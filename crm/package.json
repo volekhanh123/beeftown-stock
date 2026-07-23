@@ -1,0 +1,14 @@
+{
+  "name": "beeftown-crm",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hệ thống CRM & thẻ thành viên Beeftown",
+  "scripts": {
+    "test": "node test/chay-test.mjs && node test/test-phan-quyen.mjs",
+    "test:db": "node test/chay-test.mjs",
+    "test:rls": "node test/test-phan-quyen.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.2.17"
+  }
+}

@@ -20,12 +20,21 @@
 !*/
 
 # --- ĐƯỢC PHÉP: cấu hình repo ---
-!.gitignore
-!README.md
+# Dấu / ở đầu neo vào thư mục gốc. KHÔNG bỏ dấu này: "README.md" không neo
+# sẽ khớp mọi README.md ở mọi cấp, kéo theo cả file trong node_modules.
+!/.gitignore
+!/README.md
 
 # --- ĐƯỢC PHÉP: website ---
 !Beeftown_Website/index.html
 !Beeftown_Website/google-apps-script.gs
+
+# --- ĐƯỢC PHÉP: hệ thống CRM ---
+!crm/README.md
+!crm/package.json
+!crm/package-lock.json
+!crm/supabase/migrations/*.sql
+!crm/test/*.mjs
 
 # --- ĐƯỢC PHÉP: tài liệu thiết kế dạng web ---
 !Beeftown_Bo_Nhan_Dien_So.html
@@ -49,3 +58,9 @@
 *.jpeg
 .claude/
 Du lieu nghien cuu/
+
+# Thư viện cài bằng npm — không bao giờ commit, cài lại bằng `npm install`
+node_modules/
+.next/
+.env
+.env.*

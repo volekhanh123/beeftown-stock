@@ -397,7 +397,7 @@ Cảm ơn phản hồi của bạn. Tụi em đã kiểm tra lại hệ thống 
       <span class="sec-no">B</span>
       <div>
         <h2>Zalo Official Account</h2>
-        <p class="sec-why">Ma trận phần mềm gọi Zalo là “kênh nhắn tin số một Việt Nam”. Đây là mắt xích nối form đặt bàn trên website với khách thật — khách điền form, hệ thống gửi ZNS xác nhận, sau bữa ăn gửi tin xin đánh giá Google. Vòng tròn khép kín.</p>
+        <p class="sec-why">Ma trận phần mềm gọi Zalo là “kênh nhắn tin số một Việt Nam”. Đây là mắt xích nối form đặt bàn trên website với khách thật — khách điền form, hệ thống gửi tin xác nhận, sau bữa ăn gửi tin xin đánh giá Google. Vòng tròn khép kín.</p>
       </div>
     </div>
 
@@ -497,15 +497,15 @@ Hotline: [hotline]</div>
       </div>
     </div>
 
-    <!-- B4 ZNS -->
+    <!-- B4 — mẫu tin ZBS (từ 01/01/2026 Zalo thay ZNS bằng ZBS Template Message) -->
     <div class="item">
       <div class="item-head">
-        <h3>B4 · Bốn mẫu tin ZNS</h3>
+        <h3>B4 · Bốn mẫu tin ZBS</h3>
         <span class="spec">Khớp đúng các trường form đặt bàn trên web</span>
         <button class="btn" onclick="cp('zalo-zns',this)">Sao chép</button>
       </div>
       <div class="item-body">
-        <div class="tb-body" id="zalo-zns">▸ ZNS-01 · XÁC NHẬN ĐẶT BÀN (gửi ngay sau khi khách gửi form)
+        <div class="tb-body" id="zalo-zns">▸ ZBS-01 · XÁC NHẬN ĐẶT BÀN (gửi ngay sau khi khách gửi form)
 BEEFTOWN — XÁC NHẬN ĐẶT BÀN
 Khách hàng: &lt;customer_name&gt;
 Số điện thoại: &lt;phone&gt;
@@ -517,24 +517,24 @@ Mã đặt bàn: &lt;booking_code&gt;
 Bàn được giữ trong 15 phút kể từ giờ hẹn. Cần đổi lịch, anh/chị nhắn Zalo hoặc gọi [hotline].
 Địa chỉ: [số nhà], [tên đường], P. Cầu Ông Lãnh, Quận 1.
 
-▸ ZNS-02 · NHẮC LỊCH (gửi trước giờ hẹn 2 tiếng)
+▸ ZBS-02 · NHẮC LỊCH (gửi trước giờ hẹn 2 tiếng)
 BEEFTOWN — NHẮC LỊCH HÔM NAY
 Anh/chị &lt;customer_name&gt; ơi, bàn &lt;guests&gt; khách lúc &lt;time&gt; hôm nay đã sẵn sàng.
 Địa chỉ: [số nhà], [tên đường], P. Cầu Ông Lãnh, Quận 1.
 Bàn giữ 15 phút kể từ giờ hẹn. Cần hỗ trợ: [hotline]
 
-▸ ZNS-03 · CẢM ƠN &amp; XIN ĐÁNH GIÁ (gửi sau bữa ăn 3 tiếng)
+▸ ZBS-03 · CẢM ƠN &amp; XIN ĐÁNH GIÁ (gửi sau bữa ăn 3 tiếng)
 BEEFTOWN — CẢM ƠN ANH/CHỊ
 Cảm ơn anh/chị &lt;customer_name&gt; đã ghé Beeftown hôm nay.
 Nếu bữa ăn vừa ý, anh/chị dành 30 giây đánh giá giúp tụi em nhé — mỗi góp ý đều được đọc và ghi nhận.
 Đánh giá tại: &lt;google_review_link&gt;
 
-▸ ZNS-04 · TÍCH ĐIỂM (gửi sau khi thanh toán)
+▸ ZBS-04 · TÍCH ĐIỂM (gửi sau khi thanh toán)
 BEEFTOWN — THẺ THÀNH VIÊN
 Anh/chị &lt;customer_name&gt; vừa tích &lt;points&gt; điểm từ hóa đơn &lt;amount&gt;đ.
 Tổng điểm hiện có: &lt;total_points&gt; điểm (tương đương &lt;cash_value&gt;đ)
 Điểm được trừ trực tiếp vào hóa đơn lần sau, không giới hạn thời gian sử dụng.</div>
-        <p class="note"><b>Cần biết trước khi triển khai:</b> mẫu ZNS phải đăng ký và được Zalo duyệt trước khi gửi được, thường mất vài ngày làm việc. Chi phí khoảng 300–500đ mỗi tin theo ma trận phần mềm. ZNS-03 là mẫu đáng đầu tư nhất — nó biến khách vừa ăn xong thành đánh giá 5 sao trên Google, tức là nuôi ngược lại kênh khám phá số một ở mục A.</p>
+        <p class="note"><b>Cần biết trước khi triển khai.</b> Từ <b>01/01/2026</b> Zalo đã thay ZNS bằng chuẩn <b>ZBS Template Message</b> (hợp nhất ZNS và các luồng tin UID cũ). Điều kiện: OA phải <b>đã xác thực (tick vàng)</b> — OA thường không gửi được; phải có <b>tài khoản ZBS</b> để nạp tiền và một <b>App</b>; mẫu tin phải <b>đăng ký duyệt trước, mất 2–3 ngày làm việc</b>; người nhận phải từng giao dịch với quán. Chi phí khoảng 300–500đ mỗi tin. <b>ZBS-03 là mẫu đáng đầu tư nhất</b> — nó biến khách vừa ăn xong thành đánh giá 5 sao trên Google, tức là nuôi ngược lại kênh khám phá số một ở mục A.</p>
       </div>
     </div>
 
@@ -943,7 +943,7 @@ Email:      hello@beeftown.vn</div>
 Google Maps      ?utm_source=google&utm_medium=gbp
 Google Post      ?utm_source=google&utm_medium=gbp_post&utm_campaign=[tên_chiến_dịch]
 Zalo menu OA     ?utm_source=zalo&utm_medium=oa_menu
-Zalo ZNS         ?utm_source=zalo&utm_medium=zns&utm_campaign=[tên_mẫu]
+Zalo ZBS         ?utm_source=zalo&utm_medium=zbs&utm_campaign=[tên_mẫu]
 Facebook bài     ?utm_source=facebook&utm_medium=post&utm_campaign=[tên_chiến_dịch]
 Facebook nút     ?utm_source=facebook&utm_medium=cta_button
 Instagram bio    ?utm_source=instagram&utm_medium=bio
