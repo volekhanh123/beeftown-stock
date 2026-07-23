@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beeftown — Financial Simulator</title>
+<style>
+:root{
+  --bg:#15110e; --panel:#1f1a16; --card:#272019; --card2:#2f261d;
+  --grid:#403427; --txt:#f4ede2; --muted:#b6a690;
+  --ember:#ff6a32; --ember2:#e2562a; --gold:#e8b04b; --green:#56c08d; --red:#ef6f6f; --blue:#6fb7e8;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#15110e;color:#f4ede2;font-family:"Segoe UI",system-ui,Arial,"Noto Sans KR",sans-serif;font-size:14px}
+.wrap{max-width:1280px;margin:0 auto;padding:18px 18px 60px}
+header{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+.brand{font-weight:800;font-size:26px;letter-spacing:.5px}
+.brand b{color:var(--ember)}
+.sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+.spacer{flex:1}
+.langsw{display:flex;background:var(--card);border:1px solid #ffffff14;border-radius:10px;overflow:hidden}
+.langsw button{background:transparent;color:var(--muted);border:0;padding:7px 12px;font-weight:700;cursor:pointer;font-size:13px}
+.langsw button.on{background:var(--ember2);color:#fff}
+.btn{background:var(--card);color:var(--txt);border:1px solid #ffffff1f;border-radius:10px;padding:8px 12px;cursor:pointer;font-weight:600}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.kpi{background:var(--card);border:1px solid #ffffff10;border-left:3px solid var(--ember);border-radius:12px;padding:12px 14px}
+.kpi .l{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.4px}
+.kpi .v{font-size:21px;font-weight:800;margin-top:4px}
+.kpi .s{font-size:11px;color:var(--muted);margin-top:2px}
+.kpi.g{border-left-color:var(--green)} .kpi.b{border-left-color:var(--blue)} .kpi.gd{border-left-color:var(--gold)}
+.layout{display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start}
+.panel{background:var(--panel);border:1px solid #ffffff10;border-radius:14px;padding:14px}
+.panel h3{margin:2px 0 10px;font-size:14px}
+details{background:var(--card);border:1px solid #ffffff10;border-radius:10px;margin-bottom:10px;overflow:hidden}
+details>summary{cursor:pointer;padding:10px 12px;font-weight:700;color:var(--gold);list-style:none}
+details>summary::-webkit-details-marker{display:none}
+.gbody{padding:6px 12px 12px}
+.ctrl{margin:10px 0}
+.ctrl-top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ctrl-top label{font-size:12.5px;color:var(--txt)}
+.ctrl-top .num{width:104px;background:#120e0b;border:1px solid #ffffff1f;color:var(--txt);border-radius:7px;padding:4px 7px;text-align:right;font-size:12.5px}
+.rng{width:100%;height:6px;border-radius:5px;background:var(--grid);margin-top:7px}
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.chart{background:var(--card);border:1px solid #ffffff10;border-radius:12px;padding:12px}
+.chart h4{margin:0 0 8px;font-size:12.5px;color:var(--muted);font-weight:600}
+.tablescroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 8px;border-bottom:1px solid #ffffff0f;text-align:right}
+th:first-child,td:first-child{text-align:left}
+thead th{color:var(--gold);font-size:12px}
+tr.tot td{font-weight:800;border-top:1px solid #ffffff22}
+.pos{color:var(--green)} .neg{color:var(--red)}
+.frgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:6px}
+.frbox{background:var(--card);border:1px solid #ffffff10;border-radius:10px;padding:10px 12px}
+.frbox .l{color:var(--muted);font-size:11.5px} .frbox .v{font-size:18px;font-weight:800;margin-top:3px}
+.menu-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.toggle{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12.5px}
+.menu{min-width:620px}
+.menu td .mi{width:100%;background:#120e0b;border:1px solid #ffffff1a;color:var(--txt);border-radius:6px;padding:4px 6px;font-size:12.5px;text-align:right}
+.menu td .mi.name{text-align:left}
+.del{background:#3a201c;border:1px solid #ffffff1a;color:var(--red);border-radius:6px;padding:3px 8px;cursor:pointer}
+.note{color:var(--muted);font-size:11.5px;line-height:1.5;margin-top:10px}
+.legend{display:flex;flex-wrap:wrap;gap:8px 12px;margin-top:8px;font-size:11px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+.section-title{font-size:15px;font-weight:800;margin:22px 0 8px;color:var(--txt)}
+@media(max-width:980px){.layout{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}.charts{grid-template-columns:1fr}}
+@media(max-width:560px){
+ .wrap{padding:12px 12px 48px}.brand{font-size:21px}.kpis{gap:8px}
+ .kpi{padding:10px 11px}.kpi .v{font-size:16px}.kpi .l{font-size:9.5px}
+ .panel{padding:11px}.chart{padding:9px}.ctrl-top .num{width:88px}
+ .rng{height:9px}table{font-size:12px}th,td{padding:6px 6px}.section-title{font-size:14px}
+}
+</style>
+</head>
+<body>
+<div id="boot" style="position:fixed;left:0;right:0;top:0;z-index:9999;padding:10px 14px;background:#3a1d14;color:#ffd9a0;font:13px/1.45 Arial;border-bottom:1px solid #ff6a32">
+Đang tải dashboard… Nếu dòng này KHÔNG biến mất sau 1–2 giây: file đang được mở bằng ô “xem trước” (không chạy được). Hãy mở bằng trình duyệt thật (Safari/Chrome).</div>
+<script>
+/* Bắt lỗi sớm và hiện ngay trên trang (kể cả lỗi cú pháp ở script kế tiếp). */
+window.onerror=function(m,s,l){var b=document.getElementById('boot');if(b){b.style.background='#5a1a1a';b.style.color='#ffd2d2';b.textContent='Lỗi JS: '+m+(l?' (dòng '+l+')':'');}return false;};
+</script>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="brand">BEEF<b>TOWN</b></div>
+      <div class="sub" data-t="subtitle"></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="langsw" id="langsw">
+      <button data-lang="vi" class="on">VI</button>
+      <button data-lang="en">EN</button>
+      <button data-lang="ko">KO</button>
+    </div>
+    <button class="btn" id="reset" data-t="reset"></button>
+  </header>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="layout">
+    <div class="panel">
+      <h3 data-t="inputs_title"></h3>
+      <details open><summary data-t="grp_revenue"></summary><div class="gbody" id="grp-revenue"></div></details>
+      <details open><summary data-t="grp_varcost"></summary><div class="gbody" id="grp-varcost"></div></details>
+      <details><summary data-t="grp_fixed"></summary><div class="gbody" id="grp-fixed"></div></details>
+      <details><summary data-t="grp_capex"></summary><div class="gbody" id="grp-capex">
+        <div class="ctrl"><div class="ctrl-top"><label data-t="in_deposit"></label><b id="depositVal"></b></div></div>
+      </div></details>
+      <details><summary data-t="grp_growth"></summary><div class="gbody" id="grp-growth"></div></details>
+    </div>
+
+    <div>
+      <div class="charts">
+        <div class="chart"><h4 data-t="ch_pl"></h4><div id="chPL"></div></div>
+        <div class="chart"><h4 data-t="ch_cost"></h4><div id="chCost"></div><div class="legend" id="costLegend"></div></div>
+        <div class="chart"><h4 data-t="ch_be"></h4><div id="chBE"></div></div>
+        <div class="chart"><h4 data-t="ch_cash"></h4><div id="chCash"></div></div>
+      </div>
+      <div class="section-title" data-t="sec_pl"></div>
+      <div class="panel"><div class="tablescroll"><table id="plTable"></table></div></div>
+      <div class="section-title" data-t="sec_franchise"></div>
+      <div class="panel"><div class="frgrid" id="frGrid"></div><div class="note" data-t="fr_note"></div></div>
+    </div>
+  </div>
+
+  <div class="section-title" data-t="sec_menu"></div>
+  <details class="panel" id="menuPanel">
+    <summary style="font-size:14px;font-weight:700;color:var(--gold)" data-t="menu_open"></summary>
+    <div style="padding-top:12px">
+      <div class="note" data-t="menu_intro"></div>
+      <div class="menu-tools">
+        <button class="btn" id="addDish" data-t="menu_add"></button>
+        <label class="toggle"><input type="checkbox" id="menuFeeds"><span data-t="menu_feed"></span></label>
+      </div>
+      <div class="tablescroll"><table class="menu"><thead><tr>
+        <th data-t="m_name"></th><th data-t="m_price"></th><th data-t="m_food"></th>
+        <th data-t="m_qty"></th><th data-t="m_cu"></th><th data-t="m_rev"></th><th data-t="m_contrib"></th><th></th>
+      </tr></thead><tbody id="menuBody"></tbody>
+      <tfoot><tr class="tot">
+        <td data-t="m_total"></td><td></td><td id="mFood"></td><td></td><td></td><td id="mRev"></td><td id="mContrib"></td><td></td>
+      </tr></tfoot></table></div>
+      <div class="note" data-t="menu_note"></div>
+    </div>
+  </details>
+
+  <div class="note" id="disclaimer" data-t="disclaimer"></div>
+</div>
+
+<script>
+var I18N={
+ vi:{subtitle:"Mô phỏng tài chính & Dashboard — Nướng Hàn Quốc, TP.HCM",reset:"Khôi phục benchmark",
+  inputs_title:"Thông số (kéo để mô phỏng)",grp_revenue:"Doanh thu",grp_varcost:"Chi phí biến đổi (% doanh thu)",
+  grp_fixed:"Chi phí cố định (tháng)",grp_capex:"Đầu tư ban đầu (CapEx)",grp_growth:"Tăng trưởng & Định giá",
+  in_seats:"Số ghế",in_turns:"Lượt quay bàn/ngày",in_fill:"Tỷ lệ lấp đầy ghế",in_ticket:"Giá TB/khách (dine-in)",
+  in_days:"Ngày mở/tháng",in_delivery:"Delivery (% so với dine-in)",in_food:"Food cost (COGS)",in_labor:"Nhân công",
+  in_util:"Điện/nước/gas",in_mkt:"Marketing",in_other:"Chi phí khác",in_comm:"Hoa hồng app GH (trên delivery)",
+  in_rent:"Thuê mặt bằng",in_software:"Phần mềm & CNTT",in_otherfixed:"Cố định khác",
+  in_construction:"Thi công & nội thất",in_kitchen:"Bếp & bàn nướng không khói",in_furniture:"Bàn ghế",
+  in_posit:"POS & thiết bị IT",in_opening:"Khai trương & marketing",in_wc:"Vốn lưu động",in_deposit:"Đặt cọc (3x thuê)",
+  in_growthY2:"Tăng trưởng DT Năm 2",in_growthY3:"Tăng trưởng DT Năm 3",in_franchiseFee:"Phí nhượng quyền/điểm",
+  in_royalty:"Royalty (% DT)",in_outlets:"Số điểm franchise",in_evmult:"Bội số định giá EV/EBITDA",
+  kpi_rev:"Doanh thu/tháng",kpi_ebitda:"EBITDA/tháng",kpi_margin:"Biên EBITDA",kpi_berev:"DT hòa vốn/tháng",
+  kpi_becov:"Khách hòa vốn/ngày",kpi_payback:"Hoàn vốn",kpi_roi:"ROI/năm (ổn định)",kpi_ev:"Định giá 1 điểm",
+  kpi_rev_s:"ổn định",kpi_becov_s:"dự kiến: ",
+  ch_pl:"Doanh thu & EBITDA (3 năm)",ch_cost:"1 đồng doanh thu đi đâu",ch_be:"Khách/ngày: thực tế vs hòa vốn",
+  ch_cash:"Dòng tiền luỹ kế & hoàn vốn (36 tháng)",
+  sec_pl:"P&L theo năm",sec_franchise:"Nhượng quyền & Định giá",sec_menu:"Mô phỏng món (mở rộng)",
+  pl_item:"Khoản mục",pl_y1:"Năm 1",pl_y2:"Năm 2",pl_y3:"Năm 3",pl_rev:"Doanh thu",pl_var:"Chi phí biến đổi",
+  pl_fix:"Chi phí cố định",pl_ebitda:"EBITDA",pl_margin:"Biên EBITDA",
+  leg_food:"Food cost",leg_labor:"Nhân công",leg_util:"Điện nước gas",leg_mkt:"Marketing",leg_other:"Khác",
+  leg_comm:"Hoa hồng GH",leg_fixed:"Thuê + cố định",leg_ebitda:"EBITDA",leg_custom:"Chi phí thêm",
+  be_actual:"Thực tế",be_break:"Hòa vốn",be_safe:"Biên an toàn ",
+  fr_outlets:"Số điểm franchise",fr_fee:"Phí nhượng quyền (tổng)",fr_roy:"Royalty/năm (đủ điểm)",fr_ev1:"Định giá 1 điểm",
+  fr_note:"Royalty là dòng tiền gộp cho công ty mẹ (chưa trừ chi phí hỗ trợ chuỗi). Định giá khi exit tăng theo: EBITDA/điểm đã chứng minh, số điểm nhân rộng, thương hiệu & SOP chuẩn hoá.",
+  menu_open:"Mở module mô phỏng món",menu_add:"+ Thêm món",menu_feed:"Dùng doanh thu menu để chạy mô hình",
+  menu_intro:"Nhập từng món để xem biên đóng góp & cơ cấu menu. Bật nút bên dưới để doanh thu/food cost của mô hình chạy theo menu này.",
+  m_name:"Món",m_price:"Giá bán",m_food:"Food cost %",m_qty:"SL/ngày",m_cu:"Đóng góp/phần",m_rev:"DT/ngày",m_contrib:"Đóng góp/ngày",
+  m_total:"TỔNG",menu_note:"Đóng góp/phần = giá x (1 - food cost%). Khi bật, doanh thu dine-in/tháng = tổng DT menu/ngày x số ngày mở; food cost lấy theo bình quân gia quyền của menu.",
+  cv_var:"+ Chi phí biến đổi thêm (% DT)",cv_fixed:"+ Chi phí cố định thêm (tháng)",cv_capex:"+ Đầu tư thêm (một lần)",
+  cv_add:"+ Thêm dòng",cv_name:"Tên khoản chi phí",
+  disclaimer:"Lưu ý: Mô hình benchmark để ra quyết định, KHÔNG phải cam kết kết quả. Số mặc định là giả định nướng Hàn tầm trung tại TP.HCM — hãy thay bằng số thực để chính xác.",
+  unit_mo:"tháng",not_viable:"Không khả thi",over:" >36"},
+ en:{subtitle:"Financial Simulator & Dashboard — Korean BBQ, HCMC",reset:"Reset to benchmark",
+  inputs_title:"Inputs (drag to simulate)",grp_revenue:"Revenue",grp_varcost:"Variable costs (% of revenue)",
+  grp_fixed:"Fixed costs (monthly)",grp_capex:"Initial investment (CapEx)",grp_growth:"Growth & Valuation",
+  in_seats:"Seats",in_turns:"Table turns/day",in_fill:"Seat fill rate",in_ticket:"Avg ticket (dine-in)",
+  in_days:"Open days/month",in_delivery:"Delivery (% of dine-in)",in_food:"Food cost (COGS)",in_labor:"Labor",
+  in_util:"Utilities (elec/water/gas)",in_mkt:"Marketing",in_other:"Other costs",in_comm:"Delivery commission (on delivery)",
+  in_rent:"Rent",in_software:"Software & IT",in_otherfixed:"Other fixed",
+  in_construction:"Construction & interior",in_kitchen:"Kitchen & smokeless grills",in_furniture:"Furniture",
+  in_posit:"POS & IT equipment",in_opening:"Opening & marketing",in_wc:"Working capital",in_deposit:"Deposit (3x rent)",
+  in_growthY2:"Revenue growth Y2",in_growthY3:"Revenue growth Y3",in_franchiseFee:"Franchise fee/outlet",
+  in_royalty:"Royalty (% rev)",in_outlets:"Franchise outlets",in_evmult:"Valuation multiple EV/EBITDA",
+  kpi_rev:"Revenue/month",kpi_ebitda:"EBITDA/month",kpi_margin:"EBITDA margin",kpi_berev:"Break-even rev/mo",
+  kpi_becov:"Break-even covers/day",kpi_payback:"Payback",kpi_roi:"ROI/yr (steady)",kpi_ev:"Valuation / outlet",
+  kpi_rev_s:"steady",kpi_becov_s:"expected: ",
+  ch_pl:"Revenue & EBITDA (3 yrs)",ch_cost:"Where each revenue dong goes",ch_be:"Covers/day: actual vs break-even",
+  ch_cash:"Cumulative cash flow & payback (36 mo)",
+  sec_pl:"P&L by year",sec_franchise:"Franchise & Valuation",sec_menu:"Menu simulation (expansion)",
+  pl_item:"Item",pl_y1:"Year 1",pl_y2:"Year 2",pl_y3:"Year 3",pl_rev:"Revenue",pl_var:"Variable costs",
+  pl_fix:"Fixed costs",pl_ebitda:"EBITDA",pl_margin:"EBITDA margin",
+  leg_food:"Food cost",leg_labor:"Labor",leg_util:"Utilities",leg_mkt:"Marketing",leg_other:"Other",
+  leg_comm:"Delivery comm.",leg_fixed:"Rent + fixed",leg_ebitda:"EBITDA",leg_custom:"Custom",
+  be_actual:"Actual",be_break:"Break-even",be_safe:"Safety margin ",
+  fr_outlets:"Franchise outlets",fr_fee:"Franchise fees (total)",fr_roy:"Royalty/yr (at target)",fr_ev1:"Valuation / outlet",
+  fr_note:"Royalty is gross cash to the franchisor (before chain-support costs). Exit valuation scales with proven EBITDA/outlet, number of outlets, and standardized brand & SOP.",
+  menu_open:"Open menu-simulation module",menu_add:"+ Add dish",menu_feed:"Use menu revenue to drive the model",
+  menu_intro:"Enter each dish to see contribution margin & menu mix. Toggle below to drive the model's revenue/food cost from this menu.",
+  m_name:"Dish",m_price:"Price",m_food:"Food cost %",m_qty:"Qty/day",m_cu:"Contrib/unit",m_rev:"Rev/day",m_contrib:"Contrib/day",
+  m_total:"TOTAL",menu_note:"Contribution/unit = price x (1 - food cost%). When on, monthly dine-in revenue = total menu rev/day x open days; food cost uses the menu's weighted average.",
+  cv_var:"+ Add variable cost (% rev)",cv_fixed:"+ Add fixed cost (monthly)",cv_capex:"+ Add CapEx (one-time)",
+  cv_add:"+ Add row",cv_name:"Cost item name",
+  disclaimer:"Note: A benchmark model for decision-making, NOT a guarantee of results. Defaults are mid-range Korean BBQ assumptions for HCMC — replace with your real figures for accuracy.",
+  unit_mo:"mo",not_viable:"Not viable",over:" >36"},
+ ko:{subtitle:"재무 시뮬레이터 & 대시보드 — 한식 BBQ, 호치민",reset:"기본값 복원",
+  inputs_title:"입력값 (드래그하여 시뮬레이션)",grp_revenue:"매출",grp_varcost:"변동비 (매출 %)",
+  grp_fixed:"고정비 (월)",grp_capex:"초기 투자 (CapEx)",grp_growth:"성장 & 가치평가",
+  in_seats:"좌석 수",in_turns:"테이블 회전/일",in_fill:"좌석 점유율",in_ticket:"객단가 (매장)",
+  in_days:"월 영업일",in_delivery:"배달 (매장 대비 %)",in_food:"식자재 원가",in_labor:"인건비",
+  in_util:"공과금 (전기/수도/가스)",in_mkt:"마케팅",in_other:"기타 비용",in_comm:"배달 수수료 (배달분)",
+  in_rent:"임대료",in_software:"소프트웨어 & IT",in_otherfixed:"기타 고정비",
+  in_construction:"공사 & 인테리어",in_kitchen:"주방 & 무연 그릴",in_furniture:"가구",
+  in_posit:"POS & IT 장비",in_opening:"오픈 & 마케팅",in_wc:"운전자본",in_deposit:"보증금 (임대료 3배)",
+  in_growthY2:"2년차 매출 성장",in_growthY3:"3년차 매출 성장",in_franchiseFee:"가맹비/매장",
+  in_royalty:"로열티 (매출 %)",in_outlets:"가맹점 수",in_evmult:"가치 배수 EV/EBITDA",
+  kpi_rev:"월 매출",kpi_ebitda:"월 EBITDA",kpi_margin:"EBITDA 마진",kpi_berev:"손익분기 매출/월",
+  kpi_becov:"손익분기 고객/일",kpi_payback:"투자 회수",kpi_roi:"연 ROI (안정기)",kpi_ev:"1개 매장 가치",
+  kpi_rev_s:"안정기",kpi_becov_s:"예상: ",
+  ch_pl:"매출 & EBITDA (3년)",ch_cost:"매출 1원의 사용처",ch_be:"고객/일: 실제 vs 손익분기",
+  ch_cash:"누적 현금흐름 & 회수 (36개월)",
+  sec_pl:"연도별 손익",sec_franchise:"가맹 & 가치평가",sec_menu:"메뉴 시뮬레이션 (확장)",
+  pl_item:"항목",pl_y1:"1년차",pl_y2:"2년차",pl_y3:"3년차",pl_rev:"매출",pl_var:"변동비",
+  pl_fix:"고정비",pl_ebitda:"EBITDA",pl_margin:"EBITDA 마진",
+  leg_food:"식자재",leg_labor:"인건비",leg_util:"공과금",leg_mkt:"마케팅",leg_other:"기타",
+  leg_comm:"배달 수수료",leg_fixed:"임대+고정",leg_ebitda:"EBITDA",leg_custom:"추가비용",
+  be_actual:"실제",be_break:"손익분기",be_safe:"안전 마진 ",
+  fr_outlets:"가맹점 수",fr_fee:"가맹비 (총)",fr_roy:"연 로열티 (목표 달성시)",fr_ev1:"1개 매장 가치",
+  fr_note:"로열티는 본사 총 현금흐름(체인 지원비 차감 전)입니다. 엑싯 가치는 매장당 입증된 EBITDA, 매장 수, 표준화된 브랜드·SOP에 비례해 상승합니다.",
+  menu_open:"메뉴 시뮬레이션 모듈 열기",menu_add:"+ 메뉴 추가",menu_feed:"메뉴 매출로 모델 구동",
+  menu_intro:"각 메뉴를 입력해 공헌이익과 메뉴 구성을 확인하세요. 아래 토글을 켜면 모델의 매출/식자재 원가가 이 메뉴로 계산됩니다.",
+  m_name:"메뉴",m_price:"가격",m_food:"식자재 %",m_qty:"수량/일",m_cu:"공헌/개",m_rev:"매출/일",m_contrib:"공헌/일",
+  m_total:"합계",menu_note:"공헌/개 = 가격 x (1 - 식자재%). 켜면 월 매장매출 = 총 메뉴 매출/일 x 영업일, 식자재 원가는 메뉴 가중평균을 사용합니다.",
+  cv_var:"+ 변동비 추가 (매출%)",cv_fixed:"+ 고정비 추가 (월)",cv_capex:"+ 투자 추가 (일회성)",
+  cv_add:"+ 행 추가",cv_name:"비용 항목명",
+  disclaimer:"참고: 의사결정용 벤치마크 모델이며 결과를 보장하지 않습니다. 기본값은 호치민 중급 한식 BBQ 가정치입니다 — 실제 수치로 교체하세요.",
+  unit_mo:"개월",not_viable:"불가",over:" >36"}
+};
+
+var PARAMS=[
+ {k:"seats",g:"revenue",t:"num",min:20,max:400,step:5,def:120},
+ {k:"turns",g:"revenue",t:"num",min:0.5,max:4,step:0.1,def:1.6},
+ {k:"fill",g:"revenue",t:"pct",min:30,max:100,step:5,def:70},
+ {k:"ticket",g:"revenue",t:"money",min:50000,max:800000,step:10000,def:290000},
+ {k:"days",g:"revenue",t:"num",min:20,max:31,step:1,def:30},
+ {k:"delivery",g:"revenue",t:"pct",min:0,max:150,step:5,def:30},
+ {k:"food",g:"varcost",t:"pct",min:15,max:60,step:1,def:38},
+ {k:"labor",g:"varcost",t:"pct",min:10,max:45,step:1,def:25},
+ {k:"util",g:"varcost",t:"pct",min:0,max:20,step:1,def:6},
+ {k:"mkt",g:"varcost",t:"pct",min:0,max:25,step:1,def:7},
+ {k:"other",g:"varcost",t:"pct",min:0,max:20,step:1,def:5},
+ {k:"comm",g:"varcost",t:"pct",min:0,max:40,step:1,def:25},
+ {k:"rent",g:"fixed",t:"money",min:10000000,max:300000000,step:5000000,def:70000000},
+ {k:"software",g:"fixed",t:"money",min:0,max:10000000,step:100000,def:1200000},
+ {k:"otherfixed",g:"fixed",t:"money",min:0,max:50000000,step:1000000,def:10000000},
+ {k:"construction",g:"capex",t:"money",min:0,max:2000000000,step:50000000,def:600000000},
+ {k:"kitchen",g:"capex",t:"money",min:0,max:2000000000,step:50000000,def:700000000},
+ {k:"furniture",g:"capex",t:"money",min:0,max:500000000,step:10000000,def:100000000},
+ {k:"posit",g:"capex",t:"money",min:0,max:200000000,step:5000000,def:35000000},
+ {k:"opening",g:"capex",t:"money",min:0,max:500000000,step:10000000,def:80000000},
+ {k:"wc",g:"capex",t:"money",min:0,max:1000000000,step:50000000,def:200000000},
+ {k:"growthY2",g:"growth",t:"pct",min:0,max:60,step:5,def:15},
+ {k:"growthY3",g:"growth",t:"pct",min:0,max:60,step:5,def:10},
+ {k:"franchiseFee",g:"growth",t:"money",min:0,max:2000000000,step:50000000,def:300000000},
+ {k:"royalty",g:"growth",t:"pct",min:0,max:15,step:1,def:5},
+ {k:"outlets",g:"growth",t:"num",min:0,max:50,step:1,def:5},
+ {k:"evmult",g:"growth",t:"num",min:1,max:12,step:0.5,def:5}
+];
+var RAMP=[0.60,0.70,0.80,0.88,0.95,1.00,1,1,1,1,1,1];
+var lang="vi";
+var state={}; for(var pi=0;pi<PARAMS.length;pi++){state[PARAMS[pi].k]=PARAMS[pi].def;}
+var menu=[
+ {n:{vi:"Ba chỉ bò Mỹ",en:"US beef belly",ko:"미국산 삼겹살(소)"},price:189000,food:45,qty:40},
+ {n:{vi:"Sườn bò non BBQ",en:"BBQ short rib",ko:"BBQ 갈비"},price:259000,food:48,qty:30},
+ {n:{vi:"Ba chỉ heo nướng",en:"Grilled pork belly",ko:"삼겹살"},price:129000,food:38,qty:35},
+ {n:{vi:"Set combo 2 người",en:"Combo set (2 pax)",ko:"2인 세트"},price:459000,food:42,qty:20},
+ {n:{vi:"Canh kim chi",en:"Kimchi jjigae",ko:"김치찌개"},price:89000,food:28,qty:25},
+ {n:{vi:"Cơm trộn / banchan",en:"Bibimbap / banchan",ko:"비빔밥/반찬"},price:59000,food:25,qty:30},
+ {n:{vi:"Soju / bia",en:"Soju / beer",ko:"소주/맥주"},price:79000,food:22,qty:60}
+];
+var menuFeeds=false;
+var custom={var:[],fixed:[],capex:[]};
+
+var nf=new Intl.NumberFormat('en-US');
+function vnd(v){return nf.format(Math.round(v))+" ₫";}
+function compact(v){v=+v;var a=Math.abs(v);
+ if(lang==="ko"){if(a>=1e8)return (v/1e8).toFixed(2)+"억 ₫"; if(a>=1e4)return Math.round(v/1e4)+"만 ₫"; return vnd(v);}
+ if(lang==="en"){if(a>=1e9)return (v/1e9).toFixed(2)+"B ₫"; if(a>=1e6)return (v/1e6).toFixed(1)+"M ₫"; return vnd(v);}
+ if(a>=1e9)return (v/1e9).toFixed(2)+" tỷ"; if(a>=1e6)return Math.round(v/1e6)+" tr ₫"; return vnd(v);}
+function pct(v){return (v*100).toFixed(1)+"%";}
+function T(k){var v=I18N[lang][k]; return (v===undefined||v===null)?k:v;}
+function esc(t){return String(t).replace(/"/g,'&quot;');}
+function sum(arr){var s=0;for(var i=0;i<arr.length;i++){s+=(+arr[i]||0);}return s;}
+
+function menuTotals(){var rev=0,cost=0,contrib=0;for(var i=0;i<menu.length;i++){var d=menu[i];var r=d.price*d.qty;rev+=r;cost+=r*(d.food/100);contrib+=r*(1-d.food/100);}
+ return {rev:rev,cost:cost,contrib:contrib,foodPct:rev>0?cost/rev:0};}
+function compute(){
+ var s=state;
+ var fill=s.fill/100, dPct=s.delivery/100;
+ var food=s.food/100,labor=s.labor/100,util=s.util/100,mkt=s.mkt/100,other=s.other/100,comm=s.comm/100;
+ var deposit=3*s.rent;
+ var cVar=sum(custom.var.map(function(b){return b.val;}))/100;
+ var cFixed=sum(custom.fixed.map(function(b){return b.val;}));
+ var cCapex=sum(custom.capex.map(function(b){return b.val;}));
+ var capex=deposit+s.construction+s.kitchen+s.furniture+s.posit+s.opening+s.wc+cCapex;
+ var dineIn, foodPct=food;
+ var mt=menuTotals();
+ if(menuFeeds && mt.rev>0){dineIn=mt.rev*s.days; foodPct=mt.foodPct;}
+ else {var covers=s.seats*s.turns*fill; dineIn=covers*s.ticket*s.days;}
+ var coversDay=(menuFeeds&&mt.rev>0) ? (mt.rev/Math.max(s.ticket,1)) : s.seats*s.turns*fill;
+ var delivery=dineIn*dPct;
+ var totalRev=dineIn+delivery;
+ var varExcl=foodPct+labor+util+mkt+other;
+ var delShare=dPct/(1+dPct);
+ var commOfTotal=comm*delShare;
+ var blendedVar=varExcl+commOfTotal+cVar;
+ var cm=1-blendedVar;
+ var fixed=s.rent+s.software+s.otherfixed+cFixed;
+ var beRev=cm>0?fixed/cm:Infinity;
+ var beCoversDay=cm>0?(beRev/s.days)/Math.max(s.ticket,1):Infinity;
+ var ebitdaM=totalRev*cm-fixed;
+ var ebitdaY=ebitdaM*12;
+ var steadyAnnual=totalRev*12;
+ var y1rev=0,y1eb=0,monthsEB=[];
+ for(var i=0;i<12;i++){var r=totalRev*RAMP[i];var e=r*cm-fixed;y1rev+=r;y1eb+=e;monthsEB.push(e);}
+ var y2rev=steadyAnnual*(1+s.growthY2/100), y3rev=y2rev*(1+s.growthY3/100);
+ var y2eb=y2rev*cm-fixed*12, y3eb=y3rev*cm-fixed*12;
+ var cum=[],c=0,payback=null;
+ for(var m=0;m<36;m++){c+=(m<12?monthsEB[m]:ebitdaM);cum.push(c);if(payback===null&&c>=capex)payback=m+1;}
+ var roiSteady=capex>0?ebitdaY/capex:0;
+ var evOutlet=ebitdaY*s.evmult;
+ var frFee=s.franchiseFee*s.outlets, royaltyY=steadyAnnual*(s.royalty/100)*s.outlets;
+ return {totalRev:totalRev,cm:cm,fixed:fixed,beRev:beRev,beCoversDay:beCoversDay,coversDay:coversDay,
+  ebitdaM:ebitdaM,ebitdaY:ebitdaY,capex:capex,deposit:deposit,y1rev:y1rev,y1eb:y1eb,y2rev:y2rev,y2eb:y2eb,
+  y3rev:y3rev,y3eb:y3eb,cum:cum,payback:payback,roiSteady:roiSteady,evOutlet:evOutlet,frFee:frFee,royaltyY:royaltyY,
+  food:foodPct,labor:labor,util:util,mkt:mkt,other:other,commOfTotal:commOfTotal,customVarPct:cVar};
+}
+
+function fmtInput(p,val){if(p.t==="money")return nf.format(val); return val;}
+function byId(id){return document.getElementById(id);}
+function buildInputs(){
+ for(var i=0;i<PARAMS.length;i++){(function(p){
+  var wrap=document.createElement("div");wrap.className="ctrl";
+  wrap.innerHTML='<div class="ctrl-top"><label data-t="in_'+p.k+'"></label>'
+    +'<input class="num" data-k="'+p.k+'" inputmode="numeric"></div>'
+    +'<input class="rng" type="range" data-k="'+p.k+'" min="'+p.min+'" max="'+p.max+'" step="'+p.step+'">';
+  byId("grp-"+p.g).appendChild(wrap);
+  var num=wrap.querySelector(".num"),rng=wrap.querySelector(".rng");
+  num.value=fmtInput(p,state[p.k]); rng.value=state[p.k];
+  rng.addEventListener("input",function(){state[p.k]=+rng.value;num.value=fmtInput(p,state[p.k]);render();});
+  num.addEventListener("input",function(){var v=parseFloat(String(num.value).replace(/[^0-9.\-]/g,""));if(isNaN(v))return;
+    v=Math.min(p.max,Math.max(p.min,v));state[p.k]=v;rng.value=v;render();});
+  num.addEventListener("blur",function(){num.value=fmtInput(p,state[p.k]);});
+ })(PARAMS[i]);}
+}
+
+var CUST=[{type:"var",grp:"varcost",titleKey:"cv_var",unit:"%"},
+ {type:"fixed",grp:"fixed",titleKey:"cv_fixed",unit:"₫"},
+ {type:"capex",grp:"capex",titleKey:"cv_capex",unit:"₫"}];
+function buildCustom(){
+ for(var i=0;i<CUST.length;i++){var c=CUST[i];
+  var box=document.createElement("div");
+  box.style.cssText="margin-top:12px;border-top:1px dashed #ffffff1f;padding-top:8px";
+  box.innerHTML='<div style="color:var(--gold);font-size:12px;font-weight:700;margin:2px 0 6px" data-t="'+c.titleKey+'"></div>'
+   +'<div id="cust-'+c.type+'"></div>'
+   +'<button class="btn" style="padding:5px 10px;font-size:12px;margin-top:6px" data-add="'+c.type+'" data-t="cv_add"></button>';
+  byId("grp-"+c.grp).appendChild(box);
+ }
+}
+function renderCustom(){
+ for(var i=0;i<CUST.length;i++){(function(c){
+  var host=byId("cust-"+c.type);if(!host)return;
+  var rows="";
+  for(var j=0;j<custom[c.type].length;j++){var it=custom[c.type][j];
+   var disp=(c.unit==="%")?it.val:nf.format(it.val);
+   rows+='<div class="ctrl-top" style="margin:5px 0;gap:6px">'
+    +'<input class="num" style="flex:1;width:auto;text-align:left" data-ct="'+c.type+'" data-i="'+j+'" data-f="name" value="'+esc(it.name||"")+'" placeholder="'+T("cv_name")+'">'
+    +'<input class="num" inputmode="numeric" data-ct="'+c.type+'" data-i="'+j+'" data-f="val" value="'+disp+'">'
+    +'<span style="color:var(--muted);font-size:12px;width:12px">'+c.unit+'</span>'
+    +'<button class="del" data-cd="'+c.type+'" data-i="'+j+'">x</button></div>';
+  }
+  host.innerHTML=rows;
+  var ins=host.querySelectorAll("input");
+  for(var a=0;a<ins.length;a++){ins[a].addEventListener("input",function(){
+    var ii=+this.getAttribute("data-i"),f=this.getAttribute("data-f"),ty=this.getAttribute("data-ct");
+    if(f==="name")custom[ty][ii].name=this.value;
+    else{var v=parseFloat(String(this.value).replace(/[^0-9.]/g,""));custom[ty][ii].val=isNaN(v)?0:v;}
+    renderOutputs();});}
+  var dels=host.querySelectorAll(".del");
+  for(var b2=0;b2<dels.length;b2++){dels[b2].addEventListener("click",function(){
+    custom[this.getAttribute("data-cd")].splice(+this.getAttribute("data-i"),1);render();});}
+ })(CUST[i]);}
+}
+
+var C={food:"#ff6a32",labor:"#e8b04b",util:"#6fb7e8",mkt:"#b07de0",other:"#9aa0a6",comm:"#ef6f6f",custom:"#2dd4bf",fixed:"#7a6f63",ebitda:"#56c08d",gold:"#e8b04b",green:"#56c08d",red:"#ef6f6f"};
+function svg(w,h,inner){return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" height="'+h+'">'+inner+'</svg>';}
+function chartPL(M){
+ var w=440,bw=34,gap=58,base=176;var max=Math.max(M.y1rev,M.y2rev,M.y3rev)*1.1||1;
+ var yrs=[["pl_y1",M.y1rev,M.y1eb],["pl_y2",M.y2rev,M.y2eb],["pl_y3",M.y3rev,M.y3eb]];var g="";
+ for(var i=0;i<3;i++){var y=yrs[i];var x=34+i*(bw*2+gap);
+  var rh=(y[1]/max)*(base-12),eh=(Math.max(y[2],0)/max)*(base-12);
+  g+='<rect x="'+x+'" y="'+(base-rh)+'" width="'+bw+'" height="'+rh+'" rx="3" fill="'+C.gold+'"/>';
+  g+='<rect x="'+(x+bw+6)+'" y="'+(base-eh)+'" width="'+bw+'" height="'+eh+'" rx="3" fill="'+C.green+'"/>';
+  g+='<text x="'+(x+bw)+'" y="'+(base+14)+'" fill="#b6a690" font-size="11" text-anchor="middle">'+T(y[0])+'</text>';
+  g+='<text x="'+(x+bw/2)+'" y="'+(base-rh-5)+'" fill="#e8b04b" font-size="9.5" text-anchor="middle">'+compact(y[1])+'</text>';
+  g+='<text x="'+(x+bw+6+bw/2)+'" y="'+(base-eh-5)+'" fill="#56c08d" font-size="9.5" text-anchor="middle">'+compact(y[2])+'</text>';}
+ return svg(w,200,g);
+}
+function chartCost(M){
+ var segs=[["food",M.food],["labor",M.labor],["util",M.util],["mkt",M.mkt],["other",M.other],
+  ["comm",M.commOfTotal],["custom",M.customVarPct||0],["fixed",M.fixed/M.totalRev],["ebitda",Math.max(0,M.ebitdaM/M.totalRev)]];
+ var w=440,bw=w-16,x=8,g="";
+ for(var i=0;i<segs.length;i++){var s=segs[i];var sw=Math.max(0,s[1])*bw;if(sw<=0)continue;
+  g+='<rect x="'+x+'" y="18" width="'+sw+'" height="26" fill="'+C[s[0]]+'"></rect>';
+  if(sw>30)g+='<text x="'+(x+sw/2)+'" y="35" fill="#1a1410" font-size="10" font-weight="700" text-anchor="middle">'+(s[1]*100).toFixed(0)+'%</text>';
+  x+=sw;}
+ var leg="";for(var j=0;j<segs.length;j++){leg+='<span><i style="background:'+C[segs[j][0]]+'"></i>'+T("leg_"+segs[j][0])+' '+pct(segs[j][1])+'</span>';}
+ byId("costLegend").innerHTML=leg;
+ return svg(w,60,g);
+}
+function chartBE(M){
+ var w=440,base=150;var bev=isFinite(M.beCoversDay)?M.beCoversDay:0;var max=Math.max(M.coversDay,bev)*1.25||1;
+ var bw=80,x1=80,x2=240;var ah=(M.coversDay/max)*(base-10);var bh=(bev/max)*(base-10);var g="";
+ g+='<rect x="'+x1+'" y="'+(base-ah)+'" width="'+bw+'" height="'+ah+'" rx="4" fill="'+C.green+'"/>';
+ g+='<text x="'+(x1+bw/2)+'" y="'+(base-ah-6)+'" fill="#56c08d" font-size="12" font-weight="700" text-anchor="middle">'+M.coversDay.toFixed(0)+'</text>';
+ g+='<text x="'+(x1+bw/2)+'" y="'+(base+16)+'" fill="#b6a690" font-size="11" text-anchor="middle">'+T("be_actual")+'</text>';
+ g+='<rect x="'+x2+'" y="'+(base-bh)+'" width="'+bw+'" height="'+bh+'" rx="4" fill="'+C.red+'"/>';
+ g+='<text x="'+(x2+bw/2)+'" y="'+(base-bh-6)+'" fill="#ef6f6f" font-size="12" font-weight="700" text-anchor="middle">'+(isFinite(M.beCoversDay)?M.beCoversDay.toFixed(0):"--")+'</text>';
+ g+='<text x="'+(x2+bw/2)+'" y="'+(base+16)+'" fill="#b6a690" font-size="11" text-anchor="middle">'+T("be_break")+'</text>';
+ var safe=(isFinite(M.beCoversDay)&&M.coversDay>0)?(M.coversDay-M.beCoversDay)/M.coversDay:0;
+ g+='<text x="'+(w/2)+'" y="16" fill="#e8b04b" font-size="11.5" text-anchor="middle">'+T("be_safe")+(safe*100).toFixed(0)+'%</text>';
+ return svg(w,180,g);
+}
+function chartCash(M){
+ var w=440,h=200,padL=40,padB=24,padT=14,n=M.cum.length;
+ var allmin=Math.min(0,Math.min.apply(null,M.cum));
+ var allmax=Math.max(M.capex,Math.max.apply(null,M.cum));
+ function X(i){return padL+(i/(n-1))*(w-padL-10);}
+ function Y(v){return padT+(1-(v-allmin)/((allmax-allmin)||1))*(h-padT-padB);}
+ var g="";
+ g+='<line x1="'+padL+'" y1="'+Y(0)+'" x2="'+(w-10)+'" y2="'+Y(0)+'" stroke="#5a4d3f" stroke-width="1"/>';
+ g+='<line x1="'+padL+'" y1="'+Y(M.capex)+'" x2="'+(w-10)+'" y2="'+Y(M.capex)+'" stroke="#ef6f6f" stroke-width="1" stroke-dasharray="5 4"/>';
+ g+='<text x="'+(w-12)+'" y="'+(Y(M.capex)-4)+'" fill="#ef6f6f" font-size="10" text-anchor="end">CapEx '+compact(M.capex)+'</text>';
+ var pts="";for(var i=0;i<n;i++){pts+=X(i)+","+Y(M.cum[i])+" ";}
+ g+='<polyline points="'+pts+'" fill="none" stroke="'+C.gold+'" stroke-width="2"/>';
+ if(M.payback){var px=X(M.payback-1);g+='<line x1="'+px+'" y1="'+padT+'" x2="'+px+'" y2="'+(h-padB)+'" stroke="#56c08d" stroke-width="1.5" stroke-dasharray="3 3"/>';
+  g+='<text x="'+(px+4)+'" y="'+(padT+12)+'" fill="#56c08d" font-size="11" font-weight="700">'+M.payback+' '+T("unit_mo")+'</text>';}
+ var ax=[0,12,24,35];for(var k=0;k<ax.length;k++){g+='<text x="'+X(ax[k])+'" y="'+(h-8)+'" fill="#b6a690" font-size="9.5" text-anchor="middle">'+(ax[k]+1)+'</text>';}
+ return svg(w,h,g);
+}
+
+function setText(){var els=document.querySelectorAll("[data-t]");
+ for(var i=0;i<els.length;i++){els[i].textContent=T(els[i].getAttribute("data-t"));}
+ document.documentElement.lang=lang;}
+function renderOutputs(){
+ var M=compute();
+ byId("depositVal").textContent=compact(M.deposit);
+ var becov=isFinite(M.beCoversDay)?M.beCoversDay.toFixed(0):"--";
+ var payback=M.ebitdaM<=0?T("not_viable"):(M.payback?(M.payback+" "+T("unit_mo")):T("over"));
+ var k=[
+  ["kpi_rev",compact(M.totalRev),T("kpi_rev_s"),""],
+  ["kpi_ebitda",compact(M.ebitdaM),pct(M.ebitdaM/M.totalRev),"g"],
+  ["kpi_margin",pct(M.ebitdaM/M.totalRev),"",""],
+  ["kpi_ev",compact(M.evOutlet),state.evmult+"x","gd"],
+  ["kpi_berev",compact(M.beRev),"","b"],
+  ["kpi_becov",becov,T("kpi_becov_s")+M.coversDay.toFixed(0),"b"],
+  ["kpi_payback",payback,"","g"],
+  ["kpi_roi",pct(M.roiSteady),"","g"]
+ ];
+ var kh="";for(var i=0;i<k.length;i++){kh+='<div class="kpi '+k[i][3]+'"><div class="l">'+T(k[i][0])+'</div><div class="v">'+k[i][1]+'</div><div class="s">'+(k[i][2]||"")+'</div></div>';}
+ byId("kpis").innerHTML=kh;
+ byId("chPL").innerHTML=chartPL(M);
+ byId("chCost").innerHTML=chartCost(M);
+ byId("chBE").innerHTML=chartBE(M);
+ byId("chCash").innerHTML=chartCash(M);
+ var plHtml='<thead><tr><th>'+T("pl_item")+'</th><th>'+T("pl_y1")+'</th><th>'+T("pl_y2")+'</th><th>'+T("pl_y3")+'</th></tr></thead><tbody>'
+  +'<tr><td>'+T("pl_rev")+'</td><td>'+vnd(M.y1rev)+'</td><td>'+vnd(M.y2rev)+'</td><td>'+vnd(M.y3rev)+'</td></tr>'
+  +'<tr><td>'+T("pl_var")+'</td><td>'+vnd(M.y1rev-M.fixed*12-M.y1eb)+'</td><td>'+vnd(M.y2rev-M.fixed*12-M.y2eb)+'</td><td>'+vnd(M.y3rev-M.fixed*12-M.y3eb)+'</td></tr>'
+  +'<tr><td>'+T("pl_fix")+'</td><td>'+vnd(M.fixed*12)+'</td><td>'+vnd(M.fixed*12)+'</td><td>'+vnd(M.fixed*12)+'</td></tr>'
+  +'<tr class="tot"><td>'+T("pl_ebitda")+'</td><td class="'+(M.y1eb>=0?'pos':'neg')+'">'+vnd(M.y1eb)+'</td><td class="'+(M.y2eb>=0?'pos':'neg')+'">'+vnd(M.y2eb)+'</td><td class="'+(M.y3eb>=0?'pos':'neg')+'">'+vnd(M.y3eb)+'</td></tr>'
+  +'<tr><td>'+T("pl_margin")+'</td><td>'+pct(M.y1eb/M.y1rev)+'</td><td>'+pct(M.y2eb/M.y2rev)+'</td><td>'+pct(M.y3eb/M.y3rev)+'</td></tr></tbody>';
+ byId("plTable").innerHTML=plHtml;
+ var fr=[["fr_outlets",state.outlets+""],["fr_fee",compact(M.frFee)],["fr_roy",compact(M.royaltyY)],["fr_ev1",compact(M.evOutlet)]];
+ var fh="";for(var j=0;j<fr.length;j++){fh+='<div class="frbox"><div class="l">'+T(fr[j][0])+'</div><div class="v">'+fr[j][1]+'</div></div>';}
+ byId("frGrid").innerHTML=fh;
+ renderMenu();
+}
+function render(){ setText(); renderCustom(); renderOutputs(); }
+
+function renderMenu(){
+ var tb=byId("menuBody");var rows="";
+ for(var i=0;i<menu.length;i++){var d=menu[i];var cu=d.price*(1-d.food/100),rev=d.price*d.qty,ct=cu*d.qty;
+  rows+='<tr><td><input class="mi name" data-i="'+i+'" data-f="n" value="'+esc(d.n[lang]||d.n.vi)+'"></td>'
+   +'<td><input class="mi" inputmode="numeric" data-i="'+i+'" data-f="price" value="'+d.price+'"></td>'
+   +'<td><input class="mi" inputmode="numeric" data-i="'+i+'" data-f="food" value="'+d.food+'"></td>'
+   +'<td><input class="mi" inputmode="numeric" data-i="'+i+'" data-f="qty" value="'+d.qty+'"></td>'
+   +'<td>'+vnd(cu)+'</td><td>'+vnd(rev)+'</td><td>'+vnd(ct)+'</td>'
+   +'<td><button class="del" data-i="'+i+'">x</button></td></tr>';}
+ tb.innerHTML=rows;
+ var t=menuTotals();
+ byId("mFood").textContent=pct(t.foodPct);byId("mRev").textContent=vnd(t.rev);byId("mContrib").textContent=vnd(t.contrib);
+ var ins=tb.querySelectorAll(".mi");
+ for(var a=0;a<ins.length;a++){ins[a].addEventListener("input",function(){
+   var ii=+this.getAttribute("data-i"),f=this.getAttribute("data-f");
+   if(f==="n"){menu[ii].n={vi:this.value,en:this.value,ko:this.value};}
+   else{var v=parseFloat(String(this.value).replace(/[^0-9.]/g,""));menu[ii][f]=isNaN(v)?0:v;}
+   if(menuFeeds)render(); else renderMenu();});}
+ var dels=tb.querySelectorAll(".del");
+ for(var b3=0;b3<dels.length;b3++){dels[b3].addEventListener("click",function(){menu.splice(+this.getAttribute("data-i"),1);render();});}
+}
+
+(function init(){
+ try{
+  buildInputs();
+  buildCustom();
+  document.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("[data-add]"):null;if(!b)return;
+   var ty=b.getAttribute("data-add");custom[ty].push({name:"",val:ty==="var"?2:(ty==="fixed"?5000000:50000000)});render();});
+  byId("langsw").addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("button"):null;if(!b)return;
+   lang=b.getAttribute("data-lang");var bs=document.querySelectorAll("#langsw button");
+   for(var i=0;i<bs.length;i++){bs[i].className=(bs[i]===b)?"on":"";}
+   for(var j=0;j<PARAMS.length;j++){var nmm=document.querySelector('.num[data-k="'+PARAMS[j].k+'"]');if(nmm)nmm.value=fmtInput(PARAMS[j],state[PARAMS[j].k]);}
+   render();});
+  byId("reset").addEventListener("click",function(){for(var i=0;i<PARAMS.length;i++){state[PARAMS[i].k]=PARAMS[i].def;}
+   for(var j=0;j<PARAMS.length;j++){var p=PARAMS[j];var nmm=document.querySelector('.num[data-k="'+p.k+'"]');var rr=document.querySelector('.rng[data-k="'+p.k+'"]');if(nmm)nmm.value=fmtInput(p,state[p.k]);if(rr)rr.value=state[p.k];}
+   render();});
+  byId("addDish").addEventListener("click",function(){menu.push({n:{vi:"Món mới",en:"New dish",ko:"새 메뉴"},price:99000,food:35,qty:10});render();});
+  byId("menuFeeds").addEventListener("change",function(e){menuFeeds=e.target.checked;render();});
+  render();
+  var boot=byId("boot");if(boot)boot.style.display="none";
+ }catch(err){
+  var bb=byId("boot");if(bb){bb.style.background="#5a1a1a";bb.style.color="#ffd2d2";bb.textContent="Lỗi: "+(err&&err.message?err.message:err);}
+ }
+})();
+</script>
+</body>
+</html>

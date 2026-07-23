@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Beeftown — Thiết kế hệ thống CRM &amp; Thẻ thành viên</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@800&family=Montserrat:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+<style>
+/* ===== BEEFTOWN — Thiết kế CRM =============================================
+   Theo Brand Guidelines BGBTFILE (2026)
+   Beef Red #B23A2C · Cream #FBF4E1 · Mustard #F2A900 · Charcoal #1E160E
+   Số liệu tài chính trích từ Beeftown_Mo_hinh_tai_chinh.xlsx
+   Nguyên tắc build/buy trích từ Beeftown_Ma_tran_phan_mem.xlsx
+   ========================================================================= */
+:root{
+  --red:#B23A2C; --red-dark:#8F2C21; --cream:#FBF4E1; --cream-deep:#F5ECD7;
+  --mustard:#F2A900; --marigold:#F5C211; --charcoal:#1E160E; --stone:#B8A98C;
+  --ink-soft:rgba(30,22,14,.70); --line:rgba(30,22,14,.15);
+  --green:#3E7C3A;
+  --logo:'Baloo 2',cursive; --sans:'Montserrat',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--cream);color:var(--charcoal);line-height:1.7;font-size:15px;-webkit-font-smoothing:antialiased}
+svg{display:block;max-width:100%}
+a{color:var(--red)}
+.wrap{width:min(1140px,92%);margin-inline:auto}
+
+/* Header */
+.top{background:var(--charcoal);color:var(--cream);padding:52px 0 46px}
+.top .brandline{display:flex;align-items:center;gap:14px;margin-bottom:26px}
+.top .wm{font-family:var(--logo);font-weight:800;font-size:30px;color:var(--cream);line-height:1}
+.top h1{font-weight:800;text-transform:uppercase;font-size:clamp(26px,4vw,42px);line-height:1.15;letter-spacing:-.01em}
+.top .sub{color:rgba(251,244,225,.72);max-width:680px;margin-top:16px;font-size:15.5px}
+.top .meta{display:flex;flex-wrap:wrap;gap:10px;margin-top:26px}
+.chip{border:1px solid rgba(251,244,225,.3);padding:7px 14px;font-size:11.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:rgba(251,244,225,.85)}
+.chip.hot{background:var(--mustard);border-color:var(--mustard);color:var(--charcoal)}
+
+/* Nav */
+nav.toc{position:sticky;top:0;z-index:50;background:rgba(251,244,225,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav.toc ul{list-style:none;display:flex;overflow-x:auto}
+nav.toc a{display:block;padding:16px 18px;font-size:11.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-soft);white-space:nowrap;text-decoration:none;border-bottom:2px solid transparent}
+nav.toc a:hover{color:var(--red);border-bottom-color:var(--red)}
+
+/* Alert */
+.alert{background:#FFF6E0;border-left:4px solid var(--mustard);padding:22px 26px;margin:40px 0}
+.alert.red{background:#FDECEA;border-left-color:var(--red)}
+.alert h3{font-size:14px;text-transform:uppercase;letter-spacing:.12em;margin-bottom:10px}
+.alert p{font-size:14.5px;color:var(--ink-soft);margin-bottom:8px}
+.alert p:last-child{margin-bottom:0}
+
+/* Section */
+.sec{padding:76px 0;border-top:1px solid var(--line)}
+.sec-head{display:flex;align-items:flex-start;gap:22px;margin-bottom:14px}
+.sec-no{font-family:var(--logo);font-weight:800;font-size:44px;color:var(--red);line-height:.9;flex:none}
+.sec-head h2{font-weight:800;text-transform:uppercase;font-size:clamp(21px,3vw,31px);line-height:1.2;letter-spacing:-.01em}
+.sec-why{color:var(--ink-soft);max-width:740px;font-size:15px;margin-top:8px}
+
+/* Card */
+.item{margin-top:40px;background:#fff;border:1px solid var(--line)}
+.item-head{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:18px 24px;border-bottom:1px solid var(--line);background:var(--cream-deep)}
+.item-head h3{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;flex:1;min-width:200px}
+.spec{font-size:11.5px;font-weight:600;letter-spacing:.06em;color:var(--ink-soft);font-variant-numeric:tabular-nums}
+.btn{border:1px solid var(--charcoal);background:transparent;color:var(--charcoal);font-family:var(--sans);font-weight:700;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;padding:10px 18px;min-height:40px;cursor:pointer;transition:background .2s,color .2s}
+.btn:hover{background:var(--charcoal);color:var(--cream)}
+.btn.ok{background:var(--green);border-color:var(--green);color:#fff}
+.item-body{padding:30px 24px}
+.note{font-size:13.5px;color:var(--ink-soft);margin-top:20px;padding-top:16px;border-top:1px dashed var(--line)}
+.note b{color:var(--charcoal)}
+
+/* Text block */
+.tb-body{background:var(--cream-deep);border:1px solid var(--line);padding:22px 24px;font-size:14.5px;line-height:1.85;white-space:pre-wrap;font-family:var(--sans);overflow-wrap:anywhere;word-break:break-word}
+
+/* Lists */
+.list{list-style:none;display:grid;gap:12px;margin-top:6px}
+.list li{padding-left:26px;position:relative;font-size:14.5px;color:var(--ink-soft)}
+.list li::before{content:"";position:absolute;left:0;top:11px;width:12px;height:1px;background:var(--red)}
+.list li b{color:var(--charcoal)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:13.5px;margin-top:8px}
+th,td{text-align:left;padding:12px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:var(--charcoal);color:var(--cream);font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+td{color:var(--ink-soft)}
+td b{color:var(--charcoal)}
+.tbl-scroll{overflow-x:auto}
+.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.good td{background:rgba(62,124,58,.07)}
+tr.bad td{background:rgba(178,58,44,.06)}
+.tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;border:1px solid currentColor}
+.tag.g{color:var(--green)} .tag.r{color:var(--red)} .tag.m{color:#9A6B00}
+code{background:var(--cream-deep);padding:2px 7px;font-size:12.5px;border:1px solid var(--line);font-family:ui-monospace,Consolas,monospace;color:var(--red-dark);overflow-wrap:anywhere}
+
+/* Stat row */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--line);background:#fff;margin-top:34px}
+.stat{padding:24px 22px;border-right:1px solid var(--line)}
+.stat:last-child{border-right:0}
+.stat b{display:block;font-family:var(--logo);font-weight:800;font-size:30px;color:var(--red);line-height:1.1}
+.stat span{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--ink-soft);font-weight:600;margin-top:6px}
+.stat em{display:block;font-style:normal;font-size:12px;color:var(--stone);margin-top:8px}
+
+/* Flow */
+.flow{display:grid;gap:2px;margin-top:8px}
+.flow-row{display:grid;grid-template-columns:130px 1fr;gap:0;background:#fff;border:1px solid var(--line)}
+.flow-when{background:var(--charcoal);color:var(--marigold);padding:14px 16px;font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;display:flex;align-items:center}
+.flow-what{padding:14px 18px;font-size:14px;color:var(--ink-soft)}
+.flow-what b{color:var(--charcoal)}
+
+footer{background:var(--charcoal);color:rgba(251,244,225,.62);padding:56px 0 40px;font-size:13.5px;margin-top:40px}
+footer h4{color:var(--mustard);font-size:11px;letter-spacing:.2em;text-transform:uppercase;margin-bottom:14px}
+footer .fgrid{display:grid;grid-template-columns:1.4fr 1fr;gap:50px}
+footer ul{list-style:none;display:grid;gap:9px}
+
+@media (max-width:900px){
+  .grid2,footer .fgrid{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .stat{border-bottom:1px solid var(--line)}
+  .sec{padding:56px 0}
+  .sec-no{font-size:32px}
+  .item-body{padding:22px 16px}
+  .flow-row{grid-template-columns:1fr}
+  .flow-when{padding:10px 16px}
+}
+@media print{nav.toc,.btn{display:none} .sec{page-break-inside:avoid}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brandline">
+      <svg width="46" height="46" viewBox="0 0 64 64" aria-hidden="true" style="color:#FBF4E1">
+        <path d="M19 15 Q13 8 18 4 Q24 1 25 10 M45 15 Q51 8 46 4 Q40 1 39 10" stroke="currentColor" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+        <g fill="currentColor">
+          <ellipse cx="9" cy="30" rx="8" ry="5.5" transform="rotate(-18 9 30)"/>
+          <ellipse cx="55" cy="30" rx="8" ry="5.5" transform="rotate(18 55 30)"/>
+          <path d="M32 12 C47 12 55 23 55 36 C55 51 45 59 32 59 C19 59 9 51 9 36 C9 23 17 12 32 12 Z"/>
+        </g>
+        <path d="M19 33 q4 -4 8 0" stroke="#1E160E" stroke-width="2.8" fill="none" stroke-linecap="round"/>
+        <path d="M38 32 h8" stroke="#1E160E" stroke-width="2.8" stroke-linecap="round"/>
+        <ellipse cx="32" cy="47" rx="13.5" ry="9" fill="#1E160E"/>
+        <ellipse cx="32" cy="46.5" rx="8" ry="4.8" fill="#B23A2C"/>
+      </svg>
+      <span class="wm">BEEFTOWN</span>
+    </div>
+    <h1>Thiết kế hệ thống CRM<br/>&amp; Thẻ thành viên</h1>
+    <p class="sub">Bản thiết kế nghiệp vụ để làm việc với nhà cung cấp CRM. Toàn bộ con số tích điểm được tính ngược từ biên đóng góp thật trong mô hình tài chính — không copy mức chuẩn của ngành.</p>
+    <div class="meta">
+      <span class="chip hot">Mua phần mềm · Sở hữu dữ liệu</span>
+      <span class="chip">Thẻ Beeftown</span>
+      <span class="chip">Zalo OA + ZNS</span>
+      <span class="chip">Ngân sách 1,5tr/năm</span>
+    </div>
+  </div>
+</header>
+
+<nav class="toc">
+  <div class="wrap">
+    <ul>
+      <li><a href="#nguyentac">A · Nguyên tắc</a></li>
+      <li><a href="#dulieu">B · Dữ liệu</a></li>
+      <li><a href="#phannhom">C · Phân nhóm</a></li>
+      <li><a href="#tichdiem">D · Tích điểm</a></li>
+      <li><a href="#kichban">E · Kịch bản</a></li>
+      <li><a href="#nhacungcap">F · Nhà cung cấp</a></li>
+      <li><a href="#chiso">G · Chỉ số</a></li>
+      <li><a href="#lotrinh">H · Lộ trình</a></li>
+      <li><a href="#phaply">I · Pháp lý</a></li>
+    </ul>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="alert red">
+    <h3>Con số quyết định toàn bộ thiết kế này</h3>
+    <p>Biên đóng góp của Beeftown chỉ <b>13,2%</b> — tức mỗi khách 290.000đ chỉ để lại <b>38.280đ</b> sau khi trừ nguyên liệu, nhân công, điện gas và các chi phí biến đổi khác. Nếu áp mức tích điểm 5% như nhiều nơi vẫn làm, bạn trả lại 14.500đ mỗi khách — bằng <b>38% toàn bộ biên đóng góp</b>.</p>
+    <p>Vì vậy mục D dưới đây tính ngược từ con số này thay vì copy mức chuẩn ngành, và đề xuất cách <b>tài trợ chương trình từ ngân sách marketing sẵn có</b> thay vì coi nó là chi phí mới.</p>
+  </div>
+
+  <div class="stats">
+    <div class="stat"><b>290.000đ</b><span>Giá trung bình/khách</span><em>Mô hình tài chính, dine-in</em></div>
+    <div class="stat"><b>13,2%</b><span>Biên đóng góp</span><em>= 38.280đ mỗi khách</em></div>
+    <div class="stat"><b>20.300đ</b><span>Marketing mỗi khách</span><em>7% doanh thu — nguồn tài trợ</em></div>
+    <div class="stat"><b>134</b><span>Lượt khách/ngày</span><em>Hòa vốn ở 70,5 lượt</em></div>
+  </div>
+</div>
+
+<!-- ============ A · NGUYÊN TẮC ============ -->
+<section class="sec" id="nguyentac">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-no">A</span>
+      <div>
+        <h2>Nguyên tắc &amp; phạm vi</h2>
+        <p class="sec-why">Ma trận phần mềm đã chốt: mua sẵn ~90%, không tự viết. Bản thiết kế này tôn trọng nguyên tắc đó — nó mô tả <em>nghiệp vụ</em> để đưa cho nhà cung cấp cấu hình, không phải bản vẽ để thuê lập trình viên.</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><h3>A1 · Cái gì thuê, cái gì sở hữu</h3></div>
+      <div class="item-body">
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th style="width:26%">Thành phần</th><th style="width:16%">Cách làm</th><th>Lý do</th></tr></thead>
+            <tbody>
+              <tr class="bad"><td><b>Phần mềm CRM / tích điểm</b></td><td><span class="tag r">Thuê</span></td><td>Hàng hóa phổ thông, không tạo lợi thế cạnh tranh. Ngân sách đã dự trù 1,5tr/năm. Tự viết tốn 100–500tr và làm mất giá thương vụ nhượng quyền.</td></tr>
+              <tr class="good"><td><b>Dữ liệu khách hàng</b></td><td><span class="tag g">Sở hữu 100%</span></td><td>Tài sản thật sự. Bắt buộc chọn nhà cung cấp cho phép xuất toàn bộ data bất cứ lúc nào.</td></tr>
+              <tr class="good"><td><b>Thiết kế nghiệp vụ này</b></td><td><span class="tag g">Sở hữu 100%</span></td><td>Cách phân nhóm khách, cơ chế điểm, kịch bản chăm sóc — nhân bản được sang mọi chi nhánh nhượng quyền. Đây là IP.</td></tr>
+              <tr class="good"><td><b>Kênh liên lạc (Zalo OA)</b></td><td><span class="tag g">Sở hữu</span></td><td>OA đứng tên Beeftown. Người theo dõi OA là tài sản, đổi nhà cung cấp CRM không mất.</td></tr>
+              <tr><td><b>Hệ thống điểm bán (POS)</b></td><td><span class="tag m">Thuê</span></td><td>Nguồn dữ liệu giao dịch. Chọn POS có sẵn module loyalty hoặc kết nối được với CRM đã chọn.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note"><b>Một câu để nhớ:</b> phần mềm là thứ đi thuê và thay được; dữ liệu khách và cách bạn chăm sóc họ mới là thứ mang bán được khi nhượng quyền. Mọi quyết định trong tài liệu này đều bảo vệ vế thứ hai.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ B · DỮ LIỆU ============ -->
+<section class="sec" id="dulieu">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-no">B</span>
+      <div>
+        <h2>Cấu trúc dữ liệu khách</h2>
+        <p class="sec-why">Ba nguồn đổ về một hồ sơ khách duy nhất. Khóa nối là số điện thoại — cần chuẩn hóa ngay từ lúc nhập, nếu không sẽ có ba hồ sơ cho cùng một người.</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <h3>B1 · Các trường cần thu</h3>
+        <span class="spec">Khóa chính: số điện thoại</span>
+      </div>
+      <div class="item-body">
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th style="width:22%">Trường</th><th style="width:14%">Nguồn</th><th style="width:12%">Bắt buộc</th><th>Ghi chú</th></tr></thead>
+            <tbody>
+              <tr><td><b>Số điện thoại</b></td><td>Web · POS · Zalo</td><td><span class="tag r">Có</span></td><td>Chuẩn hóa về dạng <code>0xxxxxxxxx</code> (bỏ +84, bỏ khoảng trắng) trước khi lưu. Đây là khóa nối mọi nguồn.</td></tr>
+              <tr><td>Họ tên</td><td>Web · POS</td><td><span class="tag r">Có</span></td><td>Dùng để xưng hô trong tin nhắn ZNS.</td></tr>
+              <tr><td>Ngày sinh</td><td>Zalo · quầy</td><td><span class="tag m">Nên</span></td><td>Chỉ cần ngày và tháng. Dùng cho kịch bản sinh nhật — một trong những tin có tỷ lệ mở cao nhất.</td></tr>
+              <tr><td>Lần ghé đầu tiên</td><td>Tự động</td><td><span class="tag r">Có</span></td><td>Mốc tính tuổi khách hàng.</td></tr>
+              <tr><td>Lần ghé gần nhất</td><td>POS</td><td><span class="tag r">Có</span></td><td><b>Trường quan trọng nhất</b> — dùng để phát hiện khách sắp rời bỏ.</td></tr>
+              <tr><td>Số lần ghé</td><td>POS</td><td><span class="tag r">Có</span></td><td>Cùng với trường trên quyết định khách thuộc nhóm nào ở mục C.</td></tr>
+              <tr><td>Tổng chi tiêu</td><td>POS</td><td><span class="tag r">Có</span></td><td>Cơ sở tính giá trị vòng đời khách.</td></tr>
+              <tr><td>Giá trị hóa đơn trung bình</td><td>Tự tính</td><td><span class="tag m">Nên</span></td><td>Tổng chi tiêu ÷ số lần ghé. So với mốc 290.000đ để biết khách chi nhiều hay ít hơn trung bình.</td></tr>
+              <tr><td>Phần cắt hay gọi</td><td>POS</td><td><span class="tag m">Nên</span></td><td>Rất hợp concept quầy thịt — nhắn "phần lõi vai anh hay chọn hôm nay có hàng mới" mạnh hơn nhiều so với khuyến mãi chung chung.</td></tr>
+              <tr><td>Dịp thường đi</td><td>Web</td><td>Tùy</td><td>Form đặt bàn đã có sẵn trường này (gia đình / công ty / sinh nhật / bạn bè).</td></tr>
+              <tr><td>Số khách thường đi</td><td>Web · POS</td><td>Tùy</td><td>Phân biệt khách đi đôi với khách đi nhóm đông — cách chăm sóc khác nhau.</td></tr>
+              <tr><td><b>Đồng ý nhận thông tin</b></td><td>Web · quầy</td><td><span class="tag r">Có</span></td><td>Bắt buộc về mặt pháp lý trước khi gửi tin quảng cáo. Xem mục I.</td></tr>
+              <tr><td>Nguồn khách đến</td><td>Web (UTM)</td><td><span class="tag m">Nên</span></td><td>Theo quy ước UTM đã thiết kế ở bộ nhận diện số mục F3 — để biết kênh nào mang khách thật, không chỉ lượt xem.</td></tr>
+              <tr><td>Điểm hiện có</td><td>CRM</td><td><span class="tag r">Có</span></td><td>Do phần mềm CRM quản lý.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note"><b>Đừng thu thứ không dùng đến.</b> Mỗi trường thêm vào là thêm một câu hỏi làm khách ngại và thêm một nghĩa vụ bảo vệ dữ liệu. Danh sách trên đã lược bỏ email (người Việt ít dùng để nhận tin nhà hàng) và địa chỉ nhà (chỉ cần khi có giao hàng).</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><h3>B2 · Ba nguồn dữ liệu và vai trò</h3></div>
+      <div class="item-body">
+        <ul class="list">
+          <li><b>Form đặt bàn trên website</b> — nguồn duy nhất hoạt động <em>trước khi khai trương</em>. Thu tên, SĐT, ngày giờ, số khách, dịp, nguồn UTM. Đã được nối vào Google Sheet do Beeftown sở hữu (xem mục H bước 1).</li>
+          <li><b>POS lúc thanh toán</b> — nguồn quan trọng nhất sau khai trương vì nó gắn với tiền thật: chi tiêu, tần suất, món gọi. Nhân viên hỏi số điện thoại khi tính tiền để tích điểm; đây là lúc khách sẵn lòng cho nhất.</li>
+          <li><b>Zalo OA</b> — kênh liên lạc và nơi khách tự tra điểm. Người theo dõi OA thuộc về Beeftown, không mất khi đổi nhà cung cấp CRM.</li>
+        </ul>
+        <p class="note"><b>Về khách đặt qua app giao hàng:</b> mô hình tài chính giả định 30% doanh thu từ delivery, nhưng dữ liệu khách của các đơn đó <b>thuộc về Grab/ShopeeFood, không thuộc về bạn</b>. Nếu thực sự chạy delivery, cách duy nhất để kéo họ về là kẹp thẻ mời quét mã Zalo vào đơn hàng. Lưu ý Brand Book hiện đang chốt "chỉ phục vụ tại bàn" — hai tài liệu này cần thống nhất.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ C · PHÂN NHÓM ============ -->
+<section class="sec" id="phannhom">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-no">C</span>
+      <div>
+        <h2>Phân nhóm khách &amp; vòng đời</h2>
+        <p class="sec-why">Sáu nhóm, phân loại tự động bằng hai trường: số lần ghé và số ngày kể từ lần ghé gần nhất. Không cần phân tích phức tạp — chỉ cần hai con số này là đủ để biết nên làm gì với từng người.</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <h3>C1 · Sáu nhóm và hành động tương ứng</h3>
+        <span class="spec">Phân loại tự động theo tần suất + độ mới</span>
+      </div>
+      <div class="item-body">
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th style="width:17%">Nhóm</th><th style="width:20%">Điều kiện</th><th style="width:30%">Mục tiêu</th><th>Hành động</th></tr></thead>
+            <tbody>
+              <tr><td><b>Khách mới</b></td><td>1 lần ghé, trong 30 ngày</td><td>Kéo về lần thứ hai — đây là bước rơi rụng nhiều nhất</td><td>ZNS cảm ơn + xin đánh giá Google. Sau 14 ngày chưa quay lại: gửi ưu đãi lần ghé thứ hai có hạn dùng.</td></tr>
+              <tr><td><b>Đang thành thói quen</b></td><td>2–3 lần ghé</td><td>Đẩy lên mốc 4 lần — qua mốc này khách thường ở lại lâu dài</td><td>Giới thiệu phần cắt chưa từng thử. Đúng lời hứa thương hiệu: "đa dạng phần cắt ở nhiều mức giá".</td></tr>
+              <tr class="good"><td><b>Khách thân thiết</b></td><td>4+ lần, ghé trong 60 ngày</td><td>Giữ nguyên nhịp, không làm phiền</td><td>Ưu tiên giữ bàn cuối tuần. Báo trước khi có phần cắt mới. Nhắn ít thôi — nhóm này đã hài lòng.</td></tr>
+              <tr class="good"><td><b>Khách VIP</b></td><td>Top 10% chi tiêu tích lũy</td><td>Nhận diện và trân trọng</td><td>Quản lý nhớ mặt, nhớ phần cắt hay gọi. Ưu tiên phòng riêng. Đây là nhóm giới thiệu khách mới nhiều nhất.</td></tr>
+              <tr class="bad"><td><b>Khách ngủ đông</b></td><td>Từng ghé 2+ lần, đã 60–120 ngày không quay lại</td><td><b>Nhóm đáng cứu nhất</b> — họ đã biết và từng thích quán</td><td>Chiến dịch đánh thức: ưu đãi mạnh hơn bình thường, có hạn dùng rõ. Kéo lại một khách cũ rẻ hơn nhiều so với kiếm khách mới.</td></tr>
+              <tr><td><b>B2B tiệc công ty</b></td><td>Đặt trên 10 khách / có xuất hóa đơn VAT</td><td>Tệp khách số 2 theo Brand Brief</td><td><b>Không tích điểm cá nhân</b> — dùng chiết khấu theo hợp đồng. Lưu hồ sơ người quyết định (thường là HR/hành chính), nhắc trước mùa tiệc cuối năm và các dịp công ty hay tổ chức.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note"><b>Vì sao tách riêng B2B:</b> người đặt tiệc công ty chi tiêu rất lớn nhưng tiền không phải của họ — tích điểm cá nhân trên hóa đơn công ty vừa không tạo động lực đúng, vừa dễ gây vấn đề với kế toán bên khách. Thứ họ cần là báo giá nhanh, phòng riêng chắc chắn và hóa đơn xuất gọn.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ D · TÍCH ĐIỂM ============ -->
+<section class="sec" id="tichdiem">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-no">D</span>
+      <div>
+        <h2>Thẻ Beeftown — cơ chế tích điểm</h2>
+        <p class="sec-why">Brand Book mô tả: <em>"Thẻ Beeftown — tích điểm đổi tiền &amp; ưu đãi mỗi lần ghé"</em>. Phần này biến mô tả đó thành con số cụ thể, tính ngược từ biên đóng góp thật.</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <h3>D1 · Mỗi mức tích điểm ngốn bao nhiêu biên?</h3>
+        <span class="spec">Tính trên hóa đơn trung bình 290.000đ</span>
+      </div>
+      <div class="item-body">
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th>Mức tích điểm</th><th class="num">Trả lại/khách</th><th class="num">% biên đóng góp</th><th class="num">Chi phí/năm ước tính</th><th>Đánh giá</th></tr></thead>
+            <tbody>
+              <tr><td><b>1%</b></td><td class="num">2.900đ</td><td class="num">7,6%</td><td class="num">~142 triệu</td><td>An toàn nhưng quá nhỏ để khách để ý.</td></tr>
+              <tr><td><b>2%</b></td><td class="num">5.800đ</td><td class="num">15,2%</td><td class="num">~284 triệu</td><td>Chấp nhận được, tác dụng vừa phải.</td></tr>
+              <tr class="good"><td><b>3%</b> <span class="tag g">Đề xuất</span></td><td class="num">8.700đ</td><td class="num">22,7%</td><td class="num">~426 triệu</td><td>Đủ lớn để khách cảm nhận được, vẫn trong tầm kiểm soát nếu tài trợ đúng cách (xem D2).</td></tr>
+              <tr class="bad"><td><b>5%</b></td><td class="num">14.500đ</td><td class="num">38,0%</td><td class="num">~710 triệu</td><td>Mức nhiều nơi hay dùng — với biên của Beeftown là <b>quá sức</b>.</td></tr>
+              <tr class="bad"><td><b>10%</b></td><td class="num">29.000đ</td><td class="num">75,8%</td><td class="num">~1,42 tỷ</td><td>Xóa gần hết lợi nhuận. Tuyệt đối không.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Chi phí/năm tính trên 134 lượt khách/ngày × 30 ngày × 12 tháng, giả định toàn bộ khách đều tham gia và dùng hết điểm — tức <b>đây là mức trần xấu nhất</b>. Thực tế thấp hơn nhờ ba luật ở mục D3. Đối chiếu: EBITDA năm 1 theo mô hình là 1,22 tỷ.</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <h3>D2 · Tài trợ từ đâu — điểm mấu chốt</h3>
+        <span class="spec">Không phải chi phí mới</span>
+      </div>
+      <div class="item-body">
+        <p style="font-size:15px;color:var(--ink-soft);margin-bottom:18px">Sai lầm thường gặp là coi tiền tích điểm là chi phí phát sinh thêm. Thực tế nó nên được lấy từ <b>dòng marketing 7% đã có sẵn</b> trong mô hình tài chính — tương đương <b>20.300đ mỗi khách</b>.</p>
+        <div class="grid2">
+          <div>
+            <p style="font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin-bottom:12px">Kéo một khách mới</p>
+            <ul class="list">
+              <li>Tốn trọn <b>20.300đ</b> chi phí marketing</li>
+              <li>Chưa chắc quay lại lần hai</li>
+              <li>Phải trả tiền lại từ đầu cho người tiếp theo</li>
+            </ul>
+          </div>
+          <div>
+            <p style="font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--green);margin-bottom:12px">Kéo một khách cũ quay lại</p>
+            <ul class="list">
+              <li>Chỉ tốn <b>8.700đ</b> tiền điểm</li>
+              <li>Đã biết quán, tỷ lệ quay lại cao hơn hẳn</li>
+              <li>Khách quen thường chi nhiều hơn và giới thiệu người khác</li>
+            </ul>
+          </div>
+        </div>
+        <p class="note"><b>Cách đặt vấn đề đúng khi trình bày với nhà đầu tư:</b> chuyển một phần ngân sách marketing từ <em>kéo khách mới</em> sang <em>giữ khách cũ</em>. Tổng chi marketing không đổi, chỉ đổi cách phân bổ. Đề xuất bắt đầu bằng cách dành 30–40% dòng marketing cho giữ chân, phần còn lại vẫn kéo khách mới — rồi điều chỉnh theo số liệu thật sau 3 tháng.</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <h3>D3 · Ba luật giữ chi phí trong tầm kiểm soát</h3>
+        <span class="spec">Đưa vào thể lệ chương trình</span>
+      </div>
+      <div class="item-body">
+        <ul class="list">
+          <li><b>Ngưỡng dùng tối thiểu 50.000đ.</b> Khách phải tích đủ mới được trừ vào hóa đơn. Tác dụng kép: tạo động lực quay lại cho đủ ngưỡng, và một phần điểm sẽ không bao giờ được dùng. Trong ngành, tỷ lệ điểm không dùng thường là 10–30% — nghĩa là chi phí thực của chương trình 3% thường rơi vào khoảng 2,1–2,7%.</li>
+          <li><b>Không tích điểm trên phần đã trừ điểm.</b> Nếu hóa đơn 290.000đ mà khách trừ 50.000đ điểm, chỉ tích điểm trên 240.000đ. Ngăn vòng lặp tự nuôi.</li>
+          <li><b>Không cộng dồn với khuyến mãi lớn.</b> Dịp giảm giá sâu hoặc combo khai trương thì không tích điểm — nếu không, biên vốn đã mỏng sẽ bị ăn hai lần.</li>
+        </ul>
+        <p class="note"><b>Ba luật này phải ghi rõ trong thể lệ và in trên thẻ/trang tích điểm ngay từ đầu.</b> Thêm luật vào sau khi khách đã quen được hưởng sẽ gây phản ứng tiêu cực và làm hỏng chữ "honest" trong giá trị thương hiệu.</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <h3>D4 · Thể lệ để công bố cho khách</h3>
+        <span class="spec">Đã viết sẵn</span>
+        <button class="btn" onclick="cp('the-le',this)">Sao chép</button>
+      </div>
+      <div class="item-body">
+        <div class="tb-body" id="the-le">THẺ BEEFTOWN — THỂ LỆ TÍCH ĐIỂM
+
+▸ CÁCH THAM GIA
+Đọc số điện thoại khi thanh toán. Miễn phí, không cần làm thẻ cứng, không cần tải ứng dụng.
+
+▸ CÁCH TÍCH ĐIỂM
+Tích 3% giá trị hóa đơn. Ví dụ hóa đơn 300.000đ được 9.000đ điểm.
+
+▸ CÁCH DÙNG ĐIỂM
+Điểm quy đổi thành tiền, trừ trực tiếp vào hóa đơn lần sau.
+Dùng được khi tích đủ từ 50.000đ trở lên.
+Điểm không có hạn sử dụng.
+
+▸ LƯU Ý
+Không tích điểm trên phần hóa đơn đã được trừ bằng điểm.
+Không áp dụng cùng lúc với các chương trình khuyến mãi lớn.
+Hóa đơn công ty áp dụng chính sách riêng — vui lòng liên hệ quản lý.
+
+▸ TRA CỨU ĐIỂM
+Nhắn "THẺ" tới Zalo Beeftown, hoặc hỏi nhân viên khi thanh toán.</div>
+        <p class="note">Giọng văn theo đúng Brand Book: thẳng thắn, không hoa mỹ, nói rõ cả điều kiện lẫn quyền lợi. <b>"Điểm không có hạn sử dụng"</b> là lựa chọn có chủ ý — nó hợp với giá trị "honest", và thực tế điểm hết hạn ít giúp tiết kiệm mà lại gây bực bội rất lớn khi khách phát hiện.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ E · KỊCH BẢN ============ -->
+<section class="sec" id="kichban">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-no">E</span>
+      <div>
+        <h2>Kịch bản chăm sóc tự động</h2>
+        <p class="sec-why">Bốn mẫu tin ZNS đã được viết sẵn trong <em>Bộ nhận diện số</em> mục B4. Phần này là bảng kích hoạt: khi nào gửi, gửi gì, đo bằng chỉ số nào.</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <h3>E1 · Bảng kích hoạt</h3>
+        <span class="spec">ZNS ~300–500đ/tin</span>
+      </div>
+      <div class="item-body">
+        <div class="flow">
+          <div class="flow-row">
+            <div class="flow-when">Ngay lập tức</div>
+            <div class="flow-what"><b>Khách gửi form đặt bàn</b> → mẫu <b>ZNS-01 Xác nhận đặt bàn</b>. Đo: tỷ lệ khách đến trên số bàn đã đặt.</div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-when">Trước 2 giờ</div>
+            <div class="flow-what"><b>Sắp tới giờ hẹn</b> → mẫu <b>ZNS-02 Nhắc lịch</b>. Đo: tỷ lệ đặt bàn rồi không đến. Đây là tin tiết kiệm tiền rõ rệt nhất — mỗi bàn trống vì khách quên là một bàn lẽ ra bán được.</div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-when">Sau 3 giờ</div>
+            <div class="flow-what"><b>Khách đã ăn xong</b> → mẫu <b>ZNS-03 Cảm ơn + xin đánh giá</b>. Đo: số đánh giá Google mới mỗi tuần. Tin này nuôi ngược lại kênh khám phá số 1 là Google Maps.</div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-when">Sau thanh toán</div>
+            <div class="flow-what"><b>Tích điểm thành công</b> → mẫu <b>ZNS-04 Thông báo điểm</b>. Đo: tỷ lệ khách đăng ký thẻ trên tổng hóa đơn.</div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-when">Sau 14 ngày</div>
+            <div class="flow-what"><b>Khách mới chưa quay lại</b> → ưu đãi cho lần ghé thứ hai, có hạn dùng 14 ngày. Đo: tỷ lệ chuyển từ 1 lần sang 2 lần ghé — <b>chỉ số quan trọng nhất trong ba tháng đầu</b>.</div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-when">Sau 60 ngày</div>
+            <div class="flow-what"><b>Khách ngủ đông</b> → chiến dịch đánh thức, ưu đãi mạnh hơn mức thường, nêu rõ phần cắt mới. Đo: tỷ lệ khách quay lại trên số tin đã gửi.</div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-when">Sinh nhật</div>
+            <div class="flow-what"><b>Trước 3 ngày</b> → lời chúc kèm ưu đãi dùng trong tháng sinh nhật. Nhóm khách gia đình rất hợp kịch bản này.</div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-when">Tháng 10–12</div>
+            <div class="flow-what"><b>Khách B2B</b> → mời đặt tiệc cuối năm, gửi trước mùa cao điểm. Không phải tin tự động mà là danh sách để quản lý gọi trực tiếp.</div>
+          </div>
+        </div>
+        <p class="note"><b>Giới hạn tần suất:</b> tối đa 2 tin quảng cáo mỗi tháng cho một khách. Tin giao dịch (xác nhận, nhắc lịch, báo điểm) không tính vào giới hạn này vì khách chờ nhận. Gửi quá nhiều dẫn tới bị chặn OA — mất luôn cả kênh liên lạc lẫn khả năng gửi tin giao dịch.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ F · NHÀ CUNG CẤP ============ -->
+<section class="sec" id="nhacungcap">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-no">F</span>
+      <div>
+        <h2>Chọn nhà cung cấp</h2>
+        <p class="sec-why">Ma trận phần mềm đã liệt kê 4 lựa chọn và cảnh báo rõ: <em>"chọn NCC cho phép XUẤT &amp; SỞ HỮU data khách — đừng để khóa trong vendor"</em>. Phần này biến cảnh báo đó thành tiêu chí chấm điểm.</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <h3>F1 · Tiêu chí chấm điểm</h3>
+        <span class="spec">Ngân sách đã duyệt: 1,5tr/năm</span>
+      </div>
+      <div class="item-body">
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th style="width:30%">Tiêu chí</th><th style="width:14%">Trọng số</th><th>Cách đánh giá</th></tr></thead>
+            <tbody>
+              <tr class="bad"><td><b>Xuất được toàn bộ data khách</b></td><td><span class="tag r">Loại trực tiếp</span></td><td>Không xuất được ra Excel/CSV bất cứ lúc nào, không cần xin phép → <b>loại ngay</b>, không cần xét tiếp. Đây là điều kiện cần, không phải điểm cộng.</td></tr>
+              <tr><td>Kết nối được với POS đã chọn</td><td>25%</td><td>Nếu không tự động đồng bộ, nhân viên phải nhập tay hai lần — chương trình sẽ chết trong vòng một tháng.</td></tr>
+              <tr><td>Tích điểm qua Zalo</td><td>20%</td><td>Ma trận đã xác định Zalo là kênh nhắn tin số 1. Khách không phải tải thêm ứng dụng.</td></tr>
+              <tr><td>Phân nhóm khách tự động</td><td>20%</td><td>Có tự chia nhóm theo mục C không, hay phải lọc thủ công mỗi lần?</td></tr>
+              <tr><td>Gửi ZNS theo kịch bản</td><td>15%</td><td>Có tự động hóa được bảng kích hoạt ở mục E, hay chỉ gửi hàng loạt thủ công?</td></tr>
+              <tr><td>Chi phí trong ngân sách</td><td>10%</td><td>Mốc 1,5tr/năm đã duyệt. Cẩn thận phí ẩn: phí khởi tạo, phí theo số khách, phí ZNS tính riêng.</td></tr>
+              <tr><td>Nhân bản cho chi nhánh mới</td><td>10%</td><td>Mục tiêu nhượng quyền — thêm chi nhánh có phải mua gói mới từ đầu không?</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">Bốn lựa chọn trong ma trận: <b>NextX · Social Loyalty (NextPay) · Zalo Loyalty · PandaLoyalty</b>, khoảng giá 750k–12tr/năm. Ma trận ghi rõ giá là ước tính tham khảo — <b>phải lấy báo giá trực tiếp trước khi quyết</b>.</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <h3>F2 · Tám câu hỏi bắt buộc hỏi trước khi ký</h3>
+        <span class="spec">Gửi thẳng cho sale</span>
+        <button class="btn" onclick="cp('cauhoi',this)">Sao chép</button>
+      </div>
+      <div class="item-body">
+        <div class="tb-body" id="cauhoi">1. Tôi có xuất được toàn bộ dữ liệu khách hàng ra file Excel/CSV bất cứ lúc nào không? Có cần xin phép hay trả thêm phí không? Nếu ngừng hợp đồng, tôi lấy dữ liệu về bằng cách nào và trong bao lâu?
+
+2. Phần mềm kết nối trực tiếp với POS nào? Cụ thể với [tên POS đang dùng] thì đồng bộ tự động hay phải nhập tay?
+
+3. Chi phí trọn gói một năm là bao nhiêu? Liệt kê đầy đủ: phí khởi tạo, phí thuê bao, phí theo số lượng khách, phí tin nhắn ZNS, phí đào tạo, phí hỗ trợ.
+
+4. Có giới hạn số lượng khách hàng trong gói cơ bản không? Vượt quá thì tính phí thế nào?
+
+5. Hệ thống tự phân nhóm khách theo số lần ghé và số ngày chưa quay lại được không? Tôi có tự đặt được điều kiện phân nhóm không?
+
+6. Gửi ZNS tự động theo kịch bản (ví dụ: sau 60 ngày khách không quay lại thì gửi ưu đãi) có làm được không, hay chỉ gửi hàng loạt thủ công?
+
+7. Khi mở chi nhánh thứ hai, tôi có phải mua gói mới không? Dữ liệu khách có dùng chung giữa các chi nhánh không?
+
+8. Cho tôi dùng thử bao lâu? Trong thời gian thử có nhập được dữ liệu thật không?</div>
+        <p class="note"><b>Câu số 1 là câu quan trọng nhất</b> — nếu sale trả lời vòng vo hoặc nói "để em hỏi lại kỹ thuật", đó là dấu hiệu xấu. Nhà cung cấp đàng hoàng trả lời được ngay vì họ tự tin về điều đó.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ G · CHỈ SỐ ============ -->
+<section class="sec" id="chiso">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-no">G</span>
+      <div>
+        <h2>Chỉ số theo dõi</h2>
+        <p class="sec-why">Sáu con số. Xem hằng tháng, lấy trực tiếp từ báo cáo POS và CRM — không cần dựng hệ thống báo cáo riêng.</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><h3>G1 · Sáu chỉ số và cách tính</h3></div>
+      <div class="item-body">
+        <div class="tbl-scroll">
+          <table>
+            <thead><tr><th style="width:24%">Chỉ số</th><th style="width:30%">Cách tính</th><th>Ý nghĩa</th></tr></thead>
+            <tbody>
+              <tr class="good"><td><b>Tỷ lệ quay lại lần 2</b></td><td>Khách ghé ≥2 lần ÷ tổng khách mới</td><td><b>Chỉ số quan trọng nhất trong 3 tháng đầu.</b> Nếu thấp, vấn đề nằm ở món ăn hoặc dịch vụ chứ không phải ở chương trình tích điểm — đừng cố sửa bằng cách tăng ưu đãi.</td></tr>
+              <tr><td>Tần suất ghé</td><td>Tổng lượt ÷ số khách trong kỳ</td><td>Với nhà hàng nướng, khách quen thường ghé mỗi 4–8 tuần. Theo dõi xu hướng tăng hay giảm quan trọng hơn con số tuyệt đối.</td></tr>
+              <tr><td>Giá trị vòng đời khách</td><td>Hóa đơn TB × số lần ghé TB × 13,2%</td><td>Lợi nhuận thực một khách mang lại. Dùng để biết được phép chi bao nhiêu để có một khách mới.</td></tr>
+              <tr><td>Chi phí mỗi khách quay lại</td><td>Tiền điểm + phí ZNS ÷ số khách quay lại</td><td>So với 20.300đ chi phí kéo khách mới. Nếu thấp hơn nhiều thì nên chuyển thêm ngân sách sang giữ chân.</td></tr>
+              <tr><td>Tỷ lệ điểm được dùng</td><td>Điểm đã dùng ÷ điểm đã phát</td><td>Cho biết chi phí thực của chương trình. Nếu rất thấp (dưới 40%) nghĩa là khách không thấy hấp dẫn — cần xem lại ngưỡng dùng.</td></tr>
+              <tr><td>Tỷ lệ đăng ký thẻ</td><td>Hóa đơn có SĐT ÷ tổng hóa đơn</td><td>Đo việc nhân viên có hỏi số điện thoại không. Dưới 50% là vấn đề đào tạo, không phải vấn đề phần mềm.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note"><b>Cách dùng bảng này:</b> mỗi tháng ghi 6 con số vào một trang tính, xem xu hướng qua các tháng. Đừng đợi có báo cáo đẹp mới bắt đầu đo — sáu con số này lấy được ngay từ tháng đầu tiên.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ H · LỘ TRÌNH ============ -->
+<section class="sec" id="lotrinh">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-no">H</span>
+      <div>
+        <h2>Lộ trình triển khai</h2>
+        <p class="sec-why">Bám theo mốc trong <em>Launch Tracker 90 ngày</em>: ra mắt tích điểm Zalo OA ở Tuần 5. Việc thu dữ liệu bắt đầu sớm hơn thế — ngay từ bây giờ.</p>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><h3>H1 · Năm bước</h3></div>
+      <div class="item-body">
+        <div class="flow">
+          <div class="flow-row">
+            <div class="flow-when">Ngay bây giờ</div>
+            <div class="flow-what"><b>Bước 1 — Bắt đầu thu dữ liệu.</b> Form đặt bàn trên website đã được nối vào Google Sheet do bạn sở hữu. Mọi lượt quan tâm trước khai trương đều được lưu lại. Không tốn đồng nào, và khi chọn xong nhà cung cấp CRM thì đã có sẵn danh sách để nhập vào.</div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-when">Trước khai trương</div>
+            <div class="flow-what"><b>Bước 2 — Chọn nhà cung cấp.</b> Gửi 8 câu hỏi ở mục F2 cho cả 4 nhà cung cấp, chấm theo bảng F1. Chốt cùng lúc với việc chốt POS để đảm bảo hai bên kết nối được.</div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-when">Tuần 1–4</div>
+            <div class="flow-what"><b>Bước 3 — Thu số điện thoại, chưa vội tích điểm.</b> Nhân viên hỏi số điện thoại khi thanh toán. Giai đoạn này tập trung tạo thói quen cho nhân viên và kiểm tra chất lượng dữ liệu. Bật ZNS-01 và ZNS-02 (xác nhận, nhắc lịch) trước vì đây là tin giao dịch, khách luôn hoan nghênh.</div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-when">Tuần 5</div>
+            <div class="flow-what"><b>Bước 4 — Bật Thẻ Beeftown.</b> Đúng mốc trong Launch Tracker. Công bố thể lệ D4, in tại quầy. Bật ZNS-03 và ZNS-04. Đợi tới lúc này là có chủ ý: vận hành đã ổn, nhân viên đã quen hỏi số điện thoại.</div>
+          </div>
+          <div class="flow-row">
+            <div class="flow-when">Tháng 3</div>
+            <div class="flow-what"><b>Bước 5 — Chiến dịch đánh thức đầu tiên.</b> Lúc này mới đủ số khách qua mốc 60 ngày để chạy. Đây cũng là thời điểm rà lại 6 chỉ số ở mục G và điều chỉnh mức tích điểm nếu cần.</div>
+          </div>
+        </div>
+        <p class="note"><b>Vì sao không bật tích điểm ngay ngày khai trương:</b> tuần đầu nhân viên còn bỡ ngỡ, bếp còn chưa đều tay, khách đông đột biến. Thêm một quy trình mới lúc đó dễ gây sai sót và tạo ấn tượng xấu. Thu số điện thoại trước, tích điểm sau — dữ liệu vẫn không mất vì bạn có thể cộng bù điểm cho khách đã ghé trong 4 tuần đầu, và đó lại là một lý do hay để nhắn tin cho họ.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ I · PHÁP LÝ ============ -->
+<section class="sec" id="phaply">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="sec-no">I</span>
+      <div>
+        <h2>Tuân thủ dữ liệu cá nhân</h2>
+        <p class="sec-why">Tên và số điện thoại là dữ liệu cá nhân. Việc thu thập và dùng để gửi tin quảng cáo cần có sự đồng ý rõ ràng của khách.</p>
+      </div>
+    </div>
+
+    <div class="alert">
+      <h3>Lưu ý</h3>
+      <p>Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân đang có hiệu lực tại Việt Nam và đặt ra nghĩa vụ với việc thu thập, xử lý dữ liệu cá nhân. Phần dưới đây nêu nguyên tắc thực hành và câu chữ gợi ý, <b>không phải tư vấn pháp lý</b> — hãy rà lại với luật sư hoặc đơn vị tư vấn của công ty trước khi vận hành thật, đặc biệt là các nghĩa vụ về hồ sơ đánh giá tác động xử lý dữ liệu.</p>
+    </div>
+
+    <div class="item">
+      <div class="item-head"><h3>I1 · Bốn nguyên tắc thực hành</h3></div>
+      <div class="item-body">
+        <ul class="list">
+          <li><b>Xin đồng ý trước khi gửi tin quảng cáo.</b> Tin giao dịch (xác nhận đặt bàn, nhắc lịch) khác với tin quảng cáo (ưu đãi, món mới) — loại thứ hai cần sự đồng ý rõ ràng. Ô đồng ý trên form đặt bàn <b>không được tick sẵn</b>.</li>
+          <li><b>Nói rõ dùng để làm gì.</b> Không thu thập rồi dùng cho mục đích khác với điều đã nói với khách.</li>
+          <li><b>Cho khách rút lại dễ dàng.</b> Mỗi tin quảng cáo phải có cách từ chối nhận tiếp. Khi khách yêu cầu xóa dữ liệu thì phải xóa được — đây cũng là lý do phải chọn nhà cung cấp cho phép thao tác trên dữ liệu.</li>
+          <li><b>Chỉ người cần mới được xem.</b> Danh sách khách hàng không để trong nhóm chat chung. Tài khoản CRM cấp theo vai trò, nhân viên nghỉ việc thì khóa ngay.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="item">
+      <div class="item-head">
+        <h3>I2 · Câu xin đồng ý</h3>
+        <span class="spec">Dùng trên web, tại quầy và trên Zalo</span>
+        <button class="btn" onclick="cp('dongy',this)">Sao chép</button>
+      </div>
+      <div class="item-body">
+        <div class="tb-body" id="dongy">▸ TRÊN FORM ĐẶT BÀN (ô tick, KHÔNG tick sẵn)
+Tôi đồng ý để Beeftown liên hệ xác nhận đặt bàn và gửi thông tin ưu đãi qua số điện thoại này. Có thể huỷ nhận tin bất cứ lúc nào.
+
+▸ TẠI QUẦY THANH TOÁN (nhân viên nói)
+"Anh/chị cho em xin số điện thoại để tích điểm và nhận ưu đãi lần sau nhé. Bên em chỉ dùng để liên hệ về đặt bàn và ưu đãi thôi ạ, anh/chị muốn ngừng nhận tin lúc nào cũng được."
+
+▸ CUỐI MỖI TIN QUẢNG CÁO
+Không muốn nhận tin nữa, anh/chị nhắn "NGUNG" cho Beeftown.
+
+▸ KHI KHÁCH YÊU CẦU XOÁ DỮ LIỆU
+"Dạ em đã ghi nhận. Beeftown sẽ xoá toàn bộ thông tin của anh/chị khỏi hệ thống. Anh/chị lưu ý là điểm tích luỹ cũng sẽ mất theo ạ."</div>
+        <p class="note"><b>Ô đồng ý này đã được thêm vào form đặt bàn trên website</b> — form không gửi được nếu khách chưa tick. Đây vừa là yêu cầu pháp lý, vừa lọc ra đúng những người thực sự muốn nghe từ bạn, giúp tỷ lệ tương tác cao hơn và ít bị chặn OA hơn.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="fgrid">
+      <div>
+        <h4>Tài liệu này dùng thế nào</h4>
+        <p style="margin-bottom:14px">Gửi mục <b style="color:#FBF4E1">F2</b> cho nhà cung cấp CRM để lấy báo giá và đánh giá. Dùng mục <b style="color:#FBF4E1">B, C, E</b> làm yêu cầu cấu hình khi triển khai. Mục <b style="color:#FBF4E1">D</b> là phần cần thống nhất với nhà đầu tư trước khi chạy.</p>
+        <p>Bấm Ctrl + P để in ra PDF gửi cho John và Sang.</p>
+      </div>
+      <div>
+        <h4>Liên quan</h4>
+        <ul>
+          <li>Beeftown_Bo_Nhan_Dien_So.html — 4 mẫu ZNS ở mục B4, quy ước UTM ở mục F3</li>
+          <li>Beeftown_Ma_tran_phan_mem.xlsx — nguyên tắc build/buy, ngân sách</li>
+          <li>Beeftown_Mo_hinh_tai_chinh.xlsx — nguồn của mọi con số trong mục D</li>
+          <li>Beeftown_Launch_Tracker_90ngay.xlsx — mốc Tuần 5</li>
+        </ul>
+      </div>
+    </div>
+    <p style="margin-top:44px;padding-top:26px;border-top:1px solid rgba(251,244,225,.14);font-size:12px;color:rgba(251,244,225,.4)">Beeftown — Thiết kế CRM &amp; Thẻ thành viên · Bản thảo tháng 7/2026 · Số liệu tài chính trích từ mô hình nội bộ, cần chạy lại khi có số thật của mặt bằng Quận 1</p>
+  </div>
+</footer>
+
+<script>
+function cp(id,btn){
+  var el=document.getElementById(id);
+  if(!el)return;
+  var text=el.innerText.trim();
+  var done=function(){
+    var old=btn.textContent;
+    btn.textContent='Đã sao chép';btn.classList.add('ok');
+    setTimeout(function(){btn.textContent=old;btn.classList.remove('ok')},1800);
+  };
+  if(navigator.clipboard&&window.isSecureContext){
+    navigator.clipboard.writeText(text).then(done,function(){fb(text,done)});
+  }else{fb(text,done)}
+}
+/* Dự phòng khi mở bằng file:// — clipboard API bị chặn */
+function fb(text,done){
+  var ta=document.createElement('textarea');
+  ta.value=text;ta.style.position='fixed';ta.style.opacity='0';
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand('copy');done()}catch(e){alert('Không sao chép tự động được. Bạn bôi đen và nhấn Ctrl+C nhé.')}
+  document.body.removeChild(ta);
+}
+</script>
+</body>
+</html>

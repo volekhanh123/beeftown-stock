@@ -1,0 +1,51 @@
+# =============================================================
+# BEEFTOWN — .gitignore theo kiểu CHẶN HẾT RỒI MỞ TỪNG CÁI
+# =============================================================
+# Thư mục này chứa tài liệu mật kinh doanh: mô hình tài chính,
+# nghiên cứu đối thủ, tracker KOL (có thông tin người thật).
+#
+# Vì vậy mặc định là CHẶN TẤT CẢ, chỉ mở đúng những file web
+# cần cho việc phát triển giao diện. Cách này an toàn hơn hẳn
+# so với liệt kê loại trừ — file mật thêm vào sau này sẽ tự
+# động bị chặn mà không cần ai nhớ cập nhật.
+#
+# THÊM FILE MỚI VÀO REPO: thêm một dòng !ten-file vào mục
+# "ĐƯỢC PHÉP" bên dưới. Kiểm tra bằng: git status --short
+# =============================================================
+
+# --- Chặn tất cả ---
+*
+
+# --- Cho phép git đi vào thư mục con để tìm file được mở ---
+!*/
+
+# --- ĐƯỢC PHÉP: cấu hình repo ---
+!.gitignore
+!README.md
+
+# --- ĐƯỢC PHÉP: website ---
+!Beeftown_Website/index.html
+!Beeftown_Website/google-apps-script.gs
+
+# --- ĐƯỢC PHÉP: tài liệu thiết kế dạng web ---
+!Beeftown_Bo_Nhan_Dien_So.html
+!Beeftown_CRM_Design.html
+!Beeftown_Instore_Art.html
+!Beeftown_Logo_Suite_and_Directions.html
+!Beeftown_Dashboard.html
+!Beeftown_Concept_Board_v1.svg
+
+# =============================================================
+# CỐ TÌNH CHẶN — nhắc lại cho rõ, kể cả khi có ai đó sửa nhầm
+# quy tắc bên trên. Những dòng này đứng sau nên luôn thắng.
+# =============================================================
+*.xlsx
+*.xls
+*.pptx
+*.docx
+*.pdf
+*.png
+*.jpg
+*.jpeg
+.claude/
+Du lieu nghien cuu/
