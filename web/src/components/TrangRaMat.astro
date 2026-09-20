@@ -1,0 +1,128 @@
+---
+/**
+ * TRANG RA MẮT
+ * ============
+ * Trang này phải ĐÚNG và ĐỦ ngay cả khi mọi công tắc đều tắt. Đó là phép thử
+ * của cả thiết kế, không phải một trường hợp biên.
+ *
+ * Với database trống, trang hiện: tên, khẩu hiệu, descriptor, một câu giới
+ * thiệu, dòng trạng thái mặc định, và khối tuyển dụng. Không số điện thoại
+ * giả, không địa chỉ dạng [số nhà], không ảnh kho, không nút dẫn đi đâu cả.
+ *
+ * Mỗi dữ kiện được bật lên sẽ THÊM vào trang, không bao giờ trừ đi phần nền.
+ */
+import { THUONG_HIEU, chu } from '../lib/chu';
+import { dinhDangNgay, homNayVn } from '../lib/noi-dung';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+
+interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
+const { ngonNgu, noiDung: nd } = Astro.props;
+const t = chu(ngonNgu);
+
+const duongDanTuyenDung = ngonNgu === 'en' ? '/en/jobs' : '/tuyen-dung';
+
+// Nút chính dẫn tới nơi THẬT SỰ có người trả lời. Không có nơi nào như vậy
+// thì không hiện nút — một nút dẫn tới hư không tệ hơn là không có nút.
+const nutChinh =
+  nd.facebook_url ? { url: nd.facebook_url, chu: t.theoDoi } :
+  nd.email_lien_he ? { url: `mailto:${nd.email_lien_he}`, chu: t.nhanTin } :
+  null;
+
+const ngayMo = nd.ngay_khai_truong;
+const daMo = !!(ngayMo && ngayMo <= homNayVn());
+
+const mangXaHoi = [
+  { url: nd.instagram_url, ten: 'Instagram' },
+  { url: nd.tiktok_url, ten: 'TikTok' },
+  { url: nd.zalo_oa_url, ten: 'Zalo' },
+].filter((m): m is { url: string; ten: string } => !!m.url);
+---
+
+<section class="man-hinh">
+  <div class="nen-chu" aria-hidden="true"></div>
+
+  <div class="khung">
+    {/* Tên thương hiệu đã có ở đầu trang — ở đây chỉ cần descriptor. */}
+    <p class="hieu"><span lang="en">{THUONG_HIEU.descriptor}</span></p>
+
+    {/* Khẩu hiệu là tiếng Anh trên một trang tiếng Việt. Đánh dấu lang="en"
+        để trình đọc màn hình không đọc tiếng Anh bằng âm tiếng Việt. */}
+    <h1><span lang="en">{THUONG_HIEU.khauHieu}</span></h1>
+
+    <p class="dan" style="max-width:56ch; margin-top:26px">{t.gioiThieu}</p>
+
+    {ngayMo && (
+      <p class="hieu" style="margin:30px 0 0">
+        {daMo
+          ? (ngonNgu === 'en' ? 'Open since' : 'Mở cửa từ')
+          : (ngonNgu === 'en' ? 'Opening' : 'Đón bạn từ')}
+        {' '}
+        <strong style="color:var(--cuc-vang); letter-spacing:normal; font-size:15px">
+          {dinhDangNgay(ngayMo, ngonNgu)}
+        </strong>
+      </p>
+    )}
+
+    <div class="trang-thai" style="margin-top:34px">
+      <p>{nd.dong_trang_thai ?? t.trangThaiMacDinh}</p>
+    </div>
+
+    {nutChinh && (
+      <div class="hang-nut">
+        <a class="nut nut-chinh" href={nutChinh.url} rel="noopener">{nutChinh.chu}</a>
+        {nd.google_maps_url && (
+          <a class="nut nut-vien" href={nd.google_maps_url} rel="noopener">{t.chiDuong}</a>
+        )}
+        {nd.hotline && (
+          <a class="nut nut-vien" href={`tel:${nd.hotline.replace(/\s/g, '')}`}>
+            {t.goiNhaHang}
+          </a>
+        )}
+      </div>
+    )}
+
+    {nutChinh && <p class="nho" style="margin-top:14px">{t.theoDoiPhu}</p>}
+
+    {nd.dia_chi_hien_thi && (
+      <p style="margin-top:30px; font-size:19px; font-weight:600">
+        {nd.google_maps_url
+          ? <a href={nd.google_maps_url} rel="noopener">{nd.dia_chi_hien_thi}</a>
+          : nd.dia_chi_hien_thi}
+      </p>
+    )}
+    {!nd.dia_chi_hien_thi && (
+      <p style="margin-top:30px; font-size:19px; font-weight:600">{t.diaChiNgan}</p>
+    )}
+
+    {mangXaHoi.length > 0 && (
+      <p class="nho" style="margin-top:22px">
+        {mangXaHoi.map((m, i) => (
+          <>
+            {i > 0 && ' · '}
+            <a href={m.url} rel="noopener">{m.ten}</a>
+          </>
+        ))}
+      </p>
+    )}
+  </div>
+</section>
+
+{/* ------------------------------------------------------------------------
+    TUYỂN DỤNG
+    Ở ngày treo bạt chỉ có đúng hai nhóm người ghé trang này: người đi ngang
+    qua nhìn thấy bạt, và người đang tìm việc. Khách hàng thì còn sáu tuần
+    nữa mới vào ăn được.
+    Tài liệu vận hành ghi tuyển dụng là "đường găng thứ hai bên cạnh giấy
+    ATTP" — 19 người, 11–12 ngày đào tạo, không bắt đầu được trước khi xong
+    nội thất. Đây là phần duy nhất của website ảnh hưởng tới ngày mở cửa.
+    ------------------------------------------------------------------------ */}
+<section class="muc muc-sang">
+  <div class="khung">
+    <p class="hieu">{ngonNgu === 'en' ? 'Careers' : 'Tuyển dụng'}</p>
+    <h2>{t.tuyenDungTieuDe}</h2>
+    <p style="max-width:58ch">{t.tuyenDungDan}</p>
+    <div class="hang-nut" style="margin-top:22px">
+      <a class="nut nut-chinh" href={duongDanTuyenDung}>{t.tuyenDungXem}</a>
+    </div>
+  </div>
+</section>

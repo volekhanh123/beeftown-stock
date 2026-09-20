@@ -1,0 +1,239 @@
+/* =============================================================================
+   BEEFTOWN — HỆ THỐNG GIAO DIỆN
+   =============================================================================
+   Màu đọc thẳng từ bộ logo/màu PDF Khánh cung cấp (Brand Overview mục 7).
+   Không suy màu từ ảnh, không tự thêm sắc độ ngoài bảng.
+
+   PHÔNG CHỮ — một quyết định cần giải thích:
+   Trang 1 của PDF ghi Hypo-me Bold cho logo, trang 6 ghi NVN Beloved Bold cho
+   heading. Cả hai đều CHƯA CÓ BẢN QUYỀN, và tài liệu tự nhận là chưa rõ hai
+   tên đó có phải một phông hay không.
+   Vì vậy ở đây KHÔNG dùng phông hiển thị nào cả. Tên thương hiệu đặt bằng
+   Montserrat ExtraBold siết chữ. Một họ phông duy nhất, giấy phép OFL, không
+   rủi ro pháp lý — và quan trọng hơn: nó sẽ KHÔNG BAO GIỜ bị nhầm là phông
+   thương hiệu thật, nên không ai ở khâu sau tưởng câu chuyện phông đã xong.
+   ============================================================================= */
+
+:root {
+  --do:        #B23A2C;   /* Beef Red — màu chủ đạo, nút chính */
+  --do-dam:    #8F2C21;
+  --kem:       #FBF4E1;   /* Cream — nền sáng */
+  --kem-sau:   #F5ECD7;
+  --mu-tat:    #F2A900;   /* Mustard — điểm nhấn */
+  --cuc-vang:  #F5C211;   /* Marigold — điểm nhấn trên nền tối */
+  --than:      #1E160E;   /* Charcoal — nền tối, chữ */
+  --da:        #B8A98C;   /* Warm Stone — chữ phụ */
+
+  --muc-nhat:  rgba(30, 22, 14, .68);
+  --vach:      rgba(30, 22, 14, .16);
+  --vach-kem:  rgba(251, 244, 225, .22);
+
+  --chu: 'Montserrat', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --rong: min(1120px, 90%);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--chu);
+  background: var(--than);
+  color: var(--kem);
+  line-height: 1.6;
+  font-size: 17px;
+  -webkit-font-smoothing: antialiased;
+}
+
+img { max-width: 100%; height: auto; display: block; }
+
+a { color: inherit; }
+
+/* Chỉ hiện khi dùng bàn phím — không bắt người dùng chuột phải nhìn viền. */
+:focus-visible {
+  outline: 3px solid var(--cuc-vang);
+  outline-offset: 3px;
+}
+
+.bo-qua {
+  position: absolute; left: -9999px;
+  background: var(--cuc-vang); color: var(--than);
+  padding: 12px 20px; font-weight: 700; border-radius: 4px;
+}
+.bo-qua:focus { left: 16px; top: 16px; z-index: 100; }
+
+.khung { width: var(--rong); margin-inline: auto; }
+
+/* ---------------------------------------------------------------------------
+   NỀN CHỮ — thứ thay thế cho ảnh chưa có
+   ---------------------------------------------------------------------------
+   Tám trong mười khuôn hình bắt buộc cần phòng đã hoàn thiện và biển đã sáng.
+   Nghĩa là mọi giai đoạn trước ngày mở phải HOÀN CHỈNH với KHÔNG một tấm ảnh
+   nào — không phải vì tiết kiệm, mà vì ảnh thật chưa thể tồn tại.
+   Khối này làm cho việc không có ảnh trông như một quyết định, không phải
+   như một trang bị hỏng.
+   --------------------------------------------------------------------------- */
+.nen-chu {
+  position: absolute; inset: 0; z-index: -1;
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(178, 58, 44, .38), transparent 62%),
+    linear-gradient(180deg, #241a11 0%, var(--than) 60%);
+  overflow: hidden;
+}
+.nen-chu::after {
+  /* Vạch mảnh chéo — gợi vân vỉ nướng mà không vẽ một cái vỉ nướng giả. */
+  content: '';
+  position: absolute; inset: -20%;
+  background: repeating-linear-gradient(
+    115deg, transparent 0 22px, rgba(251, 244, 225, .028) 22px 23px);
+}
+
+/* --- Chữ ------------------------------------------------------------------ */
+.hieu {
+  display: inline-flex; align-items: center; gap: 12px;
+  font-size: 11px; font-weight: 700; letter-spacing: .3em;
+  text-transform: uppercase; color: var(--da);
+}
+.hieu::before {
+  content: ''; width: 36px; height: 1px; background: var(--mu-tat); flex: none;
+}
+
+.ten-thuong-hieu {
+  font-weight: 800; letter-spacing: -.02em; text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(38px, 8.5vw, 92px);
+  line-height: 1.02;
+  font-weight: 800;
+  letter-spacing: -.025em;
+  text-wrap: balance;
+}
+
+h2 {
+  margin: 0 0 18px;
+  font-size: clamp(26px, 4vw, 42px);
+  line-height: 1.12;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  text-wrap: balance;
+}
+
+h3 { margin: 0 0 10px; font-size: 19px; font-weight: 700; }
+
+p { margin: 0 0 18px; }
+
+.dan { font-size: clamp(17px, 2.1vw, 21px); color: var(--kem); opacity: .9; }
+
+.nho { font-size: 14px; color: var(--da); }
+
+/* --- Nút ------------------------------------------------------------------ */
+.nut {
+  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+  min-height: 52px; padding: 14px 28px;
+  font: inherit; font-weight: 700; font-size: 16px;
+  text-decoration: none; border: 1.5px solid transparent; border-radius: 3px;
+  cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+}
+.nut-chinh { background: var(--do); color: var(--kem); }
+.nut-chinh:hover { background: var(--do-dam); }
+.nut-vien { border-color: var(--vach-kem); color: var(--kem); }
+.nut-vien:hover { border-color: var(--cuc-vang); color: var(--cuc-vang); }
+
+.hang-nut { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+
+/* --- Bố cục --------------------------------------------------------------- */
+.man-hinh {
+  position: relative;
+  min-height: 100svh;
+  display: flex; flex-direction: column;
+  padding: 28px 0 44px;
+}
+
+.muc { padding: 72px 0; border-top: 1px solid var(--vach-kem); }
+.muc-sang { background: var(--kem); color: var(--than); border-top: 0; }
+.muc-sang .nho { color: var(--muc-nhat); }
+.muc-sang .hieu { color: var(--muc-nhat); }
+.muc-sang .nut-vien { border-color: var(--vach); color: var(--than); }
+.muc-sang .nut-vien:hover { border-color: var(--do); color: var(--do); }
+
+.the {
+  border: 1px solid var(--vach-kem); border-radius: 4px;
+  padding: 22px 24px;
+}
+.muc-sang .the { border-color: var(--vach); }
+
+.luoi {
+  display: grid; gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+/* --- Đầu trang và chân trang ---------------------------------------------- */
+.dau-trang {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; margin-bottom: auto; padding-bottom: 40px;
+}
+.dau-trang .ten-thuong-hieu { font-size: 21px; }
+
+.doi-ngon-ngu {
+  font-size: 13px; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; text-decoration: none;
+  color: var(--da); padding: 10px 4px;
+  border-bottom: 1px solid transparent;
+}
+.doi-ngon-ngu:hover { color: var(--cuc-vang); border-bottom-color: var(--cuc-vang); }
+
+.chan-trang {
+  padding: 40px 0; border-top: 1px solid var(--vach-kem);
+  font-size: 14px; color: var(--da);
+}
+.chan-trang a { color: var(--da); }
+.chan-trang a:hover { color: var(--cuc-vang); }
+.chan-hang {
+  display: flex; flex-wrap: wrap; gap: 10px 24px;
+  align-items: center; justify-content: space-between;
+}
+
+/* --- Dòng trạng thái ------------------------------------------------------ */
+.trang-thai {
+  display: flex; align-items: flex-start; gap: 14px;
+  border-left: 3px solid var(--mu-tat);
+  padding: 4px 0 4px 18px;
+  margin: 0 0 34px;
+  max-width: 62ch;
+}
+.trang-thai p { margin: 0; }
+
+/* --- Thẻ vị trí tuyển dụng ------------------------------------------------ */
+.vi-tri { display: flex; flex-direction: column; gap: 6px; }
+.vi-tri .nhan {
+  align-self: flex-start;
+  font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+  color: var(--do); background: rgba(178, 58, 44, .1);
+  padding: 4px 10px; border-radius: 2px;
+}
+
+/* --- Màn hình nhỏ --------------------------------------------------------- */
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+  .muc { padding: 52px 0; }
+  .man-hinh { padding: 20px 0 36px; }
+  .dau-trang { padding-bottom: 28px; }
+  .nut { width: 100%; }
+  .hang-nut { flex-direction: column; align-items: stretch; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
+
+@media print {
+  .nen-chu, .doi-ngon-ngu { display: none; }
+  body { background: #fff; color: #000; }
+}

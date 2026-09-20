@@ -1,0 +1,139 @@
+---
+/**
+ * TRANG TUYỂN DỤNG
+ * ================
+ * Giai đoạn 1 cố ý KHÔNG có form. Tin tuyển dụng tĩnh cộng một câu hướng dẫn
+ * nhắn tin lấy được phần lớn giá trị ngay ngày đầu, mà không kéo theo nghĩa
+ * vụ dữ liệu cá nhân của một cái form chưa ai thiết kế chỗ nhận.
+ *
+ * Form thật (migration 0012 đã dựng sẵn database cho nó) thay thế khối này ở
+ * Giai đoạn 2, khi đã có Supabase và có người trực hộp thư.
+ *
+ * MỨC LƯƠNG KHÔNG HIỆN Ở ĐÂY. Bảng lương nằm trong tài liệu vận hành mật, và
+ * ràng buộc vi_tri_luong_chi_khi_duyet trong database đòi phải có người duyệt
+ * trước khi con số đó ra tới trang công khai. Đăng lương sai là một chuyện
+ * khác hẳn đăng mô tả món sai.
+ */
+import { chu } from '../lib/chu';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+
+export interface ViTri {
+  ma: string;
+  ten: string;
+  bo_phan: string;
+  loai_hop_dong: string;
+  so_luong: number | null;
+  mo_ta: string | null;
+  yeu_cau: string | null;
+  ca_lam: string | null;
+  luong_tu: number | null;
+  luong_den: number | null;
+}
+
+interface Props {
+  ngonNgu: NgonNgu;
+  noiDung: NoiDung;
+  viTri: ViTri[];
+}
+const { ngonNgu, noiDung: nd, viTri } = Astro.props;
+const t = chu(ngonNgu);
+
+// Danh sách dự phòng khi chưa nối database. Đây chỉ là TÊN VỊ TRÍ, lấy từ
+// bảng mục lục tài liệu vận hành — không phải nội dung mật.
+const DU_PHONG = [
+  { ten_vi: 'Nhân viên sảnh',             ten_en: 'Hall staff',              bo_phan_vi: 'Sảnh',        bo_phan_en: 'Floor',    ca: true },
+  { ten_vi: 'Tổ trưởng sảnh',             ten_en: 'Floor leader',            bo_phan_vi: 'Sảnh',        bo_phan_en: 'Floor',    ca: false },
+  { ten_vi: 'Quản lý sảnh',               ten_en: 'Floor manager',           bo_phan_vi: 'Quản lý',     bo_phan_en: 'Management', ca: false },
+  { ten_vi: 'Quản lý cửa hàng',           ten_en: 'Store manager',           bo_phan_vi: 'Quản lý',     bo_phan_en: 'Management', ca: false },
+  { ten_vi: 'Nhân viên bếp',              ten_en: 'Kitchen staff',           bo_phan_vi: 'Bếp',         bo_phan_en: 'Kitchen',  ca: false },
+  { ten_vi: 'Nhân viên bộ phận thịt',     ten_en: 'Meat department',         bo_phan_vi: 'Quầy thịt',   bo_phan_en: 'Meat counter', ca: false },
+  { ten_vi: 'Nhân viên tư vấn quầy thịt', ten_en: 'Meat counter assistant',  bo_phan_vi: 'Quầy thịt',   bo_phan_en: 'Meat counter', ca: true },
+  { ten_vi: 'Đầu mối marketing',          ten_en: 'Marketing coordinator',   bo_phan_vi: 'Marketing',   bo_phan_en: 'Marketing', ca: true },
+];
+
+const dungDuPhong = viTri.length === 0;
+
+const nutNhanTin =
+  nd.facebook_url ? { url: nd.facebook_url, chu: t.nhanTin } :
+  nd.email_lien_he ? { url: `mailto:${nd.email_lien_he}`, chu: t.nhanTin } :
+  null;
+
+const nhanTheoCa = ngonNgu === 'en' ? 'Shift work' : 'Làm theo ca';
+const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';
+---
+
+<section class="muc" style="padding-top:20px">
+  <div class="khung">
+    <p class="hieu">{ngonNgu === 'en' ? 'Careers' : 'Tuyển dụng'}</p>
+    <h1 style="font-size:clamp(32px,6vw,58px)">{t.tuyenDungTieuDe}</h1>
+    <p class="dan" style="max-width:58ch; margin-top:22px">{t.tuyenDungDan}</p>
+  </div>
+</section>
+
+<section class="muc muc-sang">
+  <div class="khung">
+    <h2>{ngonNgu === 'en' ? 'Open roles' : 'Vị trí đang tuyển'}</h2>
+
+    <div class="luoi" style="margin-top:26px">
+      {dungDuPhong
+        ? DU_PHONG.map((v) => (
+            <div class="the vi-tri">
+              <span class="nhan">{ngonNgu === 'en' ? v.bo_phan_en : v.bo_phan_vi}</span>
+              <h3>{ngonNgu === 'en' ? v.ten_en : v.ten_vi}</h3>
+              <p class="nho" style="margin:0">{v.ca ? nhanTheoCa : nhanToanTG}</p>
+            </div>
+          ))
+        : viTri.map((v) => (
+            <div class="the vi-tri">
+              <span class="nhan">{v.bo_phan}</span>
+              <h3>{v.ten}</h3>
+              {v.ca_lam && <p class="nho" style="margin:0">{v.ca_lam}</p>}
+              {v.so_luong && (
+                <p class="nho" style="margin:0">
+                  {ngonNgu === 'en' ? `${v.so_luong} positions` : `Cần ${v.so_luong} người`}
+                </p>
+              )}
+              {v.mo_ta && <p style="margin:8px 0 0">{v.mo_ta}</p>}
+              {v.yeu_cau && (
+                <p class="nho" style="margin:8px 0 0">
+                  <strong>{ngonNgu === 'en' ? 'Requirements: ' : 'Yêu cầu: '}</strong>
+                  {v.yeu_cau}
+                </p>
+              )}
+              {v.luong_tu && (
+                <p style="margin:8px 0 0; font-weight:700; color:var(--do)">
+                  {v.luong_tu.toLocaleString('vi-VN')}
+                  {v.luong_den ? `–${v.luong_den.toLocaleString('vi-VN')}` : ''} đ
+                </p>
+              )}
+            </div>
+          ))}
+    </div>
+
+    <div class="the" style="margin-top:30px; max-width:62ch">
+      <h3>{ngonNgu === 'en' ? 'How to apply' : 'Cách ứng tuyển'}</h3>
+      <p style="margin-bottom:0">{t.tuyenDungCachNop}</p>
+      {!nutNhanTin && (
+        <p class="nho" style="margin:14px 0 0">{t.tuyenDungChuaMo}</p>
+      )}
+      {nutNhanTin && (
+        <div class="hang-nut" style="margin-top:18px">
+          <a class="nut nut-chinh" href={nutNhanTin.url} rel="noopener">{nutNhanTin.chu}</a>
+          {nd.hotline && (
+            <a class="nut nut-vien" href={`tel:${nd.hotline.replace(/\s/g, '')}`}>
+              {t.goiNhaHang}
+            </a>
+          )}
+        </div>
+      )}
+    </div>
+
+    <p class="nho" style="margin-top:22px; max-width:62ch">
+      {ngonNgu === 'en'
+        ? 'Beeftown only uses the details you send for hiring, and keeps them for six months.'
+        : 'Beeftown chỉ dùng thông tin bạn gửi cho việc tuyển dụng, và lưu trong sáu tháng.'}
+      {' '}
+      <a href={ngonNgu === 'en' ? '/en/privacy' : '/quyen-rieng-tu'}>{t.quyenRiengTu}</a>
+    </p>
+  </div>
+</section>

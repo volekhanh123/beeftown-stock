@@ -1,0 +1,10 @@
+# Cấu hình Cloudflare Workers.
+#
+# KHÔNG khai `main` và `assets` ở đây: từ @astrojs/cloudflare v14, adapter
+# chạy qua Cloudflare Vite plugin và tự sinh hai mục đó. Khai tay sẽ trỏ vào
+# một file chưa tồn tại lúc build và làm hỏng cả lượt build.
+name = "beeftown"
+compatibility_date = "2026-09-20"
+
+# nodejs_compat cần cho @supabase/supabase-js chạy trên workerd.
+compatibility_flags = ["nodejs_compat"]

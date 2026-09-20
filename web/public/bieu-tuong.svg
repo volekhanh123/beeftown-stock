@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Beeftown">
+  <!--
+    BIỂU TƯỢNG TRÌNH DUYỆT — vẽ RIÊNG, không rút nhỏ logo chính.
+
+    Logo trong bộ nhận diện là đầu bò nhiều nét: mõm, mắt, vệt sáng trong.
+    Ở 32px những nét đó dính vào nhau thành một vệt mờ. Nên biểu tượng này chỉ
+    giữ đúng thứ còn đọc được ở kích thước nhỏ: bóng đầu bò và hai sừng, một
+    màu duy nhất trên nền đỏ thương hiệu.
+
+    Đây là hình tạm cho tới khi designer giao bản chính thức.
+  -->
+  <rect width="64" height="64" rx="12" fill="#B23A2C"/>
+  <g fill="none" stroke="#FBF4E1" stroke-width="4.5"
+     stroke-linecap="round" stroke-linejoin="round">
+    <!-- Hai sừng -->
+    <path d="M17 24c-4-1.5-6-5-5.5-9 4.5.5 8 3 9.5 7"/>
+    <path d="M47 24c4-1.5 6-5 5.5-9-4.5.5-8 3-9.5 7"/>
+    <!-- Bóng đầu -->
+    <path d="M21 22c2.8-2.2 6.6-3.4 11-3.4S40.2 19.8 43 22c2.6 2 4 4.8 4 8.4 0 8-6.6 14.6-15 14.6S17 38.4 17 30.4c0-3.6 1.4-6.4 4-8.4z"/>
+  </g>
+  <!-- Hai lỗ mũi: đủ để nhận ra là đầu bò, không thêm nét nào nữa -->
+  <circle cx="27" cy="36" r="2.6" fill="#FBF4E1"/>
+  <circle cx="37" cy="36" r="2.6" fill="#FBF4E1"/>
+</svg>

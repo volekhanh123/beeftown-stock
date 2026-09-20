@@ -1,0 +1,18 @@
+---
+import Trang from '../../layouts/Trang.astro';
+import TrangTuyenDung from '../../components/TrangTuyenDung.astro';
+import { docNoiDung } from '../../lib/noi-dung';
+import { docViTri } from '../../lib/tuyen-dung';
+
+const noiDung = await docNoiDung('en');
+const viTri = await docViTri('en');
+---
+<Trang
+  ngonNgu="en"
+  noiDung={noiDung}
+  duongDan="/en/jobs"
+  tieuDe="Careers — Beeftown"
+  moTa="Beeftown is hiring floor, kitchen, meat department and counter staff for opening day in District 1, Ho Chi Minh City."
+>
+  <TrangTuyenDung ngonNgu="en" noiDung={noiDung} viTri={viTri} />
+</Trang>

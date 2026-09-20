@@ -1,0 +1,10 @@
+---
+import Trang from '../../layouts/Trang.astro';
+import TrangRaMat from '../../components/TrangRaMat.astro';
+import { docNoiDung } from '../../lib/noi-dung';
+
+const noiDung = await docNoiDung('en');
+---
+<Trang ngonNgu="en" noiDung={noiDung} duongDan="/en">
+  <TrangRaMat ngonNgu="en" noiDung={noiDung} />
+</Trang>
