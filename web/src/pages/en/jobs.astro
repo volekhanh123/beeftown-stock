@@ -3,9 +3,17 @@ import Trang from '../../layouts/Trang.astro';
 import TrangTuyenDung from '../../components/TrangTuyenDung.astro';
 import { docNoiDung } from '../../lib/noi-dung';
 import { docViTri } from '../../lib/tuyen-dung';
+import { xuLyUngTuyen, ketQuaUngTuyen } from '../../lib/xu-ly-form';
 
 const noiDung = await docNoiDung('en');
 const viTri = await docViTri('en');
+
+// POST tới chính đường dẫn này = một lượt nộp hồ sơ. Xử lý xong thì chuyển
+// hướng, nên bấm F5 không gửi lại lần nữa.
+const chuyenHuong = await xuLyUngTuyen(Astro, '/en/jobs');
+if (chuyenHuong) return chuyenHuong;
+
+const ketQuaNop = ketQuaUngTuyen(Astro);
 ---
 <Trang
   ngonNgu="en"
@@ -14,5 +22,5 @@ const viTri = await docViTri('en');
   tieuDe="Careers — Beeftown"
   moTa="Beeftown is hiring floor, kitchen, meat department and counter staff for opening day in District 1, Ho Chi Minh City."
 >
-  <TrangTuyenDung ngonNgu="en" noiDung={noiDung} viTri={viTri} />
+  <TrangTuyenDung ngonNgu="en" noiDung={noiDung} viTri={viTri} ketQuaNop={ketQuaNop} />
 </Trang>

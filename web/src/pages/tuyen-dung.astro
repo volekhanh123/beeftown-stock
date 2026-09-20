@@ -3,9 +3,17 @@ import Trang from '../layouts/Trang.astro';
 import TrangTuyenDung from '../components/TrangTuyenDung.astro';
 import { docNoiDung } from '../lib/noi-dung';
 import { docViTri } from '../lib/tuyen-dung';
+import { xuLyUngTuyen, ketQuaUngTuyen } from '../lib/xu-ly-form';
 
 const noiDung = await docNoiDung('vi');
 const viTri = await docViTri('vi');
+
+// POST tới chính đường dẫn này = một lượt nộp hồ sơ. Xử lý xong thì chuyển
+// hướng, nên bấm F5 không gửi lại lần nữa.
+const chuyenHuong = await xuLyUngTuyen(Astro, '/tuyen-dung');
+if (chuyenHuong) return chuyenHuong;
+
+const ketQuaNop = ketQuaUngTuyen(Astro);
 ---
 <Trang
   ngonNgu="vi"
@@ -14,5 +22,5 @@ const viTri = await docViTri('vi');
   tieuDe="Tuyển dụng — Beeftown"
   moTa="Beeftown đang tuyển nhân viên sảnh, bếp, bộ phận thịt và quầy tư vấn cho ngày mở cửa tại Quận 1, TP.HCM."
 >
-  <TrangTuyenDung ngonNgu="vi" noiDung={noiDung} viTri={viTri} />
+  <TrangTuyenDung ngonNgu="vi" noiDung={noiDung} viTri={viTri} ketQuaNop={ketQuaNop} />
 </Trang>

@@ -1,0 +1,32 @@
+---
+import Trang from '../layouts/Trang.astro';
+import TrangDatBan from '../components/TrangDatBan.astro';
+import { docNoiDung } from '../lib/noi-dung';
+import { tinhTrangDatBan } from '../lib/dat-ban';
+import { xuLyDatBan, ketQuaDatBan } from '../lib/xu-ly-form';
+
+const chuyenHuong = await xuLyDatBan(Astro, '/dat-ban');
+if (chuyenHuong) return chuyenHuong;
+
+const noiDung = await docNoiDung('vi');
+const ketQua = ketQuaDatBan(Astro);
+const tinhTrang = await tinhTrangDatBan(
+  Astro.url.searchParams.get('ngay'),
+  noiDung.form_dat_ban_dang_mo,
+);
+---
+<Trang
+  ngonNgu="vi"
+  noiDung={noiDung}
+  duongDan="/dat-ban"
+  tieuDe="Đặt bàn — Beeftown"
+  moTa="Gửi yêu cầu đặt bàn tại Beeftown, nhà hàng chuyên bò ở Quận 1, TP.HCM. Nhà hàng gọi lại để xác nhận."
+>
+  <TrangDatBan
+    ngonNgu="vi"
+    noiDung={noiDung}
+    tinhTrang={tinhTrang}
+    ketQua={ketQua}
+    duongDan="/dat-ban"
+  />
+</Trang>

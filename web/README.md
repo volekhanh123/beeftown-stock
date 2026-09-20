@@ -49,21 +49,46 @@ Mở http://localhost:4321. Không cần Supabase.
 
 ```
 web/
+├─ kiem-tra/quet-chuoi-cam.mjs  ← quét chuỗi cấm trên trang ĐÃ RENDER
 ├─ src/
+│  ├─ middleware.ts    ← chặn cửa /noi-bo. Một chỗ duy nhất.
 │  ├─ lib/
 │  │  ├─ noi-dung.ts   ← ĐỌC CỔNG NỘI DUNG. Đọc file này trước.
-│  │  ├─ chu.ts        ← toàn bộ câu chữ cố định, hai thứ tiếng
+│  │  ├─ chu.ts        ← câu chữ cố định + bảng cặp đường dẫn Việt–Anh
+│  │  ├─ phien.ts      ← phiên đăng nhập nội bộ, cookie, IP, kết quả form
+│  │  ├─ cong-tac.ts   ← đọc/ghi bảng công tắc nội dung
+│  │  ├─ nop-ho-so.ts  ← nhận hồ sơ ứng tuyển + tải CV
+│  │  ├─ dat-ban.ts    ← lịch trống và gửi yêu cầu đặt bàn
+│  │  ├─ xu-ly-form.ts ← POST → chuyển hướng → GET, dùng chung hai ngôn ngữ
 │  │  └─ tuyen-dung.ts
-│  ├─ layouts/Trang.astro     ← thẻ mô tả, JSON-LD, đầu và chân trang
+│  ├─ layouts/
+│  │  ├─ Trang.astro   ← thẻ mô tả, JSON-LD, đầu và chân trang
+│  │  └─ NoiBo.astro   ← khung giao diện nội bộ
 │  ├─ components/
-│  │  ├─ TrangRaMat.astro
-│  │  └─ TrangTuyenDung.astro
-│  ├─ pages/           ← tiếng Việt ở gốc, tiếng Anh dưới /en
-│  └─ styles/chung.css
+│  │  ├─ TrangRaMat.astro · TrangTuyenDung.astro
+│  │  ├─ TrangDatBan.astro · FormUngTuyen.astro
+│  ├─ pages/
+│  │  ├─ (tiếng Việt ở gốc, tiếng Anh dưới /en)
+│  │  └─ noi-bo/       ← giao diện nội bộ, có middleware canh cửa
+│  └─ styles/chung.css · noi-bo.css
 └─ public/bieu-tuong.svg
 ```
 
 Tên file và biến đặt bằng tiếng Việt, khớp với tên cột trong database. Người đọc `dat_ban.trang_thai` rồi đọc tiếp mã nguồn không phải dịch qua lại.
+
+---
+
+## Giao diện nội bộ
+
+`/noi-bo` cần một project Supabase đã chạy migration. Chưa nối thì trang đăng nhập nói thẳng là chưa nối và **không hiện ô đăng nhập** — một ô không đăng nhập được là lời nói dối có thêm bước.
+
+**Không có khóa `service_role` ở đâu trong thư mục này, và sẽ không bao giờ có.** Cách hiển nhiên cho một trang quản trị là dùng khóa đó vì nó đi xuyên qua mọi RLS — và đó chính là lý do không dùng: một lỗi lập trình trong `/noi-bo` sẽ đi xuyên qua toàn bộ hệ thống phân quyền, trên cùng một Worker đang phục vụ trang công khai.
+
+Thay vào đó nhân viên đăng nhập bằng Supabase Auth, access token của **họ** nằm trong cookie HttpOnly, và mọi truy vấn chạy dưới vai `authenticated` với đúng `auth.uid()` của người đó. RLS ở `0007`/`0010`/`0012` là luật duy nhất.
+
+Hệ quả cụ thể: một người vai `marketing` đăng nhập sẽ soạn được bản nháp nhưng **không** công bố được, và giao diện không cần biết luật đó — chính trigger trong database từ chối, y như khi họ gõ SQL bằng tay.
+
+**Tài khoản do chủ nhà hàng tạo trong Supabase Studio**, rồi nối `auth_uid` vào một dòng trong bảng `nhan_su`. Đăng nhập Supabase thành công mà không có dòng `nhan_su` thì vẫn bị từ chối — Supabase Auth trả lời "ai", bảng `nhan_su` trả lời "có phải nhân viên không".
 
 ---
 
@@ -100,29 +125,47 @@ Khóa `service_role` thì ngược lại: **không bao giờ** đặt vào thư 
 
 ## Đã làm và chưa làm
 
-**Giai đoạn 1 — xong, deploy được ngay:**
-trang ra mắt · trang tuyển dụng tĩnh · trang quyền riêng tư · song ngữ Việt–Anh · thẻ mô tả và JSON-LD chỉ khai dữ kiện đã công bố · `robots.txt` · `sitemap.xml` · biểu tượng trình duyệt.
+**Trang công khai — 8 đường dẫn, song ngữ:**
+ra mắt · tuyển dụng · **đặt bàn** · quyền riêng tư, mỗi trang một bản Việt một bản Anh, cộng `robots.txt` và `sitemap.xml`.
+
+**Giao diện nội bộ `/noi-bo`:**
+đăng nhập · tổng quan (danh sách việc còn thiếu, đọc thẳng từ bốn view trong database) · **công tắc nội dung** · hộp thư đặt bàn · hộp thư hồ sơ ứng tuyển.
+
+**Hai form công khai**, đều là form HTML thuần không JavaScript:
+
+| Form | Hiện khi nào |
+|---|---|
+| Ứng tuyển | Có ít nhất một `vi_tri_tuyen_dung` ở trạng thái `da_cong_bo`. Chưa có thì hiện khối "nhắn Facebook". |
+| Đặt bàn | Công tắc `form_dat_ban_dang_mo` bật **và** database thật sự còn chỗ trong 14 ngày tới. Xem lý do ở đầu `lib/dat-ban.ts`. |
 
 **Chưa làm, theo đúng kế hoạch:**
 
 | Phần | Vì sao chưa |
 |---|---|
-| Giao diện nội bộ `/noi-bo` | Cần Supabase chạy thật trước |
-| Form ứng tuyển | Database đã sẵn sàng (`0012`); cần Supabase và một hộp thư có người đọc |
-| Form đặt bàn | **Chặn bởi thực tế, không phải bởi code.** Giờ phục vụ chưa chốt và bảng `ban_an` chưa có dữ liệu. Bật lúc này thì khách sẽ nhận được câu *"đã hết bàn"* — một lời nói sai về một nhà hàng chưa mở. |
-| Thực đơn | Database đã có 31 món (`0011`), tất cả ở trạng thái nháp, không một giá nào được duyệt |
-| Ảnh | Tám trong mười khuôn hình bắt buộc cần phòng đã hoàn thiện và biển đã sáng |
+| Email báo về khi có hồ sơ / yêu cầu mới | **Việc quan trọng nhất còn lại.** Rủi ro lớn nhất không phải hệ thống hỏng mà là hồ sơ nằm im không ai mở. Cần một dịch vụ gửi mail và một hộp thư có người đọc. |
+| Màn hình chọn ảnh | Ô ảnh trong `/noi-bo` đang nhận mã dòng `tep_anh` gõ tay. Tải ảnh làm trong Supabase Studio. |
+| Duyệt giá thực đơn | Database đã có 31 món (`0011`), không một giá nào được duyệt |
+| Trang thực đơn công khai | Chờ giá và ảnh |
+| Tra cứu / hủy đặt bàn cho khách | Database đã có `tra_cuu_dat_ban()` và `huy_dat_ban()` từ `0013` |
+| Màn hình CRM: khách, phân nhóm, điểm | Cần có khách thật |
 
 ---
 
 ## Trước khi phát hành
 
-Rà danh sách chuỗi cấm — mỗi chuỗi tương ứng một điều tài liệu thương hiệu cấm:
-
 ```bash
-cd web && grep -rniE "unsplash|0900|\[số nhà\]|thịt chuẩn|MB9|229\.000|199\.000|wagyu|43 ngày|than hoa|phòng riêng|rẻ hơn|số một|duy nhất|đặt bàn thành công" src/ public/
+npm run quet
 ```
 
-Không có kết quả nào là đạt.
+Lệnh này tải từng trang qua HTTP và đọc **phần chữ khách nhìn thấy** — thân trang, tiêu đề, thẻ mô tả, JSON-LD — rồi đối chiếu với danh sách cấm. Mỗi lần đỏ nó in kèm **lý do** câu đó bị cấm, để không ai chỉ xóa từ rồi viết lại cùng ý bằng chữ khác.
+
+Nó tự bật `astro dev` nếu chưa có server nào chạy, và `npm run deploy` gọi nó trước khi build — nên không có đường deploy vòng qua nó.
+
+**Vì sao không grep mã nguồn.** Bản đầu tiên của phép thử này là một lệnh `grep` vào `src/`. Nó sai theo hai hướng:
+
+- **Báo nhầm** — nó tìm thấy chính những dòng chú thích ghi *"cấm dùng từ này"*. Một phép thử báo động về tài liệu của chính nó sẽ dạy người ta bỏ qua nó, mà một phép thử bị bỏ qua thì tệ hơn không có, vì nó vẫn tạo cảm giác đã kiểm rồi.
+- **Bỏ sót**, nặng hơn nhiều — từ migration `0010`, nội dung trang đến **từ database**. Gõ *"rẻ hơn 30%"* vào ô dòng trạng thái trong `/noi-bo` rồi bấm công bố là câu đó lên trang chủ ngay, còn lệnh grep mã nguồn thì xanh mãi mãi. Nó đang canh một cánh cửa không còn ai đi qua.
+
+**Chỗ lệnh này vẫn không với tới:** nó chỉ thấy nội dung **đang được công bố lúc chạy**. Vì vậy nó thuộc về hai thời điểm — trước khi deploy, và **sau mỗi lần bật công tắc nội dung**.
 
 Phần nghiệm thu bằng hai điện thoại thật và phép thử ảnh chia sẻ nằm ở `../README.md`.

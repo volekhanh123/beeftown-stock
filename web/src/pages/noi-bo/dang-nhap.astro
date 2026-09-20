@@ -1,0 +1,85 @@
+---
+/**
+ * ĐĂNG NHẬP NỘI BỘ
+ *
+ * Form HTML thuần, POST về chính trang này. Không có JavaScript nào — nên nó
+ * chạy được trên mọi điện thoại, kể cả khi mạng chỉ tải xong phần HTML.
+ *
+ * Khi chưa nối database thì trang này KHÔNG hiện form. Một ô đăng nhập không
+ * thể đăng nhập là lời nói dối có thêm bước — cùng lý do đã rút quy tắc 4
+ * trong README gốc.
+ */
+import NoiBo from '../../layouts/NoiBo.astro';
+import { dangNhap, layPhien, coDatabase } from '../../lib/phien';
+
+let loi: string | null = null;
+
+// Đã đăng nhập rồi thì đi thẳng vào trong, không hiện lại form.
+if (Astro.request.method === 'GET' && coDatabase()) {
+  if (await layPhien(Astro.cookies)) return Astro.redirect('/noi-bo', 302);
+}
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const email = String(form.get('email') ?? '').trim();
+  const matKhau = String(form.get('mat_khau') ?? '');
+
+  if (!email || !matKhau) {
+    loi = 'Vui lòng điền email và mật khẩu.';
+  } else {
+    loi = await dangNhap(Astro.cookies, email, matKhau);
+    if (!loi) return Astro.redirect('/noi-bo', 302);
+  }
+}
+
+const noiDuoc = coDatabase();
+---
+<NoiBo tieuDe="Đăng nhập">
+  <h1>Đăng nhập nội bộ</h1>
+
+  {!noiDuoc ? (
+    <div class="nb-bao luu-y">
+      <p><strong>Chưa nối database.</strong></p>
+      <p>
+        Giao diện nội bộ cần một project Supabase đã chạy xong toàn bộ migration
+        trong <code>crm/supabase/migrations/</code>.
+        {' '}Đặt{' '}<code>PUBLIC_SUPABASE_URL</code>{' '}và{' '}
+        <code>PUBLIC_SUPABASE_ANON_KEY</code>{' '}trong{' '}<code>web/.env</code>,
+        rồi tải lại trang này.
+      </p>
+      <p>
+        Trang công khai vẫn chạy bình thường mà không cần bước này — nó được
+        thiết kế để đúng và đủ ngay cả khi chưa có database nào.
+      </p>
+    </div>
+  ) : (
+    <>
+      <p class="nb-dan">
+        Tài khoản do chủ nhà hàng tạo trong Supabase và nối với một dòng trong
+        bảng <code>nhan_su</code>. Không có đường tự đăng ký.
+      </p>
+
+      {loi && <div class="nb-bao loi"><p>{loi}</p></div>}
+
+      <form method="POST" class="nb-the">
+        <label class="nb-o">
+          <span>Email</span>
+          <input
+            type="email" name="email" required autocomplete="username"
+            autocapitalize="off" autocorrect="off" spellcheck="false"
+            inputmode="email"
+          />
+        </label>
+        <label class="nb-o">
+          <span>Mật khẩu</span>
+          <input type="password" name="mat_khau" required autocomplete="current-password" />
+        </label>
+        <button type="submit" class="nb-nut" style="width:100%">Đăng nhập</button>
+      </form>
+    </>
+  )}
+
+  <p class="nb-dan" style="margin-top:2rem">
+    <a href="/">← Về trang công khai</a>
+  </p>
+</NoiBo>

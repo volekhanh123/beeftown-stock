@@ -2,12 +2,17 @@
 /**
  * TRANG TUYỂN DỤNG
  * ================
- * Giai đoạn 1 cố ý KHÔNG có form. Tin tuyển dụng tĩnh cộng một câu hướng dẫn
- * nhắn tin lấy được phần lớn giá trị ngay ngày đầu, mà không kéo theo nghĩa
- * vụ dữ liệu cá nhân của một cái form chưa ai thiết kế chỗ nhận.
+ * FORM CHỈ HIỆN KHI CÓ VỊ TRÍ THẬT ĐỂ NỘP VÀO.
  *
- * Form thật (migration 0012 đã dựng sẵn database cho nó) thay thế khối này ở
- * Giai đoạn 2, khi đã có Supabase và có người trực hộp thư.
+ * Điều kiện đầy đủ là: đã nối database, công tắc hien_tuyen_dung đang bật, và
+ * có ít nhất một dòng vi_tri_tuyen_dung ở trạng thái da_cong_bo. Cả ba cùng
+ * được trả lời bằng MỘT câu hỏi — tin_tuyen_dung_cong_khai() trả về mảng rỗng
+ * hay không — vì chính hàm đó đã kiểm tra cả ba.
+ *
+ * Thiếu bất kỳ điều kiện nào thì trang hiện danh sách vị trí dự phòng cộng
+ * câu hướng dẫn nhắn Facebook, và KHÔNG hiện form. Lý do không phải là gọn
+ * gàng: nop_ho_so_ung_tuyen() cần một mã vị trí thật, nên một cái form hiện
+ * lúc chưa có vị trí nào là cái ô mời người ta điền rồi báo lỗi.
  *
  * MỨC LƯƠNG KHÔNG HIỆN Ở ĐÂY. Bảng lương nằm trong tài liệu vận hành mật, và
  * ràng buộc vi_tri_luong_chi_khi_duyet trong database đòi phải có người duyệt
@@ -16,6 +21,8 @@
  */
 import { chu } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import type { KetQuaNop } from '../lib/nop-ho-so';
+import FormUngTuyen from './FormUngTuyen.astro';
 
 export interface ViTri {
   ma: string;
@@ -34,8 +41,9 @@ interface Props {
   ngonNgu: NgonNgu;
   noiDung: NoiDung;
   viTri: ViTri[];
+  ketQuaNop?: KetQuaNop | null;
 }
-const { ngonNgu, noiDung: nd, viTri } = Astro.props;
+const { ngonNgu, noiDung: nd, viTri, ketQuaNop = null } = Astro.props;
 const t = chu(ngonNgu);
 
 // Danh sách dự phòng khi chưa nối database. Đây chỉ là TÊN VỊ TRÍ, lấy từ
@@ -110,21 +118,32 @@ const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';
           ))}
     </div>
 
-    <div class="the" style="margin-top:30px; max-width:62ch">
-      <h3>{ngonNgu === 'en' ? 'How to apply' : 'Cách ứng tuyển'}</h3>
-      <p style="margin-bottom:0">{t.tuyenDungCachNop}</p>
-      {!nutNhanTin && (
-        <p class="nho" style="margin:14px 0 0">{t.tuyenDungChuaMo}</p>
-      )}
-      {nutNhanTin && (
-        <div class="hang-nut" style="margin-top:18px">
-          <a class="nut nut-chinh" href={nutNhanTin.url} rel="noopener">{nutNhanTin.chu}</a>
-          {nd.hotline && (
-            <a class="nut nut-vien" href={`tel:${nd.hotline.replace(/\s/g, '')}`}>
-              {t.goiNhaHang}
-            </a>
+    <div id="nop-ho-so" style="margin-top:30px">
+      {dungDuPhong ? (
+        <div class="the" style="max-width:62ch">
+          <h3>{ngonNgu === 'en' ? 'How to apply' : 'Cách ứng tuyển'}</h3>
+          <p style="margin-bottom:0">{t.tuyenDungCachNop}</p>
+          {!nutNhanTin && (
+            <p class="nho" style="margin:14px 0 0">{t.tuyenDungChuaMo}</p>
+          )}
+          {nutNhanTin && (
+            <div class="hang-nut" style="margin-top:18px">
+              <a class="nut nut-chinh" href={nutNhanTin.url} rel="noopener">{nutNhanTin.chu}</a>
+              {nd.hotline && (
+                <a class="nut nut-vien" href={`tel:${nd.hotline.replace(/\s/g, '')}`}>
+                  {t.goiNhaHang}
+                </a>
+              )}
+            </div>
           )}
         </div>
+      ) : (
+        <FormUngTuyen
+          ngonNgu={ngonNgu}
+          viTri={viTri}
+          ketQua={ketQuaNop}
+          nhanTin={nutNhanTin}
+        />
       )}
     </div>
 

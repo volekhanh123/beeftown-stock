@@ -11,8 +11,9 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "wrangler dev",
-    "deploy": "astro build && wrangler deploy",
-    "kiem-tra": "astro check"
+    "deploy": "npm run quet && astro build && wrangler deploy",
+    "kiem-tra": "astro check",
+    "quet": "node kiem-tra/quet-chuoi-cam.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.2",

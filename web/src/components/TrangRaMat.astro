@@ -20,6 +20,7 @@ const { ngonNgu, noiDung: nd } = Astro.props;
 const t = chu(ngonNgu);
 
 const duongDanTuyenDung = ngonNgu === 'en' ? '/en/jobs' : '/tuyen-dung';
+const duongDanDatBan = ngonNgu === 'en' ? '/en/book' : '/dat-ban';
 
 // Nút chính dẫn tới nơi THẬT SỰ có người trả lời. Không có nơi nào như vậy
 // thì không hiện nút — một nút dẫn tới hư không tệ hơn là không có nút.
@@ -27,6 +28,16 @@ const nutChinh =
   nd.facebook_url ? { url: nd.facebook_url, chu: t.theoDoi } :
   nd.email_lien_he ? { url: `mailto:${nd.email_lien_he}`, chu: t.nhanTin } :
   null;
+
+// Nút đặt bàn chỉ hiện khi công tắc đang bật. Trang /dat-ban vẫn tồn tại và
+// vẫn nói thật khi form đóng, nhưng dẫn khách tới đó để đọc câu "chưa mở đặt
+// bàn" là bắt họ đi một quãng để nhận một lời từ chối.
+//
+// Lưu ý: công tắc bật CHƯA đủ để form dựng lên — trang /dat-ban còn hỏi
+// database xem có khung giờ nào còn chỗ thật không. Nút này cố ý chỉ nhìn
+// công tắc, vì kiểm tra lịch trống cho mọi lượt tải trang chủ là quá đắt cho
+// thứ khách nhìn thấy trong hai giây đầu.
+const hienNutDatBan = nd.form_dat_ban_dang_mo === true;
 
 const ngayMo = nd.ngay_khai_truong;
 const daMo = !!(ngayMo && ngayMo <= homNayVn());
@@ -67,9 +78,15 @@ const mangXaHoi = [
       <p>{nd.dong_trang_thai ?? t.trangThaiMacDinh}</p>
     </div>
 
-    {nutChinh && (
+    {(nutChinh || hienNutDatBan) && (
       <div class="hang-nut">
-        <a class="nut nut-chinh" href={nutChinh.url} rel="noopener">{nutChinh.chu}</a>
+        {hienNutDatBan && (
+          <a class="nut nut-chinh" href={duongDanDatBan}>{t.datBan}</a>
+        )}
+        {nutChinh && (
+          <a class={`nut ${hienNutDatBan ? 'nut-vien' : 'nut-chinh'}`}
+             href={nutChinh.url} rel="noopener">{nutChinh.chu}</a>
+        )}
         {nd.google_maps_url && (
           <a class="nut nut-vien" href={nd.google_maps_url} rel="noopener">{t.chiDuong}</a>
         )}

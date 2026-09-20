@@ -11,6 +11,12 @@ export default defineConfig({
   output: 'server',
   adapter: cloudflare({ imageService: 'passthrough' }),
 
+  // Chống CSRF: từ chối POST có Origin khác tên miền của trang. Astro bật sẵn
+  // cho output: 'server', nhưng ghi ra ĐÂY để nó nhìn thấy được — /noi-bo và
+  // hai form công khai đều là POST bằng form HTML thuần, và một mặc định im
+  // lặng thì không ai kiểm được là nó còn bật hay không.
+  security: { checkOrigin: true },
+
   // Tiếng Việt là ngôn ngữ chính và không có tiền tố trong đường dẫn.
   i18n: {
     defaultLocale: 'vi',

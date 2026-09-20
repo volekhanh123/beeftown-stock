@@ -18,9 +18,11 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 | 6 | **Cổng nội dung** — công tắc cho từng dữ kiện | ✅ Xong (`0010`) |
 | 7 | **Thực đơn** — 31 món, duyệt giá từng món | ✅ Xong (`0011`) |
 | 8 | **Tuyển dụng** — tin, hồ sơ, vé tải CV | ✅ Xong (`0012`) |
+| 9 | **Đặt nội dung một giao dịch** — công bố bốn bước thành một | ✅ Xong (`0015`) |
 
-**320 kiểm tra đạt** (trước đây 71). Phần database hoàn chỉnh; trang công khai ở
-`../web/` đã dựng xong Giai đoạn 1, giao diện nội bộ chưa làm.
+**391 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
+`../web/` có 8 đường dẫn song ngữ, giao diện nội bộ `/noi-bo` và hai form
+công khai đều đã dựng.
 
 ## Chạy kiểm thử
 
@@ -68,15 +70,17 @@ crm/
 │   ├── 0011_thuc_don.sql        31 món · duyệt giá từng món · bò xem tại quầy
 │   ├── 0012_tuyen_dung.sql      tin tuyển dụng · hồ sơ · vé tải CV
 │   ├── 0013_cong_khai_va_do_luong.sql   API công khai · đo lường website
-│   └── 0014_storage_supabase.sql   kho file — PGlite BỎ QUA, kiểm bằng tay
+│   ├── 0014_storage_supabase.sql   kho file — PGlite BỎ QUA, kiểm bằng tay
+│   └── 0015_dat_noi_dung.sql    công bố một dữ kiện trong MỘT giao dịch
 └── test/                    ← kiểm thử chạy trên Postgres thật
 ```
 
 ### Thứ tự chạy có ràng buộc
 
-- **`0008` phải chạy trước mọi file sau nó.** Khối `alter default privileges` trong đó là thứ bảo vệ toàn bộ bảng tạo ra ở `0009`–`0014`.
+- **`0008` phải chạy trước mọi file sau nó.** Khối `alter default privileges` trong đó là thứ bảo vệ toàn bộ bảng tạo ra ở `0009`–`0015`.
 - **`0009` và `0011` phụ thuộc vòng.** `tep_anh.mon_an_id` trỏ tới `mon_an` chưa tồn tại; cột ra đời ở `0009` không kèm khóa ngoại, khóa ngoại được thêm ở cuối `0011`.
 - **File nào tạo hàm thì PHẢI kết thúc bằng khối chốt quyền.** Xem `0008` mục 6.
+- **View mới PHẢI khai `security_invoker = true` tường minh.** Mặc định của Postgres là view chạy dưới quyền người tạo, tức đi xuyên qua RLS của bảng bên dưới — đúng lỗ hổng số 2 mà `0008` đã vá. `0008` chỉ sửa được 7 view có mặt lúc đó. `test-an-toan.mjs` mục 2 liệt kê `pg_class` và bắt đúng chuyện quên này; nó đã bắt được `v_bang_cong_tac` ngay lần chạy đầu tiên của `0015`.
 - **`0014` là file duy nhất PGlite không chạy.** Toàn bộ DDL kho file bọc trong khối kiểm tra schema `storage`. Danh sách kiểm tra bằng tay nằm ở cuối file đó — **bắt buộc làm trên Supabase thật.**
 
 ## Bốn quyết định thiết kế quan trọng
@@ -172,7 +176,9 @@ Website công khai **không có quyền vào bảng nào cả** — chỉ gọi 
 4. **Luôn gửi tin từ view `v_duoc_gui_tin`** hoặc qua `duoc_phep_gui()`, đừng gửi thẳng từ bảng `khach_hang` — sẽ gửi cho cả người chưa đồng ý.
 5. **Xuất dữ liệu phải luôn chạy được** (`v_khach_tong_hop`). Đây là đường lui về phần mềm thuê nếu sau này cần bán doanh nghiệp.
 6. **Đừng bao giờ đổi chữ ký của một hàm công khai.** `create or replace` với bộ tham số khác sẽ âm thầm tạo ra một OVERLOAD, và bản cũ vẫn giữ nguyên quyền đã cấp cho `anon`. Cần chữ ký khác thì **đặt tên mới** — xem `lich_trong_theo_ma` ở `0013`.
-7. **Thêm hàm mới thì phải cập nhật danh sách `DUOC_PHEP` trong `test/test-an-toan.mjs`.** Danh sách đó là bản sao có chủ ý của khối chốt quyền ở `0013`. Câu DDL nói ý định; bài test mới là thứ chứng minh.
-8. **Đừng đổi chữ trong các câu `raise exception` cũ** — bài test khớp regex tiếng Việt (`/hết bàn/i`, `/quá khứ/i`, `/bất biến/i`).
-9. **Mọi chỗ chạm tới schema `auth` phải đi qua một hàm `security definer`** — `la_chu_so_huu()`, `co_vai_tro()`, `co_phien_dang_nhap()`. Vai trò `authenticated` không có quyền vào schema `auth`, nên gọi thẳng `auth.uid()` từ một trigger hay policy thường sẽ lỗi *"permission denied for schema auth"*.
-10. **KHÔNG hiển thị `so_ban_con_trong` thành con số ở bất cứ đâu.** Nó là một oracle sức chứa, và hiển thị ra là tạo cảm giác khan hiếm giả — đúng thứ tài liệu thương hiệu cấm. Website dùng `lich_trong_theo_ma()`, chỉ trả về CÓ/KHÔNG còn chỗ.
+7. **Website và database nói chuyện bằng TÊN CHUỖI, và không có bước biên dịch nào kiểm chúng.** `rpc('tao_dat_ban', { p_so_khach: 4 })` gõ sai một chữ thì `astro check` vẫn xanh, còn PostgREST thì báo "không tìm thấy hàm phù hợp" — hoặc tệ hơn, chọn một phiên bản khác nhờ tham số mặc định và chạy im lặng với giá trị sai. `test/test-hop-dong-web.mjs` đọc mã nguồn `web/src`, rút ra mọi tên hàm, tham số, bảng và cột, rồi đối chiếu với `pg_proc` và `information_schema`. Nó cũng khẳng định mã chạy dưới vai `anon` không gọi hàm ngoài danh sách 12 hàm đã duyệt, và không đọc thẳng bảng nào.
+
+8. **Thêm hàm mới thì phải cập nhật danh sách `DUOC_PHEP` trong `test/test-an-toan.mjs`.** Danh sách đó là bản sao có chủ ý của khối chốt quyền ở `0013`. Câu DDL nói ý định; bài test mới là thứ chứng minh.
+9. **Đừng đổi chữ trong các câu `raise exception` cũ** — bài test khớp regex tiếng Việt (`/hết bàn/i`, `/quá khứ/i`, `/bất biến/i`).
+10. **Mọi chỗ chạm tới schema `auth` phải đi qua một hàm `security definer`** — `la_chu_so_huu()`, `co_vai_tro()`, `co_phien_dang_nhap()`. Vai trò `authenticated` không có quyền vào schema `auth`, nên gọi thẳng `auth.uid()` từ một trigger hay policy thường sẽ lỗi *"permission denied for schema auth"*.
+11. **KHÔNG hiển thị `so_ban_con_trong` thành con số ở bất cứ đâu.** Nó là một oracle sức chứa, và hiển thị ra là tạo cảm giác khan hiếm giả — đúng thứ tài liệu thương hiệu cấm. Website dùng `lich_trong_theo_ma()`, chỉ trả về CÓ/KHÔNG còn chỗ.

@@ -47,6 +47,7 @@ const VI: Bo = {
   chiDuong: 'Chỉ đường',
   goiNhaHang: 'Gọi nhà hàng',
   xemMenu: 'Xem thực đơn',
+  datBan: 'Đặt bàn',
 
   // --- Tuyển dụng -----------------------------------------------------------
   tuyenDungTieuDe: 'Beeftown đang tìm người',
@@ -91,6 +92,7 @@ const EN: Bo = {
   chiDuong: 'Directions',
   goiNhaHang: 'Call the restaurant',
   xemMenu: 'View the menu',
+  datBan: 'Book a table',
 
   tuyenDungTieuDe: 'Beeftown is hiring',
   tuyenDungDan:
@@ -119,8 +121,32 @@ export function chu(ngonNgu: NgonNgu): Bo {
   return ngonNgu === 'en' ? EN : VI;
 }
 
-/** Đường dẫn tương ứng ở ngôn ngữ kia. */
+/**
+ * CẶP ĐƯỜNG DẪN VIỆT–ANH
+ *
+ * Phải liệt kê tay, không suy ra được. Đường dẫn tiếng Anh dùng TỪ TIẾNG ANH
+ * — /en/jobs chứ không phải /en/tuyen-dung — vì người Anh gõ và đọc đường dẫn
+ * đó, và vì Google xếp hạng theo từ khóa trong đường dẫn.
+ *
+ * Bản đầu tiên của hàm này chỉ ghép '/en' vào trước đường dẫn tiếng Việt.
+ * Hệ quả: nút "English" trên trang tuyển dụng trỏ tới /en/tuyen-dung, và
+ * trang đó KHÔNG TỒN TẠI — mỗi lượt bấm là một trang 404. Trang chủ thì đúng,
+ * nên lỗi không lộ ra ở chỗ dễ thấy nhất.
+ *
+ * Bảng này là nguồn sự thật cho cả hai chiều và cho cả sitemap, nên thêm một
+ * cặp trang mới là sửa đúng một chỗ.
+ */
+export const CAP_DUONG_DAN: ReadonlyArray<readonly [vi: string, en: string]> = [
+  ['/',               '/en'],
+  ['/tuyen-dung',     '/en/jobs'],
+  ['/dat-ban',        '/en/book'],
+  ['/quyen-rieng-tu', '/en/privacy'],
+] as const;
+
+/** Đường dẫn tương ứng ở ngôn ngữ kia. Không tìm thấy thì về trang chủ cùng ngôn ngữ. */
 export function duongDanNgonNguKhac(duongDan: string, ngonNgu: NgonNgu): string {
-  if (ngonNgu === 'en') return duongDan.replace(/^\/en(\/|$)/, '/') || '/';
-  return '/en' + (duongDan === '/' ? '' : duongDan);
+  const sach = duongDan.length > 1 ? duongDan.replace(/\/$/, '') : duongDan;
+  const cap = CAP_DUONG_DAN.find(([vi, en]) => (ngonNgu === 'en' ? en : vi) === sach);
+  if (cap) return ngonNgu === 'en' ? cap[0] : cap[1];
+  return ngonNgu === 'en' ? '/' : '/en';
 }
