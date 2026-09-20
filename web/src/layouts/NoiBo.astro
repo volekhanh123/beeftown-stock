@@ -40,6 +40,7 @@ const MUC = [
   { duong: '/noi-bo/noi-dung',    ten: 'Nội dung',   vai: ['chu_so_huu', 'quan_ly', 'marketing'] },
   { duong: '/noi-bo/dat-ban',     ten: 'Đặt bàn',    vai: null },
   { duong: '/noi-bo/tuyen-dung',  ten: 'Tuyển dụng', vai: ['chu_so_huu', 'quan_ly'] },
+  { duong: '/noi-bo/cai-dat',     ten: 'Cài đặt',    vai: ['chu_so_huu', 'quan_ly'] },
 ];
 const muc = MUC.filter(m => !m.vai || (nhanSu && m.vai.includes(nhanSu.vai_tro)));
 ---

@@ -47,6 +47,13 @@ const [
 
 const anhBatBuocThieu = anhThieu?.filter(a => a.bat_buoc) ?? [];
 
+// v_mon_con_vuong trả về mọi món chưa công bố — kể cả món đã đủ mô tả, đã
+// duyệt giá, chỉ còn chờ bấm nút; cột vuong_gi của chúng là 'Sẵn sàng công
+// bố'. Đếm cả nhóm đó thì dòng việc dưới đây không bao giờ xanh được, đúng
+// ngược với tên của nó.
+const monVuongThat = monVuong?.filter(m => m.vuong_gi !== 'Sẵn sàng công bố') ?? null;
+const monSanSang = monVuong?.filter(m => m.vuong_gi === 'Sẵn sàng công bố').length ?? 0;
+
 const viec = [
   {
     xong: congBoThieu !== null && congBoThieu.length === 0,
@@ -65,11 +72,12 @@ const viec = [
     di: null,
   },
   {
-    xong: monVuong !== null && monVuong.length === 0,
+    xong: monVuongThat !== null && monVuongThat.length === 0,
     ten: 'Thực đơn sẵn sàng công bố',
-    con: monVuong === null ? null
-      : monVuong.length === 0 ? null
-      : `còn ${monVuong.length} món vướng`,
+    con: monVuongThat === null ? null
+      : monVuongThat.length === 0
+        ? (monSanSang > 0 ? `${monSanSang} món đã sẵn sàng, chờ bấm công bố` : null)
+        : `còn ${monVuongThat.length} món vướng`,
     di: null,
   },
   {
@@ -125,15 +133,13 @@ const viec = [
   <h2>Những việc không làm được ở đây</h2>
   <div class="nb-the">
     <p style="margin-top:0">
-      Một số việc cố ý không có nút trong giao diện này, vì chúng cần giấy tờ,
-      tài khoản đứng tên công ty, hoặc một người thật xác nhận:
+      Chi nhánh, giờ phục vụ, bàn ăn và ba việc dọn dữ liệu đã chuyển sang
+      màn <a href="/noi-bo/cai-dat">Cài đặt</a>. Còn lại ba việc chưa có nút:
     </p>
     <ul style="margin:0;padding-left:1.2rem;font-size:.92rem;line-height:1.8">
-      <li>Tạo tài khoản nhân sự mới — làm trong Supabase, rồi nối <code>auth_uid</code> vào bảng <code>nhan_su</code></li>
-      <li>Nhập bàn thật vào <code>ban_an</code> — đây là thứ mở khóa form đặt bàn</li>
-      <li>Chốt giờ phục vụ — sửa cột trên <code>chi_nhanh</code>, rồi bật công tắc <code>gio_phuc_vu_da_chot</code></li>
-      <li>Tải ảnh lên Supabase Storage</li>
-      <li>Duyệt giá từng món trong thực đơn</li>
+      <li><strong>Tạo tài khoản nhân sự mới</strong> — phải đi qua Supabase Auth, rồi nối <code>auth_uid</code> vào bảng <code>nhan_su</code>. Một trang web tự tạo được tài khoản đăng nhập cho chính nó là một trang web tự cấp quyền cho chính nó.</li>
+      <li><strong>Tải ảnh lên</strong> — làm trong Supabase Storage; màn chọn ảnh chưa dựng</li>
+      <li><strong>Duyệt giá từng món</strong> — màn thực đơn chưa dựng</li>
     </ul>
   </div>
 </NoiBo>

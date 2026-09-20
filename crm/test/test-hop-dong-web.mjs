@@ -113,6 +113,8 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/phien.ts',
   // Đọc và ghi cổng nội dung, chỉ được gọi từ /noi-bo sau middleware.
   'web/src/lib/cong-tac.ts',
+  // Chi nhánh, bàn ăn, dọn dữ liệu — cũng chỉ gọi từ /noi-bo.
+  'web/src/lib/cai-dat.ts',
 ];
 
 function laAnon(g) {
