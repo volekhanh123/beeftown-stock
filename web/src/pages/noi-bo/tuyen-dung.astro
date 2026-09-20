@@ -67,9 +67,19 @@ if (Astro.request.method === 'POST') {
   if (!id || !CHUYEN_DUOC[tu]?.some(b => b.toi === toi)) {
     bao = { ok: false, cau: 'Bước chuyển không hợp lệ.' };
   } else {
+    // MỘT câu UPDATE, MỘT dòng nhật ký.
+    //
+    // Bản trước chạy UPDATE rồi chèn thêm một dòng nhat_ky_ho_so. Nhưng
+    // trigger ho_so_kiem_tra_vong_doi() ĐÃ tự ghi một dòng khi trạng thái
+    // đổi — nên mỗi bước chuyển sinh ra hai dòng, và nhật ký là bảng bất
+    // biến nên dòng thừa không bao giờ dọn được.
+    //
+    // Từ 0016, ghi chú đi kèm trong chính câu UPDATE qua cột ghi_chu_buoc,
+    // trigger đọc nó. Bảng nhat_ky_ho_so giờ có policy INSERT là false —
+    // chèn tay từ đây sẽ lỗi, đúng như thiết kế.
     const { data, error } = await client
       .from('ho_so_ung_tuyen')
-      .update({ trang_thai: toi, nguoi_phu_trach: nhanSu.id })
+      .update({ trang_thai: toi, nguoi_phu_trach: nhanSu.id, ghi_chu_buoc: ghiChu })
       .eq('id', id)
       .eq('trang_thai', tu)   // chống hai người cùng bấm, như hộp thư đặt bàn
       .select('id');
@@ -79,16 +89,7 @@ if (Astro.request.method === 'POST') {
     } else if (!data || data.length === 0) {
       bao = { ok: false, cau: 'Hồ sơ đã được người khác xử lý. Tải lại trang để xem trạng thái mới.' };
     } else {
-      // Nhật ký là một câu INSERT riêng và CÓ THỂ hỏng sau khi trạng thái đã
-      // đổi. Nói thẳng khi điều đó xảy ra, thay vì báo thành công trọn vẹn —
-      // một vết kiểm toán thiếu mà không ai biết thiếu thì tệ hơn là không có.
-      const { error: eLog } = await client.from('nhat_ky_ho_so').insert({
-        ho_so_id: id, tu_trang_thai: tu, den_trang_thai: toi,
-        ghi_chu: ghiChu, nguoi_thuc_hien: nhanSu.id,
-      });
-      bao = eLog
-        ? { ok: false, cau: `Đã chuyển sang "${TEN_TRANG_THAI[toi]}", nhưng KHÔNG ghi được nhật ký: ${eLog.message}` }
-        : { ok: true, cau: `Đã chuyển sang "${TEN_TRANG_THAI[toi]}".` };
+      bao = { ok: true, cau: `Đã chuyển sang "${TEN_TRANG_THAI[toi]}".` };
     }
   }
 }

@@ -19,8 +19,9 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 | 7 | **Thực đơn** — 31 món, duyệt giá từng món | ✅ Xong (`0011`) |
 | 8 | **Tuyển dụng** — tin, hồ sơ, vé tải CV | ✅ Xong (`0012`) |
 | 9 | **Đặt nội dung một giao dịch** — công bố bốn bước thành một | ✅ Xong (`0015`) |
+| 9b | **Vá vé tải CV, quyền thu hồi, nhật ký trùng** | ✅ Xong (`0016`) |
 
-**391 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
+**417 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
 `../web/` có 8 đường dẫn song ngữ, giao diện nội bộ `/noi-bo` và hai form
 công khai đều đã dựng.
 
@@ -34,13 +35,15 @@ cd crm && npm install && npm test
 
 | Lệnh | Kiểm gì | Số kiểm tra |
 |---|---|---|
-| `npm run test:db` | nghiệp vụ: chuẩn hóa SĐT, sổ cái điểm, ba luật tính điểm, đặt bàn, phân nhóm | 57 |
+| `npm run test:db` | nghiệp vụ: chuẩn hóa SĐT, sổ cái điểm, ba luật tính điểm, đặt bàn, phân nhóm | 59 |
 | `npm run test:rls` | phân quyền: tách dữ liệu giữa chi nhánh, vai trò, website công khai | 23 |
 | `npm run test:an-toan` | **bốn lỗ hổng ở `0008`** và hai lỗi chỉ số | 28 |
 | `npm run test:cong-bo` | cổng nội dung và ảnh | 53 |
 | `npm run test:thuc-don` | thực đơn và duyệt giá | 50 |
-| `npm run test:tuyen-dung` | tuyển dụng và dữ liệu cá nhân | 59 |
+| `npm run test:tuyen-dung` | tuyển dụng, dữ liệu cá nhân, nhật ký bất biến | 67 |
 | `npm run test:cong-khai` | API công khai, mã đặt bàn, đo lường | 50 |
+| `npm run test:noi-dung` | đặt/thu hồi nội dung trong một giao dịch, vé tải CV | 52 |
+| `npm run test:hop-dong` | hợp đồng giữa `web/src` và database: tên hàm, tham số, bảng, cột | 35 |
 
 **Chạy lại toàn bộ kiểm thử sau mỗi lần sửa migration.** Chúng đã bắt được lỗi thật, không phải một lần:
 
@@ -71,7 +74,8 @@ crm/
 │   ├── 0012_tuyen_dung.sql      tin tuyển dụng · hồ sơ · vé tải CV
 │   ├── 0013_cong_khai_va_do_luong.sql   API công khai · đo lường website
 │   ├── 0014_storage_supabase.sql   kho file — PGlite BỎ QUA, kiểm bằng tay
-│   └── 0015_dat_noi_dung.sql    công bố một dữ kiện trong MỘT giao dịch
+│   ├── 0015_dat_noi_dung.sql    công bố một dữ kiện trong MỘT giao dịch
+│   └── 0016_va_ve_tai_cv_va_quyen_thu_hoi.sql   ⚠ VÁ 3 LỖI — xem đầu file
 └── test/                    ← kiểm thử chạy trên Postgres thật
 ```
 
@@ -155,7 +159,7 @@ Ngoài ra `cau_hinh_tich_diem.ty_le_tich` có **trần cứng 20%** — biên đ
 | `duoc_phep_gui()` | Chốt chặn trước khi gửi tin | Nội bộ |
 | `chi_so_crm()` | 6 chỉ số theo dõi | Quản lý, chủ sở hữu |
 
-Website công khai **không có quyền vào bảng nào cả** — chỉ gọi được ba hàm `SECURITY DEFINER` ở trên.
+Website công khai **không có quyền vào bảng nào cả** — chỉ gọi được danh sách hàm `SECURITY DEFINER` trong khối chốt quyền ở cuối migration MỚI NHẤT có tạo hàm. Đừng chép số lượng vào đây: bảng trên đã từng nói "ba hàm" trong khi thực tế là 12, và nó lạc hậu suốt tám migration mà không ai để ý. `test-an-toan.mjs` canh danh sách đó.
 
 ## Việc cần làm trước khi chạy thật
 
@@ -180,5 +184,7 @@ Website công khai **không có quyền vào bảng nào cả** — chỉ gọi 
 
 8. **Thêm hàm mới thì phải cập nhật danh sách `DUOC_PHEP` trong `test/test-an-toan.mjs`.** Danh sách đó là bản sao có chủ ý của khối chốt quyền ở `0013`. Câu DDL nói ý định; bài test mới là thứ chứng minh.
 9. **Đừng đổi chữ trong các câu `raise exception` cũ** — bài test khớp regex tiếng Việt (`/hết bàn/i`, `/quá khứ/i`, `/bất biến/i`).
-10. **Mọi chỗ chạm tới schema `auth` phải đi qua một hàm `security definer`** — `la_chu_so_huu()`, `co_vai_tro()`, `co_phien_dang_nhap()`. Vai trò `authenticated` không có quyền vào schema `auth`, nên gọi thẳng `auth.uid()` từ một trigger hay policy thường sẽ lỗi *"permission denied for schema auth"*.
+10. **Đừng tham chiếu BẢNG trong schema `auth` từ policy hay trigger** — dùng `la_chu_so_huu()`, `co_vai_tro()`, `co_phien_dang_nhap()` thay vì đọc thẳng `auth.users`.
+    Riêng HÀM `auth.uid()` thì gọi thẳng được: Supabase cấp sẵn quyền đó cho `authenticated`, và `0007` đã dùng nó như vậy ở `nhan_su_doc` và `mau_tin_doc`. Bản trước của quy tắc này cấm luôn cả `auth.uid()`, tức là nó mâu thuẫn với chính `0007` — mà `nhan_su_doc` lại nằm trên đường đăng nhập của MỌI request `/noi-bo`.
+    **Phép thử một dòng trên project mới:** `select has_schema_privilege('authenticated', 'auth', 'usage');` — trả `false` thì không ai đăng nhập được, và triệu chứng là bị đá về trang đăng nhập dù mật khẩu đúng.
 11. **KHÔNG hiển thị `so_ban_con_trong` thành con số ở bất cứ đâu.** Nó là một oracle sức chứa, và hiển thị ra là tạo cảm giác khan hiếm giả — đúng thứ tài liệu thương hiệu cấm. Website dùng `lich_trong_theo_ma()`, chỉ trả về CÓ/KHÔNG còn chỗ.

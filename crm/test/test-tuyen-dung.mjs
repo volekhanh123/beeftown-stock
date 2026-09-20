@@ -423,6 +423,58 @@ await nhom('9 · CÔNG TẮC CỔNG TUYỂN DỤNG', async () => {
 });
 
 // ===========================================================================
+await nhom('MỘT BƯỚC CHUYỂN — MỘT DÒNG NHẬT KÝ (0016 mục 3)', async () => {
+  // Trigger ho_so_kiem_tra_vong_doi() đã tự ghi nhật ký khi trạng thái đổi.
+  // Giao diện /noi-bo/tuyen-dung từng ghi THÊM một dòng nữa cho cùng bước
+  // chuyển, vì nó cần chỗ lưu ghi chú. Nhật ký là bảng bất biến nên dòng
+  // thừa không dọn được — một vết kiểm toán nói sai về số lần xảy ra.
+  await db.query(
+    `update noi_dung_cong_bo set trang_thai = 'da_thu_hoi'
+     where khoa = 'hien_tuyen_dung' and trang_thai = 'da_cong_bo'`);
+  await db.query(
+    `insert into noi_dung_cong_bo (khoa, kieu, gia_tri_bool, trang_thai, cong_bo_luc)
+     values ('hien_tuyen_dung', 'bool', true, 'da_cong_bo', now())`);
+
+  const nop = await nopHoSo('nhan-vien-sanh', 'Đỗ Thị Nhật Ký', '0913000111');
+  const ma = nop.rows?.[0]?.ma;
+  ok('Nộp được hồ sơ để thử nhật ký', typeof ma === 'string', nop.loi ?? '');
+
+  const { rows: [hs] } = await db.query(
+    `select id from ho_so_ung_tuyen where ma_ho_so = $1`, [ma]);
+
+  const { rows: [{ n: truoc }] } = await db.query(
+    `select count(*)::int as n from nhat_ky_ho_so where ho_so_id = $1`, [hs.id]);
+  ok('Lúc nộp có đúng một dòng nhật ký', truoc === 1, `${truoc} dòng`);
+
+  // Đúng khuôn mà giao diện dùng: ghi chú đi trong CÙNG câu UPDATE.
+  const doi = await duoiDanhNghia(uidQlA,
+    `update ho_so_ung_tuyen
+     set trang_thai = 'dang_xem', ghi_chu_buoc = 'Đã gọi, hẹn gặp thứ Năm'
+     where id = $1`, [hs.id]);
+  ok('Quản lý đổi được trạng thái kèm ghi chú', doi.loi === null, doi.loi ?? '');
+
+  const { rows: nk } = await db.query(
+    `select tu_trang_thai, den_trang_thai, ghi_chu, nguoi_thuc_hien
+     from nhat_ky_ho_so where ho_so_id = $1 order by created_at`, [hs.id]);
+  ok('Một bước chuyển sinh ĐÚNG MỘT dòng nhật ký', nk.length === 2,
+     `${nk.length} dòng, đáng ra 2 (nộp + chuyển)`);
+  ok('Ghi chú đi được vào nhật ký qua trigger',
+     nk[1]?.ghi_chu === 'Đã gọi, hẹn gặp thứ Năm', `ghi_chu = ${nk[1]?.ghi_chu}`);
+  ok('Nhật ký vẫn ghi đúng người thực hiện', nk[1]?.nguoi_thuc_hien !== null);
+
+  // Không ai chèn tay vào nhật ký được nữa — kể cả nhân sự đã đăng nhập.
+  const chenTay = await duoiDanhNghia(uidQlA,
+    `insert into nhat_ky_ho_so (ho_so_id, den_trang_thai, ghi_chu)
+     values ($1, 'tu_choi', 'dòng bịa')`, [hs.id]);
+  ok('Nhân sự KHÔNG chèn tay được một dòng kiểm toán', chenTay.loi !== null,
+     chenTay.loi ?? 'chèn được — nhật ký không còn đáng tin');
+
+  const { rows: [{ n: sau }] } = await db.query(
+    `select count(*)::int as n from nhat_ky_ho_so where ho_so_id = $1`, [hs.id]);
+  ok('Số dòng nhật ký không đổi sau khi bị từ chối', sau === 2, `${sau} dòng`);
+});
+
+// ===========================================================================
 console.log('\n' + '='.repeat(60));
 if (hong === 0) {
   console.log(`\x1b[32m\x1b[1mTẤT CẢ ${dat} KIỂM TRA TUYỂN DỤNG ĐỀU ĐẠT\x1b[0m`);

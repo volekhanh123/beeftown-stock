@@ -210,7 +210,101 @@ await nhom('5 · THU HỒI — một nút khi có sự cố', async () => {
 });
 
 // ===========================================================================
-await nhom('6 · VIEW BẢNG CÔNG TẮC', async () => {
+await nhom('6 · GỠ KHỎI TRANG PHẢI QUA CÙNG MỘT CỬA (0016 mục 2)', async () => {
+  // Cờ chi_chu_so_huu nghĩa là "chỉ chủ nhà hàng được công bố". Trước 0016,
+  // trigger chỉ kiểm quyền ở nhánh da_cong_bo — nên marketing GỠ ĐƯỢC những
+  // dữ kiện mà họ không đặt lên được, kể cả công tắc form đặt bàn và hotline.
+  // Giao diện chỉ giấu nút, và giấu nút không phải là phân quyền.
+  await duoiDanhNghia(uidChu,
+    `select dat_noi_dung('hotline', p_text := '0901234567', p_cong_bo := true)`);
+  ok('Điểm xuất phát: hotline đang trên trang',
+     (await trenTrang('hotline')) === '0901234567');
+
+  const rMkt = await duoiDanhNghia(uidMkt, `select thu_hoi_noi_dung('hotline') as x`);
+  ok('Marketing KHÔNG gỡ được khóa chỉ-chủ-sở-hữu',
+     rMkt.loi !== null && /chủ sở hữu/i.test(rMkt.loi ?? ''), rMkt.loi ?? 'không có lỗi');
+  ok('Hotline còn nguyên trên trang', (await trenTrang('hotline')) === '0901234567');
+
+  const rQl = await duoiDanhNghia(uidQl, `select thu_hoi_noi_dung('hotline') as x`);
+  ok('Quản lý cũng KHÔNG gỡ được khóa chỉ-chủ-sở-hữu',
+     rQl.loi !== null && /chủ sở hữu/i.test(rQl.loi ?? ''), rQl.loi ?? 'không có lỗi');
+
+  // Khóa thường thì quản lý gỡ được — nếu không thì đã vá quá tay.
+  await duoiDanhNghia(uidChu,
+    `select dat_noi_dung('facebook_url', p_text := 'https://facebook.com/beeftown', p_cong_bo := true)`);
+  const rTh = await duoiDanhNghia(uidQl, `select thu_hoi_noi_dung('facebook_url') as x`);
+  ok('Quản lý VẪN gỡ được khóa thường', rTh.loi === null && rTh.rows?.[0]?.x === true,
+     rTh.loi ?? '');
+
+  const rMkt2 = await duoiDanhNghia(uidMkt, `select thu_hoi_noi_dung('dia_chi_hien_thi') as x`);
+  ok('Marketing KHÔNG gỡ được cả khóa thường',
+     rMkt2.loi !== null && /quyền/i.test(rMkt2.loi ?? ''), rMkt2.loi ?? 'không có lỗi');
+
+  // Chủ sở hữu vẫn làm được mọi thứ.
+  const rChu = await duoiDanhNghia(uidChu, `select thu_hoi_noi_dung('hotline') as x`);
+  ok('Chủ nhà hàng gỡ được', rChu.loi === null && rChu.rows?.[0]?.x === true, rChu.loi ?? '');
+});
+
+// ===========================================================================
+await nhom('7 · VÉ TẢI CV (0016 mục 1)', async () => {
+  // Policy storage của 0014 kiểm vé bằng một câu select vào phieu_tai_len,
+  // chạy dưới quyền anon — mà anon không có GRANT và bị RLS chặn trên chính
+  // bảng đó. Kết quả: MỌI lượt tải CV bị từ chối, im lặng, 100% số lần.
+  // Phần storage không chạy trên PGlite nên không test nào bắt được. Ở đây
+  // test cái có thể test: hàm bọc mà policy mới gọi.
+  // xin_phieu_tai_cv() kiểm cong_tac_bat('hien_tuyen_dung') trước tiên — vé
+  // tải CV chỉ tồn tại khi cổng tuyển dụng đang mở.
+  await duoiDanhNghia(uidChu,
+    `select dat_noi_dung('hien_tuyen_dung', p_bool := true, p_cong_bo := true)`);
+
+  const { rows: [ve] } = await db.query(
+    `select xin_phieu_tai_cv(null::inet) as id`);
+  ok('Xin được vé', typeof ve.id === 'string');
+
+  const hoi = async (doan) => {
+    const { rows: [r] } = await db.query(`select ve_con_hieu_luc($1) as x`, [doan]);
+    return r.x;
+  };
+
+  ok('Vé vừa cấp là hợp lệ', (await hoi(ve.id)) === true);
+  ok('Đoạn đường dẫn tự bịa bị từ chối', (await hoi('test')) === false);
+  ok('Chuỗi rỗng bị từ chối', (await hoi('')) === false);
+  ok('null bị từ chối', (await hoi(null)) === false);
+  ok('uuid không tồn tại bị từ chối',
+     (await hoi('00000000-0000-0000-0000-000000000000')) === false);
+
+  // Quan trọng nhất: đoạn không phải uuid KHÔNG được ném lỗi. Ném lỗi trong
+  // một policy thì storage trả về thông báo khó hiểu thay vì "bị từ chối".
+  let nem = null;
+  try { await db.query(`select ve_con_hieu_luc($1)`, ["'; drop table phieu_tai_len; --"]); }
+  catch (e) { nem = e.message; }
+  ok('Đoạn rác KHÔNG làm hàm ném lỗi', nem === null, nem ?? '');
+
+  await db.query(`update phieu_tai_len set da_dung = true where id = $1`, [ve.id]);
+  ok('Vé đã dùng bị từ chối', (await hoi(ve.id)) === false);
+
+  const { rows: [ve2] } = await db.query(`select xin_phieu_tai_cv(null::inet) as id`);
+  await db.query(`update phieu_tai_len set het_han = now() - interval '1 minute' where id = $1`,
+                 [ve2.id]);
+  ok('Vé hết hạn bị từ chối', (await hoi(ve2.id)) === false);
+
+  // Hàm phải là security definer — nếu không thì nó thừa hưởng đúng vấn đề
+  // mà nó sinh ra để giải quyết.
+  const { rows: [p] } = await db.query(
+    `select prosecdef from pg_proc where proname = 've_con_hieu_luc'`);
+  ok('ve_con_hieu_luc là security definer', p?.prosecdef === true);
+
+  // Và anon KHÔNG được gọi nó: policy storage chạy dưới quyền của storage,
+  // không cần anon có EXECUTE. Cấp thêm là mở một đường dò vé.
+  const { rows: [q] } = await db.query(`
+    select has_function_privilege('anon', p.oid, 'execute') as duoc
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 've_con_hieu_luc'`);
+  ok('anon KHÔNG gọi được ve_con_hieu_luc', q?.duoc === false);
+});
+
+// ===========================================================================
+await nhom('8 · VIEW BẢNG CÔNG TẮC', async () => {
   const r = await duoiDanhNghia(uidChu, `select * from v_bang_cong_tac order by thu_tu`);
   ok('Quản trị đọc được bảng công tắc', r.loi === null, r.loi ?? '');
   ok('Trả về ĐỦ mọi khóa trong sổ đăng ký, kể cả khóa chưa công bố',

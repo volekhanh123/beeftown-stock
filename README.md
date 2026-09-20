@@ -21,7 +21,7 @@ Bò nhập khẩu tươi mát được pha lóc và **đóng gói sẵn theo t�
 | File | Nội dung |
 |---|---|
 | `web/` | **Website đang dùng.** Astro trên Cloudflare Workers, song ngữ Việt–Anh. Xem `web/README.md`. |
-| `crm/` | Database CRM trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung. 320 kiểm tra. |
+| `crm/` | Database CRM trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung. 417 kiểm tra. |
 | ~~`Beeftown_Website/index.html`~~ | ⚠️ **BẢN NHÁP CŨ — KHÔNG PHÁT HÀNH.** Xem cảnh báo bên dưới. |
 | ~~`Beeftown_Website/google-apps-script.gs`~~ | ⚠️ Đã thay bằng `tao_dat_ban()` trong database. |
 | `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên. |
@@ -133,7 +133,8 @@ Những chỗ dễ làm hỏng nếu không biết trước:
 - [ ] Tạo tài khoản đầu tiên trong Supabase Studio, rồi thêm một dòng `nhan_su` có `auth_uid` trỏ tới nó và `vai_tro = 'chu_so_huu'`.
       *Không có bước thứ hai thì đăng nhập được vào Supabase nhưng `/noi-bo` vẫn từ chối — có chủ ý: Supabase Auth trả lời "ai", bảng `nhan_su` trả lời "có phải nhân viên không".*
 - [ ] Thêm một dòng `chi_nhanh` có `ma` khớp biến `PUBLIC_CHI_NHANH`
-- [ ] Đặt biến `PUBLIC_*` ở phần **build** của Cloudflare (không phải phần biến lúc chạy)
+- [ ] Điền `web/.env` **trên máy dùng để build** (`PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_CHI_NHANH`, `SITE_URL`).
+      *Build chạy trên máy, không chạy trên Cloudflare — dashboard của Cloudflare không có chỗ đặt mấy biến này. Đặt sai chỗ thì trang vẫn deploy, vẫn trả 200, chỉ là không nối được database và không ai biết.*
 - [ ] Đăng nhập `/noi-bo`, công bố địa chỉ và link Facebook. Trang chủ đổi ngay, không cần deploy lại.
 - [ ] Gọi `tao_tin_tuyen_dung_mau(<id chi nhánh>)` → 8 tin nháp. Sửa lại rồi chuyển sang `da_cong_bo`; **form ứng tuyển tự hiện ra** khi có tin đầu tiên được công bố.
 - [ ] Kiểm tra kho file bằng tay theo danh sách cuối `0014_storage_supabase.sql`

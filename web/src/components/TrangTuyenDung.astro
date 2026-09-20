@@ -118,10 +118,34 @@ const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';
           ))}
     </div>
 
+    {/*
+      KẾT QUẢ ĐỨNG NGOÀI CÙNG, KIỂM TRƯỚC MỌI THỨ KHÁC.
+
+      Bản đầu tiên đặt thẻ xác nhận LỒNG BÊN TRONG nhánh có-vị-trí-tuyển-dụng.
+      Hệ quả: nếu giữa lúc POST và lúc GET mà danh sách vị trí rỗng đi — công
+      tắc hien_tuyen_dung bị tắt, tin hết hạn, Supabase chớp một nhịp — thì
+      ứng viên thấy màn hình "cổng chưa mở, nhắn Facebook" dù hồ sơ ĐÃ GHI vào
+      database, và mã hồ sơ biến mất vĩnh viễn. Không có hàm tra cứu ngược,
+      nên mất là mất hẳn.
+
+      Trang đặt bàn vốn làm đúng. Hai trang lệch nhau đúng ở chỗ nguy hiểm
+      nhất, nên giờ cả hai cùng một khuôn: đã có kết quả thì kết quả thắng.
+    */}
     <div id="nop-ho-so" style="margin-top:30px">
-      {dungDuPhong ? (
+      {ketQuaNop?.ok ? (
+        /* Đã nộp xong: thẻ xác nhận thắng mọi thứ khác. */
+        <FormUngTuyen ngonNgu={ngonNgu} viTri={viTri} ketQua={ketQuaNop} nhanTin={nutNhanTin} />
+
+      ) : dungDuPhong ? (
         <div class="the" style="max-width:62ch">
-          <h3>{ngonNgu === 'en' ? 'How to apply' : 'Cách ứng tuyển'}</h3>
+          {/* Lỗi mà lại không còn vị trí nào: vẫn phải nói cho người ta biết
+              là chưa gửi được, chứ không im lặng đổi sang màn hình khác. */}
+          {ketQuaNop && (
+            <div style="border-left:4px solid var(--do);padding:12px 14px;margin:0 0 18px;background:rgba(178,58,44,.08)">
+              <p style="margin:0"><strong>{ketQuaNop.cau}</strong></p>
+            </div>
+          )}
+          <h3 style="margin-top:0">{ngonNgu === 'en' ? 'How to apply' : 'Cách ứng tuyển'}</h3>
           <p style="margin-bottom:0">{t.tuyenDungCachNop}</p>
           {!nutNhanTin && (
             <p class="nho" style="margin:14px 0 0">{t.tuyenDungChuaMo}</p>
@@ -137,13 +161,9 @@ const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';
             </div>
           )}
         </div>
+
       ) : (
-        <FormUngTuyen
-          ngonNgu={ngonNgu}
-          viTri={viTri}
-          ketQua={ketQuaNop}
-          nhanTin={nutNhanTin}
-        />
+        <FormUngTuyen ngonNgu={ngonNgu} viTri={viTri} ketQua={ketQuaNop} nhanTin={nutNhanTin} />
       )}
     </div>
 

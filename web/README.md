@@ -107,9 +107,17 @@ Chép `.env.example` thành `.env`:
 
 Khóa `service_role` thì ngược lại: **không bao giờ** đặt vào thư mục này.
 
-**Khi deploy lên Cloudflare, đặt các biến `PUBLIC_*` ở phần BUILD**, không phải phần biến môi trường lúc chạy — Vite nhúng chúng vào bản build.
+**Build chạy trên MÁY CỦA BẠN, không phải trên Cloudflare.** `npm run deploy` chạy `astro build` ở đây rồi `wrangler deploy` chỉ đẩy bản đã build lên. Cloudflare không tham gia bước build, nên dashboard của nó **không có chỗ** đặt biến `PUBLIC_*` — biến phải nằm trong `web/.env` lúc bạn chạy build.
 
-`SITE_URL` mà sai hoặc thiếu thì thẻ `og:image` thành đường dẫn tương đối và Facebook không hiện ảnh. Đây là lỗi phổ biến nhất của phần này.
+Làm sai chỗ này không gây lỗi: trang vẫn deploy, vẫn trả 200, chỉ là `taoClient()` trả `null` nên `/noi-bo` không hiện ô đăng nhập và hai form công khai biến mất. Một trang chết lâm sàng trông y hệt một trang đang chờ nội dung.
+
+Phép thử một dòng sau khi build:
+
+```bash
+grep -rq "$(grep PUBLIC_SUPABASE_URL .env | cut -d= -f2 | sed 's|https://||;s|..*||')" dist/ && echo "biến đã vào bản build" || echo "CHƯA VÀO"
+```
+
+`SITE_URL` được Astro **nướng vào bản build** — nó thành canonical, `og:url`, `url` trong JSON-LD và mọi `<loc>` trong sitemap. Sai thì Facebook không hiện ảnh khi chia sẻ link. Lần deploy đầu chưa biết địa chỉ `workers.dev`: deploy một lần không đặt biến, đọc địa chỉ wrangler in ra, điền vào `.env` rồi deploy lại.
 
 ---
 

@@ -53,7 +53,7 @@ if (Astro.request.method === 'POST') {
   if (!id || !hopLe) {
     bao = { ok: false, cau: 'Bước chuyển không hợp lệ.' };
   } else {
-    const { error } = await client
+    const { data, error } = await client
       .from('dat_ban')
       .update({ trang_thai: toi, nguoi_xu_ly: nhanSu.id })
       .eq('id', id)
@@ -62,8 +62,14 @@ if (Astro.request.method === 'POST') {
       // dòng này thì người bấm sau ghi đè lặng lẽ lên việc người bấm trước.
       .eq('trang_thai', tu)
       .select('id');
+
     if (error) {
       bao = { ok: false, cau: error.message };
+    } else if (!data || data.length === 0) {
+      // Câu .eq() ở trên KHÔNG khớp dòng nào: người khác đã xử lý trước.
+      // Thiếu nhánh này thì màn hình báo "Đã chuyển sang..." trong khi không
+      // có gì đổi cả — tức là chống được chuyện ghi đè, rồi nói dối về nó.
+      bao = { ok: false, cau: 'Yêu cầu đã được người khác xử lý. Tải lại trang để xem trạng thái mới.' };
     } else {
       bao = { ok: true, cau: `Đã chuyển sang "${TEN_TRANG_THAI[toi]}".` };
     }

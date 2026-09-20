@@ -22,9 +22,13 @@ interface Props {
 const { tieuDe, nhanSu } = Astro.props;
 const duong = Astro.url.pathname.replace(/\/$/, '') || '/noi-bo';
 
+// Đúng bốn vai của enum vai_tro (0001). Thêm nhãn cho một vai không có
+// trong enum chỉ làm người đọc mã tưởng nó tồn tại.
 const TEN_VAI_TRO: Record<string, string> = {
-  chu_so_huu: 'Chủ nhà hàng', quan_ly: 'Quản lý', marketing: 'Marketing',
-  thu_ngan: 'Thu ngân', phuc_vu: 'Phục vụ', bep: 'Bếp',
+  chu_so_huu: 'Chủ nhà hàng',
+  quan_ly: 'Quản lý',
+  thu_ngan: 'Thu ngân',
+  marketing: 'Marketing',
 };
 
 // Ô nào hiện ra do VAI TRÒ quyết định, và danh sách vai trò ở đây khớp đúng

@@ -16,7 +16,7 @@
  * thấy gì. Cùng một bộ luật cho giao diện và cho người gọi database trực
  * tiếp — không có đường vòng.
  *
- * Hệ quả cụ thể và đáng giá: một người vai `phuc_vu` đăng nhập vào /noi-bo
+ * Hệ quả cụ thể và đáng giá: một người vai `thu_ngan` đăng nhập vào /noi-bo
  * sẽ KHÔNG thấy ô công tắc nội dung, vì chính sách noi_dung_them chỉ cho
  * chu_so_huu/quan_ly/marketing. Ta không phải viết lại luật đó trong
  * JavaScript, nên nó không thể lệch.
@@ -51,7 +51,9 @@ interface Token {
 export interface NhanSu {
   id: string;
   ho_ten: string;
-  vai_tro: 'chu_so_huu' | 'quan_ly' | 'marketing' | 'thu_ngan' | 'phuc_vu' | 'bep';
+  // Bốn giá trị, khớp đúng enum vai_tro ở 0001. Bản trước khai thêm
+  // 'phuc_vu' và 'bep' — hai vai KHÔNG TỒN TẠI trong database.
+  vai_tro: 'chu_so_huu' | 'quan_ly' | 'thu_ngan' | 'marketing';
   chi_nhanh_id: string | null;
   email: string;
 }

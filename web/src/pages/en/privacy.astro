@@ -13,9 +13,15 @@ const nd = await docNoiDung('en');
 
       <h2 style="font-size:24px; margin-top:40px">What we collect</h2>
       <p>When you send a table request or a job application, Beeftown stores your
-        name, phone number and whatever else you choose to enter. The website
-        records page views and button clicks, but <strong>does not store IP
-        addresses</strong> and uses no third-party analytics.</p>
+        name, phone number, whatever else you choose to enter, and <strong>the IP
+        address that request came from</strong>. The IP address is used to block
+        spam and as evidence that you ticked the consent box; it is erased at the
+        same time as the rest. If you attach a CV, the file is kept in a private
+        store that only the owner and managers can open.</p>
+      <p>Beeftown <strong>uses no third-party analytics</strong> — no Google
+        Analytics, no advertising pixels, no tracking you across other sites.</p>
+      <p>The data is held in Supabase, a database service Beeftown rents. Nobody
+        else reads it.</p>
 
       <h2 style="font-size:24px; margin-top:34px">What we use it for</h2>
       <p>Booking details are used so the restaurant can call to confirm. Job
@@ -24,9 +30,13 @@ const nd = await docNoiDung('en');
         pre-ticked, and leaving it unticked does not affect your booking.</p>
 
       <h2 style="font-size:24px; margin-top:34px">How long we keep it</h2>
-      <p>Job applications are kept for <strong>six months</strong> from the date you
-        apply, after which name, phone, email and CV file are erased. Website
-        measurement data is deleted after 90 days.</p>
+      <p>Job applications are kept for <strong>six months</strong> from the date
+        you apply, after which name, phone, email, IP address and CV file are
+        erased. What remains — the date and the role applied for — is kept in a
+        form that no longer identifies you, so the restaurant knows how many
+        people applied in each round.</p>
+      <p>Booking details are kept so the restaurant can see your history with us.
+        You can ask us to delete them at any time.</p>
 
       <h2 style="font-size:24px; margin-top:34px">Your rights</h2>
       <p>You can ask to see, correct or delete your information, and you can opt out
