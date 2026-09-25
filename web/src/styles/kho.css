@@ -22,6 +22,18 @@
 }
 .kho-dh a[aria-current='page'] { background: var(--than); color: var(--kem); border-color: var(--than); }
 
+/* Chủ nhà hàng thấy tới 9 mục, dài hơn khung 880px: vuốt ngang thì mục đang mở
+   (Cài đặt nằm cuối) bị đẩy ra ngoài khung. Máy tính cho xuống dòng. Điện thoại
+   vẫn vuốt ngang cho gọn; trình duyệt hiểu scroll-initial-target thì mở sẵn ở
+   đúng mục đang xem. Chỉ đặt nó ở đây: trên máy tính thanh này không còn cuộn
+   được, và "nearest" sẽ thành cả trang — trang bị kéo xuống tận thanh menu. */
+@media (min-width: 641px) {
+  .kho-dh { flex-wrap: wrap; overflow-x: visible; padding-bottom: .1rem; }
+}
+@media (max-width: 640px) {
+  .kho-dh a[aria-current='page'] { scroll-initial-target: nearest; }
+}
+
 .kho-cn {
   display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
   font-size: .85rem; color: var(--muc-nhat); margin: 0 0 1rem;
