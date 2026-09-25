@@ -156,10 +156,10 @@ Làm sai chỗ này không gây lỗi: trang vẫn deploy, vẫn trả 200, ch�
 Phép thử một dòng sau khi build:
 
 ```bash
-grep -rq "$(grep PUBLIC_SUPABASE_URL .env | cut -d= -f2 | sed 's|https://||;s|..*||')" dist/ && echo "biến đã vào bản build" || echo "CHƯA VÀO"
+grep -rq "$(grep PUBLIC_SUPABASE_URL .env | cut -d= -f2 | sed 's|https://||;s|\..*||')" dist/ && echo "biến đã vào bản build" || echo "CHƯA VÀO"
 ```
 
-`SITE_URL` được Astro **nướng vào bản build** — nó thành canonical, `og:url`, `url` trong JSON-LD và mọi `<loc>` trong sitemap. Sai thì Facebook không hiện ảnh khi chia sẻ link. Lần deploy đầu chưa biết địa chỉ `workers.dev`: deploy một lần không đặt biến, đọc địa chỉ wrangler in ra, điền vào `.env` rồi deploy lại.
+`SITE_URL` được Astro **nướng vào bản build** — nó thành canonical, `og:url`, `url` trong JSON-LD và mọi `<loc>` trong sitemap. Sai thì Facebook không hiện ảnh khi chia sẻ link. Web chạy ở `https://beeftown.vn` (tên miền riêng gắn vào Worker trên dashboard Cloudflare), nên `SITE_URL=https://beeftown.vn`. Địa chỉ `workers.dev` và link xem trước cố ý tắt bằng `workers_dev = false` và `preview_urls = false` trong `wrangler.toml` — thiếu hai dòng đó, mỗi lần `wrangler deploy` Cloudflare tự bật lại cả hai.
 
 ---
 
