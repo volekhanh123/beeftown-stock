@@ -38,6 +38,8 @@ Tất cả đều là **HTML tự chứa** — mở thẳng bằng trình duyệ
 
 Cân in tem TM-A 30kg (dòng TM-xA, firmware V3.14E8) không có phần mềm đi kèm, nên `Beeftown_Can_TMA.html` thay phần việc hay dùng nhất: sửa danh sách hàng và chữ trên tem. Cách dùng có ghi ngay trên trang (3 bước: lưu từ cân ra USB → sửa → nạp lại).
 
+Đã nạp thử vào cân thật và in tem thành công (25/09/2026).
+
 Những điều đã biết về file `JHSCALE/A_000.TMS` mà cân lưu ra:
 
 - Văn bản tách cột bằng tab, xuống dòng CRLF. Mỗi phần mở bằng `DWL<tab>TÊN` (đời cũ dùng `XD1`) và đóng bằng `END<tab>TÊN`.
