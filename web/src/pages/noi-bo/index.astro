@@ -18,6 +18,12 @@ import NoiBo from '../../layouts/NoiBo.astro';
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
 
+// Thủ kho, NV quầy/bếp, kế toán không thấy dữ liệu CRM (0018) — trang tổng
+// quan này toàn ô trống với họ. Đưa thẳng vào kho.
+if (['thu_kho', 'nhan_vien_quay', 'ke_toan'].includes(nhanSu.vai_tro)) {
+  return Astro.redirect('/noi-bo/kho', 302);
+}
+
 /** Đếm mà không kéo dòng về — dữ liệu cá nhân không cần đi qua đây chỉ để đếm. */
 async function dem(bang: string, loc: (q: any) => any): Promise<number | null> {
   try {

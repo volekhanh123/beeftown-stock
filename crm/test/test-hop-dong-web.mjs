@@ -115,6 +115,13 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/cong-tac.ts',
   // Chi nhánh, bàn ăn, dọn dữ liệu — cũng chỉ gọi từ /noi-bo.
   'web/src/lib/cai-dat.ts',
+  // Kho — mọi file chỉ được gọi từ /noi-bo/kho, sau middleware, bằng client
+  // mang access token của nhân sự. Liệt kê từng file: file kho mới đọc bảng
+  // sẽ làm phép thử đỏ cho tới khi có người phân loại nó.
+  'web/src/lib/kho/trang.ts',
+  'web/src/lib/kho/danh-muc.ts',
+  'web/src/lib/kho/nhap.ts',
+  'web/src/lib/kho/ton.ts',
 ];
 
 function laAnon(g) {
@@ -148,11 +155,15 @@ for (const { duong, ma } of files) {
 // --- from('bang').select('a, b, c') ----------------------------------------
 const goiBang = [];
 for (const { duong, ma } of files) {
-  for (const m of ma.matchAll(/\.from\(\s*'([a-z0-9_-]+)'\s*\)([\s\S]{0,400})/g)) {
+  // Lookahead (?=...) để không "nuốt" 400 ký tự sau mỗi from(): hai from()
+  // đứng gần nhau (hai truy vấn liền trong một hàm) thì from() thứ hai vẫn
+  // được kiểm. Đoạn đuôi cắt ở from() kế tiếp để không lấy nhầm select của nó.
+  for (const m of ma.matchAll(/\.from\(\s*'([a-z0-9_-]+)'\s*\)(?=([\s\S]{0,400}))/g)) {
     const bang = m[1];
     // Bỏ qua Storage: .from('ho-so-ung-tuyen') là tên kho, không phải bảng.
     if (bang.includes('-')) continue;
-    const sel = m[2].match(/\.select\(\s*'([^']*)'/);
+    const duoi = m[2].split(/\.from\(/)[0];
+    const sel = duoi.match(/\.select\(\s*'([^']*)'/);
     const cot = sel
       ? sel[1]
           .split(',')

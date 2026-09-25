@@ -1,0 +1,99 @@
+---
+/**
+ * Form thêm / sửa một mặt hàng. Dùng chung cho "Thêm mặt hàng" và "Sửa".
+ * `gt` là giá trị để điền sẵn: từ database khi sửa, hoặc chữ vừa gõ khi báo
+ * lỗi. Không gọi database.
+ */
+import TruongThem from './TruongThem.astro';
+import type { DinhNghiaTruong } from '../../lib/kho/truong-them.ts';
+import type { GiaTriFormMatHang } from '../../lib/kho/danh-muc.ts';
+
+interface Props {
+  gt: GiaTriFormMatHang;
+  dinhNghia: DinhNghiaTruong[];
+  coXemGia: boolean;
+  nutLuu: string;
+}
+const { gt, dinhNghia, coXemGia, nutLuu } = Astro.props;
+---
+<form method="POST" class="nb-the">
+  <input type="hidden" name="viec" value="luu" />
+  {gt.id && <input type="hidden" name="id" value={gt.id} />}
+
+  <div class="kho-luoi">
+    <label class="nb-o"><span>Tên mặt hàng *</span>
+      <input type="text" name="ten" required maxlength="120" value={gt.ten} placeholder="Thăn ngoại cắt lát" /></label>
+    <label class="nb-o"><span>Loại *</span>
+      <select name="loai">
+        <option value="phan_cat" selected={gt.loai === 'phan_cat'}>Phần cắt (bán ở quầy)</option>
+        <option value="tang" selected={gt.loai === 'tang'}>Tảng nhập</option>
+        <option value="phu_pham" selected={gt.loai === 'phu_pham'}>Phụ phẩm (mỡ, gân, vụn…)</option>
+      </select></label>
+  </div>
+
+  <div class="kho-luoi">
+    <label class="nb-o"><span>Mã</span>
+      <small>Bỏ trống = tự đặt theo tên.</small>
+      <input type="text" name="ma" maxlength="30" value={gt.ma} autocapitalize="characters" spellcheck="false" placeholder="C-THANNGOAI" /></label>
+    <label class="nb-o"><span>Nhóm</span>
+      <small>Để gom khi xem: Thăn, Vai, Sườn…</small>
+      <input type="text" name="nhom" maxlength="40" value={gt.nhom} /></label>
+    <label class="nb-o"><span>Tên khác</span>
+      <small>Tên tiếng Anh / tên trên hóa đơn NCC.</small>
+      <input type="text" name="ten_phu" maxlength="120" value={gt.ten_phu} /></label>
+  </div>
+
+  <div class="kho-luoi">
+    <label class="nb-o"><span>Giá bán/kg ở quầy</span>
+      <small>Dùng để chia giá vốn khi pha lóc.</small>
+      <input type="text" inputmode="numeric" name="gia_ban_kg" value={gt.gia_ban_kg} placeholder="650.000" /></label>
+    <label class="nb-o"><span>Hạn dùng (ngày)</span>
+      <small>Tính từ ngày nhập / ngày pha.</small>
+      <input type="text" inputmode="numeric" name="han_dung_ngay" value={gt.han_dung_ngay} placeholder="3" /></label>
+    <label class="nb-o"><span>Báo trước hạn (ngày)</span>
+      <small>Trống = theo cài đặt chung.</small>
+      <input type="text" inputmode="numeric" name="canh_bao_truoc_ngay" value={gt.canh_bao_truoc_ngay} /></label>
+  </div>
+
+  <div class="kho-luoi">
+    <label class="nb-o"><span>Mã hàng trên cân</span>
+      <small>5 số mã hàng cài trên cân Dahua (in trong mã vạch nhãn).</small>
+      <input type="text" inputmode="numeric" name="ma_can" maxlength="6" value={gt.ma_can} /></label>
+    <label class="nb-o"><span>Quầy tối thiểu (kg)</span>
+      <small>Quầy dưới mức này thì báo cần ra thêm hàng.</small>
+      <input type="text" inputmode="decimal" name="ton_toi_thieu_kg" value={gt.ton_toi_thieu_kg} /></label>
+    <label class="nb-o"><span>Đếm theo</span>
+      <select name="dem_goi">
+        <option value="co" selected={gt.dem_goi}>Gói / tảng và kg</option>
+        <option value="khong" selected={!gt.dem_goi}>Chỉ kg (đổ chung khay)</option>
+      </select></label>
+    <label class="nb-o"><span>Tên đơn vị đếm</span>
+      <input type="text" name="don_vi_goi" maxlength="20" value={gt.don_vi_goi} placeholder="gói / tảng / khay" /></label>
+  </div>
+
+  <div class="kho-luoi">
+    <label class="nb-o"><span>Khi là đầu ra pha lóc, mặc định</span>
+      <small>Chọn lại được ở từng lần pha.</small>
+      <select name="xu_ly_mac_dinh">
+        <option value="nhap_kho" selected={gt.xu_ly_mac_dinh === 'nhap_kho'}>Nhập kho / ra quầy</option>
+        <option value="chuyen_bep" selected={gt.xu_ly_mac_dinh === 'chuyen_bep'}>Chuyển bếp dùng lại</option>
+        <option value="bo" selected={gt.xu_ly_mac_dinh === 'bo'}>Bỏ</option>
+      </select></label>
+    {coXemGia && (
+      <label class="nb-o"><span>Giá trị thu hồi/kg (phụ phẩm)</span>
+        <small>Phụ phẩm dùng lại được tính giá trị này, trừ vào giá vốn phần thịt. 0 = không tính.</small>
+        <input type="text" inputmode="numeric" name="gia_tri_thu_hoi_kg" value={gt.gia_tri_thu_hoi_kg} /></label>
+    )}
+    <label class="nb-o"><span>Thứ tự</span>
+      <input type="text" inputmode="numeric" name="thu_tu" value={gt.thu_tu} /></label>
+    <label class="nb-o"><span>Tình trạng</span>
+      <select name="dang_dung">
+        <option value="co" selected={gt.dang_dung}>Đang dùng</option>
+        <option value="khong" selected={!gt.dang_dung}>Ngừng dùng</option>
+      </select></label>
+  </div>
+
+  <TruongThem dinhNghia={dinhNghia} giaTri={gt.truong_them} />
+
+  <button type="submit" class="nb-nut" style="width:100%">{nutLuu}</button>
+</form>

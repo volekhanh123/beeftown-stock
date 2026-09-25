@@ -1,0 +1,38 @@
+---
+/**
+ * Ô chọn mặt hàng, gom theo loại (tảng / phần cắt / phụ phẩm) và nhóm.
+ * Mặt hàng đã ngừng dùng chỉ hiện khi đang là giá trị được chọn sẵn (dữ liệu
+ * cũ), để form cũ không tự đổi mặt hàng. Không gọi database.
+ */
+import { TEN_LOAI_MAT_HANG } from '../../lib/kho/chung.ts';
+
+interface MatHangChon {
+  id: string; ma: string; ten: string; nhom: string | null;
+  loai: string; dang_dung: boolean;
+}
+interface Props {
+  name: string;
+  matHang: MatHangChon[];
+  chon?: string;
+  loai?: string[];
+  batBuoc?: boolean;
+  trong?: string;
+}
+const { name, matHang, chon = '', loai, batBuoc = false, trong = '— chọn mặt hàng —' } = Astro.props;
+const ds = matHang.filter(m => (m.dang_dung || m.id === chon) && (!loai || loai.includes(m.loai)));
+const nhom = ['tang', 'phan_cat', 'phu_pham']
+  .map(l => ({ l, ten: TEN_LOAI_MAT_HANG[l], hang: ds.filter(m => m.loai === l) }))
+  .filter(n => n.hang.length > 0);
+---
+<select name={name} required={batBuoc}>
+  <option value="">{trong}</option>
+  {nhom.map(n => (
+    <optgroup label={n.ten}>
+      {n.hang.map(m => (
+        <option value={m.id} selected={m.id === chon}>
+          {m.ten}{m.nhom ? ` · ${m.nhom}` : ''} ({m.ma}){!m.dang_dung ? ' — ngừng dùng' : ''}
+        </option>
+      ))}
+    </optgroup>
+  ))}
+</select>

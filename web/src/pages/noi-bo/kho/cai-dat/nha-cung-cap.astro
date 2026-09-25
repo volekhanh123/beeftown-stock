@@ -1,0 +1,124 @@
+---
+/**
+ * KHO — CÀI ĐẶT · NHÀ CUNG CẤP
+ *
+ * Quản lý, chủ nhà hàng và kế toán sửa được (kế toán cần mã số thuế, tài
+ * khoản ngân hàng để thanh toán). Số ngày nợ là hạn thanh toán mặc định, tính
+ * từ ngày hóa đơn — phiếu nhập tự điền hạn khi được duyệt.
+ */
+import NoiBo from '../../../../layouts/NoiBo.astro';
+import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import TruongThem from '../../../../components/kho/TruongThem.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { docNhaCungCap, docDinhNghia, luuNhaCungCap, type NhaCungCap } from '../../../../lib/kho/danh-muc.ts';
+import { cauLoiKho, type KetQua } from '../../../../lib/kho/chung.ts';
+import { docTruongThem, hienThiGiaTri, type DinhNghiaTruong, type GiaTriTruong } from '../../../../lib/kho/truong-them.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('ncc')) return Astro.redirect('/noi-bo/kho/cai-dat', 302);
+
+let ds: NhaCungCap[] = [];
+let dinhNghia: DinhNghiaTruong[] = [];
+let loiDoc = k.loiDoc;
+try {
+  [ds, dinhNghia] = await Promise.all([docNhaCungCap(k.client), docDinhNghia(k.client, 'nha_cung_cap')]);
+} catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được nhà cung cấp.'); }
+
+let bao: KetQua | null = k.bao;
+let nhapLai: FormData | null = null;
+const form = await docFormGui(Astro);
+if (form) {
+  const id = String(form.get('id') ?? '');
+  const kq = await luuNhaCungCap(k.client, form, dinhNghia, ds.find(n => n.id === id));
+  if (kq.ok) return chuyenHuong(Astro, '/noi-bo/kho/cai-dat/nha-cung-cap', kq);
+  bao = kq;
+  nhapLai = form;
+}
+
+const suaId = nhapLai ? String(nhapLai.get('id') ?? '') : (Astro.url.searchParams.get('sua') ?? '');
+const dangSua = ds.find(n => n.id === suaId);
+const g = (ten: string, macDinh = '') => (nhapLai ? String(nhapLai.get(ten) ?? '') : macDinh);
+
+type GiaTri = { id?: string; ten: string; ma_so_thue: string; dien_thoai: string; email: string; dia_chi: string;
+  nguoi_lien_he: string; so_ngay_no: string; ngan_hang: string; so_tai_khoan: string; ghi_chu: string;
+  dang_dung: boolean; truong_them: GiaTriTruong };
+const tu = (n?: NhaCungCap): GiaTri => ({
+  id: n?.id,
+  ten: g('ten', n?.ten ?? ''), ma_so_thue: g('ma_so_thue', n?.ma_so_thue ?? ''),
+  dien_thoai: g('dien_thoai', n?.dien_thoai ?? ''), email: g('email', n?.email ?? ''),
+  dia_chi: g('dia_chi', n?.dia_chi ?? ''), nguoi_lien_he: g('nguoi_lien_he', n?.nguoi_lien_he ?? ''),
+  so_ngay_no: g('so_ngay_no', String(n?.so_ngay_no ?? 0)), ngan_hang: g('ngan_hang', n?.ngan_hang ?? ''),
+  so_tai_khoan: g('so_tai_khoan', n?.so_tai_khoan ?? ''), ghi_chu: g('ghi_chu', n?.ghi_chu ?? ''),
+  dang_dung: nhapLai ? nhapLai.get('dang_dung') !== 'khong' : (n?.dang_dung ?? true),
+  truong_them: nhapLai ? docTruongThem(nhapLai, dinhNghia, undefined, n?.truong_them ?? {}).giaTri : (n?.truong_them ?? {}),
+});
+// Một form duy nhất: đang sửa thì điền nhà cung cấp đó, không thì là form thêm mới.
+const gt = dangSua ? tu(dangSua) : tu();
+const moForm = !!dangSua || ds.length === 0 || !!nhapLai;
+---
+<NoiBo tieuDe="Nhà cung cấp" nhanSu={k.nhanSu}>
+  <h1>Nhà cung cấp</h1>
+  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+  <p><a href="/noi-bo/kho/cai-dat">← Cài đặt kho</a></p>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {(
+    <details class="nb-the" open={moForm}>
+      <summary style="cursor:pointer;font-weight:700">{dangSua ? `Sửa: ${dangSua.ten}` : '+ Thêm nhà cung cấp'}</summary>
+      <form method="POST" style="margin-top:1rem">
+        {gt.id && <input type="hidden" name="id" value={gt.id} />}
+        <label class="nb-o"><span>Tên nhà cung cấp *</span>
+          <input type="text" name="ten" required maxlength="160" value={gt.ten} /></label>
+        <div class="kho-luoi">
+          <label class="nb-o"><span>Mã số thuế</span>
+            <input type="text" inputmode="numeric" name="ma_so_thue" value={gt.ma_so_thue} /></label>
+          <label class="nb-o"><span>Số ngày nợ</span>
+            <small>Hạn thanh toán = ngày hóa đơn + số ngày này.</small>
+            <input type="text" inputmode="numeric" name="so_ngay_no" value={gt.so_ngay_no} /></label>
+          <label class="nb-o"><span>Người liên hệ</span>
+            <input type="text" name="nguoi_lien_he" value={gt.nguoi_lien_he} /></label>
+          <label class="nb-o"><span>Điện thoại</span>
+            <input type="tel" inputmode="tel" name="dien_thoai" value={gt.dien_thoai} /></label>
+          <label class="nb-o"><span>Email</span>
+            <input type="email" name="email" value={gt.email} /></label>
+        </div>
+        <label class="nb-o"><span>Địa chỉ</span><input type="text" name="dia_chi" value={gt.dia_chi} /></label>
+        <div class="kho-luoi">
+          <label class="nb-o"><span>Ngân hàng</span><input type="text" name="ngan_hang" value={gt.ngan_hang} /></label>
+          <label class="nb-o"><span>Số tài khoản</span><input type="text" inputmode="numeric" name="so_tai_khoan" value={gt.so_tai_khoan} /></label>
+        </div>
+        <TruongThem dinhNghia={dinhNghia} giaTri={gt.truong_them} />
+        <label class="nb-o"><span>Ghi chú</span><input type="text" name="ghi_chu" value={gt.ghi_chu} /></label>
+        <label class="nb-o"><span>Tình trạng</span>
+          <select name="dang_dung">
+            <option value="co" selected={gt.dang_dung}>Đang giao dịch</option>
+            <option value="khong" selected={!gt.dang_dung}>Ngừng giao dịch</option>
+          </select></label>
+        <button type="submit" class="nb-nut" style="width:100%">{gt.id ? 'Lưu thay đổi' : 'Thêm nhà cung cấp'}</button>
+      </form>
+      {dangSua && <p style="margin:.75rem 0 0"><a href="/noi-bo/kho/cai-dat/nha-cung-cap">Đóng, không sửa nữa</a></p>}
+    </details>
+  )}
+
+  <h2>Danh sách ({ds.length})</h2>
+  {ds.length === 0 ? <p class="nb-rong">Chưa có nhà cung cấp nào.</p> : ds.map(n => (
+    <div class="nb-dong" style={n.dang_dung ? '' : 'opacity:.55'}>
+      <div class="nb-dong-dau">
+        <strong>{n.ten}</strong>
+        <a href={`/noi-bo/kho/cai-dat/nha-cung-cap?sua=${n.id}`}>Sửa</a>
+      </div>
+      <dl>
+        {n.ma_so_thue && <><dt>MST</dt><dd>{n.ma_so_thue}</dd></>}
+        <dt>Nợ</dt><dd>{n.so_ngay_no ? `${n.so_ngay_no} ngày` : 'trả ngay'}</dd>
+        {(n.nguoi_lien_he || n.dien_thoai) && <><dt>Liên hệ</dt><dd>{[n.nguoi_lien_he, n.dien_thoai].filter(Boolean).join(' · ')}</dd></>}
+        {n.so_tai_khoan && <><dt>Tài khoản</dt><dd>{n.so_tai_khoan}{n.ngan_hang ? ` · ${n.ngan_hang}` : ''}</dd></>}
+        {dinhNghia.filter(d => n.truong_them?.[d.khoa] !== undefined).map(d => (
+          <><dt>{d.nhan}</dt><dd>{hienThiGiaTri(d, n.truong_them[d.khoa])}</dd></>
+        ))}
+        {!n.dang_dung && <><dt>Tình trạng</dt><dd>Ngừng giao dịch</dd></>}
+      </dl>
+    </div>
+  ))}
+</NoiBo>

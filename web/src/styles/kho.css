@@ -1,0 +1,126 @@
+/* =============================================================================
+   KHO — bổ sung riêng cho /noi-bo/kho
+   =============================================================================
+   Dựa hẳn trên noi-bo.css (nb-the, nb-o, nb-nut, nb-bao...). File này chỉ thêm
+   những thứ màn hình kho cần mà nội bộ CRM chưa có: thanh điều hướng con, thẻ
+   lô hàng, nhãn hạn dùng, bảng số liệu cho máy tính.
+
+   Vẫn giữ luật của noi-bo.css: chạm được bằng ngón cái (48px), chữ ô nhập
+   16px để iPhone không tự phóng to.
+   ============================================================================= */
+
+/* --- Điều hướng con của kho ---------------------------------------------- */
+.kho-dh {
+  display: flex; gap: .4rem; overflow-x: auto; padding: .1rem 0 .9rem;
+  margin: -.25rem 0 1rem; scrollbar-width: thin;
+}
+.kho-dh a {
+  flex: 0 0 auto; text-decoration: none; font-weight: 600; font-size: .85rem;
+  padding: .55rem .85rem; border-radius: 999px; min-height: 40px;
+  display: inline-flex; align-items: center;
+  background: #fff; color: var(--than); border: 1px solid var(--vach);
+}
+.kho-dh a[aria-current='page'] { background: var(--than); color: var(--kem); border-color: var(--than); }
+
+.kho-cn {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  font-size: .85rem; color: var(--muc-nhat); margin: 0 0 1rem;
+}
+.kho-cn a { font-weight: 600; }
+
+/* --- Lưới ô nhập ---------------------------------------------------------- */
+.kho-luoi { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); }
+.kho-luoi-2 { display: grid; gap: .75rem; grid-template-columns: 1fr 1fr; }
+@media (max-width: 420px) { .kho-luoi-2 { grid-template-columns: 1fr; } }
+
+/* Ô tích / ô chọn nằm ngang */
+.kho-tich {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .35rem 0 .9rem; font-size: .92rem; cursor: pointer;
+}
+.kho-tich input { width: 22px; height: 22px; margin: 0; accent-color: var(--do); flex-shrink: 0; }
+
+/* --- Ô số tổng quan ------------------------------------------------------- */
+.kho-o-so-luoi { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); margin-bottom: 1rem; }
+.kho-o-so {
+  background: #fff; border: 1px solid var(--vach); border-radius: 10px;
+  padding: .85rem 1rem; text-decoration: none; color: inherit; display: block;
+}
+.kho-o-so b { display: block; font-size: 1.6rem; line-height: 1.1; }
+.kho-o-so span { font-size: .8rem; color: var(--muc-nhat); }
+.kho-o-so.gap { border-color: var(--do); background: #FDECEA; }
+.kho-o-so.luu-y { border-color: var(--mu-tat); background: #FFF5DC; }
+
+/* --- Nút nhanh ------------------------------------------------------------- */
+.kho-nut-nhanh { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); margin-bottom: 1.5rem; }
+.kho-nut-nhanh .nb-nut { width: 100%; }
+
+/* --- Nhãn hạn dùng ------------------------------------------------------- */
+.kho-han { display: inline-block; font-size: .72rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; white-space: nowrap; }
+.kho-han.het_han { background: var(--do); color: #fff; }
+.kho-han.sap_het { background: var(--mu-tat); color: var(--than); }
+.kho-han.con_han { background: #E9F5EE; color: #1F7A4C; }
+
+/* --- Thẻ mặt hàng trong tồn kho ------------------------------------------ */
+.kho-mh { background: #fff; border: 1px solid var(--vach); border-radius: 10px; margin-bottom: .6rem; }
+.kho-mh > summary {
+  list-style: none; cursor: pointer; padding: .85rem 1rem;
+  display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap;
+}
+.kho-mh > summary::-webkit-details-marker { display: none; }
+.kho-mh > summary .ten { font-weight: 700; }
+.kho-mh > summary .ten small { display: block; font-weight: 400; color: var(--muc-nhat); font-size: .78rem; }
+.kho-mh > summary .so { text-align: right; font-size: .9rem; }
+.kho-mh > summary .so b { font-size: 1.05rem; }
+.kho-mh-lo { border-top: 1px solid var(--vach); padding: .5rem 1rem .75rem; }
+
+/* --- Bảng số liệu (máy tính) — trên điện thoại cuộn ngang ------------------ */
+.kho-bang-khung { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1rem; }
+.kho-bang { width: 100%; border-collapse: collapse; font-size: .87rem; background: #fff; }
+.kho-bang th, .kho-bang td { padding: .55rem .6rem; border-bottom: 1px solid var(--vach); text-align: left; vertical-align: top; }
+.kho-bang th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muc-nhat); background: var(--kem-sau); white-space: nowrap; }
+.kho-bang td.so, .kho-bang th.so { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kho-bang tr.tong td { font-weight: 700; background: var(--kem-sau); }
+
+/* --- Dòng hàng trong phiếu ------------------------------------------------ */
+.kho-dong-hang {
+  border: 1px solid var(--vach); border-radius: 10px; padding: .85rem .85rem .25rem;
+  margin-bottom: .75rem; background: #fff; position: relative;
+}
+.kho-dong-hang > .so-thu-tu {
+  position: absolute; top: -.6rem; left: .75rem; background: var(--than); color: var(--kem);
+  font-size: .7rem; font-weight: 700; padding: .1rem .45rem; border-radius: 4px;
+}
+.kho-dong-hang details { margin: -.25rem 0 .75rem; }
+.kho-dong-hang details > summary { cursor: pointer; font-size: .85rem; color: var(--muc-nhat); padding: .35rem 0; }
+
+/* --- Ảnh chứng từ --------------------------------------------------------- */
+.kho-anh { display: flex; gap: .5rem; flex-wrap: wrap; margin: .25rem 0 1rem; }
+.kho-anh a { display: block; width: 6rem; height: 6rem; border-radius: 8px; overflow: hidden; border: 1px solid var(--vach); background: var(--kem-sau); }
+.kho-anh img { width: 100%; height: 100%; object-fit: cover; }
+.kho-anh label { display: flex; flex-direction: column; align-items: center; gap: .25rem; font-size: .75rem; }
+
+/* --- Danh sách thuộc tính ------------------------------------------------- */
+.kho-dl { display: grid; grid-template-columns: auto 1fr; gap: .3rem .9rem; font-size: .92rem; margin: 0 0 .75rem; }
+.kho-dl dt { color: var(--muc-nhat); }
+.kho-dl dd { margin: 0; }
+
+/* --- Chữ số -------------------------------------------------------------- */
+.kho-so { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.kho-phu { color: var(--muc-nhat); font-size: .82rem; }
+.kho-thanh-nut { display: flex; gap: .6rem; flex-wrap: wrap; margin: 1rem 0; }
+.kho-thanh-nut .nb-nut { flex: 1 1 10rem; }
+.kho-nut-xoa { background: #fff !important; color: var(--do) !important; border: 1px solid var(--do) !important; }
+
+/* Hàng nút dính đáy màn hình trên điện thoại cho form dài. Khi có thanh
+   điều hướng dính đáy (vai dùng cả CRM lẫn kho) thì đứng ngay trên nó. */
+@media (max-width: 640px) {
+  .kho-thanh-nut.dinh {
+    position: sticky; bottom: 0; background: var(--kem); padding: .6rem 0; margin: 0;
+    box-shadow: 0 -6px 12px -8px rgba(30, 22, 14, .25); z-index: 5;
+  }
+  body:has(.nb-dieu-huong) .kho-thanh-nut.dinh { bottom: 4.6rem; }
+
+  /* Bảng số liệu: giữ cột đủ rộng để đọc, vuốt ngang để xem hết. */
+  .kho-bang-khung .kho-bang { min-width: 34rem; }
+}

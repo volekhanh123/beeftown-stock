@@ -1,0 +1,62 @@
+---
+/**
+ * Các ô thông tin thêm do chủ nhà hàng tự tạo (kho_truong_them).
+ *
+ * Ô đang dùng: hiện ô nhập đúng kiểu. Ô đã tắt: chỉ hiện giá trị cũ (nếu có),
+ * không cho sửa. Ô Có/Không là ô CHỌN ba giá trị, không phải ô tích — ô tích
+ * bỏ trống không phân biệt được "Không" với "chưa trả lời".
+ *
+ * Không gọi database. Tên ô: tenO() trong lib/kho/truong-them.ts.
+ */
+import {
+  tenO, giaTriVaoO, hienThiGiaTri, type DinhNghiaTruong, type GiaTriTruong,
+} from '../../lib/kho/truong-them.ts';
+
+interface Props {
+  dinhNghia: DinhNghiaTruong[];
+  giaTri?: GiaTriTruong;
+  dong?: number;
+  chiDoc?: boolean;
+}
+const { dinhNghia, giaTri = {}, dong, chiDoc = false } = Astro.props;
+// Chế độ chỉ đọc: chỉ hiện ô CÓ giá trị — một dãy "—" không nói gì với người đọc.
+const coGiaTri = (d: DinhNghiaTruong) => giaTri[d.khoa] !== undefined && giaTri[d.khoa] !== null && giaTri[d.khoa] !== '';
+const hien = dinhNghia.filter(d => chiDoc ? coGiaTri(d) : (d.dang_dung || coGiaTri(d)));
+---
+{hien.length > 0 && (
+  <div class="kho-luoi">
+    {hien.map(d => (
+      chiDoc || !d.dang_dung ? (
+        <div class="nb-o">
+          <span>{d.nhan}{!d.dang_dung && ' (ô đã tắt)'}</span>
+          <p style="margin:0;padding:.5rem 0">{hienThiGiaTri(d, giaTri[d.khoa])}</p>
+        </div>
+      ) : (
+        <label class="nb-o">
+          <span>{d.nhan}{d.bat_buoc && ' *'}</span>
+          {d.goi_y && <small>{d.goi_y}</small>}
+          {d.kieu === 'chon' ? (
+            <select name={tenO(d.khoa, dong)}>
+              <option value="">—</option>
+              {d.lua_chon.map(l => (
+                <option value={l} selected={giaTriVaoO(d, giaTri[d.khoa]) === l}>{l}</option>
+              ))}
+            </select>
+          ) : d.kieu === 'co_khong' ? (
+            <select name={tenO(d.khoa, dong)}>
+              <option value="">—</option>
+              <option value="co" selected={giaTriVaoO(d, giaTri[d.khoa]) === 'co'}>Có</option>
+              <option value="khong" selected={giaTriVaoO(d, giaTri[d.khoa]) === 'khong'}>Không</option>
+            </select>
+          ) : d.kieu === 'ngay' ? (
+            <input type="date" name={tenO(d.khoa, dong)} value={giaTriVaoO(d, giaTri[d.khoa])} />
+          ) : d.kieu === 'so' ? (
+            <input type="text" inputmode="decimal" name={tenO(d.khoa, dong)} value={giaTriVaoO(d, giaTri[d.khoa])} />
+          ) : (
+            <input type="text" name={tenO(d.khoa, dong)} maxlength="500" value={giaTriVaoO(d, giaTri[d.khoa])} />
+          )}
+        </label>
+      )
+    ))}
+  </div>
+)}

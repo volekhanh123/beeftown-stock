@@ -22,24 +22,33 @@ interface Props {
 const { tieuDe, nhanSu } = Astro.props;
 const duong = Astro.url.pathname.replace(/\/$/, '') || '/noi-bo';
 
-// Đúng bốn vai của enum vai_tro (0001). Thêm nhãn cho một vai không có
-// trong enum chỉ làm người đọc mã tưởng nó tồn tại.
+// Đúng bảy vai của enum vai_tro (bốn vai CRM ở 0001, ba vai kho ở 0017).
+// Thêm nhãn cho một vai không có trong enum chỉ làm người đọc mã tưởng nó
+// tồn tại.
 const TEN_VAI_TRO: Record<string, string> = {
   chu_so_huu: 'Chủ nhà hàng',
   quan_ly: 'Quản lý',
   thu_ngan: 'Thu ngân',
   marketing: 'Marketing',
+  thu_kho: 'Thủ kho',
+  nhan_vien_quay: 'NV quầy/bếp',
+  ke_toan: 'Kế toán',
 };
+
+// Vai kho không thấy dữ liệu CRM (0018 dựng tường ngăn), nên Tổng quan và
+// Đặt bàn chỉ hiện cho bốn vai CRM.
+const VAI_CRM = ['chu_so_huu', 'quan_ly', 'thu_ngan', 'marketing'];
 
 // Ô nào hiện ra do VAI TRÒ quyết định, và danh sách vai trò ở đây khớp đúng
 // với chính sách RLS tương ứng trong database. Giấu một ô mà RLS vẫn cho
 // phép thì chỉ gây khó chịu; hiện một ô mà RLS chặn thì người dùng bấm vào
 // và nhận lỗi khó hiểu. Cả hai đều tệ, nên hai danh sách phải khớp nhau.
 const MUC = [
-  { duong: '/noi-bo',             ten: 'Tổng quan',  vai: null },
+  { duong: '/noi-bo',             ten: 'Tổng quan',  vai: VAI_CRM },
   { duong: '/noi-bo/noi-dung',    ten: 'Nội dung',   vai: ['chu_so_huu', 'quan_ly', 'marketing'] },
-  { duong: '/noi-bo/dat-ban',     ten: 'Đặt bàn',    vai: null },
+  { duong: '/noi-bo/dat-ban',     ten: 'Đặt bàn',    vai: VAI_CRM },
   { duong: '/noi-bo/tuyen-dung',  ten: 'Tuyển dụng', vai: ['chu_so_huu', 'quan_ly'] },
+  { duong: '/noi-bo/kho',         ten: 'Kho',        vai: ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan'] },
   { duong: '/noi-bo/cai-dat',     ten: 'Cài đặt',    vai: ['chu_so_huu', 'quan_ly'] },
 ];
 const muc = MUC.filter(m => !m.vai || (nhanSu && m.vai.includes(nhanSu.vai_tro)));
@@ -81,7 +90,7 @@ const muc = MUC.filter(m => !m.vai || (nhanSu && m.vai.includes(nhanSu.vai_tro))
       <nav class="nb-dieu-huong" aria-label="Khu vực nội bộ">
         <div class="nb-khung nb-dieu-huong-hang">
           {muc.map(m => (
-            <a href={m.duong} aria-current={duong === m.duong ? 'page' : undefined}>{m.ten}</a>
+            <a href={m.duong} aria-current={duong === m.duong || (m.duong !== '/noi-bo' && duong.startsWith(m.duong + '/')) ? 'page' : undefined}>{m.ten}</a>
           ))}
         </div>
       </nav>

@@ -60,7 +60,8 @@ web/
 │  │  ├─ nop-ho-so.ts  ← nhận hồ sơ ứng tuyển + tải CV
 │  │  ├─ dat-ban.ts    ← lịch trống và gửi yêu cầu đặt bàn
 │  │  ├─ xu-ly-form.ts ← POST → chuyển hướng → GET, dùng chung hai ngôn ngữ
-│  │  └─ tuyen-dung.ts
+│  │  ├─ tuyen-dung.ts
+│  │  └─ kho/          ← PHẦN MỀM KHO — xem mục "Kho" bên dưới
 │  ├─ layouts/
 │  │  ├─ Trang.astro   ← thẻ mô tả, JSON-LD, đầu và chân trang
 │  │  └─ NoiBo.astro   ← khung giao diện nội bộ
@@ -70,7 +71,8 @@ web/
 │  ├─ pages/
 │  │  ├─ (tiếng Việt ở gốc, tiếng Anh dưới /en)
 │  │  └─ noi-bo/       ← giao diện nội bộ, có middleware canh cửa
-│  └─ styles/chung.css · noi-bo.css
+│  │     └─ kho/       ← các màn kho
+│  └─ styles/chung.css · noi-bo.css · kho.css
 └─ public/bieu-tuong.svg
 ```
 
@@ -89,6 +91,31 @@ Thay vào đó nhân viên đăng nhập bằng Supabase Auth, access token củ
 Hệ quả cụ thể: một người vai `marketing` đăng nhập sẽ soạn được bản nháp nhưng **không** công bố được, và giao diện không cần biết luật đó — chính trigger trong database từ chối, y như khi họ gõ SQL bằng tay.
 
 **Tài khoản do chủ nhà hàng tạo trong Supabase Studio**, rồi nối `auth_uid` vào một dòng trong bảng `nhan_su`. Đăng nhập Supabase thành công mà không có dòng `nhan_su` thì vẫn bị từ chối — Supabase Auth trả lời "ai", bảng `nhan_su` trả lời "có phải nhân viên không".
+
+---
+
+## Kho (`/noi-bo/kho`)
+
+Phần mềm quản lý kho thịt: nhập tảng, pha lóc, quầy thịt, hạn dùng, kiểm kê, công nợ nhà cung cấp. Nằm **trong** giao diện nội bộ, dùng chung đăng nhập — không phải một ứng dụng riêng. Database ở `crm/supabase/migrations/0017_*` trở đi.
+
+| Màn | Việc |
+|---|---|
+| `/noi-bo/kho` | Tổng quan: lô hết hạn / sắp hết hạn (bán trước — FEFO), phiếu chờ duyệt, quầy dưới mức tối thiểu |
+| `/noi-bo/kho/ton` | Tồn theo mặt hàng → từng lô, lọc theo vị trí, hạn, loại |
+| `/noi-bo/kho/nhap` | Phiếu nhập và tồn đầu kỳ: thủ kho lập, quản lý duyệt. **Tồn chỉ cộng khi duyệt.** |
+| `/noi-bo/kho/cai-dat` | Mặt hàng (dán từ Excel được), nhà cung cấp, vị trí, lý do, công thức pha lóc, **ô thông tin tự tạo**, mã vạch cân |
+
+**Vai trò.** Ba vai mới trong `nhan_su.vai_tro`: `thu_kho`, `nhan_vien_quay` (nhân viên quầy/bếp), `ke_toan`. Bảng tra "vai nào làm được gì" nằm ở hàm `kho_vai_duoc()` (migration `0018`); `lib/kho/chung.ts` giữ một bản soi gương chỉ để ẩn nút, và `crm/test/test-kho-quyen.mjs` so hai bản từng dòng. Nhân viên quầy/bếp **không thấy giá nhập, giá vốn** — không phải vì giao diện giấu, mà vì database không trả những cột đó cho họ.
+
+Vai kho **không** thấy dữ liệu CRM (khách hàng, đặt bàn, điểm) — `0018` dựng tường ngăn. Đăng nhập bằng vai kho thì `/noi-bo` chuyển thẳng vào `/noi-bo/kho`.
+
+**Tạo tài khoản vai kho** giống mọi tài khoản khác: tạo user trong Supabase Studio, rồi thêm một dòng `nhan_su` với `vai_tro` là `thu_kho`, `nhan_vien_quay` hoặc `ke_toan` và `chi_nhanh_id` của quán.
+
+**Không JavaScript.** Mọi màn là form POST, lưu xong chuyển hướng 303 (F5 không gửi lại lệnh). Form dài như phiếu nhập được **lưu nháp phía máy chủ** ở mỗi lần bấm; mỗi form mang một `ma_gui` để bấm hai lần vẫn chỉ ra một phiếu, và `phien_ban` để hai máy không đè lên nhau.
+
+**Nhãn cân.** Cân Dahua TM-A in mã EAN-13 kiểu 2+5+5+1 (hai số đầu, năm số mã hàng, năm số trọng lượng gram, một số kiểm tra). Mẫu đọc cài được ở Cài đặt → Mã vạch cân, có ô thử một nhãn thật. Mã hàng trên cân khớp cột "mã cân" của mặt hàng.
+
+**Ảnh chứng từ** (hóa đơn, hàng hỏng) lưu ở kho file riêng `kho-chung-tu` (`0021`) và đi qua Worker — ảnh điện thoại vài MB có thể vượt giới hạn CPU của gói Cloudflare Workers miễn phí. Nếu tải ảnh hay lỗi, chuyển sang gói trả phí.
 
 ---
 

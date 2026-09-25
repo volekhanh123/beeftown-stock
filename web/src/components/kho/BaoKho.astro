@@ -1,0 +1,14 @@
+---
+/** Câu báo kết quả (xanh = xong, đỏ = lỗi) và lỗi đọc dữ liệu. Không gọi database. */
+import type { KetQua } from '../../lib/kho/chung.ts';
+
+interface Props {
+  bao?: KetQua | null;
+  loiDoc?: string | null;
+}
+const { bao, loiDoc } = Astro.props;
+---
+{bao && (
+  <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`} role={bao.ok ? 'status' : 'alert'}><p>{bao.cau}</p></div>
+)}
+{loiDoc && <div class="nb-bao loi" role="alert"><p>{loiDoc}</p></div>}

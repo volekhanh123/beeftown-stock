@@ -1,0 +1,185 @@
+---
+/**
+ * KHO — CÀI ĐẶT · MẶT HÀNG
+ *
+ * Danh mục lớn (gần như mọi phần con bò), nên có ba đường nhập:
+ *   1. Tạo danh mục mẫu — một lần, khi danh mục còn trống
+ *   2. Dán từ Excel — nhiều dòng một lúc, trùng mã thì cập nhật
+ *   3. Thêm / sửa từng mặt hàng
+ * Sửa một mặt hàng: bấm "Sửa" → form hiện ở đầu trang (?sua=<id>), để trang
+ * danh sách không phải chở cả trăm form.
+ */
+import NoiBo from '../../../../layouts/NoiBo.astro';
+import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import FormMatHang from '../../../../components/kho/FormMatHang.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import {
+  docMatHang, docGiaTriThuHoi, docDinhNghia, luuMatHang, nhapCsvMatHang, taoDanhMucMau,
+  type MatHang, type GiaTriFormMatHang,
+} from '../../../../lib/kho/danh-muc.ts';
+import {
+  boDau, cauLoiKho, dinhDangTien, TEN_LOAI_MAT_HANG, TEN_XU_LY, type KetQua,
+} from '../../../../lib/kho/chung.ts';
+import { docTruongThem, type DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('danh_muc')) return Astro.redirect('/noi-bo/kho/cai-dat', 302);
+
+const q = Astro.url.searchParams;
+const locLoai = q.get('loai') ?? '';
+const tim = (q.get('tim') ?? '').trim();
+const suaId = q.get('sua') ?? '';
+
+let matHang: MatHang[] = [];
+let thuHoi = new Map<string, number | null>();
+let dinhNghia: DinhNghiaTruong[] = [];
+let loiDoc = k.loiDoc;
+try {
+  [matHang, thuHoi, dinhNghia] = await Promise.all([
+    docMatHang(k.client), docGiaTriThuHoi(k.client), docDinhNghia(k.client, 'mat_hang'),
+  ]);
+} catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được danh mục.'); }
+
+let bao: KetQua | null = k.bao;
+let nhapLai: FormData | null = null;
+let csvLai = '';
+const form = await docFormGui(Astro);
+if (form) {
+  const viec = String(form.get('viec') ?? '');
+  let kq: KetQua;
+  if (viec === 'luu') {
+    const id = String(form.get('id') ?? '');
+    kq = await luuMatHang(k.client, form, dinhNghia, matHang.find(m => m.id === id));
+    if (!kq.ok) nhapLai = form;
+  } else if (viec === 'csv') {
+    csvLai = String(form.get('noi_dung') ?? '');
+    kq = await nhapCsvMatHang(k.client, csvLai);
+  } else if (viec === 'mau') {
+    kq = await taoDanhMucMau(k.client);
+  } else kq = { ok: false, cau: 'Việc không hợp lệ.' };
+  if (kq.ok) return chuyenHuong(Astro, `/noi-bo/kho/cai-dat/mat-hang${locLoai ? `?loai=${locLoai}` : ''}`, kq);
+  bao = kq;
+}
+
+const tuDb = (m: MatHang): GiaTriFormMatHang => ({
+  id: m.id, ma: m.ma, ten: m.ten, ten_phu: m.ten_phu ?? '', nhom: m.nhom ?? '', loai: m.loai,
+  dem_goi: m.dem_goi, don_vi_goi: m.don_vi_goi,
+  han_dung_ngay: m.han_dung_ngay?.toString() ?? '', canh_bao_truoc_ngay: m.canh_bao_truoc_ngay?.toString() ?? '',
+  gia_ban_kg: m.gia_ban_kg !== null ? m.gia_ban_kg.toLocaleString('vi-VN') : '',
+  xu_ly_mac_dinh: m.xu_ly_mac_dinh, ma_can: m.ma_can ?? '',
+  ton_toi_thieu_kg: m.ton_toi_thieu_kg !== null ? String(m.ton_toi_thieu_kg).replace('.', ',') : '',
+  thu_tu: String(m.thu_tu), dang_dung: m.dang_dung, truong_them: m.truong_them ?? {},
+  gia_tri_thu_hoi_kg: thuHoi.get(m.id)?.toLocaleString('vi-VN') ?? '',
+});
+const tuForm = (f: FormData, id?: string): GiaTriFormMatHang => {
+  const g = (t: string) => String(f.get(t) ?? '');
+  const tt = docTruongThem(f, dinhNghia, undefined, dangSua?.truong_them ?? {}).giaTri;
+  return {
+    id, ma: g('ma'), ten: g('ten'), ten_phu: g('ten_phu'), nhom: g('nhom'), loai: g('loai') || 'phan_cat',
+    dem_goi: g('dem_goi') !== 'khong', don_vi_goi: g('don_vi_goi'), han_dung_ngay: g('han_dung_ngay'),
+    canh_bao_truoc_ngay: g('canh_bao_truoc_ngay'), gia_ban_kg: g('gia_ban_kg'), xu_ly_mac_dinh: g('xu_ly_mac_dinh'),
+    ma_can: g('ma_can'), ton_toi_thieu_kg: g('ton_toi_thieu_kg'), thu_tu: g('thu_tu'),
+    dang_dung: g('dang_dung') !== 'khong', truong_them: tt, gia_tri_thu_hoi_kg: g('gia_tri_thu_hoi_kg'),
+  };
+};
+const TRONG: GiaTriFormMatHang = {
+  ma: '', ten: '', ten_phu: '', nhom: '', loai: locLoai || 'phan_cat', dem_goi: true, don_vi_goi: '',
+  han_dung_ngay: '', canh_bao_truoc_ngay: '', gia_ban_kg: '', xu_ly_mac_dinh: 'nhap_kho', ma_can: '',
+  ton_toi_thieu_kg: '', thu_tu: '', dang_dung: true, truong_them: {}, gia_tri_thu_hoi_kg: '',
+};
+
+const idLoi = nhapLai ? String(nhapLai.get('id') ?? '') : '';
+const dangSua = matHang.find(m => m.id === (idLoi || suaId));
+const gtSua = dangSua ? (nhapLai && idLoi ? tuForm(nhapLai, dangSua.id) : tuDb(dangSua)) : null;
+const gtMoi = nhapLai && !idLoi ? tuForm(nhapLai) : TRONG;
+
+const timBoDau = boDau(tim).toLowerCase();
+const ds = matHang.filter(m =>
+  (!locLoai || m.loai === locLoai)
+  && (!timBoDau || boDau(`${m.ten} ${m.ma} ${m.ten_phu ?? ''} ${m.nhom ?? ''}`).toLowerCase().includes(timBoDau)));
+const coXemGia = k.duoc('xem_gia');
+---
+<NoiBo tieuDe="Mặt hàng" nhanSu={k.nhanSu}>
+  <h1>Mặt hàng</h1>
+  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+  <p><a href="/noi-bo/kho/cai-dat">← Cài đặt kho</a></p>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {gtSua && (
+    <>
+      <h2>Sửa: {dangSua!.ten}</h2>
+      <FormMatHang gt={gtSua} dinhNghia={dinhNghia} coXemGia={coXemGia} nutLuu="Lưu thay đổi" />
+      <p><a href="/noi-bo/kho/cai-dat/mat-hang">Đóng, không sửa nữa</a></p>
+    </>
+  )}
+
+  {matHang.length === 0 && (
+    <form method="POST" class="nb-the">
+      <input type="hidden" name="viec" value="mau" />
+      <p style="margin-top:0"><strong>Danh mục đang trống.</strong> Tạo nhanh 19 mặt hàng mẫu cho quán bò nướng
+        (8 tảng nhập khẩu phổ biến, 8 phần cắt, 3 phụ phẩm) rồi sửa lại cho đúng quán mình.
+        Danh mục mẫu KHÔNG có giá bán — giá do anh/chị nhập.</p>
+      <button type="submit" class="nb-nut">Tạo danh mục mẫu</button>
+    </form>
+  )}
+
+  <details class="nb-the" open={!gtSua && (matHang.length === 0 || (!!nhapLai && !idLoi))}>
+    <summary style="cursor:pointer;font-weight:700">+ Thêm một mặt hàng</summary>
+    <div style="margin-top:1rem">
+      <FormMatHang gt={gtMoi} dinhNghia={dinhNghia} coXemGia={coXemGia} nutLuu="Thêm mặt hàng" />
+    </div>
+  </details>
+
+  <details class="nb-the" open={!!csvLai}>
+    <summary style="cursor:pointer;font-weight:700">Dán nhiều mặt hàng từ Excel</summary>
+    <form method="POST" style="margin-top:1rem">
+      <input type="hidden" name="viec" value="csv" />
+      <p class="nb-dan" style="font-size:.88rem">
+        Mỗi dòng một mặt hàng, các cột theo thứ tự:
+        <strong>Tên · Loại · Nhóm · Hạn dùng (ngày) · Giá bán/kg · Mã cân · Mã</strong>.
+        Chỉ cột Tên bắt buộc. Loại ghi <em>tảng</em>, <em>phần cắt</em> hoặc <em>phụ phẩm</em>.
+        Chọn các ô trong Excel rồi dán thẳng vào đây. Trùng mã thì cập nhật mặt hàng cũ.
+      </p>
+      <label class="nb-o">
+        <span>Nội dung</span>
+        <textarea name="noi_dung" rows="8" placeholder={'Thăn ngoại cắt lát\tphần cắt\tThăn\t3\t650000\t101\nNạc vai nguyên tảng\ttảng\tVai\t30'}>{csvLai}</textarea>
+      </label>
+      <button type="submit" class="nb-nut">Nhập danh sách</button>
+    </form>
+  </details>
+
+  <h2>Danh mục ({matHang.length})</h2>
+  <nav class="kho-dh" aria-label="Lọc theo loại">
+    {[['', 'Tất cả'], ['tang', 'Tảng'], ['phan_cat', 'Phần cắt'], ['phu_pham', 'Phụ phẩm']].map(([v, t]) => (
+      <a href={v ? `/noi-bo/kho/cai-dat/mat-hang?loai=${v}` : '/noi-bo/kho/cai-dat/mat-hang'} aria-current={locLoai === v ? 'page' : undefined}>{t}</a>
+    ))}
+  </nav>
+  <form method="GET" style="display:flex;gap:.5rem;margin-bottom:1rem">
+    {locLoai && <input type="hidden" name="loai" value={locLoai} />}
+    <label class="nb-o" style="flex:1;margin:0"><input type="search" name="tim" value={tim} placeholder="Tìm tên, mã…" aria-label="Tìm" /></label>
+    <button type="submit" class="nb-nut phu">Tìm</button>
+  </form>
+
+  {ds.length === 0 ? <p class="nb-rong">Không có mặt hàng nào.</p> : (
+    <div class="kho-bang-khung">
+      <table class="kho-bang">
+        <thead><tr><th>Mặt hàng</th><th>Loại</th><th class="so">Giá bán/kg</th><th class="so">HSD</th><th>Mã cân</th><th>Pha lóc ra</th><th></th></tr></thead>
+        <tbody>
+          {ds.map(m => (
+            <tr style={m.dang_dung ? '' : 'opacity:.5'}>
+              <td><strong>{m.ten}</strong><br /><span class="kho-phu">{m.ma}{m.nhom ? ` · ${m.nhom}` : ''}{m.ten_phu ? ` · ${m.ten_phu}` : ''}{!m.dang_dung ? ' · ngừng dùng' : ''}</span></td>
+              <td>{TEN_LOAI_MAT_HANG[m.loai]}</td>
+              <td class="so">{m.gia_ban_kg !== null ? dinhDangTien(m.gia_ban_kg) : (m.loai === 'phan_cat' ? <span class="kho-han sap_het">chưa có</span> : '—')}</td>
+              <td class="so">{m.han_dung_ngay ? `${m.han_dung_ngay} ngày` : '—'}</td>
+              <td>{m.ma_can ?? '—'}</td>
+              <td>{TEN_XU_LY[m.xu_ly_mac_dinh]}{coXemGia && m.loai === 'phu_pham' && thuHoi.get(m.id) ? <><br /><span class="kho-phu">{dinhDangTien(thuHoi.get(m.id))}/kg</span></> : ''}</td>
+              <td><a href={`/noi-bo/kho/cai-dat/mat-hang?sua=${m.id}${locLoai ? `&loai=${locLoai}` : ''}`}>Sửa</a></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )}
+</NoiBo>
