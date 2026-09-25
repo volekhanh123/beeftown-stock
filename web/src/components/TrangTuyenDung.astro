@@ -20,21 +20,27 @@
  * khác hẳn đăng mô tả món sai.
  */
 import { chu } from '../lib/chu';
-import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import { dinhDangNgay, type NgonNgu, type NoiDung } from '../lib/noi-dung';
 import type { KetQuaNop } from '../lib/nop-ho-so';
+import type { TruongForm } from '../lib/truong-form';
+import { BO_PHAN, LOAI_HOP_DONG, dinhDangLuong, nhanEnum } from '../lib/tuyen-dung';
 import FormUngTuyen from './FormUngTuyen.astro';
 
-export interface ViTri {
+/** Một tin đã công bố, kèm công tắc từng trường của form (0026). */
+export interface ViTri extends TruongForm {
   ma: string;
   ten: string;
   bo_phan: string;
+  cap_bac: string | null;
   loai_hop_dong: string;
   so_luong: number | null;
   mo_ta: string | null;
   yeu_cau: string | null;
+  quyen_loi: string | null;
   ca_lam: string | null;
   luong_tu: number | null;
   luong_den: number | null;
+  han_nop: string | null;
 }
 
 interface Props {
@@ -66,6 +72,9 @@ const nutNhanTin =
   nd.email_lien_he ? { url: `mailto:${nd.email_lien_he}`, chu: t.nhanTin } :
   null;
 
+// Database chỉ trả luong_tu/luong_den khi mức lương đã được duyệt (0012).
+const mucLuong = (v: ViTri) => dinhDangLuong(v.luong_tu, v.luong_den, ngonNgu);
+
 const nhanTheoCa = ngonNgu === 'en' ? 'Shift work' : 'Làm theo ca';
 const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';
 ---
@@ -93,25 +102,38 @@ const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';
           ))
         : viTri.map((v) => (
             <div class="the vi-tri">
-              <span class="nhan">{v.bo_phan}</span>
+              <span class="nhan">{nhanEnum(BO_PHAN, v.bo_phan, ngonNgu)}</span>
               <h3>{v.ten}</h3>
-              {v.ca_lam && <p class="nho" style="margin:0">{v.ca_lam}</p>}
+              {v.cap_bac && <p class="nho" style="margin:0">{v.cap_bac}</p>}
+              <p class="nho" style="margin:0">
+                {nhanEnum(LOAI_HOP_DONG, v.loai_hop_dong, ngonNgu)}
+                {v.ca_lam && ` · ${v.ca_lam}`}
+              </p>
               {v.so_luong && (
                 <p class="nho" style="margin:0">
                   {ngonNgu === 'en' ? `${v.so_luong} positions` : `Cần ${v.so_luong} người`}
                 </p>
               )}
-              {v.mo_ta && <p style="margin:8px 0 0">{v.mo_ta}</p>}
+              {/* pre-line: xuống dòng người soạn gõ ở màn nội bộ phải còn nguyên. */}
+              {v.mo_ta && <p style="margin:8px 0 0;white-space:pre-line">{v.mo_ta}</p>}
               {v.yeu_cau && (
-                <p class="nho" style="margin:8px 0 0">
+                <p class="nho" style="margin:8px 0 0;white-space:pre-line">
                   <strong>{ngonNgu === 'en' ? 'Requirements: ' : 'Yêu cầu: '}</strong>
                   {v.yeu_cau}
                 </p>
               )}
-              {v.luong_tu && (
-                <p style="margin:8px 0 0; font-weight:700; color:var(--do)">
-                  {v.luong_tu.toLocaleString('vi-VN')}
-                  {v.luong_den ? `–${v.luong_den.toLocaleString('vi-VN')}` : ''} đ
+              {v.quyen_loi && (
+                <p class="nho" style="margin:8px 0 0;white-space:pre-line">
+                  <strong>{ngonNgu === 'en' ? 'Benefits: ' : 'Quyền lợi: '}</strong>
+                  {v.quyen_loi}
+                </p>
+              )}
+              {mucLuong(v) && (
+                <p style="margin:8px 0 0; font-weight:700; color:var(--do)">{mucLuong(v)}</p>
+              )}
+              {v.han_nop && (
+                <p class="nho" style="margin:8px 0 0">
+                  {ngonNgu === 'en' ? 'Apply by ' : 'Hạn nộp: '}{dinhDangNgay(v.han_nop, ngonNgu)}
                 </p>
               )}
             </div>

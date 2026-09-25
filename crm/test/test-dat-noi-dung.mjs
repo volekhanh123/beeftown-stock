@@ -88,6 +88,14 @@ async function duoiDanhNghia(uid, sql, params = []) {
   finally { await db.exec(`reset role`); }
 }
 
+async function duoiDanhNghiaAnon(sql, params = []) {
+  await db.query(`delete from auth._phien`);
+  await db.exec(`set role anon`);
+  try { return { rows: (await db.query(sql, params)).rows, loi: null }; }
+  catch (e) { return { rows: null, loi: e.message }; }
+  finally { await db.exec(`reset role`); }
+}
+
 /** Giá trị đang được công bố cho một khóa, đọc qua đúng cửa mà website dùng. */
 async function trenTrang(khoa) {
   const { rows: [r] } = await db.query(`select noi_dung_cong_khai('vi') -> $1 as v`, [khoa]);
@@ -246,10 +254,12 @@ await nhom('6 · GỠ KHỎI TRANG PHẢI QUA CÙNG MỘT CỬA (0016 mục 2)',
 });
 
 // ===========================================================================
-await nhom('7 · VÉ TẢI CV (0016 mục 1)', async () => {
+await nhom('7 · VÉ TẢI CV (0016 mục 1, 0025)', async () => {
   // Policy storage của 0014 kiểm vé bằng một câu select vào phieu_tai_len,
   // chạy dưới quyền anon — mà anon không có GRANT và bị RLS chặn trên chính
   // bảng đó. Kết quả: MỌI lượt tải CV bị từ chối, im lặng, 100% số lần.
+  // 0016 bọc câu đó vào một hàm definer nhưng không cấp cho anon quyền GỌI
+  // hàm, nên lỗi vẫn y nguyên, chỉ đổi câu báo — 0025 cấp nốt quyền đó.
   // Phần storage không chạy trên PGlite nên không test nào bắt được. Ở đây
   // test cái có thể test: hàm bọc mà policy mới gọi.
   // xin_phieu_tai_cv() kiểm cong_tac_bat('hien_tuyen_dung') trước tiên — vé
@@ -294,13 +304,22 @@ await nhom('7 · VÉ TẢI CV (0016 mục 1)', async () => {
     `select prosecdef from pg_proc where proname = 've_con_hieu_luc'`);
   ok('ve_con_hieu_luc là security definer', p?.prosecdef === true);
 
-  // Và anon KHÔNG được gọi nó: policy storage chạy dưới quyền của storage,
-  // không cần anon có EXECUTE. Cấp thêm là mở một đường dò vé.
+  // Và anon PHẢI gọi được nó. Policy storage chạy dưới vai của request — với
+  // khóa anon là anon — và quyền EXECUTE được kiểm với chính vai đó, definer
+  // hay không. Bản trước của khẳng định này nói điều ngược lại; kiểm tay trên
+  // Supabase thử cho thấy mọi lượt tải CV lỗi "permission denied for function
+  // ve_con_hieu_luc".
   const { rows: [q] } = await db.query(`
     select has_function_privilege('anon', p.oid, 'execute') as duoc
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public' and p.proname = 've_con_hieu_luc'`);
-  ok('anon KHÔNG gọi được ve_con_hieu_luc', q?.duoc === false);
+  ok('anon gọi được ve_con_hieu_luc', q?.duoc === true);
+
+  // Bằng hành vi, đúng phần việc policy làm: dưới vai anon, hỏi về một vé thật.
+  const { rows: [ve3] } = await db.query(`select xin_phieu_tai_cv(null::inet) as id`);
+  const r = await duoiDanhNghiaAnon(`select public.ve_con_hieu_luc($1) as x`, [ve3.id]);
+  ok('Dưới vai anon, hàm chạy được và nhận ra vé thật',
+     r.loi === null && r.rows?.[0]?.x === true, r.loi ?? '');
 });
 
 // ===========================================================================

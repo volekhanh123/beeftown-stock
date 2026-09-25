@@ -127,6 +127,8 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/kho/kiem-ke.ts',
   'web/src/lib/kho/cong-no.ts',
   'web/src/lib/kho/bao-cao.ts',
+  // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
+  'web/src/lib/tin-tuyen-dung.ts',
 ];
 
 function laAnon(g) {
@@ -268,6 +270,10 @@ await nhom('5 · WEB KHÔNG GỌI HÀM NGOÀI DANH SÁCH CHO PHÉP', async () =>
   // Trang công khai chạy dưới vai anon. Nó chỉ được gọi 12 hàm đã duyệt
   // (0013). Gọi hàm ngoài danh sách sẽ lỗi 403 trên production — nhưng chạy
   // ngon lành ở máy lập trình viên nếu người đó đang dùng khóa service_role.
+  //
+  // ve_con_hieu_luc() anon cũng có EXECUTE (0025), nhưng là để policy tải CV
+  // của storage gọi. Mã web không có lý do gọi nó qua RPC, nên nó cố ý vắng
+  // mặt ở đây.
   const CONG_KHAI = [
     'noi_dung_cong_khai', 'tin_tuyen_dung_cong_khai', 'thuc_don_cong_khai',
     'chi_nhanh_cong_khai', 'lich_trong_theo_ma', 'tao_dat_ban',
@@ -316,6 +322,40 @@ await nhom('7 · KHÓA CÔNG BỐ WEB DÙNG ĐỀU CÓ TRONG SỔ ĐĂNG KÝ', a
   const thieu = [...co].filter(k => !khaiBao.includes(k));
   ok('Mọi khóa trong sổ đăng ký đều được khai trong TypeScript',
      thieu.length === 0, thieu.length ? `THIẾU: ${thieu.join(', ')}` : '');
+});
+
+// ===========================================================================
+await nhom('8 · MÀN SOẠN TIN GHI ĐÚNG CỘT VÀ ĐÚNG ENUM', async () => {
+  // Màn soạn đọc bằng select('*') và ghi bằng update({...}) — hai chỗ mà mục
+  // 3 và 4 không nhìn thấy tên cột. Chỗ duy nhất tên cột hiện ra là kiểu
+  // TinTuyenDung, nên đối chiếu chính kiểu đó.
+  const maTin = files.find(f => f.duong.endsWith('lib/tin-tuyen-dung.ts'))?.ma ?? '';
+  const khoi = maTin.match(/export interface TinTuyenDung \{([\s\S]*?)\n\}/);
+  const khoa = khoi ? [...khoi[1].matchAll(/^\s{2}([a-z0-9_]+)\s*[?:]/gm)].map(m => m[1]) : [];
+  ok('Đọc được khai báo kiểu TinTuyenDung', khoa.length > 20, `${khoa.length} khóa`);
+
+  const { rows } = await db.query(`
+    select column_name from information_schema.columns
+    where table_schema = 'public' and table_name = 'vi_tri_tuyen_dung'`);
+  const cot = new Set(rows.map(r => r.column_name));
+  const sai = khoa.filter(k => !cot.has(k));
+  ok('Mọi khóa của TinTuyenDung đều là cột thật của vi_tri_tuyen_dung',
+     sai.length === 0, sai.length ? `SAI: ${sai.join(', ')}` : '');
+
+  // Bộ phận và loại hợp đồng được ghi thẳng khóa của bảng nhãn xuống cột
+  // enum. Gõ nhầm "quay-thit" thì form hiện đẹp mà lưu thì hỏng.
+  const maNhan = files.find(f => f.duong.endsWith('lib/tuyen-dung.ts'))?.ma ?? '';
+  for (const [bang, kieu] of [['BO_PHAN', 'bo_phan_tuyen'], ['LOAI_HOP_DONG', 'loai_hop_dong']]) {
+    const k = maNhan.match(new RegExp(`export const ${bang} = \\{([\\s\\S]*?)\\n\\}`));
+    const web = k ? [...k[1].matchAll(/^\s+([a-z_]+):/gm)].map(m => m[1]).sort() : [];
+    const { rows: e } = await db.query(`
+      select e.enumlabel from pg_enum e join pg_type t on t.oid = e.enumtypid
+      where t.typname = $1 order by 1`, [kieu]);
+    const dbGiaTri = e.map(r => r.enumlabel).sort();
+    ok(`Nhãn ${bang} khớp đúng enum ${kieu}`,
+       web.length > 0 && web.join(',') === dbGiaTri.join(','),
+       `web: ${web.join(',')} · database: ${dbGiaTri.join(',')}`);
+  }
 });
 
 // ===========================================================================
