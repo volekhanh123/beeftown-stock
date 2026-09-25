@@ -108,7 +108,7 @@ Phần mềm quản lý kho thịt: nhập tảng, pha lóc, quầy thịt, hạ
 | `/noi-bo/kho/kiem-ke` | Kiểm kê quầy (theo mặt hàng, quét nhãn được) và kho lạnh (từng lô). Đếm mù, gửi, quản lý duyệt. Chưa nối iPOS: thiếu ở quầy = đã bán |
 | `/noi-bo/kho/cong-no` | Công nợ nhà cung cấp: đang nợ, quá hạn, đến hạn 7 ngày; đối chiếu hóa đơn, ghi thanh toán / giảm trừ (tự chia theo hạn), trả hàng NCC |
 | `/noi-bo/kho/bao-cao` | Xuất – nhập – tồn, thu hồi theo tảng × NCC, hủy / xuất bếp / chênh lệch, bán ước tính. Tải CSV cho Excel (`/noi-bo/kho/bao-cao/<tên>.csv`) |
-| `/noi-bo/kho/cai-dat` | Mặt hàng (dán từ Excel được), nhà cung cấp, vị trí, lý do, công thức pha lóc, **ô thông tin tự tạo**, mã vạch cân |
+| `/noi-bo/kho/cai-dat` | Mặt hàng (dán từ Excel được), nhà cung cấp, vị trí, lý do, công thức pha lóc, **ô thông tin tự tạo**, mã vạch cân, **đồng bộ cân** |
 
 **Vai trò.** Ba vai mới trong `nhan_su.vai_tro`: `thu_kho`, `nhan_vien_quay` (nhân viên quầy/bếp), `ke_toan`. Bảng tra "vai nào làm được gì" nằm ở hàm `kho_vai_duoc()` (migration `0018`); `lib/kho/chung.ts` giữ một bản soi gương chỉ để ẩn nút, và `crm/test/test-kho-quyen.mjs` so hai bản từng dòng. Nhân viên quầy/bếp **không thấy giá nhập, giá vốn** — không phải vì giao diện giấu, mà vì database không trả những cột đó cho họ.
 
@@ -121,6 +121,14 @@ Vai kho **không** thấy dữ liệu CRM (khách hàng, đặt bàn, điểm) �
 **Nhãn cân.** Cân Dahua TM-A in mã EAN-13 kiểu 2+5+5+1 (hai số đầu, năm số mã hàng, năm số trọng lượng gram, một số kiểm tra). Mẫu đọc cài được ở Cài đặt → Mã vạch cân, có ô thử một nhãn thật. Mã hàng trên cân khớp cột "mã cân" của mặt hàng.
 
 **Quét nhãn** (`components/kho/QuetMa.astro`): máy quét cầm tay USB/Bluetooth gõ mã như bàn phím — mỗi nhãn một dòng trong ô quét, rồi bấm "Đọc mã". Nút "Quét bằng camera" là phần thêm, chỉ hiện khi trình duyệt đọc được EAN-13 (Chrome Android); iPhone không thấy nút, vẫn dùng máy quét được. Đây là đoạn JavaScript DUY NHẤT của khu kho — tắt đi trang vẫn chạy đủ.
+
+**Đồng bộ cân** (`/noi-bo/kho/cai-dat/can`, quyền `danh_muc`). **Kho là gốc**: mã cân, tên, giá bán/kg chỉ sửa ở Mặt hàng, rồi đưa sang cân qua USB. Cân không nối mạng với kho, nên người dùng lưu dữ liệu từ cân ra USB (`JHSCALE/A_000.TMS`), tải file lên màn này, xem trước thêm/sửa/xoá, rồi tải file mới về nạp lại vào cân. Các bước bấm trên cân có ghi ngay trên màn.
+
+- Khớp theo mã cân. Hàng đã có trên cân giữ nguyên số PLU (phím gọi hàng không đổi); hàng mới lấy số PLU trống nhỏ nhất. Hàng trên cân không có trong kho bị xoá, trừ khi tích "giữ lại".
+- Hàng kho thiếu giá, giá quá 999.999 đ/kg (cân chỉ hiện 6 chữ số) hay mã dài hơn số chữ `C` trong mẫu mã vạch thì không đưa lên cân, và màn xem trước ghi rõ lý do.
+- **Máy chủ không lưu file**: file có tên và mật khẩu WiFi của quán. Bước xem trước mang file theo form dưới dạng base64; bấm tải là dựng lại từ danh mục mới nhất. Không ghi gì vào database.
+- Đọc/ghi file ở `lib/kho/can-tma.ts` (cách đọc file ghi ở đầu file đó), kiểm bằng `crm/test/test-kho-can.mjs`. Dòng không đổi được ghi lại y nguyên từng byte.
+- Hạn dùng chưa đưa sang cân được: chưa biết cân lưu số ngày hạn dùng ở cột nào của dòng PLU.
 
 **Ảnh chứng từ** (hóa đơn, hàng hỏng) lưu ở kho file riêng `kho-chung-tu` (`0021`) và đi qua Worker — ảnh điện thoại vài MB có thể vượt giới hạn CPU của gói Cloudflare Workers miễn phí. Nếu tải ảnh hay lỗi, chuyển sang gói trả phí.
 

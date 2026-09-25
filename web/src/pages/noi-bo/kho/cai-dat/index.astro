@@ -47,6 +47,7 @@ const MUC = [
   { link: '/noi-bo/kho/cai-dat/vi-tri-ly-do', ten: 'Vị trí và lý do', mo_ta: 'Kho lạnh, quầy; lý do hủy, lý do xuất bếp, ảnh bắt buộc.', hien: k.duoc('danh_muc') },
   { link: '/noi-bo/kho/cai-dat/o-thong-tin', ten: 'Ô thông tin thêm', mo_ta: 'Tự tạo ô mới cho mặt hàng, nhà cung cấp, phiếu nhập, lô hàng: xuất xứ, grade, nhiệt độ khi nhận…', hien: k.duoc('danh_muc') || k.duoc('cai_dat_goc') },
   { link: '/noi-bo/kho/cai-dat/ma-vach', ten: 'Mã vạch cân', mo_ta: 'Cách đọc nhãn cân Dahua (mặc định 2+5+5+1). Có ô thử một nhãn thật.', hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/can', ten: 'Đồng bộ cân', mo_ta: 'Đưa mã cân, tên, giá bán/kg của Mặt hàng sang cân in tem qua USB. Kho là gốc.', hien: k.duoc('danh_muc') },
 ].filter(m => m.hien);
 ---
 <NoiBo tieuDe="Cài đặt kho" nhanSu={k.nhanSu}>

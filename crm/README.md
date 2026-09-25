@@ -24,7 +24,7 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 | 11 | **Kho · GĐ2** — pha lóc (tỉ lệ thu hồi, giá vốn thật), chuyển quầy, xuất bếp, báo hủy có duyệt, kiểm kê dựng lại tồn | ✅ Xong (`0022`–`0023`) |
 | 12 | **Kho · GĐ3** — đối chiếu hóa đơn, công nợ nhà cung cấp, thanh toán, trả hàng NCC, báo cáo xuất–nhập–tồn / thu hồi / hao hụt / bán, tải CSV | ✅ Xong (`0024`) |
 
-**1196 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
+**1251 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
 `../web/` có 8 đường dẫn song ngữ, giao diện nội bộ `/noi-bo` và hai form
 công khai đều đã dựng.
 
@@ -47,7 +47,8 @@ cd crm && npm install && npm test
 | `npm run test:cong-khai` | API công khai, mã đặt bàn, đo lường | 50 |
 | `npm run test:noi-dung` | đặt/thu hồi nội dung trong một giao dịch, vé tải CV | 52 |
 | `npm run test:hop-dong` | hợp đồng giữa `web/src` và database: tên hàm, tham số, bảng, cột | 187 |
-| `npm run test:kho` | **kho**: tường ngăn CRM, bảng quyền, phiếu nhập, sổ kho, giá vốn, mã vạch nhãn cân, form và CSV; pha lóc; chuyển, xuất bếp, hủy, kiểm kê; công nợ và báo cáo | 77 + 117 + 99 + 115 + 120 + 91 |
+| `npm run test:kho` | **kho**: tường ngăn CRM, bảng quyền, phiếu nhập, sổ kho, giá vốn, mã vạch nhãn cân, form và CSV; pha lóc; chuyển, xuất bếp, hủy, kiểm kê; công nợ và báo cáo; đồng bộ cân | 77 + 117 + 99 + 115 + 120 + 91 + 55 |
+| `npm run test:can` | đồng bộ danh mục sang cân in tem: đọc/ghi file `A_000.TMS`, dòng không đổi giữ nguyên từng byte | 55 |
 
 **Chạy lại toàn bộ kiểm thử sau mỗi lần sửa migration.** Chúng đã bắt được lỗi thật, không phải một lần:
 
