@@ -17,7 +17,7 @@
  * nếu tải CV thất bại, hồ sơ VẪN được nộp không kèm CV, và câu trả lời nói
  * rõ điều đó — thay vì bắt người ta điền lại từ đầu vì một cái file.
  *
- * Từ 0025, tin nào không hỏi CV thì file gửi kèm bị bỏ qua, không tải lên.
+ * Từ 0026, tin nào không hỏi CV thì file gửi kèm bị bỏ qua, không tải lên.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -81,7 +81,7 @@ async function taiCv(
 }
 
 /**
- * Tin này có hỏi CV không (0025).
+ * Tin này có hỏi CV không (0026).
  *
  * Không đọc được danh sách tin thì trả true, tức cứ tải như trước khi có
  * công tắc: làm mất CV của người ta tệ hơn một file thừa trong kho.

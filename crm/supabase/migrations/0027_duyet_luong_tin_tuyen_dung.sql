@@ -1,6 +1,9 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0026 · CHỈ CHỦ NHÀ HÀNG VÀ QUẢN LÝ DUYỆT ĐƯỢC LƯƠNG
+-- BEEFTOWN CRM — 0027 · CHỈ CHỦ NHÀ HÀNG VÀ QUẢN LÝ DUYỆT ĐƯỢC LƯƠNG
 -- =============================================================================
+-- (Trước đây đánh số 0026; đổi 25/09/2026 cùng 0025–0026 để khỏi trùng số
+-- với nhánh kho.)
+--
 -- VẤN ĐỀ
 --
 -- 0012 tách lương làm hai: mức đề xuất (luong_de_xuat_*) và mức chính thức
@@ -38,7 +41,7 @@ alter table vi_tri_tuyen_dung
 comment on column vi_tri_tuyen_dung.luong_nguoi_duyet is
   'Ai duyệt mức lương đang hiện trên trang. Trigger vi_tri_kiem_tra() tự ghi — đừng ghi tay.';
 comment on column vi_tri_tuyen_dung.nguoi_duyet is
-  'Ai đăng tin lên trang lần gần nhất. Trigger vi_tri_kiem_tra() tự ghi từ 0026.';
+  'Ai đăng tin lên trang lần gần nhất. Trigger vi_tri_kiem_tra() tự ghi từ 0027.';
 
 
 create or replace function vi_tri_kiem_tra()
@@ -87,7 +90,7 @@ create trigger vi_tri_kiem_tra_trigger
 
 
 -- =============================================================================
--- CHỐT QUYỀN — xem giải thích ở 0008 mục 6. Giữ dòng ve_con_hieu_luc: xem 0023.
+-- CHỐT QUYỀN — xem giải thích ở 0008 mục 6. Giữ dòng ve_con_hieu_luc: xem 0025.
 -- =============================================================================
 do $$
 begin
@@ -112,7 +115,7 @@ begin
     execute 'grant execute on function xin_phieu_tai_cv(inet) to anon';
     execute 'grant execute on function nop_ho_so_ung_tuyen(text,text,text,text,smallint,text,text,text[],uuid,text,boolean,text,int,text,text,inet) to anon';
     -- Không phải để website gọi: policy tải CV trên storage.objects gọi nó
-    -- dưới vai anon. Xem 0023.
+    -- dưới vai anon. Xem 0025.
     execute 'grant execute on function ve_con_hieu_luc(text) to anon';
 
     -- Đo lường

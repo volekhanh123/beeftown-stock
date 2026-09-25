@@ -142,7 +142,7 @@ await nhom('1 · TIN TUYỂN DỤNG CÔNG KHAI', async () => {
     `select count(*)::int as n from vi_tri_tuyen_dung`);
   ok('Seed đủ 8 vị trí theo tài liệu vận hành', soTin === 8, `${soTin} vị trí`);
 
-  // 0025: không phải vị trí nào cũng cần CV. Quản lý và marketing thì có;
+  // 0026: không phải vị trí nào cũng cần CV. Quản lý và marketing thì có;
   // phục vụ, phụ bếp nộp từ điện thoại và hầu như không có file CV.
   const { rows: coCv } = await db.query(
     `select ma from vi_tri_tuyen_dung where hoi_cv order by ma`);
@@ -349,7 +349,7 @@ await nhom('6 · VÒNG ĐỜI HỒ SƠ VÀ NHẬT KÝ', async () => {
 
 // ===========================================================================
 await nhom('7 · VÉ TẢI CV — SERVER CẤP ĐƯỜNG DẪN', async () => {
-  // Vé chỉ có nghĩa ở tin có hỏi CV (0025). Tin mẫu nhân viên sảnh không hỏi,
+  // Vé chỉ có nghĩa ở tin có hỏi CV (0026). Tin mẫu nhân viên sảnh không hỏi,
   // nên bật cho tin này trước khi thử vé.
   await db.query(`update vi_tri_tuyen_dung set hoi_cv = true where ma = 'nhan-vien-sanh'`);
 
@@ -496,7 +496,7 @@ await nhom('MỘT BƯỚC CHUYỂN — MỘT DÒNG NHẬT KÝ (0016 mục 3)', a
 });
 
 // ===========================================================================
-await nhom('10 · MỖI TIN HỎI NHỮNG GÌ (0025)', async () => {
+await nhom('10 · MỖI TIN HỎI NHỮNG GÌ (0026)', async () => {
   // Tin bếp tắt hết trường tùy chọn. Ứng viên — hoặc trình duyệt cũ không ẩn
   // được ô — vẫn gửi đủ; database phải bỏ hết, kể cả vé tải CV.
   await db.query(
@@ -565,7 +565,7 @@ await nhom('10 · MỖI TIN HỎI NHỮNG GÌ (0025)', async () => {
 });
 
 // ===========================================================================
-await nhom('11 · DUYỆT LƯƠNG VÀ ĐĂNG TIN (0026)', async () => {
+await nhom('11 · DUYỆT LƯƠNG VÀ ĐĂNG TIN (0027)', async () => {
   // Chủ nhà hàng chốt: đăng và gỡ tin thì cả marketing làm được; mức lương
   // chính thức thì chỉ chủ nhà hàng và quản lý.
   const idCua = async (uid) =>

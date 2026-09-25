@@ -259,7 +259,7 @@ await nhom('5 · WEB KHÔNG GỌI HÀM NGOÀI DANH SÁCH CHO PHÉP', async () =>
   // (0013). Gọi hàm ngoài danh sách sẽ lỗi 403 trên production — nhưng chạy
   // ngon lành ở máy lập trình viên nếu người đó đang dùng khóa service_role.
   //
-  // ve_con_hieu_luc() anon cũng có EXECUTE (0023), nhưng là để policy tải CV
+  // ve_con_hieu_luc() anon cũng có EXECUTE (0025), nhưng là để policy tải CV
   // của storage gọi. Mã web không có lý do gọi nó qua RPC, nên nó cố ý vắng
   // mặt ở đây.
   const CONG_KHAI = [

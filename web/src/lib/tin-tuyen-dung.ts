@@ -10,7 +10,7 @@
  *
  *   · policy vi_tri_them / vi_tri_sua (0012): chủ nhà hàng, quản lý và
  *     marketing soạn, đăng, gỡ được tin ở chi nhánh của mình.
- *   · trigger vi_tri_kiem_tra() (0026): chỉ chủ nhà hàng và quản lý đổi được
+ *   · trigger vi_tri_kiem_tra() (0027): chỉ chủ nhà hàng và quản lý đổi được
  *     mức lương chính thức; marketing chỉ ghi mức đề xuất.
  *
  * Giao diện chỉ ẩn nút cho gọn mắt — ai gọi thẳng vẫn bị database chặn.
@@ -97,7 +97,7 @@ export function homNayVn(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
 }
 
-/** Câu lỗi cho người đọc. Câu của trigger 0026 viết sẵn bằng tiếng Việt, dùng nguyên văn. */
+/** Câu lỗi cho người đọc. Câu của trigger 0027 viết sẵn bằng tiếng Việt, dùng nguyên văn. */
 function cauLoi(e: { message?: string } | null, macDinh: string): string {
   const m = e?.message ?? '';
   if (/vi_tri_cong_bo_phai_sach/.test(m)) {
@@ -196,7 +196,7 @@ export async function taoTin(
         ten_vi: ten,
         bo_phan: boPhan,
         loai_hop_dong: loai,
-        // Tin quản lý và marketing hỏi CV sẵn, như bốn tin mẫu ở 0025.
+        // Tin quản lý và marketing hỏi CV sẵn, như bốn tin mẫu ở 0026.
         hoi_cv: boPhan === 'quan_ly' || boPhan === 'marketing',
       })
       .select('id')

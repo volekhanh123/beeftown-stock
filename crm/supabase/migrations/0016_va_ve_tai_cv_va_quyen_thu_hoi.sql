@@ -308,7 +308,7 @@ comment on table nhat_ky_ho_so is
 -- =============================================================================
 -- CHỐT QUYỀN — xem giải thích ở 0008 mục 6
 -- =============================================================================
--- THIẾU MỘT DÒNG — 0023 đã bổ sung. Danh sách dưới đây không cấp
+-- THIẾU MỘT DÒNG — 0025 đã bổ sung. Danh sách dưới đây không cấp
 -- ve_con_hieu_luc() cho anon, với lý do "policy chạy dưới quyền của chính
 -- storage". Lý do đó sai, và ngược với chính mục 1 ở trên: policy chạy dưới
 -- vai của request — với khóa anon là anon — nên anon phải có EXECUTE. Kiểm

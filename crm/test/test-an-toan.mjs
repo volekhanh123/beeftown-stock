@@ -145,7 +145,7 @@ await nhom('1 · QUYỀN THỰC THI HÀM (lỗ hổng 1 và 4)', async () => {
     'tin_tuyen_dung_cong_khai',
     'tra_cuu_dat_ban',
     // Không phải để website gọi: policy tải CV trên storage.objects gọi nó
-    // dưới vai anon. Thiếu thì mọi lượt tải CV lỗi quyền — xem 0023.
+    // dưới vai anon. Thiếu thì mọi lượt tải CV lỗi quyền — xem 0025.
     've_con_hieu_luc',
     'xin_phieu_tai_cv',
   ].sort();

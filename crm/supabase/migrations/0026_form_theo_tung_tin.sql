@@ -1,7 +1,8 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0025 · MỖI TIN TUYỂN DỤNG TỰ CHỌN FORM HỎI NHỮNG GÌ
+-- BEEFTOWN CRM — 0026 · MỖI TIN TUYỂN DỤNG TỰ CHỌN FORM HỎI NHỮNG GÌ
 -- =============================================================================
--- (0022–0024 đã có chủ ở các nhánh làm song song — nên file này là 0025.)
+-- (0017–0024 đã có chủ ở các nhánh làm song song, 0025 là bản vá quyền kiểm
+-- vé tải CV — nên file này là 0026. Trước đây đánh số 0025; đổi 25/09/2026.)
 --
 -- VẤN ĐỀ
 --
@@ -248,7 +249,7 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  -- 0025: trường tin này không hỏi thì không lưu, dù có gửi lên. Form chỉ ẩn
+  -- 0026: trường tin này không hỏi thì không lưu, dù có gửi lên. Form chỉ ẩn
   -- bằng CSS, nên trình duyệt cũ vẫn thấy và vẫn gửi.
   if not v_vi_tri.hoi_email       then p_email       := null; end if;
   if not v_vi_tri.hoi_nam_sinh    then p_nam_sinh    := null; end if;
@@ -325,7 +326,7 @@ $$;
 
 
 -- =============================================================================
--- CHỐT QUYỀN — xem giải thích ở 0008 mục 6. Giữ dòng ve_con_hieu_luc: xem 0023.
+-- CHỐT QUYỀN — xem giải thích ở 0008 mục 6. Giữ dòng ve_con_hieu_luc: xem 0025.
 -- =============================================================================
 do $$
 begin
@@ -350,7 +351,7 @@ begin
     execute 'grant execute on function xin_phieu_tai_cv(inet) to anon';
     execute 'grant execute on function nop_ho_so_ung_tuyen(text,text,text,text,smallint,text,text,text[],uuid,text,boolean,text,int,text,text,inet) to anon';
     -- Không phải để website gọi: policy tải CV trên storage.objects gọi nó
-    -- dưới vai anon. Xem 0023.
+    -- dưới vai anon. Xem 0025.
     execute 'grant execute on function ve_con_hieu_luc(text) to anon';
 
     -- Đo lường

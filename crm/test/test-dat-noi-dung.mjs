@@ -254,12 +254,12 @@ await nhom('6 · GỠ KHỎI TRANG PHẢI QUA CÙNG MỘT CỬA (0016 mục 2)',
 });
 
 // ===========================================================================
-await nhom('7 · VÉ TẢI CV (0016 mục 1, 0023)', async () => {
+await nhom('7 · VÉ TẢI CV (0016 mục 1, 0025)', async () => {
   // Policy storage của 0014 kiểm vé bằng một câu select vào phieu_tai_len,
   // chạy dưới quyền anon — mà anon không có GRANT và bị RLS chặn trên chính
   // bảng đó. Kết quả: MỌI lượt tải CV bị từ chối, im lặng, 100% số lần.
   // 0016 bọc câu đó vào một hàm definer nhưng không cấp cho anon quyền GỌI
-  // hàm, nên lỗi vẫn y nguyên, chỉ đổi câu báo — 0023 cấp nốt quyền đó.
+  // hàm, nên lỗi vẫn y nguyên, chỉ đổi câu báo — 0025 cấp nốt quyền đó.
   // Phần storage không chạy trên PGlite nên không test nào bắt được. Ở đây
   // test cái có thể test: hàm bọc mà policy mới gọi.
   // xin_phieu_tai_cv() kiểm cong_tac_bat('hien_tuyen_dung') trước tiên — vé

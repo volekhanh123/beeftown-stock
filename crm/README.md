@@ -20,9 +20,9 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 | 8 | **Tuyển dụng** — tin, hồ sơ, vé tải CV | ✅ Xong (`0012`) |
 | 9 | **Đặt nội dung một giao dịch** — công bố bốn bước thành một | ✅ Xong (`0015`) |
 | 9b | **Vá vé tải CV, quyền thu hồi, nhật ký trùng** | ✅ Xong (`0016`) |
-| 9c | **Vá quyền gọi hàm kiểm vé** — tải CV vẫn hỏng sau `0016` | ✅ Xong (`0023`) |
-| 9d | **Form hỏi gì tùy từng tin** — chỉ tin cần CV mới có ô CV | ✅ Xong (`0025`) |
-| 9e | **Màn soạn tin tuyển dụng** — chỉ chủ nhà hàng và quản lý duyệt lương | ✅ Xong (`0026`) |
+| 9c | **Vá quyền gọi hàm kiểm vé** — tải CV vẫn hỏng sau `0016` | ✅ Xong (`0025`) |
+| 9d | **Form hỏi gì tùy từng tin** — chỉ tin cần CV mới có ô CV | ✅ Xong (`0026`) |
+| 9e | **Màn soạn tin tuyển dụng** — chỉ chủ nhà hàng và quản lý duyệt lương | ✅ Xong (`0027`) |
 
 **468 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
 `../web/` có 8 đường dẫn song ngữ, giao diện nội bộ `/noi-bo` và hai form
@@ -79,9 +79,9 @@ crm/
 │   ├── 0014_storage_supabase.sql   kho file — PGlite BỎ QUA, kiểm bằng tay
 │   ├── 0015_dat_noi_dung.sql    công bố một dữ kiện trong MỘT giao dịch
 │   ├── 0016_va_ve_tai_cv_va_quyen_thu_hoi.sql   ⚠ VÁ 3 LỖI — xem đầu file
-│   ├── 0023_va_quyen_kiem_ve_tai_cv.sql   anon gọi được hàm kiểm vé — CV mới tải lên được
-│   ├── 0025_form_theo_tung_tin.sql   mỗi tin tự chọn form hỏi gì — chỉ tin cần CV mới có ô CV
-│   └── 0026_duyet_luong_tin_tuyen_dung.sql   chỉ chủ nhà hàng và quản lý đổi được lương chính thức
+│   ├── 0025_va_quyen_kiem_ve_tai_cv.sql   anon gọi được hàm kiểm vé — CV mới tải lên được
+│   ├── 0026_form_theo_tung_tin.sql   mỗi tin tự chọn form hỏi gì — chỉ tin cần CV mới có ô CV
+│   └── 0027_duyet_luong_tin_tuyen_dung.sql   chỉ chủ nhà hàng và quản lý đổi được lương chính thức
 └── test/                    ← kiểm thử chạy trên Postgres thật
 ```
 
@@ -92,16 +92,16 @@ crm/
 - **File nào tạo hàm thì PHẢI kết thúc bằng khối chốt quyền.** Xem `0008` mục 6.
 - **View mới PHẢI khai `security_invoker = true` tường minh.** Mặc định của Postgres là view chạy dưới quyền người tạo, tức đi xuyên qua RLS của bảng bên dưới — đúng lỗ hổng số 2 mà `0008` đã vá. `0008` chỉ sửa được 7 view có mặt lúc đó. `test-an-toan.mjs` mục 2 liệt kê `pg_class` và bắt đúng chuyện quên này; nó đã bắt được `v_bang_cong_tac` ngay lần chạy đầu tiên của `0015`.
 - **`0014` là file duy nhất PGlite không chạy.** Toàn bộ DDL kho file bọc trong khối kiểm tra schema `storage`. Danh sách kiểm tra bằng tay nằm ở cuối file đó — **bắt buộc làm trên Supabase thật.**
-- **Khối chốt quyền từ `0023` trở đi PHẢI giữ dòng `ve_con_hieu_luc(text)`.** Policy tải CV trên `storage.objects` gọi hàm đó dưới vai `anon`. Chép danh sách từ một file cũ hơn là CV lại rơi im lặng, và PGlite không có storage để thấy; `DUOC_PHEP` trong `test-an-toan.mjs` và mục 7 của `test-dat-noi-dung.mjs` mới bắt được.
-- **Số migration đang trùng giữa các nhánh — phải đánh lại khi gộp.** Nhánh kho dùng `0017`–`0024`, bản vá quyền hàm CRM dùng `0022`, nhánh này dùng `0023`, `0025` và `0026`. Supabase CLI coi phần số là phiên bản, nên hai file cùng số `0022` hay `0023` không cùng tồn tại được. Khối chốt quyền của mọi file nhánh khác đều viết trước `0023` nên thiếu dòng `ve_con_hieu_luc(text)`: sau khi gộp, khối chốt quyền **chạy cuối cùng** phải có dòng đó, và `DUOC_PHEP` sẽ đỏ nếu thiếu. Trên một database đã có sẵn, đừng chạy file nào có khối chốt quyền thiếu dòng đó sau `0023`.
+- **Khối chốt quyền từ `0025` trở đi PHẢI giữ dòng `ve_con_hieu_luc(text)`.** Policy tải CV trên `storage.objects` gọi hàm đó dưới vai `anon`. Chép danh sách từ một file cũ hơn là CV lại rơi im lặng, và PGlite không có storage để thấy; `DUOC_PHEP` trong `test-an-toan.mjs` và mục 7 của `test-dat-noi-dung.mjs` mới bắt được.
+- **Số migration không được trùng giữa các nhánh làm song song.** Supabase CLI coi phần số là phiên bản, nên hai file cùng số không cùng tồn tại được. Nhánh kho dùng `0017`–`0024`. Nhánh này lúc đầu dùng `0023`, `0025`, `0026` — `0023` trùng với nhánh kho — nên ngày 25/09/2026 đã đánh lại thành `0025`, `0026`, `0027`, giữ nguyên thứ tự giữa ba file. Bản vá quyền hàm CRM dùng `0022`, trùng với `0022` của nhánh kho: phải đánh lại khi gộp. Migration mới lấy số sau số lớn nhất trên **mọi** nhánh đang mở (hiện là `0028`). Khối chốt quyền của mọi file nhánh khác đều viết trước `0025` nên thiếu dòng `ve_con_hieu_luc(text)`: sau khi gộp, khối chốt quyền **chạy cuối cùng** phải có dòng đó, và `DUOC_PHEP` sẽ đỏ nếu thiếu. Trên một database đã có sẵn, đừng chạy file nào có khối chốt quyền thiếu dòng đó sau `0025`.
 
 ## Nhật ký kiểm tay kho file
 
 `0014` bắt kiểm tay vì PGlite không có schema `storage`, và dặn ghi lại ngày, người kiểm vào đây.
 
-**2026-09-25 · Claude, phiên sửa `0023`.** Chưa phải project Supabase thật: một Supabase thử dựng cục bộ gồm Postgres 17.10, storage-api v1.79.19 (mã nguồn của Supabase) và PostgREST v13.0.8, sau một cổng chung `/rest/v1` + `/storage/v1`, chạy đủ migration. Mọi thao tác dùng **khóa anon** qua `supabase-js`, và chạy cả hàm `nopHoSo()` thật của website.
+**2026-09-25 · Claude, phiên sửa `0025`.** Chưa phải project Supabase thật: một Supabase thử dựng cục bộ gồm Postgres 17.10, storage-api v1.79.19 (mã nguồn của Supabase) và PostgREST v13.0.8, sau một cổng chung `/rest/v1` + `/storage/v1`, chạy đủ migration. Mọi thao tác dùng **khóa anon** qua `supabase-js`, và chạy cả hàm `nopHoSo()` thật của website.
 
-| Bước | Tới `0016` | Thêm `0023` |
+| Bước | Tới `0016` | Thêm `0025` |
 |---|---|---|
 | 5 · tải lên `test/x.pdf` | bị từ chối — nhưng vì `permission denied for function ve_con_hieu_luc`, không phải vì kiểm vé | bị từ chối: `new row violates row-level security policy` |
 | 6 · xin vé, tải lên `<mã vé>/cv.pdf` | **HỎNG:** `403 permission denied for function ve_con_hieu_luc` | thành công |
@@ -115,7 +115,7 @@ Hai điều lộ ra, cần biết khi đọc bước 6 ở cuối `0014`:
 - **Vé bị đánh dấu "đã dùng" khi nộp hồ sơ, không phải khi tải lên.** Lần tải thứ hai cùng đường dẫn bị chặn vì file đã tồn tại, không phải vì vé. Trước khi `nop_ho_so_ung_tuyen()` chạy, cùng một vé vẫn tải thêm được file **tên khác** (đã thử: thành công).
 - **Storage chỉ nhận khóa ASCII.** `tenTepAnToan()` trong `web/src/lib/nop-ho-so.ts` từng giữ chữ có dấu, nên mọi CV đặt tên tiếng Việt có dấu bị trả `Invalid key` và rơi im lặng y như lỗi quyền. Đã sửa: bỏ dấu, giữ chữ (`CV-Nguyen-Van-Thu.pdf`).
 
-**2026-09-25 · lần hai, sau `0025`.** Cùng bộ thử, thêm website chạy bằng `astro dev`, nộp hồ sơ qua đúng form trong trình duyệt:
+**2026-09-25 · lần hai, sau `0026`.** Cùng bộ thử, thêm website chạy bằng `astro dev`, nộp hồ sơ qua đúng form trong trình duyệt:
 
 - Tin *Quản lý sảnh* (có hỏi CV), file `CV Trần Quản Lý.pdf`: hồ sơ kèm CV, file lên kho thành `CV-Tran-Quan-Ly.pdf`, email và năm sinh được lưu.
 - Tin *Nhân viên sảnh* (không hỏi CV), vẫn gắn file dù ô đang ẩn: hồ sơ vào, không xin vé, không file nào lên kho, không có câu cảnh báo thiếu CV.

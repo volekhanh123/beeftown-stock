@@ -1,8 +1,9 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0023 · ANON PHẢI GỌI ĐƯỢC HÀM KIỂM VÉ TẢI CV
+-- BEEFTOWN CRM — 0025 · ANON PHẢI GỌI ĐƯỢC HÀM KIỂM VÉ TẢI CV
 -- =============================================================================
--- (Số 0017–0022 đã có chủ ở các nhánh làm song song — module kho và bản vá
--- quyền hàm CRM — nên file này nhảy thẳng lên 0023.)
+-- (Số 0017–0024 đã có chủ ở các nhánh làm song song — module kho và bản vá
+-- quyền hàm CRM — nên file này là 0025. Trước đây đánh số 0023, trùng với
+-- 0023 của nhánh kho; đổi ngày 25/09/2026, thứ tự với 0026–0027 giữ nguyên.)
 --
 -- LỖI
 --
@@ -55,12 +56,12 @@
 --
 -- Mọi khối chốt quyền từ đây về sau PHẢI giữ dòng grant ve_con_hieu_luc.
 -- Khối chốt quyền mở đầu bằng revoke trên MỌI hàm, nên chép danh sách từ một
--- file cũ hơn 0023 là âm thầm làm hỏng tải CV lần nữa. Thứ bắt được chuyện
+-- file cũ hơn 0025 là âm thầm làm hỏng tải CV lần nữa. Thứ bắt được chuyện
 -- đó là DUOC_PHEP trong test-an-toan.mjs và mục 7 của test-dat-noi-dung.mjs.
 --
 -- Khối chốt quyền của 0018–0022 viết trước file này nên chưa có dòng đó.
--- Trên database mới chúng chạy trước 0023 nên không sao — nhưng đừng chạy
--- chúng SAU 0023 trên một database đã có sẵn.
+-- Trên database mới chúng chạy trước 0025 nên không sao — nhưng đừng chạy
+-- chúng SAU 0025 trên một database đã có sẵn.
 -- =============================================================================
 
 do $$
