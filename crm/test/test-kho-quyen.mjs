@@ -232,14 +232,30 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // Phiếu nhập
     'kho_luu_phieu_nhap', 'kho_gui_duyet_phieu_nhap', 'kho_rut_phieu_nhap',
     'kho_duyet_phieu_nhap', 'kho_tu_choi_phieu_nhap', 'kho_huy_phieu_nhap',
+    // Pha lóc
+    'kho_luu_phien_pha', 'kho_xem_thu_phien_pha', 'kho_chot_phien_pha',
+    'kho_mo_lai_phien_pha', 'kho_huy_phien_pha',
+    // Chuyển, xuất bếp, hủy
+    'kho_tao_phieu_xuat', 'kho_duyet_phieu_huy', 'kho_tu_choi_phieu_huy',
+    // Kiểm kê
+    'kho_bat_dau_kiem_ke', 'kho_luu_kiem_ke', 'kho_gui_kiem_ke',
+    'kho_duyet_kiem_ke', 'kho_tu_choi_kiem_ke', 'kho_huy_kiem_ke',
+    // Công nợ, trả hàng
+    'kho_doi_chieu_hoa_don', 'kho_ghi_thanh_toan', 'kho_huy_thanh_toan', 'kho_tra_nha_cung_cap',
+    // Báo cáo — SECURITY INVOKER, RLS của người gọi vẫn áp dụng
+    'kho_bao_cao_xuat_nhap_ton', 'kho_bao_cao_thu_hoi', 'kho_bao_cao_hao_hut', 'kho_bao_cao_ban',
     // Đối soát
     'kho_doi_soat_ton',
     // Hàm trigger — PostgREST không gọi được hàm trả về trigger
     'kho_vi_tri_kiem_sua', 'kho_truong_them_kiem_sua', 'kho_truong_them_kiem',
     'kho_mat_hang_chuan_hoa', 'kho_cong_thuc_pha_kiem', 'kho_lo_chan_sua_xoa',
     'kho_ton_chi_qua_so_cai', 'kho_so_cai_ghi', 'kho_so_cai_chan_sua_xoa',
+    'kho_phieu_nhap_chan_huy_da_tra',
   ].sort();
-  const NOI_BO = ['kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap'].sort();
+  const NOI_BO = [
+    'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
+    'kho_tinh_phien_pha', 'kho_phan_bo', 'kho_kg_tb_goi', 'kho_kiem_ke_bo_sung_dong', 'kho_dung_lai_ton',
+  ].sort();
 
   const { rows } = await db.query(`
     select p.proname, has_function_privilege('authenticated', p.oid, 'execute') as goi

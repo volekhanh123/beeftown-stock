@@ -16,7 +16,11 @@ import { moTrangKho, docFormGui, chuyenHuong, khoiTaoKho } from '../../../lib/kh
 import { docTon, quaySapHet, type DongTon } from '../../../lib/kho/ton.ts';
 import { docMatHang, type MatHang } from '../../../lib/kho/danh-muc.ts';
 import { demPhieuChoDuyet } from '../../../lib/kho/nhap.ts';
-import { cauLoiKho, dinhDangKg, dinhDangNgay, TEN_LOAI_VI_TRI } from '../../../lib/kho/chung.ts';
+import { demPhienNhap } from '../../../lib/kho/pha-loc.ts';
+import { demPhieuHuyCho } from '../../../lib/kho/xuat.ts';
+import { demKiemKeCho } from '../../../lib/kho/kiem-ke.ts';
+import { docCongNoNcc } from '../../../lib/kho/cong-no.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangTien, TEN_LOAI_VI_TRI } from '../../../lib/kho/chung.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -29,11 +33,27 @@ if (form && k.chiNhanh && form.get('viec') === 'khoi_tao') {
 let ton: DongTon[] = [];
 let matHang: MatHang[] = [];
 let choDuyet: number | null = null;
+let huyCho: number | null = null;
+let kiemKeCho: number | null = null;
+let phaNhap: number | null = null;
+let noQuaHan: number | null = null;
+let chuaDoiChieu: number | null = null;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
+  const cn = k.chiNhanh.id;
   try {
-    [ton, matHang] = await Promise.all([docTon(k.client, k.chiNhanh.id), docMatHang(k.client)]);
-    if (k.duoc('duyet')) choDuyet = await demPhieuChoDuyet(k.client, k.chiNhanh.id);
+    [ton, matHang] = await Promise.all([docTon(k.client, cn), docMatHang(k.client)]);
+    if (k.duoc('duyet')) {
+      [choDuyet, huyCho, kiemKeCho] = await Promise.all([
+        demPhieuChoDuyet(k.client, cn), demPhieuHuyCho(k.client, cn), demKiemKeCho(k.client, cn),
+      ]);
+    }
+    if (k.duoc('pha_loc')) phaNhap = await demPhienNhap(k.client, cn);
+    if (k.duoc('ke_toan')) {
+      const ncc = await docCongNoNcc(k.client, cn);
+      noQuaHan = ncc.reduce((s, n) => s + n.no_qua_han, 0);
+      chuaDoiChieu = ncc.reduce((s, n) => s + n.so_phieu_chua_doi_chieu, 0);
+    }
   } catch (e) {
     loiDoc = cauLoiKho(e, 'Không đọc được tồn kho.');
   }
@@ -91,6 +111,31 @@ const conBuoc = buoc.some(b => !b.xong);
             <b>{choDuyet ?? '—'}</b><span>phiếu nhập chờ duyệt</span>
           </a>
         )}
+        {k.duoc('duyet') && (
+          <a href="/noi-bo/kho/xuat?loc=cho_duyet" class={`kho-o-so ${huyCho ? 'luu-y' : ''}`}>
+            <b>{huyCho ?? '—'}</b><span>báo hủy chờ duyệt</span>
+          </a>
+        )}
+        {k.duoc('duyet') && (
+          <a href="/noi-bo/kho/kiem-ke?loc=cho_duyet" class={`kho-o-so ${kiemKeCho ? 'luu-y' : ''}`}>
+            <b>{kiemKeCho ?? '—'}</b><span>kiểm kê chờ duyệt</span>
+          </a>
+        )}
+        {k.duoc('pha_loc') && (
+          <a href="/noi-bo/kho/pha-loc?loc=nhap" class={`kho-o-so ${phaNhap ? 'luu-y' : ''}`}>
+            <b>{phaNhap ?? '—'}</b><span>phiên pha lóc chưa chốt</span>
+          </a>
+        )}
+        {k.duoc('ke_toan') && (
+          <a href="/noi-bo/kho/cong-no" class={`kho-o-so ${noQuaHan ? 'gap' : ''}`}>
+            <b style="font-size:1.2rem">{noQuaHan === null ? '—' : dinhDangTien(noQuaHan)}</b><span>nợ nhà cung cấp quá hạn</span>
+          </a>
+        )}
+        {k.duoc('ke_toan') && (
+          <a href="/noi-bo/kho/cong-no" class={`kho-o-so ${chuaDoiChieu ? 'luu-y' : ''}`}>
+            <b>{chuaDoiChieu ?? '—'}</b><span>phiếu chưa đối chiếu hóa đơn</span>
+          </a>
+        )}
         <a href="/noi-bo/kho/ton?vi_tri=quay" class={`kho-o-so ${quayThieu.length ? 'luu-y' : ''}`}>
           <b>{quayThieu.length}</b><span>mặt hàng quầy dưới mức tối thiểu</span>
         </a>
@@ -98,6 +143,11 @@ const conBuoc = buoc.some(b => !b.xong);
 
       <div class="kho-nut-nhanh">
         {k.duoc('nhap') && <a class="nb-nut" href="/noi-bo/kho/nhap/moi">Lập phiếu nhập</a>}
+        {k.duoc('pha_loc') && <a class="nb-nut" href="/noi-bo/kho/pha-loc/moi">Pha lóc</a>}
+        {k.duoc('van_hanh') && <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=chuyen">Chuyển ra quầy</a>}
+        {k.duoc('van_hanh') && <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=xuat_bep">Xuất bếp</a>}
+        {k.duoc('van_hanh') && <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=huy">Báo hủy</a>}
+        {k.duoc('van_hanh') && <a class="nb-nut phu" href="/noi-bo/kho/kiem-ke">Kiểm kê</a>}
         <a class="nb-nut phu" href="/noi-bo/kho/ton">Xem tồn kho</a>
       </div>
 
@@ -106,7 +156,7 @@ const conBuoc = buoc.some(b => !b.xong);
           <h2>Cần xử lý trước — hết hạn sớm nhất ở trên</h2>
           <div class="kho-bang-khung">
             <table class="kho-bang">
-              <thead><tr><th>Mặt hàng</th><th>Lô</th><th>Ở đâu</th><th class="so">Còn</th><th>Hạn dùng</th></tr></thead>
+              <thead><tr><th>Mặt hàng</th><th>Lô</th><th>Ở đâu</th><th class="so">Còn</th><th>Hạn dùng</th>{k.duoc('van_hanh') && <th></th>}</tr></thead>
               <tbody>
                 {canXuLy.slice(0, 20).map(t => (
                   <tr>
@@ -120,6 +170,11 @@ const conBuoc = buoc.some(b => !b.xong);
                       </span>
                       <span class="kho-phu"> {dinhDangNgay(t.han_dung)}</span>
                     </td>
+                    {k.duoc('van_hanh') && (
+                      <td>{t.tinh_trang_han === 'het_han'
+                        ? <a href={`/noi-bo/kho/xuat/moi?loai=huy&tu=${t.vi_tri_id}`}>Báo hủy</a>
+                        : <a href={`/noi-bo/kho/xuat/moi?loai=xuat_bep&tu=${t.vi_tri_id}`}>Xuất bếp</a>}</td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -138,6 +193,7 @@ const conBuoc = buoc.some(b => !b.xong);
                 <span><strong>{q.ten}</strong> — quầy còn {dinhDangKg(q.con_kg)} kg, mức tối thiểu {dinhDangKg(q.toi_thieu_kg)} kg</span></li>
             ))}
           </ul>
+          {k.duoc('van_hanh') && <p><a href="/noi-bo/kho/xuat/moi?loai=chuyen">Chuyển hàng từ kho ra quầy →</a></p>}
         </>
       )}
     </>

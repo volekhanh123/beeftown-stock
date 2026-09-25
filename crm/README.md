@@ -21,8 +21,10 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 | 9 | **Đặt nội dung một giao dịch** — công bố bốn bước thành một | ✅ Xong (`0015`) |
 | 9b | **Vá vé tải CV, quyền thu hồi, nhật ký trùng** | ✅ Xong (`0016`) |
 | 10 | **Kho · GĐ1** — 3 vai kho, tường ngăn CRM, danh mục, ô thông tin tự tạo, phiếu nhập có duyệt, sổ kho bất biến | ✅ Xong (`0017`–`0021`) |
+| 11 | **Kho · GĐ2** — pha lóc (tỉ lệ thu hồi, giá vốn thật), chuyển quầy, xuất bếp, báo hủy có duyệt, kiểm kê dựng lại tồn | ✅ Xong (`0022`–`0023`) |
+| 12 | **Kho · GĐ3** — đối chiếu hóa đơn, công nợ nhà cung cấp, thanh toán, trả hàng NCC, báo cáo xuất–nhập–tồn / thu hồi / hao hụt / bán, tải CSV | ✅ Xong (`0024`) |
 
-**794 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
+**1251 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
 `../web/` có 8 đường dẫn song ngữ, giao diện nội bộ `/noi-bo` và hai form
 công khai đều đã dựng.
 
@@ -44,8 +46,8 @@ cd crm && npm install && npm test
 | `npm run test:tuyen-dung` | tuyển dụng, dữ liệu cá nhân, nhật ký bất biến | 67 |
 | `npm run test:cong-khai` | API công khai, mã đặt bàn, đo lường | 50 |
 | `npm run test:noi-dung` | đặt/thu hồi nội dung trong một giao dịch, vé tải CV | 52 |
-| `npm run test:hop-dong` | hợp đồng giữa `web/src` và database: tên hàm, tham số, bảng, cột | 101 |
-| `npm run test:kho` | **kho**: tường ngăn CRM, bảng quyền, phiếu nhập, sổ kho, giá vốn, mã vạch nhãn cân, đồng bộ cân | 77 + 117 + 57 + 55 |
+| `npm run test:hop-dong` | hợp đồng giữa `web/src` và database: tên hàm, tham số, bảng, cột | 187 |
+| `npm run test:kho` | **kho**: tường ngăn CRM, bảng quyền, phiếu nhập, sổ kho, giá vốn, mã vạch nhãn cân, form và CSV; pha lóc; chuyển, xuất bếp, hủy, kiểm kê; công nợ và báo cáo; đồng bộ cân | 77 + 117 + 99 + 115 + 120 + 91 + 55 |
 | `npm run test:can` | đồng bộ danh mục sang cân in tem: đọc/ghi file `A_000.TMS`, dòng không đổi giữ nguyên từng byte | 55 |
 
 **Chạy lại toàn bộ kiểm thử sau mỗi lần sửa migration.** Chúng đã bắt được lỗi thật, không phải một lần:
@@ -83,7 +85,10 @@ crm/
 │   ├── 0018_kho_tuong_ngan.sql  KHO · vai kho không thấy/ghi dữ liệu CRM · bảng quyền kho
 │   ├── 0019_kho_danh_muc.sql    KHO · vị trí, mặt hàng, NCC, lý do, ô thông tin tự tạo, cài đặt
 │   ├── 0020_kho_so_cai_nhap.sql KHO · lô hàng, sổ kho bất biến, tồn, phiếu nhập + duyệt
-│   └── 0021_kho_chung_tu_anh.sql  KHO · kho file ảnh chứng từ — PGlite BỎ QUA phần storage
+│   ├── 0021_kho_chung_tu_anh.sql  KHO · kho file ảnh chứng từ — PGlite BỎ QUA phần storage
+│   ├── 0022_kho_pha_loc.sql     KHO · phiên pha lóc: thu hồi, chia giá vốn không lệch một đồng
+│   ├── 0023_kho_xuat_kiem_ke.sql  KHO · chuyển quầy, xuất bếp, hủy qua "chờ hủy", kiểm kê
+│   └── 0024_kho_cong_no_bao_cao.sql  KHO · đối chiếu hóa đơn, công nợ, thanh toán, trả NCC, báo cáo
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs
 ```
@@ -177,7 +182,7 @@ Website công khai **không có quyền vào bảng nào cả** — chỉ gọi 
 - [ ] Tạo project Supabase, chạy các file migration theo thứ tự
 - [ ] Tạo tài khoản nhân sự đầu tiên (`chu_so_huu`) và nối `auth_uid`
 - [ ] Nhập danh sách bàn thật vào `ban_an`
-- [ ] Kho: chạy `0017` riêng, rồi `0018`–`0021`; làm danh sách kiểm tay kho file `kho-chung-tu` ở cuối `0021`; tạo tài khoản vai kho
+- [ ] Kho: chạy `0017` riêng, rồi `0018`–`0024`; làm danh sách kiểm tay kho file `kho-chung-tu` ở cuối `0021`; tạo tài khoản vai kho
 - [ ] **Xác thực Zalo OA (tick vàng)** — đường găng, làm sớm
 - [ ] Tạo tài khoản ZBS + App, gửi 4 mẫu tin trong `mau_tin` đi duyệt (2–3 ngày làm việc)
 - [ ] Cập nhật `ma_zalo` và `da_duyet = true` sau khi Zalo duyệt xong
@@ -203,3 +208,8 @@ Website công khai **không có quyền vào bảng nào cả** — chỉ gọi 
 12. **`duoc_truy_cap_chi_nhanh()` chỉ còn trả true cho bốn vai CRM** (từ `0018`). Vai kho dùng `kho_cn_duoc()` / `kho_duoc()`. Thêm vai mới sau này thì vai đó mặc định KHÔNG thấy dữ liệu CRM — muốn cho thấy phải sửa hàm này có chủ ý.
 13. **Thêm hàm kho mới thì phải xếp nó vào `GOI_DUOC` hoặc `NOI_BO` trong `test/test-kho-quyen.mjs`.** Hàm nội bộ (chỉ hàm definer khác gọi) phải `revoke execute ... from authenticated` ở cuối file migration, bọc trong khối kiểm `pg_roles`.
 14. **Sổ kho bất biến, tồn kho chỉ do trigger của sổ ghi.** `kho_ton` từ chối mọi lệnh ghi không đến từ trigger của `kho_so_cai` (kiểm `pg_trigger_depth()`), kể cả từ hàm definer. Sửa sai = dòng `dao_nguoc` hoặc chênh lệch kiểm kê. `kho_doi_soat_ton()` phải luôn trả về rỗng.
+15. **Pha lóc: tổng giá vốn các lô ra = giá vốn tảng vào, đúng từng đồng.** Mọi phép chia tiền đi qua `kho_chia_so_du_lon_nhat()`. Sửa `kho_tinh_phien_pha()` thì chạy `test-kho-pha-loc.mjs` — nhóm 5 cố ý dùng số lẻ để bắt lệch một đồng.
+16. **Hàng hết hạn không lên quầy, không vào bếp.** `kho_phan_bo()` bỏ qua lô hết hạn khi đích là quầy hoặc bếp; hàng hết hạn chỉ có đường báo hủy (qua vị trí "Hàng chờ hủy", quản lý duyệt).
+17. **Kiểm kê ghi phần CHÊNH so với sổ chụp lúc gửi, không ghi đè tồn.** Hàng chuyển vào sau khi gửi đếm vẫn còn. Duyệt bị chặn khi vị trí còn phiếu nhập chờ duyệt hoặc phiên pha lóc nháp. Thiếu ở quầy ghi là `ban` chỉ khi `nguon_so_ban = 'kiem_ke'` (chưa nối iPOS) — nối iPOS xong nhớ đổi cài đặt này.
+18. **Công nợ không có cột "số dư" nào để sửa.** Còn nợ của một phiếu luôn được TÍNH: hóa đơn (hoặc tổng phiếu) − các khoản thanh toán / giảm trừ còn hiệu lực. Ghi nhầm thì hủy khoản đó rồi ghi lại. Phiếu nhập đã có tiền trả thì trigger chặn hủy phiếu.
+19. **Báo cáo là hàm SECURITY INVOKER** (`kho_bao_cao_*`) — đừng đổi sang definer: RLS của người gọi là thứ giữ cho nhân viên quầy nhận cột tiền bằng 0 và thủ kho chi nhánh khác nhận bảng rỗng.

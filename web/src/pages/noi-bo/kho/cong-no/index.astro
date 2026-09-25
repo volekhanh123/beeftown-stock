@@ -1,0 +1,100 @@
+---
+/**
+ * KHO — CÔNG NỢ NHÀ CUNG CẤP
+ *
+ * Trả lời câu kế toán hỏi mỗi sáng: ĐANG NỢ AI BAO NHIÊU, KHOẢN NÀO QUÁ HẠN,
+ * TUẦN NÀY PHẢI TRẢ GÌ, HÓA ĐƠN NÀO CHƯA ĐỐI CHIẾU. Số do database tính (view
+ * kho_v_cong_no_*, 0024). Chỉ vai xem giá mở được trang.
+ */
+import NoiBo from '../../../../layouts/NoiBo.astro';
+import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import { docCongNoNcc, docCongNoPhieu, type CongNoNcc, type CongNoPhieu } from '../../../../lib/kho/cong-no.ts';
+import { cauLoiKho, congNgay, dinhDangNgay, dinhDangTien, homNayVn } from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+
+let ncc: CongNoNcc[] = [];
+let phieu: CongNoPhieu[] = [];
+let loiDoc = k.loiDoc;
+if (k.chiNhanh && k.daKhoiTao) {
+  try {
+    [ncc, phieu] = await Promise.all([docCongNoNcc(k.client, k.chiNhanh.id), docCongNoPhieu(k.client, k.chiNhanh.id)]);
+  } catch (e) {
+    loiDoc = cauLoiKho(e, 'Không đọc được công nợ.');
+  }
+}
+const homNay = homNayVn();
+const tuanToi = congNgay(homNay, 7);
+const tongNo = phieu.reduce((s, p) => s + Math.max(p.con_no, 0), 0);
+const quaHan = phieu.filter(p => p.qua_han);
+const tienQuaHan = quaHan.reduce((s, p) => s + p.con_no, 0);
+const denHan = phieu.filter(p => !p.qua_han && p.con_no > 0 && p.han_thanh_toan && p.han_thanh_toan <= tuanToi);
+const tienDenHan = denHan.reduce((s, p) => s + p.con_no, 0);
+const chuaDoiChieu = phieu.filter(p => !p.da_doi_chieu);
+const nccNoLai = ncc.filter(n => n.con_no < 0);
+const sapXep = [...ncc].sort((a, b) => b.no_qua_han - a.no_qua_han || b.con_no - a.con_no);
+---
+<NoiBo tieuDe="Công nợ" nhanSu={k.nhanSu}>
+  <h1>Công nợ nhà cung cấp</h1>
+  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+  ) : (
+    <>
+      <div class="kho-o-so-luoi">
+        <div class="kho-o-so"><b style="font-size:1.25rem">{dinhDangTien(tongNo)}</b><span>đang nợ</span></div>
+        <div class={`kho-o-so ${tienQuaHan > 0 ? 'gap' : ''}`}><b style="font-size:1.25rem">{dinhDangTien(tienQuaHan)}</b><span>quá hạn · {quaHan.length} phiếu</span></div>
+        <div class={`kho-o-so ${tienDenHan > 0 ? 'luu-y' : ''}`}><b style="font-size:1.25rem">{dinhDangTien(tienDenHan)}</b><span>đến hạn trong 7 ngày</span></div>
+        <div class={`kho-o-so ${chuaDoiChieu.length ? 'luu-y' : ''}`}><b>{chuaDoiChieu.length}</b><span>phiếu chưa đối chiếu hóa đơn</span></div>
+      </div>
+      <p class="nb-dan">
+        Phải trả của một phiếu = <strong>tiền trên hóa đơn</strong> khi đã đối chiếu, hoặc tổng phiếu nhập khi chưa.
+        Hạn thanh toán = ngày hóa đơn (hoặc ngày nhập) + số ngày nợ của nhà cung cấp.
+        <a href="/noi-bo/kho/bao-cao/cong-no.csv">Tải bảng công nợ (Excel)</a>
+      </p>
+
+      {sapXep.length === 0 ? (
+        <p class="nb-rong">Chưa có phiếu nhập mua nào được duyệt.</p>
+      ) : (
+        <div class="kho-bang-khung">
+          <table class="kho-bang">
+            <thead><tr><th>Nhà cung cấp</th><th class="so">Còn nợ</th><th class="so">Quá hạn</th><th>Hạn gần nhất</th><th class="so">Chưa đối chiếu</th></tr></thead>
+            <tbody>
+              {sapXep.map(n => (
+                <tr>
+                  <td><a href={`/noi-bo/kho/cong-no/${n.nha_cung_cap_id}`}><strong>{n.ten_nha_cung_cap}</strong></a><br />
+                    <span class="kho-phu">{n.so_phieu} phiếu · {n.so_phieu_con_no} còn nợ</span></td>
+                  <td class="so">{n.con_no < 0 ? <span title="Nhà cung cấp nợ lại">−{dinhDangTien(-n.con_no)}</span> : dinhDangTien(n.con_no)}</td>
+                  <td class="so">{n.no_qua_han > 0 ? <strong style="color:var(--do)">{dinhDangTien(n.no_qua_han)}</strong> : '—'}</td>
+                  <td>{n.han_gan_nhat ? <span class={`kho-han ${n.han_gan_nhat < homNay ? 'het_han' : n.han_gan_nhat <= tuanToi ? 'sap_het' : 'con_han'}`}>{dinhDangNgay(n.han_gan_nhat)}</span> : '—'}</td>
+                  <td class="so">{n.so_phieu_chua_doi_chieu || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {nccNoLai.length > 0 && (
+        <p class="kho-phu">Số âm: nhà cung cấp đang nợ lại quán (thường do trả hàng sau khi đã thanh toán) — trừ vào lần trả sau hoặc đòi hoàn tiền.</p>
+      )}
+
+      {quaHan.length > 0 && (
+        <>
+          <h2>Phiếu quá hạn</h2>
+          <ul class="nb-viec">
+            {quaHan.map(p => (
+              <li><span class="dau chua">!</span>
+                <span><a href={`/noi-bo/kho/cong-no/${p.nha_cung_cap_id}`}><strong>{p.so_phieu}</strong></a> · {p.ten_nha_cung_cap} — còn nợ <strong>{dinhDangTien(p.con_no)}</strong>, quá hạn {p.so_ngay_qua_han} ngày (hạn {dinhDangNgay(p.han_thanh_toan)})</span></li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
+  )}
+</NoiBo>

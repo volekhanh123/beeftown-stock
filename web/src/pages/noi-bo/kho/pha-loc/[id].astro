@@ -1,0 +1,490 @@
+---
+/**
+ * KHO — MỘT PHIÊN PHA LÓC (mở mới khi id = "moi")
+ *
+ *   · Bước 1 (mới): chọn loại tảng đem pha — ô chọn GET, không ghi gì.
+ *   · SOẠN (mới / nháp, vai pha_loc): tích lô tảng lấy ra, ghi từng phần
+ *     cắt ra. Mỗi lần lưu, cuối trang hiện XEM THỬ thu hồi và giá vốn do
+ *     database tính — đúng con số sẽ ghi khi chốt.
+ *   · XEM (đã chốt / đã hủy): tổng kết, các lô mới sinh ra kèm giá vốn/kg.
+ *     Chốt nhầm thì "Mở lại" — chỉ được khi các lô ra chưa bị đụng tới.
+ *
+ * Không JavaScript. Lưu phía máy chủ ở mỗi lần bấm, chuyển hướng 303; lỗi
+ * nhập liệu thì hiện lại đúng chữ đã gõ.
+ */
+import NoiBo from '../../../../layouts/NoiBo.astro';
+import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
+import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
+import {
+  docCaiDat, docCongThuc, docMatHang, docViTri,
+  type CaiDat, type CongThuc, type MatHang, type ViTri,
+} from '../../../../lib/kho/danh-muc.ts';
+import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
+import {
+  docPhienPha, docThongTinLo, docGiaVonLo, xemThuPhien, luuPhienPha, chotPhien, moLaiPhien, huyPhien,
+  raTrong, type PhienPha, type DauVao, type DauRa, type KetQuaTinh, type KetQuaDocPhien, type RaForm,
+} from '../../../../lib/kho/pha-loc.ts';
+import {
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, dinhDangTien, homNayVn,
+  TEN_XU_LY, TRANG_THAI_CHUNG_TU, type KetQua,
+} from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
+const cn = k.chiNhanh;
+
+const idThamSo = Astro.params.id ?? '';
+const moi = idThamSo === 'moi';
+if (moi && !k.duoc('pha_loc')) {
+  return chuyenHuong(Astro, '/noi-bo/kho/pha-loc', { ok: false, cau: 'Tài khoản của bạn xem được phiên pha lóc nhưng không ghi phiên mới.' });
+}
+
+// ---------------------------------------------------------------------------
+// Đọc
+// ---------------------------------------------------------------------------
+let matHang: MatHang[] = [];
+let viTri: ViTri[] = [];
+let caiDat: CaiDat | null = null;
+let congThuc: CongThuc[] = [];
+let ton: DongTon[] = [];
+let phien: PhienPha | null = null;
+let vaoDb: DauVao[] = [];
+let raDb: DauRa[] = [];
+let loiDoc = k.loiDoc;
+try {
+  [matHang, viTri, caiDat, congThuc, ton] = await Promise.all([
+    docMatHang(k.client), docViTri(k.client, cn.id), docCaiDat(k.client, cn.id),
+    docCongThuc(k.client), docTon(k.client, cn.id),
+  ]);
+  if (!moi) {
+    const doc = await docPhienPha(k.client, idThamSo);
+    if (doc) { phien = doc.phien; vaoDb = doc.vao; raDb = doc.ra; }
+  }
+} catch (e) {
+  loiDoc = cauLoiKho(e, 'Không đọc được phiên pha lóc.');
+}
+if (!moi && !phien && !loiDoc) {
+  return chuyenHuong(Astro, '/noi-bo/kho/pha-loc', { ok: false, cau: 'Không tìm thấy phiên pha lóc này.' });
+}
+
+const q = Astro.url.searchParams;
+const form = await docFormGui(Astro);
+const mhVaoId = phien?.mat_hang_vao_id
+  ?? (form ? String(form.get('mat_hang_vao_id') ?? '') : (q.get('mat_hang') ?? ''));
+const mhVao = matHang.find(m => m.id === mhVaoId && (m.loai === 'tang' || m.loai === 'phan_cat')) ?? null;
+const soanDuoc = k.duoc('pha_loc') && (moi || phien?.trang_thai === 'nhap');
+
+// ---------------------------------------------------------------------------
+// Lệnh gửi lên
+// ---------------------------------------------------------------------------
+let bao: KetQua | null = k.bao;
+let docLoi: KetQuaDocPhien | null = null;
+if (Astro.request.method === 'POST' && !form) {
+  bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
+}
+if (form) {
+  const viec = String(form.get('viec') ?? '');
+  const ve = (id: string, kq: KetQua, them = '') => chuyenHuong(Astro, `/noi-bo/kho/pha-loc/${id}${them}`, kq);
+
+  if (['luu', 'them_dong', 'chot'].includes(viec)) {
+    if (!soanDuoc || !mhVao) {
+      bao = { ok: false, cau: !mhVao ? 'Chưa chọn loại tảng đem pha.' : 'Phiên không còn sửa được (đã chốt hoặc đã hủy).' };
+    } else {
+      const kq = await luuPhienPha(k.client, cn.id, form, {
+        id: phien?.id ?? null,
+        phienBan: phien ? Number(form.get('phien_ban')) : null,
+        matHangVaoId: mhVao.id,
+      });
+      if (!kq.ok || !kq.id) {
+        bao = kq;
+        docLoi = kq.doc ?? null;
+      } else if (viec === 'chot') {
+        const c = await chotPhien(k.client, kq.id, kq.phienBan ?? null);
+        return ve(kq.id, c.ok ? c : { ok: false, cau: `Đã lưu nháp nhưng CHƯA chốt được: ${c.cau}` });
+      } else if (viec === 'them_dong') {
+        const them = Math.min(Number(form.get('so_ra') ?? 0) + 4, 60);
+        return ve(kq.id, { ok: true, cau: `${kq.cau} Thêm phần ra ở cuối danh sách.` }, `?ra=${them}`);
+      } else {
+        return ve(kq.id, kq);
+      }
+    }
+  } else if (phien) {
+    const lyDo = String(form.get('ly_do') ?? '').trim();
+    let kq: KetQua;
+    if (viec === 'mo_lai') kq = await moLaiPhien(k.client, phien.id, lyDo);
+    else if (viec === 'huy') kq = await huyPhien(k.client, phien.id, lyDo || null);
+    else kq = { ok: false, cau: 'Việc không hợp lệ.' };
+    return ve(phien.id, kq);
+  } else {
+    bao = { ok: false, cau: 'Việc không hợp lệ.' };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dữ liệu hiển thị
+// ---------------------------------------------------------------------------
+const tenMh = new Map(matHang.map(m => [m.id, m]));
+const tenVt = new Map(viTri.map(v => [v.id, v]));
+const viTriRa = viTri.filter(v => v.loai !== 'cho_huy' && v.dang_dung);
+const viTriMacDinh = viTriRa.find(v => v.loai === 'quay')?.id ?? caiDat?.vi_tri_nhan_hang_id ?? viTriRa[0]?.id ?? '';
+
+// Tảng có hàng để chọn ở bước 1.
+const coTon = new Set(ton.filter(t => t.loai_vi_tri !== 'cho_huy' && t.so_kg > 0).map(t => t.mat_hang_id));
+const tangChon = matHang.filter(m => (m.loai === 'tang' || m.loai === 'phan_cat') && coTon.has(m.id));
+
+// Công thức của loại tảng này.
+const ctCuaTang = congThuc.filter(c => c.mat_hang_vao_id === mhVaoId && (c.dang_dung || c.id === phien?.cong_thuc_id));
+const ctChonId = docLoi?.dau.cong_thuc_id ?? phien?.cong_thuc_id ?? (q.get('cong_thuc') ?? (ctCuaTang.length === 1 ? ctCuaTang[0].id : ''));
+const ctChon = ctCuaTang.find(c => c.id === ctChonId) ?? null;
+const duKien = new Map((ctChon?.dong ?? []).map(d => [d.mat_hang_ra_id, d.ty_le_du_kien]));
+
+// Đầu vào: mọi lô của loại tảng đang có (trừ chờ hủy) + lô đã ghi trong nháp.
+type DongVao = { key: string; lo_id: string; vi_tri_id: string; ton_kg: number; ton_goi: number; ma_lo: string; han_dung: string; tinh_trang: string };
+const dongVao: DongVao[] = ton
+  .filter(t => t.mat_hang_id === mhVaoId && t.loai_vi_tri !== 'cho_huy' && t.so_kg > 0)
+  .map(t => ({ key: `${t.lo_id}|${t.vi_tri_id}`, lo_id: t.lo_id, vi_tri_id: t.vi_tri_id, ton_kg: t.so_kg, ton_goi: t.so_goi,
+               ma_lo: t.ma_lo, han_dung: t.han_dung, tinh_trang: t.tinh_trang_han }));
+const thieu = vaoDb.filter(v => !dongVao.some(d => d.key === `${v.lo_id}|${v.vi_tri_id}`));
+const loThem = await docThongTinLo(k.client, [...thieu.map(v => v.lo_id), ...raDb.map(r => r.lo_id ?? ''), ...vaoDb.map(v => v.lo_id)]);
+for (const v of thieu) {
+  const l = loThem.get(v.lo_id);
+  dongVao.push({ key: `${v.lo_id}|${v.vi_tri_id}`, lo_id: v.lo_id, vi_tri_id: v.vi_tri_id, ton_kg: 0, ton_goi: 0,
+                 ma_lo: l?.ma_lo ?? '—', han_dung: l?.han_dung ?? '', tinh_trang: 'het_han' });
+}
+dongVao.sort((a, b) => a.han_dung.localeCompare(b.han_dung) || a.ma_lo.localeCompare(b.ma_lo));
+const giaLo = await docGiaVonLo(k.client, [...dongVao.map(d => d.lo_id), ...raDb.map(r => r.lo_id ?? '')]);
+
+const vaoTheoKey = new Map(vaoDb.map(v => [`${v.lo_id}|${v.vi_tri_id}`, v]));
+const loiTheoKey = new Map((docLoi?.vao ?? []).map(v => [`${v.lo_id}|${v.vi_tri_id}`, v]));
+const giaTriVao = (d: DongVao) => {
+  const e = loiTheoKey.get(d.key);
+  if (e) return { dung: e.dung, kg: e.so_kg, goi: e.so_goi };
+  const v = vaoTheoKey.get(d.key);
+  if (!v) return { dung: false, kg: '', goi: '' };
+  const layHet = v.so_kg === d.ton_kg;
+  return { dung: true, kg: layHet ? '' : String(v.so_kg).replace('.', ','), goi: layHet || !v.so_goi ? '' : String(v.so_goi) };
+};
+
+// Đầu ra.
+const raCo: RaForm[] = docLoi?.ra ?? (raDb.length
+  ? raDb.map(r => ({
+      mat_hang_id: r.mat_hang_id, so_kg: String(r.so_kg).replace('.', ','), so_goi: r.so_goi ? String(r.so_goi) : '',
+      xu_ly: r.xu_ly, vi_tri_id: r.vi_tri_id ?? '', han_dung: r.han_dung ?? '',
+    }))
+  : (ctChon?.dong ?? []).map(d => ({ ...raTrong(viTriMacDinh), mat_hang_id: d.mat_hang_ra_id, xu_ly: d.xu_ly ?? '' })));
+const soRaMuon = Math.min(Math.max(Number(q.get('ra') ?? 0) || 0, 0), 60);
+const soRaTrong = Math.max(raCo.length ? 2 : 4, soRaMuon - raCo.length);
+const raHien: RaForm[] = [...raCo, ...Array.from({ length: soRaTrong }, () => raTrong(viTriMacDinh))];
+
+// Xem thử (nháp đã có đầu vào và đầu ra).
+let xemThu: KetQuaTinh | null = null;
+let loiXemThu: string | null = null;
+if (phien && phien.trang_thai === 'nhap' && vaoDb.length > 0 && raDb.length > 0) {
+  const r = await xemThuPhien(k.client, phien.id);
+  xemThu = r.kq; loiXemThu = r.loi;
+}
+const tinhTheoRa = new Map((xemThu?.dong ?? []).map(d => [d.ra_id, d]));
+const ten = phien ? await tenNhanSu(k.client, [phien.nguoi_tao, phien.nguoi_chot, phien.nguoi_huy]) : new Map<string, string>();
+const [nhanTT, lopTT] = phien ? (TRANG_THAI_CHUNG_TU[phien.trang_thai] ?? [phien.trang_thai, 'tat']) : ['Mới', 'nhap'];
+const maGuiForm = crypto.randomUUID();
+const ngayPha = docLoi?.dau.ngay_pha ?? phien?.ngay_pha ?? homNayVn();
+const ghiChu = docLoi?.dau.ghi_chu ?? phien?.ghi_chu ?? '';
+const tieuDe = moi ? 'Phiên pha lóc mới' : `Phiên ${phien?.so_phieu ?? ''}`;
+const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
+  giaBan && giaBan > 0 ? dinhDangPhanTram(((giaBan - giaVon) * 100) / giaBan, 1) : '—';
+---
+<NoiBo tieuDe={tieuDe} nhanSu={k.nhanSu}>
+  <h1>{tieuDe}</h1>
+  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {phien && (
+    <p class="nb-dan">
+      <span class={`nb-nhan ${lopTT}`}>{nhanTT}</span>
+      {' · '}{tenMh.get(phien.mat_hang_vao_id)?.ten ?? '—'}
+      {' · '}lập bởi {ten.get(phien.nguoi_tao ?? '') ?? '—'} lúc {dinhDangThoiDiem(phien.created_at)}
+      {phien.chot_luc && <>{' · '}chốt bởi {ten.get(phien.nguoi_chot ?? '') ?? '—'} {dinhDangThoiDiem(phien.chot_luc)}</>}
+      {phien.huy_luc && <>{' · '}hủy bởi {ten.get(phien.nguoi_huy ?? '') ?? '—'} {dinhDangThoiDiem(phien.huy_luc)}</>}
+    </p>
+  )}
+  {phien?.ly_do && (
+    <div class="nb-bao luu-y"><p><strong>{phien.trang_thai === 'da_huy' ? 'Lý do hủy' : 'Lý do mở lại'}:</strong> {phien.ly_do}</p></div>
+  )}
+
+  {moi && !mhVao ? (
+    // =======================================================================
+    // BƯỚC 1 — CHỌN TẢNG
+    // =======================================================================
+    <form method="GET" class="nb-the">
+      <label class="nb-o">
+        <span>Đem pha loại tảng nào?</span>
+        <small>Mỗi phiên một loại. Pha hai loại tảng thì ghi hai phiên — để thu hồi và giá vốn của từng loại không lẫn vào nhau.</small>
+        {tangChon.length === 0
+          ? <p class="nb-rong" style="margin:.5rem 0">Kho chưa có tảng nào. Tảng vào kho khi phiếu nhập được duyệt.</p>
+          : <ChonMatHang name="mat_hang" matHang={tangChon} loai={['tang', 'phan_cat']} batBuoc trong="— chọn tảng —" />}
+      </label>
+      {tangChon.length > 0 && <button type="submit" class="nb-nut">Tiếp tục</button>}
+    </form>
+  ) : soanDuoc && mhVao ? (
+    // =======================================================================
+    // SOẠN
+    // =======================================================================
+    <>
+      {moi && (
+        <p class="nb-dan">Đang pha: <strong>{mhVao.ten}</strong> · <a href="/noi-bo/kho/pha-loc/moi">đổi loại tảng</a></p>
+      )}
+      {ctCuaTang.length > 0 && moi && (
+        <nav class="kho-dh" aria-label="Công thức mẫu">
+          <span class="kho-phu" style="align-self:center">Điền sẵn theo công thức:</span>
+          {ctCuaTang.map(c => (
+            <a href={`/noi-bo/kho/pha-loc/moi?mat_hang=${mhVao.id}&cong_thuc=${c.id}`} aria-current={c.id === ctChonId ? 'page' : undefined}>{c.ten}</a>
+          ))}
+        </nav>
+      )}
+
+      <form method="POST">
+        <input type="hidden" name="ma_gui" value={maGuiForm} />
+        <input type="hidden" name="mat_hang_vao_id" value={mhVao.id} />
+        {phien && <input type="hidden" name="phien_ban" value={String(phien.phien_ban)} />}
+        {ctChon && <input type="hidden" name="cong_thuc_id" value={ctChon.id} />}
+        <input type="hidden" name="so_vao" value={String(dongVao.length)} />
+        <input type="hidden" name="so_ra" value={String(raHien.length)} />
+
+        <div class="nb-the">
+          <div class="kho-luoi">
+            <label class="nb-o"><span>Ngày pha</span>
+              <input type="date" name="ngay_pha" value={ngayPha} max={homNayVn()} required /></label>
+            <label class="nb-o"><span>Ghi chú</span>
+              <input type="text" name="ghi_chu" value={ghiChu} maxlength="500" placeholder="ví dụ: thợ Tuấn, tảng mỡ nhiều" /></label>
+          </div>
+        </div>
+
+        <h2>1 · Tảng đem pha</h2>
+        {dongVao.length === 0 ? (
+          <p class="nb-rong">Không còn lô {mhVao.ten} nào trong kho.</p>
+        ) : (
+          <div class="kho-lo-chon">
+            {dongVao.map((d, i) => {
+              const gt = giaTriVao(d);
+              const gia = giaLo.get(d.lo_id);
+              return (
+                <div>
+                  <input type="hidden" name={`v${i}_lo`} value={d.lo_id} />
+                  <input type="hidden" name={`v${i}_vi_tri`} value={d.vi_tri_id} />
+                  <div class="dau">
+                    <label class="kho-tich" style="padding:0">
+                      <input type="checkbox" name={`v${i}_dung`} value="co" checked={gt.dung} />
+                      <b>Lô {d.ma_lo}</b>
+                    </label>
+                    <span class="kho-phu">
+                      {tenVt.get(d.vi_tri_id)?.ten ?? '—'} · còn <strong>{dinhDangKg(d.ton_kg)} kg</strong>
+                      {mhVao.dem_goi && <> · {d.ton_goi} {mhVao.don_vi_goi}</>}
+                      {gia && <> · {dinhDangTien(gia.gia_von_kg)}/kg</>}
+                      {' · '}<span class={`kho-han ${d.tinh_trang}`}>HSD {dinhDangNgay(d.han_dung)}</span>
+                    </span>
+                  </div>
+                  <div class="kho-luoi">
+                    <label class="nb-o"><span>Số kg lấy</span>
+                      <input type="text" inputmode="decimal" name={`v${i}_so_kg`} value={gt.kg} placeholder="bỏ trống = lấy hết" /></label>
+                    {mhVao.dem_goi && (
+                      <label class="nb-o"><span>Số {mhVao.don_vi_goi} lấy</span>
+                        <input type="text" inputmode="numeric" name={`v${i}_so_goi`} value={gt.goi} placeholder={i === 0 ? 'ví dụ 1' : undefined} /></label>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <p class="kho-phu">Tích lô đem pha. Lấy cả lô: để trống số kg. Lấy một phần (1 trong 2 {mhVao.don_vi_goi}): ghi số kg cân được và số {mhVao.don_vi_goi}. Lấy hết số {mhVao.don_vi_goi} của lô thì tính hết số kg trên sổ — phần nước rỉ vào hao hụt.</p>
+
+        <h2>2 · Phần cắt ra</h2>
+        {raHien.map((r, i) => {
+          const mh = tenMh.get(r.mat_hang_id);
+          const dk = duKien.get(r.mat_hang_id);
+          return (
+            <div class="kho-dong-hang">
+              <span class="so-thu-tu">{i + 1}</span>
+              <label class="nb-o" style="margin-top:.4rem">
+                <span>Mặt hàng{dk !== undefined && dk !== null ? ` · dự kiến ${dinhDangPhanTram(dk)}` : ''}</span>
+                <ChonMatHang name={`r${i}_mat_hang`} matHang={matHang} chon={r.mat_hang_id} />
+              </label>
+              <div class="kho-luoi">
+                <label class="nb-o"><span>Số kg</span>
+                  <input type="text" inputmode="decimal" name={`r${i}_so_kg`} value={r.so_kg} placeholder={i === 0 ? 'ví dụ 7,25' : undefined} /></label>
+                <label class="nb-o"><span>Số {mh?.don_vi_goi ?? 'gói'}</span>
+                  <input type="text" inputmode="numeric" name={`r${i}_so_goi`} value={r.so_goi} /></label>
+                <label class="nb-o"><span>Xử lý</span>
+                  <select name={`r${i}_xu_ly`}>
+                    <option value="">{mh ? `Mặc định: ${TEN_XU_LY[mh.xu_ly_mac_dinh]}` : 'Mặc định của mặt hàng'}</option>
+                    <option value="nhap_kho" selected={r.xu_ly === 'nhap_kho'}>Nhập kho / quầy</option>
+                    <option value="chuyen_bep" selected={r.xu_ly === 'chuyen_bep'}>Chuyển bếp</option>
+                    <option value="bo" selected={r.xu_ly === 'bo'}>Bỏ</option>
+                  </select></label>
+                <label class="nb-o"><span>Để ở</span>
+                  <select name={`r${i}_vi_tri`}>
+                    {viTriRa.map(v => <option value={v.id} selected={v.id === (r.vi_tri_id || viTriMacDinh)}>{v.ten}</option>)}
+                  </select></label>
+              </div>
+              <details open={!!r.han_dung}>
+                <summary>Hạn dùng khác mặc định</summary>
+                <label class="nb-o"><span>Hạn dùng</span>
+                  <small>Bỏ trống = ngày pha + hạn của mặt hàng, không quá hạn của tảng.</small>
+                  <input type="date" name={`r${i}_hsd`} value={r.han_dung} /></label>
+              </details>
+              {i < raCo.length && (
+                <label class="kho-tich"><input type="checkbox" name={`r${i}_xoa`} value="co" /> Bỏ dòng này</label>
+              )}
+            </div>
+          );
+        })}
+        <p class="kho-phu">Phần "Bỏ" (mỡ, xương…) vẫn nên cân và ghi — để biết tỉ lệ bỏ đi. Phần không cân được (nước, vụn bám dao) tự thành hao hụt.</p>
+
+        <div class="kho-thanh-nut dinh">
+          <button type="submit" name="viec" value="luu" class="nb-nut phu">Lưu + xem thử</button>
+          <button type="submit" name="viec" value="them_dong" class="nb-nut phu">Lưu + thêm dòng</button>
+          {phien && <button type="submit" name="viec" value="chot" class="nb-nut">Chốt phiên</button>}
+        </div>
+      </form>
+
+      {phien && (
+        <section class="nb-the" style="margin-top:1.5rem">
+          <h2 style="margin-top:0">Xem thử trước khi chốt</h2>
+          {loiXemThu ? (
+            <div class="nb-bao loi"><p>{loiXemThu}</p></div>
+          ) : !xemThu ? (
+            <p class="nb-rong">Chọn ít nhất một lô tảng và ghi ít nhất một phần cắt ra, rồi bấm "Lưu + xem thử".</p>
+          ) : (
+            <>
+              <div class="kho-o-so-luoi">
+                <div class="kho-o-so"><b>{dinhDangPhanTram(xemThu.ty_le_thu_hoi)}</b><span>thu hồi thịt</span></div>
+                <div class="kho-o-so"><b>{dinhDangPhanTram(xemThu.ty_le_phu_pham)}</b><span>phụ phẩm</span></div>
+                <div class="kho-o-so"><b>{dinhDangPhanTram(xemThu.ty_le_bo)}</b><span>bỏ</span></div>
+                <div class={`kho-o-so ${(xemThu.ty_le_hao_hut ?? 0) < 0 ? 'luu-y' : ''}`}><b>{dinhDangPhanTram(xemThu.ty_le_hao_hut)}</b><span>hao hụt ({dinhDangKg(xemThu.tong_kg_hao_hut)} kg)</span></div>
+              </div>
+              <p class="nb-dan">Tảng vào <strong>{dinhDangKg(xemThu.tong_kg_vao)} kg</strong> · giá vốn <strong>{dinhDangTien(xemThu.gia_tri_vao)}</strong> ({dinhDangTien(xemThu.gia_von_vao_kg)}/kg) · chia theo {xemThu.chia_theo === 'gia_tri' ? 'giá trị bán' : 'kg'}</p>
+              {xemThu.canh_bao.length > 0 && (
+                <div class="nb-bao luu-y">{xemThu.canh_bao.map(c => <p>{c}</p>)}</div>
+              )}
+              <div class="kho-bang-khung">
+                <table class="kho-bang">
+                  <thead><tr><th>Phần ra</th><th class="so">Kg</th><th class="so">% tảng</th><th>Xử lý</th><th class="so">Giá vốn</th><th class="so">Giá vốn/kg</th><th class="so">Giá bán/kg</th><th class="so">Biên lãi</th></tr></thead>
+                  <tbody>
+                    {raDb.map(r => {
+                      const t = tinhTheoRa.get(r.id);
+                      const mh = tenMh.get(r.mat_hang_id);
+                      return (
+                        <tr>
+                          <td>{mh?.ten ?? '—'}</td>
+                          <td class="so">{dinhDangKg(r.so_kg)}</td>
+                          <td class="so">{dinhDangPhanTram(t?.ty_le ?? null)}</td>
+                          <td>{TEN_XU_LY[r.xu_ly]}</td>
+                          <td class="so">{t ? dinhDangTien(t.gia_tri) : '—'}</td>
+                          <td class="so">{t && r.xu_ly !== 'bo' ? dinhDangTien(t.gia_von_kg) : '—'}</td>
+                          <td class="so">{mh?.gia_ban_kg ? dinhDangTien(mh.gia_ban_kg) : '—'}</td>
+                          <td class="so">{t && t.nhom === 'thit' ? bienLai(mh?.gia_ban_kg, t.gia_von_kg) : '—'}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr class="tong"><td>Tổng</td><td class="so">{dinhDangKg(xemThu.tong_kg_thit + xemThu.tong_kg_phu_pham + xemThu.tong_kg_bo)}</td><td colspan="2"></td><td class="so">{dinhDangTien(xemThu.dong.reduce((s, d) => s + d.gia_tri, 0))}</td><td colspan="3"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="kho-phu">Tổng giá vốn phần ra luôn bằng đúng giá vốn tảng vào. Phụ phẩm giữ lại tính theo giá trị thu hồi cài trong mặt hàng; phần bỏ bằng 0; phần còn lại chia cho thịt. Chốt phiên thì mỗi phần giữ lại thành một lô mới với đúng giá vốn này.</p>
+            </>
+          )}
+        </section>
+      )}
+
+      {phien && (
+        <details class="nb-the" style="margin-top:1.5rem">
+          <summary style="cursor:pointer;font-weight:600">Hủy phiên nháp này</summary>
+          <form method="POST" style="margin-top:.75rem">
+            <label class="nb-o"><span>Lý do (không bắt buộc)</span><input type="text" name="ly_do" maxlength="500" /></label>
+            <button type="submit" name="viec" value="huy" class="nb-nut kho-nut-xoa">Hủy phiên nháp</button>
+          </form>
+        </details>
+      )}
+    </>
+  ) : phien && (
+    // =======================================================================
+    // XEM
+    // =======================================================================
+    <>
+      {phien.trang_thai === 'da_chot' && (
+        <div class="kho-o-so-luoi">
+          <div class="kho-o-so"><b>{dinhDangPhanTram(phien.ty_le_thu_hoi)}</b><span>thu hồi thịt</span></div>
+          <div class="kho-o-so"><b>{dinhDangKg(phien.tong_kg_vao)}</b><span>kg tảng vào</span></div>
+          <div class="kho-o-so"><b>{dinhDangKg(phien.tong_kg_thit)}</b><span>kg thịt ra</span></div>
+          <div class="kho-o-so"><b>{dinhDangKg(phien.tong_kg_hao_hut)}</b><span>kg hao hụt</span></div>
+        </div>
+      )}
+      <div class="nb-the">
+        <dl class="kho-dl">
+          <dt>Ngày pha</dt><dd>{dinhDangNgay(phien.ngay_pha)}</dd>
+          <dt>Tảng</dt><dd>{tenMh.get(phien.mat_hang_vao_id)?.ten ?? '—'}</dd>
+          {phien.ghi_chu && <><dt>Ghi chú</dt><dd>{phien.ghi_chu}</dd></>}
+        </dl>
+      </div>
+
+      <h2>Tảng đem pha</h2>
+      <div class="kho-bang-khung">
+        <table class="kho-bang">
+          <thead><tr><th>Lô</th><th>Lấy ở</th><th class="so">Kg</th><th class="so">Số tảng</th><th class="so">Giá vốn/kg</th></tr></thead>
+          <tbody>
+            {vaoDb.map(v => (
+              <tr>
+                <td>{loThem.get(v.lo_id)?.ma_lo ?? '—'}<br /><span class="kho-phu">HSD {dinhDangNgay(loThem.get(v.lo_id)?.han_dung)}</span></td>
+                <td>{tenVt.get(v.vi_tri_id)?.ten ?? '—'}</td>
+                <td class="so">{dinhDangKg(v.so_kg)}</td>
+                <td class="so">{v.so_goi || '—'}</td>
+                <td class="so">{giaLo.get(v.lo_id) ? dinhDangTien(giaLo.get(v.lo_id)!.gia_von_kg) : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Phần cắt ra</h2>
+      <div class="kho-bang-khung">
+        <table class="kho-bang">
+          <thead><tr><th>Phần ra</th><th class="so">Kg</th><th class="so">Gói</th><th>Xử lý</th><th>Lô mới</th><th class="so">Giá vốn/kg</th><th class="so">Biên lãi</th></tr></thead>
+          <tbody>
+            {raDb.map(r => {
+              const g = r.lo_id ? giaLo.get(r.lo_id) : undefined;
+              const l = r.lo_id ? loThem.get(r.lo_id) : undefined;
+              return (
+                <tr>
+                  <td>{tenMh.get(r.mat_hang_id)?.ten ?? '—'}</td>
+                  <td class="so">{dinhDangKg(r.so_kg)}</td>
+                  <td class="so">{r.so_goi || '—'}</td>
+                  <td>{TEN_XU_LY[r.xu_ly]}{r.xu_ly === 'nhap_kho' && r.vi_tri_id ? ` · ${tenVt.get(r.vi_tri_id)?.ten ?? ''}` : ''}</td>
+                  <td>{l ? <>{l.ma_lo}<br /><span class="kho-phu">HSD {dinhDangNgay(l.han_dung)}</span></> : '—'}</td>
+                  <td class="so">{g ? dinhDangTien(g.gia_von_kg) : '—'}</td>
+                  <td class="so">{g ? bienLai(r.gia_ban_kg, g.gia_von_kg) : '—'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {phien.trang_thai === 'da_chot' && k.duoc('pha_loc') && (
+        <details class="nb-the">
+          <summary style="cursor:pointer;font-weight:600">Mở lại phiên để sửa (cân nhầm, ghi nhầm)</summary>
+          <p class="nb-dan" style="margin-top:.75rem">Chỉ mở lại được khi các lô mới <strong>chưa được chuyển, bán, xuất hay kiểm kê</strong>. Mở lại = tồn trở về như trước khi chốt; sửa xong phải chốt lại.</p>
+          <form method="POST">
+            <label class="nb-o"><span>Lý do mở lại</span><textarea name="ly_do" required maxlength="500"></textarea></label>
+            <button type="submit" name="viec" value="mo_lai" class="nb-nut kho-nut-xoa">Mở lại phiên</button>
+          </form>
+        </details>
+      )}
+    </>
+  )}
+
+  <p style="margin-top:1.5rem"><a href="/noi-bo/kho/pha-loc">← Danh sách phiên pha lóc</a></p>
+</NoiBo>

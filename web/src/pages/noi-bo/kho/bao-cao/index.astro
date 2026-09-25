@@ -1,0 +1,88 @@
+---
+/**
+ * KHO — BÁO CÁO
+ *
+ * Chọn kỳ (mặc định từ đầu tháng tới hôm nay) và một trong bốn báo cáo. Mỗi
+ * báo cáo tải được về Excel (CSV) với đúng kỳ đang xem. Số do database tính
+ * (hàm kho_bao_cao_*, 0024) — trang này chỉ hiện.
+ */
+import NoiBo from '../../../../layouts/NoiBo.astro';
+import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import { BAO_CAO, docBaoCao, kyBaoCao, type CotBaoCao } from '../../../../lib/kho/bao-cao.ts';
+import { dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangTien, homNayVn } from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+
+const q = Astro.url.searchParams;
+const ten = Object.hasOwn(BAO_CAO, q.get('bao_cao') ?? '') ? q.get('bao_cao')! : 'xuat-nhap-ton';
+const dn = BAO_CAO[ten];
+const { tu, den } = kyBaoCao(q, homNayVn());
+
+let dong: Record<string, unknown>[] = [];
+let loiDoc = k.loiDoc;
+if (k.chiNhanh && k.daKhoiTao) {
+  const kq = await docBaoCao(k.client, ten, k.chiNhanh.id, tu, den);
+  dong = kq.dong;
+  loiDoc = kq.loi ?? loiDoc;
+}
+const hien = (c: CotBaoCao, v: unknown) => {
+  if (v === null || v === undefined || v === '') return '—';
+  if (c.kieu === 'kg') return Number(v) === 0 ? '·' : dinhDangKg(Number(v));
+  if (c.kieu === 'tien') return Number(v) === 0 ? '·' : dinhDangTien(Number(v));
+  if (c.kieu === 'pt') return dinhDangPhanTram(Number(v));
+  return String(v);
+};
+const tong = (khoa: string) => dong.reduce((s, d) => s + Number(d[khoa] ?? 0), 0);
+const link = (thay: Record<string, string>) => `/noi-bo/kho/bao-cao?${new URLSearchParams({ bao_cao: ten, tu, den, ...thay }).toString()}`;
+const linkCsv = `/noi-bo/kho/bao-cao/${ten}.csv?${new URLSearchParams({ tu, den }).toString()}`;
+---
+<NoiBo tieuDe="Báo cáo kho" nhanSu={k.nhanSu}>
+  <h1>Báo cáo kho</h1>
+  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  <nav class="kho-dh" aria-label="Chọn báo cáo">
+    {Object.entries(BAO_CAO).map(([k2, b]) => <a href={link({ bao_cao: k2 })} aria-current={k2 === ten ? 'page' : undefined}>{b.ten}</a>)}
+  </nav>
+
+  <form method="GET" class="nb-the">
+    <input type="hidden" name="bao_cao" value={ten} />
+    <div class="kho-luoi">
+      <label class="nb-o"><span>Từ ngày</span><input type="date" name="tu" value={tu} /></label>
+      <label class="nb-o"><span>Đến ngày</span><input type="date" name="den" value={den} /></label>
+    </div>
+    <div class="kho-thanh-nut" style="margin:0">
+      <button type="submit" class="nb-nut phu">Xem</button>
+      <a class="nb-nut phu" href={linkCsv}>Tải về Excel (CSV)</a>
+    </div>
+  </form>
+
+  <p class="nb-dan"><strong>{dn.ten}</strong> · {dinhDangNgay(tu)} – {dinhDangNgay(den)}. {dn.moTa}</p>
+
+  {dong.length === 0 ? (
+    <p class="nb-rong">Không có số liệu trong kỳ này.</p>
+  ) : (
+    <div class="kho-bang-khung">
+      <table class="kho-bang kho-bao-cao">
+        <thead><tr>{dn.cot.map(c => <th class={c.kieu === 'chu' ? '' : 'so'}>{c.ten}</th>)}</tr></thead>
+        <tbody>
+          {dong.map(d => (
+            <tr>{dn.cot.map(c => <td class={c.kieu === 'chu' ? '' : 'so'}>{hien(c, d[c.khoa])}</td>)}</tr>
+          ))}
+          {dn.cong && (
+            <tr class="tong">{dn.cot.map((c, i) => (
+              <td class={c.kieu === 'chu' ? '' : 'so'}>{i === 0 ? 'Tổng' : dn.cong!.includes(c.khoa) ? dinhDangTien(tong(c.khoa)) : ''}</td>
+            ))}</tr>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )}
+  {ten === 'ban' && (
+    <p class="kho-phu">Đây là số ƯỚC TÍNH: thiếu ở quầy khi kiểm kê được coi là đã bán, nhân với giá bán hiện tại. Nối iPOS xong, số bán sẽ lấy thẳng từ máy tính tiền.</p>
+  )}
+</NoiBo>
