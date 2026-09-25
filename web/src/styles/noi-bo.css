@@ -182,3 +182,9 @@
 .nb-viec .dau { flex-shrink: 0; font-weight: 700; width: 1.4rem; }
 .nb-viec .dau.xong { color: #1F7A4C; }
 .nb-viec .dau.chua { color: var(--da); }
+
+/* Trạng thái một ô dịch (0036), dưới ô tiếng Anh/Hàn ở màn soạn tin và màn công tắc. */
+.nb-dich { display: block; margin-top: .3rem; font-size: .78rem; }
+.nb-dich.xong { color: var(--muc-nhat); }
+.nb-dich.cho  { color: #8a6d00; }
+.nb-dich.loi  { color: var(--do); }

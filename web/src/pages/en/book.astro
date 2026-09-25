@@ -5,11 +5,11 @@ import { docNoiDung } from '../../lib/noi-dung';
 import { tinhTrangDatBan } from '../../lib/dat-ban';
 import { xuLyDatBan, ketQuaDatBan } from '../../lib/xu-ly-form';
 
-const chuyenHuong = await xuLyDatBan(Astro, '/en/book');
+const chuyenHuong = await xuLyDatBan(Astro, '/en/book', 'en');
 if (chuyenHuong) return chuyenHuong;
 
 const noiDung = await docNoiDung('en');
-const ketQua = ketQuaDatBan(Astro);
+const ketQua = ketQuaDatBan(Astro, 'en');
 const tinhTrang = await tinhTrangDatBan(
   Astro.url.searchParams.get('ngay'),
   noiDung.form_dat_ban_dang_mo,

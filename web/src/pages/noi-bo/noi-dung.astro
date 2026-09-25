@@ -24,6 +24,7 @@ import {
   docBangCongTac, ghiCongTac, giaTriHienTai, motaGiaTri, NHOM,
   type HangCongTac,
 } from '../../lib/cong-tac';
+import { moTaO } from '../../lib/ban-dich';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
@@ -178,13 +179,30 @@ const duocCongBo = ['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro);
                             autocapitalize="off" spellcheck="false"
                           />}
                     </label>
-                    {h.kieu === 'van_ban' && (
-                      <label class="nb-o">
-                        <span>Bản tiếng Anh</span>
-                        <small>Để trống thì trang tiếng Anh dùng câu nền có sẵn, không dịch máy.</small>
-                        <textarea name="gia_tri_en" rows="3" lang="en">{h.gia_tri_text_en ?? ''}</textarea>
-                      </label>
-                    )}
+                    {h.kieu === 'van_ban' && ([['en', 'Bản tiếng Anh'], ['ko', 'Bản tiếng Hàn']] as const).map(([l, nhan]) => {
+                      const chu = l === 'en' ? h.gia_tri_text_en : h.gia_tri_text_ko;
+                      const tt = moTaO(h.ban_dich?.gia_tri_text?.[l], false);
+                      return (
+                        <label class="nb-o">
+                          <span>{nhan}</span>
+                          <small>
+                            Để nguyên thì máy tự dịch khi câu tiếng Việt đổi. Sửa tay thì bản
+                            của bạn được giữ; xóa trắng là nhờ máy dịch lại.
+                          </small>
+                          <textarea name={`gia_tri_${l}`} rows="3" lang={l}>{chu ?? ''}</textarea>
+                          {/* Chữ lúc mở màn hình — lib/cong-tac.ts so với nó để biết ô nào được sửa tay. */}
+                          <input type="hidden" name={`goc_gia_tri_${l}`} value={chu ?? ''} />
+                          {tt
+                            ? <small class={`nb-dich ${tt.lop}`}>{tt.chu}</small>
+                            : h.dang_song && !chu && (
+                                <small class="nb-dich cho">
+                                  Chưa có bản dịch — trang {l === 'ko' ? 'tiếng Hàn đang hiện bản tiếng Anh' : 'tiếng Anh đang hiện bản tiếng Việt'}.
+                                  Bấm Công bố để máy dịch.
+                                </small>
+                              )}
+                        </label>
+                      );
+                    })}
                   </>
                 )}
 

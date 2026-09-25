@@ -22,6 +22,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TruongForm } from './truong-form';
+import type { NgonNgu } from './noi-dung';
+import { cauLoiDatabase, dich, type BaThuTieng } from './chu';
 
 export interface KetQuaNop {
   ok: boolean;
@@ -30,6 +32,49 @@ export interface KetQuaNop {
   /** Hồ sơ đã nộp nhưng CV không lên được. Vẫn là ok: true. */
   luuY?: string;
 }
+
+/**
+ * Câu trả lời cho ứng viên, ở cả ba thứ tiếng. xu-ly-form.ts dùng lại bảng
+ * này cho câu đọc từ cookie sau khi chuyển hướng, để hai nơi không nói hai
+ * câu khác nhau.
+ */
+export const CAU_NOP = {
+  thieuViTri: {
+    vi: 'Vui lòng chọn vị trí muốn ứng tuyển.',
+    en: 'Please choose the role you are applying for.',
+    ko: '지원하실 포지션을 선택해 주세요.',
+  },
+  thieuHoTen: {
+    vi: 'Vui lòng điền họ tên.',
+    en: 'Please enter your full name.',
+    ko: '이름을 입력해 주세요.',
+  },
+  thieuSdt: {
+    vi: 'Vui lòng điền số điện thoại.',
+    en: 'Please enter your phone number.',
+    ko: '전화번호를 입력해 주세요.',
+  },
+  thieuDongY: {
+    vi: 'Cần bạn đồng ý cho Beeftown lưu thông tin thì nhà hàng mới nhận hồ sơ được.',
+    en: 'Beeftown can only accept your application if you agree to let us store your information.',
+    ko: 'Beeftown이 정보를 보관하는 데 동의해 주셔야 지원서를 받을 수 있어요.',
+  },
+  chuaGhi: {
+    vi: 'Chưa gửi được hồ sơ. Thông tin của bạn CHƯA được ghi nhận. Vui lòng thử lại.',
+    en: 'Your application could not be sent. Your details have NOT been recorded. Please try again.',
+    ko: '지원서를 보내지 못했어요. 입력하신 정보는 아직 접수되지 않았어요. 다시 시도해 주세요.',
+  },
+  daNhan: {
+    vi: 'Beeftown đã nhận hồ sơ của bạn.',
+    en: 'Beeftown has received your application.',
+    ko: 'Beeftown에 지원서가 접수되었어요.',
+  },
+  cvHong: {
+    vi: 'File CV không tải lên được nên hồ sơ được nộp không kèm CV. Bạn có thể gửi CV sau khi nhà hàng gọi lại.',
+    en: 'Your CV file could not be uploaded, so your application was sent without it. You can send your CV after we call you back.',
+    ko: '이력서 파일을 올리지 못해 이력서 없이 지원서가 제출되었어요. 매장에서 다시 전화드린 뒤에 이력서를 보내 주셔도 돼요.',
+  },
+} as const satisfies Record<string, BaThuTieng>;
 
 const CV_TOI_DA = 5 * 1024 * 1024;   // khớp file_size_limit của kho ở 0014
 const CV_KIEU = new Set([
@@ -100,20 +145,18 @@ async function tinHoiCv(client: SupabaseClient, viTri: string): Promise<boolean>
 }
 
 export async function nopHoSo(
-  client: SupabaseClient, form: FormData, ip: string | null,
+  client: SupabaseClient, form: FormData, ip: string | null, ngonNgu: NgonNgu,
 ): Promise<KetQuaNop> {
+  const cau = dich(ngonNgu, CAU_NOP);
   const viTri = String(form.get('vi_tri') ?? '').trim();
   const hoTen = String(form.get('ho_ten') ?? '').trim();
   const sdt = String(form.get('sdt') ?? '').trim();
 
-  if (!viTri) return { ok: false, cau: 'Vui lòng chọn vị trí muốn ứng tuyển.' };
-  if (!hoTen)  return { ok: false, cau: 'Vui lòng điền họ tên.' };
-  if (!sdt)    return { ok: false, cau: 'Vui lòng điền số điện thoại.' };
+  if (!viTri) return { ok: false, cau: cau.thieuViTri };
+  if (!hoTen)  return { ok: false, cau: cau.thieuHoTen };
+  if (!sdt)    return { ok: false, cau: cau.thieuSdt };
   if (form.get('dong_y') !== 'co') {
-    return {
-      ok: false,
-      cau: 'Cần bạn đồng ý cho Beeftown lưu thông tin thì nhà hàng mới nhận hồ sơ được.',
-    };
+    return { ok: false, cau: cau.thieuDongY };
   }
 
   // Thời gian điền form, tính ở server từ mốc nhúng lúc dựng trang — nên nó
@@ -156,22 +199,15 @@ export async function nopHoSo(
 
   if (error) {
     // Câu lỗi từ 0012 viết bằng tiếng Việt và đã tính tới việc hiện thẳng cho
-    // ứng viên. Dùng nguyên văn; chỉ khi không nhận ra mới thay bằng câu chung.
-    const m = error.message ?? '';
-    return {
-      ok: false,
-      cau: /[àáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i.test(m)
-        ? m
-        : 'Chưa gửi được hồ sơ. Thông tin của bạn CHƯA được ghi nhận. Vui lòng thử lại.',
-    };
+    // ứng viên. Trang tiếng Việt dùng nguyên văn, trang khác nhận bản dịch;
+    // chỉ khi không nhận ra mới thay bằng câu chung — xem cauLoiDatabase().
+    return { ok: false, cau: cauLoiDatabase(error.message ?? '', ngonNgu, cau.chuaGhi) };
   }
 
   return {
     ok: true,
     ma: typeof data === 'string' ? data : undefined,
-    cau: 'Beeftown đã nhận hồ sơ của bạn.',
-    luuY: cvHong
-      ? 'File CV không tải lên được nên hồ sơ được nộp không kèm CV. Bạn có thể gửi CV sau khi nhà hàng gọi lại.'
-      : undefined,
+    cau: cau.daNhan,
+    luuY: cvHong ? cau.cvHong : undefined,
   };
 }
