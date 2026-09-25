@@ -1,0 +1,15 @@
+---
+/**
+ * Đầu trang KHI IN (ẩn trên màn hình): tên quán, chi nhánh, tên chứng từ, số
+ * phiếu, giờ in. Giấy in ra để ký, lưu cùng hóa đơn, nên phải tự nói nó là gì.
+ */
+import { dinhDangThoiDiem } from '../../lib/kho/chung.ts';
+
+interface Props { tieuDe: string; soPhieu?: string | null; chiNhanh?: string | null }
+const { tieuDe, soPhieu, chiNhanh } = Astro.props;
+---
+<header class="kho-chi-in kho-in-dau">
+  <p class="kho-in-quan">BEEFTOWN{chiNhanh ? ` · ${chiNhanh}` : ''}</p>
+  <p class="kho-in-ten">{tieuDe}</p>
+  <p class="kho-in-so">{soPhieu ? `Số: ${soPhieu} · ` : ''}In lúc {dinhDangThoiDiem(new Date().toISOString())}</p>
+</header>

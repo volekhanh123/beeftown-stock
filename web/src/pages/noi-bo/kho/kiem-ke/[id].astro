@@ -27,6 +27,9 @@
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import KyTen from '../../../../components/kho/KyTen.astro';
 import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
 import QuetMa from '../../../../components/kho/QuetMa.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
@@ -263,6 +266,12 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
 <Kho k={k} tieuDe={tieuDe} huongDan={choToiDuyet ? 'quan-ly-duyet' : laQuay ? 'nv-quay' : undefined}>
   <h1>{tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
+  {kk && (
+    <>
+      <InDau tieuDe="BIÊN BẢN KIỂM KÊ" soPhieu={kk.so_phieu} chiNhanh={k.chiNhanh?.ten} />
+      <NutIn chu="In biên bản" />
+    </>
+  )}
   {luuY.length > 0 && <div class="nb-bao luu-y" role="status">{luuY.map(c => <p>{c}</p>)}</div>}
 
   {kk && (
@@ -448,7 +457,7 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
           )}
 
           {choToiDuyet && (
-            <div class="nb-the">
+            <div class="nb-the kho-khong-in">
               <h2 style="margin-top:0">Duyệt kiểm kê</h2>
               <p class="nb-dan">Duyệt = tồn trên sổ bằng số đếm. {kk.loai_vi_tri === 'quay' && kk.nguon_so_ban === 'kiem_ke' ? 'Phần thiếu ở quầy ghi là đã bán; ' : 'Phần thiếu ghi là chênh lệch kiểm kê; '}phần thừa cộng vào lô mới nhất.</p>
               <form method="POST" class="kho-thanh-nut">
@@ -483,9 +492,10 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
     </>
   )}
 
-  <p style="margin-top:1.5rem">
+  <p class="kho-khong-in" style="margin-top:1.5rem">
     {choToiDuyet
       ? <a href="/noi-bo/kho/duyet">← Về trang Duyệt</a>
       : <a href="/noi-bo/kho/kiem-ke">← Danh sách kiểm kê</a>}
   </p>
+  {kk && <KyTen ten={['Người đếm', 'Người kiểm tra', 'Quản lý duyệt']} />}
 </Kho>

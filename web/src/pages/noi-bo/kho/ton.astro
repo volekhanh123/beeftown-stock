@@ -42,7 +42,11 @@ import {
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 
-const boLoc = docBoLocTon(Astro.url.searchParams);
+// Nhân viên quầy chỉ xem hàng ở quầy (và hàng chờ hủy) — kho lạnh là việc của
+// thủ kho; quầy cần hàng thì bấm "Lấy thêm". Lỗi rà soát số 25.
+const laQuay = k.nhanSu.vai_tro === 'nhan_vien_quay';
+const boLocUrl = docBoLocTon(Astro.url.searchParams);
+const boLoc = laQuay && boLocUrl.viTri !== 'cho_huy' ? { ...boLocUrl, viTri: 'quay' as const } : boLocUrl;
 const { viTri, han, loai, duoiMuc, tim } = boLoc;
 const xemGia = k.duoc('xem_gia');
 const vanHanh = k.duoc('van_hanh');
@@ -91,7 +95,8 @@ const coLoc = dangLoc.length > 0 || tim !== '';
 
 const HANG_LOC: { ten: string; khoa: 'vi_tri' | 'han' | 'loai' | 'duoi_muc'; dangChon: string; chon: [string, string][] }[] = [
   { ten: 'Ở đâu', khoa: 'vi_tri', dangChon: viTri,
-    chon: [['', 'Mọi nơi'], ['kho', 'Kho'], ['quay', 'Quầy'], ['cho_huy', 'Chờ hủy']] },
+    chon: laQuay ? [['quay', 'Quầy'], ['cho_huy', 'Chờ hủy']]
+      : [['', 'Mọi nơi'], ['kho', 'Kho'], ['quay', 'Quầy'], ['cho_huy', 'Chờ hủy']] },
   { ten: 'Hạn dùng', khoa: 'han', dangChon: han,
     chon: [['', 'Mọi hạn'], ['sap_het', 'Sắp hết hạn'], ['het_han', 'Đã hết hạn']] },
   { ten: 'Loại hàng', khoa: 'loai', dangChon: loai,

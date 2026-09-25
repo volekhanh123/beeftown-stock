@@ -1,0 +1,19 @@
+---
+/** "← Trang trước · Trang 2 · Trang sau →" cho danh sách phiếu (GĐ4b). */
+import { linkDs } from '../../lib/kho/tim-ds.ts';
+
+interface Props { duong: string; trang: number; coSau: boolean }
+const { duong, trang, coSau } = Astro.props;
+const sp = Astro.url.searchParams;
+---
+{(trang > 1 || coSau) && (
+  <nav class="kho-trang" aria-label="Chuyển trang">
+    {trang > 1
+      ? <a class="nb-nut phu" href={linkDs(duong, sp, { trang: trang - 1 > 1 ? String(trang - 1) : null })} rel="prev">← Trang trước</a>
+      : <span></span>}
+    <span class="kho-trang-so">Trang {trang}</span>
+    {coSau
+      ? <a class="nb-nut phu" href={linkDs(duong, sp, { trang: String(trang + 1) })} rel="next">Trang sau →</a>
+      : <span></span>}
+  </nav>
+)}

@@ -104,6 +104,22 @@ Link dùng chung giữa các trang (trang nhận phải đọc được các tha
 - `/noi-bo/kho/nhap?loc=nhap|cho_duyet|tu_choi`, `/noi-bo/kho/pha-loc?loc=nhap`
 - `/noi-bo/kho/cong-no?loc=qua_han|den_han|chua_doi_chieu`
 
+## 3b. Danh sách phiếu, trang in (GĐ4b)
+
+- **Tìm / lọc ngày / của tôi / chia trang** ở Nhập hàng, Chuyển · Xuất · Hủy, Kiểm kê, Pha lóc:
+  `lib/kho/tim-ds.ts` (thuần) + `components/kho/LocDanhSach.astro` + `PhanTrang.astro`. Mọi thứ nằm
+  trên URL (`?q=&tu=&den=&cua_toi=1&trang=`) — gửi link qua Zalo là người nhận thấy đúng danh sách đó.
+  Mỗi trang 30 phiếu; đọc dư 1 dòng để biết còn trang sau, không đếm tổng. Chữ tìm được làm sạch
+  (`lamSachTim`) trước khi ghép vào `.or()` của PostgREST.
+- Tìm theo chữ có dấu phân biệt dấu: "thit" không ra "Thịt". Gõ số phiếu là chắc nhất.
+- **Trang in**: phiếu nhập, biên bản hủy / phiếu chuyển / xuất bếp / trả NCC, biên bản kiểm kê. Đầu
+  trang in (`InDau.astro`), hàng chữ ký (`KyTen.astro`) chỉ hiện khi in; `@media print` trong
+  `kho-khung.css` bỏ thanh trên, menu, nút, mục gập, ô duyệt. Nút "In phiếu" (`NutIn.astro` +
+  `public/kho/js/in-an.js`) chỉ hiện khi có JavaScript; không có thì in bằng menu trình duyệt.
+- NV quầy xem **Tồn kho** chỉ thấy hàng ở quầy và hàng chờ hủy (`?vi_tri=kho` bị bỏ qua).
+- Đăng nhập xong vào thẳng `/noi-bo/kho` (sửa 1 dòng `pages/noi-bo/dang-nhap.astro`). Vai không
+  có quyền kho (thu ngân, marketing) bị `moTrangKho` đưa về `/noi-bo` như cũ.
+
 ## 4. Cài như app (PWA)
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng
@@ -133,7 +149,7 @@ dùng ở:
 | `public/kho/js/ean13.js` | (GĐ5b) Giải mã EAN-13 bằng JS thuần cho iPhone — Safari không có `BarcodeDetector` |
 | `public/kho/js/anh-nho.js` | (GĐ5a) Thu ảnh hóa đơn ≤ 1600px trước khi tải |
 | `public/kho/js/may-chung.js` | (GĐ5d) Đếm giờ tự khóa máy dùng chung |
-| `public/kho/js/in-an.js` | (GĐ8a) In / lưu PDF / chia sẻ đơn đặt hàng |
+| `public/kho/js/in-an.js` | Hiện nút "In phiếu" và gọi `window.print()` (GĐ4b); sau này in đơn đặt hàng (GĐ8a) |
 
 Không thêm thư viện npm cho phía trình duyệt. `test-kho-giao-dien.mjs` hỏng nếu có `<script>`,
 `onclick=…` hay file JS ngoài danh sách này.

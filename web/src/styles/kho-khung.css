@@ -234,7 +234,30 @@
   .kho-chinh, .kho-chinh.rong { width: 100%; max-width: none; margin: 0; padding: 0; }
   .kho-khung { display: block; padding: 0; }
   .kho-than .nb-the, .kho-than .nb-dong { box-shadow: none; break-inside: avoid; }
+  /* GĐ4b — giấy in chỉ giữ nội dung phiếu: bỏ nút, ô tìm, chuyển trang, lọc. */
+  .kho-than button, .kho-than a.nb-nut, .kho-than .kho-tim, .kho-than .kho-trang,
+  .kho-than nav.kho-dh, .kho-than .kho-quet, .kho-than input[type='file'] { display: none !important; }
+  .kho-than h1 { display: none; }
+  .kho-than a { color: inherit; text-decoration: none; }
+  .kho-than .nb-o input, .kho-than .nb-o select, .kho-than .nb-o textarea { border: 0; border-bottom: 1px dotted #999; border-radius: 0; background: none; padding: 0; min-height: 0; }
+  /* Mục gập (từ chối, hủy phiếu…) là thao tác, không phải nội dung phiếu. */
+  .kho-than details:not([open]) { display: none !important; }
+  .kho-chi-in { display: block !important; }
+  .kho-ky { display: grid !important; }
+  @page { margin: 12mm; }
 }
+
+/* --- Phần chỉ hiện khi in (GĐ4b) ------------------------------------------- */
+.kho-chi-in { display: none; }
+.kho-in-dau { text-align: center; margin: 0 0 1rem; }
+.kho-in-dau p { margin: 0; }
+.kho-in-quan { font-size: .85rem; letter-spacing: .08em; }
+.kho-in-ten { font-size: 1.4rem; font-weight: 800; margin: .3rem 0 !important; }
+.kho-in-so { font-size: .85rem; }
+.kho-ky { gap: 1rem; margin-top: 2rem; text-align: center; break-inside: avoid; }
+.kho-ky div { display: flex; flex-direction: column; min-height: 7rem; }
+.kho-ky span { font-size: .75rem; font-style: italic; }
+.kho-nut-in { margin: 0 0 .75rem; }
 
 /* --- Dòng sự kiện (Thông báo, Việc cần làm) --------------------------------- */
 .kho-sk-ds { list-style: none; margin: 0 0 1.25rem; padding: 0; display: grid; gap: .5rem; }
@@ -396,3 +419,29 @@ a.kho-the-so:hover { border-color: var(--kho-vach-dam); }
 .kho-the-so.do b { color: var(--do); }
 .kho-the-so.vang { border-color: #F3DDA5; background: #FFFCF2; }
 .chu-do { color: var(--do) !important; font-weight: 600; }
+
+/* --- Tìm + lọc ngày + chia trang cho danh sách phiếu (GĐ4b) ---------------- */
+.kho-tim { margin: 0 0 .75rem; }
+.kho-tim-hang { display: flex; gap: .5rem; align-items: stretch; margin-bottom: .5rem; }
+.kho-tim-hang .nb-o { flex: 1; margin: 0; }
+.kho-tim-hang .nb-nut { flex: 0 0 auto; }
+.kho-tim-them { padding: 0; margin: 0 0 .5rem; }
+.kho-tim-them > summary {
+  list-style: none; cursor: pointer; min-height: 48px; padding: .4rem 1rem;
+  display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+}
+.kho-tim-them > summary::-webkit-details-marker { display: none; }
+.kho-tim-them > summary::after { content: '▾'; margin-left: auto; color: var(--muc-nhat); }
+.kho-tim-them[open] > summary::after { content: '▴'; }
+.kho-tim-chu { font-weight: 700; }
+.kho-tim-tom { font-size: .9rem; color: var(--muc-nhat); }
+.kho-tim-than { border-top: 1px solid var(--kho-vach); padding: .75rem 1rem 1rem; display: grid; gap: .6rem; }
+.kho-tim-than .kho-dh { margin: 0; flex-wrap: wrap; overflow: visible; }
+.kho-tim-toi { display: flex; align-items: center; gap: .6rem; min-height: 48px; font-weight: 600; }
+.kho-tim-toi input { width: 1.4rem; height: 1.4rem; }
+.kho-tim-dang { margin: 0 0 .5rem; font-size: .9rem; color: var(--muc-nhat); }
+.kho-trang {
+  display: grid; grid-template-columns: 1fr auto 1fr; gap: .75rem; align-items: center; margin: 1rem 0;
+}
+.kho-trang > :last-child { justify-self: end; }
+.kho-trang-so { font-weight: 700; color: var(--muc-nhat); }

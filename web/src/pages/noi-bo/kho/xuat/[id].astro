@@ -29,6 +29,9 @@
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import KyTen from '../../../../components/kho/KyTen.astro';
 import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
 import QuetMa from '../../../../components/kho/QuetMa.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
@@ -287,6 +290,14 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
 <Kho k={k} tieuDe={tieuDe} huongDan={huongDan}>
   <h1>{tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
+  {!moi && phieu && (
+    <>
+      <InDau tieuDe={({ huy: 'BIÊN BẢN HỦY HÀNG', chuyen: 'PHIẾU CHUYỂN KHO', xuat_bep: 'PHIẾU XUẤT BẾP',
+        tra_ncc: 'PHIẾU TRẢ HÀNG NHÀ CUNG CẤP' } as Record<string, string>)[phieu.loai] ?? 'PHIẾU XUẤT KHO'}
+        soPhieu={phieu.so_phieu} chiNhanh={k.chiNhanh?.ten} />
+      <NutIn chu={phieu.loai === 'huy' ? 'In biên bản' : 'In phiếu'} />
+    </>
+  )}
   {luuY.length > 0 && (
     <div class="nb-bao luu-y" role="status">{luuY.map(c => <p>{c}</p>)}</div>
   )}
@@ -510,7 +521,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
       )}
 
       {phieu.loai === 'huy' && choToiDuyet && (
-        <div class="nb-the">
+        <div class="nb-the kho-khong-in">
           <h2 style="margin-top:0">Duyệt báo hủy</h2>
           <form method="POST" class="kho-thanh-nut">
             <button type="submit" name="viec" value="duyet" class="nb-nut">Duyệt — ghi hủy</button>
@@ -527,11 +538,13 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
     </>
   )}
 
-  <p style="margin-top:1.5rem">
+  <p class="kho-khong-in" style="margin-top:1.5rem">
     {nccTra
       ? <a href={`/noi-bo/kho/cong-no/${nccTra}`}>← Công nợ nhà cung cấp</a>
       : choToiDuyet
         ? <a href="/noi-bo/kho/duyet">← Về trang Duyệt</a>
         : <a href="/noi-bo/kho/xuat">← Danh sách phiếu</a>}
   </p>
+  {!moi && phieu && <KyTen ten={phieu.loai === 'huy' ? ['Người báo hủy', 'Người chứng kiến', 'Quản lý duyệt']
+    : phieu.loai === 'tra_ncc' ? ['Thủ kho', 'Nhà cung cấp nhận', 'Kế toán'] : ['Người giao', 'Người nhận']} />}
 </Kho>

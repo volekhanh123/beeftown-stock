@@ -26,6 +26,9 @@ import { cauSuKien, KHOA_SU_KIEN } from '../../web/src/lib/kho/viec.ts';
 import { QUY_TRINH } from '../../web/src/lib/kho/quy-trinh.ts';
 import { BIEU_TUONG } from '../../web/src/lib/kho/bieu-tuong.ts';
 import { duoc, QUYEN_KHO } from '../../web/src/lib/kho/chung.ts';
+import {
+  CO_TRANG, docTimDs, lamSachTim, locTimNhieuCot, khoangTrang, catTrang, linkDs, dangTim, apDungTim,
+} from '../../web/src/lib/kho/tim-ds.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — KIỂM THỬ KHUNG GIAO DIỆN');
 
@@ -260,7 +263,12 @@ await nhom('8 · JAVASCRIPT CHỈ Ở CHỖ ĐÃ CHO PHÉP', async () => {
     ...moiFile(join(WEB, 'src/components/kho')),
     join(WEB, 'src/layouts/Kho.astro'),
   ].filter(p => p.endsWith('.astro'));
-  const coScript = nguon.filter(p => /<script\b/i.test(doc(p)) && !DUOC_SCRIPT.has(relative(GOC, p).split(sep).join('/')));
+  // Được: script viết trong QuetMa.astro, và thẻ nạp một file trong public/kho/js
+  // (<script is:inline src="/kho/js/in-an.js">). Mọi <script> khác là hỏng.
+  const theHong = ma => [...ma.matchAll(/<script\b[^>]*>/gi)]
+    .filter(m => !DUOC_JS.has(m[0].match(/src="\/kho\/js\/([^"]+)"/)?.[1] ?? ''));
+  const coScript = nguon.filter(p => theHong(doc(p)).length > 0
+    && !DUOC_SCRIPT.has(relative(GOC, p).split(sep).join('/')));
   ok('Không có <script> ngoài danh sách cho phép', coScript.length === 0,
     coScript.map(p => relative(GOC, p)).join(', '));
   const suKien = nguon.filter(p => /\son(click|change|submit|input|load|keydown|keyup|focus|blur)\s*=/i.test(doc(p)));
@@ -303,6 +311,53 @@ await nhom('9 · QUYỀN KHỚP GIỮA MENU VÀ TRANG', async () => {
     }
   }
   ok('Không vai nào thấy ô menu dẫn tới trang mình bị cấm', hong.length === 0, hong.join(' | '));
+});
+
+// ===========================================================================
+await nhom('10 · TÌM, LỌC NGÀY, CHIA TRANG DANH SÁCH PHIẾU', async () => {
+  const t = docTimDs(new URLSearchParams('q=Thịt ABC&tu=2026-09-20&den=2026-09-01&cua_toi=1&trang=3'));
+  ok('Đọc chữ tìm', t.q === 'Thịt ABC');
+  ok('Từ ngày sau đến ngày → tự đảo lại', t.tu === '2026-09-01' && t.den === '2026-09-20');
+  ok('Đọc "của tôi" và trang', t.cuaToi && t.trang === 3);
+  const xau = docTimDs(new URLSearchParams('tu=hom-qua&trang=-4'));
+  ok('Ngày sai dạng bị bỏ, trang âm về 1', xau.tu === null && xau.trang === 1 && !dangTim(xau));
+  ok('Chữ tìm không chèn được điều kiện lọc', lamSachTim('a,so_phieu.eq.1)*%"') === 'a so_phieu.eq.1');
+  ok('Chữ tìm dài bị cắt ở 60 ký tự', lamSachTim('x'.repeat(200)).length === 60);
+  ok('Bộ lọc nhiều cột', locTimNhieuCot(['so_phieu', 'ten'], 'PN-01') === 'so_phieu.ilike.*PN-01*,ten.ilike.*PN-01*');
+  ok('Không tìm gì → không có bộ lọc', locTimNhieuCot(['so_phieu'], '  ') === null);
+  const [dau, cuoi] = khoangTrang({ ...t, trang: 2 });
+  ok(`Trang 2 đọc dòng ${CO_TRANG}..${2 * CO_TRANG} (dư 1 dòng để biết còn trang sau)`, dau === CO_TRANG && cuoi === 2 * CO_TRANG);
+  const c = catTrang(Array.from({ length: CO_TRANG + 1 }, (_, i) => i));
+  ok('Đọc được CO_TRANG + 1 dòng → còn trang sau, hiện CO_TRANG dòng', c.coSau && c.ds.length === CO_TRANG);
+  ok('Đọc ít hơn → hết', !catTrang([1, 2]).coSau);
+  const sp = new URLSearchParams('loc=cho_duyet&q=abc&trang=4');
+  ok('Đổi bộ lọc thì về trang 1, giữ tham số khác',
+    linkDs('/x', sp, { tu: '2026-09-01' }) === '/x?loc=cho_duyet&q=abc&tu=2026-09-01');
+  ok('Đổi trang giữ bộ lọc', linkDs('/x', sp, { trang: '5' }) === '/x?loc=cho_duyet&q=abc&trang=5');
+  ok('Bỏ hết tham số → đường dẫn trơn', linkDs('/x', new URLSearchParams('q=a'), { q: null }) === '/x');
+  // apDungTim gọi đúng các bước trên builder
+  const goi = [];
+  const gia = new Proxy({}, { get: (_, ten) => (...a) => { goi.push(`${String(ten)}(${a.join('|')})`); return gia; } });
+  apDungTim(gia, t, { cotTim: ['so_phieu'], cotNgay: 'ngay', nhanSuId: 'NS1' });
+  ok('Áp tìm + ngày + của tôi + trang', goi.join(' ') ===
+    `or(so_phieu.ilike.*Thịt ABC*) gte(ngay|2026-09-01) lte(ngay|2026-09-20) eq(nguoi_tao|NS1) range(${2 * CO_TRANG}|${3 * CO_TRANG})`,
+    goi.join(' '));
+});
+
+// ===========================================================================
+await nhom('11 · TRANG IN VÀ ĐĂNG NHẬP', async () => {
+  for (const [f, ten] of [['nhap/[id].astro', 'PHIẾU NHẬP KHO'], ['xuat/[id].astro', 'BIÊN BẢN HỦY HÀNG'],
+    ['kiem-ke/[id].astro', 'BIÊN BẢN KIỂM KÊ']]) {
+    const ma = doc(join(TRANG, 'noi-bo/kho', f));
+    ok(`${f}: có đầu trang in "${ten}", nút In và chỗ ký`,
+      ma.includes(ten) && /<NutIn\b/.test(ma) && /<KyTen\b/.test(ma));
+  }
+  const css = doc(join(WEB, 'src/styles/kho-khung.css'));
+  ok('Khi in: ẩn thanh trên, menu, nút; hiện phần chỉ-in', /@media print[\s\S]*kho-chi-in/.test(css));
+  ok('Nút In chỉ hiện khi có JavaScript (hidden sẵn)',
+    /data-in hidden/.test(doc(join(WEB, 'src/components/kho/NutIn.astro'))));
+  ok('Quản lý / chủ đăng nhập xong vào thẳng kho',
+    /redirect\('\/noi-bo\/kho'/.test(doc(join(TRANG, 'noi-bo/dang-nhap.astro'))));
 });
 
 process.exit(ketThuc('KHUNG GIAO DIỆN'));

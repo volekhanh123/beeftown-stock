@@ -11,6 +11,9 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { docDanhSachPhieuXuat, TEN_LOAI_XUAT, type PhieuXuatTom, type LoaiXuat } from '../../../../lib/kho/xuat.ts';
 import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, TRANG_THAI_CHUNG_TU } from '../../../../lib/kho/chung.ts';
+import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
+import PhanTrang from '../../../../components/kho/PhanTrang.astro';
+import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -21,13 +24,15 @@ const LOC = [
 ] as const;
 const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
 
+const tim = docTimDs(Astro.url.searchParams);
 let ds: PhieuXuatTom[] = [];
+let coSau = false;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
-    ds = await docDanhSachPhieuXuat(k.client, k.chiNhanh.id, loc === 'cho_duyet'
+    ({ ds, coSau } = catTrang(await docDanhSachPhieuXuat(k.client, k.chiNhanh.id, loc === 'cho_duyet'
       ? { trangThai: 'cho_duyet' }
-      : { loai: loc || null });
+      : { loai: loc || null }, { tim, nhanSuId: k.nhanSu.id })));
   } catch (e) {
     loiDoc = cauLoiKho(e, 'Không đọc được phiếu xuất.');
   }
@@ -62,8 +67,11 @@ const moTa = (p: PhieuXuatTom) =>
         ))}
       </nav>
 
+      <LocDanhSach duong="/noi-bo/kho/xuat" tim={tim} giu={{ loc }} coCuaToi={k.duoc('van_hanh')}
+        goiY="Số phiếu, nơi, lý do…" />
+
       {ds.length === 0 ? (
-        <p class="nb-rong">Chưa có phiếu nào{loc ? ' ở mục này' : ''}.</p>
+        <p class="nb-rong">{tim.trang > 1 ? 'Hết danh sách — bấm "Trang trước".' : dangTim(tim) ? 'Không tìm thấy phiếu nào khớp bộ lọc.' : `Chưa có phiếu nào${loc ? ' ở mục này' : ''}.`}</p>
       ) : ds.map(p => {
         const [nhan, lop] = TRANG_THAI_CHUNG_TU[p.trang_thai] ?? [p.trang_thai, 'tat'];
         return (
@@ -81,6 +89,7 @@ const moTa = (p: PhieuXuatTom) =>
           </a>
         );
       })}
+      <PhanTrang duong="/noi-bo/kho/xuat" trang={tim.trang} coSau={coSau} />
     </>
   )}
 </Kho>

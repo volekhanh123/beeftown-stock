@@ -26,6 +26,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, laUuid, type KetQua } from './chung.ts';
 import { gomTheoMaCan, tachDanhSachMa } from './ma-vach.ts';
+import { apDungTim, type TimDs } from './tim-ds.ts';
 
 export interface KiemKeTom {
   id: string;
@@ -81,14 +82,20 @@ const soHoacNull = (v: unknown) => (v === null || v === undefined ? null : Numbe
 // -----------------------------------------------------------------------------
 // ĐỌC
 // -----------------------------------------------------------------------------
-export async function docDanhSachKiemKe(client: SupabaseClient, chiNhanhId: string, trangThai: string | null): Promise<KiemKeTom[]> {
+export async function docDanhSachKiemKe(
+  client: SupabaseClient, chiNhanhId: string, trangThai: string | null,
+  // Có tim: tìm / lọc ngày / của tôi / đọc đúng một trang (lib/kho/tim-ds.ts).
+  tim?: { tim: TimDs; nhanSuId: string | null },
+): Promise<KiemKeTom[]> {
   let q = client
     .from('kho_v_kiem_ke')
     .select('id, so_phieu, vi_tri_id, ten_vi_tri, loai_vi_tri, kieu, ngay_kiem, trang_thai, so_dong, so_dong_da_dem, ly_do, nguoi_tao, created_at')
     .eq('chi_nhanh_id', chiNhanhId)
-    .order('created_at', { ascending: false })
-    .limit(120);
+    .order('created_at', { ascending: false });
   if (trangThai) q = q.eq('trang_thai', trangThai);
+  q = tim
+    ? apDungTim(q, tim.tim, { cotTim: ['so_phieu', 'ten_vi_tri'], cotNgay: 'ngay_kiem', nhanSuId: tim.nhanSuId })
+    : q.limit(120);
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []) as KiemKeTom[];

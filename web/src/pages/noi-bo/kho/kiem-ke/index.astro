@@ -15,6 +15,9 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { docViTri, docCaiDat, type ViTri, type CaiDat } from '../../../../lib/kho/danh-muc.ts';
 import { docDanhSachKiemKe, batDauKiemKe, kieuTheoViTri, type KiemKeTom } from '../../../../lib/kho/kiem-ke.ts';
+import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
+import PhanTrang from '../../../../components/kho/PhanTrang.astro';
+import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
 import { cauLoiKho, dinhDangNgay, dinhDangThoiDiem, TRANG_THAI_CHUNG_TU, type KetQua } from '../../../../lib/kho/chung.ts';
 
 const k = await moTrangKho(Astro);
@@ -35,18 +38,25 @@ if (form && k.chiNhanh && String(form.get('viec')) === 'bat_dau') {
   bao = kq;
 }
 
+const tim = docTimDs(Astro.url.searchParams);
 let ds: KiemKeTom[] = [];
+let hien: KiemKeTom[] = [];
+let coSau = false;
 let viTri: ViTri[] = [];
 let caiDat: CaiDat | null = null;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
     // Đọc cả danh sách (không lọc) để thẻ vị trí luôn biết phiếu nào đang mở.
-    [ds, viTri, caiDat] = await Promise.all([
+    // Danh sách bên dưới đọc riêng: lọc trạng thái + tìm + đúng một trang.
+    let trang: KiemKeTom[];
+    [ds, trang, viTri, caiDat] = await Promise.all([
       docDanhSachKiemKe(k.client, k.chiNhanh.id, null),
+      docDanhSachKiemKe(k.client, k.chiNhanh.id, loc || null, { tim, nhanSuId: k.nhanSu.id }),
       docViTri(k.client, k.chiNhanh.id),
       docCaiDat(k.client, k.chiNhanh.id),
     ]);
+    ({ ds: hien, coSau } = catTrang(trang));
   } catch (e) {
     loiDoc = cauLoiKho(e, 'Không đọc được kiểm kê.');
   }
@@ -54,7 +64,6 @@ if (k.chiNhanh && k.daKhoiTao) {
 const dangMo = new Map(ds.filter(x => x.trang_thai === 'dang_dem' || x.trang_thai === 'cho_duyet').map(x => [x.vi_tri_id, x]));
 // Nhân viên quầy chỉ đếm quầy — không thấy thẻ kho lạnh.
 const viTriDem = viTri.filter(v => v.loai !== 'cho_huy' && v.dang_dung && (!laQuay || v.loai === 'quay'));
-const hien = loc ? ds.filter(x => x.trang_thai === loc) : ds;
 const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
 ---
 <Kho k={k} tieuDe="Kiểm kê" huongDan={laQuay ? 'nv-quay' : undefined}>
@@ -118,8 +127,11 @@ const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
         ))}
       </nav>
 
+      <LocDanhSach duong="/noi-bo/kho/kiem-ke" tim={tim} giu={{ loc }} coCuaToi={k.duoc('van_hanh')}
+        goiY="Số phiếu, nơi đếm…" />
+
       {hien.length === 0 ? (
-        <p class="nb-rong">Chưa có phiếu kiểm kê nào{loc ? ' ở trạng thái này' : ''}.</p>
+        <p class="nb-rong">{tim.trang > 1 ? 'Hết danh sách — bấm "Trang trước".' : dangTim(tim) ? 'Không tìm thấy phiếu nào khớp bộ lọc.' : `Chưa có phiếu kiểm kê nào${loc ? ' ở trạng thái này' : ''}.`}</p>
       ) : hien.map(x => {
         const [nhan, lop] = TRANG_THAI_CHUNG_TU[x.trang_thai] ?? [x.trang_thai, 'tat'];
         return (
@@ -137,6 +149,7 @@ const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
           </a>
         );
       })}
+      <PhanTrang duong="/noi-bo/kho/kiem-ke" trang={tim.trang} coSau={coSau} />
     </>
   )}
 </Kho>

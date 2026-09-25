@@ -20,6 +20,9 @@
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import KyTen from '../../../../components/kho/KyTen.astro';
 import TruongThem from '../../../../components/kho/TruongThem.astro';
 import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
@@ -205,6 +208,13 @@ const [linkVe, chuVe] = Astro.url.searchParams.get('tu') === 'duyet'
 <Kho k={k} tieuDe={tieuDe} huongDan={choToiDuyet ? 'quan-ly-duyet' : 'thu-kho'}>
   <h1>{tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
+  {phieu && (
+    <>
+      <InDau tieuDe={phieu.loai === 'ton_dau' ? 'PHIẾU NHẬP TỒN ĐẦU KỲ' : 'PHIẾU NHẬP KHO'}
+        soPhieu={phieu.so_phieu} chiNhanh={k.chiNhanh?.ten} />
+      <NutIn />
+    </>
+  )}
 
   {phieu && (
     <p class="nb-dan">
@@ -442,7 +452,7 @@ const [linkVe, chuVe] = Astro.url.searchParams.get('tu') === 'duyet'
       )}
 
       {phieu.trang_thai === 'cho_duyet' && k.duoc('duyet') && (
-        <div class="nb-the">
+        <div class="nb-the kho-khong-in">
           <h2 style="margin-top:0">Duyệt phiếu</h2>
           <p class="nb-dan">Duyệt xong, mỗi dòng thành một <strong>lô hàng</strong> và vào tồn kho ngay.
             Sau đó trang quay về <strong>Duyệt</strong> để làm phiếu tiếp theo.</p>
@@ -491,5 +501,6 @@ const [linkVe, chuVe] = Astro.url.searchParams.get('tu') === 'duyet'
     </details>
   )}
 
-  <p style="margin-top:1.5rem"><a href={linkVe}>{chuVe}</a></p>
+  <p class="kho-khong-in" style="margin-top:1.5rem"><a href={linkVe}>{chuVe}</a></p>
+  {phieu && <KyTen ten={phieu.loai === 'ton_dau' ? ['Người lập', 'Quản lý duyệt'] : ['Người giao hàng', 'Thủ kho', 'Quản lý duyệt', 'Kế toán']} />}
 </Kho>

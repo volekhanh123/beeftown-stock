@@ -28,7 +28,9 @@ if (Astro.request.method === 'POST') {
     loi = 'Vui lòng điền email và mật khẩu.';
   } else {
     loi = await dangNhap(Astro.cookies, email, matKhau);
-    if (!loi) return Astro.redirect('/noi-bo', 302);
+    // Kho là việc hằng ngày của quản lý và chủ (chủ nhà hàng chọn): vào thẳng
+    // "Hôm nay" của kho. Vai chỉ kho đã được /noi-bo chuyển tiếp như cũ.
+    if (!loi) return Astro.redirect('/noi-bo/kho', 302);
   }
 }
 
