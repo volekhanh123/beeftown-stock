@@ -1,0 +1,104 @@
+---
+/**
+ * Ô quét nhãn cân.
+ *
+ * Máy quét cầm tay (USB/Bluetooth) hoạt động như bàn phím: gõ 13 số rồi
+ * Enter — trong ô nhiều dòng, mỗi nhãn thành một dòng. Quét xong bấm nút để
+ * trang đọc mã (gửi form với viec = `viec`).
+ *
+ * Nút "Quét bằng camera" là phần THÊM: chỉ hiện khi trình duyệt có
+ * BarcodeDetector (Chrome trên Android). iPhone hoặc trình duyệt cũ không
+ * thấy nút — vẫn dùng máy quét hoặc gõ tay được. Không có JavaScript thì
+ * trang vẫn chạy đủ.
+ *
+ * Hai gói cùng mặt hàng, cùng trọng lượng in ra CÙNG một mã — nên camera chỉ
+ * bỏ qua mã trùng trong 2 giây (đang giữ nguyên gói trước ống kính), không
+ * bỏ qua mã trùng nói chung.
+ */
+interface Props {
+  viec?: string;
+  nhan?: string;
+  goiY?: string;
+}
+const {
+  viec = 'quet',
+  nhan = 'Đọc mã đã quét',
+  goiY = 'Quét từng nhãn — mỗi mã một dòng. Có thể dán nhiều mã cách nhau bằng dấu phẩy.',
+} = Astro.props;
+---
+<div class="kho-quet" data-quet-ma>
+  <label class="nb-o" style="margin-bottom:.5rem">
+    <span>Quét nhãn cân</span>
+    <small>{goiY}</small>
+    <textarea name="ma_quet" rows="3" inputmode="numeric" autocomplete="off" spellcheck="false"
+      placeholder="2012345012509"></textarea>
+  </label>
+  <div class="kho-thanh-nut" style="margin:.25rem 0 0">
+    <button type="submit" name="viec" value={viec} class="nb-nut phu" formnovalidate>{nhan}</button>
+    <button type="button" class="nb-nut phu" data-quet-camera hidden>Quét bằng camera</button>
+  </div>
+  <dialog class="kho-quet-hop" data-quet-hop>
+    <video playsinline muted></video>
+    <p><strong data-quet-dem>0</strong> nhãn đã đọc · giữ từng gói trước camera</p>
+    <button type="button" class="nb-nut" data-quet-xong>Xong</button>
+  </dialog>
+</div>
+
+<script is:inline>
+(async () => {
+  if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) return;
+  // Một số trình duyệt máy tính có BarcodeDetector nhưng không đọc được EAN-13.
+  let dang = [];
+  try { dang = await window.BarcodeDetector.getSupportedFormats(); } catch { return; }
+  if (!dang.includes('ean_13')) return;
+  document.querySelectorAll('[data-quet-ma]').forEach(goc => {
+    const nut = goc.querySelector('[data-quet-camera]');
+    const hop = goc.querySelector('[data-quet-hop]');
+    const video = hop.querySelector('video');
+    const dem = hop.querySelector('[data-quet-dem]');
+    const o = goc.querySelector('textarea');
+    let luong = null, hen = null, cuoi = '', luc = 0, so = 0;
+    nut.hidden = false;
+
+    const dung = () => {
+      if (hen) clearInterval(hen);
+      hen = null;
+      if (luong) luong.getTracks().forEach(t => t.stop());
+      luong = null;
+      if (hop.open) hop.close();
+    };
+
+    nut.addEventListener('click', async () => {
+      let docMa;
+      try { docMa = new window.BarcodeDetector({ formats: ['ean_13'] }); } catch { nut.hidden = true; return; }
+      try {
+        luong = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      } catch {
+        alert('Không mở được camera. Cho phép trang dùng camera, hoặc dùng máy quét cầm tay.');
+        return;
+      }
+      so = 0; dem.textContent = '0';
+      video.srcObject = luong;
+      hop.showModal();
+      await video.play().catch(() => {});
+      hen = setInterval(async () => {
+        if (video.readyState < 2) return;
+        let kq = [];
+        try { kq = await docMa.detect(video); } catch { return; }
+        for (const m of kq) {
+          const ma = String(m.rawValue || '');
+          if (!/^\d{13}$/.test(ma)) continue;
+          const bayGio = Date.now();
+          if (ma === cuoi && bayGio - luc < 2000) { luc = bayGio; continue; }
+          cuoi = ma; luc = bayGio;
+          o.value = (o.value.trim() ? o.value.trim() + '\n' : '') + ma;
+          so += 1; dem.textContent = String(so);
+          if (navigator.vibrate) navigator.vibrate(60);
+        }
+      }, 250);
+    });
+    hop.querySelector('[data-quet-xong]').addEventListener('click', dung);
+    hop.addEventListener('close', dung);
+  });
+})();
+</script>

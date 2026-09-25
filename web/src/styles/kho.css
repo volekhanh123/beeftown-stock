@@ -112,6 +112,25 @@
 .kho-thanh-nut .nb-nut { flex: 1 1 10rem; }
 .kho-nut-xoa { background: #fff !important; color: var(--do) !important; border: 1px solid var(--do) !important; }
 
+/* --- Quét nhãn bằng camera ------------------------------------------------ */
+/* .nb-nut đặt display nên thuộc tính hidden của trình duyệt bị đè — ép lại,
+   không thì iPhone thấy một nút camera bấm không ra gì. */
+.kho-quet [hidden] { display: none !important; }
+.kho-quet-hop { border: 0; border-radius: 12px; padding: 1rem; width: min(30rem, 94vw); }
+.kho-quet-hop::backdrop { background: rgba(20, 14, 8, .6); }
+.kho-quet-hop video { width: 100%; max-height: 55vh; object-fit: cover; border-radius: 8px; background: #000; display: block; }
+.kho-quet-hop p { margin: .75rem 0; font-size: .9rem; }
+.kho-quet-hop .nb-nut { width: 100%; }
+
+/* --- Dòng lô để chọn (pha lóc, xuất theo lô) ------------------------------ */
+.kho-lo-chon { display: grid; gap: .5rem; grid-template-columns: 1fr; margin-bottom: .75rem; }
+.kho-lo-chon > div {
+  border: 1px solid var(--vach); border-radius: 10px; background: #fff;
+  padding: .7rem .85rem .2rem;
+}
+.kho-lo-chon .dau { display: flex; justify-content: space-between; gap: .5rem; flex-wrap: wrap; align-items: baseline; margin-bottom: .4rem; }
+.kho-lo-chon .dau b { font-size: .95rem; }
+
 /* Hàng nút dính đáy màn hình trên điện thoại cho form dài. Khi có thanh
    điều hướng dính đáy (vai dùng cả CRM lẫn kho) thì đứng ngay trên nó. */
 @media (max-width: 640px) {

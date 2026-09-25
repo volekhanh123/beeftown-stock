@@ -232,6 +232,14 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // Phiếu nhập
     'kho_luu_phieu_nhap', 'kho_gui_duyet_phieu_nhap', 'kho_rut_phieu_nhap',
     'kho_duyet_phieu_nhap', 'kho_tu_choi_phieu_nhap', 'kho_huy_phieu_nhap',
+    // Pha lóc
+    'kho_luu_phien_pha', 'kho_xem_thu_phien_pha', 'kho_chot_phien_pha',
+    'kho_mo_lai_phien_pha', 'kho_huy_phien_pha',
+    // Chuyển, xuất bếp, hủy
+    'kho_tao_phieu_xuat', 'kho_duyet_phieu_huy', 'kho_tu_choi_phieu_huy',
+    // Kiểm kê
+    'kho_bat_dau_kiem_ke', 'kho_luu_kiem_ke', 'kho_gui_kiem_ke',
+    'kho_duyet_kiem_ke', 'kho_tu_choi_kiem_ke', 'kho_huy_kiem_ke',
     // Đối soát
     'kho_doi_soat_ton',
     // Hàm trigger — PostgREST không gọi được hàm trả về trigger
@@ -239,7 +247,10 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_mat_hang_chuan_hoa', 'kho_cong_thuc_pha_kiem', 'kho_lo_chan_sua_xoa',
     'kho_ton_chi_qua_so_cai', 'kho_so_cai_ghi', 'kho_so_cai_chan_sua_xoa',
   ].sort();
-  const NOI_BO = ['kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap'].sort();
+  const NOI_BO = [
+    'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
+    'kho_tinh_phien_pha', 'kho_phan_bo', 'kho_kg_tb_goi', 'kho_kiem_ke_bo_sung_dong', 'kho_dung_lai_ton',
+  ].sort();
 
   const { rows } = await db.query(`
     select p.proname, has_function_privilege('authenticated', p.oid, 'execute') as goi

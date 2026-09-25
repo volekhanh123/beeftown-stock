@@ -122,6 +122,9 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/kho/danh-muc.ts',
   'web/src/lib/kho/nhap.ts',
   'web/src/lib/kho/ton.ts',
+  'web/src/lib/kho/pha-loc.ts',
+  'web/src/lib/kho/xuat.ts',
+  'web/src/lib/kho/kiem-ke.ts',
 ];
 
 function laAnon(g) {

@@ -1,0 +1,116 @@
+---
+/**
+ * KHO — DANH SÁCH PHIÊN PHA LÓC
+ *
+ * Trên cùng: thu hồi bình quân 30 ngày theo từng loại tảng (tính theo kg, chỉ
+ * phiên đã chốt) — con số chủ nhà hàng nhìn để biết thợ pha có đều tay không,
+ * tảng của nhà cung cấp nào ra thịt tốt. Dưới: các phiên, phiên nháp lên đầu.
+ *
+ * Phiên pha có giá bán dùng để chia giá vốn → chỉ vai xem giá mở được trang.
+ */
+import NoiBo from '../../../../layouts/NoiBo.astro';
+import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
+import { docDanhSachPhienPha, thuHoiTheoTang, type PhienPhaTom } from '../../../../lib/kho/pha-loc.ts';
+import {
+  cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, homNayVn,
+  TRANG_THAI_CHUNG_TU,
+} from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+
+const LOC = [['', 'Tất cả'], ['nhap', 'Nháp'], ['da_chot', 'Đã chốt'], ['da_huy', 'Đã hủy']] as const;
+const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
+
+let ds: PhienPhaTom[] = [];
+let loiDoc = k.loiDoc;
+if (k.chiNhanh && k.daKhoiTao) {
+  try {
+    ds = await docDanhSachPhienPha(k.client, k.chiNhanh.id, loc || null);
+  } catch (e) {
+    loiDoc = cauLoiKho(e, 'Không đọc được phiên pha lóc.');
+  }
+}
+const tu30 = congNgay(homNayVn(), -30);
+const thuHoi = thuHoiTheoTang(ds.filter(p => p.ngay_pha >= tu30));
+const sapXep = [...ds].sort((a, b) => (a.trang_thai === 'nhap' ? 0 : 1) - (b.trang_thai === 'nhap' ? 0 : 1));
+const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
+---
+<NoiBo tieuDe="Pha lóc" nhanSu={k.nhanSu}>
+  <h1>Pha lóc</h1>
+  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+  ) : (
+    <>
+      <p class="nb-dan">
+        Mỗi lần pha: chọn tảng đem pha, cân từng phần cắt ra, phụ phẩm, phần bỏ. Phần mềm tính
+        <strong>tỉ lệ thu hồi</strong> và <strong>giá vốn thật mỗi kg</strong> của từng phần.
+        Tồn chỉ đổi khi bấm <em>Chốt phiên</em>.
+      </p>
+
+      {k.duoc('pha_loc') && (
+        <div class="kho-nut-nhanh">
+          <a class="nb-nut" href="/noi-bo/kho/pha-loc/moi">Phiên pha mới</a>
+        </div>
+      )}
+
+      {thuHoi.length > 0 && (
+        <>
+          <h2>Thu hồi 30 ngày qua</h2>
+          <div class="kho-bang-khung">
+            <table class="kho-bang">
+              <thead><tr><th>Tảng</th><th class="so">Số phiên</th><th class="so">Kg vào</th><th class="so">Kg thịt ra</th><th class="so">Thu hồi</th></tr></thead>
+              <tbody>
+                {thuHoi.map(t => (
+                  <tr>
+                    <td>{t.ten}</td>
+                    <td class="so">{t.so_phien}</td>
+                    <td class="so">{dinhDangKg(t.kg_vao)}</td>
+                    <td class="so">{dinhDangKg(t.kg_thit)}</td>
+                    <td class="so"><strong>{dinhDangPhanTram(t.ty_le)}</strong></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p class="kho-phu" style="margin-top:-.5rem">Thu hồi = kg thịt giữ lại (phần cắt, kể cả phần chuyển bếp) ÷ kg tảng đem pha. Không tính phụ phẩm và phần bỏ.</p>
+        </>
+      )}
+
+      <nav class="kho-dh" aria-label="Lọc theo trạng thái">
+        {LOC.map(([v, t]) => (
+          <a href={v ? `/noi-bo/kho/pha-loc?loc=${v}` : '/noi-bo/kho/pha-loc'} aria-current={loc === v ? 'page' : undefined}>{t}</a>
+        ))}
+      </nav>
+
+      {sapXep.length === 0 ? (
+        <p class="nb-rong">Chưa có phiên pha lóc nào{loc ? ' ở trạng thái này' : ''}.</p>
+      ) : sapXep.map(p => {
+        const [nhan, lop] = TRANG_THAI_CHUNG_TU[p.trang_thai] ?? [p.trang_thai, 'tat'];
+        return (
+          <a href={`/noi-bo/kho/pha-loc/${p.id}`} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
+            <div class="nb-dong-dau">
+              <strong>{p.so_phieu} · {p.ten_mat_hang_vao}</strong>
+              <span class={`nb-nhan ${lop}`}>{nhan}</span>
+            </div>
+            <dl>
+              <dt>Ngày pha</dt><dd>{dinhDangNgay(p.ngay_pha)}</dd>
+              {p.trang_thai === 'da_chot' ? (
+                <><dt>Kết quả</dt><dd>{dinhDangKg(p.tong_kg_vao)} kg vào → {dinhDangKg(p.tong_kg_thit)} kg thịt · thu hồi <strong>{dinhDangPhanTram(p.ty_le_thu_hoi)}</strong></dd></>
+              ) : (
+                <><dt>Đang ghi</dt><dd>{p.so_dau_vao} lô vào ({dinhDangKg(p.kg_vao_nhap)} kg) · {p.so_dau_ra} phần ra ({dinhDangKg(p.kg_ra_nhap)} kg)</dd></>
+              )}
+              <dt>Người lập</dt><dd>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
+            </dl>
+          </a>
+        );
+      })}
+    </>
+  )}
+</NoiBo>
