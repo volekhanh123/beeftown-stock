@@ -44,6 +44,9 @@
 !Beeftown_Dashboard.html
 !Beeftown_Concept_Board_v1.svg
 
+# --- ĐƯỢC PHÉP: công cụ nội bộ ---
+!Beeftown_Can_TMA.html
+
 # --- ĐƯỢC PHÉP: ứng dụng web (Astro + Cloudflare Workers) ---
 # Mở theo ĐUÔI FILE chứ không mở cả thư mục. Nhờ vậy file mật thêm vào web/
 # sau này (xlsx, pdf, ảnh chụp) vẫn tự động bị chặn ở mục bên dưới — đúng
@@ -75,6 +78,9 @@
 *.png
 *.jpg
 *.jpeg
+# File dữ liệu lưu từ cân: có mật khẩu WiFi và lịch sử bán hàng
+*.TMS
+*.tms
 .claude/
 Du lieu nghien cuu/
 

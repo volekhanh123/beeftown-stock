@@ -1,0 +1,102 @@
+---
+/**
+ * KHO — CÀI ĐẶT · MÃ VẠCH CÂN
+ *
+ * Cách đọc dãy 13 số dưới mã vạch nhãn cân Dahua TM-A. Mặc định 2+5+5+1.
+ * Ô "Thử một nhãn" để chủ nhà hàng gõ đúng 13 số trên một nhãn thật và xem
+ * phần mềm đọc ra mặt hàng nào, bao nhiêu kg — sai thì sửa mẫu ngay tại đây.
+ */
+import NoiBo from '../../../../layouts/NoiBo.astro';
+import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { docCaiDat, docMatHang, luuCaiDat, type CaiDat, type MatHang } from '../../../../lib/kho/danh-muc.ts';
+import { docMaVach, MAU_MAC_DINH } from '../../../../lib/kho/ma-vach.ts';
+import { cauLoiKho, dinhDangKg, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('danh_muc')) return Astro.redirect('/noi-bo/kho/cai-dat', 302);
+
+let bao: KetQua | null = k.bao;
+const form = await docFormGui(Astro);
+if (form && k.chiNhanh) {
+  const kq = await luuCaiDat(k.client, form, k.chiNhanh.id);
+  if (kq.ok) return chuyenHuong(Astro, '/noi-bo/kho/cai-dat/ma-vach', kq);
+  bao = kq;
+}
+
+let caiDat: CaiDat | null = null;
+let matHang: MatHang[] = [];
+let loiDoc = k.loiDoc;
+if (k.chiNhanh && k.daKhoiTao) {
+  try {
+    [caiDat, matHang] = await Promise.all([docCaiDat(k.client, k.chiNhanh.id), docMatHang(k.client)]);
+  } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được cài đặt.'); }
+}
+
+const mau = caiDat?.mau_ma_vach ?? '';
+const thu = (Astro.url.searchParams.get('thu') ?? '').replace(/\s/g, '');
+const kq = thu ? docMaVach(thu, mau || MAU_MAC_DINH, caiDat?.so_le_kg ?? 3) : null;
+const mh = kq?.hopLe ? matHang.find(m => m.ma_can === kq.maCan && m.dang_dung) : undefined;
+const chuaCoMaCan = matHang.filter(m => m.dang_dung && m.loai === 'phan_cat' && !m.ma_can);
+---
+<NoiBo tieuDe="Mã vạch cân" nhanSu={k.nhanSu}>
+  <h1>Mã vạch cân</h1>
+  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+  <p><a href="/noi-bo/kho/cai-dat">← Cài đặt kho</a></p>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {!caiDat ? <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho.</p> : (
+    <>
+      <div class="nb-the">
+        <h2 style="margin-top:0">Thử một nhãn thật</h2>
+        <p class="nb-dan" style="font-size:.88rem">Gõ đúng 13 số in dưới mã vạch của một nhãn cân (hoặc quét bằng máy quét cầm tay vào ô này).</p>
+        <form method="GET" style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <label class="nb-o" style="flex:1 1 12rem;margin:0">
+            <input type="text" inputmode="numeric" name="thu" value={thu} maxlength="20" placeholder="2012345012509" aria-label="Mã vạch" autofocus />
+          </label>
+          <button type="submit" class="nb-nut">Đọc thử</button>
+        </form>
+        {kq && (kq.hopLe ? (
+          <div class="nb-bao xong" style="margin:1rem 0 0">
+            <p>Mã hàng trên cân: <strong>{kq.maCan}</strong>
+              {kq.soKg !== null && <> · nặng <strong>{dinhDangKg(kq.soKg)} kg</strong></>}
+              {kq.thanhTien !== null && <> · thành tiền <strong>{dinhDangTien(kq.thanhTien)}</strong></>}</p>
+            <p>{mh ? <>Khớp mặt hàng <strong>{mh.ten}</strong> ({mh.ma}).</> : <>Chưa có mặt hàng nào mang mã cân <strong>{kq.maCan}</strong> — vào <a href="/noi-bo/kho/cai-dat/mat-hang">Mặt hàng</a> điền mã cân cho đúng phần cắt.</>}</p>
+            <p class="kho-phu">Nếu số kg khác số in trên nhãn: đổi "số lẻ của trọng lượng" hoặc mẫu bên dưới.</p>
+          </div>
+        ) : (
+          <div class="nb-bao loi" style="margin:1rem 0 0"><p>{kq.loi}</p></div>
+        ))}
+      </div>
+
+      <form method="POST" class="nb-the">
+        <h2 style="margin-top:0">Cách đọc nhãn</h2>
+        <input type="hidden" name="vi_tri_nhan_hang_id" value={caiDat.vi_tri_nhan_hang_id ?? ''} />
+        <input type="hidden" name="canh_bao_truoc_ngay" value={String(caiDat.canh_bao_truoc_ngay)} />
+        <label class="nb-o">
+          <span>Mẫu mã vạch (13 ký tự)</span>
+          <small>0–9 = số cố định · X = số bất kỳ · C = mã hàng · W = trọng lượng · P = thành tiền · K = số kiểm tra.
+            Cân Dahua 2+5+5+1: <code>{MAU_MAC_DINH}</code>. Để trống = tắt đọc nhãn.</small>
+          <input type="text" name="mau_ma_vach" value={mau} maxlength="13" autocapitalize="characters" spellcheck="false" style="font-family:monospace;letter-spacing:.15em" />
+        </label>
+        <label class="nb-o">
+          <span>Số lẻ của trọng lượng</span>
+          <small>3 = trọng lượng in theo gram (01250 = 1,250 kg). Cân cài khác thì đổi.</small>
+          <select name="so_le_kg">
+            {[3, 2, 1, 0].map(n => <option value={String(n)} selected={caiDat!.so_le_kg === n}>{n}</option>)}
+          </select>
+        </label>
+        <button type="submit" class="nb-nut">Lưu cách đọc nhãn</button>
+      </form>
+
+      {chuaCoMaCan.length > 0 && (
+        <div class="nb-bao luu-y">
+          <p><strong>{chuaCoMaCan.length} phần cắt chưa có mã cân:</strong> {chuaCoMaCan.slice(0, 8).map(m => m.ten).join(', ')}{chuaCoMaCan.length > 8 ? '…' : ''}.
+            Quét nhãn những phần này sẽ không nhận ra mặt hàng.</p>
+        </div>
+      )}
+    </>
+  )}
+</NoiBo>

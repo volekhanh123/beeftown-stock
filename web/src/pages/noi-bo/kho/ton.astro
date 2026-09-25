@@ -1,0 +1,141 @@
+---
+/**
+ * KHO — TỒN KHO
+ *
+ * Gom theo mặt hàng; bấm vào mặt hàng thì thấy từng lô, lô hết hạn sớm nhất
+ * ở trên (bán trước, FEFO). Lọc bằng link GET — không cần JavaScript.
+ *
+ * Giá trị tồn chỉ hiện với vai xem giá. Nhân viên quầy/bếp đọc kho_v_ton_gia
+ * sẽ nhận về rỗng (RLS), nên cột tiền tự biến mất với họ.
+ */
+import NoiBo from '../../../layouts/NoiBo.astro';
+import DieuHuongKho from '../../../components/kho/DieuHuongKho.astro';
+import BaoKho from '../../../components/kho/BaoKho.astro';
+import { moTrangKho } from '../../../lib/kho/trang.ts';
+import { docTon, docGiaTon, gomTheoMatHang, type DongTon } from '../../../lib/kho/ton.ts';
+import {
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangTien, boDau,
+  TEN_LOAI_MAT_HANG, TEN_LOAI_VI_TRI,
+} from '../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+
+const q = Astro.url.searchParams;
+const locViTri = q.get('vi_tri') ?? '';          // '' | 'kho' | 'quay' | 'cho_huy'
+const locHan = q.get('han') ?? '';                // '' | 'het_han' | 'sap_het'
+const locLoai = q.get('loai') ?? '';              // '' | 'tang' | 'phan_cat' | 'phu_pham'
+const tim = (q.get('tim') ?? '').trim();
+
+let ton: DongTon[] = [];
+let gia = new Map<string, { gia_von_kg: number; gia_tri: number }>();
+let loiDoc = k.loiDoc;
+if (k.chiNhanh) {
+  try {
+    [ton, gia] = await Promise.all([
+      docTon(k.client, k.chiNhanh.id),
+      k.duoc('xem_gia') ? docGiaTon(k.client, k.chiNhanh.id) : Promise.resolve(new Map()),
+    ]);
+  } catch (e) {
+    loiDoc = cauLoiKho(e, 'Không đọc được tồn kho.');
+  }
+}
+
+const timBoDau = boDau(tim).toLowerCase();
+const loc = ton.filter(t =>
+  (!locViTri || t.loai_vi_tri === locViTri)
+  && (!locHan || t.tinh_trang_han === locHan || (locHan === 'sap_het' && t.tinh_trang_han === 'het_han'))
+  && (!locLoai || t.loai_hang === locLoai)
+  && (!timBoDau || boDau(`${t.ten_hang} ${t.ma_hang} ${t.ma_lo} ${t.nhom ?? ''}`).toLowerCase().includes(timBoDau)));
+
+const nhom = gomTheoMatHang(loc);
+const giaCua = (t: DongTon) => gia.get(`${t.lo_id}|${t.vi_tri_id}`);
+const coGia = gia.size > 0;
+const tongGiaTri = coGia ? loc.reduce((s, t) => s + (giaCua(t)?.gia_tri ?? 0), 0) : 0;
+const tongKg = Math.round(loc.reduce((s, t) => s + t.so_kg * 1000, 0)) / 1000;
+
+const link = (thay: Record<string, string>) => {
+  const p = new URLSearchParams({ vi_tri: locViTri, han: locHan, loai: locLoai, tim, ...thay });
+  for (const [kk, v] of [...p.entries()]) if (!v) p.delete(kk);
+  const s = p.toString();
+  return `/noi-bo/kho/ton${s ? `?${s}` : ''}`;
+};
+---
+<NoiBo tieuDe="Tồn kho" nhanSu={k.nhanSu}>
+  <h1>Tồn kho</h1>
+  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  <div class="nb-the">
+    <div class="kho-dh" style="margin:0;padding:0 0 .5rem">
+      {[['', 'Mọi vị trí'], ['kho', 'Kho'], ['quay', 'Quầy'], ['cho_huy', 'Chờ hủy']].map(([v, ten]) => (
+        <a href={link({ vi_tri: v })} aria-current={locViTri === v ? 'page' : undefined}>{ten}</a>
+      ))}
+    </div>
+    <div class="kho-dh" style="margin:0;padding:0 0 .5rem">
+      {[['', 'Mọi hạn'], ['sap_het', 'Sắp hết + hết hạn'], ['het_han', 'Đã hết hạn']].map(([v, ten]) => (
+        <a href={link({ han: v })} aria-current={locHan === v ? 'page' : undefined}>{ten}</a>
+      ))}
+    </div>
+    <div class="kho-dh" style="margin:0;padding:0 0 .75rem">
+      {[['', 'Mọi loại'], ['tang', 'Tảng'], ['phan_cat', 'Phần cắt'], ['phu_pham', 'Phụ phẩm']].map(([v, ten]) => (
+        <a href={link({ loai: v })} aria-current={locLoai === v ? 'page' : undefined}>{ten}</a>
+      ))}
+    </div>
+    <form method="GET" style="display:flex;gap:.5rem">
+      {locViTri && <input type="hidden" name="vi_tri" value={locViTri} />}
+      {locHan && <input type="hidden" name="han" value={locHan} />}
+      {locLoai && <input type="hidden" name="loai" value={locLoai} />}
+      <label class="nb-o" style="flex:1;margin:0">
+        <input type="search" name="tim" value={tim} placeholder="Tìm tên, mã hàng, mã lô…" aria-label="Tìm" />
+      </label>
+      <button type="submit" class="nb-nut phu">Tìm</button>
+    </form>
+  </div>
+
+  <p class="nb-dan">
+    <strong>{nhom.length}</strong> mặt hàng · <strong>{dinhDangKg(tongKg)} kg</strong>
+    {coGia && <> · giá trị <strong>{dinhDangTien(tongGiaTri)}</strong></>}
+  </p>
+
+  {nhom.length === 0 ? (
+    <p class="nb-rong">{ton.length === 0 ? 'Kho đang trống. Hàng vào kho khi phiếu nhập được duyệt.' : 'Không có lô nào khớp bộ lọc.'}</p>
+  ) : nhom.map(g => (
+    <details class="kho-mh" open={nhom.length <= 3 || g.tinh_trang_xau_nhat !== 'con_han'}>
+      <summary>
+        <span class="ten">
+          {g.ten_hang}
+          <small>{g.ma_hang} · {TEN_LOAI_MAT_HANG[g.loai_hang]}{g.nhom ? ` · ${g.nhom}` : ''} · {g.so_lo} lô</small>
+        </span>
+        <span class="so">
+          <b class="kho-so">{dinhDangKg(g.so_kg)} kg</b>
+          {g.dem_goi && <span class="kho-so"> · {g.so_goi} {g.don_vi_goi}</span>}
+          <br /><span class={`kho-han ${g.tinh_trang_xau_nhat}`}>HSD sớm nhất {dinhDangNgay(g.han_som_nhat)}</span>
+        </span>
+      </summary>
+      <div class="kho-mh-lo">
+        <div class="kho-bang-khung" style="margin:0">
+          <table class="kho-bang">
+            <thead><tr>
+              <th>Lô</th><th>Ở đâu</th><th class="so">Kg</th>{g.dem_goi && <th class="so">{g.don_vi_goi}</th>}
+              <th>Hạn dùng</th>{coGia && <th class="so">Giá vốn/kg</th>}
+            </tr></thead>
+            <tbody>
+              {g.lo.map(t => (
+                <tr>
+                  <td>{t.ma_lo}<br /><span class="kho-phu">{t.nguon === 'ton_dau' ? 'tồn đầu' : t.nguon === 'pha_loc' ? 'pha lóc' : 'nhập'} {dinhDangNgay(t.ngay_dong_goi)}</span></td>
+                  <td>{t.ten_vi_tri}<br /><span class="kho-phu">{TEN_LOAI_VI_TRI[t.loai_vi_tri]}</span></td>
+                  <td class="so">{dinhDangKg(t.so_kg)}</td>
+                  {g.dem_goi && <td class="so">{t.so_goi}</td>}
+                  <td><span class={`kho-han ${t.tinh_trang_han}`}>{dinhDangNgay(t.han_dung)}</span><br />
+                    <span class="kho-phu">{t.so_ngay_con < 0 ? `quá ${-t.so_ngay_con} ngày` : t.so_ngay_con === 0 ? 'hết hạn hôm nay' : `còn ${t.so_ngay_con} ngày`}</span></td>
+                  {coGia && <td class="so">{giaCua(t) ? dinhDangTien(giaCua(t)!.gia_von_kg) : '—'}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </details>
+  ))}
+</NoiBo>

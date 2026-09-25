@@ -115,6 +115,18 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/cong-tac.ts',
   // Chi nhánh, bàn ăn, dọn dữ liệu — cũng chỉ gọi từ /noi-bo.
   'web/src/lib/cai-dat.ts',
+  // Kho — mọi file chỉ được gọi từ /noi-bo/kho, sau middleware, bằng client
+  // mang access token của nhân sự. Liệt kê từng file: file kho mới đọc bảng
+  // sẽ làm phép thử đỏ cho tới khi có người phân loại nó.
+  'web/src/lib/kho/trang.ts',
+  'web/src/lib/kho/danh-muc.ts',
+  'web/src/lib/kho/nhap.ts',
+  'web/src/lib/kho/ton.ts',
+  'web/src/lib/kho/pha-loc.ts',
+  'web/src/lib/kho/xuat.ts',
+  'web/src/lib/kho/kiem-ke.ts',
+  'web/src/lib/kho/cong-no.ts',
+  'web/src/lib/kho/bao-cao.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
 ];

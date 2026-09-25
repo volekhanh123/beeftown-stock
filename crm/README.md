@@ -24,8 +24,11 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 | 9d | **Form hỏi gì tùy từng tin** — chỉ tin cần CV mới có ô CV | ✅ Xong (`0026`) |
 | 9e | **Màn soạn tin tuyển dụng** — chỉ chủ nhà hàng và quản lý duyệt lương | ✅ Xong (`0027`) |
 | 9f | **Lương theo giờ hay theo tháng** — đơn vị đi cùng con số, duyệt cùng lúc | ✅ Xong (`0028`) |
+| 10 | **Kho · GĐ1** — 3 vai kho, tường ngăn CRM, danh mục, ô thông tin tự tạo, phiếu nhập có duyệt, sổ kho bất biến | ✅ Xong (`0017`–`0021`) |
+| 11 | **Kho · GĐ2** — pha lóc (tỉ lệ thu hồi, giá vốn thật), chuyển quầy, xuất bếp, báo hủy có duyệt, kiểm kê dựng lại tồn | ✅ Xong (`0022`–`0023`) |
+| 12 | **Kho · GĐ3** — đối chiếu hóa đơn, công nợ nhà cung cấp, thanh toán, trả hàng NCC, báo cáo xuất–nhập–tồn / thu hồi / hao hụt / bán, tải CSV | ✅ Xong (`0024`) |
 
-**478 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
+**1308 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
 `../web/` có 8 đường dẫn song ngữ, giao diện nội bộ `/noi-bo` và hai form
 công khai đều đã dựng.
 
@@ -39,7 +42,7 @@ cd crm && npm install && npm test
 
 | Lệnh | Kiểm gì | Số kiểm tra |
 |---|---|---|
-| `npm run test:db` | nghiệp vụ: chuẩn hóa SĐT, sổ cái điểm, ba luật tính điểm, đặt bàn, phân nhóm | 63 |
+| `npm run test:db` | nghiệp vụ: chuẩn hóa SĐT, sổ cái điểm, ba luật tính điểm, đặt bàn, phân nhóm | 71 |
 | `npm run test:rls` | phân quyền: tách dữ liệu giữa chi nhánh, vai trò, website công khai | 23 |
 | `npm run test:an-toan` | **bốn lỗ hổng ở `0008`** và hai lỗi chỉ số | 28 |
 | `npm run test:cong-bo` | cổng nội dung và ảnh | 53 |
@@ -47,7 +50,9 @@ cd crm && npm install && npm test
 | `npm run test:tuyen-dung` | tuyển dụng, dữ liệu cá nhân, nhật ký bất biến, form theo từng tin, duyệt lương, lương giờ/tháng | 101 |
 | `npm run test:cong-khai` | API công khai, mã đặt bàn, đo lường | 50 |
 | `npm run test:noi-dung` | đặt/thu hồi nội dung trong một giao dịch, vé tải CV | 53 |
-| `npm run test:hop-dong` | hợp đồng giữa `web/src` và database: tên hàm, tham số, bảng, cột, enum | 57 |
+| `npm run test:hop-dong` | hợp đồng giữa `web/src` và database: tên hàm, tham số, bảng, cột, enum | 205 |
+| `npm run test:kho` | **kho**: tường ngăn CRM, bảng quyền, phiếu nhập, sổ kho, giá vốn, mã vạch nhãn cân, form và CSV; pha lóc; chuyển, xuất bếp, hủy, kiểm kê; công nợ và báo cáo; đồng bộ cân | 77 + 117 + 99 + 115 + 120 + 91 + 55 |
+| `npm run test:can` | đồng bộ danh mục sang cân in tem: đọc/ghi file `A_000.TMS`, dòng không đổi giữ nguyên từng byte | 55 |
 
 **Chạy lại toàn bộ kiểm thử sau mỗi lần sửa migration.** Chúng đã bắt được lỗi thật, không phải một lần:
 
@@ -80,11 +85,20 @@ crm/
 │   ├── 0014_storage_supabase.sql   kho file — PGlite BỎ QUA, kiểm bằng tay
 │   ├── 0015_dat_noi_dung.sql    công bố một dữ kiện trong MỘT giao dịch
 │   ├── 0016_va_ve_tai_cv_va_quyen_thu_hoi.sql   ⚠ VÁ 3 LỖI — xem đầu file
+│   ├── 0017_kho_vai_tro.sql     KHO · 3 vai mới — ⚠ CHẠY RIÊNG, trước 0018
+│   ├── 0018_kho_tuong_ngan.sql  KHO · vai kho không thấy/ghi dữ liệu CRM · bảng quyền kho
+│   ├── 0019_kho_danh_muc.sql    KHO · vị trí, mặt hàng, NCC, lý do, ô thông tin tự tạo, cài đặt
+│   ├── 0020_kho_so_cai_nhap.sql KHO · lô hàng, sổ kho bất biến, tồn, phiếu nhập + duyệt
+│   ├── 0021_kho_chung_tu_anh.sql  KHO · kho file ảnh chứng từ — PGlite BỎ QUA phần storage
+│   ├── 0022_kho_pha_loc.sql     KHO · phiên pha lóc: thu hồi, chia giá vốn không lệch một đồng
+│   ├── 0023_kho_xuat_kiem_ke.sql  KHO · chuyển quầy, xuất bếp, hủy qua "chờ hủy", kiểm kê
+│   ├── 0024_kho_cong_no_bao_cao.sql  KHO · đối chiếu hóa đơn, công nợ, thanh toán, trả NCC, báo cáo
 │   ├── 0025_va_quyen_kiem_ve_tai_cv.sql   anon gọi được hàm kiểm vé — CV mới tải lên được
 │   ├── 0026_form_theo_tung_tin.sql   mỗi tin tự chọn form hỏi gì — chỉ tin cần CV mới có ô CV
 │   ├── 0027_duyet_luong_tin_tuyen_dung.sql   chỉ chủ nhà hàng và quản lý đổi được lương chính thức
 │   └── 0028_don_vi_luong.sql   lương theo giờ hay theo tháng — đơn vị duyệt cùng con số
 └── test/                    ← kiểm thử chạy trên Postgres thật
+    └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs
 ```
 
 ### Thứ tự chạy có ràng buộc
@@ -93,6 +107,8 @@ crm/
 - **`0009` và `0011` phụ thuộc vòng.** `tep_anh.mon_an_id` trỏ tới `mon_an` chưa tồn tại; cột ra đời ở `0009` không kèm khóa ngoại, khóa ngoại được thêm ở cuối `0011`.
 - **File nào tạo hàm thì PHẢI kết thúc bằng khối chốt quyền.** Xem `0008` mục 6.
 - **View mới PHẢI khai `security_invoker = true` tường minh.** Mặc định của Postgres là view chạy dưới quyền người tạo, tức đi xuyên qua RLS của bảng bên dưới — đúng lỗ hổng số 2 mà `0008` đã vá. `0008` chỉ sửa được 7 view có mặt lúc đó. `test-an-toan.mjs` mục 2 liệt kê `pg_class` và bắt đúng chuyện quên này; nó đã bắt được `v_bang_cong_tac` ngay lần chạy đầu tiên của `0015`.
+- **`0017` phải chạy RIÊNG, một mình, trước `0018`.** Nó thêm giá trị vào enum `vai_tro`; Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa thêm nó.
+- **Đừng tạo tài khoản vai kho trước khi chạy `0018`.** `0018` là tường ngăn: trước nó, một thủ kho đọc được số điện thoại khách.
 - **`0014` là file duy nhất PGlite không chạy.** Toàn bộ DDL kho file bọc trong khối kiểm tra schema `storage`. Danh sách kiểm tra bằng tay nằm ở cuối file đó — **bắt buộc làm trên Supabase thật.**
 - **Khối chốt quyền từ `0025` trở đi PHẢI giữ dòng `ve_con_hieu_luc(text)`.** Policy tải CV trên `storage.objects` gọi hàm đó dưới vai `anon`. Chép danh sách từ một file cũ hơn là CV lại rơi im lặng, và PGlite không có storage để thấy; `DUOC_PHEP` trong `test-an-toan.mjs` và mục 7 của `test-dat-noi-dung.mjs` mới bắt được.
 - **Số migration không được trùng giữa các nhánh làm song song.** Supabase CLI coi phần số là phiên bản, nên hai file cùng số không cùng tồn tại được. Nhánh kho dùng `0017`–`0024`. Nhánh này lúc đầu dùng `0023`, `0025`, `0026` — `0023` trùng với nhánh kho — nên ngày 25/09/2026 đã đánh lại thành `0025`, `0026`, `0027`, giữ nguyên thứ tự giữa ba file. Bản vá quyền hàm CRM dùng `0022`, trùng với `0022` của nhánh kho: phải đánh lại khi gộp. Migration mới lấy số sau số lớn nhất trên **mọi** nhánh đang mở: `0028` là đơn vị lương, nên số kế tiếp là `0029`. Khối chốt quyền của mọi file nhánh khác đều viết trước `0025` nên thiếu dòng `ve_con_hieu_luc(text)`: sau khi gộp, khối chốt quyền **chạy cuối cùng** phải có dòng đó, và `DUOC_PHEP` sẽ đỏ nếu thiếu. Trên một database đã có sẵn, đừng chạy file nào có khối chốt quyền thiếu dòng đó sau `0025`.
@@ -204,6 +220,7 @@ Website công khai **không có quyền vào bảng nào cả** — chỉ gọi 
 - [ ] Tạo project Supabase, chạy các file migration theo thứ tự
 - [ ] Tạo tài khoản nhân sự đầu tiên (`chu_so_huu`) và nối `auth_uid`
 - [ ] Nhập danh sách bàn thật vào `ban_an`
+- [ ] Kho: chạy `0017` riêng, rồi `0018`–`0024`; làm danh sách kiểm tay kho file `kho-chung-tu` ở cuối `0021`; tạo tài khoản vai kho
 - [ ] **Xác thực Zalo OA (tick vàng)** — đường găng, làm sớm
 - [ ] Tạo tài khoản ZBS + App, gửi 4 mẫu tin trong `mau_tin` đi duyệt (2–3 ngày làm việc)
 - [ ] Cập nhật `ma_zalo` và `da_duyet = true` sau khi Zalo duyệt xong
@@ -226,3 +243,11 @@ Website công khai **không có quyền vào bảng nào cả** — chỉ gọi 
     Riêng HÀM `auth.uid()` thì gọi thẳng được: Supabase cấp sẵn quyền đó cho `authenticated`, và `0007` đã dùng nó như vậy ở `nhan_su_doc` và `mau_tin_doc`. Bản trước của quy tắc này cấm luôn cả `auth.uid()`, tức là nó mâu thuẫn với chính `0007` — mà `nhan_su_doc` lại nằm trên đường đăng nhập của MỌI request `/noi-bo`.
     **Phép thử một dòng trên project mới:** `select has_schema_privilege('authenticated', 'auth', 'usage');` — trả `false` thì không ai đăng nhập được, và triệu chứng là bị đá về trang đăng nhập dù mật khẩu đúng.
 11. **KHÔNG hiển thị `so_ban_con_trong` thành con số ở bất cứ đâu.** Nó là một oracle sức chứa, và hiển thị ra là tạo cảm giác khan hiếm giả — đúng thứ tài liệu thương hiệu cấm. Website dùng `lich_trong_theo_ma()`, chỉ trả về CÓ/KHÔNG còn chỗ.
+12. **`duoc_truy_cap_chi_nhanh()` chỉ còn trả true cho bốn vai CRM** (từ `0018`). Vai kho dùng `kho_cn_duoc()` / `kho_duoc()`. Thêm vai mới sau này thì vai đó mặc định KHÔNG thấy dữ liệu CRM — muốn cho thấy phải sửa hàm này có chủ ý.
+13. **Thêm hàm kho mới thì phải xếp nó vào `GOI_DUOC` hoặc `NOI_BO` trong `test/test-kho-quyen.mjs`.** Hàm nội bộ (chỉ hàm definer khác gọi) phải `revoke execute ... from authenticated` ở cuối file migration, bọc trong khối kiểm `pg_roles`.
+14. **Sổ kho bất biến, tồn kho chỉ do trigger của sổ ghi.** `kho_ton` từ chối mọi lệnh ghi không đến từ trigger của `kho_so_cai` (kiểm `pg_trigger_depth()`), kể cả từ hàm definer. Sửa sai = dòng `dao_nguoc` hoặc chênh lệch kiểm kê. `kho_doi_soat_ton()` phải luôn trả về rỗng.
+15. **Pha lóc: tổng giá vốn các lô ra = giá vốn tảng vào, đúng từng đồng.** Mọi phép chia tiền đi qua `kho_chia_so_du_lon_nhat()`. Sửa `kho_tinh_phien_pha()` thì chạy `test-kho-pha-loc.mjs` — nhóm 5 cố ý dùng số lẻ để bắt lệch một đồng.
+16. **Hàng hết hạn không lên quầy, không vào bếp.** `kho_phan_bo()` bỏ qua lô hết hạn khi đích là quầy hoặc bếp; hàng hết hạn chỉ có đường báo hủy (qua vị trí "Hàng chờ hủy", quản lý duyệt).
+17. **Kiểm kê ghi phần CHÊNH so với sổ chụp lúc gửi, không ghi đè tồn.** Hàng chuyển vào sau khi gửi đếm vẫn còn. Duyệt bị chặn khi vị trí còn phiếu nhập chờ duyệt hoặc phiên pha lóc nháp. Thiếu ở quầy ghi là `ban` chỉ khi `nguon_so_ban = 'kiem_ke'` (chưa nối iPOS) — nối iPOS xong nhớ đổi cài đặt này.
+18. **Công nợ không có cột "số dư" nào để sửa.** Còn nợ của một phiếu luôn được TÍNH: hóa đơn (hoặc tổng phiếu) − các khoản thanh toán / giảm trừ còn hiệu lực. Ghi nhầm thì hủy khoản đó rồi ghi lại. Phiếu nhập đã có tiền trả thì trigger chặn hủy phiếu.
+19. **Báo cáo là hàm SECURITY INVOKER** (`kho_bao_cao_*`) — đừng đổi sang definer: RLS của người gọi là thứ giữ cho nhân viên quầy nhận cột tiền bằng 0 và thủ kho chi nhánh khác nhận bảng rỗng.

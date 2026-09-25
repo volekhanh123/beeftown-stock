@@ -51,9 +51,10 @@ interface Token {
 export interface NhanSu {
   id: string;
   ho_ten: string;
-  // Bốn giá trị, khớp đúng enum vai_tro ở 0001. Bản trước khai thêm
-  // 'phuc_vu' và 'bep' — hai vai KHÔNG TỒN TẠI trong database.
-  vai_tro: 'chu_so_huu' | 'quan_ly' | 'thu_ngan' | 'marketing';
+  // Khớp đúng enum vai_tro: bốn vai CRM ở 0001 và ba vai kho ở 0017. Bản
+  // trước khai thêm 'phuc_vu' và 'bep' — hai vai KHÔNG TỒN TẠI trong database.
+  vai_tro: 'chu_so_huu' | 'quan_ly' | 'thu_ngan' | 'marketing'
+         | 'thu_kho' | 'nhan_vien_quay' | 'ke_toan';
   chi_nhanh_id: string | null;
   email: string;
 }

@@ -1,0 +1,132 @@
+---
+/**
+ * KHO — CÀI ĐẶT · VỊ TRÍ VÀ LÝ DO
+ *
+ * Vị trí thuộc từng chi nhánh (kho lạnh, tủ mát, quầy thịt). Vị trí "Hàng chờ
+ * hủy" do hệ thống tạo — đổi tên được, không tắt được, không đổi loại được.
+ * Lý do dùng chung toàn thương hiệu; "bắt buộc ảnh" nghĩa là báo hủy với lý
+ * do này phải chụp ít nhất một ảnh.
+ */
+import NoiBo from '../../../../layouts/NoiBo.astro';
+import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { docViTri, docLyDo, luuViTri, luuLyDo, type ViTri, type LyDo } from '../../../../lib/kho/danh-muc.ts';
+import { cauLoiKho, TEN_LOAI_VI_TRI, type KetQua } from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('danh_muc')) return Astro.redirect('/noi-bo/kho/cai-dat', 302);
+
+let bao: KetQua | null = k.bao;
+const form = await docFormGui(Astro);
+if (form && k.chiNhanh) {
+  const viec = String(form.get('viec') ?? '');
+  const kq = viec === 'vi_tri' ? await luuViTri(k.client, form, k.chiNhanh.id)
+    : viec === 'ly_do' ? await luuLyDo(k.client, form)
+    : { ok: false, cau: 'Việc không hợp lệ.' };
+  if (kq.ok) return chuyenHuong(Astro, '/noi-bo/kho/cai-dat/vi-tri-ly-do', kq);
+  bao = kq;
+}
+
+let viTri: ViTri[] = [];
+let lyDo: LyDo[] = [];
+let loiDoc = k.loiDoc;
+if (k.chiNhanh) {
+  try {
+    [viTri, lyDo] = await Promise.all([docViTri(k.client, k.chiNhanh.id), docLyDo(k.client)]);
+  } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được vị trí và lý do.'); }
+}
+
+const NHOM_LY_DO = [
+  ['huy', 'Lý do hủy hàng'],
+  ['xuat_bep', 'Lý do xuất bếp'],
+  ['dieu_chinh', 'Lý do điều chỉnh'],
+] as const;
+---
+<NoiBo tieuDe="Vị trí và lý do" nhanSu={k.nhanSu}>
+  <h1>Vị trí và lý do</h1>
+  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+  <p><a href="/noi-bo/kho/cai-dat">← Cài đặt kho</a></p>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  <h2>Vị trí để hàng — {k.chiNhanh?.ten}</h2>
+  {viTri.length === 0 && <p class="nb-rong">Chưa có vị trí nào — bấm "Bắt đầu dùng kho" ở Tổng quan kho.</p>}
+  {viTri.map(v => (
+    <form method="POST" class="nb-dong" style={v.dang_dung ? '' : 'opacity:.6'}>
+      <input type="hidden" name="viec" value="vi_tri" />
+      <input type="hidden" name="id" value={v.id} />
+      <div class="kho-luoi">
+        <label class="nb-o"><span>Tên</span><input type="text" name="ten" value={v.ten} maxlength="60" required /></label>
+        <label class="nb-o"><span>Loại</span>
+          {v.loai === 'cho_huy'
+            ? <p style="margin:.6rem 0 0">{TEN_LOAI_VI_TRI[v.loai]} <span class="kho-phu">(hệ thống)</span></p>
+            : <select name="loai">
+                <option value="kho" selected={v.loai === 'kho'}>Kho</option>
+                <option value="quay" selected={v.loai === 'quay'}>Quầy</option>
+              </select>}
+        </label>
+        <label class="nb-o"><span>Thứ tự</span><input type="text" inputmode="numeric" name="thu_tu" value={String(v.thu_tu)} /></label>
+        <label class="nb-o"><span>Tình trạng</span>
+          {v.loai === 'cho_huy'
+            ? <><input type="hidden" name="dang_dung" value="co" /><p style="margin:.6rem 0 0">Luôn dùng</p></>
+            : <select name="dang_dung">
+                <option value="co" selected={v.dang_dung}>Đang dùng</option>
+                <option value="khong" selected={!v.dang_dung}>Ngừng dùng</option>
+              </select>}
+        </label>
+      </div>
+      <button type="submit" class="nb-nut phu">Lưu</button>
+    </form>
+  ))}
+  <details class="nb-the">
+    <summary style="cursor:pointer;font-weight:700">+ Thêm vị trí</summary>
+    <form method="POST" style="margin-top:1rem">
+      <input type="hidden" name="viec" value="vi_tri" />
+      <div class="kho-luoi">
+        <label class="nb-o"><span>Tên</span><input type="text" name="ten" maxlength="60" required placeholder="Tủ mát số 2" /></label>
+        <label class="nb-o"><span>Loại</span>
+          <select name="loai"><option value="kho">Kho</option><option value="quay">Quầy</option></select></label>
+        <label class="nb-o"><span>Thứ tự</span><input type="text" inputmode="numeric" name="thu_tu" value="5" /></label>
+      </div>
+      <button type="submit" class="nb-nut">Thêm vị trí</button>
+    </form>
+  </details>
+
+  {NHOM_LY_DO.map(([loai, tieuDe]) => (
+    <>
+      <h2>{tieuDe}</h2>
+      {lyDo.filter(l => l.loai === loai).map(l => (
+        <form method="POST" class="nb-dong" style={l.dang_dung ? '' : 'opacity:.6'}>
+          <input type="hidden" name="viec" value="ly_do" />
+          <input type="hidden" name="id" value={l.id} />
+          <div class="kho-luoi">
+            <label class="nb-o"><span>Lý do</span><input type="text" name="ten" value={l.ten} maxlength="80" required /></label>
+            <label class="nb-o"><span>Thứ tự</span><input type="text" inputmode="numeric" name="thu_tu" value={String(l.thu_tu)} /></label>
+            <label class="nb-o"><span>Tình trạng</span>
+              <select name="dang_dung">
+                <option value="co" selected={l.dang_dung}>Đang dùng</option>
+                <option value="khong" selected={!l.dang_dung}>Ngừng dùng</option>
+              </select></label>
+          </div>
+          {loai === 'huy' && (
+            <label class="kho-tich"><input type="checkbox" name="can_anh" value="co" checked={l.can_anh} /> Bắt buộc chụp ảnh khi báo hủy</label>
+          )}
+          <button type="submit" class="nb-nut phu">Lưu</button>
+        </form>
+      ))}
+      <details class="nb-the">
+        <summary style="cursor:pointer;font-weight:600">+ Thêm {tieuDe.toLowerCase()}</summary>
+        <form method="POST" style="margin-top:1rem">
+          <input type="hidden" name="viec" value="ly_do" />
+          <input type="hidden" name="loai" value={loai} />
+          <label class="nb-o"><span>Lý do</span><input type="text" name="ten" maxlength="80" required /></label>
+          {loai === 'huy' && (
+            <label class="kho-tich"><input type="checkbox" name="can_anh" value="co" checked /> Bắt buộc chụp ảnh khi báo hủy</label>
+          )}
+          <button type="submit" class="nb-nut">Thêm</button>
+        </form>
+      </details>
+    </>
+  ))}
+</NoiBo>
