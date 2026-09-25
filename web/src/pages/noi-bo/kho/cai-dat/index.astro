@@ -1,0 +1,135 @@
+---
+/**
+ * KHO — CÀI ĐẶT (trang chính)
+ *
+ * Lối vào các danh mục, cộng hai nhóm cài đặt của chi nhánh:
+ *   · Chung (quản lý): vị trí nhận hàng mặc định, số ngày cảnh báo hạn dùng
+ *   · Gốc (CHỈ chủ nhà hàng): cách tính giá vốn, nguồn số bán, tự duyệt.
+ *     Đổi mấy thứ này là đổi CON SỐ trong báo cáo — nên database chỉ cho chủ.
+ */
+import NoiBo from '../../../../layouts/NoiBo.astro';
+import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho, docFormGui, chuyenHuong, khoiTaoKho } from '../../../../lib/kho/trang.ts';
+import { docCaiDat, docViTri, luuCaiDat, luuCaiDatGoc, type CaiDat, type ViTri } from '../../../../lib/kho/danh-muc.ts';
+import { cauLoiKho, type KetQua } from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('danh_muc') && !k.duoc('ncc') && !k.duoc('cai_dat_goc')) return Astro.redirect('/noi-bo/kho', 302);
+
+let bao: KetQua | null = k.bao;
+const form = await docFormGui(Astro);
+if (form && k.chiNhanh) {
+  const viec = String(form.get('viec') ?? '');
+  let kq: KetQua;
+  if (viec === 'khoi_tao') kq = await khoiTaoKho(k.client, k.chiNhanh.id);
+  else if (viec === 'chung') kq = await luuCaiDat(k.client, form, k.chiNhanh.id);
+  else if (viec === 'goc') kq = await luuCaiDatGoc(k.client, form, k.chiNhanh.id);
+  else kq = { ok: false, cau: 'Việc không hợp lệ.' };
+  if (kq.ok) return chuyenHuong(Astro, '/noi-bo/kho/cai-dat', kq);
+  bao = kq;
+}
+
+let caiDat: CaiDat | null = null;
+let viTri: ViTri[] = [];
+let loiDoc = k.loiDoc;
+if (k.chiNhanh && k.daKhoiTao) {
+  try {
+    [caiDat, viTri] = await Promise.all([docCaiDat(k.client, k.chiNhanh.id), docViTri(k.client, k.chiNhanh.id)]);
+  } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được cài đặt.'); }
+}
+
+const MUC = [
+  { link: '/noi-bo/kho/cai-dat/mat-hang', ten: 'Mặt hàng', mo_ta: 'Tảng nhập, phần cắt bán ở quầy, phụ phẩm. Giá bán, hạn dùng, mã cân. Dán từ Excel được.', hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/cong-thuc', ten: 'Công thức pha lóc', mo_ta: 'Mỗi loại tảng thường ra những phần nào, tỉ lệ bao nhiêu — để điền sẵn phiếu pha và so thu hồi.', hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/nha-cung-cap', ten: 'Nhà cung cấp', mo_ta: 'Tên, mã số thuế, số ngày nợ, tài khoản ngân hàng.', hien: k.duoc('ncc') },
+  { link: '/noi-bo/kho/cai-dat/vi-tri-ly-do', ten: 'Vị trí và lý do', mo_ta: 'Kho lạnh, quầy; lý do hủy, lý do xuất bếp, ảnh bắt buộc.', hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/o-thong-tin', ten: 'Ô thông tin thêm', mo_ta: 'Tự tạo ô mới cho mặt hàng, nhà cung cấp, phiếu nhập, lô hàng: xuất xứ, grade, nhiệt độ khi nhận…', hien: k.duoc('danh_muc') || k.duoc('cai_dat_goc') },
+  { link: '/noi-bo/kho/cai-dat/ma-vach', ten: 'Mã vạch cân', mo_ta: 'Cách đọc nhãn cân Dahua (mặc định 2+5+5+1). Có ô thử một nhãn thật.', hien: k.duoc('danh_muc') },
+].filter(m => m.hien);
+---
+<NoiBo tieuDe="Cài đặt kho" nhanSu={k.nhanSu}>
+  <h1>Cài đặt kho</h1>
+  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {k.chiNhanh && !k.daKhoiTao && k.duoc('danh_muc') && (
+    <form method="POST" class="nb-the">
+      <input type="hidden" name="viec" value="khoi_tao" />
+      <p style="margin-top:0"><strong>{k.chiNhanh.ten} chưa bắt đầu dùng kho.</strong> Bấm để tạo sẵn kho lạnh, quầy thịt, chỗ hàng chờ hủy và lý do mặc định.</p>
+      <button type="submit" class="nb-nut">Bắt đầu dùng kho</button>
+    </form>
+  )}
+
+  {MUC.map(m => (
+    <a href={m.link} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
+      <div class="nb-dong-dau"><strong>{m.ten}</strong><span aria-hidden="true">›</span></div>
+      <p class="kho-phu" style="margin:.35rem 0 0">{m.mo_ta}</p>
+    </a>
+  ))}
+
+  {caiDat && k.duoc('danh_muc') && (
+    <>
+      <h2>Cài đặt chung — {k.chiNhanh?.ten}</h2>
+      <form method="POST" class="nb-the">
+        <input type="hidden" name="viec" value="chung" />
+        <input type="hidden" name="mau_ma_vach" value={caiDat.mau_ma_vach ?? ''} />
+        <input type="hidden" name="so_le_kg" value={String(caiDat.so_le_kg)} />
+        <label class="nb-o">
+          <span>Hàng nhập về mặc định vào</span>
+          <select name="vi_tri_nhan_hang_id">
+            {viTri.filter(v => v.loai === 'kho' && v.dang_dung).map(v => (
+              <option value={v.id} selected={v.id === caiDat!.vi_tri_nhan_hang_id}>{v.ten}</option>
+            ))}
+          </select>
+        </label>
+        <label class="nb-o">
+          <span>Cảnh báo trước hạn dùng (ngày)</span>
+          <small>Áp cho mặt hàng chưa cài số ngày riêng. 1 = báo "sắp hết" từ ngày trước hạn.</small>
+          <input type="text" inputmode="numeric" name="canh_bao_truoc_ngay" value={String(caiDat.canh_bao_truoc_ngay)} />
+        </label>
+        <button type="submit" class="nb-nut">Lưu cài đặt chung</button>
+      </form>
+    </>
+  )}
+
+  {caiDat && (
+    <>
+      <h2>Cách tính giá vốn và số bán</h2>
+      {k.duoc('cai_dat_goc') ? (
+        <form method="POST" class="nb-the">
+          <input type="hidden" name="viec" value="goc" />
+          <fieldset class="nb-o" style="border:0;padding:0;margin:0 0 1rem">
+            <legend style="font-weight:600;font-size:.88rem;margin-bottom:.35rem">Khi pha lóc, chia giá vốn tảng cho các phần thịt theo</legend>
+            <label class="kho-tich"><input type="radio" name="phuong_phap_gia_von" value="gia_tri" checked={caiDat.phuong_phap_gia_von === 'gia_tri'} />
+              <span><strong>Giá trị bán</strong> (khuyên dùng) — phần bán đắt gánh nhiều giá vốn hơn. Cần nhập giá bán/kg cho phần cắt.</span></label>
+            <label class="kho-tich"><input type="radio" name="phuong_phap_gia_von" value="khoi_luong" checked={caiDat.phuong_phap_gia_von === 'khoi_luong'} />
+              <span><strong>Khối lượng</strong> — mọi phần cùng giá vốn/kg.</span></label>
+          </fieldset>
+          <label class="kho-tich"><input type="checkbox" name="chi_phi_vao_gia_von" value="co" checked={caiDat.chi_phi_vao_gia_von} />
+            <span>Cộng chi phí khác của phiếu nhập (vận chuyển, bốc xếp) vào giá vốn</span></label>
+          <label class="kho-tich"><input type="checkbox" name="vat_vao_gia_von" value="co" checked={caiDat.vat_vao_gia_von} />
+            <span>Cộng thuế VAT đầu vào vào giá vốn (bật khi quán KHÔNG được khấu trừ VAT — hỏi kế toán)</span></label>
+          <fieldset class="nb-o" style="border:0;padding:0;margin:0 0 1rem">
+            <legend style="font-weight:600;font-size:.88rem;margin-bottom:.35rem">Số thịt đã bán ở quầy lấy từ đâu</legend>
+            <label class="kho-tich"><input type="radio" name="nguon_so_ban" value="kiem_ke" checked={caiDat.nguon_so_ban === 'kiem_ke'} />
+              <span><strong>Kiểm kê quầy cuối ngày</strong> — chưa nối iPOS: phần thiếu khi đếm quầy được tính là đã bán.</span></label>
+            <label class="kho-tich"><input type="radio" name="nguon_so_ban" value="ipos" checked={caiDat.nguon_so_ban === 'ipos'} />
+              <span><strong>iPOS</strong> — đã nối iPOS: số bán đến từ máy tính tiền, phần thiếu khi kiểm kê là hao hụt thật.</span></label>
+          </fieldset>
+          <label class="kho-tich"><input type="checkbox" name="cho_tu_duyet" value="co" checked={caiDat.cho_tu_duyet} />
+            <span>Cho quản lý tự duyệt phiếu do chính mình lập (quán nhỏ nên bật; người duyệt luôn được ghi lại)</span></label>
+          <button type="submit" class="nb-nut">Lưu</button>
+        </form>
+      ) : (
+        <div class="nb-the">
+          <p style="margin:0">Chia giá vốn theo <strong>{caiDat.phuong_phap_gia_von === 'gia_tri' ? 'giá trị bán' : 'khối lượng'}</strong>;
+            chi phí khác {caiDat.chi_phi_vao_gia_von ? 'có' : 'không'} vào giá vốn; VAT {caiDat.vat_vao_gia_von ? 'có' : 'không'} vào giá vốn;
+            số bán lấy từ <strong>{caiDat.nguon_so_ban === 'ipos' ? 'iPOS' : 'kiểm kê quầy'}</strong>.
+            Chỉ chủ nhà hàng đổi được mấy thứ này.</p>
+        </div>
+      )}
+    </>
+  )}
+</NoiBo>

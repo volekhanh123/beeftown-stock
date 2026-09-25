@@ -20,8 +20,10 @@ Bò nhập khẩu tươi mát được pha lóc và **đóng gói sẵn theo t�
 
 | File | Nội dung |
 |---|---|
-| `Beeftown_Website/index.html` | Website chính. Một file tự chứa, không cần build. Gồm phần đặt bàn 3 bước. |
-| `Beeftown_Website/google-apps-script.gs` | Code nhận dữ liệu đặt bàn vào Google Sheet. Có hướng dẫn cài đặt ngay trong file. |
+| `web/` | **Website đang dùng.** Astro trên Cloudflare Workers, song ngữ Việt–Anh. Xem `web/README.md`. |
+| `crm/` | Database CRM trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung. 417 kiểm tra. |
+| ~~`Beeftown_Website/index.html`~~ | ⚠️ **BẢN NHÁP CŨ — KHÔNG PHÁT HÀNH.** Xem cảnh báo bên dưới. |
+| ~~`Beeftown_Website/google-apps-script.gs`~~ | ⚠️ Đã thay bằng `tao_dat_ban()` trong database. |
 | `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên. |
 | `Beeftown_Bo_Nhan_Dien_So.html` | Bộ nhận diện trên Google Maps, Zalo OA, Facebook, Instagram, TikTok. |
 | `Beeftown_Instore_Art.html` | Trang trí trong cửa hàng. |
@@ -89,6 +91,34 @@ Lưu ý khi sửa code phần mềm cân:
 
 ---
 
+## ⚠️ Bản nháp cũ không được phát hành
+
+`Beeftown_Website/index.html` là bản nháp thiết kế. Nó **không được deploy**, vì đang chứa:
+
+- số bàn còn trống **mô phỏng** bằng hàm `remainingFor()`, kèm chữ đỏ *"Còn 1 bàn"* tạo cảm giác khan hiếm;
+- bốn **đánh giá khách bịa**, có tên tuổi và nghề nghiệp;
+- hotline mẫu `0900 000 001` và địa chỉ `[số nhà], [tên đường]`;
+- 17 ảnh kho Unsplash, trong đó một ảnh phòng ăn được dùng để minh họa cho lời hứa *"phòng riêng tầng trên, 10–30 khách"* — một tiện ích **chưa được xác nhận**;
+- sáu mức giá trông như đã chốt, trong khi bảng nội dung menu gốc **không có một giá nào được duyệt**;
+- câu *"rẻ hơn 30–50% so với BBQ premium"*, lặp hai lần, không có căn cứ — và tài liệu thương hiệu cấm dùng lợi thế giá làm hook.
+
+Nặng nhất: `BOOKING_ENDPOINT` để rỗng **và** lỗi bị nuốt hai lớp (`mode:'no-cors'` cộng `try/catch`), nên **mọi lượt đặt bàn đều báo thành công với khách rồi biến mất.**
+
+### Quy tắc 4 của bản README cũ đã bị RÚT LẠI
+
+Bản trước viết: *"Form không bao giờ được chết trước mặt khách. Nếu `BOOKING_ENDPOINT` chưa cấu hình hoặc mất mạng, vẫn phải hiện thông báo xác nhận."*
+
+**Quy tắc đó sai, và nó chính là nguyên nhân của lỗi trên.** Nó biến một lỗi kỹ thuật thành một lời nói dối với khách.
+
+Quy tắc thay thế:
+
+> **Thứ ghi dữ liệu và thứ quyết định câu thông báo phải là cùng một biểu thức `await`.**
+> Ghi thất bại thì nói thất bại, và chỉ đường sang inbox Facebook.
+> Hết giờ chờ thì nói *"không chắc đã ghi nhận hay chưa"* — vì đúng là không chắc.
+> Form chưa sẵn sàng thì **ẩn hẳn form**, không hiện nút mờ. Một form bị vô hiệu hóa là lời nói dối có thêm bước.
+
+Chuỗi `"đặt bàn thành công"` **không được tồn tại** trong mã nguồn.
+
 ## Lưu ý khi sửa code
 
 Những chỗ dễ làm hỏng nếu không biết trước:
@@ -97,9 +127,11 @@ Những chỗ dễ làm hỏng nếu không biết trước:
 
 2. **Hàm `remainingFor()` là số bàn trống mô phỏng** — sinh ngẫu nhiên nhưng ổn định theo chi nhánh + ngày + giờ để demo. **Phải thay bằng API thật khi vận hành.**
 
-3. **Ô đồng ý nhận tin là bắt buộc và không được tick sẵn** — yêu cầu pháp lý về dữ liệu cá nhân. Đừng bỏ thuộc tính `required` hay đặt `checked`.
+3. **Ô đồng ý nhận tin KHÔNG được tick sẵn, và KHÔNG được bắt buộc.** Bản nháp cũ đặt `required` lên ô này, nghĩa là khách phải đồng ý nhận quảng cáo mới đặt được bàn — như vậy không còn là đồng ý tự nguyện, dù ô không tick sẵn.
 
-4. **Form không bao giờ được "chết" trước mặt khách.** Nếu `BOOKING_ENDPOINT` chưa cấu hình hoặc mất mạng, vẫn phải hiện thông báo xác nhận. Giữ nguyên khối `try/catch` quanh `saveBooking()`.
+   Xác nhận đặt bàn và nhận tin quảng cáo là hai mục đích khác nhau, phải hỏi riêng. `tao_dat_ban()` nhận `p_dong_y` mặc định `false` và vẫn tạo đặt bàn bình thường; chỉ khi khách tự tick thì mới ghi một dòng vào `nhat_ky_dong_y` kèm nguyên văn câu khách đã đọc.
+
+4. ~~Form không bao giờ được "chết" trước mặt khách.~~ **QUY TẮC NÀY ĐÃ BỊ RÚT LẠI** — xem phần giải thích ở trên. Nó biến một lỗi kỹ thuật thành một lời nói dối với khách, và chính nó là nguyên nhân khiến mọi lượt đặt bàn hiện nay báo thành công rồi biến mất.
 
 5. **Không dùng emoji làm biểu tượng** — dùng SVG nét mảnh 1.5px cho thống nhất.
 
@@ -109,10 +141,70 @@ Những chỗ dễ làm hỏng nếu không biết trước:
 
 ## Còn phải làm trước khi công bố
 
-- [ ] Điền địa chỉ và hotline thật (hiện là `[số nhà], [tên đường]` và `0900 000 001`)
-- [ ] Thay ảnh Unsplash bằng ảnh chụp thật
-- [ ] Thay 4 đánh giá khách hàng minh hoạ bằng review thật từ Google Maps
-- [ ] Chốt bảng giá chính thức (giá hiện tại là dự kiến, đã ghi chú trên trang)
-- [ ] Nối `remainingFor()` vào hệ thống đặt bàn thật
-- [ ] Cấu hình `BOOKING_ENDPOINT` theo hướng dẫn trong `google-apps-script.gs`
-- [ ] Mua bản quyền phông Hypo-me cho tên thương hiệu
+### Việc của Khánh — không ai làm thay được
+
+- [ ] **Một câu hỏi về giờ: trưa mở 10:00 hay 11:00?** Mốc đóng 14:00 và khung tối 16:00–22:00 đã có hai nguồn khớp nhau (câu Khánh gõ "14-14 16-22" và roster trong `05_VanHanh`). Chỉ còn khung đầu là chưa rõ.
+- [ ] **Tạo trang Facebook**, đăng ảnh bìa và 3–4 bài trước ngày treo bạt. Đây là nút thắt của cả Giai đoạn 1 — nút bấm chính của trang trỏ vào đây, và khi chưa có thì trang **không hiện nút nào cả**.
+- [ ] **Mọi tài khoản đứng tên công ty**, không đứng tên người làm: GitHub, Cloudflare, Supabase (thẻ công ty trả tiền), nhà đăng ký tên miền, Facebook, Google Business, Zalo OA.
+      *Phép thử thành thật: người làm đăng xuất một ngày, Khánh vẫn vào được từng cái.*
+- [ ] **Một hộp thư có người đọc.**
+- [ ] Đăng ký tên miền `.vn` — cần giấy tờ, **1–5 ngày làm việc**. Trong lúc chờ, chạy trên tên miền tạm của Cloudflare. **Bạt chỉ in tên Facebook**, không in địa chỉ web, để hai đường không kẹt nhau.
+- [ ] **Supabase gói trả phí trước khi mở bất kỳ form công khai nào** — gói miễn phí tự ngủ sau 7 ngày không dùng, và nó sẽ ngủ đúng hôm form lên sóng.
+
+### Việc kỹ thuật — theo đúng thứ tự này
+
+- [ ] Tạo project Supabase, chạy `crm/supabase/migrations/` **theo thứ tự số**
+- [ ] Tạo tài khoản đầu tiên trong Supabase Studio, rồi thêm một dòng `nhan_su` có `auth_uid` trỏ tới nó và `vai_tro = 'chu_so_huu'`.
+      *Không có bước thứ hai thì đăng nhập được vào Supabase nhưng `/noi-bo` vẫn từ chối — có chủ ý: Supabase Auth trả lời "ai", bảng `nhan_su` trả lời "có phải nhân viên không".*
+- [ ] Thêm một dòng `chi_nhanh` có `ma` khớp biến `PUBLIC_CHI_NHANH`
+- [ ] Điền `web/.env` **trên máy dùng để build** (`PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_CHI_NHANH`, `SITE_URL`).
+      *Build chạy trên máy, không chạy trên Cloudflare — dashboard của Cloudflare không có chỗ đặt mấy biến này. Đặt sai chỗ thì trang vẫn deploy, vẫn trả 200, chỉ là không nối được database và không ai biết.*
+- [ ] Đăng nhập `/noi-bo`, công bố địa chỉ và link Facebook. Trang chủ đổi ngay, không cần deploy lại.
+- [ ] Gọi `tao_tin_tuyen_dung_mau(<id chi nhánh>)` → 8 tin nháp. Sửa lại rồi chuyển sang `da_cong_bo`; **form ứng tuyển tự hiện ra** khi có tin đầu tiên được công bố.
+- [ ] Kiểm tra kho file bằng tay theo danh sách cuối `0014_storage_supabase.sql`
+- [ ] Mua bản quyền phông cho tên thương hiệu — hiện dùng Montserrat, **có chủ ý**, để không ai tưởng việc này đã xong
+
+### Hai việc kỹ thuật dễ bị bỏ quên
+
+- [ ] **Nhập bàn thật vào `ban_an` trước khi mở đặt bàn.** Công tắc `form_dat_ban_dang_mo` được seed sẵn `true` ở migration `0010` (để tám kiểm tra cũ không hỏng), nhưng bảng `ban_an` thì trống trên database vừa cài. Website có chốt chặn thứ hai — nó hỏi database xem còn khung giờ nào trống trong 14 ngày tới, không có thì hiện "chưa mở đặt bàn" thay vì dựng một cái form chỉ để báo *"hết bàn"*. Nhưng chốt chặn đó chỉ giấu triệu chứng; bàn vẫn phải nhập.
+- [ ] **Email báo về khi có hồ sơ hoặc yêu cầu mới — chưa làm, và đây là việc quan trọng nhất còn lại.** Rủi ro lớn nhất của cả hệ thống không phải nó hỏng, mà là hồ sơ và yêu cầu nằm im trong database không ai mở. Cho tới khi có email, **`/noi-bo` phải được mở ra xem hằng ngày** — đó là điều kiện để bật bất kỳ form nào.
+
+---
+
+## Nghiệm thu — Khánh tự làm được
+
+**Hai điện thoại thật, dùng 4G không dùng wifi.** Khách đứng trước bạt là đang dùng 4G.
+
+- [ ] Gõ tay địa chỉ web. Trang hiện dưới 3 giây.
+- [ ] **Không cần cuộn** đã đọc được khẩu hiệu, địa chỉ và dòng trạng thái.
+- [ ] Chạm địa chỉ → mở Maps đúng 40–42 Nguyễn Thái Học.
+- [ ] Chạm "Theo dõi Beeftown" → **mở app Facebook** đúng trang. *Đây là chỗ hay hỏng nhất.*
+- [ ] Xoay ngang không vỡ. Chỉnh cỡ chữ hệ thống lớn nhất vẫn dùng được.
+- [ ] Lặp lại toàn bộ trên điện thoại thứ hai, khác hệ điều hành.
+
+**Ảnh xem trước khi chia sẻ**
+
+- [ ] Dán link vào Zalo tự gửi cho mình → thấy **ảnh**, tiêu đề, một dòng mô tả. Không phải link xanh trơ.
+- [ ] Lặp lại với Messenger và ô soạn bài Facebook.
+- [ ] *Chưa tải ảnh 1200×630 lên thì chưa có ảnh — đúng như thiết kế. Chạy `select * from v_cong_bo_con_thieu` để xem còn thiếu gì.*
+
+**Soát nội dung — đọc thành tiếng, mở tài liệu thương hiệu bên cạnh**
+
+- [ ] Mỗi câu trên trang, Khánh nói được nó lấy từ đâu. Câu nào không nói được thì xóa.
+- [ ] Tìm trong trang: giá, ngày, giờ, số điện thoại, và các từ *phòng riêng, Wagyu, than, rẻ, số một, duy nhất*. **Có một kết quả là fail.**
+- [ ] Không ảnh nào là ảnh kho. Nếu có ảnh, Khánh nói được ai chụp và chụp khi nào.
+
+**Trước khi bật form đặt bàn**
+
+- [ ] Gửi một yêu cầu thật từ điện thoại ngoài. Bấm đồng hồ.
+- [ ] **Một nhân viên thật, không được báo trước**, phải gọi lại trong khung giờ đã công bố. Không ai gọi thì form không lên sóng.
+- [ ] Gửi với số "123" → bị từ chối bằng tiếng Việt.
+- [ ] Gửi rồi bật chế độ máy bay giữa chừng → phải báo **thất bại**. Tuyệt đối không được báo "đã nhận".
+- [ ] Thử đặt khung giờ đã qua — **chạy lúc 9 giờ tối giờ Việt Nam**, đó là lúc lỗi múi giờ lộ ra.
+
+**Trước khi bật form ứng tuyển**
+
+- [ ] Nộp một hồ sơ từ điện thoại ngoài.
+- [ ] Có người nhận email trong 5 phút, đọc được trên điện thoại.
+- [ ] Nếu bật tải CV: dán đường dẫn file vào cửa sổ ẩn danh → **phải bị từ chối**.
+- [ ] Hỏi người phụ trách hộp thư: "có hồ sơ về thì anh/chị làm gì?" — phải có câu trả lời.

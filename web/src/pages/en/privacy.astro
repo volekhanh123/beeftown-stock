@@ -1,0 +1,53 @@
+---
+import Trang from '../../layouts/Trang.astro';
+import { docNoiDung } from '../../lib/noi-dung';
+const nd = await docNoiDung('en');
+---
+<Trang ngonNgu="en" noiDung={nd} duongDan="/en/privacy"
+       tieuDe="Privacy — Beeftown"
+       moTa="How Beeftown collects, uses and stores personal information.">
+  <section class="muc" style="padding-top:20px">
+    <div class="khung" style="max-width:68ch">
+      <p class="hieu">Privacy</p>
+      <h1 style="font-size:clamp(30px,5vw,48px)">How Beeftown handles your information</h1>
+
+      <h2 style="font-size:24px; margin-top:40px">What we collect</h2>
+      <p>When you send a table request or a job application, Beeftown stores your
+        name, phone number, whatever else you choose to enter, and <strong>the IP
+        address that request came from</strong>. The IP address is used to block
+        spam and as evidence that you ticked the consent box; it is erased at the
+        same time as the rest. If you attach a CV, the file is kept in a private
+        store that only the owner and managers can open.</p>
+      <p>Beeftown <strong>uses no third-party analytics</strong> — no Google
+        Analytics, no advertising pixels, no tracking you across other sites.</p>
+      <p>The data is held in Supabase, a database service Beeftown rents. Nobody
+        else reads it.</p>
+
+      <h2 style="font-size:24px; margin-top:34px">What we use it for</h2>
+      <p>Booking details are used so the restaurant can call to confirm. Job
+        applications are used to arrange a meeting. We only send news about dishes
+        or events if you <strong>tick the box yourself</strong> — that box is never
+        pre-ticked, and leaving it unticked does not affect your booking.</p>
+
+      <h2 style="font-size:24px; margin-top:34px">How long we keep it</h2>
+      <p>Job applications are kept for <strong>six months</strong> from the date
+        you apply, after which name, phone, email, IP address and CV file are
+        erased. What remains — the date and the role applied for — is kept in a
+        form that no longer identifies you, so the restaurant knows how many
+        people applied in each round.</p>
+      <p>Booking details are kept so the restaurant can see your history with us.
+        You can ask us to delete them at any time.</p>
+
+      <h2 style="font-size:24px; margin-top:34px">Your rights</h2>
+      <p>You can ask to see, correct or delete your information, and you can opt out
+        of messages at any time.
+        {nd.email_lien_he
+          ? <>Write to <a href={`mailto:${nd.email_lien_he}`}>{nd.email_lien_he}</a>.</>
+          : <>Contact details will be published here when the restaurant opens.</>}
+      </p>
+
+      <p class="nho" style="margin-top:34px">In line with Decree 13/2023/ND-CP on
+        personal data protection (Vietnam).</p>
+    </div>
+  </section>
+</Trang>

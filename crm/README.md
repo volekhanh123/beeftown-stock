@@ -8,14 +8,23 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 
 | Giai đoạn | Nội dung | Trạng thái |
 |---|---|---|
-| 0 | Schema database + phân quyền | ✅ Xong, 71 kiểm tra đạt |
-| 1 | Đặt bàn thật (thay Google Sheet) | 🔜 Schema xong, chờ giao diện |
+| 0 | Schema database + phân quyền | ✅ Xong |
+| 0b | **Siết an toàn** — vá 4 lỗ hổng, sửa 2 lỗi chỉ số | ✅ Xong (`0008`) |
+| 1 | Đặt bàn thật (thay Google Sheet) | ✅ Schema xong, form chờ giờ phục vụ và bảng bàn |
 | 2 | Lõi CRM — hồ sơ khách, phân nhóm | 🔜 Schema xong, chờ giao diện |
 | 3 | Thẻ tích điểm | 🔜 Schema xong, chờ giao diện |
 | 4 | Chiến dịch ZBS | 🔜 Schema xong, chờ nối API Zalo |
-| 5 | Báo cáo BI | 🔜 Hàm chỉ số xong, chờ giao diện |
+| 5 | Báo cáo BI | ✅ Hàm chỉ số xong (`chi_so_crm`, `phieu_do_launch`) |
+| 6 | **Cổng nội dung** — công tắc cho từng dữ kiện | ✅ Xong (`0010`) |
+| 7 | **Thực đơn** — 31 món, duyệt giá từng món | ✅ Xong (`0011`) |
+| 8 | **Tuyển dụng** — tin, hồ sơ, vé tải CV | ✅ Xong (`0012`) |
+| 9 | **Đặt nội dung một giao dịch** — công bố bốn bước thành một | ✅ Xong (`0015`) |
+| 9b | **Vá vé tải CV, quyền thu hồi, nhật ký trùng** | ✅ Xong (`0016`) |
+| 10 | **Kho · GĐ1** — 3 vai kho, tường ngăn CRM, danh mục, ô thông tin tự tạo, phiếu nhập có duyệt, sổ kho bất biến | ✅ Xong (`0017`–`0021`) |
 
-Phần **database đã hoàn chỉnh và kiểm thử đầy đủ**. Phần giao diện web chưa dựng.
+**739 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
+`../web/` có 8 đường dẫn song ngữ, giao diện nội bộ `/noi-bo` và hai form
+công khai đều đã dựng.
 
 ## Chạy kiểm thử
 
@@ -25,10 +34,28 @@ Không cần Docker, không cần cài Postgres — dùng PGlite (Postgres chạ
 cd crm && npm install && npm test
 ```
 
-- `npm run test:db` — 50 kiểm tra nghiệp vụ (chuẩn hóa SĐT, sổ cái điểm, ba luật tính điểm, đặt bàn, phân nhóm)
-- `npm run test:rls` — 21 kiểm tra phân quyền (tách dữ liệu giữa chi nhánh, vai trò, website công khai)
+| Lệnh | Kiểm gì | Số kiểm tra |
+|---|---|---|
+| `npm run test:db` | nghiệp vụ: chuẩn hóa SĐT, sổ cái điểm, ba luật tính điểm, đặt bàn, phân nhóm | 59 |
+| `npm run test:rls` | phân quyền: tách dữ liệu giữa chi nhánh, vai trò, website công khai | 23 |
+| `npm run test:an-toan` | **bốn lỗ hổng ở `0008`** và hai lỗi chỉ số | 28 |
+| `npm run test:cong-bo` | cổng nội dung và ảnh | 53 |
+| `npm run test:thuc-don` | thực đơn và duyệt giá | 50 |
+| `npm run test:tuyen-dung` | tuyển dụng, dữ liệu cá nhân, nhật ký bất biến | 67 |
+| `npm run test:cong-khai` | API công khai, mã đặt bàn, đo lường | 50 |
+| `npm run test:noi-dung` | đặt/thu hồi nội dung trong một giao dịch, vé tải CV | 52 |
+| `npm run test:hop-dong` | hợp đồng giữa `web/src` và database: tên hàm, tham số, bảng, cột | 101 |
+| `npm run test:kho` | **kho**: tường ngăn CRM, bảng quyền, phiếu nhập, sổ kho, giá vốn, mã vạch nhãn cân | 77 + 117 + 57 |
 
-**Chạy lại toàn bộ kiểm thử sau mỗi lần sửa migration.** Chúng đã bắt được 2 lỗi thật trong quá trình xây: `generate_series` không nhận kiểu `time`, và ba hàm xem lịch trống thiếu `security definer` khiến website không gọi được.
+**Chạy lại toàn bộ kiểm thử sau mỗi lần sửa migration.** Chúng đã bắt được lỗi thật, không phải một lần:
+
+- `generate_series` không nhận kiểu `time`;
+- ba hàm xem lịch trống thiếu `security definer` khiến website không gọi được;
+- **`alter default privileges ... revoke` không chặn được hàm mới** — Postgres cấp EXECUTE cho PUBLIC như một mặc định dựng sẵn trong nhân, không phải một dòng trong `pg_default_acl`. Bốn hàm helper vừa tạo trong chính `0008` đã lọt ra ngoài, và mục 1 của `test-an-toan.mjs` bắt được;
+- **seed tin tuyển dụng chèn đúng 0 dòng mà không báo lỗi**, vì nó đọc bảng `chi_nhanh` lúc bảng còn rỗng. Nay là hàm `tao_tin_tuyen_dung_mau()` gọi sau khi đã tạo chi nhánh;
+- **ràng buộc giá làm quản lý không đề xuất được giá cho món đã công bố** — một trạng thái vận hành bình thường bị chặn nhầm. Nay tách `gia_de_xuat` khỏi `gia`.
+
+`test-phan-quyen.mjs` **mô phỏng quyền mặc định của Supabase** trước khi chạy migration. Thiếu khối đó thì mọi khẳng định "anon không làm được X" đều đúng một cách RỖNG — đúng vì PGlite vốn không cấp gì cho `anon`, chứ không phải vì schema an toàn.
 
 ## Cấu trúc
 
@@ -41,9 +68,34 @@ crm/
 │   ├── 0004_dat_ban.sql         bàn · khung giờ · số bàn còn trống
 │   ├── 0005_phan_nhom_va_chi_so.sql   6 nhóm khách · 6 chỉ số
 │   ├── 0006_gui_tin.sql         mẫu tin ZBS · chiến dịch · nhật ký gửi
-│   └── 0007_phan_quyen.sql      chính sách RLS
+│   ├── 0007_phan_quyen.sql      chính sách RLS
+│   ├── 0008_siet_an_toan.sql    ⚠ VÁ 4 LỖ HỔNG — phải chạy trước 0009+
+│   ├── 0009_tep_va_anh.sql      khung ảnh có tên · chốt chặn ảnh minh họa
+│   ├── 0010_noi_dung_cong_bo.sql   CỔNG NỘI DUNG — công tắc từng dữ kiện
+│   ├── 0011_thuc_don.sql        31 món · duyệt giá từng món · bò xem tại quầy
+│   ├── 0012_tuyen_dung.sql      tin tuyển dụng · hồ sơ · vé tải CV
+│   ├── 0013_cong_khai_va_do_luong.sql   API công khai · đo lường website
+│   ├── 0014_storage_supabase.sql   kho file — PGlite BỎ QUA, kiểm bằng tay
+│   ├── 0015_dat_noi_dung.sql    công bố một dữ kiện trong MỘT giao dịch
+│   ├── 0016_va_ve_tai_cv_va_quyen_thu_hoi.sql   ⚠ VÁ 3 LỖI — xem đầu file
+│   ├── 0017_kho_vai_tro.sql     KHO · 3 vai mới — ⚠ CHẠY RIÊNG, trước 0018
+│   ├── 0018_kho_tuong_ngan.sql  KHO · vai kho không thấy/ghi dữ liệu CRM · bảng quyền kho
+│   ├── 0019_kho_danh_muc.sql    KHO · vị trí, mặt hàng, NCC, lý do, ô thông tin tự tạo, cài đặt
+│   ├── 0020_kho_so_cai_nhap.sql KHO · lô hàng, sổ kho bất biến, tồn, phiếu nhập + duyệt
+│   └── 0021_kho_chung_tu_anh.sql  KHO · kho file ảnh chứng từ — PGlite BỎ QUA phần storage
 └── test/                    ← kiểm thử chạy trên Postgres thật
+    └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs
 ```
+
+### Thứ tự chạy có ràng buộc
+
+- **`0008` phải chạy trước mọi file sau nó.** Khối `alter default privileges` trong đó là thứ bảo vệ toàn bộ bảng tạo ra ở `0009`–`0015`.
+- **`0009` và `0011` phụ thuộc vòng.** `tep_anh.mon_an_id` trỏ tới `mon_an` chưa tồn tại; cột ra đời ở `0009` không kèm khóa ngoại, khóa ngoại được thêm ở cuối `0011`.
+- **File nào tạo hàm thì PHẢI kết thúc bằng khối chốt quyền.** Xem `0008` mục 6.
+- **View mới PHẢI khai `security_invoker = true` tường minh.** Mặc định của Postgres là view chạy dưới quyền người tạo, tức đi xuyên qua RLS của bảng bên dưới — đúng lỗ hổng số 2 mà `0008` đã vá. `0008` chỉ sửa được 7 view có mặt lúc đó. `test-an-toan.mjs` mục 2 liệt kê `pg_class` và bắt đúng chuyện quên này; nó đã bắt được `v_bang_cong_tac` ngay lần chạy đầu tiên của `0015`.
+- **`0017` phải chạy RIÊNG, một mình, trước `0018`.** Nó thêm giá trị vào enum `vai_tro`; Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa thêm nó.
+- **Đừng tạo tài khoản vai kho trước khi chạy `0018`.** `0018` là tường ngăn: trước nó, một thủ kho đọc được số điện thoại khách.
+- **`0014` là file duy nhất PGlite không chạy.** Toàn bộ DDL kho file bọc trong khối kiểm tra schema `storage`. Danh sách kiểm tra bằng tay nằm ở cuối file đó — **bắt buộc làm trên Supabase thật.**
 
 ## Bốn quyết định thiết kế quan trọng
 
@@ -68,6 +120,29 @@ Không có bước này thì một người sẽ thành nhiều hồ sơ, và m�
 Mọi bảng nghiệp vụ đều có `chi_nhanh_id` dù hiện chỉ chạy một nhà hàng. Thêm chi nhánh nhượng quyền sau này chỉ cần thêm dòng vào `chi_nhanh` — không phải sửa cấu trúc dữ liệu.
 
 RLS đảm bảo chi nhánh nhượng quyền **không xem được tệp khách của toàn thương hiệu**, chỉ thấy khách đã từng tới chi nhánh mình.
+
+## Cổng nội dung — ý tưởng trung tâm của `0010`
+
+Kế hoạch ra mắt giao khoảng hai mươi đầu việc web, và việc nào cũng lặp lại đúng một câu: **chỉ đăng thứ đã được người thật xác nhận.**
+
+Website nháp cũ làm theo cách sai — viết sẵn nội dung vào HTML rồi trông chờ ai đó nhớ xóa. Kết quả là hotline `0900 000 001`, địa chỉ `[số nhà], [tên đường]`, bốn đánh giá khách bịa và sáu mức giá chưa duyệt đều nằm sẵn trong file chờ được đẩy lên.
+
+Cách làm ở đây: **mỗi dữ kiện là một dòng có công tắc riêng.** Trang công khai đọc qua đúng một hàm `security definer` chỉ trả về dòng đã công bố. Bản nháp nằm cùng bảng nhưng `anon` không có quyền vào bảng — nên **không tồn tại đường nào** để ngày khai trương chưa duyệt lọt ra ngoài.
+
+Bốn điểm thiết kế đáng giữ:
+
+1. **Ghi thêm, không sửa đè.** Đổi ngày khai trương = thêm dòng mới, thu hồi dòng cũ. Vì khi ngày bị dời — và nó sẽ bị dời — thứ cần nhất là gỡ dữ kiện sai **khỏi trang trong vài giây**, chứ không phải chờ soạn xong bản thay thế.
+2. **Sổ đăng ký khóa đóng.** Gõ sai tên khóa là lỗi khóa ngoại ngay lúc ghi, không phải một ô trống im lặng trên trang chủ.
+3. **Hàm công khai trả đủ MỌI khóa**, khóa chưa duyệt có giá trị `null`. Nhờ vậy front-end phân biệt được "chưa duyệt" với "lập trình viên gõ nhầm".
+4. **Công tắc phải có hiệu lực thật.** `tao_dat_ban()` kiểm tra `form_dat_ban_dang_mo` ở đầu thân hàm. Không có bước này thì công tắc chỉ là trang trí: một trang đã nằm trong bộ nhớ đệm trình duyệt vẫn gọi được RPC và vẫn ghi đặt bàn.
+
+**Phép thử:** chạy `select noi_dung_cong_khai()` trên database vừa cài. Mọi khóa phải là `null` trừ `form_dat_ban_dang_mo`. Đó là bất biến, thể hiện bằng dữ liệu chứ không bằng lời hứa.
+
+```sql
+select * from v_cong_bo_con_thieu;   -- checklist khai trương
+select * from v_anh_con_thieu;       -- danh sách buổi chụp
+select * from v_mon_con_vuong;       -- vì sao món F07 chưa lên web
+```
 
 ## Ba luật tính điểm
 
@@ -94,13 +169,14 @@ Ngoài ra `cau_hinh_tich_diem.ty_le_tich` có **trần cứng 20%** — biên đ
 | `duoc_phep_gui()` | Chốt chặn trước khi gửi tin | Nội bộ |
 | `chi_so_crm()` | 6 chỉ số theo dõi | Quản lý, chủ sở hữu |
 
-Website công khai **không có quyền vào bảng nào cả** — chỉ gọi được ba hàm `SECURITY DEFINER` ở trên.
+Website công khai **không có quyền vào bảng nào cả** — chỉ gọi được danh sách hàm `SECURITY DEFINER` trong khối chốt quyền ở cuối migration MỚI NHẤT có tạo hàm. Đừng chép số lượng vào đây: bảng trên đã từng nói "ba hàm" trong khi thực tế là 12, và nó lạc hậu suốt tám migration mà không ai để ý. `test-an-toan.mjs` canh danh sách đó.
 
 ## Việc cần làm trước khi chạy thật
 
 - [ ] Tạo project Supabase, chạy các file migration theo thứ tự
 - [ ] Tạo tài khoản nhân sự đầu tiên (`chu_so_huu`) và nối `auth_uid`
 - [ ] Nhập danh sách bàn thật vào `ban_an`
+- [ ] Kho: chạy `0017` riêng, rồi `0018`–`0021`; làm danh sách kiểm tay kho file `kho-chung-tu` ở cuối `0021`; tạo tài khoản vai kho
 - [ ] **Xác thực Zalo OA (tick vàng)** — đường găng, làm sớm
 - [ ] Tạo tài khoản ZBS + App, gửi 4 mẫu tin trong `mau_tin` đi duyệt (2–3 ngày làm việc)
 - [ ] Cập nhật `ma_zalo` và `da_duyet = true` sau khi Zalo duyệt xong
@@ -114,3 +190,15 @@ Website công khai **không có quyền vào bảng nào cả** — chỉ gọi 
 3. **Chạy `npm test` sau mọi thay đổi migration.**
 4. **Luôn gửi tin từ view `v_duoc_gui_tin`** hoặc qua `duoc_phep_gui()`, đừng gửi thẳng từ bảng `khach_hang` — sẽ gửi cho cả người chưa đồng ý.
 5. **Xuất dữ liệu phải luôn chạy được** (`v_khach_tong_hop`). Đây là đường lui về phần mềm thuê nếu sau này cần bán doanh nghiệp.
+6. **Đừng bao giờ đổi chữ ký của một hàm công khai.** `create or replace` với bộ tham số khác sẽ âm thầm tạo ra một OVERLOAD, và bản cũ vẫn giữ nguyên quyền đã cấp cho `anon`. Cần chữ ký khác thì **đặt tên mới** — xem `lich_trong_theo_ma` ở `0013`.
+7. **Website và database nói chuyện bằng TÊN CHUỖI, và không có bước biên dịch nào kiểm chúng.** `rpc('tao_dat_ban', { p_so_khach: 4 })` gõ sai một chữ thì `astro check` vẫn xanh, còn PostgREST thì báo "không tìm thấy hàm phù hợp" — hoặc tệ hơn, chọn một phiên bản khác nhờ tham số mặc định và chạy im lặng với giá trị sai. `test/test-hop-dong-web.mjs` đọc mã nguồn `web/src`, rút ra mọi tên hàm, tham số, bảng và cột, rồi đối chiếu với `pg_proc` và `information_schema`. Nó cũng khẳng định mã chạy dưới vai `anon` không gọi hàm ngoài danh sách 12 hàm đã duyệt, và không đọc thẳng bảng nào.
+
+8. **Thêm hàm mới thì phải cập nhật danh sách `DUOC_PHEP` trong `test/test-an-toan.mjs`.** Danh sách đó là bản sao có chủ ý của khối chốt quyền ở `0013`. Câu DDL nói ý định; bài test mới là thứ chứng minh.
+9. **Đừng đổi chữ trong các câu `raise exception` cũ** — bài test khớp regex tiếng Việt (`/hết bàn/i`, `/quá khứ/i`, `/bất biến/i`).
+10. **Đừng tham chiếu BẢNG trong schema `auth` từ policy hay trigger** — dùng `la_chu_so_huu()`, `co_vai_tro()`, `co_phien_dang_nhap()` thay vì đọc thẳng `auth.users`.
+    Riêng HÀM `auth.uid()` thì gọi thẳng được: Supabase cấp sẵn quyền đó cho `authenticated`, và `0007` đã dùng nó như vậy ở `nhan_su_doc` và `mau_tin_doc`. Bản trước của quy tắc này cấm luôn cả `auth.uid()`, tức là nó mâu thuẫn với chính `0007` — mà `nhan_su_doc` lại nằm trên đường đăng nhập của MỌI request `/noi-bo`.
+    **Phép thử một dòng trên project mới:** `select has_schema_privilege('authenticated', 'auth', 'usage');` — trả `false` thì không ai đăng nhập được, và triệu chứng là bị đá về trang đăng nhập dù mật khẩu đúng.
+11. **KHÔNG hiển thị `so_ban_con_trong` thành con số ở bất cứ đâu.** Nó là một oracle sức chứa, và hiển thị ra là tạo cảm giác khan hiếm giả — đúng thứ tài liệu thương hiệu cấm. Website dùng `lich_trong_theo_ma()`, chỉ trả về CÓ/KHÔNG còn chỗ.
+12. **`duoc_truy_cap_chi_nhanh()` chỉ còn trả true cho bốn vai CRM** (từ `0018`). Vai kho dùng `kho_cn_duoc()` / `kho_duoc()`. Thêm vai mới sau này thì vai đó mặc định KHÔNG thấy dữ liệu CRM — muốn cho thấy phải sửa hàm này có chủ ý.
+13. **Thêm hàm kho mới thì phải xếp nó vào `GOI_DUOC` hoặc `NOI_BO` trong `test/test-kho-quyen.mjs`.** Hàm nội bộ (chỉ hàm definer khác gọi) phải `revoke execute ... from authenticated` ở cuối file migration, bọc trong khối kiểm `pg_roles`.
+14. **Sổ kho bất biến, tồn kho chỉ do trigger của sổ ghi.** `kho_ton` từ chối mọi lệnh ghi không đến từ trigger của `kho_so_cai` (kiểm `pg_trigger_depth()`), kể cả từ hàm definer. Sửa sai = dòng `dao_nguoc` hoặc chênh lệch kiểm kê. `kho_doi_soat_ton()` phải luôn trả về rỗng.

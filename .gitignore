@@ -47,6 +47,25 @@
 # --- ĐƯỢC PHÉP: công cụ nội bộ ---
 !Beeftown_Can_TMA.html
 
+# --- ĐƯỢC PHÉP: ứng dụng web (Astro + Cloudflare Workers) ---
+# Mở theo ĐUÔI FILE chứ không mở cả thư mục. Nhờ vậy file mật thêm vào web/
+# sau này (xlsx, pdf, ảnh chụp) vẫn tự động bị chặn ở mục bên dưới — đúng
+# tinh thần "chặn hết rồi mở từng cái" của file này.
+!/web/**/*.ts
+!/web/**/*.tsx
+!/web/**/*.js
+!/web/**/*.mjs
+!/web/**/*.jsx
+!/web/**/*.astro
+!/web/**/*.css
+!/web/**/*.json
+!/web/**/*.jsonc
+!/web/**/*.md
+!/web/**/*.svg
+!/web/**/*.toml
+!/web/.node-version
+!/web/.npmrc
+
 # =============================================================
 # CỐ TÌNH CHẶN — nhắc lại cho rõ, kể cả khi có ai đó sửa nhầm
 # quy tắc bên trên. Những dòng này đứng sau nên luôn thắng.
@@ -65,8 +84,20 @@
 .claude/
 Du lieu nghien cuu/
 
+# Kết quả build và bộ nhớ đệm — sinh lại được bằng npm run build,
+# không bao giờ commit. Phải nằm ở đây (sau danh sách cho phép) vì
+# allowlist mở theo đuôi file sẽ kéo cả .mjs, .css, .json trong dist vào.
+web/dist/
+web/.astro/
+web/.wrangler/
+.wrangler/
+
 # Thư viện cài bằng npm — không bao giờ commit, cài lại bằng `npm install`
 node_modules/
 .next/
 .env
 .env.*
+
+# Mẫu biến môi trường — CHỈ chứa TÊN biến, không chứa khóa thật.
+# Dòng này BẮT BUỘC đứng sau .env.* ở trên, nếu không sẽ bị chặn.
+!/web/.env.example

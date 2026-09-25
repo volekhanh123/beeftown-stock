@@ -1,0 +1,184 @@
+/* =============================================================================
+   GIAO DIỆN NỘI BỘ
+   =============================================================================
+   Khác hẳn trang công khai, và cố ý khác: trang công khai nền tối, chữ to,
+   ít chi tiết — để đọc lướt ngoài đường. Trang nội bộ nền sáng, mật độ cao
+   hơn — để đứng ở quầy dò một danh sách.
+
+   Nền sáng ở đây còn là một tín hiệu: nhìn vào là biết ngay mình đang ở
+   trang quản trị, không phải trang khách. Người dùng cùng một điện thoại cho
+   cả hai.
+
+   KÍCH THƯỚC CHẠM: mọi nút và ô nhập tối thiểu 48px chiều cao, và mọi ô nhập
+   có font-size >= 16px. Dưới 16px thì Safari trên iPhone tự phóng to trang
+   khi chạm vào ô — trang nhảy, người dùng mất chỗ.
+   ============================================================================= */
+
+.nb-than {
+  background: var(--kem);
+  color: var(--than);
+  font-size: 16px;
+  /* Chừa chỗ cho thanh điều hướng dính đáy trên điện thoại. */
+  padding-bottom: 5rem;
+}
+
+.nb-khung { width: min(880px, 92%); margin-inline: auto; }
+
+/* --- Đầu trang ------------------------------------------------------------ */
+.nb-dau {
+  background: var(--than);
+  color: var(--kem);
+  padding: .75rem 0;
+}
+.nb-dau-hang {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+}
+.nb-hieu {
+  font-weight: 800; letter-spacing: .06em; font-size: 1rem;
+  text-decoration: none; display: flex; align-items: baseline; gap: .5rem;
+}
+.nb-hieu span {
+  font-weight: 600; font-size: .7rem; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--cuc-vang);
+}
+.nb-ai { display: flex; align-items: center; gap: .75rem; margin: 0; }
+.nb-ten { font-size: .8rem; line-height: 1.25; text-align: right; }
+.nb-ten em { display: block; font-style: normal; color: var(--da); font-size: .72rem; }
+
+.nb-nut-nho {
+  font: inherit; font-size: .78rem; font-weight: 600;
+  background: transparent; color: var(--kem);
+  border: 1px solid var(--vach-kem); border-radius: 6px;
+  padding: .5rem .7rem; cursor: pointer; min-height: 40px;
+}
+.nb-nut-nho:hover { background: rgba(251, 244, 225, .1); }
+
+/* --- Điều hướng ----------------------------------------------------------- */
+.nb-dieu-huong { background: #fff; border-bottom: 1px solid var(--vach); }
+.nb-dieu-huong-hang { display: flex; gap: .25rem; overflow-x: auto; }
+.nb-dieu-huong a {
+  padding: .95rem .85rem; text-decoration: none; white-space: nowrap;
+  font-weight: 600; font-size: .9rem; color: var(--muc-nhat);
+  border-bottom: 3px solid transparent;
+}
+.nb-dieu-huong a[aria-current='page'] { color: var(--do); border-bottom-color: var(--do); }
+
+@media (max-width: 640px) {
+  .nb-dieu-huong {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+    border-bottom: none; border-top: 1px solid var(--vach);
+    box-shadow: 0 -2px 12px rgba(30, 22, 14, .1);
+  }
+  .nb-dieu-huong-hang { justify-content: space-around; width: 100%; }
+  .nb-dieu-huong a { flex: 1; text-align: center; padding: .85rem .3rem; font-size: .8rem;
+                     border-bottom: none; border-top: 3px solid transparent; }
+  .nb-dieu-huong a[aria-current='page'] { border-top-color: var(--do); }
+}
+
+/* --- Thân trang ----------------------------------------------------------- */
+.nb-chinh { padding: 1.5rem 0 3rem; }
+.nb-chinh h1 { font-size: 1.5rem; margin: 0 0 .4rem; line-height: 1.2; }
+.nb-chinh h2 { font-size: 1.1rem; margin: 2rem 0 .75rem; }
+.nb-dan { color: var(--muc-nhat); margin: 0 0 1.5rem; max-width: 60ch; }
+
+.nb-the {
+  background: #fff; border: 1px solid var(--vach); border-radius: 10px;
+  padding: 1rem; margin-bottom: .75rem;
+}
+
+/* --- Công tắc ------------------------------------------------------------- */
+.nb-cong-tac { display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+.nb-cong-tac-chu { flex: 1 1 16rem; min-width: 0; }
+.nb-cong-tac-chu strong { display: block; font-size: .98rem; }
+.nb-cong-tac-chu p { margin: .25rem 0 0; font-size: .85rem; color: var(--muc-nhat); }
+
+.nb-gia-tri {
+  margin: .6rem 0 0; padding: .55rem .7rem; border-radius: 6px;
+  background: var(--kem-sau); font-size: .9rem;
+  overflow-wrap: anywhere;
+}
+.nb-gia-tri.trong { color: var(--muc-nhat); font-style: italic; background: transparent;
+                    border: 1px dashed var(--vach); }
+
+.nb-huy { display: flex; gap: .5rem; align-items: center; flex-shrink: 0; }
+
+/* --- Nhãn trạng thái ------------------------------------------------------ */
+.nb-nhan {
+  display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; padding: .2rem .5rem; border-radius: 4px; white-space: nowrap;
+}
+.nb-nhan.song   { background: #1F7A4C; color: #fff; }
+.nb-nhan.tat    { background: var(--vach); color: var(--muc-nhat); }
+.nb-nhan.nhap   { background: var(--mu-tat); color: var(--than); }
+.nb-nhan.cho    { background: var(--do); color: #fff; }
+
+/* --- Nút ------------------------------------------------------------------ */
+.nb-nut {
+  font: inherit; font-size: .92rem; font-weight: 700;
+  border: none; border-radius: 8px; cursor: pointer;
+  padding: .8rem 1.1rem; min-height: 48px;
+  background: var(--do); color: #fff;
+  text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
+}
+.nb-nut:hover { background: var(--do-dam); }
+.nb-nut.phu { background: #fff; color: var(--than); border: 1px solid var(--vach); }
+.nb-nut.phu:hover { background: var(--kem-sau); }
+.nb-nut[disabled] { opacity: .45; cursor: not-allowed; }
+
+/* --- Ô nhập --------------------------------------------------------------- */
+.nb-o { display: block; margin-bottom: 1rem; }
+.nb-o > span { display: block; font-weight: 600; font-size: .88rem; margin-bottom: .35rem; }
+.nb-o > small { display: block; color: var(--muc-nhat); font-size: .8rem; margin-bottom: .35rem; }
+.nb-o input, .nb-o select, .nb-o textarea {
+  font: inherit; font-size: 16px; width: 100%;
+  padding: .75rem .8rem; min-height: 48px;
+  border: 1px solid var(--vach); border-radius: 8px; background: #fff; color: var(--than);
+}
+.nb-o textarea { min-height: 7rem; resize: vertical; line-height: 1.5; }
+.nb-o input:focus, .nb-o select:focus, .nb-o textarea:focus {
+  outline: 3px solid var(--cuc-vang); outline-offset: 1px; border-color: var(--than);
+}
+
+/* --- Thông báo ------------------------------------------------------------ */
+.nb-bao {
+  border-radius: 8px; padding: .9rem 1rem; margin-bottom: 1.25rem;
+  font-size: .92rem; border-left: 4px solid;
+}
+.nb-bao.loi    { background: #FDECEA; border-color: var(--do); }
+.nb-bao.xong   { background: #E9F5EE; border-color: #1F7A4C; }
+.nb-bao.luu-y  { background: #FFF5DC; border-color: var(--mu-tat); }
+.nb-bao p:first-child { margin-top: 0; }
+.nb-bao p:last-child  { margin-bottom: 0; }
+
+/* --- Danh sách ------------------------------------------------------------ */
+.nb-dong {
+  background: #fff; border: 1px solid var(--vach); border-radius: 10px;
+  padding: .9rem 1rem; margin-bottom: .6rem;
+}
+.nb-dong-dau {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: .75rem; flex-wrap: wrap;
+}
+.nb-dong-dau strong { font-size: 1rem; }
+.nb-dong dl { display: grid; grid-template-columns: auto 1fr; gap: .2rem .75rem;
+              margin: .6rem 0 0; font-size: .87rem; }
+.nb-dong dt { color: var(--muc-nhat); }
+.nb-dong dd { margin: 0; }
+.nb-dong-nut { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .85rem; }
+.nb-dong-nut .nb-nut { font-size: .85rem; padding: .6rem .9rem; min-height: 44px; }
+
+.nb-rong {
+  text-align: center; padding: 2.5rem 1rem; color: var(--muc-nhat);
+  border: 1px dashed var(--vach); border-radius: 10px;
+}
+
+/* --- Danh sách việc còn thiếu --------------------------------------------- */
+.nb-viec { list-style: none; padding: 0; margin: 0; }
+.nb-viec li {
+  display: flex; gap: .7rem; align-items: flex-start;
+  padding: .7rem 0; border-bottom: 1px solid var(--vach); font-size: .92rem;
+}
+.nb-viec li:last-child { border-bottom: none; }
+.nb-viec .dau { flex-shrink: 0; font-weight: 700; width: 1.4rem; }
+.nb-viec .dau.xong { color: #1F7A4C; }
+.nb-viec .dau.chua { color: var(--da); }

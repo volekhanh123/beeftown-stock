@@ -1,0 +1,151 @@
+---
+/**
+ * TỔNG QUAN NỘI BỘ
+ *
+ * Trả lời đúng một câu hỏi: HÔM NAY CÒN VƯỚNG GÌ.
+ *
+ * Danh sách việc ở đây không viết tay — nó là bốn câu truy vấn vào bốn view
+ * đã có sẵn trong database. Viết tay thì nó sẽ lạc hậu vào ngày thứ ba; đọc
+ * từ database thì nó không thể sai, vì cùng một nguồn quyết định trang công
+ * khai hiện gì.
+ *
+ * Con số đặt bàn và hồ sơ ứng tuyển là số ĐANG CHỜ NGƯỜI XỬ LÝ, không phải
+ * tổng tích lũy. Rủi ro lớn nhất của cả hệ thống không phải nó hỏng, mà là
+ * hồ sơ và yêu cầu nằm im trong database không ai mở.
+ */
+import NoiBo from '../../layouts/NoiBo.astro';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+
+// Thủ kho, NV quầy/bếp, kế toán không thấy dữ liệu CRM (0018) — trang tổng
+// quan này toàn ô trống với họ. Đưa thẳng vào kho.
+if (['thu_kho', 'nhan_vien_quay', 'ke_toan'].includes(nhanSu.vai_tro)) {
+  return Astro.redirect('/noi-bo/kho', 302);
+}
+
+/** Đếm mà không kéo dòng về — dữ liệu cá nhân không cần đi qua đây chỉ để đếm. */
+async function dem(bang: string, loc: (q: any) => any): Promise<number | null> {
+  try {
+    const { count, error } = await loc(client.from(bang).select('*', { count: 'exact', head: true }));
+    return error ? null : (count ?? 0);
+  } catch { return null; }
+}
+
+async function docView<T>(ten: string, cot: string): Promise<T[] | null> {
+  try {
+    const { data, error } = await client.from(ten).select(cot);
+    return error ? null : ((data ?? []) as T[]);
+  } catch { return null; }
+}
+
+const [
+  congBoThieu, anhThieu, monVuong,
+  banChoXacNhan, hoSoMoi, tinDangTuyen,
+] = await Promise.all([
+  docView<{ khoa: string; mo_ta: string }>('v_cong_bo_con_thieu', 'khoa, mo_ta'),
+  docView<{ ma: string; ten: string; bat_buoc: boolean }>('v_anh_con_thieu', 'ma, ten, bat_buoc'),
+  docView<{ ma: string; ten_vi: string; vuong_gi: string }>('v_mon_con_vuong', 'ma, ten_vi, vuong_gi'),
+  dem('dat_ban', (q: any) => q.eq('trang_thai', 'cho_xac_nhan')),
+  dem('ho_so_ung_tuyen', (q: any) => q.eq('trang_thai', 'moi')),
+  dem('vi_tri_tuyen_dung', (q: any) => q.eq('trang_thai', 'da_cong_bo')),
+]);
+
+const anhBatBuocThieu = anhThieu?.filter(a => a.bat_buoc) ?? [];
+
+// v_mon_con_vuong trả về mọi món chưa công bố — kể cả món đã đủ mô tả, đã
+// duyệt giá, chỉ còn chờ bấm nút; cột vuong_gi của chúng là 'Sẵn sàng công
+// bố'. Đếm cả nhóm đó thì dòng việc dưới đây không bao giờ xanh được, đúng
+// ngược với tên của nó.
+const monVuongThat = monVuong?.filter(m => m.vuong_gi !== 'Sẵn sàng công bố') ?? null;
+const monSanSang = monVuong?.filter(m => m.vuong_gi === 'Sẵn sàng công bố').length ?? 0;
+
+const viec = [
+  {
+    xong: congBoThieu !== null && congBoThieu.length === 0,
+    ten: 'Dữ kiện bắt buộc đã công bố đủ',
+    con: congBoThieu === null ? null
+      : congBoThieu.length === 0 ? null
+      : `còn ${congBoThieu.length}: ${congBoThieu.map(x => x.mo_ta).join(' · ')}`,
+    di: '/noi-bo/noi-dung',
+  },
+  {
+    xong: anhBatBuocThieu.length === 0 && anhThieu !== null,
+    ten: 'Ảnh thật cho các khung bắt buộc',
+    con: anhThieu === null ? null
+      : anhBatBuocThieu.length === 0 ? null
+      : `còn ${anhBatBuocThieu.length} khung: ${anhBatBuocThieu.map(a => a.ten).join(' · ')}`,
+    di: null,
+  },
+  {
+    xong: monVuongThat !== null && monVuongThat.length === 0,
+    ten: 'Thực đơn sẵn sàng công bố',
+    con: monVuongThat === null ? null
+      : monVuongThat.length === 0
+        ? (monSanSang > 0 ? `${monSanSang} món đã sẵn sàng, chờ bấm công bố` : null)
+        : `còn ${monVuongThat.length} món vướng`,
+    di: null,
+  },
+  {
+    xong: (tinDangTuyen ?? 0) > 0,
+    ten: 'Tin tuyển dụng đã lên trang',
+    con: tinDangTuyen === null ? null
+      : tinDangTuyen === 0 ? 'chưa công bố tin nào — trang tuyển dụng đang dùng danh sách dự phòng tĩnh'
+      : null,
+    di: '/noi-bo/tuyen-dung',
+  },
+];
+---
+<NoiBo tieuDe="Tổng quan" nhanSu={nhanSu}>
+  <h1>Chào {nhanSu.ho_ten.split(' ').slice(-1)[0]}</h1>
+  <p class="nb-dan">Hôm nay còn vướng gì.</p>
+
+  <h2>Đang chờ người xử lý</h2>
+  <div style="display:grid;gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))">
+    <a href="/noi-bo/dat-ban" class="nb-the" style="text-decoration:none">
+      <strong style="font-size:2rem;display:block;line-height:1.1">
+        {banChoXacNhan ?? '—'}
+      </strong>
+      <span style="font-size:.88rem">yêu cầu đặt bàn chờ gọi lại</span>
+    </a>
+    {['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro) && (
+      <a href="/noi-bo/tuyen-dung" class="nb-the" style="text-decoration:none">
+        <strong style="font-size:2rem;display:block;line-height:1.1">
+          {hoSoMoi ?? '—'}
+        </strong>
+        <span style="font-size:.88rem">hồ sơ ứng tuyển chưa ai mở</span>
+      </a>
+    )}
+  </div>
+
+  <p class="nb-dan" style="margin-top:.75rem;font-size:.85rem">
+    Dấu <strong>—</strong> nghĩa là không đọc được, thường vì vai trò của bạn
+    không có quyền xem mục đó. Nó không có nghĩa là bằng không.
+  </p>
+
+  <h2>Còn thiếu để khai trương</h2>
+  <ul class="nb-viec">
+    {viec.map(v => (
+      <li>
+        <span class={`dau ${v.xong ? 'xong' : 'chua'}`}>{v.xong ? '✓' : '○'}</span>
+        <span>
+          {v.di ? <a href={v.di}>{v.ten}</a> : v.ten}
+          {v.con && <><br /><small style="color:var(--muc-nhat)">{v.con}</small></>}
+        </span>
+      </li>
+    ))}
+  </ul>
+
+  <h2>Những việc không làm được ở đây</h2>
+  <div class="nb-the">
+    <p style="margin-top:0">
+      Chi nhánh, giờ phục vụ, bàn ăn và ba việc dọn dữ liệu đã chuyển sang
+      màn <a href="/noi-bo/cai-dat">Cài đặt</a>. Còn lại ba việc chưa có nút:
+    </p>
+    <ul style="margin:0;padding-left:1.2rem;font-size:.92rem;line-height:1.8">
+      <li><strong>Tạo tài khoản nhân sự mới</strong> — phải đi qua Supabase Auth, rồi nối <code>auth_uid</code> vào bảng <code>nhan_su</code>. Một trang web tự tạo được tài khoản đăng nhập cho chính nó là một trang web tự cấp quyền cho chính nó.</li>
+      <li><strong>Tải ảnh lên</strong> — làm trong Supabase Storage; màn chọn ảnh chưa dựng</li>
+      <li><strong>Duyệt giá từng món</strong> — màn thực đơn chưa dựng</li>
+    </ul>
+  </div>
+</NoiBo>

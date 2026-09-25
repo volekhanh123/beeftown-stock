@@ -1,0 +1,362 @@
+---
+/**
+ * CÀI ĐẶT — chi nhánh, bàn ăn, dọn dữ liệu
+ *
+ * Ba việc trước đây chỉ làm được bằng SQL. Xem lý do ở đầu lib/cai-dat.ts.
+ *
+ * Màn này là chỗ mở khóa form đặt bàn: form chỉ dựng lên khi CÓ chi nhánh,
+ * CÓ giờ phục vụ, CÓ bàn trong ban_an, và công tắc form_dat_ban_dang_mo bật.
+ * Ba điều kiện đầu nằm ở đây; điều kiện cuối ở màn Nội dung.
+ */
+import NoiBo from '../../layouts/NoiBo.astro';
+import {
+  docChiNhanh, luuChiNhanh, docBanAn, themNhieuBan, themMotBan,
+  doiTrangThaiBan, xoaBan, chayViecDon, VIEC_DON,
+  type ChiNhanh, type BanAn, type KetQua,
+} from '../../lib/cai-dat';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const laChu = nhanSu.vai_tro === 'chu_so_huu';
+
+let bao: KetQua | null = null;
+
+if (Astro.request.method === 'POST') {
+  let form: FormData | null = null;
+  try {
+    form = await Astro.request.formData();
+  } catch {
+    bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên. Mạng có thể đã đứt giữa chừng — bạn thử gửi lại.' };
+  }
+
+  if (form) {
+    const viec = String(form.get('viec') ?? '');
+    const cn = await docChiNhanh(client);
+    try {
+      if (viec === 'chi_nhanh')        bao = await luuChiNhanh(client, form, cn);
+      else if (!cn)                    bao = { ok: false, cau: 'Chưa có chi nhánh nào. Tạo chi nhánh trước.' };
+      else if (viec === 'them_nhieu')  bao = await themNhieuBan(client, form, cn.id);
+      else if (viec === 'them_mot')    bao = await themMotBan(client, form, cn.id);
+      else if (viec === 'ngung')       bao = await doiTrangThaiBan(client, String(form.get('id')), false);
+      else if (viec === 'dung_lai')    bao = await doiTrangThaiBan(client, String(form.get('id')), true);
+      else if (viec === 'xoa')         bao = await xoaBan(client, String(form.get('id')));
+      else if (viec === 'don')         bao = await chayViecDon(client, String(form.get('ham')));
+      else                             bao = { ok: false, cau: 'Việc không hợp lệ.' };
+    } catch (e) {
+      bao = { ok: false, cau: e instanceof Error ? e.message : 'Không thực hiện được.' };
+    }
+  }
+}
+
+let chiNhanh: ChiNhanh | null = null;
+let ban: BanAn[] = [];
+let loiDoc: string | null = null;
+try {
+  chiNhanh = await docChiNhanh(client);
+  if (chiNhanh) ban = await docBanAn(client, chiNhanh.id);
+} catch (e) {
+  loiDoc = e instanceof Error ? e.message : 'Không đọc được cài đặt.';
+}
+
+const dangDung = ban.filter(b => b.dang_dung);
+const tongCho = dangDung.reduce((n, b) => n + b.so_cho, 0);
+
+// Mặc định của 0001 là 17:00, nhưng roster vận hành ghi ca tối bắt đầu 16:00.
+const gioToiDangNgo = chiNhanh?.toi_bat_dau?.slice(0, 5) === '17:00';
+
+const hhmm = (t: string | undefined) => (t ?? '').slice(0, 5);
+---
+<NoiBo tieuDe="Cài đặt" nhanSu={nhanSu}>
+  <h1>Cài đặt nhà hàng</h1>
+  <p class="nb-dan">
+    Chi nhánh, giờ phục vụ và bàn ăn. Đây là chỗ <strong>mở khóa form đặt
+    bàn</strong> — form chỉ dựng lên khi có đủ giờ và có bàn thật.
+  </p>
+
+  {bao && (
+    <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>
+  )}
+  {loiDoc && <div class="nb-bao loi"><p>{loiDoc}</p></div>}
+
+  {/* ---------------------------------------------------------------- */}
+  <h2>Chi nhánh</h2>
+
+  {!laChu ? (
+    <div class="nb-the">
+      <p style="margin:0">
+        Chỉ chủ nhà hàng sửa được chi nhánh và giờ phục vụ.
+        {chiNhanh && <> Hiện tại: <strong>{chiNhanh.ten}</strong> ({chiNhanh.ma}),
+          trưa {hhmm(chiNhanh.trua_bat_dau)}–{hhmm(chiNhanh.trua_ket_thuc)},
+          tối {hhmm(chiNhanh.toi_bat_dau)}–{hhmm(chiNhanh.toi_ket_thuc)}.</>}
+      </p>
+    </div>
+  ) : (
+    <form method="POST" class="nb-the">
+      <input type="hidden" name="viec" value="chi_nhanh" />
+
+      {!chiNhanh && (
+        <div class="nb-bao luu-y" style="margin-bottom:1.25rem">
+          <p style="margin:0"><strong>Chưa có chi nhánh nào.</strong> Tạo xong
+            nhớ đặt <code>PUBLIC_CHI_NHANH</code> trong <code>web/.env</code>
+            bằng đúng mã bên dưới, nếu không trang đặt bàn sẽ không tìm thấy
+            chi nhánh.</p>
+        </div>
+      )}
+
+      <label class="nb-o">
+        <span>Mã chi nhánh</span>
+        <small>Chữ thường, không dấu. Phải khớp <code>PUBLIC_CHI_NHANH</code> trong <code>web/.env</code>.</small>
+        <input type="text" name="ma" required value={chiNhanh?.ma ?? 'q1'}
+               autocapitalize="off" spellcheck="false" pattern="[a-z0-9-]{1,20}" />
+      </label>
+
+      <label class="nb-o">
+        <span>Tên chi nhánh</span>
+        <input type="text" name="ten" required value={chiNhanh?.ten ?? 'Beeftown Quận 1'} />
+      </label>
+
+      <label class="nb-o">
+        <span>Khu vực</span>
+        <small>Tên khu, dùng trong nội bộ. Không hiện trên trang công khai.</small>
+        <input type="text" name="khu_vuc" value={chiNhanh?.khu_vuc ?? ''} />
+      </label>
+
+      <label class="nb-o">
+        <span>Địa chỉ</span>
+        <small>
+          Ô này KHÔNG đưa địa chỉ lên trang công khai. Địa chỉ khách nhìn thấy
+          là khóa <code>dia_chi_hien_thi</code> ở màn <a href="/noi-bo/noi-dung">Nội dung</a>
+          {' '}— hai chỗ tách nhau để địa chỉ chỉ lên trang khi có người bấm công bố.
+        </small>
+        <input type="text" name="dia_chi" value={chiNhanh?.dia_chi ?? ''} />
+      </label>
+
+      <label class="nb-o">
+        <span>Điện thoại nội bộ</span>
+        <small>Cũng không lên trang. Hotline công khai là khóa <code>hotline</code> ở màn Nội dung.</small>
+        <input type="tel" name="dien_thoai" value={chiNhanh?.dien_thoai ?? ''} inputmode="tel" />
+      </label>
+
+      <h3 style="font-size:1rem;margin:1.5rem 0 .5rem">Giờ phục vụ</h3>
+      <p class="nb-dan" style="font-size:.85rem;margin-bottom:1rem">
+        Khung giờ đặt bàn được sinh ra từ mấy ô này. Sửa ở đây <strong>chưa
+        đưa giờ lên trang</strong> — còn phải bật công tắc
+        <a href="/noi-bo/noi-dung"><code>gio_phuc_vu_da_chot</code></a>.
+      </p>
+
+      {gioToiDangNgo && (
+        <div class="nb-bao luu-y" style="margin-bottom:1rem">
+          <p style="margin:0">
+            Giờ tối đang là <strong>17:00</strong> — đó là giá trị mặc định của
+            database, không phải giờ đã chốt. Roster vận hành ghi ca tối bắt đầu
+            <strong> 16:00</strong>. Kiểm lại trước khi công bố.
+          </p>
+        </div>
+      )}
+
+      <div style="display:grid;gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr))">
+        <label class="nb-o"><span>Trưa mở</span>
+          <input type="time" name="trua_bat_dau" required value={hhmm(chiNhanh?.trua_bat_dau) || '11:00'} /></label>
+        <label class="nb-o"><span>Trưa đóng</span>
+          <input type="time" name="trua_ket_thuc" required value={hhmm(chiNhanh?.trua_ket_thuc) || '14:00'} /></label>
+        <label class="nb-o"><span>Tối mở</span>
+          <input type="time" name="toi_bat_dau" required value={hhmm(chiNhanh?.toi_bat_dau) || '16:00'} /></label>
+        <label class="nb-o"><span>Tối đóng</span>
+          <input type="time" name="toi_ket_thuc" required value={hhmm(chiNhanh?.toi_ket_thuc) || '22:00'} /></label>
+      </div>
+
+      <div style="display:grid;gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr))">
+        <label class="nb-o"><span>Cách nhau (phút)</span>
+          <small>Khoảng cách giữa hai khung giờ.</small>
+          <input type="text" name="buoc_khung_gio_phut" inputmode="numeric"
+                 value={String(chiNhanh?.buoc_khung_gio_phut ?? 30)} /></label>
+        <label class="nb-o"><span>Một lượt ngồi (phút)</span>
+          <small>Bàn bị chiếm bao lâu.</small>
+          <input type="text" name="thoi_luong_bua_phut" inputmode="numeric"
+                 value={String(chiNhanh?.thoi_luong_bua_phut ?? 120)} /></label>
+        <label class="nb-o"><span>Giữ bàn (phút)</span>
+          <small>Chờ khách trễ bao lâu.</small>
+          <input type="text" name="giu_ban_phut" inputmode="numeric"
+                 value={String(chiNhanh?.giu_ban_phut ?? 15)} /></label>
+      </div>
+
+      <button type="submit" class="nb-nut" style="width:100%">
+        {chiNhanh ? 'Lưu chi nhánh' : 'Tạo chi nhánh'}
+      </button>
+    </form>
+  )}
+
+  {/* ---------------------------------------------------------------- */}
+  {chiNhanh && (
+    <>
+      <h2>Bàn ăn</h2>
+
+      {dangDung.length === 0 ? (
+        <div class="nb-bao luu-y">
+          <p style="margin:0">
+            <strong>Chưa có bàn nào đang dùng.</strong> Bảng bàn trống thì mọi
+            khung giờ đều tính là hết chỗ — và form đặt bàn sẽ báo
+            <em> "hết bàn"</em> với mọi khách, một câu nói sai về một nhà hàng
+            chưa mở. Trang <code>/dat-ban</code> có chốt chặn nên nó nói "chưa
+            mở đặt bàn" thay vì báo hết bàn, nhưng bàn vẫn phải nhập.
+          </p>
+        </div>
+      ) : (
+        <p class="nb-dan">
+          <strong>{dangDung.length} bàn</strong> đang dùng ·
+          <strong> {tongCho} chỗ</strong> ·
+          {dangDung.filter(b => b.la_phong_rieng).length > 0 &&
+            <> {dangDung.filter(b => b.la_phong_rieng).length} phòng riêng ·</>}
+          {ban.length - dangDung.length > 0
+            ? <> {ban.length - dangDung.length} bàn đã ngừng dùng</>
+            : <> không có bàn nào ngừng dùng</>}
+        </p>
+      )}
+
+      <div class="nb-the">
+        <h3 style="font-size:1rem;margin-top:0">Thêm nhiều bàn một lượt</h3>
+        <p class="nb-dan" style="font-size:.85rem">
+          Nhà hàng có hai, ba chục bàn. Nhập từng cái là bấm ba chục lần cho
+          một việc máy làm được.
+        </p>
+        <form method="POST">
+          <input type="hidden" name="viec" value="them_nhieu" />
+          <div style="display:grid;gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(7rem,1fr))">
+            <label class="nb-o"><span>Tên bắt đầu bằng</span>
+              <input type="text" name="tien_to" value="B" maxlength="6" autocapitalize="characters" /></label>
+            <label class="nb-o"><span>Từ số</span>
+              <input type="text" name="tu" value="1" inputmode="numeric" /></label>
+            <label class="nb-o"><span>Đến số</span>
+              <input type="text" name="den" value="10" inputmode="numeric" /></label>
+            <label class="nb-o"><span>Mỗi bàn mấy chỗ</span>
+              <input type="text" name="so_cho" value="4" inputmode="numeric" /></label>
+          </div>
+          <label class="nb-o-chon-cd">
+            <input type="checkbox" name="la_phong_rieng" value="co" />
+            <span>Đây là phòng riêng</span>
+          </label>
+          <button type="submit" class="nb-nut" style="width:100%">Thêm loạt bàn</button>
+        </form>
+      </div>
+
+      <details class="nb-the">
+        <summary style="cursor:pointer;font-weight:600">Thêm một bàn lẻ</summary>
+        <form method="POST" style="margin-top:1rem">
+          <input type="hidden" name="viec" value="them_mot" />
+          <div style="display:grid;gap:.75rem;grid-template-columns:1fr 1fr">
+            <label class="nb-o"><span>Tên bàn</span>
+              <input type="text" name="ten" required placeholder="Phòng riêng 1" /></label>
+            <label class="nb-o"><span>Số chỗ</span>
+              <input type="text" name="so_cho" value="4" inputmode="numeric" /></label>
+          </div>
+          <label class="nb-o-chon-cd">
+            <input type="checkbox" name="la_phong_rieng" value="co" />
+            <span>Đây là phòng riêng</span>
+          </label>
+          <button type="submit" class="nb-nut phu" style="width:100%">Thêm bàn</button>
+        </form>
+      </details>
+
+      {ban.length > 0 && (
+        <div class="nb-the">
+          <h3 style="font-size:1rem;margin-top:0">Danh sách bàn</h3>
+          <div class="nb-luoi-ban">
+            {ban.map(b => (
+              <div class={`nb-o-ban ${b.dang_dung ? '' : 'tat'}`}>
+                <strong>{b.ten}</strong>
+                <span>{b.so_cho} chỗ{b.la_phong_rieng ? ' · riêng' : ''}</span>
+                <form method="POST" class="nb-ban-nut">
+                  <input type="hidden" name="id" value={b.id} />
+                  {b.dang_dung
+                    ? <button type="submit" name="viec" value="ngung" class="nb-nut-nho-sang">Ngừng dùng</button>
+                    : <button type="submit" name="viec" value="dung_lai" class="nb-nut-nho-sang">Dùng lại</button>}
+                  <button type="submit" name="viec" value="xoa" class="nb-nut-nho-sang xoa">Xóa</button>
+                </form>
+              </div>
+            ))}
+          </div>
+          <p class="nb-dan" style="font-size:.85rem;margin:1rem 0 0">
+            <strong>Ngừng dùng</strong> giữ lại lịch sử đặt bàn của bàn đó —
+            dùng khi bàn hỏng hoặc dẹp tạm. <strong>Xóa</strong> chỉ nên dùng cho
+            bàn vừa gõ nhầm lúc cài đặt.
+          </p>
+        </div>
+      )}
+    </>
+  )}
+
+  {/* ---------------------------------------------------------------- */}
+  <h2>Dọn dữ liệu</h2>
+  <p class="nb-dan">
+    Ba việc này <strong>cố ý không chạy tự động</strong> — một công việc chạy
+    ngầm âm thầm hủy dữ liệu cá nhân thì nên do người bấm. Nhưng trước đây
+    không có nút nào, nên trên thực tế chúng chưa bao giờ chạy.
+  </p>
+
+  {VIEC_DON.map(v => (
+    <form method="POST" class="nb-the">
+      <input type="hidden" name="viec" value="don" />
+      <input type="hidden" name="ham" value={v.ham} />
+      <div class="nb-cong-tac">
+        <div class="nb-cong-tac-chu">
+          <strong>{v.ten}</strong>
+          <p>{v.giai_thich}</p>
+          <p><code>{v.ham}()</code></p>
+        </div>
+      </div>
+      {v.chi_chu_so_huu && !laChu ? (
+        <p class="nb-dan" style="margin:.75rem 0 0;font-size:.85rem">
+          Chỉ chủ nhà hàng chạy được việc này.
+        </p>
+      ) : (
+        <button type="submit" class="nb-nut phu" style="margin-top:.85rem">Chạy ngay</button>
+      )}
+    </form>
+  ))}
+
+  {/* ---------------------------------------------------------------- */}
+  <h2>Vẫn phải làm trong Supabase</h2>
+  <div class="nb-the">
+    <p style="margin-top:0">Còn đúng hai việc không có nút ở đây, và cả hai đều có lý do:</p>
+    <ul style="margin:0;padding-left:1.2rem;font-size:.92rem;line-height:1.8">
+      <li>
+        <strong>Tạo tài khoản nhân sự mới</strong> — phải đi qua Supabase Auth
+        (Authentication → Users), rồi nối <code>auth_uid</code> vào một dòng
+        trong bảng <code>nhan_su</code>. Một trang web tự tạo được tài khoản
+        đăng nhập cho chính nó là một trang web tự cấp quyền cho chính nó.
+      </li>
+      <li>
+        <strong>Tải ảnh lên</strong> — làm trong Storage. Màn chọn ảnh chưa dựng.
+      </li>
+    </ul>
+  </div>
+</NoiBo>
+
+<style>
+  .nb-o-chon-cd {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .5rem 0 1rem; font-size: .9rem; cursor: pointer;
+  }
+  .nb-o-chon-cd input { width: 22px; height: 22px; margin: 0; accent-color: var(--do); }
+
+  .nb-luoi-ban {
+    display: grid; gap: .6rem;
+    grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  }
+  .nb-o-ban {
+    border: 1px solid var(--vach); border-radius: 8px; padding: .7rem;
+    display: flex; flex-direction: column; gap: .15rem;
+  }
+  .nb-o-ban.tat { opacity: .5; background: var(--kem-sau); }
+  .nb-o-ban strong { font-size: .95rem; }
+  .nb-o-ban span { font-size: .8rem; color: var(--muc-nhat); }
+  .nb-ban-nut { display: flex; gap: .35rem; margin-top: .5rem; }
+  .nb-nut-nho-sang {
+    font: inherit; font-size: .75rem; font-weight: 600;
+    background: #fff; color: var(--than);
+    border: 1px solid var(--vach); border-radius: 6px;
+    padding: .4rem .5rem; cursor: pointer; min-height: 36px; flex: 1;
+  }
+  .nb-nut-nho-sang:hover { background: var(--kem-sau); }
+  .nb-nut-nho-sang.xoa { color: var(--do); }
+</style>

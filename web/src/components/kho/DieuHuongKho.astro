@@ -1,0 +1,43 @@
+---
+/**
+ * Thanh điều hướng con của kho + dòng chi nhánh.
+ *
+ * Mục nào hiện do VAI TRÒ quyết định, theo bảng QUYEN_KHO (gương của
+ * kho_vai_duoc ở 0018). Giấu mục chỉ cho gọn — database mới là nơi chặn.
+ * Không gọi database ở đây.
+ */
+import '../../styles/kho.css';
+import { duoc, type ViecKho } from '../../lib/kho/chung.ts';
+import type { ChiNhanhKho } from '../../lib/kho/trang.ts';
+
+interface Props {
+  vai: string;
+  chiNhanh: ChiNhanhKho | null;
+  cacChiNhanh: ChiNhanhKho[];
+}
+const { vai, chiNhanh, cacChiNhanh } = Astro.props;
+const duong = Astro.url.pathname.replace(/\/$/, '');
+
+const MUC: { duong: string; ten: string; viec: ViecKho[] }[] = [
+  { duong: '/noi-bo/kho',          ten: 'Tổng quan', viec: ['xem'] },
+  { duong: '/noi-bo/kho/ton',      ten: 'Tồn kho',   viec: ['xem'] },
+  { duong: '/noi-bo/kho/nhap',     ten: 'Nhập hàng', viec: ['xem_gia'] },
+  { duong: '/noi-bo/kho/cai-dat',  ten: 'Cài đặt',   viec: ['danh_muc', 'ncc', 'cai_dat_goc'] },
+];
+const muc = MUC.filter(m => m.viec.some(v => duoc(vai, v)));
+const dangO = (m: string) =>
+  m === '/noi-bo/kho' ? duong === m : duong === m || duong.startsWith(m + '/');
+---
+<nav class="kho-dh" aria-label="Khu vực kho">
+  {muc.map(m => (
+    <a href={m.duong} aria-current={dangO(m.duong) ? 'page' : undefined}>{m.ten}</a>
+  ))}
+</nav>
+{cacChiNhanh.length > 1 && (
+  <p class="kho-cn">
+    Chi nhánh: <strong>{chiNhanh?.ten ?? '—'}</strong>
+    {vai === 'chu_so_huu' && cacChiNhanh.filter(c => c.id !== chiNhanh?.id).map(c => (
+      <a href={`${duong}?cn=${encodeURIComponent(c.ma)}`}>đổi sang {c.ten}</a>
+    ))}
+  </p>
+)}

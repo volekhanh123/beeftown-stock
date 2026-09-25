@@ -1,0 +1,151 @@
+---
+/**
+ * KHUNG TRANG — thẻ mô tả, dữ liệu có cấu trúc, đầu và chân trang
+ *
+ * THẺ CHIA SẺ LINK (og:image):
+ * Chỉ đặt khi khóa `anh_chia_se` đã được công bố và ảnh là ảnh THẬT. Chưa có
+ * thì KHÔNG đặt thẻ — một thẻ og:image trỏ tới ảnh hỏng còn tệ hơn không có
+ * thẻ nào, vì Facebook sẽ nhớ kết quả hỏng đó trong bộ nhớ đệm.
+ * Hệ thống đã có chỗ nhắc việc này: v_cong_bo_con_thieu liệt kê anh_chia_se
+ * là dữ kiện bắt buộc còn thiếu cho tới khi Khánh tải ảnh 1200×630 lên.
+ *
+ * DỮ LIỆU CÓ CẤU TRÚC (JSON-LD):
+ * Chỉ khai những gì đã công bố. Cụ thể là KHÔNG có:
+ *   · priceRange — chưa có khoảng giá nào được duyệt;
+ *   · aggregateRating / review — chưa có một đánh giá thật nào, và khai số
+ *     liệu đánh giá bịa vừa vi phạm chính sách Google vừa là quảng cáo sai;
+ *   · openingHoursSpecification khi giờ chưa chốt — Google đưa giờ này lên
+ *     kết quả tìm kiếm, nên khai sai là dẫn khách tới một cánh cửa đóng.
+ */
+import '../styles/chung.css';
+import { THUONG_HIEU, chu, duongDanNgonNguKhac } from '../lib/chu';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+
+interface Props {
+  ngonNgu: NgonNgu;
+  noiDung: NoiDung;
+  tieuDe?: string;
+  moTa?: string;
+  duongDan: string;
+}
+
+const { ngonNgu, noiDung: nd, tieuDe, moTa, duongDan } = Astro.props;
+const t = chu(ngonNgu);
+
+const goc = Astro.site?.origin ?? '';
+const duongDanDayDu = goc + duongDan;
+
+// Tiêu đề: ưu tiên bản đã duyệt trong cổng nội dung, sau đó mới tới bản nền.
+const tieuDeTrang = tieuDe
+  ?? nd.tieu_de_og
+  ?? `${THUONG_HIEU.ten} — ${ngonNgu === 'en' ? THUONG_HIEU.descriptor : 'Nhà hàng chuyên bò'} · ${t.diaChiNgan}`;
+
+// Mô tả chỉ được nhắc tới địa chỉ khi địa chỉ đã công bố. Đây là lý do cụ
+// thể vì sao trang phải dựng ở phía máy chủ: thẻ mô tả là một HÀM của trạng
+// thái database, mà trình quét link của Facebook thì không chạy JavaScript.
+const moTaTrang = moTa
+  ?? nd.mo_ta_og
+  ?? (nd.dia_chi_hien_thi
+      ? `${t.moTaNgan} ${nd.dia_chi_hien_thi}.`
+      : t.moTaNgan);
+
+const anh = nd.anh_chia_se;
+const coAnhChiaSe = !!(anh && anh.nguon === 'anh_that' && anh.url);
+const urlAnhChiaSe = coAnhChiaSe ? anh!.url : null;
+
+const duongDanKia = duongDanNgonNguKhac(duongDan, ngonNgu);
+
+// Chỉ khai những trường đã được xác nhận.
+const duLieuCoCauTruc: Record<string, unknown> = {
+  '@context': 'https://schema.org',
+  '@type': 'Restaurant',
+  name: THUONG_HIEU.ten,
+  url: goc || undefined,
+  description: moTaTrang,
+  servesCuisine: ['Bò nướng', 'Barbecue'],
+  // Form đặt bàn chưa mở thì đây đúng là false — thuộc tính này sinh ra để
+  // nói điều đó.
+  acceptsReservations: nd.form_dat_ban_dang_mo === true,
+};
+if (nd.dia_chi_hien_thi) {
+  duLieuCoCauTruc.address = {
+    '@type': 'PostalAddress',
+    streetAddress: nd.dia_chi_hien_thi,
+    addressLocality: 'Quận 1',
+    addressRegion: 'TP.HCM',
+    addressCountry: 'VN',
+  };
+}
+if (nd.hotline) duLieuCoCauTruc.telephone = nd.hotline;
+if (urlAnhChiaSe) duLieuCoCauTruc.image = urlAnhChiaSe;
+const sameAs = [nd.facebook_url, nd.instagram_url, nd.tiktok_url].filter(Boolean);
+if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
+---
+<!doctype html>
+<html lang={ngonNgu}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{tieuDeTrang}</title>
+    <meta name="description" content={moTaTrang} />
+    <link rel="canonical" href={duongDanDayDu} />
+    <link rel="alternate" hreflang="vi" href={goc + (ngonNgu === 'vi' ? duongDan : duongDanKia)} />
+    <link rel="alternate" hreflang="en" href={goc + (ngonNgu === 'en' ? duongDan : duongDanKia)} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={THUONG_HIEU.ten} />
+    <meta property="og:title" content={tieuDeTrang} />
+    <meta property="og:description" content={moTaTrang} />
+    <meta property="og:url" content={duongDanDayDu} />
+    <meta property="og:locale" content={ngonNgu === 'en' ? 'en_US' : 'vi_VN'} />
+    {urlAnhChiaSe && (
+      <>
+        <meta property="og:image" content={urlAnhChiaSe} />
+        <meta property="og:image:width" content={String(anh!.rong ?? 1200)} />
+        <meta property="og:image:height" content={String(anh!.cao ?? 630)} />
+        {anh!.alt && <meta property="og:image:alt" content={anh!.alt} />}
+        <meta name="twitter:card" content="summary_large_image" />
+      </>
+    )}
+    {!urlAnhChiaSe && <meta name="twitter:card" content="summary" />}
+
+    <link rel="icon" href="/bieu-tuong.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#1E160E" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap"
+    />
+
+    <script type="application/ld+json" set:html={JSON.stringify(duLieuCoCauTruc)} is:inline />
+  </head>
+
+  <body>
+    <a class="bo-qua" href="#noi-dung">{t.boQuaToiNoiDung}</a>
+
+    <div class="khung dau-trang">
+      <a href={ngonNgu === 'en' ? '/en' : '/'} class="ten-thuong-hieu" style="text-decoration:none">
+        {THUONG_HIEU.ten}
+      </a>
+      <a class="doi-ngon-ngu" href={duongDanKia} lang={ngonNgu === 'en' ? 'vi' : 'en'}>
+        {t.doiNgonNgu}
+      </a>
+    </div>
+
+    <main id="noi-dung">
+      <slot />
+    </main>
+
+    <footer class="chan-trang">
+      <div class="khung chan-hang">
+        <span>
+          © {new Date().getFullYear()} {t.banQuyen} ·
+          <span lang="en">{THUONG_HIEU.descriptor}</span>
+        </span>
+        <a href={ngonNgu === 'en' ? '/en/privacy' : '/quyen-rieng-tu'}>{t.quyenRiengTu}</a>
+      </div>
+    </footer>
+  </body>
+</html>

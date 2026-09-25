@@ -1,0 +1,250 @@
+---
+/**
+ * FORM ỨNG TUYỂN
+ *
+ * ĐIỀU KIỆN ĐỂ FORM NÀY TỒN TẠI: phải có ít nhất một vị trí ĐÃ CÔNG BỐ trong
+ * database. Không có thì component này không được gọi — trang hiện khối
+ * "nhắn Facebook" thay thế.
+ *
+ * Lý do không phải là gọn gàng mà là đúng: nop_ho_so_ung_tuyen() cần một mã
+ * vị trí thật. Hiện form lên khi chưa có vị trí nào nghĩa là dựng một cái ô
+ * để người ta điền rồi báo lỗi — tệ hơn hẳn việc nói thẳng "chưa mở, nhắn
+ * Facebook nhé".
+ *
+ * KHÔNG CÓ JAVASCRIPT. Ứng viên phục vụ và phụ bếp dùng điện thoại rẻ, mạng
+ * 4G chập chờn. Form HTML thuần gửi được ngay khi phần HTML tải xong.
+ */
+import type { NgonNgu } from '../lib/noi-dung';
+import type { ViTri } from './TrangTuyenDung.astro';
+import type { KetQuaNop } from '../lib/nop-ho-so';
+
+interface Props {
+  ngonNgu: NgonNgu;
+  viTri: ViTri[];
+  ketQua: KetQuaNop | null;
+  /** Dùng khi form vừa lỗi, để không bắt người ta gõ lại từ đầu. */
+  daNhap?: Record<string, string>;
+  /** Nút nhắn tin, hiện kèm mọi câu lỗi để khách luôn có đường khác. */
+  nhanTin?: { url: string; chu: string } | null;
+}
+const { ngonNgu, viTri, ketQua, daNhap = {}, nhanTin } = Astro.props;
+const en = ngonNgu === 'en';
+
+// Mốc thời gian để server tính số giây điền form. Không cần JavaScript.
+const moc = Date.now();
+
+const CA = en
+  ? [['sang', 'Morning'], ['chieu', 'Afternoon'], ['toi', 'Evening'], ['cuoi_tuan', 'Weekends']]
+  : [['sang', 'Ca sáng'], ['chieu', 'Ca chiều'], ['toi', 'Ca tối'], ['cuoi_tuan', 'Cuối tuần']];
+
+const t = {
+  tieuDe:   en ? 'Apply online' : 'Nộp hồ sơ trực tuyến',
+  viTri:    en ? 'Which role' : 'Vị trí muốn ứng tuyển',
+  chon:     en ? '— choose a role —' : '— chọn vị trí —',
+  hoTen:    en ? 'Full name' : 'Họ và tên',
+  sdt:      en ? 'Phone number' : 'Số điện thoại',
+  sdtPhu:   en ? 'Beeftown will call you back on this number.'
+               : 'Beeftown sẽ gọi lại cho bạn ở số này.',
+  email:    en ? 'Email (optional)' : 'Email (không bắt buộc)',
+  namSinh:  en ? 'Year of birth (optional)' : 'Năm sinh (không bắt buộc)',
+  ca:       en ? 'Shifts you can work' : 'Ca bạn làm được',
+  gioiThieu: en ? 'A few words about yourself (optional)'
+                : 'Đôi dòng về bạn (không bắt buộc)',
+  kinhNghiem: en ? 'Previous experience (optional)'
+                 : 'Kinh nghiệm đã có (không bắt buộc)',
+  kinhNghiemPhu: en
+    ? 'No experience is fine for many roles — leave this empty if you have none.'
+    : 'Nhiều vị trí nhận cả người chưa có kinh nghiệm — chưa có thì để trống.',
+  cv:       en ? 'Attach a CV (optional)' : 'Đính kèm CV (không bắt buộc)',
+  cvPhu:    en ? 'PDF, Word or a photo, up to 5MB. Not required.'
+               : 'File PDF, Word hoặc ảnh chụp, tối đa 5MB. Không bắt buộc.',
+  dongY: en
+    ? 'I agree to let Beeftown store and use the information in this application for hiring, for six months from the date of submission.'
+    : 'Tôi đồng ý để Beeftown lưu và sử dụng thông tin trong hồ sơ này cho mục đích tuyển dụng, trong vòng 6 tháng kể từ ngày nộp.',
+  gui:      en ? 'Send application' : 'Gửi hồ sơ',
+  batBuoc:  en ? 'required' : 'bắt buộc',
+};
+---
+
+{ketQua?.ok ? (
+  <div class="the" style="max-width:62ch;border-left:4px solid var(--cuc-vang)">
+    <h3 style="margin-top:0">
+      {en ? 'Beeftown has received your application' : 'Beeftown đã nhận hồ sơ của bạn'}
+    </h3>
+    {ketQua.ma && (
+      <p>
+        {en ? 'Your reference code: ' : 'Mã hồ sơ của bạn: '}
+        <strong style="letter-spacing:.06em">{ketQua.ma}</strong>
+      </p>
+    )}
+    <p>
+      {en
+        ? 'Keep this code to mention when we call. Beeftown will call you back on the number you gave us.'
+        : 'Bạn giữ mã này để nhắc tới khi nhà hàng gọi. Beeftown sẽ gọi lại cho bạn ở số bạn vừa điền.'}
+    </p>
+    {ketQua.luuY && <p class="nho" style="margin-bottom:0">{ketQua.luuY}</p>}
+  </div>
+) : (
+  <div class="the" style="max-width:62ch">
+    <h3 style="margin-top:0">{t.tieuDe}</h3>
+
+    {ketQua && !ketQua.ok && (
+      <div style="border-left:4px solid var(--do);padding:12px 14px;margin:0 0 18px;background:rgba(178,58,44,.08)">
+        <p style="margin:0"><strong>{ketQua.cau}</strong></p>
+        {nhanTin && (
+          <p class="nho" style="margin:10px 0 0">
+            {en ? 'You can also message us directly: ' : 'Bạn cũng có thể nhắn thẳng cho Beeftown: '}
+            <a href={nhanTin.url} rel="noopener">{nhanTin.chu}</a>
+          </p>
+        )}
+      </div>
+    )}
+
+    <form method="POST" enctype="multipart/form-data" class="form-nop">
+      <input type="hidden" name="moc" value={String(moc)} />
+      <input type="hidden" name="viec" value="ung_tuyen" />
+
+      {/*
+        Bẫy bot. Bot điền mọi ô nó thấy trong HTML; người không thấy ô này.
+        Ẩn bằng CSS chứ không dùng type="hidden" — một input hidden thì bot
+        biết là bẫy, một input nhìn giống thật thì nó điền.
+        aria-hidden + tabindex để người dùng bàn phím và đọc màn hình bỏ qua.
+      */}
+      <div class="bay" aria-hidden="true">
+        <label>Website<input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+      </div>
+
+      <label class="o">
+        <span>{t.viTri} <em>({t.batBuoc})</em></span>
+        <select name="vi_tri" required>
+          <option value="">{t.chon}</option>
+          {viTri.map(v => (
+            <option value={v.ma} selected={daNhap.vi_tri === v.ma}>
+              {v.ten}{v.bo_phan ? ` — ${v.bo_phan}` : ''}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label class="o">
+        <span>{t.hoTen} <em>({t.batBuoc})</em></span>
+        <input type="text" name="ho_ten" required value={daNhap.ho_ten ?? ''}
+               autocomplete="name" autocapitalize="words" />
+      </label>
+
+      <label class="o">
+        <span>{t.sdt} <em>({t.batBuoc})</em></span>
+        <small>{t.sdtPhu}</small>
+        <input type="tel" name="sdt" required value={daNhap.sdt ?? ''}
+               inputmode="tel" autocomplete="tel" />
+      </label>
+
+      <label class="o">
+        <span>{t.email}</span>
+        <input type="email" name="email" value={daNhap.email ?? ''}
+               inputmode="email" autocomplete="email"
+               autocapitalize="off" spellcheck="false" />
+      </label>
+
+      <label class="o">
+        <span>{t.namSinh}</span>
+        <input type="text" name="nam_sinh" value={daNhap.nam_sinh ?? ''}
+               inputmode="numeric" maxlength="4" pattern="[0-9]{4}" />
+      </label>
+
+      <fieldset class="o o-nhom">
+        <legend>{t.ca}</legend>
+        {CA.map(([ma, ten]) => (
+          <label class="o-chon">
+            <input type="checkbox" name="ca" value={ma} />
+            <span>{ten}</span>
+          </label>
+        ))}
+      </fieldset>
+
+      <label class="o">
+        <span>{t.gioiThieu}</span>
+        <textarea name="gioi_thieu" rows="3">{daNhap.gioi_thieu ?? ''}</textarea>
+      </label>
+
+      <label class="o">
+        <span>{t.kinhNghiem}</span>
+        <small>{t.kinhNghiemPhu}</small>
+        <textarea name="kinh_nghiem" rows="3">{daNhap.kinh_nghiem ?? ''}</textarea>
+      </label>
+
+      <label class="o">
+        <span>{t.cv}</span>
+        <small>{t.cvPhu}</small>
+        <input type="file" name="cv"
+               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" />
+      </label>
+
+      <label class="o-chon o-dong-y">
+        <input type="checkbox" name="dong_y" value="co" required />
+        <span>{t.dongY}</span>
+      </label>
+
+      <button type="submit" class="nut nut-chinh" style="width:100%;margin-top:6px">
+        {t.gui}
+      </button>
+    </form>
+  </div>
+)}
+
+<style>
+  /* Ô bẫy: ra khỏi màn hình chứ không display:none — một số bot bỏ qua ô
+     display:none, nhưng vẫn điền ô bị đẩy ra ngoài khung nhìn. */
+  .bay {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .form-nop .o { display: block; margin-bottom: 18px; }
+  .form-nop .o > span,
+  .form-nop legend {
+    display: block; font-weight: 700; font-size: 15px; margin-bottom: 6px;
+  }
+  .form-nop .o > span em { font-style: normal; font-weight: 400; color: var(--da); }
+  .form-nop .o > small {
+    display: block; color: var(--da); font-size: 14px; margin-bottom: 6px; line-height: 1.45;
+  }
+
+  /* font-size 16px là mức tối thiểu: dưới đó Safari trên iPhone tự phóng to
+     trang khi chạm vào ô, và người đang điền mất chỗ. */
+  .form-nop input[type='text'],
+  .form-nop input[type='tel'],
+  .form-nop input[type='email'],
+  .form-nop select,
+  .form-nop textarea {
+    font: inherit; font-size: 16px; width: 100%;
+    padding: 13px 14px; min-height: 50px;
+    border: 1px solid var(--vach-kem); border-radius: 8px;
+    background: rgba(251, 244, 225, .06); color: var(--kem);
+  }
+  .form-nop textarea { min-height: 84px; resize: vertical; line-height: 1.55; }
+  .form-nop input[type='file'] {
+    font: inherit; font-size: 15px; width: 100%; color: var(--kem);
+    padding: 12px 0;
+  }
+
+  .form-nop .o-nhom {
+    border: 1px solid var(--vach-kem); border-radius: 8px;
+    padding: 14px; margin: 0 0 18px;
+  }
+  .form-nop .o-chon {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 9px 0; font-size: 15px; line-height: 1.5; cursor: pointer;
+  }
+  /* 24px + vùng chạm quanh nó: ngón tay cái, không phải con trỏ chuột. */
+  .form-nop .o-chon input[type='checkbox'] {
+    width: 24px; height: 24px; margin: 0; flex-shrink: 0; accent-color: var(--do);
+  }
+  .form-nop .o-dong-y {
+    border-top: 1px solid var(--vach-kem);
+    margin-top: 6px; padding-top: 16px; align-items: flex-start;
+  }
+</style>

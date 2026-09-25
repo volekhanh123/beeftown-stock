@@ -1,0 +1,193 @@
+/**
+ * ĐẶT BÀN — đọc lịch trống và gửi yêu cầu
+ * =======================================
+ *
+ * HAI CÔNG TẮC, KHÔNG PHẢI MỘT.
+ *
+ * Công tắc thứ nhất là form_dat_ban_dang_mo, do người bật. Công tắc thứ hai
+ * là THỰC TẾ: chi nhánh có tồn tại không, giờ phục vụ đã chốt chưa, và bảng
+ * ban_an đã có bàn nào chưa.
+ *
+ * Vì sao cần cả hai: migration 0010 seed form_dat_ban_dang_mo = true để tám
+ * kiểm tra đặt bàn cũ không hỏng. Trên một database vừa cài xong, bảng ban_an
+ * TRỐNG. Chỉ tin công tắc thứ nhất thì form hiện ra, khách điền xong, và
+ * tao_dat_ban() trả về "Khung giờ ... đã hết bàn" — một câu nói SAI về một
+ * nhà hàng chưa mở cửa, và sai theo cách tệ nhất: nó nghe như nhà hàng đông
+ * khách, nên khách không báo cho ai cả.
+ *
+ * Nên trước khi dựng form, hàm dưới đây hỏi thẳng database: có khung giờ nào
+ * còn chỗ trong 14 ngày tới không. Không có thì trang nói "chưa mở đặt bàn"
+ * và chỉ sang Facebook — đúng sự thật, và không ai phải điền gì.
+ *
+ * KHÔNG BAO GIỜ TRẢ SỐ BÀN CÒN TRỐNG RA TRÌNH DUYỆT. lich_trong_theo_ma()
+ * đã trả về boolean thay vì số, và tao_dat_ban() trả về cột con_trong thì
+ * cột đó bị bỏ ngay tại đây. Vừa là quy định của kế hoạch IMC (cấm hook khan
+ * hiếm), vừa vì một con số sức chứa là thứ đối thủ đếm được.
+ */
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { taoClient, maChiNhanh, homNayVn } from './noi-dung';
+
+export interface KhungGio {
+  gio: string;      // '18:00:00'
+  buoi: 'trua' | 'toi';
+  con_cho: boolean;
+  da_qua: boolean;
+}
+
+export interface TinhTrangDatBan {
+  /** Có dựng được form không. False thì trang hiện khối "chưa mở". */
+  moDuoc: boolean;
+  /** Khung giờ của ngày đang xem. */
+  khung: KhungGio[];
+  ngay: string;
+  /** Vì sao không mở được — CHỈ để ghi chú nội bộ, không hiện cho khách. */
+  viSao: string | null;
+}
+
+/** 14 ngày tới, đủ xa để biết nhà hàng có bàn hay không. */
+function cacNgayToi(n = 14): string[] {
+  const goc = new Date(Date.now() + 7 * 60 * 60 * 1000);
+  return Array.from({ length: n }, (_, i) => {
+    const d = new Date(goc.getTime() + i * 86400000);
+    return d.toISOString().slice(0, 10);
+  });
+}
+
+async function docKhung(
+  client: SupabaseClient, ma: string, ngay: string,
+): Promise<KhungGio[]> {
+  const { data, error } = await client.rpc('lich_trong_theo_ma', {
+    p_chi_nhanh_ma: ma,
+    p_ngay: ngay,
+  });
+  if (error || !Array.isArray(data)) return [];
+  return data as KhungGio[];
+}
+
+/**
+ * Hỏi database xem đặt bàn có thật sự dùng được không, và trả về khung giờ
+ * của ngày khách đang xem.
+ */
+export async function tinhTrangDatBan(
+  ngayXem: string | null, formDangMo: boolean | null,
+): Promise<TinhTrangDatBan> {
+  const ngay = ngayXem && /^\d{4}-\d{2}-\d{2}$/.test(ngayXem) ? ngayXem : homNayVn();
+  const rong: TinhTrangDatBan = { moDuoc: false, khung: [], ngay, viSao: null };
+
+  if (formDangMo !== true) {
+    return { ...rong, viSao: 'Công tắc form_dat_ban_dang_mo đang tắt.' };
+  }
+
+  const client = taoClient();
+  if (!client) return { ...rong, viSao: 'Chưa nối database.' };
+
+  const ma = maChiNhanh();
+
+  try {
+    const khung = await docKhung(client, ma, ngay);
+
+    if (khung.length === 0) {
+      // Không có khung giờ nào nghĩa là: không có chi nhánh mã này đang hoạt
+      // động, hoặc giờ phục vụ chưa được công bố (chi_nhanh_cong_khai() giấu
+      // giờ cho tới khi bật gio_phuc_vu_da_chot).
+      return {
+        ...rong,
+        viSao: `Không có khung giờ nào cho chi nhánh "${ma}" — kiểm tra bảng chi_nhanh và công tắc gio_phuc_vu_da_chot.`,
+      };
+    }
+
+    // Ngày đang xem có thể hết chỗ thật. Nên nhìn rộng ra 14 ngày trước khi
+    // kết luận "chưa mở": một nhà hàng kín bàn suốt hai tuần liền, kể cả
+    // những khung giờ chưa tới, thì gần như chắc chắn là bảng ban_an trống.
+    const coChoODauDo =
+      khung.some(k => k.con_cho && !k.da_qua) ||
+      (await Promise.all(
+        cacNgayToi().slice(1).map(n => docKhung(client, ma, n)),
+      )).some(ks => ks.some(k => k.con_cho));
+
+    if (!coChoODauDo) {
+      return {
+        ...rong,
+        khung,
+        viSao: 'Không còn chỗ ở bất kỳ khung giờ nào trong 14 ngày tới — nhiều khả năng bảng ban_an chưa có bàn nào.',
+      };
+    }
+
+    return { moDuoc: true, khung, ngay, viSao: null };
+  } catch (e) {
+    return { ...rong, viSao: e instanceof Error ? e.message : 'Không đọc được lịch.' };
+  }
+}
+
+export interface KetQuaDatBan {
+  ok: boolean;
+  ma?: string;
+  cau: string;
+}
+
+/**
+ * Gửi yêu cầu đặt bàn.
+ *
+ * "Thành công" ở đây nghĩa là DATABASE ĐÃ GHI, không hơn. Câu trả lời nói
+ * thẳng rằng chưa có bàn nào được giữ cho tới khi nhân viên gọi xác nhận —
+ * vì đó đúng là tình trạng của một dòng dat_ban ở trạng thái cho_xac_nhan.
+ */
+export async function guiYeuCauDatBan(
+  client: SupabaseClient, form: FormData, ip: string | null,
+): Promise<KetQuaDatBan> {
+  const hoTen = String(form.get('ho_ten') ?? '').trim();
+  const sdt = String(form.get('sdt') ?? '').trim();
+  const ngay = String(form.get('ngay') ?? '').trim();
+  const gio = String(form.get('gio') ?? '').trim();
+  const soKhach = Number(form.get('so_khach'));
+
+  if (!hoTen) return { ok: false, cau: 'Vui lòng điền họ tên.' };
+  if (!sdt)   return { ok: false, cau: 'Vui lòng điền số điện thoại.' };
+  if (!ngay)  return { ok: false, cau: 'Vui lòng chọn ngày.' };
+  if (!gio)   return { ok: false, cau: 'Vui lòng chọn khung giờ.' };
+  if (!Number.isInteger(soKhach) || soKhach < 1 || soKhach > 8) {
+    return {
+      ok: false,
+      cau: 'Số khách phải từ 1 đến 8. Nhóm đông hơn, bạn nhắn trực tiếp cho Beeftown để nhà hàng sắp xếp.',
+    };
+  }
+
+  const { data, error } = await client.rpc('tao_dat_ban', {
+    p_chi_nhanh_ma: maChiNhanh(),
+    p_sdt: sdt,
+    p_ho_ten: hoTen,
+    p_ngay: ngay,
+    p_gio: gio,
+    p_so_khach: soKhach,
+    p_dip: String(form.get('dip') ?? '').trim() || null,
+    p_ghi_chu: String(form.get('ghi_chu') ?? '').trim() || null,
+    // Đồng ý nhận tin là TÙY CHỌN và KHÔNG được gộp vào việc đặt bàn. Bắt
+    // người ta đồng ý nhận quảng cáo mới cho giữ bàn là ép buộc sự đồng ý,
+    // và nó làm hỏng luôn giá trị của những người đã đồng ý thật lòng.
+    p_dong_y: form.get('dong_y_nhan_tin') === 'co',
+    p_utm_source: String(form.get('utm_source') ?? '').trim() || null,
+    p_utm_medium: String(form.get('utm_medium') ?? '').trim() || null,
+    p_utm_campaign: String(form.get('utm_campaign') ?? '').trim() || null,
+    p_trang_gioi_thieu: null,
+    p_ip: ip,
+  });
+
+  if (error) {
+    const m = error.message ?? '';
+    return {
+      ok: false,
+      cau: /[àáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i.test(m)
+        ? m
+        : 'Chưa gửi được yêu cầu. Yêu cầu của bạn CHƯA được ghi nhận.',
+    };
+  }
+
+  // tao_dat_ban() trả về cả con_trong. Chỉ lấy mã; con số sức chứa dừng ở đây.
+  const dong = Array.isArray(data) ? data[0] : data;
+  return {
+    ok: true,
+    ma: dong?.ma_dat_ban,
+    cau: 'Beeftown đã nhận yêu cầu đặt bàn của bạn.',
+  };
+}

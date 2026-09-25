@@ -1,0 +1,32 @@
+---
+import Trang from '../../layouts/Trang.astro';
+import TrangDatBan from '../../components/TrangDatBan.astro';
+import { docNoiDung } from '../../lib/noi-dung';
+import { tinhTrangDatBan } from '../../lib/dat-ban';
+import { xuLyDatBan, ketQuaDatBan } from '../../lib/xu-ly-form';
+
+const chuyenHuong = await xuLyDatBan(Astro, '/en/book');
+if (chuyenHuong) return chuyenHuong;
+
+const noiDung = await docNoiDung('en');
+const ketQua = ketQuaDatBan(Astro);
+const tinhTrang = await tinhTrangDatBan(
+  Astro.url.searchParams.get('ngay'),
+  noiDung.form_dat_ban_dang_mo,
+);
+---
+<Trang
+  ngonNgu="en"
+  noiDung={noiDung}
+  duongDan="/en/book"
+  tieuDe="Book a table — Beeftown"
+  moTa="Request a table at Beeftown, a beef specialty restaurant in District 1, Ho Chi Minh City. We call you back to confirm."
+>
+  <TrangDatBan
+    ngonNgu="en"
+    noiDung={noiDung}
+    tinhTrang={tinhTrang}
+    ketQua={ketQua}
+    duongDan="/en/book"
+  />
+</Trang>

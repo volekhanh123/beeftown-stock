@@ -1,0 +1,429 @@
+---
+/**
+ * KHO — MỘT PHIẾU NHẬP (lập mới khi id = "moi")
+ *
+ * Ba chế độ, do trạng thái phiếu và vai quyết định:
+ *   · SOẠN  : phiếu mới / nháp / bị từ chối, người có quyền "nhap"
+ *   · DUYỆT : phiếu chờ duyệt, người có quyền "duyet" — xem trước giá vốn
+ *   · XEM   : còn lại (đã duyệt, đã hủy, hoặc không có quyền sửa)
+ *
+ * Form dài được lưu nháp PHÍA MÁY CHỦ ở mỗi lần bấm, rồi chuyển hướng 303:
+ * mất sóng giữa chừng thì phần đã lưu vẫn còn, và F5 không gửi lại. Khi có
+ * lỗi nhập liệu thì KHÔNG chuyển hướng — hiện lại đúng chữ đã gõ kèm lỗi.
+ *
+ * Không có JavaScript. Muốn thêm dòng: "Lưu và thêm dòng".
+ */
+import NoiBo from '../../../../layouts/NoiBo.astro';
+import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import TruongThem from '../../../../components/kho/TruongThem.astro';
+import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
+import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
+import {
+  docCaiDat, docDinhNghia, docMatHang, docNhaCungCap, docViTri,
+  type CaiDat, type MatHang, type NhaCungCap, type ViTri,
+} from '../../../../lib/kho/danh-muc.ts';
+import {
+  docPhieuNhap, luuPhieuNhap, guiDuyet, rutPhieu, duyetPhieu, tuChoiPhieu, huyPhieu,
+  dauTuPhieu, dongTuPhieu, dongTrong, xemTruocGiaVon,
+  type DauForm, type DongForm, type PhieuNhap, type DongPhieuNhap,
+} from '../../../../lib/kho/nhap.ts';
+import { linkAnh } from '../../../../lib/kho/anh.ts';
+import {
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, homNayVn,
+  TRANG_THAI_CHUNG_TU, type KetQua,
+} from '../../../../lib/kho/chung.ts';
+import type { DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
+const cn = k.chiNhanh;
+
+const idThamSo = Astro.params.id ?? '';
+const moi = idThamSo === 'moi';
+if (moi && !k.duoc('nhap')) {
+  return chuyenHuong(Astro, '/noi-bo/kho/nhap', { ok: false, cau: 'Tài khoản của bạn xem được phiếu nhập nhưng không lập phiếu.' });
+}
+
+// ---------------------------------------------------------------------------
+// Đọc danh mục và phiếu
+// ---------------------------------------------------------------------------
+let matHang: MatHang[] = [];
+let ncc: NhaCungCap[] = [];
+let viTri: ViTri[] = [];
+let caiDat: CaiDat | null = null;
+let dnPhieu: DinhNghiaTruong[] = [];
+let dnLo: DinhNghiaTruong[] = [];
+let phieu: PhieuNhap | null = null;
+let dongDb: DongPhieuNhap[] = [];
+let maLo = new Map<string, string>();
+let loiDoc = k.loiDoc;
+
+try {
+  [matHang, ncc, viTri, caiDat, dnPhieu, dnLo] = await Promise.all([
+    docMatHang(k.client), docNhaCungCap(k.client), docViTri(k.client, cn.id),
+    docCaiDat(k.client, cn.id), docDinhNghia(k.client, 'phieu_nhap'), docDinhNghia(k.client, 'lo_hang'),
+  ]);
+  if (!moi) {
+    const doc = await docPhieuNhap(k.client, idThamSo);
+    if (doc) { phieu = doc.phieu; dongDb = doc.dong; maLo = doc.maLo; }
+  }
+} catch (e) {
+  loiDoc = cauLoiKho(e, 'Không đọc được phiếu nhập.');
+}
+
+if (!moi && !phieu && !loiDoc) {
+  return chuyenHuong(Astro, '/noi-bo/kho/nhap', { ok: false, cau: 'Không tìm thấy phiếu nhập này.' });
+}
+
+const loai: 'mua' | 'ton_dau' = phieu?.loai
+  ?? (Astro.url.searchParams.get('loai') === 'ton_dau' ? 'ton_dau' : 'mua');
+const soanDuoc = k.duoc('nhap') && (moi || phieu?.trang_thai === 'nhap' || phieu?.trang_thai === 'tu_choi');
+
+// ---------------------------------------------------------------------------
+// Xử lý lệnh gửi lên
+// ---------------------------------------------------------------------------
+let bao: KetQua | null = k.bao;
+let dauForm: DauForm | null = null;
+let dongForm: DongForm[] | null = null;
+
+const form = await docFormGui(Astro);
+if (Astro.request.method === 'POST' && !form) {
+  bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
+}
+if (form) {
+  const viec = String(form.get('viec') ?? '');
+  const ve = (id: string, kq: KetQua, them = '') => chuyenHuong(Astro, `/noi-bo/kho/nhap/${id}${them}`, kq);
+
+  if (['luu', 'them_dong', 'gui'].includes(viec)) {
+    if (!soanDuoc) {
+      bao = { ok: false, cau: 'Phiếu không còn sửa được (đã gửi duyệt, đã duyệt hoặc đã hủy).' };
+    } else {
+      const kq = await luuPhieuNhap(k.client, cn.id, form, {
+        id: phieu?.id ?? null,
+        phienBan: phieu ? Number(form.get('phien_ban')) : null,
+        loai,
+        anhCu: phieu?.anh ?? [],
+        dinhNghiaPhieu: dnPhieu,
+        dinhNghiaLo: dnLo,
+        truongThemCu: { phieu: phieu?.truong_them, dong: dongDb.map(d => d.truong_them) },
+      });
+      if (!kq.ok || !kq.id) {
+        bao = kq;
+        dauForm = kq.dau ?? null;
+        dongForm = kq.dong ?? null;
+      } else if (viec === 'gui') {
+        const gui = await guiDuyet(k.client, kq.id, kq.phienBan ?? null);
+        return ve(kq.id, gui.ok ? gui : { ok: false, cau: `Đã lưu nháp nhưng CHƯA gửi duyệt được: ${gui.cau}` });
+      } else if (viec === 'them_dong') {
+        const them = Math.min(Number(form.get('so_dong') ?? 0) + 5, 60);
+        return ve(kq.id, { ok: true, cau: `${kq.cau} Thêm dòng ở cuối phiếu.` }, `?dong=${them}`);
+      } else {
+        return ve(kq.id, kq);
+      }
+    }
+  } else if (phieu) {
+    let kq: KetQua;
+    const lyDo = String(form.get('ly_do') ?? '').trim();
+    if (viec === 'rut') kq = await rutPhieu(k.client, phieu.id);
+    else if (viec === 'duyet') kq = await duyetPhieu(k.client, phieu.id);
+    else if (viec === 'tu_choi') kq = await tuChoiPhieu(k.client, phieu.id, lyDo);
+    else if (viec === 'huy') kq = await huyPhieu(k.client, phieu.id, lyDo || null);
+    else kq = { ok: false, cau: 'Việc không hợp lệ.' };
+    return ve(phieu.id, kq);
+  } else {
+    bao = { ok: false, cau: 'Việc không hợp lệ.' };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dữ liệu hiển thị
+// ---------------------------------------------------------------------------
+const dau: DauForm = dauForm ?? (phieu ? dauTuPhieu(phieu) : {
+  nha_cung_cap_id: '',
+  vi_tri_id: loai === 'ton_dau'
+    ? (viTri.find(v => v.loai === 'quay' && v.dang_dung)?.id ?? '')
+    : (caiDat?.vi_tri_nhan_hang_id ?? viTri.find(v => v.loai === 'kho' && v.dang_dung)?.id ?? ''),
+  ngay_nhap: homNayVn(), so_hoa_don: '', ngay_hoa_don: '', han_thanh_toan: '',
+  tien_thue: '', chi_phi_khac: '', ghi_chu: '', truong_them: {},
+});
+const soDongMuon = Math.min(Math.max(Number(Astro.url.searchParams.get('dong') ?? 0) || 0, 0), 60);
+const dongCo: DongForm[] = dongForm ?? dongTuPhieu(dongDb);
+const soTrong = Math.max(moi ? 4 : 2, soDongMuon - dongCo.length);
+const dongHien: DongForm[] = soanDuoc ? [...dongCo, ...Array.from({ length: soTrong }, dongTrong)] : dongCo;
+
+const maGuiForm = crypto.randomUUID();
+const tenMh = new Map(matHang.map(m => [m.id, m]));
+const viTriNhan = viTri.filter(v => v.loai !== 'cho_huy' && (v.dang_dung || v.id === dau.vi_tri_id));
+const nccChon = ncc.filter(n => n.dang_dung || n.id === dau.nha_cung_cap_id);
+const ten = phieu ? await tenNhanSu(k.client, [phieu.nguoi_tao, phieu.nguoi_gui, phieu.nguoi_duyet, phieu.nguoi_huy]) : new Map();
+const anhLink = phieu ? await linkAnh(k.client, phieu.anh) : new Map<string, string>();
+const [nhanTT, lopTT] = phieu ? (TRANG_THAI_CHUNG_TU[phieu.trang_thai] ?? [phieu.trang_thai, 'tat']) : ['Mới', 'nhap'];
+
+const tienHang = dongDb.reduce((s, d) => s + d.thanh_tien, 0);
+const tongTien = phieu ? tienHang + phieu.tien_thue + phieu.chi_phi_khac : 0;
+const giaVon = phieu && phieu.trang_thai === 'cho_duyet' ? xemTruocGiaVon(dongDb, phieu.chi_phi_khac, phieu.tien_thue, caiDat) : [];
+const tieuDe = moi ? (loai === 'ton_dau' ? 'Nhập tồn đầu kỳ' : 'Lập phiếu nhập') : `Phiếu ${phieu?.so_phieu ?? ''}`;
+---
+<NoiBo tieuDe={tieuDe} nhanSu={k.nhanSu}>
+  <h1>{tieuDe}</h1>
+  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {phieu && (
+    <p class="nb-dan">
+      <span class={`nb-nhan ${lopTT}`}>{nhanTT}</span>
+      {phieu.loai === 'ton_dau' && <> · tồn đầu kỳ</>}
+      · lập bởi {ten.get(phieu.nguoi_tao ?? '') ?? '—'} lúc {dinhDangThoiDiem(phieu.created_at)}
+      {phieu.gui_luc && <> · gửi duyệt {dinhDangThoiDiem(phieu.gui_luc)}</>}
+      {phieu.duyet_luc && phieu.trang_thai !== 'nhap' && <> · {phieu.trang_thai === 'tu_choi' ? 'từ chối' : 'duyệt'} bởi {ten.get(phieu.nguoi_duyet ?? '') ?? '—'} {dinhDangThoiDiem(phieu.duyet_luc)}</>}
+      {phieu.huy_luc && <> · hủy bởi {ten.get(phieu.nguoi_huy ?? '') ?? '—'} {dinhDangThoiDiem(phieu.huy_luc)}</>}
+    </p>
+  )}
+  {phieu?.ly_do && (phieu.trang_thai === 'tu_choi' || phieu.trang_thai === 'da_huy') && (
+    <div class="nb-bao luu-y"><p><strong>{phieu.trang_thai === 'tu_choi' ? 'Lý do từ chối' : 'Lý do hủy'}:</strong> {phieu.ly_do}</p></div>
+  )}
+
+  {soanDuoc ? (
+    // =====================================================================
+    // CHẾ ĐỘ SOẠN
+    // =====================================================================
+    <form method="POST" enctype="multipart/form-data">
+      <input type="hidden" name="ma_gui" value={maGuiForm} />
+      {phieu && <input type="hidden" name="phien_ban" value={String(phieu.phien_ban)} />}
+      <input type="hidden" name="so_dong" value={String(dongHien.length)} />
+
+      <div class="nb-the">
+        {loai === 'mua' ? (
+          <label class="nb-o">
+            <span>Nhà cung cấp *</span>
+            {nccChon.length === 0 && <small>Chưa có nhà cung cấp nào. {k.duoc('ncc') ? <a href="/noi-bo/kho/cai-dat/nha-cung-cap">Thêm nhà cung cấp</a> : 'Nhờ quản lý thêm nhà cung cấp.'}</small>}
+            <select name="nha_cung_cap_id">
+              <option value="">— chọn nhà cung cấp —</option>
+              {nccChon.map(n => <option value={n.id} selected={n.id === dau.nha_cung_cap_id}>{n.ten}{n.so_ngay_no ? ` (nợ ${n.so_ngay_no} ngày)` : ''}</option>)}
+            </select>
+          </label>
+        ) : (
+          <p class="nb-dan" style="font-size:.88rem">
+            Tồn đầu kỳ: hàng <strong>đang có sẵn</strong> lúc bắt đầu dùng phần mềm. Không có nhà
+            cung cấp, không vào công nợ. Đơn giá là <strong>giá vốn ước tính/kg</strong> — để báo
+            cáo giá trị tồn có số.
+          </p>
+        )}
+
+        <div class="kho-luoi">
+          <label class="nb-o">
+            <span>Nhận vào</span>
+            <select name="vi_tri_id">
+              {viTriNhan.map(v => <option value={v.id} selected={v.id === dau.vi_tri_id}>{v.ten}</option>)}
+            </select>
+          </label>
+          <label class="nb-o">
+            <span>Ngày nhập</span>
+            <input type="date" name="ngay_nhap" value={dau.ngay_nhap} max={homNayVn()} required />
+          </label>
+        </div>
+
+        {loai === 'mua' && (
+          <>
+            <div class="kho-luoi">
+              <label class="nb-o"><span>Số hóa đơn</span>
+                <input type="text" name="so_hoa_don" value={dau.so_hoa_don} autocapitalize="characters" /></label>
+              <label class="nb-o"><span>Ngày hóa đơn</span>
+                <input type="date" name="ngay_hoa_don" value={dau.ngay_hoa_don} /></label>
+              <label class="nb-o"><span>Hạn thanh toán</span>
+                <small>Bỏ trống = tự tính theo số ngày nợ của nhà cung cấp.</small>
+                <input type="date" name="han_thanh_toan" value={dau.han_thanh_toan} /></label>
+            </div>
+            <div class="kho-luoi">
+              <label class="nb-o"><span>Tiền thuế (VAT)</span>
+                <input type="text" inputmode="numeric" name="tien_thue" value={dau.tien_thue} placeholder="0" /></label>
+              <label class="nb-o"><span>Chi phí khác</span>
+                <small>Vận chuyển, bốc xếp… — cộng vào giá vốn theo kg.</small>
+                <input type="text" inputmode="numeric" name="chi_phi_khac" value={dau.chi_phi_khac} placeholder="0" /></label>
+            </div>
+          </>
+        )}
+
+        <TruongThem dinhNghia={dnPhieu} giaTri={dau.truong_them} />
+
+        <label class="nb-o"><span>Ghi chú</span>
+          <input type="text" name="ghi_chu" value={dau.ghi_chu} maxlength="500" /></label>
+
+        <div class="nb-o">
+          <span>Ảnh hóa đơn / phiếu giao hàng</span>
+          {phieu && phieu.anh.length > 0 && (
+            <div class="kho-anh">
+              {phieu.anh.map(a => (
+                <label>
+                  {anhLink.get(a) ? <a href={anhLink.get(a)} target="_blank" rel="noopener"><img src={anhLink.get(a)} alt="Ảnh chứng từ" loading="lazy" /></a> : <span>{a.split('/').pop()}</span>}
+                  <span><input type="checkbox" name="anh_giu" value={a} checked /> giữ</span>
+                </label>
+              ))}
+            </div>
+          )}
+          <input type="file" name="anh" accept="image/*,application/pdf" multiple />
+        </div>
+      </div>
+
+      <h2>Hàng nhập</h2>
+      {dongHien.map((d, i) => {
+        const mh = tenMh.get(d.mat_hang_id);
+        const coChiTiet = !!(d.ngay_san_xuat || d.so_lo_ncc);
+        return (
+          <div class="kho-dong-hang">
+            <span class="so-thu-tu">{i + 1}</span>
+            <label class="nb-o" style="margin-top:.4rem">
+              <span>Mặt hàng</span>
+              <ChonMatHang name={`d${i}_mat_hang`} matHang={matHang} chon={d.mat_hang_id} />
+            </label>
+            <div class="kho-luoi">
+              <label class="nb-o"><span>Số kg</span>
+                <input type="text" inputmode="decimal" name={`d${i}_so_kg`} value={d.so_kg} placeholder={i === 0 ? 'ví dụ 12,5' : undefined} /></label>
+              <label class="nb-o"><span>Số {mh?.don_vi_goi ?? 'tảng / gói'}</span>
+                <input type="text" inputmode="numeric" name={`d${i}_so_goi`} value={d.so_goi} placeholder={i === 0 ? 'ví dụ 1' : undefined} /></label>
+              <label class="nb-o"><span>{loai === 'ton_dau' ? 'Giá vốn ước tính/kg' : 'Đơn giá/kg'}</span>
+                <input type="text" inputmode="numeric" name={`d${i}_don_gia`} value={d.don_gia_kg} placeholder={i === 0 ? 'ví dụ 480.000' : undefined} /></label>
+              <label class="nb-o"><span>Hạn dùng</span>
+                <input type="date" name={`d${i}_hsd`} value={d.han_dung} /></label>
+            </div>
+            <TruongThem dinhNghia={dnLo.filter(x => x.bat_buoc)} giaTri={d.truong_them} dong={i} />
+            <details open={coChiTiet}>
+              <summary>Thêm chi tiết: ngày sản xuất, số lô của nhà cung cấp{dnLo.some(x => !x.bat_buoc && x.dang_dung) ? ', ô thông tin thêm' : ''}</summary>
+              <div class="kho-luoi">
+                <label class="nb-o"><span>Ngày sản xuất</span>
+                  <input type="date" name={`d${i}_nsx`} value={d.ngay_san_xuat} /></label>
+                <label class="nb-o"><span>Số lô nhà cung cấp</span>
+                  <input type="text" name={`d${i}_so_lo_ncc`} value={d.so_lo_ncc} autocapitalize="characters" /></label>
+              </div>
+              <TruongThem dinhNghia={dnLo.filter(x => !x.bat_buoc)} giaTri={d.truong_them} dong={i} />
+            </details>
+            {i < dongCo.length && (
+              <label class="kho-tich"><input type="checkbox" name={`d${i}_xoa`} value="co" /> Bỏ dòng này</label>
+            )}
+          </div>
+        );
+      })}
+      <p class="kho-phu">Hạn dùng bỏ trống = ngày nhập + hạn mặc định của mặt hàng. Dòng để trống hoàn toàn sẽ được bỏ qua.</p>
+
+      <div class="kho-thanh-nut dinh">
+        <button type="submit" name="viec" value="luu" class="nb-nut phu">Lưu nháp</button>
+        <button type="submit" name="viec" value="them_dong" class="nb-nut phu">Lưu + thêm dòng</button>
+        <button type="submit" name="viec" value="gui" class="nb-nut">Gửi quản lý duyệt</button>
+      </div>
+    </form>
+  ) : phieu && (
+    // =====================================================================
+    // CHẾ ĐỘ XEM / DUYỆT
+    // =====================================================================
+    <>
+      <div class="nb-the">
+        <dl class="kho-dl">
+          {phieu.loai === 'mua' && <><dt>Nhà cung cấp</dt><dd>{ncc.find(n => n.id === phieu!.nha_cung_cap_id)?.ten ?? '—'}</dd></>}
+          <dt>Nhận vào</dt><dd>{viTri.find(v => v.id === phieu!.vi_tri_id)?.ten ?? '—'}</dd>
+          <dt>Ngày nhập</dt><dd>{dinhDangNgay(phieu.ngay_nhap)}</dd>
+          {phieu.so_hoa_don && <><dt>Hóa đơn</dt><dd>{phieu.so_hoa_don}{phieu.ngay_hoa_don && ` · ${dinhDangNgay(phieu.ngay_hoa_don)}`}</dd></>}
+          {phieu.han_thanh_toan && <><dt>Hạn thanh toán</dt><dd>{dinhDangNgay(phieu.han_thanh_toan)}</dd></>}
+          {phieu.ghi_chu && <><dt>Ghi chú</dt><dd>{phieu.ghi_chu}</dd></>}
+        </dl>
+        <TruongThem dinhNghia={dnPhieu} giaTri={phieu.truong_them} chiDoc />
+        {phieu.anh.length > 0 && (
+          <div class="kho-anh">
+            {phieu.anh.map(a => anhLink.get(a)
+              ? <a href={anhLink.get(a)} target="_blank" rel="noopener"><img src={anhLink.get(a)} alt="Ảnh chứng từ" loading="lazy" /></a>
+              : <span class="kho-phu">{a.split('/').pop()}</span>)}
+          </div>
+        )}
+      </div>
+
+      <div class="kho-bang-khung">
+        <table class="kho-bang">
+          <thead><tr>
+            <th>Mặt hàng</th><th class="so">Kg</th><th class="so">Gói/tảng</th><th class="so">Đơn giá/kg</th>
+            <th class="so">Thành tiền</th><th>Hạn dùng</th><th>Lô</th>
+            {giaVon.length > 0 && <th class="so">Giá vốn/kg vào kho</th>}
+          </tr></thead>
+          <tbody>
+            {dongDb.map((d, i) => (
+              <tr>
+                <td>{tenMh.get(d.mat_hang_id)?.ten ?? '—'}
+                  {d.so_lo_ncc && <><br /><span class="kho-phu">lô NCC {d.so_lo_ncc}</span></>}
+                  {dnLo.length > 0 && Object.keys(d.truong_them ?? {}).length > 0 && (
+                    <><br /><span class="kho-phu">{dnLo.filter(x => d.truong_them?.[x.khoa] !== undefined).map(x => `${x.nhan}: ${d.truong_them[x.khoa] === true ? 'Có' : d.truong_them[x.khoa] === false ? 'Không' : d.truong_them[x.khoa]}`).join(' · ')}</span></>
+                  )}
+                </td>
+                <td class="so">{dinhDangKg(d.so_kg)}</td>
+                <td class="so">{d.so_goi || '—'}</td>
+                <td class="so">{dinhDangTien(d.don_gia_kg)}</td>
+                <td class="so">{dinhDangTien(d.thanh_tien)}</td>
+                <td>{dinhDangNgay(d.han_dung)}</td>
+                <td>{d.lo_id ? maLo.get(d.lo_id) ?? '—' : '—'}</td>
+                {giaVon.length > 0 && <td class="so">{dinhDangTien(giaVon[i]?.gia_von_kg)}</td>}
+              </tr>
+            ))}
+            <tr class="tong"><td>Tiền hàng</td><td class="so">{dinhDangKg(dongDb.reduce((s, d) => s + d.so_kg, 0))}</td><td></td><td></td><td class="so">{dinhDangTien(tienHang)}</td><td colspan={giaVon.length > 0 ? 3 : 2}></td></tr>
+            {phieu.loai === 'mua' && <>
+              <tr><td colspan="4">Thuế</td><td class="so">{dinhDangTien(phieu.tien_thue)}</td><td colspan={giaVon.length > 0 ? 3 : 2}></td></tr>
+              <tr><td colspan="4">Chi phí khác</td><td class="so">{dinhDangTien(phieu.chi_phi_khac)}</td><td colspan={giaVon.length > 0 ? 3 : 2}></td></tr>
+              <tr class="tong"><td colspan="4">Tổng phải trả</td><td class="so">{dinhDangTien(tongTien)}</td><td colspan={giaVon.length > 0 ? 3 : 2}></td></tr>
+            </>}
+          </tbody>
+        </table>
+      </div>
+      {giaVon.length > 0 && (
+        <p class="kho-phu">Giá vốn vào kho = đơn giá{caiDat?.chi_phi_vao_gia_von ? ' + chi phí khác chia theo kg' : ''}{caiDat?.vat_vao_gia_von ? ' + thuế chia theo tiền hàng' : ''}. Con số chính thức do hệ thống tính lúc duyệt.</p>
+      )}
+
+      {phieu.trang_thai === 'cho_duyet' && k.duoc('duyet') && (
+        <div class="nb-the">
+          <h2 style="margin-top:0">Duyệt phiếu</h2>
+          <p class="nb-dan">Duyệt xong, mỗi dòng thành một <strong>lô hàng</strong> và vào tồn kho ngay.</p>
+          <form method="POST" class="kho-thanh-nut">
+            <button type="submit" name="viec" value="duyet" class="nb-nut">Duyệt — cho hàng vào kho</button>
+          </form>
+          <details>
+            <summary style="cursor:pointer;font-weight:600">Từ chối phiếu</summary>
+            <form method="POST" style="margin-top:.75rem">
+              <label class="nb-o"><span>Lý do từ chối</span>
+                <small>Người lập phiếu sẽ đọc câu này để biết sửa gì.</small>
+                <textarea name="ly_do" required maxlength="500"></textarea></label>
+              <button type="submit" name="viec" value="tu_choi" class="nb-nut kho-nut-xoa">Từ chối</button>
+            </form>
+          </details>
+        </div>
+      )}
+
+      {phieu.trang_thai === 'cho_duyet' && k.duoc('nhap') && (
+        <form method="POST" class="kho-thanh-nut">
+          <button type="submit" name="viec" value="rut" class="nb-nut phu">Rút về để sửa</button>
+        </form>
+      )}
+
+      {phieu.trang_thai === 'da_duyet' && k.duoc('duyet') && (
+        <details class="nb-the">
+          <summary style="cursor:pointer;font-weight:600">Hủy phiếu đã duyệt (nhập nhầm)</summary>
+          <p class="nb-dan" style="margin-top:.75rem">Chỉ hủy được khi các lô của phiếu <strong>chưa được dùng</strong>
+            (chưa pha lóc, chưa chuyển, chưa xuất). Hủy = ghi dòng đảo ngược, tồn trở về như trước khi nhập.</p>
+          <form method="POST">
+            <label class="nb-o"><span>Lý do hủy</span><textarea name="ly_do" required maxlength="500"></textarea></label>
+            <button type="submit" name="viec" value="huy" class="nb-nut kho-nut-xoa">Hủy phiếu</button>
+          </form>
+        </details>
+      )}
+    </>
+  )}
+
+  {soanDuoc && phieu && (
+    <details class="nb-the" style="margin-top:1.5rem">
+      <summary style="cursor:pointer;font-weight:600">Hủy phiếu nháp này</summary>
+      <form method="POST" style="margin-top:.75rem">
+        <label class="nb-o"><span>Lý do (không bắt buộc)</span><input type="text" name="ly_do" maxlength="500" /></label>
+        <button type="submit" name="viec" value="huy" class="nb-nut kho-nut-xoa">Hủy phiếu nháp</button>
+      </form>
+    </details>
+  )}
+
+  <p style="margin-top:1.5rem"><a href="/noi-bo/kho/nhap">← Danh sách phiếu nhập</a></p>
+</NoiBo>
