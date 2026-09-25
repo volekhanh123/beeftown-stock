@@ -26,7 +26,8 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { taoClient, maChiNhanh, homNayVn } from './noi-dung';
+import { taoClient, maChiNhanh, homNayVn, type NgonNgu } from './noi-dung';
+import { cauLoiDatabase, dich, type BaThuTieng } from './chu';
 
 export interface KhungGio {
   gio: string;      // '18:00:00'
@@ -127,6 +128,52 @@ export interface KetQuaDatBan {
 }
 
 /**
+ * Câu trả lời sau khi gửi, ở cả ba thứ tiếng. Bản tiếng Anh và tiếng Hàn nói
+ * đúng điều bản tiếng Việt nói: "đã nhận yêu cầu", không bao giờ là "đã giữ
+ * bàn" — bản dịch là chỗ câu chữ dễ trôi thành một lời hứa nhất.
+ *
+ * xu-ly-form.ts dùng lại bảng này cho câu đọc từ cookie sau khi chuyển hướng,
+ * để hai nơi không nói hai câu khác nhau.
+ */
+export const CAU_DAT_BAN = {
+  thieuHoTen: {
+    vi: 'Vui lòng điền họ tên.',
+    en: 'Please enter your full name.',
+    ko: '이름을 입력해 주세요.',
+  },
+  thieuSdt: {
+    vi: 'Vui lòng điền số điện thoại.',
+    en: 'Please enter your phone number.',
+    ko: '전화번호를 입력해 주세요.',
+  },
+  thieuNgay: {
+    vi: 'Vui lòng chọn ngày.',
+    en: 'Please choose a date.',
+    ko: '날짜를 선택해 주세요.',
+  },
+  thieuGio: {
+    vi: 'Vui lòng chọn khung giờ.',
+    en: 'Please choose a time.',
+    ko: '시간대를 선택해 주세요.',
+  },
+  soKhach: {
+    vi: 'Số khách phải từ 1 đến 8. Nhóm đông hơn, bạn nhắn trực tiếp cho Beeftown để nhà hàng sắp xếp.',
+    en: 'The number of guests must be from 1 to 8. For a larger group, message Beeftown directly and we will arrange it with you.',
+    ko: '인원은 1명에서 8명까지 선택할 수 있어요. 더 많은 인원은 Beeftown에 직접 메시지를 보내 주시면 매장에서 조율해 드려요.',
+  },
+  chuaGhi: {
+    vi: 'Chưa gửi được yêu cầu. Yêu cầu của bạn CHƯA được ghi nhận.',
+    en: 'Your request could not be sent. It has NOT been recorded.',
+    ko: '요청을 보내지 못했어요. 예약 요청은 아직 접수되지 않았어요.',
+  },
+  daNhan: {
+    vi: 'Beeftown đã nhận yêu cầu đặt bàn của bạn.',
+    en: 'Beeftown has received your table request.',
+    ko: 'Beeftown에 예약 요청이 접수되었어요.',
+  },
+} as const satisfies Record<string, BaThuTieng>;
+
+/**
  * Gửi yêu cầu đặt bàn.
  *
  * "Thành công" ở đây nghĩa là DATABASE ĐÃ GHI, không hơn. Câu trả lời nói
@@ -134,23 +181,21 @@ export interface KetQuaDatBan {
  * vì đó đúng là tình trạng của một dòng dat_ban ở trạng thái cho_xac_nhan.
  */
 export async function guiYeuCauDatBan(
-  client: SupabaseClient, form: FormData, ip: string | null,
+  client: SupabaseClient, form: FormData, ip: string | null, ngonNgu: NgonNgu,
 ): Promise<KetQuaDatBan> {
+  const cau = dich(ngonNgu, CAU_DAT_BAN);
   const hoTen = String(form.get('ho_ten') ?? '').trim();
   const sdt = String(form.get('sdt') ?? '').trim();
   const ngay = String(form.get('ngay') ?? '').trim();
   const gio = String(form.get('gio') ?? '').trim();
   const soKhach = Number(form.get('so_khach'));
 
-  if (!hoTen) return { ok: false, cau: 'Vui lòng điền họ tên.' };
-  if (!sdt)   return { ok: false, cau: 'Vui lòng điền số điện thoại.' };
-  if (!ngay)  return { ok: false, cau: 'Vui lòng chọn ngày.' };
-  if (!gio)   return { ok: false, cau: 'Vui lòng chọn khung giờ.' };
+  if (!hoTen) return { ok: false, cau: cau.thieuHoTen };
+  if (!sdt)   return { ok: false, cau: cau.thieuSdt };
+  if (!ngay)  return { ok: false, cau: cau.thieuNgay };
+  if (!gio)   return { ok: false, cau: cau.thieuGio };
   if (!Number.isInteger(soKhach) || soKhach < 1 || soKhach > 8) {
-    return {
-      ok: false,
-      cau: 'Số khách phải từ 1 đến 8. Nhóm đông hơn, bạn nhắn trực tiếp cho Beeftown để nhà hàng sắp xếp.',
-    };
+    return { ok: false, cau: cau.soKhach };
   }
 
   const { data, error } = await client.rpc('tao_dat_ban', {
@@ -174,13 +219,9 @@ export async function guiYeuCauDatBan(
   });
 
   if (error) {
-    const m = error.message ?? '';
-    return {
-      ok: false,
-      cau: /[àáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i.test(m)
-        ? m
-        : 'Chưa gửi được yêu cầu. Yêu cầu của bạn CHƯA được ghi nhận.',
-    };
+    // Câu lỗi của database viết bằng tiếng Việt: trang tiếng Việt dùng nguyên
+    // văn, trang khác nhận bản dịch — xem cauLoiDatabase() trong lib/chu.ts.
+    return { ok: false, cau: cauLoiDatabase(error.message ?? '', ngonNgu, cau.chuaGhi) };
   }
 
   // tao_dat_ban() trả về cả con_trong. Chỉ lấy mã; con số sức chứa dừng ở đây.
@@ -188,6 +229,6 @@ export async function guiYeuCauDatBan(
   return {
     ok: true,
     ma: dong?.ma_dat_ban,
-    cau: 'Beeftown đã nhận yêu cầu đặt bàn của bạn.',
+    cau: cau.daNhan,
   };
 }

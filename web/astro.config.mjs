@@ -46,7 +46,7 @@ export default defineConfig({
   // Tiếng Việt là ngôn ngữ chính và không có tiền tố trong đường dẫn.
   i18n: {
     defaultLocale: 'vi',
-    locales: ['vi', 'en'],
+    locales: ['vi', 'en', 'ko'],
     routing: { prefixDefaultLocale: false },
   },
 

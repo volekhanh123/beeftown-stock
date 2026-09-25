@@ -54,7 +54,10 @@ web/
 │  ├─ middleware.ts    ← chặn cửa /noi-bo. Một chỗ duy nhất.
 │  ├─ lib/
 │  │  ├─ noi-dung.ts   ← ĐỌC CỔNG NỘI DUNG. Đọc file này trước.
-│  │  ├─ chu.ts        ← câu chữ cố định + bảng cặp đường dẫn Việt–Anh
+│  │  ├─ chu.ts        ← câu chữ cố định + bảng đường dẫn Việt–Anh–Hàn
+│  │  ├─ chuoi-cam.js  ← danh sách chữ cấm, dùng chung cho máy quét và máy dịch
+│  │  ├─ may-dich.ts   ← gọi Gemini, quy tắc dịch — không biết gì về database
+│  │  ├─ ban-dich.ts   ← nối máy dịch với database: đọc việc, dịch, ghi
 │  │  ├─ phien.ts      ← phiên đăng nhập nội bộ, cookie, IP, kết quả form
 │  │  ├─ cong-tac.ts   ← đọc/ghi bảng công tắc nội dung
 │  │  ├─ nop-ho-so.ts  ← nhận hồ sơ ứng tuyển + tải CV
@@ -69,7 +72,7 @@ web/
 │  │  ├─ TrangRaMat.astro · TrangTuyenDung.astro
 │  │  ├─ TrangDatBan.astro · FormUngTuyen.astro
 │  ├─ pages/
-│  │  ├─ (tiếng Việt ở gốc, tiếng Anh dưới /en)
+│  │  ├─ (tiếng Việt ở gốc, tiếng Anh dưới /en, tiếng Hàn dưới /ko)
 │  │  └─ noi-bo/       ← giao diện nội bộ, có middleware canh cửa
 │  │     └─ kho/       ← các màn kho
 │  └─ styles/chung.css · noi-bo.css · kho.css
@@ -91,6 +94,45 @@ Thay vào đó nhân viên đăng nhập bằng Supabase Auth, access token củ
 Hệ quả cụ thể: một người vai `marketing` đăng nhập sẽ soạn được bản nháp nhưng **không** công bố được, và giao diện không cần biết luật đó — chính trigger trong database từ chối, y như khi họ gõ SQL bằng tay.
 
 **Tài khoản do chủ nhà hàng tạo trong Supabase Studio**, rồi nối `auth_uid` vào một dòng trong bảng `nhan_su`. Đăng nhập Supabase thành công mà không có dòng `nhan_su` thì vẫn bị từ chối — Supabase Auth trả lời "ai", bảng `nhan_su` trả lời "có phải nhân viên không".
+
+---
+
+## Bản dịch tự động (tiếng Anh và tiếng Hàn)
+
+Tiếng Việt là bản gốc duy nhất người ta soạn. Bản tiếng Anh và tiếng Hàn do **Gemini** dịch mỗi khi câu tiếng Việt đổi, rồi lên trang ngay — sau khi qua **đúng bộ lọc chữ cấm** mà `npm run quet` dùng (`src/lib/chuoi-cam.js`). Bộ lọc có cả mẫu tiếng Anh và tiếng Hàn: máy dịch rất hay biến "nướng tại bàn" thành 숯불구이 (nướng than), trong khi nhà hàng nướng vỉ gas.
+
+| Sửa ở đâu | Khi nào dịch |
+|---|---|
+| Màn soạn tin tuyển dụng | Ngay sau khi bấm Lưu, chạy nền — tải lại trang sau vài giây là thấy. Nút **Dịch ngay** để chờ và xem kết quả tại chỗ. |
+| Màn công tắc nội dung | Trước khi lưu, trong cùng lần bấm (chờ vài giây). Dòng đã công bố là bất biến (`0010`), nên bản dịch phải đi cùng phiên bản. |
+| Supabase Studio (thực đơn, chú thích ảnh…) | Lần kế tiếp chủ nhà hàng, quản lý hoặc marketing mở một trang `/noi-bo` — tối đa một lượt mỗi phút. |
+
+**Ba luật**, nằm ở database (`0029`) nên đúng bất kể sửa bằng đường nào:
+
+- Bản dịch là bản dịch của **một** câu tiếng Việt cụ thể. Câu gốc đổi là bản dịch hết hiệu lực — kể cả bản sửa tay.
+- **Sửa tay thắng máy**, cho tới khi câu gốc đổi. Xóa trắng một ô dịch là nhờ máy dịch lại ô đó.
+- Bản dịch dính chữ cấm **không lên trang**: ô để trống, trang lùi về thứ tiếng kế tiếp (Hàn → Anh → Việt), màn nội bộ hiện lý do.
+
+### Cài khóa Gemini — làm một lần
+
+1. Vào [Google AI Studio](https://aistudio.google.com/apikey), đăng nhập bằng tài khoản Google của nhà hàng, bấm **Create API key**. Gói Gemini dùng trong app **không** thay được khóa này.
+2. Dashboard Cloudflare → **Workers & Pages** → `beeftown` → **Settings** → **Variables and Secrets** → **Add** → kiểu **Secret**, tên `GEMINI_API_KEY`, dán khóa, rồi bấm **Deploy**. Hoặc từ máy, trong thư mục `web/`: `npx wrangler secret put GEMINI_API_KEY`.
+3. Không dán khóa vào `.env`, vào chat hay vào repo. Secret của Worker không đi vào bản build, và `wrangler deploy` không xóa nó.
+
+Chưa có khóa thì web vẫn chạy: ô dịch để trống, trang lùi về thứ tiếng kế tiếp, màn soạn tin báo "Chưa có khóa GEMINI_API_KEY". Chạy thử trên máy thì đặt khóa trong `web/.dev.vars` (`GEMINI_API_KEY=...`) — file này bị `.gitignore` chặn.
+
+**Mẫu máy:** mặc định `gemini-flash-latest`, bí danh Google tự trỏ tới bản Flash mới nhất — để không phải sửa code mỗi lần Google khai tử một phiên bản. Muốn chọn khác thì thêm vào `wrangler.toml`:
+
+```toml
+[vars]
+GEMINI_MODEL = "gemini-flash-lite-latest"   # hoặc tên một phiên bản cụ thể
+```
+
+**Gửi đi những gì:** chỉ chữ sắp lên trang công khai — tin tuyển dụng, thực đơn, chú thích ảnh, dữ kiện công bố. Không bao giờ có tên, số điện thoại hay hồ sơ của khách và ứng viên. Điều này quan trọng vì ở gói miễn phí, Google được dùng dữ liệu gửi lên để cải thiện sản phẩm.
+
+**Thứ tự triển khai:** chạy migration `0029` **trước**, rồi mới deploy web. Làm ngược thì màn soạn tin lỗi vì thiếu cột, và trang `/ko` hiện tiếng Việt.
+
+Đổi sang dịch vụ dịch khác: chỉ viết lại `src/lib/may-dich.ts`.
 
 ---
 
@@ -175,8 +217,8 @@ grep -rq "$(grep PUBLIC_SUPABASE_URL .env | cut -d= -f2 | sed 's|https://||;s|\.
 
 ## Đã làm và chưa làm
 
-**Trang công khai — 8 đường dẫn, song ngữ:**
-ra mắt · tuyển dụng · **đặt bàn** · quyền riêng tư, mỗi trang một bản Việt một bản Anh, cộng `robots.txt` và `sitemap.xml`.
+**Trang công khai — 12 đường dẫn, ba thứ tiếng:**
+ra mắt · tuyển dụng · **đặt bàn** · quyền riêng tư, mỗi trang một bản Việt, một bản Anh (`/en`) và một bản Hàn (`/ko`), cộng `robots.txt` và `sitemap.xml`. Chữ lấy từ database được máy dịch — xem mục "Bản dịch tự động".
 
 **Giao diện nội bộ `/noi-bo`:**
 đăng nhập · tổng quan (danh sách việc còn thiếu, đọc thẳng từ bốn view trong database) · **công tắc nội dung** · hộp thư đặt bàn · hộp thư hồ sơ ứng tuyển.
@@ -217,5 +259,7 @@ Nó tự bật `astro dev` nếu chưa có server nào chạy, và `npm run depl
 - **Bỏ sót**, nặng hơn nhiều — từ migration `0010`, nội dung trang đến **từ database**. Gõ *"rẻ hơn 30%"* vào ô dòng trạng thái trong `/noi-bo` rồi bấm công bố là câu đó lên trang chủ ngay, còn lệnh grep mã nguồn thì xanh mãi mãi. Nó đang canh một cánh cửa không còn ai đi qua.
 
 **Chỗ lệnh này vẫn không với tới:** nó chỉ thấy nội dung **đang được công bố lúc chạy**. Vì vậy nó thuộc về hai thời điểm — trước khi deploy, và **sau mỗi lần bật công tắc nội dung**.
+
+**Danh sách cấm nằm ở `src/lib/chuoi-cam.js`** và máy dịch dùng chung nó: bản dịch dính chữ cấm bị giữ lại, không lên trang. Nên phần lớn lỗi của bản dịch máy bị chặn ngay lúc lưu, trước khi lệnh này kịp thấy. Thêm một mẫu cấm là thêm cho cả hai, kèm bản tiếng Anh và tiếng Hàn nếu ý đó có cách nói riêng ở hai thứ tiếng kia.
 
 Phần nghiệm thu bằng hai điện thoại thật và phép thử ảnh chia sẻ nằm ở `../README.md`.

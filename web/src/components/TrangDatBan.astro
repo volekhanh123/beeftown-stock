@@ -20,7 +20,7 @@
  * Đổi ngày bằng form GET, đặt bàn bằng form POST — cả hai không cần
  * JavaScript.
  */
-import { chu } from '../lib/chu';
+import { chu, dich } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import type { TinhTrangDatBan, KetQuaDatBan } from '../lib/dat-ban';
 import { homNayVn } from '../lib/noi-dung';
@@ -33,7 +33,6 @@ interface Props {
   duongDan: string;
 }
 const { ngonNgu, noiDung: nd, tinhTrang, ketQua, duongDan } = Astro.props;
-const en = ngonNgu === 'en';
 const tChung = chu(ngonNgu);
 
 const homNay = homNayVn();
@@ -49,37 +48,76 @@ const nutNhanTin =
   nd.email_lien_he ? { url: `mailto:${nd.email_lien_he}`, chu: tChung.nhanTin } :
   null;
 
-const t = {
-  hieu:     en ? 'Reservations' : 'Đặt bàn',
-  tieuDe:   en ? 'Book a table' : 'Đặt bàn tại Beeftown',
-  dan: en
-    ? 'Send us a request and we will call you back to confirm.'
-    : 'Bạn gửi yêu cầu, nhà hàng gọi lại để xác nhận.',
-  ngay:     en ? 'Date' : 'Ngày',
-  doiNgay:  en ? 'Show this date' : 'Xem ngày này',
-  gio:      en ? 'Time' : 'Khung giờ',
-  trua:     en ? 'Lunch' : 'Buổi trưa',
-  toi:      en ? 'Dinner' : 'Buổi tối',
-  hetCho: en
-    ? 'No times left on this date. Try another day.'
-    : 'Ngày này không còn khung giờ nào. Bạn thử ngày khác nhé.',
-  soKhach:  en ? 'How many people' : 'Mấy người',
-  soKhachPhu: en
-    ? 'For groups of 9 or more, message us and we will arrange it with you.'
-    : 'Nhóm từ 9 người trở lên, bạn nhắn cho Beeftown để nhà hàng sắp xếp riêng.',
-  hoTen:    en ? 'Full name' : 'Họ và tên',
-  sdt:      en ? 'Phone number' : 'Số điện thoại',
-  sdtPhu:   en ? 'We will call this number to confirm.'
-               : 'Nhà hàng gọi vào số này để xác nhận.',
-  dip:      en ? 'Occasion (optional)' : 'Dịp gì (không bắt buộc)',
-  ghiChu:   en ? 'Anything we should know (optional)'
-               : 'Điều nhà hàng nên biết (không bắt buộc)',
-  nhanTinKM: en
-    ? 'Send me news from Beeftown. Optional — your table does not depend on this.'
-    : 'Nhận tin mới từ Beeftown. Không bắt buộc — việc giữ bàn không phụ thuộc vào ô này.',
-  gui:      en ? 'Send request' : 'Gửi yêu cầu',
-  batBuoc:  en ? 'required' : 'bắt buộc',
-};
+// Tiếng Hàn giữ đúng ranh giới của bản tiếng Việt: 예약 요청 (yêu cầu đặt
+// bàn) và 접수 (đã nhận) — không bao giờ là chữ nói bàn đã được giữ.
+const t = dich(ngonNgu, {
+  hieu:    { vi: 'Đặt bàn', en: 'Reservations', ko: '예약' },
+  tieuDe:  { vi: 'Đặt bàn tại Beeftown', en: 'Book a table', ko: 'Beeftown 테이블 예약' },
+  dan: {
+    vi: 'Bạn gửi yêu cầu, nhà hàng gọi lại để xác nhận.',
+    en: 'Send us a request and we will call you back to confirm.',
+    ko: '예약 요청을 보내 주시면 매장에서 다시 전화드려 확인해 드려요.',
+  },
+  ngay:    { vi: 'Ngày', en: 'Date', ko: '날짜' },
+  doiNgay: { vi: 'Xem ngày này', en: 'Show this date', ko: '이 날짜 보기' },
+  gio:     { vi: 'Khung giờ', en: 'Time', ko: '시간대' },
+  trua:    { vi: 'Buổi trưa', en: 'Lunch', ko: '점심' },
+  toi:     { vi: 'Buổi tối', en: 'Dinner', ko: '저녁' },
+  hetCho: {
+    vi: 'Ngày này không còn khung giờ nào. Bạn thử ngày khác nhé.',
+    en: 'No times left on this date. Try another day.',
+    ko: '이 날짜에는 선택할 수 있는 시간대가 없어요. 다른 날짜를 선택해 주세요.',
+  },
+  soKhach: { vi: 'Mấy người', en: 'How many people', ko: '인원' },
+  soKhachPhu: {
+    vi: 'Nhóm từ 9 người trở lên, bạn nhắn cho Beeftown để nhà hàng sắp xếp riêng.',
+    en: 'For groups of 9 or more, message us and we will arrange it with you.',
+    ko: '9명 이상 단체는 Beeftown에 메시지를 보내 주세요. 매장에서 따로 조율해 드려요.',
+  },
+  hoTen:   { vi: 'Họ và tên', en: 'Full name', ko: '이름' },
+  sdt:     { vi: 'Số điện thoại', en: 'Phone number', ko: '전화번호' },
+  sdtPhu: {
+    vi: 'Nhà hàng gọi vào số này để xác nhận.',
+    en: 'We will call this number to confirm.',
+    ko: '확인 전화는 이 번호로 드려요.',
+  },
+  dip:     { vi: 'Dịp gì (không bắt buộc)', en: 'Occasion (optional)', ko: '방문 목적 (선택)' },
+  ghiChu: {
+    vi: 'Điều nhà hàng nên biết (không bắt buộc)',
+    en: 'Anything we should know (optional)',
+    ko: '미리 알려 주실 내용 (선택)',
+  },
+  nhanTinKM: {
+    vi: 'Nhận tin mới từ Beeftown. Không bắt buộc — việc giữ bàn không phụ thuộc vào ô này.',
+    en: 'Send me news from Beeftown. Optional — your table does not depend on this.',
+    ko: 'Beeftown의 새 소식 받기. 선택 사항이며, 체크하지 않아도 예약에는 영향이 없어요.',
+  },
+  gui:     { vi: 'Gửi yêu cầu', en: 'Send request', ko: '예약 요청 보내기' },
+  batBuoc: { vi: 'bắt buộc', en: 'required', ko: '필수' },
+
+  // --- Màn hình sau khi gửi ---
+  daNhan: {
+    vi: 'Beeftown đã nhận yêu cầu của bạn',
+    en: 'Beeftown has received your request',
+    ko: 'Beeftown에 예약 요청이 접수되었어요',
+  },
+  maYeuCau: { vi: 'Mã yêu cầu: ', en: 'Your reference code: ', ko: '접수 번호: ' },
+  chuaGiuBan: {
+    vi: 'Yêu cầu chỉ có hiệu lực sau khi nhân viên gọi xác nhận — hiện chưa có bàn nào được giữ.',
+    en: 'This request only takes effect after a staff member calls to confirm — no table is being held yet.',
+    ko: '예약 요청은 직원이 전화로 확인한 뒤에만 유효해요. 아직 잡아 둔 자리는 없어요.',
+  },
+  giuMa: {
+    vi: 'Bạn giữ mã này để nhắc tới khi nhà hàng gọi.',
+    en: 'Keep the code to mention when we call.',
+    ko: '매장에서 전화드릴 때 말씀해 주실 수 있게 이 번호를 기억해 두세요.',
+  },
+  nhanThang: {
+    vi: 'Bạn cũng có thể nhắn thẳng cho Beeftown: ',
+    en: 'You can also message us directly: ',
+    ko: 'Beeftown에 직접 메시지를 보내셔도 돼요: ',
+  },
+});
 ---
 
 <section class="muc" style="padding-top:20px">
@@ -95,25 +133,15 @@ const t = {
 
     {ketQua?.ok ? (
       <div class="the" style="max-width:62ch;border-left:4px solid var(--cuc-vang)">
-        <h2 style="margin-top:0">
-          {en ? 'Beeftown has received your request' : 'Beeftown đã nhận yêu cầu của bạn'}
-        </h2>
+        <h2 style="margin-top:0">{t.daNhan}</h2>
         {ketQua.ma && (
           <p>
-            {en ? 'Your reference code: ' : 'Mã yêu cầu: '}
+            {t.maYeuCau}
             <strong style="letter-spacing:.08em;font-size:1.15em">{ketQua.ma}</strong>
           </p>
         )}
-        <p style="font-weight:700">
-          {en
-            ? 'This request only takes effect after a staff member calls to confirm — no table is being held yet.'
-            : 'Yêu cầu chỉ có hiệu lực sau khi nhân viên gọi xác nhận — hiện chưa có bàn nào được giữ.'}
-        </p>
-        <p style="margin-bottom:0">
-          {en
-            ? 'Keep the code to mention when we call.'
-            : 'Bạn giữ mã này để nhắc tới khi nhà hàng gọi.'}
-        </p>
+        <p style="font-weight:700">{t.chuaGiuBan}</p>
+        <p style="margin-bottom:0">{t.giuMa}</p>
       </div>
 
     ) : !tinhTrang.moDuoc ? (
@@ -139,7 +167,7 @@ const t = {
             <p style="margin:0"><strong>{ketQua.cau}</strong></p>
             {nutNhanTin && (
               <p class="nho" style="margin:10px 0 0">
-                {en ? 'You can also message us directly: ' : 'Bạn cũng có thể nhắn thẳng cho Beeftown: '}
+                {t.nhanThang}
                 <a href={nutNhanTin.url} rel="noopener">{nutNhanTin.chu}</a>
               </p>
             )}

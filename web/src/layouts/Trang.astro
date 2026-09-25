@@ -16,9 +16,14 @@
  *     liệu đánh giá bịa vừa vi phạm chính sách Google vừa là quảng cáo sai;
  *   · openingHoursSpecification khi giờ chưa chốt — Google đưa giờ này lên
  *     kết quả tìm kiếm, nên khai sai là dẫn khách tới một cánh cửa đóng.
+ *
+ * BA THỨ TIẾNG:
+ * Mỗi trang khai hreflang cho đủ vi/en/ko và x-default về bản tiếng Việt —
+ * cùng một bộ với sitemap.xml. Nút đổi ngôn ngữ hiện HAI thứ tiếng còn lại,
+ * mỗi cái ghi bằng chính thứ tiếng đó.
  */
 import '../styles/chung.css';
-import { THUONG_HIEU, chu, duongDanNgonNguKhac } from '../lib/chu';
+import { THUONG_HIEU, NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 
 interface Props {
@@ -38,7 +43,7 @@ const duongDanDayDu = goc + duongDan;
 // Tiêu đề: ưu tiên bản đã duyệt trong cổng nội dung, sau đó mới tới bản nền.
 const tieuDeTrang = tieuDe
   ?? nd.tieu_de_og
-  ?? `${THUONG_HIEU.ten} — ${ngonNgu === 'en' ? THUONG_HIEU.descriptor : 'Nhà hàng chuyên bò'} · ${t.diaChiNgan}`;
+  ?? `${THUONG_HIEU.ten} — ${t.nganhHang} · ${t.diaChiNgan}`;
 
 // Mô tả chỉ được nhắc tới địa chỉ khi địa chỉ đã công bố. Đây là lý do cụ
 // thể vì sao trang phải dựng ở phía máy chủ: thẻ mô tả là một HÀM của trạng
@@ -53,7 +58,13 @@ const anh = nd.anh_chia_se;
 const coAnhChiaSe = !!(anh && anh.nguon === 'anh_that' && anh.url);
 const urlAnhChiaSe = coAnhChiaSe ? anh!.url : null;
 
-const duongDanKia = duongDanNgonNguKhac(duongDan, ngonNgu);
+// Bản của trang này ở một ngôn ngữ. Chính nó thì giữ nguyên đường dẫn đang
+// mở, kể cả khi trang chưa có trong bảng CAP_DUONG_DAN.
+const banCua = (n: NgonNgu) => (n === ngonNgu ? duongDan : duongDanTuongUng(duongDan, n));
+const ngonNguKhac = NGON_NGU.filter(n => n !== ngonNgu);
+
+// Facebook cần mã vùng; mã ngôn ngữ trần thì nó bỏ qua.
+const OG_LOCALE: Record<NgonNgu, string> = { vi: 'vi_VN', en: 'en_US', ko: 'ko_KR' };
 
 // Chỉ khai những trường đã được xác nhận.
 const duLieuCoCauTruc: Record<string, unknown> = {
@@ -89,15 +100,15 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     <title>{tieuDeTrang}</title>
     <meta name="description" content={moTaTrang} />
     <link rel="canonical" href={duongDanDayDu} />
-    <link rel="alternate" hreflang="vi" href={goc + (ngonNgu === 'vi' ? duongDan : duongDanKia)} />
-    <link rel="alternate" hreflang="en" href={goc + (ngonNgu === 'en' ? duongDan : duongDanKia)} />
+    {NGON_NGU.map(n => <link rel="alternate" hreflang={n} href={goc + banCua(n)} />)}
+    <link rel="alternate" hreflang="x-default" href={goc + banCua('vi')} />
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={THUONG_HIEU.ten} />
     <meta property="og:title" content={tieuDeTrang} />
     <meta property="og:description" content={moTaTrang} />
     <meta property="og:url" content={duongDanDayDu} />
-    <meta property="og:locale" content={ngonNgu === 'en' ? 'en_US' : 'vi_VN'} />
+    <meta property="og:locale" content={OG_LOCALE[ngonNgu]} />
     {urlAnhChiaSe && (
       <>
         <meta property="og:image" content={urlAnhChiaSe} />
@@ -118,6 +129,16 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap"
     />
+    {/* Montserrat không có chữ Hangul. Chỉ trang tiếng Hàn tải thêm Noto Sans
+        KR — Google cắt phông này thành nhiều mảnh theo dải ký tự nên trình
+        duyệt chỉ tải mảnh có chữ đang hiện; trang tiếng Việt và tiếng Anh
+        không tải gì thêm. Thứ tự phông nằm ở :root:lang(ko) trong chung.css. */}
+    {ngonNgu === 'ko' && (
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&display=swap"
+      />
+    )}
 
     <script type="application/ld+json" set:html={JSON.stringify(duLieuCoCauTruc)} is:inline />
   </head>
@@ -126,12 +147,19 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     <a class="bo-qua" href="#noi-dung">{t.boQuaToiNoiDung}</a>
 
     <div class="khung dau-trang">
-      <a href={ngonNgu === 'en' ? '/en' : '/'} class="ten-thuong-hieu" style="text-decoration:none">
+      <a href={duongDanTuongUng('/', ngonNgu)} class="ten-thuong-hieu" style="text-decoration:none">
         {THUONG_HIEU.ten}
       </a>
-      <a class="doi-ngon-ngu" href={duongDanKia} lang={ngonNgu === 'en' ? 'vi' : 'en'}>
-        {t.doiNgonNgu}
-      </a>
+      {/* lang trên từng nút: trình đọc màn hình đọc "한국어" bằng giọng Hàn
+          chứ không đánh vần nó bằng giọng của trang đang mở. */}
+      <nav aria-label={t.chonNgonNgu}
+           style="display:flex; flex-wrap:wrap; justify-content:flex-end; column-gap:16px">
+        {ngonNguKhac.map(n => (
+          <a class="doi-ngon-ngu" href={banCua(n)} lang={n} hreflang={n}>
+            {TEN_NGON_NGU[n]}
+          </a>
+        ))}
+      </nav>
     </div>
 
     <main id="noi-dung">
@@ -144,7 +172,7 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
           © {new Date().getFullYear()} {t.banQuyen} ·
           <span lang="en">{THUONG_HIEU.descriptor}</span>
         </span>
-        <a href={ngonNgu === 'en' ? '/en/privacy' : '/quyen-rieng-tu'}>{t.quyenRiengTu}</a>
+        <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a>
       </div>
     </footer>
   </body>

@@ -91,7 +91,8 @@ const quet = timChuoiCam;
 // riêng. Cộng thêm vài đường dẫn cố định để phòng sitemap hỏng.
 // -----------------------------------------------------------------------------
 async function danhSachTrang(goc) {
-  const luon_co = ['/', '/tuyen-dung', '/quyen-rieng-tu', '/en', '/en/jobs', '/en/privacy'];
+  const luon_co = ['/', '/tuyen-dung', '/quyen-rieng-tu', '/en', '/en/jobs', '/en/privacy',
+                   '/ko', '/ko/jobs', '/ko/privacy'];
   const bo = new Set(luon_co.map(d => new URL(d, goc).href));
   try {
     const xml = await (await fetch(new URL('/sitemap.xml', goc))).text();

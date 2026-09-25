@@ -8,22 +8,28 @@
  * /noi-bo KHÔNG có ở đây và sẽ không bao giờ có.
  */
 import type { APIRoute } from 'astro';
-import { CAP_DUONG_DAN } from '../lib/chu';
+import { CAP_DUONG_DAN, NGON_NGU, duongDanTuongUng } from '../lib/chu';
 
 export const GET: APIRoute = ({ site }) => {
   const goc = site?.origin ?? '';
 
-  // Mỗi trang khai luôn bản ngôn ngữ kia. Google dùng hreflang để hiểu hai
-  // đường dẫn là một trang chứ không phải nội dung trùng lặp.
-  const url = CAP_DUONG_DAN.flatMap(([vi, en]) =>
-    [[vi, 'vi', en, 'en'], [en, 'en', vi, 'vi']].map(([d, ng, kia, ngKia]) =>
+  // Mỗi trang khai đủ mọi bản ngôn ngữ, kể cả chính nó, cộng x-default về bản
+  // tiếng Việt — đúng bộ thẻ hreflang trong layouts/Trang.astro, để hai nơi
+  // không nói hai điều khác nhau. Google dùng hreflang để hiểu ba đường dẫn
+  // là một trang chứ không phải nội dung trùng lặp.
+  const url = CAP_DUONG_DAN.flatMap(([vi]) => {
+    const ban = NGON_NGU.map(ng => ({ ng, d: duongDanTuongUng(vi, ng) }));
+    const lienKet = [
+      ...ban.map(({ ng, d }) => `    <xhtml:link rel="alternate" hreflang="${ng}" href="${goc}${d}"/>`),
+      `    <xhtml:link rel="alternate" hreflang="x-default" href="${goc}${vi}"/>`,
+    ].join('\n');
+    return ban.map(({ d }) =>
       `  <url>\n` +
       `    <loc>${goc}${d}</loc>\n` +
-      `    <xhtml:link rel="alternate" hreflang="${ng}" href="${goc}${d}"/>\n` +
-      `    <xhtml:link rel="alternate" hreflang="${ngKia}" href="${goc}${kia}"/>\n` +
+      `${lienKet}\n` +
       `  </url>`,
-    ),
-  ).join('\n');
+    );
+  }).join('\n');
 
   return new Response(
     `<?xml version="1.0" encoding="UTF-8"?>\n` +

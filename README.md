@@ -20,8 +20,8 @@ Bò nhập khẩu tươi mát được pha lóc và **đóng gói sẵn theo t�
 
 | File | Nội dung |
 |---|---|
-| `web/` | **Website đang dùng.** Astro trên Cloudflare Workers, song ngữ Việt–Anh. Xem `web/README.md`. |
-| `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho. 1308 kiểm tra. |
+| `web/` | **Website đang dùng.** Astro trên Cloudflare Workers, ba thứ tiếng Việt–Anh–Hàn (bản Anh và Hàn do máy dịch khi câu tiếng Việt đổi). Xem `web/README.md`. |
+| `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động. 1374 kiểm tra. |
 | ~~`Beeftown_Website/index.html`~~ | ⚠️ **BẢN NHÁP CŨ — KHÔNG PHÁT HÀNH.** Xem cảnh báo bên dưới. |
 | ~~`Beeftown_Website/google-apps-script.gs`~~ | ⚠️ Đã thay bằng `tao_dat_ban()` trong database. |
 | `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên. |
@@ -160,6 +160,7 @@ Những chỗ dễ làm hỏng nếu không biết trước:
       *Không có bước thứ hai thì đăng nhập được vào Supabase nhưng `/noi-bo` vẫn từ chối — có chủ ý: Supabase Auth trả lời "ai", bảng `nhan_su` trả lời "có phải nhân viên không".*
 - [ ] Thêm một dòng `chi_nhanh` có `ma` khớp biến `PUBLIC_CHI_NHANH`
 - [ ] Điền `web/.env` **trên máy dùng để build** (`PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY`, `PUBLIC_CHI_NHANH`, `SITE_URL`).
+- [ ] Tạo khóa Gemini ở Google AI Studio và đặt làm **secret** `GEMINI_API_KEY` của Worker (dashboard Cloudflare, hoặc `npx wrangler secret put GEMINI_API_KEY`). Không có khóa thì trang vẫn chạy, chỉ là bản Anh/Hàn lùi về bản kế tiếp. Chi tiết ở `web/README.md`, mục "Bản dịch tự động".
       *Build chạy trên máy, không chạy trên Cloudflare — dashboard của Cloudflare không có chỗ đặt mấy biến này. Đặt sai chỗ thì trang vẫn deploy, vẫn trả 200, chỉ là không nối được database và không ai biết.*
 - [ ] Đăng nhập `/noi-bo`, công bố địa chỉ và link Facebook. Trang chủ đổi ngay, không cần deploy lại.
 - [ ] Gọi `tao_tin_tuyen_dung_mau(<id chi nhánh>)` → 8 tin nháp. Sửa lại rồi chuyển sang `da_cong_bo`; **form ứng tuyển tự hiện ra** khi có tin đầu tiên được công bố.
@@ -193,7 +194,7 @@ Những chỗ dễ làm hỏng nếu không biết trước:
 **Soát nội dung — đọc thành tiếng, mở tài liệu thương hiệu bên cạnh**
 
 - [ ] Mỗi câu trên trang, Khánh nói được nó lấy từ đâu. Câu nào không nói được thì xóa.
-- [ ] Tìm trong trang: giá, ngày, giờ, số điện thoại, và các từ *phòng riêng, Wagyu, than, rẻ, số một, duy nhất*. **Có một kết quả là fail.**
+- [ ] Tìm trong trang: giá, ngày, giờ, số điện thoại, và các từ *phòng riêng, Wagyu, than, rẻ, số một, duy nhất*. **Có một kết quả là fail.** Làm cả ở `/en` và `/ko` — bản dịch máy đã qua bộ lọc chữ cấm, nhưng mắt người vẫn là lần kiểm cuối.
 - [ ] Không ảnh nào là ảnh kho. Nếu có ảnh, Khánh nói được ai chụp và chụp khi nào.
 
 **Trước khi bật form đặt bàn**

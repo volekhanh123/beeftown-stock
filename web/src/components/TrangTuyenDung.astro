@@ -20,7 +20,7 @@
  * cũng chỉ ra cùng con số (0028). Đăng lương sai là một chuyện khác hẳn đăng
  * mô tả món sai.
  */
-import { chu } from '../lib/chu';
+import { chu, dich, duongDanTuongUng, type BaThuTieng } from '../lib/chu';
 import { dinhDangNgay, type NgonNgu, type NoiDung } from '../lib/noi-dung';
 import type { KetQuaNop } from '../lib/nop-ho-so';
 import type { TruongForm } from '../lib/truong-form';
@@ -56,15 +56,17 @@ const t = chu(ngonNgu);
 
 // Danh sách dự phòng khi chưa nối database. Đây chỉ là TÊN VỊ TRÍ, lấy từ
 // bảng mục lục tài liệu vận hành — không phải nội dung mật.
-const DU_PHONG = [
-  { ten_vi: 'Nhân viên sảnh',             ten_en: 'Hall staff',              bo_phan_vi: 'Sảnh',        bo_phan_en: 'Floor',    ca: true },
-  { ten_vi: 'Tổ trưởng sảnh',             ten_en: 'Floor leader',            bo_phan_vi: 'Sảnh',        bo_phan_en: 'Floor',    ca: false },
-  { ten_vi: 'Quản lý sảnh',               ten_en: 'Floor manager',           bo_phan_vi: 'Quản lý',     bo_phan_en: 'Management', ca: false },
-  { ten_vi: 'Quản lý cửa hàng',           ten_en: 'Store manager',           bo_phan_vi: 'Quản lý',     bo_phan_en: 'Management', ca: false },
-  { ten_vi: 'Nhân viên bếp',              ten_en: 'Kitchen staff',           bo_phan_vi: 'Bếp',         bo_phan_en: 'Kitchen',  ca: false },
-  { ten_vi: 'Nhân viên bộ phận thịt',     ten_en: 'Meat department',         bo_phan_vi: 'Quầy thịt',   bo_phan_en: 'Meat counter', ca: false },
-  { ten_vi: 'Nhân viên tư vấn quầy thịt', ten_en: 'Meat counter assistant',  bo_phan_vi: 'Quầy thịt',   bo_phan_en: 'Meat counter', ca: true },
-  { ten_vi: 'Đầu mối marketing',          ten_en: 'Marketing coordinator',   bo_phan_vi: 'Marketing',   bo_phan_en: 'Marketing', ca: true },
+// Bộ phận ghi bằng MÃ enum và lấy nhãn từ BO_PHAN, giống hệt tin thật từ
+// database — không giữ một bản nhãn thứ hai phải dịch lại mỗi khi thêm tiếng.
+const DU_PHONG: { ten: BaThuTieng; bo_phan: keyof typeof BO_PHAN; ca: boolean }[] = [
+  { ten: { vi: 'Nhân viên sảnh',             en: 'Hall staff',             ko: '홀 직원' },           bo_phan: 'sanh',      ca: true },
+  { ten: { vi: 'Tổ trưởng sảnh',             en: 'Floor leader',           ko: '홀 팀장' },           bo_phan: 'sanh',      ca: false },
+  { ten: { vi: 'Quản lý sảnh',               en: 'Floor manager',          ko: '홀 매니저' },         bo_phan: 'quan_ly',   ca: false },
+  { ten: { vi: 'Quản lý cửa hàng',           en: 'Store manager',          ko: '점장' },              bo_phan: 'quan_ly',   ca: false },
+  { ten: { vi: 'Nhân viên bếp',              en: 'Kitchen staff',          ko: '주방 직원' },         bo_phan: 'bep',       ca: false },
+  { ten: { vi: 'Nhân viên bộ phận thịt',     en: 'Meat department',        ko: '정육 파트 직원' },    bo_phan: 'quay_thit', ca: false },
+  { ten: { vi: 'Nhân viên tư vấn quầy thịt', en: 'Meat counter assistant', ko: '정육 코너 상담 직원' }, bo_phan: 'quay_thit', ca: true },
+  { ten: { vi: 'Đầu mối marketing',          en: 'Marketing coordinator',  ko: '마케팅 담당자' },     bo_phan: 'marketing', ca: true },
 ];
 
 const dungDuPhong = viTri.length === 0;
@@ -77,13 +79,33 @@ const nutNhanTin =
 // Database chỉ trả lương và đơn vị khi mức lương đã được duyệt (0012, 0028).
 const mucLuong = (v: ViTri) => dinhDangLuong(v.luong_tu, v.luong_den, v.luong_don_vi, ngonNgu);
 
-const nhanTheoCa = ngonNgu === 'en' ? 'Shift work' : 'Làm theo ca';
-const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';
+// Câu riêng của trang này; câu dùng chung nằm ở t = chu(ngonNgu).
+const tRieng = dich(ngonNgu, {
+  viTriDangTuyen: { vi: 'Vị trí đang tuyển', en: 'Open roles', ko: '채용 중인 포지션' },
+  theoCa:         { vi: 'Làm theo ca', en: 'Shift work', ko: '교대 근무' },
+  canNguoi: {
+    vi: (n: number) => `Cần ${n} người`,
+    en: (n: number) => `${n} positions`,
+    ko: (n: number) => `${n}명 모집`,
+  },
+  yeuCau:         { vi: 'Yêu cầu: ', en: 'Requirements: ', ko: '자격 요건: ' },
+  quyenLoi:       { vi: 'Quyền lợi: ', en: 'Benefits: ', ko: '복리후생: ' },
+  hanNop:         { vi: 'Hạn nộp: ', en: 'Apply by ', ko: '지원 마감: ' },
+  cachUngTuyen:   { vi: 'Cách ứng tuyển', en: 'How to apply', ko: '지원 방법' },
+  luuTru: {
+    vi: 'Beeftown chỉ dùng thông tin bạn gửi cho việc tuyển dụng, và lưu trong sáu tháng.',
+    en: 'Beeftown only uses the details you send for hiring, and keeps them for six months.',
+    ko: 'Beeftown은 보내 주신 정보를 채용에만 사용하며, 6개월 동안 보관해요.',
+  },
+});
+
+// "Toàn thời gian" của thẻ dự phòng là đúng nhãn loại hợp đồng của tin thật.
+const nhanToanTG = nhanEnum(LOAI_HOP_DONG, 'toan_thoi_gian', ngonNgu);
 ---
 
 <section class="muc" style="padding-top:20px">
   <div class="khung">
-    <p class="hieu">{ngonNgu === 'en' ? 'Careers' : 'Tuyển dụng'}</p>
+    <p class="hieu">{t.tuyenDung}</p>
     <h1 style="font-size:clamp(32px,6vw,58px)">{t.tuyenDungTieuDe}</h1>
     <p class="dan" style="max-width:58ch; margin-top:22px">{t.tuyenDungDan}</p>
   </div>
@@ -91,15 +113,15 @@ const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';
 
 <section class="muc muc-sang">
   <div class="khung">
-    <h2>{ngonNgu === 'en' ? 'Open roles' : 'Vị trí đang tuyển'}</h2>
+    <h2>{tRieng.viTriDangTuyen}</h2>
 
     <div class="luoi" style="margin-top:26px">
       {dungDuPhong
         ? DU_PHONG.map((v) => (
             <div class="the vi-tri">
-              <span class="nhan">{ngonNgu === 'en' ? v.bo_phan_en : v.bo_phan_vi}</span>
-              <h3>{ngonNgu === 'en' ? v.ten_en : v.ten_vi}</h3>
-              <p class="nho" style="margin:0">{v.ca ? nhanTheoCa : nhanToanTG}</p>
+              <span class="nhan">{nhanEnum(BO_PHAN, v.bo_phan, ngonNgu)}</span>
+              <h3>{v.ten[ngonNgu]}</h3>
+              <p class="nho" style="margin:0">{v.ca ? tRieng.theoCa : nhanToanTG}</p>
             </div>
           ))
         : viTri.map((v) => (
@@ -113,20 +135,20 @@ const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';
               </p>
               {v.so_luong && (
                 <p class="nho" style="margin:0">
-                  {ngonNgu === 'en' ? `${v.so_luong} positions` : `Cần ${v.so_luong} người`}
+                  {tRieng.canNguoi(v.so_luong)}
                 </p>
               )}
               {/* pre-line: xuống dòng người soạn gõ ở màn nội bộ phải còn nguyên. */}
               {v.mo_ta && <p style="margin:8px 0 0;white-space:pre-line">{v.mo_ta}</p>}
               {v.yeu_cau && (
                 <p class="nho" style="margin:8px 0 0;white-space:pre-line">
-                  <strong>{ngonNgu === 'en' ? 'Requirements: ' : 'Yêu cầu: '}</strong>
+                  <strong>{tRieng.yeuCau}</strong>
                   {v.yeu_cau}
                 </p>
               )}
               {v.quyen_loi && (
                 <p class="nho" style="margin:8px 0 0;white-space:pre-line">
-                  <strong>{ngonNgu === 'en' ? 'Benefits: ' : 'Quyền lợi: '}</strong>
+                  <strong>{tRieng.quyenLoi}</strong>
                   {v.quyen_loi}
                 </p>
               )}
@@ -135,7 +157,7 @@ const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';
               )}
               {v.han_nop && (
                 <p class="nho" style="margin:8px 0 0">
-                  {ngonNgu === 'en' ? 'Apply by ' : 'Hạn nộp: '}{dinhDangNgay(v.han_nop, ngonNgu)}
+                  {tRieng.hanNop}{dinhDangNgay(v.han_nop, ngonNgu)}
                 </p>
               )}
             </div>
@@ -169,7 +191,7 @@ const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';
               <p style="margin:0"><strong>{ketQuaNop.cau}</strong></p>
             </div>
           )}
-          <h3 style="margin-top:0">{ngonNgu === 'en' ? 'How to apply' : 'Cách ứng tuyển'}</h3>
+          <h3 style="margin-top:0">{tRieng.cachUngTuyen}</h3>
           <p style="margin-bottom:0">{t.tuyenDungCachNop}</p>
           {!nutNhanTin && (
             <p class="nho" style="margin:14px 0 0">{t.tuyenDungChuaMo}</p>
@@ -192,11 +214,9 @@ const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';
     </div>
 
     <p class="nho" style="margin-top:22px; max-width:62ch">
-      {ngonNgu === 'en'
-        ? 'Beeftown only uses the details you send for hiring, and keeps them for six months.'
-        : 'Beeftown chỉ dùng thông tin bạn gửi cho việc tuyển dụng, và lưu trong sáu tháng.'}
+      {tRieng.luuTru}
       {' '}
-      <a href={ngonNgu === 'en' ? '/en/privacy' : '/quyen-rieng-tu'}>{t.quyenRiengTu}</a>
+      <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a>
     </p>
   </div>
 </section>
