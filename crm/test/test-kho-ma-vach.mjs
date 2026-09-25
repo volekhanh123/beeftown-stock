@@ -695,4 +695,59 @@ await nhom('14 · ĐẾM QUẦY CỘNG DỒN (GĐ5b) — HÀM THUẦN', async ()
   ok('Câu sau lượt quét', cauDaCong(12, false) === 'Đã cộng 12 nhãn vào số đếm.' && /không cộng thêm/.test(cauDaCong(12, true)));
 });
 
+// ===========================================================================
+await nhom('15 · THẺ KHO VÀ "SAU PHA ĐỂ Ở" (GĐ5c) — HÀM THUẦN', async () => {
+  const { docBoLocTheKho, linkTheKho, khoangNhanh, tongKy } = await import('../../web/src/lib/kho/the-kho.ts');
+  const U = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+  const hn = '2026-09-25';
+  const q = s => new URLSearchParams(s);
+  const md = docBoLocTheKho(q(''), hn);
+  ok('Thẻ kho mặc định: đầu tháng này → hôm nay, cả chi nhánh', md.tu === '2026-09-01' && md.den === hn && md.viTri === '' && !md.loi);
+  const co = docBoLocTheKho(q(`vi_tri=${U(7)}&tu=2026-08-01&den=2026-08-31`), hn);
+  ok('Thẻ kho: đọc vị trí, từ, đến trong link', co.viTri === U(7) && co.tu === '2026-08-01' && co.den === '2026-08-31');
+  ok('Thẻ kho: vị trí không phải mã → cả chi nhánh', docBoLocTheKho(q('vi_tri=abc'), hn).viTri === '');
+  const sai = docBoLocTheKho(q('tu=2026-02-30'), hn);
+  ok('Thẻ kho: ngày không có thật → tháng này, có câu báo', sai.tu === '2026-09-01' && sai.den === hn && !!sai.loi);
+  const nguoc = docBoLocTheKho(q('tu=2026-09-20&den=2026-09-10'), hn);
+  ok('Thẻ kho: từ sau đến → tháng này, có câu báo', nguoc.tu === '2026-09-01' && nguoc.den === hn && !!nguoc.loi);
+  ok('Thẻ kho: đến sau hôm nay → hôm nay', docBoLocTheKho(q('den=2026-12-31'), hn).den === hn);
+  ok('Thẻ kho: chỉ có "đến" → từ đầu tháng của ngày đó', docBoLocTheKho(q('den=2026-07-15'), hn).tu === '2026-07-01');
+  ok('Link thẻ kho giữ bộ lọc, bỏ ô trống',
+    linkTheKho(U(1), { viTri: '', tu: '2026-09-01', den: hn }) === `/noi-bo/kho/the-kho/${U(1)}?tu=2026-09-01&den=${hn}`
+    && linkTheKho(U(1)) === `/noi-bo/kho/the-kho/${U(1)}`);
+  const kn = khoangNhanh('2026-03-10');
+  ok('Khoảng nhanh: tháng này, tháng trước (tháng 2 năm thường), 7 ngày',
+    kn[0].tu === '2026-03-01' && kn[1].tu === '2026-02-01' && kn[1].den === '2026-02-28' && kn[2].tu === '2026-03-04',
+    JSON.stringify(kn));
+  const d = (loai, nk, xk, tk, ng = 0, xg = 0, tg = 0) => ({
+    ngay: hn, loai, ten_loai: loai, so_chung_tu: null, chung_tu_loai: null, chung_tu_id: null, vi_tri: null, ma_lo: null,
+    nhap_kg: nk, xuat_kg: xk, ton_kg: tk, nhap_goi: ng, xuat_goi: xg, ton_goi: tg, dien_giai: null, lo_id: null, vi_tri_id: null,
+  });
+  const t = tongKy([d('dau_ky', 0, 0, 1.2, 0, 0, 2), d('nhap', 0.1, 0, 1.3, 1, 0, 3), d('ban', 0, 0.2, 1.1, 0, 1, 2)]);
+  ok('Tổng kỳ: đầu 1,2 + nhập 0,1 − xuất 0,2 = cuối 1,1 (cộng theo gram)',
+    t.dau_kg === 1.2 && t.nhap_kg === 0.1 && t.xuat_kg === 0.2 && t.cuoi_kg === 1.1 && t.so_dong === 2
+    && t.nhap_goi === 1 && t.xuat_goi === 1 && t.cuoi_goi === 2, JSON.stringify(t));
+  ok('Tổng kỳ: chỉ có dòng đầu kỳ → cuối = đầu', tongKy([d('dau_ky', 0, 0, 5, 0, 0, 4)]).cuoi_kg === 5);
+
+  // Dán Excel: cột "Sau pha để ở".
+  const mh = (id, ma, ten, loai, them = {}) => ({
+    id: U(id), ma, ten, loai, nhom: null, han_dung_ngay: null, gia_ban_kg: null, ma_can: null,
+    ton_toi_thieu_kg: null, dem_goi: true, don_vi_goi: 'gói', dang_dung: true, ...them,
+  });
+  const DA_CO = [mh(1, 'C-THANNGOAI', 'Thăn ngoại cắt lát', 'phan_cat'), mh(2, 'C-BAPBO', 'Bắp bò', 'phan_cat', { noi_de_sau_pha: 'quay' })];
+  const xt = xemTruocDanMatHang(DA_CO, ['Tên\tSau pha để ở', 'Thăn ngoại cắt lát\tQuầy', 'Bắp bò\tkho lạnh', 'Nạm\tquầy'].join('\n'));
+  ok('Dán "Sau pha để ở": quầy / kho lạnh hiểu được, đổi đúng', xt.loi.length === 0
+    && xt.sua.find(x => x.ma === 'C-THANNGOAI')?.sau.noi_de_sau_pha === 'quay'
+    && xt.sua.find(x => x.ma === 'C-BAPBO')?.sau.noi_de_sau_pha === 'kho'
+    && xt.them[0]?.noi_de_sau_pha === 'quay', JSON.stringify(xt));
+  const giu = xemTruocDanMatHang(DA_CO, 'Tên\tSau pha để ở\nThăn ngoại cắt lát\tkho');
+  ok('Dán "kho" cho món đang trống (= kho lạnh) → giữ nguyên', giu.giu === 1 && giu.sua.length === 0, JSON.stringify(giu));
+  ok('Dán "Sau pha để ở" chữ lạ → lỗi đúng dòng',
+    xemTruocDanMatHang(DA_CO, 'Tên\tSau pha để ở\nThăn ngoại cắt lát\tbếp').loi.some(l => /Dòng 2: sau pha để ở "bếp"/.test(l)));
+  const ghi = dongGhiDan(xt);
+  ok('Dòng ghi database luôn có cột noi_de_sau_pha', ghi.every(r => 'noi_de_sau_pha' in r));
+  ok('Không tiêu đề: cột thứ 9 là Sau pha để ở',
+    xemTruocDanMatHang(DA_CO, 'Diềm thăn;phần cắt;;;;;;;quầy').them[0]?.noi_de_sau_pha === 'quay');
+});
+
 process.exit(ketThuc('MÃ VẠCH VÀ ĐỌC SỐ'));

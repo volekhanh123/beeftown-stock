@@ -1,24 +1,36 @@
 ---
 /**
- * KHO — MỘT PHIÊN PHA LÓC (mở mới khi id = "moi")
+ * KHO — MỘT PHIÊN PHA LÓC (GĐ5c, migration 0033: pha lóc 3 bước)
  *
- *   · Bước 1 (mới): chọn loại tảng đem pha — ô chọn GET, không ghi gì.
- *   · SOẠN (mới / nháp, vai pha_loc): tích lô tảng lấy ra, ghi từng phần
- *     cắt ra. Mỗi lần lưu, cuối trang hiện XEM THỬ thu hồi (và giá vốn, với
- *     vai xem giá) do database tính — đúng con số sẽ ghi khi chốt.
- *   · XEM (đã chốt / đã hủy): tổng kết, các lô mới sinh ra (kèm giá vốn/kg
- *     với vai xem giá). Chốt nhầm thì "Mở lại" — chỉ được khi các lô ra chưa
- *     bị đụng tới.
+ * Bước 1 (chọn tảng) ở /pha-loc/moi. Trang này là bước 2 và 3:
+ *   · CÂN & QUÉT (nháp, vai pha_loc): ô quét nhãn trên cùng, tự đặt con trỏ —
+ *     mỗi lần bấm "Cộng nhãn" là một LƯỢT (kho_quet_phien_pha, cùng ma_gui
+ *     không cộng đôi). Danh sách món đã quét (gói, kg, để ở đâu) có −1, bỏ
+ *     món, bỏ lượt vừa quét. Phụ phẩm, mỡ bỏ gõ kg; lô tảng, ngày pha, ghi
+ *     chú, công thức và dòng gõ tay đầy đủ nằm trong các mục "Thêm".
+ *   · KẾT QUẢ (?buoc=ket-qua): 4 số lớn — thu hồi, dự kiến, trung bình 30
+ *     ngày, hao hụt. Nút Chốt CHỈ ở đây. Thấp hơn dự kiến quá ngưỡng thì báo
+ *     trước: chốt vẫn được, phần mềm tự báo quản lý (không duyệt).
+ *   · XONG (?buoc=xong, sau khi chốt): "Chuyển N gói ra quầy ngay" — mỗi lô
+ *     vừa pha còn ở kho lạnh một nút mở sẵn phiếu chuyển đúng lô.
+ *   · XEM (đã chốt / đã hủy, hoặc người không ghi pha lóc): tổng kết, các lô
+ *     mới. Chốt nhầm thì "Mở lại". Quản lý (duyet) thấy nút "Đã xem" với
+ *     phiên thu hồi thấp — bấm là hết báo (kho_xac_nhan_phien_pha).
  *
  * Thủ kho không thấy tiền (0031): vào được bằng quyền pha_loc; mọi cột và chữ
- * tiền chỉ hiện khi k.duoc('xem_gia'); xem thử dùng kho_xem_thu_phien_pha_kg.
+ * tiền chỉ hiện khi k.duoc('xem_gia'); số kg, % đọc bằng
+ * kho_xem_thu_phien_pha_kg (xemThuPhienKg), bản có tiền xemThuPhien chỉ cho
+ * vai xem giá.
  *
- * Không JavaScript. Lưu phía máy chủ ở mỗi lần bấm, chuyển hướng 303; lỗi
- * nhập liệu thì hiện lại đúng chữ đã gõ.
+ * Không JavaScript (ô quét dùng QuetMa — camera là phần thêm). Lưu phía máy
+ * chủ ở mỗi lần bấm, chuyển hướng 303; lỗi nhập liệu thì hiện lại đúng chữ đã
+ * gõ, lỗi mạng khi quét thì giữ các mã trong ô cùng ma_gui (gửi lại an toàn).
+ * ?ma=<mã> điền sẵn ô quét (màn Quét gửi sang "Thêm vào phiên pha đang mở").
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
+import QuetMa from '../../../../components/kho/QuetMa.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import {
   docCaiDat, docCongThuc, docMatHang, docViTri,
@@ -27,11 +39,13 @@ import {
 import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
 import {
   docPhienPha, docThongTinLo, docGiaVonLo, xemThuPhien, xemThuPhienKg, phanTramCua, luuPhienPha, chotPhien,
-  moLaiPhien, huyPhien, raTrong,
+  moLaiPhien, huyPhien, xacNhanPhien, raTrong, quetPhienPha, suaQuetPhienPha, docNhanQuet, docNoiDeSauPha,
+  buocPhien, viTriSauPha, monDaQuet, dongGoTayTheoCongThuc, soSanhThuHoi, goiRaQuay, TEN_NGUON_DU_KIEN,
   type PhienPha, type DauVao, type DauRa, type KetQuaTinh, type KetQuaTinhKg, type KetQuaDocPhien, type RaForm,
+  type NhanQuet,
 } from '../../../../lib/kho/pha-loc.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, dinhDangTien, homNayVn,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, dinhDangTien, homNayVn, laUuid,
   TEN_XU_LY, TRANG_THAI_CHUNG_TU, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 
@@ -42,12 +56,8 @@ if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const cn = k.chiNhanh;
 // Thủ kho (pha_loc, không xem giá) không thấy cột / chữ tiền nào (0031).
 const xemGia = k.duoc('xem_gia');
-
 const idThamSo = Astro.params.id ?? '';
-const moi = idThamSo === 'moi';
-if (moi && !k.duoc('pha_loc')) {
-  return chuyenHuong(Astro, '/noi-bo/kho/pha-loc', { ok: false, cau: 'Tài khoản của bạn xem được phiên pha lóc nhưng không ghi phiên mới.' });
-}
+const DUONG = `/noi-bo/kho/pha-loc/${idThamSo}`;
 
 // ---------------------------------------------------------------------------
 // Đọc
@@ -60,71 +70,100 @@ let ton: DongTon[] = [];
 let phien: PhienPha | null = null;
 let vaoDb: DauVao[] = [];
 let raDb: DauRa[] = [];
+let nhan: NhanQuet[] = [];
+let noiDe = new Map<string, 'kho' | 'quay' | null>();
 let loiDoc = k.loiDoc;
 try {
-  [matHang, viTri, caiDat, congThuc, ton] = await Promise.all([
+  let doc: Awaited<ReturnType<typeof docPhienPha>>;
+  [matHang, viTri, caiDat, congThuc, ton, doc, nhan, noiDe] = await Promise.all([
     docMatHang(k.client), docViTri(k.client, cn.id), docCaiDat(k.client, cn.id),
-    docCongThuc(k.client), docTon(k.client, cn.id),
+    docCongThuc(k.client), docTon(k.client, cn.id), docPhienPha(k.client, idThamSo),
+    docNhanQuet(k.client, idThamSo), docNoiDeSauPha(k.client),
   ]);
-  if (!moi) {
-    const doc = await docPhienPha(k.client, idThamSo);
-    if (doc) { phien = doc.phien; vaoDb = doc.vao; raDb = doc.ra; }
-  }
+  if (doc) { phien = doc.phien; vaoDb = doc.vao; raDb = doc.ra; }
 } catch (e) {
   loiDoc = cauLoiKho(e, 'Không đọc được phiên pha lóc.');
 }
-if (!moi && !phien && !loiDoc) {
+if (!phien && !loiDoc) {
   return chuyenHuong(Astro, '/noi-bo/kho/pha-loc', { ok: false, cau: 'Không tìm thấy phiên pha lóc này.' });
 }
 
 const q = Astro.url.searchParams;
 const form = await docFormGui(Astro);
-const mhVaoId = phien?.mat_hang_vao_id
-  ?? (form ? String(form.get('mat_hang_vao_id') ?? '') : (q.get('mat_hang') ?? ''));
-const mhVao = matHang.find(m => m.id === mhVaoId && (m.loai === 'tang' || m.loai === 'phan_cat')) ?? null;
-const soanDuoc = k.duoc('pha_loc') && (moi || phien?.trang_thai === 'nhap');
+const mhVao = matHang.find(m => m.id === phien?.mat_hang_vao_id) ?? null;
+const soanDuoc = k.duoc('pha_loc') && phien?.trang_thai === 'nhap';
+const tenVt = new Map(viTri.map(v => [v.id, v]));
+/** Dòng gõ tay để trống "Để ở": theo nơi để sau pha của món (kho lạnh / quầy). */
+const viTriTheoMon = (id: string) => viTriSauPha(noiDe.get(id), viTri);
 
 // ---------------------------------------------------------------------------
 // Lệnh gửi lên
 // ---------------------------------------------------------------------------
 let bao: KetQua | null = k.bao;
 let docLoi: KetQuaDocPhien | null = null;
+// Hiện lại sau lỗi quét: mã trong ô và ma_gui của lượt đó.
+let maConLai = '';
+let maGuiLai: string | null = null;
 if (Astro.request.method === 'POST' && !form) {
   bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
 }
-if (form) {
+if (form && phien) {
   const viec = String(form.get('viec') ?? '');
-  const ve = (id: string, kq: KetQua, them = '') => chuyenHuong(Astro, `/noi-bo/kho/pha-loc/${id}${them}`, kq);
+  const ve = (kq: KetQua, them = '') => chuyenHuong(Astro, `${DUONG}${them}`, kq);
+  const khongSua: KetQua = { ok: false, cau: 'Phiên không còn sửa được (đã chốt hoặc đã hủy).' };
 
-  if (['luu', 'them_dong', 'chot'].includes(viec)) {
+  if (['luu', 'them_dong', 'ket_qua'].includes(viec)) {
     if (!soanDuoc || !mhVao) {
-      bao = { ok: false, cau: !mhVao ? 'Chưa chọn loại tảng đem pha.' : 'Phiên không còn sửa được (đã chốt hoặc đã hủy).' };
+      bao = khongSua;
     } else {
       const kq = await luuPhienPha(k.client, cn.id, form, {
-        id: phien?.id ?? null,
-        phienBan: phien ? Number(form.get('phien_ban')) : null,
-        matHangVaoId: mhVao.id,
+        id: phien.id, phienBan: Number(form.get('phien_ban')), matHangVaoId: mhVao.id, viTriTheoMon,
       });
-      if (!kq.ok || !kq.id) {
+      if (!kq.ok) {
         bao = kq;
         docLoi = kq.doc ?? null;
-      } else if (viec === 'chot') {
-        const c = await chotPhien(k.client, kq.id, kq.phienBan ?? null);
-        return ve(kq.id, c.ok ? c : { ok: false, cau: `Đã lưu nháp nhưng CHƯA chốt được: ${c.cau}` });
+      } else if (viec === 'ket_qua') {
+        return ve({ ok: true, cau: 'Đã lưu. Xem kết quả rồi chốt.' }, '?buoc=ket-qua');
       } else if (viec === 'them_dong') {
-        const them = Math.min(Number(form.get('so_ra') ?? 0) + 4, 60);
-        return ve(kq.id, { ok: true, cau: `${kq.cau} Thêm phần ra ở cuối danh sách.` }, `?ra=${them}`);
+        const them = Math.min(Number(form.get('so_ra') ?? 0) + 3, 60);
+        return ve({ ok: true, cau: 'Đã lưu. Gõ thêm ở các dòng trống cuối mục.' }, `?ra=${them}#go-tay`);
       } else {
-        return ve(kq.id, kq);
+        return ve(kq);
       }
     }
-  } else if (phien) {
+  } else if (viec === 'quet') {
+    if (!soanDuoc) return ve(khongSua);
+    const maGui = String(form.get('ma_gui') ?? '');
+    const kq = await quetPhienPha(k.client, phien.id, maGui, String(form.get('ma_quet') ?? ''));
+    if (kq.ok) {
+      const loi = kq.loiNhan ?? [];
+      // Có nhãn không cộng được: báo đỏ để thợ để ý (quét lại / báo quản lý).
+      return ve(loi.length > 0 ? { ok: false, cau: `${kq.cau} Chưa cộng — ${loi.join(' · ')}` } : kq);
+    }
+    if (kq.loiNhan && kq.loiNhan.length > 0) {
+      // Không nhãn nào cộng được: toàn nhãn hỏng / lạ — không giữ lại trong ô.
+      return ve({ ok: false, cau: `Chưa cộng nhãn nào — ${kq.loiNhan.join(' · ')}` });
+    }
+    // Lỗi mạng / database: giữ các mã trong ô và ma_gui — gửi lại không cộng đôi.
+    bao = kq;
+    maConLai = String(form.get('ma_quet') ?? '').trim();
+    maGuiLai = laUuid(maGui) ? maGui : null;
+  } else if (viec === 'bo_luot' || viec === 'bot_mot' || viec === 'xoa_mon') {
+    if (!soanDuoc) return ve(khongSua);
+    const cach = viec === 'bo_luot' ? 'lan_cuoi' as const : viec === 'bot_mot' ? 'bot_mot' as const : 'xoa_mon' as const;
+    return ve(await suaQuetPhienPha(k.client, phien.id, String(form.get('ma_gui') ?? ''), cach,
+      String(form.get('mat_hang_id') ?? '') || null));
+  } else if (viec === 'chot') {
+    if (!soanDuoc) return ve(khongSua);
+    const pb = Number(String(form.get('phien_ban') ?? ''));
+    const c = await chotPhien(k.client, phien.id, Number.isInteger(pb) ? pb : null);
+    return ve(c, c.ok ? '?buoc=xong' : '?buoc=ket-qua');
+  } else if (viec === 'mo_lai' || viec === 'huy') {
     const lyDo = String(form.get('ly_do') ?? '').trim();
-    let kq: KetQua;
-    if (viec === 'mo_lai') kq = await moLaiPhien(k.client, phien.id, lyDo);
-    else if (viec === 'huy') kq = await huyPhien(k.client, phien.id, lyDo || null);
-    else kq = { ok: false, cau: 'Việc không hợp lệ.' };
-    return ve(phien.id, kq);
+    return ve(viec === 'mo_lai' ? await moLaiPhien(k.client, phien.id, lyDo) : await huyPhien(k.client, phien.id, lyDo || null));
+  } else if (viec === 'da_xem') {
+    const ghiChu = String(form.get('ghi_chu_xem') ?? '').trim();
+    return ve(await xacNhanPhien(k.client, phien.id, ghiChu || null));
   } else {
     bao = { ok: false, cau: 'Việc không hợp lệ.' };
   }
@@ -133,25 +172,23 @@ if (form) {
 // ---------------------------------------------------------------------------
 // Dữ liệu hiển thị
 // ---------------------------------------------------------------------------
+const buoc = phien ? buocPhien(phien.trang_thai, soanDuoc, q.get('buoc')) : 'xem';
 const tenMh = new Map(matHang.map(m => [m.id, m]));
-const tenVt = new Map(viTri.map(v => [v.id, v]));
 const viTriRa = viTri.filter(v => v.loai !== 'cho_huy' && v.loai !== 'dang_chuyen' && v.dang_dung);
-const viTriMacDinh = viTriRa.find(v => v.loai === 'quay')?.id ?? caiDat?.vi_tri_nhan_hang_id ?? viTriRa[0]?.id ?? '';
+const tenNoiDe = (id: string | null) => {
+  const v = id ? tenVt.get(id) : undefined;
+  return v ? v.ten : '—';
+};
 
-// Tảng có hàng để chọn ở bước 1.
-const coTon = new Set(ton.filter(t => t.loai_vi_tri !== 'cho_huy' && t.loai_vi_tri !== 'dang_chuyen' && t.so_kg > 0).map(t => t.mat_hang_id));
-const tangChon = matHang.filter(m => (m.loai === 'tang' || m.loai === 'phan_cat') && coTon.has(m.id));
-
-// Công thức của loại tảng này.
-const ctCuaTang = congThuc.filter(c => c.mat_hang_vao_id === mhVaoId && (c.dang_dung || c.id === phien?.cong_thuc_id));
-const ctChonId = docLoi?.dau.cong_thuc_id ?? phien?.cong_thuc_id ?? (q.get('cong_thuc') ?? (ctCuaTang.length === 1 ? ctCuaTang[0].id : ''));
+// Công thức của loại tảng này (chọn trong mục "Thêm").
+const ctCuaTang = congThuc.filter(c => c.mat_hang_vao_id === phien?.mat_hang_vao_id && (c.dang_dung || c.id === phien?.cong_thuc_id));
+const ctChonId = docLoi?.dau.cong_thuc_id ?? phien?.cong_thuc_id ?? '';
 const ctChon = ctCuaTang.find(c => c.id === ctChonId) ?? null;
-const duKien = new Map((ctChon?.dong ?? []).map(d => [d.mat_hang_ra_id, d.ty_le_du_kien]));
 
-// Đầu vào: mọi lô của loại tảng đang có (trừ chờ hủy) + lô đã ghi trong nháp.
+// Đầu vào: mọi lô của loại tảng đang có (trừ chờ hủy, đang mang ra quầy) + lô đã ghi trong nháp.
 type DongVao = { key: string; lo_id: string; vi_tri_id: string; ton_kg: number; ton_goi: number; ma_lo: string; han_dung: string; tinh_trang: string };
 const dongVao: DongVao[] = ton
-  .filter(t => t.mat_hang_id === mhVaoId && t.loai_vi_tri !== 'cho_huy' && t.loai_vi_tri !== 'dang_chuyen' && t.so_kg > 0)
+  .filter(t => t.mat_hang_id === phien?.mat_hang_vao_id && t.loai_vi_tri !== 'cho_huy' && t.loai_vi_tri !== 'dang_chuyen' && t.so_kg > 0)
   .map(t => ({ key: `${t.lo_id}|${t.vi_tri_id}`, lo_id: t.lo_id, vi_tri_id: t.vi_tri_id, ton_kg: t.so_kg, ton_goi: t.so_goi,
                ma_lo: t.ma_lo, han_dung: t.han_dung, tinh_trang: t.tinh_trang_han }));
 const thieu = vaoDb.filter(v => !dongVao.some(d => d.key === `${v.lo_id}|${v.vi_tri_id}`));
@@ -177,306 +214,436 @@ const giaTriVao = (d: DongVao) => {
   return { dung: true, kg: layHet ? '' : String(v.so_kg).replace('.', ','), goi: layHet || !v.so_goi ? '' : String(v.so_goi) };
 };
 
-// Đầu ra.
-const raCo: RaForm[] = docLoi?.ra ?? (raDb.length
-  ? raDb.map(r => ({
+// Món đã quét nhãn (dòng ra tu_quet) và dòng gõ tay.
+const mon = monDaQuet(raDb, nhan, tenMh);
+const tongNhan = mon.reduce((s, m) => s + m.so_nhan, 0);
+const raTay = raDb.filter(r => !r.tu_quet);
+const daCoMon = new Set(raDb.map(r => r.mat_hang_id));
+const raCo: RaForm[] = docLoi?.ra ?? (raTay.length
+  ? raTay.map(r => ({
       mat_hang_id: r.mat_hang_id, so_kg: String(r.so_kg).replace('.', ','), so_goi: r.so_goi ? String(r.so_goi) : '',
       xu_ly: r.xu_ly, vi_tri_id: r.vi_tri_id ?? '', han_dung: r.han_dung ?? '',
     }))
-  : (ctChon?.dong ?? []).map(d => ({ ...raTrong(viTriMacDinh), mat_hang_id: d.mat_hang_ra_id, xu_ly: d.xu_ly ?? '' })));
+  : dongGoTayTheoCongThuc(ctChon?.dong ?? [], tenMh, daCoMon));
+// Dòng đã có trong nháp mới có ô "Bỏ dòng này"; dòng gợi ý từ công thức thì để trống kg là bỏ qua.
+const soDongDaLuu = docLoi ? docLoi.ra.length : raTay.length;
 const soRaMuon = Math.min(Math.max(Number(q.get('ra') ?? 0) || 0, 0), 60);
-const soRaTrong = Math.max(raCo.length ? 2 : 4, soRaMuon - raCo.length);
-const raHien: RaForm[] = [...raCo, ...Array.from({ length: soRaTrong }, () => raTrong(viTriMacDinh))];
+const soRaTrong = Math.max(raCo.length ? 1 : 2, soRaMuon - raCo.length);
+const raHien: RaForm[] = [...raCo, ...Array.from({ length: soRaTrong }, () => raTrong(''))];
 
-// Xem thử (nháp đã có đầu vào và đầu ra).
-// Vai xem giá: bản có giá vốn. Thủ kho: bản chỉ kg (0031).
-let xemThu: KetQuaTinh | null = null;
+// Số kg, % (không tiền) — mọi bước. Vai xem giá thêm bản có giá vốn ở bước kết quả.
 let xemThuKg: KetQuaTinhKg | null = null;
+let xemThu: KetQuaTinh | null = null;
 let loiXemThu: string | null = null;
-if (phien && phien.trang_thai === 'nhap' && vaoDb.length > 0 && raDb.length > 0) {
-  if (xemGia) {
-    const r = await xemThuPhien(k.client, phien.id);
-    xemThu = r.kq; loiXemThu = r.loi;
-  } else {
-    const r = await xemThuPhienKg(k.client, phien.id);
-    xemThuKg = r.kq; loiXemThu = r.loi;
+if (phien && phien.trang_thai !== 'da_huy' && !loiDoc) {
+  const r = await xemThuPhienKg(k.client, phien.id);
+  xemThuKg = r.kq; loiXemThu = r.loi;
+  if (xemGia && buoc === 'ket_qua' && vaoDb.length > 0 && raDb.length > 0) {
+    const g = await xemThuPhien(k.client, phien.id);
+    xemThu = g.kq; loiXemThu = loiXemThu ?? g.loi;
   }
 }
 const kgTheoRa = new Map((xemThuKg?.dong ?? []).map(d => [d.ra_id, d]));
 const tinhTheoRa = new Map((xemThu?.dong ?? []).map(d => [d.ra_id, d]));
-const ten = phien ? await tenNhanSu(k.client, [phien.nguoi_tao, phien.nguoi_chot, phien.nguoi_huy]) : new Map<string, string>();
-const [nhanTT, lopTT] = phien ? (TRANG_THAI_CHUNG_TU[phien.trang_thai] ?? [phien.trang_thai, 'tat']) : ['Mới', 'nhap'];
+// So với dự kiến: phiên đã chốt dùng đúng số đã ghi lúc chốt.
+const tyLeHien = phien?.trang_thai === 'da_chot' ? phien.ty_le_thu_hoi : (xemThuKg?.ty_le_thu_hoi ?? null);
+const duKien = phien?.trang_thai === 'da_chot' ? phien.ty_le_du_kien : (xemThuKg?.ty_le_du_kien ?? null);
+const nguonDuKien = phien?.trang_thai === 'da_chot' ? phien.nguon_du_kien : (xemThuKg?.nguon_du_kien ?? null);
+const nguong = xemThuKg?.nguong_thu_hoi_diem ?? 3;
+const soSanh = soSanhThuHoi(tyLeHien, duKien, nguong);
+const coTheChot = vaoDb.length > 0 && raDb.length > 0;
+
+const raQuay = buoc === 'xong' ? goiRaQuay(raDb, ton) : { lo: [], tongGoi: 0, daOQuay: 0 };
+const ten = phien ? await tenNhanSu(k.client, [phien.nguoi_tao, phien.nguoi_chot, phien.nguoi_huy, phien.da_xem_boi]) : new Map<string, string>();
+const [nhanTT, lopTT] = phien ? (TRANG_THAI_CHUNG_TU[phien.trang_thai] ?? [phien.trang_thai, 'tat']) : ['—', 'tat'];
 const maGuiForm = crypto.randomUUID();
 const ngayPha = docLoi?.dau.ngay_pha ?? phien?.ngay_pha ?? homNayVn();
 const ghiChu = docLoi?.dau.ghi_chu ?? phien?.ghi_chu ?? '';
-const tieuDe = moi ? 'Phiên pha lóc mới' : `Phiên ${phien?.so_phieu ?? ''}`;
+const tieuDe = `Phiên ${phien?.so_phieu ?? ''}`;
+const chuaBatMaVach = !caiDat?.mau_ma_vach;
+// ?ma= từ màn Quét: chỉ giữ chữ số, dấu phẩy, khoảng trắng.
+const maThamSo = (q.get('ma') ?? '').replace(/[^\d,\s]/g, '').slice(0, 4000).trim();
 const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
   giaBan && giaBan > 0 ? dinhDangPhanTram(((giaBan - giaVon) * 100) / giaBan, 1) : '—';
+const soGoiMon = (m: { dem_goi: boolean; so_goi: number; so_nhan: number; don_vi_goi: string }) =>
+  m.dem_goi ? `${m.so_goi} ${m.don_vi_goi}` : `${m.so_nhan} nhãn`;
 ---
-<Kho k={k} tieuDe={tieuDe}>
-  <h1>{tieuDe}</h1>
+<Kho k={k} tieuDe={tieuDe} huongDan="thu-kho">
+  {buoc === 'can_quet' && <p class="pl-buoc">Bước 2/3 · Cân & quét</p>}
+  {buoc === 'ket_qua' && <p class="pl-buoc">Bước 3/3 · Kết quả</p>}
+  <h1>{buoc === 'xong' ? `Đã chốt ${phien?.so_phieu ?? ''}` : tieuDe}{mhVao && buoc !== 'xong' ? ` · ${mhVao.ten}` : ''}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
-  {phien && (
+  {phien && buoc === 'xem' && (
     <p class="nb-dan">
       <span class={`nb-nhan ${lopTT}`}>{nhanTT}</span>
-      {' · '}{tenMh.get(phien.mat_hang_vao_id)?.ten ?? '—'}
       {' · '}lập bởi {ten.get(phien.nguoi_tao ?? '') ?? '—'} lúc {dinhDangThoiDiem(phien.created_at)}
       {phien.chot_luc && <>{' · '}chốt bởi {ten.get(phien.nguoi_chot ?? '') ?? '—'} {dinhDangThoiDiem(phien.chot_luc)}</>}
       {phien.huy_luc && <>{' · '}hủy bởi {ten.get(phien.nguoi_huy ?? '') ?? '—'} {dinhDangThoiDiem(phien.huy_luc)}</>}
     </p>
   )}
-  {phien?.ly_do && (
+  {phien?.ly_do && buoc !== 'xong' && (
     <div class="nb-bao luu-y"><p><strong>{phien.trang_thai === 'da_huy' ? 'Lý do hủy' : 'Lý do mở lại'}:</strong> {phien.ly_do}</p></div>
   )}
 
-  {moi && !mhVao ? (
+  {!phien ? null : buoc === 'can_quet' ? (
     // =======================================================================
-    // BƯỚC 1 — CHỌN TẢNG
-    // =======================================================================
-    <form method="GET" class="nb-the">
-      <label class="nb-o">
-        <span>Đem pha loại tảng nào?</span>
-        <small>Mỗi phiên một loại. Pha hai loại tảng thì ghi hai phiên — để thu hồi{xemGia ? ' và giá vốn' : ''} của từng loại không lẫn vào nhau.</small>
-        {tangChon.length === 0
-          ? <p class="nb-rong" style="margin:.5rem 0">Kho chưa có tảng nào. Tảng vào kho khi phiếu nhập được duyệt.</p>
-          : <ChonMatHang name="mat_hang" matHang={tangChon} loai={['tang', 'phan_cat']} batBuoc trong="— chọn tảng —" />}
-      </label>
-      {tangChon.length > 0 && <button type="submit" class="nb-nut">Tiếp tục</button>}
-    </form>
-  ) : soanDuoc && mhVao ? (
-    // =======================================================================
-    // SOẠN
+    // BƯỚC 2 — CÂN & QUÉT
     // =======================================================================
     <>
-      {moi && (
-        <p class="nb-dan">Đang pha: <strong>{mhVao.ten}</strong> · <a href="/noi-bo/kho/pha-loc/moi">đổi loại tảng</a></p>
-      )}
-      {ctCuaTang.length > 0 && moi && (
-        <nav class="kho-dh" aria-label="Công thức mẫu">
-          <span class="kho-phu" style="align-self:center">Điền sẵn theo công thức:</span>
-          {ctCuaTang.map(c => (
-            <a href={`/noi-bo/kho/pha-loc/moi?mat_hang=${mhVao.id}&cong_thuc=${c.id}`} aria-current={c.id === ctChonId ? 'page' : undefined}>{c.ten}</a>
-          ))}
-        </nav>
+      {chuaBatMaVach ? (
+        <div class="nb-bao luu-y">
+          <p><strong>Chưa đọc được nhãn cân</strong> — báo quản lý bật mục Mã vạch trong Cài đặt kho. Trong lúc chờ, gõ kg từng phần ở mục "Gõ tay" bên dưới.</p>
+        </div>
+      ) : (
+        <form method="POST" action={DUONG} class="nb-the">
+          <input type="hidden" name="ma_gui" value={maGuiLai ?? crypto.randomUUID()} />
+          <QuetMa nhan="Cộng nhãn vào phiên" tuFocus giaTri={maConLai || maThamSo}
+            goiY="Quét nhãn từng gói vừa cắt. Quét được bao nhiêu thì bấm nút dưới — số được CỘNG thêm, quét nhiều đợt cũng được." />
+        </form>
       )}
 
-      <form method="POST">
+      {xemThuKg && (
+        <div class="kho-o-so-luoi">
+          <div class="kho-o-so"><b>{dinhDangKg(xemThuKg.tong_kg_vao)}</b><span>kg tảng đem pha</span></div>
+          <div class="kho-o-so"><b>{dinhDangKg(xemThuKg.kg_thit + xemThuKg.kg_phu_pham + xemThuKg.kg_bo)}</b><span>kg đã cân ra</span></div>
+          <div class="kho-o-so"><b>{dinhDangPhanTram(xemThuKg.ty_le_thu_hoi)}</b><span>thu hồi tạm tính</span></div>
+          <div class="kho-o-so"><b>{tongNhan}</b><span>nhãn đã quét</span></div>
+        </div>
+      )}
+
+      <h2>Đã quét</h2>
+      {mon.length === 0 ? (
+        <p class="nb-rong">Chưa quét gói nào.</p>
+      ) : (
+        <>
+          {mon.map(m => (
+            <div class="kho-dong-hang pl-mon">
+              <div class="pl-mon-chu">
+                <strong>{m.ten}</strong><br />
+                <span class="pl-so">{soGoiMon(m)} · {dinhDangKg(m.so_kg)} kg</span><br />
+                <span class="kho-phu">để ở {tenNoiDe(m.vi_tri_id)}</span>
+              </div>
+              <form method="POST" action={DUONG}>
+                <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
+                <input type="hidden" name="mat_hang_id" value={m.mat_hang_id} />
+                <button type="submit" name="viec" value="bot_mot" class="nb-nut phu pl-bot"
+                  aria-label={`Bớt 1 gói ${m.ten}`}>−1</button>
+              </form>
+            </div>
+          ))}
+          <div class="kho-thanh-nut">
+            <form method="POST" action={DUONG} style="flex:1 1 12rem;margin:0">
+              <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
+              <button type="submit" name="viec" value="bo_luot" class="nb-nut phu" style="width:100%">Bỏ lượt vừa quét</button>
+            </form>
+          </div>
+          <details class="nb-the">
+            <summary style="cursor:pointer;font-weight:600">Bỏ hẳn một món đã quét</summary>
+            <p class="kho-phu">Quét nhầm cả một món (ví dụ nhãn của phiên khác) thì bỏ hết nhãn của món đó.</p>
+            {mon.map(m => (
+              <form method="POST" action={DUONG} style="margin:.4rem 0">
+                <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
+                <input type="hidden" name="mat_hang_id" value={m.mat_hang_id} />
+                <button type="submit" name="viec" value="xoa_mon" class="nb-nut phu kho-nut-xoa" style="width:100%">
+                  Bỏ {m.ten} ({soGoiMon(m)})
+                </button>
+              </form>
+            ))}
+          </details>
+        </>
+      )}
+
+      <form method="POST" action={DUONG}>
         <input type="hidden" name="ma_gui" value={maGuiForm} />
-        <input type="hidden" name="mat_hang_vao_id" value={mhVao.id} />
-        {phien && <input type="hidden" name="phien_ban" value={String(phien.phien_ban)} />}
-        {ctChon && <input type="hidden" name="cong_thuc_id" value={ctChon.id} />}
+        <input type="hidden" name="phien_ban" value={String(phien.phien_ban)} />
         <input type="hidden" name="so_vao" value={String(dongVao.length)} />
         <input type="hidden" name="so_ra" value={String(raHien.length)} />
 
-        <div class="nb-the">
-          <div class="kho-luoi">
-            <label class="nb-o"><span>Ngày pha</span>
-              <input type="date" name="ngay_pha" value={ngayPha} max={homNayVn()} required /></label>
-            <label class="nb-o"><span>Ghi chú</span>
-              <input type="text" name="ghi_chu" value={ghiChu} maxlength="500" placeholder="ví dụ: thợ Tuấn, tảng mỡ nhiều" /></label>
-          </div>
-        </div>
-
-        <h2>1 · Tảng đem pha</h2>
-        {dongVao.length === 0 ? (
-          <p class="nb-rong">Không còn lô {mhVao.ten} nào trong kho.</p>
-        ) : (
-          <div class="kho-lo-chon">
-            {dongVao.map((d, i) => {
-              const gt = giaTriVao(d);
-              const gia = giaLo.get(d.lo_id);
-              return (
-                <div>
-                  <input type="hidden" name={`v${i}_lo`} value={d.lo_id} />
-                  <input type="hidden" name={`v${i}_vi_tri`} value={d.vi_tri_id} />
-                  <div class="dau">
-                    <label class="kho-tich" style="padding:0">
-                      <input type="checkbox" name={`v${i}_dung`} value="co" checked={gt.dung} />
-                      <b>Lô {d.ma_lo}</b>
-                    </label>
-                    <span class="kho-phu">
-                      {tenVt.get(d.vi_tri_id)?.ten ?? '—'} · còn <strong>{dinhDangKg(d.ton_kg)} kg</strong>
-                      {mhVao.dem_goi && <> · {d.ton_goi} {mhVao.don_vi_goi}</>}
-                      {xemGia && gia && <> · {dinhDangTien(gia.gia_von_kg)}/kg</>}
-                      {' · '}<span class={`kho-han ${d.tinh_trang}`}>HSD {dinhDangNgay(d.han_dung)}</span>
-                    </span>
-                  </div>
-                  <div class="kho-luoi">
-                    <label class="nb-o"><span>Số kg lấy</span>
-                      <input type="text" inputmode="decimal" name={`v${i}_so_kg`} value={gt.kg} placeholder="bỏ trống = lấy hết" /></label>
-                    {mhVao.dem_goi && (
-                      <label class="nb-o"><span>Số {mhVao.don_vi_goi} lấy</span>
-                        <input type="text" inputmode="numeric" name={`v${i}_so_goi`} value={gt.goi} placeholder={i === 0 ? 'ví dụ 1' : undefined} /></label>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        <p class="kho-phu">Tích lô đem pha. Lấy cả lô: để trống số kg. Lấy một phần (1 trong 2 {mhVao.don_vi_goi}): ghi số kg cân được và số {mhVao.don_vi_goi}. Lấy hết số {mhVao.don_vi_goi} của lô thì tính hết số kg trên sổ — phần nước rỉ vào hao hụt.</p>
-
-        <h2>2 · Phần cắt ra</h2>
+        <h2 id="go-tay">Phụ phẩm, mỡ bỏ — gõ kg</h2>
+        <p class="kho-phu" style="margin-top:0">Phần không có nhãn: cân rồi gõ số kg. Mỡ, xương bỏ đi vẫn nên cân — để biết tỉ lệ bỏ. Gõ xong bấm <strong>Lưu</strong> trước khi quét nhãn tiếp — quét trước khi lưu thì số vừa gõ mất.</p>
         {raHien.map((r, i) => {
           const mh = tenMh.get(r.mat_hang_id);
-          const dk = duKien.get(r.mat_hang_id);
           return (
             <div class="kho-dong-hang">
-              <span class="so-thu-tu">{i + 1}</span>
-              <label class="nb-o" style="margin-top:.4rem">
-                <span>Mặt hàng{dk !== undefined && dk !== null ? ` · dự kiến ${dinhDangPhanTram(dk)}` : ''}</span>
-                <ChonMatHang name={`r${i}_mat_hang`} matHang={matHang} chon={r.mat_hang_id} />
-              </label>
               <div class="kho-luoi">
+                <label class="nb-o"><span>Mặt hàng</span>
+                  <ChonMatHang name={`r${i}_mat_hang`} matHang={matHang} chon={r.mat_hang_id} /></label>
                 <label class="nb-o"><span>Số kg</span>
-                  <input type="text" inputmode="decimal" name={`r${i}_so_kg`} value={r.so_kg} placeholder={i === 0 ? 'ví dụ 7,25' : undefined} /></label>
-                <label class="nb-o"><span>Số {mh?.don_vi_goi ?? 'gói'}</span>
-                  <input type="text" inputmode="numeric" name={`r${i}_so_goi`} value={r.so_goi} /></label>
+                  <input type="text" inputmode="decimal" name={`r${i}_so_kg`} value={r.so_kg} placeholder={i === 0 ? 'ví dụ 1,25' : undefined} /></label>
                 <label class="nb-o"><span>Xử lý</span>
                   <select name={`r${i}_xu_ly`}>
                     <option value="">{mh ? `Mặc định: ${TEN_XU_LY[mh.xu_ly_mac_dinh]}` : 'Mặc định của mặt hàng'}</option>
-                    <option value="nhap_kho" selected={r.xu_ly === 'nhap_kho'}>Nhập kho / quầy</option>
+                    <option value="nhap_kho" selected={r.xu_ly === 'nhap_kho'}>Giữ lại (kho / quầy)</option>
                     <option value="chuyen_bep" selected={r.xu_ly === 'chuyen_bep'}>Chuyển bếp</option>
                     <option value="bo" selected={r.xu_ly === 'bo'}>Bỏ</option>
                   </select></label>
-                <label class="nb-o"><span>Để ở</span>
-                  <select name={`r${i}_vi_tri`}>
-                    {viTriRa.map(v => <option value={v.id} selected={v.id === (r.vi_tri_id || viTriMacDinh)}>{v.ten}</option>)}
-                  </select></label>
               </div>
-              <details open={!!r.han_dung}>
-                <summary>Hạn dùng khác mặc định</summary>
-                <label class="nb-o"><span>Hạn dùng</span>
-                  <small>Bỏ trống = ngày pha + hạn của mặt hàng, không quá hạn của tảng.</small>
-                  <input type="date" name={`r${i}_hsd`} value={r.han_dung} /></label>
+              <details open={!!r.han_dung || !!r.so_goi || !!r.vi_tri_id}>
+                <summary>Thêm: số gói, để ở đâu, hạn dùng</summary>
+                <div class="kho-luoi">
+                  <label class="nb-o"><span>Số {mh?.don_vi_goi ?? 'gói'}</span>
+                    <input type="text" inputmode="numeric" name={`r${i}_so_goi`} value={r.so_goi} /></label>
+                  <label class="nb-o"><span>Để ở</span>
+                    <select name={`r${i}_vi_tri`}>
+                      <option value="">Theo mặt hàng</option>
+                      {viTriRa.map(v => <option value={v.id} selected={v.id === r.vi_tri_id}>{v.ten}</option>)}
+                    </select></label>
+                  <label class="nb-o"><span>Hạn dùng</span>
+                    <input type="date" name={`r${i}_hsd`} value={r.han_dung} /></label>
+                </div>
+                <p class="kho-phu" style="margin:.25rem 0 0">Hạn dùng bỏ trống = ngày pha + hạn của mặt hàng, không quá hạn của tảng.</p>
               </details>
-              {i < raCo.length && (
+              {i < soDongDaLuu && (
                 <label class="kho-tich"><input type="checkbox" name={`r${i}_xoa`} value="co" /> Bỏ dòng này</label>
               )}
             </div>
           );
         })}
-        <p class="kho-phu">Phần "Bỏ" (mỡ, xương…) vẫn nên cân và ghi — để biết tỉ lệ bỏ đi. Phần không cân được (nước, vụn bám dao) tự thành hao hụt.</p>
+        <button type="submit" name="viec" value="them_dong" class="nb-nut phu">Lưu + thêm dòng</button>
+
+        <details class="nb-the" open={vaoDb.length === 0 || (docLoi?.loi.length ?? 0) > 0} style="margin-top:1rem">
+          <summary style="cursor:pointer;font-weight:600">
+            Tảng đem pha: {vaoDb.length === 0
+              ? 'chưa chọn — bấm để chọn'
+              : `${vaoDb.length} lô · ${dinhDangKg(vaoDb.reduce((s, v) => s + v.so_kg, 0))} kg`}
+          </summary>
+          {dongVao.length === 0 ? (
+            <p class="nb-rong">Không còn lô {mhVao?.ten ?? ''} nào trong kho.</p>
+          ) : (
+            <div class="kho-lo-chon" style="margin-top:.75rem">
+              {dongVao.map((d, i) => {
+                const gt = giaTriVao(d);
+                const gia = giaLo.get(d.lo_id);
+                return (
+                  <div>
+                    <input type="hidden" name={`v${i}_lo`} value={d.lo_id} />
+                    <input type="hidden" name={`v${i}_vi_tri`} value={d.vi_tri_id} />
+                    <div class="dau">
+                      <label class="kho-tich" style="padding:0">
+                        <input type="checkbox" name={`v${i}_dung`} value="co" checked={gt.dung} />
+                        <b>Lô {d.ma_lo}</b>
+                      </label>
+                      <span class="kho-phu">
+                        {tenVt.get(d.vi_tri_id)?.ten ?? '—'} · còn <strong>{dinhDangKg(d.ton_kg)} kg</strong>
+                        {mhVao?.dem_goi && <> · {d.ton_goi} {mhVao.don_vi_goi}</>}
+                        {xemGia && gia && <> · {dinhDangTien(gia.gia_von_kg)}/kg</>}
+                        {' · '}<span class={`kho-han ${d.tinh_trang}`}>HSD {dinhDangNgay(d.han_dung)}</span>
+                      </span>
+                    </div>
+                    <div class="kho-luoi">
+                      <label class="nb-o"><span>Số kg lấy</span>
+                        <input type="text" inputmode="decimal" name={`v${i}_so_kg`} value={gt.kg} placeholder="bỏ trống = lấy hết" /></label>
+                      {mhVao?.dem_goi && (
+                        <label class="nb-o"><span>Số {mhVao.don_vi_goi} lấy</span>
+                          <input type="text" inputmode="numeric" name={`v${i}_so_goi`} value={gt.goi} /></label>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <p class="kho-phu">Tích lô đem pha. Lấy cả lô: để trống số kg. Lấy một phần: ghi số kg cân được{mhVao?.dem_goi ? ` và số ${mhVao.don_vi_goi}` : ''}.</p>
+        </details>
+
+        <details class="nb-the">
+          <summary style="cursor:pointer;font-weight:600">Thêm: ngày pha, ghi chú, công thức</summary>
+          <div class="kho-luoi" style="margin-top:.75rem">
+            <label class="nb-o"><span>Ngày pha</span>
+              <input type="date" name="ngay_pha" value={ngayPha} max={homNayVn()} required /></label>
+            <label class="nb-o"><span>Ghi chú</span>
+              <input type="text" name="ghi_chu" value={ghiChu} maxlength="500" placeholder="ví dụ: thợ Tuấn, tảng mỡ nhiều" /></label>
+            {ctCuaTang.length > 0 ? (
+              <label class="nb-o"><span>Công thức (để so thu hồi dự kiến)</span>
+                <select name="cong_thuc_id">
+                  <option value="">— không chọn —</option>
+                  {ctCuaTang.map(c => <option value={c.id} selected={c.id === ctChonId}>{c.ten}</option>)}
+                </select></label>
+            ) : (
+              <input type="hidden" name="cong_thuc_id" value="" />
+            )}
+          </div>
+        </details>
 
         <div class="kho-thanh-nut dinh">
-          <button type="submit" name="viec" value="luu" class="nb-nut phu">Lưu + xem thử</button>
-          <button type="submit" name="viec" value="them_dong" class="nb-nut phu">Lưu + thêm dòng</button>
-          {phien && <button type="submit" name="viec" value="chot" class="nb-nut">Chốt phiên</button>}
+          <button type="submit" name="viec" value="luu" class="nb-nut phu">Lưu</button>
+          <button type="submit" name="viec" value="ket_qua" class="nb-nut">Lưu, xem kết quả →</button>
         </div>
       </form>
 
-      {phien && (
-        <section class="nb-the" style="margin-top:1.5rem">
-          <h2 style="margin-top:0">Xem thử trước khi chốt</h2>
-          {loiXemThu ? (
-            <div class="nb-bao loi"><p>{loiXemThu}</p></div>
-          ) : !xemThu && !xemThuKg ? (
-            <p class="nb-rong">Chọn ít nhất một lô tảng và ghi ít nhất một phần cắt ra, rồi bấm "Lưu + xem thử".</p>
-          ) : xemThuKg ? (
-            // Thủ kho: chỉ kg và %, không tiền.
-            <>
-              <div class="kho-o-so-luoi">
-                <div class="kho-o-so"><b>{dinhDangPhanTram(xemThuKg.ty_le_thu_hoi)}</b><span>thu hồi thịt</span></div>
-                <div class="kho-o-so"><b>{dinhDangPhanTram(phanTramCua(xemThuKg.kg_phu_pham, xemThuKg.tong_kg_vao))}</b><span>phụ phẩm</span></div>
-                <div class="kho-o-so"><b>{dinhDangPhanTram(phanTramCua(xemThuKg.kg_bo, xemThuKg.tong_kg_vao))}</b><span>bỏ</span></div>
-                <div class={`kho-o-so ${xemThuKg.kg_hao_hut < 0 ? 'luu-y' : ''}`}><b>{dinhDangPhanTram(phanTramCua(xemThuKg.kg_hao_hut, xemThuKg.tong_kg_vao))}</b><span>hao hụt ({dinhDangKg(xemThuKg.kg_hao_hut)} kg)</span></div>
-              </div>
-              <p class="nb-dan">Tảng vào <strong>{dinhDangKg(xemThuKg.tong_kg_vao)} kg</strong> · thịt giữ lại <strong>{dinhDangKg(xemThuKg.kg_thit)} kg</strong></p>
-              {xemThuKg.canh_bao.length > 0 && (
-                <div class="nb-bao luu-y">{xemThuKg.canh_bao.map(c => <p>{c}</p>)}</div>
-              )}
-              <div class="kho-bang-khung">
-                <table class="kho-bang">
-                  <thead><tr><th>Phần ra</th><th class="so">Kg</th><th class="so">% tảng</th><th>Xử lý</th></tr></thead>
-                  <tbody>
-                    {raDb.map(r => {
-                      const t = kgTheoRa.get(r.id);
-                      return (
-                        <tr>
-                          <td>{tenMh.get(r.mat_hang_id)?.ten ?? '—'}</td>
-                          <td class="so">{dinhDangKg(r.so_kg)}</td>
-                          <td class="so">{dinhDangPhanTram(t?.ty_le ?? null)}</td>
-                          <td>{TEN_XU_LY[r.xu_ly]}</td>
-                        </tr>
-                      );
-                    })}
-                    <tr class="tong"><td>Tổng</td><td class="so">{dinhDangKg(xemThuKg.kg_thit + xemThuKg.kg_phu_pham + xemThuKg.kg_bo)}</td><td colspan="2"></td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <p class="kho-phu">Hao hụt = kg tảng vào − mọi phần đã cân (thịt, phụ phẩm, phần bỏ). Lệch nhiều thì cân lại trước khi chốt. Chốt phiên thì mỗi phần giữ lại thành một lô mới.</p>
-            </>
-          ) : xemThu && (
-            <>
-              <div class="kho-o-so-luoi">
-                <div class="kho-o-so"><b>{dinhDangPhanTram(xemThu.ty_le_thu_hoi)}</b><span>thu hồi thịt</span></div>
-                <div class="kho-o-so"><b>{dinhDangPhanTram(xemThu.ty_le_phu_pham)}</b><span>phụ phẩm</span></div>
-                <div class="kho-o-so"><b>{dinhDangPhanTram(xemThu.ty_le_bo)}</b><span>bỏ</span></div>
-                <div class={`kho-o-so ${(xemThu.ty_le_hao_hut ?? 0) < 0 ? 'luu-y' : ''}`}><b>{dinhDangPhanTram(xemThu.ty_le_hao_hut)}</b><span>hao hụt ({dinhDangKg(xemThu.tong_kg_hao_hut)} kg)</span></div>
-              </div>
-              <p class="nb-dan">Tảng vào <strong>{dinhDangKg(xemThu.tong_kg_vao)} kg</strong> · giá vốn <strong>{dinhDangTien(xemThu.gia_tri_vao)}</strong> ({dinhDangTien(xemThu.gia_von_vao_kg)}/kg) · chia theo {xemThu.chia_theo === 'gia_tri' ? 'giá trị bán' : 'kg'}</p>
-              {xemThu.canh_bao.length > 0 && (
-                <div class="nb-bao luu-y">{xemThu.canh_bao.map(c => <p>{c}</p>)}</div>
-              )}
-              <div class="kho-bang-khung">
-                <table class="kho-bang">
-                  <thead><tr><th>Phần ra</th><th class="so">Kg</th><th class="so">% tảng</th><th>Xử lý</th><th class="so">Giá vốn</th><th class="so">Giá vốn/kg</th><th class="so">Giá bán/kg</th><th class="so">Biên lãi</th></tr></thead>
-                  <tbody>
-                    {raDb.map(r => {
-                      const t = tinhTheoRa.get(r.id);
-                      const mh = tenMh.get(r.mat_hang_id);
-                      return (
-                        <tr>
-                          <td>{mh?.ten ?? '—'}</td>
-                          <td class="so">{dinhDangKg(r.so_kg)}</td>
-                          <td class="so">{dinhDangPhanTram(t?.ty_le ?? null)}</td>
-                          <td>{TEN_XU_LY[r.xu_ly]}</td>
-                          <td class="so">{t ? dinhDangTien(t.gia_tri) : '—'}</td>
-                          <td class="so">{t && r.xu_ly !== 'bo' ? dinhDangTien(t.gia_von_kg) : '—'}</td>
-                          <td class="so">{mh?.gia_ban_kg ? dinhDangTien(mh.gia_ban_kg) : '—'}</td>
-                          <td class="so">{t && t.nhom === 'thit' ? bienLai(mh?.gia_ban_kg, t.gia_von_kg) : '—'}</td>
-                        </tr>
-                      );
-                    })}
-                    <tr class="tong"><td>Tổng</td><td class="so">{dinhDangKg(xemThu.tong_kg_thit + xemThu.tong_kg_phu_pham + xemThu.tong_kg_bo)}</td><td colspan="2"></td><td class="so">{dinhDangTien(xemThu.dong.reduce((s, d) => s + d.gia_tri, 0))}</td><td colspan="3"></td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <p class="kho-phu">Tổng giá vốn phần ra luôn bằng đúng giá vốn tảng vào. Phụ phẩm giữ lại tính theo giá trị thu hồi cài trong mặt hàng; phần bỏ bằng 0; phần còn lại chia cho thịt. Chốt phiên thì mỗi phần giữ lại thành một lô mới với đúng giá vốn này.</p>
-            </>
+      <details class="nb-the" style="margin-top:1.5rem">
+        <summary style="cursor:pointer;font-weight:600">Hủy phiên nháp này</summary>
+        <form method="POST" action={DUONG} style="margin-top:.75rem">
+          <label class="nb-o"><span>Lý do (không bắt buộc)</span><input type="text" name="ly_do" maxlength="500" /></label>
+          <button type="submit" name="viec" value="huy" class="nb-nut kho-nut-xoa">Hủy phiên nháp</button>
+        </form>
+      </details>
+    </>
+  ) : buoc === 'ket_qua' ? (
+    // =======================================================================
+    // BƯỚC 3 — KẾT QUẢ, CHỐT
+    // =======================================================================
+    <>
+      {loiXemThu && <div class="nb-bao loi"><p>{loiXemThu}</p></div>}
+      {xemThuKg && (
+        <>
+          <div class="kho-o-so-luoi">
+            <div class={`kho-o-so ${soSanh.muc === 'thap' ? 'gap' : ''}`}><b>{dinhDangPhanTram(xemThuKg.ty_le_thu_hoi)}</b><span>thu hồi thịt</span></div>
+            <div class="kho-o-so"><b>{dinhDangPhanTram(xemThuKg.ty_le_du_kien)}</b><span>dự kiến{xemThuKg.nguon_du_kien ? ` (${TEN_NGUON_DU_KIEN[xemThuKg.nguon_du_kien]})` : ''}</span></div>
+            <div class="kho-o-so"><b>{dinhDangPhanTram(xemThuKg.ty_le_tb_30_ngay)}</b><span>trung bình 30 ngày</span></div>
+            <div class={`kho-o-so ${xemThuKg.kg_hao_hut < 0 ? 'luu-y' : ''}`}><b>{dinhDangPhanTram(phanTramCua(xemThuKg.kg_hao_hut, xemThuKg.tong_kg_vao))}</b><span>hao hụt ({dinhDangKg(xemThuKg.kg_hao_hut)} kg)</span></div>
+          </div>
+          {soSanh.muc === 'thap' && (
+            <div class="nb-bao luu-y"><p>
+              Thu hồi thấp hơn dự kiến {dinhDangPhanTram(Math.abs(soSanh.chenh ?? 0))} (quá ngưỡng {dinhDangKg(nguong)} điểm).
+              Cân lại nếu nghi cân nhầm. Chốt vẫn được — phần mềm sẽ tự báo quản lý.
+            </p></div>
           )}
-        </section>
+          <p class="nb-dan">
+            Tảng vào <strong>{dinhDangKg(xemThuKg.tong_kg_vao)} kg</strong> · thịt giữ lại <strong>{dinhDangKg(xemThuKg.kg_thit)} kg</strong>
+            {' · '}phụ phẩm {dinhDangKg(xemThuKg.kg_phu_pham)} kg · bỏ {dinhDangKg(xemThuKg.kg_bo)} kg
+          </p>
+          {xemThuKg.canh_bao.length > 0 && (
+            <div class="nb-bao luu-y">{xemThuKg.canh_bao.map(c => <p>{c}</p>)}</div>
+          )}
+          <div class="kho-bang-khung">
+            <table class="kho-bang">
+              <thead><tr><th>Phần ra</th><th class="so">Gói</th><th class="so">Kg</th><th class="so">% tảng</th><th>Đi đâu</th></tr></thead>
+              <tbody>
+                {xemThuKg.dong.map(d => {
+                  const mh = tenMh.get(d.mat_hang_id);
+                  return (
+                    <tr>
+                      <td>{d.ten}{d.tu_quet && <span class="kho-phu"> · quét nhãn</span>}</td>
+                      <td class="so">{mh?.dem_goi && d.so_goi > 0 ? d.so_goi : '—'}</td>
+                      <td class="so">{dinhDangKg(d.so_kg)}</td>
+                      <td class="so">{dinhDangPhanTram(d.ty_le)}</td>
+                      <td>{d.xu_ly === 'nhap_kho' ? tenNoiDe(d.vi_tri_id) : TEN_XU_LY[d.xu_ly]}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p class="kho-phu">Thu hồi = kg thịt giữ lại ÷ kg tảng vào (không tính phụ phẩm, phần bỏ). Hao hụt = kg tảng vào − mọi phần đã cân.</p>
+        </>
       )}
 
-      {phien && (
-        <details class="nb-the" style="margin-top:1.5rem">
-          <summary style="cursor:pointer;font-weight:600">Hủy phiên nháp này</summary>
-          <form method="POST" style="margin-top:.75rem">
-            <label class="nb-o"><span>Lý do (không bắt buộc)</span><input type="text" name="ly_do" maxlength="500" /></label>
-            <button type="submit" name="viec" value="huy" class="nb-nut kho-nut-xoa">Hủy phiên nháp</button>
-          </form>
+      {xemGia && xemThu && (
+        <details class="nb-the">
+          <summary style="cursor:pointer;font-weight:600">Giá vốn từng phần (quản lý)</summary>
+          <p class="nb-dan">Giá vốn tảng vào <strong>{dinhDangTien(xemThu.gia_tri_vao)}</strong> ({dinhDangTien(xemThu.gia_von_vao_kg)}/kg) · chia theo {xemThu.chia_theo === 'gia_tri' ? 'giá trị bán' : 'kg'}</p>
+          <div class="kho-bang-khung">
+            <table class="kho-bang">
+              <thead><tr><th>Phần ra</th><th class="so">Kg</th><th class="so">Giá vốn</th><th class="so">Giá vốn/kg</th><th class="so">Giá bán/kg</th><th class="so">Biên lãi</th></tr></thead>
+              <tbody>
+                {raDb.map(r => {
+                  const t = tinhTheoRa.get(r.id);
+                  const mh = tenMh.get(r.mat_hang_id);
+                  return (
+                    <tr>
+                      <td>{mh?.ten ?? '—'}</td>
+                      <td class="so">{dinhDangKg(r.so_kg)}</td>
+                      <td class="so">{t ? dinhDangTien(t.gia_tri) : '—'}</td>
+                      <td class="so">{t && r.xu_ly !== 'bo' ? dinhDangTien(t.gia_von_kg) : '—'}</td>
+                      <td class="so">{mh?.gia_ban_kg ? dinhDangTien(mh.gia_ban_kg) : '—'}</td>
+                      <td class="so">{t && t.nhom === 'thit' ? bienLai(mh?.gia_ban_kg, t.gia_von_kg) : '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <p class="kho-phu">Tổng giá vốn phần ra luôn bằng giá vốn tảng vào. Phụ phẩm tính theo giá trị thu hồi cài trong mặt hàng; phần bỏ bằng 0.</p>
         </details>
       )}
+
+      {coTheChot ? (
+        <form method="POST" action={DUONG} class="kho-thanh-nut dinh">
+          <input type="hidden" name="phien_ban" value={String(phien.phien_ban)} />
+          <a class="nb-nut phu" href={DUONG}>← Cân & quét tiếp</a>
+          <button type="submit" name="viec" value="chot" class="nb-nut">Chốt phiên</button>
+        </form>
+      ) : (
+        <>
+          <p class="nb-rong">{vaoDb.length === 0 ? 'Chưa chọn tảng đem pha' : 'Chưa có phần nào cắt ra'} — quay lại bước Cân & quét.</p>
+          <p><a class="nb-nut" href={DUONG}>← Cân & quét</a></p>
+        </>
+      )}
+      <p class="kho-phu">Chốt phiên: tảng trừ khỏi kho, mỗi phần giữ lại thành một lô mới ở đúng chỗ để. Chốt nhầm thì mở lại được khi các lô mới chưa được đụng tới.</p>
     </>
-  ) : phien && (
+  ) : buoc === 'xong' ? (
+    // =======================================================================
+    // XONG — CHUYỂN RA QUẦY NGAY
+    // =======================================================================
+    <>
+      <div class="kho-o-so-luoi">
+        <div class={`kho-o-so ${soSanh.muc === 'thap' ? 'gap' : ''}`}><b>{dinhDangPhanTram(phien.ty_le_thu_hoi)}</b><span>thu hồi thịt</span></div>
+        <div class="kho-o-so"><b>{dinhDangKg(phien.tong_kg_thit)}</b><span>kg thịt ra</span></div>
+      </div>
+      {raQuay.daOQuay > 0 && <p class="nb-dan">{raQuay.daOQuay} gói đã để thẳng ở quầy.</p>}
+      {raQuay.lo.length > 0 ? (
+        <section class="nb-the">
+          <h2 style="margin-top:0">Chuyển {raQuay.tongGoi > 0 ? `${raQuay.tongGoi} gói` : 'hàng'} ra quầy ngay</h2>
+          <p class="nb-dan" style="margin-top:0">Các phần này đang ở kho lạnh. Bấm để mở sẵn phiếu chuyển ra quầy, sửa số nếu chỉ mang một phần.</p>
+          <div class="pl-luoi">
+            {raQuay.lo.map(l => (
+              <a class="nb-nut phu pl-nut" href={l.link}>
+                <b>{l.ten}</b>
+                <span>{l.dem_goi && l.so_goi > 0 ? `${l.so_goi} ${l.don_vi_goi} · ` : ''}{dinhDangKg(l.so_kg)} kg · {tenNoiDe(l.vi_tri_id)}</span>
+              </a>
+            ))}
+          </div>
+        </section>
+      ) : (
+        <p class="nb-dan">Không còn phần nào ở kho lạnh cần chuyển ra quầy.</p>
+      )}
+      <div class="kho-thanh-nut">
+        <a class="nb-nut" href="/noi-bo/kho/pha-loc/moi">Pha tảng khác</a>
+        <a class="nb-nut phu" href={DUONG}>Xem lại phiên</a>
+      </div>
+    </>
+  ) : (
     // =======================================================================
     // XEM
     // =======================================================================
     <>
       {phien.trang_thai === 'da_chot' && (
         <div class="kho-o-so-luoi">
-          <div class="kho-o-so"><b>{dinhDangPhanTram(phien.ty_le_thu_hoi)}</b><span>thu hồi thịt</span></div>
+          <div class={`kho-o-so ${phien.thu_hoi_thap ? 'gap' : ''}`}><b>{dinhDangPhanTram(phien.ty_le_thu_hoi)}</b><span>thu hồi thịt</span></div>
+          <div class="kho-o-so"><b>{dinhDangPhanTram(phien.ty_le_du_kien)}</b><span>dự kiến{nguonDuKien ? ` (${TEN_NGUON_DU_KIEN[nguonDuKien]})` : ''}</span></div>
           <div class="kho-o-so"><b>{dinhDangKg(phien.tong_kg_vao)}</b><span>kg tảng vào</span></div>
-          <div class="kho-o-so"><b>{dinhDangKg(phien.tong_kg_thit)}</b><span>kg thịt ra</span></div>
           <div class="kho-o-so"><b>{dinhDangKg(phien.tong_kg_hao_hut)}</b><span>kg hao hụt</span></div>
         </div>
       )}
+
+      {phien.trang_thai === 'da_chot' && phien.thu_hoi_thap && (
+        <section class={`nb-bao ${phien.da_xem_luc ? 'xong' : 'luu-y'}`}>
+          <p><strong>Thu hồi thấp hơn dự kiến</strong>: {dinhDangPhanTram(phien.ty_le_thu_hoi)} so với {dinhDangPhanTram(phien.ty_le_du_kien)} (ngưỡng báo {dinhDangKg(nguong)} điểm).</p>
+          {phien.da_xem_luc ? (
+            <p>Đã xem: {ten.get(phien.da_xem_boi ?? '') ?? '—'} lúc {dinhDangThoiDiem(phien.da_xem_luc)}{phien.da_xem_ghi_chu ? ` — ${phien.da_xem_ghi_chu}` : ''}</p>
+          ) : k.duoc('duyet') ? (
+            <form method="POST" action={DUONG}>
+              <label class="nb-o"><span>Ghi chú (không bắt buộc)</span>
+                <input type="text" name="ghi_chu_xem" maxlength="500" placeholder="ví dụ: tảng nhiều mỡ, đã nhắc nhà cung cấp" /></label>
+              <button type="submit" name="viec" value="da_xem" class="nb-nut">Đã xem</button>
+            </form>
+          ) : (
+            <p>Đã báo quản lý.</p>
+          )}
+        </section>
+      )}
+      {phien.trang_thai === 'da_chot' && !phien.thu_hoi_thap && k.duoc('duyet') && phien.da_xem_luc && (
+        <p class="kho-phu">Đã xem: {ten.get(phien.da_xem_boi ?? '') ?? '—'} lúc {dinhDangThoiDiem(phien.da_xem_luc)}</p>
+      )}
+
       <div class="nb-the">
         <dl class="kho-dl">
           <dt>Ngày pha</dt><dd>{dinhDangNgay(phien.ngay_pha)}</dd>
           <dt>Tảng</dt><dd>{tenMh.get(phien.mat_hang_vao_id)?.ten ?? '—'}</dd>
           {phien.ghi_chu && <><dt>Ghi chú</dt><dd>{phien.ghi_chu}</dd></>}
+          {tongNhan > 0 && <><dt>Nhãn đã quét</dt><dd>{tongNhan}</dd></>}
         </dl>
       </div>
 
@@ -501,16 +668,17 @@ const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
       <h2>Phần cắt ra</h2>
       <div class="kho-bang-khung">
         <table class="kho-bang">
-          <thead><tr><th>Phần ra</th><th class="so">Kg</th><th class="so">Gói</th><th>Xử lý</th><th>Lô mới</th>{xemGia && <><th class="so">Giá vốn/kg</th><th class="so">Biên lãi</th></>}</tr></thead>
+          <thead><tr><th>Phần ra</th><th class="so">Kg</th><th class="so">Gói</th><th class="so">% tảng</th><th>Xử lý</th><th>Lô mới</th>{xemGia && <><th class="so">Giá vốn/kg</th><th class="so">Biên lãi</th></>}</tr></thead>
           <tbody>
             {raDb.map(r => {
               const g = r.lo_id ? giaLo.get(r.lo_id) : undefined;
               const l = r.lo_id ? loThem.get(r.lo_id) : undefined;
               return (
                 <tr>
-                  <td>{tenMh.get(r.mat_hang_id)?.ten ?? '—'}</td>
+                  <td>{tenMh.get(r.mat_hang_id)?.ten ?? '—'}{r.tu_quet && <span class="kho-phu"> · quét nhãn</span>}</td>
                   <td class="so">{dinhDangKg(r.so_kg)}</td>
                   <td class="so">{r.so_goi || '—'}</td>
+                  <td class="so">{dinhDangPhanTram(kgTheoRa.get(r.id)?.ty_le ?? null)}</td>
                   <td>{TEN_XU_LY[r.xu_ly]}{r.xu_ly === 'nhap_kho' && r.vi_tri_id ? ` · ${tenVt.get(r.vi_tri_id)?.ten ?? ''}` : ''}</td>
                   <td>{l ? <>{l.ma_lo}<br /><span class="kho-phu">HSD {dinhDangNgay(l.han_dung)}</span></> : '—'}</td>
                   {xemGia && <>
@@ -528,7 +696,7 @@ const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
         <details class="nb-the">
           <summary style="cursor:pointer;font-weight:600">Mở lại phiên để sửa (cân nhầm, ghi nhầm)</summary>
           <p class="nb-dan" style="margin-top:.75rem">Chỉ mở lại được khi các lô mới <strong>chưa được chuyển, bán, xuất hay kiểm kê</strong>. Mở lại = tồn trở về như trước khi chốt; sửa xong phải chốt lại.</p>
-          <form method="POST">
+          <form method="POST" action={DUONG}>
             <label class="nb-o"><span>Lý do mở lại</span><textarea name="ly_do" required maxlength="500"></textarea></label>
             <button type="submit" name="viec" value="mo_lai" class="nb-nut kho-nut-xoa">Mở lại phiên</button>
           </form>
@@ -539,3 +707,17 @@ const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
 
   <p style="margin-top:1.5rem"><a href="/noi-bo/kho/pha-loc">← Danh sách phiên pha lóc</a></p>
 </Kho>
+
+<style>
+  .pl-buoc { margin: 0 0 .15rem; font-size: .85rem; font-weight: 700; color: var(--muc-nhat); }
+  .pl-mon { display: flex; align-items: center; gap: .75rem; }
+  .pl-mon-chu { flex: 1; min-width: 0; }
+  .pl-mon form { margin: 0; }
+  .pl-so { font-size: 1.15rem; }
+  .pl-bot { min-width: 64px; min-height: 48px; }
+  .pl-luoi { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); margin: .5rem 0 1rem; }
+  .pl-nut { width: 100%; min-height: 64px; flex-direction: column; align-items: flex-start; justify-content: center;
+    gap: .2rem; text-align: left; padding: .75rem 1rem; }
+  .pl-nut b { font-size: 1.1rem; }
+  .pl-nut span { font-size: .9rem; font-weight: 400; }
+</style>

@@ -65,7 +65,7 @@ export const MUC_KHO: MucKho[] = [
   // Nhập hàng: phiếu có tiền — điền giá, duyệt, xem lại (vai xem giá).
   { ma: 'nhap', ten: 'Nhập hàng', link: '/noi-bo/kho/nhap', bieuTuong: 'nhap', quyen: ['xem_gia'] },
   { ma: 'pha_loc', ten: 'Pha lóc', link: '/noi-bo/kho/pha-loc', bieuTuong: 'dao', quyen: ['xem_gia', 'pha_loc'],
-    dem: ['pha_nhap'] },
+    dem: ['pha_nhap', 'thu_hoi_thap'] },   // 0033: quản lý thấy phiên thu hồi thấp chưa xem
   // Quầy yêu cầu → thủ kho mang ra → quầy bấm nhận (0032). Số đỏ: thủ kho thấy
   // yêu cầu đang chờ, NV quầy thấy hàng đang mang ra chờ bấm nhận.
   { ma: 'yeu_cau_quay', ten: 'Quầy cần hàng', link: '/noi-bo/kho/quay/yeu-cau', bieuTuong: 'chuyen',

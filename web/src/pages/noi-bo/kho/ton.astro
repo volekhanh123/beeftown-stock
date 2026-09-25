@@ -18,6 +18,7 @@
  *
  * Mỗi lô có nút làm nhanh cho vai vận hành: Ra quầy (lô trong kho), Đưa bếp,
  * Báo hủy — lô hết hạn chỉ còn Báo hủy. Nút mở sẵn phiếu đúng nơi, đúng lô.
+ * Mỗi món có nút "Thẻ kho" (GĐ5c): sổ nhập – xuất – tồn của món theo ngày.
  *
  * Giá trị tồn chỉ hiện với vai xem giá. Nhân viên quầy/bếp đọc kho_v_ton_gia
  * sẽ nhận về rỗng (RLS), nên cột tiền tự biến mất với họ.
@@ -34,6 +35,7 @@ import {
   docTon, docGiaTon, gomTheoMatHang, quaySapHet, docBoLocTon, linkTon, locTon, viecVoiLo, type DongTon,
 } from '../../../lib/kho/ton.ts';
 import { docMatHang, type MatHang } from '../../../lib/kho/danh-muc.ts';
+import { linkTheKho } from '../../../lib/kho/the-kho.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangTien,
   TEN_LOAI_MAT_HANG, TEN_LOAI_VI_TRI,
@@ -203,6 +205,11 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
         </span>
       </summary>
       <div class="kho-mh-lo ton-lo-khung">
+        <p class="ton-the-kho">
+          <a class="nb-nut phu" href={linkTheKho(g.mat_hang_id)} aria-label={`Thẻ kho ${g.ten_hang}`}>
+            <BieuTuong ten="ton" co={18} />Thẻ kho
+          </a>
+        </p>
         <table class="kho-bang ton-lo">
           <thead><tr>
             <th>Hạn dùng</th><th>Ở đâu</th><th class="so">Kg</th>{g.dem_goi && <th class="so">{g.don_vi_goi}</th>}
@@ -283,6 +290,11 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
     display: inline-flex; align-items: center; white-space: nowrap;
   }
   .ton-lo td.o-nut { min-width: 12rem; }
+  .ton-the-kho { margin: 0 0 .5rem; display: flex; justify-content: flex-end; }
+  .ton-the-kho .nb-nut {
+    min-height: 48px; padding: .45rem .9rem; font-size: .85rem; gap: .35rem;
+    display: inline-flex; align-items: center;
+  }
 
   /* Khung hẹp: mỗi lô là một thẻ. Hàng 1: hạn · nơi; hàng 2: kg · gói;
      rồi mã lô, giá vốn, và các nút bấm trải hết bề ngang. */

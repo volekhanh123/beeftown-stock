@@ -129,6 +129,20 @@ export function cauSuKien(su: SuKien): CauSuKien {
                chiTiet: `${n ? `Thiếu ${n} gói. ` : ''}Hàng còn ở kho thì trả về kho; rơi vỡ, thất lạc thì ghi mất.`,
                link: `/noi-bo/kho/xuat/${e.ref_id}`, nut: 'Xử lý', muc: 'do' };
     }
+    // ---- 0033 · Pha lóc thu hồi thấp hơn dự kiến (không duyệt, chỉ báo) ------
+    case 'thu_hoi_thap': {
+      // Quản lý: so = thu hồi %, phu = dự kiến % (chữ số dấu chấm), ten = tên tảng.
+      const pt = (x: number | string | null) => {
+        const n = x === null || x === '' ? NaN : Number(x);
+        return Number.isFinite(n) ? `${n.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%` : '';
+      };
+      const thuHoi = pt(e.so);
+      const duKien = pt(e.phu);
+      return { tieuDe: `Pha lóc ${e.ma} thu hồi thấp${thuHoi ? `: ${thuHoi}` : ''}`,
+               chiTiet: [e.ten, duKien ? `dự kiến ${duKien}` : ''].filter(Boolean).join(' — ')
+                 + '. Xem lại số cân rồi bấm "Đã xem".',
+               link: `/noi-bo/kho/pha-loc/${e.ref_id}`, nut: 'Xem', muc: 'vang' };
+    }
     default:
       return { tieuDe: e.ten || e.ma || 'Có việc mới', link: '/noi-bo/kho', nut: 'Xem', muc: 'xam' };
   }
@@ -141,6 +155,8 @@ export const KHOA_SU_KIEN = [
   'cong_no_qua_han', 'cong_no_den_han', 'chua_doi_chieu', 'pha_nhap_lau',
   // 0032
   'yeu_cau_quay', 'hang_dang_chuyen', 'chuyen_nhan_thieu',
+  // 0033
+  'thu_hoi_thap',
 ] as const;
 
 /** Sự kiện là "việc cần làm" (có nút làm ngay, không chỉ để biết). */

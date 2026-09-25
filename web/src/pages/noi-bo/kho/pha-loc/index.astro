@@ -61,7 +61,7 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
   ) : (
     <>
       <p class="nb-dan">
-        Mỗi lần pha: chọn tảng đem pha, cân từng phần cắt ra, phụ phẩm, phần bỏ. Phần mềm tính
+        Mỗi lần pha: chọn tảng đem pha, quét nhãn từng gói cắt ra, gõ kg phụ phẩm và phần bỏ. Phần mềm tính
         <strong>tỉ lệ thu hồi</strong>{k.duoc('xem_gia') && <> và <strong>giá vốn thật mỗi kg</strong></>} của từng phần.
         Tồn chỉ đổi khi bấm <em>Chốt phiên</em>.
       </p>
@@ -112,12 +112,15 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
           <a href={`/noi-bo/kho/pha-loc/${p.id}`} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
             <div class="nb-dong-dau">
               <strong>{p.so_phieu} · {p.ten_mat_hang_vao}</strong>
-              <span class={`nb-nhan ${lop}`}>{nhan}</span>
+              <span>
+                {p.thu_hoi_thap && <span class={`nb-nhan ${p.da_xem_luc ? 'tat' : 'cho'}`}>{p.da_xem_luc ? 'Thu hồi thấp · đã xem' : 'Thu hồi thấp'}</span>}
+                {' '}<span class={`nb-nhan ${lop}`}>{nhan}</span>
+              </span>
             </div>
             <dl>
               <dt>Ngày pha</dt><dd>{dinhDangNgay(p.ngay_pha)}</dd>
               {p.trang_thai === 'da_chot' ? (
-                <><dt>Kết quả</dt><dd>{dinhDangKg(p.tong_kg_vao)} kg vào → {dinhDangKg(p.tong_kg_thit)} kg thịt · thu hồi <strong>{dinhDangPhanTram(p.ty_le_thu_hoi)}</strong></dd></>
+                <><dt>Kết quả</dt><dd>{dinhDangKg(p.tong_kg_vao)} kg vào → {dinhDangKg(p.tong_kg_thit)} kg thịt · thu hồi <strong>{dinhDangPhanTram(p.ty_le_thu_hoi)}</strong>{p.ty_le_du_kien !== null && <> (dự kiến {dinhDangPhanTram(p.ty_le_du_kien)})</>}</dd></>
               ) : (
                 <><dt>Đang ghi</dt><dd>{p.so_dau_vao} lô vào ({dinhDangKg(p.kg_vao_nhap)} kg) · {p.so_dau_ra} phần ra ({dinhDangKg(p.kg_ra_nhap)} kg)</dd></>
               )}

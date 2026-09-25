@@ -35,6 +35,8 @@ export interface MatHang {
   xu_ly_mac_dinh: 'nhap_kho' | 'chuyen_bep' | 'bo';
   ma_can: string | null;
   ton_toi_thieu_kg: number | null;
+  /** Sau pha lóc, gói quét nhãn để ở đâu (0033): kho | quay; null = kho lạnh. */
+  noi_de_sau_pha: 'kho' | 'quay' | null;
   truong_them: GiaTriTruong;
   dang_dung: boolean;
   thu_tu: number;
@@ -102,6 +104,8 @@ export interface GiaTriFormMatHang {
   ma: string; ten: string; ten_phu: string; nhom: string; loai: string;
   dem_goi: boolean; don_vi_goi: string; han_dung_ngay: string; canh_bao_truoc_ngay: string;
   gia_ban_kg: string; xu_ly_mac_dinh: string; ma_can: string; ton_toi_thieu_kg: string;
+  /** '' = kho lạnh (mặc định), 'quay' = quầy. */
+  noi_de_sau_pha: string;
   thu_tu: string; dang_dung: boolean; truong_them: GiaTriTruong; gia_tri_thu_hoi_kg: string;
 }
 
@@ -175,13 +179,14 @@ export async function luuDinhNghia(client: SupabaseClient, form: FormData, daCo:
 export async function docMatHang(client: SupabaseClient): Promise<MatHang[]> {
   const { data, error } = await client
     .from('kho_mat_hang')
-    .select('id, ma, ten, ten_phu, nhom, loai, dem_goi, don_vi_goi, han_dung_ngay, canh_bao_truoc_ngay, gia_ban_kg, xu_ly_mac_dinh, ma_can, ton_toi_thieu_kg, truong_them, dang_dung, thu_tu')
+    .select('id, ma, ten, ten_phu, nhom, loai, dem_goi, don_vi_goi, han_dung_ngay, canh_bao_truoc_ngay, gia_ban_kg, xu_ly_mac_dinh, ma_can, ton_toi_thieu_kg, noi_de_sau_pha, truong_them, dang_dung, thu_tu')
     .order('loai').order('thu_tu').order('ten');
   if (error) throw error;
   return (data ?? []).map(r => ({
     ...r,
     gia_ban_kg: r.gia_ban_kg === null ? null : Number(r.gia_ban_kg),
     ton_toi_thieu_kg: r.ton_toi_thieu_kg === null ? null : Number(r.ton_toi_thieu_kg),
+    noi_de_sau_pha: r.noi_de_sau_pha === 'kho' || r.noi_de_sau_pha === 'quay' ? r.noi_de_sau_pha : null,
   })) as MatHang[];
 }
 
@@ -234,6 +239,8 @@ export async function luuMatHang(
       ? s(form, 'xu_ly_mac_dinh') : 'nhap_kho',
     ma_can: maCan || null,
     ton_toi_thieu_kg: tonMin,
+    // Sau pha để ở: chỉ 'quay' là khác mặc định; còn lại (kể cả chữ lạ) = kho lạnh.
+    noi_de_sau_pha: s(form, 'noi_de_sau_pha') === 'quay' ? 'quay' : s(form, 'noi_de_sau_pha') === 'kho' ? 'kho' : null,
     truong_them: giaTri,
     thu_tu: thuTu === null || Number.isNaN(thuTu) ? (cu?.thu_tu ?? 0) : thuTu,
     dang_dung: form.get('dang_dung') !== 'khong',
@@ -279,12 +286,12 @@ export async function luuMatHang(
 // cần database.
 
 /** Các cột dán được. Đây cũng là thứ tự cột khi KHÔNG có dòng tiêu đề. */
-export const COT_DAN = ['ten', 'loai', 'nhom', 'han_dung_ngay', 'gia_ban_kg', 'ma_can', 'ma', 'ton_toi_thieu_kg'] as const;
+export const COT_DAN = ['ten', 'loai', 'nhom', 'han_dung_ngay', 'gia_ban_kg', 'ma_can', 'ma', 'ton_toi_thieu_kg', 'noi_de_sau_pha'] as const;
 export type CotDan = typeof COT_DAN[number];
 
 export const TEN_COT_DAN: Record<CotDan, string> = {
   ten: 'Tên', loai: 'Loại', nhom: 'Nhóm', han_dung_ngay: 'Hạn dùng', gia_ban_kg: 'Giá bán/kg',
-  ma_can: 'Mã cân', ma: 'Mã', ton_toi_thieu_kg: 'Quầy tối thiểu',
+  ma_can: 'Mã cân', ma: 'Mã', ton_toi_thieu_kg: 'Quầy tối thiểu', noi_de_sau_pha: 'Sau pha để ở',
 };
 
 /** Một dòng ghi vào kho_mat_hang. Mọi dòng có ĐÚNG bộ cột này — một lần upsert cho cả danh sách. */
@@ -292,6 +299,7 @@ export interface DongGhiMatHang {
   ma: string; ten: string; loai: MatHang['loai']; nhom: string | null;
   han_dung_ngay: number | null; gia_ban_kg: number | null; ma_can: string | null;
   ton_toi_thieu_kg: number | null; dem_goi: boolean; don_vi_goi: string;
+  noi_de_sau_pha: 'kho' | 'quay' | null;
 }
 
 /** Một dòng đọc được từ ô dán. Ô trống thì KHÔNG có khóa đó — nghĩa là giữ giá trị cũ. */
@@ -300,6 +308,7 @@ export interface DongDan {
   so: number;
   ten?: string; loai?: MatHang['loai']; nhom?: string; han_dung_ngay?: number;
   gia_ban_kg?: number; ma_can?: string; ma?: string; ton_toi_thieu_kg?: number;
+  noi_de_sau_pha?: 'kho' | 'quay';
 }
 
 export interface SuaDan {
@@ -322,7 +331,9 @@ export interface XemTruocDan {
 /** Phần của mặt hàng đã có mà việc dán cần biết. */
 export type MatHangDaCo = Pick<MatHang,
   'id' | 'ma' | 'ten' | 'loai' | 'nhom' | 'han_dung_ngay' | 'gia_ban_kg' | 'ma_can'
-  | 'ton_toi_thieu_kg' | 'dem_goi' | 'don_vi_goi' | 'dang_dung'>;
+  | 'ton_toi_thieu_kg' | 'dem_goi' | 'don_vi_goi' | 'dang_dung'>
+  // Danh mục đọc trước 0033 (hoặc dữ liệu test cũ) không có cột này = kho lạnh.
+  & Partial<Pick<MatHang, 'noi_de_sau_pha'>>;
 
 const TOI_DA_DONG_DAN = 500;
 
@@ -332,6 +343,12 @@ export function chuanTenMatHang(ten: string): string {
 }
 
 const gonCach = (s: string) => s.replace(/\s+/g, ' ').trim();
+
+// Ô "Sau pha để ở" khi dán: kho lạnh / quầy (bỏ dấu, không phân biệt hoa thường).
+const NOI_DE_DAN: Record<string, 'kho' | 'quay'> = {
+  'kho': 'kho', 'kho lanh': 'kho', 'tu lanh': 'kho', 'tu dong': 'kho',
+  'quay': 'quay', 'quay ban': 'quay', 'ra quay': 'quay',
+};
 
 const LOAI_DAN: Record<string, MatHang['loai']> = {
   'tang': 'tang', 'tang nhap': 'tang',
@@ -350,6 +367,7 @@ const TIEU_DE_DAN: Record<string, CotDan> = Object.fromEntries(([
   ['ma_can', ['ma can', 'ma hang tren can', 'ma tren can', 'plu', 'ma plu']],
   ['ma', ['ma', 'ma hang', 'ma mat hang']],
   ['ton_toi_thieu_kg', ['quay toi thieu', 'ton toi thieu', 'toi thieu', 'ton quay toi thieu', 'muc toi thieu', 'dinh muc quay']],
+  ['noi_de_sau_pha', ['sau pha de o', 'sau pha de', 'noi de sau pha', 'de o', 'noi de']],
 ] as [CotDan, string[]][]).flatMap(([cot, ds]) => ds.map(t => [t, cot])));
 
 function cotCuaTieuDe(o: string): CotDan | undefined {
@@ -439,6 +457,12 @@ export function docCsvMatHang(noiDung: string): { dong: DongDan[]; loi: string[]
           else d.ma = m;
           break;
         }
+        case 'noi_de_sau_pha': {
+          const noi = NOI_DE_DAN[boDau(o).toLowerCase().replace(/\s+/g, ' ').trim()];
+          if (!noi) loiDong.push(`sau pha để ở "${o}" không hiểu (ghi kho lạnh hoặc quầy)`);
+          else d.noi_de_sau_pha = noi;
+          break;
+        }
         case 'ton_toi_thieu_kg': {
           const n = docKg(o);
           if (n === null || Number.isNaN(n)) loiDong.push(`quầy tối thiểu "${o}" phải là số kg, ví dụ 2,5`);
@@ -458,6 +482,7 @@ const dongCu = (m: MatHangDaCo): DongGhiMatHang => ({
   ma: m.ma, ten: m.ten, loai: m.loai, nhom: m.nhom,
   han_dung_ngay: m.han_dung_ngay, gia_ban_kg: m.gia_ban_kg, ma_can: m.ma_can,
   ton_toi_thieu_kg: m.ton_toi_thieu_kg, dem_goi: m.dem_goi, don_vi_goi: m.don_vi_goi,
+  noi_de_sau_pha: m.noi_de_sau_pha ?? null,
 });
 
 /** "THAN" đã có → "THAN-2", "THAN-3"… (vẫn trong 30 ký tự). */
@@ -532,6 +557,8 @@ export function xemTruocDanMatHang(daCo: MatHangDaCo[], noiDung: string): XemTru
       if (d.gia_ban_kg !== undefined) sau.gia_ban_kg = d.gia_ban_kg;
       if (d.ma_can !== undefined) sau.ma_can = d.ma_can;
       if (d.ton_toi_thieu_kg !== undefined) sau.ton_toi_thieu_kg = d.ton_toi_thieu_kg;
+      // Ghi "kho lạnh" cho món đang để trống (= kho lạnh) thì không tính là đổi.
+      if (d.noi_de_sau_pha !== undefined && d.noi_de_sau_pha !== (truoc.noi_de_sau_pha ?? 'kho')) sau.noi_de_sau_pha = d.noi_de_sau_pha;
       const cotDoi = COT_DAN.filter(c => c !== 'ma' && sau[c] !== truoc[c]);
       if (cotDoi.length) {
         kq.sua.push({ id: cu.id, ma: cu.ma, ten: cu.ten, dang_dung: cu.dang_dung, truoc, sau, cot_doi: cotDoi });
@@ -568,6 +595,7 @@ export function xemTruocDanMatHang(daCo: MatHangDaCo[], noiDung: string): XemTru
       ton_toi_thieu_kg: d.ton_toi_thieu_kg ?? null,
       dem_goi: loai !== 'phu_pham',
       don_vi_goi: loai === 'tang' ? 'tảng' : loai === 'phu_pham' ? 'khay' : 'gói',
+      noi_de_sau_pha: d.noi_de_sau_pha ?? null,
     });
   }
 

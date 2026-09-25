@@ -277,6 +277,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // Pha lóc
     'kho_luu_phien_pha', 'kho_xem_thu_phien_pha', 'kho_xem_thu_phien_pha_kg', 'kho_chot_phien_pha',
     'kho_mo_lai_phien_pha', 'kho_huy_phien_pha',
+    // Pha lóc bằng quét nhãn, quản lý bấm "Đã xem" thu hồi thấp (0033)
+    'kho_quet_phien_pha', 'kho_bo_quet_phien_pha', 'kho_xac_nhan_phien_pha',
     // Chuyển, xuất bếp, xuất khác, hủy
     'kho_tao_phieu_xuat', 'kho_duyet_phieu_huy', 'kho_tu_choi_phieu_huy',
     // Quầy: yêu cầu → mang ra → nhận (0032)
@@ -294,6 +296,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_bao_cao_xnt_v2',
     // Đối soát
     'kho_doi_soat_ton',
+    // Thẻ kho — không tiền (0033)
+    'kho_the_kho',
     // Số đỏ trên menu, thông báo, ngưỡng, chỉ số quản trị (0030)
     'kho_dem_viec', 'kho_thong_bao', 'kho_da_xem_thong_bao', 'kho_luu_nguong', 'kho_chi_so_quan_tri',
     // Hàm trigger — PostgREST không gọi được hàm trả về trigger
@@ -308,6 +312,7 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_luc_vn', 'kho_su_kien',
     'kho_ghi_phieu_xuat', 'kho_chuyen_tren_duong', 'kho_don_tren_duong',
     'kho_doc_ma_vach', 'kho_kiem_ke_tinh_quet', 'kho_kiem_ke_ds_quet',
+    'kho_vi_tri_sau_pha', 'kho_phien_pha_tinh_quet', 'kho_phien_pha_tra_quet', 'kho_thu_hoi_du_kien',
   ].sort();
 
   const { rows } = await db.query(`

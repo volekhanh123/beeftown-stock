@@ -82,10 +82,12 @@ const SQL_VIEC = readdirSync(THU_MUC_MIG).filter(f => f.endsWith('.sql')).sort()
   .map(f => doc(join(THU_MUC_MIG, f)))
   .find(s => s.includes('create or replace function kho_dem_viec(')
           && s.includes('create or replace function kho_su_kien(')) ?? '';
+// Bỏ chú thích "-- …" trước khi dò khóa: dòng "-- 0033" chen giữa dấu phẩy và
+// tên khóa thì khóa đó vẫn là khóa thật.
 const thanDemViec = SQL_VIEC.slice(
   SQL_VIEC.indexOf('create or replace function kho_dem_viec('),
   SQL_VIEC.indexOf('comment on function kho_dem_viec'),
-);
+).replace(/--[^\n]*/g, '');
 const KHOA_DEM = new Set(
   [...thanDemViec.matchAll(/(?:jsonb_build_object\(|,)\s*'([a-z_]+)'\s*,/g)].map(m => m[1]),
 );
@@ -538,6 +540,40 @@ await nhom('13 · QUẦY YÊU CẦU → MANG RA → BẤM NHẬN (0032)', async 
     /\.rpc\('kho_luu_nguong'[\s\S]{0,120}chuyen_quay_can_nhan/.test(quayLib)
     && !/from\('kho_cai_dat'\)\s*\.(update|upsert|insert)/.test(quayLib));
   ok('Màn Cài đặt có công tắc', /chuyen_quay_can_nhan/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'))));
+});
+
+// ===========================================================================
+await nhom('14 · THẺ KHO VÀ QUÉT ĐẦY ĐỦ (GĐ5c, 0033)', async () => {
+  const { linkTheKho, linkChungTu } = await import('../../web/src/lib/kho/the-kho.ts');
+  const MH = '00000000-0000-0000-0000-00000000000a';
+  ok('Có trang the-kho/[mat_hang_id].astro', existsSync(join(TRANG, 'noi-bo/kho/the-kho/[mat_hang_id].astro')));
+  const lk = linkTheKho(MH, { viTri: '', tu: '2026-09-01', den: '2026-09-25' });
+  ok('Link thẻ kho trỏ tới trang có thật', trangCua(lk)?.file.endsWith('the-kho/[mat_hang_id].astro'), lk);
+  ok('Mở thẻ kho thì ô "Tồn kho" sáng', dangO(MUC_KHO.find(m => m.ma === 'ton'), lk));
+  const hong = [];
+  for (const loai of ['phieu_nhap', 'phien_pha', 'phieu_xuat', 'kiem_ke']) {
+    const l = linkChungTu(loai, MH, () => true);
+    if (!l || !trangCua(l)) hong.push(`${loai}: ${l}`);
+  }
+  ok('Link chứng từ của thẻ kho trỏ tới trang có thật', hong.length === 0, hong.join(' | '));
+  ok('Thủ kho (không xem giá) mở phiếu nhập ở màn nhận hàng',
+    linkChungTu('phieu_nhap', MH, q => q !== 'xem_gia') === `/noi-bo/kho/nhan-hang/${MH}`);
+  ok('NV quầy (không nhận hàng, không pha lóc): phiếu nhập / phiên pha không có link',
+    linkChungTu('phieu_nhap', MH, q => q === 'xem') === null && linkChungTu('phien_pha', MH, q => q === 'xem') === null);
+
+  const theKho = doc(join(TRANG, 'noi-bo/kho/the-kho/[mat_hang_id].astro'));
+  ok('Thẻ kho: chặn quyền xem, gọi docTheKho, in được (InDau, NutIn, KyTen)',
+    /if \(!k\.duoc\('xem'\)\) return Astro\.redirect/.test(theKho) && /docTheKho\(/.test(theKho)
+    && /<InDau\b/.test(theKho) && /<NutIn\b/.test(theKho) && /<KyTen\b/.test(theKho));
+  ok('Thẻ kho: không có tiền', !/dinhDangTien|gia_von|gia_tri/.test(theKho));
+  ok('Tồn kho: mỗi món có nút "Thẻ kho"', /linkTheKho\(g\.mat_hang_id\)/.test(doc(join(TRANG, 'noi-bo/kho/ton.astro'))));
+  const quet = doc(join(TRANG, 'noi-bo/kho/quet.astro'));
+  ok('Quét: nút Thẻ kho, nút theo lô, Đếm quầy, Thêm vào phiên pha',
+    /linkTheKho\(mh\.id\)/.test(quet) && /viecVoiLo\(l\)/.test(quet) && /\/noi-bo\/kho\/quay\/dem/.test(quet)
+    && /themNhanVaoPhienPha\(/.test(quet) && /name="ma_gui"/.test(quet));
+  ok('Quét: không có tiền', !/dinhDangTien|docGiaTon/.test(quet));
+  const form = doc(join(WEB, 'src/components/kho/FormMatHang.astro'));
+  ok('Danh mục mặt hàng: ô "Sau pha để ở" (Kho lạnh / Quầy)', /name="noi_de_sau_pha"/.test(form) && /Sau pha để ở/.test(form));
 });
 
 process.exit(ketThuc('KHUNG GIAO DIỆN'));

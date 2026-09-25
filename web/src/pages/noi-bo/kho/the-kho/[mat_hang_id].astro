@@ -1,0 +1,247 @@
+---
+/**
+ * KHO — THẺ KHO CỦA MỘT MÓN (GĐ5c, migration 0033)
+ *
+ * Sổ của một món theo thời gian: dòng đầu "Tồn đầu kỳ", rồi từng lần nhập,
+ * pha lóc, chuyển, bán, hủy, kiểm kê… và cột tồn cộng dồn sau mỗi dòng. Dùng
+ * khi số trên sổ và số đếm lệch nhau: nhìn là biết hàng đi đâu, ngày nào.
+ *
+ * Link: /noi-bo/kho/the-kho/<mặt hàng>?vi_tri=<vị trí>&tu=YYYY-MM-DD&den=YYYY-MM-DD
+ *   · mặc định từ đầu tháng này tới hôm nay;
+ *   · không chọn nơi = cả chi nhánh (kể cả hàng đang mang ra quầy, chờ hủy) —
+ *     tồn cuối kỳ bằng tổng tồn của món ở trang Tồn kho;
+ *   · chuyển kho → quầy khi xem cả chi nhánh hiện đủ hai dòng (đi và đến).
+ *
+ * KHÔNG có tiền (kho_the_kho chỉ trả kg, gói) — thủ kho, NV quầy xem được.
+ * NV quầy chỉ xem được quầy, như trang Tồn kho.
+ *
+ * Bảng: khung rộng là bảng; khung hẹp mỗi dòng là một thẻ (container query,
+ * giống trang Tồn kho). In được như phiếu GĐ4b: đầu trang in + chỗ ký.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import KyTen from '../../../../components/kho/KyTen.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import { docViTri, type ViTri } from '../../../../lib/kho/danh-muc.ts';
+import {
+  docBoLocTheKho, docMatHangTheKho, docTheKho, khoangNhanh, linkChungTu, linkTheKho, tongKy,
+  type DongTheKho, type MatHangTheKho,
+} from '../../../../lib/kho/the-kho.ts';
+import {
+  cauLoiKho, dinhDangKg, dinhDangNgay, homNayVn, TEN_LOAI_MAT_HANG, TEN_LOAI_VI_TRI,
+} from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem')) return Astro.redirect('/noi-bo/kho', 302);
+
+const matHangId = String(Astro.params.mat_hang_id ?? '');
+const homNay = homNayVn();
+const boLocUrl = docBoLocTheKho(Astro.url.searchParams, homNay);
+const laQuay = k.nhanSu.vai_tro === 'nhan_vien_quay';
+
+let mh: MatHangTheKho | null = null;
+let viTri: ViTri[] = [];
+let dong: DongTheKho[] = [];
+let loiDoc = k.loiDoc;
+let khongCo = false;
+try {
+  if (k.chiNhanh) [mh, viTri] = await Promise.all([docMatHangTheKho(k.client, matHangId), docViTri(k.client, k.chiNhanh.id)]);
+  if (!mh) khongCo = true;
+} catch (e) {
+  loiDoc = cauLoiKho(e, 'Không đọc được mặt hàng.');
+}
+
+// NV quầy chỉ chọn được quầy; không chọn thì quầy đầu tiên.
+const quay = viTri.filter(v => v.loai === 'quay');
+const chonDuoc = laQuay ? quay : viTri.filter(v => v.dang_dung || v.id === boLocUrl.viTri);
+const viTriHopLe = chonDuoc.some(v => v.id === boLocUrl.viTri) ? boLocUrl.viTri : '';
+const boLoc = { ...boLocUrl, viTri: laQuay && !viTriHopLe ? (quay[0]?.id ?? '') : viTriHopLe };
+const chanQuay = laQuay && !boLoc.viTri;
+
+if (mh && k.chiNhanh && !loiDoc && !chanQuay) {
+  try {
+    dong = await docTheKho(k.client, k.chiNhanh.id, mh.id, boLoc);
+  } catch (e) {
+    loiDoc = cauLoiKho(e, 'Không đọc được thẻ kho.');
+  }
+}
+
+const tong = tongKy(dong);
+const coGoi = !!mh?.dem_goi;
+const dvg = mh?.don_vi_goi ?? 'gói';
+const tenNoi = boLoc.viTri ? (viTri.find(v => v.id === boLoc.viTri)?.ten ?? '') : 'Cả chi nhánh';
+const nhanh = khoangNhanh(homNay);
+const duocXem = (q: 'xem_gia' | 'nhap' | 'pha_loc' | 'xem') => k.duoc(q);
+// Tồn âm không nên có — nếu có thì tô đỏ để người xem để ý.
+const am = (n: number) => n < 0;
+const soKg = (n: number) => (n ? dinhDangKg(n) : '');
+const soGoi = (n: number) => (n ? String(n) : '');
+---
+<Kho k={k} tieuDe={mh ? `Thẻ kho · ${mh.ten}` : 'Thẻ kho'} huongDan="thu-kho" rong>
+  <InDau tieuDe="THẺ KHO" soPhieu={mh ? `${mh.ma} · ${mh.ten}` : null} chiNhanh={k.chiNhanh?.ten} />
+  <p class="kho-khong-in"><a href="/noi-bo/kho/ton">← Tồn kho</a></p>
+  <h1>Thẻ kho{mh ? `: ${mh.ten}` : ''}</h1>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  {khongCo && !loiDoc && (
+    <p class="nb-rong">Không tìm thấy mặt hàng này. <a href="/noi-bo/kho/ton">Về Tồn kho</a> rồi bấm "Thẻ kho" ở món cần xem.</p>
+  )}
+
+  {mh && (
+    <>
+      <p class="kho-phu the-dau">
+        {mh.ma} · {TEN_LOAI_MAT_HANG[mh.loai]} · {tenNoi} · từ {dinhDangNgay(boLoc.tu)} đến {dinhDangNgay(boLoc.den)}
+      </p>
+      {boLocUrl.loi && <div class="nb-bao luu-y kho-khong-in" role="status"><p>{boLocUrl.loi}</p></div>}
+
+      <form method="GET" class="nb-the the-loc kho-khong-in">
+        <label class="nb-o">
+          <span>Ở đâu</span>
+          <select name="vi_tri">
+            {!laQuay && <option value="" selected={!boLoc.viTri}>Cả chi nhánh</option>}
+            {chonDuoc.map(v => (
+              <option value={v.id} selected={v.id === boLoc.viTri}>{v.ten} ({TEN_LOAI_VI_TRI[v.loai] ?? v.loai})</option>
+            ))}
+          </select>
+        </label>
+        <label class="nb-o"><span>Từ ngày</span><input type="date" name="tu" value={boLoc.tu} max={homNay} /></label>
+        <label class="nb-o"><span>Đến ngày</span><input type="date" name="den" value={boLoc.den} max={homNay} /></label>
+        <button type="submit" class="nb-nut">Xem</button>
+      </form>
+      <nav class="kho-dh kho-khong-in" aria-label="Chọn nhanh khoảng ngày">
+        {nhanh.map(n => (
+          <a href={linkTheKho(mh!.id, { viTri: boLoc.viTri, tu: n.tu, den: n.den })}
+             aria-current={n.tu === boLoc.tu && n.den === boLoc.den ? 'page' : undefined}>{n.ten}</a>
+        ))}
+      </nav>
+
+      {chanQuay ? (
+        <p class="nb-rong">Chi nhánh chưa có quầy nào để xem.</p>
+      ) : !loiDoc && (
+        <>
+          <section class="the-tong" aria-label="Tổng trong kỳ">
+            <div><span>Tồn đầu kỳ</span><b>{dinhDangKg(tong.dau_kg)} kg</b>{coGoi && <small>{tong.dau_goi} {dvg}</small>}</div>
+            <div><span>Nhập trong kỳ</span><b>+{dinhDangKg(tong.nhap_kg)} kg</b>{coGoi && <small>+{tong.nhap_goi} {dvg}</small>}</div>
+            <div><span>Xuất trong kỳ</span><b>−{dinhDangKg(tong.xuat_kg)} kg</b>{coGoi && <small>−{tong.xuat_goi} {dvg}</small>}</div>
+            <div class:list={['cuoi', { am: am(tong.cuoi_kg) }]}><span>Tồn cuối kỳ</span><b>{dinhDangKg(tong.cuoi_kg)} kg</b>{coGoi && <small>{tong.cuoi_goi} {dvg}</small>}</div>
+          </section>
+
+          <NutIn chu="In thẻ kho" />
+
+          {tong.so_dong === 0 ? (
+            <p class="nb-rong">Trong khoảng ngày này món không có nhập, xuất nào.</p>
+          ) : (
+            <div class="the-khung">
+              <table class="kho-bang the-bang">
+                <thead><tr>
+                  <th>Ngày</th><th>Việc</th><th>Chứng từ</th><th>Ở đâu · lô</th>
+                  <th class="so">Nhập kg</th><th class="so">Xuất kg</th><th class="so">Tồn kg</th>
+                  {coGoi && <><th class="so">Nhập {dvg}</th><th class="so">Xuất {dvg}</th><th class="so">Tồn {dvg}</th></>}
+                  <th>Ghi chú</th>
+                </tr></thead>
+                <tbody>
+                  {dong.map(d => {
+                    if (d.loai === 'dau_ky') {
+                      return (
+                        <tr class="dau-ky">
+                          <td class="o-ngay" data-nhan="Ngày">{dinhDangNgay(d.ngay ?? boLoc.tu)}</td>
+                          <td class="o-viec" data-nhan="Việc"><strong>{d.ten_loai}</strong></td>
+                          <td class="o-ct"></td><td class="o-noi"></td><td class="so o-nhap"></td><td class="so o-xuat"></td>
+                          <td class:list={['so o-ton', { am: am(d.ton_kg) }]} data-nhan="Tồn kg"><b>{dinhDangKg(d.ton_kg)}</b></td>
+                          {coGoi && <><td class="so o-nhapg"></td><td class="so o-xuatg"></td>
+                            <td class="so o-tong" data-nhan={`Tồn ${dvg}`}><b>{d.ton_goi}</b></td></>}
+                          <td class="o-ghi"></td>
+                        </tr>
+                      );
+                    }
+                    const link = linkChungTu(d.chung_tu_loai, d.chung_tu_id, duocXem);
+                    return (
+                      <tr>
+                        <td class="o-ngay" data-nhan="Ngày">{dinhDangNgay(d.ngay)}</td>
+                        <td class="o-viec" data-nhan="Việc">{d.ten_loai}</td>
+                        <td class="o-ct" data-nhan="Chứng từ">
+                          {d.so_chung_tu ? (link ? <a href={link}>{d.so_chung_tu}</a> : d.so_chung_tu) : '—'}
+                        </td>
+                        <td class="o-noi" data-nhan="Ở đâu · lô">{d.vi_tri ?? '—'}{d.ma_lo && <span class="kho-phu">{' · '}{d.ma_lo}</span>}</td>
+                        <td class="so o-nhap" data-nhan="Nhập kg">{soKg(d.nhap_kg)}</td>
+                        <td class="so o-xuat" data-nhan="Xuất kg">{soKg(d.xuat_kg)}</td>
+                        <td class:list={['so o-ton', { am: am(d.ton_kg) }]} data-nhan="Tồn kg"><b>{dinhDangKg(d.ton_kg)}</b></td>
+                        {coGoi && <>
+                          <td class="so o-nhapg" data-nhan={`Nhập ${dvg}`}>{soGoi(d.nhap_goi)}</td>
+                          <td class="so o-xuatg" data-nhan={`Xuất ${dvg}`}>{soGoi(d.xuat_goi)}</td>
+                          <td class="so o-tong" data-nhan={`Tồn ${dvg}`}><b>{d.ton_goi}</b></td>
+                        </>}
+                        <td class="o-ghi" data-nhan="Ghi chú">{d.dien_giai ?? ''}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {!boLoc.viTri && tong.so_dong > 0 && (
+            <p class="kho-phu kho-khong-in">Đang xem cả chi nhánh: hàng chuyển từ kho ra quầy hiện hai dòng (chuyển đi, chuyển đến) — tồn không đổi.</p>
+          )}
+        </>
+      )}
+      <KyTen ten={['Người lập', 'Thủ kho', 'Quản lý']} />
+    </>
+  )}
+</Kho>
+
+<style>
+  .the-dau { margin-top: -.4rem; }
+  .the-loc { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: .6rem; align-items: end; }
+  .the-loc .nb-o { margin: 0; }
+  .the-loc select, .the-loc input { font-size: 16px; min-height: 48px; }
+  .the-loc .nb-nut { min-height: 48px; }
+  .kho-dh a { min-height: 48px; }
+
+  .the-tong { display: grid; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); gap: .6rem; margin: 1rem 0; }
+  .the-tong > div { background: #fff; border: 1px solid var(--vach); border-radius: 10px; padding: .7rem .9rem; }
+  .the-tong span { display: block; font-size: .78rem; color: var(--muc-nhat); }
+  .the-tong b { display: block; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+  .the-tong small { color: var(--muc-nhat); }
+  .the-tong .cuoi { border-width: 2px; }
+  .the-tong .am b, .the-bang td.am { color: var(--do); }
+
+  .the-khung { container-type: inline-size; overflow-x: auto; }
+  .the-bang tr.dau-ky td { background: var(--kem-sau); }
+  .the-bang td.o-ghi { min-width: 10rem; }
+
+  /* Khung hẹp: mỗi dòng sổ là một thẻ. Hàng 1: ngày · việc; hàng 2: nhập /
+     xuất / tồn; rồi chứng từ, nơi, ghi chú. Ô trống thì ẩn. */
+  @container (max-width: 44rem) {
+    .the-bang, .the-bang tbody { display: block; background: transparent; }
+    .the-bang thead { display: none; }
+    .the-bang tr {
+      display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem .75rem;
+      padding: .75rem .25rem; border-bottom: 1px solid var(--vach);
+    }
+    .the-bang td, .the-bang td.so { display: block; padding: 0; border: 0; text-align: left; white-space: normal; min-width: 0; }
+    .the-bang td:empty { display: none; }
+    .the-bang td[data-nhan]::before {
+      content: attr(data-nhan); display: block; margin-bottom: .1rem;
+      font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muc-nhat);
+    }
+    .the-bang td.o-ngay { order: 1; }
+    .the-bang td.o-viec { order: 2; grid-column: span 2; }
+    .the-bang td.o-nhap { order: 3; }
+    .the-bang td.o-xuat { order: 4; }
+    .the-bang td.o-ton { order: 5; }
+    .the-bang td.o-nhapg { order: 6; }
+    .the-bang td.o-xuatg { order: 7; }
+    .the-bang td.o-tong { order: 8; }
+    .the-bang td.o-ct { order: 9; }
+    .the-bang td.o-noi { order: 10; grid-column: span 2; }
+    .the-bang td.o-ghi { order: 11; grid-column: 1 / -1; min-width: 0; }
+  }
+
+  @media print {
+    .the-khung { overflow: visible; container-type: normal; }
+    .the-tong > div { border-color: #999; }
+  }
+</style>

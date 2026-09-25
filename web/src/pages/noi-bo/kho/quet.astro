@@ -8,24 +8,49 @@
  *
  * GET cho đơn giản: máy quét cầm tay gõ mã + Enter là trang tự mở kết quả.
  * Không hiện tiền — NV quầy dùng được.
+ *
+ * Quét đầy đủ (GĐ5c): tồn theo từng nơi, lô hạn gần trước, mỗi lô có nút làm
+ * nhanh như trang Tồn kho (mở sẵn đúng lô, đúng nơi). Nút theo vai:
+ *   · vận hành: Ra quầy (lô trong kho hạn gần nhất) · Đưa bếp · Báo hủy (lô
+ *     hết hạn nếu có);
+ *   · ai cũng có: Thẻ kho, Xem tồn kho; NV quầy có thêm Đếm quầy;
+ *   · thủ kho (pha_loc) có phiên pha lóc đang mở: "Thêm vào phiên pha" — POST
+ *     một lượt quét đúng nhãn này (kho_quet_phien_pha, ma_gui riêng mỗi lần
+ *     vẽ trang → bấm hai lần không cộng đôi), xong mở phiên pha đó.
  */
 import Kho from '../../../layouts/Kho.astro';
 import BaoKho from '../../../components/kho/BaoKho.astro';
 import QuetMa from '../../../components/kho/QuetMa.astro';
 import BieuTuong from '../../../components/kho/BieuTuong.astro';
-import { moTrangKho } from '../../../lib/kho/trang.ts';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../lib/kho/trang.ts';
 import { docCaiDat, docMatHang, type MatHang } from '../../../lib/kho/danh-muc.ts';
-import { docTon, type DongTon } from '../../../lib/kho/ton.ts';
+import { docTon, viecVoiLo, type DongTon } from '../../../lib/kho/ton.ts';
+import { docPhienPhaMo, linkTheKho, themNhanVaoPhienPha, type PhienPhaMo } from '../../../lib/kho/the-kho.ts';
 import { docMaVach, tachDanhSachMa, MAU_MAC_DINH } from '../../../lib/kho/ma-vach.ts';
-import { cauLoiKho, dinhDangKg, dinhDangNgay, TEN_LOAI_VI_TRI } from '../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, laUuid, TEN_LOAI_VI_TRI, type KetQua } from '../../../lib/kho/chung.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 
 const q = Astro.url.searchParams;
 const maNhap = tachDanhSachMa(String(q.get('ma') ?? q.get('ma_quet') ?? ''))[0] ?? '';
+const vanHanh = k.duoc('van_hanh');
+const laQuay = k.nhanSu.vai_tro === 'nhan_vien_quay';
+
+// "Thêm vào phiên pha": POST về chính trang này (giữ ?ma=), thành công thì mở phiên.
+let bao: KetQua | null = k.bao;
+const form = await docFormGui(Astro);
+if (form && k.duoc('pha_loc')) {
+  const phienId = String(form.get('phien_id') ?? '');
+  const kq = String(form.get('viec') ?? '') === 'them_pha'
+    ? await themNhanVaoPhienPha(k.client, phienId, String(form.get('ma_gui') ?? ''), String(form.get('ma') ?? ''))
+    : { ok: false, cau: 'Việc không hợp lệ.' };
+  if (kq.ok && laUuid(phienId)) return chuyenHuong(Astro, `/noi-bo/kho/pha-loc/${phienId}`, kq);
+  bao = kq;
+}
 
 let loiDoc = k.loiDoc;
+let phienMo: PhienPhaMo[] = [];
 let loiQuet: string | null = null;
 let mh: MatHang | null = null;
 let soKgNhan: number | null = null;
@@ -40,7 +65,16 @@ if (maNhap && k.chiNhanh && k.daKhoiTao) {
       mh = ds.find(m => m.ma_can === kq.maCan && m.dang_dung) ?? null;
       soKgNhan = kq.soKg;
       if (!mh) loiQuet = `Nhãn hợp lệ nhưng mã hàng ${kq.maCan} chưa gắn với món nào. Để riêng gói này và báo quản lý.`;
-      else ton = (await docTon(k.client, k.chiNhanh.id)).filter(t => t.mat_hang_id === mh!.id && t.loai_vi_tri !== 'cho_huy');
+      else {
+        const coPha = k.duoc('pha_loc') && mh.loai !== 'tang';
+        const [tonDs, phien] = await Promise.all([
+          docTon(k.client, k.chiNhanh.id),
+          coPha ? docPhienPhaMo(k.client, k.chiNhanh.id) : Promise.resolve([] as PhienPhaMo[]),
+        ]);
+        ton = tonDs.filter(t => t.mat_hang_id === mh!.id && t.loai_vi_tri !== 'cho_huy');
+        // Phiên đang pha chính món này (tảng / phần cắt lớn) thì không thêm được — database cũng từ chối.
+        phienMo = phien.filter(p => p.mat_hang_vao_id !== mh!.id);
+      }
     }
   } catch (e) {
     loiDoc = cauLoiKho(e, 'Không đọc được tồn kho.');
@@ -59,10 +93,21 @@ const tongGoi = ton.reduce((s, t) => s + t.so_goi, 0);
 const tongKg = ton.reduce((s, t) => s + t.so_kg, 0);
 const loGanNhat = [...ton].filter(t => t.tinh_trang_han !== 'het_han').sort((a, b) => a.han_dung.localeCompare(b.han_dung))[0];
 const TEN_HAN: Record<string, string> = { het_han: 'Hết hạn', sap_het: 'Sắp hết hạn', con_han: 'Còn hạn' };
+
+// Nút lớn mở sẵn đúng lô: Ra quầy lấy lô trong kho lạnh hạn gần nhất; Báo hủy
+// lấy lô đã hết hạn (nếu có). Không có lô hợp thì mở phiếu theo món.
+const linkLo = (loai: string, t: DongTon | undefined) => t
+  ? `/noi-bo/kho/xuat/moi?loai=${loai}&tu=${encodeURIComponent(t.vi_tri_id)}&lo=${encodeURIComponent(t.lo_id)}`
+  : `/noi-bo/kho/xuat/moi?loai=${loai}&mh=${encodeURIComponent(mh?.id ?? '')}`;
+const loKhoGan = ton.find(t => t.loai_vi_tri === 'kho' && t.tinh_trang_han !== 'het_han');
+const loBepGan = ton.find(t => (t.loai_vi_tri === 'kho' || t.loai_vi_tri === 'quay') && t.tinh_trang_han !== 'het_han');
+const loHetHan = ton.find(t => (t.loai_vi_tri === 'kho' || t.loai_vi_tri === 'quay') && t.tinh_trang_han === 'het_han');
+const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as const;
+const maGui = crypto.randomUUID();
 ---
 <Kho k={k} tieuDe="Quét nhãn" huongDan="quet-nhan">
   <h1>Quét nhãn</h1>
-  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+  <BaoKho bao={bao} loiDoc={loiDoc} />
 
   <form method="GET" class="nb-the">
     <QuetMa nhan="Xem món này" goiY="Quét một nhãn cân bằng máy quét, hoặc bấm Quét bằng camera." tuFocus />
@@ -92,22 +137,62 @@ const TEN_HAN: Record<string, string> = { het_han: 'Hết hạn', sap_het: 'Sắ
                 <span class={`kho-han ${l.tinh_trang_han}`}>{TEN_HAN[l.tinh_trang_han]}</span>
                 <span>Hạn {dinhDangNgay(l.han_dung)} · đóng {dinhDangNgay(l.ngay_dong_goi)}</span>
                 <b>{l.dem_goi ? `${l.so_goi} ${l.don_vi_goi} · ` : ''}{dinhDangKg(l.so_kg)}</b>
+                {vanHanh && viecVoiLo(l).length > 0 && (
+                  <div class="quet-lo-nut">
+                    {viecVoiLo(l).map(v => (
+                      <a class="nb-nut phu" href={v.link} aria-label={`${v.ten} lô ${l.ma_lo} ở ${l.ten_vi_tri}`}>
+                        <BieuTuong ten={BIEU_TUONG_VIEC[v.ma]} co={18} />{v.ten}
+                      </a>
+                    ))}
+                  </div>
+                )}
               </li>
             ))}
           </ul>
         </div>
       ))}
 
+      {phienMo.length > 0 && (
+        <div class="quet-pha">
+          <h3>Gói này vừa pha xong?</h3>
+          {phienMo.map(p => (
+            <form method="POST">
+              <input type="hidden" name="viec" value="them_pha" />
+              <input type="hidden" name="phien_id" value={p.id} />
+              <input type="hidden" name="ma_gui" value={maGui} />
+              <input type="hidden" name="ma" value={maNhap} />
+              <button type="submit" class="nb-nut"><BieuTuong ten="dao" co={20} />Thêm vào phiên pha {p.so_phieu} ({p.ten_mat_hang_vao})</button>
+            </form>
+          ))}
+        </div>
+      )}
+
       <div class="kho-nhanh-luoi" style="margin-top:1rem">
-        {k.duoc('van_hanh') && (
+        {vanHanh && (
           <>
-            <a class="nb-nut" href={`/noi-bo/kho/xuat/moi?loai=chuyen&mh=${mh.id}`}><BieuTuong ten="chuyen" co={20} />Mang ra quầy</a>
-            <a class="nb-nut phu" href={`/noi-bo/kho/xuat/moi?loai=xuat_bep&mh=${mh.id}`}><BieuTuong ten="bep" co={20} />Đưa bếp</a>
-            <a class="nb-nut phu" href={`/noi-bo/kho/xuat/moi?loai=huy&mh=${mh.id}`}><BieuTuong ten="huy" co={20} />Báo hủy</a>
+            {loKhoGan && <a class="nb-nut" href={linkLo('chuyen', loKhoGan)}><BieuTuong ten="chuyen" co={20} />Ra quầy</a>}
+            <a class="nb-nut phu" href={linkLo('xuat_bep', loBepGan)}><BieuTuong ten="bep" co={20} />Đưa bếp</a>
+            <a class="nb-nut phu" href={linkLo('huy', loHetHan)}><BieuTuong ten="huy" co={20} />Báo hủy</a>
           </>
         )}
+        {laQuay && vanHanh && (
+          <a class="nb-nut phu" href="/noi-bo/kho/quay/dem"><BieuTuong ten="kiem_ke" co={20} />Đếm quầy</a>
+        )}
+        <a class="nb-nut phu" href={linkTheKho(mh.id)}><BieuTuong ten="bao_cao" co={20} />Thẻ kho</a>
         <a class="nb-nut phu" href={`/noi-bo/kho/ton?q=${encodeURIComponent(mh.ma)}`}><BieuTuong ten="ton" co={20} />Xem tồn kho</a>
       </div>
     </section>
   )}
 </Kho>
+
+<style>
+  .quet-lo-nut { grid-column: 1 / -1; display: flex; gap: .4rem; flex-wrap: wrap; }
+  .quet-lo-nut .nb-nut {
+    min-height: 48px; padding: .45rem .75rem; font-size: .85rem; gap: .35rem;
+    display: inline-flex; align-items: center; flex: 1 1 7rem; justify-content: center;
+  }
+  .quet-pha { margin-top: 1rem; }
+  .quet-pha h3 { font-size: .95rem; margin: 0 0 .4rem; }
+  .quet-pha form + form { margin-top: .4rem; }
+  .quet-pha .nb-nut { width: 100%; min-height: 48px; gap: .5rem; justify-content: flex-start; }
+</style>

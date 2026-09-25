@@ -134,6 +134,8 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/kho/thong-bao.ts',
   // Quầy yêu cầu → mang ra → bấm nhận (GĐ5b, 0032) — không đọc cột tiền nào.
   'web/src/lib/kho/quay.ts',
+  // Thẻ kho, quét đầy đủ (GĐ5c, 0033) — kho_the_kho chỉ kg / gói, không tiền.
+  'web/src/lib/kho/the-kho.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
 ];

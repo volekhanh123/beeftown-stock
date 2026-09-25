@@ -91,7 +91,7 @@ migration.
 | `/noi-bo/kho/duyet` | Hộp duyệt chung (quyền `duyet` hoặc `duyet_nhap`): phiếu nhập (điền giá rồi duyệt), báo hủy, kiểm kê — cũ nhất lên trước. Kế toán (`duyet_nhap`) chỉ thấy phiếu nhập. Duyệt xong quay về đây |
 | `/noi-bo/kho/nhan-hang` | Nhận hàng 3 bước của thủ kho (quyền `nhap`, **chỉ kg**, migration 0031): `moi` chụp hóa đơn + chọn người giao → `<id>` cân từng món → `<id>?buoc=gui` xem lại, gửi. Người có `nhap` mà không `xem_gia` mở `/noi-bo/kho/nhap/*` bị chuyển sang đây |
 | `/noi-bo/kho/nhap/<id>` | Vai xem giá. Người có `duyet_nhap` mở phiếu chờ duyệt → màn **điền giá**: ảnh hóa đơn lớn, ô đơn giá từng dòng, chip so với lần nhập trước (`kho_so_sanh_gia_nhap`, đỏ khi vượt `nguong_gia_mua_pt`), [Lưu giá] [Duyệt]. `?soan=1`: quản lý sửa cả dòng hàng |
-| `/noi-bo/kho/quet` | Quét một nhãn → món gì, còn bao nhiêu ở đâu, lô nào hạn gần, nút làm tiếp |
+| `/noi-bo/kho/quet` | Quét một nhãn → món gì, còn bao nhiêu ở đâu, lô nào hạn gần, nút làm tiếp (theo vai, xem 3d) |
 | `/noi-bo/kho/quy-trinh` | Các bước của từng nghiệp vụ (`lib/kho/quy-trinh.ts`), bước đang có việc hiện số đỏ |
 | `/noi-bo/kho/khac` | Mọi ô menu cho màn nhỏ, các màn CRM, đăng xuất |
 | `/noi-bo/kho/huong-dan` | Hướng dẫn trong app (nút "?" trỏ tới các mục ở đây) |
@@ -104,7 +104,8 @@ Link dùng chung giữa các trang (trang nhận phải đọc được các tha
 - `/noi-bo/kho/xuat/moi?loai=chuyen|xuat_bep|huy|xuat_khac&tu=<vị trí>&lo=<lô>&mh=<mặt hàng>` — mở sẵn phiếu
 - `/noi-bo/kho/ton?han=het_han|sap_het` (hai lọc **riêng**, không gộp) `&duoi_muc=1&vi_tri=quay&q=…`
 - `/noi-bo/kho/nhap?loc=nhap|cho_duyet|tu_choi` (vai xem giá), `/noi-bo/kho/nhan-hang?loc=nhap|cho_duyet|tu_choi|da_duyet`
-  (thủ kho), `/noi-bo/kho/nhan-hang/moi?loai=ton_dau`, `/noi-bo/kho/pha-loc?loc=nhap`
+  (thủ kho), `/noi-bo/kho/nhan-hang/moi?loai=ton_dau`, `/noi-bo/kho/pha-loc?loc=nhap`,
+  `/noi-bo/kho/pha-loc/<id>?buoc=ket-qua|xong&ma=<mã>`, `/noi-bo/kho/the-kho/<mặt hàng>?vi_tri=&tu=&den=`
 - `/noi-bo/kho/cong-no?loc=qua_han|den_han|chua_doi_chieu`
 
 ## 3b. Danh sách phiếu, trang in (GĐ4b)
@@ -161,6 +162,47 @@ bỏ lượt gần nhất của mình, `bot_mot` −1 gói, `xoa_mon`). "Quét x
 
 **Báo cáo.** Xuất – nhập – tồn gọi `kho_bao_cao_xnt_v2` (thêm cột xuất khác sau xuất bếp, hao hụt
 sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
+
+## 3d. Thẻ kho · Quét đầy đủ · Sau pha để ở (GĐ5c, migration 0033)
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/the-kho/<mặt hàng>?vi_tri=&tu=&den=` | Mọi vai `xem` (NV quầy chỉ chọn quầy) | Sổ của một món: dòng "Tồn đầu kỳ", rồi từng lần nhập / xuất, cột tồn cộng dồn (kg, gói). Mặc định tháng này; nút nhanh Tháng này / Tháng trước / 7 ngày. Số chứng từ bấm được khi người xem mở được trang đó (`linkChungTu`). Khung hẹp mỗi dòng một thẻ; in được (InDau + KyTen) |
+| `/noi-bo/kho/quet` | Mọi vai `xem` | Thêm: nút theo từng lô (`viecVoiLo`), Ra quầy mở sẵn lô kho hạn gần nhất, Báo hủy mở sẵn lô hết hạn, Thẻ kho, Đếm quầy (NV quầy), "Thêm vào phiên pha <số>" (vai `pha_loc`, có phiên nháp, món không phải tảng) — POST một lượt `kho_quet_phien_pha` với `ma_gui` riêng rồi mở phiên |
+| `/noi-bo/kho/cai-dat/mat-hang` | `danh_muc` | Ô "Sau pha để ở: Kho lạnh / Quầy" (`kho_mat_hang.noi_de_sau_pha`, trống = kho lạnh). Dán Excel có cột "Sau pha để ở" (cột thứ 9 khi không có tiêu đề) |
+
+- `kho_the_kho` **không có tiền**. Không chọn nơi = cả chi nhánh, kể cả hàng đang mang ra quầy và
+  chờ hủy → tồn cuối kỳ = tổng tồn của món ở Tồn kho; chuyển kho → quầy hiện hai dòng (đi, đến).
+- Nút "Thẻ kho" có ở từng món trang Tồn kho và ở màn Quét. Ô menu "Tồn kho" sáng khi đang ở thẻ kho
+  (`khop` trong `dieu-huong.ts`).
+- Hàm thuần (`docBoLocTheKho`, `linkTheKho`, `khoangNhanh`, `linkChungTu`, `tongKy`) ở `lib/kho/the-kho.ts`,
+  test trong `test-kho-ma-vach.mjs` nhóm 15 và `test-kho-giao-dien.mjs` nhóm 14.
+
+## 3e. Pha lóc 3 bước bằng quét nhãn · báo thu hồi thấp (GĐ5c, migration 0033)
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/pha-loc/moi` | `pha_loc` | Bước 1: mỗi loại tảng đang có (trừ chờ hủy, đang mang ra quầy) là một nút lớn kèm kg, số tảng, số lô. Bấm = tạo phiên nháp ngay (`ma_gui` riêng mỗi nút); tảng chỉ một lô thì điền sẵn lô đó, loại tảng có đúng một công thức thì gắn luôn. Phiên nháp đang dở hiện lên trước |
+| `/noi-bo/kho/pha-loc/<id>` | `pha_loc` (nháp) | Bước 2 "Cân & quét": ô quét trên cùng (`QuetMa tuFocus`), mỗi lần gửi là một lượt `kho_quet_phien_pha` (như đếm quầy: cùng `ma_gui` không cộng đôi, lỗi mạng giữ mã trong ô). Danh sách món đã quét (gói, kg, để ở đâu) có −1, "Bỏ lượt vừa quét", "Bỏ hẳn một món" (`kho_bo_quet_phien_pha`). Phụ phẩm, mỡ bỏ gõ kg (điền sẵn theo công thức); lô tảng, ngày, ghi chú, công thức nằm trong mục "Thêm". `?ma=<mã>` điền sẵn ô quét |
+| `/noi-bo/kho/pha-loc/<id>?buoc=ket-qua` | `pha_loc` | Bước 3: 4 số lớn — thu hồi, dự kiến (theo công thức / trung bình 30 ngày), trung bình 30 ngày, hao hụt. **Nút Chốt chỉ ở đây.** Thấp quá ngưỡng thì báo trước khi chốt (chốt vẫn được). Bảng giá vốn chỉ với `xem_gia` |
+| `/noi-bo/kho/pha-loc/<id>?buoc=xong` | `pha_loc` | Sau chốt: "Chuyển N gói ra quầy ngay" — mỗi lô mới còn ở kho lạnh một nút `/noi-bo/kho/xuat/moi?loai=chuyen&tu=…&lo=…` |
+
+- **Dòng quét** (`kho_phien_pha_ra.tu_quet`): mỗi món một dòng, gói = số nhãn (món không đếm gói thì 0),
+  kg = tổng kg trên nhãn, nơi để = `kho_mat_hang.noi_de_sau_pha` (trống = kho lạnh; chi nhánh không có
+  quầy thì về kho lạnh — `kho_vi_tri_sau_pha`, bản web `viTriSauPha`). `kho_luu_phien_pha` chỉ thay các
+  dòng **gõ tay**; gõ tay một món đã quét bị từ chối, và quét nhãn của món đã gõ tay cũng bị từ chối.
+  Ô "Để ở" của dòng gõ tay bỏ trống = theo nơi để của món.
+- Nhãn không cộng: nhãn không có kg, nhãn của chính tảng đem pha, món đã gõ tay, mã chưa gán món — trả
+  trong `loi`, các nhãn khác vẫn cộng. Màn Quét có nút "Thêm vào phiên pha <số>" (vai `pha_loc`) — một
+  lượt một nhãn rồi mở phiên, câu báo hiện qua `k.bao`.
+- **Thu hồi thấp** (không duyệt, chỉ báo): lúc chốt, dự kiến = tổng `ty_le_du_kien` của công thức, không
+  có thì trung bình 30 ngày của loại tảng; thu hồi < dự kiến − `nguong_thu_hoi_diem` → `thu_hoi_thap`.
+  Sự kiện `thu_hoi_thap` (quản lý, chủ — `duyet`; số đỏ ở ô Pha lóc và quy trình) tới khi quản lý bấm
+  **"Đã xem"** trên phiên (`kho_xac_nhan_phien_pha`, có ghi chú). Mở lại / chốt lại thì xóa cờ và
+  trạng thái đã xem. Luật so ở web (`soSanhThuHoi`) phải khớp thân `kho_chot_phien_pha` (test so thẳng).
+- Thủ kho chỉ thấy kg, gói, %: bước 2, 3 và màn xem đọc `kho_xem_thu_phien_pha_kg`; hàm có tiền
+  `kho_xem_thu_phien_pha` chỉ gọi khi `xem_gia`. Hàm thuần của 3 bước ở `lib/kho/pha-loc.ts`, test ở
+  `test-kho-pha-web.mjs`; database ở `test-kho-pha-loc-quet.mjs`.
 
 ## 4. Cài như app (PWA)
 

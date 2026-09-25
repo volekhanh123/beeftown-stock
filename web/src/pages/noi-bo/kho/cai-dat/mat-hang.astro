@@ -10,6 +10,9 @@
  *   3. Thêm / sửa từng mặt hàng
  * Sửa một mặt hàng: bấm "Sửa" → form hiện ở đầu trang (?sua=<id>), để trang
  * danh sách không phải chở cả trăm form.
+ *
+ * "Sau pha để ở" (GĐ5c, 0033): gói quét nhãn lúc pha lóc tự vào kho lạnh hay
+ * quầy theo món. Để trống = kho lạnh. Dán Excel có cột "Sau pha để ở".
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -21,7 +24,7 @@ import {
   type MatHang, type GiaTriFormMatHang, type XemTruocDan, type DongGhiMatHang, type CotDan,
 } from '../../../../lib/kho/danh-muc.ts';
 import {
-  boDau, cauLoiKho, dinhDangKg, dinhDangTien, TEN_LOAI_MAT_HANG, TEN_XU_LY, type KetQua,
+  boDau, cauLoiKho, dinhDangKg, dinhDangTien, TEN_LOAI_MAT_HANG, TEN_NOI_DE_SAU_PHA, TEN_XU_LY, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { docTruongThem, type DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
 
@@ -78,6 +81,7 @@ const coThayDoi = !!xemTruoc && (xemTruoc.them.length > 0 || xemTruoc.sua.length
 const choXacNhan = !!xemTruoc && coThayDoi && xemTruoc.loi.length === 0;
 /** Giá trị một ô trong bảng xem trước. */
 const hienO = (c: CotDan, v: DongGhiMatHang[CotDan]): string => {
+  if (c === 'noi_de_sau_pha') return TEN_NOI_DE_SAU_PHA[String(v ?? 'kho')] ?? String(v);
   if (v === null || v === '') return 'trống';
   if (c === 'gia_ban_kg') return dinhDangTien(v as number);
   if (c === 'han_dung_ngay') return `${v} ngày`;
@@ -85,7 +89,7 @@ const hienO = (c: CotDan, v: DongGhiMatHang[CotDan]): string => {
   if (c === 'loai') return TEN_LOAI_MAT_HANG[v as string] ?? String(v);
   return String(v);
 };
-const COT_MOI: CotDan[] = ['nhom', 'han_dung_ngay', 'gia_ban_kg', 'ma_can', 'ton_toi_thieu_kg'];
+const COT_MOI: CotDan[] = ['nhom', 'han_dung_ngay', 'gia_ban_kg', 'ma_can', 'ton_toi_thieu_kg', 'noi_de_sau_pha'];
 
 const tuDb = (m: MatHang): GiaTriFormMatHang => ({
   id: m.id, ma: m.ma, ten: m.ten, ten_phu: m.ten_phu ?? '', nhom: m.nhom ?? '', loai: m.loai,
@@ -94,6 +98,7 @@ const tuDb = (m: MatHang): GiaTriFormMatHang => ({
   gia_ban_kg: m.gia_ban_kg !== null ? m.gia_ban_kg.toLocaleString('vi-VN') : '',
   xu_ly_mac_dinh: m.xu_ly_mac_dinh, ma_can: m.ma_can ?? '',
   ton_toi_thieu_kg: m.ton_toi_thieu_kg !== null ? String(m.ton_toi_thieu_kg).replace('.', ',') : '',
+  noi_de_sau_pha: m.noi_de_sau_pha === 'quay' ? 'quay' : '',
   thu_tu: String(m.thu_tu), dang_dung: m.dang_dung, truong_them: m.truong_them ?? {},
   gia_tri_thu_hoi_kg: thuHoi.get(m.id)?.toLocaleString('vi-VN') ?? '',
 });
@@ -104,14 +109,15 @@ const tuForm = (f: FormData, id?: string): GiaTriFormMatHang => {
     id, ma: g('ma'), ten: g('ten'), ten_phu: g('ten_phu'), nhom: g('nhom'), loai: g('loai') || 'phan_cat',
     dem_goi: g('dem_goi') !== 'khong', don_vi_goi: g('don_vi_goi'), han_dung_ngay: g('han_dung_ngay'),
     canh_bao_truoc_ngay: g('canh_bao_truoc_ngay'), gia_ban_kg: g('gia_ban_kg'), xu_ly_mac_dinh: g('xu_ly_mac_dinh'),
-    ma_can: g('ma_can'), ton_toi_thieu_kg: g('ton_toi_thieu_kg'), thu_tu: g('thu_tu'),
+    ma_can: g('ma_can'), ton_toi_thieu_kg: g('ton_toi_thieu_kg'), noi_de_sau_pha: g('noi_de_sau_pha') === 'quay' ? 'quay' : '',
+    thu_tu: g('thu_tu'),
     dang_dung: g('dang_dung') !== 'khong', truong_them: tt, gia_tri_thu_hoi_kg: g('gia_tri_thu_hoi_kg'),
   };
 };
 const TRONG: GiaTriFormMatHang = {
   ma: '', ten: '', ten_phu: '', nhom: '', loai: locLoai || 'phan_cat', dem_goi: true, don_vi_goi: '',
   han_dung_ngay: '', canh_bao_truoc_ngay: '', gia_ban_kg: '', xu_ly_mac_dinh: 'nhap_kho', ma_can: '',
-  ton_toi_thieu_kg: '', thu_tu: '', dang_dung: true, truong_them: {}, gia_tri_thu_hoi_kg: '',
+  ton_toi_thieu_kg: '', noi_de_sau_pha: '', thu_tu: '', dang_dung: true, truong_them: {}, gia_tri_thu_hoi_kg: '',
 };
 
 const idLoi = nhapLai ? String(nhapLai.get('id') ?? '') : '';
@@ -242,11 +248,12 @@ const coXemGia = k.duoc('xem_gia');
       <div class="nb-dan" style="font-size:.88rem">
         <p>Trong Excel chọn các ô (nên chọn cả <strong>dòng tiêu đề</strong>), sao chép rồi dán vào đây.
           Có dòng tiêu đề thì các cột xếp thứ tự nào cũng được. Tiêu đề hiểu được:{' '}
-          <strong>Tên · Loại · Nhóm · Hạn dùng · Giá bán · Mã cân · Mã · Quầy tối thiểu kg</strong>.
+          <strong>Tên · Loại · Nhóm · Hạn dùng · Giá bán · Mã cân · Mã · Quầy tối thiểu kg · Sau pha để ở</strong>.
           Không có dòng tiêu đề thì cột phải theo đúng thứ tự đó.</p>
         <p>Mặt hàng đã có (cùng Mã, hoặc cùng Tên khi không ghi Mã) thì được cập nhật.{' '}
           <strong>Ô để trống = giữ nguyên giá trị cũ.</strong> Tên chưa có thì thêm mặt hàng mới.
-          Loại ghi <em>tảng</em>, <em>phần cắt</em> hoặc <em>phụ phẩm</em>.</p>
+          Loại ghi <em>tảng</em>, <em>phần cắt</em> hoặc <em>phụ phẩm</em>.
+          Sau pha để ở ghi <em>kho lạnh</em> hoặc <em>quầy</em>.</p>
         <p>Bấm "Xem trước" để thấy những gì sẽ đổi — chưa lưu gì cho tới khi bấm "Xác nhận nhập".
           Muốn xóa hẳn một giá trị (ví dụ bỏ mã cân) thì bấm "Sửa" ở từng mặt hàng.</p>
       </div>
@@ -282,7 +289,7 @@ const coXemGia = k.duoc('xem_gia');
               <td class="so">{m.gia_ban_kg !== null ? dinhDangTien(m.gia_ban_kg) : (m.loai === 'phan_cat' ? <span class="kho-han sap_het">chưa có</span> : '—')}</td>
               <td class="so">{m.han_dung_ngay ? `${m.han_dung_ngay} ngày` : '—'}</td>
               <td>{m.ma_can ?? '—'}</td>
-              <td>{TEN_XU_LY[m.xu_ly_mac_dinh]}{coXemGia && m.loai === 'phu_pham' && thuHoi.get(m.id) ? <><br /><span class="kho-phu">{dinhDangTien(thuHoi.get(m.id))}/kg</span></> : ''}</td>
+              <td>{TEN_XU_LY[m.xu_ly_mac_dinh]}{m.loai !== 'tang' && m.noi_de_sau_pha === 'quay' ? <><br /><span class="kho-phu">sau pha để ở quầy</span></> : ''}{coXemGia && m.loai === 'phu_pham' && thuHoi.get(m.id) ? <><br /><span class="kho-phu">{dinhDangTien(thuHoi.get(m.id))}/kg</span></> : ''}</td>
               <td><a href={`/noi-bo/kho/cai-dat/mat-hang?sua=${m.id}${locLoai ? `&loai=${locLoai}` : ''}`}>Sửa</a></td>
             </tr>
           ))}

@@ -286,6 +286,13 @@ export const TEN_LOAI_SO_CAI: Record<string, string> = {
   dao_nguoc: 'Đảo ngược',
   tra_ncc: 'Trả nhà cung cấp',
   xuat_khac: 'Xuất khác',
+  dau_ky: 'Tồn đầu kỳ',   // dòng đầu của thẻ kho (kho_the_kho, 0033) — không phải loại sổ
+};
+
+/** Sau pha lóc, gói quét nhãn của món để ở đâu (kho_mat_hang.noi_de_sau_pha, 0033). null = kho lạnh. */
+export const TEN_NOI_DE_SAU_PHA: Record<string, string> = {
+  kho: 'Kho lạnh',
+  quay: 'Quầy',
 };
 
 /**

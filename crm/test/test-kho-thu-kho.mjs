@@ -46,13 +46,17 @@ const KHONG_PHAI_TIEN = new Set([
   'kho_cai_dat.nguong_gia_mua_pt',    // ngưỡng %, không phải tiền
 ]);
 
+// Khóa JSON khớp mẫu nhưng là CHỮ: "dien_giai" (diễn giải dòng thẻ kho, 0033)
+// có "giai" chứa "gia". Thêm vào đây phải là quyết định có ý thức.
+const KHOA_CHU = new Set(['dien_giai']);
+
 /** Mọi khóa tiền trong một giá trị JSON, quét đệ quy. Trả danh sách "đường.dẫn". */
 function khoaTien(v, duong = '') {
   const ra = [];
   if (Array.isArray(v)) v.forEach((x, i) => ra.push(...khoaTien(x, `${duong}[${i}]`)));
   else if (v && typeof v === 'object') {
     for (const [k, x] of Object.entries(v)) {
-      if (LA_TIEN.test(k)) ra.push(`${duong}.${k}`);
+      if (LA_TIEN.test(k) && !KHOA_CHU.has(k)) ra.push(`${duong}.${k}`);
       ra.push(...khoaTien(x, `${duong}.${k}`));
     }
   }
@@ -537,6 +541,59 @@ await nhom('7b · QUẦY (0032): YÊU CẦU, MANG RA, NHẬN THIẾU, ĐẾM QU�
 });
 
 // ===========================================================================
+// 0033 (GĐ5c): pha lóc bằng quét nhãn, báo thu hồi thấp, thẻ kho — để các bảng
+// mới có dữ liệu cho nhóm 8 và soát kết quả các hàm mới thủ kho / NV quầy gọi.
+let phienQuet;
+const ketQuaPha = [];
+await nhom('7c · PHA LÓC QUÉT NHÃN, THẺ KHO (0033) — KHÔNG TIỀN', async () => {
+  const ghi = r => { if (r.rows) ketQuaPha.push(r.rows); return r; };
+  const tkp = (sql, p) => tk(sql, p).then(ghi);
+  await duoi(UID.qlA, `update kho_mat_hang set noi_de_sau_pha = 'quay' where ma = 'C-THANNGOAI'`);
+  const { rows: [lo] } = await db.query(`
+    select t.lo_id, t.so_kg from kho_ton t join kho_lo l on l.id = t.lo_id
+    where t.vi_tri_id = $1 and l.mat_hang_id = $2 and t.so_kg >= 2 order by l.created_at limit 1`,
+    [viTri.kho, MH['T-THANNGOAI'].id]);
+  const ph = await tkp(`
+    select * from kho_luu_phien_pha(null, $1, $2, null, $3, null, $4::date, null, $5::jsonb, '[]'::jsonb)`,
+    [cnA.id, maGui(), MH['T-THANNGOAI'].id, homNay, JSON.stringify([{ lo_id: lo.lo_id, vi_tri_id: viTri.kho, so_kg: 2 }])]);
+  ok('Thủ kho mở phiên pha 2 kg thăn ngoại', ph.loi === null, ph.loi ?? '');
+  phienQuet = ph.rows?.[0]?.phien_id;
+  // Mã cân 301 (C-THANNGOAI, đặt ở nhóm 7b): 0,500 kg và 0,480 kg.
+  const q = await tkp(`select kho_quet_phien_pha(p_id => $1, p_ma_gui => $2, p_ma => $3::jsonb) as kq`,
+    [phienQuet, maGui(), JSON.stringify(['2000301005009', '2000301004804', '2000301005009'])]);
+  ok('Thủ kho quét 3 nhãn khi pha', q.loi === null && q.rows[0].kq.so_nhan === 3, q.loi ?? JSON.stringify(q.rows?.[0]?.kq));
+  const b = await tkp(`select kho_bo_quet_phien_pha(p_id => $1, p_ma_gui => $2, p_cach => 'bot_mot', p_mat_hang_id => $3) as kq`,
+    [phienQuet, maGui(), MH['C-THANNGOAI'].id]);
+  ok('Thủ kho bấm −1 (còn 2 gói, 0,98 kg, để ở quầy)',
+     b.loi === null && b.rows[0].kq.mon[0].so_goi === 2 && Number(b.rows[0].kq.mon[0].so_kg) === 0.98
+       && b.rows[0].kq.mon[0].loai_vi_tri === 'quay', b.loi ?? JSON.stringify(b.rows?.[0]?.kq));
+  await tkp(`select kho_xem_thu_phien_pha_kg($1) as t`, [phienQuet]);
+  const pb = (await db.query(`select phien_ban from kho_phien_pha where id = $1`, [phienQuet])).rows[0].phien_ban;
+  const c = await tkp(`select kho_chot_phien_pha($1, $2) as cau`, [phienQuet, pb]);
+  ok('Thủ kho chốt: 49% thấp hơn TB 30 ngày (70%) → báo quản lý',
+     c.loi === null && /báo quản lý/.test(c.rows?.[0]?.cau), c.loi ?? c.rows?.[0]?.cau);
+  const tb = async uid => ((await duoi(uid, `select kho_thong_bao($1, 300) as v`, [cnA.id])).rows?.[0]?.v?.su_kien ?? [])
+    .filter(e => e.khoa === 'thu_hoi_thap').length;
+  ok('Quản lý có sự kiện thu hồi thấp, thủ kho không', await tb(UID.qlA) === 1 && await tb(UID.thuKhoA) === 0);
+  const x = await tkp(`select kho_xac_nhan_phien_pha(p_id => $1, p_ghi_chu => null) as cau`, [phienQuet]);
+  ok('Thủ kho KHÔNG bấm "Đã xem" được', x.loi !== null);
+
+  const the = await tkp(`select * from kho_the_kho($1, $2, null, null, null)`, [cnA.id, MH['C-THANNGOAI'].id]);
+  ok('Thủ kho xem thẻ kho thăn ngoại cắt lát', the.loi === null && the.rows.length > 2, the.loi ?? '');
+  const nvThe = await duoi(UID.nvQuayA, `select * from kho_the_kho($1, $2, $3, null, null)`,
+    [cnA.id, MH['C-THANNGOAI'].id, viTri.quay]).then(ghi);
+  ok('NV quầy xem thẻ kho ở quầy', nvThe.loi === null && nvThe.rows.length > 1, nvThe.loi ?? '');
+  const nvQuet = await duoi(UID.nvQuayA, `select kho_quet_phien_pha(p_id => $1, p_ma_gui => $2, p_ma => '["2000301005009"]'::jsonb)`,
+    [phienQuet, maGui()]);
+  ok('NV quầy KHÔNG quét vào phiên pha được', nvQuet.loi !== null);
+
+  const tim = ketQuaPha.flatMap(r => khoaTien(r));
+  ok(`${ketQuaPha.length} kết quả hàm pha lóc / thẻ kho: không khóa tiền nào`, ketQuaPha.length >= 7 && tim.length === 0, tim.join(', '));
+  ok('Không đơn giá nào lọt ra dưới dạng giá trị', !coTien(JSON.stringify(ketQuaPha)));
+  await doiSoat('Sau pha lóc quét nhãn');
+});
+
+// ===========================================================================
 await nhom('8 · QUÉT MỌI BẢNG / VIEW kho_%: CỘT TIỀN', async () => {
   const { rows: cot } = await db.query(`
     select c.table_name, c.column_name
@@ -577,6 +634,12 @@ await nhom('9 · QUÉT ĐỆ QUY KẾT QUẢ MỌI HÀM THỦ KHO GỌI', async 
     ['kho_v_phieu_xuat', `select * from kho_v_phieu_xuat`, [], true],
     ['kho_v_kiem_ke', `select * from kho_v_kiem_ke`, [], true],
     ['kho_kiem_ke_quet', `select * from kho_kiem_ke_quet`, [], true],
+    // 0033 — thẻ kho NV quầy gọi được; bảng/view pha lóc NV quầy đọc ra 0 dòng (RLS)
+    ['kho_the_kho', `select * from kho_the_kho($1, $2, null, null, null)`, [cnA.id, MH['C-THANNGOAI'].id], true],
+    ['kho_v_phien_pha', `select * from kho_v_phien_pha`, [], true],
+    ['kho_phien_pha_quet', `select * from kho_phien_pha_quet`, [], true],
+    ['kho_phien_pha_lan_quet', `select * from kho_phien_pha_lan_quet`, [], true],
+    ['kho_xem_thu_phien_pha_kg (quét)', `select kho_xem_thu_phien_pha_kg($1) as t`, [phienQuet]],
   ];
   for (const [uid, ai] of [[UID.thuKhoA, 'thủ kho'], [UID.nvQuayA, 'NV quầy']]) {
     const tim = [];
