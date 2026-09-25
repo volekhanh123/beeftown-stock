@@ -84,7 +84,9 @@ const NHAN: Record<LoaiDong, [string, string]> = {
   giu: ['Giữ nguyên', 'giu'],
   xoa: ['Xoá khỏi cân', 'xoa'],
   ngoai_kho: ['Giữ, ngoài kho', 'giu'],
-  bo_qua: ['Không đưa lên', 'bo-qua'],
+  // Không đặt 'bo-qua': chung.css đã có .bo-qua (link "bỏ qua tới nội dung",
+  // đẩy ra ngoài màn hình), nhãn sẽ biến mất.
+  bo_qua: ['Không đưa lên', 'khong-len'],
 };
 const DEM: [LoaiDong, string][] = [
   ['them', 'thêm'], ['sua', 'sửa'], ['xoa', 'xoá khỏi cân'], ['giu', 'giữ nguyên'],
@@ -141,25 +143,23 @@ const DEM: [LoaiDong, string][] = [
         <div class="kho-bang-khung">
           <table class="kho-bang">
             <thead><tr>
-              <th class="so">PLU</th><th class="so">Mã cân</th><th>Tên trên tem</th><th class="so">Giá/kg</th><th>Thay đổi</th>
+              <th>Thay đổi</th><th class="so">PLU</th><th class="so">Mã cân</th><th>Tên trên tem</th><th class="so">Giá/kg</th>
             </tr></thead>
             <tbody>
               {keHoach.dong.map(d => (
                 <tr class={d.loai === 'xoa' || d.loai === 'bo_qua' ? 'mo' : undefined}>
+                  <td><span class={`dong-bo-nhan ${NHAN[d.loai][1]}`}>{NHAN[d.loai][0]}</span></td>
                   <td class="so">{d.so ?? '—'}</td>
                   <td class="so">{d.maCan || '—'}</td>
                   <td>
-                    {d.ten}
+                    <span class="dong-bo-ten">{d.ten}</span>
                     {d.loai === 'sua' && d.tenCu !== d.ten && <div class="kho-phu">Trên cân đang là: {d.tenCu}</div>}
+                    {d.lyDo && <div class="kho-phu">{d.lyDo}</div>}
+                    {d.canhBao && <div class="kho-phu">{d.canhBao}</div>}
                   </td>
                   <td class="so">
                     {dinhDangTien(d.gia)}
                     {d.loai === 'sua' && d.giaCu !== d.gia && <div class="kho-phu">trước: {dinhDangTien(d.giaCu)}</div>}
-                  </td>
-                  <td>
-                    <span class={`dong-bo-nhan ${NHAN[d.loai][1]}`}>{NHAN[d.loai][0]}</span>
-                    {d.lyDo && <div class="kho-phu">{d.lyDo}</div>}
-                    {d.canhBao && <div class="kho-phu">{d.canhBao}</div>}
                   </td>
                 </tr>
               ))}
@@ -198,7 +198,8 @@ const DEM: [LoaiDong, string][] = [
   .dong-bo-nhan.sua { background: var(--mu-tat); color: var(--than); }
   .dong-bo-nhan.xoa { background: var(--do); color: #fff; }
   .dong-bo-nhan.giu { background: var(--kem-sau); color: var(--muc-nhat); }
-  .dong-bo-nhan.bo-qua { border: 1px dashed var(--muc-nhat); color: var(--muc-nhat); }
-  .kho-bang tr.mo td { opacity: .6; }
+  .dong-bo-nhan.khong-len { border: 1px dashed var(--muc-nhat); color: var(--muc-nhat); }
+  /* Hàng không có trên cân sau khi nạp: làm mờ số và tên, giữ rõ nhãn và lý do. */
+  .kho-bang tr.mo td.so, .kho-bang tr.mo .dong-bo-ten { opacity: .6; }
   kbd { font-family: inherit; font-size: .8em; font-weight: 600; border: 1px solid var(--vach); border-bottom-width: 2px; border-radius: 4px; padding: 0 .3em; white-space: nowrap; }
 </style>
