@@ -108,9 +108,13 @@ await nhom('1 · VAI KHO KHÔNG ĐỌC ĐƯỢC DỮ LIỆU CRM', async () => {
 // ===========================================================================
 await nhom('2 · VAI KHO KHÔNG GHI ĐƯỢC CRM, KỂ CẢ QUA HÀM DEFINER', async () => {
   for (const [ten, uid] of VAI_KHO_A) {
+    // Từ 0031, ghi_luot_ghe() tự kiểm vai nên từ chối trước khi tới trigger
+    // tường ngăn. Lớp nào chặn cũng được, miễn là lỗi QUYỀN — không phải một
+    // lỗi tình cờ như thiếu cấu hình tích điểm.
     const diem = await duoi(uid, `select * from ghi_luot_ghe($1, '0933333333', 500000::bigint)`, [cnA.id]);
     ok(`${ten} KHÔNG tự phát được điểm qua ghi_luot_ghe()`,
-       diem.loi !== null && /Tài khoản kho không được ghi/.test(diem.loi), diem.loi ?? 'GỌI ĐƯỢC');
+       diem.loi !== null && /Tài khoản kho không được ghi|Chỉ chủ sở hữu, quản lý hoặc thu ngân/.test(diem.loi),
+       diem.loi ?? 'GỌI ĐƯỢC');
 
     const khach = await duoi(uid, `select * from tim_hoac_tao_khach('0911111111', 'Đổi tên')`);
     ok(`${ten} KHÔNG đọc/sửa được khách qua tim_hoac_tao_khach()`,
