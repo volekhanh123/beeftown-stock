@@ -28,8 +28,13 @@ async function mh(ma) {
   return (await db.query(`select * from kho_mat_hang where ma = $1`, [ma])).rows[0];
 }
 
-/** Gọi kho_luu_phieu_nhap với tham số mặc định hợp lý. */
+/**
+ * Gọi kho_luu_phieu_nhap với tham số mặc định hợp lý. Phiếu mua mặc định có
+ * một ảnh hóa đơn giả — từ 0031 gửi duyệt phiếu mua bắt buộc có ảnh.
+ */
 async function luuPhieu(uid, t) {
+  const cn = t.cn ?? cnA.id;
+  const anh = t.anh ?? ((t.loai ?? 'mua') === 'mua' ? [`${cn}/nhap/${maGui()}/1.jpg`] : []);
   return duoi(uid, `
     select * from kho_luu_phieu_nhap(
       p_id => $1, p_chi_nhanh_id => $2, p_ma_gui => $3, p_phien_ban => $4,
@@ -37,10 +42,10 @@ async function luuPhieu(uid, t) {
       p_so_hoa_don => $9, p_ngay_hoa_don => $10::date, p_han_thanh_toan => null,
       p_tien_thue => $11, p_chi_phi_khac => $12, p_ghi_chu => null, p_anh => $13::text[],
       p_truong_them => $14::jsonb, p_dong => $15::jsonb)`,
-    [t.id ?? null, t.cn ?? cnA.id, t.maGui ?? maGui(), t.phienBan ?? null,
+    [t.id ?? null, cn, t.maGui ?? maGui(), t.phienBan ?? null,
      t.loai ?? 'mua', t.ncc ?? null, t.viTri, t.ngay ?? homNay,
      t.soHoaDon ?? null, t.ngayHoaDon ?? null, t.thue ?? 0, t.chiPhi ?? 0,
-     t.anh ?? [], JSON.stringify(t.truongThem ?? {}), JSON.stringify(t.dong ?? [])]);
+     anh, JSON.stringify(t.truongThem ?? {}), JSON.stringify(t.dong ?? [])]);
 }
 
 let viTri = {};   // loai → id, chi nhánh A
@@ -144,7 +149,9 @@ await nhom('2 · DANH MỤC MẶT HÀNG', async () => {
   const nvGia = await duoi(UID.nvQuayA, `select count(*)::int as n from kho_mat_hang_gia`);
   ok('NV quầy KHÔNG đọc được giá trị thu hồi phụ phẩm', nvGia.rows?.[0]?.n === 0);
   const tkGia = await duoi(UID.thuKhoA, `select count(*)::int as n from kho_mat_hang_gia`);
-  ok('Thủ kho đọc được giá trị thu hồi phụ phẩm', tkGia.rows?.[0]?.n === 1);
+  ok('Thủ kho KHÔNG đọc được giá trị thu hồi phụ phẩm (0031: thủ kho không thấy tiền)', tkGia.rows?.[0]?.n === 0);
+  const ktGia = await duoi(UID.keToanA, `select count(*)::int as n from kho_mat_hang_gia`);
+  ok('Kế toán đọc được giá trị thu hồi phụ phẩm', ktGia.rows?.[0]?.n === 1);
 
   const ct = await duoi(UID.qlA, `
     insert into kho_cong_thuc_pha (mat_hang_vao_id, ten)
@@ -235,11 +242,13 @@ await nhom('4 · PHIẾU NHẬP — LƯU NHÁP, GỬI DUYỆT', async () => {
   const nv = await luuPhieu(UID.nvQuayA, { viTri: viTri.kho, ncc, dong, maGui: gui });
   ok('NV quầy KHÔNG lập được phiếu nhập', nv.loi !== null);
 
-  const tao = await luuPhieu(UID.thuKhoA, { viTri: viTri.kho, ncc, dong, maGui: gui, chiPhi: 150000, thue: 100000 });
-  ok('Thủ kho lưu nháp được phiếu nhập', tao.loi === null && tao.rows[0].da_co === false, tao.loi ?? '');
+  // Phiếu có giá, thuế, chi phí → vai xem giá (quản lý) lập. Thủ kho không
+  // gửi được tiền qua hàm này nữa (0031) — xem test-kho-thu-kho.mjs.
+  const tao = await luuPhieu(UID.qlA, { viTri: viTri.kho, ncc, dong, maGui: gui, chiPhi: 150000, thue: 100000 });
+  ok('Quản lý lưu nháp được phiếu nhập có giá', tao.loi === null && tao.rows[0].da_co === false, tao.loi ?? '');
   pn1 = tao.rows?.[0];
 
-  const lai = await luuPhieu(UID.thuKhoA, { viTri: viTri.kho, ncc, dong, maGui: gui });
+  const lai = await luuPhieu(UID.qlA, { viTri: viTri.kho, ncc, dong, maGui: gui });
   ok('Bấm lưu lần hai với cùng ma_gui → cùng một phiếu, không tạo trùng',
      lai.rows?.[0]?.phieu_id === pn1.phieu_id && lai.rows?.[0]?.da_co === true);
 
@@ -256,7 +265,7 @@ await nhom('4 · PHIẾU NHẬP — LƯU NHÁP, GỬI DUYỆT', async () => {
   const { rows: [{ n: ton0 }] } = await db.query(`select count(*)::int as n from kho_ton`);
   ok('Lưu nháp KHÔNG chạm tồn kho', ton0 === 0);
 
-  const cu = await luuPhieu(UID.thuKhoA, { id: pn1.phieu_id, phienBan: 99, viTri: viTri.kho, ncc, dong });
+  const cu = await luuPhieu(UID.qlA, { id: pn1.phieu_id, phienBan: 99, viTri: viTri.kho, ncc, dong });
   ok('Lưu đè với phiên bản cũ bị từ chối', cu.loi !== null && /sửa ở máy khác/.test(cu.loi), cu.loi ?? '');
 
   const guiThieu = await duoi(UID.thuKhoA, `select kho_gui_duyet_phieu_nhap($1, $2) as cau`, [pn1.phieu_id, pn1.phien_ban_moi]);
@@ -265,16 +274,16 @@ await nhom('4 · PHIẾU NHẬP — LƯU NHÁP, GỬI DUYỆT', async () => {
 
   dong[0].truong_them.nhiet_do = 2.1;
   dong[1].truong_them.nhiet_do = 3;
-  const sua = await luuPhieu(UID.thuKhoA, {
+  const sua = await luuPhieu(UID.qlA, {
     id: pn1.phieu_id, phienBan: pn1.phien_ban_moi, viTri: viTri.kho, ncc, dong,
     chiPhi: 150000, thue: 100000, soHoaDon: 'HD-555', truongThem: { da_kiem_lanh: true } });
   ok('Sửa nháp đúng phiên bản thì được', sua.loi === null, sua.loi ?? '');
   pn1 = sua.rows?.[0];
 
   const guiDung = await duoi(UID.thuKhoA, `select kho_gui_duyet_phieu_nhap($1, $2) as cau`, [pn1.phieu_id, pn1.phien_ban_moi]);
-  ok('Gửi duyệt được khi đủ ô bắt buộc', guiDung.loi === null && /chờ quản lý duyệt/.test(guiDung.rows?.[0]?.cau), guiDung.loi ?? '');
+  ok('Gửi duyệt được khi đủ ô bắt buộc', guiDung.loi === null && /chờ duyệt/.test(guiDung.rows?.[0]?.cau), guiDung.loi ?? '');
 
-  const suaKhiCho = await luuPhieu(UID.thuKhoA, { id: pn1.phieu_id, phienBan: pn1.phien_ban_moi + 1, viTri: viTri.kho, ncc, dong });
+  const suaKhiCho = await luuPhieu(UID.qlA, { id: pn1.phieu_id, phienBan: pn1.phien_ban_moi + 1, viTri: viTri.kho, ncc, dong });
   ok('Phiếu đang chờ duyệt không sửa được', suaKhiCho.loi !== null && /rút về/.test(suaKhiCho.loi));
 
   const { rows: [{ n: ton1 }] } = await db.query(`select count(*)::int as n from kho_ton`);
@@ -329,7 +338,7 @@ await nhom('6 · TỪ CHỐI, RÚT VỀ, HỦY', async () => {
   const bap = await mh('C-LAGU');
   const dong = [{ mat_hang_id: bap.id, so_goi: 10, so_kg: 3.25, don_gia_kg: 400000, truong_them: { nhiet_do: 2 } }];
 
-  const p = (await luuPhieu(UID.thuKhoA, { viTri: viTri.quay, ncc, dong })).rows[0];
+  const p = (await luuPhieu(UID.qlA, { viTri: viTri.quay, ncc, dong })).rows[0];
   await duoi(UID.thuKhoA, `select kho_gui_duyet_phieu_nhap($1, $2)`, [p.phieu_id, p.phien_ban_moi]);
 
   const khongLyDo = await duoi(UID.qlA, `select kho_tu_choi_phieu_nhap($1, '  ') as cau`, [p.phieu_id]);
@@ -341,7 +350,7 @@ await nhom('6 · TỪ CHỐI, RÚT VỀ, HỦY', async () => {
   const { rows: [sau] } = await db.query(`select trang_thai, ly_do, phien_ban from kho_phieu_nhap where id = $1`, [p.phieu_id]);
   ok('Phiếu bị từ chối lưu lý do', sau.trang_thai === 'tu_choi' && /đơn giá/.test(sau.ly_do));
 
-  const sua = await luuPhieu(UID.thuKhoA, { id: p.phieu_id, phienBan: sau.phien_ban, viTri: viTri.quay, ncc, dong });
+  const sua = await luuPhieu(UID.qlA, { id: p.phieu_id, phienBan: sau.phien_ban, viTri: viTri.quay, ncc, dong });
   const { rows: [sau2] } = await db.query(`select trang_thai from kho_phieu_nhap where id = $1`, [p.phieu_id]);
   ok('Sửa phiếu bị từ chối → trở lại nháp', sua.loi === null && sau2.trang_thai === 'nhap', sua.loi ?? '');
 
@@ -440,7 +449,8 @@ await nhom('7 · TỒN ĐẦU KỲ VÀ CÁC CHẶN NHẬP LIỆU', async () => {
   ok('Ảnh của chi nhánh khác bị từ chối', anhLa.loi !== null && /không thuộc chi nhánh/.test(anhLa.loi));
 
   const viTriB = (await db.query(`select id from kho_vi_tri where chi_nhanh_id = $1 and loai = 'kho'`, [cnB.id])).rows[0].id;
-  const tiem = await luuPhieu(UID.thuKhoA, { ncc, viTri: viTriB, dong });
+  // Bỏ đơn giá: thủ kho không gửi giá (0031) — để câu lỗi đến từ kho Q7.
+  const tiem = await luuPhieu(UID.thuKhoA, { ncc, viTri: viTriB, dong: dong.map(({ don_gia_kg, ...d }) => d) });
   ok('Thủ kho Q1 không nhập được vào kho Q7 (tiêm id)', tiem.loi !== null);
 
   await doiSoat('Sau tồn đầu kỳ');

@@ -7,7 +7,8 @@
  * Không cần database. Kiểm những thứ dễ vỡ âm thầm khi sửa giao diện:
  *   - mọi link trong menu, thanh đáy, thao tác nhanh, quy trình, thông báo đều
  *     trỏ tới một trang có thật (không ai bấm vào trang 404);
- *   - thanh đáy tối đa 5 nút, nhân viên quầy không thấy ô nào cần xem tiền;
+ *   - thanh đáy tối đa 5 nút, nhân viên quầy và thủ kho không thấy ô nào cần
+ *     xem tiền (0031: thủ kho không thấy tiền — nhận hàng ở màn chỉ kg);
  *   - khóa số đỏ trong menu và quy trình là khóa kho_dem_viec có thật, khóa sự
  *     kiện của database (0030) đều có câu chữ ở lib/kho/viec.ts;
  *   - mục "?" của từng trang trỏ tới một mục có thật trong trang Hướng dẫn;
@@ -23,6 +24,7 @@ import {
   MUC_KHO, THANH_DAY, THAO_TAC_NHANH, MUC_CRM, mucCuaVai, thanhDayCuaVai, thaoTacCuaVai, soDo, dangO,
 } from '../../web/src/lib/kho/dieu-huong.ts';
 import { cauSuKien, KHOA_SU_KIEN } from '../../web/src/lib/kho/viec.ts';
+import { docFormDienGia, chuSoSanhGia, cauCanhBaoGia } from '../../web/src/lib/kho/nhap.ts';
 import { QUY_TRINH } from '../../web/src/lib/kho/quy-trinh.ts';
 import { BIEU_TUONG } from '../../web/src/lib/kho/bieu-tuong.ts';
 import { duoc, QUYEN_KHO } from '../../web/src/lib/kho/chung.ts';
@@ -127,12 +129,39 @@ await nhom('2 · MENU THEO VAI', async () => {
   const nv = mucCuaVai('nhan_vien_quay');
   const canTien = nv.filter(m => m.quyen.every(q => q === 'xem_gia' || q === 'ke_toan'));
   ok('NV quầy: không có ô nào cần xem tiền', canTien.length === 0, canTien.map(m => m.ma).join(', '));
-  for (const ma of ['nhap', 'pha_loc', 'bao_cao', 'cong_no', 'cai_dat', 'duyet']) {
+  for (const ma of ['nhap', 'nhan_hang', 'pha_loc', 'bao_cao', 'cong_no', 'cai_dat', 'duyet']) {
     ok(`NV quầy: không thấy ô "${ma}"`, !nv.some(m => m.ma === ma));
   }
-  ok('Thủ kho: không thấy Công nợ, Duyệt', !mucCuaVai('thu_kho').some(m => m.ma === 'cong_no' || m.ma === 'duyet'));
-  ok('Kế toán: thấy Công nợ, không thấy Duyệt',
-    mucCuaVai('ke_toan').some(m => m.ma === 'cong_no') && !mucCuaVai('ke_toan').some(m => m.ma === 'duyet'));
+
+  // 0031: thủ kho không thấy tiền. Không ô, thao tác nhanh hay nút quy trình
+  // nào của thủ kho chỉ mở được bằng quyền xem giá / kế toán.
+  const chiTien = q => q.every(x => x === 'xem_gia' || x === 'ke_toan');
+  const tk = mucCuaVai('thu_kho');
+  ok('Thủ kho: không thấy ô nào chỉ-xem-giá', !tk.some(m => chiTien(m.quyen)),
+    tk.filter(m => chiTien(m.quyen)).map(m => m.ma).join(', '));
+  ok('Thủ kho: thanh đáy không có ô chỉ-xem-giá', !thanhDayCuaVai('thu_kho').some(m => chiTien(m.quyen)));
+  ok('Thủ kho: thao tác nhanh không có mục chỉ-xem-giá', !thaoTacCuaVai('thu_kho').some(t => chiTien(t.quyen)));
+  const qtTien = QUY_TRINH.flatMap(q => q.buoc).filter(b => b.quyen.some(x => duoc('thu_kho', x)) && chiTien(b.quyen));
+  ok('Thủ kho: không có nút quy trình chỉ-xem-giá', qtTien.length === 0, qtTien.map(b => b.ten).join(', '));
+  ok('Thủ kho: không có quyền xem giá (khớp 0031)', !duoc('thu_kho', 'xem_gia'));
+  for (const ma of ['nhap', 'bao_cao', 'cong_no', 'duyet']) {
+    ok(`Thủ kho: không thấy ô "${ma}"`, !tk.some(m => m.ma === ma));
+  }
+  for (const ma of ['nhan_hang', 'pha_loc', 'viec']) {
+    ok(`Thủ kho: thấy ô "${ma}"`, tk.some(m => m.ma === ma));
+  }
+  const nhanTk = thaoTacCuaVai('thu_kho').find(t => t.ten === 'Nhận hàng');
+  ok('Thủ kho: "Nhận hàng" mở màn nhận hàng chỉ kg', nhanTk?.link === '/noi-bo/kho/nhan-hang/moi', nhanTk?.link);
+  ok('Ô "Nhập hàng" (có tiền) chỉ cho vai xem giá, không số đỏ phiếu nháp',
+    (() => { const m = MUC_KHO.find(x => x.ma === 'nhap'); return m && chiTien(m.quyen) && !(m.dem ?? []).some(k => k.startsWith('nhap_')); })());
+
+  const kt = mucCuaVai('ke_toan');
+  ok('Kế toán: thấy Công nợ, Nhập hàng và Duyệt (điền giá phiếu nhập)',
+    ['cong_no', 'nhap', 'duyet'].every(ma => kt.some(m => m.ma === ma)));
+  ok('Kế toán: không thấy Nhận hàng (kế toán không lập phiếu)', !kt.some(m => m.ma === 'nhan_hang'));
+  ok('Kế toán: thanh đáy có Duyệt', thanhDayCuaVai('ke_toan').some(m => m.ma === 'duyet'));
+  ok('Kế toán: thao tác nhanh "Duyệt phiếu nhập"',
+    thaoTacCuaVai('ke_toan').some(t => t.link === '/noi-bo/kho/duyet'));
   ok('Chủ: thấy mọi ô', mucCuaVai('chu_so_huu').length === MUC_KHO.length);
   ok('Vai lạ: chỉ Trang chủ và Khác, không lỗi', thanhDayCuaVai('thu_ngan').length <= 2);
 
@@ -168,6 +197,11 @@ await nhom('3 · SỐ ĐỎ VÀ ĐÁNH DẤU MỤC ĐANG MỞ', async () => {
   ok('Tồn kho sáng ở /noi-bo/kho/ton', dangO(ton, '/noi-bo/kho/ton'));
   ok('Nhập hàng sáng khi mở một phiếu nhập',
     dangO(MUC_KHO.find(m => m.ma === 'nhap'), '/noi-bo/kho/nhap/abc'));
+  ok('Nhận hàng sáng khi mở một phiếu nhận hàng, Nhập hàng thì không',
+    dangO(MUC_KHO.find(m => m.ma === 'nhan_hang'), '/noi-bo/kho/nhan-hang/abc')
+    && !dangO(MUC_KHO.find(m => m.ma === 'nhap'), '/noi-bo/kho/nhan-hang/abc'));
+  ok('Số đỏ Nhận hàng = phiếu nháp + phiếu bị trả của chính mình',
+    soDo(MUC_KHO.find(m => m.ma === 'nhan_hang'), { nhap_nhap: 2, nhap_bi_tra: 1 }) === 3);
   const oQuay = THANH_DAY.nhan_vien_quay.find(m => m.link.includes('vi_tri=quay'));
   ok('"Ở quầy" chỉ sáng khi có ?vi_tri=quay', dangO(oQuay, '/noi-bo/kho/ton', '?vi_tri=quay')
     && !dangO(oQuay, '/noi-bo/kho/ton', ''));
@@ -186,6 +220,11 @@ await nhom('4 · THÔNG BÁO: KHÓA DATABASE ↔ CÂU CHỮ', async () => {
   const khongNull = KHOA_SU_KIEN.filter(k => /null|undefined/.test(JSON.stringify(cauSuKien({ ...mau, khoa: k,
     ten: null, ref2: null, so: null }))));
   ok('Thiếu tên / số lượng không in chữ "null"', khongNull.length === 0, khongNull.join(', '));
+  // 0031: thủ kho sửa phiếu bị trả ở màn nhận hàng (chỉ kg), không ở trang nhập có tiền.
+  ok('Phiếu nhập bị trả về → mở màn nhận hàng',
+    cauSuKien({ ...mau, khoa: 'nhap_bi_tu_choi', ref_id: 'X1' }).link === '/noi-bo/kho/nhan-hang/X1');
+  ok('Phiếu nhập chờ duyệt → mở trang điền giá',
+    cauSuKien({ ...mau, khoa: 'cho_duyet_nhap', ref_id: 'X1' }).link.startsWith('/noi-bo/kho/nhap/X1'));
 });
 
 // ===========================================================================
@@ -294,7 +333,13 @@ await nhom('9 · QUYỀN KHỚP GIỮA MENU VÀ TRANG', async () => {
   // ô rồi bị đá ra), và ngược lại trang cần quyền mà ô không đòi thì người
   // không đủ quyền sẽ thấy ô dẫn tới trang cấm.
   const hong = [];
-  for (const m of MUC_KHO) {
+  const oCanKiem = [
+    ...MUC_KHO,
+    ...Object.values(THANH_DAY).flat(),
+    ...Object.entries(THAO_TAC_NHANH).flatMap(([vai, ds]) => ds.map(t => ({ ...t, ma: `thao tác ${vai} "${t.ten}"` }))),
+    ...QUY_TRINH.flatMap(q => q.buoc.map(b => ({ ...b, ma: `quy trình ${q.ma} "${b.ten}"` }))),
+  ];
+  for (const m of oCanKiem) {
     const t = trangCua(m.link);
     if (!t || !t.file.endsWith('.astro')) continue;
     // Dòng chặn đầu trang: "if (!k.duoc('a') && !k.duoc('b')) return Astro.redirect"
@@ -358,6 +403,52 @@ await nhom('11 · TRANG IN VÀ ĐĂNG NHẬP', async () => {
     /data-in hidden/.test(doc(join(WEB, 'src/components/kho/NutIn.astro'))));
   ok('Quản lý / chủ đăng nhập xong vào thẳng kho',
     /redirect\('\/noi-bo\/kho'/.test(doc(join(TRANG, 'noi-bo/dang-nhap.astro'))));
+});
+
+// ===========================================================================
+await nhom('12 · THỦ KHO KHÔNG THẤY TIỀN (0031) — TRANG', async () => {
+  // Trang nhập có tiền vẫn chỉ cho vai xem giá; người có quyền nhận hàng mà
+  // không xem giá (thủ kho) được chuyển sang màn nhận hàng, không bị đá về
+  // trang chủ.
+  for (const f of ['nhap/index.astro', 'nhap/[id].astro']) {
+    const dong = doc(join(TRANG, 'noi-bo/kho', f)).split('\n')
+      .find(d => /!k\.duoc\('xem_gia'\)/.test(d) && /return Astro\.redirect/.test(d)) ?? '';
+    ok(`${f}: không xem giá mà có quyền nhận hàng → chuyển sang nhan-hang`,
+      /k\.duoc\('nhap'\)\s*\?\s*[`'a-zA-Z]*/.test(dong) && /nhan-hang|nhanHang/.test(dong), dong.trim());
+  }
+  const nhapId = doc(join(TRANG, 'noi-bo/kho/nhap/[id].astro'));
+  ok('nhap/[id]: điền giá và duyệt theo quyền duyet_nhap', /k\.duoc\('duyet_nhap'\)/.test(nhapId)
+    && /kho_dien_gia_phieu_nhap|dienGiaPhieu/.test(nhapId));
+  ok('nhap/[id]: hủy phiếu đã duyệt vẫn cần quyền duyet',
+    /trang_thai === 'da_duyet' && k\.duoc\('duyet'\)/.test(nhapId));
+  const phaId = doc(join(TRANG, 'noi-bo/kho/pha-loc/[id].astro'));
+  ok('pha-loc/[id]: thủ kho xem thử bằng bản chỉ kg', /xemThuPhienKg/.test(phaId) && /xemGia/.test(phaId));
+  const phaLib = doc(join(WEB, 'src/lib/kho/pha-loc.ts'));
+  ok('lib pha-loc gọi kho_xem_thu_phien_pha_kg', /\.rpc\('kho_xem_thu_phien_pha_kg'/.test(phaLib));
+  // Màn điền giá: đọc form, chip so giá, hộp cảnh báo (hàm thuần).
+  const f = new FormData();
+  f.set('gia_A', '480.000'); f.set('gia_B', ''); f.set('gia_LA', '999'); f.set('tien_thue', '12.000');
+  const dg = docFormDienGia(f, [{ id: 'A' }, { id: 'B' }], 'mua');
+  ok('Điền giá: chỉ nhận ô của dòng thuộc phiếu, ô trống = 0',
+    JSON.stringify(dg.payload) === JSON.stringify([{ dong_id: 'A', don_gia_kg: 480000 }, { dong_id: 'B', don_gia_kg: 0 }])
+    && dg.loi.length === 0, JSON.stringify(dg));
+  f.set('gia_B', '4,8 triệu');
+  ok('Điền giá: gõ sai đơn giá thì báo đúng dòng', docFormDienGia(f, [{ id: 'A' }, { id: 'B' }], 'mua').loi[0]?.startsWith('Dòng 2'));
+  ok('Điền giá: tồn đầu kỳ luôn gửi thuế, chi phí trống',
+    docFormDienGia(f, [{ id: 'A' }], 'ton_dau').giaTri.tien_thue === '');
+  const ss = (chenh, vuot) => ({ dong_id: 'A', mat_hang_id: 'M', don_gia_kg: 520000, gia_truoc: 480000,
+    ngay_truoc: '2026-09-01', so_phieu_truoc: 'PN-1', chenh_pt: chenh, vuot_nguong: vuot });
+  ok('Chip so giá: "Lần trước 480.000 đ · +8,3%", đỏ khi vượt',
+    chuSoSanhGia(ss(8.3, true))?.chu === 'Lần trước 480.000 đ · +8,3%' && chuSoSanhGia(ss(8.3, true))?.vuot === true,
+    chuSoSanhGia(ss(8.3, true))?.chu);
+  ok('Chip so giá: chưa có lần trước → không hiện', chuSoSanhGia({ ...ss(null, false), gia_truoc: null }) === null);
+  ok('Hộp cảnh báo: đếm món vượt ngưỡng',
+    cauCanhBaoGia([ss(8.3, true), ss(6, true), ss(3, false)], 5) === '2 món giá tăng hơn 5% so với lần trước — kiểm lại hóa đơn');
+  ok('Hộp cảnh báo: không món nào vượt → không hiện', cauCanhBaoGia([ss(3, false)], 5) === null);
+
+  const duyet = doc(join(TRANG, 'noi-bo/kho/duyet.astro'));
+  ok('Trang Duyệt: báo hủy, kiểm kê chỉ đọc cho vai duyet', /duyetKhac \? docDanhSachPhieuXuat/.test(duyet)
+    && /duyetKhac \? docDanhSachKiemKe/.test(duyet));
 });
 
 process.exit(ketThuc('KHUNG GIAO DIỆN'));

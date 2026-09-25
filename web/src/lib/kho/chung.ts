@@ -17,14 +17,17 @@ export type VaiTro =
   | 'thu_kho' | 'nhan_vien_quay' | 'ke_toan';
 
 export type ViecKho =
-  | 'xem' | 'xem_gia' | 'nhap' | 'duyet' | 'pha_loc' | 'van_hanh'
+  | 'xem' | 'xem_gia' | 'nhap' | 'duyet' | 'duyet_nhap' | 'pha_loc' | 'van_hanh'
   | 'ke_toan' | 'danh_muc' | 'ncc' | 'cai_dat_goc';
 
 export const QUYEN_KHO: Record<ViecKho, readonly VaiTro[]> = {
   xem:         ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan'],
-  xem_gia:     ['chu_so_huu', 'quan_ly', 'thu_kho', 'ke_toan'],
+  // Thủ kho không thấy tiền (0031): chỉ chụp hóa đơn, cân, đếm.
+  xem_gia:     ['chu_so_huu', 'quan_ly', 'ke_toan'],
   nhap:        ['chu_so_huu', 'quan_ly', 'thu_kho'],
   duyet:       ['chu_so_huu', 'quan_ly'],
+  // Điền giá, duyệt / từ chối phiếu nhập — kế toán cũng làm được (0031).
+  duyet_nhap:  ['chu_so_huu', 'quan_ly', 'ke_toan'],
   pha_loc:     ['chu_so_huu', 'quan_ly', 'thu_kho'],
   van_hanh:    ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay'],
   ke_toan:     ['chu_so_huu', 'quan_ly', 'ke_toan'],

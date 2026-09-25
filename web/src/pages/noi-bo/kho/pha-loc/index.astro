@@ -6,7 +6,8 @@
  * phiên đã chốt) — con số chủ nhà hàng nhìn để biết thợ pha có đều tay không,
  * tảng của nhà cung cấp nào ra thịt tốt. Dưới: các phiên, phiên nháp lên đầu.
  *
- * Phiên pha có giá bán dùng để chia giá vốn → chỉ vai xem giá mở được trang.
+ * Vai xem giá và vai pha lóc (thủ kho) mở được trang. Danh sách chỉ có kg và
+ * % thu hồi — không có tiền (0031: thủ kho không thấy tiền).
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -22,7 +23,7 @@ import {
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
-if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.duoc('xem_gia') && !k.duoc('pha_loc')) return Astro.redirect('/noi-bo/kho', 302);
 
 const LOC = [['', 'Tất cả'], ['nhap', 'Nháp'], ['da_chot', 'Đã chốt'], ['da_huy', 'Đã hủy']] as const;
 const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
@@ -61,7 +62,7 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
     <>
       <p class="nb-dan">
         Mỗi lần pha: chọn tảng đem pha, cân từng phần cắt ra, phụ phẩm, phần bỏ. Phần mềm tính
-        <strong>tỉ lệ thu hồi</strong> và <strong>giá vốn thật mỗi kg</strong> của từng phần.
+        <strong>tỉ lệ thu hồi</strong>{k.duoc('xem_gia') && <> và <strong>giá vốn thật mỗi kg</strong></>} của từng phần.
         Tồn chỉ đổi khi bấm <em>Chốt phiên</em>.
       </p>
 

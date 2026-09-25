@@ -3,9 +3,10 @@
  * KHO — DANH SÁCH PHIẾU NHẬP
  *
  * Lọc theo trạng thái bằng link GET: ?loc=cho_duyet | nhap | tu_choi |
- * da_duyet | da_huy. Quản lý mở trang này chủ yếu để duyệt, nên có sẵn ô
- * "Chờ duyệt"; thủ kho tìm lại phiếu nháp chưa gửi ở ô "Nháp". Chỉ vai xem
- * giá thấy màn này (phiếu có đơn giá). Cách làm chi tiết: trang Quy trình.
+ * da_duyet | da_huy. Quản lý, kế toán mở trang này chủ yếu để điền giá và
+ * duyệt, nên có sẵn ô "Chờ duyệt". Chỉ vai xem giá thấy màn này (phiếu có
+ * đơn giá); thủ kho (0031: không thấy tiền) được chuyển sang Nhận hàng
+ * (/noi-bo/kho/nhan-hang — chỉ kg). Cách làm chi tiết: trang Quy trình.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -20,7 +21,7 @@ import {
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
-if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.duoc('xem_gia')) return Astro.redirect(k.duoc('nhap') ? '/noi-bo/kho/nhan-hang' : '/noi-bo/kho', 302);
 
 const LOC = [
   ['', 'Tất cả'], ['cho_duyet', 'Chờ duyệt'], ['nhap', 'Nháp'],
@@ -44,7 +45,7 @@ if (k.chiNhanh && k.daKhoiTao) {
 }
 const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 ---
-<Kho k={k} tieuDe="Nhập hàng" huongDan="thu-kho">
+<Kho k={k} tieuDe="Nhập hàng" huongDan={k.nhanSu.vai_tro === 'ke_toan' ? 'ke-toan' : 'quan-ly-duyet'}>
   <h1>Nhập hàng</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
@@ -53,7 +54,7 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
   ) : (
     <>
       <p class="nb-dan">
-        Hàng chỉ vào tồn khi quản lý duyệt phiếu.{' '}
+        Thủ kho gửi phiếu có kg và ảnh hóa đơn; kế toán hoặc quản lý điền giá rồi duyệt — hàng chỉ vào tồn khi đã duyệt.{' '}
         <a href="/noi-bo/kho/quy-trinh?qt=nhan-hang">Xem cách làm →</a>
       </p>
 

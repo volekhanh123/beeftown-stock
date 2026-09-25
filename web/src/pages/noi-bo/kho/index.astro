@@ -4,12 +4,14 @@
  *
  * Mỗi vai mở app là thấy đúng việc của mình:
  *   · Thủ kho — "Việc hôm nay": thao tác nhanh + việc cần làm (bị trả về, hết
- *     hạn phải hủy, sắp hết hạn, quầy sắp hết...).
+ *     hạn phải hủy, sắp hết hạn, quầy sắp hết...). Không có con số tiền nào
+ *     (0031); phiếu nhận hàng mở ở /noi-bo/kho/nhan-hang (chỉ kg).
  *   · NV quầy/bếp — "Quầy hôm nay": gói nào xếp ra bán trước, gói hết hạn phải
  *     bỏ, món quầy sắp hết, đã đếm quầy chưa. Chỉ hàng ở quầy.
  *   · Quản lý, chủ — "Hôm nay": hai thẻ "Cần theo dõi" (việc, chờ duyệt) và
  *     "Quản trị" (tiền: tồn kho, giá vốn, thu hồi, hao hụt, chi phí thịt).
- *   · Kế toán — công nợ trước tiên: quá hạn, đến hạn 7 ngày, chưa đối chiếu.
+ *   · Kế toán — phiếu nhập chờ điền giá (0031), rồi công nợ: quá hạn, đến
+ *     hạn 7 ngày, chưa đối chiếu.
  *
  * Chưa khởi tạo kho thì chỉ hiện nút "Bắt đầu dùng kho".
  */
@@ -196,7 +198,7 @@ const tieuDe = laQuay ? 'Quầy hôm nay' : laQuanLy ? 'Hôm nay' : vai === 'thu
             <a href="/noi-bo/kho/ton?han=het_han" class:list={['kho-o-so', { gap: n('het_han') > 0 }]}><b>{n('het_han')}</b><span>lô hết hạn</span></a>
             <a href="/noi-bo/kho/ton?han=sap_het" class:list={['kho-o-so', { 'luu-y': n('sap_het_han') > 0 }]}><b>{n('sap_het_han')}</b><span>lô sắp hết hạn</span></a>
             <a href="/noi-bo/kho/ton?duoi_muc=1" class:list={['kho-o-so', { 'luu-y': n('quay_duoi_muc') > 0 }]}><b>{n('quay_duoi_muc')}</b><span>món quầy sắp hết</span></a>
-            <a href="/noi-bo/kho/nhap?loc=nhap" class:list={['kho-o-so', { 'luu-y': n('nhap_nhap') > 0 }]}><b>{n('nhap_nhap')}</b><span>phiếu nhập nháp</span></a>
+            <a href="/noi-bo/kho/nhan-hang" class:list={['kho-o-so', { gap: n('nhap_bi_tra') > 0, 'luu-y': n('nhap_nhap') > 0 }]}><b>{n('nhap_nhap') + n('nhap_bi_tra')}</b><span>{n('nhap_bi_tra') > 0 ? `phiếu nhận hàng (${n('nhap_bi_tra')} bị trả về)` : 'phiếu nhận hàng chưa gửi'}</span></a>
           </div>
         </>
       )}
@@ -314,6 +316,12 @@ const tieuDe = laQuay ? 'Quầy hôm nay' : laQuanLy ? 'Hôm nay' : vai === 'thu
       {/* ============================ KẾ TOÁN ============================ */}
       {laKeToan && (
         <div class="kho-the-luoi">
+          <a href="/noi-bo/kho/duyet" class:list={['kho-the-so', { do: n('duyet_nhap') > 0 }]}>
+            <span class="kho-the-so-dau"><BieuTuong ten="duyet" /> Phiếu nhập chờ điền giá</span>
+            <b>{n('duyet_nhap')} <small>phiếu</small></b>
+            <small>Điền giá từ ảnh hóa đơn rồi duyệt</small>
+            <em>Chi tiết →</em>
+          </a>
           <a href="/noi-bo/kho/cong-no?loc=qua_han" class:list={['kho-the-so', { do: noQuaHan > 0 }]}>
             <span class="kho-the-so-dau"><BieuTuong ten="canh_bao" /> Quá hạn</span>
             <b>{dinhDangTien(noQuaHan)}</b>

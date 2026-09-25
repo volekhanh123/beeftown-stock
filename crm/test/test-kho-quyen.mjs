@@ -167,9 +167,15 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
     ['nhan_vien_quay', 'van_hanh', true],
     ['nhan_vien_quay', 'pha_loc', false],
     ['thu_kho', 'nhap', true],
-    ['thu_kho', 'duyet', false],            // phiếu nhập phải có quản lý duyệt
+    ['thu_kho', 'duyet', false],            // phiếu nhập phải có người khác duyệt
+    ['thu_kho', 'duyet_nhap', false],
+    ['thu_kho', 'xem_gia', false],          // 0031: thủ kho chỉ chụp, cân, đếm — không thấy tiền
+    ['thu_kho', 'pha_loc', true],
     ['ke_toan', 'ke_toan', true],
     ['ke_toan', 'nhap', false],
+    ['ke_toan', 'duyet_nhap', true],        // 0031: kế toán điền giá và duyệt phiếu nhập
+    ['ke_toan', 'duyet', false],            // nhưng không duyệt hủy hàng, kiểm kê
+    ['nhan_vien_quay', 'duyet_nhap', false],
     ['quan_ly', 'cai_dat_goc', false],      // cách tính giá vốn: chỉ chủ
     ['chu_so_huu', 'cai_dat_goc', true],
     ['thu_ngan', 'xem', false],             // vai CRM thuần không dùng kho
@@ -236,6 +242,8 @@ await nhom('7 · ẢNH CHỨNG TỪ — AI XEM, AI TẢI', async () => {
   ok('NV quầy KHÔNG xem được ảnh hóa đơn (có giá)', await kiem(UID.nvQuayA, 'kho_duoc_doc_tep', f(cnA.id, 'nhap')) === false);
   ok('NV quầy KHÔNG tải được ảnh hóa đơn', await kiem(UID.nvQuayA, 'kho_duoc_tai_tep', f(cnA.id, 'nhap')) === false);
   ok('Thủ kho tải được ảnh hóa đơn', await kiem(UID.thuKhoA, 'kho_duoc_tai_tep', f(cnA.id, 'nhap')) === true);
+  ok('Thủ kho KHÔNG xem lại được ảnh hóa đơn (có giá — 0031)', await kiem(UID.thuKhoA, 'kho_duoc_doc_tep', f(cnA.id, 'nhap')) === false);
+  ok('Kế toán xem được ảnh hóa đơn để điền giá', await kiem(UID.keToanA, 'kho_duoc_doc_tep', f(cnA.id, 'nhap')) === true);
   ok('Thủ kho KHÔNG tải được vào chi nhánh khác', await kiem(UID.thuKhoA, 'kho_duoc_tai_tep', f(cnB.id, 'nhap')) === false);
   ok('Kế toán tải được ảnh thanh toán', await kiem(UID.keToanA, 'kho_duoc_tai_tep', f(cnA.id, 'thanh_toan')) === true);
   ok('Thủ kho KHÔNG tải được ảnh thanh toán', await kiem(UID.thuKhoA, 'kho_duoc_tai_tep', f(cnA.id, 'thanh_toan')) === false);
@@ -263,8 +271,11 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // Phiếu nhập
     'kho_luu_phieu_nhap', 'kho_gui_duyet_phieu_nhap', 'kho_rut_phieu_nhap',
     'kho_duyet_phieu_nhap', 'kho_tu_choi_phieu_nhap', 'kho_huy_phieu_nhap',
+    // Nhận hàng chỉ kg, điền giá, so giá (0031)
+    'kho_ds_ncc_nhap', 'kho_ds_phieu_nhap_kg', 'kho_doc_phieu_nhap_kg', 'kho_luu_phieu_nhap_kg',
+    'kho_dien_gia_phieu_nhap', 'kho_so_sanh_gia_nhap',
     // Pha lóc
-    'kho_luu_phien_pha', 'kho_xem_thu_phien_pha', 'kho_chot_phien_pha',
+    'kho_luu_phien_pha', 'kho_xem_thu_phien_pha', 'kho_xem_thu_phien_pha_kg', 'kho_chot_phien_pha',
     'kho_mo_lai_phien_pha', 'kho_huy_phien_pha',
     // Chuyển, xuất bếp, hủy
     'kho_tao_phieu_xuat', 'kho_duyet_phieu_huy', 'kho_tu_choi_phieu_huy',

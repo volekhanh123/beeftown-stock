@@ -41,7 +41,7 @@ Dữ liệu menu ở `lib/kho/dieu-huong.ts` (file thuần, test được bằng
 | Thủ kho | Trang chủ · Việc · Quét · Tồn kho · Khác |
 | NV quầy | Quầy · Việc · Quét · Ở quầy · Khác |
 | Quản lý, Chủ | Hôm nay · Duyệt · Quét · Tồn kho · Khác |
-| Kế toán | Trang chủ · Công nợ · Nhập hàng · Báo cáo · Khác |
+| Kế toán | Trang chủ · Duyệt · Công nợ · Nhập hàng · Khác (Báo cáo nằm trong Khác) |
 
 Mỗi ô ghi **quyền cần có** (`quyen`, cần một trong các quyền) — phải khớp với dòng chặn ở đầu
 trang đó. `test-kho-giao-dien.mjs` so hai chỗ này: không vai nào thấy một ô rồi bấm vào lại
@@ -88,7 +88,9 @@ migration.
 | `/noi-bo/kho` | Trang chủ **theo vai**: NV quầy "Quầy hôm nay" (hết hạn phải bỏ, **xếp ra bán trước**, quầy sắp hết); thủ kho "Việc hôm nay"; quản lý/chủ "Hôm nay" có thẻ `?tab=quan-tri` (chỉ số từ `kho_chi_so_quan_tri`); kế toán: công nợ |
 | `/noi-bo/kho/viec` | Việc cần làm: "Làm ngay" (đỏ) và "Nên làm sớm" (vàng), mỗi việc một nút |
 | `/noi-bo/kho/thong-bao` | Chuông: mọi sự kiện 30 ngày, chia thẻ Vận hành / Nhắc nhở / Hệ thống |
-| `/noi-bo/kho/duyet` | Hộp duyệt chung (quyền `duyet`): phiếu nhập, báo hủy, kiểm kê — cũ nhất lên trước. Duyệt xong quay về đây |
+| `/noi-bo/kho/duyet` | Hộp duyệt chung (quyền `duyet` hoặc `duyet_nhap`): phiếu nhập (điền giá rồi duyệt), báo hủy, kiểm kê — cũ nhất lên trước. Kế toán (`duyet_nhap`) chỉ thấy phiếu nhập. Duyệt xong quay về đây |
+| `/noi-bo/kho/nhan-hang` | Nhận hàng 3 bước của thủ kho (quyền `nhap`, **chỉ kg**, migration 0031): `moi` chụp hóa đơn + chọn người giao → `<id>` cân từng món → `<id>?buoc=gui` xem lại, gửi. Người có `nhap` mà không `xem_gia` mở `/noi-bo/kho/nhap/*` bị chuyển sang đây |
+| `/noi-bo/kho/nhap/<id>` | Vai xem giá. Người có `duyet_nhap` mở phiếu chờ duyệt → màn **điền giá**: ảnh hóa đơn lớn, ô đơn giá từng dòng, chip so với lần nhập trước (`kho_so_sanh_gia_nhap`, đỏ khi vượt `nguong_gia_mua_pt`), [Lưu giá] [Duyệt]. `?soan=1`: quản lý sửa cả dòng hàng |
 | `/noi-bo/kho/quet` | Quét một nhãn → món gì, còn bao nhiêu ở đâu, lô nào hạn gần, nút làm tiếp |
 | `/noi-bo/kho/quy-trinh` | Các bước của từng nghiệp vụ (`lib/kho/quy-trinh.ts`), bước đang có việc hiện số đỏ |
 | `/noi-bo/kho/khac` | Mọi ô menu cho màn nhỏ, các màn CRM, đăng xuất |
@@ -101,7 +103,8 @@ Link dùng chung giữa các trang (trang nhận phải đọc được các tha
 
 - `/noi-bo/kho/xuat/moi?loai=chuyen|xuat_bep|huy&tu=<vị trí>&lo=<lô>&mh=<mặt hàng>` — mở sẵn phiếu
 - `/noi-bo/kho/ton?han=het_han|sap_het` (hai lọc **riêng**, không gộp) `&duoi_muc=1&vi_tri=quay&q=…`
-- `/noi-bo/kho/nhap?loc=nhap|cho_duyet|tu_choi`, `/noi-bo/kho/pha-loc?loc=nhap`
+- `/noi-bo/kho/nhap?loc=nhap|cho_duyet|tu_choi` (vai xem giá), `/noi-bo/kho/nhan-hang?loc=nhap|cho_duyet|tu_choi|da_duyet`
+  (thủ kho), `/noi-bo/kho/nhan-hang/moi?loai=ton_dau`, `/noi-bo/kho/pha-loc?loc=nhap`
 - `/noi-bo/kho/cong-no?loc=qua_han|den_han|chua_doi_chieu`
 
 ## 3b. Danh sách phiếu, trang in (GĐ4b)

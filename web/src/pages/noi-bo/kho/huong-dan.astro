@@ -28,7 +28,8 @@ if (k instanceof Response) return k;
   <section class="nb-the" id="thu-kho">
     <h2 style="margin-top:0">Thủ kho</h2>
     <ul>
-      <li><strong>Nhận hàng:</strong> Lập phiếu nhập → chụp hóa đơn → cân từng tảng → Gửi quản lý duyệt.</li>
+      <li><strong>Nhận hàng:</strong> chụp hóa đơn → cân, đếm từng món → Gửi. Không phải ghi giá — kế toán
+        hoặc quản lý điền giá từ ảnh.</li>
       <li><strong>Pha lóc:</strong> chọn tảng → ghi từng phần cắt → xem thử thu hồi → Chốt.</li>
       <li><strong>Ra quầy:</strong> quét nhãn các gói mang ra — hệ thống tự lấy gói hạn gần trước.</li>
       <li>Phiếu bị trả về có lý do ở <a href="/noi-bo/kho/viec">Việc cần làm</a>.</li>
@@ -48,6 +49,7 @@ if (k instanceof Response) return k;
     <h2 style="margin-top:0">Quản lý</h2>
     <ul>
       <li><strong>Duyệt:</strong> mọi thứ chờ duyệt nằm ở một chỗ, cũ nhất trước. Duyệt xong tự về danh sách.</li>
+      <li><strong>Phiếu nhập:</strong> điền giá từng món nhìn theo ảnh hóa đơn rồi Duyệt (kế toán cũng làm được).</li>
       <li><strong>Hôm nay:</strong> cột "Cần theo dõi" là việc; cột "Quản trị" là con số tiền.</li>
     </ul>
   </section>
@@ -55,6 +57,8 @@ if (k instanceof Response) return k;
   <section class="nb-the" id="ke-toan">
     <h2 style="margin-top:0">Kế toán</h2>
     <ul>
+      <li><strong>Điền giá, duyệt phiếu nhập:</strong> vào <a href="/noi-bo/kho/duyet">Duyệt</a> → mở phiếu → nhìn ảnh
+        hóa đơn, gõ đơn giá từng món → Duyệt. Chip <strong>đỏ</strong> = giá lệch nhiều so với lần trước — kiểm lại hóa đơn.</li>
       <li><strong>Đối chiếu hóa đơn</strong> cho từng phiếu nhập đã duyệt, rồi <strong>ghi thanh toán</strong>.</li>
       <li>Tải bảng công nợ Excel ở Báo cáo.</li>
     </ul>

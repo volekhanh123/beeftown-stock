@@ -5,6 +5,10 @@
  * hồi và giá vốn thật mỗi kg do database tính (kho_tinh_phien_pha, 0022) —
  * file này chỉ đọc form, gọi hàm, và đọc kết quả để hiện.
  *
+ * THỦ KHO KHÔNG THẤY TIỀN (0031): thủ kho vẫn pha lóc nhưng xem thử bằng
+ * kho_xem_thu_phien_pha_kg (chỉ kg và %). Bản có tiền kho_xem_thu_phien_pha
+ * chỉ dành cho vai xem giá — trang chọn hàm theo k.duoc('xem_gia').
+ *
  * FORM (không JavaScript):
  *   Đầu vào — mỗi lô đang có của loại tảng đã chọn là một dòng:
  *     v{i}_lo, v{i}_vi_tri (ẩn) · v{i}_dung = "co" nếu đem pha
@@ -216,6 +220,40 @@ export async function xemThuPhien(client: SupabaseClient, id: string): Promise<{
   };
 }
 
+/** Kết quả xem thử CHỈ KG — cùng dạng jsonb kho_xem_thu_phien_pha_kg() (0031). */
+export interface KetQuaTinhKg {
+  tong_kg_vao: number;
+  kg_thit: number;
+  kg_phu_pham: number;
+  kg_bo: number;
+  kg_hao_hut: number;
+  ty_le_thu_hoi: number | null;
+  canh_bao: string[];
+  dong: { ra_id: string; mat_hang_id: string; ten: string; nhom: 'thit' | 'phu_pham' | 'bo'; so_kg: number; ty_le: number | null }[];
+}
+
+/** Xem thử cho vai không xem giá (thủ kho): kg và %, không có tiền. */
+export async function xemThuPhienKg(client: SupabaseClient, id: string): Promise<{ kq: KetQuaTinhKg | null; loi: string | null }> {
+  const { data, error } = await client.rpc('kho_xem_thu_phien_pha_kg', { p_id: id });
+  if (error) return { kq: null, loi: cauLoiKho(error) };
+  const t = data as KetQuaTinhKg | null;
+  if (!t) return { kq: null, loi: null };
+  return {
+    loi: null,
+    kq: {
+      tong_kg_vao: Number(t.tong_kg_vao), kg_thit: Number(t.kg_thit), kg_phu_pham: Number(t.kg_phu_pham),
+      kg_bo: Number(t.kg_bo), kg_hao_hut: Number(t.kg_hao_hut), ty_le_thu_hoi: so(t.ty_le_thu_hoi),
+      canh_bao: t.canh_bao ?? [],
+      dong: (t.dong ?? []).map(d => ({ ...d, so_kg: Number(d.so_kg), ty_le: so(d.ty_le) })),
+    },
+  };
+}
+
+/** Phần trăm của một phần so với kg tảng vào (null khi chưa có kg vào). */
+export function phanTramCua(kg: number, tongVao: number): number | null {
+  return tongVao > 0 ? (kg * 100) / tongVao : null;
+}
+
 // -----------------------------------------------------------------------------
 // FORM → DỮ LIỆU (hàm thuần, test được)
 // -----------------------------------------------------------------------------
@@ -332,7 +370,7 @@ export async function luuPhienPha(
   if (!kq) return { ok: false, cau: 'Không chắc đã lưu hay chưa — tải lại trang để kiểm tra.', doc };
   return {
     ok: true, id: kq.phien_id, phienBan: kq.phien_ban_moi,
-    cau: kq.da_co ? 'Phiên này đã được lưu từ lần bấm trước.' : 'Đã lưu nháp. Xem thu hồi và giá vốn ở cuối trang trước khi chốt.',
+    cau: kq.da_co ? 'Phiên này đã được lưu từ lần bấm trước.' : 'Đã lưu nháp. Xem thử thu hồi ở cuối trang trước khi chốt.',
   };
 }
 

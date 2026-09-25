@@ -12,6 +12,9 @@
  *
  * Duyệt xong ở trang chi tiết thì quay về đây — phiếu tiếp theo nằm sẵn.
  * Link phiếu nhập mang ?tu=duyet để nút quay lại của trang phiếu về đây.
+ *
+ * Kế toán (0031) vào đây bằng quyền duyet_nhap: chỉ thấy phiếu nhập — điền
+ * giá rồi duyệt. Báo hủy, kiểm kê, nhắc phiên pha lóc chỉ cho vai duyet.
  */
 import Kho from '../../../layouts/Kho.astro';
 import BaoKho from '../../../components/kho/BaoKho.astro';
@@ -26,7 +29,9 @@ import { thoiGianTruoc } from '../../../lib/kho/viec.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
-if (!k.duoc('duyet')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.duoc('duyet') && !k.duoc('duyet_nhap')) return Astro.redirect('/noi-bo/kho', 302);
+const duyetNhap = k.duoc('duyet_nhap');
+const duyetKhac = k.duoc('duyet');
 
 let nhap: PhieuNhapTom[] = [];
 let huy: PhieuXuatTom[] = [];
@@ -38,10 +43,10 @@ if (k.chiNhanh && k.daKhoiTao) {
   const cn = k.chiNhanh.id;
   try {
     [nhap, huy, kiemKe, phaNhap] = await Promise.all([
-      docDanhSachPhieuNhap(k.client, cn, 'cho_duyet'),
-      docDanhSachPhieuXuat(k.client, cn, { loai: 'huy', trangThai: 'cho_duyet' }),
-      docDanhSachKiemKe(k.client, cn, 'cho_duyet'),
-      docDanhSachPhienPha(k.client, cn, 'nhap'),
+      duyetNhap ? docDanhSachPhieuNhap(k.client, cn, 'cho_duyet') : Promise.resolve([]),
+      duyetKhac ? docDanhSachPhieuXuat(k.client, cn, { loai: 'huy', trangThai: 'cho_duyet' }) : Promise.resolve([]),
+      duyetKhac ? docDanhSachKiemKe(k.client, cn, 'cho_duyet') : Promise.resolve([]),
+      duyetKhac ? docDanhSachPhienPha(k.client, cn, 'nhap') : Promise.resolve([]),
     ]);
     const cu = <T extends { created_at: string }>(a: T, b: T) => a.created_at.localeCompare(b.created_at);
     nhap.sort(cu); huy.sort(cu); kiemKe.sort(cu); phaNhap.sort(cu);
@@ -52,7 +57,7 @@ if (k.chiNhanh && k.daKhoiTao) {
 }
 const tong = nhap.length + huy.length + kiemKe.length;
 ---
-<Kho k={k} tieuDe="Duyệt" huongDan="quan-ly-duyet">
+<Kho k={k} tieuDe="Duyệt" huongDan={duyetKhac ? 'quan-ly-duyet' : 'ke-toan'}>
   <h1>Chờ duyệt{tong > 0 ? ` · ${tong}` : ''}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
@@ -69,10 +74,10 @@ const tong = nhap.length + huy.length + kiemKe.length;
                 <a href={`/noi-bo/kho/nhap/${p.id}?tu=duyet`} class="kho-duyet-the">
                   <span class="kho-duyet-chinh">
                     <strong>{p.so_phieu}{p.ten_nha_cung_cap ? ` · ${p.ten_nha_cung_cap}` : p.loai === 'ton_dau' ? ' · Tồn đầu kỳ' : ''}</strong>
-                    <span>{dinhDangKg(p.tong_kg)} · {p.so_dong} dòng{p.tong_tien > 0 ? ` · ${dinhDangTien(p.tong_tien)}` : ''}</span>
+                    <span>{dinhDangKg(p.tong_kg)} kg · {p.so_dong} dòng{p.tong_tien > 0 ? ` · ${dinhDangTien(p.tong_tien)}` : ' · chưa có giá'}</span>
                     <small>{ten.get(p.nguoi_tao ?? '') ?? '—'} gửi · {thoiGianTruoc(p.created_at)}</small>
                   </span>
-                  <span class="nb-nut phu">Xem & duyệt</span>
+                  <span class="nb-nut phu">Điền giá & duyệt</span>
                 </a>
               </li>
             ))}

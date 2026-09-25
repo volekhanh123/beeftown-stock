@@ -4,10 +4,14 @@
  *
  *   · Bước 1 (mới): chọn loại tảng đem pha — ô chọn GET, không ghi gì.
  *   · SOẠN (mới / nháp, vai pha_loc): tích lô tảng lấy ra, ghi từng phần
- *     cắt ra. Mỗi lần lưu, cuối trang hiện XEM THỬ thu hồi và giá vốn do
- *     database tính — đúng con số sẽ ghi khi chốt.
- *   · XEM (đã chốt / đã hủy): tổng kết, các lô mới sinh ra kèm giá vốn/kg.
- *     Chốt nhầm thì "Mở lại" — chỉ được khi các lô ra chưa bị đụng tới.
+ *     cắt ra. Mỗi lần lưu, cuối trang hiện XEM THỬ thu hồi (và giá vốn, với
+ *     vai xem giá) do database tính — đúng con số sẽ ghi khi chốt.
+ *   · XEM (đã chốt / đã hủy): tổng kết, các lô mới sinh ra (kèm giá vốn/kg
+ *     với vai xem giá). Chốt nhầm thì "Mở lại" — chỉ được khi các lô ra chưa
+ *     bị đụng tới.
+ *
+ * Thủ kho không thấy tiền (0031): vào được bằng quyền pha_loc; mọi cột và chữ
+ * tiền chỉ hiện khi k.duoc('xem_gia'); xem thử dùng kho_xem_thu_phien_pha_kg.
  *
  * Không JavaScript. Lưu phía máy chủ ở mỗi lần bấm, chuyển hướng 303; lỗi
  * nhập liệu thì hiện lại đúng chữ đã gõ.
@@ -22,8 +26,9 @@ import {
 } from '../../../../lib/kho/danh-muc.ts';
 import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
 import {
-  docPhienPha, docThongTinLo, docGiaVonLo, xemThuPhien, luuPhienPha, chotPhien, moLaiPhien, huyPhien,
-  raTrong, type PhienPha, type DauVao, type DauRa, type KetQuaTinh, type KetQuaDocPhien, type RaForm,
+  docPhienPha, docThongTinLo, docGiaVonLo, xemThuPhien, xemThuPhienKg, phanTramCua, luuPhienPha, chotPhien,
+  moLaiPhien, huyPhien, raTrong,
+  type PhienPha, type DauVao, type DauRa, type KetQuaTinh, type KetQuaTinhKg, type KetQuaDocPhien, type RaForm,
 } from '../../../../lib/kho/pha-loc.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, dinhDangTien, homNayVn,
@@ -32,9 +37,11 @@ import {
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
-if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.duoc('xem_gia') && !k.duoc('pha_loc')) return Astro.redirect('/noi-bo/kho', 302);
 if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const cn = k.chiNhanh;
+// Thủ kho (pha_loc, không xem giá) không thấy cột / chữ tiền nào (0031).
+const xemGia = k.duoc('xem_gia');
 
 const idThamSo = Astro.params.id ?? '';
 const moi = idThamSo === 'moi';
@@ -155,7 +162,9 @@ for (const v of thieu) {
                  ma_lo: l?.ma_lo ?? '—', han_dung: l?.han_dung ?? '', tinh_trang: 'het_han' });
 }
 dongVao.sort((a, b) => a.han_dung.localeCompare(b.han_dung) || a.ma_lo.localeCompare(b.ma_lo));
-const giaLo = await docGiaVonLo(k.client, [...dongVao.map(d => d.lo_id), ...raDb.map(r => r.lo_id ?? '')]);
+const giaLo = xemGia
+  ? await docGiaVonLo(k.client, [...dongVao.map(d => d.lo_id), ...raDb.map(r => r.lo_id ?? '')])
+  : new Map<string, { gia_von_kg: number; gia_tri: number }>();
 
 const vaoTheoKey = new Map(vaoDb.map(v => [`${v.lo_id}|${v.vi_tri_id}`, v]));
 const loiTheoKey = new Map((docLoi?.vao ?? []).map(v => [`${v.lo_id}|${v.vi_tri_id}`, v]));
@@ -180,12 +189,20 @@ const soRaTrong = Math.max(raCo.length ? 2 : 4, soRaMuon - raCo.length);
 const raHien: RaForm[] = [...raCo, ...Array.from({ length: soRaTrong }, () => raTrong(viTriMacDinh))];
 
 // Xem thử (nháp đã có đầu vào và đầu ra).
+// Vai xem giá: bản có giá vốn. Thủ kho: bản chỉ kg (0031).
 let xemThu: KetQuaTinh | null = null;
+let xemThuKg: KetQuaTinhKg | null = null;
 let loiXemThu: string | null = null;
 if (phien && phien.trang_thai === 'nhap' && vaoDb.length > 0 && raDb.length > 0) {
-  const r = await xemThuPhien(k.client, phien.id);
-  xemThu = r.kq; loiXemThu = r.loi;
+  if (xemGia) {
+    const r = await xemThuPhien(k.client, phien.id);
+    xemThu = r.kq; loiXemThu = r.loi;
+  } else {
+    const r = await xemThuPhienKg(k.client, phien.id);
+    xemThuKg = r.kq; loiXemThu = r.loi;
+  }
 }
+const kgTheoRa = new Map((xemThuKg?.dong ?? []).map(d => [d.ra_id, d]));
 const tinhTheoRa = new Map((xemThu?.dong ?? []).map(d => [d.ra_id, d]));
 const ten = phien ? await tenNhanSu(k.client, [phien.nguoi_tao, phien.nguoi_chot, phien.nguoi_huy]) : new Map<string, string>();
 const [nhanTT, lopTT] = phien ? (TRANG_THAI_CHUNG_TU[phien.trang_thai] ?? [phien.trang_thai, 'tat']) : ['Mới', 'nhap'];
@@ -220,7 +237,7 @@ const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
     <form method="GET" class="nb-the">
       <label class="nb-o">
         <span>Đem pha loại tảng nào?</span>
-        <small>Mỗi phiên một loại. Pha hai loại tảng thì ghi hai phiên — để thu hồi và giá vốn của từng loại không lẫn vào nhau.</small>
+        <small>Mỗi phiên một loại. Pha hai loại tảng thì ghi hai phiên — để thu hồi{xemGia ? ' và giá vốn' : ''} của từng loại không lẫn vào nhau.</small>
         {tangChon.length === 0
           ? <p class="nb-rong" style="margin:.5rem 0">Kho chưa có tảng nào. Tảng vào kho khi phiếu nhập được duyệt.</p>
           : <ChonMatHang name="mat_hang" matHang={tangChon} loai={['tang', 'phan_cat']} batBuoc trong="— chọn tảng —" />}
@@ -281,7 +298,7 @@ const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
                     <span class="kho-phu">
                       {tenVt.get(d.vi_tri_id)?.ten ?? '—'} · còn <strong>{dinhDangKg(d.ton_kg)} kg</strong>
                       {mhVao.dem_goi && <> · {d.ton_goi} {mhVao.don_vi_goi}</>}
-                      {gia && <> · {dinhDangTien(gia.gia_von_kg)}/kg</>}
+                      {xemGia && gia && <> · {dinhDangTien(gia.gia_von_kg)}/kg</>}
                       {' · '}<span class={`kho-han ${d.tinh_trang}`}>HSD {dinhDangNgay(d.han_dung)}</span>
                     </span>
                   </div>
@@ -354,9 +371,43 @@ const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
           <h2 style="margin-top:0">Xem thử trước khi chốt</h2>
           {loiXemThu ? (
             <div class="nb-bao loi"><p>{loiXemThu}</p></div>
-          ) : !xemThu ? (
+          ) : !xemThu && !xemThuKg ? (
             <p class="nb-rong">Chọn ít nhất một lô tảng và ghi ít nhất một phần cắt ra, rồi bấm "Lưu + xem thử".</p>
-          ) : (
+          ) : xemThuKg ? (
+            // Thủ kho: chỉ kg và %, không tiền.
+            <>
+              <div class="kho-o-so-luoi">
+                <div class="kho-o-so"><b>{dinhDangPhanTram(xemThuKg.ty_le_thu_hoi)}</b><span>thu hồi thịt</span></div>
+                <div class="kho-o-so"><b>{dinhDangPhanTram(phanTramCua(xemThuKg.kg_phu_pham, xemThuKg.tong_kg_vao))}</b><span>phụ phẩm</span></div>
+                <div class="kho-o-so"><b>{dinhDangPhanTram(phanTramCua(xemThuKg.kg_bo, xemThuKg.tong_kg_vao))}</b><span>bỏ</span></div>
+                <div class={`kho-o-so ${xemThuKg.kg_hao_hut < 0 ? 'luu-y' : ''}`}><b>{dinhDangPhanTram(phanTramCua(xemThuKg.kg_hao_hut, xemThuKg.tong_kg_vao))}</b><span>hao hụt ({dinhDangKg(xemThuKg.kg_hao_hut)} kg)</span></div>
+              </div>
+              <p class="nb-dan">Tảng vào <strong>{dinhDangKg(xemThuKg.tong_kg_vao)} kg</strong> · thịt giữ lại <strong>{dinhDangKg(xemThuKg.kg_thit)} kg</strong></p>
+              {xemThuKg.canh_bao.length > 0 && (
+                <div class="nb-bao luu-y">{xemThuKg.canh_bao.map(c => <p>{c}</p>)}</div>
+              )}
+              <div class="kho-bang-khung">
+                <table class="kho-bang">
+                  <thead><tr><th>Phần ra</th><th class="so">Kg</th><th class="so">% tảng</th><th>Xử lý</th></tr></thead>
+                  <tbody>
+                    {raDb.map(r => {
+                      const t = kgTheoRa.get(r.id);
+                      return (
+                        <tr>
+                          <td>{tenMh.get(r.mat_hang_id)?.ten ?? '—'}</td>
+                          <td class="so">{dinhDangKg(r.so_kg)}</td>
+                          <td class="so">{dinhDangPhanTram(t?.ty_le ?? null)}</td>
+                          <td>{TEN_XU_LY[r.xu_ly]}</td>
+                        </tr>
+                      );
+                    })}
+                    <tr class="tong"><td>Tổng</td><td class="so">{dinhDangKg(xemThuKg.kg_thit + xemThuKg.kg_phu_pham + xemThuKg.kg_bo)}</td><td colspan="2"></td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p class="kho-phu">Hao hụt = kg tảng vào − mọi phần đã cân (thịt, phụ phẩm, phần bỏ). Lệch nhiều thì cân lại trước khi chốt. Chốt phiên thì mỗi phần giữ lại thành một lô mới.</p>
+            </>
+          ) : xemThu && (
             <>
               <div class="kho-o-so-luoi">
                 <div class="kho-o-so"><b>{dinhDangPhanTram(xemThu.ty_le_thu_hoi)}</b><span>thu hồi thịt</span></div>
@@ -432,7 +483,7 @@ const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
       <h2>Tảng đem pha</h2>
       <div class="kho-bang-khung">
         <table class="kho-bang">
-          <thead><tr><th>Lô</th><th>Lấy ở</th><th class="so">Kg</th><th class="so">Số tảng</th><th class="so">Giá vốn/kg</th></tr></thead>
+          <thead><tr><th>Lô</th><th>Lấy ở</th><th class="so">Kg</th><th class="so">Số tảng</th>{xemGia && <th class="so">Giá vốn/kg</th>}</tr></thead>
           <tbody>
             {vaoDb.map(v => (
               <tr>
@@ -440,7 +491,7 @@ const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
                 <td>{tenVt.get(v.vi_tri_id)?.ten ?? '—'}</td>
                 <td class="so">{dinhDangKg(v.so_kg)}</td>
                 <td class="so">{v.so_goi || '—'}</td>
-                <td class="so">{giaLo.get(v.lo_id) ? dinhDangTien(giaLo.get(v.lo_id)!.gia_von_kg) : '—'}</td>
+                {xemGia && <td class="so">{giaLo.get(v.lo_id) ? dinhDangTien(giaLo.get(v.lo_id)!.gia_von_kg) : '—'}</td>}
               </tr>
             ))}
           </tbody>
@@ -450,7 +501,7 @@ const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
       <h2>Phần cắt ra</h2>
       <div class="kho-bang-khung">
         <table class="kho-bang">
-          <thead><tr><th>Phần ra</th><th class="so">Kg</th><th class="so">Gói</th><th>Xử lý</th><th>Lô mới</th><th class="so">Giá vốn/kg</th><th class="so">Biên lãi</th></tr></thead>
+          <thead><tr><th>Phần ra</th><th class="so">Kg</th><th class="so">Gói</th><th>Xử lý</th><th>Lô mới</th>{xemGia && <><th class="so">Giá vốn/kg</th><th class="so">Biên lãi</th></>}</tr></thead>
           <tbody>
             {raDb.map(r => {
               const g = r.lo_id ? giaLo.get(r.lo_id) : undefined;
@@ -462,8 +513,10 @@ const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
                   <td class="so">{r.so_goi || '—'}</td>
                   <td>{TEN_XU_LY[r.xu_ly]}{r.xu_ly === 'nhap_kho' && r.vi_tri_id ? ` · ${tenVt.get(r.vi_tri_id)?.ten ?? ''}` : ''}</td>
                   <td>{l ? <>{l.ma_lo}<br /><span class="kho-phu">HSD {dinhDangNgay(l.han_dung)}</span></> : '—'}</td>
-                  <td class="so">{g ? dinhDangTien(g.gia_von_kg) : '—'}</td>
-                  <td class="so">{g ? bienLai(r.gia_ban_kg, g.gia_von_kg) : '—'}</td>
+                  {xemGia && <>
+                    <td class="so">{g ? dinhDangTien(g.gia_von_kg) : '—'}</td>
+                    <td class="so">{g ? bienLai(r.gia_ban_kg, g.gia_von_kg) : '—'}</td>
+                  </>}
                 </tr>
               );
             })}

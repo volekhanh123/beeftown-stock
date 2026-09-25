@@ -5,6 +5,11 @@
  * thì hàng mới vào tồn. Mọi lệnh ghi đi qua các hàm kho_*_phieu_nhap trong
  * migration 0020 — file này chỉ đọc form, tải ảnh và gọi hàm.
  *
+ * TỪ 0031 thủ kho không thấy tiền: thủ kho nhận hàng ở /noi-bo/kho/nhan-hang
+ * (chỉ kg, lib/kho/nhan-hang.ts). File này phục vụ vai XEM GIÁ: lập phiếu đủ
+ * giá (quản lý, chủ) và màn DUYỆT CÓ ĐIỀN GIÁ (kế toán, quản lý — quyền
+ * duyet_nhap): điền đơn giá từ ảnh hóa đơn, so với lần nhập trước, duyệt.
+ *
  * FORM DÒNG HÀNG — không JavaScript, nên số dòng cố định theo mỗi lần hiện
  * form: các dòng đã có + vài dòng trống. Cần thêm thì bấm "Lưu và thêm dòng".
  * Tên ô của dòng thứ i: d{i}_mat_hang, d{i}_so_goi, d{i}_so_kg, d{i}_don_gia,
@@ -19,7 +24,10 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, chiaSoDuLonNhat, docKg, docNgay, docSoNguyen, docTien, laUuid, type KetQua } from './chung.ts';
+import {
+  cauLoiKho, chiaSoDuLonNhat, dinhDangPhanTram, dinhDangTien, docKg, docNgay, docSoNguyen, docTien, laUuid,
+  type KetQua,
+} from './chung.ts';
 import { docTruongThem, type DinhNghiaTruong, type GiaTriTruong } from './truong-them.ts';
 import { docAnhDaTai, layTepAnh, soThuTuCuoi, taiAnh } from './anh.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
@@ -423,6 +431,165 @@ export function tuChoiPhieu(client: SupabaseClient, id: string, lyDo: string) {
 }
 export function huyPhieu(client: SupabaseClient, id: string, lyDo: string | null) {
   return cauTraVe(client.rpc('kho_huy_phieu_nhap', { p_id: id, p_ly_do: lyDo }));
+}
+
+// -----------------------------------------------------------------------------
+// ĐIỀN GIÁ KHI DUYỆT (0031) — kế toán / quản lý, quyền duyet_nhap
+// -----------------------------------------------------------------------------
+// Thủ kho gửi phiếu chỉ có kg và ảnh hóa đơn. Người duyệt nhìn ảnh, gõ đơn
+// giá từng dòng và thông tin hóa đơn, rồi "Lưu giá" hoặc "Duyệt" (= lưu giá
+// rồi duyệt ngay). Ô đơn giá tên gia_<id dòng> — chỉ nhận id của đúng phiếu
+// đang mở, id lạ bị bỏ qua (database cũng chặn lần nữa).
+// -----------------------------------------------------------------------------
+
+/** Một dòng kết quả kho_so_sanh_gia_nhap: giá dòng này so với lần nhập trước. */
+export interface SoSanhGia {
+  dong_id: string;
+  mat_hang_id: string;
+  don_gia_kg: number;
+  /** Đơn giá lần trước — cùng mặt hàng, cùng nhà cung cấp. Chưa có lần trước: null. */
+  gia_truoc: number | null;
+  ngay_truoc: string | null;
+  so_phieu_truoc: string | null;
+  /** % chênh, 1 số lẻ. Dòng chưa có giá hoặc chưa có lần trước: null. */
+  chenh_pt: number | null;
+  vuot_nguong: boolean;
+}
+
+const soHoacNull = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+
+/** So giá từng dòng với lần nhập trước. Vai không xem giá: Map rỗng. */
+export async function docSoSanhGia(client: SupabaseClient, id: string): Promise<Map<string, SoSanhGia>> {
+  const ra = new Map<string, SoSanhGia>();
+  if (!laUuid(id)) return ra;
+  const { data, error } = await client.rpc('kho_so_sanh_gia_nhap', { p_id: id });
+  if (error) throw error;
+  for (const r of (data ?? []) as Record<string, unknown>[]) {
+    ra.set(String(r.dong_id), {
+      dong_id: String(r.dong_id),
+      mat_hang_id: String(r.mat_hang_id),
+      don_gia_kg: Number(r.don_gia_kg ?? 0),
+      gia_truoc: soHoacNull(r.gia_truoc),
+      ngay_truoc: (r.ngay_truoc as string | null) ?? null,
+      so_phieu_truoc: (r.so_phieu_truoc as string | null) ?? null,
+      chenh_pt: soHoacNull(r.chenh_pt),
+      vuot_nguong: r.vuot_nguong === true,
+    });
+  }
+  return ra;
+}
+
+/** Ngưỡng cảnh báo giá nhập (%) của chi nhánh — kho_cai_dat.nguong_gia_mua_pt, mặc định 5. */
+export async function docNguongGiaMua(client: SupabaseClient, chiNhanhId: string): Promise<number> {
+  const { data } = await client
+    .from('kho_cai_dat').select('nguong_gia_mua_pt')
+    .eq('chi_nhanh_id', chiNhanhId).maybeSingle();
+  const n = Number(data?.nguong_gia_mua_pt);
+  return Number.isFinite(n) && n > 0 ? n : 5;
+}
+
+/** Chữ trên chip của một dòng: "Lần trước 480.000 đ · +8,3%". Chưa có lần trước: null. */
+export function chuSoSanhGia(s: SoSanhGia | undefined): { chu: string; vuot: boolean } | null {
+  if (!s || s.gia_truoc === null) return null;
+  const pt = s.chenh_pt === null ? '' : ` · ${s.chenh_pt > 0 ? '+' : ''}${dinhDangPhanTram(s.chenh_pt)}`;
+  return { chu: `Lần trước ${dinhDangTien(s.gia_truoc)}${pt}`, vuot: s.vuot_nguong };
+}
+
+/**
+ * Câu tóm tắt trong hộp vàng trên nút Duyệt:
+ * "2 món giá tăng hơn 5% so với lần trước — kiểm lại hóa đơn". Không món nào vượt: null.
+ */
+export function cauCanhBaoGia(ds: Iterable<SoSanhGia>, nguong: number): string | null {
+  const vuot = [...ds].filter(s => s.vuot_nguong && s.chenh_pt !== null);
+  if (vuot.length === 0) return null;
+  const huong = vuot.every(s => (s.chenh_pt ?? 0) > 0) ? 'tăng'
+    : vuot.every(s => (s.chenh_pt ?? 0) < 0) ? 'giảm' : 'lệch';
+  return `${vuot.length} món giá ${huong} hơn ${nguong.toLocaleString('vi-VN')}% so với lần trước — kiểm lại hóa đơn`;
+}
+
+/** Chữ đang hiện trên form điền giá — giữ nguyên chữ người dùng gõ để điền lại khi báo lỗi. */
+export interface DienGiaForm {
+  so_hoa_don: string;
+  ngay_hoa_don: string;
+  han_thanh_toan: string;
+  tien_thue: string;
+  chi_phi_khac: string;
+  /** Ô đơn giá theo id dòng. */
+  gia: Record<string, string>;
+}
+
+export function dienGiaTuPhieu(p: PhieuNhap, dong: DongPhieuNhap[]): DienGiaForm {
+  const tien = (n: number) => (n ? n.toLocaleString('vi-VN') : '');
+  return {
+    so_hoa_don: p.so_hoa_don ?? '',
+    ngay_hoa_don: p.ngay_hoa_don ?? '',
+    han_thanh_toan: p.han_thanh_toan ?? '',
+    tien_thue: tien(p.tien_thue),
+    chi_phi_khac: tien(p.chi_phi_khac),
+    gia: Object.fromEntries(dong.map(d => [d.id, tien(d.don_gia_kg)])),
+  };
+}
+
+export interface KetQuaDocDienGia {
+  giaTri: DienGiaForm;
+  loi: string[];
+  /** Gửi thẳng vào p_gia của kho_dien_gia_phieu_nhap. */
+  payload: { dong_id: string; don_gia_kg: number }[];
+}
+
+/**
+ * Đọc form điền giá. Hàm thuần — test được. Ô đơn giá bỏ trống = 0 (chưa có
+ * giá): trang hiện đúng thứ đã lưu, và nút Duyệt sẽ báo dòng nào còn thiếu.
+ * Phiếu tồn đầu kỳ không có thuế, chi phí — luôn gửi 0.
+ */
+export function docFormDienGia(
+  form: FormData,
+  dong: { id: string; thu_tu?: number }[],
+  loai: 'mua' | 'ton_dau',
+): KetQuaDocDienGia {
+  const s = (ten: string) => String(form.get(ten) ?? '').trim();
+  const loi: string[] = [];
+  const giaTri: DienGiaForm = {
+    so_hoa_don: s('so_hoa_don'),
+    ngay_hoa_don: s('ngay_hoa_don'),
+    han_thanh_toan: s('han_thanh_toan'),
+    tien_thue: loai === 'mua' ? s('tien_thue') : '',
+    chi_phi_khac: loai === 'mua' ? s('chi_phi_khac') : '',
+    gia: {},
+  };
+  const payload: { dong_id: string; don_gia_kg: number }[] = [];
+  dong.forEach((d, i) => {
+    const chu = s(`gia_${d.id}`);
+    giaTri.gia[d.id] = chu;
+    const gia = docTien(chu);
+    if (Number.isNaN(gia)) { loi.push(`Dòng ${i + 1}: đơn giá là số đồng mỗi kg (ví dụ 480.000)`); return; }
+    payload.push({ dong_id: d.id, don_gia_kg: gia ?? 0 });
+  });
+  if (giaTri.ngay_hoa_don && docNgay(giaTri.ngay_hoa_don) === undefined) loi.push('Ngày hóa đơn không phải ngày có thật');
+  if (giaTri.han_thanh_toan && docNgay(giaTri.han_thanh_toan) === undefined) loi.push('Hạn thanh toán không phải ngày có thật');
+  if (Number.isNaN(docTien(giaTri.tien_thue))) loi.push('Tiền thuế là số đồng');
+  if (Number.isNaN(docTien(giaTri.chi_phi_khac))) loi.push('Chi phí khác là số đồng');
+  return { giaTri, loi, payload };
+}
+
+/** Lưu giá (không đổi trạng thái). Thành công: trả phiên bản mới để duyệt tiếp. */
+export async function dienGiaPhieu(
+  client: SupabaseClient, id: string, phienBan: number | null, doc: KetQuaDocDienGia,
+): Promise<KetQua & { phienBan?: number }> {
+  if (doc.loi.length) return { ok: false, cau: doc.loi.join(' · ') };
+  const g = doc.giaTri;
+  const { data, error } = await client.rpc('kho_dien_gia_phieu_nhap', {
+    p_id: id,
+    p_phien_ban: phienBan,
+    p_so_hoa_don: g.so_hoa_don || null,
+    p_ngay_hoa_don: g.ngay_hoa_don || null,
+    p_han_thanh_toan: g.han_thanh_toan || null,
+    p_tien_thue: docTien(g.tien_thue) ?? 0,
+    p_chi_phi_khac: docTien(g.chi_phi_khac) ?? 0,
+    p_gia: doc.payload,
+  });
+  if (error) return { ok: false, cau: cauLoiKho(error) };
+  return { ok: true, cau: 'Đã lưu giá.', phienBan: Number(data) };
 }
 
 // -----------------------------------------------------------------------------

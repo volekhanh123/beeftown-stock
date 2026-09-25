@@ -1,0 +1,49 @@
+---
+/**
+ * Hàng nút lớn để chọn một trong vài thứ hay dùng (nhà cung cấp gần đây, món
+ * hay giao) — trang Nhận hàng (GĐ5a).
+ *
+ * Không JavaScript: mỗi nút là một ô radio bọc trong nhãn to, bấm là chọn,
+ * gửi form mới lưu. Ô radio vẫn hiện (nhỏ, ở góc) để máy nào không tô được
+ * nút đang chọn vẫn thấy đã chọn cái nào. Không gọi database.
+ */
+interface Props {
+  name: string;
+  ds: { value: string; nhan: string; phu?: string | null }[];
+  chon?: string;
+  /** Nhãn đọc cho người dùng trình đọc màn hình. */
+  nhan: string;
+}
+const { name, ds, chon = '', nhan } = Astro.props;
+---
+{ds.length > 0 && (
+  <div class="nh-chon" role="radiogroup" aria-label={nhan}>
+    {ds.map(o => (
+      <label class="nh-chon-o">
+        <input type="radio" name={name} value={o.value} checked={o.value === chon} />
+        <span class="nh-chon-chu">
+          <strong>{o.nhan}</strong>
+          {o.phu && <small>{o.phu}</small>}
+        </span>
+      </label>
+    ))}
+  </div>
+)}
+
+<style>
+  .nh-chon { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); margin: .25rem 0 .75rem; }
+  .nh-chon-o {
+    position: relative; display: flex; align-items: center; min-height: 56px; cursor: pointer;
+    border: 2px solid var(--kho-vach, #ddd); border-radius: 12px; background: #fff;
+    padding: .55rem .75rem .55rem 2.3rem;
+  }
+  .nh-chon-o input {
+    position: absolute; left: .7rem; top: 50%; transform: translateY(-50%);
+    width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; accent-color: var(--do, #b3261e);
+  }
+  .nh-chon-chu { display: flex; flex-direction: column; line-height: 1.25; }
+  .nh-chon-chu strong { font-size: 1rem; }
+  .nh-chon-chu small { font-size: .78rem; color: var(--muc-nhat, #666); }
+  .nh-chon-o:has(input:checked) { border-color: var(--than, #2b1d14); background: var(--kem, #fbf6ee); }
+  .nh-chon-o:focus-within { outline: 3px solid var(--do, #b3261e); outline-offset: 1px; }
+</style>

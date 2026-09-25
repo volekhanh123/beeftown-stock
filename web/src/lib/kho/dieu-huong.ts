@@ -10,8 +10,9 @@
  * việc khác nhau, nên thứ nằm dưới ngón cái của họ cũng khác nhau.
  *
  * File thuần (không import lúc chạy trừ chung.ts), để test kiểm: mọi link trỏ
- * tới một trang có thật, thanh đáy không quá 5 nút, NV quầy không có ô nào cần
- * quyền xem giá.
+ * tới một trang có thật, thanh đáy không quá 5 nút, NV quầy và thủ kho không
+ * có ô nào chỉ-xem-giá (0031: thủ kho không thấy tiền — nhận hàng ở ô "Nhận
+ * hàng", chỉ kg; ô "Nhập hàng" có tiền là của kế toán, quản lý, chủ).
  *
  * Quyền ở đây chỉ để ẩn/hiện. Mỗi mục ghi đúng quyền mà TRANG ĐÓ kiểm ở đầu
  * file — lệch nhau thì người dùng bấm vào một ô rồi bị đẩy ra, rất khó chịu.
@@ -49,13 +50,19 @@ export const MUC_KHO: MucKho[] = [
   { ma: 'trang_chu', ten: 'Trang chủ', link: '/noi-bo/kho', bieuTuong: 'nha', quyen: ['xem'] },
   { ma: 'viec', ten: 'Việc cần làm', ngan: 'Việc', link: '/noi-bo/kho/viec', bieuTuong: 'viec',
     quyen: ['nhap', 'van_hanh', 'pha_loc'], dem: KHOA_VIEC_TAY },
-  { ma: 'duyet', ten: 'Duyệt', link: '/noi-bo/kho/duyet', bieuTuong: 'duyet', quyen: ['duyet'], dem: KHOA_DUYET },
+  // Kế toán vào Duyệt bằng duyet_nhap (0031) — chỉ thấy phiếu nhập.
+  { ma: 'duyet', ten: 'Duyệt', link: '/noi-bo/kho/duyet', bieuTuong: 'duyet', quyen: ['duyet', 'duyet_nhap'],
+    dem: KHOA_DUYET },
   { ma: 'quet', ten: 'Quét nhãn', ngan: 'Quét', link: '/noi-bo/kho/quet', bieuTuong: 'quet', quyen: ['xem'] },
   { ma: 'ton', ten: 'Tồn kho', link: '/noi-bo/kho/ton', bieuTuong: 'ton', quyen: ['xem'], dem: ['het_han'],
     khop: ['/noi-bo/kho/the-kho'] },
-  { ma: 'nhap', ten: 'Nhập hàng', link: '/noi-bo/kho/nhap', bieuTuong: 'nhap', quyen: ['xem_gia'],
-    dem: ['nhap_bi_tra'] },
-  { ma: 'pha_loc', ten: 'Pha lóc', link: '/noi-bo/kho/pha-loc', bieuTuong: 'dao', quyen: ['xem_gia'],
+  // Nhận hàng: màn chỉ kg của người nhận hàng (thủ kho). Số đỏ = phiếu của
+  // chính mình còn nháp hoặc bị trả về.
+  { ma: 'nhan_hang', ten: 'Nhận hàng', link: '/noi-bo/kho/nhan-hang', bieuTuong: 'nhap', quyen: ['nhap'],
+    dem: ['nhap_nhap', 'nhap_bi_tra'] },
+  // Nhập hàng: phiếu có tiền — điền giá, duyệt, xem lại (vai xem giá).
+  { ma: 'nhap', ten: 'Nhập hàng', link: '/noi-bo/kho/nhap', bieuTuong: 'nhap', quyen: ['xem_gia'] },
+  { ma: 'pha_loc', ten: 'Pha lóc', link: '/noi-bo/kho/pha-loc', bieuTuong: 'dao', quyen: ['xem_gia', 'pha_loc'],
     dem: ['pha_nhap'] },
   { ma: 'xuat', ten: 'Chuyển · Xuất · Hủy', ngan: 'Xuất', link: '/noi-bo/kho/xuat', bieuTuong: 'chuyen',
     quyen: ['xem'], dem: ['huy_bi_tra'] },
@@ -85,14 +92,14 @@ const theoMa = (ma: string): MucKho => {
   return m;
 };
 
-/** Thanh đáy của từng vai — đúng 5 nút (kế toán 5). */
+/** Thanh đáy của từng vai — đúng 5 nút. Kế toán: Duyệt (điền giá phiếu nhập) đứng thứ hai. */
 export const THANH_DAY: Record<string, MucKho[]> = {
   thu_kho:        [{ ...theoMa('trang_chu') }, theoMa('viec'), theoMa('quet'), theoMa('ton'), MUC_KHAC],
   nhan_vien_quay: [{ ...theoMa('trang_chu'), ten: 'Quầy', bieuTuong: 'quay' }, theoMa('viec'), theoMa('quet'),
                    MUC_QUAY, MUC_KHAC],
   quan_ly:        [{ ...theoMa('trang_chu'), ten: 'Hôm nay' }, theoMa('duyet'), theoMa('quet'), theoMa('ton'), MUC_KHAC],
   chu_so_huu:     [{ ...theoMa('trang_chu'), ten: 'Hôm nay' }, theoMa('duyet'), theoMa('quet'), theoMa('ton'), MUC_KHAC],
-  ke_toan:        [theoMa('trang_chu'), theoMa('cong_no'), theoMa('nhap'), theoMa('bao_cao'), MUC_KHAC],
+  ke_toan:        [theoMa('trang_chu'), theoMa('duyet'), theoMa('cong_no'), theoMa('nhap'), MUC_KHAC],
 };
 
 export interface ThaoTac { ten: string; link: string; bieuTuong: TenBieuTuong; quyen: ViecKho[] }
@@ -100,7 +107,7 @@ export interface ThaoTac { ten: string; link: string; bieuTuong: TenBieuTuong; q
 /** "Thao tác nhanh" — nút tròn trên trang chủ và danh sách dưới cột trái. */
 export const THAO_TAC_NHANH: Record<string, ThaoTac[]> = {
   thu_kho: [
-    { ten: 'Nhận hàng', link: '/noi-bo/kho/nhap/moi', bieuTuong: 'nhap', quyen: ['nhap'] },
+    { ten: 'Nhận hàng', link: '/noi-bo/kho/nhan-hang/moi', bieuTuong: 'nhap', quyen: ['nhap'] },
     { ten: 'Pha lóc', link: '/noi-bo/kho/pha-loc/moi', bieuTuong: 'dao', quyen: ['pha_loc'] },
     { ten: 'Ra quầy', link: '/noi-bo/kho/xuat/moi?loai=chuyen', bieuTuong: 'chuyen', quyen: ['van_hanh'] },
     { ten: 'Báo hủy', link: '/noi-bo/kho/xuat/moi?loai=huy', bieuTuong: 'huy', quyen: ['van_hanh'] },
@@ -113,12 +120,13 @@ export const THAO_TAC_NHANH: Record<string, ThaoTac[]> = {
     { ten: 'Đếm quầy', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['van_hanh'] },
   ],
   quan_ly: [
-    { ten: 'Duyệt', link: '/noi-bo/kho/duyet', bieuTuong: 'duyet', quyen: ['duyet'] },
+    { ten: 'Duyệt', link: '/noi-bo/kho/duyet', bieuTuong: 'duyet', quyen: ['duyet', 'duyet_nhap'] },
     { ten: 'Kiểm kê', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['xem'] },
     { ten: 'Tồn kho', link: '/noi-bo/kho/ton', bieuTuong: 'ton', quyen: ['xem'] },
     { ten: 'Báo cáo', link: '/noi-bo/kho/bao-cao', bieuTuong: 'bao_cao', quyen: ['xem_gia'] },
   ],
   ke_toan: [
+    { ten: 'Duyệt phiếu nhập', link: '/noi-bo/kho/duyet', bieuTuong: 'duyet', quyen: ['duyet_nhap'] },
     { ten: 'Đối chiếu hóa đơn', link: '/noi-bo/kho/cong-no?loc=chua_doi_chieu', bieuTuong: 'viec', quyen: ['ke_toan'] },
     { ten: 'Ghi thanh toán', link: '/noi-bo/kho/cong-no', bieuTuong: 'cong_no', quyen: ['ke_toan'] },
     { ten: 'Tải công nợ (Excel)', link: '/noi-bo/kho/bao-cao/cong-no.csv', bieuTuong: 'bao_cao', quyen: ['ke_toan'] },

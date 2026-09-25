@@ -121,6 +121,8 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/kho/trang.ts',
   'web/src/lib/kho/danh-muc.ts',
   'web/src/lib/kho/nhap.ts',
+  // Nhận hàng chỉ kg của thủ kho (GĐ5a) — chỉ gọi các hàm _kg của 0031.
+  'web/src/lib/kho/nhan-hang.ts',
   'web/src/lib/kho/ton.ts',
   'web/src/lib/kho/pha-loc.ts',
   'web/src/lib/kho/xuat.ts',

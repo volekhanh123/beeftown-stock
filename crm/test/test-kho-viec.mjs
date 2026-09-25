@@ -34,7 +34,7 @@ async function luuPhieu(dong, vt, uid = UID.thuKhoA) {
       p_id => null, p_chi_nhanh_id => $1, p_ma_gui => $2, p_phien_ban => null,
       p_loai => 'mua', p_nha_cung_cap_id => $3, p_vi_tri_id => $4, p_ngay_nhap => $5::date,
       p_so_hoa_don => null, p_ngay_hoa_don => null, p_han_thanh_toan => null,
-      p_tien_thue => 0, p_chi_phi_khac => 0, p_ghi_chu => null, p_anh => '{}'::text[],
+      p_tien_thue => 0, p_chi_phi_khac => 0, p_ghi_chu => null, p_anh => array[$1::uuid::text || '/nhap/' || gen_random_uuid() || '/1.jpg'],
       p_truong_them => '{}'::jsonb, p_dong => $6::jsonb)`,
     [cnA.id, maGui(), ncc, vt, homNay, JSON.stringify(dong)]);
   if (luu.loi) throw new Error(luu.loi);
@@ -45,8 +45,10 @@ async function guiPhieu(p, uid = UID.thuKhoA) {
   if (gui.loi) throw new Error(gui.loi);
   return p.phieu_id;
 }
+// Phiếu sẽ được duyệt nên phải có giá → quản lý lưu (thủ kho không gửi được
+// giá — 0031); thủ kho vẫn gửi.
 async function nhapHang(dong, vt) {
-  const id = await guiPhieu(await luuPhieu(dong, vt));
+  const id = await guiPhieu(await luuPhieu(dong, vt, UID.qlA));
   const duyet = await duoi(UID.qlA, `select kho_duyet_phieu_nhap($1)`, [id]);
   if (duyet.loi) throw new Error(duyet.loi);
   return id;
@@ -109,7 +111,8 @@ await nhom('2 · BỘ KHÓA ĐÚNG THEO QUYỀN TỪNG VAI', async () => {
                  'cong_no_qua_han', 'cong_no_7_ngay', 'chua_doi_chieu'],
     'thủ kho':  [...CHUNG, 'quay_chua_dem', 'nhap_bi_tra', 'nhap_nhap', 'huy_bi_tra', 'kiem_ke_tra_ve', 'pha_nhap'],
     'NV quầy':  [...CHUNG, 'quay_chua_dem', 'huy_bi_tra', 'kiem_ke_tra_ve'],
-    'kế toán':  [...CHUNG, 'cong_no_qua_han', 'cong_no_7_ngay', 'chua_doi_chieu'],
+    // 0031: kế toán điền giá và duyệt phiếu nhập → có số đỏ duyet_nhap (không có hủy, kiểm kê)
+    'kế toán':  [...CHUNG, 'duyet_nhap', 'cong_no_qua_han', 'cong_no_7_ngay', 'chua_doi_chieu'],
   };
   const uid = { 'quản lý': UID.qlA, 'thủ kho': UID.thuKhoA, 'NV quầy': UID.nvQuayA, 'kế toán': UID.keToanA };
   for (const [ten, khoa] of Object.entries(mong)) {
@@ -153,13 +156,17 @@ await nhom('3 · HẠN DÙNG VÀ QUẦY', async () => {
 
 // ===========================================================================
 await nhom('4 · VIỆC BỊ TRẢ VỀ CHỈ BÁO ĐÚNG NGƯỜI LẬP', async () => {
-  const p = await luuPhieu([{ mat_hang_id: MH['T-THANNGOAI'].id, so_goi: 1, so_kg: 12, don_gia_kg: 400000,
+  const p = await luuPhieu([{ mat_hang_id: MH['T-THANNGOAI'].id, so_goi: 1, so_kg: 12,
                               han_dung: await ngaySau(20) }], viTri.kho);
   let tk = await demViec(UID.thuKhoA);
   ok('Phiếu nháp của thủ kho → nhap_nhap = 1', tk.nhap_nhap === 1, `thấy ${tk.nhap_nhap}`);
   const id = await guiPhieu(p);
   let ql = await demViec(UID.qlA);
   ok('Gửi duyệt → quản lý thấy duyet_nhap = 1', ql.duyet_nhap === 1, `thấy ${ql.duyet_nhap}`);
+  const kt = await demViec(UID.keToanA);
+  ok('Gửi duyệt → kế toán cũng thấy duyet_nhap = 1 (0031)', kt.duyet_nhap === 1, `thấy ${kt.duyet_nhap}`);
+  const evKt = (await thongBao(UID.keToanA)).su_kien.find(e => e.khoa === 'cho_duyet_nhap' && e.ref_id === id);
+  ok('Kế toán có thông báo phiếu nhập chờ duyệt', !!evKt);
 
   const tc = await duoi(UID.qlA, `select kho_tu_choi_phieu_nhap($1, 'Sai số kg')`, [id]);
   ok('Quản lý từ chối được', tc.loi === null, tc.loi ?? '');
@@ -268,7 +275,7 @@ await nhom('7 · CHƯA ĐỌC / ĐÃ ĐỌC', async () => {
 
   // Sự kiện mới sau khi đã đọc: phiếu nhập mới bị từ chối.
   const id = await guiPhieu(await luuPhieu([{ mat_hang_id: MH['T-THANNGOAI'].id, so_goi: 1, so_kg: 3,
-                                              don_gia_kg: 400000, han_dung: await ngaySau(20) }], viTri.kho));
+                                              han_dung: await ngaySau(20) }], viTri.kho));
   await duoi(UID.qlA, `select kho_tu_choi_phieu_nhap($1, 'Thiếu ảnh')`, [id]);
   tk = await demViec(UID.thuKhoA);
   ok('Sự kiện mới sau khi đọc → chua_doc = 1', tk.chua_doc === 1, `thấy ${tk.chua_doc}`);

@@ -33,13 +33,14 @@ let viTri = {};
 let ncc;
 const lyDo = {};
 
-async function taoPhieuNhap(dong, vt, uid = UID.thuKhoA) {
+// Phiếu có đơn giá → vai xem giá lưu; thủ kho không gửi được giá (0031).
+async function taoPhieuNhap(dong, vt, uid = UID.qlA) {
   const luu = await duoi(uid, `
     select * from kho_luu_phieu_nhap(
       p_id => null, p_chi_nhanh_id => $1, p_ma_gui => $2, p_phien_ban => null,
       p_loai => 'mua', p_nha_cung_cap_id => $3, p_vi_tri_id => $4, p_ngay_nhap => $5::date,
       p_so_hoa_don => null, p_ngay_hoa_don => null, p_han_thanh_toan => null,
-      p_tien_thue => 0, p_chi_phi_khac => 0, p_ghi_chu => null, p_anh => '{}'::text[],
+      p_tien_thue => 0, p_chi_phi_khac => 0, p_ghi_chu => null, p_anh => array[$1::uuid::text || '/nhap/' || gen_random_uuid() || '/1.jpg'],
       p_truong_them => '{}'::jsonb, p_dong => $6::jsonb)`,
     [cnA.id, maGui(), ncc, vt, homNay, JSON.stringify(dong)]);
   if (luu.loi) throw new Error(luu.loi);
@@ -49,7 +50,7 @@ async function taoPhieuNhap(dong, vt, uid = UID.thuKhoA) {
   return p.phieu_id;
 }
 
-/** Nhập hàng qua đúng luồng (thủ kho lập, quản lý duyệt). Trả các lô theo thứ tự dòng. */
+/** Nhập hàng qua đúng luồng (quản lý lập có giá rồi duyệt). Trả các lô theo thứ tự dòng. */
 async function nhapHang(dong, vt) {
   const id = await taoPhieuNhap(dong, vt);
   const duyet = await duoi(UID.qlA, `select kho_duyet_phieu_nhap($1)`, [id]);

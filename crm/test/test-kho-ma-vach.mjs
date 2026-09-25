@@ -28,6 +28,9 @@ import { docFormKiemKe, apDungQuet, gopKhiTrung, chuKyDong } from '../../web/src
 import { taoCsv, kyBaoCao, kyNhanh, tinhTong, tieuDeCsv, BAO_CAO } from '../../web/src/lib/kho/bao-cao.ts';
 import { docFormThanhToan } from '../../web/src/lib/kho/cong-no.ts';
 import { xemTruocDanMatHang, chuKyDan, dongGhiDan } from '../../web/src/lib/kho/danh-muc.ts';
+import {
+  docFormDauNhan, docFormDongNhan, ghepDongNhan, gopMonGanDay, kiemTruocKhiGui, dongNhanVaoForm,
+} from '../../web/src/lib/kho/nhan-hang.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — KIỂM THỬ MÃ VẠCH VÀ ĐỌC SỐ');
 
@@ -118,7 +121,8 @@ await nhom('5 · ĐỌC SỐ KIỂU VIỆT', async () => {
   ok('Thời điểm UTC 07:30 → 14:30 giờ Việt Nam', dinhDangThoiDiem('2026-09-25T07:30:00Z') === '25/09 14:30');
   ok('Gợi ý mã "Thăn ngoại cắt lát" → "THAN-NGOAI-CAT-LAT"', goiYMa('Thăn ngoại cắt lát') === 'THAN-NGOAI-CAT-LAT');
   ok('Gợi ý mã "Đùi bò" → "DUI-BO"', goiYMa('Đùi bò') === 'DUI-BO');
-  ok('Gương quyền: NV quầy không có xem_gia', !duoc('nhan_vien_quay', 'xem_gia') && duoc('thu_kho', 'xem_gia'));
+  ok('Gương quyền: NV quầy và thủ kho không có xem_gia (0031), kế toán có',
+     !duoc('nhan_vien_quay', 'xem_gia') && !duoc('thu_kho', 'xem_gia') && duoc('ke_toan', 'xem_gia'));
 });
 
 // ===========================================================================
@@ -505,6 +509,77 @@ await nhom('11 · DÁN DANH MỤC MẶT HÀNG TỪ EXCEL (XEM TRƯỚC)', async 
   ok('Không tiêu đề, ngăn bằng dấu ; → đúng thứ tự cũ + Quầy tối thiểu',
      cu.them[0]?.ma === 'T-LOIVAI' && cu.them[0].loai === 'tang' && cu.them[0].han_dung_ngay === 20 && cu.them[0].ton_toi_thieu_kg === 1.5,
      JSON.stringify(cu));
+});
+
+// ===========================================================================
+await nhom('12 · NHẬN HÀNG 3 BƯỚC (GĐ5a) — ĐỌC FORM, KHÔNG CÓ TIỀN', async () => {
+  const U = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+  const dnLo = [
+    { khoa: 'nhiet_do', nhan: 'Nhiệt độ khi nhận', kieu: 'so', lua_chon: [], bat_buoc: true, dang_dung: true },
+    { khoa: 'ghi_chu_cu', nhan: 'Ô đã tắt', kieu: 'chu', lua_chon: [], bat_buoc: false, dang_dung: false },
+  ];
+  const dnPhieu = [{ khoa: 'so_xe', nhan: 'Biển số xe', kieu: 'chu', lua_chon: [], bat_buoc: true, dang_dung: true }];
+  const mon = new Map([
+    [U(1), { ten: 'Thăn ngoại', dem_goi: true, don_vi_goi: 'tảng' }],
+    [U(2), { ten: 'Mỡ bò', dem_goi: false, don_vi_goi: 'gói' }],
+  ]);
+
+  // Bước 1 — đầu phiếu
+  const dau = docFormDauNhan(new Map([['ncc', U(7)], ['vi_tri_id', U(8)], ['ngay_nhap', '2026-09-20'], ['so_hoa_don', ' HD01 '], ['tt__so_xe', '51C']]), 'mua', dnPhieu);
+  ok('Bước 1: đọc NCC từ nút lớn, nơi nhận, ngày, số hóa đơn', dau.loi.length === 0 && dau.dau.nha_cung_cap_id === U(7)
+     && dau.dau.vi_tri_id === U(8) && dau.dau.so_hoa_don === 'HD01' && dau.dau.truong_them.so_xe === '51C', JSON.stringify(dau));
+  const khac = docFormDauNhan(new Map([['ncc', U(7)], ['ncc_khac', U(9)], ['vi_tri_id', U(8)], ['ngay_nhap', '2026-09-20']]), 'mua', []);
+  ok('Bước 1: ô chọn "người khác" thắng nút lớn', khac.dau.nha_cung_cap_id === U(9));
+  const thieu = docFormDauNhan(new Map([['ngay_nhap', '2026-02-30']]), 'mua', []);
+  ok('Bước 1: thiếu NCC, nơi nhận, ngày sai → 3 lỗi tiếng Việt', thieu.loi.length === 3, thieu.loi.join(' · '));
+  const td = docFormDauNhan(new Map([['ncc', U(7)], ['so_hoa_don', 'X'], ['vi_tri_id', U(8)], ['ngay_nhap', '2026-09-20']]), 'ton_dau', []);
+  ok('Tồn đầu kỳ: bỏ NCC và số hóa đơn, không đòi NCC', td.loi.length === 0 && td.dau.nha_cung_cap_id === '' && td.dau.so_hoa_don === '');
+
+  // Bước 2 — một dòng
+  const r = docFormDongNhan(new Map([['mh', U(1)], ['so_kg', '12,5'], ['so_goi', '2'], ['hsd', '2026-10-20'],
+    ['tt__nhiet_do__0', '2,5'], ['tt__ghi_chu_cu__0', 'không đọc'], ['don_gia', '480.000']]), dnLo, mon, { ghi_chu_cu: 'cũ' });
+  ok('Bước 2: đọc món từ nút lớn, kg có dấu phẩy, số tảng, HSD, nhiệt độ', r.loi.length === 0 && r.luu?.mat_hang_id === U(1)
+     && r.luu.so_kg === 12.5 && r.luu.so_goi === 2 && r.luu.han_dung === '2026-10-20' && r.luu.truong_them.nhiet_do === 2.5, JSON.stringify(r));
+  ok('Bước 2: ô đã tắt giữ giá trị cũ', r.luu?.truong_them.ghi_chu_cu === 'cũ');
+  ok('Bước 2: dòng gửi đi KHÔNG có khóa đơn giá (kể cả khi form bị chèn ô don_gia)',
+     r.luu && !Object.keys(r.luu).some(x => /gia|tien/.test(x)), JSON.stringify(Object.keys(r.luu ?? {})));
+  const chon = docFormDongNhan(new Map([['mh', U(1)], ['mh_khac', U(2)], ['so_kg', '1.5']]), dnLo, mon);
+  ok('Bước 2: ô chọn "món khác" thắng nút lớn; món không đếm gói thì không đòi số gói',
+     chon.loi.length === 0 && chon.luu?.mat_hang_id === U(2) && chon.luu.so_goi === null, chon.loi.join(' · '));
+  const thieuTang = docFormDongNhan(new Map([['mh', U(1)], ['so_kg', '3']]), dnLo, mon);
+  ok('Bước 2: món đếm tảng mà bỏ trống số tảng → nhắc "Nhập số tảng"', !thieuTang.luu && thieuTang.loi.some(l => /số tảng/.test(l)), thieuTang.loi.join(' · '));
+  const sai = docFormDongNhan(new Map([['mh', 'abc'], ['so_kg', '0'], ['so_goi', '1,5'], ['nsx', '2026-13-01']]), dnLo, mon);
+  ok('Bước 2: món lạ, kg 0, số gói lẻ, ngày sai → báo đủ, giữ chữ đã gõ',
+     !sai.luu && sai.loi.length === 4 && sai.dong.so_goi === '1,5', sai.loi.join(' · '));
+
+  // Ghép dòng khi lưu cả phiếu
+  const dsCu = [
+    { id: U(21), thu_tu: 1, mat_hang_id: U(1), ten_mat_hang: 'Thăn ngoại', dem_goi: true, don_vi_goi: 'tảng', so_goi: 2, so_kg: 12.5,
+      so_lo_ncc: null, ngay_san_xuat: null, han_dung: '2026-10-20', truong_them: { nhiet_do: 2 }, lo_id: null },
+    { id: U(22), thu_tu: 2, mat_hang_id: U(2), ten_mat_hang: 'Mỡ bò', dem_goi: false, don_vi_goi: 'gói', so_goi: 0, so_kg: 3,
+      so_lo_ncc: 'L1', ngay_san_xuat: null, han_dung: null, truong_them: {}, lo_id: null },
+  ];
+  const moi = { mat_hang_id: U(2), so_kg: 1, so_goi: null, so_lo_ncc: null, ngay_san_xuat: null, han_dung: null, truong_them: {} };
+  const them = ghepDongNhan(dsCu, { them: moi });
+  ok('Thêm dòng: giữ mọi dòng cũ, dòng mới ở cuối, không khóa id/tiền',
+     them.length === 3 && them[2] === moi && them.every(d => !('id' in d) && !('don_gia_kg' in d)) && them[1].so_goi === null);
+  const thay = ghepDongNhan(dsCu, { thay: U(21), dong: moi });
+  ok('Sửa dòng: thay đúng chỗ', thay.length === 2 && thay[0] === moi && thay[1].so_lo_ncc === 'L1');
+  const bo = ghepDongNhan(dsCu, { bo: U(22) });
+  ok('Bỏ dòng', bo.length === 1 && bo[0].mat_hang_id === U(1));
+  ok('Dòng không còn (máy khác vừa sửa) → null', ghepDongNhan(dsCu, { bo: U(99) }) === null && ghepDongNhan(dsCu, { thay: U(99), dong: moi }) === null);
+  ok('Dòng đã lưu → form sửa: kg dấu phẩy, bỏ số gói 0', dongNhanVaoForm(dsCu[0]).so_kg === '12,5' && dongNhanVaoForm(dsCu[1]).so_goi === '');
+
+  ok('Món hay giao: gộp, bỏ trùng, bỏ id lạ, giới hạn', gopMonGanDay([[U(1), U(2)], [U(2), 'x', U(3)], [U(4)]], 3).join() === [U(1), U(2), U(3)].join());
+
+  // Bước 3 — kiểm trước khi gửi
+  const p = { loai: 'mua', nha_cung_cap_id: U(7), so_anh: 1, truong_them: { so_xe: '51C' }, dong: [dsCu[0]] };
+  ok('Đủ ảnh, NCC, ô bắt buộc → gửi được', kiemTruocKhiGui(p, dnPhieu, dnLo).length === 0, kiemTruocKhiGui(p, dnPhieu, dnLo).join(' · '));
+  const vd = kiemTruocKhiGui({ ...p, so_anh: 0, truong_them: {}, dong: [dsCu[1]] }, dnPhieu, dnLo);
+  ok('Thiếu ảnh, thiếu biển số xe, dòng thiếu nhiệt độ → 3 việc cần làm', vd.length === 3
+     && vd.some(v => /ảnh|hóa đơn/.test(v)) && vd.some(v => /Dòng 1 \(Mỡ bò\).*Nhiệt độ/.test(v)), vd.join(' · '));
+  ok('Tồn đầu kỳ: không đòi ảnh, NCC hay ô bắt buộc', kiemTruocKhiGui({ loai: 'ton_dau', nha_cung_cap_id: null, so_anh: 0, truong_them: {}, dong: [dsCu[1]] }, dnPhieu, dnLo).length === 0);
+  ok('Chưa có dòng nào → không gửi được', kiemTruocKhiGui({ ...p, dong: [] }, dnPhieu, dnLo).some(v => /Chưa có món/.test(v)));
 });
 
 process.exit(ketThuc('MÃ VẠCH VÀ ĐỌC SỐ'));

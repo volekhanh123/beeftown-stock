@@ -55,8 +55,9 @@ export function cauSuKien(su: SuKien): CauSuKien {
   const congNo = su.ref2 ? `/noi-bo/kho/cong-no/${su.ref2}` : '/noi-bo/kho/cong-no';
   switch (e.khoa) {
     case 'nhap_bi_tu_choi':
+      // Người nhận hàng sửa ở màn chỉ kg (0031) — thủ kho không mở được trang nhập có tiền.
       return { tieuDe: `Phiếu nhập ${e.ma} bị trả về`, chiTiet: e.ten ? `Lý do: ${e.ten}` : undefined,
-               link: `/noi-bo/kho/nhap/${e.ref_id}`, nut: 'Sửa lại', muc: 'do' };
+               link: `/noi-bo/kho/nhan-hang/${e.ref_id}`, nut: 'Sửa lại', muc: 'do' };
     case 'huy_bi_tu_choi':
       return { tieuDe: `Báo hủy ${e.ma} không được duyệt`,
                chiTiet: `${e.ten ? `Lý do: ${e.ten}. ` : ''}Hàng đã về lại chỗ cũ.`,
@@ -82,8 +83,8 @@ export function cauSuKien(su: SuKien): CauSuKien {
                chiTiet: 'Chưa nối iPOS nên số đếm cuối ngày là số bán. Đếm và gửi ngay.',
                link: '/noi-bo/kho/kiem-ke', nut: 'Đếm ngay', muc: 'do' };
     case 'cho_duyet_nhap':
-      return { tieuDe: `Phiếu nhập ${e.ma} chờ duyệt`, chiTiet: e.ten || undefined,
-               link: `/noi-bo/kho/nhap/${e.ref_id}`, nut: 'Duyệt', muc: 'vang' };
+      return { tieuDe: `Phiếu nhập ${e.ma} chờ điền giá, duyệt`, chiTiet: e.ten || undefined,
+               link: `/noi-bo/kho/nhap/${e.ref_id}?tu=duyet`, nut: 'Điền giá', muc: 'vang' };
     case 'cho_duyet_huy':
       return { tieuDe: `Báo hủy ${e.ma} chờ duyệt`, chiTiet: e.ten ? `Ở ${e.ten}` : undefined,
                link: `/noi-bo/kho/xuat/${e.ref_id}`, nut: 'Duyệt', muc: 'vang' };
