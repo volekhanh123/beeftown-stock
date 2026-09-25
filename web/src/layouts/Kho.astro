@@ -1,0 +1,177 @@
+---
+/**
+ * KHUNG GIAO DIỆN KHO — giống iPOS Inventory Pro
+ *
+ *   · Thanh trên: logo · chi nhánh · "?" hướng dẫn · chuông có số chưa đọc ·
+ *     menu người dùng (chứa "Đăng xuất" — không để nút đăng xuất trần ngay dưới
+ *     ngón tay ướt của thủ kho nữa).
+ *   · Máy tính (≥1024px): cột trái gồm các ô biểu tượng có số đỏ, dưới là
+ *     "Thao tác nhanh". Nội dung bên phải.
+ *   · Điện thoại / tablet (<1024px): thanh 5 nút dính đáy, theo từng vai.
+ *
+ * Tách riêng khỏi layouts/NoiBo.astro có chủ đích: file đó dùng chung với
+ * phần website/CRM (một phiên làm việc khác đang sửa song song). Kho có khung
+ * riêng thì không ai phải sửa file của nhau.
+ *
+ * Không gọi database: mọi con số đã có sẵn trong `k` (moTrangKho → kho_dem_viec).
+ * Không JavaScript.
+ */
+import '../styles/chung.css';
+import '../styles/noi-bo.css';
+import '../styles/kho.css';
+import '../styles/kho-khung.css';
+import BieuTuong from '../components/kho/BieuTuong.astro';
+import type { TrangKho } from '../lib/kho/trang.ts';
+import {
+  mucCuaVai, thanhDayCuaVai, thaoTacCuaVai, soDo, dangO, nhanSo, MUC_CRM,
+} from '../lib/kho/dieu-huong.ts';
+import { TEN_VAI_KHO } from '../lib/kho/chung.ts';
+
+interface Props {
+  k: Pick<TrangKho, 'nhanSu' | 'chiNhanh' | 'cacChiNhanh' | 'viec'>;
+  tieuDe: string;
+  /** Mục trong trang Hướng dẫn cho nút "?" (vd "thu-kho-nhan-hang"). */
+  huongDan?: string;
+  /** Trang nhiều cột (báo cáo, công nợ): nội dung rộng 1200px trên máy tính. */
+  rong?: boolean;
+}
+const { k, tieuDe, huongDan, rong = false } = Astro.props;
+const vai = k.nhanSu.vai_tro;
+const duong = Astro.url.pathname;
+const timKiem = Astro.url.search;
+
+const TEN_VAI: Record<string, string> = {
+  chu_so_huu: 'Chủ nhà hàng', quan_ly: 'Quản lý', thu_ngan: 'Thu ngân', marketing: 'Marketing',
+  ...TEN_VAI_KHO,
+};
+
+const cot = mucCuaVai(vai);
+const day = thanhDayCuaVai(vai);
+const nhanh = thaoTacCuaVai(vai);
+const crm = MUC_CRM.filter(m => m.vai.includes(vai));
+const chuaDoc = typeof k.viec?.chua_doc === 'number' ? (k.viec.chua_doc as number) : 0;
+const linkHuongDan = `/noi-bo/kho/huong-dan${huongDan ? `#${huongDan}` : ''}`;
+const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.chiNhanh?.id) : [];
+---
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{tieuDe} — Kho Beeftown</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="/bieu-tuong.svg" type="image/svg+xml" />
+    <link rel="manifest" href="/kho/manifest.json" />
+    <link rel="apple-touch-icon" href="/kho/bieu-tuong-180.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Kho Beeftown" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="theme-color" content="#1E160E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" />
+  </head>
+
+  <body class="nb-than kho-than">
+    <a class="kho-bo-qua" href="#noi-dung">Bỏ qua menu</a>
+
+    <header class="kho-dau">
+      <div class="kho-dau-hang">
+        <a href="/noi-bo/kho" class="kho-hieu" aria-label="Kho Beeftown — trang chủ">
+          <img src="/bieu-tuong.svg" alt="" width="30" height="30" />
+          <span>Kho<small>{k.chiNhanh?.ten ?? 'Beeftown'}</small></span>
+        </a>
+
+        {doiChiNhanh.length > 0 && (
+          <details class="kho-cn-chon">
+            <summary>Đổi chi nhánh</summary>
+            <div>
+              {doiChiNhanh.map(c => <a href={`${duong}?cn=${encodeURIComponent(c.ma)}`}>{c.ten}</a>)}
+            </div>
+          </details>
+        )}
+
+        <nav class="kho-dau-nut" aria-label="Tiện ích">
+          <a href={linkHuongDan} class="kho-nut-tron" title="Hướng dẫn cho màn này">
+            <BieuTuong ten="huong_dan" /><span class="kho-an">Hướng dẫn</span>
+          </a>
+          <a href="/noi-bo/kho/thong-bao" class="kho-nut-tron"
+             aria-current={dangO({ link: '/noi-bo/kho/thong-bao' }, duong) ? 'page' : undefined}
+             title={chuaDoc > 0 ? `${chuaDoc} thông báo chưa đọc` : 'Thông báo'}>
+            <BieuTuong ten="chuong" />
+            <span class="kho-an">Thông báo{chuaDoc > 0 ? `, ${chuaDoc} chưa đọc` : ''}</span>
+            {chuaDoc > 0 && <b class="kho-so-do" aria-hidden="true">{nhanSo(chuaDoc)}</b>}
+          </a>
+          <details class="kho-nguoi">
+            <summary>
+              <BieuTuong ten="nguoi" />
+              <span class="kho-nguoi-ten">{k.nhanSu.ho_ten}<em>{TEN_VAI[vai] ?? vai}</em></span>
+            </summary>
+            <div class="kho-nguoi-menu">
+              <p><strong>{k.nhanSu.ho_ten}</strong><br />{TEN_VAI[vai] ?? vai}{k.chiNhanh ? ` · ${k.chiNhanh.ten}` : ''}</p>
+              {crm.length > 0 && (
+                <>
+                  <p class="kho-nguoi-nhom">Phần khác của nhà hàng</p>
+                  {crm.map(m => <a href={m.link}><BieuTuong ten={m.bieuTuong} co={18} />{m.ten}</a>)}
+                </>
+              )}
+              <a href="/noi-bo/kho/huong-dan"><BieuTuong ten="huong_dan" co={18} />Hướng dẫn sử dụng</a>
+              <form method="POST" action="/noi-bo/dang-xuat">
+                <button type="submit"><BieuTuong ten="dang_xuat" co={18} />Đăng xuất</button>
+              </form>
+            </div>
+          </details>
+        </nav>
+      </div>
+    </header>
+
+    <div class="kho-khung">
+      <nav class="kho-ben" aria-label="Các mục kho">
+        <ul class="kho-o-luoi">
+          {cot.map(m => {
+            const so = soDo(m, k.viec);
+            const dang = dangO(m, duong, timKiem);
+            return (
+              <li>
+                <a href={m.link} class="kho-o" aria-current={dang ? 'page' : undefined}>
+                  <BieuTuong ten={m.bieuTuong} co={24} />
+                  <span>{m.ten}</span>
+                  {so > 0 && <b class="kho-so-do" aria-label={`${so} việc`}>{nhanSo(so)}</b>}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+        {nhanh.length > 0 && (
+          <div class="kho-nhanh-ben">
+            <p>Thao tác nhanh</p>
+            {nhanh.map(t => <a href={t.link}><BieuTuong ten={t.bieuTuong} co={18} />{t.ten}</a>)}
+          </div>
+        )}
+      </nav>
+
+      <main id="noi-dung" class:list={['nb-chinh', 'kho-chinh', { rong }]}>
+        <slot />
+      </main>
+    </div>
+
+    <nav class="kho-day" aria-label="Menu chính">
+      {day.map(m => {
+        const so = soDo(m, k.viec);
+        const dang = dangO(m, duong, timKiem);
+        return (
+          <a href={m.link} class:list={['kho-day-nut', { giua: m.ma === 'quet' }]}
+             aria-current={dang ? 'page' : undefined}>
+            <span class="kho-day-bt">
+              <BieuTuong ten={m.bieuTuong} co={m.ma === 'quet' ? 26 : 22} />
+              {so > 0 && <b class="kho-so-do" aria-label={`${so} việc`}>{nhanSo(so)}</b>}
+            </span>
+            <span class="kho-day-chu">{m.ngan ?? m.ten}</span>
+          </a>
+        );
+      })}
+    </nav>
+  </body>
+</html>

@@ -6,8 +6,7 @@
  * vào đây để duyệt báo hủy (ô "Chờ duyệt hủy"). Phiếu không có tiền nên nhân
  * viên quầy/bếp đọc được hết.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { docDanhSachPhieuXuat, TEN_LOAI_XUAT, type PhieuXuatTom, type LoaiXuat } from '../../../../lib/kho/xuat.ts';
@@ -37,9 +36,8 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 const moTa = (p: PhieuXuatTom) =>
   p.loai === 'chuyen' ? `${p.ten_vi_tri} → ${p.ten_vi_tri_den ?? '—'}` : `từ ${p.ten_vi_tri}`;
 ---
-<NoiBo tieuDe="Chuyển, xuất, hủy" nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe="Chuyển, xuất, hủy">
   <h1>Chuyển, xuất bếp, hủy</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
@@ -85,4 +83,4 @@ const moTa = (p: PhieuXuatTom) =>
       })}
     </>
   )}
-</NoiBo>
+</Kho>

@@ -5,9 +5,11 @@
  * Chỉ trả được lô của CHÍNH phiếu nhập đó — để tiền giảm trừ tính đúng đơn
  * giá đã mua. Hàng rời kho ngay (sổ ghi "trả NCC"), công nợ của phiếu giảm
  * theo kg × đơn giá + phần thuế, hoặc đúng số tiền trên biên bản nếu ghi.
+ *
+ * Ghi xong thì về trang công nợ của nhà cung cấp, câu báo nói rõ công nợ giảm
+ * bao nhiêu (phiếu trả hàng vẫn mở được từ khoản "Giảm trừ do trả hàng").
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docPhieuNhap, type PhieuNhap, type DongPhieuNhap } from '../../../../lib/kho/nhap.ts';
@@ -62,15 +64,19 @@ if (Astro.request.method === 'POST' && !form) {
 }
 if (form && phieu && viTri) {
   const kq = await traHangNcc(k.client, cn.id, form, { phieuNhapId: phieu.id, viTriId: viTri.id });
-  if (kq.ok && kq.id) return chuyenHuong(Astro, `/noi-bo/kho/xuat/${kq.id}`, kq);
+  if (kq.ok && kq.id) {
+    return chuyenHuong(Astro, phieu.nha_cung_cap_id ? `/noi-bo/kho/cong-no/${phieu.nha_cung_cap_id}` : `/noi-bo/kho/xuat/${kq.id}`, kq);
+  }
   bao = kq;
 }
 const tenMh = new Map(matHang.map(m => [m.id, m]));
 const giaTri = (ten: string) => (form ? String(form.get(ten) ?? '') : '');
+// Khi trình duyệt cuộn tới ô đang gõ, chừa khoảng cao bằng thanh nút dính đáy
+// + thanh menu đáy của khung kho, để ô không bị che.
+const CHUA_CHO = 'scroll-margin-bottom:10rem';
 ---
-<NoiBo tieuDe="Trả hàng nhà cung cấp" nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe="Trả hàng nhà cung cấp">
   <h1>Trả hàng nhà cung cấp</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {phieu && (
@@ -86,6 +92,9 @@ const giaTri = (ten: string) => (form ? String(form.get(ten) ?? '') : '');
               {noiDe.map(v => <a href={`/noi-bo/kho/cong-no/tra-hang?phieu=${phieu!.id}&vi_tri=${v.id}`} aria-current={v.id === viTri?.id ? 'page' : undefined}>{v.ten}</a>)}
             </nav>
           )}
+          {/* Thanh "Ghi trả hàng" dính đáy màn hình điện thoại: chừa chỗ dưới
+              thẻ cuối và dưới từng ô (scroll-margin) để khi gõ, ô đang nhập —
+              nhất là "Tiền giảm trừ" — không nằm khuất sau thanh nút. */}
           <form method="POST" enctype="multipart/form-data">
             <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
             <input type="hidden" name="so_dong" value={String(loTaiDay.length)} />
@@ -101,19 +110,19 @@ const giaTri = (ten: string) => (form ? String(form.get(ten) ?? '') : '');
                       <span class="kho-phu">lô {maLo.get(t.lo_id) ?? t.ma_lo} · ở {t.ten_vi_tri} còn {dinhDangKg(t.so_kg)} kg{t.dem_goi ? ` · ${t.so_goi} ${t.don_vi_goi}` : ''} · mua {dinhDangTien(d.don_gia_kg)}/kg</span>
                     </div>
                     <div class="kho-luoi">
-                      <label class="nb-o"><span>Số kg trả</span><input type="text" inputmode="decimal" name={`t${i}_kg`} value={giaTri(`t${i}_kg`)} /></label>
-                      {t.dem_goi && <label class="nb-o"><span>Số {t.don_vi_goi}</span><input type="text" inputmode="numeric" name={`t${i}_goi`} value={giaTri(`t${i}_goi`)} /></label>}
+                      <label class="nb-o"><span>Số kg trả</span><input type="text" inputmode="decimal" name={`t${i}_kg`} value={giaTri(`t${i}_kg`)} style={CHUA_CHO} /></label>
+                      {t.dem_goi && <label class="nb-o"><span>Số {t.don_vi_goi}</span><input type="text" inputmode="numeric" name={`t${i}_goi`} value={giaTri(`t${i}_goi`)} style={CHUA_CHO} /></label>}
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div class="nb-the">
+            <div class="nb-the" style="margin-bottom:1.5rem">
               <label class="nb-o"><span>Tiền giảm trừ công nợ</span>
                 <small>Để trống = tự tính: kg trả × đơn giá mua{phieu.tien_thue > 0 ? ' + phần thuế tương ứng' : ''}. Ghi đúng số trên biên bản nếu nhà cung cấp tính khác; ghi 0 nếu họ đổi hàng mới.</small>
-                <input type="text" inputmode="numeric" name="so_tien_giam_tru" value={giaTri('so_tien_giam_tru')} /></label>
-              <label class="nb-o"><span>Ghi chú</span><input type="text" name="ghi_chu" value={giaTri('ghi_chu')} maxlength="500" placeholder="ví dụ: tảng bị rách túi, NCC nhận lại" /></label>
-              <label class="nb-o"><span>Ảnh biên bản trả hàng</span><input type="file" name="anh" accept="image/*,application/pdf" multiple /></label>
+                <input type="text" inputmode="numeric" name="so_tien_giam_tru" value={giaTri('so_tien_giam_tru')} placeholder="để trống = tự tính" style={CHUA_CHO} /></label>
+              <label class="nb-o"><span>Ghi chú</span><input type="text" name="ghi_chu" value={giaTri('ghi_chu')} maxlength="500" placeholder="ví dụ: tảng bị rách túi, NCC nhận lại" style={CHUA_CHO} /></label>
+              <label class="nb-o"><span>Ảnh biên bản trả hàng</span><input type="file" name="anh" accept="image/*,application/pdf" multiple style={CHUA_CHO} /></label>
             </div>
             <div class="kho-thanh-nut dinh">
               <button type="submit" class="nb-nut">Ghi trả hàng</button>
@@ -124,4 +133,4 @@ const giaTri = (ten: string) => (form ? String(form.get(ten) ?? '') : '');
       <p style="margin-top:1.5rem"><a href={`/noi-bo/kho/cong-no/${phieu.nha_cung_cap_id}`}>← Công nợ {tenNcc}</a></p>
     </>
   )}
-</NoiBo>
+</Kho>

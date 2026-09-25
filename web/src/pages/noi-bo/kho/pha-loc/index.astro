@@ -8,8 +8,7 @@
  *
  * Phiên pha có giá bán dùng để chia giá vốn → chỉ vai xem giá mở được trang.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { docDanhSachPhienPha, thuHoiTheoTang, type PhienPhaTom } from '../../../../lib/kho/pha-loc.ts';
@@ -39,9 +38,8 @@ const thuHoi = thuHoiTheoTang(ds.filter(p => p.ngay_pha >= tu30));
 const sapXep = [...ds].sort((a, b) => (a.trang_thai === 'nhap' ? 0 : 1) - (b.trang_thai === 'nhap' ? 0 : 1));
 const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 ---
-<NoiBo tieuDe="Pha lóc" nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe="Pha lóc">
   <h1>Pha lóc</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
@@ -113,4 +111,4 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
       })}
     </>
   )}
-</NoiBo>
+</Kho>

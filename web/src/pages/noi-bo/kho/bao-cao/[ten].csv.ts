@@ -10,7 +10,7 @@
  */
 import type { APIRoute } from 'astro';
 import { duoc, homNayVn } from '../../../../lib/kho/chung.ts';
-import { BAO_CAO, COT_CONG_NO, docBaoCao, kyBaoCao, taoCsv } from '../../../../lib/kho/bao-cao.ts';
+import { BAO_CAO, COT_CONG_NO, docBaoCao, kyBaoCao, taoCsv, tieuDeCsv, tinhTong } from '../../../../lib/kho/bao-cao.ts';
 import { docCongNoPhieu } from '../../../../lib/kho/cong-no.ts';
 
 export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
@@ -34,16 +34,23 @@ export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
   let csv: string;
   let tenTep: string;
   if (ten === 'cong-no') {
+    // Công nợ nhà cung cấp: cùng quyền với trang Công nợ (kế toán, quản lý, chủ).
+    if (!duoc(nhanSu.vai_tro, 'ke_toan')) return new Response('Tài khoản không xem được công nợ nhà cung cấp', { status: 403 });
     try {
+      // Không lọc = đọc HẾT mọi phiếu, từng trang một (không còn cắt ở 500 dòng).
       csv = taoCsv(COT_CONG_NO, (await docCongNoPhieu(client, cn.id)) as unknown as Record<string, unknown>[]);
     } catch {
       return new Response('Không đọc được công nợ', { status: 500 });
     }
     tenTep = `cong-no-${cn.ma}-${homNay}.csv`;
   } else if (Object.hasOwn(BAO_CAO, ten)) {
+    // Kỳ lấy từ form chọn ngày của trang Báo cáo (nút "Tải về Excel" gửi chính
+    // form đó), nên luôn là hai ngày đang thấy trên màn hình.
+    const dn = BAO_CAO[ten];
     const kq = await docBaoCao(client, ten, cn.id, tu, den);
     if (kq.loi) return new Response(kq.loi, { status: 500 });
-    csv = taoCsv(BAO_CAO[ten].cot, kq.dong);
+    // Dòng đầu: chi nhánh · báo cáo · kỳ. Dòng cuối: tổng (cùng hàm với trang).
+    csv = taoCsv(dn.cot, kq.dong, { tieuDe: tieuDeCsv(cn.ten, dn.ten, tu, den), tong: tinhTong(dn, kq.dong) });
     tenTep = `kho-${ten}-${cn.ma}-${tu}-${den}.csv`;
   } else {
     return new Response('Không có báo cáo này', { status: 404 });

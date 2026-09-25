@@ -7,8 +7,7 @@
  *   · Gốc (CHỈ chủ nhà hàng): cách tính giá vốn, nguồn số bán, tự duyệt.
  *     Đổi mấy thứ này là đổi CON SỐ trong báo cáo — nên database chỉ cho chủ.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong, khoiTaoKho } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docViTri, luuCaiDat, luuCaiDatGoc, type CaiDat, type ViTri } from '../../../../lib/kho/danh-muc.ts';
@@ -50,9 +49,8 @@ const MUC = [
   { link: '/noi-bo/kho/cai-dat/can', ten: 'Đồng bộ cân', mo_ta: 'Đưa mã cân, tên, giá bán/kg của Mặt hàng sang cân in tem qua USB. Kho là gốc.', hien: k.duoc('danh_muc') },
 ].filter(m => m.hien);
 ---
-<NoiBo tieuDe="Cài đặt kho" nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe="Cài đặt kho">
   <h1>Cài đặt kho</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {k.chiNhanh && !k.daKhoiTao && k.duoc('danh_muc') && (
@@ -133,4 +131,4 @@ const MUC = [
       )}
     </>
   )}
-</NoiBo>
+</Kho>

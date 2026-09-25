@@ -1,0 +1,79 @@
+---
+/**
+ * KHO — HƯỚNG DẪN SỬ DỤNG
+ *
+ * Nút "?" trên thanh trên của mọi màn kho trỏ về đây, đúng mục của màn đó.
+ * Bản này là khung: mỗi vai một mục ngắn + câu hỏi thường gặp. Giai đoạn 6
+ * viết đầy đủ từng bước kèm ảnh và làm thêm trang chia sẻ gửi nhóm qua Zalo.
+ */
+import Kho from '../../../layouts/Kho.astro';
+import { moTrangKho } from '../../../lib/kho/trang.ts';
+import { QUY_TRINH } from '../../../lib/kho/quy-trinh.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+---
+<Kho k={k} tieuDe="Hướng dẫn">
+  <h1>Hướng dẫn sử dụng kho</h1>
+  <p class="nb-dan">Mỗi việc có các bước đánh số ở màn <a href="/noi-bo/kho/quy-trinh">Quy trình</a>.
+    Dưới đây là tóm tắt theo từng vị trí.</p>
+
+  <section class="nb-the" id="menu">
+    <h2 style="margin-top:0">Menu</h2>
+    <p>Điện thoại, tablet: <strong>thanh 5 nút dưới đáy</strong>. Nút tròn đỏ ở giữa là <strong>Quét</strong> —
+      quét một nhãn cân để biết ngay món gì, còn ở đâu. Máy tính: <strong>các ô bên trái</strong>.
+      <strong>Số đỏ</strong> = việc đang chờ bạn. Chuông trên cùng = thông báo.</p>
+  </section>
+
+  <section class="nb-the" id="thu-kho">
+    <h2 style="margin-top:0">Thủ kho</h2>
+    <ul>
+      <li><strong>Nhận hàng:</strong> Lập phiếu nhập → chụp hóa đơn → cân từng tảng → Gửi quản lý duyệt.</li>
+      <li><strong>Pha lóc:</strong> chọn tảng → ghi từng phần cắt → xem thử thu hồi → Chốt.</li>
+      <li><strong>Ra quầy:</strong> quét nhãn các gói mang ra — hệ thống tự lấy gói hạn gần trước.</li>
+      <li>Phiếu bị trả về có lý do ở <a href="/noi-bo/kho/viec">Việc cần làm</a>.</li>
+    </ul>
+  </section>
+
+  <section class="nb-the" id="nv-quay">
+    <h2 style="margin-top:0">Nhân viên quầy / bếp</h2>
+    <ul>
+      <li><strong>Sáng:</strong> xem gói sắp hết hạn, xếp lên phía trước.</li>
+      <li><strong>Hàng hỏng, hết hạn:</strong> Báo hủy → chọn lý do → chụp ảnh.</li>
+      <li><strong>Cuối ngày:</strong> Đếm quầy — quét từng gói còn trên quầy rồi Gửi.</li>
+    </ul>
+  </section>
+
+  <section class="nb-the" id="quan-ly-duyet">
+    <h2 style="margin-top:0">Quản lý</h2>
+    <ul>
+      <li><strong>Duyệt:</strong> mọi thứ chờ duyệt nằm ở một chỗ, cũ nhất trước. Duyệt xong tự về danh sách.</li>
+      <li><strong>Hôm nay:</strong> cột "Cần theo dõi" là việc; cột "Quản trị" là con số tiền.</li>
+    </ul>
+  </section>
+
+  <section class="nb-the" id="ke-toan">
+    <h2 style="margin-top:0">Kế toán</h2>
+    <ul>
+      <li><strong>Đối chiếu hóa đơn</strong> cho từng phiếu nhập đã duyệt, rồi <strong>ghi thanh toán</strong>.</li>
+      <li>Tải bảng công nợ Excel ở Báo cáo.</li>
+    </ul>
+  </section>
+
+  <section class="nb-the" id="thong-bao">
+    <h2 style="margin-top:0">Thông báo và Việc cần làm</h2>
+    <p id="viec-can-lam">Chuông gom mọi sự kiện 30 ngày gần nhất. <strong>Việc cần làm</strong> chỉ giữ những gì phải
+      làm, mỗi dòng một nút làm ngay. Mở chuông là đã đọc.</p>
+  </section>
+
+  <section class="nb-the" id="quet-nhan">
+    <h2 style="margin-top:0">Quét nhãn</h2>
+    <p>Máy quét cầm tay: bấm vào ô rồi quét. Camera: bấm "Quét bằng camera", đưa từng gói vào rồi đưa ra khỏi khung;
+      hai gói giống hệt thì bấm "+1 gói giống hệt". Bấm Xong là trang tự đọc.</p>
+  </section>
+
+  <section class="nb-the" id="quy-trinh">
+    <h2 style="margin-top:0">Các quy trình</h2>
+    <ul>{QUY_TRINH.map(q => <li><a href={`/noi-bo/kho/quy-trinh?qt=${q.ma}`}>{q.ten}</a> — {q.gioiThieu}</li>)}</ul>
+  </section>
+</Kho>

@@ -1,0 +1,61 @@
+---
+/**
+ * KHO — QUY TRÌNH
+ *
+ * Giống màn "Nghiệp vụ" của iPOS: chọn một nghiệp vụ, thấy các bước đánh số,
+ * mỗi bước một câu giải thích và nút "Làm bước này". Bước đang có việc chờ
+ * thì có số đỏ. Bước không phải việc của mình thì ghi rõ việc của ai.
+ */
+import Kho from '../../../layouts/Kho.astro';
+import BieuTuong from '../../../components/kho/BieuTuong.astro';
+import { moTrangKho } from '../../../lib/kho/trang.ts';
+import { QUY_TRINH, timQuyTrinh } from '../../../lib/kho/quy-trinh.ts';
+import { soDo, nhanSo } from '../../../lib/kho/dieu-huong.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+const qt = timQuyTrinh(Astro.url.searchParams.get('qt'));
+const soCuaQt = (q: typeof qt) => q.buoc.reduce((s, b) => s + (b.quyen.some(x => k.duoc(x)) ? soDo(b, k.viec) : 0), 0);
+---
+<Kho k={k} tieuDe={`Quy trình ${qt.ten.toLowerCase()}`} huongDan="quy-trinh">
+  <h1>Quy trình</h1>
+
+  <nav class="kho-the-chon" aria-label="Chọn nghiệp vụ">
+    {QUY_TRINH.map(q => {
+      const so = soCuaQt(q);
+      return (
+        <a href={`/noi-bo/kho/quy-trinh?qt=${q.ma}`} aria-current={q.ma === qt.ma ? 'page' : undefined}>
+          {q.ten}{so > 0 && <b class="kho-so-do">{nhanSo(so)}</b>}
+        </a>
+      );
+    })}
+  </nav>
+
+  <section class="nb-the kho-qt">
+    <header class="kho-qt-dau">
+      <span class="kho-qt-bt"><BieuTuong ten={qt.bieuTuong} co={26} /></span>
+      <div>
+        <h2>Quy trình {qt.ten.toLowerCase()}</h2>
+        <p>{qt.buoc.length} bước · {qt.gioiThieu}</p>
+      </div>
+    </header>
+    <ol class="kho-qt-buoc">
+      {qt.buoc.map((b, i) => {
+        const duocLam = b.quyen.some(x => k.duoc(x));
+        const so = duocLam ? soDo(b, k.viec) : 0;
+        return (
+          <li class:list={{ 'khong-phai-minh': !duocLam }}>
+            <span class="kho-qt-so">{i + 1}</span>
+            <div>
+              <strong>{b.ten}{so > 0 && <> <b class="kho-so-do">{nhanSo(so)}</b></>}</strong>
+              <p>{b.moTa}</p>
+              {duocLam
+                ? <a class="nb-nut phu" href={b.link}>{b.nut ?? 'Làm bước này'}</a>
+                : <small>Việc của {b.ai}</small>}
+            </div>
+          </li>
+        );
+      })}
+    </ol>
+  </section>
+</Kho>

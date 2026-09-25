@@ -14,6 +14,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { laUuid } from './chung.ts';
 
 export const KHO_ANH = 'kho-chung-tu';
 const TOI_DA = 10 * 1024 * 1024;
@@ -54,6 +55,42 @@ export async function taiAnh(
   }
   if (tep.length > 8) loi.push('Mỗi lần gửi tối đa 8 ảnh — các ảnh sau bị bỏ qua.');
   return { duongDan, loi };
+}
+
+// -----------------------------------------------------------------------------
+// ẢNH ĐÃ TẢI Ở LẦN GỬI TRƯỚC — giữ qua các lần gửi lại form
+// -----------------------------------------------------------------------------
+// Ô chọn file không điền lại được khi trang hiện lại (gõ sai, bấm "Đọc mã"),
+// nên form tải ảnh ngay rồi giữ đường dẫn trong ô ẩn "anh_da_tai", cùng ma_gui
+// cũ. Phiếu nhập và báo hủy dùng chung hai hàm dưới (hàm thuần — test được).
+
+/** Tên file taiAnh đặt: "<số thứ tự>.<đuôi>". */
+const TEN_TEP_ANH = /^(\d{1,4})\.(jpg|png|webp|heic|heif|pdf)$/;
+
+/**
+ * Đọc ô ẩn "anh_da_tai". Ô ẩn sửa được bằng tay, nên chỉ nhận đường dẫn đúng
+ * chỗ của LẦN GỬI NÀY: `<chi nhánh>/<loại>/<ma_gui>/<số>.<đuôi>` — form không
+ * gắn được ảnh của phiếu khác, loại khác hay chi nhánh khác. Bỏ trùng, tối đa
+ * `toiDa` ảnh.
+ */
+export function docAnhDaTai(
+  form: FormData, chiNhanhId: string, loai: 'nhap' | 'huy' | 'thanh_toan', maGui: string, toiDa: number,
+): string[] {
+  if (!laUuid(chiNhanhId) || !laUuid(maGui)) return [];
+  const dau = `${chiNhanhId}/${loai}/${maGui}/`;
+  const ra: string[] = [];
+  for (const v of form.getAll('anh_da_tai')) {
+    const d = typeof v === 'string' ? v.trim() : '';
+    if (!d.startsWith(dau) || !TEN_TEP_ANH.test(d.slice(dau.length)) || ra.includes(d)) continue;
+    ra.push(d);
+    if (ra.length >= toiDa) break;
+  }
+  return ra;
+}
+
+/** Số thứ tự lớn nhất trong các ảnh đã tải ("…/3.jpg" → 3); không có → 0. Ảnh mới đánh số tiếp — kho file không cho ghi đè. */
+export function soThuTuCuoi(duongDan: string[]): number {
+  return duongDan.reduce((m, d) => Math.max(m, Number(TEN_TEP_ANH.exec(d.slice(d.lastIndexOf('/') + 1))?.[1] ?? 0)), 0);
 }
 
 /** Link xem ảnh có hạn 1 giờ. Ảnh người đang xem không đủ quyền: không có link. */

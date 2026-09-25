@@ -9,12 +9,16 @@
  *
  * Form dài được lưu nháp PHÍA MÁY CHỦ ở mỗi lần bấm, rồi chuyển hướng 303:
  * mất sóng giữa chừng thì phần đã lưu vẫn còn, và F5 không gửi lại. Khi có
- * lỗi nhập liệu thì KHÔNG chuyển hướng — hiện lại đúng chữ đã gõ kèm lỗi.
+ * lỗi nhập liệu thì KHÔNG chuyển hướng — hiện lại đúng chữ đã gõ kèm lỗi,
+ * cùng ma_gui cũ và ảnh hóa đơn đã tải lên (ô ẩn anh_da_tai) — không phải
+ * chụp lại.
+ *
+ * Duyệt / từ chối xong thì về trang Duyệt (còn gì chờ thì hiện ở đó).
+ * "Rút về để sửa" chỉ dành cho người lập phiếu.
  *
  * Không có JavaScript. Muốn thêm dòng: "Lưu và thêm dòng".
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import TruongThem from '../../../../components/kho/TruongThem.astro';
 import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
@@ -89,6 +93,11 @@ const soanDuoc = k.duoc('nhap') && (moi || phieu?.trang_thai === 'nhap' || phieu
 let bao: KetQua | null = k.bao;
 let dauForm: DauForm | null = null;
 let dongForm: DongForm[] | null = null;
+// Khi chưa lưu được: giữ ma_gui cũ và các ảnh form này đã tải lên.
+let maGuiGiu: string | null = null;
+let anhDaTai: string[] = [];
+let anhGiuForm: string[] | null = null;
+const laNguoiTao = !!phieu?.nguoi_tao && phieu.nguoi_tao === k.nhanSu.id;
 
 const form = await docFormGui(Astro);
 if (Astro.request.method === 'POST' && !form) {
@@ -115,11 +124,15 @@ if (form) {
         bao = kq;
         dauForm = kq.dau ?? null;
         dongForm = kq.dong ?? null;
+        maGuiGiu = kq.maGui ?? null;
+        anhDaTai = kq.anhDaTai ?? [];
+        anhGiuForm = kq.anhGiu ?? null;
       } else if (viec === 'gui') {
         const gui = await guiDuyet(k.client, kq.id, kq.phienBan ?? null);
         return ve(kq.id, gui.ok ? gui : { ok: false, cau: `Đã lưu nháp nhưng CHƯA gửi duyệt được: ${gui.cau}` });
       } else if (viec === 'them_dong') {
-        const them = Math.min(Number(form.get('so_dong') ?? 0) + 5, 60);
+        // Số dòng đã lưu + 3 dòng trống ở cuối.
+        const them = Math.min((kq.soDong ?? 0) + 3, 60);
         return ve(kq.id, { ok: true, cau: `${kq.cau} Thêm dòng ở cuối phiếu.` }, `?dong=${them}`);
       } else {
         return ve(kq.id, kq);
@@ -128,11 +141,15 @@ if (form) {
   } else if (phieu) {
     let kq: KetQua;
     const lyDo = String(form.get('ly_do') ?? '').trim();
-    if (viec === 'rut') kq = await rutPhieu(k.client, phieu.id);
-    else if (viec === 'duyet') kq = await duyetPhieu(k.client, phieu.id);
+    if (viec === 'rut') {
+      kq = laNguoiTao ? await rutPhieu(k.client, phieu.id)
+        : { ok: false, cau: 'Chỉ người lập phiếu mới rút về được. Quản lý muốn trả lại thì bấm "Từ chối" và ghi lý do.' };
+    } else if (viec === 'duyet') kq = await duyetPhieu(k.client, phieu.id);
     else if (viec === 'tu_choi') kq = await tuChoiPhieu(k.client, phieu.id, lyDo);
     else if (viec === 'huy') kq = await huyPhieu(k.client, phieu.id, lyDo || null);
     else kq = { ok: false, cau: 'Việc không hợp lệ.' };
+    // Duyệt / từ chối xong: về trang Duyệt — còn phiếu nào chờ thì hiện ở đó.
+    if (kq.ok && (viec === 'duyet' || viec === 'tu_choi')) return chuyenHuong(Astro, '/noi-bo/kho/duyet', kq);
     return ve(phieu.id, kq);
   } else {
     bao = { ok: false, cau: 'Việc không hợp lệ.' };
@@ -152,15 +169,22 @@ const dau: DauForm = dauForm ?? (phieu ? dauTuPhieu(phieu) : {
 });
 const soDongMuon = Math.min(Math.max(Number(Astro.url.searchParams.get('dong') ?? 0) || 0, 0), 60);
 const dongCo: DongForm[] = dongForm ?? dongTuPhieu(dongDb);
-const soTrong = Math.max(moi ? 4 : 2, soDongMuon - dongCo.length);
+// Phiếu mới: 2 dòng trống (trang ngắn trên điện thoại). Đã có dòng: thêm 1.
+// Cần nhiều hơn thì "Lưu + thêm dòng".
+const soTrong = Math.max(dongCo.length === 0 ? 2 : 1, soDongMuon - dongCo.length);
 const dongHien: DongForm[] = soanDuoc ? [...dongCo, ...Array.from({ length: soTrong }, dongTrong)] : dongCo;
 
-const maGuiForm = crypto.randomUUID();
+// Chưa lưu được thì dùng lại ma_gui cũ: ảnh đã tải nằm trong thư mục của mã đó.
+const maGuiForm = maGuiGiu ?? crypto.randomUUID();
 const tenMh = new Map(matHang.map(m => [m.id, m]));
 const viTriNhan = viTri.filter(v => v.loai !== 'cho_huy' && (v.dang_dung || v.id === dau.vi_tri_id));
 const nccChon = ncc.filter(n => n.dang_dung || n.id === dau.nha_cung_cap_id);
 const ten = phieu ? await tenNhanSu(k.client, [phieu.nguoi_tao, phieu.nguoi_gui, phieu.nguoi_duyet, phieu.nguoi_huy]) : new Map();
-const anhLink = phieu ? await linkAnh(k.client, phieu.anh) : new Map<string, string>();
+// Ảnh trên form soạn: ảnh cũ của phiếu + ảnh vừa tải lên nhưng phiếu chưa lưu được.
+const anhForm: string[] = [...(phieu?.anh ?? []), ...anhDaTai.filter(a => !phieu?.anh.includes(a))];
+const giuAnh = (a: string) => (anhGiuForm ? anhGiuForm.includes(a) : true);
+const soAnhGiu = anhForm.filter(giuAnh).length;
+const anhLink = await linkAnh(k.client, anhForm);
 const [nhanTT, lopTT] = phieu ? (TRANG_THAI_CHUNG_TU[phieu.trang_thai] ?? [phieu.trang_thai, 'tat']) : ['Mới', 'nhap'];
 
 const congNo = phieu && phieu.loai === 'mua' && phieu.trang_thai === 'da_duyet' ? await docCongNoMotPhieu(k.client, phieu.id) : null;
@@ -168,10 +192,18 @@ const tienHang = dongDb.reduce((s, d) => s + d.thanh_tien, 0);
 const tongTien = phieu ? tienHang + phieu.tien_thue + phieu.chi_phi_khac : 0;
 const giaVon = phieu && phieu.trang_thai === 'cho_duyet' ? xemTruocGiaVon(dongDb, phieu.chi_phi_khac, phieu.tien_thue, caiDat) : [];
 const tieuDe = moi ? (loai === 'ton_dau' ? 'Nhập tồn đầu kỳ' : 'Lập phiếu nhập') : `Phiếu ${phieu?.so_phieu ?? ''}`;
+const choToiDuyet = phieu?.trang_thai === 'cho_duyet' && k.duoc('duyet');
+
+// Link quay lại: từ trang Duyệt (?tu=duyet) thì về đó; quản lý đang xem phiếu
+// chờ duyệt thì về danh sách "Chờ duyệt" — không mất hàng đợi.
+const [linkVe, chuVe] = Astro.url.searchParams.get('tu') === 'duyet'
+  ? ['/noi-bo/kho/duyet', '← Về trang Duyệt']
+  : choToiDuyet
+    ? ['/noi-bo/kho/nhap?loc=cho_duyet', '← Chờ duyệt']
+    : ['/noi-bo/kho/nhap', '← Danh sách phiếu nhập'];
 ---
-<NoiBo tieuDe={tieuDe} nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe={tieuDe} huongDan={choToiDuyet ? 'quan-ly-duyet' : 'thu-kho'}>
   <h1>{tieuDe}</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {phieu && (
@@ -198,6 +230,35 @@ const tieuDe = moi ? (loai === 'ton_dau' ? 'Nhập tồn đầu kỳ' : 'Lập p
       <input type="hidden" name="so_dong" value={String(dongHien.length)} />
 
       <div class="nb-the">
+        <div class="nb-o">
+          <span>{loai === 'mua' ? 'Ảnh hóa đơn / phiếu giao hàng' : 'Ảnh chụp (không bắt buộc)'}</span>
+          {soAnhGiu > 0 ? (
+            <small><strong>✓ Đã có {soAnhGiu} ảnh</strong> — không cần chụp lại. Ảnh nào chụp nhầm thì bỏ tích "Giữ".</small>
+          ) : (
+            <small>Chụp ngay, hoặc chọn ảnh có sẵn trong máy (ảnh gửi qua Zalo cũng được). Chọn được nhiều ảnh.</small>
+          )}
+          {anhForm.length > 0 && (
+            <div class="kho-anh">
+              {anhForm.map(a => (
+                <label>
+                  {anhLink.get(a)
+                    ? <a href={anhLink.get(a)} target="_blank" rel="noopener">{a.endsWith('.pdf')
+                        ? <span style="display:flex;height:100%;align-items:center;justify-content:center;font-weight:700">PDF</span>
+                        : <img src={anhLink.get(a)} alt="Ảnh chứng từ" loading="lazy" />}</a>
+                    : <span>{a.split('/').pop()}</span>}
+                  <span style="display:flex;align-items:center;gap:.4rem;min-height:48px;font-size:.9rem">
+                    <input type="checkbox" name="anh_giu" value={a} checked={giuAnh(a)}
+                      style="width:22px;height:22px;min-height:0;padding:0;margin:0;accent-color:var(--do)" /> Giữ
+                  </span>
+                  {anhDaTai.includes(a) && <input type="hidden" name="anh_da_tai" value={a} />}
+                </label>
+              ))}
+            </div>
+          )}
+          <input type="file" name="anh" accept="image/*,application/pdf" multiple
+            aria-label={soAnhGiu > 0 ? 'Thêm ảnh' : 'Chụp hoặc chọn ảnh'} />
+        </div>
+
         {loai === 'mua' ? (
           <label class="nb-o">
             <span>Nhà cung cấp *</span>
@@ -253,21 +314,6 @@ const tieuDe = moi ? (loai === 'ton_dau' ? 'Nhập tồn đầu kỳ' : 'Lập p
 
         <label class="nb-o"><span>Ghi chú</span>
           <input type="text" name="ghi_chu" value={dau.ghi_chu} maxlength="500" /></label>
-
-        <div class="nb-o">
-          <span>Ảnh hóa đơn / phiếu giao hàng</span>
-          {phieu && phieu.anh.length > 0 && (
-            <div class="kho-anh">
-              {phieu.anh.map(a => (
-                <label>
-                  {anhLink.get(a) ? <a href={anhLink.get(a)} target="_blank" rel="noopener"><img src={anhLink.get(a)} alt="Ảnh chứng từ" loading="lazy" /></a> : <span>{a.split('/').pop()}</span>}
-                  <span><input type="checkbox" name="anh_giu" value={a} checked /> giữ</span>
-                </label>
-              ))}
-            </div>
-          )}
-          <input type="file" name="anh" accept="image/*,application/pdf" multiple />
-        </div>
       </div>
 
       <h2>Hàng nhập</h2>
@@ -398,7 +444,8 @@ const tieuDe = moi ? (loai === 'ton_dau' ? 'Nhập tồn đầu kỳ' : 'Lập p
       {phieu.trang_thai === 'cho_duyet' && k.duoc('duyet') && (
         <div class="nb-the">
           <h2 style="margin-top:0">Duyệt phiếu</h2>
-          <p class="nb-dan">Duyệt xong, mỗi dòng thành một <strong>lô hàng</strong> và vào tồn kho ngay.</p>
+          <p class="nb-dan">Duyệt xong, mỗi dòng thành một <strong>lô hàng</strong> và vào tồn kho ngay.
+            Sau đó trang quay về <strong>Duyệt</strong> để làm phiếu tiếp theo.</p>
           <form method="POST" class="kho-thanh-nut">
             <button type="submit" name="viec" value="duyet" class="nb-nut">Duyệt — cho hàng vào kho</button>
           </form>
@@ -414,7 +461,7 @@ const tieuDe = moi ? (loai === 'ton_dau' ? 'Nhập tồn đầu kỳ' : 'Lập p
         </div>
       )}
 
-      {phieu.trang_thai === 'cho_duyet' && k.duoc('nhap') && (
+      {phieu.trang_thai === 'cho_duyet' && k.duoc('nhap') && laNguoiTao && (
         <form method="POST" class="kho-thanh-nut">
           <button type="submit" name="viec" value="rut" class="nb-nut phu">Rút về để sửa</button>
         </form>
@@ -444,5 +491,5 @@ const tieuDe = moi ? (loai === 'ton_dau' ? 'Nhập tồn đầu kỳ' : 'Lập p
     </details>
   )}
 
-  <p style="margin-top:1.5rem"><a href="/noi-bo/kho/nhap">← Danh sách phiếu nhập</a></p>
-</NoiBo>
+  <p style="margin-top:1.5rem"><a href={linkVe}>{chuVe}</a></p>
+</Kho>
