@@ -103,13 +103,13 @@ crm/
 | 6 · xin vé, tải lên `<mã vé>/cv.pdf` | **HỎNG:** `403 permission denied for function ve_con_hieu_luc` | thành công |
 | 6 · tải lại đúng đường dẫn đó | bị từ chối (cùng lỗi quyền) | bị từ chối: `409 The resource already exists` |
 | 6 · nộp hồ sơ kèm vé, rồi tải thêm vào thư mục vé | bị từ chối (cùng lỗi quyền) | bị từ chối: RLS — vé đã dùng |
-| `nopHoSo()` với file `CV Nguyễn Văn Thử.pdf` | `ok: true` kèm câu "hồ sơ được nộp không kèm CV" | **vẫn không kèm CV:** `Invalid key` — xem dưới |
+| `nopHoSo()` với file `CV Nguyễn Văn Thử.pdf` | `ok: true` kèm câu "hồ sơ được nộp không kèm CV" | **vẫn không kèm CV:** `Invalid key` — xem dưới. Sửa tên file xong thì kèm được |
 | 2 · mở URL công khai của CV vừa nộp, không khóa | — (chưa có CV nào) | bị từ chối (400); có khóa anon cũng không tải về hay liệt kê được |
 
 Hai điều lộ ra, cần biết khi đọc bước 6 ở cuối `0014`:
 
 - **Vé bị đánh dấu "đã dùng" khi nộp hồ sơ, không phải khi tải lên.** Lần tải thứ hai cùng đường dẫn bị chặn vì file đã tồn tại, không phải vì vé. Trước khi `nop_ho_so_ung_tuyen()` chạy, cùng một vé vẫn tải thêm được file **tên khác** (đã thử: thành công).
-- **Storage chỉ nhận khóa ASCII.** `tenTepAnToan()` trong `web/src/lib/nop-ho-so.ts` giữ chữ có dấu, nên mọi CV đặt tên tiếng Việt có dấu bị trả `Invalid key` và rơi im lặng y như lỗi quyền. Chưa sửa — phải sửa ở phía web.
+- **Storage chỉ nhận khóa ASCII.** `tenTepAnToan()` trong `web/src/lib/nop-ho-so.ts` từng giữ chữ có dấu, nên mọi CV đặt tên tiếng Việt có dấu bị trả `Invalid key` và rơi im lặng y như lỗi quyền. Đã sửa: bỏ dấu, giữ chữ (`CV-Nguyen-Van-Thu.pdf`).
 
 **Chưa làm:** bước 1, 3, 4, 7, 8, và **toàn bộ danh sách trên project Supabase thật** — vẫn bắt buộc trước khi mở cổng tuyển dụng.
 

@@ -35,12 +35,19 @@ const CV_KIEU = new Set([
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ]);
 
-/** Bỏ mọi ký tự có thể làm đường dẫn kho lệch khỏi thư mục của vé. */
+/**
+ * Bỏ mọi ký tự có thể làm đường dẫn kho lệch khỏi thư mục của vé — và mọi ký
+ * tự Supabase Storage không nhận làm khóa. Kho CHỈ nhận ASCII: tên như
+ * "CV Nguyễn Văn A.pdf" bị trả về "Invalid key", và chặng CV hỏng im lặng.
+ * Nên bỏ DẤU chứ không bỏ CHỮ: ra "CV-Nguyen-Van-A.pdf".
+ */
 function tenTepAnToan(ten: string): string {
   const sach = ten
-    .normalize('NFC')
-    .replace(/[\\/]/g, '-')
-    .replace(/[^\p{L}\p{N}._-]/gu, '-')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')   // dấu thanh, mũ, móc, trăng
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')                 // đ không tách dấu được
+    .replace(/[^A-Za-z0-9._-]/g, '-')
     .replace(/-+/g, '-')
     .slice(-80);
   return sach || 'cv';
