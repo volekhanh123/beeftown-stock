@@ -21,7 +21,7 @@ Bò nhập khẩu tươi mát được pha lóc và **đóng gói sẵn theo t�
 | File | Nội dung |
 |---|---|
 | `web/` | **Website đang dùng.** Astro trên Cloudflare Workers, song ngữ Việt–Anh. Xem `web/README.md`. |
-| `crm/` | Database CRM trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung. 417 kiểm tra. |
+| `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho. 794 kiểm tra. |
 | ~~`Beeftown_Website/index.html`~~ | ⚠️ **BẢN NHÁP CŨ — KHÔNG PHÁT HÀNH.** Xem cảnh báo bên dưới. |
 | ~~`Beeftown_Website/google-apps-script.gs`~~ | ⚠️ Đã thay bằng `tao_dat_ban()` trong database. |
 | `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên. |
@@ -41,6 +41,8 @@ Tất cả đều là **HTML tự chứa** — mở thẳng bằng trình duyệ
 Cân in tem TM-A 30kg (dòng TM-xA, firmware V3.14E8) không có phần mềm đi kèm, nên `Beeftown_Can_TMA.html` thay phần việc hay dùng nhất: sửa danh sách hàng và chữ trên tem. Cách dùng có ghi ngay trên trang (3 bước: lưu từ cân ra USB → sửa → nạp lại).
 
 Đã nạp thử vào cân thật và in tem thành công (25/09/2026).
+
+**Hằng ngày dùng màn Kho › Cài đặt › Đồng bộ cân** (`/noi-bo/kho/cai-dat/can`): kho là gốc, mã cân, tên, giá lấy thẳng từ danh mục mặt hàng — xem `web/README.md`, mục "Đồng bộ cân". File HTML độc lập giữ lại cho hai việc màn đồng bộ chưa làm: sửa chữ in trên tem, và sửa nhanh khi không mở được phần mềm kho. Hai bên dùng chung cách đọc file (`web/src/lib/kho/can-tma.ts`).
 
 Những điều đã biết về file `JHSCALE/A_000.TMS` mà cân lưu ra:
 

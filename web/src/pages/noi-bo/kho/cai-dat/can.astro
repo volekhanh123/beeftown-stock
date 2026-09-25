@@ -1,0 +1,204 @@
+---
+/**
+ * KHO — CÀI ĐẶT · ĐỒNG BỘ CÂN
+ *
+ * Kho là gốc: đưa mã cân, tên, giá bán/kg của danh mục sang cân in tem Dahua
+ * TM-A. Cân không nối mạng với phần mềm kho nên đi đường USB:
+ *   1. Trên cân lưu dữ liệu ra USB → file JHSCALE/A_000.TMS
+ *   2. Tải file lên đây → xem trước thêm / sửa / xoá
+ *   3. Tải file mới về, chép đè vào USB, nạp vào cân
+ *
+ * Máy chủ KHÔNG lưu file: bước xem trước mang file theo form dưới dạng base64,
+ * bấm "Tải file" là dựng lại từ danh mục MỚI NHẤT lúc bấm. File có tên và mật
+ * khẩu WiFi của quán — không ghi vào đâu cả.
+ *
+ * Quyền: như sửa danh mục (danh_muc). Không ghi gì vào database.
+ */
+import NoiBo from '../../../../layouts/NoiBo.astro';
+import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho, docFormGui } from '../../../../lib/kho/trang.ts';
+import { docCaiDat, docMatHang } from '../../../../lib/kho/danh-muc.ts';
+import { cauLoiKho, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
+import {
+  docFileCan, lapKeHoach, ghiFileCan, soChuSoMa, tenFileCan, sangBase64, tuBase64,
+  LoiFileCan, type KeHoach, type LoaiDong,
+} from '../../../../lib/kho/can-tma.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('danh_muc')) return Astro.redirect('/noi-bo/kho/cai-dat', 302);
+
+let bao: KetQua | null = k.bao;
+let keHoach: KeHoach | null = null;
+let fileB64 = '';
+let tenFile = 'A_000.TMS';
+let thongTin: { phienBan: string; soDong: number; soLeGia: number } | null = null;
+let giuHangNgoaiKho = false;
+let giuGioCan = true;
+
+const form = await docFormGui(Astro);
+if (form && k.chiNhanh) {
+  const viec = String(form.get('viec') ?? '');
+  giuHangNgoaiKho = form.get('giu_ngoai_kho') === 'co';
+  giuGioCan = form.get('giu_gio') === 'co';
+  try {
+    let tep: Uint8Array;
+    if (viec === 'xem') {
+      const f = form.get('tep');
+      if (!(f instanceof File) || f.size === 0) {
+        throw new LoiFileCan('Chưa chọn file. Chọn file A_000.TMS trong thư mục JHSCALE của USB.');
+      }
+      tep = new Uint8Array(await f.arrayBuffer());
+      tenFile = tenFileCan(f.name);
+    } else if (viec === 'tai') {
+      tep = tuBase64(String(form.get('tep_b64') ?? ''));
+      tenFile = tenFileCan(String(form.get('ten_tep') ?? ''));
+    } else {
+      throw new LoiFileCan('Việc không hợp lệ.');
+    }
+    const file = docFileCan(tep);
+    const [caiDat, matHang] = await Promise.all([docCaiDat(k.client, k.chiNhanh.id), docMatHang(k.client)]);
+    const tuy = { giuHangNgoaiKho, giuGioCan, soChuSoMa: soChuSoMa(caiDat?.mau_ma_vach) };
+    const kh = lapKeHoach(file, matHang, tuy);
+    if (viec === 'tai') {
+      return new Response(new Blob([ghiFileCan(file, kh, tuy)]), {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'Content-Disposition': `attachment; filename="${tenFile}"`,
+          'Cache-Control': 'no-store',
+        },
+      });
+    }
+    keHoach = kh;
+    fileB64 = sangBase64(tep);
+    thongTin = { phienBan: file.phienBan, soDong: file.plu.length, soLeGia: file.soLeGia };
+  } catch (e) {
+    bao = { ok: false, cau: e instanceof LoiFileCan ? e.message : cauLoiKho(e, 'Không đọc được file hoặc danh mục mặt hàng.') };
+  }
+}
+
+const NHAN: Record<LoaiDong, [string, string]> = {
+  them: ['Thêm', 'them'],
+  sua: ['Sửa', 'sua'],
+  giu: ['Giữ nguyên', 'giu'],
+  xoa: ['Xoá khỏi cân', 'xoa'],
+  ngoai_kho: ['Giữ, ngoài kho', 'giu'],
+  bo_qua: ['Không đưa lên', 'bo-qua'],
+};
+const DEM: [LoaiDong, string][] = [
+  ['them', 'thêm'], ['sua', 'sửa'], ['xoa', 'xoá khỏi cân'], ['giu', 'giữ nguyên'],
+  ['ngoai_kho', 'giữ, ngoài kho'], ['bo_qua', 'không đưa lên'],
+];
+---
+<NoiBo tieuDe="Đồng bộ cân" nhanSu={k.nhanSu}>
+  <h1>Đồng bộ cân</h1>
+  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+  <p><a href="/noi-bo/kho/cai-dat">← Cài đặt kho</a></p>
+  <BaoKho bao={bao} loiDoc={k.loiDoc} />
+
+  <div class="nb-the">
+    <p style="margin-top:0">Đưa <strong>mã cân, tên và giá bán/kg</strong> ở <a href="/noi-bo/kho/cai-dat/mat-hang">Mặt hàng</a> sang cân in tem.
+      Kho là gốc: muốn đổi giá hay tên trên cân thì đổi ở Mặt hàng rồi đồng bộ lại.</p>
+    <ol class="dong-bo-buoc">
+      <li><strong>Lưu dữ liệu từ cân ra USB.</strong> Cắm USB vào cân, bấm <kbd>Prog</kbd>, <kbd>↓ V3</kbd> tới P4,
+        <kbd>Accu/Confirm</kbd>, <kbd>Accu/Confirm</kbd>, rồi <kbd>Amend</kbd>. Chờ cân lưu xong, bấm <kbd>Sale</kbd>.</li>
+      <li><strong>Tải file lên đây</strong> — file <code>JHSCALE/A_000.TMS</code> trong USB — và xem trước.</li>
+      <li><strong>Tải file mới về</strong>, chép đè vào USB › JHSCALE. Cắm vào cân: <kbd>Prog</kbd>, <kbd>↓ V3</kbd> tới P4,
+        <kbd>Accu/Confirm</kbd>, <kbd>Accu/Confirm</kbd>. Nạp xong rút USB ra và in thử một tem.</li>
+    </ol>
+  </div>
+
+  {!k.chiNhanh ? <p class="nb-rong">Chưa có chi nhánh nào.</p> : (
+    <form method="POST" enctype="multipart/form-data" class="nb-the">
+      <input type="hidden" name="viec" value="xem" />
+      <label class="nb-o">
+        <span>File lưu từ cân</span>
+        <small>File chỉ được đọc trong lần xem này, không lưu lên máy chủ.</small>
+        <input type="file" name="tep" accept=".TMS,.tms" required />
+      </label>
+      <label class="kho-tich"><input type="checkbox" name="giu_ngoai_kho" value="co" checked={giuHangNgoaiKho} />
+        <span>Giữ lại hàng đang có trên cân nhưng không có trong kho. Không tích thì những hàng đó bị xoá khỏi cân.</span></label>
+      <label class="kho-tich"><input type="checkbox" name="giu_gio" value="co" checked={giuGioCan} />
+        <span>Giữ nguyên giờ trên cân — bỏ phần giờ lưu trong file, để lúc nạp đồng hồ cân không bị chỉnh về giờ cũ.</span></label>
+      <button type="submit" class="nb-nut">Xem trước</button>
+    </form>
+  )}
+
+  {keHoach && thongTin && (
+    <>
+      <h2>Xem trước — {tenFile}</h2>
+      <p class="kho-phu">Cân phiên bản {thongTin.phienBan || '?'} · đang có {thongTin.soDong} mặt hàng · giá hiện {thongTin.soLeGia} số lẻ.</p>
+      <p class="dong-bo-dem">
+        {DEM.filter(([loai]) => keHoach!.dem[loai] > 0).map(([loai, chu]) => (
+          <span class={`dong-bo-nhan ${NHAN[loai][1]}`}>{keHoach!.dem[loai]} {chu}</span>
+        ))}
+      </p>
+
+      {keHoach.dong.length === 0 ? (
+        <p class="nb-rong">Kho chưa có mặt hàng nào mang mã cân, và trên cân cũng chưa có hàng. Điền mã cân ở <a href="/noi-bo/kho/cai-dat/mat-hang">Mặt hàng</a> trước.</p>
+      ) : (
+        <div class="kho-bang-khung">
+          <table class="kho-bang">
+            <thead><tr>
+              <th class="so">PLU</th><th class="so">Mã cân</th><th>Tên trên tem</th><th class="so">Giá/kg</th><th>Thay đổi</th>
+            </tr></thead>
+            <tbody>
+              {keHoach.dong.map(d => (
+                <tr class={d.loai === 'xoa' || d.loai === 'bo_qua' ? 'mo' : undefined}>
+                  <td class="so">{d.so ?? '—'}</td>
+                  <td class="so">{d.maCan || '—'}</td>
+                  <td>
+                    {d.ten}
+                    {d.loai === 'sua' && d.tenCu !== d.ten && <div class="kho-phu">Trên cân đang là: {d.tenCu}</div>}
+                  </td>
+                  <td class="so">
+                    {dinhDangTien(d.gia)}
+                    {d.loai === 'sua' && d.giaCu !== d.gia && <div class="kho-phu">trước: {dinhDangTien(d.giaCu)}</div>}
+                  </td>
+                  <td>
+                    <span class={`dong-bo-nhan ${NHAN[d.loai][1]}`}>{NHAN[d.loai][0]}</span>
+                    {d.lyDo && <div class="kho-phu">{d.lyDo}</div>}
+                    {d.canhBao && <div class="kho-phu">{d.canhBao}</div>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <form method="POST" class="nb-the">
+        <input type="hidden" name="viec" value="tai" />
+        <input type="hidden" name="tep_b64" value={fileB64} />
+        <input type="hidden" name="ten_tep" value={tenFile} />
+        {giuHangNgoaiKho && <input type="hidden" name="giu_ngoai_kho" value="co" />}
+        {giuGioCan && <input type="hidden" name="giu_gio" value="co" />}
+        <p style="margin-top:0">
+          {keHoach.coThayDoi
+            ? 'File được dựng lại từ danh mục ngay lúc bấm, nên vừa sửa Mặt hàng xong có thể tải lại luôn.'
+            : 'Hàng trên cân đã khớp với kho — không cần nạp lại.'}
+        </p>
+        <button type="submit" class="nb-nut">Tải file {tenFile}</button>
+      </form>
+
+      <div class="nb-bao luu-y">
+        <p>Không để USB cắm sẵn lúc bật cân: cân tự nạp file A_000.TMS có trong USB.</p>
+        <p>Trong menu <kbd>Prog</kbd>, không vào P3 › Delete. Cân hỏi mã 9958 nghĩa là sắp xoá dữ liệu — bấm <kbd>Cancel</kbd>.</p>
+      </div>
+    </>
+  )}
+</NoiBo>
+
+<style>
+  .dong-bo-buoc { margin: .5rem 0 0; padding-left: 1.25rem; display: grid; gap: .45rem; }
+  .dong-bo-dem { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .dong-bo-nhan { display: inline-block; font-size: .72rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; white-space: nowrap; }
+  .dong-bo-nhan.them { background: #E9F5EE; color: #1F7A4C; }
+  .dong-bo-nhan.sua { background: var(--mu-tat); color: var(--than); }
+  .dong-bo-nhan.xoa { background: var(--do); color: #fff; }
+  .dong-bo-nhan.giu { background: var(--kem-sau); color: var(--muc-nhat); }
+  .dong-bo-nhan.bo-qua { border: 1px dashed var(--muc-nhat); color: var(--muc-nhat); }
+  .kho-bang tr.mo td { opacity: .6; }
+  kbd { font-family: inherit; font-size: .8em; font-weight: 600; border: 1px solid var(--vach); border-bottom-width: 2px; border-radius: 4px; padding: 0 .3em; white-space: nowrap; }
+</style>
