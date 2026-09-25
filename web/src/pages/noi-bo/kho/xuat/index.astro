@@ -18,6 +18,7 @@ if (k instanceof Response) return k;
 
 const LOC = [
   ['', 'Tất cả'], ['cho_duyet', 'Chờ duyệt hủy'], ['chuyen', 'Chuyển'], ['xuat_bep', 'Xuất bếp'], ['huy', 'Hủy'],
+  ['tra_ncc', 'Trả NCC'],
 ] as const;
 const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
 

@@ -269,6 +269,7 @@ export const TEN_LOAI_SO_CAI: Record<string, string> = {
   kiem_ke: 'Chênh lệch kiểm kê',
   hao_hut: 'Hao hụt cân',
   dao_nguoc: 'Đảo ngược',
+  tra_ncc: 'Trả nhà cung cấp',
 };
 
 /**

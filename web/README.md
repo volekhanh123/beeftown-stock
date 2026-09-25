@@ -106,6 +106,8 @@ Phần mềm quản lý kho thịt: nhập tảng, pha lóc, quầy thịt, hạ
 | `/noi-bo/kho/pha-loc` | Phiên pha lóc: tảng vào → phần cắt, phụ phẩm, phần bỏ. Xem thử **tỉ lệ thu hồi** và **giá vốn thật/kg** trước khi chốt; thu hồi bình quân 30 ngày theo loại tảng |
 | `/noi-bo/kho/xuat` | Chuyển kho ⇄ quầy, xuất bếp, báo hủy (ảnh + quản lý duyệt). Lấy lô hết hạn sớm nhất trước; hàng hết hạn không lên quầy, không vào bếp |
 | `/noi-bo/kho/kiem-ke` | Kiểm kê quầy (theo mặt hàng, quét nhãn được) và kho lạnh (từng lô). Đếm mù, gửi, quản lý duyệt. Chưa nối iPOS: thiếu ở quầy = đã bán |
+| `/noi-bo/kho/cong-no` | Công nợ nhà cung cấp: đang nợ, quá hạn, đến hạn 7 ngày; đối chiếu hóa đơn, ghi thanh toán / giảm trừ (tự chia theo hạn), trả hàng NCC |
+| `/noi-bo/kho/bao-cao` | Xuất – nhập – tồn, thu hồi theo tảng × NCC, hủy / xuất bếp / chênh lệch, bán ước tính. Tải CSV cho Excel (`/noi-bo/kho/bao-cao/<tên>.csv`) |
 | `/noi-bo/kho/cai-dat` | Mặt hàng (dán từ Excel được), nhà cung cấp, vị trí, lý do, công thức pha lóc, **ô thông tin tự tạo**, mã vạch cân |
 
 **Vai trò.** Ba vai mới trong `nhan_su.vai_tro`: `thu_kho`, `nhan_vien_quay` (nhân viên quầy/bếp), `ke_toan`. Bảng tra "vai nào làm được gì" nằm ở hàm `kho_vai_duoc()` (migration `0018`); `lib/kho/chung.ts` giữ một bản soi gương chỉ để ẩn nút, và `crm/test/test-kho-quyen.mjs` so hai bản từng dòng. Nhân viên quầy/bếp **không thấy giá nhập, giá vốn** — không phải vì giao diện giấu, mà vì database không trả những cột đó cho họ.

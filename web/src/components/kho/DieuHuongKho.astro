@@ -25,6 +25,8 @@ const MUC: { duong: string; ten: string; viec: ViecKho[] }[] = [
   { duong: '/noi-bo/kho/pha-loc',  ten: 'Pha lóc',   viec: ['xem_gia'] },
   { duong: '/noi-bo/kho/xuat',     ten: 'Chuyển · xuất · hủy', viec: ['xem'] },
   { duong: '/noi-bo/kho/kiem-ke',  ten: 'Kiểm kê',   viec: ['xem'] },
+  { duong: '/noi-bo/kho/cong-no',  ten: 'Công nợ',   viec: ['ke_toan'] },
+  { duong: '/noi-bo/kho/bao-cao',  ten: 'Báo cáo',   viec: ['xem_gia'] },
   { duong: '/noi-bo/kho/cai-dat',  ten: 'Cài đặt',   viec: ['danh_muc', 'ncc', 'cai_dat_goc'] },
 ];
 const muc = MUC.filter(m => m.viec.some(v => duoc(vai, v)));

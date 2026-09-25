@@ -29,6 +29,7 @@ import {
   type DauForm, type DongForm, type PhieuNhap, type DongPhieuNhap,
 } from '../../../../lib/kho/nhap.ts';
 import { linkAnh } from '../../../../lib/kho/anh.ts';
+import { docCongNoMotPhieu } from '../../../../lib/kho/cong-no.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, homNayVn,
   TRANG_THAI_CHUNG_TU, type KetQua,
@@ -162,6 +163,7 @@ const ten = phieu ? await tenNhanSu(k.client, [phieu.nguoi_tao, phieu.nguoi_gui,
 const anhLink = phieu ? await linkAnh(k.client, phieu.anh) : new Map<string, string>();
 const [nhanTT, lopTT] = phieu ? (TRANG_THAI_CHUNG_TU[phieu.trang_thai] ?? [phieu.trang_thai, 'tat']) : ['Mới', 'nhap'];
 
+const congNo = phieu && phieu.loai === 'mua' && phieu.trang_thai === 'da_duyet' ? await docCongNoMotPhieu(k.client, phieu.id) : null;
 const tienHang = dongDb.reduce((s, d) => s + d.thanh_tien, 0);
 const tongTien = phieu ? tienHang + phieu.tien_thue + phieu.chi_phi_khac : 0;
 const giaVon = phieu && phieu.trang_thai === 'cho_duyet' ? xemTruocGiaVon(dongDb, phieu.chi_phi_khac, phieu.tien_thue, caiDat) : [];
@@ -374,6 +376,23 @@ const tieuDe = moi ? (loai === 'ton_dau' ? 'Nhập tồn đầu kỳ' : 'Lập p
       </div>
       {giaVon.length > 0 && (
         <p class="kho-phu">Giá vốn vào kho = đơn giá{caiDat?.chi_phi_vao_gia_von ? ' + chi phí khác chia theo kg' : ''}{caiDat?.vat_vao_gia_von ? ' + thuế chia theo tiền hàng' : ''}. Con số chính thức do hệ thống tính lúc duyệt.</p>
+      )}
+
+      {congNo && (
+        <div class="nb-the">
+          <h2 style="margin-top:0">Công nợ</h2>
+          <dl class="kho-dl">
+            <dt>Hóa đơn</dt><dd>{congNo.da_doi_chieu ? <>{congNo.so_hoa_don} · {dinhDangTien(congNo.tien_hoa_don)}</> : <span class="kho-phu">chưa đối chiếu</span>}</dd>
+            <dt>Phải trả</dt><dd class="kho-so">{dinhDangTien(congNo.phai_tra)}</dd>
+            <dt>Đã trả</dt><dd class="kho-so">{dinhDangTien(congNo.da_tra)}{congNo.giam_tru > 0 && <> · giảm trừ {dinhDangTien(congNo.giam_tru)}</>}</dd>
+            <dt>Còn nợ</dt><dd class="kho-so"><strong>{congNo.con_no < 0 ? `NCC nợ lại ${dinhDangTien(-congNo.con_no)}` : dinhDangTien(congNo.con_no)}</strong>
+              {congNo.qua_han && <span class="kho-han het_han" style="margin-left:.4rem">quá hạn {congNo.so_ngay_qua_han} ngày</span>}</dd>
+            <dt>Hạn</dt><dd>{dinhDangNgay(congNo.han_thanh_toan)}</dd>
+          </dl>
+          {k.duoc('ke_toan') && (
+            <p style="margin:0"><a href={`/noi-bo/kho/cong-no/${congNo.nha_cung_cap_id}`}>Đối chiếu, ghi thanh toán →</a> · <a href={`/noi-bo/kho/cong-no/tra-hang?phieu=${phieu.id}`}>Trả hàng →</a></p>
+          )}
+        </div>
       )}
 
       {phieu.trang_thai === 'cho_duyet' && k.duoc('duyet') && (

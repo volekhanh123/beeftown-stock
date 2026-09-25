@@ -19,7 +19,8 @@ import { demPhieuChoDuyet } from '../../../lib/kho/nhap.ts';
 import { demPhienNhap } from '../../../lib/kho/pha-loc.ts';
 import { demPhieuHuyCho } from '../../../lib/kho/xuat.ts';
 import { demKiemKeCho } from '../../../lib/kho/kiem-ke.ts';
-import { cauLoiKho, dinhDangKg, dinhDangNgay, TEN_LOAI_VI_TRI } from '../../../lib/kho/chung.ts';
+import { docCongNoNcc } from '../../../lib/kho/cong-no.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangTien, TEN_LOAI_VI_TRI } from '../../../lib/kho/chung.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -35,6 +36,8 @@ let choDuyet: number | null = null;
 let huyCho: number | null = null;
 let kiemKeCho: number | null = null;
 let phaNhap: number | null = null;
+let noQuaHan: number | null = null;
+let chuaDoiChieu: number | null = null;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   const cn = k.chiNhanh.id;
@@ -46,6 +49,11 @@ if (k.chiNhanh && k.daKhoiTao) {
       ]);
     }
     if (k.duoc('pha_loc')) phaNhap = await demPhienNhap(k.client, cn);
+    if (k.duoc('ke_toan')) {
+      const ncc = await docCongNoNcc(k.client, cn);
+      noQuaHan = ncc.reduce((s, n) => s + n.no_qua_han, 0);
+      chuaDoiChieu = ncc.reduce((s, n) => s + n.so_phieu_chua_doi_chieu, 0);
+    }
   } catch (e) {
     loiDoc = cauLoiKho(e, 'Không đọc được tồn kho.');
   }
@@ -116,6 +124,16 @@ const conBuoc = buoc.some(b => !b.xong);
         {k.duoc('pha_loc') && (
           <a href="/noi-bo/kho/pha-loc?loc=nhap" class={`kho-o-so ${phaNhap ? 'luu-y' : ''}`}>
             <b>{phaNhap ?? '—'}</b><span>phiên pha lóc chưa chốt</span>
+          </a>
+        )}
+        {k.duoc('ke_toan') && (
+          <a href="/noi-bo/kho/cong-no" class={`kho-o-so ${noQuaHan ? 'gap' : ''}`}>
+            <b style="font-size:1.2rem">{noQuaHan === null ? '—' : dinhDangTien(noQuaHan)}</b><span>nợ nhà cung cấp quá hạn</span>
+          </a>
+        )}
+        {k.duoc('ke_toan') && (
+          <a href="/noi-bo/kho/cong-no" class={`kho-o-so ${chuaDoiChieu ? 'luu-y' : ''}`}>
+            <b>{chuaDoiChieu ?? '—'}</b><span>phiếu chưa đối chiếu hóa đơn</span>
           </a>
         )}
         <a href="/noi-bo/kho/ton?vi_tri=quay" class={`kho-o-so ${quayThieu.length ? 'luu-y' : ''}`}>

@@ -160,7 +160,7 @@ const [nhanTT, lopTT] = phieu ? (TRANG_THAI_CHUNG_TU[phieu.trang_thai] ?? [phieu
 const tieuDe = moi ? TEN_LOAI_XUAT[loai] : `${TEN_LOAI_XUAT[loai]} ${phieu?.so_phieu ?? ''}`;
 const moHuy = loai === 'huy';
 // Sổ của phiếu: chỉ các dòng rời nơi lấy (chuyển đi / xuất bếp) — đủ để biết lô nào.
-const soCaiLay = soCai.filter(s => s.vi_tri_id === phieu?.vi_tri_id && (s.loai === 'chuyen_di' || s.loai === 'xuat_bep'));
+const soCaiLay = soCai.filter(s => s.vi_tri_id === phieu?.vi_tri_id && ['chuyen_di', 'xuat_bep', 'tra_ncc'].includes(s.loai));
 const daHuy = soCai.filter(s => s.loai === 'huy');
 ---
 <NoiBo tieuDe={tieuDe} nhanSu={k.nhanSu}>
@@ -302,6 +302,9 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
         <dl class="kho-dl">
           <dt>{phieu.loai === 'chuyen' ? 'Từ' : 'Lấy ở'}</dt><dd>{phieu.ten_vi_tri}</dd>
           {phieu.loai === 'chuyen' && <><dt>Đến</dt><dd>{phieu.ten_vi_tri_den}</dd></>}
+          {phieu.loai === 'tra_ncc' && phieu.phieu_nhap_id && (
+            <><dt>Phiếu nhập</dt><dd>{k.duoc('xem_gia') ? <a href={`/noi-bo/kho/nhap/${phieu.phieu_nhap_id}`}>xem phiếu nhập và công nợ</a> : 'trả lại nhà cung cấp'}</dd></>
+          )}
           <dt>Ngày</dt><dd>{dinhDangNgay(phieu.ngay)}</dd>
           {phieu.ten_ly_do && <><dt>Lý do</dt><dd>{phieu.ten_ly_do}</dd></>}
           {phieu.ghi_chu && <><dt>Ghi chú</dt><dd>{phieu.ghi_chu}</dd></>}

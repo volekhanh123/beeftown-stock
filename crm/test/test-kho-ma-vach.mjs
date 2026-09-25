@@ -24,6 +24,8 @@ import { docTruongThem, taoKhoa, tachLuaChon, giaTriVaoO } from '../../web/src/l
 import { docFormPhienPha, thuHoiTheoTang } from '../../web/src/lib/kho/pha-loc.ts';
 import { docFormPhieuXuat, dongTuQuet, gopDong } from '../../web/src/lib/kho/xuat.ts';
 import { docFormKiemKe, apDungQuet } from '../../web/src/lib/kho/kiem-ke.ts';
+import { taoCsv, kyBaoCao, BAO_CAO } from '../../web/src/lib/kho/bao-cao.ts';
+import { docFormThanhToan } from '../../web/src/lib/kho/cong-no.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — KIỂM THỬ MÃ VẠCH VÀ ĐỌC SỐ');
 
@@ -246,6 +248,41 @@ await nhom('9 · FORM KIỂM KÊ VÀ QUÉT HẾT GÓI Ở QUẦY', async () => {
   ok('Quét 3 nhãn thăn → ĐÈ số đếm: 3 gói, 1,5 kg', than?.goi === '3' && than?.kg === '1,5', JSON.stringify(than));
   ok('Mặt hàng không quét giữ nguyên số đã ghi', q.dong.find(x => x.mat_hang_id === U(2))?.het === true);
   ok('Đếm được 1 mặt hàng từ 3 mã', q.soMa === 3 && q.soHang === 1);
+});
+
+// ===========================================================================
+await nhom('10 · CSV CHO EXCEL TIẾNG VIỆT, KỲ BÁO CÁO, FORM THANH TOÁN', async () => {
+  const csv = taoCsv(
+    [{ khoa: 'ten', ten: 'Mặt hàng', kieu: 'chu' }, { khoa: 'kg', ten: 'Kg', kieu: 'kg' }, { khoa: 'tien', ten: 'Tiền', kieu: 'tien' }],
+    [{ ten: 'Thăn; loại "A"', kg: 1.25, tien: 450000.4 }, { ten: '=HYPERLINK("x")', kg: 0, tien: null }]);
+  ok('CSV mở đầu bằng BOM (Excel đọc đúng tiếng Việt)', csv.charCodeAt(0) === 0xFEFF);
+  const dong = csv.slice(1).split('\r\n');
+  ok('Dấu chấm phẩy ngăn cột, dòng CRLF', dong[0] === 'Mặt hàng;Kg;Tiền', dong[0]);
+  ok('Ô có ; và " được bọc ngoặc kép; kg dùng dấu phẩy; tiền là số nguyên',
+     dong[1] === '"Thăn; loại ""A""";1,25;450000', dong[1]);
+  ok('Ô chữ bắt đầu bằng = bị vô hiệu (chống chèn công thức)', dong[2].startsWith("'=HYPERLINK") || dong[2].startsWith(`"'=HYPERLINK`), dong[2]);
+  ok('Ô trống để trống', dong[2].endsWith(';0;'), dong[2]);
+
+  const ky = kyBaoCao(new URLSearchParams(''), '2026-09-25');
+  ok('Kỳ mặc định: đầu tháng tới hôm nay', ky.tu === '2026-09-01' && ky.den === '2026-09-25');
+  const nguoc = kyBaoCao(new URLSearchParams('tu=2026-09-20&den=2026-09-01'), '2026-09-25');
+  ok('Gõ ngược từ/đến thì tự đổi chỗ', nguoc.tu === '2026-09-01' && nguoc.den === '2026-09-20');
+  const sai = kyBaoCao(new URLSearchParams('tu=hom-qua&den=2026-02-30x'), '2026-09-25');
+  ok('Ngày sai dạng → dùng mặc định', sai.tu === '2026-09-01' && sai.den === '2026-09-25');
+  ok('Có đủ bốn báo cáo', ['xuat-nhap-ton', 'thu-hoi', 'hao-hut', 'ban'].every(t => BAO_CAO[t]));
+
+  const f = new Map([
+    ['so_tien', '5.450.000'], ['hinh_thuc', 'chuyen_khoan'], ['ngay', '2026-09-25'], ['so_pb', '2'],
+    ['pb0_phieu', U(40)], ['pb0_tien', '5.000.000'], ['pb1_phieu', U(41)], ['pb1_tien', '450.000'],
+  ]);
+  const t = docFormThanhToan(f);
+  ok('Đọc số tiền "5.450.000" và hai dòng chia', t.loi.length === 0 && t.soTien === 5450000 && t.phanBo.length === 2, t.loi.join(' · '));
+  const lech = docFormThanhToan(new Map([['so_tien', '1.000.000'], ['so_pb', '1'], ['pb0_phieu', U(40)], ['pb0_tien', '900.000']]));
+  ok('Tổng chia khác số tiền → báo ngay, không gửi', lech.loi.some(x => /phải bằng số tiền trả/.test(x)), lech.loi.join(' · '));
+  const trong = docFormThanhToan(new Map([['so_tien', '1.000.000'], ['so_pb', '2'], ['pb0_phieu', U(40)], ['pb1_phieu', U(41)]]));
+  ok('Để trống phần chia → không gửi phân bổ (database tự chia theo hạn)', trong.loi.length === 0 && trong.phanBo.length === 0);
+  const am = docFormThanhToan(new Map([['so_tien', '-5']]));
+  ok('Số tiền không hợp lệ → báo', am.loi.length > 0);
 });
 
 process.exit(ketThuc('MÃ VẠCH VÀ ĐỌC SỐ'));

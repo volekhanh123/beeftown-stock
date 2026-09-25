@@ -82,6 +82,12 @@
 .kho-bang td.so, .kho-bang th.so { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .kho-bang tr.tong td { font-weight: 700; background: var(--kem-sau); }
 
+/* Báo cáo nhiều cột: cột tên mặt hàng đứng yên khi cuộn ngang. */
+.kho-bang.kho-bao-cao th:first-child,
+.kho-bang.kho-bao-cao td:first-child { position: sticky; left: 0; z-index: 1; min-width: 9.5rem; background: #fff; }
+.kho-bang.kho-bao-cao th:first-child { background: var(--kem-sau); }
+.kho-bang.kho-bao-cao tr.tong td:first-child { background: var(--kem-sau); }
+
 /* --- Dòng hàng trong phiếu ------------------------------------------------ */
 .kho-dong-hang {
   border: 1px solid var(--vach); border-radius: 10px; padding: .85rem .85rem .25rem;

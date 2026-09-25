@@ -16,12 +16,14 @@ import { cauLoiKho, docKg, docSoNguyen, laUuid, type KetQua } from './chung.ts';
 import { gomTheoMaCan, tachDanhSachMa } from './ma-vach.ts';
 import { layTepAnh, taiAnh } from './anh.ts';
 
-export type LoaiXuat = 'chuyen' | 'xuat_bep' | 'huy';
+/** tra_ncc chỉ lập từ trang Công nợ (kho_tra_nha_cung_cap), không lập ở đây. */
+export type LoaiXuat = 'chuyen' | 'xuat_bep' | 'huy' | 'tra_ncc';
 
 export const TEN_LOAI_XUAT: Record<LoaiXuat, string> = {
   chuyen: 'Chuyển hàng',
   xuat_bep: 'Xuất bếp',
   huy: 'Báo hủy',
+  tra_ncc: 'Trả nhà cung cấp',
 };
 
 export interface PhieuXuatTom {
@@ -51,6 +53,8 @@ export interface PhieuXuat extends PhieuXuatTom {
   ly_do_tu_choi: string | null;
   nguoi_duyet: string | null;
   duyet_luc: string | null;
+  /** Phiếu trả hàng: phiếu nhập của lô được trả. */
+  phieu_nhap_id: string | null;
 }
 
 export interface DongXuat {
@@ -108,16 +112,17 @@ export async function docPhieuXuat(
   if (error) throw error;
   if (!phieu) return null;
 
-  const [{ data: dong, error: e1 }, { data: soCai, error: e2 }] = await Promise.all([
+  const [{ data: dong, error: e1 }, { data: soCai, error: e2 }, { data: goc }] = await Promise.all([
     client.from('kho_phieu_xuat_dong').select('thu_tu, mat_hang_id, lo_id, so_goi, so_kg, so_kg_do')
       .eq('phieu_xuat_id', id).order('thu_tu'),
     client.from('kho_so_cai').select('loai, lo_id, vi_tri_id, so_kg, so_goi, created_at')
       .eq('chung_tu_id', id).order('created_at'),
+    client.from('kho_phieu_xuat').select('phieu_nhap_id').eq('id', id).maybeSingle(),
   ]);
   if (e1) throw e1;
   if (e2) throw e2;
   return {
-    phieu: { ...phieu, tong_kg: Number(phieu.tong_kg), anh: phieu.anh ?? [] } as PhieuXuat,
+    phieu: { ...phieu, tong_kg: Number(phieu.tong_kg), anh: phieu.anh ?? [], phieu_nhap_id: goc?.phieu_nhap_id ?? null } as PhieuXuat,
     dong: (dong ?? []).map(d => ({ ...d, so_kg: Number(d.so_kg), so_kg_do: d.so_kg_do === null ? null : Number(d.so_kg_do) })) as DongXuat[],
     soCai: (soCai ?? []).map(s => ({ ...s, so_kg: Number(s.so_kg) })) as DongSoCai[],
   };
