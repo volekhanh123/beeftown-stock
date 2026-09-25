@@ -25,12 +25,11 @@ Bò nhập khẩu tươi mát được pha lóc và **đóng gói sẵn theo t�
 | ~~`Beeftown_Website/index.html`~~ | ⚠️ **BẢN NHÁP CŨ — KHÔNG PHÁT HÀNH.** Xem cảnh báo bên dưới. |
 | ~~`Beeftown_Website/google-apps-script.gs`~~ | ⚠️ Đã thay bằng `tao_dat_ban()` trong database. |
 | `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên. |
-| `Beeftown_Bo_Nhan_Dien_So.html` | Bộ nhận diện trên Google Maps, Zalo OA, Facebook, Instagram, TikTok. |
-| `Beeftown_Instore_Art.html` | Trang trí trong cửa hàng. |
 | `Beeftown_Logo_Suite_and_Directions.html` | Bộ logo và các hướng nhận diện. |
 | `Beeftown_Dashboard.html` | Bảng theo dõi chỉ số. |
-| `Beeftown_Concept_Board_v1.svg` | Bảng concept tổng thể. |
 | `Beeftown_Can_TMA.html` | Phần mềm cài hàng cho cân in tem TMA: sửa tên, giá, chữ trên tem rồi xuất file nạp vào cân qua USB. Chạy không cần mạng. |
+
+Các file `Beeftown_Bo_Nhan_Dien_So.html`, `Beeftown_Instore_Art.html` và `Beeftown_Concept_Board_v1.svg` đã xoá khỏi thư mục (21/09/2026) vì còn giờ mở cửa, nguồn thịt, Gen Z hoặc thông điệp cũ; bản cũ vẫn còn trong lịch sử git.
 
 Tất cả đều là **HTML tự chứa** — mở thẳng bằng trình duyệt, không cần cài đặt gì, không có bước build. Chỉ phụ thuộc Google Fonts và (riêng website) ảnh từ Unsplash.
 
