@@ -1,0 +1,206 @@
+---
+/**
+ * TIN TUYỂN DỤNG — danh sách và tạo tin mới
+ *
+ * Mỗi tin một thẻ; bấm vào để soạn ở /noi-bo/tin-tuyen-dung/<id> — nội dung,
+ * lương, form nộp hồ sơ hỏi gì, đăng và gỡ đều ở đó.
+ *
+ * Quyền do database quyết định, xem đầu lib/tin-tuyen-dung.ts. Màn này chỉ
+ * ẩn ô tạo tin với vai không soạn được, cho khỏi bấm rồi nhận lỗi.
+ */
+import NoiBo from '../../../layouts/NoiBo.astro';
+import { docNoiDung } from '../../../lib/noi-dung';
+import { BO_PHAN, LOAI_HOP_DONG, nhanEnum } from '../../../lib/tuyen-dung';
+import {
+  docDanhSach, docChiNhanh, taoTin, taoTinMau, TRANG_THAI, homNayVn,
+  type DongTin, type ChiNhanh, type KetQua,
+} from '../../../lib/tin-tuyen-dung';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const duocSoan = ['chu_so_huu', 'quan_ly', 'marketing'].includes(nhanSu.vai_tro);
+const duocTaoMau = ['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro);
+
+let chiNhanh: ChiNhanh[] = [];
+try { chiNhanh = await docChiNhanh(client); } catch { /* ô chọn chi nhánh chỉ trống đi */ }
+
+// Người gắn một chi nhánh thì tin mới thuộc chi nhánh đó. Chủ nhà hàng không
+// gắn chi nhánh nào, nên chọn khi có từ hai chi nhánh trở lên.
+const chonChiNhanh = !nhanSu.chi_nhanh_id && chiNhanh.length > 1;
+const chiNhanhMacDinh = nhanSu.chi_nhanh_id ?? chiNhanh[0]?.id ?? null;
+
+let bao: KetQua | null = null;
+
+if (Astro.request.method === 'POST') {
+  let form: FormData | null = null;
+  try {
+    form = await Astro.request.formData();
+  } catch {
+    bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên. Mạng có thể đã đứt giữa chừng — bạn thử gửi lại.' };
+  }
+
+  if (form) {
+    const viec = String(form.get('viec') ?? '');
+    const cn = (chonChiNhanh ? String(form.get('chi_nhanh_id') ?? '') : '') || chiNhanhMacDinh;
+
+    if (!cn) {
+      bao = { ok: false, cau: 'Chưa có chi nhánh nào. Tạo chi nhánh ở màn Cài đặt trước.' };
+    } else if (viec === 'tao') {
+      const kq = await taoTin(client, form, cn);
+      // Chuyển hướng sau khi tạo: bấm F5 ở màn soạn không tạo thêm tin trùng.
+      if (kq.ok) return Astro.redirect(`/noi-bo/tin-tuyen-dung/${kq.id}?moi=1`, 303);
+      bao = kq;
+    } else if (viec === 'tin_mau') {
+      bao = await taoTinMau(client, cn);
+    } else {
+      bao = { ok: false, cau: 'Việc không hợp lệ.' };
+    }
+  }
+}
+
+let ds: DongTin[] = [];
+let dsLoi: string | null = null;
+try {
+  ds = await docDanhSach(client);
+} catch (e) {
+  dsLoi = e instanceof Error ? e.message : 'Không đọc được danh sách tin.';
+}
+
+const noiDung = await docNoiDung('vi');
+const homNay = homNayVn();
+const ngayNgan = (iso: string) => {
+  const [nam, thang, ngay] = iso.split('-');
+  return `${Number(ngay)}/${Number(thang)}/${nam}`;
+};
+
+function canhBao(t: DongTin): string[] {
+  const ra: string[] = [];
+  if (t.trang_thai === 'da_cong_bo' && t.han_nop && t.han_nop < homNay) {
+    ra.push('đã quá hạn nộp — không còn hiện trên trang');
+  }
+  // Mức đề xuất khác mức đang hiện thì có người phải duyệt — kể cả khi tin
+  // đã có lương duyệt từ trước và marketing vừa đề xuất một mức mới.
+  const coDeXuat = t.luong_de_xuat_tu != null || t.luong_de_xuat_den != null;
+  const khacDangHien = !t.luong_da_duyet
+    || t.luong_de_xuat_tu !== t.luong_tu || t.luong_de_xuat_den !== t.luong_den;
+  if (coDeXuat && khacDangHien) {
+    ra.push(t.luong_da_duyet
+      ? 'có mức lương đề xuất mới chờ duyệt'
+      : 'lương đề xuất chờ chủ nhà hàng hoặc quản lý duyệt');
+  }
+  return ra;
+}
+---
+<NoiBo tieuDe="Tin tuyển dụng" nhanSu={nhanSu}>
+  <h1>Tin tuyển dụng</h1>
+  <p class="nb-dan">
+    Soạn, đăng và gỡ tin; chọn form nộp hồ sơ của từng tin hỏi những gì.
+    <a href="/noi-bo/tuyen-dung">Xem hồ sơ đã nộp →</a>
+  </p>
+
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+  {dsLoi && <div class="nb-bao loi"><p>{dsLoi}</p></div>}
+
+  {noiDung.hien_tuyen_dung !== true && (
+    <div class="nb-bao luu-y">
+      <p>
+        <strong>Cổng tuyển dụng đang tắt.</strong> Tin "đang đăng" cũng chưa hiện
+        trên trang cho tới khi bật công tắc
+        <a href="/noi-bo/noi-dung"><code>hien_tuyen_dung</code></a>.
+      </p>
+    </div>
+  )}
+
+  {!duocSoan && (
+    <div class="nb-bao luu-y">
+      <p>Chỉ chủ nhà hàng, quản lý và marketing soạn được tin. Bạn đang xem ở chế độ chỉ đọc.</p>
+    </div>
+  )}
+
+  {ds.length === 0 && !dsLoi && (
+    <div class="nb-rong">
+      <p style="margin:0">Chưa có tin tuyển dụng nào.</p>
+      {duocTaoMau && chiNhanhMacDinh && (
+        <form method="POST" style="margin-top:1rem">
+          <input type="hidden" name="viec" value="tin_mau" />
+          <button type="submit" class="nb-nut phu">Tạo 8 tin mẫu theo tài liệu vận hành</button>
+          <p style="margin:.6rem 0 0;font-size:.85rem">
+            Tin mẫu chỉ có tên và bộ phận, ở dạng nháp — chưa tin nào lên trang.
+          </p>
+        </form>
+      )}
+    </div>
+  )}
+
+  {ds.map(t => {
+    const tt = TRANG_THAI[t.trang_thai];
+    const luuY = canhBao(t);
+    return (
+      <a href={`/noi-bo/tin-tuyen-dung/${t.id}`} class="nb-dong nb-the-tin">
+        <div class="nb-dong-dau">
+          <strong>{t.ten_vi}</strong>
+          <span class={`nb-nhan ${tt.lop}`}>{tt.ten}</span>
+        </div>
+        <p class="nb-tin-phu">
+          {[
+            nhanEnum(BO_PHAN, t.bo_phan),
+            nhanEnum(LOAI_HOP_DONG, t.loai_hop_dong),
+            t.hoi_cv ? 'có hỏi CV' : 'không hỏi CV',
+            t.han_nop && `hạn nộp ${ngayNgan(t.han_nop)}`,
+          ].filter(Boolean).join(' · ')}
+        </p>
+        {luuY.length > 0 && <p class="nb-tin-canh-bao">{luuY.join(' · ')}</p>}
+      </a>
+    );
+  })}
+
+  {duocSoan && (
+    <>
+      <h2 id="them-tin">Thêm tin mới</h2>
+      <form method="POST" class="nb-the">
+        <input type="hidden" name="viec" value="tao" />
+        <label class="nb-o">
+          <span>Tên vị trí</span>
+          <input type="text" name="ten_vi" required maxlength="120"
+                 placeholder="Ví dụ: Phụ bếp ca tối" autocapitalize="sentences" />
+        </label>
+        <div class="nb-hai">
+          <label class="nb-o">
+            <span>Bộ phận</span>
+            <select name="bo_phan" required>
+              {Object.entries(BO_PHAN).map(([ma, nhan]) => <option value={ma}>{nhan.vi}</option>)}
+            </select>
+          </label>
+          <label class="nb-o">
+            <span>Loại hợp đồng</span>
+            <select name="loai_hop_dong" required>
+              {Object.entries(LOAI_HOP_DONG).map(([ma, nhan]) => (
+                <option value={ma} selected={ma === 'ban_thoi_gian'}>{nhan.vi}</option>
+              ))}
+            </select>
+          </label>
+        </div>
+        {chonChiNhanh && (
+          <label class="nb-o">
+            <span>Chi nhánh</span>
+            <select name="chi_nhanh_id" required>
+              {chiNhanh.map(c => <option value={c.id}>{c.ten}</option>)}
+            </select>
+          </label>
+        )}
+        <p class="nb-dan" style="font-size:.85rem;margin-bottom:1rem">
+          Tin mới là bản nháp. Viết mô tả, yêu cầu, lương ở bước sau rồi mới đăng.
+        </p>
+        <button type="submit" class="nb-nut" style="width:100%">Tạo tin nháp</button>
+      </form>
+    </>
+  )}
+</NoiBo>
+
+<style>
+  .nb-the-tin { display: block; color: inherit; text-decoration: none; }
+  .nb-the-tin:hover { border-color: var(--do); }
+  .nb-tin-phu { margin: .35rem 0 0; font-size: .85rem; color: var(--muc-nhat); }
+  .nb-tin-canh-bao { margin: .35rem 0 0; font-size: .85rem; color: var(--do); }
+  .nb-hai { display: grid; gap: 0 1rem; grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+</style>

@@ -1,0 +1,312 @@
+---
+/**
+ * TRANG ĐẶT BÀN
+ *
+ * CÂU QUAN TRỌNG NHẤT TRÊN TRANG NÀY nằm ở màn hình xác nhận:
+ * "Yêu cầu chỉ có hiệu lực sau khi nhân viên gọi xác nhận — hiện chưa có bàn
+ * nào được giữ."
+ *
+ * Nó ở đó vì ba con số trong kế hoạch IMC không được đánh đồng: yêu cầu đã
+ * nhận ≠ nhà hàng đã xác nhận ≠ khách thực đến. Khách đọc "đặt bàn thành
+ * công" rồi dẫn cả nhà tới vào tối thứ Bảy là một buổi tối hỏng, và lỗi nằm
+ * ở câu chữ chứ không ở hệ thống.
+ *
+ * Chuỗi "đặt bàn thành công" KHÔNG ĐƯỢC tồn tại trong mã nguồn này.
+ *
+ * KHÔNG CÓ LƯỚI SỐ BÀN CÒN TRỐNG. Khung giờ chỉ có hai trạng thái: chọn được
+ * hoặc không. Con số bị chặn từ tầng database (lich_trong_theo_ma trả về
+ * boolean) nên nó không tới được đây kể cả khi ai đó muốn hiện.
+ *
+ * Đổi ngày bằng form GET, đặt bàn bằng form POST — cả hai không cần
+ * JavaScript.
+ */
+import { chu } from '../lib/chu';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import type { TinhTrangDatBan, KetQuaDatBan } from '../lib/dat-ban';
+import { homNayVn } from '../lib/noi-dung';
+
+interface Props {
+  ngonNgu: NgonNgu;
+  noiDung: NoiDung;
+  tinhTrang: TinhTrangDatBan;
+  ketQua: KetQuaDatBan | null;
+  duongDan: string;
+}
+const { ngonNgu, noiDung: nd, tinhTrang, ketQua, duongDan } = Astro.props;
+const en = ngonNgu === 'en';
+const tChung = chu(ngonNgu);
+
+const homNay = homNayVn();
+const toiDa = new Date(Date.now() + 7 * 60 * 60 * 1000 + 60 * 86400000)
+  .toISOString().slice(0, 10);
+
+const chonDuoc = tinhTrang.khung.filter(k => k.con_cho && !k.da_qua);
+const trua = chonDuoc.filter(k => k.buoi === 'trua');
+const toi  = chonDuoc.filter(k => k.buoi === 'toi');
+
+const nutNhanTin =
+  nd.facebook_url ? { url: nd.facebook_url, chu: tChung.nhanTin } :
+  nd.email_lien_he ? { url: `mailto:${nd.email_lien_he}`, chu: tChung.nhanTin } :
+  null;
+
+const t = {
+  hieu:     en ? 'Reservations' : 'Đặt bàn',
+  tieuDe:   en ? 'Book a table' : 'Đặt bàn tại Beeftown',
+  dan: en
+    ? 'Send us a request and we will call you back to confirm.'
+    : 'Bạn gửi yêu cầu, nhà hàng gọi lại để xác nhận.',
+  ngay:     en ? 'Date' : 'Ngày',
+  doiNgay:  en ? 'Show this date' : 'Xem ngày này',
+  gio:      en ? 'Time' : 'Khung giờ',
+  trua:     en ? 'Lunch' : 'Buổi trưa',
+  toi:      en ? 'Dinner' : 'Buổi tối',
+  hetCho: en
+    ? 'No times left on this date. Try another day.'
+    : 'Ngày này không còn khung giờ nào. Bạn thử ngày khác nhé.',
+  soKhach:  en ? 'How many people' : 'Mấy người',
+  soKhachPhu: en
+    ? 'For groups of 9 or more, message us and we will arrange it with you.'
+    : 'Nhóm từ 9 người trở lên, bạn nhắn cho Beeftown để nhà hàng sắp xếp riêng.',
+  hoTen:    en ? 'Full name' : 'Họ và tên',
+  sdt:      en ? 'Phone number' : 'Số điện thoại',
+  sdtPhu:   en ? 'We will call this number to confirm.'
+               : 'Nhà hàng gọi vào số này để xác nhận.',
+  dip:      en ? 'Occasion (optional)' : 'Dịp gì (không bắt buộc)',
+  ghiChu:   en ? 'Anything we should know (optional)'
+               : 'Điều nhà hàng nên biết (không bắt buộc)',
+  nhanTinKM: en
+    ? 'Send me news from Beeftown. Optional — your table does not depend on this.'
+    : 'Nhận tin mới từ Beeftown. Không bắt buộc — việc giữ bàn không phụ thuộc vào ô này.',
+  gui:      en ? 'Send request' : 'Gửi yêu cầu',
+  batBuoc:  en ? 'required' : 'bắt buộc',
+};
+---
+
+<section class="muc" style="padding-top:20px">
+  <div class="khung">
+    <p class="hieu">{t.hieu}</p>
+    <h1 style="font-size:clamp(32px,6vw,58px)">{t.tieuDe}</h1>
+    <p class="dan" style="max-width:56ch;margin-top:22px">{t.dan}</p>
+  </div>
+</section>
+
+<section class="muc muc-sang">
+  <div class="khung">
+
+    {ketQua?.ok ? (
+      <div class="the" style="max-width:62ch;border-left:4px solid var(--cuc-vang)">
+        <h2 style="margin-top:0">
+          {en ? 'Beeftown has received your request' : 'Beeftown đã nhận yêu cầu của bạn'}
+        </h2>
+        {ketQua.ma && (
+          <p>
+            {en ? 'Your reference code: ' : 'Mã yêu cầu: '}
+            <strong style="letter-spacing:.08em;font-size:1.15em">{ketQua.ma}</strong>
+          </p>
+        )}
+        <p style="font-weight:700">
+          {en
+            ? 'This request only takes effect after a staff member calls to confirm — no table is being held yet.'
+            : 'Yêu cầu chỉ có hiệu lực sau khi nhân viên gọi xác nhận — hiện chưa có bàn nào được giữ.'}
+        </p>
+        <p style="margin-bottom:0">
+          {en
+            ? 'Keep the code to mention when we call.'
+            : 'Bạn giữ mã này để nhắc tới khi nhà hàng gọi.'}
+        </p>
+      </div>
+
+    ) : !tinhTrang.moDuoc ? (
+      <div class="the" style="max-width:62ch">
+        <h2 style="margin-top:0">{tChung.datBanChuaMo}</h2>
+        <p style="margin-bottom:0">{tChung.datBanChuaMoGiaiThich}</p>
+        {nutNhanTin && (
+          <div class="hang-nut" style="margin-top:18px">
+            <a class="nut nut-chinh" href={nutNhanTin.url} rel="noopener">{nutNhanTin.chu}</a>
+            {nd.hotline && (
+              <a class="nut nut-vien" href={`tel:${nd.hotline.replace(/\s/g, '')}`}>
+                {tChung.goiNhaHang}
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+
+    ) : (
+      <div class="the" style="max-width:62ch">
+        {ketQua && !ketQua.ok && (
+          <div style="border-left:4px solid var(--do);padding:12px 14px;margin:0 0 20px;background:rgba(178,58,44,.08)">
+            <p style="margin:0"><strong>{ketQua.cau}</strong></p>
+            {nutNhanTin && (
+              <p class="nho" style="margin:10px 0 0">
+                {en ? 'You can also message us directly: ' : 'Bạn cũng có thể nhắn thẳng cho Beeftown: '}
+                <a href={nutNhanTin.url} rel="noopener">{nutNhanTin.chu}</a>
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Đổi ngày: form GET riêng, nên không cần JavaScript và không đụng
+            gì tới dữ liệu khách đã điền ở form bên dưới. */}
+        <form method="GET" class="form-dat doi-ngay">
+          <label class="o" style="margin-bottom:10px">
+            <span>{t.ngay}</span>
+            <input type="date" name="ngay" value={tinhTrang.ngay}
+                   min={homNay} max={toiDa} />
+          </label>
+          <button type="submit" class="nut nut-vien" style="width:100%">{t.doiNgay}</button>
+        </form>
+
+        <hr style="border:none;border-top:1px solid var(--vach-kem);margin:24px 0" />
+
+        {chonDuoc.length === 0 ? (
+          <p style="margin:0"><strong>{t.hetCho}</strong></p>
+        ) : (
+          <form method="POST" action={duongDan} class="form-dat">
+            <input type="hidden" name="ngay" value={tinhTrang.ngay} />
+
+            <fieldset class="o o-nhom">
+              <legend>{t.gio} <em>({t.batBuoc})</em></legend>
+              {trua.length > 0 && (
+                <>
+                  <p class="nho nhom-ten">{t.trua}</p>
+                  <div class="luoi-gio">
+                    {trua.map((k, i) => (
+                      <label class="o-gio">
+                        <input type="radio" name="gio" value={k.gio} required checked={i === 0 && toi.length === 0} />
+                        <span>{k.gio.slice(0, 5)}</span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+              {toi.length > 0 && (
+                <>
+                  <p class="nho nhom-ten">{t.toi}</p>
+                  <div class="luoi-gio">
+                    {toi.map(k => (
+                      <label class="o-gio">
+                        <input type="radio" name="gio" value={k.gio} required />
+                        <span>{k.gio.slice(0, 5)}</span>
+                      </label>
+                    ))}
+                  </div>
+                </>
+              )}
+            </fieldset>
+
+            <label class="o">
+              <span>{t.soKhach} <em>({t.batBuoc})</em></span>
+              <small>{t.soKhachPhu}</small>
+              <select name="so_khach" required>
+                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                  <option value={n} selected={n === 2}>{n}</option>
+                ))}
+              </select>
+            </label>
+
+            <label class="o">
+              <span>{t.hoTen} <em>({t.batBuoc})</em></span>
+              <input type="text" name="ho_ten" required autocomplete="name" autocapitalize="words" />
+            </label>
+
+            <label class="o">
+              <span>{t.sdt} <em>({t.batBuoc})</em></span>
+              <small>{t.sdtPhu}</small>
+              <input type="tel" name="sdt" required inputmode="tel" autocomplete="tel" />
+            </label>
+
+            <label class="o">
+              <span>{t.dip}</span>
+              <input type="text" name="dip" autocapitalize="sentences" />
+            </label>
+
+            <label class="o">
+              <span>{t.ghiChu}</span>
+              <textarea name="ghi_chu" rows="2"></textarea>
+            </label>
+
+            {/* KHÔNG required. Xem lý do trong lib/dat-ban.ts. */}
+            <label class="o-chon">
+              <input type="checkbox" name="dong_y_nhan_tin" value="co" />
+              <span>{t.nhanTinKM}</span>
+            </label>
+
+            <button type="submit" class="nut nut-chinh" style="width:100%;margin-top:8px">
+              {t.gui}
+            </button>
+          </form>
+        )}
+      </div>
+    )}
+  </div>
+</section>
+
+<style>
+  .form-dat .o { display: block; margin-bottom: 18px; }
+  .form-dat .o > span,
+  .form-dat legend {
+    display: block; font-weight: 700; font-size: 15px; margin-bottom: 6px;
+  }
+  .form-dat .o > span em,
+  .form-dat legend em { font-style: normal; font-weight: 400; color: var(--da); }
+  .form-dat .o > small {
+    display: block; color: var(--da); font-size: 14px; margin-bottom: 6px; line-height: 1.45;
+  }
+
+  .form-dat input[type='text'],
+  .form-dat input[type='tel'],
+  .form-dat input[type='date'],
+  .form-dat select,
+  .form-dat textarea {
+    font: inherit; font-size: 16px; width: 100%;
+    padding: 13px 14px; min-height: 50px;
+    border: 1px solid var(--vach-kem); border-radius: 8px;
+    background: rgba(251, 244, 225, .06); color: var(--kem);
+  }
+  .form-dat textarea { min-height: 64px; resize: vertical; line-height: 1.55; }
+
+  .form-dat .o-nhom {
+    border: 1px solid var(--vach-kem); border-radius: 8px;
+    padding: 14px; margin: 0 0 18px;
+  }
+  .nhom-ten {
+    margin: 10px 0 8px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; font-size: 12px;
+  }
+  .nhom-ten:first-of-type { margin-top: 0; }
+
+  /* Khung giờ là nút bấm, không phải ô chọn nhỏ xíu. Tối thiểu 52px để bấm
+     được bằng ngón cái trong lúc đi đường. */
+  .luoi-gio {
+    display: grid; gap: 8px;
+    grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+  }
+  .o-gio { position: relative; display: block; }
+  .o-gio input {
+    position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer;
+  }
+  .o-gio span {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 52px; border-radius: 8px;
+    border: 1px solid var(--vach-kem);
+    font-weight: 700; font-size: 16px;
+  }
+  .o-gio input:checked + span {
+    background: var(--do); border-color: var(--do); color: #fff;
+  }
+  .o-gio input:focus-visible + span {
+    outline: 3px solid var(--cuc-vang); outline-offset: 2px;
+  }
+
+  .form-dat .o-chon {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 14px 0 4px; font-size: 15px; line-height: 1.5; cursor: pointer;
+    border-top: 1px solid var(--vach-kem); margin-top: 6px;
+  }
+  .form-dat .o-chon input[type='checkbox'] {
+    width: 24px; height: 24px; margin: 0; flex-shrink: 0; accent-color: var(--do);
+  }
+
+  .doi-ngay { margin: 0; }
+</style>

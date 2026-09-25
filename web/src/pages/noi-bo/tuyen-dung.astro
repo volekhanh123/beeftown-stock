@@ -1,0 +1,215 @@
+---
+/**
+ * HỘP THƯ HỒ SƠ ỨNG TUYỂN
+ *
+ * Đây là dữ liệu cá nhân của NGƯỜI CHƯA PHẢI KHÁCH HÀNG, thuộc phạm vi Nghị
+ * định 13/2023. Ba điều được giữ nguyên từ thiết kế database, không nới ra ở
+ * tầng giao diện:
+ *
+ *   · Chỉ chủ nhà hàng và quản lý xem được. Marketing chỉ xem được SỐ, qua
+ *     thong_ke_tuyen_dung(). RLS đã cưỡng chế; middleware chỉ tránh cho người
+ *     không có quyền nhìn thấy một trang trống khó hiểu.
+ *   · Không có nút xóa. Hết hạn lưu thì ẩn danh, giữ lại dòng để số liệu
+ *     phễu và vết kiểm toán còn nguyên.
+ *   · Mọi lần đổi trạng thái ghi vào nhat_ky_ho_so, và nhật ký đó bất biến.
+ *
+ * Số điện thoại hiện đầy đủ và bấm gọi được — đó chính là việc cần làm với
+ * một hồ sơ, và che nó đi chỉ tạo thêm một bước sao chép thủ công.
+ */
+import NoiBo from '../../layouts/NoiBo.astro';
+import { dinhDangNgay } from '../../lib/noi-dung';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+
+const TEN_TRANG_THAI: Record<string, string> = {
+  moi: 'Chưa ai mở',
+  dang_xem: 'Đang xem',
+  hen_phong_van: 'Đã hẹn phỏng vấn',
+  da_phong_van: 'Đã phỏng vấn',
+  nhan_viec: 'Nhận việc',
+  tu_choi: 'Từ chối',
+  ung_vien_rut: 'Ứng viên rút',
+  da_an_danh: 'Đã ẩn danh (hết hạn lưu)',
+};
+
+// Bước đi tiếp từ mỗi trạng thái. da_an_danh không có bước nào — dòng đó đã
+// không còn thông tin để làm gì nữa.
+const CHUYEN_DUOC: Record<string, { nhan: string; toi: string; phu?: boolean }[]> = {
+  moi: [
+    { nhan: 'Đang xem', toi: 'dang_xem' },
+    { nhan: 'Từ chối', toi: 'tu_choi', phu: true },
+  ],
+  dang_xem: [
+    { nhan: 'Đã hẹn phỏng vấn', toi: 'hen_phong_van' },
+    { nhan: 'Từ chối', toi: 'tu_choi', phu: true },
+    { nhan: 'Ứng viên rút', toi: 'ung_vien_rut', phu: true },
+  ],
+  hen_phong_van: [
+    { nhan: 'Đã phỏng vấn', toi: 'da_phong_van' },
+    { nhan: 'Ứng viên rút', toi: 'ung_vien_rut', phu: true },
+  ],
+  da_phong_van: [
+    { nhan: 'Nhận việc', toi: 'nhan_viec' },
+    { nhan: 'Từ chối', toi: 'tu_choi', phu: true },
+  ],
+};
+
+let bao: { ok: boolean; cau: string } | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = String(form.get('id') ?? '');
+  const tu = String(form.get('tu') ?? '');
+  const toi = String(form.get('toi') ?? '');
+  const ghiChu = String(form.get('ghi_chu') ?? '').trim() || null;
+
+  if (!id || !CHUYEN_DUOC[tu]?.some(b => b.toi === toi)) {
+    bao = { ok: false, cau: 'Bước chuyển không hợp lệ.' };
+  } else {
+    // MỘT câu UPDATE, MỘT dòng nhật ký.
+    //
+    // Bản trước chạy UPDATE rồi chèn thêm một dòng nhat_ky_ho_so. Nhưng
+    // trigger ho_so_kiem_tra_vong_doi() ĐÃ tự ghi một dòng khi trạng thái
+    // đổi — nên mỗi bước chuyển sinh ra hai dòng, và nhật ký là bảng bất
+    // biến nên dòng thừa không bao giờ dọn được.
+    //
+    // Từ 0016, ghi chú đi kèm trong chính câu UPDATE qua cột ghi_chu_buoc,
+    // trigger đọc nó. Bảng nhat_ky_ho_so giờ có policy INSERT là false —
+    // chèn tay từ đây sẽ lỗi, đúng như thiết kế.
+    const { data, error } = await client
+      .from('ho_so_ung_tuyen')
+      .update({ trang_thai: toi, nguoi_phu_trach: nhanSu.id, ghi_chu_buoc: ghiChu })
+      .eq('id', id)
+      .eq('trang_thai', tu)   // chống hai người cùng bấm, như hộp thư đặt bàn
+      .select('id');
+
+    if (error) {
+      bao = { ok: false, cau: error.message };
+    } else if (!data || data.length === 0) {
+      bao = { ok: false, cau: 'Hồ sơ đã được người khác xử lý. Tải lại trang để xem trạng thái mới.' };
+    } else {
+      bao = { ok: true, cau: `Đã chuyển sang "${TEN_TRANG_THAI[toi]}".` };
+    }
+  }
+}
+
+const loc = String(Astro.url.searchParams.get('loc') ?? 'moi');
+
+let dsLoi: string | null = null;
+let ds: any[] = [];
+try {
+  let q = client
+    .from('ho_so_ung_tuyen')
+    .select('id, ma_ho_so, ho_ten, sdt, email, nam_sinh, gioi_thieu, kinh_nghiem, ca_lam_duoc, duong_dan_cv, trang_thai, ngay_nop, luu_den, da_an_danh, vi_tri_tuyen_dung(ten_vi, bo_phan)')
+    .order('created_at', { ascending: false })
+    .limit(100);
+
+  if (loc === 'moi') q = q.eq('trang_thai', 'moi');
+  else if (loc === 'dang_xu_ly') q = q.in('trang_thai', ['dang_xem', 'hen_phong_van', 'da_phong_van']);
+
+  const { data, error } = await q;
+  if (error) dsLoi = error.message;
+  else ds = data ?? [];
+} catch (e) {
+  dsLoi = e instanceof Error ? e.message : 'Không đọc được danh sách.';
+}
+
+const BO_LOC = [
+  { ma: 'moi', ten: 'Chưa ai mở' },
+  { ma: 'dang_xu_ly', ten: 'Đang xử lý' },
+  { ma: 'tat_ca', ten: 'Tất cả' },
+];
+---
+<NoiBo tieuDe="Tuyển dụng" nhanSu={nhanSu}>
+  <h1>Hồ sơ ứng tuyển</h1>
+  <p class="nb-dan">
+    Đây là thông tin cá nhân của người chưa phải khách hàng. Beeftown cam kết
+    với họ là lưu <strong>sáu tháng</strong> và chỉ dùng cho tuyển dụng.
+  </p>
+  <p class="nb-dan" style="font-size:.85rem">
+    Form của từng tin hỏi những gì — có hỏi CV hay không — chỉnh ở
+    <a href="/noi-bo/tin-tuyen-dung">Tin tuyển dụng</a>.
+  </p>
+
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+  {dsLoi && <div class="nb-bao loi"><p>{dsLoi}</p></div>}
+
+  <div class="nb-dong-nut" style="margin-bottom:1.25rem">
+    {BO_LOC.map(b => (
+      <a href={`/noi-bo/tuyen-dung?loc=${b.ma}`}
+         class={`nb-nut ${loc === b.ma ? '' : 'phu'}`}
+         style="font-size:.85rem;padding:.55rem .85rem;min-height:42px">{b.ten}</a>
+    ))}
+  </div>
+
+  {ds.length === 0 && !dsLoi && (
+    <div class="nb-rong">
+      <p style="margin:0">Không có hồ sơ nào trong mục này.</p>
+      <p style="margin:.5rem 0 0;font-size:.85rem">
+        Trống cũng có thể nghĩa là cổng nộp hồ sơ chưa bật. Kiểm tra công tắc
+        <a href="/noi-bo/noi-dung"><code>hien_tuyen_dung</code></a> và xem ở
+        <a href="/noi-bo/tin-tuyen-dung">Tin tuyển dụng</a> đã có tin nào đang đăng chưa.
+      </p>
+    </div>
+  )}
+
+  {ds.map(h => {
+    const vt = Array.isArray(h.vi_tri_tuyen_dung) ? h.vi_tri_tuyen_dung[0] : h.vi_tri_tuyen_dung;
+    const buoc = CHUYEN_DUOC[h.trang_thai] ?? [];
+    return (
+      <div class="nb-dong">
+        <div class="nb-dong-dau">
+          <strong>{h.da_an_danh ? '(đã ẩn danh)' : h.ho_ten}</strong>
+          <span class={`nb-nhan ${h.trang_thai === 'moi' ? 'cho'
+                        : h.trang_thai === 'nhan_viec' ? 'song' : 'tat'}`}>
+            {TEN_TRANG_THAI[h.trang_thai] ?? h.trang_thai}
+          </span>
+        </div>
+
+        <dl>
+          <dt>Vị trí</dt>
+          <dd>{vt?.ten_vi ?? '—'}</dd>
+          {!h.da_an_danh && h.sdt && <><dt>Điện thoại</dt><dd><a href={`tel:${h.sdt}`}>{h.sdt}</a></dd></>}
+          {!h.da_an_danh && h.email && <><dt>Email</dt><dd><a href={`mailto:${h.email}`}>{h.email}</a></dd></>}
+          {h.nam_sinh && <><dt>Năm sinh</dt><dd>{h.nam_sinh}</dd></>}
+          {h.ca_lam_duoc?.length > 0 && <><dt>Ca làm được</dt><dd>{h.ca_lam_duoc.join(', ')}</dd></>}
+          <dt>Ngày nộp</dt>
+          <dd>{dinhDangNgay(h.ngay_nop, 'vi')}</dd>
+          <dt>Lưu đến</dt>
+          <dd>{dinhDangNgay(h.luu_den, 'vi')}</dd>
+          <dt>Mã</dt>
+          <dd><code>{h.ma_ho_so}</code></dd>
+        </dl>
+
+        {h.gioi_thieu && <p style="margin:.75rem 0 0;font-size:.9rem">{h.gioi_thieu}</p>}
+        {h.kinh_nghiem && <p style="margin:.4rem 0 0;font-size:.9rem;color:var(--muc-nhat)">{h.kinh_nghiem}</p>}
+
+        {h.duong_dan_cv && (
+          <p style="margin:.6rem 0 0;font-size:.85rem">
+            Có đính kèm CV — mở trong Supabase Storage tại <code>{h.duong_dan_cv}</code>.
+            Màn hình xem CV chưa làm; tệp nằm trong bucket riêng tư, không có
+            đường dẫn công khai.
+          </p>
+        )}
+
+        {buoc.length > 0 && (
+          <form method="POST" style="margin-top:.85rem">
+            <input type="hidden" name="id" value={h.id} />
+            <input type="hidden" name="tu" value={h.trang_thai} />
+            <label class="nb-o" style="margin-bottom:.6rem">
+              <span>Ghi chú (vào nhật ký, không sửa lại được)</span>
+              <input type="text" name="ghi_chu" autocapitalize="sentences" />
+            </label>
+            <div class="nb-dong-nut" style="margin-top:0">
+              {buoc.map(b => (
+                <button type="submit" name="toi" value={b.toi}
+                        class={`nb-nut ${b.phu ? 'phu' : ''}`}>{b.nhan}</button>
+              ))}
+            </div>
+          </form>
+        )}
+      </div>
+    );
+  })}
+</NoiBo>

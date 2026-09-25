@@ -1,0 +1,94 @@
+---
+/**
+ * KHUNG GIAO DIỆN NỘI BỘ
+ *
+ * Thiết kế cho NGÓN TAY CÁI trước, màn hình lớn sau. Chủ quán xác nhận bàn
+ * khi đang đứng ở quầy, một tay cầm điện thoại — không phải ngồi trước máy
+ * tính. Nên nút cao 48px, chữ 16px trở lên (dưới 16px thì Safari tự phóng to
+ * trang khi chạm vào ô nhập), và thanh điều hướng nằm DƯỚI đáy màn hình trên
+ * điện thoại.
+ *
+ * noindex: trang nội bộ không được vào kết quả tìm kiếm. Đây chỉ là phép
+ * lịch sự với Google — thứ thật sự chặn là middleware và RLS.
+ */
+import '../styles/chung.css';
+import '../styles/noi-bo.css';
+import type { NhanSu } from '../lib/phien';
+
+interface Props {
+  tieuDe: string;
+  nhanSu?: NhanSu;
+}
+const { tieuDe, nhanSu } = Astro.props;
+const duong = Astro.url.pathname.replace(/\/$/, '') || '/noi-bo';
+
+// Đúng bốn vai của enum vai_tro (0001). Thêm nhãn cho một vai không có
+// trong enum chỉ làm người đọc mã tưởng nó tồn tại.
+const TEN_VAI_TRO: Record<string, string> = {
+  chu_so_huu: 'Chủ nhà hàng',
+  quan_ly: 'Quản lý',
+  thu_ngan: 'Thu ngân',
+  marketing: 'Marketing',
+};
+
+// Ô nào hiện ra do VAI TRÒ quyết định, và danh sách vai trò ở đây khớp đúng
+// với chính sách RLS tương ứng trong database. Giấu một ô mà RLS vẫn cho
+// phép thì chỉ gây khó chịu; hiện một ô mà RLS chặn thì người dùng bấm vào
+// và nhận lỗi khó hiểu. Cả hai đều tệ, nên hai danh sách phải khớp nhau.
+const MUC = [
+  { duong: '/noi-bo',             ten: 'Tổng quan',  vai: null },
+  { duong: '/noi-bo/noi-dung',    ten: 'Nội dung',   vai: ['chu_so_huu', 'quan_ly', 'marketing'] },
+  { duong: '/noi-bo/dat-ban',     ten: 'Đặt bàn',    vai: null },
+  { duong: '/noi-bo/tuyen-dung',  ten: 'Tuyển dụng', vai: ['chu_so_huu', 'quan_ly'] },
+  { duong: '/noi-bo/cai-dat',     ten: 'Cài đặt',    vai: ['chu_so_huu', 'quan_ly'] },
+];
+const muc = MUC.filter(m => !m.vai || (nhanSu && m.vai.includes(nhanSu.vai_tro)));
+---
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{tieuDe} — Beeftown nội bộ</title>
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" href="/bieu-tuong.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#1E160E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap"
+    />
+  </head>
+
+  <body class="nb-than">
+    <header class="nb-dau">
+      <div class="nb-khung nb-dau-hang">
+        <a href="/noi-bo" class="nb-hieu">BEEFTOWN<span>nội bộ</span></a>
+        {nhanSu && (
+          <form method="POST" action="/noi-bo/dang-xuat" class="nb-ai">
+            <span class="nb-ten">
+              {nhanSu.ho_ten}
+              <em>{TEN_VAI_TRO[nhanSu.vai_tro] ?? nhanSu.vai_tro}</em>
+            </span>
+            <button type="submit" class="nb-nut-nho">Đăng xuất</button>
+          </form>
+        )}
+      </div>
+    </header>
+
+    {nhanSu && muc.length > 1 && (
+      <nav class="nb-dieu-huong" aria-label="Khu vực nội bộ">
+        <div class="nb-khung nb-dieu-huong-hang">
+          {muc.map(m => (
+            <a href={m.duong} aria-current={duong === m.duong ? 'page' : undefined}>{m.ten}</a>
+          ))}
+        </div>
+      </nav>
+    )}
+
+    <main class="nb-khung nb-chinh">
+      <slot />
+    </main>
+  </body>
+</html>

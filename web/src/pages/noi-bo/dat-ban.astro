@@ -1,0 +1,181 @@
+---
+/**
+ * HỘP THƯ ĐẶT BÀN
+ *
+ * Ba con số của kế hoạch IMC không được đánh đồng: YÊU CẦU ĐÃ NHẬN khác
+ * NHÀ HÀNG ĐÃ XÁC NHẬN khác KHÁCH THỰC ĐẾN. Màn hình này là nơi con số thứ
+ * hai được tạo ra, và nó chỉ được tạo ra khi một nhân viên thật bấm nút sau
+ * khi đã gọi điện thật.
+ *
+ * Nên nút không tên là "Duyệt" mà là "Đã gọi xác nhận" — tên nút phải mô tả
+ * việc đã xảy ra ngoài đời, không phải việc xảy ra trong database.
+ *
+ * Danh sách sắp theo NGÀY KHÁCH ĐẶT, không theo ngày gửi. Yêu cầu cho tối
+ * nay quan trọng hơn yêu cầu gửi trước nhưng cho tuần sau.
+ */
+import NoiBo from '../../layouts/NoiBo.astro';
+import { homNayVn, dinhDangNgay } from '../../lib/noi-dung';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+
+const CHUYEN_DUOC: Record<string, { nhan: string; toi: string; phu?: boolean }[]> = {
+  cho_xac_nhan: [
+    { nhan: 'Đã gọi xác nhận', toi: 'da_xac_nhan' },
+    { nhan: 'Khách hủy', toi: 'da_huy', phu: true },
+  ],
+  da_xac_nhan: [
+    { nhan: 'Khách đã tới', toi: 'da_den' },
+    { nhan: 'Không tới', toi: 'khong_den', phu: true },
+    { nhan: 'Khách hủy', toi: 'da_huy', phu: true },
+  ],
+};
+
+const TEN_TRANG_THAI: Record<string, string> = {
+  cho_xac_nhan: 'Chờ gọi xác nhận',
+  da_xac_nhan: 'Đã xác nhận',
+  da_den: 'Khách đã tới',
+  khong_den: 'Không tới',
+  da_huy: 'Đã hủy',
+};
+
+let bao: { ok: boolean; cau: string } | null = null;
+
+if (Astro.request.method === 'POST') {
+  const form = await Astro.request.formData();
+  const id = String(form.get('id') ?? '');
+  const tu = String(form.get('tu') ?? '');
+  const toi = String(form.get('toi') ?? '');
+
+  // Chỉ nhận đúng những bước đã khai ở trên. Một tham số toi= tự chế sẽ bị
+  // chặn ở đây trước khi tới database — và nếu lọt thì RLS vẫn chặn.
+  const hopLe = CHUYEN_DUOC[tu]?.some(b => b.toi === toi);
+  if (!id || !hopLe) {
+    bao = { ok: false, cau: 'Bước chuyển không hợp lệ.' };
+  } else {
+    const { data, error } = await client
+      .from('dat_ban')
+      .update({ trang_thai: toi, nguoi_xu_ly: nhanSu.id })
+      .eq('id', id)
+      // Chỉ đổi nếu trạng thái vẫn đúng như lúc trang được tải. Hai người
+      // cùng mở hộp thư trên hai điện thoại là chuyện thường, và không có
+      // dòng này thì người bấm sau ghi đè lặng lẽ lên việc người bấm trước.
+      .eq('trang_thai', tu)
+      .select('id');
+
+    if (error) {
+      bao = { ok: false, cau: error.message };
+    } else if (!data || data.length === 0) {
+      // Câu .eq() ở trên KHÔNG khớp dòng nào: người khác đã xử lý trước.
+      // Thiếu nhánh này thì màn hình báo "Đã chuyển sang..." trong khi không
+      // có gì đổi cả — tức là chống được chuyện ghi đè, rồi nói dối về nó.
+      bao = { ok: false, cau: 'Yêu cầu đã được người khác xử lý. Tải lại trang để xem trạng thái mới.' };
+    } else {
+      bao = { ok: true, cau: `Đã chuyển sang "${TEN_TRANG_THAI[toi]}".` };
+    }
+  }
+}
+
+const homNay = homNayVn();
+const loc = String(Astro.url.searchParams.get('loc') ?? 'cho');
+
+let dsLoi: string | null = null;
+let ds: any[] = [];
+try {
+  let q = client
+    .from('dat_ban')
+    .select('id, ma_dat_ban, ngay, gio, so_khach, dip, ghi_chu, trang_thai, created_at, khach_hang(ho_ten, sdt)')
+    .order('ngay', { ascending: true })
+    .order('gio', { ascending: true })
+    .limit(100);
+
+  if (loc === 'cho') q = q.eq('trang_thai', 'cho_xac_nhan');
+  else if (loc === 'hom_nay') q = q.eq('ngay', homNay);
+  else if (loc === 'sap_toi') q = q.gte('ngay', homNay);
+
+  const { data, error } = await q;
+  if (error) dsLoi = error.message;
+  else ds = data ?? [];
+} catch (e) {
+  dsLoi = e instanceof Error ? e.message : 'Không đọc được danh sách.';
+}
+
+const BO_LOC = [
+  { ma: 'cho', ten: 'Chờ gọi' },
+  { ma: 'hom_nay', ten: 'Hôm nay' },
+  { ma: 'sap_toi', ten: 'Sắp tới' },
+  { ma: 'tat_ca', ten: 'Tất cả' },
+];
+---
+<NoiBo tieuDe="Đặt bàn" nhanSu={nhanSu}>
+  <h1>Hộp thư đặt bàn</h1>
+  <p class="nb-dan">
+    Một yêu cầu ở đây <strong>chưa phải là một bàn đã giữ</strong>. Nó thành
+    bàn đã giữ khi có người gọi cho khách và bấm "Đã gọi xác nhận".
+  </p>
+
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+  {dsLoi && <div class="nb-bao loi"><p>{dsLoi}</p></div>}
+
+  <div class="nb-dong-nut" style="margin-bottom:1.25rem">
+    {BO_LOC.map(b => (
+      <a href={`/noi-bo/dat-ban?loc=${b.ma}`}
+         class={`nb-nut ${loc === b.ma ? '' : 'phu'}`}
+         style="font-size:.85rem;padding:.55rem .85rem;min-height:42px">{b.ten}</a>
+    ))}
+  </div>
+
+  {ds.length === 0 && !dsLoi && (
+    <div class="nb-rong">
+      <p style="margin:0">
+        {loc === 'cho'
+          ? 'Không có yêu cầu nào đang chờ gọi.'
+          : 'Không có yêu cầu nào trong mục này.'}
+      </p>
+      <p style="margin:.5rem 0 0;font-size:.85rem">
+        Trống cũng có thể nghĩa là form đặt bàn chưa được bật. Kiểm tra công tắc
+        <a href="/noi-bo/noi-dung"><code>form_dat_ban_dang_mo</code></a>.
+      </p>
+    </div>
+  )}
+
+  {ds.map(d => {
+    const khach = Array.isArray(d.khach_hang) ? d.khach_hang[0] : d.khach_hang;
+    const buoc = CHUYEN_DUOC[d.trang_thai] ?? [];
+    return (
+      <div class="nb-dong">
+        <div class="nb-dong-dau">
+          <strong>{khach?.ho_ten || 'Khách chưa cho tên'}</strong>
+          <span class={`nb-nhan ${d.trang_thai === 'cho_xac_nhan' ? 'cho'
+                        : d.trang_thai === 'da_xac_nhan' ? 'song' : 'tat'}`}>
+            {TEN_TRANG_THAI[d.trang_thai] ?? d.trang_thai}
+          </span>
+        </div>
+
+        <dl>
+          <dt>Điện thoại</dt>
+          <dd><a href={`tel:${khach?.sdt}`}>{khach?.sdt}</a></dd>
+          <dt>Khi nào</dt>
+          <dd>{dinhDangNgay(d.ngay, 'vi')}, {String(d.gio).slice(0, 5)}</dd>
+          <dt>Mấy người</dt>
+          <dd>{d.so_khach}</dd>
+          {d.dip && <><dt>Dịp</dt><dd>{d.dip}</dd></>}
+          {d.ghi_chu && <><dt>Ghi chú</dt><dd>{d.ghi_chu}</dd></>}
+          <dt>Mã</dt>
+          <dd><code>{d.ma_dat_ban}</code></dd>
+        </dl>
+
+        {buoc.length > 0 && (
+          <form method="POST" class="nb-dong-nut">
+            <input type="hidden" name="id" value={d.id} />
+            <input type="hidden" name="tu" value={d.trang_thai} />
+            {buoc.map(b => (
+              <button type="submit" name="toi" value={b.toi}
+                      class={`nb-nut ${b.phu ? 'phu' : ''}`}>{b.nhan}</button>
+            ))}
+          </form>
+        )}
+      </div>
+    );
+  })}
+</NoiBo>

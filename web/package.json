@@ -1,0 +1,28 @@
+{
+  "name": "beeftown-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Website Beeftown — trang công khai, cổng tuyển dụng, giao diện nội bộ",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "wrangler dev",
+    "deploy": "npm run quet && astro build && wrangler deploy",
+    "kiem-tra": "astro check",
+    "quet": "node kiem-tra/quet-chuoi-cam.mjs"
+  },
+  "dependencies": {
+    "@astrojs/cloudflare": "^14.3.2",
+    "@supabase/supabase-js": "^2.58.0",
+    "astro": "^7.3.3"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "typescript": "^6.0.3",
+    "wrangler": "^4.42.2"
+  }
+}

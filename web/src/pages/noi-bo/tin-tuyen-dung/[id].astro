@@ -1,0 +1,332 @@
+---
+/**
+ * SOẠN MỘT TIN TUYỂN DỤNG
+ *
+ * Mọi thứ của một tin ở một chỗ: nội dung hai thứ tiếng, lương, form nộp hồ
+ * sơ hỏi gì, đăng và gỡ. Quyền do database quyết định — xem đầu
+ * lib/tin-tuyen-dung.ts.
+ *
+ * BA FORM TÁCH NHAU: soạn (Lưu / Lưu và đăng), duyệt lương, gỡ tin. Nút Lưu
+ * là nút submit đầu tiên của form soạn, nên một cú Enter trong ô chữ chỉ
+ * lưu — không bao giờ đăng tin hay duyệt lương.
+ */
+import NoiBo from '../../../layouts/NoiBo.astro';
+import { TRUONG_FORM } from '../../../lib/truong-form';
+import { BO_PHAN, LOAI_HOP_DONG, dinhDangLuong } from '../../../lib/tuyen-dung';
+import {
+  docTin, luuTin, duyetLuong, goTin, TRANG_THAI, homNayVn,
+  type TinTuyenDung, type KetQuaLuu,
+} from '../../../lib/tin-tuyen-dung';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const duocSoan = ['chu_so_huu', 'quan_ly', 'marketing'].includes(nhanSu.vai_tro);
+const duocDuyetLuong = ['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro);
+const id = Astro.params.id ?? '';
+
+let bao: KetQuaLuu | null = Astro.url.searchParams.has('moi')
+  ? { ok: true, cau: 'Đã tạo tin ở dạng nháp. Viết mô tả và yêu cầu, rồi bấm "Lưu và đăng lên trang".' }
+  : null;
+
+if (Astro.request.method === 'POST') {
+  let form: FormData | null = null;
+  try {
+    form = await Astro.request.formData();
+  } catch {
+    bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên. Mạng có thể đã đứt giữa chừng — bạn thử gửi lại.' };
+  }
+
+  if (form) {
+    const viec = String(form.get('viec') ?? '');
+    const phienBan = String(form.get('phien_ban') ?? '');
+    bao = viec === 'go'       ? await goTin(client, id)
+        : viec === 'duyet'    ? await duyetLuong(client, id, phienBan, true)
+        : viec === 'bo_duyet' ? await duyetLuong(client, id, phienBan, false)
+        :                       await luuTin(client, id, form);
+  }
+}
+
+let tin: TinTuyenDung | null = null;
+let loiDoc: string | null = null;
+try {
+  tin = await docTin(client, id);
+} catch (e) {
+  loiDoc = e instanceof Error ? e.message : 'Không đọc được tin.';
+}
+
+// Lưu hỏng thì hiện lại đúng những gì người dùng vừa gõ, không bắt gõ lại.
+const v: TinTuyenDung | null = tin && { ...tin, ...(bao && !bao.ok ? bao.daGo : undefined) };
+const dangDang = tin?.trang_thai === 'da_cong_bo';
+const quaHan = !!tin?.han_nop && tin.han_nop < homNayVn();
+const luongDangHien = tin?.luong_da_duyet ? dinhDangLuong(tin.luong_tu, tin.luong_den) : null;
+const luongDeXuat = tin ? dinhDangLuong(tin.luong_de_xuat_tu, tin.luong_de_xuat_den) : null;
+const gioVn = (iso: string) => new Date(iso).toLocaleString('vi-VN', {
+  timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit',
+  day: 'numeric', month: 'numeric', year: 'numeric',
+});
+// Gửi về đúng đường dẫn tin, bỏ ?moi=1 — không thì F5 lại hiện câu "Đã tạo tin".
+const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
+---
+<NoiBo tieuDe={tin?.ten_vi ?? 'Tin tuyển dụng'} nhanSu={nhanSu}>
+  <p style="margin:0 0 .75rem;font-size:.9rem">
+    <a href="/noi-bo/tin-tuyen-dung">← Tất cả tin tuyển dụng</a>
+  </p>
+
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+  {loiDoc && <div class="nb-bao loi"><p>{loiDoc}</p></div>}
+
+  {!tin && !loiDoc && (
+    <div class="nb-rong">
+      <p style="margin:0">Không tìm thấy tin này, hoặc tài khoản của bạn không xem được.</p>
+    </div>
+  )}
+
+  {tin && v && (
+    <>
+      <div class="nb-dong-dau" style="margin-bottom:.35rem">
+        <h1 style="margin:0">{tin.ten_vi}</h1>
+        <span class={`nb-nhan ${TRANG_THAI[tin.trang_thai].lop}`}>{TRANG_THAI[tin.trang_thai].ten}</span>
+      </div>
+      <p class="nb-dan" style="font-size:.85rem">
+        Mã tin <code>{tin.ma}</code> — cố định, vì form công khai gửi đúng mã này.
+        {dangDang && tin.cong_bo_luc && (
+          <> Đăng lúc {gioVn(tin.cong_bo_luc)}. <a href="/tuyen-dung" target="_blank" rel="noopener">Xem trên trang ↗</a></>
+        )}
+      </p>
+
+      {dangDang && quaHan && (
+        <div class="nb-bao luu-y">
+          <p>
+            Hạn nộp đã qua, nên tin này <strong>không còn hiện</strong> trên trang dù
+            vẫn đang đăng. Lùi hạn nộp, hoặc để trống, để tin hiện lại.
+          </p>
+        </div>
+      )}
+
+      {!duocSoan && (
+        <div class="nb-bao luu-y">
+          <p>Chỉ chủ nhà hàng, quản lý và marketing sửa được tin. Bạn đang xem ở chế độ chỉ đọc.</p>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------ SOẠN */}
+      <form method="POST" action={duongDan} class="nb-soan">
+        <input type="hidden" name="phien_ban" value={tin.updated_at} />
+        <fieldset disabled={!duocSoan}>
+
+          <section class="nb-the">
+            <h2>Tên và phân loại</h2>
+            <label class="nb-o">
+              <span>Tên vị trí</span>
+              <input type="text" name="ten_vi" required maxlength="120" value={v.ten_vi}
+                     autocapitalize="sentences" />
+            </label>
+            <div class="nb-hai">
+              <label class="nb-o">
+                <span>Bộ phận</span>
+                <select name="bo_phan">
+                  {Object.entries(BO_PHAN).map(([ma, nhan]) => (
+                    <option value={ma} selected={ma === v.bo_phan}>{nhan.vi}</option>
+                  ))}
+                </select>
+              </label>
+              <label class="nb-o">
+                <span>Loại hợp đồng</span>
+                <select name="loai_hop_dong">
+                  {Object.entries(LOAI_HOP_DONG).map(([ma, nhan]) => (
+                    <option value={ma} selected={ma === v.loai_hop_dong}>{nhan.vi}</option>
+                  ))}
+                </select>
+              </label>
+              <label class="nb-o">
+                <span>Số lượng cần tuyển</span>
+                <input type="number" name="so_luong" min="1" max="999" inputmode="numeric"
+                       value={v.so_luong ?? ''} />
+              </label>
+              <label class="nb-o">
+                <span>Hạn nộp</span>
+                <input type="date" name="han_nop" value={v.han_nop ?? ''} />
+              </label>
+            </div>
+            <p class="nb-dan" style="font-size:.8rem;margin:-.5rem 0 1rem">
+              Hạn nộp để trống nếu tuyển liên tục. Qua hạn thì tin tự ẩn khỏi trang.
+            </p>
+            <label class="nb-o">
+              <span>Cấp bậc, lộ trình</span>
+              <small>Ví dụ: 3 bậc · Hướng lên quản lý cửa hàng</small>
+              <input type="text" name="cap_bac" value={v.cap_bac ?? ''} />
+            </label>
+            <label class="nb-o">
+              <span>Ca làm</span>
+              <small>Ví dụ: Ca tối 16:00–22:00</small>
+              <input type="text" name="ca_lam" value={v.ca_lam ?? ''} />
+            </label>
+          </section>
+
+          <section class="nb-the">
+            <h2>Nội dung tin</h2>
+            <p class="nb-dan" style="font-size:.85rem">
+              Muốn đăng thì phải có mô tả và yêu cầu. Chữ trong ngoặc vuông, kiểu
+              <code>[chờ duyệt]</code>, được coi là chưa viết xong và chặn việc đăng.
+            </p>
+            <label class="nb-o">
+              <span>Mô tả công việc</span>
+              <textarea name="mo_ta_vi" rows="5">{v.mo_ta_vi ?? ''}</textarea>
+            </label>
+            <label class="nb-o">
+              <span>Yêu cầu</span>
+              <textarea name="yeu_cau_vi" rows="4">{v.yeu_cau_vi ?? ''}</textarea>
+            </label>
+            <label class="nb-o">
+              <span>Quyền lợi</span>
+              <small>Không bắt buộc.</small>
+              <textarea name="quyen_loi_vi" rows="4">{v.quyen_loi_vi ?? ''}</textarea>
+            </label>
+
+            <details class="nb-tieng-anh" open={!!(v.ten_en || v.mo_ta_en || v.yeu_cau_en || v.quyen_loi_en)}>
+              <summary>Bản tiếng Anh — không bắt buộc</summary>
+              <p class="nb-dan" style="font-size:.85rem">
+                Ô nào để trống thì trang tiếng Anh hiện bản tiếng Việt.
+              </p>
+              <label class="nb-o">
+                <span>Tên vị trí (EN)</span>
+                <input type="text" name="ten_en" maxlength="120" value={v.ten_en ?? ''} />
+              </label>
+              <label class="nb-o">
+                <span>Mô tả (EN)</span>
+                <textarea name="mo_ta_en" rows="4">{v.mo_ta_en ?? ''}</textarea>
+              </label>
+              <label class="nb-o">
+                <span>Yêu cầu (EN)</span>
+                <textarea name="yeu_cau_en" rows="3">{v.yeu_cau_en ?? ''}</textarea>
+              </label>
+              <label class="nb-o">
+                <span>Quyền lợi (EN)</span>
+                <textarea name="quyen_loi_en" rows="3">{v.quyen_loi_en ?? ''}</textarea>
+              </label>
+            </details>
+          </section>
+
+          <section class="nb-the">
+            <h2>Lương đề xuất</h2>
+            <p class="nb-dan" style="font-size:.85rem">
+              Đang hiện trên trang: <strong>{luongDangHien ?? 'chưa có — trang không hiện lương'}</strong>.
+              {duocDuyetLuong
+                ? ' Lưu mức đề xuất rồi duyệt ở ô "Duyệt lương" bên dưới.'
+                : ' Mức đề xuất chỉ lên trang khi chủ nhà hàng hoặc quản lý duyệt.'}
+            </p>
+            <div class="nb-hai">
+              <label class="nb-o">
+                <span>Từ (đồng)</span>
+                <input type="number" name="luong_de_xuat_tu" min="0" step="1000" inputmode="numeric"
+                       value={v.luong_de_xuat_tu ?? ''} />
+              </label>
+              <label class="nb-o">
+                <span>Đến (đồng)</span>
+                <input type="number" name="luong_de_xuat_den" min="0" step="1000" inputmode="numeric"
+                       value={v.luong_de_xuat_den ?? ''} />
+              </label>
+            </div>
+          </section>
+
+          <section class="nb-the">
+            <h2>Form nộp hồ sơ hỏi gì</h2>
+            <p class="nb-dan" style="font-size:.85rem">
+              Họ tên, số điện thoại và ô đồng ý luôn có. Trường bật vẫn không bắt
+              buộc; trường tắt thì biến khỏi form, và dù có ai gửi lên cũng
+              <strong>không được lưu</strong>.
+            </p>
+            <div class="nb-truong">
+              {TRUONG_FORM.map(f => (
+                <label>
+                  <input type="checkbox" name={f.cot} value="co" checked={v[f.cot] === true} />
+                  <span>{f.ten}</span>
+                </label>
+              ))}
+            </div>
+          </section>
+
+          {duocSoan && (
+            <div class="nb-dong-nut" style="margin-bottom:1.5rem">
+              <button type="submit" name="viec" value="luu" class="nb-nut">
+                {dangDang ? 'Lưu — trang đổi ngay'
+                  : tin.trang_thai === 'da_thu_hoi' ? 'Lưu (tin vẫn đang gỡ)' : 'Lưu nháp'}
+              </button>
+              {!dangDang && (
+                <button type="submit" name="viec" value="luu_dang" class="nb-nut phu">
+                  Lưu và đăng lên trang
+                </button>
+              )}
+            </div>
+          )}
+        </fieldset>
+      </form>
+
+      {/* -------------------------------------------------------- DUYỆT LƯƠNG */}
+      {duocDuyetLuong && (
+        <form method="POST" action={duongDan} class="nb-the">
+          <input type="hidden" name="phien_ban" value={tin.updated_at} />
+          <h2>Duyệt lương</h2>
+          <p style="margin:0 0 .4rem">Mức đề xuất đã lưu: <strong>{luongDeXuat ?? 'chưa có'}</strong></p>
+          <p style="margin:0 0 .85rem">
+            Đang hiện trên trang: <strong>{luongDangHien ?? 'chưa có'}</strong>
+            {tin.luong_da_duyet && tin.luong_duyet_luc && (
+              <span class="nb-dan"> — duyệt lúc {gioVn(tin.luong_duyet_luc)}</span>
+            )}
+          </p>
+          <p class="nb-dan" style="font-size:.85rem">
+            Lương là cam kết với người lao động. Nút duyệt đưa ĐÚNG mức đề xuất đã
+            lưu lên trang; sửa mức đề xuất thì bấm lưu ở trên trước.
+          </p>
+          <div class="nb-dong-nut" style="margin-top:0">
+            <button type="submit" name="viec" value="duyet" class="nb-nut" disabled={!luongDeXuat}>
+              Duyệt mức đề xuất
+            </button>
+            {tin.luong_da_duyet && (
+              <button type="submit" name="viec" value="bo_duyet" class="nb-nut phu">
+                Bỏ duyệt — gỡ lương khỏi trang
+              </button>
+            )}
+          </div>
+        </form>
+      )}
+
+      {/* ------------------------------------------------------------ GỠ TIN */}
+      {duocSoan && dangDang && (
+        <form method="POST" action={duongDan} class="nb-the">
+          <input type="hidden" name="viec" value="go" />
+          <h2>Gỡ tin</h2>
+          <p class="nb-dan" style="font-size:.85rem">
+            Tin biến khỏi trang tuyển dụng ngay. Hồ sơ đã nộp vẫn còn nguyên, và
+            đăng lại lúc nào cũng được.
+          </p>
+          <button type="submit" class="nb-nut phu">Gỡ khỏi trang</button>
+        </form>
+      )}
+    </>
+  )}
+</NoiBo>
+
+<style>
+  .nb-soan fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .nb-soan h2, form.nb-the h2 { margin-top: 0; }
+  .nb-hai {
+    display: grid; gap: 0 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  }
+  .nb-tieng-anh { margin-top: .25rem; }
+  .nb-tieng-anh summary {
+    cursor: pointer; font-weight: 600; font-size: .9rem; padding: .4rem 0 .6rem;
+  }
+  .nb-truong {
+    display: grid; gap: .1rem 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  }
+  /* Vùng chạm đủ cho ngón tay cái, cùng cỡ ô tích ở màn Cài đặt. */
+  .nb-truong label {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .45rem 0; font-size: .92rem; cursor: pointer;
+  }
+  .nb-truong input { width: 22px; height: 22px; margin: 0; accent-color: var(--do); }
+  fieldset[disabled] .nb-truong label { cursor: not-allowed; opacity: .6; }
+</style>

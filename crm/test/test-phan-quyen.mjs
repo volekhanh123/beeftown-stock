@@ -46,6 +46,21 @@ await db.exec(`
 
   create role anon nologin;
   create role authenticated nologin;
+  create role service_role nologin;
+  grant usage on schema public to anon, authenticated, service_role;
+
+  -- QUAN TRỌNG: mô phỏng QUYỀN MẶC ĐỊNH của Supabase.
+  -- Supabase cấp sẵn mọi bảng/hàm/sequence mới cho anon và authenticated.
+  -- PGlite thì không cấp gì cả — nên nếu thiếu khối này, MỌI khẳng định
+  -- "anon không làm được X" trong file này đều đúng một cách RỖNG: đúng vì
+  -- PGlite keo kiệt, không phải vì schema an toàn. Lỗ hổng quyền thực thi hàm
+  -- (0008 mục 1) không thể tái hiện nếu thiếu mấy dòng này.
+  --
+  -- Phải đặt TRƯỚC vòng chạy migration thì default privileges mới áp lên các
+  -- đối tượng do migration tạo ra.
+  alter default privileges in schema public grant all on tables    to anon, authenticated;
+  alter default privileges in schema public grant all on functions to anon, authenticated;
+  alter default privileges in schema public grant all on sequences to anon, authenticated;
 `);
 
 for (const f of readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort()) {
@@ -231,11 +246,24 @@ ok('anon KHÔNG đọc được sổ cái điểm', anonDocDiem.loi !== null);
 await db.query(`insert into ban_an (chi_nhanh_id, ten) values ($1,'B01')`, [cnA.id]);
 const ngayMai = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
 
+// 0013 gỡ hai hàm nhận uuid khỏi danh sách công khai:
+//   · anon không có cách nào lấy được uuid chi nhánh (không đọc được bảng);
+//   · so_ban_con_trong() trả về SỐ bàn còn trống, là một oracle sức chứa —
+//     một script tầm thường có thể dò để biết nhà hàng còn bao nhiêu chỗ.
+// Website dùng lich_trong_theo_ma(), chỉ trả về CÓ/KHÔNG còn chỗ.
 const anonXemLich = await duoiDanhNghiaAnon(
-  `select * from lich_trong_theo_ngay($1,$2::date)`, [cnA.id, ngayMai]);
+  `select * from lich_trong_theo_ma($1,$2::date)`, ['q1', ngayMai]);
 ok('anon xem được lịch trống (hàm công khai)',
    anonXemLich.loi === null && anonXemLich.rows.length > 0,
    anonXemLich.loi ?? '');
+ok('Lịch công khai KHÔNG trả về số bàn còn trống',
+   anonXemLich.rows != null
+   && !Object.keys(anonXemLich.rows[0] ?? {}).includes('con_trong'),
+   Object.keys(anonXemLich.rows?.[0] ?? {}).join(', '));
+
+const anonDoSucChua = await duoiDanhNghiaAnon(
+  `select so_ban_con_trong($1,$2::date,'18:00'::time) as n`, [cnA.id, ngayMai]);
+ok('anon KHÔNG đếm được số bàn còn trống', anonDoSucChua.loi !== null);
 
 const anonDatBan = await duoiDanhNghiaAnon(
   `select * from tao_dat_ban($1,$2,$3,$4::date,$5::time,$6::smallint,null,null,true)`,
