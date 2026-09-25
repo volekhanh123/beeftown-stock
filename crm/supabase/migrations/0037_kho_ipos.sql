@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN KHO — 0036 · ĐỒNG BỘ BÁN HÀNG iPOS (GĐ7a)
+-- BEEFTOWN KHO — 0037 · ĐỒNG BỘ BÁN HÀNG iPOS (GĐ7a)
 -- =============================================================================
 -- Chủ nhà hàng đã chốt (GĐ7a): máy bán hàng iPOS là nơi ghi BÁN. Kho tự trừ
 -- theo từng hóa đơn iPOS, 5 phút một lượt; quầy không còn "thiếu = đã bán".
@@ -95,14 +95,14 @@ as $$
     when 'cai_dat_goc' then array['chu_so_huu']
     -- 0034: tài khoản của máy tính bảng dùng chung. Chỉ gọi được hàm kho_may_*.
     when 'may_chung'   then array['may_chung']
-    -- 0036: đồng bộ bán hàng iPOS. Máy may_ipos CHỈ có việc này.
+    -- 0037: đồng bộ bán hàng iPOS. Máy may_ipos CHỈ có việc này.
     when 'dong_bo_ban' then array['chu_so_huu','quan_ly','may_ipos']
     else array[]::text[]
   end)::vai_tro[];
 $$;
 
 comment on function kho_vai_duoc is
-  'Bảng tra quyền kho: việc → danh sách vai. Nguồn sự thật duy nhất; lib/kho/chung.ts soi gương và test-kho-quyen.mjs so khớp. 0031: thủ kho không còn xem_gia; thêm duyet_nhap. 0034: thêm may_chung (chỉ vai may_chung). 0036: thêm dong_bo_ban (chủ, quản lý, may_ipos).';
+  'Bảng tra quyền kho: việc → danh sách vai. Nguồn sự thật duy nhất; lib/kho/chung.ts soi gương và test-kho-quyen.mjs so khớp. 0031: thủ kho không còn xem_gia; thêm duyet_nhap. 0034: thêm may_chung (chỉ vai may_chung). 0037: thêm dong_bo_ban (chủ, quản lý, may_ipos).';
 
 
 -- =============================================================================
@@ -149,7 +149,7 @@ create trigger kho_ipos_cau_hinh_updated_at
   for each row execute function tu_dong_cap_nhat_updated_at();
 
 comment on table kho_ipos_cau_hinh is
-  'Kết nối iPOS của một chi nhánh (0036). KHÔNG chứa token — token là bí mật Worker IPOS_ACCESS_TOKEN. Ghi qua kho_ipos_luu_cau_hinh / kho_ipos_chuyen_sang / kho_ipos_tro_ve và các hàm của lượt đồng bộ.';
+  'Kết nối iPOS của một chi nhánh (0037). KHÔNG chứa token — token là bí mật Worker IPOS_ACCESS_TOKEN. Ghi qua kho_ipos_luu_cau_hinh / kho_ipos_chuyen_sang / kho_ipos_tro_ve và các hàm của lượt đồng bộ.';
 comment on column kho_ipos_cau_hinh.duong_dan_hoa_don is
   'Đường dẫn endpoint lấy hóa đơn, nối sau api_url. Trống = chưa cấu hình (chờ tài liệu API iPOS).';
 comment on column kho_ipos_cau_hinh.vi_tri_ban_id is 'Quầy bán — hàng bán trên iPOS trừ ở vị trí này.';
@@ -183,7 +183,7 @@ create trigger kho_ipos_ma_hang_updated_at
   for each row execute function tu_dong_cap_nhat_updated_at();
 
 comment on table kho_ipos_ma_hang is
-  'Mã món iPOS → món kho (0036). kieu: mon = món cố định (mat_hang_id); goi_can = món bán bằng nhãn cân, món thật đọc từ mã cân trên nhãn (mat_hang_id tùy chọn); bo_qua = không phải hàng kho (nước, dịch vụ).';
+  'Mã món iPOS → món kho (0037). kieu: mon = món cố định (mat_hang_id); goi_can = món bán bằng nhãn cân, món thật đọc từ mã cân trên nhãn (mat_hang_id tùy chọn); bo_qua = không phải hàng kho (nước, dịch vụ).';
 
 -- Hộp thư hóa đơn.
 create table kho_ipos_hoa_don (
@@ -209,7 +209,7 @@ create trigger kho_ipos_hoa_don_updated_at
   for each row execute function tu_dong_cap_nhat_updated_at();
 
 comment on table kho_ipos_hoa_don is
-  'Hóa đơn iPOS đã nhận (0036). bam = md5 nội dung đã chuẩn hóa: cùng mã cùng băm = bỏ qua; băm khác = HĐ sửa → đảo ngược rồi ghi lại.';
+  'Hóa đơn iPOS đã nhận (0037). bam = md5 nội dung đã chuẩn hóa: cùng mã cùng băm = bỏ qua; băm khác = HĐ sửa → đảo ngược rồi ghi lại.';
 
 create table kho_ipos_dong (
   id            uuid primary key default gen_random_uuid(),
@@ -251,7 +251,7 @@ create trigger kho_ipos_dong_updated_at
   for each row execute function tu_dong_cap_nhat_updated_at();
 
 comment on table kho_ipos_dong is
-  'Từng dòng hóa đơn iPOS và trạng thái trừ kho (0036): cho | da_ghi | chua_khop | thieu_hang | bo_qua | da_huy | loi. Dòng sổ kho: chung_tu_loai ban_hang, chung_tu_id = id dòng.';
+  'Từng dòng hóa đơn iPOS và trạng thái trừ kho (0037): cho | da_ghi | chua_khop | thieu_hang | bo_qua | da_huy | loi. Dòng sổ kho: chung_tu_loai ban_hang, chung_tu_id = id dòng.';
 comment on column kho_ipos_dong.thanh_tien is 'Tiền bán thật của dòng trên iPOS (đồng). Chỉ vai xem_gia đọc được.';
 comment on column kho_ipos_dong.lo_het_han is 'Đã phải lấy gói thuộc lô hết hạn để ghi bán.';
 
@@ -277,7 +277,7 @@ create table kho_ipos_lan_chay (
 create index kho_ipos_lan_chay_cn_idx on kho_ipos_lan_chay(chi_nhanh_id, bat_dau_luc desc);
 
 comment on table kho_ipos_lan_chay is
-  'Nhật ký lượt đồng bộ iPOS (0036): nguồn cron | tay, người, số HĐ / dòng, lỗi ngắn (đã xóa token).';
+  'Nhật ký lượt đồng bộ iPOS (0037): nguồn cron | tay, người, số HĐ / dòng, lỗi ngắn (đã xóa token).';
 
 -- Danh sách dòng cho màn Bán hàng iPOS. Có tiền → chỉ vai xem_gia (RLS bảng gốc).
 create view kho_v_ipos_dong with (security_invoker = true) as
@@ -292,7 +292,7 @@ create view kho_v_ipos_dong with (security_invoker = true) as
   left join kho_mat_hang m on m.id = d.mat_hang_id;
 
 comment on view kho_v_ipos_dong is
-  'Dòng bán iPOS kèm mã HĐ, tên món kho, ngày bán giờ VN (0036). security_invoker: vai không xem_gia không thấy dòng nào.';
+  'Dòng bán iPOS kèm mã HĐ, tên món kho, ngày bán giờ VN (0037). security_invoker: vai không xem_gia không thấy dòng nào.';
 
 
 -- =============================================================================
@@ -380,7 +380,7 @@ end;
 $$;
 
 comment on function kho_ipos_lay_lo is
-  'NỘI BỘ (0036). Chọn lô bán ở quầy: còn hạn trước (FEFO), thiếu thì lô hết hạn. Không đủ → null. Không ghi sổ.';
+  'NỘI BỘ (0037). Chọn lô bán ở quầy: còn hạn trước (FEFO), thiếu thì lô hết hạn. Không đủ → null. Không ghi sổ.';
 
 -- Máy tự nhận ĐỦ một phiếu mang ra quầy (như NV quầy bấm "Đã nhận đủ", 0032):
 -- toàn bộ hàng đi đường của phiếu vào quầy, phiếu → da_nhan.
@@ -429,7 +429,7 @@ end;
 $$;
 
 comment on function kho_ipos_tu_nhan is
-  'NỘI BỘ (0036). Nhận đủ một phiếu mang ra quầy thay NV quầy khi iPOS đã bán hàng của phiếu đó.';
+  'NỘI BỘ (0037). Nhận đủ một phiếu mang ra quầy thay NV quầy khi iPOS đã bán hàng của phiếu đó.';
 
 -- Đảo ngược mọi dòng sổ bán (ban, hao_hut) của một dòng iPOS chưa bị đảo.
 -- Dòng kiem_ke "hàng ngoài sổ" giữ nguyên: hàng đó có thật. Ngày = ngày gốc.
@@ -463,7 +463,7 @@ end;
 $$;
 
 comment on function kho_ipos_dao_dong is
-  'NỘI BỘ (0036). Đảo ngược các dòng sổ ban / hao_hut của một dòng iPOS (HĐ sửa hoặc hủy). Trả số dòng đã đảo.';
+  'NỘI BỘ (0037). Đảo ngược các dòng sổ ban / hao_hut của một dòng iPOS (HĐ sửa hoặc hủy). Trả số dòng đã đảo.';
 
 -- Ghi MỘT dòng iPOS vào sổ kho. KHÔNG BAO GIỜ raise: lỗi bất ngờ → 'loi'.
 -- Người gọi đã khóa kho_cai_dat. Trả trạng thái mới.
@@ -649,7 +649,7 @@ end;
 $$;
 
 comment on function kho_ipos_ghi_dong is
-  'NỘI BỘ (0036). Trừ kho một dòng bán iPOS: khớp món (ghép mã → mã cân), FEFO ở quầy bán (còn hạn trước), hao_hut lệch kg nhãn rồi ban, ngày = ngày bán giờ VN; thiếu thì tự nhận hàng đang mang ra quầy. Không bao giờ raise: lỗi → loi.';
+  'NỘI BỘ (0037). Trừ kho một dòng bán iPOS: khớp món (ghép mã → mã cân), FEFO ở quầy bán (còn hạn trước), hao_hut lệch kg nhãn rồi ban, ngày = ngày bán giờ VN; thiếu thì tự nhận hàng đang mang ra quầy. Không bao giờ raise: lỗi → loi.';
 
 -- Mất kết nối: lượt cuối lỗi, hoặc trong giờ mở cửa mà > 30 phút chưa có lượt tốt.
 create or replace function kho_ipos_mat_ket_noi(p_c kho_ipos_cau_hinh)
@@ -666,7 +666,7 @@ as $$
 $$;
 
 comment on function kho_ipos_mat_ket_noi is
-  'NỘI BỘ (0036). Đồng bộ iPOS đang bật mà lượt cuối lỗi, hoặc trong giờ mở cửa đã hơn 30 phút không có lượt tốt.';
+  'NỘI BỘ (0037). Đồng bộ iPOS đang bật mà lượt cuối lỗi, hoặc trong giờ mở cửa đã hơn 30 phút không có lượt tốt.';
 
 
 -- =============================================================================
@@ -1452,7 +1452,7 @@ as $$
 $$;
 
 comment on function kho_bao_cao_ban_thuc is
-  'Hàng bán trong kỳ (0036): nguon ipos = doanh thu THẬT từ dòng HĐ iPOS đã ghi; nguon uoc_tinh = từ kiểm kê quầy (trước khi nối iPOS), kg × giá bán hiện tại. Giá vốn theo lô. SECURITY INVOKER: không xem_gia thì tiền = 0.';
+  'Hàng bán trong kỳ (0037): nguon ipos = doanh thu THẬT từ dòng HĐ iPOS đã ghi; nguon uoc_tinh = từ kiểm kê quầy (trước khi nối iPOS), kg × giá bán hiện tại. Giá vốn theo lô. SECURITY INVOKER: không xem_gia thì tiền = 0.';
 
 
 -- =============================================================================
@@ -1498,7 +1498,7 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  -- 0036: quầy trừ kho theo iPOS — số bán phải mới (≤ 10 phút) trước khi chụp sổ.
+  -- 0037: quầy trừ kho theo iPOS — số bán phải mới (≤ 10 phút) trước khi chụp sổ.
   if v_kk.nguon_so_ban = 'ipos' then
     select * into v_ip from kho_ipos_cau_hinh where chi_nhanh_id = v_kk.chi_nhanh_id;
     if found and v_ip.bat and v_ip.vi_tri_ban_id = v_kk.vi_tri_id
@@ -1637,7 +1637,7 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  -- 0036: quầy trừ kho theo iPOS — dòng bán trước lúc gửi mà chưa trừ được kho
+  -- 0037: quầy trừ kho theo iPOS — dòng bán trước lúc gửi mà chưa trừ được kho
   -- (thiếu hàng / chưa ghép món) sẽ làm kiểm kê ra thiếu giả.
   if v_kk.nguon_so_ban = 'ipos' and v_vt.loai = 'quay' then
     select count(*) into v_n
@@ -1710,7 +1710,7 @@ $$;
 
 
 -- =============================================================================
--- 11 · SỰ KIỆN VÀ SỐ ĐỎ — thay THÂN (cùng chữ ký), chép 0033, thêm 0036
+-- 11 · SỰ KIỆN VÀ SỐ ĐỎ — thay THÂN (cùng chữ ký), chép 0033, thêm 0037
 -- =============================================================================
 --   ipos_cho_xu_ly    nhac_nho  quản lý, chủ (duyet): dòng bán iPOS chưa khớp /
 --                               thiếu hàng.
@@ -1884,7 +1884,7 @@ begin
         and f.thu_hoi_thap and f.da_xem_luc is null;
   end if;
 
-  -- ---- 0036 · Bán hàng iPOS (quản lý, chủ) ----------------------------------
+  -- ---- 0037 · Bán hàng iPOS (quản lý, chủ) ----------------------------------
   -- ipos_cho_xu_ly: so = số dòng chưa khớp + thiếu hàng; phu = số chưa khớp.
   -- Mốc = dòng chờ mới nhất vào hộp thư (thử lại mỗi lượt không làm "chưa đọc" lại).
   if kho_duoc(p_chi_nhanh_id, 'duyet') then
@@ -1944,7 +1944,7 @@ $$;
 
 
 comment on function kho_su_kien is
-  'NỘI BỘ. 0036: thêm ipos_cho_xu_ly, ipos_mat_ket_noi. Mọi sự kiện thông báo người đang đăng nhập được thấy ở một chi nhánh, suy ra từ chứng từ. Gọi qua kho_dem_viec / kho_thong_bao.';
+  'NỘI BỘ. 0037: thêm ipos_cho_xu_ly, ipos_mat_ket_noi. Mọi sự kiện thông báo người đang đăng nhập được thấy ở một chi nhánh, suy ra từ chứng từ. Gọi qua kho_dem_viec / kho_thong_bao.';
 
 create or replace function kho_dem_viec(p_chi_nhanh_id uuid)
 returns jsonb
@@ -2065,7 +2065,7 @@ begin
       'thu_hoi_thap', (select count(*) from kho_phien_pha
                        where chi_nhanh_id = p_chi_nhanh_id and trang_thai = 'da_chot'
                          and thu_hoi_thap and da_xem_luc is null),
-      -- 0036
+      -- 0037
       'ipos_cho_xu_ly', (select count(*) from kho_ipos_dong
                          where chi_nhanh_id = p_chi_nhanh_id and trang_thai in ('chua_khop', 'thieu_hang')));
   end if;
@@ -2089,7 +2089,7 @@ $$;
 
 
 comment on function kho_dem_viec is
-  'Mọi số đỏ trên menu kho của người đang đăng nhập ở một chi nhánh, trong MỘT lần gọi. Khóa nào không có quyền thì vắng mặt. Chỉ đếm, không tiền. duyet_nhap theo quyền duyet_nhap (0031); yeu_cau_quay, hang_dang_chuyen, hang_chuyen_qua_gio, chuyen_nhan_thieu (0032); thu_hoi_thap (0033); ipos_cho_xu_ly (0036).';
+  'Mọi số đỏ trên menu kho của người đang đăng nhập ở một chi nhánh, trong MỘT lần gọi. Khóa nào không có quyền thì vắng mặt. Chỉ đếm, không tiền. duyet_nhap theo quyền duyet_nhap (0031); yeu_cau_quay, hang_dang_chuyen, hang_chuyen_qua_gio, chuyen_nhan_thieu (0032); thu_hoi_thap (0033); ipos_cho_xu_ly (0037).';
 
 
 -- =============================================================================

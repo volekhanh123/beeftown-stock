@@ -21,7 +21,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-export type NgonNgu = 'vi' | 'en';
+export type NgonNgu = 'vi' | 'en' | 'ko';
 
 /** Ảnh trả về từ cổng nội dung. Luôn kèm nguồn thật để không nhầm ảnh minh họa. */
 export interface AnhCongBo {
@@ -154,14 +154,21 @@ export function homNayVn(): string {
   return t.toISOString().slice(0, 10);
 }
 
-/** "2026-12-01" → "1 tháng 12, 2026" / "1 December 2026" */
+const THANG_EN = ['January','February','March','April','May','June',
+                  'July','August','September','October','November','December'];
+
+// Một cách viết cho mỗi ngôn ngữ, không phải một nhánh if cho mỗi ngôn ngữ
+// "khác tiếng Việt": thứ tiếng thứ ba mà quên khai thì là lỗi biên dịch, chứ
+// không lặng lẽ rơi vào cách viết của tiếng Việt.
+const CACH_VIET_NGAY: Record<NgonNgu, (nam: number, thang: number, ngay: number) => string> = {
+  vi: (nam, thang, ngay) => `ngày ${ngay} tháng ${thang}, ${nam}`,
+  en: (nam, thang, ngay) => `${ngay} ${THANG_EN[thang - 1]} ${nam}`,
+  ko: (nam, thang, ngay) => `${nam}년 ${thang}월 ${ngay}일`,
+};
+
+/** "2026-12-01" → "ngày 1 tháng 12, 2026" / "1 December 2026" / "2026년 12월 1일" */
 export function dinhDangNgay(iso: string, ngonNgu: NgonNgu): string {
   const [nam, thang, ngay] = iso.split('-').map(Number);
   if (!nam || !thang || !ngay) return iso;
-  if (ngonNgu === 'en') {
-    const ten = ['January','February','March','April','May','June',
-                 'July','August','September','October','November','December'];
-    return `${ngay} ${ten[thang - 1]} ${nam}`;
-  }
-  return `ngày ${ngay} tháng ${thang}, ${nam}`;
+  return CACH_VIET_NGAY[ngonNgu](nam, thang, ngay);
 }

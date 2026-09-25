@@ -11,7 +11,7 @@
  *
  * Mỗi dữ kiện được bật lên sẽ THÊM vào trang, không bao giờ trừ đi phần nền.
  */
-import { THUONG_HIEU, chu } from '../lib/chu';
+import { THUONG_HIEU, chu, duongDanTuongUng } from '../lib/chu';
 import { dinhDangNgay, homNayVn } from '../lib/noi-dung';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 
@@ -19,8 +19,8 @@ interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
 const { ngonNgu, noiDung: nd } = Astro.props;
 const t = chu(ngonNgu);
 
-const duongDanTuyenDung = ngonNgu === 'en' ? '/en/jobs' : '/tuyen-dung';
-const duongDanDatBan = ngonNgu === 'en' ? '/en/book' : '/dat-ban';
+const duongDanTuyenDung = duongDanTuongUng('/tuyen-dung', ngonNgu);
+const duongDanDatBan = duongDanTuongUng('/dat-ban', ngonNgu);
 
 // Nút chính dẫn tới nơi THẬT SỰ có người trả lời. Không có nơi nào như vậy
 // thì không hiện nút — một nút dẫn tới hư không tệ hơn là không có nút.
@@ -56,17 +56,16 @@ const mangXaHoi = [
     {/* Tên thương hiệu đã có ở đầu trang — ở đây chỉ cần descriptor. */}
     <p class="hieu"><span lang="en">{THUONG_HIEU.descriptor}</span></p>
 
-    {/* Khẩu hiệu là tiếng Anh trên một trang tiếng Việt. Đánh dấu lang="en"
-        để trình đọc màn hình không đọc tiếng Anh bằng âm tiếng Việt. */}
+    {/* Khẩu hiệu là tiếng Anh trên cả trang tiếng Việt lẫn tiếng Hàn. Đánh
+        dấu lang="en" để trình đọc màn hình không đọc tiếng Anh bằng âm tiếng
+        Việt hay âm tiếng Hàn. */}
     <h1><span lang="en">{THUONG_HIEU.khauHieu}</span></h1>
 
     <p class="dan" style="max-width:56ch; margin-top:26px">{t.gioiThieu}</p>
 
     {ngayMo && (
       <p class="hieu" style="margin:30px 0 0">
-        {daMo
-          ? (ngonNgu === 'en' ? 'Open since' : 'Mở cửa từ')
-          : (ngonNgu === 'en' ? 'Opening' : 'Đón bạn từ')}
+        {daMo ? t.moCuaTu : t.donBanTu}
         {' '}
         <strong style="color:var(--cuc-vang); letter-spacing:normal; font-size:15px">
           {dinhDangNgay(ngayMo, ngonNgu)}
@@ -135,7 +134,7 @@ const mangXaHoi = [
     ------------------------------------------------------------------------ */}
 <section class="muc muc-sang">
   <div class="khung">
-    <p class="hieu">{ngonNgu === 'en' ? 'Careers' : 'Tuyển dụng'}</p>
+    <p class="hieu">{t.tuyenDung}</p>
     <h2>{t.tuyenDungTieuDe}</h2>
     <p style="max-width:58ch">{t.tuyenDungDan}</p>
     <div class="hang-nut" style="margin-top:22px">

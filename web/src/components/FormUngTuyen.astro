@@ -21,6 +21,7 @@
  * nop-ho-so.ts không tải CV lên cho tin không hỏi CV.
  */
 import type { NgonNgu } from '../lib/noi-dung';
+import { dich } from '../lib/chu';
 import type { ViTri } from './TrangTuyenDung.astro';
 import type { KetQuaNop } from '../lib/nop-ho-so';
 import { TRUONG_FORM } from '../lib/truong-form';
@@ -36,7 +37,6 @@ interface Props {
   nhanTin?: { url: string; chu: string } | null;
 }
 const { ngonNgu, viTri, ketQua, daNhap = {}, nhanTin } = Astro.props;
-const en = ngonNgu === 'en';
 
 // Mốc thời gian để server tính số giây điền form. Không cần JavaScript.
 const moc = Date.now();
@@ -45,55 +45,87 @@ const moc = Date.now();
 const truongAn = (v: ViTri) =>
   TRUONG_FORM.filter(f => v[f.cot] === false).map(f => f.lop).join(' ') || undefined;
 
-const CA = en
-  ? [['sang', 'Morning'], ['chieu', 'Afternoon'], ['toi', 'Evening'], ['cuoi_tuan', 'Weekends']]
-  : [['sang', 'Ca sáng'], ['chieu', 'Ca chiều'], ['toi', 'Ca tối'], ['cuoi_tuan', 'Cuối tuần']];
+// Mã ca (value) là thứ database lưu, nên giữ nguyên ở mọi ngôn ngữ; chỉ nhãn đổi.
+const CA = dich(ngonNgu, {
+  sang:      { vi: 'Ca sáng', en: 'Morning', ko: '오전' },
+  chieu:     { vi: 'Ca chiều', en: 'Afternoon', ko: '오후' },
+  toi:       { vi: 'Ca tối', en: 'Evening', ko: '저녁' },
+  cuoi_tuan: { vi: 'Cuối tuần', en: 'Weekends', ko: '주말' },
+});
 
-const t = {
-  tieuDe:   en ? 'Apply online' : 'Nộp hồ sơ trực tuyến',
-  viTri:    en ? 'Which role' : 'Vị trí muốn ứng tuyển',
-  chon:     en ? '— choose a role —' : '— chọn vị trí —',
-  hoTen:    en ? 'Full name' : 'Họ và tên',
-  sdt:      en ? 'Phone number' : 'Số điện thoại',
-  sdtPhu:   en ? 'Beeftown will call you back on this number.'
-               : 'Beeftown sẽ gọi lại cho bạn ở số này.',
-  email:    en ? 'Email (optional)' : 'Email (không bắt buộc)',
-  namSinh:  en ? 'Year of birth (optional)' : 'Năm sinh (không bắt buộc)',
-  ca:       en ? 'Shifts you can work' : 'Ca bạn làm được',
-  gioiThieu: en ? 'A few words about yourself (optional)'
-                : 'Đôi dòng về bạn (không bắt buộc)',
-  kinhNghiem: en ? 'Previous experience (optional)'
-                 : 'Kinh nghiệm đã có (không bắt buộc)',
-  kinhNghiemPhu: en
-    ? 'No experience is fine for many roles — leave this empty if you have none.'
-    : 'Nhiều vị trí nhận cả người chưa có kinh nghiệm — chưa có thì để trống.',
-  cv:       en ? 'Attach a CV (optional)' : 'Đính kèm CV (không bắt buộc)',
-  cvPhu:    en ? 'PDF, Word or a photo, up to 5MB. Not required.'
-               : 'File PDF, Word hoặc ảnh chụp, tối đa 5MB. Không bắt buộc.',
-  dongY: en
-    ? 'I agree to let Beeftown store and use the information in this application for hiring, for six months from the date of submission.'
-    : 'Tôi đồng ý để Beeftown lưu và sử dụng thông tin trong hồ sơ này cho mục đích tuyển dụng, trong vòng 6 tháng kể từ ngày nộp.',
-  gui:      en ? 'Send application' : 'Gửi hồ sơ',
-  batBuoc:  en ? 'required' : 'bắt buộc',
-};
+const t = dich(ngonNgu, {
+  tieuDe:  { vi: 'Nộp hồ sơ trực tuyến', en: 'Apply online', ko: '온라인 지원' },
+  viTri:   { vi: 'Vị trí muốn ứng tuyển', en: 'Which role', ko: '지원 포지션' },
+  chon:    { vi: '— chọn vị trí —', en: '— choose a role —', ko: '— 포지션 선택 —' },
+  hoTen:   { vi: 'Họ và tên', en: 'Full name', ko: '이름' },
+  sdt:     { vi: 'Số điện thoại', en: 'Phone number', ko: '전화번호' },
+  sdtPhu: {
+    vi: 'Beeftown sẽ gọi lại cho bạn ở số này.',
+    en: 'Beeftown will call you back on this number.',
+    ko: 'Beeftown에서 이 번호로 다시 전화드려요.',
+  },
+  email:   { vi: 'Email (không bắt buộc)', en: 'Email (optional)', ko: '이메일 (선택)' },
+  namSinh: { vi: 'Năm sinh (không bắt buộc)', en: 'Year of birth (optional)', ko: '출생 연도 (선택)' },
+  ca:      { vi: 'Ca bạn làm được', en: 'Shifts you can work', ko: '근무 가능한 시간대' },
+  gioiThieu: {
+    vi: 'Đôi dòng về bạn (không bắt buộc)',
+    en: 'A few words about yourself (optional)',
+    ko: '간단한 자기소개 (선택)',
+  },
+  kinhNghiem: {
+    vi: 'Kinh nghiệm đã có (không bắt buộc)',
+    en: 'Previous experience (optional)',
+    ko: '경력 사항 (선택)',
+  },
+  kinhNghiemPhu: {
+    vi: 'Nhiều vị trí nhận cả người chưa có kinh nghiệm — chưa có thì để trống.',
+    en: 'No experience is fine for many roles — leave this empty if you have none.',
+    ko: '경력이 없어도 지원할 수 있는 포지션이 많아요. 경력이 없으면 비워 두세요.',
+  },
+  cv:      { vi: 'Đính kèm CV (không bắt buộc)', en: 'Attach a CV (optional)', ko: '이력서 첨부 (선택)' },
+  cvPhu: {
+    vi: 'File PDF, Word hoặc ảnh chụp, tối đa 5MB. Không bắt buộc.',
+    en: 'PDF, Word or a photo, up to 5MB. Not required.',
+    ko: 'PDF, Word 파일 또는 사진, 최대 5MB까지 올릴 수 있어요. 필수는 아니에요.',
+  },
+  dongY: {
+    vi: 'Tôi đồng ý để Beeftown lưu và sử dụng thông tin trong hồ sơ này cho mục đích tuyển dụng, trong vòng 6 tháng kể từ ngày nộp.',
+    en: 'I agree to let Beeftown store and use the information in this application for hiring, for six months from the date of submission.',
+    ko: 'Beeftown이 이 지원서의 정보를 채용 목적으로 제출일로부터 6개월 동안 보관하고 이용하는 데 동의해요.',
+  },
+  gui:     { vi: 'Gửi hồ sơ', en: 'Send application', ko: '지원서 보내기' },
+  batBuoc: { vi: 'bắt buộc', en: 'required', ko: '필수' },
+
+  // --- Màn hình sau khi gửi ---
+  daNhan: {
+    vi: 'Beeftown đã nhận hồ sơ của bạn',
+    en: 'Beeftown has received your application',
+    ko: 'Beeftown에 지원서가 접수되었어요',
+  },
+  maHoSo:  { vi: 'Mã hồ sơ của bạn: ', en: 'Your reference code: ', ko: '접수 번호: ' },
+  giuMa: {
+    vi: 'Bạn giữ mã này để nhắc tới khi nhà hàng gọi. Beeftown sẽ gọi lại cho bạn ở số bạn vừa điền.',
+    en: 'Keep this code to mention when we call. Beeftown will call you back on the number you gave us.',
+    ko: '매장에서 전화드릴 때 말씀해 주실 수 있게 이 번호를 기억해 두세요. Beeftown에서 입력하신 번호로 다시 전화드려요.',
+  },
+  nhanThang: {
+    vi: 'Bạn cũng có thể nhắn thẳng cho Beeftown: ',
+    en: 'You can also message us directly: ',
+    ko: 'Beeftown에 직접 메시지를 보내셔도 돼요: ',
+  },
+});
 ---
 
 {ketQua?.ok ? (
   <div class="the" style="max-width:62ch;border-left:4px solid var(--cuc-vang)">
-    <h3 style="margin-top:0">
-      {en ? 'Beeftown has received your application' : 'Beeftown đã nhận hồ sơ của bạn'}
-    </h3>
+    <h3 style="margin-top:0">{t.daNhan}</h3>
     {ketQua.ma && (
       <p>
-        {en ? 'Your reference code: ' : 'Mã hồ sơ của bạn: '}
+        {t.maHoSo}
         <strong style="letter-spacing:.06em">{ketQua.ma}</strong>
       </p>
     )}
-    <p>
-      {en
-        ? 'Keep this code to mention when we call. Beeftown will call you back on the number you gave us.'
-        : 'Bạn giữ mã này để nhắc tới khi nhà hàng gọi. Beeftown sẽ gọi lại cho bạn ở số bạn vừa điền.'}
-    </p>
+    <p>{t.giuMa}</p>
     {ketQua.luuY && <p class="nho" style="margin-bottom:0">{ketQua.luuY}</p>}
   </div>
 ) : (
@@ -105,7 +137,7 @@ const t = {
         <p style="margin:0"><strong>{ketQua.cau}</strong></p>
         {nhanTin && (
           <p class="nho" style="margin:10px 0 0">
-            {en ? 'You can also message us directly: ' : 'Bạn cũng có thể nhắn thẳng cho Beeftown: '}
+            {t.nhanThang}
             <a href={nhanTin.url} rel="noopener">{nhanTin.chu}</a>
           </p>
         )}
@@ -166,7 +198,7 @@ const t = {
 
       <fieldset class="o o-nhom o-ca-lam">
         <legend>{t.ca}</legend>
-        {CA.map(([ma, ten]) => (
+        {Object.entries(CA).map(([ma, ten]) => (
           <label class="o-chon">
             <input type="checkbox" name="ca" value={ma} />
             <span>{ten}</span>

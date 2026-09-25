@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN KHO — Kiểm thử đồng bộ bán hàng iPOS (0036, GĐ7a)
+ * BEEFTOWN KHO — Kiểm thử đồng bộ bán hàng iPOS (0037, GĐ7a)
  * ==========================================================
  *
  *     node test/test-kho-ipos.mjs

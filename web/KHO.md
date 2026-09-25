@@ -401,10 +401,10 @@ diện màn đó đổi nhiều. Danh sách tên: `hd-trang-chu-thu-kho`, `hd-nh
 mục có thật; id không trùng, đúng dạng, giữ id cũ; ≥ 15 câu hỏi; ảnh có file, là PNG đúng cỡ, ≤ 120KB;
 link có thật; phần thủ kho / NV quầy không nhắc tiền; `dinhDang` escape đúng.
 
-## 3j. Đồng bộ bán hàng iPOS (GĐ7a, migration 0036)
+## 3j. Đồng bộ bán hàng iPOS (GĐ7a, migration 0037)
 
 Mỗi 5 phút Worker đọc hóa đơn iPOS và **database** tự trừ kho ở quầy bán. Web chỉ đọc iPOS rồi
-chuyển tiếp; khớp món, FEFO, lệch kg nhãn, thiếu hàng, hủy / sửa HĐ đều nằm trong SQL (0036, test
+chuyển tiếp; khớp món, FEFO, lệch kg nhãn, thiếu hàng, hủy / sửa HĐ đều nằm trong SQL (0037, test
 trên PGlite).
 
 ```
@@ -533,7 +533,7 @@ Không thêm thư viện npm cho phía trình duyệt. `test-kho-giao-dien.mjs` 
 đồng bộ bán hàng iPOS — GĐ7a). Hai giá trị enum được thêm ở **file riêng chạy một mình** vì
 Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa thêm nó. Hai vai này
 **không đọc được dữ liệu kho/CRM** (test-kho-quyen kiểm); từ 0034 vai `may_chung` gọi được các hàm
-`kho_may_*` của máy (mục 3f); từ 0036 vai `may_ipos` chỉ có việc `dong_bo_ban` — gọi được
+`kho_may_*` của máy (mục 3f); từ 0037 vai `may_ipos` chỉ có việc `dong_bo_ban` — gọi được
 `kho_ipos_bat_dau / _nhan / _ket_thuc` và `kho_cn_duoc`, không đọc được bảng nào (mục 3j).
 
 ## 7. Thêm một trang kho mới — danh sách kiểm

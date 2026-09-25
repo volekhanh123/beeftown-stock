@@ -1,5 +1,5 @@
 /**
- * KHO — ĐỒNG BỘ BÁN HÀNG iPOS (GĐ7a, migration 0036) — phần I/O
+ * KHO — ĐỒNG BỘ BÁN HÀNG iPOS (GĐ7a, migration 0037) — phần I/O
  *
  * Một lượt: kho_ipos_bat_dau → gọi iPOS (có phân trang) → phanTichHoaDon
  * (ipos.ts, thuần) → kho_ipos_nhan (lô ≤ 200 HĐ; lô cuối mang den_luc để tiến

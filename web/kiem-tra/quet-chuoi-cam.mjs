@@ -32,43 +32,17 @@
  *   npm run quet -- --url https://…  ← quét một trang đang chạy thật
  */
 
-import { spawn } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { setTimeout as cho } from 'node:timers/promises';
+import { timChuoiCam } from '../src/lib/chuoi-cam.js';
 
 // -----------------------------------------------------------------------------
-// DANH SÁCH CẤM
+// DANH SÁCH CẤM — nằm ở src/lib/chuoi-cam.js
 // -----------------------------------------------------------------------------
-// Mỗi dòng kèm LÝ DO. Khi phép thử đỏ, người đọc cần biết vì sao câu đó bị
-// cấm — nếu không họ sẽ xóa từ đó đi và viết lại cùng ý bằng chữ khác.
+// Máy dịch (src/lib/may-dich.ts) lọc bản dịch bằng đúng danh sách này trước
+// khi cho lên trang, nên nó phải là MỘT file dùng chung — không phải hai bản
+// chép sẽ lệch nhau sau lần sửa đầu tiên. Mỗi dòng ở đó vẫn kèm lý do.
 // -----------------------------------------------------------------------------
-const CAM = [
-  { re: /unsplash|pexels|shutterstock/i,
-    vi_sao: 'Ảnh kho. Mọi ảnh phải là ảnh thật, khai nguồn trong bảng tep_anh.' },
-  { re: /0900[\s.]?000/i,
-    vi_sao: 'Hotline mẫu của bản nháp cũ. Số thật vào khóa hotline trong cổng nội dung.' },
-  { re: /\[s(ố|o) nh(à|a)\]|\[t(ê|e)n đường\]|\[placeholder\]/i,
-    vi_sao: 'Chỗ trống chưa điền lọt ra trang. Chưa có địa chỉ thì ẨN, không hiện ngoặc vuông.' },
-  { re: /wagyu|\bMB\s?9\b|\bA5\b/i,
-    vi_sao: 'Grade và giống bò chưa được xác nhận. Tài liệu thương hiệu cấm tự thêm.' },
-  { re: /229[.,]000|199[.,]000/,
-    vi_sao: 'Giá của một chiến dịch chưa duyệt. Không giá nào trong CSV nguồn được duyệt.' },
-  { re: /43\s?ng(à|a)y|ủ\s?\d+\s?ng(à|a)y/i,
-    vi_sao: 'Số ngày ủ là một claim cụ thể chưa ai xác nhận.' },
-  { re: /than\s?hoa|than\s?củi/i,
-    vi_sao: 'Nhà hàng nướng bằng vỉ gas, không phải than.' },
-  { re: /ph(ò|o)ng\s?ri(ê|e)ng|private\s+room/i,
-    vi_sao: 'Tiện ích chưa xác nhận. Hứa trên web rồi khách tới không có là lỗi nặng nhất.' },
-  { re: /rẻ hơn|giá tốt hơn|tiết kiệm \d+%|cheaper than/i,
-    vi_sao: 'Tài liệu thương hiệu cấm lấy lợi thế giá làm hook.' },
-  { re: /số một|s(ố|o) 1 (về|ve)|duy nhất tại|best beef|ngon nhất|tốt nhất/i,
-    vi_sao: 'Claim so sánh nhất, không chứng minh được và vi phạm quảng cáo.' },
-  { re: /đặt bàn thành công|booking confirmed/i,
-    vi_sao: 'Yêu cầu đặt bàn KHÁC với bàn đã giữ. Chỉ nói "đã nhận yêu cầu".' },
-  { re: /c(ò|o)n \d+ b(à|a)n|chỉ c(ò|o)n \d+|only \d+ (tables?|seats?) left/i,
-    vi_sao: 'Hook khan hiếm. Số bàn trống bị chặn ở tầng server, không được tới trình duyệt.' },
-  { re: /\d+(\.\d{3})+\s?(đ|vnđ|vnd)/i,
-    vi_sao: 'Giá tiền. Chưa món nào có gia_da_duyet = true.' },
-];
 
 // -----------------------------------------------------------------------------
 // LẤY PHẦN CHỮ KHÁCH ĐỌC ĐƯỢC
@@ -108,14 +82,7 @@ function chuHienRa(html) {
     .replace(/[ \t]+/g, ' ');
 }
 
-function quet(chu) {
-  const thay = [];
-  for (const { re, vi_sao } of CAM) {
-    const m = chu.match(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'));
-    if (m) thay.push({ tim_thay: [...new Set(m)].slice(0, 3).join(' · '), vi_sao });
-  }
-  return thay;
-}
+const quet = timChuoiCam;
 
 // -----------------------------------------------------------------------------
 // DANH SÁCH TRANG — lấy từ sitemap, vì sitemap là thứ ta khai với Google
@@ -124,7 +91,8 @@ function quet(chu) {
 // riêng. Cộng thêm vài đường dẫn cố định để phòng sitemap hỏng.
 // -----------------------------------------------------------------------------
 async function danhSachTrang(goc) {
-  const luon_co = ['/', '/tuyen-dung', '/quyen-rieng-tu', '/en', '/en/jobs', '/en/privacy'];
+  const luon_co = ['/', '/tuyen-dung', '/quyen-rieng-tu', '/en', '/en/jobs', '/en/privacy',
+                   '/ko', '/ko/jobs', '/ko/privacy'];
   const bo = new Set(luon_co.map(d => new URL(d, goc).href));
   try {
     const xml = await (await fetch(new URL('/sitemap.xml', goc))).text();
@@ -159,7 +127,8 @@ async function batServer(cong) {
     await cho(1000);
   }
   tatServer(p);
-  throw new Error(`astro dev không lên sau 60 giây ở cổng ${cong}`);
+  throw new Error(`astro dev không lên sau 60 giây ở cổng ${cong}. Nếu một lần quét trước bị ngắt ` +
+                  'giữa chừng, có thể còn server chạy ngầm giữ cổng: chạy "npx astro dev stop" rồi thử lại.');
 }
 
 function tatServer(p) {
@@ -171,6 +140,13 @@ function tatServer(p) {
   } else {
     try { process.kill(-p.pid, 'SIGTERM'); } catch { p.kill('SIGTERM'); }
   }
+  // Astro 7: không có terminal tương tác thì `astro dev` tự chuyển sang chạy
+  // ngầm. Tiến trình spawn ở trên chỉ là cái vỏ đã thoát; server thật là một
+  // tiến trình khác, có session riêng, mà hai lệnh giết trên không chạm tới.
+  // Không dừng nó thì nó sống mồ côi giữ cổng 4329 và khóa "dev server đang
+  // chạy" — lần quét sau hoặc không bật được server, hoặc đọc nhầm server cũ
+  // đã hỏng bộ nhớ đệm, trả 500 cho mọi trang.
+  spawnSync('npx', ['astro', 'dev', 'stop'], { shell: true, stdio: 'ignore' });
 }
 
 // -----------------------------------------------------------------------------

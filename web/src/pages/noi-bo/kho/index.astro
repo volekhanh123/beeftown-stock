@@ -73,7 +73,7 @@ if (k.chiNhanh && k.daKhoiTao) {
     if (vai === 'thu_kho' && n('yeu_cau_quay') > 0) {
       cho.push(docDanhSachYeuCau(k.client, cn, { chiCho: true, gioiHan: 10 }).then(r => { yeuCauCho = r; }, () => {}));
     }
-    // Thẻ nhỏ trạng thái iPOS (GĐ7a). Lỗi đọc (database chưa có 0036…) thì không có thẻ.
+    // Thẻ nhỏ trạng thái iPOS (GĐ7a). Lỗi đọc (database chưa có 0037…) thì không có thẻ.
     if (laQuanLy && tab === 'theo-doi') cho.push(docTrangThaiIposNhe(k.client, cn).then(r => { ipos = r; }));
     if (laQuanLy && tab === 'quan-tri') {
       cho.push(docChiSoQuanTri(k.client, cn, dauThang(homNay), homNay).then(r => { chiSo = r; }));

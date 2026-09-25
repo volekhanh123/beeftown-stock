@@ -5,7 +5,7 @@
  * chỉ thấy số của chi nhánh mình, vai không xem giá nhận cột tiền bằng 0. File
  * này chỉ gọi hàm, khai báo cột để hiện bảng và xuất CSV.
  *
- * Bán hàng dùng kho_bao_cao_ban_thuc (0036): doanh thu thật từ iPOS, phần
+ * Bán hàng dùng kho_bao_cao_ban_thuc (0037): doanh thu thật từ iPOS, phần
  * trước khi nối iPOS vẫn là ước tính (cột "Nguồn").
  *
  * Xuất – nhập – tồn dùng kho_bao_cao_xnt_v2 (0032): thêm cột xuất khác và hao
@@ -127,10 +127,10 @@ export const BAO_CAO: Record<string, DinhNghiaBaoCao> = {
       link: [{ ten: 'Chuyển · xuất · hủy', href: '/noi-bo/kho/xuat' }, { ten: 'Kiểm kê', href: '/noi-bo/kho/kiem-ke' }],
     },
   },
-  // GĐ7a (0036): kho_bao_cao_ban_thuc — mỗi món tối đa hai dòng theo "Nguồn":
+  // GĐ7a (0037): kho_bao_cao_ban_thuc — mỗi món tối đa hai dòng theo "Nguồn":
   // iPOS (doanh thu THẬT từ hóa đơn) và Ước tính (thiếu khi đếm quầy × giá bán
   // hiện tại, trước khi nối iPOS). Tổng cộng riêng từng nguồn — cộng số thật với
-  // số ước tính thành một con số là sai nghĩa. Database chưa có 0036 thì đọc
+  // số ước tính thành một con số là sai nghĩa. Database chưa có 0037 thì đọc
   // hàm cũ kho_bao_cao_ban, mọi dòng là "Ước tính" (docBaoCao).
   ban: {
     ten: 'Bán hàng',
@@ -172,7 +172,7 @@ export const COT_CONG_NO: CotBaoCao[] = [
   { khoa: 'so_ngay_qua_han', ten: 'Số ngày quá hạn', kieu: 'so' },
 ];
 
-/** Cột "Nguồn" của báo cáo bán (0036). */
+/** Cột "Nguồn" của báo cáo bán (0037). */
 export const TEN_NGUON_BAN: Record<string, string> = { ipos: 'iPOS', uoc_tinh: 'Ước tính' };
 
 export const TEN_LOAI_DONG_HAO_HUT: Record<string, string> = {
@@ -198,7 +198,7 @@ export async function docBaoCao(
   else if (ten === 'hao-hut') kq = await client.rpc('kho_bao_cao_hao_hut', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
   else if (ten === 'ban') {
     kq = await client.rpc('kho_bao_cao_ban_thuc', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
-    // Database chưa chạy 0036: hàm cũ, mọi dòng là ước tính (đổi tên cột cho khớp bảng).
+    // Database chưa chạy 0037: hàm cũ, mọi dòng là ước tính (đổi tên cột cho khớp bảng).
     if (kq.error && /kho_bao_cao_ban_thuc|could not find|does not exist/i.test(kq.error.message)) {
       const cu = await client.rpc('kho_bao_cao_ban', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
       kq = cu.error ? cu : {

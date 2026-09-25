@@ -11,6 +11,7 @@
 
 import { defineMiddleware } from 'astro:middleware';
 import { layPhien, coDatabase } from './lib/phien';
+import { dichBu, chayNen, denLuotDichBu, VAI_BIEN_TAP } from './lib/ban-dich';
 
 const MO_CHO_MOI_NGUOI = ['/noi-bo/dang-nhap', '/noi-bo/dang-xuat'];
 
@@ -31,5 +32,17 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   context.locals.phien = phien;
+
+  // DỊCH BÙ, CHẠY NỀN — những chỗ không đi qua nút Lưu của màn soạn: sửa thẳng
+  // trong Supabase Studio, hoặc lần dịch trước bị lỗi. Chỉ vai biên tập (vai
+  // khác không sửa được nội dung, nên RLS cũng không cho ghi bản dịch), chỉ
+  // lượt GET (lượt POST lưu tin đã tự dịch dòng của nó), và tối đa một lượt
+  // mỗi phút. Không bao giờ làm chậm trang: trang trả về trước, dịch sau.
+  if (context.request.method === 'GET'
+      && VAI_BIEN_TAP.includes(phien.nhanSu.vai_tro)
+      && denLuotDichBu()) {
+    chayNen(context.locals, dichBu(phien.client));
+  }
+
   return next();
 });

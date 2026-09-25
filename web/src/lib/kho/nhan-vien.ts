@@ -37,7 +37,7 @@ import { biMatHopLe, BI_MAT_TOI_THIEU } from './may-chung-ma-hoa.ts';
 // -----------------------------------------------------------------------------
 /**
  * Vai chủ tạo được ở màn này — khớp danh sách trong kho_them_nhan_su (0034).
- * may_ipos (GĐ7a, 0036): tài khoản của máy chủ đồng bộ iPOS (cron) — chỉ có
+ * may_ipos (GĐ7a, 0037): tài khoản của máy chủ đồng bộ iPOS (cron) — chỉ có
  * việc dong_bo_ban, không đọc được gì. Vai CRM (quản lý, thu ngân, marketing) KHÔNG tạo ở đây vì họ
  * thấy dữ liệu khách hàng.
  */

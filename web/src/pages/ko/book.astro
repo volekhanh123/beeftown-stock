@@ -1,0 +1,32 @@
+---
+import Trang from '../../layouts/Trang.astro';
+import TrangDatBan from '../../components/TrangDatBan.astro';
+import { docNoiDung } from '../../lib/noi-dung';
+import { tinhTrangDatBan } from '../../lib/dat-ban';
+import { xuLyDatBan, ketQuaDatBan } from '../../lib/xu-ly-form';
+
+const chuyenHuong = await xuLyDatBan(Astro, '/ko/book', 'ko');
+if (chuyenHuong) return chuyenHuong;
+
+const noiDung = await docNoiDung('ko');
+const ketQua = ketQuaDatBan(Astro, 'ko');
+const tinhTrang = await tinhTrangDatBan(
+  Astro.url.searchParams.get('ngay'),
+  noiDung.form_dat_ban_dang_mo,
+);
+---
+<Trang
+  ngonNgu="ko"
+  noiDung={noiDung}
+  duongDan="/ko/book"
+  tieuDe="예약 — Beeftown"
+  moTa="호치민시 1군의 소고기 전문점 Beeftown에 예약 요청을 보내 주세요. 매장에서 다시 전화드려 확인해 드려요."
+>
+  <TrangDatBan
+    ngonNgu="ko"
+    noiDung={noiDung}
+    tinhTrang={tinhTrang}
+    ketQua={ketQua}
+    duongDan="/ko/book"
+  />
+</Trang>

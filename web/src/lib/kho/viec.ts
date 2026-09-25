@@ -143,7 +143,7 @@ export function cauSuKien(su: SuKien): CauSuKien {
                  + '. Xem lại số cân rồi bấm "Đã xem".',
                link: `/noi-bo/kho/pha-loc/${e.ref_id}`, nut: 'Xem', muc: 'vang' };
     }
-    // ---- 0036 · Bán hàng iPOS ----------------------------------------------
+    // ---- 0037 · Bán hàng iPOS ----------------------------------------------
     case 'ipos_cho_xu_ly': {
       // Quản lý: so = số dòng chưa trừ được kho, phu = số dòng chưa ghép món.
       const n = soNguyen(e.so) ?? 0;
@@ -176,7 +176,7 @@ export const KHOA_SU_KIEN = [
   'yeu_cau_quay', 'hang_dang_chuyen', 'chuyen_nhan_thieu',
   // 0033
   'thu_hoi_thap',
-  // 0036
+  // 0037
   'ipos_cho_xu_ly', 'ipos_mat_ket_noi',
 ] as const;
 

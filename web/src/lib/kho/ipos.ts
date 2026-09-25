@@ -1,5 +1,5 @@
 /**
- * KHO — ĐỌC HÓA ĐƠN iPOS (GĐ7a, migration 0036)
+ * KHO — ĐỌC HÓA ĐƠN iPOS (GĐ7a, migration 0037)
  *
  * File THUẦN: không gọi mạng, không gọi database, chỉ import ma-vach.ts. Test
  * Node nạp thẳng được (crm/test/test-kho-ipos-web.mjs).
@@ -15,7 +15,7 @@
  * (và fixture trong test), không phải sửa logic.
  *
  * Mã cân và kg của NHÃN CÂN: database tự giải từ `ma_vach` bằng mẫu mã vạch
- * của đúng chi nhánh (`kho_doc_ma_vach`, 0036) — máy đồng bộ không đọc được
+ * của đúng chi nhánh (`kho_doc_ma_vach`, 0037) — máy đồng bộ không đọc được
  * Cài đặt kho, nên mặc định web KHÔNG tự giải. Nơi gọi biết mẫu thì truyền
  * `{ mauMaVach, soLeKg }` và web gửi sẵn `ma_can` (database dùng giá trị đó
  * trước).

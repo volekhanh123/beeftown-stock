@@ -39,7 +39,7 @@ export const QUYEN_KHO: Record<ViecKho, readonly VaiTro[]> = {
   // Tài khoản của máy tính bảng dùng chung (0034): chỉ gọi được hàm kho_may_*,
   // không đọc được gì trong kho. Không vai người nào có quyền này.
   may_chung:   ['may_chung'],
-  // Đồng bộ bán hàng iPOS (0036): cron chạy bằng tài khoản máy may_ipos (chỉ có
+  // Đồng bộ bán hàng iPOS (0037): cron chạy bằng tài khoản máy may_ipos (chỉ có
   // đúng việc này), quản lý / chủ bấm "Cập nhật ngay" bằng phiên của mình.
   dong_bo_ban: ['chu_so_huu', 'quan_ly', 'may_ipos'],
 };

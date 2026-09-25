@@ -156,7 +156,7 @@ export async function dungDatabase() {
 }
 
 /**
- * Hai tài khoản máy đồng bộ iPOS (vai may_ipos, 0029/0036): mayIposA ở chi
+ * Hai tài khoản máy đồng bộ iPOS (vai may_ipos, 0029/0037): mayIposA ở chi
  * nhánh A, mayIposB ở chi nhánh B. KHÔNG tạo sẵn trong dungDatabase() — test
  * khác không phải đếm thêm người; file nào cần thì gọi hàm này.
  */

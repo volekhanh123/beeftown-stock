@@ -1,5 +1,5 @@
 /**
- * KHO — BÁN HÀNG iPOS: TRẠNG THÁI, CẤU HÌNH, HÀNG CHỜ, GHÉP MÃ (GĐ7a, 0036)
+ * KHO — BÁN HÀNG iPOS: TRẠNG THÁI, CẤU HÌNH, HÀNG CHỜ, GHÉP MÃ (GĐ7a, 0037)
  *
  * Màn dùng file này:
  *   · /noi-bo/kho/cai-dat/ipos  — Kết nối iPOS: đèn trạng thái, "Cập nhật ngay"
@@ -39,7 +39,7 @@ export interface LanChayIpos {
   loi: string | null;
 }
 
-/** Kết quả kho_ipos_trang_thai (0036) — không tiền, không token. */
+/** Kết quả kho_ipos_trang_thai (0037) — không tiền, không token. */
 export interface TrangThaiIpos {
   co_cau_hinh: boolean;
   bat: boolean;
@@ -313,7 +313,7 @@ export async function docTrangThaiIpos(client: SupabaseClient, chiNhanhId: strin
   };
 }
 
-/** Trạng thái cho thẻ nhỏ trang chủ — lỗi (database chưa có 0036…) thì null, không hỏng trang. */
+/** Trạng thái cho thẻ nhỏ trang chủ — lỗi (database chưa có 0037…) thì null, không hỏng trang. */
 export async function docTrangThaiIposNhe(client: SupabaseClient, chiNhanhId: string): Promise<TrangThaiIpos | null> {
   try { return await docTrangThaiIpos(client, chiNhanhId); } catch { return null; }
 }

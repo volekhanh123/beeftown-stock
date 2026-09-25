@@ -33,6 +33,20 @@
   --rong: min(1120px, 90%);
 }
 
+/* Montserrat không có chữ Hangul. Trang tiếng Hàn tải thêm Noto Sans KR
+   (layouts/Trang.astro) và xếp nó NGAY SAU Montserrat: chữ Latin — tên
+   thương hiệu, khẩu hiệu, descriptor — vẫn là Montserrat như mọi trang khác,
+   còn chữ Hàn rơi xuống Noto Sans KR thay vì phông hệ thống, vốn khác nhau
+   trên từng máy.
+   keep-all: tiếng Hàn chỉ xuống dòng ở dấu cách, không cắt giữa một từ —
+   mặc định của trình duyệt cho phép ngắt giữa hai âm tiết bất kỳ, và tiêu đề
+   chữ to vỡ thành "…찾고 있어" / "요". */
+:root:lang(ko) {
+  --chu: 'Montserrat', 'Noto Sans KR', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 
 html { -webkit-text-size-adjust: 100%; }
