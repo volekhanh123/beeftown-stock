@@ -14,11 +14,13 @@
 
 export type VaiTro =
   | 'chu_so_huu' | 'quan_ly' | 'thu_ngan' | 'marketing'
-  | 'thu_kho' | 'nhan_vien_quay' | 'ke_toan';
+  | 'thu_kho' | 'nhan_vien_quay' | 'ke_toan'
+  // Hai vai máy (0029): tablet dùng chung (GĐ5d) và máy đồng bộ iPOS (GĐ7a).
+  | 'may_chung' | 'may_ipos';
 
 export type ViecKho =
   | 'xem' | 'xem_gia' | 'nhap' | 'duyet' | 'duyet_nhap' | 'pha_loc' | 'van_hanh'
-  | 'ke_toan' | 'danh_muc' | 'ncc' | 'cai_dat_goc';
+  | 'ke_toan' | 'danh_muc' | 'ncc' | 'cai_dat_goc' | 'may_chung';
 
 export const QUYEN_KHO: Record<ViecKho, readonly VaiTro[]> = {
   xem:         ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan'],
@@ -34,6 +36,9 @@ export const QUYEN_KHO: Record<ViecKho, readonly VaiTro[]> = {
   danh_muc:    ['chu_so_huu', 'quan_ly'],
   ncc:         ['chu_so_huu', 'quan_ly', 'ke_toan'],
   cai_dat_goc: ['chu_so_huu'],
+  // Tài khoản của máy tính bảng dùng chung (0034): chỉ gọi được hàm kho_may_*,
+  // không đọc được gì trong kho. Không vai người nào có quyền này.
+  may_chung:   ['may_chung'],
 };
 
 /** Vai này có được làm việc này trong kho không (để ẩn/hiện nút). */

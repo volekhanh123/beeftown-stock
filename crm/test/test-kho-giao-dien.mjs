@@ -576,4 +576,60 @@ await nhom('14 · THẺ KHO VÀ QUÉT ĐẦY ĐỦ (GĐ5c, 0033)', async () => {
   ok('Danh mục mặt hàng: ô "Sau pha để ở" (Kho lạnh / Quầy)', /name="noi_de_sau_pha"/.test(form) && /Sau pha để ở/.test(form));
 });
 
+// ===========================================================================
+await nhom('15 · MÁY TÍNH BẢNG DÙNG CHUNG (GĐ5d, 0034) — TRANG', async () => {
+  // Không cần database: kiểm các chỗ nối giữa khung, moTrangKho, trang máy và
+  // may-chung.js. Phần mã hóa + database ở test-kho-may-chung.mjs.
+  for (const l of ['/noi-bo/kho/may', '/noi-bo/kho/may/dang-ky', '/noi-bo/kho/may/gan', '/noi-bo/kho/may?chon=x']) {
+    ok(`Trang máy dùng chung có thật: ${l}`, !!trangCua(l));
+  }
+  const khung = doc(join(WEB, 'src/layouts/Kho.astro'));
+  ok('Khung: nạp may-chung.js CHỈ khi có người đang dùng máy dùng chung',
+    /\{coNguoiDung && k\.may && \(\s*<script is:inline src="\/kho\/js\/may-chung\.js"/.test(khung)
+    && (khung.match(/may-chung\.js/g) ?? []).length === 2);
+  ok('Khung ở chế độ máy: "Khóa máy" và "Gỡ tôi khỏi máy này" gửi về màn máy (viec khoa / go)',
+    /name="viec" value="khoa"[\s\S]{0,200}Khóa máy/.test(khung) && /name="viec" value="go"[\s\S]{0,200}Gỡ tôi khỏi máy này/.test(khung)
+    && /action=\{DUONG_MAY\}/.test(khung));
+  ok('Khung ở chế độ máy: không có "Đăng xuất", không menu CRM',
+    /laMay \? \([\s\S]*\) : coNguoiDung \? \([\s\S]*\) : \([\s\S]*Đăng xuất/.test(khung)
+    && /const crm = cheDoMay \? \[\]/.test(khung));
+
+  const man = doc(join(TRANG, 'noi-bo/kho/may/index.astro'));
+  ok('Màn máy nhận viec=mo (PIN), khoa, go, ?khoa=1 (may-chung.js) và ?giu=1',
+    ["viec === 'mo'", "viec === 'khoa'", "viec === 'go'", "get('khoa') === '1'", "get('giu') === '1'"].every(x => man.includes(x)));
+  ok('Ô PIN: bàn phím số, không tự điền, 4–6 số',
+    /name="pin" inputmode="numeric" pattern="\[0-9\]\*" autocomplete="off"\s+minlength="4" maxlength="6"/.test(man));
+
+  const js = doc(join(WEB, 'public/kho/js/may-chung.js'));
+  ok('may-chung.js: hết giờ về /noi-bo/kho/may?khoa=1, báo còn dùng bằng ?giu=1',
+    js.includes("'/noi-bo/kho/may?khoa=1'") && js.includes("'/noi-bo/kho/may?giu=1'"));
+  ok('may-chung.js không đụng cookie (cookie máy httpOnly)', !/document\.cookie/.test(js));
+
+  const trang = doc(join(WEB, 'src/lib/kho/trang.ts'));
+  const iMay = trang.indexOf('kiemMayChung(Astro, nhanSu)');
+  ok('moTrangKho kiểm tự khóa trước khi đọc gì khác',
+    iMay > 0 && iMay < trang.indexOf("vaiDuoc(nhanSu.vai_tro, 'xem')") && iMay < trang.indexOf("from('chi_nhanh')"));
+  ok('moTrangKho: vai máy chỉ vào /noi-bo/kho/may/*',
+    /if \(laVaiMay\(nhanSu\.vai_tro\)\) \{\s*if \(!laDuongMay\(Astro\.url\.pathname\)\) return Astro\.redirect\(DUONG_MAY/.test(trang));
+
+  const lib = doc(join(WEB, 'src/lib/kho/may-chung.ts'));
+  ok('Đổi phiên bằng client không lưu phiên (persistSession: false)',
+    (lib.match(/persistSession: false/g) ?? []).length >= 2 && !/persistSession: true/.test(lib));
+  ok('Đọc bí mật KHO_MAY_KHOA qua cloudflare:workers, không qua import.meta.env',
+    /import\('cloudflare:workers'\)/.test(lib) && !/import\.meta\.env[^\n]*KHO_MAY_KHOA/.test(lib));
+  // Soát bảo mật GĐ5d: ba chỗ dễ bị sửa ngược.
+  const moKhoa = lib.slice(lib.indexOf('export async function moKhoaNguoi'), lib.indexOf('// GẮN NGƯỜI VÀO MÁY'));
+  ok('Mở bằng PIN: giải mã phiên đã cất TRƯỚC khi gọi kho_may_kiem_pin (không dò PIN cho tên máy không mở được)',
+    moKhoa.indexOf('giaiMaToken(') > 0 && moKhoa.indexOf('giaiMaToken(') < moKhoa.indexOf("rpc('kho_may_kiem_pin'"));
+  ok('POST trong ân hạn không dời mốc hoạt động (mở trang ngay sau đó là khóa)',
+    /const trongAnHan = laPost && daQuaGioKhoa\(moc\.luc, bayGio, tb\.phut, false\);\s*if \(!trongAnHan\) await ghiMoc/.test(lib));
+  const dk = lib.slice(lib.indexOf('export async function dangKyMay'));
+  ok('Đăng ký máy thu hồi phiên bị đè và token máy cũ (không để phiên sống mà không ai giữ)',
+    (dk.match(/await thuHoi\(/g) ?? []).length >= 2);
+  const coToken = moiFile(join(TRANG, 'noi-bo/kho/may'))
+    .filter(p => /refresh_token|access_token|bt_may_|bt_phien/.test(doc(p)));
+  ok('Trang máy không chạm token / cookie máy (chỉ lib/kho/may-chung.ts)', coToken.length === 0,
+    coToken.map(p => relative(GOC, p)).join(', '));
+});
+
 process.exit(ketThuc('KHUNG GIAO DIỆN'));

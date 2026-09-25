@@ -10,6 +10,11 @@
  * (nhớ bằng cookie). Hiện chỉ có một quán nên chủ sẽ không phải chọn.
  *
  * Quyền ở đây chỉ để ẩn nút. Database (kho_cn_duoc, kho_duoc) mới là nơi chặn.
+ *
+ * Máy tính bảng dùng chung (GĐ5d, lib/kho/may-chung.ts): kiểm TRƯỚC mọi thứ
+ * khác — quá giờ thì khóa máy và chuyển về /noi-bo/kho/may (POST quá ân hạn:
+ * "phiếu chưa được ghi"). Tài khoản máy (vai may_*) chỉ vào được
+ * /noi-bo/kho/may/*: trang kho khác chuyển về đó, không đọc gì thêm.
  */
 
 import type { AstroGlobal } from 'astro';
@@ -18,6 +23,7 @@ import type { NhanSu } from '../phien';
 import { duoc as vaiDuoc, cauLoiKho, type KetQua, type ViecKho } from './chung.ts';
 import { docBao, ghiBao } from './bao.ts';
 import type { SoViec } from './dieu-huong.ts';
+import { kiemMayChung, laVaiMay, laDuongMay, DUONG_MAY, type CheDoMay } from './may-chung.ts';
 
 export interface ChiNhanhKho { id: string; ma: string; ten: string }
 
@@ -34,6 +40,8 @@ export interface TrangKho {
   /** Câu báo từ lần chuyển hướng trước, nếu có. */
   bao: KetQua | null;
   duoc: (viec: ViecKho) => boolean;
+  /** Đang ở máy tính bảng dùng chung (GĐ5d). null = máy thường. */
+  may: CheDoMay | null;
 }
 
 const COOKIE_CN = 'bt_kho_cn';
@@ -42,6 +50,19 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
   const phien = Astro.locals.phien;
   if (!phien) return Astro.redirect('/noi-bo/dang-nhap', 302);
   const { client, nhanSu } = phien;
+
+  // Máy dùng chung: tự khóa khi quá giờ, dời mốc hoạt động khi còn giờ.
+  const may = await kiemMayChung(Astro, nhanSu);
+  if (may instanceof Response) return may;
+
+  // Tài khoản máy không đọc được gì trong kho — chỉ màn "Ai đang dùng máy?".
+  if (laVaiMay(nhanSu.vai_tro)) {
+    if (!laDuongMay(Astro.url.pathname)) return Astro.redirect(DUONG_MAY, 302);
+    return {
+      client, nhanSu, chiNhanh: null, cacChiNhanh: [], daKhoiTao: false, viec: null, loiDoc: null,
+      bao: docBao(Astro.cookies), duoc: (viec: ViecKho) => vaiDuoc(nhanSu.vai_tro, viec), may,
+    };
+  }
 
   // Thu ngân, marketing: không dùng kho. Trả về trang chủ nội bộ thay vì một
   // trang toàn ô trống.
@@ -103,6 +124,7 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
     client, nhanSu, chiNhanh, cacChiNhanh, daKhoiTao, viec, loiDoc,
     bao: docBao(Astro.cookies),
     duoc: (viec: ViecKho) => vaiDuoc(nhanSu.vai_tro, viec),
+    may,
   };
 }
 

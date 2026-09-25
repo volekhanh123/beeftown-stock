@@ -1,0 +1,121 @@
+---
+/**
+ * KHO — ĐĂNG KÝ MÁY TÍNH BẢNG DÙNG CHUNG (quản lý, GĐ5d)
+ *
+ * Quản lý mở trang này TRÊN CHÍNH TABLET, gõ email / mật khẩu của tài khoản
+ * máy (chủ tạo ở Cài đặt → Nhân viên và máy, vai may_chung). Máy chủ đăng
+ * nhập tài khoản máy bằng client riêng để lấy auth uid, gọi kho_dang_ky_may
+ * bằng phiên QUẢN LÝ (database kiểm quyền duyet ở chi nhánh của máy), rồi
+ * đặt phiên máy vào cookie đăng nhập: tablet về màn "Ai đang dùng máy?".
+ *
+ * Tablet đang mở bằng tài khoản máy (hoặc người không phải quản lý) thì form
+ * hỏi thêm email / mật khẩu quản lý — đăng nhập tạm, dùng xong thu hồi ngay,
+ * không ở lại trên máy.
+ *
+ * Đăng ký lại (đổi tên, đổi số phút tự khóa, bật lại máy đã tắt) cũng ở đây.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { dangKyMay, layKhoaMay, laVaiMay, DUONG_MAY } from '../../../../lib/kho/may-chung.ts';
+import { PHUT_KHOA_MAC_DINH } from '../../../../lib/kho/may-chung-ma-hoa.ts';
+import type { KetQua } from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+
+const batMay = !!(await layKhoaMay());
+const laQuanLy = !laVaiMay(k.nhanSu.vai_tro) && k.duoc('duyet');
+
+let bao: KetQua | null = k.bao;
+let giu = { email_may: '', ten: '', phut_khoa: String(PHUT_KHOA_MAC_DINH), email_ql: '' };
+const form = await docFormGui(Astro);
+if (form) {
+  const viec = String(form.get('viec') ?? '');
+  let kq: KetQua;
+  if (viec === 'dang_ky' && batMay) {
+    giu = {
+      email_may: String(form.get('email_may') ?? '').trim(),
+      ten: String(form.get('ten') ?? '').trim(),
+      phut_khoa: String(form.get('phut_khoa') ?? '').trim(),
+      email_ql: String(form.get('email_ql') ?? '').trim(),
+    };
+    kq = await dangKyMay(Astro, form, laQuanLy);
+    if (kq.ok) return chuyenHuong(Astro, DUONG_MAY, kq);
+  } else {
+    kq = { ok: false, cau: 'Việc không hợp lệ. Tải lại trang.' };
+  }
+  bao = kq;
+}
+---
+<Kho k={k} tieuDe="Đăng ký máy">
+  <h1>Đăng ký máy dùng chung</h1>
+  <BaoKho bao={bao} loiDoc={k.loiDoc} />
+
+  {!batMay ? (
+    <div class="nb-bao luu-y">
+      <p><strong>Máy dùng chung chưa được bật.</strong> Người quản trị cần đặt bí mật <code>KHO_MAY_KHOA</code> cho
+        {' '}Worker trên Cloudflare (xem web/KHO.md) rồi mới đăng ký được máy.</p>
+    </div>
+  ) : (
+    <>
+      <p class="nb-dan">
+        Làm trên <strong>chính máy tính bảng</strong> sẽ dùng chung. Đăng ký xong, máy về màn "Ai đang dùng máy?"
+        {' '}và bạn không còn đăng nhập trên máy này nữa. Đăng ký lại để đổi tên máy hoặc số phút tự khóa.
+      </p>
+      <form method="POST" class="nb-the dk-form" autocomplete="off">
+        <input type="hidden" name="viec" value="dang_ky" />
+
+        {!laQuanLy && (
+          <fieldset class="dk-nhom">
+            <legend>Quản lý xác nhận</legend>
+            <label class="nb-o">
+              <span>Email của quản lý</span>
+              <input type="email" name="email_ql" value={giu.email_ql} required autocomplete="off"
+                autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" />
+            </label>
+            <label class="nb-o">
+              <span>Mật khẩu của quản lý</span>
+              <input type="password" name="mat_khau_ql" required autocomplete="off" />
+            </label>
+          </fieldset>
+        )}
+
+        <fieldset class="dk-nhom">
+          <legend>Tài khoản của máy</legend>
+          <p class="kho-phu" style="margin-top:0">Chủ nhà hàng tạo ở Cài đặt → Nhân viên và máy (loại "Máy tính bảng dùng chung").</p>
+          <label class="nb-o">
+            <span>Email tài khoản máy</span>
+            <input type="email" name="email_may" value={giu.email_may} required autocomplete="off"
+              autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" />
+          </label>
+          <label class="nb-o">
+            <span>Mật khẩu tài khoản máy</span>
+            <input type="password" name="mat_khau_may" required autocomplete="off" />
+          </label>
+        </fieldset>
+
+        <label class="nb-o">
+          <span>Tên máy (không bắt buộc)</span>
+          <small>Ví dụ: Máy quầy thịt, Máy bếp. Để trống thì dùng tên tài khoản máy.</small>
+          <input type="text" name="ten" value={giu.ten} maxlength="60" />
+        </label>
+        <label class="nb-o">
+          <span>Tự khóa sau (phút không dùng)</span>
+          <small>Từ 1 đến 60. Nên để 5.</small>
+          <input type="text" inputmode="numeric" name="phut_khoa" value={giu.phut_khoa} />
+        </label>
+        <button type="submit" class="nb-nut dk-nut">Đăng ký máy này</button>
+      </form>
+    </>
+  )}
+  <p><a href={DUONG_MAY}>Về màn máy dùng chung</a></p>
+</Kho>
+
+<style>
+  .dk-form { max-width: 30rem; }
+  .dk-form input { font-size: 16px; }
+  .dk-nhom { border: 0; padding: 0; margin: 0 0 1rem; }
+  .dk-nhom legend { font-weight: 700; margin-bottom: .5rem; }
+  .dk-nut { width: 100%; }
+</style>

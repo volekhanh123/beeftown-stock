@@ -180,6 +180,10 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
     ['chu_so_huu', 'cai_dat_goc', true],
     ['thu_ngan', 'xem', false],             // vai CRM thuần không dùng kho
     ['marketing', 'xem', false],
+    ['may_chung', 'may_chung', true],       // 0034: chỉ để hàm kho_may_* nhận ra máy
+    ['may_chung', 'xem', false],            // máy không đọc được gì trong kho
+    ['chu_so_huu', 'may_chung', false],     // không người nào dùng được hàm của máy
+    ['may_ipos', 'may_chung', false],
   ];
   for (const [vai, viec, mong] of chot) {
     ok(`${vai} ${mong ? 'ĐƯỢC' : 'KHÔNG được'} "${viec}"`,
@@ -187,10 +191,14 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
   }
   const { rows: [{ n: soVai }] } = await db.query(`select count(*)::int as n from unnest(enum_range(null::vai_tro))`);
   ok('Bảng có đủ 9 vai để tra (khớp enum vai_tro)', VAI.length === 9 && soVai === 9, `enum có ${soVai}`);
-  for (const viec of Object.keys(QUYEN_KHO)) {
+  // Vai máy không được việc nào của người. Riêng việc may_chung (0034) chỉ có
+  // đúng vai may_chung.
+  for (const viec of Object.keys(QUYEN_KHO).filter(v => v !== 'may_chung')) {
     ok(`Vai máy chưa được việc "${viec}"`,
        !QUYEN_KHO[viec].includes('may_chung') && !QUYEN_KHO[viec].includes('may_ipos'));
   }
+  ok('Việc "may_chung" chỉ có vai may_chung',
+     QUYEN_KHO.may_chung?.length === 1 && QUYEN_KHO.may_chung[0] === 'may_chung');
 });
 
 // ===========================================================================
@@ -300,6 +308,11 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_the_kho',
     // Số đỏ trên menu, thông báo, ngưỡng, chỉ số quản trị (0030)
     'kho_dem_viec', 'kho_thong_bao', 'kho_da_xem_thong_bao', 'kho_luu_nguong', 'kho_chi_so_quan_tri',
+    // Máy tính bảng dùng chung (0034) — mỗi hàm tự kiểm: phiên máy, chính người đó, hoặc duyet
+    'kho_dang_ky_may', 'kho_may_tat', 'kho_ds_may', 'kho_may_ds_nguoi', 'kho_may_kiem_pin',
+    'kho_may_gan_nguoi', 'kho_may_dat_pin', 'kho_may_khoa', 'kho_may_go', 'kho_may_mo_khoa',
+    // Chủ tự tạo / khóa / mở tài khoản (0034) — chỉ chu_so_huu
+    'kho_them_nhan_su', 'kho_khoa_nhan_su', 'kho_mo_nhan_su', 'kho_ds_nhan_su_kho',
     // Hàm trigger — PostgREST không gọi được hàm trả về trigger
     'kho_vi_tri_kiem_sua', 'kho_truong_them_kiem_sua', 'kho_truong_them_kiem',
     'kho_mat_hang_chuan_hoa', 'kho_cong_thuc_pha_kiem', 'kho_lo_chan_sua_xoa',
@@ -313,6 +326,7 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ghi_phieu_xuat', 'kho_chuyen_tren_duong', 'kho_don_tren_duong',
     'kho_doc_ma_vach', 'kho_kiem_ke_tinh_quet', 'kho_kiem_ke_ds_quet',
     'kho_vi_tri_sau_pha', 'kho_phien_pha_tinh_quet', 'kho_phien_pha_tra_quet', 'kho_thu_hoi_du_kien',
+    'kho_may_cua_phien', 'kho_may_nguoi_hop_le', 'kho_may_ghi', 'kho_may_kiem_pin_bam',
   ].sort();
 
   const { rows } = await db.query(`

@@ -136,6 +136,12 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/kho/quay.ts',
   // Thẻ kho, quét đầy đủ (GĐ5c, 0033) — kho_the_kho chỉ kg / gói, không tiền.
   'web/src/lib/kho/the-kho.ts',
+  // Nhân viên và máy dùng chung (GĐ5d, 0034) — chỉ gọi từ /noi-bo/kho/cai-dat,
+  // bằng client của chủ / quản lý. auth.signUp đi bằng client anon riêng, không gọi rpc.
+  'web/src/lib/kho/nhan-vien.ts',
+  // Máy tính bảng dùng chung: đổi phiên người ↔ máy (GĐ5d, 0034) — chỉ gọi từ
+  // /noi-bo/kho (moTrangKho, /noi-bo/kho/may/*), bằng phiên máy hoặc phiên người.
+  'web/src/lib/kho/may-chung.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
 ];

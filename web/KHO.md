@@ -204,6 +204,91 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
   `kho_xem_thu_phien_pha` chỉ gọi khi `xem_gia`. Hàm thuần của 3 bước ở `lib/kho/pha-loc.ts`, test ở
   `test-kho-pha-web.mjs`; database ở `test-kho-pha-loc-quet.mjs`.
 
+## 3f. Máy tính bảng dùng chung · Chủ tự tạo tài khoản (GĐ5d, migration 0034)
+
+Tablet ở quầy/bếp dùng chung 1–2 máy: đổi người bằng **PIN**, **tự khóa sau 5 phút** không dùng.
+Việc ai làm vẫn ghi đúng người đó, vì mọi thao tác chạy bằng **phiên của chính người đó** — PIN chỉ
+là cách lấy lại phiên đã cất, không phải một lối đăng nhập mới.
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/may` | Máy (vai `may_chung`) | "Ai đang dùng máy?": nút tên người đã gắn → ô PIN → đổi phiên sang người đó |
+| `/noi-bo/kho/may/dang-ky` | Quản lý, trên tablet | Nhập email + mật khẩu của **tài khoản máy** → `kho_dang_ky_may` → cookie `bt_may_tb` |
+| `/noi-bo/kho/may/gan` | Từng nhân viên, trên tablet | Đăng nhập đầy đủ một lần, đặt PIN 4–6 số → `kho_may_gan_nguoi` |
+| `/noi-bo/kho/cai-dat/nhan-vien` | Chủ (phần nhân viên); quản lý, chủ (phần máy — `duyet`) | Thêm nhân viên, khóa / mở lại; máy: người đã gắn, mở khóa máy / người, khóa hẳn, tắt máy, gỡ người |
+| `/noi-bo/kho/cai-dat` | Quản lý, chủ | Thẻ "Máy dùng chung": đã bật chưa + cách bật |
+
+**Tài khoản máy thay cho RPC mở cho anon.** Mỗi tablet có login riêng — dòng `nhan_su` vai `may_chung`
+(quyền `may_chung` chỉ có ở vai này). Máy chỉ gọi được `kho_may_ds_nguoi` (liệt kê người đã gắn) và
+`kho_may_kiem_pin`; không đọc được dữ liệu kho/CRM (test-kho-quyen, test-kho-may-chung). Vai `may_*`
+chỉ vào được `/noi-bo/kho/may/*` (chặn trong `moTrangKho`). Không sửa `middleware.ts`, `phien.ts`.
+
+**Mã hóa ở Worker** (`lib/kho/may-chung-ma-hoa.ts`, thuần — Web Crypto, chạy cả Node): bí mật Worker
+`KHO_MAY_KHOA` → HKDF ra 4 khóa riêng: `token` (AES-GCM, AAD = `may_id|nhan_su_id`), `pin` (HMAC —
+`pin_bam` = HMAC(`may_id|nhan_su_id|pin`); database chỉ thấy `pin_bam`, lộ bảng cũng không dò được
+PIN 4–6 số), `moc` (ký mốc hoạt động), `ten` (tên cookie). Database không bao giờ nhận PIN thô.
+
+**Cookie** (httpOnly, secure, sameSite=lax):
+
+| Cookie | Chứa |
+|---|---|
+| `bt_may_tb` | Refresh token của **máy**, mã hóa |
+| `bt_may_s_<8 hex>` | Refresh token của **một người đã gắn**, mã hóa (tên cookie là HMAC, không lộ id) |
+| `bt_may_hd` | Mốc hoạt động (máy, người, lúc) + HMAC — sửa tay là hỏng → khóa |
+| `bt_phien` | Phiên đang dùng, **đúng định dạng của `phien.ts`** (JSON `access_token`, `refresh_token`) |
+
+**Mỗi refresh token chỉ tồn tại 1 bản**: hoặc ở `bt_phien` khi người đó đang dùng, hoặc cất trong
+cookie riêng khi máy khóa. Test-kho-may-chung nhóm 14 kiểm file `lib/kho` nào ghi `bt_phien` cũng giữ
+đúng định dạng của `phien.ts`.
+
+**Tự khóa** kiểm ở máy chủ trong `moTrangKho`: GET quá `phut_khoa` (mặc định 5) → cất token người,
+đưa phiên về máy, chuyển `/noi-bo/kho/may`. POST quá giờ được ân hạn 2× `phut_khoa`; quá nữa thì báo
+"Máy đã khóa — phiếu chưa được ghi, mở khóa rồi làm lại" (`daQuaGioKhoa`). `public/kho/js/may-chung.js`
+chỉ đếm giờ phía trình duyệt rồi chuyển `/noi-bo/kho/may?khoa=1` — tắt JS vẫn an toàn.
+POST trong ân hạn được ghi nhưng **không dời mốc**: mở trang ngay sau đó là máy khóa (người đến sau
+cầm máy đang mở trang của người trước chỉ gửi lọt được một phiếu, không dùng tiếp dưới tên người đó).
+Máy không còn giữ phiên của một người thì màn khóa từ chối **trước** khi kiểm PIN. Phiên nào rời máy
+mà không được cất (đăng ký máy đè lên phiên quản lý, token máy cũ, gắn lại, tự gỡ) đều bị thu hồi.
+Trang CRM ngoài `/noi-bo/kho` (và file CSV báo cáo) **không** qua `moTrangKho` nên không tự khóa —
+menu ở chế độ máy đã ẩn CRM; quản lý/chủ đừng mở CRM trên tablet dùng chung.
+Chế độ máy: menu người dùng đổi "Đăng xuất" thành "Khóa máy" và "Gỡ tôi khỏi máy này".
+
+**Sai PIN**: 5 lần liền → khóa người đó 15 phút; 15 lần / 30 phút hoặc 30 lần / 24 giờ (chặn dò chậm) trên một máy (mọi người cộng lại) →
+khóa máy, quản lý mở ở màn Nhân viên & máy. Mọi sự kiện ghi `kho_may_nhat_ky`. `kho_may_nguoi`
+**không có policy SELECT** — PIN băm không đọc được kể cả bằng quyền quản lý.
+
+### Chủ tự tạo tài khoản (`lib/kho/nhan-vien.ts`)
+
+1. Kiểm form trước (`docFormNhanVien`) — tạo xong tài khoản đăng nhập mà bước 3 hỏng thì email bị chiếm.
+2. `auth.signUp` bằng **client anon riêng** (`persistSession: false`), mật khẩu tạm `taoMatKhauTam()`
+   (`crypto.getRandomValues`, 12 chữ không dễ nhầm, dạng `Xk7m-4Rtq-9wPa`). Phiên của người mới
+   **không bao giờ vào cookie** (chủ không bị đăng xuất) và bị thu hồi ngay.
+3. `kho_them_nhan_su(p_auth_uid, p_ho_ten, p_vai_tro, p_chi_nhanh_id)` bằng **client của chủ** — chỉ chủ;
+   chỉ vai `thu_kho | nhan_vien_quay | ke_toan | may_chung | may_ipos` (web không cho chọn `may_ipos`
+   tới GĐ7a); uid phải có trong `auth.users` và chưa gắn nhân sự nào.
+4. Mật khẩu tạm hiện **một lần** trên màn trả lời POST (không chuyển hướng, `Cache-Control: no-store`),
+   không lưu ở đâu. F5 gửi lại → `ma_gui` trùng cookie `bt_kho_nv_gui` (chỉ chứa `ma_gui`) → không tạo lần hai.
+
+Khóa = `kho_khoa_nhan_su` (`dang_lam = false`, gỡ khỏi mọi máy); không khóa được chính mình. Lỗi
+Supabase (đăng ký bị tắt, email đã có, cần xác nhận email, giới hạn gửi thư, captcha…) thành câu tiếng
+Việt kèm chỗ bấm để sửa: `cauLoiDangKy`. Không có khóa `service_role` ở bất kỳ bước nào.
+
+### Việc cần bật một lần
+
+**Supabase** (Authentication → Sign In / Providers):
+- Bật **Allow new users to sign up** — để máy chủ tạo được tài khoản bằng khóa anon. An toàn: người lạ tự
+  đăng ký được tài khoản Supabase thì vẫn không thấy gì, vì không có dòng `nhan_su` (`layPhien` trả null).
+- Email → tắt **Confirm email** — nếu không, người mới phải bấm link trong thư trước khi đăng nhập, và máy
+  gửi thư có sẵn của Supabase chỉ gửi cho thành viên dự án (email nhân viên sẽ bị từ chối).
+- Không bật captcha cho đăng ký (máy chủ không giải được captcha).
+
+**Cloudflare** — bí mật Worker `KHO_MAY_KHOA` (≥ 32 ký tự, `openssl rand -base64 32`):
+`npx wrangler secret put KHO_MAY_KHOA`, hoặc Workers & Pages → beeftown → Settings → Variables and
+Secrets → Add → **Secret**. Đọc bằng `import { env } from 'cloudflare:workers'` (dev/test: `process.env`).
+**Không** đặt trong `wrangler.toml [vars]`, không commit giá trị. Thiếu bí mật → máy dùng chung tắt, màn
+Cài đặt báo cách bật, mọi thứ khác chạy bình thường. Đổi bí mật = mọi cookie máy và mọi PIN cũ hỏng —
+mọi người gắn lại (cách "thu hồi tất cả" khi nghi lộ).
+
 ## 4. Cài như app (PWA)
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng
@@ -242,8 +327,9 @@ Không thêm thư viện npm cho phía trình duyệt. `test-kho-giao-dien.mjs` 
 
 `may_chung` (tablet dùng chung ở quầy/bếp, đổi người bằng PIN — GĐ5d) và `may_ipos` (tài khoản
 đồng bộ bán hàng iPOS — GĐ7a). Hai giá trị enum được thêm ở **file riêng chạy một mình** vì
-Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa thêm nó. Hiện hai vai này
-**không đọc được gì** (test-kho-quyen kiểm).
+Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa thêm nó. Hai vai này
+**không đọc được dữ liệu kho/CRM** (test-kho-quyen kiểm); từ 0034 vai `may_chung` gọi được các hàm
+`kho_may_*` của máy (mục 3f). `may_ipos` vẫn chưa làm được gì.
 
 ## 7. Thêm một trang kho mới — danh sách kiểm
 
