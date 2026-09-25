@@ -20,8 +20,9 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 | 8 | **Tuyển dụng** — tin, hồ sơ, vé tải CV | ✅ Xong (`0012`) |
 | 9 | **Đặt nội dung một giao dịch** — công bố bốn bước thành một | ✅ Xong (`0015`) |
 | 9b | **Vá vé tải CV, quyền thu hồi, nhật ký trùng** | ✅ Xong (`0016`) |
+| 9c | **Vá quyền gọi hàm kiểm vé** — tải CV vẫn hỏng sau `0016` | ✅ Xong (`0023`) |
 
-**417 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
+**423 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
 `../web/` có 8 đường dẫn song ngữ, giao diện nội bộ `/noi-bo` và hai form
 công khai đều đã dựng.
 
@@ -35,15 +36,15 @@ cd crm && npm install && npm test
 
 | Lệnh | Kiểm gì | Số kiểm tra |
 |---|---|---|
-| `npm run test:db` | nghiệp vụ: chuẩn hóa SĐT, sổ cái điểm, ba luật tính điểm, đặt bàn, phân nhóm | 59 |
+| `npm run test:db` | nghiệp vụ: chuẩn hóa SĐT, sổ cái điểm, ba luật tính điểm, đặt bàn, phân nhóm | 60 |
 | `npm run test:rls` | phân quyền: tách dữ liệu giữa chi nhánh, vai trò, website công khai | 23 |
 | `npm run test:an-toan` | **bốn lỗ hổng ở `0008`** và hai lỗi chỉ số | 28 |
 | `npm run test:cong-bo` | cổng nội dung và ảnh | 53 |
 | `npm run test:thuc-don` | thực đơn và duyệt giá | 50 |
 | `npm run test:tuyen-dung` | tuyển dụng, dữ liệu cá nhân, nhật ký bất biến | 67 |
 | `npm run test:cong-khai` | API công khai, mã đặt bàn, đo lường | 50 |
-| `npm run test:noi-dung` | đặt/thu hồi nội dung trong một giao dịch, vé tải CV | 52 |
-| `npm run test:hop-dong` | hợp đồng giữa `web/src` và database: tên hàm, tham số, bảng, cột | 35 |
+| `npm run test:noi-dung` | đặt/thu hồi nội dung trong một giao dịch, vé tải CV | 53 |
+| `npm run test:hop-dong` | hợp đồng giữa `web/src` và database: tên hàm, tham số, bảng, cột | 39 |
 
 **Chạy lại toàn bộ kiểm thử sau mỗi lần sửa migration.** Chúng đã bắt được lỗi thật, không phải một lần:
 
@@ -75,7 +76,8 @@ crm/
 │   ├── 0013_cong_khai_va_do_luong.sql   API công khai · đo lường website
 │   ├── 0014_storage_supabase.sql   kho file — PGlite BỎ QUA, kiểm bằng tay
 │   ├── 0015_dat_noi_dung.sql    công bố một dữ kiện trong MỘT giao dịch
-│   └── 0016_va_ve_tai_cv_va_quyen_thu_hoi.sql   ⚠ VÁ 3 LỖI — xem đầu file
+│   ├── 0016_va_ve_tai_cv_va_quyen_thu_hoi.sql   ⚠ VÁ 3 LỖI — xem đầu file
+│   └── 0023_va_quyen_kiem_ve_tai_cv.sql   anon gọi được hàm kiểm vé — CV mới tải lên được
 └── test/                    ← kiểm thử chạy trên Postgres thật
 ```
 
@@ -86,6 +88,30 @@ crm/
 - **File nào tạo hàm thì PHẢI kết thúc bằng khối chốt quyền.** Xem `0008` mục 6.
 - **View mới PHẢI khai `security_invoker = true` tường minh.** Mặc định của Postgres là view chạy dưới quyền người tạo, tức đi xuyên qua RLS của bảng bên dưới — đúng lỗ hổng số 2 mà `0008` đã vá. `0008` chỉ sửa được 7 view có mặt lúc đó. `test-an-toan.mjs` mục 2 liệt kê `pg_class` và bắt đúng chuyện quên này; nó đã bắt được `v_bang_cong_tac` ngay lần chạy đầu tiên của `0015`.
 - **`0014` là file duy nhất PGlite không chạy.** Toàn bộ DDL kho file bọc trong khối kiểm tra schema `storage`. Danh sách kiểm tra bằng tay nằm ở cuối file đó — **bắt buộc làm trên Supabase thật.**
+- **Khối chốt quyền từ `0023` trở đi PHẢI giữ dòng `ve_con_hieu_luc(text)`.** Policy tải CV trên `storage.objects` gọi hàm đó dưới vai `anon`. Chép danh sách từ một file cũ hơn là CV lại rơi im lặng, và PGlite không có storage để thấy; `DUOC_PHEP` trong `test-an-toan.mjs` và mục 7 của `test-dat-noi-dung.mjs` mới bắt được.
+- **Số `0017`–`0022` đã có chủ ở nhánh khác** (module kho `0017`–`0021`, bản vá quyền hàm CRM `0022`), nên file sửa quyền này là `0023`. Khối chốt quyền của `0018`–`0022` viết trước `0023` nên chưa có dòng trên. Trên database mới thì `0023` chạy sau chúng, không sao; nhưng **đừng chạy `0018`–`0022` SAU `0023`** trên một database đã có sẵn — chúng sẽ thu hồi lại quyền đó.
+
+## Nhật ký kiểm tay kho file
+
+`0014` bắt kiểm tay vì PGlite không có schema `storage`, và dặn ghi lại ngày, người kiểm vào đây.
+
+**2026-09-25 · Claude, phiên sửa `0023`.** Chưa phải project Supabase thật: một Supabase thử dựng cục bộ gồm Postgres 17.10, storage-api v1.79.19 (mã nguồn của Supabase) và PostgREST v13.0.8, sau một cổng chung `/rest/v1` + `/storage/v1`, chạy đủ migration. Mọi thao tác dùng **khóa anon** qua `supabase-js`, và chạy cả hàm `nopHoSo()` thật của website.
+
+| Bước | Tới `0016` | Thêm `0023` |
+|---|---|---|
+| 5 · tải lên `test/x.pdf` | bị từ chối — nhưng vì `permission denied for function ve_con_hieu_luc`, không phải vì kiểm vé | bị từ chối: `new row violates row-level security policy` |
+| 6 · xin vé, tải lên `<mã vé>/cv.pdf` | **HỎNG:** `403 permission denied for function ve_con_hieu_luc` | thành công |
+| 6 · tải lại đúng đường dẫn đó | bị từ chối (cùng lỗi quyền) | bị từ chối: `409 The resource already exists` |
+| 6 · nộp hồ sơ kèm vé, rồi tải thêm vào thư mục vé | bị từ chối (cùng lỗi quyền) | bị từ chối: RLS — vé đã dùng |
+| `nopHoSo()` với file `CV Nguyễn Văn Thử.pdf` | `ok: true` kèm câu "hồ sơ được nộp không kèm CV" | **vẫn không kèm CV:** `Invalid key` — xem dưới |
+| 2 · mở URL công khai của CV vừa nộp, không khóa | — (chưa có CV nào) | bị từ chối (400); có khóa anon cũng không tải về hay liệt kê được |
+
+Hai điều lộ ra, cần biết khi đọc bước 6 ở cuối `0014`:
+
+- **Vé bị đánh dấu "đã dùng" khi nộp hồ sơ, không phải khi tải lên.** Lần tải thứ hai cùng đường dẫn bị chặn vì file đã tồn tại, không phải vì vé. Trước khi `nop_ho_so_ung_tuyen()` chạy, cùng một vé vẫn tải thêm được file **tên khác** (đã thử: thành công).
+- **Storage chỉ nhận khóa ASCII.** `tenTepAnToan()` trong `web/src/lib/nop-ho-so.ts` giữ chữ có dấu, nên mọi CV đặt tên tiếng Việt có dấu bị trả `Invalid key` và rơi im lặng y như lỗi quyền. Chưa sửa — phải sửa ở phía web.
+
+**Chưa làm:** bước 1, 3, 4, 7, 8, và **toàn bộ danh sách trên project Supabase thật** — vẫn bắt buộc trước khi mở cổng tuyển dụng.
 
 ## Bốn quyết định thiết kế quan trọng
 
@@ -159,7 +185,7 @@ Ngoài ra `cau_hinh_tich_diem.ty_le_tich` có **trần cứng 20%** — biên đ
 | `duoc_phep_gui()` | Chốt chặn trước khi gửi tin | Nội bộ |
 | `chi_so_crm()` | 6 chỉ số theo dõi | Quản lý, chủ sở hữu |
 
-Website công khai **không có quyền vào bảng nào cả** — chỉ gọi được danh sách hàm `SECURITY DEFINER` trong khối chốt quyền ở cuối migration MỚI NHẤT có tạo hàm. Đừng chép số lượng vào đây: bảng trên đã từng nói "ba hàm" trong khi thực tế là 12, và nó lạc hậu suốt tám migration mà không ai để ý. `test-an-toan.mjs` canh danh sách đó.
+Website công khai **không có quyền vào bảng nào cả** — chỉ gọi được danh sách hàm `SECURITY DEFINER` trong khối chốt quyền ở cuối migration MỚI NHẤT có khối đó. Đừng chép số lượng vào đây: bảng trên đã từng nói "ba hàm" trong khi thực tế là 12, và nó lạc hậu suốt tám migration mà không ai để ý. `test-an-toan.mjs` canh danh sách đó.
 
 ## Việc cần làm trước khi chạy thật
 
@@ -182,7 +208,7 @@ Website công khai **không có quyền vào bảng nào cả** — chỉ gọi 
 6. **Đừng bao giờ đổi chữ ký của một hàm công khai.** `create or replace` với bộ tham số khác sẽ âm thầm tạo ra một OVERLOAD, và bản cũ vẫn giữ nguyên quyền đã cấp cho `anon`. Cần chữ ký khác thì **đặt tên mới** — xem `lich_trong_theo_ma` ở `0013`.
 7. **Website và database nói chuyện bằng TÊN CHUỖI, và không có bước biên dịch nào kiểm chúng.** `rpc('tao_dat_ban', { p_so_khach: 4 })` gõ sai một chữ thì `astro check` vẫn xanh, còn PostgREST thì báo "không tìm thấy hàm phù hợp" — hoặc tệ hơn, chọn một phiên bản khác nhờ tham số mặc định và chạy im lặng với giá trị sai. `test/test-hop-dong-web.mjs` đọc mã nguồn `web/src`, rút ra mọi tên hàm, tham số, bảng và cột, rồi đối chiếu với `pg_proc` và `information_schema`. Nó cũng khẳng định mã chạy dưới vai `anon` không gọi hàm ngoài danh sách 12 hàm đã duyệt, và không đọc thẳng bảng nào.
 
-8. **Thêm hàm mới thì phải cập nhật danh sách `DUOC_PHEP` trong `test/test-an-toan.mjs`.** Danh sách đó là bản sao có chủ ý của khối chốt quyền ở `0013`. Câu DDL nói ý định; bài test mới là thứ chứng minh.
+8. **Thêm hàm mới thì phải cập nhật danh sách `DUOC_PHEP` trong `test/test-an-toan.mjs`.** Danh sách đó là bản sao có chủ ý của khối chốt quyền mới nhất — kể cả hàm chỉ policy storage gọi, như `ve_con_hieu_luc`. Câu DDL nói ý định; bài test mới là thứ chứng minh.
 9. **Đừng đổi chữ trong các câu `raise exception` cũ** — bài test khớp regex tiếng Việt (`/hết bàn/i`, `/quá khứ/i`, `/bất biến/i`).
 10. **Đừng tham chiếu BẢNG trong schema `auth` từ policy hay trigger** — dùng `la_chu_so_huu()`, `co_vai_tro()`, `co_phien_dang_nhap()` thay vì đọc thẳng `auth.users`.
     Riêng HÀM `auth.uid()` thì gọi thẳng được: Supabase cấp sẵn quyền đó cho `authenticated`, và `0007` đã dùng nó như vậy ở `nhan_su_doc` và `mau_tin_doc`. Bản trước của quy tắc này cấm luôn cả `auth.uid()`, tức là nó mâu thuẫn với chính `0007` — mà `nhan_su_doc` lại nằm trên đường đăng nhập của MỌI request `/noi-bo`.

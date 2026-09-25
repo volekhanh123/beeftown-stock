@@ -252,6 +252,10 @@ await nhom('5 · WEB KHÔNG GỌI HÀM NGOÀI DANH SÁCH CHO PHÉP', async () =>
   // Trang công khai chạy dưới vai anon. Nó chỉ được gọi 12 hàm đã duyệt
   // (0013). Gọi hàm ngoài danh sách sẽ lỗi 403 trên production — nhưng chạy
   // ngon lành ở máy lập trình viên nếu người đó đang dùng khóa service_role.
+  //
+  // ve_con_hieu_luc() anon cũng có EXECUTE (0023), nhưng là để policy tải CV
+  // của storage gọi. Mã web không có lý do gọi nó qua RPC, nên nó cố ý vắng
+  // mặt ở đây.
   const CONG_KHAI = [
     'noi_dung_cong_khai', 'tin_tuyen_dung_cong_khai', 'thuc_don_cong_khai',
     'chi_nhanh_cong_khai', 'lich_trong_theo_ma', 'tao_dat_ban',
