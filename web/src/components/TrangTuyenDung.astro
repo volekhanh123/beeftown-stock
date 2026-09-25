@@ -22,9 +22,11 @@
 import { chu } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import type { KetQuaNop } from '../lib/nop-ho-so';
+import type { TruongForm } from '../lib/truong-form';
 import FormUngTuyen from './FormUngTuyen.astro';
 
-export interface ViTri {
+/** Một tin đã công bố, kèm công tắc từng trường của form (0025). */
+export interface ViTri extends TruongForm {
   ma: string;
   ten: string;
   bo_phan: string;

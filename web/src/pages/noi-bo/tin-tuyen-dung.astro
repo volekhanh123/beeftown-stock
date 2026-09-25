@@ -1,0 +1,146 @@
+---
+/**
+ * TIN TUYỂN DỤNG — form nộp hồ sơ của từng tin hỏi những gì
+ *
+ * Không phải vị trí nào cũng cần CV. Quản lý và marketing thì nên có; phục
+ * vụ, phụ bếp nộp từ điện thoại và hầu như không có file CV. Màn này bật/tắt
+ * từng trường TÙY CHỌN của form cho từng tin (migration 0025).
+ *
+ * Tắt là không lưu, không chỉ là ẩn ô: nop_ho_so_ung_tuyen() bỏ giá trị của
+ * trường tin không hỏi, kể cả khi trình duyệt cũ vẫn hiện ô và gửi lên.
+ *
+ * QUYỀN DO DATABASE QUYẾT ĐỊNH: policy vi_tri_sua (0012) cho chủ sở hữu,
+ * quản lý và marketing sửa tin ở chi nhánh của mình. Giao diện chỉ khóa ô
+ * cho vai khác để khỏi bấm rồi nhận lỗi.
+ *
+ * Nội dung tin — mô tả, yêu cầu, lương, hạn nộp, đăng/gỡ — CHƯA có màn sửa.
+ */
+import NoiBo from '../../layouts/NoiBo.astro';
+import { TRUONG_FORM } from '../../lib/truong-form';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const duocSua = ['chu_so_huu', 'quan_ly', 'marketing'].includes(nhanSu.vai_tro);
+
+const TRANG_THAI: Record<string, { ten: string; lop: string }> = {
+  nhap:       { ten: 'Nháp',                lop: 'nhap' },
+  da_duyet:   { ten: 'Đã duyệt, chưa đăng', lop: 'nhap' },
+  da_cong_bo: { ten: 'Đang đăng',           lop: 'song' },
+  da_thu_hoi: { ten: 'Đã gỡ',               lop: 'tat' },
+};
+
+let bao: { ok: boolean; cau: string } | null = null;
+
+if (Astro.request.method === 'POST') {
+  let form: FormData | null = null;
+  try {
+    form = await Astro.request.formData();
+  } catch {
+    bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên. Mạng có thể đã đứt giữa chừng — bạn thử gửi lại.' };
+  }
+
+  if (form) {
+    const id = String(form.get('id') ?? '');
+    // Ô không tích thì trình duyệt không gửi gì — vắng mặt nghĩa là tắt.
+    const dong = Object.fromEntries(TRUONG_FORM.map(f => [f.cot, form!.get(f.cot) === 'co']));
+
+    const { data, error } = await client
+      .from('vi_tri_tuyen_dung')
+      .update(dong)
+      .eq('id', id)
+      .select('ten_vi');
+
+    if (error) {
+      bao = { ok: false, cau: error.message };
+    } else if (!data || data.length === 0) {
+      // RLS lọc mất dòng thì update không báo lỗi, chỉ sửa được 0 dòng.
+      bao = { ok: false, cau: 'Tài khoản của bạn không sửa được tin này.' };
+    } else {
+      bao = { ok: true, cau: `Đã lưu form của tin "${data[0].ten_vi}". Trang tuyển dụng đổi theo ngay.` };
+    }
+  }
+}
+
+let ds: any[] = [];
+let dsLoi: string | null = null;
+try {
+  const { data, error } = await client
+    .from('vi_tri_tuyen_dung')
+    .select('id, ma, ten_vi, trang_thai, hoi_email, hoi_nam_sinh, hoi_ca_lam, hoi_gioi_thieu, hoi_kinh_nghiem, hoi_cv')
+    .order('ten_vi');
+  if (error) dsLoi = error.message;
+  else ds = data ?? [];
+} catch (e) {
+  dsLoi = e instanceof Error ? e.message : 'Không đọc được danh sách tin.';
+}
+---
+<NoiBo tieuDe="Tin tuyển dụng" nhanSu={nhanSu}>
+  <h1>Tin tuyển dụng</h1>
+  <p class="nb-dan">
+    Chọn form nộp hồ sơ của từng tin hỏi những gì. Trường tắt thì ô đó biến
+    khỏi form, và dù có ai gửi lên cũng <strong>không được lưu</strong>.
+    Trường bật vẫn là không bắt buộc.
+  </p>
+  <p class="nb-dan" style="font-size:.85rem">
+    Họ tên, số điện thoại và ô đồng ý luôn có. Nội dung tin — mô tả, yêu cầu,
+    lương, hạn nộp, đăng hay gỡ — chưa sửa được ở đây.
+    <a href="/noi-bo/tuyen-dung">Xem hồ sơ đã nộp →</a>
+  </p>
+
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+  {dsLoi && <div class="nb-bao loi"><p>{dsLoi}</p></div>}
+  {!duocSua && (
+    <div class="nb-bao luu-y">
+      <p>Chỉ chủ nhà hàng, quản lý và marketing sửa được form của tin.</p>
+    </div>
+  )}
+
+  {ds.length === 0 && !dsLoi && (
+    <div class="nb-rong">
+      <p style="margin:0">Chưa có tin tuyển dụng nào.</p>
+    </div>
+  )}
+
+  {ds.map(v => {
+    const tt = TRANG_THAI[v.trang_thai] ?? { ten: v.trang_thai, lop: 'tat' };
+    return (
+      <form method="POST" class="nb-dong">
+        <input type="hidden" name="id" value={v.id} />
+        <div class="nb-dong-dau">
+          <strong>{v.ten_vi}</strong>
+          <span class={`nb-nhan ${tt.lop}`}>{tt.ten}</span>
+        </div>
+
+        <fieldset class="nb-truong" disabled={!duocSua}>
+          <legend>Form hỏi</legend>
+          {TRUONG_FORM.map(f => (
+            <label>
+              <input type="checkbox" name={f.cot} value="co" checked={v[f.cot] === true} />
+              <span>{f.ten}</span>
+            </label>
+          ))}
+        </fieldset>
+
+        {duocSua && <button type="submit" class="nb-nut">Lưu form của tin này</button>}
+      </form>
+    );
+  })}
+</NoiBo>
+
+<style>
+  .nb-truong {
+    border: 0; padding: 0; margin: .6rem 0 .85rem;
+    display: grid; gap: .1rem 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  }
+  .nb-truong legend {
+    font-size: .8rem; color: var(--muc-nhat); margin-bottom: .2rem; padding: 0;
+  }
+  /* Vùng chạm đủ cho ngón tay cái, cùng cỡ ô tích ở màn Cài đặt. */
+  .nb-truong label {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .45rem 0; font-size: .92rem; cursor: pointer;
+  }
+  .nb-truong input { width: 22px; height: 22px; margin: 0; accent-color: var(--do); }
+  .nb-truong[disabled] label { cursor: not-allowed; opacity: .6; }
+</style>

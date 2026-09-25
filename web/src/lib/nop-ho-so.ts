@@ -16,9 +16,12 @@
  * Phục vụ và phụ bếp ứng tuyển từ điện thoại thường không có file CV. Nên
  * nếu tải CV thất bại, hồ sơ VẪN được nộp không kèm CV, và câu trả lời nói
  * rõ điều đó — thay vì bắt người ta điền lại từ đầu vì một cái file.
+ *
+ * Từ 0025, tin nào không hỏi CV thì file gửi kèm bị bỏ qua, không tải lên.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { TruongForm } from './truong-form';
 
 export interface KetQuaNop {
   ok: boolean;
@@ -77,6 +80,25 @@ async function taiCv(
   return eTai ? null : { ve, ten };
 }
 
+/**
+ * Tin này có hỏi CV không (0025).
+ *
+ * Không đọc được danh sách tin thì trả true, tức cứ tải như trước khi có
+ * công tắc: làm mất CV của người ta tệ hơn một file thừa trong kho.
+ */
+async function tinHoiCv(client: SupabaseClient, viTri: string): Promise<boolean> {
+  try {
+    const { data, error } = await client.rpc('tin_tuyen_dung_cong_khai', { p_ngon_ngu: 'vi' });
+    if (error || !Array.isArray(data)) return true;
+    const tin = (data as ({ ma: string } & TruongForm)[]).find(v => v.ma === viTri);
+    // Không thấy tin thì nop_ho_so_ung_tuyen() sẽ tự báo lỗi vị trí. Tải CV
+    // lên lúc này chỉ để lại một file không hồ sơ nào trỏ tới.
+    return tin !== undefined && tin.hoi_cv !== false;
+  } catch {
+    return true;
+  }
+}
+
 export async function nopHoSo(
   client: SupabaseClient, form: FormData, ip: string | null,
 ): Promise<KetQuaNop> {
@@ -102,11 +124,13 @@ export async function nopHoSo(
   const ca = form.getAll('ca').map(String).filter(Boolean);
 
   // Tải CV TRƯỚC khi nộp, vì nop_ho_so_ung_tuyen() cần mã vé. Hỏng thì bỏ
-  // qua CV chứ không bỏ hồ sơ.
+  // qua CV chứ không bỏ hồ sơ. Tin không hỏi CV thì không tải gì: database
+  // sẽ bỏ vé, và file đã lên kho thì không hồ sơ nào trỏ tới, không việc dọn
+  // nào xóa được.
   const tep = form.get('cv');
   let cv: { ve: string; ten: string } | null = null;
   let cvHong = false;
-  if (tep instanceof File && tep.size > 0) {
+  if (tep instanceof File && tep.size > 0 && await tinHoiCv(client, viTri)) {
     cv = await taiCv(client, tep, ip);
     cvHong = cv === null;
   }

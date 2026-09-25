@@ -142,6 +142,20 @@ await nhom('1 · TIN TUYỂN DỤNG CÔNG KHAI', async () => {
     `select count(*)::int as n from vi_tri_tuyen_dung`);
   ok('Seed đủ 8 vị trí theo tài liệu vận hành', soTin === 8, `${soTin} vị trí`);
 
+  // 0025: không phải vị trí nào cũng cần CV. Quản lý và marketing thì có;
+  // phục vụ, phụ bếp nộp từ điện thoại và hầu như không có file CV.
+  const { rows: coCv } = await db.query(
+    `select ma from vi_tri_tuyen_dung where hoi_cv order by ma`);
+  ok('Tin mẫu: chỉ quản lý, tổ trưởng và marketing hỏi CV',
+     coCv.map(r => r.ma).join(',') ===
+       'dau-moi-marketing,quan-ly-cua-hang,quan-ly-sanh,to-truong-sanh',
+     coCv.map(r => r.ma).join(', '));
+
+  const { rows: [{ n: tatBot }] } = await db.query(
+    `select count(*)::int as n from vi_tri_tuyen_dung
+     where not (hoi_email and hoi_nam_sinh and hoi_ca_lam and hoi_gioi_thieu and hoi_kinh_nghiem)`);
+  ok('Tin mẫu: các trường khác vẫn hỏi như trước', tatBot === 0, `${tatBot} tin tắt bớt`);
+
   const { rows: [{ n: coLuong }] } = await db.query(
     `select count(*)::int as n from vi_tri_tuyen_dung
      where luong_tu is not null or luong_den is not null or luong_da_duyet`);
@@ -152,6 +166,9 @@ await nhom('1 · TIN TUYỂN DỤNG CÔNG KHAI', async () => {
      `${cong.length} tin`);
   ok('Tin trả về mô tả và yêu cầu', cong[0].mo_ta?.length > 10 && cong[0].yeu_cau?.length > 10);
   ok('Lương trả về null khi chưa duyệt', cong[0].luong_tu === null);
+  ok('Tin trả về công tắc từng trường cho form',
+     cong[0].hoi_cv === false && cong[0].hoi_email === true,
+     `hoi_cv=${cong[0].hoi_cv} · hoi_email=${cong[0].hoi_email}`);
 
   ok('Không đăng được tin thiếu mô tả',
      (await phaiLoi(db,
@@ -332,6 +349,10 @@ await nhom('6 · VÒNG ĐỜI HỒ SƠ VÀ NHẬT KÝ', async () => {
 
 // ===========================================================================
 await nhom('7 · VÉ TẢI CV — SERVER CẤP ĐƯỜNG DẪN', async () => {
+  // Vé chỉ có nghĩa ở tin có hỏi CV (0025). Tin mẫu nhân viên sảnh không hỏi,
+  // nên bật cho tin này trước khi thử vé.
+  await db.query(`update vi_tri_tuyen_dung set hoi_cv = true where ma = 'nhan-vien-sanh'`);
+
   const ve = await duoiDanhNghiaAnon(`select xin_phieu_tai_cv($1::inet) as id`, ['203.0.113.50']);
   ok('anon xin được vé tải CV', ve.loi === null && ve.rows?.[0]?.id, ve.loi || '');
   const maVe = ve.rows[0].id;
@@ -472,6 +493,75 @@ await nhom('MỘT BƯỚC CHUYỂN — MỘT DÒNG NHẬT KÝ (0016 mục 3)', a
   const { rows: [{ n: sau }] } = await db.query(
     `select count(*)::int as n from nhat_ky_ho_so where ho_so_id = $1`, [hs.id]);
   ok('Số dòng nhật ký không đổi sau khi bị từ chối', sau === 2, `${sau} dòng`);
+});
+
+// ===========================================================================
+await nhom('10 · MỖI TIN HỎI NHỮNG GÌ (0025)', async () => {
+  // Tin bếp tắt hết trường tùy chọn. Ứng viên — hoặc trình duyệt cũ không ẩn
+  // được ô — vẫn gửi đủ; database phải bỏ hết, kể cả vé tải CV.
+  await db.query(
+    `update vi_tri_tuyen_dung
+     set hoi_email = false, hoi_nam_sinh = false, hoi_ca_lam = false,
+         hoi_gioi_thieu = false, hoi_kinh_nghiem = false, hoi_cv = false
+     where ma = 'nhan-vien-bep'`);
+
+  const ve = await duoiDanhNghiaAnon(`select xin_phieu_tai_cv(null::inet) as id`);
+  const maVe = ve.rows?.[0]?.id;
+  const guiDu = {
+    email: 'ung.vien@example.com', namSinh: 1999, gioiThieu: 'Chăm chỉ, vui vẻ.',
+    kinhNghiem: 'Hai năm phụ bếp.', caLam: ['sang', 'toi'], maVe, tenTep: 'cv.pdf',
+  };
+
+  const r = await nopHoSo('nhan-vien-bep', 'Gửi Thừa', '0966000001', guiDu);
+  ok('Tin tắt hết trường tùy chọn vẫn nhận hồ sơ', r.loi === null, r.loi ?? '');
+
+  const cot = 'email, nam_sinh, gioi_thieu, kinh_nghiem, ca_lam_duoc, duong_dan_cv';
+  const { rows: [thua] } = await db.query(
+    `select ${cot} from ho_so_ung_tuyen where ho_ten = 'Gửi Thừa'`);
+  ok('Trường tin không hỏi thì KHÔNG được lưu, dù có gửi lên',
+     thua && Object.values(thua).every(x => x === null), JSON.stringify(thua));
+
+  const { rows: [phieu] } = await db.query(
+    `select da_dung from phieu_tai_len where id = $1`, [maVe]);
+  ok('Tin không hỏi CV: vé tải CV bị bỏ qua, không bị đánh dấu đã dùng',
+     phieu?.da_dung === false);
+
+  // Bật lại thì lưu đủ — công tắc không được làm hỏng đường bình thường.
+  await db.query(
+    `update vi_tri_tuyen_dung
+     set hoi_email = true, hoi_nam_sinh = true, hoi_ca_lam = true,
+         hoi_gioi_thieu = true, hoi_kinh_nghiem = true, hoi_cv = true
+     where ma = 'nhan-vien-bep'`);
+  const { rows: tin } = await duoiDanhNghiaAnon(
+    `select hoi_cv from tin_tuyen_dung_cong_khai() where ma = 'nhan-vien-bep'`);
+  ok('Bật lại thì trang công khai thấy ngay', tin?.[0]?.hoi_cv === true);
+
+  const r2 = await nopHoSo('nhan-vien-bep', 'Gửi Đủ', '0966000002', guiDu);
+  const { rows: [du] } = await db.query(
+    `select ${cot} from ho_so_ung_tuyen where ho_ten = 'Gửi Đủ'`);
+  ok('Tin hỏi đủ thì lưu đủ, kể cả CV bằng đúng vé lúc nãy',
+     r2.loi === null && du?.email === 'ung.vien@example.com' && du?.nam_sinh === 1999
+       && du?.ca_lam_duoc?.join(',') === 'sang,toi'
+       && du?.duong_dan_cv === `ho-so-ung-tuyen/${maVe}/cv.pdf`,
+     r2.loi ?? JSON.stringify(du));
+
+  // Ai bật/tắt được: đúng những vai soạn được tin — policy vi_tri_sua của 0012.
+  const sua = `update vi_tri_tuyen_dung set hoi_cv = not hoi_cv
+               where ma = 'quan-ly-sanh' returning ma`;
+  const mkt = await duoiDanhNghia(uidMkt, sua);
+  ok('Marketing bật/tắt được trường của tin',
+     mkt.loi === null && mkt.rows?.length === 1, mkt.loi ?? `${mkt.rows?.length} dòng`);
+
+  const tn = await duoiDanhNghia(uidThuNgan, sua);
+  ok('Thu ngân KHÔNG bật/tắt được',
+     tn.loi !== null || tn.rows?.length === 0, `${tn.rows?.length} dòng bị sửa`);
+
+  const qlKhac = await duoiDanhNghia(uidQlB, sua);
+  ok('Quản lý chi nhánh khác KHÔNG sửa được tin của Q1',
+     qlKhac.loi !== null || qlKhac.rows?.length === 0, `${qlKhac.rows?.length} dòng bị sửa`);
+
+  const anon = await duoiDanhNghiaAnon(sua);
+  ok('anon KHÔNG sửa được tin', anon.loi !== null || anon.rows?.length === 0);
 });
 
 // ===========================================================================

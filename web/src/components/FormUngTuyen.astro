@@ -13,10 +13,17 @@
  *
  * KHÔNG CÓ JAVASCRIPT. Ứng viên phục vụ và phụ bếp dùng điện thoại rẻ, mạng
  * 4G chập chờn. Form HTML thuần gửi được ngay khi phần HTML tải xong.
+ *
+ * MỖI TIN HỎI MỘT BỘ TRƯỜNG RIÊNG (0025) — cũng không cần JavaScript. Mỗi
+ * <option> mang danh sách trường mà tin đó KHÔNG hỏi; CSS :has() ẩn các ô
+ * đó khi option được chọn. Trình duyệt quá cũ không hiểu :has() thì thấy đủ
+ * mọi ô — vô hại: database bỏ giá trị của trường tin không hỏi, và
+ * nop-ho-so.ts không tải CV lên cho tin không hỏi CV.
  */
 import type { NgonNgu } from '../lib/noi-dung';
 import type { ViTri } from './TrangTuyenDung.astro';
 import type { KetQuaNop } from '../lib/nop-ho-so';
+import { TRUONG_FORM } from '../lib/truong-form';
 
 interface Props {
   ngonNgu: NgonNgu;
@@ -32,6 +39,10 @@ const en = ngonNgu === 'en';
 
 // Mốc thời gian để server tính số giây điền form. Không cần JavaScript.
 const moc = Date.now();
+
+/** Các trường tin này KHÔNG hỏi, dạng "email cv" — CSS cuối file đọc nó. */
+const truongAn = (v: ViTri) =>
+  TRUONG_FORM.filter(f => v[f.cot] === false).map(f => f.lop).join(' ') || undefined;
 
 const CA = en
   ? [['sang', 'Morning'], ['chieu', 'Afternoon'], ['toi', 'Evening'], ['cuoi_tuan', 'Weekends']]
@@ -119,7 +130,7 @@ const t = {
         <select name="vi_tri" required>
           <option value="">{t.chon}</option>
           {viTri.map(v => (
-            <option value={v.ma} selected={daNhap.vi_tri === v.ma}>
+            <option value={v.ma} selected={daNhap.vi_tri === v.ma} data-an={truongAn(v)}>
               {v.ten}{v.bo_phan ? ` — ${v.bo_phan}` : ''}
             </option>
           ))}
@@ -139,20 +150,20 @@ const t = {
                inputmode="tel" autocomplete="tel" />
       </label>
 
-      <label class="o">
+      <label class="o o-email">
         <span>{t.email}</span>
         <input type="email" name="email" value={daNhap.email ?? ''}
                inputmode="email" autocomplete="email"
                autocapitalize="off" spellcheck="false" />
       </label>
 
-      <label class="o">
+      <label class="o o-nam-sinh">
         <span>{t.namSinh}</span>
         <input type="text" name="nam_sinh" value={daNhap.nam_sinh ?? ''}
                inputmode="numeric" maxlength="4" pattern="[0-9]{4}" />
       </label>
 
-      <fieldset class="o o-nhom">
+      <fieldset class="o o-nhom o-ca-lam">
         <legend>{t.ca}</legend>
         {CA.map(([ma, ten]) => (
           <label class="o-chon">
@@ -162,18 +173,18 @@ const t = {
         ))}
       </fieldset>
 
-      <label class="o">
+      <label class="o o-gioi-thieu">
         <span>{t.gioiThieu}</span>
         <textarea name="gioi_thieu" rows="3">{daNhap.gioi_thieu ?? ''}</textarea>
       </label>
 
-      <label class="o">
+      <label class="o o-kinh-nghiem">
         <span>{t.kinhNghiem}</span>
         <small>{t.kinhNghiemPhu}</small>
         <textarea name="kinh_nghiem" rows="3">{daNhap.kinh_nghiem ?? ''}</textarea>
       </label>
 
-      <label class="o">
+      <label class="o o-cv">
         <span>{t.cv}</span>
         <small>{t.cvPhu}</small>
         <input type="file" name="cv"
@@ -246,5 +257,16 @@ const t = {
   .form-nop .o-dong-y {
     border-top: 1px solid var(--vach-kem);
     margin-top: 6px; padding-top: 16px; align-items: flex-start;
+  }
+
+  /* Ẩn ô mà tin đang chọn không hỏi — xem đầu file. Tên sau data-an là cột
+     `lop` trong lib/truong-form.ts; thêm trường ở đó thì thêm một dòng ở đây. */
+  .form-nop:has(option[data-an~='email']:checked) .o-email,
+  .form-nop:has(option[data-an~='nam-sinh']:checked) .o-nam-sinh,
+  .form-nop:has(option[data-an~='ca-lam']:checked) .o-ca-lam,
+  .form-nop:has(option[data-an~='gioi-thieu']:checked) .o-gioi-thieu,
+  .form-nop:has(option[data-an~='kinh-nghiem']:checked) .o-kinh-nghiem,
+  .form-nop:has(option[data-an~='cv']:checked) .o-cv {
+    display: none;
   }
 </style>
