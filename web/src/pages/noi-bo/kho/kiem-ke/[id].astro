@@ -272,7 +272,7 @@ const coNhanQuet = (kk?.so_nhan_quet ?? 0) > 0;
 const nhanQuet = kk && coNhanQuet ? await docSoNhanQuet(k.client, kk.id) : new Map<string, number>();
 const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
 ---
-<Kho k={k} tieuDe={tieuDe} huongDan={choToiDuyet ? 'quan-ly-duyet' : laQuay ? 'nv-quay' : undefined}>
+<Kho k={k} tieuDe={tieuDe} huongDan={choToiDuyet ? 'duyet-kiem-ke' : 'kiem-ke'}>
   <h1>{tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
   {kk && (

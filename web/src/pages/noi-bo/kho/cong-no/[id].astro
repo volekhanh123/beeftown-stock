@@ -116,7 +116,7 @@ const ten = await tenNhanSu(k.client, thanhToan.map(t => t.nguoi_tao));
 const anh = await linkAnh(k.client, thanhToan.flatMap(t => t.anh));
 const g = (khoa: string, macDinh = '') => giaTriLoi[khoa] ?? macDinh;
 ---
-<Kho k={k} tieuDe={`Công nợ · ${ncc.ten}`} rong>
+<Kho k={k} huongDan="ghi-thanh-toan" tieuDe={`Công nợ · ${ncc.ten}`} rong>
   <h1>{ncc.ten}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 

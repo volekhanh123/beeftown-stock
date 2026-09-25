@@ -64,7 +64,7 @@ const coPhien = man?.nguoi.filter(n => n.coPhien) ?? [];
 const canGanLai = man?.nguoi.filter(n => !n.coPhien) ?? [];
 const TEN_VAI: Record<string, string> = { chu_so_huu: 'Chủ nhà hàng', quan_ly: 'Quản lý', ...TEN_VAI_KHO };
 ---
-<Kho k={k} tieuDe="Ai đang dùng máy?">
+<Kho k={k} huongDan="mo-may-pin" tieuDe="Ai đang dùng máy?">
   {!batMay ? (
     <>
       <h1>Máy dùng chung</h1>

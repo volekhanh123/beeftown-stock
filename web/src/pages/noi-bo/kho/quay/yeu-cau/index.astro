@@ -104,7 +104,7 @@ const dongThem = Array.from({ length: soDong }, (_, i) => ({
 }));
 const nhan = (tt: string) => TRANG_THAI_CHUNG_TU[tt] ?? [tt, 'nhap'];
 ---
-<Kho k={k} tieuDe="Quầy cần hàng" huongDan={laQuay ? 'nv-quay' : 'thu-kho'}>
+<Kho k={k} tieuDe="Quầy cần hàng" huongDan={laQuay ? 'yeu-cau' : 'ra-quay'}>
   <h1>{choGui ? 'Yêu cầu hàng ra quầy' : 'Quầy cần hàng'}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 

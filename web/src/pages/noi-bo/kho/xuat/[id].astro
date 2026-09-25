@@ -347,7 +347,15 @@ const traVe = soCai.filter(s => s.loai === 'chuyen_den' && s.vi_tri_id === phieu
 const ghiMat = soCai.filter(s => s.loai === 'hao_hut');
 const congGoi = (ds: DongSoCai[]) => Math.abs(ds.reduce((t, x) => t + x.so_goi, 0));
 const congKg = (ds: DongSoCai[]) => Math.abs(ds.reduce((t, x) => t + x.so_kg, 0));
-const huongDan = choToiDuyet ? 'quan-ly-duyet' : vai === 'nhan_vien_quay' ? 'nv-quay' : 'thu-kho';
+// Nút "?": việc chính của màn này với người đang xem (lib/kho/huong-dan.ts).
+const huongDan = choToiDuyet ? 'duyet-huy'
+  : nut.xuLyThieu ? 'nhan-thieu'
+  : loai === 'huy' ? 'bao-huy'
+  : loai === 'xuat_bep' ? 'xuat-bep'
+  : loai === 'xuat_khac' ? 'xuat-khac'
+  : loai === 'tra_ncc' ? 'tra-ncc'
+  : vai === 'nhan_vien_quay' ? (moi ? 'tu-lay-hang' : 'nhan-ra-quay')
+  : 'ra-quay';
 // Sổ của phiếu: chỉ các dòng rời nơi lấy (chuyển đi / xuất bếp) — đủ để biết lô nào.
 const soCaiLay = soCai.filter(s => s.vi_tri_id === phieu?.vi_tri_id && ['chuyen_di', 'xuat_bep', 'xuat_khac', 'tra_ncc'].includes(s.loai));
 const daHuy = soCai.filter(s => s.loai === 'huy');

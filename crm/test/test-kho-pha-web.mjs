@@ -255,8 +255,9 @@ await nhom('9 · CÁC TRANG PHA LÓC', async () => {
   ok('Quản lý: nút "Đã xem" chỉ với quyền duyet', /k\.duoc\('duyet'\) \? \(/.test(id) && /value="da_xem"/.test(id));
   ok('Tiền chỉ hiện với xem_gia (thủ kho xem bản chỉ kg)',
      /xemThuPhienKg/.test(id) && /xemGia && buoc === 'ket_qua'/.test(id) && !/dinhDangTien/.test(moi));
+  // huongDan có thể là biểu thức (vd. [id]: thu-hoi-thap cho quản lý) — test-kho-giao-dien nhóm 5 kiểm id có thật.
   ok('Mọi trang pha lóc bọc trong <Kho … huongDan=…>',
-     ['moi.astro', '[id].astro'].every(f => /<Kho k=\{k\} tieuDe=[^>]*huongDan="[a-z-]+"/.test(docTrang(f))));
+     ['moi.astro', '[id].astro'].every(f => /<Kho k=\{k\} tieuDe=[^\n]*huongDan=("[a-z-]+"|\{)/.test(docTrang(f))));
   ok('Bẫy Astro: không "{x.length && …}" in ra số 0',
      !/\{[a-zA-Z.]+\.length && /.test(id) && !/\{[a-zA-Z.]+\.length && /.test(moi));
 });

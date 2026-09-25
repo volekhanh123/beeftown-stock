@@ -184,7 +184,7 @@ await nhom('6 · CÁC TRANG CÔNG NỢ', async () => {
   const noDau = docTrang('no-dau.astro');
   const ds = docTrang('index.astro');
   const ncc = docTrang('[id].astro');
-  ok('Trang nợ đầu kỳ: chặn quyền ke_toan, bọc <Kho>', /if \(!k\.duoc\('ke_toan'\)\)/.test(noDau) && /<Kho k=\{k\} tieuDe="Nợ đầu kỳ"/.test(noDau));
+  ok('Trang nợ đầu kỳ: chặn quyền ke_toan, bọc <Kho>', /if \(!k\.duoc\('ke_toan'\)\)/.test(noDau) && /<Kho k=\{k\}[^>]*\stieuDe="Nợ đầu kỳ"/.test(noDau));
   ok('Xem trước → Ghi, form ghi có ma_gui', /value="xem_truoc"/.test(noDau) && /value="ghi"/.test(noDau)
      && /name="ma_gui" value=\{crypto\.randomUUID\(\)\}/.test(noDau));
   ok('Dán Excel và nút "Không có nợ đầu kỳ"', /value="dan"/.test(noDau) && /value="khong_no"/.test(noDau) && />Không có nợ đầu kỳ</.test(noDau));

@@ -118,7 +118,7 @@ const giaTriMang = (d: DongYeuCau) => {
 };
 const monCua = (mhId: string) => mhTheoId.get(mhId) ?? { ten: 'Món đã xóa', dem_goi: true, don_vi_goi: 'gói' };
 ---
-<Kho k={k} tieuDe={yc ? `Yêu cầu ${yc.so_phieu}` : 'Yêu cầu của quầy'} huongDan={laQuay ? 'nv-quay' : 'thu-kho'}>
+<Kho k={k} tieuDe={yc ? `Yêu cầu ${yc.so_phieu}` : 'Yêu cầu của quầy'} huongDan={laQuay ? 'yeu-cau' : 'ra-quay'}>
   <p style="margin:0 0 .25rem"><a href="/noi-bo/kho/quay/yeu-cau">← Quầy cần hàng</a></p>
   <h1>{yc ? `Yêu cầu ${yc.so_phieu}` : 'Yêu cầu của quầy'}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />

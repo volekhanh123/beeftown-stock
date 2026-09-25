@@ -80,7 +80,7 @@ const am = (n: number) => n < 0;
 const soKg = (n: number) => (n ? dinhDangKg(n) : '');
 const soGoi = (n: number) => (n ? String(n) : '');
 ---
-<Kho k={k} tieuDe={mh ? `Thẻ kho · ${mh.ten}` : 'Thẻ kho'} huongDan="thu-kho" rong>
+<Kho k={k} tieuDe={mh ? `Thẻ kho · ${mh.ten}` : 'Thẻ kho'} huongDan="the-kho" rong>
   <InDau tieuDe="THẺ KHO" soPhieu={mh ? `${mh.ma} · ${mh.ten}` : null} chiNhanh={k.chiNhanh?.ten} />
   <p class="kho-khong-in"><a href="/noi-bo/kho/ton">← Tồn kho</a></p>
   <h1>Thẻ kho{mh ? `: ${mh.ten}` : ''}</h1>

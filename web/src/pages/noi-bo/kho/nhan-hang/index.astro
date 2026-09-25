@@ -46,7 +46,7 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 const nhanTrangThai = (tt: string): [string, string] =>
   tt === 'tu_choi' ? ['Bị trả về', 'tat'] : (TRANG_THAI_CHUNG_TU[tt] ?? [tt, 'tat']);
 ---
-<Kho k={k} tieuDe="Nhận hàng" huongDan="thu-kho">
+<Kho k={k} tieuDe="Nhận hàng" huongDan="nhan-hang">
   <h1>Nhận hàng</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 

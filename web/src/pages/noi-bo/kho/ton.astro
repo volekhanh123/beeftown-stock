@@ -112,7 +112,7 @@ const conNgay = (t: DongTon) =>
   t.so_ngay_con < 0 ? `quá ${-t.so_ngay_con} ngày` : t.so_ngay_con === 0 ? 'hết hạn hôm nay' : `còn ${t.so_ngay_con} ngày`;
 const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as const;
 ---
-<Kho k={k} tieuDe="Tồn kho">
+<Kho k={k} huongDan="ton-kho" tieuDe="Tồn kho">
   <h1>Tồn kho</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 

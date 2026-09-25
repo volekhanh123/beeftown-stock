@@ -85,7 +85,7 @@ const chonONut = nccNut.some(n => n.id === dau.nha_cung_cap_id);
 const maGuiForm = maGuiGiu ?? crypto.randomUUID();
 const tieuDe = loai === 'ton_dau' ? 'Nhập hàng có sẵn (tồn đầu kỳ)' : 'Nhận hàng';
 ---
-<Kho k={k} tieuDe={tieuDe} huongDan="thu-kho">
+<Kho k={k} tieuDe={tieuDe} huongDan="nhan-hang">
   <p class="nh-buoc">Bước 1/3 · Hóa đơn và người giao</p>
   <h1>{tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />

@@ -45,7 +45,7 @@ if (k.chiNhanh && k.daKhoiTao) {
 }
 const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 ---
-<Kho k={k} tieuDe="Nhập hàng" huongDan={k.nhanSu.vai_tro === 'ke_toan' ? 'ke-toan' : 'quan-ly-duyet'}>
+<Kho k={k} tieuDe="Nhập hàng" huongDan="duyet-nhap">
   <h1>Nhập hàng</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 

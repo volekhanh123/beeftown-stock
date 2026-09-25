@@ -23,7 +23,7 @@ Mọi trang kho bọc trong `layouts/Kho.astro`:
 |---|---|
 | `k` | Kết quả `moTrangKho(Astro)` — người đang xem, chi nhánh, quyền, số đỏ (`k.viec`) |
 | `tieuDe` | Chữ trên tab trình duyệt |
-| `huongDan` | Mục neo trong trang Hướng dẫn cho nút "?" (bỏ trống = đầu trang) |
+| `huongDan` | id mục trong `lib/kho/huong-dan.ts` cho nút "?" — **mọi trang kho phải có** (test kiểm), xem mục 3i |
 | `rong` | Nội dung rộng 1200px (bảng nhiều cột: báo cáo, công nợ, danh mục) |
 
 Khung gồm:
@@ -94,7 +94,7 @@ migration.
 | `/noi-bo/kho/quet` | Quét một nhãn → món gì, còn bao nhiêu ở đâu, lô nào hạn gần, nút làm tiếp (theo vai, xem 3d) |
 | `/noi-bo/kho/quy-trinh` | Các bước của từng nghiệp vụ (`lib/kho/quy-trinh.ts`), bước đang có việc hiện số đỏ |
 | `/noi-bo/kho/khac` | Mọi ô menu cho màn nhỏ, các màn CRM, đăng xuất |
-| `/noi-bo/kho/huong-dan` | Hướng dẫn trong app (nút "?" trỏ tới các mục ở đây) |
+| `/noi-bo/kho/huong-dan` | Hướng dẫn trong app, lọc theo vai `?vai=` (nút "?" trỏ tới các mục ở đây — mục 3i) |
 
 "Xếp ra bán trước" (`goiYXepQuay` trong `lib/kho/trang-chu.ts`): Beeftown **không giảm giá**
 hàng sắp hết hạn. Thay vào đó, mỗi món ở quầy chỉ ra lô còn hạn gần nhất để xếp lên trước.
@@ -351,6 +351,56 @@ một bản xem trước:
 - Thủ kho không thấy phiếu ND- ở đâu cả: `kho_v_phieu_nhap` và ba hàm đọc chỉ kg bỏ `no_dau`; bảng phiếu nhập đã
   khóa với vai không xem giá (0031). Test: `test-kho-cong-no-web.mjs`, `test-kho-dau-ky.mjs`, `test-kho-thu-kho.mjs`.
 
+## 3i. Hướng dẫn sử dụng (GĐ6)
+
+**Nội dung ở một chỗ: `lib/kho/huong-dan.ts`** (file thuần, không gọi database). Trang trong app
+`/noi-bo/kho/huong-dan` và trang chia sẻ gửi nhóm qua Zalo đều dựng từ file này.
+
+| Xuất | Là gì |
+|---|---|
+| `MUC_HUONG_DAN` | Mỗi mục một việc: `{ id, vai[], tieuDe, tomTat, buoc[], meo?, anh?, link? }` |
+| `NHOM_VAI` | Thứ tự, tên nhóm: Bắt đầu · Thủ kho · Nhân viên quầy & bếp · Quản lý · Kế toán · Chủ quán |
+| `CAU_HOI` | Câu hỏi thường gặp `{ id: 'hoi-…', hoi, dap }` (≥ 15 câu) |
+| `dinhDang(s)` | Escape HTML rồi đổi `**x**` → `<strong>x</strong>` — dùng với `set:html` |
+| `vaiHuongDan(vaiTro)` | Vai tài khoản → nhóm mặc định (vai lạ → Bắt đầu) |
+
+Trang Hướng dẫn: chip chọn vai là link `?vai=thu_kho…` (mặc định vai người xem, `?vai=tat-ca` xem hết),
+mục lục, mỗi mục một thẻ `nb-the` có `id`, câu hỏi dùng `<details>` — không JavaScript. Lọc vai **không
+ẩn** mục nào: mục của vai mình lên trước ("Việc của …"), còn lại nằm dưới "Việc của vai khác". Nhờ vậy
+mọi `#id` luôn có trong HTML, nút "?" của màn nào cũng tới đúng chỗ.
+
+**Thêm một mục**
+
+1. Thêm object vào `MUC_HUONG_DAN`, đặt cạnh các mục cùng nhóm. Nhóm hiển thị = vai **đầu tiên** trong
+   `vai`; các vai sau chỉ để hiện trong "Việc của tôi" của vai đó.
+2. Câu chữ: ngắn, động từ trước, **đúng chữ trên nút** (đọc trang thật: `bấm **Gửi duyệt**`). Không thuật
+   ngữ kỹ thuật. Mục có vai `thu_kho` / `nhan_vien_quay` **không nhắc tiền** (giá nhập, giá vốn, đơn giá,
+   thành tiền, lãi, công nợ — test quét).
+3. `link.href` phải là trang có thật (test dùng bảng đường dẫn như nhóm 1).
+4. Trang kho mới: truyền `huongDan="<id>"` cho `<Kho>`. Trang nhiều vai / nhiều bước thì dùng biểu thức
+   (`huongDan={laQuay ? 'yeu-cau' : 'ra-quay'}`) hoặc `const huongDan = … ;` — test đọc các chuỗi
+   đứng sau `?`, `:`, `=`.
+
+**Quy ước id**: chỉ `[a-z0-9-]`, không trùng giữa mục và câu hỏi (câu hỏi bắt đầu `hoi-`), không dùng
+`muc-luc`, `cau-hoi`, `viec-cua-toi`, `vai-khac`, `nhom-*` (neo riêng của trang). **Không đổi / xóa id đã
+dùng** — link đã lưu, nút "?" và trang chia sẻ trỏ vào đó. Các id cũ từ trước GĐ6 (`menu`, `thu-kho`,
+`nv-quay`, `may-chung`, `mo-may-pin`, `gan-may`, `quan-ly-duyet`, `ke-toan`, `viec-can-lam`, `thong-bao`,
+`tao-tai-khoan`, `quy-trinh`, `quet-nhan`) được test giữ.
+
+**Ảnh** `public/kho/hd-<tên>.png` (thư mục phẳng — `.gitignore` chỉ mở `/web/public/kho/*.png`). Trường
+`anh: { file, chu, rong, cao }`; `rong`/`cao` phải khớp cỡ file thật (để `<img width height>` không nhảy
+trang). Chụp từ **Supabase giả** (không bao giờ dữ liệu thật) bằng Playwright: `astro dev` trỏ vào một
+Supabase giả chạy cục bộ (máy chủ HTTP giả, để ngoài repo), đăng nhập `chu@test`, `ql@test`, `tk@test`, `nv@test`, `kt@test` / `matkhau`, viewport
+390×844, `deviceScaleFactor: 1`, chụp khung nhìn (không `fullPage`) hoặc crop phần chính; mỗi ảnh
+≤ 120KB. Script chụp để ngoài repo (scratchpad `chup-huong-dan.mjs` của phiên GĐ6); chụp lại khi giao
+diện màn đó đổi nhiều. Danh sách tên: `hd-trang-chu-thu-kho`, `hd-nhan-hang`, `hd-nhan-hang-dong`,
+`hd-pha-loc`, `hd-quet`, `hd-quay-hom-nay`, `hd-yeu-cau`, `hd-dem-quay`, `hd-bao-huy`, `hd-hom-nay`,
+`hd-duyet`, `hd-dien-gia`, `hd-cong-no`, `hd-thiet-lap`, `hd-menu` (thanh đáy, 390×69).
+
+**Test**: `crm/test/test-kho-giao-dien.mjs` nhóm 5 — mọi trang kho (trừ Hướng dẫn) có `huongDan` trỏ
+mục có thật; id không trùng, đúng dạng, giữ id cũ; ≥ 15 câu hỏi; ảnh có file, là PNG đúng cỡ, ≤ 120KB;
+link có thật; phần thủ kho / NV quầy không nhắc tiền; `dinhDang` escape đúng.
+
 ## 4. Cài như app (PWA)
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng
@@ -397,7 +447,8 @@ Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa th
 
 1. Đầu trang: `const k = await moTrangKho(Astro); if (k instanceof Response) return k;`
    rồi một dòng chặn quyền `if (!k.duoc('…')) return Astro.redirect('/noi-bo/kho', 302);`.
-2. Bọc trong `<Kho k={k} tieuDe="…">`, có `<h1>` và `<BaoKho>`.
+2. Bọc trong `<Kho k={k} tieuDe="…" huongDan="…">`, có `<h1>` và `<BaoKho>`. Chưa có mục hướng dẫn
+   hợp thì thêm vào `lib/kho/huong-dan.ts` (mục 3i).
 3. Form: POST + ô ẩn `viec`; thành công → `chuyenHuong(Astro, url, kq)`. Form tạo chứng từ có
    `ma_gui`; form sửa có `phien_ban`.
 4. Chữ cho nhân viên: tiếng Việt đơn giản, không thuật ngữ ("hạn gần bán trước", không "FEFO").
@@ -414,7 +465,7 @@ Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa th
 ```bash
 cd crm && npm test                    # toàn bộ; phần kho chạy qua test/chay-kho.mjs
 node test/chay-kho.mjs                # chỉ kho: tự tìm mọi test-kho-*.mjs
-node test/test-kho-giao-dien.mjs      # menu, link, manifest, JavaScript (không cần database)
+node test/test-kho-giao-dien.mjs      # menu, link, hướng dẫn, manifest, JavaScript (không cần database)
 node test/test-kho-viec.mjs           # số đỏ, thông báo, ngưỡng, chỉ số quản trị
 cd ../web && npm run kiem-tra && npm run quet && npm run build
 ```

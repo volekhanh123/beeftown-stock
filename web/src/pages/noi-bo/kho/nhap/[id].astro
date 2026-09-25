@@ -273,7 +273,7 @@ const soDongThieuGia = dongDb.filter(d => !thanhTienTam(d)).length;
 const [linkVe, chuVe] = Astro.url.searchParams.get('tu') === 'duyet' || choToiDuyet
   ? ['/noi-bo/kho/duyet', '← Về trang Duyệt']
   : ['/noi-bo/kho/nhap', '← Danh sách phiếu nhập'];
-const huongDan = dienGiaDuoc ? (k.nhanSu.vai_tro === 'ke_toan' ? 'ke-toan' : 'quan-ly-duyet') : 'quan-ly-duyet';
+const huongDan = 'duyet-nhap';
 ---
 <Kho k={k} tieuDe={tieuDe} huongDan={huongDan}>
   <h1>{tieuDe}</h1>

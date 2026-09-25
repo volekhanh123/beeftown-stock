@@ -72,7 +72,7 @@ const viTriDem = viTri.filter(v => (v.loai === 'kho' || v.loai === 'quay') && v.
 const DEM_QUAY = '/noi-bo/kho/quay/dem';
 const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
 ---
-<Kho k={k} tieuDe="Kiểm kê" huongDan={laQuay ? 'nv-quay' : undefined}>
+<Kho k={k} tieuDe="Kiểm kê" huongDan="kiem-ke">
   <h1>Kiểm kê</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 

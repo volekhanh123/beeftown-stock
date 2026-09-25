@@ -108,7 +108,7 @@ const hienBuoc = k.duoc('danh_muc') && buoc.some(b => !b.xong);
 
 const tieuDe = laQuay ? 'Quầy hôm nay' : laQuanLy ? 'Hôm nay' : vai === 'thu_kho' ? 'Việc hôm nay' : 'Trang chủ';
 ---
-<Kho k={k} tieuDe={tieuDe} huongDan={laQuay ? 'nv-quay' : vai === 'thu_kho' ? 'thu-kho' : laKeToan ? 'ke-toan' : 'quan-ly-duyet'}>
+<Kho k={k} tieuDe={tieuDe} huongDan={laQuay ? 'nv-quay' : vai === 'thu_kho' ? 'thu-kho' : laKeToan ? 'ke-toan' : 'hom-nay'}>
   <div class="kho-chao">
     <p>Chào {tenGoi} · {dinhDangNgay(homNay)}</p>
     <h1>{tieuDe}</h1>

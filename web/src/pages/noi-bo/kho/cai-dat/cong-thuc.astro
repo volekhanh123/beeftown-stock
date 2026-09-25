@@ -45,7 +45,7 @@ const tenMh = new Map(matHang.map(m => [m.id, m]));
 const dangSua = congThuc.find(c => c.id === suaId);
 const tongTyLe = (c: CongThuc) => c.dong.reduce((s, d) => s + (d.ty_le_du_kien ?? 0), 0);
 ---
-<Kho k={k} tieuDe="Công thức pha lóc">
+<Kho k={k} huongDan="cong-thuc" tieuDe="Công thức pha lóc">
   <h1>Công thức pha lóc</h1>
   <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />

@@ -11,7 +11,9 @@
  *     xem tiền (0031: thủ kho không thấy tiền — nhận hàng ở màn chỉ kg);
  *   - khóa số đỏ trong menu và quy trình là khóa kho_dem_viec có thật, khóa sự
  *     kiện của database (0030 trở đi) đều có câu chữ ở lib/kho/viec.ts;
- *   - mục "?" của từng trang trỏ tới một mục có thật trong trang Hướng dẫn;
+ *   - hướng dẫn (lib/kho/huong-dan.ts): mọi trang kho có nút "?" trỏ mục có
+ *     thật, id không trùng, ảnh có file, link đúng, phần thủ kho / NV quầy
+ *     không nhắc tiền;
  *   - cài như app: manifest hợp lệ, ảnh biểu tượng đúng kích thước;
  *   - JavaScript chỉ ở những chỗ đã cho phép (trang tắt JS vẫn chạy đủ).
  */
@@ -26,6 +28,9 @@ import {
 import { cauSuKien, KHOA_SU_KIEN } from '../../web/src/lib/kho/viec.ts';
 import { docFormDienGia, chuSoSanhGia, cauCanhBaoGia } from '../../web/src/lib/kho/nhap.ts';
 import { QUY_TRINH } from '../../web/src/lib/kho/quy-trinh.ts';
+import {
+  MUC_HUONG_DAN, CAU_HOI, NHOM_VAI, dinhDang, vaiHuongDan,
+} from '../../web/src/lib/kho/huong-dan.ts';
 import { BIEU_TUONG } from '../../web/src/lib/kho/bieu-tuong.ts';
 import { duoc, QUYEN_KHO } from '../../web/src/lib/kho/chung.ts';
 import {
@@ -238,16 +243,97 @@ await nhom('4 · THÔNG BÁO: KHÓA DATABASE ↔ CÂU CHỮ', async () => {
 });
 
 // ===========================================================================
-await nhom('5 · NÚT "?" TRỎ ĐÚNG MỤC HƯỚNG DẪN', async () => {
-  const hd = doc(join(TRANG, 'noi-bo/kho/huong-dan.astro'));
-  const neoCo = new Set([...hd.matchAll(/\bid="([a-z0-9-]+)"/g)].map(m => m[1]));
+await nhom('5 · HƯỚNG DẪN: NÚT "?" TRỎ ĐÚNG MỤC, NỘI DUNG HỢP LỆ', async () => {
+  // Nội dung ở lib/kho/huong-dan.ts; trang huong-dan.astro in mỗi mục với id={m.id}
+  // và mỗi câu hỏi với id={c.id} — nên neo có thật = id trong hai mảng này.
+  const hdTrang = doc(join(TRANG, 'noi-bo/kho/huong-dan.astro'));
+  ok('Trang Hướng dẫn in mục và câu hỏi từ huong-dan.ts (id={m.id}, id={c.id})',
+    /MUC_HUONG_DAN/.test(hdTrang) && /CAU_HOI/.test(hdTrang) && /id=\{m\.id\}/.test(hdTrang) && /id=\{c\.id\}/.test(hdTrang));
+  const idMuc = MUC_HUONG_DAN.map(m => m.id);
+  const idHoi = CAU_HOI.map(c => c.id);
+  const moiId = [...idMuc, ...idHoi];
+  const neoCo = new Set(moiId);
+  const trung = moiId.filter((x, i, a) => a.indexOf(x) !== i);
+  ok('id mục và câu hỏi không trùng', trung.length === 0, trung.join(', '));
+  const idXau = moiId.filter(x => !/^[a-z0-9]+(-[a-z0-9]+)*$/.test(x));
+  ok('id chỉ gồm chữ thường không dấu, số, gạch ngang', idXau.length === 0, idXau.join(', '));
+  // Trang tự đặt thêm vài neo (mục lục, nhóm) — không được trùng id mục.
+  const DANH_RIENG = ['muc-luc', 'cau-hoi', 'viec-cua-toi', 'vai-khac'];
+  const dungRieng = moiId.filter(x => DANH_RIENG.includes(x) || x.startsWith('nhom-'));
+  ok('id không trùng neo riêng của trang (mục lục, nhóm)', dungRieng.length === 0, dungRieng.join(', '));
+  ok('Câu hỏi có id "hoi-…", mục thì không', idHoi.every(x => x.startsWith('hoi-')) && !idMuc.some(x => x.startsWith('hoi-')));
+  ok(`Có ít nhất 15 câu hỏi thường gặp (có ${CAU_HOI.length})`, CAU_HOI.length >= 15);
+  ok('Câu hỏi nào cũng có lời đáp', CAU_HOI.every(c => c.hoi.trim() && c.dap.trim()));
+
+  const vaiCo = new Set(NHOM_VAI.map(n => n.vai));
+  const vaiLa = MUC_HUONG_DAN.filter(m => m.vai.length === 0 || m.vai.some(v => !vaiCo.has(v)));
+  ok('Mục nào cũng có vai, và vai có trong NHOM_VAI', vaiLa.length === 0, vaiLa.map(m => m.id).join(', '));
+  const nhomRong = NHOM_VAI.filter(n => !MUC_HUONG_DAN.some(m => m.vai[0] === n.vai));
+  ok('Nhóm vai nào cũng có mục', nhomRong.length === 0, nhomRong.map(n => n.ten).join(', '));
+  const itBuoc = MUC_HUONG_DAN.filter(m => m.buoc.length < 2 || !m.tieuDe.trim() || !m.tomTat.trim());
+  ok('Mục nào cũng có tiêu đề, tóm tắt và ít nhất 2 bước', itBuoc.length === 0, itBuoc.map(m => m.id).join(', '));
+  const DANH_ID_CU = ['menu', 'thu-kho', 'nv-quay', 'may-chung', 'mo-may-pin', 'gan-may', 'quan-ly-duyet',
+    'ke-toan', 'viec-can-lam', 'thong-bao', 'tao-tai-khoan', 'quy-trinh', 'quet-nhan'];
+  const mat = DANH_ID_CU.filter(x => !neoCo.has(x));
+  ok('Giữ mọi id cũ (link đã lưu vẫn tới đúng mục)', mat.length === 0, mat.join(', '));
+
+  // dinhDang: escape trước rồi mới đổi **đậm**.
+  ok('dinhDang đổi **x** thành <strong>', dinhDang('bấm **Gửi duyệt** nhé') === 'bấm <strong>Gửi duyệt</strong> nhé');
+  ok('dinhDang escape HTML', dinhDang('<script>&"\'') === '&lt;script&gt;&amp;&quot;&#39;');
+  ok('dinhDang không để lọt thẻ trong phần đậm', dinhDang('**<b>x</b>**') === '<strong>&lt;b&gt;x&lt;/b&gt;</strong>');
+  ok('vaiHuongDan: vai lạ → Bắt đầu', vaiHuongDan('may_ipos') === 'chung' && vaiHuongDan(null) === 'chung'
+    && vaiHuongDan('thu_kho') === 'thu_kho');
+
+  // Mọi trang kho (trừ chính trang Hướng dẫn) có nút "?" trỏ tới mục có thật.
+  // Lấy id trong huongDan="x", huongDan={biểu thức} và const huongDan = …;
+  // (chỉ các chuỗi đứng sau ? : hoặc = — bỏ 'huy', 'thu_kho' trong phép so).
+  const idTrongBieuThuc = s => [...s.matchAll(/(?:[?:]|(?<![=!<>])=)\s*'([^']+)'/g)].map(m => m[1]);
   const dung = [];
+  const khongCo = [];
   for (const f of moiFile(join(TRANG, 'noi-bo/kho')).filter(p => p.endsWith('.astro'))) {
-    for (const m of doc(f).matchAll(/huongDan="([^"]+)"/g)) dung.push({ f: relative(TRANG, f), neo: m[1] });
+    const ten = relative(TRANG, f);
+    if (ten.split(sep).join('/') === 'noi-bo/kho/huong-dan.astro') continue;
+    const ma = doc(f);
+    const neo = [];
+    for (const m of ma.matchAll(/huongDan="([^"]+)"/g)) neo.push(m[1]);
+    for (const m of ma.matchAll(/huongDan=\{([^}]+)\}/g)) {
+      if (/^\s*huongDan\s*$/.test(m[1])) {
+        const khai = ma.match(/const huongDan\s*=([\s\S]*?);/);
+        if (khai) neo.push(...idTrongBieuThuc('=' + khai[1]));
+      } else neo.push(...idTrongBieuThuc(m[1]));
+    }
+    if (neo.length === 0) khongCo.push(ten);
+    for (const n of neo) dung.push({ f: ten, neo: n });
   }
+  ok('Mọi trang kho (trừ Hướng dẫn) có nút "?" trỏ mục riêng', khongCo.length === 0, khongCo.join(', '));
   const thieu = dung.filter(d => !neoCo.has(d.neo));
-  ok(`Có trang dùng nút "?" (${dung.length} trang)`, dung.length > 0);
-  ok('Mọi mục "?" tồn tại trong trang Hướng dẫn', thieu.length === 0, thieu.map(d => `${d.f}#${d.neo}`).join(', '));
+  ok(`Mọi mục "?" tồn tại trong Hướng dẫn (${dung.length} chỗ dùng)`, dung.length > 0 && thieu.length === 0,
+    thieu.map(d => `${d.f}#${d.neo}`).join(', '));
+
+  // Link "Mở màn này" trỏ trang có thật; ảnh có file, đúng cỡ khai báo, không quá nặng.
+  const linkHong = MUC_HUONG_DAN.filter(m => m.link && !trangCua(m.link.href)).map(m => `${m.id}: ${m.link.href}`);
+  ok('Link "Mở màn này" của mọi mục trỏ tới trang có thật', linkHong.length === 0, linkHong.join(' | '));
+  const PUB = join(WEB, 'public');
+  const coAnh = MUC_HUONG_DAN.filter(m => m.anh);
+  ok(`Có ảnh minh họa (${coAnh.length} mục)`, coAnh.length > 0);
+  const anhThieu = coAnh.filter(m => !existsSync(join(PUB, m.anh.file)));
+  ok('Mọi ảnh hướng dẫn có file trong web/public', anhThieu.length === 0, anhThieu.map(m => m.anh.file).join(', '));
+  const anhSaiCo = coAnh.filter(m => existsSync(join(PUB, m.anh.file))).filter(m => {
+    const b = readFileSync(join(PUB, m.anh.file));
+    return b.readUInt32BE(0) !== 0x89504e47 || b.readUInt32BE(16) !== m.anh.rong || b.readUInt32BE(20) !== m.anh.cao;
+  });
+  ok('Ảnh là PNG đúng cỡ rộng × cao khai trong huong-dan.ts', anhSaiCo.length === 0, anhSaiCo.map(m => m.anh.file).join(', '));
+  const anhNang = coAnh.filter(m => existsSync(join(PUB, m.anh.file)) && statSync(join(PUB, m.anh.file)).size > 120 * 1024);
+  ok('Mỗi ảnh ≤ 120KB', anhNang.length === 0, anhNang.map(m => m.anh.file).join(', '));
+  ok('Ảnh đặt ở /kho/hd-*.png, có chữ mô tả', coAnh.every(m => /^\/kho\/hd-[a-z0-9-]+\.png$/.test(m.anh.file) && m.anh.chu.trim()));
+
+  // Thủ kho, NV quầy không thấy tiền (0031) — phần của họ không nhắc tiền.
+  const TIEN = /giá nhập|giá vốn|đơn giá|thành tiền|lãi|công nợ/i;
+  const chuCua = m => [m.tieuDe, m.tomTat, ...m.buoc, ...(m.meo ?? []), m.anh?.chu ?? '', m.link?.chu ?? ''].join(' | ');
+  const nhacTien = MUC_HUONG_DAN.filter(m => m.vai.some(v => v === 'thu_kho' || v === 'nhan_vien_quay'))
+    .filter(m => TIEN.test(chuCua(m)));
+  ok('Phần của thủ kho / NV quầy không nhắc tiền', nhacTien.length === 0,
+    nhacTien.map(m => `${m.id}: ${chuCua(m).match(TIEN)[0]}`).join(', '));
 });
 
 // ===========================================================================

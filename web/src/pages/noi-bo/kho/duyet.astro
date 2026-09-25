@@ -57,7 +57,7 @@ if (k.chiNhanh && k.daKhoiTao) {
 }
 const tong = nhap.length + huy.length + kiemKe.length;
 ---
-<Kho k={k} tieuDe="Duyệt" huongDan={duyetKhac ? 'quan-ly-duyet' : 'ke-toan'}>
+<Kho k={k} tieuDe="Duyệt" huongDan={duyetKhac ? 'quan-ly-duyet' : 'duyet-nhap'}>
   <h1>Chờ duyệt{tong > 0 ? ` · ${tong}` : ''}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 

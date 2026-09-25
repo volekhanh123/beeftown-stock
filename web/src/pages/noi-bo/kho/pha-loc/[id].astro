@@ -300,7 +300,7 @@ const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
 const soGoiMon = (m: { dem_goi: boolean; so_goi: number; so_nhan: number; don_vi_goi: string }) =>
   m.dem_goi ? `${m.so_goi} ${m.don_vi_goi}` : `${m.so_nhan} nhãn`;
 ---
-<Kho k={k} tieuDe={tieuDe} huongDan="thu-kho">
+<Kho k={k} tieuDe={tieuDe} huongDan={phien?.thu_hoi_thap && k.duoc('duyet') ? 'thu-hoi-thap' : 'pha-loc'}>
   {buoc === 'can_quet' && <p class="pl-buoc">Bước 2/3 · Cân & quét</p>}
   {buoc === 'ket_qua' && <p class="pl-buoc">Bước 3/3 · Kết quả</p>}
   <h1>{buoc === 'xong' ? `Đã chốt ${phien?.so_phieu ?? ''}` : tieuDe}{mhVao && buoc !== 'xong' ? ` · ${mhVao.ten}` : ''}</h1>

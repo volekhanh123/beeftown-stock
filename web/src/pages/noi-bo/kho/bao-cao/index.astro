@@ -52,7 +52,7 @@ const hien = (c: CotBaoCao, v: unknown) => {
 const link = (thay: Record<string, string>) => `/noi-bo/kho/bao-cao?${new URLSearchParams({ bao_cao: ten, tu, den, ...thay }).toString()}`;
 const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDangNgay(den)}`;
 ---
-<Kho k={k} tieuDe="Báo cáo kho" rong>
+<Kho k={k} huongDan="bao-cao" tieuDe="Báo cáo kho" rong>
   <h1>Báo cáo kho</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 

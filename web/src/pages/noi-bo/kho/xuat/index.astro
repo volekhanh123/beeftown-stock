@@ -49,7 +49,7 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 const moTa = (p: PhieuXuatTom) =>
   p.loai === 'chuyen' ? `${p.ten_vi_tri} → ${p.ten_vi_tri_den ?? '—'}` : `từ ${p.ten_vi_tri}`;
 ---
-<Kho k={k} tieuDe="Chuyển, xuất, hủy">
+<Kho k={k} huongDan="chuyen-xuat" tieuDe="Chuyển, xuất, hủy">
   <h1>Chuyển, xuất, hủy</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 

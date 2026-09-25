@@ -119,10 +119,10 @@ const maGui = crypto.randomUUID();
     <section class="nb-the kho-quet-kq">
       <header>
         <strong>{mh.ten}</strong>
-        <span>{soKgNhan !== null ? `Gói này: ${dinhDangKg(soKgNhan)}` : ''}</span>
+        <span>{soKgNhan !== null ? `Gói này: ${dinhDangKg(soKgNhan)} kg` : ''}</span>
       </header>
       <p class="kho-phu">
-        Tổng đang có: {mh.dem_goi ? `${tongGoi} ${mh.don_vi_goi} · ` : ''}{dinhDangKg(tongKg)}
+        Tổng đang có: {mh.dem_goi ? `${tongGoi} ${mh.don_vi_goi} · ` : ''}{dinhDangKg(tongKg)} kg
         {loGanNhat && <>{' · '}lô hạn gần nhất {dinhDangNgay(loGanNhat.han_dung)} ở {loGanNhat.ten_vi_tri}</>}
       </p>
 
@@ -136,7 +136,7 @@ const maGui = crypto.randomUUID();
               <li>
                 <span class={`kho-han ${l.tinh_trang_han}`}>{TEN_HAN[l.tinh_trang_han]}</span>
                 <span>Hạn {dinhDangNgay(l.han_dung)} · đóng {dinhDangNgay(l.ngay_dong_goi)}</span>
-                <b>{l.dem_goi ? `${l.so_goi} ${l.don_vi_goi} · ` : ''}{dinhDangKg(l.so_kg)}</b>
+                <b>{l.dem_goi ? `${l.so_goi} ${l.don_vi_goi} · ` : ''}{dinhDangKg(l.so_kg)} kg</b>
                 {vanHanh && viecVoiLo(l).length > 0 && (
                   <div class="quet-lo-nut">
                     {viecVoiLo(l).map(v => (

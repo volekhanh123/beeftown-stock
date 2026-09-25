@@ -52,7 +52,7 @@ const thuHoi = thuHoiTheoTang(daChot.filter(p => p.ngay_pha >= tu30));
 const sapXep = [...ds].sort((a, b) => (a.trang_thai === 'nhap' ? 0 : 1) - (b.trang_thai === 'nhap' ? 0 : 1));
 const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 ---
-<Kho k={k} tieuDe="Pha lóc">
+<Kho k={k} huongDan="pha-loc" tieuDe="Pha lóc">
   <h1>Pha lóc</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 

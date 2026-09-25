@@ -118,7 +118,7 @@ const nhomLuoi = (['tang', 'phan_cat', 'phu_pham'] as const)
   .filter(n => n.hang.length > 0);
 const ngayMin = congNgay(homNay, -90);
 ---
-<Kho k={k} tieuDe="Tồn đầu kỳ" rong>
+<Kho k={k} huongDan="ton-dau" tieuDe="Tồn đầu kỳ" rong>
   <h1>Tồn đầu kỳ</h1>
   <p>{vaoThietLap ? <a href="/noi-bo/kho/cai-dat#buoc-ton_dau">← Thiết lập kho</a> : <a href="/noi-bo/kho/nhan-hang">← Nhận hàng</a>}</p>
   <p class="kho-phu" style="margin-top:0">Ghi hàng <strong>đang có sẵn</strong> trong kho lạnh và quầy trước ngày bắt đầu dùng

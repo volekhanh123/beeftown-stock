@@ -192,7 +192,7 @@ const tomTatTruong = (gt: GiaTriTruong) => dnLo
 const soGoiChu = (so: number, donVi: string) => (so > 0 ? `${so} ${donVi}` : '');
 const tieuDe = phieu ? `Nhận hàng ${phieu.so_phieu}` : 'Nhận hàng';
 ---
-<Kho k={k} tieuDe={tieuDe} huongDan="thu-kho">
+<Kho k={k} tieuDe={tieuDe} huongDan="nhan-hang-can">
   {man === 'them' && <p class="nh-buoc">Bước 2/3 · Cân từng món</p>}
   {man === 'gui' && <p class="nh-buoc">Bước 3/3 · Xem lại rồi gửi</p>}
   <h1>{man === 'xong' ? 'Đã gửi' : tieuDe}</h1>

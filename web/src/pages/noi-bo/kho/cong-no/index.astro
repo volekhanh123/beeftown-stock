@@ -80,7 +80,7 @@ const hanLop = (han: string | null) => (!han ? '' : han < homNay ? 'het_han' : h
 // Ô đang mở: viền đậm để biết danh sách bên dưới là của ô nào.
 const dangMo = (l: Loc) => (loc === l ? 'outline:3px solid var(--than);outline-offset:1px' : undefined);
 ---
-<Kho k={k} tieuDe="Công nợ" rong>
+<Kho k={k} huongDan="cong-no" tieuDe="Công nợ" rong>
   <h1>Công nợ nhà cung cấp</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 

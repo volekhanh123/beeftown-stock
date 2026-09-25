@@ -111,7 +111,7 @@ const o = (id: string): ONoDau => giaTri[id] ?? { tien: '', han: '', hd: '', gc:
 /** Hạn database sẽ tự đặt khi bỏ trống. */
 const hanTuDong = (n: NccNoDau | undefined) => congNgay(homNay, n?.so_ngay_no ?? 0);
 ---
-<Kho k={k} tieuDe="Nợ đầu kỳ" rong>
+<Kho k={k} huongDan="no-dau" tieuDe="Nợ đầu kỳ" rong>
   <h1>Nợ đầu kỳ</h1>
   <p><a href="/noi-bo/kho/cong-no">← Công nợ nhà cung cấp</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
