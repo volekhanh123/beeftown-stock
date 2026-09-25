@@ -101,7 +101,7 @@ hàng sắp hết hạn. Thay vào đó, mỗi món ở quầy chỉ ra lô còn
 
 Link dùng chung giữa các trang (trang nhận phải đọc được các tham số này):
 
-- `/noi-bo/kho/xuat/moi?loai=chuyen|xuat_bep|huy&tu=<vị trí>&lo=<lô>&mh=<mặt hàng>` — mở sẵn phiếu
+- `/noi-bo/kho/xuat/moi?loai=chuyen|xuat_bep|huy|xuat_khac&tu=<vị trí>&lo=<lô>&mh=<mặt hàng>` — mở sẵn phiếu
 - `/noi-bo/kho/ton?han=het_han|sap_het` (hai lọc **riêng**, không gộp) `&duoi_muc=1&vi_tri=quay&q=…`
 - `/noi-bo/kho/nhap?loc=nhap|cho_duyet|tu_choi` (vai xem giá), `/noi-bo/kho/nhan-hang?loc=nhap|cho_duyet|tu_choi|da_duyet`
   (thủ kho), `/noi-bo/kho/nhan-hang/moi?loai=ton_dau`, `/noi-bo/kho/pha-loc?loc=nhap`
@@ -122,6 +122,45 @@ Link dùng chung giữa các trang (trang nhận phải đọc được các tha
 - NV quầy xem **Tồn kho** chỉ thấy hàng ở quầy và hàng chờ hủy (`?vi_tri=kho` bị bỏ qua).
 - Đăng nhập xong vào thẳng `/noi-bo/kho` (sửa 1 dòng `pages/noi-bo/dang-nhap.astro`). Vai không
   có quyền kho (thu ngân, marketing) bị `moTrangKho` đưa về `/noi-bo` như cũ.
+
+## 3c. Quầy: yêu cầu → mang ra → bấm nhận · đếm cộng dồn · xuất khác (GĐ5b, migration 0032)
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/quay/yeu-cau` | NV quầy (quản lý gửi thay được); thủ kho xem danh sách chờ | Gửi yêu cầu: danh sách món sắp hết từ `kho_goi_y_ra_quay` có sẵn số gói nên lấy, sửa được, ghi 0 là bỏ; thêm món khác. Nhiều quầy: `?vt=<quầy>` |
+| `/noi-bo/kho/quay/yeu-cau/<id>` | Thủ kho | "Mang ra quầy" = `kho_chuyen_theo_yeu_cau` (hạn gần lấy trước, sửa số được, chọn kho lấy); hủy yêu cầu khi chưa mang; hủy chuyến khi quầy chưa nhận |
+| `/noi-bo/kho/quay/nhan` | NV quầy | "Đã nhận đủ" một chạm, hoặc `?thieu=<phiếu>` ghi số thực nhận. Người mang ra không thấy nút nhận. Quá `gio_nhac_chuyen` giờ thì thẻ đỏ |
+| `/noi-bo/kho/quay/dem` | NV quầy (`van_hanh`) | Đếm quầy cuối ngày, quét cộng dồn (dưới đây). `?vi_tri=<quầy>` |
+| `/noi-bo/kho/xuat/moi?loai=xuat_khac` | `van_hanh` | Xuất khác (dùng nội bộ, tặng khách, hàng mẫu…): bắt buộc lý do, số `XK-`, chỉ hàng còn hạn |
+| `/noi-bo/kho/xuat/moi?loai=huy` | `van_hanh` | Báo hủy 3 bước trong **một form**: Hàng → Lý do (nút lớn) → Ảnh và gửi; ô ẩn `buoc` giữ bước, ảnh đã tải đi theo `anh_da_tai`, `ma_gui` giữ nguyên |
+| `/noi-bo/kho/xuat/<id>` | Quản lý (`duyet`) | Phiếu chuyển `nhan_thieu`: "Trả về kho" / "Ghi mất" (`kho_xu_ly_chuyen_thieu`) |
+
+**Hàng đi đường.** Mỗi chi nhánh có một vị trí loại `dang_chuyen` ("Đang mang ra quầy"), do
+`kho_khoi_tao` tạo — không đổi loại, không tắt được (màn Vị trí coi nó như "chờ hủy"). Khi bật
+công tắc **"Quầy phải bấm nhận hàng"** (`kho_cai_dat.chuyen_quay_can_nhan`, màn Cài đặt; DB mặc
+định tắt) thì phiếu chuyển kho → quầy của người **không phải** NV quầy đưa hàng vào `dang_chuyen`
+(phiếu trạng thái `dang_chuyen`); NV quầy bấm nhận mới vào quầy (`da_nhan`), thiếu thì `nhan_thieu`
+→ quản lý trả về kho (`da_tra_ve`) hoặc ghi mất. NV quầy tự lấy ("Tự lấy hàng") vẫn vào thẳng.
+
+- `dang_chuyen` **không phải chỗ để hàng**: trigger chặn nó làm nguồn/đích của phiếu xuất, kiểm kê,
+  pha lóc; nhập hàng chỉ nhận kho/quầy. Trên web: mọi ô chọn vị trí và danh sách lô để lấy phải bỏ
+  cả `cho_huy` lẫn `dang_chuyen` (`laNoiDeHang` trong `xuat.ts`); `viecVoiLo` (`ton.ts`) không cho
+  nút nào với hàng đi đường. Tồn kho "Mọi nơi" vẫn hiện dòng "Đang mang ra quầy" để biết hàng ở đâu.
+- Còn hàng đi đường vào một quầy thì chưa gửi / duyệt được kiểm kê quầy đó — nhận trước.
+- Khóa sự kiện mới: `yeu_cau_quay` (thủ kho), `hang_dang_chuyen` (quầy; `phu = 'qua_gio'` là đỏ),
+  `chuyen_nhan_thieu` (quản lý, mở `/noi-bo/kho/xuat/<id>`). Câu chữ ở `viec.ts`.
+
+**Đếm quầy cộng dồn.** Mỗi lần bấm "Cộng vào số đếm" là một **lượt** `kho_quet_kiem_ke(p_id,
+p_ma_gui, p_ma)`: web gửi **chuỗi mã thô** như máy quét gõ ra, database giải mã theo mẫu mã vạch
+(như `lib/kho/ma-vach.ts`) và ghi mỗi nhãn một dòng (`kho_kiem_ke_quet`). `ma_gui` là khóa của
+lượt → gửi lại (mạng chập, F5) không cộng đôi; lỗi thì trang hiện lại các mã trong ô với **cùng**
+`ma_gui`. Hai máy quét cùng lúc vẫn cộng đúng (khóa phiếu). Sửa: `kho_bo_quet_kiem_ke` (`lan_cuoi`
+bỏ lượt gần nhất của mình, `bot_mot` −1 gói, `xoa_mon`). "Quét xong" → món chưa thấy gói nào →
+`kho_het_hang_con_lai(p_id, p_phien_ban)` ghi = 0 một chạm rồi gửi. Màn cảm ơn không có sổ/chênh.
+Ở phiếu kiểm kê đầy đủ, số gõ tay **cộng thêm** vào số nhãn đã quét (`so_goi_them`).
+
+**Báo cáo.** Xuất – nhập – tồn gọi `kho_bao_cao_xnt_v2` (thêm cột xuất khác sau xuất bếp, hao hụt
+sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
 
 ## 4. Cài như app (PWA)
 
@@ -148,7 +187,7 @@ dùng ở:
 
 | Chỗ | Để làm gì |
 |---|---|
-| `components/kho/QuetMa.astro` (script trong file) | Camera đọc mã (Chrome Android), đếm gói trùng mã, bấm "Xong" tự gửi form |
+| `components/kho/QuetMa.astro` (script trong file) | Camera đọc mã (`BarcodeDetector` trên Chrome Android; không có thì nạp `ean13.js`), đếm gói trùng mã, bấm "Xong" tự gửi form |
 | `public/kho/js/ean13.js` | (GĐ5b) Giải mã EAN-13 bằng JS thuần cho iPhone — Safari không có `BarcodeDetector` |
 | `public/kho/js/anh-nho.js` | (GĐ5a) Thu ảnh hóa đơn ≤ 1600px trước khi tải |
 | `public/kho/js/may-chung.js` | (GĐ5d) Đếm giờ tự khóa máy dùng chung |

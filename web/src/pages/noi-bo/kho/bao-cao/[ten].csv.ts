@@ -7,6 +7,9 @@
  * Đi qua middleware như mọi đường /noi-bo — chưa đăng nhập thì bị chuyển về
  * trang đăng nhập. Dữ liệu lấy bằng client mang token của người đang dùng,
  * nên RLS vẫn quyết định họ thấy gì.
+ *
+ * Cột của file theo BAO_CAO trong lib/kho/bao-cao.ts — xuất – nhập – tồn có
+ * thêm xuất khác và hao hụt (0032); định dạng file giữ như cũ.
  */
 import type { APIRoute } from 'astro';
 import { duoc, homNayVn } from '../../../../lib/kho/chung.ts';

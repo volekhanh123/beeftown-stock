@@ -21,7 +21,8 @@ export interface DongTon {
   don_vi_goi: string;
   vi_tri_id: string;
   ten_vi_tri: string;
-  loai_vi_tri: 'kho' | 'quay' | 'cho_huy';
+  /** dang_chuyen (0032): hàng đang mang ra quầy, chưa bấm nhận. */
+  loai_vi_tri: 'kho' | 'quay' | 'cho_huy' | 'dang_chuyen';
   so_kg: number;
   so_goi: number;
   nguon: string;
@@ -189,10 +190,11 @@ export function locTon(ds: DongTon[], b: BoLocTon, chiMatHang: Set<string> | nul
 
 /**
  * Việc làm nhanh với một lô (vai "van_hanh"): link mở sẵn phiếu với đúng nơi
- * lấy và đúng lô. Hết hạn → chỉ còn "Báo hủy". Hàng ở chỗ chờ hủy → không có gì.
+ * lấy và đúng lô. Hết hạn → chỉ còn "Báo hủy". Hàng ở chỗ chờ hủy, hàng đang
+ * mang ra quầy (0032 — chỉ nhận / hủy chuyến mới đụng được) → không có gì.
  */
 export function viecVoiLo(t: DongTon): { ma: 'chuyen' | 'xuat_bep' | 'huy'; ten: string; link: string }[] {
-  if (t.loai_vi_tri === 'cho_huy' || (t.so_kg <= 0 && t.so_goi <= 0)) return [];
+  if (t.loai_vi_tri === 'cho_huy' || t.loai_vi_tri === 'dang_chuyen' || (t.so_kg <= 0 && t.so_goi <= 0)) return [];
   const link = (loai: 'chuyen' | 'xuat_bep' | 'huy') =>
     `/noi-bo/kho/xuat/moi?loai=${loai}&tu=${encodeURIComponent(t.vi_tri_id)}&lo=${encodeURIComponent(t.lo_id)}`;
   if (t.tinh_trang_han === 'het_han') return [{ ma: 'huy', ten: 'Báo hủy', link: link('huy') }];

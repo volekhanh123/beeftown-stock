@@ -479,6 +479,64 @@ await nhom('7 · THỦ KHO PHA LÓC: THẤY KG VÀ %, KHÔNG THẤY TIỀN', asy
 });
 
 // ===========================================================================
+// 0032 (GĐ5b): chạy trọn luồng quầy để các bảng mới có dữ liệu cho nhóm 8 quét
+// cột tiền, và để soát kết quả các hàm mới thủ kho / NV quầy gọi.
+let yeuCauId, kiemKeQuay;
+const ketQuaQuay = [];
+await nhom('7b · QUẦY (0032): YÊU CẦU, MANG RA, NHẬN THIẾU, ĐẾM QUÉT, XUẤT KHÁC — KHÔNG TIỀN', async () => {
+  const ghi = r => { if (r.rows) ketQuaQuay.push(r.rows); return r; };
+  const nvq = (sql, p) => duoi(UID.nvQuayA, sql, p).then(ghi);
+  const tkq = (sql, p) => tk(sql, p).then(ghi);
+  await duoi(UID.qlA, `select kho_luu_nguong($1, '{"chuyen_quay_can_nhan": true}'::jsonb)`, [cnA.id]);
+  await db.query(`update kho_mat_hang set ma_can = '301', quay_toi_thieu_goi = 50 where ma = 'C-THANNGOAI'`);
+  await db.query(`update kho_mat_hang set quay_toi_thieu_goi = 1 where ma = 'T-NACVAI'`);
+
+  const g = await nvq(`select * from kho_goi_y_ra_quay(p_chi_nhanh_id => $1, p_vi_tri_id => null)`, [cnA.id]);
+  ok('NV quầy xem gợi ý mang ra quầy', g.loi === null && g.rows.length >= 1, g.loi ?? '');
+  const y = await nvq(`select * from kho_tao_yeu_cau(p_chi_nhanh_id => $1, p_ma_gui => $2, p_vi_tri_id => null,
+    p_nguon => 'tay', p_ghi_chu => null, p_dong => $3::jsonb)`,
+    [cnA.id, maGui(), JSON.stringify([{ mat_hang_id: MH['T-NACVAI'].id, so_goi: 2 }])]);
+  ok('NV quầy gửi yêu cầu 2 tảng nạc vai', y.loi === null, y.loi ?? '');
+  yeuCauId = y.rows?.[0]?.yeu_cau_id;
+  const c = await tkq(`select * from kho_chuyen_theo_yeu_cau(p_id => $1, p_ma_gui => $2, p_vi_tri_id => null, p_dong => null)`,
+    [yeuCauId, maGui()]);
+  ok('Thủ kho mang ra theo yêu cầu', c.loi === null, c.loi ?? '');
+  const pid = c.rows?.[0]?.phieu_id;
+  const n = await nvq(`select kho_nhan_hang_chuyen(p_id => $1, p_ma_gui => $2, p_dong => $3::jsonb) as cau`,
+    [pid, maGui(), JSON.stringify([{ mat_hang_id: MH['T-NACVAI'].id, so_goi: 1 }])]);
+  ok('NV quầy nhận thiếu 1 tảng', n.loi === null && /Thiếu 1 gói/.test(n.rows?.[0]?.cau), n.loi ?? n.rows?.[0]?.cau);
+  const tkXl = await tk(`select kho_xu_ly_chuyen_thieu(p_id => $1, p_cach => 'mat', p_ly_do => 'Rơi') as cau`, [pid]);
+  ok('Thủ kho KHÔNG xử lý hàng thiếu', tkXl.loi !== null);
+  const xl = await duoi(UID.qlA, `select kho_xu_ly_chuyen_thieu(p_id => $1, p_cach => 'mat', p_ly_do => 'Rơi') as cau`, [pid]);
+  ok('Quản lý ghi mất', xl.loi === null, xl.loi ?? '');
+
+  const xk = (await db.query(`select id from kho_ly_do where loai = 'xuat_khac' order by thu_tu limit 1`)).rows[0].id;
+  const x = await tkq(`select * from kho_tao_phieu_xuat($1, $2, 'xuat_khac', $3, null, $4, null, '{}'::text[], $5::jsonb)`,
+    [cnA.id, maGui(), viTri.quay, xk, JSON.stringify([{ mat_hang_id: MH['C-THANNGOAI'].id, so_goi: 1 }])]);
+  ok('Thủ kho xuất khác 1 gói', x.loi === null, x.loi ?? '');
+
+  kiemKeQuay = (await nvq(`select kho_bat_dau_kiem_ke($1, $2, 'theo_mat_hang', $3) as id`, [cnA.id, viTri.quay, maGui()])).rows[0].id;
+  const q = await nvq(`select kho_quet_kiem_ke(p_id => $1, p_ma_gui => $2, p_ma => $3::jsonb) as kq`,
+    [kiemKeQuay, maGui(), JSON.stringify(['2000301005009', '2000301004804'])]);
+  ok('NV quầy quét 2 nhãn khi đếm quầy', q.loi === null && q.rows[0].kq.so_nhan === 2, q.loi ?? JSON.stringify(q.rows?.[0]?.kq));
+  const b = await tkq(`select kho_bo_quet_kiem_ke(p_id => $1, p_ma_gui => $2, p_cach => 'bot_mot', p_mat_hang_id => $3) as kq`,
+    [kiemKeQuay, maGui(), MH['C-THANNGOAI'].id]);
+  ok('Thủ kho bấm −1', b.loi === null, b.loi ?? '');
+  const pb = (await db.query(`select phien_ban from kho_kiem_ke where id = $1`, [kiemKeQuay])).rows[0].phien_ban;
+  const h = await nvq(`select kho_het_hang_con_lai(p_id => $1, p_phien_ban => $2) as kq`, [kiemKeQuay, pb]);
+  ok('NV quầy bấm "đã bán hết" phần còn lại', h.loi === null, h.loi ?? '');
+
+  const tim = ketQuaQuay.flatMap(r => khoaTien(r));
+  ok(`${ketQuaQuay.length} kết quả hàm quầy: không khóa tiền nào`, ketQuaQuay.length >= 7 && tim.length === 0, tim.join(', '));
+  ok('Không đơn giá nào lọt ra dưới dạng giá trị', !coTien(JSON.stringify(ketQuaQuay)));
+  const k = await duoi(UID.thuKhoA, `select * from kho_bao_cao_xnt_v2($1, $2::date, $2::date)`, [cnA.id, homNay]);
+  ok('Thủ kho gọi XNT mới: mọi cột giá trị = 0',
+     k.loi === null && k.rows.length > 0 && k.rows.every(r => Object.entries(r).every(([c, v]) => !c.endsWith('_gia_tri') || Number(v) === 0)),
+     k.loi ?? '');
+  await doiSoat('Sau luồng quầy');
+});
+
+// ===========================================================================
 await nhom('8 · QUÉT MỌI BẢNG / VIEW kho_%: CỘT TIỀN', async () => {
   const { rows: cot } = await db.query(`
     select c.table_name, c.column_name
@@ -510,21 +568,28 @@ await nhom('9 · QUÉT ĐỆ QUY KẾT QUẢ MỌI HÀM THỦ KHO GỌI', async 
     ['kho_ds_phieu_nhap_kg', `select * from kho_ds_phieu_nhap_kg($1, null, null, null, null, false, 200, 0)`, [cnA.id]],
     ...ids.map(r => ['kho_doc_phieu_nhap_kg', `select kho_doc_phieu_nhap_kg($1) as p`, [r.id]]),
     ['kho_xem_thu_phien_pha_kg', `select kho_xem_thu_phien_pha_kg($1) as t`, [phienId]],
-    ['kho_dem_viec', `select kho_dem_viec($1) as v`, [cnA.id]],
-    ['kho_thong_bao', `select kho_thong_bao($1, 300) as v`, [cnA.id]],
+    ['kho_dem_viec', `select kho_dem_viec($1) as v`, [cnA.id], true],
+    ['kho_thong_bao', `select kho_thong_bao($1, 300) as v`, [cnA.id], true],
+    // 0032 — NV quầy cũng gọi được (đánh dấu true)
+    ['kho_goi_y_ra_quay', `select * from kho_goi_y_ra_quay($1, null)`, [cnA.id], true],
+    ['kho_v_yeu_cau_quay', `select * from kho_v_yeu_cau_quay`, [], true],
+    ['kho_yeu_cau_quay_dong', `select * from kho_yeu_cau_quay_dong`, [], true],
+    ['kho_v_phieu_xuat', `select * from kho_v_phieu_xuat`, [], true],
+    ['kho_v_kiem_ke', `select * from kho_v_kiem_ke`, [], true],
+    ['kho_kiem_ke_quet', `select * from kho_kiem_ke_quet`, [], true],
   ];
   for (const [uid, ai] of [[UID.thuKhoA, 'thủ kho'], [UID.nvQuayA, 'NV quầy']]) {
     const tim = [];
     const lotSo = [];
     let chay = 0;
-    for (const [ten, sql, p] of goi) {
+    for (const [ten, sql, p = []] of goi) {
       const r = await duoi(uid, sql, p);
       if (r.loi) continue;                 // NV quầy bị từ chối các hàm nhận hàng: đúng
       chay++;
       tim.push(...khoaTien(r.rows).map(k => `${ten}${k}`));
       if (coTien(JSON.stringify(r.rows))) lotSo.push(ten);
     }
-    const mong = ai === 'thủ kho' ? goi.length : 2;
+    const mong = ai === 'thủ kho' ? goi.length : goi.filter(g => g[3]).length;
     ok(`${ai}: gọi được ${mong} hàm cần soát`, chay === mong, `${chay}`);
     ok(`${ai}: không khóa tiền nào trong kết quả`, tim.length === 0, [...new Set(tim)].slice(0, 10).join(', '));
     ok(`${ai}: không đơn giá nào lọt ra dưới dạng giá trị`, lotSo.length === 0, lotSo.join(', '));

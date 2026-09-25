@@ -40,8 +40,10 @@ if (k instanceof Response) return k;
     <h2 style="margin-top:0">Nhân viên quầy / bếp</h2>
     <ul>
       <li><strong>Sáng:</strong> xem gói sắp hết hạn, xếp lên phía trước.</li>
+      <li><strong>Quầy sắp hết:</strong> Yêu cầu hàng → phần mềm ghi sẵn số gói nên lấy, sửa nếu cần → Gửi. Thủ kho mang ra.</li>
+      <li><strong>Hàng mang ra tới:</strong> Nhận hàng ra quầy → đếm, đủ thì bấm "Đã nhận đủ"; thiếu thì bấm "Thiếu" và ghi số thực nhận.</li>
       <li><strong>Hàng hỏng, hết hạn:</strong> Báo hủy → chọn lý do → chụp ảnh.</li>
-      <li><strong>Cuối ngày:</strong> Đếm quầy — quét từng gói còn trên quầy rồi Gửi.</li>
+      <li><strong>Cuối ngày:</strong> Đếm quầy — quét từng gói còn trên quầy, quét nhiều đợt cũng được (số tự cộng dồn). Lỡ quét thừa thì bấm −1. Xong thì bấm "Quét xong" rồi Gửi.</li>
     </ul>
   </section>
 

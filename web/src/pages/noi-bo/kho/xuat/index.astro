@@ -1,10 +1,13 @@
 ---
 /**
- * KHO — CHUYỂN QUẦY, XUẤT BẾP, BÁO HỦY
+ * KHO — CHUYỂN QUẦY, XUẤT BẾP, XUẤT KHÁC, BÁO HỦY
  *
- * Nút lớn cho ba việc hằng ngày ở quầy; dưới là các phiếu gần đây. Quản lý
+ * Nút lớn cho các việc hằng ngày ở quầy; dưới là các phiếu gần đây. Quản lý
  * vào đây để duyệt báo hủy (ô "Chờ duyệt hủy"). Phiếu không có tiền nên nhân
  * viên quầy/bếp đọc được hết.
+ *
+ * "Đang mang ra" (0032): phiếu chuyển ra quầy chưa xong — đang trên đường chờ
+ * quầy bấm nhận, hoặc quầy nhận thiếu chờ quản lý xử lý.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -19,9 +22,14 @@ const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 
 const LOC = [
-  ['', 'Tất cả'], ['cho_duyet', 'Chờ duyệt hủy'], ['chuyen', 'Chuyển'], ['xuat_bep', 'Xuất bếp'], ['huy', 'Hủy'],
-  ['tra_ncc', 'Trả NCC'],
+  ['', 'Tất cả'], ['cho_duyet', 'Chờ duyệt hủy'], ['dang_chuyen', 'Đang mang ra'], ['chuyen', 'Chuyển'],
+  ['xuat_bep', 'Xuất bếp'], ['xuat_khac', 'Xuất khác'], ['huy', 'Hủy'], ['tra_ncc', 'Trả NCC'],
 ] as const;
+/** Lọc theo trạng thái (các mục còn lại lọc theo loại phiếu). */
+const LOC_TRANG_THAI: Record<string, string[]> = {
+  cho_duyet: ['cho_duyet'],
+  dang_chuyen: ['dang_chuyen', 'nhan_thieu'],
+};
 const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
 
 const tim = docTimDs(Astro.url.searchParams);
@@ -30,8 +38,8 @@ let coSau = false;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
-    ({ ds, coSau } = catTrang(await docDanhSachPhieuXuat(k.client, k.chiNhanh.id, loc === 'cho_duyet'
-      ? { trangThai: 'cho_duyet' }
+    ({ ds, coSau } = catTrang(await docDanhSachPhieuXuat(k.client, k.chiNhanh.id, LOC_TRANG_THAI[loc]
+      ? { trangThai: LOC_TRANG_THAI[loc] }
       : { loai: loc || null }, { tim, nhanSuId: k.nhanSu.id })));
   } catch (e) {
     loiDoc = cauLoiKho(e, 'Không đọc được phiếu xuất.');
@@ -42,7 +50,7 @@ const moTa = (p: PhieuXuatTom) =>
   p.loai === 'chuyen' ? `${p.ten_vi_tri} → ${p.ten_vi_tri_den ?? '—'}` : `từ ${p.ten_vi_tri}`;
 ---
 <Kho k={k} tieuDe="Chuyển, xuất, hủy">
-  <h1>Chuyển, xuất bếp, hủy</h1>
+  <h1>Chuyển, xuất, hủy</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
@@ -53,12 +61,14 @@ const moTa = (p: PhieuXuatTom) =>
         <div class="kho-nut-nhanh">
           <a class="nb-nut" href="/noi-bo/kho/xuat/moi?loai=chuyen">Chuyển hàng ra quầy</a>
           <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=xuat_bep">Xuất bếp</a>
+          <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=xuat_khac">Xuất khác</a>
           <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=huy">Báo hủy</a>
         </div>
       )}
       <p class="nb-dan">
         Hàng lấy ra theo <strong>lô hết hạn sớm nhất trước</strong>. Hàng đã hết hạn không lên quầy,
         không vào bếp — chỉ báo hủy được. Báo hủy: hàng rời quầy ngay, <strong>quản lý duyệt</strong> mới ghi mất.
+        Xuất khác (dùng nội bộ, tặng khách, hàng mẫu…) phải chọn lý do.
       </p>
 
       <nav class="kho-dh" aria-label="Lọc phiếu">

@@ -54,6 +54,8 @@ export interface KiemKe extends KiemKeTom {
   gui_luc: string | null;
   nguoi_duyet: string | null;
   duyet_luc: string | null;
+  /** Số nhãn đã quét cộng dồn ở màn Đếm quầy (0032). 0 = chưa quét nhãn nào. */
+  so_nhan_quet: number;
 }
 
 export interface DongKiemKe {
@@ -66,6 +68,9 @@ export interface DongKiemKe {
   xac_nhan_het: boolean;
   so_goi_so: number | null;
   so_kg_so: number | null;
+  /** 0032: gói gõ tay THÊM ngoài số nhãn đã quét; tu_quet = số của dòng tính từ nhãn. */
+  so_goi_them: number;
+  tu_quet: boolean;
 }
 
 export interface LoKiemKe {
@@ -114,14 +119,14 @@ export async function docKiemKe(
   if (!laUuid(id)) return null;
   const { data: kk, error } = await client
     .from('kho_v_kiem_ke')
-    .select('id, chi_nhanh_id, so_phieu, phien_ban, vi_tri_id, ten_vi_tri, loai_vi_tri, kieu, nguon_so_ban, ngay_kiem, trang_thai, ghi_chu, ly_do, nguoi_tao, nguoi_gui, gui_luc, nguoi_duyet, duyet_luc, created_at, so_dong, so_dong_da_dem')
+    .select('id, chi_nhanh_id, so_phieu, phien_ban, vi_tri_id, ten_vi_tri, loai_vi_tri, kieu, nguon_so_ban, ngay_kiem, trang_thai, ghi_chu, ly_do, nguoi_tao, nguoi_gui, gui_luc, nguoi_duyet, duyet_luc, created_at, so_dong, so_dong_da_dem, so_nhan_quet')
     .eq('id', id).maybeSingle();
   if (error) throw error;
   if (!kk) return null;
 
   const { data: dong, error: e1 } = await client
     .from('kho_kiem_ke_dong')
-    .select('id, thu_tu, mat_hang_id, lo_id, so_goi_dem, so_kg_dem, xac_nhan_het, so_goi_so, so_kg_so')
+    .select('id, thu_tu, mat_hang_id, lo_id, so_goi_dem, so_kg_dem, xac_nhan_het, so_goi_so, so_kg_so, so_goi_them, tu_quet')
     .eq('kiem_ke_id', id).order('thu_tu');
   if (e1) throw e1;
   const ids = (dong ?? []).map(d => d.id);
@@ -137,12 +142,29 @@ export async function docKiemKe(
     })) as LoKiemKe[];
   }
   return {
-    kk: kk as KiemKe,
+    kk: { ...kk, so_nhan_quet: Number(kk.so_nhan_quet ?? 0) } as KiemKe,
     dong: (dong ?? []).map(d => ({
       ...d, so_kg_dem: soHoacNull(d.so_kg_dem), so_kg_so: soHoacNull(d.so_kg_so),
+      so_goi_them: Number(d.so_goi_them ?? 0), tu_quet: !!d.tu_quet,
     })) as DongKiemKe[],
     lo,
   };
+}
+
+/**
+ * Số nhãn đã quét cộng dồn của từng món (màn Đếm quầy, 0032). Chỉ đọc khi
+ * phiếu có nhãn (so_nhan_quet > 0). Lỗi đọc thì trả Map rỗng — chỉ để hiển thị.
+ */
+export async function docSoNhanQuet(client: SupabaseClient, kiemKeId: string): Promise<Map<string, number>> {
+  const ra = new Map<string, number>();
+  if (!laUuid(kiemKeId)) return ra;
+  const { data, error } = await client
+    .from('kho_kiem_ke_quet')
+    .select('mat_hang_id')
+    .eq('kiem_ke_id', kiemKeId).limit(5000);
+  if (error) return ra;
+  for (const q of data ?? []) ra.set(q.mat_hang_id, (ra.get(q.mat_hang_id) ?? 0) + 1);
+  return ra;
 }
 
 // -----------------------------------------------------------------------------

@@ -9,6 +9,10 @@
  *
  * Mỗi vị trí chỉ một phiếu đang mở — phiếu đang mở hiện ngay trên thẻ của vị
  * trí đó, kèm lời nhắn nếu quản lý trả về để đếm lại.
+ *
+ * Nhân viên quầy bấm thẻ quầy là sang màn Đếm quầy (/noi-bo/kho/quay/dem,
+ * GĐ5b — quét cộng dồn), trừ khi phiếu đã gửi (mở phiếu xem "đã gửi lúc…").
+ * Vị trí "Đang mang ra quầy" (0032) không đếm được — không có thẻ.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -63,7 +67,9 @@ if (k.chiNhanh && k.daKhoiTao) {
 }
 const dangMo = new Map(ds.filter(x => x.trang_thai === 'dang_dem' || x.trang_thai === 'cho_duyet').map(x => [x.vi_tri_id, x]));
 // Nhân viên quầy chỉ đếm quầy — không thấy thẻ kho lạnh.
-const viTriDem = viTri.filter(v => v.loai !== 'cho_huy' && v.dang_dung && (!laQuay || v.loai === 'quay'));
+// Chỉ kho và quầy — không "chờ hủy", không "Đang mang ra quầy" (0032).
+const viTriDem = viTri.filter(v => (v.loai === 'kho' || v.loai === 'quay') && v.dang_dung && (!laQuay || v.loai === 'quay'));
+const DEM_QUAY = '/noi-bo/kho/quay/dem';
 const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
 ---
 <Kho k={k} tieuDe="Kiểm kê" huongDan={laQuay ? 'nv-quay' : undefined}>
@@ -87,6 +93,16 @@ const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
             const mo = dangMo.get(v.id);
             const kieu = kieuTheoViTri(v.loai);
             const traVe = mo?.trang_thai === 'dang_dem' && !!mo.ly_do;
+            // Nhân viên quầy: đếm ở màn Đếm quầy (quét cộng dồn).
+            if (laQuay && v.loai === 'quay' && mo?.trang_thai !== 'cho_duyet' && (!mo || mo.kieu === 'theo_mat_hang')) {
+              return (
+                <a class={`kho-o-so ${traVe ? 'gap' : ''}`} href={`${DEM_QUAY}?vi_tri=${v.id}`}>
+                  <b style="font-size:1.1rem">{v.ten}</b>
+                  <span>{mo ? `${mo.so_phieu} · đang đếm — bấm để quét tiếp` : 'Bấm để quét đếm quầy'}</span>
+                  {traVe && <span style="display:block;margin-top:.35rem;color:inherit"><strong>Quản lý trả về:</strong> {mo!.ly_do} — bấm để đếm lại.</span>}
+                </a>
+              );
+            }
             return mo ? (
               <a class={`kho-o-so ${mo.trang_thai === 'cho_duyet' ? 'luu-y' : traVe ? 'gap' : ''}`} href={`/noi-bo/kho/kiem-ke/${mo.id}`}>
                 <b style="font-size:1.1rem">{v.ten}</b>

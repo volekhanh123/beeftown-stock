@@ -50,7 +50,7 @@ if (phieu && (phieu.loai !== 'mua' || phieu.trang_thai !== 'da_duyet')) {
 
 // Lô của phiếu đang còn hàng, theo nơi để.
 const dongTheoLo = new Map(dong.filter(d => d.lo_id).map(d => [d.lo_id!, d]));
-const conHang = ton.filter(t => dongTheoLo.has(t.lo_id) && t.loai_vi_tri !== 'cho_huy' && t.so_kg > 0);
+const conHang = ton.filter(t => dongTheoLo.has(t.lo_id) && t.loai_vi_tri !== 'cho_huy' && t.loai_vi_tri !== 'dang_chuyen' && t.so_kg > 0);
 const noiDe = [...new Map(conHang.map(t => [t.vi_tri_id, t.ten_vi_tri])).entries()]
   .map(([id, ten]) => ({ id, ten, kg: conHang.filter(t => t.vi_tri_id === id).reduce((s, t) => s + t.so_kg, 0) }))
   .sort((a, b) => b.kg - a.kg);

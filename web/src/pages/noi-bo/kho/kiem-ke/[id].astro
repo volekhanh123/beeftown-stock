@@ -24,6 +24,12 @@
  * vàng riêng, đi theo đường dẫn (?hong=&la=) sau khi chuyển hướng.
  *
  * HỦY PHIẾU: phải ghi lý do — bước xác nhận thứ hai, bấm nhầm không mất số.
+ *
+ * QUÉT CỘNG DỒN (0032): phiếu quầy đã có nhãn quét ở màn Đếm quầy
+ * (/noi-bo/kho/quay/dem) thì trang này KHÔNG hiện ô quét ĐÈ số nữa (hai cách
+ * quét trộn nhau dễ mất gói) — chỉ còn link sang màn Đếm quầy. Ô số gói của
+ * món có nhãn là TỔNG (nhãn + gõ tay), không được ít hơn số nhãn. Quản lý
+ * duyệt thấy thêm số nhãn đã quét của từng món.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -37,7 +43,7 @@ import { docCaiDat, docMatHang, type CaiDat, type MatHang } from '../../../../li
 import { docThongTinLo, docGiaVonLo } from '../../../../lib/kho/pha-loc.ts';
 import {
   docKiemKe, docFormKiemKe, payloadTuDong, apDungQuet, dongDemTuDb, luuKiemKe, guiKiemKe, duyetKiemKe,
-  tuChoiKiemKe, huyKiemKe, gopKhiTrung, laLoiMayKhac, daDemDong, cauQuetLoi,
+  tuChoiKiemKe, huyKiemKe, gopKhiTrung, laLoiMayKhac, daDemDong, cauQuetLoi, docSoNhanQuet,
   type KiemKe, type DongKiemKe, type LoKiemKe, type DongDemForm, type KetQuaQuetKiemKe,
 } from '../../../../lib/kho/kiem-ke.ts';
 import {
@@ -261,6 +267,9 @@ const tongGiaTriChenh = kk && kk.trang_thai !== 'dang_dem'
   ? dongDb.reduce((s, d) => s + (chenh(d).giaTri ?? 0), 0) : 0;
 const coChenh = (d: DongKiemKe) => { const c = chenh(d); return c.dg !== 0 || (c.dk !== null && c.dk !== 0); };
 const tieuDe = kk ? `Kiểm kê ${kk.ten_vi_tri}` : 'Kiểm kê';
+// Nhãn đã quét cộng dồn ở màn Đếm quầy (0032): số nhãn của từng món.
+const coNhanQuet = (kk?.so_nhan_quet ?? 0) > 0;
+const nhanQuet = kk && coNhanQuet ? await docSoNhanQuet(k.client, kk.id) : new Map<string, number>();
 const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
 ---
 <Kho k={k} tieuDe={tieuDe} huongDan={choToiDuyet ? 'quan-ly-duyet' : laQuay ? 'nv-quay' : undefined}>
@@ -312,10 +321,20 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
             </p>
           </div>
 
-          {!theoLo && (
+          {!theoLo && coNhanQuet && (
+            <div class="nb-the">
+              <p style="margin:0">Phiếu này đang quét cộng dồn: <strong>{kk.so_nhan_quet} nhãn</strong> đã quét.
+                Số gói của món có nhãn là tổng (nhãn + gõ tay) — không ghi ít hơn số nhãn; quét nhầm thì bấm −1 ở màn Đếm quầy.</p>
+              <p style="margin:.75rem 0 0"><a class="nb-nut phu" href={`/noi-bo/kho/quay/dem?vi_tri=${kk.vi_tri_id}`}>Quét tiếp ở màn Đếm quầy</a></p>
+            </div>
+          )}
+          {!theoLo && !coNhanQuet && (
             <div class="nb-the">
               <QuetMa nhan="Đọc mã và ghi số đếm" tuFocus
                 goiY="Quét nhãn của TẤT CẢ gói đang có trong một lượt, rồi bấm nút dưới. Món nào quét được sẽ lấy đúng số gói vừa quét (thay số cũ của món đó)." />
+              {kk.loai_vi_tri === 'quay' && (
+                <p class="nb-dan" style="margin:.75rem 0 0">Muốn quét làm nhiều đợt, cộng dồn? <a href={`/noi-bo/kho/quay/dem?vi_tri=${kk.vi_tri_id}`}>Mở màn Đếm quầy</a>.</p>
+              )}
             </div>
           )}
 
@@ -331,7 +350,8 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
                 {d.goc != null && <input type="hidden" name={`k${i}_goc`} value={d.goc} />}
                 <p style="margin:.35rem 0 .5rem"><strong>{mh?.ten ?? '—'}</strong>
                   {d.lo_id && <><br /><span class="kho-phu">{moTaLo(d.lo_id)}</span></>}
-                  {!daDem[i] && <><br /><span class="kho-phu">Chưa đếm</span></>}</p>
+                  {!daDem[i] && <><br /><span class="kho-phu">Chưa đếm</span></>}
+                  {!d.lo_id && (nhanQuet.get(d.mat_hang_id) ?? 0) > 0 && <><br /><span class="kho-phu">Đã quét {nhanQuet.get(d.mat_hang_id)} nhãn</span></>}</p>
                 <div class="kho-luoi">
                   {mh?.dem_goi && (
                     <label class="nb-o"><span>Số {mh.don_vi_goi}</span>
@@ -399,6 +419,7 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
               <div class="kho-o-so"><b>{dongDb.filter(coChenh).length}</b><span>dòng lệch sổ / {dongDb.length}</span></div>
               {coGia && <div class={`kho-o-so ${tongGiaTriChenh < 0 ? 'gap' : ''}`}><b style="font-size:1.2rem">{dinhDangTien(tongGiaTriChenh)}</b><span>giá trị chênh (ước tính)</span></div>}
               {kk.loai_vi_tri === 'quay' && kk.nguon_so_ban === 'kiem_ke' && <div class="kho-o-so"><b style="font-size:1.1rem">Thiếu = bán</b><span>chưa nối iPOS</span></div>}
+              {coNhanQuet && <div class="kho-o-so"><b>{kk.so_nhan_quet}</b><span>nhãn đã quét cộng dồn</span></div>}
             </div>
           )}
           <div class="kho-bang-khung">
@@ -422,7 +443,11 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
                         {!coChenh(d) && '0'}
                       </td>
                       <td class="so">{mh?.dem_goi ? `${d.so_goi_so ?? 0}${dv} · ` : ''}{dinhDangKg(d.so_kg_so)} kg</td>
-                      <td class="so">{mh?.dem_goi ? `${d.so_goi_dem ?? '—'}${dv}` : ''}{d.so_kg_dem !== null ? `${mh?.dem_goi ? ' · ' : ''}${dinhDangKg(d.so_kg_dem)} kg` : ''}</td>
+                      <td class="so">{mh?.dem_goi ? `${d.so_goi_dem ?? '—'}${dv}` : ''}{d.so_kg_dem !== null ? `${mh?.dem_goi ? ' · ' : ''}${dinhDangKg(d.so_kg_dem)} kg` : ''}
+                        {!d.lo_id && (nhanQuet.get(d.mat_hang_id) ?? 0) > 0 && (
+                          <><br /><span class="kho-phu">quét {nhanQuet.get(d.mat_hang_id)} nhãn{d.so_goi_them > 0 ? ` + ${d.so_goi_them} ghi tay` : ''}</span></>
+                        )}
+                      </td>
                       {coGia && <td class="so">{c.giaTri !== null && Math.round(c.giaTri) !== 0 ? dinhDangTien(c.giaTri) : '—'}</td>}
                     </tr>
                   );

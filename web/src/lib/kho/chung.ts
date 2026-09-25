@@ -225,6 +225,8 @@ export const TEN_LOAI_VI_TRI: Record<string, string> = {
   kho: 'Kho',
   quay: 'Quầy',
   cho_huy: 'Chờ hủy',
+  // 0032: hàng thủ kho đang mang ra, quầy chưa bấm nhận — không phải chỗ để hàng.
+  dang_chuyen: 'Đang mang ra quầy',
 };
 
 export const TEN_XU_LY: Record<string, string> = {
@@ -258,6 +260,16 @@ export const TRANG_THAI_CHUNG_TU: Record<string, [string, string]> = {
   da_chot: ['Đã chốt', 'song'],
   da_ghi: ['Đã ghi', 'song'],
   dang_dem: ['Đang đếm', 'nhap'],
+  // Phiếu chuyển ra quầy khi quầy phải bấm nhận (0032)
+  dang_chuyen: ['Đang mang ra', 'cho'],
+  da_nhan: ['Quầy đã nhận', 'song'],
+  nhan_thieu: ['Nhận thiếu', 'cho'],
+  da_tra_ve: ['Đã trả về kho', 'tat'],
+  // Yêu cầu của quầy (0032)
+  cho: ['Chờ mang ra', 'cho'],
+  dang_lam: ['Đang mang ra', 'nhap'],
+  xong: ['Xong', 'song'],
+  huy: ['Đã hủy', 'tat'],
 };
 
 export const TEN_LOAI_SO_CAI: Record<string, string> = {
@@ -273,6 +285,7 @@ export const TEN_LOAI_SO_CAI: Record<string, string> = {
   hao_hut: 'Hao hụt cân',
   dao_nguoc: 'Đảo ngược',
   tra_ncc: 'Trả nhà cung cấp',
+  xuat_khac: 'Xuất khác',
 };
 
 /**

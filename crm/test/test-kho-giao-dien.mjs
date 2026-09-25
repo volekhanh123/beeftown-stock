@@ -10,7 +10,7 @@
  *   - thanh đáy tối đa 5 nút, nhân viên quầy và thủ kho không thấy ô nào cần
  *     xem tiền (0031: thủ kho không thấy tiền — nhận hàng ở màn chỉ kg);
  *   - khóa số đỏ trong menu và quy trình là khóa kho_dem_viec có thật, khóa sự
- *     kiện của database (0030) đều có câu chữ ở lib/kho/viec.ts;
+ *     kiện của database (0030 trở đi) đều có câu chữ ở lib/kho/viec.ts;
  *   - mục "?" của từng trang trỏ tới một mục có thật trong trang Hướng dẫn;
  *   - cài như app: manifest hợp lệ, ảnh biểu tượng đúng kích thước;
  *   - JavaScript chỉ ở những chỗ đã cho phép (trang tắt JS vẫn chạy đủ).
@@ -28,6 +28,9 @@ import { docFormDienGia, chuSoSanhGia, cauCanhBaoGia } from '../../web/src/lib/k
 import { QUY_TRINH } from '../../web/src/lib/kho/quy-trinh.ts';
 import { BIEU_TUONG } from '../../web/src/lib/kho/bieu-tuong.ts';
 import { duoc, QUYEN_KHO } from '../../web/src/lib/kho/chung.ts';
+import {
+  docFormYeuCau, docFormMangRa, docFormNhan, gomMon, quaGio, soDeNghi, cauSoLuong,
+} from '../../web/src/lib/kho/quay.ts';
 import {
   CO_TRANG, docTimDs, lamSachTim, locTimNhieuCot, khoangTrang, catTrang, linkDs, dangTim, apDungTim,
 } from '../../web/src/lib/kho/tim-ds.ts';
@@ -72,19 +75,24 @@ function trangCua(link) {
 
 const VAI = ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan'];
 
-// Khóa kho_dem_viec có thật: đọc từ thân hàm trong 0030.
-const SQL_0030 = doc(join(GOC, 'crm/supabase/migrations/0030_kho_viec_thong_bao.sql'));
-const thanDemViec = SQL_0030.slice(
-  SQL_0030.indexOf('create or replace function kho_dem_viec('),
-  SQL_0030.indexOf('comment on function kho_dem_viec'),
+// Khóa kho_dem_viec có thật: đọc từ thân hàm ở migration MỚI NHẤT còn dựng lại
+// nó (0030 → 0031 → 0032...). Migration sau thay thân thì thân cũ hết hiệu lực.
+const THU_MUC_MIG = join(GOC, 'crm/supabase/migrations');
+const SQL_VIEC = readdirSync(THU_MUC_MIG).filter(f => f.endsWith('.sql')).sort().reverse()
+  .map(f => doc(join(THU_MUC_MIG, f)))
+  .find(s => s.includes('create or replace function kho_dem_viec(')
+          && s.includes('create or replace function kho_su_kien(')) ?? '';
+const thanDemViec = SQL_VIEC.slice(
+  SQL_VIEC.indexOf('create or replace function kho_dem_viec('),
+  SQL_VIEC.indexOf('comment on function kho_dem_viec'),
 );
 const KHOA_DEM = new Set(
   [...thanDemViec.matchAll(/(?:jsonb_build_object\(|,)\s*'([a-z_]+)'\s*,/g)].map(m => m[1]),
 );
 // Khóa sự kiện có thật: "select '<khóa>', '<nhóm>'" và nhánh case của hạn dùng.
-const thanSuKien = SQL_0030.slice(
-  SQL_0030.indexOf('create or replace function kho_su_kien('),
-  SQL_0030.indexOf('create or replace function kho_dem_viec('),
+const thanSuKien = SQL_VIEC.slice(
+  SQL_VIEC.indexOf('create or replace function kho_su_kien('),
+  SQL_VIEC.indexOf('create or replace function kho_dem_viec('),
 );
 const KHOA_SK_SQL = new Set([
   ...[...thanSuKien.matchAll(/select '([a-z_]+)', '(?:van_hanh|nhac_nho|he_thong)'/g)].map(m => m[1]),
@@ -180,7 +188,7 @@ await nhom('2 · MENU THEO VAI', async () => {
 
 // ===========================================================================
 await nhom('3 · SỐ ĐỎ VÀ ĐÁNH DẤU MỤC ĐANG MỞ', async () => {
-  ok('Đọc được khóa kho_dem_viec từ 0030', KHOA_DEM.has('duyet_nhap') && KHOA_DEM.has('het_han'),
+  ok('Đọc được khóa kho_dem_viec từ migration mới nhất', KHOA_DEM.has('duyet_nhap') && KHOA_DEM.has('het_han'),
     [...KHOA_DEM].join(', '));
   const khoaLa = [...MUC_KHO.flatMap(m => m.dem ?? []), ...QUY_TRINH.flatMap(q => q.buoc.flatMap(b => b.dem ?? []))]
     .filter(k => !KHOA_DEM.has(k));
@@ -209,7 +217,7 @@ await nhom('3 · SỐ ĐỎ VÀ ĐÁNH DẤU MỤC ĐANG MỞ', async () => {
 
 // ===========================================================================
 await nhom('4 · THÔNG BÁO: KHÓA DATABASE ↔ CÂU CHỮ', async () => {
-  ok('Đọc được khóa sự kiện từ 0030', KHOA_SK_SQL.size >= 10, [...KHOA_SK_SQL].join(', '));
+  ok('Đọc được khóa sự kiện từ migration mới nhất', KHOA_SK_SQL.size >= 10, [...KHOA_SK_SQL].join(', '));
   const thieuCau = [...KHOA_SK_SQL].filter(k => !KHOA_SU_KIEN.includes(k));
   ok('Mọi khóa database có thể trả về đều có câu chữ', thieuCau.length === 0, thieuCau.join(', '));
   const thua = KHOA_SU_KIEN.filter(k => !KHOA_SK_SQL.has(k));
@@ -449,6 +457,87 @@ await nhom('12 · THỦ KHO KHÔNG THẤY TIỀN (0031) — TRANG', async () => 
   const duyet = doc(join(TRANG, 'noi-bo/kho/duyet.astro'));
   ok('Trang Duyệt: báo hủy, kiểm kê chỉ đọc cho vai duyet', /duyetKhac \? docDanhSachPhieuXuat/.test(duyet)
     && /duyetKhac \? docDanhSachKiemKe/.test(duyet));
+});
+
+// ===========================================================================
+await nhom('13 · QUẦY YÊU CẦU → MANG RA → BẤM NHẬN (0032)', async () => {
+  for (const f of ['quay/yeu-cau/index.astro', 'quay/yeu-cau/[id].astro', 'quay/nhan.astro']) {
+    ok(`Có trang ${f}`, existsSync(join(TRANG, 'noi-bo/kho', f)));
+  }
+  const mau = { nhom: 'van_hanh', ref_id: 'P1', ref2: 'Q1', ma: 'YC-2609-0001', ten: 'Quầy thịt', phu: 'quay', so: 4, luc: '' };
+  ok('Yêu cầu của quầy → mở yêu cầu, nút "Mang ra"',
+    cauSuKien({ ...mau, khoa: 'yeu_cau_quay' }).link === '/noi-bo/kho/quay/yeu-cau/P1'
+    && cauSuKien({ ...mau, khoa: 'yeu_cau_quay' }).nut === 'Mang ra');
+  ok('Hàng đang mang ra → màn nhận hàng; quá giờ thì đỏ, chưa quá thì vàng',
+    cauSuKien({ ...mau, khoa: 'hang_dang_chuyen' }).link === '/noi-bo/kho/quay/nhan'
+    && cauSuKien({ ...mau, khoa: 'hang_dang_chuyen', phu: 'qua_gio' }).muc === 'do'
+    && cauSuKien({ ...mau, khoa: 'hang_dang_chuyen' }).muc === 'vang');
+  ok('Quầy nhận thiếu → quản lý mở phiếu chuyển',
+    cauSuKien({ ...mau, khoa: 'chuyen_nhan_thieu' }).link === '/noi-bo/kho/xuat/P1');
+
+  // Menu: NV quầy có "Yêu cầu hàng" ở thao tác nhanh, nút Quầy có số đỏ hàng đang mang ra.
+  ok('NV quầy: thao tác nhanh "Yêu cầu hàng" đứng đầu',
+    thaoTacCuaVai('nhan_vien_quay')[0]?.link === '/noi-bo/kho/quay/yeu-cau');
+  ok('NV quầy: nút Quầy có số đỏ hàng đang mang ra',
+    soDo(THANH_DAY.nhan_vien_quay[0], { hang_dang_chuyen: 2 }) === 2);
+  ok('Thủ kho: số đỏ Việc gồm yêu cầu của quầy',
+    soDo(MUC_KHO.find(m => m.ma === 'viec'), { yeu_cau_quay: 3 }) === 3);
+  const qt = QUY_TRINH.find(q => q.ma === 'quay');
+  ok('Quy trình "Quầy mỗi ngày": yêu cầu → mang ra → bấm nhận → xử lý thiếu',
+    ['/noi-bo/kho/quay/yeu-cau', '/noi-bo/kho/quay/nhan'].every(l => qt?.buoc.some(b => b.link === l))
+    && ['yeu_cau_quay', 'hang_dang_chuyen', 'chuyen_nhan_thieu'].every(k => qt?.buoc.some(b => (b.dem ?? []).includes(k))));
+
+  const mh = [
+    { id: '00000000-0000-0000-0000-00000000000a', ma: 'A', ten: 'Thăn', nhom: null, loai: 'phan_cat', dem_goi: true, don_vi_goi: 'gói', dang_dung: true },
+    { id: '00000000-0000-0000-0000-00000000000b', ma: 'B', ten: 'Xương', nhom: null, loai: 'phu_pham', dem_goi: false, don_vi_goi: 'gói', dang_dung: true },
+  ];
+  const [A, B] = mh.map(m => m.id);
+  const f = new FormData();
+  f.set(`g_${A}`, '3'); f.set(`g_${B}`, '1,5'); f.set('t0_mat_hang', A); f.set('t0_so', '2');
+  const yc = docFormYeuCau(f, mh, 3);
+  ok('Yêu cầu: gói với món đếm gói, kg với món cân ký; một món hai dòng thì cộng lại',
+    JSON.stringify(yc.dong) === JSON.stringify([{ mat_hang_id: A, so_goi: 5 }, { mat_hang_id: B, so_kg: 1.5 }])
+    && yc.nguon === 'goi_y' && yc.loi.length === 0, JSON.stringify(yc));
+  const f2 = new FormData(); f2.set(`g_${A}`, '0'); f2.set('t0_mat_hang', A); f2.set('t0_so', '1,5');
+  const yc2 = docFormYeuCau(f2, mh, 1);
+  ok('Yêu cầu: ghi 0 là bỏ món; món đếm gói ghi số lẻ thì báo lỗi', yc2.dong.length === 0 && yc2.loi.length === 1, JSON.stringify(yc2));
+  const f3 = new FormData(); f3.set('t0_so', '2');
+  ok('Yêu cầu: dòng có số mà chưa chọn món thì báo', docFormYeuCau(f3, mh, 1).loi.length === 1);
+
+  const dong = [{ thu_tu: 1, mat_hang_id: A, so_goi: 4, so_kg: null, ghi_chu: null },
+                { thu_tu: 2, mat_hang_id: B, so_goi: 0, so_kg: 2, ghi_chu: null }];
+  const m1 = new FormData(); m1.set(`m_${A}`, '4'); m1.set(`m_${B}`, '2');
+  ok('Mang ra đúng như yêu cầu → p_dong null', docFormMangRa(m1, dong, mh).pDong === null);
+  const m2 = new FormData(); m2.set(`m_${A}`, '3'); m2.set(`m_${B}`, '0');
+  ok('Mang ra ít hơn / bỏ món → gửi số thật, bỏ món ghi 0',
+    JSON.stringify(docFormMangRa(m2, dong, mh).pDong) === JSON.stringify([{ mat_hang_id: A, so_goi: 3 }]));
+  const m3 = new FormData(); m3.set(`m_${A}`, '0'); m3.set(`m_${B}`, '0');
+  ok('Mang ra: mọi món 0 → báo, không lập phiếu rỗng', docFormMangRa(m3, dong, mh).loi.length === 1);
+
+  const mon = gomMon([{ mat_hang_id: A, so_goi: 2, so_kg: 1.2 }, { mat_hang_id: A, so_goi: 1, so_kg: 0.6 },
+                      { mat_hang_id: B, so_goi: 0, so_kg: 2 }]);
+  ok('Gom dòng phiếu theo món (nhiều lô)', mon.length === 2 && mon[0].so_goi === 3 && mon[0].so_kg === 1.8);
+  const n1 = new FormData(); n1.set(`n_${A}`, '3'); n1.set(`n_${B}`, '2');
+  ok('Nhận: ghi đủ mọi món → p_dong null (= nhận đủ)', docFormNhan(n1, mon, mh).pDong === null);
+  const n2 = new FormData(); n2.set(`n_${A}`, '2'); n2.set(`n_${B}`, '2');
+  ok('Nhận thiếu: chỉ gửi món nhận ít hơn',
+    JSON.stringify(docFormNhan(n2, mon, mh).pDong) === JSON.stringify([{ mat_hang_id: A, so_goi: 2 }]));
+  const n3 = new FormData(); n3.set(`n_${A}`, '5'); n3.set(`n_${B}`, '');
+  ok('Nhận: nhiều hơn số mang ra hoặc bỏ trống → báo từng món', docFormNhan(n3, mon, mh).loi.length === 2);
+
+  ok('Quá giờ nhắc', quaGio('2026-09-25T00:00:00Z', 2, new Date('2026-09-25T02:00:00Z'))
+    && !quaGio('2026-09-25T00:00:00Z', 2, new Date('2026-09-25T01:59:00Z')));
+  ok('Số đề nghị: món cân ký dùng kg, kho hết → 0',
+    soDeNghi({ dem_goi: false, so_goi_de_nghi: null, so_kg_de_nghi: 1.5 }) === 1.5
+    && soDeNghi({ dem_goi: true, so_goi_de_nghi: null, so_kg_de_nghi: null }) === 0);
+  ok('Câu số lượng: "3 gói" · "1,5 kg"', cauSoLuong(mh[0], 3, 1) === '3 gói' && cauSoLuong(mh[1], 0, 1.5) === '1,5 kg');
+
+  // Công tắc Cài đặt đi qua kho_luu_nguong — không ghi thẳng bảng kho_cai_dat.
+  const quayLib = doc(join(WEB, 'src/lib/kho/quay.ts'));
+  ok('Công tắc "Quầy phải bấm nhận" lưu bằng kho_luu_nguong',
+    /\.rpc\('kho_luu_nguong'[\s\S]{0,120}chuyen_quay_can_nhan/.test(quayLib)
+    && !/from\('kho_cai_dat'\)\s*\.(update|upsert|insert)/.test(quayLib));
+  ok('Màn Cài đặt có công tắc', /chuyen_quay_can_nhan/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'))));
 });
 
 process.exit(ketThuc('KHUNG GIAO DIỆN'));

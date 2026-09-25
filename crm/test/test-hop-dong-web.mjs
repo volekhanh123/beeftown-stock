@@ -127,9 +127,13 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/kho/pha-loc.ts',
   'web/src/lib/kho/xuat.ts',
   'web/src/lib/kho/kiem-ke.ts',
+  // Đếm quầy quét cộng dồn (GĐ5b) — chỉ gọi từ /noi-bo/kho/quay/dem.
+  'web/src/lib/kho/dem-quay.ts',
   'web/src/lib/kho/cong-no.ts',
   'web/src/lib/kho/bao-cao.ts',
   'web/src/lib/kho/thong-bao.ts',
+  // Quầy yêu cầu → mang ra → bấm nhận (GĐ5b, 0032) — không đọc cột tiền nào.
+  'web/src/lib/kho/quay.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
 ];

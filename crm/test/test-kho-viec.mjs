@@ -105,12 +105,17 @@ await nhom('1 · CHUẨN BỊ', async () => {
 // ===========================================================================
 await nhom('2 · BỘ KHÓA ĐÚNG THEO QUYỀN TỪNG VAI', async () => {
   const CHUNG = ['khoi_tao', 'het_han', 'sap_het_han', 'quay_duoi_muc', 'chua_doc', 'thong_bao_xem_luc'];
+  // 0032: mang hàng ra quầy — thủ kho thấy yêu cầu của quầy; NV quầy thấy hàng
+  // đang mang ra chờ bấm nhận; quản lý thấy cả hai và phiếu nhận thiếu.
+  const DI_DUONG = ['hang_dang_chuyen', 'hang_chuyen_qua_gio'];
   const mong = {
     'quản lý':  [...CHUNG, 'quay_chua_dem', 'nhap_bi_tra', 'nhap_nhap', 'huy_bi_tra', 'kiem_ke_tra_ve',
                  'pha_nhap', 'duyet_nhap', 'duyet_huy', 'duyet_kiem_ke',
-                 'cong_no_qua_han', 'cong_no_7_ngay', 'chua_doi_chieu'],
-    'thủ kho':  [...CHUNG, 'quay_chua_dem', 'nhap_bi_tra', 'nhap_nhap', 'huy_bi_tra', 'kiem_ke_tra_ve', 'pha_nhap'],
-    'NV quầy':  [...CHUNG, 'quay_chua_dem', 'huy_bi_tra', 'kiem_ke_tra_ve'],
+                 'cong_no_qua_han', 'cong_no_7_ngay', 'chua_doi_chieu',
+                 'yeu_cau_quay', ...DI_DUONG, 'chuyen_nhan_thieu'],
+    'thủ kho':  [...CHUNG, 'quay_chua_dem', 'nhap_bi_tra', 'nhap_nhap', 'huy_bi_tra', 'kiem_ke_tra_ve', 'pha_nhap',
+                 'yeu_cau_quay'],
+    'NV quầy':  [...CHUNG, 'quay_chua_dem', 'huy_bi_tra', 'kiem_ke_tra_ve', ...DI_DUONG],
     // 0031: kế toán điền giá và duyệt phiếu nhập → có số đỏ duyet_nhap (không có hủy, kiểm kê)
     'kế toán':  [...CHUNG, 'duyet_nhap', 'cong_no_qua_han', 'cong_no_7_ngay', 'chua_doi_chieu'],
   };

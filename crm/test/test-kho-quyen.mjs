@@ -277,15 +277,21 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // Pha lóc
     'kho_luu_phien_pha', 'kho_xem_thu_phien_pha', 'kho_xem_thu_phien_pha_kg', 'kho_chot_phien_pha',
     'kho_mo_lai_phien_pha', 'kho_huy_phien_pha',
-    // Chuyển, xuất bếp, hủy
+    // Chuyển, xuất bếp, xuất khác, hủy
     'kho_tao_phieu_xuat', 'kho_duyet_phieu_huy', 'kho_tu_choi_phieu_huy',
+    // Quầy: yêu cầu → mang ra → nhận (0032)
+    'kho_tao_yeu_cau', 'kho_huy_yeu_cau', 'kho_goi_y_ra_quay', 'kho_chuyen_theo_yeu_cau',
+    'kho_nhan_hang_chuyen', 'kho_xu_ly_chuyen_thieu', 'kho_huy_chuyen',
     // Kiểm kê
     'kho_bat_dau_kiem_ke', 'kho_luu_kiem_ke', 'kho_gui_kiem_ke',
     'kho_duyet_kiem_ke', 'kho_tu_choi_kiem_ke', 'kho_huy_kiem_ke',
+    // Đếm quầy cộng dồn bằng máy quét (0032)
+    'kho_quet_kiem_ke', 'kho_bo_quet_kiem_ke', 'kho_het_hang_con_lai',
     // Công nợ, trả hàng
     'kho_doi_chieu_hoa_don', 'kho_ghi_thanh_toan', 'kho_huy_thanh_toan', 'kho_tra_nha_cung_cap',
     // Báo cáo — SECURITY INVOKER, RLS của người gọi vẫn áp dụng
     'kho_bao_cao_xuat_nhap_ton', 'kho_bao_cao_thu_hoi', 'kho_bao_cao_hao_hut', 'kho_bao_cao_ban',
+    'kho_bao_cao_xnt_v2',
     // Đối soát
     'kho_doi_soat_ton',
     // Số đỏ trên menu, thông báo, ngưỡng, chỉ số quản trị (0030)
@@ -294,12 +300,14 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_vi_tri_kiem_sua', 'kho_truong_them_kiem_sua', 'kho_truong_them_kiem',
     'kho_mat_hang_chuan_hoa', 'kho_cong_thuc_pha_kiem', 'kho_lo_chan_sua_xoa',
     'kho_ton_chi_qua_so_cai', 'kho_so_cai_ghi', 'kho_so_cai_chan_sua_xoa',
-    'kho_phieu_nhap_chan_huy_da_tra',
+    'kho_phieu_nhap_chan_huy_da_tra', 'kho_chan_vi_tri_di_duong',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
     'kho_tinh_phien_pha', 'kho_phan_bo', 'kho_kg_tb_goi', 'kho_kiem_ke_bo_sung_dong', 'kho_dung_lai_ton',
     'kho_luc_vn', 'kho_su_kien',
+    'kho_ghi_phieu_xuat', 'kho_chuyen_tren_duong', 'kho_don_tren_duong',
+    'kho_doc_ma_vach', 'kho_kiem_ke_tinh_quet', 'kho_kiem_ke_ds_quet',
   ].sort();
 
   const { rows } = await db.query(`

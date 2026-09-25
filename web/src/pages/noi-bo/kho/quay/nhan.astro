@@ -1,0 +1,218 @@
+---
+/**
+ * KHO — NHẬN HÀNG MANG RA QUẦY (0032)
+ *
+ * Khi cài đặt "Quầy phải bấm nhận hàng" bật, hàng thủ kho mang ra nằm ở "Đang
+ * mang ra quầy" tới khi NV quầy kiểm và bấm:
+ *   · "Đã nhận đủ" — một chạm (kho_nhan_hang_chuyen, p_dong null);
+ *   · "Thiếu" (?thieu=<phiếu>) — ghi số THỰC NHẬN từng món. Món nhận ít hơn
+ *     số mang ra thì database báo quản lý (chuyen_nhan_thieu); quản lý trả về
+ *     kho hoặc ghi mất ở trang phiếu.
+ * Mỗi nút có ma_gui riêng: bấm hai lần không nhận hai lần. Người mang hàng ra
+ * không tự bấm nhận được (database chặn) — trang chỉ cho họ hủy chuyến.
+ *
+ * Nhận xong trang hiện "Xếp ra bán trước" (goiYXepQuay): gói hạn gần để lên
+ * phía trước. Không có tiền.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import BieuTuong from '../../../../components/kho/BieuTuong.astro';
+import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
+import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
+import { goiYXepQuay } from '../../../../lib/kho/trang-chu.ts';
+import {
+  docHangDangMang, docMatHangQuay, docCaiDatQuay, docFormNhan, nhanHangChuyen, huyChuyen, cauSoLuong,
+  type HangDangMang, type MatHangQuay,
+} from '../../../../lib/kho/quay.ts';
+import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, laUuid, type KetQua } from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('van_hanh')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
+const cn = k.chiNhanh;
+const laQuay = k.nhanSu.vai_tro === 'nhan_vien_quay';
+const URL_TRANG = '/noi-bo/kho/quay/nhan';
+
+let ds: HangDangMang[] = [];
+let matHang: MatHangQuay[] = [];
+let gioNhac = 2;
+let loiDoc = k.loiDoc;
+try {
+  const [c, mh] = await Promise.all([docCaiDatQuay(k.client, cn.id), docMatHangQuay(k.client)]);
+  gioNhac = c?.gio_nhac_chuyen ?? 2;
+  matHang = mh;
+  ds = await docHangDangMang(k.client, cn.id, gioNhac);
+} catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được hàng đang mang ra.'); }
+
+// ---------------------------------------------------------------------------
+// Bấm nhận · ghi thiếu · hủy chuyến
+// ---------------------------------------------------------------------------
+const form = await docFormGui(Astro);
+const idForm = String(form?.get('id') ?? '');
+const maGuiCu = String(form?.get('ma_gui') ?? '');
+let bao: KetQua | null = k.bao;
+if (form) {
+  const viec = String(form.get('viec') ?? '');
+  const p = ds.find(x => x.id === idForm);
+  let kq: KetQua;
+  if (!p && !loiDoc && laUuid(idForm) && (viec === 'nhan_du' || (viec === 'nhan_thieu' && ds.length < 50))) {
+    // Phiếu không còn đang mang ra. Bấm hai lần: lần sau mang cùng ma_gui nên
+    // database trả "đã ghi nhận" (không nhận hai lần); người khác vừa bấm hoặc
+    // đã hủy chuyến thì database báo đúng lý do. Không gửi số thiếu ở đây.
+    // Danh sách đọc tối đa 50 phiếu: đủ 50 thì phiếu vắng có thể vẫn đang chờ
+    // — khi đó KHÔNG gửi "nhận đủ" thay cho số thiếu.
+    kq = await nhanHangChuyen(k.client, idForm, maGuiCu, null);
+  } else if (!p) {
+    kq = { ok: false, cau: 'Phiếu này không còn chờ nhận nữa — có thể người khác vừa bấm nhận. Xem danh sách bên dưới.' };
+  } else if (viec === 'nhan_du') {
+    kq = await nhanHangChuyen(k.client, p.id, maGuiCu, null);
+  } else if (viec === 'nhan_thieu') {
+    const { pDong, loi } = docFormNhan(form, p.mon, matHang);
+    kq = loi.length > 0 ? { ok: false, cau: loi.join(' ') } : await nhanHangChuyen(k.client, p.id, maGuiCu, pDong);
+    if (kq.ok && pDong) kq = { ok: true, cau: `${kq.cau} Phần thiếu đã báo quản lý.` };
+  } else if (viec === 'huy_chuyen') {
+    kq = await huyChuyen(k.client, p.id, String(form.get('ly_do') ?? '').trim());
+  } else {
+    kq = { ok: false, cau: 'Việc không hợp lệ.' };
+  }
+  if (kq.ok) return chuyenHuong(Astro, URL_TRANG, kq);
+  bao = kq;
+}
+
+// ---------------------------------------------------------------------------
+// Hiển thị
+// ---------------------------------------------------------------------------
+let ton: DongTon[] = [];
+let ten = new Map<string, string>();
+try {
+  const [t, n] = await Promise.all([
+    laQuay ? docTon(k.client, cn.id) : Promise.resolve([] as DongTon[]),
+    tenNhanSu(k.client, ds.map(p => p.nguoi_tao)),
+  ]);
+  ton = t; ten = n;
+} catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, 'Không đọc được hàng ở quầy.'); }
+
+const mhTheoId = new Map(matHang.map(m => [m.id, m]));
+const monCua = (id: string) => mhTheoId.get(id) ?? { ten: 'Món đã xóa', dem_goi: true, don_vi_goi: 'gói' };
+const thieuId = form && String(form.get('viec')) === 'nhan_thieu' ? idForm : Astro.url.searchParams.get('thieu');
+// Gửi lại form bị lỗi thì giữ ma_gui của lần bấm đó; lần đầu mỗi nút một mã mới.
+const maGuiCho = (id: string) => (id === idForm && laUuid(maGuiCu) ? maGuiCu : crypto.randomUUID());
+const giaTriNhan = (pId: string, m: { dem_goi: boolean }, mon: { mat_hang_id: string; so_goi: number; so_kg: number }) => {
+  const cu = pId === idForm ? form?.get(`n_${mon.mat_hang_id}`) : null;
+  if (cu !== null && cu !== undefined) return String(cu);
+  return m.dem_goi ? String(mon.so_goi) : dinhDangKg(mon.so_kg);
+};
+const xep = goiYXepQuay(ton);
+---
+<Kho k={k} tieuDe="Nhận hàng ra quầy" huongDan={laQuay ? 'nv-quay' : 'thu-kho'}>
+  <h1>Nhận hàng ra quầy</h1>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {ds.length === 0 ? (
+    <p class="nb-rong">Không có hàng nào đang mang ra quầy.</p>
+  ) : (
+    <p class="kho-phu">Đếm từng món trên xe / khay. Đủ thì bấm "Đã nhận đủ". Thiếu thì bấm "Thiếu" và ghi số thực nhận — phần mềm báo quản lý.</p>
+  )}
+
+  {ds.map(p => {
+    const laNguoiMang = p.nguoi_tao === k.nhanSu.id;
+    const moThieu = thieuId === p.id && !laNguoiMang;
+    return (
+      <section class:list={['nb-the', 'nh-the', { do: p.qua_gio }]}>
+        <header class="nh-dau">
+          <strong>{p.so_phieu}{p.so_yeu_cau ? ` · theo yêu cầu ${p.so_yeu_cau}` : ''}</strong>
+          <span class="kho-phu">{p.ten_vi_tri} → {p.ten_vi_tri_den ?? 'quầy'} · {dinhDangThoiDiem(p.created_at)}{p.nguoi_tao && ten.get(p.nguoi_tao) ? ` · ${ten.get(p.nguoi_tao)} mang ra` : ''}</span>
+          {p.qua_gio && <span class="chu-do"><BieuTuong ten="canh_bao" co={18} /> Đã quá {gioNhac} giờ chưa bấm nhận</span>}
+        </header>
+
+        {moThieu ? (
+          <form method="POST">
+            <input type="hidden" name="id" value={p.id} />
+            <input type="hidden" name="ma_gui" value={maGuiCho(p.id)} />
+            <p style="margin:.25rem 0 .5rem"><strong>Ghi số thực nhận</strong> từng món (không nhận được gì thì ghi 0).</p>
+            <ul class="kho-dong-ds">
+              {p.mon.map(x => {
+                const m = monCua(x.mat_hang_id);
+                return (
+                  <li>
+                    <span><strong>{m.ten}</strong><small>Mang ra {cauSoLuong(m, x.so_goi, x.so_kg)}</small></span>
+                    <label class="nb-o nh-o">
+                      <span class="an">{m.ten} — số thực nhận</span>
+                      <input type="text" inputmode={m.dem_goi ? 'numeric' : 'decimal'} name={`n_${x.mat_hang_id}`}
+                        value={giaTriNhan(p.id, m, x)} autocomplete="off" />
+                      <small>{m.dem_goi ? m.don_vi_goi || 'gói' : 'kg'}</small>
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+            <div class="kho-thanh-nut">
+              <button type="submit" name="viec" value="nhan_thieu" class="nb-nut nh-lon">Gửi số thực nhận</button>
+              <a class="nb-nut phu nh-lon" href={URL_TRANG}>Quay lại</a>
+            </div>
+          </form>
+        ) : (
+          <>
+            <ul class="kho-dong-ds">
+              {p.mon.map(x => {
+                const m = monCua(x.mat_hang_id);
+                return <li><span><strong>{m.ten}</strong></span><b>{cauSoLuong(m, x.so_goi, x.so_kg)}</b></li>;
+              })}
+            </ul>
+            {laNguoiMang ? (
+              <p class="kho-phu" style="margin:.5rem 0 0">Bạn mang hàng này ra — nhờ nhân viên quầy kiểm và bấm nhận.</p>
+            ) : (
+              <div class="kho-thanh-nut">
+                <form method="POST" style="flex:1 1 12rem;display:flex">
+                  <input type="hidden" name="id" value={p.id} />
+                  <input type="hidden" name="ma_gui" value={maGuiCho(p.id)} />
+                  <button type="submit" name="viec" value="nhan_du" class="nb-nut nh-lon" style="flex:1">Đã nhận đủ</button>
+                </form>
+                <a class="nb-nut phu nh-lon" href={`${URL_TRANG}?thieu=${p.id}`}>Thiếu — ghi số nhận</a>
+              </div>
+            )}
+          </>
+        )}
+
+        {(laNguoiMang || k.duoc('duyet')) && (
+          <details style="margin-top:.5rem">
+            <summary class="nh-tom">Hủy chuyến (mang nhầm, quầy không cần nữa)</summary>
+            <form method="POST" style="margin-top:.5rem">
+              <input type="hidden" name="id" value={p.id} />
+              <label class="nb-o">
+                <span>Lý do</span>
+                <input type="text" name="ly_do" maxlength="500" />
+              </label>
+              <button type="submit" name="viec" value="huy_chuyen" class="nb-nut kho-nut-xoa">Hủy chuyến — hàng về lại kho</button>
+            </form>
+          </details>
+        )}
+      </section>
+    );
+  })}
+
+  {laQuay && (
+    <section class="kho-khoi">
+      <h2><BieuTuong ten="quay" /> Xếp ra bán trước</h2>
+      {xep.length === 0 ? <p class="kho-phu">Hàng ở quầy đều còn hạn xa — xếp sao cũng được.</p> : (
+        <ul class="kho-dong-ds">
+          {xep.map(x => (
+            <li class:list={{ gap: x.gap }}><span><strong>{x.ten}</strong><small>{x.cau}</small></span></li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )}
+</Kho>
+
+<style>
+  .nh-the.do { border-color: #F2C9C3; background: #FFF8F7; }
+  .nh-dau { display: flex; flex-direction: column; gap: .2rem; margin-bottom: .25rem; }
+  .nh-dau .chu-do { display: inline-flex; align-items: center; gap: .3rem; }
+  .nh-lon { min-height: 56px; font-size: 1.05rem; }
+  .nh-o { display: flex; align-items: center; gap: .4rem; margin: 0; flex: 0 0 auto; }
+  .nh-o input { width: 6rem; text-align: right; font-size: 1.15rem !important; }
+  .nh-tom { cursor: pointer; font-weight: 600; min-height: 48px; display: flex; align-items: center; color: var(--muc-nhat); }
+  .an { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>

@@ -135,11 +135,11 @@ if (form) {
 // ---------------------------------------------------------------------------
 const tenMh = new Map(matHang.map(m => [m.id, m]));
 const tenVt = new Map(viTri.map(v => [v.id, v]));
-const viTriRa = viTri.filter(v => v.loai !== 'cho_huy' && v.dang_dung);
+const viTriRa = viTri.filter(v => v.loai !== 'cho_huy' && v.loai !== 'dang_chuyen' && v.dang_dung);
 const viTriMacDinh = viTriRa.find(v => v.loai === 'quay')?.id ?? caiDat?.vi_tri_nhan_hang_id ?? viTriRa[0]?.id ?? '';
 
 // Tảng có hàng để chọn ở bước 1.
-const coTon = new Set(ton.filter(t => t.loai_vi_tri !== 'cho_huy' && t.so_kg > 0).map(t => t.mat_hang_id));
+const coTon = new Set(ton.filter(t => t.loai_vi_tri !== 'cho_huy' && t.loai_vi_tri !== 'dang_chuyen' && t.so_kg > 0).map(t => t.mat_hang_id));
 const tangChon = matHang.filter(m => (m.loai === 'tang' || m.loai === 'phan_cat') && coTon.has(m.id));
 
 // Công thức của loại tảng này.
@@ -151,7 +151,7 @@ const duKien = new Map((ctChon?.dong ?? []).map(d => [d.mat_hang_ra_id, d.ty_le_
 // Đầu vào: mọi lô của loại tảng đang có (trừ chờ hủy) + lô đã ghi trong nháp.
 type DongVao = { key: string; lo_id: string; vi_tri_id: string; ton_kg: number; ton_goi: number; ma_lo: string; han_dung: string; tinh_trang: string };
 const dongVao: DongVao[] = ton
-  .filter(t => t.mat_hang_id === mhVaoId && t.loai_vi_tri !== 'cho_huy' && t.so_kg > 0)
+  .filter(t => t.mat_hang_id === mhVaoId && t.loai_vi_tri !== 'cho_huy' && t.loai_vi_tri !== 'dang_chuyen' && t.so_kg > 0)
   .map(t => ({ key: `${t.lo_id}|${t.vi_tri_id}`, lo_id: t.lo_id, vi_tri_id: t.vi_tri_id, ton_kg: t.so_kg, ton_goi: t.so_goi,
                ma_lo: t.ma_lo, han_dung: t.han_dung, tinh_trang: t.tinh_trang_han }));
 const thieu = vaoDb.filter(v => !dongVao.some(d => d.key === `${v.lo_id}|${v.vi_tri_id}`));

@@ -31,6 +31,9 @@ import { xemTruocDanMatHang, chuKyDan, dongGhiDan } from '../../web/src/lib/kho/
 import {
   docFormDauNhan, docFormDongNhan, ghepDongNhan, gopMonGanDay, kiemTruocKhiGui, dongNhanVaoForm,
 } from '../../web/src/lib/kho/nhan-hang.ts';
+import { maTuO, cauLoiNhan, monKhongThay, cauDaCong, TOI_DA_MOT_LUOT } from '../../web/src/lib/kho/dem-quay.ts';
+import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — KIỂM THỬ MÃ VẠCH VÀ ĐỌC SỐ');
 
@@ -580,6 +583,116 @@ await nhom('12 · NHẬN HÀNG 3 BƯỚC (GĐ5a) — ĐỌC FORM, KHÔNG CÓ TI�
      && vd.some(v => /ảnh|hóa đơn/.test(v)) && vd.some(v => /Dòng 1 \(Mỡ bò\).*Nhiệt độ/.test(v)), vd.join(' · '));
   ok('Tồn đầu kỳ: không đòi ảnh, NCC hay ô bắt buộc', kiemTruocKhiGui({ loai: 'ton_dau', nha_cung_cap_id: null, so_anh: 0, truong_them: {}, dong: [dsCu[1]] }, dnPhieu, dnLo).length === 0);
   ok('Chưa có dòng nào → không gửi được', kiemTruocKhiGui({ ...p, dong: [] }, dnPhieu, dnLo).some(v => /Chưa có món/.test(v)));
+});
+
+// ===========================================================================
+await nhom('13 · ĐỌC EAN-13 TỪ ẢNH CAMERA (public/kho/js/ean13.js — iPhone)', async () => {
+  // Nạp file đúng như trình duyệt: chạy trong một "window" rỗng.
+  const nguon = readFileSync(new URL('../../web/public/kho/js/ean13.js', import.meta.url), 'utf8');
+  const hop = { window: {} };
+  vm.runInNewContext(nguon, hop);
+  const giaiMa = hop.window.KhoEan13?.giaiMa;
+  ok('File gắn window.KhoEan13.giaiMa', typeof giaiMa === 'function');
+  ok('Không dùng thư viện ngoài (không import / require)', !/\bimport\b|\brequire\(/.test(nguon));
+
+  // --- Dựng ảnh vạch tổng hợp từ một mã EAN-13 -------------------------------
+  const BANG_L = [[3,2,1,1],[2,2,2,1],[2,1,2,2],[1,4,1,1],[1,1,3,2],[1,2,3,1],[1,1,1,4],[1,3,1,2],[1,2,1,3],[3,1,1,2]];
+  const KIEU = ['000000','001011','001101','001110','010011','011001','011100','010101','010110','011010'];
+  const vach = (w, batDauDen) => w.map((n, i) => ((i % 2 === 0) === batDauDen ? '1' : '0').repeat(n)).join('');
+  /** 13 số → 95 mô-đun ('1' = vạch đen). Không kiểm số kiểm tra — để dựng cả mã sai. */
+  const moDun = ma => {
+    let s = '101';
+    for (let i = 0; i < 6; i++) {
+      const d = +ma[i + 1];
+      s += vach(KIEU[+ma[0]][i] === '1' ? [...BANG_L[d]].reverse() : BANG_L[d], false);
+    }
+    s += '01010';
+    for (let i = 0; i < 6; i++) s += vach(BANG_L[+ma[i + 7]], true);
+    return s + '101';
+  };
+  const ngauNhien = hat => () => { hat = (hat * 1103515245 + 12345) & 0x7fffffff; return hat / 0x7fffffff; };
+  /**
+   * Ảnh RGBA như ctx.getImageData(): mô-đun rộng m điểm ảnh (lẻ — như camera),
+   * mép vạch nhòe, nhiễu ±nhieu, sáng dần từ trái sang phải; có thể xoay 90°
+   * hoặc lộn ngược.
+   */
+  const dungAnh = (ma, { m = 2.6, cao = 48, nhieu = 12, xoay = false, nguoc = false, hat = 7 } = {}) => {
+    let md = moDun(ma);
+    if (nguoc) md = [...md].reverse().join('');
+    const LE = 10, W = Math.ceil((95 + 2 * LE) * m), r = ngauNhien(hat);
+    const hang = new Float32Array(W);
+    for (let x = 0; x < W; x++) {
+      let phu = 0;
+      for (let t = 0; t < 8; t++) {
+        const i = Math.floor((x + (t + 0.5) / 8) / m - LE);
+        if (i >= 0 && i < 95 && md[i] === '1') phu += 1 / 8;
+      }
+      hang[x] = 225 - 190 * phu;
+    }
+    const nhoe = hang.map((v, x) => (hang[Math.max(0, x - 1)] + 2 * v + hang[Math.min(W - 1, x + 1)]) / 4);
+    const w = xoay ? cao : W, h = xoay ? W : cao;
+    const data = new Uint8ClampedArray(w * h * 4);
+    for (let y = 0; y < cao; y++) {
+      for (let x = 0; x < W; x++) {
+        const v = nhoe[x] + (r() * 2 - 1) * nhieu + (x / W) * 20;
+        const i = xoay ? (x * w + y) * 4 : (y * w + x) * 4;
+        data[i] = data[i + 1] = data[i + 2] = v; data[i + 3] = 255;
+      }
+    }
+    return { width: w, height: h, data };
+  };
+
+  const nhan = ean('201234501250');   // 2012345012509 — nhãn cân mẫu
+  ok('Nhãn cân 2012345012509, mô-đun 2,6 điểm ảnh, nhiễu nhẹ → đọc đúng', giaiMa(dungAnh(nhan)) === nhan);
+  ok('Mã chuẩn 4006381333931 → đọc đúng', giaiMa(dungAnh('4006381333931')) === '4006381333931');
+  ok('Mã bắt đầu bằng 0 (kiểu toàn L) → đọc đúng', giaiMa(dungAnh(ean('012345678901'))) === ean('012345678901'));
+  let du = 0;
+  const coMau = [1.8, 2, 2.3, 3.4, 5];
+  for (const m of coMau) if (giaiMa(dungAnh(nhan, { m, hat: Math.round(m * 10) })) === nhan) du += 1;
+  ok('Vạch mảnh 1,8 tới dày 5 điểm ảnh đều đọc được', du === coMau.length, `${du}/${coMau.length}`);
+  ok('Gói lộn ngược (đọc từ phải sang trái) → đúng mã', giaiMa(dungAnh(nhan, { nguoc: true })) === nhan);
+  ok('Gói xoay dọc 90° → đúng mã', giaiMa(dungAnh(nhan, { xoay: true })) === nhan);
+  ok('Nhiễu mạnh hơn (±25) vẫn đọc đúng', giaiMa(dungAnh(nhan, { nhieu: 25, hat: 3 })) === nhan);
+
+  // Không bao giờ đoán: sai số kiểm tra, ảnh trống, ảnh nhiễu → null.
+  const sai = nhan.slice(0, 12) + String((+nhan[12] + 1) % 10);
+  ok('Mã sai số kiểm tra → null (không đoán)', giaiMa(dungAnh(sai)) === null);
+  ok('Mã chuẩn sai số cuối 4006381333932 → null', giaiMa(dungAnh('4006381333932')) === null);
+  const trang = { width: 200, height: 40, data: new Uint8ClampedArray(200 * 40 * 4).fill(230) };
+  ok('Ảnh trắng trơn → null', giaiMa(trang) === null);
+  const r = ngauNhien(99);
+  let doc = 0;
+  for (let lan = 0; lan < 30; lan++) {
+    const data = new Uint8ClampedArray(320 * 60 * 4).map((_, i) => (i % 4 === 3 ? 255 : r() * 255));
+    if (giaiMa({ width: 320, height: 60, data }) !== null) doc += 1;
+  }
+  ok('30 ảnh nhiễu ngẫu nhiên → không ra mã nào', doc === 0, `${doc} ảnh ra mã`);
+  ok('Dữ liệu hỏng / thiếu → null, không ném lỗi',
+     giaiMa(null) === null && giaiMa({}) === null && giaiMa({ width: 10, height: 10, data: new Uint8ClampedArray(4) }) === null);
+});
+
+// ===========================================================================
+await nhom('14 · ĐẾM QUẦY CỘNG DỒN (GĐ5b) — HÀM THUẦN', async () => {
+  ok('Ô quét: tách dòng / dấu phẩy, bỏ chữ lạ', maTuO('2012345012509\n 2012345012509, abc;4006381333931\n\n').join() === '2012345012509,2012345012509,4006381333931');
+  ok('Hai gói cùng mã giữ nguyên hai lần (cộng đủ hai gói)', maTuO('2012345012509\n2012345012509').length === 2);
+  ok('Tối đa mỗi lượt khớp database (300)', TOI_DA_MOT_LUOT === 300);
+  const cau = cauLoiNhan([
+    { ma: '1', loi: 'Sai số kiểm tra — quét lại' }, { ma: '2', loi: 'Sai số kiểm tra — quét lại' },
+    { ma: '3', loi: 'Mã hàng 99 chưa gán cho món nào — báo quản lý' },
+  ]);
+  ok('Lỗi nhãn gom theo câu', cau.length === 2 && cau[0] === '2 nhãn: Sai số kiểm tra — quét lại' && /^1 nhãn: Mã hàng 99/.test(cau[1]), cau.join(' | '));
+  ok('Không có lỗi → không có câu', cauLoiNhan([]).length === 0);
+  const dong = [
+    { mat_hang_id: 'a', ten: 'Thăn', dem_goi: true, so_goi_dem: 3, so_kg_dem: 1.2, xac_nhan_het: false },
+    { mat_hang_id: 'b', ten: 'Nạm', dem_goi: true, so_goi_dem: null, so_kg_dem: null, xac_nhan_het: false },
+    { mat_hang_id: 'c', ten: 'Gầu', dem_goi: true, so_goi_dem: 0, so_kg_dem: null, xac_nhan_het: false },
+    { mat_hang_id: 'd', ten: 'Mỡ', dem_goi: false, so_goi_dem: null, so_kg_dem: null, xac_nhan_het: false },
+    { mat_hang_id: 'e', ten: 'Xương', dem_goi: false, so_goi_dem: null, so_kg_dem: 2.5, xac_nhan_het: false },
+    { mat_hang_id: 'f', ten: 'Bắp', dem_goi: true, so_goi_dem: 0, so_kg_dem: null, xac_nhan_het: true },
+  ];
+  ok('"Không thấy gói nào": chưa đếm hoặc 0 mà chưa xác nhận hết',
+     monKhongThay(dong).map(d => d.mat_hang_id).join() === 'b,c,d');
+  ok('Câu sau lượt quét', cauDaCong(12, false) === 'Đã cộng 12 nhãn vào số đếm.' && /không cộng thêm/.test(cauDaCong(12, true)));
 });
 
 process.exit(ketThuc('MÃ VẠCH VÀ ĐỌC SỐ'));

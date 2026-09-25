@@ -60,14 +60,14 @@ export interface ViTri {
   id: string;
   chi_nhanh_id: string;
   ten: string;
-  loai: 'kho' | 'quay' | 'cho_huy';
+  loai: 'kho' | 'quay' | 'cho_huy' | 'dang_chuyen';
   dang_dung: boolean;
   thu_tu: number;
 }
 
 export interface LyDo {
   id: string;
-  loai: 'huy' | 'xuat_bep' | 'dieu_chinh';
+  loai: 'huy' | 'xuat_bep' | 'dieu_chinh' | 'xuat_khac';
   ten: string;
   can_anh: boolean;
   dang_dung: boolean;
@@ -766,7 +766,7 @@ export async function luuLyDo(client: SupabaseClient, form: FormData): Promise<K
     return { ok: true, cau: `Đã lưu lý do "${ten}".` };
   }
   const loai = s(form, 'loai');
-  if (!['huy', 'xuat_bep', 'dieu_chinh'].includes(loai)) return { ok: false, cau: 'Chọn lý do này dùng cho việc gì.' };
+  if (!['huy', 'xuat_bep', 'dieu_chinh', 'xuat_khac'].includes(loai)) return { ok: false, cau: 'Chọn lý do này dùng cho việc gì.' };
   const { error } = await client.from('kho_ly_do').insert({ ...dong, loai });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   return { ok: true, cau: `Đã thêm lý do "${ten}".` };

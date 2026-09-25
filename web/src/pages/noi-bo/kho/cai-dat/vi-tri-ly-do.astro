@@ -3,7 +3,8 @@
  * KHO — CÀI ĐẶT · VỊ TRÍ VÀ LÝ DO
  *
  * Vị trí thuộc từng chi nhánh (kho lạnh, tủ mát, quầy thịt). Vị trí "Hàng chờ
- * hủy" do hệ thống tạo — đổi tên được, không tắt được, không đổi loại được.
+ * hủy" và "Đang mang ra quầy" (0032) do hệ thống tạo — đổi tên được, không
+ * tắt được, không đổi loại được.
  * Lý do dùng chung toàn thương hiệu; "bắt buộc ảnh" nghĩa là báo hủy với lý
  * do này phải chụp ít nhất một ảnh.
  */
@@ -37,9 +38,13 @@ if (k.chiNhanh) {
   } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được vị trí và lý do.'); }
 }
 
+// Vị trí hệ thống: không có ô chọn loại, không tắt được.
+const laHeThong = (v: ViTri) => v.loai === 'cho_huy' || v.loai === 'dang_chuyen';
+
 const NHOM_LY_DO = [
   ['huy', 'Lý do hủy hàng'],
   ['xuat_bep', 'Lý do xuất bếp'],
+  ['xuat_khac', 'Lý do xuất khác'],
   ['dieu_chinh', 'Lý do điều chỉnh'],
 ] as const;
 ---
@@ -57,7 +62,7 @@ const NHOM_LY_DO = [
       <div class="kho-luoi">
         <label class="nb-o"><span>Tên</span><input type="text" name="ten" value={v.ten} maxlength="60" required /></label>
         <label class="nb-o"><span>Loại</span>
-          {v.loai === 'cho_huy'
+          {laHeThong(v)
             ? <p style="margin:.6rem 0 0">{TEN_LOAI_VI_TRI[v.loai]} <span class="kho-phu">(hệ thống)</span></p>
             : <select name="loai">
                 <option value="kho" selected={v.loai === 'kho'}>Kho</option>
@@ -66,7 +71,7 @@ const NHOM_LY_DO = [
         </label>
         <label class="nb-o"><span>Thứ tự</span><input type="text" inputmode="numeric" name="thu_tu" value={String(v.thu_tu)} /></label>
         <label class="nb-o"><span>Tình trạng</span>
-          {v.loai === 'cho_huy'
+          {laHeThong(v)
             ? <><input type="hidden" name="dang_dung" value="co" /><p style="margin:.6rem 0 0">Luôn dùng</p></>
             : <select name="dang_dung">
                 <option value="co" selected={v.dang_dung}>Đang dùng</option>

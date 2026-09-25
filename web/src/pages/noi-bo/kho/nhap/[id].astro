@@ -225,7 +225,7 @@ const dongHien: DongForm[] = soanDuoc ? [...dongCo, ...Array.from({ length: soTr
 // Chưa lưu được thì dùng lại ma_gui cũ: ảnh đã tải nằm trong thư mục của mã đó.
 const maGuiForm = maGuiGiu ?? crypto.randomUUID();
 const tenMh = new Map(matHang.map(m => [m.id, m]));
-const viTriNhan = viTri.filter(v => v.loai !== 'cho_huy' && (v.dang_dung || v.id === dau.vi_tri_id));
+const viTriNhan = viTri.filter(v => v.loai !== 'cho_huy' && v.loai !== 'dang_chuyen' && (v.dang_dung || v.id === dau.vi_tri_id));
 const nccChon = ncc.filter(n => n.dang_dung || n.id === dau.nha_cung_cap_id);
 const ten = phieu ? await tenNhanSu(k.client, [phieu.nguoi_tao, phieu.nguoi_gui, phieu.nguoi_duyet, phieu.nguoi_huy]) : new Map();
 // Ảnh trên form soạn: ảnh cũ của phiếu + ảnh vừa tải lên nhưng phiếu chưa lưu được.

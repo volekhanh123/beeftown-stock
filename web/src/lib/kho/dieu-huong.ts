@@ -40,8 +40,10 @@ export interface MucKho {
 }
 
 // Các khóa "việc của chính mình / việc tay chân" — gom thành số đỏ của mục Việc.
+// 0032: yêu cầu của quầy (thủ kho mang ra), hàng đang mang ra (quầy bấm nhận).
 export const KHOA_VIEC_TAY = [
   'nhap_bi_tra', 'huy_bi_tra', 'kiem_ke_tra_ve', 'het_han', 'quay_duoi_muc', 'quay_chua_dem',
+  'yeu_cau_quay', 'hang_dang_chuyen',
 ];
 export const KHOA_DUYET = ['duyet_nhap', 'duyet_huy', 'duyet_kiem_ke'];
 export const KHOA_CONG_NO = ['cong_no_qua_han', 'chua_doi_chieu'];
@@ -64,8 +66,15 @@ export const MUC_KHO: MucKho[] = [
   { ma: 'nhap', ten: 'Nhập hàng', link: '/noi-bo/kho/nhap', bieuTuong: 'nhap', quyen: ['xem_gia'] },
   { ma: 'pha_loc', ten: 'Pha lóc', link: '/noi-bo/kho/pha-loc', bieuTuong: 'dao', quyen: ['xem_gia', 'pha_loc'],
     dem: ['pha_nhap'] },
+  // Quầy yêu cầu → thủ kho mang ra → quầy bấm nhận (0032). Số đỏ: thủ kho thấy
+  // yêu cầu đang chờ, NV quầy thấy hàng đang mang ra chờ bấm nhận.
+  { ma: 'yeu_cau_quay', ten: 'Quầy cần hàng', link: '/noi-bo/kho/quay/yeu-cau', bieuTuong: 'chuyen',
+    quyen: ['van_hanh'], dem: ['yeu_cau_quay'] },
+  { ma: 'nhan_quay', ten: 'Nhận hàng ra quầy', link: '/noi-bo/kho/quay/nhan', bieuTuong: 'quay',
+    quyen: ['van_hanh'], dem: ['hang_dang_chuyen'] },
+  // Số đỏ thêm: phiếu chuyển quầy nhận thiếu, chờ quản lý xử lý (0032).
   { ma: 'xuat', ten: 'Chuyển · Xuất · Hủy', ngan: 'Xuất', link: '/noi-bo/kho/xuat', bieuTuong: 'chuyen',
-    quyen: ['xem'], dem: ['huy_bi_tra'] },
+    quyen: ['xem'], dem: ['huy_bi_tra', 'chuyen_nhan_thieu'] },
   { ma: 'kiem_ke', ten: 'Kiểm kê', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['xem'],
     dem: ['kiem_ke_tra_ve', 'quay_chua_dem'] },
   { ma: 'cong_no', ten: 'Công nợ', link: '/noi-bo/kho/cong-no', bieuTuong: 'cong_no', quyen: ['ke_toan'],
@@ -95,7 +104,9 @@ const theoMa = (ma: string): MucKho => {
 /** Thanh đáy của từng vai — đúng 5 nút. Kế toán: Duyệt (điền giá phiếu nhập) đứng thứ hai. */
 export const THANH_DAY: Record<string, MucKho[]> = {
   thu_kho:        [{ ...theoMa('trang_chu') }, theoMa('viec'), theoMa('quet'), theoMa('ton'), MUC_KHAC],
-  nhan_vien_quay: [{ ...theoMa('trang_chu'), ten: 'Quầy', bieuTuong: 'quay' }, theoMa('viec'), theoMa('quet'),
+  // Nút Quầy có số đỏ khi hàng đang mang ra — trang chủ quầy có thẻ "bấm nhận".
+  nhan_vien_quay: [{ ...theoMa('trang_chu'), ten: 'Quầy', bieuTuong: 'quay', dem: ['hang_dang_chuyen'] },
+                   theoMa('viec'), theoMa('quet'),
                    MUC_QUAY, MUC_KHAC],
   quan_ly:        [{ ...theoMa('trang_chu'), ten: 'Hôm nay' }, theoMa('duyet'), theoMa('quet'), theoMa('ton'), MUC_KHAC],
   chu_so_huu:     [{ ...theoMa('trang_chu'), ten: 'Hôm nay' }, theoMa('duyet'), theoMa('quet'), theoMa('ton'), MUC_KHAC],
@@ -109,15 +120,17 @@ export const THAO_TAC_NHANH: Record<string, ThaoTac[]> = {
   thu_kho: [
     { ten: 'Nhận hàng', link: '/noi-bo/kho/nhan-hang/moi', bieuTuong: 'nhap', quyen: ['nhap'] },
     { ten: 'Pha lóc', link: '/noi-bo/kho/pha-loc/moi', bieuTuong: 'dao', quyen: ['pha_loc'] },
-    { ten: 'Ra quầy', link: '/noi-bo/kho/xuat/moi?loai=chuyen', bieuTuong: 'chuyen', quyen: ['van_hanh'] },
+    { ten: 'Quầy cần hàng', link: '/noi-bo/kho/quay/yeu-cau', bieuTuong: 'chuyen', quyen: ['van_hanh'] },
     { ten: 'Báo hủy', link: '/noi-bo/kho/xuat/moi?loai=huy', bieuTuong: 'huy', quyen: ['van_hanh'] },
     { ten: 'Kiểm kê', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['van_hanh'] },
   ],
   nhan_vien_quay: [
-    { ten: 'Lấy hàng ra quầy', link: '/noi-bo/kho/xuat/moi?loai=chuyen', bieuTuong: 'chuyen', quyen: ['van_hanh'] },
+    { ten: 'Yêu cầu hàng', link: '/noi-bo/kho/quay/yeu-cau', bieuTuong: 'chuyen', quyen: ['van_hanh'] },
+    { ten: 'Nhận hàng ra quầy', link: '/noi-bo/kho/quay/nhan', bieuTuong: 'quay', quyen: ['van_hanh'] },
+    { ten: 'Tự lấy hàng', link: '/noi-bo/kho/xuat/moi?loai=chuyen', bieuTuong: 'chuyen', quyen: ['van_hanh'] },
     { ten: 'Đưa bếp', link: '/noi-bo/kho/xuat/moi?loai=xuat_bep', bieuTuong: 'bep', quyen: ['van_hanh'] },
     { ten: 'Báo hàng hỏng', link: '/noi-bo/kho/xuat/moi?loai=huy', bieuTuong: 'huy', quyen: ['van_hanh'] },
-    { ten: 'Đếm quầy', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['van_hanh'] },
+    { ten: 'Đếm quầy', link: '/noi-bo/kho/quay/dem', bieuTuong: 'kiem_ke', quyen: ['van_hanh'] },
   ],
   quan_ly: [
     { ten: 'Duyệt', link: '/noi-bo/kho/duyet', bieuTuong: 'duyet', quyen: ['duyet', 'duyet_nhap'] },

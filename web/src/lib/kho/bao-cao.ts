@@ -5,6 +5,9 @@
  * chỉ thấy số của chi nhánh mình, vai không xem giá nhận cột tiền bằng 0. File
  * này chỉ gọi hàm, khai báo cột để hiện bảng và xuất CSV.
  *
+ * Xuất – nhập – tồn dùng kho_bao_cao_xnt_v2 (0032): thêm cột xuất khác và hao
+ * hụt (mất khi mang ra quầy), tách khỏi kiểm kê. Hàm cũ vẫn còn trong database.
+ *
  * CSV cho Excel tiếng Việt: UTF-8 có BOM (không thì Excel hiện "Tháº¥n"),
  * dấu chấm phẩy ngăn cột (Excel máy cài tiếng Việt coi dấu phẩy là dấu thập
  * phân), kg dùng dấu phẩy thập phân, tiền là số nguyên không dấu phân cách.
@@ -42,7 +45,7 @@ export interface DinhNghiaBaoCao {
 export const BAO_CAO: Record<string, DinhNghiaBaoCao> = {
   'xuat-nhap-ton': {
     ten: 'Xuất – nhập – tồn',
-    moTa: 'Theo mặt hàng, theo ngày chứng từ. Chuyển giữa kho và quầy không tính. Giá trị theo giá vốn từng lô.',
+    moTa: 'Theo mặt hàng, theo ngày chứng từ. Chuyển giữa kho và quầy không tính. Hao hụt = hàng mất khi mang ra quầy. Giá trị theo giá vốn từng lô.',
     cot: [
       { khoa: 'ten', ten: 'Mặt hàng', kieu: 'chu' },
       { khoa: 'dau_kg', ten: 'Tồn đầu kg', kieu: 'kg' },
@@ -55,18 +58,23 @@ export const BAO_CAO: Record<string, DinhNghiaBaoCao> = {
       { khoa: 'ban_gia_tri', ten: 'Bán giá vốn', kieu: 'tien', tienMat: true },
       { khoa: 'xuat_bep_kg', ten: 'Xuất bếp kg', kieu: 'kg' },
       { khoa: 'xuat_bep_gia_tri', ten: 'Xuất bếp tiền', kieu: 'tien', tienMat: true },
+      { khoa: 'xuat_khac_kg', ten: 'Xuất khác kg', kieu: 'kg' },
+      { khoa: 'xuat_khac_gia_tri', ten: 'Xuất khác tiền', kieu: 'tien', tienMat: true },
       { khoa: 'huy_kg', ten: 'Hủy kg', kieu: 'kg' },
       { khoa: 'huy_gia_tri', ten: 'Hủy tiền', kieu: 'tien', tienMat: true },
       { khoa: 'tra_ncc_kg', ten: 'Trả NCC kg', kieu: 'kg' },
       { khoa: 'kiem_ke_kg', ten: 'Kiểm kê ± kg', kieu: 'kg' },
       { khoa: 'kiem_ke_gia_tri', ten: 'Kiểm kê ± tiền', kieu: 'tien', tienMat: true },
+      { khoa: 'hao_hut_kg', ten: 'Hao hụt kg', kieu: 'kg' },
+      { khoa: 'hao_hut_gia_tri', ten: 'Hao hụt tiền', kieu: 'tien', tienMat: true },
       { khoa: 'cuoi_kg', ten: 'Tồn cuối kg', kieu: 'kg' },
       { khoa: 'cuoi_gia_tri', ten: 'Tồn cuối tiền', kieu: 'tien', tienMat: true },
     ],
     cong: [
       'dau_kg', 'dau_gia_tri', 'nhap_kg', 'nhap_gia_tri', 'pha_ra_kg', 'pha_vao_kg',
-      'ban_kg', 'ban_gia_tri', 'xuat_bep_kg', 'xuat_bep_gia_tri', 'huy_kg', 'huy_gia_tri',
-      'tra_ncc_kg', 'kiem_ke_kg', 'kiem_ke_gia_tri', 'cuoi_kg', 'cuoi_gia_tri',
+      'ban_kg', 'ban_gia_tri', 'xuat_bep_kg', 'xuat_bep_gia_tri', 'xuat_khac_kg', 'xuat_khac_gia_tri',
+      'huy_kg', 'huy_gia_tri', 'tra_ncc_kg', 'kiem_ke_kg', 'kiem_ke_gia_tri', 'hao_hut_kg', 'hao_hut_gia_tri',
+      'cuoi_kg', 'cuoi_gia_tri',
     ],
     khiTrong: {
       cau: 'Kho chưa có hàng nào tính tới ngày cuối kỳ. Số liệu có khi phiếu nhập hàng được duyệt',
@@ -100,7 +108,7 @@ export const BAO_CAO: Record<string, DinhNghiaBaoCao> = {
   },
   'hao-hut': {
     ten: 'Hủy, xuất bếp, chênh lệch',
-    moTa: 'Hàng rời kho không qua bán: hủy (theo lý do), xuất bếp, trả nhà cung cấp, thiếu / thừa khi kiểm kê.',
+    moTa: 'Hàng rời kho không qua bán: hủy (theo lý do), xuất bếp, xuất khác (theo lý do), trả nhà cung cấp, thiếu / thừa khi kiểm kê, mất khi mang ra quầy.',
     cot: [
       { khoa: 'loai_dong', ten: 'Loại', kieu: 'chu' },
       { khoa: 'ten', ten: 'Mặt hàng', kieu: 'chu' },
@@ -112,7 +120,7 @@ export const BAO_CAO: Record<string, DinhNghiaBaoCao> = {
     cong: ['so_kg', 'so_goi', 'gia_tri'],
     tongTheo: 'loai_dong',
     khiTrong: {
-      cau: 'Chưa có phiếu hủy, xuất bếp, trả nhà cung cấp hay kiểm kê lệch sổ nào được duyệt trong kỳ',
+      cau: 'Chưa có phiếu hủy, xuất bếp, xuất khác, trả nhà cung cấp hay kiểm kê lệch sổ nào được duyệt trong kỳ',
       link: [{ ten: 'Chuyển · xuất · hủy', href: '/noi-bo/kho/xuat' }, { ten: 'Kiểm kê', href: '/noi-bo/kho/kiem-ke' }],
     },
   },
@@ -156,9 +164,12 @@ export const COT_CONG_NO: CotBaoCao[] = [
 export const TEN_LOAI_DONG_HAO_HUT: Record<string, string> = {
   huy: 'Hủy',
   xuat_bep: 'Xuất bếp',
+  xuat_khac: 'Xuất khác',
   tra_ncc: 'Trả nhà cung cấp',
   kiem_ke_thieu: 'Kiểm kê thiếu',
   kiem_ke_thua: 'Kiểm kê thừa',
+  // 0032: hàng mất khi mang ra quầy (quản lý "ghi mất" phần quầy nhận thiếu).
+  hao_hut: 'Hao hụt',
 };
 
 // -----------------------------------------------------------------------------
@@ -168,7 +179,7 @@ export async function docBaoCao(
   client: SupabaseClient, ten: string, chiNhanhId: string, tu: string, den: string,
 ): Promise<{ dong: Record<string, unknown>[]; loi: string | null }> {
   let kq: { data: unknown; error: { message: string } | null };
-  if (ten === 'xuat-nhap-ton') kq = await client.rpc('kho_bao_cao_xuat_nhap_ton', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
+  if (ten === 'xuat-nhap-ton') kq = await client.rpc('kho_bao_cao_xnt_v2', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
   else if (ten === 'thu-hoi') kq = await client.rpc('kho_bao_cao_thu_hoi', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
   else if (ten === 'hao-hut') kq = await client.rpc('kho_bao_cao_hao_hut', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
   else if (ten === 'ban') kq = await client.rpc('kho_bao_cao_ban', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });

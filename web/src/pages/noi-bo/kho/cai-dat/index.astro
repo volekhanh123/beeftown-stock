@@ -4,6 +4,8 @@
  *
  * Lối vào các danh mục, cộng hai nhóm cài đặt của chi nhánh:
  *   · Chung (quản lý): vị trí nhận hàng mặc định, số ngày cảnh báo hạn dùng
+ *   · Quầy (quản lý, 0032): công tắc "Quầy phải bấm nhận hàng" — lưu qua
+ *     kho_luu_nguong (khóa chuyen_quay_can_nhan), không ghi thẳng bảng
  *   · Gốc (CHỈ chủ nhà hàng): cách tính giá vốn, nguồn số bán, tự duyệt.
  *     Đổi mấy thứ này là đổi CON SỐ trong báo cáo — nên database chỉ cho chủ.
  */
@@ -11,6 +13,7 @@ import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong, khoiTaoKho } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docViTri, luuCaiDat, luuCaiDatGoc, type CaiDat, type ViTri } from '../../../../lib/kho/danh-muc.ts';
+import { docCaiDatQuay, luuCongTacNhan, type CaiDatQuay } from '../../../../lib/kho/quay.ts';
 import { cauLoiKho, type KetQua } from '../../../../lib/kho/chung.ts';
 
 const k = await moTrangKho(Astro);
@@ -25,6 +28,7 @@ if (form && k.chiNhanh) {
   if (viec === 'khoi_tao') kq = await khoiTaoKho(k.client, k.chiNhanh.id);
   else if (viec === 'chung') kq = await luuCaiDat(k.client, form, k.chiNhanh.id);
   else if (viec === 'goc') kq = await luuCaiDatGoc(k.client, form, k.chiNhanh.id);
+  else if (viec === 'nhan_quay') kq = await luuCongTacNhan(k.client, k.chiNhanh.id, form.get('chuyen_quay_can_nhan') === 'co');
   else kq = { ok: false, cau: 'Việc không hợp lệ.' };
   if (kq.ok) return chuyenHuong(Astro, '/noi-bo/kho/cai-dat', kq);
   bao = kq;
@@ -32,10 +36,13 @@ if (form && k.chiNhanh) {
 
 let caiDat: CaiDat | null = null;
 let viTri: ViTri[] = [];
+let caiDatQuay: CaiDatQuay | null = null;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
-    [caiDat, viTri] = await Promise.all([docCaiDat(k.client, k.chiNhanh.id), docViTri(k.client, k.chiNhanh.id)]);
+    [caiDat, viTri, caiDatQuay] = await Promise.all([
+      docCaiDat(k.client, k.chiNhanh.id), docViTri(k.client, k.chiNhanh.id), docCaiDatQuay(k.client, k.chiNhanh.id),
+    ]);
   } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được cài đặt.'); }
 }
 
@@ -90,6 +97,21 @@ const MUC = [
         </label>
         <button type="submit" class="nb-nut">Lưu cài đặt chung</button>
       </form>
+
+      {caiDatQuay && (
+        <>
+          <h2>Mang hàng ra quầy</h2>
+          <form method="POST" class="nb-the">
+            <input type="hidden" name="viec" value="nhan_quay" />
+            <label class="kho-tich"><input type="checkbox" name="chuyen_quay_can_nhan" value="co" checked={caiDatQuay.chuyen_quay_can_nhan} />
+              <span><strong>Quầy phải bấm nhận hàng</strong> — hàng thủ kho mang ra chỉ vào quầy khi nhân viên quầy kiểm và bấm
+                "Đã nhận". Nhận thiếu thì báo quản lý. Tắt: hàng vào thẳng quầy ngay khi thủ kho lập phiếu.
+                Nhân viên quầy tự lấy hàng thì luôn vào thẳng quầy.</span></label>
+            <p class="kho-phu" style="margin:.25rem 0 .75rem">Quá {caiDatQuay.gio_nhac_chuyen} giờ mà quầy chưa bấm nhận thì phần mềm nhắc (tô đỏ).</p>
+            <button type="submit" class="nb-nut">Lưu</button>
+          </form>
+        </>
+      )}
     </>
   )}
 

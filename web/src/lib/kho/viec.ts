@@ -81,7 +81,7 @@ export function cauSuKien(su: SuKien): CauSuKien {
     case 'quay_chua_dem':
       return { tieuDe: `${e.ten || 'Quầy'}: chưa đếm cuối ngày hôm qua`,
                chiTiet: 'Chưa nối iPOS nên số đếm cuối ngày là số bán. Đếm và gửi ngay.',
-               link: '/noi-bo/kho/kiem-ke', nut: 'Đếm ngay', muc: 'do' };
+               link: `/noi-bo/kho/quay/dem?${q({ vi_tri: e.ref_id })}`, nut: 'Đếm ngay', muc: 'do' };
     case 'cho_duyet_nhap':
       return { tieuDe: `Phiếu nhập ${e.ma} chờ điền giá, duyệt`, chiTiet: e.ten || undefined,
                link: `/noi-bo/kho/nhap/${e.ref_id}?tu=duyet`, nut: 'Điền giá', muc: 'vang' };
@@ -106,16 +106,41 @@ export function cauSuKien(su: SuKien): CauSuKien {
       return { tieuDe: `Phiên pha lóc ${e.ma} để nháp hơn một ngày`,
                chiTiet: `${e.ten || ''} — chốt hoặc hủy để kiểm kê không bị chặn.`,
                link: `/noi-bo/kho/pha-loc/${e.ref_id}`, nut: 'Mở', muc: 'vang' };
+    // ---- 0032 · Quầy yêu cầu → thủ kho mang ra → quầy bấm nhận ------------
+    case 'yeu_cau_quay': {
+      // Thủ kho: so = số món quầy cần.
+      const n = soNguyen(e.so);
+      return { tieuDe: `${e.ten || 'Quầy'} cần hàng: ${e.ma}`,
+               chiTiet: n ? `${n} món — mang ra quầy, lấy hàng hạn gần trước.` : 'Mang ra quầy, lấy hàng hạn gần trước.',
+               link: `/noi-bo/kho/quay/yeu-cau/${e.ref_id}`, nut: 'Mang ra', muc: 'vang' };
+    }
+    case 'hang_dang_chuyen': {
+      // NV quầy: so = số gói đang mang ra. Quá giờ nhắc (phu = 'qua_gio') thì đỏ.
+      const n = soNguyen(e.so);
+      const quaGio = e.phu === 'qua_gio';
+      return { tieuDe: `${quaGio ? 'Chưa bấm nhận' : 'Hàng đang mang ra'}${e.ten ? ` ${e.ten}` : ' quầy'}: ${e.ma}`,
+               chiTiet: `${n ? `${n} gói. ` : ''}${quaGio ? 'Đã quá giờ — ' : ''}Kiểm hàng rồi bấm "Đã nhận đủ", thiếu thì ghi số thực nhận.`,
+               link: '/noi-bo/kho/quay/nhan', nut: 'Nhận hàng', muc: quaGio ? 'do' : 'vang' };
+    }
+    case 'chuyen_nhan_thieu': {
+      // Quản lý: so = số gói quầy nhận thiếu.
+      const n = soNguyen(e.so);
+      return { tieuDe: `${e.ten || 'Quầy'} nhận thiếu: ${e.ma}`,
+               chiTiet: `${n ? `Thiếu ${n} gói. ` : ''}Hàng còn ở kho thì trả về kho; rơi vỡ, thất lạc thì ghi mất.`,
+               link: `/noi-bo/kho/xuat/${e.ref_id}`, nut: 'Xử lý', muc: 'do' };
+    }
     default:
       return { tieuDe: e.ten || e.ma || 'Có việc mới', link: '/noi-bo/kho', nut: 'Xem', muc: 'xam' };
   }
 }
 
-/** Mọi khóa database có thể trả về (test so với 0030). */
+/** Mọi khóa database có thể trả về (test so với migration mới nhất dựng lại kho_su_kien). */
 export const KHOA_SU_KIEN = [
   'nhap_bi_tu_choi', 'huy_bi_tu_choi', 'kiem_ke_tra_ve', 'het_han', 'sap_het_han',
   'quay_duoi_muc', 'quay_chua_dem', 'cho_duyet_nhap', 'cho_duyet_huy', 'cho_duyet_kiem_ke',
   'cong_no_qua_han', 'cong_no_den_han', 'chua_doi_chieu', 'pha_nhap_lau',
+  // 0032
+  'yeu_cau_quay', 'hang_dang_chuyen', 'chuyen_nhan_thieu',
 ] as const;
 
 /** Sự kiện là "việc cần làm" (có nút làm ngay, không chỉ để biết). */
