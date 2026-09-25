@@ -11,7 +11,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, docKg, docNgay, docSoNguyen, docTien, laUuid, type KetQua } from './chung.ts';
+import { boDau, cauLoiKho, docKg, docNgay, docSoNguyen, docTien, laUuid, type KetQua } from './chung.ts';
 import { layTepAnh, taiAnh } from './anh.ts';
 
 export interface CongNoNcc {
@@ -416,5 +416,279 @@ export async function traHangNcc(
     ok: true, id: kq.phieu_xuat_id,
     cau: (kq.da_co ? `Phiếu trả hàng ${kq.so_phieu} đã được ghi từ lần bấm trước: ${cauTien}.`
       : `Đã ghi phiếu trả hàng ${kq.so_phieu}: ${cauTien}.`) + cauAnh,
+  };
+}
+
+// -----------------------------------------------------------------------------
+// NỢ ĐẦU KỲ (GĐ5e, migration 0035)
+// -----------------------------------------------------------------------------
+// Số tiền quán còn nợ từng nhà cung cấp lúc bắt đầu dùng phần mềm. Mỗi nhà
+// cung cấp một phiếu ND- (kho_phieu_nhap loại no_dau): không hàng, không lô,
+// không sổ kho — chỉ số tiền phải trả. Database tạo phiếu đã duyệt, đã đối
+// chiếu (tien_hoa_don = số nợ), nên công nợ, thanh toán tự chia theo hạn,
+// quá hạn đều tính như phiếu mua. Nhập ở /noi-bo/kho/cong-no/no-dau:
+//   · lưới: mỗi nhà cung cấp đang dùng một dòng — ô Số tiền, Hạn trả, Số hóa
+//     đơn, Ghi chú (n{i}_ncc ẩn, n{i}_tien, n{i}_han, n{i}_hd, n{i}_gc; so_dong);
+//   · hoặc dán từ Excel (docDanNoDau) → điền vào lưới;
+//   · "Xem trước" chỉ kiểm, "Ghi nợ đầu kỳ" gửi lại đúng các dòng đó kèm ma_gui.
+
+/** Số phiếu nợ đầu kỳ bắt đầu bằng ND- (kho_sinh_so(…, 'ND')). View công nợ không có cột loại. */
+export function laNoDau(p: { so_phieu: string | null | undefined }): boolean {
+  return /^ND-/.test(p.so_phieu ?? '');
+}
+
+/** Nhãn loại của một dòng công nợ: "Nợ đầu kỳ" hay "Nhập mua". */
+export function tenLoaiCongNo(p: { so_phieu: string | null | undefined }): string {
+  return laNoDau(p) ? 'Nợ đầu kỳ' : 'Nhập mua';
+}
+
+/**
+ * Link của số phiếu trong màn công nợ. Phiếu nợ đầu kỳ không có trang phiếu
+ * nhập (không hàng; kho_doc_phieu_nhap_kg từ chối) → về trang công nợ của
+ * nhà cung cấp, đúng dòng đó.
+ */
+export function linkPhieuCongNo(p: { id: string; so_phieu: string; nha_cung_cap_id: string }): string {
+  return laNoDau(p) ? `/noi-bo/kho/cong-no/${p.nha_cung_cap_id}#p-${p.id}` : `/noi-bo/kho/nhap/${p.id}`;
+}
+
+export interface NccNoDau {
+  id: string;
+  ten: string;
+  ma_so_thue: string | null;
+  so_ngay_no: number;
+  dang_dung: boolean;
+}
+
+/** Nhà cung cấp (đang dùng trước) — cho lưới nợ đầu kỳ. */
+export async function docNccNoDau(client: SupabaseClient): Promise<NccNoDau[]> {
+  const { data, error } = await client
+    .from('kho_nha_cung_cap')
+    .select('id, ten, ma_so_thue, so_ngay_no, dang_dung')
+    .order('dang_dung', { ascending: false }).order('ten');
+  if (error) throw error;
+  return (data ?? []).map(r => ({ ...r, so_ngay_no: so(r.so_ngay_no) })) as NccNoDau[];
+}
+
+/** Các phiếu nợ đầu kỳ còn hiệu lực của chi nhánh (kèm đã trả, còn nợ). */
+export async function docNoDauKy(client: SupabaseClient, chiNhanhId: string): Promise<CongNoPhieu[]> {
+  const ds = await docHetTrang((tu, den) => client
+    .from('kho_v_cong_no_phieu')
+    .select('id, so_phieu, nha_cung_cap_id, ten_nha_cung_cap, ngay_nhap, so_hoa_don, ngay_hoa_don, han_thanh_toan, tien_hoa_don, da_doi_chieu, ghi_chu_doi_chieu, tong_tien_phieu, phai_tra, da_tra, giam_tru, con_no, qua_han, so_ngay_qua_han', { count: 'exact' })
+    .eq('chi_nhanh_id', chiNhanhId).like('so_phieu', 'ND-%')
+    .order('ten_nha_cung_cap').order('id')
+    .range(tu, den));
+  return ds.map(chuanHoaPhieu);
+}
+
+/** Chữ gõ trong một dòng lưới (giữ nguyên để hiện lại khi có lỗi). */
+export interface ONoDau { tien: string; han: string; hd: string; gc: string }
+export interface DongNoDau {
+  nha_cung_cap_id: string;
+  ten: string;
+  so_tien: number;
+  /** null = để database tính: hôm nay + số ngày được nợ của nhà cung cấp. */
+  han_thanh_toan: string | null;
+  so_hoa_don: string | null;
+  ghi_chu: string | null;
+}
+export interface XemTruocNoDau { dong: DongNoDau[]; loi: string[]; tong: number }
+
+export const TOI_DA_DONG_NO_DAU = 300; // như kho_ghi_no_dau_ky
+
+/** Đọc lưới: nhà cung cấp id → chữ đã gõ. Dòng không gõ gì thì bỏ. */
+export function docFormNoDau(form: { get(ten: string): unknown }): Record<string, ONoDau> {
+  const s = (t: string) => String(form.get(t) ?? '').trim();
+  const ra: Record<string, ONoDau> = {};
+  const soDong = docSoNguyen(form.get('so_dong'), 0, 2000) ?? 0;
+  for (let i = 0; i < (Number.isNaN(soDong) ? 0 : soDong); i++) {
+    const id = s(`n${i}_ncc`);
+    const o: ONoDau = { tien: s(`n${i}_tien`), han: s(`n${i}_han`), hd: s(`n${i}_hd`), gc: s(`n${i}_gc`) };
+    if (!laUuid(id) || (!o.tien && !o.han && !o.hd && !o.gc)) continue;
+    ra[id] = o;
+  }
+  return ra;
+}
+
+/**
+ * Kiểm các dòng trước khi ghi (hàm thuần — trang gọi lúc "Xem trước" và gọi
+ * lại đúng hàm này lúc "Ghi"). daGhi: nhà cung cấp → số phiếu ND- còn hiệu
+ * lực (database cũng chặn, báo trước cho dễ hiểu).
+ */
+export function xemTruocNoDau(
+  ncc: NccNoDau[], giaTri: Record<string, ONoDau>, daGhi: Map<string, string> = new Map(),
+): XemTruocNoDau {
+  const loi: string[] = [];
+  const dong: DongNoDau[] = [];
+  const theoId = new Map(ncc.map(n => [n.id, n]));
+  // Theo thứ tự của danh sách nhà cung cấp (như lưới), rồi id lạ ở cuối.
+  const ids = [...ncc.map(n => n.id).filter(id => id in giaTri), ...Object.keys(giaTri).filter(id => !theoId.has(id))];
+  for (const id of ids) {
+    const o = giaTri[id];
+    const n = theoId.get(id);
+    if (!n) { loi.push('Có dòng của nhà cung cấp không còn trong danh mục — tải lại trang.'); continue; }
+    const ten = n.ten;
+    const soPhieu = daGhi.get(id);
+    if (soPhieu) { loi.push(`${ten}: đã ghi nợ đầu kỳ ở phiếu ${soPhieu} — hủy phiếu đó trước nếu muốn ghi lại.`); continue; }
+    const tien = docTien(o.tien);
+    if (tien === null) { loi.push(`${ten}: chưa ghi số tiền nợ.`); continue; }
+    if (Number.isNaN(tien) || tien <= 0) { loi.push(`${ten}: số tiền "${o.tien}" phải là số đồng lớn hơn 0 (ví dụ 12.500.000).`); continue; }
+    const han = docNgay(o.han);
+    if (han === undefined) { loi.push(`${ten}: hạn trả "${o.han}" không phải ngày có thật.`); continue; }
+    if (o.hd.length > 60) { loi.push(`${ten}: số hóa đơn tối đa 60 ký tự.`); continue; }
+    if (o.gc.length > 500) { loi.push(`${ten}: ghi chú tối đa 500 ký tự.`); continue; }
+    dong.push({ nha_cung_cap_id: id, ten, so_tien: tien, han_thanh_toan: han, so_hoa_don: o.hd || null, ghi_chu: o.gc || null });
+  }
+  if (dong.length > TOI_DA_DONG_NO_DAU) loi.push(`Mỗi lần ghi tối đa ${TOI_DA_DONG_NO_DAU} nhà cung cấp — chia làm nhiều lần.`);
+  return { dong, loi, tong: dong.reduce((a, d) => a + d.so_tien, 0) };
+}
+
+/** Dòng gửi kho_ghi_no_dau_ky: chỉ đặt khóa có giá trị (hàm database từ chối khóa lạ). */
+export function dongGuiNoDau(ds: DongNoDau[]): Record<string, unknown>[] {
+  return ds.map(d => {
+    const p: Record<string, unknown> = { nha_cung_cap_id: d.nha_cung_cap_id, so_tien: d.so_tien };
+    if (d.han_thanh_toan) p.han_thanh_toan = d.han_thanh_toan;
+    if (d.so_hoa_don) p.so_hoa_don = d.so_hoa_don;
+    if (d.ghi_chu) p.ghi_chu = d.ghi_chu;
+    return p;
+  });
+}
+
+// --- Dán từ Excel -------------------------------------------------------------
+type CotNoDau = 'ncc' | 'tien' | 'han' | 'hd' | 'gc';
+const COT_NO_DAU: readonly CotNoDau[] = ['ncc', 'tien', 'han', 'hd', 'gc'];
+const TIEU_DE_NO_DAU: Record<string, CotNoDau> = Object.fromEntries(([
+  ['ncc', ['nha cung cap', 'ncc', 'ten', 'ten nha cung cap', 'ten ncc', 'ma so thue', 'mst']],
+  ['tien', ['so tien', 'tien', 'so tien no', 'tien no', 'no', 'con no', 'cong no', 'so du', 'du no']],
+  ['han', ['han', 'han tra', 'han thanh toan', 'ngay tra', 'ngay den han', 'den han']],
+  ['hd', ['so hoa don', 'hoa don', 'so hd', 'hd']],
+  ['gc', ['ghi chu', 'dien giai', 'noi dung']],
+] as [CotNoDau, string[]][]).flatMap(([cot, ds]) => ds.map(t => [t, cot])));
+
+/** Chữ so khớp: bỏ dấu, chữ thường, gọn khoảng trắng. */
+export function chuanTenNcc(ten: string): string {
+  return boDau(ten).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/** Ngày trong Excel: 31/10/2026, 31-10-2026, 31.10.2026 hoặc 2026-10-31 → YYYY-MM-DD. Trống → null, sai → undefined. */
+export function docNgayDan(v: string): string | null | undefined {
+  const s = v.trim();
+  if (!s) return null;
+  const m = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})$/.exec(s);
+  return docNgay(m ? `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` : s);
+}
+
+/**
+ * Đọc ô dán: cột Nhà cung cấp (tên hoặc mã số thuế), Số tiền, Hạn trả, Số
+ * hóa đơn, Ghi chú — cách nhau bằng Tab (dán từ Excel) hoặc dấu ;. Có dòng
+ * tiêu đề thì cột xếp thứ tự nào cũng được. Khớp nhà cung cấp theo mã số thuế,
+ * rồi theo tên không dấu (đang dùng trước). Trả chữ cho lưới — kiểm số tiền,
+ * hạn ở xemTruocNoDau như khi gõ tay.
+ */
+export function docDanNoDau(
+  noiDung: string, ncc: NccNoDau[],
+): { giaTri: Record<string, ONoDau>; loi: string[]; boQua: string[] } {
+  const giaTri: Record<string, ONoDau> = {};
+  const loi: string[] = [];
+  const boQua: string[] = [];
+  // Không tách bằng dấu phẩy: số tiền "12,500,000" có dấu phẩy.
+  const ngan = noiDung.includes('\t') ? '\t' : ';';
+  const boNgoac = (o: string) => {
+    const t = o.trim();
+    return t.length >= 2 && t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1).replace(/""/g, '"').trim() : t;
+  };
+  const hang = noiDung.split(/\r?\n/)
+    .map((raw, i) => ({ so: i + 1, o: raw.split(ngan).map(boNgoac) }))
+    .filter(h => h.o.some(x => x !== ''));
+  if (hang.length === 0) return { giaTri, loi, boQua };
+
+  let cot: (CotNoDau | undefined)[] = [...COT_NO_DAU];
+  const dau = hang[0].o.map(o => TIEU_DE_NO_DAU[chuanTenNcc(o).replace(/( (d|dong|vnd))+$/, '')]);
+  const hieu = dau.filter((c): c is CotNoDau => !!c);
+  if (hieu.length >= 2 || (hieu.includes('ncc') && docTien(hang[0].o[1] ?? '') === null)) {
+    hang[0].o.forEach((o, i) => { if (o && !dau[i]) boQua.push(o); });
+    for (const c of COT_NO_DAU) if (dau.filter(x => x === c).length > 1) loi.push('Dòng tiêu đề: có cột bị lặp — xóa bớt một cột.');
+    if (!hieu.includes('ncc') || !hieu.includes('tien')) loi.push('Dòng tiêu đề cần có cột Nhà cung cấp và cột Số tiền.');
+    if (loi.length) return { giaTri, loi, boQua };
+    cot = dau;
+    hang.shift();
+  }
+
+  const dangDung = ncc.filter(n => n.dang_dung);
+  const theoMst = new Map<string, NccNoDau[]>();
+  for (const n of dangDung) if (n.ma_so_thue) theoMst.set(n.ma_so_thue.replace(/\s/g, ''), [...(theoMst.get(n.ma_so_thue.replace(/\s/g, '')) ?? []), n]);
+  const theoTen = new Map<string, NccNoDau[]>();
+  for (const n of dangDung) theoTen.set(chuanTenNcc(n.ten), [...(theoTen.get(chuanTenNcc(n.ten)) ?? []), n]);
+  const daDan = new Map<string, number>();
+
+  for (const h of hang) {
+    const o: Partial<Record<CotNoDau, string>> = {};
+    cot.forEach((c, i) => { if (c) o[c] = h.o[i] ?? ''; });
+    const chuNcc = (o.ncc ?? '').trim();
+    if (!chuNcc) { loi.push(`Dòng ${h.so}: thiếu tên nhà cung cấp.`); continue; }
+    const mst = chuNcc.replace(/\s/g, '');
+    const khop = /^\d{10}(-\d{3})?$/.test(mst) ? theoMst.get(mst) ?? [] : theoTen.get(chuanTenNcc(chuNcc)) ?? [];
+    if (khop.length === 0) { loi.push(`Dòng ${h.so}: không thấy nhà cung cấp "${chuNcc}" — thêm ở Cài đặt › Nhà cung cấp trước, hoặc sửa tên cho giống.`); continue; }
+    if (khop.length > 1) { loi.push(`Dòng ${h.so}: có ${khop.length} nhà cung cấp tên "${chuNcc}" — ghi mã số thuế thay cho tên.`); continue; }
+    const n = khop[0];
+    const truoc = daDan.get(n.id);
+    if (truoc !== undefined) { loi.push(`Dòng ${h.so}: ${n.ten} đã có ở dòng ${truoc} — gộp thành một dòng.`); continue; }
+    const han = docNgayDan(o.han ?? '');
+    if (han === undefined) { loi.push(`Dòng ${h.so} (${n.ten}): hạn trả "${o.han}" không hiểu — ghi dạng 31/10/2026.`); continue; }
+    daDan.set(n.id, h.so);
+    giaTri[n.id] = { tien: (o.tien ?? '').trim(), han: han ?? '', hd: (o.hd ?? '').trim(), gc: (o.gc ?? '').trim() };
+  }
+  return { giaTri, loi, boQua };
+}
+
+/** Ghi nợ đầu kỳ: một phiếu ND- mỗi nhà cung cấp. Cùng ma_gui (bấm hai lần, F5) → trả lại đúng các phiếu cũ. */
+export async function ghiNoDauKy(
+  client: SupabaseClient, chiNhanhId: string, maGui: string, dong: DongNoDau[],
+): Promise<KetQua> {
+  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang.' };
+  if (dong.length === 0) return { ok: false, cau: 'Chưa có dòng nợ nào — ghi số tiền ở ít nhất một nhà cung cấp.' };
+  const { data, error } = await client.rpc('kho_ghi_no_dau_ky', {
+    p_chi_nhanh_id: chiNhanhId,
+    p_ma_gui: maGui,
+    p_dong: dongGuiNoDau(dong),
+  });
+  if (error) return { ok: false, cau: cauLoiKho(error) };
+  const kq = (data ?? {}) as { da_co?: boolean; tong_tien?: number; phieu?: { so_phieu: string }[] };
+  const soPhieu = kq.phieu?.length ?? 0;
+  const tien = so(kq.tong_tien).toLocaleString('vi-VN');
+  return {
+    ok: true,
+    cau: kq.da_co
+      ? `Nợ đầu kỳ đã được ghi từ lần bấm trước: ${soPhieu} nhà cung cấp, ${tien} đ.`
+      : `Đã ghi nợ đầu kỳ ${soPhieu} nhà cung cấp, tổng ${tien} đ. Trả tiền ở trang công nợ của từng nhà cung cấp như phiếu nhập.`,
+  };
+}
+
+/** Hủy một phiếu nợ đầu kỳ (ghi nhầm). Bắt buộc lý do; đã trả tiền / giảm trừ thì database chặn. */
+export function huyNoDauKy(client: SupabaseClient, id: string, lyDo: string): Promise<KetQua> {
+  if (!laUuid(id)) return Promise.resolve({ ok: false, cau: 'Phiếu không hợp lệ.' });
+  if (!lyDo.trim()) return Promise.resolve({ ok: false, cau: 'Ghi lý do hủy (ví dụ: ghi nhầm số tiền).' });
+  return cauTraVe(client.rpc('kho_huy_phieu_nhap', { p_id: id, p_ly_do: lyDo.trim() }));
+}
+
+/** Bước "Nhà cung cấp & nợ đầu kỳ" của màn Thiết lập: đã ghi / đã bấm "Không có nợ đầu kỳ". */
+export interface BuocNoDau { xong: boolean; bo_qua: boolean }
+
+export async function docBuocNoDau(client: SupabaseClient, chiNhanhId: string): Promise<BuocNoDau | null> {
+  const { data, error } = await client.rpc('kho_tien_do_thiet_lap', { p_chi_nhanh_id: chiNhanhId });
+  if (error || !data) return null;
+  const b = (data as Record<string, { xong?: boolean; bo_qua?: boolean } | undefined>).ncc_no_dau;
+  return b ? { xong: !!b.xong, bo_qua: !!b.bo_qua } : null;
+}
+
+/** Nút "Không có nợ đầu kỳ" (bo_qua = true) và "Bỏ đánh dấu" (false) — kế toán bấm được (0035). */
+export async function danhDauKhongNoDau(client: SupabaseClient, chiNhanhId: string, boQua: boolean): Promise<KetQua> {
+  const { error } = await client.rpc('kho_danh_dau_thiet_lap', {
+    p_chi_nhanh_id: chiNhanhId, p_buoc: 'ncc_no_dau', p_bo_qua: boQua,
+  });
+  if (error) return { ok: false, cau: cauLoiKho(error) };
+  return {
+    ok: true,
+    cau: boQua ? 'Đã đánh dấu: không có nợ đầu kỳ. Bước này trong Thiết lập đã xong.'
+      : 'Đã bỏ đánh dấu "không có nợ đầu kỳ".',
   };
 }

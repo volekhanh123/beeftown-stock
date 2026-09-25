@@ -154,7 +154,7 @@ const idPhieu = dangDem ? mo!.id : '';
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {quay.length === 0 ? (
-    <p class="nb-rong">Chi nhánh chưa có quầy nào đang dùng. Báo quản lý thêm quầy trong Cài đặt kho.</p>
+    <p class="nb-rong">Chi nhánh chưa có quầy nào đang dùng. Báo quản lý thêm quầy trong Thiết lập kho.</p>
   ) : !quayChon ? (
     // ===================================================================
     // CHỌN QUẦY (chi nhánh có nhiều quầy)
@@ -187,7 +187,7 @@ const idPhieu = dangDem ? mo!.id : '';
     </div>
   ) : chuaBatMaVach ? (
     <div class="nb-the">
-      <p style="margin:0"><strong>Chưa đọc được nhãn cân</strong> — báo quản lý bật mục Mã vạch trong Cài đặt kho.</p>
+      <p style="margin:0"><strong>Chưa đọc được nhãn cân</strong> — báo quản lý bật mục Mã vạch trong Thiết lập kho.</p>
       <p class="nb-dan" style="margin:.5rem 0 0">Trong lúc chờ, đếm bằng tay ở trang Kiểm kê.</p>
       <p style="margin:1rem 0 0"><a class="nb-nut" href="/noi-bo/kho/kiem-ke">Mở Kiểm kê</a></p>
     </div>

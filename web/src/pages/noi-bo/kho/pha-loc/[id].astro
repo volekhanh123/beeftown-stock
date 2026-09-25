@@ -8,6 +8,9 @@
  *     không cộng đôi). Danh sách món đã quét (gói, kg, để ở đâu) có −1, bỏ
  *     món, bỏ lượt vừa quét. Phụ phẩm, mỡ bỏ gõ kg; lô tảng, ngày pha, ghi
  *     chú, công thức và dòng gõ tay đầy đủ nằm trong các mục "Thêm".
+ *     GĐ5e: tất cả nằm trong MỘT form — nút quét, −1, bỏ lượt, bỏ món đều lưu
+ *     phần gõ tay trước rồi mới làm (gõ kg rồi quét ngay không mất số). Món
+ *     của −1 / bỏ món đi theo formaction ?mon=<id>; lệnh sửa có ma_gui_sua riêng.
  *   · KẾT QUẢ (?buoc=ket-qua): 4 số lớn — thu hồi, dự kiến, trung bình 30
  *     ngày, hao hụt. Nút Chốt CHỈ ở đây. Thấp hơn dự kiến quá ngưỡng thì báo
  *     trước: chốt vẫn được, phần mềm tự báo quản lý (không duyệt).
@@ -41,6 +44,7 @@ import {
   docPhienPha, docThongTinLo, docGiaVonLo, xemThuPhien, xemThuPhienKg, phanTramCua, luuPhienPha, chotPhien,
   moLaiPhien, huyPhien, xacNhanPhien, raTrong, quetPhienPha, suaQuetPhienPha, docNhanQuet, docNoiDeSauPha,
   buocPhien, viTriSauPha, monDaQuet, dongGoTayTheoCongThuc, soSanhThuHoi, goiRaQuay, TEN_NGUON_DU_KIEN,
+  VIEC_LUU_GO_TAY_TRUOC,
   type PhienPha, type DauVao, type DauRa, type KetQuaTinh, type KetQuaTinhKg, type KetQuaDocPhien, type RaForm,
   type NhanQuet,
 } from '../../../../lib/kho/pha-loc.ts';
@@ -131,28 +135,56 @@ if (form && phien) {
         return ve(kq);
       }
     }
-  } else if (viec === 'quet') {
-    if (!soanDuoc) return ve(khongSua);
+  } else if (VIEC_LUU_GO_TAY_TRUOC.includes(viec)) {
+    // Quét, −1, bỏ lượt, bỏ món (GĐ5e): cùng một form với các ô gõ kg — LƯU
+    // PHẦN GÕ TAY TRƯỚC rồi mới làm, để gõ kg phụ phẩm xong quét nhãn ngay
+    // (không bấm Lưu) thì số vừa gõ không mất.
+    if (!soanDuoc || !mhVao) return ve(khongSua);
     const maGui = String(form.get('ma_gui') ?? '');
-    const kq = await quetPhienPha(k.client, phien.id, maGui, String(form.get('ma_quet') ?? ''));
-    if (kq.ok) {
-      const loi = kq.loiNhan ?? [];
-      // Có nhãn không cộng được: báo đỏ để thợ để ý (quét lại / báo quản lý).
-      return ve(loi.length > 0 ? { ok: false, cau: `${kq.cau} Chưa cộng — ${loi.join(' · ')}` } : kq);
+    const maQuet = String(form.get('ma_quet') ?? '').trim();
+    let daLuu = false;
+    if (form.has('so_ra')) {
+      const luu = await luuPhienPha(k.client, cn.id, form, {
+        id: phien.id, phienBan: Number(form.get('phien_ban')), matHangVaoId: mhVao.id, viTriTheoMon,
+      });
+      if (!luu.ok) {
+        // Chưa quét / chưa sửa gì: hiện lại đúng chữ đã gõ và các mã trong ô.
+        bao = { ok: false, cau: `${viec === 'quet' ? 'Chưa cộng nhãn' : 'Chưa sửa'} — phần gõ tay chưa lưu được: ${luu.cau}` };
+        docLoi = luu.doc ?? null;
+        maConLai = maQuet;
+        maGuiLai = laUuid(maGui) ? maGui : null;
+      } else daLuu = true;
+    } else daLuu = true;
+
+    if (daLuu && viec === 'quet') {
+      // Ô quét trống (vd. Enter trong ô kg — nút đầu form là nút quét): chỉ lưu.
+      if (!maQuet) return ve({ ok: true, cau: 'Đã lưu.' });
+      const kq = await quetPhienPha(k.client, phien.id, maGui, maQuet);
+      if (kq.ok) {
+        const loi = kq.loiNhan ?? [];
+        // Có nhãn không cộng được: báo đỏ để thợ để ý (quét lại / báo quản lý).
+        return ve(loi.length > 0 ? { ok: false, cau: `${kq.cau} Chưa cộng — ${loi.join(' · ')}` } : kq);
+      }
+      if (kq.loiNhan && kq.loiNhan.length > 0) {
+        // Không nhãn nào cộng được: toàn nhãn hỏng / lạ — không giữ lại trong ô.
+        return ve({ ok: false, cau: `Chưa cộng nhãn nào — ${kq.loiNhan.join(' · ')}` });
+      }
+      // Lỗi mạng / database: giữ các mã trong ô và ma_gui — gửi lại không cộng đôi.
+      // Phần gõ tay ĐÃ lưu (phiên bản mới): đọc lại phiên để form mang đúng phien_ban.
+      bao = kq;
+      maConLai = maQuet;
+      maGuiLai = laUuid(maGui) ? maGui : null;
+      try {
+        const [doc, nhanMoi] = await Promise.all([docPhienPha(k.client, phien.id), docNhanQuet(k.client, phien.id)]);
+        if (doc) { phien = doc.phien; vaoDb = doc.vao; raDb = doc.ra; }
+        nhan = nhanMoi;
+      } catch { /* giữ bản đã đọc — bấm lại sẽ báo nếu phiên đã đổi */ }
+    } else if (daLuu) {
+      // Món cần sửa đi theo URL của nút (formaction ?mon=…), ma_gui riêng của lệnh sửa.
+      const cach = viec === 'bo_luot' ? 'lan_cuoi' as const : viec === 'bot_mot' ? 'bot_mot' as const : 'xoa_mon' as const;
+      return ve(await suaQuetPhienPha(k.client, phien.id, String(form.get('ma_gui_sua') ?? ''), cach,
+        q.get('mon') || null));
     }
-    if (kq.loiNhan && kq.loiNhan.length > 0) {
-      // Không nhãn nào cộng được: toàn nhãn hỏng / lạ — không giữ lại trong ô.
-      return ve({ ok: false, cau: `Chưa cộng nhãn nào — ${kq.loiNhan.join(' · ')}` });
-    }
-    // Lỗi mạng / database: giữ các mã trong ô và ma_gui — gửi lại không cộng đôi.
-    bao = kq;
-    maConLai = String(form.get('ma_quet') ?? '').trim();
-    maGuiLai = laUuid(maGui) ? maGui : null;
-  } else if (viec === 'bo_luot' || viec === 'bot_mot' || viec === 'xoa_mon') {
-    if (!soanDuoc) return ve(khongSua);
-    const cach = viec === 'bo_luot' ? 'lan_cuoi' as const : viec === 'bot_mot' ? 'bot_mot' as const : 'xoa_mon' as const;
-    return ve(await suaQuetPhienPha(k.client, phien.id, String(form.get('ma_gui') ?? ''), cach,
-      String(form.get('mat_hang_id') ?? '') || null));
   } else if (viec === 'chot') {
     if (!soanDuoc) return ve(khongSua);
     const pb = Number(String(form.get('phien_ban') ?? ''));
@@ -291,77 +323,70 @@ const soGoiMon = (m: { dem_goi: boolean; so_goi: number; so_nhan: number; don_vi
     // BƯỚC 2 — CÂN & QUÉT
     // =======================================================================
     <>
-      {chuaBatMaVach ? (
-        <div class="nb-bao luu-y">
-          <p><strong>Chưa đọc được nhãn cân</strong> — báo quản lý bật mục Mã vạch trong Cài đặt kho. Trong lúc chờ, gõ kg từng phần ở mục "Gõ tay" bên dưới.</p>
-        </div>
-      ) : (
-        <form method="POST" action={DUONG} class="nb-the">
-          <input type="hidden" name="ma_gui" value={maGuiLai ?? crypto.randomUUID()} />
-          <QuetMa nhan="Cộng nhãn vào phiên" tuFocus giaTri={maConLai || maThamSo}
-            goiY="Quét nhãn từng gói vừa cắt. Quét được bao nhiêu thì bấm nút dưới — số được CỘNG thêm, quét nhiều đợt cũng được." />
-        </form>
-      )}
-
-      {xemThuKg && (
-        <div class="kho-o-so-luoi">
-          <div class="kho-o-so"><b>{dinhDangKg(xemThuKg.tong_kg_vao)}</b><span>kg tảng đem pha</span></div>
-          <div class="kho-o-so"><b>{dinhDangKg(xemThuKg.kg_thit + xemThuKg.kg_phu_pham + xemThuKg.kg_bo)}</b><span>kg đã cân ra</span></div>
-          <div class="kho-o-so"><b>{dinhDangPhanTram(xemThuKg.ty_le_thu_hoi)}</b><span>thu hồi tạm tính</span></div>
-          <div class="kho-o-so"><b>{tongNhan}</b><span>nhãn đã quét</span></div>
-        </div>
-      )}
-
-      <h2>Đã quét</h2>
-      {mon.length === 0 ? (
-        <p class="nb-rong">Chưa quét gói nào.</p>
-      ) : (
-        <>
-          {mon.map(m => (
-            <div class="kho-dong-hang pl-mon">
-              <div class="pl-mon-chu">
-                <strong>{m.ten}</strong><br />
-                <span class="pl-so">{soGoiMon(m)} · {dinhDangKg(m.so_kg)} kg</span><br />
-                <span class="kho-phu">để ở {tenNoiDe(m.vi_tri_id)}</span>
-              </div>
-              <form method="POST" action={DUONG}>
-                <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
-                <input type="hidden" name="mat_hang_id" value={m.mat_hang_id} />
-                <button type="submit" name="viec" value="bot_mot" class="nb-nut phu pl-bot"
-                  aria-label={`Bớt 1 gói ${m.ten}`}>−1</button>
-              </form>
-            </div>
-          ))}
-          <div class="kho-thanh-nut">
-            <form method="POST" action={DUONG} style="flex:1 1 12rem;margin:0">
-              <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
-              <button type="submit" name="viec" value="bo_luot" class="nb-nut phu" style="width:100%">Bỏ lượt vừa quét</button>
-            </form>
-          </div>
-          <details class="nb-the">
-            <summary style="cursor:pointer;font-weight:600">Bỏ hẳn một món đã quét</summary>
-            <p class="kho-phu">Quét nhầm cả một món (ví dụ nhãn của phiên khác) thì bỏ hết nhãn của món đó.</p>
-            {mon.map(m => (
-              <form method="POST" action={DUONG} style="margin:.4rem 0">
-                <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
-                <input type="hidden" name="mat_hang_id" value={m.mat_hang_id} />
-                <button type="submit" name="viec" value="xoa_mon" class="nb-nut phu kho-nut-xoa" style="width:100%">
-                  Bỏ {m.ten} ({soGoiMon(m)})
-                </button>
-              </form>
-            ))}
-          </details>
-        </>
-      )}
-
+      {/* MỘT form cho cả bước (GĐ5e): ô quét, −1 / bỏ lượt / bỏ món và các ô gõ
+          kg. Bấm nút nào máy chủ cũng lưu phần gõ tay trước (VIEC_LUU_GO_TAY_TRUOC)
+          — gõ kg phụ phẩm rồi quét nhãn ngay thì số vừa gõ không mất. */}
       <form method="POST" action={DUONG}>
-        <input type="hidden" name="ma_gui" value={maGuiForm} />
+        <input type="hidden" name="ma_gui" value={maGuiLai ?? maGuiForm} />
+        <input type="hidden" name="ma_gui_sua" value={crypto.randomUUID()} />
         <input type="hidden" name="phien_ban" value={String(phien.phien_ban)} />
         <input type="hidden" name="so_vao" value={String(dongVao.length)} />
         <input type="hidden" name="so_ra" value={String(raHien.length)} />
 
+        {chuaBatMaVach ? (
+          <div class="nb-bao luu-y">
+            <p><strong>Chưa đọc được nhãn cân</strong> — báo quản lý bật mục Mã vạch trong Thiết lập kho. Trong lúc chờ, gõ kg từng phần ở mục "Gõ tay" bên dưới.</p>
+          </div>
+        ) : (
+          <div class="nb-the">
+            <QuetMa nhan="Cộng nhãn vào phiên" tuFocus giaTri={maConLai || maThamSo}
+              goiY="Quét nhãn từng gói vừa cắt. Quét được bao nhiêu thì bấm nút dưới — số được CỘNG thêm, quét nhiều đợt cũng được." />
+          </div>
+        )}
+
+        {xemThuKg && (
+          <div class="kho-o-so-luoi">
+            <div class="kho-o-so"><b>{dinhDangKg(xemThuKg.tong_kg_vao)}</b><span>kg tảng đem pha</span></div>
+            <div class="kho-o-so"><b>{dinhDangKg(xemThuKg.kg_thit + xemThuKg.kg_phu_pham + xemThuKg.kg_bo)}</b><span>kg đã cân ra</span></div>
+            <div class="kho-o-so"><b>{dinhDangPhanTram(xemThuKg.ty_le_thu_hoi)}</b><span>thu hồi tạm tính</span></div>
+            <div class="kho-o-so"><b>{tongNhan}</b><span>nhãn đã quét</span></div>
+          </div>
+        )}
+
+        <h2>Đã quét</h2>
+        {mon.length === 0 ? (
+          <p class="nb-rong">Chưa quét gói nào.</p>
+        ) : (
+          <>
+            {mon.map(m => (
+              <div class="kho-dong-hang pl-mon">
+                <div class="pl-mon-chu">
+                  <strong>{m.ten}</strong><br />
+                  <span class="pl-so">{soGoiMon(m)} · {dinhDangKg(m.so_kg)} kg</span><br />
+                  <span class="kho-phu">để ở {tenNoiDe(m.vi_tri_id)}</span>
+                </div>
+                <button type="submit" name="viec" value="bot_mot" formaction={`${DUONG}?mon=${m.mat_hang_id}`} formnovalidate
+                  class="nb-nut phu pl-bot" aria-label={`Bớt 1 gói ${m.ten}`}>−1</button>
+              </div>
+            ))}
+            <div class="kho-thanh-nut">
+              <button type="submit" name="viec" value="bo_luot" formnovalidate class="nb-nut phu" style="flex:1 1 12rem">Bỏ lượt vừa quét</button>
+            </div>
+            <details class="nb-the">
+              <summary style="cursor:pointer;font-weight:600">Bỏ hẳn một món đã quét</summary>
+              <p class="kho-phu">Quét nhầm cả một món (ví dụ nhãn của phiên khác) thì bỏ hết nhãn của món đó.</p>
+              {mon.map(m => (
+                <button type="submit" name="viec" value="xoa_mon" formaction={`${DUONG}?mon=${m.mat_hang_id}`} formnovalidate
+                  class="nb-nut phu kho-nut-xoa" style="width:100%;margin:.4rem 0">
+                  Bỏ {m.ten} ({soGoiMon(m)})
+                </button>
+              ))}
+            </details>
+          </>
+        )}
+
         <h2 id="go-tay">Phụ phẩm, mỡ bỏ — gõ kg</h2>
-        <p class="kho-phu" style="margin-top:0">Phần không có nhãn: cân rồi gõ số kg. Mỡ, xương bỏ đi vẫn nên cân — để biết tỉ lệ bỏ. Gõ xong bấm <strong>Lưu</strong> trước khi quét nhãn tiếp — quét trước khi lưu thì số vừa gõ mất.</p>
+        <p class="kho-phu" style="margin-top:0">Phần không có nhãn: cân rồi gõ số kg. Mỡ, xương bỏ đi vẫn nên cân — để biết tỉ lệ bỏ. Gõ xong quét nhãn tiếp được luôn — số vừa gõ được lưu cùng lượt quét.</p>
         {raHien.map((r, i) => {
           const mh = tenMh.get(r.mat_hang_id);
           return (
@@ -712,7 +737,6 @@ const soGoiMon = (m: { dem_goi: boolean; so_goi: number; so_nhan: number; don_vi
   .pl-buoc { margin: 0 0 .15rem; font-size: .85rem; font-weight: 700; color: var(--muc-nhat); }
   .pl-mon { display: flex; align-items: center; gap: .75rem; }
   .pl-mon-chu { flex: 1; min-width: 0; }
-  .pl-mon form { margin: 0; }
   .pl-so { font-size: 1.15rem; }
   .pl-bot { min-width: 64px; min-height: 48px; }
   .pl-luoi { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); margin: .5rem 0 1rem; }

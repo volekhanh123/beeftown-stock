@@ -371,7 +371,11 @@ export function docFormPhienPha(
       xu_ly: g('xu_ly'), vi_tri_id: g('vi_tri'), han_dung: g('hsd'),
     };
     if (form.get(`r${i}_xoa`) === 'co') continue;
-    if (!r.mat_hang_id && !r.so_kg && !r.so_goi) continue;
+    // Không số kg, không số gói = dòng bỏ trống (GĐ5e). Dòng điền sẵn theo
+    // công thức có sẵn mặt hàng nhưng chưa cân — trước đây bị báo "số kg chưa
+    // đúng", nên bấm Lưu (và nay là mỗi lượt quét, vì quét lưu phần gõ tay
+    // trước) hỏng chỉ vì một dòng gợi ý chưa dùng tới.
+    if (!r.so_kg && !r.so_goi) continue;
     ra.push(r);
     const thu = ra.length;
     if (!laUuid(r.mat_hang_id)) { loi.push(`Phần ra ${thu}: chưa chọn mặt hàng`); continue; }
@@ -395,6 +399,14 @@ export function docFormPhienPha(
 
   return { dau, vao, ra, loi, payloadVao, payloadRa };
 }
+
+/**
+ * Các nút ở bước Cân & quét mà máy chủ LƯU PHẦN GÕ TAY TRƯỚC rồi mới làm
+ * (GĐ5e). Ô quét, −1, bỏ lượt, bỏ món nằm chung một form với các ô gõ kg
+ * phụ phẩm: gõ kg rồi quét nhãn ngay (không bấm Lưu) thì số vừa gõ vẫn còn.
+ * Trước đây ô quét là form riêng — quét trước khi Lưu là mất số vừa gõ.
+ */
+export const VIEC_LUU_GO_TAY_TRUOC: readonly string[] = ['quet', 'bo_luot', 'bot_mot', 'xoa_mon'];
 
 // -----------------------------------------------------------------------------
 // GHI

@@ -142,6 +142,9 @@ const CHAY_DA_DANG_NHAP = [
   // Máy tính bảng dùng chung: đổi phiên người ↔ máy (GĐ5d, 0034) — chỉ gọi từ
   // /noi-bo/kho (moTrangKho, /noi-bo/kho/may/*), bằng phiên máy hoặc phiên người.
   'web/src/lib/kho/may-chung.ts',
+  // Thiết lập có tiến độ, ngưỡng, tồn đầu kỳ dạng lưới (GĐ5e, 0035) — chỉ gọi từ
+  // /noi-bo/kho/cai-dat; lưới đọc mặt hàng không có cột tiền (thủ kho cũng mở).
+  'web/src/lib/kho/thiet-lap.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
 ];

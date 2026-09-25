@@ -294,6 +294,31 @@ export const TEN_LOAI_SO_CAI: Record<string, string> = {
   dau_ky: 'Tồn đầu kỳ',   // dòng đầu của thẻ kho (kho_the_kho, 0033) — không phải loại sổ
 };
 
+/** Loại phiếu nhập (kho_phieu_nhap.loai). no_dau (0035): nợ đầu kỳ — chỉ số tiền, không hàng. */
+export const TEN_LOAI_PHIEU_NHAP: Record<string, string> = {
+  mua: 'Nhập mua',
+  ton_dau: 'Tồn đầu kỳ',
+  no_dau: 'Nợ đầu kỳ',
+};
+
+/**
+ * Các bước màn Thiết lập, đúng thứ tự hiện (khóa = khóa trong kết quả
+ * kho_tien_do_thiet_lap, 0035). boQua: bước có nút "Bỏ qua" — khớp
+ * duoc_bo_qua của database.
+ */
+export const BUOC_THIET_LAP: readonly { khoa: string; ten: string; boQua: boolean }[] = [
+  { khoa: 'chi_nhanh_nhan_vien', ten: 'Chi nhánh & nhân viên', boQua: false },
+  { khoa: 'mat_hang', ten: 'Mặt hàng', boQua: false },
+  { khoa: 'cong_thuc', ten: 'Công thức pha lóc', boQua: true },
+  { khoa: 'ncc_no_dau', ten: 'Nhà cung cấp & nợ đầu kỳ', boQua: true },
+  { khoa: 'ton_dau', ten: 'Tồn đầu kỳ', boQua: true },
+  { khoa: 'gia_von', ten: 'Cách tính giá vốn', boQua: true },
+  { khoa: 'dinh_muc', ten: 'Định mức tồn ở quầy', boQua: true },
+  { khoa: 'vi_tri_ly_do_ma_vach', ten: 'Vị trí, lý do, mã vạch', boQua: true },
+  { khoa: 'nguong', ten: 'Ngưỡng cảnh báo', boQua: true },
+  { khoa: 'may_chung', ten: 'Máy dùng chung', boQua: true },
+];
+
 /** Sau pha lóc, gói quét nhãn của món để ở đâu (kho_mat_hang.noi_de_sau_pha, 0033). null = kho lạnh. */
 export const TEN_NOI_DE_SAU_PHA: Record<string, string> = {
   kho: 'Kho lạnh',

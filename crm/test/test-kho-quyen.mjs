@@ -313,11 +313,14 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_may_gan_nguoi', 'kho_may_dat_pin', 'kho_may_khoa', 'kho_may_go', 'kho_may_mo_khoa',
     // Chủ tự tạo / khóa / mở tài khoản (0034) — chỉ chu_so_huu
     'kho_them_nhan_su', 'kho_khoa_nhan_su', 'kho_mo_nhan_su', 'kho_ds_nhan_su_kho',
+    // Chuẩn bị chạy thật (0035): nợ đầu kỳ (ke_toan), tồn đầu kỳ dạng lưới (nhap),
+    // tiến độ Thiết lập (xem — chỉ số đếm), đánh dấu bỏ qua bước (danh_muc)
+    'kho_ghi_no_dau_ky', 'kho_luu_ton_dau_ky', 'kho_tien_do_thiet_lap', 'kho_danh_dau_thiet_lap',
     // Hàm trigger — PostgREST không gọi được hàm trả về trigger
     'kho_vi_tri_kiem_sua', 'kho_truong_them_kiem_sua', 'kho_truong_them_kiem',
     'kho_mat_hang_chuan_hoa', 'kho_cong_thuc_pha_kiem', 'kho_lo_chan_sua_xoa',
     'kho_ton_chi_qua_so_cai', 'kho_so_cai_ghi', 'kho_so_cai_chan_sua_xoa',
-    'kho_phieu_nhap_chan_huy_da_tra', 'kho_chan_vi_tri_di_duong',
+    'kho_phieu_nhap_chan_huy_da_tra', 'kho_chan_vi_tri_di_duong', 'kho_cai_dat_ghi_moc',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
@@ -327,6 +330,7 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_doc_ma_vach', 'kho_kiem_ke_tinh_quet', 'kho_kiem_ke_ds_quet',
     'kho_vi_tri_sau_pha', 'kho_phien_pha_tinh_quet', 'kho_phien_pha_tra_quet', 'kho_thu_hoi_du_kien',
     'kho_may_cua_phien', 'kho_may_nguoi_hop_le', 'kho_may_ghi', 'kho_may_kiem_pin_bam',
+    'kho_buoc_thiet_lap',
   ].sort();
 
   const { rows } = await db.query(`

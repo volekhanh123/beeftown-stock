@@ -79,7 +79,7 @@ migration.
 **Ngưỡng cảnh báo** (cột trên `kho_cai_dat`, lưu bằng `kho_luu_nguong`, cần quyền `danh_muc`):
 `nguong_gia_mua_pt` (5%), `nguong_thu_hoi_diem` (3 điểm), `gio_nhac_chuyen` (2 giờ),
 `gio_chot_ngay` (6 giờ sáng), `nguong_dinh_muc_pt` (10%). Tên tiếng Việt ở `TEN_NGUONG`
-(`lib/kho/thong-bao.ts`).
+(`lib/kho/thong-bao.ts`). Form sửa: thẻ "Ngưỡng cảnh báo" (`#nguong`) trên màn Thiết lập (mục 3g).
 
 ## 3. Các trang trung tâm
 
@@ -200,6 +200,11 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
   Sự kiện `thu_hoi_thap` (quản lý, chủ — `duyet`; số đỏ ở ô Pha lóc và quy trình) tới khi quản lý bấm
   **"Đã xem"** trên phiên (`kho_xac_nhan_phien_pha`, có ghi chú). Mở lại / chốt lại thì xóa cờ và
   trạng thái đã xem. Luật so ở web (`soSanhThuHoi`) phải khớp thân `kho_chot_phien_pha` (test so thẳng).
+- **Một form cho cả bước 2 (GĐ5e)**: ô quét, −1 / bỏ lượt / bỏ món và các ô gõ kg chung một `<form>`.
+  Với `VIEC_LUU_GO_TAY_TRUOC` (`quet`, `bo_luot`, `bot_mot`, `xoa_mon`) máy chủ chạy `luuPhienPha` **trước**
+  rồi mới quét / sửa — gõ kg phụ phẩm xong quét nhãn ngay thì số vừa gõ không mất. Phần gõ tay lỗi → chưa quét,
+  hiện lại chữ đã gõ, giữ mã trong ô và `ma_gui`. −1 / bỏ món gửi món qua `formaction ?mon=<id>`, lệnh sửa
+  có `ma_gui_sua` riêng. Enter trong ô kg = nút quét (nút đầu form) với ô quét trống → chỉ lưu.
 - Thủ kho chỉ thấy kg, gói, %: bước 2, 3 và màn xem đọc `kho_xem_thu_phien_pha_kg`; hàm có tiền
   `kho_xem_thu_phien_pha` chỉ gọi khi `xem_gia`. Hàm thuần của 3 bước ở `lib/kho/pha-loc.ts`, test ở
   `test-kho-pha-web.mjs`; database ở `test-kho-pha-loc-quet.mjs`.
@@ -288,6 +293,63 @@ Secrets → Add → **Secret**. Đọc bằng `import { env } from 'cloudflare:w
 **Không** đặt trong `wrangler.toml [vars]`, không commit giá trị. Thiếu bí mật → máy dùng chung tắt, màn
 Cài đặt báo cách bật, mọi thứ khác chạy bình thường. Đổi bí mật = mọi cookie máy và mọi PIN cũ hỏng —
 mọi người gắn lại (cách "thu hồi tất cả" khi nghi lộ).
+
+## 3g. Thiết lập có tiến độ · tồn đầu kỳ dạng lưới (GĐ5e, migration 0035)
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/cai-dat` | `danh_muc`, `ncc` hoặc `cai_dat_goc` (ô menu "Thiết lập") | Thanh tiến độ "Còn N bước" + 10 thẻ bước (`kho_tien_do_thiet_lap`): tên, Xong / Chưa xong / Bỏ qua, câu còn thiếu gì, nút "Làm bước này", nút "Bỏ qua" (`kho_danh_dau_thiet_lap`). Bên dưới giữ các cài đặt cũ, mỗi phần một neo: `#gia-von`, `#nguong`, `#may-chung`; thẻ bước là `#buoc-<khóa>` |
+| `/noi-bo/kho/cai-dat/ton-dau?vt=<vị trí>` | `nhap` (thủ kho cũng vào; cột giá chỉ `xem_gia`) | Tồn đầu kỳ: bảng món của một kho / quầy, hoặc dán Excel nhiều nơi một lượt → xem trước → "Xác nhận" (`kho_luu_ton_dau_ky`, mỗi nơi một phiếu TD-) |
+
+**Bước và luật "xong"** ở comment của `kho_tien_do_thiet_lap` (0035). Thứ tự và tên: `BUOC_THIET_LAP`
+(`lib/kho/chung.ts`); câu chữ (`moTaBuoc`), nút (`LINK_BUOC` — mỗi nút ghi quyền của dòng chặn trang đích),
+luật ẩn nút Bỏ qua (`coTheBoQua`: `danh_muc`; `ncc_no_dau` thêm kế toán — nút "Không có nợ đầu kỳ";
+`gia_von` chỉ chủ) ở `lib/kho/thiet-lap.ts`. Kết quả **chỉ số đếm**, không tiền. Chi nhánh & nhân viên và
+Mặt hàng không bỏ qua được.
+
+- "Giá vốn" xong khi chủ bấm Lưu ở `#gia-von`, "Ngưỡng" xong khi bấm Lưu ở `#nguong` — **kể cả không đổi gì**
+  (trigger ghi `goc_xem_luc` / `nguong_luu_luc`). Form ngưỡng gọi `luuNguong` của `thong-bao.ts`.
+  Công tắc "Quầy phải bấm nhận" cũng đi qua `kho_luu_nguong`; lượt chỉ gạt công tắc (không gửi ngưỡng nào)
+  trả `nguong_luu_luc` về như cũ — không tính là đã xem ngưỡng (0035 dựng lại hàm).
+- Ô menu đổi chữ "Cài đặt" → "Thiết lập" (mã `cai_dat`, link giữ nguyên). Chưa có số đỏ: `kho_dem_viec`
+  không đếm bước thiết lập — số bước còn lại hiện ngay trên màn.
+- Tiến độ đọc riêng: lỗi đọc tiến độ chỉ hiện một dòng báo, các phần cài đặt vẫn dùng được.
+
+**Tồn đầu kỳ dạng lưới.** Hàm thuần `xemTruocDanTonDau` (ô dán) và `docLuoiTonDau` (bảng món) cho ra cùng
+một bản xem trước:
+
+- Cột dán: Mã / Tên / Mã-hoặc-Tên, Nơi, Gói, Kg, Đơn giá, HSD. Có dòng tiêu đề (từ 2 tiêu đề hiểu được, phải có
+  Mã hoặc Tên, và Kg) thì cột xếp tùy ý; không có thì theo thứ tự `Mã/Tên, Nơi, Gói, Kg, Đơn giá, HSD`.
+  Tab hoặc `;` (một kiểu cho cả bảng). **Không** tách bằng `,` — "12,5" kg sẽ bị cắt làm hai.
+  Không tiêu đề mà bảng bỏ cột Đơn giá: ngày (có `/` hoặc `-`) rơi vào chỗ cột giá được hiểu là HSD.
+- Món khớp theo **Mã** trước, rồi **Tên bỏ dấu** (như dán Mặt hàng GĐ4a); hai món cùng tên không dấu → bảo ghi Mã.
+  Nơi khớp theo tên kho / quầy; "kho" / "quầy" được khi chi nhánh chỉ có một chỗ loại đó; trống = nơi chọn
+  ở ô "Nơi để khi dòng không ghi Nơi". Không nhận chỗ chờ hủy / đang mang ra quầy.
+- HSD: `25/10/2026`, `25-10-26`, `2026-10-25`…; trống = ngày tồn đầu kỳ + hạn mặc định của món (thiếu cả hai → lỗi).
+  Ngày tồn đầu kỳ: không sau hôm nay, không quá 90 ngày trước (như database).
+- Người không xem giá: cột Đơn giá bị bỏ qua (có ghi trong "Bỏ qua cột"), bảng món không có ô giá.
+- Câu lỗi xem trước ghi "Dòng N (tên món)" với N là **dòng trong ô dán**; bảng xem trước đánh số 1..n đúng
+  thứ tự gửi, trùng "Dòng N" trong câu lỗi của database.
+- "Xác nhận" gửi các dòng ở ô ẩn (JSON, `docDongGuiTonDau` chỉ kiểm hình dạng — database kiểm luật) cùng
+  `ma_gui` tạo lúc xem trước. Database từ chối → trang dựng lại bảng từ ô ẩn (`dongTuGui`), **giữ `ma_gui`**.
+- Lưới đọc `kho_mat_hang` không có cột tiền nào (thủ kho mở được). Test: `test-kho-thiet-lap-web.mjs` (không
+  cần database); database ở `test-kho-dau-ky.mjs`.
+
+## 3h. Nợ đầu kỳ nhà cung cấp (GĐ5e, migration 0035)
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/cong-no/no-dau` | `ke_toan` | Lưới mỗi NCC đang dùng một dòng: số tiền, hạn trả (trống = hôm nay + số ngày nợ của NCC), số hóa đơn, ghi chú. Dán Excel (Tab hoặc `;`; NCC khớp theo mã số thuế rồi tên không dấu) → xem trước → "Ghi nợ đầu kỳ" (`kho_ghi_no_dau_ky`, `ma_gui`). Danh sách phiếu ND- đã ghi, hủy khi chưa trả tiền (bắt buộc lý do). Nút "Không có nợ đầu kỳ" (đánh dấu bước Thiết lập) khi chưa có phiếu ND- nào |
+
+- Nợ đầu kỳ = phiếu nhập loại `no_dau`, số `ND-`: không vị trí, không dòng hàng, không lô, không sổ kho — tồn,
+  báo cáo hàng, giá vốn không thấy nó. Số tiền ở `tien_no_dau`, chép sang `tien_hoa_don` (đã đối chiếu), nên
+  công nợ, thanh toán tự chia (hạn sớm nhất trước) chạy như phiếu mua. Mỗi NCC một phiếu còn hiệu lực / chi nhánh.
+- View công nợ không có cột loại: web nhận phiếu ND- theo tiền tố số phiếu (`laNoDau`, `tenLoaiCongNo` trong
+  `lib/kho/cong-no.ts`). Số phiếu ND- trỏ về trang công nợ của NCC (`linkPhieuCongNo` → `/noi-bo/kho/cong-no/<ncc>#p-<id>`),
+  không vào `/noi-bo/kho/nhap/`; mở `/noi-bo/kho/nhap/<id>` của phiếu ND- cũng bị chuyển về đó. Không đối chiếu,
+  không trả hàng. File `cong-no.csv` có cột "Loại" (Nhập mua / Nợ đầu kỳ).
+- Thủ kho không thấy phiếu ND- ở đâu cả: `kho_v_phieu_nhap` và ba hàm đọc chỉ kg bỏ `no_dau`; bảng phiếu nhập đã
+  khóa với vai không xem giá (0031). Test: `test-kho-cong-no-web.mjs`, `test-kho-dau-ky.mjs`, `test-kho-thu-kho.mjs`.
 
 ## 4. Cài như app (PWA)
 

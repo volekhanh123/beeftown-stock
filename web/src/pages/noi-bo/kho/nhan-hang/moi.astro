@@ -91,7 +91,8 @@ const tieuDe = loai === 'ton_dau' ? 'Nhập hàng có sẵn (tồn đầu kỳ)'
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {loai === 'ton_dau' && (
-    <p class="nb-dan">Hàng <strong>đang có sẵn</strong> lúc bắt đầu dùng phần mềm. Không có nhà cung cấp, không cần ảnh.</p>
+    <p class="nb-dan">Hàng <strong>đang có sẵn</strong> lúc bắt đầu dùng phần mềm. Không có nhà cung cấp, không cần ảnh.{' '}
+      Nhiều món, nhiều nơi? <a href="/noi-bo/kho/cai-dat/ton-dau">Nhập dạng bảng / dán Excel →</a></p>
   )}
 
   <form method="POST" enctype="multipart/form-data">

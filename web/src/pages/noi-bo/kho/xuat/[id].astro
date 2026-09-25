@@ -564,7 +564,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                     <label><input type="radio" name="ly_do_id" value={l.id} checked={l.id === lyDoForm} required={loai === 'xuat_khac'} /> {l.ten}</label>
                   ))}
                   {loai === 'xuat_khac' && lyDoChon.length === 0 && (
-                    <p class="kho-phu">Chưa có lý do xuất khác nào — quản lý mở Cài đặt kho, bấm Khởi tạo để có sẵn Dùng nội bộ, Tặng khách, Hàng mẫu, Khác.</p>
+                    <p class="kho-phu">Chưa có lý do xuất khác nào — quản lý mở Thiết lập kho, bấm Khởi tạo để có sẵn Dùng nội bộ, Tặng khách, Hàng mẫu, Khác.</p>
                   )}
                 </fieldset>
               )}

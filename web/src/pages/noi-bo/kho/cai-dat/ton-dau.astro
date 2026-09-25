@@ -1,0 +1,297 @@
+---
+/**
+ * KHO — THIẾT LẬP · TỒN ĐẦU KỲ DẠNG LƯỚI (GĐ5e, migration 0035)
+ *
+ * Hàng đang có sẵn trong kho / quầy trước ngày bắt đầu dùng phần mềm. Hai
+ * đường nhập, cùng một bước xem trước:
+ *   1. Bảng món của MỘT nơi (?vt=<vị trí>): mỗi món một dòng — số gói, kg,
+ *      đơn giá (chỉ vai xem giá), hạn dùng. Dòng để trống bị bỏ qua.
+ *   2. Dán từ Excel nhiều nơi một lượt: Mã/Tên, Nơi, Gói, Kg, Đơn giá, HSD.
+ *      Khớp món theo Mã rồi theo Tên bỏ dấu (như dán Mặt hàng).
+ * Xem trước (hàm thuần trong lib/kho/thiet-lap.ts) → "Xác nhận" gửi đúng các
+ * dòng đó (ô ẩn, JSON) cùng ma_gui → kho_luu_ton_dau_ky: mỗi nơi một phiếu
+ * TD-, gửi duyệt luôn, tự duyệt khi cài đặt cho tự duyệt và người gửi được
+ * duyệt phiếu nhập. Bấm hai lần / F5 → trả đúng các phiếu cũ. Database từ
+ * chối → hiện lại bảng xem trước với CÙNG ma_gui.
+ *
+ * Quyền: nhap (như tồn đầu kỳ ở Nhận hàng). Thủ kho không thấy cột giá —
+ * đơn giá do kế toán / quản lý điền lúc duyệt.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { docViTri } from '../../../../lib/kho/danh-muc.ts';
+import {
+  cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangTien, homNayVn, laUuid, TEN_LOAI_MAT_HANG, type KetQua,
+} from '../../../../lib/kho/chung.ts';
+import {
+  docMonTonDau, luuTonDauKy, xemTruocDanTonDau, docLuoiTonDau, kiemNgayTonDau, tomTatTheoViTri, dongGuiTonDau,
+  docDongGuiTonDau, dongTuGui, cauDaLuuTonDau, noiDeDuoc, monTrongLuoi, O_LUOI,
+  type MonTonDau, type NoiTonDau, type DongTonDau,
+} from '../../../../lib/kho/thiet-lap.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('nhap')) return Astro.redirect('/noi-bo/kho', 302);
+
+const coGia = k.duoc('xem_gia');
+const vaoThietLap = k.duoc('danh_muc') || k.duoc('ncc') || k.duoc('cai_dat_goc');
+const homNay = homNayVn();
+const DUONG = '/noi-bo/kho/cai-dat/ton-dau';
+
+let matHang: MonTonDau[] = [];
+let viTri: NoiTonDau[] = [];
+let loiDoc = k.loiDoc;
+if (k.chiNhanh && k.daKhoiTao) {
+  try {
+    const [mh, vt] = await Promise.all([docMonTonDau(k.client), docViTri(k.client, k.chiNhanh.id)]);
+    matHang = mh;
+    viTri = vt.map(v => ({ id: v.id, ten: v.ten, loai: v.loai, dang_dung: v.dang_dung }));
+  } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được danh mục mặt hàng và kho, quầy.'); }
+}
+const noiDe = noiDeDuoc(viTri);
+const mon = monTrongLuoi(matHang);
+
+const vtUrl = Astro.url.searchParams.get('vt') ?? '';
+let vtChon = noiDe.find(v => v.id === vtUrl) ?? noiDe.find(v => v.loai === 'kho') ?? noiDe[0] ?? null;
+
+let bao: KetQua | null = k.bao;
+let ngay = homNay;
+let luoiLai: FormData | null = null;
+let danLai = '';
+let vtMacDinhDan = vtChon?.id ?? '';
+let xem: { dong: DongTonDau[]; loi: string[]; boQua: string[] } | null = null;
+let maGui = '';
+
+const form = await docFormGui(Astro);
+if (form && k.chiNhanh) {
+  const viec = String(form.get('viec') ?? '');
+  ngay = String(form.get('ngay') ?? '').trim() || homNay;
+  if (viec === 'xem_luoi' || viec === 'xem_dan') {
+    if (loiDoc) {
+      bao = { ok: false, cau: 'Chưa đọc được danh mục nên chưa xem trước được — tải lại trang rồi thử lại.' };
+    } else {
+      const vtForm = String(form.get('vt') ?? '');
+      if (viec === 'xem_luoi') {
+        luoiLai = form;
+        vtChon = noiDe.find(v => v.id === vtForm) ?? vtChon;
+        xem = docLuoiTonDau(form, { matHang, viTri, viTriMacDinh: vtChon?.id ?? null, coGia, ngay });
+      } else {
+        danLai = String(form.get('noi_dung') ?? '');
+        vtMacDinhDan = vtForm;
+        xem = danLai.trim()
+          ? xemTruocDanTonDau(danLai, { matHang, viTri, viTriMacDinh: laUuid(vtForm) ? vtForm : null, coGia, ngay })
+          : { dong: [], loi: ['Ô dán đang trống — chọn các ô trong Excel, sao chép rồi dán vào.'], boQua: [] };
+      }
+      const loiNgay = kiemNgayTonDau(ngay, homNay);
+      if (loiNgay) xem.loi.unshift(loiNgay);
+      if (xem.dong.length === 0 && xem.loi.length === 0) {
+        xem.loi.push(viec === 'xem_luoi' ? 'Chưa có món nào ghi số kg.' : 'Không có dòng hàng nào trong ô dán.');
+      }
+      maGui = crypto.randomUUID();
+    }
+  } else if (viec === 'luu') {
+    maGui = String(form.get('ma_gui') ?? '');
+    const gui = docDongGuiTonDau(String(form.get('dong') ?? ''), coGia);
+    if (!gui) {
+      bao = { ok: false, cau: 'Trang đã cũ hoặc bảng bị hỏng — nhập lại rồi bấm Xem trước.' };
+    } else {
+      const kq = await luuTonDauKy(k.client, k.chiNhanh.id, maGui, ngay, gui);
+      if (kq.ok) {
+        return chuyenHuong(Astro, DUONG, {
+          ok: true, cau: cauDaLuuTonDau(kq.phieu ?? [], !!kq.daCo, new Map(viTri.map(v => [v.id, v.ten]))),
+        });
+      }
+      // Database từ chối: hiện lại đúng bảng vừa gửi, giữ ma_gui.
+      bao = kq;
+      xem = { dong: dongTuGui(gui, { matHang, viTri, ngay }), loi: [], boQua: [] };
+    }
+  } else bao = { ok: false, cau: 'Việc không hợp lệ.' };
+}
+
+const tomTat = xem ? tomTatTheoViTri(xem.dong) : [];
+const choXacNhan = !!xem && xem.loi.length === 0 && xem.dong.length > 0 && laUuid(maGui);
+/** Ô bảng món: số vừa gõ (khi xem trước / lỗi) hoặc trống. */
+const oLuoi = (ten: string) => luoiLai ? String(luoiLai.get(ten) ?? '') : '';
+const nhomLuoi = (['tang', 'phan_cat', 'phu_pham'] as const)
+  .map(loai => ({ loai, hang: mon.map((m, i) => ({ m, i })).filter(x => x.m.loai === loai) }))
+  .filter(n => n.hang.length > 0);
+const ngayMin = congNgay(homNay, -90);
+---
+<Kho k={k} tieuDe="Tồn đầu kỳ" rong>
+  <h1>Tồn đầu kỳ</h1>
+  <p>{vaoThietLap ? <a href="/noi-bo/kho/cai-dat#buoc-ton_dau">← Thiết lập kho</a> : <a href="/noi-bo/kho/nhan-hang">← Nhận hàng</a>}</p>
+  <p class="kho-phu" style="margin-top:0">Ghi hàng <strong>đang có sẵn</strong> trong kho lạnh và quầy trước ngày bắt đầu dùng
+    phần mềm. Mỗi kho / quầy thành một phiếu tồn đầu kỳ, gửi duyệt luôn.
+    {coGia ? ' Đơn giá là giá vốn ước tính mỗi kg — để trống thì điền lúc duyệt.' : ' Không cần ghi giá — kế toán, quản lý điền lúc duyệt.'}</p>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {k.chiNhanh && !k.daKhoiTao && (
+    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho — quản lý mở Thiết lập kho, bấm "Bắt đầu dùng kho" trước.</p>
+  )}
+  {k.daKhoiTao && !loiDoc && noiDe.length === 0 && (
+    <p class="nb-rong">Chưa có kho hay quầy nào đang dùng — thêm ở Vị trí và lý do trước.</p>
+  )}
+
+  {xem && (
+    <section class="nb-the" aria-labelledby="xem-truoc">
+      <h2 id="xem-truoc" style="margin-top:0">Xem trước</h2>
+      {tomTat.length > 0 && (
+        <ul class="td-tom-tat">
+          {tomTat.map(t => (
+            <li><strong>{t.ten}</strong>: {t.so_dong} dòng, {dinhDangKg(t.tong_kg)} kg</li>
+          ))}
+        </ul>
+      )}
+      {xem.loi.length > 0 && (
+        <div class="nb-bao loi" role="alert">
+          <p><strong>Chưa ghi được.</strong> Sửa những chỗ này rồi bấm "Xem trước" lại:</p>
+          <ul style="margin:.5rem 0 0;padding-left:1.2rem">
+            {xem.loi.slice(0, 30).map(l => <li>{l}</li>)}
+          </ul>
+          {xem.loi.length > 30 && <p>… và {xem.loi.length - 30} lỗi khác.</p>}
+        </div>
+      )}
+      {xem.boQua.length > 0 && <p class="kho-phu">Bỏ qua cột: {xem.boQua.join(', ')}.</p>}
+      {xem.dong.length > 0 && (
+        <div class="kho-bang-khung">
+          <table class="kho-bang">
+            <thead>
+              <tr>
+                <th class="so">Dòng</th><th>Nơi</th><th>Mặt hàng</th><th class="so">Gói</th><th class="so">Kg</th>
+                {coGia && <th class="so">Đơn giá/kg</th>}
+                <th>Hạn dùng</th>
+              </tr>
+            </thead>
+            <tbody>
+              {xem.dong.map(d => (
+                <tr>
+                  <td class="so">{d.stt}</td>
+                  <td>{d.ten_vi_tri}</td>
+                  <td><strong>{d.ten_mat_hang}</strong><br /><span class="kho-phu">{d.ma_mat_hang}</span></td>
+                  <td class="so">{d.so_goi > 0 ? `${d.so_goi} ${d.don_vi_goi}` : '—'}</td>
+                  <td class="so">{dinhDangKg(d.so_kg)}</td>
+                  {coGia && <td class="so">{d.don_gia_kg !== null ? dinhDangTien(d.don_gia_kg) : <span class="kho-phu">điền lúc duyệt</span>}</td>}
+                  <td>{d.han_se_dung ? dinhDangNgay(d.han_se_dung) : '—'}{!d.han_dung && d.han_se_dung ? <><br /><span class="kho-phu">theo hạn mặc định</span></> : ''}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {choXacNhan ? (
+        <form method="POST" class="kho-thanh-nut dinh">
+          <input type="hidden" name="viec" value="luu" />
+          <input type="hidden" name="ma_gui" value={maGui} />
+          <input type="hidden" name="ngay" value={ngay} />
+          <textarea name="dong" hidden aria-hidden="true">{JSON.stringify(dongGuiTonDau(xem.dong))}</textarea>
+          <button type="submit" class="nb-nut">Xác nhận — tạo {tomTat.length} phiếu ngày {dinhDangNgay(ngay)}</button>
+          <a class="nb-nut phu" href="#nhap">Sửa lại</a>
+        </form>
+      ) : (
+        <p style="margin-bottom:0"><a href="#nhap">Sửa lại ↓</a></p>
+      )}
+    </section>
+  )}
+
+  {k.daKhoiTao && noiDe.length > 0 && mon.length === 0 && !loiDoc && (
+    <p class="nb-rong">Chưa có mặt hàng nào — khai ở Mặt hàng trước.</p>
+  )}
+
+  {k.daKhoiTao && noiDe.length > 0 && mon.length > 0 && (
+    <>
+      <h2 id="nhap">Nhập theo từng nơi</h2>
+      <nav class="kho-dh" aria-label="Chọn kho hoặc quầy">
+        {noiDe.map(v => (
+          <a href={`${DUONG}?vt=${v.id}`} aria-current={vtChon?.id === v.id ? 'page' : undefined}>{v.ten}</a>
+        ))}
+      </nav>
+      {vtChon && (
+        <form method="POST" class="nb-the">
+          <input type="hidden" name="viec" value="xem_luoi" />
+          <input type="hidden" name="vt" value={vtChon.id} />
+          <label class="nb-o">
+            <span>Ngày tồn đầu kỳ</span>
+            <small>Thường là ngày trước hôm bắt đầu dùng phần mềm. Không quá 90 ngày trước.</small>
+            <input type="date" name="ngay" value={ngay} min={ngayMin} max={homNay} required />
+          </label>
+          <p class="kho-phu">Hàng đang có ở <strong>{vtChon.ten}</strong>. Chỉ ghi món đang có — dòng để trống được bỏ qua.
+            Hạn dùng để trống = ngày tồn đầu kỳ + hạn mặc định của món.</p>
+          <div class="kho-bang-khung">
+            <table class="kho-bang td-luoi">
+              <thead>
+                <tr><th>Mặt hàng</th><th>Số gói</th><th>Kg</th>{coGia && <th>Đơn giá/kg</th>}<th>Hạn dùng</th></tr>
+              </thead>
+              <tbody>
+                {nhomLuoi.map(n => (
+                  <>
+                    <tr class="td-nhom"><td colspan={coGia ? 5 : 4}>{TEN_LOAI_MAT_HANG[n.loai]}</td></tr>
+                    {n.hang.map(({ m, i }) => (
+                      <tr>
+                        <td>
+                          <input type="hidden" name={`${O_LUOI.mh}${i}`} value={m.id} />
+                          <strong>{m.ten}</strong><br />
+                          <span class="kho-phu">{m.ma}{m.han_dung_ngay !== null ? ` · hạn ${m.han_dung_ngay} ngày` : ' · chưa có hạn mặc định'}</span>
+                        </td>
+                        <td><input class="td-o" type="text" inputmode="numeric" name={`${O_LUOI.goi}${i}`} value={oLuoi(`${O_LUOI.goi}${i}`)}
+                          aria-label={`Số ${m.don_vi_goi} ${m.ten}`} placeholder={m.dem_goi ? m.don_vi_goi : '—'} /></td>
+                        <td><input class="td-o" type="text" inputmode="decimal" name={`${O_LUOI.kg}${i}`} value={oLuoi(`${O_LUOI.kg}${i}`)}
+                          aria-label={`Kg ${m.ten}`} placeholder="kg" /></td>
+                        {coGia && (
+                          <td><input class="td-o rong" type="text" inputmode="numeric" name={`${O_LUOI.gia}${i}`} value={oLuoi(`${O_LUOI.gia}${i}`)}
+                            aria-label={`Đơn giá mỗi kg ${m.ten}`} placeholder="đ/kg" /></td>
+                        )}
+                        <td><input class="td-o rong" type="date" name={`${O_LUOI.han}${i}`} value={oLuoi(`${O_LUOI.han}${i}`)}
+                          aria-label={`Hạn dùng ${m.ten}`} /></td>
+                      </tr>
+                    ))}
+                  </>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <button type="submit" class="nb-nut">Xem trước</button>
+        </form>
+      )}
+
+      <details class="nb-the" id="dan-excel" open={!!danLai}>
+        <summary style="cursor:pointer;font-weight:700">Dán từ Excel (nhiều nơi một lượt)</summary>
+        <form method="POST" style="margin-top:1rem">
+          <input type="hidden" name="viec" value="xem_dan" />
+          <div class="nb-dan" style="font-size:.88rem">
+            <p>Trong Excel chọn các ô (nên chọn cả <strong>dòng tiêu đề</strong>), sao chép rồi dán vào đây. Tiêu đề hiểu được:{' '}
+              <strong>Mã · Tên · Nơi · Gói · Kg{coGia ? ' · Đơn giá' : ''} · HSD</strong>. Không có dòng tiêu đề thì cột theo đúng
+              thứ tự: Mã hoặc Tên, Nơi, Gói, Kg, Đơn giá, HSD.</p>
+            <p>Món khớp theo Mã, không có thì theo Tên (không cần dấu). Nơi ghi đúng tên kho / quầy; để trống thì dùng nơi chọn
+              bên dưới. HSD ghi dạng 25/10/2026, để trống = theo hạn mặc định.{coGia ? '' : ' Cột Đơn giá (nếu có) được bỏ qua.'}</p>
+          </div>
+          <label class="nb-o">
+            <span>Ngày tồn đầu kỳ</span>
+            <input type="date" name="ngay" value={ngay} min={ngayMin} max={homNay} required />
+          </label>
+          <label class="nb-o">
+            <span>Nơi để khi dòng không ghi Nơi</span>
+            <select name="vt">
+              <option value="">— dòng nào cũng phải ghi Nơi —</option>
+              {noiDe.map(v => <option value={v.id} selected={v.id === vtMacDinhDan}>{v.ten}</option>)}
+            </select>
+          </label>
+          <label class="nb-o">
+            <span>Nội dung dán</span>
+            <textarea name="noi_dung" rows="8" placeholder={'Mã\tNơi\tGói\tKg\tHSD\nTHAN-NGOAI\tKho lạnh\t4\t12,5\t30/10/2026\nBa chỉ bò\tQuầy thịt\t6\t3,2'}>{danLai}</textarea>
+          </label>
+          <button type="submit" class="nb-nut">Xem trước</button>
+        </form>
+      </details>
+    </>
+  )}
+</Kho>
+
+<style>
+  .td-tom-tat { margin: 0 0 .75rem; padding-left: 1.2rem; }
+  .td-luoi td { vertical-align: middle; }
+  .td-nhom td { font-weight: 700; background: var(--kem-sau); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  /* Ô trong bảng: cỡ chữ 16px (iPhone không tự phóng to), cao ≥ 48px. */
+  .td-o { font-size: 16px; min-height: 48px; width: 5.5rem; padding: .4rem .5rem; border: 1px solid var(--kho-vach-dam, var(--vach)); border-radius: 8px; background: #fff; }
+  .td-o.rong { width: 9.5rem; }
+</style>

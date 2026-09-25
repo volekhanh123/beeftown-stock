@@ -14,7 +14,7 @@
 import type { APIRoute } from 'astro';
 import { duoc, homNayVn } from '../../../../lib/kho/chung.ts';
 import { BAO_CAO, COT_CONG_NO, docBaoCao, kyBaoCao, taoCsv, tieuDeCsv, tinhTong } from '../../../../lib/kho/bao-cao.ts';
-import { docCongNoPhieu } from '../../../../lib/kho/cong-no.ts';
+import { docCongNoPhieu, tenLoaiCongNo } from '../../../../lib/kho/cong-no.ts';
 
 export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
   const phien = locals.phien;
@@ -41,7 +41,9 @@ export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
     if (!duoc(nhanSu.vai_tro, 'ke_toan')) return new Response('Tài khoản không xem được công nợ nhà cung cấp', { status: 403 });
     try {
       // Không lọc = đọc HẾT mọi phiếu, từng trang một (không còn cắt ở 500 dòng).
-      csv = taoCsv(COT_CONG_NO, (await docCongNoPhieu(client, cn.id)) as unknown as Record<string, unknown>[]);
+      // Cột "Loại": nợ đầu kỳ (ND-) hay nhập mua — view công nợ không có cột loại.
+      const dong = (await docCongNoPhieu(client, cn.id)).map(p => ({ ...p, loai_cong_no: tenLoaiCongNo(p) }));
+      csv = taoCsv(COT_CONG_NO, dong as unknown as Record<string, unknown>[]);
     } catch {
       return new Response('Không đọc được công nợ', { status: 500 });
     }

@@ -16,6 +16,8 @@
  *   3. Câu lỗi thủ kho gặp có lộ số tiền không?
  *   4. Luồng mới chạy đúng: nhận hàng kg + ảnh → gửi → kế toán điền giá →
  *      so giá → duyệt; thủ kho sửa kg sau khi đã có giá thì giá không mất.
+ * Thêm (0035): nợ đầu kỳ không lộ ra với thủ kho; tồn đầu kỳ dạng lưới và
+ * tiến độ Thiết lập không trả khóa tiền.
  * Cuối cùng: kho_doi_soat_ton() rỗng.
  */
 
@@ -794,6 +796,69 @@ await nhom('10 · HÀM CŨ kho_luu_phieu_nhap: THỦ KHO KHÔNG GHI ĐƯỢC TI�
     if (h.loi) throw new Error(h.loi);
   }
   await doiSoat('Sau thử hàm cũ');
+});
+
+// ===========================================================================
+// Đặt SAU nhóm 9 (đếm phiếu) và 10. Nợ đầu kỳ là loại phiếu CÓ TIỀN, không có
+// hàng: thủ kho không được thấy nó ở đâu cả.
+await nhom('10b · NỢ ĐẦU KỲ, TỒN ĐẦU KỲ LƯỚI, TIẾN ĐỘ THIẾT LẬP (0035) — KHÔNG TIỀN', async () => {
+  const no = await duoi(UID.keToanA, `
+    select kho_ghi_no_dau_ky(p_chi_nhanh_id => $1, p_ma_gui => $2, p_dong => $3::jsonb) as kq`,
+    [cnA.id, maGui(), JSON.stringify([{ nha_cung_cap_id: nccMoi, so_tien: GIA.moi_than * 7 }])]);
+  ok('Kế toán ghi nợ đầu kỳ NCC Mới', no.loi === null, no.loi ?? '');
+  const nd = no.rows?.[0]?.kq?.phieu?.[0];
+
+  const ds = await tk(`select * from kho_ds_phieu_nhap_kg($1, null, null, null, null, false, 200, 0)`, [cnA.id]);
+  ok('Danh sách nhận hàng của thủ kho không có phiếu nợ đầu kỳ',
+     ds.loi === null && ds.rows.every(r => r.loai !== 'no_dau' && r.so_phieu !== nd?.so_phieu), ds.loi ?? '');
+  const doc = await tk(`select kho_doc_phieu_nhap_kg($1) as p`, [nd?.phieu_id]);
+  ok('Thủ kho mở phiếu nợ đầu kỳ bằng id → bị từ chối', doc.loi !== null);
+  const huy = await tk(`select kho_huy_phieu_nhap($1, 'thử')`, [nd?.phieu_id]);
+  ok('Thủ kho KHÔNG hủy được nợ đầu kỳ', huy.loi !== null);
+  const ghi = await tk(`select kho_ghi_no_dau_ky(p_chi_nhanh_id => $1, p_ma_gui => $2, p_dong => $3::jsonb) as kq`,
+    [cnA.id, maGui(), JSON.stringify([{ nha_cung_cap_id: nccMy, so_tien: GIA.my_than }])]);
+  ok('Thủ kho KHÔNG ghi được nợ đầu kỳ', ghi.loi !== null);
+
+  // Mọi cột tiền mới (tien_no_dau...) giờ đã có dữ liệu — quét lại cho thủ kho, NV quầy.
+  const { rows: cot } = await db.query(`
+    select c.table_name, c.column_name from information_schema.columns c
+    where c.table_schema = 'public' and c.table_name like 'kho\\_%'`);
+  const tien = cot.filter(c => LA_TIEN.test(c.column_name) && !KHONG_PHAI_TIEN.has(`${c.table_name}.${c.column_name}`));
+  ok('Cột tien_no_dau nằm trong danh sách quét', tien.some(c => c.column_name === 'tien_no_dau'));
+  for (const [ten, uid] of [['Thủ kho', UID.thuKhoA], ['NV quầy', UID.nvQuayA]]) {
+    const lo = [];
+    for (const { table_name, column_name } of tien) {
+      const r = await duoi(uid, `select count(*)::int as n from ${table_name} where ${column_name} is not null`);
+      if (r.loi === null && r.rows[0].n > 0) lo.push(`${table_name}.${column_name}(${r.rows[0].n})`);
+    }
+    ok(`${ten} không đọc được giá trị nào ở cột tiền (sau nợ đầu kỳ)`, lo.length === 0, lo.join(', '));
+  }
+
+  // Tồn đầu kỳ dạng lưới: thủ kho lưu được kg, không gửi được giá.
+  const luoi = [{ vi_tri_id: viTri.quay, mat_hang_id: MH['C-NACVAI'].id, so_goi: 2, so_kg: 1 },
+                { vi_tri_id: viTri.kho, mat_hang_id: MH['T-NACVAI'].id, so_goi: 1, so_kg: 6 }];
+  const ton = await tk(`select kho_luu_ton_dau_ky(p_chi_nhanh_id => $1, p_ma_gui => $2, p_ngay => $3::date, p_dong => $4::jsonb) as kq`,
+    [cnA.id, maGui(), homNay, JSON.stringify(luoi)]);
+  ok('Thủ kho lưu lưới tồn đầu kỳ (chỉ kg) → 2 phiếu chờ duyệt',
+     ton.loi === null && ton.rows[0].kq.phieu.length === 2 && ton.rows[0].kq.phieu.every(p => p.trang_thai === 'cho_duyet'),
+     ton.loi ?? '');
+  ok('Kết quả lưu lưới không có khóa tiền', khoaTien(ton.rows?.[0]?.kq).length === 0);
+  const tonGia = await tk(`select kho_luu_ton_dau_ky(p_chi_nhanh_id => $1, p_ma_gui => $2, p_ngay => $3::date, p_dong => $4::jsonb) as kq`,
+    [cnA.id, maGui(), homNay, JSON.stringify([{ ...luoi[0], don_gia_kg: GIA.ton_dau }])]);
+  ok('Thủ kho gửi đơn giá trong lưới → từ chối', tonGia.loi !== null);
+
+  // Tiến độ Thiết lập: chỉ số đếm. Tên bước "gia_von" khớp mẫu tiền nhưng giá
+  // trị chỉ là cờ đúng/sai — kiểm riêng, rồi quét phần còn lại.
+  const td = await tk(`select kho_tien_do_thiet_lap(p_chi_nhanh_id => $1) as v`, [cnA.id]);
+  const { gia_von: buocGiaVon, ...khac } = td.rows?.[0]?.v ?? {};
+  ok('Thủ kho xem được tiến độ Thiết lập', td.loi === null && typeof khac.con_lai === 'number', td.loi ?? '');
+  ok('Bước "gia_von" chỉ có cờ đúng/sai', buocGiaVon && Object.values(buocGiaVon).every(x => typeof x === 'boolean'),
+     JSON.stringify(buocGiaVon));
+  ok('Tiến độ: không khóa tiền nào khác', khoaTien(khac).length === 0, khoaTien(khac).join(', '));
+  ok('Tiến độ: không đơn giá nào lọt ra dưới dạng giá trị', !coTien(JSON.stringify(td.rows?.[0]?.v)));
+  const dd = await tk(`select kho_danh_dau_thiet_lap(p_chi_nhanh_id => $1, p_buoc => 'may_chung', p_bo_qua => true)`, [cnA.id]);
+  ok('Thủ kho KHÔNG đánh dấu bỏ qua bước được', dd.loi !== null);
+  await doiSoat('Sau nợ đầu kỳ, tồn đầu kỳ lưới');
 });
 
 // ===========================================================================

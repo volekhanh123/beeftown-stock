@@ -98,6 +98,10 @@ try {
 if (!moi && !phieu && !loiDoc) {
   return chuyenHuong(Astro, '/noi-bo/kho/nhap', { ok: false, cau: 'Không tìm thấy phiếu nhập này.' });
 }
+// Nợ đầu kỳ (ND-, 0035) không có hàng, không có trang phiếu nhập: xem ở Công nợ.
+if (phieu && (phieu.loai as string) === 'no_dau') {
+  return Astro.redirect(phieu.nha_cung_cap_id ? `/noi-bo/kho/cong-no/${phieu.nha_cung_cap_id}#p-${phieu.id}` : '/noi-bo/kho/cong-no/no-dau', 302);
+}
 
 const loai: 'mua' | 'ton_dau' = phieu?.loai
   ?? (Astro.url.searchParams.get('loai') === 'ton_dau' ? 'ton_dau' : 'mua');

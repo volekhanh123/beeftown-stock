@@ -81,7 +81,9 @@ export const MUC_KHO: MucKho[] = [
     dem: KHOA_CONG_NO },
   { ma: 'bao_cao', ten: 'Báo cáo', link: '/noi-bo/kho/bao-cao', bieuTuong: 'bao_cao', quyen: ['xem_gia'] },
   { ma: 'quy_trinh', ten: 'Quy trình', link: '/noi-bo/kho/quy-trinh', bieuTuong: 'quy_trinh', quyen: ['xem'] },
-  { ma: 'cai_dat', ten: 'Cài đặt', link: '/noi-bo/kho/cai-dat', bieuTuong: 'cai_dat',
+  // GĐ5e: màn Cài đặt thành "Thiết lập" có tiến độ từng bước (0035). Không số
+  // đỏ — số bước còn lại hiện ngay trên màn, kho_dem_viec không đếm nó.
+  { ma: 'cai_dat', ten: 'Thiết lập', link: '/noi-bo/kho/cai-dat', bieuTuong: 'cai_dat',
     quyen: ['danh_muc', 'ncc', 'cai_dat_goc'] },
   { ma: 'huong_dan', ten: 'Hướng dẫn', link: '/noi-bo/kho/huong-dan', bieuTuong: 'huong_dan', quyen: ['xem'] },
 ];

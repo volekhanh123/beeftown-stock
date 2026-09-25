@@ -100,7 +100,8 @@ crm/
 │   ├── 0031_kho_thu_kho_khong_tien.sql  KHO · thủ kho không thấy tiền · nhận hàng chỉ kg · kế toán điền giá, duyệt · cảnh báo giá nhập
 │   ├── 0032_kho_quay.sql                KHO · quầy yêu cầu → mang ra (hàng đi đường) → bấm nhận · đếm quầy cộng dồn bằng máy quét · xuất khác
 │   ├── 0033_kho_pha_quet_the_kho.sql    KHO · pha lóc bằng quét nhãn · nơi để sau pha theo món · báo thu hồi thấp (quản lý "Đã xem") · thẻ kho
-│   └── 0034_kho_may_chung.sql           KHO · máy tính bảng dùng chung (đổi người bằng PIN băm HMAC, khóa khi sai nhiều) · chủ tự tạo / khóa tài khoản kho
+│   ├── 0034_kho_may_chung.sql           KHO · máy tính bảng dùng chung (đổi người bằng PIN băm HMAC, khóa khi sai nhiều) · chủ tự tạo / khóa tài khoản kho
+│   └── 0035_kho_dau_ky_thiet_lap.sql    KHO · nợ đầu kỳ NCC (phiếu ND-) · tồn đầu kỳ dạng lưới (1 phiếu/vị trí) · tiến độ Thiết lập, đánh dấu bỏ qua bước
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs
 ```

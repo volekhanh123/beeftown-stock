@@ -1,54 +1,92 @@
 ---
 /**
- * KHO — CÀI ĐẶT (trang chính)
+ * KHO — THIẾT LẬP (trang chính của /noi-bo/kho/cai-dat)
  *
- * Lối vào các danh mục, cộng hai nhóm cài đặt của chi nhánh:
+ * GĐ5e (0035): trước ngày chạy thật, chủ / quản lý đi lần lượt 10 bước. Trên
+ * cùng là thanh tiến độ ("Còn N bước"), mỗi bước một thẻ: tên, đã xong hay
+ * còn thiếu gì (chỉ số đếm — kho_tien_do_thiet_lap), nút "Làm bước này" tới
+ * đúng trang, nút "Bỏ qua" khi bước đó bỏ qua được (kho_danh_dau_thiet_lap).
+ * Câu chữ, link, luật ẩn nút: lib/kho/thiet-lap.ts.
+ *
+ * Bên dưới giữ các phần cài đặt cũ, mỗi phần một thẻ có neo để nút của bước
+ * trỏ tới:
+ *   · Danh mục: lối vào mặt hàng, công thức, NCC, vị trí, mã vạch, cân…
  *   · Chung (quản lý): vị trí nhận hàng mặc định, số ngày cảnh báo hạn dùng
  *   · Quầy (quản lý, 0032): công tắc "Quầy phải bấm nhận hàng" — lưu qua
  *     kho_luu_nguong (khóa chuyen_quay_can_nhan), không ghi thẳng bảng
- *   · Gốc (CHỈ chủ nhà hàng): cách tính giá vốn, nguồn số bán, tự duyệt.
- *     Đổi mấy thứ này là đổi CON SỐ trong báo cáo — nên database chỉ cho chủ.
- *   · Máy dùng chung (quản lý, chủ — GĐ5d): bật hay chưa (bí mật Worker
- *     KHO_MAY_KHOA) và cách bật. Chỉ nói CÓ / KHÔNG, không bao giờ in bí mật.
+ *   · #gia-von — Gốc (CHỈ chủ nhà hàng): cách tính giá vốn, nguồn số bán, tự
+ *     duyệt. Đổi mấy thứ này là đổi CON SỐ trong báo cáo — nên database chỉ
+ *     cho chủ. Bấm Lưu (kể cả không đổi gì) = bước "Giá vốn" xong.
+ *   · #nguong — Ngưỡng cảnh báo (quản lý): 5 ngưỡng của TEN_NGUONG, lưu bằng
+ *     luuNguong (thong-bao.ts). Bấm Lưu = bước "Ngưỡng" xong.
+ *   · #may-chung — Máy dùng chung (quản lý, chủ — GĐ5d): bật hay chưa (bí mật
+ *     Worker KHO_MAY_KHOA) và cách bật. Chỉ nói CÓ / KHÔNG, không in bí mật.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong, khoiTaoKho } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docViTri, luuCaiDat, luuCaiDatGoc, type CaiDat, type ViTri } from '../../../../lib/kho/danh-muc.ts';
 import { docCaiDatQuay, luuCongTacNhan, type CaiDatQuay } from '../../../../lib/kho/quay.ts';
-import { cauLoiKho, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangThoiDiem, type KetQua } from '../../../../lib/kho/chung.ts';
 import { docBiMatMay, trangThaiMayChung } from '../../../../lib/kho/nhan-vien.ts';
+import { luuNguong, TEN_NGUONG } from '../../../../lib/kho/thong-bao.ts';
+import {
+  docTienDo, danhDauBuoc, docNguong, moTaBuoc, cauConLai, phanTramXong, linkBuocCuaVai, coTheBoQua,
+  chuNutBoQua, hienSoNguong, KHOANG_NGUONG, type TienDoThietLap, type NguongDangDung,
+} from '../../../../lib/kho/thiet-lap.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 const laChu = k.nhanSu.vai_tro === 'chu_so_huu';
+const vai = k.nhanSu.vai_tro;
 if (!k.duoc('danh_muc') && !k.duoc('ncc') && !k.duoc('cai_dat_goc')) return Astro.redirect('/noi-bo/kho', 302);
 
 let bao: KetQua | null = k.bao;
+// Lưu ngưỡng hỏng thì hiện lại đúng số vừa gõ.
+let nguongLai: FormData | null = null;
 const form = await docFormGui(Astro);
 if (form && k.chiNhanh) {
   const viec = String(form.get('viec') ?? '');
   let kq: KetQua;
+  let ve = '/noi-bo/kho/cai-dat';
   if (viec === 'khoi_tao') kq = await khoiTaoKho(k.client, k.chiNhanh.id);
   else if (viec === 'chung') kq = await luuCaiDat(k.client, form, k.chiNhanh.id);
   else if (viec === 'goc') kq = await luuCaiDatGoc(k.client, form, k.chiNhanh.id);
   else if (viec === 'nhan_quay') kq = await luuCongTacNhan(k.client, k.chiNhanh.id, form.get('chuyen_quay_can_nhan') === 'co');
-  else kq = { ok: false, cau: 'Việc không hợp lệ.' };
-  if (kq.ok) return chuyenHuong(Astro, '/noi-bo/kho/cai-dat', kq);
+  else if (viec === 'nguong') {
+    kq = await luuNguong(k.client, k.chiNhanh.id, form);
+    if (!kq.ok) nguongLai = form;
+  } else if (viec === 'bo_qua') {
+    const buoc = String(form.get('buoc') ?? '');
+    kq = await danhDauBuoc(k.client, k.chiNhanh.id, buoc, form.get('bo_qua') === 'co');
+    ve = `/noi-bo/kho/cai-dat#buoc-${buoc.replace(/[^a-z_]/g, '')}`;
+  } else kq = { ok: false, cau: 'Việc không hợp lệ.' };
+  if (kq.ok) return chuyenHuong(Astro, ve, kq);
   bao = kq;
 }
 
 let caiDat: CaiDat | null = null;
 let viTri: ViTri[] = [];
 let caiDatQuay: CaiDatQuay | null = null;
+let nguong: NguongDangDung | null = null;
+let tienDo: TienDoThietLap | null = null;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
-    [caiDat, viTri, caiDatQuay] = await Promise.all([
+    [caiDat, viTri, caiDatQuay, nguong] = await Promise.all([
       docCaiDat(k.client, k.chiNhanh.id), docViTri(k.client, k.chiNhanh.id), docCaiDatQuay(k.client, k.chiNhanh.id),
+      docNguong(k.client, k.chiNhanh.id),
     ]);
   } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được cài đặt.'); }
 }
+// Tiến độ đọc riêng: hỏng thì các phần cài đặt vẫn dùng được.
+let loiTienDo: string | null = null;
+if (k.chiNhanh && k.daKhoiTao) {
+  try { tienDo = await docTienDo(k.client, k.chiNhanh.id); }
+  catch (e) { loiTienDo = cauLoiKho(e, 'Không đọc được tiến độ thiết lập.'); }
+}
+/** Giá trị trong ô ngưỡng: số vừa gõ (khi lưu hỏng) hoặc số đang dùng. */
+const oNguong = (khoa: string) => nguongLai ? String(nguongLai.get(khoa) ?? '') : hienSoNguong(nguong?.gia_tri[khoa]);
 
 const MUC = [
   { link: '/noi-bo/kho/cai-dat/mat-hang', ten: 'Mặt hàng', mo_ta: 'Tảng nhập, phần cắt bán ở quầy, phụ phẩm. Giá bán, hạn dùng, mã cân. Dán từ Excel được.', hien: k.duoc('danh_muc') },
@@ -66,8 +104,10 @@ const MUC = [
 // Máy dùng chung bật khi Worker có bí mật KHO_MAY_KHOA (GĐ5d). Chỉ quản lý, chủ cần biết.
 const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null;
 ---
-<Kho k={k} tieuDe="Cài đặt kho">
-  <h1>Cài đặt kho</h1>
+<Kho k={k} tieuDe="Thiết lập kho">
+  <h1>Thiết lập kho</h1>
+  <p class="kho-phu" style="margin-top:0">Làm lần lượt các bước dưới đây trước ngày bắt đầu dùng kho thật. Bước nào
+    không cần cho quán mình thì bấm "Bỏ qua". Các cài đặt (trước đây ở "Cài đặt kho") nằm bên dưới.</p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {k.chiNhanh && !k.daKhoiTao && k.duoc('danh_muc') && (
@@ -78,6 +118,54 @@ const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null
     </form>
   )}
 
+  {loiTienDo && <div class="nb-bao loi" role="alert"><p>{loiTienDo}</p></div>}
+
+  {tienDo && (
+    <section class="nb-the" aria-labelledby="tien-do">
+      <h2 id="tien-do" style="margin-top:0">{cauConLai(tienDo)}</h2>
+      <div class="tl-thanh" role="progressbar" aria-valuemin="0" aria-valuemax={tienDo.tong}
+        aria-valuenow={tienDo.tong - tienDo.conLai} aria-label="Số bước đã xong">
+        <span style={`width:${phanTramXong(tienDo)}%`}></span>
+      </div>
+      <p class="kho-phu" style="margin:.4rem 0 0">Đã xong {tienDo.tong - tienDo.conLai}/{tienDo.tong} bước.</p>
+
+      <ol class="tl-ds">
+        {tienDo.buoc.map((b, i) => {
+          const link = linkBuocCuaVai(b.khoa, vai);
+          const boQuaDuoc = coTheBoQua(b, vai);
+          return (
+            <li id={`buoc-${b.khoa}`} class={`tl-buoc ${b.boQua ? 'bo-qua' : b.xong ? 'xong' : 'chua'}`}>
+              <span class="tl-so" aria-hidden="true">{b.xong ? '✓' : i + 1}</span>
+              <div class="tl-noi-dung">
+                <p class="tl-ten">
+                  <strong>{b.ten}</strong>{' '}
+                  <span class={`nb-nhan ${b.boQua ? 'tat' : b.xong ? 'song' : 'cho'}`}>{b.boQua ? 'Bỏ qua' : b.xong ? 'Xong' : 'Chưa xong'}</span>
+                </p>
+                <p class="kho-phu tl-mo-ta">{moTaBuoc(b)}</p>
+                {(link.length > 0 || boQuaDuoc) && (
+                  <div class="tl-nut">
+                    {link.map(l => (
+                      <a class={`nb-nut ${b.xong ? 'phu' : ''}`} href={l.link}>{b.xong ? l.ten : (link.length === 1 ? 'Làm bước này' : l.ten)}</a>
+                    ))}
+                    {boQuaDuoc && (!b.xong || b.boQua) && (
+                      <form method="POST">
+                        <input type="hidden" name="viec" value="bo_qua" />
+                        <input type="hidden" name="buoc" value={b.khoa} />
+                        <input type="hidden" name="bo_qua" value={b.boQua ? 'khong' : 'co'} />
+                        <button type="submit" class="nb-nut phu">{chuNutBoQua(b.khoa, b.boQua)}</button>
+                      </form>
+                    )}
+                  </div>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </section>
+  )}
+
+  <h2>Danh mục</h2>
   {MUC.map(m => (
     <a href={m.link} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
       <div class="nb-dong-dau"><strong>{m.ten}</strong><span aria-hidden="true">›</span></div>
@@ -86,7 +174,7 @@ const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null
   ))}
 
   {mayChung && (
-    <section class="nb-the">
+    <section class="nb-the" id="may-chung">
       <h2 style="margin-top:0">Máy dùng chung</h2>
       <p style="margin:0">
         <span class={`nb-nhan ${mayChung.bat ? 'song' : 'cho'}`}>{mayChung.bat ? 'Đã bật' : 'Chưa bật'}</span>{' '}
@@ -157,7 +245,7 @@ const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null
 
   {caiDat && (
     <>
-      <h2>Cách tính giá vốn và số bán</h2>
+      <h2 id="gia-von">Cách tính giá vốn và số bán</h2>
       {k.duoc('cai_dat_goc') ? (
         <form method="POST" class="nb-the">
           <input type="hidden" name="viec" value="goc" />
@@ -181,6 +269,7 @@ const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null
           </fieldset>
           <label class="kho-tich"><input type="checkbox" name="cho_tu_duyet" value="co" checked={caiDat.cho_tu_duyet} />
             <span>Cho quản lý tự duyệt phiếu do chính mình lập (quán nhỏ nên bật; người duyệt luôn được ghi lại)</span></label>
+          <p class="kho-phu" style="margin:.25rem 0 .75rem">Xem xong thì bấm Lưu, kể cả khi không đổi gì — bước "Cách tính giá vốn" của Thiết lập sẽ tính là xong.</p>
           <button type="submit" class="nb-nut">Lưu</button>
         </form>
       ) : (
@@ -193,4 +282,54 @@ const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null
       )}
     </>
   )}
+
+  {nguong && (
+    <>
+      <h2 id="nguong">Ngưỡng cảnh báo</h2>
+      {k.duoc('danh_muc') ? (
+        <form method="POST" class="nb-the">
+          <input type="hidden" name="viec" value="nguong" />
+          <p class="kho-phu" style="margin-top:0">Vượt các ngưỡng này thì phần mềm báo quản lý (chuông, Việc cần làm). Chỉ báo, không chặn.
+            {nguong.luu_luc ? ` Lưu lần cuối: ${dinhDangThoiDiem(nguong.luu_luc)}.` : ' Đang dùng số mặc định — xem lại rồi bấm Lưu.'}</p>
+          {Object.entries(TEN_NGUONG).map(([khoa, t]) => (
+            <label class="nb-o">
+              <span>{t.ten} ({t.don_vi})</span>
+              <small>{t.goi_y}{KHOANG_NGUONG[khoa] ? ` Từ ${KHOANG_NGUONG[khoa][0]} đến ${KHOANG_NGUONG[khoa][1]}.` : ''}</small>
+              <input type="text" inputmode="decimal" name={khoa} value={oNguong(khoa)} />
+            </label>
+          ))}
+          <button type="submit" class="nb-nut">Lưu ngưỡng cảnh báo</button>
+        </form>
+      ) : (
+        <div class="nb-the">
+          <ul style="margin:0;padding-left:1.2rem">
+            {Object.entries(TEN_NGUONG).map(([khoa, t]) => (
+              <li>{t.ten}: <strong>{hienSoNguong(nguong!.gia_tri[khoa]) || '—'} {t.don_vi}</strong></li>
+            ))}
+          </ul>
+          <p class="kho-phu" style="margin:.5rem 0 0">Quản lý hoặc chủ đổi được các ngưỡng này.</p>
+        </div>
+      )}
+    </>
+  )}
 </Kho>
+
+<style>
+  /* Thanh tiến độ: phần đã xong tô xanh. */
+  .tl-thanh { height: 12px; border-radius: 999px; background: var(--kem-sau); overflow: hidden; }
+  .tl-thanh > span { display: block; height: 100%; background: #1F7A4C; border-radius: 999px; }
+  .tl-ds { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .6rem; }
+  .tl-buoc { display: flex; gap: .75rem; padding: .75rem; border: 1px solid var(--vach); border-radius: 10px; background: #fff; }
+  .tl-buoc.chua { border-color: var(--mu-tat); }
+  .tl-buoc.xong, .tl-buoc.bo-qua { opacity: .85; }
+  .tl-so { flex: 0 0 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; font-weight: 700;
+    background: var(--kem-sau); color: var(--muc-nhat); }
+  .tl-buoc.xong .tl-so { background: #1F7A4C; color: #fff; }
+  .tl-noi-dung { flex: 1; min-width: 0; }
+  .tl-ten { margin: 0; }
+  .tl-mo-ta { margin: .25rem 0 0; }
+  .tl-nut { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
+  .tl-nut form { margin: 0; }
+  .tl-nut .nb-nut { min-height: 48px; }
+</style>
+

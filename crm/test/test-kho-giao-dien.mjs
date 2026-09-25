@@ -540,6 +540,10 @@ await nhom('13 · QUẦY YÊU CẦU → MANG RA → BẤM NHẬN (0032)', async 
     /\.rpc\('kho_luu_nguong'[\s\S]{0,120}chuyen_quay_can_nhan/.test(quayLib)
     && !/from\('kho_cai_dat'\)\s*\.(update|upsert|insert)/.test(quayLib));
   ok('Màn Cài đặt có công tắc', /chuyen_quay_can_nhan/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'))));
+  // GĐ5e: Cài đặt thành "Thiết lập" có tiến độ (0035) — chi tiết ở test-kho-thiet-lap-web.mjs.
+  ok('Ô menu "Thiết lập" mở màn có thanh tiến độ', MUC_KHO.find(m => m.ma === 'cai_dat')?.ten === 'Thiết lập'
+    && /kho_tien_do_thiet_lap/.test(doc(join(GOC, 'web/src/lib/kho/thiet-lap.ts')))
+    && /cauConLai\(tienDo\)/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'))));
 });
 
 // ===========================================================================

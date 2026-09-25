@@ -157,6 +157,6 @@ export async function khoiTaoKho(client: SupabaseClient, chiNhanhId: string): Pr
   const { data, error } = await client.rpc('kho_khoi_tao', { p_chi_nhanh_id: chiNhanhId });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   return { ok: true, cau: Number(data) > 0
-    ? 'Đã bắt đầu dùng kho: tạo Kho lạnh, Quầy thịt, chỗ Hàng chờ hủy và các lý do mặc định. Đổi tên được trong Cài đặt kho.'
+    ? 'Đã bắt đầu dùng kho: tạo Kho lạnh, Quầy thịt, chỗ Hàng chờ hủy và các lý do mặc định. Đổi tên được trong Thiết lập kho.'
     : 'Kho đã được khởi tạo từ trước — không có gì cần tạo thêm.' };
 }

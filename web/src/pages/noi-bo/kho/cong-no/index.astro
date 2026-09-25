@@ -12,12 +12,16 @@
  *   ?loc=qua_han        phiếu quá hạn
  *   ?loc=den_han        còn nợ, hạn trả trong 7 ngày tới (kể cả hôm nay)
  *   ?loc=chua_doi_chieu phiếu chưa đối chiếu hóa đơn
+ *
+ * GĐ5e: phiếu ND- là NỢ ĐẦU KỲ (0035) — không có trang phiếu nhập, nên số
+ * phiếu trỏ về công nợ của nhà cung cấp và có nhãn "Nợ đầu kỳ". Ghi nợ đầu
+ * kỳ ở /noi-bo/kho/cong-no/no-dau.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import {
-  docCongNoNcc, docCongNoPhieu, dinhDangLech, tienLech, type CongNoNcc, type CongNoPhieu,
+  docCongNoNcc, docCongNoPhieu, dinhDangLech, tienLech, laNoDau, linkPhieuCongNo, type CongNoNcc, type CongNoPhieu,
 } from '../../../../lib/kho/cong-no.ts';
 import { cauLoiKho, congNgay, dinhDangNgay, dinhDangTien, homNayVn } from '../../../../lib/kho/chung.ts';
 
@@ -118,7 +122,10 @@ const dangMo = (l: Loc) => (loc === l ? 'outline:3px solid var(--than);outline-o
           </ul>
         </details>
       </div>
-      <p style="margin:0 0 1rem"><a href="/noi-bo/kho/bao-cao/cong-no.csv">Tải bảng công nợ tất cả phiếu (Excel)</a></p>
+      <p style="margin:0 0 1rem;display:flex;flex-wrap:wrap;gap:.5rem 1.5rem">
+        <a href="/noi-bo/kho/cong-no/no-dau">Nợ đầu kỳ (ghi một lần khi bắt đầu)</a>
+        <a href="/noi-bo/kho/bao-cao/cong-no.csv">Tải bảng công nợ tất cả phiếu (Excel)</a>
+      </p>
 
       {loc !== '' ? (
         <>
@@ -147,8 +154,8 @@ const dangMo = (l: Loc) => (loc === l ? 'outline:3px solid var(--than);outline-o
                     return (
                       <tr>
                         <td>
-                          <a href={`/noi-bo/kho/nhap/${p.id}`}><strong>{p.so_phieu}</strong></a><br />
-                          <span class="kho-phu">nhập {dinhDangNgay(p.ngay_nhap)}</span>
+                          <a href={linkPhieuCongNo(p)}><strong>{p.so_phieu}</strong></a><br />
+                          <span class="kho-phu">{laNoDau(p) ? 'Nợ đầu kỳ · ghi' : 'nhập'} {dinhDangNgay(p.ngay_nhap)}</span>
                           {lech !== 0 && <><br /><span class="nb-nhan cho" style="text-transform:none">LỆCH {dinhDangLech(lech)}</span></>}
                         </td>
                         <td class="so"><strong>{loc === 'chua_doi_chieu' ? dinhDangTien(p.tong_tien_phieu) : soTien(p.con_no)}</strong></td>
@@ -180,7 +187,7 @@ const dangMo = (l: Loc) => (loc === l ? 'outline:3px solid var(--than);outline-o
           )}
         </>
       ) : sapXep.length === 0 ? (
-        <p class="nb-rong">Chưa có phiếu nhập mua nào được duyệt.</p>
+        <p class="nb-rong">Chưa có phiếu nhập mua nào được duyệt. Quán còn nợ nhà cung cấp từ trước khi dùng phần mềm thì <a href="/noi-bo/kho/cong-no/no-dau">ghi nợ đầu kỳ</a>.</p>
       ) : (
         <>
           <div class="kho-bang-khung">
@@ -219,7 +226,7 @@ const dangMo = (l: Loc) => (loc === l ? 'outline:3px solid var(--than);outline-o
               <ul class="nb-viec">
                 {quaHan.map(p => (
                   <li><span class="dau chua">!</span>
-                    <span><a href={`/noi-bo/kho/cong-no/${p.nha_cung_cap_id}#p-${p.id}`}><strong>{p.so_phieu}</strong></a> · {p.ten_nha_cung_cap} — còn nợ{' '}
+                    <span><a href={`/noi-bo/kho/cong-no/${p.nha_cung_cap_id}#p-${p.id}`}><strong>{p.so_phieu}</strong></a>{laNoDau(p) && ' (nợ đầu kỳ)'} · {p.ten_nha_cung_cap} — còn nợ{' '}
                       <strong>{dinhDangTien(p.con_no)}</strong>, quá hạn {p.so_ngay_qua_han} ngày (hạn {dinhDangNgay(p.han_thanh_toan)})</span></li>
                 ))}
               </ul>

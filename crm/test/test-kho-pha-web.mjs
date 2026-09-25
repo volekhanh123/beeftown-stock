@@ -26,7 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
 import {
   tomTatTang, vaoMacDinh, buocPhien, viTriSauPha, monDaQuet, dongGoTayTheoCongThuc, soSanhThuHoi,
-  goiRaQuay, cauDaQuet, docFormPhienPha, TEN_NGUON_DU_KIEN,
+  goiRaQuay, cauDaQuet, docFormPhienPha, TEN_NGUON_DU_KIEN, VIEC_LUU_GO_TAY_TRUOC,
 } from '../../web/src/lib/kho/pha-loc.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — KIỂM THỬ WEB PHA LÓC 3 BƯỚC');
@@ -179,6 +179,19 @@ await nhom('6 · FORM LƯU: "ĐỂ Ở" TRỐNG → THEO MẶT HÀNG', async () 
   ok('Xử lý mặc định của mặt hàng → vẫn gửi nơi để theo món (database bỏ qua nếu là bỏ)', d.payloadRa[3].vi_tri_id === U(71));
   const cu = docFormPhienPha(f);
   ok('Không truyền hàm nơi để → như cũ (không tự điền)', !('vi_tri_id' in cu.payloadRa[0]));
+
+  // GĐ5e: dòng điền sẵn theo công thức (có món, chưa cân) không làm hỏng lượt
+  // lưu — mỗi lượt quét giờ lưu phần gõ tay trước.
+  const goiY = docFormPhienPha(new Map([
+    ['ngay_pha', '2026-09-25'], ['so_vao', '0'], ['so_ra', '3'],
+    ['r0_mat_hang', U(2)], ['r0_so_kg', ''], ['r0_xu_ly', ''],
+    ['r1_mat_hang', U(4)], ['r1_so_kg', ''], ['r1_xu_ly', 'bo'],
+    ['r2_mat_hang', U(3)], ['r2_so_kg', '0,4'], ['r2_xu_ly', ''],
+  ]), theoMon);
+  ok('Dòng gợi ý chưa cân (không kg, không gói) bị bỏ qua, không báo lỗi',
+     goiY.loi.length === 0 && goiY.payloadRa.length === 1 && goiY.payloadRa[0].mat_hang_id === U(3), goiY.loi.join(' · '));
+  const thieuKg = docFormPhienPha(new Map([['so_vao', '0'], ['so_ra', '1'], ['r0_mat_hang', U(2)], ['r0_so_goi', '2']]));
+  ok('Có số gói mà thiếu kg vẫn báo', thieuKg.loi.length === 1 && /số kg/.test(thieuKg.loi[0]));
 });
 
 // ===========================================================================
@@ -223,6 +236,18 @@ await nhom('9 · CÁC TRANG PHA LÓC', async () => {
      && /tang\.map\(t => \(\s*<form method="POST">\s*<input type="hidden" name="ma_gui" value=\{crypto\.randomUUID\(\)\}/.test(moi));
   ok('Bước 2: ô quét trên cùng, tự đặt con trỏ', /<QuetMa[^>]*tuFocus/.test(id));
   ok('Bước 2: −1, bỏ lượt, bỏ món', /value="bot_mot"/.test(id) && /value="bo_luot"/.test(id) && /value="xoa_mon"/.test(id));
+  // GĐ5e: gõ kg phụ phẩm rồi quét ngay không mất số — ô quét, −1, bỏ lượt, bỏ
+  // món và các ô gõ kg cùng MỘT form; máy chủ lưu phần gõ tay trước.
+  const buoc2 = id.slice(id.indexOf('BƯỚC 2 — CÂN & QUÉT'), id.indexOf('Hủy phiên nháp này'));
+  const tuQuet = buoc2.slice(buoc2.indexOf('<QuetMa'));
+  ok('Bước 2: ô quét và ô gõ kg trong cùng một form (không có </form> xen giữa)',
+     buoc2.indexOf('<QuetMa') > buoc2.indexOf('<form') && !tuQuet.slice(0, tuQuet.indexOf('r${i}_so_kg')).includes('</form>'));
+  ok('Món của −1 / bỏ món đi theo formaction, lệnh sửa có ma_gui riêng',
+     /value="bot_mot" formaction=\{`\$\{DUONG\}\?mon=/.test(id) && /name="ma_gui_sua"/.test(id) && /q\.get\('mon'\)/.test(id));
+  ok('Máy chủ lưu phần gõ tay trước khi quét / sửa',
+     VIEC_LUU_GO_TAY_TRUOC.join() === 'quet,bo_luot,bot_mot,xoa_mon' && /VIEC_LUU_GO_TAY_TRUOC\.includes\(viec\)/.test(id)
+     && id.indexOf('luuPhienPha', id.indexOf('VIEC_LUU_GO_TAY_TRUOC.includes(viec)')) < id.indexOf('quetPhienPha(k.client', id.indexOf('VIEC_LUU_GO_TAY_TRUOC.includes(viec)')));
+  ok('Bỏ câu nhắc "bấm Lưu trước khi quét"', !/quét trước khi lưu|bấm <strong>Lưu<\/strong> trước/i.test(id));
   const chot = [...id.matchAll(/name="viec" value="chot"/g)].length;
   ok('Nút Chốt chỉ có một chỗ (bước Kết quả)', chot === 1
      && id.indexOf('value="chot"') > id.indexOf('BƯỚC 3 — KẾT QUẢ') && id.indexOf('value="chot"') < id.indexOf('XONG — CHUYỂN RA QUẦY'));

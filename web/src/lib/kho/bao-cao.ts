@@ -147,6 +147,8 @@ export const BAO_CAO: Record<string, DinhNghiaBaoCao> = {
 /** Cột của file công nợ (từ view kho_v_cong_no_phieu). */
 export const COT_CONG_NO: CotBaoCao[] = [
   { khoa: 'so_phieu', ten: 'Phiếu nhập', kieu: 'chu' },
+  // "Nhập mua" / "Nợ đầu kỳ" (0035) — file .csv.ts điền bằng tenLoaiCongNo.
+  { khoa: 'loai_cong_no', ten: 'Loại', kieu: 'chu' },
   { khoa: 'ten_nha_cung_cap', ten: 'Nhà cung cấp', kieu: 'chu' },
   { khoa: 'ngay_nhap', ten: 'Ngày nhập', kieu: 'chu' },
   { khoa: 'so_hoa_don', ten: 'Số hóa đơn', kieu: 'chu' },

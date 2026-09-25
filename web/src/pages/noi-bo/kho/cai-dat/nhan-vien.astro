@@ -99,7 +99,7 @@ const nhanVienDaKhoa = nhanVien.filter(n => !n.dang_lam);
 ---
 <Kho k={k} tieuDe="Nhân viên và máy dùng chung" huongDan="tao-tai-khoan">
   <h1>{laChu ? 'Nhân viên và máy dùng chung' : 'Máy dùng chung'}</h1>
-  <p><a href="/noi-bo/kho/cai-dat">← Cài đặt kho</a></p>
+  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {moiTao && (
@@ -128,7 +128,7 @@ const nhanVienDaKhoa = nhanVien.filter(n => !n.dang_lam);
       {trangThai.cau}
     </p>
     {!trangThai.bat && (
-      <p class="kho-phu" style="margin:.5rem 0 0">Cách bật: xem thẻ "Máy dùng chung" ở <a href="/noi-bo/kho/cai-dat">Cài đặt kho</a>.
+      <p class="kho-phu" style="margin:.5rem 0 0">Cách bật: xem thẻ "Máy dùng chung" ở <a href="/noi-bo/kho/cai-dat">Thiết lập kho</a>.
         Chưa bật thì mọi thứ khác vẫn chạy bình thường.</p>
     )}
   </section>
