@@ -6,17 +6,22 @@
  * sơ hỏi gì, đăng và gỡ. Quyền do database quyết định — xem đầu
  * lib/tin-tuyen-dung.ts.
  *
- * BA FORM TÁCH NHAU: soạn (Lưu / Lưu và đăng), duyệt lương, gỡ tin. Nút Lưu
- * là nút submit đầu tiên của form soạn, nên một cú Enter trong ô chữ chỉ
- * lưu — không bao giờ đăng tin hay duyệt lương.
+ * BỐN FORM TÁCH NHAU: soạn (Lưu / Lưu và đăng), dịch ngay, duyệt lương, gỡ
+ * tin. Nút Lưu là nút submit đầu tiên của form soạn, nên một cú Enter trong ô
+ * chữ chỉ lưu — không bao giờ đăng tin hay duyệt lương.
+ *
+ * BẢN DỊCH (0029): lưu xong là máy dịch nền những ô có câu tiếng Việt vừa
+ * đổi — xem lib/ban-dich.ts. Ô tiếng Anh/Hàn vẫn sửa tay được; sửa tay thắng
+ * máy cho tới khi câu tiếng Việt của ô đó đổi.
  */
 import NoiBo from '../../../layouts/NoiBo.astro';
 import { TRUONG_FORM } from '../../../lib/truong-form';
 import { BO_PHAN, LOAI_HOP_DONG, DON_VI_LUONG, dinhDangLuong } from '../../../lib/tuyen-dung';
 import {
-  docTin, luuTin, duyetLuong, goTin, TRANG_THAI, homNayVn, donViDeXuat, canhBaoDonVi,
+  docTin, luuTin, duyetLuong, goTin, TRANG_THAI, homNayVn, donViDeXuat, canhBaoDonVi, O_DICH,
   type TinTuyenDung, type KetQuaLuu,
 } from '../../../lib/tin-tuyen-dung';
+import { dichBu, chayNen, oDangCho, moTaO, cauTomTat } from '../../../lib/ban-dich';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
@@ -42,7 +47,15 @@ if (Astro.request.method === 'POST') {
     bao = viec === 'go'       ? await goTin(client, id)
         : viec === 'duyet'    ? await duyetLuong(client, id, phienBan, true)
         : viec === 'bo_duyet' ? await duyetLuong(client, id, phienBan, false)
+        // Dịch ngay thì CHỜ kết quả: người bấm nút muốn biết nó xong hay hỏng vì sao.
+        : viec === 'dich'     ? cauTomTat(await dichBu(client, { bang: 'vi_tri_tuyen_dung', dongId: id }))
         :                       await luuTin(client, id, form);
+
+    // Lưu xong thì dịch nền đúng tin này: trang trả về ngay, bản dịch vào sau
+    // vài giây. Máy hỏng cũng không làm hỏng lần lưu — xem chayNen().
+    if (bao.ok && (viec === 'luu' || viec === 'luu_dang')) {
+      chayNen(Astro.locals, dichBu(client, { bang: 'vi_tri_tuyen_dung', dongId: id }));
+    }
   }
 }
 
@@ -52,6 +65,12 @@ try {
   tin = await docTin(client, id);
 } catch (e) {
   loiDoc = e instanceof Error ? e.message : 'Không đọc được tin.';
+}
+
+// Ô nào đang chờ máy dịch — ngay sau khi lưu thì gần như mọi ô vừa đổi.
+const dangCho = tin ? await oDangCho(client, 'vi_tri_tuyen_dung', id) : new Set<string>();
+if (bao?.ok && dangCho.size > 0 && Astro.request.method === 'POST') {
+  bao = { ...bao, cau: `${bao.cau} Bản tiếng Anh và tiếng Hàn đang được dịch — tải lại trang sau ít giây để xem.` };
 }
 
 // Lưu hỏng thì hiện lại đúng những gì người dùng vừa gõ, không bắt gõ lại.
@@ -187,27 +206,34 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
               <textarea name="quyen_loi_vi" rows="4">{v.quyen_loi_vi ?? ''}</textarea>
             </label>
 
-            <details class="nb-tieng-anh" open={!!(v.ten_en || v.mo_ta_en || v.yeu_cau_en || v.quyen_loi_en)}>
-              <summary>Bản tiếng Anh — không bắt buộc</summary>
+            <details class="nb-tieng-anh" open={dangCho.size > 0}>
+              <summary>Bản tiếng Anh và tiếng Hàn — máy tự dịch</summary>
               <p class="nb-dan" style="font-size:.85rem">
-                Ô nào để trống thì trang tiếng Anh hiện bản tiếng Việt.
+                Mỗi lần lưu, máy dịch những ô có câu tiếng Việt vừa đổi. Sửa tay ô
+                nào thì ô đó được giữ, cho tới khi câu tiếng Việt của nó đổi. Xóa
+                trắng một ô là nhờ máy dịch lại ô đó.
               </p>
-              <label class="nb-o">
-                <span>Tên vị trí (EN)</span>
-                <input type="text" name="ten_en" maxlength="120" value={v.ten_en ?? ''} />
-              </label>
-              <label class="nb-o">
-                <span>Mô tả (EN)</span>
-                <textarea name="mo_ta_en" rows="4">{v.mo_ta_en ?? ''}</textarea>
-              </label>
-              <label class="nb-o">
-                <span>Yêu cầu (EN)</span>
-                <textarea name="yeu_cau_en" rows="3">{v.yeu_cau_en ?? ''}</textarea>
-              </label>
-              <label class="nb-o">
-                <span>Quyền lợi (EN)</span>
-                <textarea name="quyen_loi_en" rows="3">{v.quyen_loi_en ?? ''}</textarea>
-              </label>
+              {([['en', 'Tiếng Anh'], ['ko', 'Tiếng Hàn']] as const).map(([l, tenNgonNgu]) => (
+                <fieldset class="nb-ngon-ngu">
+                  <legend>{tenNgonNgu}</legend>
+                  {O_DICH.map(o => {
+                    const ten = `${o.cot}_${l}` as const;
+                    const trangThai = moTaO(tin.ban_dich?.[o.cot]?.[l], dangCho.has(`${o.cot}/${l}`));
+                    return (
+                      <label class="nb-o">
+                        <span>{o.ten} ({l.toUpperCase()})</span>
+                        {o.dong === 1
+                          ? <input type="text" name={ten} lang={l} maxlength={o.cot === 'ten' ? 120 : undefined}
+                                   value={v[ten] ?? ''} />
+                          : <textarea name={ten} rows={o.dong} lang={l}>{v[ten] ?? ''}</textarea>}
+                        {/* Chữ lúc mở màn hình — lib/tin-tuyen-dung.ts so với nó để biết ô nào được sửa tay. */}
+                        <input type="hidden" name={`goc_${ten}`} value={tin[ten] ?? ''} />
+                        {trangThai && <small class={`nb-dich ${trangThai.lop}`}>{trangThai.chu}</small>}
+                      </label>
+                    );
+                  })}
+                </fieldset>
+              ))}
             </details>
           </section>
 
@@ -277,6 +303,20 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
         </fieldset>
       </form>
 
+      {/* ------------------------------------------------------------ DỊCH */}
+      {duocSoan && dangCho.size > 0 && (
+        <form method="POST" action={duongDan} class="nb-the">
+          <input type="hidden" name="viec" value="dich" />
+          <h2>Bản dịch</h2>
+          <p class="nb-dan" style="font-size:.85rem">
+            Còn {dangCho.size} ô tiếng Anh/Hàn đang chờ máy dịch. Máy tự làm sau
+            mỗi lần lưu và khi có người mở trang nội bộ; bấm nút này để dịch
+            ngay và xem kết quả.
+          </p>
+          <button type="submit" class="nb-nut phu">Dịch ngay</button>
+        </form>
+      )}
+
       {/* -------------------------------------------------------- DUYỆT LƯƠNG */}
       {duocDuyetLuong && (
         <form method="POST" action={duongDan} class="nb-the">
@@ -333,6 +373,8 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
   .nb-tieng-anh summary {
     cursor: pointer; font-weight: 600; font-size: .9rem; padding: .4rem 0 .6rem;
   }
+  .nb-ngon-ngu { border: 1px solid var(--vach); border-radius: 8px; padding: .5rem .85rem .25rem; margin: 0 0 1rem; }
+  .nb-ngon-ngu legend { font-weight: 700; font-size: .9rem; padding: 0 .35rem; }
   .nb-truong {
     display: grid; gap: .1rem 1rem;
     grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));

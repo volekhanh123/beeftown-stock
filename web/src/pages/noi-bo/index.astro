@@ -42,6 +42,7 @@ async function docView<T>(ten: string, cot: string): Promise<T[] | null> {
 const [
   congBoThieu, anhThieu, monVuong,
   banChoXacNhan, hoSoMoi, tinDangTuyen,
+  dichCho, dichNoiDung,
 ] = await Promise.all([
   docView<{ khoa: string; mo_ta: string }>('v_cong_bo_con_thieu', 'khoa, mo_ta'),
   docView<{ ma: string; ten: string; bat_buoc: boolean }>('v_anh_con_thieu', 'ma, ten, bat_buoc'),
@@ -49,6 +50,10 @@ const [
   dem('dat_ban', (q: any) => q.eq('trang_thai', 'cho_xac_nhan')),
   dem('ho_so_ung_tuyen', (q: any) => q.eq('trang_thai', 'moi')),
   dem('vi_tri_tuyen_dung', (q: any) => q.eq('trang_thai', 'da_cong_bo')),
+  // Ô dịch đang chờ (0029). Tách dữ kiện công bố ra riêng: máy tự dịch bù mọi
+  // thứ khác, còn dữ kiện thì chỉ dịch khi có người bấm Công bố lại.
+  dem('v_viec_dich', (q: any) => q.neq('bang', 'noi_dung_cong_bo')),
+  dem('v_viec_dich', (q: any) => q.eq('bang', 'noi_dung_cong_bo')),
 ]);
 
 const anhBatBuocThieu = anhThieu?.filter(a => a.bat_buoc) ?? [];
@@ -93,6 +98,16 @@ const viec = [
       : tinDangTuyen === 0 ? 'chưa công bố tin nào — trang tuyển dụng đang dùng danh sách dự phòng tĩnh'
       : null,
     di: '/noi-bo/tin-tuyen-dung',
+  },
+  {
+    xong: dichCho === 0 && dichNoiDung === 0,
+    ten: 'Bản tiếng Anh và tiếng Hàn',
+    con: dichCho === null || dichNoiDung === null ? null
+      : [
+          dichCho > 0 ? `còn ${dichCho} ô đang chờ máy dịch — máy tự dịch dần khi có người mở trang nội bộ` : '',
+          dichNoiDung > 0 ? `${dichNoiDung} ô ở màn Nội dung chưa có bản dịch — bấm Công bố lại dữ kiện đó để máy dịch` : '',
+        ].filter(Boolean).join(' · ') || null,
+    di: dichNoiDung ? '/noi-bo/noi-dung' : '/noi-bo/tin-tuyen-dung',
   },
 ];
 ---

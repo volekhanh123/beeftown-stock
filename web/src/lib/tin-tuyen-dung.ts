@@ -23,6 +23,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { TRUONG_FORM, type CotTruong } from './truong-form';
 import { BO_PHAN, LOAI_HOP_DONG, DON_VI_LUONG } from './tuyen-dung';
+import type { SoBanDich } from './ban-dich';
 
 export type TrangThaiTin = 'nhap' | 'da_duyet' | 'da_cong_bo' | 'da_thu_hoi';
 
@@ -44,6 +45,17 @@ export interface TinTuyenDung {
   quyen_loi_vi: string | null;
   quyen_loi_en: string | null;
   ca_lam: string | null;
+  // Bản tiếng Hàn, và bản dịch của hai ô trước đây chỉ có tiếng Việt (0029).
+  ten_ko: string | null;
+  mo_ta_ko: string | null;
+  yeu_cau_ko: string | null;
+  quyen_loi_ko: string | null;
+  ca_lam_en: string | null;
+  ca_lam_ko: string | null;
+  cap_bac_en: string | null;
+  cap_bac_ko: string | null;
+  /** Sổ bản dịch — trigger ghi_so_ban_dich() giữ, web chỉ đọc. */
+  ban_dich: SoBanDich;
   luong_de_xuat_tu: number | null;
   luong_de_xuat_den: number | null;
   luong_de_xuat_don_vi: string;
@@ -254,6 +266,26 @@ export async function taoTinMau(client: SupabaseClient, chiNhanhId: string): Pro
 // -----------------------------------------------------------------------------
 // LƯU — một câu UPDATE cho mọi nút trong form soạn
 // -----------------------------------------------------------------------------
+/**
+ * Các ô có bản dịch trên form soạn, theo thứ tự hiện trên màn hình. Khớp các
+ * dòng vi_tri_tuyen_dung trong cot_ban_dich() của 0029: ô <cot> có bản dịch ở
+ * <cot>_en và <cot>_ko.
+ */
+export const O_DICH = [
+  { cot: 'ten',       ten: 'Tên vị trí',        dong: 1 },
+  { cot: 'cap_bac',   ten: 'Cấp bậc, lộ trình', dong: 1 },
+  { cot: 'ca_lam',    ten: 'Ca làm',            dong: 1 },
+  { cot: 'mo_ta',     ten: 'Mô tả công việc',   dong: 4 },
+  { cot: 'yeu_cau',   ten: 'Yêu cầu',           dong: 3 },
+  { cot: 'quyen_loi', ten: 'Quyền lợi',         dong: 3 },
+] as const;
+
+/** So hai bản chữ như database so (chuan_ban_dich): bỏ \r và khoảng trắng hai đầu. */
+function giongNhau(a: string | null, b: string | null): boolean {
+  const c = (x: string | null) => (x ?? '').replace(/\r/g, '').trim();
+  return c(a) === c(b);
+}
+
 function docForm(form: FormData): { dong: Partial<TinTuyenDung>; loi: string | null } {
   const boPhan = String(form.get('bo_phan') ?? '');
   const loai = String(form.get('loai_hop_dong') ?? '');
@@ -265,18 +297,14 @@ function docForm(form: FormData): { dong: Partial<TinTuyenDung>; loi: string | n
 
   const dong: Partial<TinTuyenDung> = {
     ten_vi: chu(form, 'ten_vi') ?? '',
-    ten_en: chu(form, 'ten_en'),
     bo_phan: boPhan,
     cap_bac: chu(form, 'cap_bac'),
     loai_hop_dong: loai,
     so_luong: soLuong ?? null,
     han_nop: hanNop,
     mo_ta_vi: chu(form, 'mo_ta_vi'),
-    mo_ta_en: chu(form, 'mo_ta_en'),
     yeu_cau_vi: chu(form, 'yeu_cau_vi'),
-    yeu_cau_en: chu(form, 'yeu_cau_en'),
     quyen_loi_vi: chu(form, 'quyen_loi_vi'),
-    quyen_loi_en: chu(form, 'quyen_loi_en'),
     ca_lam: chu(form, 'ca_lam'),
     luong_de_xuat_tu: tu ?? null,
     luong_de_xuat_den: den ?? null,
@@ -285,6 +313,21 @@ function docForm(form: FormData): { dong: Partial<TinTuyenDung>; loi: string | n
   // Ô không tích thì trình duyệt không gửi gì — vắng mặt nghĩa là tắt.
   for (const f of TRUONG_FORM) {
     (dong as Record<CotTruong, boolean>)[f.cot] = form.get(f.cot) === 'co';
+  }
+
+  // Ô dịch chỉ vào câu UPDATE khi người dùng THẬT SỰ sửa nó so với lúc mở màn
+  // hình (ô ẩn goc_…). Máy dịch chạy nền có thể đã ghi bản mới trong lúc form
+  // còn mở; gửi lại nguyên chữ cũ của form là đè mất bản đó — và trigger còn
+  // ghi nhận chữ cũ ấy là "bản sửa tay" của câu gốc mới, sai hẳn.
+  for (const o of O_DICH) {
+    for (const l of ['en', 'ko'] as const) {
+      const ten = `${o.cot}_${l}` as keyof TinTuyenDung;
+      if (form.get(ten) === null) continue;
+      const moi = chu(form, ten);
+      if (!giongNhau(moi, chu(form, `goc_${ten}`))) {
+        (dong as Record<string, unknown>)[ten] = moi;
+      }
+    }
   }
 
   let loi: string | null = null;
