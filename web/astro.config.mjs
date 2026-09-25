@@ -53,8 +53,8 @@ export default defineConfig({
   // Phải đúng TRƯỚC khi build, vì Astro nướng giá trị này vào bản build: nó
   // thành canonical, og:url, url trong JSON-LD và mọi <loc> trong sitemap.
   //
-  // Giá trị dự phòng là địa chỉ workers.dev chứ không phải pages.dev —
-  // adapter này deploy lên Workers, không phải Pages. Dự phòng sai tên miền
-  // thì nó sai theo cách trông như đúng.
-  site: env.SITE_URL || 'https://beeftown.workers.dev',
+  // Giá trị dự phòng là tên miền thật: web chạy ở beeftown.vn, còn địa chỉ
+  // workers.dev đã tắt (workers_dev = false trong wrangler.toml). Dự phòng sai
+  // tên miền thì nó sai theo cách trông như đúng.
+  site: env.SITE_URL || 'https://beeftown.vn',
 });
