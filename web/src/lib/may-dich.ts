@@ -7,7 +7,7 @@
  * biến môi trường: khóa API do người gọi đưa vào (lib/ban-dich.ts đọc nó từ
  * secret của Worker). Muốn đổi sang máy dịch khác thì chỉ viết lại file này.
  *
- * CHỈ GỬI CHỮ CÔNG KHAI. Danh sách ô dịch (cot_ban_dich() trong 0029) toàn là
+ * CHỈ GỬI CHỮ CÔNG KHAI. Danh sách ô dịch (cot_ban_dich() trong 0036) toàn là
  * chữ sắp lên trang: tin tuyển dụng, thực đơn, chú thích ảnh, dữ kiện công bố.
  * Không bao giờ có tên, số điện thoại hay hồ sơ của khách hoặc ứng viên. Điều
  * đó quan trọng vì gói miễn phí của Gemini được dùng dữ liệu gửi lên để cải

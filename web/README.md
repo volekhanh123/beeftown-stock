@@ -107,7 +107,7 @@ Tiếng Việt là bản gốc duy nhất người ta soạn. Bản tiếng Anh 
 | Màn công tắc nội dung | Trước khi lưu, trong cùng lần bấm (chờ vài giây). Dòng đã công bố là bất biến (`0010`), nên bản dịch phải đi cùng phiên bản. |
 | Supabase Studio (thực đơn, chú thích ảnh…) | Lần kế tiếp chủ nhà hàng, quản lý hoặc marketing mở một trang `/noi-bo` — tối đa một lượt mỗi phút. |
 
-**Ba luật**, nằm ở database (`0029`) nên đúng bất kể sửa bằng đường nào:
+**Ba luật**, nằm ở database (`0036`) nên đúng bất kể sửa bằng đường nào:
 
 - Bản dịch là bản dịch của **một** câu tiếng Việt cụ thể. Câu gốc đổi là bản dịch hết hiệu lực — kể cả bản sửa tay.
 - **Sửa tay thắng máy**, cho tới khi câu gốc đổi. Xóa trắng một ô dịch là nhờ máy dịch lại ô đó.
@@ -130,7 +130,7 @@ GEMINI_MODEL = "gemini-flash-lite-latest"   # hoặc tên một phiên bản c�
 
 **Gửi đi những gì:** chỉ chữ sắp lên trang công khai — tin tuyển dụng, thực đơn, chú thích ảnh, dữ kiện công bố. Không bao giờ có tên, số điện thoại hay hồ sơ của khách và ứng viên. Điều này quan trọng vì ở gói miễn phí, Google được dùng dữ liệu gửi lên để cải thiện sản phẩm.
 
-**Thứ tự triển khai:** chạy migration `0029` **trước**, rồi mới deploy web. Làm ngược thì màn soạn tin lỗi vì thiếu cột, và trang `/ko` hiện tiếng Việt.
+**Thứ tự triển khai:** chạy migration `0036` **trước**, rồi mới deploy web. Làm ngược thì màn soạn tin lỗi vì thiếu cột, và trang `/ko` hiện tiếng Việt.
 
 Đổi sang dịch vụ dịch khác: chỉ viết lại `src/lib/may-dich.ts`.
 

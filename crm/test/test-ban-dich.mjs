@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN CRM — Kiểm thử tiếng Hàn và bản dịch tự động (0029)
+ * BEEFTOWN CRM — Kiểm thử tiếng Hàn và bản dịch tự động (0036)
  * ============================================================
  *
  *     node test/test-ban-dich.mjs
@@ -14,7 +14,7 @@
  *   · Mục 4 — sửa tay phải thắng máy, và mở form rồi bấm Lưu (trình duyệt đổi
  *     \n thành \r\n) KHÔNG được tính là sửa tay.
  *
- * Mục 1 nạp migration tới 0028, thêm dữ liệu kiểu cũ, RỒI mới chạy 0029 — vì
+ * Mục 1 nạp mọi migration trước 0036, thêm dữ liệu kiểu cũ, RỒI mới chạy 0036 — vì
  * phần khởi tạo sổ chỉ kiểm được trên một database đã có sẵn bản tiếng Anh.
  */
 
@@ -63,12 +63,12 @@ await db.exec(`
 `);
 
 const tatCa = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort();
-for (const f of tatCa.filter(f => f < '0029')) {
+for (const f of tatCa.filter(f => f < '0036')) {
   await db.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
 }
 
 // ---------------------------------------------------------------------------
-// Dữ liệu KIỂU CŨ — có trước 0029, bản tiếng Anh do người gõ tay
+// Dữ liệu KIỂU CŨ — có trước 0036, bản tiếng Anh do người gõ tay
 // ---------------------------------------------------------------------------
 const { rows: [cn] } = await db.query(
   `insert into chi_nhanh (ma, ten) values ('q1','Beeftown Quận 1') returning *`);
@@ -86,7 +86,7 @@ await db.query(`
   values ('dong_trang_thai', 'van_ban', 'Beeftown đang chuẩn bị', 'Beeftown is getting ready',
           'da_cong_bo')`);
 
-for (const f of tatCa.filter(f => f >= '0029')) {
+for (const f of tatCa.filter(f => f >= '0036')) {
   await db.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
 }
 

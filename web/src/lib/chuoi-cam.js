@@ -2,7 +2,7 @@
  * DANH SÁCH CHỮ CẤM — một nguồn, hai người dùng
  * =============================================
  *
- * Trước 0029 danh sách này nằm trong web/kiem-tra/quet-chuoi-cam.mjs và chỉ
+ * Trước 0036 danh sách này nằm trong web/kiem-tra/quet-chuoi-cam.mjs và chỉ
  * máy quét đọc. Giờ có thêm người thứ hai: máy dịch. Bản dịch máy lên trang
  * KHÔNG qua mắt người, nên nó phải qua đúng bộ lọc mà máy quét dùng cho trang
  * thật — và "đúng bộ lọc" nghĩa là cùng một file, không phải một bản chép sẽ

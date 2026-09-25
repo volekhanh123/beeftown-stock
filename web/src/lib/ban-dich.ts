@@ -2,7 +2,7 @@
  * BẢN DỊCH TỰ ĐỘNG — nối máy dịch với database
  * ============================================
  *
- * Luật nằm ở database (0029): ô nào cần dịch (v_viec_dich), ghi thế nào để
+ * Luật nằm ở database (0036): ô nào cần dịch (v_viec_dich), ghi thế nào để
  * không bao giờ ghi bản dịch của một câu vừa bị sửa (ghi_ban_dich), và sửa
  * tay thắng máy (trigger ghi_so_ban_dich). File này chỉ làm ba việc: đọc
  * việc, gọi máy dịch (lib/may-dich.ts), ghi kết quả.
@@ -14,7 +14,7 @@
  *   · Middleware, khi vai biên tập mở một trang /noi-bo → dịch bù chỗ còn
  *     sót: sửa thẳng trong Supabase Studio, hoặc lần trước máy lỗi.
  *   · Màn công tắc → dịch MỘT dữ kiện TRƯỚC khi gọi dat_noi_dung(), vì bản
- *     dịch của dữ kiện đi cùng phiên bản (xem đầu 0029).
+ *     dịch của dữ kiện đi cùng phiên bản (xem đầu 0036).
  *
  * Mọi lời gọi database dùng client của người đang đăng nhập — không có khóa
  * service_role. Ai không sửa được tin thì RLS cũng không cho ghi bản dịch.
@@ -207,7 +207,7 @@ export async function oDangCho(client: SupabaseClient, bang: string, dongId: str
   return new Set((data ?? []).map((r: { cot: string; ngon_ngu: string }) => `${r.cot}/${r.ngon_ngu}`));
 }
 
-/** Một mục trong sổ bản dịch (cột ban_dich, 0029). */
+/** Một mục trong sổ bản dịch (cột ban_dich, 0036). */
 export interface SoO {
   bam?: string;
   cach?: 'may' | 'tay';

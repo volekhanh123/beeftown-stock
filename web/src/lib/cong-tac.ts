@@ -30,7 +30,7 @@ export interface HangCongTac {
   gia_tri_tep_id: string | null;
   cong_bo_luc: string | null;
   ly_do: string | null;
-  /** Sổ bản dịch của phiên bản đang sống (0029). null khi khóa chưa công bố. */
+  /** Sổ bản dịch của phiên bản đang sống (0036). null khi khóa chưa công bố. */
   ban_dich: SoBanDich | null;
 }
 
@@ -99,7 +99,7 @@ export function motaGiaTri(h: HangCongTac): string | null {
 
 export interface KetQuaGhi { ok: boolean; cau: string }
 
-/** So như database so (chuan_ban_dich, 0029): bỏ \r và khoảng trắng hai đầu. */
+/** So như database so (chuan_ban_dich, 0036): bỏ \r và khoảng trắng hai đầu. */
 function giongNhau(a: string | null, b: string | null): boolean {
   const c = (x: string | null) => (x ?? '').replace(/\r/g, '').trim();
   return c(a) === c(b);

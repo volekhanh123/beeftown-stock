@@ -1,6 +1,12 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0029 · TIẾNG HÀN VÀ BẢN DỊCH TỰ ĐỘNG
+-- BEEFTOWN CRM — 0036 · TIẾNG HÀN VÀ BẢN DỊCH TỰ ĐỘNG
 -- =============================================================================
+-- (Số 0029–0035 thuộc nhánh kho giai đoạn 4–5 đang mở cùng lúc — PR #9 — nên
+-- file này là 0036. Trên project Supabase nó đã chạy với tên lịch sử
+-- 0029_tieng_han_va_ban_dich, đặt trước khi thấy PR #9; nội dung y hệt file.
+-- Không phụ thuộc gì vào 0029–0035, và khối chốt quyền cuối file có cùng danh
+-- sách anon với chúng, nên chạy trước hay sau chúng đều ra cùng một kết quả.)
+--
 -- VẤN ĐỀ
 --
 -- Trang công khai có hai thứ tiếng, và bản tiếng Anh phải gõ tay vào ô riêng.

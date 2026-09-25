@@ -129,7 +129,7 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/kho/bao-cao.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
-  // Bản dịch tự động (0029) — gọi từ màn soạn tin, màn công tắc và middleware
+  // Bản dịch tự động (0036) — gọi từ màn soạn tin, màn công tắc và middleware
   // của /noi-bo, luôn bằng client của nhân sự đang đăng nhập.
   'web/src/lib/ban-dich.ts',
 ];

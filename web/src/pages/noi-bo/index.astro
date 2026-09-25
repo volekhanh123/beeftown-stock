@@ -50,7 +50,7 @@ const [
   dem('dat_ban', (q: any) => q.eq('trang_thai', 'cho_xac_nhan')),
   dem('ho_so_ung_tuyen', (q: any) => q.eq('trang_thai', 'moi')),
   dem('vi_tri_tuyen_dung', (q: any) => q.eq('trang_thai', 'da_cong_bo')),
-  // Ô dịch đang chờ (0029). Tách dữ kiện công bố ra riêng: máy tự dịch bù mọi
+  // Ô dịch đang chờ (0036). Tách dữ kiện công bố ra riêng: máy tự dịch bù mọi
   // thứ khác, còn dữ kiện thì chỉ dịch khi có người bấm Công bố lại.
   dem('v_viec_dich', (q: any) => q.neq('bang', 'noi_dung_cong_bo')),
   dem('v_viec_dich', (q: any) => q.eq('bang', 'noi_dung_cong_bo')),

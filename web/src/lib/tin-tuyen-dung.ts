@@ -45,7 +45,7 @@ export interface TinTuyenDung {
   quyen_loi_vi: string | null;
   quyen_loi_en: string | null;
   ca_lam: string | null;
-  // Bản tiếng Hàn, và bản dịch của hai ô trước đây chỉ có tiếng Việt (0029).
+  // Bản tiếng Hàn, và bản dịch của hai ô trước đây chỉ có tiếng Việt (0036).
   ten_ko: string | null;
   mo_ta_ko: string | null;
   yeu_cau_ko: string | null;
@@ -268,7 +268,7 @@ export async function taoTinMau(client: SupabaseClient, chiNhanhId: string): Pro
 // -----------------------------------------------------------------------------
 /**
  * Các ô có bản dịch trên form soạn, theo thứ tự hiện trên màn hình. Khớp các
- * dòng vi_tri_tuyen_dung trong cot_ban_dich() của 0029: ô <cot> có bản dịch ở
+ * dòng vi_tri_tuyen_dung trong cot_ban_dich() của 0036: ô <cot> có bản dịch ở
  * <cot>_en và <cot>_ko.
  */
 export const O_DICH = [
