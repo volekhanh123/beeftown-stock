@@ -10,8 +10,9 @@
  *
  *   · policy vi_tri_them / vi_tri_sua (0012): chủ nhà hàng, quản lý và
  *     marketing soạn, đăng, gỡ được tin ở chi nhánh của mình.
- *   · trigger vi_tri_kiem_tra() (0027): chỉ chủ nhà hàng và quản lý đổi được
- *     mức lương chính thức; marketing chỉ ghi mức đề xuất.
+ *   · trigger vi_tri_kiem_tra() (0027, 0028): chỉ chủ nhà hàng và quản lý đổi
+ *     được mức lương chính thức, kể cả đơn vị giờ/tháng; marketing chỉ ghi
+ *     mức đề xuất.
  *
  * Giao diện chỉ ẩn nút cho gọn mắt — ai gọi thẳng vẫn bị database chặn.
  *
@@ -21,7 +22,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { TRUONG_FORM, type CotTruong } from './truong-form';
-import { BO_PHAN, LOAI_HOP_DONG } from './tuyen-dung';
+import { BO_PHAN, LOAI_HOP_DONG, DON_VI_LUONG } from './tuyen-dung';
 
 export type TrangThaiTin = 'nhap' | 'da_duyet' | 'da_cong_bo' | 'da_thu_hoi';
 
@@ -45,8 +46,10 @@ export interface TinTuyenDung {
   ca_lam: string | null;
   luong_de_xuat_tu: number | null;
   luong_de_xuat_den: number | null;
+  luong_de_xuat_don_vi: string;
   luong_tu: number | null;
   luong_den: number | null;
+  luong_don_vi: string;
   luong_da_duyet: boolean;
   luong_duyet_luc: string | null;
   han_nop: string | null;
@@ -72,8 +75,10 @@ export interface DongTin {
   luong_da_duyet: boolean;
   luong_tu: number | null;
   luong_den: number | null;
+  luong_don_vi: string;
   luong_de_xuat_tu: number | null;
   luong_de_xuat_den: number | null;
+  luong_de_xuat_don_vi: string;
   hoi_cv: boolean;
 }
 
@@ -95,6 +100,33 @@ export const TRANG_THAI: Record<TrangThaiTin, { ten: string; lop: string }> = {
 /** Hôm nay theo giờ Việt Nam, dạng YYYY-MM-DD — khớp hom_nay_vn() của database. */
 export function homNayVn(): string {
   return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
+}
+
+/**
+ * Đơn vị chọn sẵn ở ô lương đề xuất. Tin chưa có mức đề xuất thì đơn vị đang
+ * lưu chưa mang nghĩa gì (mặc định 'thang' của 0028), nên chọn theo loại hợp
+ * đồng: bán thời gian thường trả theo giờ.
+ */
+export function donViDeXuat(
+  t: Pick<TinTuyenDung, 'luong_de_xuat_tu' | 'luong_de_xuat_den' | 'luong_de_xuat_don_vi' | 'loai_hop_dong'>,
+): string {
+  if (t.luong_de_xuat_tu != null || t.luong_de_xuat_den != null) return t.luong_de_xuat_don_vi;
+  return t.loai_hop_dong === 'ban_thoi_gian' ? 'gio' : 'thang';
+}
+
+/**
+ * Câu nhắc khi con số và đơn vị lệch nhau — dấu hiệu quên đổi ô đơn vị. Chỉ
+ * nhắc, không chặn: phụ cấp thực tập dưới một triệu một tháng vẫn có thật.
+ */
+export function canhBaoDonVi(tu: number | null, den: number | null, donVi: string): string | null {
+  const cao = Math.max(tu ?? 0, den ?? 0);
+  if (donVi === 'gio' && cao >= 1_000_000) {
+    return 'Từ một triệu đồng một giờ trở lên là cao bất thường — có phải lương tháng?';
+  }
+  if (donVi === 'thang' && cao > 0 && cao < 1_000_000) {
+    return 'Dưới một triệu đồng một tháng là thấp bất thường — có phải lương giờ?';
+  }
+  return null;
 }
 
 /** Câu lỗi cho người đọc. Câu của trigger 0027 viết sẵn bằng tiếng Việt, dùng nguyên văn. */
@@ -148,7 +180,7 @@ export async function docChiNhanh(client: SupabaseClient): Promise<ChiNhanh[]> {
 export async function docDanhSach(client: SupabaseClient): Promise<DongTin[]> {
   const { data, error } = await client
     .from('vi_tri_tuyen_dung')
-    .select('id, ten_vi, bo_phan, loai_hop_dong, trang_thai, han_nop, luong_da_duyet, luong_tu, luong_den, luong_de_xuat_tu, luong_de_xuat_den, hoi_cv')
+    .select('id, ten_vi, bo_phan, loai_hop_dong, trang_thai, han_nop, luong_da_duyet, luong_tu, luong_den, luong_don_vi, luong_de_xuat_tu, luong_de_xuat_den, luong_de_xuat_don_vi, hoi_cv')
     .order('ten_vi');
   if (error) throw new Error(error.message);
   const thuTu: Record<TrangThaiTin, number> = { da_cong_bo: 0, nhap: 1, da_duyet: 1, da_thu_hoi: 2 };
@@ -228,6 +260,7 @@ function docForm(form: FormData): { dong: Partial<TinTuyenDung>; loi: string | n
   const soLuong = soNguyen(form, 'so_luong', 999);
   const tu = soNguyen(form, 'luong_de_xuat_tu', 1_000_000_000);
   const den = soNguyen(form, 'luong_de_xuat_den', 1_000_000_000);
+  const donVi = String(form.get('luong_de_xuat_don_vi') ?? '');
   const hanNop = chu(form, 'han_nop');
 
   const dong: Partial<TinTuyenDung> = {
@@ -247,6 +280,7 @@ function docForm(form: FormData): { dong: Partial<TinTuyenDung>; loi: string | n
     ca_lam: chu(form, 'ca_lam'),
     luong_de_xuat_tu: tu ?? null,
     luong_de_xuat_den: den ?? null,
+    luong_de_xuat_don_vi: donVi,
   };
   // Ô không tích thì trình duyệt không gửi gì — vắng mặt nghĩa là tắt.
   for (const f of TRUONG_FORM) {
@@ -258,8 +292,9 @@ function docForm(form: FormData): { dong: Partial<TinTuyenDung>; loi: string | n
   else if (!(boPhan in BO_PHAN)) loi = 'Chưa chọn bộ phận.';
   else if (!(loai in LOAI_HOP_DONG)) loi = 'Chưa chọn loại hợp đồng.';
   else if (soLuong === undefined || soLuong === 0) loi = 'Số lượng cần tuyển phải là số từ 1 đến 999.';
-  else if (tu === undefined || den === undefined) loi = 'Mức lương đề xuất phải là số đồng, ví dụ 6000000.';
+  else if (tu === undefined || den === undefined) loi = 'Mức lương đề xuất phải là số đồng, ví dụ 25000 hoặc 6000000.';
   else if (tu != null && den != null && den < tu) loi = 'Mức đề xuất "đến" phải lớn hơn hoặc bằng mức "từ".';
+  else if (!(donVi in DON_VI_LUONG)) loi = 'Chưa chọn lương tính theo giờ hay theo tháng.';
   else if (hanNop && !/^\d{4}-\d{2}-\d{2}$/.test(hanNop)) loi = 'Hạn nộp không đúng dạng ngày.';
 
   return { dong, loi };
@@ -322,7 +357,7 @@ export async function duyetLuong(
 ): Promise<KetQua> {
   const { data: tin } = await client
     .from('vi_tri_tuyen_dung')
-    .select('luong_de_xuat_tu, luong_de_xuat_den, updated_at')
+    .select('luong_de_xuat_tu, luong_de_xuat_den, luong_de_xuat_don_vi, updated_at')
     .eq('id', id)
     .maybeSingle();
   if (!tin) return { ok: false, cau: 'Không đọc được tin này.' };
@@ -336,7 +371,8 @@ export async function duyetLuong(
   const { data, error } = await client
     .from('vi_tri_tuyen_dung')
     .update(duyet
-      ? { luong_tu: tin.luong_de_xuat_tu, luong_den: tin.luong_de_xuat_den, luong_da_duyet: true }
+      ? { luong_tu: tin.luong_de_xuat_tu, luong_den: tin.luong_de_xuat_den,
+          luong_don_vi: tin.luong_de_xuat_don_vi, luong_da_duyet: true }
       : { luong_tu: null, luong_den: null, luong_da_duyet: false })
     .eq('id', id)
     .eq('updated_at', phienBan)

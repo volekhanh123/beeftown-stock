@@ -14,10 +14,11 @@
  * gàng: nop_ho_so_ung_tuyen() cần một mã vị trí thật, nên một cái form hiện
  * lúc chưa có vị trí nào là cái ô mời người ta điền rồi báo lỗi.
  *
- * MỨC LƯƠNG KHÔNG HIỆN Ở ĐÂY. Bảng lương nằm trong tài liệu vận hành mật, và
- * ràng buộc vi_tri_luong_chi_khi_duyet trong database đòi phải có người duyệt
- * trước khi con số đó ra tới trang công khai. Đăng lương sai là một chuyện
- * khác hẳn đăng mô tả món sai.
+ * MỨC LƯƠNG CHỈ HIỆN KHI ĐÃ DUYỆT. Bảng lương nằm trong tài liệu vận hành
+ * mật, và ràng buộc vi_tri_luong_chi_khi_duyet trong database đòi phải có
+ * người duyệt trước khi con số đó ra tới trang công khai; đơn vị giờ/tháng
+ * cũng chỉ ra cùng con số (0028). Đăng lương sai là một chuyện khác hẳn đăng
+ * mô tả món sai.
  */
 import { chu } from '../lib/chu';
 import { dinhDangNgay, type NgonNgu, type NoiDung } from '../lib/noi-dung';
@@ -40,6 +41,7 @@ export interface ViTri extends TruongForm {
   ca_lam: string | null;
   luong_tu: number | null;
   luong_den: number | null;
+  luong_don_vi: string | null;
   han_nop: string | null;
 }
 
@@ -72,8 +74,8 @@ const nutNhanTin =
   nd.email_lien_he ? { url: `mailto:${nd.email_lien_he}`, chu: t.nhanTin } :
   null;
 
-// Database chỉ trả luong_tu/luong_den khi mức lương đã được duyệt (0012).
-const mucLuong = (v: ViTri) => dinhDangLuong(v.luong_tu, v.luong_den, ngonNgu);
+// Database chỉ trả lương và đơn vị khi mức lương đã được duyệt (0012, 0028).
+const mucLuong = (v: ViTri) => dinhDangLuong(v.luong_tu, v.luong_den, v.luong_don_vi, ngonNgu);
 
 const nhanTheoCa = ngonNgu === 'en' ? 'Shift work' : 'Làm theo ca';
 const nhanToanTG  = ngonNgu === 'en' ? 'Full time' : 'Toàn thời gian';

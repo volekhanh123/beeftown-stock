@@ -79,10 +79,12 @@ function canhBao(t: DongTin): string[] {
     ra.push('đã quá hạn nộp — không còn hiện trên trang');
   }
   // Mức đề xuất khác mức đang hiện thì có người phải duyệt — kể cả khi tin
-  // đã có lương duyệt từ trước và marketing vừa đề xuất một mức mới.
+  // đã có lương duyệt từ trước và marketing vừa đề xuất một mức mới, hay chỉ
+  // đổi đơn vị giờ/tháng.
   const coDeXuat = t.luong_de_xuat_tu != null || t.luong_de_xuat_den != null;
   const khacDangHien = !t.luong_da_duyet
-    || t.luong_de_xuat_tu !== t.luong_tu || t.luong_de_xuat_den !== t.luong_den;
+    || t.luong_de_xuat_tu !== t.luong_tu || t.luong_de_xuat_den !== t.luong_den
+    || t.luong_de_xuat_don_vi !== t.luong_don_vi;
   if (coDeXuat && khacDangHien) {
     ra.push(t.luong_da_duyet
       ? 'có mức lương đề xuất mới chờ duyệt'
@@ -94,8 +96,8 @@ function canhBao(t: DongTin): string[] {
 <NoiBo tieuDe="Tin tuyển dụng" nhanSu={nhanSu}>
   <h1>Tin tuyển dụng</h1>
   <p class="nb-dan">
-    Soạn, đăng và gỡ tin; chọn form nộp hồ sơ của từng tin hỏi những gì.
-    <a href="/noi-bo/tuyen-dung">Xem hồ sơ đã nộp →</a>
+    Soạn, đăng và gỡ tin; chọn form nộp hồ sơ của từng tin hỏi
+    những gì. <a href="/noi-bo/tuyen-dung">Xem hồ sơ đã nộp →</a>
   </p>
 
   {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
@@ -104,9 +106,8 @@ function canhBao(t: DongTin): string[] {
   {noiDung.hien_tuyen_dung !== true && (
     <div class="nb-bao luu-y">
       <p>
-        <strong>Cổng tuyển dụng đang tắt.</strong> Tin "đang đăng" cũng chưa hiện
-        trên trang cho tới khi bật công tắc
-        <a href="/noi-bo/noi-dung"><code>hien_tuyen_dung</code></a>.
+        <strong>Cổng tuyển dụng đang tắt.</strong> Tin "đang đăng" cũng chưa hiện trên
+        trang cho tới khi bật công tắc <a href="/noi-bo/noi-dung"><code>hien_tuyen_dung</code></a>.
       </p>
     </div>
   )}

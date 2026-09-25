@@ -19,8 +19,8 @@ export async function docViTri(ngonNgu: NgonNgu = 'vi'): Promise<ViTri[]> {
 }
 
 /**
- * Nhãn cho hai enum của tin tuyển dụng (0012). Khóa phải khớp ĐÚNG giá trị
- * enum trong database — màn soạn tin ghi thẳng khóa này xuống, và
+ * Nhãn cho các enum của tin tuyển dụng (0012, 0028). Khóa phải khớp ĐÚNG giá
+ * trị enum trong database — màn soạn tin ghi thẳng khóa này xuống, và
  * test-hop-dong-web.mjs đối chiếu với pg_enum.
  */
 export const BO_PHAN = {
@@ -38,17 +38,24 @@ export const LOAI_HOP_DONG = {
   thuc_tap:       { vi: 'Thực tập',       en: 'Internship' },
 } as const;
 
+/** Lương trả theo giờ hay theo tháng — phần đuôi của "25.000 đ/giờ". */
+export const DON_VI_LUONG = {
+  gio:   { vi: 'giờ',   en: 'hour' },
+  thang: { vi: 'tháng', en: 'month' },
+} as const;
+
 /**
- * "6.000.000–8.000.000 đ", "Từ 6.000.000 đ", "Đến 8.000.000 đ", hoặc null.
- * Database cho phép chỉ có một đầu — "từ 6 triệu" là một mức hợp lệ.
+ * "6.000.000–8.000.000 đ/tháng", "Từ 25.000 đ/giờ", "Đến 8.000.000 đ/tháng",
+ * hoặc null. Database cho phép chỉ có một đầu — "từ 6 triệu" là một mức hợp lệ.
  */
 export function dinhDangLuong(
-  tu: number | null, den: number | null, ngonNgu: NgonNgu = 'vi',
+  tu: number | null, den: number | null, donVi: string | null, ngonNgu: NgonNgu = 'vi',
 ): string | null {
   const so = (n: number) => n.toLocaleString('vi-VN');
-  if (tu && den) return tu === den ? `${so(tu)} đ` : `${so(tu)}–${so(den)} đ`;
-  if (tu) return `${ngonNgu === 'en' ? 'From' : 'Từ'} ${so(tu)} đ`;
-  if (den) return `${ngonNgu === 'en' ? 'Up to' : 'Đến'} ${so(den)} đ`;
+  const d = donVi ? `đ/${nhanEnum(DON_VI_LUONG, donVi, ngonNgu)}` : 'đ';
+  if (tu && den) return tu === den ? `${so(tu)} ${d}` : `${so(tu)}–${so(den)} ${d}`;
+  if (tu) return `${ngonNgu === 'en' ? 'From' : 'Từ'} ${so(tu)} ${d}`;
+  if (den) return `${ngonNgu === 'en' ? 'Up to' : 'Đến'} ${so(den)} ${d}`;
   return null;
 }
 
