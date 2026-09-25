@@ -119,6 +119,8 @@ Tiếng Việt là bản gốc duy nhất người ta soạn. Bản tiếng Anh 
 2. Dashboard Cloudflare → **Workers & Pages** → `beeftown` → **Settings** → **Variables and Secrets** → **Add** → kiểu **Secret**, tên `GEMINI_API_KEY`, dán khóa, rồi bấm **Deploy**. Hoặc từ máy, trong thư mục `web/`: `npx wrangler secret put GEMINI_API_KEY`.
 3. Không dán khóa vào `.env`, vào chat hay vào repo. Secret của Worker không đi vào bản build, và `wrangler deploy` không xóa nó.
 
+**Phải chọn kiểu Secret, không phải Text.** Biến kiểu Text hiện nguyên giá trị trên dashboard và trong API. Tệ hơn, `wrangler deploy` **xóa** nó ở lần deploy kế tiếp: wrangler xóa mọi biến không khai trong `wrangler.toml` rồi mới đặt biến theo file. Lỡ thêm dạng Text thì xóa biến đó rồi thêm lại dạng Secret. Trong lúc chưa đổi, deploy bằng `npx wrangler deploy --keep-vars` — và lưu ý bảng so sánh cấu hình wrangler in ra trước khi tải lên sẽ in cả giá trị của biến Text.
+
 Chưa có khóa thì web vẫn chạy: ô dịch để trống, trang lùi về thứ tiếng kế tiếp, màn soạn tin báo "Chưa có khóa GEMINI_API_KEY". Chạy thử trên máy thì đặt khóa trong `web/.dev.vars` (`GEMINI_API_KEY=...`) — file này bị `.gitignore` chặn.
 
 **Mẫu máy:** mặc định `gemini-flash-latest`, bí danh Google tự trỏ tới bản Flash mới nhất — để không phải sửa code mỗi lần Google khai tử một phiên bản. Muốn chọn khác thì thêm vào `wrangler.toml`:
