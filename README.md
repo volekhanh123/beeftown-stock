@@ -34,11 +34,25 @@ File trong `cong-cu/`, `thiet-ke/` và `luu-tru/` đều là **HTML tự chứa*
 
 ## Concept
 
-Bò nhập khẩu tươi mát được pha lóc và **đóng gói sẵn theo từng phần cắt**, ghi rõ tên phần, trọng lượng và giá ngay trên gói. Khách ra quầy tự chọn phần mình thích như đi tiệm thịt, rồi mang về bàn nướng.
+> Nguồn gốc: `00_DOC_TRUOC.md` trong OneDrive `Desktop\FnB Investment\`. Đổi concept thì sửa ở đó trước rồi chép sang đây.
 
-- **Khẩu hiệu:** Thịt chuẩn, giá thật · *Pick it – Grill it – Love it*
+Thịt bò được pha lóc và **đóng gói sẵn (skin-pack) theo từng phần cắt**, nhãn ghi rõ tên phần, giá/100g, trọng lượng, giá cuối **đã gồm VAT** và ngày đóng gói. Khách ra quầy tự chọn phần mình thích rồi mang về bàn nướng. Menu có các món phụ Hàn, nhưng banchan chủ ý ít và không được dùng làm điểm bán hàng.
+
+> **Giới hạn nội dung cụ thể:** không dùng lại hook Wagyu/MB9, 229.000đ/100g hoặc 1.000 phần 199.000đ. Khánh đã xác nhận ủ từng miếng bò; không tự thêm số ngày, nguồn/grade hay phương pháp aging chưa có căn cứ. Chi tiết frozen/cut trong nguồn cũ chuyển sang hoàn thiện menu, không chặn plan.
+
+**Danh mục thịt cũ để đối chiếu khi làm menu:** Ribeye with Cap · Outside Skirt (anchangsal) · Chadolbagi lát mỏng · Top Blade còn gân giữa (buchaesal) · Galbisal · **Galbisal ướp tại chỗ sau khi khách chọn** · LA Galbi. Phân loại món nướng/frozen của Chadolbagi và LA Galbi chưa được xem là chốt.
+
+**Thiết bị nướng (chốt 02/09/2026):** vỉ **GAS** (gas-roaster), không phải than hoa — không dùng hình ảnh than trong truyền thông.
+
+**Đào tạo (thông tin lưu để truy vết):** bản 11–12 ngày đã gồm 1–2 ngày soft opening. Chi tiết lịch/roster chuyển sang vận hành, không phải đầu vào bắt buộc tiếp theo để làm marketing.
+
+**Giờ mở cửa (cập nhật 17/09):** Khánh ghi “14-14 16-22”; khung đầu chưa rõ. Đang chờ xác nhận, không tự sửa thành 10–14 hoặc kế thừa giờ ở Core Shift. Plan vẫn chạy theo T và lịch rolling.
+
+- **Tagline chính thức:** *Pick it. Grill it. Love it.*
 - **Định vị:** cao cấp vừa tầm — không phải quán bình dân, cũng không phải nhà hàng sang trọng
-- **Khách mục tiêu:** gia đình và người trên 30 tuổi · dân văn phòng và tiệc công ty
+- **Khách mục tiêu:** gia đình ưu tiên; văn phòng/công ty tiếp theo. Chưa có đối tác.
+- **Menu ngày đầu:** các món ăn/đồ uống trong artwork menu đã được Khánh xác nhận bán. Set sốt 69k chỉ là món thêm tùy chọn, không phải set trưa.
+- **Quy mô tham chiếu:** 25–30 bàn, tối đa khoảng 120 khách cùng lúc.
 
 ---
 
@@ -82,9 +96,7 @@ Lưu ý khi sửa code phần mềm cân:
 
 ### Phông chữ
 
-- **Montserrat** — toàn bộ tiêu đề và nội dung
-- **Baloo 2** — chỉ dùng cho tên thương hiệu và khẩu hiệu
-  - ⚠️ Đây là **bản thay tạm** cho *Hypo-me Bold* — phông độc quyền của thương hiệu. Cần mua bản quyền trước khi in ấn hoặc chạy quảng cáo.
+Nguồn thiết kế hiện hành là PDF logo/màu tạm do Khánh cung cấp. Trang 1 ghi Hypo-me Bold và Montserrat; trang 6 có nhãn NVN Beloved Bold ở Heading. Đối chiếu file font và vai trò khi hoàn thiện thiết kế. Baloo 2 là lựa chọn web tạm cũ, không được mặc định là font trong bộ PDF mới. Tình trạng quyền sử dụng font cần kiểm tra theo file/font thực tế trước phát hành.
 
 ### Giọng văn
 
@@ -95,7 +107,8 @@ Lưu ý khi sửa code phần mềm cân:
 **Không nên:**
 - ❌ Dùng chữ **"rẻ"** — thay bằng *hợp lý*, *xứng đáng*, *giá thật*
 - ❌ Dùng tiếng lóng giới trẻ hoặc chiêu câu tương tác
-- ❌ Hứa mâm banchan đầy đủ kiểu Hàn — Beeftown tập trung vào bò
+- ❌ Dùng số lượng banchan như một điểm bán hàng hoặc hứa banchan phong phú
+- ❌ Dùng “Best beef in town”, “bò ngon nhất”, “số một” hoặc claim dẫn đầu tương tự khi chưa có tài liệu hợp pháp chứng minh
 
 ---
 
