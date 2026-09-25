@@ -45,7 +45,9 @@ const db = new PGlite();
 console.log('\x1b[1m\nBEEFTOWN CRM — KIỂM THỬ TUYỂN DỤNG\x1b[0m');
 console.log('='.repeat(60));
 
-await db.exec(`
+// Dựng lại những gì Supabase có sẵn trước migration. Mục 12 dùng lại cho một
+// database thứ hai.
+const KHUNG_SUPABASE = `
   create schema if not exists auth;
   create table if not exists auth._phien (uid uuid);
   create or replace function auth.uid() returns uuid
@@ -56,9 +58,11 @@ await db.exec(`
   grant usage on schema public to anon, authenticated;
   alter default privileges in schema public grant all on tables    to anon, authenticated;
   alter default privileges in schema public grant all on functions to anon, authenticated;
-`);
+`;
+const MIGRATIONS = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort();
 
-for (const f of readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort()) {
+await db.exec(KHUNG_SUPABASE);
+for (const f of MIGRATIONS) {
   await db.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
 }
 
@@ -643,6 +647,92 @@ await nhom('11 · DUYỆT LƯƠNG VÀ ĐĂNG TIN (0027)', async () => {
     `update vi_tri_tuyen_dung set trang_thai = 'da_thu_hoi'
      where ma = 'dau-moi-marketing' returning ma`);
   ok('Marketing gỡ được tin', go.loi === null && go.rows?.length === 1, go.loi ?? '');
+});
+
+// ===========================================================================
+await nhom('12 · LƯƠNG THEO GIỜ HAY THEO THÁNG (0028)', async () => {
+  // Đơn vị là một phần của con số: "25.000 đ/giờ" đổi thành "/tháng" là đổi
+  // cam kết. Nên nó đi đúng đường duyệt của 0027.
+  const { rows: [{ n: khacThang }] } = await db.query(
+    `select count(*)::int as n from vi_tri_tuyen_dung
+     where luong_don_vi <> 'thang' or luong_de_xuat_don_vi <> 'thang'`);
+  ok('Đơn vị mặc định là tháng', khacThang === 0, `${khacThang} tin khác`);
+
+  // Tin đã có lương TRƯỚC 0028: một database thứ hai chạy tới 0027, ghi một
+  // mức giờ và một mức tháng đã duyệt, rồi mới chạy 0028.
+  const cu = new PGlite();
+  await cu.exec(KHUNG_SUPABASE);
+  for (const f of MIGRATIONS.filter(f => f < '0028')) {
+    await cu.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
+  }
+  const { rows: [cn] } = await cu.query(
+    `insert into chi_nhanh (ma, ten) values ('q1','Beeftown Quận 1') returning id`);
+  const { rows: [ql] } = await cu.query(
+    `insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro)
+     values (gen_random_uuid(), $1, 'Quản lý Q1', 'quan_ly') returning id`, [cn.id]);
+  await cu.query(
+    `insert into vi_tri_tuyen_dung (chi_nhanh_id, ma, ten_vi, bo_phan,
+       luong_de_xuat_tu, luong_de_xuat_den, luong_tu, luong_den, luong_da_duyet)
+     values ($1, 'luong-gio',   'Phụ bếp ca tối', 'bep', 28000, 30000, 28000, 30000, true),
+            ($1, 'luong-thang', 'Bếp chính', 'bep', 8000000, 10000000, 8000000, 10000000, true)`,
+    [cn.id]);
+  // Không có phiên đăng nhập thì trigger 0027 ghi người duyệt là null, nên ghi tay.
+  await cu.query(
+    `update vi_tri_tuyen_dung
+     set luong_nguoi_duyet = $1, luong_duyet_luc = '2026-09-01 10:00+07'`, [ql.id]);
+  await cu.exec(readFileSync(join(MIGRATIONS_DIR, MIGRATIONS.find(f => f.startsWith('0028'))), 'utf8'));
+  const { rows: sau } = await cu.query(
+    `select ma, luong_de_xuat_don_vi, luong_don_vi, luong_nguoi_duyet,
+            luong_duyet_luc = '2026-09-01 10:00+07' as giu_gio_duyet
+     from vi_tri_tuyen_dung order by ma`);
+  await cu.close();
+  ok('Tin có sẵn: dưới một triệu đồng thành lương giờ, còn lại giữ tháng',
+     sau.map(r => `${r.ma}:${r.luong_de_xuat_don_vi}/${r.luong_don_vi}`).join(' ')
+       === 'luong-gio:gio/gio luong-thang:thang/thang',
+     JSON.stringify(sau));
+  ok('Chạy 0028 không xóa vết ai duyệt lương và lúc nào',
+     sau.length === 2 && sau.every(r => r.luong_nguoi_duyet === ql.id && r.giu_gio_duyet),
+     JSON.stringify(sau));
+
+  // Mục 11 đã để tin bếp ở trạng thái đang đăng, lương bị bỏ duyệt.
+  const congKhai = async () => (await duoiDanhNghiaAnon(
+    `select luong_tu, luong_don_vi from tin_tuyen_dung_cong_khai()
+     where ma = 'nhan-vien-bep'`)).rows?.[0];
+  const truocDuyet = await congKhai();
+  ok('Chưa duyệt lương thì trang không thấy cả đơn vị',
+     truocDuyet !== undefined && truocDuyet.luong_don_vi === null, JSON.stringify(truocDuyet));
+
+  const deXuat = await duoiDanhNghia(uidMkt,
+    `update vi_tri_tuyen_dung
+     set luong_de_xuat_tu = 25000, luong_de_xuat_den = 30000, luong_de_xuat_don_vi = 'gio'
+     where ma = 'nhan-vien-bep' returning ma`);
+  ok('Marketing đề xuất được lương theo giờ',
+     deXuat.loi === null && deXuat.rows?.length === 1, deXuat.loi ?? '');
+
+  const qlDuyet = await duoiDanhNghia(uidQlA,
+    `update vi_tri_tuyen_dung
+     set luong_tu = luong_de_xuat_tu, luong_den = luong_de_xuat_den,
+         luong_don_vi = luong_de_xuat_don_vi, luong_da_duyet = true
+     where ma = 'nhan-vien-bep' returning ma`);
+  const sauDuyet = await congKhai();
+  ok('Duyệt thì đơn vị lên trang cùng con số',
+     qlDuyet.loi === null && Number(sauDuyet?.luong_tu) === 25000 && sauDuyet?.luong_don_vi === 'gio',
+     qlDuyet.loi ?? JSON.stringify(sauDuyet));
+
+  const mktDoi = await duoiDanhNghia(uidMkt,
+    `update vi_tri_tuyen_dung set luong_don_vi = 'thang'
+     where ma = 'nhan-vien-bep' returning ma`);
+  ok('Marketing KHÔNG đổi được đơn vị của mức đã duyệt',
+     mktDoi.loi !== null && /chủ nhà hàng hoặc quản lý/i.test(mktDoi.loi),
+     mktDoi.loi ?? 'ĐỔI ĐƯỢC — 25.000 đ/giờ thành 25.000 đ/tháng');
+
+  const mktDeXuat = await duoiDanhNghia(uidMkt,
+    `update vi_tri_tuyen_dung set luong_de_xuat_don_vi = 'thang'
+     where ma = 'nhan-vien-bep' returning ma`);
+  ok('Marketing đổi được đơn vị đề xuất, và mức đang hiện giữ nguyên',
+     mktDeXuat.loi === null && mktDeXuat.rows?.length === 1
+       && (await congKhai())?.luong_don_vi === 'gio',
+     mktDeXuat.loi ?? '');
 });
 
 // ===========================================================================

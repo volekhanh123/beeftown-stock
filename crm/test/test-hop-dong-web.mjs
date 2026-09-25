@@ -342,10 +342,12 @@ await nhom('8 · MÀN SOẠN TIN GHI ĐÚNG CỘT VÀ ĐÚNG ENUM', async () => 
   ok('Mọi khóa của TinTuyenDung đều là cột thật của vi_tri_tuyen_dung',
      sai.length === 0, sai.length ? `SAI: ${sai.join(', ')}` : '');
 
-  // Bộ phận và loại hợp đồng được ghi thẳng khóa của bảng nhãn xuống cột
-  // enum. Gõ nhầm "quay-thit" thì form hiện đẹp mà lưu thì hỏng.
+  // Bộ phận, loại hợp đồng và đơn vị lương được ghi thẳng khóa của bảng nhãn
+  // xuống cột enum. Gõ nhầm "quay-thit" thì form hiện đẹp mà lưu thì hỏng.
   const maNhan = files.find(f => f.duong.endsWith('lib/tuyen-dung.ts'))?.ma ?? '';
-  for (const [bang, kieu] of [['BO_PHAN', 'bo_phan_tuyen'], ['LOAI_HOP_DONG', 'loai_hop_dong']]) {
+  for (const [bang, kieu] of [
+    ['BO_PHAN', 'bo_phan_tuyen'], ['LOAI_HOP_DONG', 'loai_hop_dong'], ['DON_VI_LUONG', 'don_vi_luong'],
+  ]) {
     const k = maNhan.match(new RegExp(`export const ${bang} = \\{([\\s\\S]*?)\\n\\}`));
     const web = k ? [...k[1].matchAll(/^\s+([a-z_]+):/gm)].map(m => m[1]).sort() : [];
     const { rows: e } = await db.query(`

@@ -12,9 +12,9 @@
  */
 import NoiBo from '../../../layouts/NoiBo.astro';
 import { TRUONG_FORM } from '../../../lib/truong-form';
-import { BO_PHAN, LOAI_HOP_DONG, dinhDangLuong } from '../../../lib/tuyen-dung';
+import { BO_PHAN, LOAI_HOP_DONG, DON_VI_LUONG, dinhDangLuong } from '../../../lib/tuyen-dung';
 import {
-  docTin, luuTin, duyetLuong, goTin, TRANG_THAI, homNayVn,
+  docTin, luuTin, duyetLuong, goTin, TRANG_THAI, homNayVn, donViDeXuat, canhBaoDonVi,
   type TinTuyenDung, type KetQuaLuu,
 } from '../../../lib/tin-tuyen-dung';
 
@@ -58,8 +58,12 @@ try {
 const v: TinTuyenDung | null = tin && { ...tin, ...(bao && !bao.ok ? bao.daGo : undefined) };
 const dangDang = tin?.trang_thai === 'da_cong_bo';
 const quaHan = !!tin?.han_nop && tin.han_nop < homNayVn();
-const luongDangHien = tin?.luong_da_duyet ? dinhDangLuong(tin.luong_tu, tin.luong_den) : null;
-const luongDeXuat = tin ? dinhDangLuong(tin.luong_de_xuat_tu, tin.luong_de_xuat_den) : null;
+const luongDangHien = tin?.luong_da_duyet
+  ? dinhDangLuong(tin.luong_tu, tin.luong_den, tin.luong_don_vi) : null;
+const luongDeXuat = tin
+  ? dinhDangLuong(tin.luong_de_xuat_tu, tin.luong_de_xuat_den, tin.luong_de_xuat_don_vi) : null;
+const donVi = v ? donViDeXuat(v) : 'thang';
+const nhacDonVi = v ? canhBaoDonVi(v.luong_de_xuat_tu, v.luong_de_xuat_den, donVi) : null;
 const gioVn = (iso: string) => new Date(iso).toLocaleString('vi-VN', {
   timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit',
   day: 'numeric', month: 'numeric', year: 'numeric',
@@ -166,8 +170,8 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
           <section class="nb-the">
             <h2>Nội dung tin</h2>
             <p class="nb-dan" style="font-size:.85rem">
-              Muốn đăng thì phải có mô tả và yêu cầu. Chữ trong ngoặc vuông, kiểu
-              <code>[chờ duyệt]</code>, được coi là chưa viết xong và chặn việc đăng.
+              Muốn đăng thì phải có mô tả và yêu cầu. Chữ trong ngoặc vuông,
+              kiểu <code>[chờ duyệt]</code>, được coi là chưa viết xong và chặn việc đăng.
             </p>
             <label class="nb-o">
               <span>Mô tả công việc</span>
@@ -215,26 +219,37 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
                 ? ' Lưu mức đề xuất rồi duyệt ở ô "Duyệt lương" bên dưới.'
                 : ' Mức đề xuất chỉ lên trang khi chủ nhà hàng hoặc quản lý duyệt.'}
             </p>
+            {/* Bước 100 chứ không 1.000: lương giờ hay lẻ trăm, như 25.500 đ, mà
+                trình duyệt từ chối số lệch bước. */}
             <div class="nb-hai">
               <label class="nb-o">
                 <span>Từ (đồng)</span>
-                <input type="number" name="luong_de_xuat_tu" min="0" step="1000" inputmode="numeric"
+                <input type="number" name="luong_de_xuat_tu" min="0" step="100" inputmode="numeric"
                        value={v.luong_de_xuat_tu ?? ''} />
               </label>
               <label class="nb-o">
                 <span>Đến (đồng)</span>
-                <input type="number" name="luong_de_xuat_den" min="0" step="1000" inputmode="numeric"
+                <input type="number" name="luong_de_xuat_den" min="0" step="100" inputmode="numeric"
                        value={v.luong_de_xuat_den ?? ''} />
               </label>
+              <label class="nb-o">
+                <span>Đơn vị</span>
+                <select name="luong_de_xuat_don_vi">
+                  {Object.entries(DON_VI_LUONG).map(([ma, nhan]) => (
+                    <option value={ma} selected={ma === donVi}>đ/{nhan.vi}</option>
+                  ))}
+                </select>
+              </label>
             </div>
+            {nhacDonVi && <div class="nb-bao luu-y"><p>{nhacDonVi}</p></div>}
           </section>
 
           <section class="nb-the">
             <h2>Form nộp hồ sơ hỏi gì</h2>
             <p class="nb-dan" style="font-size:.85rem">
               Họ tên, số điện thoại và ô đồng ý luôn có. Trường bật vẫn không bắt
-              buộc; trường tắt thì biến khỏi form, và dù có ai gửi lên cũng
-              <strong>không được lưu</strong>.
+              buộc; trường tắt thì biến khỏi form, và dù có ai gửi lên
+              cũng <strong>không được lưu</strong>.
             </p>
             <div class="nb-truong">
               {TRUONG_FORM.map(f => (
