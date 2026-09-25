@@ -11,19 +11,28 @@
  * thấy nút — vẫn dùng máy quét hoặc gõ tay được. Không có JavaScript thì
  * trang vẫn chạy đủ.
  *
- * Hai gói cùng mặt hàng, cùng trọng lượng in ra CÙNG một mã — nên camera chỉ
- * bỏ qua mã trùng trong 2 giây (đang giữ nguyên gói trước ống kính), không
- * bỏ qua mã trùng nói chung.
+ * Hai gói cùng mặt hàng, cùng trọng lượng in ra CÙNG một mã. Camera chỉ tính
+ * lại một mã khi mã đó đã RỜI khung hình ít nhất 0,8 giây — giữ nguyên một gói
+ * trước ống kính thì tính một lần; đưa gói ra rồi đưa gói kế tiếp vào thì tính
+ * gói kế tiếp. (Bản trước đặt lại đồng hồ mỗi lần thấy mã, nên gói thứ hai
+ * giống hệt đưa vào ngay sau gói đầu bị bỏ sót — và khi đếm quầy, gói bị sót
+ * thành "đã bán".) Hai gói giống hệt không tách ra được thì bấm "+1 gói giống
+ * hệt" ngay trong khung camera.
+ *
+ * Bấm "Xong" trong khung camera là gửi luôn (không phải bấm thêm "Đọc mã").
  */
 interface Props {
   viec?: string;
   nhan?: string;
   goiY?: string;
+  /** Đặt con trỏ sẵn vào ô quét — máy quét cầm tay gõ vào được ngay. */
+  tuFocus?: boolean;
 }
 const {
   viec = 'quet',
   nhan = 'Đọc mã đã quét',
   goiY = 'Quét từng nhãn — mỗi mã một dòng. Có thể dán nhiều mã cách nhau bằng dấu phẩy.',
+  tuFocus = false,
 } = Astro.props;
 ---
 <div class="kho-quet" data-quet-ma>
@@ -31,15 +40,16 @@ const {
     <span>Quét nhãn cân</span>
     <small>{goiY}</small>
     <textarea name="ma_quet" rows="3" inputmode="numeric" autocomplete="off" spellcheck="false"
-      placeholder="2012345012509"></textarea>
+      placeholder="2012345012509" autofocus={tuFocus}></textarea>
   </label>
   <div class="kho-thanh-nut" style="margin:.25rem 0 0">
-    <button type="submit" name="viec" value={viec} class="nb-nut phu" formnovalidate>{nhan}</button>
+    <button type="submit" name="viec" value={viec} class="nb-nut phu" formnovalidate data-quet-gui>{nhan}</button>
     <button type="button" class="nb-nut phu" data-quet-camera hidden>Quét bằng camera</button>
   </div>
   <dialog class="kho-quet-hop" data-quet-hop>
     <video playsinline muted></video>
-    <p><strong data-quet-dem>0</strong> nhãn đã đọc · giữ từng gói trước camera</p>
+    <p><strong data-quet-dem>0</strong> nhãn đã đọc · đưa từng gói vào rồi đưa ra khỏi khung</p>
+    <button type="button" class="nb-nut phu" data-quet-them hidden>+1 gói giống hệt gói vừa quét</button>
     <button type="button" class="nb-nut" data-quet-xong>Xong</button>
   </dialog>
 </div>
@@ -57,8 +67,10 @@ const {
     const video = hop.querySelector('video');
     const dem = hop.querySelector('[data-quet-dem]');
     const o = goc.querySelector('textarea');
-    let luong = null, hen = null, cuoi = '', luc = 0, so = 0;
-    nut.hidden = false;
+    let luong = null, hen = null, cuoi = '', so = 0;
+    // Mã → lần cuối thấy trong khung. Chỉ tính lại khi mã đã vắng ≥ 0,8 giây.
+    const lanThay = new Map();
+    const them = hop.querySelector('[data-quet-them]');
 
     const dung = () => {
       if (hen) clearInterval(hen);
@@ -67,6 +79,14 @@ const {
       luong = null;
       if (hop.open) hop.close();
     };
+
+    const ghi = ma => {
+      o.value = (o.value.trim() ? o.value.trim() + '\n' : '') + ma;
+      so += 1; dem.textContent = String(so);
+      cuoi = ma; them.hidden = false;
+      if (navigator.vibrate) navigator.vibrate(60);
+    };
+    them.addEventListener('click', () => { if (cuoi) ghi(cuoi); });
 
     nut.addEventListener('click', async () => {
       let docMa;
@@ -77,7 +97,7 @@ const {
         alert('Không mở được camera. Cho phép trang dùng camera, hoặc dùng máy quét cầm tay.');
         return;
       }
-      so = 0; dem.textContent = '0';
+      so = 0; dem.textContent = '0'; lanThay.clear(); cuoi = ''; them.hidden = true;
       video.srcObject = luong;
       hop.showModal();
       await video.play().catch(() => {});
@@ -85,19 +105,23 @@ const {
         if (video.readyState < 2) return;
         let kq = [];
         try { kq = await docMa.detect(video); } catch { return; }
+        const bayGio = Date.now();
         for (const m of kq) {
           const ma = String(m.rawValue || '');
           if (!/^\d{13}$/.test(ma)) continue;
-          const bayGio = Date.now();
-          if (ma === cuoi && bayGio - luc < 2000) { luc = bayGio; continue; }
-          cuoi = ma; luc = bayGio;
-          o.value = (o.value.trim() ? o.value.trim() + '\n' : '') + ma;
-          so += 1; dem.textContent = String(so);
-          if (navigator.vibrate) navigator.vibrate(60);
+          const truoc = lanThay.get(ma);
+          lanThay.set(ma, bayGio);
+          if (truoc !== undefined && bayGio - truoc < 800) continue;   // vẫn là gói đang giữ
+          ghi(ma);
         }
-      }, 250);
+      }, 200);
     });
-    hop.querySelector('[data-quet-xong]').addEventListener('click', dung);
+    // Xong = đóng camera và gửi luôn để trang đọc mã.
+    hop.querySelector('[data-quet-xong]').addEventListener('click', () => {
+      dung();
+      const gui = goc.querySelector('[data-quet-gui]');
+      if (so > 0 && gui && gui.form) gui.form.requestSubmit(gui);
+    });
     hop.addEventListener('close', dung);
   });
 })();

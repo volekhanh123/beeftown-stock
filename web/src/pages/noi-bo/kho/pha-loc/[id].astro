@@ -12,8 +12,7 @@
  * Không JavaScript. Lưu phía máy chủ ở mỗi lần bấm, chuyển hướng 303; lỗi
  * nhập liệu thì hiện lại đúng chữ đã gõ.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
@@ -197,9 +196,8 @@ const tieuDe = moi ? 'Phiên pha lóc mới' : `Phiên ${phien?.so_phieu ?? ''}`
 const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
   giaBan && giaBan > 0 ? dinhDangPhanTram(((giaBan - giaVon) * 100) / giaBan, 1) : '—';
 ---
-<NoiBo tieuDe={tieuDe} nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe={tieuDe}>
   <h1>{tieuDe}</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {phien && (
@@ -487,4 +485,4 @@ const bienLai = (giaBan: number | null | undefined, giaVon: number) =>
   )}
 
   <p style="margin-top:1.5rem"><a href="/noi-bo/kho/pha-loc">← Danh sách phiên pha lóc</a></p>
-</NoiBo>
+</Kho>

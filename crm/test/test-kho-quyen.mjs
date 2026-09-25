@@ -35,10 +35,20 @@ const datBan = await duoiAnon(
   `select * from tao_dat_ban('q1', '0922222222', 'Khách đặt web', $1::date, '18:00'::time, 2::smallint)`,
   [ngayKia]);
 
+// Hai vai "máy" (0029): tablet dùng chung và máy đồng bộ iPOS. Tạo ở đây chứ
+// không ở kho-chung.mjs để các file test khác không phải đếm thêm người.
+const UID_MAY_CHUNG = '00000000-0000-4000-8000-0000000000c1';
+const UID_MAY_IPOS  = '00000000-0000-4000-8000-0000000000c2';
+await db.query(`insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro, dang_lam) values
+  ($1, $3, 'Tablet quầy Q1', 'may_chung', true), ($2, $3, 'Máy iPOS Q1', 'may_ipos', true)`,
+  [UID_MAY_CHUNG, UID_MAY_IPOS, cnA.id]);
+
 const VAI_KHO_A = [
   ['thủ kho', UID.thuKhoA],
   ['NV quầy/bếp', UID.nvQuayA],
   ['kế toán', UID.keToanA],
+  ['tablet dùng chung (may_chung)', UID_MAY_CHUNG],
+  ['máy iPOS (may_ipos)', UID_MAY_IPOS],
 ];
 
 // ===========================================================================
@@ -75,8 +85,23 @@ await nhom('1 · VAI KHO KHÔNG ĐỌC ĐƯỢC DỮ LIỆU CRM', async () => {
     ok(`${ten} chỉ thấy đúng hồ sơ của mình trong nhan_su`, ns.rows?.[0]?.n === 1,
        ns.loi ?? `thấy ${ns.rows?.[0]?.n}`);
     const cn = await duoi(uid, `select id from chi_nhanh`);
-    ok(`${ten} chỉ thấy chi nhánh của mình`,
-       cn.rows?.length === 1 && cn.rows[0].id === cnA.id, cn.loi ?? `thấy ${cn.rows?.length}`);
+    const mongCn = /máy|tablet/.test(ten) ? 0 : 1;   // vai máy chưa có quyền "xem" kho
+    ok(`${ten} ${mongCn ? 'chỉ thấy chi nhánh của mình' : 'không thấy chi nhánh nào'}`,
+       cn.rows?.length === mongCn && (mongCn === 0 || cn.rows[0].id === cnA.id), cn.loi ?? `thấy ${cn.rows?.length}`);
+  }
+
+  // Vai máy (0029) chưa được làm gì trong kho: không đọc được bảng kho nào.
+  const { rows: bangKho } = await db.query(`
+    select tablename from pg_tables where schemaname = 'public' and tablename like 'kho\\_%' order by 1`);
+  for (const [ten, uid] of VAI_KHO_A.filter(([t]) => /máy|tablet/.test(t))) {
+    const lot = [];
+    for (const { tablename } of bangKho) {
+      const r = await duoi(uid, `select count(*)::int as n from ${tablename}`);
+      if (r.loi === null && r.rows[0].n > 0) lot.push(`${tablename}(${r.rows[0].n})`);
+    }
+    ok(`${ten} không đọc được dòng nào ở bảng kho`, lot.length === 0, lot.join(', '));
+    const dv = await duoi(uid, `select kho_dem_viec($1)`, [cnA.id]);
+    ok(`${ten} không gọi được kho_dem_viec`, dv.loi !== null);
   }
 });
 
@@ -122,7 +147,8 @@ await nhom('3 · BỐN VAI CRM Y NHƯ TRƯỚC', async () => {
 
 // ===========================================================================
 await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
-  const VAI = ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan', 'thu_ngan', 'marketing'];
+  const VAI = ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan', 'thu_ngan', 'marketing',
+               'may_chung', 'may_ipos'];
 
   for (const viec of Object.keys(QUYEN_KHO)) {
     const { rows: [{ ds }] } = await db.query(`select kho_vai_duoc($1)::text[] as ds`, [viec]);
@@ -153,7 +179,12 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
     ok(`${vai} ${mong ? 'ĐƯỢC' : 'KHÔNG được'} "${viec}"`,
        QUYEN_KHO[viec].includes(vai) === mong);
   }
-  ok('Bảng có đủ 7 vai để tra', VAI.length === 7);
+  const { rows: [{ n: soVai }] } = await db.query(`select count(*)::int as n from unnest(enum_range(null::vai_tro))`);
+  ok('Bảng có đủ 9 vai để tra (khớp enum vai_tro)', VAI.length === 9 && soVai === 9, `enum có ${soVai}`);
+  for (const viec of Object.keys(QUYEN_KHO)) {
+    ok(`Vai máy chưa được việc "${viec}"`,
+       !QUYEN_KHO[viec].includes('may_chung') && !QUYEN_KHO[viec].includes('may_ipos'));
+  }
 });
 
 // ===========================================================================
@@ -246,6 +277,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_bao_cao_xuat_nhap_ton', 'kho_bao_cao_thu_hoi', 'kho_bao_cao_hao_hut', 'kho_bao_cao_ban',
     // Đối soát
     'kho_doi_soat_ton',
+    // Số đỏ trên menu, thông báo, ngưỡng, chỉ số quản trị (0030)
+    'kho_dem_viec', 'kho_thong_bao', 'kho_da_xem_thong_bao', 'kho_luu_nguong', 'kho_chi_so_quan_tri',
     // Hàm trigger — PostgREST không gọi được hàm trả về trigger
     'kho_vi_tri_kiem_sua', 'kho_truong_them_kiem_sua', 'kho_truong_them_kiem',
     'kho_mat_hang_chuan_hoa', 'kho_cong_thuc_pha_kiem', 'kho_lo_chan_sua_xoa',
@@ -255,6 +288,7 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
     'kho_tinh_phien_pha', 'kho_phan_bo', 'kho_kg_tb_goi', 'kho_kiem_ke_bo_sung_dong', 'kho_dung_lai_ton',
+    'kho_luc_vn', 'kho_su_kien',
   ].sort();
 
   const { rows } = await db.query(`

@@ -10,12 +10,19 @@
  * Tên ô của dòng thứ i: d{i}_mat_hang, d{i}_so_goi, d{i}_so_kg, d{i}_don_gia,
  * d{i}_hsd, d{i}_nsx, d{i}_so_lo_ncc, d{i}_xoa; ô thông tin thêm tt__<khoa>__{i}.
  * Dòng chưa chọn mặt hàng và chưa nhập kg thì bỏ qua — đó là dòng trống.
+ *
+ * ẢNH HÓA ĐƠN — tải lên TRƯỚC khi kiểm các ô khác. Ô chọn file không điền lại
+ * được sau khi trang hiện lại vì gõ sai, nên ảnh đã lên được giữ bằng ô ẩn
+ * `anh_da_tai` (đường dẫn trong kho file) cùng với ma_gui của form. Lần bấm
+ * sau chỉ nhận đường dẫn nằm trong thư mục <chi nhánh>/nhap/<ma_gui này>/ —
+ * form không gắn được ảnh của phiếu khác. Ảnh nào cũng có ô "Giữ" (anh_giu).
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cauLoiKho, chiaSoDuLonNhat, docKg, docNgay, docSoNguyen, docTien, laUuid, type KetQua } from './chung.ts';
 import { docTruongThem, type DinhNghiaTruong, type GiaTriTruong } from './truong-them.ts';
-import { layTepAnh, taiAnh } from './anh.ts';
+import { docAnhDaTai, layTepAnh, soThuTuCuoi, taiAnh } from './anh.ts';
+import { apDungTim, type TimDs } from './tim-ds.ts';
 
 export interface PhieuNhapTom {
   id: string;
@@ -111,14 +118,18 @@ export interface DauForm {
 // -----------------------------------------------------------------------------
 export async function docDanhSachPhieuNhap(
   client: SupabaseClient, chiNhanhId: string, trangThai: string | null,
+  // Có tim: tìm / lọc ngày / của tôi / đọc đúng một trang (lib/kho/tim-ds.ts).
+  tim?: { tim: TimDs; nhanSuId: string | null },
 ): Promise<PhieuNhapTom[]> {
   let q = client
     .from('kho_v_phieu_nhap')
     .select('id, so_phieu, loai, trang_thai, ten_nha_cung_cap, ten_vi_tri, ngay_nhap, so_hoa_don, han_thanh_toan, so_dong, tong_kg, tong_goi, tien_hang, tong_tien, nguoi_tao, created_at')
     .eq('chi_nhanh_id', chiNhanhId)
-    .order('created_at', { ascending: false })
-    .limit(100);
+    .order('created_at', { ascending: false });
   if (trangThai) q = q.eq('trang_thai', trangThai);
+  q = tim
+    ? apDungTim(q, tim.tim, { cotTim: ['so_phieu', 'ten_nha_cung_cap', 'so_hoa_don'], cotNgay: 'ngay_nhap', nhanSuId: tim.nhanSuId })
+    : q.limit(100);
   const { data, error } = await q;
   if (error) throw error;
   return (data ?? []).map(r => ({
@@ -299,11 +310,22 @@ export function docFormPhieuNhap(
 export interface KetQuaLuu extends KetQua {
   id?: string;
   phienBan?: number;
+  /** Số dòng hàng đã lưu (không kể dòng trống). */
+  soDong?: number;
   dau?: DauForm;
   dong?: DongForm[];
+  /** Chưa lưu được: ma_gui của form — trang hiện lại form với đúng mã này. */
+  maGui?: string;
+  /** Chưa lưu được: mọi ảnh form này đã tải lên (kể cả ảnh bỏ tích) — ô ẩn anh_da_tai. */
+  anhDaTai?: string[];
+  /** Chưa lưu được: các ảnh đang tích "Giữ" — hiện lại đúng như người dùng để. */
+  anhGiu?: string[];
 }
 
-/** Lưu nháp (tạo mới khi id null). Tải ảnh hóa đơn trước, rồi gọi hàm database. */
+/**
+ * Lưu nháp (tạo mới khi id null). Tải ảnh hóa đơn TRƯỚC khi kiểm các ô —
+ * gõ sai một ô thì ảnh vẫn còn, không phải chụp lại — rồi gọi hàm database.
+ */
 export async function luuPhieuNhap(
   client: SupabaseClient,
   chiNhanhId: string,
@@ -319,15 +341,33 @@ export async function luuPhieuNhap(
   },
 ): Promise<KetQuaLuu> {
   const doc = docFormPhieuNhap(form, ctx.dinhNghiaPhieu, ctx.dinhNghiaLo, ctx.truongThemCu);
-  if (doc.loi.length) return { ok: false, cau: doc.loi.join(' · '), dau: doc.dau, dong: doc.dong };
 
   const maGui = String(form.get('ma_gui') ?? '');
   if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang rồi nhập lại.', dau: doc.dau, dong: doc.dong };
 
-  // Ảnh: giữ ảnh cũ còn được tích, thêm ảnh mới chụp.
-  const giuLai = form.getAll('anh_giu').map(String).filter(a => ctx.anhCu.includes(a));
-  const tai = await taiAnh(client, chiNhanhId, 'nhap', maGui, layTepAnh(form), ctx.anhCu.length + 1);
-  const anh = [...giuLai, ...tai.duongDan];
+  // Ảnh — làm TRƯỚC khi báo lỗi gõ sai. Giữ ảnh cũ của phiếu và ảnh form này
+  // đã tải ở lần bấm trước (nếu còn tích "Giữ"), rồi tải thêm ảnh vừa chọn.
+  // Số thứ tự ảnh mới nối tiếp ảnh đã có trong cùng thư mục ma_gui: kho file
+  // không cho ghi đè.
+  const tich = new Set(form.getAll('anh_giu').map(String));
+  const daTaiTruoc = docAnhDaTai(form, chiNhanhId, 'nhap', maGui, 24);
+  const batDau = Math.max(ctx.anhCu.length, soThuTuCuoi(daTaiTruoc)) + 1;
+  const tai = await taiAnh(client, chiNhanhId, 'nhap', maGui, layTepAnh(form), batDau);
+  const anh = [
+    ...ctx.anhCu.filter(a => tich.has(a)),
+    ...daTaiTruoc.filter(a => tich.has(a)),
+    ...tai.duongDan,
+  ];
+  const cauAnh = tai.loi.length ? ` Lưu ý: ${tai.loi.join(' · ')}` : '';
+  // Chưa lưu được: trả lại đủ để trang hiện lại form cùng ma_gui và ảnh đã lên.
+  const chuaLuu = (cau: string): KetQuaLuu => ({
+    ok: false,
+    cau: cau + (anh.length ? ` · Ảnh vẫn còn (${anh.length} ảnh), không cần chụp lại.` : '') + cauAnh,
+    dau: doc.dau, dong: doc.dong,
+    maGui, anhDaTai: [...daTaiTruoc, ...tai.duongDan], anhGiu: anh,
+  });
+
+  if (doc.loi.length) return chuaLuu(doc.loi.join(' · '));
 
   const { data, error } = await client.rpc('kho_luu_phieu_nhap', {
     p_id: ctx.id,
@@ -348,16 +388,16 @@ export async function luuPhieuNhap(
     p_truong_them: doc.dau.truong_them,
     p_dong: doc.payload,
   });
-  if (error) return { ok: false, cau: cauLoiKho(error), dau: doc.dau, dong: doc.dong };
+  if (error) return chuaLuu(cauLoiKho(error));
 
   const kq = (Array.isArray(data) ? data[0] : data) as { phieu_id: string; phien_ban_moi: number; da_co: boolean } | undefined;
-  if (!kq) return { ok: false, cau: 'Không chắc đã lưu hay chưa — tải lại trang để kiểm tra.', dau: doc.dau, dong: doc.dong };
+  if (!kq) return chuaLuu('Không chắc đã lưu hay chưa — tải lại trang để kiểm tra.');
 
-  const cauAnh = tai.loi.length ? ` Lưu ý: ${tai.loi.join(' · ')}` : '';
   return {
     ok: true,
     id: kq.phieu_id,
     phienBan: kq.phien_ban_moi,
+    soDong: doc.payload.length,
     cau: (kq.da_co ? 'Phiếu này đã được lưu từ lần bấm trước.' : 'Đã lưu nháp.') + cauAnh,
   };
 }

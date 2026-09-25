@@ -1,0 +1,13 @@
+---
+/** Hàng chữ ký cuối trang KHI IN (ẩn trên màn hình). */
+interface Props { ten: string[] }
+const { ten } = Astro.props;
+---
+<section class="kho-chi-in kho-ky" style={`grid-template-columns: repeat(${ten.length}, 1fr)`}>
+  {ten.map(t => (
+    <div>
+      <strong>{t}</strong>
+      <span>(ký, ghi rõ họ tên)</span>
+    </div>
+  ))}
+</section>

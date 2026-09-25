@@ -127,6 +127,7 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/kho/kiem-ke.ts',
   'web/src/lib/kho/cong-no.ts',
   'web/src/lib/kho/bao-cao.ts',
+  'web/src/lib/kho/thong-bao.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
 ];

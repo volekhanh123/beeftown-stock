@@ -3,20 +3,35 @@
  * KHO — MỘT PHIẾU CHUYỂN / XUẤT BẾP / BÁO HỦY (lập mới khi id = "moi")
  *
  * Lập mới: ?loai=chuyen|xuat_bep|huy, nơi lấy ?tu=, nơi nhận ?den= (chuyển).
+ * Link từ trang chủ, thông báo và trang Quét còn mang sẵn thứ cần lấy:
+ *   ?lo=<lô>  → lô đó điền sẵn ở phần "theo lô" với TẤT CẢ số gói (hàng đếm
+ *               gói) hoặc số kg (hàng theo kg) đang có ở nơi lấy. Không có
+ *               ?tu thì nơi lấy là chỗ lô đang nằm.
+ *   ?mh=<món> → một dòng "theo mặt hàng" chọn sẵn món đó.
  * Đổi nơi bằng link GET ở đầu trang — danh sách lô bên dưới là lô ĐANG CÓ ở
- * nơi lấy, nên nơi lấy phải chọn trước.
+ * nơi lấy, nên nơi lấy phải chọn trước. Xuất bếp / báo hủy: thủ kho mặc định
+ * lấy ở Kho lạnh, nhân viên quầy lấy ở quầy.
  *
- * Hai cách ghi hàng, dùng chung được:
- *   · theo mặt hàng: "3 gói thăn cắt lát" — hệ thống lấy lô hết hạn sớm nhất;
- *     quét nhãn cân vào đây là nhanh nhất;
+ * Hai cách ghi hàng, dùng chung được nhưng KHÔNG cho một món ở cả hai chỗ
+ * (kho sẽ bị trừ hai lần):
+ *   · theo mặt hàng: "3 gói thăn cắt lát" — tự lấy hàng hạn gần trước; quét
+ *     nhãn cân là nhanh nhất, nên ô quét nằm đầu phần hàng và có sẵn con trỏ;
  *   · theo lô: ghi số gói ở đúng lô cần lấy — hợp với báo hủy lô hết hạn.
+ *     Nhân viên quầy chuyển hàng không thấy phần này (trừ khi link đã chọn
+ *     sẵn lô) — máy tự lấy đúng lô.
+ *
+ * Ảnh báo hủy tải lên một lần rồi giữ trong ô ẩn (lib/kho/xuat.ts): bấm
+ * "Đọc mã", "Thêm một dòng" hay gửi bị lỗi đều không làm mất ảnh.
  *
  * Phiếu ghi xong không sửa được (sổ kho bất biến). Chuyển nhầm thì chuyển
- * ngược lại; báo hủy nhầm thì quản lý từ chối.
+ * ngược lại; báo hủy nhầm thì quản lý từ chối. Duyệt / từ chối xong quay về
+ * hộp Duyệt để làm tiếp phiếu kế.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import KyTen from '../../../../components/kho/KyTen.astro';
 import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
 import QuetMa from '../../../../components/kho/QuetMa.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
@@ -26,12 +41,13 @@ import {
 import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
 import { docThongTinLo } from '../../../../lib/kho/pha-loc.ts';
 import {
-  docPhieuXuat, taoPhieuXuat, duyetHuy, tuChoiHuy, dongTuQuet, gopDong, docFormPhieuXuat, TEN_LOAI_XUAT,
+  docPhieuXuat, taoPhieuXuat, duyetHuy, tuChoiHuy, dongTuQuet, gopDong, docFormPhieuXuat, giuAnhHuy,
+  tomTatHang, docNhaCungCapCuaPhieuNhap, TEN_LOAI_XUAT,
   type DongLoForm, type DongSoCai, type DongXuat, type DongXuatForm, type LoaiXuat, type PhieuXuat,
 } from '../../../../lib/kho/xuat.ts';
 import { linkAnh } from '../../../../lib/kho/anh.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, laUuid,
   TEN_LOAI_SO_CAI, TRANG_THAI_CHUNG_TU, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 
@@ -39,6 +55,7 @@ const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const cn = k.chiNhanh;
+const vai = k.nhanSu.vai_tro;
 
 const idThamSo = Astro.params.id ?? '';
 const moi = idThamSo === 'moi';
@@ -77,16 +94,44 @@ if (!moi && !phieu && !loiDoc) {
 const q = Astro.url.searchParams;
 const loai: LoaiXuat = phieu?.loai
   ?? (['chuyen', 'xuat_bep', 'huy'].includes(q.get('loai') ?? '') ? q.get('loai') as LoaiXuat : 'chuyen');
+const moHuy = loai === 'huy';
 const dungDuoc = viTri.filter(v => v.loai !== 'cho_huy' && v.dang_dung);
 const khoDau = dungDuoc.find(v => v.id === caiDat?.vi_tri_nhan_hang_id) ?? dungDuoc.find(v => v.loai === 'kho');
 const quayDau = dungDuoc.find(v => v.loai === 'quay');
+
+// Link mang sẵn lô (?lo) hay món (?mh) cần lấy.
+const loThamSo = laUuid(q.get('lo')) ? q.get('lo') : null;
+const mhThamSo = matHang.find(m => m.id === q.get('mh') && m.dang_dung) ?? null;
+
+// Nơi lấy mặc định. Chuyển: từ kho. Xuất bếp / báo hủy: thủ kho làm ở Kho
+// lạnh, còn nhân viên quầy (và quản lý) thường làm ở quầy.
+const macDinh = (loai === 'chuyen' || vai === 'thu_kho' ? khoDau ?? quayDau : quayDau ?? khoDau) ?? dungDuoc[0] ?? null;
+/** Nơi đang có hàng khớp điều kiện — ưu tiên nơi mặc định, rồi theo thứ tự vị trí. */
+const noiCo = (dk: (t: DongTon) => boolean) => {
+  const co = (v: ViTri) => ton.some(t => t.vi_tri_id === v.id && (t.so_kg > 0 || t.so_goi > 0) && dk(t));
+  return macDinh && co(macDinh) ? macDinh : dungDuoc.find(co);
+};
 const tu = dungDuoc.find(v => v.id === q.get('tu'))
-  ?? (loai === 'chuyen' ? khoDau : quayDau) ?? dungDuoc[0] ?? null;
+  ?? (loThamSo ? noiCo(t => t.lo_id === loThamSo) : undefined)
+  // Đưa bếp / báo hủy một món (từ trang Quét): lấy ở chỗ đang có món đó.
+  // Phiếu chuyển thì không — "mang ra quầy" luôn đi từ kho.
+  ?? (mhThamSo && loai !== 'chuyen'
+    ? noiCo(t => t.mat_hang_id === mhThamSo.id && (loai !== 'xuat_bep' || t.tinh_trang_han !== 'het_han'))
+    : undefined)
+  ?? macDinh;
 const den = loai !== 'chuyen' ? null
   : dungDuoc.find(v => v.id === q.get('den') && v.id !== tu?.id)
     ?? dungDuoc.find(v => v.id !== tu?.id && v.loai !== tu?.loai) ?? dungDuoc.find(v => v.id !== tu?.id) ?? null;
+const giuLink: Record<string, string> = {
+  ...(loThamSo ? { lo: loThamSo } : {}), ...(mhThamSo ? { mh: mhThamSo.id } : {}),
+};
 const linkMoi = (thay: Record<string, string>) => {
-  const p = new URLSearchParams({ loai, ...(tu ? { tu: tu.id } : {}), ...(den ? { den: den.id } : {}), ...thay });
+  const p = new URLSearchParams({ loai, ...(tu ? { tu: tu.id } : {}), ...(den ? { den: den.id } : {}), ...giuLink, ...thay });
+  return `/noi-bo/kho/xuat/moi?${p.toString()}`;
+};
+// Đổi loại phiếu mà vẫn giữ lô / món đang cần lấy (vd. mở "Xuất bếp" mới thấy lô đã hỏng → "Báo hủy").
+const linkLoai = (l: LoaiXuat) => {
+  const p = new URLSearchParams({ loai: l, ...(loThamSo && tu ? { tu: tu.id } : {}), ...giuLink });
   return `/noi-bo/kho/xuat/moi?${p.toString()}`;
 };
 const chiConHan = loai === 'xuat_bep' || (loai === 'chuyen' && den?.loai === 'quay');
@@ -96,16 +141,32 @@ const loTaiTu = ton.filter(t => t.vi_tri_id === tu?.id && (t.so_kg > 0 || t.so_g
   .sort((a, b) => a.han_dung.localeCompare(b.han_dung) || a.ma_lo.localeCompare(b.ma_lo));
 const hangTaiTu = new Set(loTaiTu.filter(t => !chiConHan || t.tinh_trang_han !== 'het_han').map(t => t.mat_hang_id));
 const mhChon = matHang.filter(m => hangTaiTu.has(m.id));
+// Lô mà link chỉ tới, nếu còn ở nơi lấy. Hết hạn mà phiếu chỉ nhận hàng còn hạn thì không điền được.
+const loChon = loThamSo ? loTaiTu.find(t => t.lo_id === loThamSo) ?? null : null;
+const loChonKhoa = !!loChon && chiConHan && loChon.tinh_trang_han === 'het_han';
+// Nhân viên quầy chuyển hàng: không phải chọn lô — máy tự lấy hàng hạn gần trước.
+const anTheoLo = vai === 'nhan_vien_quay' && loai === 'chuyen';
+const lyDoLoai = lyDo.filter(l => l.loai === loai);
+const nutGhi = moHuy ? 'Ghi báo hủy' : 'Ghi phiếu';
+const tenMh = new Map(matHang.map(m => [m.id, m]));
 
 // ---------------------------------------------------------------------------
 // Lệnh gửi lên
 // ---------------------------------------------------------------------------
 let bao: KetQua | null = k.bao;
+/** Dòng vàng dưới câu báo: nhãn không đọc được, ảnh chưa tải lên... */
+const luuY: string[] = [];
 let dongA: DongXuatForm[] | null = null;
 let dongB: DongLoForm[] | null = null;
+let anhGiu: string[] = [];
+let dienSanMh = false;
 let ghiChuForm = '';
 let lyDoForm = '';
 const form = await docFormGui(Astro);
+// Gửi lại form (Đọc mã, sửa lỗi) thì GIỮ ma_gui: ảnh đã tải nằm dưới ma_gui này,
+// và lỡ lần trước đã ghi được mà mạng rớt thì bấm lại vẫn chỉ ra một phiếu.
+const maGuiCu = String(form?.get('ma_gui') ?? '');
+const maGuiForm = moi && laUuid(maGuiCu) ? maGuiCu : crypto.randomUUID();
 if (Astro.request.method === 'POST' && !form) {
   bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
 }
@@ -113,66 +174,139 @@ if (form) {
   const viec = String(form.get('viec') ?? '');
   ghiChuForm = String(form.get('ghi_chu') ?? '');
   lyDoForm = String(form.get('ly_do_id') ?? '');
-  if (moi && (viec === 'quet' || viec === 'ghi')) {
+  if (moi && (viec === 'quet' || viec === 'them_dong' || viec === 'ghi')) {
     if (!tu) {
       bao = { ok: false, cau: 'Chưa có kho hay quầy nào để lấy hàng.' };
-    } else if (viec === 'quet') {
-      const doc = docFormPhieuXuat(form, matHang);
-      const quet = dongTuQuet(String(form.get('ma_quet') ?? ''), matHang, caiDat?.mau_ma_vach, caiDat?.so_le_kg ?? 3);
-      dongA = gopDong(doc.dong, quet.dong);
-      dongB = doc.theoLo;
-      bao = quet.soMa === 0
-        ? { ok: false, cau: 'Ô quét đang trống — quét nhãn vào ô rồi bấm "Đọc mã".' }
-        : { ok: quet.loi.length === 0, cau: `Đã đọc ${quet.soMa} mã → ${quet.dong.length} mặt hàng.${quet.loi.length ? ` Chưa đọc được: ${quet.loi.join(' · ')}` : ' Kiểm lại rồi bấm "Ghi phiếu".'}` };
-    } else {
-      const kq = await taoPhieuXuat(k.client, cn.id, form, { loai, viTriId: tu.id, matHang });
+    } else if (viec === 'ghi') {
+      const kq = await taoPhieuXuat(k.client, cn.id, form, { loai, viTriId: tu.id, matHang, lyDo: lyDoLoai, den });
       if (kq.ok && kq.id) return chuyenHuong(Astro, `/noi-bo/kho/xuat/${kq.id}`, kq);
-      bao = kq;
+      bao = { ok: false, cau: kq.cau };
       dongA = kq.doc?.dong ?? null;
       dongB = kq.doc?.theoLo ?? null;
+      anhGiu = kq.anh ?? [];
+    } else {
+      // "Đọc mã" / "Thêm một dòng": vẽ lại form với đúng số đang ghi, chưa ghi gì.
+      const doc = docFormPhieuXuat(form, matHang);
+      dongB = doc.theoLo;
+      if (moHuy) {
+        const giu = await giuAnhHuy(k.client, cn.id, form, maGuiForm);
+        anhGiu = giu.duongDan;
+        luuY.push(...giu.loi);
+      }
+      if (viec === 'them_dong') {
+        dongA = doc.dong;
+      } else {
+        const quet = dongTuQuet(String(form.get('ma_quet') ?? ''), matHang, caiDat?.mau_ma_vach, caiDat?.so_le_kg ?? 3);
+        dongA = gopDong(doc.dong, quet.dong);
+        bao = quet.soMa === 0
+          ? { ok: false, cau: 'Ô quét đang trống — quét nhãn vào ô rồi bấm "Đọc mã đã quét".' }
+          : quet.soDoc > 0
+            ? { ok: true, cau: `Đã đọc ${quet.soDoc} nhãn: ${tomTatHang(quet.dong, matHang)}. Kiểm lại rồi bấm "${nutGhi}".` }
+            : { ok: false, cau: 'Chưa đọc được nhãn nào.' };
+        luuY.unshift(...quet.loi);
+        // Món vừa quét mà cũng đang có số ở phần lô: báo ngay, đừng đợi bấm ghi mới bị chặn.
+        const coOLo = new Set(doc.theoLo.filter(l => l.so_goi || l.so_kg).map(l => l.mat_hang_id));
+        for (const d of quet.dong) {
+          if (coOLo.has(d.mat_hang_id)) luuY.push(`${tenMh.get(d.mat_hang_id)?.ten ?? 'Một món'} vừa quét cũng đang ghi ở phần lô — xóa số ở một chỗ.`);
+        }
+        // Mã cân lạ: chỉ người sửa được danh mục mới thấy mã và chỗ sửa.
+        if (quet.maCanLa.length > 0 && k.duoc('danh_muc')) {
+          luuY.push(`Cho quản lý: mã cân ${quet.maCanLa.join(', ')} chưa gắn với món nào — gắn ở Cài đặt → Mặt hàng.`);
+        }
+      }
     }
   } else if (phieu) {
     let kq: KetQua;
     if (viec === 'duyet') kq = await duyetHuy(k.client, phieu.id);
     else if (viec === 'tu_choi') kq = await tuChoiHuy(k.client, phieu.id, String(form.get('ly_do') ?? '').trim());
     else kq = { ok: false, cau: 'Việc không hợp lệ.' };
-    return chuyenHuong(Astro, `/noi-bo/kho/xuat/${phieu.id}`, kq);
+    // Duyệt / từ chối xong: về hộp Duyệt, phiếu kế tiếp nằm sẵn ở đó. Lỗi thì ở lại phiếu này.
+    return chuyenHuong(Astro, kq.ok ? '/noi-bo/kho/duyet' : `/noi-bo/kho/xuat/${phieu.id}`, kq);
   } else {
     bao = { ok: false, cau: 'Việc không hợp lệ.' };
+  }
+} else if (moi) {
+  // Mở từ link: điền sẵn. Gửi form rồi thì luôn giữ đúng số người dùng đã ghi.
+  if (loChon && !loChonKhoa) {
+    dongB = [{
+      lo_id: loChon.lo_id, mat_hang_id: loChon.mat_hang_id,
+      so_goi: loChon.dem_goi && loChon.so_goi > 0 ? String(loChon.so_goi) : '',
+      so_kg: loChon.dem_goi ? '' : String(loChon.so_kg).replace('.', ','),
+    }];
+  } else if (loThamSo && !loChon && tu) {
+    luuY.push(`Lô được chọn không còn hàng ở ${tu.ten} — có thể đã chuyển hay hủy rồi.`);
+  }
+  if (mhThamSo && loChon?.mat_hang_id !== mhThamSo.id) {
+    dongA = [{ mat_hang_id: mhThamSo.id, so_goi: '', so_kg: '' }];
+    dienSanMh = true;
   }
 }
 
 // ---------------------------------------------------------------------------
 // Dữ liệu hiển thị
 // ---------------------------------------------------------------------------
-const tenMh = new Map(matHang.map(m => [m.id, m]));
-const lyDoChon = lyDo.filter(l => l.loai === loai && (l.dang_dung || l.id === lyDoForm));
+const lyDoChon = lyDoLoai.filter(l => l.dang_dung || l.id === lyDoForm);
+// Một dòng trống để ghi thêm (trước là 2–4 dòng). Link đã chọn sẵn món thì
+// chính dòng đó là dòng để ghi.
 const dongHienA: DongXuatForm[] = [
   ...(dongA ?? []),
-  ...Array.from({ length: Math.max(2, 4 - (dongA?.length ?? 0)) }, () => ({ mat_hang_id: '', so_goi: '', so_kg: '' })),
+  ...(dienSanMh ? [] : [{ mat_hang_id: '', so_goi: '', so_kg: '' }]),
 ];
 const theoLoCu = new Map((dongB ?? []).map(l => [l.lo_id, l]));
-const maGuiForm = crypto.randomUUID();
+const loCoSo = new Set((dongB ?? []).filter(l => l.so_goi || l.so_kg).map(l => l.lo_id));
+// Lô link chọn sẵn lên đầu. Nhân viên quầy chuyển hàng chỉ thấy lô đã chọn / đang có số.
+const loHien = (anTheoLo ? loTaiTu.filter(t => t.lo_id === loChon?.lo_id || loCoSo.has(t.lo_id)) : loTaiTu)
+  .slice().sort((a, b) => Number(b.lo_id === loChon?.lo_id) - Number(a.lo_id === loChon?.lo_id));
+const hienTheoLo = !anTheoLo || loHien.length > 0;
+
+// Ảnh báo hủy: lý do nào cần ảnh, nói bằng chữ ngay dưới ô ảnh.
+const lyDoDung = lyDoChon.filter(l => l.dang_dung);
+const lyDoCanAnh = lyDoDung.filter(l => l.can_anh);
+const moiLyDoCanAnh = lyDoDung.length > 0 && lyDoCanAnh.length === lyDoDung.length;
+const lyDoDangChon = lyDoChon.find(l => l.id === lyDoForm) ?? null;
+const canAnh = moHuy && (lyDoDangChon ? lyDoDangChon.can_anh : moiLyDoCanAnh);
+const goiYAnh = moiLyDoCanAnh
+  ? 'Bắt buộc — lý do nào cũng cần ảnh.'
+  : lyDoCanAnh.length > 0
+    ? `Cần ảnh khi lý do là: ${lyDoCanAnh.map(l => l.ten).join(', ')}.`
+    : 'Không bắt buộc.';
+const anhLinkGiu = anhGiu.length ? await linkAnh(k.client, anhGiu) : new Map<string, string>();
+
 const loTheoMa = phieu ? await docThongTinLo(k.client, [...soCai.map(s => s.lo_id), ...dongDb.map(d => d.lo_id ?? '')]) : new Map();
 const ten = phieu ? await tenNhanSu(k.client, [phieu.nguoi_tao, phieu.nguoi_duyet]) : new Map<string, string>();
 const anhLink = phieu ? await linkAnh(k.client, phieu.anh) : new Map<string, string>();
+// Phiếu trả hàng: quay lại công nợ của đúng nhà cung cấp (trang Công nợ chỉ
+// vai kế toán — kế toán, quản lý, chủ — mở được; thủ kho xem giá nhưng không vào đó).
+const nccTra = phieu?.loai === 'tra_ncc' && k.duoc('ke_toan')
+  ? await docNhaCungCapCuaPhieuNhap(k.client, phieu.phieu_nhap_id) : null;
 const [nhanTT, lopTT] = phieu ? (TRANG_THAI_CHUNG_TU[phieu.trang_thai] ?? [phieu.trang_thai, 'tat']) : ['Mới', 'nhap'];
 const tieuDe = moi ? TEN_LOAI_XUAT[loai] : `${TEN_LOAI_XUAT[loai]} ${phieu?.so_phieu ?? ''}`;
-const moHuy = loai === 'huy';
+const choToiDuyet = phieu?.trang_thai === 'cho_duyet' && k.duoc('duyet');
+const huongDan = choToiDuyet ? 'quan-ly-duyet' : vai === 'nhan_vien_quay' ? 'nv-quay' : 'thu-kho';
 // Sổ của phiếu: chỉ các dòng rời nơi lấy (chuyển đi / xuất bếp) — đủ để biết lô nào.
 const soCaiLay = soCai.filter(s => s.vi_tri_id === phieu?.vi_tri_id && ['chuyen_di', 'xuat_bep', 'tra_ncc'].includes(s.loai));
 const daHuy = soCai.filter(s => s.loai === 'huy');
 ---
-<NoiBo tieuDe={tieuDe} nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe={tieuDe} huongDan={huongDan}>
   <h1>{tieuDe}</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <BaoKho bao={bao} loiDoc={loiDoc} />
+  {!moi && phieu && (
+    <>
+      <InDau tieuDe={({ huy: 'BIÊN BẢN HỦY HÀNG', chuyen: 'PHIẾU CHUYỂN KHO', xuat_bep: 'PHIẾU XUẤT BẾP',
+        tra_ncc: 'PHIẾU TRẢ HÀNG NHÀ CUNG CẤP' } as Record<string, string>)[phieu.loai] ?? 'PHIẾU XUẤT KHO'}
+        soPhieu={phieu.so_phieu} chiNhanh={k.chiNhanh?.ten} />
+      <NutIn chu={phieu.loai === 'huy' ? 'In biên bản' : 'In phiếu'} />
+    </>
+  )}
+  {luuY.length > 0 && (
+    <div class="nb-bao luu-y" role="status">{luuY.map(c => <p>{c}</p>)}</div>
+  )}
 
   {moi ? (
     <>
       <nav class="kho-dh" aria-label="Loại phiếu">
         {(['chuyen', 'xuat_bep', 'huy'] as const).map(l => (
-          <a href={`/noi-bo/kho/xuat/moi?loai=${l}`} aria-current={l === loai ? 'page' : undefined}>{TEN_LOAI_XUAT[l]}</a>
+          <a href={linkLoai(l)} aria-current={l === loai ? 'page' : undefined}>{TEN_LOAI_XUAT[l]}</a>
         ))}
       </nav>
       <div class="nb-the">
@@ -190,6 +324,15 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
         )}
       </div>
 
+      {loChonKhoa && loChon && (
+        <div class="nb-bao luu-y" role="status">
+          <p>
+            Lô {loChon.ma_lo} ({loChon.ten_hang}) đã hết hạn — không {loai === 'xuat_bep' ? 'đưa bếp' : 'đưa ra quầy'} được.{' '}
+            <a href={`/noi-bo/kho/xuat/moi?loai=huy&tu=${loChon.vi_tri_id}&lo=${loChon.lo_id}`}>Báo hủy lô này</a>
+          </p>
+        </div>
+      )}
+
       {!tu || (loai === 'chuyen' && !den) ? (
         <p class="nb-rong">Cần ít nhất {loai === 'chuyen' ? 'hai vị trí (kho và quầy)' : 'một kho hoặc quầy'} đang dùng. Thêm trong Cài đặt → Vị trí.</p>
       ) : (
@@ -197,7 +340,8 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
           <input type="hidden" name="ma_gui" value={maGuiForm} />
           {den && <input type="hidden" name="vi_tri_den_id" value={den.id} />}
           <input type="hidden" name="so_dong" value={String(dongHienA.length)} />
-          <input type="hidden" name="so_lo" value={String(loTaiTu.length)} />
+          <input type="hidden" name="so_lo" value={String(hienTheoLo ? loHien.length : 0)} />
+          {anhGiu.map(d => <input type="hidden" name="anh_da_tai" value={d} />)}
 
           <p class="nb-dan">
             {loai === 'chuyen' && <>Chuyển từ <strong>{tu.ten}</strong> sang <strong>{den?.ten}</strong>.</>}
@@ -206,82 +350,98 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
             {chiConHan && <> Lô <strong>đã hết hạn</strong> được bỏ qua — chỉ báo hủy được.</>}
           </p>
 
+          <h2>{moHuy ? 'Hàng cần hủy' : 'Hàng lấy ra'}</h2>
+          <QuetMa tuFocus />
+          <p class="kho-phu">Không quét được thì chọn món và ghi số gói — máy tự lấy hàng hạn gần trước. Hàng theo kg (không đếm gói) thì ghi số kg.</p>
+          {dongHienA.map((d, i) => (
+            <div class="kho-dong-hang">
+              <span class="so-thu-tu">{i + 1}</span>
+              <label class="nb-o" style="margin-top:.4rem"><span>Mặt hàng</span>
+                <ChonMatHang name={`d${i}_mat_hang`} matHang={mhChon.length ? [...mhChon, ...matHang.filter(m => m.id === d.mat_hang_id && !hangTaiTu.has(m.id))] : matHang} chon={d.mat_hang_id} trong={mhChon.length ? '— chọn mặt hàng —' : '— nơi này đang trống —'} />
+              </label>
+              <div class="kho-luoi">
+                <label class="nb-o"><span>Số gói</span>
+                  <input type="text" inputmode="numeric" name={`d${i}_so_goi`} value={d.so_goi} /></label>
+                <label class="nb-o"><span>Số kg</span>
+                  <input type="text" inputmode="decimal" name={`d${i}_so_kg`} value={d.so_kg} placeholder={i === 0 ? 'hàng theo kg / kg quét được' : undefined} /></label>
+              </div>
+            </div>
+          ))}
+          <div class="kho-thanh-nut" style="margin-top:0">
+            <button type="submit" name="viec" value="them_dong" class="nb-nut phu" formnovalidate>+ Thêm một dòng</button>
+          </div>
+
+          {hienTheoLo && (
+            <details open={moHuy || !!loChon || loCoSo.size > 0}>
+              <summary style="cursor:pointer;font-weight:600;padding:.5rem 0">{anTheoLo ? 'Lô đã chọn' : moHuy ? 'Chọn lô cần hủy' : 'Hoặc chọn đúng lô cần lấy'}</summary>
+              <p class="kho-phu" style="margin-top:0">Món đã ghi ở trên thì đừng ghi lại ở đây — mỗi món chỉ ghi một chỗ.</p>
+              {loHien.length === 0 ? (
+                <p class="nb-rong">{tu.ten} đang không có hàng.</p>
+              ) : (
+                <div class="kho-lo-chon">
+                  {loHien.map((t, i) => {
+                    const cu = theoLoCu.get(t.lo_id);
+                    const khoa = chiConHan && t.tinh_trang_han === 'het_han';
+                    return (
+                      <div>
+                        <input type="hidden" name={`l${i}_lo`} value={t.lo_id} />
+                        <input type="hidden" name={`l${i}_mat_hang`} value={t.mat_hang_id} />
+                        <div class="dau">
+                          <b>{t.ten_hang}</b>
+                          <span class="kho-phu">lô {t.ma_lo} · còn {t.dem_goi ? `${t.so_goi} ${t.don_vi_goi} · ` : ''}{dinhDangKg(t.so_kg)} kg ·{' '}
+                            <span class={`kho-han ${t.tinh_trang_han}`}>HSD {dinhDangNgay(t.han_dung)}</span></span>
+                        </div>
+                        {khoa ? (
+                          <p class="kho-phu" style="margin:.2rem 0 .6rem">Đã hết hạn — chỉ báo hủy được.</p>
+                        ) : (
+                          <div class="kho-luoi">
+                            {t.dem_goi && (
+                              <label class="nb-o"><span>Số {t.don_vi_goi}</span>
+                                <input type="text" inputmode="numeric" name={`l${i}_so_goi`} value={cu?.so_goi ?? ''} /></label>
+                            )}
+                            <label class="nb-o"><span>Số kg{t.dem_goi ? ' (nếu cân)' : ''}</span>
+                              <input type="text" inputmode="decimal" name={`l${i}_so_kg`} value={cu?.so_kg ?? ''} /></label>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </details>
+          )}
+
           <div class="nb-the">
             {loai !== 'chuyen' && (
               <label class="nb-o"><span>Lý do{moHuy ? ' *' : ''}</span>
                 <select name="ly_do_id" required={moHuy}>
                   <option value="">{moHuy ? '— chọn lý do —' : '(không ghi lý do)'}</option>
-                  {lyDoChon.map(l => <option value={l.id} selected={l.id === lyDoForm}>{l.ten}{l.can_anh ? ' — cần ảnh' : ''}</option>)}
+                  {lyDoChon.map(l => <option value={l.id} selected={l.id === lyDoForm}>{l.ten}{moHuy && l.can_anh && !moiLyDoCanAnh ? ' (cần ảnh)' : ''}</option>)}
                 </select></label>
             )}
             {moHuy && (
-              <label class="nb-o"><span>Ảnh chụp hàng</span>
-                <small>Chụp rõ nhãn và tình trạng hàng. Chọn ảnh sau cùng, ngay trước khi bấm "Ghi báo hủy".</small>
-                <input type="file" name="anh" accept="image/*" capture="environment" multiple /></label>
+              <>
+                <label class="nb-o"><span>Ảnh chụp hàng{canAnh ? ' *' : ''}</span>
+                  <small>{goiYAnh} Chụp rõ nhãn và tình trạng hàng. Ảnh đã chọn được giữ lại khi bấm "Đọc mã" hay khi phải sửa lỗi.</small>
+                  <input type="file" name="anh" accept="image/*" capture="environment" multiple required={moiLyDoCanAnh && anhGiu.length === 0} /></label>
+                {anhGiu.length > 0 && (
+                  <>
+                    <p class="kho-phu" style="margin:-.25rem 0 .4rem">Đã có {anhGiu.length} ảnh — không cần chụp lại. Muốn thêm thì chọn tiếp.</p>
+                    <div class="kho-anh">
+                      {anhGiu.map(d => anhLinkGiu.get(d)
+                        ? <a href={anhLinkGiu.get(d)} target="_blank" rel="noopener"><img src={anhLinkGiu.get(d)} alt="Ảnh hàng báo hủy đã chụp" loading="lazy" /></a>
+                        : <span class="kho-phu">{d.split('/').pop()}</span>)}
+                    </div>
+                  </>
+                )}
+              </>
             )}
             <label class="nb-o"><span>Ghi chú</span>
               <input type="text" name="ghi_chu" value={ghiChuForm} maxlength="500" /></label>
           </div>
 
-          <details open={!moHuy || (dongA ?? []).length > 0}>
-            <summary style="cursor:pointer;font-weight:600;padding:.5rem 0">{moHuy ? 'Theo mặt hàng / quét nhãn (tự lấy lô hết hạn sớm nhất)' : 'Theo mặt hàng'}</summary>
-            <p class="kho-phu" style="margin-top:0">Ghi số gói — hệ thống lấy lô hết hạn sớm nhất. Hàng theo kg (không đếm gói) thì ghi số kg.</p>
-            <QuetMa />
-            {dongHienA.map((d, i) => (
-              <div class="kho-dong-hang">
-                <span class="so-thu-tu">{i + 1}</span>
-                <label class="nb-o" style="margin-top:.4rem"><span>Mặt hàng</span>
-                  <ChonMatHang name={`d${i}_mat_hang`} matHang={mhChon.length ? [...mhChon, ...matHang.filter(m => m.id === d.mat_hang_id && !hangTaiTu.has(m.id))] : matHang} chon={d.mat_hang_id} trong={mhChon.length ? '— chọn mặt hàng —' : '— nơi này đang trống —'} />
-                </label>
-                <div class="kho-luoi">
-                  <label class="nb-o"><span>Số gói</span>
-                    <input type="text" inputmode="numeric" name={`d${i}_so_goi`} value={d.so_goi} /></label>
-                  <label class="nb-o"><span>Số kg</span>
-                    <input type="text" inputmode="decimal" name={`d${i}_so_kg`} value={d.so_kg} placeholder={i === 0 ? 'hàng theo kg / kg quét được' : undefined} /></label>
-                </div>
-              </div>
-            ))}
-          </details>
-
-          <details open={moHuy || (dongB ?? []).some(l => l.so_goi || l.so_kg)}>
-            <summary style="cursor:pointer;font-weight:600;padding:.5rem 0">{moHuy ? 'Chọn lô cần hủy' : 'Hoặc chọn đúng lô cần lấy'}</summary>
-            {loTaiTu.length === 0 ? (
-              <p class="nb-rong">{tu.ten} đang không có hàng.</p>
-            ) : (
-              <div class="kho-lo-chon">
-                {loTaiTu.map((t, i) => {
-                  const cu = theoLoCu.get(t.lo_id);
-                  const khoa = chiConHan && t.tinh_trang_han === 'het_han';
-                  return (
-                    <div>
-                      <input type="hidden" name={`l${i}_lo`} value={t.lo_id} />
-                      <input type="hidden" name={`l${i}_mat_hang`} value={t.mat_hang_id} />
-                      <div class="dau">
-                        <b>{t.ten_hang}</b>
-                        <span class="kho-phu">lô {t.ma_lo} · còn {t.dem_goi ? `${t.so_goi} ${t.don_vi_goi} · ` : ''}{dinhDangKg(t.so_kg)} kg ·{' '}
-                          <span class={`kho-han ${t.tinh_trang_han}`}>HSD {dinhDangNgay(t.han_dung)}</span></span>
-                      </div>
-                      {khoa ? (
-                        <p class="kho-phu" style="margin:.2rem 0 .6rem">Đã hết hạn — chỉ báo hủy được.</p>
-                      ) : (
-                        <div class="kho-luoi">
-                          {t.dem_goi && (
-                            <label class="nb-o"><span>Số {t.don_vi_goi}</span>
-                              <input type="text" inputmode="numeric" name={`l${i}_so_goi`} value={cu?.so_goi ?? ''} /></label>
-                          )}
-                          <label class="nb-o"><span>Số kg{t.dem_goi ? ' (nếu cân)' : ''}</span>
-                            <input type="text" inputmode="decimal" name={`l${i}_so_kg`} value={cu?.so_kg ?? ''} /></label>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </details>
-
           <div class="kho-thanh-nut dinh">
-            <button type="submit" name="viec" value="ghi" class={`nb-nut ${moHuy ? 'kho-nut-xoa' : ''}`}>{moHuy ? 'Ghi báo hủy' : 'Ghi phiếu'}</button>
+            <button type="submit" name="viec" value="ghi" class={`nb-nut ${moHuy ? 'kho-nut-xoa' : ''}`}>{nutGhi}</button>
           </div>
         </form>
       )}
@@ -328,7 +488,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                 <td class="so">{d.so_goi || '—'}</td>
                 <td class="so">{dinhDangKg(d.so_kg)}</td>
                 <td class="so">{d.so_kg_do !== null ? dinhDangKg(d.so_kg_do) : '—'}</td>
-                <td>{d.lo_id ? loTheoMa.get(d.lo_id)?.ma_lo ?? '—' : 'FEFO'}</td>
+                <td>{d.lo_id ? loTheoMa.get(d.lo_id)?.ma_lo ?? '—' : 'tự lấy hàng hạn gần trước'}</td>
               </tr>
             ))}
           </tbody>
@@ -360,8 +520,8 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
         </p>
       )}
 
-      {phieu.loai === 'huy' && phieu.trang_thai === 'cho_duyet' && k.duoc('duyet') && (
-        <div class="nb-the">
+      {phieu.loai === 'huy' && choToiDuyet && (
+        <div class="nb-the kho-khong-in">
           <h2 style="margin-top:0">Duyệt báo hủy</h2>
           <form method="POST" class="kho-thanh-nut">
             <button type="submit" name="viec" value="duyet" class="nb-nut">Duyệt — ghi hủy</button>
@@ -378,5 +538,13 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
     </>
   )}
 
-  <p style="margin-top:1.5rem"><a href="/noi-bo/kho/xuat">← Danh sách phiếu</a></p>
-</NoiBo>
+  <p class="kho-khong-in" style="margin-top:1.5rem">
+    {nccTra
+      ? <a href={`/noi-bo/kho/cong-no/${nccTra}`}>← Công nợ nhà cung cấp</a>
+      : choToiDuyet
+        ? <a href="/noi-bo/kho/duyet">← Về trang Duyệt</a>
+        : <a href="/noi-bo/kho/xuat">← Danh sách phiếu</a>}
+  </p>
+  {!moi && phieu && <KyTen ten={phieu.loai === 'huy' ? ['Người báo hủy', 'Người chứng kiến', 'Quản lý duyệt']
+    : phieu.loai === 'tra_ncc' ? ['Thủ kho', 'Nhà cung cấp nhận', 'Kế toán'] : ['Người giao', 'Người nhận']} />}
+</Kho>

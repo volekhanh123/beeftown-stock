@@ -1,0 +1,176 @@
+/**
+ * KHO — MENU THEO VAI
+ *
+ * Khung giống iPOS Inventory Pro:
+ *   · máy tính (≥1024px): cột ô biểu tượng bên trái, số đỏ báo việc, dưới là
+ *     "Thao tác nhanh";
+ *   · điện thoại / tablet: thanh 5 nút dưới đáy, nút giữa là QUÉT.
+ *
+ * Mỗi vai một thanh đáy riêng — thủ kho, NV quầy, quản lý, kế toán làm những
+ * việc khác nhau, nên thứ nằm dưới ngón cái của họ cũng khác nhau.
+ *
+ * File thuần (không import lúc chạy trừ chung.ts), để test kiểm: mọi link trỏ
+ * tới một trang có thật, thanh đáy không quá 5 nút, NV quầy không có ô nào cần
+ * quyền xem giá.
+ *
+ * Quyền ở đây chỉ để ẩn/hiện. Mỗi mục ghi đúng quyền mà TRANG ĐÓ kiểm ở đầu
+ * file — lệch nhau thì người dùng bấm vào một ô rồi bị đẩy ra, rất khó chịu.
+ */
+
+import { duoc, type ViecKho } from './chung.ts';
+import type { TenBieuTuong } from './bieu-tuong.ts';
+
+/** Kết quả kho_dem_viec (0030): số đếm theo khóa; khóa không có quyền thì vắng mặt. */
+export type SoViec = Record<string, number | boolean | string | null | undefined>;
+
+export interface MucKho {
+  ma: string;
+  ten: string;
+  /** Tên ngắn cho thanh đáy (≤ 9 ký tự). */
+  ngan?: string;
+  link: string;
+  bieuTuong: TenBieuTuong;
+  /** Cần MỘT trong các quyền này (khớp với dòng kiểm quyền đầu trang). */
+  quyen: ViecKho[];
+  /** Các khóa kho_dem_viec cộng lại thành số đỏ. */
+  dem?: string[];
+  /** Tiền tố đường dẫn khác cũng tính là "đang ở mục này". */
+  khop?: string[];
+}
+
+// Các khóa "việc của chính mình / việc tay chân" — gom thành số đỏ của mục Việc.
+export const KHOA_VIEC_TAY = [
+  'nhap_bi_tra', 'huy_bi_tra', 'kiem_ke_tra_ve', 'het_han', 'quay_duoi_muc', 'quay_chua_dem',
+];
+export const KHOA_DUYET = ['duyet_nhap', 'duyet_huy', 'duyet_kiem_ke'];
+export const KHOA_CONG_NO = ['cong_no_qua_han', 'chua_doi_chieu'];
+
+export const MUC_KHO: MucKho[] = [
+  { ma: 'trang_chu', ten: 'Trang chủ', link: '/noi-bo/kho', bieuTuong: 'nha', quyen: ['xem'] },
+  { ma: 'viec', ten: 'Việc cần làm', ngan: 'Việc', link: '/noi-bo/kho/viec', bieuTuong: 'viec',
+    quyen: ['nhap', 'van_hanh', 'pha_loc'], dem: KHOA_VIEC_TAY },
+  { ma: 'duyet', ten: 'Duyệt', link: '/noi-bo/kho/duyet', bieuTuong: 'duyet', quyen: ['duyet'], dem: KHOA_DUYET },
+  { ma: 'quet', ten: 'Quét nhãn', ngan: 'Quét', link: '/noi-bo/kho/quet', bieuTuong: 'quet', quyen: ['xem'] },
+  { ma: 'ton', ten: 'Tồn kho', link: '/noi-bo/kho/ton', bieuTuong: 'ton', quyen: ['xem'], dem: ['het_han'],
+    khop: ['/noi-bo/kho/the-kho'] },
+  { ma: 'nhap', ten: 'Nhập hàng', link: '/noi-bo/kho/nhap', bieuTuong: 'nhap', quyen: ['xem_gia'],
+    dem: ['nhap_bi_tra'] },
+  { ma: 'pha_loc', ten: 'Pha lóc', link: '/noi-bo/kho/pha-loc', bieuTuong: 'dao', quyen: ['xem_gia'],
+    dem: ['pha_nhap'] },
+  { ma: 'xuat', ten: 'Chuyển · Xuất · Hủy', ngan: 'Xuất', link: '/noi-bo/kho/xuat', bieuTuong: 'chuyen',
+    quyen: ['xem'], dem: ['huy_bi_tra'] },
+  { ma: 'kiem_ke', ten: 'Kiểm kê', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['xem'],
+    dem: ['kiem_ke_tra_ve', 'quay_chua_dem'] },
+  { ma: 'cong_no', ten: 'Công nợ', link: '/noi-bo/kho/cong-no', bieuTuong: 'cong_no', quyen: ['ke_toan'],
+    dem: KHOA_CONG_NO },
+  { ma: 'bao_cao', ten: 'Báo cáo', link: '/noi-bo/kho/bao-cao', bieuTuong: 'bao_cao', quyen: ['xem_gia'] },
+  { ma: 'quy_trinh', ten: 'Quy trình', link: '/noi-bo/kho/quy-trinh', bieuTuong: 'quy_trinh', quyen: ['xem'] },
+  { ma: 'cai_dat', ten: 'Cài đặt', link: '/noi-bo/kho/cai-dat', bieuTuong: 'cai_dat',
+    quyen: ['danh_muc', 'ncc', 'cai_dat_goc'] },
+  { ma: 'huong_dan', ten: 'Hướng dẫn', link: '/noi-bo/kho/huong-dan', bieuTuong: 'huong_dan', quyen: ['xem'] },
+];
+
+// Hai mục chỉ có trên thanh đáy.
+const MUC_QUAY: MucKho = {
+  ma: 'hang_quay', ten: 'Hàng ở quầy', ngan: 'Ở quầy', link: '/noi-bo/kho/ton?vi_tri=quay', bieuTuong: 'quay',
+  quyen: ['xem'],
+};
+const MUC_KHAC: MucKho = {
+  ma: 'khac', ten: 'Khác', link: '/noi-bo/kho/khac', bieuTuong: 'khac', quyen: ['xem'],
+};
+
+const theoMa = (ma: string): MucKho => {
+  const m = MUC_KHO.find(x => x.ma === ma);
+  if (!m) throw new Error(`Không có mục menu kho "${ma}"`);
+  return m;
+};
+
+/** Thanh đáy của từng vai — đúng 5 nút (kế toán 5). */
+export const THANH_DAY: Record<string, MucKho[]> = {
+  thu_kho:        [{ ...theoMa('trang_chu') }, theoMa('viec'), theoMa('quet'), theoMa('ton'), MUC_KHAC],
+  nhan_vien_quay: [{ ...theoMa('trang_chu'), ten: 'Quầy', bieuTuong: 'quay' }, theoMa('viec'), theoMa('quet'),
+                   MUC_QUAY, MUC_KHAC],
+  quan_ly:        [{ ...theoMa('trang_chu'), ten: 'Hôm nay' }, theoMa('duyet'), theoMa('quet'), theoMa('ton'), MUC_KHAC],
+  chu_so_huu:     [{ ...theoMa('trang_chu'), ten: 'Hôm nay' }, theoMa('duyet'), theoMa('quet'), theoMa('ton'), MUC_KHAC],
+  ke_toan:        [theoMa('trang_chu'), theoMa('cong_no'), theoMa('nhap'), theoMa('bao_cao'), MUC_KHAC],
+};
+
+export interface ThaoTac { ten: string; link: string; bieuTuong: TenBieuTuong; quyen: ViecKho[] }
+
+/** "Thao tác nhanh" — nút tròn trên trang chủ và danh sách dưới cột trái. */
+export const THAO_TAC_NHANH: Record<string, ThaoTac[]> = {
+  thu_kho: [
+    { ten: 'Nhận hàng', link: '/noi-bo/kho/nhap/moi', bieuTuong: 'nhap', quyen: ['nhap'] },
+    { ten: 'Pha lóc', link: '/noi-bo/kho/pha-loc/moi', bieuTuong: 'dao', quyen: ['pha_loc'] },
+    { ten: 'Ra quầy', link: '/noi-bo/kho/xuat/moi?loai=chuyen', bieuTuong: 'chuyen', quyen: ['van_hanh'] },
+    { ten: 'Báo hủy', link: '/noi-bo/kho/xuat/moi?loai=huy', bieuTuong: 'huy', quyen: ['van_hanh'] },
+    { ten: 'Kiểm kê', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['van_hanh'] },
+  ],
+  nhan_vien_quay: [
+    { ten: 'Lấy hàng ra quầy', link: '/noi-bo/kho/xuat/moi?loai=chuyen', bieuTuong: 'chuyen', quyen: ['van_hanh'] },
+    { ten: 'Đưa bếp', link: '/noi-bo/kho/xuat/moi?loai=xuat_bep', bieuTuong: 'bep', quyen: ['van_hanh'] },
+    { ten: 'Báo hàng hỏng', link: '/noi-bo/kho/xuat/moi?loai=huy', bieuTuong: 'huy', quyen: ['van_hanh'] },
+    { ten: 'Đếm quầy', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['van_hanh'] },
+  ],
+  quan_ly: [
+    { ten: 'Duyệt', link: '/noi-bo/kho/duyet', bieuTuong: 'duyet', quyen: ['duyet'] },
+    { ten: 'Kiểm kê', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['xem'] },
+    { ten: 'Tồn kho', link: '/noi-bo/kho/ton', bieuTuong: 'ton', quyen: ['xem'] },
+    { ten: 'Báo cáo', link: '/noi-bo/kho/bao-cao', bieuTuong: 'bao_cao', quyen: ['xem_gia'] },
+  ],
+  ke_toan: [
+    { ten: 'Đối chiếu hóa đơn', link: '/noi-bo/kho/cong-no?loc=chua_doi_chieu', bieuTuong: 'viec', quyen: ['ke_toan'] },
+    { ten: 'Ghi thanh toán', link: '/noi-bo/kho/cong-no', bieuTuong: 'cong_no', quyen: ['ke_toan'] },
+    { ten: 'Tải công nợ (Excel)', link: '/noi-bo/kho/bao-cao/cong-no.csv', bieuTuong: 'bao_cao', quyen: ['ke_toan'] },
+  ],
+};
+THAO_TAC_NHANH.chu_so_huu = THAO_TAC_NHANH.quan_ly;
+
+/** Các mục cột trái mà vai này được thấy. */
+export function mucCuaVai(vai: string): MucKho[] {
+  return MUC_KHO.filter(m => m.quyen.some(q => duoc(vai, q)));
+}
+
+/** Thanh đáy của vai này (vai lạ: chỉ Trang chủ + Khác). */
+export function thanhDayCuaVai(vai: string): MucKho[] {
+  const ds = THANH_DAY[vai] ?? [theoMa('trang_chu'), MUC_KHAC];
+  return ds.filter(m => m.quyen.some(q => duoc(vai, q)));
+}
+
+export function thaoTacCuaVai(vai: string): ThaoTac[] {
+  return (THAO_TAC_NHANH[vai] ?? []).filter(t => t.quyen.some(q => duoc(vai, q)));
+}
+
+/** Số đỏ của một mục: cộng các khóa đếm (khóa vắng mặt = 0). */
+export function soDo(muc: { dem?: string[] }, viec: SoViec | null | undefined): number {
+  if (!muc.dem || !viec) return 0;
+  return muc.dem.reduce((s, k) => s + (typeof viec[k] === 'number' ? (viec[k] as number) : 0), 0);
+}
+
+/** Đường dẫn hiện tại có thuộc mục này không. */
+export function dangO(muc: { link: string; khop?: string[] }, duong: string, timKiem = ''): boolean {
+  const [goc, q] = muc.link.split('?');
+  const d = duong.replace(/\/$/, '') || '/';
+  if (q) return d === goc && timKiem.replace(/^\?/, '').split('&').includes(q);
+  if (goc === '/noi-bo/kho') return d === goc;
+  return d === goc || d.startsWith(goc + '/') || (muc.khop ?? []).some(p => d === p || d.startsWith(p + '/'));
+}
+
+/** Hiện số đỏ: 0 thì không hiện, lớn quá thì "99+". */
+export function nhanSo(n: number): string {
+  return n > 99 ? '99+' : String(n);
+}
+
+// -----------------------------------------------------------------------------
+// PHẦN CRM / WEBSITE — link trong menu người dùng cho quản lý, chủ nhà hàng
+// -----------------------------------------------------------------------------
+// Soi gương danh sách MUC trong layouts/NoiBo.astro (file dùng chung — kho
+// không sửa file đó). Vai nào thấy mục nào phải khớp với bên đó.
+const VAI_CRM = ['chu_so_huu', 'quan_ly', 'thu_ngan', 'marketing'];
+export const MUC_CRM: { link: string; ten: string; vai: string[]; bieuTuong: TenBieuTuong }[] = [
+  { link: '/noi-bo', ten: 'Tổng quan nhà hàng', vai: VAI_CRM, bieuTuong: 'nha' },
+  { link: '/noi-bo/dat-ban', ten: 'Đặt bàn', vai: VAI_CRM, bieuTuong: 'lich' },
+  { link: '/noi-bo/noi-dung', ten: 'Nội dung website', vai: ['chu_so_huu', 'quan_ly', 'marketing'], bieuTuong: 'viec' },
+  { link: '/noi-bo/tuyen-dung', ten: 'Tuyển dụng', vai: ['chu_so_huu', 'quan_ly'], bieuTuong: 'nguoi' },
+  { link: '/noi-bo/cai-dat', ten: 'Cài đặt nhà hàng', vai: ['chu_so_huu', 'quan_ly'], bieuTuong: 'cai_dat' },
+];

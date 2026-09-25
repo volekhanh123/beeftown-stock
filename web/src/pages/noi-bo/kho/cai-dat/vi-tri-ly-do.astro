@@ -7,8 +7,7 @@
  * Lý do dùng chung toàn thương hiệu; "bắt buộc ảnh" nghĩa là báo hủy với lý
  * do này phải chụp ít nhất một ảnh.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docViTri, docLyDo, luuViTri, luuLyDo, type ViTri, type LyDo } from '../../../../lib/kho/danh-muc.ts';
@@ -44,9 +43,8 @@ const NHOM_LY_DO = [
   ['dieu_chinh', 'Lý do điều chỉnh'],
 ] as const;
 ---
-<NoiBo tieuDe="Vị trí và lý do" nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe="Vị trí và lý do">
   <h1>Vị trí và lý do</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <p><a href="/noi-bo/kho/cai-dat">← Cài đặt kho</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
@@ -129,4 +127,4 @@ const NHOM_LY_DO = [
       </details>
     </>
   ))}
-</NoiBo>
+</Kho>

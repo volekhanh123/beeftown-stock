@@ -2,15 +2,20 @@
 /**
  * KHO — BÁO CÁO
  *
- * Chọn kỳ (mặc định từ đầu tháng tới hôm nay) và một trong bốn báo cáo. Mỗi
- * báo cáo tải được về Excel (CSV) với đúng kỳ đang xem. Số do database tính
- * (hàm kho_bao_cao_*, 0024) — trang này chỉ hiện.
+ * Chọn một trong bốn báo cáo và kỳ: bấm nhanh Hôm nay · 7 ngày · Tháng này ·
+ * Tháng trước, hoặc chọn hai ngày rồi "Xem" (mặc định từ đầu tháng tới hôm nay).
+ *
+ * "Tải về Excel" là nút gửi của CHÍNH form chọn ngày (formaction sang đường
+ * .csv), không phải link dựng sẵn từ lần xem trước: file luôn lấy đúng hai ngày
+ * đang thấy trên màn hình, kể cả khi vừa đổi ngày mà chưa bấm "Xem".
+ *
+ * Số do database tính (hàm kho_bao_cao_*, 0024) — trang này chỉ hiện. Dòng
+ * tổng tính chung một hàm với file Excel (tinhTong), nên hai bên luôn khớp.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
-import { BAO_CAO, docBaoCao, kyBaoCao, type CotBaoCao } from '../../../../lib/kho/bao-cao.ts';
+import { BAO_CAO, docBaoCao, kyBaoCao, kyNhanh, tinhTong, type CotBaoCao } from '../../../../lib/kho/bao-cao.ts';
 import { dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangTien, homNayVn } from '../../../../lib/kho/chung.ts';
 
 const k = await moTrangKho(Astro);
@@ -20,15 +25,22 @@ if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
 const q = Astro.url.searchParams;
 const ten = Object.hasOwn(BAO_CAO, q.get('bao_cao') ?? '') ? q.get('bao_cao')! : 'xuat-nhap-ton';
 const dn = BAO_CAO[ten];
-const { tu, den } = kyBaoCao(q, homNayVn());
+const homNay = homNayVn();
+const { tu, den } = kyBaoCao(q, homNay);
+const cacKy = kyNhanh(homNay);
+// Hôm mùng 1, "Hôm nay" và "Tháng này" trùng ngày — chỉ tô nút đầu tiên.
+const kyDangChon = cacKy.find(x => x.tu === tu && x.den === den)?.ten;
 
 let dong: Record<string, unknown>[] = [];
 let loiDoc = k.loiDoc;
+let daDoc = false;
 if (k.chiNhanh && k.daKhoiTao) {
   const kq = await docBaoCao(k.client, ten, k.chiNhanh.id, tu, den);
   dong = kq.dong;
   loiDoc = kq.loi ?? loiDoc;
+  daDoc = !kq.loi;
 }
+const tong = tinhTong(dn, dong);
 const hien = (c: CotBaoCao, v: unknown) => {
   if (v === null || v === undefined || v === '') return '—';
   if (c.kieu === 'kg') return Number(v) === 0 ? '·' : dinhDangKg(Number(v));
@@ -36,53 +48,73 @@ const hien = (c: CotBaoCao, v: unknown) => {
   if (c.kieu === 'pt') return dinhDangPhanTram(Number(v));
   return String(v);
 };
-const tong = (khoa: string) => dong.reduce((s, d) => s + Number(d[khoa] ?? 0), 0);
 const link = (thay: Record<string, string>) => `/noi-bo/kho/bao-cao?${new URLSearchParams({ bao_cao: ten, tu, den, ...thay }).toString()}`;
-const linkCsv = `/noi-bo/kho/bao-cao/${ten}.csv?${new URLSearchParams({ tu, den }).toString()}`;
+const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDangNgay(den)}`;
 ---
-<NoiBo tieuDe="Báo cáo kho" nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe="Báo cáo kho" rong>
   <h1>Báo cáo kho</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   <nav class="kho-dh" aria-label="Chọn báo cáo">
-    {Object.entries(BAO_CAO).map(([k2, b]) => <a href={link({ bao_cao: k2 })} aria-current={k2 === ten ? 'page' : undefined}>{b.ten}</a>)}
+    {Object.entries(BAO_CAO).map(([k2, b]) => (
+      <a href={link({ bao_cao: k2 })} aria-current={k2 === ten ? 'page' : undefined} style="min-height:48px">{b.ten}</a>
+    ))}
   </nav>
 
-  <form method="GET" class="nb-the">
+  <form method="GET" action="/noi-bo/kho/bao-cao" class="nb-the">
     <input type="hidden" name="bao_cao" value={ten} />
+    <nav class="kho-dh" aria-label="Chọn nhanh kỳ báo cáo" style="margin:0;padding:0 0 .75rem">
+      {cacKy.map(x => (
+        <a href={link({ tu: x.tu, den: x.den })} aria-current={x.ten === kyDangChon ? 'page' : undefined} style="min-height:48px">{x.ten}</a>
+      ))}
+    </nav>
     <div class="kho-luoi">
-      <label class="nb-o"><span>Từ ngày</span><input type="date" name="tu" value={tu} /></label>
-      <label class="nb-o"><span>Đến ngày</span><input type="date" name="den" value={den} /></label>
+      <label class="nb-o"><span>Từ ngày</span><input type="date" name="tu" value={tu} required /></label>
+      <label class="nb-o"><span>Đến ngày</span><input type="date" name="den" value={den} required /></label>
     </div>
     <div class="kho-thanh-nut" style="margin:0">
       <button type="submit" class="nb-nut phu">Xem</button>
-      <a class="nb-nut phu" href={linkCsv}>Tải về Excel (CSV)</a>
+      <button type="submit" class="nb-nut phu" formaction={`/noi-bo/kho/bao-cao/${ten}.csv`}>Tải về Excel (CSV)</button>
     </div>
+    <p class="kho-phu" style="margin:.6rem 0 0">File Excel lấy đúng hai ngày đang chọn ở trên. Dòng đầu ghi chi nhánh và kỳ, dòng cuối là tổng.</p>
   </form>
 
-  <p class="nb-dan"><strong>{dn.ten}</strong> · {dinhDangNgay(tu)} – {dinhDangNgay(den)}. {dn.moTa}</p>
+  <p class="nb-dan"><strong>{dn.ten}</strong> · {kyChu}. {dn.moTa}</p>
 
-  {dong.length === 0 ? (
-    <p class="nb-rong">Không có số liệu trong kỳ này.</p>
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+  ) : dong.length === 0 ? (
+    daDoc && (
+      <p class="nb-rong">
+        {dn.khiTrong.cau}{' → '}
+        {dn.khiTrong.link.map((l, i) => <>{i > 0 && ' · '}<a href={l.href}>{l.ten}</a></>)}
+      </p>
+    )
   ) : (
     <div class="kho-bang-khung">
       <table class="kho-bang kho-bao-cao">
-        <thead><tr>{dn.cot.map(c => <th class={c.kieu === 'chu' ? '' : 'so'}>{c.ten}</th>)}</tr></thead>
+        <thead><tr>{dn.cot.map(c => <th class={c.kieu === 'chu' ? undefined : 'so'}>{c.ten}</th>)}</tr></thead>
         <tbody>
           {dong.map(d => (
-            <tr>{dn.cot.map(c => <td class={c.kieu === 'chu' ? '' : 'so'}>{hien(c, d[c.khoa])}</td>)}</tr>
+            <tr>{dn.cot.map(c => <td class={c.kieu === 'chu' ? undefined : 'so'}>{hien(c, d[c.khoa])}</td>)}</tr>
           ))}
-          {dn.cong && (
-            <tr class="tong">{dn.cot.map((c, i) => (
-              <td class={c.kieu === 'chu' ? '' : 'so'}>{i === 0 ? 'Tổng' : dn.cong!.includes(c.khoa) ? dinhDangTien(tong(c.khoa)) : ''}</td>
-            ))}</tr>
-          )}
         </tbody>
+        {tong.length > 0 && (
+          <tfoot>
+            {tong.map(t => (
+              <tr class="tong">{dn.cot.map((c, i) => (
+                <td class={c.kieu === 'chu' ? undefined : 'so'}>{i === 0 ? t.nhan : c.khoa in t.so ? hien(c, t.so[c.khoa]) : ''}</td>
+              ))}</tr>
+            ))}
+          </tfoot>
+        )}
       </table>
     </div>
+  )}
+  {ten === 'hao-hut' && dong.length > 0 && (
+    <p class="kho-phu">Cuối bảng cộng riêng từng loại (hủy, xuất bếp, trả nhà cung cấp, kiểm kê thiếu, kiểm kê thừa), không gộp thành một số: hàng thừa khi kiểm kê không phải hàng mất.</p>
   )}
   {ten === 'ban' && (
     <p class="kho-phu">Đây là số ƯỚC TÍNH: thiếu ở quầy khi kiểm kê được coi là đã bán, nhân với giá bán hiện tại. Nối iPOS xong, số bán sẽ lấy thẳng từ máy tính tiền.</p>
   )}
-</NoiBo>
+</Kho>

@@ -12,8 +12,7 @@
  * Chỉ chủ nhà hàng tạo/sửa được (database chặn — policy kho_truong_them_them).
  * Quản lý xem được danh sách để biết form đang hỏi gì.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docDinhNghia, luuDinhNghia } from '../../../../lib/kho/danh-muc.ts';
@@ -43,9 +42,8 @@ const g = (ten: string) => (nhapLai && !nhapLai.get('id') ? String(nhapLai.get(t
 const suaId = Astro.url.searchParams.get('sua') ?? '';
 const DOI_TUONG = ['mat_hang', 'nha_cung_cap', 'phieu_nhap', 'lo_hang'] as const;
 ---
-<NoiBo tieuDe="Ô thông tin thêm" nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe="Ô thông tin thêm">
   <h1>Ô thông tin thêm</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <p><a href="/noi-bo/kho/cai-dat">← Cài đặt kho</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
@@ -128,4 +126,4 @@ const DOI_TUONG = ['mat_hang', 'nha_cung_cap', 'phieu_nhap', 'lo_hang'] as const
       </>
     );
   })}
-</NoiBo>
+</Kho>

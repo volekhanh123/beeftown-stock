@@ -6,8 +6,7 @@
  * Ô "Thử một nhãn" để chủ nhà hàng gõ đúng 13 số trên một nhãn thật và xem
  * phần mềm đọc ra mặt hàng nào, bao nhiêu kg — sai thì sửa mẫu ngay tại đây.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docMatHang, luuCaiDat, type CaiDat, type MatHang } from '../../../../lib/kho/danh-muc.ts';
@@ -40,10 +39,11 @@ const thu = (Astro.url.searchParams.get('thu') ?? '').replace(/\s/g, '');
 const kq = thu ? docMaVach(thu, mau || MAU_MAC_DINH, caiDat?.so_le_kg ?? 3) : null;
 const mh = kq?.hopLe ? matHang.find(m => m.ma_can === kq.maCan && m.dang_dung) : undefined;
 const chuaCoMaCan = matHang.filter(m => m.dang_dung && m.loai === 'phan_cat' && !m.ma_can);
+/** Số tên hiện thành nút sửa; còn lại dồn vào link "Mặt hàng". */
+const HIEN_TOI_DA = 12;
 ---
-<NoiBo tieuDe="Mã vạch cân" nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe="Mã vạch cân">
   <h1>Mã vạch cân</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <p><a href="/noi-bo/kho/cai-dat">← Cài đặt kho</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
@@ -93,10 +93,29 @@ const chuaCoMaCan = matHang.filter(m => m.dang_dung && m.loai === 'phan_cat' && 
 
       {chuaCoMaCan.length > 0 && (
         <div class="nb-bao luu-y">
-          <p><strong>{chuaCoMaCan.length} phần cắt chưa có mã cân:</strong> {chuaCoMaCan.slice(0, 8).map(m => m.ten).join(', ')}{chuaCoMaCan.length > 8 ? '…' : ''}.
-            Quét nhãn những phần này sẽ không nhận ra mặt hàng.</p>
+          <p><strong>{chuaCoMaCan.length} phần cắt chưa có mã cân</strong> — quét nhãn những phần này sẽ không nhận ra mặt hàng.
+            Bấm vào tên để điền mã cân:</p>
+          <ul class="thieu-ma-can">
+            {chuaCoMaCan.slice(0, HIEN_TOI_DA).map(m => (
+              <li><a href={`/noi-bo/kho/cai-dat/mat-hang?sua=${m.id}`}>{m.ten}</a></li>
+            ))}
+          </ul>
+          {chuaCoMaCan.length > HIEN_TOI_DA && (
+            <p>… và {chuaCoMaCan.length - HIEN_TOI_DA} phần khác — xem ở <a href="/noi-bo/kho/cai-dat/mat-hang?loai=phan_cat">Mặt hàng</a>.</p>
+          )}
         </div>
       )}
     </>
   )}
-</NoiBo>
+</Kho>
+
+<style>
+  /* Mỗi tên là một nút chạm được (48px) dẫn thẳng tới form sửa mặt hàng đó. */
+  .thieu-ma-can { list-style: none; margin: .6rem 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: .4rem; }
+  .thieu-ma-can a {
+    display: inline-flex; align-items: center; min-height: 48px; padding: 0 .9rem;
+    border-radius: 999px; background: #fff; border: 1px solid var(--vach);
+    color: var(--than); font-weight: 600; text-decoration: none;
+  }
+  .thieu-ma-can a:hover { background: var(--kem-sau); }
+</style>

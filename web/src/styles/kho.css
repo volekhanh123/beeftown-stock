@@ -149,15 +149,22 @@
 .kho-lo-chon .dau { display: flex; justify-content: space-between; gap: .5rem; flex-wrap: wrap; align-items: baseline; margin-bottom: .4rem; }
 .kho-lo-chon .dau b { font-size: .95rem; }
 
-/* Hàng nút dính đáy màn hình trên điện thoại cho form dài. Khi có thanh
-   điều hướng dính đáy (vai dùng cả CRM lẫn kho) thì đứng ngay trên nó. */
-@media (max-width: 640px) {
+/* Hàng nút dính đáy màn hình cho form dài — trên điện thoại VÀ tablet (tablet
+   quầy 768–1023px trước đây phải cuộn hết form mới thấy nút gửi). Khi có thanh
+   đáy của khung kho thì đứng ngay trên nó. */
+@media (max-width: 1023px) {
   .kho-thanh-nut.dinh {
     position: sticky; bottom: 0; background: var(--kem); padding: .6rem 0; margin: 0;
     box-shadow: 0 -6px 12px -8px rgba(30, 22, 14, .25); z-index: 5;
   }
   body:has(.nb-dieu-huong) .kho-thanh-nut.dinh { bottom: 4.6rem; }
+  body:has(.kho-day) .kho-thanh-nut.dinh {
+    bottom: calc(var(--kho-day-cao, 4.25rem) + env(safe-area-inset-bottom));
+    background: var(--kho-nen, var(--kem));
+  }
+}
 
+@media (max-width: 640px) {
   /* Bảng số liệu: giữ cột đủ rộng để đọc, vuốt ngang để xem hết. */
   .kho-bang-khung .kho-bang { min-width: 34rem; }
 }

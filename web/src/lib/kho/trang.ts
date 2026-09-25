@@ -17,6 +17,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NhanSu } from '../phien';
 import { duoc as vaiDuoc, cauLoiKho, type KetQua, type ViecKho } from './chung.ts';
 import { docBao, ghiBao } from './bao.ts';
+import type { SoViec } from './dieu-huong.ts';
 
 export interface ChiNhanhKho { id: string; ma: string; ten: string }
 
@@ -27,6 +28,8 @@ export interface TrangKho {
   cacChiNhanh: ChiNhanhKho[];
   /** Chi nhánh đã bấm "Bắt đầu dùng kho" chưa (có dòng kho_cai_dat). */
   daKhoiTao: boolean;
+  /** Số đỏ trên menu (kho_dem_viec, 0030). null = chưa đọc được — menu hiện không có số. */
+  viec: SoViec | null;
   loiDoc: string | null;
   /** Câu báo từ lần chuyển hướng trước, nếu có. */
   bao: KetQua | null;
@@ -46,18 +49,33 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
 
   let cacChiNhanh: ChiNhanhKho[] = [];
   let loiDoc: string | null = null;
-  try {
-    const { data, error } = await client.from('chi_nhanh').select('id, ma, ten').order('ma');
-    if (error) throw error;
-    cacChiNhanh = (data ?? []) as ChiNhanhKho[];
-  } catch (e) {
-    loiDoc = cauLoiKho(e, 'Không đọc được danh sách chi nhánh.');
-  }
+  const docChiNhanh = async () => {
+    try {
+      const { data, error } = await client.from('chi_nhanh').select('id, ma, ten').order('ma');
+      if (error) throw error;
+      cacChiNhanh = (data ?? []) as ChiNhanhKho[];
+    } catch (e) {
+      loiDoc = cauLoiKho(e, 'Không đọc được danh sách chi nhánh.');
+    }
+  };
+
+  // Số đỏ trên menu và "đã khởi tạo kho chưa" cùng một lần gọi (kho_dem_viec).
+  // Nhân sự thường đã biết chi nhánh của mình, nên chạy SONG SONG với việc đọc
+  // danh sách chi nhánh — không thêm lượt chờ nào so với trước.
+  let viec: SoViec | null = null;
+  const docViec = async (cn: string) => {
+    try {
+      const { data, error } = await client.rpc('kho_dem_viec', { p_chi_nhanh_id: cn });
+      if (!error && data && typeof data === 'object') viec = data as SoViec;
+    } catch { /* số đỏ chỉ để nhắc — thiếu thì menu không có số */ }
+  };
 
   let chiNhanh: ChiNhanhKho | null = null;
   if (nhanSu.chi_nhanh_id) {
+    await Promise.all([docChiNhanh(), docViec(nhanSu.chi_nhanh_id)]);
     chiNhanh = cacChiNhanh.find(c => c.id === nhanSu.chi_nhanh_id) ?? null;
   } else {
+    await docChiNhanh();
     const thamSo = Astro.url.searchParams.get('cn');
     const chon = thamSo ?? Astro.cookies.get(COOKIE_CN)?.value;
     chiNhanh = cacChiNhanh.find(c => c.ma === chon) ?? cacChiNhanh[0] ?? null;
@@ -67,10 +85,13 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
         path: '/noi-bo/kho', maxAge: 60 * 60 * 24 * 60,
       });
     }
+    if (chiNhanh) await docViec(chiNhanh.id);
   }
 
-  let daKhoiTao = false;
-  if (chiNhanh) {
+  let daKhoiTao = !!chiNhanh && (viec as SoViec | null)?.khoi_tao === true;
+  if (chiNhanh && viec === null) {
+    // kho_dem_viec không trả lời (database chưa chạy 0030, mạng chập chờn):
+    // hỏi thẳng bảng cài đặt như trước, để trang không đòi "Bắt đầu dùng kho" lần nữa.
     try {
       const { data } = await client
         .from('kho_cai_dat').select('chi_nhanh_id').eq('chi_nhanh_id', chiNhanh.id).maybeSingle();
@@ -79,7 +100,7 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
   }
 
   return {
-    client, nhanSu, chiNhanh, cacChiNhanh, daKhoiTao, loiDoc,
+    client, nhanSu, chiNhanh, cacChiNhanh, daKhoiTao, viec, loiDoc,
     bao: docBao(Astro.cookies),
     duoc: (viec: ViecKho) => vaiDuoc(nhanSu.vai_tro, viec),
   };

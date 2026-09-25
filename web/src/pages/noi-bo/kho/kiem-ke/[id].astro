@@ -4,14 +4,32 @@
  *
  *   · ĐANG ĐẾM (vai vận hành): ghi số đếm từng dòng. KHÔNG hiện số trên sổ —
  *     đếm mù cho đúng. Quầy: quét hết nhãn các gói → tự ra số gói và kg.
- *     "Gửi duyệt" = lưu rồi gửi; database chụp sổ sách lúc đó.
+ *     Trên cùng là "Đã đếm x/y" và tên các dòng chưa đếm (bấm để nhảy tới).
+ *     Không còn gì thì chỉ cần tích "Đã hết thật" (ô trống = 0).
+ *     "Gửi quản lý duyệt" = lưu rồi gửi; database chụp sổ sách lúc đó.
  *   · CHỜ DUYỆT: bảng sổ — đếm — chênh (kèm giá trị chênh với vai xem giá).
- *     Quản lý duyệt, hoặc trả về để đếm lại.
+ *     Quản lý duyệt, trả về để đếm lại, hoặc hủy — xong thì về trang Duyệt,
+ *     phiếu chờ tiếp theo nằm sẵn ở đó.
+ *     Nhân viên quầy chỉ thấy "Đã gửi quản lý lúc … — cảm ơn": không sổ,
+ *     không chênh (vừa bớt chữ khó, vừa để lần đếm sau vẫn là đếm mù).
  *   · ĐÃ DUYỆT: từng lô trước → sau.
+ *
+ * HAI NGƯỜI CÙNG ĐẾM (xem lib/kho/kiem-ke.ts): form luôn mang phien_ban của
+ * bản mà các con số trên form dựa vào. Hiện lại form sau lỗi thì giữ
+ * phien_ban người đếm đã gửi — KHÔNG lấy phien_ban mới nhất, vì như vậy bấm
+ * Lưu lần nữa sẽ đè mất số của người kia. Bị máy khác lưu trước thì đọc lại
+ * database và gộp.
+ *
+ * QUÉT NHÃN: câu xanh cho nhãn đọc được; nhãn không đọc được / gói lạ là câu
+ * vàng riêng, đi theo đường dẫn (?hong=&la=) sau khi chuyển hướng.
+ *
+ * HỦY PHIẾU: phải ghi lý do — bước xác nhận thứ hai, bấm nhầm không mất số.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import KyTen from '../../../../components/kho/KyTen.astro';
 import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
 import QuetMa from '../../../../components/kho/QuetMa.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
@@ -19,15 +37,17 @@ import { docCaiDat, docMatHang, type CaiDat, type MatHang } from '../../../../li
 import { docThongTinLo, docGiaVonLo } from '../../../../lib/kho/pha-loc.ts';
 import {
   docKiemKe, docFormKiemKe, payloadTuDong, apDungQuet, dongDemTuDb, luuKiemKe, guiKiemKe, duyetKiemKe,
-  tuChoiKiemKe, huyKiemKe, type KiemKe, type DongKiemKe, type LoKiemKe, type DongDemForm,
+  tuChoiKiemKe, huyKiemKe, gopKhiTrung, laLoiMayKhac, daDemDong, cauQuetLoi,
+  type KiemKe, type DongKiemKe, type LoKiemKe, type DongDemForm, type KetQuaQuetKiemKe,
 } from '../../../../lib/kho/kiem-ke.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, TRANG_THAI_CHUNG_TU, type KetQua,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, homNayVn, TRANG_THAI_CHUNG_TU, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
+const laQuay = k.nhanSu.vai_tro === 'nhan_vien_quay';
 
 let matHang: MatHang[] = [];
 let caiDat: CaiDat | null = null;
@@ -48,21 +68,31 @@ if (!kk && !loiDoc) {
   return chuyenHuong(Astro, '/noi-bo/kho/kiem-ke', { ok: false, cau: 'Không tìm thấy phiếu kiểm kê này.' });
 }
 
-const demDuoc = !!kk && kk.trang_thai === 'dang_dem' && k.duoc('van_hanh');
+let demDuoc = !!kk && kk.trang_thai === 'dang_dem' && k.duoc('van_hanh');
+const tenMh = new Map(matHang.map(m => [m.id, m]));
 
 // ---------------------------------------------------------------------------
 // Lệnh gửi lên
 // ---------------------------------------------------------------------------
 let bao: KetQua | null = k.bao;
+/** Câu vàng: nhãn không đọc được, máy khác vừa lưu... */
+const luuY: string[] = [];
+// Khi hiện lại form sau lỗi: số người đếm vừa gửi, và BẢN mà các số đó dựa
+// vào (phien_ban, số gốc của ghi chú). null = lấy thẳng từ database.
 let dongLoi: DongDemForm[] | null = null;
+let phienBanForm: number | null = null;
+let ghiChuForm: string | null = null;
+let ghiChuGocForm: string | null = null;
+
 const form = await docFormGui(Astro);
 if (Astro.request.method === 'POST' && !form) {
   bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
 }
 if (form && kk) {
   const viec = String(form.get('viec') ?? '');
-  const ve = (kq: KetQua) => chuyenHuong(Astro, `/noi-bo/kho/kiem-ke/${kk!.id}`, kq);
-  const phienBan = Number(form.get('phien_ban') ?? kk.phien_ban);
+  const ve = (kq: KetQua, thamSo = '') => chuyenHuong(Astro, `/noi-bo/kho/kiem-ke/${kk!.id}${thamSo}`, kq);
+  const pbTho = String(form.get('phien_ban') ?? '');
+  const phienBan = /^\d{1,9}$/.test(pbTho) ? Number(pbTho) : kk.phien_ban;
   const ghiChu = String(form.get('ghi_chu') ?? '').trim() || null;
 
   if (['luu', 'gui', 'quet'].includes(viec)) {
@@ -70,56 +100,142 @@ if (form && kk) {
       bao = { ok: false, cau: 'Phiếu không còn ở bước đếm.' };
     } else {
       const doc = docFormKiemKe(form, matHang);
+      let dongGui = doc.dong;
       let payload = doc.payload;
       let loi = doc.loi;
-      let cauQuet = '';
+      let quet: KetQuaQuetKiemKe | null = null;
       if (viec === 'quet') {
-        const q = apDungQuet(doc.dong, String(form.get('ma_quet') ?? ''), matHang, caiDat?.mau_ma_vach, caiDat?.so_le_kg ?? 3);
-        const p = payloadTuDong(q.dong, matHang);
-        payload = p.payload; loi = p.loi;
-        dongLoi = q.dong;
-        cauQuet = q.soMa === 0 ? ' Ô quét đang trống.'
-          : ` Đã đọc ${q.soMa} mã → ${q.soHang} mặt hàng.${q.loi.length ? ` Chưa đọc được: ${q.loi.join(' · ')}` : ''}`;
-      } else {
-        dongLoi = doc.dong;
+        quet = apDungQuet(doc.dong, String(form.get('ma_quet') ?? ''), matHang, caiDat?.mau_ma_vach, caiDat?.so_le_kg ?? 3);
+        const p = payloadTuDong(quet.dong, matHang);
+        dongGui = quet.dong; payload = p.payload; loi = p.loi;
       }
-      if (loi.length) {
-        bao = { ok: false, cau: loi.join(' · ') + cauQuet };
-      } else {
-        const luu = await luuKiemKe(k.client, kk.id, phienBan, ghiChu, payload);
-        if (!luu.ok) {
-          bao = { ok: false, cau: luu.cau + cauQuet };
-        } else if (viec === 'gui') {
-          const g = await guiKiemKe(k.client, kk.id, luu.phienBan ?? phienBan);
-          return ve(g.ok ? g : { ok: false, cau: `Đã lưu số đếm nhưng CHƯA gửi được: ${g.cau}` });
-        } else {
-          return ve({ ok: true, cau: luu.cau + cauQuet });
+      // Chưa lưu được thì hiện lại đúng số vừa gửi, trên đúng bản người đếm đang sửa.
+      dongLoi = dongGui;
+      phienBanForm = phienBan;
+      ghiChuForm = ghiChu ?? '';
+      ghiChuGocForm = String(form.get('ghi_chu_goc') ?? '').trim();
+      const cauDoc = quet && quet.soDoc > 0 ? `Đã đọc ${quet.soDoc} nhãn: ${quet.tomTat}.` : '';
+
+      // Máy khác đã lưu sau lúc trang này mở: không lưu đè — đọc lại rồi gộp.
+      let mayKhac = phienBan !== kk.phien_ban;
+      let luu: (KetQua & { phienBan?: number }) | null = null;
+      if (!mayKhac && loi.length === 0) {
+        luu = await luuKiemKe(k.client, kk.id, phienBan, ghiChu, payload);
+        if (!luu.ok && laLoiMayKhac(luu.cau)) mayKhac = true;   // máy kia lưu đúng lúc mình bấm
+      }
+
+      if (mayKhac) {
+        if (luu) {
+          try {
+            const moi = await docKiemKe(k.client, kk.id);
+            if (moi) { kk = moi.kk; dongDb = moi.dong; loDb = moi.lo; }
+          } catch { /* đọc lại không được: gộp với bản vừa đọc đầu trang, lần lưu sau database vẫn chặn nếu còn cũ */ }
+          demDuoc = kk.trang_thai === 'dang_dem' && k.duoc('van_hanh');
         }
+        if (!demDuoc) {
+          bao = { ok: false, cau: 'Phiếu vừa được gửi ở máy khác — không còn ở bước đếm.' };
+        } else {
+          const gop = gopKhiTrung(dongGui, dongDemTuDb(dongDb));
+          dongLoi = gop.dong;
+          phienBanForm = kk.phien_ban;
+          // Ghi chú: mình có sửa thì giữ của mình, không thì lấy ghi chú mới nhất.
+          ghiChuForm = (ghiChu ?? '') !== ghiChuGocForm ? (ghiChu ?? '') : (kk.ghi_chu ?? '');
+          ghiChuGocForm = kk.ghi_chu ?? '';
+          luuY.push('Có người vừa lưu phiếu này ở máy khác — đã tải lại số mới nhất, kiểm tra rồi lưu lại.');
+          if (gop.giu > 0) luuY.push(`Số bạn vừa ghi ở ${gop.giu} dòng vẫn còn trên màn hình nhưng CHƯA lưu — kiểm tra rồi bấm "Lưu số đếm".`);
+          if (gop.trung.length > 0) {
+            const ten = gop.trung.map(d => tenMh.get(d.mat_hang_id)?.ten ?? '—');
+            luuY.push(`Hai máy ghi khác nhau ở: ${[...new Set(ten)].join(', ')} — đang hiện số của máy kia. Đếm lại dòng đó nếu cần.`);
+          }
+          if (viec === 'gui') luuY.push('Phiếu CHƯA gửi quản lý.');
+          if (quet) luuY.push(...quet.loi);
+        }
+      } else if (loi.length > 0 || (luu && !luu.ok)) {
+        bao = { ok: false, cau: loi.length > 0 ? `Chưa lưu: ${loi.join(' · ')}` : `Chưa lưu: ${luu?.cau ?? ''}` };
+        if (cauDoc) luuY.push(`${cauDoc} Sửa chỗ báo lỗi rồi bấm "Lưu số đếm".`);
+        if (quet) luuY.push(...quet.loi);
+      } else if (viec === 'gui') {
+        const g = await guiKiemKe(k.client, kk.id, luu?.phienBan ?? phienBan);
+        if (!g.ok) return ve({ ok: false, cau: `Đã lưu số đếm nhưng CHƯA gửi được: ${g.cau}` });
+        // Nhân viên quầy: không báo "mấy dòng lệch sổ" — đếm mù cho lần sau.
+        return ve(laQuay ? { ok: true, cau: `Đã gửi ${kk.so_phieu} cho quản lý. Cảm ơn!` } : g);
+      } else if (quet) {
+        const cau = quet.soMa === 0 ? 'Đã lưu số đếm. Ô quét đang trống — chưa đọc nhãn nào.'
+          : cauDoc ? `${cauDoc} Đã ghi vào phiếu.`
+          : 'Đã lưu số đếm.';
+        const q = new URLSearchParams();
+        if (quet.soNhanHong > 0) q.set('hong', String(quet.soNhanHong));
+        if (quet.soGoiLa > 0) q.set('la', String(quet.soGoiLa));
+        const thamSo = q.toString();
+        return ve({ ok: true, cau }, thamSo ? `?${thamSo}` : '');
+      } else {
+        return ve({ ok: true, cau: luu?.cau ?? 'Đã lưu số đếm.' });
       }
     }
   } else {
     const lyDo = String(form.get('ly_do') ?? '').trim();
+    const choDuyet = kk.trang_thai === 'cho_duyet';
     let kq: KetQua;
     if (viec === 'duyet') kq = await duyetKiemKe(k.client, kk.id);
     else if (viec === 'tu_choi') kq = await tuChoiKiemKe(k.client, kk.id, lyDo);
     else if (viec === 'huy') kq = await huyKiemKe(k.client, kk.id, lyDo || null);
     else kq = { ok: false, cau: 'Việc không hợp lệ.' };
+    // Quản lý duyệt / trả về / hủy phiếu chờ duyệt: về trang Duyệt — phiếu chờ tiếp theo nằm sẵn.
+    if (kq.ok && (viec === 'duyet' || viec === 'tu_choi' || (viec === 'huy' && choDuyet))) {
+      return chuyenHuong(Astro, '/noi-bo/kho/duyet', kq);
+    }
+    // Hủy phiếu đang đếm: phiếu không còn gì để làm — về danh sách kiểm kê.
+    if (kq.ok && viec === 'huy') return chuyenHuong(Astro, '/noi-bo/kho/kiem-ke', kq);
     return ve(kq);
   }
+}
+
+// Câu vàng của lần quét trước (sau khi chuyển hướng).
+if (!form && demDuoc) {
+  const soTrenLink = (ten: string) => {
+    const n = Number(Astro.url.searchParams.get(ten) ?? 0);
+    return Number.isInteger(n) && n > 0 && n < 100000 ? n : 0;
+  };
+  luuY.push(...cauQuetLoi(soTrenLink('hong'), soTrenLink('la')));
 }
 
 // ---------------------------------------------------------------------------
 // Dữ liệu hiển thị
 // ---------------------------------------------------------------------------
-const tenMh = new Map(matHang.map(m => [m.id, m]));
 const theoLo = kk?.kieu === 'theo_lo';
 const dongHien: DongDemForm[] = dongLoi ?? dongDemTuDb(dongDb);
-const loIds = [...dongDb.map(d => d.lo_id ?? ''), ...loDb.map(l => l.lo_id)];
+const phienBanHien = phienBanForm ?? kk?.phien_ban ?? 0;
+const ghiChuHien = ghiChuForm ?? kk?.ghi_chu ?? '';
+const ghiChuGocHien = ghiChuGocForm ?? kk?.ghi_chu ?? '';
+const loIds = [...dongHien.map(d => d.lo_id), ...dongDb.map(d => d.lo_id ?? ''), ...loDb.map(l => l.lo_id)];
 const thongTinLo = await docThongTinLo(k.client, loIds);
 const giaLo = kk && kk.trang_thai !== 'dang_dem' ? await docGiaVonLo(k.client, loDb.map(l => l.lo_id)) : new Map();
 const coGia = giaLo.size > 0;
 const ten = kk ? await tenNhanSu(k.client, [kk.nguoi_tao, kk.nguoi_gui, kk.nguoi_duyet]) : new Map<string, string>();
 const [nhanTT, lopTT] = kk ? (TRANG_THAI_CHUNG_TU[kk.trang_thai] ?? [kk.trang_thai, 'tat']) : ['', ''];
+
+// Tiến độ đếm: dòng nào đã có số (tích "Đã hết thật" cũng là đã đếm).
+const moTaLo = (id: string | null) => {
+  if (!id) return '';
+  const l = thongTinLo.get(id);
+  return l ? `lô ${l.ma_lo} · HSD ${dinhDangNgay(l.han_dung)}` : '';
+};
+const tenDong = (d: DongDemForm) => {
+  const lo = d.lo_id ? thongTinLo.get(d.lo_id) : undefined;
+  return `${tenMh.get(d.mat_hang_id)?.ten ?? '—'}${lo ? ` (lô ${lo.ma_lo})` : ''}`;
+};
+const daDem = dongHien.map(d => daDemDong(d, tenMh.get(d.mat_hang_id)?.dem_goi ?? false));
+const soDaDem = daDem.filter(Boolean).length;
+const chuaDem = dongHien.map((d, i) => ({ i, ten: tenDong(d) })).filter(x => !daDem[x.i]);
+
+/** "21:42" nếu hôm nay, "21:42 ngày 24/09" nếu hôm khác. */
+const gioLuc = (ts: string | null) => {
+  const t = dinhDangThoiDiem(ts);
+  if (t === '—') return '—';
+  const [ngay, gio] = t.split(' ');
+  const h = homNayVn();
+  return ngay === `${h.slice(8, 10)}/${h.slice(5, 7)}` ? gio : `${gio} ngày ${ngay}`;
+};
 
 // Chênh lệch từng dòng (sau khi gửi). Kg chênh của dòng đếm gói mà không cân
 // là ƯỚC TÍNH theo kg trung bình mỗi gói — con số thật do database tính lúc duyệt.
@@ -144,23 +260,25 @@ const chenh = (d: DongKiemKe) => {
 const tongGiaTriChenh = kk && kk.trang_thai !== 'dang_dem'
   ? dongDb.reduce((s, d) => s + (chenh(d).giaTri ?? 0), 0) : 0;
 const coChenh = (d: DongKiemKe) => { const c = chenh(d); return c.dg !== 0 || (c.dk !== null && c.dk !== 0); };
-const moTaLo = (id: string | null) => {
-  if (!id) return '';
-  const l = thongTinLo.get(id);
-  return l ? `lô ${l.ma_lo} · HSD ${dinhDangNgay(l.han_dung)}` : '';
-};
 const tieuDe = kk ? `Kiểm kê ${kk.ten_vi_tri}` : 'Kiểm kê';
+const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
 ---
-<NoiBo tieuDe={tieuDe} nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe={tieuDe} huongDan={choToiDuyet ? 'quan-ly-duyet' : laQuay ? 'nv-quay' : undefined}>
   <h1>{tieuDe}</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <BaoKho bao={bao} loiDoc={loiDoc} />
+  {kk && (
+    <>
+      <InDau tieuDe="BIÊN BẢN KIỂM KÊ" soPhieu={kk.so_phieu} chiNhanh={k.chiNhanh?.ten} />
+      <NutIn chu="In biên bản" />
+    </>
+  )}
+  {luuY.length > 0 && <div class="nb-bao luu-y" role="status">{luuY.map(c => <p>{c}</p>)}</div>}
 
   {kk && (
     <>
       <p class="nb-dan">
         <span class={`nb-nhan ${lopTT}`}>{nhanTT}</span>
-        {' · '}{kk.so_phieu} · {kk.kieu === 'theo_lo' ? 'đếm từng lô' : 'đếm theo mặt hàng'} · ngày {dinhDangNgay(kk.ngay_kiem)}
+        {' · '}{kk.so_phieu} · {kk.kieu === 'theo_lo' ? 'đếm từng lô' : 'đếm gói theo món'} · ngày {dinhDangNgay(kk.ngay_kiem)}
         {' · '}mở bởi {ten.get(kk.nguoi_tao ?? '') ?? '—'} {dinhDangThoiDiem(kk.created_at)}
         {kk.gui_luc && <>{' · '}gửi bởi {ten.get(kk.nguoi_gui ?? '') ?? '—'} {dinhDangThoiDiem(kk.gui_luc)}</>}
         {kk.duyet_luc && <>{' · '}duyệt bởi {ten.get(kk.nguoi_duyet ?? '') ?? '—'} {dinhDangThoiDiem(kk.duyet_luc)}</>}
@@ -171,14 +289,33 @@ const tieuDe = kk ? `Kiểm kê ${kk.ten_vi_tri}` : 'Kiểm kê';
         // ===================================================================
         // ĐANG ĐẾM
         // ===================================================================
-        <form method="POST">
-          <input type="hidden" name="phien_ban" value={String(kk.phien_ban)} />
+        <form method="POST" action={`/noi-bo/kho/kiem-ke/${kk.id}`}>
+          <input type="hidden" name="phien_ban" value={String(phienBanHien)} />
           <input type="hidden" name="so_dong" value={String(dongHien.length)} />
-          <p class="nb-dan">Ghi đúng số đang thấy. Không còn thì ghi <strong>0</strong> và tích <em>Đã hết thật</em>. Số trên sổ sẽ hiện sau khi gửi.</p>
+          <input type="hidden" name="ghi_chu_goc" value={ghiChuGocHien} />
+
+          <div class="nb-the">
+            <p style="margin:0 0 .5rem;font-size:1.2rem">
+              <strong>Đã đếm {soDaDem}/{dongHien.length}</strong>
+              {dongHien.length > 0 && chuaDem.length === 0 && <span class="kho-phu">{' '}— đủ hết, bấm "Gửi quản lý duyệt".</span>}
+            </p>
+            <progress max={Math.max(dongHien.length, 1)} value={soDaDem} style="width:100%;height:12px" aria-hidden="true"></progress>
+            {chuaDem.length > 0 && (
+              <p class="kho-phu" style="margin:.5rem 0 0">
+                Chưa đếm:{' '}
+                {chuaDem.slice(0, 8).map((x, j) => <>{j > 0 && ', '}<a href={`#dong-${x.i}`}>{x.ten}</a></>)}
+                {chuaDem.length > 8 && ` và ${chuaDem.length - 8} dòng khác`}
+              </p>
+            )}
+            <p class="nb-dan" style="margin:.75rem 0 0">
+              Ghi đúng số đang thấy. Không còn gì thì chỉ cần tích <strong>Đã hết thật</strong>. Số trên sổ sẽ hiện sau khi gửi.
+            </p>
+          </div>
 
           {!theoLo && (
             <div class="nb-the">
-              <QuetMa nhan="Đọc mã và ghi số đếm" goiY="Quét lần lượt nhãn của MỌI gói đang có — mỗi mặt hàng quét được sẽ lấy đúng số gói và tổng kg vừa quét (thay cho số đang ghi)." />
+              <QuetMa nhan="Đọc mã và ghi số đếm" tuFocus
+                goiY="Quét nhãn của TẤT CẢ gói đang có trong một lượt, rồi bấm nút dưới. Món nào quét được sẽ lấy đúng số gói vừa quét (thay số cũ của món đó)." />
             </div>
           )}
 
@@ -186,12 +323,15 @@ const tieuDe = kk ? `Kiểm kê ${kk.ten_vi_tri}` : 'Kiểm kê';
           {dongHien.map((d, i) => {
             const mh = tenMh.get(d.mat_hang_id);
             return (
-              <div class="kho-dong-hang">
+              <div class="kho-dong-hang" id={`dong-${i}`}
+                   style={`scroll-margin-top:5.5rem${daDem[i] ? '' : ';border-left:4px solid var(--mu-tat)'}`}>
                 <span class="so-thu-tu">{i + 1}</span>
                 <input type="hidden" name={`k${i}_mh`} value={d.mat_hang_id} />
                 {d.lo_id && <input type="hidden" name={`k${i}_lo`} value={d.lo_id} />}
+                {d.goc != null && <input type="hidden" name={`k${i}_goc`} value={d.goc} />}
                 <p style="margin:.35rem 0 .5rem"><strong>{mh?.ten ?? '—'}</strong>
-                  {d.lo_id && <><br /><span class="kho-phu">{moTaLo(d.lo_id)}</span></>}</p>
+                  {d.lo_id && <><br /><span class="kho-phu">{moTaLo(d.lo_id)}</span></>}
+                  {!daDem[i] && <><br /><span class="kho-phu">Chưa đếm</span></>}</p>
                 <div class="kho-luoi">
                   {mh?.dem_goi && (
                     <label class="nb-o"><span>Số {mh.don_vi_goi}</span>
@@ -200,14 +340,17 @@ const tieuDe = kk ? `Kiểm kê ${kk.ten_vi_tri}` : 'Kiểm kê';
                   <label class="nb-o"><span>{mh?.dem_goi ? 'Kg (nếu cân)' : 'Số kg'}</span>
                     <input type="text" inputmode="decimal" name={`k${i}_kg`} value={d.kg} /></label>
                 </div>
-                <label class="kho-tich"><input type="checkbox" name={`k${i}_het`} value="co" checked={d.het} /> Đã hết thật (ghi 0)</label>
+                <label class="kho-tich" style="min-height:48px;padding:.1rem 0 .6rem">
+                  <input type="checkbox" name={`k${i}_het`} value="co" checked={d.het} />
+                  Đã hết thật — không còn {mh?.dem_goi ? `${mh.don_vi_goi} nào` : 'gì'}
+                </label>
               </div>
             );
           })}
 
           {!theoLo && (
             <details class="nb-the">
-              <summary style="cursor:pointer;font-weight:600">Thấy mặt hàng không có trong danh sách</summary>
+              <summary style="cursor:pointer;font-weight:600;min-height:48px;display:flex;align-items:center">Thấy mặt hàng không có trong danh sách</summary>
               <div style="margin-top:.75rem">
                 <label class="nb-o"><span>Mặt hàng</span><ChonMatHang name="them_mat_hang" matHang={matHang} /></label>
                 <div class="kho-luoi">
@@ -219,7 +362,7 @@ const tieuDe = kk ? `Kiểm kê ${kk.ten_vi_tri}` : 'Kiểm kê';
           )}
 
           <label class="nb-o"><span>Ghi chú</span>
-            <input type="text" name="ghi_chu" value={kk.ghi_chu ?? ''} maxlength="500" /></label>
+            <input type="text" name="ghi_chu" value={ghiChuHien} maxlength="500" /></label>
 
           <div class="kho-thanh-nut dinh">
             <button type="submit" name="viec" value="luu" class="nb-nut phu">Lưu số đếm</button>
@@ -227,7 +370,25 @@ const tieuDe = kk ? `Kiểm kê ${kk.ten_vi_tri}` : 'Kiểm kê';
           </div>
         </form>
       ) : kk.trang_thai === 'dang_dem' ? (
-        <p class="nb-rong">Phiếu đang được đếm. Số trên sổ và chênh lệch sẽ hiện sau khi gửi duyệt.</p>
+        <p class="nb-rong">Phiếu đang được đếm. Số trên sổ và chênh lệch sẽ hiện sau khi gửi quản lý duyệt.</p>
+      ) : laQuay ? (
+        // ===================================================================
+        // NHÂN VIÊN QUẦY — chỉ một câu, không sổ, không chênh
+        // ===================================================================
+        <div class="nb-the">
+          {kk.trang_thai === 'da_huy' ? (
+            <p style="margin:0;font-size:1.1rem"><strong>Phiếu này đã hủy.</strong></p>
+          ) : (
+            <>
+              <p style="margin:0;font-size:1.1rem"><strong>Đã gửi quản lý{kk.gui_luc ? ` lúc ${gioLuc(kk.gui_luc)}` : ''} — cảm ơn.</strong></p>
+              <p class="nb-dan" style="margin:.5rem 0 0">
+                {kk.trang_thai === 'da_duyet'
+                  ? 'Quản lý đã duyệt số đếm này.'
+                  : 'Quản lý sẽ xem và duyệt. Cần đếm lại thì phiếu được trả về kèm lời nhắn.'}
+              </p>
+            </>
+          )}
+        </div>
       ) : (
         // ===================================================================
         // CHỜ DUYỆT / ĐÃ DUYỆT / ĐÃ HỦY
@@ -295,15 +456,15 @@ const tieuDe = kk ? `Kiểm kê ${kk.ten_vi_tri}` : 'Kiểm kê';
             </details>
           )}
 
-          {kk.trang_thai === 'cho_duyet' && k.duoc('duyet') && (
-            <div class="nb-the">
+          {choToiDuyet && (
+            <div class="nb-the kho-khong-in">
               <h2 style="margin-top:0">Duyệt kiểm kê</h2>
               <p class="nb-dan">Duyệt = tồn trên sổ bằng số đếm. {kk.loai_vi_tri === 'quay' && kk.nguon_so_ban === 'kiem_ke' ? 'Phần thiếu ở quầy ghi là đã bán; ' : 'Phần thiếu ghi là chênh lệch kiểm kê; '}phần thừa cộng vào lô mới nhất.</p>
               <form method="POST" class="kho-thanh-nut">
                 <button type="submit" name="viec" value="duyet" class="nb-nut">Duyệt kiểm kê</button>
               </form>
               <details>
-                <summary style="cursor:pointer;font-weight:600">Trả về để đếm lại</summary>
+                <summary style="cursor:pointer;font-weight:600;min-height:48px;display:flex;align-items:center">Trả về để đếm lại</summary>
                 <form method="POST" style="margin-top:.75rem">
                   <label class="nb-o"><span>Đếm lại chỗ nào?</span><textarea name="ly_do" required maxlength="500"></textarea></label>
                   <button type="submit" name="viec" value="tu_choi" class="nb-nut kho-nut-xoa">Trả về đếm lại</button>
@@ -317,11 +478,13 @@ const tieuDe = kk ? `Kiểm kê ${kk.ten_vi_tri}` : 'Kiểm kê';
         </>
       )}
 
-      {(kk.trang_thai === 'dang_dem' && k.duoc('van_hanh')) || (kk.trang_thai === 'cho_duyet' && k.duoc('duyet')) ? (
+      {(kk.trang_thai === 'dang_dem' && k.duoc('van_hanh')) || choToiDuyet ? (
         <details class="nb-the" style="margin-top:1.5rem">
-          <summary style="cursor:pointer;font-weight:600">Hủy phiếu kiểm kê này</summary>
+          <summary style="cursor:pointer;font-weight:600;min-height:48px;display:flex;align-items:center">Hủy phiếu kiểm kê này</summary>
           <form method="POST" style="margin-top:.75rem">
-            <label class="nb-o"><span>Lý do (không bắt buộc)</span><input type="text" name="ly_do" maxlength="500" /></label>
+            <p class="nb-dan">Hủy là <strong>bỏ hết số đã đếm</strong> của phiếu này — không lấy lại được. Chỉ hủy khi mở nhầm.</p>
+            <label class="nb-o"><span>Vì sao hủy? (bắt buộc)</span>
+              <input type="text" name="ly_do" required minlength="3" maxlength="500" placeholder="vd. mở nhầm vị trí" /></label>
             <button type="submit" name="viec" value="huy" class="nb-nut kho-nut-xoa">Hủy phiếu</button>
           </form>
         </details>
@@ -329,5 +492,10 @@ const tieuDe = kk ? `Kiểm kê ${kk.ten_vi_tri}` : 'Kiểm kê';
     </>
   )}
 
-  <p style="margin-top:1.5rem"><a href="/noi-bo/kho/kiem-ke">← Danh sách kiểm kê</a></p>
-</NoiBo>
+  <p class="kho-khong-in" style="margin-top:1.5rem">
+    {choToiDuyet
+      ? <a href="/noi-bo/kho/duyet">← Về trang Duyệt</a>
+      : <a href="/noi-bo/kho/kiem-ke">← Danh sách kiểm kê</a>}
+  </p>
+  {kk && <KyTen ten={['Người đếm', 'Người kiểm tra', 'Quản lý duyệt']} />}
+</Kho>

@@ -1,0 +1,113 @@
+---
+/**
+ * KHO — QUÉT NHÃN (nút giữa thanh đáy)
+ *
+ * Quét một nhãn cân bất kỳ → biết ngay đó là món gì, gói nặng bao nhiêu, món
+ * đó còn ở đâu, lô nào hạn gần nhất — và các nút làm tiếp (ra quầy, đưa bếp,
+ * báo hủy). Không cần nhớ món nằm ở menu nào.
+ *
+ * GET cho đơn giản: máy quét cầm tay gõ mã + Enter là trang tự mở kết quả.
+ * Không hiện tiền — NV quầy dùng được.
+ */
+import Kho from '../../../layouts/Kho.astro';
+import BaoKho from '../../../components/kho/BaoKho.astro';
+import QuetMa from '../../../components/kho/QuetMa.astro';
+import BieuTuong from '../../../components/kho/BieuTuong.astro';
+import { moTrangKho } from '../../../lib/kho/trang.ts';
+import { docCaiDat, docMatHang, type MatHang } from '../../../lib/kho/danh-muc.ts';
+import { docTon, type DongTon } from '../../../lib/kho/ton.ts';
+import { docMaVach, tachDanhSachMa, MAU_MAC_DINH } from '../../../lib/kho/ma-vach.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, TEN_LOAI_VI_TRI } from '../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+
+const q = Astro.url.searchParams;
+const maNhap = tachDanhSachMa(String(q.get('ma') ?? q.get('ma_quet') ?? ''))[0] ?? '';
+
+let loiDoc = k.loiDoc;
+let loiQuet: string | null = null;
+let mh: MatHang | null = null;
+let soKgNhan: number | null = null;
+let ton: DongTon[] = [];
+if (maNhap && k.chiNhanh && k.daKhoiTao) {
+  try {
+    const [cd, ds] = await Promise.all([docCaiDat(k.client, k.chiNhanh.id), docMatHang(k.client)]);
+    const kq = docMaVach(maNhap, cd?.mau_ma_vach ?? MAU_MAC_DINH, cd?.so_le_kg ?? 3);
+    if (!kq.hopLe) {
+      loiQuet = kq.loi === 'Sai số kiểm tra — quét lại' ? 'Nhãn đọc sai — quét lại nhãn này.' : `${kq.loi}.`;
+    } else {
+      mh = ds.find(m => m.ma_can === kq.maCan && m.dang_dung) ?? null;
+      soKgNhan = kq.soKg;
+      if (!mh) loiQuet = `Nhãn hợp lệ nhưng mã hàng ${kq.maCan} chưa gắn với món nào. Để riêng gói này và báo quản lý.`;
+      else ton = (await docTon(k.client, k.chiNhanh.id)).filter(t => t.mat_hang_id === mh!.id && t.loai_vi_tri !== 'cho_huy');
+    }
+  } catch (e) {
+    loiDoc = cauLoiKho(e, 'Không đọc được tồn kho.');
+  }
+}
+
+// Gom theo vị trí, lô hạn gần trước (FEFO).
+const theoViTri = new Map<string, { ten: string; loai: string; id: string; lo: DongTon[] }>();
+for (const t of ton) {
+  const g = theoViTri.get(t.vi_tri_id) ?? { ten: t.ten_vi_tri, loai: t.loai_vi_tri, id: t.vi_tri_id, lo: [] };
+  g.lo.push(t);
+  theoViTri.set(t.vi_tri_id, g);
+}
+const nhom = [...theoViTri.values()].sort((a, b) => (a.loai === 'quay' ? -1 : 1) - (b.loai === 'quay' ? -1 : 1));
+const tongGoi = ton.reduce((s, t) => s + t.so_goi, 0);
+const tongKg = ton.reduce((s, t) => s + t.so_kg, 0);
+const loGanNhat = [...ton].filter(t => t.tinh_trang_han !== 'het_han').sort((a, b) => a.han_dung.localeCompare(b.han_dung))[0];
+const TEN_HAN: Record<string, string> = { het_han: 'Hết hạn', sap_het: 'Sắp hết hạn', con_han: 'Còn hạn' };
+---
+<Kho k={k} tieuDe="Quét nhãn" huongDan="quet-nhan">
+  <h1>Quét nhãn</h1>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  <form method="GET" class="nb-the">
+    <QuetMa nhan="Xem món này" goiY="Quét một nhãn cân bằng máy quét, hoặc bấm Quét bằng camera." tuFocus />
+  </form>
+
+  {loiQuet && <div class="nb-bao luu-y" role="status"><p>{loiQuet}</p></div>}
+
+  {mh && (
+    <section class="nb-the kho-quet-kq">
+      <header>
+        <strong>{mh.ten}</strong>
+        <span>{soKgNhan !== null ? `Gói này: ${dinhDangKg(soKgNhan)}` : ''}</span>
+      </header>
+      <p class="kho-phu">
+        Tổng đang có: {mh.dem_goi ? `${tongGoi} ${mh.don_vi_goi} · ` : ''}{dinhDangKg(tongKg)}
+        {loGanNhat && <>{' · '}lô hạn gần nhất {dinhDangNgay(loGanNhat.han_dung)} ở {loGanNhat.ten_vi_tri}</>}
+      </p>
+
+      {nhom.length === 0 ? (
+        <p class="nb-rong">Trên sổ không còn gói nào của món này.</p>
+      ) : nhom.map(g => (
+        <div class="kho-quet-vt">
+          <h3>{g.ten} <small>{TEN_LOAI_VI_TRI[g.loai] ?? g.loai}</small></h3>
+          <ul>
+            {g.lo.map(l => (
+              <li>
+                <span class={`kho-han ${l.tinh_trang_han}`}>{TEN_HAN[l.tinh_trang_han]}</span>
+                <span>Hạn {dinhDangNgay(l.han_dung)} · đóng {dinhDangNgay(l.ngay_dong_goi)}</span>
+                <b>{l.dem_goi ? `${l.so_goi} ${l.don_vi_goi} · ` : ''}{dinhDangKg(l.so_kg)}</b>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+
+      <div class="kho-nhanh-luoi" style="margin-top:1rem">
+        {k.duoc('van_hanh') && (
+          <>
+            <a class="nb-nut" href={`/noi-bo/kho/xuat/moi?loai=chuyen&mh=${mh.id}`}><BieuTuong ten="chuyen" co={20} />Mang ra quầy</a>
+            <a class="nb-nut phu" href={`/noi-bo/kho/xuat/moi?loai=xuat_bep&mh=${mh.id}`}><BieuTuong ten="bep" co={20} />Đưa bếp</a>
+            <a class="nb-nut phu" href={`/noi-bo/kho/xuat/moi?loai=huy&mh=${mh.id}`}><BieuTuong ten="huy" co={20} />Báo hủy</a>
+          </>
+        )}
+        <a class="nb-nut phu" href={`/noi-bo/kho/ton?q=${encodeURIComponent(mh.ma)}`}><BieuTuong ten="ton" co={20} />Xem tồn kho</a>
+      </div>
+    </section>
+  )}
+</Kho>

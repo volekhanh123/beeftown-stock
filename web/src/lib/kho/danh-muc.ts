@@ -12,7 +12,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  cauLoiKho, docKg, docSoNguyen, docTien, goiYMa, laUuid, TEN_LOAI_MAT_HANG,
+  boDau, cauLoiKho, docKg, docSoNguyen, docTien, goiYMa, laUuid, TEN_LOAI_MAT_HANG,
   type KetQua,
 } from './chung.ts';
 import { docTruongThem, taoKhoa, tachLuaChon, type DinhNghiaTruong, type GiaTriTruong } from './truong-them.ts';
@@ -262,60 +262,387 @@ export async function luuMatHang(
   return { ok: true, cau: cu ? `Đã lưu "${ten}".` : `Đã thêm "${ten}" (mã ${ma}).` };
 }
 
-/**
- * Nhập hàng loạt: dán từ Excel. Mỗi dòng: Tên | Loại | Nhóm | Hạn dùng (ngày)
- * | Giá bán/kg | Mã cân | Mã. Cột cách nhau bằng Tab (dán từ Excel), dấu ; hoặc
- * dấu phẩy. Chỉ cột Tên là bắt buộc. Trùng mã thì CẬP NHẬT mặt hàng cũ.
- */
-export function docCsvMatHang(noiDung: string): { dong: Record<string, unknown>[]; loi: string[] } {
-  const dong: Record<string, unknown>[] = [];
-  const loi: string[] = [];
-  const daThay = new Set<string>();
-  const LOAI: Record<string, string> = {
-    'tang': 'tang', 'tảng': 'tang', 'tang nhap': 'tang', 'tảng nhập': 'tang',
-    'phan cat': 'phan_cat', 'phần cắt': 'phan_cat', 'cat': 'phan_cat', 'cắt': 'phan_cat', 'phan_cat': 'phan_cat',
-    'phu pham': 'phu_pham', 'phụ phẩm': 'phu_pham', 'phu_pham': 'phu_pham',
-  };
+// -----------------------------------------------------------------------------
+// DÁN DANH MỤC TỪ EXCEL — xem trước rồi mới ghi
+// -----------------------------------------------------------------------------
+// Bản cũ ghi thẳng: ô trống thành null và upsert theo mã ĐÈ MẤT giá bán, hạn
+// dùng, mã cân đang có; dán không có cột Mã thì mã tự sinh từ tên không khớp
+// mã cũ → thành mặt hàng TRÙNG. Giờ:
+//   · ô trống = GIỮ giá trị cũ;
+//   · khớp theo Mã (nếu có), không có Mã thì theo Tên (bỏ dấu, không phân biệt
+//     hoa thường, gộp khoảng trắng);
+//   · có dòng tiêu đề thì cột xếp thứ tự nào cũng được;
+//   · mã tự sinh cho hàng mới không bao giờ trùng mã đã có;
+//   · xem trước đủ "cũ → mới" rồi mới bấm Xác nhận. Không cần hàm database mới:
+//     mỗi dòng gửi đi đã gộp đủ giá trị, một lần upsert theo mã.
+// Các hàm dưới (trừ nhapCsvMatHang) là hàm thuần — kiểm thử bằng node, không
+// cần database.
 
-  noiDung.split(/\r?\n/).forEach((raw, i) => {
-    const hang = raw.trim();
-    if (!hang) return;
-    const cot = (hang.includes('\t') ? hang.split('\t') : hang.split(/[;,]/)).map(x => x.trim());
-    const [ten, loaiRaw, nhom, hanRaw, giaRaw, maCanRaw, maRaw] = cot;
-    if (!ten || /^tên$/i.test(ten)) return;   // dòng tiêu đề
-    const loai = LOAI[(loaiRaw ?? '').toLowerCase()] ?? (loaiRaw ? '' : 'phan_cat');
-    if (!loai) { loi.push(`Dòng ${i + 1}: loại "${loaiRaw}" không hiểu (tảng / phần cắt / phụ phẩm)`); return; }
-    const han = docSoNguyen(hanRaw, 1, 3650);
-    const gia = docTien(giaRaw);
-    const maCan = (maCanRaw ?? '').replace(/^0+/, '');
-    const ma = (maRaw || goiYMa(ten)).toUpperCase();
-    if (Number.isNaN(han)) { loi.push(`Dòng ${i + 1}: hạn dùng "${hanRaw}" không phải số ngày`); return; }
-    if (Number.isNaN(gia)) { loi.push(`Dòng ${i + 1}: giá "${giaRaw}" không phải số đồng`); return; }
-    if (maCan && !/^[1-9]\d{0,5}$/.test(maCan)) { loi.push(`Dòng ${i + 1}: mã cân "${maCanRaw}" phải là dãy số`); return; }
-    if (!/^[A-Z0-9][A-Z0-9_.-]{0,29}$/.test(ma)) { loi.push(`Dòng ${i + 1}: mã "${ma}" không hợp lệ`); return; }
-    if (daThay.has(ma)) { loi.push(`Dòng ${i + 1}: mã ${ma} bị lặp trong danh sách dán`); return; }
-    daThay.add(ma);
-    dong.push({
-      ma, ten, loai,
-      nhom: nhom || null,
-      han_dung_ngay: han,
-      gia_ban_kg: gia,
-      ma_can: maCan || null,
+/** Các cột dán được. Đây cũng là thứ tự cột khi KHÔNG có dòng tiêu đề. */
+export const COT_DAN = ['ten', 'loai', 'nhom', 'han_dung_ngay', 'gia_ban_kg', 'ma_can', 'ma', 'ton_toi_thieu_kg'] as const;
+export type CotDan = typeof COT_DAN[number];
+
+export const TEN_COT_DAN: Record<CotDan, string> = {
+  ten: 'Tên', loai: 'Loại', nhom: 'Nhóm', han_dung_ngay: 'Hạn dùng', gia_ban_kg: 'Giá bán/kg',
+  ma_can: 'Mã cân', ma: 'Mã', ton_toi_thieu_kg: 'Quầy tối thiểu',
+};
+
+/** Một dòng ghi vào kho_mat_hang. Mọi dòng có ĐÚNG bộ cột này — một lần upsert cho cả danh sách. */
+export interface DongGhiMatHang {
+  ma: string; ten: string; loai: MatHang['loai']; nhom: string | null;
+  han_dung_ngay: number | null; gia_ban_kg: number | null; ma_can: string | null;
+  ton_toi_thieu_kg: number | null; dem_goi: boolean; don_vi_goi: string;
+}
+
+/** Một dòng đọc được từ ô dán. Ô trống thì KHÔNG có khóa đó — nghĩa là giữ giá trị cũ. */
+export interface DongDan {
+  /** Số dòng trong ô dán (tính cả dòng tiêu đề), để báo lỗi đúng chỗ. */
+  so: number;
+  ten?: string; loai?: MatHang['loai']; nhom?: string; han_dung_ngay?: number;
+  gia_ban_kg?: number; ma_can?: string; ma?: string; ton_toi_thieu_kg?: number;
+}
+
+export interface SuaDan {
+  id: string; ma: string; ten: string; dang_dung: boolean;
+  truoc: DongGhiMatHang; sau: DongGhiMatHang;
+  /** Cột đổi giá trị — để trang tô "cũ → mới". */
+  cot_doi: CotDan[];
+}
+
+export interface XemTruocDan {
+  them: DongGhiMatHang[];
+  sua: SuaDan[];
+  /** Số dòng khớp mặt hàng cũ mà không đổi gì. */
+  giu: number;
+  loi: string[];
+  /** Tiêu đề cột không hiểu — bỏ qua cả cột. */
+  boQua: string[];
+}
+
+/** Phần của mặt hàng đã có mà việc dán cần biết. */
+export type MatHangDaCo = Pick<MatHang,
+  'id' | 'ma' | 'ten' | 'loai' | 'nhom' | 'han_dung_ngay' | 'gia_ban_kg' | 'ma_can'
+  | 'ton_toi_thieu_kg' | 'dem_goi' | 'don_vi_goi' | 'dang_dung'>;
+
+const TOI_DA_DONG_DAN = 500;
+
+/** Tên để so khớp: bỏ dấu, chữ thường, gộp khoảng trắng. "Thăn  NGOẠI" = "than ngoai". */
+export function chuanTenMatHang(ten: string): string {
+  return boDau(ten).toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+const gonCach = (s: string) => s.replace(/\s+/g, ' ').trim();
+
+const LOAI_DAN: Record<string, MatHang['loai']> = {
+  'tang': 'tang', 'tang nhap': 'tang',
+  'phan cat': 'phan_cat', 'cat': 'phan_cat',
+  'phu pham': 'phu_pham',
+};
+
+// Tiêu đề cột → cột. So sau khi bỏ dấu, bỏ ký tự lạ và bỏ đơn vị ở cuối
+// ("Giá bán/kg" → "gia ban", "Hạn dùng (ngày)" → "han dung").
+const TIEU_DE_DAN: Record<string, CotDan> = Object.fromEntries(([
+  ['ten', ['ten', 'ten mat hang', 'ten hang', 'mat hang', 'ten san pham']],
+  ['loai', ['loai', 'loai hang', 'loai mat hang']],
+  ['nhom', ['nhom', 'nhom hang']],
+  ['han_dung_ngay', ['han dung', 'han su dung', 'hsd', 'han']],
+  ['gia_ban_kg', ['gia ban', 'gia', 'gia ban quay', 'gia ban o quay', 'don gia']],
+  ['ma_can', ['ma can', 'ma hang tren can', 'ma tren can', 'plu', 'ma plu']],
+  ['ma', ['ma', 'ma hang', 'ma mat hang']],
+  ['ton_toi_thieu_kg', ['quay toi thieu', 'ton toi thieu', 'toi thieu', 'ton quay toi thieu', 'muc toi thieu', 'dinh muc quay']],
+] as [CotDan, string[]][]).flatMap(([cot, ds]) => ds.map(t => [t, cot])));
+
+function cotCuaTieuDe(o: string): CotDan | undefined {
+  const t = boDau(o).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+    .replace(/( (kg|ngay|d|dong|vnd|moi))+$/, '');
+  return TIEU_DE_DAN[t];
+}
+
+/** Bỏ ngoặc kép Excel bọc quanh ô ("Thăn ""A""" → Thăn "A"). */
+function boNgoacKep(o: string): string {
+  const t = o.trim();
+  return t.length >= 2 && t.startsWith('"') && t.endsWith('"') ? t.slice(1, -1).replace(/""/g, '"').trim() : t;
+}
+
+/**
+ * Đọc ô dán. Cột cách nhau bằng Tab (dán từ Excel), hoặc dấu ; hoặc dấu phẩy —
+ * chọn MỘT kiểu cho cả bảng. Dòng đầu là tiêu đề nếu có cột Tên / Mã (hoặc từ
+ * hai tiêu đề hiểu được trở lên); không có tiêu đề thì theo thứ tự COT_DAN.
+ * Ô trống → không đặt khóa (giữ giá trị cũ). Chưa so với danh mục ở bước này.
+ */
+export function docCsvMatHang(noiDung: string): { dong: DongDan[]; loi: string[]; boQua: string[] } {
+  const dong: DongDan[] = [];
+  const loi: string[] = [];
+  const boQua: string[] = [];
+  const ngan = noiDung.includes('\t') ? '\t' : noiDung.includes(';') ? ';' : ',';
+  const hang = noiDung.split(/\r?\n/)
+    .map((raw, i) => ({ so: i + 1, o: raw.split(ngan).map(boNgoacKep) }))
+    .filter(h => h.o.some(x => x !== ''));
+  if (hang.length === 0) return { dong, loi, boQua };
+
+  // Dòng tiêu đề?
+  let cot: (CotDan | undefined)[] = [...COT_DAN];
+  const dau = hang[0].o.map(cotCuaTieuDe);
+  const hieu = dau.filter((c): c is CotDan => !!c);
+  if (hieu.includes('ten') || hieu.includes('ma') || hieu.length >= 2) {
+    hang[0].o.forEach((o, i) => { if (o && !dau[i]) boQua.push(o); });
+    for (const c of COT_DAN) {
+      if (dau.filter(x => x === c).length > 1) loi.push(`Dòng tiêu đề: cột "${TEN_COT_DAN[c]}" có hai lần — xóa bớt một cột`);
+    }
+    if (!hieu.includes('ten') && !hieu.includes('ma')) loi.push('Dòng tiêu đề cần có cột Tên hoặc cột Mã để biết là mặt hàng nào');
+    if (loi.length) return { dong, loi, boQua };
+    cot = dau;
+    hang.shift();
+  }
+
+  for (const h of hang) {
+    const d: DongDan = { so: h.so };
+    const loiDong: string[] = [];
+    cot.forEach((c, i) => {
+      const o = h.o[i] ?? '';
+      if (!c || o === '') return;
+      switch (c) {
+        case 'ten': {
+          const ten = gonCach(o);
+          if (ten.length > 120) loiDong.push('tên dài quá 120 chữ');
+          else d.ten = ten;
+          break;
+        }
+        case 'loai': {
+          const loai = LOAI_DAN[boDau(o).toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim()];
+          if (!loai) loiDong.push(`loại "${o}" không hiểu (ghi tảng, phần cắt hoặc phụ phẩm)`);
+          else d.loai = loai;
+          break;
+        }
+        case 'nhom': d.nhom = gonCach(o); break;
+        case 'han_dung_ngay': {
+          const n = docSoNguyen(o, 1, 3650);
+          if (n === null || Number.isNaN(n)) loiDong.push(`hạn dùng "${o}" phải là số ngày, từ 1 đến 3650`);
+          else d.han_dung_ngay = n;
+          break;
+        }
+        case 'gia_ban_kg': {
+          const n = docTien(o);
+          if (n === null || Number.isNaN(n)) loiDong.push(`giá "${o}" phải là số đồng, ví dụ 650000`);
+          else d.gia_ban_kg = n;
+          break;
+        }
+        case 'ma_can': {
+          const m = o.replace(/\s/g, '').replace(/^0+/, '');
+          if (!/^[1-9]\d{0,5}$/.test(m)) loiDong.push(`mã cân "${o}" phải là dãy số (tối đa 6 số)`);
+          else d.ma_can = m;
+          break;
+        }
+        case 'ma': {
+          const m = o.toUpperCase();
+          if (!/^[A-Z0-9][A-Z0-9_.-]{0,29}$/.test(m)) loiDong.push(`mã "${o}" chỉ gồm chữ không dấu, số và dấu gạch (tối đa 30 ký tự)`);
+          else d.ma = m;
+          break;
+        }
+        case 'ton_toi_thieu_kg': {
+          const n = docKg(o);
+          if (n === null || Number.isNaN(n)) loiDong.push(`quầy tối thiểu "${o}" phải là số kg, ví dụ 2,5`);
+          else d.ton_toi_thieu_kg = n;
+          break;
+        }
+      }
+    });
+    if (loiDong.length) { loi.push(`Dòng ${h.so}: ${loiDong.join('; ')}`); continue; }
+    if (d.ten === undefined && d.ma === undefined) { loi.push(`Dòng ${h.so}: thiếu tên mặt hàng`); continue; }
+    dong.push(d);
+  }
+  return { dong, loi, boQua };
+}
+
+const dongCu = (m: MatHangDaCo): DongGhiMatHang => ({
+  ma: m.ma, ten: m.ten, loai: m.loai, nhom: m.nhom,
+  han_dung_ngay: m.han_dung_ngay, gia_ban_kg: m.gia_ban_kg, ma_can: m.ma_can,
+  ton_toi_thieu_kg: m.ton_toi_thieu_kg, dem_goi: m.dem_goi, don_vi_goi: m.don_vi_goi,
+});
+
+/** "THAN" đã có → "THAN-2", "THAN-3"… (vẫn trong 30 ký tự). */
+function maKhongTrung(goc: string, daDung: Set<string>): string {
+  if (!daDung.has(goc)) return goc;
+  for (let i = 2; ; i++) {
+    const duoi = `-${i}`;
+    const ma = goc.slice(0, 30 - duoi.length).replace(/-+$/, '') + duoi;
+    if (!daDung.has(ma)) return ma;
+  }
+}
+
+/**
+ * So ô dán với danh mục đang có: dòng nào thêm mới, dòng nào sửa (cũ → mới),
+ * dòng nào giữ nguyên, dòng nào lỗi. Hàm thuần — trang gọi để xem trước, và
+ * nhapCsvMatHang gọi lại đúng hàm này lúc xác nhận.
+ */
+export function xemTruocDanMatHang(daCo: MatHangDaCo[], noiDung: string): XemTruocDan {
+  const doc = docCsvMatHang(noiDung);
+  const kq: XemTruocDan = { them: [], sua: [], giu: 0, loi: [...doc.loi], boQua: doc.boQua };
+  if (doc.dong.length > TOI_DA_DONG_DAN) {
+    kq.loi.push(`Mỗi lần dán tối đa ${TOI_DA_DONG_DAN} dòng — chia làm nhiều lần.`);
+    return kq;
+  }
+
+  const theoMa = new Map(daCo.map(m => [m.ma, m]));
+  const theoTen = new Map<string, MatHangDaCo[]>();
+  for (const m of daCo) {
+    const k = chuanTenMatHang(m.ten);
+    theoTen.set(k, [...(theoTen.get(k) ?? []), m]);
+  }
+  const hangCuDaDan = new Map<string, number>();   // id mặt hàng cũ → dòng dán
+  const tenMoi = new Map<string, number>();        // tên (đã chuẩn) của hàng mới → dòng
+  const maMoi = new Map<string, number>();         // mã ghi sẵn của hàng mới → dòng
+  const moi: DongDan[] = [];
+
+  for (const d of doc.dong) {
+    let cu: MatHangDaCo | undefined;
+    if (d.ma !== undefined) {
+      cu = theoMa.get(d.ma);
+      const cungTen = !cu && d.ten !== undefined ? theoTen.get(chuanTenMatHang(d.ten)) ?? [] : [];
+      if (cungTen.length) {
+        kq.loi.push(`Dòng ${d.so}: "${d.ten}" đã có với mã ${cungTen.map(m => m.ma).join(', ')}, khác mã ${d.ma} đang ghi — sửa ô Mã cho đúng, hoặc để trống ô Mã`);
+        continue;
+      }
+    } else if (d.ten !== undefined) {
+      const cungTen = theoTen.get(chuanTenMatHang(d.ten)) ?? [];
+      const dangDung = cungTen.filter(m => m.dang_dung);
+      if (cungTen.length === 1) cu = cungTen[0];
+      else if (dangDung.length === 1) cu = dangDung[0];
+      else if (cungTen.length > 1) {
+        kq.loi.push(`Dòng ${d.so}: có ${cungTen.length} mặt hàng cùng tên "${d.ten}" (mã ${cungTen.map(m => m.ma).join(', ')}) — thêm cột Mã để biết sửa mặt hàng nào`);
+        continue;
+      }
+    }
+
+    if (cu) {
+      const dongTruoc = hangCuDaDan.get(cu.id);
+      if (dongTruoc !== undefined) {
+        kq.loi.push(`Dòng ${d.so}: "${cu.ten}" đã có ở dòng ${dongTruoc} — mỗi mặt hàng chỉ ghi một dòng`);
+        continue;
+      }
+      hangCuDaDan.set(cu.id, d.so);
+      const truoc = dongCu(cu);
+      // Ô trống giữ nguyên. Tên chỉ đổi khi khớp theo MÃ — khớp theo tên thì
+      // tên dán (có thể không dấu) không được đè tên đang có.
+      const sau: DongGhiMatHang = { ...truoc };
+      if (d.ma !== undefined && d.ten !== undefined) sau.ten = d.ten;
+      if (d.loai !== undefined) sau.loai = d.loai;
+      if (d.nhom !== undefined) sau.nhom = d.nhom;
+      if (d.han_dung_ngay !== undefined) sau.han_dung_ngay = d.han_dung_ngay;
+      if (d.gia_ban_kg !== undefined) sau.gia_ban_kg = d.gia_ban_kg;
+      if (d.ma_can !== undefined) sau.ma_can = d.ma_can;
+      if (d.ton_toi_thieu_kg !== undefined) sau.ton_toi_thieu_kg = d.ton_toi_thieu_kg;
+      const cotDoi = COT_DAN.filter(c => c !== 'ma' && sau[c] !== truoc[c]);
+      if (cotDoi.length) {
+        kq.sua.push({ id: cu.id, ma: cu.ma, ten: cu.ten, dang_dung: cu.dang_dung, truoc, sau, cot_doi: cotDoi });
+      } else kq.giu++;
+      continue;
+    }
+
+    // Mặt hàng mới.
+    if (d.ten === undefined) {
+      kq.loi.push(`Dòng ${d.so}: mã ${d.ma} chưa có trong danh mục — mặt hàng mới cần có Tên`);
+      continue;
+    }
+    const k = chuanTenMatHang(d.ten);
+    if (tenMoi.has(k)) { kq.loi.push(`Dòng ${d.so}: "${d.ten}" bị lặp với dòng ${tenMoi.get(k)}`); continue; }
+    if (d.ma !== undefined && maMoi.has(d.ma)) { kq.loi.push(`Dòng ${d.so}: mã ${d.ma} bị lặp với dòng ${maMoi.get(d.ma)}`); continue; }
+    tenMoi.set(k, d.so);
+    if (d.ma !== undefined) maMoi.set(d.ma, d.so);
+    moi.push(d);
+  }
+
+  // Mã cho hàng mới chưa ghi mã: gợi ý từ tên, KHÔNG trùng mã nào đang có hay
+  // vừa ghi trong bảng — trùng thì upsert theo mã sẽ đè lên mặt hàng khác.
+  const maDaDung = new Set([...theoMa.keys(), ...maMoi.keys()]);
+  for (const d of moi) {
+    const ma = d.ma ?? maKhongTrung(goiYMa(d.ten!), maDaDung);
+    maDaDung.add(ma);
+    const loai = d.loai ?? 'phan_cat';
+    kq.them.push({
+      ma, ten: d.ten!, loai,
+      nhom: d.nhom ?? null,
+      han_dung_ngay: d.han_dung_ngay ?? null,
+      gia_ban_kg: d.gia_ban_kg ?? null,
+      ma_can: d.ma_can ?? null,
+      ton_toi_thieu_kg: d.ton_toi_thieu_kg ?? null,
       dem_goi: loai !== 'phu_pham',
       don_vi_goi: loai === 'tang' ? 'tảng' : loai === 'phu_pham' ? 'khay' : 'gói',
     });
-  });
-  return { dong, loi };
+  }
+
+  // Mã cân: mỗi mã chỉ một mặt hàng ĐANG DÙNG (unique index của 0019). Báo
+  // trước ở đây thay vì để database từ chối cả lần nhập bằng một câu khó hiểu.
+  const suaTheoId = new Map(kq.sua.map(x => [x.id, x]));
+  const theoMaCan = new Map<string, { ten: string; dan: boolean }[]>();
+  const ghiMaCan = (maCan: string | null, ten: string, dan: boolean) => {
+    if (maCan) theoMaCan.set(maCan, [...(theoMaCan.get(maCan) ?? []), { ten, dan }]);
+  };
+  for (const m of daCo) {
+    if (!m.dang_dung) continue;
+    const x = suaTheoId.get(m.id);
+    ghiMaCan(x ? x.sau.ma_can : m.ma_can, x ? x.sau.ten : m.ten, !!x?.cot_doi.includes('ma_can'));
+  }
+  for (const t of kq.them) ghiMaCan(t.ma_can, t.ten, true);
+  for (const [maCan, ds] of theoMaCan) {
+    if (ds.length > 1 && ds.some(x => x.dan)) {
+      kq.loi.push(`Mã cân ${maCan} bị trùng: ${ds.map(x => `"${x.ten}"`).join(' và ')} — mỗi mã cân chỉ cho một mặt hàng`);
+    }
+  }
+  return kq;
 }
 
-export async function nhapCsvMatHang(client: SupabaseClient, noiDung: string): Promise<KetQua> {
-  const { dong, loi } = docCsvMatHang(noiDung);
-  if (loi.length) return { ok: false, cau: `Chưa nhập gì cả. ${loi.slice(0, 5).join(' · ')}${loi.length > 5 ? ` · và ${loi.length - 5} lỗi khác` : ''}` };
-  if (dong.length === 0) return { ok: false, cau: 'Không có dòng nào để nhập.' };
-  if (dong.length > 500) return { ok: false, cau: 'Mỗi lần nhập tối đa 500 dòng.' };
-  const { error } = await client.from('kho_mat_hang').upsert(dong, { onConflict: 'ma' });
-  if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: `Đã nhập ${dong.length} mặt hàng (mã trùng thì cập nhật).` };
+/**
+ * Dấu vân tay của bản xem trước. Trang gửi kèm khi bấm Xác nhận; lúc ghi tính
+ * lại từ danh mục mới nhất — khác nhau nghĩa là có người vừa sửa danh mục, phải
+ * xem lại chứ không ghi mù.
+ */
+export function chuKyDan(xt: XemTruocDan): string {
+  const s = JSON.stringify([xt.them, xt.sua.map(x => [x.id, x.truoc, x.sau])]);
+  let h = 5381;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(h, 33) ^ s.charCodeAt(i)) >>> 0;
+  return `${s.length.toString(36)}-${h.toString(36)}`;
+}
+
+/** Các dòng gửi database: hàng mới + hàng sửa đã gộp đủ. Cùng một bộ cột, không có id. */
+export function dongGhiDan(xt: XemTruocDan): DongGhiMatHang[] {
+  return [...xt.them, ...xt.sua.map(x => x.sau)];
+}
+
+/**
+ * Bấm "Xác nhận nhập": đọc lại danh mục MỚI NHẤT, so lại đúng như lúc xem
+ * trước, rồi ghi MỘT lần upsert theo mã. Danh mục vừa đổi (chữ ký khác) thì
+ * không ghi — trả bản xem trước mới để người dùng xem lại.
+ */
+export async function nhapCsvMatHang(
+  client: SupabaseClient, noiDung: string, chuKy: string,
+): Promise<KetQua & { xemTruoc?: XemTruocDan }> {
+  let daCo: MatHang[];
+  try { daCo = await docMatHang(client); }
+  catch (e) { return { ok: false, cau: cauLoiKho(e, 'Không đọc được danh mục hiện tại — chưa nhập gì, thử lại.') }; }
+
+  const xt = xemTruocDanMatHang(daCo, noiDung);
+  if (xt.loi.length) {
+    return { ok: false, cau: `Chưa nhập gì cả — còn ${xt.loi.length} lỗi, xem bên dưới.`, xemTruoc: xt };
+  }
+  const ghi = dongGhiDan(xt);
+  if (ghi.length === 0) {
+    return xt.giu > 0
+      ? { ok: true, cau: 'Danh mục đã đúng như bảng dán — không có gì phải đổi.' }
+      : { ok: false, cau: 'Không có dòng nào để nhập.' };
+  }
+  if (chuKy !== chuKyDan(xt)) {
+    return { ok: false, cau: 'Danh mục vừa có người sửa, nên thay đổi đã khác lúc xem trước. Xem lại bảng bên dưới rồi bấm "Xác nhận nhập" lần nữa.', xemTruoc: xt };
+  }
+
+  const { error } = await client.from('kho_mat_hang').upsert(ghi, { onConflict: 'ma' });
+  if (error) return { ok: false, cau: cauLoiKho(error), xemTruoc: xt };
+  const phan = [
+    xt.them.length ? `thêm ${xt.them.length} mặt hàng mới` : '',
+    xt.sua.length ? `cập nhật ${xt.sua.length} mặt hàng` : '',
+    xt.giu ? `${xt.giu} mặt hàng giữ nguyên` : '',
+  ].filter(Boolean);
+  return { ok: true, cau: `Đã ${phan.join(', ')}.` };
 }
 
 export async function taoDanhMucMau(client: SupabaseClient): Promise<KetQua> {

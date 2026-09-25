@@ -1,0 +1,20 @@
+---
+/** Một dòng sự kiện: câu, thời gian, nút làm ngay. Dùng ở Thông báo và Việc cần làm. Không gọi database. */
+import BieuTuong from './BieuTuong.astro';
+import { cauSuKien, thoiGianTruoc, type SuKien } from '../../lib/kho/viec.ts';
+
+interface Props { e: SuKien; hienChuaDoc?: boolean }
+const { e, hienChuaDoc = false } = Astro.props;
+const c = cauSuKien(e);
+---
+<li class:list={['kho-sk', c.muc, { 'chua-doc': hienChuaDoc && e.chua_doc }]}>
+  <span class="kho-sk-dau" aria-hidden="true">
+    <BieuTuong ten={c.muc === 'do' ? 'canh_bao' : c.muc === 'vang' ? 'viec' : 'chuong'} co={20} />
+  </span>
+  <div class="kho-sk-chu">
+    <strong>{c.tieuDe}</strong>
+    {c.chiTiet && <span>{c.chiTiet}</span>}
+    <small>{thoiGianTruoc(e.luc)}{hienChuaDoc && e.chua_doc ? ' · mới' : ''}</small>
+  </div>
+  <a class="nb-nut phu kho-sk-nut" href={c.link}>{c.nut}</a>
+</li>
