@@ -10,10 +10,10 @@ const viTri = await docViTri('vi');
 
 // POST tới chính đường dẫn này = một lượt nộp hồ sơ. Xử lý xong thì chuyển
 // hướng, nên bấm F5 không gửi lại lần nữa.
-const chuyenHuong = await xuLyUngTuyen(Astro, '/tuyen-dung');
+const chuyenHuong = await xuLyUngTuyen(Astro, '/tuyen-dung', 'vi');
 if (chuyenHuong) return chuyenHuong;
 
-const ketQuaNop = ketQuaUngTuyen(Astro);
+const ketQuaNop = ketQuaUngTuyen(Astro, 'vi');
 ---
 <Trang
   ngonNgu="vi"

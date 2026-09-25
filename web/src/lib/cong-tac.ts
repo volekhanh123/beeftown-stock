@@ -8,6 +8,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { dichMotCau, type NgonNguDich, type SoBanDich } from './ban-dich';
 
 export type KieuCongBo = 'van_ban' | 'ngay' | 'so' | 'bool' | 'url' | 'sdt' | 'tep';
 
@@ -22,12 +23,15 @@ export interface HangCongTac {
   dang_song: boolean;
   gia_tri_text: string | null;
   gia_tri_text_en: string | null;
+  gia_tri_text_ko: string | null;
   gia_tri_ngay: string | null;
   gia_tri_so: number | null;
   gia_tri_bool: boolean | null;
   gia_tri_tep_id: string | null;
   cong_bo_luc: string | null;
   ly_do: string | null;
+  /** Sổ bản dịch của phiên bản đang sống (0036). null khi khóa chưa công bố. */
+  ban_dich: SoBanDich | null;
 }
 
 /** Tên nhóm hiện cho người dùng, kèm một câu nói nhóm đó dùng để làm gì. */
@@ -84,14 +88,82 @@ export function motaGiaTri(h: HangCongTac): string | null {
     case 'ngay': return h.gia_tri_ngay;
     case 'so':   return h.gia_tri_so === null ? null : String(h.gia_tri_so);
     case 'tep':  return h.gia_tri_tep_id ? 'Đã gắn ảnh' : null;
-    default:
-      return h.gia_tri_text_en
-        ? `${h.gia_tri_text}  ·  EN: ${h.gia_tri_text_en}`
-        : h.gia_tri_text;
+    default: {
+      const phan = [h.gia_tri_text];
+      if (h.gia_tri_text_en) phan.push(`EN: ${h.gia_tri_text_en}`);
+      if (h.gia_tri_text_ko) phan.push(`KO: ${h.gia_tri_text_ko}`);
+      return phan.join('  ·  ');
+    }
   }
 }
 
 export interface KetQuaGhi { ok: boolean; cau: string }
+
+/** So như database so (chuan_ban_dich, 0036): bỏ \r và khoảng trắng hai đầu. */
+function giongNhau(a: string | null, b: string | null): boolean {
+  const c = (x: string | null) => (x ?? '').replace(/\r/g, '').trim();
+  return c(a) === c(b);
+}
+
+interface BanDichDuKien {
+  en: string | null;
+  ko: string | null;
+  so: SoBanDich;
+  canhBao: string[];
+}
+
+/**
+ * Bản dịch cho một dữ kiện văn bản, lập TRƯỚC khi gọi dat_noi_dung(): dòng
+ * đã công bố là bất biến (0010), nên bản dịch phải đi cùng phiên bản mới —
+ * không có "dịch sau" cho bảng này.
+ *
+ * Với từng thứ tiếng:
+ *   · người dùng sửa ô (khác chữ lúc mở màn hình, ô ẩn goc_…) → giữ bản tay;
+ *     xóa trắng ô → nhờ máy dịch lại;
+ *   · câu tiếng Việt không đổi và bản đang sống vẫn tốt → giữ nguyên cả chữ
+ *     lẫn sổ, không tốn một lượt gọi máy;
+ *   · còn lại → máy dịch. Máy hỏng thì vẫn lưu, ô đó để trống (trang lùi về
+ *     thứ tiếng kế tiếp) và người dùng được báo lý do.
+ */
+async function lapBanDich(h: HangCongTac, vi: string, form: FormData): Promise<BanDichDuKien> {
+  const kq: BanDichDuKien = { en: null, ko: null, so: {}, canhBao: [] };
+  const so: NonNullable<SoBanDich[string]> = {};
+  const viDoi = !h.dang_song || !giongNhau(vi, h.gia_tri_text);
+  const canMay: NgonNguDich[] = [];
+
+  for (const l of ['en', 'ko'] as const) {
+    const moi = String(form.get(`gia_tri_${l}`) ?? '').trim() || null;
+    const goc = String(form.get(`goc_gia_tri_${l}`) ?? '').trim() || null;
+    const soCu = h.ban_dich?.gia_tri_text?.[l];
+
+    if (!giongNhau(moi, goc)) {
+      if (moi) { kq[l] = moi; so[l] = { cach: 'tay', tt: 'ok' }; }
+      else canMay.push(l);
+    } else if (!viDoi && moi && soCu?.tt === 'ok') {
+      kq[l] = moi;
+      so[l] = soCu;
+    } else {
+      canMay.push(l);
+    }
+  }
+
+  if (canMay.length > 0) {
+    const dich = await dichMotCau(vi);
+    for (const l of canMay) {
+      const r = dich[l];
+      if (r.tt === 'ok') {
+        kq[l] = r.noi_dung;
+        so[l] = { cach: 'may', tt: 'ok' };
+      } else {
+        so[l] = { cach: 'may', tt: r.tt, ly_do: r.ly_do };
+        kq.canhBao.push(`${l === 'en' ? 'Bản tiếng Anh' : 'Bản tiếng Hàn'} ${r.tt === 'bi_chan' ? 'bị chặn' : 'chưa dịch được'}: ${r.ly_do}`);
+      }
+    }
+  }
+
+  kq.so = { gia_tri_text: so };
+  return kq;
+}
 
 /**
  * Ghi một dữ kiện.
@@ -117,6 +189,7 @@ export async function ghiCongTac(
   }
 
   const congBo = viec === 'cong_bo';
+  let canhBaoDich: string[] = [];
   const tham: Record<string, unknown> = {
     p_khoa: h.khoa,
     p_ly_do: String(form.get('ly_do') ?? '').trim() || null,
@@ -150,7 +223,11 @@ export async function ghiCongTac(
       if (!v) return { ok: false, cau: 'Chưa điền nội dung.' };
       tham.p_text = v;
       if (h.kieu === 'van_ban') {
-        tham.p_text_en = String(form.get('gia_tri_en') ?? '').trim() || null;
+        const dich = await lapBanDich(h, v, form);
+        tham.p_text_en = dich.en;
+        tham.p_text_ko = dich.ko;
+        tham.p_ban_dich = dich.so;
+        canhBaoDich = dich.canhBao;
       }
     }
   }
@@ -158,11 +235,13 @@ export async function ghiCongTac(
   const { error } = await client.rpc('dat_noi_dung', tham);
   if (error) return { ok: false, cau: cauLoi(error) };
 
+  const cau = congBo
+    ? `Đã công bố "${h.mo_ta}". Trang công khai đổi ngay bây giờ.`
+    : `Đã lưu nháp "${h.mo_ta}". Bản nháp KHÔNG hiện trên trang.`;
   return {
     ok: true,
-    cau: congBo
-      ? `Đã công bố "${h.mo_ta}". Trang công khai đổi ngay bây giờ.`
-      : `Đã lưu nháp "${h.mo_ta}". Bản nháp KHÔNG hiện trên trang.`,
+    cau: canhBaoDich.length === 0 ? cau
+      : `${cau} Lưu ý — ${canhBaoDich.join(' · ')}. Trang của thứ tiếng đó tạm hiện bản kế tiếp; bấm lưu lại sau để thử dịch lại.`,
   };
 }
 
