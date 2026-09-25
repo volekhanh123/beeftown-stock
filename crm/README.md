@@ -23,8 +23,9 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 | 9c | **Vá quyền gọi hàm kiểm vé** — tải CV vẫn hỏng sau `0016` | ✅ Xong (`0025`) |
 | 9d | **Form hỏi gì tùy từng tin** — chỉ tin cần CV mới có ô CV | ✅ Xong (`0026`) |
 | 9e | **Màn soạn tin tuyển dụng** — chỉ chủ nhà hàng và quản lý duyệt lương | ✅ Xong (`0027`) |
+| 9f | **Lương theo giờ hay theo tháng** — đơn vị đi cùng con số, duyệt cùng lúc | ✅ Xong (`0028`) |
 
-**468 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
+**478 kiểm tra đạt** (trước đây 71). Database hoàn chỉnh. Trang công khai ở
 `../web/` có 8 đường dẫn song ngữ, giao diện nội bộ `/noi-bo` và hai form
 công khai đều đã dựng.
 
@@ -38,15 +39,15 @@ cd crm && npm install && npm test
 
 | Lệnh | Kiểm gì | Số kiểm tra |
 |---|---|---|
-| `npm run test:db` | nghiệp vụ: chuẩn hóa SĐT, sổ cái điểm, ba luật tính điểm, đặt bàn, phân nhóm | 62 |
+| `npm run test:db` | nghiệp vụ: chuẩn hóa SĐT, sổ cái điểm, ba luật tính điểm, đặt bàn, phân nhóm | 63 |
 | `npm run test:rls` | phân quyền: tách dữ liệu giữa chi nhánh, vai trò, website công khai | 23 |
 | `npm run test:an-toan` | **bốn lỗ hổng ở `0008`** và hai lỗi chỉ số | 28 |
 | `npm run test:cong-bo` | cổng nội dung và ảnh | 53 |
 | `npm run test:thuc-don` | thực đơn và duyệt giá | 50 |
-| `npm run test:tuyen-dung` | tuyển dụng, dữ liệu cá nhân, nhật ký bất biến, form theo từng tin, duyệt lương | 93 |
+| `npm run test:tuyen-dung` | tuyển dụng, dữ liệu cá nhân, nhật ký bất biến, form theo từng tin, duyệt lương, lương giờ/tháng | 101 |
 | `npm run test:cong-khai` | API công khai, mã đặt bàn, đo lường | 50 |
 | `npm run test:noi-dung` | đặt/thu hồi nội dung trong một giao dịch, vé tải CV | 53 |
-| `npm run test:hop-dong` | hợp đồng giữa `web/src` và database: tên hàm, tham số, bảng, cột, enum | 56 |
+| `npm run test:hop-dong` | hợp đồng giữa `web/src` và database: tên hàm, tham số, bảng, cột, enum | 57 |
 
 **Chạy lại toàn bộ kiểm thử sau mỗi lần sửa migration.** Chúng đã bắt được lỗi thật, không phải một lần:
 
@@ -81,7 +82,8 @@ crm/
 │   ├── 0016_va_ve_tai_cv_va_quyen_thu_hoi.sql   ⚠ VÁ 3 LỖI — xem đầu file
 │   ├── 0025_va_quyen_kiem_ve_tai_cv.sql   anon gọi được hàm kiểm vé — CV mới tải lên được
 │   ├── 0026_form_theo_tung_tin.sql   mỗi tin tự chọn form hỏi gì — chỉ tin cần CV mới có ô CV
-│   └── 0027_duyet_luong_tin_tuyen_dung.sql   chỉ chủ nhà hàng và quản lý đổi được lương chính thức
+│   ├── 0027_duyet_luong_tin_tuyen_dung.sql   chỉ chủ nhà hàng và quản lý đổi được lương chính thức
+│   └── 0028_don_vi_luong.sql   lương theo giờ hay theo tháng — đơn vị duyệt cùng con số
 └── test/                    ← kiểm thử chạy trên Postgres thật
 ```
 
@@ -93,7 +95,7 @@ crm/
 - **View mới PHẢI khai `security_invoker = true` tường minh.** Mặc định của Postgres là view chạy dưới quyền người tạo, tức đi xuyên qua RLS của bảng bên dưới — đúng lỗ hổng số 2 mà `0008` đã vá. `0008` chỉ sửa được 7 view có mặt lúc đó. `test-an-toan.mjs` mục 2 liệt kê `pg_class` và bắt đúng chuyện quên này; nó đã bắt được `v_bang_cong_tac` ngay lần chạy đầu tiên của `0015`.
 - **`0014` là file duy nhất PGlite không chạy.** Toàn bộ DDL kho file bọc trong khối kiểm tra schema `storage`. Danh sách kiểm tra bằng tay nằm ở cuối file đó — **bắt buộc làm trên Supabase thật.**
 - **Khối chốt quyền từ `0025` trở đi PHẢI giữ dòng `ve_con_hieu_luc(text)`.** Policy tải CV trên `storage.objects` gọi hàm đó dưới vai `anon`. Chép danh sách từ một file cũ hơn là CV lại rơi im lặng, và PGlite không có storage để thấy; `DUOC_PHEP` trong `test-an-toan.mjs` và mục 7 của `test-dat-noi-dung.mjs` mới bắt được.
-- **Số migration không được trùng giữa các nhánh làm song song.** Supabase CLI coi phần số là phiên bản, nên hai file cùng số không cùng tồn tại được. Nhánh kho dùng `0017`–`0024`. Nhánh này lúc đầu dùng `0023`, `0025`, `0026` — `0023` trùng với nhánh kho — nên ngày 25/09/2026 đã đánh lại thành `0025`, `0026`, `0027`, giữ nguyên thứ tự giữa ba file. Bản vá quyền hàm CRM dùng `0022`, trùng với `0022` của nhánh kho: phải đánh lại khi gộp. Migration mới lấy số sau số lớn nhất trên **mọi** nhánh đang mở (hiện là `0028`). Khối chốt quyền của mọi file nhánh khác đều viết trước `0025` nên thiếu dòng `ve_con_hieu_luc(text)`: sau khi gộp, khối chốt quyền **chạy cuối cùng** phải có dòng đó, và `DUOC_PHEP` sẽ đỏ nếu thiếu. Trên một database đã có sẵn, đừng chạy file nào có khối chốt quyền thiếu dòng đó sau `0025`.
+- **Số migration không được trùng giữa các nhánh làm song song.** Supabase CLI coi phần số là phiên bản, nên hai file cùng số không cùng tồn tại được. Nhánh kho dùng `0017`–`0024`. Nhánh này lúc đầu dùng `0023`, `0025`, `0026` — `0023` trùng với nhánh kho — nên ngày 25/09/2026 đã đánh lại thành `0025`, `0026`, `0027`, giữ nguyên thứ tự giữa ba file. Bản vá quyền hàm CRM dùng `0022`, trùng với `0022` của nhánh kho: phải đánh lại khi gộp. Migration mới lấy số sau số lớn nhất trên **mọi** nhánh đang mở: `0028` là đơn vị lương, nên số kế tiếp là `0029`. Khối chốt quyền của mọi file nhánh khác đều viết trước `0025` nên thiếu dòng `ve_con_hieu_luc(text)`: sau khi gộp, khối chốt quyền **chạy cuối cùng** phải có dòng đó, và `DUOC_PHEP` sẽ đỏ nếu thiếu. Trên một database đã có sẵn, đừng chạy file nào có khối chốt quyền thiếu dòng đó sau `0025`.
 
 ## Nhật ký kiểm tay kho file
 
