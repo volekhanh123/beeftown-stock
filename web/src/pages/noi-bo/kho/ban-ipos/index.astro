@@ -1,0 +1,155 @@
+---
+/**
+ * KHO — BÁN HÀNG iPOS (GĐ7a, 0036)
+ *
+ * Dòng bán đọc từ hóa đơn iPOS, chia 4 thẻ: Chưa khớp (chưa ghép món, lỗi) ·
+ * Thiếu hàng (sổ không đủ hàng ở quầy) · Đã ghi · Bỏ qua. Tìm theo mã HĐ /
+ * món, lọc ngày bán, chia trang như danh sách phiếu (GĐ4b, lib/kho/tim-ds.ts).
+ *
+ * Mỗi dòng một cách sửa:
+ *   · Chưa khớp → "Ghép món" (/noi-bo/kho/ban-ipos/ghep?ma=…) — ghép xong mọi
+ *     dòng cùng mã được xử lý lại.
+ *   · Thiếu hàng → "Thử lại" (sau khi nhận hàng / chốt pha lóc) · "Hàng ngoài
+ *     sổ" (bắt buộc lý do: cộng phần thiếu vào lô mới nhất rồi trừ) · "Bỏ qua".
+ * Dòng chưa khớp / thiếu hàng tự thử lại mỗi lượt đồng bộ, nên phần lớn tự hết.
+ *
+ * Quản lý, chủ (duyet). Có tiền (thành tiền dòng) — view kho_v_ipos_dong chỉ
+ * trả dòng cho vai xem_gia; cột tiền chỉ hiện khi xem_gia.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
+import PhanTrang from '../../../../components/kho/PhanTrang.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { docTimDs, catTrang, dangTim, linkDs } from '../../../../lib/kho/tim-ds.ts';
+import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
+import {
+  docDongIpos, docTrangThaiIpos, docThe, xuLyDongIpos, lopDen, THE_DONG, TEN_TRANG_THAI_DONG,
+  type DongIpos, type TrangThaiIpos,
+} from '../../../../lib/kho/ban-ipos.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('duyet')) return Astro.redirect('/noi-bo/kho', 302);
+const xemGia = k.duoc('xem_gia');
+const DUONG = '/noi-bo/kho/ban-ipos';
+const sp = Astro.url.searchParams;
+const the = docThe(sp.get('the'));
+
+let bao: KetQua | null = k.bao;
+const form = await docFormGui(Astro);
+if (form && k.chiNhanh && String(form.get('viec')) === 'xu_ly') {
+  const kq = await xuLyDongIpos(k.client, form);
+  if (kq.ok) return chuyenHuong(Astro, `${DUONG}${Astro.url.search}`, kq);
+  bao = kq;
+}
+
+const tim = docTimDs(sp);
+let hien: DongIpos[] = [];
+let coSau = false;
+let tt: TrangThaiIpos | null = null;
+let loiDoc = k.loiDoc;
+if (k.chiNhanh && k.daKhoiTao) {
+  try {
+    let trang: DongIpos[];
+    [trang, tt] = await Promise.all([
+      docDongIpos(k.client, k.chiNhanh.id, [...the.trangThai], tim),
+      docTrangThaiIpos(k.client, k.chiNhanh.id),
+    ]);
+    ({ ds: hien, coSau } = catTrang(trang));
+  } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được dòng bán iPOS.'); }
+}
+const soThe: Record<string, number | null> = tt
+  ? { chua_khop: tt.dem.chua_khop + tt.dem.loi, thieu_hang: tt.dem.thieu_hang, da_ghi: null, bo_qua: null }
+  : {};
+const kgGoi = (d: DongIpos) => [
+  d.so_goi ? `${d.so_goi} gói` : '',
+  d.so_kg !== null ? `${dinhDangKg(d.so_kg)} kg` : '',
+].filter(Boolean).join(' · ') || '—';
+---
+<Kho k={k} tieuDe="Bán hàng iPOS" huongDan="ban-ipos" rong>
+  <h1>Bán hàng iPOS</h1>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {tt && (
+    <div class={`nb-bao ${lopDen(tt.den)}`}>
+      <p style="margin:0">{tt.cau} Lần chạy cuối: {dinhDangThoiDiem(tt.lan_cuoi_luc)}.{' '}
+        <a href="/noi-bo/kho/cai-dat/ipos">Kết nối iPOS</a></p>
+    </div>
+  )}
+
+  <p class="nb-dan">Mỗi dòng là một món trên hóa đơn iPOS. Dòng chưa trừ được kho tự thử lại mỗi 5 phút — thường là
+    hàng mang ra quầy chưa bấm nhận hoặc pha lóc chưa chốt. Còn dòng chờ thì chưa duyệt được kiểm kê quầy.</p>
+
+  <nav class="kho-dh" aria-label="Lọc theo trạng thái">
+    {THE_DONG.map(t => (
+      <a href={linkDs(DUONG, new URLSearchParams(), { the: t.ma === THE_DONG[0].ma ? null : t.ma })}
+        aria-current={the.ma === t.ma ? 'page' : undefined}>
+        {t.ten}{typeof soThe[t.ma] === 'number' && soThe[t.ma]! > 0 ? ` · ${soThe[t.ma]}` : ''}
+      </a>
+    ))}
+  </nav>
+
+  <LocDanhSach duong={DUONG} tim={tim} giu={{ the: the.ma === THE_DONG[0].ma ? null : the.ma }}
+    goiY="Mã hóa đơn, mã hoặc tên món…" />
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+  ) : hien.length === 0 ? (
+    <p class="nb-rong">{tim.trang > 1 ? 'Hết danh sách — bấm "Trang trước".' : dangTim(tim) ? 'Không có dòng nào khớp bộ lọc.'
+      : the.ma === 'chua_khop' || the.ma === 'thieu_hang' ? 'Không có dòng nào chờ xử lý. Tốt lắm!' : 'Chưa có dòng nào.'}</p>
+  ) : hien.map(d => {
+    const [nhan, lop] = TEN_TRANG_THAI_DONG[d.trang_thai] ?? [d.trang_thai, 'tat'];
+    return (
+      <div class="nb-dong" id={`d-${d.id}`}>
+        <div class="nb-dong-dau">
+          <strong>{d.ten_mat_hang ?? d.ten_ipos ?? d.ma_ipos ?? 'Món không tên'}</strong>
+          <span class={`nb-nhan ${lop}`}>{nhan}</span>
+        </div>
+        <dl>
+          <dt>Bán lúc</dt><dd>{dinhDangThoiDiem(d.thoi_diem_ban)} · HĐ {d.ma_hd}</dd>
+          <dt>Món trên iPOS</dt><dd>{d.ten_ipos ?? '—'}{d.ma_ipos ? ` (mã ${d.ma_ipos})` : ''}{d.ma_can ? ` · mã cân ${d.ma_can}` : ''}</dd>
+          <dt>Số lượng</dt><dd>{kgGoi(d)}</dd>
+          {xemGia && d.thanh_tien !== null && <><dt>Thành tiền</dt><dd>{dinhDangTien(d.thanh_tien)}</dd></>}
+          {d.ly_do && <><dt>Lý do</dt><dd>{d.ly_do}</dd></>}
+          {d.so_lan_thu > 1 && d.trang_thai !== 'da_ghi' && <><dt>Đã thử</dt><dd>{d.so_lan_thu} lần</dd></>}
+          {d.lo_het_han && <><dt>Lưu ý</dt><dd>Trừ vào lô đã hết hạn — kiểm lại quầy.</dd></>}
+        </dl>
+
+        {(d.trang_thai === 'chua_khop' || (d.trang_thai === 'loi' && !d.mat_hang_id)) && d.ma_ipos && (
+          <div class="kho-thanh-nut" style="margin:.5rem 0 0">
+            <a class="nb-nut" href={`/noi-bo/kho/ban-ipos/ghep?ma=${encodeURIComponent(d.ma_ipos)}`}>Ghép món</a>
+          </div>
+        )}
+        {(d.trang_thai === 'thieu_hang' || d.trang_thai === 'loi' || (d.trang_thai === 'chua_khop' && !d.ma_ipos)) && (
+          <form method="POST" class="kho-thanh-nut" style="margin:.5rem 0 0;flex-wrap:wrap">
+            <input type="hidden" name="viec" value="xu_ly" />
+            <input type="hidden" name="dong_id" value={d.id} />
+            {d.trang_thai !== 'chua_khop' && <button type="submit" name="cach" value="thu_lai" class="nb-nut">Thử lại</button>}
+            <button type="submit" name="cach" value="bo_qua" class="nb-nut phu">Bỏ qua</button>
+          </form>
+        )}
+        {d.trang_thai === 'thieu_hang' && (
+          <details style="margin:.5rem 0 0">
+            <summary style="cursor:pointer;min-height:48px;display:flex;align-items:center;font-weight:600">Hàng ngoài sổ</summary>
+            <form method="POST">
+              <input type="hidden" name="viec" value="xu_ly" />
+              <input type="hidden" name="dong_id" value={d.id} />
+              <input type="hidden" name="cach" value="ngoai_so" />
+              <p class="kho-phu" style="margin:.25rem 0 .5rem">Hàng có thật ở quầy mà sổ không có (quên nhập, nhập nhầm chỗ):
+                phần thiếu được cộng vào lô mới nhất của món rồi trừ bán. Ghi lại vì sao.</p>
+              <label class="nb-o"><span>Lý do</span>
+                <input type="text" name="ly_do" required minlength="3" maxlength="300" placeholder="Vd: hàng tồn quầy chưa nhập sổ" /></label>
+              <button type="submit" class="nb-nut">Ghi hàng ngoài sổ</button>
+            </form>
+          </details>
+        )}
+      </div>
+    );
+  })}
+  <PhanTrang duong={DUONG} trang={tim.trang} coSau={coSau} />
+
+  {k.duoc('danh_muc') && (
+    <p><a href="/noi-bo/kho/ban-ipos/ghep">Ghép mã món iPOS với món kho →</a></p>
+  )}
+</Kho>

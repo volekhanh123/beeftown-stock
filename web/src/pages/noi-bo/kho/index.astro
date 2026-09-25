@@ -12,6 +12,7 @@
  *     bỏ, món quầy sắp hết, đã đếm quầy chưa. Chỉ hàng ở quầy.
  *   · Quản lý, chủ — "Hôm nay": hai thẻ "Cần theo dõi" (việc, chờ duyệt) và
  *     "Quản trị" (tiền: tồn kho, giá vốn, thu hồi, hao hụt, chi phí thịt).
+ *     GĐ7a: thẻ nhỏ "Bán hàng iPOS" (đèn, số dòng chờ) khi đã cấu hình iPOS.
  *   · Kế toán — phiếu nhập chờ điền giá (0031), rồi công nợ: quá hạn, đến
  *     hạn 7 ngày, chưa đối chiếu.
  *
@@ -29,6 +30,7 @@ import { docThongBao, docChiSoQuanTri, type ChiSoQuanTri } from '../../../lib/kh
 import { cauSuKien, laViec, type SuKien } from '../../../lib/kho/viec.ts';
 import { goiYXepQuay, dauThang, thayDoiPt } from '../../../lib/kho/trang-chu.ts';
 import { docDanhSachYeuCau, type YeuCauQuay } from '../../../lib/kho/quay.ts';
+import { docTrangThaiIposNhe, chuDen, type TrangThaiIpos } from '../../../lib/kho/ban-ipos.ts';
 import { thaoTacCuaVai, soDo, KHOA_DUYET } from '../../../lib/kho/dieu-huong.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangNgayNgan, dinhDangThoiDiem, dinhDangTien, dinhDangPhanTram, homNayVn,
@@ -57,6 +59,7 @@ let suKien: SuKien[] = [];
 let congNo: CongNoNcc[] = [];
 let chiSo: ChiSoQuanTri | null = null;
 let yeuCauCho: YeuCauQuay[] = [];
+let ipos: TrangThaiIpos | null = null;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   const cn = k.chiNhanh.id;
@@ -70,6 +73,8 @@ if (k.chiNhanh && k.daKhoiTao) {
     if (vai === 'thu_kho' && n('yeu_cau_quay') > 0) {
       cho.push(docDanhSachYeuCau(k.client, cn, { chiCho: true, gioiHan: 10 }).then(r => { yeuCauCho = r; }, () => {}));
     }
+    // Thẻ nhỏ trạng thái iPOS (GĐ7a). Lỗi đọc (database chưa có 0036…) thì không có thẻ.
+    if (laQuanLy && tab === 'theo-doi') cho.push(docTrangThaiIposNhe(k.client, cn).then(r => { ipos = r; }));
     if (laQuanLy && tab === 'quan-tri') {
       cho.push(docChiSoQuanTri(k.client, cn, dauThang(homNay), homNay).then(r => { chiSo = r; }));
     }
@@ -94,6 +99,7 @@ const quayThieu = suKien.filter(e => e.khoa === 'quay_duoi_muc');
 // Quản lý
 const soDuyet = soDo({ dem: KHOA_DUYET }, k.viec);
 const cs = chiSo as ChiSoQuanTri | null;
+const iposThe = (ipos as TrangThaiIpos | null)?.co_cau_hinh ? ipos as TrangThaiIpos | null : null;
 const conNo = congNo.reduce((s, c) => s + c.con_no, 0);
 const noQuaHan = congNo.reduce((s, c) => s + c.no_qua_han, 0);
 
@@ -299,6 +305,15 @@ const tieuDe = laQuay ? 'Quầy hôm nay' : laQuanLy ? 'Hôm nay' : vai === 'thu
                   <span class="kho-the-so-dau"><BieuTuong ten="cong_no" /> Công nợ</span>
                   <b>{n('cong_no_qua_han')} <small>phiếu quá hạn</small></b>
                   <small>{n('cong_no_7_ngay')} đến hạn 7 ngày · {n('chua_doi_chieu')} chưa đối chiếu</small>
+                  <em>Chi tiết →</em>
+                </a>
+              )}
+              {iposThe && (
+                <a href={iposThe.cho_xu_ly > 0 ? '/noi-bo/kho/ban-ipos' : '/noi-bo/kho/cai-dat/ipos'}
+                  class:list={['kho-the-so', { do: iposThe.den === 'do', vang: iposThe.den === 'vang' }]}>
+                  <span class="kho-the-so-dau"><BieuTuong ten="quay" /> Bán hàng iPOS</span>
+                  <b>{iposThe.cho_xu_ly} <small>dòng chưa trừ kho</small></b>
+                  <small>{chuDen(iposThe.den)} · lần cuối {dinhDangThoiDiem(iposThe.lan_cuoi_luc)}</small>
                   <em>Chi tiết →</em>
                 </a>
               )}

@@ -10,7 +10,8 @@
  * đang thấy trên màn hình, kể cả khi vừa đổi ngày mà chưa bấm "Xem".
  *
  * Số do database tính (hàm kho_bao_cao_*, 0024; xuất – nhập – tồn dùng
- * kho_bao_cao_xnt_v2 của 0032, có cột xuất khác và hao hụt) — trang này chỉ hiện. Dòng
+ * kho_bao_cao_xnt_v2 của 0032, có cột xuất khác và hao hụt; bán hàng dùng
+ * kho_bao_cao_ban_thuc của 0036, cột "Nguồn" iPOS / Ước tính) — trang này chỉ hiện. Dòng
  * tổng tính chung một hàm với file Excel (tinhTong), nên hai bên luôn khớp.
  */
 import Kho from '../../../../layouts/Kho.astro';
@@ -116,6 +117,9 @@ const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDan
     <p class="kho-phu">Cuối bảng cộng riêng từng loại (hủy, xuất bếp, xuất khác, trả nhà cung cấp, kiểm kê thiếu, kiểm kê thừa, hao hụt), không gộp thành một số: hàng thừa khi kiểm kê không phải hàng mất.</p>
   )}
   {ten === 'ban' && (
-    <p class="kho-phu">Đây là số ƯỚC TÍNH: thiếu ở quầy khi kiểm kê được coi là đã bán, nhân với giá bán hiện tại. Nối iPOS xong, số bán sẽ lấy thẳng từ máy tính tiền.</p>
+    <p class="kho-phu">Dòng nguồn <strong>iPOS</strong> là doanh thu THẬT từ hóa đơn iPOS đã trừ kho. Dòng nguồn <strong>Ước tính</strong>
+      là hàng bán trước khi nối iPOS: thiếu ở quầy khi kiểm kê được coi là đã bán, nhân với giá bán hiện tại. Cuối bảng cộng riêng
+      từng nguồn. Dòng bán iPOS chưa trừ được kho (chưa ghép món, thiếu hàng) chưa có trong báo cáo —{' '}
+      <a href="/noi-bo/kho/ban-ipos">xử lý ở Bán hàng iPOS</a>.</p>
   )}
 </Kho>

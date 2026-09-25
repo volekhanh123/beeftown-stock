@@ -145,6 +145,16 @@ const CHAY_DA_DANG_NHAP = [
   // Thiết lập có tiến độ, ngưỡng, tồn đầu kỳ dạng lưới (GĐ5e, 0035) — chỉ gọi từ
   // /noi-bo/kho/cai-dat; lưới đọc mặt hàng không có cột tiền (thủ kho cũng mở).
   'web/src/lib/kho/thiet-lap.ts',
+  // Đồng bộ bán hàng iPOS (GĐ7a, 0036) — "Cập nhật ngay" ở /noi-bo/kho/cai-dat/ipos
+  // bằng phiên người bấm; cron (src/worker.ts) bằng tài khoản máy may_ipos đã
+  // đăng nhập (client anon riêng + signInWithPassword). Không bao giờ chạy vai anon.
+  'web/src/lib/kho/ipos-dong-bo.ts',
+  // Bán hàng iPOS (GĐ7a, 0036): trạng thái, cấu hình, hàng chờ, ghép mã — chỉ gọi từ
+  // /noi-bo/kho (Kết nối iPOS, Bán hàng iPOS, trang chủ quản lý). Không đọc / ghi token.
+  'web/src/lib/kho/ban-ipos.ts',
+  // Một lượt đồng bộ iPOS (GĐ7a): "Cập nhật ngay" chạy bằng client của quản lý / chủ;
+  // cron đăng nhập tài khoản máy may_ipos (client anon riêng → sau signIn là authenticated).
+  'web/src/lib/kho/ipos-dong-bo.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
 ];

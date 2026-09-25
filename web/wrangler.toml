@@ -1,10 +1,13 @@
 # Cấu hình Cloudflare Workers.
 #
-# KHÔNG khai `main` và `assets` ở đây: từ @astrojs/cloudflare v14, adapter
-# chạy qua Cloudflare Vite plugin và tự sinh hai mục đó. Khai tay sẽ trỏ vào
-# một file chưa tồn tại lúc build và làm hỏng cả lượt build.
+# `main` trỏ vào FILE NGUỒN src/worker.ts (không phải file trong dist/): adapter
+# @astrojs/cloudflare v14 chạy qua Cloudflare Vite plugin, chỉ tự điền `main`
+# khi nó vắng mặt, và build file nguồn này thành dist/server/entry.mjs.
+# src/worker.ts = handler web mặc định của adapter + `scheduled` cho Cron
+# Trigger đồng bộ iPOS (GĐ7a). KHÔNG khai `assets` — adapter tự sinh.
 name = "beeftown"
 compatibility_date = "2026-09-20"
+main = "./src/worker.ts"
 
 # nodejs_compat cần cho @supabase/supabase-js chạy trên workerd.
 compatibility_flags = ["nodejs_compat"]
@@ -14,3 +17,9 @@ compatibility_flags = ["nodejs_compat"]
 # Không khai hai dòng này thì mỗi lần `wrangler deploy` tự bật lại cả hai.
 workers_dev = false
 preview_urls = false
+
+# Đồng bộ bán hàng iPOS mỗi 5 phút (giờ UTC; lượt ngoài giờ mở cửa rất nhẹ —
+# không có hóa đơn mới). Bí mật IPOS_ACCESS_TOKEN, KHO_IPOS_EMAIL,
+# KHO_IPOS_MAT_KHAU đặt bằng `npx wrangler secret put …` — KHÔNG ghi ở đây.
+[triggers]
+crons = ["*/5 * * * *"]

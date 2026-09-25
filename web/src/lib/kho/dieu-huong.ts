@@ -80,6 +80,9 @@ export const MUC_KHO: MucKho[] = [
   { ma: 'cong_no', ten: 'Công nợ', link: '/noi-bo/kho/cong-no', bieuTuong: 'cong_no', quyen: ['ke_toan'],
     dem: KHOA_CONG_NO },
   { ma: 'bao_cao', ten: 'Báo cáo', link: '/noi-bo/kho/bao-cao', bieuTuong: 'bao_cao', quyen: ['xem_gia'] },
+  // GĐ7a (0036): dòng bán iPOS chưa trừ được kho — chưa ghép món, thiếu hàng trên sổ.
+  { ma: 'ban_ipos', ten: 'Bán hàng iPOS', link: '/noi-bo/kho/ban-ipos', bieuTuong: 'quay', quyen: ['duyet'],
+    dem: ['ipos_cho_xu_ly'] },
   { ma: 'quy_trinh', ten: 'Quy trình', link: '/noi-bo/kho/quy-trinh', bieuTuong: 'quy_trinh', quyen: ['xem'] },
   // GĐ5e: màn Cài đặt thành "Thiết lập" có tiến độ từng bước (0035). Không số
   // đỏ — số bước còn lại hiện ngay trên màn, kho_dem_viec không đếm nó.

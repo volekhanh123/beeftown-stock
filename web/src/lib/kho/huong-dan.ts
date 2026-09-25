@@ -556,6 +556,23 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     link: { href: '/noi-bo/kho/pha-loc', chu: 'Mở Pha lóc' },
   },
   {
+    id: 'ban-ipos', vai: ['quan_ly', 'chu_so_huu'],
+    tieuDe: 'Bán hàng iPOS chưa trừ được kho',
+    tomTat: 'Mỗi món bán trên iPOS tự trừ kho ở quầy. Dòng nào chưa trừ được thì nằm ở màn này chờ bạn.',
+    buoc: [
+      'Mở **Khác** → **Bán hàng iPOS** (số đỏ = số dòng đang chờ).',
+      'Thẻ **Chưa khớp**: iPOS có món phần mềm chưa biết. Bấm **Ghép món**, chọn món trong kho (hoặc **Hàng cân nhãn**, **Không phải hàng kho**), bấm **Ghép**. Mọi dòng cùng mã tự trừ kho.',
+      'Thẻ **Thiếu hàng**: sổ không đủ hàng ở quầy. Thường do hàng mang ra chưa bấm nhận hoặc pha lóc chưa chốt — làm xong việc đó rồi bấm **Thử lại**.',
+      'Hàng có thật ở quầy mà sổ không có: mở **Hàng ngoài sổ**, ghi lý do, bấm **Ghi hàng ngoài sổ**.',
+      'Không muốn trừ kho dòng đó: bấm **Bỏ qua**.',
+    ],
+    meo: [
+      'Dòng chờ tự thử lại mỗi 5 phút — phần lớn tự hết khi giấy tờ đi kịp thực tế.',
+      'Còn dòng thiếu hàng / chưa khớp bán trước lúc gửi đếm quầy thì chưa duyệt được phiếu đếm quầy đó.',
+    ],
+    link: { href: '/noi-bo/kho/ban-ipos', chu: 'Mở Bán hàng iPOS' },
+  },
+  {
     id: 'duyet-huy', vai: ['quan_ly', 'chu_so_huu'],
     tieuDe: 'Duyệt báo hủy',
     tomTat: 'Xem ảnh và lý do. Duyệt thì ghi hủy; từ chối thì hàng về lại chỗ cũ.',
@@ -829,6 +846,23 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     ],
     link: { href: '/noi-bo/kho/cai-dat#nguong', chu: 'Mở Ngưỡng cảnh báo' },
   },
+  {
+    id: 'ipos', vai: ['chu_so_huu', 'quan_ly'],
+    tieuDe: 'Kết nối iPOS',
+    tomTat: 'Nối máy tính tiền iPOS để kho tự trừ theo từng hóa đơn, 5 phút một lượt — không còn lấy phần thiếu khi đếm quầy làm số bán.',
+    buoc: [
+      'Nhờ người quản lý Cloudflare cài token iPOS và tài khoản máy đồng bộ (hướng dẫn ở mục **Cài lần đầu** trên màn **Kết nối iPOS**). Không dán token vào phần mềm.',
+      'Chủ quán điền địa chỉ iPOS, pos_parent, pos_id, đường dẫn lấy hóa đơn, chọn **Quầy bán**, tích **Bật đồng bộ**, bấm **Lưu cấu hình**.',
+      'Bấm **Cập nhật ngay** để thử. Đèn xanh là tốt; vàng là cần xem; đỏ là mất kết nối.',
+      'Ghép các món iPOS với món kho ở **Bán hàng iPOS** → **Ghép món**.',
+      'Đếm quầy, duyệt xong, rồi bấm **Chuyển sang trừ kho theo iPOS** (để trống mốc = lúc gửi lần đếm quầy vừa duyệt).',
+    ],
+    meo: [
+      'Muốn quay lại như cũ: bấm **Quay lại đếm quầy**. Hàng đã trừ theo iPOS giữ nguyên.',
+      'Mất kết nối hơn 30 phút trong giờ mở cửa thì chuông báo quản lý.',
+    ],
+    link: { href: '/noi-bo/kho/cai-dat/ipos', chu: 'Mở Kết nối iPOS' },
+  },
 ];
 
 export const CAU_HOI: CauHoi[] = [
@@ -868,6 +902,8 @@ export const CAU_HOI: CauHoi[] = [
     dap: 'Chỉ quản lý, kế toán và chủ quán. Thủ kho và nhân viên quầy chỉ thấy kg, gói, hạn dùng.' },
   { id: 'hoi-nhan-thieu-quay', hoi: 'Hàng mang ra quầy bị thiếu?',
     dap: 'Nhân viên quầy bấm **Thiếu — ghi số nhận** và ghi số thật. Quản lý sẽ trả phần thiếu về kho hoặc ghi mất.' },
+  { id: 'hoi-ipos-khong-tru', hoi: 'Bán trên iPOS mà kho không trừ?',
+    dap: 'Mở **Kết nối iPOS** xem đèn: đỏ là mất kết nối — bấm **Cập nhật ngay**. Đèn vàng / số đỏ ở **Bán hàng iPOS**: món chưa ghép hoặc sổ thiếu hàng ở quầy — ghép món, nhận hàng đang mang ra, rồi **Thử lại**.' },
 ];
 
 /** Mục thuộc vai (có vai trong danh sách `vai`). */

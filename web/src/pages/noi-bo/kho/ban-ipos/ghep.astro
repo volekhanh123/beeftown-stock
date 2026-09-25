@@ -1,0 +1,142 @@
+---
+/**
+ * KHO — GHÉP MÃ MÓN iPOS VỚI MÓN KHO (GĐ7a, 0036)
+ *
+ * Mã món iPOS chưa ghép (gom theo mã, đếm số dòng đang chờ), mỗi mã một form:
+ *   · chọn món kho — gợi ý trước (trùng mã cân, tên không dấu giống nhau:
+ *     goiYMatHang trong lib/kho/ban-ipos.ts), rồi mọi món đang dùng;
+ *   · "Hàng cân nhãn" — món thật đọc từ mã cân trên nhãn (một mã iPOS chung
+ *     cho mọi gói cân);
+ *   · "Không phải hàng kho" (nước, đồ khô…) — bán món này kho không trừ.
+ * Ghép xong kho_ipos_gan_ma xử lý lại ngay mọi dòng chưa khớp cùng mã.
+ *
+ * ?ma=<mã> (từ nút "Ghép món" ở màn Bán hàng iPOS) đưa mã đó lên đầu.
+ * Bên dưới: các mã đã ghép, bỏ ghép được. Quyền danh_muc (quản lý, chủ).
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { docMatHang, type MatHang } from '../../../../lib/kho/danh-muc.ts';
+import { cauLoiKho, dinhDangThoiDiem, type KetQua } from '../../../../lib/kho/chung.ts';
+import {
+  docMaChuaGhep, docMaDaGhep, ganMaIpos, goiYMatHang, type MaChuaGhep, type MaIposDaGhep,
+} from '../../../../lib/kho/ban-ipos.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('danh_muc')) return Astro.redirect('/noi-bo/kho', 302);
+const DUONG = '/noi-bo/kho/ban-ipos/ghep';
+const maChon = (Astro.url.searchParams.get('ma') ?? '').trim().slice(0, 100);
+
+let bao: KetQua | null = k.bao;
+const form = await docFormGui(Astro);
+if (form && k.chiNhanh && String(form.get('viec')) === 'ghep') {
+  const kq = await ganMaIpos(k.client, k.chiNhanh.id, form);
+  if (kq.ok) return chuyenHuong(Astro, DUONG, kq);
+  bao = kq;
+}
+
+let chuaGhep: MaChuaGhep[] = [];
+let daGhep: MaIposDaGhep[] = [];
+let matHang: MatHang[] = [];
+let loiDoc = k.loiDoc;
+if (k.chiNhanh && k.daKhoiTao) {
+  try {
+    [chuaGhep, daGhep, matHang] = await Promise.all([
+      docMaChuaGhep(k.client, k.chiNhanh.id), docMaDaGhep(k.client, k.chiNhanh.id), docMatHang(k.client),
+    ]);
+  } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được mã món iPOS.'); }
+}
+// Mã được chọn lên đầu; chưa có trong danh sách (vd đã ghép rồi) thì vẫn cho ghép lại.
+if (maChon) {
+  const i = chuaGhep.findIndex(m => m.ma_ipos === maChon);
+  if (i > 0) chuaGhep.unshift(...chuaGhep.splice(i, 1));
+  else if (i < 0) {
+    const cu = daGhep.find(m => m.ma_ipos === maChon);
+    chuaGhep.unshift({ ma_ipos: maChon, ten_ipos: cu?.ten_ipos ?? null, so_dong: 0, ma_can: null, lan_cuoi: '' });
+  }
+}
+const dangDung = matHang.filter(m => m.dang_dung);
+const tenMon = new Map(matHang.map(m => [m.id, m.ten]));
+const chuKieu = (m: MaIposDaGhep) => m.kieu === 'bo_qua' ? 'Không phải hàng kho'
+  : m.kieu === 'goi_can' ? `Hàng cân nhãn${m.mat_hang_id ? ` (${tenMon.get(m.mat_hang_id) ?? '—'})` : ''}`
+  : tenMon.get(m.mat_hang_id ?? '') ?? '—';
+---
+<Kho k={k} tieuDe="Ghép món iPOS" huongDan="ban-ipos">
+  <h1>Ghép món iPOS</h1>
+  <p><a href="/noi-bo/kho/ban-ipos">← Bán hàng iPOS</a></p>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+  <p class="nb-dan">Mỗi món trên iPOS cần biết nó là món nào trong kho. Ghép một lần là xong — mọi dòng bán cùng mã,
+    cả dòng đang chờ, tự trừ kho. Gói thịt cân nhãn thì chọn <strong>Hàng cân nhãn</strong>: món đọc từ mã cân trên nhãn.</p>
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+  ) : (
+    <>
+      <h2>Chưa ghép · {chuaGhep.filter(m => m.so_dong > 0).length}</h2>
+      {chuaGhep.length === 0 ? (
+        <p class="nb-rong">Không còn mã nào chưa ghép. Tốt lắm!</p>
+      ) : chuaGhep.map(m => {
+        const goiY = goiYMatHang(m, dangDung);
+        return (
+          <form method="POST" class="nb-the" id={`ma-${m.ma_ipos.replace(/[^A-Za-z0-9_-]/g, '_')}`}>
+            <input type="hidden" name="viec" value="ghep" />
+            <input type="hidden" name="ma_ipos" value={m.ma_ipos} />
+            <p style="margin-top:0"><strong>{m.ten_ipos ?? '(iPOS không gửi tên)'}</strong> · mã <code>{m.ma_ipos}</code>
+              {m.ma_can && <> · mã cân {m.ma_can}</>}</p>
+            <p class="kho-phu" style="margin:-.5rem 0 .75rem">
+              {m.so_dong > 0 ? `${m.so_dong} dòng đang chờ · bán gần nhất ${dinhDangThoiDiem(m.lan_cuoi)}` : 'Không có dòng nào đang chờ.'}
+            </p>
+            <label class="nb-o">
+              <span>Là món nào trong kho?</span>
+              <select name="mat_hang_id" required>
+                <option value="">— Chọn —</option>
+                {goiY.length > 0 && (
+                  <optgroup label="Gợi ý">
+                    {goiY.map((g, i) => <option value={g.id} selected={i === 0}>{g.ten} ({g.ma})</option>)}
+                  </optgroup>
+                )}
+                <optgroup label="Khác">
+                  <option value="goi_can">Hàng cân nhãn — món đọc từ mã cân</option>
+                  <option value="bo_qua">Không phải hàng kho (nước, đồ khô…)</option>
+                </optgroup>
+                <optgroup label="Mọi món">
+                  {dangDung.map(g => <option value={g.id}>{g.ten} ({g.ma})</option>)}
+                </optgroup>
+              </select>
+            </label>
+            <button type="submit" class="nb-nut">Ghép</button>
+          </form>
+        );
+      })}
+
+      <h2>Đã ghép · {daGhep.length}</h2>
+      {daGhep.length === 0 ? (
+        <p class="nb-rong">Chưa ghép mã nào.</p>
+      ) : (
+        <div class="kho-bang-khung">
+          <table class="kho-bang">
+            <thead><tr><th>Mã iPOS</th><th>Tên trên iPOS</th><th>Món kho</th><th></th></tr></thead>
+            <tbody>
+              {daGhep.map(m => (
+                <tr>
+                  <td><code>{m.ma_ipos}</code></td>
+                  <td>{m.ten_ipos ?? '—'}</td>
+                  <td>{chuKieu(m)}</td>
+                  <td>
+                    <form method="POST" style="margin:0">
+                      <input type="hidden" name="viec" value="ghep" />
+                      <input type="hidden" name="ma_ipos" value={m.ma_ipos} />
+                      <input type="hidden" name="mat_hang_id" value="bo_ghep" />
+                      <button type="submit" class="nb-nut phu">Bỏ ghép</button>
+                    </form>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  )}
+</Kho>

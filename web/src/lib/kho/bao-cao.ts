@@ -5,6 +5,9 @@
  * chỉ thấy số của chi nhánh mình, vai không xem giá nhận cột tiền bằng 0. File
  * này chỉ gọi hàm, khai báo cột để hiện bảng và xuất CSV.
  *
+ * Bán hàng dùng kho_bao_cao_ban_thuc (0036): doanh thu thật từ iPOS, phần
+ * trước khi nối iPOS vẫn là ước tính (cột "Nguồn").
+ *
  * Xuất – nhập – tồn dùng kho_bao_cao_xnt_v2 (0032): thêm cột xuất khác và hao
  * hụt (mất khi mang ra quầy), tách khỏi kiểm kê. Hàm cũ vẫn còn trong database.
  *
@@ -124,22 +127,28 @@ export const BAO_CAO: Record<string, DinhNghiaBaoCao> = {
       link: [{ ten: 'Chuyển · xuất · hủy', href: '/noi-bo/kho/xuat' }, { ten: 'Kiểm kê', href: '/noi-bo/kho/kiem-ke' }],
     },
   },
+  // GĐ7a (0036): kho_bao_cao_ban_thuc — mỗi món tối đa hai dòng theo "Nguồn":
+  // iPOS (doanh thu THẬT từ hóa đơn) và Ước tính (thiếu khi đếm quầy × giá bán
+  // hiện tại, trước khi nối iPOS). Tổng cộng riêng từng nguồn — cộng số thật với
+  // số ước tính thành một con số là sai nghĩa. Database chưa có 0036 thì đọc
+  // hàm cũ kho_bao_cao_ban, mọi dòng là "Ước tính" (docBaoCao).
   ban: {
-    ten: 'Bán (ước tính)',
-    moTa: 'Chưa nối iPOS: số bán lấy từ phần thiếu khi kiểm kê quầy. Doanh thu ước tính theo giá bán HIỆN TẠI trong danh mục.',
+    ten: 'Bán hàng',
+    moTa: 'Nguồn iPOS: doanh thu thật từ hóa đơn iPOS đã trừ kho. Nguồn Ước tính: phần thiếu khi đếm quầy (trước khi nối iPOS), nhân giá bán HIỆN TẠI trong danh mục. Giá vốn theo lô.',
     cot: [
       { khoa: 'ten', ten: 'Mặt hàng', kieu: 'chu' },
+      { khoa: 'nguon', ten: 'Nguồn', kieu: 'chu' },
       { khoa: 'so_goi', ten: 'Gói', kieu: 'so' },
       { khoa: 'so_kg', ten: 'Kg', kieu: 'kg' },
-      { khoa: 'gia_ban_kg', ten: 'Giá bán/kg', kieu: 'tien' },
-      { khoa: 'doanh_thu_uoc_tinh', ten: 'Doanh thu ước tính', kieu: 'tien' },
+      { khoa: 'doanh_thu', ten: 'Doanh thu', kieu: 'tien' },
       { khoa: 'gia_von', ten: 'Giá vốn', kieu: 'tien', tienMat: true },
-      { khoa: 'lai_gop_uoc_tinh', ten: 'Lãi gộp ước tính', kieu: 'tien', tienMat: true },
+      { khoa: 'lai_gop', ten: 'Lãi gộp', kieu: 'tien', tienMat: true },
     ],
-    cong: ['so_goi', 'so_kg', 'doanh_thu_uoc_tinh', 'gia_von', 'lai_gop_uoc_tinh'],
+    cong: ['so_goi', 'so_kg', 'doanh_thu', 'gia_von', 'lai_gop'],
+    tongTheo: 'nguon',
     khiTrong: {
-      cau: 'Chưa có số bán trong kỳ. Số bán có khi phiếu kiểm kê quầy được duyệt và quầy thiếu hàng so với sổ',
-      link: [{ ten: 'Kiểm kê', href: '/noi-bo/kho/kiem-ke' }],
+      cau: 'Chưa có số bán trong kỳ. Số bán có khi hóa đơn iPOS được trừ kho, hoặc (chưa nối iPOS) khi phiếu kiểm kê quầy được duyệt và quầy thiếu hàng so với sổ',
+      link: [{ ten: 'Bán hàng iPOS', href: '/noi-bo/kho/ban-ipos' }, { ten: 'Kiểm kê', href: '/noi-bo/kho/kiem-ke' }],
     },
   },
 };
@@ -163,6 +172,9 @@ export const COT_CONG_NO: CotBaoCao[] = [
   { khoa: 'so_ngay_qua_han', ten: 'Số ngày quá hạn', kieu: 'so' },
 ];
 
+/** Cột "Nguồn" của báo cáo bán (0036). */
+export const TEN_NGUON_BAN: Record<string, string> = { ipos: 'iPOS', uoc_tinh: 'Ước tính' };
+
 export const TEN_LOAI_DONG_HAO_HUT: Record<string, string> = {
   huy: 'Hủy',
   xuat_bep: 'Xuất bếp',
@@ -184,11 +196,23 @@ export async function docBaoCao(
   if (ten === 'xuat-nhap-ton') kq = await client.rpc('kho_bao_cao_xnt_v2', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
   else if (ten === 'thu-hoi') kq = await client.rpc('kho_bao_cao_thu_hoi', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
   else if (ten === 'hao-hut') kq = await client.rpc('kho_bao_cao_hao_hut', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
-  else if (ten === 'ban') kq = await client.rpc('kho_bao_cao_ban', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
-  else return { dong: [], loi: 'Không có báo cáo này.' };
+  else if (ten === 'ban') {
+    kq = await client.rpc('kho_bao_cao_ban_thuc', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
+    // Database chưa chạy 0036: hàm cũ, mọi dòng là ước tính (đổi tên cột cho khớp bảng).
+    if (kq.error && /kho_bao_cao_ban_thuc|could not find|does not exist/i.test(kq.error.message)) {
+      const cu = await client.rpc('kho_bao_cao_ban', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
+      kq = cu.error ? cu : {
+        data: ((cu.data ?? []) as Record<string, unknown>[]).map(d => ({
+          ...d, nguon: 'uoc_tinh', doanh_thu: d.doanh_thu_uoc_tinh, lai_gop: d.lai_gop_uoc_tinh,
+        })),
+        error: null,
+      };
+    }
+  } else return { dong: [], loi: 'Không có báo cáo này.' };
   if (kq.error) return { dong: [], loi: cauLoiKho(kq.error) };
   const dong = (kq.data ?? []) as Record<string, unknown>[];
   if (ten === 'hao-hut') for (const d of dong) d.loai_dong = TEN_LOAI_DONG_HAO_HUT[String(d.loai_dong)] ?? d.loai_dong;
+  if (ten === 'ban') for (const d of dong) d.nguon = TEN_NGUON_BAN[String(d.nguon)] ?? d.nguon;
   if (ten === 'thu-hoi') for (const d of dong) d.ten_nha_cung_cap = d.ten_nha_cung_cap ?? '(tồn đầu / không rõ)';
   return { dong, loi: null };
 }

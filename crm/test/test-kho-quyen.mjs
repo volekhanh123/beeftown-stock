@@ -184,6 +184,15 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
     ['may_chung', 'xem', false],            // máy không đọc được gì trong kho
     ['chu_so_huu', 'may_chung', false],     // không người nào dùng được hàm của máy
     ['may_ipos', 'may_chung', false],
+    ['may_ipos', 'dong_bo_ban', true],      // 0036: máy iPOS chỉ đồng bộ bán hàng
+    ['may_ipos', 'xem', false],             // không đọc được gì trong kho
+    ['may_ipos', 'xem_gia', false],
+    ['quan_ly', 'dong_bo_ban', true],       // bấm "Cập nhật ngay"
+    ['chu_so_huu', 'dong_bo_ban', true],
+    ['nhan_vien_quay', 'dong_bo_ban', false],
+    ['thu_kho', 'dong_bo_ban', false],
+    ['ke_toan', 'dong_bo_ban', false],
+    ['may_chung', 'dong_bo_ban', false],
   ];
   for (const [vai, viec, mong] of chot) {
     ok(`${vai} ${mong ? 'ĐƯỢC' : 'KHÔNG được'} "${viec}"`,
@@ -192,13 +201,17 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
   const { rows: [{ n: soVai }] } = await db.query(`select count(*)::int as n from unnest(enum_range(null::vai_tro))`);
   ok('Bảng có đủ 9 vai để tra (khớp enum vai_tro)', VAI.length === 9 && soVai === 9, `enum có ${soVai}`);
   // Vai máy không được việc nào của người. Riêng việc may_chung (0034) chỉ có
-  // đúng vai may_chung.
-  for (const viec of Object.keys(QUYEN_KHO).filter(v => v !== 'may_chung')) {
+  // đúng vai may_chung; việc dong_bo_ban (0036) là việc DUY NHẤT của may_ipos.
+  for (const viec of Object.keys(QUYEN_KHO).filter(v => v !== 'may_chung' && v !== 'dong_bo_ban')) {
     ok(`Vai máy chưa được việc "${viec}"`,
        !QUYEN_KHO[viec].includes('may_chung') && !QUYEN_KHO[viec].includes('may_ipos'));
   }
   ok('Việc "may_chung" chỉ có vai may_chung',
      QUYEN_KHO.may_chung?.length === 1 && QUYEN_KHO.may_chung[0] === 'may_chung');
+  ok('may_ipos có đúng MỘT việc: dong_bo_ban',
+     Object.keys(QUYEN_KHO).filter(v => QUYEN_KHO[v].includes('may_ipos')).join() === 'dong_bo_ban');
+  ok('Việc "dong_bo_ban": chủ, quản lý, may_ipos — không vai nhân viên nào khác',
+     [...QUYEN_KHO.dong_bo_ban].sort().join() === 'chu_so_huu,may_ipos,quan_ly');
 });
 
 // ===========================================================================
@@ -297,11 +310,16 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_duyet_kiem_ke', 'kho_tu_choi_kiem_ke', 'kho_huy_kiem_ke',
     // Đếm quầy cộng dồn bằng máy quét (0032)
     'kho_quet_kiem_ke', 'kho_bo_quet_kiem_ke', 'kho_het_hang_con_lai',
+    // Đồng bộ bán hàng iPOS (0036): lượt (dong_bo_ban), cấu hình / chuyển nguồn
+    // (cai_dat_goc), ghép mã (danh_muc), xử lý dòng (duyet), trạng thái (xem)
+    'kho_ipos_bat_dau', 'kho_ipos_nhan', 'kho_ipos_ket_thuc',
+    'kho_ipos_luu_cau_hinh', 'kho_ipos_chuyen_sang', 'kho_ipos_tro_ve',
+    'kho_ipos_gan_ma', 'kho_ipos_xu_ly_dong', 'kho_ipos_trang_thai',
     // Công nợ, trả hàng
     'kho_doi_chieu_hoa_don', 'kho_ghi_thanh_toan', 'kho_huy_thanh_toan', 'kho_tra_nha_cung_cap',
     // Báo cáo — SECURITY INVOKER, RLS của người gọi vẫn áp dụng
     'kho_bao_cao_xuat_nhap_ton', 'kho_bao_cao_thu_hoi', 'kho_bao_cao_hao_hut', 'kho_bao_cao_ban',
-    'kho_bao_cao_xnt_v2',
+    'kho_bao_cao_xnt_v2', 'kho_bao_cao_ban_thuc',
     // Đối soát
     'kho_doi_soat_ton',
     // Thẻ kho — không tiền (0033)
@@ -331,6 +349,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_vi_tri_sau_pha', 'kho_phien_pha_tinh_quet', 'kho_phien_pha_tra_quet', 'kho_thu_hoi_du_kien',
     'kho_may_cua_phien', 'kho_may_nguoi_hop_le', 'kho_may_ghi', 'kho_may_kiem_pin_bam',
     'kho_buoc_thiet_lap',
+    // 0036: ghi một dòng iPOS, chọn lô, tự nhận hàng đi đường, đảo ngược, mất kết nối
+    'kho_ipos_ghi_dong', 'kho_ipos_lay_lo', 'kho_ipos_tu_nhan', 'kho_ipos_dao_dong', 'kho_ipos_mat_ket_noi',
   ].sort();
 
   const { rows } = await db.query(`

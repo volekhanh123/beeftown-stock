@@ -143,6 +143,25 @@ export function cauSuKien(su: SuKien): CauSuKien {
                  + '. Xem lại số cân rồi bấm "Đã xem".',
                link: `/noi-bo/kho/pha-loc/${e.ref_id}`, nut: 'Xem', muc: 'vang' };
     }
+    // ---- 0036 · Bán hàng iPOS ----------------------------------------------
+    case 'ipos_cho_xu_ly': {
+      // Quản lý: so = số dòng chưa trừ được kho, phu = số dòng chưa ghép món.
+      const n = soNguyen(e.so) ?? 0;
+      const chuaKhop = soNguyen(e.phu) ?? 0;
+      const thieu = Math.max(n - chuaKhop, 0);
+      const phan = [chuaKhop ? `${chuaKhop} chưa ghép món` : '', thieu ? `${thieu} thiếu hàng trên sổ` : '']
+        .filter(Boolean).join(', ');
+      return { tieuDe: `Bán hàng iPOS: ${n || 'có'} dòng chưa trừ được kho`,
+               chiTiet: `${phan ? `${phan}. ` : ''}Ghép món hoặc thử lại — còn dòng chờ thì chưa duyệt được kiểm kê quầy.`,
+               link: '/noi-bo/kho/ban-ipos', nut: 'Xử lý', muc: 'vang' };
+    }
+    case 'ipos_mat_ket_noi': {
+      // Quản lý: phu = 'loi' (lượt cuối lỗi) | 'cham' (> 30 phút trong giờ mở cửa); so = phút từ lần tốt cuối.
+      const phut = soNguyen(e.so);
+      return { tieuDe: e.phu === 'loi' ? 'Không đồng bộ được iPOS' : 'iPOS lâu chưa cập nhật',
+               chiTiet: `${phut ? `Lần tốt cuối: ${phut} phút trước. ` : ''}Số bán chưa về kho — mở Kết nối iPOS xem lỗi, bấm "Cập nhật ngay".`,
+               link: '/noi-bo/kho/cai-dat/ipos', nut: 'Xem', muc: 'do' };
+    }
     default:
       return { tieuDe: e.ten || e.ma || 'Có việc mới', link: '/noi-bo/kho', nut: 'Xem', muc: 'xam' };
   }
@@ -157,6 +176,8 @@ export const KHOA_SU_KIEN = [
   'yeu_cau_quay', 'hang_dang_chuyen', 'chuyen_nhan_thieu',
   // 0033
   'thu_hoi_thap',
+  // 0036
+  'ipos_cho_xu_ly', 'ipos_mat_ket_noi',
 ] as const;
 
 /** Sự kiện là "việc cần làm" (có nút làm ngay, không chỉ để biết). */
