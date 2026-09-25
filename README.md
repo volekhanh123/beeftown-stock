@@ -1,8 +1,34 @@
-# Beeftown — Tài sản web
+# Beeftown — phần mềm và tài sản web
 
-Website và các tài liệu thiết kế dạng web của **Beeftown** — nhà hàng BBQ bò kiểu quầy thịt tại khu Cầu Ông Lãnh, Quận 1, TP.HCM. Dự kiến khai trương 2026.
+Website, phần mềm nội bộ (CRM, tuyển dụng, kho) và các tài liệu thiết kế dạng web của **Beeftown** — nhà hàng BBQ bò kiểu quầy thịt tại khu Cầu Ông Lãnh, Quận 1, TP.HCM. Dự kiến khai trương 2026.
 
-> **Repo này chỉ chứa file web.** Tài liệu kinh doanh (mô hình tài chính, nghiên cứu đối thủ, danh sách KOL, kế hoạch marketing) **cố tình không được đưa lên** — xem `.gitignore`. Khi thêm file mới, nhớ kiểm tra `git status --short` trước khi commit.
+> **Repo này chỉ chứa code và file web.** Tài liệu kinh doanh (mô hình tài chính, nghiên cứu đối thủ, danh sách KOL, kế hoạch marketing) **cố tình không được đưa lên** — chúng nằm trong OneDrive, xem `.gitignore`. Khi thêm file mới, nhớ kiểm tra `git status --short` trước khi commit.
+
+---
+
+## Làm việc ở đâu
+
+- **Bản làm việc duy nhất là `C:\Beeftown`**, nằm ngoài OneDrive. GitHub (`volekhanh123/beeftown-stock`, riêng tư) là bản sao lưu; thay đổi vào `main` qua pull request.
+- **Đừng đưa code vào lại OneDrive.** OneDrive đồng bộ cả `.git` và `node_modules` nên hay giành file với git, và đường dẫn dài có dấu làm npm lỗi (Windows giới hạn độ dài đường dẫn).
+- **Tài liệu kinh doanh ở lại OneDrive** (`Desktop\FnB Investment\`), không vào repo.
+- **Làm bằng phiên Claude local, mở trong `C:\Beeftown`.** Mỗi phiên tự có worktree riêng trong `.claude/worktrees/`. Đừng mở nhánh mới từ phiên cloud: phiên cloud không đọc được ghi chú trên máy này, nên trước đây hay đánh trùng số migration.
+- **Số migration kế tiếp là `0032`.** Trước khi đặt số, `git fetch` rồi xem số lớn nhất trên `main` và mọi nhánh còn mở.
+
+---
+
+## Cấu trúc thư mục
+
+| Thư mục | Nội dung |
+|---|---|
+| `web/` | **Website đang chạy ở beeftown.vn**, cùng giao diện nội bộ `/noi-bo` và phần mềm kho `/noi-bo/kho`. Astro trên Cloudflare Workers, song ngữ Việt–Anh. Xem `web/README.md` và `web/KHO.md`. |
+| `supabase/` | **Database chung** (tên cũ `crm/`): migration `0001`–`0031` cho đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho; 1637 kiểm tra chạy bằng `npm test`. Xem `supabase/README.md`. |
+| `cong-cu/` | `Beeftown_Can_TMA.html` — phần mềm cài hàng cho cân in tem TMA: sửa tên, giá, chữ trên tem rồi xuất file nạp vào cân qua USB. Chạy không cần mạng. |
+| `thiet-ke/` | `Beeftown_CRM_Design.html` (thiết kế CRM và thẻ thành viên — đặc tả nghiệp vụ của `supabase/`), `Beeftown_Logo_Suite_and_Directions.html` (bộ logo và các hướng nhận diện), `Beeftown_Dashboard.html` (bảng theo dõi chỉ số). |
+| `luu-tru/website-tinh-cu/` | ⚠️ **BẢN NHÁP CŨ — KHÔNG PHÁT HÀNH.** Web tĩnh một file trước khi có `web/`; xem cảnh báo bên dưới. `google-apps-script.gs` đã được thay bằng `tao_dat_ban()` trong database. |
+
+Các file `Beeftown_Bo_Nhan_Dien_So.html`, `Beeftown_Instore_Art.html` và `Beeftown_Concept_Board_v1.svg` đã xoá khỏi thư mục (21/09/2026) vì còn giờ mở cửa, nguồn thịt, Gen Z hoặc thông điệp cũ; bản cũ vẫn còn trong lịch sử git.
+
+File trong `cong-cu/`, `thiet-ke/` và `luu-tru/` đều là **HTML tự chứa** — mở thẳng bằng trình duyệt, không cần cài đặt gì, không có bước build. Chỉ phụ thuộc Google Fonts và (riêng web tĩnh cũ) ảnh từ Unsplash.
 
 ---
 
@@ -16,28 +42,9 @@ Bò nhập khẩu tươi mát được pha lóc và **đóng gói sẵn theo t�
 
 ---
 
-## Các file
-
-| File | Nội dung |
-|---|---|
-| `web/` | **Website đang dùng.** Astro trên Cloudflare Workers, song ngữ Việt–Anh. Xem `web/README.md`. |
-| `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho. 1308 kiểm tra. |
-| ~~`Beeftown_Website/index.html`~~ | ⚠️ **BẢN NHÁP CŨ — KHÔNG PHÁT HÀNH.** Xem cảnh báo bên dưới. |
-| ~~`Beeftown_Website/google-apps-script.gs`~~ | ⚠️ Đã thay bằng `tao_dat_ban()` trong database. |
-| `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên. |
-| `Beeftown_Logo_Suite_and_Directions.html` | Bộ logo và các hướng nhận diện. |
-| `Beeftown_Dashboard.html` | Bảng theo dõi chỉ số. |
-| `Beeftown_Can_TMA.html` | Phần mềm cài hàng cho cân in tem TMA: sửa tên, giá, chữ trên tem rồi xuất file nạp vào cân qua USB. Chạy không cần mạng. |
-
-Các file `Beeftown_Bo_Nhan_Dien_So.html`, `Beeftown_Instore_Art.html` và `Beeftown_Concept_Board_v1.svg` đã xoá khỏi thư mục (21/09/2026) vì còn giờ mở cửa, nguồn thịt, Gen Z hoặc thông điệp cũ; bản cũ vẫn còn trong lịch sử git.
-
-Tất cả đều là **HTML tự chứa** — mở thẳng bằng trình duyệt, không cần cài đặt gì, không có bước build. Chỉ phụ thuộc Google Fonts và (riêng website) ảnh từ Unsplash.
-
----
-
 ## Phần mềm cân TMA
 
-Cân in tem TM-A 30kg (dòng TM-xA, firmware V3.14E8) không có phần mềm đi kèm, nên `Beeftown_Can_TMA.html` thay phần việc hay dùng nhất: sửa danh sách hàng và chữ trên tem. Cách dùng có ghi ngay trên trang (3 bước: lưu từ cân ra USB → sửa → nạp lại).
+Cân in tem TM-A 30kg (dòng TM-xA, firmware V3.14E8) không có phần mềm đi kèm, nên `cong-cu/Beeftown_Can_TMA.html` thay phần việc hay dùng nhất: sửa danh sách hàng và chữ trên tem. Cách dùng có ghi ngay trên trang (3 bước: lưu từ cân ra USB → sửa → nạp lại).
 
 Đã nạp thử vào cân thật và in tem thành công (25/09/2026).
 
@@ -94,7 +101,7 @@ Lưu ý khi sửa code phần mềm cân:
 
 ## ⚠️ Bản nháp cũ không được phát hành
 
-`Beeftown_Website/index.html` là bản nháp thiết kế. Nó **không được deploy**, vì đang chứa:
+`luu-tru/website-tinh-cu/index.html` là bản nháp thiết kế. Nó **không được deploy**, vì đang chứa:
 
 - số bàn còn trống **mô phỏng** bằng hàm `remainingFor()`, kèm chữ đỏ *"Còn 1 bàn"* tạo cảm giác khan hiếm;
 - bốn **đánh giá khách bịa**, có tên tuổi và nghề nghiệp;
@@ -154,7 +161,7 @@ Những chỗ dễ làm hỏng nếu không biết trước:
 
 ### Việc kỹ thuật — theo đúng thứ tự này
 
-- [ ] Tạo project Supabase, chạy `crm/supabase/migrations/` **theo thứ tự số**
+- [ ] Tạo project Supabase, chạy `supabase/migrations/` **theo thứ tự số**
 - [ ] Tạo tài khoản đầu tiên trong Supabase Studio, rồi thêm một dòng `nhan_su` có `auth_uid` trỏ tới nó và `vai_tro = 'chu_so_huu'`.
       *Không có bước thứ hai thì đăng nhập được vào Supabase nhưng `/noi-bo` vẫn từ chối — có chủ ý: Supabase Auth trả lời "ai", bảng `nhan_su` trả lời "có phải nhân viên không".*
 - [ ] Thêm một dòng `chi_nhanh` có `ma` khớp biến `PUBLIC_CHI_NHANH`

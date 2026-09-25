@@ -24,7 +24,7 @@
  * UTF-8.
  *
  * File thuần, không import gì — test Node nạp thẳng được (xem test-kho-can.mjs),
- * và bản HTML độc lập Beeftown_Can_TMA.html ở gốc repo dùng đúng cách đọc này.
+ * và bản HTML độc lập cong-cu/Beeftown_Can_TMA.html dùng đúng cách đọc này.
  */
 
 export const GIA_TOI_DA = 999999;      // cửa sổ đơn giá trên cân có 6 chữ số

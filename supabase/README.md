@@ -1,8 +1,12 @@
-# Beeftown CRM
+# Beeftown — database (Supabase)
 
-Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 100%** dữ liệu khách hàng — đây chính là một trong ba thứ mà ma trận phần mềm yêu cầu phải tự sở hữu.
+Database chung của mọi phần mềm Beeftown: CRM và thẻ thành viên, đặt bàn, cổng nội dung, thực đơn, tuyển dụng, kho. Website và giao diện nội bộ ở `../web/` đọc/ghi vào đây.
 
-> **Đặc tả nghiệp vụ:** [`../Beeftown_CRM_Design.html`](../Beeftown_CRM_Design.html). Mọi con số trong code (tỷ lệ 3%, ngưỡng 50.000đ, 6 nhóm khách) đều lấy từ đó — sửa code thì phải sửa cả tài liệu.
+> Thư mục này tên là `crm/` cho tới 25/09/2026 (migration nằm ở `crm/supabase/migrations/`). Chú thích trong các migration cũ còn ghi `crm/README.md` — là file này. Không sửa migration đã chạy chỉ để đổi chú thích.
+
+Phần CRM và thẻ thành viên: Beeftown **sở hữu 100%** dữ liệu khách hàng — đây chính là một trong ba thứ mà ma trận phần mềm yêu cầu phải tự sở hữu.
+
+> **Đặc tả nghiệp vụ:** [`../thiet-ke/Beeftown_CRM_Design.html`](../thiet-ke/Beeftown_CRM_Design.html). Mọi con số trong code (tỷ lệ 3%, ngưỡng 50.000đ, 6 nhóm khách) đều lấy từ đó — sửa code thì phải sửa cả tài liệu.
 
 ## Trạng thái
 
@@ -39,7 +43,7 @@ công khai đều đã dựng.
 Không cần Docker, không cần cài Postgres — dùng PGlite (Postgres chạy WASM trong Node).
 
 ```bash
-cd crm && npm install && npm test
+cd supabase && npm install && npm test
 ```
 
 | Lệnh | Kiểm gì | Số kiểm tra |
@@ -70,8 +74,8 @@ cd crm && npm install && npm test
 ## Cấu trúc
 
 ```
-crm/
-├── supabase/migrations/     ← schema, đánh số theo thứ tự chạy
+supabase/
+├── migrations/              ← schema, đánh số theo thứ tự chạy
 │   ├── 0001_nen_mong.sql        chi nhánh · nhân sự · chuẩn hóa SĐT · hàm phân quyền
 │   ├── 0002_khach_hang.sql      khách · nhật ký đồng ý · lượt ghé
 │   ├── 0003_the_thanh_vien.sql  sổ cái điểm · ba luật tính điểm

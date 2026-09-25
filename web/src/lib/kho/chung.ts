@@ -2,7 +2,7 @@
  * KHO — NHỮNG THỨ DÙNG CHUNG, THUẦN TÚY
  *
  * File này KHÔNG import gì lúc chạy (chỉ `import type`), để các bài test ở
- * crm/test nạp thẳng được bằng Node mà không cần dựng Astro. Mọi thứ ở đây là
+ * supabase/test nạp thẳng được bằng Node mà không cần dựng Astro. Mọi thứ ở đây là
  * hàm thuần: đọc số, định dạng số, bảng tra quyền.
  *
  * BẢNG TRA QUYỀN Ở ĐÂY CHỈ LÀ GƯƠNG

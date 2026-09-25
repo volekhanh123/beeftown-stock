@@ -1,8 +1,8 @@
 {
-  "name": "beeftown-crm",
+  "name": "beeftown-supabase",
   "version": "0.1.0",
   "private": true,
-  "description": "Hệ thống CRM & thẻ thành viên Beeftown",
+  "description": "Database Beeftown trên Supabase — migration và kiểm thử (CRM, tuyển dụng, kho)",
   "scripts": {
     "test": "node test/chay-test.mjs && node test/test-phan-quyen.mjs && node test/test-an-toan.mjs && node test/test-cong-bo.mjs && node test/test-thuc-don.mjs && node test/test-tuyen-dung.mjs && node test/test-cong-khai.mjs && node test/test-dat-noi-dung.mjs && node test/test-hop-dong-web.mjs && node test/chay-kho.mjs && node test/test-quyen-ham-crm.mjs",
     "test:db": "node test/chay-test.mjs",

@@ -71,7 +71,7 @@ function trangCua(link) {
 const VAI = ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan'];
 
 // Khóa kho_dem_viec có thật: đọc từ thân hàm trong 0030.
-const SQL_0030 = doc(join(GOC, 'crm/supabase/migrations/0030_kho_viec_thong_bao.sql'));
+const SQL_0030 = doc(join(GOC, 'supabase/migrations/0030_kho_viec_thong_bao.sql'));
 const thanDemViec = SQL_0030.slice(
   SQL_0030.indexOf('create or replace function kho_dem_viec('),
   SQL_0030.indexOf('comment on function kho_dem_viec'),

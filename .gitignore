@@ -25,27 +25,23 @@
 !/.gitignore
 !/README.md
 
-# --- ĐƯỢC PHÉP: website ---
-!Beeftown_Website/index.html
-!Beeftown_Website/google-apps-script.gs
-
-# --- ĐƯỢC PHÉP: hệ thống CRM ---
-!crm/README.md
-!crm/package.json
-!crm/package-lock.json
-!crm/supabase/migrations/*.sql
-!crm/test/*.mjs
+# --- ĐƯỢC PHÉP: database (Supabase) — tên cũ crm/ ---
+!/supabase/README.md
+!/supabase/package.json
+!/supabase/package-lock.json
+!/supabase/migrations/*.sql
+!/supabase/test/*.mjs
 
 # --- ĐƯỢC PHÉP: tài liệu thiết kế dạng web ---
-!Beeftown_Bo_Nhan_Dien_So.html
-!Beeftown_CRM_Design.html
-!Beeftown_Instore_Art.html
-!Beeftown_Logo_Suite_and_Directions.html
-!Beeftown_Dashboard.html
-!Beeftown_Concept_Board_v1.svg
+!/thiet-ke/*.html
+!/thiet-ke/*.svg
 
-# --- ĐƯỢC PHÉP: công cụ nội bộ ---
-!Beeftown_Can_TMA.html
+# --- ĐƯỢC PHÉP: công cụ nội bộ chạy không cần mạng ---
+!/cong-cu/*.html
+
+# --- ĐƯỢC PHÉP: bản cũ giữ lại để tra (không phát hành) ---
+!/luu-tru/website-tinh-cu/index.html
+!/luu-tru/website-tinh-cu/google-apps-script.gs
 
 # --- ĐƯỢC PHÉP: ứng dụng web (Astro + Cloudflare Workers) ---
 # Mở theo ĐUÔI FILE chứ không mở cả thư mục. Nhờ vậy file mật thêm vào web/
@@ -91,6 +87,10 @@ web/dist/
 web/.astro/
 web/.wrangler/
 .wrangler/
+
+# Dữ liệu Supabase CLI sinh ra khi link project — không commit
+supabase/.temp/
+supabase/.branches/
 
 # Thư viện cài bằng npm — không bao giờ commit, cài lại bằng `npm install`
 node_modules/

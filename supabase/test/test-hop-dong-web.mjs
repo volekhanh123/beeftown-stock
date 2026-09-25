@@ -35,7 +35,7 @@ import { join, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = join(__dirname, '..', 'supabase', 'migrations');
+const MIGRATIONS_DIR = join(__dirname, '..', 'migrations');
 const WEB_SRC = join(__dirname, '..', '..', 'web', 'src');
 
 let dat = 0, hong = 0;

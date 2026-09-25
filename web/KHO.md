@@ -172,7 +172,7 @@ Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa th
    Nút ≥ 48px, ô nhập cỡ chữ 16px (iPhone không tự phóng to).
 5. Nếu có ô menu: thêm vào `MUC_KHO` với đúng quyền của dòng chặn; nếu có số đỏ thì ghi `dem`.
 6. File `lib/kho/*.ts` mới gọi database → thêm vào `CHAY_DA_DANG_NHAP` trong
-   `crm/test/test-hop-dong-web.mjs`. Gọi RPC bằng object viết thẳng `.rpc('x', { p_… })`,
+   `supabase/test/test-hop-dong-web.mjs`. Gọi RPC bằng object viết thẳng `.rpc('x', { p_… })`,
    `.select('…')` nháy đơn và không ép kiểu `::`.
 7. Bẫy của Astro: khoảng trắng giữa `{biểu thức}` và chữ ở dòng sau bị nuốt — viết `{' '}`;
    `{soLuong && <x/>}` in ra số 0 — viết `soLuong > 0 && …`.
@@ -180,7 +180,7 @@ Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa th
 ## 8. Kiểm thử
 
 ```bash
-cd crm && npm test                    # toàn bộ; phần kho chạy qua test/chay-kho.mjs
+cd supabase && npm test                  # toàn bộ; phần kho chạy qua test/chay-kho.mjs
 node test/chay-kho.mjs                # chỉ kho: tự tìm mọi test-kho-*.mjs
 node test/test-kho-giao-dien.mjs      # menu, link, manifest, JavaScript (không cần database)
 node test/test-kho-viec.mjs           # số đỏ, thông báo, ngưỡng, chỉ số quản trị

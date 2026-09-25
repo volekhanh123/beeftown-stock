@@ -17,7 +17,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = join(__dirname, '..', 'supabase', 'migrations');
+const MIGRATIONS_DIR = join(__dirname, '..', 'migrations');
 
 export const UID = {
   chu:      '00000000-0000-4000-8000-000000000001',
