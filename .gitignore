@@ -44,6 +44,9 @@
 !Beeftown_Dashboard.html
 !Beeftown_Concept_Board_v1.svg
 
+# --- ĐƯỢC PHÉP: công cụ nội bộ ---
+!Beeftown_Can_TMA.html
+
 # =============================================================
 # CỐ TÌNH CHẶN — nhắc lại cho rõ, kể cả khi có ai đó sửa nhầm
 # quy tắc bên trên. Những dòng này đứng sau nên luôn thắng.
@@ -56,6 +59,9 @@
 *.png
 *.jpg
 *.jpeg
+# File dữ liệu lưu từ cân: có mật khẩu WiFi và lịch sử bán hàng
+*.TMS
+*.tms
 .claude/
 Du lieu nghien cuu/
 

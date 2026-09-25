@@ -28,8 +28,30 @@ Bò nhập khẩu tươi mát được pha lóc và **đóng gói sẵn theo t�
 | `Beeftown_Logo_Suite_and_Directions.html` | Bộ logo và các hướng nhận diện. |
 | `Beeftown_Dashboard.html` | Bảng theo dõi chỉ số. |
 | `Beeftown_Concept_Board_v1.svg` | Bảng concept tổng thể. |
+| `Beeftown_Can_TMA.html` | Phần mềm cài hàng cho cân in tem TMA: sửa tên, giá, chữ trên tem rồi xuất file nạp vào cân qua USB. Chạy không cần mạng. |
 
 Tất cả đều là **HTML tự chứa** — mở thẳng bằng trình duyệt, không cần cài đặt gì, không có bước build. Chỉ phụ thuộc Google Fonts và (riêng website) ảnh từ Unsplash.
+
+---
+
+## Phần mềm cân TMA
+
+Cân in tem TM-A 30kg (dòng TM-xA, firmware V3.14E8) không có phần mềm đi kèm, nên `Beeftown_Can_TMA.html` thay phần việc hay dùng nhất: sửa danh sách hàng và chữ trên tem. Cách dùng có ghi ngay trên trang (3 bước: lưu từ cân ra USB → sửa → nạp lại).
+
+Những điều đã biết về file `JHSCALE/A_000.TMS` mà cân lưu ra:
+
+- Văn bản tách cột bằng tab, xuống dòng CRLF. Mỗi phần mở bằng `DWL<tab>TÊN` (đời cũ dùng `XD1`) và đóng bằng `END<tab>TÊN`.
+- Dòng hàng `PLU`: cột 1 số PLU, 2 mã hàng (5 số, nằm trong mã vạch), 4 cách bán (1 cân ký, 2 theo gói), 5 đơn giá, 15 tên, 64 mã tìm kiếm không dấu. Các cột khác chưa rõ nghĩa, phần mềm giữ nguyên.
+- Giá ghi dạng `mantissa,số-lẻ`: `845,0` = 845. Cân hiện giá theo Spec202 số lẻ (đang là 3), nên 845 hiện là `845.000`, đọc là 845.000đ. Tối đa 999.999đ vì cửa sổ đơn giá chỉ có 6 chữ số.
+- Spec0 là số mẫu tem đang dùng (hiện là 28). Ô chữ số t của mẫu tem nằm ở cột `6 + t` của dòng `LAB` (từ t = 16 trở đi là `7 + t`).
+- Phần `TIM` là giờ lúc lưu. Phần mềm bỏ phần này khi xuất để cân không bị chỉnh đồng hồ về giờ cũ.
+
+Lưu ý khi sửa code phần mềm cân:
+
+1. **Dòng không sửa phải được ghi lại y nguyên từng byte.** File được đọc dạng chuỗi byte, chỉ đổi sang UTF-8 khi hiện lên màn hình hoặc ghi chữ mới. Đừng chuyển sang đọc cả file bằng `TextDecoder`: file của một số cân có byte lỗi, đọc kiểu đó sẽ làm hỏng file.
+2. **Không commit file `.TMS`** — trong đó có tên và mật khẩu WiFi của cửa hàng. `.gitignore` đã chặn.
+3. Sơ đồ tem trên trang là gần đúng. Loại ô 0 là mã vạch, 3 là chữ cố định, 1 và 2 là dữ liệu; một số mã dữ liệu vẫn chưa rõ nghĩa nên hiện khung trống.
+4. Sau khi sửa, kiểm tra lại: mở một file cân thật rồi xuất mà không sửa gì (bỏ tick "Giữ nguyên giờ trên cân") — file ra phải giống hệt file vào.
 
 ---
 
