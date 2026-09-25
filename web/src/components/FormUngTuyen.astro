@@ -24,6 +24,7 @@ import type { NgonNgu } from '../lib/noi-dung';
 import type { ViTri } from './TrangTuyenDung.astro';
 import type { KetQuaNop } from '../lib/nop-ho-so';
 import { TRUONG_FORM } from '../lib/truong-form';
+import { BO_PHAN, nhanEnum } from '../lib/tuyen-dung';
 
 interface Props {
   ngonNgu: NgonNgu;
@@ -131,7 +132,7 @@ const t = {
           <option value="">{t.chon}</option>
           {viTri.map(v => (
             <option value={v.ma} selected={daNhap.vi_tri === v.ma} data-an={truongAn(v)}>
-              {v.ten}{v.bo_phan ? ` — ${v.bo_phan}` : ''}
+              {v.ten}{v.bo_phan ? ` — ${nhanEnum(BO_PHAN, v.bo_phan, ngonNgu)}` : ''}
             </option>
           ))}
         </select>

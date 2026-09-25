@@ -565,6 +565,87 @@ await nhom('10 · MỖI TIN HỎI NHỮNG GÌ (0025)', async () => {
 });
 
 // ===========================================================================
+await nhom('11 · DUYỆT LƯƠNG VÀ ĐĂNG TIN (0026)', async () => {
+  // Chủ nhà hàng chốt: đăng và gỡ tin thì cả marketing làm được; mức lương
+  // chính thức thì chỉ chủ nhà hàng và quản lý.
+  const idCua = async (uid) =>
+    (await db.query(`select id from nhan_su where auth_uid = $1`, [uid])).rows[0].id;
+  const luongBep = async () => (await db.query(
+    `select luong_tu, luong_da_duyet, luong_nguoi_duyet, luong_duyet_luc
+     from vi_tri_tuyen_dung where ma = 'nhan-vien-bep'`)).rows[0];
+
+  const deXuat = await duoiDanhNghia(uidMkt,
+    `update vi_tri_tuyen_dung set luong_de_xuat_tu = 6000000, luong_de_xuat_den = 8000000
+     where ma = 'nhan-vien-bep' returning ma`);
+  ok('Marketing ghi được mức lương đề xuất',
+     deXuat.loi === null && deXuat.rows?.length === 1, deXuat.loi ?? '');
+
+  const duyet = `update vi_tri_tuyen_dung
+                 set luong_tu = luong_de_xuat_tu, luong_den = luong_de_xuat_den,
+                     luong_da_duyet = true
+                 where ma = 'nhan-vien-bep' returning ma`;
+  const mktDuyet = await duoiDanhNghia(uidMkt, duyet);
+  ok('Marketing KHÔNG tự duyệt được mức lương',
+     mktDuyet.loi !== null && /chủ nhà hàng hoặc quản lý/i.test(mktDuyet.loi),
+     mktDuyet.loi ?? 'DUYỆT ĐƯỢC');
+  ok('Lần bị chặn không để lại gì', (await luongBep()).luong_da_duyet === false);
+
+  const qlDuyet = await duoiDanhNghia(uidQlA, duyet);
+  const sauDuyet = await luongBep();
+  ok('Quản lý duyệt được mức lương',
+     qlDuyet.loi === null && sauDuyet.luong_da_duyet && Number(sauDuyet.luong_tu) === 6000000,
+     qlDuyet.loi ?? JSON.stringify(sauDuyet));
+  ok('Ghi lại ai duyệt lương và lúc nào',
+     sauDuyet.luong_nguoi_duyet === await idCua(uidQlA) && sauDuyet.luong_duyet_luc !== null);
+
+  const { rows: tin } = await duoiDanhNghiaAnon(
+    `select luong_tu from tin_tuyen_dung_cong_khai() where ma = 'nhan-vien-bep'`);
+  ok('Mức đã duyệt hiện trên trang công khai', Number(tin?.[0]?.luong_tu) === 6000000);
+
+  // Chặn đúng ba cột chính thức, không chặn cả dòng.
+  const suaKhac = await duoiDanhNghia(uidMkt,
+    `update vi_tri_tuyen_dung set ca_lam = 'Ca tối', luong_de_xuat_tu = 6500000
+     where ma = 'nhan-vien-bep' returning ma`);
+  ok('Marketing vẫn sửa được phần khác của tin đã duyệt lương, kể cả mức đề xuất',
+     suaKhac.loi === null && suaKhac.rows?.length === 1, suaKhac.loi ?? '');
+  ok('Sửa mức đề xuất không đụng tới mức đang hiện',
+     Number((await luongBep()).luong_tu) === 6000000);
+
+  const boDuyet = `update vi_tri_tuyen_dung
+                   set luong_tu = null, luong_den = null, luong_da_duyet = false
+                   where ma = 'nhan-vien-bep' returning ma`;
+  const mktBo = await duoiDanhNghia(uidMkt, boDuyet);
+  ok('Marketing KHÔNG gỡ được mức lương đã duyệt', mktBo.loi !== null, mktBo.loi ?? 'GỠ ĐƯỢC');
+
+  const chuBo = await duoiDanhNghia(uidChu, boDuyet);
+  const sauBo = await luongBep();
+  ok('Chủ nhà hàng bỏ duyệt được, dấu người duyệt xóa theo',
+     chuBo.loi === null && !sauBo.luong_da_duyet && sauBo.luong_nguoi_duyet === null,
+     chuBo.loi ?? JSON.stringify(sauBo));
+
+  const tao = await duoiDanhNghia(uidMkt,
+    `insert into vi_tri_tuyen_dung (chi_nhanh_id, ma, ten_vi, bo_phan, luong_tu, luong_da_duyet)
+     values ($1, 'thu-luong-mkt', 'Tin thử', 'sanh', 7000000, true) returning ma`, [cnA.id]);
+  ok('Marketing KHÔNG lách được bằng cách tạo tin mới kèm lương đã duyệt',
+     tao.loi !== null, tao.loi ?? 'TẠO ĐƯỢC');
+
+  // Đăng và gỡ: marketing làm được, và trigger ghi ai đăng, lúc nào.
+  const dang = await duoiDanhNghia(uidMkt,
+    `update vi_tri_tuyen_dung
+     set mo_ta_vi = 'Điều phối truyền thông cho nhà hàng.',
+         yeu_cau_vi = 'Chụp ảnh và viết bài được.', trang_thai = 'da_cong_bo'
+     where ma = 'dau-moi-marketing' returning cong_bo_luc, nguoi_duyet`);
+  ok('Marketing đăng được tin', dang.loi === null && dang.rows?.length === 1, dang.loi ?? '');
+  ok('Ghi lại ai đăng tin và lúc nào',
+     dang.rows?.[0]?.cong_bo_luc != null && dang.rows?.[0]?.nguoi_duyet === await idCua(uidMkt));
+
+  const go = await duoiDanhNghia(uidMkt,
+    `update vi_tri_tuyen_dung set trang_thai = 'da_thu_hoi'
+     where ma = 'dau-moi-marketing' returning ma`);
+  ok('Marketing gỡ được tin', go.loi === null && go.rows?.length === 1, go.loi ?? '');
+});
+
+// ===========================================================================
 console.log('\n' + '='.repeat(60));
 if (hong === 0) {
   console.log(`\x1b[32m\x1b[1mTẤT CẢ ${dat} KIỂM TRA TUYỂN DỤNG ĐỀU ĐẠT\x1b[0m`);

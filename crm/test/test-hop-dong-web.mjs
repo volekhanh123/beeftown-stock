@@ -115,6 +115,8 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/cong-tac.ts',
   // Chi nhánh, bàn ăn, dọn dữ liệu — cũng chỉ gọi từ /noi-bo.
   'web/src/lib/cai-dat.ts',
+  // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
+  'web/src/lib/tin-tuyen-dung.ts',
 ];
 
 function laAnon(g) {
@@ -148,11 +150,15 @@ for (const { duong, ma } of files) {
 // --- from('bang').select('a, b, c') ----------------------------------------
 const goiBang = [];
 for (const { duong, ma } of files) {
-  for (const m of ma.matchAll(/\.from\(\s*'([a-z0-9_-]+)'\s*\)([\s\S]{0,400})/g)) {
+  // Lookahead (?=...) để không "nuốt" 400 ký tự sau mỗi from(): hai from()
+  // đứng gần nhau (hai truy vấn liền trong một hàm) thì from() thứ hai vẫn
+  // được kiểm. Đoạn đuôi cắt ở from() kế tiếp để không lấy nhầm select của nó.
+  for (const m of ma.matchAll(/\.from\(\s*'([a-z0-9_-]+)'\s*\)(?=([\s\S]{0,400}))/g)) {
     const bang = m[1];
     // Bỏ qua Storage: .from('ho-so-ung-tuyen') là tên kho, không phải bảng.
     if (bang.includes('-')) continue;
-    const sel = m[2].match(/\.select\(\s*'([^']*)'/);
+    const duoi = m[2].split(/\.from\(/)[0];
+    const sel = duoi.match(/\.select\(\s*'([^']*)'/);
     const cot = sel
       ? sel[1]
           .split(',')
@@ -304,6 +310,40 @@ await nhom('7 · KHÓA CÔNG BỐ WEB DÙNG ĐỀU CÓ TRONG SỔ ĐĂNG KÝ', a
   const thieu = [...co].filter(k => !khaiBao.includes(k));
   ok('Mọi khóa trong sổ đăng ký đều được khai trong TypeScript',
      thieu.length === 0, thieu.length ? `THIẾU: ${thieu.join(', ')}` : '');
+});
+
+// ===========================================================================
+await nhom('8 · MÀN SOẠN TIN GHI ĐÚNG CỘT VÀ ĐÚNG ENUM', async () => {
+  // Màn soạn đọc bằng select('*') và ghi bằng update({...}) — hai chỗ mà mục
+  // 3 và 4 không nhìn thấy tên cột. Chỗ duy nhất tên cột hiện ra là kiểu
+  // TinTuyenDung, nên đối chiếu chính kiểu đó.
+  const maTin = files.find(f => f.duong.endsWith('lib/tin-tuyen-dung.ts'))?.ma ?? '';
+  const khoi = maTin.match(/export interface TinTuyenDung \{([\s\S]*?)\n\}/);
+  const khoa = khoi ? [...khoi[1].matchAll(/^\s{2}([a-z0-9_]+)\s*[?:]/gm)].map(m => m[1]) : [];
+  ok('Đọc được khai báo kiểu TinTuyenDung', khoa.length > 20, `${khoa.length} khóa`);
+
+  const { rows } = await db.query(`
+    select column_name from information_schema.columns
+    where table_schema = 'public' and table_name = 'vi_tri_tuyen_dung'`);
+  const cot = new Set(rows.map(r => r.column_name));
+  const sai = khoa.filter(k => !cot.has(k));
+  ok('Mọi khóa của TinTuyenDung đều là cột thật của vi_tri_tuyen_dung',
+     sai.length === 0, sai.length ? `SAI: ${sai.join(', ')}` : '');
+
+  // Bộ phận và loại hợp đồng được ghi thẳng khóa của bảng nhãn xuống cột
+  // enum. Gõ nhầm "quay-thit" thì form hiện đẹp mà lưu thì hỏng.
+  const maNhan = files.find(f => f.duong.endsWith('lib/tuyen-dung.ts'))?.ma ?? '';
+  for (const [bang, kieu] of [['BO_PHAN', 'bo_phan_tuyen'], ['LOAI_HOP_DONG', 'loai_hop_dong']]) {
+    const k = maNhan.match(new RegExp(`export const ${bang} = \\{([\\s\\S]*?)\\n\\}`));
+    const web = k ? [...k[1].matchAll(/^\s+([a-z_]+):/gm)].map(m => m[1]).sort() : [];
+    const { rows: e } = await db.query(`
+      select e.enumlabel from pg_enum e join pg_type t on t.oid = e.enumtypid
+      where t.typname = $1 order by 1`, [kieu]);
+    const dbGiaTri = e.map(r => r.enumlabel).sort();
+    ok(`Nhãn ${bang} khớp đúng enum ${kieu}`,
+       web.length > 0 && web.join(',') === dbGiaTri.join(','),
+       `web: ${web.join(',')} · database: ${dbGiaTri.join(',')}`);
+  }
 });
 
 // ===========================================================================
