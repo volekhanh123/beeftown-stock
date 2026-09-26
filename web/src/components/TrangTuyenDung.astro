@@ -104,7 +104,7 @@ const tRieng = dich(ngonNgu, {
   viTriDangTuyen: { vi: 'Vị trí đang tuyển', en: 'Open roles', ko: '채용 중인 포지션' },
   canNguoi: {
     vi: (n: number) => `Cần ${n} người`,
-    en: (n: number) => `${n} positions`,
+    en: (n: number) => (n === 1 ? '1 position' : `${n} positions`),
     ko: (n: number) => `${n}명 모집`,
   },
   yeuCau:         { vi: 'Yêu cầu: ', en: 'Requirements: ', ko: '자격 요건: ' },
