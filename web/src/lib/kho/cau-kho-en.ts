@@ -2,28 +2,31 @@
  * CÂU THÔNG BÁO CỦA KHO Ở TIẾNG ANH
  * ================================
  *
- * Hàm kho trong database báo lỗi bằng tiếng Việt (`raise exception '…'`), đi
- * lên trang qua error.message — không có cách nào khác ngoài tra bảng. dichCau()
- * (lib/cau-noi-bo.ts) tra ở đây sau bảng của phần CRM:
+ * Hàm kho trong database nói bằng tiếng Việt: báo lỗi (`raise exception '…'`, lên
+ * trang qua error.message) và trả về / ghi vào bảng câu cho người đọc (câu báo xong
+ * việc, lý do dòng bán iPOS, ghi chú sổ kho, cảnh báo, lỗi từng dòng…) — không có
+ * cách nào khác ngoài tra bảng. dichCau() (lib/cau-noi-bo.ts) tra ở đây sau bảng của
+ * phần CRM:
  *
  *   · CAU_KHO_EN — câu cố định, đúng từng chữ (kể cả dấu chấm cuối);
- *   · MAU_KHO_EN — câu có `%`: viết NGUYÊN câu raise như trong migration
- *     (`%` là chỗ Postgres thay giá trị, `%%` là dấu phần trăm), bản tiếng Anh
- *     đặt {1}, {2}… vào chỗ giá trị thứ 1, thứ 2… của câu tiếng Việt.
+ *   · MAU_KHO_EN — câu có `%`: câu raise viết NGUYÊN như trong migration (`%` là
+ *     chỗ Postgres thay giá trị, `%%` là dấu phần trăm); câu ghép bằng `||` viết như
+ *     lúc chạy, `%` ở chỗ giá trị. Bản tiếng Anh đặt {1}, {2}… vào chỗ giá trị thứ 1,
+ *     thứ 2… của câu tiếng Việt.
  *
  * Câu chưa có ở đây thì màn tiếng Anh hiện nguyên tiếng Việt — người đọc vẫn
- * thấy có lỗi và chụp gửi quản lý được. test-kho-tieng-anh.mjs đòi mọi câu
- * raise của migration kho đều dịch được.
+ * thấy có lỗi và chụp gửi quản lý được. test-kho-tieng-anh.mjs đòi mọi câu raise,
+ * và mọi câu hàm kho trả về / ghi cho người đọc, đều dịch được.
  */
 
 import { LOI_KHO_CHUNG, type HaiThuTieng } from './chung.ts';
 
 /**
- * Câu raise KHÔNG có % của các migration kho — vi đúng từng chữ như trong migration.
- * Viết dạng { vi, en } như mọi câu hai thứ tiếng (bộ quét chữ Việt của test chỉ nhận chữ Việt
- * ở giá trị vi:); CAU_KHO_EN bên dưới trải chúng thành bảng tra.
+ * Câu KHÔNG có % của database kho — vi đúng từng chữ. Viết dạng { vi, en } như mọi câu hai
+ * thứ tiếng (bộ quét chữ Việt của test chỉ nhận chữ Việt ở giá trị vi:); CAU_KHO_EN bên dưới
+ * trải chúng thành bảng tra.
  */
-const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
+const CAU_DB: ReadonlyArray<HaiThuTieng> = [
   // 0018_kho_tuong_ngan — tường ngăn tài khoản kho với dữ liệu CRM
   { vi: 'Tài khoản kho không được ghi dữ liệu khách hàng, đặt bàn hay điểm tích lũy',
     en: 'Inventory accounts are not allowed to add or change customer, booking or loyalty-point data' },
@@ -108,6 +111,8 @@ const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Cần ghi lý do hủy phiếu đã duyệt', en: 'Enter a reason for cancelling an approved document' },
   { vi: 'Phiếu vừa được người khác xử lý — tải lại trang',
     en: 'Someone else just handled this document — reload the page' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Hủy phiếu nhập', en: 'Goods receipt cancelled' },
 
   // 0022_kho_pha_loc — pha lóc
   { vi: 'Không tìm thấy phiên pha lóc', en: 'Butchery session not found' },
@@ -132,6 +137,11 @@ const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Không tìm thấy phiên pha lóc, hoặc tài khoản không được hủy',
     en: 'Butchery session not found, or your account is not allowed to cancel it' },
   { vi: 'Phiên đã chốt — mở lại trước khi hủy', en: 'The session is closed — reopen it before cancelling' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Không giữ lại phần nào — toàn bộ giá vốn đầu vào thành tổn thất',
+    en: 'Nothing is kept — the whole input cost becomes a loss' },
+  { vi: 'Pha lóc chuyển thẳng bếp', en: 'Butchery straight to the kitchen' },
+  { vi: 'Mở lại phiên pha lóc', en: 'Butchery session reopened' },
 
   // 0023_kho_xuat_kiem_ke — chuyển, xuất, báo hủy, kiểm kê
   { vi: 'Số lượng lấy ra phải lớn hơn 0', en: 'The quantity taken must be greater than 0' },
@@ -168,6 +178,8 @@ const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Phiếu đã duyệt — không hủy được', en: 'The stocktake is approved — it cannot be cancelled' },
   { vi: 'Phiếu đang chờ duyệt — chỉ quản lý hủy được',
     en: 'The stocktake is awaiting approval — only a manager can cancel it' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Từ chối hủy — trả về chỗ cũ', en: 'Write-off rejected — returned to where it was' },
 
   // 0024_kho_cong_no_bao_cao — công nợ: đối chiếu hóa đơn, thanh toán, trả hàng NCC
   { vi: 'Không tìm thấy phiếu nhập, hoặc tài khoản không được đối chiếu hóa đơn',
@@ -232,6 +244,8 @@ const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Tài khoản của bạn không điền giá — dùng màn Nhận hàng',
     en: 'Your account does not enter prices — use the Receive goods screen' },
   { vi: 'Không xóa được ảnh hóa đơn đã chụp', en: 'Invoice photos already taken cannot be deleted' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Tổng kg ra lớn hơn kg vào — kiểm lại số cân', en: 'Total kg out is more than kg in — check the weights' },
 
   // 0032_kho_quay — quầy: yêu cầu hàng, mang ra quầy, nhận hàng, quét kiểm kê
   { vi: 'Không đổi được loại của vị trí "Đang mang ra quầy"',
@@ -279,6 +293,17 @@ const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Chưa chọn món', en: 'No item selected' },
   { vi: 'Bạn chưa có lượt quét nào để bỏ', en: 'You have no scans to undo' },
   { vi: 'Món này chưa quét gói nào', en: 'No packs of this item have been scanned' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Mất khi mang ra quầy', en: 'Lost on the way to the counter' },
+  { vi: 'Nhận thiếu — trả về kho', en: 'Received short — returned to stock' },
+  { vi: 'Hủy chuyến — hàng về lại chỗ cũ', en: 'Transfer cancelled — goods back where they were' },
+  { vi: 'Mẫu mã vạch trong Cài đặt không hợp lệ', en: 'The barcode pattern in Settings is not valid' },
+  { vi: 'Không phải mã 13 số', en: 'Not a 13-digit code' },
+  { vi: 'Sai số kiểm tra — quét lại', en: 'Wrong check digit — scan again' },
+  { vi: 'Không phải nhãn cân (đầu mã không khớp mẫu)',
+    en: 'Not a scale label (the start of the code does not match the pattern)' },
+  { vi: 'Mã hàng trên nhãn bằng 0', en: 'The item code on the label is 0' },
+  { vi: 'Trọng lượng trên nhãn bằng 0', en: 'The weight on the label is 0' },
 
   // 0033_kho_pha_quet_the_kho — quét nhãn pha lóc, xác nhận thu hồi, thẻ kho
   { vi: 'Không tìm thấy phiên pha lóc, hoặc tài khoản không được ghi pha lóc',
@@ -291,6 +316,22 @@ const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Không tìm thấy mặt hàng', en: 'Item not found' },
   { vi: 'Vị trí không thuộc chi nhánh này', en: 'The location does not belong to this branch' },
   { vi: 'Từ ngày phải trước đến ngày', en: 'The start date must be before the end date' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Tồn đầu kỳ', en: 'Opening stock' },
+  { vi: 'Nhập', en: 'Received' },
+  { vi: 'Đem pha lóc', en: 'Into butchery' },
+  { vi: 'Pha lóc ra', en: 'From butchery' },
+  { vi: 'Chuyển đi', en: 'Transfer out' },
+  { vi: 'Chuyển đến', en: 'Transfer in' },
+  { vi: 'Bán', en: 'Sale' },
+  { vi: 'Xuất bếp', en: 'To kitchen' },
+  { vi: 'Hủy', en: 'Write-off' },
+  { vi: 'Chênh lệch kiểm kê', en: 'Stocktake difference' },
+  { vi: 'Hao hụt cân', en: 'Weight loss' },
+  { vi: 'Đảo ngược', en: 'Reversal' },
+  { vi: 'Trả nhà cung cấp', en: 'Returned to supplier' },
+  { vi: 'Xuất khác', en: 'Other issue' },
+  { vi: 'Khai tồn đầu kỳ', en: 'Opening stock entry' },
 
   // 0034_kho_may_chung — máy dùng chung, tài khoản nhân viên kho
   { vi: 'Chỉ tài khoản máy dùng chung mới làm được việc này', en: 'Only the shared tablet account can do this' },
@@ -336,6 +377,8 @@ const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Chỉ chủ nhà hàng mới mở lại được tài khoản', en: 'Only the owner can reactivate accounts' },
   { vi: 'Không tự mở tài khoản của mình được', en: 'You cannot reactivate your own account' },
   { vi: 'Chỉ chủ nhà hàng mới xem được danh sách này', en: 'Only the owner can view this list' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: '5 lần sai liên tiếp', en: '5 wrong attempts in a row' },
 
   // 0035_kho_dau_ky_thiet_lap — nợ đầu kỳ, tồn đầu kỳ, thiết lập
   { vi: 'Tài khoản của bạn không được ghi nợ đầu kỳ', en: 'Your account is not allowed to record opening balances' },
@@ -401,8 +444,59 @@ const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Ghi lý do hàng ngoài sổ', en: 'Enter a reason for the off-the-books goods' },
   { vi: 'Chỉ dòng thiếu hàng mới ghi được hàng ngoài sổ',
     en: 'Only lines short of stock can be recorded as off-the-books goods' },
+  { vi: 'Chưa ghi được: Hóa đơn đã hủy trên iPOS', en: 'Not recorded yet: The invoice was cancelled on iPOS' },
+  { vi: 'Chưa ghi được: Chưa chuyển sang trừ kho theo iPOS',
+    en: 'Not recorded yet: Not switched to deducting stock from iPOS yet' },
+  { vi: 'Chưa ghi được: Bán trước mốc chuyển sang iPOS — đã tính trong lần đếm quầy',
+    en: 'Not recorded yet: Sold before the switch to iPOS — already counted in the counter count' },
+  { vi: 'Chưa ghi được: Không phải hàng kho', en: 'Not recorded yet: Not an inventory item' },
+  { vi: 'Chưa ghi được: Món chế biến — chỉ đếm suất, không trừ kho',
+    en: 'Not recorded yet: Prepared dish — only portions are counted, stock is not deducted' },
+  { vi: 'Chưa ghi được: Mã cân (không đọc được) chưa gán cho món nào',
+    en: 'Not recorded yet: Scale code (unreadable) is not assigned to any item' },
+  { vi: 'Chưa ghi được: Chưa ghép mã iPOS với món trong kho',
+    en: 'Not recorded yet: The iPOS code is not matched to an inventory item yet' },
+  { vi: 'Chưa ghi được: Chưa chọn quầy bán trong Kết nối iPOS',
+    en: 'Not recorded yet: No sales counter chosen in the iPOS connection' },
+  { vi: 'Chưa ghi được: Số gói bán phải lớn hơn 0',
+    en: 'Not recorded yet: The number of packs sold must be greater than 0' },
+  { vi: 'Chưa ghi được: Số lượng bán trên iPOS phải lớn hơn 0',
+    en: 'Not recorded yet: The quantity sold on iPOS must be greater than 0' },
   { vi: 'Bán hàng iPOS chưa cập nhật hơn 10 phút — mở Kết nối iPOS, bấm "Cập nhật ngay" rồi gửi lại',
     en: 'iPOS sales have not updated for over 10 minutes — open the iPOS connection, press "Update now", then send again' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Tự nhận khi iPOS báo đã bán', en: 'Auto-received when iPOS reported the sale' },
+  { vi: 'HĐ iPOS sửa / hủy', en: 'iPOS invoice changed / cancelled' },
+  { vi: 'Hóa đơn đã hủy trên iPOS', en: 'The invoice was cancelled on iPOS' },
+  { vi: 'Chưa chuyển sang trừ kho theo iPOS', en: 'Not switched to deducting stock from iPOS yet' },
+  { vi: 'Bán trước mốc chuyển sang iPOS — đã tính trong lần đếm quầy',
+    en: 'Sold before the switch to iPOS — already counted in the counter count' },
+  { vi: 'Không phải hàng kho', en: 'Not an inventory item' },
+  { vi: 'Mã cân (không đọc được) chưa gán cho món nào', en: 'Scale code (unreadable) is not assigned to any item' },
+  { vi: 'Chưa ghép mã iPOS với món trong kho', en: 'The iPOS code is not matched to an inventory item yet' },
+  { vi: 'Đã bán gói thuộc lô HẾT HẠN', en: 'Sold a pack from an EXPIRED lot' },
+  { vi: 'Đồng bộ iPOS chưa bật ở chi nhánh này', en: 'iPOS sync is not turned on for this branch' },
+  { vi: 'Chưa cấu hình đủ kết nối iPOS: thiếu đường dẫn lấy hóa đơn, quầy bán',
+    en: 'The iPOS connection is not fully set up: missing the invoice path, the sales counter' },
+  { vi: 'Chưa cấu hình đủ kết nối iPOS: thiếu đường dẫn lấy hóa đơn',
+    en: 'The iPOS connection is not fully set up: missing the invoice path' },
+  { vi: 'Chưa cấu hình đủ kết nối iPOS: thiếu quầy bán',
+    en: 'The iPOS connection is not fully set up: missing the sales counter' },
+  { vi: 'Đang có một lượt đồng bộ chạy — đợi ít phút', en: 'A sync run is already in progress — wait a few minutes' },
+  { vi: 'Quá 10 phút không xong — coi như hỏng', en: 'Not finished after 10 minutes — treated as failed' },
+  { vi: 'Vừa cập nhật xong — đợi 1 phút rồi bấm lại', en: 'Just updated — wait 1 minute, then press again' },
+  { vi: 'Dòng đã bỏ khỏi hóa đơn trên iPOS', en: 'The line was removed from the invoice on iPOS' },
+  { vi: 'Quản lý bỏ qua', en: 'Skipped by a manager' },
+  { vi: 'Chưa bật đồng bộ iPOS.', en: 'iPOS sync is not turned on.' },
+  { vi: 'Chưa cấu hình đủ kết nối iPOS.', en: 'The iPOS connection is not fully set up.' },
+  { vi: 'Lần đồng bộ gần nhất bị lỗi — số bán chưa cập nhật.',
+    en: 'The last sync failed — sales figures are not up to date.' },
+  { vi: 'Hơn 30 phút chưa đồng bộ được iPOS.', en: 'iPOS has not synced for over 30 minutes.' },
+  { vi: 'Đang đọc iPOS nhưng CHƯA trừ kho — còn dùng đếm quầy làm số bán.',
+    en: 'Reading iPOS but NOT deducting stock yet — the counter count is still the sales figure.' },
+  { vi: 'Có dòng bán chưa trừ được kho — mở Bán hàng iPOS để xử lý.',
+    en: 'Some sale lines are not deducted from stock — open iPOS sales to handle them.' },
+  { vi: 'Kho đang tự trừ theo iPOS.', en: 'Stock is being deducted automatically from iPOS.' },
 
   // 0038_kho_dinh_luong — định lượng món, định mức bếp
   { vi: 'Tài khoản của bạn không sửa được danh sách món', en: 'Your account cannot edit the dish list' },
@@ -466,6 +560,9 @@ const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
     en: 'Your account cannot view order suggestions at this branch' },
   { vi: 'Tài khoản của bạn không xem được đánh giá nhà cung cấp ở chi nhánh này',
     en: 'Your account cannot view the supplier evaluation at this branch' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Chưa bán / dùng trong 28 ngày qua và chưa cài mức tối đa kho lạnh — tự quyết số đặt',
+    en: 'Not sold / used in the last 28 days and no cold store maximum set — decide the order quantity yourself' },
 
   // 0040_kho_cong_no_v2 — công nợ: hóa đơn gộp, bù trừ, hoàn tiền, trả hàng chờ tiền, MISA
   { vi: 'Tài khoản của bạn không xem được công nợ', en: 'Your account cannot view payables' },
@@ -509,6 +606,12 @@ const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Tài khoản của bạn không được sửa mã MISA', en: 'Your account is not allowed to edit MISA codes' },
   { vi: 'Mã MISA chỉ gồm chữ không dấu, số và các dấu _ . / - (tối đa 40 ký tự)',
     en: 'A MISA code may only contain unaccented letters, digits and _ . / - (at most 40 characters)' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Hủy phiếu trả hàng chờ xác nhận', en: 'Return awaiting confirmation cancelled' },
+  { vi: 'Nợ đầu kỳ (lúc bắt đầu dùng phần mềm)', en: 'Opening balance (when the software was first used)' },
+  { vi: 'Nhập hàng', en: 'Goods receipt' },
+  { vi: 'Số dư đầu kỳ', en: 'Balance at start of period' },
+  { vi: 'Số dư cuối kỳ', en: 'Balance at end of period' },
 
   // 0041_kho_sua_nhanh_bao_cao — sửa nhanh mặt hàng, báo cáo
   { vi: 'Tài khoản của bạn không sửa được danh mục mặt hàng', en: 'Your account cannot edit the item catalog' },
@@ -519,6 +622,19 @@ const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
     en: 'Your account cannot view the purchasing report (it shows prices)' },
   { vi: 'Chọn xem theo nhà cung cấp hoặc theo mặt hàng', en: 'Choose to view by supplier or by item' },
   { vi: 'Tài khoản của bạn không xem được sổ thanh toán', en: 'Your account cannot view the payment ledger' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Chưa đổi ô nào — không có gì để lưu.', en: 'Nothing was changed — there is nothing to save.' },
+  { vi: 'Một món được gửi hai lần trong cùng một lần lưu.', en: 'An item was sent twice in the same save.' },
+  { vi: 'Không tìm thấy món này — có thể đã bị xóa. Tải lại trang.',
+    en: 'This item was not found — it may have been deleted. Reload the page.' },
+  { vi: 'Không ghi nhà cung cấp', en: 'No supplier recorded' },
+  { vi: 'Trả tiền', en: 'Payment' },
+  { vi: 'Giảm trừ', en: 'Deduction' },
+  { vi: 'Bù trừ', en: 'Offset' },
+  { vi: 'NCC hoàn tiền', en: 'Supplier refund' },
+  { vi: 'Chuyển khoản', en: 'Bank transfer' },
+  { vi: 'Tiền mặt', en: 'Cash' },
+  { vi: 'Khác', en: 'Other' },
 
   // 0042_kho_ipos_callback — iPOS gửi hóa đơn sang (callback), bán theo kg / gói / suất
   { vi: 'Số lượng bán trên iPOS phải lớn hơn 0', en: 'The quantity sold on iPOS must be greater than 0' },
@@ -532,20 +648,27 @@ const CAU_RAISE: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Bán theo phải là kg, gói hoặc suất', en: '"Sold by" must be kg, pack or portion' },
   { vi: 'Mỗi gói phải nặng hơn 0 kg và không quá 1000 kg',
     en: 'Each pack must weigh more than 0 kg and at most 1,000 kg' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Món chế biến — chỉ đếm suất, không trừ kho',
+    en: 'Prepared dish — only portions are counted, stock is not deducted' },
+  { vi: 'Lần cập nhật gần nhất bị lỗi — bấm "Cập nhật ngay" để thử lại.',
+    en: 'The last update failed — press "Update now" to try again.' },
+  { vi: 'Đang nhận hóa đơn iPOS nhưng CHƯA trừ kho — còn dùng đếm quầy làm số bán.',
+    en: 'Receiving iPOS invoices but NOT deducting stock yet — the counter count is still the sales figure.' },
 ];
 
 /** Câu cố định: đúng từng chữ. */
 export const CAU_KHO_EN: Readonly<Record<string, string>> = {
   // cauLoiKho() — lỗi kỹ thuật đã đổi thành câu dễ hiểu
   ...Object.fromEntries(Object.values(LOI_KHO_CHUNG).map(c => [c.vi, c.en])),
-  // raise exception của các migration kho
-  ...Object.fromEntries(CAU_RAISE.map(c => [c.vi, c.en])),
+  // câu của các migration kho
+  ...Object.fromEntries(CAU_DB.map(c => [c.vi, c.en])),
 };
 
 /**
- * { vi: câu raise tiếng Việt, có %; en: bản tiếng Anh, có {1}, {2}… }. Câu đầu tiên khớp là câu
- * được dùng. Giá trị là chữ Việt viết sẵn trong SQL (case … then '…') hoặc câu lỗi lồng bên trong
- * (sqlerrm): từng trường hợp thật đứng ngay TRƯỚC câu gốc, vì câu gốc cũng khớp chúng.
+ * { vi: câu tiếng Việt, có %; en: bản tiếng Anh, có {1}, {2}… }. Câu đầu tiên khớp là câu được
+ * dùng. Giá trị là chữ Việt viết sẵn trong SQL (case … then '…') hoặc câu lỗi lồng bên trong
+ * (sqlerrm, lý do đã ghi): từng trường hợp thật đứng ngay TRƯỚC câu gốc, vì câu gốc cũng khớp chúng.
  */
 const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   // 0019_kho_danh_muc — danh mục: vị trí, ô thông tin thêm, công thức, cài đặt
@@ -588,6 +711,19 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Phiếu % chưa được gửi duyệt', en: 'Document {1} has not been sent for approval' },
   { vi: 'Không hủy được: lô % đã được dùng (pha lóc, chuyển, xuất hoặc kiểm kê). Hãy điều chỉnh qua kiểm kê.',
     en: 'Cannot cancel: lot {1} has already been used (butchery, transfer, issue or stocktake). Correct it through a stocktake instead.' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Phiếu % đã được gửi duyệt trước đó.', en: 'Goods receipt {1} was already sent for approval.' },
+  { vi: 'Đã gửi phiếu % chờ quản lý duyệt.', en: 'Sent goods receipt {1} — waiting for a manager to approve it.' },
+  { vi: 'Phiếu % đang là bản nháp.', en: 'Goods receipt {1} is a draft.' },
+  { vi: 'Đã rút phiếu % về để sửa.', en: 'Withdrew goods receipt {1} so it can be edited.' },
+  { vi: 'Phiếu % đã được duyệt trước đó.', en: 'Document {1} was already approved.' },
+  { vi: 'Đã duyệt phiếu %: % lô hàng đã vào kho.', en: 'Approved goods receipt {1} — lots added to stock: {2}.' },
+  { vi: 'Phiếu % đã bị từ chối trước đó.', en: 'Document {1} was already rejected.' },
+  { vi: 'Đã từ chối phiếu %.', en: 'Rejected goods receipt {1}.' },
+  { vi: 'Phiếu % đã bị hủy trước đó.', en: 'Document {1} was already cancelled.' },
+  { vi: 'Đã hủy phiếu nháp %.', en: 'Cancelled draft goods receipt {1}.' },
+  { vi: 'Đã hủy phiếu % và trả tồn về như trước khi nhập.',
+    en: 'Cancelled goods receipt {1} and put stock back to what it was before receiving.' },
 
   // 0022_kho_pha_loc — pha lóc
   { vi: 'Giá trị thu hồi phụ phẩm (% đ) lớn hơn giá vốn đầu vào (% đ) — kiểm lại giá trị thu hồi trong Cài đặt mặt hàng',
@@ -634,6 +770,18 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: 'Total kg out ({1} kg) is more than kg in ({2} kg) — check the weights' },
   { vi: 'Không mở lại được: lô % đã được dùng sau khi chốt (chuyển, xuất, bán hoặc kiểm kê)',
     en: 'Cannot reopen: lot {1} has been used since the session was closed (transfer, issue, sale or stocktake)' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Chưa có giá bán: % — phiên này chia giá vốn theo kg',
+    en: 'No sale price yet: {1} — this session splits the cost by kg' },
+  { vi: 'Phụ phẩm chưa có giá trị thu hồi (tính 0 đ): %',
+    en: 'By-products without a recovery value (counted as 0 ₫): {1}' },
+  { vi: 'Phiên % đã được chốt trước đó.', en: 'Butchery session {1} was already closed.' },
+  { vi: 'Đã chốt phiên %: thu hồi %, % lô mới.', en: 'Closed butchery session {1}: yield {2}, new lots: {3}.' },
+  { vi: 'Phiên % đang mở để sửa.', en: 'Butchery session {1} is already open for editing.' },
+  { vi: 'Đã mở lại phiên % — tồn đã trả về như trước khi chốt. Sửa xong nhớ chốt lại.',
+    en: 'Reopened butchery session {1} — stock is back to what it was before closing. Remember to close it again when you are done.' },
+  { vi: 'Phiên % đã bị hủy trước đó.', en: 'Butchery session {1} was already cancelled.' },
+  { vi: 'Đã hủy phiên nháp %.', en: 'Cancelled draft butchery session {1}.' },
 
   // 0023_kho_xuat_kiem_ke — chuyển, xuất, báo hủy, kiểm kê
   { vi: 'Không đủ hàng: "%" ở "%" chỉ còn % % còn hạn',
@@ -683,6 +831,17 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: 'Cannot approve: not enough stock — lot {1} at "{2}" has only {3} kg and {4} {5} left. Stock has changed since the stocktake was sent. Press "Reject" to recount.' },
   { vi: 'Không duyệt được: % — tồn đã thay đổi sau khi gửi kiểm kê. Bấm "Từ chối" để đếm lại.',
     en: 'Cannot approve: {1} — stock has changed since the stocktake was sent. Press "Reject" to recount.' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Đã duyệt hủy %: % kg.', en: 'Approved write-off {1}: {2} kg.' },
+  { vi: 'Đã từ chối % — hàng đã về lại chỗ cũ.', en: 'Rejected {1} — the goods are back where they were.' },
+  { vi: 'Phiếu % đã gửi, đang chờ duyệt.', en: 'Stocktake {1} was already sent and is awaiting approval.' },
+  { vi: 'Đã gửi %: % dòng lệch sổ, chờ quản lý duyệt.',
+    en: 'Sent {1} — lines that differ from the books: {2}. Waiting for a manager to approve.' },
+  { vi: 'Đã duyệt %: % dòng điều chỉnh, ghi bán % gói (% kg).',
+    en: 'Approved {1} — adjustment lines: {2}; recorded as sold: {3} pack(s) ({4} kg).' },
+  { vi: 'Đã duyệt %: % dòng điều chỉnh.', en: 'Approved {1} — adjustment lines: {2}.' },
+  { vi: 'Đã trả % về để đếm lại.', en: 'Sent {1} back for a recount.' },
+  { vi: 'Đã hủy phiếu kiểm kê %.', en: 'Cancelled stocktake {1}.' },
 
   // 0024_kho_cong_no_bao_cao — công nợ: đối chiếu hóa đơn, thanh toán, trả hàng NCC
   { vi: 'Phiếu % đã có thanh toán hoặc giảm trừ — kế toán hủy các khoản đó trước',
@@ -696,6 +855,14 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Lô %: số kg phải lớn hơn 0, tối đa 3 số lẻ',
     en: 'Lot {1}: kg must be greater than 0, with at most 3 decimal places' },
   { vi: 'Lô %: số % phải là số nguyên không âm', en: 'Lot {1}: the number of {2} must be a whole number, 0 or more' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Đã đối chiếu % với hóa đơn %: khớp phiếu.', en: 'Reconciled {1} with invoice {2}: matches the receipt.' },
+  { vi: 'Đã đối chiếu % với hóa đơn %: LỆCH % đ so với phiếu — công nợ tính theo hóa đơn.',
+    en: 'Reconciled {1} with invoice {2}: DIFFERS by {3} ₫ from the receipt — payables follow the invoice.' },
+  { vi: 'Khoản % đã bị hủy trước đó.', en: 'Entry {1} was already cancelled.' },
+  { vi: 'Đã hủy % — công nợ các phiếu liên quan đã trở lại như trước.',
+    en: 'Cancelled {1} — payables of the related receipts are back to what they were.' },
+  { vi: 'Trả hàng % của phiếu %', en: 'Return {1} of goods receipt {2}' },
 
   // 0030_kho_viec_thong_bao — việc cần làm, ngưỡng cảnh báo
   { vi: 'Không có ngưỡng tên "%"', en: 'There is no threshold named "{1}"' },
@@ -720,6 +887,8 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: 'Price entry {1}: the unit price must be a whole VND amount, 0 or more' },
   { vi: 'Dòng % (%): chưa có đơn giá — điền giá rồi duyệt',
     en: 'Line {1} ({2}): no unit price yet — enter the price, then approve' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Đã gửi phiếu % chờ duyệt.', en: 'Sent goods receipt {1} for approval.' },
 
   // 0032_kho_quay — quầy: yêu cầu hàng, mang ra quầy, nhận hàng, quét kiểm kê
   { vi: '"%" phải là bật hoặc tắt', en: '"{1}" must be on or off' },
@@ -758,6 +927,24 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: 'Goods on the way are not confirmed as received yet: {1} — press "Received in full" (or report a shortage) before approving the stocktake' },
   { vi: 'Còn hàng đang mang ra chưa bấm nhận: % — bấm "Đã nhận" (hoặc báo thiếu) trước khi %',
     en: 'Goods on the way are not confirmed as received yet: {1} — press "Received in full" (or report a shortage) first' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Yêu cầu % đã hủy trước đó.', en: 'Request {1} was already cancelled.' },
+  { vi: 'Đã hủy yêu cầu %.', en: 'Cancelled request {1}.' },
+  { vi: 'Theo yêu cầu %', en: 'For request {1}' },
+  { vi: 'Đã ghi nhận hàng của phiếu %.', en: 'The goods of {1} are recorded.' },
+  { vi: 'Đã nhận %: % gói. Thiếu % gói (% kg) — đã báo quản lý.',
+    en: 'Received {1}: {2} pack(s). Short: {3} pack(s) ({4} kg) — the manager has been notified.' },
+  { vi: 'Đã nhận đủ %: % gói (% kg).', en: 'Received {1} in full: {2} pack(s) ({3} kg).' },
+  { vi: 'Phiếu % đã được xử lý trước đó.', en: 'Transfer {1} was already handled.' },
+  { vi: 'Mất khi mang ra quầy: %', en: 'Lost on the way to the counter: {1}' },
+  { vi: 'Đã trả % gói thiếu của % về kho.', en: 'Returned {1} short pack(s) of {2} to stock.' },
+  { vi: 'Đã ghi mất % gói (% kg) của %.', en: 'Recorded {1} pack(s) ({2} kg) of {3} as lost.' },
+  { vi: 'Phiếu % đã hủy trước đó.', en: 'Document {1} was already cancelled.' },
+  { vi: 'Đã hủy % — % gói đã về lại chỗ cũ.', en: 'Cancelled {1} — {2} pack(s) back where they were.' },
+  { vi: 'Mã hàng % chưa gán cho món nào — báo quản lý',
+    en: 'Item code {1} is not assigned to any item — tell a manager' },
+  { vi: '"%" tính theo kg mà nhãn không có kg — nhập số kg bằng tay',
+    en: '"{1}" is counted by kg but the label has no kg — enter the kg by hand' },
 
   // 0033_kho_pha_quet_the_kho — quét nhãn pha lóc, xác nhận thu hồi, thẻ kho
   { vi: 'Phiên % đã chốt — không quét thêm được', en: 'Butchery session {1} is closed — no more scanning' },
@@ -769,6 +956,23 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: 'Output {1} ({2}): this item was scanned — correct it with the −1 button or by undoing the scan' },
   { vi: 'Phiên % chưa chốt — chưa có kết quả để xem',
     en: 'Butchery session {1} is not closed — there are no results to review yet' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: '"%" là hàng đem pha, không phải phần cắt ra', en: '"{1}" is the item being butchered, not a cut' },
+  { vi: 'Nhãn "%" không có số kg — cân lại in nhãn có kg',
+    en: 'The "{1}" label has no kg — weigh again and print a label with kg' },
+  { vi: '"%" đã ghi bằng tay — xóa dòng đó rồi quét lại',
+    en: '"{1}" was entered by hand — delete that line, then scan again' },
+  { vi: 'Đã chốt phiên %: thu hồi %, % lô mới. Thu hồi thấp hơn dự kiến (%) — đã báo quản lý.',
+    en: 'Closed butchery session {1}: yield {2}, new lots: {3}. The yield is below the expected {4} — the manager has been notified.' },
+  { vi: 'Phiên % đã được xem trước đó.', en: 'Butchery session {1} was already reviewed.' },
+  { vi: 'Đã ghi nhận: đã xem kết quả phiên %.',
+    en: 'Recorded: the results of butchery session {1} have been reviewed.' },
+
+  // 0034_kho_may_chung — máy dùng chung, tài khoản nhân viên kho
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'gỡ % người', en: 'removed {1} person(s)' },
+  { vi: '% lần sai trong 30 phút', en: '{1} wrong attempts in 30 minutes' },
+  { vi: '% lần sai trong 24 giờ', en: '{1} wrong attempts in 24 hours' },
 
   // 0035_kho_dau_ky_thiet_lap — nợ đầu kỳ, tồn đầu kỳ, thiết lập
   { vi: 'Dòng %: chưa chọn nhà cung cấp', en: 'Line {1}: no supplier selected' },
@@ -784,6 +988,8 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: 'Line {1} ({2}): invoice number at most 60 characters, note at most 500' },
   { vi: 'Dòng %: chọn nơi để là một kho hoặc quầy đang dùng của chi nhánh này',
     en: 'Line {1}: choose an active store or counter of this branch as the location' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Đã hủy nợ đầu kỳ %.', en: 'Cancelled opening balance {1}.' },
 
   // 0037_kho_ipos — bán hàng iPOS
   { vi: '"%" tính theo kg mà dòng iPOS không có số kg', en: '"{1}" is counted by kg but the iPOS line has no kg' },
@@ -794,9 +1000,31 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Dòng này đã xử lý xong (%)', en: 'This line has already been handled ({1})' },
   { vi: 'Chưa có lô nào của "%" — nhập hàng hoặc tồn đầu kỳ trước',
     en: 'There is no lot of "{1}" yet — receive goods or enter opening stock first' },
+  { vi: 'Chưa ghi được: Mã cân % chưa gán cho món nào',
+    en: 'Not recorded yet: Scale code {1} is not assigned to any item' },
+  { vi: 'Chưa ghi được: Quầy không đủ "%" trên sổ: cần %',
+    en: 'Not recorded yet: The counter does not have enough "{1}" on the books: needs {2}' },
+  { vi: 'Chưa ghi được: "%" tính theo kg mà dòng iPOS không có số kg',
+    en: 'Not recorded yet: "{1}" is counted by kg but the iPOS line has no kg' },
+  { vi: 'Chưa ghi được: iPOS báo bán % gói "%" — số gói phải là số nguyên. Món này bán theo kg thì đổi "Bán theo" ở Ghép món',
+    en: 'Not recorded yet: iPOS reports {1} packs of "{2}" sold — the number of packs must be a whole number. If this item is sold by kg, change "Sold by" in Match dish' },
+  { vi: 'Chưa ghi được: "%" tính theo kg mà iPOS bán theo gói — điền "mỗi gói = … kg" ở Ghép món',
+    en: 'Not recorded yet: "{1}" is counted by kg but iPOS sells it by the pack — fill in "each pack = … kg" in Match dish' },
   { vi: 'Chưa ghi được: %', en: 'Not recorded yet: {1}' },
   { vi: 'Còn % dòng bán iPOS trước lúc gửi chưa trừ được kho (thiếu hàng / chưa ghép món) — xử lý ở Bán hàng iPOS rồi duyệt',
     en: 'iPOS sale lines from before the count was sent are still not deducted from stock (short on stock / dish not matched): {1} — handle them in iPOS sales, then approve' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Mã cân % chưa gán cho món nào', en: 'Scale code {1} is not assigned to any item' },
+  { vi: 'Quầy không đủ "%" trên sổ: cần %', en: 'The counter does not have enough "{1}" on the books: needs {2}' },
+  { vi: 'Lệch kg nhãn cân · iPOS %', en: 'Scale label kg difference · iPOS {1}' },
+  { vi: 'Chưa cấu hình đủ kết nối iPOS: thiếu %, đường dẫn lấy hóa đơn, quầy bán',
+    en: 'The iPOS connection is not fully set up: missing {1}, the invoice path, the sales counter' },
+  { vi: 'Chưa cấu hình đủ kết nối iPOS: thiếu %, đường dẫn lấy hóa đơn',
+    en: 'The iPOS connection is not fully set up: missing {1}, the invoice path' },
+  { vi: 'Chưa cấu hình đủ kết nối iPOS: thiếu %, quầy bán',
+    en: 'The iPOS connection is not fully set up: missing {1}, the sales counter' },
+  { vi: 'Chưa cấu hình đủ kết nối iPOS: thiếu %', en: 'The iPOS connection is not fully set up: missing {1}' },
+  { vi: 'Hàng ngoài sổ: %', en: 'Off-the-books goods: {1}' },
 
   // 0038_kho_dinh_luong — định lượng món, định mức bếp
   { vi: 'Mã iPOS % đang ghép với hàng bán thẳng từ quầy (đã trừ kho khi bán) — không làm định lượng cho mã này',
@@ -811,6 +1039,21 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: 'Line {1} ({2}): grams must be greater than 0 and at most 10,000' },
   { vi: 'Còn % dòng lỗi — sửa trong bảng dán rồi bấm Áp dụng lại. %',
     en: 'Rows with errors: {1} — fix them in the pasted table, then press Apply again. {2}' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Dòng %: không đọc được', en: 'Line {1}: cannot be read' },
+  { vi: 'Dòng %: thiếu tên hoặc mã món', en: 'Line {1}: dish name or code missing' },
+  { vi: 'Dòng %: tên món dài quá (tối đa 120 chữ)', en: 'Line {1}: dish name too long (at most 120 characters)' },
+  { vi: 'Dòng %: thiếu mặt hàng', en: 'Line {1}: item missing' },
+  { vi: 'Dòng %: có % mặt hàng tên "%" — ghi mã mặt hàng',
+    en: 'Line {1}: {2} items are named "{3}" — enter the item code' },
+  { vi: 'Dòng %: không tìm thấy mặt hàng "%" — ghi đúng mã, mã cân hoặc tên',
+    en: 'Line {1}: item "{2}" not found — enter the exact code, scale code or name' },
+  { vi: 'Dòng %: gram "%" không phải số (ví dụ 150 hoặc 150,5)',
+    en: 'Line {1}: grams "{2}" is not a number (for example 150 or 150.5)' },
+  { vi: 'Dòng %: gram phải lớn hơn 0 và không quá 10.000',
+    en: 'Line {1}: grams must be greater than 0 and at most 10,000' },
+  { vi: 'Dòng %: trùng với dòng % (cùng món, cùng mặt hàng)',
+    en: 'Line {1}: duplicate of line {2} (same dish, same item)' },
 
   // 0039_kho_dat_hang — đặt hàng, mức kho lạnh
   { vi: '%: mức tối thiểu phải từ 0 kg trở lên', en: '{1}: the minimum level must be 0 kg or more' },
@@ -845,6 +1088,87 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Đơn % chưa gửi cho nhà cung cấp', en: 'Order {1} has not been sent to the supplier yet' },
   { vi: 'Đơn % đã nhận đủ hàng', en: 'Order {1} has already been fully received' },
   { vi: 'Đơn % không còn món nào chờ giao', en: 'Order {1} has no items left waiting for delivery' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Đã lưu mức kho lạnh của %.', en: 'Saved the cold store levels for {1}.' },
+  { vi: 'Đơn % đã được gửi trước đó.', en: 'Order {1} was already sent.' },
+  { vi: 'Đã gửi đơn % cho %. In hoặc lưu PDF để gửi Zalo.',
+    en: 'Sent order {1} to {2}. Print it or save it as a PDF to send on Zalo.' },
+  { vi: 'Đơn % đã hủy trước đó.', en: 'Order {1} was already cancelled.' },
+  { vi: 'Đã hủy đơn %.', en: 'Cancelled order {1}.' },
+  { vi: 'Nhận theo đơn %. Ghi hạn dùng theo nhãn cho: %',
+    en: 'Received against order {1}. Enter use-by dates from the labels for: {2}' },
+  { vi: 'Nhận theo đơn %', en: 'Received against order {1}' },
+  //     kho_goi_y_dat_hang — lời giải thích gợi ý đặt hàng: đủ tổ hợp phần tùy chọn, câu nhiều phần trước
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg, đang mang ra quầy % kg, đã đặt chưa về % kg → nên đặt % kg. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand, {3} kg on the way to the counter, {4} kg ordered, not arrived yet → order {5} kg. Below the minimum of {6} kg!' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg, đang mang ra quầy % kg, đã đặt chưa về % kg → chưa cần đặt. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand, {3} kg on the way to the counter, {4} kg ordered, not arrived yet → no need to order yet. Below the minimum of {5} kg!' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg, đang mang ra quầy % kg, đã đặt chưa về % kg → nên đặt % kg. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand, {6} kg on the way to the counter, {7} kg ordered, not arrived yet → order {8} kg. Below the minimum of {9} kg!' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg, đang mang ra quầy % kg, đã đặt chưa về % kg → chưa cần đặt. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand, {6} kg on the way to the counter, {7} kg ordered, not arrived yet → no need to order yet. Below the minimum of {8} kg!' },
+  { vi: 'Chưa bán / dùng trong 28 ngày qua và chưa cài mức tối đa kho lạnh — tự quyết số đặt (đang có % kg). Dưới mức tối thiểu % kg!',
+    en: 'Not sold / used in the last 28 days and no cold store maximum set — decide the order quantity yourself ({1} kg on hand). Below the minimum of {2} kg!' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg, đang mang ra quầy % kg, đã đặt chưa về % kg → nên đặt % kg',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand, {3} kg on the way to the counter, {4} kg ordered, not arrived yet → order {5} kg' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg, đang mang ra quầy % kg, đã đặt chưa về % kg → chưa cần đặt',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand, {3} kg on the way to the counter, {4} kg ordered, not arrived yet → no need to order yet' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg, đang mang ra quầy % kg → nên đặt % kg. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand, {3} kg on the way to the counter → order {4} kg. Below the minimum of {5} kg!' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg, đang mang ra quầy % kg → chưa cần đặt. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand, {3} kg on the way to the counter → no need to order yet. Below the minimum of {4} kg!' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg, đã đặt chưa về % kg → nên đặt % kg. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand, {3} kg ordered, not arrived yet → order {4} kg. Below the minimum of {5} kg!' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg, đã đặt chưa về % kg → chưa cần đặt. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand, {3} kg ordered, not arrived yet → no need to order yet. Below the minimum of {4} kg!' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg, đang mang ra quầy % kg, đã đặt chưa về % kg → nên đặt % kg',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand, {6} kg on the way to the counter, {7} kg ordered, not arrived yet → order {8} kg' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg, đang mang ra quầy % kg, đã đặt chưa về % kg → chưa cần đặt',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand, {6} kg on the way to the counter, {7} kg ordered, not arrived yet → no need to order yet' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg, đang mang ra quầy % kg → nên đặt % kg. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand, {6} kg on the way to the counter → order {7} kg. Below the minimum of {8} kg!' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg, đang mang ra quầy % kg → chưa cần đặt. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand, {6} kg on the way to the counter → no need to order yet. Below the minimum of {7} kg!' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg, đã đặt chưa về % kg → nên đặt % kg. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand, {6} kg ordered, not arrived yet → order {7} kg. Below the minimum of {8} kg!' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg, đã đặt chưa về % kg → chưa cần đặt. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand, {6} kg ordered, not arrived yet → no need to order yet. Below the minimum of {7} kg!' },
+  { vi: 'Chưa bán / dùng trong 28 ngày qua và chưa cài mức tối đa kho lạnh — tự quyết số đặt. Dưới mức tối thiểu % kg!',
+    en: 'Not sold / used in the last 28 days and no cold store maximum set — decide the order quantity yourself. Below the minimum of {1} kg!' },
+  { vi: 'Chưa bán / dùng trong 28 ngày qua và chưa cài mức tối đa kho lạnh — tự quyết số đặt (đang có % kg)',
+    en: 'Not sold / used in the last 28 days and no cold store maximum set — decide the order quantity yourself ({1} kg on hand)' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg, đang mang ra quầy % kg → nên đặt % kg',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand, {3} kg on the way to the counter → order {4} kg' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg, đang mang ra quầy % kg → chưa cần đặt',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand, {3} kg on the way to the counter → no need to order yet' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg, đã đặt chưa về % kg → nên đặt % kg',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand, {3} kg ordered, not arrived yet → order {4} kg' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg, đã đặt chưa về % kg → chưa cần đặt',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand, {3} kg ordered, not arrived yet → no need to order yet' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg → nên đặt % kg. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand → order {3} kg. Below the minimum of {4} kg!' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg → chưa cần đặt. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand → no need to order yet. Below the minimum of {3} kg!' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg, đang mang ra quầy % kg → nên đặt % kg',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand, {6} kg on the way to the counter → order {7} kg' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg, đang mang ra quầy % kg → chưa cần đặt',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand, {6} kg on the way to the counter → no need to order yet' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg, đã đặt chưa về % kg → nên đặt % kg',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand, {6} kg ordered, not arrived yet → order {7} kg' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg, đã đặt chưa về % kg → chưa cần đặt',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand, {6} kg ordered, not arrived yet → no need to order yet' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg → nên đặt % kg. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand → order {6} kg. Below the minimum of {7} kg!' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg → chưa cần đặt. Dưới mức tối thiểu % kg!',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand → no need to order yet. Below the minimum of {6} kg!' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg → nên đặt % kg',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand → order {3} kg' },
+  { vi: 'Cần % kg (mức tối đa kho lạnh); đang có % kg → chưa cần đặt',
+    en: 'Need {1} kg (cold store maximum); {2} kg on hand → no need to order yet' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg → nên đặt % kg',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand → order {6} kg' },
+  { vi: 'Cần % kg (dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng); đang có % kg → chưa cần đặt',
+    en: 'Need {1} kg (average use {2} kg/day × {3} days: {4} days waiting for delivery + 3 days buffer); {5} kg on hand → no need to order yet' },
 
   // 0040_kho_cong_no_v2 — công nợ: hóa đơn gộp, bù trừ, hoàn tiền, trả hàng chờ tiền, MISA
   { vi: 'Phiếu % nằm trong hóa đơn gộp % — kế toán bỏ đối chiếu hóa đơn đó trước',
@@ -875,12 +1199,76 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: 'The accountant has already confirmed the amount for return {1} — it can no longer be cancelled' },
   { vi: 'Mã tài khoản: trường "%" không được nhận', en: 'Account codes: field "{1}" is not accepted' },
   { vi: 'Mã MISA % đã dùng cho mặt hàng khác', en: 'MISA code {1} is already used for another item' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Hóa đơn gộp % (% phiếu) — lệch: %', en: 'Combined invoice {1} (receipts: {2}) — difference: {3}' },
+  { vi: 'Hóa đơn gộp % (% phiếu)', en: 'Combined invoice {1} (receipts: {2})' },
+  { vi: 'Hóa đơn gộp % đã được bỏ đối chiếu trước đó.',
+    en: 'The reconciliation of combined invoice {1} was already undone.' },
+  { vi: 'Đã bỏ đối chiếu hóa đơn gộp % — % phiếu trở lại như trước khi đối chiếu.',
+    en: 'Undid the reconciliation of combined invoice {1} — receipts back to how they were before: {2}.' },
+  { vi: 'Đã hủy phiếu trả hàng % — % lô đã về lại chỗ cũ.',
+    en: 'Cancelled return {1} — lots back where they were: {2}.' },
+  //     kho_cong_no_theo_ky — diễn giải dòng thanh toán: nhãn [+ ": ghi chú"] + " — phiếu …"
+  { vi: 'Trả tiền: % — phiếu %', en: 'Payment: {1} — for {2}' },
+  { vi: 'Trả tiền — phiếu %', en: 'Payment — for {1}' },
+  { vi: 'Trả tiền (chuyển khoản): % — phiếu %', en: 'Payment (bank transfer): {1} — for {2}' },
+  { vi: 'Trả tiền (chuyển khoản) — phiếu %', en: 'Payment (bank transfer) — for {1}' },
+  { vi: 'Trả tiền (tiền mặt): % — phiếu %', en: 'Payment (cash): {1} — for {2}' },
+  { vi: 'Trả tiền (tiền mặt) — phiếu %', en: 'Payment (cash) — for {1}' },
+  { vi: 'Giảm trừ: % — phiếu %', en: 'Deduction: {1} — for {2}' },
+  { vi: 'Giảm trừ — phiếu %', en: 'Deduction — for {1}' },
+  { vi: 'Bù trừ công nợ: % — phiếu %', en: 'Payables offset: {1} — for {2}' },
+  { vi: 'Bù trừ công nợ — phiếu %', en: 'Payables offset — for {1}' },
+  { vi: 'Nhà cung cấp hoàn tiền: % — phiếu %', en: 'Supplier refund: {1} — for {2}' },
+  { vi: 'Nhà cung cấp hoàn tiền — phiếu %', en: 'Supplier refund — for {1}' },
+  { vi: 'Nhà cung cấp hoàn tiền (chuyển khoản): % — phiếu %', en: 'Supplier refund (bank transfer): {1} — for {2}' },
+  { vi: 'Nhà cung cấp hoàn tiền (chuyển khoản) — phiếu %', en: 'Supplier refund (bank transfer) — for {1}' },
+  { vi: 'Nhà cung cấp hoàn tiền (tiền mặt): % — phiếu %', en: 'Supplier refund (cash): {1} — for {2}' },
+  { vi: 'Nhà cung cấp hoàn tiền (tiền mặt) — phiếu %', en: 'Supplier refund (cash) — for {1}' },
+
+  // 0041_kho_sua_nhanh_bao_cao — sửa nhanh mặt hàng, báo cáo
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Dòng % không đúng dạng.', en: 'Line {1} is not in the right format.' },
+  { vi: 'Dòng %: thiếu mặt hàng.', en: 'Line {1}: the item is missing.' },
+  { vi: '%: thiếu phiên bản của dòng — tải lại trang rồi sửa lại.',
+    en: '{1}: the line version is missing — reload the page and edit again.' },
+  { vi: '%: vừa được người khác sửa lúc % — tải lại trang để xem số mới rồi sửa lại.',
+    en: '{1}: someone else edited it at {2} — reload the page to see the new values, then edit again.' },
+  { vi: '%: giá bán/kg phải là số đồng, ví dụ 650000.',
+    en: '{1}: the sale price/kg must be a VND amount, for example 650000.' },
+  { vi: '%: hạn dùng là số ngày, từ 1 đến 3650.', en: '{1}: shelf life is a number of days, from 1 to 3650.' },
+  { vi: '%: mã cân là dãy số (tối đa 6 số), đúng như mã hàng cài trên cân.',
+    en: '{1}: the scale code is a number (up to 6 digits), exactly as set on the scale.' },
+  { vi: '%: số gói tối thiểu ở quầy là số nguyên, từ 0.',
+    en: '{1}: the minimum packs at the counter must be a whole number, from 0.' },
+  { vi: '%: số gói tối đa ở quầy là số nguyên, từ 1.',
+    en: '{1}: the maximum packs at the counter must be a whole number, from 1.' },
+  { vi: '%: tồn tối thiểu là số kg, ví dụ 2,5.', en: '{1}: the minimum stock is a number of kg, for example 2.5.' },
+  { vi: '%: mức tối thiểu kho lạnh là số kg, ví dụ 20 hoặc 12,5.',
+    en: '{1}: the cold store minimum is a number of kg, for example 20 or 12.5.' },
+  { vi: '%: mức tối đa kho lạnh là số kg lớn hơn 0 (bỏ trống nếu không dùng).',
+    en: '{1}: the cold store maximum is a number of kg greater than 0 (leave it empty if not used).' },
+  { vi: '%: sau pha để ở "kho" (kho lạnh) hoặc "quay" (quầy).',
+    en: '{1}: after butchery it goes to "kho" (cold store) or "quay" (counter).' },
+  { vi: '%: chọn "Đang dùng" hoặc "Ngưng dùng".', en: '{1}: choose "In use" or "Not in use".' },
+  { vi: '%: số gói tối đa ở quầy phải từ % (số gói tối thiểu) trở lên.',
+    en: '{1}: the maximum packs at the counter must be at least {2} (the minimum packs).' },
+  { vi: '%: mức tối thiểu kho lạnh không được lớn hơn mức tối đa.',
+    en: '{1}: the cold store minimum cannot be greater than the maximum.' },
+  { vi: '%: mã cân % đang dùng cho "%".', en: '{1}: scale code {2} is already used for "{3}".' },
+  { vi: 'Chưa lưu món nào: % ô cần sửa (xem chữ đỏ ở từng dòng).',
+    en: 'Nothing saved — fields to fix: {1} (see the red text on each line).' },
+  { vi: 'Đã lưu % món.', en: 'Saved {1} item(s).' },
 
   // 0042_kho_ipos_callback — iPOS gửi hóa đơn sang (callback), bán theo kg / gói / suất
   { vi: 'iPOS báo bán % gói "%" — số gói phải là số nguyên. Món này bán theo kg thì đổi "Bán theo" ở Ghép món',
     en: 'iPOS reports {1} packs of "{2}" sold — the number of packs must be a whole number. If this item is sold by kg, change "Sold by" in Match dish' },
   { vi: '"%" tính theo kg mà iPOS bán theo gói — điền "mỗi gói = … kg" ở Ghép món',
     en: '"{1}" is counted by kg but iPOS sells it by the pack — fill in "each pack = … kg" in Match dish' },
+  //   · hàm trả về / ghi vào bảng cho người đọc
+  { vi: 'Lệch kg bán theo cân · iPOS %', en: 'Sold-by-weight kg difference · iPOS {1}' },
+  { vi: 'Đã hơn % giờ trong giờ mở cửa không nhận được hóa đơn nào từ iPOS — kiểm tra máy iPOS và địa chỉ nhận hóa đơn.',
+    en: 'No invoice has come from iPOS for over {1} hours during opening hours — check the iPOS device and the invoice address.' },
 
   // Câu rộng — biểu thức của chúng cũng khớp câu cụ thể hơn ở trên ("Dòng % không hợp lệ" khớp
   // "Dòng 3 (Ba chỉ): lô không hợp lệ"), nên tra sau cùng.
@@ -892,6 +1280,8 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: '"%": chưa nhập số %', en: '"{1}": number of {2} not entered' },
   { vi: 'Yêu cầu % %', en: 'Request {1}: {2}' },
   { vi: 'Đơn % %', en: 'Order {1}: {2}' },
+  { vi: 'Nhập từ %', en: 'Received from {1}' },
+  { vi: 'Pha lóc %', en: 'Butchery of {1}' },
 ];
 
 type Mau = readonly [RegExp, (m: RegExpMatchArray) => string];
