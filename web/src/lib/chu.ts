@@ -80,8 +80,8 @@ const VI = {
   tuyenDung: 'Tuyển dụng',
   tuyenDungTieuDe: 'Beeftown đang tìm người',
   tuyenDungDan:
-    'Nhà hàng đang tuyển cho ngày mở cửa: nhân viên sảnh, bếp, bộ phận thịt và ' +
-    'quầy tư vấn. Phần lớn vị trí làm theo ca, nhận cả người chưa có kinh nghiệm.',
+    'Nhà hàng đang tuyển đội mở cửa cho ba bộ phận: quầy thịt, bếp và sảnh. ' +
+    'Nhân viên sảnh làm bán thời gian, nhận cả người chưa có kinh nghiệm; quầy thịt và bếp cần người đã có tay nghề.',
   tuyenDungCachNop:
     'Gửi cho Beeftown họ tên, vị trí muốn ứng tuyển và số điện thoại. ' +
     'Nhà hàng sẽ gọi lại để hẹn gặp.',
@@ -137,8 +137,8 @@ const EN: Bo = {
   tuyenDung: 'Careers',
   tuyenDungTieuDe: 'Beeftown is hiring',
   tuyenDungDan:
-    'We are hiring for opening day: floor staff, kitchen, meat department and the ' +
-    'counter. Most roles are shift-based, and no experience is required for many of them.',
+    'We are building our opening team across three departments: Butcher, Kitchen and Hall. ' +
+    'Hall Crew roles are part-time and open to people without experience; Butcher and Kitchen roles need hands-on experience.',
   tuyenDungCachNop:
     'Send us your name, the role you want, and your phone number. ' +
     'We will call you back to arrange a meeting.',
@@ -187,8 +187,8 @@ const KO: Bo = {
   tuyenDung: '채용',
   tuyenDungTieuDe: 'Beeftown에서 함께할 분을 찾고 있어요',
   tuyenDungDan:
-    '오픈에 맞춰 홀, 주방, 정육 파트, 정육 코너 상담 직원을 채용하고 있어요. ' +
-    '대부분 교대 근무이고, 경력이 없어도 지원할 수 있어요.',
+    '오픈 팀을 정육, 주방, 홀 세 파트로 꾸리고 있어요. ' +
+    '홀 크루는 파트타임이고 경력이 없어도 지원할 수 있어요. 정육과 주방은 실무 경력이 있는 분을 찾고 있어요.',
   tuyenDungCachNop:
     'Beeftown에 이름, 지원하려는 포지션, 전화번호를 보내 주세요. ' +
     '매장에서 다시 전화드려 만나 뵐 일정을 잡을게요.',

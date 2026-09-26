@@ -29,9 +29,9 @@ export async function docViTri(ngonNgu: NgonNgu = 'vi'): Promise<ViTri[]> {
  * giá trị enum và báo lệch với database.
  */
 export const BO_PHAN = {
-  sanh:      { vi: 'Sảnh',      en: 'Floor',        ko: '홀' },
+  sanh:      { vi: 'Sảnh',      en: 'Hall',         ko: '홀' },
   bep:       { vi: 'Bếp',       en: 'Kitchen',      ko: '주방' },
-  quay_thit: { vi: 'Quầy thịt', en: 'Meat counter', ko: '정육 코너' },
+  quay_thit: { vi: 'Quầy thịt', en: 'Butcher',      ko: '정육 코너' },
   quan_ly:   { vi: 'Quản lý',   en: 'Management',   ko: '관리직' },
   marketing: { vi: 'Marketing', en: 'Marketing',    ko: '마케팅' },
 } as const satisfies Record<string, BaThuTieng>;
