@@ -1,0 +1,138 @@
+---
+/**
+ * KHO — HỘP DUYỆT
+ *
+ * Mọi thứ đang chờ quản lý duyệt, ở MỘT chỗ, cũ nhất trước: phiếu nhập, báo
+ * hủy, kiểm kê. Trước đây là ba danh sách lọc riêng; duyệt xong một phiếu lại
+ * phải quay ra lọc lại.
+ *
+ * Thứ tự nhóm có lý do: kiểm kê ở một vị trí bị chặn khi vị trí đó còn phiếu
+ * nhập chưa duyệt hoặc phiên pha lóc còn nháp (0023). Nên phiếu nhập đứng đầu,
+ * kiểm kê đứng cuối, và phiên pha lóc nháp được nhắc riêng.
+ *
+ * Duyệt xong ở trang chi tiết thì quay về đây — phiếu tiếp theo nằm sẵn.
+ * Link phiếu nhập mang ?tu=duyet để nút quay lại của trang phiếu về đây.
+ *
+ * Kế toán (0031) vào đây bằng quyền duyet_nhap: chỉ thấy phiếu nhập — điền
+ * giá rồi duyệt. Báo hủy, kiểm kê, nhắc phiên pha lóc chỉ cho vai duyet.
+ */
+import Kho from '../../../layouts/Kho.astro';
+import BaoKho from '../../../components/kho/BaoKho.astro';
+import BieuTuong from '../../../components/kho/BieuTuong.astro';
+import { moTrangKho, tenNhanSu } from '../../../lib/kho/trang.ts';
+import { docDanhSachPhieuNhap, type PhieuNhapTom } from '../../../lib/kho/nhap.ts';
+import { docDanhSachPhieuXuat, type PhieuXuatTom } from '../../../lib/kho/xuat.ts';
+import { docDanhSachKiemKe, type KiemKeTom } from '../../../lib/kho/kiem-ke.ts';
+import { docDanhSachPhienPha, type PhienPhaTom } from '../../../lib/kho/pha-loc.ts';
+import { cauLoiKho, dinhDangKg, dinhDangTien } from '../../../lib/kho/chung.ts';
+import { thoiGianTruoc } from '../../../lib/kho/viec.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('duyet') && !k.duoc('duyet_nhap')) return Astro.redirect('/noi-bo/kho', 302);
+const duyetNhap = k.duoc('duyet_nhap');
+const duyetKhac = k.duoc('duyet');
+
+let nhap: PhieuNhapTom[] = [];
+let huy: PhieuXuatTom[] = [];
+let kiemKe: KiemKeTom[] = [];
+let phaNhap: PhienPhaTom[] = [];
+let ten = new Map<string, string>();
+let loiDoc = k.loiDoc;
+if (k.chiNhanh && k.daKhoiTao) {
+  const cn = k.chiNhanh.id;
+  try {
+    [nhap, huy, kiemKe, phaNhap] = await Promise.all([
+      duyetNhap ? docDanhSachPhieuNhap(k.client, cn, 'cho_duyet') : Promise.resolve([]),
+      duyetKhac ? docDanhSachPhieuXuat(k.client, cn, { loai: 'huy', trangThai: 'cho_duyet' }) : Promise.resolve([]),
+      duyetKhac ? docDanhSachKiemKe(k.client, cn, 'cho_duyet') : Promise.resolve([]),
+      duyetKhac ? docDanhSachPhienPha(k.client, cn, 'nhap') : Promise.resolve([]),
+    ]);
+    const cu = <T extends { created_at: string }>(a: T, b: T) => a.created_at.localeCompare(b.created_at);
+    nhap.sort(cu); huy.sort(cu); kiemKe.sort(cu); phaNhap.sort(cu);
+    ten = await tenNhanSu(k.client, [...nhap, ...huy, ...kiemKe, ...phaNhap].map(x => x.nguoi_tao));
+  } catch (e) {
+    loiDoc = cauLoiKho(e, 'Không đọc được danh sách chờ duyệt.');
+  }
+}
+const tong = nhap.length + huy.length + kiemKe.length;
+---
+<Kho k={k} tieuDe="Duyệt" huongDan={duyetKhac ? 'quan-ly-duyet' : 'duyet-nhap'}>
+  <h1>Chờ duyệt{tong > 0 ? ` · ${tong}` : ''}</h1>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  {tong === 0 && phaNhap.length === 0 ? (
+    <p class="nb-rong">Không có gì chờ duyệt.</p>
+  ) : (
+    <>
+      {nhap.length > 0 && (
+        <section class="kho-duyet-nhom">
+          <h2><BieuTuong ten="nhap" /> Phiếu nhập · {nhap.length}</h2>
+          <ul class="kho-duyet-ds">
+            {nhap.map(p => (
+              <li>
+                <a href={`/noi-bo/kho/nhap/${p.id}?tu=duyet`} class="kho-duyet-the">
+                  <span class="kho-duyet-chinh">
+                    <strong>{p.so_phieu}{p.ten_nha_cung_cap ? ` · ${p.ten_nha_cung_cap}` : p.loai === 'ton_dau' ? ' · Tồn đầu kỳ' : ''}</strong>
+                    <span>{dinhDangKg(p.tong_kg)} kg · {p.so_dong} dòng{p.tong_tien > 0 ? ` · ${dinhDangTien(p.tong_tien)}` : ' · chưa có giá'}</span>
+                    <small>{ten.get(p.nguoi_tao ?? '') ?? '—'} gửi · {thoiGianTruoc(p.created_at)}</small>
+                  </span>
+                  <span class="nb-nut phu">Điền giá & duyệt</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {phaNhap.length > 0 && (
+        <div class="nb-bao luu-y">
+          <p><strong>{phaNhap.length} phiên pha lóc còn nháp</strong> — kiểm kê ở kho có tảng đang pha sẽ bị chặn cho tới
+            khi phiên được chốt hoặc hủy.{' '}
+            {phaNhap.slice(0, 3).map((f, i) => <>{i > 0 ? ', ' : ''}<a href={`/noi-bo/kho/pha-loc/${f.id}`}>{f.so_phieu}</a></>)}
+          </p>
+        </div>
+      )}
+
+      {huy.length > 0 && (
+        <section class="kho-duyet-nhom">
+          <h2><BieuTuong ten="huy" /> Báo hủy · {huy.length}</h2>
+          <ul class="kho-duyet-ds">
+            {huy.map(p => (
+              <li>
+                <a href={`/noi-bo/kho/xuat/${p.id}`} class="kho-duyet-the">
+                  <span class="kho-duyet-chinh">
+                    <strong>{p.so_phieu} · {p.ten_ly_do ?? 'Không ghi lý do'}</strong>
+                    <span>{p.tong_goi > 0 ? `${p.tong_goi} gói · ` : ''}{dinhDangKg(p.tong_kg)} · ở {p.ten_vi_tri}</span>
+                    <small>{ten.get(p.nguoi_tao ?? '') ?? '—'} báo · {thoiGianTruoc(p.created_at)}</small>
+                  </span>
+                  <span class="nb-nut phu">Xem ảnh & duyệt</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {kiemKe.length > 0 && (
+        <section class="kho-duyet-nhom">
+          <h2><BieuTuong ten="kiem_ke" /> Kiểm kê · {kiemKe.length}</h2>
+          <ul class="kho-duyet-ds">
+            {kiemKe.map(p => (
+              <li>
+                <a href={`/noi-bo/kho/kiem-ke/${p.id}`} class="kho-duyet-the">
+                  <span class="kho-duyet-chinh">
+                    <strong>{p.so_phieu} · {p.ten_vi_tri}</strong>
+                    <span>{p.so_dong} dòng đã đếm</span>
+                    <small>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {thoiGianTruoc(p.created_at)}</small>
+                  </span>
+                  <span class="nb-nut phu">Xem chênh lệch</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </>
+  )}
+</Kho>

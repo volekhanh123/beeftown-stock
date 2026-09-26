@@ -1,0 +1,13 @@
+---
+/**
+ * Một biểu tượng nét (24×24) từ lib/kho/bieu-tuong.ts. Trang trí thuần:
+ * aria-hidden, chữ bên cạnh mới là thứ đọc được. Không gọi database.
+ */
+import { BIEU_TUONG, type TenBieuTuong } from '../../lib/kho/bieu-tuong.ts';
+
+interface Props { ten: TenBieuTuong; co?: number; class?: string }
+const { ten, co = 22, class: lop } = Astro.props;
+---
+<svg class:list={['kho-bt', lop]} width={co} height={co} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+     stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"
+     set:html={BIEU_TUONG[ten]} />

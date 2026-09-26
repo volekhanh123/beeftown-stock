@@ -2,21 +2,26 @@
 /**
  * KHO — DANH SÁCH PHIẾU NHẬP
  *
- * Lọc theo trạng thái bằng link GET. Quản lý mở trang này chủ yếu để duyệt,
- * nên có sẵn ô "Chờ duyệt". Chỉ vai xem giá thấy màn này (phiếu có đơn giá).
+ * Lọc theo trạng thái bằng link GET: ?loc=cho_duyet | nhap | tu_choi |
+ * da_duyet | da_huy. Quản lý, kế toán mở trang này chủ yếu để điền giá và
+ * duyệt, nên có sẵn ô "Chờ duyệt". Chỉ vai xem giá thấy màn này (phiếu có
+ * đơn giá); thủ kho (0031: không thấy tiền) được chuyển sang Nhận hàng
+ * (/noi-bo/kho/nhan-hang — chỉ kg). Cách làm chi tiết: trang Quy trình.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { docDanhSachPhieuNhap, type PhieuNhapTom } from '../../../../lib/kho/nhap.ts';
+import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
+import PhanTrang from '../../../../components/kho/PhanTrang.astro';
+import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, TRANG_THAI_CHUNG_TU,
 } from '../../../../lib/kho/chung.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
-if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.duoc('xem_gia')) return Astro.redirect(k.duoc('nhap') ? '/noi-bo/kho/nhan-hang' : '/noi-bo/kho', 302);
 
 const LOC = [
   ['', 'Tất cả'], ['cho_duyet', 'Chờ duyệt'], ['nhap', 'Nháp'],
@@ -24,21 +29,24 @@ const LOC = [
 ] as const;
 const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc'))
   ? Astro.url.searchParams.get('loc')! : '';
+const tenLoc = LOC.find(([v]) => v === loc)?.[1] ?? '';
 
+const tim = docTimDs(Astro.url.searchParams);
 let ds: PhieuNhapTom[] = [];
+let coSau = false;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
-    ds = await docDanhSachPhieuNhap(k.client, k.chiNhanh.id, loc || null);
+    ({ ds, coSau } = catTrang(await docDanhSachPhieuNhap(k.client, k.chiNhanh.id, loc || null,
+      { tim, nhanSuId: k.nhanSu.id })));
   } catch (e) {
     loiDoc = cauLoiKho(e, 'Không đọc được phiếu nhập.');
   }
 }
 const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 ---
-<NoiBo tieuDe="Nhập hàng" nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe="Nhập hàng" huongDan="duyet-nhap">
   <h1>Nhập hàng</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
@@ -46,15 +54,14 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
   ) : (
     <>
       <p class="nb-dan">
-        Hàng về: thủ kho lập phiếu, chụp hóa đơn, gửi duyệt. <strong>Hàng chỉ vào tồn
-        khi quản lý bấm duyệt.</strong> Mới dùng phần mềm: nhập hàng đang có sẵn bằng
-        phiếu <em>tồn đầu kỳ</em>.
+        Thủ kho gửi phiếu có kg và ảnh hóa đơn; kế toán hoặc quản lý điền giá rồi duyệt — hàng chỉ vào tồn khi đã duyệt.{' '}
+        <a href="/noi-bo/kho/quy-trinh?qt=nhan-hang">Xem cách làm →</a>
       </p>
 
       {k.duoc('nhap') && (
         <div class="kho-nut-nhanh">
           <a class="nb-nut" href="/noi-bo/kho/nhap/moi">Lập phiếu nhập</a>
-          <a class="nb-nut phu" href="/noi-bo/kho/nhap/moi?loai=ton_dau">Nhập tồn đầu kỳ</a>
+          <a class="nb-nut phu" href="/noi-bo/kho/cai-dat/ton-dau">Nhập tồn đầu kỳ</a>
         </div>
       )}
 
@@ -64,8 +71,12 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
         ))}
       </nav>
 
+      <LocDanhSach duong="/noi-bo/kho/nhap" tim={tim} giu={{ loc }} coCuaToi={k.duoc('nhap')}
+        goiY="Số phiếu, nhà cung cấp, số hóa đơn…" />
+
       {ds.length === 0 ? (
-        <p class="nb-rong">Chưa có phiếu nào{loc ? ' ở trạng thái này' : ''}.</p>
+        <p class="nb-rong">{tim.trang > 1 ? 'Hết danh sách — bấm "Trang trước".' : dangTim(tim) ? 'Không tìm thấy phiếu nào khớp bộ lọc.'
+          : loc ? `Không có phiếu nào ở mục "${tenLoc}".` : 'Chưa có phiếu nhập nào.'}</p>
       ) : ds.map(p => {
         const [nhan, lop] = TRANG_THAI_CHUNG_TU[p.trang_thai] ?? [p.trang_thai, 'tat'];
         return (
@@ -84,6 +95,7 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
           </a>
         );
       })}
+      <PhanTrang duong="/noi-bo/kho/nhap" trang={tim.trang} coSau={coSau} />
     </>
   )}
-</NoiBo>
+</Kho>

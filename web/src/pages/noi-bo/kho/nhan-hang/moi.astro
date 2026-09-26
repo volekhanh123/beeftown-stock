@@ -1,0 +1,166 @@
+---
+/**
+ * KHO — NHẬN HÀNG, BƯỚC 1: CHỤP HÓA ĐƠN, CHỌN NHÀ CUNG CẤP (GĐ5a)
+ *
+ * Ảnh hóa đơn / phiếu giao hàng lên TRƯỚC (bắt buộc với hàng mua): kế toán
+ * đọc giá từ ảnh này, thủ kho không gõ giá. Ô chọn file thường, không ép mở
+ * camera — hóa đơn hay đến qua Zalo, chọn ảnh có sẵn trong máy cũng được.
+ *
+ * Bấm "Tiếp" → tải ảnh, tạo phiếu nháp 0 dòng (kho_luu_phieu_nhap_kg), chuyển
+ * sang bước 2 /nhan-hang/<id>. Gõ sai thì hiện lại form cùng ma_gui cũ và ảnh
+ * đã lên (ô ẩn anh_da_tai) — không phải chụp lại.
+ *
+ * ?loai=ton_dau: nhập hàng đang có sẵn lúc mới dùng phần mềm — không nhà cung
+ * cấp, không bắt buộc ảnh.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import TruongThem from '../../../../components/kho/TruongThem.astro';
+import NhanHangChon from '../../../../components/kho/NhanHangChon.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { docCaiDat, docDinhNghia, docViTri, type CaiDat, type ViTri } from '../../../../lib/kho/danh-muc.ts';
+import { docNccNhap, taoPhieuNhan, type DauNhan, type NccNhap } from '../../../../lib/kho/nhan-hang.ts';
+import { cauLoiKho, dinhDangNgayNgan, homNayVn, type KetQua } from '../../../../lib/kho/chung.ts';
+import type { DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('nhap')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
+const cn = k.chiNhanh;
+const loai: 'mua' | 'ton_dau' = Astro.url.searchParams.get('loai') === 'ton_dau' ? 'ton_dau' : 'mua';
+
+let ncc: NccNhap[] = [];
+let viTri: ViTri[] = [];
+let caiDat: CaiDat | null = null;
+let dnPhieu: DinhNghiaTruong[] = [];
+let loiDoc = k.loiDoc;
+try {
+  [ncc, viTri, caiDat, dnPhieu] = await Promise.all([
+    loai === 'mua' ? docNccNhap(k.client, cn.id) : Promise.resolve([]),
+    docViTri(k.client, cn.id), docCaiDat(k.client, cn.id), docDinhNghia(k.client, 'phieu_nhap'),
+  ]);
+} catch (e) {
+  loiDoc = cauLoiKho(e, 'Không đọc được danh mục.');
+}
+
+// ---------------------------------------------------------------------------
+// Gửi form
+// ---------------------------------------------------------------------------
+let bao: KetQua | null = k.bao;
+let dauForm: DauNhan | null = null;
+let maGuiGiu: string | null = null;
+let anhDaTai: string[] = [];
+
+const form = await docFormGui(Astro);
+if (Astro.request.method === 'POST' && !form) {
+  bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
+}
+if (form) {
+  if (String(form.get('viec') ?? '') === 'tao') {
+    const kq = await taoPhieuNhan(k.client, cn.id, form, { loai, dinhNghiaPhieu: dnPhieu });
+    if (kq.ok && kq.id) return chuyenHuong(Astro, `/noi-bo/kho/nhan-hang/${kq.id}`, kq);
+    bao = kq;
+    dauForm = kq.dau ?? null;
+    maGuiGiu = kq.maGui ?? null;
+    anhDaTai = kq.anhDaTai ?? [];
+  } else {
+    bao = { ok: false, cau: 'Việc không hợp lệ.' };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Dữ liệu hiển thị
+// ---------------------------------------------------------------------------
+const noiNhan = viTri.filter(v => v.dang_dung && (v.loai === 'kho' || v.loai === 'quay'));
+const dau: DauNhan = dauForm ?? {
+  nha_cung_cap_id: '',
+  vi_tri_id: noiNhan.find(v => v.id === caiDat?.vi_tri_nhan_hang_id)?.id ?? noiNhan.find(v => v.loai === 'kho')?.id ?? noiNhan[0]?.id ?? '',
+  ngay_nhap: homNayVn(), so_hoa_don: '', truong_them: {},
+};
+// 6 người giao gần đây là nút lớn; còn lại trong ô chọn.
+const nccNut = ncc.slice(0, 6);
+const nccKhac = ncc.slice(6);
+const chonONut = nccNut.some(n => n.id === dau.nha_cung_cap_id);
+const maGuiForm = maGuiGiu ?? crypto.randomUUID();
+const tieuDe = loai === 'ton_dau' ? 'Nhập hàng có sẵn (tồn đầu kỳ)' : 'Nhận hàng';
+---
+<Kho k={k} tieuDe={tieuDe} huongDan="nhan-hang">
+  <p class="nh-buoc">Bước 1/3 · Hóa đơn và người giao</p>
+  <h1>{tieuDe}</h1>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {loai === 'ton_dau' && (
+    <p class="nb-dan">Hàng <strong>đang có sẵn</strong> lúc bắt đầu dùng phần mềm. Không có nhà cung cấp, không cần ảnh.{' '}
+      Nhiều món, nhiều nơi? <a href="/noi-bo/kho/cai-dat/ton-dau">Nhập dạng bảng / dán Excel →</a></p>
+  )}
+
+  <form method="POST" enctype="multipart/form-data">
+    <input type="hidden" name="ma_gui" value={maGuiForm} />
+    {anhDaTai.map(a => <input type="hidden" name="anh_da_tai" value={a} />)}
+
+    <div class="nb-the">
+      <div class="nb-o">
+        <span>{loai === 'mua' ? '1. Chụp hóa đơn / phiếu giao hàng *' : 'Ảnh chụp (không bắt buộc)'}</span>
+        {anhDaTai.length > 0 ? (
+          <p class="nh-da-chup">✓ Đã chụp {anhDaTai.length} ảnh — không cần chụp lại. Chụp thêm nếu hóa đơn nhiều trang.</p>
+        ) : (
+          <small>Chụp ngay, hoặc chọn ảnh có sẵn trong máy (ảnh gửi qua Zalo cũng được). Chọn được nhiều ảnh.</small>
+        )}
+        <input type="file" name="anh" accept="image/*,application/pdf" multiple class="nh-tep"
+          aria-label={anhDaTai.length > 0 ? 'Thêm ảnh' : 'Chụp hoặc chọn ảnh hóa đơn'} />
+      </div>
+    </div>
+
+    {loai === 'mua' && (
+      <div class="nb-the">
+        <div class="nb-o">
+          <span>2. Ai giao hàng? *</span>
+          {ncc.length === 0 && (
+            <small>Chưa có nhà cung cấp nào. {k.duoc('ncc') ? <a href="/noi-bo/kho/cai-dat/nha-cung-cap">Thêm nhà cung cấp</a> : 'Nhờ quản lý thêm nhà cung cấp.'}</small>
+          )}
+          <NhanHangChon name="ncc" nhan="Nhà cung cấp giao gần đây" chon={chonONut ? dau.nha_cung_cap_id : ''}
+            ds={nccNut.map(n => ({ value: n.id, nhan: n.ten, phu: n.lan_cuoi ? `giao ${dinhDangNgayNgan(n.lan_cuoi)}` : null }))} />
+        </div>
+        {nccKhac.length > 0 && (
+          <label class="nb-o">
+            <span>Người khác</span>
+            <select name="ncc_khac">
+              <option value="">— không có ở trên thì chọn ở đây —</option>
+              {nccKhac.map(n => <option value={n.id} selected={n.id === dau.nha_cung_cap_id}>{n.ten}</option>)}
+            </select>
+          </label>
+        )}
+      </div>
+    )}
+
+    <div class="nb-the">
+      <div class="nb-o">
+        <span>{loai === 'mua' ? '3. ' : ''}Nhận vào đâu?</span>
+        <NhanHangChon name="vi_tri_id" nhan="Nơi nhận hàng" chon={dau.vi_tri_id}
+          ds={noiNhan.map(v => ({ value: v.id, nhan: v.ten }))} />
+      </div>
+      <div class="kho-luoi">
+        <label class="nb-o"><span>Ngày nhận</span>
+          <input type="date" name="ngay_nhap" value={dau.ngay_nhap} max={homNayVn()} required /></label>
+        {loai === 'mua' && (
+          <label class="nb-o"><span>Số hóa đơn (nếu có)</span>
+            <input type="text" name="so_hoa_don" value={dau.so_hoa_don} maxlength="60" autocapitalize="characters" /></label>
+        )}
+      </div>
+      {loai === 'mua' && <TruongThem dinhNghia={dnPhieu} giaTri={dau.truong_them} />}
+    </div>
+
+    <div class="kho-thanh-nut dinh">
+      <button type="submit" name="viec" value="tao" class="nb-nut">Tiếp: cân hàng →</button>
+    </div>
+  </form>
+
+  <p style="margin-top:1.5rem"><a href="/noi-bo/kho/nhan-hang">← Danh sách nhận hàng</a></p>
+</Kho>
+
+<style>
+  .nh-buoc { margin: 0 0 .15rem; font-size: .85rem; font-weight: 700; color: var(--muc-nhat); }
+  .nh-da-chup { margin: 0 0 .5rem; font-weight: 700; color: var(--kho-xanh, #1f7a4c); }
+  .nh-tep { font-size: 16px; min-height: 48px; }
+</style>

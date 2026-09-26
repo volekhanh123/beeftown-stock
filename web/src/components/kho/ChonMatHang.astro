@@ -1,6 +1,8 @@
 ---
 /**
  * Ô chọn mặt hàng, gom theo loại (tảng / phần cắt / phụ phẩm) và nhóm.
+ * Chữ hiện chỉ "tên · nhóm" — thêm "(MÃ)" thì trên điện thoại tên bị cắt giữa
+ * chừng. Mã vẫn nằm trong title (rê chuột trên máy tính thấy).
  * Mặt hàng đã ngừng dùng chỉ hiện khi đang là giá trị được chọn sẵn (dữ liệu
  * cũ), để form cũ không tự đổi mặt hàng. Không gọi database.
  */
@@ -29,8 +31,8 @@ const nhom = ['tang', 'phan_cat', 'phu_pham']
   {nhom.map(n => (
     <optgroup label={n.ten}>
       {n.hang.map(m => (
-        <option value={m.id} selected={m.id === chon}>
-          {m.ten}{m.nhom ? ` · ${m.nhom}` : ''} ({m.ma}){!m.dang_dung ? ' — ngừng dùng' : ''}
+        <option value={m.id} selected={m.id === chon} title={`${m.ten} · mã ${m.ma}`}>
+          {m.ten}{m.nhom ? ` · ${m.nhom}` : ''}{!m.dang_dung ? ' — ngừng dùng' : ''}
         </option>
       ))}
     </optgroup>

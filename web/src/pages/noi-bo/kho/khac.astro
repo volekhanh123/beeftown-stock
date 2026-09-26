@@ -1,0 +1,60 @@
+---
+/**
+ * KHO — KHÁC
+ *
+ * Nút cuối thanh đáy trên điện thoại: mọi mục kho mà vai này được dùng, dạng
+ * lưới ô lớn (như iPOS), kèm phần khác của nhà hàng (đặt bàn, website...) cho
+ * quản lý / chủ, và nút đăng xuất.
+ */
+import Kho from '../../../layouts/Kho.astro';
+import BieuTuong from '../../../components/kho/BieuTuong.astro';
+import { moTrangKho } from '../../../lib/kho/trang.ts';
+import { mucCuaVai, thaoTacCuaVai, soDo, nhanSo, MUC_CRM } from '../../../lib/kho/dieu-huong.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+const vai = k.nhanSu.vai_tro;
+const muc = mucCuaVai(vai).filter(m => m.ma !== 'trang_chu');
+const nhanh = thaoTacCuaVai(vai);
+const crm = MUC_CRM.filter(m => m.vai.includes(vai));
+---
+<Kho k={k} huongDan="menu" tieuDe="Khác">
+  <h1>Tất cả mục</h1>
+
+  <ul class="kho-o-luoi kho-khac-luoi">
+    {muc.map(m => {
+      const so = soDo(m, k.viec);
+      return (
+        <li>
+          <a href={m.link} class="kho-o">
+            <BieuTuong ten={m.bieuTuong} co={26} />
+            <span>{m.ten}</span>
+            {so > 0 && <b class="kho-so-do" aria-label={`${so} việc`}>{nhanSo(so)}</b>}
+          </a>
+        </li>
+      );
+    })}
+  </ul>
+
+  {nhanh.length > 0 && (
+    <>
+      <h2>Thao tác nhanh</h2>
+      <div class="kho-nhanh-luoi">
+        {nhanh.map(t => <a class="nb-nut phu" href={t.link}><BieuTuong ten={t.bieuTuong} co={20} />{t.ten}</a>)}
+      </div>
+    </>
+  )}
+
+  {crm.length > 0 && (
+    <>
+      <h2>Phần khác của nhà hàng</h2>
+      <div class="kho-nhanh-luoi">
+        {crm.map(m => <a class="nb-nut phu" href={m.link}><BieuTuong ten={m.bieuTuong} co={20} />{m.ten}</a>)}
+      </div>
+    </>
+  )}
+
+  <form method="POST" action="/noi-bo/dang-xuat" class="kho-thanh-nut">
+    <button type="submit" class="nb-nut phu kho-nut-xoa"><BieuTuong ten="dang_xuat" co={20} />Đăng xuất</button>
+  </form>
+</Kho>

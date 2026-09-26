@@ -1,0 +1,107 @@
+---
+/**
+ * KHO — NHẬN HÀNG: DANH SÁCH PHIẾU (GĐ5a)
+ *
+ * Màn của người nhận hàng (quyền "nhap"): chỉ kg, số tảng, số ảnh — KHÔNG có
+ * tiền (đọc bằng kho_ds_phieu_nhap_kg, migration 0031). Lọc trạng thái bằng
+ * link GET ?loc=nhap | cho_duyet | tu_choi | da_duyet; tìm / ngày / của tôi /
+ * trang như các danh sách khác (lib/kho/tim-ds.ts).
+ *
+ * Phiếu có giá, điền giá, duyệt: /noi-bo/kho/nhap (vai xem giá).
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
+import PhanTrang from '../../../../components/kho/PhanTrang.astro';
+import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
+import { docDsPhieuNhan, type PhieuNhanTom } from '../../../../lib/kho/nhan-hang.ts';
+import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, TRANG_THAI_CHUNG_TU } from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('nhap')) return Astro.redirect('/noi-bo/kho', 302);
+
+const LOC = [
+  ['', 'Tất cả'], ['nhap', 'Nháp'], ['cho_duyet', 'Chờ duyệt'],
+  ['tu_choi', 'Bị trả về'], ['da_duyet', 'Đã duyệt'],
+] as const;
+const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc'))
+  ? Astro.url.searchParams.get('loc')! : '';
+const tenLoc = LOC.find(([v]) => v === loc)?.[1] ?? '';
+
+const tim = docTimDs(Astro.url.searchParams);
+let ds: PhieuNhanTom[] = [];
+let coSau = false;
+let loiDoc = k.loiDoc;
+if (k.chiNhanh && k.daKhoiTao) {
+  try {
+    ({ ds, coSau } = catTrang(await docDsPhieuNhan(k.client, k.chiNhanh.id, loc || null, tim)));
+  } catch (e) {
+    loiDoc = cauLoiKho(e, 'Không đọc được danh sách phiếu nhận hàng.');
+  }
+}
+const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
+// Nhãn trạng thái cho thủ kho: "Bị trả về" dễ hiểu hơn "Bị từ chối".
+const nhanTrangThai = (tt: string): [string, string] =>
+  tt === 'tu_choi' ? ['Bị trả về', 'tat'] : (TRANG_THAI_CHUNG_TU[tt] ?? [tt, 'tat']);
+---
+<Kho k={k} tieuDe="Nhận hàng" huongDan="nhan-hang">
+  <h1>Nhận hàng</h1>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Trang chủ kho</a>.</p>
+  ) : (
+    <>
+      <p class="nb-dan">
+        Hàng về: chụp hóa đơn → cân từng món → gửi. Kế toán / quản lý điền giá và duyệt,
+        duyệt xong hàng mới vào tồn.
+      </p>
+
+      <div class="kho-nut-nhanh">
+        <a class="nb-nut nh-lon" href="/noi-bo/kho/nhan-hang/moi">+ Nhận hàng mới</a>
+      </div>
+
+      <nav class="kho-dh" aria-label="Lọc theo trạng thái">
+        {LOC.map(([v, t]) => (
+          <a href={v ? `/noi-bo/kho/nhan-hang?loc=${v}` : '/noi-bo/kho/nhan-hang'} aria-current={loc === v ? 'page' : undefined}>{t}</a>
+        ))}
+      </nav>
+
+      <LocDanhSach duong="/noi-bo/kho/nhan-hang" tim={tim} giu={{ loc }} coCuaToi
+        goiY="Số phiếu, nhà cung cấp, số hóa đơn…" />
+
+      {ds.length === 0 ? (
+        <p class="nb-rong">{tim.trang > 1 ? 'Hết danh sách — bấm "Trang trước".' : dangTim(tim) ? 'Không tìm thấy phiếu nào khớp bộ lọc.'
+          : loc ? `Không có phiếu nào ở mục "${tenLoc}".` : 'Chưa có phiếu nhận hàng nào.'}</p>
+      ) : ds.map(p => {
+        const [nhan, lop] = nhanTrangThai(p.trang_thai);
+        return (
+          <a href={`/noi-bo/kho/nhan-hang/${p.id}`} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
+            <div class="nb-dong-dau">
+              <strong>{p.so_phieu}{p.loai === 'ton_dau' && ' · tồn đầu kỳ'}</strong>
+              <span class={`nb-nhan ${lop}`}>{nhan}</span>
+            </div>
+            {p.trang_thai === 'tu_choi' && p.ly_do && (
+              <p class="nh-ly-do">Lý do trả về: {p.ly_do}</p>
+            )}
+            <dl>
+              {p.loai === 'mua' && <><dt>Nhà cung cấp</dt><dd>{p.ten_nha_cung_cap ?? 'chưa chọn'}</dd></>}
+              <dt>Ngày nhận</dt><dd>{dinhDangNgay(p.ngay_nhap)} · vào {p.ten_vi_tri ?? '—'}</dd>
+              <dt>Hàng</dt><dd>{p.so_dong} món · {dinhDangKg(p.tong_kg)} kg{p.tong_goi > 0 && <> · {p.tong_goi} tảng/gói</>}</dd>
+              {p.loai === 'mua' && <><dt>Ảnh hóa đơn</dt><dd>{p.so_anh > 0 ? `✓ ${p.so_anh} ảnh` : 'chưa chụp'}</dd></>}
+              <dt>Người lập</dt><dd>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
+            </dl>
+          </a>
+        );
+      })}
+      <PhanTrang duong="/noi-bo/kho/nhan-hang" trang={tim.trang} coSau={coSau} />
+    </>
+  )}
+</Kho>
+
+<style>
+  .nh-lon { min-height: 56px; font-size: 1.05rem; }
+  .nh-ly-do { margin: .25rem 0 .5rem; padding: .45rem .6rem; border-radius: 8px; background: var(--kho-do-nen, #fdecea); font-size: .9rem; }
+</style>

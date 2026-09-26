@@ -121,12 +121,30 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/kho/trang.ts',
   'web/src/lib/kho/danh-muc.ts',
   'web/src/lib/kho/nhap.ts',
+  // Nhận hàng chỉ kg của thủ kho (GĐ5a) — chỉ gọi các hàm _kg của 0031.
+  'web/src/lib/kho/nhan-hang.ts',
   'web/src/lib/kho/ton.ts',
   'web/src/lib/kho/pha-loc.ts',
   'web/src/lib/kho/xuat.ts',
   'web/src/lib/kho/kiem-ke.ts',
+  // Đếm quầy quét cộng dồn (GĐ5b) — chỉ gọi từ /noi-bo/kho/quay/dem.
+  'web/src/lib/kho/dem-quay.ts',
   'web/src/lib/kho/cong-no.ts',
   'web/src/lib/kho/bao-cao.ts',
+  'web/src/lib/kho/thong-bao.ts',
+  // Quầy yêu cầu → mang ra → bấm nhận (GĐ5b, 0032) — không đọc cột tiền nào.
+  'web/src/lib/kho/quay.ts',
+  // Thẻ kho, quét đầy đủ (GĐ5c, 0033) — kho_the_kho chỉ kg / gói, không tiền.
+  'web/src/lib/kho/the-kho.ts',
+  // Nhân viên và máy dùng chung (GĐ5d, 0034) — chỉ gọi từ /noi-bo/kho/cai-dat,
+  // bằng client của chủ / quản lý. auth.signUp đi bằng client anon riêng, không gọi rpc.
+  'web/src/lib/kho/nhan-vien.ts',
+  // Máy tính bảng dùng chung: đổi phiên người ↔ máy (GĐ5d, 0034) — chỉ gọi từ
+  // /noi-bo/kho (moTrangKho, /noi-bo/kho/may/*), bằng phiên máy hoặc phiên người.
+  'web/src/lib/kho/may-chung.ts',
+  // Thiết lập có tiến độ, ngưỡng, tồn đầu kỳ dạng lưới (GĐ5e, 0035) — chỉ gọi từ
+  // /noi-bo/kho/cai-dat; lưới đọc mặt hàng không có cột tiền (thủ kho cũng mở).
+  'web/src/lib/kho/thiet-lap.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
   // Bản dịch tự động (0036) — gọi từ màn soạn tin, màn công tắc và middleware

@@ -6,13 +6,16 @@
  * phiên đã chốt) — con số chủ nhà hàng nhìn để biết thợ pha có đều tay không,
  * tảng của nhà cung cấp nào ra thịt tốt. Dưới: các phiên, phiên nháp lên đầu.
  *
- * Phiên pha có giá bán dùng để chia giá vốn → chỉ vai xem giá mở được trang.
+ * Vai xem giá và vai pha lóc (thủ kho) mở được trang. Danh sách chỉ có kg và
+ * % thu hồi — không có tiền (0031: thủ kho không thấy tiền).
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { docDanhSachPhienPha, thuHoiTheoTang, type PhienPhaTom } from '../../../../lib/kho/pha-loc.ts';
+import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
+import PhanTrang from '../../../../components/kho/PhanTrang.astro';
+import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
 import {
   cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, homNayVn,
   TRANG_THAI_CHUNG_TU,
@@ -20,28 +23,37 @@ import {
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
-if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.duoc('xem_gia') && !k.duoc('pha_loc')) return Astro.redirect('/noi-bo/kho', 302);
 
 const LOC = [['', 'Tất cả'], ['nhap', 'Nháp'], ['da_chot', 'Đã chốt'], ['da_huy', 'Đã hủy']] as const;
 const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
 
+const tim = docTimDs(Astro.url.searchParams);
 let ds: PhienPhaTom[] = [];
+let daChot: PhienPhaTom[] = [];
+let coSau = false;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
-    ds = await docDanhSachPhienPha(k.client, k.chiNhanh.id, loc || null);
+    // Bảng thu hồi 30 ngày đọc riêng các phiên đã chốt — không phụ thuộc bộ
+    // lọc của danh sách (lọc "Nháp" trước đây làm bảng biến mất).
+    let trang: PhienPhaTom[];
+    [trang, daChot] = await Promise.all([
+      docDanhSachPhienPha(k.client, k.chiNhanh.id, loc || null, { tim, nhanSuId: k.nhanSu.id }),
+      tim.trang === 1 ? docDanhSachPhienPha(k.client, k.chiNhanh.id, 'da_chot') : Promise.resolve([]),
+    ]);
+    ({ ds, coSau } = catTrang(trang));
   } catch (e) {
     loiDoc = cauLoiKho(e, 'Không đọc được phiên pha lóc.');
   }
 }
 const tu30 = congNgay(homNayVn(), -30);
-const thuHoi = thuHoiTheoTang(ds.filter(p => p.ngay_pha >= tu30));
+const thuHoi = thuHoiTheoTang(daChot.filter(p => p.ngay_pha >= tu30));
 const sapXep = [...ds].sort((a, b) => (a.trang_thai === 'nhap' ? 0 : 1) - (b.trang_thai === 'nhap' ? 0 : 1));
 const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 ---
-<NoiBo tieuDe="Pha lóc" nhanSu={k.nhanSu}>
+<Kho k={k} huongDan="pha-loc" tieuDe="Pha lóc">
   <h1>Pha lóc</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
@@ -49,8 +61,8 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
   ) : (
     <>
       <p class="nb-dan">
-        Mỗi lần pha: chọn tảng đem pha, cân từng phần cắt ra, phụ phẩm, phần bỏ. Phần mềm tính
-        <strong>tỉ lệ thu hồi</strong> và <strong>giá vốn thật mỗi kg</strong> của từng phần.
+        Mỗi lần pha: chọn tảng đem pha, quét nhãn từng gói cắt ra, gõ kg phụ phẩm và phần bỏ. Phần mềm tính
+        <strong>tỉ lệ thu hồi</strong>{k.duoc('xem_gia') && <> và <strong>giá vốn thật mỗi kg</strong></>} của từng phần.
         Tồn chỉ đổi khi bấm <em>Chốt phiên</em>.
       </p>
 
@@ -89,20 +101,26 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
         ))}
       </nav>
 
+      <LocDanhSach duong="/noi-bo/kho/pha-loc" tim={tim} giu={{ loc }} coCuaToi={k.duoc('pha_loc')}
+        goiY="Số phiên, tên tảng…" />
+
       {sapXep.length === 0 ? (
-        <p class="nb-rong">Chưa có phiên pha lóc nào{loc ? ' ở trạng thái này' : ''}.</p>
+        <p class="nb-rong">{tim.trang > 1 ? 'Hết danh sách — bấm "Trang trước".' : dangTim(tim) ? 'Không tìm thấy phiên nào khớp bộ lọc.' : `Chưa có phiên pha lóc nào${loc ? ' ở trạng thái này' : ''}.`}</p>
       ) : sapXep.map(p => {
         const [nhan, lop] = TRANG_THAI_CHUNG_TU[p.trang_thai] ?? [p.trang_thai, 'tat'];
         return (
           <a href={`/noi-bo/kho/pha-loc/${p.id}`} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
             <div class="nb-dong-dau">
               <strong>{p.so_phieu} · {p.ten_mat_hang_vao}</strong>
-              <span class={`nb-nhan ${lop}`}>{nhan}</span>
+              <span>
+                {p.thu_hoi_thap && <span class={`nb-nhan ${p.da_xem_luc ? 'tat' : 'cho'}`}>{p.da_xem_luc ? 'Thu hồi thấp · đã xem' : 'Thu hồi thấp'}</span>}
+                {' '}<span class={`nb-nhan ${lop}`}>{nhan}</span>
+              </span>
             </div>
             <dl>
               <dt>Ngày pha</dt><dd>{dinhDangNgay(p.ngay_pha)}</dd>
               {p.trang_thai === 'da_chot' ? (
-                <><dt>Kết quả</dt><dd>{dinhDangKg(p.tong_kg_vao)} kg vào → {dinhDangKg(p.tong_kg_thit)} kg thịt · thu hồi <strong>{dinhDangPhanTram(p.ty_le_thu_hoi)}</strong></dd></>
+                <><dt>Kết quả</dt><dd>{dinhDangKg(p.tong_kg_vao)} kg vào → {dinhDangKg(p.tong_kg_thit)} kg thịt · thu hồi <strong>{dinhDangPhanTram(p.ty_le_thu_hoi)}</strong>{p.ty_le_du_kien !== null && <> (dự kiến {dinhDangPhanTram(p.ty_le_du_kien)})</>}</dd></>
               ) : (
                 <><dt>Đang ghi</dt><dd>{p.so_dau_vao} lô vào ({dinhDangKg(p.kg_vao_nhap)} kg) · {p.so_dau_ra} phần ra ({dinhDangKg(p.kg_ra_nhap)} kg)</dd></>
               )}
@@ -111,6 +129,7 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
           </a>
         );
       })}
+      <PhanTrang duong="/noi-bo/kho/pha-loc" trang={tim.trang} coSau={coSau} />
     </>
   )}
-</NoiBo>
+</Kho>

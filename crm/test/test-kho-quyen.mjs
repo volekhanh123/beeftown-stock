@@ -35,10 +35,20 @@ const datBan = await duoiAnon(
   `select * from tao_dat_ban('q1', '0922222222', 'Khách đặt web', $1::date, '18:00'::time, 2::smallint)`,
   [ngayKia]);
 
+// Hai vai "máy" (0029): tablet dùng chung và máy đồng bộ iPOS. Tạo ở đây chứ
+// không ở kho-chung.mjs để các file test khác không phải đếm thêm người.
+const UID_MAY_CHUNG = '00000000-0000-4000-8000-0000000000c1';
+const UID_MAY_IPOS  = '00000000-0000-4000-8000-0000000000c2';
+await db.query(`insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro, dang_lam) values
+  ($1, $3, 'Tablet quầy Q1', 'may_chung', true), ($2, $3, 'Máy iPOS Q1', 'may_ipos', true)`,
+  [UID_MAY_CHUNG, UID_MAY_IPOS, cnA.id]);
+
 const VAI_KHO_A = [
   ['thủ kho', UID.thuKhoA],
   ['NV quầy/bếp', UID.nvQuayA],
   ['kế toán', UID.keToanA],
+  ['tablet dùng chung (may_chung)', UID_MAY_CHUNG],
+  ['máy iPOS (may_ipos)', UID_MAY_IPOS],
 ];
 
 // ===========================================================================
@@ -75,8 +85,23 @@ await nhom('1 · VAI KHO KHÔNG ĐỌC ĐƯỢC DỮ LIỆU CRM', async () => {
     ok(`${ten} chỉ thấy đúng hồ sơ của mình trong nhan_su`, ns.rows?.[0]?.n === 1,
        ns.loi ?? `thấy ${ns.rows?.[0]?.n}`);
     const cn = await duoi(uid, `select id from chi_nhanh`);
-    ok(`${ten} chỉ thấy chi nhánh của mình`,
-       cn.rows?.length === 1 && cn.rows[0].id === cnA.id, cn.loi ?? `thấy ${cn.rows?.length}`);
+    const mongCn = /máy|tablet/.test(ten) ? 0 : 1;   // vai máy chưa có quyền "xem" kho
+    ok(`${ten} ${mongCn ? 'chỉ thấy chi nhánh của mình' : 'không thấy chi nhánh nào'}`,
+       cn.rows?.length === mongCn && (mongCn === 0 || cn.rows[0].id === cnA.id), cn.loi ?? `thấy ${cn.rows?.length}`);
+  }
+
+  // Vai máy (0029) chưa được làm gì trong kho: không đọc được bảng kho nào.
+  const { rows: bangKho } = await db.query(`
+    select tablename from pg_tables where schemaname = 'public' and tablename like 'kho\\_%' order by 1`);
+  for (const [ten, uid] of VAI_KHO_A.filter(([t]) => /máy|tablet/.test(t))) {
+    const lot = [];
+    for (const { tablename } of bangKho) {
+      const r = await duoi(uid, `select count(*)::int as n from ${tablename}`);
+      if (r.loi === null && r.rows[0].n > 0) lot.push(`${tablename}(${r.rows[0].n})`);
+    }
+    ok(`${ten} không đọc được dòng nào ở bảng kho`, lot.length === 0, lot.join(', '));
+    const dv = await duoi(uid, `select kho_dem_viec($1)`, [cnA.id]);
+    ok(`${ten} không gọi được kho_dem_viec`, dv.loi !== null);
   }
 });
 
@@ -122,7 +147,8 @@ await nhom('3 · BỐN VAI CRM Y NHƯ TRƯỚC', async () => {
 
 // ===========================================================================
 await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
-  const VAI = ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan', 'thu_ngan', 'marketing'];
+  const VAI = ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan', 'thu_ngan', 'marketing',
+               'may_chung', 'may_ipos'];
 
   for (const viec of Object.keys(QUYEN_KHO)) {
     const { rows: [{ ds }] } = await db.query(`select kho_vai_duoc($1)::text[] as ds`, [viec]);
@@ -141,19 +167,38 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
     ['nhan_vien_quay', 'van_hanh', true],
     ['nhan_vien_quay', 'pha_loc', false],
     ['thu_kho', 'nhap', true],
-    ['thu_kho', 'duyet', false],            // phiếu nhập phải có quản lý duyệt
+    ['thu_kho', 'duyet', false],            // phiếu nhập phải có người khác duyệt
+    ['thu_kho', 'duyet_nhap', false],
+    ['thu_kho', 'xem_gia', false],          // 0031: thủ kho chỉ chụp, cân, đếm — không thấy tiền
+    ['thu_kho', 'pha_loc', true],
     ['ke_toan', 'ke_toan', true],
     ['ke_toan', 'nhap', false],
+    ['ke_toan', 'duyet_nhap', true],        // 0031: kế toán điền giá và duyệt phiếu nhập
+    ['ke_toan', 'duyet', false],            // nhưng không duyệt hủy hàng, kiểm kê
+    ['nhan_vien_quay', 'duyet_nhap', false],
     ['quan_ly', 'cai_dat_goc', false],      // cách tính giá vốn: chỉ chủ
     ['chu_so_huu', 'cai_dat_goc', true],
     ['thu_ngan', 'xem', false],             // vai CRM thuần không dùng kho
     ['marketing', 'xem', false],
+    ['may_chung', 'may_chung', true],       // 0034: chỉ để hàm kho_may_* nhận ra máy
+    ['may_chung', 'xem', false],            // máy không đọc được gì trong kho
+    ['chu_so_huu', 'may_chung', false],     // không người nào dùng được hàm của máy
+    ['may_ipos', 'may_chung', false],
   ];
   for (const [vai, viec, mong] of chot) {
     ok(`${vai} ${mong ? 'ĐƯỢC' : 'KHÔNG được'} "${viec}"`,
        QUYEN_KHO[viec].includes(vai) === mong);
   }
-  ok('Bảng có đủ 7 vai để tra', VAI.length === 7);
+  const { rows: [{ n: soVai }] } = await db.query(`select count(*)::int as n from unnest(enum_range(null::vai_tro))`);
+  ok('Bảng có đủ 9 vai để tra (khớp enum vai_tro)', VAI.length === 9 && soVai === 9, `enum có ${soVai}`);
+  // Vai máy không được việc nào của người. Riêng việc may_chung (0034) chỉ có
+  // đúng vai may_chung.
+  for (const viec of Object.keys(QUYEN_KHO).filter(v => v !== 'may_chung')) {
+    ok(`Vai máy chưa được việc "${viec}"`,
+       !QUYEN_KHO[viec].includes('may_chung') && !QUYEN_KHO[viec].includes('may_ipos'));
+  }
+  ok('Việc "may_chung" chỉ có vai may_chung',
+     QUYEN_KHO.may_chung?.length === 1 && QUYEN_KHO.may_chung[0] === 'may_chung');
 });
 
 // ===========================================================================
@@ -205,6 +250,8 @@ await nhom('7 · ẢNH CHỨNG TỪ — AI XEM, AI TẢI', async () => {
   ok('NV quầy KHÔNG xem được ảnh hóa đơn (có giá)', await kiem(UID.nvQuayA, 'kho_duoc_doc_tep', f(cnA.id, 'nhap')) === false);
   ok('NV quầy KHÔNG tải được ảnh hóa đơn', await kiem(UID.nvQuayA, 'kho_duoc_tai_tep', f(cnA.id, 'nhap')) === false);
   ok('Thủ kho tải được ảnh hóa đơn', await kiem(UID.thuKhoA, 'kho_duoc_tai_tep', f(cnA.id, 'nhap')) === true);
+  ok('Thủ kho KHÔNG xem lại được ảnh hóa đơn (có giá — 0031)', await kiem(UID.thuKhoA, 'kho_duoc_doc_tep', f(cnA.id, 'nhap')) === false);
+  ok('Kế toán xem được ảnh hóa đơn để điền giá', await kiem(UID.keToanA, 'kho_duoc_doc_tep', f(cnA.id, 'nhap')) === true);
   ok('Thủ kho KHÔNG tải được vào chi nhánh khác', await kiem(UID.thuKhoA, 'kho_duoc_tai_tep', f(cnB.id, 'nhap')) === false);
   ok('Kế toán tải được ảnh thanh toán', await kiem(UID.keToanA, 'kho_duoc_tai_tep', f(cnA.id, 'thanh_toan')) === true);
   ok('Thủ kho KHÔNG tải được ảnh thanh toán', await kiem(UID.thuKhoA, 'kho_duoc_tai_tep', f(cnA.id, 'thanh_toan')) === false);
@@ -232,29 +279,58 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // Phiếu nhập
     'kho_luu_phieu_nhap', 'kho_gui_duyet_phieu_nhap', 'kho_rut_phieu_nhap',
     'kho_duyet_phieu_nhap', 'kho_tu_choi_phieu_nhap', 'kho_huy_phieu_nhap',
+    // Nhận hàng chỉ kg, điền giá, so giá (0031)
+    'kho_ds_ncc_nhap', 'kho_ds_phieu_nhap_kg', 'kho_doc_phieu_nhap_kg', 'kho_luu_phieu_nhap_kg',
+    'kho_dien_gia_phieu_nhap', 'kho_so_sanh_gia_nhap',
     // Pha lóc
-    'kho_luu_phien_pha', 'kho_xem_thu_phien_pha', 'kho_chot_phien_pha',
+    'kho_luu_phien_pha', 'kho_xem_thu_phien_pha', 'kho_xem_thu_phien_pha_kg', 'kho_chot_phien_pha',
     'kho_mo_lai_phien_pha', 'kho_huy_phien_pha',
-    // Chuyển, xuất bếp, hủy
+    // Pha lóc bằng quét nhãn, quản lý bấm "Đã xem" thu hồi thấp (0033)
+    'kho_quet_phien_pha', 'kho_bo_quet_phien_pha', 'kho_xac_nhan_phien_pha',
+    // Chuyển, xuất bếp, xuất khác, hủy
     'kho_tao_phieu_xuat', 'kho_duyet_phieu_huy', 'kho_tu_choi_phieu_huy',
+    // Quầy: yêu cầu → mang ra → nhận (0032)
+    'kho_tao_yeu_cau', 'kho_huy_yeu_cau', 'kho_goi_y_ra_quay', 'kho_chuyen_theo_yeu_cau',
+    'kho_nhan_hang_chuyen', 'kho_xu_ly_chuyen_thieu', 'kho_huy_chuyen',
     // Kiểm kê
     'kho_bat_dau_kiem_ke', 'kho_luu_kiem_ke', 'kho_gui_kiem_ke',
     'kho_duyet_kiem_ke', 'kho_tu_choi_kiem_ke', 'kho_huy_kiem_ke',
+    // Đếm quầy cộng dồn bằng máy quét (0032)
+    'kho_quet_kiem_ke', 'kho_bo_quet_kiem_ke', 'kho_het_hang_con_lai',
     // Công nợ, trả hàng
     'kho_doi_chieu_hoa_don', 'kho_ghi_thanh_toan', 'kho_huy_thanh_toan', 'kho_tra_nha_cung_cap',
     // Báo cáo — SECURITY INVOKER, RLS của người gọi vẫn áp dụng
     'kho_bao_cao_xuat_nhap_ton', 'kho_bao_cao_thu_hoi', 'kho_bao_cao_hao_hut', 'kho_bao_cao_ban',
+    'kho_bao_cao_xnt_v2',
     // Đối soát
     'kho_doi_soat_ton',
+    // Thẻ kho — không tiền (0033)
+    'kho_the_kho',
+    // Số đỏ trên menu, thông báo, ngưỡng, chỉ số quản trị (0030)
+    'kho_dem_viec', 'kho_thong_bao', 'kho_da_xem_thong_bao', 'kho_luu_nguong', 'kho_chi_so_quan_tri',
+    // Máy tính bảng dùng chung (0034) — mỗi hàm tự kiểm: phiên máy, chính người đó, hoặc duyet
+    'kho_dang_ky_may', 'kho_may_tat', 'kho_ds_may', 'kho_may_ds_nguoi', 'kho_may_kiem_pin',
+    'kho_may_gan_nguoi', 'kho_may_dat_pin', 'kho_may_khoa', 'kho_may_go', 'kho_may_mo_khoa',
+    // Chủ tự tạo / khóa / mở tài khoản (0034) — chỉ chu_so_huu
+    'kho_them_nhan_su', 'kho_khoa_nhan_su', 'kho_mo_nhan_su', 'kho_ds_nhan_su_kho',
+    // Chuẩn bị chạy thật (0035): nợ đầu kỳ (ke_toan), tồn đầu kỳ dạng lưới (nhap),
+    // tiến độ Thiết lập (xem — chỉ số đếm), đánh dấu bỏ qua bước (danh_muc)
+    'kho_ghi_no_dau_ky', 'kho_luu_ton_dau_ky', 'kho_tien_do_thiet_lap', 'kho_danh_dau_thiet_lap',
     // Hàm trigger — PostgREST không gọi được hàm trả về trigger
     'kho_vi_tri_kiem_sua', 'kho_truong_them_kiem_sua', 'kho_truong_them_kiem',
     'kho_mat_hang_chuan_hoa', 'kho_cong_thuc_pha_kiem', 'kho_lo_chan_sua_xoa',
     'kho_ton_chi_qua_so_cai', 'kho_so_cai_ghi', 'kho_so_cai_chan_sua_xoa',
-    'kho_phieu_nhap_chan_huy_da_tra',
+    'kho_phieu_nhap_chan_huy_da_tra', 'kho_chan_vi_tri_di_duong', 'kho_cai_dat_ghi_moc',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
     'kho_tinh_phien_pha', 'kho_phan_bo', 'kho_kg_tb_goi', 'kho_kiem_ke_bo_sung_dong', 'kho_dung_lai_ton',
+    'kho_luc_vn', 'kho_su_kien',
+    'kho_ghi_phieu_xuat', 'kho_chuyen_tren_duong', 'kho_don_tren_duong',
+    'kho_doc_ma_vach', 'kho_kiem_ke_tinh_quet', 'kho_kiem_ke_ds_quet',
+    'kho_vi_tri_sau_pha', 'kho_phien_pha_tinh_quet', 'kho_phien_pha_tra_quet', 'kho_thu_hoi_du_kien',
+    'kho_may_cua_phien', 'kho_may_nguoi_hop_le', 'kho_may_ghi', 'kho_may_kiem_pin_bam',
+    'kho_buoc_thiet_lap',
   ].sort();
 
   const { rows } = await db.query(`

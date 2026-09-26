@@ -6,24 +6,39 @@
  * Enter — trong ô nhiều dòng, mỗi nhãn thành một dòng. Quét xong bấm nút để
  * trang đọc mã (gửi form với viec = `viec`).
  *
- * Nút "Quét bằng camera" là phần THÊM: chỉ hiện khi trình duyệt có
- * BarcodeDetector (Chrome trên Android). iPhone hoặc trình duyệt cũ không
- * thấy nút — vẫn dùng máy quét hoặc gõ tay được. Không có JavaScript thì
- * trang vẫn chạy đủ.
+ * Nút "Quét bằng camera" là phần THÊM: hiện khi trình duyệt mở được camera.
+ *   · Có BarcodeDetector đọc được EAN-13 (Chrome trên Android): dùng nó.
+ *   · Không có (Safari trên iPhone/iPad, GĐ5b): bấm nút thì nạp
+ *     /kho/js/ean13.js — đọc mã bằng JavaScript thuần trên từng khung hình
+ *     (vẽ vào canvas, thu về ≤ 640 điểm ảnh ngang cho nhẹ máy).
+ * Không có camera thì không thấy nút — vẫn dùng máy quét hoặc gõ tay được.
+ * Không có JavaScript thì trang vẫn chạy đủ.
  *
- * Hai gói cùng mặt hàng, cùng trọng lượng in ra CÙNG một mã — nên camera chỉ
- * bỏ qua mã trùng trong 2 giây (đang giữ nguyên gói trước ống kính), không
- * bỏ qua mã trùng nói chung.
+ * Hai gói cùng mặt hàng, cùng trọng lượng in ra CÙNG một mã. Camera chỉ tính
+ * lại một mã khi mã đó đã RỜI khung hình ít nhất 0,8 giây (1,5 giây với bộ
+ * đọc JavaScript trên iPhone) — giữ nguyên một gói trước ống kính thì tính
+ * một lần; đưa gói ra rồi đưa gói kế tiếp vào thì tính gói kế tiếp. (Bản trước đặt lại đồng hồ mỗi lần thấy mã, nên gói thứ hai
+ * giống hệt đưa vào ngay sau gói đầu bị bỏ sót — và khi đếm quầy, gói bị sót
+ * thành "đã bán".) Hai gói giống hệt không tách ra được thì bấm "+1 gói giống
+ * hệt" ngay trong khung camera.
+ *
+ * Bấm "Xong" trong khung camera là gửi luôn (không phải bấm thêm "Đọc mã").
  */
 interface Props {
   viec?: string;
   nhan?: string;
   goiY?: string;
+  /** Đặt con trỏ sẵn vào ô quét — máy quét cầm tay gõ vào được ngay. */
+  tuFocus?: boolean;
+  /** Mã đang có trong ô (hiện lại sau lỗi, để không phải quét lại từ đầu). */
+  giaTri?: string;
 }
 const {
   viec = 'quet',
   nhan = 'Đọc mã đã quét',
   goiY = 'Quét từng nhãn — mỗi mã một dòng. Có thể dán nhiều mã cách nhau bằng dấu phẩy.',
+  tuFocus = false,
+  giaTri = '',
 } = Astro.props;
 ---
 <div class="kho-quet" data-quet-ma>
@@ -31,33 +46,58 @@ const {
     <span>Quét nhãn cân</span>
     <small>{goiY}</small>
     <textarea name="ma_quet" rows="3" inputmode="numeric" autocomplete="off" spellcheck="false"
-      placeholder="2012345012509"></textarea>
+      placeholder="2012345012509" autofocus={tuFocus}>{giaTri}</textarea>
   </label>
   <div class="kho-thanh-nut" style="margin:.25rem 0 0">
-    <button type="submit" name="viec" value={viec} class="nb-nut phu" formnovalidate>{nhan}</button>
+    <button type="submit" name="viec" value={viec} class="nb-nut phu" formnovalidate data-quet-gui>{nhan}</button>
     <button type="button" class="nb-nut phu" data-quet-camera hidden>Quét bằng camera</button>
   </div>
   <dialog class="kho-quet-hop" data-quet-hop>
     <video playsinline muted></video>
-    <p><strong data-quet-dem>0</strong> nhãn đã đọc · giữ từng gói trước camera</p>
+    <p><strong data-quet-dem>0</strong> nhãn đã đọc · đưa từng gói vào rồi đưa ra khỏi khung</p>
+    <button type="button" class="nb-nut phu" data-quet-them hidden>+1 gói giống hệt gói vừa quét</button>
     <button type="button" class="nb-nut" data-quet-xong>Xong</button>
   </dialog>
 </div>
 
 <script is:inline>
 (async () => {
-  if (!('BarcodeDetector' in window) || !navigator.mediaDevices?.getUserMedia) return;
-  // Một số trình duyệt máy tính có BarcodeDetector nhưng không đọc được EAN-13.
-  let dang = [];
-  try { dang = await window.BarcodeDetector.getSupportedFormats(); } catch { return; }
-  if (!dang.includes('ean_13')) return;
+  if (!navigator.mediaDevices?.getUserMedia) return;
+  // Chrome Android: BarcodeDetector. Một số trình duyệt máy tính có nó nhưng
+  // không đọc được EAN-13 — khi đó dùng bộ đọc JavaScript như iPhone.
+  let coDetector = false;
+  if ('BarcodeDetector' in window) {
+    try { coDetector = (await window.BarcodeDetector.getSupportedFormats()).includes('ean_13'); } catch { coDetector = false; }
+  }
+  // iPhone: nạp /kho/js/ean13.js lần đầu bấm nút (một lần cho cả trang).
+  let napJs = null;
+  const napEan13 = () => {
+    if (window.KhoEan13) return Promise.resolve();
+    if (!napJs) {
+      napJs = new Promise((xong, hong) => {
+        const the = document.createElement('script');
+        the.src = '/kho/js/ean13.js';
+        the.addEventListener('load', () => (window.KhoEan13 ? xong() : hong()));
+        the.addEventListener('error', () => { napJs = null; hong(); });
+        document.head.appendChild(the);
+      });
+    }
+    return napJs;
+  };
+
   document.querySelectorAll('[data-quet-ma]').forEach(goc => {
     const nut = goc.querySelector('[data-quet-camera]');
     const hop = goc.querySelector('[data-quet-hop]');
     const video = hop.querySelector('video');
     const dem = hop.querySelector('[data-quet-dem]');
     const o = goc.querySelector('textarea');
-    let luong = null, hen = null, cuoi = '', luc = 0, so = 0;
+    let luong = null, hen = null, cuoi = '', so = 0, dangDoc = false;
+    // Mã → lần cuối thấy trong khung. Chỉ tính lại khi mã đã vắng ≥ 0,8 giây.
+    // Bộ đọc JavaScript hay trượt vài khung liền (tay rung, mờ) dù gói vẫn
+    // nằm trước ống kính — chờ 1,5 giây để không tính một gói thành hai.
+    const lanThay = new Map();
+    const vang = coDetector ? 800 : 1500;
+    const them = hop.querySelector('[data-quet-them]');
     nut.hidden = false;
 
     const dung = () => {
@@ -68,36 +108,71 @@ const {
       if (hop.open) hop.close();
     };
 
+    const ghi = ma => {
+      o.value = (o.value.trim() ? o.value.trim() + '\n' : '') + ma;
+      so += 1; dem.textContent = String(so);
+      cuoi = ma; them.hidden = false;
+      if (navigator.vibrate) navigator.vibrate(60);
+    };
+    them.addEventListener('click', () => { if (cuoi) ghi(cuoi); });
+
     nut.addEventListener('click', async () => {
-      let docMa;
-      try { docMa = new window.BarcodeDetector({ formats: ['ean_13'] }); } catch { nut.hidden = true; return; }
+      // docKhung(): các mã thấy trong khung hình hiện tại.
+      let docKhung;
+      if (coDetector) {
+        let docMa;
+        try { docMa = new window.BarcodeDetector({ formats: ['ean_13'] }); } catch { nut.hidden = true; return; }
+        docKhung = async () => (await docMa.detect(video)).map(m => String(m.rawValue || ''));
+      } else {
+        try { await napEan13(); } catch {
+          alert('Không tải được bộ đọc mã. Kiểm tra mạng, hoặc dùng máy quét cầm tay.');
+          return;
+        }
+        const khung = document.createElement('canvas');
+        const ve = khung.getContext('2d', { willReadFrequently: true });
+        docKhung = async () => {
+          const r = video.videoWidth, c = video.videoHeight;
+          if (!r || !c || !ve) return [];
+          const tiLe = Math.min(1, 640 / r);
+          khung.width = Math.round(r * tiLe); khung.height = Math.round(c * tiLe);
+          ve.drawImage(video, 0, 0, khung.width, khung.height);
+          const ma = window.KhoEan13.giaiMa(ve.getImageData(0, 0, khung.width, khung.height));
+          return ma ? [ma] : [];
+        };
+      }
       try {
         luong = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       } catch {
         alert('Không mở được camera. Cho phép trang dùng camera, hoặc dùng máy quét cầm tay.');
         return;
       }
-      so = 0; dem.textContent = '0';
+      so = 0; dem.textContent = '0'; lanThay.clear(); cuoi = ''; them.hidden = true;
       video.srcObject = luong;
       hop.showModal();
       await video.play().catch(() => {});
       hen = setInterval(async () => {
-        if (video.readyState < 2) return;
+        // Đọc bằng JavaScript có thể lâu hơn một nhịp — không chồng hai lần đọc.
+        if (video.readyState < 2 || dangDoc) return;
+        dangDoc = true;
         let kq = [];
-        try { kq = await docMa.detect(video); } catch { return; }
-        for (const m of kq) {
-          const ma = String(m.rawValue || '');
+        try { kq = await docKhung(); } catch { kq = []; }
+        dangDoc = false;
+        const bayGio = Date.now();
+        for (const ma of kq) {
           if (!/^\d{13}$/.test(ma)) continue;
-          const bayGio = Date.now();
-          if (ma === cuoi && bayGio - luc < 2000) { luc = bayGio; continue; }
-          cuoi = ma; luc = bayGio;
-          o.value = (o.value.trim() ? o.value.trim() + '\n' : '') + ma;
-          so += 1; dem.textContent = String(so);
-          if (navigator.vibrate) navigator.vibrate(60);
+          const truoc = lanThay.get(ma);
+          lanThay.set(ma, bayGio);
+          if (truoc !== undefined && bayGio - truoc < vang) continue;   // vẫn là gói đang giữ
+          ghi(ma);
         }
-      }, 250);
+      }, coDetector ? 200 : 250);
     });
-    hop.querySelector('[data-quet-xong]').addEventListener('click', dung);
+    // Xong = đóng camera và gửi luôn để trang đọc mã.
+    hop.querySelector('[data-quet-xong]').addEventListener('click', () => {
+      dung();
+      const gui = goc.querySelector('[data-quet-gui]');
+      if (so > 0 && gui && gui.form) gui.form.requestSubmit(gui);
+    });
     hop.addEventListener('close', dung);
   });
 })();

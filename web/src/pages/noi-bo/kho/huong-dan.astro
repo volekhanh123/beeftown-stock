@@ -1,0 +1,130 @@
+---
+/**
+ * KHO — HƯỚNG DẪN SỬ DỤNG (GĐ6)
+ *
+ * Nội dung ở lib/kho/huong-dan.ts (dùng chung với trang chia sẻ gửi Zalo).
+ * Nút "?" trên thanh trên của mọi màn kho trỏ về đây, đúng #id của màn đó.
+ *
+ * Lọc theo vai (?vai=thu_kho…, mặc định vai người đang xem; ?vai=tat-ca xem
+ * hết) KHÔNG ẩn mục nào: mục của vai mình lên trước, các mục khác xếp sau
+ * dưới tiêu đề "Việc của vai khác". Nhờ vậy mọi #id luôn có trong HTML — nút
+ * "?" của màn nào cũng cuộn tới đúng chỗ, dù đang lọc vai nào.
+ *
+ * Không JavaScript: chip vai là link, câu hỏi dùng <details>.
+ */
+import Kho from '../../../layouts/Kho.astro';
+import { moTrangKho } from '../../../lib/kho/trang.ts';
+import {
+  MUC_HUONG_DAN, NHOM_VAI, CAU_HOI, dinhDang, vaiHuongDan, nhomCua,
+  type MucHuongDan, type VaiHuongDan,
+} from '../../../lib/kho/huong-dan.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+
+const DUONG = '/noi-bo/kho/huong-dan';
+const thamSo = Astro.url.searchParams.get('vai');
+const tatCa = thamSo === 'tat-ca';
+const vaiChon: VaiHuongDan = tatCa ? 'chung' : vaiHuongDan(thamSo ?? k.nhanSu.vai_tro);
+const locVai = !tatCa && vaiChon !== 'chung';
+const tenVai = (v: VaiHuongDan) => NHOM_VAI.find(n => n.vai === v)?.ten ?? '';
+
+interface Khoi { id: string; ten: string; muc: MucHuongDan[] }
+const theoNhom = (ds: MucHuongDan[]): Khoi[] => NHOM_VAI
+  .map(n => ({ id: `nhom-${n.vai.replace(/_/g, '-')}`, ten: n.ten, muc: ds.filter(m => nhomCua(m) === n.vai) }))
+  .filter(n => n.muc.length > 0);
+
+// "Bắt đầu" luôn trên cùng; rồi việc của vai đang chọn; rồi phần còn lại.
+const batDau = MUC_HUONG_DAN.filter(m => nhomCua(m) === 'chung');
+const cuaToi = locVai ? MUC_HUONG_DAN.filter(m => nhomCua(m) !== 'chung' && m.vai.includes(vaiChon)) : [];
+const conLai = MUC_HUONG_DAN.filter(m => nhomCua(m) !== 'chung' && !cuaToi.includes(m));
+const khoi: Khoi[] = [
+  { id: 'nhom-chung', ten: tenVai('chung'), muc: batDau },
+  ...(locVai ? [{ id: 'viec-cua-toi', ten: `Việc của ${tenVai(vaiChon)}`, muc: cuaToi }] : []),
+];
+const khoiKhac = theoNhom(conLai);
+---
+<Kho k={k} tieuDe="Hướng dẫn">
+  <h1>Hướng dẫn sử dụng kho</h1>
+  <p class="nb-dan">Mỗi việc là vài bước đánh số, chữ in đậm là chữ trên nút cần bấm.
+    Bấm <strong>?</strong> ở góc trên của màn nào thì mở đúng mục của màn đó.</p>
+
+  <nav class="kho-dh" aria-label="Xem theo vai">
+    {NHOM_VAI.filter(n => n.vai !== 'chung').map(n => (
+      <a href={`${DUONG}?vai=${n.vai}`} aria-current={locVai && n.vai === vaiChon ? 'page' : undefined}>{n.ten}</a>
+    ))}
+    <a href={`${DUONG}?vai=tat-ca`} aria-current={!locVai ? 'page' : undefined}>Xem tất cả</a>
+  </nav>
+
+  <section class="nb-the hd-muc-luc" aria-labelledby="muc-luc">
+    <h2 id="muc-luc" style="margin-top:0">Mục lục</h2>
+    {[...khoi, ...khoiKhac].map(n => (
+      <>
+        <p class="hd-nhom-ten"><a href={`#${n.id}`}>{n.ten}</a></p>
+        <ul>{n.muc.map(m => <li><a href={`#${m.id}`}>{m.tieuDe}</a></li>)}</ul>
+      </>
+    ))}
+    <p class="hd-nhom-ten"><a href="#cau-hoi">Câu hỏi thường gặp</a></p>
+  </section>
+
+  {[...khoi, ...(locVai && khoiKhac.length ? [{ id: 'vai-khac', ten: 'Việc của vai khác', muc: [] }] : []), ...khoiKhac].map(n => (
+    <>
+      <h2 id={n.id} class:list={['hd-nhom', { 'hd-vai-khac': n.id === 'vai-khac' }]}>{n.ten}</h2>
+      {n.muc.map(m => (
+        <section class="nb-the hd-the" id={m.id}>
+          <h3 style="margin-top:0">{m.tieuDe}</h3>
+          <p class="hd-tom-tat" set:html={dinhDang(m.tomTat)} />
+          <ol class="hd-buoc">{m.buoc.map(b => <li set:html={dinhDang(b)} />)}</ol>
+          {m.meo && m.meo.length > 0 && (
+            <ul class="hd-meo">{m.meo.map(x => <li set:html={dinhDang(x)} />)}</ul>
+          )}
+          {m.anh && (
+            <figure class="hd-anh">
+              <img src={m.anh.file} alt={m.anh.chu} width={m.anh.rong} height={m.anh.cao} loading="lazy" decoding="async" />
+              <figcaption class="kho-phu">{m.anh.chu}</figcaption>
+            </figure>
+          )}
+          {m.link && <p class="kho-khong-in" style="margin:.75rem 0 0"><a class="nb-nut phu" href={m.link.href}>{m.link.chu} →</a></p>}
+        </section>
+      ))}
+    </>
+  ))}
+
+  <h2 id="cau-hoi" class="hd-nhom">Câu hỏi thường gặp</h2>
+  <section class="nb-the hd-hoi">
+    {CAU_HOI.map(c => (
+      <details id={c.id}>
+        <summary>{c.hoi}</summary>
+        <p set:html={dinhDang(c.dap)} />
+      </details>
+    ))}
+  </section>
+</Kho>
+
+<style>
+  .hd-nhom { margin: 1.75rem 0 .5rem; }
+  .hd-vai-khac { border-top: 2px solid var(--kho-vach); padding-top: 1rem; }
+  .hd-muc-luc ul { margin: .25rem 0 .75rem; padding-left: 1.2rem; }
+  .hd-muc-luc li { margin: .3rem 0; }
+  .hd-nhom-ten { margin: .5rem 0 0; font-weight: 700; }
+  .hd-the { scroll-margin-top: 5rem; }
+  .hd-tom-tat { margin: 0 0 .5rem; }
+  .hd-buoc { margin: 0; padding-left: 1.4rem; }
+  .hd-buoc li { margin: .4rem 0; line-height: 1.5; }
+  .hd-meo { margin: .75rem 0 0; padding-left: 1.2rem; font-size: .92rem; color: var(--muc-nhat); }
+  .hd-meo li { margin: .3rem 0; }
+  .hd-anh { margin: 1rem 0 0; }
+  .hd-anh img {
+    display: block; width: 100%; max-width: 320px; height: auto;
+    border: 1px solid var(--kho-vach); border-radius: var(--kho-bo);
+  }
+  .hd-anh figcaption { margin-top: .35rem; }
+  .hd-hoi details { border-bottom: 1px solid var(--kho-vach); scroll-margin-top: 5rem; }
+  .hd-hoi details:last-child { border-bottom: 0; }
+  .hd-hoi summary { cursor: pointer; font-weight: 600; min-height: 48px; display: flex; align-items: center; }
+  .hd-hoi details p { margin: 0 0 .9rem; }
+  @media print {
+    .hd-anh img { max-width: 220px; }
+    .hd-the { break-inside: avoid; }
+  }
+</style>

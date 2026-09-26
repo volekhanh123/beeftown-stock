@@ -1,0 +1,209 @@
+---
+/**
+ * KHO — "AI ĐANG DÙNG MÁY?" (máy tính bảng dùng chung, GĐ5d, 0034)
+ *
+ * Màn của tablet đang KHÓA (phiên hiện tại là tài khoản máy): mỗi người đã
+ * gắn vào máy là một nút tên lớn → ô PIN → đúng thì máy đổi sang phiên của
+ * chính người đó (lib/kho/may-chung.ts) và mở trang chủ kho.
+ *
+ * Cũng là nơi nhận:
+ *   · POST viec=khoa  — nút "Khóa máy" trong menu người dùng (Kho.astro)
+ *   · POST viec=go    — "Gỡ tôi khỏi máy này"
+ *   · GET ?khoa=1     — may-chung.js hết giờ
+ *   · GET ?giu=1      — may-chung.js báo "vẫn đang dùng" (204, không dữ liệu)
+ *
+ * Sai PIN: câu dễ hiểu (còn N lần / đã khóa tới HH:MM). Không có token nào
+ * trong HTML hay URL — ?chon= chỉ là mã nhân sự để hiện ô PIN.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import {
+  giuMay, khoaMay, moKhoaNguoi, goToiKhoiMay, docManKhoa, layKhoaMay, laVaiMay, gioPhut, DUONG_MAY,
+  type ManKhoa,
+} from '../../../../lib/kho/may-chung.ts';
+import { laUuid, TEN_VAI_KHO, type KetQua } from '../../../../lib/kho/chung.ts';
+
+// Nhịp "vẫn đang dùng" của may-chung.js: không cần đọc chi nhánh hay số đỏ.
+if (Astro.url.searchParams.get('giu') === '1') return await giuMay(Astro);
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+
+const batMay = !!(await layKhoaMay());
+const laMay = laVaiMay(k.nhanSu.vai_tro);
+const dangDung = !!k.may?.nhanSuId && k.may.nhanSuId === k.nhanSu.id;
+
+let bao: KetQua | null = k.bao;
+const form = await docFormGui(Astro);
+if (form) {
+  const viec = String(form.get('viec') ?? '');
+  if (viec === 'mo' && laMay) {
+    const ns = String(form.get('nhan_su_id') ?? '');
+    const kq = await moKhoaNguoi(Astro, ns, String(form.get('pin') ?? '').trim());
+    return chuyenHuong(Astro, kq.ok ? '/noi-bo/kho' : `${DUONG_MAY}${laUuid(ns) ? `?chon=${ns}` : ''}`, kq);
+  }
+  if (viec === 'khoa' && dangDung) return chuyenHuong(Astro, DUONG_MAY, await khoaMay(Astro, 'bam'));
+  if (viec === 'go' && dangDung) return chuyenHuong(Astro, DUONG_MAY, await goToiKhoiMay(Astro, k.may!));
+  bao = { ok: false, cau: 'Việc không hợp lệ. Tải lại trang.' };
+} else if (Astro.url.searchParams.get('khoa') === '1' && dangDung) {
+  return chuyenHuong(Astro, DUONG_MAY, await khoaMay(Astro, 'het_gio'));
+}
+
+// Màn khóa: đọc máy và người đã gắn bằng phiên máy.
+let man: ManKhoa | null = null;
+let loiDoc: string | null = null;
+if (batMay && laMay && k.nhanSu.vai_tro === ('may_chung' as string)) {
+  const r = await docManKhoa(Astro, k.client);
+  if (typeof r === 'string') loiDoc = r; else man = r;
+}
+
+const chonId = Astro.url.searchParams.get('chon');
+const chon = man?.nguoi.find(n => n.nhan_su_id === chonId && n.coPhien) ?? null;
+const coPhien = man?.nguoi.filter(n => n.coPhien) ?? [];
+const canGanLai = man?.nguoi.filter(n => !n.coPhien) ?? [];
+const TEN_VAI: Record<string, string> = { chu_so_huu: 'Chủ nhà hàng', quan_ly: 'Quản lý', ...TEN_VAI_KHO };
+---
+<Kho k={k} huongDan="mo-may-pin" tieuDe="Ai đang dùng máy?">
+  {!batMay ? (
+    <>
+      <h1>Máy dùng chung</h1>
+      <BaoKho bao={bao} loiDoc={k.loiDoc} />
+      <div class="nb-bao luu-y">
+        <p><strong>Máy dùng chung chưa được bật.</strong></p>
+        <p>Người quản trị cần đặt bí mật <code>KHO_MAY_KHOA</code> cho Worker trên Cloudflare (xem web/KHO.md).
+          {' '}Trong lúc chờ, mỗi người đăng nhập bằng tài khoản của mình như bình thường.</p>
+      </div>
+    </>
+  ) : laMay && k.nhanSu.vai_tro !== ('may_chung' as string) ? (
+    <>
+      <h1>Tài khoản máy</h1>
+      <BaoKho bao={bao} loiDoc={k.loiDoc} />
+      <p class="nb-dan">Tài khoản này dành cho máy đồng bộ bán hàng, không dùng để mở kho trên máy tính bảng.</p>
+    </>
+  ) : laMay ? (
+    <>
+      <h1>Ai đang dùng máy?</h1>
+      {man && <p class="kho-phu may-ten">{man.may.ten}{man.may.ten_chi_nhanh ? ` · ${man.may.ten_chi_nhanh}` : ''}</p>}
+      <BaoKho bao={bao} loiDoc={loiDoc} />
+
+      {man?.may.bi_khoa && (
+        <div class="nb-bao loi" role="alert">
+          <p><strong>Máy đang bị khóa</strong> vì nhập sai PIN quá nhiều lần.</p>
+          <p>Quản lý mở khóa ở Cài đặt → Nhân viên và máy (trên điện thoại hoặc máy tính của quản lý).</p>
+        </div>
+      )}
+
+      {man && !man.may.bi_khoa && chon && (
+        <form method="POST" class="nb-the may-pin">
+          <input type="hidden" name="viec" value="mo" />
+          <input type="hidden" name="nhan_su_id" value={chon.nhan_su_id} />
+          <p class="may-pin-ten"><strong>{chon.ho_ten}</strong></p>
+          {chon.khoa_den && (
+            <p class="nb-bao loi">Tên này đang bị khóa tới {gioPhut(chon.khoa_den)} vì nhập sai PIN nhiều lần.</p>
+          )}
+          <label class="nb-o">
+            <span>Nhập PIN của bạn</span>
+            <input type="password" name="pin" inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+              minlength="4" maxlength="6" required autofocus class="may-o-pin" />
+          </label>
+          <button type="submit" class="nb-nut may-nut-mo">Mở máy</button>
+          <a href={DUONG_MAY} class="nb-nut phu may-nut-mo">Chọn người khác</a>
+        </form>
+      )}
+
+      {man && !man.may.bi_khoa && !chon && (
+        coPhien.length > 0 ? (
+          <ul class="may-luoi">
+            {coPhien.map(n => (
+              <li>
+                <a href={`${DUONG_MAY}?chon=${n.nhan_su_id}`} class="may-nguoi">
+                  <strong>{n.ho_ten}</strong>
+                  <span>{n.khoa_den ? `Bị khóa tới ${gioPhut(n.khoa_den)}` : (TEN_VAI[n.vai_tro] ?? '')}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <div class="nb-bao luu-y">
+            <p>Chưa ai gắn vào máy này. Bấm <strong>"Gắn tôi vào máy này"</strong> bên dưới, đăng nhập một lần và đặt PIN.</p>
+          </div>
+        )
+      )}
+
+      {canGanLai.length > 0 && !chon && (
+        <div class="nb-the">
+          <p style="margin-top:0"><strong>Cần đăng nhập lại trên máy này:</strong>{' '}{canGanLai.map(n => n.ho_ten).join(', ')}.</p>
+          <p class="kho-phu" style="margin-bottom:0">Máy không còn giữ đăng nhập của những người này. Bấm "Gắn tôi vào máy này" và đăng nhập lại.</p>
+        </div>
+      )}
+
+      <div class="may-duoi">
+        <a href={`${DUONG_MAY}/gan`} class="nb-nut phu">Gắn tôi vào máy này</a>
+        <a href={`${DUONG_MAY}/dang-ky`} class="nb-nut phu">Đăng ký lại máy (quản lý)</a>
+      </div>
+    </>
+  ) : dangDung ? (
+    <>
+      <h1>Bạn đang dùng máy{k.may?.tenMay ? ` "${k.may.tenMay}"` : ''}</h1>
+      <BaoKho bao={bao} loiDoc={k.loiDoc} />
+      <p class="nb-dan">Máy tự khóa sau {k.may?.phutKhoa} phút không dùng. Xong việc thì bấm "Khóa máy" để người sau không làm dưới tên bạn.</p>
+      <div class="may-duoi">
+        <form method="POST">
+          <input type="hidden" name="viec" value="khoa" />
+          <button type="submit" class="nb-nut">Khóa máy</button>
+        </form>
+        <a href="/noi-bo/kho" class="nb-nut phu">Về trang chủ kho</a>
+        <a href={`${DUONG_MAY}/gan`} class="nb-nut phu">Đổi PIN của tôi</a>
+        <form method="POST">
+          <input type="hidden" name="viec" value="go" />
+          <button type="submit" class="nb-nut phu">Gỡ tôi khỏi máy này</button>
+        </form>
+      </div>
+    </>
+  ) : (
+    <>
+      <h1>Máy tính bảng dùng chung</h1>
+      <BaoKho bao={bao} loiDoc={k.loiDoc} />
+      <p class="nb-dan">
+        Máy ở quầy hoặc bếp nhiều người cùng dùng: mỗi người chọn tên mình và nhập PIN, máy tự khóa sau vài phút
+        {' '}không dùng. Việc ai làm vẫn ghi đúng tên người đó.
+      </p>
+      <div class="nb-the">
+        <p style="margin-top:0"><strong>Cài một máy mới</strong></p>
+        <ol style="margin:0;padding-left:1.2rem">
+          <li>Chủ nhà hàng tạo một tài khoản <em>Máy tính bảng dùng chung</em> ở Cài đặt → Nhân viên và máy.</li>
+          <li>Quản lý mở trang này <strong>trên chính máy tính bảng đó</strong>, bấm "Đăng ký máy này" và nhập tài khoản máy.</li>
+          <li>Từng người bấm "Gắn tôi vào máy này", đăng nhập một lần và đặt PIN 4–6 số.</li>
+        </ol>
+      </div>
+      {k.duoc('duyet') && (
+        <div class="may-duoi">
+          <a href={`${DUONG_MAY}/dang-ky`} class="nb-nut">Đăng ký máy này</a>
+        </div>
+      )}
+    </>
+  )}
+</Kho>
+
+<style>
+  .may-ten { margin: -.5rem 0 1rem; font-size: 1rem; }
+  .may-luoi {
+    list-style: none; margin: 0 0 1.25rem; padding: 0;
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: .75rem;
+  }
+  .may-nguoi {
+    display: flex; flex-direction: column; justify-content: center; gap: .2rem;
+    min-height: 88px; padding: .9rem 1rem; border-radius: 14px;
+    background: #fff; border: 2px solid var(--vach, #ddd); color: inherit; text-decoration: none;
+  }
+  .may-nguoi strong { font-size: 1.15rem; }
+  .may-nguoi span { font-size: .85rem; color: var(--muc-nhat, #666); }
+  .may-nguoi:hover, .may-nguoi:focus-visible { border-color: var(--do, #b3261e); }
+  .may-pin { max-width: 26rem; }
+  .may-pin-ten { margin-top: 0; font-size: 1.2rem; }
+  .may-o-pin { font-size: 1.6rem; letter-spacing: .5rem; text-align: center; }
+  .may-nut-mo { width: 100%; margin-top: .5rem; text-align: center; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }
+  .may-duoi { display: flex; flex-wrap: wrap; gap: .75rem; margin: 1.25rem 0; }
+  .may-duoi form { margin: 0; }
+</style>

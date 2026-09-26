@@ -79,6 +79,12 @@ const { gt, dinhNghia, coXemGia, nutLuu } = Astro.props;
         <option value="chuyen_bep" selected={gt.xu_ly_mac_dinh === 'chuyen_bep'}>Chuyển bếp dùng lại</option>
         <option value="bo" selected={gt.xu_ly_mac_dinh === 'bo'}>Bỏ</option>
       </select></label>
+    <label class="nb-o"><span>Sau pha để ở</span>
+      <small>Gói quét nhãn lúc pha lóc tự vào chỗ này.</small>
+      <select name="noi_de_sau_pha">
+        <option value="" selected={gt.noi_de_sau_pha !== 'quay'}>Kho lạnh</option>
+        <option value="quay" selected={gt.noi_de_sau_pha === 'quay'}>Quầy</option>
+      </select></label>
     {coXemGia && (
       <label class="nb-o"><span>Giá trị thu hồi/kg (phụ phẩm)</span>
         <small>Phụ phẩm dùng lại được tính giá trị này, trừ vào giá vốn phần thịt. 0 = không tính.</small>

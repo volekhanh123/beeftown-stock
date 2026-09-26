@@ -4,7 +4,7 @@
   "private": true,
   "description": "Hệ thống CRM & thẻ thành viên Beeftown",
   "scripts": {
-    "test": "node test/chay-test.mjs && node test/test-phan-quyen.mjs && node test/test-an-toan.mjs && node test/test-cong-bo.mjs && node test/test-thuc-don.mjs && node test/test-tuyen-dung.mjs && node test/test-cong-khai.mjs && node test/test-dat-noi-dung.mjs && node test/test-ban-dich.mjs && node test/test-hop-dong-web.mjs && node test/test-kho-quyen.mjs && node test/test-kho-nhap.mjs && node test/test-kho-ma-vach.mjs && node test/test-kho-pha-loc.mjs && node test/test-kho-xuat-kiem-ke.mjs && node test/test-kho-cong-no.mjs && node test/test-kho-can.mjs",
+    "test": "node test/chay-test.mjs && node test/test-phan-quyen.mjs && node test/test-an-toan.mjs && node test/test-cong-bo.mjs && node test/test-thuc-don.mjs && node test/test-tuyen-dung.mjs && node test/test-cong-khai.mjs && node test/test-dat-noi-dung.mjs && node test/test-ban-dich.mjs && node test/test-hop-dong-web.mjs && node test/chay-kho.mjs",
     "test:db": "node test/chay-test.mjs",
     "test:rls": "node test/test-phan-quyen.mjs",
     "test:an-toan": "node test/test-an-toan.mjs",
@@ -15,7 +15,7 @@
     "test:noi-dung": "node test/test-dat-noi-dung.mjs",
     "test:ban-dich": "node test/test-ban-dich.mjs",
     "test:hop-dong": "node test/test-hop-dong-web.mjs",
-    "test:kho": "node test/test-kho-quyen.mjs && node test/test-kho-nhap.mjs && node test/test-kho-ma-vach.mjs && node test/test-kho-pha-loc.mjs && node test/test-kho-xuat-kiem-ke.mjs && node test/test-kho-cong-no.mjs && node test/test-kho-can.mjs",
+    "test:kho": "node test/chay-kho.mjs",
     "test:can": "node test/test-kho-can.mjs"
   },
   "devDependencies": {

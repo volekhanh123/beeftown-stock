@@ -2,20 +2,31 @@
 /**
  * KHO — KIỂM KÊ
  *
- * Mỗi kho / quầy một nút "Bắt đầu đếm". Quầy mặc định đếm theo mặt hàng
- * (đếm gói), kho lạnh mặc định đếm từng lô (tảng). Mỗi vị trí chỉ một phiếu
- * đang mở — phiếu đang mở hiện ngay trên thẻ của vị trí đó.
+ * Mỗi kho / quầy một nút "Bắt đầu đếm". Cách đếm tự theo loại vị trí: quầy
+ * đếm gói theo món, kho lạnh đếm từng lô (tảng) — không bắt nhân viên chọn
+ * một thứ kỹ thuật. Ai cần đổi thì mở "Tùy chọn" (nhân viên quầy không thấy).
+ * Nhân viên quầy chỉ thấy thẻ của quầy.
+ *
+ * Mỗi vị trí chỉ một phiếu đang mở — phiếu đang mở hiện ngay trên thẻ của vị
+ * trí đó, kèm lời nhắn nếu quản lý trả về để đếm lại.
+ *
+ * Nhân viên quầy bấm thẻ quầy là sang màn Đếm quầy (/noi-bo/kho/quay/dem,
+ * GĐ5b — quét cộng dồn), trừ khi phiếu đã gửi (mở phiếu xem "đã gửi lúc…").
+ * Vị trí "Đang mang ra quầy" (0032) không đếm được — không có thẻ.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { docViTri, docCaiDat, type ViTri, type CaiDat } from '../../../../lib/kho/danh-muc.ts';
-import { docDanhSachKiemKe, batDauKiemKe, type KiemKeTom } from '../../../../lib/kho/kiem-ke.ts';
+import { docDanhSachKiemKe, batDauKiemKe, kieuTheoViTri, type KiemKeTom } from '../../../../lib/kho/kiem-ke.ts';
+import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
+import PhanTrang from '../../../../components/kho/PhanTrang.astro';
+import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
 import { cauLoiKho, dinhDangNgay, dinhDangThoiDiem, TRANG_THAI_CHUNG_TU, type KetQua } from '../../../../lib/kho/chung.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
+const laQuay = k.nhanSu.vai_tro === 'nhan_vien_quay';
 
 const LOC = [['', 'Tất cả'], ['cho_duyet', 'Chờ duyệt'], ['dang_dem', 'Đang đếm'], ['da_duyet', 'Đã duyệt'], ['da_huy', 'Đã hủy']] as const;
 const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
@@ -23,36 +34,46 @@ const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.u
 let bao: KetQua | null = k.bao;
 const form = await docFormGui(Astro);
 if (form && k.chiNhanh && String(form.get('viec')) === 'bat_dau') {
+  // Thẻ nào cũng gửi "kieu": ô ẩn (nhân viên quầy) hoặc ô chọn trong "Tùy chọn"
+  // — đóng lại vẫn gửi, mặc định đúng theo loại vị trí.
   const kq = await batDauKiemKe(k.client, k.chiNhanh.id, String(form.get('vi_tri_id') ?? ''),
     String(form.get('kieu') ?? 'theo_mat_hang'), String(form.get('ma_gui') ?? ''));
   if (kq.ok && kq.id) return chuyenHuong(Astro, `/noi-bo/kho/kiem-ke/${kq.id}`, kq);
   bao = kq;
 }
 
+const tim = docTimDs(Astro.url.searchParams);
 let ds: KiemKeTom[] = [];
+let hien: KiemKeTom[] = [];
+let coSau = false;
 let viTri: ViTri[] = [];
 let caiDat: CaiDat | null = null;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
     // Đọc cả danh sách (không lọc) để thẻ vị trí luôn biết phiếu nào đang mở.
-    [ds, viTri, caiDat] = await Promise.all([
+    // Danh sách bên dưới đọc riêng: lọc trạng thái + tìm + đúng một trang.
+    let trang: KiemKeTom[];
+    [ds, trang, viTri, caiDat] = await Promise.all([
       docDanhSachKiemKe(k.client, k.chiNhanh.id, null),
+      docDanhSachKiemKe(k.client, k.chiNhanh.id, loc || null, { tim, nhanSuId: k.nhanSu.id }),
       docViTri(k.client, k.chiNhanh.id),
       docCaiDat(k.client, k.chiNhanh.id),
     ]);
+    ({ ds: hien, coSau } = catTrang(trang));
   } catch (e) {
     loiDoc = cauLoiKho(e, 'Không đọc được kiểm kê.');
   }
 }
 const dangMo = new Map(ds.filter(x => x.trang_thai === 'dang_dem' || x.trang_thai === 'cho_duyet').map(x => [x.vi_tri_id, x]));
-const viTriDem = viTri.filter(v => v.loai !== 'cho_huy' && v.dang_dung);
-const hien = loc ? ds.filter(x => x.trang_thai === loc) : ds;
+// Nhân viên quầy chỉ đếm quầy — không thấy thẻ kho lạnh.
+// Chỉ kho và quầy — không "chờ hủy", không "Đang mang ra quầy" (0032).
+const viTriDem = viTri.filter(v => (v.loai === 'kho' || v.loai === 'quay') && v.dang_dung && (!laQuay || v.loai === 'quay'));
+const DEM_QUAY = '/noi-bo/kho/quay/dem';
 const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
 ---
-<NoiBo tieuDe="Kiểm kê" nhanSu={k.nhanSu}>
+<Kho k={k} tieuDe="Kiểm kê" huongDan="kiem-ke">
   <h1>Kiểm kê</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
@@ -66,14 +87,27 @@ const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
           : <> Số bán lấy từ iPOS: phần thiếu ghi là chênh lệch kiểm kê.</>}
       </p>
 
-      {k.duoc('van_hanh') && (
+      {k.duoc('van_hanh') && viTriDem.length > 0 && (
         <div class="kho-o-so-luoi">
           {viTriDem.map(v => {
             const mo = dangMo.get(v.id);
+            const kieu = kieuTheoViTri(v.loai);
+            const traVe = mo?.trang_thai === 'dang_dem' && !!mo.ly_do;
+            // Nhân viên quầy: đếm ở màn Đếm quầy (quét cộng dồn).
+            if (laQuay && v.loai === 'quay' && mo?.trang_thai !== 'cho_duyet' && (!mo || mo.kieu === 'theo_mat_hang')) {
+              return (
+                <a class={`kho-o-so ${traVe ? 'gap' : ''}`} href={`${DEM_QUAY}?vi_tri=${v.id}`}>
+                  <b style="font-size:1.1rem">{v.ten}</b>
+                  <span>{mo ? `${mo.so_phieu} · đang đếm — bấm để quét tiếp` : 'Bấm để quét đếm quầy'}</span>
+                  {traVe && <span style="display:block;margin-top:.35rem;color:inherit"><strong>Quản lý trả về:</strong> {mo!.ly_do} — bấm để đếm lại.</span>}
+                </a>
+              );
+            }
             return mo ? (
-              <a class={`kho-o-so ${mo.trang_thai === 'cho_duyet' ? 'luu-y' : ''}`} href={`/noi-bo/kho/kiem-ke/${mo.id}`}>
+              <a class={`kho-o-so ${mo.trang_thai === 'cho_duyet' ? 'luu-y' : traVe ? 'gap' : ''}`} href={`/noi-bo/kho/kiem-ke/${mo.id}`}>
                 <b style="font-size:1.1rem">{v.ten}</b>
-                <span>{mo.so_phieu} · {mo.trang_thai === 'cho_duyet' ? 'chờ duyệt' : `đang đếm ${mo.so_dong_da_dem}/${mo.so_dong}`}</span>
+                <span>{mo.so_phieu} · {mo.trang_thai === 'cho_duyet' ? 'đã gửi, chờ quản lý duyệt' : `đang đếm ${mo.so_dong_da_dem}/${mo.so_dong}`}</span>
+                {traVe && <span style="display:block;margin-top:.35rem;color:inherit"><strong>Quản lý trả về:</strong> {mo.ly_do} — bấm để đếm lại.</span>}
               </a>
             ) : (
               <form method="POST" class="kho-o-so">
@@ -81,11 +115,22 @@ const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
                 <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
                 <input type="hidden" name="vi_tri_id" value={v.id} />
                 <b style="font-size:1.1rem">{v.ten}</b>
-                <select name="kieu" aria-label="Cách đếm" style="margin:.4rem 0;width:100%">
-                  <option value="theo_mat_hang" selected={v.loai === 'quay'}>Đếm theo mặt hàng</option>
-                  <option value="theo_lo" selected={v.loai !== 'quay'}>Đếm từng lô</option>
-                </select>
-                <button type="submit" class="nb-nut" style="width:100%">Bắt đầu đếm</button>
+                <span>{kieu === 'theo_mat_hang' ? 'Đếm số gói của từng món' : 'Đếm từng lô (từng tảng)'}</span>
+                {laQuay ? (
+                  <input type="hidden" name="kieu" value={kieu} />
+                ) : (
+                  <details style="margin:.35rem 0 0">
+                    <summary style="cursor:pointer;min-height:48px;display:flex;align-items:center;font-size:.9rem;font-weight:600">Tùy chọn</summary>
+                    <label class="nb-o" style="margin:0 0 .5rem">
+                      <span style="font-size:.88rem;color:inherit">Cách đếm</span>
+                      <select name="kieu">
+                        <option value="theo_mat_hang" selected={kieu === 'theo_mat_hang'}>Đếm số gói của từng món</option>
+                        <option value="theo_lo" selected={kieu === 'theo_lo'}>Đếm từng lô (từng tảng, từng hạn dùng)</option>
+                      </select>
+                    </label>
+                  </details>
+                )}
+                <button type="submit" class="nb-nut" style="width:100%;margin-top:.5rem">Bắt đầu đếm</button>
               </form>
             );
           })}
@@ -98,8 +143,11 @@ const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
         ))}
       </nav>
 
+      <LocDanhSach duong="/noi-bo/kho/kiem-ke" tim={tim} giu={{ loc }} coCuaToi={k.duoc('van_hanh')}
+        goiY="Số phiếu, nơi đếm…" />
+
       {hien.length === 0 ? (
-        <p class="nb-rong">Chưa có phiếu kiểm kê nào{loc ? ' ở trạng thái này' : ''}.</p>
+        <p class="nb-rong">{tim.trang > 1 ? 'Hết danh sách — bấm "Trang trước".' : dangTim(tim) ? 'Không tìm thấy phiếu nào khớp bộ lọc.' : `Chưa có phiếu kiểm kê nào${loc ? ' ở trạng thái này' : ''}.`}</p>
       ) : hien.map(x => {
         const [nhan, lop] = TRANG_THAI_CHUNG_TU[x.trang_thai] ?? [x.trang_thai, 'tat'];
         return (
@@ -109,13 +157,15 @@ const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
               <span class={`nb-nhan ${lop}`}>{nhan}</span>
             </div>
             <dl>
-              <dt>Ngày</dt><dd>{dinhDangNgay(x.ngay_kiem)} · {x.kieu === 'theo_lo' ? 'đếm từng lô' : 'đếm theo mặt hàng'}</dd>
+              <dt>Ngày</dt><dd>{dinhDangNgay(x.ngay_kiem)} · {x.kieu === 'theo_lo' ? 'đếm từng lô' : 'đếm gói theo món'}</dd>
               <dt>Đã đếm</dt><dd>{x.so_dong_da_dem}/{x.so_dong} dòng</dd>
+              {x.trang_thai === 'dang_dem' && x.ly_do && <><dt>Quản lý trả về</dt><dd>{x.ly_do}</dd></>}
               <dt>Người lập</dt><dd>{ten.get(x.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(x.created_at)}</dd>
             </dl>
           </a>
         );
       })}
+      <PhanTrang duong="/noi-bo/kho/kiem-ke" trang={tim.trang} coSau={coSau} />
     </>
   )}
-</NoiBo>
+</Kho>

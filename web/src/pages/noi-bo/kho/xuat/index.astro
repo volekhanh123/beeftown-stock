@@ -1,34 +1,46 @@
 ---
 /**
- * KHO — CHUYỂN QUẦY, XUẤT BẾP, BÁO HỦY
+ * KHO — CHUYỂN QUẦY, XUẤT BẾP, XUẤT KHÁC, BÁO HỦY
  *
- * Nút lớn cho ba việc hằng ngày ở quầy; dưới là các phiếu gần đây. Quản lý
+ * Nút lớn cho các việc hằng ngày ở quầy; dưới là các phiếu gần đây. Quản lý
  * vào đây để duyệt báo hủy (ô "Chờ duyệt hủy"). Phiếu không có tiền nên nhân
  * viên quầy/bếp đọc được hết.
+ *
+ * "Đang mang ra" (0032): phiếu chuyển ra quầy chưa xong — đang trên đường chờ
+ * quầy bấm nhận, hoặc quầy nhận thiếu chờ quản lý xử lý.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { docDanhSachPhieuXuat, TEN_LOAI_XUAT, type PhieuXuatTom, type LoaiXuat } from '../../../../lib/kho/xuat.ts';
 import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, TRANG_THAI_CHUNG_TU } from '../../../../lib/kho/chung.ts';
+import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
+import PhanTrang from '../../../../components/kho/PhanTrang.astro';
+import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 
 const LOC = [
-  ['', 'Tất cả'], ['cho_duyet', 'Chờ duyệt hủy'], ['chuyen', 'Chuyển'], ['xuat_bep', 'Xuất bếp'], ['huy', 'Hủy'],
-  ['tra_ncc', 'Trả NCC'],
+  ['', 'Tất cả'], ['cho_duyet', 'Chờ duyệt hủy'], ['dang_chuyen', 'Đang mang ra'], ['chuyen', 'Chuyển'],
+  ['xuat_bep', 'Xuất bếp'], ['xuat_khac', 'Xuất khác'], ['huy', 'Hủy'], ['tra_ncc', 'Trả NCC'],
 ] as const;
+/** Lọc theo trạng thái (các mục còn lại lọc theo loại phiếu). */
+const LOC_TRANG_THAI: Record<string, string[]> = {
+  cho_duyet: ['cho_duyet'],
+  dang_chuyen: ['dang_chuyen', 'nhan_thieu'],
+};
 const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
 
+const tim = docTimDs(Astro.url.searchParams);
 let ds: PhieuXuatTom[] = [];
+let coSau = false;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
-    ds = await docDanhSachPhieuXuat(k.client, k.chiNhanh.id, loc === 'cho_duyet'
-      ? { trangThai: 'cho_duyet' }
-      : { loai: loc || null });
+    ({ ds, coSau } = catTrang(await docDanhSachPhieuXuat(k.client, k.chiNhanh.id, LOC_TRANG_THAI[loc]
+      ? { trangThai: LOC_TRANG_THAI[loc] }
+      : { loai: loc || null }, { tim, nhanSuId: k.nhanSu.id })));
   } catch (e) {
     loiDoc = cauLoiKho(e, 'Không đọc được phiếu xuất.');
   }
@@ -37,9 +49,8 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 const moTa = (p: PhieuXuatTom) =>
   p.loai === 'chuyen' ? `${p.ten_vi_tri} → ${p.ten_vi_tri_den ?? '—'}` : `từ ${p.ten_vi_tri}`;
 ---
-<NoiBo tieuDe="Chuyển, xuất, hủy" nhanSu={k.nhanSu}>
-  <h1>Chuyển, xuất bếp, hủy</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+<Kho k={k} huongDan="chuyen-xuat" tieuDe="Chuyển, xuất, hủy">
+  <h1>Chuyển, xuất, hủy</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
@@ -50,12 +61,14 @@ const moTa = (p: PhieuXuatTom) =>
         <div class="kho-nut-nhanh">
           <a class="nb-nut" href="/noi-bo/kho/xuat/moi?loai=chuyen">Chuyển hàng ra quầy</a>
           <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=xuat_bep">Xuất bếp</a>
+          <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=xuat_khac">Xuất khác</a>
           <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=huy">Báo hủy</a>
         </div>
       )}
       <p class="nb-dan">
         Hàng lấy ra theo <strong>lô hết hạn sớm nhất trước</strong>. Hàng đã hết hạn không lên quầy,
         không vào bếp — chỉ báo hủy được. Báo hủy: hàng rời quầy ngay, <strong>quản lý duyệt</strong> mới ghi mất.
+        Xuất khác (dùng nội bộ, tặng khách, hàng mẫu…) phải chọn lý do.
       </p>
 
       <nav class="kho-dh" aria-label="Lọc phiếu">
@@ -64,8 +77,11 @@ const moTa = (p: PhieuXuatTom) =>
         ))}
       </nav>
 
+      <LocDanhSach duong="/noi-bo/kho/xuat" tim={tim} giu={{ loc }} coCuaToi={k.duoc('van_hanh')}
+        goiY="Số phiếu, nơi, lý do…" />
+
       {ds.length === 0 ? (
-        <p class="nb-rong">Chưa có phiếu nào{loc ? ' ở mục này' : ''}.</p>
+        <p class="nb-rong">{tim.trang > 1 ? 'Hết danh sách — bấm "Trang trước".' : dangTim(tim) ? 'Không tìm thấy phiếu nào khớp bộ lọc.' : `Chưa có phiếu nào${loc ? ' ở mục này' : ''}.`}</p>
       ) : ds.map(p => {
         const [nhan, lop] = TRANG_THAI_CHUNG_TU[p.trang_thai] ?? [p.trang_thai, 'tat'];
         return (
@@ -83,6 +99,7 @@ const moTa = (p: PhieuXuatTom) =>
           </a>
         );
       })}
+      <PhanTrang duong="/noi-bo/kho/xuat" trang={tim.trang} coSau={coSau} />
     </>
   )}
-</NoiBo>
+</Kho>

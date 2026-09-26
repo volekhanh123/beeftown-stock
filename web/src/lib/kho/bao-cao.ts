@@ -5,13 +5,18 @@
  * chỉ thấy số của chi nhánh mình, vai không xem giá nhận cột tiền bằng 0. File
  * này chỉ gọi hàm, khai báo cột để hiện bảng và xuất CSV.
  *
+ * Xuất – nhập – tồn dùng kho_bao_cao_xnt_v2 (0032): thêm cột xuất khác và hao
+ * hụt (mất khi mang ra quầy), tách khỏi kiểm kê. Hàm cũ vẫn còn trong database.
+ *
  * CSV cho Excel tiếng Việt: UTF-8 có BOM (không thì Excel hiện "Tháº¥n"),
  * dấu chấm phẩy ngăn cột (Excel máy cài tiếng Việt coi dấu phẩy là dấu thập
  * phân), kg dùng dấu phẩy thập phân, tiền là số nguyên không dấu phân cách.
+ * Dòng đầu ghi chi nhánh + tên báo cáo + kỳ (in ra hay gửi đi vẫn biết là số
+ * của kỳ nào), dòng cuối là tổng — kế toán không phải cộng lại trong Excel.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho } from './chung.ts';
+import { cauLoiKho, congNgay, dinhDangNgay } from './chung.ts';
 
 export type KieuCot = 'chu' | 'kg' | 'tien' | 'so' | 'pt';
 export interface CotBaoCao { khoa: string; ten: string; kieu: KieuCot; tienMat?: boolean }
@@ -20,14 +25,27 @@ export interface DinhNghiaBaoCao {
   ten: string;
   moTa: string;
   cot: CotBaoCao[];
-  /** Tổng ở cuối bảng cho các cột này. */
+  /** Cột được cộng ở dòng tổng cuối bảng (và cuối file Excel). */
   cong?: string[];
+  /**
+   * Cột không cộng thẳng được (tỉ lệ %) — dòng tổng tính lại từ tổng hai cột:
+   * tổng(tử) ÷ tổng(mẫu) × nhân. Vd thu hồi chung = kg thịt ÷ kg vào × 100.
+   */
+  chiaTong?: Record<string, { tu: string; mau: string; nhan?: number }>;
+  /**
+   * Cộng RIÊNG theo từng giá trị của cột này, không gộp một tổng chung.
+   * Báo cáo hủy / xuất bếp / chênh lệch: cộng "thừa" với "thiếu" hay "hủy" với
+   * "trả nhà cung cấp" thành một số là sai nghĩa.
+   */
+  tongTheo?: string;
+  /** Bảng trống: nói việc gì sinh ra số liệu và chỗ làm việc đó. */
+  khiTrong: { cau: string; link: { ten: string; href: string }[] };
 }
 
 export const BAO_CAO: Record<string, DinhNghiaBaoCao> = {
   'xuat-nhap-ton': {
     ten: 'Xuất – nhập – tồn',
-    moTa: 'Theo mặt hàng, theo ngày chứng từ. Chuyển giữa kho và quầy không tính. Giá trị theo giá vốn từng lô.',
+    moTa: 'Theo mặt hàng, theo ngày chứng từ. Chuyển giữa kho và quầy không tính. Hao hụt = hàng mất khi mang ra quầy. Giá trị theo giá vốn từng lô.',
     cot: [
       { khoa: 'ten', ten: 'Mặt hàng', kieu: 'chu' },
       { khoa: 'dau_kg', ten: 'Tồn đầu kg', kieu: 'kg' },
@@ -40,15 +58,28 @@ export const BAO_CAO: Record<string, DinhNghiaBaoCao> = {
       { khoa: 'ban_gia_tri', ten: 'Bán giá vốn', kieu: 'tien', tienMat: true },
       { khoa: 'xuat_bep_kg', ten: 'Xuất bếp kg', kieu: 'kg' },
       { khoa: 'xuat_bep_gia_tri', ten: 'Xuất bếp tiền', kieu: 'tien', tienMat: true },
+      { khoa: 'xuat_khac_kg', ten: 'Xuất khác kg', kieu: 'kg' },
+      { khoa: 'xuat_khac_gia_tri', ten: 'Xuất khác tiền', kieu: 'tien', tienMat: true },
       { khoa: 'huy_kg', ten: 'Hủy kg', kieu: 'kg' },
       { khoa: 'huy_gia_tri', ten: 'Hủy tiền', kieu: 'tien', tienMat: true },
       { khoa: 'tra_ncc_kg', ten: 'Trả NCC kg', kieu: 'kg' },
       { khoa: 'kiem_ke_kg', ten: 'Kiểm kê ± kg', kieu: 'kg' },
       { khoa: 'kiem_ke_gia_tri', ten: 'Kiểm kê ± tiền', kieu: 'tien', tienMat: true },
+      { khoa: 'hao_hut_kg', ten: 'Hao hụt kg', kieu: 'kg' },
+      { khoa: 'hao_hut_gia_tri', ten: 'Hao hụt tiền', kieu: 'tien', tienMat: true },
       { khoa: 'cuoi_kg', ten: 'Tồn cuối kg', kieu: 'kg' },
       { khoa: 'cuoi_gia_tri', ten: 'Tồn cuối tiền', kieu: 'tien', tienMat: true },
     ],
-    cong: ['dau_gia_tri', 'nhap_gia_tri', 'ban_gia_tri', 'xuat_bep_gia_tri', 'huy_gia_tri', 'kiem_ke_gia_tri', 'cuoi_gia_tri'],
+    cong: [
+      'dau_kg', 'dau_gia_tri', 'nhap_kg', 'nhap_gia_tri', 'pha_ra_kg', 'pha_vao_kg',
+      'ban_kg', 'ban_gia_tri', 'xuat_bep_kg', 'xuat_bep_gia_tri', 'xuat_khac_kg', 'xuat_khac_gia_tri',
+      'huy_kg', 'huy_gia_tri', 'tra_ncc_kg', 'kiem_ke_kg', 'kiem_ke_gia_tri', 'hao_hut_kg', 'hao_hut_gia_tri',
+      'cuoi_kg', 'cuoi_gia_tri',
+    ],
+    khiTrong: {
+      cau: 'Kho chưa có hàng nào tính tới ngày cuối kỳ. Số liệu có khi phiếu nhập hàng được duyệt',
+      link: [{ ten: 'Nhập hàng', href: '/noi-bo/kho/nhap' }],
+    },
   },
   'thu-hoi': {
     ten: 'Thu hồi pha lóc',
@@ -66,10 +97,18 @@ export const BAO_CAO: Record<string, DinhNghiaBaoCao> = {
       { khoa: 'gia_von_vao_kg', ten: 'Giá vốn tảng/kg', kieu: 'tien', tienMat: true },
       { khoa: 'gia_von_thit_kg', ten: 'Giá vốn thịt/kg', kieu: 'tien', tienMat: true },
     ],
+    // Số phiên không cộng: phiên dùng tảng của hai nhà cung cấp nằm ở hai dòng.
+    // Giá vốn / kg không cộng: mỗi loại tảng một giá.
+    cong: ['kg_vao', 'kg_thit', 'kg_phu_pham', 'kg_bo', 'kg_hao_hut'],
+    chiaTong: { ty_le_thu_hoi: { tu: 'kg_thit', mau: 'kg_vao', nhan: 100 } },
+    khiTrong: {
+      cau: 'Chưa có phiên pha lóc nào chốt trong kỳ',
+      link: [{ ten: 'Pha lóc', href: '/noi-bo/kho/pha-loc' }],
+    },
   },
   'hao-hut': {
     ten: 'Hủy, xuất bếp, chênh lệch',
-    moTa: 'Hàng rời kho không qua bán: hủy (theo lý do), xuất bếp, trả nhà cung cấp, thiếu / thừa khi kiểm kê.',
+    moTa: 'Hàng rời kho không qua bán: hủy (theo lý do), xuất bếp, xuất khác (theo lý do), trả nhà cung cấp, thiếu / thừa khi kiểm kê, mất khi mang ra quầy.',
     cot: [
       { khoa: 'loai_dong', ten: 'Loại', kieu: 'chu' },
       { khoa: 'ten', ten: 'Mặt hàng', kieu: 'chu' },
@@ -78,7 +117,12 @@ export const BAO_CAO: Record<string, DinhNghiaBaoCao> = {
       { khoa: 'so_goi', ten: 'Gói', kieu: 'so' },
       { khoa: 'gia_tri', ten: 'Giá vốn', kieu: 'tien', tienMat: true },
     ],
-    cong: ['gia_tri'],
+    cong: ['so_kg', 'so_goi', 'gia_tri'],
+    tongTheo: 'loai_dong',
+    khiTrong: {
+      cau: 'Chưa có phiếu hủy, xuất bếp, xuất khác, trả nhà cung cấp hay kiểm kê lệch sổ nào được duyệt trong kỳ',
+      link: [{ ten: 'Chuyển · xuất · hủy', href: '/noi-bo/kho/xuat' }, { ten: 'Kiểm kê', href: '/noi-bo/kho/kiem-ke' }],
+    },
   },
   ban: {
     ten: 'Bán (ước tính)',
@@ -92,13 +136,19 @@ export const BAO_CAO: Record<string, DinhNghiaBaoCao> = {
       { khoa: 'gia_von', ten: 'Giá vốn', kieu: 'tien', tienMat: true },
       { khoa: 'lai_gop_uoc_tinh', ten: 'Lãi gộp ước tính', kieu: 'tien', tienMat: true },
     ],
-    cong: ['doanh_thu_uoc_tinh', 'gia_von', 'lai_gop_uoc_tinh'],
+    cong: ['so_goi', 'so_kg', 'doanh_thu_uoc_tinh', 'gia_von', 'lai_gop_uoc_tinh'],
+    khiTrong: {
+      cau: 'Chưa có số bán trong kỳ. Số bán có khi phiếu kiểm kê quầy được duyệt và quầy thiếu hàng so với sổ',
+      link: [{ ten: 'Kiểm kê', href: '/noi-bo/kho/kiem-ke' }],
+    },
   },
 };
 
 /** Cột của file công nợ (từ view kho_v_cong_no_phieu). */
 export const COT_CONG_NO: CotBaoCao[] = [
   { khoa: 'so_phieu', ten: 'Phiếu nhập', kieu: 'chu' },
+  // "Nhập mua" / "Nợ đầu kỳ" (0035) — file .csv.ts điền bằng tenLoaiCongNo.
+  { khoa: 'loai_cong_no', ten: 'Loại', kieu: 'chu' },
   { khoa: 'ten_nha_cung_cap', ten: 'Nhà cung cấp', kieu: 'chu' },
   { khoa: 'ngay_nhap', ten: 'Ngày nhập', kieu: 'chu' },
   { khoa: 'so_hoa_don', ten: 'Số hóa đơn', kieu: 'chu' },
@@ -116,9 +166,12 @@ export const COT_CONG_NO: CotBaoCao[] = [
 export const TEN_LOAI_DONG_HAO_HUT: Record<string, string> = {
   huy: 'Hủy',
   xuat_bep: 'Xuất bếp',
+  xuat_khac: 'Xuất khác',
   tra_ncc: 'Trả nhà cung cấp',
   kiem_ke_thieu: 'Kiểm kê thiếu',
   kiem_ke_thua: 'Kiểm kê thừa',
+  // 0032: hàng mất khi mang ra quầy (quản lý "ghi mất" phần quầy nhận thiếu).
+  hao_hut: 'Hao hụt',
 };
 
 // -----------------------------------------------------------------------------
@@ -128,7 +181,7 @@ export async function docBaoCao(
   client: SupabaseClient, ten: string, chiNhanhId: string, tu: string, den: string,
 ): Promise<{ dong: Record<string, unknown>[]; loi: string | null }> {
   let kq: { data: unknown; error: { message: string } | null };
-  if (ten === 'xuat-nhap-ton') kq = await client.rpc('kho_bao_cao_xuat_nhap_ton', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
+  if (ten === 'xuat-nhap-ton') kq = await client.rpc('kho_bao_cao_xnt_v2', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
   else if (ten === 'thu-hoi') kq = await client.rpc('kho_bao_cao_thu_hoi', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
   else if (ten === 'hao-hut') kq = await client.rpc('kho_bao_cao_hao_hut', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
   else if (ten === 'ban') kq = await client.rpc('kho_bao_cao_ban', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
@@ -141,6 +194,44 @@ export async function docBaoCao(
 }
 
 // -----------------------------------------------------------------------------
+// DÒNG TỔNG — hàm thuần, trang và file Excel dùng chung
+// -----------------------------------------------------------------------------
+export interface DongTong {
+  /** Chữ ở cột đầu: "Tổng", hoặc "Cộng Hủy", "Cộng Xuất bếp"… */
+  nhan: string;
+  /** Số theo khóa cột. Cột không có ở đây thì để trống. */
+  so: Record<string, number>;
+}
+
+/** Làm tròn như cách hiện ô: kg 3 số lẻ (bỏ lỗi cộng số thực 0,1 + 0,2), tiền số nguyên. */
+function lamTron(x: number, kieu: KieuCot | undefined): number {
+  if (kieu === 'kg') return Math.round(x * 1000) / 1000;
+  if (kieu === 'pt') return Math.round(x * 100) / 100;
+  return Math.round(x);
+}
+
+export function tinhTong(dn: DinhNghiaBaoCao, dong: Record<string, unknown>[]): DongTong[] {
+  if (dong.length === 0 || (!dn.cong?.length && !dn.chiaTong)) return [];
+  const kieu = new Map(dn.cot.map(c => [c.khoa, c.kieu]));
+  const nhom = new Map<string, Record<string, unknown>[]>();
+  for (const d of dong) {
+    const khoaNhom = dn.tongTheo ? String(d[dn.tongTheo] ?? '') : '';
+    const ds = nhom.get(khoaNhom);
+    if (ds) ds.push(d); else nhom.set(khoaNhom, [d]);
+  }
+  return [...nhom].map(([khoaNhom, ds]) => {
+    const cong = (khoa: string) => ds.reduce((s, d) => s + (Number(d[khoa]) || 0), 0);
+    const so: Record<string, number> = {};
+    for (const khoa of dn.cong ?? []) so[khoa] = lamTron(cong(khoa), kieu.get(khoa));
+    for (const [khoa, { tu, mau, nhan = 1 }] of Object.entries(dn.chiaTong ?? {})) {
+      const m = cong(mau);
+      if (m !== 0) so[khoa] = lamTron(cong(tu) / m * nhan, kieu.get(khoa));
+    }
+    return { nhan: dn.tongTheo ? `Cộng ${khoaNhom}` : 'Tổng', so };
+  });
+}
+
+// -----------------------------------------------------------------------------
 // CSV — hàm thuần
 // -----------------------------------------------------------------------------
 function oCsv(v: unknown, kieu: KieuCot): string {
@@ -149,22 +240,61 @@ function oCsv(v: unknown, kieu: KieuCot): string {
   if (kieu === 'kg' || kieu === 'pt') s = String(Number(v)).replace('.', ',');
   else if (kieu === 'tien' || kieu === 'so') s = String(Math.round(Number(v)));
   else s = String(v);
-  // Chặn "công thức" khi mở bằng Excel (=, +, -, @ ở đầu ô chữ).
-  if (kieu === 'chu' && /^[=+\-@]/.test(s)) s = `'${s}`;
+  // Chặn "công thức" khi mở bằng Excel (=, +, -, @, tab, xuống dòng ở đầu ô chữ).
+  if (kieu === 'chu' && /^[=+\-@\t\r]/.test(s)) s = `'${s}`;
   return /[;"\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-export function taoCsv(cot: CotBaoCao[], dong: Record<string, unknown>[]): string {
+export interface TuyChonCsv {
+  /** Dòng đầu file, một ô (vd "Beeftown Quận 1 · Xuất – nhập – tồn · 01/09/2026–25/09/2026"). */
+  tieuDe?: string;
+  /** Dòng tổng ở cuối file (từ tinhTong). */
+  tong?: DongTong[];
+}
+
+export function taoCsv(cot: CotBaoCao[], dong: Record<string, unknown>[], tuyChon: TuyChonCsv = {}): string {
+  const tieuDe = tuyChon.tieuDe ? [oCsv(tuyChon.tieuDe, 'chu')] : [];
   const dau = cot.map(c => oCsv(c.ten, 'chu')).join(';');
   const than = dong.map(d => cot.map(c => oCsv(d[c.khoa], c.kieu)).join(';'));
-  return '﻿' + [dau, ...than].join('\r\n') + '\r\n';
+  const tong = (tuyChon.tong ?? []).map(t =>
+    cot.map((c, i) => (i === 0 ? oCsv(t.nhan, 'chu') : oCsv(t.so[c.khoa], c.kieu))).join(';'));
+  return '\uFEFF' + [...tieuDe, dau, ...than, ...tong].join('\r\n') + '\r\n';
+}
+
+/** Dòng đầu file báo cáo: "Beeftown Quận 1 · Xuất – nhập – tồn · 01/09/2026–25/09/2026". */
+export function tieuDeCsv(tenChiNhanh: string, tenBaoCao: string, tu: string, den: string): string {
+  const ky = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)}–${dinhDangNgay(den)}`;
+  return [tenChiNhanh, tenBaoCao, ky].filter(Boolean).join(' · ');
+}
+
+// -----------------------------------------------------------------------------
+// KỲ BÁO CÁO — hàm thuần
+// -----------------------------------------------------------------------------
+/** Ngày YYYY-MM-DD có thật (không nhận 30/02, 31/04 — database sẽ báo lỗi). */
+function ngayHopLe(s: string | null): s is string {
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(s + 'T00:00:00Z');
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
 }
 
 /** Kỳ báo cáo từ tham số GET; mặc định từ đầu tháng tới hôm nay (giờ VN). */
 export function kyBaoCao(q: URLSearchParams, homNay: string): { tu: string; den: string } {
-  const hopLe = (s: string | null) => !!s && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s + 'T00:00:00Z'));
-  let tu = hopLe(q.get('tu')) ? q.get('tu')! : `${homNay.slice(0, 8)}01`;
-  let den = hopLe(q.get('den')) ? q.get('den')! : homNay;
+  const qTu = q.get('tu');
+  const qDen = q.get('den');
+  let tu = ngayHopLe(qTu) ? qTu : `${homNay.slice(0, 8)}01`;
+  let den = ngayHopLe(qDen) ? qDen : homNay;
   if (tu > den) [tu, den] = [den, tu];
   return { tu, den };
+}
+
+/** Nút chọn nhanh kỳ: Hôm nay · 7 ngày · Tháng này · Tháng trước. */
+export function kyNhanh(homNay: string): { ten: string; tu: string; den: string }[] {
+  const dauThang = `${homNay.slice(0, 8)}01`;
+  const cuoiThangTruoc = congNgay(dauThang, -1);
+  return [
+    { ten: 'Hôm nay', tu: homNay, den: homNay },
+    { ten: '7 ngày', tu: congNgay(homNay, -6), den: homNay },
+    { ten: 'Tháng này', tu: dauThang, den: homNay },
+    { ten: 'Tháng trước', tu: `${cuoiThangTruoc.slice(0, 8)}01`, den: cuoiThangTruoc },
+  ];
 }

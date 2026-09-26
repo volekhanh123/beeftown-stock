@@ -1,0 +1,116 @@
+---
+/**
+ * KHO — GẮN TÔI VÀO MÁY NÀY / ĐỔI PIN (máy tính bảng dùng chung, GĐ5d)
+ *
+ *   · Máy đang khóa: người dùng đăng nhập ĐẦY ĐỦ một lần (email, mật khẩu)
+ *     ngay trên máy và đặt PIN 4–6 số. Máy chủ đăng nhập bằng client riêng,
+ *     băm PIN (HMAC, database không thấy PIN thô), gọi kho_may_gan_nguoi
+ *     bằng phiên của chính người đó, rồi cho người đó dùng máy luôn.
+ *   · Đang dùng máy: đổi PIN của mình (kho_may_dat_pin), không cần mật khẩu.
+ *
+ * Lỗi thì hiện lại form (không giữ mật khẩu, không giữ PIN).
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { ganNguoi, doiPin, layKhoaMay, laVaiMay, DUONG_MAY } from '../../../../lib/kho/may-chung.ts';
+import type { KetQua } from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+
+const batMay = !!(await layKhoaMay());
+const dangKhoa = batMay && laVaiMay(k.nhanSu.vai_tro) && !!k.may && !k.may.nhanSuId;
+const dangDung = batMay && !!k.may?.nhanSuId && k.may.nhanSuId === k.nhanSu.id;
+
+let bao: KetQua | null = k.bao;
+let email = '';
+const form = await docFormGui(Astro);
+if (form) {
+  const viec = String(form.get('viec') ?? '');
+  let kq: KetQua;
+  if (viec === 'gan' && dangKhoa) {
+    email = String(form.get('email') ?? '').trim();
+    kq = await ganNguoi(Astro, form);
+    if (kq.ok) return chuyenHuong(Astro, '/noi-bo/kho', kq);
+  } else if (viec === 'doi_pin' && dangDung) {
+    kq = await doiPin(Astro, form, k.may!);
+    if (kq.ok) return chuyenHuong(Astro, DUONG_MAY, kq);
+  } else {
+    kq = { ok: false, cau: 'Việc không hợp lệ. Tải lại trang.' };
+  }
+  bao = kq;
+}
+---
+<Kho k={k} huongDan="gan-may" tieuDe={dangDung ? 'Đổi PIN' : 'Gắn vào máy'}>
+  {dangDung ? (
+    <>
+      <h1>Đổi PIN của tôi</h1>
+      <BaoKho bao={bao} loiDoc={k.loiDoc} />
+      <p class="nb-dan">PIN chỉ dùng trên máy{k.may?.tenMay ? ` "${k.may.tenMay}"` : ' này'}. Không cho ai biết PIN — ai mở máy bằng PIN của bạn thì việc họ làm ghi tên bạn.</p>
+      <form method="POST" class="nb-the gan-form">
+        <input type="hidden" name="viec" value="doi_pin" />
+        <label class="nb-o">
+          <span>PIN mới (4 đến 6 số)</span>
+          <input type="password" name="pin" inputmode="numeric" pattern="[0-9]*" autocomplete="off" minlength="4" maxlength="6" required />
+        </label>
+        <label class="nb-o">
+          <span>Nhập lại PIN mới</span>
+          <input type="password" name="pin_lai" inputmode="numeric" pattern="[0-9]*" autocomplete="off" minlength="4" maxlength="6" required />
+        </label>
+        <button type="submit" class="nb-nut gan-nut">Đổi PIN</button>
+      </form>
+      <p><a href={DUONG_MAY}>Quay lại</a></p>
+    </>
+  ) : dangKhoa ? (
+    <>
+      <h1>Gắn tôi vào máy này</h1>
+      <BaoKho bao={bao} loiDoc={k.loiDoc} />
+      <p class="nb-dan">Đăng nhập bằng tài khoản của bạn <strong>một lần</strong> và đặt PIN. Lần sau chỉ cần chọn tên và nhập PIN.
+        {' '}Đã gắn rồi mà quên PIN thì gắn lại ở đây để đặt PIN mới.</p>
+      <form method="POST" class="nb-the gan-form" autocomplete="off">
+        <input type="hidden" name="viec" value="gan" />
+        <label class="nb-o">
+          <span>Email của bạn</span>
+          <input type="email" name="email" value={email} required autocomplete="off"
+            autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" />
+        </label>
+        <label class="nb-o">
+          <span>Mật khẩu</span>
+          <input type="password" name="mat_khau" required autocomplete="off" />
+        </label>
+        <label class="nb-o">
+          <span>Đặt PIN (4 đến 6 số)</span>
+          <small>Không dùng số lặp (1111) hay số liền nhau (1234).</small>
+          <input type="password" name="pin" inputmode="numeric" pattern="[0-9]*" autocomplete="off" minlength="4" maxlength="6" required />
+        </label>
+        <label class="nb-o">
+          <span>Nhập lại PIN</span>
+          <input type="password" name="pin_lai" inputmode="numeric" pattern="[0-9]*" autocomplete="off" minlength="4" maxlength="6" required />
+        </label>
+        <button type="submit" class="nb-nut gan-nut">Gắn và bắt đầu dùng</button>
+      </form>
+      <p><a href={DUONG_MAY}>Quay lại</a></p>
+    </>
+  ) : (
+    <>
+      <h1>Gắn vào máy dùng chung</h1>
+      <BaoKho bao={bao} loiDoc={k.loiDoc} />
+      <div class="nb-bao luu-y">
+        {!batMay ? (
+          <p>Máy dùng chung chưa được bật (thiếu bí mật <code>KHO_MAY_KHOA</code>).</p>
+        ) : (
+          <p>Trang này dùng <strong>trên máy tính bảng dùng chung đang khóa</strong> (màn "Ai đang dùng máy?").
+            {' '}Trên điện thoại của riêng bạn thì không cần gắn.</p>
+        )}
+      </div>
+      <p><a href={DUONG_MAY}>Về màn máy dùng chung</a></p>
+    </>
+  )}
+</Kho>
+
+<style>
+  .gan-form { max-width: 28rem; }
+  .gan-form input { font-size: 16px; }
+  .gan-nut { width: 100%; }
+</style>

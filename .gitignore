@@ -98,6 +98,11 @@ node_modules/
 .env
 .env.*
 
+# Biểu tượng app kho (cài lên màn hình điện thoại) — dựng từ đầu bò trong
+# web/public/bieu-tuong.svg. Chỉ mở đúng thư mục này; ảnh khác vẫn bị chặn.
+# Dòng này BẮT BUỘC đứng sau *.png ở trên, nếu không sẽ bị chặn.
+!/web/public/kho/*.png
+
 # Mẫu biến môi trường — CHỈ chứa TÊN biến, không chứa khóa thật.
 # Dòng này BẮT BUỘC đứng sau .env.* ở trên, nếu không sẽ bị chặn.
 !/web/.env.example

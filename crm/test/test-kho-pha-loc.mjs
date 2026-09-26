@@ -36,14 +36,17 @@ async function napMatHang() {
 let viTri = {};
 let ncc;
 
-/** Nhập hàng qua đúng luồng: thủ kho lập, gửi; quản lý duyệt. Trả các lô sinh ra. */
+/**
+ * Nhập hàng qua đúng luồng: quản lý lưu phiếu có giá (thủ kho không gửi được
+ * giá — 0031), thủ kho gửi; quản lý duyệt. Trả các lô sinh ra.
+ */
 async function nhapHang(dong, vt = viTri.kho) {
-  const luu = await duoi(UID.thuKhoA, `
+  const luu = await duoi(UID.qlA, `
     select * from kho_luu_phieu_nhap(
       p_id => null, p_chi_nhanh_id => $1, p_ma_gui => $2, p_phien_ban => null,
       p_loai => 'mua', p_nha_cung_cap_id => $3, p_vi_tri_id => $4, p_ngay_nhap => $5::date,
       p_so_hoa_don => null, p_ngay_hoa_don => null, p_han_thanh_toan => null,
-      p_tien_thue => 0, p_chi_phi_khac => 0, p_ghi_chu => null, p_anh => '{}'::text[],
+      p_tien_thue => 0, p_chi_phi_khac => 0, p_ghi_chu => null, p_anh => array[$1::uuid::text || '/nhap/' || gen_random_uuid() || '/1.jpg'],
       p_truong_them => '{}'::jsonb, p_dong => $6::jsonb)`,
     [cnA.id, maGui(), ncc, vt, homNay, JSON.stringify(dong)]);
   if (luu.loi) throw new Error(luu.loi);
@@ -225,8 +228,16 @@ await nhom('2 · LƯU NHÁP PHIÊN PHA LÓC', async () => {
 
 // ===========================================================================
 await nhom('3 · XEM THỬ — THU HỒI VÀ GIÁ VỐN TRƯỚC KHI CHỐT', async () => {
-  const x = await xemThu(UID.thuKhoA, ph1.phien_id);
-  ok('Thủ kho xem thử được', x.loi === null, x.loi ?? '');
+  // 0031: bản xem thử có tiền là của vai xem giá; thủ kho xem bản chỉ kg.
+  const x = await xemThu(UID.qlA, ph1.phien_id);
+  ok('Quản lý xem thử được', x.loi === null, x.loi ?? '');
+  const tkTien = await xemThu(UID.thuKhoA, ph1.phien_id);
+  ok('Thủ kho KHÔNG xem được bản xem thử có tiền (0031)', tkTien.loi !== null);
+  const tkKg = await duoi(UID.thuKhoA, `select kho_xem_thu_phien_pha_kg($1) as t`, [ph1.phien_id]);
+  const k = tkKg.rows?.[0]?.t;
+  ok('Thủ kho xem thử bản chỉ kg: vào 10 kg, thu hồi 70%, hao hụt 0,5 kg',
+     tkKg.loi === null && Number(k.tong_kg_vao) === 10 && Number(k.ty_le_thu_hoi) === 70 && Number(k.kg_hao_hut) === 0.5,
+     tkKg.loi ?? JSON.stringify(k));
   const t = x.rows?.[0]?.t;
   ok('Vào 10 kg, giá trị 5.000.000đ', Number(t.tong_kg_vao) === 10 && Number(t.gia_tri_vao) === 5000000,
      `${t.tong_kg_vao} / ${t.gia_tri_vao}`);
@@ -326,7 +337,7 @@ await nhom('5 · CHIA GIÁ VỐN SỐ LẺ — VẪN KHÔNG LỆCH MỘT ĐỒNG
   ok('Lưu phiên số lẻ', s.loi === null, s.loi ?? '');
   const id = s.rows[0].phien_id;
 
-  const x = (await xemThu(UID.thuKhoA, id)).rows[0].t;
+  const x = (await xemThu(UID.qlA, id)).rows[0].t;
   const tongRa = x.dong.reduce((a, d) => a + Number(d.gia_tri), 0);
   ok('Tổng giá trị ra = giá trị vào (9,3 × 523.457 làm tròn)', tongRa === Number(x.gia_tri_vao)
      && Number(x.gia_tri_vao) === Math.round(9.3 * 523457), `${tongRa} vs ${x.gia_tri_vao}`);
@@ -343,7 +354,7 @@ await nhom('5 · CHIA GIÁ VỐN SỐ LẺ — VẪN KHÔNG LỆCH MỘT ĐỒNG
 
   // Thiếu giá bán một phần → cả phiên chia theo kg, có cảnh báo.
   await duoi(UID.qlA, `update kho_mat_hang set gia_ban_kg = null where ma = 'C-THANNOI'`);
-  const y = (await xemThu(UID.thuKhoA, id)).rows[0].t;
+  const y = (await xemThu(UID.qlA, id)).rows[0].t;
   ok('Thiếu giá bán → chia theo kg, cảnh báo nêu tên phần thiếu',
      y.chia_theo === 'khoi_luong' && y.canh_bao.some(c => /Thăn nội cắt miếng/.test(c)), JSON.stringify(y.canh_bao));
   ok('Chia theo kg: tỉ lệ đúng theo kg',
@@ -354,15 +365,19 @@ await nhom('5 · CHIA GIÁ VỐN SỐ LẺ — VẪN KHÔNG LỆCH MỘT ĐỒNG
   // Chủ đổi cách tính sang theo kg — không còn cảnh báo thiếu giá.
   const doi = await duoi(UID.chu, `select kho_luu_cai_dat_goc($1, 'khoi_luong', true, false, 'kiem_ke', true)`, [cnA.id]);
   ok('Chủ đổi cách chia giá vốn sang theo kg', doi.loi === null, doi.loi ?? '');
-  const z = (await xemThu(UID.thuKhoA, id)).rows[0].t;
+  const z = (await xemThu(UID.qlA, id)).rows[0].t;
   ok('Cài đặt theo kg được áp dụng', z.chia_theo === 'khoi_luong' && !z.canh_bao.some(c => /giá bán/.test(c)));
   await duoi(UID.chu, `select kho_luu_cai_dat_goc($1, 'gia_tri', true, false, 'kiem_ke', true)`, [cnA.id]);
 
   // Giá trị thu hồi phụ phẩm vượt giá vốn đầu vào → chặn.
   await db.query(`update kho_mat_hang_gia set gia_tri_thu_hoi_kg = 99000000 where mat_hang_id = $1`, [MH['P-VUN'].id]);
-  const vuot = await xemThu(UID.thuKhoA, id);
+  const vuot = await xemThu(UID.qlA, id);
   ok('Giá trị thu hồi phụ phẩm lớn hơn giá vốn vào bị chặn',
      vuot.loi !== null && /lớn hơn giá vốn đầu vào/.test(vuot.loi), vuot.loi ?? '');
+  ok('Câu lỗi đó không in số tiền (thủ kho chốt cũng gặp — 0031)', !/\d/.test(vuot.loi ?? '0'), vuot.loi ?? '');
+  const vuotChot = await chot(UID.thuKhoA, id, (await phien(id)).phien_ban);
+  ok('Thủ kho chốt lúc đó: bị chặn, câu lỗi không có số tiền',
+     vuotChot.loi !== null && !/\d/.test(vuotChot.loi), vuotChot.loi ?? '');
   await db.query(`update kho_mat_hang_gia set gia_tri_thu_hoi_kg = 100000 where mat_hang_id = $1`, [MH['P-VUN'].id]);
 
   const pb = (await phien(id)).phien_ban;
@@ -384,7 +399,7 @@ await nhom('5 · CHIA GIÁ VỐN SỐ LẺ — VẪN KHÔNG LỆCH MỘT ĐỒNG
   });
   const { rows: [v2] } = await db.query(`select so_kg from kho_phien_pha_vao where phien_pha_id = $1`, [s2.rows[0].phien_id]);
   ok('Lấy hết số tảng → tính hết số kg trên sổ (10,7 kg), không để tồn ảo', Number(v2.so_kg) === 10.7, `${v2.so_kg}`);
-  const x2 = (await xemThu(UID.thuKhoA, s2.rows[0].phien_id)).rows[0].t;
+  const x2 = (await xemThu(UID.qlA, s2.rows[0].phien_id)).rows[0].t;
   ok('Phần chênh 0,5 kg nằm trong hao hụt của phiên', Number(x2.tong_kg_hao_hut) === 3.2, `${x2.tong_kg_hao_hut}`);
   ok('HSD mặc định không vượt HSD tảng (tảng còn 2 ngày)', x2.han_som_nhat_vao === await ngaySau(2));
   const cNot = await chot(UID.thuKhoA, s2.rows[0].phien_id, (await phien(s2.rows[0].phien_id)).phien_ban);

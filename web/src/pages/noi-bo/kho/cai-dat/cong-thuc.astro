@@ -6,8 +6,7 @@
  * Công thức điền sẵn phiếu pha lóc và là mốc so tỉ lệ thu hồi thực tế. Không
  * bắt buộc — pha lóc vẫn ghi được khi chưa có công thức nào.
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
@@ -46,10 +45,9 @@ const tenMh = new Map(matHang.map(m => [m.id, m]));
 const dangSua = congThuc.find(c => c.id === suaId);
 const tongTyLe = (c: CongThuc) => c.dong.reduce((s, d) => s + (d.ty_le_du_kien ?? 0), 0);
 ---
-<NoiBo tieuDe="Công thức pha lóc" nhanSu={k.nhanSu}>
+<Kho k={k} huongDan="cong-thuc" tieuDe="Công thức pha lóc">
   <h1>Công thức pha lóc</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
-  <p><a href="/noi-bo/kho/cai-dat">← Cài đặt kho</a></p>
+  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {dangSua && (
@@ -135,4 +133,4 @@ const tongTyLe = (c: CongThuc) => c.dong.reduce((s, d) => s + (d.ty_le_du_kien ?
       <p class="kho-phu" style="margin:.3rem 0 0">Đầu vào: {tenMh.get(c.mat_hang_vao_id)?.ten ?? '—'}</p>
     </a>
   ))}
-</NoiBo>
+</Kho>

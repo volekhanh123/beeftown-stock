@@ -1,26 +1,38 @@
 ---
 /**
- * KHO — TỔNG QUAN
+ * KHO — TRANG CHỦ THEO VAI (giống iPOS Inventory Pro)
  *
- * Trả lời đúng câu hỏi đầu ca: HÔM NAY KHO CÒN VƯỚNG GÌ.
- *   · lô nào hết hạn / sắp hết hạn — phải bán trước, chuyển bếp hoặc hủy (FEFO)
- *   · phiếu nào đang chờ quản lý duyệt
- *   · quầy thịt mặt hàng nào đã dưới mức tối thiểu
+ * Mỗi vai mở app là thấy đúng việc của mình:
+ *   · Thủ kho — "Việc hôm nay": thao tác nhanh + việc cần làm (bị trả về, hết
+ *     hạn phải hủy, sắp hết hạn, quầy sắp hết...). Không có con số tiền nào
+ *     (0031); phiếu nhận hàng mở ở /noi-bo/kho/nhan-hang (chỉ kg). Thẻ "Quầy
+ *     đang cần": yêu cầu của quầy đang chờ mang ra (0032).
+ *   · NV quầy/bếp — "Quầy hôm nay": nút lớn "Yêu cầu hàng", thẻ "Hàng đang
+ *     mang ra — bấm nhận" (0032), gói nào xếp ra bán trước, gói hết hạn phải
+ *     bỏ, món quầy sắp hết, đã đếm quầy chưa. Chỉ hàng ở quầy.
+ *   · Quản lý, chủ — "Hôm nay": hai thẻ "Cần theo dõi" (việc, chờ duyệt) và
+ *     "Quản trị" (tiền: tồn kho, giá vốn, thu hồi, hao hụt, chi phí thịt).
+ *   · Kế toán — phiếu nhập chờ điền giá (0031), rồi công nợ: quá hạn, đến
+ *     hạn 7 ngày, chưa đối chiếu.
  *
- * Chưa khởi tạo kho thì chỉ hiện một nút "Bắt đầu dùng kho" và các bước đầu.
+ * Chưa khởi tạo kho thì chỉ hiện nút "Bắt đầu dùng kho".
  */
-import NoiBo from '../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../layouts/Kho.astro';
 import BaoKho from '../../../components/kho/BaoKho.astro';
+import BieuTuong from '../../../components/kho/BieuTuong.astro';
+import DongSuKien from '../../../components/kho/DongSuKien.astro';
 import { moTrangKho, docFormGui, chuyenHuong, khoiTaoKho } from '../../../lib/kho/trang.ts';
-import { docTon, quaySapHet, type DongTon } from '../../../lib/kho/ton.ts';
+import { docTon, type DongTon } from '../../../lib/kho/ton.ts';
 import { docMatHang, type MatHang } from '../../../lib/kho/danh-muc.ts';
-import { demPhieuChoDuyet } from '../../../lib/kho/nhap.ts';
-import { demPhienNhap } from '../../../lib/kho/pha-loc.ts';
-import { demPhieuHuyCho } from '../../../lib/kho/xuat.ts';
-import { demKiemKeCho } from '../../../lib/kho/kiem-ke.ts';
-import { docCongNoNcc } from '../../../lib/kho/cong-no.ts';
-import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangTien, TEN_LOAI_VI_TRI } from '../../../lib/kho/chung.ts';
+import { docCongNoNcc, type CongNoNcc } from '../../../lib/kho/cong-no.ts';
+import { docThongBao, docChiSoQuanTri, type ChiSoQuanTri } from '../../../lib/kho/thong-bao.ts';
+import { cauSuKien, laViec, type SuKien } from '../../../lib/kho/viec.ts';
+import { goiYXepQuay, dauThang, thayDoiPt } from '../../../lib/kho/trang-chu.ts';
+import { docDanhSachYeuCau, type YeuCauQuay } from '../../../lib/kho/quay.ts';
+import { thaoTacCuaVai, soDo, KHOA_DUYET } from '../../../lib/kho/dieu-huong.ts';
+import {
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangNgayNgan, dinhDangThoiDiem, dinhDangTien, dinhDangPhanTram, homNayVn,
+} from '../../../lib/kho/chung.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -30,53 +42,77 @@ if (form && k.chiNhanh && form.get('viec') === 'khoi_tao') {
   return chuyenHuong(Astro, '/noi-bo/kho', await khoiTaoKho(k.client, k.chiNhanh.id));
 }
 
+const vai = k.nhanSu.vai_tro;
+const laQuay = vai === 'nhan_vien_quay';
+const laKeToan = vai === 'ke_toan';
+const laQuanLy = k.duoc('duyet');
+const tab = Astro.url.searchParams.get('tab') === 'quan-tri' && k.duoc('xem_gia') ? 'quan-tri' : 'theo-doi';
+const v = k.viec ?? {};
+const n = (khoa: string) => (typeof v[khoa] === 'number' ? (v[khoa] as number) : 0);
+const homNay = homNayVn();
+
 let ton: DongTon[] = [];
 let matHang: MatHang[] = [];
-let choDuyet: number | null = null;
-let huyCho: number | null = null;
-let kiemKeCho: number | null = null;
-let phaNhap: number | null = null;
-let noQuaHan: number | null = null;
-let chuaDoiChieu: number | null = null;
+let suKien: SuKien[] = [];
+let congNo: CongNoNcc[] = [];
+let chiSo: ChiSoQuanTri | null = null;
+let yeuCauCho: YeuCauQuay[] = [];
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   const cn = k.chiNhanh.id;
   try {
-    [ton, matHang] = await Promise.all([docTon(k.client, cn), docMatHang(k.client)]);
-    if (k.duoc('duyet')) {
-      [choDuyet, huyCho, kiemKeCho] = await Promise.all([
-        demPhieuChoDuyet(k.client, cn), demPhieuHuyCho(k.client, cn), demKiemKeCho(k.client, cn),
-      ]);
+    const viec = docThongBao(k.client, cn, 200).then(r => { suKien = r.suKien.filter(laViec); if (r.loi) loiDoc = r.loi; });
+    const cho: Promise<unknown>[] = [viec];
+    if (laQuay || vai === 'thu_kho') cho.push(docTon(k.client, cn).then(r => { ton = r; }));
+    if (k.duoc('danh_muc')) cho.push(docMatHang(k.client).then(r => { matHang = r; }));
+    if (k.duoc('ke_toan')) cho.push(docCongNoNcc(k.client, cn).then(r => { congNo = r; }));
+    // Thủ kho: yêu cầu của quầy đang chờ mang ra (0032). Lỗi đọc thì bỏ thẻ này, không hỏng trang.
+    if (vai === 'thu_kho' && n('yeu_cau_quay') > 0) {
+      cho.push(docDanhSachYeuCau(k.client, cn, { chiCho: true, gioiHan: 10 }).then(r => { yeuCauCho = r; }, () => {}));
     }
-    if (k.duoc('pha_loc')) phaNhap = await demPhienNhap(k.client, cn);
-    if (k.duoc('ke_toan')) {
-      const ncc = await docCongNoNcc(k.client, cn);
-      noQuaHan = ncc.reduce((s, n) => s + n.no_qua_han, 0);
-      chuaDoiChieu = ncc.reduce((s, n) => s + n.so_phieu_chua_doi_chieu, 0);
+    if (laQuanLy && tab === 'quan-tri') {
+      cho.push(docChiSoQuanTri(k.client, cn, dauThang(homNay), homNay).then(r => { chiSo = r; }));
     }
+    await Promise.all(cho);
   } catch (e) {
-    loiDoc = cauLoiKho(e, 'Không đọc được tồn kho.');
+    loiDoc = cauLoiKho(e, 'Không đọc được dữ liệu kho.');
   }
 }
 
-const canXuLy = ton
-  .filter(t => t.tinh_trang_han !== 'con_han' && t.loai_vi_tri !== 'cho_huy')
-  .sort((a, b) => a.han_dung.localeCompare(b.han_dung));
-const hetHan = canXuLy.filter(t => t.tinh_trang_han === 'het_han');
-const sapHet = canXuLy.filter(t => t.tinh_trang_han === 'sap_het');
-const quayThieu = quaySapHet(ton, matHang);
+const nhanh = thaoTacCuaVai(vai);
+const tenGoi = k.nhanSu.ho_ten.trim().split(/\s+/).pop();
+const viecNgay = suKien.filter(e => cauSuKien(e).muc === 'do').sort((a, b) => a.luc.localeCompare(b.luc));
+// Thủ kho đã có thẻ "Quầy đang cần" riêng — không nhắc lại yêu cầu của quầy trong danh sách việc.
+const viecSom = suKien.filter(e => cauSuKien(e).muc === 'vang' && !(yeuCauCho.length > 0 && e.khoa === 'yeu_cau_quay'))
+  .sort((a, b) => a.luc.localeCompare(b.luc));
 
+// NV quầy
+const xep = goiYXepQuay(ton);
+const hetHanQuay = ton.filter(t => t.loai_vi_tri === 'quay' && t.tinh_trang_han === 'het_han');
+const quayThieu = suKien.filter(e => e.khoa === 'quay_duoi_muc');
+
+// Quản lý
+const soDuyet = soDo({ dem: KHOA_DUYET }, k.viec);
+const cs = chiSo as ChiSoQuanTri | null;
+const conNo = congNo.reduce((s, c) => s + c.con_no, 0);
+const noQuaHan = congNo.reduce((s, c) => s + c.no_qua_han, 0);
+
+// Các bước bắt đầu — chỉ cho người làm được
 const buoc = [
   { xong: k.daKhoiTao, ten: 'Bắt đầu dùng kho (tạo kho lạnh, quầy, lý do mặc định)', link: '/noi-bo/kho' },
   { xong: matHang.length > 0, ten: 'Khai báo mặt hàng: tảng, phần cắt, phụ phẩm', link: '/noi-bo/kho/cai-dat/mat-hang' },
-  { xong: matHang.some(m => m.gia_ban_kg !== null), ten: 'Nhập giá bán/kg cho các phần cắt (để tính giá vốn khi pha lóc)', link: '/noi-bo/kho/cai-dat/mat-hang' },
-  { xong: ton.length > 0, ten: 'Nhập tồn đầu kỳ hoặc phiếu nhập đầu tiên', link: '/noi-bo/kho/nhap' },
+  { xong: matHang.some(m => m.gia_ban_kg !== null), ten: 'Nhập giá bán/kg cho các phần cắt', link: '/noi-bo/kho/cai-dat/mat-hang' },
+  { xong: matHang.some(m => m.ma_can !== null), ten: 'Gắn mã cân cho các phần cắt để quét nhãn được', link: '/noi-bo/kho/cai-dat/mat-hang' },
 ];
-const conBuoc = buoc.some(b => !b.xong);
+const hienBuoc = k.duoc('danh_muc') && buoc.some(b => !b.xong);
+
+const tieuDe = laQuay ? 'Quầy hôm nay' : laQuanLy ? 'Hôm nay' : vai === 'thu_kho' ? 'Việc hôm nay' : 'Trang chủ';
 ---
-<NoiBo tieuDe="Kho" nhanSu={k.nhanSu}>
-  <h1>Kho thịt</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
+<Kho k={k} tieuDe={tieuDe} huongDan={laQuay ? 'nv-quay' : vai === 'thu_kho' ? 'thu-kho' : laKeToan ? 'ke-toan' : 'hom-nay'}>
+  <div class="kho-chao">
+    <p>Chào {tenGoi} · {dinhDangNgay(homNay)}</p>
+    <h1>{tieuDe}</h1>
+  </div>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.chiNhanh ? (
@@ -99,107 +135,268 @@ const conBuoc = buoc.some(b => !b.xong);
     </div>
   ) : (
     <>
-      <div class="kho-o-so-luoi">
-        <a href="/noi-bo/kho/ton?han=het_han" class={`kho-o-so ${hetHan.length ? 'gap' : ''}`}>
-          <b>{hetHan.length}</b><span>lô đã hết hạn</span>
-        </a>
-        <a href="/noi-bo/kho/ton?han=sap_het" class={`kho-o-so ${sapHet.length ? 'luu-y' : ''}`}>
-          <b>{sapHet.length}</b><span>lô sắp hết hạn</span>
-        </a>
-        {k.duoc('duyet') && (
-          <a href="/noi-bo/kho/nhap?loc=cho_duyet" class={`kho-o-so ${choDuyet ? 'luu-y' : ''}`}>
-            <b>{choDuyet ?? '—'}</b><span>phiếu nhập chờ duyệt</span>
-          </a>
-        )}
-        {k.duoc('duyet') && (
-          <a href="/noi-bo/kho/xuat?loc=cho_duyet" class={`kho-o-so ${huyCho ? 'luu-y' : ''}`}>
-            <b>{huyCho ?? '—'}</b><span>báo hủy chờ duyệt</span>
-          </a>
-        )}
-        {k.duoc('duyet') && (
-          <a href="/noi-bo/kho/kiem-ke?loc=cho_duyet" class={`kho-o-so ${kiemKeCho ? 'luu-y' : ''}`}>
-            <b>{kiemKeCho ?? '—'}</b><span>kiểm kê chờ duyệt</span>
-          </a>
-        )}
-        {k.duoc('pha_loc') && (
-          <a href="/noi-bo/kho/pha-loc?loc=nhap" class={`kho-o-so ${phaNhap ? 'luu-y' : ''}`}>
-            <b>{phaNhap ?? '—'}</b><span>phiên pha lóc chưa chốt</span>
-          </a>
-        )}
-        {k.duoc('ke_toan') && (
-          <a href="/noi-bo/kho/cong-no" class={`kho-o-so ${noQuaHan ? 'gap' : ''}`}>
-            <b style="font-size:1.2rem">{noQuaHan === null ? '—' : dinhDangTien(noQuaHan)}</b><span>nợ nhà cung cấp quá hạn</span>
-          </a>
-        )}
-        {k.duoc('ke_toan') && (
-          <a href="/noi-bo/kho/cong-no" class={`kho-o-so ${chuaDoiChieu ? 'luu-y' : ''}`}>
-            <b>{chuaDoiChieu ?? '—'}</b><span>phiếu chưa đối chiếu hóa đơn</span>
-          </a>
-        )}
-        <a href="/noi-bo/kho/ton?vi_tri=quay" class={`kho-o-so ${quayThieu.length ? 'luu-y' : ''}`}>
-          <b>{quayThieu.length}</b><span>mặt hàng quầy dưới mức tối thiểu</span>
-        </a>
-      </div>
+      {nhanh.length > 0 && (
+        <nav class="kho-tron-hang" aria-label="Thao tác nhanh">
+          {nhanh.map(t => (
+            <a href={t.link} class="kho-tron">
+              <span class="kho-tron-bt"><BieuTuong ten={t.bieuTuong} co={26} /></span>
+              <span>{t.ten}</span>
+            </a>
+          ))}
+        </nav>
+      )}
 
-      <div class="kho-nut-nhanh">
-        {k.duoc('nhap') && <a class="nb-nut" href="/noi-bo/kho/nhap/moi">Lập phiếu nhập</a>}
-        {k.duoc('pha_loc') && <a class="nb-nut" href="/noi-bo/kho/pha-loc/moi">Pha lóc</a>}
-        {k.duoc('van_hanh') && <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=chuyen">Chuyển ra quầy</a>}
-        {k.duoc('van_hanh') && <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=xuat_bep">Xuất bếp</a>}
-        {k.duoc('van_hanh') && <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=huy">Báo hủy</a>}
-        {k.duoc('van_hanh') && <a class="nb-nut phu" href="/noi-bo/kho/kiem-ke">Kiểm kê</a>}
-        <a class="nb-nut phu" href="/noi-bo/kho/ton">Xem tồn kho</a>
-      </div>
-
-      {canXuLy.length > 0 && (
+      {/* ============================ NV QUẦY ============================ */}
+      {laQuay && (
         <>
-          <h2>Cần xử lý trước — hết hạn sớm nhất ở trên</h2>
-          <div class="kho-bang-khung">
-            <table class="kho-bang">
-              <thead><tr><th>Mặt hàng</th><th>Lô</th><th>Ở đâu</th><th class="so">Còn</th><th>Hạn dùng</th>{k.duoc('van_hanh') && <th></th>}</tr></thead>
-              <tbody>
-                {canXuLy.slice(0, 20).map(t => (
-                  <tr>
-                    <td>{t.ten_hang}</td>
-                    <td class="kho-phu">{t.ma_lo}</td>
-                    <td>{t.ten_vi_tri}<span class="kho-phu"> · {TEN_LOAI_VI_TRI[t.loai_vi_tri]}</span></td>
-                    <td class="so">{dinhDangKg(t.so_kg)} kg{t.dem_goi && t.so_goi ? ` · ${t.so_goi} ${t.don_vi_goi}` : ''}</td>
-                    <td>
-                      <span class={`kho-han ${t.tinh_trang_han}`}>
-                        {t.so_ngay_con < 0 ? `quá ${-t.so_ngay_con} ngày` : t.so_ngay_con === 0 ? 'hết hạn hôm nay' : `còn ${t.so_ngay_con} ngày`}
-                      </span>
-                      <span class="kho-phu"> {dinhDangNgay(t.han_dung)}</span>
-                    </td>
-                    {k.duoc('van_hanh') && (
-                      <td>{t.tinh_trang_han === 'het_han'
-                        ? <a href={`/noi-bo/kho/xuat/moi?loai=huy&tu=${t.vi_tri_id}`}>Báo hủy</a>
-                        : <a href={`/noi-bo/kho/xuat/moi?loai=xuat_bep&tu=${t.vi_tri_id}`}>Xuất bếp</a>}</td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <a href="/noi-bo/kho/quay/yeu-cau" class="nb-nut kho-yc-lon">
+            <BieuTuong ten="chuyen" /> Yêu cầu hàng ra quầy
+          </a>
+
+          {n('hang_dang_chuyen') > 0 && (
+            <a href="/noi-bo/kho/quay/nhan" class:list={['kho-the-so', 'kho-yc-the', { do: n('hang_chuyen_qua_gio') > 0, vang: n('hang_chuyen_qua_gio') === 0 }]}>
+              <span class="kho-the-so-dau"><BieuTuong ten="quay" /> Hàng đang mang ra — bấm nhận</span>
+              <b>{n('hang_dang_chuyen')} <small>chuyến chờ quầy kiểm</small></b>
+              <small>{n('hang_chuyen_qua_gio') > 0 ? `${n('hang_chuyen_qua_gio')} chuyến đã quá giờ chưa bấm nhận` : 'Đếm đủ thì bấm "Đã nhận đủ", thiếu thì ghi số thực nhận.'}</small>
+              <em>Kiểm và nhận →</em>
+            </a>
+          )}
+
+          <div class:list={['kho-dai', { do: n('quay_chua_dem') > 0 || n('kiem_ke_tra_ve') > 0 }]}>
+            <BieuTuong ten="kiem_ke" />
+            {n('kiem_ke_tra_ve') > 0 ? <span><strong>Quản lý trả về phiếu đếm quầy</strong> — đếm lại rồi gửi.</span>
+              : n('quay_chua_dem') > 0 ? <span><strong>Hôm qua quầy chưa được đếm.</strong> Chưa nối iPOS nên số đếm là số bán.</span>
+              : <span>Đếm quầy cuối ngày nay trước khi về.</span>}
+            <a class="nb-nut phu" href="/noi-bo/kho/quay/dem">Đếm quầy</a>
           </div>
-          {canXuLy.length > 20 && <p class="kho-phu">Còn {canXuLy.length - 20} lô nữa — xem ở <a href="/noi-bo/kho/ton">Tồn kho</a>.</p>}
+
+          {hetHanQuay.length > 0 && (
+            <section class="kho-khoi do">
+              <h2><BieuTuong ten="canh_bao" /> Hết hạn — phải bỏ · {hetHanQuay.length}</h2>
+              <ul class="kho-dong-ds">
+                {hetHanQuay.map(t => (
+                  <li>
+                    <span><strong>{t.ten_hang}</strong><small>{t.dem_goi ? `${t.so_goi} ${t.don_vi_goi} · ` : ''}{dinhDangKg(t.so_kg)} kg · hạn {dinhDangNgayNgan(t.han_dung)}</small></span>
+                    <a class="nb-nut" href={`/noi-bo/kho/xuat/moi?loai=huy&tu=${t.vi_tri_id}&lo=${t.lo_id}`}>Báo hủy</a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          <section class="kho-khoi">
+            <h2><BieuTuong ten="quay" /> Xếp ra bán trước</h2>
+            {xep.length === 0 ? <p class="kho-phu">Hàng ở quầy đều còn hạn xa — không cần xếp lại.</p> : (
+              <ul class="kho-dong-ds">
+                {xep.map(x => (
+                  <li class:list={{ gap: x.gap }}>
+                    <span><strong>{x.ten}</strong><small>{x.cau}</small></span>
+                    {x.gap && <a class="nb-nut phu" href={`/noi-bo/kho/xuat/moi?loai=xuat_bep&tu=${x.truoc.vi_tri_id}&lo=${x.truoc.lo_id}`}>Đưa bếp</a>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          {quayThieu.length > 0 && (
+            <section class="kho-khoi">
+              <h2><BieuTuong ten="chuyen" /> Quầy sắp hết · {quayThieu.length}</h2>
+              <p class="kho-phu" style="margin:0 0 .3rem"><a href="/noi-bo/kho/quay/yeu-cau">Gửi yêu cầu cho thủ kho →</a> (đã điền sẵn số gói nên lấy)</p>
+              <ul class="kho-dong-ds">
+                {quayThieu.map(e => (
+                  <li>
+                    <span><strong>{e.ten}</strong><small>Còn {dinhDangKg(e.so)} kg bán được</small></span>
+                    <a class="nb-nut phu" href={`/noi-bo/kho/xuat/moi?loai=chuyen&mh=${e.ref_id}`}>Lấy thêm</a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </>
       )}
 
-      {quayThieu.length > 0 && (
+      {/* ============================ THỦ KHO ============================ */}
+      {vai === 'thu_kho' && (
         <>
-          <h2>Quầy thịt sắp hết</h2>
-          <ul class="nb-viec">
-            {quayThieu.map(q => (
-              <li><span class="dau chua">!</span>
-                <span><strong>{q.ten}</strong> — quầy còn {dinhDangKg(q.con_kg)} kg, mức tối thiểu {dinhDangKg(q.toi_thieu_kg)} kg</span></li>
-            ))}
-          </ul>
-          {k.duoc('van_hanh') && <p><a href="/noi-bo/kho/xuat/moi?loai=chuyen">Chuyển hàng từ kho ra quầy →</a></p>}
+          <div class="kho-o-so-luoi">
+            <a href="/noi-bo/kho/ton?han=het_han" class:list={['kho-o-so', { gap: n('het_han') > 0 }]}><b>{n('het_han')}</b><span>lô hết hạn</span></a>
+            <a href="/noi-bo/kho/ton?han=sap_het" class:list={['kho-o-so', { 'luu-y': n('sap_het_han') > 0 }]}><b>{n('sap_het_han')}</b><span>lô sắp hết hạn</span></a>
+            <a href="/noi-bo/kho/ton?duoi_muc=1" class:list={['kho-o-so', { 'luu-y': n('quay_duoi_muc') > 0 }]}><b>{n('quay_duoi_muc')}</b><span>món quầy sắp hết</span></a>
+            <a href="/noi-bo/kho/nhan-hang" class:list={['kho-o-so', { gap: n('nhap_bi_tra') > 0, 'luu-y': n('nhap_nhap') > 0 }]}><b>{n('nhap_nhap') + n('nhap_bi_tra')}</b><span>{n('nhap_bi_tra') > 0 ? `phiếu nhận hàng (${n('nhap_bi_tra')} bị trả về)` : 'phiếu nhận hàng chưa gửi'}</span></a>
+          </div>
+
+          {yeuCauCho.length > 0 && (
+            <section class="kho-khoi">
+              <h2><BieuTuong ten="chuyen" /> Quầy đang cần · {n('yeu_cau_quay')}</h2>
+              <ul class="kho-dong-ds">
+                {yeuCauCho.map(y => (
+                  <li>
+                    <span><strong>{y.ten_vi_tri}: {y.so_mon} món</strong><small>{y.so_phieu} · gửi lúc {dinhDangThoiDiem(y.created_at)}{y.ghi_chu ? ` · ${y.ghi_chu}` : ''}</small></span>
+                    <a class="nb-nut kho-yc-nut" href={`/noi-bo/kho/quay/yeu-cau/${y.id}`}>Mang ra</a>
+                  </li>
+                ))}
+              </ul>
+              {n('yeu_cau_quay') > yeuCauCho.length && <p><a href="/noi-bo/kho/quay/yeu-cau">Xem tất cả →</a></p>}
+            </section>
+          )}
         </>
+      )}
+
+      {(vai === 'thu_kho' || (laQuanLy && tab === 'theo-doi')) && (
+        viecNgay.length + viecSom.length === 0 ? (
+          <p class="nb-rong">Không có việc gì đang chờ. Tốt lắm!</p>
+        ) : (
+          <>
+            {viecNgay.length > 0 && (
+              <>
+                <h2>Làm ngay · {viecNgay.length}</h2>
+                <ul class="kho-sk-ds">{viecNgay.slice(0, 8).map(e => <DongSuKien e={e} />)}</ul>
+              </>
+            )}
+            {viecSom.length > 0 && (
+              <>
+                <h2>Nên làm sớm · {viecSom.length}</h2>
+                <ul class="kho-sk-ds">{viecSom.slice(0, 8).map(e => <DongSuKien e={e} />)}</ul>
+              </>
+            )}
+            {viecNgay.length + viecSom.length > 16 && <p><a href="/noi-bo/kho/viec">Xem tất cả việc →</a></p>}
+          </>
+        )
+      )}
+
+      {/* ============================ QUẢN LÝ / CHỦ ============================ */}
+      {laQuanLy && (
+        <>
+          {k.duoc('xem_gia') && (
+            <nav class="kho-the-chon" aria-label="Chọn bảng">
+              <a href="/noi-bo/kho" aria-current={tab === 'theo-doi' ? 'page' : undefined}>Cần theo dõi</a>
+              <a href="/noi-bo/kho?tab=quan-tri" aria-current={tab === 'quan-tri' ? 'page' : undefined}>Quản trị</a>
+            </nav>
+          )}
+
+          {tab === 'theo-doi' ? (
+            <div class="kho-the-luoi">
+              <a href="/noi-bo/kho/duyet" class:list={['kho-the-so', { do: soDuyet > 0 }]}>
+                <span class="kho-the-so-dau"><BieuTuong ten="duyet" /> Chờ bạn duyệt</span>
+                <b>{soDuyet}</b>
+                <small>{n('duyet_nhap')} phiếu nhập · {n('duyet_huy')} báo hủy · {n('duyet_kiem_ke')} kiểm kê</small>
+                <em>Chi tiết →</em>
+              </a>
+              <a href="/noi-bo/kho/ton?han=het_han" class:list={['kho-the-so', { do: n('het_han') > 0 }]}>
+                <span class="kho-the-so-dau"><BieuTuong ten="canh_bao" /> Hạn dùng</span>
+                <b>{n('het_han')} <small>hết hạn</small></b>
+                <small>{n('sap_het_han')} lô sắp hết hạn</small>
+                <em>Chi tiết →</em>
+              </a>
+              <a href="/noi-bo/kho/ton?duoi_muc=1" class:list={['kho-the-so', { vang: n('quay_duoi_muc') > 0 || n('quay_chua_dem') > 0 }]}>
+                <span class="kho-the-so-dau"><BieuTuong ten="quay" /> Quầy</span>
+                <b>{n('quay_duoi_muc')} <small>món sắp hết</small></b>
+                <small>{n('quay_chua_dem') > 0 ? 'Hôm qua CHƯA đếm quầy' : 'Quầy đã đếm'}</small>
+                <em>Chi tiết →</em>
+              </a>
+              {k.duoc('ke_toan') && (
+                <a href="/noi-bo/kho/cong-no?loc=qua_han" class:list={['kho-the-so', { do: n('cong_no_qua_han') > 0 }]}>
+                  <span class="kho-the-so-dau"><BieuTuong ten="cong_no" /> Công nợ</span>
+                  <b>{n('cong_no_qua_han')} <small>phiếu quá hạn</small></b>
+                  <small>{n('cong_no_7_ngay')} đến hạn 7 ngày · {n('chua_doi_chieu')} chưa đối chiếu</small>
+                  <em>Chi tiết →</em>
+                </a>
+              )}
+              {n('chuyen_nhan_thieu') > 0 && (
+                <a href="/noi-bo/kho/xuat" class="kho-the-so do">
+                  <span class="kho-the-so-dau"><BieuTuong ten="chuyen" /> Quầy nhận thiếu</span>
+                  <b>{n('chuyen_nhan_thieu')} <small>phiếu chờ xử lý</small></b>
+                  <small>Trả về kho hoặc ghi mất</small>
+                  <em>Chi tiết →</em>
+                </a>
+              )}
+              {n('pha_nhap') > 0 && (
+                <a href="/noi-bo/kho/pha-loc?loc=nhap" class="kho-the-so vang">
+                  <span class="kho-the-so-dau"><BieuTuong ten="dao" /> Pha lóc</span>
+                  <b>{n('pha_nhap')} <small>phiên còn nháp</small></b>
+                  <small>Chưa chốt thì kiểm kê kho bị chặn</small>
+                  <em>Chi tiết →</em>
+                </a>
+              )}
+            </div>
+          ) : cs === null ? (
+            <p class="nb-rong">Chưa đọc được số liệu quản trị.</p>
+          ) : (
+            <>
+              <p class="kho-phu">Từ {dinhDangNgay(cs.tu)} tới {dinhDangNgay(cs.den)}, so với cùng số ngày ngay trước đó.</p>
+              <div class="kho-the-luoi">
+                <a href="/noi-bo/kho/ton" class="kho-the-so">
+                  <span class="kho-the-so-dau"><BieuTuong ten="ton" /> Tồn kho</span>
+                  <b>{dinhDangTien(cs.gia_tri_ton_kho + cs.gia_tri_ton_quay)}</b>
+                  <small>Kho lạnh {dinhDangTien(cs.gia_tri_ton_kho)} · Quầy {dinhDangTien(cs.gia_tri_ton_quay)}</small>
+                  <small class:list={{ 'chu-do': cs.mh_het_quay > 0 }}>{cs.mh_het_quay} món quầy hết · {cs.mh_duoi_muc} dưới mức</small>
+                </a>
+                <a href="/noi-bo/kho/bao-cao?bao_cao=thu-hoi" class="kho-the-so">
+                  <span class="kho-the-so-dau"><BieuTuong ten="dao" /> Giá vốn & thu hồi</span>
+                  <b>{cs.gia_von_kg !== null ? `${dinhDangTien(cs.gia_von_kg)}/kg` : '—'}</b>
+                  <small>Giá vốn thịt thật · kỳ trước {cs.gia_von_kg_truoc !== null ? `${dinhDangTien(cs.gia_von_kg_truoc)}/kg` : '—'}</small>
+                  <small>Thu hồi {dinhDangPhanTram(cs.thu_hoi_pt)} ({cs.so_phien_pha} phiên) · kỳ trước {dinhDangPhanTram(cs.thu_hoi_pt_truoc)}</small>
+                </a>
+                <a href="/noi-bo/kho/bao-cao?bao_cao=hao-hut" class:list={['kho-the-so', { vang: cs.huy + cs.kiem_ke_thieu > 0 }]}>
+                  <span class="kho-the-so-dau"><BieuTuong ten="huy" /> Hao hụt</span>
+                  <b>{dinhDangTien(cs.huy + cs.kiem_ke_thieu)}</b>
+                  <small>Hủy {dinhDangTien(cs.huy)} · Thiếu khi kiểm kê {dinhDangTien(cs.kiem_ke_thieu)}</small>
+                  <small>Thừa khi kiểm kê {dinhDangTien(cs.kiem_ke_thua)}</small>
+                </a>
+                <a href="/noi-bo/kho/bao-cao?bao_cao=xuat-nhap-ton" class="kho-the-so">
+                  <span class="kho-the-so-dau"><BieuTuong ten="bao_cao" /> Chi phí thịt đã dùng</span>
+                  <b>{dinhDangTien(cs.chi_phi_thit)}</b>
+                  <small>Kỳ trước {dinhDangTien(cs.chi_phi_thit_truoc)}{thayDoiPt(cs.chi_phi_thit, cs.chi_phi_thit_truoc) !== null ? ` (${(thayDoiPt(cs.chi_phi_thit, cs.chi_phi_thit_truoc) ?? 0) > 0 ? '+' : ''}${thayDoiPt(cs.chi_phi_thit, cs.chi_phi_thit_truoc)}%)` : ''}</small>
+                  <small>Bán {dinhDangTien(cs.ban_gia_von)} · Bếp {dinhDangTien(cs.xuat_bep)}</small>
+                </a>
+                <div class="kho-the-so">
+                  <span class="kho-the-so-dau"><BieuTuong ten="cong_no" /> Chi phí thịt / doanh thu</span>
+                  <b>—</b>
+                  <small>Có số sau khi nối iPOS. Hiện tại: bán ước tính {dinhDangTien(cs.doanh_thu_uoc_tinh)} (giá bán × kg thiếu ở quầy).</small>
+                </div>
+              </div>
+            </>
+          )}
+        </>
+      )}
+
+      {/* ============================ KẾ TOÁN ============================ */}
+      {laKeToan && (
+        <div class="kho-the-luoi">
+          <a href="/noi-bo/kho/duyet" class:list={['kho-the-so', { do: n('duyet_nhap') > 0 }]}>
+            <span class="kho-the-so-dau"><BieuTuong ten="duyet" /> Phiếu nhập chờ điền giá</span>
+            <b>{n('duyet_nhap')} <small>phiếu</small></b>
+            <small>Điền giá từ ảnh hóa đơn rồi duyệt</small>
+            <em>Chi tiết →</em>
+          </a>
+          <a href="/noi-bo/kho/cong-no?loc=qua_han" class:list={['kho-the-so', { do: noQuaHan > 0 }]}>
+            <span class="kho-the-so-dau"><BieuTuong ten="canh_bao" /> Quá hạn</span>
+            <b>{dinhDangTien(noQuaHan)}</b>
+            <small>{n('cong_no_qua_han')} phiếu</small>
+            <em>Chi tiết →</em>
+          </a>
+          <a href="/noi-bo/kho/cong-no?loc=den_han" class:list={['kho-the-so', { vang: n('cong_no_7_ngay') > 0 }]}>
+            <span class="kho-the-so-dau"><BieuTuong ten="lich" /> Đến hạn 7 ngày</span>
+            <b>{n('cong_no_7_ngay')} <small>phiếu</small></b>
+            <em>Chi tiết →</em>
+          </a>
+          <a href="/noi-bo/kho/cong-no?loc=chua_doi_chieu" class:list={['kho-the-so', { vang: n('chua_doi_chieu') > 0 }]}>
+            <span class="kho-the-so-dau"><BieuTuong ten="viec" /> Chưa đối chiếu hóa đơn</span>
+            <b>{n('chua_doi_chieu')} <small>phiếu</small></b>
+            <em>Chi tiết →</em>
+          </a>
+          <a href="/noi-bo/kho/cong-no" class="kho-the-so">
+            <span class="kho-the-so-dau"><BieuTuong ten="cong_no" /> Đang nợ nhà cung cấp</span>
+            <b>{dinhDangTien(conNo)}</b>
+            <small>{congNo.length} nhà cung cấp</small>
+            <em>Chi tiết →</em>
+          </a>
+        </div>
       )}
     </>
   )}
 
-  {k.chiNhanh && conBuoc && (
+  {hienBuoc && (
     <>
       <h2>Các bước bắt đầu</h2>
       <ul class="nb-viec">
@@ -212,4 +409,10 @@ const conBuoc = buoc.some(b => !b.xong);
       </ul>
     </>
   )}
-</NoiBo>
+</Kho>
+
+<style>
+  .kho-yc-lon { width: 100%; min-height: 56px; font-size: 1.1rem; gap: .5rem; margin-bottom: 1rem; }
+  .kho-yc-the { margin-bottom: 1rem; }
+  .kho-yc-nut { min-height: 48px !important; font-size: .95rem !important; }
+</style>

@@ -10,6 +10,11 @@
  * (nhớ bằng cookie). Hiện chỉ có một quán nên chủ sẽ không phải chọn.
  *
  * Quyền ở đây chỉ để ẩn nút. Database (kho_cn_duoc, kho_duoc) mới là nơi chặn.
+ *
+ * Máy tính bảng dùng chung (GĐ5d, lib/kho/may-chung.ts): kiểm TRƯỚC mọi thứ
+ * khác — quá giờ thì khóa máy và chuyển về /noi-bo/kho/may (POST quá ân hạn:
+ * "phiếu chưa được ghi"). Tài khoản máy (vai may_*) chỉ vào được
+ * /noi-bo/kho/may/*: trang kho khác chuyển về đó, không đọc gì thêm.
  */
 
 import type { AstroGlobal } from 'astro';
@@ -17,6 +22,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NhanSu } from '../phien';
 import { duoc as vaiDuoc, cauLoiKho, type KetQua, type ViecKho } from './chung.ts';
 import { docBao, ghiBao } from './bao.ts';
+import type { SoViec } from './dieu-huong.ts';
+import { kiemMayChung, laVaiMay, laDuongMay, DUONG_MAY, type CheDoMay } from './may-chung.ts';
 
 export interface ChiNhanhKho { id: string; ma: string; ten: string }
 
@@ -27,10 +34,14 @@ export interface TrangKho {
   cacChiNhanh: ChiNhanhKho[];
   /** Chi nhánh đã bấm "Bắt đầu dùng kho" chưa (có dòng kho_cai_dat). */
   daKhoiTao: boolean;
+  /** Số đỏ trên menu (kho_dem_viec, 0030). null = chưa đọc được — menu hiện không có số. */
+  viec: SoViec | null;
   loiDoc: string | null;
   /** Câu báo từ lần chuyển hướng trước, nếu có. */
   bao: KetQua | null;
   duoc: (viec: ViecKho) => boolean;
+  /** Đang ở máy tính bảng dùng chung (GĐ5d). null = máy thường. */
+  may: CheDoMay | null;
 }
 
 const COOKIE_CN = 'bt_kho_cn';
@@ -40,24 +51,52 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
   if (!phien) return Astro.redirect('/noi-bo/dang-nhap', 302);
   const { client, nhanSu } = phien;
 
+  // Máy dùng chung: tự khóa khi quá giờ, dời mốc hoạt động khi còn giờ.
+  const may = await kiemMayChung(Astro, nhanSu);
+  if (may instanceof Response) return may;
+
+  // Tài khoản máy không đọc được gì trong kho — chỉ màn "Ai đang dùng máy?".
+  if (laVaiMay(nhanSu.vai_tro)) {
+    if (!laDuongMay(Astro.url.pathname)) return Astro.redirect(DUONG_MAY, 302);
+    return {
+      client, nhanSu, chiNhanh: null, cacChiNhanh: [], daKhoiTao: false, viec: null, loiDoc: null,
+      bao: docBao(Astro.cookies), duoc: (viec: ViecKho) => vaiDuoc(nhanSu.vai_tro, viec), may,
+    };
+  }
+
   // Thu ngân, marketing: không dùng kho. Trả về trang chủ nội bộ thay vì một
   // trang toàn ô trống.
   if (!vaiDuoc(nhanSu.vai_tro, 'xem')) return Astro.redirect('/noi-bo', 302);
 
   let cacChiNhanh: ChiNhanhKho[] = [];
   let loiDoc: string | null = null;
-  try {
-    const { data, error } = await client.from('chi_nhanh').select('id, ma, ten').order('ma');
-    if (error) throw error;
-    cacChiNhanh = (data ?? []) as ChiNhanhKho[];
-  } catch (e) {
-    loiDoc = cauLoiKho(e, 'Không đọc được danh sách chi nhánh.');
-  }
+  const docChiNhanh = async () => {
+    try {
+      const { data, error } = await client.from('chi_nhanh').select('id, ma, ten').order('ma');
+      if (error) throw error;
+      cacChiNhanh = (data ?? []) as ChiNhanhKho[];
+    } catch (e) {
+      loiDoc = cauLoiKho(e, 'Không đọc được danh sách chi nhánh.');
+    }
+  };
+
+  // Số đỏ trên menu và "đã khởi tạo kho chưa" cùng một lần gọi (kho_dem_viec).
+  // Nhân sự thường đã biết chi nhánh của mình, nên chạy SONG SONG với việc đọc
+  // danh sách chi nhánh — không thêm lượt chờ nào so với trước.
+  let viec: SoViec | null = null;
+  const docViec = async (cn: string) => {
+    try {
+      const { data, error } = await client.rpc('kho_dem_viec', { p_chi_nhanh_id: cn });
+      if (!error && data && typeof data === 'object') viec = data as SoViec;
+    } catch { /* số đỏ chỉ để nhắc — thiếu thì menu không có số */ }
+  };
 
   let chiNhanh: ChiNhanhKho | null = null;
   if (nhanSu.chi_nhanh_id) {
+    await Promise.all([docChiNhanh(), docViec(nhanSu.chi_nhanh_id)]);
     chiNhanh = cacChiNhanh.find(c => c.id === nhanSu.chi_nhanh_id) ?? null;
   } else {
+    await docChiNhanh();
     const thamSo = Astro.url.searchParams.get('cn');
     const chon = thamSo ?? Astro.cookies.get(COOKIE_CN)?.value;
     chiNhanh = cacChiNhanh.find(c => c.ma === chon) ?? cacChiNhanh[0] ?? null;
@@ -67,10 +106,13 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
         path: '/noi-bo/kho', maxAge: 60 * 60 * 24 * 60,
       });
     }
+    if (chiNhanh) await docViec(chiNhanh.id);
   }
 
-  let daKhoiTao = false;
-  if (chiNhanh) {
+  let daKhoiTao = !!chiNhanh && (viec as SoViec | null)?.khoi_tao === true;
+  if (chiNhanh && viec === null) {
+    // kho_dem_viec không trả lời (database chưa chạy 0030, mạng chập chờn):
+    // hỏi thẳng bảng cài đặt như trước, để trang không đòi "Bắt đầu dùng kho" lần nữa.
     try {
       const { data } = await client
         .from('kho_cai_dat').select('chi_nhanh_id').eq('chi_nhanh_id', chiNhanh.id).maybeSingle();
@@ -79,9 +121,10 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
   }
 
   return {
-    client, nhanSu, chiNhanh, cacChiNhanh, daKhoiTao, loiDoc,
+    client, nhanSu, chiNhanh, cacChiNhanh, daKhoiTao, viec, loiDoc,
     bao: docBao(Astro.cookies),
     duoc: (viec: ViecKho) => vaiDuoc(nhanSu.vai_tro, viec),
+    may,
   };
 }
 
@@ -114,6 +157,6 @@ export async function khoiTaoKho(client: SupabaseClient, chiNhanhId: string): Pr
   const { data, error } = await client.rpc('kho_khoi_tao', { p_chi_nhanh_id: chiNhanhId });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   return { ok: true, cau: Number(data) > 0
-    ? 'Đã bắt đầu dùng kho: tạo Kho lạnh, Quầy thịt, chỗ Hàng chờ hủy và các lý do mặc định. Đổi tên được trong Cài đặt kho.'
+    ? 'Đã bắt đầu dùng kho: tạo Kho lạnh, Quầy thịt, chỗ Hàng chờ hủy và các lý do mặc định. Đổi tên được trong Thiết lập kho.'
     : 'Kho đã được khởi tạo từ trước — không có gì cần tạo thêm.' };
 }

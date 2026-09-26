@@ -4,22 +4,27 @@
  *
  * Danh mục lớn (gần như mọi phần con bò), nên có ba đường nhập:
  *   1. Tạo danh mục mẫu — một lần, khi danh mục còn trống
- *   2. Dán từ Excel — nhiều dòng một lúc, trùng mã thì cập nhật
+ *   2. Dán từ Excel — nhiều dòng một lúc. Bấm "Xem trước" thấy đủ thêm mới /
+ *      cập nhật (cũ → mới) / lỗi; chưa ghi gì cho tới khi bấm "Xác nhận nhập".
+ *      Ô trống = giữ giá trị cũ; khớp theo Mã, không có Mã thì theo Tên.
  *   3. Thêm / sửa từng mặt hàng
  * Sửa một mặt hàng: bấm "Sửa" → form hiện ở đầu trang (?sua=<id>), để trang
  * danh sách không phải chở cả trăm form.
+ *
+ * "Sau pha để ở" (GĐ5c, 0033): gói quét nhãn lúc pha lóc tự vào kho lạnh hay
+ * quầy theo món. Để trống = kho lạnh. Dán Excel có cột "Sau pha để ở".
  */
-import NoiBo from '../../../../layouts/NoiBo.astro';
-import DieuHuongKho from '../../../../components/kho/DieuHuongKho.astro';
+import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import FormMatHang from '../../../../components/kho/FormMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import {
   docMatHang, docGiaTriThuHoi, docDinhNghia, luuMatHang, nhapCsvMatHang, taoDanhMucMau,
-  type MatHang, type GiaTriFormMatHang,
+  xemTruocDanMatHang, chuKyDan, TEN_COT_DAN,
+  type MatHang, type GiaTriFormMatHang, type XemTruocDan, type DongGhiMatHang, type CotDan,
 } from '../../../../lib/kho/danh-muc.ts';
 import {
-  boDau, cauLoiKho, dinhDangTien, TEN_LOAI_MAT_HANG, TEN_XU_LY, type KetQua,
+  boDau, cauLoiKho, dinhDangKg, dinhDangTien, TEN_LOAI_MAT_HANG, TEN_NOI_DE_SAU_PHA, TEN_XU_LY, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { docTruongThem, type DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
 
@@ -45,23 +50,46 @@ try {
 let bao: KetQua | null = k.bao;
 let nhapLai: FormData | null = null;
 let csvLai = '';
+// Dán từ Excel: bước 1 "Xem trước" chỉ so, không ghi; bước 2 "Xác nhận nhập"
+// gửi lại đúng nội dung đó (ô ẩn) kèm chữ ký của bản xem trước.
+let xemTruoc: XemTruocDan | null = null;
 const form = await docFormGui(Astro);
 if (form) {
   const viec = String(form.get('viec') ?? '');
-  let kq: KetQua;
+  let kq: KetQua | null = null;
   if (viec === 'luu') {
     const id = String(form.get('id') ?? '');
     kq = await luuMatHang(k.client, form, dinhNghia, matHang.find(m => m.id === id));
     if (!kq.ok) nhapLai = form;
-  } else if (viec === 'csv') {
+  } else if (viec === 'xem_truoc') {
     csvLai = String(form.get('noi_dung') ?? '');
-    kq = await nhapCsvMatHang(k.client, csvLai);
+    if (loiDoc) kq = { ok: false, cau: 'Chưa đọc được danh mục hiện tại nên chưa so được — tải lại trang rồi bấm Xem trước lần nữa.' };
+    else if (!csvLai.trim()) kq = { ok: false, cau: 'Ô dán đang trống — chọn các ô trong Excel, sao chép rồi dán vào.' };
+    else xemTruoc = xemTruocDanMatHang(matHang, csvLai);
+  } else if (viec === 'nhap_excel') {
+    csvLai = String(form.get('noi_dung') ?? '');
+    const r = await nhapCsvMatHang(k.client, csvLai, String(form.get('chu_ky') ?? ''));
+    kq = { ok: r.ok, cau: r.cau };
+    xemTruoc = r.xemTruoc ?? null;
   } else if (viec === 'mau') {
     kq = await taoDanhMucMau(k.client);
   } else kq = { ok: false, cau: 'Việc không hợp lệ.' };
-  if (kq.ok) return chuyenHuong(Astro, `/noi-bo/kho/cai-dat/mat-hang${locLoai ? `?loai=${locLoai}` : ''}`, kq);
-  bao = kq;
+  if (kq?.ok) return chuyenHuong(Astro, `/noi-bo/kho/cai-dat/mat-hang${locLoai ? `?loai=${locLoai}` : ''}`, kq);
+  if (kq) bao = kq;
 }
+const coThayDoi = !!xemTruoc && (xemTruoc.them.length > 0 || xemTruoc.sua.length > 0);
+const choXacNhan = !!xemTruoc && coThayDoi && xemTruoc.loi.length === 0;
+/** Giá trị một ô trong bảng xem trước. */
+const hienO = (c: CotDan, v: DongGhiMatHang[CotDan]): string => {
+  if (c === 'noi_de_sau_pha') return TEN_NOI_DE_SAU_PHA[String(v ?? 'kho')] ?? String(v);
+  if (v === null || v === '') return 'trống';
+  if (c === 'gia_ban_kg') return dinhDangTien(v as number);
+  if (c === 'han_dung_ngay') return `${v} ngày`;
+  if (c === 'ton_toi_thieu_kg') return `${dinhDangKg(v as number)} kg`;
+  if (c === 'loai') return TEN_LOAI_MAT_HANG[v as string] ?? String(v);
+  return String(v);
+};
+const COT_MOI: CotDan[] = ['nhom', 'han_dung_ngay', 'gia_ban_kg', 'ma_can', 'ton_toi_thieu_kg', 'noi_de_sau_pha'];
 
 const tuDb = (m: MatHang): GiaTriFormMatHang => ({
   id: m.id, ma: m.ma, ten: m.ten, ten_phu: m.ten_phu ?? '', nhom: m.nhom ?? '', loai: m.loai,
@@ -70,6 +98,7 @@ const tuDb = (m: MatHang): GiaTriFormMatHang => ({
   gia_ban_kg: m.gia_ban_kg !== null ? m.gia_ban_kg.toLocaleString('vi-VN') : '',
   xu_ly_mac_dinh: m.xu_ly_mac_dinh, ma_can: m.ma_can ?? '',
   ton_toi_thieu_kg: m.ton_toi_thieu_kg !== null ? String(m.ton_toi_thieu_kg).replace('.', ',') : '',
+  noi_de_sau_pha: m.noi_de_sau_pha === 'quay' ? 'quay' : '',
   thu_tu: String(m.thu_tu), dang_dung: m.dang_dung, truong_them: m.truong_them ?? {},
   gia_tri_thu_hoi_kg: thuHoi.get(m.id)?.toLocaleString('vi-VN') ?? '',
 });
@@ -80,14 +109,15 @@ const tuForm = (f: FormData, id?: string): GiaTriFormMatHang => {
     id, ma: g('ma'), ten: g('ten'), ten_phu: g('ten_phu'), nhom: g('nhom'), loai: g('loai') || 'phan_cat',
     dem_goi: g('dem_goi') !== 'khong', don_vi_goi: g('don_vi_goi'), han_dung_ngay: g('han_dung_ngay'),
     canh_bao_truoc_ngay: g('canh_bao_truoc_ngay'), gia_ban_kg: g('gia_ban_kg'), xu_ly_mac_dinh: g('xu_ly_mac_dinh'),
-    ma_can: g('ma_can'), ton_toi_thieu_kg: g('ton_toi_thieu_kg'), thu_tu: g('thu_tu'),
+    ma_can: g('ma_can'), ton_toi_thieu_kg: g('ton_toi_thieu_kg'), noi_de_sau_pha: g('noi_de_sau_pha') === 'quay' ? 'quay' : '',
+    thu_tu: g('thu_tu'),
     dang_dung: g('dang_dung') !== 'khong', truong_them: tt, gia_tri_thu_hoi_kg: g('gia_tri_thu_hoi_kg'),
   };
 };
 const TRONG: GiaTriFormMatHang = {
   ma: '', ten: '', ten_phu: '', nhom: '', loai: locLoai || 'phan_cat', dem_goi: true, don_vi_goi: '',
   han_dung_ngay: '', canh_bao_truoc_ngay: '', gia_ban_kg: '', xu_ly_mac_dinh: 'nhap_kho', ma_can: '',
-  ton_toi_thieu_kg: '', thu_tu: '', dang_dung: true, truong_them: {}, gia_tri_thu_hoi_kg: '',
+  ton_toi_thieu_kg: '', noi_de_sau_pha: '', thu_tu: '', dang_dung: true, truong_them: {}, gia_tri_thu_hoi_kg: '',
 };
 
 const idLoi = nhapLai ? String(nhapLai.get('id') ?? '') : '';
@@ -101,11 +131,90 @@ const ds = matHang.filter(m =>
   && (!timBoDau || boDau(`${m.ten} ${m.ma} ${m.ten_phu ?? ''} ${m.nhom ?? ''}`).toLowerCase().includes(timBoDau)));
 const coXemGia = k.duoc('xem_gia');
 ---
-<NoiBo tieuDe="Mặt hàng" nhanSu={k.nhanSu}>
+<Kho k={k} huongDan="mat-hang" tieuDe="Mặt hàng" rong>
   <h1>Mặt hàng</h1>
-  <DieuHuongKho vai={k.nhanSu.vai_tro} chiNhanh={k.chiNhanh} cacChiNhanh={k.cacChiNhanh} />
-  <p><a href="/noi-bo/kho/cai-dat">← Cài đặt kho</a></p>
+  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {xemTruoc && (
+    <section class="nb-the" aria-labelledby="xem-truoc">
+      <h2 id="xem-truoc" style="margin-top:0">Xem trước bảng dán</h2>
+      <p class="dan-dem">
+        {xemTruoc.them.length > 0 && <span class="dan-nhan them">{xemTruoc.them.length} thêm mới</span>}
+        {xemTruoc.sua.length > 0 && <span class="dan-nhan sua">{xemTruoc.sua.length} cập nhật</span>}
+        {xemTruoc.giu > 0 && <span class="dan-nhan giu">{xemTruoc.giu} giữ nguyên</span>}
+        {xemTruoc.loi.length > 0 && <span class="dan-nhan loi">{xemTruoc.loi.length} lỗi</span>}
+      </p>
+      {xemTruoc.loi.length > 0 && (
+        <div class="nb-bao loi" role="alert">
+          <p><strong>Chưa nhập được.</strong> Sửa những chỗ này trong ô dán bên dưới rồi bấm "Xem trước" lại:</p>
+          <ul class="dan-loi">
+            {xemTruoc.loi.slice(0, 30).map(l => <li>{l}</li>)}
+          </ul>
+          {xemTruoc.loi.length > 30 && <p>… và {xemTruoc.loi.length - 30} lỗi khác.</p>}
+        </div>
+      )}
+      {xemTruoc.boQua.length > 0 && (
+        <p class="kho-phu">Bỏ qua cột không hiểu: {xemTruoc.boQua.join(', ')}.</p>
+      )}
+      {!coThayDoi ? (
+        xemTruoc.loi.length === 0 && <p class="nb-rong">Không có gì thay đổi — danh mục đã đúng như bảng dán.</p>
+      ) : (
+        <div class="kho-bang-khung">
+          <table class="kho-bang">
+            <thead><tr><th>Mặt hàng</th><th>Sẽ thay đổi</th></tr></thead>
+            <tbody>
+              {xemTruoc.sua.map(x => (
+                <tr>
+                  <td>
+                    <span class="dan-nhan sua">Cập nhật</span><br />
+                    <strong>{x.ten}</strong><br />
+                    <span class="kho-phu">{x.ma}{!x.dang_dung ? ' · ngừng dùng' : ''}</span>
+                  </td>
+                  <td>
+                    <ul class="dan-doi">
+                      {x.cot_doi.map(c => (
+                        <li>{TEN_COT_DAN[c]}: <del>{hienO(c, x.truoc[c])}</del> → <ins>{hienO(c, x.sau[c])}</ins></li>
+                      ))}
+                    </ul>
+                  </td>
+                </tr>
+              ))}
+              {xemTruoc.them.map(t => (
+                <tr>
+                  <td>
+                    <span class="dan-nhan them">Thêm mới</span><br />
+                    <strong>{t.ten}</strong><br />
+                    <span class="kho-phu">{t.ma} · {TEN_LOAI_MAT_HANG[t.loai]}</span>
+                  </td>
+                  <td>
+                    {COT_MOI.some(c => t[c] !== null) ? (
+                      <ul class="dan-doi">
+                        {COT_MOI.filter(c => t[c] !== null).map(c => (
+                          <li>{TEN_COT_DAN[c]}: <ins>{hienO(c, t[c])}</ins></li>
+                        ))}
+                      </ul>
+                    ) : <span class="kho-phu">Chỉ có tên — điền giá, hạn dùng sau.</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {choXacNhan ? (
+        <form method="POST" class="kho-thanh-nut dinh">
+          <input type="hidden" name="viec" value="nhap_excel" />
+          <input type="hidden" name="chu_ky" value={chuKyDan(xemTruoc)} />
+          <textarea name="noi_dung" hidden aria-hidden="true">{csvLai}</textarea>
+          <button type="submit" class="nb-nut">Xác nhận nhập</button>
+          <a class="nb-nut phu" href="#dan-excel">Sửa lại bảng dán</a>
+        </form>
+      ) : (
+        <p style="margin-bottom:0"><a href="#dan-excel">Sửa lại bảng dán ↓</a></p>
+      )}
+    </section>
+  )}
 
   {gtSua && (
     <>
@@ -132,21 +241,27 @@ const coXemGia = k.duoc('xem_gia');
     </div>
   </details>
 
-  <details class="nb-the" open={!!csvLai}>
+  <details class="nb-the" id="dan-excel" open={!!csvLai}>
     <summary style="cursor:pointer;font-weight:700">Dán nhiều mặt hàng từ Excel</summary>
     <form method="POST" style="margin-top:1rem">
-      <input type="hidden" name="viec" value="csv" />
-      <p class="nb-dan" style="font-size:.88rem">
-        Mỗi dòng một mặt hàng, các cột theo thứ tự:
-        <strong>Tên · Loại · Nhóm · Hạn dùng (ngày) · Giá bán/kg · Mã cân · Mã</strong>.
-        Chỉ cột Tên bắt buộc. Loại ghi <em>tảng</em>, <em>phần cắt</em> hoặc <em>phụ phẩm</em>.
-        Chọn các ô trong Excel rồi dán thẳng vào đây. Trùng mã thì cập nhật mặt hàng cũ.
-      </p>
+      <input type="hidden" name="viec" value="xem_truoc" />
+      <div class="nb-dan" style="font-size:.88rem">
+        <p>Trong Excel chọn các ô (nên chọn cả <strong>dòng tiêu đề</strong>), sao chép rồi dán vào đây.
+          Có dòng tiêu đề thì các cột xếp thứ tự nào cũng được. Tiêu đề hiểu được:{' '}
+          <strong>Tên · Loại · Nhóm · Hạn dùng · Giá bán · Mã cân · Mã · Quầy tối thiểu kg · Sau pha để ở</strong>.
+          Không có dòng tiêu đề thì cột phải theo đúng thứ tự đó.</p>
+        <p>Mặt hàng đã có (cùng Mã, hoặc cùng Tên khi không ghi Mã) thì được cập nhật.{' '}
+          <strong>Ô để trống = giữ nguyên giá trị cũ.</strong> Tên chưa có thì thêm mặt hàng mới.
+          Loại ghi <em>tảng</em>, <em>phần cắt</em> hoặc <em>phụ phẩm</em>.
+          Sau pha để ở ghi <em>kho lạnh</em> hoặc <em>quầy</em>.</p>
+        <p>Bấm "Xem trước" để thấy những gì sẽ đổi — chưa lưu gì cho tới khi bấm "Xác nhận nhập".
+          Muốn xóa hẳn một giá trị (ví dụ bỏ mã cân) thì bấm "Sửa" ở từng mặt hàng.</p>
+      </div>
       <label class="nb-o">
-        <span>Nội dung</span>
-        <textarea name="noi_dung" rows="8" placeholder={'Thăn ngoại cắt lát\tphần cắt\tThăn\t3\t650000\t101\nNạc vai nguyên tảng\ttảng\tVai\t30'}>{csvLai}</textarea>
+        <span>Nội dung dán</span>
+        <textarea name="noi_dung" rows="8" placeholder={'Tên\tLoại\tGiá bán\tMã cân\nThăn ngoại cắt lát\tphần cắt\t650000\t101\nNạc vai nguyên tảng\ttảng'}>{csvLai}</textarea>
       </label>
-      <button type="submit" class="nb-nut">Nhập danh sách</button>
+      <button type="submit" class="nb-nut">Xem trước</button>
     </form>
   </details>
 
@@ -174,7 +289,7 @@ const coXemGia = k.duoc('xem_gia');
               <td class="so">{m.gia_ban_kg !== null ? dinhDangTien(m.gia_ban_kg) : (m.loai === 'phan_cat' ? <span class="kho-han sap_het">chưa có</span> : '—')}</td>
               <td class="so">{m.han_dung_ngay ? `${m.han_dung_ngay} ngày` : '—'}</td>
               <td>{m.ma_can ?? '—'}</td>
-              <td>{TEN_XU_LY[m.xu_ly_mac_dinh]}{coXemGia && m.loai === 'phu_pham' && thuHoi.get(m.id) ? <><br /><span class="kho-phu">{dinhDangTien(thuHoi.get(m.id))}/kg</span></> : ''}</td>
+              <td>{TEN_XU_LY[m.xu_ly_mac_dinh]}{m.loai !== 'tang' && m.noi_de_sau_pha === 'quay' ? <><br /><span class="kho-phu">sau pha để ở quầy</span></> : ''}{coXemGia && m.loai === 'phu_pham' && thuHoi.get(m.id) ? <><br /><span class="kho-phu">{dinhDangTien(thuHoi.get(m.id))}/kg</span></> : ''}</td>
               <td><a href={`/noi-bo/kho/cai-dat/mat-hang?sua=${m.id}${locLoai ? `&loai=${locLoai}` : ''}`}>Sửa</a></td>
             </tr>
           ))}
@@ -182,4 +297,19 @@ const coXemGia = k.duoc('xem_gia');
       </table>
     </div>
   )}
-</NoiBo>
+</Kho>
+
+<style>
+  .dan-dem { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .dan-nhan { display: inline-block; font-size: .72rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; white-space: nowrap; }
+  .dan-nhan.them { background: #E9F5EE; color: #1F7A4C; }
+  .dan-nhan.sua { background: var(--mu-tat); color: var(--than); }
+  .dan-nhan.giu { background: var(--kem-sau); color: var(--muc-nhat); }
+  .dan-nhan.loi { background: var(--do); color: #fff; }
+  .dan-loi { margin: .5rem 0 0; padding-left: 1.2rem; }
+  .dan-doi { margin: 0; padding-left: 1.1rem; }
+  .dan-doi li + li { margin-top: .2rem; }
+  /* Cũ gạch ngang, mới tô vàng — nhìn là thấy ô nào đổi. */
+  .dan-doi del { color: var(--muc-nhat); }
+  .dan-doi ins { text-decoration: none; font-weight: 700; background: #FFF5DC; padding: 0 .25rem; border-radius: 3px; }
+</style>

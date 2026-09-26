@@ -32,14 +32,17 @@ let viTri = {};
 let nccA, nccB;
 const lyDo = {};
 
-/** Nhập hàng qua đúng luồng; trả id phiếu và các lô. */
+/**
+ * Nhập hàng qua đúng luồng; trả id phiếu và các lô. Phiếu có giá, thuế, chi
+ * phí nên quản lý (vai xem giá) lưu — thủ kho không gửi được tiền (0031).
+ */
 async function nhapHang({ ncc = null, loai = 'mua', ngayNhap = homNay, vt = viTri.kho, thue = 0, chiPhi = 0, dong }) {
-  const luu = await duoi(UID.thuKhoA, `
+  const luu = await duoi(UID.qlA, `
     select * from kho_luu_phieu_nhap(
       p_id => null, p_chi_nhanh_id => $1, p_ma_gui => $2, p_phien_ban => null,
       p_loai => $3, p_nha_cung_cap_id => $4, p_vi_tri_id => $5, p_ngay_nhap => $6::date,
       p_so_hoa_don => null, p_ngay_hoa_don => null, p_han_thanh_toan => null,
-      p_tien_thue => $7, p_chi_phi_khac => $8, p_ghi_chu => null, p_anh => '{}'::text[],
+      p_tien_thue => $7, p_chi_phi_khac => $8, p_ghi_chu => null, p_anh => array[$1::uuid::text || '/nhap/' || gen_random_uuid() || '/1.jpg'],
       p_truong_them => '{}'::jsonb, p_dong => $9::jsonb)`,
     [cnA.id, maGui(), loai, ncc, vt, ngayNhap, thue, chiPhi, JSON.stringify(dong)]);
   if (luu.loi) throw new Error(luu.loi);
@@ -400,7 +403,8 @@ await nhom('10 · AI THẤY GÌ', async () => {
   ok('NV quầy KHÔNG thấy khoản thanh toán', await dem(UID.nvQuayA, 'kho_thanh_toan') === 0);
   ok('NV quầy KHÔNG thấy phân bổ', await dem(UID.nvQuayA, 'kho_thanh_toan_phan_bo') === 0);
   ok('Kế toán thấy các khoản', await dem(UID.keToanA, 'kho_thanh_toan') > 0);
-  ok('Thủ kho xem được (vai xem giá) nhưng không ghi được', await dem(UID.thuKhoA, 'kho_thanh_toan') > 0);
+  ok('Thủ kho KHÔNG thấy khoản thanh toán (0031: thủ kho không thấy tiền)', await dem(UID.thuKhoA, 'kho_thanh_toan') === 0);
+  ok('Thủ kho KHÔNG thấy công nợ', await dem(UID.thuKhoA, 'kho_v_cong_no_phieu') === 0);
   ok('Marketing KHÔNG thấy', await dem(UID.mktA, 'kho_thanh_toan') === 0);
   // Quét lại mọi bảng / view kho KHI ĐÃ CÓ tiền trả, giảm trừ, trả hàng.
   const { rows: cot } = await db.query(`
@@ -409,12 +413,14 @@ await nhom('10 · AI THẤY GÌ', async () => {
     where c.table_schema = 'public' and c.table_name like 'kho\\_%'
       and c.data_type in ('bigint', 'numeric', 'integer')
       and c.column_name ~ '(gia_von|gia_tri|thanh_tien|don_gia|so_tien|tien_|chi_phi|phai_tra|da_tra|con_no|giam_tru|no_qua_han)'`);
-  const lo = [];
-  for (const { table_name, column_name } of cot) {
-    const r = await duoi(UID.nvQuayA, `select count(*)::int as n from ${table_name} where ${column_name} is not null`);
-    if (r.loi === null && r.rows[0].n > 0) lo.push(`${table_name}.${column_name}`);
+  for (const [ten, uid] of [['NV quầy', UID.nvQuayA], ['Thủ kho', UID.thuKhoA]]) {
+    const lo = [];
+    for (const { table_name, column_name } of cot) {
+      const r = await duoi(uid, `select count(*)::int as n from ${table_name} where ${column_name} is not null`);
+      if (r.loi === null && r.rows[0].n > 0) lo.push(`${table_name}.${column_name}`);
+    }
+    ok(`${ten} không đọc được cột tiền nào khi đã có công nợ (${cot.length} cột được soát)`, lo.length === 0 && cot.length > 20, lo.join(', '));
   }
-  ok(`NV quầy không đọc được cột tiền nào khi đã có công nợ (${cot.length} cột được soát)`, lo.length === 0 && cot.length > 20, lo.join(', '));
   const thNv = await baoCao(UID.nvQuayA, 'kho_bao_cao_thu_hoi', await ngay(-60), homNay);
   ok('NV quầy chạy báo cáo thu hồi: rỗng (không thấy phiên pha lóc)', thNv.loi === null && thNv.rows.length === 0);
 

@@ -14,23 +14,31 @@
 
 export type VaiTro =
   | 'chu_so_huu' | 'quan_ly' | 'thu_ngan' | 'marketing'
-  | 'thu_kho' | 'nhan_vien_quay' | 'ke_toan';
+  | 'thu_kho' | 'nhan_vien_quay' | 'ke_toan'
+  // Hai vai máy (0029): tablet dùng chung (GĐ5d) và máy đồng bộ iPOS (GĐ7a).
+  | 'may_chung' | 'may_ipos';
 
 export type ViecKho =
-  | 'xem' | 'xem_gia' | 'nhap' | 'duyet' | 'pha_loc' | 'van_hanh'
-  | 'ke_toan' | 'danh_muc' | 'ncc' | 'cai_dat_goc';
+  | 'xem' | 'xem_gia' | 'nhap' | 'duyet' | 'duyet_nhap' | 'pha_loc' | 'van_hanh'
+  | 'ke_toan' | 'danh_muc' | 'ncc' | 'cai_dat_goc' | 'may_chung';
 
 export const QUYEN_KHO: Record<ViecKho, readonly VaiTro[]> = {
   xem:         ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan'],
-  xem_gia:     ['chu_so_huu', 'quan_ly', 'thu_kho', 'ke_toan'],
+  // Thủ kho không thấy tiền (0031): chỉ chụp hóa đơn, cân, đếm.
+  xem_gia:     ['chu_so_huu', 'quan_ly', 'ke_toan'],
   nhap:        ['chu_so_huu', 'quan_ly', 'thu_kho'],
   duyet:       ['chu_so_huu', 'quan_ly'],
+  // Điền giá, duyệt / từ chối phiếu nhập — kế toán cũng làm được (0031).
+  duyet_nhap:  ['chu_so_huu', 'quan_ly', 'ke_toan'],
   pha_loc:     ['chu_so_huu', 'quan_ly', 'thu_kho'],
   van_hanh:    ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay'],
   ke_toan:     ['chu_so_huu', 'quan_ly', 'ke_toan'],
   danh_muc:    ['chu_so_huu', 'quan_ly'],
   ncc:         ['chu_so_huu', 'quan_ly', 'ke_toan'],
   cai_dat_goc: ['chu_so_huu'],
+  // Tài khoản của máy tính bảng dùng chung (0034): chỉ gọi được hàm kho_may_*,
+  // không đọc được gì trong kho. Không vai người nào có quyền này.
+  may_chung:   ['may_chung'],
 };
 
 /** Vai này có được làm việc này trong kho không (để ẩn/hiện nút). */
@@ -222,6 +230,8 @@ export const TEN_LOAI_VI_TRI: Record<string, string> = {
   kho: 'Kho',
   quay: 'Quầy',
   cho_huy: 'Chờ hủy',
+  // 0032: hàng thủ kho đang mang ra, quầy chưa bấm nhận — không phải chỗ để hàng.
+  dang_chuyen: 'Đang mang ra quầy',
 };
 
 export const TEN_XU_LY: Record<string, string> = {
@@ -255,6 +265,16 @@ export const TRANG_THAI_CHUNG_TU: Record<string, [string, string]> = {
   da_chot: ['Đã chốt', 'song'],
   da_ghi: ['Đã ghi', 'song'],
   dang_dem: ['Đang đếm', 'nhap'],
+  // Phiếu chuyển ra quầy khi quầy phải bấm nhận (0032)
+  dang_chuyen: ['Đang mang ra', 'cho'],
+  da_nhan: ['Quầy đã nhận', 'song'],
+  nhan_thieu: ['Nhận thiếu', 'cho'],
+  da_tra_ve: ['Đã trả về kho', 'tat'],
+  // Yêu cầu của quầy (0032)
+  cho: ['Chờ mang ra', 'cho'],
+  dang_lam: ['Đang mang ra', 'nhap'],
+  xong: ['Xong', 'song'],
+  huy: ['Đã hủy', 'tat'],
 };
 
 export const TEN_LOAI_SO_CAI: Record<string, string> = {
@@ -270,6 +290,39 @@ export const TEN_LOAI_SO_CAI: Record<string, string> = {
   hao_hut: 'Hao hụt cân',
   dao_nguoc: 'Đảo ngược',
   tra_ncc: 'Trả nhà cung cấp',
+  xuat_khac: 'Xuất khác',
+  dau_ky: 'Tồn đầu kỳ',   // dòng đầu của thẻ kho (kho_the_kho, 0033) — không phải loại sổ
+};
+
+/** Loại phiếu nhập (kho_phieu_nhap.loai). no_dau (0035): nợ đầu kỳ — chỉ số tiền, không hàng. */
+export const TEN_LOAI_PHIEU_NHAP: Record<string, string> = {
+  mua: 'Nhập mua',
+  ton_dau: 'Tồn đầu kỳ',
+  no_dau: 'Nợ đầu kỳ',
+};
+
+/**
+ * Các bước màn Thiết lập, đúng thứ tự hiện (khóa = khóa trong kết quả
+ * kho_tien_do_thiet_lap, 0035). boQua: bước có nút "Bỏ qua" — khớp
+ * duoc_bo_qua của database.
+ */
+export const BUOC_THIET_LAP: readonly { khoa: string; ten: string; boQua: boolean }[] = [
+  { khoa: 'chi_nhanh_nhan_vien', ten: 'Chi nhánh & nhân viên', boQua: false },
+  { khoa: 'mat_hang', ten: 'Mặt hàng', boQua: false },
+  { khoa: 'cong_thuc', ten: 'Công thức pha lóc', boQua: true },
+  { khoa: 'ncc_no_dau', ten: 'Nhà cung cấp & nợ đầu kỳ', boQua: true },
+  { khoa: 'ton_dau', ten: 'Tồn đầu kỳ', boQua: true },
+  { khoa: 'gia_von', ten: 'Cách tính giá vốn', boQua: true },
+  { khoa: 'dinh_muc', ten: 'Định mức tồn ở quầy', boQua: true },
+  { khoa: 'vi_tri_ly_do_ma_vach', ten: 'Vị trí, lý do, mã vạch', boQua: true },
+  { khoa: 'nguong', ten: 'Ngưỡng cảnh báo', boQua: true },
+  { khoa: 'may_chung', ten: 'Máy dùng chung', boQua: true },
+];
+
+/** Sau pha lóc, gói quét nhãn của món để ở đâu (kho_mat_hang.noi_de_sau_pha, 0033). null = kho lạnh. */
+export const TEN_NOI_DE_SAU_PHA: Record<string, string> = {
+  kho: 'Kho lạnh',
+  quay: 'Quầy',
 };
 
 /**
