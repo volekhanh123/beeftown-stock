@@ -6,6 +6,7 @@
  * lấy đúng hai ngày đang thấy. Không JavaScript, không gọi database.
  */
 import { kyNhanh } from '../../lib/kho/bao-cao.ts';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
 
 interface Props {
   /** Đường trang, vd /noi-bo/kho/bao-cao/mua-hang */
@@ -19,25 +20,37 @@ interface Props {
   csv?: string | null;
 }
 const { duong, tu, den, homNay, giu = {}, csv } = Astro.props;
-const cacKy = kyNhanh(homNay);
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  chonNhanh: { vi: 'Chọn nhanh kỳ', en: 'Quick periods' },
+  tuNgay: { vi: 'Từ ngày', en: 'From' },
+  denNgay: { vi: 'Đến ngày', en: 'To' },
+  xem: { vi: 'Xem', en: 'View' },
+  taiCsv: { vi: 'Tải về Excel (CSV)', en: 'Download to Excel (CSV)' },
+  ghiChuCsv: {
+    vi: 'File Excel lấy đúng hai ngày đang chọn ở trên. Dòng đầu ghi chi nhánh và kỳ, dòng cuối là tổng.',
+    en: 'The Excel file uses exactly the two dates chosen above. The first row shows the branch and period, the last row is the total.',
+  },
+});
+const cacKy = kyNhanh(homNay, nn);
 // Hôm mùng 1, "Hôm nay" và "Tháng này" trùng ngày — chỉ tô nút đầu tiên.
 const kyDangChon = cacKy.find(x => x.tu === tu && x.den === den)?.ten;
 const link = (x: { tu: string; den: string }) => `${duong}?${new URLSearchParams({ ...giu, tu: x.tu, den: x.den }).toString()}`;
 ---
 <form method="GET" action={duong} class="nb-the kho-khong-in">
   {Object.entries(giu).map(([k, v]) => <input type="hidden" name={k} value={v} />)}
-  <nav class="kho-dh" aria-label="Chọn nhanh kỳ" style="margin:0;padding:0 0 .75rem">
+  <nav class="kho-dh" aria-label={t.chonNhanh} style="margin:0;padding:0 0 .75rem">
     {cacKy.map(x => (
       <a href={link(x)} aria-current={x.ten === kyDangChon ? 'page' : undefined} style="min-height:48px">{x.ten}</a>
     ))}
   </nav>
   <div class="kho-luoi">
-    <label class="nb-o"><span>Từ ngày</span><input type="date" name="tu" value={tu} required /></label>
-    <label class="nb-o"><span>Đến ngày</span><input type="date" name="den" value={den} required /></label>
+    <label class="nb-o"><span>{t.tuNgay}</span><input type="date" name="tu" value={tu} required /></label>
+    <label class="nb-o"><span>{t.denNgay}</span><input type="date" name="den" value={den} required /></label>
   </div>
   <div class="kho-thanh-nut" style="margin:0">
-    <button type="submit" class="nb-nut phu">Xem</button>
-    {csv && <button type="submit" class="nb-nut phu" formaction={csv}>Tải về Excel (CSV)</button>}
+    <button type="submit" class="nb-nut phu">{t.xem}</button>
+    {csv && <button type="submit" class="nb-nut phu" formaction={csv}>{t.taiCsv}</button>}
   </div>
-  {csv && <p class="kho-phu" style="margin:.6rem 0 0">File Excel lấy đúng hai ngày đang chọn ở trên. Dòng đầu ghi chi nhánh và kỳ, dòng cuối là tổng.</p>}
+  {csv && <p class="kho-phu" style="margin:.6rem 0 0">{t.ghiChuCsv}</p>}
 </form>

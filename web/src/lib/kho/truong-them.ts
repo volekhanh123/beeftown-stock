@@ -16,7 +16,7 @@
  * ô tích bỏ trống không phân biệt được "Không" với "chưa trả lời".
  */
 
-import { boDau, docNgay, docSoThapPhan } from './chung.ts';
+import { boDau, docNgay, docSoThapPhan, type HaiThuTieng, type NgonNguNB } from './chung.ts';
 
 export type KieuTruong = 'chu' | 'so' | 'ngay' | 'chon' | 'co_khong';
 
@@ -48,15 +48,20 @@ interface FormLike { get(ten: string): unknown }
  *
  * Không kiểm "bắt buộc" ở đây: phiếu nháp được phép thiếu. Database kiểm lúc
  * gửi duyệt (phiếu) hoặc lúc lưu (danh mục).
+ *
+ * loi (tiếng Việt) và loiEn (tiếng Anh) song song, cùng thứ tự — nơi dựng câu
+ * báo (KetQua) lấy cả hai.
  */
 export function docTruongThem(
   form: FormLike,
   dinhNghia: DinhNghiaTruong[],
   dong?: number,
   cu: GiaTriTruong = {},
-): { giaTri: GiaTriTruong; loi: string[] } {
+): { giaTri: GiaTriTruong; loi: string[]; loiEn: string[] } {
   const giaTri: GiaTriTruong = {};
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
 
   for (const dn of dinhNghia) {
     if (!dn.dang_dung) {
@@ -68,34 +73,40 @@ export function docTruongThem(
 
     switch (dn.kieu) {
       case 'chu':
-        if (raw.length > 500) loi.push(`Ô "${dn.nhan}" dài quá 500 ký tự`);
+        if (raw.length > 500) bao({ vi: `Ô "${dn.nhan}" dài quá 500 ký tự`, en: `Field "${dn.nhan}" is longer than 500 characters` });
         else giaTri[dn.khoa] = raw;
         break;
       case 'so': {
         const n = docSoThapPhan(raw);
-        if (n === null || Number.isNaN(n)) loi.push(`Ô "${dn.nhan}" phải là số`);
+        if (n === null || Number.isNaN(n)) bao({ vi: `Ô "${dn.nhan}" phải là số`, en: `Field "${dn.nhan}" must be a number` });
         else giaTri[dn.khoa] = n;
         break;
       }
       case 'ngay': {
         const d = docNgay(raw);
-        if (!d) loi.push(`Ô "${dn.nhan}" phải là một ngày có thật`);
+        if (!d) bao({ vi: `Ô "${dn.nhan}" phải là một ngày có thật`, en: `Field "${dn.nhan}" must be a real date` });
         else giaTri[dn.khoa] = d;
         break;
       }
       case 'chon':
-        if (!dn.lua_chon.includes(raw)) loi.push(`Ô "${dn.nhan}" phải chọn trong danh sách`);
+        if (!dn.lua_chon.includes(raw)) bao({ vi: `Ô "${dn.nhan}" phải chọn trong danh sách`, en: `Field "${dn.nhan}" must be picked from the list` });
         else giaTri[dn.khoa] = raw;
         break;
       case 'co_khong':
         if (raw === 'co') giaTri[dn.khoa] = true;
         else if (raw === 'khong') giaTri[dn.khoa] = false;
-        else loi.push(`Ô "${dn.nhan}" phải là Có hoặc Không`);
+        else bao({ vi: `Ô "${dn.nhan}" phải là Có hoặc Không`, en: `Field "${dn.nhan}" must be Yes or No` });
         break;
     }
   }
-  return { giaTri, loi };
+  return { giaTri, loi, loiEn };
 }
+
+/** Chữ Có / Không của ô co_khong. */
+export const CO_KHONG = {
+  co: { vi: 'Có', en: 'Yes' },
+  khong: { vi: 'Không', en: 'No' },
+} satisfies Record<string, HaiThuTieng>;
 
 /** Giá trị để điền lại vào ô nhập (value của input/select). */
 export function giaTriVaoO(dn: DinhNghiaTruong, v: unknown): string {
@@ -106,15 +117,15 @@ export function giaTriVaoO(dn: DinhNghiaTruong, v: unknown): string {
 }
 
 /** Giá trị để hiển thị chỉ đọc. */
-export function hienThiGiaTri(dn: DinhNghiaTruong, v: unknown): string {
+export function hienThiGiaTri(dn: DinhNghiaTruong, v: unknown, nn: NgonNguNB = 'vi'): string {
   if (v === undefined || v === null || v === '') return '—';
-  if (dn.kieu === 'co_khong') return v === true ? 'Có' : 'Không';
+  if (dn.kieu === 'co_khong') return v === true ? CO_KHONG.co[nn] : CO_KHONG.khong[nn];
   if (dn.kieu === 'ngay' && typeof v === 'string') {
     const [y, m, d] = v.split('-');
     return `${d}/${m}/${y}`;
   }
   if (dn.kieu === 'so' && typeof v === 'number') {
-    return v.toLocaleString('vi-VN', { maximumFractionDigits: 6 });
+    return v.toLocaleString(nn === 'en' ? 'en-US' : 'vi-VN', { maximumFractionDigits: 6 });
   }
   return String(v);
 }

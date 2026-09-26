@@ -4,6 +4,11 @@
  * File THUẦN: không gọi mạng, không gọi database, không import gì. Test Node
  * nạp thẳng được (crm/test/test-kho-ipos-web.mjs).
  *
+ * HAI THỨ TIẾNG: câu đọc thực đơn (lỗi, cảnh báo) hiện trên màn Kết nối iPOS
+ * nên có bản tiếng Anh (CAU_MENU_IPOS; phanTichMenu trả thêm loiEn,
+ * canhBaoEn). Câu của phanTichCallback thì chỉ iPOS Hub (thân trả lời HTTP) và
+ * log đọc — giữ tiếng Việt như cũ.
+ *
  * NGUỒN: tài liệu Postman "IPOS HUB API INTERGRATION FOR MERCHANT" của iPOS
  * (mục 1 "Lấy thông tin món ăn, nhà hàng" và mục 6.1 "Event 11: sale_manager").
  * Điều tài liệu nói:
@@ -29,6 +34,9 @@
  *
  * KHÔNG BAO GIỜ đưa GIÁ TRỊ vào câu cảnh báo — chỉ tên khóa.
  */
+
+/** Câu hai thứ tiếng — cùng khuôn HaiThuTieng (lib/ngon-ngu-noi-bo.ts); file này không import gì. */
+type HaiThuTieng = { readonly vi: string; readonly en: string };
 
 // =============================================================================
 // MỌI ĐIỀU VỀ API iPOS NẰM Ở ĐÂY (theo tài liệu Postman nói trên)
@@ -260,21 +268,42 @@ export function phanTichCallback(json: unknown): KetQuaCallback {
 // THỰC ĐƠN — GET /v2/items
 // =============================================================================
 /**
+ * Câu lỗi / cảnh báo khi đọc thực đơn, hai thứ tiếng. Câu lỗi còn được ghi vào
+ * nhật ký lượt (kho_ipos_lan_chay.loi, chỉ tiếng Việt) — dichLoiIpos()
+ * (ipos-dong-bo.ts) đọc ngược cho màn tiếng Anh. Chỉ có mã lỗi, không giá trị nào.
+ */
+export const CAU_MENU_IPOS = {
+  khongObject: { vi: 'iPOS trả về nội dung không phải object', en: 'iPOS returned something that is not an object' },
+  baoLoi: {
+    vi: (ma: string) => `iPOS báo lỗi khi đọc thực đơn (mã ${ma}) — kiểm tra pos_parent, pos_id và token`,
+    en: (ma: string) => `iPOS reported an error while reading the menu (code ${ma}) — check pos_parent, pos_id and the token`,
+  },
+  khongItems: { vi: 'Không thấy danh sách món (khóa "items") trong kết quả iPOS', en: 'No item list (key "items") in the iPOS result' },
+  thieuMa: {
+    vi: (n: number) => `${n} món thiếu "store_item_id" / "item_id" — bỏ qua`,
+    en: (n: number) => `${n} ${n === 1 ? 'item is' : 'items are'} missing "store_item_id" / "item_id" — skipped`,
+  },
+};
+
+/**
  * Đọc danh mục món iPOS → [{ma_ipos, ten_ipos, loai, dang_ban}] cho
  * kho_ipos_luu_menu. KHÔNG lấy giá (ta_price / ots_price bị bỏ).
  * ma_ipos = store_item_id (= item_id dưới máy POS, là mã callback gửi), thiếu
  * thì item_id. Món con (childs — size) cũng là món, có mã riêng.
+ * loiEn / canhBaoEn: bản tiếng Anh của loi / canhBao, cùng thứ tự.
  */
-export function phanTichMenu(json: unknown): { mon: MonIpos[]; loi: string | null; canhBao: string[] } {
-  if (!laObj(json)) return { mon: [], loi: 'iPOS trả về nội dung không phải object', canhBao: [] };
+export function phanTichMenu(json: unknown): {
+  mon: MonIpos[]; loi: string | null; canhBao: string[]; loiEn: string | null; canhBaoEn: string[];
+} {
+  const C = CAU_MENU_IPOS;
+  const hong = (loi: HaiThuTieng) => ({ mon: [], loi: loi.vi, canhBao: [], loiEn: loi.en, canhBaoEn: [] });
+  if (!laObj(json)) return hong(C.khongObject);
   if (laObj(json.error)) {
     const ma = chu(json.error.code) ?? '?';
-    return { mon: [], loi: `iPOS báo lỗi khi đọc thực đơn (mã ${ma}) — kiểm tra pos_parent, pos_id và token`, canhBao: [] };
+    return hong({ vi: C.baoLoi.vi(ma), en: C.baoLoi.en(ma) });
   }
   const data = laObj(json.data) ? json.data : json;
-  if (!Array.isArray(data.items)) {
-    return { mon: [], loi: `Không thấy danh sách món (khóa "items") trong kết quả iPOS`, canhBao: [] };
-  }
+  if (!Array.isArray(data.items)) return hong(C.khongItems);
   const nhom = new Map<string, string>();
   if (Array.isArray(data.item_types)) {
     for (const t of data.item_types) {
@@ -303,8 +332,9 @@ export function phanTichMenu(json: unknown): { mon: MonIpos[]; loi: string | nul
     if (Array.isArray(x.childs)) for (const c of x.childs) them(c, sau + 1);
   };
   for (const x of data.items) them(x, 0);
-  const canhBao = khongMa ? [`${khongMa} món thiếu "store_item_id" / "item_id" — bỏ qua`] : [];
-  return { mon: [...ra.values()], loi: null, canhBao };
+  const canhBao = khongMa ? [C.thieuMa.vi(khongMa)] : [];
+  const canhBaoEn = khongMa ? [C.thieuMa.en(khongMa)] : [];
+  return { mon: [...ra.values()], loi: null, canhBao, loiEn: null, canhBaoEn };
 }
 
 export interface NoiIpos {

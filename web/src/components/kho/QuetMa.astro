@@ -23,7 +23,12 @@
  * hệt" ngay trong khung camera.
  *
  * Bấm "Xong" trong khung camera là gửi luôn (không phải bấm thêm "Đọc mã").
+ *
+ * Hai thứ tiếng: chữ trên trang theo nn; hai câu báo lỗi của script đi qua
+ * data-loi-tai / data-loi-camera (script inline không đọc được Astro.locals).
  */
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
+
 interface Props {
   viec?: string;
   nhan?: string;
@@ -33,30 +38,44 @@ interface Props {
   /** Mã đang có trong ô (hiện lại sau lỗi, để không phải quét lại từ đầu). */
   giaTri?: string;
 }
+const t = dichNB(nnCua(Astro), {
+  nhan: { vi: 'Đọc mã đã quét', en: 'Read scanned codes' },
+  goiY: { vi: 'Quét từng nhãn — mỗi mã một dòng. Có thể dán nhiều mã cách nhau bằng dấu phẩy.',
+          en: 'Scan one label at a time — one code per line. You can also paste several codes separated by commas.' },
+  quetNhan: { vi: 'Quét nhãn cân', en: 'Scan scale labels' },
+  camera: { vi: 'Quét bằng camera', en: 'Scan with camera' },
+  daDoc: { vi: 'nhãn đã đọc · đưa từng gói vào rồi đưa ra khỏi khung', en: 'labels read · move each pack into the frame, then out' },
+  motGoi: { vi: '+1 gói giống hệt gói vừa quét', en: '+1 pack identical to the last one' },
+  xong: { vi: 'Xong', en: 'Done' },
+  loiTai: { vi: 'Không tải được bộ đọc mã. Kiểm tra mạng, hoặc dùng máy quét cầm tay.',
+            en: 'Could not load the code reader. Check the network, or use a handheld scanner.' },
+  loiCamera: { vi: 'Không mở được camera. Cho phép trang dùng camera, hoặc dùng máy quét cầm tay.',
+               en: 'Could not open the camera. Allow this page to use the camera, or use a handheld scanner.' },
+});
 const {
   viec = 'quet',
-  nhan = 'Đọc mã đã quét',
-  goiY = 'Quét từng nhãn — mỗi mã một dòng. Có thể dán nhiều mã cách nhau bằng dấu phẩy.',
+  nhan = t.nhan,
+  goiY = t.goiY,
   tuFocus = false,
   giaTri = '',
 } = Astro.props;
 ---
-<div class="kho-quet" data-quet-ma>
+<div class="kho-quet" data-quet-ma data-loi-tai={t.loiTai} data-loi-camera={t.loiCamera}>
   <label class="nb-o" style="margin-bottom:.5rem">
-    <span>Quét nhãn cân</span>
+    <span>{t.quetNhan}</span>
     <small>{goiY}</small>
     <textarea name="ma_quet" rows="3" inputmode="numeric" autocomplete="off" spellcheck="false"
       placeholder="2012345012509" autofocus={tuFocus}>{giaTri}</textarea>
   </label>
   <div class="kho-thanh-nut" style="margin:.25rem 0 0">
     <button type="submit" name="viec" value={viec} class="nb-nut phu" formnovalidate data-quet-gui>{nhan}</button>
-    <button type="button" class="nb-nut phu" data-quet-camera hidden>Quét bằng camera</button>
+    <button type="button" class="nb-nut phu" data-quet-camera hidden>{t.camera}</button>
   </div>
   <dialog class="kho-quet-hop" data-quet-hop>
     <video playsinline muted></video>
-    <p><strong data-quet-dem>0</strong> nhãn đã đọc · đưa từng gói vào rồi đưa ra khỏi khung</p>
-    <button type="button" class="nb-nut phu" data-quet-them hidden>+1 gói giống hệt gói vừa quét</button>
-    <button type="button" class="nb-nut" data-quet-xong>Xong</button>
+    <p><strong data-quet-dem>0</strong> {t.daDoc}</p>
+    <button type="button" class="nb-nut phu" data-quet-them hidden>{t.motGoi}</button>
+    <button type="button" class="nb-nut" data-quet-xong>{t.xong}</button>
   </dialog>
 </div>
 
@@ -125,7 +144,7 @@ const {
         docKhung = async () => (await docMa.detect(video)).map(m => String(m.rawValue || ''));
       } else {
         try { await napEan13(); } catch {
-          alert('Không tải được bộ đọc mã. Kiểm tra mạng, hoặc dùng máy quét cầm tay.');
+          alert(goc.dataset.loiTai);
           return;
         }
         const khung = document.createElement('canvas');
@@ -143,7 +162,7 @@ const {
       try {
         luong = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
       } catch {
-        alert('Không mở được camera. Cho phép trang dùng camera, hoặc dùng máy quét cầm tay.');
+        alert(goc.dataset.loiCamera);
         return;
       }
       so = 0; dem.textContent = '0'; lanThay.clear(); cuoi = ''; them.hidden = true;

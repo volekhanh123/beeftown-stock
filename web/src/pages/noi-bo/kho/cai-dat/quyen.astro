@@ -2,7 +2,7 @@
 /**
  * KHO — AI LÀM ĐƯỢC GÌ (ma trận quyền bằng lời, GĐ8c)
  *
- * Mở cho mọi vai xem kho. Dựng hoàn toàn từ QUYEN_KHO + MO_TA_VIEC
+ * Mở cho mọi vai xem kho. Dựng hoàn toàn từ QUYEN_KHO + MO_TA_VIEC_NB
  * (lib/kho/chung.ts) — thêm việc mới vào QUYEN_KHO là bảng tự có dòng mới;
  * thiếu câu mô tả thì lỗi kiểu và test-kho-giao-dien nhóm 16 đỏ. Không gọi
  * database: bảng này là GƯƠNG của kho_vai_duoc (database mới là nơi chặn,
@@ -12,8 +12,9 @@ import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import {
-  MO_TA_VIEC, QUYEN_KHO, TEN_VAI_DAY, VAI_BANG_QUYEN, duoc, tomTatVai, type ViecKho,
+  MO_TA_VIEC_NB, QUYEN_KHO, TEN_VAI_DAY_NB, VAI_BANG_QUYEN, duoc, nhanKho, tomTatVai, type ViecKho,
 } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -23,42 +24,63 @@ const vaiToi = k.nhanSu.vai_tro;
 const viec = Object.keys(QUYEN_KHO) as ViecKho[];
 const vaiNguoi = VAI_BANG_QUYEN.filter(v => !v.startsWith('may_'));
 const vaiMay = VAI_BANG_QUYEN.filter(v => v.startsWith('may_'));
+const nn = k.nn;
+const tenVai = (v: string) => nhanKho(TEN_VAI_DAY_NB, v, nn);
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Ai làm được gì', en: 'Who can do what' },
+  veThietLap: { vi: '← Thiết lập kho', en: '← Inventory setup' },
+  huongDan: { vi: 'Hướng dẫn', en: 'Help' },
+  gt1: { vi: 'Mỗi tài khoản có một ', en: 'Each account has a ' },
+  vai: { vi: 'vai', en: 'role' },
+  gt2: { vi: '. Vai quyết định thấy nút nào, mở được màn nào.', en: '. The role decides which buttons you see and which screens you can open.' },
+  gt3: { vi: 'Tài khoản của bạn: ', en: 'Your account: ' },
+  gt4: { vi: '. Cần thêm việc thì nhờ chủ quán đổi vai', en: '. If you need to do more, ask the owner to change your role' },
+  gt5: { vi: 'ở ', en: 'in ' },
+  thietLapNhanVien: { vi: 'Thiết lập → Nhân viên', en: 'Setup → Staff' },
+  tomTat: { vi: 'Tóm tắt từng vai', en: 'Summary by role' },
+  vaiCuaBan: { vi: 'vai của bạn', en: 'your role' },
+  bangChiTiet: { vi: 'Bảng chi tiết', en: 'Full table' },
+  viec: { vi: 'Việc', en: 'Task' },
+  duoc: { vi: 'Được', en: 'Allowed' },
+  khong: { vi: 'Không', en: 'Not allowed' },
+  taiKhoanMay: { vi: 'Tài khoản máy', en: 'Device accounts' },
+  cuoi: { vi: 'Thu ngân và marketing không dùng phần kho. Giá tiền (giá nhập, giá vốn, tiền hàng) chỉ chủ quán, quản lý, kế toán thấy — thủ kho và nhân viên quầy chỉ thấy kg, gói, hạn dùng.',
+          en: 'Cashiers and marketing do not use inventory. Prices (purchase prices, costs, stock value) are only seen by the owner, managers and the accountant — storekeepers and counter staff only see kg, packs and use-by dates.' },
+});
 ---
-<Kho k={k} huongDan="quyen" tieuDe="Ai làm được gì" rong>
-  <h1>Ai làm được gì</h1>
+<Kho k={k} huongDan="quyen" tieuDe={t.tieuDe} rong>
+  <h1>{t.tieuDe}</h1>
   <p>
-    {k.duoc('danh_muc') || k.duoc('ncc') || k.duoc('cai_dat_goc') ? <><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a> · </> : null}
-    <a href="/noi-bo/kho/huong-dan">Hướng dẫn</a>
+    {k.duoc('danh_muc') || k.duoc('ncc') || k.duoc('cai_dat_goc') ? <><a href="/noi-bo/kho/cai-dat">{t.veThietLap}</a> · </> : null}
+    <a href="/noi-bo/kho/huong-dan">{t.huongDan}</a>
   </p>
   <BaoKho bao={k.bao} loiDoc={k.loiDoc} />
 
-  <p class="nb-dan">Mỗi tài khoản có một <strong>vai</strong>. Vai quyết định thấy nút nào, mở được màn nào.
-    Tài khoản của bạn: <strong>{TEN_VAI_DAY[vaiToi] ?? vaiToi}</strong>. Cần thêm việc thì nhờ chủ quán đổi vai
-    ở <strong>Thiết lập → Nhân viên</strong>.</p>
+  <p class="nb-dan">{t.gt1}<strong>{t.vai}</strong>{t.gt2} {t.gt3}<strong>{tenVai(vaiToi)}</strong>{t.gt4} {t.gt5}<strong>{t.thietLapNhanVien}</strong>.</p>
 
-  <h2>Tóm tắt từng vai</h2>
+  <h2>{t.tomTat}</h2>
   <ul class="q-tom">
     {vaiNguoi.map(v => (
-      <li class:list={{ 'q-toi': v === vaiToi }}>{tomTatVai(v)}{v === vaiToi && <span class="nb-nhan song" style="margin-left:.4rem">vai của bạn</span>}</li>
+      <li class:list={{ 'q-toi': v === vaiToi }}>{tomTatVai(v, nn)}{v === vaiToi && <span class="nb-nhan song" style="margin-left:.4rem">{t.vaiCuaBan}</span>}</li>
     ))}
   </ul>
 
-  <h2>Bảng chi tiết</h2>
+  <h2>{t.bangChiTiet}</h2>
   <div class="kho-bang-khung">
     <table class="kho-bang q-bang">
       <thead>
         <tr>
-          <th scope="col">Việc</th>
-          {vaiNguoi.map(v => <th scope="col" class:list={['q-o', { 'q-toi': v === vaiToi }]}>{TEN_VAI_DAY[v]}</th>)}
+          <th scope="col">{t.viec}</th>
+          {vaiNguoi.map(v => <th scope="col" class:list={['q-o', { 'q-toi': v === vaiToi }]}>{tenVai(v)}</th>)}
         </tr>
       </thead>
       <tbody>
         {viec.filter(x => vaiNguoi.some(v => duoc(v, x))).map(x => (
           <tr>
-            <th scope="row"><strong>{MO_TA_VIEC[x].ten}</strong><span class="kho-phu">{MO_TA_VIEC[x].moTa}</span></th>
+            <th scope="row"><strong>{MO_TA_VIEC_NB[x].ten[nn]}</strong><span class="kho-phu">{MO_TA_VIEC_NB[x].moTa[nn]}</span></th>
             {vaiNguoi.map(v => (
               <td class:list={['q-o', { 'q-toi': v === vaiToi }]}>
-                {duoc(v, x) ? <span class="q-co" aria-label="Được">✓</span> : <span class="q-khong" aria-label="Không">—</span>}
+                {duoc(v, x) ? <span class="q-co" aria-label={t.duoc}>✓</span> : <span class="q-khong" aria-label={t.khong}>—</span>}
               </td>
             ))}
           </tr>
@@ -67,14 +89,13 @@ const vaiMay = VAI_BANG_QUYEN.filter(v => v.startsWith('may_'));
     </table>
   </div>
 
-  <h2>Tài khoản máy</h2>
+  <h2>{t.taiKhoanMay}</h2>
   <ul class="q-tom">
     {vaiMay.map(v => (
-      <li>{TEN_VAI_DAY[v]}: {viec.filter(x => duoc(v, x)).map(x => MO_TA_VIEC[x].moTa).join(' ')}</li>
+      <li>{tenVai(v)}: {viec.filter(x => duoc(v, x)).map(x => MO_TA_VIEC_NB[x].moTa[nn]).join(' ')}</li>
     ))}
   </ul>
-  <p class="kho-phu">Thu ngân và marketing không dùng phần kho. Giá tiền (giá nhập, giá vốn, tiền hàng) chỉ chủ quán, quản lý,
-    kế toán thấy — thủ kho và nhân viên quầy chỉ thấy kg, gói, hạn dùng.</p>
+  <p class="kho-phu">{t.cuoi}</p>
 </Kho>
 
 <style>

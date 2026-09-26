@@ -4,12 +4,17 @@
  * phiếu, giờ in. Giấy in ra để ký, lưu cùng hóa đơn, nên phải tự nói nó là gì.
  */
 import { dinhDangThoiDiem } from '../../lib/kho/chung.ts';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
 
 interface Props { tieuDe: string; soPhieu?: string | null; chiNhanh?: string | null }
 const { tieuDe, soPhieu, chiNhanh } = Astro.props;
+const t = dichNB(nnCua(Astro), {
+  so: { vi: 'Số', en: 'No.' },
+  inLuc: { vi: 'In lúc', en: 'Printed' },
+});
 ---
 <header class="kho-chi-in kho-in-dau">
   <p class="kho-in-quan">BEEFTOWN{chiNhanh ? ` · ${chiNhanh}` : ''}</p>
   <p class="kho-in-ten">{tieuDe}</p>
-  <p class="kho-in-so">{soPhieu ? `Số: ${soPhieu} · ` : ''}In lúc {dinhDangThoiDiem(new Date().toISOString())}</p>
+  <p class="kho-in-so">{soPhieu ? `${t.so}: ${soPhieu} · ` : ''}{t.inLuc} {dinhDangThoiDiem(new Date().toISOString())}</p>
 </header>

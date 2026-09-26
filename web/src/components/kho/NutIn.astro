@@ -3,8 +3,10 @@
  * Nút "In phiếu". Chỉ hiện khi có JavaScript (public/kho/js/in-an.js bật nó
  * lên); không có JS thì in bằng menu trình duyệt — CSS in vẫn áp dụng.
  */
+import { nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
+
 interface Props { chu?: string }
-const { chu = 'In phiếu' } = Astro.props;
+const { chu = { vi: 'In phiếu', en: 'Print' }[nnCua(Astro)] } = Astro.props;
 ---
 <div class="kho-nut-in kho-khong-in">
   <button type="button" class="nb-nut phu" data-in hidden>🖨 {chu}</button>

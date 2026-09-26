@@ -17,15 +17,72 @@ import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
 import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
 import {
-  cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, homNayVn,
-  TRANG_THAI_CHUNG_TU,
+  cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, homNayVn, trangThaiKho,
 } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('xem_gia') && !k.duoc('pha_loc')) return Astro.redirect('/noi-bo/kho', 302);
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  tatCa: { vi: 'Tất cả', en: 'All' },
+  nhap: { vi: 'Nháp', en: 'Draft' },
+  daChot: { vi: 'Đã chốt', en: 'Closed' },
+  daHuy: { vi: 'Đã hủy', en: 'Cancelled' },
+  khongDoc: { vi: 'Không đọc được phiên pha lóc.', en: 'Could not read the butchery sessions.' },
+  tieuDe: { vi: 'Pha lóc', en: 'Butchery' },
+  chuaBatDau1: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào ', en: 'This branch has not started using inventory yet. Go to ' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory home' },
+  dan1: {
+    vi: 'Mỗi lần pha: chọn tảng đem pha, quét nhãn từng gói cắt ra, gõ kg phụ phẩm và phần bỏ. Phần mềm tính ',
+    en: 'Each session: choose the primal to cut, scan the label of each pack you cut, and type the kg of by-products and discards. The system works out the ',
+  },
+  dan2: { vi: 'tỉ lệ thu hồi', en: 'yield' },
+  dan3: { vi: ' và ', en: ' and the ' },
+  dan4: { vi: 'giá vốn thật mỗi kg', en: 'real cost per kg' },
+  dan5: { vi: ' của từng phần. Tồn chỉ đổi khi bấm ', en: ' of each part. Stock only changes when you press ' },
+  dan6: { vi: 'Chốt phiên', en: 'Close session' },
+  phienMoi: { vi: 'Phiên pha mới', en: 'New butchery session' },
+  thuHoi30: { vi: 'Thu hồi 30 ngày qua', en: 'Yield, last 30 days' },
+  tang: { vi: 'Tảng', en: 'Primal' },
+  soPhien: { vi: 'Số phiên', en: 'Sessions' },
+  kgVao: { vi: 'Kg vào', en: 'Kg in' },
+  kgThitRa: { vi: 'Kg thịt ra', en: 'Kg meat out' },
+  thuHoi: { vi: 'Thu hồi', en: 'Yield' },
+  congThuc: {
+    vi: 'Thu hồi = kg thịt giữ lại (phần cắt, kể cả phần chuyển bếp) ÷ kg tảng đem pha. Không tính phụ phẩm và phần bỏ.',
+    en: 'Yield = kg of meat kept (cuts, including those sent to the kitchen) ÷ kg of primal cut. By-products and discards are not counted.',
+  },
+  locTrangThai: { vi: 'Lọc theo trạng thái', en: 'Filter by status' },
+  goiYTim: { vi: 'Số phiên, tên tảng…', en: 'Session number, primal name…' },
+  hetDs: { vi: 'Hết danh sách — bấm "Trang trước".', en: 'End of the list — press "Previous".' },
+  khongKhop: { vi: 'Không tìm thấy phiên nào khớp bộ lọc.', en: 'No sessions match the filters.' },
+  chuaCo: { vi: 'Chưa có phiên pha lóc nào', en: 'No butchery sessions yet' },
+  oTrangThai: { vi: ' ở trạng thái này', en: ' with this status' },
+  thapDaXem: { vi: 'Thu hồi thấp · đã xem', en: 'Low yield · seen' },
+  thap: { vi: 'Thu hồi thấp', en: 'Low yield' },
+  ngayPha: { vi: 'Ngày pha', en: 'Date' },
+  ketQua: { vi: 'Kết quả', en: 'Result' },
+  vaoRa: {
+    vi: (vao: string, thit: string) => `${vao} kg vào → ${thit} kg thịt · thu hồi `,
+    en: (vao: string, thit: string) => `${vao} kg in → ${thit} kg meat · yield `,
+  },
+  duKien: { vi: (pt: string) => ` (dự kiến ${pt})`, en: (pt: string) => ` (expected ${pt})` },
+  dangGhi: { vi: 'Đang ghi', en: 'In progress' },
+  loVao: {
+    vi: (n: number, kg: string) => `${n} lô vào (${kg} kg)`,
+    en: (n: number, kg: string) => `${n} ${s(n, 'lot', 'lots')} in (${kg} kg)`,
+  },
+  phanRa: {
+    vi: (n: number, kg: string) => `${n} phần ra (${kg} kg)`,
+    en: (n: number, kg: string) => `${n} ${s(n, 'output', 'outputs')} (${kg} kg)`,
+  },
+  nguoiLap: { vi: 'Người lập', en: 'Made by' },
+});
 
-const LOC = [['', 'Tất cả'], ['nhap', 'Nháp'], ['da_chot', 'Đã chốt'], ['da_huy', 'Đã hủy']] as const;
+const LOC = [['', t.tatCa], ['nhap', t.nhap], ['da_chot', t.daChot], ['da_huy', t.daHuy]] as const;
 const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
 
 const tim = docTimDs(Astro.url.searchParams);
@@ -44,7 +101,7 @@ if (k.chiNhanh && k.daKhoiTao) {
     ]);
     ({ ds, coSau } = catTrang(trang));
   } catch (e) {
-    loiDoc = cauLoiKho(e, 'Không đọc được phiên pha lóc.');
+    loiDoc = cauLoiKho(e, t.khongDoc);
   }
 }
 const tu30 = congNgay(homNayVn(), -30);
@@ -52,79 +109,79 @@ const thuHoi = thuHoiTheoTang(daChot.filter(p => p.ngay_pha >= tu30));
 const sapXep = [...ds].sort((a, b) => (a.trang_thai === 'nhap' ? 0 : 1) - (b.trang_thai === 'nhap' ? 0 : 1));
 const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 ---
-<Kho k={k} huongDan="pha-loc" tieuDe="Pha lóc">
-  <h1>Pha lóc</h1>
+<Kho k={k} huongDan="pha-loc" tieuDe={t.tieuDe}>
+  <h1>{t.tieuDe}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
-    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+    <p class="nb-rong">{t.chuaBatDau1}<a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
   ) : (
     <>
       <p class="nb-dan">
-        Mỗi lần pha: chọn tảng đem pha, quét nhãn từng gói cắt ra, gõ kg phụ phẩm và phần bỏ. Phần mềm tính
-        <strong>tỉ lệ thu hồi</strong>{k.duoc('xem_gia') && <> và <strong>giá vốn thật mỗi kg</strong></>} của từng phần.
-        Tồn chỉ đổi khi bấm <em>Chốt phiên</em>.
+        {t.dan1}<strong>{t.dan2}</strong>{k.duoc('xem_gia') && <>{t.dan3}<strong>{t.dan4}</strong></>}{t.dan5}<em>{t.dan6}</em>.
       </p>
 
       {k.duoc('pha_loc') && (
         <div class="kho-nut-nhanh">
-          <a class="nb-nut" href="/noi-bo/kho/pha-loc/moi">Phiên pha mới</a>
+          <a class="nb-nut" href="/noi-bo/kho/pha-loc/moi">{t.phienMoi}</a>
         </div>
       )}
 
       {thuHoi.length > 0 && (
         <>
-          <h2>Thu hồi 30 ngày qua</h2>
+          <h2>{t.thuHoi30}</h2>
           <div class="kho-bang-khung">
             <table class="kho-bang">
-              <thead><tr><th>Tảng</th><th class="so">Số phiên</th><th class="so">Kg vào</th><th class="so">Kg thịt ra</th><th class="so">Thu hồi</th></tr></thead>
+              <thead><tr><th>{t.tang}</th><th class="so">{t.soPhien}</th><th class="so">{t.kgVao}</th><th class="so">{t.kgThitRa}</th><th class="so">{t.thuHoi}</th></tr></thead>
               <tbody>
-                {thuHoi.map(t => (
+                {thuHoi.map(x => (
                   <tr>
-                    <td>{t.ten}</td>
-                    <td class="so">{t.so_phien}</td>
-                    <td class="so">{dinhDangKg(t.kg_vao)}</td>
-                    <td class="so">{dinhDangKg(t.kg_thit)}</td>
-                    <td class="so"><strong>{dinhDangPhanTram(t.ty_le)}</strong></td>
+                    <td>{x.ten}</td>
+                    <td class="so">{x.so_phien}</td>
+                    <td class="so">{dinhDangKg(x.kg_vao, nn)}</td>
+                    <td class="so">{dinhDangKg(x.kg_thit, nn)}</td>
+                    <td class="so"><strong>{dinhDangPhanTram(x.ty_le, 1, nn)}</strong></td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          <p class="kho-phu" style="margin-top:-.5rem">Thu hồi = kg thịt giữ lại (phần cắt, kể cả phần chuyển bếp) ÷ kg tảng đem pha. Không tính phụ phẩm và phần bỏ.</p>
+          <p class="kho-phu" style="margin-top:-.5rem">{t.congThuc}</p>
         </>
       )}
 
-      <nav class="kho-dh" aria-label="Lọc theo trạng thái">
-        {LOC.map(([v, t]) => (
-          <a href={v ? `/noi-bo/kho/pha-loc?loc=${v}` : '/noi-bo/kho/pha-loc'} aria-current={loc === v ? 'page' : undefined}>{t}</a>
+      <nav class="kho-dh" aria-label={t.locTrangThai}>
+        {LOC.map(([v, ten]) => (
+          <a href={v ? `/noi-bo/kho/pha-loc?loc=${v}` : '/noi-bo/kho/pha-loc'} aria-current={loc === v ? 'page' : undefined}>{ten}</a>
         ))}
       </nav>
 
       <LocDanhSach duong="/noi-bo/kho/pha-loc" tim={tim} giu={{ loc }} coCuaToi={k.duoc('pha_loc')}
-        goiY="Số phiên, tên tảng…" />
+        goiY={t.goiYTim} />
 
       {sapXep.length === 0 ? (
-        <p class="nb-rong">{tim.trang > 1 ? 'Hết danh sách — bấm "Trang trước".' : dangTim(tim) ? 'Không tìm thấy phiên nào khớp bộ lọc.' : `Chưa có phiên pha lóc nào${loc ? ' ở trạng thái này' : ''}.`}</p>
+        <p class="nb-rong">{tim.trang > 1 ? t.hetDs : dangTim(tim) ? t.khongKhop : `${t.chuaCo}${loc ? t.oTrangThai : ''}.`}</p>
       ) : sapXep.map(p => {
-        const [nhan, lop] = TRANG_THAI_CHUNG_TU[p.trang_thai] ?? [p.trang_thai, 'tat'];
+        // Trạng thái lạ: hiện nguyên mã, màu xám (như trước).
+        const [nhan, lopTT] = trangThaiKho(p.trang_thai, nn);
+        const lop = lopTT || 'tat';
         return (
           <a href={`/noi-bo/kho/pha-loc/${p.id}`} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
             <div class="nb-dong-dau">
               <strong>{p.so_phieu} · {p.ten_mat_hang_vao}</strong>
               <span>
-                {p.thu_hoi_thap && <span class={`nb-nhan ${p.da_xem_luc ? 'tat' : 'cho'}`}>{p.da_xem_luc ? 'Thu hồi thấp · đã xem' : 'Thu hồi thấp'}</span>}
+                {p.thu_hoi_thap && <span class={`nb-nhan ${p.da_xem_luc ? 'tat' : 'cho'}`}>{p.da_xem_luc ? t.thapDaXem : t.thap}</span>}
                 {' '}<span class={`nb-nhan ${lop}`}>{nhan}</span>
               </span>
             </div>
             <dl>
-              <dt>Ngày pha</dt><dd>{dinhDangNgay(p.ngay_pha)}</dd>
+              <dt>{t.ngayPha}</dt><dd>{dinhDangNgay(p.ngay_pha)}</dd>
               {p.trang_thai === 'da_chot' ? (
-                <><dt>Kết quả</dt><dd>{dinhDangKg(p.tong_kg_vao)} kg vào → {dinhDangKg(p.tong_kg_thit)} kg thịt · thu hồi <strong>{dinhDangPhanTram(p.ty_le_thu_hoi)}</strong>{p.ty_le_du_kien !== null && <> (dự kiến {dinhDangPhanTram(p.ty_le_du_kien)})</>}</dd></>
+                <><dt>{t.ketQua}</dt><dd>{t.vaoRa(dinhDangKg(p.tong_kg_vao, nn), dinhDangKg(p.tong_kg_thit, nn))}<strong>{dinhDangPhanTram(p.ty_le_thu_hoi, 1, nn)}</strong>{p.ty_le_du_kien !== null && <>{t.duKien(dinhDangPhanTram(p.ty_le_du_kien, 1, nn))}</>}</dd></>
               ) : (
-                <><dt>Đang ghi</dt><dd>{p.so_dau_vao} lô vào ({dinhDangKg(p.kg_vao_nhap)} kg) · {p.so_dau_ra} phần ra ({dinhDangKg(p.kg_ra_nhap)} kg)</dd></>
+                <><dt>{t.dangGhi}</dt><dd>{t.loVao(p.so_dau_vao, dinhDangKg(p.kg_vao_nhap, nn))} · {t.phanRa(p.so_dau_ra, dinhDangKg(p.kg_ra_nhap, nn))}</dd></>
               )}
-              <dt>Người lập</dt><dd>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
+              <dt>{t.nguoiLap}</dt><dd>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
             </dl>
           </a>
         );

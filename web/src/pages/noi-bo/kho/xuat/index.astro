@@ -12,18 +12,63 @@
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
-import { docDanhSachPhieuXuat, TEN_LOAI_XUAT, type PhieuXuatTom, type LoaiXuat } from '../../../../lib/kho/xuat.ts';
-import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, TRANG_THAI_CHUNG_TU } from '../../../../lib/kho/chung.ts';
+import { docDanhSachPhieuXuat, TEN_LOAI_XUAT_NB, type PhieuXuatTom, type LoaiXuat } from '../../../../lib/kho/xuat.ts';
+import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, nhanKho, trangThaiKho } from '../../../../lib/kho/chung.ts';
 import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
 import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  tatCa: { vi: 'Tất cả', en: 'All' },
+  choDuyetHuy: { vi: 'Chờ duyệt hủy', en: 'Write-offs to approve' },
+  dangMangRa: { vi: 'Đang mang ra', en: 'On the way' },
+  chuyen: { vi: 'Chuyển', en: 'Transfers' },
+  xuatBep: { vi: 'Xuất bếp', en: 'To kitchen' },
+  xuatKhac: { vi: 'Xuất khác', en: 'Other issues' },
+  huy: { vi: 'Hủy', en: 'Write-offs' },
+  traNcc: { vi: 'Trả NCC', en: 'Supplier returns' },
+  khongDoc: { vi: 'Không đọc được phiếu xuất.', en: 'Could not read the issue slips.' },
+  tu: { vi: (noi: string) => `từ ${noi}`, en: (noi: string) => `from ${noi}` },
+  tieuDe: { vi: 'Chuyển, xuất, hủy', en: 'Transfers, issues, write-offs' },
+  chuaBatDau1: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào ', en: 'This branch has not started using inventory yet. Go to ' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory home' },
+  nutChuyen: { vi: 'Chuyển hàng ra quầy', en: 'Transfer to counter' },
+  nutXuatBep: { vi: 'Xuất bếp', en: 'Issue to kitchen' },
+  nutXuatKhac: { vi: 'Xuất khác', en: 'Other issue' },
+  nutBaoHuy: { vi: 'Báo hủy', en: 'Report write-off' },
+  dan1: { vi: 'Hàng lấy ra theo ', en: 'Goods are taken from the ' },
+  dan2: { vi: 'lô hết hạn sớm nhất trước', en: 'lot with the earliest use-by date first' },
+  dan3: {
+    vi: '. Hàng đã hết hạn không lên quầy, không vào bếp — chỉ báo hủy được. Báo hủy: hàng rời quầy ngay, ',
+    en: '. Expired goods do not go to the counter or the kitchen — they can only be written off. Write-off: the goods leave the counter at once and are only recorded as lost after the ',
+  },
+  dan4: { vi: 'quản lý duyệt', en: 'manager approves' },
+  dan5: {
+    vi: ' mới ghi mất. Xuất khác (dùng nội bộ, tặng khách, hàng mẫu…) phải chọn lý do.',
+    en: '. Other issues (staff use, gifts to guests, samples…) need a reason.',
+  },
+  locPhieu: { vi: 'Lọc phiếu', en: 'Filter slips' },
+  goiYTim: { vi: 'Số phiếu, nơi, lý do…', en: 'Slip number, location, reason…' },
+  hetDs: { vi: 'Hết danh sách — bấm "Trang trước".', en: 'End of the list — press "Previous".' },
+  khongKhop: { vi: 'Không tìm thấy phiếu nào khớp bộ lọc.', en: 'No slips match the filters.' },
+  chuaCo: { vi: 'Chưa có phiếu nào', en: 'No slips yet' },
+  oMucNay: { vi: ' ở mục này', en: ' in this section' },
+  noi: { vi: 'Nơi', en: 'Where' },
+  hang: { vi: 'Hàng', en: 'Goods' },
+  soDong: { vi: (n: number) => `${n} dòng`, en: (n: number) => `${n} ${s(n, 'line', 'lines')}` },
+  soGoi: { vi: (n: number) => `${n} gói`, en: (n: number) => `${n} ${s(n, 'pack', 'packs')}` },
+  lyDo: { vi: 'Lý do', en: 'Reason' },
+  nguoiLap: { vi: 'Người lập', en: 'Made by' },
+});
 
 const LOC = [
-  ['', 'Tất cả'], ['cho_duyet', 'Chờ duyệt hủy'], ['dang_chuyen', 'Đang mang ra'], ['chuyen', 'Chuyển'],
-  ['xuat_bep', 'Xuất bếp'], ['xuat_khac', 'Xuất khác'], ['huy', 'Hủy'], ['tra_ncc', 'Trả NCC'],
+  ['', t.tatCa], ['cho_duyet', t.choDuyetHuy], ['dang_chuyen', t.dangMangRa], ['chuyen', t.chuyen],
+  ['xuat_bep', t.xuatBep], ['xuat_khac', t.xuatKhac], ['huy', t.huy], ['tra_ncc', t.traNcc],
 ] as const;
 /** Lọc theo trạng thái (các mục còn lại lọc theo loại phiếu). */
 const LOC_TRANG_THAI: Record<string, string[]> = {
@@ -42,59 +87,59 @@ if (k.chiNhanh && k.daKhoiTao) {
       ? { trangThai: LOC_TRANG_THAI[loc] }
       : { loai: loc || null }, { tim, nhanSuId: k.nhanSu.id })));
   } catch (e) {
-    loiDoc = cauLoiKho(e, 'Không đọc được phiếu xuất.');
+    loiDoc = cauLoiKho(e, t.khongDoc);
   }
 }
 const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 const moTa = (p: PhieuXuatTom) =>
-  p.loai === 'chuyen' ? `${p.ten_vi_tri} → ${p.ten_vi_tri_den ?? '—'}` : `từ ${p.ten_vi_tri}`;
+  p.loai === 'chuyen' ? `${p.ten_vi_tri} → ${p.ten_vi_tri_den ?? '—'}` : t.tu(p.ten_vi_tri);
 ---
-<Kho k={k} huongDan="chuyen-xuat" tieuDe="Chuyển, xuất, hủy">
-  <h1>Chuyển, xuất, hủy</h1>
+<Kho k={k} huongDan="chuyen-xuat" tieuDe={t.tieuDe}>
+  <h1>{t.tieuDe}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
-    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+    <p class="nb-rong">{t.chuaBatDau1}<a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
   ) : (
     <>
       {k.duoc('van_hanh') && (
         <div class="kho-nut-nhanh">
-          <a class="nb-nut" href="/noi-bo/kho/xuat/moi?loai=chuyen">Chuyển hàng ra quầy</a>
-          <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=xuat_bep">Xuất bếp</a>
-          <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=xuat_khac">Xuất khác</a>
-          <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=huy">Báo hủy</a>
+          <a class="nb-nut" href="/noi-bo/kho/xuat/moi?loai=chuyen">{t.nutChuyen}</a>
+          <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=xuat_bep">{t.nutXuatBep}</a>
+          <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=xuat_khac">{t.nutXuatKhac}</a>
+          <a class="nb-nut phu" href="/noi-bo/kho/xuat/moi?loai=huy">{t.nutBaoHuy}</a>
         </div>
       )}
       <p class="nb-dan">
-        Hàng lấy ra theo <strong>lô hết hạn sớm nhất trước</strong>. Hàng đã hết hạn không lên quầy,
-        không vào bếp — chỉ báo hủy được. Báo hủy: hàng rời quầy ngay, <strong>quản lý duyệt</strong> mới ghi mất.
-        Xuất khác (dùng nội bộ, tặng khách, hàng mẫu…) phải chọn lý do.
+        {t.dan1}<strong>{t.dan2}</strong>{t.dan3}<strong>{t.dan4}</strong>{t.dan5}
       </p>
 
-      <nav class="kho-dh" aria-label="Lọc phiếu">
-        {LOC.map(([v, t]) => (
-          <a href={v ? `/noi-bo/kho/xuat?loc=${v}` : '/noi-bo/kho/xuat'} aria-current={loc === v ? 'page' : undefined}>{t}</a>
+      <nav class="kho-dh" aria-label={t.locPhieu}>
+        {LOC.map(([v, ten]) => (
+          <a href={v ? `/noi-bo/kho/xuat?loc=${v}` : '/noi-bo/kho/xuat'} aria-current={loc === v ? 'page' : undefined}>{ten}</a>
         ))}
       </nav>
 
       <LocDanhSach duong="/noi-bo/kho/xuat" tim={tim} giu={{ loc }} coCuaToi={k.duoc('van_hanh')}
-        goiY="Số phiếu, nơi, lý do…" />
+        goiY={t.goiYTim} />
 
       {ds.length === 0 ? (
-        <p class="nb-rong">{tim.trang > 1 ? 'Hết danh sách — bấm "Trang trước".' : dangTim(tim) ? 'Không tìm thấy phiếu nào khớp bộ lọc.' : `Chưa có phiếu nào${loc ? ' ở mục này' : ''}.`}</p>
+        <p class="nb-rong">{tim.trang > 1 ? t.hetDs : dangTim(tim) ? t.khongKhop : `${t.chuaCo}${loc ? t.oMucNay : ''}.`}</p>
       ) : ds.map(p => {
-        const [nhan, lop] = TRANG_THAI_CHUNG_TU[p.trang_thai] ?? [p.trang_thai, 'tat'];
+        // Trạng thái lạ: hiện nguyên mã, màu xám (như trước).
+        const [nhan, lopTT] = trangThaiKho(p.trang_thai, nn);
+        const lop = lopTT || 'tat';
         return (
           <a href={`/noi-bo/kho/xuat/${p.id}`} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
             <div class="nb-dong-dau">
-              <strong>{p.so_phieu} · {TEN_LOAI_XUAT[p.loai as LoaiXuat]}</strong>
+              <strong>{p.so_phieu} · {nhanKho(TEN_LOAI_XUAT_NB, p.loai as LoaiXuat, nn)}</strong>
               <span class={`nb-nhan ${lop}`}>{nhan}</span>
             </div>
             <dl>
-              <dt>Nơi</dt><dd>{moTa(p)}</dd>
-              <dt>Hàng</dt><dd>{p.so_dong} dòng · {p.tong_goi ? `${p.tong_goi} gói · ` : ''}{dinhDangKg(p.tong_kg)} kg</dd>
-              {p.ten_ly_do && <><dt>Lý do</dt><dd>{p.ten_ly_do}</dd></>}
-              <dt>Người lập</dt><dd>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
+              <dt>{t.noi}</dt><dd>{moTa(p)}</dd>
+              <dt>{t.hang}</dt><dd>{t.soDong(p.so_dong)} · {p.tong_goi ? `${t.soGoi(p.tong_goi)} · ` : ''}{dinhDangKg(p.tong_kg, nn)} kg</dd>
+              {p.ten_ly_do && <><dt>{t.lyDo}</dt><dd>{p.ten_ly_do}</dd></>}
+              <dt>{t.nguoiLap}</dt><dd>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
             </dl>
           </a>
         );

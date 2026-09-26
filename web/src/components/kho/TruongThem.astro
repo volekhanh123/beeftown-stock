@@ -9,8 +9,9 @@
  * Không gọi database. Tên ô: tenO() trong lib/kho/truong-them.ts.
  */
 import {
-  tenO, giaTriVaoO, hienThiGiaTri, type DinhNghiaTruong, type GiaTriTruong,
+  tenO, giaTriVaoO, hienThiGiaTri, CO_KHONG, type DinhNghiaTruong, type GiaTriTruong,
 } from '../../lib/kho/truong-them.ts';
+import { nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
 
 interface Props {
   dinhNghia: DinhNghiaTruong[];
@@ -19,6 +20,8 @@ interface Props {
   chiDoc?: boolean;
 }
 const { dinhNghia, giaTri = {}, dong, chiDoc = false } = Astro.props;
+const nn = nnCua(Astro);
+const oTat = { vi: ' (ô đã tắt)', en: ' (field turned off)' }[nn];
 // Chế độ chỉ đọc: chỉ hiện ô CÓ giá trị — một dãy "—" không nói gì với người đọc.
 const coGiaTri = (d: DinhNghiaTruong) => giaTri[d.khoa] !== undefined && giaTri[d.khoa] !== null && giaTri[d.khoa] !== '';
 const hien = dinhNghia.filter(d => chiDoc ? coGiaTri(d) : (d.dang_dung || coGiaTri(d)));
@@ -28,8 +31,8 @@ const hien = dinhNghia.filter(d => chiDoc ? coGiaTri(d) : (d.dang_dung || coGiaT
     {hien.map(d => (
       chiDoc || !d.dang_dung ? (
         <div class="nb-o">
-          <span>{d.nhan}{!d.dang_dung && ' (ô đã tắt)'}</span>
-          <p style="margin:0;padding:.5rem 0">{hienThiGiaTri(d, giaTri[d.khoa])}</p>
+          <span>{d.nhan}{!d.dang_dung && oTat}</span>
+          <p style="margin:0;padding:.5rem 0">{hienThiGiaTri(d, giaTri[d.khoa], nn)}</p>
         </div>
       ) : (
         <label class="nb-o">
@@ -45,8 +48,8 @@ const hien = dinhNghia.filter(d => chiDoc ? coGiaTri(d) : (d.dang_dung || coGiaT
           ) : d.kieu === 'co_khong' ? (
             <select name={tenO(d.khoa, dong)}>
               <option value="">—</option>
-              <option value="co" selected={giaTriVaoO(d, giaTri[d.khoa]) === 'co'}>Có</option>
-              <option value="khong" selected={giaTriVaoO(d, giaTri[d.khoa]) === 'khong'}>Không</option>
+              <option value="co" selected={giaTriVaoO(d, giaTri[d.khoa]) === 'co'}>{CO_KHONG.co[nn]}</option>
+              <option value="khong" selected={giaTriVaoO(d, giaTri[d.khoa]) === 'khong'}>{CO_KHONG.khong[nn]}</option>
             </select>
           ) : d.kieu === 'ngay' ? (
             <input type="date" name={tenO(d.khoa, dong)} value={giaTriVaoO(d, giaTri[d.khoa])} />

@@ -18,10 +18,15 @@
  * Phần thuần (đọc form, gom mã chưa ghép, gợi ý món, câu chữ) không gọi
  * database — test bằng Node. Phần gọi database dùng client mang token của
  * người đang xem (RLS: dòng có tiền chỉ vai xem_gia thấy).
+ *
+ * HAI THỨ TIẾNG: bảng nhãn có bản `…_NB` ({ vi, en }; bảng tên cũ dựng lại từ
+ * đó), đọc form trả thêm loiEn, câu báo KetQua mang cauEn. Câu của database
+ * (TrangThaiIpos.cau, ly_do) đi nguyên văn — trang tra dichCau.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { boDau, cauLoiKho, docSoNguyen, laUuid, type KetQua } from './chung.ts';
+import { boDau, cauLoiKho, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { dichCau } from '../cau-noi-bo.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 
 // -----------------------------------------------------------------------------
@@ -123,38 +128,62 @@ export interface MonMenuIpos {
   dang_ban: boolean;
 }
 
-/** Lựa chọn "Bán theo" ở màn Ghép món. '' = theo món kho. */
-export const CHON_DON_VI_BAN: readonly { ma: '' | DonViBan; ten: string; giai: string }[] = [
-  { ma: '', ten: 'Theo món kho', giai: 'Món đếm gói → mỗi số lượng là 1 gói; món theo kg → số lượng là kg.' },
-  { ma: 'kg', ten: 'Theo kg', giai: 'iPOS gõ số kg (vd 0,45). Món đếm gói thì lấy gói nguyên gần số kg nhất, lệch ghi hao hụt.' },
-  { ma: 'goi', ten: 'Theo gói', giai: 'Mỗi số lượng là 1 gói. Món kho tính theo kg thì điền "mỗi gói = … kg".' },
-  { ma: 'suat', ten: 'Theo suất (món chế biến)', giai: 'Món bếp nấu (phở, lẩu…): kho không trừ, chỉ đếm suất để so định lượng.' },
+/** Lựa chọn "Bán theo" ở màn Ghép món. '' = theo món kho. Hai thứ tiếng. */
+export const CHON_DON_VI_BAN_NB: readonly { ma: '' | DonViBan; ten: HaiThuTieng; giai: HaiThuTieng }[] = [
+  { ma: '', ten: { vi: 'Theo món kho', en: 'As the stock item' },
+    giai: { vi: 'Món đếm gói → mỗi số lượng là 1 gói; món theo kg → số lượng là kg.',
+            en: 'Pack-counted item → each unit is 1 pack; kg item → the quantity is kg.' } },
+  { ma: 'kg', ten: { vi: 'Theo kg', en: 'By kg' },
+    giai: { vi: 'iPOS gõ số kg (vd 0,45). Món đếm gói thì lấy gói nguyên gần số kg nhất, lệch ghi hao hụt.',
+            en: 'iPOS enters the kg (e.g. 0.45). For a pack-counted item, the whole pack closest to that weight is taken; the difference is recorded as weight loss.' } },
+  { ma: 'goi', ten: { vi: 'Theo gói', en: 'By pack' },
+    giai: { vi: 'Mỗi số lượng là 1 gói. Món kho tính theo kg thì điền "mỗi gói = … kg".',
+            en: 'Each unit is 1 pack. If the stock item is tracked in kg, fill in "each pack = … kg".' } },
+  { ma: 'suat', ten: { vi: 'Theo suất (món chế biến)', en: 'By portion (cooked dish)' },
+    giai: { vi: 'Món bếp nấu (phở, lẩu…): kho không trừ, chỉ đếm suất để so định lượng.',
+            en: 'Dishes the kitchen cooks (pho, hotpot…): no stock is deducted; portions are only counted to compare with recipes.' } },
 ];
+/** Bản chỉ tiếng Việt (tên cũ, giữ cho code và test cũ). */
+export const CHON_DON_VI_BAN: readonly { ma: '' | DonViBan; ten: string; giai: string }[] =
+  CHON_DON_VI_BAN_NB.map(c => ({ ma: c.ma, ten: c.ten.vi, giai: c.giai.vi }));
 
-export function tenDonViBan(v: string | null | undefined): string {
-  return CHON_DON_VI_BAN.find(c => c.ma === (v ?? ''))?.ten ?? 'Theo món kho';
+export function tenDonViBan(v: string | null | undefined, nn: NgonNguNB = 'vi'): string {
+  return (CHON_DON_VI_BAN_NB.find(c => c.ma === (v ?? '')) ?? CHON_DON_VI_BAN_NB[0]).ten[nn];
 }
 
 // -----------------------------------------------------------------------------
 // CÂU CHỮ — thuần
 // -----------------------------------------------------------------------------
-export const TEN_TRANG_THAI_DONG: Record<TrangThaiDong, [string, string]> = {
-  cho:        ['Chờ', 'tat'],
-  da_ghi:     ['Đã trừ kho', 'song'],
-  chua_khop:  ['Chưa ghép món', 'cho'],
-  thieu_hang: ['Thiếu hàng trên sổ', 'cho'],
-  bo_qua:     ['Bỏ qua', 'tat'],
-  da_huy:     ['Hóa đơn đã hủy', 'tat'],
-  loi:        ['Lỗi', 'cho'],
+export const TEN_TRANG_THAI_DONG_NB: Record<TrangThaiDong, [HaiThuTieng, string]> = {
+  cho:        [{ vi: 'Chờ', en: 'Waiting' }, 'tat'],
+  da_ghi:     [{ vi: 'Đã trừ kho', en: 'Deducted from stock' }, 'song'],
+  chua_khop:  [{ vi: 'Chưa ghép món', en: 'Not matched' }, 'cho'],
+  thieu_hang: [{ vi: 'Thiếu hàng trên sổ', en: 'Short on the books' }, 'cho'],
+  bo_qua:     [{ vi: 'Bỏ qua', en: 'Skipped' }, 'tat'],
+  da_huy:     [{ vi: 'Hóa đơn đã hủy', en: 'Invoice cancelled' }, 'tat'],
+  loi:        [{ vi: 'Lỗi', en: 'Error' }, 'cho'],
 };
+/** Bản chỉ tiếng Việt (tên cũ, giữ cho code và test cũ). */
+export const TEN_TRANG_THAI_DONG: Record<TrangThaiDong, [string, string]> = Object.fromEntries(
+  Object.entries(TEN_TRANG_THAI_DONG_NB).map(([k, [ten, lop]]) => [k, [ten.vi, lop]]),
+) as Record<TrangThaiDong, [string, string]>;
+
+/** Nhãn và lớp CSS của trạng thái một dòng bán theo ngôn ngữ; trạng thái lạ → [mã, 'tat']. */
+export function trangThaiDong(ma: string | null | undefined, nn: NgonNguNB = 'vi'): [string, string] {
+  const x = ma ? TEN_TRANG_THAI_DONG_NB[ma as TrangThaiDong] : undefined;
+  return x ? [x[0][nn], x[1]] : [ma ?? '', 'tat'];
+}
 
 /** Thẻ lọc của màn Bán hàng iPOS. Thẻ đầu là mặc định. "Chưa khớp" gồm cả dòng lỗi. */
-export const THE_DONG: readonly { ma: string; ten: string; trangThai: TrangThaiDong[] }[] = [
-  { ma: 'chua_khop', ten: 'Chưa khớp', trangThai: ['chua_khop', 'loi'] },
-  { ma: 'thieu_hang', ten: 'Thiếu hàng', trangThai: ['thieu_hang'] },
-  { ma: 'da_ghi', ten: 'Đã ghi', trangThai: ['da_ghi'] },
-  { ma: 'bo_qua', ten: 'Bỏ qua', trangThai: ['bo_qua', 'da_huy'] },
+export const THE_DONG_NB: readonly { ma: string; ten: HaiThuTieng; trangThai: TrangThaiDong[] }[] = [
+  { ma: 'chua_khop', ten: { vi: 'Chưa khớp', en: 'Unmatched' }, trangThai: ['chua_khop', 'loi'] },
+  { ma: 'thieu_hang', ten: { vi: 'Thiếu hàng', en: 'Short stock' }, trangThai: ['thieu_hang'] },
+  { ma: 'da_ghi', ten: { vi: 'Đã ghi', en: 'Recorded' }, trangThai: ['da_ghi'] },
+  { ma: 'bo_qua', ten: { vi: 'Bỏ qua', en: 'Skipped' }, trangThai: ['bo_qua', 'da_huy'] },
 ];
+/** Bản chỉ tiếng Việt (tên cũ, giữ cho code và test cũ). */
+export const THE_DONG: readonly { ma: string; ten: string; trangThai: TrangThaiDong[] }[] =
+  THE_DONG_NB.map(t => ({ ...t, ten: t.ten.vi }));
 
 export function docThe(v: string | null | undefined): (typeof THE_DONG)[number] {
   return THE_DONG.find(t => t.ma === v) ?? THE_DONG[0];
@@ -165,8 +194,11 @@ export function lopDen(den: DenIpos | string | null | undefined): 'xong' | 'luu-
   return den === 'xanh' ? 'xong' : den === 'do' ? 'loi' : 'luu-y';
 }
 
-export function chuDen(den: DenIpos | string | null | undefined): string {
-  return den === 'xanh' ? 'Đang chạy tốt' : den === 'do' ? 'Mất kết nối' : 'Cần xem';
+export function chuDen(den: DenIpos | string | null | undefined, nn: NgonNguNB = 'vi'): string {
+  const c = den === 'xanh' ? { vi: 'Đang chạy tốt', en: 'Running well' }
+    : den === 'do' ? { vi: 'Mất kết nối', en: 'Disconnected' }
+    : { vi: 'Cần xem', en: 'Needs attention' };
+  return c[nn];
 }
 
 /** Cách xử lý dòng chờ mà database nhận. */
@@ -193,35 +225,51 @@ const COT_CAU_HINH = ['api_url', 'pos_parent', 'pos_id'] as const;
 /**
  * Form Kết nối iPOS → object gửi kho_ipos_luu_cau_hinh. Chỉ các khóa database
  * nhận; ô nào có chữ "token" bị từ chối NGAY (không gửi đi đâu cả) — token là
- * bí mật Worker, không bao giờ vào database.
+ * bí mật Worker, không bao giờ vào database. loiEn: bản tiếng Anh của loi.
  */
-export function docFormCauHinhIpos(form: FormData): { cauHinh: CauHinhGui | null; loi: string | null } {
+export function docFormCauHinhIpos(form: FormData): { cauHinh: CauHinhGui | null; loi: string | null; loiEn: string | null } {
   const chu = (k: string) => String(form.get(k) ?? '').trim();
+  const hong = (c: HaiThuTieng) => ({ cauHinh: null, loi: c.vi, loiEn: c.en });
   for (const k of COT_CAU_HINH) {
     if (/token/i.test(chu(k))) {
-      return { cauHinh: null, loi: 'Không dán token vào đây. Token iPOS là bí mật của máy chủ — người quản lý Cloudflare cài bằng lệnh npx wrangler secret put IPOS_ACCESS_TOKEN.' };
+      return hong({
+        vi: 'Không dán token vào đây. Token iPOS là bí mật của máy chủ — người quản lý Cloudflare cài bằng lệnh npx wrangler secret put IPOS_ACCESS_TOKEN.',
+        en: 'Do not paste a token here. The iPOS token is a server secret — whoever manages Cloudflare sets it with the command npx wrangler secret put IPOS_ACCESS_TOKEN.',
+      });
     }
   }
   const api = chu('api_url').replace(/\/+$/, '');
   if (api && !/^https:\/\/[A-Za-z0-9.-]+(:[0-9]{1,5})?(\/[A-Za-z0-9._~/-]*)?$/.test(api)) {
-    return { cauHinh: null, loi: 'Địa chỉ iPOS phải bắt đầu bằng https:// và không có dấu ? hay tham số.' };
+    return hong({
+      vi: 'Địa chỉ iPOS phải bắt đầu bằng https:// và không có dấu ? hay tham số.',
+      en: 'The iPOS address must start with https:// and have no ? or parameters.',
+    });
   }
   for (const [k, ten] of [['pos_parent', 'pos_parent'], ['pos_id', 'pos_id']] as const) {
     const v = chu(k);
     if (v && !/^[A-Za-z0-9_.-]{1,60}$/.test(v)) {
-      return { cauHinh: null, loi: `${ten} chỉ gồm chữ không dấu, số, dấu chấm, gạch (tối đa 60 ký tự).` };
+      return hong({
+        vi: `${ten} chỉ gồm chữ không dấu, số, dấu chấm, gạch (tối đa 60 ký tự).`,
+        en: `${ten} may only contain plain letters (no accents), digits, dots and dashes (at most 60 characters).`,
+      });
     }
   }
   const vt = chu('vi_tri_ban_id');
-  if (vt && !laUuid(vt)) return { cauHinh: null, loi: 'Chọn lại quầy bán.' };
+  if (vt && !laUuid(vt)) return hong({ vi: 'Chọn lại quầy bán.', en: 'Choose the sales counter again.' });
   const mo = docSoNguyen(chu('gio_mo_cua') || '10', 0, 23);
   const dong = docSoNguyen(chu('gio_dong_cua') || '23', 1, 24);
   if (mo === null || dong === null || Number.isNaN(mo) || Number.isNaN(dong) || mo >= dong) {
-    return { cauHinh: null, loi: 'Giờ mở cửa từ 0 đến 23, giờ đóng cửa từ 1 đến 24, và mở phải trước đóng.' };
+    return hong({
+      vi: 'Giờ mở cửa từ 0 đến 23, giờ đóng cửa từ 1 đến 24, và mở phải trước đóng.',
+      en: 'The opening hour is 0 to 23, the closing hour is 1 to 24, and opening must come before closing.',
+    });
   }
   const mat = docSoNguyen(chu('gio_mat_ket_noi') || '3', 1, 12);
   if (mat === null || Number.isNaN(mat)) {
-    return { cauHinh: null, loi: 'Báo mất kết nối sau từ 1 đến 12 giờ không nhận hóa đơn.' };
+    return hong({
+      vi: 'Báo mất kết nối sau từ 1 đến 12 giờ không nhận hóa đơn.',
+      en: 'The disconnection alert must be after 1 to 12 hours without invoices.',
+    });
   }
   return {
     cauHinh: {
@@ -230,6 +278,7 @@ export function docFormCauHinhIpos(form: FormData): { cauHinh: CauHinhGui | null
       vi_tri_ban_id: vt, gio_mo_cua: mo, gio_dong_cua: dong, gio_mat_ket_noi: mat,
     },
     loi: null,
+    loiEn: null,
   };
 }
 
@@ -316,14 +365,24 @@ export function goiYMatHang<T extends { id: string; ten: string; ma: string; ma_
 }
 
 /** Câu báo sau khi ghép: "Đã ghép … 5 dòng: 4 đã trừ kho, 1 thiếu hàng trên sổ." */
-export function cauKetQuaGhep(ma: string, kq: { so_dong?: number; dong?: Record<string, number> } | null, boGhep = false): string {
-  if (boGhep) return `Đã bỏ ghép mã "${ma}". Dòng bán mới của mã này sẽ nằm ở Chưa khớp.`;
+export function cauKetQuaGhep(
+  ma: string, kq: { so_dong?: number; dong?: Record<string, number> } | null, boGhep = false, nn: NgonNguNB = 'vi',
+): string {
+  const c = (x: HaiThuTieng) => x[nn];
+  if (boGhep) {
+    return c({ vi: `Đã bỏ ghép mã "${ma}". Dòng bán mới của mã này sẽ nằm ở Chưa khớp.`,
+               en: `Removed the match for code "${ma}". New sale lines with this code will show under Unmatched.` });
+  }
   const n = Number(kq?.so_dong ?? 0);
-  if (!n) return `Đã ghép mã "${ma}". Dòng bán sau này của mã này sẽ tự trừ kho.`;
+  if (!n) {
+    return c({ vi: `Đã ghép mã "${ma}". Dòng bán sau này của mã này sẽ tự trừ kho.`,
+               en: `Matched code "${ma}". Future sale lines with this code will be deducted from stock automatically.` });
+  }
   const phan = Object.entries(kq?.dong ?? {})
     .filter(([, so]) => Number(so) > 0)
-    .map(([tt, so]) => `${so} ${(TEN_TRANG_THAI_DONG[tt as TrangThaiDong]?.[0] ?? tt).toLowerCase()}`);
-  return `Đã ghép mã "${ma}" và xử lý lại ${n} dòng${phan.length ? `: ${phan.join(', ')}` : ''}.`;
+    .map(([tt, so]) => `${so} ${(TEN_TRANG_THAI_DONG_NB[tt as TrangThaiDong]?.[0]?.[nn] ?? tt).toLowerCase()}`);
+  return c({ vi: `Đã ghép mã "${ma}" và xử lý lại ${n} dòng${phan.length ? `: ${phan.join(', ')}` : ''}.`,
+             en: `Matched code "${ma}" and reprocessed ${n} ${n === 1 ? 'line' : 'lines'}${phan.length ? `: ${phan.join(', ')}` : ''}.` });
 }
 
 // -----------------------------------------------------------------------------
@@ -442,43 +501,73 @@ export async function docMonMenu(client: SupabaseClient, chiNhanhId: string, ma:
 // -----------------------------------------------------------------------------
 // GHI DATABASE
 // -----------------------------------------------------------------------------
+const YEU_CAU_HONG = { vi: 'Yêu cầu không hợp lệ — tải lại trang.', en: 'Invalid request — reload the page.' };
+
 export async function luuCauHinhIpos(client: SupabaseClient, chiNhanhId: string, form: FormData): Promise<KetQua> {
-  const { cauHinh, loi } = docFormCauHinhIpos(form);
-  if (!cauHinh) return { ok: false, cau: loi ?? 'Cấu hình chưa hợp lệ.' };
+  const { cauHinh, loi, loiEn } = docFormCauHinhIpos(form);
+  if (!cauHinh) {
+    const macDinh = { vi: 'Cấu hình chưa hợp lệ.', en: 'The settings are not valid.' };
+    return { ok: false, cau: loi ?? macDinh.vi, cauEn: loiEn ?? macDinh.en };
+  }
   const { error } = await client.rpc('kho_ipos_luu_cau_hinh', { p_chi_nhanh_id: chiNhanhId, p_cau_hinh: cauHinh });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: cauHinh.bat ? 'Đã lưu kết nối iPOS. Đồng bộ đang bật — hóa đơn iPOS gửi sang sẽ được ghi.' : 'Đã lưu kết nối iPOS. Đồng bộ đang tắt — hóa đơn gửi sang chỉ được cất lại, chưa trừ kho.' };
+  return kqHai(true, cauHinh.bat
+    ? { vi: 'Đã lưu kết nối iPOS. Đồng bộ đang bật — hóa đơn iPOS gửi sang sẽ được ghi.',
+        en: 'iPOS connection saved. Sync is on — invoices sent by iPOS will be recorded.' }
+    : { vi: 'Đã lưu kết nối iPOS. Đồng bộ đang tắt — hóa đơn gửi sang chỉ được cất lại, chưa trừ kho.',
+        en: 'iPOS connection saved. Sync is off — invoices sent over are only stored, not deducted from stock.' });
 }
 
 export async function chuyenSangIpos(client: SupabaseClient, chiNhanhId: string, form: FormData): Promise<KetQua> {
-  if (form.get('xac_nhan') !== 'co') return { ok: false, cau: 'Tích ô "Tôi đã hiểu" trước khi chuyển.' };
+  if (form.get('xac_nhan') !== 'co') return kqHai(false, { vi: 'Tích ô "Tôi đã hiểu" trước khi chuyển.', en: 'Tick "I understand" before switching.' });
   const moc = docMocChuyen(form.get('tu_luc'));
-  if (moc === undefined) return { ok: false, cau: 'Mốc chuyển chưa đúng dạng ngày giờ.' };
+  if (moc === undefined) return kqHai(false, { vi: 'Mốc chuyển chưa đúng dạng ngày giờ.', en: 'The switch time is not a valid date and time.' });
   const { data, error } = await client.rpc('kho_ipos_chuyen_sang', { p_chi_nhanh_id: chiNhanhId, p_tu_luc: moc });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const tu = (data as { ipos_tu_luc?: string } | null)?.ipos_tu_luc;
-  return { ok: true, cau: `Đã chuyển sang trừ kho theo iPOS${tu ? ` từ ${new Date(new Date(tu).getTime() + 7 * 3600e3).toISOString().slice(0, 16).replace('T', ' ')}` : ''}. Bán trước mốc này được bỏ qua (đã tính trong lần đếm quầy).` };
+  const luc = tu ? new Date(new Date(tu).getTime() + 7 * 3600e3).toISOString().slice(0, 16).replace('T', ' ') : '';
+  return kqHai(true, {
+    vi: `Đã chuyển sang trừ kho theo iPOS${tu ? ` từ ${luc}` : ''}. Bán trước mốc này được bỏ qua (đã tính trong lần đếm quầy).`,
+    en: `Switched to deducting stock from iPOS${tu ? ` from ${luc}` : ''}. Sales before this time are skipped (already covered by the counter count).`,
+  });
 }
 
 export async function troVeDemQuay(client: SupabaseClient, chiNhanhId: string): Promise<KetQua> {
   const { error } = await client.rpc('kho_ipos_tro_ve', { p_chi_nhanh_id: chiNhanhId });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: 'Đã quay lại lấy số bán từ đếm quầy. Dòng iPOS đã trừ kho giữ nguyên; dòng mới chỉ nằm chờ.' };
+  return kqHai(true, {
+    vi: 'Đã quay lại lấy số bán từ đếm quầy. Dòng iPOS đã trừ kho giữ nguyên; dòng mới chỉ nằm chờ.',
+    en: 'Back to taking sales from the counter count. iPOS lines already deducted stay as they are; new lines just wait.',
+  });
 }
 
 export async function xuLyDongIpos(client: SupabaseClient, form: FormData): Promise<KetQua> {
   const id = String(form.get('dong_id') ?? '');
   const cach = String(form.get('cach') ?? '') as CachXuLy;
   const lyDo = String(form.get('ly_do') ?? '').trim().slice(0, 300);
-  if (!laUuid(id) || !CACH_XU_LY.includes(cach)) return { ok: false, cau: 'Yêu cầu không hợp lệ — tải lại trang.' };
-  if (cach === 'ngoai_so' && lyDo.length < 3) return { ok: false, cau: 'Ghi lý do hàng ngoài sổ (vd "hàng tồn quầy chưa nhập sổ").' };
+  if (!laUuid(id) || !CACH_XU_LY.includes(cach)) return kqHai(false, YEU_CAU_HONG);
+  if (cach === 'ngoai_so' && lyDo.length < 3) {
+    return kqHai(false, {
+      vi: 'Ghi lý do hàng ngoài sổ (vd "hàng tồn quầy chưa nhập sổ").',
+      en: 'Enter a reason for the off-book stock (e.g. "counter stock not entered in the books yet").',
+    });
+  }
   const { data, error } = await client.rpc('kho_ipos_xu_ly_dong', { p_id: id, p_cach: cach, p_ly_do: lyDo || null });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const kq = (data ?? {}) as { trang_thai?: string; ly_do?: string | null };
-  if (cach === 'bo_qua') return { ok: true, cau: 'Đã bỏ qua dòng này — kho không trừ.' };
-  if (kq.trang_thai === 'da_ghi') return { ok: true, cau: cach === 'ngoai_so' ? 'Đã ghi hàng ngoài sổ và trừ kho.' : 'Thử lại được — đã trừ kho.' };
-  const ten = TEN_TRANG_THAI_DONG[kq.trang_thai as TrangThaiDong]?.[0] ?? kq.trang_thai ?? '';
-  return { ok: false, cau: `Vẫn chưa trừ được kho (${ten.toLowerCase()})${kq.ly_do ? `: ${kq.ly_do}` : ''}.` };
+  if (cach === 'bo_qua') return kqHai(true, { vi: 'Đã bỏ qua dòng này — kho không trừ.', en: 'Line skipped — no stock deducted.' });
+  if (kq.trang_thai === 'da_ghi') {
+    return kqHai(true, cach === 'ngoai_so'
+      ? { vi: 'Đã ghi hàng ngoài sổ và trừ kho.', en: 'Off-book stock recorded and deducted.' }
+      : { vi: 'Thử lại được — đã trừ kho.', en: 'Retry worked — deducted from stock.' });
+  }
+  const nhan = TEN_TRANG_THAI_DONG_NB[kq.trang_thai as TrangThaiDong]?.[0];
+  const ten = (l: NgonNguNB) => nhan?.[l] ?? kq.trang_thai ?? '';
+  // ly_do là câu của database — bản tiếng Anh tra dichCau.
+  return kqHai(false, {
+    vi: `Vẫn chưa trừ được kho (${ten('vi').toLowerCase()})${kq.ly_do ? `: ${kq.ly_do}` : ''}.`,
+    en: `Still could not deduct from stock (${ten('en').toLowerCase()})${kq.ly_do ? `: ${dichCau('en', kq.ly_do)}` : ''}.`,
+  });
 }
 
 export interface GhepGui {
@@ -493,43 +582,64 @@ export interface GhepGui {
  * Form Ghép món → tham số kho_ipos_gan_ma_v2 (thuần). mat_hang_id: id món kho
  * | "goi_can" (hàng cân nhãn) | "bo_qua" (không phải hàng kho) | "bo_ghep".
  * don_vi_ban: '' | kg | goi | suat — suất = món chế biến: không cần chọn món kho.
+ * loiEn: bản tiếng Anh của loi.
  */
-export function docFormGhep(form: FormData): { ghep: GhepGui | null; loi: string | null } {
+export function docFormGhep(form: FormData): { ghep: GhepGui | null; loi: string | null; loiEn: string | null } {
+  const hong = (c: HaiThuTieng) => ({ ghep: null, loi: c.vi, loiEn: c.en });
   const ma = String(form.get('ma_ipos') ?? '').trim();
   const chon = String(form.get('mat_hang_id') ?? '').trim();
   const dvChu = String(form.get('don_vi_ban') ?? '').trim();
-  if (!ma || ma.length > 100) return { ghep: null, loi: 'Thiếu mã món iPOS.' };
-  if (dvChu && !['kg', 'goi', 'suat'].includes(dvChu)) return { ghep: null, loi: 'Chọn lại "Bán theo".' };
+  if (!ma || ma.length > 100) return hong({ vi: 'Thiếu mã món iPOS.', en: 'The iPOS dish code is missing.' });
+  if (dvChu && !['kg', 'goi', 'suat'].includes(dvChu)) return hong({ vi: 'Chọn lại "Bán theo".', en: 'Choose "Sold by" again.' });
   const donVi = (dvChu || null) as DonViBan | null;
 
-  if (chon === 'bo_ghep') return { ghep: { ma, kieu: null, matHang: null, donVi: null, kgMoiDonVi: null }, loi: null };
-  if (donVi === 'suat') return { ghep: { ma, kieu: 'bo_qua', matHang: null, donVi, kgMoiDonVi: null }, loi: null };
+  if (chon === 'bo_ghep') return { ghep: { ma, kieu: null, matHang: null, donVi: null, kgMoiDonVi: null }, loi: null, loiEn: null };
+  if (donVi === 'suat') return { ghep: { ma, kieu: 'bo_qua', matHang: null, donVi, kgMoiDonVi: null }, loi: null, loiEn: null };
 
   let kieu: GhepGui['kieu'];
   let matHang: string | null = null;
   if (chon === 'bo_qua') kieu = 'bo_qua';
   else if (chon === 'goi_can') kieu = 'goi_can';
   else if (laUuid(chon)) { kieu = 'mon'; matHang = chon; }
-  else return { ghep: null, loi: 'Chọn món trong kho, "Không phải hàng kho", hoặc Bán theo suất (món chế biến).' };
+  else {
+    return hong({
+      vi: 'Chọn món trong kho, "Không phải hàng kho", hoặc Bán theo suất (món chế biến).',
+      en: 'Choose a stock item, "Not a stock item", or Sold by portion (cooked dish).',
+    });
+  }
 
   let kg: number | null = null;
   const kgChu = String(form.get('kg_moi_don_vi') ?? '').trim().replace(',', '.');
   if (donVi === 'goi' && kgChu !== '') {
     kg = /^\d{1,4}(\.\d{1,3})?$/.test(kgChu) ? Number(kgChu) : NaN;
-    if (!(kg > 0 && kg <= 1000)) return { ghep: null, loi: 'Mỗi gói phải nặng hơn 0 và không quá 1000 kg (vd 0,5).' };
+    if (!(kg > 0 && kg <= 1000)) {
+      return hong({ vi: 'Mỗi gói phải nặng hơn 0 và không quá 1000 kg (vd 0,5).', en: 'Each pack must weigh more than 0 and at most 1000 kg (e.g. 0.5).' });
+    }
   }
-  return { ghep: { ma, kieu, matHang, donVi: kieu === 'bo_qua' ? null : donVi, kgMoiDonVi: kg }, loi: null };
+  return { ghep: { ma, kieu, matHang, donVi: kieu === 'bo_qua' ? null : donVi, kgMoiDonVi: kg }, loi: null, loiEn: null };
 }
 
 export async function ganMaIpos(client: SupabaseClient, chiNhanhId: string, form: FormData): Promise<KetQua> {
-  const { ghep, loi } = docFormGhep(form);
-  if (!ghep) return { ok: false, cau: loi ?? 'Yêu cầu không hợp lệ — tải lại trang.' };
+  const { ghep, loi, loiEn } = docFormGhep(form);
+  if (!ghep) return { ok: false, cau: loi ?? YEU_CAU_HONG.vi, cauEn: loiEn ?? YEU_CAU_HONG.en };
   const { data, error } = await client.rpc('kho_ipos_gan_ma_v2', {
     p_chi_nhanh_id: chiNhanhId, p_ma_ipos: ghep.ma, p_kieu: ghep.kieu, p_mat_hang_id: ghep.matHang,
     p_don_vi_ban: ghep.donVi, p_kg_moi_don_vi: ghep.kgMoiDonVi,
   });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  if (ghep.donVi === 'suat') return { ok: true, cau: `Mã "${ghep.ma}" là món chế biến — kho không trừ, chỉ đếm suất để so định lượng.` };
-  if (ghep.kieu === 'bo_qua') return { ok: true, cau: `Mã "${ghep.ma}" không phải hàng kho — bán món này kho không trừ.` };
-  return { ok: true, cau: cauKetQuaGhep(ghep.ma, data as { so_dong?: number; dong?: Record<string, number> }, ghep.kieu === null) };
+  if (ghep.donVi === 'suat') {
+    return kqHai(true, {
+      vi: `Mã "${ghep.ma}" là món chế biến — kho không trừ, chỉ đếm suất để so định lượng.`,
+      en: `Code "${ghep.ma}" is a cooked dish — no stock is deducted; portions are only counted to compare with recipes.`,
+    });
+  }
+  if (ghep.kieu === 'bo_qua') {
+    return kqHai(true, {
+      vi: `Mã "${ghep.ma}" không phải hàng kho — bán món này kho không trừ.`,
+      en: `Code "${ghep.ma}" is not a stock item — selling it does not deduct stock.`,
+    });
+  }
+  const kqGhep = data as { so_dong?: number; dong?: Record<string, number> };
+  const boGhep = ghep.kieu === null;
+  return { ok: true, cau: cauKetQuaGhep(ghep.ma, kqGhep, boGhep), cauEn: cauKetQuaGhep(ghep.ma, kqGhep, boGhep, 'en') };
 }

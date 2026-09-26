@@ -520,7 +520,8 @@ await nhom('8 · TIẾN ĐỘ THIẾT LẬP: TỪNG BƯỚC, BỎ QUA, CON_LAI',
 
   // web/src/lib/kho/chung.ts (BUOC_THIET_LAP) soi gương: đủ bước, đúng nút "Bỏ qua".
   const chung = readFileSync(new URL('../../web/src/lib/kho/chung.ts', import.meta.url), 'utf8');
-  const web = [...chung.matchAll(/\{ khoa: '(\w+)', ten: '[^']+', boQua: (true|false) \}/g)].map(m => [m[1], m[2] === 'true']);
+  // Tên bước hai thứ tiếng: ten: { vi: '…', en: '…' } (BUOC_THIET_LAP_NB).
+  const web = [...chung.matchAll(/\{ khoa: '(\w+)', ten: \{ vi: '[^']+', en: '[^']+' \}, boQua: (true|false) \}/g)].map(m => [m[1], m[2] === 'true']);
   ok('BUOC_THIET_LAP trong chung.ts khớp 10 bước của database, cùng thứ tự đã định',
      web.map(x => x[0]).join() === BUOC.join(), web.map(x => x[0]).join());
   ok('BUOC_THIET_LAP.boQua khớp duoc_bo_qua', web.every(([k, b]) => t[k]?.duoc_bo_qua === b));

@@ -19,31 +19,46 @@
  *
  * Hàm thuần (docFormSuaNhanh, giaTriO, docFormViTriLyDo, phienBanViTriLyDo)
  * test bằng Node; hàm gọi database nằm cuối file.
+ *
+ * Hai thứ tiếng: bảng tên cột / loại lý do có bản `…_NB` ({ vi, en }), bảng tên
+ * cũ dựng lại từ đó; lỗi đọc form trả loi và loiEn song song; câu báo KetQua
+ * mang thêm cauEn. Câu lỗi của database (kho_sua_nhanh_mat_hang) trang tra
+ * dichCau lúc hiện.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, docKg, docSoNguyen, docTien, laUuid, type KetQua } from './chung.ts';
+import {
+  cauLoiKho, docKg, docSoNguyen, docTien, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB,
+} from './chung.ts';
+import { dichCau } from '../cau-noi-bo.ts';
 import type { LyDo, ViTri } from './danh-muc.ts';
+
+/** Số ít / số nhiều cho câu tiếng Anh. */
+const soIt = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
 
 // -----------------------------------------------------------------------------
 // 1 · SỬA NHANH MẶT HÀNG
 // -----------------------------------------------------------------------------
 export type KieuO = 'tien' | 'so' | 'kg' | 'chu' | 'noi_de' | 'dang_dung';
 
-export const O_SUA_NHANH = [
-  { khoa: 'gia_ban_kg', ten: 'Giá bán/kg', kieu: 'tien' },
-  { khoa: 'han_dung_ngay', ten: 'HSD (ngày)', kieu: 'so' },
-  { khoa: 'ma_can', ten: 'Mã cân', kieu: 'chu' },
-  { khoa: 'quay_toi_thieu_goi', ten: 'Quầy tối thiểu (gói)', kieu: 'so' },
-  { khoa: 'quay_toi_da_goi', ten: 'Quầy tối đa (gói)', kieu: 'so' },
-  { khoa: 'ton_toi_thieu_kg', ten: 'Quầy tối thiểu (kg)', kieu: 'kg' },
-  { khoa: 'kho_toi_thieu_kg', ten: 'Kho lạnh tối thiểu (kg)', kieu: 'kg' },
-  { khoa: 'kho_toi_da_kg', ten: 'Kho lạnh tối đa (kg)', kieu: 'kg' },
-  { khoa: 'noi_de_sau_pha', ten: 'Sau pha để ở', kieu: 'noi_de' },
-  { khoa: 'dang_dung', ten: 'Tình trạng', kieu: 'dang_dung' },
-] as const satisfies readonly { khoa: string; ten: string; kieu: KieuO }[];
+export const O_SUA_NHANH_NB = [
+  { khoa: 'gia_ban_kg', ten: { vi: 'Giá bán/kg', en: 'Sale price/kg' }, kieu: 'tien' },
+  { khoa: 'han_dung_ngay', ten: { vi: 'HSD (ngày)', en: 'Use-by (days)' }, kieu: 'so' },
+  { khoa: 'ma_can', ten: { vi: 'Mã cân', en: 'Scale code' }, kieu: 'chu' },
+  { khoa: 'quay_toi_thieu_goi', ten: { vi: 'Quầy tối thiểu (gói)', en: 'Counter min (packs)' }, kieu: 'so' },
+  { khoa: 'quay_toi_da_goi', ten: { vi: 'Quầy tối đa (gói)', en: 'Counter max (packs)' }, kieu: 'so' },
+  { khoa: 'ton_toi_thieu_kg', ten: { vi: 'Quầy tối thiểu (kg)', en: 'Counter min (kg)' }, kieu: 'kg' },
+  { khoa: 'kho_toi_thieu_kg', ten: { vi: 'Kho lạnh tối thiểu (kg)', en: 'Cold store min (kg)' }, kieu: 'kg' },
+  { khoa: 'kho_toi_da_kg', ten: { vi: 'Kho lạnh tối đa (kg)', en: 'Cold store max (kg)' }, kieu: 'kg' },
+  { khoa: 'noi_de_sau_pha', ten: { vi: 'Sau pha để ở', en: 'After butchery goes to' }, kieu: 'noi_de' },
+  { khoa: 'dang_dung', ten: { vi: 'Tình trạng', en: 'Status' }, kieu: 'dang_dung' },
+] as const satisfies readonly { khoa: string; ten: HaiThuTieng; kieu: KieuO }[];
 
-export type OSuaNhanh = typeof O_SUA_NHANH[number]['khoa'];
+export type OSuaNhanh = typeof O_SUA_NHANH_NB[number]['khoa'];
+
+/** Bản chỉ tiếng Việt (tên cũ, cho code và test cũ). */
+export const O_SUA_NHANH: readonly { khoa: OSuaNhanh; ten: string; kieu: KieuO }[] =
+  O_SUA_NHANH_NB.map(o => ({ khoa: o.khoa, ten: o.ten.vi, kieu: o.kieu }));
 
 export interface MonSuaNhanh {
   id: string; ma: string; ten: string; nhom: string | null;
@@ -60,13 +75,16 @@ export interface MonSuaNhanh {
 /** Chữ gõ để xóa hẳn một ô (ô trống là GIỮ). */
 export const CHU_XOA = '-';
 
-/** Giá trị hiện trong ô (và ô ẩn cu_…). */
-export function giaTriO(m: MonSuaNhanh, khoa: OSuaNhanh): string {
+/**
+ * Giá trị hiện trong ô (và ô ẩn cu_…). Tiếng Anh: "650,000" và "1.5" — so
+ * "có đổi không" và đọc số (docTien, docKg) hiểu cả hai cách viết.
+ */
+export function giaTriO(m: MonSuaNhanh, khoa: OSuaNhanh, nn: NgonNguNB = 'vi'): string {
   const v = m[khoa];
   switch (khoa) {
-    case 'gia_ban_kg': return v === null ? '' : Number(v).toLocaleString('vi-VN');
+    case 'gia_ban_kg': return v === null ? '' : Number(v).toLocaleString(nn === 'en' ? 'en-US' : 'vi-VN');
     case 'ton_toi_thieu_kg': case 'kho_toi_thieu_kg': case 'kho_toi_da_kg':
-      return v === null ? '' : String(v).replace('.', ',');
+      return v === null ? '' : nn === 'en' ? String(v) : String(v).replace('.', ',');
     case 'noi_de_sau_pha': return v === 'quay' ? 'quay' : 'kho';
     case 'dang_dung': return v ? 'co' : 'khong';
     default: return v === null || v === undefined ? '' : String(v);
@@ -147,10 +165,16 @@ export function loiTheoMon(loi: LoiDongSuaNhanh[]): Map<string, { cau: string[];
   return ra;
 }
 
-/** Lỗi "vừa được người khác sửa" — dòng đó hiện lại số MỚI trong database, bỏ chữ đã gõ. */
+/**
+ * Lỗi "vừa được người khác sửa" — dòng đó hiện lại số MỚI trong database, bỏ chữ đã gõ.
+ * Nhận ra bằng câu tiếng Việt của kho_sua_nhanh_mat_hang (0041) — câu database, không phải chữ giao diện.
+ */
 export function laLoiPhienBan(l: LoiDongSuaNhanh): boolean {
   return l.truong === null && /người khác sửa|thiếu phiên bản/.test(l.cau);
 }
+
+/** Giá trị lọc "chưa có nhóm" trên đường dẫn (?nhom=…) — là mã lọc, không phải chữ hiện. */
+export const NHOM_CHUA_CO = '(chưa có)';
 
 /** Lọc bảng: nhóm, loại, chữ tìm (bỏ dấu, không phân biệt hoa thường). */
 export function locMonSuaNhanh(
@@ -159,19 +183,22 @@ export function locMonSuaNhanh(
   const tim = boDau(loc.tim ?? '').toLowerCase().trim();
   return ds.filter(m =>
     (!loc.loai || m.loai === loc.loai)
-    && (!loc.nhom || (loc.nhom === '(chưa có)' ? !m.nhom : m.nhom === loc.nhom))
+    && (!loc.nhom || (loc.nhom === NHOM_CHUA_CO ? !m.nhom : m.nhom === loc.nhom))
     && (!tim || boDau(`${m.ten} ${m.ma} ${m.nhom ?? ''} ${m.ma_can ?? ''}`).toLowerCase().includes(tim)));
 }
 
 // -----------------------------------------------------------------------------
 // 2 · VỊ TRÍ + LÝ DO TRÊN MỘT FORM
 // -----------------------------------------------------------------------------
-export const LOAI_LY_DO = [
-  ['huy', 'Lý do hủy hàng'],
-  ['xuat_bep', 'Lý do xuất bếp'],
-  ['xuat_khac', 'Lý do xuất khác'],
-  ['dieu_chinh', 'Lý do điều chỉnh'],
-] as const;
+export const LOAI_LY_DO_NB = [
+  ['huy', { vi: 'Lý do hủy hàng', en: 'Write-off reasons' }],
+  ['xuat_bep', { vi: 'Lý do xuất bếp', en: 'Kitchen issue reasons' }],
+  ['xuat_khac', { vi: 'Lý do xuất khác', en: 'Other issue reasons' }],
+  ['dieu_chinh', { vi: 'Lý do điều chỉnh', en: 'Adjustment reasons' }],
+] as const satisfies readonly (readonly [LyDo['loai'], HaiThuTieng])[];
+
+/** Bản chỉ tiếng Việt (tên cũ, cho code và test cũ). */
+export const LOAI_LY_DO: readonly (readonly [LyDo['loai'], string])[] = LOAI_LY_DO_NB.map(([loai, ten]) => [loai, ten.vi] as const);
 
 /** Số dòng trống để thêm mới trên form: vị trí, và mỗi loại lý do. */
 export const SO_DONG_THEM = 2;
@@ -204,6 +231,8 @@ export interface KeHoachViTriLyDo {
   lyDoSua: { id: string; ten: string; dong: Record<string, unknown> }[];
   lyDoMoi: { ten: string; loai: string; can_anh: boolean; tinh_dinh_muc?: boolean; o: string }[];
   loi: string[];
+  /** loi bằng tiếng Anh, cùng thứ tự. */
+  loiEn: string[];
 }
 
 /**
@@ -217,13 +246,21 @@ export function docFormViTriLyDo(form: FormData, viTri: ViTri[], lyDo: LyDo[]): 
     const n = docSoNguyen(form.get(t), 0, 999);
     return n === null || Number.isNaN(n) ? macDinh : n;
   };
-  const kq: KeHoachViTriLyDo = { viTriSua: [], viTriMoi: [], lyDoSua: [], lyDoMoi: [], loi: [] };
+  const kq: KeHoachViTriLyDo = { viTriSua: [], viTriMoi: [], lyDoSua: [], lyDoMoi: [], loi: [], loiEn: [] };
+  const bao = (x: HaiThuTieng) => { kq.loi.push(x.vi); kq.loiEn.push(x.en); };
 
   for (const v of viTri) {
     if (!form.has(`vt_ten_${v.id}`)) continue;
     const ten = g(`vt_ten_${v.id}`);
-    if (!ten) { kq.loi.push(`Vị trí "${v.ten}": chưa có tên — muốn bỏ thì chọn "Ngừng dùng".`); continue; }
-    if (ten.length > 60) { kq.loi.push(`Vị trí "${v.ten}": tên dài quá (tối đa 60 ký tự).`); continue; }
+    if (!ten) {
+      bao({ vi: `Vị trí "${v.ten}": chưa có tên — muốn bỏ thì chọn "Ngừng dùng".`,
+            en: `Location "${v.ten}": the name is empty — to stop using it, choose "No longer used".` });
+      continue;
+    }
+    if (ten.length > 60) {
+      bao({ vi: `Vị trí "${v.ten}": tên dài quá (tối đa 60 ký tự).`, en: `Location "${v.ten}": the name is too long (60 characters max).` });
+      continue;
+    }
     const dong: Record<string, unknown> = {};
     if (ten !== v.ten) dong.ten = ten;
     const tt = thuTu(`vt_thu_tu_${v.id}`, v.thu_tu);
@@ -240,16 +277,29 @@ export function docFormViTriLyDo(form: FormData, viTri: ViTri[], lyDo: LyDo[]): 
     const ten = g(`vt_moi_ten_${i}`);
     if (!ten) continue;
     const loai = g(`vt_moi_loai_${i}`);
-    if (loai !== 'kho' && loai !== 'quay') { kq.loi.push(`Vị trí mới "${ten}": chọn Kho hoặc Quầy.`); continue; }
-    if (ten.length > 60) { kq.loi.push(`Vị trí mới "${ten}": tên dài quá (tối đa 60 ký tự).`); continue; }
+    if (loai !== 'kho' && loai !== 'quay') {
+      bao({ vi: `Vị trí mới "${ten}": chọn Kho hoặc Quầy.`, en: `New location "${ten}": choose Store or Counter.` });
+      continue;
+    }
+    if (ten.length > 60) {
+      bao({ vi: `Vị trí mới "${ten}": tên dài quá (tối đa 60 ký tự).`, en: `New location "${ten}": the name is too long (60 characters max).` });
+      continue;
+    }
     kq.viTriMoi.push({ ten, loai, thu_tu: thuTu(`vt_moi_thu_tu_${i}`, 5), o: `vt_moi_ten_${i}` });
   }
 
   for (const l of lyDo) {
     if (!form.has(`ld_ten_${l.id}`)) continue;
     const ten = g(`ld_ten_${l.id}`);
-    if (!ten) { kq.loi.push(`Lý do "${l.ten}": chưa có chữ — muốn bỏ thì chọn "Ngừng dùng".`); continue; }
-    if (ten.length > 80) { kq.loi.push(`Lý do "${l.ten}": dài quá (tối đa 80 ký tự).`); continue; }
+    if (!ten) {
+      bao({ vi: `Lý do "${l.ten}": chưa có chữ — muốn bỏ thì chọn "Ngừng dùng".`,
+            en: `Reason "${l.ten}": the text is empty — to stop using it, choose "No longer used".` });
+      continue;
+    }
+    if (ten.length > 80) {
+      bao({ vi: `Lý do "${l.ten}": dài quá (tối đa 80 ký tự).`, en: `Reason "${l.ten}": too long (80 characters max).` });
+      continue;
+    }
     const dong: Record<string, unknown> = {};
     if (ten !== l.ten) dong.ten = ten;
     const tt = thuTu(`ld_thu_tu_${l.id}`, l.thu_tu);
@@ -274,7 +324,10 @@ export function docFormViTriLyDo(form: FormData, viTri: ViTri[], lyDo: LyDo[]): 
     for (let i = 0; i < SO_DONG_THEM; i++) {
       const ten = g(`ld_moi_ten_${loai}_${i}`);
       if (!ten) continue;
-      if (ten.length > 80) { kq.loi.push(`Lý do mới "${ten}": dài quá (tối đa 80 ký tự).`); continue; }
+      if (ten.length > 80) {
+        bao({ vi: `Lý do mới "${ten}": dài quá (tối đa 80 ký tự).`, en: `New reason "${ten}": too long (80 characters max).` });
+        continue;
+      }
       const moi: KeHoachViTriLyDo['lyDoMoi'][number] = {
         ten, loai, can_anh: form.get(`ld_moi_can_anh_${loai}_${i}`) === 'co', o: `ld_moi_ten_${loai}_${i}`,
       };
@@ -317,18 +370,24 @@ export async function docMonSuaNhanh(client: SupabaseClient): Promise<MonSuaNhan
   }));
 }
 
+/** Câu "không có gì để lưu" — dùng ở cả hai form "Lưu tất cả". */
+const CHUA_DOI_O: HaiThuTieng = { vi: 'Chưa đổi ô nào — không có gì để lưu.', en: 'No cells changed — nothing to save.' };
+
 export async function suaNhanhMatHang(
   client: SupabaseClient, chiNhanhId: string, dong: DongGuiSuaNhanh[],
 ): Promise<KetQuaSuaNhanh> {
-  if (dong.length === 0) return { ok: true, soLuu: 0, loi: [], cau: 'Chưa đổi ô nào — không có gì để lưu.' };
+  if (dong.length === 0) return { soLuu: 0, loi: [], ...kqHai(true, CHUA_DOI_O) };
   const { data, error } = await client.rpc('kho_sua_nhanh_mat_hang', { p_chi_nhanh_id: chiNhanhId, p_dong: dong });
   if (error) return { ok: false, soLuu: 0, loi: [], cau: cauLoiKho(error) };
   const r = (data ?? {}) as { ok?: boolean; cau?: string; so_dong_luu?: number; loi?: LoiDongSuaNhanh[] };
+  // Câu của database (tiếng Việt, trang tra dichCau); database không trả câu thì dùng câu mặc định hai thứ tiếng.
+  const cau = r.cau ?? null;
+  const macDinh: HaiThuTieng = r.ok ? { vi: 'Đã lưu.', en: 'Saved.' } : { vi: 'Chưa lưu được.', en: 'Not saved.' };
   return {
     ok: r.ok === true,
     soLuu: Number(r.so_dong_luu ?? 0),
     loi: Array.isArray(r.loi) ? r.loi : [],
-    cau: r.cau ?? (r.ok ? 'Đã lưu.' : 'Chưa lưu được.'),
+    ...(cau !== null ? { cau } : { cau: macDinh.vi, cauEn: macDinh.en }),
   };
 }
 
@@ -341,36 +400,46 @@ export async function luuViTriLyDo(
   client: SupabaseClient, chiNhanhId: string, kh: KeHoachViTriLyDo,
 ): Promise<KetQua & { oMoiDaLuu: string[] }> {
   const oMoiDaLuu: string[] = [];
-  if (kh.loi.length > 0) return { ok: false, cau: `Chưa lưu gì: ${kh.loi.join(' · ')}`, oMoiDaLuu };
+  if (kh.loi.length > 0) {
+    return { oMoiDaLuu, ...kqHai(false, { vi: `Chưa lưu gì: ${kh.loi.join(' · ')}`, en: `Nothing saved: ${kh.loiEn.join(' · ')}` }) };
+  }
   const n = soThayDoi(kh);
-  if (n === 0) return { ok: true, cau: 'Chưa đổi ô nào — không có gì để lưu.', oMoiDaLuu };
+  if (n === 0) return { oMoiDaLuu, ...kqHai(true, CHUA_DOI_O) };
   let daLuu = 0;
-  const hong = (e: unknown, ten: string) => ({
-    ok: false,
-    cau: `${daLuu > 0 ? `Đã lưu ${daLuu} dòng, ` : ''}chưa lưu được "${ten}": ${cauLoiKho(e)}`,
+  // Lỗi database / mạng: câu tiếng Việt như cũ; bản tiếng Anh tra dichCau.
+  const loiDb = (e: unknown): HaiThuTieng => { const vi = cauLoiKho(e); return { vi, en: dichCau('en', vi) }; };
+  const hong = (loi: HaiThuTieng, ten: string) => ({
     oMoiDaLuu,
+    ...kqHai(false, {
+      vi: `${daLuu > 0 ? `Đã lưu ${daLuu} dòng, ` : ''}chưa lưu được "${ten}": ${loi.vi}`,
+      en: daLuu > 0
+        ? `Saved ${daLuu} ${soIt(daLuu, 'row', 'rows')}, but could not save "${ten}": ${loi.en}`
+        : `Could not save "${ten}": ${loi.en}`,
+    }),
   });
+  const khongSuaViTri: HaiThuTieng = { vi: 'Không sửa được vị trí này.', en: 'Could not update this location.' };
+  const khongSuaLyDo: HaiThuTieng = { vi: 'Không sửa được lý do này.', en: 'Could not update this reason.' };
   for (const v of kh.viTriSua) {
     const { data, error } = await client.from('kho_vi_tri').update(v.dong).eq('id', v.id).select('id');
-    if (error || !data?.length) return hong(error ?? 'Không sửa được vị trí này.', v.ten);
+    if (error || !data?.length) return hong(error ? loiDb(error) : khongSuaViTri, v.ten);
     daLuu++;
   }
   for (const { o, ...v } of kh.viTriMoi) {
     const { error } = await client.from('kho_vi_tri').insert({ ...v, chi_nhanh_id: chiNhanhId });
-    if (error) return hong(error, v.ten);
+    if (error) return hong(loiDb(error), v.ten);
     daLuu++;
     oMoiDaLuu.push(o);
   }
   for (const l of kh.lyDoSua) {
     const { data, error } = await client.from('kho_ly_do').update(l.dong).eq('id', l.id).select('id');
-    if (error || !data?.length) return hong(error ?? 'Không sửa được lý do này.', l.ten);
+    if (error || !data?.length) return hong(error ? loiDb(error) : khongSuaLyDo, l.ten);
     daLuu++;
   }
   for (const { o, ...l } of kh.lyDoMoi) {
     const { error } = await client.from('kho_ly_do').insert({ ...l, thu_tu: 0, dang_dung: true });
-    if (error) return hong(error, l.ten);
+    if (error) return hong(loiDb(error), l.ten);
     daLuu++;
     oMoiDaLuu.push(o);
   }
-  return { ok: true, cau: `Đã lưu ${daLuu} dòng.`, oMoiDaLuu };
+  return { oMoiDaLuu, ...kqHai(true, { vi: `Đã lưu ${daLuu} dòng.`, en: `Saved ${daLuu} ${soIt(daLuu, 'row', 'rows')}.` }) };
 }

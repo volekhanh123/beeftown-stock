@@ -25,15 +25,68 @@ import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.t
 import { docCaiDat, docDinhNghia, docViTri, type CaiDat, type ViTri } from '../../../../lib/kho/danh-muc.ts';
 import { docNccNhap, taoPhieuNhan, type DauNhan, type NccNhap } from '../../../../lib/kho/nhan-hang.ts';
 import { docDonChoNhan, taoPhieuTuDon, type DonDatTom } from '../../../../lib/kho/dat-hang.ts';
-import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangNgayNgan, homNayVn, type KetQua } from '../../../../lib/kho/chung.ts';
+import {
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangNgayNgan, homNayVn, kqHai, type KetQua,
+} from '../../../../lib/kho/chung.ts';
 import type { DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('nhap')) return Astro.redirect('/noi-bo/kho', 302);
 if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const cn = k.chiNhanh;
+const nn = k.nn;
 const loai: 'mua' | 'ton_dau' = Astro.url.searchParams.get('loai') === 'ton_dau' ? 'ton_dau' : 'mua';
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  khongDocDanhMuc: { vi: 'Không đọc được danh mục.', en: 'Could not read the catalog.' },
+  tdTonDau: { vi: 'Nhập hàng có sẵn (tồn đầu kỳ)', en: 'Enter goods already on hand (opening stock)' },
+  tdNhan: { vi: 'Nhận hàng', en: 'Receive goods' },
+  buoc: { vi: 'Bước 1/3 · Hóa đơn và người giao', en: 'Step 1/3 · Invoice and supplier' },
+  td1: { vi: 'Hàng', en: 'Goods' },
+  td2: { vi: 'đang có sẵn', en: 'already on hand' },
+  td3: { vi: 'lúc bắt đầu dùng phần mềm. Không có nhà cung cấp, không cần ảnh.', en: 'when you start using the software. No supplier, no photo needed.' },
+  td4: { vi: 'Nhiều món, nhiều nơi?', en: 'Many items, many places?' },
+  td5: { vi: 'Nhập dạng bảng / dán Excel →', en: 'Enter as a table / paste from Excel →' },
+  theoDon: { vi: 'Nhận theo đơn đặt', en: 'Receive against a purchase order' },
+  theoDonDan: {
+    vi: 'Hàng về theo đơn đã đặt: bấm đơn đó — phiếu có sẵn món và số kg còn thiếu, chỉ việc cân lại và sửa số.',
+    en: 'Goods arriving for an order you placed: press that order — the note comes filled in with the items and kg still missing, so you only weigh again and correct the numbers.',
+  },
+  henGiao: { vi: 'Hẹn giao', en: 'Due' },
+  soMon: { vi: (n: number) => `${n} món`, en: (n: number) => `${n} ${s(n, 'item', 'items')}` },
+  dat: { vi: 'đặt', en: 'ordered' },
+  daNhan: { vi: (kg: string) => ` · đã nhận ${kg} kg`, en: (kg: string) => ` · received ${kg} kg` },
+  nhanTheoDon: { vi: 'Nhận hàng theo đơn này', en: 'Receive against this order' },
+  khongTheoDon: { vi: 'Hàng không theo đơn nào thì làm như thường ở dưới.', en: 'Goods not on any order: carry on as usual below.' },
+  anhBatBuoc: { vi: '1. Chụp hóa đơn / phiếu giao hàng *', en: '1. Photograph the invoice / delivery note *' },
+  anhTuyY: { vi: 'Ảnh chụp (không bắt buộc)', en: 'Photos (optional)' },
+  daChup: {
+    vi: (n: number) => `✓ Đã chụp ${n} ảnh — không cần chụp lại. Chụp thêm nếu hóa đơn nhiều trang.`,
+    en: (n: number) => `✓ ${n} ${s(n, 'photo', 'photos')} taken — no need to take them again. Add more if the invoice has several pages.`,
+  },
+  chupNgay: {
+    vi: 'Chụp ngay, hoặc chọn ảnh có sẵn trong máy (ảnh gửi qua Zalo cũng được). Chọn được nhiều ảnh.',
+    en: 'Take a photo now, or choose one already on the device (photos sent over Zalo are fine). You can choose several.',
+  },
+  themAnh: { vi: 'Thêm ảnh', en: 'Add photos' },
+  chupHoacChon: { vi: 'Chụp hoặc chọn ảnh hóa đơn', en: 'Take or choose an invoice photo' },
+  aiGiao: { vi: '2. Ai giao hàng? *', en: '2. Who delivered? *' },
+  chuaCoNcc: { vi: 'Chưa có nhà cung cấp nào.', en: 'No suppliers yet.' },
+  themNcc: { vi: 'Thêm nhà cung cấp', en: 'Add a supplier' },
+  nhoQuanLy: { vi: 'Nhờ quản lý thêm nhà cung cấp.', en: 'Ask a manager to add suppliers.' },
+  nccGanDay: { vi: 'Nhà cung cấp giao gần đây', en: 'Suppliers who delivered recently' },
+  giao: { vi: (ngay: string) => `giao ${ngay}`, en: (ngay: string) => `delivered ${ngay}` },
+  nguoiKhac: { vi: 'Người khác', en: 'Someone else' },
+  chonODay: { vi: '— không có ở trên thì chọn ở đây —', en: '— not listed above? Choose here —' },
+  nhanVaoDau: { vi: 'Nhận vào đâu?', en: 'Where does it go?' },
+  noiNhan: { vi: 'Nơi nhận hàng', en: 'Receiving location' },
+  ngayNhan: { vi: 'Ngày nhận', en: 'Date received' },
+  soHoaDon: { vi: 'Số hóa đơn (nếu có)', en: 'Invoice no. (if any)' },
+  tiep: { vi: 'Tiếp: cân hàng →', en: 'Next: weigh the goods →' },
+  veDs: { vi: '← Danh sách nhận hàng', en: '← Receiving list' },
+});
 
 let ncc: NccNhap[] = [];
 let viTri: ViTri[] = [];
@@ -46,7 +99,7 @@ try {
     docViTri(k.client, cn.id), docCaiDat(k.client, cn.id), docDinhNghia(k.client, 'phieu_nhap'),
   ]);
 } catch (e) {
-  loiDoc = cauLoiKho(e, 'Không đọc được danh mục.');
+  loiDoc = cauLoiKho(e, t.khongDocDanhMuc);
 }
 
 // ---------------------------------------------------------------------------
@@ -59,7 +112,10 @@ let anhDaTai: string[] = [];
 
 const form = await docFormGui(Astro);
 if (Astro.request.method === 'POST' && !form) {
-  bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
+  bao = kqHai(false, {
+    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
+    en: 'Could not read what was sent — the connection may have dropped. Please send again.',
+  });
 }
 if (form) {
   if (String(form.get('viec') ?? '') === 'theo_don' && loai === 'mua') {
@@ -74,7 +130,7 @@ if (form) {
     maGuiGiu = kq.maGui ?? null;
     anhDaTai = kq.anhDaTai ?? [];
   } else {
-    bao = { ok: false, cau: 'Việc không hợp lệ.' };
+    bao = kqHai(false, { vi: 'Việc không hợp lệ.', en: 'Invalid action.' });
   }
 }
 
@@ -94,38 +150,38 @@ const nccNut = ncc.slice(0, 6);
 const nccKhac = ncc.slice(6);
 const chonONut = nccNut.some(n => n.id === dau.nha_cung_cap_id);
 const maGuiForm = maGuiGiu ?? crypto.randomUUID();
-const tieuDe = loai === 'ton_dau' ? 'Nhập hàng có sẵn (tồn đầu kỳ)' : 'Nhận hàng';
+const tieuDe = loai === 'ton_dau' ? t.tdTonDau : t.tdNhan;
 ---
 <Kho k={k} tieuDe={tieuDe} huongDan="nhan-hang">
-  <p class="nh-buoc">Bước 1/3 · Hóa đơn và người giao</p>
+  <p class="nh-buoc">{t.buoc}</p>
   <h1>{tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {loai === 'ton_dau' && (
-    <p class="nb-dan">Hàng <strong>đang có sẵn</strong> lúc bắt đầu dùng phần mềm. Không có nhà cung cấp, không cần ảnh.{' '}
-      Nhiều món, nhiều nơi? <a href="/noi-bo/kho/cai-dat/ton-dau">Nhập dạng bảng / dán Excel →</a></p>
+    <p class="nb-dan">{t.td1} <strong>{t.td2}</strong> {t.td3}{' '}
+      {t.td4} <a href="/noi-bo/kho/cai-dat/ton-dau">{t.td5}</a></p>
   )}
 
   {donCho.length > 0 && (
     <section class="nb-the">
-      <h2 style="margin-top:0">Nhận theo đơn đặt</h2>
-      <p class="kho-phu">Hàng về theo đơn đã đặt: bấm đơn đó — phiếu có sẵn món và số kg còn thiếu, chỉ việc cân lại và sửa số.</p>
+      <h2 style="margin-top:0">{t.theoDon}</h2>
+      <p class="kho-phu">{t.theoDonDan}</p>
       <ul class="kho-dong-ds">
         {donCho.map(d => (
           <li>
             <span>
               <strong>{d.so_phieu} · {d.ten_nha_cung_cap}</strong>
-              <small>Hẹn giao {dinhDangNgay(d.ngay_giao_du_kien)} · {d.so_dong} món · đặt {dinhDangKg(d.tong_kg_dat)} kg{d.tong_kg_da_nhan > 0 ? ` · đã nhận ${dinhDangKg(d.tong_kg_da_nhan)} kg` : ''}</small>
+              <small>{t.henGiao} {dinhDangNgay(d.ngay_giao_du_kien)} · {t.soMon(d.so_dong)} · {t.dat} {dinhDangKg(d.tong_kg_dat, nn)} kg{d.tong_kg_da_nhan > 0 ? t.daNhan(dinhDangKg(d.tong_kg_da_nhan, nn)) : ''}</small>
             </span>
             <form method="POST">
               <input type="hidden" name="don_id" value={d.id} />
               <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
-              <button type="submit" name="viec" value="theo_don" class="nb-nut">Nhận hàng theo đơn này</button>
+              <button type="submit" name="viec" value="theo_don" class="nb-nut">{t.nhanTheoDon}</button>
             </form>
           </li>
         ))}
       </ul>
-      <p class="kho-phu" style="margin-bottom:0">Hàng không theo đơn nào thì làm như thường ở dưới.</p>
+      <p class="kho-phu" style="margin-bottom:0">{t.khongTheoDon}</p>
     </section>
   )}
 
@@ -135,32 +191,32 @@ const tieuDe = loai === 'ton_dau' ? 'Nhập hàng có sẵn (tồn đầu kỳ)'
 
     <div class="nb-the">
       <div class="nb-o">
-        <span>{loai === 'mua' ? '1. Chụp hóa đơn / phiếu giao hàng *' : 'Ảnh chụp (không bắt buộc)'}</span>
+        <span>{loai === 'mua' ? t.anhBatBuoc : t.anhTuyY}</span>
         {anhDaTai.length > 0 ? (
-          <p class="nh-da-chup">✓ Đã chụp {anhDaTai.length} ảnh — không cần chụp lại. Chụp thêm nếu hóa đơn nhiều trang.</p>
+          <p class="nh-da-chup">{t.daChup(anhDaTai.length)}</p>
         ) : (
-          <small>Chụp ngay, hoặc chọn ảnh có sẵn trong máy (ảnh gửi qua Zalo cũng được). Chọn được nhiều ảnh.</small>
+          <small>{t.chupNgay}</small>
         )}
         <input type="file" name="anh" accept="image/*,application/pdf" multiple class="nh-tep"
-          aria-label={anhDaTai.length > 0 ? 'Thêm ảnh' : 'Chụp hoặc chọn ảnh hóa đơn'} />
+          aria-label={anhDaTai.length > 0 ? t.themAnh : t.chupHoacChon} />
       </div>
     </div>
 
     {loai === 'mua' && (
       <div class="nb-the">
         <div class="nb-o">
-          <span>2. Ai giao hàng? *</span>
+          <span>{t.aiGiao}</span>
           {ncc.length === 0 && (
-            <small>Chưa có nhà cung cấp nào. {k.duoc('ncc') ? <a href="/noi-bo/kho/cai-dat/nha-cung-cap">Thêm nhà cung cấp</a> : 'Nhờ quản lý thêm nhà cung cấp.'}</small>
+            <small>{t.chuaCoNcc} {k.duoc('ncc') ? <a href="/noi-bo/kho/cai-dat/nha-cung-cap">{t.themNcc}</a> : t.nhoQuanLy}</small>
           )}
-          <NhanHangChon name="ncc" nhan="Nhà cung cấp giao gần đây" chon={chonONut ? dau.nha_cung_cap_id : ''}
-            ds={nccNut.map(n => ({ value: n.id, nhan: n.ten, phu: n.lan_cuoi ? `giao ${dinhDangNgayNgan(n.lan_cuoi)}` : null }))} />
+          <NhanHangChon name="ncc" nhan={t.nccGanDay} chon={chonONut ? dau.nha_cung_cap_id : ''}
+            ds={nccNut.map(n => ({ value: n.id, nhan: n.ten, phu: n.lan_cuoi ? t.giao(dinhDangNgayNgan(n.lan_cuoi)) : null }))} />
         </div>
         {nccKhac.length > 0 && (
           <label class="nb-o">
-            <span>Người khác</span>
+            <span>{t.nguoiKhac}</span>
             <select name="ncc_khac">
-              <option value="">— không có ở trên thì chọn ở đây —</option>
+              <option value="">{t.chonODay}</option>
               {nccKhac.map(n => <option value={n.id} selected={n.id === dau.nha_cung_cap_id}>{n.ten}</option>)}
             </select>
           </label>
@@ -170,15 +226,15 @@ const tieuDe = loai === 'ton_dau' ? 'Nhập hàng có sẵn (tồn đầu kỳ)'
 
     <div class="nb-the">
       <div class="nb-o">
-        <span>{loai === 'mua' ? '3. ' : ''}Nhận vào đâu?</span>
-        <NhanHangChon name="vi_tri_id" nhan="Nơi nhận hàng" chon={dau.vi_tri_id}
+        <span>{loai === 'mua' ? '3. ' : ''}{t.nhanVaoDau}</span>
+        <NhanHangChon name="vi_tri_id" nhan={t.noiNhan} chon={dau.vi_tri_id}
           ds={noiNhan.map(v => ({ value: v.id, nhan: v.ten }))} />
       </div>
       <div class="kho-luoi">
-        <label class="nb-o"><span>Ngày nhận</span>
+        <label class="nb-o"><span>{t.ngayNhan}</span>
           <input type="date" name="ngay_nhap" value={dau.ngay_nhap} max={homNayVn()} required /></label>
         {loai === 'mua' && (
-          <label class="nb-o"><span>Số hóa đơn (nếu có)</span>
+          <label class="nb-o"><span>{t.soHoaDon}</span>
             <input type="text" name="so_hoa_don" value={dau.so_hoa_don} maxlength="60" autocapitalize="characters" /></label>
         )}
       </div>
@@ -186,11 +242,11 @@ const tieuDe = loai === 'ton_dau' ? 'Nhập hàng có sẵn (tồn đầu kỳ)'
     </div>
 
     <div class="kho-thanh-nut dinh">
-      <button type="submit" name="viec" value="tao" class="nb-nut">Tiếp: cân hàng →</button>
+      <button type="submit" name="viec" value="tao" class="nb-nut">{t.tiep}</button>
     </div>
   </form>
 
-  <p style="margin-top:1.5rem"><a href="/noi-bo/kho/nhan-hang">← Danh sách nhận hàng</a></p>
+  <p style="margin-top:1.5rem"><a href="/noi-bo/kho/nhan-hang">{t.veDs}</a></p>
 </Kho>
 
 <style>

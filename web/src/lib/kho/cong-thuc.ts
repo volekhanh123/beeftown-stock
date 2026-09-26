@@ -17,11 +17,28 @@
  *
  * Hàm thuần (docLuoiCongThuc, tongTyLe, mauTong, phienBanCongThuc, tinhGoiY)
  * test bằng Node; hàm gọi database ở cuối file.
+ *
+ * Hai thứ tiếng: lỗi lưới trả loi (tiếng Việt) và loiEn song song; hàm trả câu
+ * chữ / số hiện trong ô nhận tham số cuối `nn` (mặc định tiếng Việt, như trước);
+ * câu báo KetQua mang thêm cauEn. Tên bản sao "… (bản sao)" là dữ liệu lưu vào
+ * database — giữ nguyên.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, congNgay, docKg, docSoNguyen, laUuid, type KetQua } from './chung.ts';
+import {
+  cauLoiKho, congNgay, docKg, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB,
+} from './chung.ts';
+import { dichCau } from '../cau-noi-bo.ts';
 import type { CongThuc } from './danh-muc.ts';
+
+/** Số ít / số nhiều cho câu tiếng Anh. */
+const soIt = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+
+/** Lỗi database / mạng ở hai thứ tiếng — để ghép vào câu báo của thư viện. */
+function loiHai(e: unknown): HaiThuTieng {
+  const vi = cauLoiKho(e);
+  return { vi, en: dichCau('en', vi) };
+}
 
 export const SO_DONG_TRONG = 3;
 export const SO_DONG_TOI_DA = 60;
@@ -37,10 +54,11 @@ export interface DongLuoi {
 /** Chữ đã gõ của một dòng lưới — hiện lại đúng như vậy khi Tính lại / báo lỗi. */
 export interface ChuDongLuoi { mh: string; tl: string; xl: string; tt: string; bo: boolean }
 
-export function chuTuCongThuc(ct: CongThuc): ChuDongLuoi[] {
+/** Lưới từ công thức trong database. Tỷ lệ "72,5" (tiếng Anh "72.5") — docKg đọc được cả hai. */
+export function chuTuCongThuc(ct: CongThuc, nn: NgonNguNB = 'vi'): ChuDongLuoi[] {
   return [...ct.dong].sort((a, b) => a.thu_tu - b.thu_tu).map(d => ({
     mh: d.mat_hang_ra_id,
-    tl: d.ty_le_du_kien === null ? '' : String(d.ty_le_du_kien).replace('.', ','),
+    tl: d.ty_le_du_kien === null ? '' : nn === 'en' ? String(d.ty_le_du_kien) : String(d.ty_le_du_kien).replace('.', ','),
     xl: d.xu_ly ?? '',
     tt: String(d.thu_tu),
     bo: false,
@@ -52,22 +70,32 @@ export function themDongTrong(chu: ChuDongLuoi[], n = SO_DONG_TRONG): ChuDongLuo
   return [...chu, ...Array.from({ length: n }, () => ({ mh: '', tl: '', xl: '', tt: '', bo: false }))];
 }
 
-export function docLuoiCongThuc(form: FormData): { dong: DongLuoi[]; chu: ChuDongLuoi[]; loi: string[] } {
+/** Đọc lưới từ form. loi (tiếng Việt) và loiEn (tiếng Anh) song song, cùng thứ tự. */
+export function docLuoiCongThuc(form: FormData): { dong: DongLuoi[]; chu: ChuDongLuoi[]; loi: string[]; loiEn: string[] } {
   const n = Math.min(docSoNguyen(form.get('so_dong'), 0, SO_DONG_TOI_DA) || 0, SO_DONG_TOI_DA);
   const g = (t: string) => String(form.get(t) ?? '').trim();
   const chu: ChuDongLuoi[] = [];
   const dong: DongLuoi[] = [];
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (x: HaiThuTieng) => { loi.push(x.vi); loiEn.push(x.en); };
   const daCo = new Set<string>();
   for (let i = 0; i < n; i++) {
     const c: ChuDongLuoi = { mh: g(`mh_${i}`), tl: g(`tl_${i}`), xl: g(`xl_${i}`), tt: g(`tt_${i}`), bo: form.get(`bo_${i}`) === 'co' };
     chu.push(c);
     if (c.bo || !c.mh) continue;
-    if (!laUuid(c.mh)) { loi.push(`Dòng ${i + 1}: chọn phần ra.`); continue; }
-    if (daCo.has(c.mh)) { loi.push(`Dòng ${i + 1}: phần ra này đã có ở dòng trên — mỗi phần một dòng.`); continue; }
+    if (!laUuid(c.mh)) { bao({ vi: `Dòng ${i + 1}: chọn phần ra.`, en: `Row ${i + 1}: choose the output cut.` }); continue; }
+    if (daCo.has(c.mh)) {
+      bao({ vi: `Dòng ${i + 1}: phần ra này đã có ở dòng trên — mỗi phần một dòng.`,
+            en: `Row ${i + 1}: this cut is already on a row above — one row per cut.` });
+      continue;
+    }
     daCo.add(c.mh);
     const tl = docKg(c.tl);
-    if (Number.isNaN(tl) || (tl !== null && tl > 100)) { loi.push(`Dòng ${i + 1}: tỷ lệ là % từ 0 đến 100, ví dụ 72,5.`); continue; }
+    if (Number.isNaN(tl) || (tl !== null && tl > 100)) {
+      bao({ vi: `Dòng ${i + 1}: tỷ lệ là % từ 0 đến 100, ví dụ 72,5.`, en: `Row ${i + 1}: the percentage must be from 0 to 100, for example 72.5.` });
+      continue;
+    }
     const tt = docSoNguyen(c.tt, 0, 999);
     dong.push({
       mat_hang_ra_id: c.mh,
@@ -76,7 +104,7 @@ export function docLuoiCongThuc(form: FormData): { dong: DongLuoi[]; chu: ChuDon
       thu_tu: tt === null || Number.isNaN(tt) ? i + 1 : tt,
     });
   }
-  return { dong, chu, loi };
+  return { dong, chu, loi, loiEn };
 }
 
 /** Tổng % của các dòng (bỏ dòng tích Bỏ / trống), 2 số lẻ. */
@@ -99,13 +127,15 @@ export function mauTong(tong: number): 'xanh' | 'vang' | 'do' {
   return 'vang';
 }
 
-export function cauTong(tong: number): string {
+export function cauTong(tong: number, nn: NgonNguNB = 'vi'): string {
+  const vung = nn === 'en' ? 'en-US' : 'vi-VN';
   const m = mauTong(tong);
-  const s = tong.toLocaleString('vi-VN', { maximumFractionDigits: 2 });
-  if (m === 'do') return `Tổng ${s}% — vượt 100%, giảm bớt tỷ lệ các phần.`;
+  const s = tong.toLocaleString(vung, { maximumFractionDigits: 2 });
+  if (m === 'do') return { vi: `Tổng ${s}% — vượt 100%, giảm bớt tỷ lệ các phần.`, en: `Total ${s}% — over 100%, lower some of the percentages.` }[nn];
   const con = Math.round((100 - tong) * 100) / 100;
-  return con === 0 ? `Tổng ${s}% — đủ 100%.`
-    : `Tổng ${s}% — còn ${con.toLocaleString('vi-VN', { maximumFractionDigits: 2 })}% coi là hao hụt khi pha.`;
+  const sCon = con.toLocaleString(vung, { maximumFractionDigits: 2 });
+  return con === 0 ? { vi: `Tổng ${s}% — đủ 100%.`, en: `Total ${s}% — exactly 100%.` }[nn]
+    : { vi: `Tổng ${s}% — còn ${sCon}% coi là hao hụt khi pha.`, en: `Total ${s}% — the remaining ${sCon}% counts as butchery loss.` }[nn];
 }
 
 /** Chuỗi phần ra để chống ghi đè: đổi một con số ở đâu cũng khác. */
@@ -137,9 +167,9 @@ export function tinhGoiY(
 // -----------------------------------------------------------------------------
 // GỌI DATABASE
 // -----------------------------------------------------------------------------
-/** Phiên pha đã chốt của loại tảng này trong 30 ngày (kể cả hôm nay), chỉ kg. */
+/** Phiên pha đã chốt của loại tảng này trong 30 ngày (kể cả hôm nay), chỉ kg. nn: ngôn ngữ của câu lỗi mặc định. */
 export async function docGoiYThucTe(
-  client: SupabaseClient, chiNhanhId: string, matHangVaoId: string, homNay: string,
+  client: SupabaseClient, chiNhanhId: string, matHangVaoId: string, homNay: string, nn: NgonNguNB = 'vi',
 ): Promise<{ soPhien: number; kgVao: number; tyLe: Map<string, number>; loi: string | null }> {
   const rong = { soPhien: 0, kgVao: 0, tyLe: new Map<string, number>() };
   const { data: phien, error } = await client
@@ -148,7 +178,7 @@ export async function docGoiYThucTe(
     .eq('chi_nhanh_id', chiNhanhId).eq('mat_hang_vao_id', matHangVaoId).eq('trang_thai', 'da_chot')
     .gte('ngay_pha', congNgay(homNay, -(NGAY_GOI_Y - 1))).lte('ngay_pha', homNay)
     .limit(500);
-  if (error) return { ...rong, loi: cauLoiKho(error, 'Không đọc được các phiên pha lóc.') };
+  if (error) return { ...rong, loi: cauLoiKho(error, { vi: 'Không đọc được các phiên pha lóc.', en: 'Could not read the butchery sessions.' }[nn]) };
   const ds = ((phien ?? []) as { id: string; tong_kg_vao: unknown }[])
     .map(p => ({ id: p.id, tong_kg_vao: p.tong_kg_vao === null ? null : Number(p.tong_kg_vao) }));
   if (ds.length === 0) return { ...rong, loi: null };
@@ -156,7 +186,7 @@ export async function docGoiYThucTe(
     .from('kho_phien_pha_ra')
     .select('phien_pha_id, mat_hang_id, so_kg')
     .in('phien_pha_id', ds.map(p => p.id));
-  if (loiRa) return { ...rong, loi: cauLoiKho(loiRa, 'Không đọc được các phần pha ra.') };
+  if (loiRa) return { ...rong, loi: cauLoiKho(loiRa, { vi: 'Không đọc được các phần pha ra.', en: 'Could not read the butchery outputs.' }[nn]) };
   const dsRa = ((ra ?? []) as { phien_pha_id: string; mat_hang_id: string; so_kg: unknown }[])
     .map(r => ({ ...r, so_kg: Number(r.so_kg) }));
   return { ...tinhGoiY(ds, dsRa), loi: null };
@@ -170,7 +200,8 @@ export async function luuLuoiCongThuc(
   client: SupabaseClient, hienTai: CongThuc, phienBan: string, dong: DongLuoi[],
 ): Promise<KetQua> {
   if (phienBan !== phienBanCongThuc(hienTai)) {
-    return { ok: false, cau: 'Công thức vừa được người khác sửa — tải lại trang để xem số mới rồi sửa lại.' };
+    return kqHai(false, { vi: 'Công thức vừa được người khác sửa — tải lại trang để xem số mới rồi sửa lại.',
+                          en: 'Someone else just edited this recipe — reload the page to see the new numbers, then edit again.' });
   }
   if (dong.length > 0) {
     const { error } = await client.from('kho_cong_thuc_pha_dong').upsert(
@@ -183,26 +214,40 @@ export async function luuLuoiCongThuc(
   const bo = hienTai.dong.filter(d => !giu.has(d.mat_hang_ra_id)).map(d => d.id);
   if (bo.length > 0) {
     const { error } = await client.from('kho_cong_thuc_pha_dong').delete().in('id', bo);
-    if (error) return { ok: false, cau: `Đã lưu các phần ra, nhưng chưa bỏ được dòng cũ: ${cauLoiKho(error)}` };
+    if (error) {
+      const l = loiHai(error);
+      return kqHai(false, { vi: `Đã lưu các phần ra, nhưng chưa bỏ được dòng cũ: ${l.vi}`,
+                            en: `Output cuts saved, but the old rows could not be removed: ${l.en}` });
+    }
   }
-  return { ok: true, cau: `Đã lưu "${hienTai.ten}": ${dong.length} phần ra, tổng ${tongTyLe(dong).toLocaleString('vi-VN')}%.` };
+  const tong = tongTyLe(dong);
+  return kqHai(true, { vi: `Đã lưu "${hienTai.ten}": ${dong.length} phần ra, tổng ${tong.toLocaleString('vi-VN')}%.`,
+                       en: `Saved "${hienTai.ten}": ${dong.length} output ${soIt(dong.length, 'cut', 'cuts')}, total ${tong.toLocaleString('en-US')}%.` });
 }
 
 /** Nhân bản: công thức mới cùng đầu vào, tên "… (bản sao)", đủ phần ra. */
 export async function nhanBanCongThuc(
   client: SupabaseClient, ct: CongThuc,
 ): Promise<KetQua & { id?: string }> {
+  // Tên bản sao lưu vào database (dữ liệu, mọi người cùng đọc) — không theo ngôn ngữ màn hình.
   const ten = `${ct.ten} (bản sao)`.slice(0, 120);
   const { data, error } = await client.from('kho_cong_thuc_pha')
     .insert({ ten, mat_hang_vao_id: ct.mat_hang_vao_id, ghi_chu: ct.ghi_chu })
     .select('id').single();
-  if (error || !data) return { ok: false, cau: cauLoiKho(error ?? 'Không tạo được bản sao.') };
+  if (error) return { ok: false, cau: cauLoiKho(error) };
+  if (!data) return kqHai(false, { vi: 'Không tạo được bản sao.', en: 'Could not create the copy.' });
   const id = String(data.id);
   if (ct.dong.length > 0) {
     const { error: loiDong } = await client.from('kho_cong_thuc_pha_dong').insert(ct.dong.map(d => ({
       cong_thuc_id: id, mat_hang_ra_id: d.mat_hang_ra_id, ty_le_du_kien: d.ty_le_du_kien, xu_ly: d.xu_ly, thu_tu: d.thu_tu,
     })));
-    if (loiDong) return { ok: false, id, cau: `Đã tạo "${ten}" nhưng chưa chép được phần ra: ${cauLoiKho(loiDong)}` };
+    if (loiDong) {
+      const l = loiHai(loiDong);
+      return { id, ...kqHai(false, { vi: `Đã tạo "${ten}" nhưng chưa chép được phần ra: ${l.vi}`,
+                                     en: `Created "${ten}" but could not copy the output cuts: ${l.en}` }) };
+    }
   }
-  return { ok: true, id, cau: `Đã tạo "${ten}" với ${ct.dong.length} phần ra. Sửa tên và tỷ lệ bên dưới.` };
+  const n = ct.dong.length;
+  return { id, ...kqHai(true, { vi: `Đã tạo "${ten}" với ${n} phần ra. Sửa tên và tỷ lệ bên dưới.`,
+                                en: `Created "${ten}" with ${n} output ${soIt(n, 'cut', 'cuts')}. Edit the name and percentages below.` }) };
 }

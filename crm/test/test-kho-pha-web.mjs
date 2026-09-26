@@ -238,10 +238,12 @@ await nhom('9 · CÁC TRANG PHA LÓC', async () => {
   ok('Bước 2: −1, bỏ lượt, bỏ món', /value="bot_mot"/.test(id) && /value="bo_luot"/.test(id) && /value="xoa_mon"/.test(id));
   // GĐ5e: gõ kg phụ phẩm rồi quét ngay không mất số — ô quét, −1, bỏ lượt, bỏ
   // món và các ô gõ kg cùng MỘT form; máy chủ lưu phần gõ tay trước.
-  const buoc2 = id.slice(id.indexOf('BƯỚC 2 — CÂN & QUÉT'), id.indexOf('Hủy phiên nháp này'));
+  // Chữ "Hủy phiên nháp này" nằm trong bảng câu { vi, en } ở đầu trang — mốc cuối bước 2 là chỗ dùng nó ({t.huyNhapNay}).
+  const buoc2 = id.slice(id.indexOf('BƯỚC 2 — CÂN & QUÉT'), id.indexOf('{t.huyNhapNay}'));
   const tuQuet = buoc2.slice(buoc2.indexOf('<QuetMa'));
   ok('Bước 2: ô quét và ô gõ kg trong cùng một form (không có </form> xen giữa)',
-     buoc2.indexOf('<QuetMa') > buoc2.indexOf('<form') && !tuQuet.slice(0, tuQuet.indexOf('r${i}_so_kg')).includes('</form>'));
+     /huyNhapNay: \{ vi: 'Hủy phiên nháp này'/.test(id)
+     && buoc2.indexOf('<QuetMa') > buoc2.indexOf('<form') && !tuQuet.slice(0, tuQuet.indexOf('r${i}_so_kg')).includes('</form>'));
   ok('Món của −1 / bỏ món đi theo formaction, lệnh sửa có ma_gui riêng',
      /value="bot_mot" formaction=\{`\$\{DUONG\}\?mon=/.test(id) && /name="ma_gui_sua"/.test(id) && /q\.get\('mon'\)/.test(id));
   ok('Máy chủ lưu phần gõ tay trước khi quét / sửa',

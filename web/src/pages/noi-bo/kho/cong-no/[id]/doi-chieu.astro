@@ -8,6 +8,9 @@
  * chạy, cộng phát sinh, số dư cuối kỳ — tất cả từ kho_cong_no_theo_ky. Mặc định
  * từ đầu tháng tới hôm nay. In bằng nút "In / Lưu PDF" (in-an.js) hoặc menu
  * trình duyệt; đầu trang in (InDau) và hàng chữ ký (KyTen) chỉ hiện khi in.
+ *
+ * Tờ in theo ngôn ngữ đang xem (màn tiếng Anh in bản tiếng Anh); tên nhà cung
+ * cấp, diễn giải của chứng từ là dữ liệu — giữ nguyên.
  */
 import Kho from '../../../../../layouts/Kho.astro';
 import BaoKho from '../../../../../components/kho/BaoKho.astro';
@@ -16,94 +19,145 @@ import KyTen from '../../../../../components/kho/KyTen.astro';
 import NutIn from '../../../../../components/kho/NutIn.astro';
 import { moTrangKho, chuyenHuong } from '../../../../../lib/kho/trang.ts';
 import {
-  docTenNcc, docCongNoTheoKy, docKyCongNo, tomTatKy, TEN_LOAI_SO_CONG_NO, type DongSoCongNo,
+  docTenNcc, docCongNoTheoKy, docKyCongNo, tomTatKy, TEN_LOAI_SO_CONG_NO_NB, type DongSoCongNo,
 } from '../../../../../lib/kho/cong-no.ts';
-import { cauLoiKho, dinhDangNgay, dinhDangTien, homNayVn } from '../../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangNgay, dinhDangTien, homNayVn, kqHai, nhanKho } from '../../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../../lib/ngon-ngu-noi-bo.ts';
+import { dichCau } from '../../../../../lib/cau-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('ke_toan')) return Astro.redirect('/noi-bo/kho', 302);
 if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
+const nn = k.nn;
 const cn = k.chiNhanh;
 const ncc = await docTenNcc(k.client, Astro.params.id ?? '');
-if (!ncc) return chuyenHuong(Astro, '/noi-bo/kho/cong-no', { ok: false, cau: 'Không tìm thấy nhà cung cấp này.' });
+if (!ncc) {
+  return chuyenHuong(Astro, '/noi-bo/kho/cong-no', kqHai(false, { vi: 'Không tìm thấy nhà cung cấp này.', en: 'This supplier was not found.' }));
+}
 const homNay = homNayVn();
 const ky = docKyCongNo(Astro.url.searchParams, homNay);
+const t = dichNB(nn, {
+  tieuDe: { vi: (ten: string) => `Biên bản đối chiếu · ${ten}`, en: (ten: string) => `Reconciliation statement · ${ten}` },
+  inTieuDe: { vi: 'BIÊN BẢN ĐỐI CHIẾU CÔNG NỢ', en: 'PAYABLES RECONCILIATION STATEMENT' },
+  h1: { vi: (ten: string) => `Biên bản đối chiếu công nợ · ${ten}`, en: (ten: string) => `Payables reconciliation statement · ${ten}` },
+  veCongNo: { vi: (ten: string) => `← Công nợ ${ten}`, en: (ten: string) => `← Payables: ${ten}` },
+  khongDoc: { vi: 'Không đọc được sổ công nợ.', en: 'Could not read the payables ledger.' },
+  thangNay: { vi: 'Tháng này', en: 'This month' },
+  thangTruoc: { vi: 'Tháng trước', en: 'Last month' },
+  tuDauNam: { vi: 'Từ đầu năm', en: 'Year to date' },
+  chonNhanhKy: { vi: 'Chọn nhanh kỳ', en: 'Quick periods' },
+  tuNgay: { vi: 'Từ ngày', en: 'From' },
+  denNgay: { vi: 'Đến ngày', en: 'To' },
+  xemKyNay: { vi: 'Xem kỳ này', en: 'Show this period' },
+  inPdf: { vi: 'In / Lưu PDF', en: 'Print / Save as PDF' },
+  benMua: { vi: 'Bên mua:', en: 'Buyer:' },
+  benBan: { vi: 'Bên bán:', en: 'Seller:' },
+  mst: { vi: 'MST', en: 'Tax code' },
+  haiBen1: { vi: 'Hai bên cùng đối chiếu công nợ từ ngày ', en: 'Both parties have reconciled the payables from ' },
+  haiBen2: { vi: ' đến ngày ', en: ' to ' },
+  haiBen3: { vi: ' như sau:', en: ' as follows:' },
+  ngay: { vi: 'Ngày', en: 'Date' },
+  chungTu: { vi: 'Chứng từ', en: 'Document' },
+  soHoaDon: { vi: 'Số hóa đơn', en: 'Invoice no.' },
+  dienGiai: { vi: 'Diễn giải', en: 'Description' },
+  phatSinhTang: { vi: 'Phát sinh tăng', en: 'Increase' },
+  phatSinhGiam: { vi: 'Phát sinh giảm', en: 'Decrease' },
+  conNo: { vi: 'Còn nợ', en: 'Balance' },
+  soDuDauKy: { vi: 'Số dư đầu kỳ', en: 'Balance at start of period' },
+  congPhatSinh: { vi: 'Cộng phát sinh trong kỳ', en: 'Totals for the period' },
+  soDuCuoiKy: { vi: (d: string) => `Số dư cuối kỳ (${d})`, en: (d: string) => `Balance at end of period (${d})` },
+  quanNo: {
+    vi: (d: string, ten: string) => `Tính đến ngày ${d}, Beeftown còn nợ ${ten} số tiền `,
+    en: (d: string, ten: string) => `As of ${d}, Beeftown owes ${ten} `,
+  },
+  nccNo: {
+    vi: (d: string, ten: string) => `Tính đến ngày ${d}, ${ten} còn nợ lại Beeftown số tiền `,
+    en: (d: string, ten: string) => `As of ${d}, ${ten} owes Beeftown `,
+  },
+  chenhLech: {
+    vi: 'Nếu có chênh lệch, đề nghị bên bán báo lại trong 7 ngày kể từ ngày nhận biên bản. Quá hạn này coi như hai bên đã thống nhất số liệu trên.',
+    en: 'If there is any difference, the seller should report it within 7 days of receiving this statement. After that, both parties are taken to agree with the figures above.',
+  },
+  keToan: { vi: 'Kế toán Beeftown', en: 'Beeftown accountant' },
+  daiDienBeeftown: { vi: 'Đại diện Beeftown', en: 'For Beeftown' },
+  daiDienNcc: { vi: (ten: string) => `Đại diện ${ten}`, en: (ten: string) => `For ${ten}` },
+});
 
 let so: DongSoCongNo[] = [];
 let loiDoc = k.loiDoc;
 try {
   so = await docCongNoTheoKy(k.client, cn.id, ncc.id, ky.tu, ky.den);
 } catch (e) {
-  loiDoc = cauLoiKho(e, 'Không đọc được sổ công nợ.');
+  loiDoc = cauLoiKho(e, t.khongDoc);
 }
-const t = tomTatKy(so);
-const soTien = (n: number) => (n < 0 ? `−${dinhDangTien(-n)}` : dinhDangTien(n));
+const tom = tomTatKy(so);
+const soTien = (n: number) => (n < 0 ? `−${dinhDangTien(-n, nn)}` : dinhDangTien(n, nn));
 const dauNam = `${homNay.slice(0, 4)}-01-01`;
 const thangTruocDau = (() => { const d = new Date(`${homNay.slice(0, 8)}01T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() - 1); return d.toISOString().slice(0, 10); })();
 const thangTruocCuoi = (() => { const d = new Date(`${homNay.slice(0, 8)}01T00:00:00Z`); d.setUTCDate(0); return d.toISOString().slice(0, 10); })();
 const MOC: [string, string, string][] = [
-  ['Tháng này', `${homNay.slice(0, 8)}01`, homNay],
-  ['Tháng trước', thangTruocDau, thangTruocCuoi],
-  ['Từ đầu năm', dauNam, homNay],
+  [t.thangNay, `${homNay.slice(0, 8)}01`, homNay],
+  [t.thangTruoc, thangTruocDau, thangTruocCuoi],
+  [t.tuDauNam, dauNam, homNay],
 ];
 ---
-<Kho k={k} huongDan="doi-chieu-cong-no" tieuDe={`Biên bản đối chiếu · ${ncc.ten}`} rong>
-  <InDau tieuDe="BIÊN BẢN ĐỐI CHIẾU CÔNG NỢ" chiNhanh={cn.ten} />
-  <h1 class="kho-khong-in">Biên bản đối chiếu công nợ · {ncc.ten}</h1>
-  <p class="kho-khong-in"><a href={`/noi-bo/kho/cong-no/${ncc.id}`}>← Công nợ {ncc.ten}</a></p>
+<Kho k={k} huongDan="doi-chieu-cong-no" tieuDe={t.tieuDe(ncc.ten)} rong>
+  <InDau tieuDe={t.inTieuDe} chiNhanh={cn.ten} />
+  <h1 class="kho-khong-in">{t.h1(ncc.ten)}</h1>
+  <p class="kho-khong-in"><a href={`/noi-bo/kho/cong-no/${ncc.id}`}>{t.veCongNo(ncc.ten)}</a></p>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   <form method="GET" class="nb-the kho-khong-in">
-    <nav class="kho-dh" aria-label="Chọn nhanh kỳ">
+    <nav class="kho-dh" aria-label={t.chonNhanhKy}>
       {MOC.map(([ten, a, b]) => <a href={`?tu=${a}&den=${b}`} aria-current={ky.tu === a && ky.den === b ? 'page' : undefined}>{ten}</a>)}
     </nav>
     <div class="kho-luoi">
-      <label class="nb-o"><span>Từ ngày</span><input type="date" name="tu" value={ky.tu} max={homNay} /></label>
-      <label class="nb-o"><span>Đến ngày</span><input type="date" name="den" value={ky.den} max={homNay} /></label>
+      <label class="nb-o"><span>{t.tuNgay}</span><input type="date" name="tu" value={ky.tu} max={homNay} /></label>
+      <label class="nb-o"><span>{t.denNgay}</span><input type="date" name="den" value={ky.den} max={homNay} /></label>
     </div>
-    <button type="submit" class="nb-nut phu">Xem kỳ này</button>
+    <button type="submit" class="nb-nut phu">{t.xemKyNay}</button>
   </form>
-  <NutIn chu="In / Lưu PDF" />
+  <NutIn chu={t.inPdf} />
 
   <section class="bb">
-    <p><strong>Bên mua:</strong> Beeftown · {cn.ten}</p>
-    <p><strong>Bên bán:</strong> {ncc.ten}{ncc.ma_so_thue ? ` · MST ${ncc.ma_so_thue}` : ''}{ncc.dia_chi ? ` · ${ncc.dia_chi}` : ''}</p>
-    <p>Hai bên cùng đối chiếu công nợ từ ngày <strong>{dinhDangNgay(ky.tu)}</strong> đến ngày <strong>{dinhDangNgay(ky.den)}</strong> như sau:</p>
+    <p><strong>{t.benMua}</strong> Beeftown · {cn.ten}</p>
+    <p><strong>{t.benBan}</strong> {ncc.ten}{ncc.ma_so_thue ? ` · ${t.mst} ${ncc.ma_so_thue}` : ''}{ncc.dia_chi ? ` · ${ncc.dia_chi}` : ''}</p>
+    <p>{t.haiBen1}<strong>{dinhDangNgay(ky.tu)}</strong>{t.haiBen2}<strong>{dinhDangNgay(ky.den)}</strong>{t.haiBen3}</p>
 
     <div class="kho-bang-khung">
       <table class="kho-bang">
-        <thead><tr><th>Ngày</th><th>Chứng từ</th><th>Số hóa đơn</th><th>Diễn giải</th><th class="so">Phát sinh tăng</th><th class="so">Phát sinh giảm</th><th class="so">Còn nợ</th></tr></thead>
+        <thead><tr><th>{t.ngay}</th><th>{t.chungTu}</th><th>{t.soHoaDon}</th><th>{t.dienGiai}</th><th class="so">{t.phatSinhTang}</th><th class="so">{t.phatSinhGiam}</th><th class="so">{t.conNo}</th></tr></thead>
         <tbody>
-          <tr><td>{dinhDangNgay(ky.tu)}</td><td colspan="3"><strong>Số dư đầu kỳ</strong></td><td></td><td></td><td class="so"><strong>{soTien(t.dauKy)}</strong></td></tr>
-          {t.chungTu.map(d => (
+          <tr><td>{dinhDangNgay(ky.tu)}</td><td colspan="3"><strong>{t.soDuDauKy}</strong></td><td></td><td></td><td class="so"><strong>{soTien(tom.dauKy)}</strong></td></tr>
+          {tom.chungTu.map(d => (
             <tr>
               <td>{dinhDangNgay(d.ngay)}</td>
-              <td>{d.so_chung_tu}<br /><span class="kho-phu">{TEN_LOAI_SO_CONG_NO[d.loai] ?? d.loai}</span></td>
+              <td>{d.so_chung_tu}<br /><span class="kho-phu">{nhanKho(TEN_LOAI_SO_CONG_NO_NB, d.loai, nn)}</span></td>
               <td>{d.so_hoa_don ?? ''}</td>
-              <td>{d.dien_giai}</td>
-              <td class="so">{d.tang ? dinhDangTien(d.tang) : ''}</td>
-              <td class="so">{d.giam ? dinhDangTien(d.giam) : ''}</td>
+              <td>{dichCau(nn, d.dien_giai)}</td>
+              <td class="so">{d.tang ? dinhDangTien(d.tang, nn) : ''}</td>
+              <td class="so">{d.giam ? dinhDangTien(d.giam, nn) : ''}</td>
               <td class="so">{soTien(d.so_du)}</td>
             </tr>
           ))}
         </tbody>
         <tfoot>
-          <tr class="tong"><td colspan="4">Cộng phát sinh trong kỳ</td><td class="so">{dinhDangTien(t.tang)}</td><td class="so">{dinhDangTien(t.giam)}</td><td></td></tr>
-          <tr class="tong"><td colspan="6">Số dư cuối kỳ ({dinhDangNgay(ky.den)})</td><td class="so">{soTien(t.cuoiKy)}</td></tr>
+          <tr class="tong"><td colspan="4">{t.congPhatSinh}</td><td class="so">{dinhDangTien(tom.tang, nn)}</td><td class="so">{dinhDangTien(tom.giam, nn)}</td><td></td></tr>
+          <tr class="tong"><td colspan="6">{t.soDuCuoiKy(dinhDangNgay(ky.den))}</td><td class="so">{soTien(tom.cuoiKy)}</td></tr>
         </tfoot>
       </table>
     </div>
 
     <p>
-      {t.cuoiKy >= 0
-        ? <>Tính đến ngày {dinhDangNgay(ky.den)}, Beeftown còn nợ {ncc.ten} số tiền <strong>{dinhDangTien(t.cuoiKy)}</strong>.</>
-        : <>Tính đến ngày {dinhDangNgay(ky.den)}, {ncc.ten} còn nợ lại Beeftown số tiền <strong>{dinhDangTien(-t.cuoiKy)}</strong>.</>}
+      {tom.cuoiKy >= 0
+        ? <>{t.quanNo(dinhDangNgay(ky.den), ncc.ten)}<strong>{dinhDangTien(tom.cuoiKy, nn)}</strong>.</>
+        : <>{t.nccNo(dinhDangNgay(ky.den), ncc.ten)}<strong>{dinhDangTien(-tom.cuoiKy, nn)}</strong>.</>}
     </p>
-    <p class="kho-phu">Nếu có chênh lệch, đề nghị bên bán báo lại trong 7 ngày kể từ ngày nhận biên bản. Quá hạn này coi như hai bên đã thống nhất số liệu trên.</p>
+    <p class="kho-phu">{t.chenhLech}</p>
   </section>
 
-  <KyTen ten={['Kế toán Beeftown', 'Đại diện Beeftown', `Đại diện ${ncc.ten}`]} />
+  <KyTen ten={[t.keToan, t.daiDienBeeftown, t.daiDienNcc(ncc.ten)]} />
 </Kho>
 
 <style>

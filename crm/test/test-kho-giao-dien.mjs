@@ -136,8 +136,9 @@ await nhom('2 · MENU THEO VAI', async () => {
       (THANH_DAY[vai] ?? []).filter(m => !day.includes(m)).map(m => m.ma).join(', '));
     ok(`${vai}: nút cuối thanh đáy là "Khác"`, day.at(-1)?.link === '/noi-bo/kho/khac');
     ok(`${vai}: nút đầu thanh đáy là trang chủ kho`, day[0]?.link === '/noi-bo/kho');
-    const tenNgan = day.map(m => m.ngan ?? m.ten).filter(t => t.length > 9);
-    ok(`${vai}: chữ trên thanh đáy ≤ 9 ký tự`, tenNgan.length === 0, tenNgan.join(', '));
+    // Tên hai thứ tiếng ({ vi, en }): cả hai bản đều phải vừa nút.
+    const tenNgan = day.flatMap(m => ['vi', 'en'].map(nn => (m.ngan ?? m.ten)[nn])).filter(t => !t || t.length > 9);
+    ok(`${vai}: chữ trên thanh đáy ≤ 9 ký tự (tiếng Việt và tiếng Anh)`, tenNgan.length === 0, tenNgan.join(', '));
     const khongQuyen = thaoTacCuaVai(vai).length !== (THAO_TAC_NHANH[vai] ?? []).length;
     ok(`${vai}: mọi thao tác nhanh đều làm được`, !khongQuyen);
   }
@@ -158,7 +159,7 @@ await nhom('2 · MENU THEO VAI', async () => {
   ok('Thủ kho: thanh đáy không có ô chỉ-xem-giá', !thanhDayCuaVai('thu_kho').some(m => chiTien(m.quyen)));
   ok('Thủ kho: thao tác nhanh không có mục chỉ-xem-giá', !thaoTacCuaVai('thu_kho').some(t => chiTien(t.quyen)));
   const qtTien = QUY_TRINH.flatMap(q => q.buoc).filter(b => b.quyen.some(x => duoc('thu_kho', x)) && chiTien(b.quyen));
-  ok('Thủ kho: không có nút quy trình chỉ-xem-giá', qtTien.length === 0, qtTien.map(b => b.ten).join(', '));
+  ok('Thủ kho: không có nút quy trình chỉ-xem-giá', qtTien.length === 0, qtTien.map(b => b.ten.vi).join(', '));
   ok('Thủ kho: không có quyền xem giá (khớp 0031)', !duoc('thu_kho', 'xem_gia'));
   for (const ma of ['nhap', 'bao_cao', 'cong_no', 'duyet']) {
     ok(`Thủ kho: không thấy ô "${ma}"`, !tk.some(m => m.ma === ma));
@@ -166,7 +167,7 @@ await nhom('2 · MENU THEO VAI', async () => {
   for (const ma of ['nhan_hang', 'pha_loc', 'viec']) {
     ok(`Thủ kho: thấy ô "${ma}"`, tk.some(m => m.ma === ma));
   }
-  const nhanTk = thaoTacCuaVai('thu_kho').find(t => t.ten === 'Nhận hàng');
+  const nhanTk = thaoTacCuaVai('thu_kho').find(t => t.ten.vi === 'Nhận hàng');
   ok('Thủ kho: "Nhận hàng" mở màn nhận hàng chỉ kg', nhanTk?.link === '/noi-bo/kho/nhan-hang/moi', nhanTk?.link);
   ok('Ô "Nhập hàng" (có tiền) chỉ cho vai xem giá, không số đỏ phiếu nháp',
     (() => { const m = MUC_KHO.find(x => x.ma === 'nhap'); return m && chiTien(m.quyen) && !(m.dem ?? []).some(k => k.startsWith('nhap_')); })());
@@ -272,15 +273,20 @@ await nhom('5 · HƯỚNG DẪN: NÚT "?" TRỎ ĐÚNG MỤC, NỘI DUNG HỢP L
   ok('id không trùng neo riêng của trang (mục lục, nhóm)', dungRieng.length === 0, dungRieng.join(', '));
   ok('Câu hỏi có id "hoi-…", mục thì không', idHoi.every(x => x.startsWith('hoi-')) && !idMuc.some(x => x.startsWith('hoi-')));
   ok(`Có ít nhất 15 câu hỏi thường gặp (có ${CAU_HOI.length})`, CAU_HOI.length >= 15);
-  ok('Câu hỏi nào cũng có lời đáp', CAU_HOI.every(c => c.hoi.trim() && c.dap.trim()));
+  // Câu chữ của hướng dẫn là cặp { vi, en } — bản nào cũng phải có chữ.
+  const coChu = x => ['vi', 'en'].every(nn => typeof x?.[nn] === 'string' && x[nn].trim() !== '');
+  ok('Câu hỏi nào cũng có lời đáp (tiếng Việt và tiếng Anh)', CAU_HOI.every(c => coChu(c.hoi) && coChu(c.dap)));
 
   const vaiCo = new Set(NHOM_VAI.map(n => n.vai));
   const vaiLa = MUC_HUONG_DAN.filter(m => m.vai.length === 0 || m.vai.some(v => !vaiCo.has(v)));
   ok('Mục nào cũng có vai, và vai có trong NHOM_VAI', vaiLa.length === 0, vaiLa.map(m => m.id).join(', '));
   const nhomRong = NHOM_VAI.filter(n => !MUC_HUONG_DAN.some(m => m.vai[0] === n.vai));
-  ok('Nhóm vai nào cũng có mục', nhomRong.length === 0, nhomRong.map(n => n.ten).join(', '));
-  const itBuoc = MUC_HUONG_DAN.filter(m => m.buoc.length < 2 || !m.tieuDe.trim() || !m.tomTat.trim());
-  ok('Mục nào cũng có tiêu đề, tóm tắt và ít nhất 2 bước', itBuoc.length === 0, itBuoc.map(m => m.id).join(', '));
+  ok('Nhóm vai nào cũng có mục', nhomRong.length === 0, nhomRong.map(n => n.ten.vi).join(', '));
+  ok('Tên nhóm vai có hai thứ tiếng', NHOM_VAI.every(n => coChu(n.ten)));
+  const itBuoc = MUC_HUONG_DAN.filter(m => m.buoc.length < 2 || !coChu(m.tieuDe) || !coChu(m.tomTat)
+    || !m.buoc.every(coChu) || !(m.meo ?? []).every(coChu) || (m.link && !coChu(m.link.chu)));
+  ok('Mục nào cũng có tiêu đề, tóm tắt và ít nhất 2 bước (đủ tiếng Việt và tiếng Anh)', itBuoc.length === 0,
+    itBuoc.map(m => m.id).join(', '));
   const DANH_ID_CU = ['menu', 'thu-kho', 'nv-quay', 'may-chung', 'mo-may-pin', 'gan-may', 'quan-ly-duyet',
     'ke-toan', 'viec-can-lam', 'thong-bao', 'tao-tai-khoan', 'quy-trinh', 'quet-nhan'];
   const mat = DANH_ID_CU.filter(x => !neoCo.has(x));
@@ -334,15 +340,26 @@ await nhom('5 · HƯỚNG DẪN: NÚT "?" TRỎ ĐÚNG MỤC, NỘI DUNG HỢP L
   ok('Ảnh là PNG đúng cỡ rộng × cao khai trong huong-dan.ts', anhSaiCo.length === 0, anhSaiCo.map(m => m.anh.file).join(', '));
   const anhNang = coAnh.filter(m => existsSync(join(PUB, m.anh.file)) && statSync(join(PUB, m.anh.file)).size > 120 * 1024);
   ok('Mỗi ảnh ≤ 120KB', anhNang.length === 0, anhNang.map(m => m.anh.file).join(', '));
-  ok('Ảnh đặt ở /kho/hd-*.png, có chữ mô tả', coAnh.every(m => /^\/kho\/hd-[a-z0-9-]+\.png$/.test(m.anh.file) && m.anh.chu.trim()));
+  ok('Ảnh đặt ở /kho/hd-*.png, có chữ mô tả (hai thứ tiếng)',
+    coAnh.every(m => /^\/kho\/hd-[a-z0-9-]+\.png$/.test(m.anh.file) && coChu(m.anh.chu)));
 
-  // Thủ kho, NV quầy không thấy tiền (0031) — phần của họ không nhắc tiền.
-  const TIEN = /giá nhập|giá vốn|đơn giá|thành tiền|lãi|công nợ/i;
-  const chuCua = m => [m.tieuDe, m.tomTat, ...m.buoc, ...(m.meo ?? []), m.anh?.chu ?? '', m.link?.chu ?? ''].join(' | ');
-  const nhacTien = MUC_HUONG_DAN.filter(m => m.vai.some(v => v === 'thu_kho' || v === 'nhan_vien_quay'))
-    .filter(m => TIEN.test(chuCua(m)));
-  ok('Phần của thủ kho / NV quầy không nhắc tiền', nhacTien.length === 0,
-    nhacTien.map(m => `${m.id}: ${chuCua(m).match(TIEN)[0]}`).join(', '));
+  // Thủ kho, NV quầy không thấy tiền (0031) — phần của họ không nhắc tiền, ở cả hai thứ tiếng.
+  const TIEN = {
+    vi: /giá nhập|giá vốn|đơn giá|thành tiền|lãi|công nợ/i,
+    en: /\b(price|cost|payable|amount|profit)s?\b/i,
+  };
+  const chuCua = (m, nn) => [m.tieuDe[nn], m.tomTat[nn], ...m.buoc.map(b => b[nn]), ...(m.meo ?? []).map(x => x[nn]),
+    m.anh?.chu[nn] ?? '', m.link?.chu[nn] ?? ''].join(' | ');
+  const cuaTkNv = MUC_HUONG_DAN.filter(m => m.vai.some(v => v === 'thu_kho' || v === 'nhan_vien_quay'));
+  // Bộ lọc phải bắt được chữ về tiền thật (mục điền giá của kế toán) — để hai phép kiểm dưới không đạt suông.
+  const mucGia = MUC_HUONG_DAN.find(m => m.id === 'duyet-nhap');
+  ok('Bộ lọc chữ về tiền bắt được mục điền giá (tiếng Việt và tiếng Anh)', cuaTkNv.length > 0 && !!mucGia
+    && TIEN.vi.test(chuCua(mucGia, 'vi')) && TIEN.en.test(chuCua(mucGia, 'en')));
+  for (const nn of ['vi', 'en']) {
+    const nhacTien = cuaTkNv.filter(m => TIEN[nn].test(chuCua(m, nn)));
+    ok(`Phần của thủ kho / NV quầy không nhắc tiền (${nn === 'vi' ? 'tiếng Việt' : 'tiếng Anh'})`, nhacTien.length === 0,
+      nhacTien.map(m => `${m.id}: ${chuCua(m, nn).match(TIEN[nn])[0]}`).join(', '));
+  }
 });
 
 // ===========================================================================
@@ -442,7 +459,7 @@ await nhom('9 · QUYỀN KHỚP GIỮA MENU VÀ TRANG', async () => {
     ...MUC_KHO,
     ...Object.values(THANH_DAY).flat(),
     ...Object.entries(THAO_TAC_NHANH).flatMap(([vai, ds]) => ds.map(t => ({ ...t, ma: `thao tác ${vai} "${t.ten}"` }))),
-    ...QUY_TRINH.flatMap(q => q.buoc.map(b => ({ ...b, ma: `quy trình ${q.ma} "${b.ten}"` }))),
+    ...QUY_TRINH.flatMap(q => q.buoc.map(b => ({ ...b, ma: `quy trình ${q.ma} "${b.ten.vi}"` }))),
   ];
   for (const m of oCanKiem) {
     const t = trangCua(m.link);
@@ -636,9 +653,9 @@ await nhom('13 · QUẦY YÊU CẦU → MANG RA → BẤM NHẬN (0032)', async 
     && !/from\('kho_cai_dat'\)\s*\.(update|upsert|insert)/.test(quayLib));
   ok('Màn Cài đặt có công tắc', /chuyen_quay_can_nhan/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'))));
   // GĐ5e: Cài đặt thành "Thiết lập" có tiến độ (0035) — chi tiết ở test-kho-thiet-lap-web.mjs.
-  ok('Ô menu "Thiết lập" mở màn có thanh tiến độ', MUC_KHO.find(m => m.ma === 'cai_dat')?.ten === 'Thiết lập'
+  ok('Ô menu "Thiết lập" mở màn có thanh tiến độ', MUC_KHO.find(m => m.ma === 'cai_dat')?.ten?.vi === 'Thiết lập'
     && /kho_tien_do_thiet_lap/.test(doc(join(GOC, 'web/src/lib/kho/thiet-lap.ts')))
-    && /cauConLai\(tienDo\)/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'))));
+    && /cauConLai\(tienDo, nn\)/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'))));
 });
 
 // ===========================================================================
@@ -668,7 +685,7 @@ await nhom('14 · THẺ KHO VÀ QUÉT ĐẦY ĐỦ (GĐ5c, 0033)', async () => {
   ok('Tồn kho: mỗi món có nút "Thẻ kho"', /linkTheKho\(g\.mat_hang_id\)/.test(doc(join(TRANG, 'noi-bo/kho/ton.astro'))));
   const quet = doc(join(TRANG, 'noi-bo/kho/quet.astro'));
   ok('Quét: nút Thẻ kho, nút theo lô, Đếm quầy, Thêm vào phiên pha',
-    /linkTheKho\(mh\.id\)/.test(quet) && /viecVoiLo\(l\)/.test(quet) && /\/noi-bo\/kho\/quay\/dem/.test(quet)
+    /linkTheKho\(mh\.id\)/.test(quet) && /viecVoiLo\(l(, nn)?\)/.test(quet) && /\/noi-bo\/kho\/quay\/dem/.test(quet)
     && /themNhanVaoPhienPha\(/.test(quet) && /name="ma_gui"/.test(quet));
   ok('Quét: không có tiền', !/dinhDangTien|docGiaTon/.test(quet));
   const form = doc(join(WEB, 'src/components/kho/FormMatHang.astro'));
@@ -686,11 +703,14 @@ await nhom('15 · MÁY TÍNH BẢNG DÙNG CHUNG (GĐ5d, 0034) — TRANG', async 
   ok('Khung: nạp may-chung.js CHỈ khi có người đang dùng máy dùng chung',
     /\{coNguoiDung && k\.may && \(\s*<script is:inline src="\/kho\/js\/may-chung\.js"/.test(khung)
     && (khung.match(/may-chung\.js/g) ?? []).length === 2);
+  // Chữ nút nằm trong bảng câu { vi, en } của khung (t.khoaMay…); kiểm cả câu lẫn chỗ dùng.
   ok('Khung ở chế độ máy: "Khóa máy" và "Gỡ tôi khỏi máy này" gửi về màn máy (viec khoa / go)',
-    /name="viec" value="khoa"[\s\S]{0,200}Khóa máy/.test(khung) && /name="viec" value="go"[\s\S]{0,200}Gỡ tôi khỏi máy này/.test(khung)
+    /name="viec" value="khoa"[\s\S]{0,200}\{t\.khoaMay\}/.test(khung) && /name="viec" value="go"[\s\S]{0,200}\{t\.goToi\}/.test(khung)
+    && /khoaMay: \{ vi: 'Khóa máy'/.test(khung) && /goToi: \{ vi: 'Gỡ tôi khỏi máy này'/.test(khung)
     && /action=\{DUONG_MAY\}/.test(khung));
   ok('Khung ở chế độ máy: không có "Đăng xuất", không menu CRM',
-    /laMay \? \([\s\S]*\) : coNguoiDung \? \([\s\S]*\) : \([\s\S]*Đăng xuất/.test(khung)
+    /laMay \? \([\s\S]*\) : coNguoiDung \? \([\s\S]*\) : \([\s\S]*\{t\.dangXuat\}/.test(khung)
+    && /dangXuat: \{ vi: 'Đăng xuất'/.test(khung)
     && /const crm = cheDoMay \? \[\]/.test(khung));
 
   const man = doc(join(TRANG, 'noi-bo/kho/may/index.astro'));
@@ -743,8 +763,9 @@ await nhom('16 · AI LÀM ĐƯỢC GÌ · TRUNG TÂM BÁO CÁO ẨN THEO QUYỀN
   const vaiThieu = [...vaiCo].filter(v => !VAI_BANG_QUYEN.includes(v) || !TEN_VAI_DAY[v]);
   ok('Mọi vai có trong QUYEN_KHO đều hiện trên trang (có tên)', vaiThieu.length === 0, vaiThieu.join(', '));
   const trangQuyen = doc(join(TRANG, 'noi-bo/kho/cai-dat/quyen.astro'));
-  ok('Trang quyền dựng từ QUYEN_KHO + MO_TA_VIEC, mở cho mọi vai xem kho',
-    /Object\.keys\(QUYEN_KHO\)/.test(trangQuyen) && /MO_TA_VIEC\[x\]/.test(trangQuyen)
+  // Trang đọc bản hai thứ tiếng MO_TA_VIEC_NB (MO_TA_VIEC là bản tiếng Việt dựng từ đó).
+  ok('Trang quyền dựng từ QUYEN_KHO + MO_TA_VIEC_NB, mở cho mọi vai xem kho',
+    /Object\.keys\(QUYEN_KHO\)/.test(trangQuyen) && /MO_TA_VIEC_NB\[x\]/.test(trangQuyen)
     && /if \(!k\.duoc\('xem'\)\) return Astro\.redirect/.test(trangQuyen));
   // Mỗi việc mà một vai người làm được đều có dòng trên bảng (bảng chỉ bỏ việc chỉ-máy).
   const vaiNguoi = VAI_BANG_QUYEN.filter(v => !v.startsWith('may_'));
@@ -813,7 +834,7 @@ await nhom('16 · AI LÀM ĐƯỢC GÌ · TRUNG TÂM BÁO CÁO ẨN THEO QUYỀN
   ok('CSV theo tháng mở cho vai xem; sổ thanh toán chỉ ke_toan',
     /ten === 'theo-thang'\) \{\s*\/\/[^\n]*\n\s*if \(!duoc\(nhanSu\.vai_tro, 'xem'\)\)/.test(csvTs)
     && /ten === 'so-thanh-toan'\) \{\s*if \(!duoc\(nhanSu\.vai_tro, 'ke_toan'\)\)/.test(csvTs));
-  ok('CSV theo tháng: cột tiền theo quyền người tải', /dinhNghiaTheoThang\(duoc\(nhanSu\.vai_tro, 'xem_gia'\)\)/.test(csvTs));
+  ok('CSV theo tháng: cột tiền theo quyền người tải', /dinhNghiaTheoThang\(duoc\(nhanSu\.vai_tro, 'xem_gia'\)(, nn)?\)/.test(csvTs));
 
   // Báo cáo in được: đầu trang in + nút In.
   for (const f of ['[loai].astro', 'theo-thang.astro', 'mua-hang.astro', 'so-thanh-toan.astro', 'dinh-muc.astro', 'ncc.astro']) {

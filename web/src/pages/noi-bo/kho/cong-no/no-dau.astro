@@ -25,19 +25,128 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import {
   docNccNoDau, docNoDauKy, docFormNoDau, docDanNoDau, xemTruocNoDau, ghiNoDauKy, huyNoDauKy,
-  docBuocNoDau, danhDauKhongNoDau,
+  docBuocNoDau, danhDauKhongNoDau, cauLoiCongNo,
   type NccNoDau, type CongNoPhieu, type ONoDau, type XemTruocNoDau, type BuocNoDau,
 } from '../../../../lib/kho/cong-no.ts';
-import { cauLoiKho, congNgay, dinhDangNgay, dinhDangTien, homNayVn, type KetQua } from '../../../../lib/kho/chung.ts';
+import { congNgay, dinhDangNgay, dinhDangTien, homNayVn, kqHai, type HaiThuTieng, type KetQua } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
+const nn = k.nn;
+/** Câu báo của trang — cả hai thứ tiếng đi theo câu báo (KetQua.cauEn). */
+const CAU = {
+  quyen: { vi: 'Nợ đầu kỳ do kế toán hoặc quản lý ghi.', en: 'Opening balances are recorded by the accountant or a manager.' },
+  mangDut: {
+    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
+    en: 'Could not read what was sent — the connection may have dropped. Please send it again.',
+  },
+  chuaDocNcc: {
+    vi: 'Chưa đọc được danh sách nhà cung cấp — tải lại trang rồi làm lại.',
+    en: 'The supplier list has not loaded — reload the page and try again.',
+  },
+  chuaGhiTien: { vi: 'Chưa ghi số tiền ở nhà cung cấp nào.', en: 'No amount entered for any supplier.' },
+  danTrong: {
+    vi: 'Ô dán đang trống — chọn các ô trong Excel, sao chép rồi dán vào.',
+    en: 'The paste box is empty — select the cells in Excel, copy them, then paste here.',
+  },
+  viecSai: { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+} satisfies Record<string, HaiThuTieng>;
 if (!k.duoc('ke_toan')) {
-  return chuyenHuong(Astro, '/noi-bo/kho', { ok: false, cau: 'Nợ đầu kỳ do kế toán hoặc quản lý ghi.' });
+  return chuyenHuong(Astro, '/noi-bo/kho', kqHai(false, CAU.quyen));
 }
 if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const cn = k.chiNhanh;
 const DUONG = '/noi-bo/kho/cong-no/no-dau';
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Nợ đầu kỳ', en: 'Opening balances' },
+  khongDoc: { vi: 'Không đọc được nhà cung cấp và nợ đầu kỳ.', en: 'Could not read the suppliers and opening balances.' },
+  veCongNo: { vi: '← Công nợ nhà cung cấp', en: '← Supplier payables' },
+  gioiThieu1: { vi: 'Ghi ', en: 'Record ' },
+  motLan: { vi: 'một lần', en: 'once' },
+  gioiThieu2: {
+    vi: ' số tiền quán còn nợ từng nhà cung cấp tính tới hôm bắt đầu dùng phần mềm (xem sổ công nợ cũ hoặc hỏi nhà cung cấp). Sau đó trả tiền ở trang công nợ của nhà cung cấp như phiếu nhập bình thường.',
+    en: ' how much the restaurant owed each supplier on the day it started using this software (check the old payables book or ask the supplier). After that, pay on the supplier\'s payables page, just like a normal goods receipt.',
+  },
+  chiTien: { vi: 'Nợ đầu kỳ chỉ là số tiền — không có hàng, không vào tồn kho.', en: 'An opening balance is only an amount — no goods, nothing goes into stock.' },
+  daDanhDau: { vi: 'Đã đánh dấu: không có nợ đầu kỳ.', en: 'Marked: no opening balances.' },
+  buocXong: { vi: ' Bước này trong Thiết lập đã xong.', en: ' This Setup step is done.' },
+  boDanhDau: { vi: 'Bỏ đánh dấu (thật ra có nợ)', en: 'Remove the mark (there are balances after all)' },
+  khongNoHoi: {
+    vi: 'Quán không nợ nhà cung cấp nào lúc bắt đầu? Bấm nút dưới để đánh dấu bước này xong.',
+    en: 'The restaurant owed no supplier anything when it started? Press the button below to mark this step as done.',
+  },
+  khongNo: { vi: 'Không có nợ đầu kỳ', en: 'No opening balances' },
+  xemTruoc: { vi: 'Xem trước', en: 'Preview' },
+  chuaGhiDuoc: { vi: 'Chưa ghi được.', en: 'Not saved yet.' },
+  suaCho: { vi: ' Sửa những chỗ này trong lưới bên dưới rồi bấm "Xem trước" lại:', en: ' Fix these in the grid below, then press "Preview" again:' },
+  vaLoiKhac: { vi: (n: number) => `… và ${n} lỗi khác.`, en: (n: number) => `… and ${n} more ${s(n, 'error', 'errors')}.` },
+  nhaCungCap: { vi: 'Nhà cung cấp', en: 'Supplier' },
+  soTienNo: { vi: 'Số tiền nợ', en: 'Amount owed' },
+  hanTra: { vi: 'Hạn trả', en: 'Due date' },
+  hdGhiChu: { vi: 'Số hóa đơn · ghi chú', en: 'Invoice no. · note' },
+  tuTinh: { vi: (n: number) => `tự tính: hôm nay + ${n} ngày`, en: (n: number) => `automatic: today + ${n} ${s(n, 'day', 'days')}` },
+  tongNcc: { vi: (n: number) => `Tổng ${n} nhà cung cấp`, en: (n: number) => `Total: ${n} ${s(n, 'supplier', 'suppliers')}` },
+  ghiNoDau: { vi: (tien: string) => `Ghi nợ đầu kỳ (${tien})`, en: (tien: string) => `Record opening balances (${tien})` },
+  suaLai: { vi: 'Sửa lại', en: 'Edit' },
+  suaLaiLuoi: { vi: 'Sửa lại trong lưới ↓', en: 'Edit in the grid ↓' },
+  daGhi: {
+    vi: (n: number, tien: string) => `Đã ghi (${n} nhà cung cấp · ${tien})`,
+    en: (n: number, tien: string) => `Recorded (${n} ${s(n, 'supplier', 'suppliers')} · ${tien})`,
+  },
+  nhanNoDau: { vi: 'Nợ đầu kỳ', en: 'Opening balance' },
+  hoaDon: { vi: 'hóa đơn', en: 'invoice' },
+  conNo: { vi: 'Còn nợ', en: 'Still owed' },
+  daTra: { vi: 'đã trả', en: 'paid' },
+  khongHuyDuoc: {
+    vi: 'Đã trả tiền / giảm trừ nên không hủy được. Ghi nhầm thì hủy các khoản trả ở trang công nợ của nhà cung cấp trước.',
+    en: 'It has payments or deductions, so it cannot be cancelled. If it was a mistake, cancel those entries on the supplier\'s payables page first.',
+  },
+  huyGhiNham: { vi: 'Hủy (ghi nhầm)', en: 'Cancel (entered by mistake)' },
+  lyDo: { vi: 'Lý do', en: 'Reason' },
+  viDuLyDo: { vi: 'ví dụ: ghi nhầm số tiền', en: 'e.g. wrong amount entered' },
+  huyNoDau: { vi: (so: string) => `Hủy nợ đầu kỳ ${so}`, en: (so: string) => `Cancel opening balance ${so}` },
+  ghiTungNcc: { vi: 'Ghi nợ từng nhà cung cấp', en: 'Enter the balance for each supplier' },
+  chuaCoNcc1: { vi: 'Chưa có nhà cung cấp nào. Thêm ở ', en: 'There are no suppliers yet. Add them in ' },
+  caiDatNcc: { vi: 'Cài đặt › Nhà cung cấp', en: 'Setup › Suppliers' },
+  chuaCoNcc2: { vi: ' trước.', en: ' first.' },
+  moiNccCoRoi: { vi: 'Mọi nhà cung cấp đang dùng đã có nợ đầu kỳ.', en: 'Every active supplier already has an opening balance.' },
+  huongDanLuoi: {
+    vi: 'Nhà cung cấp không nợ thì để trống ô số tiền. Hạn trả bỏ trống = hôm nay + số ngày được nợ của nhà cung cấp.',
+    en: 'Leave the amount empty for suppliers you owe nothing. Empty due date = today + the supplier\'s credit days.',
+  },
+  mst: { vi: 'MST', en: 'tax code' },
+  soTienConNo: { vi: 'Số tiền còn nợ', en: 'Amount still owed' },
+  viDuTien: { vi: 'ví dụ 12.500.000', en: 'e.g. 12,500,000' },
+  hanTrong: {
+    vi: (ngay: string, n: number) => `Trống = ${ngay} (${n} ngày)`,
+    en: (ngay: string, n: number) => `Empty = ${ngay} (${n} ${s(n, 'day', 'days')})`,
+  },
+  themHdGc: { vi: 'Thêm: số hóa đơn, ghi chú', en: 'More: invoice no., note' },
+  soHoaDon: { vi: 'Số hóa đơn', en: 'Invoice no.' },
+  ghiChu: { vi: 'Ghi chú', en: 'Note' },
+  viDuGhiChu: { vi: 'ví dụ: theo biên bản đối chiếu 30/09', en: 'e.g. per reconciliation statement 30/09' },
+  danExcel: { vi: 'Dán từ Excel', en: 'Paste from Excel' },
+  bangDanLoi: { vi: 'Bảng dán còn lỗi.', en: 'The pasted table has errors.' },
+  suaODan: { vi: ' Sửa trong ô dán rồi bấm lại:', en: ' Fix them in the paste box and press the button again:' },
+  boQuaCot: { vi: (ds: string) => `Bỏ qua cột không hiểu: ${ds}.`, en: (ds: string) => `Skipped columns it did not understand: ${ds}.` },
+  danHd1: { vi: 'Trong Excel chọn các ô (nên chọn cả ', en: 'In Excel, select the cells (best to include the ' },
+  dongTieuDe: { vi: 'dòng tiêu đề', en: 'header row' },
+  danHd2: { vi: '), sao chép rồi dán vào đây. Tiêu đề hiểu được:', en: '), copy them and paste here. Headers it understands (Vietnamese, accents optional):' },
+  tieuDeHieu: { vi: 'Nhà cung cấp · Số tiền · Hạn trả · Số hóa đơn · Ghi chú', en: 'Nha cung cap · So tien · Han tra · So hoa don · Ghi chu' },
+  danHd3: { vi: '. Không có dòng tiêu đề thì cột theo đúng thứ tự đó.', en: '. Without a header row, the columns must be in that order.' },
+  danHd4: {
+    vi: 'Nhà cung cấp ghi tên (như trong danh mục, có dấu hay không đều được) hoặc mã số thuế. Hạn trả ghi dạng 31/10/2026. Dán xong các số được điền vào lưới và hiện bản xem trước — chưa ghi gì cho tới khi bấm "Ghi nợ đầu kỳ".',
+    en: 'For the supplier, write the name (as in the catalog, with or without accents) or the tax code. Write due dates like 31/10/2026. After pasting, the figures go into the grid and a preview appears — nothing is saved until you press "Record opening balances".',
+  },
+  noiDungDan: { vi: 'Nội dung dán', en: 'Pasted content' },
+  viDuDan: {
+    vi: 'Nhà cung cấp\tSố tiền\tHạn trả\nCông ty Thịt Bò Úc\t12500000\t31/10/2026',
+    en: 'Nha cung cap\tSo tien\tHan tra\nAussie Beef Co\t12500000\t31/10/2026',
+  },
+  dienVaoLuoi: { vi: 'Điền vào lưới và xem trước', en: 'Fill the grid and preview' },
+});
 
 let ncc: NccNoDau[] = [];
 let daCo: CongNoPhieu[] = [];
@@ -48,7 +157,7 @@ try {
     docNccNoDau(k.client), docNoDauKy(k.client, cn.id), docBuocNoDau(k.client, cn.id),
   ]);
 } catch (e) {
-  loiDoc = cauLoiKho(e, 'Không đọc được nhà cung cấp và nợ đầu kỳ.');
+  loiDoc = cauLoiCongNo(e, t.khongDoc, nn);
 }
 /** Nhà cung cấp → số phiếu ND- còn hiệu lực. */
 const daGhi = new Map(daCo.map(p => [p.nha_cung_cap_id, p.so_phieu]));
@@ -57,20 +166,21 @@ let bao: KetQua | null = k.bao;
 let giaTri: Record<string, ONoDau> = {};
 let xemTruoc: XemTruocNoDau | null = null;
 let danLai = '';
+/** Lỗi bảng dán, ở ngôn ngữ đang xem (thư viện trả loi / loiEn song song). */
 let loiDan: string[] = [];
 let boQuaDan: string[] = [];
 const form = await docFormGui(Astro);
 if (Astro.request.method === 'POST' && !form) {
-  bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
+  bao = kqHai(false, CAU.mangDut);
 }
 if (form) {
   const viec = String(form.get('viec') ?? '');
   if (viec === 'xem_truoc' || viec === 'ghi') {
     giaTri = docFormNoDau(form);
-    if (loiDoc) bao = { ok: false, cau: 'Chưa đọc được danh sách nhà cung cấp — tải lại trang rồi làm lại.' };
+    if (loiDoc) bao = kqHai(false, CAU.chuaDocNcc);
     else {
       const xt = xemTruocNoDau(ncc, giaTri, daGhi);
-      if (Object.keys(giaTri).length === 0) bao = { ok: false, cau: 'Chưa ghi số tiền ở nhà cung cấp nào.' };
+      if (Object.keys(giaTri).length === 0) bao = kqHai(false, CAU.chuaGhiTien);
       else if (viec === 'ghi' && xt.loi.length === 0) {
         const kq = await ghiNoDauKy(k.client, cn.id, String(form.get('ma_gui') ?? ''), xt.dong);
         if (kq.ok) return chuyenHuong(Astro, DUONG, kq);
@@ -80,24 +190,29 @@ if (form) {
     }
   } else if (viec === 'dan') {
     danLai = String(form.get('noi_dung') ?? '');
-    if (loiDoc) bao = { ok: false, cau: 'Chưa đọc được danh sách nhà cung cấp — tải lại trang rồi làm lại.' };
-    else if (!danLai.trim()) bao = { ok: false, cau: 'Ô dán đang trống — chọn các ô trong Excel, sao chép rồi dán vào.' };
+    if (loiDoc) bao = kqHai(false, CAU.chuaDocNcc);
+    else if (!danLai.trim()) bao = kqHai(false, CAU.danTrong);
     else {
       const d = docDanNoDau(danLai, ncc);
-      loiDan = d.loi;
+      loiDan = nn === 'en' ? d.loiEn : d.loi;
       boQuaDan = d.boQua;
       giaTri = d.giaTri;
       if (loiDan.length === 0) {
         xemTruoc = xemTruocNoDau(ncc, giaTri, daGhi);
         danLai = '';
-      } else bao = { ok: false, cau: `Bảng dán còn ${loiDan.length} lỗi — xem bên dưới. Các dòng đọc được đã điền vào lưới.` };
+      } else {
+        bao = kqHai(false, {
+          vi: `Bảng dán còn ${loiDan.length} lỗi — xem bên dưới. Các dòng đọc được đã điền vào lưới.`,
+          en: `The pasted table has ${loiDan.length} ${s(loiDan.length, 'error', 'errors')} — see below. The lines that could be read are filled into the grid.`,
+        });
+      }
     }
   } else if (viec === 'huy') {
     return chuyenHuong(Astro, DUONG, await huyNoDauKy(k.client, String(form.get('phieu_id') ?? ''), String(form.get('ly_do') ?? '')));
   } else if (viec === 'khong_no' || viec === 'bo_danh_dau') {
     return chuyenHuong(Astro, DUONG, await danhDauKhongNoDau(k.client, cn.id, viec === 'khong_no'));
   } else {
-    bao = { ok: false, cau: 'Việc không hợp lệ.' };
+    bao = kqHai(false, CAU.viecSai);
   }
 }
 
@@ -107,65 +222,65 @@ const chuaGhi = nccDung.filter(n => !daGhi.has(n.id));
 const tenNcc = new Map(ncc.map(n => [n.id, n]));
 const tongDaGhi = daCo.reduce((s, p) => s + p.phai_tra, 0);
 const choXacNhan = !!xemTruoc && xemTruoc.loi.length === 0 && xemTruoc.dong.length > 0;
+const loiXemTruoc = xemTruoc ? (nn === 'en' ? xemTruoc.loiEn : xemTruoc.loi) : [];
 const o = (id: string): ONoDau => giaTri[id] ?? { tien: '', han: '', hd: '', gc: '' };
 /** Hạn database sẽ tự đặt khi bỏ trống. */
 const hanTuDong = (n: NccNoDau | undefined) => congNgay(homNay, n?.so_ngay_no ?? 0);
 ---
-<Kho k={k} huongDan="no-dau" tieuDe="Nợ đầu kỳ" rong>
-  <h1>Nợ đầu kỳ</h1>
-  <p><a href="/noi-bo/kho/cong-no">← Công nợ nhà cung cấp</a></p>
+<Kho k={k} huongDan="no-dau" tieuDe={t.tieuDe} rong>
+  <h1>{t.tieuDe}</h1>
+  <p><a href="/noi-bo/kho/cong-no">{t.veCongNo}</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   <div class="nb-dan">
-    <p style="margin-top:0">Ghi <strong>một lần</strong> số tiền quán còn nợ từng nhà cung cấp tính tới hôm bắt đầu dùng phần mềm
-      (xem sổ công nợ cũ hoặc hỏi nhà cung cấp). Sau đó trả tiền ở trang công nợ của nhà cung cấp như phiếu nhập bình thường.</p>
-    <p style="margin-bottom:0">Nợ đầu kỳ chỉ là số tiền — không có hàng, không vào tồn kho.</p>
+    <p style="margin-top:0">{t.gioiThieu1}<strong>{t.motLan}</strong>{t.gioiThieu2}</p>
+    <p style="margin-bottom:0">{t.chiTien}</p>
   </div>
 
   {daCo.length === 0 && buoc && (
     buoc.bo_qua ? (
       <form method="POST" class="nb-the">
         <input type="hidden" name="viec" value="bo_danh_dau" />
-        <p style="margin-top:0"><strong>Đã đánh dấu: không có nợ đầu kỳ.</strong> Bước này trong Thiết lập đã xong.</p>
-        <button type="submit" class="nb-nut phu">Bỏ đánh dấu (thật ra có nợ)</button>
+        <p style="margin-top:0"><strong>{t.daDanhDau}</strong>{t.buocXong}</p>
+        <button type="submit" class="nb-nut phu">{t.boDanhDau}</button>
       </form>
     ) : (
       <form method="POST" class="nb-the">
         <input type="hidden" name="viec" value="khong_no" />
-        <p style="margin-top:0">Quán không nợ nhà cung cấp nào lúc bắt đầu? Bấm nút dưới để đánh dấu bước này xong.</p>
-        <button type="submit" class="nb-nut phu">Không có nợ đầu kỳ</button>
+        <p style="margin-top:0">{t.khongNoHoi}</p>
+        <button type="submit" class="nb-nut phu">{t.khongNo}</button>
       </form>
     )
   )}
 
   {xemTruoc && (
     <section class="nb-the" aria-labelledby="xem-truoc">
-      <h2 id="xem-truoc" style="margin-top:0">Xem trước</h2>
-      {xemTruoc.loi.length > 0 && (
+      <h2 id="xem-truoc" style="margin-top:0">{t.xemTruoc}</h2>
+      {loiXemTruoc.length > 0 && (
         <div class="nb-bao loi" role="alert">
-          <p><strong>Chưa ghi được.</strong> Sửa những chỗ này trong lưới bên dưới rồi bấm "Xem trước" lại:</p>
-          <ul style="margin:.5rem 0 0;padding-left:1.2rem">{xemTruoc.loi.slice(0, 30).map(l => <li>{l}</li>)}</ul>
-          {xemTruoc.loi.length > 30 && <p>… và {xemTruoc.loi.length - 30} lỗi khác.</p>}
+          <p><strong>{t.chuaGhiDuoc}</strong>{t.suaCho}</p>
+          <ul style="margin:.5rem 0 0;padding-left:1.2rem">{loiXemTruoc.slice(0, 30).map(l => <li>{l}</li>)}</ul>
+          {loiXemTruoc.length > 30 && <p>{t.vaLoiKhac(loiXemTruoc.length - 30)}</p>}
         </div>
       )}
       {xemTruoc.dong.length > 0 && (
         <div class="kho-bang-khung">
           <table class="kho-bang">
-            <thead><tr><th>Nhà cung cấp</th><th class="so">Số tiền nợ</th><th>Hạn trả</th><th>Số hóa đơn · ghi chú</th></tr></thead>
+            <thead><tr><th>{t.nhaCungCap}</th><th class="so">{t.soTienNo}</th><th>{t.hanTra}</th><th>{t.hdGhiChu}</th></tr></thead>
             <tbody>
               {xemTruoc.dong.map(d => (
                 <tr>
                   <td><strong>{d.ten}</strong></td>
-                  <td class="so"><strong>{dinhDangTien(d.so_tien)}</strong></td>
+                  <td class="so"><strong>{dinhDangTien(d.so_tien, nn)}</strong></td>
                   <td>{d.han_thanh_toan
                     ? dinhDangNgay(d.han_thanh_toan)
-                    : <>{dinhDangNgay(hanTuDong(tenNcc.get(d.nha_cung_cap_id)))}<br /><span class="kho-phu">tự tính: hôm nay + {tenNcc.get(d.nha_cung_cap_id)?.so_ngay_no ?? 0} ngày</span></>}</td>
+                    : <>{dinhDangNgay(hanTuDong(tenNcc.get(d.nha_cung_cap_id)))}<br /><span class="kho-phu">{t.tuTinh(tenNcc.get(d.nha_cung_cap_id)?.so_ngay_no ?? 0)}</span></>}</td>
                   <td>{[d.so_hoa_don, d.ghi_chu].filter(Boolean).join(' · ') || '—'}</td>
                 </tr>
               ))}
             </tbody>
             <tfoot>
-              <tr class="tong"><td>Tổng {xemTruoc.dong.length} nhà cung cấp</td><td class="so">{dinhDangTien(xemTruoc.tong)}</td><td colspan="2"></td></tr>
+              <tr class="tong"><td>{t.tongNcc(xemTruoc.dong.length)}</td><td class="so">{dinhDangTien(xemTruoc.tong, nn)}</td><td colspan="2"></td></tr>
             </tfoot>
           </table>
         </div>
@@ -184,41 +299,41 @@ const hanTuDong = (n: NccNoDau | undefined) => congNgay(homNay, n?.so_ngay_no ??
               <input type="hidden" name={`n${i}_gc`} value={d.ghi_chu ?? ''} />
             </>
           ))}
-          <button type="submit" class="nb-nut">Ghi nợ đầu kỳ ({dinhDangTien(xemTruoc.tong)})</button>
-          <a class="nb-nut phu" href="#luoi">Sửa lại</a>
+          <button type="submit" class="nb-nut">{t.ghiNoDau(dinhDangTien(xemTruoc.tong, nn))}</button>
+          <a class="nb-nut phu" href="#luoi">{t.suaLai}</a>
         </form>
       ) : (
-        <p style="margin-bottom:0"><a href="#luoi">Sửa lại trong lưới ↓</a></p>
+        <p style="margin-bottom:0"><a href="#luoi">{t.suaLaiLuoi}</a></p>
       )}
     </section>
   )}
 
   {daCo.length > 0 && (
     <>
-      <h2>Đã ghi ({daCo.length} nhà cung cấp · {dinhDangTien(tongDaGhi)})</h2>
+      <h2>{t.daGhi(daCo.length, dinhDangTien(tongDaGhi, nn))}</h2>
       {daCo.map(p => {
         const daTraTien = p.da_tra > 0 || p.giam_tru > 0;
         return (
           <div class="nb-dong">
             <div class="nb-dong-dau">
               <strong><a href={`/noi-bo/kho/cong-no/${p.nha_cung_cap_id}#p-${p.id}`}>{p.ten_nha_cung_cap}</a> · {p.so_phieu}</strong>
-              <span class="nb-nhan nhap">Nợ đầu kỳ</span>
+              <span class="nb-nhan nhap">{t.nhanNoDau}</span>
             </div>
             <dl>
-              <dt>Số tiền nợ</dt><dd class="kho-so"><strong>{dinhDangTien(p.phai_tra)}</strong></dd>
-              <dt>Hạn trả</dt><dd>{dinhDangNgay(p.han_thanh_toan)}{p.so_hoa_don && <> · hóa đơn {p.so_hoa_don}</>}</dd>
-              <dt>Còn nợ</dt><dd class="kho-so">{p.con_no < 0 ? `−${dinhDangTien(-p.con_no)}` : dinhDangTien(p.con_no)}{p.da_tra > 0 && <span class="kho-phu"> · đã trả {dinhDangTien(p.da_tra)}</span>}</dd>
+              <dt>{t.soTienNo}</dt><dd class="kho-so"><strong>{dinhDangTien(p.phai_tra, nn)}</strong></dd>
+              <dt>{t.hanTra}</dt><dd>{dinhDangNgay(p.han_thanh_toan)}{p.so_hoa_don && <> · {t.hoaDon} {p.so_hoa_don}</>}</dd>
+              <dt>{t.conNo}</dt><dd class="kho-so">{p.con_no < 0 ? `−${dinhDangTien(-p.con_no, nn)}` : dinhDangTien(p.con_no, nn)}{p.da_tra > 0 && <span class="kho-phu"> · {t.daTra} {dinhDangTien(p.da_tra, nn)}</span>}</dd>
             </dl>
             {daTraTien ? (
-              <p class="kho-phu" style="margin:.25rem 0 0">Đã trả tiền / giảm trừ nên không hủy được. Ghi nhầm thì hủy các khoản trả ở trang công nợ của nhà cung cấp trước.</p>
+              <p class="kho-phu" style="margin:.25rem 0 0">{t.khongHuyDuoc}</p>
             ) : (
               <details>
-                <summary style="cursor:pointer;font-size:.9rem;color:var(--muc-nhat);padding:.8rem 0">Hủy (ghi nhầm)</summary>
+                <summary style="cursor:pointer;font-size:.9rem;color:var(--muc-nhat);padding:.8rem 0">{t.huyGhiNham}</summary>
                 <form method="POST">
                   <input type="hidden" name="viec" value="huy" />
                   <input type="hidden" name="phieu_id" value={p.id} />
-                  <label class="nb-o"><span>Lý do</span><input type="text" name="ly_do" required maxlength="500" placeholder="ví dụ: ghi nhầm số tiền" /></label>
-                  <button type="submit" class="nb-nut kho-nut-xoa">Hủy nợ đầu kỳ {p.so_phieu}</button>
+                  <label class="nb-o"><span>{t.lyDo}</span><input type="text" name="ly_do" required maxlength="500" placeholder={t.viDuLyDo} /></label>
+                  <button type="submit" class="nb-nut kho-nut-xoa">{t.huyNoDau(p.so_phieu)}</button>
                 </form>
               </details>
             )}
@@ -228,36 +343,36 @@ const hanTuDong = (n: NccNoDau | undefined) => congNgay(homNay, n?.so_ngay_no ??
     </>
   )}
 
-  <h2 id="luoi" style="scroll-margin-top:5rem">Ghi nợ từng nhà cung cấp</h2>
+  <h2 id="luoi" style="scroll-margin-top:5rem">{t.ghiTungNcc}</h2>
   {nccDung.length === 0 ? (
-    <p class="nb-rong">Chưa có nhà cung cấp nào. Thêm ở <a href="/noi-bo/kho/cai-dat/nha-cung-cap">Cài đặt › Nhà cung cấp</a> trước.</p>
+    <p class="nb-rong">{t.chuaCoNcc1}<a href="/noi-bo/kho/cai-dat/nha-cung-cap">{t.caiDatNcc}</a>{t.chuaCoNcc2}</p>
   ) : chuaGhi.length === 0 ? (
-    <p class="nb-rong">Mọi nhà cung cấp đang dùng đã có nợ đầu kỳ.</p>
+    <p class="nb-rong">{t.moiNccCoRoi}</p>
   ) : (
     <form method="POST">
       <input type="hidden" name="viec" value="xem_truoc" />
       <input type="hidden" name="so_dong" value={String(chuaGhi.length)} />
-      <p class="kho-phu" style="margin-top:0">Nhà cung cấp không nợ thì để trống ô số tiền. Hạn trả bỏ trống = hôm nay + số ngày được nợ của nhà cung cấp.</p>
+      <p class="kho-phu" style="margin-top:0">{t.huongDanLuoi}</p>
       {chuaGhi.map((n, i) => {
         const g = o(n.id);
         return (
           <div class="kho-dong-hang">
             <input type="hidden" name={`n${i}_ncc`} value={n.id} />
-            <p style="margin:0 0 .4rem"><strong>{n.ten}</strong>{n.ma_so_thue && <span class="kho-phu"> · MST {n.ma_so_thue}</span>}</p>
+            <p style="margin:0 0 .4rem"><strong>{n.ten}</strong>{n.ma_so_thue && <span class="kho-phu"> · {t.mst} {n.ma_so_thue}</span>}</p>
             <div class="kho-luoi">
-              <label class="nb-o"><span>Số tiền còn nợ</span>
-                <input type="text" inputmode="numeric" name={`n${i}_tien`} value={g.tien} placeholder="ví dụ 12.500.000" /></label>
-              <label class="nb-o"><span>Hạn trả</span>
-                <small>Trống = {dinhDangNgay(hanTuDong(n))} ({n.so_ngay_no} ngày)</small>
+              <label class="nb-o"><span>{t.soTienConNo}</span>
+                <input type="text" inputmode="numeric" name={`n${i}_tien`} value={g.tien} placeholder={t.viDuTien} /></label>
+              <label class="nb-o"><span>{t.hanTra}</span>
+                <small>{t.hanTrong(dinhDangNgay(hanTuDong(n)), n.so_ngay_no)}</small>
                 <input type="date" name={`n${i}_han`} value={g.han} /></label>
             </div>
             <details open={!!g.hd || !!g.gc}>
-              <summary>Thêm: số hóa đơn, ghi chú</summary>
+              <summary>{t.themHdGc}</summary>
               <div class="kho-luoi">
-                <label class="nb-o"><span>Số hóa đơn</span>
+                <label class="nb-o"><span>{t.soHoaDon}</span>
                   <input type="text" name={`n${i}_hd`} value={g.hd} maxlength="60" autocapitalize="characters" /></label>
-                <label class="nb-o"><span>Ghi chú</span>
-                  <input type="text" name={`n${i}_gc`} value={g.gc} maxlength="500" placeholder="ví dụ: theo biên bản đối chiếu 30/09" /></label>
+                <label class="nb-o"><span>{t.ghiChu}</span>
+                  <input type="text" name={`n${i}_gc`} value={g.gc} maxlength="500" placeholder={t.viDuGhiChu} /></label>
               </div>
             </details>
           </div>
@@ -265,35 +380,34 @@ const hanTuDong = (n: NccNoDau | undefined) => congNgay(homNay, n?.so_ngay_no ??
       })}
       {/* Đang có bản xem trước thì thanh dính dưới đáy là nút Ghi — nút này thôi dính. */}
       <div class={choXacNhan ? 'kho-thanh-nut' : 'kho-thanh-nut dinh'}>
-        <button type="submit" class={choXacNhan ? 'nb-nut phu' : 'nb-nut'}>Xem trước</button>
+        <button type="submit" class={choXacNhan ? 'nb-nut phu' : 'nb-nut'}>{t.xemTruoc}</button>
       </div>
     </form>
   )}
 
   {chuaGhi.length > 0 && (
     <details class="nb-the" id="dan-excel" open={!!danLai} style="margin-top:1.5rem">
-      <summary style="cursor:pointer;font-weight:700">Dán từ Excel</summary>
+      <summary style="cursor:pointer;font-weight:700">{t.danExcel}</summary>
       {loiDan.length > 0 && (
         <div class="nb-bao loi" role="alert" style="margin-top:1rem">
-          <p><strong>Bảng dán còn lỗi.</strong> Sửa trong ô dán rồi bấm lại:</p>
+          <p><strong>{t.bangDanLoi}</strong>{t.suaODan}</p>
           <ul style="margin:.5rem 0 0;padding-left:1.2rem">{loiDan.slice(0, 30).map(l => <li>{l}</li>)}</ul>
-          {loiDan.length > 30 && <p>… và {loiDan.length - 30} lỗi khác.</p>}
+          {loiDan.length > 30 && <p>{t.vaLoiKhac(loiDan.length - 30)}</p>}
         </div>
       )}
-      {boQuaDan.length > 0 && <p class="kho-phu">Bỏ qua cột không hiểu: {boQuaDan.join(', ')}.</p>}
+      {boQuaDan.length > 0 && <p class="kho-phu">{t.boQuaCot(boQuaDan.join(', '))}</p>}
       <form method="POST" style="margin-top:1rem">
         <input type="hidden" name="viec" value="dan" />
         <div class="nb-dan" style="font-size:.88rem">
-          <p>Trong Excel chọn các ô (nên chọn cả <strong>dòng tiêu đề</strong>), sao chép rồi dán vào đây. Tiêu đề hiểu được:{' '}
-            <strong>Nhà cung cấp · Số tiền · Hạn trả · Số hóa đơn · Ghi chú</strong>. Không có dòng tiêu đề thì cột theo đúng thứ tự đó.</p>
-          <p style="margin-bottom:0">Nhà cung cấp ghi tên (như trong danh mục, có dấu hay không đều được) hoặc mã số thuế.
-            Hạn trả ghi dạng 31/10/2026. Dán xong các số được điền vào lưới và hiện bản xem trước — chưa ghi gì cho tới khi bấm "Ghi nợ đầu kỳ".</p>
+          <p>{t.danHd1}<strong>{t.dongTieuDe}</strong>{t.danHd2}{' '}
+            <strong>{t.tieuDeHieu}</strong>{t.danHd3}</p>
+          <p style="margin-bottom:0">{t.danHd4}</p>
         </div>
         <label class="nb-o">
-          <span>Nội dung dán</span>
-          <textarea name="noi_dung" rows="6" placeholder={'Nhà cung cấp\tSố tiền\tHạn trả\nCông ty Thịt Bò Úc\t12500000\t31/10/2026'}>{danLai}</textarea>
+          <span>{t.noiDungDan}</span>
+          <textarea name="noi_dung" rows="6" placeholder={t.viDuDan}>{danLai}</textarea>
         </label>
-        <button type="submit" class="nb-nut phu">Điền vào lưới và xem trước</button>
+        <button type="submit" class="nb-nut phu">{t.dienVaoLuoi}</button>
       </form>
     </details>
   )}

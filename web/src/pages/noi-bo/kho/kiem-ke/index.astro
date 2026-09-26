@@ -22,13 +22,59 @@ import { docDanhSachKiemKe, batDauKiemKe, kieuTheoViTri, type KiemKeTom } from '
 import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
 import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
-import { cauLoiKho, dinhDangNgay, dinhDangThoiDiem, TRANG_THAI_CHUNG_TU, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangNgay, dinhDangThoiDiem, trangThaiKho, type KetQua } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 const laQuay = k.nhanSu.vai_tro === 'nhan_vien_quay';
+const nn = k.nn;
+const t = dichNB(nn, {
+  tatCa: { vi: 'Tất cả', en: 'All' },
+  choDuyet: { vi: 'Chờ duyệt', en: 'Awaiting approval' },
+  dangDem: { vi: 'Đang đếm', en: 'Counting' },
+  daDuyet: { vi: 'Đã duyệt', en: 'Approved' },
+  daHuy: { vi: 'Đã hủy', en: 'Cancelled' },
+  khongDoc: { vi: 'Không đọc được kiểm kê.', en: 'Could not read the stocktakes.' },
+  tieuDe: { vi: 'Kiểm kê', en: 'Stocktake' },
+  chuaBatDau1: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào ', en: 'This branch has not started using inventory yet. Go to ' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory home' },
+  dan: {
+    vi: 'Đếm hàng thật đang có, ghi vào phiếu, gửi quản lý duyệt. Duyệt xong tồn trên sổ bằng đúng số đếm.',
+    en: 'Count the goods that are actually there, enter them on the sheet and send it to a manager for approval. Once approved, the stock on the books equals the count.',
+  },
+  chuaIpos1: { vi: ' Chưa nối iPOS: số ', en: ' iPOS is not connected: ' },
+  chuaIpos2: { vi: 'thiếu ở quầy được tính là đã bán', en: 'whatever is missing at the counter counts as sold' },
+  chuaIpos3: { vi: ' — nên đếm quầy mỗi tối.', en: ' — so count the counter every evening.' },
+  coIpos: { vi: ' Số bán lấy từ iPOS: phần thiếu ghi là chênh lệch kiểm kê.', en: ' Sales come from iPOS: anything missing is recorded as a stocktake difference.' },
+  quetTiep: { vi: (so: string) => `${so} · đang đếm — bấm để quét tiếp`, en: (so: string) => `${so} · counting — press to keep scanning` },
+  bamQuet: { vi: 'Bấm để quét đếm quầy', en: 'Press to scan the counter count' },
+  traVe: { vi: 'Quản lý trả về:', en: 'Sent back by the manager:' },
+  demLai: { vi: ' — bấm để đếm lại.', en: ' — press to count again.' },
+  daGuiCho: { vi: 'đã gửi, chờ quản lý duyệt', en: 'sent, awaiting manager approval' },
+  dangDemSo: { vi: (a: number, b: number) => `đang đếm ${a}/${b}`, en: (a: number, b: number) => `counting ${a}/${b}` },
+  demGoi: { vi: 'Đếm số gói của từng món', en: 'Count the packs of each item' },
+  demLo: { vi: 'Đếm từng lô (từng tảng)', en: 'Count each lot (each primal)' },
+  tuyChon: { vi: 'Tùy chọn', en: 'Options' },
+  cachDem: { vi: 'Cách đếm', en: 'Counting method' },
+  demLoDu: { vi: 'Đếm từng lô (từng tảng, từng hạn dùng)', en: 'Count each lot (each primal, each use-by date)' },
+  batDau: { vi: 'Bắt đầu đếm', en: 'Start counting' },
+  locTrangThai: { vi: 'Lọc theo trạng thái', en: 'Filter by status' },
+  goiYTim: { vi: 'Số phiếu, nơi đếm…', en: 'Sheet number, location…' },
+  hetDs: { vi: 'Hết danh sách — bấm "Trang trước".', en: 'End of the list — press "Previous".' },
+  khongKhop: { vi: 'Không tìm thấy phiếu nào khớp bộ lọc.', en: 'No sheets match the filters.' },
+  chuaCo: { vi: 'Chưa có phiếu kiểm kê nào', en: 'No stocktake sheets yet' },
+  oTrangThai: { vi: ' ở trạng thái này', en: ' with this status' },
+  ngay: { vi: 'Ngày', en: 'Date' },
+  kieuLo: { vi: 'đếm từng lô', en: 'lot by lot' },
+  kieuMon: { vi: 'đếm gói theo món', en: 'packs by item' },
+  daDem: { vi: 'Đã đếm', en: 'Counted' },
+  soDong: { vi: (a: number, b: number) => `${a}/${b} dòng`, en: (a: number, b: number) => `${a}/${b} lines` },
+  quanLyTraVe: { vi: 'Quản lý trả về', en: 'Sent back by manager' },
+  nguoiLap: { vi: 'Người lập', en: 'Made by' },
+});
 
-const LOC = [['', 'Tất cả'], ['cho_duyet', 'Chờ duyệt'], ['dang_dem', 'Đang đếm'], ['da_duyet', 'Đã duyệt'], ['da_huy', 'Đã hủy']] as const;
+const LOC = [['', t.tatCa], ['cho_duyet', t.choDuyet], ['dang_dem', t.dangDem], ['da_duyet', t.daDuyet], ['da_huy', t.daHuy]] as const;
 const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
 
 let bao: KetQua | null = k.bao;
@@ -62,7 +108,7 @@ if (k.chiNhanh && k.daKhoiTao) {
     ]);
     ({ ds: hien, coSau } = catTrang(trang));
   } catch (e) {
-    loiDoc = cauLoiKho(e, 'Không đọc được kiểm kê.');
+    loiDoc = cauLoiKho(e, t.khongDoc);
   }
 }
 const dangMo = new Map(ds.filter(x => x.trang_thai === 'dang_dem' || x.trang_thai === 'cho_duyet').map(x => [x.vi_tri_id, x]));
@@ -72,19 +118,19 @@ const viTriDem = viTri.filter(v => (v.loai === 'kho' || v.loai === 'quay') && v.
 const DEM_QUAY = '/noi-bo/kho/quay/dem';
 const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
 ---
-<Kho k={k} tieuDe="Kiểm kê" huongDan="kiem-ke">
-  <h1>Kiểm kê</h1>
+<Kho k={k} tieuDe={t.tieuDe} huongDan="kiem-ke">
+  <h1>{t.tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
-    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+    <p class="nb-rong">{t.chuaBatDau1}<a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
   ) : (
     <>
       <p class="nb-dan">
-        Đếm hàng thật đang có, ghi vào phiếu, gửi quản lý duyệt. Duyệt xong tồn trên sổ bằng đúng số đếm.
+        {t.dan}
         {caiDat?.nguon_so_ban !== 'ipos'
-          ? <> Chưa nối iPOS: số <strong>thiếu ở quầy được tính là đã bán</strong> — nên đếm quầy mỗi tối.</>
-          : <> Số bán lấy từ iPOS: phần thiếu ghi là chênh lệch kiểm kê.</>}
+          ? <>{t.chuaIpos1}<strong>{t.chuaIpos2}</strong>{t.chuaIpos3}</>
+          : <>{t.coIpos}</>}
       </p>
 
       {k.duoc('van_hanh') && viTriDem.length > 0 && (
@@ -98,16 +144,16 @@ const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
               return (
                 <a class={`kho-o-so ${traVe ? 'gap' : ''}`} href={`${DEM_QUAY}?vi_tri=${v.id}`}>
                   <b style="font-size:1.1rem">{v.ten}</b>
-                  <span>{mo ? `${mo.so_phieu} · đang đếm — bấm để quét tiếp` : 'Bấm để quét đếm quầy'}</span>
-                  {traVe && <span style="display:block;margin-top:.35rem;color:inherit"><strong>Quản lý trả về:</strong> {mo!.ly_do} — bấm để đếm lại.</span>}
+                  <span>{mo ? t.quetTiep(mo.so_phieu) : t.bamQuet}</span>
+                  {traVe && <span style="display:block;margin-top:.35rem;color:inherit"><strong>{t.traVe}</strong> {mo!.ly_do}{t.demLai}</span>}
                 </a>
               );
             }
             return mo ? (
               <a class={`kho-o-so ${mo.trang_thai === 'cho_duyet' ? 'luu-y' : traVe ? 'gap' : ''}`} href={`/noi-bo/kho/kiem-ke/${mo.id}`}>
                 <b style="font-size:1.1rem">{v.ten}</b>
-                <span>{mo.so_phieu} · {mo.trang_thai === 'cho_duyet' ? 'đã gửi, chờ quản lý duyệt' : `đang đếm ${mo.so_dong_da_dem}/${mo.so_dong}`}</span>
-                {traVe && <span style="display:block;margin-top:.35rem;color:inherit"><strong>Quản lý trả về:</strong> {mo.ly_do} — bấm để đếm lại.</span>}
+                <span>{mo.so_phieu} · {mo.trang_thai === 'cho_duyet' ? t.daGuiCho : t.dangDemSo(mo.so_dong_da_dem, mo.so_dong)}</span>
+                {traVe && <span style="display:block;margin-top:.35rem;color:inherit"><strong>{t.traVe}</strong> {mo.ly_do}{t.demLai}</span>}
               </a>
             ) : (
               <form method="POST" class="kho-o-so">
@@ -115,41 +161,43 @@ const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
                 <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
                 <input type="hidden" name="vi_tri_id" value={v.id} />
                 <b style="font-size:1.1rem">{v.ten}</b>
-                <span>{kieu === 'theo_mat_hang' ? 'Đếm số gói của từng món' : 'Đếm từng lô (từng tảng)'}</span>
+                <span>{kieu === 'theo_mat_hang' ? t.demGoi : t.demLo}</span>
                 {laQuay ? (
                   <input type="hidden" name="kieu" value={kieu} />
                 ) : (
                   <details style="margin:.35rem 0 0">
-                    <summary style="cursor:pointer;min-height:48px;display:flex;align-items:center;font-size:.9rem;font-weight:600">Tùy chọn</summary>
+                    <summary style="cursor:pointer;min-height:48px;display:flex;align-items:center;font-size:.9rem;font-weight:600">{t.tuyChon}</summary>
                     <label class="nb-o" style="margin:0 0 .5rem">
-                      <span style="font-size:.88rem;color:inherit">Cách đếm</span>
+                      <span style="font-size:.88rem;color:inherit">{t.cachDem}</span>
                       <select name="kieu">
-                        <option value="theo_mat_hang" selected={kieu === 'theo_mat_hang'}>Đếm số gói của từng món</option>
-                        <option value="theo_lo" selected={kieu === 'theo_lo'}>Đếm từng lô (từng tảng, từng hạn dùng)</option>
+                        <option value="theo_mat_hang" selected={kieu === 'theo_mat_hang'}>{t.demGoi}</option>
+                        <option value="theo_lo" selected={kieu === 'theo_lo'}>{t.demLoDu}</option>
                       </select>
                     </label>
                   </details>
                 )}
-                <button type="submit" class="nb-nut" style="width:100%;margin-top:.5rem">Bắt đầu đếm</button>
+                <button type="submit" class="nb-nut" style="width:100%;margin-top:.5rem">{t.batDau}</button>
               </form>
             );
           })}
         </div>
       )}
 
-      <nav class="kho-dh" aria-label="Lọc theo trạng thái">
-        {LOC.map(([v, t]) => (
-          <a href={v ? `/noi-bo/kho/kiem-ke?loc=${v}` : '/noi-bo/kho/kiem-ke'} aria-current={loc === v ? 'page' : undefined}>{t}</a>
+      <nav class="kho-dh" aria-label={t.locTrangThai}>
+        {LOC.map(([v, ten]) => (
+          <a href={v ? `/noi-bo/kho/kiem-ke?loc=${v}` : '/noi-bo/kho/kiem-ke'} aria-current={loc === v ? 'page' : undefined}>{ten}</a>
         ))}
       </nav>
 
       <LocDanhSach duong="/noi-bo/kho/kiem-ke" tim={tim} giu={{ loc }} coCuaToi={k.duoc('van_hanh')}
-        goiY="Số phiếu, nơi đếm…" />
+        goiY={t.goiYTim} />
 
       {hien.length === 0 ? (
-        <p class="nb-rong">{tim.trang > 1 ? 'Hết danh sách — bấm "Trang trước".' : dangTim(tim) ? 'Không tìm thấy phiếu nào khớp bộ lọc.' : `Chưa có phiếu kiểm kê nào${loc ? ' ở trạng thái này' : ''}.`}</p>
+        <p class="nb-rong">{tim.trang > 1 ? t.hetDs : dangTim(tim) ? t.khongKhop : `${t.chuaCo}${loc ? t.oTrangThai : ''}.`}</p>
       ) : hien.map(x => {
-        const [nhan, lop] = TRANG_THAI_CHUNG_TU[x.trang_thai] ?? [x.trang_thai, 'tat'];
+        // Trạng thái lạ: hiện nguyên mã, màu xám (như trước).
+        const [nhan, lopTT] = trangThaiKho(x.trang_thai, nn);
+        const lop = lopTT || 'tat';
         return (
           <a href={`/noi-bo/kho/kiem-ke/${x.id}`} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
             <div class="nb-dong-dau">
@@ -157,10 +205,10 @@ const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
               <span class={`nb-nhan ${lop}`}>{nhan}</span>
             </div>
             <dl>
-              <dt>Ngày</dt><dd>{dinhDangNgay(x.ngay_kiem)} · {x.kieu === 'theo_lo' ? 'đếm từng lô' : 'đếm gói theo món'}</dd>
-              <dt>Đã đếm</dt><dd>{x.so_dong_da_dem}/{x.so_dong} dòng</dd>
-              {x.trang_thai === 'dang_dem' && x.ly_do && <><dt>Quản lý trả về</dt><dd>{x.ly_do}</dd></>}
-              <dt>Người lập</dt><dd>{ten.get(x.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(x.created_at)}</dd>
+              <dt>{t.ngay}</dt><dd>{dinhDangNgay(x.ngay_kiem)} · {x.kieu === 'theo_lo' ? t.kieuLo : t.kieuMon}</dd>
+              <dt>{t.daDem}</dt><dd>{t.soDong(x.so_dong_da_dem, x.so_dong)}</dd>
+              {x.trang_thai === 'dang_dem' && x.ly_do && <><dt>{t.quanLyTraVe}</dt><dd>{x.ly_do}</dd></>}
+              <dt>{t.nguoiLap}</dt><dd>{ten.get(x.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(x.created_at)}</dd>
             </dl>
           </a>
         );

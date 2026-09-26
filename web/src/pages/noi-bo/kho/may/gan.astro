@@ -14,10 +14,12 @@ import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { ganNguoi, doiPin, layKhoaMay, laVaiMay, DUONG_MAY } from '../../../../lib/kho/may-chung.ts';
-import type { KetQua } from '../../../../lib/kho/chung.ts';
+import { kqHai, type KetQua } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
+const nn = k.nn;
 
 const batMay = !!(await layKhoaMay());
 const dangKhoa = batMay && laVaiMay(k.nhanSu.vai_tro) && !!k.may && !k.may.nhanSuId;
@@ -37,74 +39,105 @@ if (form) {
     kq = await doiPin(Astro, form, k.may!);
     if (kq.ok) return chuyenHuong(Astro, DUONG_MAY, kq);
   } else {
-    kq = { ok: false, cau: 'Việc không hợp lệ. Tải lại trang.' };
+    kq = kqHai(false, { vi: 'Việc không hợp lệ. Tải lại trang.', en: 'Invalid action. Reload the page.' });
   }
   bao = kq;
 }
+const t = dichNB(nn, {
+  doiPin: { vi: 'Đổi PIN', en: 'Change PIN' },
+  ganVaoMay: { vi: 'Gắn vào máy', en: 'Add to tablet' },
+  doiPinCuaToi: { vi: 'Đổi PIN của tôi', en: 'Change my PIN' },
+  pinChiDung: {
+    vi: (ten: string) => `PIN chỉ dùng trên máy${ten ? ` "${ten}"` : ' này'}. Không cho ai biết PIN — ai mở máy bằng PIN của bạn thì việc họ làm ghi tên bạn.`,
+    en: (ten: string) => `The PIN only works on ${ten ? `the tablet "${ten}"` : 'this tablet'}. Do not tell anyone your PIN — whatever someone does after unlocking with your PIN is recorded under your name.`,
+  },
+  pinMoi: { vi: 'PIN mới (4 đến 6 số)', en: 'New PIN (4 to 6 digits)' },
+  nhapLaiPinMoi: { vi: 'Nhập lại PIN mới', en: 'Enter the new PIN again' },
+  quayLai: { vi: 'Quay lại', en: 'Back' },
+  ganToi: { vi: 'Gắn tôi vào máy này', en: 'Add me to this tablet' },
+  dangNhap: { vi: 'Đăng nhập bằng tài khoản của bạn', en: 'Log in with your account' },
+  motLan: { vi: 'một lần', en: 'once' },
+  datPinGiai: { vi: 'và đặt PIN. Lần sau chỉ cần chọn tên và nhập PIN.', en: 'and set a PIN. Next time, just choose your name and enter your PIN.' },
+  quenPin: { vi: 'Đã gắn rồi mà quên PIN thì gắn lại ở đây để đặt PIN mới.', en: 'Already added but forgot your PIN? Add yourself again here to set a new PIN.' },
+  emailCuaBan: { vi: 'Email của bạn', en: 'Your email' },
+  matKhau: { vi: 'Mật khẩu', en: 'Password' },
+  datPin: { vi: 'Đặt PIN (4 đến 6 số)', en: 'Set a PIN (4 to 6 digits)' },
+  khongDungSo: { vi: 'Không dùng số lặp (1111) hay số liền nhau (1234).', en: 'No repeated digits (1111) or consecutive digits (1234).' },
+  nhapLaiPin: { vi: 'Nhập lại PIN', en: 'Enter the PIN again' },
+  ganVaBatDau: { vi: 'Gắn và bắt đầu dùng', en: 'Add me and start' },
+  ganVaoMayChung: { vi: 'Gắn vào máy dùng chung', en: 'Add yourself to a shared tablet' },
+  chuaBat: { vi: 'Máy dùng chung chưa được bật (thiếu bí mật', en: 'The shared tablet feature is not turned on (the' },
+  chuaBat2: { vi: ').', en: ' secret is missing).' },
+  trangNayDung: { vi: 'Trang này dùng', en: 'This page is used' },
+  mayDangKhoa: { vi: 'trên máy tính bảng dùng chung đang khóa', en: 'on a locked shared tablet' },
+  manAiDung: { vi: '(màn "Ai đang dùng máy?").', en: '(the "Who is using this tablet?" screen).' },
+  dienThoaiRieng: { vi: 'Trên điện thoại của riêng bạn thì không cần gắn.', en: 'On your own phone you do not need to add yourself.' },
+  veManMay: { vi: 'Về màn máy dùng chung', en: 'Back to the shared tablet screen' },
+});
 ---
-<Kho k={k} huongDan="gan-may" tieuDe={dangDung ? 'Đổi PIN' : 'Gắn vào máy'}>
+<Kho k={k} huongDan="gan-may" tieuDe={dangDung ? t.doiPin : t.ganVaoMay}>
   {dangDung ? (
     <>
-      <h1>Đổi PIN của tôi</h1>
+      <h1>{t.doiPinCuaToi}</h1>
       <BaoKho bao={bao} loiDoc={k.loiDoc} />
-      <p class="nb-dan">PIN chỉ dùng trên máy{k.may?.tenMay ? ` "${k.may.tenMay}"` : ' này'}. Không cho ai biết PIN — ai mở máy bằng PIN của bạn thì việc họ làm ghi tên bạn.</p>
+      <p class="nb-dan">{t.pinChiDung(k.may?.tenMay ?? '')}</p>
       <form method="POST" class="nb-the gan-form">
         <input type="hidden" name="viec" value="doi_pin" />
         <label class="nb-o">
-          <span>PIN mới (4 đến 6 số)</span>
+          <span>{t.pinMoi}</span>
           <input type="password" name="pin" inputmode="numeric" pattern="[0-9]*" autocomplete="off" minlength="4" maxlength="6" required />
         </label>
         <label class="nb-o">
-          <span>Nhập lại PIN mới</span>
+          <span>{t.nhapLaiPinMoi}</span>
           <input type="password" name="pin_lai" inputmode="numeric" pattern="[0-9]*" autocomplete="off" minlength="4" maxlength="6" required />
         </label>
-        <button type="submit" class="nb-nut gan-nut">Đổi PIN</button>
+        <button type="submit" class="nb-nut gan-nut">{t.doiPin}</button>
       </form>
-      <p><a href={DUONG_MAY}>Quay lại</a></p>
+      <p><a href={DUONG_MAY}>{t.quayLai}</a></p>
     </>
   ) : dangKhoa ? (
     <>
-      <h1>Gắn tôi vào máy này</h1>
+      <h1>{t.ganToi}</h1>
       <BaoKho bao={bao} loiDoc={k.loiDoc} />
-      <p class="nb-dan">Đăng nhập bằng tài khoản của bạn <strong>một lần</strong> và đặt PIN. Lần sau chỉ cần chọn tên và nhập PIN.
-        {' '}Đã gắn rồi mà quên PIN thì gắn lại ở đây để đặt PIN mới.</p>
+      <p class="nb-dan">{t.dangNhap} <strong>{t.motLan}</strong> {t.datPinGiai}
+        {' '}{t.quenPin}</p>
       <form method="POST" class="nb-the gan-form" autocomplete="off">
         <input type="hidden" name="viec" value="gan" />
         <label class="nb-o">
-          <span>Email của bạn</span>
+          <span>{t.emailCuaBan}</span>
           <input type="email" name="email" value={email} required autocomplete="off"
             autocapitalize="off" autocorrect="off" spellcheck="false" inputmode="email" />
         </label>
         <label class="nb-o">
-          <span>Mật khẩu</span>
+          <span>{t.matKhau}</span>
           <input type="password" name="mat_khau" required autocomplete="off" />
         </label>
         <label class="nb-o">
-          <span>Đặt PIN (4 đến 6 số)</span>
-          <small>Không dùng số lặp (1111) hay số liền nhau (1234).</small>
+          <span>{t.datPin}</span>
+          <small>{t.khongDungSo}</small>
           <input type="password" name="pin" inputmode="numeric" pattern="[0-9]*" autocomplete="off" minlength="4" maxlength="6" required />
         </label>
         <label class="nb-o">
-          <span>Nhập lại PIN</span>
+          <span>{t.nhapLaiPin}</span>
           <input type="password" name="pin_lai" inputmode="numeric" pattern="[0-9]*" autocomplete="off" minlength="4" maxlength="6" required />
         </label>
-        <button type="submit" class="nb-nut gan-nut">Gắn và bắt đầu dùng</button>
+        <button type="submit" class="nb-nut gan-nut">{t.ganVaBatDau}</button>
       </form>
-      <p><a href={DUONG_MAY}>Quay lại</a></p>
+      <p><a href={DUONG_MAY}>{t.quayLai}</a></p>
     </>
   ) : (
     <>
-      <h1>Gắn vào máy dùng chung</h1>
+      <h1>{t.ganVaoMayChung}</h1>
       <BaoKho bao={bao} loiDoc={k.loiDoc} />
       <div class="nb-bao luu-y">
         {!batMay ? (
-          <p>Máy dùng chung chưa được bật (thiếu bí mật <code>KHO_MAY_KHOA</code>).</p>
+          <p>{t.chuaBat} <code>KHO_MAY_KHOA</code>{t.chuaBat2}</p>
         ) : (
-          <p>Trang này dùng <strong>trên máy tính bảng dùng chung đang khóa</strong> (màn "Ai đang dùng máy?").
-            {' '}Trên điện thoại của riêng bạn thì không cần gắn.</p>
+          <p>{t.trangNayDung} <strong>{t.mayDangKhoa}</strong> {t.manAiDung}
+            {' '}{t.dienThoaiRieng}</p>
         )}
       </div>
-      <p><a href={DUONG_MAY}>Về màn máy dùng chung</a></p>
+      <p><a href={DUONG_MAY}>{t.veManMay}</a></p>
     </>
   )}
 </Kho>

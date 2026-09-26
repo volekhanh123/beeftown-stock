@@ -29,24 +29,36 @@
  * nhận (lib/kho/quay.ts). Quầy nhận thiếu → nhan_thieu → quản lý trả về kho
  * (da_tra_ve) hoặc ghi mất (da_nhan). Người lập hủy được chuyến khi quầy chưa
  * nhận (da_huy, hàng về lại kho).
+ *
+ * Hai thứ tiếng: lỗi form có loiEn song song với loi, câu báo có cauEn,
+ * tomTatHang nhận thêm nn, tên loại phiếu có bản _NB. Câu database trả về
+ * (duyệt, trả về…) thì trang tra dichCau lúc hiện.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, laUuid, type KetQua } from './chung.ts';
+import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { gomTheoMaCan, tachDanhSachMa } from './ma-vach.ts';
 import { docAnhDaTai, layTepAnh, soThuTuCuoi, taiAnh } from './anh.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
+import { dichCau } from '../cau-noi-bo.ts';
 
 /** tra_ncc chỉ lập từ trang Công nợ (kho_tra_nha_cung_cap), không lập ở đây. */
 export type LoaiXuat = 'chuyen' | 'xuat_bep' | 'huy' | 'tra_ncc' | 'xuat_khac';
 
-export const TEN_LOAI_XUAT: Record<LoaiXuat, string> = {
-  chuyen: 'Chuyển hàng',
-  xuat_bep: 'Xuất bếp',
-  huy: 'Báo hủy',
-  tra_ncc: 'Trả nhà cung cấp',
-  xuat_khac: 'Xuất khác',
+export const TEN_LOAI_XUAT_NB: Record<LoaiXuat, HaiThuTieng> = {
+  chuyen: { vi: 'Chuyển hàng', en: 'Transfer' },
+  xuat_bep: { vi: 'Xuất bếp', en: 'Issue to kitchen' },
+  huy: { vi: 'Báo hủy', en: 'Write-off' },
+  tra_ncc: { vi: 'Trả nhà cung cấp', en: 'Return to supplier' },
+  xuat_khac: { vi: 'Xuất khác', en: 'Other issue' },
 };
+/** Bảng tên cũ (chỉ tiếng Việt), dựng từ bản hai thứ tiếng. */
+export const TEN_LOAI_XUAT: Record<LoaiXuat, string> = Object.fromEntries(
+  Object.entries(TEN_LOAI_XUAT_NB).map(([k, v]) => [k, v.vi]),
+) as Record<LoaiXuat, string>;
+
+/** Đơn vị gói mặc định của cột kho_mat_hang.don_vi_goi (0019) — khi món không mang đơn vị. */
+const GOI_MAC_DINH: HaiThuTieng = { vi: 'gói', en: 'packs' };
 
 /** Các loại phiếu lập được ở /noi-bo/kho/xuat/moi?loai=… (theo thứ tự trên thanh chọn). */
 export const LOAI_LAP_DUOC = ['chuyen', 'xuat_bep', 'xuat_khac', 'huy'] as const;
@@ -207,11 +219,17 @@ export interface KetQuaDocXuat {
   dong: DongXuatForm[];
   theoLo: DongLoForm[];
   loi: string[];
+  /** Các lỗi đó bằng tiếng Anh, cùng thứ tự. */
+  loiEn: string[];
   payload: Record<string, unknown>[];
 }
 
+type BaoLoi = (c: HaiThuTieng) => void;
+
 export function docFormPhieuXuat(form: FormData, matHang: { id: string; ten: string; dem_goi: boolean }[]): KetQuaDocXuat {
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao: BaoLoi = c => { loi.push(c.vi); loiEn.push(c.en); };
   const payload: Record<string, unknown>[] = [];
   const mh = new Map(matHang.map(m => [m.id, m]));
 
@@ -224,8 +242,8 @@ export function docFormPhieuXuat(form: FormData, matHang: { id: string; ten: str
     dong.push(d);
     const thu = dong.length;
     const m = mh.get(d.mat_hang_id);
-    if (!laUuid(d.mat_hang_id) || !m) { loi.push(`Dòng ${thu}: chưa chọn mặt hàng`); continue; }
-    const p = docDong(m, d.so_goi, d.so_kg, `Dòng ${thu} (${m.ten})`, loi);
+    if (!laUuid(d.mat_hang_id) || !m) { bao({ vi: `Dòng ${thu}: chưa chọn mặt hàng`, en: `Line ${thu}: no item chosen` }); continue; }
+    const p = docDong(m, d.so_goi, d.so_kg, { vi: `Dòng ${thu} (${m.ten})`, en: `Line ${thu} (${m.ten})` }, bao);
     if (p) payload.push({ mat_hang_id: d.mat_hang_id, ...p });
   }
 
@@ -237,8 +255,8 @@ export function docFormPhieuXuat(form: FormData, matHang: { id: string; ten: str
     theoLo.push(l);
     if (!l.so_goi && !l.so_kg) continue;
     const m = mh.get(l.mat_hang_id);
-    if (!laUuid(l.lo_id) || !m) { loi.push('Một dòng lô không hợp lệ — tải lại trang'); continue; }
-    const p = docDong(m, l.so_goi, l.so_kg, `Lô của "${m.ten}"`, loi);
+    if (!laUuid(l.lo_id) || !m) { bao({ vi: 'Một dòng lô không hợp lệ — tải lại trang', en: 'A lot line is not valid — reload the page' }); continue; }
+    const p = docDong(m, l.so_goi, l.so_kg, { vi: `Lô của "${m.ten}"`, en: `Lot of "${m.ten}"` }, bao);
     if (p) payload.push({ mat_hang_id: l.mat_hang_id, lo_id: l.lo_id, ...p });
   }
 
@@ -248,23 +266,31 @@ export function docFormPhieuXuat(form: FormData, matHang: { id: string; ten: str
   const coSo = (x: { so_goi: string; so_kg: string }) => !!(x.so_goi || x.so_kg);
   const theoMh = new Set(dong.filter(d => coSo(d) && mh.has(d.mat_hang_id)).map(d => d.mat_hang_id));
   const trung = new Set(theoLo.filter(l => coSo(l) && theoMh.has(l.mat_hang_id)).map(l => l.mat_hang_id));
-  loi.unshift(...[...trung].map(id => `${mh.get(id)!.ten} được ghi ở cả hai phần — chỉ ghi một chỗ`));
+  const cauTrung: HaiThuTieng[] = [...trung].map(id => mh.get(id)!.ten).map(ten => ({
+    vi: `${ten} được ghi ở cả hai phần — chỉ ghi một chỗ`,
+    en: `${ten} is entered in both sections — enter it in one place only`,
+  }));
+  loi.unshift(...cauTrung.map(c => c.vi));
+  loiEn.unshift(...cauTrung.map(c => c.en));
 
-  return { dong, theoLo, loi, payload };
+  return { dong, theoLo, loi, loiEn, payload };
 }
 
 function docDong(
-  m: { dem_goi: boolean }, goiChu: string, kgChu: string, nhan: string, loi: string[],
+  m: { dem_goi: boolean }, goiChu: string, kgChu: string, nhan: HaiThuTieng, bao: BaoLoi,
 ): Record<string, unknown> | null {
   const goi = docSoNguyen(goiChu, 0, 100000);
   const kg = docKg(kgChu);
-  if (Number.isNaN(goi)) { loi.push(`${nhan}: số gói là số nguyên`); return null; }
-  if (Number.isNaN(kg) || (kg !== null && kg <= 0)) { loi.push(`${nhan}: số kg chưa đúng (ví dụ 1,25)`); return null; }
+  if (Number.isNaN(goi)) { bao({ vi: `${nhan.vi}: số gói là số nguyên`, en: `${nhan.en}: the number of packs must be a whole number` }); return null; }
+  if (Number.isNaN(kg) || (kg !== null && kg <= 0)) {
+    bao({ vi: `${nhan.vi}: số kg chưa đúng (ví dụ 1,25)`, en: `${nhan.en}: the kg is not right (for example 1.25)` });
+    return null;
+  }
   if (m.dem_goi) {
-    if (!goi) { loi.push(`${nhan}: chưa nhập số gói`); return null; }
+    if (!goi) { bao({ vi: `${nhan.vi}: chưa nhập số gói`, en: `${nhan.en}: number of packs not entered` }); return null; }
     return kg !== null ? { so_goi: goi, so_kg: kg } : { so_goi: goi };
   }
-  if (kg === null) { loi.push(`${nhan}: chưa nhập số kg`); return null; }
+  if (kg === null) { bao({ vi: `${nhan.vi}: chưa nhập số kg`, en: `${nhan.en}: kg not entered` }); return null; }
   return { so_kg: kg };
 }
 
@@ -272,6 +298,8 @@ export interface KetQuaQuet {
   dong: DongXuatForm[];
   /** Câu cho nhân viên, chữ thường ngày — không có mã, không có "Cài đặt". */
   loi: string[];
+  /** Các câu đó bằng tiếng Anh, cùng thứ tự. */
+  loiEn: string[];
   /** Tổng số mã trong ô quét. */
   soMa: number;
   /** Số nhãn đã thành dòng hàng. */
@@ -314,9 +342,18 @@ export function dongTuQuet(
   }
   const soNhanHong = gom.loi.length;
   const loi: string[] = [];
-  if (soNhanHong > 0) loi.push(`${soNhanHong} nhãn không đọc được — quét lại ${soNhanHong > 1 ? 'các gói' : 'gói'} đó`);
-  if (soGoiLa > 0) loi.push(`${soGoiLa} gói không nhận ra món — để riêng, báo quản lý`);
-  return { dong, loi, soMa: ds.length, soDoc, soNhanHong, soGoiLa, maCanLa };
+  const loiEn: string[] = [];
+  const bao: BaoLoi = c => { loi.push(c.vi); loiEn.push(c.en); };
+  const n = soNhanHong, g = soGoiLa;
+  if (n > 0) {
+    bao({ vi: `${n} nhãn không đọc được — quét lại ${n > 1 ? 'các gói' : 'gói'} đó`,
+          en: `${n} ${n === 1 ? 'label' : 'labels'} could not be read — scan ${n > 1 ? 'those packs' : 'that pack'} again` });
+  }
+  if (g > 0) {
+    bao({ vi: `${g} gói không nhận ra món — để riêng, báo quản lý`,
+          en: `${g} ${g === 1 ? 'pack' : 'packs'} not recognised — set ${g === 1 ? 'it' : 'them'} aside and tell the manager` });
+  }
+  return { dong, loi, loiEn, soMa: ds.length, soDoc, soNhanHong, soGoiLa, maCanLa };
 }
 
 /**
@@ -328,6 +365,7 @@ export function tomTatHang(
   dong: { mat_hang_id?: unknown; so_goi?: unknown; so_kg?: unknown }[],
   matHang: { id: string; ten: string; dem_goi: boolean; don_vi_goi?: string | null }[],
   toiDa = 3,
+  nn: NgonNguNB = 'vi',
 ): string {
   const mh = new Map(matHang.map(m => [m.id, m]));
   const so = (v: unknown, kg: boolean) => {
@@ -346,11 +384,13 @@ export function tomTatHang(
   const cau = [...cong].map(([id, c]) => {
     const m = mh.get(id)!;
     const kg = c.gram / 1000;
-    if (m.dem_goi) return `${c.goi} ${m.don_vi_goi || 'gói'} ${m.ten}${kg > 0 ? ` (${dinhDangKg(kg)} kg)` : ''}`;
-    return `${dinhDangKg(kg)} kg ${m.ten}`;
+    if (m.dem_goi) return `${c.goi} ${m.don_vi_goi || GOI_MAC_DINH[nn]} ${m.ten}${kg > 0 ? ` (${dinhDangKg(kg, nn)} kg)` : ''}`;
+    return `${dinhDangKg(kg, nn)} kg ${m.ten}`;
   });
   if (cau.length <= toiDa) return cau.join(', ');
-  return `${cau.slice(0, toiDa).join(', ')} và ${cau.length - toiDa} món khác`;
+  const dau = cau.slice(0, toiDa).join(', ');
+  const con = cau.length - toiDa;
+  return { vi: `${dau} và ${con} món khác`, en: `${dau} and ${con} more ${con === 1 ? 'item' : 'items'}` }[nn];
 }
 
 /** Gộp dòng quét vào các dòng đang có: cùng mặt hàng thì cộng dồn. */
@@ -393,17 +433,29 @@ const TOI_DA_ANH = 8;
  */
 export async function giuAnhHuy(
   client: SupabaseClient, chiNhanhId: string, form: FormData, maGui: string,
-): Promise<{ duongDan: string[]; loi: string[] }> {
+): Promise<{ duongDan: string[]; loi: string[]; loiEn: string[] }> {
   const cu = docAnhDaTai(form, chiNhanhId, 'huy', maGui, TOI_DA_ANH);
   const tep = layTepAnh(form);
-  if (tep.length === 0 || !laUuid(maGui)) return { duongDan: cu, loi: [] };
+  if (tep.length === 0 || !laUuid(maGui)) return { duongDan: cu, loi: [], loiEn: [] };
   const con = TOI_DA_ANH - cu.length;
-  if (con <= 0) return { duongDan: cu, loi: [`Đã đủ ${TOI_DA_ANH} ảnh — ảnh mới không được thêm.`] };
+  if (con <= 0) {
+    const du = { vi: `Đã đủ ${TOI_DA_ANH} ảnh — ảnh mới không được thêm.`, en: `There are already ${TOI_DA_ANH} photos — new photos were not added.` };
+    return { duongDan: cu, loi: [du.vi], loiEn: [du.en] };
+  }
   const batDau = soThuTuCuoi(cu) + 1;
   const tai = await taiAnh(client, chiNhanhId, 'huy', maGui, tep.slice(0, con), batDau);
   const loi = [...tai.loi];
-  if (tep.length > con) loi.push(`Mỗi phiếu tối đa ${TOI_DA_ANH} ảnh — ${tep.length - con} ảnh sau bị bỏ qua.`);
-  return { duongDan: [...cu, ...tai.duongDan], loi };
+  const loiEn = [...tai.loiEn];
+  if (tep.length > con) {
+    const bo = tep.length - con;
+    const cau: HaiThuTieng = {
+      vi: `Mỗi phiếu tối đa ${TOI_DA_ANH} ảnh — ${bo} ảnh sau bị bỏ qua.`,
+      en: `Each slip takes at most ${TOI_DA_ANH} photos — the last ${bo} ${bo === 1 ? 'photo was' : 'photos were'} skipped.`,
+    };
+    loi.push(cau.vi);
+    loiEn.push(cau.en);
+  }
+  return { duongDan: [...cu, ...tai.duongDan], loi, loiEn };
 }
 
 export async function taoPhieuXuat(
@@ -420,32 +472,40 @@ export async function taoPhieuXuat(
 ): Promise<KetQuaXuat> {
   const doc = docFormPhieuXuat(form, ctx.matHang);
   const maGui = String(form.get('ma_gui') ?? '');
-  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang rồi nhập lại.', doc };
+  if (!laUuid(maGui)) return { ...kqHai(false, CAU_XUAT.formCu), doc };
   const den = String(form.get('vi_tri_den_id') ?? '');
   const lyDo = String(form.get('ly_do_id') ?? '');
   const loi = [...doc.loi];
+  const loiEn = [...doc.loiEn];
+  const bao: BaoLoi = c => { loi.push(c.vi); loiEn.push(c.en); };
 
   let anh: string[] = [];
-  let cauAnh = '';
+  // Lưu ý về ảnh, nối vào cuối câu báo (hai thứ tiếng).
+  let cauAnh: HaiThuTieng = { vi: '', en: '' };
   if (ctx.loai === 'huy') {
     // Kiểm lý do cần ảnh NGAY Ở ĐÂY, trước khi tải ảnh và gọi database: phiếu
     // chắc chắn bị từ chối thì báo luôn, bằng câu dễ hiểu.
     const ld = ctx.lyDo?.find(l => l.id === lyDo) ?? null;
     const coAnh = docAnhDaTai(form, chiNhanhId, 'huy', maGui, TOI_DA_ANH).length > 0 || layTepAnh(form).length > 0;
-    if (!laUuid(lyDo)) loi.push('Chưa chọn lý do hủy');
-    else if (ld?.can_anh && !coAnh) loi.push(`Lý do "${ld.ten}" cần ảnh chụp hàng — chụp ít nhất một ảnh`);
+    if (!laUuid(lyDo)) bao(CAU_XUAT.chuaLyDoHuy);
+    else if (ld?.can_anh && !coAnh) {
+      bao({ vi: `Lý do "${ld.ten}" cần ảnh chụp hàng — chụp ít nhất một ảnh`,
+            en: `The reason "${ld.ten}" needs a photo of the goods — take at least one photo` });
+    }
     // Có ảnh thì tải và giữ luôn, kể cả khi form còn lỗi — sửa lỗi xong không phải chụp lại.
     const tai = await giuAnhHuy(client, chiNhanhId, form, maGui);
     anh = tai.duongDan;
-    if (tai.loi.length) cauAnh = ` Lưu ý ảnh: ${tai.loi.join(' · ')}`;
-    if (ld?.can_anh && coAnh && anh.length === 0) loi.push(`Lý do "${ld.ten}" cần ảnh chụp hàng — ảnh chưa tải lên được, chụp lại`);
+    if (tai.loi.length) cauAnh = { vi: ` Lưu ý ảnh: ${tai.loi.join(' · ')}`, en: ` Photo note: ${tai.loiEn.join(' · ')}` };
+    if (ld?.can_anh && coAnh && anh.length === 0) {
+      bao({ vi: `Lý do "${ld.ten}" cần ảnh chụp hàng — ảnh chưa tải lên được, chụp lại`,
+            en: `The reason "${ld.ten}" needs a photo of the goods — the photo could not be uploaded, take it again` });
+    }
   }
   // Xuất khác: database bắt buộc lý do (0032) — báo trước bằng câu dễ hiểu.
-  if (ctx.loai === 'xuat_khac' && !laUuid(lyDo)) loi.push('Chưa chọn lý do xuất (dùng nội bộ, tặng khách…)');
-  if (loi.length) return { ok: false, cau: loi.join(' · ') + cauAnh, doc, anh };
-  if (doc.payload.length === 0) {
-    return { ok: false, cau: 'Chưa có dòng hàng nào — chọn mặt hàng hoặc ghi số gói ở lô cần lấy.' + cauAnh, doc, anh };
-  }
+  if (ctx.loai === 'xuat_khac' && !laUuid(lyDo)) bao(CAU_XUAT.chuaLyDoXuat);
+  const noiAnh = (c: HaiThuTieng) => kqHai(false, { vi: c.vi + cauAnh.vi, en: c.en + cauAnh.en });
+  if (loi.length) return { ...noiAnh({ vi: loi.join(' · '), en: loiEn.join(' · ') }), doc, anh };
+  if (doc.payload.length === 0) return { ...noiAnh(CAU_XUAT.chuaCoDong), doc, anh };
 
   const { data, error } = await client.rpc('kho_tao_phieu_xuat', {
     p_chi_nhanh_id: chiNhanhId,
@@ -458,10 +518,16 @@ export async function taoPhieuXuat(
     p_anh: anh,
     p_dong: doc.payload,
   });
-  if (error) return { ok: false, cau: cauLoiKho(error) + cauAnh, doc, anh };
+  if (error) {
+    const loiDb = cauLoiKho(error);
+    return { ...noiAnh({ vi: loiDb, en: dichCau('en', loiDb) }), doc, anh };
+  }
   const kq = (Array.isArray(data) ? data[0] : data) as { phieu_id: string; so_phieu: string; da_co: boolean } | undefined;
-  if (!kq) return { ok: false, cau: 'Không chắc đã ghi hay chưa — xem danh sách phiếu để kiểm tra.', doc, anh };
-  const hang = tomTatHang(doc.payload, ctx.matHang) || 'hàng';
+  if (!kq) return { ...kqHai(false, CAU_XUAT.khongChac), doc, anh };
+  const hang: HaiThuTieng = {
+    vi: tomTatHang(doc.payload, ctx.matHang) || CAU_XUAT.hang.vi,
+    en: tomTatHang(doc.payload, ctx.matHang, 3, 'en') || CAU_XUAT.hang.en,
+  };
   // Phiếu chuyển ra quầy có thể thành hàng đi đường (cài đặt + vai người lập
   // do database quyết) — đọc lại trạng thái để câu báo nói đúng.
   let diDuong = false;
@@ -470,21 +536,48 @@ export async function taoPhieuXuat(
     diDuong = tt?.trang_thai === 'dang_chuyen';
   }
   const tenLyDo = ctx.lyDo?.find(l => l.id === lyDo)?.ten;
-  const cau = kq.da_co
-    ? `Phiếu ${kq.so_phieu} đã được ghi từ lần bấm trước.`
-    : ctx.loai === 'huy'
-      ? `Đã báo hủy ${hang} — hàng đã để riêng ở "Hàng chờ hủy", chờ quản lý duyệt.`
-      : ctx.loai === 'xuat_bep'
-        ? `Đã đưa bếp ${hang}.`
-        : ctx.loai === 'xuat_khac'
-          ? `Đã xuất ${hang}${tenLyDo ? ` (${tenLyDo})` : ''}.`
-          : diDuong
-            ? `Đang mang ${hang} ra ${ctx.den?.ten ?? 'quầy'} — quầy kiểm hàng rồi bấm "Đã nhận" thì hàng mới vào quầy.`
-            : ctx.den
-              ? `Đã chuyển ${hang} ${ctx.den.loai === 'quay' ? 'ra' : 'về'} ${ctx.den.ten}.`
-              : `Đã chuyển ${hang}.`;
-  return { ok: true, id: kq.phieu_id, cau: cau + cauAnh };
+  const cau = cauDaGhi(kq.so_phieu, kq.da_co, ctx.loai, hang, { tenLyDo, diDuong, den: ctx.den ?? null });
+  return { ...kqHai(true, { vi: cau.vi + cauAnh.vi, en: cau.en + cauAnh.en }), id: kq.phieu_id };
 }
+
+/** Câu báo sau khi ghi phiếu: đã ghi từ trước, đã báo hủy, đã đưa bếp, đang mang ra quầy… */
+function cauDaGhi(
+  soPhieu: string, daCo: boolean, loai: LoaiXuat, hang: HaiThuTieng,
+  t: { tenLyDo: string | undefined; diDuong: boolean; den: { ten: string; loai: string } | null },
+): HaiThuTieng {
+  const { tenLyDo, diDuong, den } = t;
+  if (daCo) return { vi: `Phiếu ${soPhieu} đã được ghi từ lần bấm trước.`, en: `Slip ${soPhieu} was already recorded by the previous press.` };
+  if (loai === 'huy') {
+    return { vi: `Đã báo hủy ${hang.vi} — hàng đã để riêng ở "Hàng chờ hủy", chờ quản lý duyệt.`,
+             en: `Write-off reported for ${hang.en} — the goods are set aside in "Awaiting write-off" until a manager approves.` };
+  }
+  if (loai === 'xuat_bep') return { vi: `Đã đưa bếp ${hang.vi}.`, en: `Sent to the kitchen: ${hang.en}.` };
+  if (loai === 'xuat_khac') {
+    return { vi: `Đã xuất ${hang.vi}${tenLyDo ? ` (${tenLyDo})` : ''}.`, en: `Issued ${hang.en}${tenLyDo ? ` (${tenLyDo})` : ''}.` };
+  }
+  if (diDuong) {
+    return { vi: `Đang mang ${hang.vi} ra ${den?.ten ?? 'quầy'} — quầy kiểm hàng rồi bấm "Đã nhận" thì hàng mới vào quầy.`,
+             en: `${hang.en} on the way to ${den?.ten ?? 'the counter'} — the goods only go into the counter once counter staff check them and press "Received".` };
+  }
+  if (den) {
+    return { vi: `Đã chuyển ${hang.vi} ${den.loai === 'quay' ? 'ra' : 'về'} ${den.ten}.`, en: `Transferred ${hang.en} to ${den.ten}.` };
+  }
+  return { vi: `Đã chuyển ${hang.vi}.`, en: `Transferred ${hang.en}.` };
+}
+
+const CAU_XUAT = {
+  formCu: { vi: 'Form đã cũ — tải lại trang rồi nhập lại.', en: 'This form is out of date — reload the page and enter it again.' },
+  chuaLyDoHuy: { vi: 'Chưa chọn lý do hủy', en: 'No write-off reason chosen' },
+  chuaLyDoXuat: { vi: 'Chưa chọn lý do xuất (dùng nội bộ, tặng khách…)', en: 'No issue reason chosen (staff use, gift to a guest…)' },
+  chuaCoDong: {
+    vi: 'Chưa có dòng hàng nào — chọn mặt hàng hoặc ghi số gói ở lô cần lấy.',
+    en: 'No goods lines yet — choose an item, or enter the number of packs at the lot to take.',
+  },
+  khongChac: { vi: 'Không chắc đã ghi hay chưa — xem danh sách phiếu để kiểm tra.', en: 'Not sure whether it was saved — check the list of slips.' },
+  hang: { vi: 'hàng', en: 'goods' },
+  xong: { vi: 'Xong.', en: 'Done.' },
+  ghiLyDo: { vi: 'Ghi lý do trước (vd. còn ở kho, rơi vỡ, thất lạc…)', en: 'Write a reason first (e.g. still in the store, dropped, lost…)' },
+} satisfies Record<string, HaiThuTieng>;
 
 /**
  * Phiếu trả nhà cung cấp: nhà cung cấp của phiếu nhập gốc — để nút quay lại
@@ -501,10 +594,11 @@ export async function docNhaCungCapCuaPhieuNhap(client: SupabaseClient, phieuNha
   }
 }
 
+/** Câu database (màn tiếng Anh tra dichCau lúc hiện); database không trả câu nào thì "Xong.". */
 async function cauTraVe(ham: PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<KetQua> {
   const { data, error } = await ham;
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: String(data ?? 'Xong.') };
+  return data === null || data === undefined ? kqHai(true, CAU_XUAT.xong) : { ok: true, cau: String(data) };
 }
 
 export function duyetHuy(client: SupabaseClient, id: string) {
@@ -523,7 +617,7 @@ export function tuChoiHuy(client: SupabaseClient, id: string, lyDo: string) {
  * ghi mất) — sau này đọc lại còn biết vì sao.
  */
 export function xuLyChuyenThieu(client: SupabaseClient, id: string, cach: 'tra_ve' | 'mat', lyDo: string) {
-  if (!lyDo.trim()) return Promise.resolve<KetQua>({ ok: false, cau: 'Ghi lý do trước (vd. còn ở kho, rơi vỡ, thất lạc…)' });
+  if (!lyDo.trim()) return Promise.resolve<KetQua>(kqHai(false, CAU_XUAT.ghiLyDo));
   return cauTraVe(client.rpc('kho_xu_ly_chuyen_thieu', { p_id: id, p_cach: cach, p_ly_do: lyDo.trim() }));
 }
 

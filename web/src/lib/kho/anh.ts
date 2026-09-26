@@ -14,7 +14,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { laUuid } from './chung.ts';
+import { laUuid, type HaiThuTieng } from './chung.ts';
 
 export const KHO_ANH = 'kho-chung-tu';
 const TOI_DA = 10 * 1024 * 1024;
@@ -30,7 +30,8 @@ export function layTepAnh(form: FormData, ten = 'anh'): File[] {
 
 /**
  * Tải ảnh lên. Trả về đường dẫn các ảnh đã lên và câu lỗi cho ảnh không lên
- * được — một ảnh lỗi không làm hỏng cả chứng từ.
+ * được — một ảnh lỗi không làm hỏng cả chứng từ. loi (tiếng Việt) và loiEn
+ * (tiếng Anh) song song, cùng thứ tự.
  */
 export async function taiAnh(
   client: SupabaseClient,
@@ -39,22 +40,24 @@ export async function taiAnh(
   maGui: string,
   tep: File[],
   batDau = 1,
-): Promise<{ duongDan: string[]; loi: string[] }> {
+): Promise<{ duongDan: string[]; loi: string[]; loiEn: string[] }> {
   const duongDan: string[] = [];
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
   let so = batDau;
   for (const f of tep.slice(0, 8)) {
     const duoi = DUOI[f.type];
-    if (!duoi) { loi.push(`"${f.name}" không phải ảnh JPG/PNG/WEBP/HEIC hay PDF`); continue; }
-    if (f.size > TOI_DA) { loi.push(`"${f.name}" nặng quá 10 MB`); continue; }
+    if (!duoi) { bao({ vi: `"${f.name}" không phải ảnh JPG/PNG/WEBP/HEIC hay PDF`, en: `"${f.name}" is not a JPG/PNG/WEBP/HEIC image or a PDF` }); continue; }
+    if (f.size > TOI_DA) { bao({ vi: `"${f.name}" nặng quá 10 MB`, en: `"${f.name}" is larger than 10 MB` }); continue; }
     const duong = `${chiNhanhId}/${loai}/${maGui}/${so}.${duoi}`;
     so += 1;
     const { error } = await client.storage.from(KHO_ANH).upload(duong, f, { contentType: f.type, upsert: false });
-    if (error) { loi.push(`"${f.name}" chưa tải lên được (${error.message})`); continue; }
+    if (error) { bao({ vi: `"${f.name}" chưa tải lên được (${error.message})`, en: `"${f.name}" could not be uploaded (${error.message})` }); continue; }
     duongDan.push(duong);
   }
-  if (tep.length > 8) loi.push('Mỗi lần gửi tối đa 8 ảnh — các ảnh sau bị bỏ qua.');
-  return { duongDan, loi };
+  if (tep.length > 8) bao({ vi: 'Mỗi lần gửi tối đa 8 ảnh — các ảnh sau bị bỏ qua.', en: 'At most 8 photos per upload — the rest were skipped.' });
+  return { duongDan, loi, loiEn };
 }
 
 // -----------------------------------------------------------------------------

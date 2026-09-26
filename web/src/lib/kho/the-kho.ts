@@ -11,10 +11,15 @@
  * nhãn — mỗi lần bấm có ma_gui riêng, bấm hai lần không cộng đôi.
  *
  * Phần trên (đọc link, link chứng từ, tổng kỳ) là hàm thuần — test bằng node.
+ *
+ * Hai thứ tiếng: câu báo có cauEn / loiEn; tên khoảng ngày nhận thêm nn (mặc
+ * định tiếng Việt như cũ). Tên việc và diễn giải dòng sổ là chữ database — trang
+ * dịch bằng dichCau (bảng cau-kho-en.ts).
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, docNgay, laUuid, type KetQua } from './chung.ts';
+import { cauLoiKho, docNgay, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { dichCau } from '../cau-noi-bo.ts';
 
 // -----------------------------------------------------------------------------
 // HÀM THUẦN
@@ -48,7 +53,14 @@ export interface BoLocTheKho {
   den: string;
   /** Có chữ sai trong link (ngày không có thật, từ sau đến…) — đã dùng mặc định. */
   loi: string | null;
+  /** Câu đó bằng tiếng Anh (docBoLocTheKho luôn điền cùng loi). */
+  loiEn?: string | null;
 }
+
+const LOI_LINK = {
+  ngaySai: { vi: 'Ngày trong link không đúng — đang xem tháng này.', en: 'The date in the link is not valid — showing this month.' },
+  tuSauDen: { vi: 'Từ ngày phải trước đến ngày — đang xem tháng này.', en: 'The start date must be before the end date — showing this month.' },
+} satisfies Record<string, HaiThuTieng>;
 
 /** Ngày đầu tháng của một ngày YYYY-MM-DD. */
 export const dauThang = (iso: string) => `${iso.slice(0, 7)}-01`;
@@ -63,16 +75,18 @@ export function docBoLocTheKho(q: URLSearchParams, homNay: string): BoLocTheKho 
   const tuLink = docNgay(q.get('tu'));
   const denLink = docNgay(q.get('den'));
   if (tuLink === undefined || denLink === undefined) {
-    return { viTri, tu: dauThang(homNay), den: homNay, loi: 'Ngày trong link không đúng — đang xem tháng này.' };
+    return { viTri, tu: dauThang(homNay), den: homNay, loi: LOI_LINK.ngaySai.vi, loiEn: LOI_LINK.ngaySai.en };
   }
   let den = denLink && denLink < homNay ? denLink : homNay;
   let tu = tuLink || dauThang(den);
   let loi: string | null = null;
+  let loiEn: string | null = null;
   if (tu > den) {
-    loi = 'Từ ngày phải trước đến ngày — đang xem tháng này.';
+    loi = LOI_LINK.tuSauDen.vi;
+    loiEn = LOI_LINK.tuSauDen.en;
     tu = dauThang(homNay); den = homNay;
   }
-  return { viTri, tu, den, loi };
+  return { viTri, tu, den, loi, loiEn };
 }
 
 /** Link trang thẻ kho của một món, giữ bộ lọc, đổi vài thứ trong `thay`. */
@@ -87,8 +101,14 @@ export function linkTheKho(
   return `/noi-bo/kho/the-kho/${encodeURIComponent(matHangId)}${s ? `?${s}` : ''}`;
 }
 
+const TEN_KHOANG = {
+  thangNay: { vi: 'Tháng này', en: 'This month' },
+  thangTruoc: { vi: 'Tháng trước', en: 'Last month' },
+  bayNgay: { vi: '7 ngày', en: '7 days' },
+} satisfies Record<string, HaiThuTieng>;
+
 /** Các khoảng ngày bấm nhanh: tháng này, tháng trước, 7 ngày. */
-export function khoangNhanh(homNay: string): { ten: string; tu: string; den: string }[] {
+export function khoangNhanh(homNay: string, nn: NgonNguNB = 'vi'): { ten: string; tu: string; den: string }[] {
   const dau = dauThang(homNay);
   const d = new Date(dau + 'T00:00:00Z');
   d.setUTCDate(0);   // ngày cuối tháng trước
@@ -96,9 +116,9 @@ export function khoangNhanh(homNay: string): { ten: string; tu: string; den: str
   const bay = new Date(homNay + 'T00:00:00Z');
   bay.setUTCDate(bay.getUTCDate() - 6);
   return [
-    { ten: 'Tháng này', tu: dau, den: homNay },
-    { ten: 'Tháng trước', tu: dauThang(cuoiTruoc), den: cuoiTruoc },
-    { ten: '7 ngày', tu: bay.toISOString().slice(0, 10), den: homNay },
+    { ten: TEN_KHOANG.thangNay[nn], tu: dau, den: homNay },
+    { ten: TEN_KHOANG.thangTruoc[nn], tu: dauThang(cuoiTruoc), den: cuoiTruoc },
+    { ten: TEN_KHOANG.bayNgay[nn], tu: bay.toISOString().slice(0, 10), den: homNay },
   ];
 }
 
@@ -224,13 +244,24 @@ export async function docPhienPhaMo(client: SupabaseClient, chiNhanhId: string):
 export async function themNhanVaoPhienPha(
   client: SupabaseClient, phienId: string, maGui: string, ma: string,
 ): Promise<KetQua> {
-  if (!laUuid(phienId) || !laUuid(maGui)) return { ok: false, cau: 'Trang đã cũ — tải lại trang rồi quét lại.' };
-  if (!/^\d{13}$/.test(ma)) return { ok: false, cau: 'Nhãn đọc sai — quét lại nhãn này.' };
+  if (!laUuid(phienId) || !laUuid(maGui)) return kqHai(false, CAU_THEM_PHA.trangCu);
+  if (!/^\d{13}$/.test(ma)) return kqHai(false, CAU_THEM_PHA.nhanSai);
   const { data, error } = await client.rpc('kho_quet_phien_pha', { p_id: phienId, p_ma_gui: maGui, p_ma: [ma] });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const kq = (data ?? {}) as { da_co?: boolean; so_nhan?: number; loi?: { ma: string; loi: string }[] };
-  if (kq.da_co) return { ok: true, cau: 'Gói này đã được thêm từ trước — không cộng thêm lần nữa.' };
-  if (Number(kq.so_nhan ?? 0) > 0) return { ok: true, cau: 'Đã thêm gói này vào phiên pha.' };
+  if (kq.da_co) return kqHai(true, CAU_THEM_PHA.daCo);
+  if (Number(kq.so_nhan ?? 0) > 0) return kqHai(true, CAU_THEM_PHA.daThem);
   const loi = kq.loi?.[0]?.loi;
-  return { ok: false, cau: loi ? `Chưa thêm được: ${loi}` : 'Chưa thêm được gói này vào phiên pha.' };
+  // Lý do là câu database (tiếng Việt) — bản tiếng Anh tra dichCau.
+  return loi
+    ? kqHai(false, { vi: `Chưa thêm được: ${loi}`, en: `Not added: ${dichCau('en', loi)}` })
+    : kqHai(false, CAU_THEM_PHA.chuaThem);
 }
+
+const CAU_THEM_PHA = {
+  trangCu: { vi: 'Trang đã cũ — tải lại trang rồi quét lại.', en: 'This page is out of date — reload it and scan again.' },
+  nhanSai: { vi: 'Nhãn đọc sai — quét lại nhãn này.', en: 'The label was misread — scan it again.' },
+  daCo: { vi: 'Gói này đã được thêm từ trước — không cộng thêm lần nữa.', en: 'This pack was already added — it is not counted again.' },
+  daThem: { vi: 'Đã thêm gói này vào phiên pha.', en: 'Pack added to the butchery session.' },
+  chuaThem: { vi: 'Chưa thêm được gói này vào phiên pha.', en: 'Could not add this pack to the butchery session.' },
+} satisfies Record<string, HaiThuTieng>;

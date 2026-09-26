@@ -41,7 +41,19 @@ export function laEan13HopLe(ma: string): boolean {
 
 export type KetQuaDoc =
   | { hopLe: true; ma: string; maCan: string; soKg: number | null; thanhTien: number | null }
-  | { hopLe: false; ma: string; loi: string };
+  /** loi: tiếng Việt, loiEn: cùng câu bằng tiếng Anh. */
+  | { hopLe: false; ma: string; loi: string; loiEn: string };
+
+/** Vì sao một mã không đọc được — hai thứ tiếng. */
+const LOI_DOC = {
+  mau: { vi: 'Mẫu mã vạch trong Cài đặt không hợp lệ', en: 'The barcode pattern in Settings is not valid' },
+  khongPhai13: { vi: 'Không phải mã 13 số', en: 'Not a 13-digit code' },
+  soKiemTra: { vi: 'Sai số kiểm tra — quét lại', en: 'Wrong check digit — scan again' },
+  khongPhaiNhan: { vi: 'Không phải nhãn cân (đầu mã không khớp mẫu)', en: 'Not a scale label (the start of the code does not match the pattern)' },
+  maBang0: { vi: 'Mã hàng trên nhãn bằng 0', en: 'The item code on the label is 0' },
+  kgBang0: { vi: 'Trọng lượng trên nhãn bằng 0', en: 'The weight on the label is 0' },
+} as const;
+const hong = (ma: string, c: { vi: string; en: string }): KetQuaDoc => ({ hopLe: false, ma, loi: c.vi, loiEn: c.en });
 
 /**
  * Đọc một mã vạch theo mẫu.
@@ -51,27 +63,27 @@ export type KetQuaDoc =
  */
 export function docMaVach(ma: string, mau: string = MAU_MAC_DINH, soLeKg = 3): KetQuaDoc {
   const s = ma.trim();
-  if (!kiemTraMau(mau)) return { hopLe: false, ma: s, loi: 'Mẫu mã vạch trong Cài đặt không hợp lệ' };
-  if (!/^\d{13}$/.test(s)) return { hopLe: false, ma: s, loi: 'Không phải mã 13 số' };
-  if (!laEan13HopLe(s)) return { hopLe: false, ma: s, loi: 'Sai số kiểm tra — quét lại' };
+  if (!kiemTraMau(mau)) return hong(s, LOI_DOC.mau);
+  if (!/^\d{13}$/.test(s)) return hong(s, LOI_DOC.khongPhai13);
+  if (!laEan13HopLe(s)) return hong(s, LOI_DOC.soKiemTra);
 
   let c = '', w = '', p = '';
   for (let i = 0; i < 13; i++) {
     const k = mau[i];
     const so = s[i];
     if (k >= '0' && k <= '9') {
-      if (so !== k) return { hopLe: false, ma: s, loi: 'Không phải nhãn cân (đầu mã không khớp mẫu)' };
+      if (so !== k) return hong(s, LOI_DOC.khongPhaiNhan);
     } else if (k === 'C') c += so;
     else if (k === 'W') w += so;
     else if (k === 'P') p += so;
   }
 
   const maCan = c.replace(/^0+/, '');
-  if (maCan === '') return { hopLe: false, ma: s, loi: 'Mã hàng trên nhãn bằng 0' };
+  if (maCan === '') return hong(s, LOI_DOC.maBang0);
 
   const soKg = w ? Number(w) / 10 ** soLeKg : null;
   const thanhTien = p ? Number(p) : null;
-  if (soKg !== null && soKg <= 0) return { hopLe: false, ma: s, loi: 'Trọng lượng trên nhãn bằng 0' };
+  if (soKg !== null && soKg <= 0) return hong(s, LOI_DOC.kgBang0);
 
   return { hopLe: true, ma: s, maCan, soKg, thanhTien };
 }

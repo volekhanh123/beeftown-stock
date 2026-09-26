@@ -23,9 +23,16 @@
  * tự = 1 byte); chỉ khi hiện tên lên màn hình hoặc ghi tên mới mới đổi qua lại
  * UTF-8.
  *
- * File thuần, không import gì — test Node nạp thẳng được (xem test-kho-can.mjs),
- * và bản HTML độc lập Beeftown_Can_TMA.html ở gốc repo dùng đúng cách đọc này.
+ * File thuần, không import gì lúc chạy (chỉ `import type`) — test Node nạp thẳng
+ * được (xem test-kho-can.mjs), và bản HTML độc lập Beeftown_Can_TMA.html ở gốc
+ * repo dùng đúng cách đọc này.
+ *
+ * Hai thứ tiếng: lỗi đọc file (LoiFileCan) mang thêm bản tiếng Anh (`en`); lý do
+ * / cảnh báo trong kế hoạch theo tham số cuối `nn` của lapKeHoach (mặc định
+ * tiếng Việt, như trước).
  */
+
+import type { HaiThuTieng, NgonNguNB } from './chung.ts';
 
 export const GIA_TOI_DA = 999999;      // cửa sổ đơn giá trên cân có 6 chữ số
 export const TEN_TOI_DA = 40;          // dài hơn thì cắt bớt khi đưa lên cân
@@ -37,8 +44,22 @@ const COT = { SO: 1, MA: 2, CACH_BAN: 4, GIA: 5, TEN: 15, TIM_KIEM: 64 };
 // Dòng hàng 69 cột của firmware V3.14E8, rút từ file cân thật; {n} là các cột tự điền.
 const KHUON_PLU = 'PLU\t{1}\t{2}\t\t{4}\t{5}\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t9\t{15}\t\t\t\t\t\t\t\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t0\t{64}\t0\t0\t0\t';
 
-/** Lỗi đọc file có câu báo cho người dùng — trang hiện nguyên câu này. */
-export class LoiFileCan extends Error {}
+/**
+ * Lỗi đọc file có câu báo cho người dùng — trang hiện nguyên câu này. message là
+ * tiếng Việt (như trước), en là cùng câu bằng tiếng Anh.
+ */
+export class LoiFileCan extends Error {
+  readonly en: string;
+  constructor(vi: string, en: string = vi) {
+    super(vi);
+    this.en = en;
+  }
+}
+
+/** LoiFileCan từ một câu hai thứ tiếng (để ném). */
+function loiFile(c: HaiThuTieng): LoiFileCan {
+  return new LoiFileCan(c.vi, c.en);
+}
 
 // -----------------------------------------------------------------------------
 // CHUỖI BYTE
@@ -62,7 +83,10 @@ const ghiChu = (t: string): string => sangChuoiByte(new TextEncoder().encode(t))
 /** File mang theo form xem trước dưới dạng base64 — không lưu lên máy chủ. */
 export function sangBase64(u8: Uint8Array): string { return btoa(sangChuoiByte(u8)); }
 export function tuBase64(s: string): Uint8Array<ArrayBuffer> {
-  try { return tuChuoiByte(atob(s)); } catch { throw new LoiFileCan('File gửi kèm bị hỏng. Tải file từ cân lên lại.'); }
+  try { return tuChuoiByte(atob(s)); } catch {
+    throw loiFile({ vi: 'File gửi kèm bị hỏng. Tải file từ cân lên lại.',
+                en: 'The attached file is damaged. Upload the file from the scale again.' });
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -135,15 +159,22 @@ export interface FileCan {
 }
 
 export function docFileCan(u8: Uint8Array): FileCan {
-  if (u8.length === 0) throw new LoiFileCan('File rỗng. Lưu lại dữ liệu từ cân ra USB rồi tải lên lại.');
-  if (u8.length > CO_FILE_TOI_DA) throw new LoiFileCan('File quá lớn, không phải file dữ liệu của cân.');
+  if (u8.length === 0) {
+    throw loiFile({ vi: 'File rỗng. Lưu lại dữ liệu từ cân ra USB rồi tải lên lại.',
+                en: 'The file is empty. Save the data from the scale to the USB stick again, then upload it.' });
+  }
+  if (u8.length > CO_FILE_TOI_DA) {
+    throw loiFile({ vi: 'File quá lớn, không phải file dữ liệu của cân.',
+                en: 'The file is too large — it is not a scale data file.' });
+  }
   const coBom = u8[0] === 0xEF && u8[1] === 0xBB && u8[2] === 0xBF;
   const noiDung = sangChuoiByte(coBom ? u8.subarray(3) : u8);
   const xuongDong = noiDung.includes('\r\n') ? '\r\n' : '\n';
   const dong = noiDung.split(xuongDong);
   const dau = dong[0].split('\t');
   if (dau[0] !== 'ECS' || dau[1] !== 'VER') {
-    throw new LoiFileCan('Đây không phải file dữ liệu của cân. Chọn file A_000.TMS trong thư mục JHSCALE của USB.');
+    throw loiFile({ vi: 'Đây không phải file dữ liệu của cân. Chọn file A_000.TMS trong thư mục JHSCALE của USB.',
+                en: 'This is not a scale data file. Choose the A_000.TMS file in the JHSCALE folder on the USB stick.' });
   }
 
   const phan: Record<string, { dau: number; cuoi: number }> = {};
@@ -156,7 +187,10 @@ export function docFileCan(u8: Uint8Array): FileCan {
       mo = { ten: c[1], dau: i };
     }
   }
-  if (!phan.PLU) throw new LoiFileCan('File không có phần hàng hoá (PLU). Lưu lại dữ liệu từ cân ra USB rồi tải lên lại.');
+  if (!phan.PLU) {
+    throw loiFile({ vi: 'File không có phần hàng hoá (PLU). Lưu lại dữ liệu từ cân ra USB rồi tải lên lại.',
+                en: 'The file has no items section (PLU). Save the data from the scale to the USB stick again, then upload it.' });
+  }
 
   const spec: Record<number, string> = {};
   if (phan.TMS) {
@@ -230,19 +264,27 @@ export interface KeHoach {
 
 interface HangHopLe { hang: HangKho; ma: string; ten: string; gia: number; canhBao?: string }
 
-function kiemHang(h: HangKho, soChuSo: number): { ok: true; v: HangHopLe } | { ok: false; lyDo: string } {
+function kiemHang(h: HangKho, soChuSo: number, nn: NgonNguNB): { ok: true; v: HangHopLe } | { ok: false; lyDo: string } {
+  const c = (x: HaiThuTieng) => x[nn];
   const ma = chuanMa(h.ma_can);
-  if (ma.length > soChuSo) return { ok: false, lyDo: `Mã cân ${ma} dài quá ${soChuSo} số — mã vạch trên tem không chứa hết.` };
-  if (h.gia_ban_kg === null || h.gia_ban_kg === undefined) return { ok: false, lyDo: 'Chưa có giá bán/kg.' };
-  if (!(h.gia_ban_kg > 0)) return { ok: false, lyDo: 'Giá bán/kg đang là 0 đ.' };
-  if (h.gia_ban_kg > GIA_TOI_DA) return { ok: false, lyDo: `Giá ${h.gia_ban_kg.toLocaleString('vi-VN')} đ/kg vượt mức cân hiện được (999.999 đ).` };
+  if (ma.length > soChuSo) {
+    return { ok: false, lyDo: c({ vi: `Mã cân ${ma} dài quá ${soChuSo} số — mã vạch trên tem không chứa hết.`,
+                                   en: `Scale code ${ma} is longer than ${soChuSo} digits — the barcode on the label cannot hold it.` }) };
+  }
+  if (h.gia_ban_kg === null || h.gia_ban_kg === undefined) return { ok: false, lyDo: c({ vi: 'Chưa có giá bán/kg.', en: 'No sale price/kg yet.' }) };
+  if (!(h.gia_ban_kg > 0)) return { ok: false, lyDo: c({ vi: 'Giá bán/kg đang là 0 đ.', en: 'The sale price/kg is 0 ₫.' }) };
+  if (h.gia_ban_kg > GIA_TOI_DA) {
+    return { ok: false, lyDo: c({ vi: `Giá ${h.gia_ban_kg.toLocaleString('vi-VN')} đ/kg vượt mức cân hiện được (999.999 đ).`,
+                                   en: `The price ${h.gia_ban_kg.toLocaleString('en-US')} ₫/kg is more than the scale can show (999,999 ₫).` }) };
+  }
   let ten = sachTen(h.ten);
   let canhBao: string | undefined;
   if ([...ten].length > TEN_TOI_DA) {
     ten = [...ten].slice(0, TEN_TOI_DA).join('').trim();
-    canhBao = `Tên dài quá ${TEN_TOI_DA} ký tự, đã cắt còn "${ten}".`;
+    canhBao = c({ vi: `Tên dài quá ${TEN_TOI_DA} ký tự, đã cắt còn "${ten}".`,
+                  en: `Name longer than ${TEN_TOI_DA} characters, shortened to "${ten}".` });
   } else if ([...ten].length > TEN_DAI) {
-    canhBao = 'Tên dài, có thể bị cắt khi in trên tem.';
+    canhBao = c({ vi: 'Tên dài, có thể bị cắt khi in trên tem.', en: 'Long name — it may be cut off when printed on the label.' });
   }
   return { ok: true, v: { hang: h, ma, ten, gia: Math.round(h.gia_ban_kg), canhBao } };
 }
@@ -254,15 +296,17 @@ function kiemHang(h: HangKho, soChuSo: number): { ok: true; v: HangHopLe } | { o
  *  - Hàng trên cân không có trong kho bị xoá (trừ khi chọn giữ lại).
  *  - Hàng kho thiếu giá, giá quá mức hay mã quá dài: không đưa lên cân; nếu
  *    đã có trên cân thì để nguyên dòng cũ và báo lý do.
+ * nn chỉ đổi câu lý do / cảnh báo; số PLU, tên, giá ghi vào file không đổi.
  */
-export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo): KeHoach {
+export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo, nn: NgonNguNB = 'vi'): KeHoach {
+  const c = (x: HaiThuTieng) => x[nn];
   const hopLe = new Map<string, HangHopLe>();
   const loiTheoMa = new Map<string, { hang: HangKho; lyDo: string }>();
   for (const h of danhMuc) {
     if (!h.dang_dung) continue;
     const ma = chuanMa(h.ma_can);
     if (!ma) continue;
-    const kq = kiemHang(h, tuy.soChuSoMa);
+    const kq = kiemHang(h, tuy.soChuSoMa, nn);
     if (kq.ok) hopLe.set(ma, kq.v); else loiTheoMa.set(ma, { hang: h, lyDo: kq.lyDo });
   }
 
@@ -283,15 +327,20 @@ export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo
       daKhop.add(p.ma);
       soDaDung.add(p.so);
       ra.push({ loai: 'giu', so: p.so, maCan: p.ma, ten: p.ten, gia: p.gia, maKho: loi.hang.ma,
-        lyDo: `Để nguyên trên cân: ${loi.lyDo}`, goc: p });
+        lyDo: c({ vi: `Để nguyên trên cân: ${loi.lyDo}`, en: `Left as it is on the scale: ${loi.lyDo}` }), goc: p });
     } else if (p.ma && daKhop.has(p.ma)) {
-      ra.push({ loai: 'xoa', so: p.so, maCan: p.ma, ten: p.ten, gia: p.gia, lyDo: 'Trùng mã cân với một dòng khác trên cân.', goc: p });
+      ra.push({ loai: 'xoa', so: p.so, maCan: p.ma, ten: p.ten, gia: p.gia,
+        lyDo: c({ vi: 'Trùng mã cân với một dòng khác trên cân.', en: 'Same scale code as another line on the scale.' }), goc: p });
     } else if (tuy.giuHangNgoaiKho) {
       soDaDung.add(p.so);
-      ra.push({ loai: 'ngoai_kho', so: p.so, maCan: p.ma, ten: p.ten, gia: p.gia, lyDo: 'Không có trong kho — giữ lại theo lựa chọn.', goc: p });
+      ra.push({ loai: 'ngoai_kho', so: p.so, maCan: p.ma, ten: p.ten, gia: p.gia,
+        lyDo: c({ vi: 'Không có trong kho — giữ lại theo lựa chọn.', en: 'Not in inventory — kept, as you chose.' }), goc: p });
     } else {
       ra.push({ loai: 'xoa', so: p.so, maCan: p.ma, ten: p.ten, gia: p.gia,
-        lyDo: p.ma ? 'Không có mặt hàng nào đang dùng mang mã cân này trong kho.' : 'Không có mã cân.', goc: p });
+        lyDo: p.ma
+          ? c({ vi: 'Không có mặt hàng nào đang dùng mang mã cân này trong kho.', en: 'No active item in inventory has this scale code.' })
+          : c({ vi: 'Không có mã cân.', en: 'No scale code.' }),
+        goc: p });
     }
   }
 
@@ -306,7 +355,7 @@ export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo
   for (const [ma, loi] of loiTheoMa) {
     if (daKhop.has(ma)) continue;
     ra.push({ loai: 'bo_qua', so: null, maCan: ma, ten: sachTen(loi.hang.ten), gia: loi.hang.gia_ban_kg, maKho: loi.hang.ma,
-      lyDo: `Không đưa lên cân: ${loi.lyDo}` });
+      lyDo: c({ vi: `Không đưa lên cân: ${loi.lyDo}`, en: `Not sent to the scale: ${loi.lyDo}` }) });
   }
 
   ra.sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity) || Number(a.maCan) - Number(b.maCan));

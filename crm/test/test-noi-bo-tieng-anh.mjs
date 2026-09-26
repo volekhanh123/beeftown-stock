@@ -15,7 +15,7 @@
  *   3. Các màn CRM và thư viện của chúng không còn chữ Việt nào nằm ngoài cặp
  *      { vi, en } — trừ vài chỗ cố ý, liệt kê kèm lý do ở CO_Y.
  *
- * Phần kho chưa có tiếng Anh (chờ nhánh kho gộp vào main), nên chưa kiểm ở đây.
+ * Phần kho kiểm ở test-kho-tieng-anh.mjs (cùng bộ quét quet-chu-viet.mjs).
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
@@ -28,6 +28,7 @@ const WEB = join(GOC, 'web', 'src');
 const MIGRATIONS_DIR = join(GOC, 'crm', 'supabase', 'migrations');
 
 const { dichCau } = await import(join(WEB, 'lib', 'cau-noi-bo.ts'));
+const { quetChuViet } = await import('./quet-chu-viet.mjs');
 const { CAM } = await import(join(WEB, 'lib', 'chuoi-cam.js'));
 
 let dat = 0, hong = 0;
@@ -135,19 +136,17 @@ nhom('3 · MÀN CRM KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     ".replace(/đ/g, 'd')", ".replace(/Đ/g, 'D')", // bỏ dấu khi sinh mã tin
     "'Tiếng Việt'",                  // chữ trên nút đổi sang tiếng Việt
   ];
-  const boChuThich = s => s
-    .replace(/<!--[\s\S]*?-->/g, m => m.replace(/[^\n]/g, ' '))
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, m => m.replace(/[^\n]/g, ' '))
-    .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
-    .split('\n').map(d => d.replace(/(^|[^:'"`])\/\/(?![^'"`]*['"`]\s*[,)}\]]).*$/, '$1')).join('\n');
-  const VI_GIA_TRI = /\bvi:\s*(?:\([^)]*\)\s*=>\s*)?(?:'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"|`(?:[^`\\]|\\.)*`)/g;
-
   for (const t of TEP) {
-    let s = boChuThich(readFileSync(join(WEB, t), 'utf8')).replace(VI_GIA_TRI, 'vi: ""');
-    for (const c of CO_Y) s = s.split(c).join('');
-    const sot = s.split('\n').map((d, i) => [i + 1, d.trim()]).filter(([, d]) => VIET.test(d));
+    const sot = quetChuViet(readFileSync(join(WEB, t), 'utf8'), CO_Y);
     ok(`${t}`, sot.length === 0, sot.slice(0, 3).map(([n, d]) => `dòng ${n}: ${d.slice(0, 90)}`).join(' | '));
   }
+  // Câu tách thành {t.a}⏎{t.b} thì Astro bỏ dấu cách ở giữa — xem dinh-chu.mjs.
+  const { timChoDinh } = await import('./dinh-chu.mjs');
+  const dinh = [];
+  for (const t of TEP.filter(t => t.endsWith('.astro'))) {
+    for (const x of await timChoDinh(readFileSync(join(WEB, t), 'utf8'))) dinh.push(`${t}:${x.dong} [${x.nn}] «${x.mau.replace(/\s+/g, ' ')}»`);
+  }
+  ok('Màn CRM không có hai mẩu chữ dính nhau vì xuống dòng (cả vi và en)', dinh.length === 0, dinh.slice(0, 4).join(' | '));
 }
 
 // ===========================================================================

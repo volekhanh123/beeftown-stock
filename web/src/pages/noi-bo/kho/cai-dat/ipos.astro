@@ -22,14 +22,16 @@ import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docViTri, type ViTri } from '../../../../lib/kho/danh-muc.ts';
-import { cauLoiKho, dinhDangThoiDiem, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangThoiDiem, kqHai, type KetQua } from '../../../../lib/kho/chung.ts';
 import {
   docTrangThaiIpos, luuCauHinhIpos, chuyenSangIpos, troVeDemQuay, lopDen, chuDen, oMocChuyen,
   type TrangThaiIpos,
 } from '../../../../lib/kho/ban-ipos.ts';
-import { dongBoIpos, trangThaiBiMatIpos, layKhoaCallback, KHOA_TOI_THIEU } from '../../../../lib/kho/ipos-dong-bo.ts';
+import { dongBoIpos, trangThaiBiMatIpos, layKhoaCallback, dichLoiIpos, KHOA_TOI_THIEU } from '../../../../lib/kho/ipos-dong-bo.ts';
 import { cheKhoa } from '../../../../lib/kho/ipos.ts';
 import { DUONG_HOOK } from '../../../../lib/kho/ipos-hook.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -37,6 +39,7 @@ if (!k.duoc('xem')) return Astro.redirect('/noi-bo/kho', 302);
 const laChu = k.duoc('cai_dat_goc');
 const dongBoDuoc = k.duoc('dong_bo_ban');
 const DUONG = '/noi-bo/kho/cai-dat/ipos';
+const nn = k.nn;
 
 let bao: KetQua | null = k.bao;
 let formLai: FormData | null = null;
@@ -47,11 +50,11 @@ if (form && k.chiNhanh) {
   if (viec === 'cap_nhat' && dongBoDuoc) {
     try {
       const r = await dongBoIpos({ supabase: k.client, chiNhanhId: k.chiNhanh.id, nguon: 'tay' });
-      kq = { ok: r.ok, cau: r.cau };
+      kq = { ok: r.ok, cau: r.cau, cauEn: r.cauEn };
     } catch {
       // dongBoIpos tự bắt lỗi và xóa token khỏi câu lỗi; tới đây là lỗi lạ — không in chi tiết
       // (câu lỗi thô có thể chứa URL kèm token).
-      kq = { ok: false, cau: 'Không cập nhật được — thử lại sau ít phút.' };
+      kq = kqHai(false, { vi: 'Không cập nhật được — thử lại sau ít phút.', en: 'Could not update — try again in a few minutes.' });
     }
   } else if (viec === 'luu' && laChu) {
     kq = await luuCauHinhIpos(k.client, k.chiNhanh.id, form);
@@ -60,10 +63,234 @@ if (form && k.chiNhanh) {
     kq = await chuyenSangIpos(k.client, k.chiNhanh.id, form);
   } else if (viec === 'tro_ve' && laChu) {
     kq = await troVeDemQuay(k.client, k.chiNhanh.id);
-  } else kq = { ok: false, cau: 'Tài khoản của bạn không làm được việc này.' };
+  } else kq = kqHai(false, { vi: 'Tài khoản của bạn không làm được việc này.', en: 'Your account cannot do this.' });
   if (kq.ok) return chuyenHuong(Astro, DUONG, kq);
   bao = kq;
 }
+
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Kết nối iPOS', en: 'iPOS connection' },
+  veThietLap: { vi: '← Thiết lập kho', en: '← Inventory setup' },
+  gioiThieu: {
+    vi: 'Máy tính tiền iPOS là nơi ghi bán. Nối xong, mỗi lần thu ngân in hóa đơn, iPOS tự gửi hóa đơn sang và phần mềm trừ kho ở quầy — không còn lấy "thiếu khi đếm quầy" làm số bán.',
+    en: 'The iPOS till is where sales are recorded. Once connected, every time the cashier prints an invoice, iPOS sends it over and the app deducts counter stock — the "shortfall at the counter count" is no longer used as the sales figure.',
+  },
+  khongDoc: { vi: 'Không đọc được trạng thái iPOS.', en: 'Could not read the iPOS status.' },
+  chuaKhoiTao: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory home' },
+  nguonTay: { vi: 'Bấm tay', en: 'Manual' },
+  nguonIpos: { vi: 'iPOS gửi', en: 'Sent by iPOS' },
+  nguonTuDong: { vi: 'Tự động', en: 'Automatic' },
+  // Trạng thái
+  lanNhanHd: { vi: 'Lần nhận hóa đơn gần nhất:', en: 'Last invoice received:' },
+  chuaNhanHd: { vi: 'chưa nhận hóa đơn nào', en: 'no invoice received yet' },
+  lanCapNhatCuoi: { vi: 'lần cập nhật cuối:', en: 'last update:' },
+  dangChay: { vi: ' · đang chạy', en: ' · running' },
+  thucDonIpos: { vi: 'Thực đơn iPOS:', en: 'iPOS menu:' },
+  soMon: { vi: (n: number) => `${n} món`, en: (n: number) => `${n} ${n === 1 ? 'dish' : 'dishes'}` },
+  docLuc: { vi: ', đọc lúc', en: ', read at' },
+  chuaDocDuoc: { vi: 'chưa đọc được', en: 'not read yet' },
+  menuDoi: {
+    vi: ' · iPOS báo thực đơn vừa đổi, sẽ đọc lại trong 5 phút',
+    en: ' · iPOS reported a menu change; it will be read again within 5 minutes',
+  },
+  loiLanCuoi: { vi: 'Lỗi lần cuối:', en: 'Last error:' },
+  dongChuaGhep: {
+    vi: (_n: number) => 'dòng chưa ghép món',
+    en: (n: number) => (n === 1 ? 'line not matched to a dish' : 'lines not matched to a dish'),
+  },
+  dongThieuHang: {
+    vi: (_n: number) => 'dòng thiếu hàng trên sổ',
+    en: (n: number) => (n === 1 ? 'line short on the books' : 'lines short on the books'),
+  },
+  dongDaTru: {
+    vi: (_n: number) => 'dòng đã trừ kho hôm nay',
+    en: (n: number) => (n === 1 ? 'line deducted from stock today' : 'lines deducted from stock today'),
+  },
+  dongHetHan: {
+    vi: (_n: number) => 'dòng bán vào lô đã hết hạn (7 ngày)',
+    en: (n: number) => (n === 1 ? 'line sold from an expired lot (7 days)' : 'lines sold from expired lots (7 days)'),
+  },
+  // Cập nhật ngay
+  capNhatNgay: { vi: 'Cập nhật ngay', en: 'Update now' },
+  capNhatGiai: {
+    vi: '— thử lại các dòng bán đang chờ (sau khi nhận hàng, ghép món) và đọc lại thực đơn iPOS, không đợi lượt 5 phút. Hóa đơn thì iPOS tự gửi sang, không cần bấm.',
+    en: '— retry the waiting sale lines (after receiving goods or matching dishes) and read the iPOS menu again, without waiting for the 5-minute run. Invoices are sent by iPOS on its own; no need to press anything.',
+  },
+  mayChu: { vi: 'Máy chủ', en: 'The server' },
+  chuaCaiToken: { vi: 'chưa cài token iPOS', en: 'has no iPOS token yet' },
+  chuaCaiTokenGiai: {
+    vi: '— vẫn thử lại được dòng chờ, nhưng chưa đọc được thực đơn. Cách cài: xem mục "Cài lần đầu" bên dưới.',
+    en: '— waiting lines can still be retried, but the menu cannot be read yet. How to set it up: see "First-time setup" below.',
+  },
+  dongBoTat: { vi: 'Đồng bộ đang tắt — chủ nhà hàng bật ở form bên dưới.', en: 'Sync is off — the owner turns it on in the form below.' },
+  // Trừ kho theo iPOS
+  truKhoTheoIpos: { vi: 'Trừ kho theo iPOS', en: 'Deduct stock from iPOS' },
+  dangDung: { vi: 'Đang dùng', en: 'In use' },
+  khoTuTru: { vi: 'Kho tự trừ theo hóa đơn iPOS từ', en: 'Stock is deducted automatically from iPOS invoices since' },
+  oQuay: { vi: 'ở', en: 'at' },
+  demQuayGio: { vi: 'Đếm quầy cuối ngày giờ chỉ để tìm hao hụt thật.', en: 'The end-of-day counter count is now only for finding real losses.' },
+  quayLaiGiai: {
+    vi: 'Quay lại đếm quầy: phần thiếu khi đếm quầy lại được tính là đã bán. Dòng iPOS đã trừ kho giữ nguyên; hóa đơn mới vẫn được đọc nhưng chỉ nằm chờ.',
+    en: 'Back to counter counts: the shortfall at the counter count is counted as sold again. iPOS lines already deducted stay as they are; new invoices are still read but only wait.',
+  },
+  quayLai: { vi: 'Quay lại đếm quầy', en: 'Back to counter counts' },
+  chuaDung: { vi: 'Chưa dùng', en: 'Not in use' },
+  soBanLay: { vi: 'Số bán đang lấy từ', en: 'Sales are currently taken from the' },
+  demQuayCuoiNgay: { vi: 'đếm quầy cuối ngày', en: 'end-of-day counter count' },
+  soBanLayGiai: {
+    vi: '(phần thiếu = đã bán). Hóa đơn iPOS đọc về chỉ nằm chờ, chưa trừ kho.',
+    en: '(shortfall = sold). iPOS invoices that come in only wait and are not deducted from stock.',
+  },
+  khiChuyen: { vi: 'Khi chuyển: từ', en: 'When you switch: from the' },
+  moc: { vi: 'mốc', en: 'switch time' },
+  khiChuyenGiai: {
+    vi: 'dưới đây, mỗi hóa đơn iPOS tự trừ kho ở quầy bán; hàng bán TRƯỚC mốc được bỏ qua vì đã tính trong lần đếm quầy cuối. Nên chọn đúng lúc gửi lần đếm quầy đã duyệt gần nhất — để trống là phần mềm tự lấy mốc đó. Sau đó đếm quầy chỉ còn để tìm hao hụt thật.',
+    en: 'below, every iPOS invoice deducts stock at the sales counter; sales BEFORE that time are skipped because the last counter count already covers them. Pick the time the latest approved counter count was submitted — leave it empty and the app uses that time. After that, counter counts are only for finding real losses.',
+  },
+  mocChuyen: { vi: 'Mốc chuyển (giờ Việt Nam)', en: 'Switch time (Vietnam time)' },
+  mocTrong: { vi: 'Để trống = lúc gửi lần đếm quầy đã duyệt gần nhất.', en: 'Empty = when the latest approved counter count was submitted.' },
+  toiDaHieu: {
+    vi: 'Tôi đã hiểu: từ mốc này, kho trừ theo iPOS; phần thiếu khi đếm quầy là hao hụt, không phải bán.',
+    en: 'I understand: from this time, stock is deducted from iPOS; a shortfall at the counter count is a loss, not a sale.',
+  },
+  chuyenSang: { vi: 'Chuyển sang trừ kho theo iPOS', en: 'Switch to deducting stock from iPOS' },
+  chonQuayTruoc: { vi: 'Chọn quầy bán ở form bên dưới trước.', en: 'Choose the sales counter in the form below first.' },
+  chiChuChuyen: { vi: 'Chỉ chủ nhà hàng chuyển được.', en: 'Only the owner can switch.' },
+  // Cấu hình
+  cauHinh: { vi: 'Cấu hình', en: 'Settings' },
+  batDongBo: { vi: 'Bật đồng bộ', en: 'Turn on sync' },
+  batDongBoGiai: {
+    vi: '— hóa đơn iPOS gửi sang được ghi ngay. Tắt thì hóa đơn chỉ được cất lại, chưa trừ kho.',
+    en: '— invoices sent by iPOS are recorded right away. When it is off, invoices are only stored, not deducted from stock.',
+  },
+  diaChiIpos: { vi: 'Địa chỉ iPOS', en: 'iPOS address' },
+  diaChiIposGiai: {
+    vi: 'Dùng để đọc thực đơn. Mặc định là máy thử của iPOS; khi iPOS cấp địa chỉ thật thì thay.',
+    en: "Used to read the menu. The default is iPOS's test server; replace it when iPOS gives you the real address.",
+  },
+  quayBan: { vi: 'Quầy bán', en: 'Sales counter' },
+  quayBanGiai: { vi: 'Hàng bán trên iPOS được trừ ở quầy này.', en: 'Items sold on iPOS are deducted from this counter.' },
+  chonQuay: { vi: '— Chọn quầy —', en: '— Choose a counter —' },
+  gioMoCua: { vi: 'Giờ mở cửa', en: 'Opening hour' },
+  gioDongCua: { vi: 'Giờ đóng cửa', en: 'Closing hour' },
+  khungGioMo: { vi: 'Giờ mở cửa', en: 'Opening hours' },
+  baoMatKetNoi: { vi: 'Báo mất kết nối sau (giờ)', en: 'Disconnection alert after (hours)' },
+  baoMatKetNoiGiai: {
+    vi: 'Trong giờ mở cửa mà quá bấy nhiêu giờ không nhận được hóa đơn nào thì chuông báo quản lý (1–12, thường là 3).',
+    en: 'If no invoice arrives for this many hours during opening hours, the bell alerts the manager (1–12, usually 3).',
+  },
+  quanVang: {
+    vi: 'Quán vắng khách không bị coi là mất kết nối — chỉ tính trong giờ mở cửa.',
+    en: 'A quiet restaurant is not treated as disconnected — only opening hours count.',
+  },
+  khongDanToken: { vi: 'Không dán token vào đây', en: 'Do not paste a token here' },
+  tokenBiMat: { vi: '— token là bí mật của máy chủ (xem bên dưới).', en: '— the token is a server secret (see below).' },
+  luuCauHinh: { vi: 'Lưu cấu hình', en: 'Save settings' },
+  dongBo: { vi: 'Đồng bộ', en: 'Sync' },
+  dangBat: { vi: 'Đang bật', en: 'On' },
+  dangTat: { vi: 'Đang tắt', en: 'Off' },
+  chuaChon: { vi: 'chưa chọn', en: 'not chosen' },
+  baoMatKetNoiSau: { vi: 'Báo mất kết nối sau', en: 'Disconnection alert after' },
+  gioKhongNhan: {
+    vi: (n: number) => `${n} giờ không nhận hóa đơn`,
+    en: (n: number) => `${n} ${n === 1 ? 'hour' : 'hours'} without invoices`,
+  },
+  chiChuSua: { vi: 'Chỉ chủ nhà hàng sửa được.', en: 'Only the owner can edit.' },
+  // Địa chỉ nhận hóa đơn
+  diaChiNhan: { vi: 'Địa chỉ nhận hóa đơn', en: 'Invoice receiving address' },
+  danDiaChi: { vi: 'Dán địa chỉ này vào CMS iPOS (mục callback_url)', en: 'Paste this address into the iPOS CMS (the callback_url field)' },
+  phanCuoiChe: {
+    vi: 'Phần cuối là khóa bí mật — chỉ chủ nhà hàng xem được đầy đủ.',
+    en: 'The last part is a secret key — only the owner can see it in full.',
+  },
+  phanCuoi: { vi: 'Phần cuối là', en: 'The last part is a' },
+  khoaBiMat: { vi: 'khóa bí mật', en: 'secret key' },
+  khoaBiMatGiai: {
+    vi: ': chỉ gửi cho iPOS, không dán vào nhóm Zalo. Lỡ lộ thì nhờ người quản lý Cloudflare đổi khóa mới rồi gửi lại địa chỉ cho iPOS.',
+    en: ': send it only to iPOS, never paste it into a Zalo group. If it leaks, ask whoever manages Cloudflare to change the key, then send the new address to iPOS.',
+  },
+  chuaCaiKhoa: { vi: 'chưa cài khóa nhận hóa đơn', en: 'has no invoice receiving key yet' },
+  chuaCaiKhoaGiai: {
+    vi: '— iPOS chưa gửi sang được. Xem bước 1 ở "Cài lần đầu" bên dưới.',
+    en: '— iPOS cannot send invoices yet. See step 1 of "First-time setup" below.',
+  },
+  viecNhoIpos: { vi: 'Việc cần nhờ iPOS', en: 'What to ask iPOS for' },
+  nho1a: { vi: 'Cấu hình', en: 'Set the' },
+  nho1b: { vi: 'của điểm bán là địa chỉ ở trên (trong CMS partner.foodbook.vn).', en: 'of the outlet to the address above (in the partner.foodbook.vn CMS).' },
+  nho2a: { vi: 'Bật gửi', en: 'Turn on sending' },
+  moiHoaDon: { vi: 'MỌI hóa đơn', en: 'EVERY invoice' },
+  nho2b: {
+    vi: 'của điểm bán sang (mặc định iPOS chỉ gửi đơn "liên quan đối tác" như đơn giao hàng, voucher — thiếu bước này thì kho không trừ đủ).',
+    en: 'of the outlet (by default iPOS only sends "partner-related" orders such as deliveries and vouchers — without this step, stock is not fully deducted).',
+  },
+  nho3a: { vi: 'Cấp', en: 'Issue an' },
+  nho3b: {
+    vi: 'cho bản chạy thật (người quản lý Cloudflare cài làm bí mật máy chủ, xem bên dưới).',
+    en: 'for the live system (whoever manages Cloudflare sets it as a server secret, see below).',
+  },
+  nho4a: { vi: 'Cho biết món thịt ở quầy bán theo', en: 'Tell us whether the counter meat items are sold by' },
+  hayTheo: { vi: 'hay theo', en: 'or by' },
+  goi: { vi: 'gói', en: 'pack' },
+  nho4b: { vi: 'trên máy iPOS — rồi chọn "Bán theo" cho đúng ở', en: 'on the iPOS device — then set "Sold by" correctly in' },
+  ghepMon: { vi: 'Ghép món', en: 'Match dishes' },
+  // Cài lần đầu
+  caiLanDau: { vi: 'Cài lần đầu (người quản lý Cloudflare)', en: 'First-time setup (whoever manages Cloudflare)' },
+  khoaNhanHd: { vi: 'Khóa nhận hóa đơn:', en: 'Invoice receiving key:' },
+  taiKhoanMay: { vi: '· Tài khoản máy:', en: '· Device account:' },
+  tokenIpos: { vi: '· Token iPOS (đọc thực đơn):', en: '· iPOS token (menu reading):' },
+  daCai: { vi: 'Đã cài', en: 'Set' },
+  chuaCai: { vi: 'Chưa cài', en: 'Not set' },
+  cai1a: {
+    vi: (n: number) => `Tạo một chuỗi ngẫu nhiên từ ${n} ký tự trở lên (vd`,
+    en: (n: number) => `Create a random string of ${n} or more characters (e.g.`,
+  },
+  cai1b: { vi: '), trong thư mục web chạy', en: '), then in the web folder run' },
+  cai1c: { vi: 'rồi dán vào. Đây là khóa trong địa chỉ nhận hóa đơn.', en: 'and paste it in. This is the key in the invoice receiving address.' },
+  cai2a: { vi: 'Chủ tạo tài khoản vai', en: 'The owner creates an account with the role' },
+  mayDongBoIpos: { vi: 'Máy đồng bộ iPOS', en: 'iPOS sync device' },
+  oTrang: { vi: 'ở', en: 'in' },
+  nhanVienMay: { vi: 'Nhân viên & máy dùng chung', en: 'Staff & shared tablets' },
+  cai2b: {
+    vi: '. Tài khoản này chỉ làm được đúng một việc: đồng bộ bán hàng — không xem được kho, giá hay khách hàng.',
+    en: '. This account can do exactly one thing: sync sales — it cannot see stock, prices or customers.',
+  },
+  cai3a: { vi: 'Cài email và mật khẩu của tài khoản đó thành hai bí mật', en: "Set that account's email and password as two secrets" },
+  va: { vi: 'và', en: 'and' },
+  cai3b: {
+    vi: '(cùng cách như bước 1). Máy chủ dùng nó để ghi hóa đơn iPOS gửi sang và chạy lượt 5 phút.',
+    en: '(the same way as step 1). The server uses it to record invoices sent by iPOS and to run the 5-minute job.',
+  },
+  cai4a: { vi: 'Token do iPOS cấp:', en: 'The token issued by iPOS:' },
+  cai4b: {
+    vi: '(hoặc Cloudflare → Workers & Pages → beeftown → Settings → Variables and Secrets → Add → loại',
+    en: '(or Cloudflare → Workers & Pages → beeftown → Settings → Variables and Secrets → Add → type',
+  },
+  cai4c: {
+    vi: '). Chỉ dùng để đọc thực đơn. Không ghi vào wrangler.toml, không gửi qua Zalo, không dán vào trang này.',
+    en: '). It is only used to read the menu. Never put it in wrangler.toml, never send it over Zalo, never paste it into this page.',
+  },
+  cai5a: { vi: 'Chủ điền cấu hình ở trên, chọn quầy bán, tích', en: 'The owner fills in the settings above, chooses the sales counter, ticks' },
+  cai5b: { vi: ', bấm', en: ', presses' },
+  cai5c: { vi: ', gửi địa chỉ nhận hóa đơn cho iPOS, rồi bấm', en: ', sends the invoice receiving address to iPOS, then presses' },
+  cai5d: { vi: 'để đọc thực đơn.', en: 'to read the menu.' },
+  chuaCaiThiTat: {
+    vi: 'Chưa cài thì phần đó tắt, mọi thứ khác vẫn chạy bình thường.',
+    en: 'Anything not set up yet stays off; everything else keeps working as usual.',
+  },
+  // Nhật ký
+  muoiLuot: { vi: '10 lượt gần nhất', en: 'Last 10 runs' },
+  chuaCoLuot: { vi: 'Chưa có lượt đồng bộ nào.', en: 'No sync runs yet.' },
+  luc: { vi: 'Lúc', en: 'Time' },
+  aiChay: { vi: 'Ai chạy', en: 'Run by' },
+  hoaDon: { vi: 'Hóa đơn', en: 'Invoices' },
+  dong: { vi: 'Dòng', en: 'Lines' },
+  daTruKho: { vi: 'Đã trừ kho', en: 'Deducted' },
+  ketQua: { vi: 'Kết quả', en: 'Result' },
+  loi: { vi: 'Lỗi', en: 'Error' },
+  xong: { vi: 'Xong', en: 'Done' },
+  dangChayNhan: { vi: 'Đang chạy', en: 'Running' },
+});
 
 let tt: TrangThaiIpos | null = null;
 let quay: ViTri[] = [];
@@ -74,7 +301,7 @@ if (k.chiNhanh && k.daKhoiTao) {
       docTrangThaiIpos(k.client, k.chiNhanh.id),
       docViTri(k.client, k.chiNhanh.id).then(ds => ds.filter(v => v.loai === 'quay' && v.dang_dung)),
     ]);
-  } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được trạng thái iPOS.'); }
+  } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
 }
 // Chỉ biết CÓ / KHÔNG — không bao giờ đưa giá trị bí mật ra trang (trừ khóa callback cho chủ).
 let biMat = { token: false, taiKhoanMay: false, khoaCallback: false };
@@ -84,7 +311,7 @@ let khoa: string | undefined;
 if (laChu) { try { khoa = await layKhoaCallback(); } catch { /* coi như chưa cài */ } }
 const gocWeb = (Astro.site ?? Astro.url).origin;
 const diaChiNhan = biMat.khoaCallback ? `${gocWeb}${DUONG_HOOK}${laChu && khoa ? khoa : cheKhoa('x')}` : null;
-const chuNguon = (n: string) => n === 'tay' ? 'Bấm tay' : n === 'callback' ? 'iPOS gửi' : 'Tự động';
+const chuNguon = (n: string) => n === 'tay' ? t.nguonTay : n === 'callback' ? t.nguonIpos : t.nguonTuDong;
 
 /** Giá trị ô: chữ vừa gõ (lưu hỏng) hoặc cấu hình đang dùng. */
 const o = (khoa: string, hienTai: string | number | null | undefined) =>
@@ -94,108 +321,99 @@ const quayDangChon = formLai ? String(formLai.get('vi_tri_ban_id') ?? '') : (tt?
 const tenQuay = quay.find(q => q.id === tt?.vi_tri_ban_id)?.ten ?? null;
 const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
 ---
-<Kho k={k} tieuDe="Kết nối iPOS" huongDan="ipos">
-  <h1>Kết nối iPOS</h1>
-  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
-  <p class="kho-phu" style="margin-top:0">Máy tính tiền iPOS là nơi ghi bán. Nối xong, mỗi lần thu ngân in hóa đơn, iPOS tự gửi
-    hóa đơn sang và phần mềm trừ kho ở quầy — không còn lấy "thiếu khi đếm quầy" làm số bán.</p>
+<Kho k={k} tieuDe={t.tieuDe} huongDan="ipos">
+  <h1>{t.tieuDe}</h1>
+  <p><a href="/noi-bo/kho/cai-dat">{t.veThietLap}</a></p>
+  <p class="kho-phu" style="margin-top:0">{t.gioiThieu}</p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
-    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+    <p class="nb-rong">{t.chuaKhoiTao} <a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
   ) : tt && (
     <>
       <section class={`nb-bao ${lopDen(tt.den)}`} aria-live="polite">
-        <p style="margin:0"><strong>{chuDen(tt.den)}.</strong> {tt.cau}</p>
+        <p style="margin:0"><strong>{chuDen(tt.den, nn)}.</strong> {dichCau(nn, tt.cau)}</p>
         <p class="kho-phu" style="margin:.35rem 0 0">
-          Lần nhận hóa đơn gần nhất: <strong>{tt.nhan_hd_luc ? dinhDangThoiDiem(tt.nhan_hd_luc) : 'chưa nhận hóa đơn nào'}</strong>
-          · lần cập nhật cuối: {dinhDangThoiDiem(tt.lan_cuoi_luc)}
-          {tt.dang_chay && ' · đang chạy'}
+          {t.lanNhanHd} <strong>{tt.nhan_hd_luc ? dinhDangThoiDiem(tt.nhan_hd_luc) : t.chuaNhanHd}</strong> · {t.lanCapNhatCuoi} {dinhDangThoiDiem(tt.lan_cuoi_luc)}
+          {tt.dang_chay && t.dangChay}
         </p>
         <p class="kho-phu" style="margin:.35rem 0 0">
-          Thực đơn iPOS: {tt.so_mon_menu > 0 ? <><a href="/noi-bo/kho/ban-ipos/ghep#thuc-don">{tt.so_mon_menu} món</a>, đọc lúc {dinhDangThoiDiem(tt.menu_luc)}</> : 'chưa đọc được'}
-          {tt.menu_can_lam_moi && ' · iPOS báo thực đơn vừa đổi, sẽ đọc lại trong 5 phút'}
+          {t.thucDonIpos} {tt.so_mon_menu > 0 ? <><a href="/noi-bo/kho/ban-ipos/ghep#thuc-don">{t.soMon(tt.so_mon_menu)}</a>{t.docLuc} {dinhDangThoiDiem(tt.menu_luc)}</> : t.chuaDocDuoc}
+          {tt.menu_can_lam_moi && t.menuDoi}
         </p>
-        {tt.lan_cuoi_loi && <p class="kho-phu" style="margin:.35rem 0 0">Lỗi lần cuối: {tt.lan_cuoi_loi}</p>}
+        {tt.lan_cuoi_loi && <p class="kho-phu" style="margin:.35rem 0 0">{t.loiLanCuoi} {dichLoiIpos(tt.lan_cuoi_loi, nn)}</p>}
       </section>
 
       <div class="kho-o-so-luoi">
         <a class:list={['kho-o-so', { 'luu-y': tt.dem.chua_khop > 0 }]} href="/noi-bo/kho/ban-ipos?the=chua_khop">
-          <b>{tt.dem.chua_khop + tt.dem.loi}</b><span>dòng chưa ghép món</span></a>
+          <b>{tt.dem.chua_khop + tt.dem.loi}</b><span>{t.dongChuaGhep(tt.dem.chua_khop + tt.dem.loi)}</span></a>
         <a class:list={['kho-o-so', { 'luu-y': tt.dem.thieu_hang > 0 }]} href="/noi-bo/kho/ban-ipos?the=thieu_hang">
-          <b>{tt.dem.thieu_hang}</b><span>dòng thiếu hàng trên sổ</span></a>
-        <a class="kho-o-so" href="/noi-bo/kho/ban-ipos?the=da_ghi"><b>{tt.dem.da_ghi_hom_nay}</b><span>dòng đã trừ kho hôm nay</span></a>
+          <b>{tt.dem.thieu_hang}</b><span>{t.dongThieuHang(tt.dem.thieu_hang)}</span></a>
+        <a class="kho-o-so" href="/noi-bo/kho/ban-ipos?the=da_ghi"><b>{tt.dem.da_ghi_hom_nay}</b><span>{t.dongDaTru(tt.dem.da_ghi_hom_nay)}</span></a>
         {tt.dem.het_han > 0 && (
-          <a class="kho-o-so gap" href="/noi-bo/kho/ton?han=het_han"><b>{tt.dem.het_han}</b><span>dòng bán vào lô đã hết hạn (7 ngày)</span></a>
+          <a class="kho-o-so gap" href="/noi-bo/kho/ton?han=het_han"><b>{tt.dem.het_han}</b><span>{t.dongHetHan(tt.dem.het_han)}</span></a>
         )}
       </div>
 
       {dongBoDuoc && (
         <form method="POST" class="nb-the">
           <input type="hidden" name="viec" value="cap_nhat" />
-          <p style="margin-top:0"><strong>Cập nhật ngay</strong> — thử lại các dòng bán đang chờ (sau khi nhận hàng, ghép món)
-            và đọc lại thực đơn iPOS, không đợi lượt 5 phút. Hóa đơn thì iPOS tự gửi sang, không cần bấm.</p>
+          <p style="margin-top:0"><strong>{t.capNhatNgay}</strong> {t.capNhatGiai}</p>
           {!coToken && (
-            <p class="kho-phu">Máy chủ <strong>chưa cài token iPOS</strong> — vẫn thử lại được dòng chờ, nhưng chưa đọc được thực đơn.
-              Cách cài: xem mục "Cài lần đầu" bên dưới.</p>
+            <p class="kho-phu">{t.mayChu} <strong>{t.chuaCaiToken}</strong> {t.chuaCaiTokenGiai}</p>
           )}
-          <button type="submit" class="nb-nut" disabled={!tt.bat || tt.dang_chay}>Cập nhật ngay</button>
-          {!tt.bat && <p class="kho-phu" style="margin:.5rem 0 0">Đồng bộ đang tắt — chủ nhà hàng bật ở form bên dưới.</p>}
+          <button type="submit" class="nb-nut" disabled={!tt.bat || tt.dang_chay}>{t.capNhatNgay}</button>
+          {!tt.bat && <p class="kho-phu" style="margin:.5rem 0 0">{t.dongBoTat}</p>}
         </form>
       )}
 
-      <h2>Trừ kho theo iPOS</h2>
+      <h2>{t.truKhoTheoIpos}</h2>
       <div class="nb-the">
         {dangIpos ? (
           <>
-            <p style="margin-top:0"><span class="nb-nhan song">Đang dùng</span> Kho tự trừ theo hóa đơn iPOS từ
-              <strong> {dinhDangThoiDiem(tt.ipos_tu_luc)}</strong>{tenQuay ? <> ở <strong>{tenQuay}</strong></> : ''}.
-              Đếm quầy cuối ngày giờ chỉ để tìm hao hụt thật.</p>
+            <p style="margin-top:0"><span class="nb-nhan song">{t.dangDung}</span> {t.khoTuTru}
+              <strong> {dinhDangThoiDiem(tt.ipos_tu_luc)}</strong>{tenQuay ? <> {t.oQuay} <strong>{tenQuay}</strong></> : ''}. {t.demQuayGio}</p>
             {laChu && (
               <form method="POST">
                 <input type="hidden" name="viec" value="tro_ve" />
-                <p class="kho-phu">Quay lại đếm quầy: phần thiếu khi đếm quầy lại được tính là đã bán. Dòng iPOS đã trừ kho
-                  giữ nguyên; hóa đơn mới vẫn được đọc nhưng chỉ nằm chờ.</p>
-                <button type="submit" class="nb-nut phu">Quay lại đếm quầy</button>
+                <p class="kho-phu">{t.quayLaiGiai}</p>
+                <button type="submit" class="nb-nut phu">{t.quayLai}</button>
               </form>
             )}
           </>
         ) : (
           <>
-            <p style="margin-top:0"><span class="nb-nhan cho">Chưa dùng</span> Số bán đang lấy từ <strong>đếm quầy cuối ngày</strong>
-              (phần thiếu = đã bán). Hóa đơn iPOS đọc về chỉ nằm chờ, chưa trừ kho.</p>
+            <p style="margin-top:0"><span class="nb-nhan cho">{t.chuaDung}</span> {t.soBanLay} <strong>{t.demQuayCuoiNgay}</strong> {t.soBanLayGiai}</p>
             {laChu ? (
               <form method="POST">
                 <input type="hidden" name="viec" value="chuyen_sang" />
-                <p class="kho-phu">Khi chuyển: từ <strong>mốc</strong> dưới đây, mỗi hóa đơn iPOS tự trừ kho ở quầy bán; hàng bán
-                  TRƯỚC mốc được bỏ qua vì đã tính trong lần đếm quầy cuối. Nên chọn đúng lúc gửi lần đếm quầy đã duyệt gần nhất —
-                  để trống là phần mềm tự lấy mốc đó. Sau đó đếm quầy chỉ còn để tìm hao hụt thật.</p>
+                <p class="kho-phu">{t.khiChuyen} <strong>{t.moc}</strong> {t.khiChuyenGiai}</p>
                 <label class="nb-o">
-                  <span>Mốc chuyển (giờ Việt Nam)</span>
-                  <small>Để trống = lúc gửi lần đếm quầy đã duyệt gần nhất.</small>
+                  <span>{t.mocChuyen}</span>
+                  <small>{t.mocTrong}</small>
                   <input type="datetime-local" name="tu_luc" value={oMocChuyen(tt.ipos_tu_luc)} />
                 </label>
                 <label class="kho-tich"><input type="checkbox" name="xac_nhan" value="co" />
-                  <span>Tôi đã hiểu: từ mốc này, kho trừ theo iPOS; phần thiếu khi đếm quầy là hao hụt, không phải bán.</span></label>
-                <button type="submit" class="nb-nut" disabled={!tt.vi_tri_ban_id}>Chuyển sang trừ kho theo iPOS</button>
-                {!tt.vi_tri_ban_id && <p class="kho-phu" style="margin:.5rem 0 0">Chọn quầy bán ở form bên dưới trước.</p>}
+                  <span>{t.toiDaHieu}</span></label>
+                <button type="submit" class="nb-nut" disabled={!tt.vi_tri_ban_id}>{t.chuyenSang}</button>
+                {!tt.vi_tri_ban_id && <p class="kho-phu" style="margin:.5rem 0 0">{t.chonQuayTruoc}</p>}
               </form>
             ) : (
-              <p class="kho-phu" style="margin:0">Chỉ chủ nhà hàng chuyển được.</p>
+              <p class="kho-phu" style="margin:0">{t.chiChuChuyen}</p>
             )}
           </>
         )}
       </div>
 
-      <h2>Cấu hình</h2>
+      <h2>{t.cauHinh}</h2>
       {laChu ? (
         <form method="POST" class="nb-the">
           <input type="hidden" name="viec" value="luu" />
           <label class="kho-tich"><input type="checkbox" name="bat" value="co" checked={batDangChon} />
-            <span><strong>Bật đồng bộ</strong> — hóa đơn iPOS gửi sang được ghi ngay. Tắt thì hóa đơn chỉ được cất lại, chưa trừ kho.</span></label>
+            <span><strong>{t.batDongBo}</strong> {t.batDongBoGiai}</span></label>
           <label class="nb-o">
-            <span>Địa chỉ iPOS</span>
-            <small>Dùng để đọc thực đơn. Mặc định là máy thử của iPOS; khi iPOS cấp địa chỉ thật thì thay.</small>
+            <span>{t.diaChiIpos}</span>
+            <small>{t.diaChiIposGiai}</small>
             <input type="url" name="api_url" value={o('api_url', tt.api_url)} placeholder="https://apitest.foodbook.vn/ipos/ws/xpartner" autocomplete="off" spellcheck="false" />
           </label>
           <div class="nb-hai">
@@ -205,100 +423,89 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
               <input type="text" name="pos_id" value={o('pos_id', tt.pos_id)} autocomplete="off" spellcheck="false" /></label>
           </div>
           <label class="nb-o">
-            <span>Quầy bán</span>
-            <small>Hàng bán trên iPOS được trừ ở quầy này.</small>
+            <span>{t.quayBan}</span>
+            <small>{t.quayBanGiai}</small>
             <select name="vi_tri_ban_id">
-              <option value="">— Chọn quầy —</option>
+              <option value="">{t.chonQuay}</option>
               {quay.map(q => <option value={q.id} selected={q.id === quayDangChon}>{q.ten}</option>)}
             </select>
           </label>
           <div class="nb-hai">
-            <label class="nb-o"><span>Giờ mở cửa</span>
+            <label class="nb-o"><span>{t.gioMoCua}</span>
               <input type="text" inputmode="numeric" name="gio_mo_cua" value={o('gio_mo_cua', tt.gio_mo_cua)} /></label>
-            <label class="nb-o"><span>Giờ đóng cửa</span>
+            <label class="nb-o"><span>{t.gioDongCua}</span>
               <input type="text" inputmode="numeric" name="gio_dong_cua" value={o('gio_dong_cua', tt.gio_dong_cua)} /></label>
           </div>
           <label class="nb-o">
-            <span>Báo mất kết nối sau (giờ)</span>
-            <small>Trong giờ mở cửa mà quá bấy nhiêu giờ không nhận được hóa đơn nào thì chuông báo quản lý (1–12, thường là 3).</small>
+            <span>{t.baoMatKetNoi}</span>
+            <small>{t.baoMatKetNoiGiai}</small>
             <input type="text" inputmode="numeric" name="gio_mat_ket_noi" value={o('gio_mat_ket_noi', tt.gio_mat_ket_noi)} />
           </label>
-          <p class="kho-phu" style="margin:0 0 .75rem">Quán vắng khách không bị coi là mất kết nối — chỉ tính trong giờ mở cửa.
-            <strong>Không dán token vào đây</strong> — token là bí mật của máy chủ (xem bên dưới).</p>
-          <button type="submit" class="nb-nut">Lưu cấu hình</button>
+          <p class="kho-phu" style="margin:0 0 .75rem">{t.quanVang} <strong>{t.khongDanToken}</strong> {t.tokenBiMat}</p>
+          <button type="submit" class="nb-nut">{t.luuCauHinh}</button>
         </form>
       ) : (
         <div class="nb-the">
           <dl style="margin:0">
-            <dt>Đồng bộ</dt><dd>{tt.bat ? 'Đang bật' : 'Đang tắt'}</dd>
-            <dt>Địa chỉ iPOS</dt><dd>{tt.api_url}</dd>
+            <dt>{t.dongBo}</dt><dd>{tt.bat ? t.dangBat : t.dangTat}</dd>
+            <dt>{t.diaChiIpos}</dt><dd>{tt.api_url}</dd>
             <dt>pos_parent · pos_id</dt><dd>{tt.pos_parent ?? '—'} · {tt.pos_id ?? '—'}</dd>
-            <dt>Quầy bán</dt><dd>{tenQuay ?? 'chưa chọn'}</dd>
-            <dt>Giờ mở cửa</dt><dd>{tt.gio_mo_cua}h – {tt.gio_dong_cua}h</dd>
-            <dt>Báo mất kết nối sau</dt><dd>{tt.gio_mat_ket_noi} giờ không nhận hóa đơn</dd>
+            <dt>{t.quayBan}</dt><dd>{tenQuay ?? t.chuaChon}</dd>
+            <dt>{t.khungGioMo}</dt><dd>{tt.gio_mo_cua}h – {tt.gio_dong_cua}h</dd>
+            <dt>{t.baoMatKetNoiSau}</dt><dd>{t.gioKhongNhan(tt.gio_mat_ket_noi)}</dd>
           </dl>
-          <p class="kho-phu" style="margin:.5rem 0 0">Chỉ chủ nhà hàng sửa được.</p>
+          <p class="kho-phu" style="margin:.5rem 0 0">{t.chiChuSua}</p>
         </div>
       )}
 
       <section class="nb-the" id="dia-chi-nhan">
-        <h2 style="margin-top:0">Địa chỉ nhận hóa đơn</h2>
+        <h2 style="margin-top:0">{t.diaChiNhan}</h2>
         {diaChiNhan ? (
           <>
             <label class="nb-o" style="margin-bottom:.5rem">
-              <span>Dán địa chỉ này vào CMS iPOS (mục callback_url)</span>
+              <span>{t.danDiaChi}</span>
               <input type="text" readonly value={diaChiNhan} autocomplete="off" spellcheck="false" />
             </label>
-            {!laChu && <p class="kho-phu" style="margin:0">Phần cuối là khóa bí mật — chỉ chủ nhà hàng xem được đầy đủ.</p>}
-            {laChu && <p class="kho-phu" style="margin:0">Phần cuối là <strong>khóa bí mật</strong>: chỉ gửi cho iPOS, không dán vào nhóm Zalo.
-              Lỡ lộ thì nhờ người quản lý Cloudflare đổi khóa mới rồi gửi lại địa chỉ cho iPOS.</p>}
+            {!laChu && <p class="kho-phu" style="margin:0">{t.phanCuoiChe}</p>}
+            {laChu && <p class="kho-phu" style="margin:0">{t.phanCuoi} <strong>{t.khoaBiMat}</strong>{t.khoaBiMatGiai}</p>}
           </>
         ) : (
-          <p class="kho-phu" style="margin:0">Máy chủ <strong>chưa cài khóa nhận hóa đơn</strong> — iPOS chưa gửi sang được. Xem bước 1 ở
-            "Cài lần đầu" bên dưới.</p>
+          <p class="kho-phu" style="margin:0">{t.mayChu} <strong>{t.chuaCaiKhoa}</strong> {t.chuaCaiKhoaGiai}</p>
         )}
 
-        <h3>Việc cần nhờ iPOS</h3>
+        <h3>{t.viecNhoIpos}</h3>
         <ol class="kho-phu" style="margin:.25rem 0 0;padding-left:1.25rem">
-          <li>Cấu hình <strong>callback_url</strong> của điểm bán là địa chỉ ở trên (trong CMS partner.foodbook.vn).</li>
-          <li>Bật gửi <strong>MỌI hóa đơn</strong> của điểm bán sang (mặc định iPOS chỉ gửi đơn "liên quan đối tác" như đơn giao hàng,
-            voucher — thiếu bước này thì kho không trừ đủ).</li>
-          <li>Cấp <strong>access_token</strong> cho bản chạy thật (người quản lý Cloudflare cài làm bí mật máy chủ, xem bên dưới).</li>
-          <li>Cho biết món thịt ở quầy bán theo <strong>kg</strong> hay theo <strong>gói</strong> trên máy iPOS — rồi chọn "Bán theo" cho
-            đúng ở <a href="/noi-bo/kho/ban-ipos/ghep">Ghép món</a>.</li>
+          <li>{t.nho1a} <strong>callback_url</strong> {t.nho1b}</li>
+          <li>{t.nho2a} <strong>{t.moiHoaDon}</strong> {t.nho2b}</li>
+          <li>{t.nho3a} <strong>access_token</strong> {t.nho3b}</li>
+          <li>{t.nho4a} <strong>kg</strong> {t.hayTheo} <strong>{t.goi}</strong> {t.nho4b} <a href="/noi-bo/kho/ban-ipos/ghep">{t.ghepMon}</a>.</li>
         </ol>
       </section>
 
       <section class="nb-the" id="cai-lan-dau">
-        <h2 style="margin-top:0">Cài lần đầu (người quản lý Cloudflare)</h2>
+        <h2 style="margin-top:0">{t.caiLanDau}</h2>
         <p style="margin:0">
-          Khóa nhận hóa đơn: <span class={`nb-nhan ${biMat.khoaCallback ? 'song' : 'cho'}`}>{biMat.khoaCallback ? 'Đã cài' : 'Chưa cài'}</span>{' '}
-          · Tài khoản máy: <span class={`nb-nhan ${biMat.taiKhoanMay ? 'song' : 'cho'}`}>{biMat.taiKhoanMay ? 'Đã cài' : 'Chưa cài'}</span>{' '}
-          · Token iPOS (đọc thực đơn): <span class={`nb-nhan ${coToken ? 'song' : 'cho'}`}>{coToken ? 'Đã cài' : 'Chưa cài'}</span>
+          {t.khoaNhanHd} <span class={`nb-nhan ${biMat.khoaCallback ? 'song' : 'cho'}`}>{biMat.khoaCallback ? t.daCai : t.chuaCai}</span>{' '}
+          {t.taiKhoanMay} <span class={`nb-nhan ${biMat.taiKhoanMay ? 'song' : 'cho'}`}>{biMat.taiKhoanMay ? t.daCai : t.chuaCai}</span>{' '}
+          {t.tokenIpos} <span class={`nb-nhan ${coToken ? 'song' : 'cho'}`}>{coToken ? t.daCai : t.chuaCai}</span>
         </p>
         <ol class="kho-phu" style="margin:.75rem 0 0;padding-left:1.25rem">
-          <li>Tạo một chuỗi ngẫu nhiên từ {KHOA_TOI_THIEU} ký tự trở lên (vd <code>openssl rand -hex 24</code>), trong thư mục web chạy
-            <code>npx wrangler secret put IPOS_CALLBACK_KHOA</code> rồi dán vào. Đây là khóa trong địa chỉ nhận hóa đơn.</li>
-          <li>Chủ tạo tài khoản vai <strong>Máy đồng bộ iPOS</strong> ở <a href="/noi-bo/kho/cai-dat/nhan-vien">Nhân viên &amp; máy dùng chung</a>.
-            Tài khoản này chỉ làm được đúng một việc: đồng bộ bán hàng — không xem được kho, giá hay khách hàng.</li>
-          <li>Cài email và mật khẩu của tài khoản đó thành hai bí mật <code>KHO_IPOS_EMAIL</code> và <code>KHO_IPOS_MAT_KHAU</code>
-            (cùng cách như bước 1). Máy chủ dùng nó để ghi hóa đơn iPOS gửi sang và chạy lượt 5 phút.</li>
-          <li>Token do iPOS cấp: <code>npx wrangler secret put IPOS_ACCESS_TOKEN</code> (hoặc Cloudflare → Workers &amp; Pages →
-            beeftown → Settings → Variables and Secrets → Add → loại <strong>Secret</strong>). Chỉ dùng để đọc thực đơn. Không ghi vào
-            wrangler.toml, không gửi qua Zalo, không dán vào trang này.</li>
-          <li>Chủ điền cấu hình ở trên, chọn quầy bán, tích <strong>Bật đồng bộ</strong>, bấm <strong>Lưu cấu hình</strong>, gửi địa chỉ
-            nhận hóa đơn cho iPOS, rồi bấm <strong>Cập nhật ngay</strong> để đọc thực đơn.</li>
+          <li>{t.cai1a(KHOA_TOI_THIEU)} <code>openssl rand -hex 24</code>{t.cai1b} <code>npx wrangler secret put IPOS_CALLBACK_KHOA</code> {t.cai1c}</li>
+          <li>{t.cai2a} <strong>{t.mayDongBoIpos}</strong> {t.oTrang} <a href="/noi-bo/kho/cai-dat/nhan-vien">{t.nhanVienMay}</a>{t.cai2b}</li>
+          <li>{t.cai3a} <code>KHO_IPOS_EMAIL</code> {t.va} <code>KHO_IPOS_MAT_KHAU</code> {t.cai3b}</li>
+          <li>{t.cai4a} <code>npx wrangler secret put IPOS_ACCESS_TOKEN</code> {t.cai4b} <strong>Secret</strong>{t.cai4c}</li>
+          <li>{t.cai5a} <strong>{t.batDongBo}</strong>{t.cai5b} <strong>{t.luuCauHinh}</strong>{t.cai5c} <strong>{t.capNhatNgay}</strong> {t.cai5d}</li>
         </ol>
-        <p class="kho-phu" style="margin:.5rem 0 0">Chưa cài thì phần đó tắt, mọi thứ khác vẫn chạy bình thường.</p>
+        <p class="kho-phu" style="margin:.5rem 0 0">{t.chuaCaiThiTat}</p>
       </section>
 
-      <h2>10 lượt gần nhất</h2>
+      <h2>{t.muoiLuot}</h2>
       {tt.lan_chay.length === 0 ? (
-        <p class="nb-rong">Chưa có lượt đồng bộ nào.</p>
+        <p class="nb-rong">{t.chuaCoLuot}</p>
       ) : (
         <div class="kho-bang-khung">
           <table class="kho-bang">
-            <thead><tr><th>Lúc</th><th>Ai chạy</th><th class="so">Hóa đơn</th><th class="so">Dòng</th><th class="so">Đã trừ kho</th><th>Kết quả</th></tr></thead>
+            <thead><tr><th>{t.luc}</th><th>{t.aiChay}</th><th class="so">{t.hoaDon}</th><th class="so">{t.dong}</th><th class="so">{t.daTruKho}</th><th>{t.ketQua}</th></tr></thead>
             <tbody>
               {tt.lan_chay.map(l => (
                 <tr>
@@ -307,8 +514,8 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
                   <td class="so">{l.so_hd}</td>
                   <td class="so">{l.so_dong}</td>
                   <td class="so">{l.so_da_ghi}</td>
-                  <td>{l.loi ? <span class="nb-nhan cho">Lỗi</span> : l.ket_thuc_luc ? <span class="nb-nhan song">Xong</span> : <span class="nb-nhan tat">Đang chạy</span>}
-                    {l.loi && <> {l.loi}</>}</td>
+                  <td>{l.loi ? <span class="nb-nhan cho">{t.loi}</span> : l.ket_thuc_luc ? <span class="nb-nhan song">{t.xong}</span> : <span class="nb-nhan tat">{t.dangChayNhan}</span>}
+                    {l.loi && <> {dichLoiIpos(l.loi, nn)}</>}</td>
                 </tr>
               ))}
             </tbody>
