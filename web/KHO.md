@@ -361,9 +361,9 @@ một bản xem trước:
 
 | Xuất | Là gì |
 |---|---|
-| `MUC_HUONG_DAN` | Mỗi mục một việc: `{ id, vai[], tieuDe, tomTat, buoc[], meo?, anh?, link? }` |
-| `NHOM_VAI` | Thứ tự, tên nhóm: Bắt đầu · Thủ kho · Nhân viên quầy & bếp · Quản lý · Kế toán · Chủ quán |
-| `CAU_HOI` | Câu hỏi thường gặp `{ id: 'hoi-…', hoi, dap }` (≥ 15 câu) |
+| `MUC_HUONG_DAN` | Mỗi mục một việc: `{ id, vai[], tieuDe, tomTat, buoc[], meo?, anh?, link? }` — mọi câu là cặp `{ vi, en }` |
+| `NHOM_VAI` | Thứ tự, tên nhóm: Bắt đầu · Thủ kho · Nhân viên quầy & bếp · Quản lý · Kế toán · Chủ quán (`ten: { vi, en }`) |
+| `CAU_HOI` | Câu hỏi thường gặp `{ id: 'hoi-…', hoi, dap }` (≥ 15 câu, `hoi` / `dap` là `{ vi, en }`) |
 | `dinhDang(s)` | Escape HTML rồi đổi `**x**` → `<strong>x</strong>` — dùng với `set:html` |
 | `vaiHuongDan(vaiTro)` | Vai tài khoản → nhóm mặc định (vai lạ → Bắt đầu) |
 
@@ -378,7 +378,11 @@ mọi `#id` luôn có trong HTML, nút "?" của màn nào cũng tới đúng ch
    `vai`; các vai sau chỉ để hiện trong "Việc của tôi" của vai đó.
 2. Câu chữ: ngắn, động từ trước, **đúng chữ trên nút** (đọc trang thật: `bấm **Gửi duyệt**`). Không thuật
    ngữ kỹ thuật. Mục có vai `thu_kho` / `nhan_vien_quay` **không nhắc tiền** (giá nhập, giá vốn, đơn giá,
-   thành tiền, lãi, công nợ — test quét).
+   thành tiền, lãi, công nợ — test quét, ở cả hai thứ tiếng).
+   Mỗi câu viết hai thứ tiếng cạnh nhau: `tieuDe: { vi: '…', en: '…' }`, trang đọc `[nn]`. Bản tiếng Anh
+   dùng đúng chữ trên nút của màn tiếng Anh (tên menu, thao tác nhanh ở `dieu-huong.ts`). Tên do database
+   giữ (lý do, chỗ để) không dịch; ảnh chụp vẫn là màn tiếng Việt, chỉ `anh.chu` có hai thứ tiếng.
+   `lib/kho/quy-trinh.ts` cùng cách: tên, bước, lời dặn đều là `{ vi, en }`.
 3. `link.href` phải là trang có thật (test dùng bảng đường dẫn như nhóm 1).
 4. Trang kho mới: truyền `huongDan="<id>"` cho `<Kho>`. Trang nhiều vai / nhiều bước thì dùng biểu thức
    (`huongDan={laQuay ? 'yeu-cau' : 'ra-quay'}`) hoặc `const huongDan = … ;` — test đọc các chuỗi
@@ -817,8 +821,14 @@ Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa th
 6. File `lib/kho/*.ts` mới gọi database → thêm vào `CHAY_DA_DANG_NHAP` trong
    `crm/test/test-hop-dong-web.mjs`. Gọi RPC bằng object viết thẳng `.rpc('x', { p_… })`,
    `.select('…')` nháy đơn và không ép kiểu `::`.
-7. Bẫy của Astro: khoảng trắng giữa `{biểu thức}` và chữ ở dòng sau bị nuốt — viết `{' '}`;
-   `{soLuong && <x/>}` in ra số 0 — viết `soLuong > 0 && …`.
+7. Bẫy của Astro (`compressHTML: 'jsx'`, mặc định của Astro 7): khoảng trắng có xuống dòng giữa hai nút
+   bị bỏ hẳn — `{t.cau1}⏎{t.cau2}` hiện "Câu một.Câu hai.", `chữ⏎{t.x}` cũng dính. Viết hai mẩu trên cùng
+   dòng, cách một dấu cách, hoặc thêm `{' '}`. `crm/test/dinh-chu.mjs` bắt chỗ này (test-kho-tieng-anh
+   nhóm 4). `{soLuong && <x/>}` in ra số 0 — viết `soLuong > 0 && …`.
+8. Hai thứ tiếng: chữ của trang viết `{ vi, en }` qua `dichNB(k.nn, …)`; câu báo trả `kqHai(ok, { vi, en })`;
+   số truyền `nn` (`dinhDangKg(x, nn)`…); câu từ database hiện qua `dichCau(nn, …)`. Cách làm và các bảng
+   dùng chung: `web/README.md`, mục "Tiếng Anh ở giao diện nội bộ". File mới tự vào bộ quét của
+   `crm/test/test-kho-tieng-anh.mjs` — chữ Việt sót ngoài `{ vi, en }` là test đỏ.
 
 ## 8. Kiểm thử
 
@@ -838,6 +848,7 @@ node test/test-kho-cong-no-v2.mjs     # công nợ v2: bù trừ, hoàn tiền, 
 node test/test-kho-cong-no-v2-web.mjs # công nợ v2: misa.ts, form Trả tiền, hóa đơn gộp web = database, trang
 node test/test-kho-sua-nhanh.mjs      # sửa hàng loạt, báo cáo tháng, mua hàng, sổ thanh toán — database (0041)
 node test/test-kho-sua-nhanh-web.mjs  # sửa nhanh, lưới công thức, vị trí + lý do, trung tâm báo cáo — web
+node test/test-kho-tieng-anh.mjs      # tiếng Anh: chữ Việt ngoài { vi, en }, trang quên truyền nn, câu database, chữ dính khi xuống dòng
 cd ../web && npm run kiem-tra && npm run quet && npm run build
 ```
 
