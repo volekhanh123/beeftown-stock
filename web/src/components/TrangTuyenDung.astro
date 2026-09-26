@@ -61,11 +61,14 @@ const t = chu(ngonNgu);
 // database — không giữ một bản nhãn thứ hai phải dịch lại mỗi khi thêm tiếng.
 // Loại hợp đồng chỉ ghi khi JD đã chốt (sảnh: bán thời gian); chưa chốt thì
 // null và thẻ không hiện dòng đó — không đoán thay nhà hàng.
+// Tên tiếng Hàn giữ đúng ten_ko của tin thật (và câu dẫn trong chu.ts, gợi ý
+// ở form, mô tả trang /ko/jobs cũng vậy): một vị trí chỉ có một tên trên
+// trang Hàn — trước 26/09 tin ghi "홀 직원" mà form lại gọi "홀 크루".
 const DU_PHONG: { ten: BaThuTieng; bo_phan: keyof typeof BO_PHAN; loai: keyof typeof LOAI_HOP_DONG | null }[] = [
-  { ten: { vi: 'Nhân viên sảnh',                         en: 'Hall Crew',                             ko: '홀 크루' },               bo_phan: 'sanh',      loai: 'ban_thoi_gian' },
-  { ten: { vi: 'Nhân viên bếp có kinh nghiệm',           en: 'Experienced Kitchen Crew',              ko: '경력 주방 크루' },        bo_phan: 'bep',       loai: null },
-  { ten: { vi: 'Nhân viên đóng gói và hỗ trợ quầy thịt', en: 'Butcher Packaging & Counter Assistant', ko: '정육 포장·코너 보조 직원' }, bo_phan: 'quay_thit', loai: null },
-  { ten: { vi: 'Thợ pha lóc thịt bò',                    en: 'Skilled Beef Trimmer',                  ko: '숙련 정육 손질 직원' },   bo_phan: 'quay_thit', loai: null },
+  { ten: { vi: 'Nhân viên sảnh',                         en: 'Hall Crew',                             ko: '홀 직원' },               bo_phan: 'sanh',      loai: 'ban_thoi_gian' },
+  { ten: { vi: 'Nhân viên bếp có kinh nghiệm',           en: 'Experienced Kitchen Crew',              ko: '경력 주방 직원' },        bo_phan: 'bep',       loai: null },
+  { ten: { vi: 'Nhân viên đóng gói và hỗ trợ quầy thịt', en: 'Butcher Packaging & Counter Assistant', ko: '포장 및 정육 코너 보조 직원' }, bo_phan: 'quay_thit', loai: null },
+  { ten: { vi: 'Thợ pha lóc thịt bò',                    en: 'Skilled Beef Trimmer',                  ko: '소고기 정육사' },   bo_phan: 'quay_thit', loai: null },
 ];
 
 const dungDuPhong = viTri.length === 0;
