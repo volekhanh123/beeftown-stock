@@ -22,6 +22,7 @@ import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { quetChuViet, VIET } from './quet-chu-viet.mjs';
+import { kiemNn, docThuVien } from './kiem-nn.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GOC = join(__dirname, '..', '..');
@@ -178,6 +179,9 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     'pages/noi-bo/kho/huong-dan.astro',
     'pages/noi-bo/kho/quy-trinh.astro',
     // ---- hết gói hướng dẫn ----
+    // ---- thêm cho gói báo cáo (số trong bảng chưa theo ngôn ngữ) ----
+    'components/kho/BangBaoCao.astro',
+    // ---- hết phần thêm ----
   ];
 
   const la = [...CHUA_LAM, ...Object.keys(KHONG_QUET)].filter(f => !TAT_CA.includes(f));
@@ -188,6 +192,14 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     const sot = quetChuViet(doc(f), CO_Y);
     ok(f, sot.length === 0, sot.slice(0, 3).map(([n, d]) => `dòng ${n}: ${d.slice(0, 90)}`).join(' | '));
   }
+
+  // Thư viện đã có bản tiếng Anh mà trang quên truyền nn → màn tiếng Anh vẫn
+  // hiện tiếng Việt (bộ quét trên không thấy được). Chỉ kiểm trang, component, khung.
+  const tv = docThuVien();
+  const giaoDien = quet.filter(f => !f.startsWith('lib/'));
+  const sotNn = giaoDien.flatMap(f => kiemNn(doc(f), tv).map(([n, d]) => `${f}:${n} ${d}`));
+  ok(`${giaoDien.length} trang / component đã dịch đều truyền nn cho thư viện (${tv.ham.size} hàm có nn, không dùng ${tv.bangCu.size} bảng tên cũ)`,
+     sotNn.length === 0, sotNn.slice(0, 6).join(' | '));
 }
 
 // ===========================================================================

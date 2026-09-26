@@ -216,9 +216,9 @@ if (k.chiNhanh && k.daKhoiTao) {
 
 const nhanh = thaoTacCuaVai(vai);
 const tenGoi = k.nhanSu.ho_ten.trim().split(/\s+/).pop();
-const viecNgay = suKien.filter(e => cauSuKien(e).muc === 'do').sort((a, b) => a.luc.localeCompare(b.luc));
+const viecNgay = suKien.filter(e => cauSuKien(e, nn).muc === 'do').sort((a, b) => a.luc.localeCompare(b.luc));
 // Thủ kho đã có thẻ "Quầy đang cần" riêng — không nhắc lại yêu cầu của quầy trong danh sách việc.
-const viecSom = suKien.filter(e => cauSuKien(e).muc === 'vang' && !(yeuCauCho.length > 0 && e.khoa === 'yeu_cau_quay'))
+const viecSom = suKien.filter(e => cauSuKien(e, nn).muc === 'vang' && !(yeuCauCho.length > 0 && e.khoa === 'yeu_cau_quay'))
   .sort((a, b) => a.luc.localeCompare(b.luc));
 
 // NV quầy

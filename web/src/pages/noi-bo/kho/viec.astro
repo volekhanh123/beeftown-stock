@@ -28,8 +28,8 @@ if (k.chiNhanh && k.daKhoiTao) {
   loiDoc = r.loi ?? loiDoc;
 }
 // Cũ nhất lên trước: việc tồn lâu nhất làm trước.
-const ngay = suKien.filter(e => cauSuKien(e).muc === 'do').sort((a, b) => a.luc.localeCompare(b.luc));
-const som = suKien.filter(e => cauSuKien(e).muc === 'vang').sort((a, b) => a.luc.localeCompare(b.luc));
+const ngay = suKien.filter(e => cauSuKien(e, k.nn).muc === 'do').sort((a, b) => a.luc.localeCompare(b.luc));
+const som = suKien.filter(e => cauSuKien(e, k.nn).muc === 'vang').sort((a, b) => a.luc.localeCompare(b.luc));
 const t = dichNB(k.nn, {
   tieuDe: { vi: 'Việc cần làm', en: 'To-do' },
   khongCo: { vi: 'Không có việc gì đang chờ. Tốt lắm!', en: 'Nothing is waiting. Well done!' },
