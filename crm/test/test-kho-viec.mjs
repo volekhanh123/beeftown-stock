@@ -114,7 +114,8 @@ await nhom('2 · BỘ KHÓA ĐÚNG THEO QUYỀN TỪNG VAI', async () => {
                  'cong_no_qua_han', 'cong_no_7_ngay', 'chua_doi_chieu',
                  'yeu_cau_quay', ...DI_DUONG, 'chuyen_nhan_thieu',
                  'thu_hoi_thap',    // 0033: pha lóc thu hồi thấp, chưa bấm "Đã xem"
-                 'ipos_cho_xu_ly'], // 0037: dòng bán iPOS chưa trừ được kho
+                 'ipos_cho_xu_ly',  // 0037: dòng bán iPOS chưa trừ được kho
+                 'dinh_muc_lech'],  // 0038: mặt hàng bếp nhận lệch định mức 7 ngày
     'thủ kho':  [...CHUNG, 'quay_chua_dem', 'nhap_bi_tra', 'nhap_nhap', 'huy_bi_tra', 'kiem_ke_tra_ve', 'pha_nhap',
                  'yeu_cau_quay'],
     'NV quầy':  [...CHUNG, 'quay_chua_dem', 'huy_bi_tra', 'kiem_ke_tra_ve', ...DI_DUONG],

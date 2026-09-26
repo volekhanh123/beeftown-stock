@@ -152,6 +152,10 @@ const CHAY_DA_DANG_NHAP = [
   // Bán hàng iPOS (GĐ7a, 0037): trạng thái, cấu hình, hàng chờ, ghép mã — chỉ gọi từ
   // /noi-bo/kho (Kết nối iPOS, Bán hàng iPOS, trang chủ quản lý). Không đọc / ghi token.
   'web/src/lib/kho/ban-ipos.ts',
+  // Định lượng món, đối chiếu định mức (GĐ7b, 0038) — chỉ gọi từ /noi-bo/kho/cai-dat/dinh-luong,
+  // /noi-bo/kho/bao-cao/dinh-muc và file CSV của nó, bằng client của nhân sự. Không cột tiền
+  // nào ở bảng món / định lượng; tiền lệch do database trả null khi không xem giá.
+  'web/src/lib/kho/dinh-luong.ts',
   // Một lượt đồng bộ iPOS (GĐ7a): "Cập nhật ngay" chạy bằng client của quản lý / chủ;
   // cron đăng nhập tài khoản máy may_ipos (client anon riêng → sau signIn là authenticated).
   'web/src/lib/kho/ipos-dong-bo.ts',

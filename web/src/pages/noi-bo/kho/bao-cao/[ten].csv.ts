@@ -3,6 +3,8 @@
  *
  *   /noi-bo/kho/bao-cao/<xuat-nhap-ton|thu-hoi|hao-hut|ban>.csv?tu=&den=
  *   /noi-bo/kho/bao-cao/cong-no.csv
+ *   /noi-bo/kho/bao-cao/dinh-muc.csv?tu=&den=   (GĐ7b, 0038 — mọi vai xem kho;
+ *        cột "Tiền lệch" chỉ khi người tải có quyền xem giá)
  *
  * Đi qua middleware như mọi đường /noi-bo — chưa đăng nhập thì bị chuyển về
  * trang đăng nhập. Dữ liệu lấy bằng client mang token của người đang dùng,
@@ -12,15 +14,21 @@
  * thêm xuất khác và hao hụt (0032); định dạng file giữ như cũ.
  */
 import type { APIRoute } from 'astro';
-import { duoc, homNayVn } from '../../../../lib/kho/chung.ts';
+import { congNgay, duoc, homNayVn } from '../../../../lib/kho/chung.ts';
 import { BAO_CAO, COT_CONG_NO, docBaoCao, kyBaoCao, taoCsv, tieuDeCsv, tinhTong } from '../../../../lib/kho/bao-cao.ts';
 import { docCongNoPhieu, tenLoaiCongNo } from '../../../../lib/kho/cong-no.ts';
+import { docBaoCaoDinhMuc, dinhNghiaDinhMuc, NGAY_TOI_DA_DINH_MUC } from '../../../../lib/kho/dinh-luong.ts';
 
 export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
   const phien = locals.phien;
   if (!phien) return new Response('Chưa đăng nhập', { status: 401 });
   const { client, nhanSu } = phien;
-  if (!duoc(nhanSu.vai_tro, 'xem_gia')) return new Response('Tài khoản không xem được báo cáo tiền', { status: 403 });
+  const ten = params.ten ?? '';
+  // Đối chiếu định mức (0038) mở cho mọi vai xem kho (thủ kho, NV quầy: chỉ kg).
+  // Mọi file khác có tiền — chỉ vai xem giá.
+  if (ten === 'dinh-muc' ? !duoc(nhanSu.vai_tro, 'xem') : !duoc(nhanSu.vai_tro, 'xem_gia')) {
+    return new Response(ten === 'dinh-muc' ? 'Tài khoản không xem được kho' : 'Tài khoản không xem được báo cáo tiền', { status: 403 });
+  }
 
   // Chi nhánh: cùng cách chọn với moTrangKho() — nhân sự theo chi nhánh của
   // mình, chủ nhà hàng theo chi nhánh đang chọn (cookie) hoặc chi nhánh đầu.
@@ -31,7 +39,6 @@ export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
     : cacCn.find(c => c.ma === cookies.get('bt_kho_cn')?.value) ?? cacCn[0];
   if (!cn) return new Response('Chưa có chi nhánh', { status: 404 });
 
-  const ten = params.ten ?? '';
   const homNay = homNayVn();
   const { tu, den } = kyBaoCao(url.searchParams, homNay);
   let csv: string;
@@ -48,6 +55,15 @@ export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
       return new Response('Không đọc được công nợ', { status: 500 });
     }
     tenTep = `cong-no-${cn.ma}-${homNay}.csv`;
+  } else if (ten === 'dinh-muc') {
+    if (congNgay(tu, NGAY_TOI_DA_DINH_MUC) < den) return new Response('Khoảng ngày tối đa 1 năm', { status: 400 });
+    const coGia = duoc(nhanSu.vai_tro, 'xem_gia');
+    const dn = dinhNghiaDinhMuc(coGia);
+    const kq = await docBaoCaoDinhMuc(client, cn.id, tu, den);
+    if (kq.loi) return new Response(kq.loi, { status: 500 });
+    const dong = kq.dong as unknown as Record<string, unknown>[];
+    csv = taoCsv(dn.cot, dong, { tieuDe: tieuDeCsv(cn.ten, dn.ten, tu, den), tong: tinhTong(dn, dong) });
+    tenTep = `kho-dinh-muc-${cn.ma}-${tu}-${den}.csv`;
   } else if (Object.hasOwn(BAO_CAO, ten)) {
     // Kỳ lấy từ form chọn ngày của trang Báo cáo (nút "Tải về Excel" gửi chính
     // form đó), nên luôn là hai ngày đang thấy trên màn hình.

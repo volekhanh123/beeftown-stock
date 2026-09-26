@@ -162,6 +162,22 @@ export function cauSuKien(su: SuKien): CauSuKien {
                chiTiet: `${phut ? `Lần tốt cuối: ${phut} phút trước. ` : ''}Số bán chưa về kho — mở Kết nối iPOS xem lỗi, bấm "Cập nhật ngay".`,
                link: '/noi-bo/kho/cai-dat/ipos', nut: 'Xem', muc: 'do' };
     }
+    // ---- 0038 · Định lượng: bếp nhận lệch định mức 7 ngày ------------------
+    case 'dinh_muc_lech': {
+      // Quản lý: so = lệch % (dương = bếp nhận nhiều hơn định lượng), phu = lệch kg,
+      // luc = 0 giờ hôm nay (giờ VN) → khoảng 7 ngày của cảnh báo = luc − 6 ngày … luc.
+      const pt = soNguyen(e.so);
+      const lechKg = soNguyen(e.phu);
+      const t = new Date(e.luc).getTime();
+      const ngay = (n: number) => Number.isFinite(t) ? new Date(t + 7 * 3600000 + n * 86400000).toISOString().slice(0, 10) : null;
+      const nhieu = (lechKg ?? pt ?? 0) >= 0;
+      return { tieuDe: `Bếp nhận thịt ${nhieu ? 'nhiều' : 'ít'} hơn định lượng: ${e.ten || e.ma || 'một mặt hàng'}`,
+               chiTiet: `7 ngày qua${pt !== null && Number.isFinite(pt) ? ` lệch ${pt > 0 ? '+' : ''}${pt.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%` : ''}`
+                 + `${lechKg !== null && Number.isFinite(lechKg) ? ` (${lechKg > 0 ? '+' : ''}${kg(lechKg)})` : ''}`
+                 + ' so với số món bán trên iPOS. Xem lại phiếu Xuất bếp và định lượng món.',
+               link: `/noi-bo/kho/bao-cao/dinh-muc${ngay(-6) ? `?${q({ tu: ngay(-6), den: ngay(0) })}` : ''}`,
+               nut: 'Xem', muc: 'vang' };
+    }
     default:
       return { tieuDe: e.ten || e.ma || 'Có việc mới', link: '/noi-bo/kho', nut: 'Xem', muc: 'xam' };
   }
@@ -178,6 +194,8 @@ export const KHOA_SU_KIEN = [
   'thu_hoi_thap',
   // 0037
   'ipos_cho_xu_ly', 'ipos_mat_ket_noi',
+  // 0038
+  'dinh_muc_lech',
 ] as const;
 
 /** Sự kiện là "việc cần làm" (có nút làm ngay, không chỉ để biết). */

@@ -493,6 +493,55 @@ curl "http://localhost:8787/cdn-cgi/handler/scheduled"   # gọi scheduled một
 
 (`/__scheduled` của `--test-scheduled` bị router Astro trả 404 — dùng `/cdn-cgi/handler/scheduled`.)
 
+## 3k. Định lượng món · đối chiếu định mức bếp (GĐ7b, migration 0038)
+
+Chủ quán đã chốt: **định lượng món chỉ để đối chiếu**. Bếp vẫn nhận thịt bằng phiếu Xuất bếp; bếp
+không phải vị trí tồn; kho **không** tự trừ theo định lượng.
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/cai-dat/dinh-luong` | `danh_muc` | Danh sách món (tìm tên / mã iPOS không dấu, chip "Chưa có định lượng", "Ngừng bán", 30 món một trang — mọi thứ trên URL). `?mon=<id>` mở lưới mặt hàng × gram. Nút "Lấy món từ iPOS", "+ Thêm một món", "Dán định lượng từ Excel" → Xem trước → Áp dụng |
+| `/noi-bo/kho/bao-cao/dinh-muc?tu=&den=` | `xem` (cột "Tiền lệch" chỉ `xem_gia`) | Theo mặt hàng: bếp nhận kg, lẽ ra dùng kg, lệch kg / %, số suất bán; màu đỏ / vàng / xanh / xám (`mucLech`). Mốc nhanh như trang Báo cáo. CSV `bao-cao/dinh-muc.csv` |
+
+**Dữ liệu** (0038, chi tiết trong comment đầu migration): `kho_mon` theo **chi nhánh** (mã món iPOS riêng từng
+máy), `kho_dinh_luong` (món × mặt hàng × gram, 0 < gram ≤ 10.000). Hai bảng không có cột tiền.
+
+- **Bếp nhận** = mọi dòng sổ `xuat_bep` trong kỳ: phiếu Xuất bếp **và** phần "chuyển bếp" khi chốt pha lóc
+  (mở lại phiên pha thì trừ lại).
+- **Lẽ ra dùng** = số suất × gram. Số suất = dòng iPOS có mã khớp `kho_mon.ma_ipos`; bỏ hóa đơn hủy, dòng `da_huy`,
+  và dòng `da_ghi` (hàng bán thẳng từ quầy, đã trừ kho — bếp không nhận). Món ăn thường ghép kiểu `bo_qua` ở
+  Bán hàng iPOS → vẫn được đếm.
+- "Lấy món từ iPOS" (`kho_mon_tu_ipos`) lấy mã ghép kiểu `bo_qua` + mã bán chưa ghép; **không** lấy kiểu `mon` /
+  `goi_can` (hàng kho bán nguyên gói). `kho_luu_mon` cũng từ chối mã đang ghép hai kiểu đó.
+- Lệch % = (bếp nhận − lẽ ra dùng) ÷ lẽ ra dùng; `vuot_nguong` khi |lệch| **>** `nguong_dinh_muc_pt` (sửa ở
+  Thiết lập → Ngưỡng cảnh báo). Chưa có suất bán nào khớp món → `chua_co_ban`, không đánh giá.
+- Tiền lệch = kg lệch × giá vốn trung bình phần bếp nhận trong kỳ (kỳ bếp không nhận mặt hàng đó: giá vốn TB
+  mọi lô của mặt hàng ở chi nhánh); database trả null cho vai không xem giá,
+  web bỏ hẳn cột ở bảng và CSV (`cotDinhMuc(coGia)`).
+
+**Web** (`lib/kho/dinh-luong.ts`): hàm thuần `tachDanDinhLuong` (Tab hoặc `;`, ô trong ngoặc kép giữ dấu ngăn,
+tiêu đề Món / Mặt hàng / Gram xếp tùy ý, `dong` = số dòng trong ô dán — câu lỗi của database dùng số này),
+`docLuoiDinhLuong` (ô `mh_<i>`, `gram_<i>`, `bo_<i>`, `so_dong`), `phienBanDinhLuong`, `locMon`, `mucLech`,
+`cotDinhMuc` / `dinhNghiaDinhMuc` (dùng `taoCsv` / `tinhTong` của `bao-cao.ts`; dòng tổng không tính % chung).
+Khớp món / mặt hàng, kiểm gram, tạo món mới khi áp dụng: **database** (`kho_nhap_dinh_luong`), không lặp ở web.
+
+- Lưới một món: lưu = **thay toàn bộ** (`kho_luu_dinh_luong`); dòng trống / tích "Bỏ" là không có. Nút "Thêm dòng"
+  (cùng form, `viec=them_dong`) dựng lại lưới với 3 dòng trống, không lưu. Form mang `phien_ban` = chuỗi
+  mặt hàng:gram lúc mở; lưu mà database đã khác thì từ chối, không đè.
+- Dán Excel áp dụng chỉ thêm / sửa gram, không xóa mặt hàng vắng mặt trong bảng dán; còn dòng lỗi thì từ chối cả
+  bảng (trang hiện lại bản xem trước). Áp dụng lại cùng bảng không đổi gì — không cần `ma_gui`.
+- Bếp nhận tính **mọi** phiếu Xuất bếp, kể cả lý do "Cơm nhân viên", "Gần hết hạn" — các phiếu đó làm lệch dương.
+- Ô menu "Định mức bếp" / "Định lượng món" nằm dưới đường của Báo cáo / Thiết lập: `dangO` chỉ cho ô cụ thể nhất sáng.
+- Cảnh báo `dinh_muc_lech` (quản lý, chủ): 7 ngày gần nhất, mỗi mặt hàng lệch một dòng; nút "Xem" mở báo cáo đúng
+  7 ngày đó. Số đỏ ở ô menu "Định mức bếp" (`quyen: duyet`). Ô "Định lượng món" (`danh_muc`) nằm trong Khác và
+  trong phần danh mục của Thiết lập. Bước Thiết lập `dinh_muc` là **định mức tồn quầy** — không liên quan.
+- Hướng dẫn: mục `dinh-luong` (quản lý, chủ), nút "?" của cả hai trang.
+- Chưa làm: cờ "món không dùng thịt" (đồ uống lấy từ iPOS nằm ở "Chưa có định lượng" tới khi chọn "Ngừng bán /
+  không dùng thịt").
+
+Test: `test-kho-dinh-luong.mjs` (database), `test-kho-dinh-luong-web.mjs` (hàm thuần, trang), nhóm 10c của
+`test-kho-thu-kho.mjs` (thủ kho / NV quầy không thấy tiền lệch).
+
 ## 4. Cài như app (PWA)
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng
@@ -562,6 +611,8 @@ node test/test-kho-giao-dien.mjs      # menu, link, hướng dẫn, manifest, Ja
 node test/test-kho-viec.mjs           # số đỏ, thông báo, ngưỡng, chỉ số quản trị
 node test/test-kho-ipos.mjs           # đồng bộ iPOS: phần database
 node test/test-kho-ipos-web.mjs       # đồng bộ iPOS: ipos.ts, dongBoIpos, cron, quét token (cần build web để kiểm dist)
+node test/test-kho-dinh-luong.mjs     # định lượng món, đối chiếu định mức: phần database
+node test/test-kho-dinh-luong-web.mjs # định lượng: dán Excel, lưới gram, màu lệch, cột tiền, trang
 cd ../web && npm run kiem-tra && npm run quet && npm run build
 ```
 

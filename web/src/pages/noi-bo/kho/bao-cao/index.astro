@@ -11,7 +11,8 @@
  *
  * Số do database tính (hàm kho_bao_cao_*, 0024; xuất – nhập – tồn dùng
  * kho_bao_cao_xnt_v2 của 0032, có cột xuất khác và hao hụt; bán hàng dùng
- * kho_bao_cao_ban_thuc của 0037, cột "Nguồn" iPOS / Ước tính) — trang này chỉ hiện. Dòng
+ * kho_bao_cao_ban_thuc của 0037, cột "Nguồn" iPOS / Ước tính) — trang này chỉ hiện.
+ * "Định mức bếp" (0038) là trang riêng bao-cao/dinh-muc (mở cho mọi vai xem kho). Dòng
  * tổng tính chung một hàm với file Excel (tinhTong), nên hai bên luôn khớp.
  */
 import Kho from '../../../../layouts/Kho.astro';
@@ -61,6 +62,8 @@ const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDan
     {Object.entries(BAO_CAO).map(([k2, b]) => (
       <a href={link({ bao_cao: k2 })} aria-current={k2 === ten ? 'page' : undefined} style="min-height:48px">{b.ten}</a>
     ))}
+    {/* GĐ7b (0038): trang riêng — thủ kho cũng mở được (chỉ kg). Giữ kỳ đang chọn. */}
+    <a href={`/noi-bo/kho/bao-cao/dinh-muc?${new URLSearchParams({ tu, den }).toString()}`} style="min-height:48px">Định mức bếp</a>
   </nav>
 
   <form method="GET" action="/noi-bo/kho/bao-cao" class="nb-the">

@@ -83,6 +83,13 @@ export const MUC_KHO: MucKho[] = [
   // GĐ7a (0037): dòng bán iPOS chưa trừ được kho — chưa ghép món, thiếu hàng trên sổ.
   { ma: 'ban_ipos', ten: 'Bán hàng iPOS', link: '/noi-bo/kho/ban-ipos', bieuTuong: 'quay', quyen: ['duyet'],
     dem: ['ipos_cho_xu_ly'] },
+  // GĐ7b (0038): định lượng món (danh_muc) và đối chiếu định mức bếp. Báo cáo mở
+  // cho mọi vai xem kho, nhưng ô menu chỉ cho quản lý / chủ — người nhận cảnh
+  // báo dinh_muc_lech (số đỏ). Thủ kho / NV quầy mở trang (chỉ kg) khi được gửi link.
+  { ma: 'dinh_luong', ten: 'Định lượng món', link: '/noi-bo/kho/cai-dat/dinh-luong', bieuTuong: 'bep',
+    quyen: ['danh_muc'] },
+  { ma: 'dinh_muc', ten: 'Định mức bếp', link: '/noi-bo/kho/bao-cao/dinh-muc', bieuTuong: 'bao_cao',
+    quyen: ['duyet'], dem: ['dinh_muc_lech'] },
   { ma: 'quy_trinh', ten: 'Quy trình', link: '/noi-bo/kho/quy-trinh', bieuTuong: 'quy_trinh', quyen: ['xem'] },
   // GĐ5e: màn Cài đặt thành "Thiết lập" có tiến độ từng bước (0035). Không số
   // đỏ — số bước còn lại hiện ngay trên màn, kho_dem_viec không đếm nó.
@@ -179,6 +186,13 @@ export function dangO(muc: { link: string; khop?: string[] }, duong: string, tim
   const d = duong.replace(/\/$/, '') || '/';
   if (q) return d === goc && timKiem.replace(/^\?/, '').split('&').includes(q);
   if (goc === '/noi-bo/kho') return d === goc;
+  // Trang có ô menu riêng nằm dưới đường của ô khác (bao-cao/dinh-muc dưới
+  // Báo cáo, cai-dat/dinh-luong dưới Thiết lập, GĐ7b): chỉ ô riêng sáng.
+  const conRieng = MUC_KHO.some(m => {
+    const l = m.link.split('?')[0];
+    return !m.link.includes('?') && l.startsWith(goc + '/') && (d === l || d.startsWith(l + '/'));
+  });
+  if (conRieng) return false;
   return d === goc || d.startsWith(goc + '/') || (muc.khop ?? []).some(p => d === p || d.startsWith(p + '/'));
 }
 

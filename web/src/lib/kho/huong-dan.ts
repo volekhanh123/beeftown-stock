@@ -773,6 +773,24 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     link: { href: '/noi-bo/kho/cai-dat/cong-thuc', chu: 'Mở Công thức pha lóc' },
   },
   {
+    id: 'dinh-luong', vai: ['quan_ly', 'chu_so_huu'],
+    tieuDe: 'Định lượng món và định mức bếp',
+    tomTat: 'Mỗi suất món dùng bao nhiêu gram thịt. Phần mềm nhân với số suất bán trên iPOS rồi so với số thịt bếp đã nhận. Chỉ để so — kho không tự trừ.',
+    buoc: [
+      'Mở **Khác** → **Định lượng món**. Bấm **Lấy món từ iPOS** để có sẵn danh sách món đã bán.',
+      'Nhiều món: mở **Dán định lượng từ Excel**, dán bảng **Món · Mặt hàng · Gram**, bấm **Xem trước** rồi **Áp dụng**.',
+      'Từng món: bấm tên món, chọn mặt hàng, gõ gram một suất, bấm **Lưu định lượng**. Cần thêm ô thì bấm **Thêm dòng**.',
+      'Xem kết quả: mở **Khác** → **Định mức bếp**, chọn kỳ. Dòng đỏ là lệch quá ngưỡng.',
+    ],
+    meo: [
+      'Chip **Chưa có định lượng** lọc các món còn thiếu gram.',
+      'Đồ uống, món không dùng thịt: mở món → **Đổi tên, mã iPOS, ngừng bán** → chọn "Ngừng bán / không dùng thịt".',
+      'Bếp vẫn lấy thịt bằng phiếu **Xuất bếp** như cũ. Ngưỡng lệch sửa ở **Thiết lập** → **Ngưỡng cảnh báo**.',
+      'Lệch vượt ngưỡng 7 ngày gần nhất thì chuông báo quản lý mỗi sáng.',
+    ],
+    link: { href: '/noi-bo/kho/cai-dat/dinh-luong', chu: 'Mở Định lượng món' },
+  },
+  {
     id: 'nha-cung-cap', vai: ['chu_so_huu', 'quan_ly', 'ke_toan'],
     tieuDe: 'Nhà cung cấp',
     tomTat: 'Tên, mã số thuế, tài khoản ngân hàng, số ngày được nợ.',

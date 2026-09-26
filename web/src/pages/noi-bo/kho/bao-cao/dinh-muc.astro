@@ -1,0 +1,189 @@
+---
+/**
+ * KHO — BÁO CÁO · ĐỐI CHIẾU ĐỊNH MỨC BẾP (GĐ7b, migration 0038)
+ *
+ * Theo mặt hàng: bếp đã nhận bao nhiêu kg (phiếu Xuất bếp + phần "chuyển bếp"
+ * khi chốt pha lóc) so với số kg lẽ ra dùng (số suất bán trên iPOS × gram định
+ * lượng của món). Lệch vượt ngưỡng (Thiết lập → Ngưỡng cảnh báo → Định mức)
+ * tô đỏ. Chỉ để so — kho không trừ theo định lượng.
+ *
+ * Mọi vai xem kho mở được (thủ kho, NV quầy xem kg). Cột "Tiền lệch" chỉ vai
+ * xem giá: database trả null cho vai khác, trang bỏ hẳn cột.
+ *
+ * Kỳ: nút nhanh như trang Báo cáo; mặc định từ đầu tháng. Link từ chuông
+ * (dinh_muc_lech) mở sẵn đúng 7 ngày của cảnh báo (?tu=&den=).
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import { kyBaoCao, kyNhanh, tinhTong } from '../../../../lib/kho/bao-cao.ts';
+import {
+  docBaoCaoDinhMuc, dinhNghiaDinhMuc, mucLech, hienLechKg, hienLechPt, TEN_MUC_LECH, NGAY_TOI_DA_DINH_MUC,
+  type DongDinhMuc,
+} from '../../../../lib/kho/dinh-luong.ts';
+import { congNgay, dinhDangKg, dinhDangNgay, dinhDangTien, homNayVn, TEN_LOAI_MAT_HANG } from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem')) return Astro.redirect('/noi-bo/kho', 302);
+
+const q = Astro.url.searchParams;
+const homNay = homNayVn();
+const { tu, den } = kyBaoCao(q, homNay);
+const cacKy = kyNhanh(homNay);
+const kyDangChon = cacKy.find(x => x.tu === tu && x.den === den)?.ten;
+const coGia = k.duoc('xem_gia');
+const dn = dinhNghiaDinhMuc(coGia);
+
+let dong: DongDinhMuc[] = [];
+let loiDoc = k.loiDoc;
+let daDoc = false;
+if (congNgay(tu, NGAY_TOI_DA_DINH_MUC) < den) {
+  loiDoc = 'Khoảng ngày dài quá — chọn tối đa 1 năm.';
+} else if (k.chiNhanh && k.daKhoiTao) {
+  const kq = await docBaoCaoDinhMuc(k.client, k.chiNhanh.id, tu, den);
+  dong = kq.dong;
+  loiDoc = kq.loi ?? loiDoc;
+  daDoc = !kq.loi;
+}
+const dau = dong[0];
+const chuaCoBan = daDoc && (dau ? dau.chua_co_ban : true);
+const chuaDl = dau?.so_mon_chua_dinh_luong ?? 0;
+const nguong = dau?.nguong_pt ?? null;
+const soVuot = dong.filter(d => mucLech(d) === 'do').length;
+const tong = tinhTong(dn, dong as unknown as Record<string, unknown>[])[0];
+const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDangNgay(den)}`;
+const link = (thay: Record<string, string>) => `/noi-bo/kho/bao-cao/dinh-muc?${new URLSearchParams({ tu, den, ...thay }).toString()}`;
+const kg = (n: number) => (n === 0 ? '·' : dinhDangKg(n));
+---
+<Kho k={k} huongDan="dinh-luong" tieuDe="Đối chiếu định mức bếp" rong>
+  <h1>Đối chiếu định mức bếp</h1>
+  {coGia && <p><a href="/noi-bo/kho/bao-cao">← Báo cáo kho</a></p>}
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  <form method="GET" action="/noi-bo/kho/bao-cao/dinh-muc" class="nb-the">
+    <nav class="kho-dh" aria-label="Chọn nhanh kỳ" style="margin:0;padding:0 0 .75rem">
+      {cacKy.map(x => (
+        <a href={link({ tu: x.tu, den: x.den })} aria-current={x.ten === kyDangChon ? 'page' : undefined} style="min-height:48px">{x.ten}</a>
+      ))}
+    </nav>
+    <div class="kho-luoi">
+      <label class="nb-o"><span>Từ ngày</span><input type="date" name="tu" value={tu} required /></label>
+      <label class="nb-o"><span>Đến ngày</span><input type="date" name="den" value={den} required /></label>
+    </div>
+    <div class="kho-thanh-nut" style="margin:0">
+      <button type="submit" class="nb-nut phu">Xem</button>
+      <button type="submit" class="nb-nut phu" formaction="/noi-bo/kho/bao-cao/dinh-muc.csv">Tải về Excel (CSV)</button>
+    </div>
+  </form>
+
+  <p class="nb-dan">
+    <strong>{kyChu}</strong>. <strong>Bếp nhận</strong> = phiếu Xuất bếp + phần chuyển bếp khi pha lóc.{' '}
+    <strong>Lẽ ra dùng</strong> = số suất bán trên iPOS × gram mỗi suất (Định lượng món).
+    {nguong !== null && <> Lệch quá <strong>{nguong.toLocaleString('vi-VN')}%</strong> thì tô đỏ.</>}
+    {' '}Số dương: bếp nhận nhiều hơn lẽ ra dùng.
+  </p>
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+  ) : daDoc && (
+    <>
+      {chuaCoBan && (
+        <div class="nb-bao luu-y" role="status">
+          <p style="margin:0"><strong>Kỳ này chưa có món bán nào từ iPOS khớp với món có định lượng</strong>, nên chưa tính được
+            "lẽ ra dùng" — bảng dưới chỉ có số bếp nhận.
+            {k.duoc('danh_muc')
+              ? <> Kiểm tra <a href="/noi-bo/kho/cai-dat/ipos">Kết nối iPOS</a>, và gắn mã iPOS cho món ở{' '}
+                  <a href="/noi-bo/kho/cai-dat/dinh-luong">Định lượng món</a> (bấm "Lấy món từ iPOS").</>
+              : <> Nhờ quản lý kiểm tra kết nối iPOS và định lượng món.</>}
+          </p>
+        </div>
+      )}
+      {!chuaCoBan && chuaDl > 0 && (
+        <div class="nb-bao luu-y" role="status">
+          <p style="margin:0"><strong>{chuaDl} món có bán trong kỳ mà chưa có định lượng</strong> — số "lẽ ra dùng" đang thiếu phần của
+            những món đó, nên lệch có thể cao hơn thực tế.
+            {k.duoc('danh_muc') && <> <a href="/noi-bo/kho/cai-dat/dinh-luong?loc=chua">Nhập gram cho các món này</a>.</>}
+          </p>
+        </div>
+      )}
+      {!chuaCoBan && dong.length > 0 && (
+        <p class="dm-tom">
+          {soVuot > 0
+            ? <span class="dm-chip do">{soVuot} mặt hàng lệch quá ngưỡng</span>
+            : <span class="dm-chip xanh">Không mặt hàng nào lệch quá ngưỡng</span>}
+        </p>
+      )}
+
+      {dong.length === 0 ? (
+        <p class="nb-rong">
+          {dn.khiTrong.cau}.{' '}
+          {k.duoc('danh_muc') ? <a href="/noi-bo/kho/cai-dat/dinh-luong">Mở Định lượng món</a> : null}
+        </p>
+      ) : (
+        <div class="kho-bang-khung">
+          <table class="kho-bang kho-bao-cao">
+            <thead>
+              <tr>
+                <th>Mặt hàng</th>
+                <th class="so">Bếp nhận kg</th>
+                <th class="so">Lẽ ra dùng kg</th>
+                <th class="so">Lệch kg</th>
+                <th class="so">Lệch %</th>
+                <th class="so">Số suất bán</th>
+                {coGia && <th class="so">Tiền lệch</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {dong.map(d => {
+                const muc = mucLech(d);
+                return (
+                  <tr class={`dm-${muc}`}>
+                    <td>
+                      <strong>{d.ten}</strong><br />
+                      <span class="kho-phu">{d.ma}{TEN_LOAI_MAT_HANG[d.loai] ? ` · ${TEN_LOAI_MAT_HANG[d.loai]}` : ''}</span>{' '}
+                      <span class={`dm-chip ${muc}`}>{TEN_MUC_LECH[muc]}</span>
+                    </td>
+                    <td class="so">{kg(d.kg_xuat_bep)}</td>
+                    <td class="so">{d.kg_ly_thuyet > 0 ? dinhDangKg(d.kg_ly_thuyet) : '—'}</td>
+                    <td class="so">{d.kg_ly_thuyet > 0 || d.chenh_kg !== 0 ? hienLechKg(d.chenh_kg) : '·'}</td>
+                    <td class="so"><strong>{hienLechPt(d.chenh_pt)}</strong></td>
+                    <td class="so">{d.so_suat > 0 ? d.so_suat.toLocaleString('vi-VN') : '—'}</td>
+                    {coGia && <td class="so">{d.tien_chenh !== null && d.tien_chenh !== 0 ? dinhDangTien(d.tien_chenh) : '·'}</td>}
+                  </tr>
+                );
+              })}
+            </tbody>
+            {tong && (
+              <tfoot>
+                <tr class="tong">
+                  <td>Tổng</td>
+                  <td class="so">{kg(tong.so.kg_xuat_bep ?? 0)}</td>
+                  <td class="so">{kg(tong.so.kg_ly_thuyet ?? 0)}</td>
+                  <td class="so">{hienLechKg(tong.so.chenh_kg ?? 0)}</td>
+                  <td></td>
+                  <td></td>
+                  {coGia && <td class="so">{dinhDangTien(tong.so.tien_chenh ?? 0)}</td>}
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      )}
+      <p class="kho-phu">Mặt hàng "Chưa so được": bếp có nhận nhưng chưa món bán nào trong kỳ có gram của mặt hàng đó.
+        {coGia && <> Tiền lệch = kg lệch × giá vốn trung bình phần bếp nhận trong kỳ (kỳ bếp không nhận thì lấy giá vốn trung bình các lô của mặt hàng).</>}
+        {' '}Bếp nhận nhiều hơn thường do: phiếu Xuất bếp dùng cho việc khác (cơm nhân viên, hàng gần hết hạn), gram định lượng thấp hơn thực tế, món bán ngoài iPOS, hoặc hao hụt khi chế biến.
+        Bếp nhận ít hơn thường do: bếp lấy thịt mà không lập phiếu Xuất bếp, hoặc gram định lượng cao hơn thực tế.</p>
+    </>
+  )}
+</Kho>
+
+<style>
+  .dm-tom { margin: .5rem 0 1rem; }
+  .dm-chip { display: inline-block; font-size: .75rem; font-weight: 700; padding: .15rem .5rem; border-radius: 4px; white-space: nowrap; }
+  .dm-chip.do { background: var(--do); color: #fff; }
+  .dm-chip.vang { background: var(--kho-vang-nen); color: #7A5A00; }
+  .dm-chip.xanh { background: var(--kho-xanh-nen); color: #1F7A4C; }
+  .dm-chip.xam { background: var(--kem-sau); color: var(--muc-nhat); }
+  tr.dm-do td { background: var(--kho-do-nen); }
+</style>

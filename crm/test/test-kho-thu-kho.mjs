@@ -18,6 +18,8 @@
  *      so giá → duyệt; thủ kho sửa kg sau khi đã có giá thì giá không mất.
  * Thêm (0035): nợ đầu kỳ không lộ ra với thủ kho; tồn đầu kỳ dạng lưới và
  * tiến độ Thiết lập không trả khóa tiền.
+ * Thêm (0038): báo cáo đối chiếu định mức trả kg cho thủ kho / NV quầy, tiền
+ * lệch (tien_chenh) chỉ có số với vai xem giá; món, định lượng không có tiền.
  * Cuối cùng: kho_doi_soat_ton() rỗng.
  */
 
@@ -859,6 +861,45 @@ await nhom('10b · NỢ ĐẦU KỲ, TỒN ĐẦU KỲ LƯỚI, TIẾN ĐỘ THI
   const dd = await tk(`select kho_danh_dau_thiet_lap(p_chi_nhanh_id => $1, p_buoc => 'may_chung', p_bo_qua => true)`, [cnA.id]);
   ok('Thủ kho KHÔNG đánh dấu bỏ qua bước được', dd.loi !== null);
   await doiSoat('Sau nợ đầu kỳ, tồn đầu kỳ lưới');
+});
+
+// ===========================================================================
+// 0038 (GĐ7b): định lượng món chỉ có gram; báo cáo đối chiếu định mức trả kg
+// cho mọi vai xem, cột tien_chenh chỉ có số với vai xem_gia.
+await nhom('10c · ĐỊNH LƯỢNG MÓN, ĐỐI CHIẾU ĐỊNH MỨC (0038) — KHÔNG TIỀN', async () => {
+  const mon = await duoi(UID.qlA, `select kho_luu_mon($1, null, 'Bò kho', null, true) as m`, [cnA.id]);
+  ok('Quản lý thêm món', mon.loi === null, mon.loi ?? '');
+  const dl = await duoi(UID.qlA, `select kho_luu_dinh_luong($1, $2::jsonb)`, [mon.rows?.[0]?.m?.id,
+    JSON.stringify([{ mat_hang_id: MH['P-VUN'].id, gram: 100 }, { mat_hang_id: MH['C-THANNGOAI'].id, gram: 50 }])]);
+  ok('Quản lý lưu định lượng', dl.loi === null, dl.loi ?? '');
+  const sua = await tk(`select kho_luu_mon($1, null, 'Món thủ kho', null, true)`, [cnA.id]);
+  ok('Thủ kho KHÔNG thêm được món', sua.loi !== null);
+  const dan = await tk(`select kho_nhap_dinh_luong($1, $2::jsonb, false)`,
+    [cnA.id, JSON.stringify([{ mon: 'Bò kho', mat_hang: 'P-VUN', gram: 90 }])]);
+  ok('Thủ kho KHÔNG dán được định lượng', dan.loi !== null);
+
+  const tu = await ngay(-30);
+  for (const [ai, uid] of [['Thủ kho', UID.thuKhoA], ['NV quầy', UID.nvQuayA]]) {
+    const f = uid === UID.thuKhoA ? tk : (sql, p) => duoi(uid, sql, p);
+    const r = await f(`select * from kho_bao_cao_dinh_muc($1, $2::date, $3::date)`, [cnA.id, tu, homNay]);
+    const vun = r.rows?.find(x => x.mat_hang_id === MH['P-VUN'].id);
+    ok(`${ai} xem được báo cáo định mức (thấy kg bếp nhận của thịt vụn)`, r.loi === null && Number(vun?.kg_xuat_bep) > 0,
+       r.loi ?? JSON.stringify(r.rows));
+    ok(`${ai}: tien_chenh null ở mọi dòng`, (r.rows ?? []).every(x => x.tien_chenh === null));
+    const conLai = (r.rows ?? []).map(({ tien_chenh, ...x }) => x);
+    ok(`${ai}: ngoài tien_chenh (null) không khóa tiền nào`, khoaTien(conLai).length === 0, khoaTien(conLai).join(', '));
+    ok(`${ai}: không đơn giá nào lọt ra dưới dạng giá trị`, !coTien(JSON.stringify(r.rows)));
+    for (const bang of ['kho_mon', 'kho_dinh_luong']) {
+      const b = await f(`select * from ${bang} where chi_nhanh_id = $1`, [cnA.id]);
+      ok(`${ai} đọc ${bang}: có dòng, không khóa tiền`, b.loi === null && b.rows.length > 0 && khoaTien(b.rows).length === 0,
+         b.loi ?? khoaTien(b.rows).join(', '));
+    }
+  }
+  const kt = await duoi(UID.keToanA, `select * from kho_bao_cao_dinh_muc($1, $2::date, $3::date)`, [cnA.id, tu, homNay]);
+  ok('Đối chứng: kế toán thấy tiền lệch của thịt vụn',
+     ['number', 'string'].includes(typeof kt.rows?.find(x => x.mat_hang_id === MH['P-VUN'].id)?.tien_chenh),
+     kt.loi ?? JSON.stringify(kt.rows));
+  await doiSoat('Sau định lượng món');
 });
 
 // ===========================================================================

@@ -220,6 +220,14 @@ await nhom('3 · SỐ ĐỎ VÀ ĐÁNH DẤU MỤC ĐANG MỞ', async () => {
   const oQuay = THANH_DAY.nhan_vien_quay.find(m => m.link.includes('vi_tri=quay'));
   ok('"Ở quầy" chỉ sáng khi có ?vi_tri=quay', dangO(oQuay, '/noi-bo/kho/ton', '?vi_tri=quay')
     && !dangO(oQuay, '/noi-bo/kho/ton', ''));
+  // GĐ7b: trang có ô riêng nằm dưới đường của ô khác — chỉ ô riêng sáng.
+  const oMuc = ma => MUC_KHO.find(m => m.ma === ma);
+  ok('Mở Định mức bếp: ô "Định mức bếp" sáng, ô "Báo cáo" không',
+    dangO(oMuc('dinh_muc'), '/noi-bo/kho/bao-cao/dinh-muc') && !dangO(oMuc('bao_cao'), '/noi-bo/kho/bao-cao/dinh-muc'));
+  ok('Mở Định lượng món: ô "Định lượng món" sáng, ô "Thiết lập" không',
+    dangO(oMuc('dinh_luong'), '/noi-bo/kho/cai-dat/dinh-luong') && !dangO(oMuc('cai_dat'), '/noi-bo/kho/cai-dat/dinh-luong'));
+  ok('Trang con khác của Báo cáo / Thiết lập vẫn sáng ô cha',
+    dangO(oMuc('bao_cao'), '/noi-bo/kho/bao-cao') && dangO(oMuc('cai_dat'), '/noi-bo/kho/cai-dat/mat-hang'));
 });
 
 // ===========================================================================

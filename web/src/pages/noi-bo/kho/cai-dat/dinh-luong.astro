@@ -1,0 +1,372 @@
+---
+/**
+ * KHO — CÀI ĐẶT · ĐỊNH LƯỢNG MÓN (GĐ7b, migration 0038)
+ *
+ * Mỗi món bán (theo chi nhánh, nối iPOS bằng mã món) ghi mỗi suất dùng bao
+ * nhiêu gram từng mặt hàng. Chỉ để ĐỐI CHIẾU (báo cáo bao-cao/dinh-muc): bếp
+ * vẫn nhận thịt bằng phiếu Xuất bếp, kho không tự trừ theo định lượng.
+ *
+ * Quán nhiều món (> 30) nên có ba đường nhập:
+ *   1. "Lấy món từ iPOS" — tạo món từ mã đã bán trên iPOS (kho_mon_tu_ipos).
+ *   2. Dán Excel "Món | Mặt hàng | Gram" → Xem trước (database khớp món theo
+ *      mã iPOS rồi tên không dấu, mặt hàng theo mã / mã cân / tên) → Áp dụng.
+ *      Áp dụng lại cùng bảng không đổi gì; món chưa có thì được tạo.
+ *   3. Mở một món (?mon=<id>) → lưới mặt hàng × gram: sửa, tích "Bỏ", ô trống
+ *      để thêm; "Thêm dòng" dựng lại lưới với 3 dòng trống mà không lưu.
+ *      Lưu = thay toàn bộ định lượng của món (kho_luu_dinh_luong). Form mang
+ *      "phiên bản" (mặt hàng:gram lúc mở) — người khác vừa sửa thì không đè.
+ *
+ * Danh sách: tìm (tên / mã iPOS, không phân biệt dấu), chip "Chưa có định
+ * lượng", "Ngừng bán", chia trang 30 món — mọi thứ trên URL.
+ * Bảng món / định lượng không có cột tiền.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
+import PhanTrang from '../../../../components/kho/PhanTrang.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { cauLoiKho, laUuid, type KetQua } from '../../../../lib/kho/chung.ts';
+import { CO_TRANG, lamSachTim, linkDs } from '../../../../lib/kho/tim-ds.ts';
+import {
+  docMon, docDinhLuong, docMatHangDl, luuMon, luuDinhLuong, layMonTuIpos, nhapDinhLuong,
+  ganDinhLuong, locMon, docLocMon, docLuoiDinhLuong, phienBanDinhLuong, tachDanDinhLuong, cauApDungDl,
+  hienGram, DONG_TRONG_THEM,
+  type Mon, type DongDinhLuong, type MatHangDl, type ODongLuoi, type XemTruocDl,
+} from '../../../../lib/kho/dinh-luong.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('danh_muc')) return Astro.redirect('/noi-bo/kho/cai-dat', 302);
+
+const DUONG = '/noi-bo/kho/cai-dat/dinh-luong';
+const sp = Astro.url.searchParams;
+const tim = lamSachTim(sp.get('q'));
+const loc = docLocMon(sp.get('loc'));
+const monSp = sp.get('mon') ?? '';
+const trang = Math.min(Math.max(Number.parseInt(sp.get('trang') ?? '1', 10) || 1, 1), 500);
+const cn = k.chiNhanh && k.daKhoiTao ? k.chiNhanh : null;
+
+let bao: KetQua | null = k.bao;
+let monMo = laUuid(monSp) ? monSp : '';
+/** Lưới gõ dở (lỗi, hoặc bấm "Thêm dòng") — dựng lại đúng chữ đã gõ. */
+let luoiLai: ODongLuoi[] | null = null;
+/** Form món gõ dở khi lưu lỗi. */
+let monLai: { id: string; ten: string; ma_ipos: string; dang_ban: boolean } | null = null;
+let danLai = '';
+let xemTruoc: XemTruocDl | null = null;
+
+const form = await docFormGui(Astro);
+if (form && cn) {
+  const viec = String(form.get('viec') ?? '');
+  const g = (t: string) => String(form.get(t) ?? '').trim();
+  if (viec === 'luu_mon') {
+    const id = laUuid(g('id')) ? g('id') : null;
+    const r = await luuMon(k.client, cn.id, id, g('ten'), g('ma_ipos'), g('dang_ban') !== 'khong');
+    if (r.ok) return chuyenHuong(Astro, `${DUONG}?mon=${r.id ?? id ?? ''}`, r);
+    bao = r;
+    monLai = { id: id ?? '', ten: g('ten'), ma_ipos: g('ma_ipos'), dang_ban: g('dang_ban') !== 'khong' };
+    if (id) monMo = id;
+  } else if (viec === 'luu_dinh_luong' || viec === 'them_dong') {
+    const id = g('mon_id');
+    if (!laUuid(id)) bao = { ok: false, cau: 'Không rõ món nào — mở lại món từ danh sách.' };
+    else {
+      monMo = id;
+      let mh: MatHangDl[] = [];
+      try { mh = await docMatHangDl(k.client); } catch (e) { bao = { ok: false, cau: cauLoiKho(e, 'Không đọc được danh mục mặt hàng.') }; }
+      const luoi = docLuoiDinhLuong(form, mh);
+      if (viec === 'them_dong') {
+        luoiLai = [...luoi.o, ...Array.from({ length: DONG_TRONG_THEM }, () => ({ mat_hang_id: '', gram: '', bo: false }))];
+      } else if (!bao) {
+        luoiLai = luoi.o;
+        if (luoi.loi.length > 0) bao = { ok: false, cau: `Chưa lưu. ${luoi.loi.slice(0, 5).join(' ')}` };
+        else {
+          let hienTai: DongDinhLuong[] | null = null;
+          try { hienTai = await docDinhLuong(k.client, cn.id, id); } catch (e) { bao = { ok: false, cau: cauLoiKho(e) }; }
+          if (hienTai && phienBanDinhLuong(hienTai) !== g('phien_ban')) {
+            bao = { ok: false, cau: 'Người khác vừa sửa định lượng món này nên chưa lưu. Bảng bên dưới là số anh/chị vừa gõ — mở lại món để xem số mới rồi sửa lại.' };
+          } else if (hienTai) {
+            const r = await luuDinhLuong(k.client, id, luoi.dong);
+            if (r.ok) return chuyenHuong(Astro, `${DUONG}?mon=${id}`, r);
+            bao = r;
+          }
+        }
+      }
+    }
+  } else if (viec === 'tu_ipos') {
+    const r = await layMonTuIpos(k.client, cn.id);
+    if (r.ok) return chuyenHuong(Astro, `${DUONG}?loc=chua`, r);
+    bao = r;
+  } else if (viec === 'xem_truoc' || viec === 'ap_dung') {
+    danLai = String(form.get('noi_dung') ?? '');
+    const t = tachDanDinhLuong(danLai);
+    if (t.loi) bao = { ok: false, cau: t.loi };
+    else {
+      const apDung = viec === 'ap_dung';
+      const r = await nhapDinhLuong(k.client, cn.id, t.dong, apDung);
+      if (r.ok && r.kq && apDung) return chuyenHuong(Astro, DUONG, { ok: true, cau: cauApDungDl(r.kq) });
+      if (r.ok) xemTruoc = r.kq;
+      else {
+        bao = { ok: false, cau: r.cau ?? 'Chưa áp dụng được.' };
+        // Áp dụng bị từ chối (vd bảng vừa có dòng lỗi): hiện lại bản xem trước.
+        if (apDung) xemTruoc = (await nhapDinhLuong(k.client, cn.id, t.dong, false)).kq;
+      }
+    }
+  } else bao = { ok: false, cau: 'Việc không hợp lệ.' };
+}
+
+let mon: Mon[] = [];
+let dl: DongDinhLuong[] = [];
+let matHang: MatHangDl[] = [];
+let loiDoc = k.loiDoc;
+if (cn) {
+  try {
+    [mon, dl, matHang] = await Promise.all([docMon(k.client, cn.id), docDinhLuong(k.client, cn.id), docMatHangDl(k.client)]);
+  } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được danh sách món.'); }
+}
+
+const moiMon = ganDinhLuong(mon, dl);
+const soChua = moiMon.filter(m => m.dang_ban && m.so_dong === 0).length;
+const soNgung = moiMon.filter(m => !m.dang_ban).length;
+const soDangBan = moiMon.length - soNgung;
+const ds = locMon(moiMon, tim, loc);
+const dsTrang = ds.slice((trang - 1) * CO_TRANG, trang * CO_TRANG + 1);
+const coSau = dsTrang.length > CO_TRANG;
+const hienTrang = dsTrang.slice(0, CO_TRANG);
+
+const dangMo = moiMon.find(m => m.id === monMo) ?? null;
+const tenMh = new Map(matHang.map(m => [m.id, m]));
+const thuTuMh = new Map(matHang.map((m, i) => [m.id, i]));
+const dlMo = dangMo
+  ? dl.filter(d => d.mon_id === dangMo.id).sort((a, b) => (thuTuMh.get(a.mat_hang_id) ?? 0) - (thuTuMh.get(b.mat_hang_id) ?? 0))
+  : [];
+const luoi: ODongLuoi[] = luoiLai ?? [
+  ...dlMo.map(d => ({ mat_hang_id: d.mat_hang_id, gram: hienGram(d.gram), bo: false })),
+  ...Array.from({ length: DONG_TRONG_THEM }, () => ({ mat_hang_id: '', gram: '', bo: false })),
+];
+const phienBan = phienBanDinhLuong(dlMo);
+const tongGramMo = dlMo.reduce((s, d) => s + d.gram, 0);
+const gtMon = monLai && (monLai.id === (dangMo?.id ?? '')) ? monLai
+  : dangMo ? { id: dangMo.id, ten: dangMo.ten, ma_ipos: dangMo.ma_ipos ?? '', dang_ban: dangMo.dang_ban } : null;
+const gtMonMoi = monLai && !monLai.id ? monLai : { id: '', ten: '', ma_ipos: '', dang_ban: true };
+
+const linkMon = (id: string) => linkDs(DUONG, sp, { mon: id, trang: sp.get('trang') });
+const dongLai = linkDs(DUONG, sp, { mon: null, trang: sp.get('trang') });
+const choApDung = !!xemTruoc && xemTruoc.so_loi === 0 && (xemTruoc.them + xemTruoc.sua + xemTruoc.so_mon_moi) > 0;
+const TEN_THAY_DOI: Record<string, string> = { them: 'Thêm', sua: 'Sửa', giu: 'Giữ nguyên' };
+---
+<Kho k={k} huongDan="dinh-luong" tieuDe="Định lượng món" rong>
+  <h1>Định lượng món</h1>
+  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a> · <a href="/noi-bo/kho/bao-cao/dinh-muc">Đối chiếu định mức bếp →</a></p>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  <p class="nb-dan">Mỗi món ghi <strong>một suất dùng bao nhiêu gram</strong> từng loại thịt. Phần mềm nhân với số suất bán trên
+    iPOS rồi so với số thịt bếp đã nhận (phiếu Xuất bếp). <strong>Kho không tự trừ theo định lượng</strong> — bếp vẫn lấy thịt
+    bằng phiếu Xuất bếp như cũ.</p>
+
+  {!cn ? (
+    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+  ) : (
+    <>
+      {xemTruoc && (
+        <section class="nb-the" aria-labelledby="xem-truoc">
+          <h2 id="xem-truoc" style="margin-top:0">Xem trước bảng dán</h2>
+          <p class="dl-dem">
+            {xemTruoc.them > 0 && <span class="dl-nhan them">{xemTruoc.them} thêm</span>}
+            {xemTruoc.sua > 0 && <span class="dl-nhan sua">{xemTruoc.sua} sửa gram</span>}
+            {xemTruoc.giu > 0 && <span class="dl-nhan giu">{xemTruoc.giu} giữ nguyên</span>}
+            {xemTruoc.so_mon_moi > 0 && <span class="dl-nhan them">{xemTruoc.so_mon_moi} món mới</span>}
+            {xemTruoc.so_loi > 0 && <span class="dl-nhan loi">{xemTruoc.so_loi} dòng lỗi</span>}
+          </p>
+          {xemTruoc.so_loi > 0 && (
+            <div class="nb-bao loi" role="alert">
+              <p><strong>Chưa áp dụng được.</strong> Sửa các dòng lỗi trong ô dán bên dưới rồi bấm "Xem trước" lại.
+                Số dòng là dòng trong ô dán.</p>
+            </div>
+          )}
+          <div class="kho-bang-khung">
+            <table class="kho-bang">
+              <thead><tr><th class="so">Dòng</th><th>Món</th><th>Mặt hàng</th><th class="so">Gram</th><th>Thay đổi</th></tr></thead>
+              <tbody>
+                {xemTruoc.dong.map(d => (
+                  <tr class={d.ok ? undefined : 'dl-dong-loi'}>
+                    <td class="so">{d.stt}</td>
+                    <td>{d.mon?.ten ?? '—'}{d.tao_mon_moi && <> <span class="dl-nhan them">món mới</span></>}</td>
+                    <td>{d.mat_hang ? <>{d.mat_hang.ten} <span class="kho-phu">{d.mat_hang.ma}</span></> : '—'}</td>
+                    <td class="so">{hienGram(d.gram)}</td>
+                    <td>
+                      {!d.ok ? <span class="dl-loi">{d.loi}</span>
+                        : d.thay_doi === 'sua' ? <>Sửa: <del>{hienGram(d.gram_cu)} g</del> → <ins>{hienGram(d.gram)} g</ins></>
+                        : TEN_THAY_DOI[d.thay_doi ?? ''] ?? ''}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {choApDung ? (
+            <form method="POST" class="kho-thanh-nut dinh">
+              <input type="hidden" name="viec" value="ap_dung" />
+              <textarea name="noi_dung" hidden aria-hidden="true">{danLai}</textarea>
+              <button type="submit" class="nb-nut">Áp dụng</button>
+              <a class="nb-nut phu" href="#dan-excel">Sửa lại bảng dán</a>
+            </form>
+          ) : xemTruoc.so_loi === 0 ? (
+            <p class="nb-rong">Không có gì thay đổi — định lượng đã đúng như bảng dán.</p>
+          ) : (
+            <p style="margin-bottom:0"><a href="#dan-excel">Sửa lại bảng dán ↓</a></p>
+          )}
+        </section>
+      )}
+
+      {dangMo && gtMon && (
+        <section class="nb-the" aria-labelledby="mon-mo">
+          <h2 id="mon-mo" style="margin-top:0">{dangMo.ten}</h2>
+          <p class="kho-phu" style="margin-top:0">
+            {dangMo.ma_ipos ? <>Mã iPOS <strong>{dangMo.ma_ipos}</strong></> : <>Chưa có mã iPOS — chưa đếm được số suất bán</>}
+            {!dangMo.dang_ban && ' · ngừng bán'}
+            {dlMo.length > 0 && <> · một suất: {dlMo.length} mặt hàng, tổng {hienGram(tongGramMo)} g</>}
+          </p>
+
+          <form method="POST">
+            <input type="hidden" name="mon_id" value={dangMo.id} />
+            <input type="hidden" name="phien_ban" value={phienBan} />
+            <input type="hidden" name="so_dong" value={String(luoi.length)} />
+            <div class="kho-bang-khung">
+              <table class="kho-bang dl-luoi">
+                <thead><tr><th>Mặt hàng</th><th class="so">Gram một suất</th><th>Bỏ</th></tr></thead>
+                <tbody>
+                  {luoi.map((o, i) => (
+                    <tr>
+                      <td><label><span class="kho-an">Mặt hàng dòng {i + 1}</span>
+                        <ChonMatHang name={`mh_${i}`} matHang={matHang} chon={o.mat_hang_id} trong="— thêm mặt hàng —" /></label></td>
+                      <td class="so"><label><span class="kho-an">Gram dòng {i + 1}</span>
+                        <input type="text" inputmode="decimal" name={`gram_${i}`} value={o.gram} placeholder="150" autocomplete="off" /></label></td>
+                      <td>{o.mat_hang_id ? (
+                        <label class="dl-bo"><input type="checkbox" name={`bo_${i}`} value="1" checked={o.bo} /> Bỏ</label>
+                      ) : null}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p class="kho-phu">Ô gram nhận số lẻ (150,5). Muốn bỏ một mặt hàng khỏi món thì tích <strong>Bỏ</strong> rồi lưu.
+              {tenMh.size === 0 && <> Danh mục mặt hàng đang trống — <a href="/noi-bo/kho/cai-dat/mat-hang">thêm mặt hàng</a> trước.</>}</p>
+            <div class="kho-thanh-nut">
+              <button type="submit" name="viec" value="luu_dinh_luong" class="nb-nut">Lưu định lượng</button>
+              <button type="submit" name="viec" value="them_dong" class="nb-nut phu" formnovalidate>Thêm dòng</button>
+            </div>
+          </form>
+
+          <details style="margin-top:1rem" open={!!monLai && monLai.id === dangMo.id}>
+            <summary style="cursor:pointer;font-weight:600">Đổi tên, mã iPOS, ngừng bán</summary>
+            <form method="POST" style="margin-top:.75rem">
+              <input type="hidden" name="viec" value="luu_mon" />
+              <input type="hidden" name="id" value={gtMon.id} />
+              <label class="nb-o"><span>Tên món</span><input type="text" name="ten" value={gtMon.ten} required maxlength="120" /></label>
+              <label class="nb-o"><span>Mã món trên iPOS</span><input type="text" name="ma_ipos" value={gtMon.ma_ipos} maxlength="100" autocomplete="off" /></label>
+              <label class="nb-o"><span>Tình trạng</span>
+                <select name="dang_ban">
+                  <option value="co" selected={gtMon.dang_ban}>Đang bán</option>
+                  <option value="khong" selected={!gtMon.dang_ban}>Ngừng bán / không dùng thịt (ẩn khỏi danh sách)</option>
+                </select></label>
+              <button type="submit" class="nb-nut phu">Lưu món</button>
+            </form>
+          </details>
+          <p style="margin:1rem 0 0"><a href={dongLai}>Đóng</a></p>
+        </section>
+      )}
+
+      <div class="kho-thanh-nut">
+        <form method="POST" style="margin:0">
+          <input type="hidden" name="viec" value="tu_ipos" />
+          <button type="submit" class="nb-nut phu">Lấy món từ iPOS</button>
+        </form>
+      </div>
+      <p class="kho-phu" style="margin-top:0">"Lấy món từ iPOS" tạo món từ các mã đã bán trên iPOS (hoặc đã đánh dấu "không phải hàng kho"
+        ở <a href="/noi-bo/kho/ban-ipos">Bán hàng iPOS</a>). Bấm lại nhiều lần không bị trùng.</p>
+
+      <details class="nb-the" open={!!monLai && !monLai.id}>
+        <summary style="cursor:pointer;font-weight:700">+ Thêm một món</summary>
+        <form method="POST" style="margin-top:1rem">
+          <input type="hidden" name="viec" value="luu_mon" />
+          <label class="nb-o"><span>Tên món</span><input type="text" name="ten" value={gtMonMoi.ten} required maxlength="120" placeholder="Bò nướng tảng" /></label>
+          <label class="nb-o"><span>Mã món trên iPOS (nếu có)</span><input type="text" name="ma_ipos" value={gtMonMoi.ma_ipos} maxlength="100" autocomplete="off" /></label>
+          <input type="hidden" name="dang_ban" value="co" />
+          <button type="submit" class="nb-nut">Thêm món</button>
+        </form>
+      </details>
+
+      <details class="nb-the" id="dan-excel" open={!!danLai}>
+        <summary style="cursor:pointer;font-weight:700">Dán định lượng từ Excel</summary>
+        <form method="POST" style="margin-top:1rem">
+          <input type="hidden" name="viec" value="xem_truoc" />
+          <div class="nb-dan" style="font-size:.88rem">
+            <p>Mỗi dòng một mặt hàng của một món: <strong>Món · Mặt hàng · Gram</strong>. Món nhiều loại thịt thì ghi nhiều dòng.
+              Chép thẳng từ Excel (nên chọn cả dòng tiêu đề), hoặc ngăn cột bằng dấu <strong>;</strong>.</p>
+            <p><strong>Món</strong>: mã iPOS hoặc tên món (không cần đúng dấu). Món chưa có thì được tạo mới.
+              <strong>Mặt hàng</strong>: mã, mã cân hoặc tên. <strong>Gram</strong>: số gram một suất, ví dụ 150 hoặc 150,5.</p>
+            <p>Bấm "Xem trước" để thấy từng dòng — chưa lưu gì cho tới khi bấm "Áp dụng". Mặt hàng không có trong bảng dán
+              được giữ nguyên; muốn bỏ thì mở món và tích "Bỏ".</p>
+          </div>
+          <label class="nb-o">
+            <span>Nội dung dán</span>
+            <textarea name="noi_dung" rows="8" placeholder={'Món\tMặt hàng\tGram\nBò nướng tảng\tThăn ngoại cắt lát\t200\nLẩu bò\tBắp bò\t120\nLẩu bò\tGân bò\t50'}>{danLai}</textarea>
+          </label>
+          <button type="submit" class="nb-nut">Xem trước</button>
+        </form>
+      </details>
+
+      <h2>Món ({soDangBan} đang bán)</h2>
+      <nav class="kho-dh" aria-label="Lọc món">
+        <a href={linkDs(DUONG, sp, { loc: null, mon: null })} aria-current={loc === '' ? 'page' : undefined}>Đang bán</a>
+        <a href={linkDs(DUONG, sp, { loc: 'chua', mon: null })} aria-current={loc === 'chua' ? 'page' : undefined}>Chưa có định lượng ({soChua})</a>
+        {soNgung > 0 && <a href={linkDs(DUONG, sp, { loc: 'ngung', mon: null })} aria-current={loc === 'ngung' ? 'page' : undefined}>Ngừng bán ({soNgung})</a>}
+      </nav>
+      <form method="GET" action={DUONG} class="kho-tim" role="search">
+        {loc && <input type="hidden" name="loc" value={loc} />}
+        <div class="kho-tim-hang">
+          <label class="nb-o"><input type="search" name="q" value={tim} placeholder="Tìm tên món, mã iPOS…" aria-label="Tìm món" autocomplete="off" /></label>
+          <button type="submit" class="nb-nut phu">Tìm</button>
+        </div>
+        {tim && <p class="kho-tim-dang">Đang tìm “<strong>{tim}</strong>”. <a href={linkDs(DUONG, sp, { q: null, mon: null })}>Bỏ tìm</a></p>}
+      </form>
+
+      {hienTrang.length === 0 ? (
+        <p class="nb-rong">
+          {mon.length === 0
+            ? <>Chưa có món nào. Bấm <strong>Lấy món từ iPOS</strong>, dán bảng từ Excel, hoặc thêm từng món.</>
+            : loc === 'chua' && !tim ? 'Mọi món đang bán đều đã có định lượng.' : 'Không có món nào khớp.'}
+        </p>
+      ) : hienTrang.map(m => (
+        <a href={linkMon(m.id)} class="nb-dong" aria-current={m.id === dangMo?.id ? 'true' : undefined}
+          style={`display:block;text-decoration:none;color:inherit;${m.dang_ban ? '' : 'opacity:.6'}`}>
+          <div class="nb-dong-dau">
+            <strong>{m.ten}</strong>
+            {m.so_dong === 0
+              ? <span class="dl-nhan loi">Chưa có định lượng</span>
+              : <span class="kho-phu">{m.so_dong} mặt hàng · {hienGram(m.tong_gram)} g</span>}
+          </div>
+          <p class="kho-phu" style="margin:.3rem 0 0">{m.ma_ipos ? `Mã iPOS ${m.ma_ipos}` : 'Chưa có mã iPOS'}</p>
+        </a>
+      ))}
+      <PhanTrang duong={DUONG} trang={trang} coSau={coSau} />
+    </>
+  )}
+</Kho>
+
+<style>
+  .dl-dem { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .dl-nhan { display: inline-block; font-size: .72rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; white-space: nowrap; }
+  .dl-nhan.them { background: var(--kho-xanh-nen); color: #1F7A4C; }
+  .dl-nhan.sua { background: var(--mu-tat); color: var(--than); }
+  .dl-nhan.giu { background: var(--kem-sau); color: var(--muc-nhat); }
+  .dl-nhan.loi { background: var(--do); color: #fff; }
+  .dl-loi { color: var(--do); font-weight: 600; }
+  tr.dl-dong-loi td { background: var(--kho-do-nen); }
+  del { color: var(--muc-nhat); }
+  ins { text-decoration: none; font-weight: 700; background: var(--kho-vang-nen); padding: 0 .25rem; border-radius: 3px; }
+  .dl-luoi select, .dl-luoi input[type="text"] { min-height: 48px; font-size: 16px; width: 100%; }
+  .dl-luoi td.so input { max-width: 8rem; text-align: right; }
+  .dl-bo { display: inline-flex; align-items: center; gap: .35rem; min-height: 48px; white-space: nowrap; }
+  .dl-bo input { width: 1.25rem; height: 1.25rem; }
+</style>

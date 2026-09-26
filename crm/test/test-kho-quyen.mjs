@@ -334,6 +334,9 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // Chuẩn bị chạy thật (0035): nợ đầu kỳ (ke_toan), tồn đầu kỳ dạng lưới (nhap),
     // tiến độ Thiết lập (xem — chỉ số đếm), đánh dấu bỏ qua bước (danh_muc)
     'kho_ghi_no_dau_ky', 'kho_luu_ton_dau_ky', 'kho_tien_do_thiet_lap', 'kho_danh_dau_thiet_lap',
+    // Định lượng món (0038): món, định lượng, dán Excel, lấy món từ iPOS (danh_muc);
+    // đối chiếu định mức (xem — SECURITY DEFINER, tiền chỉ trả khi xem_gia)
+    'kho_luu_mon', 'kho_luu_dinh_luong', 'kho_nhap_dinh_luong', 'kho_mon_tu_ipos', 'kho_bao_cao_dinh_muc',
     // Hàm trigger — PostgREST không gọi được hàm trả về trigger
     'kho_vi_tri_kiem_sua', 'kho_truong_them_kiem_sua', 'kho_truong_them_kiem',
     'kho_mat_hang_chuan_hoa', 'kho_cong_thuc_pha_kiem', 'kho_lo_chan_sua_xoa',
@@ -351,6 +354,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_buoc_thiet_lap',
     // 0037: ghi một dòng iPOS, chọn lô, tự nhận hàng đi đường, đảo ngược, mất kết nối
     'kho_ipos_ghi_dong', 'kho_ipos_lay_lo', 'kho_ipos_tu_nhan', 'kho_ipos_dao_dong', 'kho_ipos_mat_ket_noi',
+    // 0038: bỏ dấu (cột sinh ten_khong_dau), số suất bán, tính định mức (có giá vốn)
+    'kho_khong_dau', 'kho_dinh_muc_ban', 'kho_dinh_muc_tinh',
   ].sort();
 
   const { rows } = await db.query(`
