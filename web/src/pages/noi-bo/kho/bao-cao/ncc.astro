@@ -11,7 +11,7 @@
  * Kỳ: nút nhanh như trang Báo cáo; CSV bao-cao/ncc.csv cùng cột.
  *
  * Hai thứ tiếng: chữ của trang ở đây. Câu bảng trống (dinhNghiaDanhGiaNcc),
- * công thức điểm sao (CONG_THUC_SAO) và chữ "chưa đủ số liệu" (chuSao) là của
+ * công thức điểm sao (CONG_THUC_SAO_NB) và chữ "chưa đủ số liệu" (chuSao) là của
  * lib/kho/dat-hang.ts (gói nhập hàng) — dùng bản hai thứ tiếng của file đó khi có.
  */
 import Kho from '../../../../layouts/Kho.astro';
@@ -21,7 +21,7 @@ import NutIn from '../../../../components/kho/NutIn.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import { kyBaoCao, kyNhanh, tinhTong } from '../../../../lib/kho/bao-cao.ts';
 import {
-  docDanhGiaNcc, dinhNghiaDanhGiaNcc, chuSao, mucSao, CONG_THUC_SAO, type DongDanhGiaNcc,
+  docDanhGiaNcc, dinhNghiaDanhGiaNcc, chuSao, mucSao, CONG_THUC_SAO_NB, type DongDanhGiaNcc,
 } from '../../../../lib/kho/dat-hang.ts';
 import { congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangTien, homNayVn } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
@@ -91,7 +91,7 @@ const { tu, den } = kyBaoCao(q, homNay);
 const cacKy = kyNhanh(homNay, nn);
 const kyDangChon = cacKy.find(x => x.tu === tu && x.den === den)?.ten;
 const coGia = k.duoc('xem_gia');
-const dn = dinhNghiaDanhGiaNcc(coGia);
+const dn = dinhNghiaDanhGiaNcc(coGia, nn);
 
 let dong: DongDanhGiaNcc[] = [];
 let loiDoc = k.loiDoc;
@@ -173,7 +173,7 @@ const soLe = (x: number) => (nn === 'en' ? String(x) : String(x).replace('.', ',
                 <tr>
                   <td><strong>{d.ten}</strong></td>
                   <td>
-                    <span class={`ncc-sao ${mucSao(d.diem_sao)}`} title={d.diem_sao !== null ? `${soLe(d.diem_sao)} / 5` : undefined}>{chuSao(d.diem_sao)}</span>
+                    <span class={`ncc-sao ${mucSao(d.diem_sao)}`} title={d.diem_sao !== null ? `${soLe(d.diem_sao)} / 5` : undefined}>{chuSao(d.diem_sao, nn)}</span>
                     {d.diem_sao !== null && <span class="kho-phu"> {soLe(d.diem_sao)}</span>}
                   </td>
                   <td class="so">{soChu(d.so_phieu)}</td>
@@ -209,7 +209,7 @@ const soLe = (x: number) => (nn === 'en' ? String(x) : String(x).replace('.', ',
             )}
           </table>
         </div>
-        <p class="kho-phu"><strong>{t.diemSao}</strong> {CONG_THUC_SAO} {t.chuaCham}
+        <p class="kho-phu"><strong>{t.diemSao}</strong> {CONG_THUC_SAO_NB[nn]} {t.chuaCham}
           {' '}<strong>{t.thuHoiTb}</strong>{t.thuHoiGiai}
           {coGia && <> <strong>{t.lechHoaDon}</strong>{t.lechGiai} <strong>{t.ngayTraTb}</strong>{t.ngayTraGiai}</>}
         </p>

@@ -110,7 +110,7 @@ export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
     tenTep = `kho-dinh-muc-${cn.ma}-${tu}-${den}.csv`;
   } else if (ten === 'ncc') {
     if (congNgay(tu, 366) < den) return new Response(t.kyToiDa, { status: 400 });
-    const dn = dinhNghiaDanhGiaNcc(duoc(nhanSu.vai_tro, 'xem_gia'));
+    const dn = dinhNghiaDanhGiaNcc(duoc(nhanSu.vai_tro, 'xem_gia'), nn);
     const kq = await docDanhGiaNcc(client, cn.id, tu, den);
     if (kq.loi) return loi(kq.loi, 500);
     const dong = kq.dong as unknown as Record<string, unknown>[];

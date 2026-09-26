@@ -21,12 +21,28 @@ export const VIET = /[ạảãàáâậầấẩẫăắằẳẵặẹẻẽè�
 
 const trang = m => m.replace(/[^\n]/g, ' ');
 
+/**
+ * Bỏ chú thích khối /* … *\/, giữ số dòng. "/*" chỉ mở chú thích khi đứng sau
+ * đầu dòng, khoảng trắng hoặc dấu của code — không phải trong accept="image/*"
+ * (bản cũ coi đó là chú thích và bỏ qua cả phần file phía sau).
+ */
+export function boChuKhoi(s) {
+  let ra = '', i = 0;
+  for (let j = s.indexOf('/*'); j >= 0; j = s.indexOf('/*', i)) {
+    if (j > 0 && !/[\s{}()\[\],;=:!&|?+\-<>]/.test(s[j - 1])) { ra += s.slice(i, j + 2); i = j + 2; continue; }
+    const k = s.indexOf('*/', j + 2);
+    if (k < 0) break;
+    ra += s.slice(i, j) + trang(s.slice(j, k + 2));
+    i = k + 2;
+  }
+  return ra + s.slice(i);
+}
+
 /** Bỏ chú thích, giữ nguyên số dòng. */
 export function boChuThich(s) {
-  return s
+  return boChuKhoi(s
     .replace(/<!--[\s\S]*?-->/g, trang)
-    .replace(/\{\/\*[\s\S]*?\*\/\}/g, trang)
-    .replace(/\/\*[\s\S]*?\*\//g, trang)
+    .replace(/\{\/\*[\s\S]*?\*\/\}/g, trang))
     .split('\n').map(d => d.replace(/(^|[^:'"`])\/\/(?![^'"`]*['"`]\s*[,)}\]]).*$/, '$1')).join('\n');
 }
 

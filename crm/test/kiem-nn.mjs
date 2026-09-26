@@ -20,6 +20,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { boChuKhoi } from './quet-chu-viet.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // KIEM_WEB: chạy từ nơi khác (vd một worktree) thì chỉ thư mục web/src cần kiểm.
@@ -70,9 +71,8 @@ const CO_NN = /\bnn\b|nnCua\(|'vi'|"vi"/;
 /** Các chỗ sót trong một file: [[số dòng, mô tả], …]. */
 export function kiemNn(nguon, thuVien = docThuVien()) {
   // Bỏ chú thích (giữ dòng) để không bắt nhầm tên hàm nhắc trong chú thích.
-  const s = nguon
-    .replace(/<!--[\s\S]*?-->/g, m => m.replace(/[^\n]/g, ' '))
-    .replace(/\/\*[\s\S]*?\*\//g, m => m.replace(/[^\n]/g, ' '))
+  const s = boChuKhoi(nguon
+    .replace(/<!--[\s\S]*?-->/g, m => m.replace(/[^\n]/g, ' ')))
     .replace(/(^|[^:'"`])\/\/[^\n]*/g, (m, a) => a + ' '.repeat(m.length - a.length));
   const dong = i => s.slice(0, i).split('\n').length;
   const ra = [];
