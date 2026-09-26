@@ -9,6 +9,33 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { dichMotCau, type NgonNguDich, type SoBanDich } from './ban-dich';
+import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo';
+import { dichCau, moTaKhoa } from './cau-noi-bo';
+
+/** Câu của file này ở hai thứ tiếng giao diện nội bộ (lib/ngon-ngu-noi-bo.ts). */
+const CAU = {
+  dangBat:    { vi: 'Đang bật', en: 'On' },
+  dangTat:    { vi: 'Đang tắt', en: 'Off' },
+  daGanAnh:   { vi: 'Đã gắn ảnh', en: 'Photo attached' },
+  daGo:       { vi: (ten: string) => `Đã gỡ "${ten}" khỏi trang công khai.`,
+                en: (ten: string) => `Removed "${ten}" from the public site.` },
+  chuaNgay:   { vi: 'Chưa chọn ngày.', en: 'No date chosen.' },
+  chiSo:      { vi: 'Chỉ nhận chữ số.', en: 'Digits only.' },
+  chuaAnh:    { vi: 'Chưa chọn ảnh.', en: 'No photo chosen.' },
+  chuaNoiDung:{ vi: 'Chưa điền nội dung.', en: 'Nothing entered.' },
+  daCongBo:   { vi: (ten: string) => `Đã công bố "${ten}". Trang công khai đổi ngay bây giờ.`,
+                en: (ten: string) => `Published "${ten}". The public site changes right now.` },
+  daLuuNhap:  { vi: (ten: string) => `Đã lưu nháp "${ten}". Bản nháp KHÔNG hiện trên trang.`,
+                en: (ten: string) => `Saved "${ten}" as a draft. Drafts do NOT show on the site.` },
+  luuY:       { vi: (cau: string, ds: string) => `${cau} Lưu ý — ${ds}. Trang của thứ tiếng đó tạm hiện bản kế tiếp; bấm lưu lại sau để thử dịch lại.`,
+                en: (cau: string, ds: string) => `${cau} Note — ${ds}. That language's page shows the next language for now; save again later to retry the translation.` },
+  banEn:      { vi: 'Bản tiếng Anh', en: 'The English version' },
+  banKo:      { vi: 'Bản tiếng Hàn', en: 'The Korean version' },
+  biChan:     { vi: 'bị chặn', en: 'was blocked' },
+  chuaDich:   { vi: 'chưa dịch được', en: 'could not be translated' },
+  khongQuyen: { vi: 'Tài khoản của bạn không có quyền làm việc này.', en: 'Your account is not allowed to do this.' },
+  khongGhi:   { vi: 'Không ghi được. Thông tin CHƯA được lưu.', en: 'Could not save. Nothing has been saved.' },
+} satisfies Record<string, HaiThuTieng<unknown>>;
 
 export type KieuCongBo = 'van_ban' | 'ngay' | 'so' | 'bool' | 'url' | 'sdt' | 'tep';
 
@@ -35,26 +62,30 @@ export interface HangCongTac {
 }
 
 /** Tên nhóm hiện cho người dùng, kèm một câu nói nhóm đó dùng để làm gì. */
-export const NHOM: Record<string, { ten: string; dan: string }> = {
+export const NHOM: Record<string, { ten: HaiThuTieng; dan: HaiThuTieng }> = {
   trang_thai: {
-    ten: 'Trạng thái và khối nội dung',
-    dan: 'Bật một khối là thêm nó vào trang. Tắt là gỡ khỏi trang ngay lập tức.',
+    ten: { vi: 'Trạng thái và khối nội dung', en: 'Status and content blocks' },
+    dan: { vi: 'Bật một khối là thêm nó vào trang. Tắt là gỡ khỏi trang ngay lập tức.',
+           en: 'Turning a block on adds it to the site. Turning it off removes it right away.' },
   },
   lien_he: {
-    ten: 'Liên hệ',
-    dan: 'Mỗi dòng ở đây bật một nút trên trang. Chưa công bố thì trang KHÔNG hiện nút — một nút dẫn tới hư không tệ hơn không có nút.',
+    ten: { vi: 'Liên hệ', en: 'Contact' },
+    dan: { vi: 'Mỗi dòng ở đây bật một nút trên trang. Chưa công bố thì trang KHÔNG hiện nút — một nút dẫn tới hư không tệ hơn không có nút.',
+           en: 'Each row here turns on a button on the site. Until it is published the site shows NO button — a button that leads nowhere is worse than no button.' },
   },
   lich: {
-    ten: 'Ngày tháng',
-    dan: 'Chỉ công bố khi đã chắc. Ngày sai trên trang thì gỡ bằng nút "Gỡ khỏi trang", không cần soạn ngày mới trước.',
+    ten: { vi: 'Ngày tháng', en: 'Dates' },
+    dan: { vi: 'Chỉ công bố khi đã chắc. Ngày sai trên trang thì gỡ bằng nút "Gỡ khỏi trang", không cần soạn ngày mới trước.',
+           en: 'Publish only when certain. If a date on the site is wrong, take it down with "Remove from site" — no need to prepare a new date first.' },
   },
   chia_se: {
-    ten: 'Xem trước khi chia sẻ link',
-    dan: 'Thứ hiện ra khi ai đó dán link Beeftown vào Zalo, Messenger hay Facebook.',
+    ten: { vi: 'Xem trước khi chia sẻ link', en: 'Link-sharing preview' },
+    dan: { vi: 'Thứ hiện ra khi ai đó dán link Beeftown vào Zalo, Messenger hay Facebook.',
+           en: 'What appears when someone pastes a Beeftown link into Zalo, Messenger or Facebook.' },
   },
   khoi: {
-    ten: 'Khối nội dung',
-    dan: 'Các phần lớn của trang.',
+    ten: { vi: 'Khối nội dung', en: 'Content blocks' },
+    dan: { vi: 'Các phần lớn của trang.', en: 'The big sections of the site.' },
   },
 };
 
@@ -81,13 +112,14 @@ export function giaTriHienTai(h: HangCongTac): string {
 }
 
 /** Câu mô tả giá trị đang sống, cho người đọc lướt. */
-export function motaGiaTri(h: HangCongTac): string | null {
+export function motaGiaTri(h: HangCongTac, nn: NgonNguNB = 'vi'): string | null {
   if (!h.dang_song) return null;
+  const t = dichNB(nn, CAU);
   switch (h.kieu) {
-    case 'bool': return h.gia_tri_bool ? 'Đang bật' : 'Đang tắt';
+    case 'bool': return h.gia_tri_bool ? t.dangBat : t.dangTat;
     case 'ngay': return h.gia_tri_ngay;
     case 'so':   return h.gia_tri_so === null ? null : String(h.gia_tri_so);
-    case 'tep':  return h.gia_tri_tep_id ? 'Đã gắn ảnh' : null;
+    case 'tep':  return h.gia_tri_tep_id ? t.daGanAnh : null;
     default: {
       const phan = [h.gia_tri_text];
       if (h.gia_tri_text_en) phan.push(`EN: ${h.gia_tri_text_en}`);
@@ -125,7 +157,8 @@ interface BanDichDuKien {
  *   · còn lại → máy dịch. Máy hỏng thì vẫn lưu, ô đó để trống (trang lùi về
  *     thứ tiếng kế tiếp) và người dùng được báo lý do.
  */
-async function lapBanDich(h: HangCongTac, vi: string, form: FormData): Promise<BanDichDuKien> {
+async function lapBanDich(h: HangCongTac, vi: string, form: FormData, nn: NgonNguNB): Promise<BanDichDuKien> {
+  const t = dichNB(nn, CAU);
   const kq: BanDichDuKien = { en: null, ko: null, so: {}, canhBao: [] };
   const so: NonNullable<SoBanDich[string]> = {};
   const viDoi = !h.dang_song || !giongNhau(vi, h.gia_tri_text);
@@ -156,7 +189,7 @@ async function lapBanDich(h: HangCongTac, vi: string, form: FormData): Promise<B
         so[l] = { cach: 'may', tt: 'ok' };
       } else {
         so[l] = { cach: 'may', tt: r.tt, ly_do: r.ly_do };
-        kq.canhBao.push(`${l === 'en' ? 'Bản tiếng Anh' : 'Bản tiếng Hàn'} ${r.tt === 'bi_chan' ? 'bị chặn' : 'chưa dịch được'}: ${r.ly_do}`);
+        kq.canhBao.push(`${l === 'en' ? t.banEn : t.banKo} ${r.tt === 'bi_chan' ? t.biChan : t.chuaDich}: ${dichCau(nn, r.ly_do)}`);
       }
     }
   }
@@ -176,16 +209,19 @@ export async function ghiCongTac(
   client: SupabaseClient,
   h: HangCongTac,
   form: FormData,
+  nn: NgonNguNB = 'vi',
 ): Promise<KetQuaGhi> {
   const viec = String(form.get('viec') ?? '');
+  const t = dichNB(nn, CAU);
+  const ten = moTaKhoa(nn, h.khoa, h.mo_ta);
 
   if (viec === 'go') {
     const { error } = await client.rpc('thu_hoi_noi_dung', {
       p_khoa: h.khoa,
       p_ly_do: String(form.get('ly_do') ?? '').trim() || null,
     });
-    if (error) return { ok: false, cau: cauLoi(error) };
-    return { ok: true, cau: `Đã gỡ "${h.mo_ta}" khỏi trang công khai.` };
+    if (error) return { ok: false, cau: cauLoi(error, nn) };
+    return { ok: true, cau: t.daGo(ten) };
   }
 
   const congBo = viec === 'cong_bo';
@@ -202,28 +238,28 @@ export async function ghiCongTac(
       break;
     case 'ngay': {
       const v = String(form.get('gia_tri') ?? '').trim();
-      if (!v) return { ok: false, cau: 'Chưa chọn ngày.' };
+      if (!v) return { ok: false, cau: t.chuaNgay };
       tham.p_ngay = v;
       break;
     }
     case 'so': {
       const v = String(form.get('gia_tri') ?? '').trim();
-      if (!/^\d+$/.test(v)) return { ok: false, cau: 'Chỉ nhận chữ số.' };
+      if (!/^\d+$/.test(v)) return { ok: false, cau: t.chiSo };
       tham.p_so = Number(v);
       break;
     }
     case 'tep': {
       const v = String(form.get('gia_tri') ?? '').trim();
-      if (!v) return { ok: false, cau: 'Chưa chọn ảnh.' };
+      if (!v) return { ok: false, cau: t.chuaAnh };
       tham.p_tep_id = v;
       break;
     }
     default: {
       const v = String(form.get('gia_tri') ?? '').trim();
-      if (!v) return { ok: false, cau: 'Chưa điền nội dung.' };
+      if (!v) return { ok: false, cau: t.chuaNoiDung };
       tham.p_text = v;
       if (h.kieu === 'van_ban') {
-        const dich = await lapBanDich(h, v, form);
+        const dich = await lapBanDich(h, v, form, nn);
         tham.p_text_en = dich.en;
         tham.p_text_ko = dich.ko;
         tham.p_ban_dich = dich.so;
@@ -233,24 +269,22 @@ export async function ghiCongTac(
   }
 
   const { error } = await client.rpc('dat_noi_dung', tham);
-  if (error) return { ok: false, cau: cauLoi(error) };
+  if (error) return { ok: false, cau: cauLoi(error, nn) };
 
-  const cau = congBo
-    ? `Đã công bố "${h.mo_ta}". Trang công khai đổi ngay bây giờ.`
-    : `Đã lưu nháp "${h.mo_ta}". Bản nháp KHÔNG hiện trên trang.`;
+  const cau = congBo ? t.daCongBo(ten) : t.daLuuNhap(ten);
   return {
     ok: true,
-    cau: canhBaoDich.length === 0 ? cau
-      : `${cau} Lưu ý — ${canhBaoDich.join(' · ')}. Trang của thứ tiếng đó tạm hiện bản kế tiếp; bấm lưu lại sau để thử dịch lại.`,
+    cau: canhBaoDich.length === 0 ? cau : t.luuY(cau, canhBaoDich.join(' · ')),
   };
 }
 
-function cauLoi(e: { message?: string; hint?: string | null }): string {
+function cauLoi(e: { message?: string; hint?: string | null }, nn: NgonNguNB): string {
+  const t = dichNB(nn, CAU);
   const m = e.message ?? '';
   if (/permission denied|insufficient_privilege|không có quyền|chỉ chủ sở hữu/i.test(m)) {
     return m.includes('quyền') || m.includes('chủ sở hữu')
-      ? m
-      : 'Tài khoản của bạn không có quyền làm việc này.';
+      ? dichCau(nn, m)
+      : t.khongQuyen;
   }
-  return m || 'Không ghi được. Thông tin CHƯA được lưu.';
+  return m ? dichCau(nn, m) : t.khongGhi;
 }

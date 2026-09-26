@@ -14,9 +14,52 @@
  * hồ sơ và yêu cầu nằm im trong database không ai mở.
  */
 import NoiBo from '../../layouts/NoiBo.astro';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo';
+import { moTaKhoa, tenKhungAnh } from '../../lib/cau-noi-bo';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  tieuDe:      { vi: 'Tổng quan', en: 'Overview' },
+  chao:        { vi: (ten: string) => `Chào ${ten}`, en: (ten: string) => `Hi ${ten}` },
+  dan:         { vi: 'Hôm nay còn vướng gì.', en: 'What is still stuck today.' },
+  dangCho:     { vi: 'Đang chờ người xử lý', en: 'Waiting for someone' },
+  banCho:      { vi: 'yêu cầu đặt bàn chờ gọi lại', en: 'booking requests waiting for a call back' },
+  hoSoMoi:     { vi: 'hồ sơ ứng tuyển chưa ai mở', en: 'job applications nobody has opened' },
+  gach1:       { vi: 'Dấu ', en: 'A ' },
+  gach2:       { vi: ' nghĩa là không đọc được, thường vì vai trò của bạn không có quyền xem mục đó. Nó không có nghĩa là bằng không.',
+                 en: ' means the number could not be read, usually because your role cannot see that section. It does not mean zero.' },
+  conThieu:    { vi: 'Còn thiếu để khai trương', en: 'Still missing before opening' },
+  vDuKien:     { vi: 'Dữ kiện bắt buộc đã công bố đủ', en: 'All required facts published' },
+  vAnh:        { vi: 'Ảnh thật cho các khung bắt buộc', en: 'Real photos for every required slot' },
+  vThucDon:    { vi: 'Thực đơn sẵn sàng công bố', en: 'Menu ready to publish' },
+  vTin:        { vi: 'Tin tuyển dụng đã lên trang', en: 'Job postings live on the site' },
+  vDich:       { vi: 'Bản tiếng Anh và tiếng Hàn', en: 'English and Korean versions' },
+  con:         { vi: (n: number, ds: string) => `còn ${n}: ${ds}`, en: (n: number, ds: string) => `${n} left: ${ds}` },
+  conKhung:    { vi: (n: number, ds: string) => `còn ${n} khung: ${ds}`, en: (n: number, ds: string) => `${n} slots left: ${ds}` },
+  monSanSang:  { vi: (n: number) => `${n} món đã sẵn sàng, chờ bấm công bố`, en: (n: number) => `${n} dishes ready, waiting for Publish` },
+  monVuong:    { vi: (n: number) => `còn ${n} món vướng`, en: (n: number) => `${n} dishes still blocked` },
+  chuaCoTin:   { vi: 'chưa công bố tin nào — trang tuyển dụng đang dùng danh sách dự phòng tĩnh',
+                 en: 'no posting published — the careers page shows the static fallback list' },
+  dichCho:     { vi: (n: number) => `còn ${n} ô đang chờ máy dịch — máy tự dịch dần khi có người mở trang nội bộ`,
+                 en: (n: number) => `${n} fields waiting for machine translation — it runs gradually whenever someone opens the internal app` },
+  dichNoiDung: { vi: (n: number) => `${n} ô ở màn Nội dung chưa có bản dịch — bấm Công bố lại dữ kiện đó để máy dịch`,
+                 en: (n: number) => `${n} fields on the Content screen have no translation — publish that fact again to translate it` },
+  khongLam:    { vi: 'Những việc không làm được ở đây', en: 'What you cannot do here' },
+  khongLam1:   { vi: 'Chi nhánh, giờ phục vụ, bàn ăn và ba việc dọn dữ liệu đã chuyển sang màn ', en: 'Branches, opening hours, tables and three data clean-up jobs moved to the ' },
+  caiDat:      { vi: 'Cài đặt', en: 'Settings' },
+  khongLam2:   { vi: '. Còn lại ba việc chưa có nút:', en: ' screen. Three jobs still have no button:' },
+  taoTK:       { vi: 'Tạo tài khoản nhân sự mới', en: 'Create a new staff account' },
+  taoTK1:      { vi: ' — phải đi qua Supabase Auth, rồi nối ', en: ' — it has to go through Supabase Auth, then link ' },
+  taoTK2:      { vi: ' vào bảng ', en: ' to the ' },
+  taoTK3:      { vi: '. Một trang web tự tạo được tài khoản đăng nhập cho chính nó là một trang web tự cấp quyền cho chính nó.',
+                 en: ' table. A website that can create its own login accounts is a website that grants itself access.' },
+  taiAnh:      { vi: 'Tải ảnh lên', en: 'Upload photos' },
+  taiAnh1:     { vi: ' — làm trong Supabase Storage; màn chọn ảnh chưa dựng', en: ' — done in Supabase Storage; the photo picker is not built yet' },
+  duyetGia:    { vi: 'Duyệt giá từng món', en: 'Approve each dish price' },
+  duyetGia1:   { vi: ' — màn thực đơn chưa dựng', en: ' — the menu screen is not built yet' },
+});
 
 // Thủ kho, NV quầy/bếp, kế toán không thấy dữ liệu CRM (0018) — trang tổng
 // quan này toàn ô trống với họ. Đưa thẳng vào kho.
@@ -68,77 +111,76 @@ const monSanSang = monVuong?.filter(m => m.vuong_gi === 'Sẵn sàng công bố'
 const viec = [
   {
     xong: congBoThieu !== null && congBoThieu.length === 0,
-    ten: 'Dữ kiện bắt buộc đã công bố đủ',
+    ten: t.vDuKien,
     con: congBoThieu === null ? null
       : congBoThieu.length === 0 ? null
-      : `còn ${congBoThieu.length}: ${congBoThieu.map(x => x.mo_ta).join(' · ')}`,
+      : t.con(congBoThieu.length, congBoThieu.map(x => moTaKhoa(nn, x.khoa, x.mo_ta)).join(' · ')),
     di: '/noi-bo/noi-dung',
   },
   {
     xong: anhBatBuocThieu.length === 0 && anhThieu !== null,
-    ten: 'Ảnh thật cho các khung bắt buộc',
+    ten: t.vAnh,
     con: anhThieu === null ? null
       : anhBatBuocThieu.length === 0 ? null
-      : `còn ${anhBatBuocThieu.length} khung: ${anhBatBuocThieu.map(a => a.ten).join(' · ')}`,
+      : t.conKhung(anhBatBuocThieu.length, anhBatBuocThieu.map(a => tenKhungAnh(nn, a.ma, a.ten)).join(' · ')),
     di: null,
   },
   {
     xong: monVuongThat !== null && monVuongThat.length === 0,
-    ten: 'Thực đơn sẵn sàng công bố',
+    ten: t.vThucDon,
     con: monVuongThat === null ? null
       : monVuongThat.length === 0
-        ? (monSanSang > 0 ? `${monSanSang} món đã sẵn sàng, chờ bấm công bố` : null)
-        : `còn ${monVuongThat.length} món vướng`,
+        ? (monSanSang > 0 ? t.monSanSang(monSanSang) : null)
+        : t.monVuong(monVuongThat.length),
     di: null,
   },
   {
     xong: (tinDangTuyen ?? 0) > 0,
-    ten: 'Tin tuyển dụng đã lên trang',
+    ten: t.vTin,
     con: tinDangTuyen === null ? null
-      : tinDangTuyen === 0 ? 'chưa công bố tin nào — trang tuyển dụng đang dùng danh sách dự phòng tĩnh'
+      : tinDangTuyen === 0 ? t.chuaCoTin
       : null,
     di: '/noi-bo/tin-tuyen-dung',
   },
   {
     xong: dichCho === 0 && dichNoiDung === 0,
-    ten: 'Bản tiếng Anh và tiếng Hàn',
+    ten: t.vDich,
     con: dichCho === null || dichNoiDung === null ? null
       : [
-          dichCho > 0 ? `còn ${dichCho} ô đang chờ máy dịch — máy tự dịch dần khi có người mở trang nội bộ` : '',
-          dichNoiDung > 0 ? `${dichNoiDung} ô ở màn Nội dung chưa có bản dịch — bấm Công bố lại dữ kiện đó để máy dịch` : '',
+          dichCho > 0 ? t.dichCho(dichCho) : '',
+          dichNoiDung > 0 ? t.dichNoiDung(dichNoiDung) : '',
         ].filter(Boolean).join(' · ') || null,
     di: dichNoiDung ? '/noi-bo/noi-dung' : '/noi-bo/tin-tuyen-dung',
   },
 ];
 ---
-<NoiBo tieuDe="Tổng quan" nhanSu={nhanSu}>
-  <h1>Chào {nhanSu.ho_ten.split(' ').slice(-1)[0]}</h1>
-  <p class="nb-dan">Hôm nay còn vướng gì.</p>
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <h1>{t.chao(nhanSu.ho_ten.split(' ').slice(-1)[0])}</h1>
+  <p class="nb-dan">{t.dan}</p>
 
-  <h2>Đang chờ người xử lý</h2>
+  <h2>{t.dangCho}</h2>
   <div style="display:grid;gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))">
     <a href="/noi-bo/dat-ban" class="nb-the" style="text-decoration:none">
       <strong style="font-size:2rem;display:block;line-height:1.1">
         {banChoXacNhan ?? '—'}
       </strong>
-      <span style="font-size:.88rem">yêu cầu đặt bàn chờ gọi lại</span>
+      <span style="font-size:.88rem">{t.banCho}</span>
     </a>
     {['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro) && (
       <a href="/noi-bo/tuyen-dung" class="nb-the" style="text-decoration:none">
         <strong style="font-size:2rem;display:block;line-height:1.1">
           {hoSoMoi ?? '—'}
         </strong>
-        <span style="font-size:.88rem">hồ sơ ứng tuyển chưa ai mở</span>
+        <span style="font-size:.88rem">{t.hoSoMoi}</span>
       </a>
     )}
   </div>
 
   <p class="nb-dan" style="margin-top:.75rem;font-size:.85rem">
-    Dấu <strong>—</strong> nghĩa là không đọc được, thường vì vai trò của bạn
-    không có quyền xem mục đó. Nó không có nghĩa là bằng không.
+    {t.gach1}<strong>—</strong>{t.gach2}
   </p>
 
-  <h2>Còn thiếu để khai trương</h2>
+  <h2>{t.conThieu}</h2>
   <ul class="nb-viec">
     {viec.map(v => (
       <li>
@@ -151,16 +193,15 @@ const viec = [
     ))}
   </ul>
 
-  <h2>Những việc không làm được ở đây</h2>
+  <h2>{t.khongLam}</h2>
   <div class="nb-the">
     <p style="margin-top:0">
-      Chi nhánh, giờ phục vụ, bàn ăn và ba việc dọn dữ liệu đã chuyển sang
-      màn <a href="/noi-bo/cai-dat">Cài đặt</a>. Còn lại ba việc chưa có nút:
+      {t.khongLam1}<a href="/noi-bo/cai-dat">{t.caiDat}</a>{t.khongLam2}
     </p>
     <ul style="margin:0;padding-left:1.2rem;font-size:.92rem;line-height:1.8">
-      <li><strong>Tạo tài khoản nhân sự mới</strong> — phải đi qua Supabase Auth, rồi nối <code>auth_uid</code> vào bảng <code>nhan_su</code>. Một trang web tự tạo được tài khoản đăng nhập cho chính nó là một trang web tự cấp quyền cho chính nó.</li>
-      <li><strong>Tải ảnh lên</strong> — làm trong Supabase Storage; màn chọn ảnh chưa dựng</li>
-      <li><strong>Duyệt giá từng món</strong> — màn thực đơn chưa dựng</li>
+      <li><strong>{t.taoTK}</strong>{t.taoTK1}<code>auth_uid</code>{t.taoTK2}<code>nhan_su</code>{t.taoTK3}</li>
+      <li><strong>{t.taiAnh}</strong>{t.taiAnh1}</li>
+      <li><strong>{t.duyetGia}</strong>{t.duyetGia1}</li>
     </ul>
   </div>
 </NoiBo>

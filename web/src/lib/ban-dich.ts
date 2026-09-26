@@ -20,6 +20,8 @@
  * service_role. Ai không sửa được tin thì RLS cũng không cho ghi bản dịch.
  */
 
+import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo';
+import { dichCau } from './cau-noi-bo';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { env } from 'cloudflare:workers';
 import {
@@ -155,15 +157,33 @@ export async function dichBu(
 }
 
 /** Một câu cho người bấm nút "Dịch ngay" — nói rõ bao nhiêu ô xong, ô nào hỏng và vì sao. */
-export function cauTomTat(t: TomTatDich): { ok: boolean; cau: string } {
+/** Câu trạng thái dịch cho giao diện nội bộ, hai thứ tiếng (lib/ngon-ngu-noi-bo.ts). */
+const CAU_DICH = {
+  khongDocDs:  { vi: (l: string) => `Không đọc được danh sách cần dịch: ${l}`, en: (l: string) => `Could not read the translation queue: ${l}` },
+  hetViec:     { vi: 'Không còn ô nào cần dịch.', en: 'Nothing left to translate.' },
+  daDich:      { vi: (x: number, n: number) => `Đã dịch ${x}/${n} ô`, en: (x: number, n: number) => `Translated ${x}/${n} fields` },
+  biChanN:     { vi: (n: number) => `${n} ô bị bộ lọc chữ cấm chặn, không lên trang`, en: (n: number) => `${n} fields blocked by the forbidden-words filter, not shown on the site` },
+  loiN:        { vi: (n: number, l: string) => `${n} ô chưa dịch được: ${l}`, en: (n: number, l: string) => `${n} fields not translated: ${l}` },
+  loiThuLai:   { vi: (l: string) => `Lỗi lần trước, sẽ thử lại: ${l}`, en: (l: string) => `Failed last time, will retry: ${l}` },
+  dangCho:     { vi: 'Đang chờ máy dịch — tải lại trang sau ít giây', en: 'Waiting for machine translation — reload in a few seconds' },
+  biChan:      { vi: (l: string) => `Bị chặn, không lên trang: ${l}`, en: (l: string) => `Blocked, not shown on the site: ${l}` },
+  chuaDich:    { vi: (l: string) => `Chưa dịch được: ${l}`, en: (l: string) => `Not translated: ${l}` },
+  suaTay:      { vi: 'Bản sửa tay — giữ nguyên cho tới khi câu tiếng Việt đổi', en: 'Edited by hand — kept until the Vietnamese sentence changes' },
+  mayDich:     { vi: 'Máy dịch', en: 'Machine translation' },
+} satisfies Record<string, HaiThuTieng<unknown>>;
+
+export function cauTomTat(t: TomTatDich, nn: NgonNguNB = 'vi'): { ok: boolean; cau: string } {
+  const c = dichNB(nn, CAU_DICH);
+  // loi_dau là câu tiếng Việt của máy dịch hoặc database — dịch lúc hiện.
+  const loiDau = dichCau(nn, t.loi_dau);
   if (t.so_o === 0) {
     return t.loi_dau
-      ? { ok: false, cau: `Không đọc được danh sách cần dịch: ${t.loi_dau}` }
-      : { ok: true, cau: 'Không còn ô nào cần dịch.' };
+      ? { ok: false, cau: c.khongDocDs(loiDau) }
+      : { ok: true, cau: c.hetViec };
   }
-  const phan = [`Đã dịch ${t.xong}/${t.so_o} ô`];
-  if (t.bi_chan) phan.push(`${t.bi_chan} ô bị bộ lọc chữ cấm chặn, không lên trang`);
-  if (t.loi) phan.push(`${t.loi} ô chưa dịch được: ${t.loi_dau ?? ''}`);
+  const phan = [c.daDich(t.xong, t.so_o)];
+  if (t.bi_chan) phan.push(c.biChanN(t.bi_chan));
+  if (t.loi) phan.push(c.loiN(t.loi, loiDau));
   return { ok: t.loi === 0 && t.bi_chan === 0, cau: phan.join(' · ') };
 }
 
@@ -222,16 +242,19 @@ export type SoBanDich = Record<string, Partial<Record<NgonNguDich, SoO>>>;
  * Một dòng chữ nói trạng thái của một ô dịch, cho người soạn đọc lướt.
  * Trả về null khi không có gì đáng nói (ô chưa có câu gốc).
  */
-export function moTaO(so: SoO | undefined, dangCho: boolean): { chu: string; lop: 'xong' | 'cho' | 'loi' } | null {
+export function moTaO(
+  so: SoO | undefined, dangCho: boolean, nn: NgonNguNB = 'vi',
+): { chu: string; lop: 'xong' | 'cho' | 'loi' } | null {
+  const c = dichNB(nn, CAU_DICH);
+  // ly_do được lưu bằng tiếng Việt lúc máy dịch chạy — dịch lúc hiện.
+  const lyDo = dichCau(nn, so?.ly_do);
   if (dangCho) {
     return so?.tt === 'loi'
-      ? { chu: `Lỗi lần trước, sẽ thử lại: ${so.ly_do ?? ''}`, lop: 'loi' }
-      : { chu: 'Đang chờ máy dịch — tải lại trang sau ít giây', lop: 'cho' };
+      ? { chu: c.loiThuLai(lyDo), lop: 'loi' }
+      : { chu: c.dangCho, lop: 'cho' };
   }
   if (!so) return null;
-  if (so.tt === 'bi_chan') return { chu: `Bị chặn, không lên trang: ${so.ly_do ?? ''}`, lop: 'loi' };
-  if (so.tt === 'loi') return { chu: `Chưa dịch được: ${so.ly_do ?? ''}`, lop: 'loi' };
-  return so.cach === 'tay'
-    ? { chu: 'Bản sửa tay — giữ nguyên cho tới khi câu tiếng Việt đổi', lop: 'xong' }
-    : { chu: 'Máy dịch', lop: 'xong' };
+  if (so.tt === 'bi_chan') return { chu: c.biChan(lyDo), lop: 'loi' };
+  if (so.tt === 'loi') return { chu: c.chuaDich(lyDo), lop: 'loi' };
+  return so.cach === 'tay' ? { chu: c.suaTay, lop: 'xong' } : { chu: c.mayDich, lop: 'xong' };
 }

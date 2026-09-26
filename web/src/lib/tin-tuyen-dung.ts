@@ -24,6 +24,56 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { TRUONG_FORM, type CotTruong } from './truong-form';
 import { BO_PHAN, LOAI_HOP_DONG, DON_VI_LUONG, MA_CHUA_CHOT } from './tuyen-dung';
 import type { SoBanDich } from './ban-dich';
+import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo';
+import { dichCau } from './cau-noi-bo';
+
+/**
+ * Câu của file này ở hai thứ tiếng giao diện nội bộ. Mọi hàm trả câu cho người
+ * đọc nhận thêm nn (mặc định tiếng Việt, như trước khi có tiếng Anh).
+ */
+const CAU = {
+  caoBatThuong:  { vi: 'Từ một triệu đồng một giờ trở lên là cao bất thường — có phải lương tháng?',
+                   en: 'One million dong or more per hour is unusually high — is this a monthly salary?' },
+  thapBatThuong: { vi: 'Dưới một triệu đồng một tháng là thấp bất thường — có phải lương giờ?',
+                   en: 'Under one million dong per month is unusually low — is this an hourly wage?' },
+  chuaSach:      { vi: 'Chưa đăng được: tên, mô tả và yêu cầu bằng tiếng Việt phải viết xong — không để trống, không còn chữ trong ngoặc vuông kiểu [chờ duyệt].',
+                   en: 'Cannot publish yet: the Vietnamese title, description and requirements must be finished — nothing empty, no bracketed text like [chờ duyệt] left.' },
+  denNhoHonTu:   { vi: 'Mức lương "đến" phải lớn hơn hoặc bằng mức "từ".',
+                   en: 'The "to" salary must be greater than or equal to the "from" salary.' },
+  khongQuyen:    { vi: 'Tài khoản của bạn không có quyền làm việc này.', en: 'Your account is not allowed to do this.' },
+  chuaTen:       { vi: 'Chưa điền tên tin.', en: 'The posting has no title.' },
+  chuaBoPhan:    { vi: 'Chưa chọn bộ phận.', en: 'No department chosen.' },
+  chuaLoai:      { vi: 'Chưa chọn loại hợp đồng.', en: 'No contract type chosen.' },
+  khongTao:      { vi: 'Không tạo được tin.', en: 'Could not create the posting.' },
+  trungTen:      { vi: 'Đã có nhiều tin trùng tên này. Đặt một tên khác.', en: 'Several postings already use this title. Choose another title.' },
+  khongTaoMau:   { vi: 'Không tạo được tin mẫu.', en: 'Could not create the sample postings.' },
+  daTaoMau:      { vi: (n: unknown) => `Đã tạo ${n} tin mẫu ở dạng nháp. Viết mô tả và yêu cầu cho tin cần tuyển rồi bấm đăng.`,
+                   en: (n: unknown) => `Created ${n} sample postings as drafts. Write the description and requirements for the roles you are hiring for, then publish.` },
+  soLuongSai:    { vi: 'Số lượng cần tuyển phải là số từ 1 đến 999.', en: 'Openings must be a number from 1 to 999.' },
+  luongSai:      { vi: 'Mức lương đề xuất phải là số đồng, ví dụ 25000 hoặc 6000000.', en: 'The proposed salary must be a number of dong, for example 25000 or 6000000.' },
+  deXuatDenTu:   { vi: 'Mức đề xuất "đến" phải lớn hơn hoặc bằng mức "từ".', en: 'The proposed "to" amount must be greater than or equal to "from".' },
+  chuaDonVi:     { vi: 'Chưa chọn lương tính theo giờ hay theo tháng.', en: 'Choose whether the salary is per hour or per month.' },
+  hanNopSai:     { vi: 'Hạn nộp không đúng dạng ngày.', en: 'The deadline is not a valid date.' },
+  daLuu:         { vi: 'Đã lưu.', en: 'Saved.' },
+  daLuuDang:     { vi: 'Đã lưu và đăng lên trang tuyển dụng.', en: 'Saved and published on the careers page.' },
+  viecSai:       { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+  khongLuu:      { vi: 'Không lưu được.', en: 'Could not save.' },
+  nguoiKhacSua:  { vi: 'Tin vừa được người khác sửa. Bạn đang thấy bản mình vừa gõ, CHƯA được lưu — bấm lưu lần nữa sẽ ghi đè bản của họ.',
+                   en: 'Someone else just edited this posting. You are seeing what you typed, NOT saved yet — saving again will overwrite their version.' },
+  khongSuaDuoc:  { vi: 'Tài khoản của bạn không sửa được tin này.', en: 'Your account cannot edit this posting.' },
+  khongDocTin:   { vi: 'Không đọc được tin này.', en: 'Could not read this posting.' },
+  suaSauKhiMo:   { vi: 'Tin vừa được sửa sau lúc bạn mở trang. Xem lại mức đề xuất mới rồi hẵng duyệt.',
+                   en: 'The posting was edited after you opened the page. Check the new proposed salary before approving.' },
+  chuaDeXuat:    { vi: 'Chưa có mức đề xuất nào để duyệt. Điền mức đề xuất và bấm Lưu trước.',
+                   en: 'There is no proposed salary to approve. Enter one and press Save first.' },
+  khongDuyet:    { vi: 'Không duyệt được.', en: 'Could not approve.' },
+  taiLai:        { vi: 'Tin vừa được sửa sau lúc bạn mở trang. Tải lại trang rồi thử lại.', en: 'The posting was edited after you opened the page. Reload and try again.' },
+  daDuyet:       { vi: 'Đã duyệt — trang tuyển dụng hiện mức lương này.', en: 'Approved — the careers page shows this salary.' },
+  daBoDuyet:     { vi: 'Đã bỏ duyệt — trang tuyển dụng không hiện lương nữa.', en: 'Approval removed — the careers page no longer shows a salary.' },
+  khongGo:       { vi: 'Không gỡ được tin.', en: 'Could not take the posting down.' },
+  khongConDang:  { vi: 'Tin không còn đang đăng — có thể người khác vừa gỡ. Tải lại trang để xem.', en: 'The posting is no longer live — someone may have just taken it down. Reload to check.' },
+  daGo:          { vi: 'Đã gỡ tin khỏi trang tuyển dụng. Hồ sơ đã nộp vào tin này vẫn còn nguyên.', en: 'Took the posting off the careers page. Applications already sent to it are kept.' },
+} satisfies Record<string, HaiThuTieng<unknown>>;
 
 export type TrangThaiTin = 'nhap' | 'da_duyet' | 'da_cong_bo' | 'da_thu_hoi';
 
@@ -81,6 +131,8 @@ export interface TinTuyenDung {
 export interface DongTin {
   id: string;
   ten_vi: string;
+  /** Tên tiếng Anh (máy dịch hoặc sửa tay) — danh sách ở giao diện tiếng Anh hiện tên này. */
+  ten_en: string | null;
   bo_phan: string;
   loai_hop_dong: string | null;
   trang_thai: TrangThaiTin;
@@ -103,11 +155,11 @@ export interface KetQua { ok: boolean; cau: string }
 export interface KetQuaLuu extends KetQua { daGo?: Partial<TinTuyenDung> }
 
 // 0012 có nấc da_duyet; màn này không dùng tới, nên nó hiện như một bản nháp.
-export const TRANG_THAI: Record<TrangThaiTin, { ten: string; lop: string }> = {
-  nhap:       { ten: 'Nháp',      lop: 'nhap' },
-  da_duyet:   { ten: 'Nháp',      lop: 'nhap' },
-  da_cong_bo: { ten: 'Đang đăng', lop: 'song' },
-  da_thu_hoi: { ten: 'Đã gỡ',     lop: 'tat' },
+export const TRANG_THAI: Record<TrangThaiTin, { ten: HaiThuTieng; lop: string }> = {
+  nhap:       { ten: { vi: 'Nháp',      en: 'Draft' },     lop: 'nhap' },
+  da_duyet:   { ten: { vi: 'Nháp',      en: 'Draft' },     lop: 'nhap' },
+  da_cong_bo: { ten: { vi: 'Đang đăng', en: 'Live' },      lop: 'song' },
+  da_thu_hoi: { ten: { vi: 'Đã gỡ',     en: 'Taken down' }, lop: 'tat' },
 };
 
 /** Hôm nay theo giờ Việt Nam, dạng YYYY-MM-DD — khớp hom_nay_vn() của database. */
@@ -131,30 +183,22 @@ export function donViDeXuat(
  * Câu nhắc khi con số và đơn vị lệch nhau — dấu hiệu quên đổi ô đơn vị. Chỉ
  * nhắc, không chặn: phụ cấp thực tập dưới một triệu một tháng vẫn có thật.
  */
-export function canhBaoDonVi(tu: number | null, den: number | null, donVi: string): string | null {
+export function canhBaoDonVi(
+  tu: number | null, den: number | null, donVi: string, nn: NgonNguNB = 'vi',
+): string | null {
   const cao = Math.max(tu ?? 0, den ?? 0);
-  if (donVi === 'gio' && cao >= 1_000_000) {
-    return 'Từ một triệu đồng một giờ trở lên là cao bất thường — có phải lương tháng?';
-  }
-  if (donVi === 'thang' && cao > 0 && cao < 1_000_000) {
-    return 'Dưới một triệu đồng một tháng là thấp bất thường — có phải lương giờ?';
-  }
+  if (donVi === 'gio' && cao >= 1_000_000) return CAU.caoBatThuong[nn];
+  if (donVi === 'thang' && cao > 0 && cao < 1_000_000) return CAU.thapBatThuong[nn];
   return null;
 }
 
 /** Câu lỗi cho người đọc. Câu của trigger 0027 viết sẵn bằng tiếng Việt, dùng nguyên văn. */
-function cauLoi(e: { message?: string } | null, macDinh: string): string {
+function cauLoi(e: { message?: string } | null, macDinh: string, nn: NgonNguNB): string {
   const m = e?.message ?? '';
-  if (/vi_tri_cong_bo_phai_sach/.test(m)) {
-    return 'Chưa đăng được: tên, mô tả và yêu cầu bằng tiếng Việt phải viết xong — không để trống, không còn chữ trong ngoặc vuông kiểu [chờ duyệt].';
-  }
-  if (/vi_tri_de_xuat_hop_le|vi_tri_luong_chi_khi_duyet/.test(m)) {
-    return 'Mức lương "đến" phải lớn hơn hoặc bằng mức "từ".';
-  }
-  if (/violates row-level security|permission denied for table/i.test(m)) {
-    return 'Tài khoản của bạn không có quyền làm việc này.';
-  }
-  return m || macDinh;
+  if (/vi_tri_cong_bo_phai_sach/.test(m)) return CAU.chuaSach[nn];
+  if (/vi_tri_de_xuat_hop_le|vi_tri_luong_chi_khi_duyet/.test(m)) return CAU.denNhoHonTu[nn];
+  if (/violates row-level security|permission denied for table/i.test(m)) return CAU.khongQuyen[nn];
+  return m ? dichCau(nn, m) : macDinh;
 }
 
 /** Mã tin từ tên: không dấu, chữ thường, gạch nối — "Phụ bếp ca tối" thành "phu-bep-ca-toi". */
@@ -203,7 +247,7 @@ export async function docChiNhanh(client: SupabaseClient): Promise<ChiNhanh[]> {
 export async function docDanhSach(client: SupabaseClient): Promise<DongTin[]> {
   const { data, error } = await client
     .from('vi_tri_tuyen_dung')
-    .select('id, ten_vi, bo_phan, loai_hop_dong, trang_thai, han_nop, luong_da_duyet, luong_tu, luong_den, luong_don_vi, luong_de_xuat_tu, luong_de_xuat_den, luong_de_xuat_don_vi, hoi_cv')
+    .select('id, ten_vi, ten_en, bo_phan, loai_hop_dong, trang_thai, han_nop, luong_da_duyet, luong_tu, luong_den, luong_don_vi, luong_de_xuat_tu, luong_de_xuat_den, luong_de_xuat_don_vi, hoi_cv')
     .order('ten_vi');
   if (error) throw new Error(error.message);
   const thuTu: Record<TrangThaiTin, number> = { da_cong_bo: 0, nhap: 1, da_duyet: 1, da_thu_hoi: 2 };
@@ -230,14 +274,15 @@ export async function docTin(client: SupabaseClient, id: string): Promise<TinTuy
  * mọi form người ta đã mở sẵn.
  */
 export async function taoTin(
-  client: SupabaseClient, form: FormData, chiNhanhId: string,
+  client: SupabaseClient, form: FormData, chiNhanhId: string, nn: NgonNguNB = 'vi',
 ): Promise<{ ok: true; id: string } | { ok: false; cau: string }> {
+  const t = dichNB(nn, CAU);
   const ten = chu(form, 'ten_vi');
   const boPhan = String(form.get('bo_phan') ?? '');
   const loai = docLoaiHopDong(form);
-  if (!ten) return { ok: false, cau: 'Chưa điền tên tin.' };
-  if (!(boPhan in BO_PHAN)) return { ok: false, cau: 'Chưa chọn bộ phận.' };
-  if (loai === undefined) return { ok: false, cau: 'Chưa chọn loại hợp đồng.' };
+  if (!ten) return { ok: false, cau: t.chuaTen };
+  if (!(boPhan in BO_PHAN)) return { ok: false, cau: t.chuaBoPhan };
+  if (loai === undefined) return { ok: false, cau: t.chuaLoai };
 
   // Mã là duy nhất trên MỌI chi nhánh, kể cả những chi nhánh RLS giấu khỏi
   // người đang tạo — nên không đọc trước được, chỉ thử rồi đổi đuôi.
@@ -258,20 +303,17 @@ export async function taoTin(
       .single();
     if (!error) return { ok: true, id: data.id };
     if (!/duplicate key|unique/i.test(error.message)) {
-      return { ok: false, cau: cauLoi(error, 'Không tạo được tin.') };
+      return { ok: false, cau: cauLoi(error, t.khongTao, nn) };
     }
   }
-  return { ok: false, cau: 'Đã có nhiều tin trùng tên này. Đặt một tên khác.' };
+  return { ok: false, cau: t.trungTen };
 }
 
 /** Tám tin mẫu ở dạng nháp (0012). Hàm database tự kiểm vai trò. */
-export async function taoTinMau(client: SupabaseClient, chiNhanhId: string): Promise<KetQua> {
+export async function taoTinMau(client: SupabaseClient, chiNhanhId: string, nn: NgonNguNB = 'vi'): Promise<KetQua> {
   const { data, error } = await client.rpc('tao_tin_tuyen_dung_mau', { p_chi_nhanh_id: chiNhanhId });
-  if (error) return { ok: false, cau: cauLoi(error, 'Không tạo được tin mẫu.') };
-  return {
-    ok: true,
-    cau: `Đã tạo ${data} tin mẫu ở dạng nháp. Viết mô tả và yêu cầu cho tin cần tuyển rồi bấm đăng.`,
-  };
+  if (error) return { ok: false, cau: cauLoi(error, CAU.khongTaoMau[nn], nn) };
+  return { ok: true, cau: CAU.daTaoMau[nn](data) };
 }
 
 // -----------------------------------------------------------------------------
@@ -283,12 +325,12 @@ export async function taoTinMau(client: SupabaseClient, chiNhanhId: string): Pro
  * <cot>_en và <cot>_ko.
  */
 export const O_DICH = [
-  { cot: 'ten',       ten: 'Tên vị trí',        dong: 1 },
-  { cot: 'cap_bac',   ten: 'Cấp bậc, lộ trình', dong: 1 },
-  { cot: 'ca_lam',    ten: 'Ca làm',            dong: 1 },
-  { cot: 'mo_ta',     ten: 'Mô tả công việc',   dong: 4 },
-  { cot: 'yeu_cau',   ten: 'Yêu cầu',           dong: 3 },
-  { cot: 'quyen_loi', ten: 'Quyền lợi',         dong: 3 },
+  { cot: 'ten',       ten: { vi: 'Tên vị trí',        en: 'Position title' },         dong: 1 },
+  { cot: 'cap_bac',   ten: { vi: 'Cấp bậc, lộ trình', en: 'Level, career path' },     dong: 1 },
+  { cot: 'ca_lam',    ten: { vi: 'Ca làm',            en: 'Shifts' },                 dong: 1 },
+  { cot: 'mo_ta',     ten: { vi: 'Mô tả công việc',   en: 'Job description' },        dong: 4 },
+  { cot: 'yeu_cau',   ten: { vi: 'Yêu cầu',           en: 'Requirements' },           dong: 3 },
+  { cot: 'quyen_loi', ten: { vi: 'Quyền lợi',         en: 'Benefits' },               dong: 3 },
 ] as const;
 
 /** So hai bản chữ như database so (chuan_ban_dich): bỏ \r và khoảng trắng hai đầu. */
@@ -297,7 +339,8 @@ function giongNhau(a: string | null, b: string | null): boolean {
   return c(a) === c(b);
 }
 
-function docForm(form: FormData): { dong: Partial<TinTuyenDung>; loi: string | null } {
+function docForm(form: FormData, nn: NgonNguNB): { dong: Partial<TinTuyenDung>; loi: string | null } {
+  const t = dichNB(nn, CAU);
   const boPhan = String(form.get('bo_phan') ?? '');
   const loai = docLoaiHopDong(form);
   const soLuong = soNguyen(form, 'so_luong', 999);
@@ -342,32 +385,35 @@ function docForm(form: FormData): { dong: Partial<TinTuyenDung>; loi: string | n
   }
 
   let loi: string | null = null;
-  if (!dong.ten_vi) loi = 'Chưa điền tên tin.';
-  else if (!(boPhan in BO_PHAN)) loi = 'Chưa chọn bộ phận.';
-  else if (loai === undefined) loi = 'Chưa chọn loại hợp đồng.';
-  else if (soLuong === undefined || soLuong === 0) loi = 'Số lượng cần tuyển phải là số từ 1 đến 999.';
-  else if (tu === undefined || den === undefined) loi = 'Mức lương đề xuất phải là số đồng, ví dụ 25000 hoặc 6000000.';
-  else if (tu != null && den != null && den < tu) loi = 'Mức đề xuất "đến" phải lớn hơn hoặc bằng mức "từ".';
-  else if (!(donVi in DON_VI_LUONG)) loi = 'Chưa chọn lương tính theo giờ hay theo tháng.';
-  else if (hanNop && !/^\d{4}-\d{2}-\d{2}$/.test(hanNop)) loi = 'Hạn nộp không đúng dạng ngày.';
+  if (!dong.ten_vi) loi = t.chuaTen;
+  else if (!(boPhan in BO_PHAN)) loi = t.chuaBoPhan;
+  else if (loai === undefined) loi = t.chuaLoai;
+  else if (soLuong === undefined || soLuong === 0) loi = t.soLuongSai;
+  else if (tu === undefined || den === undefined) loi = t.luongSai;
+  else if (tu != null && den != null && den < tu) loi = t.deXuatDenTu;
+  else if (!(donVi in DON_VI_LUONG)) loi = t.chuaDonVi;
+  else if (hanNop && !/^\d{4}-\d{2}-\d{2}$/.test(hanNop)) loi = t.hanNopSai;
 
   return { dong, loi };
 }
 
-const CAU_XONG: Record<string, string> = {
-  luu: 'Đã lưu.',
-  luu_dang: 'Đã lưu và đăng lên trang tuyển dụng.',
+const CAU_XONG: Record<string, keyof typeof CAU> = {
+  luu: 'daLuu',
+  luu_dang: 'daLuuDang',
 };
 
 /**
  * Lưu mọi ô của form soạn; nút "Lưu và đăng" thì đăng luôn trong CÙNG câu
  * UPDATE, để nội dung và trạng thái không bao giờ lệch nhau.
  */
-export async function luuTin(client: SupabaseClient, id: string, form: FormData): Promise<KetQuaLuu> {
+export async function luuTin(
+  client: SupabaseClient, id: string, form: FormData, nn: NgonNguNB = 'vi',
+): Promise<KetQuaLuu> {
+  const t = dichNB(nn, CAU);
   const viec = String(form.get('viec') ?? 'luu');
-  if (!(viec in CAU_XONG)) return { ok: false, cau: 'Việc không hợp lệ.' };
+  if (!(viec in CAU_XONG)) return { ok: false, cau: t.viecSai };
 
-  const { dong, loi } = docForm(form);
+  const { dong, loi } = docForm(form, nn);
   if (loi) return { ok: false, cau: loi, daGo: dong };
   if (viec === 'luu_dang') dong.trang_thai = 'da_cong_bo';
 
@@ -380,7 +426,7 @@ export async function luuTin(client: SupabaseClient, id: string, form: FormData)
     .eq('updated_at', phienBan)
     .select('id');
 
-  if (error) return { ok: false, cau: cauLoi(error, 'Không lưu được.'), daGo: dong };
+  if (error) return { ok: false, cau: cauLoi(error, t.khongLuu, nn), daGo: dong };
   if (!data || data.length === 0) {
     const { data: hienTai } = await client
       .from('vi_tri_tuyen_dung')
@@ -390,12 +436,10 @@ export async function luuTin(client: SupabaseClient, id: string, form: FormData)
     return {
       ok: false,
       daGo: dong,
-      cau: hienTai && hienTai.updated_at !== phienBan
-        ? 'Tin vừa được người khác sửa. Bạn đang thấy bản mình vừa gõ, CHƯA được lưu — bấm lưu lần nữa sẽ ghi đè bản của họ.'
-        : 'Tài khoản của bạn không sửa được tin này.',
+      cau: hienTai && hienTai.updated_at !== phienBan ? t.nguoiKhacSua : t.khongSuaDuoc,
     };
   }
-  return { ok: true, cau: CAU_XONG[viec] };
+  return { ok: true, cau: String(t[CAU_XONG[viec]]) };
 }
 
 /**
@@ -407,19 +451,18 @@ export async function luuTin(client: SupabaseClient, id: string, form: FormData)
  * trúng nó — trình duyệt bấm nút submit ĐẦU TIÊN của form.
  */
 export async function duyetLuong(
-  client: SupabaseClient, id: string, phienBan: string, duyet: boolean,
+  client: SupabaseClient, id: string, phienBan: string, duyet: boolean, nn: NgonNguNB = 'vi',
 ): Promise<KetQua> {
+  const t = dichNB(nn, CAU);
   const { data: tin } = await client
     .from('vi_tri_tuyen_dung')
     .select('luong_de_xuat_tu, luong_de_xuat_den, luong_de_xuat_don_vi, updated_at')
     .eq('id', id)
     .maybeSingle();
-  if (!tin) return { ok: false, cau: 'Không đọc được tin này.' };
-  if (tin.updated_at !== phienBan) {
-    return { ok: false, cau: 'Tin vừa được sửa sau lúc bạn mở trang. Xem lại mức đề xuất mới rồi hẵng duyệt.' };
-  }
+  if (!tin) return { ok: false, cau: t.khongDocTin };
+  if (tin.updated_at !== phienBan) return { ok: false, cau: t.suaSauKhiMo };
   if (duyet && tin.luong_de_xuat_tu == null && tin.luong_de_xuat_den == null) {
-    return { ok: false, cau: 'Chưa có mức đề xuất nào để duyệt. Điền mức đề xuất và bấm Lưu trước.' };
+    return { ok: false, cau: t.chuaDeXuat };
   }
 
   const { data, error } = await client
@@ -431,29 +474,21 @@ export async function duyetLuong(
     .eq('id', id)
     .eq('updated_at', phienBan)
     .select('id');
-  if (error) return { ok: false, cau: cauLoi(error, 'Không duyệt được.') };
-  if (!data || data.length === 0) {
-    return { ok: false, cau: 'Tin vừa được sửa sau lúc bạn mở trang. Tải lại trang rồi thử lại.' };
-  }
-  return {
-    ok: true,
-    cau: duyet
-      ? 'Đã duyệt — trang tuyển dụng hiện mức lương này.'
-      : 'Đã bỏ duyệt — trang tuyển dụng không hiện lương nữa.',
-  };
+  if (error) return { ok: false, cau: cauLoi(error, t.khongDuyet, nn) };
+  if (!data || data.length === 0) return { ok: false, cau: t.taiLai };
+  return { ok: true, cau: duyet ? t.daDuyet : t.daBoDuyet };
 }
 
 /** Gỡ tin khỏi trang. Không đụng nội dung, nên không cần kiểm phiên bản. */
-export async function goTin(client: SupabaseClient, id: string): Promise<KetQua> {
+export async function goTin(client: SupabaseClient, id: string, nn: NgonNguNB = 'vi'): Promise<KetQua> {
+  const t = dichNB(nn, CAU);
   const { data, error } = await client
     .from('vi_tri_tuyen_dung')
     .update({ trang_thai: 'da_thu_hoi' })
     .eq('id', id)
     .eq('trang_thai', 'da_cong_bo')
     .select('id');
-  if (error) return { ok: false, cau: cauLoi(error, 'Không gỡ được tin.') };
-  if (!data || data.length === 0) {
-    return { ok: false, cau: 'Tin không còn đang đăng — có thể người khác vừa gỡ. Tải lại trang để xem.' };
-  }
-  return { ok: true, cau: 'Đã gỡ tin khỏi trang tuyển dụng. Hồ sơ đã nộp vào tin này vẫn còn nguyên.' };
+  if (error) return { ok: false, cau: cauLoi(error, t.khongGo, nn) };
+  if (!data || data.length === 0) return { ok: false, cau: t.khongConDang };
+  return { ok: true, cau: t.daGo };
 }
