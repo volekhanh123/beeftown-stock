@@ -194,7 +194,7 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
 nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
 {
   // Gói "câu database" bật cờ này khi lib/kho/cau-kho-en.ts đã đủ câu.
-  const DA_DICH_DU = false;
+  const DA_DICH_DU = true;
   const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042|0044_kho)/;
   const tep = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql') && KHO.test(f)).sort();
   const cau = new Map();
