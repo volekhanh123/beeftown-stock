@@ -6,6 +6,8 @@
  * khi chốt pha lóc) so với số kg lẽ ra dùng (số suất bán trên iPOS × gram định
  * lượng của món). Lệch vượt ngưỡng (Thiết lập → Ngưỡng cảnh báo → Định mức)
  * tô đỏ. Chỉ để so — kho không trừ theo định lượng.
+ * Phiếu Xuất bếp có lý do bỏ tích "Tính vào định mức bếp" (0043, mặc định Cơm
+ * nhân viên) không cộng vào "bếp nhận".
  *
  * Mọi vai xem kho mở được (thủ kho, NV quầy xem kg). Cột "Tiền lệch" chỉ vai
  * xem giá: database trả null cho vai khác, trang bỏ hẳn cột.
@@ -62,6 +64,8 @@ const kg = (n: number) => (n === 0 ? '·' : dinhDangKg(n));
   <InDau tieuDe="ĐỐI CHIẾU ĐỊNH MỨC BẾP" soPhieu={kyChu} chiNhanh={k.chiNhanh?.ten} />
   <h1>Đối chiếu định mức bếp</h1>
   <p><a href={`/noi-bo/kho/bao-cao?${new URLSearchParams({ tu, den }).toString()}`}>← Báo cáo kho</a></p>
+  <p class="nb-dan" style="font-size:.9rem">Không tính phiếu Xuất bếp có lý do được đánh dấu không tính định mức (mặc định: Cơm nhân viên).
+    {k.duoc('danh_muc') ? <>Đổi ở <a href="/noi-bo/kho/cai-dat/vi-tri-ly-do">Thiết lập → Vị trí và lý do</a>.</> : 'Quản lý đổi ở Thiết lập → Vị trí và lý do.'}</p>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   <form method="GET" action="/noi-bo/kho/bao-cao/dinh-muc" class="nb-the">

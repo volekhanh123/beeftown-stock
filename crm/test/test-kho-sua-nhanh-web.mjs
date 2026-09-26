@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
 import {
   CHU_XOA, docFormSuaNhanh, giaTriO, loiTheoMon, laLoiPhienBan, locMonSuaNhanh, suaNhanhMatHang,
-  docFormViTriLyDo, phienBanViTriLyDo, soThayDoi,
+  docFormViTriLyDo, phienBanViTriLyDo, soThayDoi, tinhDinhMuc,
 } from '../../web/src/lib/kho/sua-nhanh.ts';
 import {
   docLuoiCongThuc, tongChu, tongTyLe, mauTong, cauTong, phienBanCongThuc, tinhGoiY, themDongTrong, chuTuCongThuc,
@@ -143,6 +143,50 @@ await nhom('2 · VỊ TRÍ + LÝ DO MỘT FORM — HÀM THUẦN', async () => {
   const pb = phienBanViTriLyDo(vt, ld);
   ok('Phiên bản đổi khi có người sửa một chữ', pb !== phienBanViTriLyDo([{ ...vt[0], ten: 'Kho lạnh 1' }, vt[1]], ld)
     && pb === phienBanViTriLyDo([...vt].reverse(), ld));
+
+  // Ô tích "Tính vào định mức bếp" (0043) — chỉ lý do Xuất bếp.
+  const ldDm = [
+    { id: id(21), loai: 'huy', ten: 'Hết hạn', can_anh: true, dang_dung: true, thu_tu: 1, tinh_dinh_muc: true },
+    { id: id(22), loai: 'xuat_bep', ten: 'Cơm nhân viên', can_anh: false, dang_dung: true, thu_tu: 1, tinh_dinh_muc: false },
+    { id: id(23), loai: 'xuat_bep', ten: 'Làm món ở bếp', can_anh: false, dang_dung: true, thu_tu: 2, tinh_dinh_muc: true },
+  ];
+  const nguyenDm = {
+    ...nguyen,
+    [`ld_co_dm_${id(22)}`]: '1',                                                 // không tích = không tính
+    [`ld_ten_${id(23)}`]: 'Làm món ở bếp', [`ld_thu_tu_${id(23)}`]: '2', [`ld_dang_dung_${id(23)}`]: 'co',
+    [`ld_co_dm_${id(23)}`]: '1', [`ld_tinh_dm_${id(23)}`]: 'co',
+    ld_moi_ten_xuat_bep_0: '', ld_moi_co_dm_xuat_bep_0: '1', ld_moi_tinh_dm_xuat_bep_0: 'co',
+  };
+  ok('Định mức: không đổi ô tích → không ghi gì', soThayDoi(docFormViTriLyDo(taoForm(nguyenDm), vt, ldDm)) === 0);
+  const dm = docFormViTriLyDo(taoForm({
+    ...nguyenDm,
+    [`ld_tinh_dm_${id(22)}`]: 'co',                                              // bật lại Cơm nhân viên
+    [`ld_tinh_dm_${id(23)}`]: '',                                                // bỏ tích Làm món
+  }), vt, ldDm);
+  ok('Định mức: tích / bỏ tích → ghi đúng tinh_dinh_muc',
+    dm.lyDoSua.length === 2
+    && JSON.stringify(dm.lyDoSua.find(l => l.id === id(22))?.dong) === '{"tinh_dinh_muc":true}'
+    && JSON.stringify(dm.lyDoSua.find(l => l.id === id(23))?.dong) === '{"tinh_dinh_muc":false}');
+  const boOAn = { ...nguyenDm };
+  delete boOAn[`ld_co_dm_${id(22)}`];
+  const khongO = docFormViTriLyDo(taoForm(boOAn), vt, ldDm);
+  ok('Định mức: form không có ô (thiếu ô ẩn) → không đổi cột', soThayDoi(khongO) === 0);
+  const huyCoDm = docFormViTriLyDo(taoForm({ ...nguyenDm, [`ld_co_dm_${id(21)}`]: '1' }), vt, ldDm);
+  ok('Định mức: lý do Hủy không có cột này dù form gửi ô ẩn', soThayDoi(huyCoDm) === 0);
+  const moi = docFormViTriLyDo(taoForm({
+    ...nguyenDm,
+    ld_moi_ten_xuat_bep_0: 'Nếm thử món mới', ld_moi_tinh_dm_xuat_bep_0: '',
+    ld_moi_ten_xuat_bep_1: 'Làm món đặt', ld_moi_co_dm_xuat_bep_1: '1', ld_moi_tinh_dm_xuat_bep_1: 'co',
+    ld_moi_ten_huy_1: 'Rơi vỡ', ld_moi_can_anh_huy_1: 'co',
+  }), vt, ldDm);
+  const m0 = moi.lyDoMoi.find(l => l.ten === 'Nếm thử món mới');
+  const m1 = moi.lyDoMoi.find(l => l.ten === 'Làm món đặt');
+  const mh = moi.lyDoMoi.find(l => l.ten === 'Rơi vỡ');
+  ok('Định mức: lý do Xuất bếp mới mang ô tích, lý do Hủy mới không',
+    m0?.tinh_dinh_muc === false && m1?.tinh_dinh_muc === true && mh !== undefined && !('tinh_dinh_muc' in mh));
+  ok('Định mức: thiếu cột (database cũ) coi như tính', tinhDinhMuc({}) && !tinhDinhMuc({ tinh_dinh_muc: false }));
+  ok('Định mức: phiên bản đổi khi đổi ô tích',
+    phienBanViTriLyDo(vt, ldDm) !== phienBanViTriLyDo(vt, ldDm.map(l => (l.id === id(22) ? { ...l, tinh_dinh_muc: true } : l))));
 });
 
 // ===========================================================================
@@ -375,6 +419,15 @@ await nhom('8 · MÃ NGUỒN TRANG', async () => {
   const vl = doc(join(TRANG, 'cai-dat/vi-tri-ly-do.astro'));
   ok('Vị trí + lý do: MỘT form POST, có phien_ban, nút Lưu tất cả', (vl.match(/<form method="POST"/g) ?? []).length === 1
     && /name="phien_ban"/.test(vl) && /Lưu tất cả/.test(vl) && /docFormViTriLyDo/.test(vl));
+  ok('Vị trí + lý do: ô tích "Tính vào định mức bếp" chỉ ở bảng Xuất bếp, cả dòng cũ lẫn dòng mới',
+    /Tính vào định mức bếp/.test(vl) && /ld_co_dm_\$\{l\.id\}/.test(vl) && /ld_tinh_dm_\$\{l\.id\}/.test(vl)
+    && /ld_moi_co_dm_/.test(vl) && /ld_moi_tinh_dm_/.test(vl)
+    && (vl.match(/loai === 'xuat_bep' && \(/g) ?? []).length === 2);
+  const dmTrang = doc(join(TRANG, 'bao-cao/dinh-muc.astro'));
+  ok('Định mức bếp: câu "không tính … Cơm nhân viên" + link Vị trí và lý do chỉ cho danh_muc',
+    /không tính định mức \(mặc định: Cơm nhân viên\)/.test(dmTrang)
+    && /k\.duoc\('danh_muc'\) \? <>Đổi ở <a href="\/noi-bo\/kho\/cai-dat\/vi-tri-ly-do"/.test(dmTrang));
+  ok('Danh mục đọc cột tinh_dinh_muc của lý do', /select\('id, loai, ten, can_anh, dang_dung, thu_tu, tinh_dinh_muc'\)/.test(doc(join(GOC, 'web/src/lib/kho/danh-muc.ts'))));
 
   const ct = doc(join(TRANG, 'cai-dat/cong-thuc.astro'));
   ok('Công thức: lưới có Tính lại, Thêm dòng, Lưu công thức, phiên bản', ['tinh_lai', 'them_dong', 'luu_luoi'].every(v => ct.includes(`value="${v}"`))

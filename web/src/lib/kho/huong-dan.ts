@@ -954,6 +954,7 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
       'Đồ uống, món không dùng thịt: mở món → **Đổi tên, mã iPOS, ngừng bán** → chọn "Ngừng bán / không dùng thịt".',
       'Bếp vẫn lấy thịt bằng phiếu **Xuất bếp** như cũ. Ngưỡng lệch sửa ở **Thiết lập** → **Ngưỡng cảnh báo**.',
       'Lệch vượt ngưỡng 7 ngày gần nhất thì chuông báo quản lý mỗi sáng.',
+      'Phiếu **Xuất bếp** lý do **Cơm nhân viên** không tính vào định mức (kho vẫn trừ đủ kg). Lý do khác muốn bỏ ra thì vào **Thiết lập** → **Vị trí và lý do**, bỏ tích **Tính vào định mức bếp**.',
     ],
     link: { href: '/noi-bo/kho/cai-dat/dinh-luong', chu: 'Mở Định lượng món' },
   },
@@ -976,7 +977,10 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
       'Thêm mới: gõ vào dòng trống màu vàng cuối mỗi bảng.',
       'Bấm **Lưu tất cả** một lần. Bỏ một dòng: chọn **Ngừng dùng**.',
     ],
-    meo: ['Lý do hủy tích **Phải chụp ảnh** thì báo hủy với lý do đó bắt buộc có ảnh.'],
+    meo: [
+      'Lý do hủy tích **Phải chụp ảnh** thì báo hủy với lý do đó bắt buộc có ảnh.',
+      'Lý do xuất bếp bỏ tích **Tính vào định mức bếp** (mặc định: Cơm nhân viên) thì báo cáo Định mức bếp không cộng phần đó.',
+    ],
     link: { href: '/noi-bo/kho/cai-dat/vi-tri-ly-do', chu: 'Mở Vị trí và lý do' },
   },
   {

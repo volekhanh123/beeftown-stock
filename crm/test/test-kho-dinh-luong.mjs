@@ -15,7 +15,9 @@
  *     "chuyển bếp" khi pha lóc được tính (mở lại phiên thì trừ lại); HĐ hủy và
  *     dòng đã trừ kho không đếm; thủ kho / NV quầy không thấy tiền;
  *   · cảnh báo dinh_muc_lech khi vượt ngưỡng, không khi dưới / bằng ngưỡng;
- *   · kho không bị trừ theo định lượng — kho_doi_soat_ton() rỗng.
+ *   · kho không bị trừ theo định lượng — kho_doi_soat_ton() rỗng;
+ *   · (0043) phiếu Xuất bếp lý do "Cơm nhân viên" KHÔNG tính vào bếp nhận; quản lý
+ *     bật lại được (tinh_dinh_muc); lý do mới tên đó mặc định không tính.
  */
 
 import { dungDatabase, taoBoDem, UID, maGui, UID_MAY_IPOS, themMayIpos } from './kho-chung.mjs';
@@ -468,6 +470,81 @@ await nhom('10 · CẢNH BÁO dinh_muc_lech (7 NGÀY, NGƯỠNG nguong_dinh_muc_
   ok('Chi nhánh Q7 không có cảnh báo định mức', !(b.rows?.[0]?.v?.su_kien ?? []).some(x => x.khoa === 'dinh_muc_lech'));
   await dat(10);
   await doiSoat('Cuối cùng');
+});
+
+// ===========================================================================
+await nhom('11 · CƠM NHÂN VIÊN KHÔNG TÍNH VÀO ĐỊNH MỨC (0043)', async () => {
+  const tu = await ngaySau(-1);
+  const lyDo = async ten => (await db.query(
+    `select id, tinh_dinh_muc from kho_ly_do where loai = 'xuat_bep' and ten = $1`, [ten])).rows[0];
+  const comNv = await lyDo('Cơm nhân viên');
+  const lamMon = await lyDo('Làm món ở bếp');
+  ok('Lý do mặc định "Cơm nhân viên" (kho_khoi_tao): không tính định mức', comNv?.tinh_dinh_muc === false, JSON.stringify(comNv));
+  ok('Lý do "Làm món ở bếp": tính định mức', lamMon?.tinh_dinh_muc === true);
+  const { rows: khac } = await db.query(`select loai, ten from kho_ly_do where not tinh_dinh_muc`);
+  ok('Chỉ đúng một lý do không tính (Cơm nhân viên)', khac.length === 1, JSON.stringify(khac));
+
+  // Bò kho (8 suất) dùng thêm nạc vai 250 g → lẽ ra dùng 2 kg.
+  const bo = await monTheoTen('Bò kho');
+  const dl = await luuDl(UID.qlA, bo.id, [{ mat_hang_id: MH['P-VUN'].id, gram: 100 }, { mat_hang_id: MH['C-NACVAI'].id, gram: 250 }]);
+  ok('Bò kho: thịt vụn 100 g + nạc vai 250 g', dl.loi === null, dl.loi ?? '');
+  const [loNac] = await nhapHang([{ mat_hang_id: MH['C-NACVAI'].id, so_goi: 10, so_kg: 5, don_gia_kg: 300000,
+                                    han_dung: await ngaySau(5) }], viTri.kho);
+  const xuatLd = (ldId, soGoi) => duoi(UID.thuKhoA, `
+    select * from kho_tao_phieu_xuat(
+      p_chi_nhanh_id => $1, p_ma_gui => $2, p_loai => 'xuat_bep', p_vi_tri_id => $3, p_vi_tri_den_id => null,
+      p_ly_do_id => $4, p_ghi_chu => null, p_anh => '{}'::text[], p_dong => $5::jsonb)`,
+    [cnA.id, maGui(), viTri.kho, ldId, JSON.stringify([{ mat_hang_id: MH['C-NACVAI'].id, lo_id: loNac.id, so_goi: soGoi }])]);
+  const x1 = await xuatLd(lamMon.id, 4);
+  ok('Thủ kho xuất bếp 4 gói nạc vai (2 kg), lý do "Làm món ở bếp"', x1.loi === null, x1.loi ?? '');
+  const x2 = await xuatLd(comNv.id, 2);
+  ok('Thủ kho xuất bếp 2 gói nạc vai (1 kg), lý do "Cơm nhân viên"', x2.loi === null, x2.loi ?? '');
+  const { rows: [so] } = await db.query(`select -sum(so_kg)::numeric as kg from kho_so_cai
+    where loai = 'xuat_bep' and mat_hang_id = $1 and chung_tu_loai = 'phieu_xuat'`, [MH['C-NACVAI'].id]);
+  ok('Sổ kho vẫn trừ đủ 3 kg (cơm nhân viên vẫn là thịt ra khỏi kho)', Number(so.kg) === 3, `${so.kg}`);
+
+  const r = await baoCao(UID.qlA, tu, homNay);
+  const nac = dongMh(r.rows, 'C-NACVAI');
+  ok('Báo cáo: nạc vai bếp nhận 2 kg (không tính 1 kg cơm nhân viên), lẽ ra dùng 2 kg, lệch 0%',
+     Number(nac?.kg_xuat_bep) === 2 && Number(nac?.kg_ly_thuyet) === 2 && Number(nac?.chenh_pt) === 0 && nac?.vuot_nguong === false,
+     JSON.stringify(nac));
+  ok('Thăn ngoại (xuất bếp không lý do) vẫn 10 kg; thịt vụn chuyển bếp khi pha vẫn 1 kg',
+     Number(dongMh(r.rows, 'C-THANNGOAI')?.kg_xuat_bep) === 10 && Number(dongMh(r.rows, 'P-VUN')?.kg_xuat_bep) === 1);
+  ok('Cảnh báo dinh_muc_lech KHÔNG bắn cho nạc vai vì cơm nhân viên',
+     !(await suKien(UID.qlA, 'dinh_muc_lech')).some(x => x.ma === 'C-NACVAI'));
+
+  const tk = await duoi(UID.thuKhoA, `update kho_ly_do set tinh_dinh_muc = true where id = $1`, [comNv.id]);
+  ok('Thủ kho KHÔNG bật lại được (không đổi dòng nào)', (tk.loi !== null || tk.rows?.length === 0)
+     && (await lyDo('Cơm nhân viên')).tinh_dinh_muc === false, tk.loi ?? '');
+
+  const bat = await duoi(UID.qlA, `update kho_ly_do set tinh_dinh_muc = true where id = $1`, [comNv.id]);
+  ok('Quản lý bật lại "Tính vào định mức bếp" cho Cơm nhân viên', bat.loi === null && (await lyDo('Cơm nhân viên')).tinh_dinh_muc === true,
+     bat.loi ?? '');
+  const r2 = await baoCao(UID.qlA, tu, homNay);
+  const nac2 = dongMh(r2.rows, 'C-NACVAI');
+  ok('…bếp nhận nạc vai thành 3 kg, lệch +50%, vượt ngưỡng', Number(nac2?.kg_xuat_bep) === 3 && Number(nac2?.chenh_pt) === 50
+     && nac2?.vuot_nguong === true, JSON.stringify(nac2));
+  ok('…cảnh báo dinh_muc_lech có nạc vai', (await suKien(UID.qlA, 'dinh_muc_lech')).some(x => x.ma === 'C-NACVAI'));
+  const tkr = await baoCao(UID.thuKhoA, tu, homNay);
+  ok('…thủ kho vẫn không thấy tiền', tkr.loi === null && tkr.rows.every(x => x.tien_chenh === null));
+
+  await duoi(UID.qlA, `update kho_ly_do set tinh_dinh_muc = false where id = $1`, [comNv.id]);
+  ok('Tắt lại → 2 kg, hết cảnh báo nạc vai', Number(dongMh((await baoCao(UID.qlA, tu, homNay)).rows, 'C-NACVAI')?.kg_xuat_bep) === 2
+     && !(await suKien(UID.qlA, 'dinh_muc_lech')).some(x => x.ma === 'C-NACVAI'));
+
+  // Lý do dùng chung toàn thương hiệu. Quản lý chi nhánh khác thêm "Cơm nhân viên" gõ
+  // trên máy Mac (chữ tổ hợp NFD, thừa khoảng trắng) và cố đặt tinh_dinh_muc = true.
+  const tenMac = '  Cơm   nhân viên '.normalize('NFD');
+  const moi = await duoi(UID.qlB, `insert into kho_ly_do (loai, ten, tinh_dinh_muc) values ('xuat_bep', $1, true)
+    returning tinh_dinh_muc`, [tenMac]);
+  ok('Thêm lý do Xuất bếp tên "Cơm nhân viên" (khác dạng chữ) → mặc định KHÔNG tính định mức',
+     moi.loi === null && moi.rows[0].tinh_dinh_muc === false, moi.loi ?? JSON.stringify(moi.rows));
+  const xk = await duoi(UID.qlB, `insert into kho_ly_do (loai, ten) values ('huy', 'Cơm nhân viên') returning tinh_dinh_muc`);
+  ok('Lý do loại khác (Hủy) cùng tên → không bị đổi (vẫn true)', xk.loi === null && xk.rows[0].tinh_dinh_muc === true, xk.loi ?? '');
+  const tc = await duoi(UID.qlB, `insert into kho_ly_do (loai, ten) values ('xuat_bep', 'Cơm nhân viên ca tối') returning tinh_dinh_muc`);
+  ok('Tên chỉ gần giống ("Cơm nhân viên ca tối") → vẫn tính (quản lý tự bỏ tích nếu muốn)',
+     tc.loi === null && tc.rows[0].tinh_dinh_muc === true, tc.loi ?? '');
+  await doiSoat('Sau xuất bếp cơm nhân viên');
 });
 
 process.exit(ketThuc('ĐỊNH LƯỢNG MÓN'));

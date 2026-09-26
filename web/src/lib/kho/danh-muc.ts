@@ -88,6 +88,8 @@ export interface LyDo {
   can_anh: boolean;
   dang_dung: boolean;
   thu_tu: number;
+  /** Chỉ có nghĩa với lý do Xuất bếp (0043): false = phiếu xuất bếp lý do này KHÔNG tính vào định mức (vd Cơm nhân viên). */
+  tinh_dinh_muc: boolean;
 }
 
 export interface CaiDat {
@@ -844,7 +846,7 @@ export async function luuViTri(client: SupabaseClient, form: FormData, chiNhanhI
 
 export async function docLyDo(client: SupabaseClient): Promise<LyDo[]> {
   const { data, error } = await client
-    .from('kho_ly_do').select('id, loai, ten, can_anh, dang_dung, thu_tu')
+    .from('kho_ly_do').select('id, loai, ten, can_anh, dang_dung, thu_tu, tinh_dinh_muc')
     .order('loai').order('thu_tu').order('ten');
   if (error) throw error;
   return (data ?? []) as LyDo[];

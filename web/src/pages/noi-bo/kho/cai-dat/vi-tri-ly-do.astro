@@ -6,7 +6,9 @@
  * hủy" và "Đang mang ra quầy" (0032) do hệ thống tạo — đổi tên được, không
  * tắt được, không đổi loại được.
  * Lý do dùng chung toàn thương hiệu; "bắt buộc ảnh" nghĩa là báo hủy với lý
- * do này phải chụp ít nhất một ảnh.
+ * do này phải chụp ít nhất một ảnh. Lý do Xuất bếp có ô "Tính vào định mức
+ * bếp" (0043): bỏ tích thì phiếu xuất bếp lý do đó không cộng vào "bếp nhận"
+ * ở báo cáo định mức (mặc định Cơm nhân viên không tính).
  *
  * GĐ8c: mọi dòng của hai bảng + vài dòng trống để thêm nằm trong MỘT form, một
  * nút "Lưu tất cả" (lib/kho/sua-nhanh.ts: docFormViTriLyDo → luuViTriLyDo).
@@ -19,7 +21,7 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docViTri, docLyDo, type ViTri, type LyDo } from '../../../../lib/kho/danh-muc.ts';
 import {
-  LOAI_LY_DO, SO_DONG_THEM, docFormViTriLyDo, laViTriHeThong, luuViTriLyDo, phienBanViTriLyDo,
+  LOAI_LY_DO, SO_DONG_THEM, docFormViTriLyDo, laViTriHeThong, luuViTriLyDo, phienBanViTriLyDo, tinhDinhMuc,
 } from '../../../../lib/kho/sua-nhanh.ts';
 import { cauLoiKho, TEN_LOAI_VI_TRI, type KetQua } from '../../../../lib/kho/chung.ts';
 
@@ -124,9 +126,11 @@ const tich = (ten: string, macDinh: boolean, coO: string) => (go && go.has(coO) 
     {LOAI_LY_DO.map(([loai, tieuDe]) => (
       <>
         <h2>{tieuDe}</h2>
+        {loai === 'xuat_bep' && <p class="nb-dan" style="font-size:.9rem">Bỏ tích <strong>Tính vào định mức bếp</strong> với phần bếp lấy không để nấu món bán (vd Cơm nhân viên):
+          kho vẫn trừ đủ số kg, nhưng báo cáo Định mức bếp không cộng phần này nên không báo lệch oan.</p>}
         <div class="kho-bang-khung">
           <table class="kho-bang vl-bang">
-            <thead><tr><th>Lý do</th><th class="so">Thứ tự</th><th>Tình trạng</th>{loai === 'huy' && <th>Bắt buộc ảnh</th>}</tr></thead>
+            <thead><tr><th>Lý do</th><th class="so">Thứ tự</th><th>Tình trạng</th>{loai === 'huy' && <th>Bắt buộc ảnh</th>}{loai === 'xuat_bep' && <th>Định mức bếp</th>}</tr></thead>
             <tbody>
               {lyDo.filter(l => l.loai === loai).map(l => (
                 <tr style={l.dang_dung ? undefined : 'opacity:.6'}>
@@ -144,6 +148,12 @@ const tich = (ten: string, macDinh: boolean, coO: string) => (go && go.has(coO) 
                       <label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_can_anh_${l.id}`} value="co" checked={tich(`ld_can_anh_${l.id}`, l.can_anh, `ld_co_anh_${l.id}`)} /> Phải chụp ảnh</label>
                     </td>
                   )}
+                  {loai === 'xuat_bep' && (
+                    <td>
+                      <input type="hidden" name={`ld_co_dm_${l.id}`} value="1" />
+                      <label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_tinh_dm_${l.id}`} value="co" checked={tich(`ld_tinh_dm_${l.id}`, tinhDinhMuc(l), `ld_co_dm_${l.id}`)} /> Tính vào định mức bếp</label>
+                    </td>
+                  )}
                 </tr>
               ))}
               {Array.from({ length: SO_DONG_THEM }, (_, i) => (
@@ -153,6 +163,12 @@ const tich = (ten: string, macDinh: boolean, coO: string) => (go && go.has(coO) 
                   <td class="kho-phu">Mới</td>
                   {loai === 'huy' && (
                     <td><label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_moi_can_anh_${loai}_${i}`} value="co" checked={go ? go.get(`ld_moi_can_anh_${loai}_${i}`) === 'co' : true} /> Phải chụp ảnh</label></td>
+                  )}
+                  {loai === 'xuat_bep' && (
+                    <td>
+                      <input type="hidden" name={`ld_moi_co_dm_${loai}_${i}`} value="1" />
+                      <label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_moi_tinh_dm_${loai}_${i}`} value="co" checked={go ? go.get(`ld_moi_tinh_dm_${loai}_${i}`) === 'co' : true} /> Tính vào định mức bếp</label>
+                    </td>
                   )}
                 </tr>
               ))}

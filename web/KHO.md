@@ -545,8 +545,8 @@ không phải vị trí tồn; kho **không** tự trừ theo định lượng.
 **Dữ liệu** (0038, chi tiết trong comment đầu migration): `kho_mon` theo **chi nhánh** (mã món iPOS riêng từng
 máy), `kho_dinh_luong` (món × mặt hàng × gram, 0 < gram ≤ 10.000). Hai bảng không có cột tiền.
 
-- **Bếp nhận** = mọi dòng sổ `xuat_bep` trong kỳ: phiếu Xuất bếp **và** phần "chuyển bếp" khi chốt pha lóc
-  (mở lại phiên pha thì trừ lại).
+- **Bếp nhận** = dòng sổ `xuat_bep` trong kỳ: phiếu Xuất bếp **và** phần "chuyển bếp" khi chốt pha lóc
+  (mở lại phiên pha thì trừ lại) — **trừ** phiếu Xuất bếp có lý do `kho_ly_do.tinh_dinh_muc = false` (0043, xem dưới).
 - **Lẽ ra dùng** = số suất × gram. Số suất = dòng iPOS có mã khớp `kho_mon.ma_ipos`; bỏ hóa đơn hủy, dòng `da_huy`,
   và dòng `da_ghi` (hàng bán thẳng từ quầy, đã trừ kho — bếp không nhận). Món ăn thường ghép kiểu `bo_qua` ở
   Bán hàng iPOS → vẫn được đếm.
@@ -569,7 +569,14 @@ Khớp món / mặt hàng, kiểm gram, tạo món mới khi áp dụng: **datab
   mặt hàng:gram lúc mở; lưu mà database đã khác thì từ chối, không đè.
 - Dán Excel áp dụng chỉ thêm / sửa gram, không xóa mặt hàng vắng mặt trong bảng dán; còn dòng lỗi thì từ chối cả
   bảng (trang hiện lại bản xem trước). Áp dụng lại cùng bảng không đổi gì — không cần `ma_gui`.
-- Bếp nhận tính **mọi** phiếu Xuất bếp, kể cả lý do "Cơm nhân viên", "Gần hết hạn" — các phiếu đó làm lệch dương.
+- **Cơm nhân viên không tính định mức** (chủ chốt 26/09, migration 0043): cột `kho_ly_do.tinh_dinh_muc` (mặc định
+  `true`; lý do dùng chung toàn thương hiệu). Lý do Xuất bếp tên "Cơm nhân viên" (so tên chuẩn hóa: NFC, chữ thường,
+  gộp khoảng trắng) được đặt `false` — cả dòng đã có lẫn dòng thêm sau (trigger BEFORE INSERT
+  `kho_ly_do_dinh_muc_mac_dinh`; chỉ khi thêm, quản lý bật lại được). `kho_dinh_muc_tinh` bỏ dòng sổ có dòng gốc
+  (dòng đảo ngược xét qua `dao_cua`) thuộc phiếu xuất có lý do `false`; chuyển bếp khi pha lóc giữ nguyên. Kho vẫn
+  trừ đủ kg — chỉ báo cáo định mức và cảnh báo `dinh_muc_lech` không cộng. Web: ô tích "Tính vào định mức bếp" ở
+  Vị trí và lý do (chỉ bảng Xuất bếp), một câu dưới tiêu đề báo cáo định mức (link chỉ hiện với `danh_muc`).
+  Lý do khác như "Gần hết hạn" vẫn tính — muốn bỏ thì quản lý bỏ tích.
 - Ô menu "Định mức bếp" / "Định lượng món" nằm dưới đường của Báo cáo / Thiết lập: `dangO` chỉ cho ô cụ thể nhất sáng.
 - Cảnh báo `dinh_muc_lech` (quản lý, chủ): 7 ngày gần nhất, mỗi mặt hàng lệch một dòng; nút "Xem" mở báo cáo đúng
   7 ngày đó. Số đỏ ở ô menu "Định mức bếp" (`quyen: duyet`). Ô "Định lượng món" (`danh_muc`) nằm trong Khác và
@@ -720,8 +727,9 @@ Tổng chạy tính **ở máy chủ** (`tongChu`) khi bấm Tính lại / Thêm
 (`tinhGoiY`) — chỉ kg; cột "Gợi ý" để người dùng tự chép, không tự điền đè.
 
 **Vị trí + lý do** (`docFormViTriLyDo` → `luuViTriLyDo`): ô `vt_ten_<id>`, `vt_loai_<id>`, `vt_thu_tu_<id>`,
-`vt_dang_dung_<id>`, `ld_*_<id>` (lý do hủy có ô ẩn `ld_co_anh_<id>` để biết ô tích có trên form), dòng mới
-`vt_moi_*_<i>`, `ld_moi_*_<loại>_<i>`. Kiểm hết trước khi ghi (tên trống ở dòng có sẵn = lỗi, nhắc "Ngừng dùng");
+`vt_dang_dung_<id>`, `ld_*_<id>` (lý do hủy có ô ẩn `ld_co_anh_<id>` để biết ô tích có trên form; lý do Xuất bếp
+có ô ẩn `ld_co_dm_<id>` + ô tích `ld_tinh_dm_<id>` = cột `tinh_dinh_muc`, 0043), dòng mới
+`vt_moi_*_<i>`, `ld_moi_*_<loại>_<i>` (Xuất bếp mới: `ld_moi_co_dm_xuat_bep_<i>` + `ld_moi_tinh_dm_xuat_bep_<i>`, mặc định tích). Kiểm hết trước khi ghi (tên trống ở dòng có sẵn = lỗi, nhắc "Ngừng dùng");
 chỉ dòng đổi mới ghi, từng lệnh một (không có hàm gộp — lỗi giữa chừng báo "Đã lưu N dòng, chưa lưu được …").
 `phien_ban` = băm FNV của hai bảng (`phienBanViTriLyDo`). Vị trí hệ thống: không đổi loại, không tắt.
 

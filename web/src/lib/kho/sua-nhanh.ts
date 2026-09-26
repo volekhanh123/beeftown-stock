@@ -179,12 +179,15 @@ export const SO_DONG_THEM = 2;
 /** Vị trí hệ thống (chờ hủy, đang mang ra quầy): không đổi loại, không tắt được. */
 export const laViTriHeThong = (v: Pick<ViTri, 'loai'>) => v.loai === 'cho_huy' || v.loai === 'dang_chuyen';
 
+/** Lý do có tính vào định mức bếp không (thiếu cột = tính, như mặc định database). */
+export const tinhDinhMuc = (l: Pick<LyDo, 'tinh_dinh_muc'>) => l.tinh_dinh_muc !== false;
+
 /** Chuỗi phiên bản của hai bảng lúc mở trang (đổi một chữ ở đâu cũng khác). */
 export function phienBanViTriLyDo(viTri: ViTri[], lyDo: LyDo[]): string {
   const v = [...viTri].sort((a, b) => a.id.localeCompare(b.id))
     .map(x => [x.id, x.ten, x.loai, x.thu_tu, x.dang_dung ? 1 : 0].join('|'));
   const l = [...lyDo].sort((a, b) => a.id.localeCompare(b.id))
-    .map(x => [x.id, x.ten, x.loai, x.thu_tu, x.dang_dung ? 1 : 0, x.can_anh ? 1 : 0].join('|'));
+    .map(x => [x.id, x.ten, x.loai, x.thu_tu, x.dang_dung ? 1 : 0, x.can_anh ? 1 : 0, tinhDinhMuc(x) ? 1 : 0].join('|'));
   // Gọn: băm chuỗi dài thành 8 ký tự (FNV-1a) — chỉ để so, không để bảo mật.
   let h = 0x811c9dc5;
   for (const ch of [...v, '#', ...l].join('\n')) {
@@ -199,7 +202,7 @@ export interface KeHoachViTriLyDo {
   /** `o` = tên ô tên trên form — lưu được thì trang xóa chữ ở ô đó (bấm lại không thêm trùng). */
   viTriMoi: { ten: string; loai: 'kho' | 'quay'; thu_tu: number; o: string }[];
   lyDoSua: { id: string; ten: string; dong: Record<string, unknown> }[];
-  lyDoMoi: { ten: string; loai: string; can_anh: boolean; o: string }[];
+  lyDoMoi: { ten: string; loai: string; can_anh: boolean; tinh_dinh_muc?: boolean; o: string }[];
   loi: string[];
 }
 
@@ -260,6 +263,11 @@ export function docFormViTriLyDo(form: FormData, viTri: ViTri[], lyDo: LyDo[]): 
       const canAnh = form.get(`ld_can_anh_${l.id}`) === 'co';
       if (canAnh !== l.can_anh) dong.can_anh = canAnh;
     }
+    // Ô tích "tính vào định mức bếp" chỉ có ở lý do Xuất bếp; ô ẩn ld_co_dm_<id> báo ô tích có trên form.
+    if (l.loai === 'xuat_bep' && form.has(`ld_co_dm_${l.id}`)) {
+      const tinh = form.get(`ld_tinh_dm_${l.id}`) === 'co';
+      if (tinh !== tinhDinhMuc(l)) dong.tinh_dinh_muc = tinh;
+    }
     if (Object.keys(dong).length > 0) kq.lyDoSua.push({ id: l.id, ten, dong });
   }
   for (const [loai] of LOAI_LY_DO) {
@@ -267,7 +275,14 @@ export function docFormViTriLyDo(form: FormData, viTri: ViTri[], lyDo: LyDo[]): 
       const ten = g(`ld_moi_ten_${loai}_${i}`);
       if (!ten) continue;
       if (ten.length > 80) { kq.loi.push(`Lý do mới "${ten}": dài quá (tối đa 80 ký tự).`); continue; }
-      kq.lyDoMoi.push({ ten, loai, can_anh: form.get(`ld_moi_can_anh_${loai}_${i}`) === 'co', o: `ld_moi_ten_${loai}_${i}` });
+      const moi: KeHoachViTriLyDo['lyDoMoi'][number] = {
+        ten, loai, can_anh: form.get(`ld_moi_can_anh_${loai}_${i}`) === 'co', o: `ld_moi_ten_${loai}_${i}`,
+      };
+      // Lý do Xuất bếp mới: ghi ô tích "tính vào định mức bếp" (tên "Cơm nhân viên" thì database luôn đặt KHÔNG tính).
+      if (loai === 'xuat_bep' && form.has(`ld_moi_co_dm_${loai}_${i}`)) {
+        moi.tinh_dinh_muc = form.get(`ld_moi_tinh_dm_${loai}_${i}`) === 'co';
+      }
+      kq.lyDoMoi.push(moi);
     }
   }
   return kq;

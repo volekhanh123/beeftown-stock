@@ -360,6 +360,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_phieu_nhap_chan_huy_da_tra', 'kho_chan_vi_tri_di_duong', 'kho_cai_dat_ghi_moc',
     'kho_phieu_nhap_kiem_don', 'kho_phieu_nhap_cap_nhat_don',
     'kho_ncc_ghi_doi_tai_khoan', 'kho_phieu_nhap_giu_hoa_don_gop',
+    // 0043: thêm lý do Xuất bếp "Cơm nhân viên" → mặc định không tính định mức
+    'kho_ly_do_dinh_muc_mac_dinh',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
