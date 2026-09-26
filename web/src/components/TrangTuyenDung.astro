@@ -54,19 +54,18 @@ interface Props {
 const { ngonNgu, noiDung: nd, viTri, ketQuaNop = null } = Astro.props;
 const t = chu(ngonNgu);
 
-// Danh sách dự phòng khi chưa nối database. Đây chỉ là TÊN VỊ TRÍ, lấy từ
-// bảng mục lục tài liệu vận hành — không phải nội dung mật.
+// Danh sách dự phòng khi chưa nối database: bốn vị trí đội mở cửa theo JD
+// (BEEF_TOWN_Recruitment_EN_FINAL, 26/09/2026), cùng thứ tự với tin thật
+// (tin_tuyen_dung_cong_khai xếp theo bộ phận rồi tên). Chỉ là TÊN VỊ TRÍ.
 // Bộ phận ghi bằng MÃ enum và lấy nhãn từ BO_PHAN, giống hệt tin thật từ
 // database — không giữ một bản nhãn thứ hai phải dịch lại mỗi khi thêm tiếng.
-const DU_PHONG: { ten: BaThuTieng; bo_phan: keyof typeof BO_PHAN; ca: boolean }[] = [
-  { ten: { vi: 'Nhân viên sảnh',             en: 'Hall staff',             ko: '홀 직원' },           bo_phan: 'sanh',      ca: true },
-  { ten: { vi: 'Tổ trưởng sảnh',             en: 'Floor leader',           ko: '홀 팀장' },           bo_phan: 'sanh',      ca: false },
-  { ten: { vi: 'Quản lý sảnh',               en: 'Floor manager',          ko: '홀 매니저' },         bo_phan: 'quan_ly',   ca: false },
-  { ten: { vi: 'Quản lý cửa hàng',           en: 'Store manager',          ko: '점장' },              bo_phan: 'quan_ly',   ca: false },
-  { ten: { vi: 'Nhân viên bếp',              en: 'Kitchen staff',          ko: '주방 직원' },         bo_phan: 'bep',       ca: false },
-  { ten: { vi: 'Nhân viên bộ phận thịt',     en: 'Meat department',        ko: '정육 파트 직원' },    bo_phan: 'quay_thit', ca: false },
-  { ten: { vi: 'Nhân viên tư vấn quầy thịt', en: 'Meat counter assistant', ko: '정육 코너 상담 직원' }, bo_phan: 'quay_thit', ca: true },
-  { ten: { vi: 'Đầu mối marketing',          en: 'Marketing coordinator',  ko: '마케팅 담당자' },     bo_phan: 'marketing', ca: true },
+// Loại hợp đồng chỉ ghi khi JD đã chốt (sảnh: bán thời gian); chưa chốt thì
+// null và thẻ không hiện dòng đó — không đoán thay nhà hàng.
+const DU_PHONG: { ten: BaThuTieng; bo_phan: keyof typeof BO_PHAN; loai: keyof typeof LOAI_HOP_DONG | null }[] = [
+  { ten: { vi: 'Nhân viên sảnh',                         en: 'Hall Crew',                             ko: '홀 크루' },               bo_phan: 'sanh',      loai: 'ban_thoi_gian' },
+  { ten: { vi: 'Nhân viên bếp có kinh nghiệm',           en: 'Experienced Kitchen Crew',              ko: '경력 주방 크루' },        bo_phan: 'bep',       loai: null },
+  { ten: { vi: 'Nhân viên đóng gói và hỗ trợ quầy thịt', en: 'Butcher Packaging & Counter Assistant', ko: '정육 포장·코너 보조 직원' }, bo_phan: 'quay_thit', loai: null },
+  { ten: { vi: 'Thợ pha lóc thịt bò',                    en: 'Skilled Beef Trimmer',                  ko: '숙련 정육 손질 직원' },   bo_phan: 'quay_thit', loai: null },
 ];
 
 const dungDuPhong = viTri.length === 0;
@@ -82,7 +81,6 @@ const mucLuong = (v: ViTri) => dinhDangLuong(v.luong_tu, v.luong_den, v.luong_do
 // Câu riêng của trang này; câu dùng chung nằm ở t = chu(ngonNgu).
 const tRieng = dich(ngonNgu, {
   viTriDangTuyen: { vi: 'Vị trí đang tuyển', en: 'Open roles', ko: '채용 중인 포지션' },
-  theoCa:         { vi: 'Làm theo ca', en: 'Shift work', ko: '교대 근무' },
   canNguoi: {
     vi: (n: number) => `Cần ${n} người`,
     en: (n: number) => `${n} positions`,
@@ -98,9 +96,6 @@ const tRieng = dich(ngonNgu, {
     ko: 'Beeftown은 보내 주신 정보를 채용에만 사용하며, 6개월 동안 보관해요.',
   },
 });
-
-// "Toàn thời gian" của thẻ dự phòng là đúng nhãn loại hợp đồng của tin thật.
-const nhanToanTG = nhanEnum(LOAI_HOP_DONG, 'toan_thoi_gian', ngonNgu);
 ---
 
 <section class="muc" style="padding-top:20px">
@@ -121,7 +116,8 @@ const nhanToanTG = nhanEnum(LOAI_HOP_DONG, 'toan_thoi_gian', ngonNgu);
             <div class="the vi-tri">
               <span class="nhan">{nhanEnum(BO_PHAN, v.bo_phan, ngonNgu)}</span>
               <h3>{v.ten[ngonNgu]}</h3>
-              <p class="nho" style="margin:0">{v.ca ? tRieng.theoCa : nhanToanTG}</p>
+              {/* Cùng nhãn loại hợp đồng với tin thật. */}
+              {v.loai && <p class="nho" style="margin:0">{nhanEnum(LOAI_HOP_DONG, v.loai, ngonNgu)}</p>}
             </div>
           ))
         : viTri.map((v) => (
