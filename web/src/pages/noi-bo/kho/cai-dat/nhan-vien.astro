@@ -114,6 +114,10 @@ const nhanVienDaKhoa = nhanVien.filter(n => !n.dang_lam);
       {moiTao.vai_tro === 'may_chung' ? (
         <p class="kho-phu">Tài khoản của máy tính bảng: trên tablet, quản lý mở <strong>/noi-bo/kho/may/dang-ky</strong> và
           nhập email + mật khẩu này. Xong thì từng nhân viên đăng nhập một lần trên máy để đặt PIN.</p>
+      ) : moiTao.vai_tro === 'may_ipos' ? (
+        <p class="kho-phu">Tài khoản của máy đồng bộ iPOS: người quản lý Cloudflare cài email này làm bí mật
+          <code>KHO_IPOS_EMAIL</code> và mật khẩu này làm <code>KHO_IPOS_MAT_KHAU</code> — xem
+          <a href="/noi-bo/kho/cai-dat/ipos">Kết nối iPOS</a>. Không ai đăng nhập bằng tài khoản này.</p>
       ) : (
         <p class="kho-phu">Người này đăng nhập ở trang Đăng nhập nội bộ bằng email và mật khẩu trên.
           {moiTao.can_xac_nhan && ' Trước đó phải bấm link xác nhận trong thư Supabase gửi tới email này.'}</p>

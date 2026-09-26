@@ -1,0 +1,188 @@
+---
+/**
+ * KHO — IN ĐƠN ĐẶT HÀNG · LƯU PDF · GỬI ZALO (GĐ8a, migration 0039)
+ *
+ * Một tờ A4 gọn: logo, quán / chi nhánh, số đơn, ngày đặt, ngày giao, nhà cung
+ * cấp, bảng món (kg, gói), ghi chú, chỗ ký. Giá dự kiến CHỈ khi người xem được
+ * giá VÀ chọn "In kèm giá" (?gia=1) — mặc định không in giá (NCC tự báo giá).
+ *
+ * Nút (public/kho/js/in-an.js, chỉ hiện khi có JavaScript):
+ *   · "In / Lưu PDF" = window.print() — trong hộp in chọn "Lưu thành PDF";
+ *   · "Chia sẻ" = Web Share API (điện thoại): gửi nội dung đơn thành tin nhắn
+ *     vào Zalo… Máy không có thì nút không hiện.
+ * Không JS vẫn dùng được: in bằng menu trình duyệt, chép tin nhắn ở ô bên dưới.
+ */
+import Kho from '../../../../../layouts/Kho.astro';
+import BaoKho from '../../../../../components/kho/BaoKho.astro';
+import NutIn from '../../../../../components/kho/NutIn.astro';
+import KyTen from '../../../../../components/kho/KyTen.astro';
+import { moTrangKho, chuyenHuong } from '../../../../../lib/kho/trang.ts';
+import { docDonDat, docGiaDonDat, tinNhanDon, nhanTrangThaiDon, type DonDat } from '../../../../../lib/kho/dat-hang.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangTien } from '../../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('nhap') && !k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+const DS = '/noi-bo/kho/dat-hang';
+const coGia = k.duoc('xem_gia');
+const inGia = coGia && Astro.url.searchParams.get('gia') === '1';
+
+let don: DonDat | null = null;
+let gia = new Map<string, number | null>();
+type LienHe = { dien_thoai: string | null; dia_chi: string | null; nguoi_lien_he: string | null };
+let ncc = null as LienHe | null;
+let loiDoc = k.loiDoc;
+try {
+  don = await docDonDat(k.client, Astro.params.id ?? '');
+  if (don && coGia) {
+    // Liên hệ NCC: bảng nhà cung cấp chỉ vai xem giá đọc được — thủ kho in chỉ có tên.
+    const [g, n] = await Promise.all([
+      inGia ? docGiaDonDat(k.client, don.id) : Promise.resolve(new Map<string, number | null>()),
+      k.client.from('kho_nha_cung_cap').select('dien_thoai, dia_chi, nguoi_lien_he').eq('id', don.nha_cung_cap_id).maybeSingle(),
+    ]);
+    gia = g;
+    ncc = (n.data ?? null) as LienHe | null;
+  }
+} catch (e) {
+  loiDoc = cauLoiKho(e, 'Không đọc được đơn đặt hàng.');
+}
+if (!don && !loiDoc) return chuyenHuong(Astro, DS, { ok: false, cau: 'Không tìm thấy đơn đặt hàng này.' });
+
+const thanhTien = (mh: string, kg: number) => {
+  const g = gia.get(mh);
+  return g === null || g === undefined ? null : Math.round(kg * g);
+};
+const tongTien = don && inGia
+  ? don.dong.reduce<number | null>((s, d) => { const t = thanhTien(d.mat_hang_id, d.so_kg_dat); return t === null ? s : (s ?? 0) + t; }, null)
+  : null;
+const tongKg = don ? don.dong.reduce((s, d) => s + d.so_kg_dat, 0) : 0;
+const tin = don ? tinNhanDon(don, { chiNhanh: k.chiNhanh?.ten, gia: inGia ? gia : null }) : '';
+const [nhanTT] = don ? nhanTrangThaiDon(don.trang_thai) : [''];
+const tieuDe = don ? `In đơn ${don.so_phieu}` : 'In đơn đặt hàng';
+---
+<Kho k={k} tieuDe={tieuDe} huongDan="dat-hang">
+  <h1>{tieuDe}</h1>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  {don && (
+    <>
+      <div class="kho-khong-in">
+        {don.trang_thai === 'nhap' && (
+          <div class="nb-bao luu-y"><p style="margin:0">Đơn còn là <strong>nháp</strong> — chưa gửi. {k.duoc('duyet_nhap') ? 'Bấm Gửi ở trang đơn trước khi gửi cho nhà cung cấp.' : 'Nhờ quản lý xem lại và gửi.'}</p></div>
+        )}
+        {don.trang_thai === 'huy' && (
+          <div class="nb-bao loi"><p style="margin:0">Đơn này <strong>đã hủy</strong> — đừng gửi cho nhà cung cấp.</p></div>
+        )}
+        {coGia && (
+          <form method="GET" class="dh-chon-gia">
+            <label>
+              <input type="checkbox" name="gia" value="1" checked={inGia} />
+              <span>In kèm giá dự kiến</span>
+            </label>
+            <button type="submit" class="nb-nut phu">Cập nhật</button>
+          </form>
+        )}
+        <div class="dh-nut">
+          <NutIn chu="In / Lưu PDF" />
+          <button type="button" class="nb-nut phu" data-chia-se data-tieu-de={`Đơn đặt hàng ${don.so_phieu}`} data-chu={tin} hidden>
+            Chia sẻ (Zalo…)
+          </button>
+        </div>
+        <p class="kho-phu">
+          Gửi Zalo: bấm <strong>In / Lưu PDF</strong> → chọn <strong>Lưu thành PDF</strong> → gửi file PDF vào Zalo của nhà cung cấp.
+          Hoặc chép nội dung tin nhắn bên dưới.
+        </p>
+        <details class="nb-the">
+          <summary style="cursor:pointer;font-weight:600">Nội dung tin nhắn (chép gửi Zalo)</summary>
+          <label class="nb-o" style="margin-top:.5rem">
+            <span class="an">Nội dung tin nhắn</span>
+            <textarea readonly rows={Math.min(don.dong.length + 6, 20)}>{tin}</textarea>
+          </label>
+        </details>
+      </div>
+
+      {/* ======================= Tờ đơn (màn hình và giấy) ======================= */}
+      <article class="dh-giay">
+        <header class="dh-giay-dau">
+          <img src="/bieu-tuong.svg" alt="" width="56" height="56" />
+          <div>
+            <p class="dh-quan">BEEFTOWN{k.chiNhanh ? ` · ${k.chiNhanh.ten}` : ''}</p>
+            <p class="dh-ten">ĐƠN ĐẶT HÀNG</p>
+            <p class="dh-so">Số: <strong>{don.so_phieu}</strong> · Ngày đặt {dinhDangNgay(don.ngay_dat)}{don.trang_thai === 'nhap' ? ' · BẢN NHÁP' : ''}</p>
+          </div>
+        </header>
+
+        <dl class="kho-dl dh-giay-dl">
+          <dt>Gửi</dt><dd><strong>{don.ten_nha_cung_cap ?? '—'}</strong>{ncc?.nguoi_lien_he ? ` · ${ncc.nguoi_lien_he}` : ''}{ncc?.dien_thoai ? ` · ${ncc.dien_thoai}` : ''}</dd>
+          {ncc?.dia_chi && <><dt>Địa chỉ</dt><dd>{ncc.dia_chi}</dd></>}
+          <dt>Ngày giao</dt><dd><strong>{dinhDangNgay(don.ngay_giao_du_kien)}</strong></dd>
+          {don.ghi_chu && <><dt>Ghi chú</dt><dd>{don.ghi_chu}</dd></>}
+        </dl>
+
+        <table class="kho-bang dh-giay-bang">
+          <thead>
+            <tr>
+              <th class="so">STT</th>
+              <th>Mặt hàng</th>
+              <th class="so">Số kg</th>
+              <th class="so">Số gói / tảng</th>
+              {inGia && <th class="so">Giá dự kiến/kg</th>}
+              {inGia && <th class="so">Thành tiền</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {don.dong.map((d, i) => (
+              <tr>
+                <td class="so">{i + 1}</td>
+                <td>{d.ten_mat_hang}<span class="kho-phu"> · {d.ma}</span></td>
+                <td class="so"><strong>{dinhDangKg(d.so_kg_dat)}</strong></td>
+                <td class="so">{d.so_goi_dat ? `${d.so_goi_dat} ${d.don_vi_goi}` : ''}</td>
+                {inGia && <td class="so">{gia.get(d.mat_hang_id) != null ? dinhDangTien(gia.get(d.mat_hang_id)) : ''}</td>}
+                {inGia && <td class="so">{thanhTien(d.mat_hang_id, d.so_kg_dat) !== null ? dinhDangTien(thanhTien(d.mat_hang_id, d.so_kg_dat)) : ''}</td>}
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr class="tong">
+              <td></td>
+              <td>Cộng {don.dong.length} món</td>
+              <td class="so">{dinhDangKg(tongKg)}</td>
+              <td></td>
+              {inGia && <td></td>}
+              {inGia && <td class="so">{tongTien !== null ? dinhDangTien(tongTien) : ''}</td>}
+            </tr>
+          </tfoot>
+        </table>
+        <p class="kho-phu">Số kg là số đặt; thịt cân lẻ được, giao đúng cân thật. Nhờ nhà cung cấp gửi kèm hóa đơn / phiếu giao hàng.</p>
+        <KyTen ten={['Người đặt hàng', 'Nhà cung cấp xác nhận']} />
+      </article>
+
+      <p class="kho-khong-in kho-phu" style="margin-top:1rem">Trạng thái đơn: {nhanTT}.</p>
+    </>
+  )}
+
+  <p class="kho-khong-in" style="margin-top:1.5rem"><a href={don ? `${DS}/${don.id}` : DS}>← Về đơn đặt hàng</a></p>
+</Kho>
+
+<style>
+  .dh-chon-gia { display: flex; gap: .75rem; align-items: center; flex-wrap: wrap; margin: 0 0 .75rem; }
+  .dh-chon-gia label { display: flex; gap: .5rem; align-items: center; min-height: 48px; font-weight: 600; }
+  .dh-chon-gia input { width: 1.3rem; height: 1.3rem; }
+  .dh-nut { display: flex; gap: .5rem; flex-wrap: wrap; align-items: flex-start; }
+  .dh-nut .nb-nut { min-height: 48px; }
+  .dh-giay { background: #fff; border: 1px solid var(--kho-vach, #ddd); border-radius: 12px; padding: 1.25rem; margin-top: 1rem; }
+  .dh-giay-dau { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }
+  .dh-giay-dau p { margin: 0; }
+  .dh-quan { font-size: .85rem; letter-spacing: .08em; }
+  .dh-ten { font-size: 1.4rem; font-weight: 800; }
+  .dh-so { font-size: .9rem; }
+  .dh-giay-bang { margin: .5rem 0; }
+  .dh-giay textarea { font-size: 16px; }
+  textarea { width: 100%; font-size: 16px; }
+  .an { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media print {
+    .dh-giay { border: 0; padding: 0; margin: 0; }
+    .dh-giay-bang { font-size: 11pt; }
+    .dh-giay-bang th { background: #eee !important; }
+  }
+</style>

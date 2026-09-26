@@ -12,6 +12,10 @@
  *
  * ?loai=ton_dau: nhập hàng đang có sẵn lúc mới dùng phần mềm — không nhà cung
  * cấp, không bắt buộc ảnh.
+ *
+ * "Nhận theo đơn đặt" (GĐ8a, 0039): đơn đã gửi / nhận một phần hiện thành nút —
+ * bấm là kho_tao_phieu_nhap_tu_don tạo phiếu nháp điền sẵn món và kg còn thiếu,
+ * mở thẳng bước 2 (ảnh hóa đơn chụp ở đó bằng "Thêm ảnh").
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -20,7 +24,8 @@ import NhanHangChon from '../../../../components/kho/NhanHangChon.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docDinhNghia, docViTri, type CaiDat, type ViTri } from '../../../../lib/kho/danh-muc.ts';
 import { docNccNhap, taoPhieuNhan, type DauNhan, type NccNhap } from '../../../../lib/kho/nhan-hang.ts';
-import { cauLoiKho, dinhDangNgayNgan, homNayVn, type KetQua } from '../../../../lib/kho/chung.ts';
+import { docDonChoNhan, taoPhieuTuDon, type DonDatTom } from '../../../../lib/kho/dat-hang.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangNgayNgan, homNayVn, type KetQua } from '../../../../lib/kho/chung.ts';
 import type { DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
 
 const k = await moTrangKho(Astro);
@@ -57,7 +62,11 @@ if (Astro.request.method === 'POST' && !form) {
   bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
 }
 if (form) {
-  if (String(form.get('viec') ?? '') === 'tao') {
+  if (String(form.get('viec') ?? '') === 'theo_don' && loai === 'mua') {
+    const kq = await taoPhieuTuDon(k.client, String(form.get('don_id') ?? ''), String(form.get('ma_gui') ?? ''));
+    if (kq.ok && kq.id) return chuyenHuong(Astro, `/noi-bo/kho/nhan-hang/${kq.id}`, kq);
+    bao = kq;
+  } else if (String(form.get('viec') ?? '') === 'tao') {
     const kq = await taoPhieuNhan(k.client, cn.id, form, { loai, dinhNghiaPhieu: dnPhieu });
     if (kq.ok && kq.id) return chuyenHuong(Astro, `/noi-bo/kho/nhan-hang/${kq.id}`, kq);
     bao = kq;
@@ -78,6 +87,8 @@ const dau: DauNhan = dauForm ?? {
   vi_tri_id: noiNhan.find(v => v.id === caiDat?.vi_tri_nhan_hang_id)?.id ?? noiNhan.find(v => v.loai === 'kho')?.id ?? noiNhan[0]?.id ?? '',
   ngay_nhap: homNayVn(), so_hoa_don: '', truong_them: {},
 };
+// Đơn đặt hàng đang chờ hàng về (lỗi đọc → không hiện phần này).
+const donCho: DonDatTom[] = loai === 'mua' ? await docDonChoNhan(k.client, cn.id) : [];
 // 6 người giao gần đây là nút lớn; còn lại trong ô chọn.
 const nccNut = ncc.slice(0, 6);
 const nccKhac = ncc.slice(6);
@@ -93,6 +104,29 @@ const tieuDe = loai === 'ton_dau' ? 'Nhập hàng có sẵn (tồn đầu kỳ)'
   {loai === 'ton_dau' && (
     <p class="nb-dan">Hàng <strong>đang có sẵn</strong> lúc bắt đầu dùng phần mềm. Không có nhà cung cấp, không cần ảnh.{' '}
       Nhiều món, nhiều nơi? <a href="/noi-bo/kho/cai-dat/ton-dau">Nhập dạng bảng / dán Excel →</a></p>
+  )}
+
+  {donCho.length > 0 && (
+    <section class="nb-the">
+      <h2 style="margin-top:0">Nhận theo đơn đặt</h2>
+      <p class="kho-phu">Hàng về theo đơn đã đặt: bấm đơn đó — phiếu có sẵn món và số kg còn thiếu, chỉ việc cân lại và sửa số.</p>
+      <ul class="kho-dong-ds">
+        {donCho.map(d => (
+          <li>
+            <span>
+              <strong>{d.so_phieu} · {d.ten_nha_cung_cap}</strong>
+              <small>Hẹn giao {dinhDangNgay(d.ngay_giao_du_kien)} · {d.so_dong} món · đặt {dinhDangKg(d.tong_kg_dat)} kg{d.tong_kg_da_nhan > 0 ? ` · đã nhận ${dinhDangKg(d.tong_kg_da_nhan)} kg` : ''}</small>
+            </span>
+            <form method="POST">
+              <input type="hidden" name="don_id" value={d.id} />
+              <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
+              <button type="submit" name="viec" value="theo_don" class="nb-nut">Nhận hàng theo đơn này</button>
+            </form>
+          </li>
+        ))}
+      </ul>
+      <p class="kho-phu" style="margin-bottom:0">Hàng không theo đơn nào thì làm như thường ở dưới.</p>
+    </section>
   )}
 
   <form method="POST" enctype="multipart/form-data">

@@ -37,6 +37,8 @@ export const BIEU_TUONG = {
   tiep:       '<path d="M9 6l6 6-6 6"/>',
   lui:        '<path d="M15 6l-6 6 6 6"/>',
   canh_bao:   '<path d="M12 3l10 18H2L12 3z"/><path d="M12 10v5"/><path d="M12 18v.2"/>',
+  // GĐ8a: đặt hàng nhà cung cấp — xe đẩy hàng.
+  dat_hang:   '<path d="M3 4h2l2.4 10.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 8H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/>',
   in:         '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
 } as const;
 

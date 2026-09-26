@@ -52,6 +52,10 @@ const boLoc = laQuay && boLocUrl.viTri !== 'cho_huy' ? { ...boLocUrl, viTri: 'qu
 const { viTri, han, loai, duoiMuc, tim } = boLoc;
 const xemGia = k.duoc('xem_gia');
 const vanHanh = k.duoc('van_hanh');
+// GĐ8b (0040): trả hàng NCC hai bước — người nhận hàng ghi kg trả ngay từ lô hàng nhập mua.
+const traNcc = k.duoc('nhap');
+const linkTraNcc = (t: DongTon) => (traNcc && t.nguon === 'nhap' && (t.loai_vi_tri === 'kho' || t.loai_vi_tri === 'quay') && t.so_kg > 0
+  ? `/noi-bo/kho/cong-no/tra-hang?lo=${t.lo_id}&vi_tri=${t.vi_tri_id}` : null);
 
 let ton: DongTon[] = [];
 let gia = new Map<string, { gia_von_kg: number; gia_tri: number }>();
@@ -228,7 +232,8 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
                   <td class="o-noi" data-nhan="Ở đâu">{t.ten_vi_tri}</td>
                   <td class="so o-kg" data-nhan="Kg"><b>{dinhDangKg(t.so_kg)}</b></td>
                   {g.dem_goi && <td class="so o-goi" data-nhan={g.don_vi_goi}><b>{t.so_goi}</b></td>}
-                  <td class="o-lo" data-nhan="Lô">{t.ma_lo}{' '}<span class="kho-phu">{nguonLo(t)} {dinhDangNgay(t.ngay_dong_goi)}</span></td>
+                  <td class="o-lo" data-nhan="Lô">{t.ma_lo}{' '}<span class="kho-phu">{nguonLo(t)} {dinhDangNgay(t.ngay_dong_goi)}</span>
+                    {linkTraNcc(t) && <>{' '}<a class="kho-phu" href={linkTraNcc(t)!} aria-label={`Trả nhà cung cấp lô ${t.ma_lo}`}>Trả NCC</a></>}</td>
                   {coGia && <td class="so o-gia" data-nhan="Giá vốn/kg">{giaCua(t) ? dinhDangTien(giaCua(t)!.gia_von_kg) : '—'}</td>}
                   {vanHanh && (
                     <td class:list={['o-nut', { trong: viec.length === 0 }]}>

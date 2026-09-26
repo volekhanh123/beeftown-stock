@@ -10,7 +10,8 @@
  *
  * Bên dưới giữ các phần cài đặt cũ, mỗi phần một thẻ có neo để nút của bước
  * trỏ tới:
- *   · Danh mục: lối vào mặt hàng, công thức, NCC, vị trí, mã vạch, cân…
+ *   · Danh mục: lối vào mặt hàng, công thức, NCC, vị trí, mã vạch, cân,
+ *     Kết nối iPOS (GĐ7a — không thêm bước vào kho_tien_do_thiet_lap)…
  *   · Chung (quản lý): vị trí nhận hàng mặc định, số ngày cảnh báo hạn dùng
  *   · Quầy (quản lý, 0032): công tắc "Quầy phải bấm nhận hàng" — lưu qua
  *     kho_luu_nguong (khóa chuyen_quay_can_nhan), không ghi thẳng bảng
@@ -90,12 +91,16 @@ const oNguong = (khoa: string) => nguongLai ? String(nguongLai.get(khoa) ?? '') 
 
 const MUC = [
   { link: '/noi-bo/kho/cai-dat/mat-hang', ten: 'Mặt hàng', mo_ta: 'Tảng nhập, phần cắt bán ở quầy, phụ phẩm. Giá bán, hạn dùng, mã cân. Dán từ Excel được.', hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/mat-hang/sua-nhanh', ten: 'Sửa nhanh mặt hàng', mo_ta: 'Một bảng mọi món: giá bán, hạn dùng, mã cân, mức quầy, mức kho lạnh — sửa nhiều món rồi Lưu tất cả một lần.', hien: k.duoc('danh_muc') },
   { link: '/noi-bo/kho/cai-dat/cong-thuc', ten: 'Công thức pha lóc', mo_ta: 'Mỗi loại tảng thường ra những phần nào, tỉ lệ bao nhiêu — để điền sẵn phiếu pha và so thu hồi.', hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/dinh-luong', ten: 'Định lượng món', mo_ta: 'Mỗi suất món dùng bao nhiêu gram thịt — để so với số thịt bếp nhận. Lấy món từ iPOS, dán từ Excel được.', hien: k.duoc('danh_muc') },
   { link: '/noi-bo/kho/cai-dat/nha-cung-cap', ten: 'Nhà cung cấp', mo_ta: 'Tên, mã số thuế, số ngày nợ, tài khoản ngân hàng.', hien: k.duoc('ncc') },
   { link: '/noi-bo/kho/cai-dat/vi-tri-ly-do', ten: 'Vị trí và lý do', mo_ta: 'Kho lạnh, quầy; lý do hủy, lý do xuất bếp, ảnh bắt buộc.', hien: k.duoc('danh_muc') },
   { link: '/noi-bo/kho/cai-dat/o-thong-tin', ten: 'Ô thông tin thêm', mo_ta: 'Tự tạo ô mới cho mặt hàng, nhà cung cấp, phiếu nhập, lô hàng: xuất xứ, grade, nhiệt độ khi nhận…', hien: k.duoc('danh_muc') || k.duoc('cai_dat_goc') },
   { link: '/noi-bo/kho/cai-dat/ma-vach', ten: 'Mã vạch cân', mo_ta: 'Cách đọc nhãn cân Dahua (mặc định 2+5+5+1). Có ô thử một nhãn thật.', hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/ipos', ten: 'Kết nối iPOS', mo_ta: 'iPOS tự gửi hóa đơn sang, kho trừ ở quầy. Địa chỉ nhận hóa đơn, đèn trạng thái, Cập nhật ngay, chuyển từ đếm quầy sang iPOS.', hien: k.duoc('danh_muc') || k.duoc('cai_dat_goc') },
   { link: '/noi-bo/kho/cai-dat/can', ten: 'Đồng bộ cân', mo_ta: 'Đưa mã cân, tên, giá bán/kg của Mặt hàng sang cân in tem qua USB. Kho là gốc.', hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/quyen', ten: 'Ai làm được gì', mo_ta: 'Bảng từng vai (chủ, quản lý, kế toán, thủ kho, NV quầy) làm được việc gì, ai thấy giá tiền.', hien: true },
   laChu
     ? { link: '/noi-bo/kho/cai-dat/nhan-vien', ten: 'Nhân viên & máy dùng chung', mo_ta: 'Tạo tài khoản cho thủ kho, NV quầy/bếp, kế toán, máy tính bảng. Khóa người nghỉ việc. Xem ai đã gắn vào máy, mở khóa máy.', hien: true }
     : { link: '/noi-bo/kho/cai-dat/nhan-vien', ten: 'Máy dùng chung', mo_ta: 'Máy tính bảng ở quầy/bếp: ai đã gắn, ai bị khóa vì sai PIN. Mở khóa, tắt máy.', hien: k.duoc('duyet') },
@@ -265,7 +270,9 @@ const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null
             <label class="kho-tich"><input type="radio" name="nguon_so_ban" value="kiem_ke" checked={caiDat.nguon_so_ban === 'kiem_ke'} />
               <span><strong>Kiểm kê quầy cuối ngày</strong> — chưa nối iPOS: phần thiếu khi đếm quầy được tính là đã bán.</span></label>
             <label class="kho-tich"><input type="radio" name="nguon_so_ban" value="ipos" checked={caiDat.nguon_so_ban === 'ipos'} />
-              <span><strong>iPOS</strong> — đã nối iPOS: số bán đến từ máy tính tiền, phần thiếu khi kiểm kê là hao hụt thật.</span></label>
+              <span><strong>iPOS</strong> — đã nối iPOS: số bán đến từ máy tính tiền, phần thiếu khi kiểm kê là hao hụt thật.
+                Chuyển bằng nút <a href="/noi-bo/kho/cai-dat/ipos">Chuyển sang trừ kho theo iPOS</a> để đặt luôn mốc chuyển —
+                chọn ở đây thì kho chưa trừ theo iPOS cho tới khi có mốc.</span></label>
           </fieldset>
           <label class="kho-tich"><input type="checkbox" name="cho_tu_duyet" value="co" checked={caiDat.cho_tu_duyet} />
             <span>Cho quản lý tự duyệt phiếu do chính mình lập (quán nhỏ nên bật; người duyệt luôn được ghi lại)</span></label>

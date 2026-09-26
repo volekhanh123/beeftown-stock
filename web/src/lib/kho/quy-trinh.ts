@@ -34,10 +34,14 @@ export interface QuyTrinh {
 export const QUY_TRINH: QuyTrinh[] = [
   {
     ma: 'nhan-hang', ten: 'Nhận hàng', bieuTuong: 'nhap',
-    gioiThieu: 'Thủ kho chụp, cân, gửi — không cần biết giá. Kế toán hoặc quản lý điền giá từ ảnh hóa đơn rồi duyệt; hàng chỉ vào tồn khi đã duyệt.',
+    gioiThieu: 'Quản lý đặt hàng (phần mềm gợi ý số kg). Hàng về: thủ kho chụp, cân, gửi — không cần biết giá. Kế toán hoặc quản lý điền giá từ ảnh hóa đơn rồi duyệt; hàng chỉ vào tồn khi đã duyệt.',
     buoc: [
+      // GĐ8a (0039): đặt hàng trước khi hàng về. Số đỏ: đơn quá ngày giao chưa thấy hàng.
+      { ten: 'Đặt hàng nhà cung cấp', ai: 'Quản lý', quyen: ['nhap'],
+        moTa: 'Chọn nhà cung cấp — phần mềm gợi ý số kg nên đặt theo tồn kho và lượng dùng 28 ngày. Sửa số, bấm Gửi, rồi in / lưu PDF gửi Zalo.',
+        link: '/noi-bo/kho/dat-hang/moi', nut: 'Lập đơn', dem: ['don_dat_tre'] },
       { ten: 'Chụp hóa đơn', ai: 'Thủ kho', quyen: ['nhap'],
-        moTa: 'Chọn nhà cung cấp, chụp hóa đơn / phiếu giao hàng. Phiếu mua bắt buộc có ảnh.',
+        moTa: 'Hàng theo đơn đặt: bấm "Nhận theo đơn này" để có sẵn món và kg. Chọn nhà cung cấp, chụp hóa đơn / phiếu giao hàng. Phiếu mua bắt buộc có ảnh.',
         link: '/noi-bo/kho/nhan-hang/moi' },
       { ten: 'Cân, đếm từng món', ai: 'Thủ kho', quyen: ['nhap'],
         moTa: 'Mỗi món một dòng: số kg cân được, số tảng / gói. Không phải ghi giá.',
@@ -111,7 +115,7 @@ export const QUY_TRINH: QuyTrinh[] = [
         link: '/noi-bo/kho/duyet', dem: ['duyet_huy'] },
       { ten: 'Xem báo cáo hủy', ai: 'Quản lý', quyen: ['xem_gia'],
         moTa: 'Hủy bao nhiêu kg, bao nhiêu tiền, vì lý do gì — theo tuần, tháng.',
-        link: '/noi-bo/kho/bao-cao?bao_cao=hao-hut', nut: 'Xem báo cáo' },
+        link: '/noi-bo/kho/bao-cao/hao-hut', nut: 'Xem báo cáo' },
     ],
   },
   {
@@ -134,7 +138,7 @@ export const QUY_TRINH: QuyTrinh[] = [
   },
   {
     ma: 'cong-no', ten: 'Công nợ', bieuTuong: 'cong_no',
-    gioiThieu: 'Còn nợ nhà cung cấp = Nhập mua − Trả hàng / giảm trừ − Đã thanh toán.',
+    gioiThieu: 'Còn phải trả = Nợ đầu kỳ + Mua − Đã trả − Giảm trừ.',
     buoc: [
       { ten: 'Đối chiếu hóa đơn', ai: 'Kế toán', quyen: ['ke_toan'],
         moTa: 'Ghi hóa đơn VAT cho từng phiếu nhập đã duyệt.',
@@ -142,11 +146,17 @@ export const QUY_TRINH: QuyTrinh[] = [
       { ten: 'Ghi thanh toán', ai: 'Kế toán', quyen: ['ke_toan'],
         moTa: 'Chuyển khoản / tiền mặt / giảm trừ. Tự chia cho phiếu đến hạn sớm nhất.',
         link: '/noi-bo/kho/cong-no', dem: ['cong_no_qua_han'] },
-      { ten: 'Trả hàng nhà cung cấp', ai: 'Kế toán', quyen: ['ke_toan'],
-        moTa: 'Hàng lỗi trả lại: tồn giảm và công nợ tự giảm theo.',
-        link: '/noi-bo/kho/cong-no' },
+      { ten: 'Hóa đơn gộp', ai: 'Kế toán', quyen: ['ke_toan'],
+        moTa: 'NCC xuất một hóa đơn cho nhiều lần giao: chọn các phiếu, ghi số hóa đơn — tự chia tiền vào từng phiếu.',
+        link: '/noi-bo/kho/cong-no?tab=ncc' },
+      { ten: 'Trả hàng nhà cung cấp', ai: 'Thủ kho ghi kg · Kế toán xác nhận tiền', quyen: ['nhap', 'ke_toan'],
+        moTa: 'Thủ kho ghi số kg trả (hàng rời kho ngay), kế toán xác nhận với nhà cung cấp.',
+        link: '/noi-bo/kho/cong-no/tra-hang', dem: ['tra_hang_cho_tien'] },
+      { ten: 'Xuất sang MISA', ai: 'Kế toán', quyen: ['ke_toan'],
+        moTa: 'Chọn kỳ, xem trước, tải file CSV để nhập khẩu vào MISA.',
+        link: '/noi-bo/kho/cong-no/misa', nut: 'Mở' },
       { ten: 'Tải bảng công nợ', ai: 'Kế toán', quyen: ['ke_toan'],
-        moTa: 'File Excel (CSV) để gửi hoặc nhập sang phần mềm kế toán.',
+        moTa: 'File Excel (CSV) để gửi hoặc lưu lại.',
         link: '/noi-bo/kho/bao-cao/cong-no.csv', nut: 'Tải về' },
     ],
   },

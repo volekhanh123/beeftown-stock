@@ -1,0 +1,90 @@
+---
+/**
+ * KHO — AI LÀM ĐƯỢC GÌ (ma trận quyền bằng lời, GĐ8c)
+ *
+ * Mở cho mọi vai xem kho. Dựng hoàn toàn từ QUYEN_KHO + MO_TA_VIEC
+ * (lib/kho/chung.ts) — thêm việc mới vào QUYEN_KHO là bảng tự có dòng mới;
+ * thiếu câu mô tả thì lỗi kiểu và test-kho-giao-dien nhóm 16 đỏ. Không gọi
+ * database: bảng này là GƯƠNG của kho_vai_duoc (database mới là nơi chặn,
+ * test-kho-quyen so hai bản).
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import {
+  MO_TA_VIEC, QUYEN_KHO, TEN_VAI_DAY, VAI_BANG_QUYEN, duoc, tomTatVai, type ViecKho,
+} from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem')) return Astro.redirect('/noi-bo/kho', 302);
+
+const vaiToi = k.nhanSu.vai_tro;
+const viec = Object.keys(QUYEN_KHO) as ViecKho[];
+const vaiNguoi = VAI_BANG_QUYEN.filter(v => !v.startsWith('may_'));
+const vaiMay = VAI_BANG_QUYEN.filter(v => v.startsWith('may_'));
+---
+<Kho k={k} huongDan="quyen" tieuDe="Ai làm được gì" rong>
+  <h1>Ai làm được gì</h1>
+  <p>
+    {k.duoc('danh_muc') || k.duoc('ncc') || k.duoc('cai_dat_goc') ? <><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a> · </> : null}
+    <a href="/noi-bo/kho/huong-dan">Hướng dẫn</a>
+  </p>
+  <BaoKho bao={k.bao} loiDoc={k.loiDoc} />
+
+  <p class="nb-dan">Mỗi tài khoản có một <strong>vai</strong>. Vai quyết định thấy nút nào, mở được màn nào.
+    Tài khoản của bạn: <strong>{TEN_VAI_DAY[vaiToi] ?? vaiToi}</strong>. Cần thêm việc thì nhờ chủ quán đổi vai
+    ở <strong>Thiết lập → Nhân viên</strong>.</p>
+
+  <h2>Tóm tắt từng vai</h2>
+  <ul class="q-tom">
+    {vaiNguoi.map(v => (
+      <li class:list={{ 'q-toi': v === vaiToi }}>{tomTatVai(v)}{v === vaiToi && <span class="nb-nhan song" style="margin-left:.4rem">vai của bạn</span>}</li>
+    ))}
+  </ul>
+
+  <h2>Bảng chi tiết</h2>
+  <div class="kho-bang-khung">
+    <table class="kho-bang q-bang">
+      <thead>
+        <tr>
+          <th scope="col">Việc</th>
+          {vaiNguoi.map(v => <th scope="col" class:list={['q-o', { 'q-toi': v === vaiToi }]}>{TEN_VAI_DAY[v]}</th>)}
+        </tr>
+      </thead>
+      <tbody>
+        {viec.filter(x => vaiNguoi.some(v => duoc(v, x))).map(x => (
+          <tr>
+            <th scope="row"><strong>{MO_TA_VIEC[x].ten}</strong><span class="kho-phu">{MO_TA_VIEC[x].moTa}</span></th>
+            {vaiNguoi.map(v => (
+              <td class:list={['q-o', { 'q-toi': v === vaiToi }]}>
+                {duoc(v, x) ? <span class="q-co" aria-label="Được">✓</span> : <span class="q-khong" aria-label="Không">—</span>}
+              </td>
+            ))}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Tài khoản máy</h2>
+  <ul class="q-tom">
+    {vaiMay.map(v => (
+      <li>{TEN_VAI_DAY[v]}: {viec.filter(x => duoc(v, x)).map(x => MO_TA_VIEC[x].moTa).join(' ')}</li>
+    ))}
+  </ul>
+  <p class="kho-phu">Thu ngân và marketing không dùng phần kho. Giá tiền (giá nhập, giá vốn, tiền hàng) chỉ chủ quán, quản lý,
+    kế toán thấy — thủ kho và nhân viên quầy chỉ thấy kg, gói, hạn dùng.</p>
+</Kho>
+
+<style>
+  .q-tom { padding-left: 1.2rem; }
+  .q-tom li { margin: .35rem 0; }
+  .q-bang th[scope="row"] { text-align: left; min-width: 14rem; font-weight: 400; }
+  .q-bang th[scope="row"] strong { display: block; }
+  .q-bang th[scope="row"] .kho-phu { display: block; font-size: .8rem; }
+  .q-o { text-align: center; white-space: nowrap; }
+  .q-toi { background: var(--kho-vang-nen, #FFF5DC); }
+  .q-co { color: var(--kho-xanh, #1F7A4C); font-weight: 700; font-size: 1.1rem; }
+  .q-khong { color: var(--muc-nhat, #999); }
+</style>

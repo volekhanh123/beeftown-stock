@@ -61,6 +61,7 @@ import {
   type BuocHuy, type DongLoForm, type DongSoCai, type DongXuat, type DongXuatForm, type LoaiXuat, type PhieuXuat,
 } from '../../../../lib/kho/xuat.ts';
 import { linkAnh } from '../../../../lib/kho/anh.ts';
+import { huyTraHangChoTien } from '../../../../lib/kho/cong-no.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, laUuid,
   TEN_LOAI_SO_CAI, TRANG_THAI_CHUNG_TU, type KetQua,
@@ -270,6 +271,9 @@ if (form) {
     } else if (viec === 'huy_chuyen') {
       kq = await huyChuyenDiDuong(k.client, phieu.id, lyDoGo);
       return chuyenHuong(Astro, `/noi-bo/kho/xuat/${phieu.id}`, kq);
+    } else if (viec === 'huy_tra') {
+      // Trả hàng NCC còn chờ kế toán xác nhận tiền (0040): hàng về lại chỗ cũ.
+      return chuyenHuong(Astro, `/noi-bo/kho/xuat/${phieu.id}`, await huyTraHangChoTien(k.client, phieu.id, lyDoGo));
     } else kq = { ok: false, cau: 'Việc không hợp lệ.' };
     // Duyệt / từ chối xong: về hộp Duyệt, phiếu kế tiếp nằm sẵn ở đó. Lỗi thì ở lại phiếu này.
     return chuyenHuong(Astro, kq.ok ? '/noi-bo/kho/duyet' : `/noi-bo/kho/xuat/${phieu.id}`, kq);
@@ -332,6 +336,10 @@ const anhLink = phieu ? await linkAnh(k.client, phieu.anh) : new Map<string, str
 // vai kế toán — kế toán, quản lý, chủ — mở được; thủ kho xem giá nhưng không vào đó).
 const nccTra = phieu?.loai === 'tra_ncc' && k.duoc('ke_toan')
   ? await docNhaCungCapCuaPhieuNhap(k.client, phieu.phieu_nhap_id) : null;
+// Trả hàng hai bước (0040): phiếu còn chờ kế toán xác nhận tiền thì người ghi,
+// kế toán hoặc quản lý hủy được (database kiểm lại quyền).
+const huyTraDuoc = phieu?.loai === 'tra_ncc' && phieu.trang_thai === 'cho_xac_nhan_tien'
+  && (phieu.nguoi_tao === k.nhanSu.id || k.duoc('ke_toan') || k.duoc('duyet'));
 const [nhanTT, lopTT] = phieu ? (TRANG_THAI_CHUNG_TU[phieu.trang_thai] ?? [phieu.trang_thai, 'tat']) : ['Mới', 'nhap'];
 const tieuDe = moi ? TEN_LOAI_XUAT[loai] : `${TEN_LOAI_XUAT[loai]} ${phieu?.so_phieu ?? ''}`;
 const choToiDuyet = phieu?.trang_thai === 'cho_duyet' && k.duoc('duyet');
@@ -353,7 +361,7 @@ const huongDan = choToiDuyet ? 'duyet-huy'
   : loai === 'huy' ? 'bao-huy'
   : loai === 'xuat_bep' ? 'xuat-bep'
   : loai === 'xuat_khac' ? 'xuat-khac'
-  : loai === 'tra_ncc' ? 'tra-ncc'
+  : loai === 'tra_ncc' ? (k.duoc('ke_toan') ? 'tra-ncc' : 'tra-hang')
   : vai === 'nhan_vien_quay' ? (moi ? 'tu-lay-hang' : 'nhan-ra-quay')
   : 'ra-quay';
 // Sổ của phiếu: chỉ các dòng rời nơi lấy (chuyển đi / xuất bếp) — đủ để biết lô nào.
@@ -744,6 +752,16 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
             </div>
           </form>
         </div>
+      )}
+      {huyTraDuoc && (
+        <details class="nb-the kho-khong-in">
+          <summary style="cursor:pointer;font-weight:600">Hủy phiếu trả hàng — hàng về lại {phieu.ten_vi_tri}</summary>
+          <form method="POST" style="margin-top:.75rem">
+            <p class="kho-phu" style="margin-top:0">Chỉ hủy được khi kế toán chưa xác nhận. Dùng khi ghi nhầm số kg hoặc nhà cung cấp không nhận lại hàng — hủy xong thì ghi lại cho đúng.</p>
+            <label class="nb-o"><span>Lý do hủy</span><input type="text" name="ly_do" required maxlength="500" placeholder="ví dụ: ghi nhầm 2,4 thành 24 kg" /></label>
+            <button type="submit" name="viec" value="huy_tra" class="nb-nut kho-nut-xoa">Hủy phiếu trả hàng</button>
+          </form>
+        </details>
       )}
       {nut.huyChuyen && (
         <details class="nb-the kho-khong-in">

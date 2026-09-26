@@ -1,0 +1,177 @@
+---
+/**
+ * KHO — XUẤT SANG MISA (GĐ8b, migration 0040) · /noi-bo/kho/cong-no/misa
+ *
+ * Chọn kỳ + loại (mua hàng / thanh toán) → xem trước bảng (đúng cột của file,
+ * COT_MISA trong lib/kho/misa.ts), số dòng thiếu mã MISA (link sửa NCC, ô sửa
+ * mã mặt hàng ngay tại đây) → tải CSV (/noi-bo/kho/cong-no/misa.csv, UTF-8 BOM,
+ * dấu ; hoặc ,). Thẻ "Mã tài khoản" sửa các TK mặc định (kho_luu_misa_tk).
+ *
+ * Chưa có file mẫu nhập khẩu của MISA — cột, tên cột, cách ghi ngày / số gom
+ * ở COT_MISA và DINH_DANG_MISA ("CHỈNH KHI CÓ FILE MẪU"). Chỉ vai kế toán.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import {
+  docDuLieuMisa, docMisaTk, luuMisaTk, luuMaMisaMatHang, docMaMisaDanhMuc,
+} from '../../../../lib/kho/cong-no.ts';
+import {
+  COT_MISA, TEN_LOAI_MISA, TEN_TK_MISA, docBoLocMisa, docFormMisaTk, docMaMisa, oXemMisa, thieuMaMisa, tomTatMisa,
+  type DongMisa, type LoaiMisa,
+} from '../../../../lib/kho/misa.ts';
+import { cauLoiKho, dinhDangNgay, dinhDangTien, homNayVn, type KetQua } from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('ke_toan')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
+const cn = k.chiNhanh;
+const homNay = homNayVn();
+const sp = Astro.url.searchParams;
+const loc = docBoLocMisa(sp, homNay);
+const DUONG = '/noi-bo/kho/cong-no/misa';
+const giuQ = `${DUONG}?tu=${loc.tu}&den=${loc.den}&loai=${loc.loai}${loc.ngan === ',' ? '&ngan=phay' : ''}`;
+
+let bao: KetQua | null = k.bao;
+const form = await docFormGui(Astro);
+if (Astro.request.method === 'POST' && !form) {
+  bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
+}
+if (form) {
+  const viec = String(form.get('viec') ?? '');
+  if (viec === 'luu_tk') {
+    const f = docFormMisaTk(form);
+    if (f.loi.length) bao = { ok: false, cau: f.loi.join(' · ') };
+    else return chuyenHuong(Astro, `${giuQ}#tai-khoan`, await luuMisaTk(k.client, cn.id, f.tk));
+  } else if (viec === 'ma_hang') {
+    const ma = docMaMisa(form.get('ma_misa'));
+    if (ma === undefined) bao = { ok: false, cau: 'Mã MISA chỉ gồm chữ không dấu, số và các dấu _ . / - (tối đa 40 ký tự).' };
+    else return chuyenHuong(Astro, `${giuQ}#thieu-ma`, await luuMaMisaMatHang(k.client, String(form.get('mat_hang_id') ?? ''), ma));
+  } else {
+    bao = { ok: false, cau: 'Việc không hợp lệ.' };
+  }
+}
+
+let dong: DongMisa[] = [];
+let tk: Record<string, string> = {};
+let thieu: ReturnType<typeof thieuMaMisa> = { ncc: [], matHang: [] };
+let loiDoc = k.loiDoc;
+try {
+  const [d, t, dm] = await Promise.all([
+    docDuLieuMisa(k.client, cn.id, loc.tu, loc.den, loc.loai),
+    docMisaTk(k.client, cn.id),
+    docMaMisaDanhMuc(k.client),
+  ]);
+  dong = d; tk = t;
+  thieu = thieuMaMisa(dong, dm.ncc, dm.matHang);
+} catch (e) {
+  loiDoc = cauLoiKho(e, 'Không đọc được dữ liệu MISA.');
+}
+const tt = tomTatMisa(dong);
+const cot = COT_MISA[loc.loai];
+const XEM = 50;
+const linkTai = `/noi-bo/kho/cong-no/misa.csv?tu=${loc.tu}&den=${loc.den}&loai=${loc.loai}${loc.ngan === ',' ? '&ngan=phay' : ''}`;
+---
+<Kho k={k} huongDan="misa" tieuDe="Xuất sang MISA" rong>
+  <h1>Xuất sang MISA</h1>
+  <p><a href="/noi-bo/kho/cong-no">← Công nợ</a></p>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  <form method="GET" action={DUONG} class="nb-the">
+    <div class="kho-luoi">
+      <label class="nb-o"><span>Từ ngày</span><input type="date" name="tu" value={loc.tu} max={homNay} /></label>
+      <label class="nb-o"><span>Đến ngày</span><input type="date" name="den" value={loc.den} max={homNay} /></label>
+      <label class="nb-o"><span>Loại dữ liệu</span>
+        <select name="loai">
+          {(Object.keys(TEN_LOAI_MISA) as LoaiMisa[]).map(l => <option value={l} selected={loc.loai === l}>{TEN_LOAI_MISA[l]}</option>)}
+        </select></label>
+      <label class="nb-o"><span>Ngăn cột bằng</span>
+        <select name="ngan">
+          <option value="cham_phay" selected={loc.ngan === ';'}>Dấu ; (Excel tiếng Việt)</option>
+          <option value="phay" selected={loc.ngan === ','}>Dấu , (Excel tiếng Anh)</option>
+        </select></label>
+    </div>
+    <button type="submit" class="nb-nut phu">Xem trước</button>
+  </form>
+
+  <div class="kho-o-so-luoi">
+    <div class="kho-o-so"><b>{tt.soDong}</b><span>dòng · {tt.soChungTu} chứng từ</span></div>
+    <div class="kho-o-so"><b style="font-size:1.2rem">{dinhDangTien(tt.tongTien)}</b><span>{loc.loai === 'mua_hang' ? 'tiền hàng và chi phí (chưa thuế)' : 'tổng số tiền'}</span></div>
+    {loc.loai === 'mua_hang' && <div class="kho-o-so"><b style="font-size:1.2rem">{dinhDangTien(tt.tongThue)}</b><span>tiền thuế</span></div>}
+    <a href="#thieu-ma" class={`kho-o-so ${tt.soThieuMa > 0 ? 'luu-y' : ''}`}><b>{tt.soThieuMa}</b><span>dòng thiếu mã MISA</span></a>
+  </div>
+
+  <p style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center">
+    <a class="nb-nut" href={linkTai} download>Tải file CSV ({dinhDangNgay(loc.tu)}–{dinhDangNgay(loc.den)})</a>
+    <span class="kho-phu">Mở bằng Excel, soát lại, lưu thành .xlsx nếu MISA đòi, rồi nhập khẩu vào MISA. Lưu ý: Excel tự bỏ số 0 ở đầu mã số thuế, số hóa đơn (0012345 thành 12345) — nếu có, mở bằng Excel → Dữ liệu → Từ văn bản/CSV và chọn kiểu Văn bản cho các cột đó.</span>
+  </p>
+
+  {dong.length === 0 ? (
+    <p class="nb-rong">Không có {loc.loai === 'mua_hang' ? 'phiếu nhập mua nào được duyệt' : 'khoản trả tiền nào'} trong kỳ này.</p>
+  ) : (
+    <>
+      <h2>Xem trước{dong.length > XEM ? ` (${XEM} dòng đầu / ${dong.length})` : ''}</h2>
+      <div class="kho-bang-khung">
+        <table class="kho-bang">
+          <thead><tr>{cot.map(c => <th class={c.kieu === 'tien' || c.kieu === 'so' || c.kieu === 'phan_tram' ? 'so' : undefined}>{c.ten}</th>)}</tr></thead>
+          <tbody>
+            {dong.slice(0, XEM).map(d => (
+              <tr style={d.thieu_ma ? 'background:var(--kho-vang-nhat, #fff7e0)' : undefined}>
+                {cot.map(c => <td class={c.kieu === 'tien' || c.kieu === 'so' || c.kieu === 'phan_tram' ? 'so' : undefined}>{oXemMisa(d, c)}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p class="kho-phu">Dòng nền vàng: thiếu mã MISA của nhà cung cấp hoặc mặt hàng (file vẫn xuất, cột cuối đánh dấu "x").</p>
+    </>
+  )}
+
+  <section id="thieu-ma" style="scroll-margin-top:5rem">
+    <h2>Mã MISA còn thiếu</h2>
+    {thieu.ncc.length === 0 && thieu.matHang.length === 0 ? (
+      <p class="nb-rong">Mọi nhà cung cấp và mặt hàng trong kỳ này đã có mã MISA.</p>
+    ) : (
+      <>
+        {thieu.ncc.length > 0 && (
+          <>
+            <p><strong>Nhà cung cấp</strong> — thiếu mã thì file dùng mã số thuế (hoặc mã tạm "NCC-…"):</p>
+            <ul>
+              {thieu.ncc.map(n => <li><a href={`/noi-bo/kho/cai-dat/nha-cung-cap?sua=${n.id}`}>{n.ten}</a> — bấm để ghi "Mã nhà cung cấp bên MISA"</li>)}
+            </ul>
+          </>
+        )}
+        {thieu.matHang.length > 0 && (
+          <>
+            <p><strong>Mặt hàng</strong> — thiếu mã thì file dùng mã trong kho:</p>
+            {thieu.matHang.map(m => (
+              <form method="POST" class="kho-luoi" style="align-items:end">
+                <input type="hidden" name="viec" value="ma_hang" />
+                <input type="hidden" name="mat_hang_id" value={m.id} />
+                <p style="margin:0 0 .9rem"><strong>{m.ten}</strong><br /><span class="kho-phu">mã trong kho {m.ma}</span></p>
+                <label class="nb-o"><span>Mã MISA</span><input type="text" name="ma_misa" maxlength="40" autocapitalize="characters" required /></label>
+                <button type="submit" class="nb-nut phu">Lưu mã</button>
+              </form>
+            ))}
+          </>
+        )}
+      </>
+    )}
+  </section>
+
+  <section id="tai-khoan" class="nb-the" style="margin-top:1.5rem;scroll-margin-top:5rem">
+    <h2 style="margin-top:0">Mã tài khoản mặc định</h2>
+    <p class="kho-phu">Dùng cho cột TK Nợ / TK Có của file. Sửa theo hệ thống tài khoản quán đang dùng trong MISA.</p>
+    <form method="POST">
+      <input type="hidden" name="viec" value="luu_tk" />
+      <div class="kho-luoi">
+        {TEN_TK_MISA.map(([khoa, ten, macDinh]) => (
+          <label class="nb-o"><span>{ten}</span><small>Mặc định {macDinh}</small>
+            <input type="text" inputmode="numeric" name={khoa} value={tk[khoa] ?? macDinh} maxlength="10" /></label>
+        ))}
+      </div>
+      <button type="submit" class="nb-nut phu">Lưu mã tài khoản</button>
+    </form>
+  </section>
+</Kho>

@@ -46,7 +46,8 @@ export const KHOA_VIEC_TAY = [
   'yeu_cau_quay', 'hang_dang_chuyen',
 ];
 export const KHOA_DUYET = ['duyet_nhap', 'duyet_huy', 'duyet_kiem_ke'];
-export const KHOA_CONG_NO = ['cong_no_qua_han', 'chua_doi_chieu'];
+// 0040: + phiếu trả hàng thủ kho đã ghi kg, chờ kế toán xác nhận tiền.
+export const KHOA_CONG_NO = ['cong_no_qua_han', 'chua_doi_chieu', 'tra_hang_cho_tien'];
 
 export const MUC_KHO: MucKho[] = [
   { ma: 'trang_chu', ten: 'Trang chủ', link: '/noi-bo/kho', bieuTuong: 'nha', quyen: ['xem'] },
@@ -64,6 +65,11 @@ export const MUC_KHO: MucKho[] = [
     dem: ['nhap_nhap', 'nhap_bi_tra'] },
   // Nhập hàng: phiếu có tiền — điền giá, duyệt, xem lại (vai xem giá).
   { ma: 'nhap', ten: 'Nhập hàng', link: '/noi-bo/kho/nhap', bieuTuong: 'nhap', quyen: ['xem_gia'] },
+  // GĐ8a (0039): đơn đặt hàng nhà cung cấp — quản lý / chủ lập và gửi, thủ kho lập
+  // nháp chỉ kg (quyền nhap). Số đỏ: đơn đã gửi quá ngày giao mà chưa thấy hàng
+  // (don_dat_tre — chỉ quản lý, chủ nhận). Kế toán xem đơn qua link (trang cho xem_gia).
+  { ma: 'dat_hang', ten: 'Đặt hàng', link: '/noi-bo/kho/dat-hang', bieuTuong: 'dat_hang', quyen: ['nhap'],
+    dem: ['don_dat_tre'] },
   { ma: 'pha_loc', ten: 'Pha lóc', link: '/noi-bo/kho/pha-loc', bieuTuong: 'dao', quyen: ['xem_gia', 'pha_loc'],
     dem: ['pha_nhap', 'thu_hoi_thap'] },   // 0033: quản lý thấy phiên thu hồi thấp chưa xem
   // Quầy yêu cầu → thủ kho mang ra → quầy bấm nhận (0032). Số đỏ: thủ kho thấy
@@ -80,12 +86,24 @@ export const MUC_KHO: MucKho[] = [
   { ma: 'cong_no', ten: 'Công nợ', link: '/noi-bo/kho/cong-no', bieuTuong: 'cong_no', quyen: ['ke_toan'],
     dem: KHOA_CONG_NO },
   { ma: 'bao_cao', ten: 'Báo cáo', link: '/noi-bo/kho/bao-cao', bieuTuong: 'bao_cao', quyen: ['xem_gia'] },
+  // GĐ7a (0037): dòng bán iPOS chưa trừ được kho — chưa ghép món, thiếu hàng trên sổ.
+  { ma: 'ban_ipos', ten: 'Bán hàng iPOS', link: '/noi-bo/kho/ban-ipos', bieuTuong: 'quay', quyen: ['duyet'],
+    dem: ['ipos_cho_xu_ly'] },
+  // GĐ7b (0038): định lượng món (danh_muc) và đối chiếu định mức bếp. Báo cáo mở
+  // cho mọi vai xem kho, nhưng ô menu chỉ cho quản lý / chủ — người nhận cảnh
+  // báo dinh_muc_lech (số đỏ). Thủ kho / NV quầy mở trang (chỉ kg) khi được gửi link.
+  { ma: 'dinh_luong', ten: 'Định lượng món', link: '/noi-bo/kho/cai-dat/dinh-luong', bieuTuong: 'bep',
+    quyen: ['danh_muc'] },
+  { ma: 'dinh_muc', ten: 'Định mức bếp', link: '/noi-bo/kho/bao-cao/dinh-muc', bieuTuong: 'bao_cao',
+    quyen: ['duyet'], dem: ['dinh_muc_lech'] },
   { ma: 'quy_trinh', ten: 'Quy trình', link: '/noi-bo/kho/quy-trinh', bieuTuong: 'quy_trinh', quyen: ['xem'] },
   // GĐ5e: màn Cài đặt thành "Thiết lập" có tiến độ từng bước (0035). Không số
   // đỏ — số bước còn lại hiện ngay trên màn, kho_dem_viec không đếm nó.
   { ma: 'cai_dat', ten: 'Thiết lập', link: '/noi-bo/kho/cai-dat', bieuTuong: 'cai_dat',
     quyen: ['danh_muc', 'ncc', 'cai_dat_goc'] },
   { ma: 'huong_dan', ten: 'Hướng dẫn', link: '/noi-bo/kho/huong-dan', bieuTuong: 'huong_dan', quyen: ['xem'] },
+  // GĐ8c: bảng "vai nào làm được việc gì" bằng lời — mọi vai xem kho mở được.
+  { ma: 'quyen', ten: 'Ai làm được gì', link: '/noi-bo/kho/cai-dat/quyen', bieuTuong: 'nguoi', quyen: ['xem'] },
 ];
 
 // Hai mục chỉ có trên thanh đáy.
@@ -125,6 +143,8 @@ export const THAO_TAC_NHANH: Record<string, ThaoTac[]> = {
     { ten: 'Quầy cần hàng', link: '/noi-bo/kho/quay/yeu-cau', bieuTuong: 'chuyen', quyen: ['van_hanh'] },
     { ten: 'Báo hủy', link: '/noi-bo/kho/xuat/moi?loai=huy', bieuTuong: 'huy', quyen: ['van_hanh'] },
     { ten: 'Kiểm kê', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['van_hanh'] },
+    // GĐ8b (0040): trả hàng NCC hai bước — thủ kho chỉ ghi kg.
+    { ten: 'Trả hàng NCC', link: '/noi-bo/kho/cong-no/tra-hang', bieuTuong: 'chuyen', quyen: ['nhap'] },
   ],
   nhan_vien_quay: [
     { ten: 'Yêu cầu hàng', link: '/noi-bo/kho/quay/yeu-cau', bieuTuong: 'chuyen', quyen: ['van_hanh'] },
@@ -136,6 +156,7 @@ export const THAO_TAC_NHANH: Record<string, ThaoTac[]> = {
   ],
   quan_ly: [
     { ten: 'Duyệt', link: '/noi-bo/kho/duyet', bieuTuong: 'duyet', quyen: ['duyet', 'duyet_nhap'] },
+    { ten: 'Đặt hàng', link: '/noi-bo/kho/dat-hang/moi', bieuTuong: 'dat_hang', quyen: ['nhap'] },
     { ten: 'Kiểm kê', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['xem'] },
     { ten: 'Tồn kho', link: '/noi-bo/kho/ton', bieuTuong: 'ton', quyen: ['xem'] },
     { ten: 'Báo cáo', link: '/noi-bo/kho/bao-cao', bieuTuong: 'bao_cao', quyen: ['xem_gia'] },
@@ -145,6 +166,7 @@ export const THAO_TAC_NHANH: Record<string, ThaoTac[]> = {
     { ten: 'Đối chiếu hóa đơn', link: '/noi-bo/kho/cong-no?loc=chua_doi_chieu', bieuTuong: 'viec', quyen: ['ke_toan'] },
     { ten: 'Ghi thanh toán', link: '/noi-bo/kho/cong-no', bieuTuong: 'cong_no', quyen: ['ke_toan'] },
     { ten: 'Tải công nợ (Excel)', link: '/noi-bo/kho/bao-cao/cong-no.csv', bieuTuong: 'bao_cao', quyen: ['ke_toan'] },
+    { ten: 'Xuất sang MISA', link: '/noi-bo/kho/cong-no/misa', bieuTuong: 'bao_cao', quyen: ['ke_toan'] },
   ],
 };
 THAO_TAC_NHANH.chu_so_huu = THAO_TAC_NHANH.quan_ly;
@@ -176,6 +198,13 @@ export function dangO(muc: { link: string; khop?: string[] }, duong: string, tim
   const d = duong.replace(/\/$/, '') || '/';
   if (q) return d === goc && timKiem.replace(/^\?/, '').split('&').includes(q);
   if (goc === '/noi-bo/kho') return d === goc;
+  // Trang có ô menu riêng nằm dưới đường của ô khác (bao-cao/dinh-muc dưới
+  // Báo cáo, cai-dat/dinh-luong dưới Thiết lập, GĐ7b): chỉ ô riêng sáng.
+  const conRieng = MUC_KHO.some(m => {
+    const l = m.link.split('?')[0];
+    return !m.link.includes('?') && l.startsWith(goc + '/') && (d === l || d.startsWith(l + '/'));
+  });
+  if (conRieng) return false;
   return d === goc || d.startsWith(goc + '/') || (muc.khop ?? []).some(p => d === p || d.startsWith(p + '/'));
 }
 

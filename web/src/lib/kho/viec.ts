@@ -143,6 +143,74 @@ export function cauSuKien(su: SuKien): CauSuKien {
                  + '. Xem lại số cân rồi bấm "Đã xem".',
                link: `/noi-bo/kho/pha-loc/${e.ref_id}`, nut: 'Xem', muc: 'vang' };
     }
+    // ---- 0037 · Bán hàng iPOS ----------------------------------------------
+    case 'ipos_cho_xu_ly': {
+      // Quản lý: so = số dòng chưa trừ được kho, phu = số dòng chưa ghép món.
+      const n = soNguyen(e.so) ?? 0;
+      const chuaKhop = soNguyen(e.phu) ?? 0;
+      const thieu = Math.max(n - chuaKhop, 0);
+      const phan = [chuaKhop ? `${chuaKhop} chưa ghép món` : '', thieu ? `${thieu} thiếu hàng trên sổ` : '']
+        .filter(Boolean).join(', ');
+      return { tieuDe: `Bán hàng iPOS: ${n || 'có'} dòng chưa trừ được kho`,
+               chiTiet: `${phan ? `${phan}. ` : ''}Ghép món hoặc thử lại — còn dòng chờ thì chưa duyệt được kiểm kê quầy.`,
+               link: '/noi-bo/kho/ban-ipos', nut: 'Xử lý', muc: 'vang' };
+    }
+    case 'ipos_mat_ket_noi': {
+      // Quản lý (0042): phu = 'loi' (lượt cập nhật cuối lỗi) | 'cham' (trong giờ mở cửa quá gio_mat_ket_noi giờ
+      // không nhận hóa đơn nào); so = phút từ hóa đơn cuối nhận được (null = chưa nhận hóa đơn nào).
+      const phut = soNguyen(e.so);
+      const gio = phut === null ? '' : phut >= 120 ? `${Math.floor(phut / 60)} giờ` : `${phut} phút`;
+      if (e.phu === 'loi') {
+        return { tieuDe: 'Không cập nhật được iPOS',
+                 chiTiet: 'Lần cập nhật gần nhất bị lỗi (thử lại dòng chờ hoặc đọc thực đơn) — mở Kết nối iPOS xem lỗi, bấm "Cập nhật ngay".',
+                 link: '/noi-bo/kho/cai-dat/ipos', nut: 'Xem', muc: 'do' };
+      }
+      return { tieuDe: 'iPOS lâu không gửi hóa đơn sang',
+               chiTiet: `${gio ? `Hóa đơn cuối nhận được: ${gio} trước. ` : 'Chưa nhận được hóa đơn nào từ iPOS. '}Số bán chưa về kho — kiểm tra máy iPOS còn chạy, nhờ iPOS xem địa chỉ nhận hóa đơn.`,
+               link: '/noi-bo/kho/cai-dat/ipos', nut: 'Xem', muc: 'do' };
+    }
+    // ---- 0038 · Định lượng: bếp nhận lệch định mức 7 ngày ------------------
+    case 'dinh_muc_lech': {
+      // Quản lý: so = lệch % (dương = bếp nhận nhiều hơn định lượng), phu = lệch kg,
+      // luc = 0 giờ hôm nay (giờ VN) → khoảng 7 ngày của cảnh báo = luc − 6 ngày … luc.
+      const pt = soNguyen(e.so);
+      const lechKg = soNguyen(e.phu);
+      const t = new Date(e.luc).getTime();
+      const ngay = (n: number) => Number.isFinite(t) ? new Date(t + 7 * 3600000 + n * 86400000).toISOString().slice(0, 10) : null;
+      const nhieu = (lechKg ?? pt ?? 0) >= 0;
+      return { tieuDe: `Bếp nhận thịt ${nhieu ? 'nhiều' : 'ít'} hơn định lượng: ${e.ten || e.ma || 'một mặt hàng'}`,
+               chiTiet: `7 ngày qua${pt !== null && Number.isFinite(pt) ? ` lệch ${pt > 0 ? '+' : ''}${pt.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%` : ''}`
+                 + `${lechKg !== null && Number.isFinite(lechKg) ? ` (${lechKg > 0 ? '+' : ''}${kg(lechKg)})` : ''}`
+                 + ' so với số món bán trên iPOS. Xem lại phiếu Xuất bếp và định lượng món.',
+               link: `/noi-bo/kho/bao-cao/dinh-muc${ngay(-6) ? `?${q({ tu: ngay(-6), den: ngay(0) })}` : ''}`,
+               nut: 'Xem', muc: 'vang' };
+    }
+    // ---- 0039 · Đơn đặt hàng quá ngày giao mà chưa nhận ------------------
+    case 'don_dat_tre': {
+      // Quản lý: ma = số đơn, ten = tên NCC, so = số ngày trễ, phu = ngày giao dự kiến (YYYY-MM-DD).
+      const tre = soNguyen(e.so);
+      const hen = /^\d{4}-\d{2}-\d{2}$/.test(e.phu ?? '') ? e.phu!.split('-').reverse().join('/') : null;
+      const phan = [e.ten, hen ? `hẹn giao ${hen}` : '', tre && tre > 0 ? `trễ ${tre} ngày` : ''].filter(Boolean).join(' — ');
+      return { tieuDe: e.ma ? `Đơn đặt ${e.ma} chưa thấy hàng về` : 'Đơn đặt hàng chưa thấy hàng về',
+               chiTiet: `${phan ? `${phan}. ` : ''}Gọi nhà cung cấp hỏi lại; không giao nữa thì hủy đơn.`,
+               link: `/noi-bo/kho/dat-hang/${e.ref_id}`, nut: 'Xem đơn', muc: 'vang' };
+    }
+    // ---- 0040 · Trả hàng hai bước; NCC đổi số tài khoản ngân hàng ------------
+    case 'tra_hang_cho_tien': {
+      // Kế toán: ma = số phiếu trả hàng (XT-), ten = tên NCC, so = tổng kg trả.
+      const phan = [e.ten, kg(e.so)].filter(Boolean).join(' — ');
+      return { tieuDe: e.ma ? `Trả hàng ${e.ma} chờ xác nhận tiền` : 'Trả hàng chờ xác nhận tiền',
+               chiTiet: `${phan ? `${phan}. ` : ''}Thủ kho đã ghi số kg trả — ghi số tiền nhà cung cấp trừ vào công nợ.`,
+               link: '/noi-bo/kho/cong-no/tra-hang#cho-tien', nut: 'Xác nhận tiền', muc: 'vang' };
+    }
+    case 'ncc_doi_tai_khoan': {
+      // Chủ: ma = số tài khoản mới, ten = tên NCC, phu = người đổi.
+      return { tieuDe: `Số tài khoản của ${e.ten || 'nhà cung cấp'} vừa bị đổi`,
+               chiTiet: `${e.ma ? `Số mới: ${e.ma}. ` : ''}${e.phu ? `Người đổi: ${e.phu}. ` : ''}`
+                 + 'Gọi điện hỏi lại nhà cung cấp trước khi chuyển tiền — kẻ gian hay giả làm NCC để đổi số tài khoản.',
+               link: su.ref2 ? `/noi-bo/kho/cai-dat/nha-cung-cap?${q({ sua: su.ref2 })}` : '/noi-bo/kho/cai-dat/nha-cung-cap',
+               nut: 'Xem', muc: 'do' };
+    }
     default:
       return { tieuDe: e.ten || e.ma || 'Có việc mới', link: '/noi-bo/kho', nut: 'Xem', muc: 'xam' };
   }
@@ -157,6 +225,14 @@ export const KHOA_SU_KIEN = [
   'yeu_cau_quay', 'hang_dang_chuyen', 'chuyen_nhan_thieu',
   // 0033
   'thu_hoi_thap',
+  // 0037
+  'ipos_cho_xu_ly', 'ipos_mat_ket_noi',
+  // 0038
+  'dinh_muc_lech',
+  // 0039
+  'don_dat_tre',
+  // 0040
+  'tra_hang_cho_tien', 'ncc_doi_tai_khoan',
 ] as const;
 
 /** Sự kiện là "việc cần làm" (có nút làm ngay, không chỉ để biết). */

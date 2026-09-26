@@ -94,6 +94,17 @@ export interface PhieuNhan {
   duyet_luc: string | null;
   created_at: string;
   dong: DongNhan[];
+  /** Đơn đặt hàng của phiếu (0039) — null khi nhận lẻ, không theo đơn. Không tiền. */
+  don_dat: DonDatCuaPhieu | null;
+}
+
+/** kho_doc_phieu_nhap_kg → don_dat (0039). so_kg_da_nhan gồm cả phiếu này nếu phiếu đã gửi / đã duyệt. */
+export interface DonDatCuaPhieu {
+  id: string;
+  so_phieu: string;
+  trang_thai: string;
+  ngay_giao_du_kien: string;
+  dong: { mat_hang_id: string; ten_mat_hang: string; so_kg_dat: number; so_goi_dat: number | null; so_kg_da_nhan: number }[];
 }
 
 /** Một dòng gửi vào p_dong — KHÔNG có don_gia_kg (có là database báo lỗi). */
@@ -158,6 +169,13 @@ export async function docPhieuNhan(client: SupabaseClient, id: string): Promise<
     dong: (p.dong ?? []).map(d => ({
       ...d, so_kg: Number(d.so_kg), so_goi: Number(d.so_goi ?? 0), truong_them: d.truong_them ?? {},
     })),
+    don_dat: p.don_dat && typeof p.don_dat === 'object' ? {
+      ...p.don_dat,
+      dong: (p.don_dat.dong ?? []).map(x => ({
+        ...x, so_kg_dat: Number(x.so_kg_dat), so_kg_da_nhan: Number(x.so_kg_da_nhan ?? 0),
+        so_goi_dat: x.so_goi_dat === null || x.so_goi_dat === undefined ? null : Number(x.so_goi_dat),
+      })),
+    } : null,
   };
 }
 

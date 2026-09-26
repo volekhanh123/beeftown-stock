@@ -11,6 +11,8 @@
  * Sửa một mặt hàng: bấm "Sửa" → form hiện ở đầu trang (?sua=<id>), để trang
  * danh sách không phải chở cả trăm form.
  *
+ * Sửa nhiều món một lượt trong bảng: trang con mat-hang/sua-nhanh (GĐ8c, 0041).
+ *
  * "Sau pha để ở" (GĐ5c, 0033): gói quét nhãn lúc pha lóc tự vào kho lạnh hay
  * quầy theo món. Để trống = kho lạnh. Dán Excel có cột "Sau pha để ở".
  */
@@ -99,6 +101,9 @@ const tuDb = (m: MatHang): GiaTriFormMatHang => ({
   xu_ly_mac_dinh: m.xu_ly_mac_dinh, ma_can: m.ma_can ?? '',
   ton_toi_thieu_kg: m.ton_toi_thieu_kg !== null ? String(m.ton_toi_thieu_kg).replace('.', ',') : '',
   noi_de_sau_pha: m.noi_de_sau_pha === 'quay' ? 'quay' : '',
+  kho_toi_thieu_kg: m.kho_toi_thieu_kg !== null ? String(m.kho_toi_thieu_kg).replace('.', ',') : '',
+  kho_toi_da_kg: m.kho_toi_da_kg !== null ? String(m.kho_toi_da_kg).replace('.', ',') : '',
+  ma_misa: m.ma_misa ?? '',
   thu_tu: String(m.thu_tu), dang_dung: m.dang_dung, truong_them: m.truong_them ?? {},
   gia_tri_thu_hoi_kg: thuHoi.get(m.id)?.toLocaleString('vi-VN') ?? '',
 });
@@ -110,6 +115,7 @@ const tuForm = (f: FormData, id?: string): GiaTriFormMatHang => {
     dem_goi: g('dem_goi') !== 'khong', don_vi_goi: g('don_vi_goi'), han_dung_ngay: g('han_dung_ngay'),
     canh_bao_truoc_ngay: g('canh_bao_truoc_ngay'), gia_ban_kg: g('gia_ban_kg'), xu_ly_mac_dinh: g('xu_ly_mac_dinh'),
     ma_can: g('ma_can'), ton_toi_thieu_kg: g('ton_toi_thieu_kg'), noi_de_sau_pha: g('noi_de_sau_pha') === 'quay' ? 'quay' : '',
+    kho_toi_thieu_kg: g('kho_toi_thieu_kg'), kho_toi_da_kg: g('kho_toi_da_kg'), ma_misa: g('ma_misa'),
     thu_tu: g('thu_tu'),
     dang_dung: g('dang_dung') !== 'khong', truong_them: tt, gia_tri_thu_hoi_kg: g('gia_tri_thu_hoi_kg'),
   };
@@ -117,7 +123,7 @@ const tuForm = (f: FormData, id?: string): GiaTriFormMatHang => {
 const TRONG: GiaTriFormMatHang = {
   ma: '', ten: '', ten_phu: '', nhom: '', loai: locLoai || 'phan_cat', dem_goi: true, don_vi_goi: '',
   han_dung_ngay: '', canh_bao_truoc_ngay: '', gia_ban_kg: '', xu_ly_mac_dinh: 'nhap_kho', ma_can: '',
-  ton_toi_thieu_kg: '', noi_de_sau_pha: '', thu_tu: '', dang_dung: true, truong_them: {}, gia_tri_thu_hoi_kg: '',
+  ton_toi_thieu_kg: '', noi_de_sau_pha: '', kho_toi_thieu_kg: '', kho_toi_da_kg: '', thu_tu: '', dang_dung: true, truong_them: {}, gia_tri_thu_hoi_kg: '',
 };
 
 const idLoi = nhapLai ? String(nhapLai.get('id') ?? '') : '';
@@ -133,7 +139,7 @@ const coXemGia = k.duoc('xem_gia');
 ---
 <Kho k={k} huongDan="mat-hang" tieuDe="Mặt hàng" rong>
   <h1>Mặt hàng</h1>
-  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
+  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a> · <a href="/noi-bo/kho/cai-dat/mat-hang/sua-nhanh">Sửa nhanh nhiều món (giá, hạn dùng, mã cân, mức quầy / kho)</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {xemTruoc && (

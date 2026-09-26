@@ -145,6 +145,35 @@ const CHAY_DA_DANG_NHAP = [
   // Thiết lập có tiến độ, ngưỡng, tồn đầu kỳ dạng lưới (GĐ5e, 0035) — chỉ gọi từ
   // /noi-bo/kho/cai-dat; lưới đọc mặt hàng không có cột tiền (thủ kho cũng mở).
   'web/src/lib/kho/thiet-lap.ts',
+  // Đồng bộ bán hàng iPOS (GĐ7a, 0037) — "Cập nhật ngay" ở /noi-bo/kho/cai-dat/ipos
+  // bằng phiên người bấm; cron (src/worker.ts) bằng tài khoản máy may_ipos đã
+  // đăng nhập (client anon riêng + signInWithPassword). Không bao giờ chạy vai anon.
+  'web/src/lib/kho/ipos-dong-bo.ts',
+  // Bán hàng iPOS (GĐ7a, 0037): trạng thái, cấu hình, hàng chờ, ghép mã — chỉ gọi từ
+  // /noi-bo/kho (Kết nối iPOS, Bán hàng iPOS, trang chủ quản lý). Không đọc / ghi token.
+  'web/src/lib/kho/ban-ipos.ts',
+  // Định lượng món, đối chiếu định mức (GĐ7b, 0038) — chỉ gọi từ /noi-bo/kho/cai-dat/dinh-luong,
+  // /noi-bo/kho/bao-cao/dinh-muc và file CSV của nó, bằng client của nhân sự. Không cột tiền
+  // nào ở bảng món / định lượng; tiền lệch do database trả null khi không xem giá.
+  'web/src/lib/kho/dinh-luong.ts',
+  // Đặt hàng NCC, gợi ý, nhận theo đơn, đánh giá NCC (GĐ8a, 0039) — chỉ gọi từ
+  // /noi-bo/kho/dat-hang/*, nhan-hang/moi, bao-cao/ncc và file CSV của nó, bằng client
+  // của nhân sự. Giá dự kiến chỉ đọc khi xem_gia (bảng / view có RLS xem_gia).
+  'web/src/lib/kho/dat-hang.ts',
+  // Sửa hàng loạt mặt hàng (kho_sua_nhanh_mat_hang), vị trí + lý do một form (GĐ8c, 0041) —
+  // chỉ gọi từ /noi-bo/kho/cai-dat/mat-hang/sua-nhanh và cai-dat/vi-tri-ly-do, bằng client
+  // của chủ / quản lý. Bảng sửa nhanh không đọc cột giá vốn nào.
+  'web/src/lib/kho/sua-nhanh.ts',
+  // Công thức pha lóc dạng lưới, nhân bản, gợi ý từ phiên pha đã chốt (GĐ8c) — chỉ gọi từ
+  // /noi-bo/kho/cai-dat/cong-thuc (danh_muc). Gợi ý đọc kg, không tiền.
+  'web/src/lib/kho/cong-thuc.ts',
+  // Một lượt đồng bộ iPOS (GĐ7a): "Cập nhật ngay" chạy bằng client của quản lý / chủ;
+  // cron đăng nhập tài khoản máy may_ipos (client anon riêng → sau signIn là authenticated).
+  'web/src/lib/kho/ipos-dong-bo.ts',
+  // Nhận hóa đơn iPOS đẩy sang (GĐ7c, 0042): route công khai /hook/ipos/<khóa> nhưng MỌI lời gọi
+  // database đi bằng tài khoản máy may_ipos đã đăng nhập (client anon riêng + signInWithPassword,
+  // sau đó là authenticated) — chỉ sau khi khóa bí mật IPOS_CALLBACK_KHOA khớp. Không bao giờ chạy vai anon.
+  'web/src/lib/kho/ipos-hook.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
   // Bản dịch tự động (0036) — gọi từ màn soạn tin, màn công tắc và middleware

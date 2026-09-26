@@ -62,6 +62,15 @@ const { gt, dinhNghia, coXemGia, nutLuu } = Astro.props;
     <label class="nb-o"><span>Quầy tối thiểu (kg)</span>
       <small>Quầy dưới mức này thì báo cần ra thêm hàng.</small>
       <input type="text" inputmode="decimal" name="ton_toi_thieu_kg" value={gt.ton_toi_thieu_kg} /></label>
+    <label class="nb-o"><span>Kho lạnh tối thiểu (kg)</span>
+      <small>Dưới mức này thì gợi ý đặt hàng báo đỏ.</small>
+      <input type="text" inputmode="decimal" name="kho_toi_thieu_kg" value={gt.kho_toi_thieu_kg} /></label>
+    <label class="nb-o"><span>Kho lạnh tối đa (kg)</span>
+      <small>Gợi ý đặt hàng đặt cho đủ tới mức này. Trống = tự tính theo lượng dùng.</small>
+      <input type="text" inputmode="decimal" name="kho_toi_da_kg" value={gt.kho_toi_da_kg} /></label>
+    <label class="nb-o"><span>Mã hàng bên MISA</span>
+      <small>Mã kế toán dùng trong MISA. Trống thì file MISA dùng mã ở trên và đánh dấu "thiếu mã".</small>
+      <input type="text" name="ma_misa" maxlength="40" value={gt.ma_misa ?? ''} autocapitalize="characters" /></label>
     <label class="nb-o"><span>Đếm theo</span>
       <select name="dem_goi">
         <option value="co" selected={gt.dem_goi}>Gói / tảng và kg</option>

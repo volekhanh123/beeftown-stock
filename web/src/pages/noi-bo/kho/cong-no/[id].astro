@@ -16,13 +16,21 @@
  * GĐ5e: phiếu ND- (nợ đầu kỳ, 0035) nằm chung danh sách, nhãn "Nợ đầu kỳ":
  * không có trang phiếu nhập, không trả hàng, không đối chiếu (đã đối chiếu
  * sẵn lúc ghi). Trả tiền, tự chia theo hạn như phiếu mua.
+ *
+ * GĐ8b (0040): nút "Trả tiền" mở /cong-no/<id>/tra-tien (xem trước cách chia,
+ * "Trả đủ", chuyển khoản / tiền mặt / bù trừ / NCC hoàn tiền / giảm trừ);
+ * "Đối chiếu hóa đơn gộp" mở /cong-no/<id>/hoa-don-gop; "In biên bản đối
+ * chiếu" mở /cong-no/<id>/doi-chieu. Phiếu thuộc hóa đơn gộp không đối chiếu
+ * lẻ được (database chặn) — bỏ đối chiếu gộp ở đây (khi chưa trả tiền).
+ * Số tài khoản vừa đổi trong 30 ngày → dòng đỏ nhắc gọi hỏi lại NCC.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import {
-  docCongNoNcc, docCongNoPhieu, docThanhToan, docTenNcc, doiChieuHoaDon, ghiThanhToan, huyThanhToan,
-  dinhDangLech, tienLech, laNoDau, TEN_HINH_THUC, type CongNoNcc, type CongNoPhieu, type ThanhToan,
+  docCongNoNcc, docCongNoPhieu, docThanhToan, docTenNcc, doiChieuHoaDon, huyThanhToan,
+  docHoaDonGop, boDoiChieuGop, docNhatKyTaiKhoan, doiTaiKhoanGanDay, tenKhoan,
+  dinhDangLech, tienLech, laNoDau, type CongNoNcc, type CongNoPhieu, type ThanhToan, type HoaDonGop, type DoiTaiKhoan,
 } from '../../../../lib/kho/cong-no.ts';
 import { linkAnh } from '../../../../lib/kho/anh.ts';
 import { cauLoiKho, congNgay, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, homNayVn, laUuid, type KetQua } from '../../../../lib/kho/chung.ts';
@@ -55,7 +63,6 @@ const lienKet = (thay: Record<string, string | null> = {}, neo = '') => {
 };
 
 let bao: KetQua | null = k.bao;
-let giaTriLoi: Record<string, string> = {};
 /** Phiếu vừa đối chiếu lỗi: mở lại ô đó với đúng những gì đã gõ. */
 let doiChieuLoi: { phieuId: string; giaTri: Record<string, string> } | null = null;
 const form = await docFormGui(Astro);
@@ -75,11 +82,8 @@ if (form) {
       bao = kq;
       doiChieuLoi = { phieuId: id, giaTri: kq.giaTri ?? {} };
     }
-  } else if (viec === 'thanh_toan') {
-    const kq = await ghiThanhToan(k.client, cn.id, ncc.id, form);
-    if (kq.ok) return ve(kq);
-    bao = kq;
-    giaTriLoi = kq.giaTri ?? {};
+  } else if (viec === 'bo_gop') {
+    return ve(await boDoiChieuGop(k.client, String(form.get('hoa_don_id') ?? ''), String(form.get('ly_do') ?? '')));
   } else if (viec === 'huy_tt') {
     return ve(await huyThanhToan(k.client, String(form.get('thanh_toan_id') ?? ''), String(form.get('ly_do') ?? '').trim()));
   } else {
@@ -91,17 +95,23 @@ let tong: CongNoNcc | undefined;
 let phieu: CongNoPhieu[] = [];
 let thanhToan: ThanhToan[] = [];
 let conNuaKhoan = 0;
+let hoaDonGop: HoaDonGop[] = [];
+let nhatKyTk: DoiTaiKhoan[] = [];
 let loiDoc = k.loiDoc;
 try {
-  const [dsTong, dsPhieu, tt] = await Promise.all([
+  const [dsTong, dsPhieu, tt, hd, nk] = await Promise.all([
     docCongNoNcc(k.client, cn.id, ncc.id),
     docCongNoPhieu(k.client, cn.id, { nccId: ncc.id, conViec: !tatCaPhieu }),
     docThanhToan(k.client, cn.id, ncc.id, tatCaKhoan ? null : 30),
+    docHoaDonGop(k.client, cn.id, ncc.id),
+    docNhatKyTaiKhoan(k.client, ncc.id, 5).catch(() => [] as DoiTaiKhoan[]),
   ]);
   tong = dsTong[0];
   phieu = dsPhieu;
   thanhToan = tt.ds;
   conNuaKhoan = tt.conNua;
+  hoaDonGop = hd;
+  nhatKyTk = nk;
 } catch (e) {
   loiDoc = cauLoiKho(e, 'Không đọc được công nợ.');
 }
@@ -111,10 +121,12 @@ const tuanToi = congNgay(homNay, 7);
 const conNo = tong?.con_no ?? 0;
 const quaHan = tong?.no_qua_han ?? 0;
 const soPhieuXong = Math.max((tong?.so_phieu ?? 0) - phieu.length, 0);
-const phieuNo = phieu.filter(p => p.con_no > 0);
 const ten = await tenNhanSu(k.client, thanhToan.map(t => t.nguoi_tao));
 const anh = await linkAnh(k.client, thanhToan.flatMap(t => t.anh));
-const g = (khoa: string, macDinh = '') => giaTriLoi[khoa] ?? macDinh;
+const soHdGop = new Map(hoaDonGop.filter(h => h.trang_thai === 'hieu_luc').map(h => [h.id, h.so_hoa_don]));
+const doiTk = doiTaiKhoanGanDay(nhatKyTk, Date.now());
+const coNoLai = (tong?.con_no ?? 0) < 0 || phieu.some(p => p.con_no < 0);
+const TT = `/noi-bo/kho/cong-no/${ncc.id}/tra-tien`;
 ---
 <Kho k={k} huongDan="ghi-thanh-toan" tieuDe={`Công nợ · ${ncc.ten}`} rong>
   <h1>{ncc.ten}</h1>
@@ -128,6 +140,26 @@ const g = (khoa: string, macDinh = '') => giaTriLoi[khoa] ?? macDinh;
   {(ncc.ngan_hang || ncc.so_tai_khoan) && (
     <p class="nb-dan">Chuyển khoản: <strong>{ncc.so_tai_khoan ?? '—'}</strong>{ncc.ngan_hang && ` · ${ncc.ngan_hang}`}</p>
   )}
+  {doiTk && (
+    <div class="nb-bao loi" role="alert"><p>
+      Tài khoản ngân hàng vừa đổi lúc {dinhDangThoiDiem(doiTk.luc)}: {doiTk.so_tai_khoan_cu}{doiTk.ngan_hang_cu ? ` (${doiTk.ngan_hang_cu})` : ''} → <strong>{doiTk.so_tai_khoan_moi ?? '(trống)'}{doiTk.ngan_hang_moi ? ` (${doiTk.ngan_hang_moi})` : ''}</strong>.
+      Gọi điện hỏi lại nhà cung cấp (số điện thoại cũ đã biết) trước khi chuyển tiền.
+    </p></div>
+  )}
+  <div class="cn-nut" id="ghi-thanh-toan">
+    <a class="nb-nut" href={TT}>Trả tiền</a>
+    <a class="nb-nut phu" href={`/noi-bo/kho/cong-no/${ncc.id}/hoa-don-gop`}>Đối chiếu hóa đơn gộp</a>
+    <a class="nb-nut phu" href={`/noi-bo/kho/cong-no/${ncc.id}/doi-chieu`}>In biên bản đối chiếu</a>
+  </div>
+  <p class="kho-phu" style="margin-top:-.5rem">
+    Ghi nhanh:{' '}
+    <a href={`${TT}?kieu=chuyen_khoan`}>chuyển khoản</a> ·{' '}
+    <a href={`${TT}?kieu=tien_mat`}>tiền mặt</a> ·{' '}
+    <a href={`${TT}?kieu=bu_tru`}>bù trừ</a> ·{' '}
+    <a href={`${TT}?kieu=giam_tru`}>giảm trừ</a>
+    {coNoLai && <> · <a href={`${TT}?kieu=hoan_tien`}><strong>NCC hoàn tiền</strong></a></>}
+    {' '}· Hóa đơn: {ncc.kieu_hoa_don === 'gop' ? 'gộp nhiều lần giao' : 'mỗi lần giao một hóa đơn'}
+  </p>
 
   <h2>{tatCaPhieu ? 'Tất cả phiếu nhập' : 'Phiếu còn việc'}</h2>
   {!tatCaPhieu && <p class="kho-phu" style="margin-top:-.5rem">Phiếu còn nợ hoặc chưa đối chiếu hóa đơn.</p>}
@@ -146,6 +178,7 @@ const g = (khoa: string, macDinh = '') => giaTriLoi[khoa] ?? macDinh;
             : <strong><a href={`/noi-bo/kho/nhap/${p.id}`}>{p.so_phieu}</a> · nhập {dinhDangNgay(p.ngay_nhap)}</strong>}
           <span style="display:inline-flex;gap:.35rem;flex-wrap:wrap">
             {noDau && <span class="nb-nhan nhap" style="text-transform:none">Nợ đầu kỳ</span>}
+            {p.hoa_don_gop_id && <span class="nb-nhan nhap" style="text-transform:none">Hóa đơn gộp {soHdGop.get(p.hoa_don_gop_id) ?? ''}</span>}
             {lech !== 0 && <span class="nb-nhan cho" style="text-transform:none" title="Tiền hóa đơn khác tổng phiếu nhập">LỆCH {dinhDangLech(lech)}</span>}
             {p.con_no <= 0
               ? <span class="nb-nhan song">{p.con_no < 0 ? 'NCC nợ lại' : 'Đã trả đủ'}</span>
@@ -163,7 +196,8 @@ const g = (khoa: string, macDinh = '') => giaTriLoi[khoa] ?? macDinh;
                 {lech !== 0 && <span class="kho-phu">{' '}(phiếu {dinhDangTien(p.tong_tien_phieu)}{p.ghi_chu_doi_chieu ? ` — ${p.ghi_chu_doi_chieu}` : ''})</span>}</>
             : <span class="kho-phu">chưa đối chiếu · phiếu {dinhDangTien(p.tong_tien_phieu)}</span>}</dd>
           <dt>Phải trả</dt><dd class="kho-so">{dinhDangTien(p.phai_tra)}</dd>
-          <dt>Đã trả</dt><dd class="kho-so">{dinhDangTien(p.da_tra)}{p.giam_tru > 0 && <> · giảm trừ {dinhDangTien(p.giam_tru)}</>}</dd>
+          <dt>Đã trả</dt><dd class="kho-so">{dinhDangTien(p.da_tra)}{p.giam_tru > 0 && <> · giảm trừ {dinhDangTien(p.giam_tru)}</>}
+            {(p.bu_tru > 0 || p.hoan_tien > 0) && <span class="kho-phu">{' '}(tiền trả {dinhDangTien(p.tien_tra)}{p.bu_tru > 0 ? ` · bù trừ ${dinhDangTien(p.bu_tru)}` : ''}{p.hoan_tien > 0 ? ` · NCC hoàn ${dinhDangTien(p.hoan_tien)}` : ''})</span>}</dd>
           <dt>Còn nợ</dt><dd class="kho-so"><strong>{p.con_no < 0 ? `−${dinhDangTien(-p.con_no)}` : dinhDangTien(p.con_no)}</strong></dd>
         </dl>
         {noDau ? (
@@ -171,6 +205,9 @@ const g = (khoa: string, macDinh = '') => giaTriLoi[khoa] ?? macDinh;
         ) : (
         <>
         <p style="margin:.25rem 0 0"><a href={`/noi-bo/kho/cong-no/tra-hang?phieu=${p.id}`}>Trả hàng cho nhà cung cấp →</a></p>
+        {p.hoa_don_gop_id ? (
+          <p class="kho-phu" style="margin:.5rem 0 0">Đã đối chiếu theo hóa đơn gộp — muốn sửa thì bỏ đối chiếu hóa đơn đó ở mục <a href="#hoa-don-gop">Hóa đơn gộp</a>.</p>
+        ) : (
         <details open={loiO !== null || moPhieu === p.id}>
           <summary style="cursor:pointer;font-weight:600;padding:.8rem 0">{p.da_doi_chieu ? 'Sửa đối chiếu hóa đơn' : 'Đối chiếu hóa đơn'}</summary>
           <form method="POST" style="margin-top:.5rem">
@@ -189,6 +226,7 @@ const g = (khoa: string, macDinh = '') => giaTriLoi[khoa] ?? macDinh;
             <button type="submit" class="nb-nut phu">Lưu đối chiếu</button>
           </form>
         </details>
+        )}
         </>
         )}
       </div>
@@ -198,51 +236,46 @@ const g = (khoa: string, macDinh = '') => giaTriLoi[khoa] ?? macDinh;
     ? <p><a href={lienKet({ phieu: null })}>Chỉ xem phiếu còn việc</a></p>
     : soPhieuXong > 0 && <p><a href={lienKet({ phieu: 'tat_ca' })}>Xem cả {soPhieuXong} phiếu đã xong (đã trả đủ, đã đối chiếu) →</a></p>}
 
-  <section class="nb-the" id="ghi-thanh-toan" style="margin-top:1.5rem;scroll-margin-top:5rem">
-    <h2 style="margin-top:0">Ghi thanh toán</h2>
-    <form method="POST" enctype="multipart/form-data">
-      <input type="hidden" name="viec" value="thanh_toan" />
-      <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
-      <input type="hidden" name="so_pb" value={String(phieuNo.length)} />
-      <div class="kho-luoi">
-        <label class="nb-o"><span>Loại</span>
-          <select name="loai">
-            <option value="thanh_toan" selected={g('loai') !== 'giam_tru'}>Trả tiền</option>
-            <option value="giam_tru" selected={g('loai') === 'giam_tru'}>Giảm trừ (chiết khấu, hàng thiếu)</option>
-          </select></label>
-        <label class="nb-o"><span>Số tiền</span><input type="text" inputmode="numeric" name="so_tien" value={g('so_tien')} required placeholder="ví dụ 5.450.000" /></label>
-        <label class="nb-o"><span>Hình thức</span>
-          <select name="hinh_thuc">
-            {Object.entries(TEN_HINH_THUC).map(([v, t]) => <option value={v} selected={g('hinh_thuc', 'chuyen_khoan') === v}>{t}</option>)}
-          </select></label>
-        <label class="nb-o"><span>Ngày</span><input type="date" name="ngay" value={g('ngay', homNay)} max={homNay} required /></label>
-      </div>
-      <label class="nb-o"><span>Ghi chú</span><input type="text" name="ghi_chu" value={g('ghi_chu')} maxlength="500" placeholder="ví dụ: UNC Vietcombank 25/09" /></label>
-      <label class="nb-o"><span>Ảnh ủy nhiệm chi / biên nhận</span><input type="file" name="anh" accept="image/*,application/pdf" multiple /></label>
-      {phieuNo.length > 0 && (
-        <details open={phieuNo.some((_, i) => !!giaTriLoi[`pb${i}_tien`])}>
-          <summary style="cursor:pointer;font-weight:600;padding:.8rem 0">Chia cho phiếu cụ thể (không bắt buộc)</summary>
-          <p class="kho-phu">Để trống hết = trả phiếu đến hạn sớm nhất trước. Ghi số tiền ở từng phiếu thì tổng phải bằng số tiền trả.</p>
-          {phieuNo.map((p, i) => (
-            <div class="kho-luoi" style="align-items:end">
-              <input type="hidden" name={`pb${i}_phieu`} value={p.id} />
-              <p style="margin:0 0 .9rem"><strong>{p.so_phieu}</strong>{laNoDau(p) && ' (nợ đầu kỳ)'}<br /><span class="kho-phu">còn nợ {dinhDangTien(p.con_no)}{p.qua_han ? ' · quá hạn' : ''}</span></p>
-              <label class="nb-o"><span>Trả phiếu này</span><input type="text" inputmode="numeric" name={`pb${i}_tien`} value={g(`pb${i}_tien`)} /></label>
-            </div>
-          ))}
-        </details>
-      )}
-      <button type="submit" class="nb-nut" style="width:100%;margin-top:.5rem">Ghi thanh toán</button>
-    </form>
-  </section>
+  {hoaDonGop.length > 0 && (
+    <section id="hoa-don-gop" style="scroll-margin-top:5rem">
+      <h2>Hóa đơn gộp</h2>
+      {hoaDonGop.map(h => (
+        <div class="nb-dong" style={h.trang_thai === 'da_bo' ? 'opacity:.6' : ''}>
+          <div class="nb-dong-dau">
+            <strong>HĐ {h.so_hoa_don} · {dinhDangNgay(h.ngay)}</strong>
+            <span class={`nb-nhan ${h.trang_thai === 'da_bo' ? 'tat' : 'song'}`}>{h.trang_thai === 'da_bo' ? 'Đã bỏ' : dinhDangTien(h.tong_tien)}</span>
+          </div>
+          <dl>
+            <dt>Phiếu</dt><dd>{h.phieu.length > 0 ? h.phieu.map(x => `${x.so_phieu ?? '?'}: ${dinhDangTien(x.so_tien)}`).join(' · ') : `${h.so_phieu} phiếu`}</dd>
+            <dt>Tổng phiếu</dt><dd>{dinhDangTien(h.tong_phieu)}{h.tong_tien !== h.tong_phieu && <> · <span class="nb-nhan cho" style="text-transform:none">LỆCH {dinhDangLech(h.tong_tien - h.tong_phieu)}</span></>}</dd>
+            {h.tien_thue > 0 && <><dt>Tiền thuế</dt><dd>{dinhDangTien(h.tien_thue)}</dd></>}
+            {h.ly_do_lech && <><dt>Lý do lệch</dt><dd>{h.ly_do_lech}</dd></>}
+            {h.ly_do_bo && <><dt>Lý do bỏ</dt><dd>{h.ly_do_bo}</dd></>}
+          </dl>
+          {h.trang_thai === 'hieu_luc' && (
+            <details>
+              <summary style="cursor:pointer;font-size:.85rem;color:var(--muc-nhat);padding:.8rem 0">Bỏ đối chiếu hóa đơn này (chọn nhầm phiếu, sai số)</summary>
+              <form method="POST" style="margin-top:.5rem">
+                <input type="hidden" name="viec" value="bo_gop" />
+                <input type="hidden" name="hoa_don_id" value={h.id} />
+                <p class="kho-phu">Chỉ bỏ được khi các phiếu chưa có khoản trả tiền, giảm trừ, bù trừ hay hoàn tiền nào. Các phiếu trở lại như trước khi đối chiếu.</p>
+                <label class="nb-o"><span>Lý do</span><input type="text" name="ly_do" required maxlength="500" /></label>
+                <button type="submit" class="nb-nut kho-nut-xoa">Bỏ đối chiếu</button>
+              </form>
+            </details>
+          )}
+        </div>
+      ))}
+    </section>
+  )}
 
   <h2 id="cac-khoan" style="scroll-margin-top:5rem">Các khoản đã ghi</h2>
   {thanhToan.length === 0 ? (
-    <p class="nb-rong">Chưa có khoản trả tiền hay giảm trừ nào.</p>
+    <p class="nb-rong">Chưa có khoản trả tiền, giảm trừ, bù trừ hay hoàn tiền nào.</p>
   ) : thanhToan.map(t => (
     <div class="nb-dong" style={t.trang_thai === 'da_huy' ? 'opacity:.6' : ''}>
       <div class="nb-dong-dau">
-        <strong>{t.so_phieu} · {t.loai === 'thanh_toan' ? `Trả tiền (${TEN_HINH_THUC[t.hinh_thuc ?? 'khac']})` : t.phieu_xuat_id ? 'Giảm trừ do trả hàng' : 'Giảm trừ'}</strong>
+        <strong>{t.so_phieu} · {tenKhoan(t)}</strong>
         <span class={`nb-nhan ${t.trang_thai === 'da_huy' ? 'tat' : 'song'}`}>{t.trang_thai === 'da_huy' ? 'Đã hủy' : dinhDangTien(t.so_tien)}</span>
       </div>
       <dl>
@@ -274,3 +307,7 @@ const g = (khoa: string, macDinh = '') => giaTriLoi[khoa] ?? macDinh;
 
   <p style="margin-top:1.5rem"><a href="/noi-bo/kho/cong-no">← Công nợ tất cả nhà cung cấp</a></p>
 </Kho>
+
+<style>
+  .cn-nut { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1rem; scroll-margin-top: 5rem; }
+</style>
