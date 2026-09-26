@@ -346,6 +346,9 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ghi_thanh_toan_v2', 'kho_xem_truoc_thanh_toan', 'kho_doi_chieu_hoa_don_gop', 'kho_bo_doi_chieu_gop',
     'kho_tra_hang_ghi_kg', 'kho_ds_tra_hang_cho_tien', 'kho_xac_nhan_tien_tra_hang', 'kho_huy_tra_hang_cho_tien',
     'kho_cong_no_theo_ky', 'kho_du_lieu_misa', 'kho_luu_misa_tk', 'kho_luu_ma_misa_mat_hang',
+    // Sửa hàng loạt, báo cáo (0041): sửa nhanh mặt hàng (danh_muc), báo cáo tháng (xem — tiền
+    // chỉ xem_gia), mua hàng theo NCC / mặt hàng (xem_gia), sổ thanh toán (ke_toan)
+    'kho_sua_nhanh_mat_hang', 'kho_bao_cao_theo_thang', 'kho_bao_cao_mua_hang', 'kho_so_thanh_toan',
     // Hàm trigger — PostgREST không gọi được hàm trả về trigger
     'kho_vi_tri_kiem_sua', 'kho_truong_them_kiem_sua', 'kho_truong_them_kiem',
     'kho_mat_hang_chuan_hoa', 'kho_cong_thuc_pha_kiem', 'kho_lo_chan_sua_xoa',

@@ -11,6 +11,8 @@
  * Sửa một mặt hàng: bấm "Sửa" → form hiện ở đầu trang (?sua=<id>), để trang
  * danh sách không phải chở cả trăm form.
  *
+ * Sửa nhiều món một lượt trong bảng: trang con mat-hang/sua-nhanh (GĐ8c, 0041).
+ *
  * "Sau pha để ở" (GĐ5c, 0033): gói quét nhãn lúc pha lóc tự vào kho lạnh hay
  * quầy theo món. Để trống = kho lạnh. Dán Excel có cột "Sau pha để ở".
  */
@@ -137,7 +139,7 @@ const coXemGia = k.duoc('xem_gia');
 ---
 <Kho k={k} huongDan="mat-hang" tieuDe="Mặt hàng" rong>
   <h1>Mặt hàng</h1>
-  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
+  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a> · <a href="/noi-bo/kho/cai-dat/mat-hang/sua-nhanh">Sửa nhanh nhiều món (giá, hạn dùng, mã cân, mức quầy / kho)</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {xemTruoc && (

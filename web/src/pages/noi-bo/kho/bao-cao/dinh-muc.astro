@@ -15,6 +15,8 @@
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import { kyBaoCao, kyNhanh, tinhTong } from '../../../../lib/kho/bao-cao.ts';
 import {
@@ -57,8 +59,9 @@ const link = (thay: Record<string, string>) => `/noi-bo/kho/bao-cao/dinh-muc?${n
 const kg = (n: number) => (n === 0 ? '·' : dinhDangKg(n));
 ---
 <Kho k={k} huongDan="dinh-luong" tieuDe="Đối chiếu định mức bếp" rong>
+  <InDau tieuDe="ĐỐI CHIẾU ĐỊNH MỨC BẾP" soPhieu={kyChu} chiNhanh={k.chiNhanh?.ten} />
   <h1>Đối chiếu định mức bếp</h1>
-  {coGia && <p><a href="/noi-bo/kho/bao-cao">← Báo cáo kho</a></p>}
+  <p><a href={`/noi-bo/kho/bao-cao?${new URLSearchParams({ tu, den }).toString()}`}>← Báo cáo kho</a></p>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   <form method="GET" action="/noi-bo/kho/bao-cao/dinh-muc" class="nb-the">
@@ -176,6 +179,7 @@ const kg = (n: number) => (n === 0 ? '·' : dinhDangKg(n));
         Bếp nhận ít hơn thường do: bếp lấy thịt mà không lập phiếu Xuất bếp, hoặc gram định lượng cao hơn thực tế.</p>
     </>
   )}
+  {daDoc && dong.length > 0 && <NutIn chu="In báo cáo" />}
 </Kho>
 
 <style>

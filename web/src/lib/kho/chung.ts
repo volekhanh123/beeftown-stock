@@ -5,6 +5,8 @@
  * crm/test nạp thẳng được bằng Node mà không cần dựng Astro. Mọi thứ ở đây là
  * hàm thuần: đọc số, định dạng số, bảng tra quyền.
  *
+ * Câu mô tả từng việc (MO_TA_VIEC, GĐ8c) cho trang "Ai làm được gì".
+ *
  * BẢNG TRA QUYỀN Ở ĐÂY CHỈ LÀ GƯƠNG
  *
  * Luật thật nằm ở hàm kho_vai_duoc() trong migration 0018 — database mới là
@@ -57,6 +59,64 @@ export const TEN_VAI_KHO: Record<string, string> = {
   nhan_vien_quay: 'NV quầy/bếp',
   ke_toan: 'Kế toán',
 };
+
+// -----------------------------------------------------------------------------
+// MA TRẬN QUYỀN BẰNG LỜI (GĐ8c) — trang /noi-bo/kho/cai-dat/quyen
+// -----------------------------------------------------------------------------
+// Mỗi việc trong QUYEN_KHO một tên và một câu nói việc đó cho làm gì. Kiểu
+// Record<ViecKho, …> bắt buộc đủ mọi việc (thêm việc mới mà quên câu là lỗi
+// kiểu); test-kho-giao-dien nhóm 16 kiểm thêm lần nữa.
+export const MO_TA_VIEC: Record<ViecKho, { ten: string; moTa: string }> = {
+  xem:         { ten: 'Xem kho', moTa: 'Mở phần kho: tồn kho, thẻ kho, quét nhãn, danh sách phiếu — số kg, số gói, hạn dùng.' },
+  xem_gia:     { ten: 'Xem giá tiền', moTa: 'Thấy giá nhập, giá vốn, tiền hàng và các báo cáo có tiền.' },
+  nhap:        { ten: 'Nhận hàng', moTa: 'Lập phiếu nhận hàng (chụp hóa đơn, cân từng món), đơn đặt hàng nháp, tồn đầu kỳ, ghi kg khi trả hàng nhà cung cấp.' },
+  duyet:       { ten: 'Duyệt', moTa: 'Duyệt báo hủy và kiểm kê, xử lý hàng ra quầy bị thiếu, hủy phiếu đã duyệt, xem cảnh báo thu hồi thấp.' },
+  duyet_nhap:  { ten: 'Điền giá, duyệt phiếu nhập', moTa: 'Điền đơn giá theo hóa đơn rồi duyệt hoặc trả phiếu nhận hàng về cho người lập.' },
+  pha_loc:     { ten: 'Pha lóc', moTa: 'Tạo phiên pha lóc, quét nhãn các phần cắt ra, chốt phiên.' },
+  van_hanh:    { ten: 'Việc ở quầy, bếp', moTa: 'Mang hàng ra quầy, nhận hàng ở quầy, xuất bếp, xuất khác, báo hủy, kiểm kê, đếm quầy cuối ngày.' },
+  ke_toan:     { ten: 'Công nợ, thanh toán', moTa: 'Đối chiếu hóa đơn, trả tiền nhà cung cấp, sổ thanh toán, biên bản đối chiếu, xuất file MISA.' },
+  danh_muc:    { ten: 'Danh mục', moTa: 'Sửa mặt hàng (cả sửa nhanh nhiều món), công thức pha lóc, vị trí, lý do, định lượng món, ngưỡng cảnh báo.' },
+  ncc:         { ten: 'Nhà cung cấp', moTa: 'Thêm, sửa nhà cung cấp: mã số thuế, tài khoản ngân hàng, số ngày được nợ.' },
+  cai_dat_goc: { ten: 'Cài đặt gốc', moTa: 'Cách tính giá vốn, nguồn số bán, tạo và khóa tài khoản nhân viên.' },
+  may_chung:   { ten: 'Máy dùng chung', moTa: 'Chỉ tài khoản của máy tính bảng: hiện danh sách người đã gắn và kiểm PIN. Không đọc được gì trong kho.' },
+  dong_bo_ban: { ten: 'Đồng bộ iPOS', moTa: 'Lấy hóa đơn bán từ iPOS để trừ kho ở quầy (máy iPOS tự chạy 5 phút một lần; quản lý, chủ bấm "Cập nhật ngay").' },
+};
+
+/** Vai hiện trên trang quyền, đúng thứ tự cột. Hai vai máy để cuối. */
+export const VAI_BANG_QUYEN: readonly VaiTro[] = [
+  'chu_so_huu', 'quan_ly', 'ke_toan', 'thu_kho', 'nhan_vien_quay', 'may_chung', 'may_ipos',
+];
+
+export const TEN_VAI_DAY: Record<string, string> = {
+  chu_so_huu: 'Chủ quán',
+  quan_ly: 'Quản lý',
+  ke_toan: 'Kế toán',
+  thu_kho: 'Thủ kho',
+  nhan_vien_quay: 'NV quầy/bếp',
+  may_chung: 'Máy dùng chung',
+  may_ipos: 'Máy đồng bộ iPOS',
+  thu_ngan: 'Thu ngân',
+  marketing: 'Marketing',
+};
+
+/** Các việc vai này làm được, theo thứ tự của QUYEN_KHO. */
+export function viecCuaVai(vai: string): ViecKho[] {
+  return (Object.keys(QUYEN_KHO) as ViecKho[]).filter(v => duoc(vai, v));
+}
+
+/**
+ * Một câu cho mỗi vai: "Thủ kho: xem kho, nhận hàng, pha lóc, việc ở quầy, bếp.
+ * KHÔNG thấy giá tiền." Vai không có việc kho nào: "không dùng kho".
+ */
+export function tomTatVai(vai: string): string {
+  const ten = TEN_VAI_DAY[vai] ?? vai;
+  const ds = viecCuaVai(vai);
+  if (ds.length === 0) return `${ten}: không dùng kho.`;
+  const lam = ds.filter(v => v !== 'xem_gia').map(v => MO_TA_VIEC[v].ten.toLowerCase());
+  const gia = duoc(vai, 'xem') && !duoc(vai, 'xem_gia') ? ' KHÔNG thấy giá tiền.' : '';
+  const tien = duoc(vai, 'xem_gia') ? ' Thấy giá tiền.' : '';
+  return `${ten}: ${lam.join(', ')}.${gia}${tien}`;
+}
 
 export interface KetQua { ok: boolean; cau: string }
 

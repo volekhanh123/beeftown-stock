@@ -115,7 +115,7 @@ export const QUY_TRINH: QuyTrinh[] = [
         link: '/noi-bo/kho/duyet', dem: ['duyet_huy'] },
       { ten: 'Xem báo cáo hủy', ai: 'Quản lý', quyen: ['xem_gia'],
         moTa: 'Hủy bao nhiêu kg, bao nhiêu tiền, vì lý do gì — theo tuần, tháng.',
-        link: '/noi-bo/kho/bao-cao?bao_cao=hao-hut', nut: 'Xem báo cáo' },
+        link: '/noi-bo/kho/bao-cao/hao-hut', nut: 'Xem báo cáo' },
     ],
   },
   {

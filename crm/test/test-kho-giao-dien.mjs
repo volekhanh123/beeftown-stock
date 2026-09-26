@@ -32,7 +32,8 @@ import {
   MUC_HUONG_DAN, CAU_HOI, NHOM_VAI, dinhDang, vaiHuongDan,
 } from '../../web/src/lib/kho/huong-dan.ts';
 import { BIEU_TUONG } from '../../web/src/lib/kho/bieu-tuong.ts';
-import { duoc, QUYEN_KHO } from '../../web/src/lib/kho/chung.ts';
+import { duoc, QUYEN_KHO, MO_TA_VIEC, VAI_BANG_QUYEN, TEN_VAI_DAY, tomTatVai, viecCuaVai } from '../../web/src/lib/kho/chung.ts';
+import { THE_BAO_CAO, NHOM_BAO_CAO, theBaoCaoCuaVai, linkTheBaoCao, BAO_CAO } from '../../web/src/lib/kho/bao-cao.ts';
 import {
   docFormYeuCau, docFormMangRa, docFormNhan, gomMon, quaGio, soDeNghi, cauSoLuong,
 } from '../../web/src/lib/kho/quay.ts';
@@ -728,6 +729,99 @@ await nhom('15 · MÁY TÍNH BẢNG DÙNG CHUNG (GĐ5d, 0034) — TRANG', async 
     .filter(p => /refresh_token|access_token|bt_may_|bt_phien/.test(doc(p)));
   ok('Trang máy không chạm token / cookie máy (chỉ lib/kho/may-chung.ts)', coToken.length === 0,
     coToken.map(p => relative(GOC, p)).join(', '));
+});
+
+// ===========================================================================
+await nhom('16 · AI LÀM ĐƯỢC GÌ · TRUNG TÂM BÁO CÁO ẨN THEO QUYỀN (GĐ8c)', async () => {
+  // --- Trang quyền phủ đủ việc ---------------------------------------------
+  const viec = Object.keys(QUYEN_KHO);
+  const thieuMoTa = viec.filter(v => !MO_TA_VIEC[v]?.ten?.trim() || !MO_TA_VIEC[v]?.moTa?.trim());
+  ok('Mọi việc trong QUYEN_KHO có tên và câu mô tả (MO_TA_VIEC)', thieuMoTa.length === 0, thieuMoTa.join(', '));
+  const thua = Object.keys(MO_TA_VIEC).filter(v => !viec.includes(v));
+  ok('MO_TA_VIEC không có việc lạ', thua.length === 0, thua.join(', '));
+  const vaiCo = new Set(Object.values(QUYEN_KHO).flat());
+  const vaiThieu = [...vaiCo].filter(v => !VAI_BANG_QUYEN.includes(v) || !TEN_VAI_DAY[v]);
+  ok('Mọi vai có trong QUYEN_KHO đều hiện trên trang (có tên)', vaiThieu.length === 0, vaiThieu.join(', '));
+  const trangQuyen = doc(join(TRANG, 'noi-bo/kho/cai-dat/quyen.astro'));
+  ok('Trang quyền dựng từ QUYEN_KHO + MO_TA_VIEC, mở cho mọi vai xem kho',
+    /Object\.keys\(QUYEN_KHO\)/.test(trangQuyen) && /MO_TA_VIEC\[x\]/.test(trangQuyen)
+    && /if \(!k\.duoc\('xem'\)\) return Astro\.redirect/.test(trangQuyen));
+  // Mỗi việc mà một vai người làm được đều có dòng trên bảng (bảng chỉ bỏ việc chỉ-máy).
+  const vaiNguoi = VAI_BANG_QUYEN.filter(v => !v.startsWith('may_'));
+  const dongBang = viec.filter(x => vaiNguoi.some(v => duoc(v, x)));
+  ok('Bảng chi tiết có đủ việc của mọi vai người (chỉ bỏ may_chung)', dongBang.length === viec.length - 1
+    && !dongBang.includes('may_chung'), dongBang.join(', '));
+  ok('Thủ kho: "KHÔNG thấy giá tiền", có nhận hàng, pha lóc',
+    /^Thủ kho: .*nhận hàng.*pha lóc.*KHÔNG thấy giá tiền\.$/.test(tomTatVai('thu_kho')), tomTatVai('thu_kho'));
+  ok('NV quầy: "KHÔNG thấy giá tiền", không nhận hàng',
+    /KHÔNG thấy giá tiền/.test(tomTatVai('nhan_vien_quay')) && !/nhận hàng/.test(tomTatVai('nhan_vien_quay')), tomTatVai('nhan_vien_quay'));
+  ok('Kế toán, quản lý, chủ: thấy giá tiền', ['ke_toan', 'quan_ly', 'chu_so_huu'].every(v => /Thấy giá tiền/.test(tomTatVai(v))));
+  ok('Vai không dùng kho: câu riêng', tomTatVai('thu_ngan') === 'Thu ngân: không dùng kho.');
+  ok('viecCuaVai theo đúng QUYEN_KHO', viecCuaVai('ke_toan').join() === viec.filter(v => duoc('ke_toan', v)).join());
+  const oQuyen = MUC_KHO.find(m => m.link === '/noi-bo/kho/cai-dat/quyen');
+  ok('Ô menu "Ai làm được gì" cho mọi vai xem kho', !!oQuyen && oQuyen.quyen.join() === 'xem');
+  ok('Mở trang quyền: ô "Ai làm được gì" sáng, ô "Thiết lập" không',
+    dangO(oQuyen, '/noi-bo/kho/cai-dat/quyen') && !dangO(MUC_KHO.find(m => m.ma === 'cai_dat'), '/noi-bo/kho/cai-dat/quyen'));
+
+  // --- Trung tâm báo cáo: mỗi thẻ ẩn theo quyền, khớp dòng chặn trang đích ---
+  const hub = doc(join(TRANG, 'noi-bo/kho/bao-cao/index.astro'));
+  ok('Trang Báo cáo mở cho mọi vai xem kho, thẻ lọc bằng theBaoCaoCuaVai',
+    /if \(!k\.duoc\('xem'\)\) return Astro\.redirect/.test(hub) && /theBaoCaoCuaVai\(k\.nhanSu\.vai_tro\)/.test(hub));
+  ok('Link cũ ?bao_cao= chuyển sang trang riêng', /bao_cao/.test(hub) && /bao-cao\/\$\{cu\}/.test(hub));
+  ok('Thẻ tóm tắt có tiền chỉ khi xem giá', /coGia && tomTat/.test(hub) && /const coGia = k\.duoc\('xem_gia'\)/.test(hub));
+  const maTrung = THE_BAO_CAO.map(t => t.ma).filter((m, i, a) => a.indexOf(m) !== i);
+  ok('Mã thẻ báo cáo không trùng', maTrung.length === 0, maTrung.join(', '));
+  ok('Thẻ nào cũng thuộc một nhóm có thật', THE_BAO_CAO.every(t => NHOM_BAO_CAO.includes(t.nhom)));
+  ok('Có đủ thẻ spec GĐ8c', ['xuat-nhap-ton', 'theo-thang', 'mua-ncc', 'mua-mat-hang', 'cong-no-ky', 'so-thanh-toan',
+    'hao-hut', 'dinh-muc', 'danh-gia-ncc', 'ban'].every(m => THE_BAO_CAO.some(t => t.ma === m)));
+  const linkHong = THE_BAO_CAO.filter(t => !trangCua(linkTheBaoCao(t, '2026-09-01', '2026-09-26')));
+  ok('Link mọi thẻ trỏ trang có thật', linkHong.length === 0, linkHong.map(t => t.ma).join(', '));
+  const chan = [];
+  for (const t of THE_BAO_CAO) {
+    const tr = trangCua(t.link);
+    if (!tr || !tr.file.endsWith('.astro')) { chan.push(`${t.ma}: không có trang`); continue; }
+    // Dòng chặn một dòng ("… return Astro.redirect"), hoặc khối "if (!k.duoc('x')) {" đầu trang (Công nợ).
+    const dongMa = doc(join(GOC, tr.file)).split('\n');
+    const dong = dongMa.find(d => /!k\.duoc\(/.test(d) && /return Astro\.redirect/.test(d))
+      ?? dongMa.find(d => /^if \(!k\.duoc\(/.test(d)) ?? '';
+    const canh = [...dong.matchAll(/!k\.duoc\('([a-z_]+)'\)/g)].map(x => x[1]);
+    const canDu = /\|\|/.test(dong);
+    for (const vai of VAI) {
+      const thay = t.quyen.some(q => duoc(vai, q));
+      const vao = canDu ? canh.every(q => duoc(vai, q)) : canh.some(q => duoc(vai, q));
+      if (thay !== vao) chan.push(`${t.ma}: ${vai} ${thay ? 'thấy thẻ nhưng bị chặn' : 'vào được nhưng không thấy thẻ'} (trang đòi ${canh.join('/')})`);
+    }
+  }
+  ok('Quyền của thẻ = quyền dòng chặn trang đích (không thấy thẻ rồi bị đá ra, không giấu thẻ của trang mở được)',
+    chan.length === 0, chan.join(' | '));
+  const chiTien = q => q.every(x => x === 'xem_gia' || x === 'ke_toan');
+  for (const vai of ['thu_kho', 'nhan_vien_quay']) {
+    const ds = theBaoCaoCuaVai(vai);
+    ok(`${vai}: không thấy thẻ báo cáo có tiền`, !ds.some(t => chiTien(t.quyen)), ds.map(t => t.ma).join(', '));
+    ok(`${vai}: thấy Theo tháng và Định mức bếp (chỉ kg)`, ['theo-thang', 'dinh-muc'].every(m => ds.some(t => t.ma === m)));
+  }
+  ok('Thủ kho thấy Đánh giá NCC, NV quầy không', theBaoCaoCuaVai('thu_kho').some(t => t.ma === 'danh-gia-ncc')
+    && !theBaoCaoCuaVai('nhan_vien_quay').some(t => t.ma === 'danh-gia-ncc'));
+  ok('Sổ thanh toán, công nợ theo kỳ: chỉ vai kế toán', THE_BAO_CAO.filter(t => ['so-thanh-toan', 'cong-no-ky'].includes(t.ma))
+    .every(t => t.quyen.join() === 'ke_toan'));
+  ok('Chủ thấy mọi thẻ', theBaoCaoCuaVai('chu_so_huu').length === THE_BAO_CAO.length);
+
+  // Mỗi thẻ có CSV → file .csv.ts nhận tên đó.
+  const csvTs = doc(join(TRANG, 'noi-bo/kho/bao-cao/[ten].csv.ts'));
+  const csvThieu = THE_BAO_CAO.filter(t => t.csv && !(t.csv in BAO_CAO) && !csvTs.includes(`ten === '${t.csv}'`));
+  ok('Mọi thẻ có CSV đều có nhánh trong [ten].csv.ts', csvThieu.length === 0, csvThieu.map(t => t.csv).join(', '));
+  ok('CSV theo tháng mở cho vai xem; sổ thanh toán chỉ ke_toan',
+    /ten === 'theo-thang'\) \{\s*\/\/[^\n]*\n\s*if \(!duoc\(nhanSu\.vai_tro, 'xem'\)\)/.test(csvTs)
+    && /ten === 'so-thanh-toan'\) \{\s*if \(!duoc\(nhanSu\.vai_tro, 'ke_toan'\)\)/.test(csvTs));
+  ok('CSV theo tháng: cột tiền theo quyền người tải', /dinhNghiaTheoThang\(duoc\(nhanSu\.vai_tro, 'xem_gia'\)\)/.test(csvTs));
+
+  // Báo cáo in được: đầu trang in + nút In.
+  for (const f of ['[loai].astro', 'theo-thang.astro', 'mua-hang.astro', 'so-thanh-toan.astro', 'dinh-muc.astro', 'ncc.astro']) {
+    const ma = doc(join(TRANG, 'noi-bo/kho/bao-cao', f));
+    ok(`bao-cao/${f}: in được (InDau + NutIn)`, /<InDau\b/.test(ma) && /<NutIn\b/.test(ma));
+  }
+  const thang = doc(join(TRANG, 'noi-bo/kho/bao-cao/theo-thang.astro'));
+  ok('Theo tháng: cột tiền theo coGia', /const coGia = k\.duoc\('xem_gia'\)/.test(thang) && /dinhNghiaTheoThang\(coGia\)/.test(thang));
 });
 
 process.exit(ketThuc('KHUNG GIAO DIỆN'));

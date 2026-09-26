@@ -160,6 +160,13 @@ const CHAY_DA_DANG_NHAP = [
   // /noi-bo/kho/dat-hang/*, nhan-hang/moi, bao-cao/ncc và file CSV của nó, bằng client
   // của nhân sự. Giá dự kiến chỉ đọc khi xem_gia (bảng / view có RLS xem_gia).
   'web/src/lib/kho/dat-hang.ts',
+  // Sửa hàng loạt mặt hàng (kho_sua_nhanh_mat_hang), vị trí + lý do một form (GĐ8c, 0041) —
+  // chỉ gọi từ /noi-bo/kho/cai-dat/mat-hang/sua-nhanh và cai-dat/vi-tri-ly-do, bằng client
+  // của chủ / quản lý. Bảng sửa nhanh không đọc cột giá vốn nào.
+  'web/src/lib/kho/sua-nhanh.ts',
+  // Công thức pha lóc dạng lưới, nhân bản, gợi ý từ phiên pha đã chốt (GĐ8c) — chỉ gọi từ
+  // /noi-bo/kho/cai-dat/cong-thuc (danh_muc). Gợi ý đọc kg, không tiền.
+  'web/src/lib/kho/cong-thuc.ts',
   // Một lượt đồng bộ iPOS (GĐ7a): "Cập nhật ngay" chạy bằng client của quản lý / chủ;
   // cron đăng nhập tài khoản máy may_ipos (client anon riêng → sau signIn là authenticated).
   'web/src/lib/kho/ipos-dong-bo.ts',

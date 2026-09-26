@@ -91,6 +91,7 @@ const oNguong = (khoa: string) => nguongLai ? String(nguongLai.get(khoa) ?? '') 
 
 const MUC = [
   { link: '/noi-bo/kho/cai-dat/mat-hang', ten: 'Mặt hàng', mo_ta: 'Tảng nhập, phần cắt bán ở quầy, phụ phẩm. Giá bán, hạn dùng, mã cân. Dán từ Excel được.', hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/mat-hang/sua-nhanh', ten: 'Sửa nhanh mặt hàng', mo_ta: 'Một bảng mọi món: giá bán, hạn dùng, mã cân, mức quầy, mức kho lạnh — sửa nhiều món rồi Lưu tất cả một lần.', hien: k.duoc('danh_muc') },
   { link: '/noi-bo/kho/cai-dat/cong-thuc', ten: 'Công thức pha lóc', mo_ta: 'Mỗi loại tảng thường ra những phần nào, tỉ lệ bao nhiêu — để điền sẵn phiếu pha và so thu hồi.', hien: k.duoc('danh_muc') },
   { link: '/noi-bo/kho/cai-dat/dinh-luong', ten: 'Định lượng món', mo_ta: 'Mỗi suất món dùng bao nhiêu gram thịt — để so với số thịt bếp nhận. Lấy món từ iPOS, dán từ Excel được.', hien: k.duoc('danh_muc') },
   { link: '/noi-bo/kho/cai-dat/nha-cung-cap', ten: 'Nhà cung cấp', mo_ta: 'Tên, mã số thuế, số ngày nợ, tài khoản ngân hàng.', hien: k.duoc('ncc') },
@@ -99,6 +100,7 @@ const MUC = [
   { link: '/noi-bo/kho/cai-dat/ma-vach', ten: 'Mã vạch cân', mo_ta: 'Cách đọc nhãn cân Dahua (mặc định 2+5+5+1). Có ô thử một nhãn thật.', hien: k.duoc('danh_muc') },
   { link: '/noi-bo/kho/cai-dat/ipos', ten: 'Kết nối iPOS', mo_ta: 'Bán hàng trên iPOS tự trừ kho ở quầy, 5 phút một lượt. Đèn trạng thái, Cập nhật ngay, chuyển từ đếm quầy sang iPOS.', hien: k.duoc('danh_muc') || k.duoc('cai_dat_goc') },
   { link: '/noi-bo/kho/cai-dat/can', ten: 'Đồng bộ cân', mo_ta: 'Đưa mã cân, tên, giá bán/kg của Mặt hàng sang cân in tem qua USB. Kho là gốc.', hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/quyen', ten: 'Ai làm được gì', mo_ta: 'Bảng từng vai (chủ, quản lý, kế toán, thủ kho, NV quầy) làm được việc gì, ai thấy giá tiền.', hien: true },
   laChu
     ? { link: '/noi-bo/kho/cai-dat/nhan-vien', ten: 'Nhân viên & máy dùng chung', mo_ta: 'Tạo tài khoản cho thủ kho, NV quầy/bếp, kế toán, máy tính bảng. Khóa người nghỉ việc. Xem ai đã gắn vào máy, mở khóa máy.', hien: true }
     : { link: '/noi-bo/kho/cai-dat/nhan-vien', ten: 'Máy dùng chung', mo_ta: 'Máy tính bảng ở quầy/bếp: ai đã gắn, ai bị khóa vì sai PIN. Mở khóa, tắt máy.', hien: k.duoc('duyet') },

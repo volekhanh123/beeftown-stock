@@ -95,6 +95,8 @@ migration.
 | `/noi-bo/kho/quy-trinh` | Các bước của từng nghiệp vụ (`lib/kho/quy-trinh.ts`), bước đang có việc hiện số đỏ |
 | `/noi-bo/kho/khac` | Mọi ô menu cho màn nhỏ, các màn CRM, đăng xuất |
 | `/noi-bo/kho/huong-dan` | Hướng dẫn trong app, lọc theo vai `?vai=` (nút "?" trỏ tới các mục ở đây — mục 3i) |
+| `/noi-bo/kho/bao-cao` | Trung tâm báo cáo (GĐ8c, mục 3n): mốc nhanh, tóm tắt kỳ, thẻ báo cáo ẩn theo quyền |
+| `/noi-bo/kho/cai-dat/quyen` | Ai làm được gì — bảng vai × việc bằng lời (mục 3n) |
 
 "Xếp ra bán trước" (`goiYXepQuay` trong `lib/kho/trang-chu.ts`): Beeftown **không giảm giá**
 hàng sắp hết hạn. Thay vào đó, mỗi món ở quầy chỉ ra lô còn hạn gần nhất để xếp lên trước.
@@ -647,6 +649,72 @@ Test: `test-kho-cong-no-v2.mjs` (database), `test-kho-cong-no-v2-web.mjs` (misa.
 cong-no.ts, vòng thật trên PGlite: chia hóa đơn gộp web = database, form Trả tiền → v2, sổ theo kỳ khớp
 view, CSV từ dữ liệu MISA thật; mã nguồn trang), nhóm 10e của `test-kho-thu-kho.mjs`.
 
+## 3n. Sửa hàng loạt · công thức dạng lưới · vị trí + lý do một form · ai làm được gì · trung tâm báo cáo (GĐ8c, migration 0041)
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/cai-dat/mat-hang/sua-nhanh?loai=&nhom=&tim=` | `danh_muc` | Bảng mọi món, mỗi ô một input: giá bán, HSD, mã cân, quầy tối thiểu / tối đa (gói), quầy tối thiểu (kg), kho lạnh tối thiểu / tối đa, sau pha để ở, đang dùng. Một nút **Lưu tất cả** (form POST) → `kho_sua_nhanh_mat_hang`. Chip loại / nhóm, ô tìm (bỏ dấu) — trên URL. Điện thoại: cuộn ngang, cột tên món `position: sticky` |
+| `/noi-bo/kho/cai-dat/cong-thuc?sua=<id>[&goi_y=1]` | `danh_muc` | Mỗi công thức một **lưới** phần ra × tỷ lệ % × xử lý × thứ tự × Bỏ; nút **Tính lại** (đầu form = phím Enter, không lưu), **Thêm dòng**, **Lưu công thức**; **Nhân bản công thức**; **Gợi ý từ thực tế** |
+| `/noi-bo/kho/cai-dat/vi-tri-ly-do` | `danh_muc` | Vị trí + bốn bảng lý do trong **một** form, 2 dòng trống mỗi bảng để thêm, **Lưu tất cả** |
+| `/noi-bo/kho/cai-dat/quyen` | `xem` (mọi vai) | "Ai làm được gì": một câu mỗi vai (`tomTatVai` — "Thủ kho: …; KHÔNG thấy giá tiền.") + bảng việc × vai. Ô menu "Ai làm được gì" (`quyen: xem`) |
+| `/noi-bo/kho/bao-cao?tu=&den=` | `xem` | **Trung tâm báo cáo** (làm lại): mốc nhanh, thẻ tóm tắt (chỉ `xem_gia`), thẻ báo cáo theo nhóm ẩn theo quyền. Link cũ `?bao_cao=<tên>` → 301 sang `bao-cao/<tên>` |
+| `/noi-bo/kho/bao-cao/<xuat-nhap-ton\|thu-hoi\|hao-hut\|ban>` | `xem_gia` | Trang `[loai].astro` (tách từ trang Báo cáo cũ, cùng `docBaoCao`) |
+| `/noi-bo/kho/bao-cao/theo-thang?nam=` | `xem` (cột tiền chỉ `xem_gia`) | `kho_bao_cao_theo_thang` — mỗi tháng một dòng |
+| `/noi-bo/kho/bao-cao/mua-hang?nhom=ncc\|mat_hang&tu=&den=` | `xem_gia` | `kho_bao_cao_mua_hang` |
+| `/noi-bo/kho/bao-cao/so-thanh-toan?tu=&den=` | `ke_toan` | `kho_so_thanh_toan` — khoản đã hủy mờ, tiền 0; in có chỗ ký |
+
+**Sửa nhanh** (`lib/kho/sua-nhanh.ts`). Form mỗi dòng: `id` (lặp), `pb_<id>` = `updated_at` lúc đọc (chuỗi nguyên văn
+từ PostgREST — database ép lại `timestamptz` rồi so), `<ô>_<id>` chữ gõ, `cu_<ô>_<id>` giá trị lúc mở (ô ẩn).
+`docFormSuaNhanh` chỉ gửi dòng có ô đổi và chỉ các ô đó:
+
+- **Ô để trống = GIỮ** (đúng đặc tả). Muốn xóa hẳn một ô thì gõ **`-`** (`CHU_XOA`) → gửi `null`. Ô vốn trống mà gõ `-` → không gửi.
+- So "đổi chưa" trên dạng chuẩn: `650.000` = `650000` (tiền), `1.5` = `1,5` (kg), `0101` = `101` (mã cân). Gửi số khi
+  đọc được; chữ sai gửi nguyên văn để **database** báo đúng ô (web không lặp luật).
+- Database lưu **tất cả hoặc không**, trả `loi[{dong,id,ten,truong,cau}]`: trang tô đỏ ô `truong`, hiện câu dưới dòng
+  đó, giữ chữ đã gõ ở mọi dòng (`chuGo`). Dòng lỗi "vừa được người khác sửa" (`laLoiPhienBan`) bỏ chữ gõ, hiện số mới.
+- Bảng đọc `kho_mat_hang` bằng `docMonSuaNhanh` (không cột giá vốn nào). Ô "Sau pha để ở" không hiện ở món loại tảng.
+  Thêm món, đổi tên / loại / mã / đơn vị: vẫn ở trang Mặt hàng.
+
+**Công thức dạng lưới** (`lib/kho/cong-thuc.ts`). Ô `mh_<i>`, `tl_<i>`, `xl_<i>`, `tt_<i>`, `bo_<i>`, `so_dong`.
+Tổng chạy tính **ở máy chủ** (`tongChu`) khi bấm Tính lại / Thêm dòng / lỗi: **xanh** 95–100%, **vàng** dưới 95%
+(phần còn lại coi là hao hụt), **đỏ** vượt 100% (`mauTong`, `cauTong`). Lưu = thay toàn bộ phần ra: upsert
+(`cong_thuc_id, mat_hang_ra_id`) rồi xóa dòng không còn — không có hàm database riêng, `phien_ban` = chuỗi phần ra
+(`phienBanCongThuc`) so với bản đọc lại. "Gợi ý từ thực tế" (`docGoiYThucTe`): phiên `kho_phien_pha` đã chốt
+(`da_chot`) của đúng loại tảng, chi nhánh đang chọn, `ngay_pha` trong 30 ngày → Σ kg ra từng món ÷ Σ `tong_kg_vao`
+(`tinhGoiY`) — chỉ kg; cột "Gợi ý" để người dùng tự chép, không tự điền đè.
+
+**Vị trí + lý do** (`docFormViTriLyDo` → `luuViTriLyDo`): ô `vt_ten_<id>`, `vt_loai_<id>`, `vt_thu_tu_<id>`,
+`vt_dang_dung_<id>`, `ld_*_<id>` (lý do hủy có ô ẩn `ld_co_anh_<id>` để biết ô tích có trên form), dòng mới
+`vt_moi_*_<i>`, `ld_moi_*_<loại>_<i>`. Kiểm hết trước khi ghi (tên trống ở dòng có sẵn = lỗi, nhắc "Ngừng dùng");
+chỉ dòng đổi mới ghi, từng lệnh một (không có hàm gộp — lỗi giữa chừng báo "Đã lưu N dòng, chưa lưu được …").
+`phien_ban` = băm FNV của hai bảng (`phienBanViTriLyDo`). Vị trí hệ thống: không đổi loại, không tắt.
+
+**Ai làm được gì.** `MO_TA_VIEC: Record<ViecKho, {ten, moTa}>`, `VAI_BANG_QUYEN`, `TEN_VAI_DAY`, `viecCuaVai`,
+`tomTatVai` ở `lib/kho/chung.ts` (thuần). Thêm việc mới vào `QUYEN_KHO` mà quên câu mô tả → lỗi kiểu +
+test-kho-giao-dien nhóm 16 đỏ.
+
+**Trung tâm báo cáo** (`lib/kho/bao-cao.ts`):
+
+- `kyNhanh` thêm **Quý này**, **Năm nay**; component `ChonKy.astro` (mốc nhanh + hai ô ngày + Xem + nút CSV
+  `formaction`) và `BangBaoCao.astro` (bảng theo `DinhNghiaBaoCao` + dòng tổng `tinhTong`) dùng chung các trang báo cáo.
+- Thẻ tóm tắt (vai xem giá): cộng `kho_bao_cao_xnt_v2` (`tomTatXnt`: hao hụt = mất khi ra quầy + kiểm kê thiếu − thừa;
+  chi phí thịt = bán + xuất bếp + xuất khác + hủy + hao hụt — như `kho_bao_cao_theo_thang`). Doanh thu iPOS lấy từ
+  `kho_bao_cao_theo_thang` **chỉ khi kỳ trùng trọn tháng** (`doanhThuKy`; kỳ lẻ ngày → không có doanh thu).
+- `THE_BAO_CAO`: `{ma, nhom, ten, moTa, link, quyen, ky: ngay|nam|khong, csv}`; `theBaoCaoCuaVai`, `linkTheBaoCao`.
+  `quyen` phải khớp dòng chặn trang đích — test so từng vai (thấy thẻ ⇔ vào được). Thủ kho thấy Theo tháng, Định mức
+  bếp, Đánh giá NCC; NV quầy thấy Theo tháng, Định mức bếp. Ô menu "Báo cáo" vẫn `xem_gia` (thủ kho tới qua link).
+- Định nghĩa cột: `dinhNghiaTheoThang(coGia)` (không xem giá = bỏ hẳn cột tiền; dòng tổng không cộng tồn đầu / tồn cuối),
+  `dinhNghiaMuaHang(nhom)`, `DN_SO_THANH_TOAN`. Đọc: `docTheoThang`, `docMuaHang`, `docSoThanhToan`.
+- CSV (`bao-cao/[ten].csv.ts`): thêm `theo-thang.csv?nam=` (`xem`), `mua-hang.csv?nhom=` (`xem_gia`), `so-thanh-toan.csv`
+  (`ke_toan`). Mọi trang báo cáo in được: `InDau` + `NutIn` (thêm cho `dinh-muc`, `ncc`); sổ thanh toán có `KyTen`.
+- Link cũ `bao-cao?bao_cao=…` trong `index.astro` (thẻ quản trị) và `quy-trinh.ts` đã đổi sang `bao-cao/<tên>`.
+
+Hướng dẫn: mục mới `sua-nhanh`, `quyen` (nhóm Bắt đầu); viết lại `bao-cao`, `cong-thuc`, `vi-tri-ly-do`.
+
+Test: `test-kho-sua-nhanh.mjs` (database), `test-kho-sua-nhanh-web.mjs` (hàm thuần; cột web ⊂ cột hàm; vòng thật
+form → `kho_sua_nhanh_mat_hang` trên PGlite; báo cáo theo quyền; mã nguồn trang), `test-kho-giao-dien.mjs` nhóm 16
+(trang quyền phủ đủ việc, thẻ báo cáo ẩn theo quyền = dòng chặn trang, CSV có nhánh).
+
 ## 4. Cài như app (PWA)
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng
@@ -722,6 +790,8 @@ node test/test-kho-dat-hang.mjs       # đặt hàng NCC, gợi ý, nhận theo 
 node test/test-kho-dat-hang-web.mjs   # đặt hàng: form (thủ kho không gửi giá), dat-hang.ts trên PGlite, trang
 node test/test-kho-cong-no-v2.mjs     # công nợ v2: bù trừ, hoàn tiền, hóa đơn gộp, trả hàng 2 bước, sổ kỳ, MISA — database
 node test/test-kho-cong-no-v2-web.mjs # công nợ v2: misa.ts, form Trả tiền, hóa đơn gộp web = database, trang
+node test/test-kho-sua-nhanh.mjs      # sửa hàng loạt, báo cáo tháng, mua hàng, sổ thanh toán — database (0041)
+node test/test-kho-sua-nhanh-web.mjs  # sửa nhanh, lưới công thức, vị trí + lý do, trung tâm báo cáo — web
 cd ../web && npm run kiem-tra && npm run quet && npm run build
 ```
 

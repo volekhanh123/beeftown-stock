@@ -346,19 +346,19 @@ const tieuDe = laQuay ? 'Quầy hôm nay' : laQuanLy ? 'Hôm nay' : vai === 'thu
                   <small>Kho lạnh {dinhDangTien(cs.gia_tri_ton_kho)} · Quầy {dinhDangTien(cs.gia_tri_ton_quay)}</small>
                   <small class:list={{ 'chu-do': cs.mh_het_quay > 0 }}>{cs.mh_het_quay} món quầy hết · {cs.mh_duoi_muc} dưới mức</small>
                 </a>
-                <a href="/noi-bo/kho/bao-cao?bao_cao=thu-hoi" class="kho-the-so">
+                <a href="/noi-bo/kho/bao-cao/thu-hoi" class="kho-the-so">
                   <span class="kho-the-so-dau"><BieuTuong ten="dao" /> Giá vốn & thu hồi</span>
                   <b>{cs.gia_von_kg !== null ? `${dinhDangTien(cs.gia_von_kg)}/kg` : '—'}</b>
                   <small>Giá vốn thịt thật · kỳ trước {cs.gia_von_kg_truoc !== null ? `${dinhDangTien(cs.gia_von_kg_truoc)}/kg` : '—'}</small>
                   <small>Thu hồi {dinhDangPhanTram(cs.thu_hoi_pt)} ({cs.so_phien_pha} phiên) · kỳ trước {dinhDangPhanTram(cs.thu_hoi_pt_truoc)}</small>
                 </a>
-                <a href="/noi-bo/kho/bao-cao?bao_cao=hao-hut" class:list={['kho-the-so', { vang: cs.huy + cs.kiem_ke_thieu > 0 }]}>
+                <a href="/noi-bo/kho/bao-cao/hao-hut" class:list={['kho-the-so', { vang: cs.huy + cs.kiem_ke_thieu > 0 }]}>
                   <span class="kho-the-so-dau"><BieuTuong ten="huy" /> Hao hụt</span>
                   <b>{dinhDangTien(cs.huy + cs.kiem_ke_thieu)}</b>
                   <small>Hủy {dinhDangTien(cs.huy)} · Thiếu khi kiểm kê {dinhDangTien(cs.kiem_ke_thieu)}</small>
                   <small>Thừa khi kiểm kê {dinhDangTien(cs.kiem_ke_thua)}</small>
                 </a>
-                <a href="/noi-bo/kho/bao-cao?bao_cao=xuat-nhap-ton" class="kho-the-so">
+                <a href="/noi-bo/kho/bao-cao/xuat-nhap-ton" class="kho-the-so">
                   <span class="kho-the-so-dau"><BieuTuong ten="bao_cao" /> Chi phí thịt đã dùng</span>
                   <b>{dinhDangTien(cs.chi_phi_thit)}</b>
                   <small>Kỳ trước {dinhDangTien(cs.chi_phi_thit_truoc)}{thayDoiPt(cs.chi_phi_thit, cs.chi_phi_thit_truoc) !== null ? ` (${(thayDoiPt(cs.chi_phi_thit, cs.chi_phi_thit_truoc) ?? 0) > 0 ? '+' : ''}${thayDoiPt(cs.chi_phi_thit, cs.chi_phi_thit_truoc)}%)` : ''}</small>

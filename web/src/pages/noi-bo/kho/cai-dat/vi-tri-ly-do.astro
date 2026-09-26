@@ -1,135 +1,177 @@
 ---
 /**
- * KHO — CÀI ĐẶT · VỊ TRÍ VÀ LÝ DO
+ * KHO — CÀI ĐẶT · VỊ TRÍ VÀ LÝ DO (một trang, một form — GĐ8c)
  *
  * Vị trí thuộc từng chi nhánh (kho lạnh, tủ mát, quầy thịt). Vị trí "Hàng chờ
  * hủy" và "Đang mang ra quầy" (0032) do hệ thống tạo — đổi tên được, không
  * tắt được, không đổi loại được.
  * Lý do dùng chung toàn thương hiệu; "bắt buộc ảnh" nghĩa là báo hủy với lý
  * do này phải chụp ít nhất một ảnh.
+ *
+ * GĐ8c: mọi dòng của hai bảng + vài dòng trống để thêm nằm trong MỘT form, một
+ * nút "Lưu tất cả" (lib/kho/sua-nhanh.ts: docFormViTriLyDo → luuViTriLyDo).
+ * Chỉ dòng có đổi được ghi; kiểm hết trước khi ghi. `phien_ban` = chuỗi các dòng
+ * lúc mở trang — người khác vừa sửa thì từ chối, không đè. Lỗi thì trang hiện
+ * lại đúng chữ đã gõ.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
-import { docViTri, docLyDo, luuViTri, luuLyDo, type ViTri, type LyDo } from '../../../../lib/kho/danh-muc.ts';
+import { docViTri, docLyDo, type ViTri, type LyDo } from '../../../../lib/kho/danh-muc.ts';
+import {
+  LOAI_LY_DO, SO_DONG_THEM, docFormViTriLyDo, laViTriHeThong, luuViTriLyDo, phienBanViTriLyDo,
+} from '../../../../lib/kho/sua-nhanh.ts';
 import { cauLoiKho, TEN_LOAI_VI_TRI, type KetQua } from '../../../../lib/kho/chung.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('danh_muc')) return Astro.redirect('/noi-bo/kho/cai-dat', 302);
 
-let bao: KetQua | null = k.bao;
-const form = await docFormGui(Astro);
-if (form && k.chiNhanh) {
-  const viec = String(form.get('viec') ?? '');
-  const kq = viec === 'vi_tri' ? await luuViTri(k.client, form, k.chiNhanh.id)
-    : viec === 'ly_do' ? await luuLyDo(k.client, form)
-    : { ok: false, cau: 'Việc không hợp lệ.' };
-  if (kq.ok) return chuyenHuong(Astro, '/noi-bo/kho/cai-dat/vi-tri-ly-do', kq);
-  bao = kq;
-}
-
 let viTri: ViTri[] = [];
 let lyDo: LyDo[] = [];
 let loiDoc = k.loiDoc;
-if (k.chiNhanh) {
+const doc = async () => {
+  if (!k.chiNhanh) return;
   try {
     [viTri, lyDo] = await Promise.all([docViTri(k.client, k.chiNhanh.id), docLyDo(k.client)]);
+    loiDoc = k.loiDoc;
   } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được vị trí và lý do.'); }
+};
+await doc();
+
+let bao: KetQua | null = k.bao;
+/** Chữ đã gõ khi lỗi — hiện lại đúng như vậy. */
+let go: FormData | null = null;
+const form = await docFormGui(Astro);
+if (form && k.chiNhanh) {
+  let kq: KetQua;
+  if (loiDoc) kq = { ok: false, cau: 'Chưa đọc được dữ liệu hiện tại — tải lại trang rồi lưu lại.' };
+  else if (String(form.get('phien_ban') ?? '') !== phienBanViTriLyDo(viTri, lyDo)) {
+    kq = { ok: false, cau: 'Vị trí / lý do vừa được người khác sửa — trang đã hiện số mới, gõ lại phần của bạn rồi bấm Lưu tất cả.' };
+  } else {
+    const luu = await luuViTriLyDo(k.client, k.chiNhanh.id, docFormViTriLyDo(form, viTri, lyDo));
+    kq = luu;
+    if (!luu.ok) {
+      go = form;
+      // Dòng mới đã thêm được: xóa chữ ở ô tên để bấm Lưu lần nữa không thêm trùng.
+      for (const ten of luu.oMoiDaLuu) go.set(ten, '');
+    }
+  }
+  if (kq.ok) return chuyenHuong(Astro, '/noi-bo/kho/cai-dat/vi-tri-ly-do', kq);
+  bao = kq;
+  await doc();   // đã lưu được một phần thì hiện đúng số trong database
 }
 
-// Vị trí hệ thống: không có ô chọn loại, không tắt được.
-const laHeThong = (v: ViTri) => v.loai === 'cho_huy' || v.loai === 'dang_chuyen';
-
-const NHOM_LY_DO = [
-  ['huy', 'Lý do hủy hàng'],
-  ['xuat_bep', 'Lý do xuất bếp'],
-  ['xuat_khac', 'Lý do xuất khác'],
-  ['dieu_chinh', 'Lý do điều chỉnh'],
-] as const;
+/** Giá trị một ô: chữ đã gõ (khi lỗi) hoặc số trong database. */
+const o = (ten: string, macDinh: string) => (go && go.has(ten) ? String(go.get(ten) ?? '') : macDinh);
+const tich = (ten: string, macDinh: boolean, coO: string) => (go && go.has(coO) ? go.get(ten) === 'co' : macDinh);
 ---
-<Kho k={k} huongDan="vi-tri-ly-do" tieuDe="Vị trí và lý do">
+<Kho k={k} huongDan="vi-tri-ly-do" tieuDe="Vị trí và lý do" rong>
   <h1>Vị trí và lý do</h1>
   <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
+  <p class="nb-dan" style="font-size:.9rem">Sửa thẳng trong các bảng, điền dòng trống để thêm mới, rồi bấm <strong>Lưu tất cả</strong> một lần.
+    Muốn bỏ một vị trí hay lý do thì chọn <strong>Ngừng dùng</strong> (không xóa — phiếu cũ vẫn cần tên).</p>
 
-  <h2>Vị trí để hàng — {k.chiNhanh?.ten}</h2>
-  {viTri.length === 0 && <p class="nb-rong">Chưa có vị trí nào — bấm "Bắt đầu dùng kho" ở Tổng quan kho.</p>}
-  {viTri.map(v => (
-    <form method="POST" class="nb-dong" style={v.dang_dung ? '' : 'opacity:.6'}>
-      <input type="hidden" name="viec" value="vi_tri" />
-      <input type="hidden" name="id" value={v.id} />
-      <div class="kho-luoi">
-        <label class="nb-o"><span>Tên</span><input type="text" name="ten" value={v.ten} maxlength="60" required /></label>
-        <label class="nb-o"><span>Loại</span>
-          {laHeThong(v)
-            ? <p style="margin:.6rem 0 0">{TEN_LOAI_VI_TRI[v.loai]} <span class="kho-phu">(hệ thống)</span></p>
-            : <select name="loai">
-                <option value="kho" selected={v.loai === 'kho'}>Kho</option>
-                <option value="quay" selected={v.loai === 'quay'}>Quầy</option>
-              </select>}
-        </label>
-        <label class="nb-o"><span>Thứ tự</span><input type="text" inputmode="numeric" name="thu_tu" value={String(v.thu_tu)} /></label>
-        <label class="nb-o"><span>Tình trạng</span>
-          {laHeThong(v)
-            ? <><input type="hidden" name="dang_dung" value="co" /><p style="margin:.6rem 0 0">Luôn dùng</p></>
-            : <select name="dang_dung">
-                <option value="co" selected={v.dang_dung}>Đang dùng</option>
-                <option value="khong" selected={!v.dang_dung}>Ngừng dùng</option>
-              </select>}
-        </label>
-      </div>
-      <button type="submit" class="nb-nut phu">Lưu</button>
-    </form>
-  ))}
-  <details class="nb-the">
-    <summary style="cursor:pointer;font-weight:700">+ Thêm vị trí</summary>
-    <form method="POST" style="margin-top:1rem">
-      <input type="hidden" name="viec" value="vi_tri" />
-      <div class="kho-luoi">
-        <label class="nb-o"><span>Tên</span><input type="text" name="ten" maxlength="60" required placeholder="Tủ mát số 2" /></label>
-        <label class="nb-o"><span>Loại</span>
-          <select name="loai"><option value="kho">Kho</option><option value="quay">Quầy</option></select></label>
-        <label class="nb-o"><span>Thứ tự</span><input type="text" inputmode="numeric" name="thu_tu" value="5" /></label>
-      </div>
-      <button type="submit" class="nb-nut">Thêm vị trí</button>
-    </form>
-  </details>
+  <form method="POST">
+    <input type="hidden" name="phien_ban" value={phienBanViTriLyDo(viTri, lyDo)} />
 
-  {NHOM_LY_DO.map(([loai, tieuDe]) => (
-    <>
-      <h2>{tieuDe}</h2>
-      {lyDo.filter(l => l.loai === loai).map(l => (
-        <form method="POST" class="nb-dong" style={l.dang_dung ? '' : 'opacity:.6'}>
-          <input type="hidden" name="viec" value="ly_do" />
-          <input type="hidden" name="id" value={l.id} />
-          <div class="kho-luoi">
-            <label class="nb-o"><span>Lý do</span><input type="text" name="ten" value={l.ten} maxlength="80" required /></label>
-            <label class="nb-o"><span>Thứ tự</span><input type="text" inputmode="numeric" name="thu_tu" value={String(l.thu_tu)} /></label>
-            <label class="nb-o"><span>Tình trạng</span>
-              <select name="dang_dung">
-                <option value="co" selected={l.dang_dung}>Đang dùng</option>
-                <option value="khong" selected={!l.dang_dung}>Ngừng dùng</option>
-              </select></label>
-          </div>
-          {loai === 'huy' && (
-            <label class="kho-tich"><input type="checkbox" name="can_anh" value="co" checked={l.can_anh} /> Bắt buộc chụp ảnh khi báo hủy</label>
-          )}
-          <button type="submit" class="nb-nut phu">Lưu</button>
-        </form>
-      ))}
-      <details class="nb-the">
-        <summary style="cursor:pointer;font-weight:600">+ Thêm {tieuDe.toLowerCase()}</summary>
-        <form method="POST" style="margin-top:1rem">
-          <input type="hidden" name="viec" value="ly_do" />
-          <input type="hidden" name="loai" value={loai} />
-          <label class="nb-o"><span>Lý do</span><input type="text" name="ten" maxlength="80" required /></label>
-          {loai === 'huy' && (
-            <label class="kho-tich"><input type="checkbox" name="can_anh" value="co" checked /> Bắt buộc chụp ảnh khi báo hủy</label>
-          )}
-          <button type="submit" class="nb-nut">Thêm</button>
-        </form>
-      </details>
-    </>
-  ))}
+    <h2>Vị trí để hàng — {k.chiNhanh?.ten}</h2>
+    {viTri.length === 0 && <p class="nb-rong">Chưa có vị trí nào — bấm "Bắt đầu dùng kho" ở Tổng quan kho.</p>}
+    <div class="kho-bang-khung">
+      <table class="kho-bang vl-bang">
+        <thead><tr><th>Tên</th><th>Loại</th><th class="so">Thứ tự</th><th>Tình trạng</th></tr></thead>
+        <tbody>
+          {viTri.map(v => (
+            <tr style={v.dang_dung ? undefined : 'opacity:.6'}>
+              <td><input type="text" name={`vt_ten_${v.id}`} value={o(`vt_ten_${v.id}`, v.ten)} maxlength="60" aria-label={`Tên vị trí ${v.ten}`} /></td>
+              <td>
+                {laViTriHeThong(v)
+                  ? <>{TEN_LOAI_VI_TRI[v.loai]} <span class="kho-phu">(hệ thống)</span></>
+                  : <select name={`vt_loai_${v.id}`} aria-label={`Loại vị trí ${v.ten}`}>
+                      <option value="kho" selected={o(`vt_loai_${v.id}`, v.loai) === 'kho'}>Kho</option>
+                      <option value="quay" selected={o(`vt_loai_${v.id}`, v.loai) === 'quay'}>Quầy</option>
+                    </select>}
+              </td>
+              <td class="so"><input type="text" inputmode="numeric" name={`vt_thu_tu_${v.id}`} value={o(`vt_thu_tu_${v.id}`, String(v.thu_tu))} class="vl-so" aria-label={`Thứ tự ${v.ten}`} /></td>
+              <td>
+                {laViTriHeThong(v)
+                  ? 'Luôn dùng'
+                  : <select name={`vt_dang_dung_${v.id}`} aria-label={`Tình trạng ${v.ten}`}>
+                      <option value="co" selected={o(`vt_dang_dung_${v.id}`, v.dang_dung ? 'co' : 'khong') === 'co'}>Đang dùng</option>
+                      <option value="khong" selected={o(`vt_dang_dung_${v.id}`, v.dang_dung ? 'co' : 'khong') === 'khong'}>Ngừng dùng</option>
+                    </select>}
+              </td>
+            </tr>
+          ))}
+          {Array.from({ length: SO_DONG_THEM }, (_, i) => (
+            <tr class="vl-moi">
+              <td><input type="text" name={`vt_moi_ten_${i}`} value={o(`vt_moi_ten_${i}`, '')} maxlength="60" placeholder={i === 0 ? '+ Vị trí mới, vd Tủ mát số 2' : '+ Vị trí mới'} aria-label={`Tên vị trí mới ${i + 1}`} /></td>
+              <td>
+                <select name={`vt_moi_loai_${i}`} aria-label={`Loại vị trí mới ${i + 1}`}>
+                  <option value="kho" selected={o(`vt_moi_loai_${i}`, 'kho') === 'kho'}>Kho</option>
+                  <option value="quay" selected={o(`vt_moi_loai_${i}`, 'kho') === 'quay'}>Quầy</option>
+                </select>
+              </td>
+              <td class="so"><input type="text" inputmode="numeric" name={`vt_moi_thu_tu_${i}`} value={o(`vt_moi_thu_tu_${i}`, '5')} class="vl-so" aria-label={`Thứ tự vị trí mới ${i + 1}`} /></td>
+              <td class="kho-phu">Mới</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+
+    {LOAI_LY_DO.map(([loai, tieuDe]) => (
+      <>
+        <h2>{tieuDe}</h2>
+        <div class="kho-bang-khung">
+          <table class="kho-bang vl-bang">
+            <thead><tr><th>Lý do</th><th class="so">Thứ tự</th><th>Tình trạng</th>{loai === 'huy' && <th>Bắt buộc ảnh</th>}</tr></thead>
+            <tbody>
+              {lyDo.filter(l => l.loai === loai).map(l => (
+                <tr style={l.dang_dung ? undefined : 'opacity:.6'}>
+                  <td><input type="text" name={`ld_ten_${l.id}`} value={o(`ld_ten_${l.id}`, l.ten)} maxlength="80" aria-label={`Lý do ${l.ten}`} /></td>
+                  <td class="so"><input type="text" inputmode="numeric" name={`ld_thu_tu_${l.id}`} value={o(`ld_thu_tu_${l.id}`, String(l.thu_tu))} class="vl-so" aria-label={`Thứ tự ${l.ten}`} /></td>
+                  <td>
+                    <select name={`ld_dang_dung_${l.id}`} aria-label={`Tình trạng ${l.ten}`}>
+                      <option value="co" selected={o(`ld_dang_dung_${l.id}`, l.dang_dung ? 'co' : 'khong') === 'co'}>Đang dùng</option>
+                      <option value="khong" selected={o(`ld_dang_dung_${l.id}`, l.dang_dung ? 'co' : 'khong') === 'khong'}>Ngừng dùng</option>
+                    </select>
+                  </td>
+                  {loai === 'huy' && (
+                    <td>
+                      <input type="hidden" name={`ld_co_anh_${l.id}`} value="1" />
+                      <label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_can_anh_${l.id}`} value="co" checked={tich(`ld_can_anh_${l.id}`, l.can_anh, `ld_co_anh_${l.id}`)} /> Phải chụp ảnh</label>
+                    </td>
+                  )}
+                </tr>
+              ))}
+              {Array.from({ length: SO_DONG_THEM }, (_, i) => (
+                <tr class="vl-moi">
+                  <td><input type="text" name={`ld_moi_ten_${loai}_${i}`} value={o(`ld_moi_ten_${loai}_${i}`, '')} maxlength="80" placeholder="+ Lý do mới" aria-label={`${tieuDe} mới ${i + 1}`} /></td>
+                  <td class="kho-phu so">—</td>
+                  <td class="kho-phu">Mới</td>
+                  {loai === 'huy' && (
+                    <td><label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_moi_can_anh_${loai}_${i}`} value="co" checked={go ? go.get(`ld_moi_can_anh_${loai}_${i}`) === 'co' : true} /> Phải chụp ảnh</label></td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </>
+    ))}
+
+    <div class="kho-thanh-nut dinh">
+      <button type="submit" class="nb-nut">Lưu tất cả</button>
+      <a class="nb-nut phu" href="/noi-bo/kho/cai-dat/vi-tri-ly-do">Bỏ các ô vừa gõ</a>
+    </div>
+  </form>
 </Kho>
+
+<style>
+  .vl-bang input[type="text"], .vl-bang select { width: 100%; font-size: 16px; min-height: 44px; }
+  .vl-bang td:first-child { min-width: 11rem; }
+  .vl-bang .vl-so { max-width: 4.5rem; text-align: right; }
+  .vl-moi td { background: var(--kho-vang-nen, #FFF5DC); }
+</style>

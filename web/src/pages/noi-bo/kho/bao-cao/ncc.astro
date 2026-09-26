@@ -12,6 +12,8 @@
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import { kyBaoCao, kyNhanh, tinhTong } from '../../../../lib/kho/bao-cao.ts';
 import {
@@ -48,9 +50,10 @@ const link = (thay: Record<string, string>) => `/noi-bo/kho/bao-cao/ncc?${new UR
 const soChu = (n: number) => (n === 0 ? '·' : n.toLocaleString('vi-VN'));
 ---
 <Kho k={k} huongDan="danh-gia-ncc" tieuDe="Đánh giá nhà cung cấp" rong>
+  <InDau tieuDe="ĐÁNH GIÁ NHÀ CUNG CẤP" soPhieu={kyChu} chiNhanh={k.chiNhanh?.ten} />
   <h1>Đánh giá nhà cung cấp</h1>
   <p>
-    {coGia && <><a href="/noi-bo/kho/bao-cao">← Báo cáo kho</a> · </>}
+    <a href={`/noi-bo/kho/bao-cao?${new URLSearchParams({ tu, den }).toString()}`}>← Báo cáo kho</a> ·{" "}
     <a href="/noi-bo/kho/dat-hang">Đơn đặt hàng</a>
   </p>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
@@ -150,6 +153,7 @@ const soChu = (n: number) => (n === 0 ? '·' : n.toLocaleString('vi-VN'));
       </>
     )
   )}
+  {daDoc && dong.length > 0 && <NutIn chu="In báo cáo" />}
 </Kho>
 
 <style>

@@ -1,0 +1,77 @@
+---
+/**
+ * KHO — MỘT BÁO CÁO THEO KỲ (GĐ8c tách từ trang Báo cáo cũ)
+ *
+ *   /noi-bo/kho/bao-cao/<xuat-nhap-ton | thu-hoi | hao-hut | ban>?tu=&den=
+ *
+ * Số do database tính (hàm kho_bao_cao_*, 0024; xuất – nhập – tồn dùng
+ * kho_bao_cao_xnt_v2 của 0032; bán hàng dùng kho_bao_cao_ban_thuc của 0037) —
+ * trang này chỉ hiện. Dòng tổng tính chung một hàm với file Excel (tinhTong).
+ * Các báo cáo có trang riêng (theo-thang, mua-hang, so-thanh-toan, dinh-muc,
+ * ncc) là file tĩnh cùng thư mục — Astro chọn file tĩnh trước file [loai].
+ *
+ * Link cũ /noi-bo/kho/bao-cao?bao_cao=<tên> được trang Báo cáo chuyển về đây.
+ * In được: đầu trang in (InDau) ghi tên báo cáo và kỳ.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import ChonKy from '../../../../components/kho/ChonKy.astro';
+import BangBaoCao from '../../../../components/kho/BangBaoCao.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import { BAO_CAO, NGAY_TOI_DA_KY, docBaoCao, kyBaoCao, tinhTong } from '../../../../lib/kho/bao-cao.ts';
+import { congNgay, dinhDangNgay, homNayVn } from '../../../../lib/kho/chung.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho/bao-cao', 302);
+
+const ten = Astro.params.loai ?? '';
+if (!Object.hasOwn(BAO_CAO, ten)) return Astro.redirect('/noi-bo/kho/bao-cao', 302);
+const dn = BAO_CAO[ten];
+const homNay = homNayVn();
+const { tu, den } = kyBaoCao(Astro.url.searchParams, homNay);
+
+let dong: Record<string, unknown>[] = [];
+let loiDoc = k.loiDoc;
+let daDoc = false;
+if (congNgay(tu, NGAY_TOI_DA_KY) < den) {
+  loiDoc = 'Khoảng ngày dài quá — chọn tối đa 1 năm.';
+} else if (k.chiNhanh && k.daKhoiTao) {
+  const kq = await docBaoCao(k.client, ten, k.chiNhanh.id, tu, den);
+  dong = kq.dong;
+  loiDoc = kq.loi ?? loiDoc;
+  daDoc = !kq.loi;
+}
+const tong = tinhTong(dn, dong);
+const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDangNgay(den)}`;
+---
+<Kho k={k} huongDan="bao-cao" tieuDe={dn.ten} rong>
+  <InDau tieuDe={dn.ten.toUpperCase()} soPhieu={kyChu} chiNhanh={k.chiNhanh?.ten} />
+  <h1>{dn.ten}</h1>
+  <p class="kho-khong-in"><a href={`/noi-bo/kho/bao-cao?${new URLSearchParams({ tu, den }).toString()}`}>← Báo cáo kho</a></p>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  <ChonKy duong={`/noi-bo/kho/bao-cao/${ten}`} tu={tu} den={den} homNay={homNay} csv={`/noi-bo/kho/bao-cao/${ten}.csv`} />
+
+  <p class="nb-dan"><strong>{kyChu}</strong>. {dn.moTa}</p>
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+  ) : daDoc && (
+    <>
+      <BangBaoCao dn={dn} dong={dong} tong={tong} />
+      {dong.length > 0 && <NutIn chu="In báo cáo" />}
+    </>
+  )}
+  {ten === 'hao-hut' && dong.length > 0 && (
+    <p class="kho-phu">Cuối bảng cộng riêng từng loại (hủy, xuất bếp, xuất khác, trả nhà cung cấp, kiểm kê thiếu, kiểm kê thừa, hao hụt), không gộp thành một số: hàng thừa khi kiểm kê không phải hàng mất.</p>
+  )}
+  {ten === 'ban' && (
+    <p class="kho-phu">Dòng nguồn <strong>iPOS</strong> là doanh thu THẬT từ hóa đơn iPOS đã trừ kho. Dòng nguồn <strong>Ước tính</strong>
+      là hàng bán trước khi nối iPOS: thiếu ở quầy khi kiểm kê được coi là đã bán, nhân với giá bán hiện tại. Cuối bảng cộng riêng
+      từng nguồn. Dòng bán iPOS chưa trừ được kho (chưa ghép món, thiếu hàng) chưa có trong báo cáo —{' '}
+      <a href="/noi-bo/kho/ban-ipos">xử lý ở Bán hàng iPOS</a>.</p>
+  )}
+</Kho>

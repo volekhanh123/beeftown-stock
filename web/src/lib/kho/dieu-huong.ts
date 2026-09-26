@@ -102,6 +102,8 @@ export const MUC_KHO: MucKho[] = [
   { ma: 'cai_dat', ten: 'Thiết lập', link: '/noi-bo/kho/cai-dat', bieuTuong: 'cai_dat',
     quyen: ['danh_muc', 'ncc', 'cai_dat_goc'] },
   { ma: 'huong_dan', ten: 'Hướng dẫn', link: '/noi-bo/kho/huong-dan', bieuTuong: 'huong_dan', quyen: ['xem'] },
+  // GĐ8c: bảng "vai nào làm được việc gì" bằng lời — mọi vai xem kho mở được.
+  { ma: 'quyen', ten: 'Ai làm được gì', link: '/noi-bo/kho/cai-dat/quyen', bieuTuong: 'nguoi', quyen: ['xem'] },
 ];
 
 // Hai mục chỉ có trên thanh đáy.

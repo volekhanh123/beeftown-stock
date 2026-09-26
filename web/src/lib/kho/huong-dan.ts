@@ -206,6 +206,17 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     meo: ['Bấm **Làm bước này** trên màn Quy trình để mở đúng màn cần làm.'],
     link: { href: '/noi-bo/kho/quy-trinh', chu: 'Mở Quy trình' },
   },
+  {
+    id: 'quyen', vai: ['chung'],
+    tieuDe: 'Ai làm được gì',
+    tomTat: 'Bảng từng vai (chủ quán, quản lý, kế toán, thủ kho, nhân viên quầy) làm được những việc gì trong kho.',
+    buoc: [
+      'Mở **Khác** → **Ai làm được gì**.',
+      'Đọc dòng tóm tắt của vai mình (tô vàng), hoặc xem bảng chi tiết: dấu ✓ là được làm.',
+      'Thiếu việc cần làm: nhờ chủ quán đổi vai ở **Thiết lập** → **Nhân viên**.',
+    ],
+    link: { href: '/noi-bo/kho/cai-dat/quyen', chu: 'Mở Ai làm được gì' },
+  },
 
   // ===========================================================================
   // THỦ KHO — không nhắc tiền
@@ -695,11 +706,18 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
   {
     id: 'bao-cao', vai: ['quan_ly', 'chu_so_huu', 'ke_toan'],
     tieuDe: 'Báo cáo',
-    tomTat: 'Tồn kho, thu hồi pha lóc, hao hụt, nhập hàng, công nợ — theo kỳ.',
+    tomTat: 'Một trang cho mọi báo cáo: tóm tắt kỳ, xuất – nhập – tồn, theo tháng, mua hàng, công nợ, sổ thanh toán, hao hụt, định mức, bán hàng.',
     buoc: [
       'Mở **Khác** → **Báo cáo**.',
-      'Chọn loại báo cáo, chọn kỳ (hoặc **Từ ngày**, **Đến ngày** → **Xem**).',
-      'Cần file: bấm **Tải về Excel (CSV)**.',
+      'Bấm mốc nhanh: **Hôm nay**, **7 ngày**, **Tháng này**, **Tháng trước**, **Quý này**, **Năm nay** (hoặc chọn **Từ ngày**, **Đến ngày** → **Xem**).',
+      'Xem các thẻ tóm tắt: nhập, bán, hao hụt, hủy, tồn cuối, chi phí thịt (và doanh thu iPOS khi chọn kỳ trọn tháng).',
+      'Bấm **Xem** ở thẻ báo cáo cần — báo cáo mở đúng kỳ đang chọn. Cần file: **Tải CSV**. Cần giấy: **In báo cáo**.',
+    ],
+    meo: [
+      '**Theo tháng**: mỗi tháng một dòng, chọn năm. Chi phí thịt / doanh thu cho biết thịt chiếm bao nhiêu % doanh thu.',
+      '**Mua hàng**: bấm **Theo nhà cung cấp** hoặc **Theo mặt hàng** — thấy giá TB, thấp nhất, cao nhất một kg.',
+      '**Sổ thanh toán** (kế toán): mọi khoản trả tiền, bù trừ, NCC hoàn tiền theo ngày; khoản đã hủy hiện mờ, tiền bằng 0.',
+      'Thủ kho, nhân viên quầy mở trang Báo cáo chỉ thấy các báo cáo kg (Theo tháng, Định mức bếp).',
     ],
     link: { href: '/noi-bo/kho/bao-cao', chu: 'Mở Báo cáo' },
   },
@@ -888,12 +906,34 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     link: { href: '/noi-bo/kho/cai-dat/mat-hang', chu: 'Mở Mặt hàng' },
   },
   {
+    id: 'sua-nhanh', vai: ['chu_so_huu', 'quan_ly'],
+    tieuDe: 'Sửa nhanh nhiều mặt hàng',
+    tomTat: 'Một bảng mọi món: giá bán, hạn dùng, mã cân, mức quầy, mức kho lạnh, sau pha để ở, đang dùng — sửa nhiều món, lưu một lần.',
+    buoc: [
+      'Mở **Thiết lập** → **Sửa nhanh mặt hàng** (hoặc link trên trang Mặt hàng).',
+      'Lọc theo loại, nhóm hoặc gõ tên vào ô **Tìm**.',
+      'Sửa thẳng trong ô. **Ô để trống = giữ nguyên**; gõ dấu **-** để xóa hẳn ô đó.',
+      'Bấm **Lưu tất cả**. Có ô sai thì chưa lưu món nào — chữ đỏ hiện dưới món đó, sửa rồi bấm lại.',
+    ],
+    meo: [
+      'Điện thoại: kéo ngang bảng, cột tên món luôn đứng yên bên trái.',
+      'Báo "vừa được người khác sửa": dòng đó đã hiện số mới — gõ lại phần của mình rồi lưu.',
+    ],
+    link: { href: '/noi-bo/kho/cai-dat/mat-hang/sua-nhanh', chu: 'Mở Sửa nhanh mặt hàng' },
+  },
+  {
     id: 'cong-thuc', vai: ['chu_so_huu', 'quan_ly'],
     tieuDe: 'Công thức pha lóc',
     tomTat: 'Mỗi loại tảng thường ra bao nhiêu % từng phần — làm mốc so thu hồi. Không bắt buộc.',
     buoc: [
       'Mở **+ Tạo công thức mới**, chọn loại tảng, bấm **Tạo công thức**.',
-      'Thêm từng phần ra và tỉ lệ, bấm **Thêm / cập nhật phần ra**.',
+      'Trong lưới: mỗi dòng chọn một **Phần ra**, gõ **Tỷ lệ %**. Thiếu dòng thì bấm **Thêm dòng**.',
+      'Bấm **Tính lại** để xem tổng: xanh là ổn (95–100%), vàng là còn thiếu (phần thiếu coi là hao hụt), đỏ là vượt 100%.',
+      'Bấm **Lưu công thức**. Bỏ một phần: tích ô **Bỏ** rồi lưu.',
+    ],
+    meo: [
+      '**Gợi ý từ thực tế**: cột Gợi ý là tỷ lệ thật trung bình của các phiên pha đã chốt trong 30 ngày — chép sang ô Tỷ lệ nếu thấy hợp.',
+      '**Nhân bản công thức**: tạo bản sao để làm công thức mới cho tảng tương tự, rồi đổi tên.',
     ],
     link: { href: '/noi-bo/kho/cai-dat/cong-thuc', chu: 'Mở Công thức pha lóc' },
   },
@@ -928,11 +968,13 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
   {
     id: 'vi-tri-ly-do', vai: ['chu_so_huu', 'quan_ly'],
     tieuDe: 'Vị trí và lý do',
-    tomTat: 'Kho lạnh, tủ mát, quầy thịt; lý do hủy, lý do xuất khác.',
+    tomTat: 'Kho lạnh, tủ mát, quầy thịt; lý do hủy, lý do xuất bếp, xuất khác — sửa hết trên một trang.',
     buoc: [
-      'Thêm nơi để hàng: mở **+ Thêm vị trí** → **Thêm vị trí**.',
-      'Thêm lý do: mở **+ Thêm …** ở bảng lý do → **Thêm**. Tích "bắt buộc ảnh" nếu lý do đó phải chụp ảnh.',
+      'Sửa tên, thứ tự, tình trạng thẳng trong bảng.',
+      'Thêm mới: gõ vào dòng trống màu vàng cuối mỗi bảng.',
+      'Bấm **Lưu tất cả** một lần. Bỏ một dòng: chọn **Ngừng dùng**.',
     ],
+    meo: ['Lý do hủy tích **Phải chụp ảnh** thì báo hủy với lý do đó bắt buộc có ảnh.'],
     link: { href: '/noi-bo/kho/cai-dat/vi-tri-ly-do', chu: 'Mở Vị trí và lý do' },
   },
   {

@@ -25,6 +25,8 @@
  * Thêm (0040): trả hàng hai bước — thủ kho chỉ ghi kg, mọi hàm có tiền (hàng
  * chờ, xác nhận tiền, công nợ theo kỳ, MISA, thanh toán v2) từ chối thủ kho /
  * NV quầy; bảng hóa đơn gộp, nhật ký tài khoản NCC đọc ra 0 dòng.
+ * Thêm (0041): báo cáo theo tháng trả kg cho thủ kho / NV quầy, mọi cột tiền
+ * null; mua hàng, sổ thanh toán, sửa hàng loạt danh mục từ chối hai vai này.
  * Cuối cùng: kho_doi_soat_ton() rỗng.
  */
 
@@ -1073,6 +1075,40 @@ await nhom('10e · CÔNG NỢ V2 (0040): TRẢ HÀNG HAI BƯỚC, HÓA ĐƠN G�
   const phieuTra = await tk(`select * from kho_v_phieu_xuat where id = $1`, [ghi.rows?.[0]?.phieu_xuat_id]);
   ok('Thủ kho xem phiếu trả hàng: không khóa tiền', phieuTra.loi === null && khoaTien(phieuTra.rows).length === 0, phieuTra.loi ?? '');
   await doiSoat('Sau trả hàng hai bước');
+});
+
+// ===========================================================================
+// 0041 (GĐ8c): báo cáo theo tháng cho mọi vai kho — thủ kho / NV quầy thấy kg,
+// mọi cột tiền null; mua hàng, sổ thanh toán, sửa hàng loạt danh mục từ chối.
+await nhom('10f · BÁO CÁO THÁNG, MUA HÀNG, SỔ THANH TOÁN, SỬA HÀNG LOẠT (0041) — KHÔNG TIỀN', async () => {
+  const nam = Number(homNay.slice(0, 4));
+  for (const [ai, uid] of [['Thủ kho', UID.thuKhoA], ['NV quầy', UID.nvQuayA]]) {
+    const f = uid === UID.thuKhoA ? tk : (sql, p) => duoi(uid, sql, p);
+    const r = await f(`select * from kho_bao_cao_theo_thang($1, $2)`, [cnA.id, nam]);
+    ok(`${ai} xem báo cáo tháng: có kg nhập`, r.loi === null && r.rows.some(x => Number(x.nhap_kg) > 0), r.loi ?? '');
+    const coSo = (r.rows ?? []).flatMap(x => khoaTien(x).filter(k => x[k.slice(1)] !== null));
+    ok(`${ai}: mọi khóa tiền của báo cáo tháng đều null`, coSo.length === 0, coSo.join(', '));
+    ok(`${ai}: báo cáo tháng không số tiền nào`, !coTien(JSON.stringify(r.rows)));
+    const tu = await ngay(-60);
+    const lot = [];
+    for (const [ten, sql, p] of [
+      ['kho_bao_cao_mua_hang (ncc)', `select * from kho_bao_cao_mua_hang($1, $2::date, $3::date, 'ncc')`, [cnA.id, tu, homNay]],
+      ['kho_bao_cao_mua_hang (mat_hang)', `select * from kho_bao_cao_mua_hang($1, $2::date, $3::date, 'mat_hang')`, [cnA.id, tu, homNay]],
+      ['kho_so_thanh_toan', `select * from kho_so_thanh_toan($1, $2::date, $3::date)`, [cnA.id, tu, homNay]],
+      ['kho_sua_nhanh_mat_hang', `select kho_sua_nhanh_mat_hang($1, $2::jsonb)`,
+        [cnA.id, JSON.stringify([{ id: MH['P-VUN'].id, phien_ban: new Date().toISOString(), gia_ban_kg: 1 }])]],
+    ]) {
+      const x = await f(sql, p);
+      if (x.loi === null) lot.push(ten);
+    }
+    ok(`${ai} bị từ chối mua hàng, sổ thanh toán, sửa hàng loạt`, lot.length === 0, lot.join(', '));
+  }
+  const kt = await duoi(UID.keToanA, `select * from kho_bao_cao_theo_thang($1, $2)`, [cnA.id, nam]);
+  ok('Đối chứng: kế toán thấy tiền nhập theo tháng', kt.rows?.some(x => Number(x.nhap_tien) > 0), kt.loi ?? '');
+  const mh = await duoi(UID.keToanA, `select * from kho_bao_cao_mua_hang($1, $2::date, $3::date, 'mat_hang')`,
+    [cnA.id, await ngay(-60), homNay]);
+  ok('Đối chứng: kế toán thấy giá mua theo mặt hàng', mh.rows?.some(x => Number(x.gia_tb_kg) > 0), mh.loi ?? '');
+  await doiSoat('Sau báo cáo 0041');
 });
 
 // ===========================================================================
