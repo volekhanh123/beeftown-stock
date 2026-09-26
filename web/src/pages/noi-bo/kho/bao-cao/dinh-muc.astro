@@ -22,28 +22,108 @@ import NutIn from '../../../../components/kho/NutIn.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import { kyBaoCao, kyNhanh, tinhTong } from '../../../../lib/kho/bao-cao.ts';
 import {
-  docBaoCaoDinhMuc, dinhNghiaDinhMuc, mucLech, hienLechKg, hienLechPt, TEN_MUC_LECH, NGAY_TOI_DA_DINH_MUC,
+  docBaoCaoDinhMuc, dinhNghiaDinhMuc, mucLech, hienLechKg, hienLechPt, TEN_MUC_LECH_NB, NGAY_TOI_DA_DINH_MUC,
   type DongDinhMuc,
 } from '../../../../lib/kho/dinh-luong.ts';
-import { congNgay, dinhDangKg, dinhDangNgay, dinhDangTien, homNayVn, TEN_LOAI_MAT_HANG } from '../../../../lib/kho/chung.ts';
+import { congNgay, dinhDangKg, dinhDangNgay, dinhDangTien, homNayVn, TEN_LOAI_MAT_HANG_NB } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('xem')) return Astro.redirect('/noi-bo/kho', 302);
 
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  inTieuDe: { vi: 'ĐỐI CHIẾU ĐỊNH MỨC BẾP', en: 'KITCHEN USAGE CHECK' },
+  kyDai: { vi: 'Khoảng ngày dài quá — chọn tối đa 1 năm.', en: 'The date range is too long — choose at most 1 year.' },
+  veBaoCao: { vi: '← Báo cáo kho', en: '← Inventory reports' },
+  khongTinh: {
+    vi: 'Không tính phiếu Xuất bếp có lý do được đánh dấu không tính định mức (mặc định: Cơm nhân viên).',
+    en: 'Kitchen issue slips whose reason is marked as not counted (by default: staff meals) are left out.',
+  },
+  doiO: { vi: 'Đổi ở', en: 'Change this in' },
+  viTriLyDo: { vi: 'Thiết lập → Vị trí và lý do', en: 'Setup → Locations and reasons' },
+  quanLyDoi: { vi: 'Quản lý đổi ở Thiết lập → Vị trí và lý do.', en: 'A manager can change this in Setup → Locations and reasons.' },
+  chonNhanh: { vi: 'Chọn nhanh kỳ', en: 'Quick periods' },
+  tuNgay: { vi: 'Từ ngày', en: 'From' },
+  denNgay: { vi: 'Đến ngày', en: 'To' },
+  xem: { vi: 'Xem', en: 'View' },
+  taiCsv: { vi: 'Tải về Excel (CSV)', en: 'Download to Excel (CSV)' },
+  bepNhan: { vi: 'Bếp nhận', en: 'Kitchen received' },
+  bepNhanGiai: { vi: '= phiếu Xuất bếp + phần chuyển bếp khi pha lóc.', en: '= issues to the kitchen + the part sent to the kitchen during butchery.' },
+  leRaDung: { vi: 'Lẽ ra dùng', en: 'Should have used' },
+  leRaDungGiai: { vi: '= số suất bán trên iPOS × gram mỗi suất (Định lượng món).', en: '= portions sold on iPOS × grams per portion (Dish recipes).' },
+  lechQua: { vi: 'Lệch quá', en: 'A variance over' },
+  toDo: { vi: 'thì tô đỏ.', en: 'is shown in red.' },
+  soDuong: { vi: 'Số dương: bếp nhận nhiều hơn lẽ ra dùng.', en: 'Positive numbers: the kitchen received more than it should have used.' },
+  chuaBatDau: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory overview' },
+  chuaCoBan1: {
+    vi: 'Kỳ này chưa có món bán nào từ iPOS khớp với món có định lượng',
+    en: 'No dish sold on iPOS in this period matches a dish with a recipe',
+  },
+  chuaCoBan2: {
+    vi: ', nên chưa tính được "lẽ ra dùng" — bảng dưới chỉ có số bếp nhận.',
+    en: ', so "should have used" cannot be worked out yet — the table below only shows what the kitchen received.',
+  },
+  kiemTra: { vi: 'Kiểm tra', en: 'Check the' },
+  ketNoiIpos: { vi: 'Kết nối iPOS', en: 'iPOS connection' },
+  ganMaIpos: { vi: ', và gắn mã iPOS cho món ở', en: ', and add iPOS codes to dishes in' },
+  dinhLuongMon: { vi: 'Định lượng món', en: 'Dish recipes' },
+  bamLayMon: { vi: '(bấm "Lấy món từ iPOS").', en: '(press "Get dishes from iPOS").' },
+  nhoQuanLy: { vi: 'Nhờ quản lý kiểm tra kết nối iPOS và định lượng món.', en: 'Ask a manager to check the iPOS connection and the dish recipes.' },
+  chuaDl: {
+    vi: (n: number) => `${n} món có bán trong kỳ mà chưa có định lượng`,
+    en: (n: number) => `${n} ${s(n, 'dish was', 'dishes were')} sold in this period without a recipe`,
+  },
+  chuaDl2: {
+    vi: '— số "lẽ ra dùng" đang thiếu phần của những món đó, nên lệch có thể cao hơn thực tế.',
+    en: '— "should have used" is missing their share, so the variance may look higher than it really is.',
+  },
+  nhapGram: { vi: 'Nhập gram cho các món này', en: 'Enter grams for these dishes' },
+  soVuot: {
+    vi: (n: number) => `${n} mặt hàng lệch quá ngưỡng`,
+    en: (n: number) => `${n} ${s(n, 'item is', 'items are')} over the threshold`,
+  },
+  khongVuot: { vi: 'Không mặt hàng nào lệch quá ngưỡng', en: 'No item is over the threshold' },
+  moDinhLuong: { vi: 'Mở Định lượng món', en: 'Open Dish recipes' },
+  matHang: { vi: 'Mặt hàng', en: 'Item' },
+  bepNhanKg: { vi: 'Bếp nhận kg', en: 'Kitchen received kg' },
+  leRaDungKg: { vi: 'Lẽ ra dùng kg', en: 'Should have used kg' },
+  lechKg: { vi: 'Lệch kg', en: 'Variance kg' },
+  lechPt: { vi: 'Lệch %', en: 'Variance %' },
+  soSuat: { vi: 'Số suất bán', en: 'Portions sold' },
+  tienLech: { vi: 'Tiền lệch', en: 'Variance value' },
+  tong: { vi: 'Tổng', en: 'Total' },
+  chuaSoDuoc: {
+    vi: 'Mặt hàng "Chưa so được": bếp có nhận nhưng chưa món bán nào trong kỳ có gram của mặt hàng đó.',
+    en: 'Items marked "Not comparable yet": the kitchen received them, but no dish sold in the period has grams of that item.',
+  },
+  tienLechGiai: {
+    vi: 'Tiền lệch = kg lệch × giá vốn trung bình phần bếp nhận trong kỳ (kỳ bếp không nhận thì lấy giá vốn trung bình các lô của mặt hàng).',
+    en: 'Variance value = variance kg × the average cost of what the kitchen received in the period (if it received nothing, the average cost of the item\'s lots).',
+  },
+  viSao: {
+    vi: 'Bếp nhận nhiều hơn thường do: phiếu Xuất bếp dùng cho việc khác (cơm nhân viên, hàng gần hết hạn), gram định lượng thấp hơn thực tế, món bán ngoài iPOS, hoặc hao hụt khi chế biến. Bếp nhận ít hơn thường do: bếp lấy thịt mà không lập phiếu Xuất bếp, hoặc gram định lượng cao hơn thực tế.',
+    en: 'The kitchen receiving more usually comes from: kitchen issue slips used for other things (staff meals, goods close to expiry), recipe grams lower than reality, dishes sold outside iPOS, or losses while cooking. The kitchen receiving less usually comes from: meat taken without a kitchen issue slip, or recipe grams higher than reality.',
+  },
+  inBaoCao: { vi: 'In báo cáo', en: 'Print report' },
+});
+
 const q = Astro.url.searchParams;
 const homNay = homNayVn();
 const { tu, den } = kyBaoCao(q, homNay);
-const cacKy = kyNhanh(homNay);
+const cacKy = kyNhanh(homNay, nn);
 const kyDangChon = cacKy.find(x => x.tu === tu && x.den === den)?.ten;
 const coGia = k.duoc('xem_gia');
-const dn = dinhNghiaDinhMuc(coGia);
+const dn = dinhNghiaDinhMuc(coGia, nn);
 
 let dong: DongDinhMuc[] = [];
 let loiDoc = k.loiDoc;
 let daDoc = false;
 if (congNgay(tu, NGAY_TOI_DA_DINH_MUC) < den) {
-  loiDoc = 'Khoảng ngày dài quá — chọn tối đa 1 năm.';
+  loiDoc = t.kyDai;
 } else if (k.chiNhanh && k.daKhoiTao) {
   const kq = await docBaoCaoDinhMuc(k.client, k.chiNhanh.id, tu, den);
   dong = kq.dong;
@@ -55,90 +135,89 @@ const chuaCoBan = daDoc && (dau ? dau.chua_co_ban : true);
 const chuaDl = dau?.so_mon_chua_dinh_luong ?? 0;
 const nguong = dau?.nguong_pt ?? null;
 const soVuot = dong.filter(d => mucLech(d) === 'do').length;
-const tong = tinhTong(dn, dong as unknown as Record<string, unknown>[])[0];
+const tong = tinhTong(dn, dong as unknown as Record<string, unknown>[], nn)[0];
 const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDangNgay(den)}`;
 const link = (thay: Record<string, string>) => `/noi-bo/kho/bao-cao/dinh-muc?${new URLSearchParams({ tu, den, ...thay }).toString()}`;
-const kg = (n: number) => (n === 0 ? '·' : dinhDangKg(n));
+const kg = (n: number) => (n === 0 ? '·' : dinhDangKg(n, nn));
+const vungSo = nn === 'en' ? 'en-US' : 'vi-VN';
 ---
-<Kho k={k} huongDan="dinh-luong" tieuDe="Đối chiếu định mức bếp" rong>
-  <InDau tieuDe="ĐỐI CHIẾU ĐỊNH MỨC BẾP" soPhieu={kyChu} chiNhanh={k.chiNhanh?.ten} />
-  <h1>Đối chiếu định mức bếp</h1>
-  <p><a href={`/noi-bo/kho/bao-cao?${new URLSearchParams({ tu, den }).toString()}`}>← Báo cáo kho</a></p>
-  <p class="nb-dan" style="font-size:.9rem">Không tính phiếu Xuất bếp có lý do được đánh dấu không tính định mức (mặc định: Cơm nhân viên).
-    {k.duoc('danh_muc') ? <>Đổi ở <a href="/noi-bo/kho/cai-dat/vi-tri-ly-do">Thiết lập → Vị trí và lý do</a>.</> : 'Quản lý đổi ở Thiết lập → Vị trí và lý do.'}</p>
+<Kho k={k} huongDan="dinh-luong" tieuDe={dn.ten} rong>
+  <InDau tieuDe={t.inTieuDe} soPhieu={kyChu} chiNhanh={k.chiNhanh?.ten} />
+  <h1>{dn.ten}</h1>
+  <p><a href={`/noi-bo/kho/bao-cao?${new URLSearchParams({ tu, den }).toString()}`}>{t.veBaoCao}</a></p>
+  <p class="nb-dan" style="font-size:.9rem">{t.khongTinh}{' '}
+    {k.duoc('danh_muc') ? <>{t.doiO} <a href="/noi-bo/kho/cai-dat/vi-tri-ly-do">{t.viTriLyDo}</a>.</> : t.quanLyDoi}</p>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   <form method="GET" action="/noi-bo/kho/bao-cao/dinh-muc" class="nb-the">
-    <nav class="kho-dh" aria-label="Chọn nhanh kỳ" style="margin:0;padding:0 0 .75rem">
+    <nav class="kho-dh" aria-label={t.chonNhanh} style="margin:0;padding:0 0 .75rem">
       {cacKy.map(x => (
         <a href={link({ tu: x.tu, den: x.den })} aria-current={x.ten === kyDangChon ? 'page' : undefined} style="min-height:48px">{x.ten}</a>
       ))}
     </nav>
     <div class="kho-luoi">
-      <label class="nb-o"><span>Từ ngày</span><input type="date" name="tu" value={tu} required /></label>
-      <label class="nb-o"><span>Đến ngày</span><input type="date" name="den" value={den} required /></label>
+      <label class="nb-o"><span>{t.tuNgay}</span><input type="date" name="tu" value={tu} required /></label>
+      <label class="nb-o"><span>{t.denNgay}</span><input type="date" name="den" value={den} required /></label>
     </div>
     <div class="kho-thanh-nut" style="margin:0">
-      <button type="submit" class="nb-nut phu">Xem</button>
-      <button type="submit" class="nb-nut phu" formaction="/noi-bo/kho/bao-cao/dinh-muc.csv">Tải về Excel (CSV)</button>
+      <button type="submit" class="nb-nut phu">{t.xem}</button>
+      <button type="submit" class="nb-nut phu" formaction="/noi-bo/kho/bao-cao/dinh-muc.csv">{t.taiCsv}</button>
     </div>
   </form>
 
   <p class="nb-dan">
-    <strong>{kyChu}</strong>. <strong>Bếp nhận</strong> = phiếu Xuất bếp + phần chuyển bếp khi pha lóc.{' '}
-    <strong>Lẽ ra dùng</strong> = số suất bán trên iPOS × gram mỗi suất (Định lượng món).
-    {nguong !== null && <> Lệch quá <strong>{nguong.toLocaleString('vi-VN')}%</strong> thì tô đỏ.</>}
-    {' '}Số dương: bếp nhận nhiều hơn lẽ ra dùng.
+    <strong>{kyChu}</strong>. <strong>{t.bepNhan}</strong> {t.bepNhanGiai}{' '}
+    <strong>{t.leRaDung}</strong> {t.leRaDungGiai}
+    {nguong !== null && <> {t.lechQua} <strong>{nguong.toLocaleString(vungSo)}%</strong> {t.toDo}</>}
+    {' '}{t.soDuong}
   </p>
 
   {!k.daKhoiTao ? (
-    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+    <p class="nb-rong">{t.chuaBatDau} <a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
   ) : daDoc && (
     <>
       {chuaCoBan && (
         <div class="nb-bao luu-y" role="status">
-          <p style="margin:0"><strong>Kỳ này chưa có món bán nào từ iPOS khớp với món có định lượng</strong>, nên chưa tính được
-            "lẽ ra dùng" — bảng dưới chỉ có số bếp nhận.
+          <p style="margin:0"><strong>{t.chuaCoBan1}</strong>{t.chuaCoBan2}
             {k.duoc('danh_muc')
-              ? <> Kiểm tra <a href="/noi-bo/kho/cai-dat/ipos">Kết nối iPOS</a>, và gắn mã iPOS cho món ở{' '}
-                  <a href="/noi-bo/kho/cai-dat/dinh-luong">Định lượng món</a> (bấm "Lấy món từ iPOS").</>
-              : <> Nhờ quản lý kiểm tra kết nối iPOS và định lượng món.</>}
+              ? <> {t.kiemTra} <a href="/noi-bo/kho/cai-dat/ipos">{t.ketNoiIpos}</a>{t.ganMaIpos}{' '}
+                  <a href="/noi-bo/kho/cai-dat/dinh-luong">{t.dinhLuongMon}</a> {t.bamLayMon}</>
+              : <> {t.nhoQuanLy}</>}
           </p>
         </div>
       )}
       {!chuaCoBan && chuaDl > 0 && (
         <div class="nb-bao luu-y" role="status">
-          <p style="margin:0"><strong>{chuaDl} món có bán trong kỳ mà chưa có định lượng</strong> — số "lẽ ra dùng" đang thiếu phần của
-            những món đó, nên lệch có thể cao hơn thực tế.
-            {k.duoc('danh_muc') && <> <a href="/noi-bo/kho/cai-dat/dinh-luong?loc=chua">Nhập gram cho các món này</a>.</>}
+          <p style="margin:0"><strong>{t.chuaDl(chuaDl)}</strong> {t.chuaDl2}
+            {k.duoc('danh_muc') && <> <a href="/noi-bo/kho/cai-dat/dinh-luong?loc=chua">{t.nhapGram}</a>.</>}
           </p>
         </div>
       )}
       {!chuaCoBan && dong.length > 0 && (
         <p class="dm-tom">
           {soVuot > 0
-            ? <span class="dm-chip do">{soVuot} mặt hàng lệch quá ngưỡng</span>
-            : <span class="dm-chip xanh">Không mặt hàng nào lệch quá ngưỡng</span>}
+            ? <span class="dm-chip do">{t.soVuot(soVuot)}</span>
+            : <span class="dm-chip xanh">{t.khongVuot}</span>}
         </p>
       )}
 
       {dong.length === 0 ? (
         <p class="nb-rong">
           {dn.khiTrong.cau}.{' '}
-          {k.duoc('danh_muc') ? <a href="/noi-bo/kho/cai-dat/dinh-luong">Mở Định lượng món</a> : null}
+          {k.duoc('danh_muc') ? <a href="/noi-bo/kho/cai-dat/dinh-luong">{t.moDinhLuong}</a> : null}
         </p>
       ) : (
         <div class="kho-bang-khung">
           <table class="kho-bang kho-bao-cao">
             <thead>
               <tr>
-                <th>Mặt hàng</th>
-                <th class="so">Bếp nhận kg</th>
-                <th class="so">Lẽ ra dùng kg</th>
-                <th class="so">Lệch kg</th>
-                <th class="so">Lệch %</th>
-                <th class="so">Số suất bán</th>
-                {coGia && <th class="so">Tiền lệch</th>}
+                <th>{t.matHang}</th>
+                <th class="so">{t.bepNhanKg}</th>
+                <th class="so">{t.leRaDungKg}</th>
+                <th class="so">{t.lechKg}</th>
+                <th class="so">{t.lechPt}</th>
+                <th class="so">{t.soSuat}</th>
+                {coGia && <th class="so">{t.tienLech}</th>}
               </tr>
             </thead>
             <tbody>
@@ -148,15 +227,15 @@ const kg = (n: number) => (n === 0 ? '·' : dinhDangKg(n));
                   <tr class={`dm-${muc}`}>
                     <td>
                       <strong>{d.ten}</strong><br />
-                      <span class="kho-phu">{d.ma}{TEN_LOAI_MAT_HANG[d.loai] ? ` · ${TEN_LOAI_MAT_HANG[d.loai]}` : ''}</span>{' '}
-                      <span class={`dm-chip ${muc}`}>{TEN_MUC_LECH[muc]}</span>
+                      <span class="kho-phu">{d.ma}{TEN_LOAI_MAT_HANG_NB[d.loai] ? ` · ${TEN_LOAI_MAT_HANG_NB[d.loai][nn]}` : ''}</span>{' '}
+                      <span class={`dm-chip ${muc}`}>{TEN_MUC_LECH_NB[muc][nn]}</span>
                     </td>
                     <td class="so">{kg(d.kg_xuat_bep)}</td>
-                    <td class="so">{d.kg_ly_thuyet > 0 ? dinhDangKg(d.kg_ly_thuyet) : '—'}</td>
-                    <td class="so">{d.kg_ly_thuyet > 0 || d.chenh_kg !== 0 ? hienLechKg(d.chenh_kg) : '·'}</td>
-                    <td class="so"><strong>{hienLechPt(d.chenh_pt)}</strong></td>
-                    <td class="so">{d.so_suat > 0 ? d.so_suat.toLocaleString('vi-VN') : '—'}</td>
-                    {coGia && <td class="so">{d.tien_chenh !== null && d.tien_chenh !== 0 ? dinhDangTien(d.tien_chenh) : '·'}</td>}
+                    <td class="so">{d.kg_ly_thuyet > 0 ? dinhDangKg(d.kg_ly_thuyet, nn) : '—'}</td>
+                    <td class="so">{d.kg_ly_thuyet > 0 || d.chenh_kg !== 0 ? hienLechKg(d.chenh_kg, nn) : '·'}</td>
+                    <td class="so"><strong>{hienLechPt(d.chenh_pt, nn)}</strong></td>
+                    <td class="so">{d.so_suat > 0 ? d.so_suat.toLocaleString(vungSo) : '—'}</td>
+                    {coGia && <td class="so">{d.tien_chenh !== null && d.tien_chenh !== 0 ? dinhDangTien(d.tien_chenh, nn) : '·'}</td>}
                   </tr>
                 );
               })}
@@ -164,26 +243,25 @@ const kg = (n: number) => (n === 0 ? '·' : dinhDangKg(n));
             {tong && (
               <tfoot>
                 <tr class="tong">
-                  <td>Tổng</td>
+                  <td>{t.tong}</td>
                   <td class="so">{kg(tong.so.kg_xuat_bep ?? 0)}</td>
                   <td class="so">{kg(tong.so.kg_ly_thuyet ?? 0)}</td>
-                  <td class="so">{hienLechKg(tong.so.chenh_kg ?? 0)}</td>
+                  <td class="so">{hienLechKg(tong.so.chenh_kg ?? 0, nn)}</td>
                   <td></td>
                   <td></td>
-                  {coGia && <td class="so">{dinhDangTien(tong.so.tien_chenh ?? 0)}</td>}
+                  {coGia && <td class="so">{dinhDangTien(tong.so.tien_chenh ?? 0, nn)}</td>}
                 </tr>
               </tfoot>
             )}
           </table>
         </div>
       )}
-      <p class="kho-phu">Mặt hàng "Chưa so được": bếp có nhận nhưng chưa món bán nào trong kỳ có gram của mặt hàng đó.
-        {coGia && <> Tiền lệch = kg lệch × giá vốn trung bình phần bếp nhận trong kỳ (kỳ bếp không nhận thì lấy giá vốn trung bình các lô của mặt hàng).</>}
-        {' '}Bếp nhận nhiều hơn thường do: phiếu Xuất bếp dùng cho việc khác (cơm nhân viên, hàng gần hết hạn), gram định lượng thấp hơn thực tế, món bán ngoài iPOS, hoặc hao hụt khi chế biến.
-        Bếp nhận ít hơn thường do: bếp lấy thịt mà không lập phiếu Xuất bếp, hoặc gram định lượng cao hơn thực tế.</p>
+      <p class="kho-phu">{t.chuaSoDuoc}
+        {coGia && <> {t.tienLechGiai}</>}
+        {' '}{t.viSao}</p>
     </>
   )}
-  {daDoc && dong.length > 0 && <NutIn chu="In báo cáo" />}
+  {daDoc && dong.length > 0 && <NutIn chu={t.inBaoCao} />}
 </Kho>
 
 <style>

@@ -817,7 +817,7 @@ await nhom('16 · AI LÀM ĐƯỢC GÌ · TRUNG TÂM BÁO CÁO ẨN THEO QUYỀN
   ok('CSV theo tháng mở cho vai xem; sổ thanh toán chỉ ke_toan',
     /ten === 'theo-thang'\) \{\s*\/\/[^\n]*\n\s*if \(!duoc\(nhanSu\.vai_tro, 'xem'\)\)/.test(csvTs)
     && /ten === 'so-thanh-toan'\) \{\s*if \(!duoc\(nhanSu\.vai_tro, 'ke_toan'\)\)/.test(csvTs));
-  ok('CSV theo tháng: cột tiền theo quyền người tải', /dinhNghiaTheoThang\(duoc\(nhanSu\.vai_tro, 'xem_gia'\)\)/.test(csvTs));
+  ok('CSV theo tháng: cột tiền theo quyền người tải', /dinhNghiaTheoThang\(duoc\(nhanSu\.vai_tro, 'xem_gia'\)(, nn)?\)/.test(csvTs));
 
   // Báo cáo in được: đầu trang in + nút In.
   for (const f of ['[loai].astro', 'theo-thang.astro', 'mua-hang.astro', 'so-thanh-toan.astro', 'dinh-muc.astro', 'ncc.astro']) {

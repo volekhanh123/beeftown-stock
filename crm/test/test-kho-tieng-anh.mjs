@@ -126,18 +126,6 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     'pages/noi-bo/kho/cong-no/tra-hang.astro',
     // ---- hết gói công nợ ----
     // ---- gói báo cáo: báo cáo, định lượng món, định mức bếp ----
-    'components/kho/ChonKy.astro',
-    'lib/kho/bao-cao.ts',
-    'lib/kho/dinh-luong.ts',
-    'pages/noi-bo/kho/bao-cao/[loai].astro',
-    'pages/noi-bo/kho/bao-cao/[ten].csv.ts',
-    'pages/noi-bo/kho/bao-cao/dinh-muc.astro',
-    'pages/noi-bo/kho/bao-cao/index.astro',
-    'pages/noi-bo/kho/bao-cao/mua-hang.astro',
-    'pages/noi-bo/kho/bao-cao/ncc.astro',
-    'pages/noi-bo/kho/bao-cao/so-thanh-toan.astro',
-    'pages/noi-bo/kho/bao-cao/theo-thang.astro',
-    'pages/noi-bo/kho/cai-dat/dinh-luong.astro',
     // ---- hết gói báo cáo ----
     // ---- gói danh mục: thiết lập, mặt hàng, NCC, vị trí, công thức, cân ----
     'components/kho/FormMatHang.astro',

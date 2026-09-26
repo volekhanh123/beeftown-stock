@@ -326,7 +326,8 @@ await nhom('5 · TRANG: QUYỀN, HƯỚNG DẪN, JAVASCRIPT, TIỀN', async () =
     /const guiDuoc = lapDuoc && k\.duoc\('duyet_nhap'\)/.test(ma.xem) && /const guiDuoc = k\.duoc\('duyet_nhap'\)/.test(ma.moi));
   ok('Nhận hàng theo đơn → mở màn nhận hàng', /taoPhieuTuDon/.test(ma.xem) && /\/noi-bo\/kho\/nhan-hang\/\$\{kq\.id\}/.test(ma.xem));
   ok('Danh sách: tìm / ngày / trang như GĐ4b', /<LocDanhSach\b/.test(ma.ds) && /<PhanTrang\b/.test(ma.ds) && /catTrang/.test(ma.ds));
-  ok('Đánh giá NCC: cột tiền theo coGia, có nút CSV', /coGia && <th class="so">Giá TB\/kg/.test(ma.ncc) && /ncc\.csv/.test(ma.ncc));
+  ok('Đánh giá NCC: cột tiền theo coGia, có nút CSV', /coGia && <th class="so">\{t\.giaTbKg\}/.test(ma.ncc)
+    && /giaTbKg: \{ vi: 'Giá TB\/kg'/.test(ma.ncc) && /ncc\.csv/.test(ma.ncc));
 
   const js = doc(join(WEB, 'public/kho/js/in-an.js'));
   ok('in-an.js: Web Share khi có, không thì để ẩn', /navigator\.share/.test(js) && /\[data-chia-se\]/.test(js)
