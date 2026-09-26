@@ -26,21 +26,170 @@ import { moTrangKho, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import {
   docCongNoNcc, docNoDauKy, docCongNoPhieuTrang, docThanhToanTrang, docCongNoTheoKy, docKyCongNo,
   congThucCongNo, locNccCongNo, catTrangBoNho, docChipCongNo, tomTatKy, tienGiamNo, tenKhoan, chuanTenNcc,
-  dinhDangLech, tienLech, laNoDau, linkPhieuCongNo, CHIP_CONG_NO, TEN_LOAI_KHOAN, TEN_LOAI_SO_CONG_NO,
+  dinhDangLech, tienLech, laNoDau, linkPhieuCongNo, cauLoiCongNo, CHIP_CONG_NO_NB, TEN_LOAI_KHOAN_NB, TEN_LOAI_SO_CONG_NO_NB,
   type CongNoNcc, type CongNoPhieu, type KhoanThanhToan, type DongSoCongNo,
 } from '../../../../lib/kho/cong-no.ts';
 import { docTimDs, linkDs } from '../../../../lib/kho/tim-ds.ts';
-import { cauLoiKho, congNgay, dinhDangNgay, dinhDangTien, homNayVn, laUuid } from '../../../../lib/kho/chung.ts';
+import { congNgay, dinhDangNgay, dinhDangTien, homNayVn, laUuid, kqHai, nhanKho } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
+const nn = k.nn;
 if (!k.duoc('ke_toan')) {
-  return chuyenHuong(Astro, '/noi-bo/kho', { ok: false, cau: 'Công nợ nhà cung cấp do kế toán hoặc quản lý xem.' });
+  return chuyenHuong(Astro, '/noi-bo/kho', kqHai(false, {
+    vi: 'Công nợ nhà cung cấp do kế toán hoặc quản lý xem.', en: 'Supplier payables are for the accountant or a manager.',
+  }));
 }
 
 const DUONG = '/noi-bo/kho/cong-no';
-const THE = { ncc: 'Theo NCC', phieu: 'Theo phiếu', 'thanh-toan': 'Thanh toán', 'theo-doi': 'Theo dõi' } as const;
+const THE = {
+  ncc: { vi: 'Theo NCC', en: 'By supplier' }, phieu: { vi: 'Theo phiếu', en: 'By receipt' },
+  'thanh-toan': { vi: 'Thanh toán', en: 'Payments' }, 'theo-doi': { vi: 'Theo dõi', en: 'Ledger' },
+} as const;
 type The = keyof typeof THE;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Công nợ', en: 'Payables' },
+  h1: { vi: 'Công nợ nhà cung cấp', en: 'Supplier payables' },
+  khongDoc: { vi: 'Không đọc được công nợ.', en: 'Could not read payables.' },
+  chuaBatDau: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào ', en: 'This branch has not started using inventory. Go to ' },
+  tongQuanKho: { vi: 'Tổng quan kho', en: 'Inventory home' },
+  noDauKy: { vi: 'Nợ đầu kỳ', en: 'Opening balance' },
+  mua: { vi: 'Mua', en: 'Purchases' },
+  daTra: { vi: 'Đã trả', en: 'Paid' },
+  giamTru: { vi: 'Giảm trừ', en: 'Deductions' },
+  conPhaiTra: { vi: 'Còn phải trả', en: 'Still to pay' },
+  xemViDu: { vi: 'Xem ví dụ', en: 'See an example' },
+  viDuA: { vi: 'Lúc bắt đầu dùng phần mềm quán còn nợ ', en: 'When it started using the software, the restaurant owed ' },
+  viDuB: { vi: '. Nhập một phiếu thịt ', en: '. A meat delivery comes in for ' },
+  viDuC: { vi: '. Trả lại 1 tảng hỏng, được trừ ', en: '. One damaged primal goes back and the supplier deducts ' },
+  viDuD: { vi: '. Đã chuyển khoản ', en: '. The restaurant has paid ' },
+  viDuE: { vi: '.', en: ' by bank transfer.' },
+  viDuMua: {
+    vi: 'Mua = tiền trên hóa đơn khi kế toán đã đối chiếu; chưa đối chiếu thì lấy tổng phiếu nhập.',
+    en: 'Purchases = the invoice amount once the accountant has reconciled it; until then, the goods receipt total.',
+  },
+  viDuTra: { vi: 'Đã trả = tiền trả + bù trừ − tiền nhà cung cấp hoàn lại.', en: 'Paid = payments + offsets − money the supplier refunded.' },
+  viDuHan: {
+    vi: 'Hạn trả = ngày hóa đơn (hoặc ngày nhập) + số ngày được nợ của nhà cung cấp.',
+    en: 'Due date = invoice date (or receipt date) + the supplier\'s credit days.',
+  },
+  viDuAm: {
+    vi: 'Số âm (−): nhà cung cấp đang nợ lại quán, thường do trả hàng sau khi đã trả tiền — bù trừ lần sau hoặc đòi hoàn tiền.',
+    en: 'Negative (−): the supplier owes the restaurant, usually because goods went back after they were paid for — offset it next time or ask for a refund.',
+  },
+  quaHan: { vi: 'quá hạn', en: 'overdue' },
+  denHan7: { vi: 'đến hạn trong 7 ngày', en: 'due within 7 days' },
+  chuaDoiChieuHd: {
+    vi: (_n: number) => 'phiếu chưa đối chiếu hóa đơn',
+    en: (n: number) => `${s(n, 'receipt', 'receipts')} not reconciled with an invoice`,
+  },
+  traHangCho: {
+    vi: (_n: number) => 'trả hàng chờ xác nhận tiền',
+    en: (n: number) => `${s(n, 'return', 'returns')} awaiting amount confirmation`,
+  },
+  traHangNcc: { vi: 'Trả hàng nhà cung cấp', en: 'Return goods to a supplier' },
+  xuatMisa: { vi: 'Xuất sang MISA', en: 'Export to MISA' },
+  noDauLink: { vi: 'Nợ đầu kỳ (ghi một lần khi bắt đầu)', en: 'Opening balances (recorded once at the start)' },
+  taiExcel: { vi: 'Tải bảng công nợ tất cả phiếu (Excel)', en: 'Download payables for all receipts (Excel)' },
+  chonCachXem: { vi: 'Chọn cách xem', en: 'Choose a view' },
+  locNhanh: { vi: 'Lọc nhanh', en: 'Quick filters' },
+  timTenNcc: { vi: 'Tìm tên nhà cung cấp', en: 'Search supplier name' },
+  timNcc: { vi: 'Tìm nhà cung cấp', en: 'Search suppliers' },
+  tim: { vi: 'Tìm', en: 'Search' },
+  chuaCoPhieu: {
+    vi: 'Chưa có phiếu nhập mua nào được duyệt. Quán còn nợ nhà cung cấp từ trước khi dùng phần mềm thì ',
+    en: 'No purchase receipts have been approved yet. If the restaurant owed suppliers money before using the software, ',
+  },
+  ghiNoDau: { vi: 'ghi nợ đầu kỳ', en: 'record opening balances' },
+  khongKhop: { vi: 'Không có nhà cung cấp nào khớp. ', en: 'No suppliers match. ' },
+  boLoc: { vi: 'Bỏ lọc', en: 'Clear filters' },
+  nhaCungCap: { vi: 'Nhà cung cấp', en: 'Supplier' },
+  phaiTra: { vi: 'Phải trả', en: 'Payable' },
+  conNo: { vi: 'Còn nợ', en: 'Owed' },
+  quaHanCot: { vi: 'Quá hạn', en: 'Overdue' },
+  hanGanNhat: { vi: 'Hạn gần nhất', en: 'Next due' },
+  chuaDoiChieuCot: { vi: 'Chưa đối chiếu', en: 'Not reconciled' },
+  dongNcc: {
+    vi: (a: number, b: number, c: number) => `${a} phiếu · ${b} còn nợ${c > 0 ? ` · ${c} trong hóa đơn gộp` : ''}`,
+    en: (a: number, b: number, c: number) => `${a} ${s(a, 'receipt', 'receipts')} · ${b} unpaid${c > 0 ? ` · ${c} in ${s(c, 'a combined invoice', 'combined invoices')}` : ''}`,
+  },
+  nccNoLai: { vi: 'Nhà cung cấp nợ lại', en: 'The supplier owes the restaurant' },
+  tongNcc: { vi: (n: number) => `Tổng ${n} nhà cung cấp`, en: (n: number) => `Total: ${n} ${s(n, 'supplier', 'suppliers')}` },
+  soAm: {
+    vi: 'Số âm: nhà cung cấp đang nợ lại quán (thường do trả hàng sau khi đã thanh toán) — bù trừ vào lần trả sau hoặc ghi "NCC hoàn tiền".',
+    en: 'Negative: the supplier owes the restaurant (usually goods returned after payment) — offset it against the next payment or record a "Supplier refund".',
+  },
+  goiYPhieu: { vi: 'Số phiếu, nhà cung cấp, số hóa đơn', en: 'Receipt no., supplier, invoice no.' },
+  rongQuaHan: { vi: 'Không có phiếu nào quá hạn.', en: 'No overdue receipts.' },
+  rongDenHan: { vi: 'Không có phiếu nào đến hạn trong 7 ngày tới.', en: 'No receipts due in the next 7 days.' },
+  rongChuaDoiChieu: { vi: 'Mọi phiếu đã đối chiếu hóa đơn.', en: 'Every receipt is reconciled with an invoice.' },
+  rongGop: { vi: 'Chưa có phiếu nào nằm trong hóa đơn gộp.', en: 'No receipts are in a combined invoice yet.' },
+  rongPhieu: { vi: 'Không có phiếu nào.', en: 'No receipts.' },
+  phieu: { vi: 'Phiếu', en: 'Receipt' },
+  hoaDon: { vi: 'Hóa đơn', en: 'Invoice' },
+  hanTra: { vi: 'Hạn trả', en: 'Due date' },
+  noDauGhi: { vi: 'Nợ đầu kỳ · ghi', en: 'Opening balance · recorded' },
+  nhapNgay: { vi: 'nhập', en: 'received' },
+  lech: { vi: 'LỆCH', en: 'MISMATCH' },
+  hoaDonGop: { vi: 'Hóa đơn gộp', en: 'Combined invoice' },
+  chuaDoiChieu: { vi: 'chưa đối chiếu', en: 'not reconciled' },
+  quaNgay: { vi: (n: number) => `quá ${n} ngày`, en: (n: number) => `${n} ${s(n, 'day', 'days')} overdue` },
+  hanHomNay: { vi: 'hạn hôm nay', en: 'due today' },
+  conNgay: { vi: (n: number) => `còn ${n} ngày`, en: (n: number) => `${n} ${s(n, 'day', 'days')} left` },
+  doiChieu: { vi: 'Đối chiếu', en: 'Reconcile' },
+  traTien: { vi: 'Trả tiền', en: 'Pay' },
+  tongPhieu: { vi: (n: number) => `Tổng ${n} phiếu`, en: (n: number) => `Total: ${n} ${s(n, 'receipt', 'receipts')}` },
+  trangNay: { vi: '(trang này)', en: '(this page)' },
+  loaiKhoan: { vi: 'Loại khoản', en: 'Entry type' },
+  tatCa: { vi: 'Tất cả', en: 'All' },
+  goiYKhoan: { vi: 'Số chứng từ (TT-, GT-, BT-, HT-), ghi chú', en: 'Document no. (TT-, GT-, BT-, HT-), note' },
+  chuaCoKhoan: {
+    vi: (loai: string) => `Chưa có khoản nào${loai ? ` loại "${loai}"` : ''}.`,
+    en: (loai: string) => `No entries${loai ? ` of type "${loai}"` : ''} yet.`,
+  },
+  ngay: { vi: 'Ngày', en: 'Date' },
+  chungTu: { vi: 'Chứng từ', en: 'Document' },
+  loai: { vi: 'Loại', en: 'Type' },
+  soTien: { vi: 'Số tiền', en: 'Amount' },
+  ghiChu: { vi: 'Ghi chú', en: 'Note' },
+  daHuy: { vi: 'Đã hủy', en: 'Cancelled' },
+  nccTraLai: { vi: 'Nhà cung cấp trả lại — công nợ tăng', en: 'Refunded by the supplier — payables go up' },
+  congNoGiam: { vi: 'Công nợ giảm', en: 'Reduction in payables' },
+  trangNayKhongHuy: { vi: '(trang này, không tính khoản đã hủy)', en: '(this page, excluding cancelled entries)' },
+  khongHuy: { vi: '(không tính khoản đã hủy)', en: '(excluding cancelled entries)' },
+  ghiKhoanMoi: {
+    vi: 'Ghi khoản mới ở trang của từng nhà cung cấp (thẻ Theo NCC → bấm tên → ',
+    en: 'Record new entries on each supplier\'s page (By supplier tab → click the name → ',
+  },
+  tuNgay: { vi: 'Từ ngày', en: 'From' },
+  denNgay: { vi: 'Đến ngày', en: 'To' },
+  goiYSo: { vi: 'Số chứng từ, diễn giải', en: 'Document no., description' },
+  xem: { vi: 'Xem', en: 'Show' },
+  dauKy: { vi: (d: string) => `đầu kỳ (${d})`, en: (d: string) => `start of period (${d})` },
+  phatSinhTang: { vi: 'phát sinh tăng (mua, hoàn tiền)', en: 'increases (purchases, refunds)' },
+  phatSinhGiam: { vi: 'phát sinh giảm (trả, giảm trừ, bù trừ)', en: 'decreases (payments, deductions, offsets)' },
+  cuoiKy: { vi: (d: string) => `cuối kỳ (${d})`, en: (d: string) => `end of period (${d})` },
+  inBienBan: {
+    vi: (ten: string) => `In biên bản đối chiếu công nợ ${ten}`,
+    en: (ten: string) => `Print the reconciliation statement for ${ten}`,
+  },
+  khongChungTu: { vi: 'Không có chứng từ nào trong kỳ này.', en: 'No documents in this period.' },
+  dienGiai: { vi: 'Diễn giải', en: 'Description' },
+  tang: { vi: 'Tăng', en: 'Increase' },
+  giam: { vi: 'Giảm', en: 'Decrease' },
+  soDu: { vi: 'Số dư', en: 'Balance' },
+  soDuDauKy: { vi: 'Số dư đầu kỳ', en: 'Balance at start of period' },
+  hd: { vi: 'HĐ', en: 'Inv.' },
+  congPhatSinh: { vi: 'Cộng phát sinh · số dư cuối kỳ', en: 'Period totals · balance at end of period' },
+  caKy: { vi: ' (cả kỳ, không theo chữ tìm)', en: ' (whole period, not filtered by search)' },
+  chonNcc: {
+    vi: 'Chọn một nhà cung cấp để in biên bản đối chiếu công nợ gửi họ ký.',
+    en: 'Pick a supplier to print a reconciliation statement for them to sign.',
+  },
+});
 const sp = Astro.url.searchParams;
 const chip = docChipCongNo(sp.get('loc'));
 const tabChu = sp.get('tab') ?? '';
@@ -48,7 +197,7 @@ const tab: The = Object.hasOwn(THE, tabChu) ? tabChu as The : chip ? 'phieu' : '
 const tim = docTimDs(sp);
 const homNay = homNayVn();
 const tuanToi = congNgay(homNay, 7);
-const loaiKhoan = Object.hasOwn(TEN_LOAI_KHOAN, sp.get('loai') ?? '') ? sp.get('loai') : null;
+const loaiKhoan = Object.hasOwn(TEN_LOAI_KHOAN_NB, sp.get('loai') ?? '') ? sp.get('loai') : null;
 const ky = docKyCongNo(sp, homNay);
 const nccTheoDoi = laUuid(sp.get('ncc')) ? sp.get('ncc') : null;
 
@@ -68,7 +217,7 @@ if (k.chiNhanh && k.daKhoiTao) {
     if (tab === 'thanh-toan') khoan = await docThanhToanTrang(k.client, cn, tim, loaiKhoan);
     if (tab === 'theo-doi') so = await docCongNoTheoKy(k.client, cn, nccTheoDoi, ky.tu, ky.den);
   } catch (e) {
-    loiDoc = cauLoiKho(e, 'Không đọc được công nợ.');
+    loiDoc = cauLoiCongNo(e, t.khongDoc, nn);
   }
 }
 const ct = congThucCongNo(ncc, [{ phai_tra: tongNoDau }]);
@@ -85,81 +234,82 @@ const ky_ = tomTatKy(so);
 const soLoc = tim.q ? ky_.chungTu.filter(d => chuanTenNcc(`${d.so_chung_tu ?? ''} ${d.ten_nha_cung_cap ?? ''} ${d.dien_giai}`).includes(chuanTenNcc(tim.q))) : ky_.chungTu;
 const soTrang = catTrangBoNho(soLoc, tim);
 
-const soTien = (n: number) => (n < 0 ? `−${dinhDangTien(-n)}` : dinhDangTien(n));
+const soTien = (n: number) => (n < 0 ? `−${dinhDangTien(-n, nn)}` : dinhDangTien(n, nn));
+/** Số trong câu ví dụ, theo cách ghi số của ngôn ngữ đang xem. */
+const soViDu = (n: number) => n.toLocaleString(nn === 'en' ? 'en-US' : 'vi-VN');
 const conNgay = (han: string | null) => (han ? Math.round((Date.parse(han) - Date.parse(homNay)) / 86400000) : null);
 const hanLop = (han: string | null) => (!han ? '' : han < homNay ? 'het_han' : han <= tuanToi ? 'sap_het' : 'con_han');
-const linkThe = (t: The) => linkDs(DUONG, new URLSearchParams(t === 'ncc' || t === 'phieu' ? (chip ? { loc: chip } : {}) : {}), { tab: t === 'ncc' ? null : t });
+const linkThe = (th: The) => linkDs(DUONG, new URLSearchParams(th === 'ncc' || th === 'phieu' ? (chip ? { loc: chip } : {}) : {}), { tab: th === 'ncc' ? null : th });
 const tongTrang = (ds: CongNoPhieu[], khoa: 'phai_tra' | 'da_tra' | 'giam_tru' | 'con_no') => ds.reduce((a, p) => a + p[khoa], 0);
 const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_cung_cap ?? '';
 ---
-<Kho k={k} huongDan="cong-no" tieuDe="Công nợ" rong>
-  <h1>Công nợ nhà cung cấp</h1>
+<Kho k={k} huongDan="cong-no" tieuDe={t.tieuDe} rong>
+  <h1>{t.h1}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
-    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+    <p class="nb-rong">{t.chuaBatDau}<a href="/noi-bo/kho">{t.tongQuanKho}</a>.</p>
   ) : (
     <>
       {/* Dải công thức: đọc từ trái sang phải như một phép tính. */}
       <div class="nb-the cn-cong-thuc">
         <div class="cn-phep">
-          <span><small>Nợ đầu kỳ</small><b>{dinhDangTien(ct.dauKy)}</b></span>
+          <span><small>{t.noDauKy}</small><b>{dinhDangTien(ct.dauKy, nn)}</b></span>
           <i>+</i>
-          <span><small>Mua</small><b>{dinhDangTien(ct.mua)}</b></span>
+          <span><small>{t.mua}</small><b>{dinhDangTien(ct.mua, nn)}</b></span>
           <i>−</i>
-          <span><small>Đã trả</small><b>{soTien(ct.tra)}</b></span>
+          <span><small>{t.daTra}</small><b>{soTien(ct.tra)}</b></span>
           <i>−</i>
-          <span><small>Giảm trừ</small><b>{dinhDangTien(ct.giamTru)}</b></span>
+          <span><small>{t.giamTru}</small><b>{dinhDangTien(ct.giamTru, nn)}</b></span>
           <i>=</i>
-          <span class="ket"><small>Còn phải trả</small><b>{soTien(ct.conPhaiTra)}</b></span>
+          <span class="ket"><small>{t.conPhaiTra}</small><b>{soTien(ct.conPhaiTra)}</b></span>
         </div>
         <details>
-          <summary>Xem ví dụ</summary>
+          <summary>{t.xemViDu}</summary>
           <p style="margin:0 0 .5rem">
-            Lúc bắt đầu dùng phần mềm quán còn nợ <strong>2.000.000 đ</strong>. Nhập một phiếu thịt <strong>10.000.000 đ</strong>.
-            Trả lại 1 tảng hỏng, được trừ <strong>500.000 đ</strong>. Đã chuyển khoản <strong>6.000.000 đ</strong>.
+            {t.viDuA}<strong>{dinhDangTien(2000000, nn)}</strong>{t.viDuB}<strong>{dinhDangTien(10000000, nn)}</strong>{t.viDuC}<strong>{dinhDangTien(500000, nn)}</strong>{t.viDuD}<strong>{dinhDangTien(6000000, nn)}</strong>{t.viDuE}
           </p>
-          <p style="margin:0 0 .5rem">Còn phải trả = 2.000.000 + 10.000.000 − 6.000.000 − 500.000 = <strong>5.500.000 đ</strong>.</p>
+          <p style="margin:0 0 .5rem">{t.conPhaiTra} = {soViDu(2000000)} + {soViDu(10000000)} − {soViDu(6000000)} − {soViDu(500000)} = <strong>{dinhDangTien(5500000, nn)}</strong>.</p>
           <ul class="kho-phu" style="margin:0 0 .5rem;padding-left:1.2rem">
-            <li>Mua = tiền trên hóa đơn khi kế toán đã đối chiếu; chưa đối chiếu thì lấy tổng phiếu nhập.</li>
-            <li>Đã trả = tiền trả + bù trừ − tiền nhà cung cấp hoàn lại.</li>
-            <li>Hạn trả = ngày hóa đơn (hoặc ngày nhập) + số ngày được nợ của nhà cung cấp.</li>
-            <li>Số âm (−): nhà cung cấp đang nợ lại quán, thường do trả hàng sau khi đã trả tiền — bù trừ lần sau hoặc đòi hoàn tiền.</li>
+            <li>{t.viDuMua}</li>
+            <li>{t.viDuTra}</li>
+            <li>{t.viDuHan}</li>
+            <li>{t.viDuAm}</li>
           </ul>
         </details>
       </div>
 
       <div class="kho-o-so-luoi">
         <a href={`${DUONG}?tab=phieu&loc=qua_han`} class={`kho-o-so ${tienQuaHan > 0 ? 'gap' : ''}`}>
-          <b style="font-size:1.25rem">{dinhDangTien(tienQuaHan)}</b><span>quá hạn</span>
+          <b style="font-size:1.25rem">{dinhDangTien(tienQuaHan, nn)}</b><span>{t.quaHan}</span>
         </a>
         <a href={`${DUONG}?tab=phieu&loc=den_han`} class={`kho-o-so ${tienDenHan > 0 ? 'luu-y' : ''}`}>
-          <b style="font-size:1.25rem">{dinhDangTien(tienDenHan)}</b><span>đến hạn trong 7 ngày</span>
+          <b style="font-size:1.25rem">{dinhDangTien(tienDenHan, nn)}</b><span>{t.denHan7}</span>
         </a>
         <a href={`${DUONG}?tab=phieu&loc=chua_doi_chieu`} class={`kho-o-so ${soChuaDoiChieu > 0 ? 'luu-y' : ''}`}>
-          <b>{soChuaDoiChieu}</b><span>phiếu chưa đối chiếu hóa đơn</span>
+          <b>{soChuaDoiChieu}</b><span>{t.chuaDoiChieuHd(soChuaDoiChieu)}</span>
         </a>
         <a href="/noi-bo/kho/cong-no/tra-hang#cho-tien" class={`kho-o-so ${choTien > 0 ? 'luu-y' : ''}`}>
-          <b>{choTien}</b><span>trả hàng chờ xác nhận tiền</span>
+          <b>{choTien}</b><span>{t.traHangCho(choTien)}</span>
         </a>
       </div>
       <p style="margin:0 0 1rem;display:flex;flex-wrap:wrap;gap:.5rem 1.5rem">
-        <a href="/noi-bo/kho/cong-no/tra-hang">Trả hàng nhà cung cấp</a>
-        <a href="/noi-bo/kho/cong-no/misa">Xuất sang MISA</a>
-        <a href="/noi-bo/kho/cong-no/no-dau">Nợ đầu kỳ (ghi một lần khi bắt đầu)</a>
-        <a href="/noi-bo/kho/bao-cao/cong-no.csv">Tải bảng công nợ tất cả phiếu (Excel)</a>
+        <a href="/noi-bo/kho/cong-no/tra-hang">{t.traHangNcc}</a>
+        <a href="/noi-bo/kho/cong-no/misa">{t.xuatMisa}</a>
+        <a href="/noi-bo/kho/cong-no/no-dau">{t.noDauLink}</a>
+        <a href="/noi-bo/kho/bao-cao/cong-no.csv">{t.taiExcel}</a>
       </p>
 
-      <nav class="kho-the-chon" aria-label="Chọn cách xem">
-        {(Object.keys(THE) as The[]).map(t => (
-          <a href={linkThe(t)} aria-current={tab === t ? 'page' : undefined}>{THE[t]}</a>
+      <nav class="kho-the-chon" aria-label={t.chonCachXem}>
+        {(Object.keys(THE) as The[]).map(th => (
+          <a href={linkThe(th)} aria-current={tab === th ? 'page' : undefined}>{THE[th][nn]}</a>
         ))}
       </nav>
 
       {(tab === 'ncc' || tab === 'phieu') && (
-        <nav class="kho-dh" aria-label="Lọc nhanh">
-          {(Object.keys(CHIP_CONG_NO) as (keyof typeof CHIP_CONG_NO)[]).map(c => (
-            <a href={linkDs(DUONG, sp, { loc: chip === c ? null : c, tab })} aria-current={chip === c ? 'page' : undefined}>{CHIP_CONG_NO[c]}</a>
+        <nav class="kho-dh" aria-label={t.locNhanh}>
+          {(Object.keys(CHIP_CONG_NO_NB) as (keyof typeof CHIP_CONG_NO_NB)[]).map(c => (
+            <a href={linkDs(DUONG, sp, { loc: chip === c ? null : c, tab })} aria-current={chip === c ? 'page' : undefined}>{CHIP_CONG_NO_NB[c][nn]}</a>
           ))}
         </nav>
       )}
@@ -170,28 +320,28 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
           <form method="GET" action={DUONG} class="kho-tim" role="search">
             {chip && <input type="hidden" name="loc" value={chip} />}
             <div class="kho-tim-hang">
-              <label class="nb-o"><input type="search" name="q" value={tim.q} placeholder="Tìm tên nhà cung cấp" aria-label="Tìm nhà cung cấp" autocomplete="off" /></label>
-              <button type="submit" class="nb-nut phu">Tìm</button>
+              <label class="nb-o"><input type="search" name="q" value={tim.q} placeholder={t.timTenNcc} aria-label={t.timNcc} autocomplete="off" /></label>
+              <button type="submit" class="nb-nut phu">{t.tim}</button>
             </div>
           </form>
           {nccLoc.length === 0 ? (
             <p class="nb-rong">{ncc.length === 0
-              ? <>Chưa có phiếu nhập mua nào được duyệt. Quán còn nợ nhà cung cấp từ trước khi dùng phần mềm thì <a href="/noi-bo/kho/cong-no/no-dau">ghi nợ đầu kỳ</a>.</>
-              : <>Không có nhà cung cấp nào khớp. <a href={DUONG}>Bỏ lọc</a></>}</p>
+              ? <>{t.chuaCoPhieu}<a href="/noi-bo/kho/cong-no/no-dau">{t.ghiNoDau}</a>.</>
+              : <>{t.khongKhop}<a href={DUONG}>{t.boLoc}</a></>}</p>
           ) : (
             <div class="kho-bang-khung">
               <table class="kho-bang">
-                <thead><tr><th>Nhà cung cấp</th><th class="so">Phải trả</th><th class="so">Đã trả</th><th class="so">Giảm trừ</th><th class="so">Còn nợ</th><th class="so">Quá hạn</th><th>Hạn gần nhất</th><th class="so">Chưa đối chiếu</th></tr></thead>
+                <thead><tr><th>{t.nhaCungCap}</th><th class="so">{t.phaiTra}</th><th class="so">{t.daTra}</th><th class="so">{t.giamTru}</th><th class="so">{t.conNo}</th><th class="so">{t.quaHanCot}</th><th>{t.hanGanNhat}</th><th class="so">{t.chuaDoiChieuCot}</th></tr></thead>
                 <tbody>
                   {nccTrang.ds.map(n => (
                     <tr>
                       <td><a href={`${DUONG}/${n.nha_cung_cap_id}`}><strong>{n.ten_nha_cung_cap}</strong></a><br />
-                        <span class="kho-phu">{n.so_phieu} phiếu · {n.so_phieu_con_no} còn nợ{n.so_phieu_hoa_don_gop > 0 ? ` · ${n.so_phieu_hoa_don_gop} trong hóa đơn gộp` : ''}</span></td>
-                      <td class="so">{dinhDangTien(n.tong_phai_tra)}</td>
+                        <span class="kho-phu">{t.dongNcc(n.so_phieu, n.so_phieu_con_no, n.so_phieu_hoa_don_gop)}</span></td>
+                      <td class="so">{dinhDangTien(n.tong_phai_tra, nn)}</td>
                       <td class="so">{soTien(n.da_tra)}</td>
-                      <td class="so">{n.giam_tru > 0 ? dinhDangTien(n.giam_tru) : '—'}</td>
-                      <td class="so"><strong>{n.con_no < 0 ? <span title="Nhà cung cấp nợ lại">−{dinhDangTien(-n.con_no)}</span> : dinhDangTien(n.con_no)}</strong></td>
-                      <td class="so">{n.no_qua_han > 0 ? <strong style="color:var(--do)">{dinhDangTien(n.no_qua_han)}</strong> : '—'}</td>
+                      <td class="so">{n.giam_tru > 0 ? dinhDangTien(n.giam_tru, nn) : '—'}</td>
+                      <td class="so"><strong>{n.con_no < 0 ? <span title={t.nccNoLai}>−{dinhDangTien(-n.con_no, nn)}</span> : dinhDangTien(n.con_no, nn)}</strong></td>
+                      <td class="so">{n.no_qua_han > 0 ? <strong style="color:var(--do)">{dinhDangTien(n.no_qua_han, nn)}</strong> : '—'}</td>
                       <td>{n.han_gan_nhat ? <span class={`kho-han ${hanLop(n.han_gan_nhat)}`}>{dinhDangNgay(n.han_gan_nhat)}</span> : '—'}</td>
                       <td class="so">{n.so_phieu_chua_doi_chieu > 0 ? n.so_phieu_chua_doi_chieu : '—'}</td>
                     </tr>
@@ -199,12 +349,12 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
                 </tbody>
                 <tfoot>
                   <tr class="tong">
-                    <td>Tổng {nccLoc.length} nhà cung cấp</td>
-                    <td class="so">{dinhDangTien(nccLoc.reduce((s, n) => s + n.tong_phai_tra, 0))}</td>
+                    <td>{t.tongNcc(nccLoc.length)}</td>
+                    <td class="so">{dinhDangTien(nccLoc.reduce((s, n) => s + n.tong_phai_tra, 0), nn)}</td>
                     <td class="so">{soTien(nccLoc.reduce((s, n) => s + n.da_tra, 0))}</td>
-                    <td class="so">{dinhDangTien(nccLoc.reduce((s, n) => s + n.giam_tru, 0))}</td>
+                    <td class="so">{dinhDangTien(nccLoc.reduce((s, n) => s + n.giam_tru, 0), nn)}</td>
                     <td class="so">{soTien(nccLoc.reduce((s, n) => s + n.con_no, 0))}</td>
-                    <td class="so">{dinhDangTien(nccLoc.reduce((s, n) => s + n.no_qua_han, 0))}</td>
+                    <td class="so">{dinhDangTien(nccLoc.reduce((s, n) => s + n.no_qua_han, 0), nn)}</td>
                     <td></td>
                     <td class="so">{nccLoc.reduce((s, n) => s + n.so_phieu_chua_doi_chieu, 0)}</td>
                   </tr>
@@ -214,7 +364,7 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
           )}
           <PhanTrang duong={DUONG} trang={tim.trang} coSau={nccTrang.coSau} />
           {nccLoc.some(n => n.con_no < 0) && (
-            <p class="kho-phu">Số âm: nhà cung cấp đang nợ lại quán (thường do trả hàng sau khi đã thanh toán) — bù trừ vào lần trả sau hoặc ghi "NCC hoàn tiền".</p>
+            <p class="kho-phu">{t.soAm}</p>
           )}
         </>
       )}
@@ -222,18 +372,18 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
       {/* ============================= THEO PHIẾU ============================= */}
       {tab === 'phieu' && (
         <>
-          <LocDanhSach duong={DUONG} tim={tim} giu={{ tab: 'phieu', loc: chip || null }} goiY="Số phiếu, nhà cung cấp, số hóa đơn" />
+          <LocDanhSach duong={DUONG} tim={tim} giu={{ tab: 'phieu', loc: chip || null }} goiY={t.goiYPhieu} />
           {phieu.ds.length === 0 ? (
             <p class="nb-rong">
-              {chip === 'qua_han' ? 'Không có phiếu nào quá hạn.' : chip === 'den_han' ? 'Không có phiếu nào đến hạn trong 7 ngày tới.'
-                : chip === 'chua_doi_chieu' ? 'Mọi phiếu đã đối chiếu hóa đơn.' : chip === 'gop' ? 'Chưa có phiếu nào nằm trong hóa đơn gộp.'
-                : 'Không có phiếu nào.'}
+              {chip === 'qua_han' ? t.rongQuaHan : chip === 'den_han' ? t.rongDenHan
+                : chip === 'chua_doi_chieu' ? t.rongChuaDoiChieu : chip === 'gop' ? t.rongGop
+                : t.rongPhieu}
             </p>
           ) : (
             <div class="kho-bang-khung">
               <table class="kho-bang">
                 <thead>
-                  <tr><th>Phiếu</th><th>Nhà cung cấp</th><th>Hóa đơn</th><th class="so">Phải trả</th><th class="so">Đã trả</th><th class="so">Giảm trừ</th><th class="so">Còn nợ</th><th>Hạn trả</th><th></th></tr>
+                  <tr><th>{t.phieu}</th><th>{t.nhaCungCap}</th><th>{t.hoaDon}</th><th class="so">{t.phaiTra}</th><th class="so">{t.daTra}</th><th class="so">{t.giamTru}</th><th class="so">{t.conNo}</th><th>{t.hanTra}</th><th></th></tr>
                 </thead>
                 <tbody>
                   {phieu.ds.map(p => {
@@ -242,23 +392,23 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
                       <tr>
                         <td>
                           <a href={linkPhieuCongNo(p)}><strong>{p.so_phieu}</strong></a><br />
-                          <span class="kho-phu">{laNoDau(p) ? 'Nợ đầu kỳ · ghi' : 'nhập'} {dinhDangNgay(p.ngay_nhap)}</span>
-                          {lech !== 0 && <><br /><span class="nb-nhan cho" style="text-transform:none">LỆCH {dinhDangLech(lech)}</span></>}
+                          <span class="kho-phu">{laNoDau(p) ? t.noDauGhi : t.nhapNgay} {dinhDangNgay(p.ngay_nhap)}</span>
+                          {lech !== 0 && <><br /><span class="nb-nhan cho" style="text-transform:none">{t.lech} {dinhDangLech(lech, nn)}</span></>}
                         </td>
                         <td>{p.ten_nha_cung_cap}</td>
-                        <td>{p.da_doi_chieu ? <>{p.so_hoa_don ?? '—'}{p.hoa_don_gop_id && <><br /><span class="nb-nhan nhap" style="text-transform:none">Hóa đơn gộp</span></>}</> : <span class="kho-phu">chưa đối chiếu</span>}</td>
-                        <td class="so">{dinhDangTien(p.phai_tra)}</td>
+                        <td>{p.da_doi_chieu ? <>{p.so_hoa_don ?? '—'}{p.hoa_don_gop_id && <><br /><span class="nb-nhan nhap" style="text-transform:none">{t.hoaDonGop}</span></>}</> : <span class="kho-phu">{t.chuaDoiChieu}</span>}</td>
+                        <td class="so">{dinhDangTien(p.phai_tra, nn)}</td>
                         <td class="so">{soTien(p.da_tra)}</td>
-                        <td class="so">{p.giam_tru > 0 ? dinhDangTien(p.giam_tru) : '—'}</td>
+                        <td class="so">{p.giam_tru > 0 ? dinhDangTien(p.giam_tru, nn) : '—'}</td>
                         <td class="so"><strong>{soTien(p.con_no)}</strong></td>
                         <td>{p.han_thanh_toan ? <span class={`kho-han ${hanLop(p.han_thanh_toan)}`}>{dinhDangNgay(p.han_thanh_toan)}</span> : '—'}
-                          {p.qua_han ? <><br /><strong style="color:var(--do)">quá {p.so_ngay_qua_han} ngày</strong></>
-                            : p.con_no > 0 && p.han_thanh_toan && p.han_thanh_toan <= tuanToi ? <><br /><span class="kho-phu">{conNgay(p.han_thanh_toan) === 0 ? 'hạn hôm nay' : `còn ${conNgay(p.han_thanh_toan)} ngày`}</span></> : null}</td>
+                          {p.qua_han ? <><br /><strong style="color:var(--do)">{t.quaNgay(p.so_ngay_qua_han)}</strong></>
+                            : p.con_no > 0 && p.han_thanh_toan && p.han_thanh_toan <= tuanToi ? <><br /><span class="kho-phu">{conNgay(p.han_thanh_toan) === 0 ? t.hanHomNay : t.conNgay(conNgay(p.han_thanh_toan) ?? 0)}</span></> : null}</td>
                         <td>
                           {!p.da_doi_chieu
-                            ? <a class="nb-nut phu" style="white-space:nowrap" href={`${DUONG}/${p.nha_cung_cap_id}?mo=${p.id}#p-${p.id}`}>Đối chiếu</a>
+                            ? <a class="nb-nut phu" style="white-space:nowrap" href={`${DUONG}/${p.nha_cung_cap_id}?mo=${p.id}#p-${p.id}`}>{t.doiChieu}</a>
                             : p.con_no > 0
-                              ? <a class="nb-nut phu" style="white-space:nowrap" href={`${DUONG}/${p.nha_cung_cap_id}/tra-tien`}>Trả tiền</a>
+                              ? <a class="nb-nut phu" style="white-space:nowrap" href={`${DUONG}/${p.nha_cung_cap_id}/tra-tien`}>{t.traTien}</a>
                               : null}
                         </td>
                       </tr>
@@ -267,10 +417,10 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
                 </tbody>
                 <tfoot>
                   <tr class="tong">
-                    <td colspan="3">Tổng {phieu.ds.length} phiếu {tim.trang > 1 || phieu.coSau ? '(trang này)' : ''}</td>
-                    <td class="so">{dinhDangTien(tongTrang(phieu.ds, 'phai_tra'))}</td>
+                    <td colspan="3">{t.tongPhieu(phieu.ds.length)} {tim.trang > 1 || phieu.coSau ? t.trangNay : ''}</td>
+                    <td class="so">{dinhDangTien(tongTrang(phieu.ds, 'phai_tra'), nn)}</td>
                     <td class="so">{soTien(tongTrang(phieu.ds, 'da_tra'))}</td>
-                    <td class="so">{dinhDangTien(tongTrang(phieu.ds, 'giam_tru'))}</td>
+                    <td class="so">{dinhDangTien(tongTrang(phieu.ds, 'giam_tru'), nn)}</td>
                     <td class="so">{soTien(tongTrang(phieu.ds, 'con_no'))}</td>
                     <td colspan="2"></td>
                   </tr>
@@ -285,35 +435,35 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
       {/* ============================= THANH TOÁN ============================= */}
       {tab === 'thanh-toan' && (
         <>
-          <nav class="kho-dh" aria-label="Loại khoản">
-            <a href={linkDs(DUONG, sp, { loai: null, tab: 'thanh-toan' })} aria-current={!loaiKhoan ? 'page' : undefined}>Tất cả</a>
-            {Object.entries(TEN_LOAI_KHOAN).map(([ma, ten]) => (
-              <a href={linkDs(DUONG, sp, { loai: ma, tab: 'thanh-toan' })} aria-current={loaiKhoan === ma ? 'page' : undefined}>{ten}</a>
+          <nav class="kho-dh" aria-label={t.loaiKhoan}>
+            <a href={linkDs(DUONG, sp, { loai: null, tab: 'thanh-toan' })} aria-current={!loaiKhoan ? 'page' : undefined}>{t.tatCa}</a>
+            {Object.entries(TEN_LOAI_KHOAN_NB).map(([ma, ten]) => (
+              <a href={linkDs(DUONG, sp, { loai: ma, tab: 'thanh-toan' })} aria-current={loaiKhoan === ma ? 'page' : undefined}>{ten[nn]}</a>
             ))}
           </nav>
-          <LocDanhSach duong={DUONG} tim={tim} giu={{ tab: 'thanh-toan', loai: loaiKhoan }} goiY="Số chứng từ (TT-, GT-, BT-, HT-), ghi chú" />
+          <LocDanhSach duong={DUONG} tim={tim} giu={{ tab: 'thanh-toan', loai: loaiKhoan }} goiY={t.goiYKhoan} />
           {khoan.ds.length === 0 ? (
-            <p class="nb-rong">Chưa có khoản nào{loaiKhoan ? ` loại "${TEN_LOAI_KHOAN[loaiKhoan]}"` : ''}.</p>
+            <p class="nb-rong">{t.chuaCoKhoan(loaiKhoan ? nhanKho(TEN_LOAI_KHOAN_NB, loaiKhoan, nn) : '')}</p>
           ) : (
             <div class="kho-bang-khung">
               <table class="kho-bang">
-                <thead><tr><th>Ngày</th><th>Chứng từ</th><th>Nhà cung cấp</th><th>Loại</th><th class="so">Số tiền</th><th>Ghi chú</th></tr></thead>
+                <thead><tr><th>{t.ngay}</th><th>{t.chungTu}</th><th>{t.nhaCungCap}</th><th>{t.loai}</th><th class="so">{t.soTien}</th><th>{t.ghiChu}</th></tr></thead>
                 <tbody>
-                  {khoan.ds.map(t => (
-                    <tr style={t.trang_thai === 'da_huy' ? 'opacity:.55' : ''}>
-                      <td>{dinhDangNgay(t.ngay)}</td>
-                      <td><strong>{t.so_phieu}</strong>{t.trang_thai === 'da_huy' && <><br /><span class="nb-nhan tat">Đã hủy</span></>}</td>
-                      <td><a href={`${DUONG}/${t.nha_cung_cap_id}#cac-khoan`}>{t.ten_nha_cung_cap}</a></td>
-                      <td>{tenKhoan(t)}</td>
-                      <td class="so">{t.loai === 'hoan_tien' ? <span title="Nhà cung cấp trả lại — công nợ tăng">+{dinhDangTien(t.so_tien)}</span> : dinhDangTien(t.so_tien)}</td>
-                      <td>{t.ghi_chu ?? ''}</td>
+                  {khoan.ds.map(kh => (
+                    <tr style={kh.trang_thai === 'da_huy' ? 'opacity:.55' : ''}>
+                      <td>{dinhDangNgay(kh.ngay)}</td>
+                      <td><strong>{kh.so_phieu}</strong>{kh.trang_thai === 'da_huy' && <><br /><span class="nb-nhan tat">{t.daHuy}</span></>}</td>
+                      <td><a href={`${DUONG}/${kh.nha_cung_cap_id}#cac-khoan`}>{kh.ten_nha_cung_cap}</a></td>
+                      <td>{tenKhoan(kh, nn)}</td>
+                      <td class="so">{kh.loai === 'hoan_tien' ? <span title={t.nccTraLai}>+{dinhDangTien(kh.so_tien, nn)}</span> : dinhDangTien(kh.so_tien, nn)}</td>
+                      <td>{kh.ghi_chu ?? ''}</td>
                     </tr>
                   ))}
                 </tbody>
                 <tfoot>
                   <tr class="tong">
-                    <td colspan="4">Công nợ giảm {tim.trang > 1 || khoan.coSau ? '(trang này, không tính khoản đã hủy)' : '(không tính khoản đã hủy)'}</td>
-                    <td class="so">{soTien(khoan.ds.reduce((a, t) => a + tienGiamNo(t), 0))}</td>
+                    <td colspan="4">{t.congNoGiam} {tim.trang > 1 || khoan.coSau ? t.trangNayKhongHuy : t.khongHuy}</td>
+                    <td class="so">{soTien(khoan.ds.reduce((a, kh) => a + tienGiamNo(kh), 0))}</td>
                     <td></td>
                   </tr>
                 </tfoot>
@@ -321,7 +471,7 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
             </div>
           )}
           <PhanTrang duong={DUONG} trang={tim.trang} coSau={khoan.coSau} />
-          <p class="kho-phu">Ghi khoản mới ở trang của từng nhà cung cấp (thẻ Theo NCC → bấm tên → <strong>Trả tiền</strong>).</p>
+          <p class="kho-phu">{t.ghiKhoanMoi}<strong>{t.traTien}</strong>).</p>
         </>
       )}
 
@@ -331,44 +481,44 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
           <form method="GET" action={DUONG} class="nb-the" style="margin-bottom:1rem">
             <input type="hidden" name="tab" value="theo-doi" />
             <div class="kho-luoi">
-              <label class="nb-o"><span>Từ ngày</span><input type="date" name="tu" value={ky.tu} max={homNay} /></label>
-              <label class="nb-o"><span>Đến ngày</span><input type="date" name="den" value={ky.den} max={homNay} /></label>
-              <label class="nb-o"><span>Nhà cung cấp</span>
+              <label class="nb-o"><span>{t.tuNgay}</span><input type="date" name="tu" value={ky.tu} max={homNay} /></label>
+              <label class="nb-o"><span>{t.denNgay}</span><input type="date" name="den" value={ky.den} max={homNay} /></label>
+              <label class="nb-o"><span>{t.nhaCungCap}</span>
                 <select name="ncc">
-                  <option value="">Tất cả</option>
+                  <option value="">{t.tatCa}</option>
                   {ncc.map(n => <option value={n.nha_cung_cap_id} selected={n.nha_cung_cap_id === nccTheoDoi}>{n.ten_nha_cung_cap}</option>)}
                 </select></label>
-              <label class="nb-o"><span>Tìm</span><input type="search" name="q" value={tim.q} placeholder="Số chứng từ, diễn giải" /></label>
+              <label class="nb-o"><span>{t.tim}</span><input type="search" name="q" value={tim.q} placeholder={t.goiYSo} /></label>
             </div>
-            <button type="submit" class="nb-nut phu">Xem</button>
+            <button type="submit" class="nb-nut phu">{t.xem}</button>
           </form>
           <div class="kho-o-so-luoi">
-            <div class="kho-o-so"><b>{soTien(ky_.dauKy)}</b><span>đầu kỳ ({dinhDangNgay(ky.tu)})</span></div>
-            <div class="kho-o-so"><b>{dinhDangTien(ky_.tang)}</b><span>phát sinh tăng (mua, hoàn tiền)</span></div>
-            <div class="kho-o-so"><b>{dinhDangTien(ky_.giam)}</b><span>phát sinh giảm (trả, giảm trừ, bù trừ)</span></div>
-            <div class="kho-o-so"><b>{soTien(ky_.cuoiKy)}</b><span>cuối kỳ ({dinhDangNgay(ky.den)})</span></div>
+            <div class="kho-o-so"><b>{soTien(ky_.dauKy)}</b><span>{t.dauKy(dinhDangNgay(ky.tu))}</span></div>
+            <div class="kho-o-so"><b>{dinhDangTien(ky_.tang, nn)}</b><span>{t.phatSinhTang}</span></div>
+            <div class="kho-o-so"><b>{dinhDangTien(ky_.giam, nn)}</b><span>{t.phatSinhGiam}</span></div>
+            <div class="kho-o-so"><b>{soTien(ky_.cuoiKy)}</b><span>{t.cuoiKy(dinhDangNgay(ky.den))}</span></div>
           </div>
           {nccTheoDoi && (
-            <p><a class="nb-nut phu" href={`${DUONG}/${nccTheoDoi}/doi-chieu?tu=${ky.tu}&den=${ky.den}`}>In biên bản đối chiếu công nợ {tenNccTheoDoi}</a></p>
+            <p><a class="nb-nut phu" href={`${DUONG}/${nccTheoDoi}/doi-chieu?tu=${ky.tu}&den=${ky.den}`}>{t.inBienBan(tenNccTheoDoi)}</a></p>
           )}
           {soLoc.length === 0 ? (
-            <p class="nb-rong">Không có chứng từ nào trong kỳ này.</p>
+            <p class="nb-rong">{t.khongChungTu}</p>
           ) : (
             <div class="kho-bang-khung">
               <table class="kho-bang">
-                <thead><tr><th>Ngày</th><th>Chứng từ</th>{!nccTheoDoi && <th>Nhà cung cấp</th>}<th>Diễn giải</th><th class="so">Tăng</th><th class="so">Giảm</th><th class="so">Số dư</th></tr></thead>
+                <thead><tr><th>{t.ngay}</th><th>{t.chungTu}</th>{!nccTheoDoi && <th>{t.nhaCungCap}</th>}<th>{t.dienGiai}</th><th class="so">{t.tang}</th><th class="so">{t.giam}</th><th class="so">{t.soDu}</th></tr></thead>
                 <tbody>
                   {tim.trang === 1 && (
-                    <tr><td>{dinhDangNgay(ky.tu)}</td><td colspan={nccTheoDoi ? 2 : 3}><strong>Số dư đầu kỳ</strong></td><td></td><td></td><td class="so"><strong>{soTien(ky_.dauKy)}</strong></td></tr>
+                    <tr><td>{dinhDangNgay(ky.tu)}</td><td colspan={nccTheoDoi ? 2 : 3}><strong>{t.soDuDauKy}</strong></td><td></td><td></td><td class="so"><strong>{soTien(ky_.dauKy)}</strong></td></tr>
                   )}
                   {soTrang.ds.map(d => (
                     <tr>
                       <td>{dinhDangNgay(d.ngay)}</td>
-                      <td><strong>{d.so_chung_tu}</strong><br /><span class="kho-phu">{TEN_LOAI_SO_CONG_NO[d.loai] ?? d.loai}{d.so_hoa_don ? ` · HĐ ${d.so_hoa_don}` : ''}</span></td>
+                      <td><strong>{d.so_chung_tu}</strong><br /><span class="kho-phu">{nhanKho(TEN_LOAI_SO_CONG_NO_NB, d.loai, nn)}{d.so_hoa_don ? ` · ${t.hd} ${d.so_hoa_don}` : ''}</span></td>
                       {!nccTheoDoi && <td>{d.nha_cung_cap_id ? <a href={linkDs(DUONG, sp, { ncc: d.nha_cung_cap_id, tab: 'theo-doi' })}>{d.ten_nha_cung_cap}</a> : ''}</td>}
-                      <td>{d.dien_giai}</td>
-                      <td class="so">{d.tang ? dinhDangTien(d.tang) : ''}</td>
-                      <td class="so">{d.giam ? dinhDangTien(d.giam) : ''}</td>
+                      <td>{dichCau(nn, d.dien_giai)}</td>
+                      <td class="so">{d.tang ? dinhDangTien(d.tang, nn) : ''}</td>
+                      <td class="so">{d.giam ? dinhDangTien(d.giam, nn) : ''}</td>
                       <td class="so">{soTien(d.so_du)}</td>
                     </tr>
                   ))}
@@ -376,9 +526,9 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
                 {!soTrang.coSau && (
                   <tfoot>
                     <tr class="tong">
-                      <td colspan={nccTheoDoi ? 3 : 4}>Cộng phát sinh · số dư cuối kỳ{tim.q ? ' (cả kỳ, không theo chữ tìm)' : ''}</td>
-                      <td class="so">{dinhDangTien(ky_.tang)}</td>
-                      <td class="so">{dinhDangTien(ky_.giam)}</td>
+                      <td colspan={nccTheoDoi ? 3 : 4}>{t.congPhatSinh}{tim.q ? t.caKy : ''}</td>
+                      <td class="so">{dinhDangTien(ky_.tang, nn)}</td>
+                      <td class="so">{dinhDangTien(ky_.giam, nn)}</td>
                       <td class="so">{soTien(ky_.cuoiKy)}</td>
                     </tr>
                   </tfoot>
@@ -387,7 +537,7 @@ const tenNccTheoDoi = ncc.find(n => n.nha_cung_cap_id === nccTheoDoi)?.ten_nha_c
             </div>
           )}
           <PhanTrang duong={DUONG} trang={tim.trang} coSau={soTrang.coSau} />
-          <p class="kho-phu">Chọn một nhà cung cấp để in biên bản đối chiếu công nợ gửi họ ký.</p>
+          <p class="kho-phu">{t.chonNcc}</p>
         </>
       )}
     </>

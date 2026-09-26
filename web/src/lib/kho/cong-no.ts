@@ -8,15 +8,71 @@
  * FORM THANH TOÁN: so_tien, hinh_thuc, ngay, ghi_chu, anh; phân bổ tùy chọn
  * pb{i}_phieu (ẩn) + pb{i}_tien — để trống hết thì database tự trả phiếu đến
  * hạn sớm nhất trước.
+ *
+ * HAI THỨ TIẾNG: câu báo KetQua mang thêm cauEn; hàm kiểm form trả loi (tiếng
+ * Việt) và loiEn (tiếng Anh) song song, cùng thứ tự; bảng nhãn có bản `…_NB`
+ * ({ vi, en }), bảng tên cũ chỉ tiếng Việt dựng lại từ đó. Câu tiếng Việt giữ
+ * nguyên từng chữ — test và code cũ đọc chúng.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  boDau, cauLoiKho, chiaSoDuLonNhat, docKg, docNgay, docSoNguyen, docTien, homNayVn, laUuid, type KetQua,
+  boDau, cauLoiKho, chiaSoDuLonNhat, docKg, docNgay, docSoNguyen, docTien, homNayVn, laUuid, kqHai, nhanKho,
+  TEN_LOAI_PHIEU_NHAP_NB, type HaiThuTieng, type KetQua, type NgonNguNB,
 } from './chung.ts';
 import { layTepAnh, taiAnh } from './anh.ts';
 import { catTrang, khoangTrang, locTimNhieuCot, type TimDs } from './tim-ds.ts';
 import type { DongMisa, LoaiMisa } from './misa.ts';
+
+/** Bảng hai thứ tiếng → bảng chỉ tiếng Việt (tên cũ, giữ cho code và test cũ — cùng kiểu). */
+function chiVi<T extends Readonly<Record<string, HaiThuTieng>>>(bang: T): { [K in keyof T]: T[K]['vi'] } {
+  return Object.fromEntries(Object.entries(bang).map(([k, v]) => [k, v.vi])) as { [K in keyof T]: T[K]['vi'] };
+}
+
+/** Số tiền trong câu báo: tiếng Việt "450.000 đ" như cũ, tiếng Anh "450,000 ₫". */
+const TIEN: HaiThuTieng<(x: number) => string> = {
+  vi: (x: number) => `${x.toLocaleString('vi-VN')} đ`,
+  en: (x: number) => `${x.toLocaleString('en-US')} ₫`,
+};
+
+/** Câu dùng nhiều lần trong file. */
+const CAU = {
+  xong: { vi: 'Xong.', en: 'Done.' },
+  formCu: { vi: 'Form đã cũ — tải lại trang.', en: 'This form is out of date — reload the page.' },
+  phieuKhongHopLe: { vi: 'Phiếu không hợp lệ.', en: 'Invalid document.' },
+  khongChac: {
+    vi: 'Không chắc đã ghi hay chưa — xem danh sách phiếu để kiểm tra.',
+    en: 'Not sure whether it was saved — check the list of documents.',
+  },
+  quaNhieuDong: {
+    vi: 'Quá nhiều dòng công nợ để đọc một lần — báo người quản trị.',
+    en: 'Too many payables rows to read at once — tell the administrator.',
+  },
+} satisfies Record<string, HaiThuTieng>;
+
+/** Lỗi dòng trả hàng — traHangNcc và docDongTraHang dùng chung. */
+const CAU_TRA_HANG = {
+  loSai: { vi: 'Lô không hợp lệ — tải lại trang', en: 'Invalid lot — reload the page' } as HaiThuTieng,
+  kg: (i: number): HaiThuTieng => ({ vi: `Dòng ${i}: ghi số kg trả (ví dụ 4,5)`, en: `Line ${i}: enter the kg returned (for example 4.5)` }),
+  goi: (i: number): HaiThuTieng => ({ vi: `Dòng ${i}: số tảng / gói là số nguyên`, en: `Line ${i}: the number of primals / packs must be a whole number` }),
+};
+
+/** " Lưu ý: <ảnh chưa tải được>" nối sau câu báo (rỗng khi mọi ảnh đều lên). */
+function cauAnhLoi(tai: { loi: string[]; loiEn: string[] }): HaiThuTieng {
+  return tai.loi.length
+    ? { vi: ` Lưu ý: ${tai.loi.join(' · ')}`, en: ` Note: ${tai.loiEn.join(' · ')}` }
+    : { vi: '', en: '' };
+}
+
+/**
+ * Câu lỗi đọc công nợ để hiện trên trang: như cauLoiKho(e, macDinh); riêng câu
+ * "quá nhiều dòng" của chính file này thì theo ngôn ngữ đang xem. Câu database
+ * vẫn là tiếng Việt — BaoKho tra dichCau lúc hiện.
+ */
+export function cauLoiCongNo(e: unknown, macDinh: string, nn: NgonNguNB = 'vi'): string {
+  const cau = cauLoiKho(e, macDinh);
+  return cau === CAU.quaNhieuDong.vi ? CAU.quaNhieuDong[nn] : cau;
+}
 
 export interface CongNoNcc {
   nha_cung_cap_id: string;
@@ -84,11 +140,12 @@ export interface ThanhToan {
   phan_bo: { phieu_nhap_id: string; so_phieu: string | null; so_tien: number }[];
 }
 
-export const TEN_HINH_THUC: Record<string, string> = {
-  chuyen_khoan: 'Chuyển khoản',
-  tien_mat: 'Tiền mặt',
-  khac: 'Khác',
+export const TEN_HINH_THUC_NB: Record<string, HaiThuTieng> = {
+  chuyen_khoan: { vi: 'Chuyển khoản', en: 'Bank transfer' },
+  tien_mat: { vi: 'Tiền mặt', en: 'Cash' },
+  khac: { vi: 'Khác', en: 'Other' },
 };
+export const TEN_HINH_THUC: Record<string, string> = chiVi(TEN_HINH_THUC_NB);
 
 const so = (v: unknown) => Number(v ?? 0);
 
@@ -119,7 +176,8 @@ async function docHetTrang(trang: DocTrang): Promise<Dong[]> {
     ra.push(...ds);
     if (ds.length === 0 || (count !== null ? ra.length >= count : ds.length < CO_TRANG)) return ra;
   }
-  throw new Error('Quá nhiều dòng công nợ để đọc một lần — báo người quản trị.');
+  // Trang hiện câu này qua cauLoiCongNo() — có bản tiếng Anh.
+  throw new Error(CAU.quaNhieuDong.vi);
 }
 
 /** Chia mảng id thành từng phần — .in() với hàng nghìn id làm URL quá dài. */
@@ -213,9 +271,9 @@ export function tienLech(p: Pick<CongNoPhieu, 'da_doi_chieu' | 'tien_hoa_don' | 
   return p.da_doi_chieu && p.tien_hoa_don !== null ? p.tien_hoa_don - p.tong_tien_phieu : 0;
 }
 
-/** 50000 → "+50.000 đ", -50000 → "−50.000 đ". */
-export function dinhDangLech(lech: number): string {
-  return `${lech > 0 ? '+' : '−'}${Math.abs(lech).toLocaleString('vi-VN')} đ`;
+/** 50000 → "+50.000 đ", -50000 → "−50.000 đ" (tiếng Anh: "+50,000 ₫"). */
+export function dinhDangLech(lech: number, nn: NgonNguNB = 'vi'): string {
+  return `${lech > 0 ? '+' : '−'}${TIEN[nn](Math.abs(lech))}`;
 }
 
 /**
@@ -274,6 +332,8 @@ export async function docTenNcc(client: SupabaseClient, nccId: string): Promise<
 // -----------------------------------------------------------------------------
 export interface KetQuaDocThanhToan {
   loi: string[];
+  /** Cùng các lỗi ở tiếng Anh, cùng thứ tự với loi. */
+  loiEn: string[];
   soTien: number | null;
   phanBo: { phieu_nhap_id: string; so_tien: number }[];
   giaTri: Record<string, string>;
@@ -282,11 +342,15 @@ export interface KetQuaDocThanhToan {
 export function docFormThanhToan(form: FormData): KetQuaDocThanhToan {
   const s = (t: string) => String(form.get(t) ?? '').trim();
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
   const giaTri: Record<string, string> = {};
   for (const k of ['so_tien', 'hinh_thuc', 'ngay', 'ghi_chu', 'loai']) giaTri[k] = s(k);
   const soTien = docTien(giaTri.so_tien);
-  if (soTien === null || Number.isNaN(soTien) || soTien <= 0) loi.push('Số tiền là số đồng lớn hơn 0 (ví dụ 5.450.000)');
-  if (giaTri.ngay && docNgay(giaTri.ngay) === undefined) loi.push('Ngày không phải ngày có thật');
+  if (soTien === null || Number.isNaN(soTien) || soTien <= 0) {
+    bao({ vi: 'Số tiền là số đồng lớn hơn 0 (ví dụ 5.450.000)', en: 'The amount must be in VND and more than 0 (for example 5,450,000)' });
+  }
+  if (giaTri.ngay && docNgay(giaTri.ngay) === undefined) bao({ vi: 'Ngày không phải ngày có thật', en: 'The date is not a real date' });
 
   const phanBo: { phieu_nhap_id: string; so_tien: number }[] = [];
   const soPb = docSoNguyen(form.get('so_pb'), 0, 500) ?? 0;
@@ -296,14 +360,22 @@ export function docFormThanhToan(form: FormData): KetQuaDocThanhToan {
     giaTri[`pb${i}_tien`] = chu;
     if (!chu) continue;
     const t = docTien(chu);
-    if (!laUuid(id) || t === null || Number.isNaN(t) || t <= 0) { loi.push(`Số tiền trả cho phiếu thứ ${i + 1} chưa đúng`); continue; }
+    if (!laUuid(id) || t === null || Number.isNaN(t) || t <= 0) {
+      bao({ vi: `Số tiền trả cho phiếu thứ ${i + 1} chưa đúng`, en: `The amount for receipt no. ${i + 1} is not valid` });
+      continue;
+    }
     phanBo.push({ phieu_nhap_id: id, so_tien: t });
   }
   if (phanBo.length && soTien && !Number.isNaN(soTien)) {
     const tong = phanBo.reduce((a, b) => a + b.so_tien, 0);
-    if (tong !== soTien) loi.push(`Tổng tiền chia cho các phiếu (${tong.toLocaleString('vi-VN')} đ) phải bằng số tiền trả (${soTien.toLocaleString('vi-VN')} đ) — hoặc để trống hết để tự chia theo hạn`);
+    if (tong !== soTien) {
+      bao({
+        vi: `Tổng tiền chia cho các phiếu (${tong.toLocaleString('vi-VN')} đ) phải bằng số tiền trả (${soTien.toLocaleString('vi-VN')} đ) — hoặc để trống hết để tự chia theo hạn`,
+        en: `The amounts split across the receipts (${TIEN.en(tong)}) must add up to the payment (${TIEN.en(soTien)}) — or leave them all empty to split by due date automatically`,
+      });
+    }
   }
-  return { loi, soTien: soTien !== null && !Number.isNaN(soTien) ? soTien : null, phanBo, giaTri };
+  return { loi, loiEn, soTien: soTien !== null && !Number.isNaN(soTien) ? soTien : null, phanBo, giaTri };
 }
 
 // -----------------------------------------------------------------------------
@@ -312,7 +384,9 @@ export function docFormThanhToan(form: FormData): KetQuaDocThanhToan {
 async function cauTraVe(ham: PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<KetQua> {
   const { data, error } = await ham;
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: String(data ?? 'Xong.') };
+  // Câu database trả về (tiếng Việt) — BaoKho tra dichCau lúc hiện.
+  if (data === null || data === undefined) return kqHai(true, CAU.xong);
+  return { ok: true, cau: String(data) };
 }
 
 /**
@@ -327,21 +401,28 @@ export async function doiChieuHoaDon(
   const s = (t: string) => String(form.get(t) ?? '').trim();
   const giaTri: Record<string, string> = {};
   for (const k of ['so_hoa_don', 'ngay_hoa_don', 'tien_hoa_don', 'han_thanh_toan', 'ghi_chu_doi_chieu']) giaTri[k] = s(k);
-  const loi = (cau: string) => ({ ok: false, cau, giaTri });
+  const loi = (c: HaiThuTieng) => ({ ok: false, cau: c.vi, cauEn: c.en, giaTri });
 
-  if (!giaTri.so_hoa_don) return loi('Ghi số hóa đơn.');
+  if (!giaTri.so_hoa_don) return loi({ vi: 'Ghi số hóa đơn.', en: 'Enter the invoice number.' });
   const tien = docTien(giaTri.tien_hoa_don);
-  if (tien === null || Number.isNaN(tien)) return loi('Ghi tổng tiền in trên hóa đơn (ví dụ 5.450.000).');
+  if (tien === null || Number.isNaN(tien)) {
+    return loi({ vi: 'Ghi tổng tiền in trên hóa đơn (ví dụ 5.450.000).', en: 'Enter the total printed on the invoice (for example 5,450,000).' });
+  }
   const ngayHd = docNgay(giaTri.ngay_hoa_don);
   const han = docNgay(giaTri.han_thanh_toan);
-  if (ngayHd === undefined || han === undefined) return loi('Ngày không phải ngày có thật.');
+  if (ngayHd === undefined || han === undefined) return loi({ vi: 'Ngày không phải ngày có thật.', en: 'One of the dates is not a real date.' });
 
   // Tổng phiếu đọc lại từ database, không tin số gửi lên từ form.
   const phieu = await docCongNoMotPhieu(client, id);
-  if (!phieu) return loi('Không tìm thấy phiếu nhập này trong công nợ — tải lại trang.');
+  if (!phieu) {
+    return loi({ vi: 'Không tìm thấy phiếu nhập này trong công nợ — tải lại trang.', en: 'This goods receipt is not in payables — reload the page.' });
+  }
   const lech = tien - phieu.tong_tien_phieu;
   if (lech !== 0 && !giaTri.ghi_chu_doi_chieu) {
-    return loi(`Hóa đơn ${tien.toLocaleString('vi-VN')} đ lệch phiếu ${phieu.tong_tien_phieu.toLocaleString('vi-VN')} đ (${dinhDangLech(lech)}). Ghi lý do vào ô "Ghi chú" (ví dụ: NCC tính thêm phí giao hàng) rồi lưu lại.`);
+    return loi({
+      vi: `Hóa đơn ${tien.toLocaleString('vi-VN')} đ lệch phiếu ${phieu.tong_tien_phieu.toLocaleString('vi-VN')} đ (${dinhDangLech(lech)}). Ghi lý do vào ô "Ghi chú" (ví dụ: NCC tính thêm phí giao hàng) rồi lưu lại.`,
+      en: `The invoice (${TIEN.en(tien)}) differs from the receipt (${TIEN.en(phieu.tong_tien_phieu)}) by ${dinhDangLech(lech, 'en')}. Write the reason in "Note" (for example: the supplier added a delivery fee), then save again.`,
+    });
   }
 
   const kq = await cauTraVe(client.rpc('kho_doi_chieu_hoa_don', {
@@ -359,9 +440,9 @@ export async function ghiThanhToan(
   client: SupabaseClient, chiNhanhId: string, nccId: string, form: FormData,
 ): Promise<KetQua & { giaTri?: Record<string, string> }> {
   const doc = docFormThanhToan(form);
-  if (doc.loi.length) return { ok: false, cau: doc.loi.join(' · '), giaTri: doc.giaTri };
+  if (doc.loi.length) return { ok: false, cau: doc.loi.join(' · '), cauEn: doc.loiEn.join(' · '), giaTri: doc.giaTri };
   const maGui = String(form.get('ma_gui') ?? '');
-  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang.', giaTri: doc.giaTri };
+  if (!laUuid(maGui)) return { ...kqHai(false, CAU.formCu), giaTri: doc.giaTri };
   const loai = doc.giaTri.loai === 'giam_tru' ? 'giam_tru' : 'thanh_toan';
 
   const tai = await taiAnh(client, chiNhanhId, 'thanh_toan', maGui, layTepAnh(form));
@@ -379,12 +460,14 @@ export async function ghiThanhToan(
   });
   if (error) return { ok: false, cau: cauLoiKho(error), giaTri: doc.giaTri };
   const kq = (Array.isArray(data) ? data[0] : data) as { so_phieu: string; da_co: boolean } | undefined;
-  const cauAnh = tai.loi.length ? ` Lưu ý: ${tai.loi.join(' · ')}` : '';
-  return {
-    ok: true,
-    cau: (kq?.da_co ? `Khoản ${kq.so_phieu} đã được ghi từ lần bấm trước.`
-      : `Đã ghi ${kq?.so_phieu ?? ''}: ${(doc.soTien ?? 0).toLocaleString('vi-VN')} đ${doc.phanBo.length ? '' : ' — tự chia cho phiếu đến hạn sớm nhất'}.`) + cauAnh,
-  };
+  const cauAnh = cauAnhLoi(tai);
+  const cau: HaiThuTieng = kq?.da_co
+    ? { vi: `Khoản ${kq.so_phieu} đã được ghi từ lần bấm trước.`, en: `Entry ${kq.so_phieu} was already saved on your earlier click.` }
+    : {
+      vi: `Đã ghi ${kq?.so_phieu ?? ''}: ${(doc.soTien ?? 0).toLocaleString('vi-VN')} đ${doc.phanBo.length ? '' : ' — tự chia cho phiếu đến hạn sớm nhất'}.`,
+      en: `Recorded ${kq?.so_phieu ?? ''}: ${TIEN.en(doc.soTien ?? 0)}${doc.phanBo.length ? '' : ' — split automatically, earliest due first'}.`,
+    };
+  return kqHai(true, { vi: cau.vi + cauAnh.vi, en: cau.en + cauAnh.en });
 }
 
 export function huyThanhToan(client: SupabaseClient, id: string, lyDo: string): Promise<KetQua> {
@@ -397,6 +480,8 @@ export async function traHangNcc(
 ): Promise<KetQua & { id?: string }> {
   const s = (t: string) => String(form.get(t) ?? '').trim();
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
   const dong: Record<string, unknown>[] = [];
   const soDong = docSoNguyen(form.get('so_dong'), 0, 200) ?? 0;
   for (let i = 0; i < (Number.isNaN(soDong) ? 0 : soDong); i++) {
@@ -406,18 +491,20 @@ export async function traHangNcc(
     if (!kgChu && !goiChu) continue;
     const kg = docKg(kgChu);
     const goi = docSoNguyen(goiChu, 0, 100000);
-    if (!laUuid(lo)) { loi.push('Lô không hợp lệ — tải lại trang'); continue; }
-    if (kg === null || Number.isNaN(kg) || kg <= 0) { loi.push(`Dòng ${i + 1}: ghi số kg trả (ví dụ 4,5)`); continue; }
-    if (Number.isNaN(goi)) { loi.push(`Dòng ${i + 1}: số tảng / gói là số nguyên`); continue; }
+    if (!laUuid(lo)) { bao(CAU_TRA_HANG.loSai); continue; }
+    if (kg === null || Number.isNaN(kg) || kg <= 0) { bao(CAU_TRA_HANG.kg(i + 1)); continue; }
+    if (Number.isNaN(goi)) { bao(CAU_TRA_HANG.goi(i + 1)); continue; }
     dong.push(goi !== null ? { lo_id: lo, so_kg: kg, so_goi: goi } : { lo_id: lo, so_kg: kg });
   }
   const tienChu = s('so_tien_giam_tru');
   const tien = tienChu ? docTien(tienChu) : null;
-  if (tien !== null && Number.isNaN(tien)) loi.push('Số tiền giảm trừ là số đồng (hoặc để trống để tự tính)');
-  if (!dong.length && !loi.length) loi.push('Chưa ghi số kg trả ở lô nào.');
-  if (loi.length) return { ok: false, cau: loi.join(' · ') };
+  if (tien !== null && Number.isNaN(tien)) {
+    bao({ vi: 'Số tiền giảm trừ là số đồng (hoặc để trống để tự tính)', en: 'The deduction must be in VND (or leave it empty to have it calculated)' });
+  }
+  if (!dong.length && !loi.length) bao({ vi: 'Chưa ghi số kg trả ở lô nào.', en: 'No kg entered for any lot.' });
+  if (loi.length) return { ok: false, cau: loi.join(' · '), cauEn: loiEn.join(' · ') };
   const maGui = s('ma_gui');
-  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang.' };
+  if (!laUuid(maGui)) return kqHai(false, CAU.formCu);
 
   const tai = await taiAnh(client, chiNhanhId, 'thanh_toan', maGui, layTepAnh(form));
   const { data, error } = await client.rpc('kho_tra_nha_cung_cap', {
@@ -432,19 +519,19 @@ export async function traHangNcc(
   });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const kq = (Array.isArray(data) ? data[0] : data) as { phieu_xuat_id: string; so_phieu: string; so_tien_giam_tru: number; da_co: boolean } | undefined;
-  if (!kq) return { ok: false, cau: 'Không chắc đã ghi hay chưa — xem danh sách phiếu để kiểm tra.' };
+  if (!kq) return kqHai(false, CAU.khongChac);
   // Câu báo luôn nói rõ công nợ giảm bao nhiêu — trang chuyển về công nợ của
   // nhà cung cấp, kế toán đọc số này để so với biên bản.
   const giam = Number(kq.so_tien_giam_tru) || 0;
-  const cauTien = giam > 0
-    ? `công nợ giảm ${giam.toLocaleString('vi-VN')} đ`
-    : 'không giảm công nợ (0 đ — nhà cung cấp đổi hàng mới)';
-  const cauAnh = tai.loi.length ? ` Lưu ý: ${tai.loi.join(' · ')}` : '';
-  return {
-    ok: true, id: kq.phieu_xuat_id,
-    cau: (kq.da_co ? `Phiếu trả hàng ${kq.so_phieu} đã được ghi từ lần bấm trước: ${cauTien}.`
-      : `Đã ghi phiếu trả hàng ${kq.so_phieu}: ${cauTien}.`) + cauAnh,
-  };
+  const cauTien: HaiThuTieng = giam > 0
+    ? { vi: `công nợ giảm ${giam.toLocaleString('vi-VN')} đ`, en: `payables down by ${TIEN.en(giam)}` }
+    : { vi: 'không giảm công nợ (0 đ — nhà cung cấp đổi hàng mới)', en: 'payables unchanged (0 ₫ — the supplier replaces the goods)' };
+  const cauAnh = cauAnhLoi(tai);
+  const cau: HaiThuTieng = kq.da_co
+    ? { vi: `Phiếu trả hàng ${kq.so_phieu} đã được ghi từ lần bấm trước: ${cauTien.vi}.`,
+        en: `Return slip ${kq.so_phieu} was already saved on your earlier click: ${cauTien.en}.` }
+    : { vi: `Đã ghi phiếu trả hàng ${kq.so_phieu}: ${cauTien.vi}.`, en: `Return slip ${kq.so_phieu} recorded: ${cauTien.en}.` };
+  return { ...kqHai(true, { vi: cau.vi + cauAnh.vi, en: cau.en + cauAnh.en }), id: kq.phieu_xuat_id };
 }
 
 // -----------------------------------------------------------------------------
@@ -465,9 +552,9 @@ export function laNoDau(p: { so_phieu: string | null | undefined }): boolean {
   return /^ND-/.test(p.so_phieu ?? '');
 }
 
-/** Nhãn loại của một dòng công nợ: "Nợ đầu kỳ" hay "Nhập mua". */
-export function tenLoaiCongNo(p: { so_phieu: string | null | undefined }): string {
-  return laNoDau(p) ? 'Nợ đầu kỳ' : 'Nhập mua';
+/** Nhãn loại của một dòng công nợ: "Nợ đầu kỳ" hay "Nhập mua" (tiếng Anh: "Opening balance" / "Purchase"). */
+export function tenLoaiCongNo(p: { so_phieu: string | null | undefined }, nn: NgonNguNB = 'vi'): string {
+  return nhanKho(TEN_LOAI_PHIEU_NHAP_NB, laNoDau(p) ? 'no_dau' : 'mua', nn);
 }
 
 /**
@@ -519,7 +606,8 @@ export interface DongNoDau {
   so_hoa_don: string | null;
   ghi_chu: string | null;
 }
-export interface XemTruocNoDau { dong: DongNoDau[]; loi: string[]; tong: number }
+/** loiEn: cùng các lỗi ở tiếng Anh, cùng thứ tự với loi. */
+export interface XemTruocNoDau { dong: DongNoDau[]; loi: string[]; loiEn: string[]; tong: number }
 
 export const TOI_DA_DONG_NO_DAU = 300; // như kho_ghi_no_dau_ky
 
@@ -546,6 +634,8 @@ export function xemTruocNoDau(
   ncc: NccNoDau[], giaTri: Record<string, ONoDau>, daGhi: Map<string, string> = new Map(),
 ): XemTruocNoDau {
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
   const dong: DongNoDau[] = [];
   const theoId = new Map(ncc.map(n => [n.id, n]));
   // Theo thứ tự của danh sách nhà cung cấp (như lưới), rồi id lạ ở cuối.
@@ -553,21 +643,35 @@ export function xemTruocNoDau(
   for (const id of ids) {
     const o = giaTri[id];
     const n = theoId.get(id);
-    if (!n) { loi.push('Có dòng của nhà cung cấp không còn trong danh mục — tải lại trang.'); continue; }
+    if (!n) {
+      bao({ vi: 'Có dòng của nhà cung cấp không còn trong danh mục — tải lại trang.', en: 'A line belongs to a supplier that is no longer in the catalog — reload the page.' });
+      continue;
+    }
     const ten = n.ten;
     const soPhieu = daGhi.get(id);
-    if (soPhieu) { loi.push(`${ten}: đã ghi nợ đầu kỳ ở phiếu ${soPhieu} — hủy phiếu đó trước nếu muốn ghi lại.`); continue; }
+    if (soPhieu) {
+      bao({ vi: `${ten}: đã ghi nợ đầu kỳ ở phiếu ${soPhieu} — hủy phiếu đó trước nếu muốn ghi lại.`,
+            en: `${ten}: opening balance already recorded in ${soPhieu} — cancel that first if you want to record it again.` });
+      continue;
+    }
     const tien = docTien(o.tien);
-    if (tien === null) { loi.push(`${ten}: chưa ghi số tiền nợ.`); continue; }
-    if (Number.isNaN(tien) || tien <= 0) { loi.push(`${ten}: số tiền "${o.tien}" phải là số đồng lớn hơn 0 (ví dụ 12.500.000).`); continue; }
+    if (tien === null) { bao({ vi: `${ten}: chưa ghi số tiền nợ.`, en: `${ten}: no amount owed entered.` }); continue; }
+    if (Number.isNaN(tien) || tien <= 0) {
+      bao({ vi: `${ten}: số tiền "${o.tien}" phải là số đồng lớn hơn 0 (ví dụ 12.500.000).`,
+            en: `${ten}: the amount "${o.tien}" must be in VND and more than 0 (for example 12,500,000).` });
+      continue;
+    }
     const han = docNgay(o.han);
-    if (han === undefined) { loi.push(`${ten}: hạn trả "${o.han}" không phải ngày có thật.`); continue; }
-    if (o.hd.length > 60) { loi.push(`${ten}: số hóa đơn tối đa 60 ký tự.`); continue; }
-    if (o.gc.length > 500) { loi.push(`${ten}: ghi chú tối đa 500 ký tự.`); continue; }
+    if (han === undefined) { bao({ vi: `${ten}: hạn trả "${o.han}" không phải ngày có thật.`, en: `${ten}: the due date "${o.han}" is not a real date.` }); continue; }
+    if (o.hd.length > 60) { bao({ vi: `${ten}: số hóa đơn tối đa 60 ký tự.`, en: `${ten}: the invoice number can be at most 60 characters.` }); continue; }
+    if (o.gc.length > 500) { bao({ vi: `${ten}: ghi chú tối đa 500 ký tự.`, en: `${ten}: the note can be at most 500 characters.` }); continue; }
     dong.push({ nha_cung_cap_id: id, ten, so_tien: tien, han_thanh_toan: han, so_hoa_don: o.hd || null, ghi_chu: o.gc || null });
   }
-  if (dong.length > TOI_DA_DONG_NO_DAU) loi.push(`Mỗi lần ghi tối đa ${TOI_DA_DONG_NO_DAU} nhà cung cấp — chia làm nhiều lần.`);
-  return { dong, loi, tong: dong.reduce((a, d) => a + d.so_tien, 0) };
+  if (dong.length > TOI_DA_DONG_NO_DAU) {
+    bao({ vi: `Mỗi lần ghi tối đa ${TOI_DA_DONG_NO_DAU} nhà cung cấp — chia làm nhiều lần.`,
+          en: `You can record at most ${TOI_DA_DONG_NO_DAU} suppliers at a time — split them into several goes.` });
+  }
+  return { dong, loi, loiEn, tong: dong.reduce((a, d) => a + d.so_tien, 0) };
 }
 
 /** Dòng gửi kho_ghi_no_dau_ky: chỉ đặt khóa có giá trị (hàm database từ chối khóa lạ). */
@@ -614,9 +718,11 @@ export function docNgayDan(v: string): string | null | undefined {
  */
 export function docDanNoDau(
   noiDung: string, ncc: NccNoDau[],
-): { giaTri: Record<string, ONoDau>; loi: string[]; boQua: string[] } {
+): { giaTri: Record<string, ONoDau>; loi: string[]; loiEn: string[]; boQua: string[] } {
   const giaTri: Record<string, ONoDau> = {};
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
   const boQua: string[] = [];
   // Không tách bằng dấu phẩy: số tiền "12,500,000" có dấu phẩy.
   const ngan = noiDung.includes('\t') ? '\t' : ';';
@@ -627,16 +733,23 @@ export function docDanNoDau(
   const hang = noiDung.split(/\r?\n/)
     .map((raw, i) => ({ so: i + 1, o: raw.split(ngan).map(boNgoac) }))
     .filter(h => h.o.some(x => x !== ''));
-  if (hang.length === 0) return { giaTri, loi, boQua };
+  if (hang.length === 0) return { giaTri, loi, loiEn, boQua };
 
   let cot: (CotNoDau | undefined)[] = [...COT_NO_DAU];
   const dau = hang[0].o.map(o => TIEU_DE_NO_DAU[chuanTenNcc(o).replace(/( (d|dong|vnd))+$/, '')]);
   const hieu = dau.filter((c): c is CotNoDau => !!c);
   if (hieu.length >= 2 || (hieu.includes('ncc') && docTien(hang[0].o[1] ?? '') === null)) {
     hang[0].o.forEach((o, i) => { if (o && !dau[i]) boQua.push(o); });
-    for (const c of COT_NO_DAU) if (dau.filter(x => x === c).length > 1) loi.push('Dòng tiêu đề: có cột bị lặp — xóa bớt một cột.');
-    if (!hieu.includes('ncc') || !hieu.includes('tien')) loi.push('Dòng tiêu đề cần có cột Nhà cung cấp và cột Số tiền.');
-    if (loi.length) return { giaTri, loi, boQua };
+    for (const c of COT_NO_DAU) {
+      if (dau.filter(x => x === c).length > 1) {
+        bao({ vi: 'Dòng tiêu đề: có cột bị lặp — xóa bớt một cột.', en: 'Header row: a column appears twice — delete one of them.' });
+      }
+    }
+    if (!hieu.includes('ncc') || !hieu.includes('tien')) {
+      // Tiêu đề máy hiểu là chữ Việt (có dấu hay không) — bản tiếng Anh ghi dạng không dấu.
+      bao({ vi: 'Dòng tiêu đề cần có cột Nhà cung cấp và cột Số tiền.', en: 'The header row needs a supplier column (Nha cung cap) and an amount column (So tien).' });
+    }
+    if (loi.length) return { giaTri, loi, loiEn, boQua };
     cot = dau;
     hang.shift();
   }
@@ -652,28 +765,45 @@ export function docDanNoDau(
     const o: Partial<Record<CotNoDau, string>> = {};
     cot.forEach((c, i) => { if (c) o[c] = h.o[i] ?? ''; });
     const chuNcc = (o.ncc ?? '').trim();
-    if (!chuNcc) { loi.push(`Dòng ${h.so}: thiếu tên nhà cung cấp.`); continue; }
+    if (!chuNcc) { bao({ vi: `Dòng ${h.so}: thiếu tên nhà cung cấp.`, en: `Line ${h.so}: supplier name missing.` }); continue; }
     const mst = chuNcc.replace(/\s/g, '');
     const khop = /^\d{10}(-\d{3})?$/.test(mst) ? theoMst.get(mst) ?? [] : theoTen.get(chuanTenNcc(chuNcc)) ?? [];
-    if (khop.length === 0) { loi.push(`Dòng ${h.so}: không thấy nhà cung cấp "${chuNcc}" — thêm ở Cài đặt › Nhà cung cấp trước, hoặc sửa tên cho giống.`); continue; }
-    if (khop.length > 1) { loi.push(`Dòng ${h.so}: có ${khop.length} nhà cung cấp tên "${chuNcc}" — ghi mã số thuế thay cho tên.`); continue; }
+    if (khop.length === 0) {
+      bao({ vi: `Dòng ${h.so}: không thấy nhà cung cấp "${chuNcc}" — thêm ở Cài đặt › Nhà cung cấp trước, hoặc sửa tên cho giống.`,
+            en: `Line ${h.so}: supplier "${chuNcc}" not found — add it in Setup › Suppliers first, or change the name to match.` });
+      continue;
+    }
+    if (khop.length > 1) {
+      bao({ vi: `Dòng ${h.so}: có ${khop.length} nhà cung cấp tên "${chuNcc}" — ghi mã số thuế thay cho tên.`,
+            en: `Line ${h.so}: ${khop.length} suppliers are named "${chuNcc}" — use the tax code instead of the name.` });
+      continue;
+    }
     const n = khop[0];
     const truoc = daDan.get(n.id);
-    if (truoc !== undefined) { loi.push(`Dòng ${h.so}: ${n.ten} đã có ở dòng ${truoc} — gộp thành một dòng.`); continue; }
+    if (truoc !== undefined) {
+      bao({ vi: `Dòng ${h.so}: ${n.ten} đã có ở dòng ${truoc} — gộp thành một dòng.`, en: `Line ${h.so}: ${n.ten} is already on line ${truoc} — merge them into one line.` });
+      continue;
+    }
     const han = docNgayDan(o.han ?? '');
-    if (han === undefined) { loi.push(`Dòng ${h.so} (${n.ten}): hạn trả "${o.han}" không hiểu — ghi dạng 31/10/2026.`); continue; }
+    if (han === undefined) {
+      bao({ vi: `Dòng ${h.so} (${n.ten}): hạn trả "${o.han}" không hiểu — ghi dạng 31/10/2026.`,
+            en: `Line ${h.so} (${n.ten}): due date "${o.han}" not understood — write it like 31/10/2026.` });
+      continue;
+    }
     daDan.set(n.id, h.so);
     giaTri[n.id] = { tien: (o.tien ?? '').trim(), han: han ?? '', hd: (o.hd ?? '').trim(), gc: (o.gc ?? '').trim() };
   }
-  return { giaTri, loi, boQua };
+  return { giaTri, loi, loiEn, boQua };
 }
 
 /** Ghi nợ đầu kỳ: một phiếu ND- mỗi nhà cung cấp. Cùng ma_gui (bấm hai lần, F5) → trả lại đúng các phiếu cũ. */
 export async function ghiNoDauKy(
   client: SupabaseClient, chiNhanhId: string, maGui: string, dong: DongNoDau[],
 ): Promise<KetQua> {
-  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang.' };
-  if (dong.length === 0) return { ok: false, cau: 'Chưa có dòng nợ nào — ghi số tiền ở ít nhất một nhà cung cấp.' };
+  if (!laUuid(maGui)) return kqHai(false, CAU.formCu);
+  if (dong.length === 0) {
+    return kqHai(false, { vi: 'Chưa có dòng nợ nào — ghi số tiền ở ít nhất một nhà cung cấp.', en: 'No balance lines yet — enter an amount for at least one supplier.' });
+  }
   const { data, error } = await client.rpc('kho_ghi_no_dau_ky', {
     p_chi_nhanh_id: chiNhanhId,
     p_ma_gui: maGui,
@@ -683,18 +813,21 @@ export async function ghiNoDauKy(
   const kq = (data ?? {}) as { da_co?: boolean; tong_tien?: number; phieu?: { so_phieu: string }[] };
   const soPhieu = kq.phieu?.length ?? 0;
   const tien = so(kq.tong_tien).toLocaleString('vi-VN');
-  return {
-    ok: true,
-    cau: kq.da_co
-      ? `Nợ đầu kỳ đã được ghi từ lần bấm trước: ${soPhieu} nhà cung cấp, ${tien} đ.`
-      : `Đã ghi nợ đầu kỳ ${soPhieu} nhà cung cấp, tổng ${tien} đ. Trả tiền ở trang công nợ của từng nhà cung cấp như phiếu nhập.`,
-  };
+  const tienEn = TIEN.en(so(kq.tong_tien));
+  const nccEn = `${soPhieu} ${soPhieu === 1 ? 'supplier' : 'suppliers'}`;
+  return kqHai(true, kq.da_co
+    ? { vi: `Nợ đầu kỳ đã được ghi từ lần bấm trước: ${soPhieu} nhà cung cấp, ${tien} đ.`,
+        en: `Opening balances were already saved on your earlier click: ${nccEn}, ${tienEn}.` }
+    : { vi: `Đã ghi nợ đầu kỳ ${soPhieu} nhà cung cấp, tổng ${tien} đ. Trả tiền ở trang công nợ của từng nhà cung cấp như phiếu nhập.`,
+        en: `Opening balances recorded for ${nccEn}, total ${tienEn}. Pay them on each supplier's payables page, like goods receipts.` });
 }
 
 /** Hủy một phiếu nợ đầu kỳ (ghi nhầm). Bắt buộc lý do; đã trả tiền / giảm trừ thì database chặn. */
 export function huyNoDauKy(client: SupabaseClient, id: string, lyDo: string): Promise<KetQua> {
-  if (!laUuid(id)) return Promise.resolve({ ok: false, cau: 'Phiếu không hợp lệ.' });
-  if (!lyDo.trim()) return Promise.resolve({ ok: false, cau: 'Ghi lý do hủy (ví dụ: ghi nhầm số tiền).' });
+  if (!laUuid(id)) return Promise.resolve(kqHai(false, CAU.phieuKhongHopLe));
+  if (!lyDo.trim()) {
+    return Promise.resolve(kqHai(false, { vi: 'Ghi lý do hủy (ví dụ: ghi nhầm số tiền).', en: 'Enter a reason for cancelling (for example: wrong amount entered).' }));
+  }
   return cauTraVe(client.rpc('kho_huy_phieu_nhap', { p_id: id, p_ly_do: lyDo.trim() }));
 }
 
@@ -714,11 +847,9 @@ export async function danhDauKhongNoDau(client: SupabaseClient, chiNhanhId: stri
     p_chi_nhanh_id: chiNhanhId, p_buoc: 'ncc_no_dau', p_bo_qua: boQua,
   });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return {
-    ok: true,
-    cau: boQua ? 'Đã đánh dấu: không có nợ đầu kỳ. Bước này trong Thiết lập đã xong.'
-      : 'Đã bỏ đánh dấu "không có nợ đầu kỳ".',
-  };
+  return kqHai(true, boQua
+    ? { vi: 'Đã đánh dấu: không có nợ đầu kỳ. Bước này trong Thiết lập đã xong.', en: 'Marked: no opening balances. This Setup step is done.' }
+    : { vi: 'Đã bỏ đánh dấu "không có nợ đầu kỳ".', en: 'Removed the "no opening balances" mark.' });
 }
 
 // =============================================================================
@@ -729,30 +860,43 @@ export async function danhDauKhongNoDau(client: SupabaseClient, chiNhanhId: stri
 // trước cách chia (kho_xem_truoc_thanh_toan), sổ theo kỳ (kho_cong_no_theo_ky).
 // Ở đây chỉ đọc form, gọi hàm và vài hàm thuần để trang hiện số / lọc / chia trang.
 
-export const TEN_LOAI_KHOAN: Record<string, string> = {
-  thanh_toan: 'Trả tiền',
-  giam_tru: 'Giảm trừ',
-  bu_tru: 'Bù trừ',
-  hoan_tien: 'NCC hoàn tiền',
+export const TEN_LOAI_KHOAN_NB: Record<string, HaiThuTieng> = {
+  thanh_toan: { vi: 'Trả tiền', en: 'Payment' },
+  giam_tru: { vi: 'Giảm trừ', en: 'Deduction' },
+  bu_tru: { vi: 'Bù trừ', en: 'Offset' },
+  hoan_tien: { vi: 'NCC hoàn tiền', en: 'Supplier refund' },
 };
+export const TEN_LOAI_KHOAN: Record<string, string> = chiVi(TEN_LOAI_KHOAN_NB);
+
+const GIAM_TRU_TRA_HANG: HaiThuTieng = { vi: 'Giảm trừ do trả hàng', en: 'Deduction for returned goods' };
 
 /** Tên một khoản trong lịch sử: "Trả tiền (Chuyển khoản)", "Giảm trừ do trả hàng", "Bù trừ"… */
-export function tenKhoan(t: { loai: string; hinh_thuc: string | null; phieu_xuat_id?: string | null }): string {
-  if (t.loai === 'thanh_toan') return `Trả tiền (${TEN_HINH_THUC[t.hinh_thuc ?? 'khac'] ?? 'Khác'})`;
-  if (t.loai === 'hoan_tien') return `NCC hoàn tiền (${TEN_HINH_THUC[t.hinh_thuc ?? 'khac'] ?? 'Khác'})`;
-  if (t.loai === 'giam_tru') return t.phieu_xuat_id ? 'Giảm trừ do trả hàng' : 'Giảm trừ';
-  return TEN_LOAI_KHOAN[t.loai] ?? t.loai;
+export function tenKhoan(t: { loai: string; hinh_thuc: string | null; phieu_xuat_id?: string | null }, nn: NgonNguNB = 'vi'): string {
+  const hinhThuc = () => TEN_HINH_THUC_NB[t.hinh_thuc ?? 'khac']?.[nn] ?? TEN_HINH_THUC_NB.khac[nn];
+  if (t.loai === 'thanh_toan') return `${TEN_LOAI_KHOAN_NB.thanh_toan[nn]} (${hinhThuc()})`;
+  if (t.loai === 'hoan_tien') return `${TEN_LOAI_KHOAN_NB.hoan_tien[nn]} (${hinhThuc()})`;
+  if (t.loai === 'giam_tru') return t.phieu_xuat_id ? GIAM_TRU_TRA_HANG[nn] : TEN_LOAI_KHOAN_NB.giam_tru[nn];
+  return TEN_LOAI_KHOAN_NB[t.loai]?.[nn] ?? t.loai;
 }
 
 // --- Chọn "loại" trên màn Trả tiền ------------------------------------------
 export type KieuTra = 'chuyen_khoan' | 'tien_mat' | 'bu_tru' | 'hoan_tien' | 'giam_tru';
-export const KIEU_TRA: readonly { ma: KieuTra; ten: string; moTa: string }[] = [
-  { ma: 'chuyen_khoan', ten: 'Chuyển khoản', moTa: 'Quán chuyển tiền cho nhà cung cấp' },
-  { ma: 'tien_mat', ten: 'Tiền mặt', moTa: 'Quán trả tiền mặt' },
-  { ma: 'bu_tru', ten: 'Bù trừ', moTa: 'Trừ vào khoản NCC đang nợ quán (tiền cọc, vỏ thùng…) — không chuyển tiền' },
-  { ma: 'hoan_tien', ten: 'NCC hoàn tiền', moTa: 'Nhà cung cấp trả lại tiền cho quán (quán đã trả thừa, trả hàng sau khi trả đủ)' },
-  { ma: 'giam_tru', ten: 'Giảm trừ', moTa: 'Chiết khấu, hàng thiếu — NCC bớt tiền' },
+export const KIEU_TRA_NB: readonly { ma: KieuTra; ten: HaiThuTieng; moTa: HaiThuTieng }[] = [
+  { ma: 'chuyen_khoan', ten: { vi: 'Chuyển khoản', en: 'Bank transfer' },
+    moTa: { vi: 'Quán chuyển tiền cho nhà cung cấp', en: 'The restaurant transfers money to the supplier' } },
+  { ma: 'tien_mat', ten: { vi: 'Tiền mặt', en: 'Cash' },
+    moTa: { vi: 'Quán trả tiền mặt', en: 'The restaurant pays in cash' } },
+  { ma: 'bu_tru', ten: { vi: 'Bù trừ', en: 'Offset' },
+    moTa: { vi: 'Trừ vào khoản NCC đang nợ quán (tiền cọc, vỏ thùng…) — không chuyển tiền',
+            en: 'Take it off money the supplier owes the restaurant (deposit, crates…) — no money changes hands' } },
+  { ma: 'hoan_tien', ten: { vi: 'NCC hoàn tiền', en: 'Supplier refund' },
+    moTa: { vi: 'Nhà cung cấp trả lại tiền cho quán (quán đã trả thừa, trả hàng sau khi trả đủ)',
+            en: 'The supplier pays money back to the restaurant (overpaid, or goods returned after paying in full)' } },
+  { ma: 'giam_tru', ten: { vi: 'Giảm trừ', en: 'Deduction' },
+    moTa: { vi: 'Chiết khấu, hàng thiếu — NCC bớt tiền', en: 'Discount, short delivery — the supplier takes money off' } },
 ];
+export const KIEU_TRA: readonly { ma: KieuTra; ten: string; moTa: string }[] =
+  KIEU_TRA_NB.map(x => ({ ma: x.ma, ten: x.ten.vi, moTa: x.moTa.vi }));
 
 /** Kiểu trên màn → loai + hinh_thuc của kho_ghi_thanh_toan_v2. null = kiểu lạ. */
 export function loaiTuKieu(kieu: string, hinhThucHoan?: string | null): { loai: string; hinh_thuc: string | null } | null {
@@ -813,6 +957,8 @@ export interface FormTraTien {
   /** Rỗng = để database tự chia (người dùng không sửa phần chia gợi ý). */
   phanBo: { phieu_nhap_id: string; so_tien: number }[];
   loi: string[];
+  /** Cùng các lỗi ở tiếng Anh, cùng thứ tự với loi. */
+  loiEn: string[];
   giaTri: Record<string, string>;
 }
 
@@ -827,15 +973,26 @@ export function docFormTraTien(form: { get(ten: string): unknown }, ghi: boolean
   const giaTri: Record<string, string> = {};
   for (const k of ['kieu', 'so_tien', 'ngay', 'ghi_chu', 'hinh_thuc_hoan']) giaTri[k] = s(k);
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
   const kieu = (KIEU_TRA.some(x => x.ma === giaTri.kieu) ? giaTri.kieu : '') as KieuTra | '';
   const lh = kieu ? loaiTuKieu(kieu, giaTri.hinh_thuc_hoan) : null;
-  if (!lh) loi.push('Chọn cách trả: chuyển khoản, tiền mặt, bù trừ, NCC hoàn tiền hoặc giảm trừ');
+  if (!lh) {
+    bao({ vi: 'Chọn cách trả: chuyển khoản, tiền mặt, bù trừ, NCC hoàn tiền hoặc giảm trừ',
+          en: 'Choose how to pay: bank transfer, cash, offset, supplier refund or deduction' });
+  }
   let soTien = docTien(giaTri.so_tien);
-  if (soTien !== null && (Number.isNaN(soTien) || soTien <= 0)) { loi.push('Số tiền là số đồng lớn hơn 0 (ví dụ 5.450.000)'); soTien = null; }
-  if (ghi && soTien === null && !loi.length) loi.push('Ghi số tiền (hoặc bấm "Trả đủ")');
+  if (soTien !== null && (Number.isNaN(soTien) || soTien <= 0)) {
+    bao({ vi: 'Số tiền là số đồng lớn hơn 0 (ví dụ 5.450.000)', en: 'The amount must be in VND and more than 0 (for example 5,450,000)' });
+    soTien = null;
+  }
+  if (ghi && soTien === null && !loi.length) bao({ vi: 'Ghi số tiền (hoặc bấm "Trả đủ")', en: 'Enter the amount (or press "Pay in full")' });
   const ngay = docNgay(giaTri.ngay);
-  if (ngay === undefined) loi.push('Ngày không phải ngày có thật');
-  if (ghi && lh?.loai === 'bu_tru' && !giaTri.ghi_chu) loi.push('Bù trừ: ghi rõ khoản nhà cung cấp nợ lại quán (ví dụ tiền cọc, vỏ thùng)');
+  if (ngay === undefined) bao({ vi: 'Ngày không phải ngày có thật', en: 'The date is not a real date' });
+  if (ghi && lh?.loai === 'bu_tru' && !giaTri.ghi_chu) {
+    bao({ vi: 'Bù trừ: ghi rõ khoản nhà cung cấp nợ lại quán (ví dụ tiền cọc, vỏ thùng)',
+          en: 'Offset: say what the supplier owes the restaurant (for example a deposit, crates)' });
+  }
 
   const phanBo: { phieu_nhap_id: string; so_tien: number }[] = [];
   let khacGoiY = false;
@@ -846,7 +1003,10 @@ export function docFormTraTien(form: { get(ten: string): unknown }, ghi: boolean
     giaTri[`pb${i}_tien`] = chu;
     const goiY = docTien(s(`pb${i}_goi_y`)) ?? 0;
     const t = chu ? docTien(chu) : 0;
-    if (t === null || Number.isNaN(t) || t < 0 || !laUuid(id)) { loi.push(`Số tiền cho phiếu thứ ${i + 1} chưa đúng`); continue; }
+    if (t === null || Number.isNaN(t) || t < 0 || !laUuid(id)) {
+      bao({ vi: `Số tiền cho phiếu thứ ${i + 1} chưa đúng`, en: `The amount for receipt no. ${i + 1} is not valid` });
+      continue;
+    }
     if (t !== (Number.isNaN(goiY) ? 0 : goiY)) khacGoiY = true;
     if (t > 0) phanBo.push({ phieu_nhap_id: id, so_tien: t });
   }
@@ -854,12 +1014,15 @@ export function docFormTraTien(form: { get(ten: string): unknown }, ghi: boolean
   else if (soTien !== null) {
     const tong = phanBo.reduce((a, b) => a + b.so_tien, 0);
     if (tong !== soTien) {
-      loi.push(`Tổng tiền chia cho các phiếu (${tong.toLocaleString('vi-VN')} đ) phải bằng số tiền (${soTien.toLocaleString('vi-VN')} đ) — hoặc bấm "Xem trước" để chia lại tự động`);
+      bao({
+        vi: `Tổng tiền chia cho các phiếu (${tong.toLocaleString('vi-VN')} đ) phải bằng số tiền (${soTien.toLocaleString('vi-VN')} đ) — hoặc bấm "Xem trước" để chia lại tự động`,
+        en: `The amounts split across the receipts (${TIEN.en(tong)}) must add up to the amount (${TIEN.en(soTien)}) — or press "Preview the split" to split it again automatically`,
+      });
     }
   }
   return {
     kieu, loai: lh?.loai ?? null, hinhThuc: lh?.hinh_thuc ?? null, soTien,
-    ngay: ngay ?? null, ghiChu: giaTri.ghi_chu, phanBo, loi, giaTri,
+    ngay: ngay ?? null, ghiChu: giaTri.ghi_chu, phanBo, loi, loiEn, giaTri,
   };
 }
 
@@ -868,9 +1031,9 @@ export async function ghiThanhToanV2(
   client: SupabaseClient, chiNhanhId: string, nccId: string, form: FormData,
 ): Promise<KetQua & { giaTri?: Record<string, string> }> {
   const doc = docFormTraTien(form, true);
-  if (doc.loi.length) return { ok: false, cau: doc.loi.join(' · '), giaTri: doc.giaTri };
+  if (doc.loi.length) return { ok: false, cau: doc.loi.join(' · '), cauEn: doc.loiEn.join(' · '), giaTri: doc.giaTri };
   const maGui = String(form.get('ma_gui') ?? '');
-  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang.', giaTri: doc.giaTri };
+  if (!laUuid(maGui)) return { ...kqHai(false, CAU.formCu), giaTri: doc.giaTri };
 
   const tai = await taiAnh(client, chiNhanhId, 'thanh_toan', maGui, layTepAnh(form));
   const { data, error } = await client.rpc('kho_ghi_thanh_toan_v2', {
@@ -887,13 +1050,13 @@ export async function ghiThanhToanV2(
   });
   if (error) return { ok: false, cau: cauLoiKho(error), giaTri: doc.giaTri };
   const kq = (Array.isArray(data) ? data[0] : data) as { so_phieu: string; da_co: boolean } | undefined;
-  const cauAnh = tai.loi.length ? ` Lưu ý: ${tai.loi.join(' · ')}` : '';
-  const ten = TEN_LOAI_KHOAN[doc.loai ?? ''] ?? 'khoản';
-  return {
-    ok: true,
-    cau: (kq?.da_co ? `Khoản ${kq.so_phieu} đã được ghi từ lần bấm trước.`
-      : `Đã ghi ${kq?.so_phieu ?? ''} (${ten.toLowerCase()}): ${(doc.soTien ?? 0).toLocaleString('vi-VN')} đ.`) + cauAnh,
-  };
+  const cauAnh = cauAnhLoi(tai);
+  const ten = TEN_LOAI_KHOAN_NB[doc.loai ?? ''] ?? { vi: 'khoản', en: 'entry' };
+  const cau: HaiThuTieng = kq?.da_co
+    ? { vi: `Khoản ${kq.so_phieu} đã được ghi từ lần bấm trước.`, en: `Entry ${kq.so_phieu} was already saved on your earlier click.` }
+    : { vi: `Đã ghi ${kq?.so_phieu ?? ''} (${ten.vi.toLowerCase()}): ${(doc.soTien ?? 0).toLocaleString('vi-VN')} đ.`,
+        en: `Recorded ${kq?.so_phieu ?? ''} (${ten.en.toLowerCase()}): ${TIEN.en(doc.soTien ?? 0)}.` };
+  return kqHai(true, { vi: cau.vi + cauAnh.vi, en: cau.en + cauAnh.en });
 }
 
 // --- Công thức trên đầu trang Công nợ ----------------------------------------
@@ -918,12 +1081,14 @@ export function congThucCongNo(ncc: Pick<CongNoNcc, 'tong_phai_tra' | 'da_tra' |
 }
 
 // --- Thẻ "Theo NCC": chip lọc, tìm, chia trang trong bộ nhớ ------------------
-export const CHIP_CONG_NO = {
-  qua_han: 'Quá hạn',
-  den_han: 'Đến hạn 7 ngày',
-  chua_doi_chieu: 'Chưa đối chiếu',
-  gop: 'Có hóa đơn gộp',
-} as const;
+export const CHIP_CONG_NO_NB = {
+  qua_han: { vi: 'Quá hạn', en: 'Overdue' },
+  den_han: { vi: 'Đến hạn 7 ngày', en: 'Due in 7 days' },
+  chua_doi_chieu: { vi: 'Chưa đối chiếu', en: 'Not reconciled' },
+  gop: { vi: 'Có hóa đơn gộp', en: 'Combined invoice' },
+} as const satisfies Record<string, HaiThuTieng>;
+/** Bản chỉ tiếng Việt, cùng kiểu với trước ({ readonly qua_han: 'Quá hạn', … }). */
+export const CHIP_CONG_NO = chiVi(CHIP_CONG_NO_NB);
 export type ChipCongNo = keyof typeof CHIP_CONG_NO;
 
 export function docChipCongNo(v: string | null): ChipCongNo | '' {
@@ -1078,14 +1243,15 @@ export function docKyCongNo(sp: URLSearchParams, homNay: string): { tu: string; 
   return { tu, den };
 }
 
-export const TEN_LOAI_SO_CONG_NO: Record<string, string> = {
-  mua: 'Nhập mua',
-  no_dau: 'Nợ đầu kỳ',
-  thanh_toan: 'Trả tiền',
-  giam_tru: 'Giảm trừ',
-  bu_tru: 'Bù trừ',
-  hoan_tien: 'NCC hoàn tiền',
+export const TEN_LOAI_SO_CONG_NO_NB: Record<string, HaiThuTieng> = {
+  mua: { vi: 'Nhập mua', en: 'Purchase' },
+  no_dau: { vi: 'Nợ đầu kỳ', en: 'Opening balance' },
+  thanh_toan: { vi: 'Trả tiền', en: 'Payment' },
+  giam_tru: { vi: 'Giảm trừ', en: 'Deduction' },
+  bu_tru: { vi: 'Bù trừ', en: 'Offset' },
+  hoan_tien: { vi: 'NCC hoàn tiền', en: 'Supplier refund' },
 };
+export const TEN_LOAI_SO_CONG_NO: Record<string, string> = chiVi(TEN_LOAI_SO_CONG_NO_NB);
 
 // --- Hóa đơn gộp ---------------------------------------------------------------
 export interface HoaDonGop {
@@ -1144,6 +1310,8 @@ export interface FormHoaDonGop {
   lyDo: string;
   phieu: string[];
   loi: string[];
+  /** Cùng các lỗi ở tiếng Anh, cùng thứ tự với loi. */
+  loiEn: string[];
   giaTri: Record<string, string>;
 }
 
@@ -1154,18 +1322,32 @@ export function docFormHoaDonGop(form: { get(ten: string): unknown; getAll(ten: 
   for (const k of ['so_hoa_don', 'ngay', 'tong_tien', 'tien_thue', 'ly_do_lech']) giaTri[k] = s(k);
   const phieu = [...new Set(form.getAll('phieu').map(v => String(v)).filter(laUuid))];
   const loi: string[] = [];
-  if (phieu.length < 2) loi.push('Tích ít nhất 2 phiếu nằm trong hóa đơn này (một phiếu thì dùng "Đối chiếu hóa đơn" ở phiếu đó)');
-  if (!giaTri.so_hoa_don) loi.push('Ghi số hóa đơn');
-  else if (giaTri.so_hoa_don.length > 60) loi.push('Số hóa đơn tối đa 60 ký tự');
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
+  if (phieu.length < 2) {
+    bao({ vi: 'Tích ít nhất 2 phiếu nằm trong hóa đơn này (một phiếu thì dùng "Đối chiếu hóa đơn" ở phiếu đó)',
+          en: 'Tick at least 2 receipts that are on this invoice (for a single receipt, use "Reconcile invoice" on that receipt)' });
+  }
+  if (!giaTri.so_hoa_don) bao({ vi: 'Ghi số hóa đơn', en: 'Enter the invoice number' });
+  else if (giaTri.so_hoa_don.length > 60) bao({ vi: 'Số hóa đơn tối đa 60 ký tự', en: 'The invoice number can be at most 60 characters' });
   const ngay = docNgay(giaTri.ngay);
-  if (!ngay) loi.push(ngay === undefined ? 'Ngày hóa đơn không phải ngày có thật' : 'Ghi ngày hóa đơn');
+  if (!ngay) {
+    bao(ngay === undefined ? { vi: 'Ngày hóa đơn không phải ngày có thật', en: 'The invoice date is not a real date' }
+      : { vi: 'Ghi ngày hóa đơn', en: 'Enter the invoice date' });
+  }
   let tongTien = docTien(giaTri.tong_tien);
-  if (tongTien === null) loi.push('Ghi tổng tiền in trên hóa đơn (ví dụ 25.450.000)');
-  else if (Number.isNaN(tongTien) || tongTien < 0) { loi.push('Tổng tiền là số đồng (ví dụ 25.450.000)'); tongTien = null; }
+  if (tongTien === null) bao({ vi: 'Ghi tổng tiền in trên hóa đơn (ví dụ 25.450.000)', en: 'Enter the total printed on the invoice (for example 25,450,000)' });
+  else if (Number.isNaN(tongTien) || tongTien < 0) {
+    bao({ vi: 'Tổng tiền là số đồng (ví dụ 25.450.000)', en: 'The total must be in VND (for example 25,450,000)' });
+    tongTien = null;
+  }
   let tienThue = docTien(giaTri.tien_thue) ?? 0;
-  if (Number.isNaN(tienThue) || tienThue < 0) { loi.push('Tiền thuế là số đồng (để trống nếu không có)'); tienThue = 0; }
-  if (tongTien !== null && tienThue > tongTien) loi.push('Tiền thuế không lớn hơn tổng tiền hóa đơn');
-  return { soHoaDon: giaTri.so_hoa_don, ngay: ngay ?? null, tongTien, tienThue, lyDo: giaTri.ly_do_lech, phieu, loi, giaTri };
+  if (Number.isNaN(tienThue) || tienThue < 0) {
+    bao({ vi: 'Tiền thuế là số đồng (để trống nếu không có)', en: 'The tax must be in VND (leave it empty if there is none)' });
+    tienThue = 0;
+  }
+  if (tongTien !== null && tienThue > tongTien) bao({ vi: 'Tiền thuế không lớn hơn tổng tiền hóa đơn', en: 'The tax cannot be more than the invoice total' });
+  return { soHoaDon: giaTri.so_hoa_don, ngay: ngay ?? null, tongTien, tienThue, lyDo: giaTri.ly_do_lech, phieu, loi, loiEn, giaTri };
 }
 
 export interface ChiaHoaDonGop {
@@ -1201,13 +1383,15 @@ export async function doiChieuGop(
   client: SupabaseClient, chiNhanhId: string, nccId: string, form: FormData, tongPhieu: number,
 ): Promise<KetQua & { giaTri?: Record<string, string> }> {
   const f = docFormHoaDonGop(form);
-  if (f.loi.length) return { ok: false, cau: f.loi.join(' · '), giaTri: f.giaTri };
+  if (f.loi.length) return { ok: false, cau: f.loi.join(' · '), cauEn: f.loiEn.join(' · '), giaTri: f.giaTri };
   const maGui = String(form.get('ma_gui') ?? '');
-  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang.', giaTri: f.giaTri };
+  if (!laUuid(maGui)) return { ...kqHai(false, CAU.formCu), giaTri: f.giaTri };
   const lech = (f.tongTien ?? 0) - tongPhieu;
   if (lech !== 0 && !f.lyDo) {
-    return { ok: false, giaTri: f.giaTri,
-      cau: `Hóa đơn ${(f.tongTien ?? 0).toLocaleString('vi-VN')} đ lệch tổng các phiếu ${tongPhieu.toLocaleString('vi-VN')} đ (${dinhDangLech(lech)}). Ghi lý do lệch rồi lưu lại.` };
+    return { giaTri: f.giaTri, ...kqHai(false, {
+      vi: `Hóa đơn ${(f.tongTien ?? 0).toLocaleString('vi-VN')} đ lệch tổng các phiếu ${tongPhieu.toLocaleString('vi-VN')} đ (${dinhDangLech(lech)}). Ghi lý do lệch rồi lưu lại.`,
+      en: `The invoice (${TIEN.en(f.tongTien ?? 0)}) differs from the receipts' total (${TIEN.en(tongPhieu)}) by ${dinhDangLech(lech, 'en')}. Enter the reason for the difference, then save again.`,
+    }) };
   }
   const { data, error } = await client.rpc('kho_doi_chieu_hoa_don_gop', {
     p_chi_nhanh_id: chiNhanhId,
@@ -1222,24 +1406,28 @@ export async function doiChieuGop(
   });
   if (error) return { ok: false, cau: cauLoiKho(error), giaTri: f.giaTri };
   const kq = (Array.isArray(data) ? data[0] : data) as { da_co?: boolean } | undefined;
-  return {
-    ok: true,
-    cau: kq?.da_co ? `Hóa đơn ${f.soHoaDon} đã được đối chiếu từ lần bấm trước.`
-      : `Đã đối chiếu hóa đơn gộp ${f.soHoaDon} cho ${f.phieu.length} phiếu — tổng ${(f.tongTien ?? 0).toLocaleString('vi-VN')} đ.`,
-  };
+  const soPhieuEn = `${f.phieu.length} ${f.phieu.length === 1 ? 'receipt' : 'receipts'}`;
+  return kqHai(true, kq?.da_co
+    ? { vi: `Hóa đơn ${f.soHoaDon} đã được đối chiếu từ lần bấm trước.`, en: `Invoice ${f.soHoaDon} was already reconciled on your earlier click.` }
+    : { vi: `Đã đối chiếu hóa đơn gộp ${f.soHoaDon} cho ${f.phieu.length} phiếu — tổng ${(f.tongTien ?? 0).toLocaleString('vi-VN')} đ.`,
+        en: `Combined invoice ${f.soHoaDon} reconciled for ${soPhieuEn} — total ${TIEN.en(f.tongTien ?? 0)}.` });
 }
 
 export function boDoiChieuGop(client: SupabaseClient, id: string, lyDo: string): Promise<KetQua> {
-  if (!laUuid(id)) return Promise.resolve({ ok: false, cau: 'Hóa đơn không hợp lệ.' });
-  if (!lyDo.trim()) return Promise.resolve({ ok: false, cau: 'Ghi lý do bỏ đối chiếu (ví dụ: chọn nhầm phiếu).' });
+  if (!laUuid(id)) return Promise.resolve(kqHai(false, { vi: 'Hóa đơn không hợp lệ.', en: 'Invalid invoice.' }));
+  if (!lyDo.trim()) {
+    return Promise.resolve(kqHai(false, { vi: 'Ghi lý do bỏ đối chiếu (ví dụ: chọn nhầm phiếu).', en: 'Enter a reason for undoing it (for example: wrong receipts picked).' }));
+  }
   return cauTraVe(client.rpc('kho_bo_doi_chieu_gop', { p_hoa_don_id: id, p_ly_do: lyDo.trim() }));
 }
 
 // --- Trả hàng hai bước -----------------------------------------------------------
 /** Dòng trả hàng: t{i}_lo (ẩn), t{i}_kg, t{i}_goi; dòng bỏ trống thì bỏ qua. */
-export function docDongTraHang(form: { get(ten: string): unknown }): { dong: Record<string, unknown>[]; loi: string[] } {
+export function docDongTraHang(form: { get(ten: string): unknown }): { dong: Record<string, unknown>[]; loi: string[]; loiEn: string[] } {
   const s = (t: string) => String(form.get(t) ?? '').trim();
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
   const dong: Record<string, unknown>[] = [];
   const soDong = docSoNguyen(form.get('so_dong'), 0, 200) ?? 0;
   for (let i = 0; i < (Number.isNaN(soDong) ? 0 : soDong); i++) {
@@ -1249,13 +1437,13 @@ export function docDongTraHang(form: { get(ten: string): unknown }): { dong: Rec
     if (!kgChu && !goiChu) continue;
     const kg = docKg(kgChu);
     const goi = docSoNguyen(goiChu, 0, 100000);
-    if (!laUuid(lo)) { loi.push('Lô không hợp lệ — tải lại trang'); continue; }
-    if (kg === null || Number.isNaN(kg) || kg <= 0) { loi.push(`Dòng ${i + 1}: ghi số kg trả (ví dụ 4,5)`); continue; }
-    if (Number.isNaN(goi)) { loi.push(`Dòng ${i + 1}: số tảng / gói là số nguyên`); continue; }
+    if (!laUuid(lo)) { bao(CAU_TRA_HANG.loSai); continue; }
+    if (kg === null || Number.isNaN(kg) || kg <= 0) { bao(CAU_TRA_HANG.kg(i + 1)); continue; }
+    if (Number.isNaN(goi)) { bao(CAU_TRA_HANG.goi(i + 1)); continue; }
     dong.push(goi !== null ? { lo_id: lo, so_kg: kg, so_goi: goi } : { lo_id: lo, so_kg: kg });
   }
-  if (!dong.length && !loi.length) loi.push('Chưa ghi số kg trả.');
-  return { dong, loi };
+  if (!dong.length && !loi.length) bao({ vi: 'Chưa ghi số kg trả.', en: 'No kg entered.' });
+  return { dong, loi, loiEn };
 }
 
 /**
@@ -1266,10 +1454,10 @@ export function docDongTraHang(form: { get(ten: string): unknown }): { dong: Rec
 export async function traHangGhiKg(
   client: SupabaseClient, chiNhanhId: string, form: FormData, ctx: { phieuNhapId: string | null; viTriId: string },
 ): Promise<KetQua & { id?: string }> {
-  const { dong, loi } = docDongTraHang(form);
-  if (loi.length) return { ok: false, cau: loi.join(' · ') };
+  const { dong, loi, loiEn } = docDongTraHang(form);
+  if (loi.length) return { ok: false, cau: loi.join(' · '), cauEn: loiEn.join(' · ') };
   const maGui = String(form.get('ma_gui') ?? '').trim();
-  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang.' };
+  if (!laUuid(maGui)) return kqHai(false, CAU.formCu);
   const tai = await taiAnh(client, chiNhanhId, 'huy', maGui, layTepAnh(form));
   const { data, error } = await client.rpc('kho_tra_hang_ghi_kg', {
     p_chi_nhanh_id: chiNhanhId,
@@ -1282,13 +1470,13 @@ export async function traHangGhiKg(
   });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const kq = (Array.isArray(data) ? data[0] : data) as { phieu_xuat_id: string; so_phieu: string; da_co: boolean } | undefined;
-  if (!kq) return { ok: false, cau: 'Không chắc đã ghi hay chưa — xem danh sách phiếu để kiểm tra.' };
-  const cauAnh = tai.loi.length ? ` Lưu ý: ${tai.loi.join(' · ')}` : '';
-  return {
-    ok: true, id: kq.phieu_xuat_id,
-    cau: (kq.da_co ? `Phiếu trả hàng ${kq.so_phieu} đã được ghi từ lần bấm trước.`
-      : `Đã ghi phiếu trả hàng ${kq.so_phieu}: hàng đã rời kho. Kế toán sẽ xác nhận với nhà cung cấp.`) + cauAnh,
-  };
+  if (!kq) return kqHai(false, CAU.khongChac);
+  const cauAnh = cauAnhLoi(tai);
+  const cau: HaiThuTieng = kq.da_co
+    ? { vi: `Phiếu trả hàng ${kq.so_phieu} đã được ghi từ lần bấm trước.`, en: `Return slip ${kq.so_phieu} was already saved on your earlier click.` }
+    : { vi: `Đã ghi phiếu trả hàng ${kq.so_phieu}: hàng đã rời kho. Kế toán sẽ xác nhận với nhà cung cấp.`,
+        en: `Return slip ${kq.so_phieu} recorded: the goods have left stock. The accountant will confirm with the supplier.` };
+  return { ...kqHai(true, { vi: cau.vi + cauAnh.vi, en: cau.en + cauAnh.en }), id: kq.phieu_xuat_id };
 }
 
 export interface TraHangChoTien {
@@ -1322,10 +1510,12 @@ export async function docTraHangChoTien(client: SupabaseClient, chiNhanhId: stri
 /** Trả hàng bước 2 (kế toán): so_tien trống = tự tính, 0 = NCC không trừ tiền (đổi hàng mới). */
 export async function xacNhanTienTraHang(client: SupabaseClient, form: FormData): Promise<KetQua> {
   const id = String(form.get('phieu_xuat_id') ?? '');
-  if (!laUuid(id)) return { ok: false, cau: 'Phiếu không hợp lệ.' };
+  if (!laUuid(id)) return kqHai(false, CAU.phieuKhongHopLe);
   const chu = String(form.get('so_tien') ?? '').trim();
   const tien = chu ? docTien(chu) : null;
-  if (tien !== null && (Number.isNaN(tien) || tien < 0)) return { ok: false, cau: 'Số tiền giảm trừ là số đồng (để trống = tự tính, 0 = không trừ).' };
+  if (tien !== null && (Number.isNaN(tien) || tien < 0)) {
+    return kqHai(false, { vi: 'Số tiền giảm trừ là số đồng (để trống = tự tính, 0 = không trừ).', en: 'The deduction must be in VND (empty = calculate it, 0 = no deduction).' });
+  }
   const { data, error } = await client.rpc('kho_xac_nhan_tien_tra_hang', {
     p_phieu_xuat_id: id,
     p_so_tien: tien,
@@ -1334,11 +1524,12 @@ export async function xacNhanTienTraHang(client: SupabaseClient, form: FormData)
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const kq = (Array.isArray(data) ? data[0] : data) as { so_phieu: string; so_tien_giam_tru: number; da_co: boolean } | undefined;
   const giam = so(kq?.so_tien_giam_tru);
-  const cauTien = giam > 0 ? `công nợ giảm ${giam.toLocaleString('vi-VN')} đ` : 'không giảm công nợ (0 đ)';
-  return {
-    ok: true,
-    cau: kq?.da_co ? `Phiếu ${kq.so_phieu} đã được xác nhận từ trước: ${cauTien}.` : `Đã xác nhận phiếu ${kq?.so_phieu ?? ''}: ${cauTien}.`,
-  };
+  const cauTien: HaiThuTieng = giam > 0
+    ? { vi: `công nợ giảm ${giam.toLocaleString('vi-VN')} đ`, en: `payables down by ${TIEN.en(giam)}` }
+    : { vi: 'không giảm công nợ (0 đ)', en: 'payables unchanged (0 ₫)' };
+  return kqHai(true, kq?.da_co
+    ? { vi: `Phiếu ${kq.so_phieu} đã được xác nhận từ trước: ${cauTien.vi}.`, en: `Slip ${kq.so_phieu} was already confirmed: ${cauTien.en}.` }
+    : { vi: `Đã xác nhận phiếu ${kq?.so_phieu ?? ''}: ${cauTien.vi}.`, en: `Slip ${kq?.so_phieu ?? ''} confirmed: ${cauTien.en}.` });
 }
 
 /**
@@ -1347,8 +1538,13 @@ export async function xacNhanTienTraHang(client: SupabaseClient, form: FormData)
  * kế toán hoặc quản lý. Không có tiền trong câu trả về.
  */
 export function huyTraHangChoTien(client: SupabaseClient, id: string, lyDo: string): Promise<KetQua> {
-  if (!laUuid(id)) return Promise.resolve({ ok: false, cau: 'Phiếu không hợp lệ.' });
-  if (!lyDo.trim()) return Promise.resolve({ ok: false, cau: 'Ghi lý do hủy (ví dụ: ghi nhầm số kg, nhà cung cấp không nhận lại).' });
+  if (!laUuid(id)) return Promise.resolve(kqHai(false, CAU.phieuKhongHopLe));
+  if (!lyDo.trim()) {
+    return Promise.resolve(kqHai(false, {
+      vi: 'Ghi lý do hủy (ví dụ: ghi nhầm số kg, nhà cung cấp không nhận lại).',
+      en: 'Enter a reason for cancelling (for example: wrong kg entered, the supplier would not take it back).',
+    }));
+  }
   return cauTraVe(client.rpc('kho_huy_tra_hang_cho_tien', { p_phieu_xuat_id: id, p_ly_do: lyDo.trim() }));
 }
 
@@ -1415,18 +1611,18 @@ export async function docMisaTk(client: SupabaseClient, chiNhanhId: string): Pro
 }
 
 export async function luuMisaTk(client: SupabaseClient, chiNhanhId: string, tk: Record<string, string>): Promise<KetQua> {
-  if (Object.keys(tk).length === 0) return { ok: false, cau: 'Chưa sửa mã tài khoản nào.' };
+  if (Object.keys(tk).length === 0) return kqHai(false, { vi: 'Chưa sửa mã tài khoản nào.', en: 'No account code was changed.' });
   const { error } = await client.rpc('kho_luu_misa_tk', { p_chi_nhanh_id: chiNhanhId, p_misa_tk: tk });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: 'Đã lưu mã tài khoản. File MISA từ giờ dùng các mã mới.' };
+  return kqHai(true, { vi: 'Đã lưu mã tài khoản. File MISA từ giờ dùng các mã mới.', en: 'Account codes saved. The MISA file uses the new codes from now on.' });
 }
 
 /** Kế toán sửa mã MISA của một mặt hàng (bảng mặt hàng chỉ quản lý sửa được — đi qua hàm riêng). */
 export async function luuMaMisaMatHang(client: SupabaseClient, matHangId: string, ma: string | null): Promise<KetQua> {
-  if (!laUuid(matHangId)) return { ok: false, cau: 'Mặt hàng không hợp lệ.' };
+  if (!laUuid(matHangId)) return kqHai(false, { vi: 'Mặt hàng không hợp lệ.', en: 'Invalid item.' });
   const { error } = await client.rpc('kho_luu_ma_misa_mat_hang', { p_mat_hang_id: matHangId, p_ma_misa: ma });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: ma ? `Đã lưu mã MISA ${ma}.` : 'Đã xóa mã MISA.' };
+  return kqHai(true, ma ? { vi: `Đã lưu mã MISA ${ma}.`, en: `MISA code ${ma} saved.` } : { vi: 'Đã xóa mã MISA.', en: 'MISA code removed.' });
 }
 
 /** NCC và mặt hàng kèm mã MISA — để tìm chỗ thiếu mã trên màn MISA. */

@@ -33,12 +33,125 @@ import {
   traHangNcc, traHangGhiKg, docTraHangChoTien, xacNhanTienTraHang, huyTraHangChoTien, catTrangBoNho, chuanTenNcc, type TraHangChoTien,
 } from '../../../../lib/kho/cong-no.ts';
 import { docTimDs } from '../../../../lib/kho/tim-ds.ts';
-import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, laUuid, type KetQua } from '../../../../lib/kho/chung.ts';
+import {
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, laUuid, kqHai, trangThaiKho, type HaiThuTieng, type KetQua,
+} from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('nhap') && !k.duoc('ke_toan')) return Astro.redirect('/noi-bo/kho', 302);
 if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
+const nn = k.nn;
+/** Câu báo của trang — cả hai thứ tiếng đi theo câu báo (KetQua.cauEn). */
+const CAU = {
+  khongThayPhieu: { vi: 'Không tìm thấy phiếu nhập.', en: 'Goods receipt not found.' },
+  chiPhieuMua: { vi: 'Chỉ trả hàng được cho phiếu nhập mua đã duyệt.', en: 'Goods can only be returned against an approved purchase receipt.' },
+  mangDut: {
+    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
+    en: 'Could not read what was sent — the connection may have dropped. Please send it again.',
+  },
+  xacNhanKeToan: { vi: 'Xác nhận tiền trả hàng do kế toán làm.', en: 'The accountant confirms the amount for returns.' },
+  loKhongCon: { vi: 'Lô này không còn ở nơi đã chọn — tải lại trang.', en: 'This lot is no longer at the chosen location — reload the page.' },
+  viecSai: { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+} satisfies Record<string, HaiThuTieng>;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Trả hàng nhà cung cấp', en: 'Return goods to a supplier' },
+  khongDoc: { vi: 'Không đọc được dữ liệu trả hàng.', en: 'Could not read the return data.' },
+  phieu: { vi: 'Phiếu', en: 'Receipt' },
+  nhap: { vi: 'nhập', en: 'received' },
+  hetHang: {
+    vi: 'Hàng của phiếu này không còn trong kho — đã pha lóc, bán hoặc xuất hết.',
+    en: 'The goods from this receipt are no longer in stock — already butchered, sold or issued.',
+  },
+  noiDeHang: { vi: 'Nơi đang để hàng', en: 'Where the goods are' },
+  loTaiDay: {
+    vi: (ma: string, viTri: string, kg: string) => `lô ${ma} · ở ${viTri} còn ${kg} kg`,
+    en: (ma: string, viTri: string, kg: string) => `lot ${ma} · ${kg} kg left at ${viTri}`,
+  },
+  muaGia: { vi: (gia: string) => ` · mua ${gia}/kg`, en: (gia: string) => ` · bought at ${gia}/kg` },
+  soKgTra: { vi: 'Số kg trả', en: 'Kg returned' },
+  soGoi: { vi: (dv: string) => `Số ${dv}`, en: (dv: string) => `Number of ${dv}` },
+  tienGiamTru: { vi: 'Tiền giảm trừ công nợ', en: 'Amount taken off payables' },
+  deTrongTuTinh: {
+    vi: (coThue: boolean) => `Để trống = tự tính: kg trả × đơn giá mua${coThue ? ' + phần thuế tương ứng' : ''}. Ghi đúng số trên biên bản nếu nhà cung cấp tính khác; ghi 0 nếu họ đổi hàng mới.`,
+    en: (coThue: boolean) => `Leave empty to calculate it: kg returned × purchase price${coThue ? ' + the matching tax' : ''}. Enter the figure on the return note if the supplier calculates differently; enter 0 if they replace the goods.`,
+  },
+  deTrong: { vi: 'để trống = tự tính', en: 'empty = calculated' },
+  ghiChu: { vi: 'Ghi chú', en: 'Note' },
+  viDuGhiChu: { vi: 'ví dụ: tảng bị rách túi, NCC nhận lại', en: 'e.g. torn bag on a primal, supplier took it back' },
+  anhBienBan: { vi: 'Ảnh biên bản trả hàng', en: 'Photo of the return note' },
+  ghiTraHang: { vi: 'Ghi trả hàng', en: 'Record return' },
+  veCongNo: { vi: (ten: string) => `← Công nợ ${ten}`, en: (ten: string) => `← Payables: ${ten}` },
+  loNhapO: {
+    vi: (ma: string, ngay: string, viTri: string) => `lô ${ma} · nhập ${ngay} · ở ${viTri} còn `,
+    en: (ma: string, ngay: string, viTri: string) => `lot ${ma} · received ${ngay} · at ${viTri}: `,
+  },
+  conLai: { vi: '', en: ' left' },
+  lyDoTra: { vi: 'Lý do trả', en: 'Reason for return' },
+  viDuLyDoTra: { vi: 'ví dụ: tảng bị rách túi, có mùi', en: 'e.g. torn bag on a primal, bad smell' },
+  anhHangTra: { vi: 'Ảnh hàng trả / biên bản', en: 'Photo of the returned goods / note' },
+  roiKhoNgay: {
+    vi: 'Hàng rời kho ngay khi bấm ghi. Kế toán sẽ xác nhận với nhà cung cấp sau.',
+    en: 'The goods leave stock as soon as you press record. The accountant will confirm with the supplier later.',
+  },
+  chonLoKhacVe: { vi: '← Chọn lô khác', en: '← Pick another lot' },
+  loKhongConHang: {
+    vi: 'Lô này không còn hàng nhập mua ở kho hay quầy. ',
+    en: 'This lot has no purchased goods left in the store or at the counter. ',
+  },
+  chonLoKhac: { vi: 'Chọn lô khác', en: 'Pick another lot' },
+  choXacNhan: { vi: 'Trả hàng chờ xác nhận tiền', en: 'Returns awaiting amount confirmation' },
+  khongCoCho: { vi: 'Không có phiếu trả hàng nào chờ xác nhận.', en: 'No returns are waiting for confirmation.' },
+  hangTra: { vi: 'Hàng trả', en: 'Returned goods' },
+  goiTang: { vi: (_n: number) => 'gói/tảng', en: (n: number) => s(n, 'pack/primal', 'packs/primals') },
+  soLo: { vi: (n: number) => `${n} lô`, en: (n: number) => `${n} ${s(n, 'lot', 'lots')}` },
+  phieuNhap: { vi: 'phiếu nhập', en: 'goods receipt' },
+  nguoiGhi: { vi: 'Người ghi', en: 'Recorded by' },
+  lyDo: { vi: 'Lý do', en: 'Reason' },
+  tuTinh: { vi: 'Tự tính', en: 'Calculated' },
+  tuTinhGiai: { vi: '(kg × đơn giá mua + phần thuế)', en: '(kg × purchase price + tax share)' },
+  xemPhieuAnh: { vi: 'Xem phiếu, ảnh →', en: 'See the slip and photos →' },
+  tienNccTru: { vi: 'Tiền nhà cung cấp trừ', en: 'Amount the supplier deducts' },
+  trongGoiY: {
+    vi: (tien: string) => `Trống = ${tien}. Ghi 0 nếu NCC đổi hàng mới.`,
+    en: (tien: string) => `Empty = ${tien}. Enter 0 if the supplier replaces the goods.`,
+  },
+  viDuBienBan: { vi: 'ví dụ: theo biên bản NCC ký 25/09', en: 'e.g. per the return note the supplier signed 25/09' },
+  xacNhan: { vi: 'Xác nhận', en: 'Confirm' },
+  huyPhieuNay: {
+    vi: 'Hủy phiếu này (ghi nhầm kg, nhà cung cấp không nhận lại)',
+    en: 'Cancel this slip (wrong kg, or the supplier would not take it back)',
+  },
+  hangVeLai: { vi: 'Hàng về lại đúng lô, đúng chỗ cũ. Công nợ không đổi.', en: 'The goods go back to the same lot and place. Payables do not change.' },
+  lyDoHuy: { vi: 'Lý do hủy', en: 'Reason for cancelling' },
+  viDuHuy: { vi: 'ví dụ: ghi nhầm 2,4 thành 24 kg', en: 'e.g. typed 24 kg instead of 2.4' },
+  huyPhieuTra: { vi: 'Hủy phiếu trả hàng', en: 'Cancel return slip' },
+  motBuoc: {
+    vi: 'Trả hàng một bước (ghi luôn tiền): Công nợ → nhà cung cấp → ở phiếu nhập bấm ',
+    en: 'One-step return (with the amount): Payables → supplier → on the goods receipt press ',
+  },
+  traHangNcc: { vi: 'Trả hàng cho nhà cung cấp →', en: 'Return goods to the supplier →' },
+  ghiHangTraKg: { vi: 'Ghi hàng trả (chỉ kg)', en: 'Record returned goods (kg only)' },
+  chonLoCanTra: { vi: 'Chọn lô hàng cần trả', en: 'Pick the lot to return' },
+  huongDanLo1: {
+    vi: 'Hàng hỏng, sai quy cách cần trả nhà cung cấp: tìm lô, bấm ',
+    en: 'Damaged or wrong goods to send back to the supplier: find the lot, press ',
+  },
+  traLoNay: { vi: 'Trả lô này', en: 'Return this lot' },
+  huongDanLo2: { vi: ', ghi số kg.', en: ', then enter the kg.' },
+  timGoiY: { vi: 'Tên hàng, mã hàng, mã lô', en: 'Item name, item code, lot code' },
+  timLo: { vi: 'Tìm lô', en: 'Search lots' },
+  tim: { vi: 'Tìm', en: 'Search' },
+  khongKhop: { vi: 'Không có lô nào khớp.', en: 'No lots match.' },
+  khongCoHang: { vi: 'Không có hàng nhập mua nào ở kho hay quầy.', en: 'No purchased goods in the store or at the counter.' },
+  hang: { vi: 'Hàng', en: 'Item' },
+  lo: { vi: 'Lô', en: 'Lot' },
+  oDau: { vi: 'Ở đâu', en: 'Where' },
+  conKg: { vi: 'Còn (kg)', en: 'Left (kg)' },
+  nhapHan: { vi: (a: string, b: string) => `nhập ${a} · hạn ${b}`, en: (a: string, b: string) => `received ${a} · use by ${b}` },
+});
 const cn = k.chiNhanh;
 const q = Astro.url.searchParams;
 const DUONG = '/noi-bo/kho/cong-no/tra-hang';
@@ -59,63 +172,63 @@ try {
   if (cheDo === 'phieu') {
     const doc = await docPhieuNhap(k.client, q.get('phieu') ?? '');
     if (doc) { phieu = doc.phieu; dong = doc.dong; maLo = doc.maLo; }
-    const [mh, t, ds] = await Promise.all([docMatHang(k.client), docTon(k.client, cn.id), docNhaCungCap(k.client)]);
-    matHang = mh; ton = t;
+    const [mh, tn, ds] = await Promise.all([docMatHang(k.client), docTon(k.client, cn.id), docNhaCungCap(k.client)]);
+    matHang = mh; ton = tn;
     tenNcc = ds.find(n => n.id === phieu?.nha_cung_cap_id)?.ten ?? '';
   } else {
-    const [t, ct] = await Promise.all([
+    const [tn, ct] = await Promise.all([
       docTon(k.client, cn.id),
       keToan && cheDo === 'ds' ? docTraHangChoTien(k.client, cn.id) : Promise.resolve([] as TraHangChoTien[]),
     ]);
-    ton = t;
+    ton = tn;
     choTien = ct;
   }
 } catch (e) {
-  loiDoc = cauLoiKho(e, 'Không đọc được dữ liệu trả hàng.');
+  loiDoc = cauLoiKho(e, t.khongDoc);
 }
-if (cheDo === 'phieu' && !phieu && !loiDoc) return chuyenHuong(Astro, '/noi-bo/kho/cong-no', { ok: false, cau: 'Không tìm thấy phiếu nhập.' });
+if (cheDo === 'phieu' && !phieu && !loiDoc) return chuyenHuong(Astro, '/noi-bo/kho/cong-no', kqHai(false, CAU.khongThayPhieu));
 if (phieu && (phieu.loai !== 'mua' || phieu.trang_thai !== 'da_duyet')) {
-  return chuyenHuong(Astro, `/noi-bo/kho/nhap/${phieu.id}`, { ok: false, cau: 'Chỉ trả hàng được cho phiếu nhập mua đã duyệt.' });
+  return chuyenHuong(Astro, `/noi-bo/kho/nhap/${phieu.id}`, kqHai(false, CAU.chiPhieuMua));
 }
 
 /** Lô trả được: hàng nhập mua, đang ở kho lạnh / quầy, còn kg. */
-const traDuoc = (t: DongTon) => t.nguon === 'nhap' && (t.loai_vi_tri === 'kho' || t.loai_vi_tri === 'quay') && t.so_kg > 0;
+const traDuoc = (x: DongTon) => x.nguon === 'nhap' && (x.loai_vi_tri === 'kho' || x.loai_vi_tri === 'quay') && x.so_kg > 0;
 
 // --- Chế độ một bước theo phiếu nhập (kế toán) ---
 const dongTheoLo = new Map(dong.filter(d => d.lo_id).map(d => [d.lo_id!, d]));
-const conHang = ton.filter(t => dongTheoLo.has(t.lo_id) && t.loai_vi_tri !== 'cho_huy' && t.loai_vi_tri !== 'dang_chuyen' && t.so_kg > 0);
-const noiDe = [...new Map(conHang.map(t => [t.vi_tri_id, t.ten_vi_tri])).entries()]
-  .map(([id, ten]) => ({ id, ten, kg: conHang.filter(t => t.vi_tri_id === id).reduce((s, t) => s + t.so_kg, 0) }))
+const conHang = ton.filter(x => dongTheoLo.has(x.lo_id) && x.loai_vi_tri !== 'cho_huy' && x.loai_vi_tri !== 'dang_chuyen' && x.so_kg > 0);
+const noiDe = [...new Map(conHang.map(x => [x.vi_tri_id, x.ten_vi_tri])).entries()]
+  .map(([id, ten]) => ({ id, ten, kg: conHang.filter(x => x.vi_tri_id === id).reduce((s, x) => s + x.so_kg, 0) }))
   .sort((a, b) => b.kg - a.kg);
 const viTri = noiDe.find(v => v.id === q.get('vi_tri')) ?? noiDe[0] ?? null;
-const loTaiDay = conHang.filter(t => t.vi_tri_id === viTri?.id);
+const loTaiDay = conHang.filter(x => x.vi_tri_id === viTri?.id);
 
 // --- Chế độ hai bước theo lô ---
-const loChon = cheDo === 'lo' ? ton.find(t => t.lo_id === q.get('lo') && t.vi_tri_id === q.get('vi_tri') && traDuoc(t))
-  ?? ton.find(t => t.lo_id === q.get('lo') && traDuoc(t)) ?? null : null;
+const loChon = cheDo === 'lo' ? ton.find(x => x.lo_id === q.get('lo') && x.vi_tri_id === q.get('vi_tri') && traDuoc(x))
+  ?? ton.find(x => x.lo_id === q.get('lo') && traDuoc(x)) ?? null : null;
 
 // --- Danh sách lô để chọn ---
 const tim = docTimDs(q);
 const dsLo = ton.filter(traDuoc)
-  .filter(t => !tim.q || chuanTenNcc(`${t.ten_hang} ${t.ma_hang} ${t.ma_lo}`).includes(chuanTenNcc(tim.q)));
+  .filter(x => !tim.q || chuanTenNcc(`${x.ten_hang} ${x.ma_hang} ${x.ma_lo}`).includes(chuanTenNcc(tim.q)));
 const loTrang = catTrangBoNho(dsLo, tim);
 
 let bao: KetQua | null = k.bao;
 const form = await docFormGui(Astro);
 if (Astro.request.method === 'POST' && !form) {
-  bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
+  bao = kqHai(false, CAU.mangDut);
 }
 if (form) {
   const viec = String(form.get('viec') ?? '');
   if (viec === 'xac_nhan_tien') {
-    if (!keToan) bao = { ok: false, cau: 'Xác nhận tiền trả hàng do kế toán làm.' };
+    if (!keToan) bao = kqHai(false, CAU.xacNhanKeToan);
     else return chuyenHuong(Astro, `${DUONG}#cho-tien`, await xacNhanTienTraHang(k.client, form));
   } else if (viec === 'huy_tra') {
     // Ghi nhầm / NCC không nhận lại: hàng về lại chỗ cũ (database kiểm quyền).
     return chuyenHuong(Astro, keToan ? `${DUONG}#cho-tien` : DUONG,
       await huyTraHangChoTien(k.client, String(form.get('phieu_xuat_id') ?? ''), String(form.get('ly_do') ?? '')));
   } else if (viec === 'ghi_kg') {
-    if (!loChon) bao = { ok: false, cau: 'Lô này không còn ở nơi đã chọn — tải lại trang.' };
+    if (!loChon) bao = kqHai(false, CAU.loKhongCon);
     else {
       const kq = await traHangGhiKg(k.client, cn.id, form, { phieuNhapId: null, viTriId: loChon.vi_tri_id });
       // Thủ kho: sang trang phiếu vừa ghi (thấy "Chờ kế toán xác nhận", hủy được nếu ghi nhầm).
@@ -129,7 +242,7 @@ if (form) {
     }
     bao = kq;
   } else {
-    bao = { ok: false, cau: 'Việc không hợp lệ.' };
+    bao = kqHai(false, CAU.viecSai);
   }
 }
 const tenMh = new Map(matHang.map(m => [m.id, m]));
@@ -138,22 +251,25 @@ const giaTri = (ten: string) => (form ? String(form.get(ten) ?? '') : '');
 // + thanh menu đáy của khung kho, để ô không bị che.
 const CHUA_CHO = 'scroll-margin-bottom:10rem';
 const huongDan = keToan ? 'tra-ncc' : 'tra-hang';
+/** Số tiền gợi ý trong ô nhập, theo cách ghi số của ngôn ngữ đang xem. */
+const soO = (n: number) => n.toLocaleString(nn === 'en' ? 'en-US' : 'vi-VN');
+const [choKeToan] = trangThaiKho('cho_xac_nhan_tien', nn);
 ---
-<Kho k={k} huongDan={huongDan} tieuDe="Trả hàng nhà cung cấp">
-  <h1>Trả hàng nhà cung cấp</h1>
+<Kho k={k} huongDan={huongDan} tieuDe={t.tieuDe}>
+  <h1>{t.tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {/* ====================== MỘT BƯỚC THEO PHIẾU (KẾ TOÁN) ====================== */}
   {cheDo === 'phieu' && phieu && (
     <>
-      <p class="nb-dan">Phiếu <a href={`/noi-bo/kho/nhap/${phieu.id}`}><strong>{phieu.so_phieu}</strong></a> · {tenNcc} · nhập {dinhDangNgay(phieu.ngay_nhap)}</p>
+      <p class="nb-dan">{t.phieu} <a href={`/noi-bo/kho/nhap/${phieu.id}`}><strong>{phieu.so_phieu}</strong></a> · {tenNcc} · {t.nhap} {dinhDangNgay(phieu.ngay_nhap)}</p>
 
       {noiDe.length === 0 ? (
-        <p class="nb-rong">Hàng của phiếu này không còn trong kho — đã pha lóc, bán hoặc xuất hết.</p>
+        <p class="nb-rong">{t.hetHang}</p>
       ) : (
         <>
           {noiDe.length > 1 && (
-            <nav class="kho-dh" aria-label="Nơi đang để hàng">
+            <nav class="kho-dh" aria-label={t.noiDeHang}>
               {noiDe.map(v => <a href={`${DUONG}?phieu=${phieu!.id}&vi_tri=${v.id}`} aria-current={v.id === viTri?.id ? 'page' : undefined}>{v.ten}</a>)}
             </nav>
           )}
@@ -161,38 +277,38 @@ const huongDan = keToan ? 'tra-ncc' : 'tra-hang';
             <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
             <input type="hidden" name="so_dong" value={String(loTaiDay.length)} />
             <div class="kho-lo-chon">
-              {loTaiDay.map((t, i) => {
-                const d = dongTheoLo.get(t.lo_id)!;
-                const mh = tenMh.get(t.mat_hang_id);
+              {loTaiDay.map((x, i) => {
+                const d = dongTheoLo.get(x.lo_id)!;
+                const mh = tenMh.get(x.mat_hang_id);
                 return (
                   <div>
-                    <input type="hidden" name={`t${i}_lo`} value={t.lo_id} />
+                    <input type="hidden" name={`t${i}_lo`} value={x.lo_id} />
                     <div class="dau">
-                      <b>{mh?.ten ?? t.ten_hang}</b>
-                      <span class="kho-phu">lô {maLo.get(t.lo_id) ?? t.ma_lo} · ở {t.ten_vi_tri} còn {dinhDangKg(t.so_kg)} kg{t.dem_goi ? ` · ${t.so_goi} ${t.don_vi_goi}` : ''} · mua {dinhDangTien(d.don_gia_kg)}/kg</span>
+                      <b>{mh?.ten ?? x.ten_hang}</b>
+                      <span class="kho-phu">{t.loTaiDay(maLo.get(x.lo_id) ?? x.ma_lo, x.ten_vi_tri, dinhDangKg(x.so_kg, nn))}{x.dem_goi ? ` · ${x.so_goi} ${x.don_vi_goi}` : ''}{t.muaGia(dinhDangTien(d.don_gia_kg, nn))}</span>
                     </div>
                     <div class="kho-luoi">
-                      <label class="nb-o"><span>Số kg trả</span><input type="text" inputmode="decimal" name={`t${i}_kg`} value={giaTri(`t${i}_kg`)} style={CHUA_CHO} /></label>
-                      {t.dem_goi && <label class="nb-o"><span>Số {t.don_vi_goi}</span><input type="text" inputmode="numeric" name={`t${i}_goi`} value={giaTri(`t${i}_goi`)} style={CHUA_CHO} /></label>}
+                      <label class="nb-o"><span>{t.soKgTra}</span><input type="text" inputmode="decimal" name={`t${i}_kg`} value={giaTri(`t${i}_kg`)} style={CHUA_CHO} /></label>
+                      {x.dem_goi && <label class="nb-o"><span>{t.soGoi(x.don_vi_goi)}</span><input type="text" inputmode="numeric" name={`t${i}_goi`} value={giaTri(`t${i}_goi`)} style={CHUA_CHO} /></label>}
                     </div>
                   </div>
                 );
               })}
             </div>
             <div class="nb-the" style="margin-bottom:1.5rem">
-              <label class="nb-o"><span>Tiền giảm trừ công nợ</span>
-                <small>Để trống = tự tính: kg trả × đơn giá mua{phieu.tien_thue > 0 ? ' + phần thuế tương ứng' : ''}. Ghi đúng số trên biên bản nếu nhà cung cấp tính khác; ghi 0 nếu họ đổi hàng mới.</small>
-                <input type="text" inputmode="numeric" name="so_tien_giam_tru" value={giaTri('so_tien_giam_tru')} placeholder="để trống = tự tính" style={CHUA_CHO} /></label>
-              <label class="nb-o"><span>Ghi chú</span><input type="text" name="ghi_chu" value={giaTri('ghi_chu')} maxlength="500" placeholder="ví dụ: tảng bị rách túi, NCC nhận lại" style={CHUA_CHO} /></label>
-              <label class="nb-o"><span>Ảnh biên bản trả hàng</span><input type="file" name="anh" accept="image/*,application/pdf" multiple style={CHUA_CHO} /></label>
+              <label class="nb-o"><span>{t.tienGiamTru}</span>
+                <small>{t.deTrongTuTinh(phieu.tien_thue > 0)}</small>
+                <input type="text" inputmode="numeric" name="so_tien_giam_tru" value={giaTri('so_tien_giam_tru')} placeholder={t.deTrong} style={CHUA_CHO} /></label>
+              <label class="nb-o"><span>{t.ghiChu}</span><input type="text" name="ghi_chu" value={giaTri('ghi_chu')} maxlength="500" placeholder={t.viDuGhiChu} style={CHUA_CHO} /></label>
+              <label class="nb-o"><span>{t.anhBienBan}</span><input type="file" name="anh" accept="image/*,application/pdf" multiple style={CHUA_CHO} /></label>
             </div>
             <div class="kho-thanh-nut dinh">
-              <button type="submit" class="nb-nut">Ghi trả hàng</button>
+              <button type="submit" class="nb-nut">{t.ghiTraHang}</button>
             </div>
           </form>
         </>
       )}
-      <p style="margin-top:1.5rem"><a href={`/noi-bo/kho/cong-no/${phieu.nha_cung_cap_id}`}>← Công nợ {tenNcc}</a></p>
+      <p style="margin-top:1.5rem"><a href={`/noi-bo/kho/cong-no/${phieu.nha_cung_cap_id}`}>{t.veCongNo(tenNcc)}</a></p>
     </>
   )}
 
@@ -206,22 +322,22 @@ const huongDan = keToan ? 'tra-ncc' : 'tra-hang';
         <input type="hidden" name="t0_lo" value={loChon.lo_id} />
         <div class="nb-the">
           <p style="margin:0 0 .25rem"><b>{loChon.ten_hang}</b></p>
-          <p class="kho-phu" style="margin:0 0 .75rem">lô {loChon.ma_lo} · nhập {dinhDangNgay(loChon.ngay_dong_goi)} · ở {loChon.ten_vi_tri} còn <strong>{dinhDangKg(loChon.so_kg)} kg</strong>{loChon.dem_goi ? ` · ${loChon.so_goi} ${loChon.don_vi_goi}` : ''}</p>
+          <p class="kho-phu" style="margin:0 0 .75rem">{t.loNhapO(loChon.ma_lo, dinhDangNgay(loChon.ngay_dong_goi), loChon.ten_vi_tri)}<strong>{dinhDangKg(loChon.so_kg, nn)} kg</strong>{t.conLai}{loChon.dem_goi ? ` · ${loChon.so_goi} ${loChon.don_vi_goi}` : ''}</p>
           <div class="kho-luoi">
-            <label class="nb-o"><span>Số kg trả</span><input type="text" inputmode="decimal" name="t0_kg" value={giaTri('t0_kg')} required style={CHUA_CHO} /></label>
-            {loChon.dem_goi && <label class="nb-o"><span>Số {loChon.don_vi_goi}</span><input type="text" inputmode="numeric" name="t0_goi" value={giaTri('t0_goi')} style={CHUA_CHO} /></label>}
+            <label class="nb-o"><span>{t.soKgTra}</span><input type="text" inputmode="decimal" name="t0_kg" value={giaTri('t0_kg')} required style={CHUA_CHO} /></label>
+            {loChon.dem_goi && <label class="nb-o"><span>{t.soGoi(loChon.don_vi_goi)}</span><input type="text" inputmode="numeric" name="t0_goi" value={giaTri('t0_goi')} style={CHUA_CHO} /></label>}
           </div>
-          <label class="nb-o"><span>Lý do trả</span><input type="text" name="ghi_chu" value={giaTri('ghi_chu')} maxlength="500" placeholder="ví dụ: tảng bị rách túi, có mùi" style={CHUA_CHO} /></label>
-          <label class="nb-o"><span>Ảnh hàng trả / biên bản</span><input type="file" name="anh" accept="image/*,application/pdf" multiple style={CHUA_CHO} /></label>
-          <p class="kho-phu" style="margin:0">Hàng rời kho ngay khi bấm ghi. Kế toán sẽ xác nhận với nhà cung cấp sau.</p>
+          <label class="nb-o"><span>{t.lyDoTra}</span><input type="text" name="ghi_chu" value={giaTri('ghi_chu')} maxlength="500" placeholder={t.viDuLyDoTra} style={CHUA_CHO} /></label>
+          <label class="nb-o"><span>{t.anhHangTra}</span><input type="file" name="anh" accept="image/*,application/pdf" multiple style={CHUA_CHO} /></label>
+          <p class="kho-phu" style="margin:0">{t.roiKhoNgay}</p>
         </div>
         <div class="kho-thanh-nut dinh">
-          <button type="submit" class="nb-nut">Ghi trả hàng</button>
+          <button type="submit" class="nb-nut">{t.ghiTraHang}</button>
         </div>
-        <p style="margin-top:1rem"><a href={DUONG}>← Chọn lô khác</a></p>
+        <p style="margin-top:1rem"><a href={DUONG}>{t.chonLoKhacVe}</a></p>
       </form>
     ) : (
-      <p class="nb-rong">Lô này không còn hàng nhập mua ở kho hay quầy. <a href={DUONG}>Chọn lô khác</a></p>
+      <p class="nb-rong">{t.loKhongConHang}<a href={DUONG}>{t.chonLoKhac}</a></p>
     )
   )}
 
@@ -230,71 +346,71 @@ const huongDan = keToan ? 'tra-ncc' : 'tra-hang';
     <>
       {keToan && (
         <section id="cho-tien" style="scroll-margin-top:5rem">
-          <h2>Trả hàng chờ xác nhận tiền</h2>
+          <h2>{t.choXacNhan}</h2>
           {choTien.length === 0 ? (
-            <p class="nb-rong">Không có phiếu trả hàng nào chờ xác nhận.</p>
+            <p class="nb-rong">{t.khongCoCho}</p>
           ) : choTien.map(p => (
             <div class="nb-dong">
               <div class="nb-dong-dau">
                 <strong>{p.so_phieu} · {p.ten_nha_cung_cap ?? '—'}</strong>
-                <span class="nb-nhan cho" style="text-transform:none">Chờ kế toán xác nhận</span>
+                <span class="nb-nhan cho" style="text-transform:none">{choKeToan}</span>
               </div>
               <dl>
-                <dt>Hàng trả</dt><dd>{dinhDangKg(p.tong_kg)} kg{p.tong_goi > 0 ? ` · ${p.tong_goi} gói/tảng` : ''} · {p.so_dong} lô · phiếu nhập <a href={`/noi-bo/kho/nhap/${p.phieu_nhap_id}`}>{p.so_phieu_nhap}</a></dd>
-                <dt>Người ghi</dt><dd>{p.nguoi_ghi ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
-                {p.ghi_chu && <><dt>Lý do</dt><dd>{p.ghi_chu}</dd></>}
-                <dt>Tự tính</dt><dd><strong>{dinhDangTien(p.so_tien_goi_y)}</strong> <span class="kho-phu">(kg × đơn giá mua + phần thuế)</span></dd>
+                <dt>{t.hangTra}</dt><dd>{dinhDangKg(p.tong_kg, nn)} kg{p.tong_goi > 0 ? ` · ${p.tong_goi} ${t.goiTang(p.tong_goi)}` : ''} · {t.soLo(p.so_dong)} · {t.phieuNhap} <a href={`/noi-bo/kho/nhap/${p.phieu_nhap_id}`}>{p.so_phieu_nhap}</a></dd>
+                <dt>{t.nguoiGhi}</dt><dd>{p.nguoi_ghi ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
+                {p.ghi_chu && <><dt>{t.lyDo}</dt><dd>{p.ghi_chu}</dd></>}
+                <dt>{t.tuTinh}</dt><dd><strong>{dinhDangTien(p.so_tien_goi_y, nn)}</strong> <span class="kho-phu">{t.tuTinhGiai}</span></dd>
               </dl>
-              <p style="margin:.25rem 0 0"><a href={`/noi-bo/kho/xuat/${p.phieu_xuat_id}`}>Xem phiếu, ảnh →</a></p>
+              <p style="margin:.25rem 0 0"><a href={`/noi-bo/kho/xuat/${p.phieu_xuat_id}`}>{t.xemPhieuAnh}</a></p>
               <form method="POST" class="kho-luoi" style="align-items:end;margin-top:.5rem">
                 <input type="hidden" name="viec" value="xac_nhan_tien" />
                 <input type="hidden" name="phieu_xuat_id" value={p.phieu_xuat_id} />
-                <label class="nb-o"><span>Tiền nhà cung cấp trừ</span>
-                  <small>Trống = {dinhDangTien(p.so_tien_goi_y)}. Ghi 0 nếu NCC đổi hàng mới.</small>
-                  <input type="text" inputmode="numeric" name="so_tien" placeholder={p.so_tien_goi_y.toLocaleString('vi-VN')} /></label>
-                <label class="nb-o"><span>Ghi chú</span><input type="text" name="ghi_chu" maxlength="500" placeholder="ví dụ: theo biên bản NCC ký 25/09" /></label>
-                <button type="submit" class="nb-nut">Xác nhận</button>
+                <label class="nb-o"><span>{t.tienNccTru}</span>
+                  <small>{t.trongGoiY(dinhDangTien(p.so_tien_goi_y, nn))}</small>
+                  <input type="text" inputmode="numeric" name="so_tien" placeholder={soO(p.so_tien_goi_y)} /></label>
+                <label class="nb-o"><span>{t.ghiChu}</span><input type="text" name="ghi_chu" maxlength="500" placeholder={t.viDuBienBan} /></label>
+                <button type="submit" class="nb-nut">{t.xacNhan}</button>
               </form>
               <details>
-                <summary style="cursor:pointer;font-size:.85rem;color:var(--muc-nhat);padding:.8rem 0">Hủy phiếu này (ghi nhầm kg, nhà cung cấp không nhận lại)</summary>
+                <summary style="cursor:pointer;font-size:.85rem;color:var(--muc-nhat);padding:.8rem 0">{t.huyPhieuNay}</summary>
                 <form method="POST" style="margin-top:.25rem">
                   <input type="hidden" name="viec" value="huy_tra" />
                   <input type="hidden" name="phieu_xuat_id" value={p.phieu_xuat_id} />
-                  <p class="kho-phu" style="margin:0 0 .5rem">Hàng về lại đúng lô, đúng chỗ cũ. Công nợ không đổi.</p>
-                  <label class="nb-o"><span>Lý do hủy</span><input type="text" name="ly_do" required maxlength="500" placeholder="ví dụ: ghi nhầm 2,4 thành 24 kg" /></label>
-                  <button type="submit" class="nb-nut kho-nut-xoa">Hủy phiếu trả hàng</button>
+                  <p class="kho-phu" style="margin:0 0 .5rem">{t.hangVeLai}</p>
+                  <label class="nb-o"><span>{t.lyDoHuy}</span><input type="text" name="ly_do" required maxlength="500" placeholder={t.viDuHuy} /></label>
+                  <button type="submit" class="nb-nut kho-nut-xoa">{t.huyPhieuTra}</button>
                 </form>
               </details>
             </div>
           ))}
-          <p class="kho-phu">Trả hàng một bước (ghi luôn tiền): Công nợ → nhà cung cấp → ở phiếu nhập bấm <strong>Trả hàng cho nhà cung cấp →</strong>.</p>
+          <p class="kho-phu">{t.motBuoc}<strong>{t.traHangNcc}</strong>.</p>
         </section>
       )}
 
       {(thuKho || keToan) && (
         <section>
-          <h2>{keToan ? 'Ghi hàng trả (chỉ kg)' : 'Chọn lô hàng cần trả'}</h2>
-          <p class="nb-dan">Hàng hỏng, sai quy cách cần trả nhà cung cấp: tìm lô, bấm <strong>Trả lô này</strong>, ghi số kg.</p>
+          <h2>{keToan ? t.ghiHangTraKg : t.chonLoCanTra}</h2>
+          <p class="nb-dan">{t.huongDanLo1}<strong>{t.traLoNay}</strong>{t.huongDanLo2}</p>
           <form method="GET" action={DUONG} class="kho-tim" role="search">
             <div class="kho-tim-hang">
-              <label class="nb-o"><input type="search" name="q" value={tim.q} placeholder="Tên hàng, mã hàng, mã lô" aria-label="Tìm lô" autocomplete="off" /></label>
-              <button type="submit" class="nb-nut phu">Tìm</button>
+              <label class="nb-o"><input type="search" name="q" value={tim.q} placeholder={t.timGoiY} aria-label={t.timLo} autocomplete="off" /></label>
+              <button type="submit" class="nb-nut phu">{t.tim}</button>
             </div>
           </form>
           {dsLo.length === 0 ? (
-            <p class="nb-rong">{tim.q ? 'Không có lô nào khớp.' : 'Không có hàng nhập mua nào ở kho hay quầy.'}</p>
+            <p class="nb-rong">{tim.q ? t.khongKhop : t.khongCoHang}</p>
           ) : (
             <div class="kho-bang-khung">
               <table class="kho-bang">
-                <thead><tr><th>Hàng</th><th>Lô</th><th>Ở đâu</th><th class="so">Còn (kg)</th><th></th></tr></thead>
+                <thead><tr><th>{t.hang}</th><th>{t.lo}</th><th>{t.oDau}</th><th class="so">{t.conKg}</th><th></th></tr></thead>
                 <tbody>
-                  {loTrang.ds.map(t => (
+                  {loTrang.ds.map(x => (
                     <tr>
-                      <td><strong>{t.ten_hang}</strong><br /><span class="kho-phu">{t.ma_hang}</span></td>
-                      <td>{t.ma_lo}<br /><span class="kho-phu">nhập {dinhDangNgay(t.ngay_dong_goi)} · hạn {dinhDangNgay(t.han_dung)}</span></td>
-                      <td>{t.ten_vi_tri}</td>
-                      <td class="so"><b>{dinhDangKg(t.so_kg)}</b>{t.dem_goi ? <><br /><span class="kho-phu">{t.so_goi} {t.don_vi_goi}</span></> : null}</td>
-                      <td><a class="nb-nut phu" style="white-space:nowrap" href={`${DUONG}?lo=${t.lo_id}&vi_tri=${t.vi_tri_id}`}>Trả lô này</a></td>
+                      <td><strong>{x.ten_hang}</strong><br /><span class="kho-phu">{x.ma_hang}</span></td>
+                      <td>{x.ma_lo}<br /><span class="kho-phu">{t.nhapHan(dinhDangNgay(x.ngay_dong_goi), dinhDangNgay(x.han_dung))}</span></td>
+                      <td>{x.ten_vi_tri}</td>
+                      <td class="so"><b>{dinhDangKg(x.so_kg, nn)}</b>{x.dem_goi ? <><br /><span class="kho-phu">{x.so_goi} {x.don_vi_goi}</span></> : null}</td>
+                      <td><a class="nb-nut phu" style="white-space:nowrap" href={`${DUONG}?lo=${x.lo_id}&vi_tri=${x.vi_tri_id}`}>{t.traLoNay}</a></td>
                     </tr>
                   ))}
                 </tbody>

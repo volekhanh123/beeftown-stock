@@ -321,12 +321,19 @@ await nhom('7 · MÃ NGUỒN TRANG, MENU, HƯỚNG DẪN', async () => {
   ok('Form ghi tiền / hóa đơn gộp / ghi kg có ma_gui', /name="ma_gui" value=\{maGui\}/.test(trang.tt) && /name="ma_gui" value=\{maGui\}/.test(trang.gop)
      && /value="ghi_kg"/.test(trang.tra) && /name="ma_gui"/.test(trang.tra));
   ok('Trả tiền: nút Xem trước và Trả đủ, ô gợi ý ẩn', /value="xem_truoc"/.test(trang.tt) && /value="tra_du"/.test(trang.tt) && /_goi_y`\}/.test(trang.tt));
-  ok('Công nợ: 4 thẻ, dải công thức, "Xem ví dụ", chip, tìm, phân trang', /'thanh-toan': 'Thanh toán', 'theo-doi': 'Theo dõi'/.test(trang.ds)
+  // Tên thẻ hai thứ tiếng { vi, en }, hiện bằng THE[th][nn] (không in cả object).
+  ok('Công nợ: 4 thẻ, dải công thức, "Xem ví dụ", chip, tìm, phân trang',
+     /'thanh-toan': \{ vi: 'Thanh toán', en: '[^']+' \}, 'theo-doi': \{ vi: 'Theo dõi', en: '[^']+' \}/.test(trang.ds)
+     && /\{THE\[th\]\[nn\]\}/.test(trang.ds)
      && /Còn phải trả/.test(trang.ds) && /<details>/.test(trang.ds) && /Xem ví dụ/.test(trang.ds) && /CHIP_CONG_NO/.test(trang.ds)
      && /<PhanTrang/.test(trang.ds) && /<LocDanhSach/.test(trang.ds) && /<tfoot>/.test(trang.ds));
   ok('Link cũ ?loc=… không tab vẫn mở danh sách phiếu', /chip \? 'phieu' : 'ncc'/.test(trang.ds));
-  ok('Trang NCC: Trả tiền, Đối chiếu hóa đơn gộp, In biên bản, cảnh báo đổi tài khoản', /const TT = `\/noi-bo\/kho\/cong-no\/\$\{ncc\.id\}\/tra-tien`/.test(trang.ncc) && /href=\{TT\}>Trả tiền</.test(trang.ncc)
-     && /\/hoa-don-gop`\}>Đối chiếu hóa đơn gộp</.test(trang.ncc) && /\/doi-chieu`\}>In biên bản đối chiếu</.test(trang.ncc) && /doiTaiKhoanGanDay/.test(trang.ncc));
+  // Chữ nút hai thứ tiếng (dichNB): chỗ cũ là {t.x}, câu tiếng Việt nằm ở x: { vi: '…' }.
+  ok('Trang NCC: Trả tiền, Đối chiếu hóa đơn gộp, In biên bản, cảnh báo đổi tài khoản', /const TT = `\/noi-bo\/kho\/cong-no\/\$\{ncc\.id\}\/tra-tien`/.test(trang.ncc)
+     && /href=\{TT\}>\{t\.traTien\}</.test(trang.ncc) && /\btraTien: \{ vi: 'Trả tiền'/.test(trang.ncc)
+     && /\/hoa-don-gop`\}>\{t\.doiChieuGop\}</.test(trang.ncc) && /\bdoiChieuGop: \{ vi: 'Đối chiếu hóa đơn gộp'/.test(trang.ncc)
+     && /\/doi-chieu`\}>\{t\.inBienBan\}</.test(trang.ncc) && /\binBienBan: \{ vi: 'In biên bản đối chiếu'/.test(trang.ncc)
+     && /doiTaiKhoanGanDay/.test(trang.ncc));
   ok('Phiếu trong hóa đơn gộp không có form đối chiếu lẻ', /p\.hoa_don_gop_id \? \(/.test(trang.ncc));
   ok('Biên bản in được: InDau, KyTen, NutIn', /<InDau /.test(trang.bb) && /<KyTen /.test(trang.bb) && /<NutIn /.test(trang.bb));
   ok('MISA: tải qua misa.csv, route có thật', /cong-no\/misa\.csv\?/.test(trang.misa) && existsSync(join(KHO, 'cong-no', 'misa.csv.ts')));

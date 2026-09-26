@@ -114,15 +114,6 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     'pages/noi-bo/kho/xuat/index.astro',
     // ---- hết gói vận hành ----
     // ---- gói công nợ: công nợ NCC, trả tiền, đối chiếu, trả hàng, MISA ----
-    'lib/kho/cong-no.ts',
-    'pages/noi-bo/kho/cong-no/[id].astro',
-    'pages/noi-bo/kho/cong-no/[id]/doi-chieu.astro',
-    'pages/noi-bo/kho/cong-no/[id]/hoa-don-gop.astro',
-    'pages/noi-bo/kho/cong-no/[id]/tra-tien.astro',
-    'pages/noi-bo/kho/cong-no/index.astro',
-    'pages/noi-bo/kho/cong-no/misa.astro',
-    'pages/noi-bo/kho/cong-no/no-dau.astro',
-    'pages/noi-bo/kho/cong-no/tra-hang.astro',
     // ---- hết gói công nợ ----
     // ---- gói báo cáo: báo cáo, định lượng món, định mức bếp ----
     'components/kho/ChonKy.astro',
