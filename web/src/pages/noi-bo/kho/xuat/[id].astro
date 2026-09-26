@@ -700,9 +700,9 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
               <input type="hidden" name="so_dong" value={String(dongHienA.length)} />
               <input type="hidden" name="so_lo" value={String(hienTheoLo ? loHien.length : 0)} />
               <p class="nb-dan">
-                {loai === 'chuyen' && <>{ch.chuyenTu}<strong>{tu.ten}</strong>{ch.sang}<strong>{den?.ten}</strong>.</>}
-                {loai === 'xuat_bep' && <>{ch.xuatBepTu}<strong>{tu.ten}</strong>.</>}
-                {loai === 'xuat_khac' && <>{ch.xuatTu}<strong>{tu.ten}</strong>{ch.xuatKhacDuoi}</>}
+                {loai === 'chuyen' && <>{ch.chuyenTu}<strong>{tu.ten}</strong>{ch.sang}<strong>{den?.ten}</strong>.</>}{' '}
+                {loai === 'xuat_bep' && <>{ch.xuatBepTu}<strong>{tu.ten}</strong>.</>}{' '}
+                {loai === 'xuat_khac' && <>{ch.xuatTu}<strong>{tu.ten}</strong>{ch.xuatKhacDuoi}</>}{' '}
                 {loai === 'huy' && <>{ch.baoHuyO}<strong>{tu.ten}</strong>{ch.baoHuyDuoi}</>}
                 {chiConHan && <>{ch.boQua1}<strong>{ch.boQua2}</strong>{ch.boQua3}</>}
               </p>
@@ -979,8 +979,8 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
       </div>
       {phieu.loai === 'huy' && (
         <p class="kho-phu">
-          {phieu.trang_thai === 'cho_duyet' && ch.huyCho}
-          {phieu.trang_thai === 'da_duyet' && ch.daGhiHuy(dinhDangKg(Math.abs(daHuy.reduce((s, x) => s + x.so_kg, 0)), nn))}
+          {phieu.trang_thai === 'cho_duyet' && ch.huyCho}{' '}
+          {phieu.trang_thai === 'da_duyet' && ch.daGhiHuy(dinhDangKg(Math.abs(daHuy.reduce((s, x) => s + x.so_kg, 0)), nn))}{' '}
           {phieu.trang_thai === 'tu_choi' && ch.veChoCu}
         </p>
       )}

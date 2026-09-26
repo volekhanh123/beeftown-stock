@@ -160,15 +160,13 @@ const goiYThieu = goiY ? [...goiY.tyLe].filter(([mh]) => !luoiDung.some(d => d.m
   {dangSua && (
     <div class="nb-the">
       <h2 style="margin-top:0">{dangSua.ten}</h2>
-      <p class="kho-phu">{t.dauVao}<strong>{tenMh.get(dangSua.mat_hang_vao_id)?.ten ?? '—'}</strong>{t.moTaLuoi}
-        {t.suaXong}<strong>{t.tinhLai}</strong>{t.deXemTong}<strong>{t.luuCongThuc}</strong>.</p>
+      <p class="kho-phu">{t.dauVao}<strong>{tenMh.get(dangSua.mat_hang_vao_id)?.ten ?? '—'}</strong>{t.moTaLuoi} {t.suaXong}<strong>{t.tinhLai}</strong>{t.deXemTong}<strong>{t.luuCongThuc}</strong>.</p>
 
       {goiY && !goiY.loi && (
         <p class="nb-dan" style="font-size:.9rem">
           {goiY.soPhien === 0
             ? t.chuaCoGoiY(NGAY_GOI_Y)
-            : <>{t.goiYTu}<strong>{t.soPhien(goiY.soPhien)}</strong>{t.goiYTrong(NGAY_GOI_Y, dinhDangKg(goiY.kgVao, nn))}
-                {t.cot}<strong>{t.goiY}</strong>{t.goiYCuoi}</>}
+            : <>{t.goiYTu}<strong>{t.soPhien(goiY.soPhien)}</strong>{t.goiYTrong(NGAY_GOI_Y, dinhDangKg(goiY.kgVao, nn))} {t.cot}<strong>{t.goiY}</strong>{t.goiYCuoi}</>}
         </p>
       )}
 

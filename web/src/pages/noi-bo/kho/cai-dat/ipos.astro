@@ -334,8 +334,7 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
       <section class={`nb-bao ${lopDen(tt.den)}`} aria-live="polite">
         <p style="margin:0"><strong>{chuDen(tt.den, nn)}.</strong> {dichCau(nn, tt.cau)}</p>
         <p class="kho-phu" style="margin:.35rem 0 0">
-          {t.lanNhanHd} <strong>{tt.nhan_hd_luc ? dinhDangThoiDiem(tt.nhan_hd_luc) : t.chuaNhanHd}</strong>
-          · {t.lanCapNhatCuoi} {dinhDangThoiDiem(tt.lan_cuoi_luc)}
+          {t.lanNhanHd} <strong>{tt.nhan_hd_luc ? dinhDangThoiDiem(tt.nhan_hd_luc) : t.chuaNhanHd}</strong> · {t.lanCapNhatCuoi} {dinhDangThoiDiem(tt.lan_cuoi_luc)}
           {tt.dang_chay && t.dangChay}
         </p>
         <p class="kho-phu" style="margin:.35rem 0 0">
@@ -373,8 +372,7 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
         {dangIpos ? (
           <>
             <p style="margin-top:0"><span class="nb-nhan song">{t.dangDung}</span> {t.khoTuTru}
-              <strong> {dinhDangThoiDiem(tt.ipos_tu_luc)}</strong>{tenQuay ? <> {t.oQuay} <strong>{tenQuay}</strong></> : ''}.
-              {t.demQuayGio}</p>
+              <strong> {dinhDangThoiDiem(tt.ipos_tu_luc)}</strong>{tenQuay ? <> {t.oQuay} <strong>{tenQuay}</strong></> : ''}. {t.demQuayGio}</p>
             {laChu && (
               <form method="POST">
                 <input type="hidden" name="viec" value="tro_ve" />
@@ -385,8 +383,7 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
           </>
         ) : (
           <>
-            <p style="margin-top:0"><span class="nb-nhan cho">{t.chuaDung}</span> {t.soBanLay} <strong>{t.demQuayCuoiNgay}</strong>
-              {t.soBanLayGiai}</p>
+            <p style="margin-top:0"><span class="nb-nhan cho">{t.chuaDung}</span> {t.soBanLay} <strong>{t.demQuayCuoiNgay}</strong> {t.soBanLayGiai}</p>
             {laChu ? (
               <form method="POST">
                 <input type="hidden" name="viec" value="chuyen_sang" />
@@ -444,8 +441,7 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
             <small>{t.baoMatKetNoiGiai}</small>
             <input type="text" inputmode="numeric" name="gio_mat_ket_noi" value={o('gio_mat_ket_noi', tt.gio_mat_ket_noi)} />
           </label>
-          <p class="kho-phu" style="margin:0 0 .75rem">{t.quanVang}
-            <strong>{t.khongDanToken}</strong> {t.tokenBiMat}</p>
+          <p class="kho-phu" style="margin:0 0 .75rem">{t.quanVang} <strong>{t.khongDanToken}</strong> {t.tokenBiMat}</p>
           <button type="submit" class="nb-nut">{t.luuCauHinh}</button>
         </form>
       ) : (
@@ -494,11 +490,9 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
           {t.tokenIpos} <span class={`nb-nhan ${coToken ? 'song' : 'cho'}`}>{coToken ? t.daCai : t.chuaCai}</span>
         </p>
         <ol class="kho-phu" style="margin:.75rem 0 0;padding-left:1.25rem">
-          <li>{t.cai1a(KHOA_TOI_THIEU)} <code>openssl rand -hex 24</code>{t.cai1b}
-            <code>npx wrangler secret put IPOS_CALLBACK_KHOA</code> {t.cai1c}</li>
+          <li>{t.cai1a(KHOA_TOI_THIEU)} <code>openssl rand -hex 24</code>{t.cai1b} <code>npx wrangler secret put IPOS_CALLBACK_KHOA</code> {t.cai1c}</li>
           <li>{t.cai2a} <strong>{t.mayDongBoIpos}</strong> {t.oTrang} <a href="/noi-bo/kho/cai-dat/nhan-vien">{t.nhanVienMay}</a>{t.cai2b}</li>
-          <li>{t.cai3a} <code>KHO_IPOS_EMAIL</code> {t.va} <code>KHO_IPOS_MAT_KHAU</code>
-            {t.cai3b}</li>
+          <li>{t.cai3a} <code>KHO_IPOS_EMAIL</code> {t.va} <code>KHO_IPOS_MAT_KHAU</code> {t.cai3b}</li>
           <li>{t.cai4a} <code>npx wrangler secret put IPOS_ACCESS_TOKEN</code> {t.cai4b} <strong>Secret</strong>{t.cai4c}</li>
           <li>{t.cai5a} <strong>{t.batDongBo}</strong>{t.cai5b} <strong>{t.luuCauHinh}</strong>{t.cai5c} <strong>{t.capNhatNgay}</strong> {t.cai5d}</li>
         </ol>

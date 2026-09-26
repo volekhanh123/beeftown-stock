@@ -114,8 +114,7 @@ const HIEN_TOI_DA = 12;
         <input type="hidden" name="canh_bao_truoc_ngay" value={String(caiDat.canh_bao_truoc_ngay)} />
         <label class="nb-o">
           <span>{t.mau}</span>
-          <small>{t.mauGoiY1}
-            {t.mauGoiY2}<code>{MAU_MAC_DINH}</code>{t.mauGoiY3}</small>
+          <small>{t.mauGoiY1} {t.mauGoiY2}<code>{MAU_MAC_DINH}</code>{t.mauGoiY3}</small>
           <input type="text" name="mau_ma_vach" value={mau} maxlength="13" autocapitalize="characters" spellcheck="false" style="font-family:monospace;letter-spacing:.15em" />
         </label>
         <label class="nb-o">
@@ -130,8 +129,7 @@ const HIEN_TOI_DA = 12;
 
       {chuaCoMaCan.length > 0 && (
         <div class="nb-bao luu-y">
-          <p><strong>{t.thieuMaCan(chuaCoMaCan.length)}</strong>{t.thieuMaCan2}
-            {t.bamTen}</p>
+          <p><strong>{t.thieuMaCan(chuaCoMaCan.length)}</strong>{t.thieuMaCan2} {t.bamTen}</p>
           <ul class="thieu-ma-can">
             {chuaCoMaCan.slice(0, HIEN_TOI_DA).map(m => (
               <li><a href={`/noi-bo/kho/cai-dat/mat-hang?sua=${m.id}`}>{m.ten}</a></li>

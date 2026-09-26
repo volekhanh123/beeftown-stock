@@ -607,8 +607,8 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
                       <td>{mh?.ten ?? '—'}{d.lo_id && <><br /><span class="kho-phu">{moTaLo(d.lo_id)}</span></>}
                         {d.xac_nhan_het && <><br /><span class="kho-phu">{t.xacNhanHet}</span></>}</td>
                       <td class="so" style={coChenh(d) ? 'font-weight:700' : ''}>
-                        {mh?.dem_goi && c.dg !== 0 ? `${c.dg > 0 ? '+' : ''}${c.dg}${dv}` : ''}
-                        {c.dk !== null && c.dk !== 0 ? <>{mh?.dem_goi && c.dg !== 0 && <br />}{c.uoc ? '≈ ' : ''}{c.dk > 0 ? '+' : ''}{dinhDangKg(c.dk, nn)} kg</> : ''}
+                        {mh?.dem_goi && c.dg !== 0 ? `${c.dg > 0 ? '+' : ''}${c.dg}${dv}` : ''}{' '}
+                        {c.dk !== null && c.dk !== 0 ? <>{mh?.dem_goi && c.dg !== 0 && <br />}{c.uoc ? '≈ ' : ''}{c.dk > 0 ? '+' : ''}{dinhDangKg(c.dk, nn)} kg</> : ''}{' '}
                         {!coChenh(d) && '0'}
                       </td>
                       <td class="so">{mh?.dem_goi ? `${d.so_goi_so ?? 0}${dv} · ` : ''}{dinhDangKg(d.so_kg_so, nn)} kg</td>

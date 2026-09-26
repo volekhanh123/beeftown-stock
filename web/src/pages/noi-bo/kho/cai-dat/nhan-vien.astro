@@ -239,9 +239,7 @@ const nhanVienDaKhoa = nhanVien.filter(n => !n.dang_lam);
       {moiTao.vai_tro === 'may_chung' ? (
         <p class="kho-phu">{t.mayChung1} <strong>/noi-bo/kho/may/dang-ky</strong> {t.mayChung2}</p>
       ) : moiTao.vai_tro === 'may_ipos' ? (
-        <p class="kho-phu">{t.mayIpos1}
-          <code>KHO_IPOS_EMAIL</code> {t.mayIpos2} <code>KHO_IPOS_MAT_KHAU</code> {t.mayIpos3}
-          <a href="/noi-bo/kho/cai-dat/ipos">{t.ketNoiIpos}</a>{t.mayIpos4}</p>
+        <p class="kho-phu">{t.mayIpos1} <code>KHO_IPOS_EMAIL</code> {t.mayIpos2} <code>KHO_IPOS_MAT_KHAU</code> {t.mayIpos3} <a href="/noi-bo/kho/cai-dat/ipos">{t.ketNoiIpos}</a>{t.mayIpos4}</p>
       ) : (
         <p class="kho-phu">{t.nguoiNay}
           {moiTao.can_xac_nhan && t.xacNhan}</p>

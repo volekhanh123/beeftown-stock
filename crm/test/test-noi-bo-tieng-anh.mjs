@@ -140,6 +140,13 @@ nhom('3 · MÀN CRM KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     const sot = quetChuViet(readFileSync(join(WEB, t), 'utf8'), CO_Y);
     ok(`${t}`, sot.length === 0, sot.slice(0, 3).map(([n, d]) => `dòng ${n}: ${d.slice(0, 90)}`).join(' | '));
   }
+  // Câu tách thành {t.a}⏎{t.b} thì Astro bỏ dấu cách ở giữa — xem dinh-chu.mjs.
+  const { timChoDinh } = await import('./dinh-chu.mjs');
+  const dinh = [];
+  for (const t of TEP.filter(t => t.endsWith('.astro'))) {
+    for (const x of await timChoDinh(readFileSync(join(WEB, t), 'utf8'))) dinh.push(`${t}:${x.dong} [${x.nn}] «${x.mau.replace(/\s+/g, ' ')}»`);
+  }
+  ok('Màn CRM không có hai mẩu chữ dính nhau vì xuống dòng (cả vi và en)', dinh.length === 0, dinh.slice(0, 4).join(' | '));
 }
 
 // ===========================================================================

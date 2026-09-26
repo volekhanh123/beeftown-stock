@@ -499,8 +499,7 @@ const huongDan = 'duyet-nhap';
   {phieu && (
     <p class="nb-dan">
       <span class={`nb-nhan ${lopTT}`}>{nhanTT}</span>
-      {phieu.loai === 'ton_dau' && <>{t.tonDau}</>}
-      · {t.lapBoi} {ten.get(phieu.nguoi_tao ?? '') ?? '—'} {t.luc} {dinhDangThoiDiem(phieu.created_at)}
+      {phieu.loai === 'ton_dau' && <>{t.tonDau}</>} · {t.lapBoi} {ten.get(phieu.nguoi_tao ?? '') ?? '—'} {t.luc} {dinhDangThoiDiem(phieu.created_at)}
       {phieu.gui_luc && <> · {t.guiDuyetLuc} {dinhDangThoiDiem(phieu.gui_luc)}</>}
       {phieu.duyet_luc && phieu.trang_thai !== 'nhap' && <> · {phieu.trang_thai === 'tu_choi' ? t.tuChoiBoi : t.duyetBoi} {ten.get(phieu.nguoi_duyet ?? '') ?? '—'} {dinhDangThoiDiem(phieu.duyet_luc)}</>}
       {phieu.huy_luc && <> · {t.huyBoi} {ten.get(phieu.nguoi_huy ?? '') ?? '—'} {dinhDangThoiDiem(phieu.huy_luc)}</>}

@@ -252,8 +252,7 @@ const tieuDe = laQuay ? t.tdQuay : laQuanLy ? t.tdQuanLy : vai === 'thu_kho' ? t
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.chiNhanh ? (
-    <div class="nb-bao luu-y"><p>{t.chuaCoCN1}
-      <a href="/noi-bo/cai-dat">{t.caiDatNhaHang}</a> {t.chuaCoCN2}</p></div>
+    <div class="nb-bao luu-y"><p>{t.chuaCoCN1} <a href="/noi-bo/cai-dat">{t.caiDatNhaHang}</a> {t.chuaCoCN2}</p></div>
   ) : !k.daKhoiTao ? (
     <div class="nb-the">
       <h2 style="margin-top:0">{t.chuaBatDau(k.chiNhanh.ten)}</h2>

@@ -15,6 +15,7 @@
  *      kèm lý do. File kho mới cũng bị quét ngay (không có danh sách chờ).
  *   2. Mọi câu raise exception của các migration kho đều có bản tiếng Anh.
  *   3. Khung kho có nút đổi tiếng; câu báo, số, câu sự kiện theo ngôn ngữ.
+ *   4. Không có hai mẩu chữ dính nhau vì xuống dòng trong template (dinh-chu.mjs).
  */
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
@@ -383,6 +384,23 @@ nhom('3 · KHUNG, CÂU BÁO, SỐ, SỰ KIỆN THEO NGÔN NGỮ');
 
   const menuThieu = dieuHuong.MUC_KHO.filter(m => !m.ten?.en?.trim() || VIET.test(m.ten.en)).map(m => m.ma);
   ok('Mọi mục menu kho có tên tiếng Anh', menuThieu.length === 0, menuThieu.join(', '));
+}
+
+// ===========================================================================
+nhom('4 · KHÔNG DÍNH CHỮ KHI XUỐNG DÒNG');
+{
+  // Astro 7 (compressHTML 'jsx') bỏ khoảng trắng có xuống dòng giữa hai nút: câu
+  // tách thành {t.a}⏎{t.b} hiện "Câu một.Câu hai." — xem dinh-chu.mjs.
+  const { timChoDinh } = await import('./dinh-chu.mjs');
+  const moiAstro = thu => readdirSync(join(WEB, thu)).flatMap(f => {
+    const p = join(thu, f);
+    return statSync(join(WEB, p)).isDirectory() ? moiAstro(p) : p.endsWith('.astro') ? [p.split(sep).join('/')] : [];
+  });
+  const tep = ['layouts/Kho.astro', ...moiAstro('components/kho'), ...moiAstro('pages/noi-bo/kho')];
+  const sot = [];
+  for (const f of tep) for (const x of await timChoDinh(doc(f))) sot.push(`${f}:${x.dong} [${x.nn}] «${x.mau.replace(/\s+/g, ' ')}»`);
+  ok(`${tep.length} file .astro của kho: không có hai mẩu chữ dính nhau vì xuống dòng (cả vi và en)`, sot.length === 0,
+     `${sot.slice(0, 4).join(' | ')} — viết hai mẩu trên cùng dòng, cách một dấu cách, hoặc thêm {' '}`);
 }
 
 console.log('\n' + '='.repeat(60));
