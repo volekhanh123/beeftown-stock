@@ -156,10 +156,17 @@ export function cauSuKien(su: SuKien): CauSuKien {
                link: '/noi-bo/kho/ban-ipos', nut: 'Xử lý', muc: 'vang' };
     }
     case 'ipos_mat_ket_noi': {
-      // Quản lý: phu = 'loi' (lượt cuối lỗi) | 'cham' (> 30 phút trong giờ mở cửa); so = phút từ lần tốt cuối.
+      // Quản lý (0042): phu = 'loi' (lượt cập nhật cuối lỗi) | 'cham' (trong giờ mở cửa quá gio_mat_ket_noi giờ
+      // không nhận hóa đơn nào); so = phút từ hóa đơn cuối nhận được (null = chưa nhận hóa đơn nào).
       const phut = soNguyen(e.so);
-      return { tieuDe: e.phu === 'loi' ? 'Không đồng bộ được iPOS' : 'iPOS lâu chưa cập nhật',
-               chiTiet: `${phut ? `Lần tốt cuối: ${phut} phút trước. ` : ''}Số bán chưa về kho — mở Kết nối iPOS xem lỗi, bấm "Cập nhật ngay".`,
+      const gio = phut === null ? '' : phut >= 120 ? `${Math.floor(phut / 60)} giờ` : `${phut} phút`;
+      if (e.phu === 'loi') {
+        return { tieuDe: 'Không cập nhật được iPOS',
+                 chiTiet: 'Lần cập nhật gần nhất bị lỗi (thử lại dòng chờ hoặc đọc thực đơn) — mở Kết nối iPOS xem lỗi, bấm "Cập nhật ngay".',
+                 link: '/noi-bo/kho/cai-dat/ipos', nut: 'Xem', muc: 'do' };
+      }
+      return { tieuDe: 'iPOS lâu không gửi hóa đơn sang',
+               chiTiet: `${gio ? `Hóa đơn cuối nhận được: ${gio} trước. ` : 'Chưa nhận được hóa đơn nào từ iPOS. '}Số bán chưa về kho — kiểm tra máy iPOS còn chạy, nhờ iPOS xem địa chỉ nhận hóa đơn.`,
                link: '/noi-bo/kho/cai-dat/ipos', nut: 'Xem', muc: 'do' };
     }
     // ---- 0038 · Định lượng: bếp nhận lệch định mức 7 ngày ------------------

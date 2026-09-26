@@ -79,7 +79,7 @@ export const MO_TA_VIEC: Record<ViecKho, { ten: string; moTa: string }> = {
   ncc:         { ten: 'Nhà cung cấp', moTa: 'Thêm, sửa nhà cung cấp: mã số thuế, tài khoản ngân hàng, số ngày được nợ.' },
   cai_dat_goc: { ten: 'Cài đặt gốc', moTa: 'Cách tính giá vốn, nguồn số bán, tạo và khóa tài khoản nhân viên.' },
   may_chung:   { ten: 'Máy dùng chung', moTa: 'Chỉ tài khoản của máy tính bảng: hiện danh sách người đã gắn và kiểm PIN. Không đọc được gì trong kho.' },
-  dong_bo_ban: { ten: 'Đồng bộ iPOS', moTa: 'Lấy hóa đơn bán từ iPOS để trừ kho ở quầy (máy iPOS tự chạy 5 phút một lần; quản lý, chủ bấm "Cập nhật ngay").' },
+  dong_bo_ban: { ten: 'Đồng bộ iPOS', moTa: 'Ghi hóa đơn bán iPOS gửi sang để trừ kho ở quầy, thử lại dòng chờ và đọc thực đơn iPOS (máy iPOS tự chạy; quản lý, chủ bấm "Cập nhật ngay").' },
 };
 
 /** Vai hiện trên trang quyền, đúng thứ tự cột. Hai vai máy để cuối. */

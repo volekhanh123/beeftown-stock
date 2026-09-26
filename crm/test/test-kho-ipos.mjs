@@ -167,11 +167,14 @@ await nhom('1 · CHUẨN BỊ: KHO, HÀNG Ở QUẦY, CẤU HÌNH iPOS', async (
   const ql = await duoi(UID.qlA, `select kho_ipos_luu_cau_hinh($1, $2::jsonb)`, [cnA.id, JSON.stringify(cfg)]);
   ok('Quản lý KHÔNG sửa được kết nối iPOS (chỉ chủ)', ql.loi !== null, ql.loi ?? '');
   const chu = await duoi(UID.chu, `select kho_ipos_luu_cau_hinh($1, $2::jsonb) as v`, [cnA.id, JSON.stringify(cfg)]);
-  ok('Chủ lưu cấu hình (chưa có đường dẫn hóa đơn)', chu.loi === null && chu.rows[0].v.bat === true
-     && chu.rows[0].v.cau_hinh_du === false && chu.rows[0].v.den === 'vang', chu.loi ?? JSON.stringify(chu.rows?.[0]?.v));
+  // 0042: iPOS tự đẩy hóa đơn — không cần đường dẫn lấy hóa đơn nữa.
+  ok('Chủ lưu cấu hình (không cần đường dẫn hóa đơn — 0042)', chu.loi === null && chu.rows[0].v.bat === true
+     && chu.rows[0].v.cau_hinh_du === true && chu.rows[0].v.den === 'vang', chu.loi ?? JSON.stringify(chu.rows?.[0]?.v));
   ok('api_url mặc định là máy thử iPOS', chu.rows?.[0]?.v?.api_url === 'https://apitest.foodbook.vn/ipos/ws/xpartner');
-  const thieu = await luot([]);
-  ok('Thiếu đường dẫn hóa đơn → từ chối, nói rõ thiếu gì', /đường dẫn lấy hóa đơn/.test(thieu.tuChoi ?? ''), JSON.stringify(thieu));
+  const khongDuongDan = await luot([], { denLuc: null });
+  ok('Không có đường dẫn hóa đơn vẫn chạy được lượt (0042)', khongDuongDan.bd?.duoc === true && !khongDuongDan.loi,
+     JSON.stringify(khongDuongDan));
+  await db.query(`update kho_ipos_lan_chay set bat_dau_luc = bat_dau_luc - interval '2 minutes'`);
 
   const tok1 = await duoi(UID.chu, `select kho_ipos_luu_cau_hinh($1, $2::jsonb)`,
     [cnA.id, JSON.stringify({ api_url: 'https://apitest.foodbook.vn/ipos/ws/xpartner?' + THAM_SO_TOKEN })]);
@@ -557,7 +560,9 @@ await nhom('10 · KIỂM KÊ QUẦY KHI NGUỒN iPOS: CHẶN GỬI / DUYỆT', a
   await luot([hd('HD-KK', phutTruoc(5), [{ so_goi: 5, ma_can: '102', thanh_tien: 1000000 }])]);
   ok('Có một dòng thiếu hàng', (await dongHd('HD-KK'))[0].trang_thai === 'thieu_hang');
 
-  await db.query(`update kho_ipos_cau_hinh set dong_bo_den_luc = now() - interval '20 minutes' where chi_nhanh_id = $1`, [cnA.id]);
+  // 0042: mốc là lần cuối hộp thư được xử lý (callback / thử lại), không phải watermark.
+  await db.query(`update kho_ipos_cau_hinh set hop_thu_luc = now() - interval '20 minutes',
+    dong_bo_den_luc = now() - interval '2 days' where chi_nhanh_id = $1`, [cnA.id]);
   const pb = async () => (await db.query(`select phien_ban from kho_kiem_ke where id = $1`, [kid])).rows[0].phien_ban;
   const g1 = await duoi(UID.nvQuayA, `select kho_gui_kiem_ke($1, $2)`, [kid, await pb()]);
   ok('Bán hàng iPOS cũ hơn 10 phút → chưa gửi được kiểm kê quầy', g1.loi !== null && /hơn 10 phút/.test(g1.loi), g1.loi ?? '');

@@ -1,11 +1,14 @@
 ---
 /**
- * KHO — KẾT NỐI iPOS (GĐ7a, 0037)
+ * KHO — KẾT NỐI iPOS (GĐ7a 0037; GĐ7c 0042: iPOS TỰ ĐẨY hóa đơn sang)
  *
- * Xem: mọi vai xem kho (đèn, lần chạy cuối, nhật ký). Sửa: chỉ chủ
+ * Xem: mọi vai xem kho (đèn, lần nhận hóa đơn cuối, nhật ký). Sửa: chỉ chủ
  * (cai_dat_goc). "Cập nhật ngay": quản lý, chủ (dong_bo_ban) — chạy
- * dongBoIpos (lib/kho/ipos-dong-bo.ts) bằng PHIÊN CỦA NGƯỜI BẤM, không
- * service_role.
+ * dongBoIpos (lib/kho/ipos-dong-bo.ts: thử lại hàng chờ + đọc lại thực đơn
+ * iPOS) bằng PHIÊN CỦA NGƯỜI BẤM, không service_role.
+ *
+ * Địa chỉ nhận hóa đơn `{site}/hook/ipos/<IPOS_CALLBACK_KHOA>` để dán vào CMS
+ * iPOS: CHỈ CHỦ thấy đủ khóa; người khác thấy khóa bị che.
  *
  * Trang này KHÔNG BAO GIỜ in token: chỉ nói "đã cài / chưa cài" bí mật
  * Worker IPOS_ACCESS_TOKEN. Form cấu hình không có ô token; ô nào dán chữ
@@ -24,7 +27,9 @@ import {
   docTrangThaiIpos, luuCauHinhIpos, chuyenSangIpos, troVeDemQuay, lopDen, chuDen, oMocChuyen,
   type TrangThaiIpos,
 } from '../../../../lib/kho/ban-ipos.ts';
-import { dongBoIpos, trangThaiBiMatIpos } from '../../../../lib/kho/ipos-dong-bo.ts';
+import { dongBoIpos, trangThaiBiMatIpos, layKhoaCallback, KHOA_TOI_THIEU } from '../../../../lib/kho/ipos-dong-bo.ts';
+import { cheKhoa } from '../../../../lib/kho/ipos.ts';
+import { DUONG_HOOK } from '../../../../lib/kho/ipos-hook.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -71,10 +76,15 @@ if (k.chiNhanh && k.daKhoiTao) {
     ]);
   } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được trạng thái iPOS.'); }
 }
-// Chỉ biết CÓ / KHÔNG — không bao giờ đưa giá trị bí mật ra trang.
-let biMat = { token: false, taiKhoanMay: false };
+// Chỉ biết CÓ / KHÔNG — không bao giờ đưa giá trị bí mật ra trang (trừ khóa callback cho chủ).
+let biMat = { token: false, taiKhoanMay: false, khoaCallback: false };
 try { biMat = await trangThaiBiMatIpos(); } catch { /* coi như chưa cài */ }
 const coToken = biMat.token;
+let khoa: string | undefined;
+if (laChu) { try { khoa = await layKhoaCallback(); } catch { /* coi như chưa cài */ } }
+const gocWeb = (Astro.site ?? Astro.url).origin;
+const diaChiNhan = biMat.khoaCallback ? `${gocWeb}${DUONG_HOOK}${laChu && khoa ? khoa : cheKhoa('x')}` : null;
+const chuNguon = (n: string) => n === 'tay' ? 'Bấm tay' : n === 'callback' ? 'iPOS gửi' : 'Tự động';
 
 /** Giá trị ô: chữ vừa gõ (lưu hỏng) hoặc cấu hình đang dùng. */
 const o = (khoa: string, hienTai: string | number | null | undefined) =>
@@ -87,8 +97,8 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
 <Kho k={k} tieuDe="Kết nối iPOS" huongDan="ipos">
   <h1>Kết nối iPOS</h1>
   <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
-  <p class="kho-phu" style="margin-top:0">Máy tính tiền iPOS là nơi ghi bán. Nối xong, cứ 5 phút phần mềm đọc hóa đơn mới
-    và tự trừ kho ở quầy — không còn lấy "thiếu khi đếm quầy" làm số bán.</p>
+  <p class="kho-phu" style="margin-top:0">Máy tính tiền iPOS là nơi ghi bán. Nối xong, mỗi lần thu ngân in hóa đơn, iPOS tự gửi
+    hóa đơn sang và phần mềm trừ kho ở quầy — không còn lấy "thiếu khi đếm quầy" làm số bán.</p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
@@ -98,10 +108,13 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
       <section class={`nb-bao ${lopDen(tt.den)}`} aria-live="polite">
         <p style="margin:0"><strong>{chuDen(tt.den)}.</strong> {tt.cau}</p>
         <p class="kho-phu" style="margin:.35rem 0 0">
-          Lần chạy cuối: {dinhDangThoiDiem(tt.lan_cuoi_luc)}
-          {tt.lan_ok_luc && tt.lan_ok_luc !== tt.lan_cuoi_luc && <> · lần tốt cuối: {dinhDangThoiDiem(tt.lan_ok_luc)}</>}
-          {tt.dong_bo_den_luc && <> · đã đọc tới {dinhDangThoiDiem(tt.dong_bo_den_luc)}</>}
+          Lần nhận hóa đơn gần nhất: <strong>{tt.nhan_hd_luc ? dinhDangThoiDiem(tt.nhan_hd_luc) : 'chưa nhận hóa đơn nào'}</strong>
+          · lần cập nhật cuối: {dinhDangThoiDiem(tt.lan_cuoi_luc)}
           {tt.dang_chay && ' · đang chạy'}
+        </p>
+        <p class="kho-phu" style="margin:.35rem 0 0">
+          Thực đơn iPOS: {tt.so_mon_menu > 0 ? <><a href="/noi-bo/kho/ban-ipos/ghep#thuc-don">{tt.so_mon_menu} món</a>, đọc lúc {dinhDangThoiDiem(tt.menu_luc)}</> : 'chưa đọc được'}
+          {tt.menu_can_lam_moi && ' · iPOS báo thực đơn vừa đổi, sẽ đọc lại trong 5 phút'}
         </p>
         {tt.lan_cuoi_loi && <p class="kho-phu" style="margin:.35rem 0 0">Lỗi lần cuối: {tt.lan_cuoi_loi}</p>}
       </section>
@@ -120,10 +133,11 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
       {dongBoDuoc && (
         <form method="POST" class="nb-the">
           <input type="hidden" name="viec" value="cap_nhat" />
-          <p style="margin-top:0"><strong>Cập nhật ngay</strong> — đọc hóa đơn mới từ iPOS bây giờ, không đợi lượt 5 phút.
-            Bấm xong đợi vài giây.</p>
+          <p style="margin-top:0"><strong>Cập nhật ngay</strong> — thử lại các dòng bán đang chờ (sau khi nhận hàng, ghép món)
+            và đọc lại thực đơn iPOS, không đợi lượt 5 phút. Hóa đơn thì iPOS tự gửi sang, không cần bấm.</p>
           {!coToken && (
-            <p class="kho-phu">Máy chủ <strong>chưa cài token iPOS</strong> — bấm sẽ báo lỗi. Cách cài: xem mục "Cài lần đầu" bên dưới.</p>
+            <p class="kho-phu">Máy chủ <strong>chưa cài token iPOS</strong> — vẫn thử lại được dòng chờ, nhưng chưa đọc được thực đơn.
+              Cách cài: xem mục "Cài lần đầu" bên dưới.</p>
           )}
           <button type="submit" class="nb-nut" disabled={!tt.bat || tt.dang_chay}>Cập nhật ngay</button>
           {!tt.bat && <p class="kho-phu" style="margin:.5rem 0 0">Đồng bộ đang tắt — chủ nhà hàng bật ở form bên dưới.</p>}
@@ -178,10 +192,10 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
         <form method="POST" class="nb-the">
           <input type="hidden" name="viec" value="luu" />
           <label class="kho-tich"><input type="checkbox" name="bat" value="co" checked={batDangChon} />
-            <span><strong>Bật đồng bộ</strong> — 5 phút một lượt. Tắt thì không đọc iPOS nữa.</span></label>
+            <span><strong>Bật đồng bộ</strong> — hóa đơn iPOS gửi sang được ghi ngay. Tắt thì hóa đơn chỉ được cất lại, chưa trừ kho.</span></label>
           <label class="nb-o">
             <span>Địa chỉ iPOS</span>
-            <small>Mặc định là máy thử của iPOS. Khi iPOS cấp địa chỉ thật thì thay.</small>
+            <small>Dùng để đọc thực đơn. Mặc định là máy thử của iPOS; khi iPOS cấp địa chỉ thật thì thay.</small>
             <input type="url" name="api_url" value={o('api_url', tt.api_url)} placeholder="https://apitest.foodbook.vn/ipos/ws/xpartner" autocomplete="off" spellcheck="false" />
           </label>
           <div class="nb-hai">
@@ -190,11 +204,6 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
             <label class="nb-o"><span>pos_id</span>
               <input type="text" name="pos_id" value={o('pos_id', tt.pos_id)} autocomplete="off" spellcheck="false" /></label>
           </div>
-          <label class="nb-o">
-            <span>Đường dẫn lấy hóa đơn</span>
-            <small>Theo tài liệu iPOS (vd <code>/sales</code>). Trống = chưa cấu hình, đồng bộ chưa chạy.</small>
-            <input type="text" name="duong_dan_hoa_don" value={o('duong_dan_hoa_don', tt.duong_dan_hoa_don)} autocomplete="off" spellcheck="false" />
-          </label>
           <label class="nb-o">
             <span>Quầy bán</span>
             <small>Hàng bán trên iPOS được trừ ở quầy này.</small>
@@ -209,7 +218,12 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
             <label class="nb-o"><span>Giờ đóng cửa</span>
               <input type="text" inputmode="numeric" name="gio_dong_cua" value={o('gio_dong_cua', tt.gio_dong_cua)} /></label>
           </div>
-          <p class="kho-phu" style="margin:0 0 .75rem">Trong giờ mở cửa mà hơn 30 phút không đồng bộ được thì chuông báo quản lý.
+          <label class="nb-o">
+            <span>Báo mất kết nối sau (giờ)</span>
+            <small>Trong giờ mở cửa mà quá bấy nhiêu giờ không nhận được hóa đơn nào thì chuông báo quản lý (1–12, thường là 3).</small>
+            <input type="text" inputmode="numeric" name="gio_mat_ket_noi" value={o('gio_mat_ket_noi', tt.gio_mat_ket_noi)} />
+          </label>
+          <p class="kho-phu" style="margin:0 0 .75rem">Quán vắng khách không bị coi là mất kết nối — chỉ tính trong giờ mở cửa.
             <strong>Không dán token vào đây</strong> — token là bí mật của máy chủ (xem bên dưới).</p>
           <button type="submit" class="nb-nut">Lưu cấu hình</button>
         </form>
@@ -219,33 +233,63 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
             <dt>Đồng bộ</dt><dd>{tt.bat ? 'Đang bật' : 'Đang tắt'}</dd>
             <dt>Địa chỉ iPOS</dt><dd>{tt.api_url}</dd>
             <dt>pos_parent · pos_id</dt><dd>{tt.pos_parent ?? '—'} · {tt.pos_id ?? '—'}</dd>
-            <dt>Đường dẫn lấy hóa đơn</dt><dd>{tt.duong_dan_hoa_don ?? 'chưa cấu hình'}</dd>
             <dt>Quầy bán</dt><dd>{tenQuay ?? 'chưa chọn'}</dd>
             <dt>Giờ mở cửa</dt><dd>{tt.gio_mo_cua}h – {tt.gio_dong_cua}h</dd>
+            <dt>Báo mất kết nối sau</dt><dd>{tt.gio_mat_ket_noi} giờ không nhận hóa đơn</dd>
           </dl>
           <p class="kho-phu" style="margin:.5rem 0 0">Chỉ chủ nhà hàng sửa được.</p>
         </div>
       )}
 
+      <section class="nb-the" id="dia-chi-nhan">
+        <h2 style="margin-top:0">Địa chỉ nhận hóa đơn</h2>
+        {diaChiNhan ? (
+          <>
+            <label class="nb-o" style="margin-bottom:.5rem">
+              <span>Dán địa chỉ này vào CMS iPOS (mục callback_url)</span>
+              <input type="text" readonly value={diaChiNhan} autocomplete="off" spellcheck="false" />
+            </label>
+            {!laChu && <p class="kho-phu" style="margin:0">Phần cuối là khóa bí mật — chỉ chủ nhà hàng xem được đầy đủ.</p>}
+            {laChu && <p class="kho-phu" style="margin:0">Phần cuối là <strong>khóa bí mật</strong>: chỉ gửi cho iPOS, không dán vào nhóm Zalo.
+              Lỡ lộ thì nhờ người quản lý Cloudflare đổi khóa mới rồi gửi lại địa chỉ cho iPOS.</p>}
+          </>
+        ) : (
+          <p class="kho-phu" style="margin:0">Máy chủ <strong>chưa cài khóa nhận hóa đơn</strong> — iPOS chưa gửi sang được. Xem bước 1 ở
+            "Cài lần đầu" bên dưới.</p>
+        )}
+
+        <h3>Việc cần nhờ iPOS</h3>
+        <ol class="kho-phu" style="margin:.25rem 0 0;padding-left:1.25rem">
+          <li>Cấu hình <strong>callback_url</strong> của điểm bán là địa chỉ ở trên (trong CMS partner.foodbook.vn).</li>
+          <li>Bật gửi <strong>MỌI hóa đơn</strong> của điểm bán sang (mặc định iPOS chỉ gửi đơn "liên quan đối tác" như đơn giao hàng,
+            voucher — thiếu bước này thì kho không trừ đủ).</li>
+          <li>Cấp <strong>access_token</strong> cho bản chạy thật (người quản lý Cloudflare cài làm bí mật máy chủ, xem bên dưới).</li>
+          <li>Cho biết món thịt ở quầy bán theo <strong>kg</strong> hay theo <strong>gói</strong> trên máy iPOS — rồi chọn "Bán theo" cho
+            đúng ở <a href="/noi-bo/kho/ban-ipos/ghep">Ghép món</a>.</li>
+        </ol>
+      </section>
+
       <section class="nb-the" id="cai-lan-dau">
         <h2 style="margin-top:0">Cài lần đầu (người quản lý Cloudflare)</h2>
         <p style="margin:0">
-          Token iPOS: <span class={`nb-nhan ${coToken ? 'song' : 'cho'}`}>{coToken ? 'Đã cài' : 'Chưa cài'}</span>{' '}
-          · Tài khoản máy (tự chạy 5 phút): <span class={`nb-nhan ${biMat.taiKhoanMay ? 'song' : 'cho'}`}>{biMat.taiKhoanMay ? 'Đã cài' : 'Chưa cài'}</span>
+          Khóa nhận hóa đơn: <span class={`nb-nhan ${biMat.khoaCallback ? 'song' : 'cho'}`}>{biMat.khoaCallback ? 'Đã cài' : 'Chưa cài'}</span>{' '}
+          · Tài khoản máy: <span class={`nb-nhan ${biMat.taiKhoanMay ? 'song' : 'cho'}`}>{biMat.taiKhoanMay ? 'Đã cài' : 'Chưa cài'}</span>{' '}
+          · Token iPOS (đọc thực đơn): <span class={`nb-nhan ${coToken ? 'song' : 'cho'}`}>{coToken ? 'Đã cài' : 'Chưa cài'}</span>
         </p>
         <ol class="kho-phu" style="margin:.75rem 0 0;padding-left:1.25rem">
-          <li>Token do iPOS cấp là <strong>bí mật của máy chủ</strong>: trong thư mục web chạy
-            <code>npx wrangler secret put IPOS_ACCESS_TOKEN</code> rồi dán token (hoặc Cloudflare → Workers &amp; Pages →
-            beeftown → Settings → Variables and Secrets → Add → loại <strong>Secret</strong>). Không ghi vào wrangler.toml,
-            không gửi qua Zalo, không dán vào trang này.</li>
+          <li>Tạo một chuỗi ngẫu nhiên từ {KHOA_TOI_THIEU} ký tự trở lên (vd <code>openssl rand -hex 24</code>), trong thư mục web chạy
+            <code>npx wrangler secret put IPOS_CALLBACK_KHOA</code> rồi dán vào. Đây là khóa trong địa chỉ nhận hóa đơn.</li>
           <li>Chủ tạo tài khoản vai <strong>Máy đồng bộ iPOS</strong> ở <a href="/noi-bo/kho/cai-dat/nhan-vien">Nhân viên &amp; máy dùng chung</a>.
             Tài khoản này chỉ làm được đúng một việc: đồng bộ bán hàng — không xem được kho, giá hay khách hàng.</li>
           <li>Cài email và mật khẩu của tài khoản đó thành hai bí mật <code>KHO_IPOS_EMAIL</code> và <code>KHO_IPOS_MAT_KHAU</code>
-            (cùng cách như bước 1). Máy chủ dùng nó để tự chạy 5 phút một lượt.</li>
-          <li>Chủ điền cấu hình ở trên, chọn quầy bán, tích <strong>Bật đồng bộ</strong>, bấm <strong>Lưu cấu hình</strong>, rồi
-            <strong>Cập nhật ngay</strong> để thử.</li>
+            (cùng cách như bước 1). Máy chủ dùng nó để ghi hóa đơn iPOS gửi sang và chạy lượt 5 phút.</li>
+          <li>Token do iPOS cấp: <code>npx wrangler secret put IPOS_ACCESS_TOKEN</code> (hoặc Cloudflare → Workers &amp; Pages →
+            beeftown → Settings → Variables and Secrets → Add → loại <strong>Secret</strong>). Chỉ dùng để đọc thực đơn. Không ghi vào
+            wrangler.toml, không gửi qua Zalo, không dán vào trang này.</li>
+          <li>Chủ điền cấu hình ở trên, chọn quầy bán, tích <strong>Bật đồng bộ</strong>, bấm <strong>Lưu cấu hình</strong>, gửi địa chỉ
+            nhận hóa đơn cho iPOS, rồi bấm <strong>Cập nhật ngay</strong> để đọc thực đơn.</li>
         </ol>
-        <p class="kho-phu" style="margin:.5rem 0 0">Chưa cài thì đồng bộ tắt, mọi thứ khác vẫn chạy bình thường.</p>
+        <p class="kho-phu" style="margin:.5rem 0 0">Chưa cài thì phần đó tắt, mọi thứ khác vẫn chạy bình thường.</p>
       </section>
 
       <h2>10 lượt gần nhất</h2>
@@ -259,7 +303,7 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
               {tt.lan_chay.map(l => (
                 <tr>
                   <td>{dinhDangThoiDiem(l.bat_dau_luc)}</td>
-                  <td>{l.nguon === 'tay' ? 'Bấm tay' : 'Tự động'}</td>
+                  <td>{chuNguon(l.nguon)}</td>
                   <td class="so">{l.so_hd}</td>
                   <td class="so">{l.so_dong}</td>
                   <td class="so">{l.so_da_ghi}</td>

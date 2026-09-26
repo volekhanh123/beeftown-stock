@@ -65,7 +65,7 @@ const soThe: Record<string, number | null> = tt
 const kgGoi = (d: DongIpos) => [
   d.so_goi ? `${d.so_goi} gói` : '',
   d.so_kg !== null ? `${dinhDangKg(d.so_kg)} kg` : '',
-].filter(Boolean).join(' · ') || '—';
+].filter(Boolean).join(' · ') || (d.so_luong !== null ? `${dinhDangKg(d.so_luong)} (số lượng trên iPOS)` : '—');
 ---
 <Kho k={k} tieuDe="Bán hàng iPOS" huongDan="ban-ipos" rong>
   <h1>Bán hàng iPOS</h1>
@@ -73,7 +73,7 @@ const kgGoi = (d: DongIpos) => [
 
   {tt && (
     <div class={`nb-bao ${lopDen(tt.den)}`}>
-      <p style="margin:0">{tt.cau} Lần chạy cuối: {dinhDangThoiDiem(tt.lan_cuoi_luc)}.{' '}
+      <p style="margin:0">{tt.cau} Lần nhận hóa đơn gần nhất: {tt.nhan_hd_luc ? dinhDangThoiDiem(tt.nhan_hd_luc) : 'chưa có'}.{' '}
         <a href="/noi-bo/kho/cai-dat/ipos">Kết nối iPOS</a></p>
     </div>
   )}

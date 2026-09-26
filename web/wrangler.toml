@@ -27,8 +27,9 @@ preview_urls = false
 [placement]
 region = "aws:ap-southeast-1"
 
-# Đồng bộ bán hàng iPOS mỗi 5 phút (giờ UTC; lượt ngoài giờ mở cửa rất nhẹ —
-# không có hóa đơn mới). Bí mật IPOS_ACCESS_TOKEN, KHO_IPOS_EMAIL,
-# KHO_IPOS_MAT_KHAU đặt bằng `npx wrangler secret put …` — KHÔNG ghi ở đây.
+# iPOS tự đẩy hóa đơn sang /hook/ipos/<khóa> (GĐ7c). Cron 5 phút chỉ thử lại
+# dòng bán đang chờ và đọc thực đơn iPOS mỗi giờ — lượt rất nhẹ. Bí mật
+# IPOS_CALLBACK_KHOA, IPOS_ACCESS_TOKEN, KHO_IPOS_EMAIL, KHO_IPOS_MAT_KHAU đặt
+# bằng `npx wrangler secret put …` — KHÔNG ghi ở đây.
 [triggers]
 crons = ["*/5 * * * *"]

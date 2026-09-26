@@ -404,94 +404,130 @@ diện màn đó đổi nhiều. Danh sách tên: `hd-trang-chu-thu-kho`, `hd-nh
 mục có thật; id không trùng, đúng dạng, giữ id cũ; ≥ 15 câu hỏi; ảnh có file, là PNG đúng cỡ, ≤ 120KB;
 link có thật; phần thủ kho / NV quầy không nhắc tiền; `dinhDang` escape đúng.
 
-## 3j. Đồng bộ bán hàng iPOS (GĐ7a, migration 0037)
+## 3j. Đồng bộ bán hàng iPOS (GĐ7a 0037 · GĐ7c 0042: iPOS tự đẩy hóa đơn sang)
 
-Mỗi 5 phút Worker đọc hóa đơn iPOS và **database** tự trừ kho ở quầy bán. Web chỉ đọc iPOS rồi
-chuyển tiếp; khớp món, FEFO, lệch kg nhãn, thiếu hàng, hủy / sửa HĐ đều nằm trong SQL (0037, test
-trên PGlite).
+Tài liệu thật của iPOS (Postman "IPOS HUB API INTERGRATION FOR MERCHANT") khác giả định của GĐ7a:
+**không có API kéo danh sách hóa đơn**. Khi thu ngân in hóa đơn, iPOS Hub **POST** JSON thô tới
+`callback_url` HTTPS của mình (cấu hình trong CMS partner.foodbook.vn). Web chỉ nhận rồi chuyển tiếp;
+khớp món, đổi số lượng ra kg / gói, FEFO, thiếu hàng, bắn trùng, sửa HĐ đều nằm trong SQL (0037, 0042,
+test trên PGlite).
 
 ```
+iPOS Hub ─POST─► https://beeftown.vn/hook/ipos/<IPOS_CALLBACK_KHOA>
+  └ src/worker.ts fetch: /hook/ipos/* chặn TRƯỚC Astro ─► lib/kho/ipos-hook.ts xuLyHookIpos
+       (web/src/pages/hook/ipos/[khoa].ts gọi cùng hàm — cho astro dev)
+       1. khóa so sánh thời gian hằng (sai 404, thiếu bí mật 503), body ≤ 256KB (413), JSON (400)
+       2. lib/kho/ipos.ts phanTichCallback (THUẦN): Event 11 → HĐ chuẩn hóa, bỏ thông tin khách
+          Event 12 item_changed → cờ thực đơn đổi · event khác → 200 bỏ qua
+       3. đăng nhập tài khoản máy may_ipos (client anon riêng, không ghi phiên ra đâu cả; dangNhapMayIposNho
+          giữ phiên trong BỘ NHỚ isolate tới 2 phút trước khi hết hạn — mỗi hóa đơn một lần đăng nhập sẽ
+          chạm giới hạn đăng nhập của Supabase Auth giờ cao điểm)
+       4. kho_ipos_tim_chi_nhanh(pos_parent, pos_id)   (không khớp → 202 + log, Hub không bắn lại mãi)
+       5. kho_ipos_nhan_callback(cn, HĐ) → 200 {"ok":true} CHỈ khi đã vào hộp thư; lỗi database → 500
+          (Event 12: kho_ipos_bao_menu_doi)
+
 Cron */5 (wrangler.toml [triggers]) ─► src/worker.ts scheduled() ─► dongBoTatCa(env)
-  └ lib/kho/ipos-dong-bo.ts (I/O): đăng nhập tài khoản máy may_ipos (client anon riêng, không lưu phiên)
-       → kho_cn_duoc('dong_bo_ban') = chi nhánh của máy → mỗi chi nhánh dongBoIpos():
-       1. kho_ipos_bat_dau(cn, 'cron'|'tay')  → api_url, pos_parent, pos_id, đường dẫn, cửa sổ tu_luc → den_luc
-       2. GET {api_url}{duong_dan_hoa_don}?access_token&pos_parent&pos_id&from&to&page&limit  (≤ 20 trang, 20 giây/lần)
-       3. lib/kho/ipos.ts phanTichHoaDon (THUẦN) → payload [{ma_hd, thoi_diem_ban, da_huy, raw, dong[]}]
-       4. kho_ipos_nhan(cn, lan_id, lô ≤ 200 HĐ, den_luc chỉ ở lô cuối)  → hộp thư → ghi sổ từng dòng
-       5. kho_ipos_ket_thuc(lan_id, lỗi đã xóa token | null)
+  └ lib/kho/ipos-dong-bo.ts: đăng nhập máy → kho_cn_duoc('dong_bo_ban') → mỗi chi nhánh dongBoIpos():
+       1. kho_ipos_bat_dau(cn, 'cron'|'tay')           → api_url, pos, menu_luc, menu_can_lam_moi
+       2. kho_ipos_nhan(cn, lan_id, [], null)          → THỬ LẠI hàng chờ (chưa khớp, thiếu hàng)
+       3. tới hạn (iPOS báo đổi / quá 60 phút / bấm tay): GET {api_url}/v2/items?access_token&pos_parent
+          &pos_id&menu_type=DELI → phanTichMenu (không lấy giá) → kho_ipos_luu_menu
+       4. kho_ipos_ket_thuc(lan_id, lỗi đã xóa token | null)
 ```
+
+Payload HĐ (Event 11 → `kho_ipos_nhan_callback`): `{ ma_hd: "<pos_id>:<tran_id>", thoi_diem_ban:
+tran_date + "+07:00", da_huy, raw, dong: [{ khoa_dong: chỉ số (từ 0), ma_ipos: item_id, ten_ipos:
+item_name, so_luong: quantity, thanh_tien: amount }] }`. Dòng hàng iPOS **không có mã vạch, không kg
+từng nhãn**; hai dòng cùng item_id là hai dòng. `raw` bỏ `membership_*`, `delivery_info`,
+`payment_info`, `sale_note`, mọi khóa có phone / email / address / token (database có lưới thứ hai,
+`kho_ipos_bo_pii`). Bắn trùng (Hub có thể bắn double): cùng `ma_hd` cùng nội dung → bỏ; nội dung khác →
+đảo ngược rồi ghi lại.
 
 | Chỗ | Việc |
 |---|---|
-| `lib/kho/ipos.ts` | Thuần (chỉ import `ma-vach.ts`). `TRUONG_IPOS` (mọi giả định về API), `phanTichHoaDon`, `docThoiDiem`, `giaiMaVach`, `taoUrlHoaDon`, `conTrangSau`, `chiaLo`, `xoaToken` |
-| `lib/kho/ipos-dong-bo.ts` | `dongBoIpos({ supabase, chiNhanhId, nguon, env?, fetchFn? })` (không bao giờ ném lỗi, trả `{ok, cau, chuaCai?, tuChoi?, tomTat}`), `dongBoTatCa(env)` cho cron, `layBiMatIpos`, `trangThaiBiMatIpos` (chỉ có / không) |
-| `src/worker.ts` | `fetch` = `handle` của `@astrojs/cloudflare/handler` (y như entry mặc định) + `scheduled` |
-| `/noi-bo/kho/cai-dat/ipos` | Kết nối iPOS: đèn, lần chạy, "Cập nhật ngay" (= `dongBoIpos` bằng phiên người bấm, quyền `dong_bo_ban`, giới hạn 60 giây), cấu hình, chuyển nguồn số bán |
+| `lib/kho/ipos.ts` | Thuần, không import gì. `TRUONG_IPOS` (mọi điều về API, ghi nguồn tài liệu), `phanTichCallback`, `phanTichMenu`, `taoUrlMenu`, `docThoiDiem`, `xoaToken`, `bangNhauHang`, `boThongTinKhach` |
+| `lib/kho/ipos-hook.ts` | `xuLyHookIpos(request, khoa, { env?, taoClient?, ghiLog? })` → `Response` (không bao giờ ném lỗi), `khoaTuDuong` |
+| `lib/kho/ipos-dong-bo.ts` | `dongBoIpos({ supabase, chiNhanhId, nguon, env?, fetchFn?, docMenu? })`, `dongBoTatCa(env)`, `dangNhapMayIpos`, `layBiMatIpos`, `trangThaiBiMatIpos` (chỉ có / không), `layKhoaCallback` (chỉ cho chủ) |
+| `src/worker.ts` | `fetch`: `/hook/ipos/*` → `xuLyHookIpos`, còn lại = `handle` của `@astrojs/cloudflare/handler`; `scheduled` |
+| `/noi-bo/kho/cai-dat/ipos` | Kết nối iPOS: đèn, **lần nhận hóa đơn gần nhất**, **địa chỉ nhận hóa đơn** (chủ thấy đủ khóa, người khác thấy che), 4 việc nhờ iPOS, "Cập nhật ngay" (= thử lại hàng chờ + đọc lại thực đơn, phiên người bấm, `dong_bo_ban`, giới hạn 60 giây), cấu hình (không còn ô đường dẫn hóa đơn; có "báo mất kết nối sau … giờ"), chuyển nguồn số bán |
 | `/noi-bo/kho/ban-ipos` | Hàng đợi: Chưa khớp → Ghép món; Thiếu hàng → Thử lại / Hàng ngoài sổ / Bỏ qua (`kho_ipos_xu_ly_dong`) |
+| `/noi-bo/kho/ban-ipos/ghep` | Ghép món + **Bán theo** kg / gói (+ "mỗi gói = … kg") / suất (món chế biến) → `kho_ipos_gan_ma_v2`; **Thực đơn iPOS** (`kho_ipos_menu`, tìm + chia trang GĐ4b) để ghép trước khi bán |
+
+**Tại sao chặn /hook/ipos ở worker.ts.** Astro bật `security.checkOrigin`: POST có `content-type`
+kiểu form (`text/plain`, `x-www-form-urlencoded`, `multipart/form-data`) hoặc không có `content-type` mà
+`Origin` khác tên miền → 403. Tài liệu nói Hub gửi "RAW data" — có thể là `text/plain` không `Origin`.
+Hook không đọc cookie nên không có gì để CSRF; chặn trước Astro là đúng chỗ. Route
+`src/pages/hook/ipos/[khoa].ts` giữ lại cho `astro dev` (gửi `application/json` là qua được chốt).
+
+**"Bán theo" (0042, `kho_ipos_ma_hang.don_vi_ban`).** iPOS chỉ gửi `quantity`. Database đổi:
+`kg` → kg bán = quantity (món đếm gói: lấy gói nguyên theo hạn gần nhất cho tổng kg gần nhất, lệch ghi hao
+hụt); `goi` → số gói = quantity (món theo kg thì kg = quantity × "mỗi gói = … kg"); `suat` → món chế biến,
+dòng `bo_qua`, kho không trừ, định lượng GĐ7b đếm suất từ `so_luong`; trống → theo món kho.
+
+**Mất kết nối / chặn đếm quầy (0042).** Không có hóa đơn ≠ mất kết nối (quán vắng). Đèn đỏ + chuông
+`ipos_mat_ket_noi` khi: lượt cập nhật cuối lỗi (thử lại / đọc thực đơn), hoặc TRONG giờ mở cửa quá
+`gio_mat_ket_noi` giờ (mặc định 3, chủ đổi 1–12) không nhận hóa đơn nào. Gửi đếm quầy chỉ bị chặn khi hộp
+thư chưa được xử lý trong 10 phút (`hop_thu_luc` — cron 5 phút cập nhật), không còn theo watermark.
 
 **Worker có `main` riêng.** `wrangler.toml` khai `main = "./src/worker.ts"` — adapter
 `@astrojs/cloudflare` v14 chỉ tự điền `main` khi nó vắng mặt và build chính file nguồn này thành
 `dist/server/entry.mjs`. Sau `npm run build` phải thấy: `dist/server/wrangler.json` có
-`"triggers":{"crons":["*/5 * * * *"]}` và `entry.mjs` có `scheduled(` (test-kho-ipos-web nhóm 6 kiểm).
-Cron chạy cả ngoài giờ mở cửa — lượt không có hóa đơn rất nhẹ; muốn bớt thì đổi biểu thức (giờ UTC,
-VN = UTC+7).
+`"triggers":{"crons":["*/5 * * * *"]}` và `entry.mjs` có `scheduled(` (test-kho-ipos-web nhóm 7 kiểm).
+Cron giờ chỉ thử lại hàng chờ + đọc thực đơn — lượt rất nhẹ.
 
 **Bí mật** (bí mật Worker — **không** đặt trong `wrangler.toml [vars]`, `.env`, README, không commit giá trị):
 
 | Tên | Là gì |
 |---|---|
-| `IPOS_ACCESS_TOKEN` | Token API iPOS (xin iPOS; token bản thử từng bị dán vào chat — coi như đã lộ, xin token mới cho bản chạy thật) |
-| `KHO_IPOS_EMAIL`, `KHO_IPOS_MAT_KHAU` | Tài khoản máy vai `may_ipos` (chủ tạo ở Cài đặt → Nhân viên & máy, mỗi chi nhánh một máy) |
+| `IPOS_CALLBACK_KHOA` | Khóa bí mật trong địa chỉ nhận hóa đơn — chuỗi ngẫu nhiên **≥ 32 ký tự** (`openssl rand -hex 24`). Thiếu / ngắn → hook trả 503. Lộ → đặt khóa mới, gửi lại địa chỉ cho iPOS |
+| `KHO_IPOS_EMAIL`, `KHO_IPOS_MAT_KHAU` | Tài khoản máy vai `may_ipos` (chủ tạo ở Cài đặt → Nhân viên & máy, mỗi chi nhánh một máy). Hook và cron đều dùng — thiếu thì hook trả 503 |
+| `IPOS_ACCESS_TOKEN` | Token API iPOS — **chỉ để đọc thực đơn** `/v2/items`. Thiếu → không có thực đơn, hóa đơn vẫn nhận. (Token bản thử từng bị dán vào chat / nằm trong tài liệu mẫu — coi như đã lộ, xin token mới cho bản chạy thật) |
 
 ```bash
 cd web
-npx wrangler secret put IPOS_ACCESS_TOKEN
+npx wrangler secret put IPOS_CALLBACK_KHOA
 npx wrangler secret put KHO_IPOS_EMAIL
 npx wrangler secret put KHO_IPOS_MAT_KHAU
+npx wrangler secret put IPOS_ACCESS_TOKEN
 ```
 
-Đọc theo thứ tự: tham số `env` của `scheduled` → `import { env } from 'cloudflare:workers'` →
-`process.env` (chạy thử bằng Node). Thiếu `IPOS_ACCESS_TOKEN` → đồng bộ tắt, màn Kết nối iPOS báo
-"chưa cài", mọi thứ khác chạy bình thường. Thiếu tài khoản máy → cron tắt, "Cập nhật ngay" vẫn chạy
-bằng phiên người bấm. Chạy thử cục bộ: đặt ba bí mật trong `web/.dev.vars` (bị `.gitignore` chặn).
+Đọc theo thứ tự: tham số `env` (của `fetch` / `scheduled`) → `import { env } from 'cloudflare:workers'` →
+`process.env` (chạy thử bằng Node). Chạy thử cục bộ: đặt bí mật trong `web/.dev.vars` (bị `.gitignore` chặn).
 
-**Token không bao giờ rời hàm gọi iPOS:** `kho_ipos_bat_dau` không trả token; URL có token chỉ nằm
-trong lời gọi `fetch`; mọi câu lỗi đi qua `xoaToken` (thay token và mọi `access_token=…` bằng `***`)
-trước khi về trang / log / `kho_ipos_ket_thuc` (database có thêm một lưới xóa nữa và
-`kho_ipos_luu_cau_hinh` từ chối mọi thứ có chữ "token"). `raw` lưu database bỏ các khóa có thông tin
-khách (`phone`, `email`, `customer`…). Test quét cả repo tìm chuỗi giống token.
+**Token / khóa không bao giờ lộ:** `kho_ipos_bat_dau` không trả token; URL có token chỉ nằm trong lời gọi
+`fetch`; mọi câu lỗi đi qua `xoaToken` trước khi về trang / log / `kho_ipos_ket_thuc` (database có thêm một
+lưới nữa và `kho_ipos_luu_cau_hinh` từ chối mọi thứ có chữ "token"). Hook **không log body**; câu log bị xóa
+khóa, token, mật khẩu. Khóa callback chỉ đưa ra trang cho chủ (`cai_dat_goc`). Test quét cả repo tìm chuỗi
+giống token (kể cả kiểu 32 ký tự in hoa + số như token mẫu trong tài liệu iPOS).
 
-**Mã cân / kg nhãn:** web **không** tự giải nhãn cân — máy đồng bộ không đọc được Cài đặt kho, nên
-database giải `ma_vach` bằng mẫu mã vạch của đúng chi nhánh (`kho_doc_ma_vach`). Web chỉ gửi
-`so_goi` (1 gói / nhãn) cho dòng nhãn cân; kg lấy trên nhãn. Nơi gọi biết mẫu thì truyền
-`phanTichHoaDon(json, { mauMaVach, soLeKg })` → web gửi sẵn `ma_can` (database dùng giá trị đó trước).
-Dòng không phải nhãn cân: số lượng nguyên → `so_goi`; số lẻ, đơn vị "kg" hoặc trường `weight` → `so_kg`.
+### Việc phải nhờ iPOS
 
-### Chưa có tài liệu API iPOS — chỉnh `TRUONG_IPOS`
+1. Cấu hình `callback_url` của điểm bán = địa chỉ trên màn Kết nối iPOS (`https://beeftown.vn/hook/ipos/<khóa>`).
+2. **Bật bắn MỌI hóa đơn của điểm bán** — mặc định Hub chỉ bắn đơn "liên quan partner" (voucher, đơn
+   giao hàng / đặt bàn do partner tạo, ví partner…). Thiếu bước này kho không trừ đủ.
+3. Cấp `access_token` bản thật (đặt bí mật Worker) và địa chỉ API thật (`api.foodbook.vn` — hiện mạng máy
+   thử chỉ mở tới `apitest.foodbook.vn`).
+4. Cho biết món thịt ở quầy bán theo **kg** hay theo **gói** trên máy iPOS → chọn "Bán theo" ở Ghép món.
 
-Lúc viết chưa đọc được tài liệu (Postman) của iPOS. Mọi giả định nằm trong **một** bảng hằng
-`TRUONG_IPOS` đầu `lib/kho/ipos.ts` (ghi "CHỈNH KHI CÓ TÀI LIỆU"): tên tham số URL, định dạng giờ gửi
-đi (`dinhDangGioThamSo`), phân trang, khóa bọc mảng hóa đơn, tên trường mã HĐ / giờ / hủy / dòng /
-mã món / mã vạch / số lượng / kg / tiền. Bộ đọc thử lần lượt nhiều tên; HĐ thiếu mã hoặc giờ bị bỏ
-kèm cảnh báo (chỉ tên khóa, không giá trị). Có tài liệu thì: sửa bảng, thay 3 fixture GIẢ trong
-`crm/test/test-kho-ipos-web.mjs` bằng JSON thật (xóa thông tin khách), điền `duong_dan_hoa_don` ở
-màn Kết nối iPOS. Câu hỏi còn chờ tài liệu:
+### Câu hỏi còn mở (chưa có trong tài liệu)
 
-1. Endpoint lấy hóa đơn theo khoảng thời gian: đường dẫn, phân trang, khoảng tối đa.
-2. Mỗi nhãn quét có thành một dòng riêng kèm mã EAN-13 thô và kg không, hay iPOS gộp lại (quyết
-   định có đếm được số gói không).
-3. Mã HĐ / mã dòng ổn định; hủy, trả hàng, sửa sau thanh toán hiện ra thế nào.
-4. Định dạng giờ và múi giờ (giờ không ghi múi đang hiểu là +07:00).
-5. Giới hạn số lần gọi, địa chỉ bản thật so với `apitest`, phạm vi và hạn của token.
-6. Có webhook không (có thì thay cron bằng endpoint nhận).
-7. Có endpoint danh mục món không (để ghép mã nhanh).
+1. **Hủy hóa đơn** báo thế nào? Tài liệu không có event hủy. Bộ đọc nhận mềm `is_cancel` / `status`
+   (CHƯA XÁC NHẬN); HĐ bắn lại cùng `tran_id` mà nội dung khác thì database đảo ngược rồi ghi lại.
+2. Món thịt ở quầy bán theo kg hay theo gói (quyết định "Bán theo" mặc định).
+3. Hub có **thử lại** khi mình trả 500 / 503 không, thử mấy lần, cách nhau bao lâu? (Nếu không, hóa đơn
+   lúc database lỗi bị mất — cần iPOS gửi lại hoặc đối chiếu tay.)
+4. `Content-Type` Hub gửi (JSON hay text/plain) và Hub có ký / gửi header xác thực nào không (hiện chỉ dựa
+   vào khóa bí mật trong đường dẫn).
+5. `pos_id` trong callback có đúng là số điểm bán cấu hình ở màn Kết nối iPOS (`kho_ipos_tim_chi_nhanh`
+   so `pos_parent` không phân biệt hoa thường).
 
-**Chạy thử cron cục bộ:**
+**Chạy thử cục bộ:**
 
 ```bash
 cd web && npm run build
 npx wrangler dev --config dist/server/wrangler.json      # đọc bí mật từ web/.dev.vars
 curl "http://localhost:8787/cdn-cgi/handler/scheduled"   # gọi scheduled một lần, log "[iPOS] …"
+curl -X POST -H 'content-type: text/plain' --data @event11.json "http://localhost:8787/hook/ipos/<khóa>"
 ```
 
 (`/__scheduled` của `--test-scheduled` bị router Astro trả 404 — dùng `/cdn-cgi/handler/scheduled`.)
@@ -756,7 +792,8 @@ Không thêm thư viện npm cho phía trình duyệt. `test-kho-giao-dien.mjs` 
 Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa thêm nó. Hai vai này
 **không đọc được dữ liệu kho/CRM** (test-kho-quyen kiểm); từ 0034 vai `may_chung` gọi được các hàm
 `kho_may_*` của máy (mục 3f); từ 0037 vai `may_ipos` chỉ có việc `dong_bo_ban` — gọi được
-`kho_ipos_bat_dau / _nhan / _ket_thuc` và `kho_cn_duoc`, không đọc được bảng nào (mục 3j).
+`kho_ipos_bat_dau / _nhan / _ket_thuc`, `kho_ipos_nhan_callback`, `kho_ipos_tim_chi_nhanh`, `kho_ipos_luu_menu`,
+`kho_ipos_bao_menu_doi` và `kho_cn_duoc`, không đọc được bảng nào (mục 3j).
 
 ## 7. Thêm một trang kho mới — danh sách kiểm
 
@@ -783,7 +820,8 @@ node test/chay-kho.mjs                # chỉ kho: tự tìm mọi test-kho-*.mj
 node test/test-kho-giao-dien.mjs      # menu, link, hướng dẫn, manifest, JavaScript (không cần database)
 node test/test-kho-viec.mjs           # số đỏ, thông báo, ngưỡng, chỉ số quản trị
 node test/test-kho-ipos.mjs           # đồng bộ iPOS: phần database
-node test/test-kho-ipos-web.mjs       # đồng bộ iPOS: ipos.ts, dongBoIpos, cron, quét token (cần build web để kiểm dist)
+node test/test-kho-ipos-callback.mjs  # iPOS đẩy hóa đơn (0042): bán theo kg / gói / suất, bắn trùng, mất kết nối — database
+node test/test-kho-ipos-web.mjs       # đồng bộ iPOS: phanTichCallback, hook /hook/ipos, dongBoIpos, cron, quét token (build web để kiểm dist)
 node test/test-kho-dinh-luong.mjs     # định lượng món, đối chiếu định mức: phần database
 node test/test-kho-dinh-luong-web.mjs # định lượng: dán Excel, lưới gram, màu lệch, cột tiền, trang
 node test/test-kho-dat-hang.mjs       # đặt hàng NCC, gợi ý, nhận theo đơn, đánh giá NCC: phần database

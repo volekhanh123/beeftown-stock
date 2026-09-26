@@ -170,6 +170,10 @@ const CHAY_DA_DANG_NHAP = [
   // Một lượt đồng bộ iPOS (GĐ7a): "Cập nhật ngay" chạy bằng client của quản lý / chủ;
   // cron đăng nhập tài khoản máy may_ipos (client anon riêng → sau signIn là authenticated).
   'web/src/lib/kho/ipos-dong-bo.ts',
+  // Nhận hóa đơn iPOS đẩy sang (GĐ7c, 0042): route công khai /hook/ipos/<khóa> nhưng MỌI lời gọi
+  // database đi bằng tài khoản máy may_ipos đã đăng nhập (client anon riêng + signInWithPassword,
+  // sau đó là authenticated) — chỉ sau khi khóa bí mật IPOS_CALLBACK_KHOA khớp. Không bao giờ chạy vai anon.
+  'web/src/lib/kho/ipos-hook.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
   // Bản dịch tự động (0036) — gọi từ màn soạn tin, màn công tắc và middleware

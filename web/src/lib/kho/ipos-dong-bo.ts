@@ -1,9 +1,12 @@
 /**
- * KHO — ĐỒNG BỘ BÁN HÀNG iPOS (GĐ7a, migration 0037) — phần I/O
+ * KHO — ĐỒNG BỘ BÁN HÀNG iPOS (GĐ7a; GĐ7c, migration 0042) — phần I/O
  *
- * Một lượt: kho_ipos_bat_dau → gọi iPOS (có phân trang) → phanTichHoaDon
- * (ipos.ts, thuần) → kho_ipos_nhan (lô ≤ 200 HĐ; lô cuối mang den_luc để tiến
- * watermark) → kho_ipos_ket_thuc. Mọi quyết định trừ kho nằm trong database.
+ * iPOS TỰ ĐẨY hóa đơn sang (callback, lib/kho/ipos-hook.ts) — không có API kéo
+ * hóa đơn. File này lo phần còn lại, một lượt:
+ *   kho_ipos_bat_dau → kho_ipos_nhan([]) (thử lại hàng chờ: dòng chưa khớp /
+ *   thiếu hàng) → đọc thực đơn GET /v2/items khi tới hạn (mỗi ~1 giờ, iPOS báo
+ *   thực đơn đổi, hoặc bấm tay) → kho_ipos_luu_menu → kho_ipos_ket_thuc.
+ * Mọi quyết định trừ kho nằm trong database.
  *
  * Hai lối vào:
  *   · `dongBoIpos({ supabase, chiNhanhId, nguon: 'tay' })` — nút "Cập nhật ngay"
@@ -13,20 +16,17 @@
  *     refresh token), chạy mọi chi nhánh máy được đồng bộ, rồi đăng xuất.
  *
  * BÍ MẬT (bí mật Worker, KHÔNG đặt trong wrangler.toml / .env / repo):
- *   IPOS_ACCESS_TOKEN — token API iPOS · KHO_IPOS_EMAIL, KHO_IPOS_MAT_KHAU —
- *   tài khoản máy. Đọc: tham số `env` → `cloudflare:workers` → process.env
- *   (chạy thử bằng Node). Thiếu → đồng bộ tắt, không lỗi gì khác.
+ *   IPOS_ACCESS_TOKEN — token API iPOS (chỉ để đọc thực đơn) · KHO_IPOS_EMAIL,
+ *   KHO_IPOS_MAT_KHAU — tài khoản máy · IPOS_CALLBACK_KHOA — khóa bí mật trong
+ *   địa chỉ nhận hóa đơn. Đọc: tham số `env` → `cloudflare:workers` →
+ *   process.env (chạy thử bằng Node). Thiếu → phần đó tắt, không lỗi gì khác.
  *
- * TOKEN KHÔNG BAO GIỜ rời khỏi hàm gọi iPOS: không vào database (kho_ipos_bat_dau
- * không trả token, câu lỗi đi qua `xoaToken` trước khi gửi kho_ipos_ket_thuc —
- * database còn một lưới nữa), không vào log, không vào câu trả về trang.
+ * TOKEN KHÔNG BAO GIỜ rời khỏi hàm gọi iPOS: không vào database, không vào log,
+ * không vào câu trả về trang — mọi câu lỗi đi qua `xoaToken`.
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import {
-  TRUONG_IPOS, phanTichHoaDon, conTrangSau, gopTrungMa, chiaLo, taoUrlHoaDon, xoaToken,
-  type HoaDonIpos, type CuaSoIpos,
-} from './ipos.ts';
+import { TRUONG_IPOS, phanTichMenu, taoUrlMenu, xoaToken, type NoiIpos } from './ipos.ts';
 
 // -----------------------------------------------------------------------------
 // BÍ MẬT
@@ -35,11 +35,17 @@ export interface BiMatIpos {
   token?: string;
   email?: string;
   matKhau?: string;
+  khoaCallback?: string;
 }
 
-type Env = Record<string, unknown> | undefined;
+export type Env = Record<string, unknown> | undefined;
 
-const TEN_BI_MAT = { token: 'IPOS_ACCESS_TOKEN', email: 'KHO_IPOS_EMAIL', matKhau: 'KHO_IPOS_MAT_KHAU' } as const;
+export const TEN_BI_MAT = {
+  token: 'IPOS_ACCESS_TOKEN', email: 'KHO_IPOS_EMAIL', matKhau: 'KHO_IPOS_MAT_KHAU', khoaCallback: 'IPOS_CALLBACK_KHOA',
+} as const;
+
+/** Khóa callback phải dài ít nhất chừng này (ngẫu nhiên). */
+export const KHOA_TOI_THIEU = 32;
 
 async function envWorker(): Promise<Env> {
   try {
@@ -67,33 +73,145 @@ export async function layBiMatIpos(env?: Env): Promise<BiMatIpos> {
     token: docChuoi(TEN_BI_MAT.token, env, w, p),
     email: docChuoi(TEN_BI_MAT.email, env, w, p),
     matKhau: docChuoi(TEN_BI_MAT.matKhau, env, w, p),
+    khoaCallback: docChuoi(TEN_BI_MAT.khoaCallback, env, w, p),
   };
 }
 
+export interface TrangThaiBiMat {
+  token: boolean;
+  taiKhoanMay: boolean;
+  /** Khóa callback đã cài và đủ dài. */
+  khoaCallback: boolean;
+}
+
 /** Cho màn Kết nối iPOS: đã cài bí mật nào — chỉ CÓ / KHÔNG, không bao giờ giá trị. */
-export async function trangThaiBiMatIpos(env?: Env): Promise<{ token: boolean; taiKhoanMay: boolean }> {
+export async function trangThaiBiMatIpos(env?: Env): Promise<TrangThaiBiMat> {
   const b = await layBiMatIpos(env);
-  return { token: !!b.token, taiKhoanMay: !!(b.email && b.matKhau) };
+  return {
+    token: !!b.token,
+    taiKhoanMay: !!(b.email && b.matKhau),
+    khoaCallback: !!b.khoaCallback && b.khoaCallback.length >= KHOA_TOI_THIEU,
+  };
+}
+
+/**
+ * Khóa callback — CHỈ gọi cho chủ nhà hàng (màn Kết nối iPOS hiện địa chỉ đầy
+ * đủ để dán vào CMS iPOS). Chưa cài / quá ngắn → undefined.
+ */
+export async function layKhoaCallback(env?: Env): Promise<string | undefined> {
+  const k = (await layBiMatIpos(env)).khoaCallback;
+  return k && k.length >= KHOA_TOI_THIEU ? k : undefined;
 }
 
 // -----------------------------------------------------------------------------
-// MỘT LƯỢT
+// TÀI KHOẢN MÁY may_ipos
+// -----------------------------------------------------------------------------
+function layBienCong(ten: string, env: Env): string | undefined {
+  const v = (import.meta as { env?: Record<string, unknown> }).env?.[ten];
+  if (typeof v === 'string' && v) return v;
+  return docChuoi(ten, env, envNode());
+}
+
+export interface PhuThuocMay {
+  /** Tạo client Supabase (test thay bằng client giả). */
+  taoClient?: () => SupabaseClient;
+  fetchFn?: typeof fetch;
+  ghiLog?: (cau: string) => void;
+}
+
+export type KetQuaDangNhap =
+  | { ok: true; client: SupabaseClient; dangXuat: () => Promise<void>; /** Phiên hết hạn lúc (ms), nếu biết. */ hetLuc?: number }
+  | { ok: false; cau: string; chuaCai: boolean };
+
+/**
+ * Đăng nhập tài khoản máy may_ipos bằng client anon RIÊNG (không lưu phiên,
+ * không tự làm mới). Dùng xong PHẢI gọi `dangXuat()`.
+ */
+export async function dangNhapMayIpos(bm: BiMatIpos, env: Env, phuThuoc: PhuThuocMay = {}): Promise<KetQuaDangNhap> {
+  if (!bm.email || !bm.matKhau) {
+    return { ok: false, chuaCai: true, cau: `chưa cài ${TEN_BI_MAT.email} / ${TEN_BI_MAT.matKhau}` };
+  }
+  let client: SupabaseClient;
+  if (phuThuoc.taoClient) client = phuThuoc.taoClient();
+  else {
+    const url = layBienCong('PUBLIC_SUPABASE_URL', env);
+    const anon = layBienCong('PUBLIC_SUPABASE_ANON_KEY', env);
+    if (!url || !anon) return { ok: false, chuaCai: true, cau: 'chưa nối database' };
+    client = createClient(url, anon, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
+  }
+  let hetLuc: number | undefined;
+  try {
+    const { data, error } = await client.auth.signInWithPassword({ email: bm.email, password: bm.matKhau });
+    if (error || !data?.session) {
+      return { ok: false, chuaCai: false, cau: `tài khoản máy không đăng nhập được: ${error?.message ?? 'không có phiên'}` };
+    }
+    const het = Number((data.session as { expires_at?: number }).expires_at);
+    if (Number.isFinite(het) && het > 0) hetLuc = het * 1000;
+  } catch (e) {
+    return { ok: false, chuaCai: false, cau: `tài khoản máy không đăng nhập được: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  return {
+    ok: true, client, hetLuc,
+    // Thu hồi phiên vừa cấp — không giữ refresh token nào của máy.
+    dangXuat: async () => { try { await client.auth.signOut({ scope: 'local' }); } catch { /* bỏ qua */ } },
+  };
+}
+
+/**
+ * Phiên máy dùng lại cho hook nhận hóa đơn (GĐ7c). Mỗi hóa đơn một lần đăng
+ * nhập thì giờ cao điểm dễ chạm giới hạn đăng nhập của Supabase Auth (mặc định
+ * ~30 lần / 5 phút / IP) → hóa đơn bị từ chối. Nên giữ phiên trong BỘ NHỚ của
+ * isolate Worker (không ghi đâu cả, mất khi isolate tắt) tới 2 phút trước khi
+ * hết hạn; hết thì đăng xuất phiên cũ, đăng nhập lại.
+ */
+let phienNho: { email: string; client: SupabaseClient; hetLuc: number } | null = null;
+const NHO_TRUOC_HET_MS = 120_000;
+
+/** Bỏ phiên đang nhớ (lỗi database lạ — lần sau đăng nhập lại). */
+export function quenPhienMay(): void { phienNho = null; }
+
+export async function dangNhapMayIposNho(
+  bm: BiMatIpos, env: Env, phuThuoc: PhuThuocMay = {}, bayGio = Date.now(),
+): Promise<KetQuaDangNhap> {
+  const khongLam = async () => { /* phiên còn dùng lại — không đăng xuất */ };
+  if (phienNho && phienNho.email === bm.email && phienNho.hetLuc - NHO_TRUOC_HET_MS > bayGio) {
+    return { ok: true, client: phienNho.client, dangXuat: khongLam, hetLuc: phienNho.hetLuc };
+  }
+  const cu = phienNho;
+  phienNho = null;
+  if (cu) { try { await cu.client.auth.signOut({ scope: 'local' }); } catch { /* bỏ qua */ } }
+  const dn = await dangNhapMayIpos(bm, env, phuThuoc);
+  if (!dn.ok) return dn;
+  // Không biết hạn phiên → không nhớ, dùng một lần rồi đăng xuất như cũ.
+  if (!dn.hetLuc || !bm.email) return dn;
+  phienNho = { email: bm.email, client: dn.client, hetLuc: dn.hetLuc };
+  return { ...dn, dangXuat: khongLam };
+}
+
+// -----------------------------------------------------------------------------
+// MỘT LƯỢT: thử lại hàng chờ + làm mới thực đơn
 // -----------------------------------------------------------------------------
 export interface TomTatNhan {
   hd_moi: number; hd_trung: number; hd_sua: number; hd_huy: number; hd_loi: number;
   so_dong: number; dong: Record<string, number>;
 }
 
+export interface KetQuaMenu {
+  so_mon: number; moi: number; bo: number; dat_ten: number;
+}
+
 export interface KetQuaDongBo {
   ok: boolean;
   /** Câu tiếng Việt cho người đọc — đã xóa token. */
   cau: string;
-  /** Không chạy vì thiếu bí mật IPOS_ACCESS_TOKEN. */
+  /** Thiếu bí mật IPOS_ACCESS_TOKEN — không đọc được thực đơn (hàng chờ vẫn thử lại). */
   chuaCai?: boolean;
   /** Database từ chối bắt đầu (chưa bật, đang chạy, vừa chạy...) — không phải lỗi. */
   tuChoi?: boolean;
-  soHd?: number;
   tomTat?: TomTatNhan;
+  menu?: KetQuaMenu;
   canhBao?: string[];
 }
 
@@ -103,7 +221,12 @@ export interface ThamSoDongBo {
   nguon: 'cron' | 'tay';
   env?: Env;
   fetchFn?: typeof fetch;
+  /** Ép đọc thực đơn (mặc định: bấm tay, iPOS báo đổi, hoặc quá MENU_MOI_PHUT). */
+  docMenu?: boolean;
 }
+
+/** Thực đơn cũ hơn chừng này (phút) thì lượt cron đọc lại. */
+export const MENU_MOI_PHUT = 60;
 
 async function goiIpos(url: string, fetchFn: typeof fetch): Promise<unknown> {
   const huy = new AbortController();
@@ -124,42 +247,36 @@ async function goiIpos(url: string, fetchFn: typeof fetch): Promise<unknown> {
   }
 }
 
-function cong(a: TomTatNhan | undefined, b: TomTatNhan): TomTatNhan {
-  if (!a) return { ...b, dong: { ...b.dong } };
-  const dong = { ...a.dong };
-  for (const [k, v] of Object.entries(b.dong ?? {})) dong[k] = (dong[k] ?? 0) + Number(v);
-  return {
-    hd_moi: a.hd_moi + b.hd_moi, hd_trung: a.hd_trung + b.hd_trung, hd_sua: a.hd_sua + b.hd_sua,
-    hd_huy: a.hd_huy + b.hd_huy, hd_loi: a.hd_loi + b.hd_loi, so_dong: a.so_dong + b.so_dong, dong,
-  };
+/** Tới lúc đọc lại thực đơn chưa. */
+export function canDocMenu(o: { menu_luc?: string | null; menu_can_lam_moi?: boolean | null }, bayGio = Date.now()): boolean {
+  if (o.menu_can_lam_moi) return true;
+  if (!o.menu_luc) return true;
+  const t = new Date(o.menu_luc).getTime();
+  return Number.isNaN(t) || bayGio - t >= MENU_MOI_PHUT * 60_000;
 }
 
 /** Câu tóm tắt một lượt tốt. */
-export function cauTomTat(soHd: number, t: TomTatNhan | undefined): string {
-  if (!t) return 'Đã cập nhật.';
-  const d = t.dong ?? {};
-  const phan = [`${soHd} hóa đơn đọc từ iPOS`, `${t.hd_moi} mới`];
-  if (t.hd_sua) phan.push(`${t.hd_sua} sửa`);
-  if (t.hd_huy) phan.push(`${t.hd_huy} hủy`);
-  phan.push(`${d.da_ghi ?? 0} dòng đã trừ kho`);
-  const cho = (d.chua_khop ?? 0) + (d.thieu_hang ?? 0);
-  if (cho) phan.push(`${cho} dòng chờ xử lý`);
-  if (d.loi) phan.push(`${d.loi} dòng lỗi`);
+export function cauTomTat(t: TomTatNhan | undefined, menu?: KetQuaMenu | null): string {
+  const phan: string[] = [];
+  const d = t?.dong ?? {};
+  const soThu = Object.values(d).reduce((a, b) => a + (Number(b) || 0), 0);
+  if (!soThu) phan.push('không có dòng nào đang chờ');
+  else {
+    phan.push(`thử lại ${soThu} dòng đang chờ: ${d.da_ghi ?? 0} đã trừ kho`);
+    const cho = (d.chua_khop ?? 0) + (d.thieu_hang ?? 0);
+    if (cho) phan.push(`${cho} vẫn chờ xử lý`);
+    if (d.loi) phan.push(`${d.loi} lỗi`);
+  }
+  if (menu) phan.push(`thực đơn iPOS ${menu.so_mon} món${menu.moi ? ` (${menu.moi} món mới)` : ''}`);
   return `Đã cập nhật: ${phan.join(', ')}.`;
 }
 
 /**
- * Chạy một lượt đồng bộ cho một chi nhánh. Không bao giờ ném lỗi: mọi lỗi
- * thành `{ ok: false, cau }` với câu đã xóa token.
+ * Một lượt cho một chi nhánh. Không bao giờ ném lỗi: mọi lỗi thành
+ * `{ ok: false, cau }` với câu đã xóa token.
  */
-export async function dongBoIpos({ supabase, chiNhanhId, nguon, env, fetchFn }: ThamSoDongBo): Promise<KetQuaDongBo> {
+export async function dongBoIpos({ supabase, chiNhanhId, nguon, env, fetchFn, docMenu }: ThamSoDongBo): Promise<KetQuaDongBo> {
   const { token } = await layBiMatIpos(env);
-  if (!token) {
-    return {
-      ok: false, chuaCai: true,
-      cau: 'Chưa cài bí mật IPOS_ACCESS_TOKEN cho Worker — đồng bộ iPOS đang tắt (xem web/KHO.md mục iPOS).',
-    };
-  }
   const goi = fetchFn ?? fetch;
 
   let lanId: string | undefined;
@@ -168,52 +285,48 @@ export async function dongBoIpos({ supabase, chiNhanhId, nguon, env, fetchFn }: 
       p_chi_nhanh_id: chiNhanhId, p_nguon: nguon,
     });
     if (e1) return { ok: false, cau: xoaToken(e1.message, token) };
-    const b = bd as ({ duoc: boolean; ly_do?: string; lan_id?: string } & Partial<CuaSoIpos>) | null;
+    const b = bd as ({ duoc: boolean; ly_do?: string; lan_id?: string; menu_luc?: string | null;
+      menu_can_lam_moi?: boolean } & Partial<NoiIpos>) | null;
     if (!b?.duoc || !b.lan_id) return { ok: false, tuChoi: true, cau: b?.ly_do ?? 'Chưa đồng bộ được.' };
     lanId = b.lan_id;
 
-    const cuaSo: CuaSoIpos = {
-      api_url: String(b.api_url ?? ''), duong_dan_hoa_don: String(b.duong_dan_hoa_don ?? ''),
-      pos_parent: String(b.pos_parent ?? ''), pos_id: String(b.pos_id ?? ''),
-      tu_luc: String(b.tu_luc), den_luc: String(b.den_luc),
-    };
+    // ---- 1 · Thử lại hàng chờ (danh sách hóa đơn rỗng) ----------------------
+    const { data: n, error: e2 } = await supabase.rpc('kho_ipos_nhan', {
+      p_chi_nhanh_id: chiNhanhId, p_lan_id: lanId, p_hoa_don: [], p_den_luc: null,
+    });
+    if (e2) throw new Error(e2.message);
+    const tomTat = n as TomTatNhan;
 
-    // ---- Đọc iPOS, từng trang ------------------------------------------------
-    const tatCa: HoaDonIpos[] = [];
+    // ---- 2 · Thực đơn iPOS (khi tới hạn) -----------------------------------
     const canhBao: string[] = [];
-    const { trangDau, toiDaTrang } = TRUONG_IPOS.phanTrang;
-    let conNua = false;
-    for (let i = 0; i < toiDaTrang; i++) {
-      const trang = trangDau + i;
-      const json = await goiIpos(taoUrlHoaDon(cuaSo, token, trang), goi);
-      const kq = phanTichHoaDon(json);
-      tatCa.push(...kq.hoaDon);
-      for (const c of kq.canhBao) if (!canhBao.includes(c)) canhBao.push(c);
-      conNua = kq.soGoc > 0 && conTrangSau(json, trang, kq.soGoc);
-      if (!conNua) break;
+    let menu: KetQuaMenu | null = null;
+    let loi: string | null = null;
+    const toiHan = docMenu ?? (nguon === 'tay' || canDocMenu(b));
+    if (toiHan && !token) {
+      canhBao.push(`Chưa cài bí mật ${TEN_BI_MAT.token} — chưa đọc được thực đơn iPOS (hóa đơn vẫn nhận bình thường).`);
+    } else if (toiHan && token) {
+      const noi: NoiIpos = { api_url: String(b.api_url ?? ''), pos_parent: String(b.pos_parent ?? ''), pos_id: String(b.pos_id ?? '') };
+      try {
+        const kq = phanTichMenu(await goiIpos(taoUrlMenu(noi, token), goi));
+        canhBao.push(...kq.canhBao);
+        if (kq.loi) loi = kq.loi;
+        else if (kq.mon.length === 0) canhBao.push('iPOS trả thực đơn rỗng — giữ thực đơn cũ.');
+        else {
+          const { data: m, error: e3 } = await supabase.rpc('kho_ipos_luu_menu', {
+            p_chi_nhanh_id: chiNhanhId, p_mon: kq.mon,
+          });
+          if (e3) throw new Error(e3.message);
+          menu = m as KetQuaMenu;
+        }
+      } catch (e) {
+        loi = `Không đọc được thực đơn iPOS: ${e instanceof Error ? e.message : String(e)}`;
+      }
+      if (loi) loi = xoaToken(loi, token).slice(0, 300);
     }
 
-    // ---- Gửi database --------------------------------------------------------
-    const hoaDon = gopTrungMa(tatCa);
-    const lo = chiaLo(hoaDon, 200);
-    if (lo.length === 0) lo.push([]);   // vẫn gửi 1 lô rỗng: thử lại dòng cũ + tiến watermark
-    let tomTat: TomTatNhan | undefined;
-    for (let i = 0; i < lo.length; i++) {
-      const cuoi = i === lo.length - 1;
-      const { data: n, error: e2 } = await supabase.rpc('kho_ipos_nhan', {
-        p_chi_nhanh_id: chiNhanhId, p_lan_id: lanId, p_hoa_don: lo[i],
-        // Đọc chưa hết (quá số trang tối đa) thì KHÔNG tiến watermark.
-        p_den_luc: cuoi && !conNua ? cuaSo.den_luc : null,
-      });
-      if (e2) throw new Error(e2.message);
-      const t = n as TomTatNhan & { canh_bao?: { ma_hd?: string; loi?: string }[] };
-      tomTat = cong(tomTat, t);
-      if (t.hd_loi) canhBao.push(`${t.hd_loi} hóa đơn bị database từ chối (xem nhật ký)`);
-    }
-
-    const loi = conNua ? `Còn hóa đơn sau ${toiDaTrang} trang — lượt sau đọc tiếp` : null;
     await supabase.rpc('kho_ipos_ket_thuc', { p_lan_id: lanId, p_loi: loi });
-    return { ok: !loi, cau: loi ?? cauTomTat(hoaDon.length, tomTat), soHd: hoaDon.length, tomTat, canhBao };
+    const cau = loi ? `${cauTomTat(tomTat, null)} ${loi}` : cauTomTat(tomTat, menu);
+    return { ok: !loi, cau, tomTat, menu: menu ?? undefined, canhBao, chuaCai: !token || undefined };
   } catch (e) {
     const cau = xoaToken(`Không đồng bộ được iPOS: ${e instanceof Error ? e.message : String(e)}`, token);
     if (lanId) {
@@ -227,18 +340,7 @@ export async function dongBoIpos({ supabase, chiNhanhId, nguon, env, fetchFn }: 
 // -----------------------------------------------------------------------------
 // CRON — mọi chi nhánh, bằng tài khoản máy may_ipos
 // -----------------------------------------------------------------------------
-function layBienCong(ten: string, env: Env): string | undefined {
-  const v = (import.meta as { env?: Record<string, unknown> }).env?.[ten];
-  if (typeof v === 'string' && v) return v;
-  return docChuoi(ten, env, envNode());
-}
-
-export interface PhuThuocCron {
-  /** Tạo client Supabase (test thay bằng client giả). */
-  taoClient?: () => SupabaseClient;
-  fetchFn?: typeof fetch;
-  ghiLog?: (cau: string) => void;
-}
+export type PhuThuocCron = PhuThuocMay;
 
 /**
  * Chạy từ `scheduled` của Worker. Không bao giờ ném lỗi. Trả danh sách câu
@@ -246,49 +348,32 @@ export interface PhuThuocCron {
  */
 export async function dongBoTatCa(env?: Env, phuThuoc: PhuThuocCron = {}): Promise<string[]> {
   const log: string[] = [];
-  const ghi = (c: string, token?: string) => {
-    const s = xoaToken(`[iPOS] ${c}`, token);
+  const bm = await layBiMatIpos(env);
+  const ghi = (c: string) => {
+    const s = xoaToken(`[iPOS] ${c}`, bm.token);
     log.push(s);
     (phuThuoc.ghiLog ?? console.log)(s);
   };
 
-  const bm = await layBiMatIpos(env);
-  if (!bm.token) { ghi('chưa cài bí mật IPOS_ACCESS_TOKEN — bỏ qua'); return log; }
-  if (!bm.email || !bm.matKhau) { ghi('chưa cài KHO_IPOS_EMAIL / KHO_IPOS_MAT_KHAU — bỏ qua', bm.token); return log; }
-
-  let client: SupabaseClient;
-  if (phuThuoc.taoClient) client = phuThuoc.taoClient();
-  else {
-    const url = layBienCong('PUBLIC_SUPABASE_URL', env);
-    const anon = layBienCong('PUBLIC_SUPABASE_ANON_KEY', env);
-    if (!url || !anon) { ghi('chưa nối database — bỏ qua', bm.token); return log; }
-    client = createClient(url, anon, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    });
-  }
-
-  let daDangNhap = false;
+  const dn = await dangNhapMayIpos(bm, env, phuThuoc);
+  if (!dn.ok) { ghi(`${dn.cau} — bỏ qua`); return log; }
+  const client = dn.client;
   try {
-    const { data, error } = await client.auth.signInWithPassword({ email: bm.email, password: bm.matKhau });
-    if (error || !data?.session) { ghi(`tài khoản máy không đăng nhập được: ${error?.message ?? 'không có phiên'}`, bm.token); return log; }
-    daDangNhap = true;
-
     const { data: ds, error: e1 } = await client.rpc('kho_cn_duoc', { p_viec: 'dong_bo_ban' });
-    if (e1) { ghi(`không đọc được chi nhánh: ${e1.message}`, bm.token); return log; }
+    if (e1) { ghi(`không đọc được chi nhánh: ${e1.message}`); return log; }
     const chiNhanh = (Array.isArray(ds) ? ds : []) as string[];
-    if (chiNhanh.length === 0) ghi('tài khoản máy không có chi nhánh nào được đồng bộ (vai phải là may_ipos)', bm.token);
+    if (chiNhanh.length === 0) ghi('tài khoản máy không có chi nhánh nào được đồng bộ (vai phải là may_ipos)');
 
     for (const cn of chiNhanh) {
       const kq = await dongBoIpos({ supabase: client, chiNhanhId: cn, nguon: 'cron', env, fetchFn: phuThuoc.fetchFn });
       // Chưa bật ở chi nhánh này = bình thường, không cần log.
       if (kq.tuChoi && /chưa bật/i.test(kq.cau)) continue;
-      ghi(`${cn.slice(0, 8)}: ${kq.cau}`, bm.token);
+      ghi(`${cn.slice(0, 8)}: ${kq.cau}`);
     }
   } catch (e) {
-    ghi(`lỗi: ${e instanceof Error ? e.message : String(e)}`, bm.token);
+    ghi(`lỗi: ${e instanceof Error ? e.message : String(e)}`);
   } finally {
-    // Thu hồi phiên vừa cấp — không giữ refresh token nào của máy.
-    if (daDangNhap) { try { await client.auth.signOut({ scope: 'local' }); } catch { /* bỏ qua */ } }
+    await dn.dangXuat();
   }
   return log;
 }

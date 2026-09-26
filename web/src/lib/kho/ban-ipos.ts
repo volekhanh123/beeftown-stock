@@ -1,5 +1,5 @@
 /**
- * KHO — BÁN HÀNG iPOS: TRẠNG THÁI, CẤU HÌNH, HÀNG CHỜ, GHÉP MÃ (GĐ7a, 0037)
+ * KHO — BÁN HÀNG iPOS: TRẠNG THÁI, CẤU HÌNH, HÀNG CHỜ, GHÉP MÃ (GĐ7a 0037, GĐ7c 0042)
  *
  * Màn dùng file này:
  *   · /noi-bo/kho/cai-dat/ipos  — Kết nối iPOS: đèn trạng thái, "Cập nhật ngay"
@@ -7,7 +7,8 @@
  *     nhật ký 10 lượt.
  *   · /noi-bo/kho/ban-ipos      — dòng bán chưa trừ được kho: thử lại, hàng
  *     ngoài sổ, bỏ qua.
- *   · /noi-bo/kho/ban-ipos/ghep — ghép mã món iPOS với món kho.
+ *   · /noi-bo/kho/ban-ipos/ghep — ghép mã món iPOS với món kho, chọn "bán theo"
+ *     kg / gói / suất (kho_ipos_gan_ma_v2, 0042), thực đơn iPOS (kho_ipos_menu).
  *   · Trang chủ quản lý: thẻ nhỏ trạng thái iPOS.
  *
  * TOKEN iPOS KHÔNG ĐI QUA FILE NÀY. Nó là bí mật Worker IPOS_ACCESS_TOKEN,
@@ -30,7 +31,7 @@ export type DenIpos = 'xanh' | 'vang' | 'do';
 
 export interface LanChayIpos {
   id: string;
-  nguon: 'cron' | 'tay';
+  nguon: 'cron' | 'tay' | 'callback';
   bat_dau_luc: string;
   ket_thuc_luc: string | null;
   so_hd: number;
@@ -39,7 +40,7 @@ export interface LanChayIpos {
   loi: string | null;
 }
 
-/** Kết quả kho_ipos_trang_thai (0037) — không tiền, không token. */
+/** Kết quả kho_ipos_trang_thai (0037, thêm trường 0042) — không tiền, không token. */
 export interface TrangThaiIpos {
   co_cau_hinh: boolean;
   bat: boolean;
@@ -52,12 +53,22 @@ export interface TrangThaiIpos {
   vi_tri_ban_id: string | null;
   gio_mo_cua: number;
   gio_dong_cua: number;
+  /** Trong giờ mở cửa, quá bấy nhiêu giờ không nhận hóa đơn thì báo mất kết nối (0042). */
+  gio_mat_ket_noi: number;
   ipos_tu_luc: string | null;
   dong_bo_den_luc: string | null;
   dang_chay: boolean;
   lan_cuoi_luc: string | null;
   lan_cuoi_loi: string | null;
   lan_ok_luc: string | null;
+  /** Lần cuối nhận được hóa đơn iPOS (0042). */
+  nhan_hd_luc: string | null;
+  /** Lần cuối hộp thư được xử lý (callback / thử lại hàng chờ) (0042). */
+  hop_thu_luc: string | null;
+  /** Lần cuối đọc được thực đơn iPOS; iPOS báo thực đơn đổi (0042). */
+  menu_luc: string | null;
+  menu_can_lam_moi: boolean;
+  so_mon_menu: number;
   mat_ket_noi: boolean;
   den: DenIpos;
   cau: string;
@@ -80,6 +91,8 @@ export interface DongIpos {
   ma_can: string | null;
   so_kg: number | null;
   so_goi: number | null;
+  /** Số lượng gốc iPOS gửi (0042). */
+  so_luong: number | null;
   thanh_tien: number | null;
   mat_hang_id: string | null;
   ten_mat_hang: string | null;
@@ -90,11 +103,36 @@ export interface DongIpos {
   xu_ly_luc: string | null;
 }
 
+export type DonViBan = 'kg' | 'goi' | 'suat';
+
 export interface MaIposDaGhep {
   ma_ipos: string;
   ten_ipos: string | null;
   kieu: 'goi_can' | 'mon' | 'bo_qua';
   mat_hang_id: string | null;
+  /** Bán theo (0042): null = theo món kho. */
+  don_vi_ban: DonViBan | null;
+  kg_moi_don_vi: number | null;
+}
+
+/** Một món trên thực đơn iPOS (kho_ipos_menu, 0042) — không giá. */
+export interface MonMenuIpos {
+  ma_ipos: string;
+  ten_ipos: string | null;
+  loai: string | null;
+  dang_ban: boolean;
+}
+
+/** Lựa chọn "Bán theo" ở màn Ghép món. '' = theo món kho. */
+export const CHON_DON_VI_BAN: readonly { ma: '' | DonViBan; ten: string; giai: string }[] = [
+  { ma: '', ten: 'Theo món kho', giai: 'Món đếm gói → mỗi số lượng là 1 gói; món theo kg → số lượng là kg.' },
+  { ma: 'kg', ten: 'Theo kg', giai: 'iPOS gõ số kg (vd 0,45). Món đếm gói thì lấy gói nguyên gần số kg nhất, lệch ghi hao hụt.' },
+  { ma: 'goi', ten: 'Theo gói', giai: 'Mỗi số lượng là 1 gói. Món kho tính theo kg thì điền "mỗi gói = … kg".' },
+  { ma: 'suat', ten: 'Theo suất (món chế biến)', giai: 'Món bếp nấu (phở, lẩu…): kho không trừ, chỉ đếm suất để so định lượng.' },
+];
+
+export function tenDonViBan(v: string | null | undefined): string {
+  return CHON_DON_VI_BAN.find(c => c.ma === (v ?? ''))?.ten ?? 'Theo món kho';
 }
 
 // -----------------------------------------------------------------------------
@@ -143,13 +181,14 @@ export interface CauHinhGui {
   api_url: string;
   pos_parent: string;
   pos_id: string;
-  duong_dan_hoa_don: string;
   vi_tri_ban_id: string;
   gio_mo_cua: number;
   gio_dong_cua: number;
+  gio_mat_ket_noi: number;
 }
 
-const COT_CAU_HINH = ['api_url', 'pos_parent', 'pos_id', 'duong_dan_hoa_don'] as const;
+// 0042: iPOS tự đẩy hóa đơn — không còn ô "đường dẫn lấy hóa đơn" (cột DB giữ nguyên, không gửi).
+const COT_CAU_HINH = ['api_url', 'pos_parent', 'pos_id'] as const;
 
 /**
  * Form Kết nối iPOS → object gửi kho_ipos_luu_cau_hinh. Chỉ các khóa database
@@ -173,10 +212,6 @@ export function docFormCauHinhIpos(form: FormData): { cauHinh: CauHinhGui | null
       return { cauHinh: null, loi: `${ten} chỉ gồm chữ không dấu, số, dấu chấm, gạch (tối đa 60 ký tự).` };
     }
   }
-  const dd = chu('duong_dan_hoa_don');
-  if (dd && !/^\/?[A-Za-z0-9._~/-]{1,200}$/.test(dd)) {
-    return { cauHinh: null, loi: 'Đường dẫn lấy hóa đơn chỉ gồm chữ không dấu, số và dấu "/" — không có dấu ? hay tham số.' };
-  }
   const vt = chu('vi_tri_ban_id');
   if (vt && !laUuid(vt)) return { cauHinh: null, loi: 'Chọn lại quầy bán.' };
   const mo = docSoNguyen(chu('gio_mo_cua') || '10', 0, 23);
@@ -184,11 +219,15 @@ export function docFormCauHinhIpos(form: FormData): { cauHinh: CauHinhGui | null
   if (mo === null || dong === null || Number.isNaN(mo) || Number.isNaN(dong) || mo >= dong) {
     return { cauHinh: null, loi: 'Giờ mở cửa từ 0 đến 23, giờ đóng cửa từ 1 đến 24, và mở phải trước đóng.' };
   }
+  const mat = docSoNguyen(chu('gio_mat_ket_noi') || '3', 1, 12);
+  if (mat === null || Number.isNaN(mat)) {
+    return { cauHinh: null, loi: 'Báo mất kết nối sau từ 1 đến 12 giờ không nhận hóa đơn.' };
+  }
   return {
     cauHinh: {
       bat: form.get('bat') === 'co',
       api_url: api, pos_parent: chu('pos_parent'), pos_id: chu('pos_id'),
-      duong_dan_hoa_don: dd, vi_tri_ban_id: vt, gio_mo_cua: mo, gio_dong_cua: dong,
+      vi_tri_ban_id: vt, gio_mo_cua: mo, gio_dong_cua: dong, gio_mat_ket_noi: mat,
     },
     loi: null,
   };
@@ -302,6 +341,12 @@ export async function docTrangThaiIpos(client: SupabaseClient, chiNhanhId: strin
     ...(d as unknown as TrangThaiIpos),
     gio_mo_cua: Number(d.gio_mo_cua ?? 10),
     gio_dong_cua: Number(d.gio_dong_cua ?? 23),
+    gio_mat_ket_noi: Number(d.gio_mat_ket_noi ?? 3),
+    nhan_hd_luc: (d.nhan_hd_luc as string | null) ?? null,
+    hop_thu_luc: (d.hop_thu_luc as string | null) ?? null,
+    menu_luc: (d.menu_luc as string | null) ?? null,
+    menu_can_lam_moi: d.menu_can_lam_moi === true,
+    so_mon_menu: Number(d.so_mon_menu ?? 0) || 0,
     cho_xu_ly: Number(d.cho_xu_ly ?? 0) || 0,
     den: d.den === 'xanh' || d.den === 'do' ? d.den : 'vang',
     cau: String(d.cau ?? ''),
@@ -326,7 +371,7 @@ export async function docDongIpos(
   client: SupabaseClient, chiNhanhId: string, trangThai: TrangThaiDong[], tim: TimDs,
 ): Promise<DongIpos[]> {
   const q = client.from('kho_v_ipos_dong')
-    .select('id, ma_hd, thoi_diem_ban, ngay_ban, ma_ipos, ten_ipos, ma_vach, ma_can, so_kg, so_goi, thanh_tien, mat_hang_id, ten_mat_hang, trang_thai, so_lan_thu, ly_do, lo_het_han, xu_ly_luc')
+    .select('id, ma_hd, thoi_diem_ban, ngay_ban, ma_ipos, ten_ipos, ma_vach, ma_can, so_kg, so_goi, so_luong, thanh_tien, mat_hang_id, ten_mat_hang, trang_thai, so_lan_thu, ly_do, lo_het_han, xu_ly_luc')
     .eq('chi_nhanh_id', chiNhanhId)
     .in('trang_thai', trangThai)
     .order('thoi_diem_ban', { ascending: false })
@@ -336,7 +381,7 @@ export async function docDongIpos(
   if (error) throw error;
   return ((data ?? []) as Record<string, unknown>[]).map(r => ({
     ...(r as unknown as DongIpos),
-    so_kg: so(r.so_kg), so_goi: so(r.so_goi), thanh_tien: so(r.thanh_tien),
+    so_kg: so(r.so_kg), so_goi: so(r.so_goi), so_luong: so(r.so_luong), thanh_tien: so(r.thanh_tien),
     so_lan_thu: Number(r.so_lan_thu ?? 0),
   }));
 }
@@ -355,11 +400,43 @@ export async function docMaChuaGhep(client: SupabaseClient, chiNhanhId: string):
 
 export async function docMaDaGhep(client: SupabaseClient, chiNhanhId: string): Promise<MaIposDaGhep[]> {
   const { data, error } = await client.from('kho_ipos_ma_hang')
-    .select('ma_ipos, ten_ipos, kieu, mat_hang_id')
+    .select('ma_ipos, ten_ipos, kieu, mat_hang_id, don_vi_ban, kg_moi_don_vi')
     .eq('chi_nhanh_id', chiNhanhId)
     .order('ma_ipos');
   if (error) throw error;
-  return (data ?? []) as MaIposDaGhep[];
+  return ((data ?? []) as Record<string, unknown>[]).map(r => ({
+    ...(r as unknown as MaIposDaGhep),
+    don_vi_ban: (r.don_vi_ban as DonViBan | null) ?? null,
+    kg_moi_don_vi: so(r.kg_moi_don_vi),
+  }));
+}
+
+/**
+ * Thực đơn iPOS (kho_ipos_menu, 0042) — tìm theo mã / tên / nhóm, một trang
+ * CO_TRANG món (+1 để biết còn trang sau). Không có cột giá.
+ */
+export async function docMenuIpos(client: SupabaseClient, chiNhanhId: string, tim: TimDs): Promise<MonMenuIpos[]> {
+  const q = client.from('kho_ipos_menu')
+    .select('ma_ipos, ten_ipos, loai, dang_ban')
+    .eq('chi_nhanh_id', chiNhanhId)
+    .order('dang_ban', { ascending: false })
+    .order('ten_ipos')
+    .order('ma_ipos');
+  const { data, error } = await apDungTim(q, { ...tim, tu: null, den: null, cuaToi: false },
+    { cotTim: ['ma_ipos', 'ten_ipos', 'loai'], cotNgay: 'cap_nhat_luc', nhanSuId: null });
+  if (error) throw error;
+  return (data ?? []) as MonMenuIpos[];
+}
+
+/** Một món thực đơn theo mã (tên cho form ghép ?ma=). Không có → null. */
+export async function docMonMenu(client: SupabaseClient, chiNhanhId: string, ma: string): Promise<MonMenuIpos | null> {
+  const { data, error } = await client.from('kho_ipos_menu')
+    .select('ma_ipos, ten_ipos, loai, dang_ban')
+    .eq('chi_nhanh_id', chiNhanhId)
+    .eq('ma_ipos', ma)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as MonMenuIpos | null) ?? null;
 }
 
 // -----------------------------------------------------------------------------
@@ -370,7 +447,7 @@ export async function luuCauHinhIpos(client: SupabaseClient, chiNhanhId: string,
   if (!cauHinh) return { ok: false, cau: loi ?? 'Cấu hình chưa hợp lệ.' };
   const { error } = await client.rpc('kho_ipos_luu_cau_hinh', { p_chi_nhanh_id: chiNhanhId, p_cau_hinh: cauHinh });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: cauHinh.bat ? 'Đã lưu kết nối iPOS. Đồng bộ đang bật — 5 phút một lượt.' : 'Đã lưu kết nối iPOS. Đồng bộ đang tắt.' };
+  return { ok: true, cau: cauHinh.bat ? 'Đã lưu kết nối iPOS. Đồng bộ đang bật — hóa đơn iPOS gửi sang sẽ được ghi.' : 'Đã lưu kết nối iPOS. Đồng bộ đang tắt — hóa đơn gửi sang chỉ được cất lại, chưa trừ kho.' };
 }
 
 export async function chuyenSangIpos(client: SupabaseClient, chiNhanhId: string, form: FormData): Promise<KetQua> {
@@ -404,23 +481,55 @@ export async function xuLyDongIpos(client: SupabaseClient, form: FormData): Prom
   return { ok: false, cau: `Vẫn chưa trừ được kho (${ten.toLowerCase()})${kq.ly_do ? `: ${kq.ly_do}` : ''}.` };
 }
 
-export async function ganMaIpos(client: SupabaseClient, chiNhanhId: string, form: FormData): Promise<KetQua> {
+export interface GhepGui {
+  ma: string;
+  kieu: 'mon' | 'goi_can' | 'bo_qua' | null;
+  matHang: string | null;
+  donVi: DonViBan | null;
+  kgMoiDonVi: number | null;
+}
+
+/**
+ * Form Ghép món → tham số kho_ipos_gan_ma_v2 (thuần). mat_hang_id: id món kho
+ * | "goi_can" (hàng cân nhãn) | "bo_qua" (không phải hàng kho) | "bo_ghep".
+ * don_vi_ban: '' | kg | goi | suat — suất = món chế biến: không cần chọn món kho.
+ */
+export function docFormGhep(form: FormData): { ghep: GhepGui | null; loi: string | null } {
   const ma = String(form.get('ma_ipos') ?? '').trim();
   const chon = String(form.get('mat_hang_id') ?? '').trim();
-  if (!ma || ma.length > 100) return { ok: false, cau: 'Thiếu mã món iPOS.' };
-  // "bo_qua" = không phải hàng kho; "goi_can" = hàng cân nhãn (món thật đọc trên nhãn);
-  // "bo_ghep" = xóa ghép; còn lại là id món kho.
-  let kieu: 'mon' | 'goi_can' | 'bo_qua' | null;
+  const dvChu = String(form.get('don_vi_ban') ?? '').trim();
+  if (!ma || ma.length > 100) return { ghep: null, loi: 'Thiếu mã món iPOS.' };
+  if (dvChu && !['kg', 'goi', 'suat'].includes(dvChu)) return { ghep: null, loi: 'Chọn lại "Bán theo".' };
+  const donVi = (dvChu || null) as DonViBan | null;
+
+  if (chon === 'bo_ghep') return { ghep: { ma, kieu: null, matHang: null, donVi: null, kgMoiDonVi: null }, loi: null };
+  if (donVi === 'suat') return { ghep: { ma, kieu: 'bo_qua', matHang: null, donVi, kgMoiDonVi: null }, loi: null };
+
+  let kieu: GhepGui['kieu'];
   let matHang: string | null = null;
   if (chon === 'bo_qua') kieu = 'bo_qua';
   else if (chon === 'goi_can') kieu = 'goi_can';
-  else if (chon === 'bo_ghep') kieu = null;
   else if (laUuid(chon)) { kieu = 'mon'; matHang = chon; }
-  else return { ok: false, cau: 'Chọn món trong kho, hoặc "Không phải hàng kho".' };
-  const { data, error } = await client.rpc('kho_ipos_gan_ma', {
-    p_chi_nhanh_id: chiNhanhId, p_ma_ipos: ma, p_kieu: kieu, p_mat_hang_id: matHang,
+  else return { ghep: null, loi: 'Chọn món trong kho, "Không phải hàng kho", hoặc Bán theo suất (món chế biến).' };
+
+  let kg: number | null = null;
+  const kgChu = String(form.get('kg_moi_don_vi') ?? '').trim().replace(',', '.');
+  if (donVi === 'goi' && kgChu !== '') {
+    kg = /^\d{1,4}(\.\d{1,3})?$/.test(kgChu) ? Number(kgChu) : NaN;
+    if (!(kg > 0 && kg <= 1000)) return { ghep: null, loi: 'Mỗi gói phải nặng hơn 0 và không quá 1000 kg (vd 0,5).' };
+  }
+  return { ghep: { ma, kieu, matHang, donVi: kieu === 'bo_qua' ? null : donVi, kgMoiDonVi: kg }, loi: null };
+}
+
+export async function ganMaIpos(client: SupabaseClient, chiNhanhId: string, form: FormData): Promise<KetQua> {
+  const { ghep, loi } = docFormGhep(form);
+  if (!ghep) return { ok: false, cau: loi ?? 'Yêu cầu không hợp lệ — tải lại trang.' };
+  const { data, error } = await client.rpc('kho_ipos_gan_ma_v2', {
+    p_chi_nhanh_id: chiNhanhId, p_ma_ipos: ghep.ma, p_kieu: ghep.kieu, p_mat_hang_id: ghep.matHang,
+    p_don_vi_ban: ghep.donVi, p_kg_moi_don_vi: ghep.kgMoiDonVi,
   });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  if (kieu === 'bo_qua') return { ok: true, cau: `Mã "${ma}" không phải hàng kho — bán món này kho không trừ.` };
-  return { ok: true, cau: cauKetQuaGhep(ma, data as { so_dong?: number; dong?: Record<string, number> }, kieu === null) };
+  if (ghep.donVi === 'suat') return { ok: true, cau: `Mã "${ghep.ma}" là món chế biến — kho không trừ, chỉ đếm suất để so định lượng.` };
+  if (ghep.kieu === 'bo_qua') return { ok: true, cau: `Mã "${ghep.ma}" không phải hàng kho — bán món này kho không trừ.` };
+  return { ok: true, cau: cauKetQuaGhep(ghep.ma, data as { so_dong?: number; dong?: Record<string, number> }, ghep.kieu === null) };
 }

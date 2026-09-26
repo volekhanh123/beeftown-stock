@@ -315,6 +315,10 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ipos_bat_dau', 'kho_ipos_nhan', 'kho_ipos_ket_thuc',
     'kho_ipos_luu_cau_hinh', 'kho_ipos_chuyen_sang', 'kho_ipos_tro_ve',
     'kho_ipos_gan_ma', 'kho_ipos_xu_ly_dong', 'kho_ipos_trang_thai',
+    // iPOS tự đẩy hóa đơn (0042): nhận callback, tìm chi nhánh theo pos, lưu danh mục món,
+    // báo thực đơn đổi (dong_bo_ban); ghép mã kèm "bán theo" kg / gói / suất (danh_muc)
+    'kho_ipos_nhan_callback', 'kho_ipos_tim_chi_nhanh', 'kho_ipos_luu_menu', 'kho_ipos_bao_menu_doi',
+    'kho_ipos_gan_ma_v2',
     // Công nợ, trả hàng
     'kho_doi_chieu_hoa_don', 'kho_ghi_thanh_toan', 'kho_huy_thanh_toan', 'kho_tra_nha_cung_cap',
     // Báo cáo — SECURITY INVOKER, RLS của người gọi vẫn áp dụng
@@ -374,6 +378,9 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_so_chu', 'kho_ngay_giao_mac_dinh', 'kho_don_dat_dong_du', 'kho_don_dat_tinh_nhan',
     // 0040: tự chia một khoản vào các phiếu (đọc view có tiền), tiền trả hàng tự tính
     'kho_chia_thanh_toan', 'kho_tien_tra_hang_goi_y',
+    // 0042: bỏ thông tin khách khỏi raw, số gói theo kg, mốc "lâu không nhận hóa đơn",
+    // lõi nhận hóa đơn (chung cho lượt và callback)
+    'kho_ipos_bo_pii', 'kho_ipos_goi_theo_kg', 'kho_ipos_moc_nhan', 'kho_ipos_nhan_hd',
   ].sort();
 
   const { rows } = await db.query(`
