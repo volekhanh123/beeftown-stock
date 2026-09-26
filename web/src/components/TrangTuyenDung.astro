@@ -70,6 +70,23 @@ const DU_PHONG: { ten: BaThuTieng; bo_phan: keyof typeof BO_PHAN; loai: keyof ty
 
 const dungDuPhong = viTri.length === 0;
 
+// Nút "Ứng tuyển vị trí này" trên từng thẻ dẫn tới ?vi_tri=<mã>#nop-ho-so, và
+// form chọn sẵn vị trí đó — không cần JavaScript. Chỉ nhận mã đang tuyển; mã
+// lạ thì như không có.
+const maTrenLink = Astro.url.searchParams.get('vi_tri');
+const chonSan: Record<string, string> = maTrenLink && viTri.some(v => v.ma === maTrenLink) ? { vi_tri: maTrenLink } : {};
+
+// Thẻ chỉ hiện câu đầu của mô tả (câu tóm tắt vai trò); phần còn lại của mô
+// tả, yêu cầu và quyền lợi nằm trong "Xem chi tiết công việc". Để nguyên cả JD
+// trên thẻ thì trên điện thoại form bị đẩy xuống gần 6.000px, sau bốn bản JD —
+// ứng viên không tìm thấy chỗ nộp (26/09/2026).
+const tachMoTa = (s: string | null) => {
+  const i = s ? s.indexOf('\n') : -1;
+  if (!s || i < 0) return { tomTat: s, conLai: null };
+  return { tomTat: s.slice(0, i).trim(), conLai: s.slice(i + 1).trim() || null };
+};
+const theViTri = viTri.map(v => ({ v, ...tachMoTa(v.mo_ta) }));
+
 const nutNhanTin =
   nd.facebook_url ? { url: nd.facebook_url, chu: t.nhanTin } :
   nd.email_lien_he ? { url: `mailto:${nd.email_lien_he}`, chu: t.nhanTin } :
@@ -90,6 +107,9 @@ const tRieng = dich(ngonNgu, {
   quyenLoi:       { vi: 'Quyền lợi: ', en: 'Benefits: ', ko: '복리후생: ' },
   hanNop:         { vi: 'Hạn nộp: ', en: 'Apply by ', ko: '지원 마감: ' },
   cachUngTuyen:   { vi: 'Cách ứng tuyển', en: 'How to apply', ko: '지원 방법' },
+  nopHoSo:        { vi: 'Nộp hồ sơ', en: 'Apply now', ko: '지원하기' },
+  ungTuyenViTri:  { vi: 'Ứng tuyển vị trí này', en: 'Apply for this role', ko: '이 포지션 지원하기' },
+  xemChiTiet:     { vi: 'Xem chi tiết công việc', en: 'View role details', ko: '자세히 보기' },
   luuTru: {
     vi: 'Beeftown chỉ dùng thông tin bạn gửi cho việc tuyển dụng, và lưu trong sáu tháng.',
     en: 'Beeftown only uses the details you send for hiring, and keeps them for six months.',
@@ -103,6 +123,11 @@ const tRieng = dich(ngonNgu, {
     <p class="hieu">{t.tuyenDung}</p>
     <h1 style="font-size:clamp(32px,6vw,58px)">{t.tuyenDungTieuDe}</h1>
     <p class="dan" style="max-width:58ch; margin-top:22px">{t.tuyenDungDan}</p>
+    {!dungDuPhong && (
+      <div class="hang-nut" style="margin-top:26px">
+        <a class="nut nut-chinh" href="#nop-ho-so">{tRieng.nopHoSo}</a>
+      </div>
+    )}
   </div>
 </section>
 
@@ -120,7 +145,7 @@ const tRieng = dich(ngonNgu, {
               {v.loai && <p class="nho" style="margin:0">{nhanEnum(LOAI_HOP_DONG, v.loai, ngonNgu)}</p>}
             </div>
           ))
-        : viTri.map((v) => (
+        : theViTri.map(({ v, tomTat, conLai }) => (
             <div class="the vi-tri">
               <span class="nhan">{nhanEnum(BO_PHAN, v.bo_phan, ngonNgu)}</span>
               <h3>{v.ten}</h3>
@@ -134,20 +159,7 @@ const tRieng = dich(ngonNgu, {
                   {tRieng.canNguoi(v.so_luong)}
                 </p>
               )}
-              {/* pre-line: xuống dòng người soạn gõ ở màn nội bộ phải còn nguyên. */}
-              {v.mo_ta && <p style="margin:8px 0 0;white-space:pre-line">{v.mo_ta}</p>}
-              {v.yeu_cau && (
-                <p class="nho" style="margin:8px 0 0;white-space:pre-line">
-                  <strong>{tRieng.yeuCau}</strong>
-                  {v.yeu_cau}
-                </p>
-              )}
-              {v.quyen_loi && (
-                <p class="nho" style="margin:8px 0 0;white-space:pre-line">
-                  <strong>{tRieng.quyenLoi}</strong>
-                  {v.quyen_loi}
-                </p>
-              )}
+              {tomTat && <p style="margin:8px 0 0">{tomTat}</p>}
               {mucLuong(v) && (
                 <p style="margin:8px 0 0; font-weight:700; color:var(--do)">{mucLuong(v)}</p>
               )}
@@ -156,6 +168,28 @@ const tRieng = dich(ngonNgu, {
                   {tRieng.hanNop}{dinhDangNgay(v.han_nop, ngonNgu)}
                 </p>
               )}
+              {(conLai || v.yeu_cau || v.quyen_loi) && (
+                <details class="chi-tiet">
+                  <summary>{tRieng.xemChiTiet}</summary>
+                  {/* pre-line: xuống dòng người soạn gõ ở màn nội bộ phải còn nguyên. */}
+                  {conLai && <p style="margin:8px 0 0;white-space:pre-line">{conLai}</p>}
+                  {v.yeu_cau && (
+                    <p class="nho" style="margin:8px 0 0;white-space:pre-line">
+                      <strong>{tRieng.yeuCau}</strong>
+                      {v.yeu_cau}
+                    </p>
+                  )}
+                  {v.quyen_loi && (
+                    <p class="nho" style="margin:8px 0 0;white-space:pre-line">
+                      <strong>{tRieng.quyenLoi}</strong>
+                      {v.quyen_loi}
+                    </p>
+                  )}
+                </details>
+              )}
+              <p style="margin:16px 0 0">
+                <a class="nut nut-chinh" href={`?vi_tri=${encodeURIComponent(v.ma)}#nop-ho-so`}>{tRieng.ungTuyenViTri}</a>
+              </p>
             </div>
           ))}
     </div>
@@ -205,7 +239,7 @@ const tRieng = dich(ngonNgu, {
         </div>
 
       ) : (
-        <FormUngTuyen ngonNgu={ngonNgu} viTri={viTri} ketQua={ketQuaNop} nhanTin={nutNhanTin} />
+        <FormUngTuyen ngonNgu={ngonNgu} viTri={viTri} ketQua={ketQuaNop} nhanTin={nutNhanTin} daNhap={chonSan} />
       )}
     </div>
 
@@ -216,3 +250,14 @@ const tRieng = dich(ngonNgu, {
     </p>
   </div>
 </section>
+
+<style>
+  /* "Xem chi tiết công việc": màu nút chính để thấy là bấm được; cao 44px cho
+     ngón tay cái. */
+  .chi-tiet { margin-top: 12px; border-top: 1px solid var(--vach); }
+  .chi-tiet > summary {
+    cursor: pointer; font-weight: 700; color: var(--do);
+    padding: 12px 0; min-height: 44px;
+  }
+  .chi-tiet > summary:focus-visible { outline: 2px solid var(--do); outline-offset: 2px; }
+</style>

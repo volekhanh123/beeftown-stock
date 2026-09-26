@@ -185,7 +185,7 @@ const t = dich(ngonNgu, {
           <button type="submit" class="nut nut-vien" style="width:100%">{t.doiNgay}</button>
         </form>
 
-        <hr style="border:none;border-top:1px solid var(--vach-kem);margin:24px 0" />
+        <hr style="border:none;border-top:1px solid var(--vach);margin:24px 0" />
 
         {chonDuoc.length === 0 ? (
           <p style="margin:0"><strong>{t.hetCho}</strong></p>
@@ -277,9 +277,9 @@ const t = dich(ngonNgu, {
     display: block; font-weight: 700; font-size: 15px; margin-bottom: 6px;
   }
   .form-dat .o > span em,
-  .form-dat legend em { font-style: normal; font-weight: 400; color: var(--da); }
+  .form-dat legend em { font-style: normal; font-weight: 400; color: var(--muc-nhat); }
   .form-dat .o > small {
-    display: block; color: var(--da); font-size: 14px; margin-bottom: 6px; line-height: 1.45;
+    display: block; color: var(--muc-nhat); font-size: 14px; margin-bottom: 6px; line-height: 1.45;
   }
 
   .form-dat input[type='text'],
@@ -289,13 +289,19 @@ const t = dich(ngonNgu, {
   .form-dat textarea {
     font: inherit; font-size: 16px; width: 100%;
     padding: 13px 14px; min-height: 50px;
-    border: 1px solid var(--vach-kem); border-radius: 8px;
-    background: rgba(251, 244, 225, .06); color: var(--kem);
+    border: 1px solid var(--vien-o); border-radius: 8px;
+    background: #fff; color: var(--than);
   }
+  /* Nền SÁNG: ô trắng, viền --vien-o, chữ than. Bản đầu viết màu cho nền tối
+     (chữ kem trên nền kem) — cùng lỗi đã làm form ứng tuyển vô hình. */
+  .form-dat :is(input, select, textarea):focus-visible {
+    outline: 2px solid var(--do); outline-offset: 1px; border-color: var(--do);
+  }
+  .form-dat :is(input, textarea)::placeholder { color: var(--muc-nhat); }
   .form-dat textarea { min-height: 64px; resize: vertical; line-height: 1.55; }
 
   .form-dat .o-nhom {
-    border: 1px solid var(--vach-kem); border-radius: 8px;
+    border: 1px solid var(--vach); border-radius: 8px;
     padding: 14px; margin: 0 0 18px;
   }
   .nhom-ten {
@@ -317,20 +323,20 @@ const t = dich(ngonNgu, {
   .o-gio span {
     display: flex; align-items: center; justify-content: center;
     min-height: 52px; border-radius: 8px;
-    border: 1px solid var(--vach-kem);
+    border: 1px solid var(--vien-o); background: #fff;
     font-weight: 700; font-size: 16px;
   }
   .o-gio input:checked + span {
     background: var(--do); border-color: var(--do); color: #fff;
   }
   .o-gio input:focus-visible + span {
-    outline: 3px solid var(--cuc-vang); outline-offset: 2px;
+    outline: 3px solid var(--do); outline-offset: 2px;
   }
 
   .form-dat .o-chon {
     display: flex; align-items: flex-start; gap: 10px;
     padding: 14px 0 4px; font-size: 15px; line-height: 1.5; cursor: pointer;
-    border-top: 1px solid var(--vach-kem); margin-top: 6px;
+    border-top: 1px solid var(--vach); margin-top: 6px;
   }
   .form-dat .o-chon input[type='checkbox'] {
     width: 24px; height: 24px; margin: 0; flex-shrink: 0; accent-color: var(--do);
