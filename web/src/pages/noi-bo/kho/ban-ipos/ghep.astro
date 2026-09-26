@@ -27,9 +27,10 @@ import { docMatHang, type MatHang } from '../../../../lib/kho/danh-muc.ts';
 import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, type KetQua } from '../../../../lib/kho/chung.ts';
 import { docTimDs, catTrang, linkDs } from '../../../../lib/kho/tim-ds.ts';
 import {
-  docMaChuaGhep, docMaDaGhep, docMenuIpos, docMonMenu, ganMaIpos, goiYMatHang, tenDonViBan, CHON_DON_VI_BAN,
+  docMaChuaGhep, docMaDaGhep, docMenuIpos, docMonMenu, ganMaIpos, goiYMatHang, tenDonViBan, CHON_DON_VI_BAN_NB,
   type MaChuaGhep, type MaIposDaGhep, type MonMenuIpos,
 } from '../../../../lib/kho/ban-ipos.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -38,6 +39,77 @@ const DUONG = '/noi-bo/kho/ban-ipos/ghep';
 const sp = Astro.url.searchParams;
 const maChon = (sp.get('ma') ?? '').trim().slice(0, 100);
 const tim = docTimDs(sp);
+const nn = k.nn;
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Ghép món iPOS', en: 'Match iPOS dishes' },
+  veBanIpos: { vi: '← Bán hàng iPOS', en: '← iPOS sales' },
+  khongDoc: { vi: 'Không đọc được mã món iPOS.', en: 'Could not read the iPOS dish codes.' },
+  dan1: { vi: 'Mỗi món trên iPOS cần biết nó là món nào trong kho, và iPOS bán nó', en: 'Each dish on iPOS needs to know which stock item it is, and whether iPOS sells it' },
+  dan2: { vi: 'theo kg, theo gói hay theo suất', en: 'by kg, by pack or by portion' },
+  dan3: {
+    vi: '. Ghép một lần là xong — mọi dòng bán cùng mã, cả dòng đang chờ, tự trừ kho. Món bếp nấu (phở, lẩu…) chọn',
+    en: '. Match it once and you are done — every sale line with that code, including the waiting ones, is deducted from stock automatically. For dishes the kitchen cooks (pho, hotpot…) choose',
+  },
+  dan4: { vi: 'Bán theo suất', en: 'Sold by portion' },
+  dan5: { vi: ': kho không trừ, chỉ đếm suất để so định lượng.', en: ': no stock is deducted; portions are only counted to compare with recipes.' },
+  chuaKhoiTao: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory home' },
+  chuaGhep: { vi: 'Chưa ghép', en: 'Not matched' },
+  khongConMa: { vi: 'Không còn mã nào chưa ghép. Tốt lắm!', en: 'No codes left to match. Well done!' },
+  khongTen: { vi: '(iPOS không gửi tên)', en: '(iPOS sent no name)' },
+  ma: { vi: 'mã', en: 'code' },
+  maCan: { vi: 'mã cân', en: 'scale code' },
+  dongCho: {
+    vi: (n: number, luc: string) => `${n} dòng đang chờ · bán gần nhất ${luc}`,
+    en: (n: number, luc: string) => `${n} waiting ${n === 1 ? 'line' : 'lines'} · last sold ${luc}`,
+  },
+  dangGhep: {
+    vi: (x: string) => `Đang ghép: ${x} — ghép lại để đổi.`,
+    en: (x: string) => `Currently matched: ${x} — match again to change it.`,
+  },
+  khongCho: { vi: 'Không có dòng nào đang chờ.', en: 'No lines waiting.' },
+  laMonNao: { vi: 'Là món nào trong kho?', en: 'Which stock item is it?' },
+  khongCanChon: { vi: 'Món chế biến (Bán theo suất) thì không cần chọn.', en: 'Cooked dishes (Sold by portion) do not need one.' },
+  chon: { vi: '— Chọn —', en: '— Choose —' },
+  nhomGoiY: { vi: 'Gợi ý', en: 'Suggestions' },
+  nhomKhac: { vi: 'Khác', en: 'Other' },
+  goiCan: { vi: 'Hàng cân nhãn — món đọc từ mã cân', en: 'Scale-labelled goods — item read from the scale code' },
+  khongPhaiHangKho: { vi: 'Không phải hàng kho (nước, đồ khô…)', en: 'Not a stock item (drinks, dry goods…)' },
+  moiMon: { vi: 'Mọi món', en: 'All items' },
+  banTheo: { vi: 'iPOS bán món này theo', en: 'iPOS sells this dish by' },
+  moiGoi: { vi: 'Mỗi gói = … kg (chỉ khi bán theo gói)', en: 'Each pack = … kg (only when sold by pack)' },
+  moiGoiGiai: {
+    vi: 'Món kho tính theo kg mà iPOS bán theo gói thì điền, vd 0,5. Món đếm gói thì để trống — lấy kg theo sổ.',
+    en: 'Fill this in when the stock item is tracked in kg but iPOS sells it by pack, e.g. 0.5. Leave it empty for pack-counted items — the kg comes from the books.',
+  },
+  ghep: { vi: 'Ghép', en: 'Match' },
+  daGhep: { vi: 'Đã ghép', en: 'Matched' },
+  chuaGhepMa: { vi: 'Chưa ghép mã nào.', en: 'No codes matched yet.' },
+  maIpos: { vi: 'Mã iPOS', en: 'iPOS code' },
+  tenIpos: { vi: 'Tên trên iPOS', en: 'Name on iPOS' },
+  monKho: { vi: 'Món kho', en: 'Stock item' },
+  banTheoCot: { vi: 'Bán theo', en: 'Sold by' },
+  sua: { vi: 'Sửa', en: 'Edit' },
+  boGhep: { vi: 'Bỏ ghép', en: 'Unmatch' },
+  thucDon: { vi: 'Thực đơn iPOS', en: 'iPOS menu' },
+  thucDonGiai: {
+    vi: 'Danh sách món đọc từ iPOS (mỗi giờ, hoặc khi iPOS báo thực đơn đổi). Ghép trước những món thịt bán ở quầy — khỏi đợi có dòng bán mới ghép.',
+    en: 'The dish list read from iPOS (every hour, or when iPOS reports a menu change). Match the meat items sold at the counter in advance — no need to wait for a sale line first.',
+  },
+  timGoiY: { vi: 'Tìm mã, tên món, nhóm', en: 'Search code, dish name, group' },
+  timNhan: { vi: 'Tìm món trên thực đơn iPOS', en: 'Search dishes on the iPOS menu' },
+  tim: { vi: 'Tìm', en: 'Search' },
+  boTim: { vi: 'Bỏ tìm', en: 'Clear search' },
+  khongKhop: { vi: 'Không có món nào khớp.', en: 'No dishes match.' },
+  chuaDocMenu: { vi: 'Chưa đọc được thực đơn iPOS — xem màn Kết nối iPOS.', en: 'The iPOS menu has not been read yet — see the iPOS connection screen.' },
+  tenMon: { vi: 'Tên món', en: 'Dish name' },
+  nhom: { vi: 'Nhóm', en: 'Group' },
+  ngungBan: { vi: 'Ngừng bán', en: 'No longer sold' },
+  monCheBien: { vi: 'Món chế biến (chỉ đếm suất)', en: 'Cooked dish (portions counted only)' },
+  khongPhaiHangKhoNgan: { vi: 'Không phải hàng kho', en: 'Not a stock item' },
+  hangCanNhan: { vi: 'Hàng cân nhãn', en: 'Scale-labelled goods' },
+  motGoi: { vi: (kg: string) => ` · 1 gói = ${kg} kg`, en: (kg: string) => ` · 1 pack = ${kg} kg` },
+});
 
 let bao: KetQua | null = k.bao;
 const form = await docFormGui(Astro);
@@ -63,7 +135,7 @@ if (k.chiNhanh && k.daKhoiTao) {
       maChon ? docMonMenu(k.client, k.chiNhanh.id, maChon) : Promise.resolve(null),
     ]);
     ({ ds: menu, coSau: menuCoSau } = catTrang(trangMenu));
-  } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được mã món iPOS.'); }
+  } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
 }
 // Mã được chọn lên đầu; chưa có trong danh sách (đã ghép rồi / chỉ có trên thực đơn) thì vẫn cho ghép.
 const cuChon = daGhep.find(m => m.ma_ipos === maChon);
@@ -77,29 +149,27 @@ if (maChon) {
 const daGhepTheoMa = new Map(daGhep.map(m => [m.ma_ipos, m]));
 const dangDung = matHang.filter(m => m.dang_dung);
 const tenMon = new Map(matHang.map(m => [m.id, m.ten]));
-const chuKieu = (m: MaIposDaGhep) => m.don_vi_ban === 'suat' ? 'Món chế biến (chỉ đếm suất)'
-  : m.kieu === 'bo_qua' ? 'Không phải hàng kho'
-  : m.kieu === 'goi_can' ? `Hàng cân nhãn${m.mat_hang_id ? ` (${tenMon.get(m.mat_hang_id) ?? '—'})` : ''}`
+const chuKieu = (m: MaIposDaGhep) => m.don_vi_ban === 'suat' ? t.monCheBien
+  : m.kieu === 'bo_qua' ? t.khongPhaiHangKhoNgan
+  : m.kieu === 'goi_can' ? `${t.hangCanNhan}${m.mat_hang_id ? ` (${tenMon.get(m.mat_hang_id) ?? '—'})` : ''}`
   : tenMon.get(m.mat_hang_id ?? '') ?? '—';
 const chuBanTheo = (m: MaIposDaGhep) => m.kieu === 'bo_qua' && m.don_vi_ban !== 'suat' ? '—'
-  : `${tenDonViBan(m.don_vi_ban)}${m.kg_moi_don_vi ? ` · 1 gói = ${dinhDangKg(m.kg_moi_don_vi)} kg` : ''}`;
+  : `${tenDonViBan(m.don_vi_ban, nn)}${m.kg_moi_don_vi ? t.motGoi(dinhDangKg(m.kg_moi_don_vi, nn)) : ''}`;
 const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
 ---
-<Kho k={k} tieuDe="Ghép món iPOS" huongDan="ban-ipos">
-  <h1>Ghép món iPOS</h1>
-  <p><a href="/noi-bo/kho/ban-ipos">← Bán hàng iPOS</a></p>
+<Kho k={k} tieuDe={t.tieuDe} huongDan="ban-ipos">
+  <h1>{t.tieuDe}</h1>
+  <p><a href="/noi-bo/kho/ban-ipos">{t.veBanIpos}</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
-  <p class="nb-dan">Mỗi món trên iPOS cần biết nó là món nào trong kho, và iPOS bán nó <strong>theo kg, theo gói hay theo suất</strong>.
-    Ghép một lần là xong — mọi dòng bán cùng mã, cả dòng đang chờ, tự trừ kho. Món bếp nấu (phở, lẩu…) chọn
-    <strong>Bán theo suất</strong>: kho không trừ, chỉ đếm suất để so định lượng.</p>
+  <p class="nb-dan">{t.dan1} <strong>{t.dan2}</strong>{t.dan3} <strong>{t.dan4}</strong>{t.dan5}</p>
 
   {!k.daKhoiTao ? (
-    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+    <p class="nb-rong">{t.chuaKhoiTao} <a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
   ) : (
     <>
-      <h2>Chưa ghép · {chuaGhep.filter(m => m.so_dong > 0).length}</h2>
+      <h2>{t.chuaGhep} · {chuaGhep.filter(m => m.so_dong > 0).length}</h2>
       {chuaGhep.length === 0 ? (
-        <p class="nb-rong">Không còn mã nào chưa ghép. Tốt lắm!</p>
+        <p class="nb-rong">{t.khongConMa}</p>
       ) : chuaGhep.map(m => {
         const goiY = goiYMatHang(m, dangDung);
         const cu = daGhepTheoMa.get(m.ma_ipos);
@@ -112,56 +182,56 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
           <form method="POST" class="nb-the" id={idMa(m.ma_ipos)}>
             <input type="hidden" name="viec" value="ghep" />
             <input type="hidden" name="ma_ipos" value={m.ma_ipos} />
-            <p style="margin-top:0"><strong>{m.ten_ipos ?? '(iPOS không gửi tên)'}</strong> · mã <code>{m.ma_ipos}</code>
-              {m.ma_can && <> · mã cân {m.ma_can}</>}</p>
+            <p style="margin-top:0"><strong>{m.ten_ipos ?? t.khongTen}</strong> · {t.ma} <code>{m.ma_ipos}</code>
+              {m.ma_can && <> · {t.maCan} {m.ma_can}</>}</p>
             <p class="kho-phu" style="margin:-.5rem 0 .75rem">
-              {m.so_dong > 0 ? `${m.so_dong} dòng đang chờ · bán gần nhất ${dinhDangThoiDiem(m.lan_cuoi)}`
-                : cu ? `Đang ghép: ${chuKieu(cu)} — ghép lại để đổi.` : 'Không có dòng nào đang chờ.'}
+              {m.so_dong > 0 ? t.dongCho(m.so_dong, dinhDangThoiDiem(m.lan_cuoi))
+                : cu ? t.dangGhep(chuKieu(cu)) : t.khongCho}
             </p>
             <label class="nb-o">
-              <span>Là món nào trong kho?</span>
-              <small>Món chế biến (Bán theo suất) thì không cần chọn.</small>
+              <span>{t.laMonNao}</span>
+              <small>{t.khongCanChon}</small>
               <select name="mat_hang_id">
-                <option value="">— Chọn —</option>
+                <option value="">{t.chon}</option>
                 {goiY.length > 0 && (
-                  <optgroup label="Gợi ý">
+                  <optgroup label={t.nhomGoiY}>
                     {goiY.map(g => <option value={g.id} selected={g.id === dangChon}>{g.ten} ({g.ma})</option>)}
                   </optgroup>
                 )}
-                <optgroup label="Khác">
-                  <option value="goi_can" selected={dangChon === 'goi_can'}>Hàng cân nhãn — món đọc từ mã cân</option>
-                  <option value="bo_qua" selected={dangChon === 'bo_qua'}>Không phải hàng kho (nước, đồ khô…)</option>
+                <optgroup label={t.nhomKhac}>
+                  <option value="goi_can" selected={dangChon === 'goi_can'}>{t.goiCan}</option>
+                  <option value="bo_qua" selected={dangChon === 'bo_qua'}>{t.khongPhaiHangKho}</option>
                 </optgroup>
-                <optgroup label="Mọi món">
+                <optgroup label={t.moiMon}>
                   {dangDung.map(g => <option value={g.id} selected={g.id === dangChon && !goiY.some(x => x.id === g.id)}>{g.ten} ({g.ma})</option>)}
                 </optgroup>
               </select>
             </label>
             <fieldset class="nb-o">
-              <legend>iPOS bán món này theo</legend>
-              {CHON_DON_VI_BAN.map(c => (
+              <legend>{t.banTheo}</legend>
+              {CHON_DON_VI_BAN_NB.map(c => (
                 <label class="kho-tich"><input type="radio" name="don_vi_ban" value={c.ma}
                     checked={(cu?.don_vi_ban ?? '') === c.ma} />
-                  <span><strong>{c.ten}</strong> — {c.giai}</span></label>
+                  <span><strong>{c.ten[nn]}</strong> — {c.giai[nn]}</span></label>
               ))}
             </fieldset>
             <label class="nb-o">
-              <span>Mỗi gói = … kg (chỉ khi bán theo gói)</span>
-              <small>Món kho tính theo kg mà iPOS bán theo gói thì điền, vd 0,5. Món đếm gói thì để trống — lấy kg theo sổ.</small>
+              <span>{t.moiGoi}</span>
+              <small>{t.moiGoiGiai}</small>
               <input type="text" inputmode="decimal" name="kg_moi_don_vi" value={cu?.kg_moi_don_vi ?? ''} autocomplete="off" />
             </label>
-            <button type="submit" class="nb-nut">Ghép</button>
+            <button type="submit" class="nb-nut">{t.ghep}</button>
           </form>
         );
       })}
 
-      <h2>Đã ghép · {daGhep.length}</h2>
+      <h2>{t.daGhep} · {daGhep.length}</h2>
       {daGhep.length === 0 ? (
-        <p class="nb-rong">Chưa ghép mã nào.</p>
+        <p class="nb-rong">{t.chuaGhepMa}</p>
       ) : (
         <div class="kho-bang-khung">
           <table class="kho-bang">
-            <thead><tr><th>Mã iPOS</th><th>Tên trên iPOS</th><th>Món kho</th><th>Bán theo</th><th></th></tr></thead>
+            <thead><tr><th>{t.maIpos}</th><th>{t.tenIpos}</th><th>{t.monKho}</th><th>{t.banTheoCot}</th><th></th></tr></thead>
             <tbody>
               {daGhep.map(m => (
                 <tr>
@@ -170,12 +240,12 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
                   <td>{chuKieu(m)}</td>
                   <td>{chuBanTheo(m)}</td>
                   <td>
-                    <a class="nb-nut phu" href={`${DUONG}?ma=${encodeURIComponent(m.ma_ipos)}#${idMa(m.ma_ipos)}`}>Sửa</a>{' '}
+                    <a class="nb-nut phu" href={`${DUONG}?ma=${encodeURIComponent(m.ma_ipos)}#${idMa(m.ma_ipos)}`}>{t.sua}</a>{' '}
                     <form method="POST" style="margin:0;display:inline">
                       <input type="hidden" name="viec" value="ghep" />
                       <input type="hidden" name="ma_ipos" value={m.ma_ipos} />
                       <input type="hidden" name="mat_hang_id" value="bo_ghep" />
-                      <button type="submit" class="nb-nut phu">Bỏ ghép</button>
+                      <button type="submit" class="nb-nut phu">{t.boGhep}</button>
                     </form>
                   </td>
                 </tr>
@@ -185,33 +255,32 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
         </div>
       )}
 
-      <h2 id="thuc-don">Thực đơn iPOS</h2>
-      <p class="kho-phu">Danh sách món đọc từ iPOS (mỗi giờ, hoặc khi iPOS báo thực đơn đổi). Ghép trước những món thịt bán ở quầy —
-        khỏi đợi có dòng bán mới ghép.</p>
+      <h2 id="thuc-don">{t.thucDon}</h2>
+      <p class="kho-phu">{t.thucDonGiai}</p>
       <form method="GET" action={`${DUONG}#thuc-don`} class="kho-tim" role="search">
         <div class="kho-tim-hang">
-          <input type="search" name="q" value={tim.q} placeholder="Tìm mã, tên món, nhóm" aria-label="Tìm món trên thực đơn iPOS" />
-          <button type="submit" class="nb-nut phu">Tìm</button>
+          <input type="search" name="q" value={tim.q} placeholder={t.timGoiY} aria-label={t.timNhan} />
+          <button type="submit" class="nb-nut phu">{t.tim}</button>
         </div>
-        {tim.q && <p class="kho-phu" style="margin:.25rem 0 0"><a href={`${linkDs(DUONG, sp, { q: null, ma: null })}#thuc-don`}>Bỏ tìm</a></p>}
+        {tim.q && <p class="kho-phu" style="margin:.25rem 0 0"><a href={`${linkDs(DUONG, sp, { q: null, ma: null })}#thuc-don`}>{t.boTim}</a></p>}
       </form>
       {menu.length === 0 ? (
-        <p class="nb-rong">{tim.q ? 'Không có món nào khớp.' : 'Chưa đọc được thực đơn iPOS — xem màn Kết nối iPOS.'}</p>
+        <p class="nb-rong">{tim.q ? t.khongKhop : t.chuaDocMenu}</p>
       ) : (
         <div class="kho-bang-khung">
           <table class="kho-bang">
-            <thead><tr><th>Mã iPOS</th><th>Tên món</th><th>Nhóm</th><th>Ghép</th></tr></thead>
+            <thead><tr><th>{t.maIpos}</th><th>{t.tenMon}</th><th>{t.nhom}</th><th>{t.ghep}</th></tr></thead>
             <tbody>
               {menu.map(m => {
                 const g = daGhepTheoMa.get(m.ma_ipos);
                 return (
                   <tr>
                     <td><code>{m.ma_ipos}</code></td>
-                    <td>{m.ten_ipos ?? '—'}{!m.dang_ban && <> <span class="nb-nhan tat">Ngừng bán</span></>}</td>
+                    <td>{m.ten_ipos ?? '—'}{!m.dang_ban && <> <span class="nb-nhan tat">{t.ngungBan}</span></>}</td>
                     <td>{m.loai ?? '—'}</td>
                     <td>{g
-                      ? <>{chuKieu(g)}{g.don_vi_ban && g.don_vi_ban !== 'suat' ? ` · ${tenDonViBan(g.don_vi_ban).toLowerCase()}` : ''}</>
-                      : <a class="nb-nut phu" href={`${DUONG}?ma=${encodeURIComponent(m.ma_ipos)}#${idMa(m.ma_ipos)}`}>Ghép</a>}</td>
+                      ? <>{chuKieu(g)}{g.don_vi_ban && g.don_vi_ban !== 'suat' ? ` · ${tenDonViBan(g.don_vi_ban, nn).toLowerCase()}` : ''}</>
+                      : <a class="nb-nut phu" href={`${DUONG}?ma=${encodeURIComponent(m.ma_ipos)}#${idMa(m.ma_ipos)}`}>{t.ghep}</a>}</td>
                   </tr>
                 );
               })}

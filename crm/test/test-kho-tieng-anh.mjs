@@ -72,6 +72,52 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
   const CO_Y = [
     ".replace(/đ$|d$|vnd$/i, '')",              // đọc ô tiền: "450.000đ"
     ".replace(/đ/g, 'd').replace(/Đ/g, 'D')",   // bỏ dấu khi sinh mã / tìm không dấu
+    // ---- gói máy & iPOS: câu cho máy / log, không hiện trên màn nào ----
+    // lib/kho/ipos-dong-bo.ts — câu đăng nhập tài khoản máy (chỉ vào log) và log của cron
+    // cho người vận hành; test-kho-ipos-web đọc log nguyên văn ("chưa cài", "không đăng
+    // nhập được"…). /chưa bật/ nhận câu từ chối của database (kho_ipos_bat_dau).
+    "cau: `chưa cài ${TEN_BI_MAT.email} / ${TEN_BI_MAT.matKhau}`",
+    "cau: 'chưa nối database'",
+    "`tài khoản máy không đăng nhập được: ${error?.message ?? 'không có phiên'}`",
+    "`tài khoản máy không đăng nhập được: ${e instanceof Error ? e.message : String(e)}`",
+    "ghi(`${dn.cau} — bỏ qua`)",
+    "ghi(`không đọc được chi nhánh: ${e1.message}`)",
+    "ghi('tài khoản máy không có chi nhánh nào được đồng bộ (vai phải là may_ipos)')",
+    "/chưa bật/i.test(kq.cau)",
+    "ghi(`lỗi: ${e instanceof Error ? e.message : String(e)}`)",   // cả ipos-hook.ts
+    // lib/kho/ipos-hook.ts — thân trả lời HTTP cho iPOS Hub (máy đọc; Hub chỉ xét mã HTTP)
+    // và log cho người vận hành; test-kho-ipos-web đọc thân / log nguyên văn.
+    "loi: 'Chỉ nhận POST'",
+    "loi: `Chưa cài bí mật ${TEN_BI_MAT.khoaCallback}`",
+    "loi: 'Không tìm thấy'",
+    "loi: 'Không đọc được nội dung'",
+    "loi: 'Nội dung quá lớn'",
+    "loi: 'Nội dung không phải JSON'",
+    "ghi(`bỏ callback hỏng: ${kq.cau}`)",
+    "'Máy chủ chưa cài tài khoản đồng bộ'",
+    "'Chưa nhận được — thử lại sau'",
+    "ghi(`không tìm được chi nhánh: ${e1.message}`)",
+    "loi: 'Lỗi máy chủ — thử lại sau'",
+    "ghi(`không có chi nhánh nào khớp pos_parent / pos_id của callback (event ${kq.loai === 'hoa_don' ? 11 : 12}) — kiểm tra màn Kết nối iPOS`)",
+    "ghi(`không ghi được cờ thực đơn đổi: ${error.message}`)",
+    "ghi(`không nhận được hóa đơn: ${error.message}`)",
+    "ghi(`database từ chối hóa đơn: ${String(t.canh_bao?.[0]?.loi ?? '').slice(0, 200)}`)",
+    "loi: 'Hóa đơn không hợp lệ'",
+    "ghi(`đã nhận hóa đơn, lưu ý: ${kq.canhBao.join('; ')}`)",
+    // lib/kho/ipos.ts — ghi chú nguồn tài liệu iPOS, và câu của phanTichCallback: chỉ đi vào
+    // thân trả lời HTTP cho iPOS Hub và log (ipos-hook.ts), không lên màn nào.
+    "nguon: 'Postman \"IPOS HUB API INTERGRATION FOR MERCHANT\" (mục 1 và 6.1)'",
+    "cau: 'Nội dung không phải một object JSON'",
+    "cau: 'Event 12 thiếu khóa \"item_changed\"'",
+    "cau: 'Event 12 thiếu pos_parent hoặc pos_id'",
+    "cau: 'Event 11 thiếu khóa \"sale_manager\"'",
+    "cau: `Event 11 thiếu ${thieu.join(', ')}`",
+    "cau: 'Event 11 không đọc được giờ bán ở khóa \"tran_date\" / \"created_at\"'",
+    "cau: 'Event 11: khóa \"items\" không phải danh sách'",
+    "cau: 'Event 11 có hơn 500 dòng'",
+    "canhBao.push(`${khongMa} dòng thiếu \"item_id\"`)",
+    "canhBao.push(`${slHong} dòng thiếu hoặc sai \"quantity\"`)",
+    // ---- hết gói máy & iPOS ----
   ];
 
   // CHƯA DỊCH XONG — mỗi gói xóa dòng của mình khi xong (giữ dòng đánh dấu).
@@ -125,19 +171,6 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     'pages/noi-bo/kho/cai-dat/vi-tri-ly-do.astro',
     // ---- hết gói danh mục ----
     // ---- gói máy & iPOS: nhân viên, máy dùng chung, bán hàng iPOS ----
-    'lib/kho/ban-ipos.ts',
-    'lib/kho/ipos-dong-bo.ts',
-    'lib/kho/ipos-hook.ts',
-    'lib/kho/ipos.ts',
-    'lib/kho/may-chung.ts',
-    'lib/kho/nhan-vien.ts',
-    'pages/noi-bo/kho/ban-ipos/ghep.astro',
-    'pages/noi-bo/kho/ban-ipos/index.astro',
-    'pages/noi-bo/kho/cai-dat/ipos.astro',
-    'pages/noi-bo/kho/cai-dat/nhan-vien.astro',
-    'pages/noi-bo/kho/may/dang-ky.astro',
-    'pages/noi-bo/kho/may/gan.astro',
-    'pages/noi-bo/kho/may/index.astro',
     // ---- hết gói máy & iPOS ----
     // ---- gói hướng dẫn: hướng dẫn, quy trình ----
     // ---- hết gói hướng dẫn ----
