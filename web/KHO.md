@@ -546,7 +546,7 @@ không phải vị trí tồn; kho **không** tự trừ theo định lượng.
 máy), `kho_dinh_luong` (món × mặt hàng × gram, 0 < gram ≤ 10.000). Hai bảng không có cột tiền.
 
 - **Bếp nhận** = dòng sổ `xuat_bep` trong kỳ: phiếu Xuất bếp **và** phần "chuyển bếp" khi chốt pha lóc
-  (mở lại phiên pha thì trừ lại) — **trừ** phiếu Xuất bếp có lý do `kho_ly_do.tinh_dinh_muc = false` (0043, xem dưới).
+  (mở lại phiên pha thì trừ lại) — **trừ** phiếu Xuất bếp có lý do `kho_ly_do.tinh_dinh_muc = false` (0044, xem dưới).
 - **Lẽ ra dùng** = số suất × gram. Số suất = dòng iPOS có mã khớp `kho_mon.ma_ipos`; bỏ hóa đơn hủy, dòng `da_huy`,
   và dòng `da_ghi` (hàng bán thẳng từ quầy, đã trừ kho — bếp không nhận). Món ăn thường ghép kiểu `bo_qua` ở
   Bán hàng iPOS → vẫn được đếm.
@@ -569,7 +569,7 @@ Khớp món / mặt hàng, kiểm gram, tạo món mới khi áp dụng: **datab
   mặt hàng:gram lúc mở; lưu mà database đã khác thì từ chối, không đè.
 - Dán Excel áp dụng chỉ thêm / sửa gram, không xóa mặt hàng vắng mặt trong bảng dán; còn dòng lỗi thì từ chối cả
   bảng (trang hiện lại bản xem trước). Áp dụng lại cùng bảng không đổi gì — không cần `ma_gui`.
-- **Cơm nhân viên không tính định mức** (chủ chốt 26/09, migration 0043): cột `kho_ly_do.tinh_dinh_muc` (mặc định
+- **Cơm nhân viên không tính định mức** (chủ chốt 26/09, migration 0044): cột `kho_ly_do.tinh_dinh_muc` (mặc định
   `true`; lý do dùng chung toàn thương hiệu). Lý do Xuất bếp tên "Cơm nhân viên" (so tên chuẩn hóa: NFC, chữ thường,
   gộp khoảng trắng) được đặt `false` — cả dòng đã có lẫn dòng thêm sau (trigger BEFORE INSERT
   `kho_ly_do_dinh_muc_mac_dinh`; chỉ khi thêm, quản lý bật lại được). `kho_dinh_muc_tinh` bỏ dòng sổ có dòng gốc
@@ -728,7 +728,7 @@ Tổng chạy tính **ở máy chủ** (`tongChu`) khi bấm Tính lại / Thêm
 
 **Vị trí + lý do** (`docFormViTriLyDo` → `luuViTriLyDo`): ô `vt_ten_<id>`, `vt_loai_<id>`, `vt_thu_tu_<id>`,
 `vt_dang_dung_<id>`, `ld_*_<id>` (lý do hủy có ô ẩn `ld_co_anh_<id>` để biết ô tích có trên form; lý do Xuất bếp
-có ô ẩn `ld_co_dm_<id>` + ô tích `ld_tinh_dm_<id>` = cột `tinh_dinh_muc`, 0043), dòng mới
+có ô ẩn `ld_co_dm_<id>` + ô tích `ld_tinh_dm_<id>` = cột `tinh_dinh_muc`, 0044), dòng mới
 `vt_moi_*_<i>`, `ld_moi_*_<loại>_<i>` (Xuất bếp mới: `ld_moi_co_dm_xuat_bep_<i>` + `ld_moi_tinh_dm_xuat_bep_<i>`, mặc định tích). Kiểm hết trước khi ghi (tên trống ở dòng có sẵn = lỗi, nhắc "Ngừng dùng");
 chỉ dòng đổi mới ghi, từng lệnh một (không có hàm gộp — lỗi giữa chừng báo "Đã lưu N dòng, chưa lưu được …").
 `phien_ban` = băm FNV của hai bảng (`phienBanViTriLyDo`). Vị trí hệ thống: không đổi loại, không tắt.
