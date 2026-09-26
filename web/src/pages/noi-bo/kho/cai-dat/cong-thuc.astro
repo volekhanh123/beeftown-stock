@@ -5,132 +5,281 @@
  * "Tảng thăn ngoại thường ra: thăn cắt lát ~75%, thịt vụn ~8%, mỡ ~15%."
  * Công thức điền sẵn phiếu pha lóc và là mốc so tỉ lệ thu hồi thực tế. Không
  * bắt buộc — pha lóc vẫn ghi được khi chưa có công thức nào.
+ *
+ * GĐ8c: mỗi công thức một LƯỚI phần cắt × tỷ lệ % trong một form (lib/kho/
+ * cong-thuc.ts): "Tính lại" cộng tổng chạy ở máy chủ (xanh 95–100%, vàng dưới,
+ * đỏ vượt 100%), "Lưu công thức" thay toàn bộ phần ra (phien_ban chống ghi đè),
+ * "Nhân bản công thức", "Gợi ý từ thực tế" (?goi_y=1 — tỷ lệ TB 30 ngày từ các
+ * phiên pha đã chốt, chỉ kg, điền vào cột Gợi ý để chép).
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { docCongThuc, docMatHang, luuCongThuc, type CongThuc, type MatHang } from '../../../../lib/kho/danh-muc.ts';
 import {
-  docCongThuc, docMatHang, luuCongThuc, themDongCongThuc, xoaDongCongThuc,
-  type CongThuc, type MatHang,
-} from '../../../../lib/kho/danh-muc.ts';
-import { cauLoiKho, dinhDangPhanTram, TEN_XU_LY, type KetQua } from '../../../../lib/kho/chung.ts';
+  SO_DONG_TOI_DA, NGAY_GOI_Y, cauTong, chuTuCongThuc, docGoiYThucTe, docLuoiCongThuc, luuLuoiCongThuc, mauTong,
+  nhanBanCongThuc, phienBanCongThuc, themDongTrong, tongChu, type ChuDongLuoi,
+} from '../../../../lib/kho/cong-thuc.ts';
+import {
+  cauLoiKho, dinhDangKg, dinhDangPhanTram, homNayVn, kqHai, nhanKho, TEN_XU_LY_NB, type KetQua,
+} from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('danh_muc')) return Astro.redirect('/noi-bo/kho/cai-dat', 302);
+const nn = k.nn;
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Công thức pha lóc', en: 'Butchery recipes' },
+  veThietLap: { vi: '← Thiết lập kho', en: '← Inventory setup' },
+  khongDoc: { vi: 'Không đọc được công thức.', en: 'Could not read the recipes.' },
+  dauVao: { vi: 'Đầu vào: ', en: 'Input: ' },
+  moTaLuoi: { vi: '. Mỗi dòng một phần cắt ra và tỷ lệ % của kg tảng.', en: '. One row per output cut, with its % of the primal\'s kg.' },
+  suaXong: { vi: 'Sửa xong bấm ', en: 'When you are done, press ' },
+  tinhLai: { vi: 'Tính lại', en: 'Recalculate' },
+  deXemTong: { vi: ' để xem tổng, rồi ', en: ' to see the total, then ' },
+  luuCongThuc: { vi: 'Lưu công thức', en: 'Save recipe' },
+  chuaCoGoiY: {
+    vi: (n: number) => `Chưa có phiên pha lóc nào đã chốt của loại tảng này trong ${n} ngày qua — chưa có gợi ý.`,
+    en: (n: number) => `No closed butchery sessions for this primal in the last ${n} days — no suggestion yet.`,
+  },
+  goiYTu: { vi: 'Gợi ý từ ', en: 'Suggestion based on ' },
+  soPhien: { vi: (n: number) => `${n} phiên`, en: (n: number) => `${n} closed butchery ${n === 1 ? 'session' : 'sessions'}` },
+  goiYTrong: {
+    vi: (n: number, kg: string) => ` pha đã chốt trong ${n} ngày (${kg} kg tảng):`,
+    en: (n: number, kg: string) => ` in the last ${n} days (${kg} kg of primal):`,
+  },
+  cot: { vi: 'cột ', en: 'the ' },
+  goiY: { vi: 'Gợi ý', en: 'Suggested' },
+  goiYCuoi: { vi: ' là tỷ lệ thật trung bình. Chép sang ô Tỷ lệ nếu muốn dùng, rồi bấm Tính lại.',
+              en: ' column shows the real average percentage. Copy it into the Percentage box if you want it, then press Recalculate.' },
+  phanRa: { vi: 'Phần ra', en: 'Output cut' },
+  tyLe: { vi: 'Tỷ lệ %', en: 'Percentage' },
+  xuLy: { vi: 'Xử lý', en: 'Handling' },
+  thuTu: { vi: 'Thứ tự', en: 'Order' },
+  bo: { vi: 'Bỏ', en: 'Remove' },
+  chonPhanRa: { vi: '— chọn phần ra —', en: '— choose an output cut —' },
+  tyLeVd: { vi: '72,5', en: '72.5' },
+  ariaTyLe: { vi: (n: number) => `Tỷ lệ % dòng ${n}`, en: (n: number) => `Percentage, row ${n}` },
+  ariaXuLy: { vi: (n: number) => `Xử lý dòng ${n}`, en: (n: number) => `Handling, row ${n}` },
+  theoMatHang: { vi: 'Theo mặt hàng', en: 'As set for the item' },
+  xlNhapKho: { vi: 'Nhập kho / ra quầy', en: 'Into stock / to the counter' },
+  xlBep: { vi: 'Chuyển bếp', en: 'To the kitchen' },
+  xlBo: { vi: 'Bỏ đi', en: 'Discard' },
+  ariaThuTu: { vi: (n: number) => `Thứ tự dòng ${n}`, en: (n: number) => `Order, row ${n}` },
+  themDong: { vi: 'Thêm dòng', en: 'Add rows' },
+  thucTeConRa: { vi: 'Pha thực tế còn ra: ', en: 'Actual butchery also produced: ' },
+  bamThemDong: { vi: ' — bấm Thêm dòng để thêm vào công thức.', en: ' — press Add rows to add them to the recipe.' },
+  goiYThucTe: { vi: 'Gợi ý từ thực tế', en: 'Suggest from actual results' },
+  anGoiY: { vi: 'Ẩn gợi ý', en: 'Hide suggestions' },
+  nhanBan: { vi: 'Nhân bản công thức', en: 'Duplicate recipe' },
+  doiTen: { vi: 'Đổi tên / ngừng dùng công thức', en: 'Rename / stop using this recipe' },
+  ten: { vi: 'Tên', en: 'Name' },
+  ghiChu: { vi: 'Ghi chú', en: 'Note' },
+  tinhTrang: { vi: 'Tình trạng', en: 'Status' },
+  dangDung: { vi: 'Đang dùng', en: 'In use' },
+  ngungDung: { vi: 'Ngừng dùng', en: 'No longer used' },
+  luu: { vi: 'Lưu', en: 'Save' },
+  dong: { vi: 'Đóng', en: 'Close' },
+  taoMoi: { vi: '+ Tạo công thức mới', en: '+ New recipe' },
+  dauVaoChon: { vi: 'Đầu vào (tảng hoặc phần cắt)', en: 'Input (primal or cut)' },
+  tenCongThuc: { vi: 'Tên công thức', en: 'Recipe name' },
+  tenVd: { vi: 'Thăn ngoại → cắt lát nướng', en: 'Striploin → sliced for grilling' },
+  taoCongThuc: { vi: 'Tạo công thức', en: 'Create recipe' },
+  cacCongThuc: { vi: (n: number) => `Các công thức (${n})`, en: (n: number) => `Recipes (${n})` },
+  chuaCo: { vi: 'Chưa có công thức nào.', en: 'No recipes yet.' },
+  soPhanRa: { vi: (n: number) => `${n} phần ra`, en: (n: number) => `${n} output ${n === 1 ? 'cut' : 'cuts'}` },
+});
+/** Câu báo của trang — hai thứ tiếng như câu của thư viện. */
+const KHONG_TIM_THAY = { vi: 'Không tìm thấy công thức này — tải lại trang.', en: 'This recipe was not found — reload the page.' };
 
-const suaId = Astro.url.searchParams.get('sua') ?? '';
-let bao: KetQua | null = k.bao;
-const form = await docFormGui(Astro);
-if (form) {
-  const viec = String(form.get('viec') ?? '');
-  const kq = viec === 'cong_thuc' ? await luuCongThuc(k.client, form)
-    : viec === 'them_dong' ? await themDongCongThuc(k.client, form)
-    : viec === 'xoa_dong' ? await xoaDongCongThuc(k.client, form)
-    : { ok: false, cau: 'Việc không hợp lệ.' };
-  const quayVe = String(form.get('cong_thuc_id') ?? form.get('id') ?? '');
-  if (kq.ok) return chuyenHuong(Astro, `/noi-bo/kho/cai-dat/cong-thuc${quayVe ? `?sua=${quayVe}` : ''}`, kq);
-  bao = kq;
-}
+const q = Astro.url.searchParams;
+const suaId = q.get('sua') ?? '';
+const muonGoiY = q.get('goi_y') === '1';
 
 let congThuc: CongThuc[] = [];
 let matHang: MatHang[] = [];
 let loiDoc = k.loiDoc;
 try {
   [congThuc, matHang] = await Promise.all([docCongThuc(k.client), docMatHang(k.client)]);
-} catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được công thức.'); }
+} catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
+
+let bao: KetQua | null = k.bao;
+/** Chữ đang gõ trong lưới (Tính lại / Thêm dòng / lỗi) — null = lấy từ database. */
+let chuLuoi: ChuDongLuoi[] | null = null;
+const form = await docFormGui(Astro);
+if (form) {
+  const viec = String(form.get('viec') ?? '');
+  const id = String(form.get('cong_thuc_id') ?? form.get('id') ?? '');
+  const ct = congThuc.find(c => c.id === id);
+  let kq: (KetQua & { id?: string }) | null = null;
+  if (viec === 'cong_thuc') {
+    kq = await luuCongThuc(k.client, form);
+  } else if (viec === 'tinh_lai' || viec === 'them_dong' || viec === 'luu_luoi') {
+    const doc = docLuoiCongThuc(form);
+    chuLuoi = viec === 'them_dong' ? themDongTrong(doc.chu) : doc.chu;
+    if (viec === 'luu_luoi') {
+      if (!ct) kq = kqHai(false, KHONG_TIM_THAY);
+      else if (doc.loi.length > 0) kq = kqHai(false, { vi: `Chưa lưu: ${doc.loi.join(' · ')}`, en: `Not saved: ${doc.loiEn.join(' · ')}` });
+      else kq = await luuLuoiCongThuc(k.client, ct, String(form.get('phien_ban') ?? ''), doc.dong);
+    } else if (doc.loi.length > 0) {
+      bao = kqHai(false, { vi: doc.loi.join(' · '), en: doc.loiEn.join(' · ') });
+    }
+  } else if (viec === 'nhan_ban') {
+    kq = ct ? await nhanBanCongThuc(k.client, ct) : kqHai(false, KHONG_TIM_THAY);
+  } else {
+    kq = kqHai(false, { vi: 'Việc không hợp lệ.', en: 'Invalid action.' });
+  }
+  if (kq?.ok) {
+    const ve = kq.id ?? id;
+    return chuyenHuong(Astro, `/noi-bo/kho/cai-dat/cong-thuc${ve ? `?sua=${ve}` : ''}`, kq);
+  }
+  if (kq) bao = kq;
+}
 
 const tenMh = new Map(matHang.map(m => [m.id, m]));
-const dangSua = congThuc.find(c => c.id === suaId);
-const tongTyLe = (c: CongThuc) => c.dong.reduce((s, d) => s + (d.ty_le_du_kien ?? 0), 0);
+const dangSua = congThuc.find(c => c.id === (form ? String(form.get('cong_thuc_id') ?? form.get('id') ?? '') || suaId : suaId));
+const luoi: ChuDongLuoi[] = dangSua ? (chuLuoi ?? themDongTrong(chuTuCongThuc(dangSua, nn))) : [];
+const luoiDung = luoi.slice(0, SO_DONG_TOI_DA);
+// Tổng chạy tính ở máy chủ từ chữ đang thấy trên lưới (dòng tích Bỏ / trống không tính).
+const tongLuoi = tongChu(luoiDung);
+const goiY = dangSua && muonGoiY && k.chiNhanh
+  ? await docGoiYThucTe(k.client, k.chiNhanh.id, dangSua.mat_hang_vao_id, homNayVn(), nn)
+  : null;
+if (goiY?.loi) loiDoc = goiY.loi;
+const tongTyLeCt = (c: CongThuc) => c.dong.reduce((s, d) => s + (d.ty_le_du_kien ?? 0), 0);
+// Món có trong gợi ý mà lưới chưa có: nhắc bên dưới để thêm.
+const goiYThieu = goiY ? [...goiY.tyLe].filter(([mh]) => !luoiDung.some(d => d.mh === mh)) : [];
 ---
-<Kho k={k} huongDan="cong-thuc" tieuDe="Công thức pha lóc">
-  <h1>Công thức pha lóc</h1>
-  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
+<Kho k={k} huongDan="cong-thuc" tieuDe={t.tieuDe} rong>
+  <h1>{t.tieuDe}</h1>
+  <p><a href="/noi-bo/kho/cai-dat">{t.veThietLap}</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {dangSua && (
     <div class="nb-the">
       <h2 style="margin-top:0">{dangSua.ten}</h2>
-      <p class="kho-phu">Đầu vào: <strong>{tenMh.get(dangSua.mat_hang_vao_id)?.ten ?? '—'}</strong> · tổng tỉ lệ dự kiến {dinhDangPhanTram(tongTyLe(dangSua))} (phần còn lại là hao hụt)</p>
-      {dangSua.dong.length === 0 ? <p class="nb-rong">Chưa có phần ra nào.</p> : (
+      <p class="kho-phu">{t.dauVao}<strong>{tenMh.get(dangSua.mat_hang_vao_id)?.ten ?? '—'}</strong>{t.moTaLuoi} {t.suaXong}<strong>{t.tinhLai}</strong>{t.deXemTong}<strong>{t.luuCongThuc}</strong>.</p>
+
+      {goiY && !goiY.loi && (
+        <p class="nb-dan" style="font-size:.9rem">
+          {goiY.soPhien === 0
+            ? t.chuaCoGoiY(NGAY_GOI_Y)
+            : <>{t.goiYTu}<strong>{t.soPhien(goiY.soPhien)}</strong>{t.goiYTrong(NGAY_GOI_Y, dinhDangKg(goiY.kgVao, nn))} {t.cot}<strong>{t.goiY}</strong>{t.goiYCuoi}</>}
+        </p>
+      )}
+
+      <form method="POST" class="ct-form">
+        <input type="hidden" name="cong_thuc_id" value={dangSua.id} />
+        <input type="hidden" name="phien_ban" value={phienBanCongThuc(dangSua)} />
+        <input type="hidden" name="so_dong" value={String(luoiDung.length)} />
+        {/* Nút đầu form = nút của phím Enter: Tính lại (không lưu gì). */}
+        <button type="submit" name="viec" value="tinh_lai" class="ct-an" tabindex="-1" aria-hidden="true">{t.tinhLai}</button>
         <div class="kho-bang-khung">
-          <table class="kho-bang">
-            <thead><tr><th>Phần ra</th><th class="so">Tỉ lệ dự kiến</th><th>Xử lý</th><th></th></tr></thead>
+          <table class="kho-bang ct-luoi">
+            <thead>
+              <tr>
+                <th>{t.phanRa}</th>
+                <th class="so">{t.tyLe}</th>
+                {goiY && <th class="so">{t.goiY}</th>}
+                <th>{t.xuLy}</th>
+                <th class="so">{t.thuTu}</th>
+                <th>{t.bo}</th>
+              </tr>
+            </thead>
             <tbody>
-              {dangSua.dong.map(d => (
-                <tr>
-                  <td>{tenMh.get(d.mat_hang_ra_id)?.ten ?? '—'}</td>
-                  <td class="so">{d.ty_le_du_kien !== null ? dinhDangPhanTram(d.ty_le_du_kien) : '—'}</td>
-                  <td>{d.xu_ly ? TEN_XU_LY[d.xu_ly] : `theo mặt hàng (${TEN_XU_LY[tenMh.get(d.mat_hang_ra_id)?.xu_ly_mac_dinh ?? 'nhap_kho']})`}</td>
+              {luoiDung.map((d, i) => (
+                <tr style={d.bo ? 'opacity:.5' : undefined}>
+                  <td><ChonMatHang name={`mh_${i}`} matHang={matHang} chon={d.mh} trong={t.chonPhanRa} /></td>
+                  <td class="so"><input type="text" inputmode="decimal" name={`tl_${i}`} value={d.tl} placeholder={t.tyLeVd} aria-label={t.ariaTyLe(i + 1)} /></td>
+                  {goiY && <td class="so">{d.mh && goiY.tyLe.has(d.mh) ? <strong>{dinhDangPhanTram(goiY.tyLe.get(d.mh), 1, nn)}</strong> : <span class="kho-phu">—</span>}</td>}
                   <td>
-                    <form method="POST" style="margin:0">
-                      <input type="hidden" name="viec" value="xoa_dong" />
-                      <input type="hidden" name="id" value={d.id} />
-                      <input type="hidden" name="cong_thuc_id" value={dangSua.id} />
-                      <button type="submit" class="nb-nut phu" style="min-height:36px;padding:.3rem .6rem;font-size:.8rem">Bỏ</button>
-                    </form>
+                    <select name={`xl_${i}`} aria-label={t.ariaXuLy(i + 1)}>
+                      <option value="" selected={!d.xl}>{t.theoMatHang}{d.mh && tenMh.get(d.mh) ? ` (${nhanKho(TEN_XU_LY_NB, tenMh.get(d.mh)!.xu_ly_mac_dinh, nn)})` : ''}</option>
+                      <option value="nhap_kho" selected={d.xl === 'nhap_kho'}>{t.xlNhapKho}</option>
+                      <option value="chuyen_bep" selected={d.xl === 'chuyen_bep'}>{t.xlBep}</option>
+                      <option value="bo" selected={d.xl === 'bo'}>{t.xlBo}</option>
+                    </select>
                   </td>
+                  <td class="so"><input type="text" inputmode="numeric" name={`tt_${i}`} value={d.tt} style="max-width:4.5rem" aria-label={t.ariaThuTu(i + 1)} /></td>
+                  <td><label class="kho-tich" style="margin:0"><input type="checkbox" name={`bo_${i}`} value="co" checked={d.bo} /> {t.bo}</label></td>
                 </tr>
               ))}
             </tbody>
+            <tfoot>
+              <tr class={`tong ct-tong ${mauTong(tongLuoi)}`}>
+                <td colspan={goiY ? 6 : 5}>{cauTong(tongLuoi, nn)}</td>
+              </tr>
+            </tfoot>
           </table>
         </div>
-      )}
-      <form method="POST">
-        <input type="hidden" name="viec" value="them_dong" />
-        <input type="hidden" name="cong_thuc_id" value={dangSua.id} />
-        <div class="kho-luoi">
-          <label class="nb-o"><span>Phần ra</span>
-            <ChonMatHang name="mat_hang_ra_id" matHang={matHang} batBuoc /></label>
-          <label class="nb-o"><span>Tỉ lệ dự kiến (%)</span>
-            <input type="text" inputmode="decimal" name="ty_le_du_kien" placeholder="72,5" /></label>
-          <label class="nb-o"><span>Xử lý</span>
-            <select name="xu_ly">
-              <option value="">Theo mặt hàng</option>
-              <option value="nhap_kho">Nhập kho / ra quầy</option>
-              <option value="chuyen_bep">Chuyển bếp</option>
-              <option value="bo">Bỏ</option>
-            </select></label>
-          <label class="nb-o"><span>Thứ tự</span><input type="text" inputmode="numeric" name="thu_tu" value={String(dangSua.dong.length + 1)} /></label>
+        <div class="kho-thanh-nut">
+          <button type="submit" name="viec" value="tinh_lai" class="nb-nut phu">{t.tinhLai}</button>
+          <button type="submit" name="viec" value="them_dong" class="nb-nut phu">{t.themDong}</button>
+          <button type="submit" name="viec" value="luu_luoi" class="nb-nut">{t.luuCongThuc}</button>
         </div>
-        <button type="submit" class="nb-nut">Thêm / cập nhật phần ra</button>
       </form>
+      {goiYThieu.length > 0 && (
+        <p class="kho-phu">{t.thucTeConRa}{goiYThieu.map(([mh, tl]) => `${tenMh.get(mh)?.ten ?? '—'} ${dinhDangPhanTram(tl, 1, nn)}`).join(' · ')}{t.bamThemDong}</p>
+      )}
+
+      <div class="kho-thanh-nut" style="margin-top:.75rem">
+        {!muonGoiY
+          ? <a class="nb-nut phu" href={`/noi-bo/kho/cai-dat/cong-thuc?sua=${dangSua.id}&goi_y=1`}>{t.goiYThucTe}</a>
+          : <a class="nb-nut phu" href={`/noi-bo/kho/cai-dat/cong-thuc?sua=${dangSua.id}`}>{t.anGoiY}</a>}
+        <form method="POST" style="margin:0">
+          <input type="hidden" name="viec" value="nhan_ban" />
+          <input type="hidden" name="cong_thuc_id" value={dangSua.id} />
+          <button type="submit" class="nb-nut phu">{t.nhanBan}</button>
+        </form>
+      </div>
+
       <details style="margin-top:1rem">
-        <summary style="cursor:pointer;font-weight:600">Đổi tên / ngừng dùng công thức</summary>
+        <summary style="cursor:pointer;font-weight:600">{t.doiTen}</summary>
         <form method="POST" style="margin-top:.75rem">
           <input type="hidden" name="viec" value="cong_thuc" />
           <input type="hidden" name="id" value={dangSua.id} />
-          <label class="nb-o"><span>Tên</span><input type="text" name="ten" value={dangSua.ten} required maxlength="120" /></label>
-          <label class="nb-o"><span>Ghi chú</span><input type="text" name="ghi_chu" value={dangSua.ghi_chu ?? ''} /></label>
-          <label class="nb-o"><span>Tình trạng</span>
-            <select name="dang_dung"><option value="co" selected={dangSua.dang_dung}>Đang dùng</option><option value="khong" selected={!dangSua.dang_dung}>Ngừng dùng</option></select></label>
-          <button type="submit" class="nb-nut phu">Lưu</button>
+          <label class="nb-o"><span>{t.ten}</span><input type="text" name="ten" value={dangSua.ten} required maxlength="120" /></label>
+          <label class="nb-o"><span>{t.ghiChu}</span><input type="text" name="ghi_chu" value={dangSua.ghi_chu ?? ''} /></label>
+          <label class="nb-o"><span>{t.tinhTrang}</span>
+            <select name="dang_dung"><option value="co" selected={dangSua.dang_dung}>{t.dangDung}</option><option value="khong" selected={!dangSua.dang_dung}>{t.ngungDung}</option></select></label>
+          <button type="submit" class="nb-nut phu">{t.luu}</button>
         </form>
       </details>
-      <p style="margin:1rem 0 0"><a href="/noi-bo/kho/cai-dat/cong-thuc">Đóng</a></p>
+      <p style="margin:1rem 0 0"><a href="/noi-bo/kho/cai-dat/cong-thuc">{t.dong}</a></p>
     </div>
   )}
 
   <details class="nb-the" open={congThuc.length === 0}>
-    <summary style="cursor:pointer;font-weight:700">+ Tạo công thức mới</summary>
+    <summary style="cursor:pointer;font-weight:700">{t.taoMoi}</summary>
     <form method="POST" style="margin-top:1rem">
       <input type="hidden" name="viec" value="cong_thuc" />
-      <label class="nb-o"><span>Đầu vào (tảng hoặc phần cắt)</span>
+      <label class="nb-o"><span>{t.dauVaoChon}</span>
         <ChonMatHang name="mat_hang_vao_id" matHang={matHang} loai={['tang', 'phan_cat']} batBuoc /></label>
-      <label class="nb-o"><span>Tên công thức</span>
-        <input type="text" name="ten" required maxlength="120" placeholder="Thăn ngoại → cắt lát nướng" /></label>
-      <label class="nb-o"><span>Ghi chú</span><input type="text" name="ghi_chu" /></label>
-      <button type="submit" class="nb-nut">Tạo công thức</button>
+      <label class="nb-o"><span>{t.tenCongThuc}</span>
+        <input type="text" name="ten" required maxlength="120" placeholder={t.tenVd} /></label>
+      <label class="nb-o"><span>{t.ghiChu}</span><input type="text" name="ghi_chu" /></label>
+      <button type="submit" class="nb-nut">{t.taoCongThuc}</button>
     </form>
   </details>
 
-  <h2>Các công thức ({congThuc.length})</h2>
-  {congThuc.length === 0 ? <p class="nb-rong">Chưa có công thức nào.</p> : congThuc.map(c => (
+  <h2>{t.cacCongThuc(congThuc.length)}</h2>
+  {congThuc.length === 0 ? <p class="nb-rong">{t.chuaCo}</p> : congThuc.map(c => (
     <a href={`/noi-bo/kho/cai-dat/cong-thuc?sua=${c.id}`} class="nb-dong" style={`display:block;text-decoration:none;color:inherit;${c.dang_dung ? '' : 'opacity:.55'}`}>
-      <div class="nb-dong-dau"><strong>{c.ten}</strong><span class="kho-phu">{c.dong.length} phần ra · {dinhDangPhanTram(tongTyLe(c))}</span></div>
-      <p class="kho-phu" style="margin:.3rem 0 0">Đầu vào: {tenMh.get(c.mat_hang_vao_id)?.ten ?? '—'}</p>
+      <div class="nb-dong-dau"><strong>{c.ten}</strong><span class="kho-phu">{t.soPhanRa(c.dong.length)} · {dinhDangPhanTram(tongTyLeCt(c), 1, nn)}</span></div>
+      <p class="kho-phu" style="margin:.3rem 0 0">{t.dauVao}{tenMh.get(c.mat_hang_vao_id)?.ten ?? '—'}</p>
     </a>
   ))}
 </Kho>
+
+<style>
+  .ct-an { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .ct-luoi select, .ct-luoi input[type="text"] { font-size: 16px; min-height: 44px; width: 100%; }
+  .ct-luoi td:first-child { min-width: 12rem; }
+  .ct-luoi td.so input { max-width: 6rem; text-align: right; }
+  .ct-tong td { font-weight: 700; }
+  .ct-tong.xanh td { color: var(--kho-xanh, #1F7A4C); background: var(--kho-xanh-nen, #E9F5EE); }
+  .ct-tong.vang td { color: #9A6B00; background: var(--kho-vang-nen, #FFF5DC); }
+  .ct-tong.do td { color: var(--do); background: var(--kho-do-nen, #FDECEA); }
+</style>

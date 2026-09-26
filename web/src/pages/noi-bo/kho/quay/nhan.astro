@@ -24,7 +24,9 @@ import {
   docHangDangMang, docMatHangQuay, docCaiDatQuay, docFormNhan, nhanHangChuyen, huyChuyen, cauSoLuong,
   type HangDangMang, type MatHangQuay,
 } from '../../../../lib/kho/quay.ts';
-import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, laUuid, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, kqHai, laUuid, type HaiThuTieng, type KetQua } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -33,6 +35,56 @@ if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const cn = k.chiNhanh;
 const laQuay = k.nhanSu.vai_tro === 'nhan_vien_quay';
 const URL_TRANG = '/noi-bo/kho/quay/nhan';
+const nn = k.nn;
+
+/** Câu báo dựng ở trang (KetQua cần cả hai thứ tiếng — đi qua cookie khi chuyển trang). */
+const CAU = {
+  khongCho: {
+    vi: 'Phiếu này không còn chờ nhận nữa — có thể người khác vừa bấm nhận. Xem danh sách bên dưới.',
+    en: 'This slip is no longer waiting to be received — someone may have just confirmed it. See the list below.',
+  },
+  viecSai: { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+} satisfies Record<string, HaiThuTieng>;
+
+const t = dichNB(nn, {
+  khongDocMang: { vi: 'Không đọc được hàng đang mang ra.', en: 'Could not read the goods on the way.' },
+  khongDocQuay: { vi: 'Không đọc được hàng ở quầy.', en: 'Could not read the counter stock.' },
+  monDaXoa: { vi: 'Món đã xóa', en: 'Deleted item' },
+  goi: { vi: 'gói', en: 'packs' },
+  tieuDe: { vi: 'Nhận hàng ra quầy', en: 'Counter receiving' },
+  khongCoHang: { vi: 'Không có hàng nào đang mang ra quầy.', en: 'Nothing is on the way to the counter.' },
+  huongDan: {
+    vi: 'Đếm từng món trên xe / khay. Đủ thì bấm "Đã nhận đủ". Thiếu thì bấm "Thiếu" và ghi số thực nhận — phần mềm báo quản lý.',
+    en: 'Count each item on the trolley / tray. If everything is there, press "Received in full". If something is short, press "Short" and enter what actually arrived — the system tells the manager.',
+  },
+  theoYeuCau: { vi: (so: string) => ` · theo yêu cầu ${so}`, en: (so: string) => ` · for request ${so}` },
+  quay: { vi: 'quầy', en: 'counter' },
+  mangRaBoi: { vi: (ten: string) => ` · ${ten} mang ra`, en: (ten: string) => ` · brought by ${ten}` },
+  quaGio: {
+    vi: (gio: number) => `Đã quá ${gio} giờ chưa bấm nhận`,
+    en: (gio: number) => `Over ${gio} ${gio === 1 ? 'hour' : 'hours'} and not confirmed yet`,
+  },
+  ghiSo1: { vi: 'Ghi số thực nhận', en: 'Enter the quantity actually received' },
+  ghiSo2: { vi: ' từng món (không nhận được gì thì ghi 0).', en: ' for each item (enter 0 if nothing arrived).' },
+  mangRa: { vi: (sl: string) => `Mang ra ${sl}`, en: (sl: string) => `Brought out: ${sl}` },
+  soThucNhan: { vi: (ten: string) => `${ten} — số thực nhận`, en: (ten: string) => `${ten} — quantity received` },
+  guiSoNhan: { vi: 'Gửi số thực nhận', en: 'Send quantities received' },
+  quayLai: { vi: 'Quay lại', en: 'Back' },
+  banMangRa: {
+    vi: 'Bạn mang hàng này ra — nhờ nhân viên quầy kiểm và bấm nhận.',
+    en: 'You brought these goods out — ask the counter staff to check them and confirm.',
+  },
+  nhanDu: { vi: 'Đã nhận đủ', en: 'Received in full' },
+  thieu: { vi: 'Thiếu — ghi số nhận', en: 'Short — enter what arrived' },
+  huyChuyenTom: { vi: 'Hủy chuyến (mang nhầm, quầy không cần nữa)', en: 'Cancel delivery (brought by mistake, counter no longer needs it)' },
+  lyDo: { vi: 'Lý do', en: 'Reason' },
+  huyChuyen: { vi: 'Hủy chuyến — hàng về lại kho', en: 'Cancel delivery — goods go back to the store' },
+  xepTruoc: { vi: 'Xếp ra bán trước', en: 'Sell these first' },
+  hanXa: {
+    vi: 'Hàng ở quầy đều còn hạn xa — xếp sao cũng được.',
+    en: 'Everything at the counter has plenty of shelf life — arrange it any way you like.',
+  },
+});
 
 let ds: HangDangMang[] = [];
 let matHang: MatHangQuay[] = [];
@@ -43,7 +95,7 @@ try {
   gioNhac = c?.gio_nhac_chuyen ?? 2;
   matHang = mh;
   ds = await docHangDangMang(k.client, cn.id, gioNhac);
-} catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được hàng đang mang ra.'); }
+} catch (e) { loiDoc = cauLoiKho(e, t.khongDocMang); }
 
 // ---------------------------------------------------------------------------
 // Bấm nhận · ghi thiếu · hủy chuyến
@@ -64,17 +116,22 @@ if (form) {
     // — khi đó KHÔNG gửi "nhận đủ" thay cho số thiếu.
     kq = await nhanHangChuyen(k.client, idForm, maGuiCu, null);
   } else if (!p) {
-    kq = { ok: false, cau: 'Phiếu này không còn chờ nhận nữa — có thể người khác vừa bấm nhận. Xem danh sách bên dưới.' };
+    kq = kqHai(false, CAU.khongCho);
   } else if (viec === 'nhan_du') {
     kq = await nhanHangChuyen(k.client, p.id, maGuiCu, null);
   } else if (viec === 'nhan_thieu') {
-    const { pDong, loi } = docFormNhan(form, p.mon, matHang);
-    kq = loi.length > 0 ? { ok: false, cau: loi.join(' ') } : await nhanHangChuyen(k.client, p.id, maGuiCu, pDong);
-    if (kq.ok && pDong) kq = { ok: true, cau: `${kq.cau} Phần thiếu đã báo quản lý.` };
+    const { pDong, loi, loiEn } = docFormNhan(form, p.mon, matHang);
+    kq = loi.length > 0 ? kqHai(false, { vi: loi.join(' '), en: loiEn.join(' ') }) : await nhanHangChuyen(k.client, p.id, maGuiCu, pDong);
+    if (kq.ok && pDong) {
+      kq = kqHai(true, {
+        vi: `${kq.cau} Phần thiếu đã báo quản lý.`,
+        en: `${kq.cauEn ?? dichCau('en', kq.cau)} The shortfall has been reported to the manager.`,
+      });
+    }
   } else if (viec === 'huy_chuyen') {
     kq = await huyChuyen(k.client, p.id, String(form.get('ly_do') ?? '').trim());
   } else {
-    kq = { ok: false, cau: 'Việc không hợp lệ.' };
+    kq = kqHai(false, CAU.viecSai);
   }
   if (kq.ok) return chuyenHuong(Astro, URL_TRANG, kq);
   bao = kq;
@@ -86,33 +143,34 @@ if (form) {
 let ton: DongTon[] = [];
 let ten = new Map<string, string>();
 try {
-  const [t, n] = await Promise.all([
+  const [tonDoc, n] = await Promise.all([
     laQuay ? docTon(k.client, cn.id) : Promise.resolve([] as DongTon[]),
     tenNhanSu(k.client, ds.map(p => p.nguoi_tao)),
   ]);
-  ton = t; ten = n;
-} catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, 'Không đọc được hàng ở quầy.'); }
+  ton = tonDoc; ten = n;
+} catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, t.khongDocQuay); }
 
 const mhTheoId = new Map(matHang.map(m => [m.id, m]));
-const monCua = (id: string) => mhTheoId.get(id) ?? { ten: 'Món đã xóa', dem_goi: true, don_vi_goi: 'gói' };
+const monCua = (id: string) => mhTheoId.get(id) ?? { ten: t.monDaXoa, dem_goi: true, don_vi_goi: t.goi };
 const thieuId = form && String(form.get('viec')) === 'nhan_thieu' ? idForm : Astro.url.searchParams.get('thieu');
 // Gửi lại form bị lỗi thì giữ ma_gui của lần bấm đó; lần đầu mỗi nút một mã mới.
 const maGuiCho = (id: string) => (id === idForm && laUuid(maGuiCu) ? maGuiCu : crypto.randomUUID());
 const giaTriNhan = (pId: string, m: { dem_goi: boolean }, mon: { mat_hang_id: string; so_goi: number; so_kg: number }) => {
   const cu = pId === idForm ? form?.get(`n_${mon.mat_hang_id}`) : null;
   if (cu !== null && cu !== undefined) return String(cu);
-  return m.dem_goi ? String(mon.so_goi) : dinhDangKg(mon.so_kg);
+  // Ô nhập: "1,5" hay "1.5" đều đọc được (docKg) — viết theo thói quen của người xem.
+  return m.dem_goi ? String(mon.so_goi) : dinhDangKg(mon.so_kg, nn);
 };
-const xep = goiYXepQuay(ton);
+const xep = goiYXepQuay(ton, nn);
 ---
-<Kho k={k} tieuDe="Nhận hàng ra quầy" huongDan={laQuay ? 'nhan-ra-quay' : 'ra-quay'}>
-  <h1>Nhận hàng ra quầy</h1>
+<Kho k={k} tieuDe={t.tieuDe} huongDan={laQuay ? 'nhan-ra-quay' : 'ra-quay'}>
+  <h1>{t.tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {ds.length === 0 ? (
-    <p class="nb-rong">Không có hàng nào đang mang ra quầy.</p>
+    <p class="nb-rong">{t.khongCoHang}</p>
   ) : (
-    <p class="kho-phu">Đếm từng món trên xe / khay. Đủ thì bấm "Đã nhận đủ". Thiếu thì bấm "Thiếu" và ghi số thực nhận — phần mềm báo quản lý.</p>
+    <p class="kho-phu">{t.huongDan}</p>
   )}
 
   {ds.map(p => {
@@ -121,35 +179,35 @@ const xep = goiYXepQuay(ton);
     return (
       <section class:list={['nb-the', 'nh-the', { do: p.qua_gio }]}>
         <header class="nh-dau">
-          <strong>{p.so_phieu}{p.so_yeu_cau ? ` · theo yêu cầu ${p.so_yeu_cau}` : ''}</strong>
-          <span class="kho-phu">{p.ten_vi_tri} → {p.ten_vi_tri_den ?? 'quầy'} · {dinhDangThoiDiem(p.created_at)}{p.nguoi_tao && ten.get(p.nguoi_tao) ? ` · ${ten.get(p.nguoi_tao)} mang ra` : ''}</span>
-          {p.qua_gio && <span class="chu-do"><BieuTuong ten="canh_bao" co={18} /> Đã quá {gioNhac} giờ chưa bấm nhận</span>}
+          <strong>{p.so_phieu}{p.so_yeu_cau ? t.theoYeuCau(p.so_yeu_cau) : ''}</strong>
+          <span class="kho-phu">{p.ten_vi_tri} → {p.ten_vi_tri_den ?? t.quay} · {dinhDangThoiDiem(p.created_at)}{p.nguoi_tao && ten.get(p.nguoi_tao) ? t.mangRaBoi(ten.get(p.nguoi_tao) ?? '') : ''}</span>
+          {p.qua_gio && <span class="chu-do"><BieuTuong ten="canh_bao" co={18} /> {t.quaGio(gioNhac)}</span>}
         </header>
 
         {moThieu ? (
           <form method="POST">
             <input type="hidden" name="id" value={p.id} />
             <input type="hidden" name="ma_gui" value={maGuiCho(p.id)} />
-            <p style="margin:.25rem 0 .5rem"><strong>Ghi số thực nhận</strong> từng món (không nhận được gì thì ghi 0).</p>
+            <p style="margin:.25rem 0 .5rem"><strong>{t.ghiSo1}</strong>{t.ghiSo2}</p>
             <ul class="kho-dong-ds">
               {p.mon.map(x => {
                 const m = monCua(x.mat_hang_id);
                 return (
                   <li>
-                    <span><strong>{m.ten}</strong><small>Mang ra {cauSoLuong(m, x.so_goi, x.so_kg)}</small></span>
+                    <span><strong>{m.ten}</strong><small>{t.mangRa(cauSoLuong(m, x.so_goi, x.so_kg, nn))}</small></span>
                     <label class="nb-o nh-o">
-                      <span class="an">{m.ten} — số thực nhận</span>
+                      <span class="an">{t.soThucNhan(m.ten)}</span>
                       <input type="text" inputmode={m.dem_goi ? 'numeric' : 'decimal'} name={`n_${x.mat_hang_id}`}
                         value={giaTriNhan(p.id, m, x)} autocomplete="off" />
-                      <small>{m.dem_goi ? m.don_vi_goi || 'gói' : 'kg'}</small>
+                      <small>{m.dem_goi ? m.don_vi_goi || t.goi : 'kg'}</small>
                     </label>
                   </li>
                 );
               })}
             </ul>
             <div class="kho-thanh-nut">
-              <button type="submit" name="viec" value="nhan_thieu" class="nb-nut nh-lon">Gửi số thực nhận</button>
-              <a class="nb-nut phu nh-lon" href={URL_TRANG}>Quay lại</a>
+              <button type="submit" name="viec" value="nhan_thieu" class="nb-nut nh-lon">{t.guiSoNhan}</button>
+              <a class="nb-nut phu nh-lon" href={URL_TRANG}>{t.quayLai}</a>
             </div>
           </form>
         ) : (
@@ -157,19 +215,19 @@ const xep = goiYXepQuay(ton);
             <ul class="kho-dong-ds">
               {p.mon.map(x => {
                 const m = monCua(x.mat_hang_id);
-                return <li><span><strong>{m.ten}</strong></span><b>{cauSoLuong(m, x.so_goi, x.so_kg)}</b></li>;
+                return <li><span><strong>{m.ten}</strong></span><b>{cauSoLuong(m, x.so_goi, x.so_kg, nn)}</b></li>;
               })}
             </ul>
             {laNguoiMang ? (
-              <p class="kho-phu" style="margin:.5rem 0 0">Bạn mang hàng này ra — nhờ nhân viên quầy kiểm và bấm nhận.</p>
+              <p class="kho-phu" style="margin:.5rem 0 0">{t.banMangRa}</p>
             ) : (
               <div class="kho-thanh-nut">
                 <form method="POST" style="flex:1 1 12rem;display:flex">
                   <input type="hidden" name="id" value={p.id} />
                   <input type="hidden" name="ma_gui" value={maGuiCho(p.id)} />
-                  <button type="submit" name="viec" value="nhan_du" class="nb-nut nh-lon" style="flex:1">Đã nhận đủ</button>
+                  <button type="submit" name="viec" value="nhan_du" class="nb-nut nh-lon" style="flex:1">{t.nhanDu}</button>
                 </form>
-                <a class="nb-nut phu nh-lon" href={`${URL_TRANG}?thieu=${p.id}`}>Thiếu — ghi số nhận</a>
+                <a class="nb-nut phu nh-lon" href={`${URL_TRANG}?thieu=${p.id}`}>{t.thieu}</a>
               </div>
             )}
           </>
@@ -177,14 +235,14 @@ const xep = goiYXepQuay(ton);
 
         {(laNguoiMang || k.duoc('duyet')) && (
           <details style="margin-top:.5rem">
-            <summary class="nh-tom">Hủy chuyến (mang nhầm, quầy không cần nữa)</summary>
+            <summary class="nh-tom">{t.huyChuyenTom}</summary>
             <form method="POST" style="margin-top:.5rem">
               <input type="hidden" name="id" value={p.id} />
               <label class="nb-o">
-                <span>Lý do</span>
+                <span>{t.lyDo}</span>
                 <input type="text" name="ly_do" maxlength="500" />
               </label>
-              <button type="submit" name="viec" value="huy_chuyen" class="nb-nut kho-nut-xoa">Hủy chuyến — hàng về lại kho</button>
+              <button type="submit" name="viec" value="huy_chuyen" class="nb-nut kho-nut-xoa">{t.huyChuyen}</button>
             </form>
           </details>
         )}
@@ -194,8 +252,8 @@ const xep = goiYXepQuay(ton);
 
   {laQuay && (
     <section class="kho-khoi">
-      <h2><BieuTuong ten="quay" /> Xếp ra bán trước</h2>
-      {xep.length === 0 ? <p class="kho-phu">Hàng ở quầy đều còn hạn xa — xếp sao cũng được.</p> : (
+      <h2><BieuTuong ten="quay" /> {t.xepTruoc}</h2>
+      {xep.length === 0 ? <p class="kho-phu">{t.hanXa}</p> : (
         <ul class="kho-dong-ds">
           {xep.map(x => (
             <li class:list={{ gap: x.gap }}><span><strong>{x.ten}</strong><small>{x.cau}</small></span></li>

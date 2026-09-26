@@ -1,0 +1,62 @@
+---
+/**
+ * Bảng một báo cáo theo khai báo cột (DinhNghiaBaoCao, lib/kho/bao-cao.ts) và
+ * dòng tổng tính bằng tinhTong — cùng hàm với file Excel nên hai bên luôn khớp.
+ * Bảng trống: câu "việc gì sinh ra số liệu" và link tới chỗ làm việc đó.
+ * Không gọi database, không JavaScript. In được (khung cuộn ngang bỏ khi in).
+ *
+ * Hai thứ tiếng: trang truyền định nghĩa và dòng tổng ĐÃ ở ngôn ngữ đang xem
+ * (BAO_CAO_NB[ten][nn], dinhNghia…(…, nn), tinhTong(…, nn)); ở đây chỉ định
+ * dạng số theo ngôn ngữ.
+ */
+import type { DinhNghiaBaoCao, DongTong, CotBaoCao } from '../../lib/kho/bao-cao.ts';
+import { dinhDangKg, dinhDangPhanTram, dinhDangTien } from '../../lib/kho/chung.ts';
+import { nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
+
+interface Props {
+  dn: DinhNghiaBaoCao;
+  dong: Record<string, unknown>[];
+  tong: DongTong[];
+  /** Dòng có khóa này = true thì mờ đi (vd khoản thanh toán đã hủy). */
+  khoaMo?: string;
+}
+const { dn, dong, tong, khoaMo } = Astro.props;
+const nn = nnCua(Astro);
+const vungSo = nn === 'en' ? 'en-US' : 'vi-VN';
+const hien = (c: CotBaoCao, v: unknown) => {
+  if (v === null || v === undefined || v === '') return '—';
+  if (c.kieu === 'kg') return Number(v) === 0 ? '·' : dinhDangKg(Number(v), nn);
+  if (c.kieu === 'tien') return Number(v) === 0 ? '·' : dinhDangTien(Number(v), nn);
+  if (c.kieu === 'so') return Number(v) === 0 ? '·' : Number(v).toLocaleString(vungSo);
+  if (c.kieu === 'pt') return dinhDangPhanTram(Number(v), 1, nn);
+  return String(v);
+};
+---
+{dong.length === 0 ? (
+  <p class="nb-rong">
+    {dn.khiTrong.cau}{' → '}
+    {dn.khiTrong.link.map((l, i) => <>{i > 0 && ' · '}<a href={l.href}>{l.ten}</a></>)}
+  </p>
+) : (
+  <div class="kho-bang-khung">
+    <table class="kho-bang kho-bao-cao">
+      <thead><tr>{dn.cot.map(c => <th class={c.kieu === 'chu' ? undefined : 'so'}>{c.ten}</th>)}</tr></thead>
+      <tbody>
+        {dong.map(d => (
+          <tr style={khoaMo && d[khoaMo] === true ? 'opacity:.55' : undefined}>
+            {dn.cot.map(c => <td class={c.kieu === 'chu' ? undefined : 'so'}>{hien(c, d[c.khoa])}</td>)}
+          </tr>
+        ))}
+      </tbody>
+      {tong.length > 0 && (
+        <tfoot>
+          {tong.map(t => (
+            <tr class="tong">{dn.cot.map((c, i) => (
+              <td class={c.kieu === 'chu' ? undefined : 'so'}>{i === 0 ? t.nhan : c.khoa in t.so ? hien(c, t.so[c.khoa]) : ''}</td>
+            ))}</tr>
+          ))}
+        </tfoot>
+      )}
+    </table>
+  </div>
+)}

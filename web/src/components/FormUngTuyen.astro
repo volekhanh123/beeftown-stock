@@ -78,9 +78,9 @@ const t = dich(ngonNgu, {
     ko: '경력 사항 (선택)',
   },
   kinhNghiemPhu: {
-    vi: 'Nhiều vị trí nhận cả người chưa có kinh nghiệm — chưa có thì để trống.',
-    en: 'No experience is fine for many roles — leave this empty if you have none.',
-    ko: '경력이 없어도 지원할 수 있는 포지션이 많아요. 경력이 없으면 비워 두세요.',
+    vi: 'Vị trí sảnh nhận cả người chưa có kinh nghiệm — chưa có thì để trống.',
+    en: 'No experience is needed for Hall Crew — leave this empty if you have none.',
+    ko: '홀 직원은 경력이 없어도 지원할 수 있어요. 경력이 없으면 비워 두세요.',
   },
   cv:      { vi: 'Đính kèm CV (không bắt buộc)', en: 'Attach a CV (optional)', ko: '이력서 첨부 (선택)' },
   cvPhu: {
@@ -252,12 +252,16 @@ const t = dich(ngonNgu, {
   .form-nop legend {
     display: block; font-weight: 700; font-size: 15px; margin-bottom: 6px;
   }
-  .form-nop .o > span em { font-style: normal; font-weight: 400; color: var(--da); }
+  .form-nop .o > span em { font-style: normal; font-weight: 400; color: var(--muc-nhat); }
   .form-nop .o > small {
-    display: block; color: var(--da); font-size: 14px; margin-bottom: 6px; line-height: 1.45;
+    display: block; color: var(--muc-nhat); font-size: 14px; margin-bottom: 6px; line-height: 1.45;
   }
 
-  /* font-size 16px là mức tối thiểu: dưới đó Safari trên iPhone tự phóng to
+  /* Form nằm trên nền SÁNG (muc-sang). Bản đầu viết màu cho nền tối: chữ kem,
+     viền kem 22%, nền kem 6% — trên nền kem thì ô vô hình và chữ gõ vào cũng
+     vô hình (26/09/2026, ứng viên không nộp được hồ sơ). Ô trắng, viền
+     --vien-o, chữ than.
+     font-size 16px là mức tối thiểu: dưới đó Safari trên iPhone tự phóng to
      trang khi chạm vào ô, và người đang điền mất chỗ. */
   .form-nop input[type='text'],
   .form-nop input[type='tel'],
@@ -266,17 +270,21 @@ const t = dich(ngonNgu, {
   .form-nop textarea {
     font: inherit; font-size: 16px; width: 100%;
     padding: 13px 14px; min-height: 50px;
-    border: 1px solid var(--vach-kem); border-radius: 8px;
-    background: rgba(251, 244, 225, .06); color: var(--kem);
+    border: 1px solid var(--vien-o); border-radius: 8px;
+    background: #fff; color: var(--than);
   }
+  .form-nop :is(input, select, textarea):focus-visible {
+    outline: 2px solid var(--do); outline-offset: 1px; border-color: var(--do);
+  }
+  .form-nop :is(input, textarea)::placeholder { color: var(--muc-nhat); }
   .form-nop textarea { min-height: 84px; resize: vertical; line-height: 1.55; }
   .form-nop input[type='file'] {
-    font: inherit; font-size: 15px; width: 100%; color: var(--kem);
+    font: inherit; font-size: 15px; width: 100%; color: var(--than);
     padding: 12px 0;
   }
 
   .form-nop .o-nhom {
-    border: 1px solid var(--vach-kem); border-radius: 8px;
+    border: 1px solid var(--vach); border-radius: 8px;
     padding: 14px; margin: 0 0 18px;
   }
   .form-nop .o-chon {
@@ -288,7 +296,7 @@ const t = dich(ngonNgu, {
     width: 24px; height: 24px; margin: 0; flex-shrink: 0; accent-color: var(--do);
   }
   .form-nop .o-dong-y {
-    border-top: 1px solid var(--vach-kem);
+    border-top: 1px solid var(--vach);
     margin-top: 6px; padding-top: 16px; align-items: flex-start;
   }
 

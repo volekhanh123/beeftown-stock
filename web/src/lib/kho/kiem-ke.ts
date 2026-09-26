@@ -21,10 +21,14 @@
  * gộp (gopKhiTrung): dòng mình không đụng tới lấy số mới; dòng mình vừa sửa
  * thì giữ (chưa lưu) — nhờ k{i}_goc biết dòng nào mình đã sửa. Không bao giờ
  * hiện lại số cũ kèm phien_ban mới: bấm Lưu lần hai sẽ xóa số của người kia.
+ *
+ * Hai thứ tiếng: lỗi nhập có loiEn song song với loi, tóm tắt quét có tomTatEn,
+ * câu báo có cauEn. Câu database trả về (duyệt, trả về…) thì trang tra
+ * dichCau lúc hiện.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, laUuid, type KetQua } from './chung.ts';
+import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { gomTheoMaCan, tachDanhSachMa } from './ma-vach.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 
@@ -220,7 +224,7 @@ export function dongDemTuDb(ds: DongKiemKe[]): DongDemForm[] {
 export function docFormKiemKe(
   form: FormData,
   matHang: { id: string; ten: string; dem_goi: boolean }[],
-): { dong: DongDemForm[]; loi: string[]; payload: Record<string, unknown>[] } {
+): { dong: DongDemForm[]; loi: string[]; loiEn: string[]; payload: Record<string, unknown>[] } {
   const dong: DongDemForm[] = [];
   const soDong = docSoNguyen(form.get('so_dong'), 0, 2000) ?? 0;
   for (let i = 0; i < (Number.isNaN(soDong) ? 0 : soDong); i++) {
@@ -243,22 +247,27 @@ export function docFormKiemKe(
   return { dong, ...payloadTuDong(dong, matHang) };
 }
 
-/** Dòng đang hiện trên form → p_dong của kho_luu_kiem_ke, kèm lỗi gõ sai. */
+/** Dòng đang hiện trên form → p_dong của kho_luu_kiem_ke, kèm lỗi gõ sai (loi / loiEn song song). */
 export function payloadTuDong(
   dong: DongDemForm[],
   matHang: { id: string; ten: string; dem_goi: boolean }[],
-): { loi: string[]; payload: Record<string, unknown>[] } {
+): { loi: string[]; loiEn: string[]; payload: Record<string, unknown>[] } {
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
   const mh = new Map(matHang.map(m => [m.id, m]));
   const payload: Record<string, unknown>[] = [];
   for (const d of dong) {
     const m = mh.get(d.mat_hang_id);
-    const nhan = m ? `"${m.ten}"` : 'Một dòng';
-    if (!m) { loi.push(`${nhan} không hợp lệ — tải lại trang`); continue; }
+    if (!m) { bao({ vi: 'Một dòng không hợp lệ — tải lại trang', en: 'A line is not valid — reload the page' }); continue; }
+    const nhan = `"${m.ten}"`;
     const goi = docSoNguyen(d.goi, 0, 100000);
     const kg = docKg(d.kg);
-    if (Number.isNaN(goi)) loi.push(`${nhan}: số ${m.dem_goi ? 'gói' : 'đếm'} là số nguyên`);
-    if (Number.isNaN(kg)) loi.push(`${nhan}: số kg chưa đúng (ví dụ 1,25)`);
+    if (Number.isNaN(goi)) {
+      bao({ vi: `${nhan}: số ${m.dem_goi ? 'gói' : 'đếm'} là số nguyên`,
+            en: `${nhan}: the ${m.dem_goi ? 'pack count' : 'count'} must be a whole number` });
+    }
+    if (Number.isNaN(kg)) bao({ vi: `${nhan}: số kg chưa đúng (ví dụ 1,25)`, en: `${nhan}: the kg is not right (for example 1.25)` });
     const p: Record<string, unknown> = { mat_hang_id: d.mat_hang_id, xac_nhan_het: d.het };
     if (laUuid(d.lo_id)) p.lo_id = d.lo_id;
     if (goi !== null && !Number.isNaN(goi)) p.so_goi_dem = goi;
@@ -268,19 +277,24 @@ export function payloadTuDong(
     if (d.het) {
       const conHang = (typeof p.so_goi_dem === 'number' && p.so_goi_dem > 0)
         || (typeof p.so_kg_dem === 'number' && p.so_kg_dem > 0);
-      if (conHang) loi.push(`${nhan}: đã tích "Đã hết thật" mà vẫn ghi số — bỏ tích, hoặc xóa số`);
+      if (conHang) {
+        bao({ vi: `${nhan}: đã tích "Đã hết thật" mà vẫn ghi số — bỏ tích, hoặc xóa số`,
+              en: `${nhan}: "None left" is ticked but a number is entered — untick it, or clear the number` });
+      }
       else if (m.dem_goi) { if (goi === null) p.so_goi_dem = 0; }
       else if (kg === null) p.so_kg_dem = 0;
     }
     payload.push(p);
   }
-  return { loi, payload };
+  return { loi, loiEn, payload };
 }
 
 export interface KetQuaQuetKiemKe {
   dong: DongDemForm[];
   /** Câu cho nhân viên bằng chữ thường ngày — không có mã số, không bảo vào "Cài đặt". */
   loi: string[];
+  /** Các câu đó bằng tiếng Anh, cùng thứ tự. */
+  loiEn: string[];
   /** Tổng số mã trong ô quét. */
   soMa: number;
   /** Số mặt hàng được ghi số từ lần quét này. */
@@ -293,6 +307,8 @@ export interface KetQuaQuetKiemKe {
   soGoiLa: number;
   /** "5 gói Thăn ngoại (1,52 kg), 7 gói Nạc vai (2,1 kg)" — cho câu báo xanh. */
   tomTat: string;
+  /** Câu đó cho màn tiếng Anh (số kiểu 1.52, "and 2 more items"). */
+  tomTatEn: string;
 }
 
 /**
@@ -301,13 +317,21 @@ export interface KetQuaQuetKiemKe {
  * Quét ĐÈ số của món (xem apDungQuet), nên không bảo "quét lại gói đó" —
  * quét lại mỗi một gói thì món đó chỉ còn 1 gói.
  */
-export function cauQuetLoi(soNhanHong: number, soGoiLa: number): string[] {
+export function cauQuetLoi(soNhanHong: number, soGoiLa: number, nn: NgonNguNB = 'vi'): string[] {
   const ra: string[] = [];
-  if (soNhanHong > 0) {
-    ra.push(`${soNhanHong} nhãn không đọc được — ${soNhanHong > 1 ? 'các gói đó' : 'gói đó'} chưa được đếm. `
-      + 'Quét lại một lượt tất cả gói của món đó (nhãn hỏng hẳn thì gõ tay số gói và xóa ô Kg của món đó).');
+  const n = soNhanHong, g = soGoiLa;
+  if (n > 0) {
+    ra.push({
+      vi: `${n} nhãn không đọc được — ${n > 1 ? 'các gói đó' : 'gói đó'} chưa được đếm. Quét lại một lượt tất cả gói của món đó (nhãn hỏng hẳn thì gõ tay số gói và xóa ô Kg của món đó).`,
+      en: `${n} ${n === 1 ? 'label' : 'labels'} could not be read — ${n > 1 ? 'those packs were' : 'that pack was'} not counted. Scan all packs of that item again in one go (if a label is badly damaged, type the number of packs by hand and clear the Kg box for that item).`,
+    }[nn]);
   }
-  if (soGoiLa > 0) ra.push(`${soGoiLa} gói không nhận ra là món gì — chưa được đếm. Để riêng, báo quản lý.`);
+  if (g > 0) {
+    ra.push({
+      vi: `${g} gói không nhận ra là món gì — chưa được đếm. Để riêng, báo quản lý.`,
+      en: `${g} ${g === 1 ? 'pack was' : 'packs were'} not recognised as any item — not counted. Set ${g === 1 ? 'it' : 'them'} aside and tell the manager.`,
+    }[nn]);
+  }
   return ra;
 }
 
@@ -327,6 +351,7 @@ export function apDungQuet(
   const theoCan = new Map(matHang.filter(m => m.dang_dung && m.ma_can).map(m => [m.ma_can!, m]));
   const ra = dong.map(d => ({ ...d }));
   const tom: string[] = [];
+  const tomEn: string[] = [];
   let soHang = 0;
   let soDoc = 0;
   let soGoiLa = 0;
@@ -340,18 +365,35 @@ export function apDungQuet(
     // Quét thấy gói thì món này còn hàng — bỏ tích "Đã hết thật" lỡ tích từ trước.
     if (co) { co.goi = String(g.soGoi); co.kg = kg; co.het = false; }
     else ra.push({ mat_hang_id: m.id, lo_id: '', goi: String(g.soGoi), kg, het: false, goc: null });
-    tom.push(m.dem_goi === false
-      ? `${dinhDangKg(g.soKg)} kg ${m.ten}`
-      : `${g.soGoi} ${m.don_vi_goi || 'gói'} ${m.ten}${g.soKg > 0 ? ` (${dinhDangKg(g.soKg)} kg)` : ''}`);
+    for (const nn of ['vi', 'en'] as const) {
+      (nn === 'vi' ? tom : tomEn).push(m.dem_goi === false
+        ? `${dinhDangKg(g.soKg, nn)} kg ${m.ten}`
+        : `${g.soGoi} ${m.don_vi_goi || GOI_MAC_DINH[nn]} ${m.ten}${g.soKg > 0 ? ` (${dinhDangKg(g.soKg, nn)} kg)` : ''}`);
+    }
   }
-  const tomTat = tom.length <= 3 ? tom.join(', ') : `${tom.slice(0, 3).join(', ')} và ${tom.length - 3} món khác`;
+  const conLai = tom.length - 3;
+  const nhieu: HaiThuTieng = {
+    vi: `${tom.slice(0, 3).join(', ')} và ${conLai} món khác`,
+    en: `${tomEn.slice(0, 3).join(', ')} and ${conLai} more ${conLai === 1 ? 'item' : 'items'}`,
+  };
+  const tomTat = tom.length <= 3 ? tom.join(', ') : nhieu.vi;
+  const tomTatEn = tomEn.length <= 3 ? tomEn.join(', ') : nhieu.en;
   const soNhanHong = gom.loi.length;
-  return { dong: ra, loi: cauQuetLoi(soNhanHong, soGoiLa), soMa: ds.length, soHang, soDoc, soNhanHong, soGoiLa, tomTat };
+  return {
+    dong: ra, loi: cauQuetLoi(soNhanHong, soGoiLa), loiEn: cauQuetLoi(soNhanHong, soGoiLa, 'en'),
+    soMa: ds.length, soHang, soDoc, soNhanHong, soGoiLa, tomTat, tomTatEn,
+  };
 }
+
+/** Đơn vị gói mặc định của cột kho_mat_hang.don_vi_goi (0019) — khi món không mang đơn vị. */
+const GOI_MAC_DINH: HaiThuTieng = { vi: 'gói', en: 'packs' };
+
+/** Đoạn câu database khi phien_ban lệch ("Phiếu đã được sửa ở máy khác. Tải lại trang…"). */
+const MAY_KHAC = { vi: 'sửa ở máy khác', en: 'changed on another device' } satisfies HaiThuTieng;
 
 /** Lỗi "phiếu đã được sửa ở máy khác" của kho_luu_kiem_ke / kho_gui_kiem_ke (phien_ban lệch). */
 export function laLoiMayKhac(cau: string): boolean {
-  return /sửa ở máy khác/i.test(cau);
+  return new RegExp(MAY_KHAC.vi, 'i').test(cau);
 }
 
 /**
@@ -398,13 +440,13 @@ export function gopKhiTrung(
 export async function batDauKiemKe(
   client: SupabaseClient, chiNhanhId: string, viTriId: string, kieu: string, maGui: string,
 ): Promise<KetQua & { id?: string }> {
-  if (!laUuid(viTriId)) return { ok: false, cau: 'Chọn vị trí cần kiểm kê.' };
-  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang.' };
+  if (!laUuid(viTriId)) return kqHai(false, CAU_KK.chonViTri);
+  if (!laUuid(maGui)) return kqHai(false, CAU_KK.formCu);
   const { data, error } = await client.rpc('kho_bat_dau_kiem_ke', {
     p_chi_nhanh_id: chiNhanhId, p_vi_tri_id: viTriId, p_kieu: kieu, p_ma_gui: maGui,
   });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, id: String(data), cau: 'Đã mở phiếu kiểm kê. Đếm từng mặt hàng rồi bấm "Gửi quản lý duyệt".' };
+  return { ...kqHai(true, CAU_KK.daMo), id: String(data) };
 }
 
 export async function luuKiemKe(
@@ -414,20 +456,52 @@ export async function luuKiemKe(
     p_id: id, p_phien_ban: phienBan, p_ghi_chu: ghiChu, p_dong: payload,
   });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, phienBan: Number(data), cau: 'Đã lưu số đếm.' };
+  return { ...kqHai(true, CAU_KK.daLuu), phienBan: Number(data) };
 }
 
+/** Câu database (màn tiếng Anh tra dichCau lúc hiện); database không trả câu nào thì "Xong.". */
 async function cauTraVe(ham: PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<KetQua> {
   const { data, error } = await ham;
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: String(data ?? 'Xong.') };
+  return data === null || data === undefined ? kqHai(true, CAU_KK.xong) : { ok: true, cau: String(data) };
 }
 
 export async function guiKiemKe(client: SupabaseClient, id: string, phienBan: number): Promise<KetQua> {
   const kq = await cauTraVe(client.rpc('kho_gui_kiem_ke', { p_id: id, p_phien_ban: phienBan }));
-  // Câu "Chưa đếm" của 0023 bảo "ghi 0" — nay chỉ cần tích "Đã hết thật".
-  return kq.ok ? kq : { ok: false, cau: kq.cau.replace('không còn thì ghi 0', 'không còn gì thì tích "Đã hết thật"') };
+  if (kq.ok) return kq;
+  // Câu "Chưa đếm: <món> — đếm hết (không còn thì ghi 0) rồi gửi" của 0023 bảo
+  // "ghi 0" — nay chỉ cần tích "Đã hết thật". Đổi đuôi câu, dựng luôn bản tiếng Anh.
+  const { dau, duoiDb, duoiMoi, ghi0, tich } = CHUA_DEM;
+  if (kq.cau.startsWith(dau.vi) && kq.cau.endsWith(duoiDb.vi)) {
+    const mon = kq.cau.slice(dau.vi.length, kq.cau.length - duoiDb.vi.length);
+    return kqHai(false, { vi: dau.vi + mon + duoiMoi.vi, en: dau.en + mon + duoiMoi.en });
+  }
+  // Câu khác dạng (chưa có): đổi chữ như trước, bản tiếng Anh tra dichCau lúc hiện.
+  return { ok: false, cau: kq.cau.replace(ghi0.vi, tich.vi) };
 }
+
+const CHUA_DEM = {
+  dau: { vi: 'Chưa đếm: ', en: 'Not counted yet: ' },
+  duoiDb: { vi: ' — đếm hết (không còn thì ghi 0) rồi gửi', en: ' — count everything (if none are left, enter 0), then send' },
+  duoiMoi: { vi: ' — đếm hết (không còn gì thì tích "Đã hết thật") rồi gửi', en: ' — count everything (if none are left, tick "None left"), then send' },
+  ghi0: { vi: 'không còn thì ghi 0', en: 'if none are left, enter 0' },
+  tich: { vi: 'không còn gì thì tích "Đã hết thật"', en: 'if none are left, tick "None left"' },
+} satisfies Record<string, HaiThuTieng>;
+
+const CAU_KK = {
+  chonViTri: { vi: 'Chọn vị trí cần kiểm kê.', en: 'Choose the location to count.' },
+  formCu: { vi: 'Form đã cũ — tải lại trang.', en: 'This form is out of date — reload the page.' },
+  daMo: {
+    vi: 'Đã mở phiếu kiểm kê. Đếm từng mặt hàng rồi bấm "Gửi quản lý duyệt".',
+    en: 'Stocktake sheet opened. Count each item, then press "Send to manager for approval".',
+  },
+  daLuu: { vi: 'Đã lưu số đếm.', en: 'Counts saved.' },
+  xong: { vi: 'Xong.', en: 'Done.' },
+  chuaHuy: {
+    vi: 'Chưa hủy: ghi lý do hủy trước (vd. "mở nhầm vị trí"), rồi bấm lại.',
+    en: 'Not cancelled: write a reason first (e.g. "opened the wrong location"), then press again.',
+  },
+} satisfies Record<string, HaiThuTieng>;
 export function duyetKiemKe(client: SupabaseClient, id: string) {
   return cauTraVe(client.rpc('kho_duyet_kiem_ke', { p_id: id }));
 }
@@ -439,6 +513,6 @@ export function tuChoiKiemKe(client: SupabaseClient, id: string, lyDo: string) {
  * hai, để một lần bấm nhầm không làm mất cả buổi đếm.
  */
 export async function huyKiemKe(client: SupabaseClient, id: string, lyDo: string | null): Promise<KetQua> {
-  if (!lyDo?.trim()) return { ok: false, cau: 'Chưa hủy: ghi lý do hủy trước (vd. "mở nhầm vị trí"), rồi bấm lại.' };
+  if (!lyDo?.trim()) return kqHai(false, CAU_KK.chuaHuy);
   return cauTraVe(client.rpc('kho_huy_kiem_ke', { p_id: id, p_ly_do: lyDo }));
 }

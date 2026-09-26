@@ -1,0 +1,137 @@
+---
+/**
+ * KHO — ĐẶT HÀNG: DANH SÁCH ĐƠN (GĐ8a, migration 0039)
+ *
+ * Đọc bằng kho_ds_don_dat_kg — chỉ kg, thủ kho mở được. Vai xem giá (kế toán,
+ * quản lý, chủ) thấy thêm tổng tiền dự kiến (view kho_v_don_dat, RLS xem_gia).
+ * Chip trạng thái ?loc=nhap | dang_cho | da_nhan | huy; tìm / ngày / của tôi /
+ * trang như các danh sách khác (lib/kho/tim-ds.ts). Không JavaScript.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
+import PhanTrang from '../../../../components/kho/PhanTrang.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import {
+  docDsDonDat, docTienDuKien, docLocDon, nhanTrangThaiDon, LOC_DON_NB, type DonDatTom,
+} from '../../../../lib/kho/dat-hang.ts';
+import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('nhap') && !k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Đặt hàng', en: 'Purchase orders' },
+  h1: { vi: 'Đặt hàng nhà cung cấp', en: 'Supplier purchase orders' },
+  khongDoc: { vi: 'Không đọc được danh sách đơn đặt hàng.', en: 'Could not read the list of purchase orders.' },
+  chuaDung: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  trangChuKho: { vi: 'Trang chủ kho', en: 'Inventory home' },
+  dan1: {
+    vi: 'Chọn nhà cung cấp → phần mềm gợi ý số kg nên đặt → sửa số → gửi, in hoặc lưu PDF gửi Zalo.',
+    en: 'Choose a supplier → the app suggests how many kg to order → adjust the numbers → send, print or save a PDF to send by Zalo.',
+  },
+  dan2: { vi: 'Hàng về thì thủ kho bấm', en: 'When the goods arrive, the storekeeper presses' },
+  nhanTheoDon: { vi: 'Nhận hàng theo đơn này', en: 'Receive against this order' },
+  lapDon: { vi: '+ Lập đơn đặt hàng', en: '+ New purchase order' },
+  danhGiaNcc: { vi: 'Đánh giá nhà cung cấp', en: 'Supplier rating' },
+  locTrangThai: { vi: 'Lọc theo trạng thái', en: 'Filter by status' },
+  goiY: { vi: 'Số đơn, nhà cung cấp…', en: 'Order no., supplier…' },
+  hetDs: { vi: 'Hết danh sách — bấm "Trang trước".', en: 'End of the list — press "Previous".' },
+  khongKhop: { vi: 'Không tìm thấy đơn nào khớp bộ lọc.', en: 'No orders match the filter.' },
+  khongCoMuc: { vi: (ten: string) => `Không có đơn nào ở mục "${ten}".`, en: (ten: string) => `No orders under "${ten}".` },
+  chuaCo: { vi: 'Chưa có đơn đặt hàng nào.', en: 'No purchase orders yet.' },
+  treHen: {
+    vi: 'Quá ngày giao — chưa thấy đủ hàng. Gọi nhà cung cấp hỏi lại.',
+    en: 'Past the delivery date and not all goods have arrived. Call the supplier to check.',
+  },
+  giaoNgay: { vi: 'Giao ngày', en: 'Delivery date' },
+  dat: { vi: 'đặt', en: 'ordered' },
+  hang: { vi: 'Hàng', en: 'Goods' },
+  soMon: { vi: (n: number) => `${n} món`, en: (n: number) => `${n} ${s(n, 'item', 'items')}` },
+  daNhan: { vi: 'đã nhận', en: 'received' },
+  tienDuKien: { vi: 'Tiền dự kiến', en: 'Expected cost' },
+  nguoiLap: { vi: 'Người lập', en: 'Made by' },
+});
+
+const DS = '/noi-bo/kho/dat-hang';
+const loc = docLocDon(Astro.url.searchParams.get('loc'));
+const tenLoc = LOC_DON_NB.find(([v]) => v === loc)?.[1][nn] ?? '';
+const tim = docTimDs(Astro.url.searchParams);
+const coGia = k.duoc('xem_gia');
+
+let ds: DonDatTom[] = [];
+let coSau = false;
+let tien = new Map<string, number | null>();
+let loiDoc = k.loiDoc;
+if (k.chiNhanh && k.daKhoiTao) {
+  try {
+    ({ ds, coSau } = catTrang(await docDsDonDat(k.client, k.chiNhanh.id, loc || null, tim)));
+    if (coGia) tien = await docTienDuKien(k.client, ds.map(d => d.id));
+  } catch (e) {
+    loiDoc = cauLoiKho(e, t.khongDoc);
+  }
+}
+---
+<Kho k={k} tieuDe={t.tieuDe} huongDan="dat-hang">
+  <h1>{t.h1}</h1>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">{t.chuaDung} <a href="/noi-bo/kho">{t.trangChuKho}</a>.</p>
+  ) : (
+    <>
+      <p class="nb-dan">
+        {t.dan1}{' '}
+        {t.dan2} <strong>{t.nhanTheoDon}</strong>.
+      </p>
+
+      <div class="kho-nut-nhanh">
+        {k.duoc('nhap') && <a class="nb-nut dh-lon" href={`${DS}/moi`}>{t.lapDon}</a>}
+        <a class="nb-nut phu dh-lon" href="/noi-bo/kho/bao-cao/ncc">{t.danhGiaNcc}</a>
+      </div>
+
+      <nav class="kho-dh" aria-label={t.locTrangThai}>
+        {LOC_DON_NB.map(([v, tenChip]) => (
+          <a href={v ? `${DS}?loc=${v}` : DS} aria-current={loc === v ? 'page' : undefined}>{tenChip[nn]}</a>
+        ))}
+      </nav>
+
+      <LocDanhSach duong={DS} tim={tim} giu={{ loc }} coCuaToi={k.duoc('nhap')}
+        goiY={t.goiY} />
+
+      {ds.length === 0 ? (
+        <p class="nb-rong">{tim.trang > 1 ? t.hetDs : dangTim(tim) ? t.khongKhop
+          : loc ? t.khongCoMuc(tenLoc) : t.chuaCo}</p>
+      ) : ds.map(d => {
+        const [nhan, lop] = nhanTrangThaiDon(d.trang_thai, nn);
+        const tienDon = tien.get(d.id);
+        return (
+          <a href={`${DS}/${d.id}`} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
+            <div class="nb-dong-dau">
+              <strong>{d.so_phieu} · {d.ten_nha_cung_cap}</strong>
+              <span class={`nb-nhan ${lop}`}>{nhan}</span>
+            </div>
+            {d.tre_hen && <p class="dh-tre">{t.treHen}</p>}
+            <dl>
+              <dt>{t.giaoNgay}</dt><dd>{dinhDangNgay(d.ngay_giao_du_kien)} · {t.dat} {dinhDangNgay(d.ngay_dat)}</dd>
+              <dt>{t.hang}</dt><dd>{t.soMon(d.so_dong)} · {t.dat} {dinhDangKg(d.tong_kg_dat, nn)} kg
+                {d.tong_kg_da_nhan > 0 && <> · {t.daNhan} {dinhDangKg(d.tong_kg_da_nhan, nn)} kg</>}</dd>
+              {coGia && tienDon !== null && tienDon !== undefined && <><dt>{t.tienDuKien}</dt><dd>{dinhDangTien(tienDon, nn)}</dd></>}
+              <dt>{t.nguoiLap}</dt><dd>{d.ten_nguoi_lap ?? '—'} · {dinhDangThoiDiem(d.created_at)}</dd>
+            </dl>
+          </a>
+        );
+      })}
+      <PhanTrang duong={DS} trang={tim.trang} coSau={coSau} />
+    </>
+  )}
+</Kho>
+
+<style>
+  .dh-lon { min-height: 56px; font-size: 1.05rem; }
+  .dh-tre { margin: .25rem 0 .5rem; padding: .45rem .6rem; border-radius: 8px; background: var(--kho-do-nen, #fdecea); font-size: .9rem; }
+</style>

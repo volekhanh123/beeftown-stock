@@ -41,6 +41,9 @@
   font-weight: 600; font-size: .7rem; letter-spacing: .14em;
   text-transform: uppercase; color: var(--cuc-vang);
 }
+.nb-dau-phai { display: flex; align-items: center; gap: .75rem; }
+/* Nút đổi tiếng là một link (a), nên cần căn như nút <button> bên cạnh. */
+.nb-doi-tieng { display: inline-flex; align-items: center; text-decoration: none; }
 .nb-ai { display: flex; align-items: center; gap: .75rem; margin: 0; }
 .nb-ten { font-size: .8rem; line-height: 1.25; text-align: right; }
 .nb-ten em { display: block; font-style: normal; color: var(--da); font-size: .72rem; }

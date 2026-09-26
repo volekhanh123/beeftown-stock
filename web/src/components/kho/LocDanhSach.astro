@@ -8,6 +8,7 @@
  */
 import { homNayVn, congNgay, dinhDangNgay } from '../../lib/kho/chung.ts';
 import { dangTim, linkDs, type TimDs } from '../../lib/kho/tim-ds.ts';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
 
 interface Props {
   duong: string;
@@ -19,19 +20,37 @@ interface Props {
   coCuaToi?: boolean;
 }
 const { duong, tim, giu = {}, goiY, coCuaToi = false } = Astro.props;
+const t = dichNB(nnCua(Astro), {
+  homNay: { vi: 'Hôm nay', en: 'Today' },
+  bayNgay: { vi: '7 ngày', en: '7 days' },
+  thangNay: { vi: 'Tháng này', en: 'This month' },
+  cuaToi: { vi: 'phiếu tôi lập', en: 'made by me' },
+  timPhieu: { vi: 'Tìm phiếu', en: 'Search documents' },
+  tim: { vi: 'Tìm', en: 'Search' },
+  ngay: { vi: 'Ngày', en: 'Date' },
+  nguoiLap: { vi: ', người lập', en: ', made by' },
+  moiNgay: { vi: 'Mọi ngày', en: 'Any date' },
+  chonNhanh: { vi: 'Chọn nhanh khoảng ngày', en: 'Quick date ranges' },
+  tuNgay: { vi: 'Từ ngày', en: 'From' },
+  denNgay: { vi: 'Đến ngày', en: 'To' },
+  chiCuaToi: { vi: 'Chỉ phiếu tôi lập', en: 'Only documents I made' },
+  loc: { vi: 'Lọc', en: 'Filter' },
+  dangLoc: { vi: 'Đang lọc', en: 'Filtering' },
+  boLoc: { vi: 'Bỏ lọc', en: 'Clear filters' },
+});
 const sp = Astro.url.searchParams;
 const homNay = homNayVn();
 const dauThang = homNay.slice(0, 8) + '01';
 const MOC: [string, string, string][] = [
-  ['Hôm nay', homNay, homNay],
-  ['7 ngày', congNgay(homNay, -6), homNay],
-  ['Tháng này', dauThang, homNay],
+  [t.homNay, homNay, homNay],
+  [t.bayNgay, congNgay(homNay, -6), homNay],
+  [t.thangNay, dauThang, homNay],
 ];
 const tomTat = [
   tim.tu || tim.den
     ? (tim.tu === tim.den ? dinhDangNgay(tim.tu) : `${tim.tu ? dinhDangNgay(tim.tu) : '…'} – ${tim.den ? dinhDangNgay(tim.den) : '…'}`)
     : null,
-  tim.cuaToi ? 'phiếu tôi lập' : null,
+  tim.cuaToi ? t.cuaToi : null,
 ].filter(Boolean).join(' · ');
 const boLoc = linkDs(duong, sp, { q: null, tu: null, den: null, cua_toi: null });
 ---
@@ -39,38 +58,38 @@ const boLoc = linkDs(duong, sp, { q: null, tu: null, den: null, cua_toi: null })
   {Object.entries(giu).map(([k, v]) => v ? <input type="hidden" name={k} value={v} /> : null)}
   <div class="kho-tim-hang">
     <label class="nb-o">
-      <input type="search" name="q" value={tim.q} placeholder={goiY} aria-label="Tìm phiếu" autocomplete="off" />
+      <input type="search" name="q" value={tim.q} placeholder={goiY} aria-label={t.timPhieu} autocomplete="off" />
     </label>
-    <button type="submit" class="nb-nut phu">Tìm</button>
+    <button type="submit" class="nb-nut phu">{t.tim}</button>
   </div>
   <details class="nb-the kho-tim-them" open={tim.tu || tim.den ? true : undefined}>
     <summary>
-      <span class="kho-tim-chu">Ngày{coCuaToi ? ', người lập' : ''}</span>
-      <span class="kho-tim-tom">{tomTat || 'Mọi ngày'}</span>
+      <span class="kho-tim-chu">{t.ngay}{coCuaToi ? t.nguoiLap : ''}</span>
+      <span class="kho-tim-tom">{tomTat || t.moiNgay}</span>
     </summary>
     <div class="kho-tim-than">
-      <div class="kho-dh" role="group" aria-label="Chọn nhanh khoảng ngày">
+      <div class="kho-dh" role="group" aria-label={t.chonNhanh}>
         {MOC.map(([ten, tu, den]) => (
           <a href={linkDs(duong, sp, { tu, den })} aria-current={tim.tu === tu && tim.den === den ? 'page' : undefined}>{ten}</a>
         ))}
       </div>
       <div class="nb-hai">
-        <label class="nb-o"><span>Từ ngày</span><input type="date" name="tu" value={tim.tu ?? ''} /></label>
-        <label class="nb-o"><span>Đến ngày</span><input type="date" name="den" value={tim.den ?? ''} /></label>
+        <label class="nb-o"><span>{t.tuNgay}</span><input type="date" name="tu" value={tim.tu ?? ''} /></label>
+        <label class="nb-o"><span>{t.denNgay}</span><input type="date" name="den" value={tim.den ?? ''} /></label>
       </div>
       {coCuaToi && (
         <label class="kho-tim-toi">
           <input type="checkbox" name="cua_toi" value="1" checked={tim.cuaToi} />
-          <span>Chỉ phiếu tôi lập</span>
+          <span>{t.chiCuaToi}</span>
         </label>
       )}
-      <button type="submit" class="nb-nut">Lọc</button>
+      <button type="submit" class="nb-nut">{t.loc}</button>
     </div>
   </details>
   {dangTim(tim) && (
     <p class="kho-tim-dang">
-      Đang lọc{tim.q ? <>: “<strong>{tim.q}</strong>”</> : ''}{tomTat ? ` · ${tomTat}` : ''}.{' '}
-      <a href={boLoc}>Bỏ lọc</a>
+      {t.dangLoc}{tim.q ? <>: “<strong>{tim.q}</strong>”</> : ''}{tomTat ? ` · ${tomTat}` : ''}.{' '}
+      <a href={boLoc}>{t.boLoc}</a>
     </p>
   )}
 </form>

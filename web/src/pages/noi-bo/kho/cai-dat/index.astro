@@ -10,14 +10,15 @@
  *
  * Bên dưới giữ các phần cài đặt cũ, mỗi phần một thẻ có neo để nút của bước
  * trỏ tới:
- *   · Danh mục: lối vào mặt hàng, công thức, NCC, vị trí, mã vạch, cân…
+ *   · Danh mục: lối vào mặt hàng, công thức, NCC, vị trí, mã vạch, cân,
+ *     Kết nối iPOS (GĐ7a — không thêm bước vào kho_tien_do_thiet_lap)…
  *   · Chung (quản lý): vị trí nhận hàng mặc định, số ngày cảnh báo hạn dùng
  *   · Quầy (quản lý, 0032): công tắc "Quầy phải bấm nhận hàng" — lưu qua
  *     kho_luu_nguong (khóa chuyen_quay_can_nhan), không ghi thẳng bảng
  *   · #gia-von — Gốc (CHỈ chủ nhà hàng): cách tính giá vốn, nguồn số bán, tự
  *     duyệt. Đổi mấy thứ này là đổi CON SỐ trong báo cáo — nên database chỉ
  *     cho chủ. Bấm Lưu (kể cả không đổi gì) = bước "Giá vốn" xong.
- *   · #nguong — Ngưỡng cảnh báo (quản lý): 5 ngưỡng của TEN_NGUONG, lưu bằng
+ *   · #nguong — Ngưỡng cảnh báo (quản lý): 5 ngưỡng của TEN_NGUONG_NB, lưu bằng
  *     luuNguong (thong-bao.ts). Bấm Lưu = bước "Ngưỡng" xong.
  *   · #may-chung — Máy dùng chung (quản lý, chủ — GĐ5d): bật hay chưa (bí mật
  *     Worker KHO_MAY_KHOA) và cách bật. Chỉ nói CÓ / KHÔNG, không in bí mật.
@@ -27,9 +28,11 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong, khoiTaoKho } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docViTri, luuCaiDat, luuCaiDatGoc, type CaiDat, type ViTri } from '../../../../lib/kho/danh-muc.ts';
 import { docCaiDatQuay, luuCongTacNhan, type CaiDatQuay } from '../../../../lib/kho/quay.ts';
-import { cauLoiKho, dinhDangThoiDiem, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangThoiDiem, kqHai, type KetQua } from '../../../../lib/kho/chung.ts';
 import { docBiMatMay, trangThaiMayChung } from '../../../../lib/kho/nhan-vien.ts';
-import { luuNguong, TEN_NGUONG } from '../../../../lib/kho/thong-bao.ts';
+import { luuNguong, TEN_NGUONG_NB } from '../../../../lib/kho/thong-bao.ts';
+import { dichCau } from '../../../../lib/cau-noi-bo.ts';
+import { dichNB, type HaiThuTieng } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import {
   docTienDo, danhDauBuoc, docNguong, moTaBuoc, cauConLai, phanTramXong, linkBuocCuaVai, coTheBoQua,
   chuNutBoQua, hienSoNguong, KHOANG_NGUONG, type TienDoThietLap, type NguongDangDung,
@@ -40,6 +43,102 @@ if (k instanceof Response) return k;
 const laChu = k.nhanSu.vai_tro === 'chu_so_huu';
 const vai = k.nhanSu.vai_tro;
 if (!k.duoc('danh_muc') && !k.duoc('ncc') && !k.duoc('cai_dat_goc')) return Astro.redirect('/noi-bo/kho', 302);
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Thiết lập kho', en: 'Inventory setup' },
+  gioiThieu: { vi: 'Làm lần lượt các bước dưới đây trước ngày bắt đầu dùng kho thật. Bước nào không cần cho quán mình thì bấm "Bỏ qua". Các cài đặt (trước đây ở "Cài đặt kho") nằm bên dưới.',
+               en: 'Work through the steps below, in order, before the day you start using inventory for real. If a step is not needed for your restaurant, press "Skip". The settings (previously under "Inventory settings") are further down.' },
+  khongDoc: { vi: 'Không đọc được cài đặt.', en: 'Could not read the settings.' },
+  khongDocTienDo: { vi: 'Không đọc được tiến độ thiết lập.', en: 'Could not read the setup progress.' },
+  chuaBatDau: { vi: (ten: string) => `${ten} chưa bắt đầu dùng kho.`, en: (ten: string) => `${ten} has not started using inventory yet.` },
+  bamTaoSan: { vi: ' Bấm để tạo sẵn kho lạnh, quầy thịt, chỗ hàng chờ hủy và lý do mặc định.',
+               en: ' Press to create the cold store, the meat counter, an awaiting write-off area and the default reasons.' },
+  batDauDung: { vi: 'Bắt đầu dùng kho', en: 'Start using inventory' },
+  ariaDaXong: { vi: 'Số bước đã xong', en: 'Steps done' },
+  daXong: { vi: (a: number, b: number) => `Đã xong ${a}/${b} bước.`, en: (a: number, b: number) => `${a}/${b} ${s(b, 'step', 'steps')} done.` },
+  nhanBoQua: { vi: 'Bỏ qua', en: 'Skipped' },
+  nhanXong: { vi: 'Xong', en: 'Done' },
+  nhanChuaXong: { vi: 'Chưa xong', en: 'Not done' },
+  lamBuocNay: { vi: 'Làm bước này', en: 'Do this step' },
+  danhMuc: { vi: 'Danh mục', en: 'Catalog' },
+  mayDungChung: { vi: 'Máy dùng chung', en: 'Shared tablet' },
+  daBat: { vi: 'Đã bật', en: 'On' },
+  chuaBat: { vi: 'Chưa bật', en: 'Off' },
+  may1a: { vi: 'Chủ tạo tài khoản vai "Máy tính bảng dùng chung" ở ', en: 'The owner creates an account with the "Shared tablet" role in ' },
+  nvMay: { vi: 'Nhân viên & máy dùng chung', en: 'Staff & shared tablets' },
+  may2a: { vi: 'Trên tablet, quản lý mở ', en: 'On the tablet, a manager opens ' },
+  may2b: { vi: ', nhập email + mật khẩu của tài khoản máy.', en: ' and enters the email + password of the tablet account.' },
+  may3: { vi: 'Từng nhân viên đăng nhập đầy đủ một lần trên máy đó và đặt PIN 4–6 số.', en: 'Each staff member logs in fully once on that tablet and sets a 4–6 digit PIN.' },
+  may4: { vi: 'Từ đó: chọn tên → gõ PIN. Không dùng 5 phút thì máy tự khóa.', en: 'After that: pick your name → type your PIN. After 5 minutes unused, the tablet locks itself.' },
+  cachBat: { vi: 'Cách bật', en: 'How to turn it on' },
+  cachBat2: { vi: ' (người quản lý Cloudflare làm một lần, mất 2 phút):', en: ' (whoever manages Cloudflare does this once; it takes 2 minutes):' },
+  bat1: { vi: 'Tạo một chuỗi bí mật ngẫu nhiên, ít nhất 32 ký tự — ví dụ chạy ', en: 'Create a random secret of at least 32 characters — for example, run ' },
+  bat2Loai: { vi: ' loại ', en: ' type ' },
+  bat2Ten: { vi: ', tên ', en: ', name ' },
+  bat2Dan: { vi: ', dán chuỗi vừa tạo → Deploy.', en: ', paste the secret you just created → Deploy.' },
+  bat2Hoac: { vi: '(Hoặc trong thư mục web: ', en: '(Or, in the web folder: ' },
+  bat3: { vi: 'KHÔNG ghi bí mật vào wrangler.toml hay gửi qua Zalo. Đổi bí mật = mọi người phải gắn lại vào máy.',
+          en: 'Do NOT put the secret in wrangler.toml or send it over Zalo. Changing the secret = everyone has to link to the tablet again.' },
+  chuaBatVanChay: { vi: 'Chưa bật thì mọi thứ khác vẫn chạy bình thường — mỗi người đăng nhập bằng email như cũ.',
+                    en: 'While it is off, everything else works as usual — everyone logs in with their email as before.' },
+  caiDatChung: { vi: 'Cài đặt chung', en: 'General settings' },
+  hangNhapVao: { vi: 'Hàng nhập về mặc định vào', en: 'Received goods go to, by default' },
+  canhBaoTruoc: { vi: 'Cảnh báo trước hạn dùng (ngày)', en: 'Warn before use-by (days)' },
+  canhBaoGoiY: { vi: 'Áp cho mặt hàng chưa cài số ngày riêng. 1 = báo "sắp hết" từ ngày trước hạn.',
+                 en: 'Applies to items without their own setting. 1 = "expiring soon" from the day before the use-by date.' },
+  luuCaiDatChung: { vi: 'Lưu cài đặt chung', en: 'Save general settings' },
+  mangRaQuay: { vi: 'Mang hàng ra quầy', en: 'Bringing goods to the counter' },
+  quayPhaiNhan: { vi: 'Quầy phải bấm nhận hàng', en: 'The counter must confirm receipt' },
+  quayPhaiNhanGoiY: { vi: ' — hàng thủ kho mang ra chỉ vào quầy khi nhân viên quầy kiểm và bấm "Đã nhận". Nhận thiếu thì báo quản lý. Tắt: hàng vào thẳng quầy ngay khi thủ kho lập phiếu. Nhân viên quầy tự lấy hàng thì luôn vào thẳng quầy.',
+                      en: ' — goods the storekeeper brings out only go into counter stock when counter staff check them and press "Received". If anything is short, the manager is alerted. Off: goods go straight into the counter as soon as the storekeeper makes the slip. When counter staff fetch goods themselves, they always go straight in.' },
+  quaGio: {
+    vi: (n: number) => `Quá ${n} giờ mà quầy chưa bấm nhận thì phần mềm nhắc (tô đỏ).`,
+    en: (n: number) => `If the counter has not confirmed after ${n} ${s(n, 'hour', 'hours')}, the software sends a reminder (in red).`,
+  },
+  luu: { vi: 'Lưu', en: 'Save' },
+  giaVon: { vi: 'Cách tính giá vốn và số bán', en: 'Costing method and sales figures' },
+  chiaTheoLegend: { vi: 'Khi pha lóc, chia giá vốn tảng cho các phần thịt theo', en: 'In butchery, split the cost of the primal across the cuts by' },
+  giaTriBanDam: { vi: 'Giá trị bán', en: 'Sale value' },
+  giaTriBanGoiY: { vi: ' (khuyên dùng) — phần bán đắt gánh nhiều giá vốn hơn. Cần nhập giá bán/kg cho phần cắt.',
+                   en: ' (recommended) — cuts that sell for more carry more of the cost. Needs a sale price/kg for each cut.' },
+  khoiLuongDam: { vi: 'Khối lượng', en: 'Weight' },
+  khoiLuongGoiY: { vi: ' — mọi phần cùng giá vốn/kg.', en: ' — every cut gets the same cost/kg.' },
+  chiPhiKhac: { vi: 'Cộng chi phí khác của phiếu nhập (vận chuyển, bốc xếp) vào giá vốn',
+                en: 'Add the other costs of a goods receipt (transport, handling) to the cost' },
+  vat: { vi: 'Cộng thuế VAT đầu vào vào giá vốn (bật khi quán KHÔNG được khấu trừ VAT — hỏi kế toán)',
+         en: 'Add input VAT to the cost (turn on if the restaurant CANNOT deduct VAT — ask the accountant)' },
+  nguonLegend: { vi: 'Số thịt đã bán ở quầy lấy từ đâu', en: 'Where the counter sales figures come from' },
+  kiemKeDam: { vi: 'Kiểm kê quầy cuối ngày', en: 'End-of-day counter count' },
+  kiemKeGoiY: { vi: ' — chưa nối iPOS: phần thiếu khi đếm quầy được tính là đã bán.',
+                en: ' — iPOS not connected: whatever is missing at the counter count is treated as sold.' },
+  iposGoiY1: { vi: ' — đã nối iPOS: số bán đến từ máy tính tiền, phần thiếu khi kiểm kê là hao hụt thật. Chuyển bằng nút ',
+               en: ' — iPOS connected: sales come from the till, and anything missing at a stocktake is a real loss. Switch with the ' },
+  iposNut: { vi: 'Chuyển sang trừ kho theo iPOS', en: 'Switch to deducting stock from iPOS' },
+  iposGoiY2: { vi: ' để đặt luôn mốc chuyển — chọn ở đây thì kho chưa trừ theo iPOS cho tới khi có mốc.',
+               en: ' button, which also sets the switch-over point — choosing it here does not deduct stock by iPOS until that point is set.' },
+  tuDuyet: { vi: 'Cho quản lý tự duyệt phiếu do chính mình lập (quán nhỏ nên bật; người duyệt luôn được ghi lại)',
+             en: 'Let managers approve documents they created themselves (worth turning on for a small restaurant; the approver is always recorded)' },
+  xemXongLuu: { vi: 'Xem xong thì bấm Lưu, kể cả khi không đổi gì — bước "Cách tính giá vốn" của Thiết lập sẽ tính là xong.',
+                en: 'When you have checked it, press Save, even if nothing changed — the "Costing method" setup step then counts as done.' },
+  chiaTheo: { vi: 'Chia giá vốn theo ', en: 'Cost is split by ' },
+  giaTriBan: { vi: 'giá trị bán', en: 'sale value' },
+  khoiLuong: { vi: 'khối lượng', en: 'weight' },
+  chiPhiVat: {
+    vi: (a: boolean, b: boolean) => `; chi phí khác ${a ? 'có' : 'không'} vào giá vốn; VAT ${b ? 'có' : 'không'} vào giá vốn; số bán lấy từ `,
+    en: (a: boolean, b: boolean) => `; other costs are ${a ? '' : 'not '}added to the cost; VAT is ${b ? '' : 'not '}added to the cost; sales figures come from `,
+  },
+  kiemKeQuay: { vi: 'kiểm kê quầy', en: 'the counter count' },
+  chiChuDoi: { vi: '. Chỉ chủ nhà hàng đổi được mấy thứ này.', en: '. Only the owner can change these.' },
+  nguong: { vi: 'Ngưỡng cảnh báo', en: 'Alert thresholds' },
+  nguongGoiY: { vi: 'Vượt các ngưỡng này thì phần mềm báo quản lý (chuông, Việc cần làm). Chỉ báo, không chặn.',
+                en: 'When a threshold is crossed, the software alerts the manager (bell, To-do). It only warns; it does not block anything.' },
+  luuLanCuoi: { vi: (x: string) => ` Lưu lần cuối: ${x}.`, en: (x: string) => ` Last saved: ${x}.` },
+  dangMacDinh: { vi: ' Đang dùng số mặc định — xem lại rồi bấm Lưu.', en: ' Using the default values — check them, then press Save.' },
+  tuDen: { vi: (a: number, b: number) => ` Từ ${a} đến ${b}.`, en: (a: number, b: number) => ` From ${a} to ${b}.` },
+  luuNguong: { vi: 'Lưu ngưỡng cảnh báo', en: 'Save alert thresholds' },
+  quanLyDoi: { vi: 'Quản lý hoặc chủ đổi được các ngưỡng này.', en: 'A manager or the owner can change these thresholds.' },
+});
 
 let bao: KetQua | null = k.bao;
 // Lưu ngưỡng hỏng thì hiện lại đúng số vừa gõ.
@@ -60,7 +159,7 @@ if (form && k.chiNhanh) {
     const buoc = String(form.get('buoc') ?? '');
     kq = await danhDauBuoc(k.client, k.chiNhanh.id, buoc, form.get('bo_qua') === 'co');
     ve = `/noi-bo/kho/cai-dat#buoc-${buoc.replace(/[^a-z_]/g, '')}`;
-  } else kq = { ok: false, cau: 'Việc không hợp lệ.' };
+  } else kq = kqHai(false, { vi: 'Việc không hợp lệ.', en: 'Invalid action.' });
   if (kq.ok) return chuyenHuong(Astro, ve, kq);
   bao = kq;
 }
@@ -77,61 +176,103 @@ if (k.chiNhanh && k.daKhoiTao) {
       docCaiDat(k.client, k.chiNhanh.id), docViTri(k.client, k.chiNhanh.id), docCaiDatQuay(k.client, k.chiNhanh.id),
       docNguong(k.client, k.chiNhanh.id),
     ]);
-  } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được cài đặt.'); }
+  } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
 }
 // Tiến độ đọc riêng: hỏng thì các phần cài đặt vẫn dùng được.
 let loiTienDo: string | null = null;
 if (k.chiNhanh && k.daKhoiTao) {
-  try { tienDo = await docTienDo(k.client, k.chiNhanh.id); }
-  catch (e) { loiTienDo = cauLoiKho(e, 'Không đọc được tiến độ thiết lập.'); }
+  try { tienDo = await docTienDo(k.client, k.chiNhanh.id, nn); }
+  catch (e) { loiTienDo = cauLoiKho(e, t.khongDocTienDo); }
 }
 /** Giá trị trong ô ngưỡng: số vừa gõ (khi lưu hỏng) hoặc số đang dùng. */
-const oNguong = (khoa: string) => nguongLai ? String(nguongLai.get(khoa) ?? '') : hienSoNguong(nguong?.gia_tri[khoa]);
+const oNguong = (khoa: string) => nguongLai ? String(nguongLai.get(khoa) ?? '') : hienSoNguong(nguong?.gia_tri[khoa], nn);
 
-const MUC = [
-  { link: '/noi-bo/kho/cai-dat/mat-hang', ten: 'Mặt hàng', mo_ta: 'Tảng nhập, phần cắt bán ở quầy, phụ phẩm. Giá bán, hạn dùng, mã cân. Dán từ Excel được.', hien: k.duoc('danh_muc') },
-  { link: '/noi-bo/kho/cai-dat/cong-thuc', ten: 'Công thức pha lóc', mo_ta: 'Mỗi loại tảng thường ra những phần nào, tỉ lệ bao nhiêu — để điền sẵn phiếu pha và so thu hồi.', hien: k.duoc('danh_muc') },
-  { link: '/noi-bo/kho/cai-dat/nha-cung-cap', ten: 'Nhà cung cấp', mo_ta: 'Tên, mã số thuế, số ngày nợ, tài khoản ngân hàng.', hien: k.duoc('ncc') },
-  { link: '/noi-bo/kho/cai-dat/vi-tri-ly-do', ten: 'Vị trí và lý do', mo_ta: 'Kho lạnh, quầy; lý do hủy, lý do xuất bếp, ảnh bắt buộc.', hien: k.duoc('danh_muc') },
-  { link: '/noi-bo/kho/cai-dat/o-thong-tin', ten: 'Ô thông tin thêm', mo_ta: 'Tự tạo ô mới cho mặt hàng, nhà cung cấp, phiếu nhập, lô hàng: xuất xứ, grade, nhiệt độ khi nhận…', hien: k.duoc('danh_muc') || k.duoc('cai_dat_goc') },
-  { link: '/noi-bo/kho/cai-dat/ma-vach', ten: 'Mã vạch cân', mo_ta: 'Cách đọc nhãn cân Dahua (mặc định 2+5+5+1). Có ô thử một nhãn thật.', hien: k.duoc('danh_muc') },
-  { link: '/noi-bo/kho/cai-dat/can', ten: 'Đồng bộ cân', mo_ta: 'Đưa mã cân, tên, giá bán/kg của Mặt hàng sang cân in tem qua USB. Kho là gốc.', hien: k.duoc('danh_muc') },
+const MUC: { link: string; ten: HaiThuTieng; mo_ta: HaiThuTieng; hien: boolean }[] = [
+  { link: '/noi-bo/kho/cai-dat/mat-hang', ten: { vi: 'Mặt hàng', en: 'Items' },
+    mo_ta: { vi: 'Tảng nhập, phần cắt bán ở quầy, phụ phẩm. Giá bán, hạn dùng, mã cân. Dán từ Excel được.',
+             en: 'Primals bought in, cuts sold at the counter, by-products. Sale prices, use-by, scale codes. You can paste from Excel.' },
+    hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/mat-hang/sua-nhanh', ten: { vi: 'Sửa nhanh mặt hàng', en: 'Quick edit items' },
+    mo_ta: { vi: 'Một bảng mọi món: giá bán, hạn dùng, mã cân, mức quầy, mức kho lạnh — sửa nhiều món rồi Lưu tất cả một lần.',
+             en: 'One table of every item: sale price, use-by, scale code, counter levels, cold store levels — edit many items, then Save all at once.' },
+    hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/cong-thuc', ten: { vi: 'Công thức pha lóc', en: 'Butchery recipes' },
+    mo_ta: { vi: 'Mỗi loại tảng thường ra những phần nào, tỉ lệ bao nhiêu — để điền sẵn phiếu pha và so thu hồi.',
+             en: 'Which cuts each primal usually gives, and in what proportions — to pre-fill butchery sessions and compare yield.' },
+    hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/dinh-luong', ten: { vi: 'Định lượng món', en: 'Dish recipes' },
+    mo_ta: { vi: 'Mỗi suất món dùng bao nhiêu gram thịt — để so với số thịt bếp nhận. Lấy món từ iPOS, dán từ Excel được.',
+             en: 'How many grams of meat each portion uses — to compare with the meat the kitchen received. Dishes come from iPOS; you can paste from Excel.' },
+    hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/nha-cung-cap', ten: { vi: 'Nhà cung cấp', en: 'Suppliers' },
+    mo_ta: { vi: 'Tên, mã số thuế, số ngày nợ, tài khoản ngân hàng.', en: 'Name, tax code, credit days, bank account.' },
+    hien: k.duoc('ncc') },
+  { link: '/noi-bo/kho/cai-dat/vi-tri-ly-do', ten: { vi: 'Vị trí và lý do', en: 'Locations and reasons' },
+    mo_ta: { vi: 'Kho lạnh, quầy; lý do hủy, lý do xuất bếp, ảnh bắt buộc.', en: 'Cold store, counter; write-off reasons, kitchen issue reasons, required photos.' },
+    hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/o-thong-tin', ten: { vi: 'Ô thông tin thêm', en: 'Custom fields' },
+    mo_ta: { vi: 'Tự tạo ô mới cho mặt hàng, nhà cung cấp, phiếu nhập, lô hàng: xuất xứ, grade, nhiệt độ khi nhận…',
+             en: 'Create your own fields for items, suppliers, goods receipts and lots: origin, grade, temperature on arrival…' },
+    hien: k.duoc('danh_muc') || k.duoc('cai_dat_goc') },
+  { link: '/noi-bo/kho/cai-dat/ma-vach', ten: { vi: 'Mã vạch cân', en: 'Scale barcodes' },
+    mo_ta: { vi: 'Cách đọc nhãn cân Dahua (mặc định 2+5+5+1). Có ô thử một nhãn thật.',
+             en: 'How Dahua scale labels are read (default 2+5+5+1). Includes a box to test a real label.' },
+    hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/ipos', ten: { vi: 'Kết nối iPOS', en: 'iPOS connection' },
+    mo_ta: { vi: 'iPOS tự gửi hóa đơn sang, kho trừ ở quầy. Địa chỉ nhận hóa đơn, đèn trạng thái, Cập nhật ngay, chuyển từ đếm quầy sang iPOS.',
+             en: 'iPOS sends the sales invoices over and stock is deducted at the counter. Invoice receiving address, status light, Update now, switching from counter counts to iPOS.' },
+    hien: k.duoc('danh_muc') || k.duoc('cai_dat_goc') },
+  { link: '/noi-bo/kho/cai-dat/can', ten: { vi: 'Đồng bộ cân', en: 'Scale sync' },
+    mo_ta: { vi: 'Đưa mã cân, tên, giá bán/kg của Mặt hàng sang cân in tem qua USB. Kho là gốc.',
+             en: 'Send the scale codes, names and sale prices/kg from Items to the label-printing scale by USB. Inventory is the source.' },
+    hien: k.duoc('danh_muc') },
+  { link: '/noi-bo/kho/cai-dat/quyen', ten: { vi: 'Ai làm được gì', en: 'Who can do what' },
+    mo_ta: { vi: 'Bảng từng vai (chủ, quản lý, kế toán, thủ kho, NV quầy) làm được việc gì, ai thấy giá tiền.',
+             en: 'A table of what each role (owner, manager, accountant, storekeeper, counter staff) can do, and who sees prices.' },
+    hien: true },
   laChu
-    ? { link: '/noi-bo/kho/cai-dat/nhan-vien', ten: 'Nhân viên & máy dùng chung', mo_ta: 'Tạo tài khoản cho thủ kho, NV quầy/bếp, kế toán, máy tính bảng. Khóa người nghỉ việc. Xem ai đã gắn vào máy, mở khóa máy.', hien: true }
-    : { link: '/noi-bo/kho/cai-dat/nhan-vien', ten: 'Máy dùng chung', mo_ta: 'Máy tính bảng ở quầy/bếp: ai đã gắn, ai bị khóa vì sai PIN. Mở khóa, tắt máy.', hien: k.duoc('duyet') },
+    ? { link: '/noi-bo/kho/cai-dat/nhan-vien', ten: { vi: 'Nhân viên & máy dùng chung', en: 'Staff & shared tablets' },
+        mo_ta: { vi: 'Tạo tài khoản cho thủ kho, NV quầy/bếp, kế toán, máy tính bảng. Khóa người nghỉ việc. Xem ai đã gắn vào máy, mở khóa máy.',
+                 en: 'Create accounts for storekeepers, counter/kitchen staff, the accountant and tablets. Lock people who have left. See who is linked to a tablet, unlock tablets.' },
+        hien: true }
+    : { link: '/noi-bo/kho/cai-dat/nhan-vien', ten: { vi: 'Máy dùng chung', en: 'Shared tablets' },
+        mo_ta: { vi: 'Máy tính bảng ở quầy/bếp: ai đã gắn, ai bị khóa vì sai PIN. Mở khóa, tắt máy.',
+                 en: 'Tablets at the counter/kitchen: who is linked, who is locked out after a wrong PIN. Unlock, turn a tablet off.' },
+        hien: k.duoc('duyet') },
 ].filter(m => m.hien);
 
 // Máy dùng chung bật khi Worker có bí mật KHO_MAY_KHOA (GĐ5d). Chỉ quản lý, chủ cần biết.
-const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null;
+// Gói máy tính bảng cho trangThaiMayChung trả thêm cauEn; bản cũ chưa có thì hiện câu tiếng Việt.
+const mayChung: { bat: boolean; cau: string; cauEn?: string } | null =
+  k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null;
 ---
-<Kho k={k} huongDan="thiet-lap" tieuDe="Thiết lập kho">
-  <h1>Thiết lập kho</h1>
-  <p class="kho-phu" style="margin-top:0">Làm lần lượt các bước dưới đây trước ngày bắt đầu dùng kho thật. Bước nào
-    không cần cho quán mình thì bấm "Bỏ qua". Các cài đặt (trước đây ở "Cài đặt kho") nằm bên dưới.</p>
+<Kho k={k} huongDan="thiet-lap" tieuDe={t.tieuDe}>
+  <h1>{t.tieuDe}</h1>
+  <p class="kho-phu" style="margin-top:0">{t.gioiThieu}</p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {k.chiNhanh && !k.daKhoiTao && k.duoc('danh_muc') && (
     <form method="POST" class="nb-the">
       <input type="hidden" name="viec" value="khoi_tao" />
-      <p style="margin-top:0"><strong>{k.chiNhanh.ten} chưa bắt đầu dùng kho.</strong> Bấm để tạo sẵn kho lạnh, quầy thịt, chỗ hàng chờ hủy và lý do mặc định.</p>
-      <button type="submit" class="nb-nut">Bắt đầu dùng kho</button>
+      <p style="margin-top:0"><strong>{t.chuaBatDau(k.chiNhanh.ten)}</strong>{t.bamTaoSan}</p>
+      <button type="submit" class="nb-nut">{t.batDauDung}</button>
     </form>
   )}
 
-  {loiTienDo && <div class="nb-bao loi" role="alert"><p>{loiTienDo}</p></div>}
+  {loiTienDo && <div class="nb-bao loi" role="alert"><p>{dichCau(nn, loiTienDo)}</p></div>}
 
   {tienDo && (
     <section class="nb-the" aria-labelledby="tien-do">
-      <h2 id="tien-do" style="margin-top:0">{cauConLai(tienDo)}</h2>
+      <h2 id="tien-do" style="margin-top:0">{cauConLai(tienDo, nn)}</h2>
       <div class="tl-thanh" role="progressbar" aria-valuemin="0" aria-valuemax={tienDo.tong}
-        aria-valuenow={tienDo.tong - tienDo.conLai} aria-label="Số bước đã xong">
+        aria-valuenow={tienDo.tong - tienDo.conLai} aria-label={t.ariaDaXong}>
         <span style={`width:${phanTramXong(tienDo)}%`}></span>
       </div>
-      <p class="kho-phu" style="margin:.4rem 0 0">Đã xong {tienDo.tong - tienDo.conLai}/{tienDo.tong} bước.</p>
+      <p class="kho-phu" style="margin:.4rem 0 0">{t.daXong(tienDo.tong - tienDo.conLai, tienDo.tong)}</p>
 
       <ol class="tl-ds">
         {tienDo.buoc.map((b, i) => {
-          const link = linkBuocCuaVai(b.khoa, vai);
+          const link = linkBuocCuaVai(b.khoa, vai, nn);
           const boQuaDuoc = coTheBoQua(b, vai);
           return (
             <li id={`buoc-${b.khoa}`} class={`tl-buoc ${b.boQua ? 'bo-qua' : b.xong ? 'xong' : 'chua'}`}>
@@ -139,20 +280,20 @@ const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null
               <div class="tl-noi-dung">
                 <p class="tl-ten">
                   <strong>{b.ten}</strong>{' '}
-                  <span class={`nb-nhan ${b.boQua ? 'tat' : b.xong ? 'song' : 'cho'}`}>{b.boQua ? 'Bỏ qua' : b.xong ? 'Xong' : 'Chưa xong'}</span>
+                  <span class={`nb-nhan ${b.boQua ? 'tat' : b.xong ? 'song' : 'cho'}`}>{b.boQua ? t.nhanBoQua : b.xong ? t.nhanXong : t.nhanChuaXong}</span>
                 </p>
-                <p class="kho-phu tl-mo-ta">{moTaBuoc(b)}</p>
+                <p class="kho-phu tl-mo-ta">{moTaBuoc(b, nn)}</p>
                 {(link.length > 0 || boQuaDuoc) && (
                   <div class="tl-nut">
                     {link.map(l => (
-                      <a class={`nb-nut ${b.xong ? 'phu' : ''}`} href={l.link}>{b.xong ? l.ten : (link.length === 1 ? 'Làm bước này' : l.ten)}</a>
+                      <a class={`nb-nut ${b.xong ? 'phu' : ''}`} href={l.link}>{b.xong ? l.ten : (link.length === 1 ? t.lamBuocNay : l.ten)}</a>
                     ))}
                     {boQuaDuoc && (!b.xong || b.boQua) && (
                       <form method="POST">
                         <input type="hidden" name="viec" value="bo_qua" />
                         <input type="hidden" name="buoc" value={b.khoa} />
                         <input type="hidden" name="bo_qua" value={b.boQua ? 'khong' : 'co'} />
-                        <button type="submit" class="nb-nut phu">{chuNutBoQua(b.khoa, b.boQua)}</button>
+                        <button type="submit" class="nb-nut phu">{chuNutBoQua(b.khoa, b.boQua, nn)}</button>
                       </form>
                     )}
                   </div>
@@ -165,39 +306,38 @@ const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null
     </section>
   )}
 
-  <h2>Danh mục</h2>
+  <h2>{t.danhMuc}</h2>
   {MUC.map(m => (
     <a href={m.link} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
-      <div class="nb-dong-dau"><strong>{m.ten}</strong><span aria-hidden="true">›</span></div>
-      <p class="kho-phu" style="margin:.35rem 0 0">{m.mo_ta}</p>
+      <div class="nb-dong-dau"><strong>{m.ten[nn]}</strong><span aria-hidden="true">›</span></div>
+      <p class="kho-phu" style="margin:.35rem 0 0">{m.mo_ta[nn]}</p>
     </a>
   ))}
 
   {mayChung && (
     <section class="nb-the" id="may-chung">
-      <h2 style="margin-top:0">Máy dùng chung</h2>
+      <h2 style="margin-top:0">{t.mayDungChung}</h2>
       <p style="margin:0">
-        <span class={`nb-nhan ${mayChung.bat ? 'song' : 'cho'}`}>{mayChung.bat ? 'Đã bật' : 'Chưa bật'}</span>{' '}
-        {mayChung.cau}
+        <span class={`nb-nhan ${mayChung.bat ? 'song' : 'cho'}`}>{mayChung.bat ? t.daBat : t.chuaBat}</span>{' '}
+        {nn === 'en' ? (mayChung.cauEn ?? mayChung.cau) : mayChung.cau}
       </p>
       {mayChung.bat ? (
         <ol class="kho-phu" style="margin:.75rem 0 0;padding-left:1.25rem">
-          <li>Chủ tạo tài khoản vai "Máy tính bảng dùng chung" ở <a href="/noi-bo/kho/cai-dat/nhan-vien">Nhân viên & máy dùng chung</a>.</li>
-          <li>Trên tablet, quản lý mở <strong>/noi-bo/kho/may/dang-ky</strong>, nhập email + mật khẩu của tài khoản máy.</li>
-          <li>Từng nhân viên đăng nhập đầy đủ một lần trên máy đó và đặt PIN 4–6 số.</li>
-          <li>Từ đó: chọn tên → gõ PIN. Không dùng 5 phút thì máy tự khóa.</li>
+          <li>{t.may1a}<a href="/noi-bo/kho/cai-dat/nhan-vien">{t.nvMay}</a>.</li>
+          <li>{t.may2a}<strong>/noi-bo/kho/may/dang-ky</strong>{t.may2b}</li>
+          <li>{t.may3}</li>
+          <li>{t.may4}</li>
         </ol>
       ) : (
         <>
-          <p style="margin:.75rem 0 .35rem"><strong>Cách bật</strong> (người quản lý Cloudflare làm một lần, mất 2 phút):</p>
+          <p style="margin:.75rem 0 .35rem"><strong>{t.cachBat}</strong>{t.cachBat2}</p>
           <ol class="kho-phu" style="margin:0;padding-left:1.25rem">
-            <li>Tạo một chuỗi bí mật ngẫu nhiên, ít nhất 32 ký tự — ví dụ chạy <code>openssl rand -base64 32</code>.</li>
+            <li>{t.bat1}<code>openssl rand -base64 32</code>.</li>
             <li>Cloudflare → Workers &amp; Pages → <strong>beeftown</strong> → Settings → Variables and Secrets → Add →
-              loại <strong>Secret</strong>, tên <code>KHO_MAY_KHOA</code>, dán chuỗi vừa tạo → Deploy.
-              (Hoặc trong thư mục web: <code>npx wrangler secret put KHO_MAY_KHOA</code>.)</li>
-            <li>KHÔNG ghi bí mật vào wrangler.toml hay gửi qua Zalo. Đổi bí mật = mọi người phải gắn lại vào máy.</li>
+              {t.bat2Loai}<strong>Secret</strong>{t.bat2Ten}<code>KHO_MAY_KHOA</code>{t.bat2Dan} {t.bat2Hoac}<code>npx wrangler secret put KHO_MAY_KHOA</code>.)</li>
+            <li>{t.bat3}</li>
           </ol>
-          <p class="kho-phu" style="margin:.5rem 0 0">Chưa bật thì mọi thứ khác vẫn chạy bình thường — mỗi người đăng nhập bằng email như cũ.</p>
+          <p class="kho-phu" style="margin:.5rem 0 0">{t.chuaBatVanChay}</p>
         </>
       )}
     </section>
@@ -205,13 +345,13 @@ const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null
 
   {caiDat && k.duoc('danh_muc') && (
     <>
-      <h2>Cài đặt chung — {k.chiNhanh?.ten}</h2>
+      <h2>{t.caiDatChung} — {k.chiNhanh?.ten}</h2>
       <form method="POST" class="nb-the">
         <input type="hidden" name="viec" value="chung" />
         <input type="hidden" name="mau_ma_vach" value={caiDat.mau_ma_vach ?? ''} />
         <input type="hidden" name="so_le_kg" value={String(caiDat.so_le_kg)} />
         <label class="nb-o">
-          <span>Hàng nhập về mặc định vào</span>
+          <span>{t.hangNhapVao}</span>
           <select name="vi_tri_nhan_hang_id">
             {viTri.filter(v => v.loai === 'kho' && v.dang_dung).map(v => (
               <option value={v.id} selected={v.id === caiDat!.vi_tri_nhan_hang_id}>{v.ten}</option>
@@ -219,24 +359,22 @@ const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null
           </select>
         </label>
         <label class="nb-o">
-          <span>Cảnh báo trước hạn dùng (ngày)</span>
-          <small>Áp cho mặt hàng chưa cài số ngày riêng. 1 = báo "sắp hết" từ ngày trước hạn.</small>
+          <span>{t.canhBaoTruoc}</span>
+          <small>{t.canhBaoGoiY}</small>
           <input type="text" inputmode="numeric" name="canh_bao_truoc_ngay" value={String(caiDat.canh_bao_truoc_ngay)} />
         </label>
-        <button type="submit" class="nb-nut">Lưu cài đặt chung</button>
+        <button type="submit" class="nb-nut">{t.luuCaiDatChung}</button>
       </form>
 
       {caiDatQuay && (
         <>
-          <h2>Mang hàng ra quầy</h2>
+          <h2>{t.mangRaQuay}</h2>
           <form method="POST" class="nb-the">
             <input type="hidden" name="viec" value="nhan_quay" />
             <label class="kho-tich"><input type="checkbox" name="chuyen_quay_can_nhan" value="co" checked={caiDatQuay.chuyen_quay_can_nhan} />
-              <span><strong>Quầy phải bấm nhận hàng</strong> — hàng thủ kho mang ra chỉ vào quầy khi nhân viên quầy kiểm và bấm
-                "Đã nhận". Nhận thiếu thì báo quản lý. Tắt: hàng vào thẳng quầy ngay khi thủ kho lập phiếu.
-                Nhân viên quầy tự lấy hàng thì luôn vào thẳng quầy.</span></label>
-            <p class="kho-phu" style="margin:.25rem 0 .75rem">Quá {caiDatQuay.gio_nhac_chuyen} giờ mà quầy chưa bấm nhận thì phần mềm nhắc (tô đỏ).</p>
-            <button type="submit" class="nb-nut">Lưu</button>
+              <span><strong>{t.quayPhaiNhan}</strong>{t.quayPhaiNhanGoiY}</span></label>
+            <p class="kho-phu" style="margin:.25rem 0 .75rem">{t.quaGio(caiDatQuay.gio_nhac_chuyen)}</p>
+            <button type="submit" class="nb-nut">{t.luu}</button>
           </form>
         </>
       )}
@@ -245,39 +383,36 @@ const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null
 
   {caiDat && (
     <>
-      <h2 id="gia-von">Cách tính giá vốn và số bán</h2>
+      <h2 id="gia-von">{t.giaVon}</h2>
       {k.duoc('cai_dat_goc') ? (
         <form method="POST" class="nb-the">
           <input type="hidden" name="viec" value="goc" />
           <fieldset class="nb-o" style="border:0;padding:0;margin:0 0 1rem">
-            <legend style="font-weight:600;font-size:.88rem;margin-bottom:.35rem">Khi pha lóc, chia giá vốn tảng cho các phần thịt theo</legend>
+            <legend style="font-weight:600;font-size:.88rem;margin-bottom:.35rem">{t.chiaTheoLegend}</legend>
             <label class="kho-tich"><input type="radio" name="phuong_phap_gia_von" value="gia_tri" checked={caiDat.phuong_phap_gia_von === 'gia_tri'} />
-              <span><strong>Giá trị bán</strong> (khuyên dùng) — phần bán đắt gánh nhiều giá vốn hơn. Cần nhập giá bán/kg cho phần cắt.</span></label>
+              <span><strong>{t.giaTriBanDam}</strong>{t.giaTriBanGoiY}</span></label>
             <label class="kho-tich"><input type="radio" name="phuong_phap_gia_von" value="khoi_luong" checked={caiDat.phuong_phap_gia_von === 'khoi_luong'} />
-              <span><strong>Khối lượng</strong> — mọi phần cùng giá vốn/kg.</span></label>
+              <span><strong>{t.khoiLuongDam}</strong>{t.khoiLuongGoiY}</span></label>
           </fieldset>
           <label class="kho-tich"><input type="checkbox" name="chi_phi_vao_gia_von" value="co" checked={caiDat.chi_phi_vao_gia_von} />
-            <span>Cộng chi phí khác của phiếu nhập (vận chuyển, bốc xếp) vào giá vốn</span></label>
+            <span>{t.chiPhiKhac}</span></label>
           <label class="kho-tich"><input type="checkbox" name="vat_vao_gia_von" value="co" checked={caiDat.vat_vao_gia_von} />
-            <span>Cộng thuế VAT đầu vào vào giá vốn (bật khi quán KHÔNG được khấu trừ VAT — hỏi kế toán)</span></label>
+            <span>{t.vat}</span></label>
           <fieldset class="nb-o" style="border:0;padding:0;margin:0 0 1rem">
-            <legend style="font-weight:600;font-size:.88rem;margin-bottom:.35rem">Số thịt đã bán ở quầy lấy từ đâu</legend>
+            <legend style="font-weight:600;font-size:.88rem;margin-bottom:.35rem">{t.nguonLegend}</legend>
             <label class="kho-tich"><input type="radio" name="nguon_so_ban" value="kiem_ke" checked={caiDat.nguon_so_ban === 'kiem_ke'} />
-              <span><strong>Kiểm kê quầy cuối ngày</strong> — chưa nối iPOS: phần thiếu khi đếm quầy được tính là đã bán.</span></label>
+              <span><strong>{t.kiemKeDam}</strong>{t.kiemKeGoiY}</span></label>
             <label class="kho-tich"><input type="radio" name="nguon_so_ban" value="ipos" checked={caiDat.nguon_so_ban === 'ipos'} />
-              <span><strong>iPOS</strong> — đã nối iPOS: số bán đến từ máy tính tiền, phần thiếu khi kiểm kê là hao hụt thật.</span></label>
+              <span><strong>iPOS</strong>{t.iposGoiY1}<a href="/noi-bo/kho/cai-dat/ipos">{t.iposNut}</a>{t.iposGoiY2}</span></label>
           </fieldset>
           <label class="kho-tich"><input type="checkbox" name="cho_tu_duyet" value="co" checked={caiDat.cho_tu_duyet} />
-            <span>Cho quản lý tự duyệt phiếu do chính mình lập (quán nhỏ nên bật; người duyệt luôn được ghi lại)</span></label>
-          <p class="kho-phu" style="margin:.25rem 0 .75rem">Xem xong thì bấm Lưu, kể cả khi không đổi gì — bước "Cách tính giá vốn" của Thiết lập sẽ tính là xong.</p>
-          <button type="submit" class="nb-nut">Lưu</button>
+            <span>{t.tuDuyet}</span></label>
+          <p class="kho-phu" style="margin:.25rem 0 .75rem">{t.xemXongLuu}</p>
+          <button type="submit" class="nb-nut">{t.luu}</button>
         </form>
       ) : (
         <div class="nb-the">
-          <p style="margin:0">Chia giá vốn theo <strong>{caiDat.phuong_phap_gia_von === 'gia_tri' ? 'giá trị bán' : 'khối lượng'}</strong>;
-            chi phí khác {caiDat.chi_phi_vao_gia_von ? 'có' : 'không'} vào giá vốn; VAT {caiDat.vat_vao_gia_von ? 'có' : 'không'} vào giá vốn;
-            số bán lấy từ <strong>{caiDat.nguon_so_ban === 'ipos' ? 'iPOS' : 'kiểm kê quầy'}</strong>.
-            Chỉ chủ nhà hàng đổi được mấy thứ này.</p>
+          <p style="margin:0">{t.chiaTheo}<strong>{caiDat.phuong_phap_gia_von === 'gia_tri' ? t.giaTriBan : t.khoiLuong}</strong>{t.chiPhiVat(caiDat.chi_phi_vao_gia_von, caiDat.vat_vao_gia_von)}<strong>{caiDat.nguon_so_ban === 'ipos' ? 'iPOS' : t.kiemKeQuay}</strong>{t.chiChuDoi}</p>
         </div>
       )}
     </>
@@ -285,29 +420,29 @@ const mayChung = k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null
 
   {nguong && (
     <>
-      <h2 id="nguong">Ngưỡng cảnh báo</h2>
+      <h2 id="nguong">{t.nguong}</h2>
       {k.duoc('danh_muc') ? (
         <form method="POST" class="nb-the">
           <input type="hidden" name="viec" value="nguong" />
-          <p class="kho-phu" style="margin-top:0">Vượt các ngưỡng này thì phần mềm báo quản lý (chuông, Việc cần làm). Chỉ báo, không chặn.
-            {nguong.luu_luc ? ` Lưu lần cuối: ${dinhDangThoiDiem(nguong.luu_luc)}.` : ' Đang dùng số mặc định — xem lại rồi bấm Lưu.'}</p>
-          {Object.entries(TEN_NGUONG).map(([khoa, t]) => (
+          <p class="kho-phu" style="margin-top:0">{t.nguongGoiY}
+            {nguong.luu_luc ? t.luuLanCuoi(dinhDangThoiDiem(nguong.luu_luc)) : t.dangMacDinh}</p>
+          {Object.entries(TEN_NGUONG_NB).map(([khoa, ng]) => (
             <label class="nb-o">
-              <span>{t.ten} ({t.don_vi})</span>
-              <small>{t.goi_y}{KHOANG_NGUONG[khoa] ? ` Từ ${KHOANG_NGUONG[khoa][0]} đến ${KHOANG_NGUONG[khoa][1]}.` : ''}</small>
+              <span>{ng.ten[nn]} ({ng.don_vi[nn]})</span>
+              <small>{ng.goi_y[nn]}{KHOANG_NGUONG[khoa] ? t.tuDen(KHOANG_NGUONG[khoa][0], KHOANG_NGUONG[khoa][1]) : ''}</small>
               <input type="text" inputmode="decimal" name={khoa} value={oNguong(khoa)} />
             </label>
           ))}
-          <button type="submit" class="nb-nut">Lưu ngưỡng cảnh báo</button>
+          <button type="submit" class="nb-nut">{t.luuNguong}</button>
         </form>
       ) : (
         <div class="nb-the">
           <ul style="margin:0;padding-left:1.2rem">
-            {Object.entries(TEN_NGUONG).map(([khoa, t]) => (
-              <li>{t.ten}: <strong>{hienSoNguong(nguong!.gia_tri[khoa]) || '—'} {t.don_vi}</strong></li>
+            {Object.entries(TEN_NGUONG_NB).map(([khoa, ng]) => (
+              <li>{ng.ten[nn]}: <strong>{hienSoNguong(nguong!.gia_tri[khoa], nn) || '—'} {ng.don_vi[nn]}</strong></li>
             ))}
           </ul>
-          <p class="kho-phu" style="margin:.5rem 0 0">Quản lý hoặc chủ đổi được các ngưỡng này.</p>
+          <p class="kho-phu" style="margin:.5rem 0 0">{t.quanLyDoi}</p>
         </div>
       )}
     </>

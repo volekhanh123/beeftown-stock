@@ -37,12 +37,81 @@ import {
 import { docMatHang, type MatHang } from '../../../lib/kho/danh-muc.ts';
 import { linkTheKho } from '../../../lib/kho/the-kho.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangTien,
-  TEN_LOAI_MAT_HANG, TEN_LOAI_VI_TRI,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangTien, nhanKho,
+  TEN_LOAI_MAT_HANG_NB, TEN_LOAI_VI_TRI_NB,
 } from '../../../lib/kho/chung.ts';
+import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+// Bảng chữ tên `ch` (không phải `t`): trang này dùng `t` cho từng dòng tồn.
+const ch = dichNB(nn, {
+  khongDoc: { vi: 'Không đọc được tồn kho.', en: 'Could not read the stock.' },
+  daHetHan: { vi: 'Đã hết hạn', en: 'Expired' },
+  sapHetHan: { vi: 'Sắp hết hạn', en: 'Expiring soon' },
+  duoiMuc: { vi: 'Món quầy dưới mức', en: 'Counter items below minimum' },
+  oDau: { vi: 'Ở đâu', en: 'Where' },
+  quay: { vi: 'Quầy', en: 'Counter' },
+  choHuy: { vi: 'Chờ hủy', en: 'Awaiting write-off' },
+  moiNoi: { vi: 'Mọi nơi', en: 'Everywhere' },
+  kho: { vi: 'Kho', en: 'Store' },
+  hanDung: { vi: 'Hạn dùng', en: 'Use-by date' },
+  moiHan: { vi: 'Mọi hạn', en: 'Any date' },
+  loaiHang: { vi: 'Loại hàng', en: 'Type' },
+  moiLoai: { vi: 'Mọi loại', en: 'All types' },
+  tang: { vi: 'Tảng', en: 'Primal' },
+  phanCat: { vi: 'Phần cắt', en: 'Cut' },
+  phuPham: { vi: 'Phụ phẩm', en: 'By-product' },
+  monOQuay: { vi: 'Món ở quầy', en: 'Counter items' },
+  moiMon: { vi: 'Mọi món', en: 'All items' },
+  duoiMucToiThieu: { vi: 'Dưới mức tối thiểu', en: 'Below minimum' },
+  nguonTonDau: { vi: 'tồn đầu', en: 'opening' },
+  nguonPhaLoc: { vi: 'pha lóc', en: 'butchery' },
+  nguonNhap: { vi: 'nhập', en: 'received' },
+  quaNgay: { vi: (n: number) => `quá ${n} ngày`, en: (n: number) => `${n} ${s(n, 'day', 'days')} over` },
+  hetHomNay: { vi: 'hết hạn hôm nay', en: 'expires today' },
+  conNgay: { vi: (n: number) => `còn ${n} ngày`, en: (n: number) => `${n} ${s(n, 'day', 'days')} left` },
+  tieuDe: { vi: 'Tồn kho', en: 'Stock' },
+  timGoiY: { vi: 'Tìm hàng hoặc mã lô…', en: 'Search items or lot codes…' },
+  timHang: { vi: 'Tìm hàng', en: 'Search items' },
+  tim: { vi: 'Tìm', en: 'Search' },
+  loc: { vi: 'Lọc', en: 'Filter' },
+  xemMoi: { vi: 'Đang xem mọi hàng', en: 'Showing all stock' },
+  boHetLoc: { vi: 'Bỏ hết bộ lọc', en: 'Clear all filters' },
+  // Tiếng Việt không đổi theo số; tiếng Anh có số ít / số nhiều.
+  lo: { vi: (_n: number) => 'lô', en: (n: number) => s(n, 'lot', 'lots') },
+  matHang: { vi: (_n: number) => 'mặt hàng', en: (n: number) => s(n, 'item', 'items') },
+  giaTri: { vi: 'giá trị', en: 'value' },
+  timChu: { vi: 'tìm', en: 'search' },
+  boLoc: { vi: 'Bỏ lọc', en: 'Clear filters' },
+  khongTinhChoHuy: { vi: 'Không tính hàng đã đưa vào chỗ chờ hủy.', en: 'Goods already moved to the awaiting write-off area are not counted.' },
+  khongDuoiMuc: { vi: 'Không có món nào ở quầy dưới mức tối thiểu.', en: 'No counter items are below their minimum.' },
+  chuaDatMuc: { vi: 'Chưa món nào đặt mức tối thiểu ở quầy, nên chưa có gì để báo.', en: 'No item has a counter minimum yet, so there is nothing to report.' },
+  datMuc: { vi: 'Đặt mức ở Mặt hàng', en: 'Set levels in Items' },
+  quaySapHet: { vi: 'Quầy sắp hết', en: 'Counter running low' },
+  quayCon: {
+    vi: (con: string, it: string) => `Quầy còn ${con} kg bán được · cần ít nhất ${it} kg`,
+    en: (con: string, it: string) => `${con} kg left to sell at the counter · needs at least ${it} kg`,
+  },
+  khoCon: { vi: (kg: string) => `Trong kho còn ${kg} kg còn hạn`, en: (kg: string) => `${kg} kg in date in the store` },
+  khoHet: { vi: 'Trong kho cũng hết — cần pha thêm hoặc nhập thêm', en: 'The store is out too — butcher or buy more' },
+  layRaQuay: { vi: 'Lấy ra quầy', en: 'Bring to counter' },
+  khoTrong: { vi: 'Kho đang trống. Hàng vào kho khi phiếu nhập được duyệt.', en: 'Stock is empty. Goods come in when a goods receipt is approved.' },
+  khongKhop: { vi: 'Không có lô nào khớp bộ lọc.', en: 'No lots match the filters.' },
+  soLo: { vi: (n: number) => `${n} lô`, en: (n: number) => `${n} ${s(n, 'lot', 'lots')}` },
+  hanSomNhat: { vi: 'Hạn sớm nhất', en: 'Earliest use-by' },
+  theKhoCua: { vi: (ten: string) => `Thẻ kho ${ten}`, en: (ten: string) => `Stock card for ${ten}` },
+  theKho: { vi: 'Thẻ kho', en: 'Stock card' },
+  cotHan: { vi: 'Hạn dùng', en: 'Use by' },
+  cotLo: { vi: 'Lô', en: 'Lot' },
+  giaVonKg: { vi: 'Giá vốn/kg', en: 'Cost/kg' },
+  lamGi: { vi: 'Làm gì', en: 'Actions' },
+  traNccLo: { vi: (lo: string) => `Trả nhà cung cấp lô ${lo}`, en: (lo: string) => `Return lot ${lo} to the supplier` },
+  traNcc: { vi: 'Trả NCC', en: 'Return' },
+  viecLo: { vi: (viec: string, lo: string, noi: string) => `${viec} lô ${lo} ở ${noi}`, en: (viec: string, lo: string, noi: string) => `${viec}: lot ${lo} at ${noi}` },
+});
 
 // Nhân viên quầy chỉ xem hàng ở quầy (và hàng chờ hủy) — kho lạnh là việc của
 // thủ kho; quầy cần hàng thì bấm "Lấy thêm". Lỗi rà soát số 25.
@@ -52,6 +121,10 @@ const boLoc = laQuay && boLocUrl.viTri !== 'cho_huy' ? { ...boLocUrl, viTri: 'qu
 const { viTri, han, loai, duoiMuc, tim } = boLoc;
 const xemGia = k.duoc('xem_gia');
 const vanHanh = k.duoc('van_hanh');
+// GĐ8b (0040): trả hàng NCC hai bước — người nhận hàng ghi kg trả ngay từ lô hàng nhập mua.
+const traNcc = k.duoc('nhap');
+const linkTraNcc = (t: DongTon) => (traNcc && t.nguon === 'nhap' && (t.loai_vi_tri === 'kho' || t.loai_vi_tri === 'quay') && t.so_kg > 0
+  ? `/noi-bo/kho/cong-no/tra-hang?lo=${t.lo_id}&vi_tri=${t.vi_tri_id}` : null);
 
 let ton: DongTon[] = [];
 let gia = new Map<string, { gia_von_kg: number; gia_tri: number }>();
@@ -66,7 +139,7 @@ if (k.chiNhanh) {
       duoiMuc ? docMatHang(k.client) : Promise.resolve([] as MatHang[]),
     ]);
   } catch (e) {
-    loiDoc = cauLoiKho(e, 'Không đọc được tồn kho.');
+    loiDoc = cauLoiKho(e, ch.khongDoc);
   }
 }
 
@@ -86,34 +159,34 @@ const tongGiaTri = coGia ? loc.reduce((s, t) => s + (giaCua(t)?.gia_tri ?? 0), 0
 const tongKg = Math.round(loc.reduce((s, t) => s + t.so_kg * 1000, 0)) / 1000;
 
 // Tóm tắt đang lọc gì — một dòng, hiện ngay trên nút "Lọc".
-const TEN_HAN: Record<string, string> = { het_han: 'Đã hết hạn', sap_het: 'Sắp hết hạn' };
+const TEN_HAN: Record<string, string> = { het_han: ch.daHetHan, sap_het: ch.sapHetHan };
 const dangLoc = [
-  viTri ? TEN_LOAI_VI_TRI[viTri] : '',
+  viTri ? nhanKho(TEN_LOAI_VI_TRI_NB, viTri, nn) : '',
   han ? TEN_HAN[han] : '',
-  loai ? TEN_LOAI_MAT_HANG[loai] : '',
-  duoiMuc ? 'Món quầy dưới mức' : '',
+  loai ? nhanKho(TEN_LOAI_MAT_HANG_NB, loai, nn) : '',
+  duoiMuc ? ch.duoiMuc : '',
 ].filter(Boolean);
 const coLoc = dangLoc.length > 0 || tim !== '';
 
 const HANG_LOC: { ten: string; khoa: 'vi_tri' | 'han' | 'loai' | 'duoi_muc'; dangChon: string; chon: [string, string][] }[] = [
-  { ten: 'Ở đâu', khoa: 'vi_tri', dangChon: viTri,
-    chon: laQuay ? [['quay', 'Quầy'], ['cho_huy', 'Chờ hủy']]
-      : [['', 'Mọi nơi'], ['kho', 'Kho'], ['quay', 'Quầy'], ['cho_huy', 'Chờ hủy']] },
-  { ten: 'Hạn dùng', khoa: 'han', dangChon: han,
-    chon: [['', 'Mọi hạn'], ['sap_het', 'Sắp hết hạn'], ['het_han', 'Đã hết hạn']] },
-  { ten: 'Loại hàng', khoa: 'loai', dangChon: loai,
-    chon: [['', 'Mọi loại'], ['tang', 'Tảng'], ['phan_cat', 'Phần cắt'], ['phu_pham', 'Phụ phẩm']] },
-  { ten: 'Món ở quầy', khoa: 'duoi_muc', dangChon: duoiMuc ? '1' : '',
-    chon: [['', 'Mọi món'], ['1', 'Dưới mức tối thiểu']] },
+  { ten: ch.oDau, khoa: 'vi_tri', dangChon: viTri,
+    chon: laQuay ? [['quay', ch.quay], ['cho_huy', ch.choHuy]]
+      : [['', ch.moiNoi], ['kho', ch.kho], ['quay', ch.quay], ['cho_huy', ch.choHuy]] },
+  { ten: ch.hanDung, khoa: 'han', dangChon: han,
+    chon: [['', ch.moiHan], ['sap_het', ch.sapHetHan], ['het_han', ch.daHetHan]] },
+  { ten: ch.loaiHang, khoa: 'loai', dangChon: loai,
+    chon: [['', ch.moiLoai], ['tang', ch.tang], ['phan_cat', ch.phanCat], ['phu_pham', ch.phuPham]] },
+  { ten: ch.monOQuay, khoa: 'duoi_muc', dangChon: duoiMuc ? '1' : '',
+    chon: [['', ch.moiMon], ['1', ch.duoiMucToiThieu]] },
 ];
 
-const nguonLo = (t: DongTon) => (t.nguon === 'ton_dau' ? 'tồn đầu' : t.nguon === 'pha_loc' ? 'pha lóc' : 'nhập');
+const nguonLo = (t: DongTon) => (t.nguon === 'ton_dau' ? ch.nguonTonDau : t.nguon === 'pha_loc' ? ch.nguonPhaLoc : ch.nguonNhap);
 const conNgay = (t: DongTon) =>
-  t.so_ngay_con < 0 ? `quá ${-t.so_ngay_con} ngày` : t.so_ngay_con === 0 ? 'hết hạn hôm nay' : `còn ${t.so_ngay_con} ngày`;
+  t.so_ngay_con < 0 ? ch.quaNgay(-t.so_ngay_con) : t.so_ngay_con === 0 ? ch.hetHomNay : ch.conNgay(t.so_ngay_con);
 const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as const;
 ---
-<Kho k={k} huongDan="ton-kho" tieuDe="Tồn kho">
-  <h1>Tồn kho</h1>
+<Kho k={k} huongDan="ton-kho" tieuDe={ch.tieuDe}>
+  <h1>{ch.tieuDe}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   <form method="GET" action="/noi-bo/kho/ton" class="ton-tim" role="search">
@@ -122,15 +195,15 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
     {loai && <input type="hidden" name="loai" value={loai} />}
     {duoiMuc && <input type="hidden" name="duoi_muc" value="1" />}
     <label class="nb-o">
-      <input type="search" name="q" value={tim} placeholder="Tìm hàng hoặc mã lô…" aria-label="Tìm hàng" autocomplete="off" />
+      <input type="search" name="q" value={tim} placeholder={ch.timGoiY} aria-label={ch.timHang} autocomplete="off" />
     </label>
-    <button type="submit" class="nb-nut phu">Tìm</button>
+    <button type="submit" class="nb-nut phu">{ch.tim}</button>
   </form>
 
   <details class="nb-the ton-loc">
     <summary>
-      <span class="ton-loc-chu">Lọc</span>
-      <span class="ton-loc-tom">{dangLoc.length > 0 ? dangLoc.join(' · ') : 'Đang xem mọi hàng'}</span>
+      <span class="ton-loc-chu">{ch.loc}</span>
+      <span class="ton-loc-tom">{dangLoc.length > 0 ? dangLoc.join(' · ') : ch.xemMoi}</span>
     </summary>
     <div class="ton-loc-than">
       {HANG_LOC.map(h => (
@@ -143,41 +216,41 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
           </div>
         </>
       ))}
-      {coLoc && <a class="nb-nut phu ton-bo-loc" href="/noi-bo/kho/ton">Bỏ hết bộ lọc</a>}
+      {coLoc && <a class="nb-nut phu ton-bo-loc" href="/noi-bo/kho/ton">{ch.boHetLoc}</a>}
     </div>
   </details>
 
   <p class="nb-dan ton-tong">
-    <strong>{loc.length}</strong> lô · <strong>{nhom.length}</strong> mặt hàng · <strong>{dinhDangKg(tongKg)} kg</strong>
-    {coGia && <> · giá trị <strong>{dinhDangTien(tongGiaTri)}</strong></>}
-    {tim && <>{' '}· tìm “{tim}”</>}
-    {coLoc && <>{' '}· <a href="/noi-bo/kho/ton">Bỏ lọc</a></>}
-    {han && !viTri && <><br /><span class="kho-phu">Không tính hàng đã đưa vào chỗ chờ hủy.</span></>}
+    <strong>{loc.length}</strong> {ch.lo(loc.length)} · <strong>{nhom.length}</strong> {ch.matHang(nhom.length)} · <strong>{dinhDangKg(tongKg, nn)} kg</strong>
+    {coGia && <> · {ch.giaTri} <strong>{dinhDangTien(tongGiaTri, nn)}</strong></>}
+    {tim && <>{' '}· {ch.timChu} “{tim}”</>}
+    {coLoc && <>{' '}· <a href="/noi-bo/kho/ton">{ch.boLoc}</a></>}
+    {han && !viTri && <><br /><span class="kho-phu">{ch.khongTinhChoHuy}</span></>}
   </p>
 
   {duoiMuc && (
     duoiMucDs.length === 0 ? (
       <div class="nb-bao xong">
         <p>{coMucToiThieu || matHang.length === 0
-          ? 'Không có món nào ở quầy dưới mức tối thiểu.'
-          : 'Chưa món nào đặt mức tối thiểu ở quầy, nên chưa có gì để báo.'}
+          ? ch.khongDuoiMuc
+          : ch.chuaDatMuc}
           {!coMucToiThieu && matHang.length > 0 && k.duoc('danh_muc') && (
-            <>{' '}<a href="/noi-bo/kho/cai-dat/mat-hang">Đặt mức ở Mặt hàng</a>.</>
+            <>{' '}<a href="/noi-bo/kho/cai-dat/mat-hang">{ch.datMuc}</a>.</>
           )}</p>
       </div>
     ) : (
       <section class="kho-khoi">
-        <h2><BieuTuong ten="quay" /> Quầy sắp hết · {duoiMucDs.length}</h2>
+        <h2><BieuTuong ten="quay" /> {ch.quaySapHet} · {duoiMucDs.length}</h2>
         <ul class="kho-dong-ds">
           {duoiMucDs.map(m => (
             <li>
               <span>
                 <strong>{m.ten}</strong>
-                <small>Quầy còn {dinhDangKg(m.con_kg)} kg bán được · cần ít nhất {dinhDangKg(m.toi_thieu_kg)} kg</small>
-                <small>{khoCon(m.id) > 0 ? `Trong kho còn ${dinhDangKg(khoCon(m.id))} kg còn hạn` : 'Trong kho cũng hết — cần pha thêm hoặc nhập thêm'}</small>
+                <small>{ch.quayCon(dinhDangKg(m.con_kg, nn), dinhDangKg(m.toi_thieu_kg, nn))}</small>
+                <small>{khoCon(m.id) > 0 ? ch.khoCon(dinhDangKg(khoCon(m.id), nn)) : ch.khoHet}</small>
               </span>
               {vanHanh && khoCon(m.id) > 0 && (
-                <a class="nb-nut phu" href={`/noi-bo/kho/xuat/moi?loai=chuyen&mh=${encodeURIComponent(m.id)}`}>Lấy ra quầy</a>
+                <a class="nb-nut phu" href={`/noi-bo/kho/xuat/moi?loai=chuyen&mh=${encodeURIComponent(m.id)}`}>{ch.layRaQuay}</a>
               )}
             </li>
           ))}
@@ -189,54 +262,55 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
   {nhom.length === 0 ? (
     /* Lọc "dưới mức" thì khối trên đã nói đủ (không có món nào / món nào hết sạch). */
     duoiMuc ? null : (
-      <p class="nb-rong">{ton.length === 0 ? 'Kho đang trống. Hàng vào kho khi phiếu nhập được duyệt.' : 'Không có lô nào khớp bộ lọc.'}</p>
+      <p class="nb-rong">{ton.length === 0 ? ch.khoTrong : ch.khongKhop}</p>
     )
   ) : nhom.map(g => (
     <details class="kho-mh" open={nhom.length <= 3 || coLoc || g.tinh_trang_xau_nhat !== 'con_han'}>
       <summary>
         <span class="ten">
           {g.ten_hang}
-          <small>{g.ma_hang} · {TEN_LOAI_MAT_HANG[g.loai_hang]}{g.nhom ? ` · ${g.nhom}` : ''} · {g.so_lo} lô</small>
+          <small>{g.ma_hang} · {nhanKho(TEN_LOAI_MAT_HANG_NB, g.loai_hang, nn)}{g.nhom ? ` · ${g.nhom}` : ''} · {ch.soLo(g.so_lo)}</small>
         </span>
         <span class="so">
-          <b class="kho-so">{dinhDangKg(g.so_kg)} kg</b>
+          <b class="kho-so">{dinhDangKg(g.so_kg, nn)} kg</b>
           {g.dem_goi && <span class="kho-so"> · {g.so_goi} {g.don_vi_goi}</span>}
-          <br /><span class={`kho-han ${g.tinh_trang_xau_nhat}`}>Hạn sớm nhất {dinhDangNgay(g.han_som_nhat)}</span>
+          <br /><span class={`kho-han ${g.tinh_trang_xau_nhat}`}>{ch.hanSomNhat} {dinhDangNgay(g.han_som_nhat)}</span>
         </span>
       </summary>
       <div class="kho-mh-lo ton-lo-khung">
         <p class="ton-the-kho">
-          <a class="nb-nut phu" href={linkTheKho(g.mat_hang_id)} aria-label={`Thẻ kho ${g.ten_hang}`}>
-            <BieuTuong ten="ton" co={18} />Thẻ kho
+          <a class="nb-nut phu" href={linkTheKho(g.mat_hang_id)} aria-label={ch.theKhoCua(g.ten_hang)}>
+            <BieuTuong ten="ton" co={18} />{ch.theKho}
           </a>
         </p>
         <table class="kho-bang ton-lo">
           <thead><tr>
-            <th>Hạn dùng</th><th>Ở đâu</th><th class="so">Kg</th>{g.dem_goi && <th class="so">{g.don_vi_goi}</th>}
-            <th>Lô</th>{coGia && <th class="so">Giá vốn/kg</th>}
-            {vanHanh && <th><span class="kho-an">Làm gì</span></th>}
+            <th>{ch.cotHan}</th><th>{ch.oDau}</th><th class="so">Kg</th>{g.dem_goi && <th class="so">{g.don_vi_goi}</th>}
+            <th>{ch.cotLo}</th>{coGia && <th class="so">{ch.giaVonKg}</th>}
+            {vanHanh && <th><span class="kho-an">{ch.lamGi}</span></th>}
           </tr></thead>
           <tbody>
             {g.lo.map(t => {
-              const viec = vanHanh ? viecVoiLo(t) : [];
+              const viec = vanHanh ? viecVoiLo(t, nn) : [];
               return (
                 <tr class={`han-${t.tinh_trang_han}`}>
-                  <td class="o-han" data-nhan="Hạn dùng">
+                  <td class="o-han" data-nhan={ch.cotHan}>
                     <span class={`kho-han ${t.tinh_trang_han}`}>{dinhDangNgay(t.han_dung)}</span>{' '}
                     <span class="kho-phu">{conNgay(t)}</span>
                   </td>
-                  <td class="o-noi" data-nhan="Ở đâu">{t.ten_vi_tri}</td>
-                  <td class="so o-kg" data-nhan="Kg"><b>{dinhDangKg(t.so_kg)}</b></td>
+                  <td class="o-noi" data-nhan={ch.oDau}>{t.ten_vi_tri}</td>
+                  <td class="so o-kg" data-nhan="Kg"><b>{dinhDangKg(t.so_kg, nn)}</b></td>
                   {g.dem_goi && <td class="so o-goi" data-nhan={g.don_vi_goi}><b>{t.so_goi}</b></td>}
-                  <td class="o-lo" data-nhan="Lô">{t.ma_lo}{' '}<span class="kho-phu">{nguonLo(t)} {dinhDangNgay(t.ngay_dong_goi)}</span></td>
-                  {coGia && <td class="so o-gia" data-nhan="Giá vốn/kg">{giaCua(t) ? dinhDangTien(giaCua(t)!.gia_von_kg) : '—'}</td>}
+                  <td class="o-lo" data-nhan={ch.cotLo}>{t.ma_lo}{' '}<span class="kho-phu">{nguonLo(t)} {dinhDangNgay(t.ngay_dong_goi)}</span>
+                    {linkTraNcc(t) && <>{' '}<a class="kho-phu" href={linkTraNcc(t)!} aria-label={ch.traNccLo(t.ma_lo)}>{ch.traNcc}</a></>}</td>
+                  {coGia && <td class="so o-gia" data-nhan={ch.giaVonKg}>{giaCua(t) ? dinhDangTien(giaCua(t)!.gia_von_kg, nn) : '—'}</td>}
                   {vanHanh && (
                     <td class:list={['o-nut', { trong: viec.length === 0 }]}>
                       {viec.length > 0 && (
                         <div class="ton-nut">
                           {viec.map(v => (
                             <a href={v.link} class:list={['nb-nut', { phu: v.ma !== 'huy' || t.tinh_trang_han !== 'het_han' }]}
-                               aria-label={`${v.ten} lô ${t.ma_lo} ở ${t.ten_vi_tri}`}>
+                               aria-label={ch.viecLo(v.ten, t.ma_lo, t.ten_vi_tri)}>
                               <BieuTuong ten={BIEU_TUONG_VIEC[v.ma]} co={18} />{v.ten}
                             </a>
                           ))}

@@ -155,6 +155,26 @@ export async function dungDatabase() {
   return { db, cnA, cnB, nsId, duoi, duoiAnon, phaiLoi };
 }
 
+/**
+ * Hai tài khoản máy đồng bộ iPOS (vai may_ipos, 0029/0037): mayIposA ở chi
+ * nhánh A, mayIposB ở chi nhánh B. KHÔNG tạo sẵn trong dungDatabase() — test
+ * khác không phải đếm thêm người; file nào cần thì gọi hàm này.
+ */
+export const UID_MAY_IPOS = {
+  mayIposA: '00000000-0000-4000-8000-0000000000d1',
+  mayIposB: '00000000-0000-4000-8000-0000000000d2',
+};
+export async function themMayIpos(db, cnA, cnB) {
+  const id = {};
+  for (const [k, cn, ten] of [['mayIposA', cnA, 'Máy iPOS Q1'], ['mayIposB', cnB, 'Máy iPOS Q7']]) {
+    const { rows: [r] } = await db.query(
+      `insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro, dang_lam)
+       values ($1, $2, $3, 'may_ipos', true) returning id`, [UID_MAY_IPOS[k], cn.id, ten]);
+    id[k] = r.id;
+  }
+  return id;
+}
+
 /** uuid ngẫu nhiên cho ma_gui. */
 export function maGui() {
   return crypto.randomUUID();

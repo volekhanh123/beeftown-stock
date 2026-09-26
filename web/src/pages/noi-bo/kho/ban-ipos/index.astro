@@ -1,0 +1,202 @@
+---
+/**
+ * KHO — BÁN HÀNG iPOS (GĐ7a, 0037)
+ *
+ * Dòng bán đọc từ hóa đơn iPOS, chia 4 thẻ: Chưa khớp (chưa ghép món, lỗi) ·
+ * Thiếu hàng (sổ không đủ hàng ở quầy) · Đã ghi · Bỏ qua. Tìm theo mã HĐ /
+ * món, lọc ngày bán, chia trang như danh sách phiếu (GĐ4b, lib/kho/tim-ds.ts).
+ *
+ * Mỗi dòng một cách sửa:
+ *   · Chưa khớp → "Ghép món" (/noi-bo/kho/ban-ipos/ghep?ma=…) — ghép xong mọi
+ *     dòng cùng mã được xử lý lại.
+ *   · Thiếu hàng → "Thử lại" (sau khi nhận hàng / chốt pha lóc) · "Hàng ngoài
+ *     sổ" (bắt buộc lý do: cộng phần thiếu vào lô mới nhất rồi trừ) · "Bỏ qua".
+ * Dòng chưa khớp / thiếu hàng tự thử lại mỗi lượt đồng bộ, nên phần lớn tự hết.
+ *
+ * Quản lý, chủ (duyet). Có tiền (thành tiền dòng) — view kho_v_ipos_dong chỉ
+ * trả dòng cho vai xem_gia; cột tiền chỉ hiện khi xem_gia.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
+import PhanTrang from '../../../../components/kho/PhanTrang.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { docTimDs, catTrang, dangTim, linkDs } from '../../../../lib/kho/tim-ds.ts';
+import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
+import {
+  docDongIpos, docTrangThaiIpos, docThe, xuLyDongIpos, lopDen, trangThaiDong, THE_DONG_NB,
+  type DongIpos, type TrangThaiIpos,
+} from '../../../../lib/kho/ban-ipos.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { dichCau } from '../../../../lib/cau-noi-bo.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('duyet')) return Astro.redirect('/noi-bo/kho', 302);
+const xemGia = k.duoc('xem_gia');
+const DUONG = '/noi-bo/kho/ban-ipos';
+const sp = Astro.url.searchParams;
+const the = docThe(sp.get('the'));
+const nn = k.nn;
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Bán hàng iPOS', en: 'iPOS sales' },
+  khongDoc: { vi: 'Không đọc được dòng bán iPOS.', en: 'Could not read the iPOS sale lines.' },
+  lanNhanHd: { vi: 'Lần nhận hóa đơn gần nhất:', en: 'Last invoice received:' },
+  chuaCo: { vi: 'chưa có', en: 'none yet' },
+  ketNoi: { vi: 'Kết nối iPOS', en: 'iPOS connection' },
+  dan: {
+    vi: 'Mỗi dòng là một món trên hóa đơn iPOS. Dòng chưa trừ được kho tự thử lại mỗi 5 phút — thường là hàng mang ra quầy chưa bấm nhận hoặc pha lóc chưa chốt. Còn dòng chờ thì chưa duyệt được kiểm kê quầy.',
+    en: 'Each line is one dish on an iPOS invoice. Lines not yet deducted from stock are retried every 5 minutes — usually goods brought to the counter that nobody has received yet, or a butchery session not closed yet. While lines are still waiting, counter stocktakes cannot be approved.',
+  },
+  locTrangThai: { vi: 'Lọc theo trạng thái', en: 'Filter by status' },
+  goiYTim: { vi: 'Mã hóa đơn, mã hoặc tên món…', en: 'Invoice number, dish code or name…' },
+  chuaKhoiTao: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory home' },
+  hetDs: { vi: 'Hết danh sách — bấm "Trang trước".', en: 'End of the list — press "Previous".' },
+  khongKhop: { vi: 'Không có dòng nào khớp bộ lọc.', en: 'No lines match the filters.' },
+  khongCho: { vi: 'Không có dòng nào chờ xử lý. Tốt lắm!', en: 'No lines waiting. Well done!' },
+  chuaCoDong: { vi: 'Chưa có dòng nào.', en: 'No lines yet.' },
+  monKhongTen: { vi: 'Món không tên', en: 'Unnamed dish' },
+  banLuc: { vi: 'Bán lúc', en: 'Sold at' },
+  hd: { vi: 'HĐ', en: 'Invoice' },
+  monIpos: { vi: 'Món trên iPOS', en: 'Dish on iPOS' },
+  ma: { vi: (m: string) => ` (mã ${m})`, en: (m: string) => ` (code ${m})` },
+  maCan: { vi: (m: string) => ` · mã cân ${m}`, en: (m: string) => ` · scale code ${m}` },
+  soLuong: { vi: 'Số lượng', en: 'Quantity' },
+  thanhTien: { vi: 'Thành tiền', en: 'Amount' },
+  lyDo: { vi: 'Lý do', en: 'Reason' },
+  daThu: { vi: 'Đã thử', en: 'Tries' },
+  soLan: { vi: (n: number) => `${n} lần`, en: (n: number) => `${n} ${n === 1 ? 'time' : 'times'}` },
+  luuY: { vi: 'Lưu ý', en: 'Note' },
+  loHetHan: { vi: 'Trừ vào lô đã hết hạn — kiểm lại quầy.', en: 'Deducted from an expired lot — check the counter.' },
+  ghepMon: { vi: 'Ghép món', en: 'Match dish' },
+  thuLai: { vi: 'Thử lại', en: 'Retry' },
+  boQua: { vi: 'Bỏ qua', en: 'Skip' },
+  hangNgoaiSo: { vi: 'Hàng ngoài sổ', en: 'Off-book stock' },
+  ngoaiSoGiai: {
+    vi: 'Hàng có thật ở quầy mà sổ không có (quên nhập, nhập nhầm chỗ): phần thiếu được cộng vào lô mới nhất của món rồi trừ bán. Ghi lại vì sao.',
+    en: 'Goods that are really at the counter but missing from the books (forgotten, or entered in the wrong place): the shortfall is added to the newest lot of the item, then deducted as sold. Write down why.',
+  },
+  vdLyDo: { vi: 'Vd: hàng tồn quầy chưa nhập sổ', en: 'E.g. counter stock not entered in the books yet' },
+  ghiNgoaiSo: { vi: 'Ghi hàng ngoài sổ', en: 'Record off-book stock' },
+  linkGhep: { vi: 'Ghép mã món iPOS với món kho →', en: 'Match iPOS dish codes with stock items →' },
+  goi: { vi: (n: number) => `${n} gói`, en: (n: number) => `${n} ${n === 1 ? 'pack' : 'packs'}` },
+  soLuongIpos: { vi: '(số lượng trên iPOS)', en: '(quantity on iPOS)' },
+});
+
+let bao: KetQua | null = k.bao;
+const form = await docFormGui(Astro);
+if (form && k.chiNhanh && String(form.get('viec')) === 'xu_ly') {
+  const kq = await xuLyDongIpos(k.client, form);
+  if (kq.ok) return chuyenHuong(Astro, `${DUONG}${Astro.url.search}`, kq);
+  bao = kq;
+}
+
+const tim = docTimDs(sp);
+let hien: DongIpos[] = [];
+let coSau = false;
+let tt: TrangThaiIpos | null = null;
+let loiDoc = k.loiDoc;
+if (k.chiNhanh && k.daKhoiTao) {
+  try {
+    let trang: DongIpos[];
+    [trang, tt] = await Promise.all([
+      docDongIpos(k.client, k.chiNhanh.id, [...the.trangThai], tim),
+      docTrangThaiIpos(k.client, k.chiNhanh.id),
+    ]);
+    ({ ds: hien, coSau } = catTrang(trang));
+  } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
+}
+const soThe: Record<string, number | null> = tt
+  ? { chua_khop: tt.dem.chua_khop + tt.dem.loi, thieu_hang: tt.dem.thieu_hang, da_ghi: null, bo_qua: null }
+  : {};
+const kgGoi = (d: DongIpos) => [
+  d.so_goi ? t.goi(d.so_goi) : '',
+  d.so_kg !== null ? `${dinhDangKg(d.so_kg, nn)} kg` : '',
+].filter(Boolean).join(' · ') || (d.so_luong !== null ? `${dinhDangKg(d.so_luong, nn)} ${t.soLuongIpos}` : '—');
+const theDau = THE_DONG_NB[0].ma;
+---
+<Kho k={k} tieuDe={t.tieuDe} huongDan="ban-ipos" rong>
+  <h1>{t.tieuDe}</h1>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {tt && (
+    <div class={`nb-bao ${lopDen(tt.den)}`}>
+      <p style="margin:0">{dichCau(nn, tt.cau)} {t.lanNhanHd} {tt.nhan_hd_luc ? dinhDangThoiDiem(tt.nhan_hd_luc) : t.chuaCo}.{' '}
+        <a href="/noi-bo/kho/cai-dat/ipos">{t.ketNoi}</a></p>
+    </div>
+  )}
+
+  <p class="nb-dan">{t.dan}</p>
+
+  <nav class="kho-dh" aria-label={t.locTrangThai}>
+    {THE_DONG_NB.map(th => (
+      <a href={linkDs(DUONG, new URLSearchParams(), { the: th.ma === theDau ? null : th.ma })}
+        aria-current={the.ma === th.ma ? 'page' : undefined}>
+        {th.ten[nn]}{typeof soThe[th.ma] === 'number' && soThe[th.ma]! > 0 ? ` · ${soThe[th.ma]}` : ''}
+      </a>
+    ))}
+  </nav>
+
+  <LocDanhSach duong={DUONG} tim={tim} giu={{ the: the.ma === theDau ? null : the.ma }}
+    goiY={t.goiYTim} />
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">{t.chuaKhoiTao} <a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
+  ) : hien.length === 0 ? (
+    <p class="nb-rong">{tim.trang > 1 ? t.hetDs : dangTim(tim) ? t.khongKhop
+      : the.ma === 'chua_khop' || the.ma === 'thieu_hang' ? t.khongCho : t.chuaCoDong}</p>
+  ) : hien.map(d => {
+    const [nhan, lop] = trangThaiDong(d.trang_thai, nn);
+    return (
+      <div class="nb-dong" id={`d-${d.id}`}>
+        <div class="nb-dong-dau">
+          <strong>{d.ten_mat_hang ?? d.ten_ipos ?? d.ma_ipos ?? t.monKhongTen}</strong>
+          <span class={`nb-nhan ${lop}`}>{nhan}</span>
+        </div>
+        <dl>
+          <dt>{t.banLuc}</dt><dd>{dinhDangThoiDiem(d.thoi_diem_ban)} · {t.hd} {d.ma_hd}</dd>
+          <dt>{t.monIpos}</dt><dd>{d.ten_ipos ?? '—'}{d.ma_ipos ? t.ma(d.ma_ipos) : ''}{d.ma_can ? t.maCan(d.ma_can) : ''}</dd>
+          <dt>{t.soLuong}</dt><dd>{kgGoi(d)}</dd>
+          {xemGia && d.thanh_tien !== null && <><dt>{t.thanhTien}</dt><dd>{dinhDangTien(d.thanh_tien, nn)}</dd></>}
+          {d.ly_do && <><dt>{t.lyDo}</dt><dd>{dichCau(nn, d.ly_do)}</dd></>}
+          {d.so_lan_thu > 1 && d.trang_thai !== 'da_ghi' && <><dt>{t.daThu}</dt><dd>{t.soLan(d.so_lan_thu)}</dd></>}
+          {d.lo_het_han && <><dt>{t.luuY}</dt><dd>{t.loHetHan}</dd></>}
+        </dl>
+
+        {(d.trang_thai === 'chua_khop' || (d.trang_thai === 'loi' && !d.mat_hang_id)) && d.ma_ipos && (
+          <div class="kho-thanh-nut" style="margin:.5rem 0 0">
+            <a class="nb-nut" href={`/noi-bo/kho/ban-ipos/ghep?ma=${encodeURIComponent(d.ma_ipos)}`}>{t.ghepMon}</a>
+          </div>
+        )}
+        {(d.trang_thai === 'thieu_hang' || d.trang_thai === 'loi' || (d.trang_thai === 'chua_khop' && !d.ma_ipos)) && (
+          <form method="POST" class="kho-thanh-nut" style="margin:.5rem 0 0;flex-wrap:wrap">
+            <input type="hidden" name="viec" value="xu_ly" />
+            <input type="hidden" name="dong_id" value={d.id} />
+            {d.trang_thai !== 'chua_khop' && <button type="submit" name="cach" value="thu_lai" class="nb-nut">{t.thuLai}</button>}
+            <button type="submit" name="cach" value="bo_qua" class="nb-nut phu">{t.boQua}</button>
+          </form>
+        )}
+        {d.trang_thai === 'thieu_hang' && (
+          <details style="margin:.5rem 0 0">
+            <summary style="cursor:pointer;min-height:48px;display:flex;align-items:center;font-weight:600">{t.hangNgoaiSo}</summary>
+            <form method="POST">
+              <input type="hidden" name="viec" value="xu_ly" />
+              <input type="hidden" name="dong_id" value={d.id} />
+              <input type="hidden" name="cach" value="ngoai_so" />
+              <p class="kho-phu" style="margin:.25rem 0 .5rem">{t.ngoaiSoGiai}</p>
+              <label class="nb-o"><span>{t.lyDo}</span>
+                <input type="text" name="ly_do" required minlength="3" maxlength="300" placeholder={t.vdLyDo} /></label>
+              <button type="submit" class="nb-nut">{t.ghiNgoaiSo}</button>
+            </form>
+          </details>
+        )}
+      </div>
+    );
+  })}
+  <PhanTrang duong={DUONG} trang={tim.trang} coSau={coSau} />
+
+  {k.duoc('danh_muc') && (
+    <p><a href="/noi-bo/kho/ban-ipos/ghep">{t.linkGhep}</a></p>
+  )}
+</Kho>

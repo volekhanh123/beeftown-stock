@@ -33,7 +33,8 @@ export interface ViTri extends TruongForm {
   ten: string;
   bo_phan: string;
   cap_bac: string | null;
-  loai_hop_dong: string;
+  /** null = chưa chốt (0043): thẻ không hiện dòng loại hợp đồng. */
+  loai_hop_dong: string | null;
   so_luong: number | null;
   mo_ta: string | null;
   yeu_cau: string | null;
@@ -54,22 +55,41 @@ interface Props {
 const { ngonNgu, noiDung: nd, viTri, ketQuaNop = null } = Astro.props;
 const t = chu(ngonNgu);
 
-// Danh sách dự phòng khi chưa nối database. Đây chỉ là TÊN VỊ TRÍ, lấy từ
-// bảng mục lục tài liệu vận hành — không phải nội dung mật.
+// Danh sách dự phòng khi chưa nối database: bốn vị trí đội mở cửa theo JD
+// (BEEF_TOWN_Recruitment_EN_FINAL, 26/09/2026), cùng thứ tự với tin thật
+// (tin_tuyen_dung_cong_khai xếp theo bộ phận rồi tên). Chỉ là TÊN VỊ TRÍ.
 // Bộ phận ghi bằng MÃ enum và lấy nhãn từ BO_PHAN, giống hệt tin thật từ
 // database — không giữ một bản nhãn thứ hai phải dịch lại mỗi khi thêm tiếng.
-const DU_PHONG: { ten: BaThuTieng; bo_phan: keyof typeof BO_PHAN; ca: boolean }[] = [
-  { ten: { vi: 'Nhân viên sảnh',             en: 'Hall staff',             ko: '홀 직원' },           bo_phan: 'sanh',      ca: true },
-  { ten: { vi: 'Tổ trưởng sảnh',             en: 'Floor leader',           ko: '홀 팀장' },           bo_phan: 'sanh',      ca: false },
-  { ten: { vi: 'Quản lý sảnh',               en: 'Floor manager',          ko: '홀 매니저' },         bo_phan: 'quan_ly',   ca: false },
-  { ten: { vi: 'Quản lý cửa hàng',           en: 'Store manager',          ko: '점장' },              bo_phan: 'quan_ly',   ca: false },
-  { ten: { vi: 'Nhân viên bếp',              en: 'Kitchen staff',          ko: '주방 직원' },         bo_phan: 'bep',       ca: false },
-  { ten: { vi: 'Nhân viên bộ phận thịt',     en: 'Meat department',        ko: '정육 파트 직원' },    bo_phan: 'quay_thit', ca: false },
-  { ten: { vi: 'Nhân viên tư vấn quầy thịt', en: 'Meat counter assistant', ko: '정육 코너 상담 직원' }, bo_phan: 'quay_thit', ca: true },
-  { ten: { vi: 'Đầu mối marketing',          en: 'Marketing coordinator',  ko: '마케팅 담당자' },     bo_phan: 'marketing', ca: true },
+// Loại hợp đồng chỉ ghi khi JD đã chốt (sảnh: bán thời gian); chưa chốt thì
+// null và thẻ không hiện dòng đó — không đoán thay nhà hàng.
+// Tên tiếng Hàn giữ đúng ten_ko của tin thật (và câu dẫn trong chu.ts, gợi ý
+// ở form, mô tả trang /ko/jobs cũng vậy): một vị trí chỉ có một tên trên
+// trang Hàn — trước 26/09 tin ghi "홀 직원" mà form lại gọi "홀 크루".
+const DU_PHONG: { ten: BaThuTieng; bo_phan: keyof typeof BO_PHAN; loai: keyof typeof LOAI_HOP_DONG | null }[] = [
+  { ten: { vi: 'Nhân viên sảnh',                         en: 'Hall Crew',                             ko: '홀 직원' },               bo_phan: 'sanh',      loai: 'ban_thoi_gian' },
+  { ten: { vi: 'Nhân viên bếp có kinh nghiệm',           en: 'Experienced Kitchen Crew',              ko: '경력 주방 직원' },        bo_phan: 'bep',       loai: null },
+  { ten: { vi: 'Nhân viên đóng gói và hỗ trợ quầy thịt', en: 'Butcher Packaging & Counter Assistant', ko: '포장 및 정육 코너 보조 직원' }, bo_phan: 'quay_thit', loai: null },
+  { ten: { vi: 'Thợ pha lóc thịt bò',                    en: 'Skilled Beef Trimmer',                  ko: '소고기 정육사' },   bo_phan: 'quay_thit', loai: null },
 ];
 
 const dungDuPhong = viTri.length === 0;
+
+// Nút "Ứng tuyển vị trí này" trên từng thẻ dẫn tới ?vi_tri=<mã>#nop-ho-so, và
+// form chọn sẵn vị trí đó — không cần JavaScript. Chỉ nhận mã đang tuyển; mã
+// lạ thì như không có.
+const maTrenLink = Astro.url.searchParams.get('vi_tri');
+const chonSan: Record<string, string> = maTrenLink && viTri.some(v => v.ma === maTrenLink) ? { vi_tri: maTrenLink } : {};
+
+// Thẻ chỉ hiện câu đầu của mô tả (câu tóm tắt vai trò); phần còn lại của mô
+// tả, yêu cầu và quyền lợi nằm trong "Xem chi tiết công việc". Để nguyên cả JD
+// trên thẻ thì trên điện thoại form bị đẩy xuống gần 6.000px, sau bốn bản JD —
+// ứng viên không tìm thấy chỗ nộp (26/09/2026).
+const tachMoTa = (s: string | null) => {
+  const i = s ? s.indexOf('\n') : -1;
+  if (!s || i < 0) return { tomTat: s, conLai: null };
+  return { tomTat: s.slice(0, i).trim(), conLai: s.slice(i + 1).trim() || null };
+};
+const theViTri = viTri.map(v => ({ v, ...tachMoTa(v.mo_ta) }));
 
 const nutNhanTin =
   nd.facebook_url ? { url: nd.facebook_url, chu: t.nhanTin } :
@@ -82,25 +102,24 @@ const mucLuong = (v: ViTri) => dinhDangLuong(v.luong_tu, v.luong_den, v.luong_do
 // Câu riêng của trang này; câu dùng chung nằm ở t = chu(ngonNgu).
 const tRieng = dich(ngonNgu, {
   viTriDangTuyen: { vi: 'Vị trí đang tuyển', en: 'Open roles', ko: '채용 중인 포지션' },
-  theoCa:         { vi: 'Làm theo ca', en: 'Shift work', ko: '교대 근무' },
   canNguoi: {
     vi: (n: number) => `Cần ${n} người`,
-    en: (n: number) => `${n} positions`,
+    en: (n: number) => (n === 1 ? '1 position' : `${n} positions`),
     ko: (n: number) => `${n}명 모집`,
   },
   yeuCau:         { vi: 'Yêu cầu: ', en: 'Requirements: ', ko: '자격 요건: ' },
   quyenLoi:       { vi: 'Quyền lợi: ', en: 'Benefits: ', ko: '복리후생: ' },
   hanNop:         { vi: 'Hạn nộp: ', en: 'Apply by ', ko: '지원 마감: ' },
   cachUngTuyen:   { vi: 'Cách ứng tuyển', en: 'How to apply', ko: '지원 방법' },
+  nopHoSo:        { vi: 'Nộp hồ sơ', en: 'Apply now', ko: '지원하기' },
+  ungTuyenViTri:  { vi: 'Ứng tuyển vị trí này', en: 'Apply for this role', ko: '이 포지션 지원하기' },
+  xemChiTiet:     { vi: 'Xem chi tiết công việc', en: 'View role details', ko: '자세히 보기' },
   luuTru: {
     vi: 'Beeftown chỉ dùng thông tin bạn gửi cho việc tuyển dụng, và lưu trong sáu tháng.',
     en: 'Beeftown only uses the details you send for hiring, and keeps them for six months.',
     ko: 'Beeftown은 보내 주신 정보를 채용에만 사용하며, 6개월 동안 보관해요.',
   },
 });
-
-// "Toàn thời gian" của thẻ dự phòng là đúng nhãn loại hợp đồng của tin thật.
-const nhanToanTG = nhanEnum(LOAI_HOP_DONG, 'toan_thoi_gian', ngonNgu);
 ---
 
 <section class="muc" style="padding-top:20px">
@@ -108,6 +127,11 @@ const nhanToanTG = nhanEnum(LOAI_HOP_DONG, 'toan_thoi_gian', ngonNgu);
     <p class="hieu">{t.tuyenDung}</p>
     <h1 style="font-size:clamp(32px,6vw,58px)">{t.tuyenDungTieuDe}</h1>
     <p class="dan" style="max-width:58ch; margin-top:22px">{t.tuyenDungDan}</p>
+    {!dungDuPhong && (
+      <div class="hang-nut" style="margin-top:26px">
+        <a class="nut nut-chinh" href="#nop-ho-so">{tRieng.nopHoSo}</a>
+      </div>
+    )}
   </div>
 </section>
 
@@ -121,37 +145,28 @@ const nhanToanTG = nhanEnum(LOAI_HOP_DONG, 'toan_thoi_gian', ngonNgu);
             <div class="the vi-tri">
               <span class="nhan">{nhanEnum(BO_PHAN, v.bo_phan, ngonNgu)}</span>
               <h3>{v.ten[ngonNgu]}</h3>
-              <p class="nho" style="margin:0">{v.ca ? tRieng.theoCa : nhanToanTG}</p>
+              {/* Cùng nhãn loại hợp đồng với tin thật. */}
+              {v.loai && <p class="nho" style="margin:0">{nhanEnum(LOAI_HOP_DONG, v.loai, ngonNgu)}</p>}
             </div>
           ))
-        : viTri.map((v) => (
+        : theViTri.map(({ v, tomTat, conLai }) => (
             <div class="the vi-tri">
               <span class="nhan">{nhanEnum(BO_PHAN, v.bo_phan, ngonNgu)}</span>
               <h3>{v.ten}</h3>
               {v.cap_bac && <p class="nho" style="margin:0">{v.cap_bac}</p>}
-              <p class="nho" style="margin:0">
-                {nhanEnum(LOAI_HOP_DONG, v.loai_hop_dong, ngonNgu)}
-                {v.ca_lam && ` · ${v.ca_lam}`}
-              </p>
+              {/* Loại hợp đồng chưa chốt thì không hiện — không đoán thay nhà hàng. */}
+              {(v.loai_hop_dong || v.ca_lam) && (
+                <p class="nho" style="margin:0">
+                  {[v.loai_hop_dong && nhanEnum(LOAI_HOP_DONG, v.loai_hop_dong, ngonNgu), v.ca_lam]
+                    .filter(Boolean).join(' · ')}
+                </p>
+              )}
               {v.so_luong && (
                 <p class="nho" style="margin:0">
                   {tRieng.canNguoi(v.so_luong)}
                 </p>
               )}
-              {/* pre-line: xuống dòng người soạn gõ ở màn nội bộ phải còn nguyên. */}
-              {v.mo_ta && <p style="margin:8px 0 0;white-space:pre-line">{v.mo_ta}</p>}
-              {v.yeu_cau && (
-                <p class="nho" style="margin:8px 0 0;white-space:pre-line">
-                  <strong>{tRieng.yeuCau}</strong>
-                  {v.yeu_cau}
-                </p>
-              )}
-              {v.quyen_loi && (
-                <p class="nho" style="margin:8px 0 0;white-space:pre-line">
-                  <strong>{tRieng.quyenLoi}</strong>
-                  {v.quyen_loi}
-                </p>
-              )}
+              {tomTat && <p style="margin:8px 0 0">{tomTat}</p>}
               {mucLuong(v) && (
                 <p style="margin:8px 0 0; font-weight:700; color:var(--do)">{mucLuong(v)}</p>
               )}
@@ -160,6 +175,28 @@ const nhanToanTG = nhanEnum(LOAI_HOP_DONG, 'toan_thoi_gian', ngonNgu);
                   {tRieng.hanNop}{dinhDangNgay(v.han_nop, ngonNgu)}
                 </p>
               )}
+              {(conLai || v.yeu_cau || v.quyen_loi) && (
+                <details class="chi-tiet">
+                  <summary>{tRieng.xemChiTiet}</summary>
+                  {/* pre-line: xuống dòng người soạn gõ ở màn nội bộ phải còn nguyên. */}
+                  {conLai && <p style="margin:8px 0 0;white-space:pre-line">{conLai}</p>}
+                  {v.yeu_cau && (
+                    <p class="nho" style="margin:8px 0 0;white-space:pre-line">
+                      <strong>{tRieng.yeuCau}</strong>
+                      {v.yeu_cau}
+                    </p>
+                  )}
+                  {v.quyen_loi && (
+                    <p class="nho" style="margin:8px 0 0;white-space:pre-line">
+                      <strong>{tRieng.quyenLoi}</strong>
+                      {v.quyen_loi}
+                    </p>
+                  )}
+                </details>
+              )}
+              <p style="margin:16px 0 0">
+                <a class="nut nut-chinh" href={`?vi_tri=${encodeURIComponent(v.ma)}#nop-ho-so`}>{tRieng.ungTuyenViTri}</a>
+              </p>
             </div>
           ))}
     </div>
@@ -209,7 +246,7 @@ const nhanToanTG = nhanEnum(LOAI_HOP_DONG, 'toan_thoi_gian', ngonNgu);
         </div>
 
       ) : (
-        <FormUngTuyen ngonNgu={ngonNgu} viTri={viTri} ketQua={ketQuaNop} nhanTin={nutNhanTin} />
+        <FormUngTuyen ngonNgu={ngonNgu} viTri={viTri} ketQua={ketQuaNop} nhanTin={nutNhanTin} daNhap={chonSan} />
       )}
     </div>
 
@@ -220,3 +257,14 @@ const nhanToanTG = nhanEnum(LOAI_HOP_DONG, 'toan_thoi_gian', ngonNgu);
     </p>
   </div>
 </section>
+
+<style>
+  /* "Xem chi tiết công việc": màu nút chính để thấy là bấm được; cao 44px cho
+     ngón tay cái. */
+  .chi-tiet { margin-top: 12px; border-top: 1px solid var(--vach); }
+  .chi-tiet > summary {
+    cursor: pointer; font-weight: 700; color: var(--do);
+    padding: 12px 0; min-height: 44px;
+  }
+  .chi-tiet > summary:focus-visible { outline: 2px solid var(--do); outline-offset: 2px; }
+</style>

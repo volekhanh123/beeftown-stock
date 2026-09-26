@@ -184,6 +184,15 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
     ['may_chung', 'xem', false],            // máy không đọc được gì trong kho
     ['chu_so_huu', 'may_chung', false],     // không người nào dùng được hàm của máy
     ['may_ipos', 'may_chung', false],
+    ['may_ipos', 'dong_bo_ban', true],      // 0037: máy iPOS chỉ đồng bộ bán hàng
+    ['may_ipos', 'xem', false],             // không đọc được gì trong kho
+    ['may_ipos', 'xem_gia', false],
+    ['quan_ly', 'dong_bo_ban', true],       // bấm "Cập nhật ngay"
+    ['chu_so_huu', 'dong_bo_ban', true],
+    ['nhan_vien_quay', 'dong_bo_ban', false],
+    ['thu_kho', 'dong_bo_ban', false],
+    ['ke_toan', 'dong_bo_ban', false],
+    ['may_chung', 'dong_bo_ban', false],
   ];
   for (const [vai, viec, mong] of chot) {
     ok(`${vai} ${mong ? 'ĐƯỢC' : 'KHÔNG được'} "${viec}"`,
@@ -192,13 +201,17 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
   const { rows: [{ n: soVai }] } = await db.query(`select count(*)::int as n from unnest(enum_range(null::vai_tro))`);
   ok('Bảng có đủ 9 vai để tra (khớp enum vai_tro)', VAI.length === 9 && soVai === 9, `enum có ${soVai}`);
   // Vai máy không được việc nào của người. Riêng việc may_chung (0034) chỉ có
-  // đúng vai may_chung.
-  for (const viec of Object.keys(QUYEN_KHO).filter(v => v !== 'may_chung')) {
+  // đúng vai may_chung; việc dong_bo_ban (0037) là việc DUY NHẤT của may_ipos.
+  for (const viec of Object.keys(QUYEN_KHO).filter(v => v !== 'may_chung' && v !== 'dong_bo_ban')) {
     ok(`Vai máy chưa được việc "${viec}"`,
        !QUYEN_KHO[viec].includes('may_chung') && !QUYEN_KHO[viec].includes('may_ipos'));
   }
   ok('Việc "may_chung" chỉ có vai may_chung',
      QUYEN_KHO.may_chung?.length === 1 && QUYEN_KHO.may_chung[0] === 'may_chung');
+  ok('may_ipos có đúng MỘT việc: dong_bo_ban',
+     Object.keys(QUYEN_KHO).filter(v => QUYEN_KHO[v].includes('may_ipos')).join() === 'dong_bo_ban');
+  ok('Việc "dong_bo_ban": chủ, quản lý, may_ipos — không vai nhân viên nào khác',
+     [...QUYEN_KHO.dong_bo_ban].sort().join() === 'chu_so_huu,may_ipos,quan_ly');
 });
 
 // ===========================================================================
@@ -297,11 +310,20 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_duyet_kiem_ke', 'kho_tu_choi_kiem_ke', 'kho_huy_kiem_ke',
     // Đếm quầy cộng dồn bằng máy quét (0032)
     'kho_quet_kiem_ke', 'kho_bo_quet_kiem_ke', 'kho_het_hang_con_lai',
+    // Đồng bộ bán hàng iPOS (0037): lượt (dong_bo_ban), cấu hình / chuyển nguồn
+    // (cai_dat_goc), ghép mã (danh_muc), xử lý dòng (duyet), trạng thái (xem)
+    'kho_ipos_bat_dau', 'kho_ipos_nhan', 'kho_ipos_ket_thuc',
+    'kho_ipos_luu_cau_hinh', 'kho_ipos_chuyen_sang', 'kho_ipos_tro_ve',
+    'kho_ipos_gan_ma', 'kho_ipos_xu_ly_dong', 'kho_ipos_trang_thai',
+    // iPOS tự đẩy hóa đơn (0042): nhận callback, tìm chi nhánh theo pos, lưu danh mục món,
+    // báo thực đơn đổi (dong_bo_ban); ghép mã kèm "bán theo" kg / gói / suất (danh_muc)
+    'kho_ipos_nhan_callback', 'kho_ipos_tim_chi_nhanh', 'kho_ipos_luu_menu', 'kho_ipos_bao_menu_doi',
+    'kho_ipos_gan_ma_v2',
     // Công nợ, trả hàng
     'kho_doi_chieu_hoa_don', 'kho_ghi_thanh_toan', 'kho_huy_thanh_toan', 'kho_tra_nha_cung_cap',
     // Báo cáo — SECURITY INVOKER, RLS của người gọi vẫn áp dụng
     'kho_bao_cao_xuat_nhap_ton', 'kho_bao_cao_thu_hoi', 'kho_bao_cao_hao_hut', 'kho_bao_cao_ban',
-    'kho_bao_cao_xnt_v2',
+    'kho_bao_cao_xnt_v2', 'kho_bao_cao_ban_thuc',
     // Đối soát
     'kho_doi_soat_ton',
     // Thẻ kho — không tiền (0033)
@@ -316,11 +338,30 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // Chuẩn bị chạy thật (0035): nợ đầu kỳ (ke_toan), tồn đầu kỳ dạng lưới (nhap),
     // tiến độ Thiết lập (xem — chỉ số đếm), đánh dấu bỏ qua bước (danh_muc)
     'kho_ghi_no_dau_ky', 'kho_luu_ton_dau_ky', 'kho_tien_do_thiet_lap', 'kho_danh_dau_thiet_lap',
+    // Định lượng món (0038): món, định lượng, dán Excel, lấy món từ iPOS (danh_muc);
+    // đối chiếu định mức (xem — SECURITY DEFINER, tiền chỉ trả khi xem_gia)
+    'kho_luu_mon', 'kho_luu_dinh_luong', 'kho_nhap_dinh_luong', 'kho_mon_tu_ipos', 'kho_bao_cao_dinh_muc',
+    // Đặt hàng NCC (0039): lập nháp (nhap), gửi (nhap + duyet_nhap), hủy, đọc chỉ kg,
+    // gợi ý (không tiền), nhận theo đơn (nhap), đánh giá NCC (tiền chỉ xem_gia),
+    // mức kho lạnh của mặt hàng (danh_muc)
+    'kho_luu_don_dat', 'kho_gui_don_dat', 'kho_huy_don_dat', 'kho_ds_don_dat_kg', 'kho_doc_don_dat_kg',
+    'kho_goi_y_dat_hang', 'kho_tao_phieu_nhap_tu_don', 'kho_bao_cao_ncc', 'kho_luu_muc_dat_hang',
+    // Công nợ v2 (0040) — mọi hàm có tiền chỉ ke_toan; bước 1 trả hàng (chỉ kg) nhap hoặc ke_toan
+    'kho_ghi_thanh_toan_v2', 'kho_xem_truoc_thanh_toan', 'kho_doi_chieu_hoa_don_gop', 'kho_bo_doi_chieu_gop',
+    'kho_tra_hang_ghi_kg', 'kho_ds_tra_hang_cho_tien', 'kho_xac_nhan_tien_tra_hang', 'kho_huy_tra_hang_cho_tien',
+    'kho_cong_no_theo_ky', 'kho_du_lieu_misa', 'kho_luu_misa_tk', 'kho_luu_ma_misa_mat_hang',
+    // Sửa hàng loạt, báo cáo (0041): sửa nhanh mặt hàng (danh_muc), báo cáo tháng (xem — tiền
+    // chỉ xem_gia), mua hàng theo NCC / mặt hàng (xem_gia), sổ thanh toán (ke_toan)
+    'kho_sua_nhanh_mat_hang', 'kho_bao_cao_theo_thang', 'kho_bao_cao_mua_hang', 'kho_so_thanh_toan',
     // Hàm trigger — PostgREST không gọi được hàm trả về trigger
     'kho_vi_tri_kiem_sua', 'kho_truong_them_kiem_sua', 'kho_truong_them_kiem',
     'kho_mat_hang_chuan_hoa', 'kho_cong_thuc_pha_kiem', 'kho_lo_chan_sua_xoa',
     'kho_ton_chi_qua_so_cai', 'kho_so_cai_ghi', 'kho_so_cai_chan_sua_xoa',
     'kho_phieu_nhap_chan_huy_da_tra', 'kho_chan_vi_tri_di_duong', 'kho_cai_dat_ghi_moc',
+    'kho_phieu_nhap_kiem_don', 'kho_phieu_nhap_cap_nhat_don',
+    'kho_ncc_ghi_doi_tai_khoan', 'kho_phieu_nhap_giu_hoa_don_gop',
+    // 0044: thêm lý do Xuất bếp "Cơm nhân viên" → mặc định không tính định mức
+    'kho_ly_do_dinh_muc_mac_dinh',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
@@ -331,6 +372,17 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_vi_tri_sau_pha', 'kho_phien_pha_tinh_quet', 'kho_phien_pha_tra_quet', 'kho_thu_hoi_du_kien',
     'kho_may_cua_phien', 'kho_may_nguoi_hop_le', 'kho_may_ghi', 'kho_may_kiem_pin_bam',
     'kho_buoc_thiet_lap',
+    // 0037: ghi một dòng iPOS, chọn lô, tự nhận hàng đi đường, đảo ngược, mất kết nối
+    'kho_ipos_ghi_dong', 'kho_ipos_lay_lo', 'kho_ipos_tu_nhan', 'kho_ipos_dao_dong', 'kho_ipos_mat_ket_noi',
+    // 0038: bỏ dấu (cột sinh ten_khong_dau), số suất bán, tính định mức (có giá vốn)
+    'kho_khong_dau', 'kho_dinh_muc_ban', 'kho_dinh_muc_tinh',
+    // 0039: số thành chữ, ngày giao mặc định, luật "đủ" của dòng đơn, tính lại kg đã nhận
+    'kho_so_chu', 'kho_ngay_giao_mac_dinh', 'kho_don_dat_dong_du', 'kho_don_dat_tinh_nhan',
+    // 0040: tự chia một khoản vào các phiếu (đọc view có tiền), tiền trả hàng tự tính
+    'kho_chia_thanh_toan', 'kho_tien_tra_hang_goi_y',
+    // 0042: bỏ thông tin khách khỏi raw, số gói theo kg, mốc "lâu không nhận hóa đơn",
+    // lõi nhận hóa đơn (chung cho lượt và callback)
+    'kho_ipos_bo_pii', 'kho_ipos_goi_theo_kg', 'kho_ipos_moc_nhan', 'kho_ipos_nhan_hd',
   ].sort();
 
   const { rows } = await db.query(`

@@ -1,0 +1,81 @@
+---
+/**
+ * KHO — SỔ THANH TOÁN NHÀ CUNG CẤP (GĐ8c, migration 0041)
+ *
+ *   /noi-bo/kho/bao-cao/so-thanh-toan?tu=&den=
+ *
+ * kho_so_thanh_toan: mọi khoản trả tiền / bù trừ / giảm trừ / NCC hoàn tiền
+ * trong kỳ, cả khoản đã hủy (tiền = 0, dòng mờ). Chỉ vai kế toán (ke_toan:
+ * chủ, quản lý, kế toán). In được, có chỗ ký; CSV cùng cột.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import ChonKy from '../../../../components/kho/ChonKy.astro';
+import BangBaoCao from '../../../../components/kho/BangBaoCao.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import KyTen from '../../../../components/kho/KyTen.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import { DN_SO_THANH_TOAN_NB, NGAY_TOI_DA_KY, docSoThanhToan, kyBaoCao, tinhTong } from '../../../../lib/kho/bao-cao.ts';
+import { congNgay, dinhDangNgay, homNayVn } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('ke_toan')) return Astro.redirect('/noi-bo/kho/bao-cao', 302);
+
+const nn = k.nn;
+const t = dichNB(nn, {
+  inTieuDe: { vi: 'SỔ THANH TOÁN NHÀ CUNG CẤP', en: 'SUPPLIER PAYMENTS LEDGER' },
+  kyDai: { vi: 'Khoảng ngày dài quá — chọn tối đa 1 năm.', en: 'The date range is too long — choose at most 1 year.' },
+  veBaoCao: { vi: '← Báo cáo kho', en: '← Inventory reports' },
+  cacKhoan: { vi: 'Các khoản ở trang Công nợ', en: 'Entries on the Payables page' },
+  chuaBatDau: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory overview' },
+  inSo: { vi: 'In sổ', en: 'Print ledger' },
+  nguoiLap: { vi: 'Người lập', en: 'Prepared by' },
+  keToanTruong: { vi: 'Kế toán trưởng', en: 'Chief accountant' },
+});
+
+const homNay = homNayVn();
+const { tu, den } = kyBaoCao(Astro.url.searchParams, homNay);
+const dn = DN_SO_THANH_TOAN_NB[nn];
+
+let dong: Record<string, unknown>[] = [];
+let loiDoc = k.loiDoc;
+let daDoc = false;
+if (congNgay(tu, NGAY_TOI_DA_KY) < den) {
+  loiDoc = t.kyDai;
+} else if (k.chiNhanh && k.daKhoiTao) {
+  const kq = await docSoThanhToan(k.client, k.chiNhanh.id, tu, den, nn);
+  dong = kq.dong.map(d => ({ ...d, da_huy: d.trang_thai === 'da_huy' }));
+  loiDoc = kq.loi ?? loiDoc;
+  daDoc = !kq.loi;
+}
+// Khoản đã hủy có tiền = 0 nên cộng thẳng vẫn đúng.
+const tong = tinhTong(dn, dong, nn);
+const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDangNgay(den)}`;
+---
+<Kho k={k} huongDan="bao-cao" tieuDe={dn.ten} rong>
+  <InDau tieuDe={t.inTieuDe} soPhieu={kyChu} chiNhanh={k.chiNhanh?.ten} />
+  <h1>{dn.ten}</h1>
+  <p class="kho-khong-in">
+    <a href={`/noi-bo/kho/bao-cao?${new URLSearchParams({ tu, den }).toString()}`}>{t.veBaoCao}</a> ·{' '}
+    <a href="/noi-bo/kho/cong-no?tab=thanh-toan">{t.cacKhoan}</a>
+  </p>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  <ChonKy duong="/noi-bo/kho/bao-cao/so-thanh-toan" tu={tu} den={den} homNay={homNay} csv="/noi-bo/kho/bao-cao/so-thanh-toan.csv" />
+
+  <p class="nb-dan"><strong>{kyChu}</strong>. {dn.moTa}</p>
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">{t.chuaBatDau} <a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
+  ) : daDoc && (
+    <>
+      <BangBaoCao dn={dn} dong={dong} tong={tong} khoaMo="da_huy" />
+      {dong.length > 0 && <NutIn chu={t.inSo} />}
+      <KyTen ten={[t.nguoiLap, t.keToanTruong]} />
+    </>
+  )}
+</Kho>

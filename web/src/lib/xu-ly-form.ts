@@ -75,10 +75,15 @@ export async function xuLyUngTuyen(
 ): Promise<Response | null> {
   if (ctx.request.method !== 'POST') return null;
 
+  // Quay về ĐÚNG chỗ thẻ kết quả (#nop-ho-so), không phải đầu trang: thẻ nằm
+  // dưới danh sách vị trí, và trên điện thoại người nộp xong thấy lại đầu trang
+  // y như lúc chưa bấm — tưởng chưa gửi được, rồi gửi lần hai (26/09/2026).
+  const ve = `${duongDan}#nop-ho-so`;
+
   const client = taoClient();
   if (!client) {
     ghiKetQua(ctx.cookies, { ok: false, loi: CAU.ungTuyenChuaSan[ngonNgu] });
-    return ctx.redirect(duongDan, 303);
+    return ctx.redirect(ve, 303);
   }
 
   let kq: KetQuaNop;
@@ -89,13 +94,13 @@ export async function xuLyUngTuyen(
     // khác nhau nhưng cùng một điều cần nói: KHÔNG CHẮC đã ghi hay chưa.
     // Nói "thất bại" ở đây là nói sai nếu database đã ghi xong rồi mới đứt.
     ghiKetQua(ctx.cookies, { ok: false, loi: CAU.ungTuyenKhongChac[ngonNgu] });
-    return ctx.redirect(duongDan, 303);
+    return ctx.redirect(ve, 303);
   }
 
   ghiKetQua(ctx.cookies, kq.ok
     ? { ok: true, ma: kq.ma, loi: kq.luuY }
     : { ok: false, loi: kq.cau });
-  return ctx.redirect(duongDan, 303);
+  return ctx.redirect(ve, 303);
 }
 
 /** Đọc kết quả của lượt gửi vừa rồi (nếu có) và đổi về dạng component hiểu được. */

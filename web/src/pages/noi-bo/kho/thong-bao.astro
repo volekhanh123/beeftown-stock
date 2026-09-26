@@ -14,7 +14,8 @@ import BaoKho from '../../../components/kho/BaoKho.astro';
 import DongSuKien from '../../../components/kho/DongSuKien.astro';
 import { moTrangKho } from '../../../lib/kho/trang.ts';
 import { docThongBao, daXemThongBao } from '../../../lib/kho/thong-bao.ts';
-import { TEN_NHOM, type NhomSuKien, type SuKien } from '../../../lib/kho/viec.ts';
+import { TEN_NHOM_NB, type NhomSuKien, type SuKien } from '../../../lib/kho/viec.ts';
+import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -26,7 +27,7 @@ const chon = NHOM.includes(Astro.url.searchParams.get('nhom') as NhomSuKien)
 let suKien: SuKien[] = [];
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
-  const r = await docThongBao(k.client, k.chiNhanh.id, 200);
+  const r = await docThongBao(k.client, k.chiNhanh.id, 200, k.nn);
   suKien = r.suKien;
   loiDoc = r.loi ?? loiDoc;
   if (!r.loi) {
@@ -36,20 +37,26 @@ if (k.chiNhanh && k.daKhoiTao) {
 }
 const dem = (n: NhomSuKien) => suKien.filter(e => e.nhom === n).length;
 const hien = chon ? suKien.filter(e => e.nhom === chon) : suKien;
+const t = dichNB(k.nn, {
+  tieuDe: { vi: 'Thông báo', en: 'Notifications' },
+  loc: { vi: 'Lọc thông báo', en: 'Filter notifications' },
+  tatCa: { vi: 'Tất cả', en: 'All' },
+  khongCo: { vi: 'Không có thông báo nào trong 30 ngày qua.', en: 'No notifications in the last 30 days.' },
+});
 ---
-<Kho k={k} tieuDe="Thông báo" huongDan="thong-bao">
-  <h1>Thông báo</h1>
+<Kho k={k} tieuDe={t.tieuDe} huongDan="thong-bao">
+  <h1>{t.tieuDe}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
-  <nav class="kho-the-chon" aria-label="Lọc thông báo">
-    <a href="/noi-bo/kho/thong-bao" aria-current={chon === null ? 'page' : undefined}>Tất cả · {suKien.length}</a>
+  <nav class="kho-the-chon" aria-label={t.loc}>
+    <a href="/noi-bo/kho/thong-bao" aria-current={chon === null ? 'page' : undefined}>{t.tatCa} · {suKien.length}</a>
     {NHOM.map(n => (
-      <a href={`/noi-bo/kho/thong-bao?nhom=${n}`} aria-current={chon === n ? 'page' : undefined}>{TEN_NHOM[n]} · {dem(n)}</a>
+      <a href={`/noi-bo/kho/thong-bao?nhom=${n}`} aria-current={chon === n ? 'page' : undefined}>{TEN_NHOM_NB[n][k.nn]} · {dem(n)}</a>
     ))}
   </nav>
 
   {hien.length === 0 ? (
-    <p class="nb-rong">Không có thông báo nào trong 30 ngày qua.</p>
+    <p class="nb-rong">{t.khongCo}</p>
   ) : (
     <ul class="kho-sk-ds">
       {hien.map(e => <DongSuKien e={e} hienChuaDoc />)}

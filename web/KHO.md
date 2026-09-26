@@ -95,6 +95,8 @@ migration.
 | `/noi-bo/kho/quy-trinh` | Các bước của từng nghiệp vụ (`lib/kho/quy-trinh.ts`), bước đang có việc hiện số đỏ |
 | `/noi-bo/kho/khac` | Mọi ô menu cho màn nhỏ, các màn CRM, đăng xuất |
 | `/noi-bo/kho/huong-dan` | Hướng dẫn trong app, lọc theo vai `?vai=` (nút "?" trỏ tới các mục ở đây — mục 3i) |
+| `/noi-bo/kho/bao-cao` | Trung tâm báo cáo (GĐ8c, mục 3n): mốc nhanh, tóm tắt kỳ, thẻ báo cáo ẩn theo quyền |
+| `/noi-bo/kho/cai-dat/quyen` | Ai làm được gì — bảng vai × việc bằng lời (mục 3n) |
 
 "Xếp ra bán trước" (`goiYXepQuay` trong `lib/kho/trang-chu.ts`): Beeftown **không giảm giá**
 hàng sắp hết hạn. Thay vào đó, mỗi món ở quầy chỉ ra lô còn hạn gần nhất để xếp lên trước.
@@ -106,7 +108,8 @@ Link dùng chung giữa các trang (trang nhận phải đọc được các tha
 - `/noi-bo/kho/nhap?loc=nhap|cho_duyet|tu_choi` (vai xem giá), `/noi-bo/kho/nhan-hang?loc=nhap|cho_duyet|tu_choi|da_duyet`
   (thủ kho), `/noi-bo/kho/nhan-hang/moi?loai=ton_dau`, `/noi-bo/kho/pha-loc?loc=nhap`,
   `/noi-bo/kho/pha-loc/<id>?buoc=ket-qua|xong&ma=<mã>`, `/noi-bo/kho/the-kho/<mặt hàng>?vi_tri=&tu=&den=`
-- `/noi-bo/kho/cong-no?loc=qua_han|den_han|chua_doi_chieu`
+- `/noi-bo/kho/cong-no?tab=ncc|phieu|thanh-toan|theo-doi&loc=qua_han|den_han|chua_doi_chieu|gop` (`?loc=` không `tab` = thẻ Theo phiếu),
+  `/noi-bo/kho/cong-no/tra-hang?lo=<lô>&vi_tri=<nơi>` (trả hàng chỉ kg), `/noi-bo/kho/cong-no/<ncc>/tra-tien?kieu=<cách trả>`
 
 ## 3b. Danh sách phiếu, trang in (GĐ4b)
 
@@ -358,9 +361,9 @@ một bản xem trước:
 
 | Xuất | Là gì |
 |---|---|
-| `MUC_HUONG_DAN` | Mỗi mục một việc: `{ id, vai[], tieuDe, tomTat, buoc[], meo?, anh?, link? }` |
-| `NHOM_VAI` | Thứ tự, tên nhóm: Bắt đầu · Thủ kho · Nhân viên quầy & bếp · Quản lý · Kế toán · Chủ quán |
-| `CAU_HOI` | Câu hỏi thường gặp `{ id: 'hoi-…', hoi, dap }` (≥ 15 câu) |
+| `MUC_HUONG_DAN` | Mỗi mục một việc: `{ id, vai[], tieuDe, tomTat, buoc[], meo?, anh?, link? }` — mọi câu là cặp `{ vi, en }` |
+| `NHOM_VAI` | Thứ tự, tên nhóm: Bắt đầu · Thủ kho · Nhân viên quầy & bếp · Quản lý · Kế toán · Chủ quán (`ten: { vi, en }`) |
+| `CAU_HOI` | Câu hỏi thường gặp `{ id: 'hoi-…', hoi, dap }` (≥ 15 câu, `hoi` / `dap` là `{ vi, en }`) |
 | `dinhDang(s)` | Escape HTML rồi đổi `**x**` → `<strong>x</strong>` — dùng với `set:html` |
 | `vaiHuongDan(vaiTro)` | Vai tài khoản → nhóm mặc định (vai lạ → Bắt đầu) |
 
@@ -375,7 +378,11 @@ mọi `#id` luôn có trong HTML, nút "?" của màn nào cũng tới đúng ch
    `vai`; các vai sau chỉ để hiện trong "Việc của tôi" của vai đó.
 2. Câu chữ: ngắn, động từ trước, **đúng chữ trên nút** (đọc trang thật: `bấm **Gửi duyệt**`). Không thuật
    ngữ kỹ thuật. Mục có vai `thu_kho` / `nhan_vien_quay` **không nhắc tiền** (giá nhập, giá vốn, đơn giá,
-   thành tiền, lãi, công nợ — test quét).
+   thành tiền, lãi, công nợ — test quét, ở cả hai thứ tiếng).
+   Mỗi câu viết hai thứ tiếng cạnh nhau: `tieuDe: { vi: '…', en: '…' }`, trang đọc `[nn]`. Bản tiếng Anh
+   dùng đúng chữ trên nút của màn tiếng Anh (tên menu, thao tác nhanh ở `dieu-huong.ts`). Tên do database
+   giữ (lý do, chỗ để) không dịch; ảnh chụp vẫn là màn tiếng Việt, chỉ `anh.chu` có hai thứ tiếng.
+   `lib/kho/quy-trinh.ts` cùng cách: tên, bước, lời dặn đều là `{ vi, en }`.
 3. `link.href` phải là trang có thật (test dùng bảng đường dẫn như nhóm 1).
 4. Trang kho mới: truyền `huongDan="<id>"` cho `<Kho>`. Trang nhiều vai / nhiều bước thì dùng biểu thức
    (`huongDan={laQuay ? 'yeu-cau' : 'ra-quay'}`) hoặc `const huongDan = … ;` — test đọc các chuỗi
@@ -400,6 +407,361 @@ diện màn đó đổi nhiều. Danh sách tên: `hd-trang-chu-thu-kho`, `hd-nh
 **Test**: `crm/test/test-kho-giao-dien.mjs` nhóm 5 — mọi trang kho (trừ Hướng dẫn) có `huongDan` trỏ
 mục có thật; id không trùng, đúng dạng, giữ id cũ; ≥ 15 câu hỏi; ảnh có file, là PNG đúng cỡ, ≤ 120KB;
 link có thật; phần thủ kho / NV quầy không nhắc tiền; `dinhDang` escape đúng.
+
+## 3j. Đồng bộ bán hàng iPOS (GĐ7a 0037 · GĐ7c 0042: iPOS tự đẩy hóa đơn sang)
+
+Tài liệu thật của iPOS (Postman "IPOS HUB API INTERGRATION FOR MERCHANT") khác giả định của GĐ7a:
+**không có API kéo danh sách hóa đơn**. Khi thu ngân in hóa đơn, iPOS Hub **POST** JSON thô tới
+`callback_url` HTTPS của mình (cấu hình trong CMS partner.foodbook.vn). Web chỉ nhận rồi chuyển tiếp;
+khớp món, đổi số lượng ra kg / gói, FEFO, thiếu hàng, bắn trùng, sửa HĐ đều nằm trong SQL (0037, 0042,
+test trên PGlite).
+
+```
+iPOS Hub ─POST─► https://beeftown.vn/hook/ipos/<IPOS_CALLBACK_KHOA>
+  └ src/worker.ts fetch: /hook/ipos/* chặn TRƯỚC Astro ─► lib/kho/ipos-hook.ts xuLyHookIpos
+       (web/src/pages/hook/ipos/[khoa].ts gọi cùng hàm — cho astro dev)
+       1. khóa so sánh thời gian hằng (sai 404, thiếu bí mật 503), body ≤ 256KB (413), JSON (400)
+       2. lib/kho/ipos.ts phanTichCallback (THUẦN): Event 11 → HĐ chuẩn hóa, bỏ thông tin khách
+          Event 12 item_changed → cờ thực đơn đổi · event khác → 200 bỏ qua
+       3. đăng nhập tài khoản máy may_ipos (client anon riêng, không ghi phiên ra đâu cả; dangNhapMayIposNho
+          giữ phiên trong BỘ NHỚ isolate tới 2 phút trước khi hết hạn — mỗi hóa đơn một lần đăng nhập sẽ
+          chạm giới hạn đăng nhập của Supabase Auth giờ cao điểm)
+       4. kho_ipos_tim_chi_nhanh(pos_parent, pos_id)   (không khớp → 202 + log, Hub không bắn lại mãi)
+       5. kho_ipos_nhan_callback(cn, HĐ) → 200 {"ok":true} CHỈ khi đã vào hộp thư; lỗi database → 500
+          (Event 12: kho_ipos_bao_menu_doi)
+
+Cron */5 (wrangler.toml [triggers]) ─► src/worker.ts scheduled() ─► dongBoTatCa(env)
+  └ lib/kho/ipos-dong-bo.ts: đăng nhập máy → kho_cn_duoc('dong_bo_ban') → mỗi chi nhánh dongBoIpos():
+       1. kho_ipos_bat_dau(cn, 'cron'|'tay')           → api_url, pos, menu_luc, menu_can_lam_moi
+       2. kho_ipos_nhan(cn, lan_id, [], null)          → THỬ LẠI hàng chờ (chưa khớp, thiếu hàng)
+       3. tới hạn (iPOS báo đổi / quá 60 phút / bấm tay): GET {api_url}/v2/items?access_token&pos_parent
+          &pos_id&menu_type=DELI → phanTichMenu (không lấy giá) → kho_ipos_luu_menu
+       4. kho_ipos_ket_thuc(lan_id, lỗi đã xóa token | null)
+```
+
+Payload HĐ (Event 11 → `kho_ipos_nhan_callback`): `{ ma_hd: "<pos_id>:<tran_id>", thoi_diem_ban:
+tran_date + "+07:00", da_huy, raw, dong: [{ khoa_dong: chỉ số (từ 0), ma_ipos: item_id, ten_ipos:
+item_name, so_luong: quantity, thanh_tien: amount }] }`. Dòng hàng iPOS **không có mã vạch, không kg
+từng nhãn**; hai dòng cùng item_id là hai dòng. `raw` bỏ `membership_*`, `delivery_info`,
+`payment_info`, `sale_note`, mọi khóa có phone / email / address / token (database có lưới thứ hai,
+`kho_ipos_bo_pii`). Bắn trùng (Hub có thể bắn double): cùng `ma_hd` cùng nội dung → bỏ; nội dung khác →
+đảo ngược rồi ghi lại.
+
+| Chỗ | Việc |
+|---|---|
+| `lib/kho/ipos.ts` | Thuần, không import gì. `TRUONG_IPOS` (mọi điều về API, ghi nguồn tài liệu), `phanTichCallback`, `phanTichMenu`, `taoUrlMenu`, `docThoiDiem`, `xoaToken`, `bangNhauHang`, `boThongTinKhach` |
+| `lib/kho/ipos-hook.ts` | `xuLyHookIpos(request, khoa, { env?, taoClient?, ghiLog? })` → `Response` (không bao giờ ném lỗi), `khoaTuDuong` |
+| `lib/kho/ipos-dong-bo.ts` | `dongBoIpos({ supabase, chiNhanhId, nguon, env?, fetchFn?, docMenu? })`, `dongBoTatCa(env)`, `dangNhapMayIpos`, `layBiMatIpos`, `trangThaiBiMatIpos` (chỉ có / không), `layKhoaCallback` (chỉ cho chủ) |
+| `src/worker.ts` | `fetch`: `/hook/ipos/*` → `xuLyHookIpos`, còn lại = `handle` của `@astrojs/cloudflare/handler`; `scheduled` |
+| `/noi-bo/kho/cai-dat/ipos` | Kết nối iPOS: đèn, **lần nhận hóa đơn gần nhất**, **địa chỉ nhận hóa đơn** (chủ thấy đủ khóa, người khác thấy che), 4 việc nhờ iPOS, "Cập nhật ngay" (= thử lại hàng chờ + đọc lại thực đơn, phiên người bấm, `dong_bo_ban`, giới hạn 60 giây), cấu hình (không còn ô đường dẫn hóa đơn; có "báo mất kết nối sau … giờ"), chuyển nguồn số bán |
+| `/noi-bo/kho/ban-ipos` | Hàng đợi: Chưa khớp → Ghép món; Thiếu hàng → Thử lại / Hàng ngoài sổ / Bỏ qua (`kho_ipos_xu_ly_dong`) |
+| `/noi-bo/kho/ban-ipos/ghep` | Ghép món + **Bán theo** kg / gói (+ "mỗi gói = … kg") / suất (món chế biến) → `kho_ipos_gan_ma_v2`; **Thực đơn iPOS** (`kho_ipos_menu`, tìm + chia trang GĐ4b) để ghép trước khi bán |
+
+**Tại sao chặn /hook/ipos ở worker.ts.** Astro bật `security.checkOrigin`: POST có `content-type`
+kiểu form (`text/plain`, `x-www-form-urlencoded`, `multipart/form-data`) hoặc không có `content-type` mà
+`Origin` khác tên miền → 403. Tài liệu nói Hub gửi "RAW data" — có thể là `text/plain` không `Origin`.
+Hook không đọc cookie nên không có gì để CSRF; chặn trước Astro là đúng chỗ. Route
+`src/pages/hook/ipos/[khoa].ts` giữ lại cho `astro dev` (gửi `application/json` là qua được chốt).
+
+**"Bán theo" (0042, `kho_ipos_ma_hang.don_vi_ban`).** iPOS chỉ gửi `quantity`. Database đổi:
+`kg` → kg bán = quantity (món đếm gói: lấy gói nguyên theo hạn gần nhất cho tổng kg gần nhất, lệch ghi hao
+hụt); `goi` → số gói = quantity (món theo kg thì kg = quantity × "mỗi gói = … kg"); `suat` → món chế biến,
+dòng `bo_qua`, kho không trừ, định lượng GĐ7b đếm suất từ `so_luong`; trống → theo món kho.
+
+**Mất kết nối / chặn đếm quầy (0042).** Không có hóa đơn ≠ mất kết nối (quán vắng). Đèn đỏ + chuông
+`ipos_mat_ket_noi` khi: lượt cập nhật cuối lỗi (thử lại / đọc thực đơn), hoặc TRONG giờ mở cửa quá
+`gio_mat_ket_noi` giờ (mặc định 3, chủ đổi 1–12) không nhận hóa đơn nào. Gửi đếm quầy chỉ bị chặn khi hộp
+thư chưa được xử lý trong 10 phút (`hop_thu_luc` — cron 5 phút cập nhật), không còn theo watermark.
+
+**Worker có `main` riêng.** `wrangler.toml` khai `main = "./src/worker.ts"` — adapter
+`@astrojs/cloudflare` v14 chỉ tự điền `main` khi nó vắng mặt và build chính file nguồn này thành
+`dist/server/entry.mjs`. Sau `npm run build` phải thấy: `dist/server/wrangler.json` có
+`"triggers":{"crons":["*/5 * * * *"]}` và `entry.mjs` có `scheduled(` (test-kho-ipos-web nhóm 7 kiểm).
+Cron giờ chỉ thử lại hàng chờ + đọc thực đơn — lượt rất nhẹ.
+
+**Bí mật** (bí mật Worker — **không** đặt trong `wrangler.toml [vars]`, `.env`, README, không commit giá trị):
+
+| Tên | Là gì |
+|---|---|
+| `IPOS_CALLBACK_KHOA` | Khóa bí mật trong địa chỉ nhận hóa đơn — chuỗi ngẫu nhiên **≥ 32 ký tự** (`openssl rand -hex 24`). Thiếu / ngắn → hook trả 503. Lộ → đặt khóa mới, gửi lại địa chỉ cho iPOS |
+| `KHO_IPOS_EMAIL`, `KHO_IPOS_MAT_KHAU` | Tài khoản máy vai `may_ipos` (chủ tạo ở Cài đặt → Nhân viên & máy, mỗi chi nhánh một máy). Hook và cron đều dùng — thiếu thì hook trả 503 |
+| `IPOS_ACCESS_TOKEN` | Token API iPOS — **chỉ để đọc thực đơn** `/v2/items`. Thiếu → không có thực đơn, hóa đơn vẫn nhận. (Token bản thử từng bị dán vào chat / nằm trong tài liệu mẫu — coi như đã lộ, xin token mới cho bản chạy thật) |
+
+```bash
+cd web
+npx wrangler secret put IPOS_CALLBACK_KHOA
+npx wrangler secret put KHO_IPOS_EMAIL
+npx wrangler secret put KHO_IPOS_MAT_KHAU
+npx wrangler secret put IPOS_ACCESS_TOKEN
+```
+
+Đọc theo thứ tự: tham số `env` (của `fetch` / `scheduled`) → `import { env } from 'cloudflare:workers'` →
+`process.env` (chạy thử bằng Node). Chạy thử cục bộ: đặt bí mật trong `web/.dev.vars` (bị `.gitignore` chặn).
+
+**Token / khóa không bao giờ lộ:** `kho_ipos_bat_dau` không trả token; URL có token chỉ nằm trong lời gọi
+`fetch`; mọi câu lỗi đi qua `xoaToken` trước khi về trang / log / `kho_ipos_ket_thuc` (database có thêm một
+lưới nữa và `kho_ipos_luu_cau_hinh` từ chối mọi thứ có chữ "token"). Hook **không log body**; câu log bị xóa
+khóa, token, mật khẩu. Khóa callback chỉ đưa ra trang cho chủ (`cai_dat_goc`). Test quét cả repo tìm chuỗi
+giống token (kể cả kiểu 32 ký tự in hoa + số như token mẫu trong tài liệu iPOS).
+
+### Việc phải nhờ iPOS
+
+1. Cấu hình `callback_url` của điểm bán = địa chỉ trên màn Kết nối iPOS (`https://beeftown.vn/hook/ipos/<khóa>`).
+2. **Bật bắn MỌI hóa đơn của điểm bán** — mặc định Hub chỉ bắn đơn "liên quan partner" (voucher, đơn
+   giao hàng / đặt bàn do partner tạo, ví partner…). Thiếu bước này kho không trừ đủ.
+3. Cấp `access_token` bản thật (đặt bí mật Worker) và địa chỉ API thật (`api.foodbook.vn` — hiện mạng máy
+   thử chỉ mở tới `apitest.foodbook.vn`).
+4. Cho biết món thịt ở quầy bán theo **kg** hay theo **gói** trên máy iPOS → chọn "Bán theo" ở Ghép món.
+
+### Câu hỏi còn mở (chưa có trong tài liệu)
+
+1. **Hủy hóa đơn** báo thế nào? Tài liệu không có event hủy. Bộ đọc nhận mềm `is_cancel` / `status`
+   (CHƯA XÁC NHẬN); HĐ bắn lại cùng `tran_id` mà nội dung khác thì database đảo ngược rồi ghi lại.
+2. Món thịt ở quầy bán theo kg hay theo gói (quyết định "Bán theo" mặc định).
+3. Hub có **thử lại** khi mình trả 500 / 503 không, thử mấy lần, cách nhau bao lâu? (Nếu không, hóa đơn
+   lúc database lỗi bị mất — cần iPOS gửi lại hoặc đối chiếu tay.)
+4. `Content-Type` Hub gửi (JSON hay text/plain) và Hub có ký / gửi header xác thực nào không (hiện chỉ dựa
+   vào khóa bí mật trong đường dẫn).
+5. `pos_id` trong callback có đúng là số điểm bán cấu hình ở màn Kết nối iPOS (`kho_ipos_tim_chi_nhanh`
+   so `pos_parent` không phân biệt hoa thường).
+
+**Chạy thử cục bộ:**
+
+```bash
+cd web && npm run build
+npx wrangler dev --config dist/server/wrangler.json      # đọc bí mật từ web/.dev.vars
+curl "http://localhost:8787/cdn-cgi/handler/scheduled"   # gọi scheduled một lần, log "[iPOS] …"
+curl -X POST -H 'content-type: text/plain' --data @event11.json "http://localhost:8787/hook/ipos/<khóa>"
+```
+
+(`/__scheduled` của `--test-scheduled` bị router Astro trả 404 — dùng `/cdn-cgi/handler/scheduled`.)
+
+## 3k. Định lượng món · đối chiếu định mức bếp (GĐ7b, migration 0038)
+
+Chủ quán đã chốt: **định lượng món chỉ để đối chiếu**. Bếp vẫn nhận thịt bằng phiếu Xuất bếp; bếp
+không phải vị trí tồn; kho **không** tự trừ theo định lượng.
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/cai-dat/dinh-luong` | `danh_muc` | Danh sách món (tìm tên / mã iPOS không dấu, chip "Chưa có định lượng", "Ngừng bán", 30 món một trang — mọi thứ trên URL). `?mon=<id>` mở lưới mặt hàng × gram. Nút "Lấy món từ iPOS", "+ Thêm một món", "Dán định lượng từ Excel" → Xem trước → Áp dụng |
+| `/noi-bo/kho/bao-cao/dinh-muc?tu=&den=` | `xem` (cột "Tiền lệch" chỉ `xem_gia`) | Theo mặt hàng: bếp nhận kg, lẽ ra dùng kg, lệch kg / %, số suất bán; màu đỏ / vàng / xanh / xám (`mucLech`). Mốc nhanh như trang Báo cáo. CSV `bao-cao/dinh-muc.csv` |
+
+**Dữ liệu** (0038, chi tiết trong comment đầu migration): `kho_mon` theo **chi nhánh** (mã món iPOS riêng từng
+máy), `kho_dinh_luong` (món × mặt hàng × gram, 0 < gram ≤ 10.000). Hai bảng không có cột tiền.
+
+- **Bếp nhận** = dòng sổ `xuat_bep` trong kỳ: phiếu Xuất bếp **và** phần "chuyển bếp" khi chốt pha lóc
+  (mở lại phiên pha thì trừ lại) — **trừ** phiếu Xuất bếp có lý do `kho_ly_do.tinh_dinh_muc = false` (0044, xem dưới).
+- **Lẽ ra dùng** = số suất × gram. Số suất = dòng iPOS có mã khớp `kho_mon.ma_ipos`; bỏ hóa đơn hủy, dòng `da_huy`,
+  và dòng `da_ghi` (hàng bán thẳng từ quầy, đã trừ kho — bếp không nhận). Món ăn thường ghép kiểu `bo_qua` ở
+  Bán hàng iPOS → vẫn được đếm.
+- "Lấy món từ iPOS" (`kho_mon_tu_ipos`) lấy mã ghép kiểu `bo_qua` + mã bán chưa ghép; **không** lấy kiểu `mon` /
+  `goi_can` (hàng kho bán nguyên gói). `kho_luu_mon` cũng từ chối mã đang ghép hai kiểu đó.
+- Lệch % = (bếp nhận − lẽ ra dùng) ÷ lẽ ra dùng; `vuot_nguong` khi |lệch| **>** `nguong_dinh_muc_pt` (sửa ở
+  Thiết lập → Ngưỡng cảnh báo). Chưa có suất bán nào khớp món → `chua_co_ban`, không đánh giá.
+- Tiền lệch = kg lệch × giá vốn trung bình phần bếp nhận trong kỳ (kỳ bếp không nhận mặt hàng đó: giá vốn TB
+  mọi lô của mặt hàng ở chi nhánh); database trả null cho vai không xem giá,
+  web bỏ hẳn cột ở bảng và CSV (`cotDinhMuc(coGia)`).
+
+**Web** (`lib/kho/dinh-luong.ts`): hàm thuần `tachDanDinhLuong` (Tab hoặc `;`, ô trong ngoặc kép giữ dấu ngăn,
+tiêu đề Món / Mặt hàng / Gram xếp tùy ý, `dong` = số dòng trong ô dán — câu lỗi của database dùng số này),
+`docLuoiDinhLuong` (ô `mh_<i>`, `gram_<i>`, `bo_<i>`, `so_dong`), `phienBanDinhLuong`, `locMon`, `mucLech`,
+`cotDinhMuc` / `dinhNghiaDinhMuc` (dùng `taoCsv` / `tinhTong` của `bao-cao.ts`; dòng tổng không tính % chung).
+Khớp món / mặt hàng, kiểm gram, tạo món mới khi áp dụng: **database** (`kho_nhap_dinh_luong`), không lặp ở web.
+
+- Lưới một món: lưu = **thay toàn bộ** (`kho_luu_dinh_luong`); dòng trống / tích "Bỏ" là không có. Nút "Thêm dòng"
+  (cùng form, `viec=them_dong`) dựng lại lưới với 3 dòng trống, không lưu. Form mang `phien_ban` = chuỗi
+  mặt hàng:gram lúc mở; lưu mà database đã khác thì từ chối, không đè.
+- Dán Excel áp dụng chỉ thêm / sửa gram, không xóa mặt hàng vắng mặt trong bảng dán; còn dòng lỗi thì từ chối cả
+  bảng (trang hiện lại bản xem trước). Áp dụng lại cùng bảng không đổi gì — không cần `ma_gui`.
+- **Cơm nhân viên không tính định mức** (chủ chốt 26/09, migration 0044): cột `kho_ly_do.tinh_dinh_muc` (mặc định
+  `true`; lý do dùng chung toàn thương hiệu). Lý do Xuất bếp tên "Cơm nhân viên" (so tên chuẩn hóa: NFC, chữ thường,
+  gộp khoảng trắng) được đặt `false` — cả dòng đã có lẫn dòng thêm sau (trigger BEFORE INSERT
+  `kho_ly_do_dinh_muc_mac_dinh`; chỉ khi thêm, quản lý bật lại được). `kho_dinh_muc_tinh` bỏ dòng sổ có dòng gốc
+  (dòng đảo ngược xét qua `dao_cua`) thuộc phiếu xuất có lý do `false`; chuyển bếp khi pha lóc giữ nguyên. Kho vẫn
+  trừ đủ kg — chỉ báo cáo định mức và cảnh báo `dinh_muc_lech` không cộng. Web: ô tích "Tính vào định mức bếp" ở
+  Vị trí và lý do (chỉ bảng Xuất bếp), một câu dưới tiêu đề báo cáo định mức (link chỉ hiện với `danh_muc`).
+  Lý do khác như "Gần hết hạn" vẫn tính — muốn bỏ thì quản lý bỏ tích.
+- Ô menu "Định mức bếp" / "Định lượng món" nằm dưới đường của Báo cáo / Thiết lập: `dangO` chỉ cho ô cụ thể nhất sáng.
+- Cảnh báo `dinh_muc_lech` (quản lý, chủ): 7 ngày gần nhất, mỗi mặt hàng lệch một dòng; nút "Xem" mở báo cáo đúng
+  7 ngày đó. Số đỏ ở ô menu "Định mức bếp" (`quyen: duyet`). Ô "Định lượng món" (`danh_muc`) nằm trong Khác và
+  trong phần danh mục của Thiết lập. Bước Thiết lập `dinh_muc` là **định mức tồn quầy** — không liên quan.
+- Hướng dẫn: mục `dinh-luong` (quản lý, chủ), nút "?" của cả hai trang.
+- Chưa làm: cờ "món không dùng thịt" (đồ uống lấy từ iPOS nằm ở "Chưa có định lượng" tới khi chọn "Ngừng bán /
+  không dùng thịt").
+
+Test: `test-kho-dinh-luong.mjs` (database), `test-kho-dinh-luong-web.mjs` (hàm thuần, trang), nhóm 10c của
+`test-kho-thu-kho.mjs` (thủ kho / NV quầy không thấy tiền lệch).
+
+## 3l. Đặt hàng nhà cung cấp · nhận theo đơn · đánh giá NCC (GĐ8a, migration 0039)
+
+Chủ quán đã chốt: quán lập đơn đặt hàng NCC ngay trong phần mềm, có **gợi ý số kg**; in / lưu PDF gửi
+Zalo; hàng về thì nhận theo đơn; cuối kỳ xem đánh giá NCC.
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/dat-hang` | `nhap` hoặc `xem_gia` | Danh sách đơn: chip `?loc=nhap\|dang_cho\|da_nhan\|huy` (`dang_cho` = đã gửi + nhận một phần), tìm / ngày / của tôi / trang như GĐ4b. Vai xem giá thấy thêm tiền dự kiến (`kho_v_don_dat`) |
+| `/noi-bo/kho/dat-hang/moi?ncc=<id>` | `nhap` | Chọn NCC (nút lớn như màn nhận hàng) → bảng gợi ý `kho_goi_y_dat_hang` điền sẵn số kg (+ số gói nếu món đếm gói), lý do một dòng nhỏ; sửa được, trống / 0 = không đặt; "+ Thêm dòng" món khác. **Lưu nháp**, hoặc **Lưu và gửi →** (nhap + duyet_nhap) → mở trang in |
+| `/noi-bo/kho/dat-hang/<id>` | `nhap` hoặc `xem_gia` | Nháp: sửa món / kg / ngày giao / ghi chú (`phien_ban`), **Lưu và gửi cho nhà cung cấp**, bỏ đơn. Đã gửi: **Nhận hàng theo đơn này** (`kho_tao_phieu_nhap_tu_don`, `ma_gui`) → `/noi-bo/kho/nhan-hang/<phiếu>`; hủy đơn (quản lý / chủ, bắt buộc lý do). Bảng đặt / đã nhận / còn thiếu; phiếu nhận hàng đã gắn |
+| `/noi-bo/kho/dat-hang/<id>/in` | `nhap` hoặc `xem_gia` | Tờ A4: logo, quán, số đơn, ngày đặt / giao, NCC (liên hệ chỉ vai xem giá — bảng NCC có RLS xem_gia), món, kg, gói, ghi chú, chỗ ký. Giá chỉ khi xem giá **và** tích "In kèm giá dự kiến" (`?gia=1`). Nút **In / Lưu PDF**, **Chia sẻ (Zalo…)** (Web Share, `in-an.js`), ô chép tin nhắn (`tinNhanDon`) |
+| `/noi-bo/kho/bao-cao/ncc?tu=&den=` | `nhap` hoặc `xem_gia` | Đánh giá NCC (`kho_bao_cao_ncc`): lần giao, kg, đơn thiếu / trễ, thu hồi pha TB, kg trả, điểm sao; vai xem giá thêm giá TB/kg, lệch hóa đơn, ngày trả tiền TB. CSV `bao-cao/ncc.csv` (cùng quyền) |
+
+- **Ai làm gì** (database chặn — đầu 0039): lập / sửa **nháp** = `nhap` (thủ kho cũng lập, chỉ kg); giá dự kiến =
+  `nhap + xem_gia`; **gửi** và hủy đơn đã gửi = `nhap + duyet_nhap` (quản lý, chủ — kế toán chỉ xem). Web ẩn nút
+  theo đúng luật đó (`guiDuoc`, `huyDuoc`).
+- **Thủ kho không thấy tiền**: danh sách, đơn, gợi ý đọc bằng `kho_ds_don_dat_kg`, `kho_doc_don_dat_kg`,
+  `kho_goi_y_dat_hang` (không cột tiền). Giá dự kiến đọc thẳng `kho_don_dat_dong` / `kho_v_don_dat` (RLS xem_gia) **chỉ khi**
+  `k.duoc('xem_gia')`. `docFormDonDat(form, mon, { coGia })`: không xem giá thì **không dòng nào có khóa**
+  `don_gia_du_kien` (database từ chối nếu có; dòng thiếu khóa giữ giá cũ theo mặt hàng); xem giá thì mọi dòng có khóa,
+  ô trống = null (xóa giá).
+- **Form đơn** (một dạng cho lập và sửa): dòng có sẵn = ô ẩn `mh` lặp lại + `kg_<mặt hàng>`, `goi_<…>`, `gia_<…>`;
+  dòng thêm = `t<i>_mh`, `t<i>_kg`, `t<i>_goi`, `t<i>_gia`, số dòng `so_dong` (≤ 30). Lỗi thì hiện lại đúng chữ đã gõ
+  (`chuFormDonDat`), giữ `ma_gui`.
+- **Gợi ý** (công thức ở comment `kho_goi_y_dat_hang`): nên đặt = mức cần − (tồn kho + quầy còn hạn + đang mang ra quầy +
+  đã đặt chưa về); mức cần = `kho_toi_da_kg` của món, chưa cài thì dùng TB/ngày 28 ngày × (số ngày giao + 3). Món của NCC
+  = món NCC đó giao gần nhất. Trang chỉ hiện số và `ly_do` database trả — không tính lại ở web.
+- **Nhận theo đơn**: `nhan-hang/moi` có phần "Nhận theo đơn đặt" (đơn `dang_cho`, `docDonChoNhan`) — bấm là tạo phiếu
+  nháp điền sẵn món / kg còn thiếu (món đã đủ — ≥ 95% kg hoặc đủ gói — không điền lại) rồi mở bước 2 (ảnh hóa đơn chụp bằng "Thêm ảnh"). `nhan-hang/<id>` đọc khóa
+  `don_dat` của `kho_doc_phieu_nhap_kg`: mỗi dòng nhãn "Đặt N kg" (món không có trong đơn: "Ngoài đơn"), form thêm món
+  nhắc món trong đơn chưa cân. Trạng thái đơn tự đổi khi phiếu được gửi / duyệt / trả về (trigger 0039).
+- **Cài đặt**: NCC có ô "Số ngày giao hàng" (0–60, trống = 1) và "Thứ giao hàng" (ô tích `thu_giao`; không tích / tích
+  đủ 7 = ngày nào cũng giao → null) — ghi thẳng bảng như các cột NCC khác. Mặt hàng có "Kho lạnh tối thiểu / tối đa
+  (kg)" — `luuMatHang` ghi qua `kho_luu_muc_dat_hang` sau khi lưu mặt hàng (chỉ khi đổi).
+- Menu: ô "Đặt hàng" (`quyen: nhap`, số đỏ `don_dat_tre` — chỉ quản lý / chủ nhận), thao tác nhanh "Đặt hàng" của quản
+  lý / chủ, bước đầu quy trình Nhận hàng. Kế toán vào qua link (Báo cáo → Đánh giá NCC → Đơn đặt hàng).
+- Hướng dẫn: `dat-hang` (quản lý, chủ, kế toán — có nhắc giá), `danh-gia-ncc`, `nhan-theo-don` (thủ kho — không nhắc
+  tiền), câu hỏi `hoi-goi-y-dat-hang`.
+- Chưa làm: cột "NCC chính" của mặt hàng (gợi ý theo NCC giao gần nhất); gửi PDF thật qua Zalo (Web Share chỉ gửi chữ —
+  file PDF lưu bằng hộp in của trình duyệt).
+
+Test: `test-kho-dat-hang.mjs` (database), `test-kho-dat-hang-web.mjs` (hàm thuần, các hàm của `dat-hang.ts` chạy thật trên
+PGlite qua client giả, mã nguồn trang), nhóm 10d của `test-kho-thu-kho.mjs`.
+
+## 3m. Công nợ kiểu iPOS · hóa đơn gộp · bù trừ / hoàn tiền · trả hàng hai bước · MISA (GĐ8b, migration 0040)
+
+Chủ quán đã chốt: hóa đơn NCC có **cả hai kiểu** (mỗi lần giao một hóa đơn, hoặc gộp nhiều lần giao);
+kế toán dùng **MISA** nhưng chưa có file mẫu. Chỉ vai `ke_toan` (chủ, quản lý, kế toán) thấy các màn
+tiền ở giai đoạn này; thủ kho chỉ làm phần **kg** của trả hàng.
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/cong-no` | `ke_toan` | Dải công thức **Nợ đầu kỳ + Mua − Đã trả − Giảm trừ = Còn phải trả** (`congThucCongNo`, "Xem ví dụ" là `<details>`), 4 ô số (quá hạn, đến hạn 7 ngày, chưa đối chiếu, trả hàng chờ tiền), thẻ `?tab=ncc\|phieu\|thanh-toan\|theo-doi`, chip `?loc=qua_han\|den_han\|chua_doi_chieu\|gop`, tìm + ngày + trang như GĐ4b, dòng tổng cuối bảng. Link cũ `?loc=…` không có `tab` mở thẻ Theo phiếu |
+| `/noi-bo/kho/cong-no/<ncc>` | `ke_toan` | Số dư, phiếu còn việc, nút **Trả tiền** / **Đối chiếu hóa đơn gộp** / **In biên bản đối chiếu**, mục "Hóa đơn gộp" (bỏ đối chiếu, bắt buộc lý do), dòng đỏ khi số tài khoản vừa đổi ≤ 30 ngày (`doiTaiKhoanGanDay`). Phiếu trong hóa đơn gộp không có form đối chiếu lẻ |
+| `/noi-bo/kho/cong-no/<ncc>/tra-tien` | `ke_toan` | Bước 1: cách trả (`KIEU_TRA`: chuyển khoản, tiền mặt, bù trừ, NCC hoàn tiền, giảm trừ) + số tiền → **Xem trước cách chia** hoặc **Trả đủ** (`kho_xem_truoc_thanh_toan`, `p_so_tien` null). Bước 2: bảng chia sửa được, ngày, ghi chú, ảnh → `kho_ghi_thanh_toan_v2` (`ma_gui`) |
+| `/noi-bo/kho/cong-no/<ncc>/hoa-don-gop` | `ke_toan` | Tích phiếu (chưa đối chiếu tích sẵn; `?tu=&den=` lọc ngày nhập), số HĐ, ngày, tổng, thuế → **Xem trước** (`xemTruocHoaDonGop`) → **Lưu đối chiếu** (`kho_doi_chieu_hoa_don_gop`, `ma_gui`); lệch tổng phiếu bắt buộc lý do |
+| `/noi-bo/kho/cong-no/<ncc>/doi-chieu?tu=&den=` | `ke_toan` | Biên bản đối chiếu công nợ A4 (`kho_cong_no_theo_ky`): đầu kỳ, từng chứng từ, số dư chạy, cuối kỳ, câu xác nhận, chỗ ký. `InDau` + `KyTen` + `NutIn` |
+| `/noi-bo/kho/cong-no/tra-hang` | `nhap` hoặc `ke_toan` | Không tham số: danh sách lô **nhập mua** ở kho / quầy (tìm, trang) → **Trả lô này**; kế toán thấy thêm `#cho-tien`. `?lo=&vi_tri=`: ghi **kg** (`kho_tra_hang_ghi_kg`, ảnh vào thư mục `huy`). `?phieu=` (kế toán): trả một bước có tiền như GĐ3 |
+| `/noi-bo/kho/cong-no/misa` | `ke_toan` | Kỳ + loại (`mua_hang` / `thanh_toan`) + dấu ngăn → xem trước 50 dòng (đúng cột file), số dòng thiếu mã (link sửa NCC, ô mã MISA mặt hàng ngay tại chỗ — `kho_luu_ma_misa_mat_hang`), mã tài khoản mặc định (`kho_luu_misa_tk`). Tải: `/noi-bo/kho/cong-no/misa.csv?tu=&den=&loai=&ngan=phay` |
+
+**Thanh toán bốn loại.** View giữ công thức cũ: `da_tra` = tiền trả + bù trừ − NCC hoàn tiền, nên
+còn nợ = phải trả − đã trả − giảm trừ không đổi và mọi chỗ cũ chạy đúng. Chi tiết ở cột cuối view
+(`tien_tra`, `bu_tru`, `hoan_tien`, `hoa_don_gop_id`; view NCC thêm `so_phieu_hoa_don_gop`,
+`no_den_han_7_ngay`). Bù trừ bắt buộc ghi chú; NCC hoàn tiền chỉ chia vào phiếu đang âm, không vượt 0.
+Form Trả tiền: bảng chia có ô ẩn `pb<i>_goi_y` (số database gợi ý). Không ô nào khác gợi ý →
+`docFormTraTien` gửi `p_phan_bo` rỗng, database tự chia lại lúc ghi; sửa bất kỳ ô nào → gửi đủ phần chia,
+tổng phải bằng số tiền. Hàm cũ `kho_ghi_thanh_toan` / `ghiThanhToan` giữ nguyên (không trang nào gọi nữa).
+
+**Hóa đơn gộp.** Web xếp phiếu theo ngày nhập rồi số phiếu và chia bằng `chiaSoDuLonNhat` — y như
+database; test so từng đồng với `kho_hoa_don_phieu`. Chỉ phiếu mua (không gộp nợ đầu kỳ), ≥ 2 phiếu.
+Bỏ đối chiếu gộp chỉ khi các phiếu chưa có khoản tiền nào. Cài đặt NCC có "Kiểu hóa đơn" (chỉ để
+nhớ — không chặn gì) và "Mã MISA".
+
+**Trả hàng hai bước.** Thủ kho: Tồn kho (link nhỏ **Trả NCC** ở lô `nguon = 'nhap'`, người có `nhap`),
+thao tác nhanh **Trả hàng NCC**, hoặc trang trả hàng → ghi kg một lô. Phiếu XT- `cho_xac_nhan_tien`
+(nhãn "Chờ kế toán xác nhận"). Kế toán: số đỏ `tra_hang_cho_tien` trên ô Công nợ (`KHOA_CONG_NO`) và
+bước "Trả hàng nhà cung cấp" của quy trình; câu ở `viec.ts` trỏ `/noi-bo/kho/cong-no/tra-hang#cho-tien`.
+Ô tiền trống = số tự tính (`so_tien_goi_y`), 0 = không trừ. Ghi xong thủ kho sang trang phiếu XT-.
+Phiếu còn chờ tiền hủy được (`kho_huy_tra_hang_cho_tien`, bắt buộc lý do): người ghi phiếu ở trang
+phiếu (`xuat/<id>`), kế toán / quản lý ở hàng chờ `#cho-tien` — đảo sổ `tra_ncc` (hàng về lại đúng lô,
+đúng chỗ), phiếu `da_huy`. Đã xác nhận tiền thì không hủy được (như trả một bước 0024).
+
+**Đổi số tài khoản NCC.** Trigger ghi `kho_ncc_tk_nhat_ky`; sự kiện `ncc_doi_tai_khoan` cho chủ (link
+`cai-dat/nha-cung-cap?sua=<id>`, màn sửa hiện các lần đổi). Chỉ báo khi đã có số cũ và số (bỏ dấu
+cách) hoặc ngân hàng thật sự khác; lưu NCC như vậy → câu báo nhắc gọi hỏi lại (`canhBaoDoiTaiKhoan`,
+`doiTaiKhoanGanDay` — cùng luật với database; điền lần đầu, gõ thêm dấu cách không báo).
+
+### MISA — chỉnh `COT_MISA` khi có file mẫu
+
+`lib/kho/misa.ts` là file **thuần** (không import, không gọi database). Mọi giả định nằm ở hai hằng đầu
+file ghi "CHỈNH KHI CÓ FILE MẪU": `COT_MISA` (thứ tự, tên cột của hai loại file) và `DINH_DANG_MISA`
+(ngày `dd/MM/yyyy`; dấu ngăn `;` thì số lẻ dùng `,`, dấu `,` thì số lẻ dùng `.`). CSV: BOM UTF-8, CRLF,
+ô có dấu ngăn / nháy / xuống dòng bọc `"…"`, tiền là số nguyên **không** phân cách nghìn, ô chữ bắt đầu
+bằng `= + - @` thêm `'` (Excel không chạy công thức), cột cuối "Thiếu mã MISA" = `x`. Không xuất
+`.xlsx` — Excel mở CSV rồi lưu lại nếu MISA đòi. Dữ liệu (TK nợ / có, mã thay thế khi thiếu, thuế
+chia từng dòng) do `kho_du_lieu_misa` quyết định. Có file mẫu thì: sửa hai hằng, sửa test nhóm 1 của
+`test-kho-cong-no-v2-web.mjs`. Mã số thuế / số hóa đơn có số 0 ở đầu vẫn ghi nguyên trong CSV, nhưng
+Excel mở thẳng sẽ bỏ số 0 — trang MISA dặn kế toán mở bằng "Từ văn bản/CSV" và chọn kiểu Văn bản; khi
+có file mẫu, xem MISA nhận cột đó dạng nào rồi mới đổi cách ghi (không tự thêm `="…"`).
+
+Test: `test-kho-cong-no-v2.mjs` (database), `test-kho-cong-no-v2-web.mjs` (misa.ts, hàm thuần của
+cong-no.ts, vòng thật trên PGlite: chia hóa đơn gộp web = database, form Trả tiền → v2, sổ theo kỳ khớp
+view, CSV từ dữ liệu MISA thật; mã nguồn trang), nhóm 10e của `test-kho-thu-kho.mjs`.
+
+## 3n. Sửa hàng loạt · công thức dạng lưới · vị trí + lý do một form · ai làm được gì · trung tâm báo cáo (GĐ8c, migration 0041)
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/cai-dat/mat-hang/sua-nhanh?loai=&nhom=&tim=` | `danh_muc` | Bảng mọi món, mỗi ô một input: giá bán, HSD, mã cân, quầy tối thiểu / tối đa (gói), quầy tối thiểu (kg), kho lạnh tối thiểu / tối đa, sau pha để ở, đang dùng. Một nút **Lưu tất cả** (form POST) → `kho_sua_nhanh_mat_hang`. Chip loại / nhóm, ô tìm (bỏ dấu) — trên URL. Điện thoại: cuộn ngang, cột tên món `position: sticky` |
+| `/noi-bo/kho/cai-dat/cong-thuc?sua=<id>[&goi_y=1]` | `danh_muc` | Mỗi công thức một **lưới** phần ra × tỷ lệ % × xử lý × thứ tự × Bỏ; nút **Tính lại** (đầu form = phím Enter, không lưu), **Thêm dòng**, **Lưu công thức**; **Nhân bản công thức**; **Gợi ý từ thực tế** |
+| `/noi-bo/kho/cai-dat/vi-tri-ly-do` | `danh_muc` | Vị trí + bốn bảng lý do trong **một** form, 2 dòng trống mỗi bảng để thêm, **Lưu tất cả** |
+| `/noi-bo/kho/cai-dat/quyen` | `xem` (mọi vai) | "Ai làm được gì": một câu mỗi vai (`tomTatVai` — "Thủ kho: …; KHÔNG thấy giá tiền.") + bảng việc × vai. Ô menu "Ai làm được gì" (`quyen: xem`) |
+| `/noi-bo/kho/bao-cao?tu=&den=` | `xem` | **Trung tâm báo cáo** (làm lại): mốc nhanh, thẻ tóm tắt (chỉ `xem_gia`), thẻ báo cáo theo nhóm ẩn theo quyền. Link cũ `?bao_cao=<tên>` → 301 sang `bao-cao/<tên>` |
+| `/noi-bo/kho/bao-cao/<xuat-nhap-ton\|thu-hoi\|hao-hut\|ban>` | `xem_gia` | Trang `[loai].astro` (tách từ trang Báo cáo cũ, cùng `docBaoCao`) |
+| `/noi-bo/kho/bao-cao/theo-thang?nam=` | `xem` (cột tiền chỉ `xem_gia`) | `kho_bao_cao_theo_thang` — mỗi tháng một dòng |
+| `/noi-bo/kho/bao-cao/mua-hang?nhom=ncc\|mat_hang&tu=&den=` | `xem_gia` | `kho_bao_cao_mua_hang` |
+| `/noi-bo/kho/bao-cao/so-thanh-toan?tu=&den=` | `ke_toan` | `kho_so_thanh_toan` — khoản đã hủy mờ, tiền 0; in có chỗ ký |
+
+**Sửa nhanh** (`lib/kho/sua-nhanh.ts`). Form mỗi dòng: `id` (lặp), `pb_<id>` = `updated_at` lúc đọc (chuỗi nguyên văn
+từ PostgREST — database ép lại `timestamptz` rồi so), `<ô>_<id>` chữ gõ, `cu_<ô>_<id>` giá trị lúc mở (ô ẩn).
+`docFormSuaNhanh` chỉ gửi dòng có ô đổi và chỉ các ô đó:
+
+- **Ô để trống = GIỮ** (đúng đặc tả). Muốn xóa hẳn một ô thì gõ **`-`** (`CHU_XOA`) → gửi `null`. Ô vốn trống mà gõ `-` → không gửi.
+- So "đổi chưa" trên dạng chuẩn: `650.000` = `650000` (tiền), `1.5` = `1,5` (kg), `0101` = `101` (mã cân). Gửi số khi
+  đọc được; chữ sai gửi nguyên văn để **database** báo đúng ô (web không lặp luật).
+- Database lưu **tất cả hoặc không**, trả `loi[{dong,id,ten,truong,cau}]`: trang tô đỏ ô `truong`, hiện câu dưới dòng
+  đó, giữ chữ đã gõ ở mọi dòng (`chuGo`). Dòng lỗi "vừa được người khác sửa" (`laLoiPhienBan`) bỏ chữ gõ, hiện số mới.
+- Bảng đọc `kho_mat_hang` bằng `docMonSuaNhanh` (không cột giá vốn nào). Ô "Sau pha để ở" không hiện ở món loại tảng.
+  Thêm món, đổi tên / loại / mã / đơn vị: vẫn ở trang Mặt hàng.
+
+**Công thức dạng lưới** (`lib/kho/cong-thuc.ts`). Ô `mh_<i>`, `tl_<i>`, `xl_<i>`, `tt_<i>`, `bo_<i>`, `so_dong`.
+Tổng chạy tính **ở máy chủ** (`tongChu`) khi bấm Tính lại / Thêm dòng / lỗi: **xanh** 95–100%, **vàng** dưới 95%
+(phần còn lại coi là hao hụt), **đỏ** vượt 100% (`mauTong`, `cauTong`). Lưu = thay toàn bộ phần ra: upsert
+(`cong_thuc_id, mat_hang_ra_id`) rồi xóa dòng không còn — không có hàm database riêng, `phien_ban` = chuỗi phần ra
+(`phienBanCongThuc`) so với bản đọc lại. "Gợi ý từ thực tế" (`docGoiYThucTe`): phiên `kho_phien_pha` đã chốt
+(`da_chot`) của đúng loại tảng, chi nhánh đang chọn, `ngay_pha` trong 30 ngày → Σ kg ra từng món ÷ Σ `tong_kg_vao`
+(`tinhGoiY`) — chỉ kg; cột "Gợi ý" để người dùng tự chép, không tự điền đè.
+
+**Vị trí + lý do** (`docFormViTriLyDo` → `luuViTriLyDo`): ô `vt_ten_<id>`, `vt_loai_<id>`, `vt_thu_tu_<id>`,
+`vt_dang_dung_<id>`, `ld_*_<id>` (lý do hủy có ô ẩn `ld_co_anh_<id>` để biết ô tích có trên form; lý do Xuất bếp
+có ô ẩn `ld_co_dm_<id>` + ô tích `ld_tinh_dm_<id>` = cột `tinh_dinh_muc`, 0044), dòng mới
+`vt_moi_*_<i>`, `ld_moi_*_<loại>_<i>` (Xuất bếp mới: `ld_moi_co_dm_xuat_bep_<i>` + `ld_moi_tinh_dm_xuat_bep_<i>`, mặc định tích). Kiểm hết trước khi ghi (tên trống ở dòng có sẵn = lỗi, nhắc "Ngừng dùng");
+chỉ dòng đổi mới ghi, từng lệnh một (không có hàm gộp — lỗi giữa chừng báo "Đã lưu N dòng, chưa lưu được …").
+`phien_ban` = băm FNV của hai bảng (`phienBanViTriLyDo`). Vị trí hệ thống: không đổi loại, không tắt.
+
+**Ai làm được gì.** `MO_TA_VIEC: Record<ViecKho, {ten, moTa}>`, `VAI_BANG_QUYEN`, `TEN_VAI_DAY`, `viecCuaVai`,
+`tomTatVai` ở `lib/kho/chung.ts` (thuần). Thêm việc mới vào `QUYEN_KHO` mà quên câu mô tả → lỗi kiểu +
+test-kho-giao-dien nhóm 16 đỏ.
+
+**Trung tâm báo cáo** (`lib/kho/bao-cao.ts`):
+
+- `kyNhanh` thêm **Quý này**, **Năm nay**; component `ChonKy.astro` (mốc nhanh + hai ô ngày + Xem + nút CSV
+  `formaction`) và `BangBaoCao.astro` (bảng theo `DinhNghiaBaoCao` + dòng tổng `tinhTong`) dùng chung các trang báo cáo.
+- Thẻ tóm tắt (vai xem giá): cộng `kho_bao_cao_xnt_v2` (`tomTatXnt`: hao hụt = mất khi ra quầy + kiểm kê thiếu − thừa;
+  chi phí thịt = bán + xuất bếp + xuất khác + hủy + hao hụt — như `kho_bao_cao_theo_thang`). Doanh thu iPOS lấy từ
+  `kho_bao_cao_theo_thang` **chỉ khi kỳ trùng trọn tháng** (`doanhThuKy`; kỳ lẻ ngày → không có doanh thu).
+- `THE_BAO_CAO`: `{ma, nhom, ten, moTa, link, quyen, ky: ngay|nam|khong, csv}`; `theBaoCaoCuaVai`, `linkTheBaoCao`.
+  `quyen` phải khớp dòng chặn trang đích — test so từng vai (thấy thẻ ⇔ vào được). Thủ kho thấy Theo tháng, Định mức
+  bếp, Đánh giá NCC; NV quầy thấy Theo tháng, Định mức bếp. Ô menu "Báo cáo" vẫn `xem_gia` (thủ kho tới qua link).
+- Định nghĩa cột: `dinhNghiaTheoThang(coGia)` (không xem giá = bỏ hẳn cột tiền; dòng tổng không cộng tồn đầu / tồn cuối),
+  `dinhNghiaMuaHang(nhom)`, `DN_SO_THANH_TOAN`. Đọc: `docTheoThang`, `docMuaHang`, `docSoThanhToan`.
+- CSV (`bao-cao/[ten].csv.ts`): thêm `theo-thang.csv?nam=` (`xem`), `mua-hang.csv?nhom=` (`xem_gia`), `so-thanh-toan.csv`
+  (`ke_toan`). Mọi trang báo cáo in được: `InDau` + `NutIn` (thêm cho `dinh-muc`, `ncc`); sổ thanh toán có `KyTen`.
+- Link cũ `bao-cao?bao_cao=…` trong `index.astro` (thẻ quản trị) và `quy-trinh.ts` đã đổi sang `bao-cao/<tên>`.
+
+Hướng dẫn: mục mới `sua-nhanh`, `quyen` (nhóm Bắt đầu); viết lại `bao-cao`, `cong-thuc`, `vi-tri-ly-do`.
+
+Test: `test-kho-sua-nhanh.mjs` (database), `test-kho-sua-nhanh-web.mjs` (hàm thuần; cột web ⊂ cột hàm; vòng thật
+form → `kho_sua_nhanh_mat_hang` trên PGlite; báo cáo theo quyền; mã nguồn trang), `test-kho-giao-dien.mjs` nhóm 16
+(trang quyền phủ đủ việc, thẻ báo cáo ẩn theo quyền = dòng chặn trang, CSV có nhánh).
 
 ## 4. Cài như app (PWA)
 
@@ -430,7 +792,7 @@ dùng ở:
 | `public/kho/js/ean13.js` | (GĐ5b) Giải mã EAN-13 bằng JS thuần cho iPhone — Safari không có `BarcodeDetector` |
 | `public/kho/js/anh-nho.js` | (GĐ5a) Thu ảnh hóa đơn ≤ 1600px trước khi tải |
 | `public/kho/js/may-chung.js` | (GĐ5d) Đếm giờ tự khóa máy dùng chung |
-| `public/kho/js/in-an.js` | Hiện nút "In phiếu" và gọi `window.print()` (GĐ4b); sau này in đơn đặt hàng (GĐ8a) |
+| `public/kho/js/in-an.js` | Hiện nút "In phiếu" và gọi `window.print()` (GĐ4b); nút "Chia sẻ" `[data-chia-se]` của đơn đặt hàng gọi Web Share API khi máy có (GĐ8a) |
 
 Không thêm thư viện npm cho phía trình duyệt. `test-kho-giao-dien.mjs` hỏng nếu có `<script>`,
 `onclick=…` hay file JS ngoài danh sách này.
@@ -441,7 +803,9 @@ Không thêm thư viện npm cho phía trình duyệt. `test-kho-giao-dien.mjs` 
 đồng bộ bán hàng iPOS — GĐ7a). Hai giá trị enum được thêm ở **file riêng chạy một mình** vì
 Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa thêm nó. Hai vai này
 **không đọc được dữ liệu kho/CRM** (test-kho-quyen kiểm); từ 0034 vai `may_chung` gọi được các hàm
-`kho_may_*` của máy (mục 3f). `may_ipos` vẫn chưa làm được gì.
+`kho_may_*` của máy (mục 3f); từ 0037 vai `may_ipos` chỉ có việc `dong_bo_ban` — gọi được
+`kho_ipos_bat_dau / _nhan / _ket_thuc`, `kho_ipos_nhan_callback`, `kho_ipos_tim_chi_nhanh`, `kho_ipos_luu_menu`,
+`kho_ipos_bao_menu_doi` và `kho_cn_duoc`, không đọc được bảng nào (mục 3j).
 
 ## 7. Thêm một trang kho mới — danh sách kiểm
 
@@ -457,8 +821,14 @@ Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa th
 6. File `lib/kho/*.ts` mới gọi database → thêm vào `CHAY_DA_DANG_NHAP` trong
    `crm/test/test-hop-dong-web.mjs`. Gọi RPC bằng object viết thẳng `.rpc('x', { p_… })`,
    `.select('…')` nháy đơn và không ép kiểu `::`.
-7. Bẫy của Astro: khoảng trắng giữa `{biểu thức}` và chữ ở dòng sau bị nuốt — viết `{' '}`;
-   `{soLuong && <x/>}` in ra số 0 — viết `soLuong > 0 && …`.
+7. Bẫy của Astro (`compressHTML: 'jsx'`, mặc định của Astro 7): khoảng trắng có xuống dòng giữa hai nút
+   bị bỏ hẳn — `{t.cau1}⏎{t.cau2}` hiện "Câu một.Câu hai.", `chữ⏎{t.x}` cũng dính. Viết hai mẩu trên cùng
+   dòng, cách một dấu cách, hoặc thêm `{' '}`. `crm/test/dinh-chu.mjs` bắt chỗ này (test-kho-tieng-anh
+   nhóm 4). `{soLuong && <x/>}` in ra số 0 — viết `soLuong > 0 && …`.
+8. Hai thứ tiếng: chữ của trang viết `{ vi, en }` qua `dichNB(k.nn, …)`; câu báo trả `kqHai(ok, { vi, en })`;
+   số truyền `nn` (`dinhDangKg(x, nn)`…); câu từ database hiện qua `dichCau(nn, …)`. Cách làm và các bảng
+   dùng chung: `web/README.md`, mục "Tiếng Anh ở giao diện nội bộ". File mới tự vào bộ quét của
+   `crm/test/test-kho-tieng-anh.mjs` — chữ Việt sót ngoài `{ vi, en }` là test đỏ.
 
 ## 8. Kiểm thử
 
@@ -467,6 +837,18 @@ cd crm && npm test                    # toàn bộ; phần kho chạy qua test/c
 node test/chay-kho.mjs                # chỉ kho: tự tìm mọi test-kho-*.mjs
 node test/test-kho-giao-dien.mjs      # menu, link, hướng dẫn, manifest, JavaScript (không cần database)
 node test/test-kho-viec.mjs           # số đỏ, thông báo, ngưỡng, chỉ số quản trị
+node test/test-kho-ipos.mjs           # đồng bộ iPOS: phần database
+node test/test-kho-ipos-callback.mjs  # iPOS đẩy hóa đơn (0042): bán theo kg / gói / suất, bắn trùng, mất kết nối — database
+node test/test-kho-ipos-web.mjs       # đồng bộ iPOS: phanTichCallback, hook /hook/ipos, dongBoIpos, cron, quét token (build web để kiểm dist)
+node test/test-kho-dinh-luong.mjs     # định lượng món, đối chiếu định mức: phần database
+node test/test-kho-dinh-luong-web.mjs # định lượng: dán Excel, lưới gram, màu lệch, cột tiền, trang
+node test/test-kho-dat-hang.mjs       # đặt hàng NCC, gợi ý, nhận theo đơn, đánh giá NCC: phần database
+node test/test-kho-dat-hang-web.mjs   # đặt hàng: form (thủ kho không gửi giá), dat-hang.ts trên PGlite, trang
+node test/test-kho-cong-no-v2.mjs     # công nợ v2: bù trừ, hoàn tiền, hóa đơn gộp, trả hàng 2 bước, sổ kỳ, MISA — database
+node test/test-kho-cong-no-v2-web.mjs # công nợ v2: misa.ts, form Trả tiền, hóa đơn gộp web = database, trang
+node test/test-kho-sua-nhanh.mjs      # sửa hàng loạt, báo cáo tháng, mua hàng, sổ thanh toán — database (0041)
+node test/test-kho-sua-nhanh-web.mjs  # sửa nhanh, lưới công thức, vị trí + lý do, trung tâm báo cáo — web
+node test/test-kho-tieng-anh.mjs      # tiếng Anh: chữ Việt ngoài { vi, en }, trang quên truyền nn, câu database, chữ dính khi xuống dòng
 cd ../web && npm run kiem-tra && npm run quet && npm run build
 ```
 

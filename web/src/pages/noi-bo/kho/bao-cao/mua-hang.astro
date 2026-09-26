@@ -1,0 +1,85 @@
+---
+/**
+ * KHO — BÁO CÁO MUA HÀNG THEO NCC / MẶT HÀNG (GĐ8c, migration 0041)
+ *
+ *   /noi-bo/kho/bao-cao/mua-hang?nhom=ncc|mat_hang&tu=&den=
+ *
+ * kho_bao_cao_mua_hang: phiếu nhập mua đã duyệt trong kỳ (không gồm tồn đầu
+ * kỳ, nợ đầu kỳ). Chỉ vai xem giá (database cũng chặn). CSV cùng cột.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import ChonKy from '../../../../components/kho/ChonKy.astro';
+import BangBaoCao from '../../../../components/kho/BangBaoCao.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import {
+  NGAY_TOI_DA_KY, TEN_NHOM_MUA_NB, dinhNghiaMuaHang, docMuaHang, kyBaoCao, tinhTong,
+} from '../../../../lib/kho/bao-cao.ts';
+import { congNgay, dinhDangNgay, homNayVn } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho/bao-cao', 302);
+
+const nn = k.nn;
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Mua hàng', en: 'Purchases' },
+  kyDai: { vi: 'Khoảng ngày dài quá — chọn tối đa 1 năm.', en: 'The date range is too long — choose at most 1 year.' },
+  veBaoCao: { vi: '← Báo cáo kho', en: '← Inventory reports' },
+  xemTheo: { vi: 'Xem theo', en: 'View by' },
+  chuaBatDau: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory overview' },
+  inBaoCao: { vi: 'In báo cáo', en: 'Print report' },
+  dongTong: { vi: 'Dòng tổng: Giá TB/kg = tổng tiền hàng ÷ tổng kg của kỳ.', en: 'Total row: Avg price/kg = total goods value ÷ total kg of the period.' },
+});
+
+const q = Astro.url.searchParams;
+const nhom: 'ncc' | 'mat_hang' = q.get('nhom') === 'mat_hang' ? 'mat_hang' : 'ncc';
+const homNay = homNayVn();
+const { tu, den } = kyBaoCao(q, homNay);
+const dn = dinhNghiaMuaHang(nhom, nn);
+
+let dong: Record<string, unknown>[] = [];
+let loiDoc = k.loiDoc;
+let daDoc = false;
+if (congNgay(tu, NGAY_TOI_DA_KY) < den) {
+  loiDoc = t.kyDai;
+} else if (k.chiNhanh && k.daKhoiTao) {
+  const kq = await docMuaHang(k.client, k.chiNhanh.id, tu, den, nhom);
+  dong = kq.dong;
+  loiDoc = kq.loi ?? loiDoc;
+  daDoc = !kq.loi;
+}
+const tong = tinhTong(dn, dong, nn);
+const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDangNgay(den)}`;
+const linkNhom = (n: string) => `/noi-bo/kho/bao-cao/mua-hang?${new URLSearchParams({ nhom: n, tu, den }).toString()}`;
+---
+<Kho k={k} huongDan="bao-cao" tieuDe={t.tieuDe} rong>
+  <InDau tieuDe={dn.ten.toUpperCase()} soPhieu={kyChu} chiNhanh={k.chiNhanh?.ten} />
+  <h1>{t.tieuDe}</h1>
+  <p class="kho-khong-in"><a href={`/noi-bo/kho/bao-cao?${new URLSearchParams({ tu, den }).toString()}`}>{t.veBaoCao}</a></p>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  <nav class="kho-dh kho-khong-in" aria-label={t.xemTheo}>
+    {Object.entries(TEN_NHOM_MUA_NB).map(([n, tenNhom]) => (
+      <a href={linkNhom(n)} aria-current={n === nhom ? 'page' : undefined} style="min-height:48px">{tenNhom[nn]}</a>
+    ))}
+  </nav>
+
+  <ChonKy duong="/noi-bo/kho/bao-cao/mua-hang" tu={tu} den={den} homNay={homNay} giu={{ nhom }} csv="/noi-bo/kho/bao-cao/mua-hang.csv" />
+
+  <p class="nb-dan"><strong>{TEN_NHOM_MUA_NB[nhom][nn]}</strong> · {kyChu}. {dn.moTa}</p>
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">{t.chuaBatDau} <a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
+  ) : daDoc && (
+    <>
+      <BangBaoCao dn={dn} dong={dong} tong={tong} />
+      {dong.length > 0 && <NutIn chu={t.inBaoCao} />}
+      {dong.length > 0 && <p class="kho-phu">{t.dongTong}</p>}
+    </>
+  )}
+</Kho>

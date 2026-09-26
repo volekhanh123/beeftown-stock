@@ -15,29 +15,61 @@
  */
 import NoiBo from '../../layouts/NoiBo.astro';
 import { homNayVn, dinhDangNgay } from '../../lib/noi-dung';
+import { dichNB, nhanNB, nnCua, type HaiThuTieng } from '../../lib/ngon-ngu-noi-bo';
+import { dichCau } from '../../lib/cau-noi-bo';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
 
-const CHUYEN_DUOC: Record<string, { nhan: string; toi: string; phu?: boolean }[]> = {
+const CHUYEN_DUOC: Record<string, { nhan: HaiThuTieng; toi: string; phu?: boolean }[]> = {
   cho_xac_nhan: [
-    { nhan: 'Đã gọi xác nhận', toi: 'da_xac_nhan' },
-    { nhan: 'Khách hủy', toi: 'da_huy', phu: true },
+    { nhan: { vi: 'Đã gọi xác nhận', en: 'Called and confirmed' }, toi: 'da_xac_nhan' },
+    { nhan: { vi: 'Khách hủy', en: 'Guest cancelled' }, toi: 'da_huy', phu: true },
   ],
   da_xac_nhan: [
-    { nhan: 'Khách đã tới', toi: 'da_den' },
-    { nhan: 'Không tới', toi: 'khong_den', phu: true },
-    { nhan: 'Khách hủy', toi: 'da_huy', phu: true },
+    { nhan: { vi: 'Khách đã tới', en: 'Guest arrived' }, toi: 'da_den' },
+    { nhan: { vi: 'Không tới', en: 'No-show' }, toi: 'khong_den', phu: true },
+    { nhan: { vi: 'Khách hủy', en: 'Guest cancelled' }, toi: 'da_huy', phu: true },
   ],
 };
 
-const TEN_TRANG_THAI: Record<string, string> = {
-  cho_xac_nhan: 'Chờ gọi xác nhận',
-  da_xac_nhan: 'Đã xác nhận',
-  da_den: 'Khách đã tới',
-  khong_den: 'Không tới',
-  da_huy: 'Đã hủy',
+const TEN_TRANG_THAI: Record<string, HaiThuTieng> = {
+  cho_xac_nhan: { vi: 'Chờ gọi xác nhận', en: 'Waiting for a confirmation call' },
+  da_xac_nhan:  { vi: 'Đã xác nhận',      en: 'Confirmed' },
+  da_den:       { vi: 'Khách đã tới',     en: 'Guest arrived' },
+  khong_den:    { vi: 'Không tới',        en: 'No-show' },
+  da_huy:       { vi: 'Đã hủy',           en: 'Cancelled' },
 };
+
+const t = dichNB(nn, {
+  tieuDe:      { vi: 'Đặt bàn', en: 'Bookings' },
+  h1:          { vi: 'Hộp thư đặt bàn', en: 'Booking inbox' },
+  dan1:        { vi: 'Một yêu cầu ở đây ', en: 'A request here ' },
+  dan2:        { vi: 'chưa phải là một bàn đã giữ', en: 'is not a held table yet' },
+  dan3:        { vi: '. Nó thành bàn đã giữ khi có người gọi cho khách và bấm "Đã gọi xác nhận".',
+                 en: '. It becomes a held table once someone calls the guest and taps "Called and confirmed".' },
+  sai:         { vi: 'Bước chuyển không hợp lệ.', en: 'That status change is not allowed.' },
+  daXuLy:      { vi: 'Yêu cầu đã được người khác xử lý. Tải lại trang để xem trạng thái mới.',
+                 en: 'Someone else already handled this request. Reload the page to see its new status.' },
+  daChuyen:    { vi: (ten: string) => `Đã chuyển sang "${ten}".`, en: (ten: string) => `Moved to "${ten}".` },
+  khongDoc:    { vi: 'Không đọc được danh sách.', en: 'Could not read the list.' },
+  locCho:      { vi: 'Chờ gọi', en: 'To call' },
+  locHomNay:   { vi: 'Hôm nay', en: 'Today' },
+  locSapToi:   { vi: 'Sắp tới', en: 'Upcoming' },
+  locTatCa:    { vi: 'Tất cả', en: 'All' },
+  rongCho:     { vi: 'Không có yêu cầu nào đang chờ gọi.', en: 'No requests waiting for a call.' },
+  rong:        { vi: 'Không có yêu cầu nào trong mục này.', en: 'No requests in this view.' },
+  rongPhu:     { vi: 'Trống cũng có thể nghĩa là form đặt bàn chưa được bật. Kiểm tra công tắc ',
+                 en: 'Empty can also mean the booking form is not switched on. Check the switch ' },
+  chuaTen:     { vi: 'Khách chưa cho tên', en: 'Guest gave no name' },
+  dienThoai:   { vi: 'Điện thoại', en: 'Phone' },
+  khiNao:      { vi: 'Khi nào', en: 'When' },
+  mayNguoi:    { vi: 'Mấy người', en: 'Guests' },
+  dip:         { vi: 'Dịp', en: 'Occasion' },
+  ghiChu:      { vi: 'Ghi chú', en: 'Notes' },
+  ma:          { vi: 'Mã', en: 'Code' },
+});
 
 let bao: { ok: boolean; cau: string } | null = null;
 
@@ -51,7 +83,7 @@ if (Astro.request.method === 'POST') {
   // chặn ở đây trước khi tới database — và nếu lọt thì RLS vẫn chặn.
   const hopLe = CHUYEN_DUOC[tu]?.some(b => b.toi === toi);
   if (!id || !hopLe) {
-    bao = { ok: false, cau: 'Bước chuyển không hợp lệ.' };
+    bao = { ok: false, cau: t.sai };
   } else {
     const { data, error } = await client
       .from('dat_ban')
@@ -64,14 +96,14 @@ if (Astro.request.method === 'POST') {
       .select('id');
 
     if (error) {
-      bao = { ok: false, cau: error.message };
+      bao = { ok: false, cau: dichCau(nn, error.message) };
     } else if (!data || data.length === 0) {
       // Câu .eq() ở trên KHÔNG khớp dòng nào: người khác đã xử lý trước.
       // Thiếu nhánh này thì màn hình báo "Đã chuyển sang..." trong khi không
       // có gì đổi cả — tức là chống được chuyện ghi đè, rồi nói dối về nó.
-      bao = { ok: false, cau: 'Yêu cầu đã được người khác xử lý. Tải lại trang để xem trạng thái mới.' };
+      bao = { ok: false, cau: t.daXuLy };
     } else {
-      bao = { ok: true, cau: `Đã chuyển sang "${TEN_TRANG_THAI[toi]}".` };
+      bao = { ok: true, cau: t.daChuyen(nhanNB(TEN_TRANG_THAI, toi, nn)) };
     }
   }
 }
@@ -94,24 +126,23 @@ try {
   else if (loc === 'sap_toi') q = q.gte('ngay', homNay);
 
   const { data, error } = await q;
-  if (error) dsLoi = error.message;
+  if (error) dsLoi = dichCau(nn, error.message);
   else ds = data ?? [];
 } catch (e) {
-  dsLoi = e instanceof Error ? e.message : 'Không đọc được danh sách.';
+  dsLoi = e instanceof Error ? dichCau(nn, e.message) : t.khongDoc;
 }
 
 const BO_LOC = [
-  { ma: 'cho', ten: 'Chờ gọi' },
-  { ma: 'hom_nay', ten: 'Hôm nay' },
-  { ma: 'sap_toi', ten: 'Sắp tới' },
-  { ma: 'tat_ca', ten: 'Tất cả' },
+  { ma: 'cho', ten: t.locCho },
+  { ma: 'hom_nay', ten: t.locHomNay },
+  { ma: 'sap_toi', ten: t.locSapToi },
+  { ma: 'tat_ca', ten: t.locTatCa },
 ];
 ---
-<NoiBo tieuDe="Đặt bàn" nhanSu={nhanSu}>
-  <h1>Hộp thư đặt bàn</h1>
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <h1>{t.h1}</h1>
   <p class="nb-dan">
-    Một yêu cầu ở đây <strong>chưa phải là một bàn đã giữ</strong>. Nó thành
-    bàn đã giữ khi có người gọi cho khách và bấm "Đã gọi xác nhận".
+    {t.dan1}<strong>{t.dan2}</strong>{t.dan3}
   </p>
 
   {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
@@ -128,13 +159,10 @@ const BO_LOC = [
   {ds.length === 0 && !dsLoi && (
     <div class="nb-rong">
       <p style="margin:0">
-        {loc === 'cho'
-          ? 'Không có yêu cầu nào đang chờ gọi.'
-          : 'Không có yêu cầu nào trong mục này.'}
+        {loc === 'cho' ? t.rongCho : t.rong}
       </p>
       <p style="margin:.5rem 0 0;font-size:.85rem">
-        Trống cũng có thể nghĩa là form đặt bàn chưa được bật. Kiểm tra công tắc
-        <a href="/noi-bo/noi-dung"><code>form_dat_ban_dang_mo</code></a>.
+        {t.rongPhu}<a href="/noi-bo/noi-dung"><code>form_dat_ban_dang_mo</code></a>.
       </p>
     </div>
   )}
@@ -145,23 +173,23 @@ const BO_LOC = [
     return (
       <div class="nb-dong">
         <div class="nb-dong-dau">
-          <strong>{khach?.ho_ten || 'Khách chưa cho tên'}</strong>
+          <strong>{khach?.ho_ten || t.chuaTen}</strong>
           <span class={`nb-nhan ${d.trang_thai === 'cho_xac_nhan' ? 'cho'
                         : d.trang_thai === 'da_xac_nhan' ? 'song' : 'tat'}`}>
-            {TEN_TRANG_THAI[d.trang_thai] ?? d.trang_thai}
+            {nhanNB(TEN_TRANG_THAI, d.trang_thai, nn)}
           </span>
         </div>
 
         <dl>
-          <dt>Điện thoại</dt>
+          <dt>{t.dienThoai}</dt>
           <dd><a href={`tel:${khach?.sdt}`}>{khach?.sdt}</a></dd>
-          <dt>Khi nào</dt>
-          <dd>{dinhDangNgay(d.ngay, 'vi')}, {String(d.gio).slice(0, 5)}</dd>
-          <dt>Mấy người</dt>
+          <dt>{t.khiNao}</dt>
+          <dd>{dinhDangNgay(d.ngay, nn)}, {String(d.gio).slice(0, 5)}</dd>
+          <dt>{t.mayNguoi}</dt>
           <dd>{d.so_khach}</dd>
-          {d.dip && <><dt>Dịp</dt><dd>{d.dip}</dd></>}
-          {d.ghi_chu && <><dt>Ghi chú</dt><dd>{d.ghi_chu}</dd></>}
-          <dt>Mã</dt>
+          {d.dip && <><dt>{t.dip}</dt><dd>{d.dip}</dd></>}
+          {d.ghi_chu && <><dt>{t.ghiChu}</dt><dd>{d.ghi_chu}</dd></>}
+          <dt>{t.ma}</dt>
           <dd><code>{d.ma_dat_ban}</code></dd>
         </dl>
 
@@ -171,7 +199,7 @@ const BO_LOC = [
             <input type="hidden" name="tu" value={d.trang_thai} />
             {buoc.map(b => (
               <button type="submit" name="toi" value={b.toi}
-                      class={`nb-nut ${b.phu ? 'phu' : ''}`}>{b.nhan}</button>
+                      class={`nb-nut ${b.phu ? 'phu' : ''}`}>{b.nhan[nn]}</button>
             ))}
           </form>
         )}

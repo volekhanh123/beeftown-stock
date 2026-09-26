@@ -12,6 +12,7 @@
 import { defineMiddleware } from 'astro:middleware';
 import { layPhien, coDatabase } from './lib/phien';
 import { dichBu, chayNen, denLuotDichBu, VAI_BIEN_TAP } from './lib/ban-dich';
+import { docNgonNguNB, ghiNgonNguNB, laNgonNguNB } from './lib/ngon-ngu-noi-bo';
 
 const MO_CHO_MOI_NGUOI = ['/noi-bo/dang-nhap', '/noi-bo/dang-xuat'];
 
@@ -19,6 +20,20 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const duong = context.url.pathname.replace(/\/$/, '') || '/';
 
   if (!duong.startsWith('/noi-bo')) return next();
+
+  // ĐỔI NGÔN NGỮ (lib/ngon-ngu-noi-bo.ts): nút "English" / "Tiếng Việt" là
+  // link ?nn=… tới chính trang đang mở. Ghi cookie rồi chuyển về đúng đường
+  // dẫn đó, bỏ ?nn= — đích chuyển luôn là đường dẫn /noi-bo của chính request,
+  // nên không có open-redirect. Đứng TRƯỚC kiểm tra đăng nhập: trang đăng nhập
+  // cũng đổi được tiếng.
+  const doiNgonNgu = context.url.searchParams.get('nn');
+  if (context.request.method === 'GET' && laNgonNguNB(doiNgonNgu)) {
+    ghiNgonNguNB(context.cookies, doiNgonNgu);
+    const ve = new URL(context.url);
+    ve.searchParams.delete('nn');
+    return context.redirect(ve.pathname + ve.search, 303);
+  }
+  context.locals.nn = docNgonNguNB(context.cookies);
 
   context.locals.coDatabase = coDatabase();
 

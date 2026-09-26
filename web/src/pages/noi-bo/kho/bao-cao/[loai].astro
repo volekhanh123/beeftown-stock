@@ -1,0 +1,97 @@
+---
+/**
+ * KHO — MỘT BÁO CÁO THEO KỲ (GĐ8c tách từ trang Báo cáo cũ)
+ *
+ *   /noi-bo/kho/bao-cao/<xuat-nhap-ton | thu-hoi | hao-hut | ban>?tu=&den=
+ *
+ * Số do database tính (hàm kho_bao_cao_*, 0024; xuất – nhập – tồn dùng
+ * kho_bao_cao_xnt_v2 của 0032; bán hàng dùng kho_bao_cao_ban_thuc của 0037) —
+ * trang này chỉ hiện. Dòng tổng tính chung một hàm với file Excel (tinhTong).
+ * Các báo cáo có trang riêng (theo-thang, mua-hang, so-thanh-toan, dinh-muc,
+ * ncc) là file tĩnh cùng thư mục — Astro chọn file tĩnh trước file [loai].
+ *
+ * Link cũ /noi-bo/kho/bao-cao?bao_cao=<tên> được trang Báo cáo chuyển về đây.
+ * In được: đầu trang in (InDau) ghi tên báo cáo và kỳ.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import ChonKy from '../../../../components/kho/ChonKy.astro';
+import BangBaoCao from '../../../../components/kho/BangBaoCao.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import { BAO_CAO_NB, NGAY_TOI_DA_KY, TEN_NGUON_BAN_NB, docBaoCao, kyBaoCao, tinhTong } from '../../../../lib/kho/bao-cao.ts';
+import { congNgay, dinhDangNgay, homNayVn } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho/bao-cao', 302);
+
+const nn = k.nn;
+const t = dichNB(nn, {
+  kyDai: { vi: 'Khoảng ngày dài quá — chọn tối đa 1 năm.', en: 'The date range is too long — choose at most 1 year.' },
+  veBaoCao: { vi: '← Báo cáo kho', en: '← Inventory reports' },
+  chuaBatDau: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory overview' },
+  inBaoCao: { vi: 'In báo cáo', en: 'Print report' },
+  ghiChuHaoHut: {
+    vi: 'Cuối bảng cộng riêng từng loại (hủy, xuất bếp, xuất khác, trả nhà cung cấp, kiểm kê thiếu, kiểm kê thừa, hao hụt), không gộp thành một số: hàng thừa khi kiểm kê không phải hàng mất.',
+    en: 'The bottom of the table totals each type separately (write-off, to kitchen, other issue, returned to supplier, stocktake shortage, stocktake surplus, loss), not as one number: a stocktake surplus is not lost goods.',
+  },
+  ban1: { vi: 'Dòng nguồn', en: 'Rows with source' },
+  ban2: { vi: 'là doanh thu THẬT từ hóa đơn iPOS đã trừ kho. Dòng nguồn', en: 'are REAL revenue from iPOS invoices already deducted from stock. Rows with source' },
+  ban3: {
+    vi: 'là hàng bán trước khi nối iPOS: thiếu ở quầy khi kiểm kê được coi là đã bán, nhân với giá bán hiện tại. Cuối bảng cộng riêng từng nguồn. Dòng bán iPOS chưa trừ được kho (chưa ghép món, thiếu hàng) chưa có trong báo cáo —',
+    en: 'are sales from before iPOS was connected: what was missing at the counter in a stocktake counts as sold, times the current sale price. The bottom of the table totals each source separately. iPOS sale lines not yet deducted from stock (dish not matched, not enough stock) are not in the report yet —',
+  },
+  xuLyIpos: { vi: 'xử lý ở Bán hàng iPOS', en: 'handle them in iPOS sales' },
+});
+
+const ten = Astro.params.loai ?? '';
+if (!Object.hasOwn(BAO_CAO_NB, ten)) return Astro.redirect('/noi-bo/kho/bao-cao', 302);
+const dn = BAO_CAO_NB[ten][nn];
+const homNay = homNayVn();
+const { tu, den } = kyBaoCao(Astro.url.searchParams, homNay);
+
+let dong: Record<string, unknown>[] = [];
+let loiDoc = k.loiDoc;
+let daDoc = false;
+if (congNgay(tu, NGAY_TOI_DA_KY) < den) {
+  loiDoc = t.kyDai;
+} else if (k.chiNhanh && k.daKhoiTao) {
+  const kq = await docBaoCao(k.client, ten, k.chiNhanh.id, tu, den, nn);
+  dong = kq.dong;
+  loiDoc = kq.loi ?? loiDoc;
+  daDoc = !kq.loi;
+}
+const tong = tinhTong(dn, dong, nn);
+const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDangNgay(den)}`;
+---
+<Kho k={k} huongDan="bao-cao" tieuDe={dn.ten} rong>
+  <InDau tieuDe={dn.ten.toUpperCase()} soPhieu={kyChu} chiNhanh={k.chiNhanh?.ten} />
+  <h1>{dn.ten}</h1>
+  <p class="kho-khong-in"><a href={`/noi-bo/kho/bao-cao?${new URLSearchParams({ tu, den }).toString()}`}>{t.veBaoCao}</a></p>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  <ChonKy duong={`/noi-bo/kho/bao-cao/${ten}`} tu={tu} den={den} homNay={homNay} csv={`/noi-bo/kho/bao-cao/${ten}.csv`} />
+
+  <p class="nb-dan"><strong>{kyChu}</strong>. {dn.moTa}</p>
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">{t.chuaBatDau} <a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
+  ) : daDoc && (
+    <>
+      <BangBaoCao dn={dn} dong={dong} tong={tong} />
+      {dong.length > 0 && <NutIn chu={t.inBaoCao} />}
+    </>
+  )}
+  {ten === 'hao-hut' && dong.length > 0 && (
+    <p class="kho-phu">{t.ghiChuHaoHut}</p>
+  )}
+  {ten === 'ban' && (
+    <p class="kho-phu">{t.ban1} <strong>iPOS</strong> {t.ban2} <strong>{TEN_NGUON_BAN_NB.uoc_tinh[nn]}</strong>{' '}
+      {t.ban3}{' '}
+      <a href="/noi-bo/kho/ban-ipos">{t.xuLyIpos}</a>.</p>
+  )}
+</Kho>

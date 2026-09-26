@@ -16,17 +16,19 @@
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
-import { cauLoiKho, dinhDangThoiDiem, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangThoiDiem, kqHai, nhanKho, type KetQua } from '../../../../lib/kho/chung.ts';
 import {
-  VAI_TAO_DUOC, TEN_VAI_NHAN_VIEN, themNhanVien, docDsNhanVien, khoaNhanVien, moNhanVien,
+  VAI_TAO_DUOC, TEN_VAI_NHAN_VIEN_NB, themNhanVien, docDsNhanVien, khoaNhanVien, moNhanVien,
   docDsMay, moKhoaMay, khoaHanMay, tatMay, goNguoiKhoiMay, docBiMatMay, trangThaiMayChung,
   type KetQuaTaoNhanVien, type NhanVienKho, type MayDungChung,
 } from '../../../../lib/kho/nhan-vien.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 const laChu = k.nhanSu.vai_tro === 'chu_so_huu';
 if (!laChu && !k.duoc('duyet')) return Astro.redirect('/noi-bo/kho/cai-dat', 302);
+const nn = k.nn;
 
 // Trang có thể chứa mật khẩu tạm — không cho trình duyệt hay proxy giữ bản sao.
 Astro.response.headers.set('Cache-Control', 'no-store');
@@ -48,11 +50,13 @@ if (form) {
   if (viec === 'them' && laChu) {
     const maGui = String(form.get('ma_gui') ?? '');
     if (maGui && Astro.cookies.get(COOKIE_DA_GUI)?.value === maGui) {
-      bao = { ok: true, cau: 'Tài khoản này đã được tạo ở lần bấm trước. Mật khẩu tạm chỉ hiện một lần — '
-        + 'nếu chưa kịp chép thì khóa tài khoản đó và tạo lại bằng email khác, hoặc đặt lại mật khẩu ở Supabase → Authentication → Users.' };
+      bao = kqHai(true, {
+        vi: 'Tài khoản này đã được tạo ở lần bấm trước. Mật khẩu tạm chỉ hiện một lần — nếu chưa kịp chép thì khóa tài khoản đó và tạo lại bằng email khác, hoặc đặt lại mật khẩu ở Supabase → Authentication → Users.',
+        en: 'This account was already created by the previous press. The temporary password is shown only once — if you did not copy it in time, lock that account and create it again with another email, or reset the password in Supabase → Authentication → Users.',
+      });
     } else {
       const kq = await themNhanVien(k.client, form, k.cacChiNhanh);
-      bao = { ok: kq.ok, cau: kq.cau };
+      bao = { ok: kq.ok, cau: kq.cau, cauEn: kq.cauEn };
       if (kq.ok && kq.moi) {
         moiTao = kq.moi;
         Astro.cookies.set(COOKIE_DA_GUI, maGui, {
@@ -74,11 +78,131 @@ if (form) {
     else if (viec === 'khoa_han_may') kq = await khoaHanMay(k.client, mayId);
     else if (viec === 'tat_may') kq = await tatMay(k.client, mayId);
     else if (viec === 'go_nguoi') kq = await goNguoiKhoiMay(k.client, mayId, nsId);
-    else kq = { ok: false, cau: 'Việc không hợp lệ.' };
+    else kq = kqHai(false, { vi: 'Việc không hợp lệ.', en: 'Invalid action.' });
     if (kq.ok) return chuyenHuong(Astro, DUONG, kq);
     bao = kq;
   }
 }
+
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Nhân viên và máy dùng chung', en: 'Staff and shared tablets' },
+  mayDungChung: { vi: 'Máy dùng chung', en: 'Shared tablets' },
+  veThietLap: { vi: '← Thiết lập kho', en: '← Inventory setup' },
+  khongDoc: { vi: 'Không đọc được danh sách nhân viên và máy.', en: 'Could not read the list of staff and tablets.' },
+  // Tài khoản vừa tạo
+  taiKhoanMoi: { vi: 'Tài khoản mới:', en: 'New account:' },
+  vai: { vi: 'Vai', en: 'Role' },
+  emailDangNhap: { vi: 'Email đăng nhập', en: 'Login email' },
+  matKhauTam: { vi: 'Mật khẩu tạm', en: 'Temporary password' },
+  chepNgay: { vi: 'Chép lại ngay.', en: 'Copy it now.' },
+  chepNgayGiai: {
+    vi: 'Mật khẩu này chỉ hiện một lần — rời trang là không xem lại được, phần mềm không lưu.',
+    en: 'This password is shown only once — once you leave the page it cannot be seen again; the app does not store it.',
+  },
+  mayChung1: { vi: 'Tài khoản của máy tính bảng: trên tablet, quản lý mở', en: 'A tablet account: on the tablet, a manager opens' },
+  mayChung2: {
+    vi: 'và nhập email + mật khẩu này. Xong thì từng nhân viên đăng nhập một lần trên máy để đặt PIN.',
+    en: 'and enters this email + password. Then each staff member logs in once on the tablet to set a PIN.',
+  },
+  mayIpos1: {
+    vi: 'Tài khoản của máy đồng bộ iPOS: người quản lý Cloudflare cài email này làm bí mật',
+    en: 'The iPOS sync device account: whoever manages Cloudflare sets this email as the secret',
+  },
+  mayIpos2: { vi: 'và mật khẩu này làm', en: 'and this password as' },
+  mayIpos3: { vi: '— xem', en: '— see' },
+  ketNoiIpos: { vi: 'Kết nối iPOS', en: 'iPOS connection' },
+  mayIpos4: { vi: '. Không ai đăng nhập bằng tài khoản này.', en: '. Nobody logs in with this account.' },
+  nguoiNay: {
+    vi: 'Người này đăng nhập ở trang Đăng nhập nội bộ bằng email và mật khẩu trên.',
+    en: 'This person logs in on the internal login page with the email and password above.',
+  },
+  xacNhan: {
+    vi: ' Trước đó phải bấm link xác nhận trong thư Supabase gửi tới email này.',
+    en: ' Before that, they must click the confirmation link in the email Supabase sends to this address.',
+  },
+  // Máy dùng chung có bật không
+  daBat: { vi: 'Đã bật', en: 'On' },
+  chuaBat: { vi: 'Chưa bật', en: 'Off' },
+  cachBat: { vi: 'Cách bật: xem thẻ "Máy dùng chung" ở', en: 'How to turn it on: see the "Shared tablet" card in' },
+  thietLapKho: { vi: 'Thiết lập kho', en: 'Inventory setup' },
+  cachBat2: { vi: '. Chưa bật thì mọi thứ khác vẫn chạy bình thường.', en: '. While it is off, everything else works as usual.' },
+  // Thêm nhân viên
+  themNhanVien: { vi: 'Thêm nhân viên', en: 'Add staff' },
+  hoTen: { vi: 'Họ tên', en: 'Full name' },
+  hoTenGiai: { vi: 'Tài khoản máy tính bảng: ghi tên máy, ví dụ "Máy quầy Q1".', en: 'For a tablet account: enter the tablet name, e.g. "Counter tablet Q1".' },
+  emailGiai: {
+    vi: 'Mỗi người một email. Máy tính bảng cũng cần một email riêng (ví dụ may-quay-q1@gmail.com).',
+    en: 'One email per person. A tablet also needs its own email (e.g. may-quay-q1@gmail.com).',
+  },
+  chon: { vi: '— Chọn —', en: '— Choose —' },
+  chiNhanh: { vi: 'Chi nhánh', en: 'Branch' },
+  matKhauTamGiai: {
+    vi: 'Mật khẩu tạm do phần mềm tạo ngẫu nhiên và hiện một lần sau khi bấm. Quản lý và các vai xem dữ liệu khách hàng không tạo ở đây.',
+    en: 'The temporary password is generated randomly by the app and shown once after you press the button. Managers and roles that see customer data are not created here.',
+  },
+  taoTaiKhoan: { vi: 'Tạo tài khoản', en: 'Create account' },
+  // Danh sách nhân viên
+  nhanVien: { vi: 'Nhân viên', en: 'Staff' },
+  chuaCoNhanVien: { vi: 'Chưa có nhân viên kho nào.', en: 'No inventory staff yet.' },
+  daGan: {
+    vi: (n: number) => ` · đã gắn ${n} máy dùng chung`,
+    en: (n: number) => ` · on ${n} shared ${n === 1 ? 'tablet' : 'tablets'}`,
+  },
+  khoaTaiKhoan: { vi: 'Khóa tài khoản', en: 'Lock account' },
+  daKhoa: { vi: 'Đã khóa', en: 'Locked' },
+  moLai: { vi: 'Mở lại', en: 'Reopen' },
+  // Máy tính bảng
+  mayTinhBang: { vi: 'Máy tính bảng', en: 'Tablets' },
+  chuaCoMay: { vi: 'Chưa có máy nào.', en: 'No tablets yet.' },
+  taoTaiKhoanMay: {
+    vi: 'Tạo một tài khoản vai "Máy tính bảng dùng chung" ở trên, rồi',
+    en: 'Create an account with the "Shared tablet" role above, then',
+  },
+  nhoChu: { vi: 'Nhờ chủ tạo tài khoản máy, rồi', en: 'Ask the owner to create a tablet account, then' },
+  trenTablet: { vi: 'trên tablet mở', en: 'on the tablet open' },
+  deDangKy: { vi: 'để đăng ký máy.', en: 'to register it.' },
+  daTat: { vi: 'Đã tắt', en: 'Turned off' },
+  dangKhoa: { vi: 'Đang khóa', en: 'Locked' },
+  dangDung: { vi: 'Đang dùng', en: 'In use' },
+  tuKhoaSau: {
+    vi: (n: number) => `tự khóa sau ${n} phút`,
+    en: (n: number) => `locks after ${n} ${n === 1 ? 'minute' : 'minutes'}`,
+  },
+  taiKhoanMay: { vi: 'tài khoản máy:', en: 'tablet account:' },
+  taiKhoanMayKhoa: { vi: ' (tài khoản máy đã bị khóa)', en: ' (tablet account locked)' },
+  dangMo: { vi: 'Đang mở:', en: 'In use by' },
+  tu: { vi: 'từ', en: 'since' },
+  biKhoaLuc: { vi: 'Máy bị khóa lúc', en: 'Tablet locked at' },
+  saiNhieu: {
+    vi: ' — nhập sai PIN quá nhiều lần. Hỏi xem ai đã dùng máy trước khi mở.',
+    en: ' — too many wrong PINs. Find out who used the tablet before unlocking it.',
+  },
+  saiPin: {
+    vi: (n: number) => `${n} lần sai PIN trong 30 phút qua (15 lần là máy tự khóa).`,
+    en: (n: number) => `${n} wrong ${n === 1 ? 'PIN' : 'PINs'} in the last 30 minutes (at 15 the tablet locks itself).`,
+  },
+  chuaAiGan: {
+    vi: 'Chưa ai gắn vào máy. Mỗi người đăng nhập một lần trên máy rồi đặt PIN.',
+    en: 'Nobody has been added to this tablet yet. Each person logs in once on the tablet, then sets a PIN.',
+  },
+  khoaToi: { vi: 'Khóa tới', en: 'Locked until' },
+  taiKhoanDaKhoa: { vi: 'Tài khoản đã khóa', en: 'Account locked' },
+  dungLanCuoi: { vi: 'Dùng lần cuối:', en: 'Last used:' },
+  moKhoa: { vi: 'Mở khóa', en: 'Unlock' },
+  goKhoiMay: { vi: 'Gỡ khỏi máy', en: 'Remove from tablet' },
+  moKhoaMay: { vi: 'Mở khóa máy', en: 'Unlock tablet' },
+  khoaMay: { vi: 'Khóa máy', en: 'Lock tablet' },
+  tatMayNay: { vi: 'Tắt máy này', en: 'Turn off this tablet' },
+  tatMayGiai: {
+    vi: 'Dùng khi mất máy hoặc thôi dùng máy. Mọi người bị gỡ khỏi máy; muốn dùng lại phải đăng ký lại máy và từng người gắn lại, đặt PIN mới. Mất máy thì khóa luôn tài khoản máy ở danh sách Nhân viên.',
+    en: 'Use this when a tablet is lost or no longer used. Everyone is removed from it; to use it again, register the tablet again and each person adds themselves again with a new PIN. If the tablet is lost, also lock the tablet account in the Staff list.',
+  },
+  tatMay: { vi: 'Tắt máy', en: 'Turn off' },
+  muonDungLai: {
+    vi: 'Muốn dùng lại: trên tablet đó mở /noi-bo/kho/may/dang-ky và đăng ký lại.',
+    en: 'To use it again: open /noi-bo/kho/may/dang-ky on that tablet and register again.',
+  },
+});
 
 let nhanVien: NhanVienKho[] = [];
 let may: MayDungChung[] = [];
@@ -88,90 +212,90 @@ try {
     laChu ? docDsNhanVien(k.client) : Promise.resolve([] as NhanVienKho[]),
     docDsMay(k.client, null),
   ]);
-} catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được danh sách nhân viên và máy.'); }
+} catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
 
 const trangThai = trangThaiMayChung(await docBiMatMay());
+const cauTrangThai = nn === 'en' ? trangThai.cauEn : trangThai.cau;
 const maGui = crypto.randomUUID();
-const tenVai = (v: string) => TEN_VAI_NHAN_VIEN[v] ?? v;
-const conKhoa = (t: string | null) => !!t && new Date(t).getTime() > Date.now();
+const tenVai = (v: string) => nhanKho(TEN_VAI_NHAN_VIEN_NB, v, nn);
+const conKhoa = (luc: string | null) => !!luc && new Date(luc).getTime() > Date.now();
 const nhanVienDangLam = nhanVien.filter(n => n.dang_lam);
 const nhanVienDaKhoa = nhanVien.filter(n => !n.dang_lam);
 ---
-<Kho k={k} tieuDe="Nhân viên và máy dùng chung" huongDan={laChu ? 'tao-tai-khoan' : 'mo-khoa-may'}>
-  <h1>{laChu ? 'Nhân viên và máy dùng chung' : 'Máy dùng chung'}</h1>
-  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
+<Kho k={k} tieuDe={t.tieuDe} huongDan={laChu ? 'tao-tai-khoan' : 'mo-khoa-may'}>
+  <h1>{laChu ? t.tieuDe : t.mayDungChung}</h1>
+  <p><a href="/noi-bo/kho/cai-dat">{t.veThietLap}</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {moiTao && (
     <section class="nb-the nv-moi" aria-live="polite">
-      <h2 style="margin-top:0">Tài khoản mới: {moiTao.ho_ten}</h2>
+      <h2 style="margin-top:0">{t.taiKhoanMoi} {moiTao.ho_ten}</h2>
       <dl>
-        <dt>Vai</dt><dd>{tenVai(moiTao.vai_tro)} — {moiTao.ten_chi_nhanh}</dd>
-        <dt>Email đăng nhập</dt><dd><strong>{moiTao.email}</strong></dd>
-        <dt>Mật khẩu tạm</dt><dd><strong class="nv-mat-khau">{moiTao.mat_khau}</strong></dd>
+        <dt>{t.vai}</dt><dd>{tenVai(moiTao.vai_tro)} — {moiTao.ten_chi_nhanh}</dd>
+        <dt>{t.emailDangNhap}</dt><dd><strong>{moiTao.email}</strong></dd>
+        <dt>{t.matKhauTam}</dt><dd><strong class="nv-mat-khau">{moiTao.mat_khau}</strong></dd>
       </dl>
-      <p><strong>Chép lại ngay.</strong> Mật khẩu này chỉ hiện một lần — rời trang là không xem lại được, phần mềm không lưu.</p>
+      <p><strong>{t.chepNgay}</strong> {t.chepNgayGiai}</p>
       {moiTao.vai_tro === 'may_chung' ? (
-        <p class="kho-phu">Tài khoản của máy tính bảng: trên tablet, quản lý mở <strong>/noi-bo/kho/may/dang-ky</strong> và
-          nhập email + mật khẩu này. Xong thì từng nhân viên đăng nhập một lần trên máy để đặt PIN.</p>
+        <p class="kho-phu">{t.mayChung1} <strong>/noi-bo/kho/may/dang-ky</strong> {t.mayChung2}</p>
+      ) : moiTao.vai_tro === 'may_ipos' ? (
+        <p class="kho-phu">{t.mayIpos1} <code>KHO_IPOS_EMAIL</code> {t.mayIpos2} <code>KHO_IPOS_MAT_KHAU</code> {t.mayIpos3} <a href="/noi-bo/kho/cai-dat/ipos">{t.ketNoiIpos}</a>{t.mayIpos4}</p>
       ) : (
-        <p class="kho-phu">Người này đăng nhập ở trang Đăng nhập nội bộ bằng email và mật khẩu trên.
-          {moiTao.can_xac_nhan && ' Trước đó phải bấm link xác nhận trong thư Supabase gửi tới email này.'}</p>
+        <p class="kho-phu">{t.nguoiNay}
+          {moiTao.can_xac_nhan && t.xacNhan}</p>
       )}
     </section>
   )}
 
   <section class="nb-the">
-    <h2 style="margin-top:0">Máy dùng chung</h2>
+    <h2 style="margin-top:0">{t.mayDungChung}</h2>
     <p style="margin:0">
-      <span class={`nb-nhan ${trangThai.bat ? 'song' : 'cho'}`}>{trangThai.bat ? 'Đã bật' : 'Chưa bật'}</span>{' '}
-      {trangThai.cau}
+      <span class={`nb-nhan ${trangThai.bat ? 'song' : 'cho'}`}>{trangThai.bat ? t.daBat : t.chuaBat}</span>{' '}
+      {cauTrangThai}
     </p>
     {!trangThai.bat && (
-      <p class="kho-phu" style="margin:.5rem 0 0">Cách bật: xem thẻ "Máy dùng chung" ở <a href="/noi-bo/kho/cai-dat">Thiết lập kho</a>.
-        Chưa bật thì mọi thứ khác vẫn chạy bình thường.</p>
+      <p class="kho-phu" style="margin:.5rem 0 0">{t.cachBat} <a href="/noi-bo/kho/cai-dat">{t.thietLapKho}</a>{t.cachBat2}</p>
     )}
   </section>
 
   {laChu && (
     <>
-      <h2>Thêm nhân viên</h2>
+      <h2>{t.themNhanVien}</h2>
       <form method="POST" class="nb-the" autocomplete="off">
         <input type="hidden" name="viec" value="them" />
         <input type="hidden" name="ma_gui" value={maGui} />
         <label class="nb-o">
-          <span>Họ tên</span>
-          <small>Tài khoản máy tính bảng: ghi tên máy, ví dụ "Máy quầy Q1".</small>
+          <span>{t.hoTen}</span>
+          <small>{t.hoTenGiai}</small>
           <input type="text" name="ho_ten" required maxlength="100" value={giu.ho_ten} />
         </label>
         <label class="nb-o">
-          <span>Email đăng nhập</span>
-          <small>Mỗi người một email. Máy tính bảng cũng cần một email riêng (ví dụ may-quay-q1@gmail.com).</small>
+          <span>{t.emailDangNhap}</span>
+          <small>{t.emailGiai}</small>
           <input type="email" name="email" required maxlength="200" inputmode="email" autocapitalize="off" spellcheck="false" value={giu.email} />
         </label>
         <label class="nb-o">
-          <span>Vai</span>
+          <span>{t.vai}</span>
           <select name="vai_tro" required>
-            <option value="">— Chọn —</option>
+            <option value="">{t.chon}</option>
             {VAI_TAO_DUOC.map(v => <option value={v} selected={giu.vai_tro === v}>{tenVai(v)}</option>)}
           </select>
         </label>
         <label class="nb-o">
-          <span>Chi nhánh</span>
+          <span>{t.chiNhanh}</span>
           <select name="chi_nhanh_id" required>
-            {k.cacChiNhanh.length !== 1 && <option value="">— Chọn —</option>}
+            {k.cacChiNhanh.length !== 1 && <option value="">{t.chon}</option>}
             {k.cacChiNhanh.map(c => (
               <option value={c.id} selected={giu.chi_nhanh_id ? giu.chi_nhanh_id === c.id : k.cacChiNhanh.length === 1}>{c.ten}</option>
             ))}
           </select>
         </label>
-        <p class="kho-phu" style="margin:0 0 1rem">Mật khẩu tạm do phần mềm tạo ngẫu nhiên và hiện một lần sau khi bấm.
-          Quản lý và các vai xem dữ liệu khách hàng không tạo ở đây.</p>
-        <button type="submit" class="nb-nut nv-nut">Tạo tài khoản</button>
+        <p class="kho-phu" style="margin:0 0 1rem">{t.matKhauTamGiai}</p>
+        <button type="submit" class="nb-nut nv-nut">{t.taoTaiKhoan}</button>
       </form>
 
-      <h2>Nhân viên ({nhanVienDangLam.length})</h2>
-      {nhanVien.length === 0 && !loiDoc && <p class="nb-rong">Chưa có nhân viên kho nào.</p>}
+      <h2>{t.nhanVien} ({nhanVienDangLam.length})</h2>
+      {nhanVien.length === 0 && !loiDoc && <p class="nb-rong">{t.chuaCoNhanVien}</p>}
       {nhanVienDangLam.map(n => (
         <form method="POST" class="nb-dong">
           <input type="hidden" name="viec" value="khoa_ns" />
@@ -179,24 +303,24 @@ const nhanVienDaKhoa = nhanVien.filter(n => !n.dang_lam);
           <div class="nb-dong-dau"><strong>{n.ho_ten}</strong><span class="nb-nhan nhap">{tenVai(n.vai_tro)}</span></div>
           <p class="kho-phu" style="margin:.35rem 0 0">
             {n.email ?? '—'} · {n.ten_chi_nhanh ?? '—'}
-            {n.so_may > 0 && ` · đã gắn ${n.so_may} máy dùng chung`}
+            {n.so_may > 0 && t.daGan(n.so_may)}
           </p>
           <div class="nb-dong-nut">
-            <button type="submit" class="nb-nut phu nv-nut">Khóa tài khoản</button>
+            <button type="submit" class="nb-nut phu nv-nut">{t.khoaTaiKhoan}</button>
           </div>
         </form>
       ))}
       {nhanVienDaKhoa.length > 0 && (
         <details class="nb-the">
-          <summary class="nv-tom-tat">Đã khóa ({nhanVienDaKhoa.length})</summary>
+          <summary class="nv-tom-tat">{t.daKhoa} ({nhanVienDaKhoa.length})</summary>
           {nhanVienDaKhoa.map(n => (
             <form method="POST" class="nb-dong" style="opacity:.75">
               <input type="hidden" name="viec" value="mo_ns" />
               <input type="hidden" name="id" value={n.id} />
-              <div class="nb-dong-dau"><strong>{n.ho_ten}</strong><span class="nb-nhan tat">Đã khóa</span></div>
+              <div class="nb-dong-dau"><strong>{n.ho_ten}</strong><span class="nb-nhan tat">{t.daKhoa}</span></div>
               <p class="kho-phu" style="margin:.35rem 0 0">{tenVai(n.vai_tro)} · {n.email ?? '—'} · {n.ten_chi_nhanh ?? '—'}</p>
               <div class="nb-dong-nut">
-                <button type="submit" class="nb-nut phu nv-nut">Mở lại</button>
+                <button type="submit" class="nb-nut phu nv-nut">{t.moLai}</button>
               </div>
             </form>
           ))}
@@ -205,60 +329,60 @@ const nhanVienDaKhoa = nhanVien.filter(n => !n.dang_lam);
     </>
   )}
 
-  <h2>Máy tính bảng ({may.filter(m => m.dang_dung).length})</h2>
+  <h2>{t.mayTinhBang} ({may.filter(m => m.dang_dung).length})</h2>
   {may.length === 0 && !loiDoc && (
-    <p class="nb-rong">Chưa có máy nào. {laChu ? 'Tạo một tài khoản vai "Máy tính bảng dùng chung" ở trên, rồi' : 'Nhờ chủ tạo tài khoản máy, rồi'}
-      {' '}trên tablet mở <strong>/noi-bo/kho/may/dang-ky</strong> để đăng ký máy.</p>
+    <p class="nb-rong">{t.chuaCoMay} {laChu ? t.taoTaiKhoanMay : t.nhoChu}
+      {' '}{t.trenTablet} <strong>/noi-bo/kho/may/dang-ky</strong> {t.deDangKy}</p>
   )}
   {may.map(m => (
     <div class="nb-dong" style={m.dang_dung ? '' : 'opacity:.6'}>
       <div class="nb-dong-dau">
         <strong>{m.ten}</strong>
-        {!m.dang_dung ? <span class="nb-nhan tat">Đã tắt</span>
-          : m.bi_khoa ? <span class="nb-nhan cho">Đang khóa</span>
-          : <span class="nb-nhan song">Đang dùng</span>}
+        {!m.dang_dung ? <span class="nb-nhan tat">{t.daTat}</span>
+          : m.bi_khoa ? <span class="nb-nhan cho">{t.dangKhoa}</span>
+          : <span class="nb-nhan song">{t.dangDung}</span>}
       </div>
       <p class="kho-phu" style="margin:.35rem 0 0">
-        {m.ten_chi_nhanh} · tự khóa sau {m.phut_khoa} phút · tài khoản máy: {m.tai_khoan_ho_ten}
-        {!m.tai_khoan_dang_lam && ' (tài khoản máy đã bị khóa)'}
+        {m.ten_chi_nhanh} · {t.tuKhoaSau(m.phut_khoa)} · {t.taiKhoanMay} {m.tai_khoan_ho_ten}
+        {!m.tai_khoan_dang_lam && t.taiKhoanMayKhoa}
       </p>
       {m.dang_dung && m.ten_nguoi_dang_dung && (
-        <p class="kho-phu" style="margin:.25rem 0 0">Đang mở: <strong>{m.ten_nguoi_dang_dung}</strong> từ {dinhDangThoiDiem(m.dung_tu)}</p>
+        <p class="kho-phu" style="margin:.25rem 0 0">{t.dangMo} <strong>{m.ten_nguoi_dang_dung}</strong> {t.tu} {dinhDangThoiDiem(m.dung_tu)}</p>
       )}
       {m.dang_dung && m.bi_khoa && (
-        <p style="margin:.5rem 0 0;color:var(--do)">Máy bị khóa lúc {dinhDangThoiDiem(m.bi_khoa_luc)}
-          {m.sai_30_phut >= 15 ? ' — nhập sai PIN quá nhiều lần. Hỏi xem ai đã dùng máy trước khi mở.' : '.'}</p>
+        <p style="margin:.5rem 0 0;color:var(--do)">{t.biKhoaLuc} {dinhDangThoiDiem(m.bi_khoa_luc)}
+          {m.sai_30_phut >= 15 ? t.saiNhieu : '.'}</p>
       )}
       {m.dang_dung && !m.bi_khoa && m.sai_30_phut > 0 && (
-        <p class="kho-phu" style="margin:.25rem 0 0">{m.sai_30_phut} lần sai PIN trong 30 phút qua (15 lần là máy tự khóa).</p>
+        <p class="kho-phu" style="margin:.25rem 0 0">{t.saiPin(m.sai_30_phut)}</p>
       )}
 
       {m.dang_dung && (
         <>
           {m.nguoi.length === 0 ? (
-            <p class="kho-phu" style="margin:.5rem 0 0">Chưa ai gắn vào máy. Mỗi người đăng nhập một lần trên máy rồi đặt PIN.</p>
+            <p class="kho-phu" style="margin:.5rem 0 0">{t.chuaAiGan}</p>
           ) : (
             <ul class="nv-nguoi">
               {m.nguoi.map(p => (
                 <li>
                   <span><strong>{p.ho_ten}</strong> · {tenVai(p.vai_tro)}
-                    {conKhoa(p.khoa_den) && <span class="nb-nhan cho" style="margin-left:.35rem">Khóa tới {dinhDangThoiDiem(p.khoa_den)}</span>}
-                    {!p.dang_lam && <span class="nb-nhan tat" style="margin-left:.35rem">Tài khoản đã khóa</span>}
-                    <br /><small class="kho-phu">Dùng lần cuối: {dinhDangThoiDiem(p.dung_lan_cuoi)}</small></span>
+                    {conKhoa(p.khoa_den) && <span class="nb-nhan cho" style="margin-left:.35rem">{t.khoaToi} {dinhDangThoiDiem(p.khoa_den)}</span>}
+                    {!p.dang_lam && <span class="nb-nhan tat" style="margin-left:.35rem">{t.taiKhoanDaKhoa}</span>}
+                    <br /><small class="kho-phu">{t.dungLanCuoi} {dinhDangThoiDiem(p.dung_lan_cuoi)}</small></span>
                   <span class="nv-nguoi-nut">
                     {conKhoa(p.khoa_den) && (
                       <form method="POST">
                         <input type="hidden" name="viec" value="mo_khoa_nguoi" />
                         <input type="hidden" name="may_id" value={m.id} />
                         <input type="hidden" name="nhan_su_id" value={p.nhan_su_id} />
-                        <button type="submit" class="nb-nut phu nv-nut">Mở khóa</button>
+                        <button type="submit" class="nb-nut phu nv-nut">{t.moKhoa}</button>
                       </form>
                     )}
                     <form method="POST">
                       <input type="hidden" name="viec" value="go_nguoi" />
                       <input type="hidden" name="may_id" value={m.id} />
                       <input type="hidden" name="nhan_su_id" value={p.nhan_su_id} />
-                      <button type="submit" class="nb-nut phu nv-nut">Gỡ khỏi máy</button>
+                      <button type="submit" class="nb-nut phu nv-nut">{t.goKhoiMay}</button>
                     </form>
                   </span>
                 </li>
@@ -271,30 +395,29 @@ const nhanVienDaKhoa = nhanVien.filter(n => !n.dang_lam);
               <form method="POST">
                 <input type="hidden" name="viec" value="mo_khoa_may" />
                 <input type="hidden" name="may_id" value={m.id} />
-                <button type="submit" class="nb-nut nv-nut">Mở khóa máy</button>
+                <button type="submit" class="nb-nut nv-nut">{t.moKhoaMay}</button>
               </form>
             ) : (
               <form method="POST">
                 <input type="hidden" name="viec" value="khoa_han_may" />
                 <input type="hidden" name="may_id" value={m.id} />
-                <button type="submit" class="nb-nut phu nv-nut">Khóa máy</button>
+                <button type="submit" class="nb-nut phu nv-nut">{t.khoaMay}</button>
               </form>
             )}
           </div>
           <details style="margin-top:.75rem">
-            <summary class="nv-tom-tat">Tắt máy này</summary>
+            <summary class="nv-tom-tat">{t.tatMayNay}</summary>
             <form method="POST">
               <input type="hidden" name="viec" value="tat_may" />
               <input type="hidden" name="may_id" value={m.id} />
-              <p class="kho-phu">Dùng khi mất máy hoặc thôi dùng máy. Mọi người bị gỡ khỏi máy; muốn dùng lại phải
-                đăng ký lại máy và từng người gắn lại, đặt PIN mới. Mất máy thì khóa luôn tài khoản máy ở danh sách Nhân viên.</p>
-              <button type="submit" class="nb-nut kho-nut-xoa nv-nut">Tắt máy {m.ten}</button>
+              <p class="kho-phu">{t.tatMayGiai}</p>
+              <button type="submit" class="nb-nut kho-nut-xoa nv-nut">{t.tatMay} {m.ten}</button>
             </form>
           </details>
         </>
       )}
       {!m.dang_dung && (
-        <p class="kho-phu" style="margin:.5rem 0 0">Muốn dùng lại: trên tablet đó mở /noi-bo/kho/may/dang-ky và đăng ký lại.</p>
+        <p class="kho-phu" style="margin:.5rem 0 0">{t.muonDungLai}</p>
       )}
     </div>
   ))}

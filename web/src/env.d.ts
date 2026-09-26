@@ -1,6 +1,7 @@
 /// <reference types="astro/client" />
 
 import type { Phien } from './lib/phien';
+import type { NgonNguNB } from './lib/ngon-ngu-noi-bo';
 
 declare global {
   namespace App {
@@ -8,6 +9,8 @@ declare global {
       /** Chỉ có trên /noi-bo và chỉ khi đã đăng nhập. Middleware đặt vào. */
       phien?: Phien;
       coDatabase?: boolean;
+      /** Ngôn ngữ giao diện nội bộ (cookie nb_ngon_ngu). Middleware đặt cho mọi đường dẫn /noi-bo. */
+      nn?: NgonNguNB;
     }
   }
 }

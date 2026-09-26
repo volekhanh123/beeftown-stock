@@ -7,6 +7,9 @@
  *
  * Cookie riêng của kho (bt_kho_bao, chỉ sống dưới /noi-bo/kho) — không đụng
  * vào cookie kết quả của form công khai trong lib/phien.ts.
+ *
+ * Câu báo mang cả bản tiếng Anh (cauEn) nếu thư viện có sẵn: người bấm có thể
+ * đổi tiếng giữa lúc ghi và lúc đọc, nên giữ cả hai rồi để BaoKho chọn.
  */
 
 import type { AstroCookies } from 'astro';
@@ -30,6 +33,8 @@ export function docBao(cookies: AstroCookies): KetQua | null {
   cookies.delete(COOKIE_BAO, { path: '/noi-bo/kho' });
   try {
     const v = JSON.parse(raw);
-    return typeof v?.ok === 'boolean' && typeof v?.cau === 'string' ? v : null;
+    if (typeof v?.ok !== 'boolean' || typeof v?.cau !== 'string') return null;
+    // cauEn: bản tiếng Anh do thư viện viết sẵn (KetQua.cauEn) — có thể vắng.
+    return typeof v.cauEn === 'string' ? { ok: v.ok, cau: v.cau, cauEn: v.cauEn } : { ok: v.ok, cau: v.cau };
   } catch { return null; }
 }

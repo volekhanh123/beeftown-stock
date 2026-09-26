@@ -17,12 +17,16 @@
  *
  * Phần trên (tới "GỌI DATABASE") là hàm thuần — test ở
  * crm/test/test-kho-thiet-lap-web.mjs, không cần database.
+ *
+ * Hai thứ tiếng: hàm trả câu chữ nhận tham số cuối `nn` (mặc định tiếng Việt,
+ * như trước); câu báo KetQua mang thêm cauEn. Ô dán nhận tiêu đề / từ khóa
+ * tiếng Việt như cũ, và thêm vài từ tiếng Anh cho màn tiếng Anh.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  BUOC_THIET_LAP, boDau, cauLoiKho, congNgay, docKg, docNgay, docSoNguyen, docTien, duoc,
-  laUuid, type KetQua, type ViecKho,
+  BUOC_THIET_LAP_NB, boDau, cauLoiKho, congNgay, docKg, docNgay, docSoNguyen, docTien, duoc,
+  kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB, type ViecKho,
 } from './chung.ts';
 
 // =============================================================================
@@ -51,16 +55,20 @@ export interface TienDoThietLap {
 const soHoacNull = (x: unknown): number | null =>
   x === null || x === undefined || !Number.isFinite(Number(x)) ? null : Number(x);
 
+/** Số ít / số nhiều cho câu tiếng Anh: n = 1 → mot, còn lại → nhieu. */
+const soIt = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+
 /**
  * Đọc kết quả thô của kho_tien_do_thiet_lap theo đúng thứ tự BUOC_THIET_LAP.
  * Bước vắng mặt (database cũ hơn web) coi như chưa xong, không bỏ qua được.
+ * nn: ngôn ngữ của tên bước.
  */
-export function docTienDoTho(raw: unknown): TienDoThietLap {
+export function docTienDoTho(raw: unknown, nn: NgonNguNB = 'vi'): TienDoThietLap {
   const d = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-  const buoc = BUOC_THIET_LAP.map(b => {
+  const buoc = BUOC_THIET_LAP_NB.map(b => {
     const x = (d[b.khoa] && typeof d[b.khoa] === 'object' ? d[b.khoa] : {}) as Record<string, unknown>;
     return {
-      khoa: b.khoa, ten: b.ten,
+      khoa: b.khoa, ten: b.ten[nn],
       xong: x.xong === true,
       so: soHoacNull(x.so), thieu: soHoacNull(x.thieu),
       boQua: x.bo_qua === true,
@@ -76,9 +84,12 @@ export function docTienDoTho(raw: unknown): TienDoThietLap {
   };
 }
 
-/** "Còn 3 bước" · "Còn 1 bước" · "Đã xong cả 10 bước". */
-export function cauConLai(td: Pick<TienDoThietLap, 'conLai' | 'tong'>): string {
-  return td.conLai <= 0 ? `Đã xong cả ${td.tong} bước` : `Còn ${td.conLai} bước`;
+/** "Còn 3 bước" · "Còn 1 bước" · "Đã xong cả 10 bước" (tiếng Anh: "3 steps left" · "All 10 steps done"). */
+export function cauConLai(td: Pick<TienDoThietLap, 'conLai' | 'tong'>, nn: NgonNguNB = 'vi'): string {
+  const c: HaiThuTieng = td.conLai <= 0
+    ? { vi: `Đã xong cả ${td.tong} bước`, en: `All ${td.tong} ${soIt(td.tong, 'step', 'steps')} done` }
+    : { vi: `Còn ${td.conLai} bước`, en: `${td.conLai} ${soIt(td.conLai, 'step', 'steps')} left` };
+  return c[nn];
 }
 
 /** Phần trăm đã xong (0–100, số nguyên) cho thanh tiến độ. */
@@ -91,82 +102,114 @@ export function phanTramXong(td: Pick<TienDoThietLap, 'conLai' | 'tong'>): numbe
  * Câu nói bước đang ở đâu — chỉ từ số đếm. Bước đã đánh dấu bỏ qua thì nói
  * rõ là bỏ qua (người sau đọc biết không phải đã làm).
  */
-export function moTaBuoc(b: Pick<BuocThietLap, 'khoa' | 'xong' | 'so' | 'thieu' | 'boQua'>): string {
+export function moTaBuoc(b: Pick<BuocThietLap, 'khoa' | 'xong' | 'so' | 'thieu' | 'boQua'>, nn: NgonNguNB = 'vi'): string {
+  const c = (x: HaiThuTieng) => x[nn];
   const so = b.so ?? 0;
   const thieu = b.thieu ?? 0;
   if (b.boQua) {
-    return b.khoa === 'ncc_no_dau' ? 'Đã đánh dấu: không có nợ đầu kỳ.' : 'Đã đánh dấu bỏ qua bước này.';
+    return b.khoa === 'ncc_no_dau'
+      ? c({ vi: 'Đã đánh dấu: không có nợ đầu kỳ.', en: 'Marked: no opening balances.' })
+      : c({ vi: 'Đã đánh dấu bỏ qua bước này.', en: 'This step is marked as skipped.' });
   }
   switch (b.khoa) {
     case 'chi_nhanh_nhan_vien':
-      return so > 0 ? `${so} người (thủ kho, NV quầy) đang làm.` : 'Chưa có tài khoản thủ kho hay NV quầy nào.';
+      return so > 0
+        ? c({ vi: `${so} người (thủ kho, NV quầy) đang làm.`,
+              en: `${so} ${soIt(so, 'person', 'people')} (storekeepers, counter staff) active.` })
+        : c({ vi: 'Chưa có tài khoản thủ kho hay NV quầy nào.', en: 'No storekeeper or counter staff accounts yet.' });
     case 'mat_hang':
-      if (so === 0) return 'Chưa có mặt hàng nào.';
+      if (so === 0) return c({ vi: 'Chưa có mặt hàng nào.', en: 'No items yet.' });
       return thieu > 0
-        ? `${so} mặt hàng; ${thieu} món còn thiếu hạn dùng, hoặc (phần cắt) thiếu giá bán / mã cân.`
-        : `${so} mặt hàng, đủ hạn dùng, giá bán, mã cân.`;
+        ? c({ vi: `${so} mặt hàng; ${thieu} món còn thiếu hạn dùng, hoặc (phần cắt) thiếu giá bán / mã cân.`,
+              en: `${so} ${soIt(so, 'item', 'items')}; ${thieu} ${soIt(thieu, 'is', 'are')} missing a use-by, or (for cuts) a sale price / scale code.` })
+        : c({ vi: `${so} mặt hàng, đủ hạn dùng, giá bán, mã cân.`,
+              en: `${so} ${soIt(so, 'item', 'items')}, all with use-by, sale price and scale code.` });
     case 'cong_thuc':
-      if (so === 0) return 'Chưa có công thức pha lóc nào.';
-      return thieu > 0 ? `${so} công thức; ${thieu} loại tảng chưa có công thức.` : `${so} công thức pha lóc.`;
-    case 'ncc_no_dau':
-      if (so === 0) return 'Chưa có nhà cung cấp nào.';
-      return b.xong
-        ? `${so} nhà cung cấp; đã ghi nợ đầu kỳ.`
-        : `${so} nhà cung cấp; chưa ghi nợ đầu kỳ (không nợ ai thì bấm "Không có nợ đầu kỳ").`;
-    case 'ton_dau':
-      if (so + thieu === 0) return 'Chưa có kho hay quầy nào.';
+      if (so === 0) return c({ vi: 'Chưa có công thức pha lóc nào.', en: 'No butchery recipes yet.' });
       return thieu > 0
-        ? `${so}/${so + thieu} kho, quầy đã có tồn đầu kỳ được duyệt; còn ${thieu} chỗ chưa có (hoặc đang chờ duyệt).`
-        : `Mọi kho, quầy (${so}) đã có tồn đầu kỳ được duyệt.`;
+        ? c({ vi: `${so} công thức; ${thieu} loại tảng chưa có công thức.`,
+              en: `${so} ${soIt(so, 'recipe', 'recipes')}; ${thieu} ${soIt(thieu, 'kind of primal has', 'kinds of primal have')} no recipe.` })
+        : c({ vi: `${so} công thức pha lóc.`, en: `${so} butchery ${soIt(so, 'recipe', 'recipes')}.` });
+    case 'ncc_no_dau':
+      if (so === 0) return c({ vi: 'Chưa có nhà cung cấp nào.', en: 'No suppliers yet.' });
+      return b.xong
+        ? c({ vi: `${so} nhà cung cấp; đã ghi nợ đầu kỳ.`, en: `${so} ${soIt(so, 'supplier', 'suppliers')}; opening balances recorded.` })
+        : c({ vi: `${so} nhà cung cấp; chưa ghi nợ đầu kỳ (không nợ ai thì bấm "Không có nợ đầu kỳ").`,
+              en: `${so} ${soIt(so, 'supplier', 'suppliers')}; opening balances not recorded yet (if you owe nobody, press "No opening balances").` });
+    case 'ton_dau':
+      if (so + thieu === 0) return c({ vi: 'Chưa có kho hay quầy nào.', en: 'No stores or counters yet.' });
+      return thieu > 0
+        ? c({ vi: `${so}/${so + thieu} kho, quầy đã có tồn đầu kỳ được duyệt; còn ${thieu} chỗ chưa có (hoặc đang chờ duyệt).`,
+              en: `${so}/${so + thieu} stores and counters have approved opening stock; ${thieu} still ${soIt(thieu, 'has', 'have')} none (or ${soIt(thieu, 'is', 'are')} awaiting approval).` })
+        : c({ vi: `Mọi kho, quầy (${so}) đã có tồn đầu kỳ được duyệt.`,
+              en: `Every store and counter (${so}) has approved opening stock.` });
     case 'gia_von':
-      return b.xong ? 'Chủ đã xem và lưu cách tính giá vốn.' : 'Chủ chưa xem cách tính giá vốn — mở phần bên dưới, xem rồi bấm Lưu.';
+      return b.xong
+        ? c({ vi: 'Chủ đã xem và lưu cách tính giá vốn.', en: 'The owner has reviewed and saved the costing method.' })
+        : c({ vi: 'Chủ chưa xem cách tính giá vốn — mở phần bên dưới, xem rồi bấm Lưu.',
+              en: 'The owner has not reviewed the costing method yet — open the section below, check it, then press Save.' });
     case 'dinh_muc':
-      if (so === 0) return 'Chưa phần cắt nào có mức tối thiểu ở quầy.';
-      return thieu > 0 ? `${so} phần cắt có mức tối thiểu; ${thieu} phần cắt chưa có.` : `Mọi phần cắt (${so}) có mức tối thiểu ở quầy.`;
+      if (so === 0) return c({ vi: 'Chưa phần cắt nào có mức tối thiểu ở quầy.', en: 'No cut has a counter minimum yet.' });
+      return thieu > 0
+        ? c({ vi: `${so} phần cắt có mức tối thiểu; ${thieu} phần cắt chưa có.`,
+              en: `${so} ${soIt(so, 'cut has', 'cuts have')} a counter minimum; ${thieu} ${soIt(thieu, 'cut does', 'cuts do')} not.` })
+        : c({ vi: `Mọi phần cắt (${so}) có mức tối thiểu ở quầy.`, en: `Every cut (${so}) has a counter minimum.` });
     case 'vi_tri_ly_do_ma_vach':
       return thieu > 0
-        ? `Còn thiếu ${thieu} trong 4 mục: có kho lạnh, có quầy, có lý do hủy / xuất, đã chọn mẫu mã vạch cân.`
-        : `Đủ kho lạnh, quầy (${so} chỗ), lý do và mẫu mã vạch cân.`;
+        ? c({ vi: `Còn thiếu ${thieu} trong 4 mục: có kho lạnh, có quầy, có lý do hủy / xuất, đã chọn mẫu mã vạch cân.`,
+              en: `${thieu} of 4 still missing: a cold store, a counter, write-off / issue reasons, a scale barcode pattern.` })
+        : c({ vi: `Đủ kho lạnh, quầy (${so} chỗ), lý do và mẫu mã vạch cân.`,
+              en: `Cold store, counter (${so} ${soIt(so, 'place', 'places')}), reasons and scale barcode pattern are all set.` });
     case 'nguong':
-      return b.xong ? 'Đã xem và lưu ngưỡng cảnh báo.' : 'Đang dùng ngưỡng mặc định — xem lại rồi bấm Lưu.';
+      return b.xong
+        ? c({ vi: 'Đã xem và lưu ngưỡng cảnh báo.', en: 'Alert thresholds reviewed and saved.' })
+        : c({ vi: 'Đang dùng ngưỡng mặc định — xem lại rồi bấm Lưu.', en: 'Using the default thresholds — check them, then press Save.' });
     case 'may_chung':
-      return so > 0 ? `${so} máy tính bảng dùng chung đang dùng.` : 'Chưa có máy tính bảng dùng chung nào.';
+      return so > 0
+        ? c({ vi: `${so} máy tính bảng dùng chung đang dùng.`, en: `${so} shared ${soIt(so, 'tablet', 'tablets')} in use.` })
+        : c({ vi: 'Chưa có máy tính bảng dùng chung nào.', en: 'No shared tablets yet.' });
     default:
-      return b.xong ? 'Đã xong.' : 'Chưa xong.';
+      return b.xong ? c({ vi: 'Đã xong.', en: 'Done.' }) : c({ vi: 'Chưa xong.', en: 'Not done yet.' });
   }
 }
 
 export interface LinkBuoc { ten: string; link: string; quyen: ViecKho[] }
+export interface LinkBuocNB { ten: HaiThuTieng; link: string; quyen: ViecKho[] }
 
 /**
  * Nút "Làm bước này" của từng bước. quyen = quyền ở dòng chặn đầu trang đích
  * (người không vào được trang đó thì không thấy nút). Link "#…" là thẻ trên
  * chính màn Thiết lập.
  */
-export const LINK_BUOC: Record<string, LinkBuoc[]> = {
+export const LINK_BUOC_NB: Record<string, LinkBuocNB[]> = {
   chi_nhanh_nhan_vien: [
-    { ten: 'Tạo tài khoản nhân viên', link: '/noi-bo/kho/cai-dat/nhan-vien', quyen: ['cai_dat_goc'] },
+    { ten: { vi: 'Tạo tài khoản nhân viên', en: 'Create staff accounts' }, link: '/noi-bo/kho/cai-dat/nhan-vien', quyen: ['cai_dat_goc'] },
   ],
-  mat_hang: [{ ten: 'Mở Mặt hàng', link: '/noi-bo/kho/cai-dat/mat-hang', quyen: ['danh_muc'] }],
-  cong_thuc: [{ ten: 'Mở Công thức pha lóc', link: '/noi-bo/kho/cai-dat/cong-thuc', quyen: ['danh_muc'] }],
+  mat_hang: [{ ten: { vi: 'Mở Mặt hàng', en: 'Open Items' }, link: '/noi-bo/kho/cai-dat/mat-hang', quyen: ['danh_muc'] }],
+  cong_thuc: [{ ten: { vi: 'Mở Công thức pha lóc', en: 'Open Butchery recipes' }, link: '/noi-bo/kho/cai-dat/cong-thuc', quyen: ['danh_muc'] }],
   ncc_no_dau: [
-    { ten: 'Mở Nhà cung cấp', link: '/noi-bo/kho/cai-dat/nha-cung-cap', quyen: ['ncc'] },
-    { ten: 'Ghi nợ đầu kỳ', link: '/noi-bo/kho/cong-no/no-dau', quyen: ['ke_toan'] },
+    { ten: { vi: 'Mở Nhà cung cấp', en: 'Open Suppliers' }, link: '/noi-bo/kho/cai-dat/nha-cung-cap', quyen: ['ncc'] },
+    { ten: { vi: 'Ghi nợ đầu kỳ', en: 'Record opening balances' }, link: '/noi-bo/kho/cong-no/no-dau', quyen: ['ke_toan'] },
   ],
-  ton_dau: [{ ten: 'Nhập tồn đầu kỳ', link: '/noi-bo/kho/cai-dat/ton-dau', quyen: ['nhap'] }],
-  gia_von: [{ ten: 'Xem cách tính giá vốn', link: '#gia-von', quyen: ['danh_muc', 'ncc', 'cai_dat_goc'] }],
-  dinh_muc: [{ ten: 'Mở Mặt hàng (phần cắt)', link: '/noi-bo/kho/cai-dat/mat-hang?loai=phan_cat', quyen: ['danh_muc'] }],
+  ton_dau: [{ ten: { vi: 'Nhập tồn đầu kỳ', en: 'Enter opening stock' }, link: '/noi-bo/kho/cai-dat/ton-dau', quyen: ['nhap'] }],
+  gia_von: [{ ten: { vi: 'Xem cách tính giá vốn', en: 'View the costing method' }, link: '#gia-von', quyen: ['danh_muc', 'ncc', 'cai_dat_goc'] }],
+  dinh_muc: [{ ten: { vi: 'Mở Mặt hàng (phần cắt)', en: 'Open Items (cuts)' }, link: '/noi-bo/kho/cai-dat/mat-hang?loai=phan_cat', quyen: ['danh_muc'] }],
   vi_tri_ly_do_ma_vach: [
-    { ten: 'Vị trí và lý do', link: '/noi-bo/kho/cai-dat/vi-tri-ly-do', quyen: ['danh_muc'] },
-    { ten: 'Mã vạch cân', link: '/noi-bo/kho/cai-dat/ma-vach', quyen: ['danh_muc'] },
+    { ten: { vi: 'Vị trí và lý do', en: 'Locations and reasons' }, link: '/noi-bo/kho/cai-dat/vi-tri-ly-do', quyen: ['danh_muc'] },
+    { ten: { vi: 'Mã vạch cân', en: 'Scale barcodes' }, link: '/noi-bo/kho/cai-dat/ma-vach', quyen: ['danh_muc'] },
   ],
-  nguong: [{ ten: 'Sửa ngưỡng cảnh báo', link: '#nguong', quyen: ['danh_muc'] }],
-  may_chung: [{ ten: 'Máy dùng chung', link: '#may-chung', quyen: ['duyet'] }],
+  nguong: [{ ten: { vi: 'Sửa ngưỡng cảnh báo', en: 'Edit alert thresholds' }, link: '#nguong', quyen: ['danh_muc'] }],
+  may_chung: [{ ten: { vi: 'Máy dùng chung', en: 'Shared tablet' }, link: '#may-chung', quyen: ['duyet'] }],
 };
 
-/** Các nút "Làm bước này" mà vai này bấm được. */
-export function linkBuocCuaVai(khoa: string, vai: string): LinkBuoc[] {
-  return (LINK_BUOC[khoa] ?? []).filter(l => l.quyen.some(q => duoc(vai, q)));
+/** Bản chỉ tiếng Việt (tên cũ, cho code và test cũ). */
+export const LINK_BUOC: Record<string, LinkBuoc[]> = Object.fromEntries(
+  Object.entries(LINK_BUOC_NB).map(([k, ds]) => [k, ds.map(l => ({ ...l, ten: l.ten.vi }))]),
+);
+
+/** Các nút "Làm bước này" mà vai này bấm được (tên theo nn). */
+export function linkBuocCuaVai(khoa: string, vai: string, nn: NgonNguNB = 'vi'): LinkBuoc[] {
+  return (LINK_BUOC_NB[khoa] ?? []).filter(l => l.quyen.some(q => duoc(vai, q))).map(l => ({ ...l, ten: l.ten[nn] }));
 }
 
 /** Quyền đánh dấu bỏ qua — soi gương kho_danh_dau_thiet_lap (0035). */
@@ -182,11 +225,11 @@ export function coTheBoQua(b: Pick<BuocThietLap, 'khoa' | 'duocBoQua'>, vai: str
 }
 
 /** Chữ trên nút bỏ qua. */
-export function chuNutBoQua(khoa: string, dangBoQua: boolean): string {
-  if (dangBoQua) return 'Không bỏ qua nữa';
-  if (khoa === 'ncc_no_dau') return 'Không có nợ đầu kỳ';
-  if (khoa === 'may_chung') return 'Không dùng máy chung';
-  return 'Bỏ qua';
+export function chuNutBoQua(khoa: string, dangBoQua: boolean, nn: NgonNguNB = 'vi'): string {
+  if (dangBoQua) return { vi: 'Không bỏ qua nữa', en: 'Undo skip' }[nn];
+  if (khoa === 'ncc_no_dau') return { vi: 'Không có nợ đầu kỳ', en: 'No opening balances' }[nn];
+  if (khoa === 'may_chung') return { vi: 'Không dùng máy chung', en: 'No shared tablet' }[nn];
+  return { vi: 'Bỏ qua', en: 'Skip' }[nn];
 }
 
 // =============================================================================
@@ -211,9 +254,13 @@ export interface NguongDangDung {
   luu_luc: string | null;
 }
 
-/** 5 → "5" · 2.5 → "2,5" — hiện trong ô nhập (người Việt gõ dấu phẩy). */
-export function hienSoNguong(n: number | null | undefined): string {
-  return n === null || n === undefined ? '' : String(n).replace('.', ',');
+/**
+ * 5 → "5" · 2.5 → "2,5" — hiện trong ô nhập (người Việt gõ dấu phẩy). Tiếng
+ * Anh: "2.5". luuNguong đọc được cả hai.
+ */
+export function hienSoNguong(n: number | null | undefined, nn: NgonNguNB = 'vi'): string {
+  if (n === null || n === undefined) return '';
+  return nn === 'en' ? String(n) : String(n).replace('.', ',');
 }
 
 // =============================================================================
@@ -273,11 +320,15 @@ export const TOI_DA_DONG_TON_DAU = 500;
 const NGAY_LUI_TOI_DA = 90;
 
 /** Ngày tồn đầu kỳ: không trống, không sau hôm nay, không quá 90 ngày trước (như database). */
-export function kiemNgayTonDau(ngay: string, homNay: string): string | null {
+export function kiemNgayTonDau(ngay: string, homNay: string, nn: NgonNguNB = 'vi'): string | null {
+  const c = (x: HaiThuTieng) => x[nn];
   const d = docNgay(ngay);
-  if (!d) return 'Chọn ngày tồn đầu kỳ.';
-  if (d > homNay) return 'Ngày tồn đầu kỳ không được sau hôm nay.';
-  if (d < congNgay(homNay, -NGAY_LUI_TOI_DA)) return `Ngày tồn đầu kỳ quá ${NGAY_LUI_TOI_DA} ngày trước — kiểm tra lại ngày.`;
+  if (!d) return c({ vi: 'Chọn ngày tồn đầu kỳ.', en: 'Choose the opening stock date.' });
+  if (d > homNay) return c({ vi: 'Ngày tồn đầu kỳ không được sau hôm nay.', en: 'The opening stock date cannot be after today.' });
+  if (d < congNgay(homNay, -NGAY_LUI_TOI_DA)) {
+    return c({ vi: `Ngày tồn đầu kỳ quá ${NGAY_LUI_TOI_DA} ngày trước — kiểm tra lại ngày.`,
+               en: `The opening stock date is more than ${NGAY_LUI_TOI_DA} days ago — check the date.` });
+  }
   return null;
 }
 
@@ -305,21 +356,24 @@ type CotTonDau = 'ma_ten' | 'ma' | 'ten' | 'noi' | 'goi' | 'kg' | 'gia' | 'han';
 /** Thứ tự cột khi KHÔNG có dòng tiêu đề. */
 export const COT_TON_DAU: CotTonDau[] = ['ma_ten', 'noi', 'goi', 'kg', 'gia', 'han'];
 
-const TEN_COT_TON_DAU: Record<CotTonDau, string> = {
-  ma_ten: 'Mã/Tên', ma: 'Mã', ten: 'Tên', noi: 'Nơi', goi: 'Gói', kg: 'Kg', gia: 'Đơn giá', han: 'HSD',
+const TEN_COT_TON_DAU: Record<CotTonDau, HaiThuTieng> = {
+  ma_ten: { vi: 'Mã/Tên', en: 'Code/Name' }, ma: { vi: 'Mã', en: 'Code' }, ten: { vi: 'Tên', en: 'Name' },
+  noi: { vi: 'Nơi', en: 'Location' }, goi: { vi: 'Gói', en: 'Packs' }, kg: { vi: 'Kg', en: 'Kg' },
+  gia: { vi: 'Đơn giá', en: 'Unit price' }, han: { vi: 'HSD', en: 'Use-by' },
 };
 
 // Tiêu đề cột → cột. So sau khi bỏ dấu, bỏ ký tự lạ, bỏ đơn vị ở cuối
-// ("Đơn giá/kg" → "don gia", "Kg" giữ nguyên).
+// ("Đơn giá/kg" → "don gia", "Kg" giữ nguyên). Mỗi cột: từ tiếng Việt như cũ,
+// rồi vài từ tiếng Anh (màn tiếng Anh ghi tiêu đề tiếng Anh).
 const TIEU_DE_TON_DAU: Record<string, CotTonDau> = Object.fromEntries(([
-  ['ma_ten', ['ma ten', 'ma hoac ten', 'ten ma', 'ma ten hang']],
-  ['ma', ['ma', 'ma hang', 'ma mat hang', 'ma mh']],
-  ['ten', ['ten', 'ten hang', 'ten mat hang', 'mat hang', 'mon', 'ten mon', 'hang']],
-  ['noi', ['noi', 'noi de', 'vi tri', 'kho', 'kho quay', 'o dau', 'de o']],
-  ['goi', ['goi', 'so goi', 'so luong', 'sl', 'so goi khay', 'goi khay', 'so tang']],
-  ['kg', ['kg', 'so kg', 'khoi luong', 'trong luong', 'can nang', 'can']],
-  ['gia', ['gia', 'don gia', 'gia von', 'gia nhap', 'don gia kg', 'gia kg']],
-  ['han', ['hsd', 'han', 'han dung', 'han su dung', 'ngay het han', 'het han']],
+  ['ma_ten', ['ma ten', 'ma hoac ten', 'ten ma', 'ma ten hang', 'code name', 'code or name']],
+  ['ma', ['ma', 'ma hang', 'ma mat hang', 'ma mh', 'code', 'item code', 'sku']],
+  ['ten', ['ten', 'ten hang', 'ten mat hang', 'mat hang', 'mon', 'ten mon', 'hang', 'name', 'item', 'item name', 'product']],
+  ['noi', ['noi', 'noi de', 'vi tri', 'kho', 'kho quay', 'o dau', 'de o', 'location', 'place', 'where']],
+  ['goi', ['goi', 'so goi', 'so luong', 'sl', 'so goi khay', 'goi khay', 'so tang', 'packs', 'pack', 'qty', 'quantity']],
+  ['kg', ['kg', 'so kg', 'khoi luong', 'trong luong', 'can nang', 'can', 'weight']],
+  ['gia', ['gia', 'don gia', 'gia von', 'gia nhap', 'don gia kg', 'gia kg', 'price', 'unit price', 'cost']],
+  ['han', ['hsd', 'han', 'han dung', 'han su dung', 'ngay het han', 'het han', 'use by', 'use by date', 'expiry', 'expiry date']],
 ] as [CotTonDau, string[]][]).flatMap(([cot, ds]) => ds.map(t => [t, cot])));
 
 function cotCuaTieuDe(o: string): CotTonDau | undefined {
@@ -337,15 +391,16 @@ export function noiDeDuoc(viTri: NoiTonDau[]): NoiTonDau[] {
   return viTri.filter(v => v.dang_dung && (v.loai === 'kho' || v.loai === 'quay'));
 }
 
-/** Tìm mặt hàng đang dùng theo Mã, rồi theo Tên bỏ dấu. Trả câu lỗi khi không rõ. */
-export function timMon(matHang: MonTonDau[], ma: string | null, ten: string | null): MonTonDau | string {
+/** Tìm mặt hàng đang dùng theo Mã, rồi theo Tên bỏ dấu. Trả câu lỗi (theo nn) khi không rõ. */
+export function timMon(matHang: MonTonDau[], ma: string | null, ten: string | null, nn: NgonNguNB = 'vi'): MonTonDau | string {
+  const c = (x: HaiThuTieng) => x[nn];
   const dang = matHang.filter(m => m.dang_dung);
   if (ma) {
     const theoMa = dang.find(m => m.ma.toUpperCase() === ma.trim().toUpperCase());
     if (theoMa) return theoMa;
     if (!ten) {
       // Cột "Mã/Tên" một ô: thử luôn như tên.
-      return timMon(matHang, null, ma);
+      return timMon(matHang, null, ma, nn);
     }
   }
   if (ten) {
@@ -353,30 +408,50 @@ export function timMon(matHang: MonTonDau[], ma: string | null, ten: string | nu
     const cungTen = dang.filter(m => chuanTen(m.ten) === k);
     if (cungTen.length === 1) return cungTen[0];
     if (cungTen.length > 1) {
-      return `có ${cungTen.length} mặt hàng cùng tên "${ten}" (mã ${cungTen.map(m => m.ma).join(', ')}) — ghi Mã thay cho Tên`;
+      const dsMa = cungTen.map(m => m.ma).join(', ');
+      return c({ vi: `có ${cungTen.length} mặt hàng cùng tên "${ten}" (mã ${dsMa}) — ghi Mã thay cho Tên`,
+                 en: `${cungTen.length} items share the name "${ten}" (codes ${dsMa}) — write the Code instead of the Name` });
     }
     const ngung = matHang.some(m => !m.dang_dung && (chuanTen(m.ten) === k || m.ma.toUpperCase() === ten.trim().toUpperCase()));
-    if (ngung) return `"${ten}" đã ngừng dùng — mở lại ở Mặt hàng hoặc bỏ dòng này`;
-    return `không tìm thấy mặt hàng "${ma && ten ? `${ma} / ${ten}` : ten}"`;
+    if (ngung) {
+      return c({ vi: `"${ten}" đã ngừng dùng — mở lại ở Mặt hàng hoặc bỏ dòng này`,
+                 en: `"${ten}" is no longer used — turn it back on in Items or remove this row` });
+    }
+    const hien = ma && ten ? `${ma} / ${ten}` : ten;
+    return c({ vi: `không tìm thấy mặt hàng "${hien}"`, en: `item "${hien}" not found` });
   }
-  if (ma) return `không tìm thấy mặt hàng mã "${ma}"`;
-  return 'chưa ghi mặt hàng';
+  if (ma) return c({ vi: `không tìm thấy mặt hàng mã "${ma}"`, en: `no item with code "${ma}"` });
+  return c({ vi: 'chưa ghi mặt hàng', en: 'no item written' });
 }
 
-/** Tìm nơi để theo tên (bỏ dấu), hoặc "kho" / "quầy" khi chi nhánh chỉ có một chỗ loại đó. */
-export function timNoi(viTri: NoiTonDau[], o: string): NoiTonDau | string {
+/**
+ * Tìm nơi để theo tên (bỏ dấu), hoặc "kho" / "quầy" (tiếng Anh: "store" /
+ * "counter") khi chi nhánh chỉ có một chỗ loại đó. Câu lỗi theo nn.
+ */
+export function timNoi(viTri: NoiTonDau[], o: string, nn: NgonNguNB = 'vi'): NoiTonDau | string {
+  const c = (x: HaiThuTieng) => x[nn];
   const ds = noiDeDuoc(viTri);
   const k = chuanTen(o);
   const cungTen = ds.filter(v => chuanTen(v.ten) === k);
   if (cungTen.length === 1) return cungTen[0];
-  if (cungTen.length > 1) return `có ${cungTen.length} chỗ cùng tên "${o}" — đổi tên cho khác nhau ở Vị trí và lý do`;
-  const loai = k === 'kho' || k === 'kho lanh' ? 'kho' : k === 'quay' || k === 'quay thit' || k === 'quay ban' ? 'quay' : null;
+  if (cungTen.length > 1) {
+    return c({ vi: `có ${cungTen.length} chỗ cùng tên "${o}" — đổi tên cho khác nhau ở Vị trí và lý do`,
+               en: `${cungTen.length} places share the name "${o}" — give them different names in Locations and reasons` });
+  }
+  const loai = k === 'kho' || k === 'kho lanh' || k === 'store' || k === 'cold store' ? 'kho'
+    : k === 'quay' || k === 'quay thit' || k === 'quay ban' || k === 'counter' ? 'quay' : null;
   if (loai) {
     const theoLoai = ds.filter(v => v.loai === loai);
     if (theoLoai.length === 1) return theoLoai[0];
-    if (theoLoai.length > 1) return `có ${theoLoai.length} ${loai === 'kho' ? 'kho' : 'quầy'} — ghi đúng tên (${theoLoai.map(v => v.ten).join(', ')})`;
+    if (theoLoai.length > 1) {
+      const dsTen = theoLoai.map(v => v.ten).join(', ');
+      return c({ vi: `có ${theoLoai.length} ${loai === 'kho' ? 'kho' : 'quầy'} — ghi đúng tên (${dsTen})`,
+                 en: `there are ${theoLoai.length} ${loai === 'kho' ? 'stores' : 'counters'} — write the exact name (${dsTen})` });
+    }
   }
-  return `không có kho / quầy nào tên "${o}" (có: ${ds.map(v => v.ten).join(', ') || 'chưa có'})`;
+  const dsCo = ds.map(v => v.ten).join(', ');
+  return c({ vi: `không có kho / quầy nào tên "${o}" (có: ${dsCo || 'chưa có'})`,
+             en: `no store or counter is called "${o}" (there are: ${dsCo || 'none yet'})` });
 }
 
 /** Ô thô của một dòng, trước khi kiểm. */
@@ -387,45 +462,53 @@ interface ODong {
   goi: string; kg: string; gia: string; han: string;
 }
 
-/** Kiểm một dòng thô → DongTonDau hoặc danh sách lỗi. Dùng chung cho bảng món và ô dán. */
-function kiemDong(o: ODong, ctx: NguCanhTonDau, mon: MonTonDau | null): DongTonDau | string[] {
+/** Kiểm một dòng thô → DongTonDau hoặc danh sách lỗi (theo nn). Dùng chung cho bảng món và ô dán. */
+function kiemDong(o: ODong, ctx: NguCanhTonDau, mon: MonTonDau | null, nn: NgonNguNB): DongTonDau | string[] {
   const loi: string[] = [];
+  const bao = (x: HaiThuTieng) => { loi.push(x[nn]); };
   let m: MonTonDau | null = mon;
   if (!m) {
-    const t = timMon(ctx.matHang, o.ma, o.ten);
+    const t = timMon(ctx.matHang, o.ma, o.ten, nn);
     if (typeof t === 'string') loi.push(t);
     else m = t;
   }
   let noi: NoiTonDau | null = null;
   if (o.noi) {
-    const t = timNoi(ctx.viTri, o.noi);
+    const t = timNoi(ctx.viTri, o.noi, nn);
     if (typeof t === 'string') loi.push(t);
     else noi = t;
   } else {
     noi = noiDeDuoc(ctx.viTri).find(v => v.id === ctx.viTriMacDinh) ?? null;
-    if (!noi) loi.push('chưa ghi Nơi, và chưa chọn "Nơi để khi dòng không ghi"');
+    if (!noi) {
+      bao({ vi: 'chưa ghi Nơi, và chưa chọn "Nơi để khi dòng không ghi"',
+            en: 'no Location written, and no "Location for rows without one" chosen' });
+    }
   }
 
   const kg = docKg(o.kg);
-  if (kg === null) loi.push('chưa ghi số kg');
-  else if (Number.isNaN(kg) || kg <= 0) loi.push(`số kg "${o.kg}" phải lớn hơn 0, ví dụ 12,5`);
+  if (kg === null) bao({ vi: 'chưa ghi số kg', en: 'kg missing' });
+  else if (Number.isNaN(kg) || kg <= 0) bao({ vi: `số kg "${o.kg}" phải lớn hơn 0, ví dụ 12,5`, en: `kg "${o.kg}" must be more than 0, for example 12.5` });
 
   const goi = docSoNguyen(o.goi, 0, 100000);
-  if (goi !== null && Number.isNaN(goi)) loi.push(`số ${m?.don_vi_goi ?? 'gói'} "${o.goi}" phải là số nguyên`);
-  else if (m && m.dem_goi && !goi) loi.push(`chưa ghi số ${m.don_vi_goi}`);
+  if (goi !== null && Number.isNaN(goi)) {
+    bao({ vi: `số ${m?.don_vi_goi ?? 'gói'} "${o.goi}" phải là số nguyên`, en: `pack count "${o.goi}" must be a whole number` });
+  } else if (m && m.dem_goi && !goi) bao({ vi: `chưa ghi số ${m.don_vi_goi}`, en: 'pack count missing' });
 
   let gia: number | null = null;
   if (ctx.coGia) {
     gia = docTien(o.gia);
-    if (gia !== null && Number.isNaN(gia)) loi.push(`đơn giá "${o.gia}" phải là số đồng, ví dụ 450000`);
+    if (gia !== null && Number.isNaN(gia)) {
+      bao({ vi: `đơn giá "${o.gia}" phải là số đồng, ví dụ 450000`, en: `unit price "${o.gia}" must be an amount in VND, for example 450000` });
+    }
   }
 
   const han = docHanDan(o.han);
-  if (han === undefined) loi.push(`hạn dùng "${o.han}" không hiểu — ghi dạng 25/10/2026`);
+  if (han === undefined) bao({ vi: `hạn dùng "${o.han}" không hiểu — ghi dạng 25/10/2026`, en: `use-by "${o.han}" not understood — write it like 25/10/2026` });
   let hanSeDung: string | null = han ?? null;
   if (han === null && m) {
-    if (m.han_dung_ngay === null) loi.push('chưa có hạn dùng, và mặt hàng chưa cài hạn mặc định');
-    else if (docNgay(ctx.ngay)) hanSeDung = congNgay(ctx.ngay, m.han_dung_ngay);
+    if (m.han_dung_ngay === null) {
+      bao({ vi: 'chưa có hạn dùng, và mặt hàng chưa cài hạn mặc định', en: 'no use-by date, and the item has no default use-by' });
+    } else if (docNgay(ctx.ngay)) hanSeDung = congNgay(ctx.ngay, m.han_dung_ngay);
   }
 
   if (loi.length || !m || !noi || kg === null || Number.isNaN(kg)) return loi;
@@ -441,10 +524,11 @@ function kiemDong(o: ODong, ctx: NguCanhTonDau, mon: MonTonDau | null): DongTonD
   };
 }
 
-function danhSo(xt: XemTruocTonDau): XemTruocTonDau {
+function danhSo(xt: XemTruocTonDau, nn: NgonNguNB): XemTruocTonDau {
   xt.dong.forEach((d, i) => { d.stt = i + 1; });
   if (xt.dong.length > TOI_DA_DONG_TON_DAU) {
-    xt.loi.push(`Mỗi lần tối đa ${TOI_DA_DONG_TON_DAU} dòng — chia làm nhiều lần.`);
+    xt.loi.push({ vi: `Mỗi lần tối đa ${TOI_DA_DONG_TON_DAU} dòng — chia làm nhiều lần.`,
+                  en: `At most ${TOI_DA_DONG_TON_DAU} rows at a time — split it into several goes.` }[nn]);
   }
   return xt;
 }
@@ -453,9 +537,11 @@ function danhSo(xt: XemTruocTonDau): XemTruocTonDau {
  * Đọc ô dán từ Excel. Cột cách nhau bằng Tab (hoặc ; — một kiểu cho cả bảng;
  * không nhận dấu phẩy vì số kg viết "12,5"). Có dòng tiêu đề (từ hai tiêu đề hiểu được) thì cột xếp thứ tự
  * nào cũng được; không có thì theo COT_TON_DAU: Mã/Tên, Nơi, Gói, Kg, Đơn giá, HSD.
- * Dòng trống bị bỏ. "Dòng N" trong câu lỗi là số dòng trong ô dán.
+ * Dòng trống bị bỏ. "Dòng N" trong câu lỗi là số dòng trong ô dán. nn: ngôn ngữ
+ * của câu lỗi, câu bỏ qua cột và `nguon`.
  */
-export function xemTruocDanTonDau(noiDung: string, ctx: NguCanhTonDau): XemTruocTonDau {
+export function xemTruocDanTonDau(noiDung: string, ctx: NguCanhTonDau, nn: NgonNguNB = 'vi'): XemTruocTonDau {
+  const c = (x: HaiThuTieng) => x[nn];
   const xt: XemTruocTonDau = { dong: [], loi: [], boQua: [] };
   // KHÔNG tách bằng dấu phẩy: "12,5" kg sẽ bị cắt thành 12 và 5 mà không ai biết.
   const ngan = noiDung.includes('\t') ? '\t' : ';';
@@ -470,16 +556,23 @@ export function xemTruocDanTonDau(noiDung: string, ctx: NguCanhTonDau): XemTruoc
   const coTieuDe = hieu.length >= 2;
   if (coTieuDe) {
     hang[0].o.forEach((o, i) => { if (o && !dau[i]) xt.boQua.push(o); });
-    const lap = [...new Set(hieu.filter((c, i) => hieu.indexOf(c) !== i))];
-    for (const c of lap) xt.loi.push(`Dòng tiêu đề: cột "${TEN_COT_TON_DAU[c]}" có hai lần — xóa bớt một cột`);
-    if (!hieu.some(c => c === 'ma' || c === 'ten' || c === 'ma_ten')) xt.loi.push('Dòng tiêu đề cần có cột Mã hoặc Tên để biết là mặt hàng nào');
-    if (!hieu.includes('kg')) xt.loi.push('Dòng tiêu đề cần có cột Kg');
+    const lap = [...new Set(hieu.filter((x, i) => hieu.indexOf(x) !== i))];
+    for (const x of lap) {
+      xt.loi.push(c({ vi: `Dòng tiêu đề: cột "${TEN_COT_TON_DAU[x].vi}" có hai lần — xóa bớt một cột`,
+                      en: `Header row: the "${TEN_COT_TON_DAU[x].en}" column appears twice — delete one of them` }));
+    }
+    if (!hieu.some(x => x === 'ma' || x === 'ten' || x === 'ma_ten')) {
+      xt.loi.push(c({ vi: 'Dòng tiêu đề cần có cột Mã hoặc Tên để biết là mặt hàng nào',
+                      en: 'The header row needs a Code or Name column to know which item each row is' }));
+    }
+    if (!hieu.includes('kg')) xt.loi.push(c({ vi: 'Dòng tiêu đề cần có cột Kg', en: 'The header row needs a Kg column' }));
     if (xt.loi.length) return xt;
     cot = dau;
     hang.shift();
   }
   if (!ctx.coGia && cot.includes('gia')) {
-    xt.boQua.push('Đơn giá (tài khoản của bạn không điền giá — kế toán điền khi duyệt)');
+    xt.boQua.push(c({ vi: 'Đơn giá (tài khoản của bạn không điền giá — kế toán điền khi duyệt)',
+                      en: 'Unit price (your account does not enter prices — the accountant fills them in when approving)' }));
   }
 
   for (const h of hang) {
@@ -492,19 +585,20 @@ export function xemTruocDanTonDau(noiDung: string, ctx: NguCanhTonDau): XemTruoc
     // đừng để thủ kho (cột giá bị bỏ qua) mất hạn dùng mà không biết.
     if (!coTieuDe && !han && /[/-]/.test(gia) && typeof docHanDan(gia) === 'string') { han = gia; gia = ''; }
     const o: ODong = {
-      nguon: `dòng ${h.so} ô dán`,
+      nguon: c({ vi: `dòng ${h.so} ô dán`, en: `pasted row ${h.so}` }),
       ma: lay('ma') || maTen || null,
       ten: lay('ten') || null,
       noi: lay('noi') || null,
       goi: lay('goi'), kg: lay('kg'), gia, han,
     };
-    const kq = kiemDong(o, ctx, null);
+    const kq = kiemDong(o, ctx, null, nn);
     if (Array.isArray(kq)) {
       const tenMon = o.ten ?? o.ma;
-      xt.loi.push(`Dòng ${h.so}${tenMon ? ` (${tenMon})` : ''}: ${kq.join('; ')}`);
+      const moTa = `${tenMon ? ` (${tenMon})` : ''}: ${kq.join('; ')}`;
+      xt.loi.push(c({ vi: `Dòng ${h.so}${moTa}`, en: `Row ${h.so}${moTa}` }));
     } else xt.dong.push(kq);
   }
-  return danhSo(xt);
+  return danhSo(xt, nn);
 }
 
 /** Tên ô của bảng món (form): mh_<i>, goi_<i>, kg_<i>, gia_<i>, han_<i>. */
@@ -523,8 +617,9 @@ export function monTrongLuoi(matHang: MonTonDau[]): MonTonDau[] {
 /**
  * Đọc bảng món của một vị trí (ctx.viTriMacDinh). Dòng để trống hết thì bỏ.
  * Id mặt hàng lấy từ ô ẩn mh_<i> và phải có trong danh mục đang dùng.
+ * nn: ngôn ngữ của câu lỗi.
  */
-export function docLuoiTonDau(form: FormData, ctx: NguCanhTonDau): XemTruocTonDau {
+export function docLuoiTonDau(form: FormData, ctx: NguCanhTonDau, nn: NgonNguNB = 'vi'): XemTruocTonDau {
   const xt: XemTruocTonDau = { dong: [], loi: [], boQua: [] };
   const theoId = new Map(ctx.matHang.filter(m => m.dang_dung).map(m => [m.id, m]));
   const g = (k: string) => String(form.get(k) ?? '').trim();
@@ -537,13 +632,17 @@ export function docLuoiTonDau(form: FormData, ctx: NguCanhTonDau): XemTruocTonDa
     };
     if (!o.goi && !o.kg && !o.gia && !o.han) continue;
     const m = theoId.get(String(id));
-    if (!m) { xt.loi.push('Danh mục vừa đổi — tải lại trang rồi nhập lại.'); break; }
+    if (!m) {
+      xt.loi.push({ vi: 'Danh mục vừa đổi — tải lại trang rồi nhập lại.',
+                    en: 'The catalog just changed — reload the page and enter it again.' }[nn]);
+      break;
+    }
     o.nguon = m.ten;
-    const kq = kiemDong(o, ctx, m);
+    const kq = kiemDong(o, ctx, m, nn);
     if (Array.isArray(kq)) xt.loi.push(`${m.ten}: ${kq.join('; ')}`);
     else xt.dong.push(kq);
   }
-  return danhSo(xt);
+  return danhSo(xt, nn);
 }
 
 /** Tóm tắt theo vị trí (mỗi vị trí sẽ là một phiếu TD-), theo thứ tự xuất hiện. */
@@ -627,44 +726,55 @@ export function dongTuGui(gui: DongGuiTonDau[], ctx: Pick<NguCanhTonDau, 'matHan
 /** Kết quả kho_luu_ton_dau_ky → câu báo. */
 export interface PhieuTonDauMoi { vi_tri_id: string; phieu_id: string; so_phieu: string; trang_thai: string; so_dong: number }
 
-export function cauDaLuuTonDau(phieu: PhieuTonDauMoi[], daCo: boolean, tenViTri: Map<string, string>): string {
-  if (phieu.length === 0) return 'Chưa tạo phiếu nào.';
+export function cauDaLuuTonDau(
+  phieu: PhieuTonDauMoi[], daCo: boolean, tenViTri: Map<string, string>, nn: NgonNguNB = 'vi',
+): string {
+  const c = (x: HaiThuTieng) => x[nn];
+  if (phieu.length === 0) return c({ vi: 'Chưa tạo phiếu nào.', en: 'No sheets were created.' });
   const ds = phieu.map(p => {
     const noi = tenViTri.get(p.vi_tri_id);
-    return `${p.so_phieu}${noi ? ` (${noi}, ${p.so_dong} dòng)` : ''}`;
+    return `${p.so_phieu}${noi ? c({ vi: ` (${noi}, ${p.so_dong} dòng)`, en: ` (${noi}, ${p.so_dong} ${soIt(p.so_dong, 'row', 'rows')})` }) : ''}`;
   }).join(', ');
   const daDuyet = phieu.every(p => p.trang_thai === 'da_duyet');
   const choDuyet = phieu.every(p => p.trang_thai === 'cho_duyet');
-  const duoi = daDuyet ? 'đã duyệt, hàng đã vào tồn kho.'
-    : choDuyet ? 'đang chờ duyệt — quản lý / kế toán điền giá rồi duyệt ở màn Duyệt.'
-      : 'xem trạng thái ở danh sách phiếu.';
-  return `${daCo ? 'Lượt này đã ghi từ trước' : `Đã tạo ${phieu.length} phiếu tồn đầu kỳ`}: ${ds} — ${duoi}`;
+  const duoi = daDuyet ? c({ vi: 'đã duyệt, hàng đã vào tồn kho.', en: 'approved, the goods are now in stock.' })
+    : choDuyet ? c({ vi: 'đang chờ duyệt — quản lý / kế toán điền giá rồi duyệt ở màn Duyệt.',
+                     en: 'awaiting approval — a manager or the accountant enters the prices and approves on the Approvals screen.' })
+      : c({ vi: 'xem trạng thái ở danh sách phiếu.', en: 'check their status in the list.' });
+  const dau = daCo
+    ? c({ vi: 'Lượt này đã ghi từ trước', en: 'This was already saved earlier' })
+    : c({ vi: `Đã tạo ${phieu.length} phiếu tồn đầu kỳ`, en: `Created ${phieu.length} opening stock ${soIt(phieu.length, 'sheet', 'sheets')}` });
+  return `${dau}: ${ds} — ${duoi}`;
+}
+
+/** Câu báo hai thứ tiếng sau khi ghi tồn đầu kỳ (cho chuyenHuong). */
+export function kqDaLuuTonDau(phieu: PhieuTonDauMoi[], daCo: boolean, tenViTri: Map<string, string>): KetQua {
+  return { ok: true, cau: cauDaLuuTonDau(phieu, daCo, tenViTri, 'vi'), cauEn: cauDaLuuTonDau(phieu, daCo, tenViTri, 'en') };
 }
 
 // =============================================================================
 // GỌI DATABASE
 // =============================================================================
 
-export async function docTienDo(client: SupabaseClient, chiNhanhId: string): Promise<TienDoThietLap> {
+export async function docTienDo(client: SupabaseClient, chiNhanhId: string, nn: NgonNguNB = 'vi'): Promise<TienDoThietLap> {
   const { data, error } = await client.rpc('kho_tien_do_thiet_lap', { p_chi_nhanh_id: chiNhanhId });
   if (error) throw error;
-  return docTienDoTho(data);
+  return docTienDoTho(data, nn);
 }
 
 /** Đánh dấu / bỏ đánh dấu "bỏ qua" một bước. */
 export async function danhDauBuoc(
   client: SupabaseClient, chiNhanhId: string, buoc: string, boQua: boolean,
 ): Promise<KetQua> {
-  const b = BUOC_THIET_LAP.find(x => x.khoa === buoc);
-  if (!b || !b.boQua) return { ok: false, cau: 'Bước này không bỏ qua được.' };
+  const b = BUOC_THIET_LAP_NB.find(x => x.khoa === buoc);
+  if (!b || !b.boQua) return kqHai(false, { vi: 'Bước này không bỏ qua được.', en: 'This step cannot be skipped.' });
   const { error } = await client.rpc('kho_danh_dau_thiet_lap', {
     p_chi_nhanh_id: chiNhanhId, p_buoc: buoc, p_bo_qua: boQua,
   });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return {
-    ok: true,
-    cau: boQua ? `Đã đánh dấu bỏ qua bước "${b.ten}".` : `Bước "${b.ten}" lại tính là chưa xong cho tới khi làm.`,
-  };
+  return kqHai(true, boQua
+    ? { vi: `Đã đánh dấu bỏ qua bước "${b.ten.vi}".`, en: `Marked the "${b.ten.en}" step as skipped.` }
+    : { vi: `Bước "${b.ten.vi}" lại tính là chưa xong cho tới khi làm.`, en: `The "${b.ten.en}" step counts as not done again until you do it.` });
 }
 
 /** Giá trị 5 ngưỡng đang dùng và lần lưu cuối. null = chi nhánh chưa khởi tạo kho. */
@@ -696,7 +806,7 @@ export async function docMonTonDau(client: SupabaseClient): Promise<MonTonDau[]>
 export async function luuTonDauKy(
   client: SupabaseClient, chiNhanhId: string, maGui: string, ngay: string, dong: DongGuiTonDau[],
 ): Promise<KetQua & { phieu?: PhieuTonDauMoi[]; daCo?: boolean }> {
-  if (!laUuid(maGui)) return { ok: false, cau: 'Trang đã cũ — tải lại trang rồi làm lại.' };
+  if (!laUuid(maGui)) return kqHai(false, { vi: 'Trang đã cũ — tải lại trang rồi làm lại.', en: 'This page is out of date — reload it and try again.' });
   const { data, error } = await client.rpc('kho_luu_ton_dau_ky', {
     p_chi_nhanh_id: chiNhanhId, p_ma_gui: maGui, p_ngay: ngay, p_dong: dong,
   });

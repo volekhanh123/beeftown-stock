@@ -56,26 +56,283 @@ import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
 import { docThongTinLo } from '../../../../lib/kho/pha-loc.ts';
 import {
   docPhieuXuat, taoPhieuXuat, duyetHuy, tuChoiHuy, dongTuQuet, gopDong, docFormPhieuXuat, giuAnhHuy,
-  tomTatHang, docNhaCungCapCuaPhieuNhap, TEN_LOAI_XUAT, LOAI_LAP_DUOC, laNoiDeHang, buocHuySau,
+  tomTatHang, docNhaCungCapCuaPhieuNhap, TEN_LOAI_XUAT_NB, LOAI_LAP_DUOC, laNoiDeHang, buocHuySau,
   docMonHayDungBep, nutPhieuChuyen, xuLyChuyenThieu, huyChuyenDiDuong,
   type BuocHuy, type DongLoForm, type DongSoCai, type DongXuat, type DongXuatForm, type LoaiXuat, type PhieuXuat,
 } from '../../../../lib/kho/xuat.ts';
 import { linkAnh } from '../../../../lib/kho/anh.ts';
+import { huyTraHangChoTien } from '../../../../lib/kho/cong-no.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, laUuid,
-  TEN_LOAI_SO_CAI, TRANG_THAI_CHUNG_TU, type KetQua,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, kqHai, laUuid, nhanKho, trangThaiKho,
+  TEN_LOAI_SO_CAI_NB, type HaiThuTieng, type KetQua, type NgonNguNB,
 } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const cn = k.chiNhanh;
 const vai = k.nhanSu.vai_tro;
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+
+/** Câu báo dựng ở trang (KetQua cần cả hai thứ tiếng — có thể đi qua cookie khi chuyển trang). */
+const CAU = {
+  khongQuyen: { vi: 'Tài khoản của bạn không chuyển, xuất hay báo hủy hàng.', en: 'Your account cannot transfer, issue or write off goods.' },
+  khongThay: { vi: 'Không tìm thấy phiếu này.', en: 'This slip was not found.' },
+  guiBaoHuy: { vi: 'Gửi báo hủy', en: 'Send write-off' },
+  ghiPhieu: { vi: 'Ghi phiếu', en: 'Save slip' },
+  mangDut: {
+    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
+    en: 'Could not read the submitted data — the connection may have dropped. Try sending again.',
+  },
+  chuaCoNoi: { vi: 'Chưa có kho hay quầy nào để lấy hàng.', en: 'There is no store or counter to take goods from yet.' },
+  chuaCoHang: {
+    vi: 'Chưa có hàng nào — quét nhãn, chọn món hoặc ghi số ở lô cần hủy.',
+    en: 'No goods yet — scan labels, choose an item, or enter a number at the lot to write off.',
+  },
+  lyDoNgung: { vi: 'Lý do này không còn dùng — chọn lý do khác.', en: 'This reason is no longer used — choose another one.' },
+  oQuetTrong: {
+    vi: 'Ô quét đang trống — quét nhãn vào ô rồi bấm "Đọc mã đã quét".',
+    en: 'The scan box is empty — scan labels into the box, then press "Read scanned codes".',
+  },
+  chuaDocNhan: { vi: 'Chưa đọc được nhãn nào.', en: 'No labels could be read.' },
+  viecSai: { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+} satisfies Record<string, HaiThuTieng>;
+
+/** Câu sau khi đọc mã (hai thứ tiếng, có số). */
+const CAU_DA_DOC = {
+  vi: (n: number, hang: string, nut: string) => `Đã đọc ${n} nhãn: ${hang}. Kiểm lại rồi bấm "${nut}".`,
+  en: (n: number, hang: string, nut: string) => `Read ${n} ${s(n, 'label', 'labels')}: ${hang}. Check, then press "${nut}".`,
+};
+
+/** Tên chứng từ in ở đầu trang (theo loại phiếu). */
+const TIEU_DE_IN: Record<string, HaiThuTieng> = {
+  huy: { vi: 'BIÊN BẢN HỦY HÀNG', en: 'WRITE-OFF REPORT' },
+  chuyen: { vi: 'PHIẾU CHUYỂN KHO', en: 'STOCK TRANSFER SLIP' },
+  xuat_bep: { vi: 'PHIẾU XUẤT BẾP', en: 'KITCHEN ISSUE SLIP' },
+  xuat_khac: { vi: 'PHIẾU XUẤT KHÁC', en: 'OTHER ISSUE SLIP' },
+  tra_ncc: { vi: 'PHIẾU TRẢ HÀNG NHÀ CUNG CẤP', en: 'SUPPLIER RETURN SLIP' },
+};
+const TIEU_DE_IN_KHAC: HaiThuTieng = { vi: 'PHIẾU XUẤT KHO', en: 'STOCK ISSUE SLIP' };
+
+// Bảng chữ tên `ch` (không phải `t`): trang này dùng `t` cho từng lô tồn.
+const ch = dichNB(nn, {
+  khongDoc: { vi: 'Không đọc được phiếu.', en: 'Could not read the slip.' },
+  vuaQuetCoLo: {
+    vi: (ten: string | undefined) => `${ten ?? 'Một món'} vừa quét cũng đang ghi ở phần lô — xóa số ở một chỗ.`,
+    en: (ten: string | undefined) => `${ten ?? 'An item'} was just scanned but is also entered in the lot section — clear the number in one place.`,
+  },
+  maCanLa: {
+    vi: (ma: string, _n: number) => `Cho quản lý: mã cân ${ma} chưa gắn với món nào — gắn ở Cài đặt → Mặt hàng.`,
+    en: (ma: string, n: number) => `For the manager: scale ${s(n, 'code', 'codes')} ${ma} ${s(n, 'is', 'are')} not linked to any item — link ${s(n, 'it', 'them')} in Setup → Items.`,
+  },
+  loKhongCon: {
+    vi: (noi: string) => `Lô được chọn không còn hàng ở ${noi} — có thể đã chuyển hay hủy rồi.`,
+    en: (noi: string) => `The chosen lot has no stock left at ${noi} — it may already have been moved or written off.`,
+  },
+  chuaCoHangNgan: { vi: 'chưa có hàng', en: 'no goods yet' },
+  buocHang: { vi: 'Hàng', en: 'Goods' },
+  buocLyDo: { vi: 'Lý do', en: 'Reason' },
+  buocAnh: { vi: 'Ảnh và gửi', en: 'Photo and send' },
+  moi: { vi: 'Mới', en: 'New' },
+  inBienBan: { vi: 'In biên bản', en: 'Print report' },
+  inPhieu: { vi: 'In phiếu', en: 'Print slip' },
+  loaiPhieu: { vi: 'Loại phiếu', en: 'Slip type' },
+  layTu: { vi: 'Lấy từ', en: 'Take from' },
+  noiLay: { vi: 'Nơi lấy', en: 'Take from' },
+  duaDen: { vi: 'Đưa đến', en: 'Send to' },
+  noiNhan: { vi: 'Nơi nhận', en: 'Destination' },
+  cacBuocHuy: { vi: 'Các bước báo hủy', en: 'Write-off steps' },
+  loHetHan: {
+    vi: (ma: string, ten: string, l: string) => `Lô ${ma} (${ten}) đã hết hạn — không ${l === 'chuyen' ? 'đưa ra quầy' : l === 'xuat_bep' ? 'đưa bếp' : 'xuất'} được.`,
+    en: (ma: string, ten: string, l: string) => `Lot ${ma} (${ten}) has expired — it cannot be ${l === 'chuyen' ? 'sent to the counter' : l === 'xuat_bep' ? 'sent to the kitchen' : 'issued'}.`,
+  },
+  baoHuyLoNay: { vi: 'Báo hủy lô này', en: 'Write off this lot' },
+  canViTri: {
+    vi: (chuyen: boolean) => `Cần ít nhất ${chuyen ? 'hai vị trí (kho và quầy)' : 'một kho hoặc quầy'} đang dùng. Thêm trong Cài đặt → Vị trí.`,
+    en: (chuyen: boolean) => `You need at least ${chuyen ? 'two locations in use (a store and a counter)' : 'one store or counter in use'}. Add them in Setup → Locations.`,
+  },
+  chuyenTu: { vi: 'Chuyển từ ', en: 'Transfer from ' },
+  sang: { vi: ' sang ', en: ' to ' },
+  xuatBepTu: { vi: 'Xuất cho bếp từ ', en: 'Issue to the kitchen from ' },
+  xuatTu: { vi: 'Xuất từ ', en: 'Issue from ' },
+  xuatKhacDuoi: {
+    vi: ' cho việc khác: dùng nội bộ, tặng khách, hàng mẫu… — phải chọn lý do.',
+    en: ' for other uses: staff use, gifts to guests, samples… — a reason is required.',
+  },
+  baoHuyO: { vi: 'Báo hủy hàng ở ', en: 'Report a write-off at ' },
+  baoHuyDuoi: {
+    vi: '. Hàng chuyển ngay sang "Hàng chờ hủy"; quản lý duyệt mới ghi mất.',
+    en: '. The goods move straight to "Awaiting write-off"; they are only recorded as lost once a manager approves.',
+  },
+  boQua1: { vi: ' Lô ', en: ' ' },
+  boQua2: { vi: 'đã hết hạn', en: 'Expired' },
+  boQua3: { vi: ' được bỏ qua — chỉ báo hủy được.', en: ' lots are skipped — they can only be written off.' },
+  hangCanHuy: { vi: 'Hàng cần hủy', en: 'Goods to write off' },
+  hangLayRa: { vi: 'Hàng lấy ra', en: 'Goods to take' },
+  monHayDua: { vi: 'Món hay đưa bếp — bấm để thêm một dòng:', en: 'Items often sent to the kitchen — press one to add a line:' },
+  khongQuetDuoc: {
+    vi: 'Không quét được thì chọn món và ghi số gói — máy tự lấy hàng hạn gần trước. Hàng theo kg (không đếm gói) thì ghi số kg.',
+    en: 'If you cannot scan, choose the item and enter the number of packs — the earliest use-by is taken first automatically. For goods by kg (not counted in packs), enter the kg.',
+  },
+  matHang: { vi: 'Mặt hàng', en: 'Item' },
+  chonMatHang: { vi: '— chọn mặt hàng —', en: '— choose an item —' },
+  noiTrong: { vi: '— nơi này đang trống —', en: '— nothing here —' },
+  soGoi: { vi: 'Số gói', en: 'Packs' },
+  soKg: { vi: 'Số kg', en: 'Kg' },
+  goiYKg: { vi: 'hàng theo kg / kg quét được', en: 'goods by kg / scanned kg' },
+  themDong: { vi: '+ Thêm một dòng', en: '+ Add a line' },
+  loDaChon: { vi: 'Lô đã chọn', en: 'Chosen lot' },
+  chonLoHuy: { vi: 'Chọn lô cần hủy', en: 'Choose the lot to write off' },
+  hoacChonLo: { vi: 'Hoặc chọn đúng lô cần lấy', en: 'Or choose the exact lot to take' },
+  motCho: {
+    vi: 'Món đã ghi ở trên thì đừng ghi lại ở đây — mỗi món chỉ ghi một chỗ.',
+    en: 'Do not enter an item here if it is already entered above — each item goes in one place only.',
+  },
+  khongCoHang: { vi: (noi: string) => `${noi} đang không có hàng.`, en: (noi: string) => `${noi} has no stock.` },
+  lo: { vi: 'lô', en: 'lot' },
+  conTruoc: { vi: 'còn ', en: '' },
+  conSau: { vi: '', en: ' left' },
+  hsd: { vi: 'HSD', en: 'Use by' },
+  chiBaoHuy: { vi: 'Đã hết hạn — chỉ báo hủy được.', en: 'Expired — can only be written off.' },
+  soDv: { vi: (dv: string) => `Số ${dv}`, en: (dv: string) => `Number of ${dv}` },
+  neuCan: { vi: ' (nếu cân)', en: ' (if weighed)' },
+  huyO: { vi: 'Hủy ở ', en: 'Write off at ' },
+  lyDoHai: { vi: 'Lý do: ', en: 'Reason: ' },
+  suaHang: { vi: '← Sửa hàng', en: '← Edit goods' },
+  doiLyDo: { vi: 'Đổi lý do', en: 'Change reason' },
+  viSaoHuy: { vi: 'Vì sao phải hủy?', en: 'Why write it off?' },
+  chuaCoLyDoHuy: {
+    vi: 'Chưa có lý do hủy nào đang dùng — quản lý thêm trong Cài đặt → Lý do.',
+    en: 'No write-off reasons in use yet — a manager adds them in Setup → Reasons.',
+  },
+  canChupAnh: { vi: 'cần chụp ảnh', en: 'photo needed' },
+  lyDo: { vi: 'Lý do', en: 'Reason' },
+  khongGhi: { vi: 'Không ghi', en: 'None' },
+  chuaCoLyDoKhac: {
+    vi: 'Chưa có lý do xuất khác nào — quản lý mở Thiết lập kho, bấm Khởi tạo để có sẵn Dùng nội bộ, Tặng khách, Hàng mẫu, Khác.',
+    en: 'No other-issue reasons yet — a manager opens Setup and presses the set-up button to add the default reasons (staff use, gift to guest, sample, other).',
+  },
+  anhHang: { vi: 'Ảnh chụp hàng', en: 'Photo of the goods' },
+  khongBatBuoc: { vi: ' (không bắt buộc)', en: ' (optional)' },
+  lyDoCanAnh: { vi: (ten: string) => `Lý do "${ten}" cần ảnh.`, en: (ten: string) => `The reason "${ten}" needs a photo.` },
+  khongCanAnh: { vi: 'Lý do này không cần ảnh — có thì càng tốt.', en: 'This reason does not need a photo — but one helps.' },
+  chupRo: { vi: ' Chụp rõ nhãn và tình trạng hàng.', en: ' Show the label and the condition of the goods clearly.' },
+  daCoAnh: {
+    vi: (n: number) => `Đã có ${n} ảnh — không cần chụp lại. Muốn thêm thì chọn tiếp.`,
+    en: (n: number) => `${n} ${s(n, 'photo is', 'photos are')} already added — no need to take ${s(n, 'it', 'them')} again. Choose more to add.`,
+  },
+  altAnhDaChup: { vi: 'Ảnh hàng báo hủy đã chụp', en: 'Photo taken of the goods to write off' },
+  ghiChu: { vi: 'Ghi chú', en: 'Note' },
+  tiepLyDo: { vi: 'Tiếp: chọn lý do →', en: 'Next: choose a reason →' },
+  lapBoi: { vi: (ten: string, luc: string) => `lập bởi ${ten} lúc ${luc}`, en: (ten: string, luc: string) => `made by ${ten} at ${luc}` },
+  tuChoiBoi: { vi: 'từ chối bởi', en: 'rejected by' },
+  duyetBoi: { vi: 'duyệt bởi', en: 'approved by' },
+  lyDoTuChoiHai: { vi: 'Lý do từ chối:', en: 'Reason for rejection:' },
+  dangMang1: { vi: (den: string) => `Hàng đang được mang ra ${den} — `, en: (den: string) => `The goods are on the way to ${den} — ` },
+  dangMang2: { vi: 'chưa vào quầy', en: 'not in the counter yet' },
+  dangMang3: {
+    vi: '. Quầy kiểm hàng rồi bấm "Đã nhận đủ", thiếu thì ghi số thực nhận.',
+    en: '. Counter staff check the goods and press "Received in full"; if short, they enter what actually arrived.',
+  },
+  moNhanHang: { vi: 'Mở màn Nhận hàng', en: 'Open counter receiving' },
+  thieu1: { vi: 'Quầy ', en: 'The counter ' },
+  thieu2: { vi: 'nhận thiếu', en: 'received short' },
+  thieu3: {
+    vi: (noi: string) => `. Phần thiếu vẫn nằm ở "Đang mang ra quầy" — quản lý chọn trả về ${noi} (hàng còn đó) hoặc ghi mất (rơi vỡ, thất lạc).`,
+    en: (noi: string) => `. The missing part is still "On the way to the counter" — a manager chooses to return it to ${noi} (if the goods are still there) or record it as lost (dropped, missing).`,
+  },
+  soGoiDem: { vi: (n: number) => `${n} gói`, en: (n: number) => `${n} ${s(n, 'pack', 'packs')}` },
+  daTraVe: {
+    vi: (phan: string, noi: string) => `Quầy nhận thiếu; phần thiếu (${phan}) đã trả về ${noi}.`,
+    en: (phan: string, noi: string) => `The counter received short; the missing part (${phan}) was returned to ${noi}.`,
+  },
+  daGhiMat: {
+    vi: (phan: string) => `Quầy nhận thiếu; phần thiếu (${phan}) đã ghi mất.`,
+    en: (phan: string) => `The counter received short; the missing part (${phan}) was recorded as lost.`,
+  },
+  nhanDu: { vi: 'Quầy đã nhận đủ hàng.', en: 'The counter received everything.' },
+  chuyenDaHuy: { vi: (noi: string) => `Chuyến đã hủy — hàng về lại ${noi}.`, en: (noi: string) => `Delivery cancelled — the goods went back to ${noi}.` },
+  tu: { vi: 'Từ', en: 'From' },
+  layO: { vi: 'Lấy ở', en: 'Taken from' },
+  den: { vi: 'Đến', en: 'To' },
+  theoYeuCau: { vi: 'Theo yêu cầu', en: 'For request' },
+  cuaQuay: { vi: 'của quầy', en: 'from the counter' },
+  quayNhan: { vi: 'Quầy nhận', en: 'Counter received' },
+  nhanTrenGoi: { vi: (a: number, b: number) => `${a}/${b} gói`, en: (a: number, b: number) => `${a}/${b} packs` },
+  huyChuyenDt: { vi: 'Hủy chuyến', en: 'Delivery cancelled' },
+  traVeKhoDt: { vi: 'Trả về kho', en: 'Returned to store' },
+  ghiMatDt: { vi: 'Ghi mất', en: 'Recorded as lost' },
+  phieuNhap: { vi: 'Phiếu nhập', en: 'Goods receipt' },
+  xemPhieuNhap: { vi: 'xem phiếu nhập và công nợ', en: 'view the goods receipt and payables' },
+  traLaiNcc: { vi: 'trả lại nhà cung cấp', en: 'returned to the supplier' },
+  ngay: { vi: 'Ngày', en: 'Date' },
+  altAnh: { vi: 'Ảnh hàng báo hủy', en: 'Photo of the written-off goods' },
+  cotGoi: { vi: 'Gói', en: 'Packs' },
+  cotKgSo: { vi: 'Kg (sổ)', en: 'Kg (books)' },
+  cotKgQuet: { vi: 'Kg quét/cân', en: 'Kg scanned/weighed' },
+  cotLoChiDinh: { vi: 'Lô chỉ định', en: 'Chosen lot' },
+  thieuNgoac: { vi: ' (thiếu)', en: ' (short)' },
+  tuLayHang: { vi: 'tự lấy hàng hạn gần trước', en: 'earliest use-by first (automatic)' },
+  loDaLay: { vi: 'Lô đã lấy', en: 'Lots taken' },
+  cotLo: { vi: 'Lô', en: 'Lot' },
+  cotHan: { vi: 'Hạn dùng', en: 'Use by' },
+  cotSoGhi: { vi: 'Sổ ghi', en: 'Ledger entry' },
+  huyCho: {
+    vi: 'Hàng đang nằm ở "Hàng chờ hủy" — không còn tính là hàng ở quầy, chưa ghi mất.',
+    en: 'The goods are in "Awaiting write-off" — no longer counted as counter stock, not yet recorded as lost.',
+  },
+  daGhiHuy: { vi: (kg: string) => `Đã ghi hủy ${kg} kg.`, en: (kg: string) => `${kg} kg written off.` },
+  veChoCu: { vi: 'Hàng đã về lại chỗ cũ.', en: 'The goods went back where they were.' },
+  duyetBaoHuy: { vi: 'Duyệt báo hủy', en: 'Approve write-off' },
+  duyetGhiHuy: { vi: 'Duyệt — ghi hủy', en: 'Approve — record write-off' },
+  tuChoiTraVe: { vi: 'Từ chối — trả hàng về chỗ cũ', en: 'Reject — put the goods back' },
+  lyDoTuChoi: { vi: 'Lý do từ chối', en: 'Reason for rejection' },
+  tuChoi: { vi: 'Từ chối', en: 'Reject' },
+  xuLyThieu: { vi: 'Xử lý hàng thiếu', en: 'Handle the shortfall' },
+  lyDoSao: { vi: 'Lý do *', en: 'Reason *' },
+  xuLyGoiY: {
+    vi: (noi: string) => `Hàng còn ở ${noi} thì "Trả về kho". Rơi vỡ, thất lạc thì "Ghi mất" — tính vào hao hụt.`,
+    en: (noi: string) => `If the goods are still at ${noi}, choose "Return to store". If dropped or lost, choose "Record as lost" — it counts as a loss.`,
+  },
+  nutTraVe: { vi: 'Trả về kho', en: 'Return to store' },
+  nutGhiMat: { vi: 'Ghi mất', en: 'Record as lost' },
+  huyTraTieuDe: { vi: (noi: string) => `Hủy phiếu trả hàng — hàng về lại ${noi}`, en: (noi: string) => `Cancel the supplier return — goods go back to ${noi}` },
+  huyTraGoiY: {
+    vi: 'Chỉ hủy được khi kế toán chưa xác nhận. Dùng khi ghi nhầm số kg hoặc nhà cung cấp không nhận lại hàng — hủy xong thì ghi lại cho đúng.',
+    en: 'Can only be cancelled before the accountant confirms. Use it when the kg was entered wrongly or the supplier would not take the goods back — then record it again correctly.',
+  },
+  lyDoHuy: { vi: 'Lý do hủy', en: 'Reason for cancelling' },
+  viDuHuyTra: { vi: 'ví dụ: ghi nhầm 2,4 thành 24 kg', en: 'e.g. entered 24 kg instead of 2.4' },
+  nutHuyTra: { vi: 'Hủy phiếu trả hàng', en: 'Cancel supplier return' },
+  huyChuyenTieuDe: { vi: (noi: string) => `Hủy chuyến — hàng về lại ${noi}`, en: (noi: string) => `Cancel delivery — goods go back to ${noi}` },
+  huyChuyenGoiY: {
+    vi: 'Chỉ hủy được khi quầy chưa bấm nhận. Yêu cầu của quầy (nếu có) quay về chờ mang ra.',
+    en: 'Can only be cancelled before the counter confirms receipt. The counter request (if any) goes back to waiting.',
+  },
+  lyDoKhongBuoc: { vi: 'Lý do (không bắt buộc)', en: 'Reason (optional)' },
+  nutHuyChuyen: { vi: 'Hủy chuyến', en: 'Cancel delivery' },
+  veCongNo: { vi: '← Công nợ nhà cung cấp', en: '← Supplier payables' },
+  veDuyet: { vi: '← Về trang Duyệt', en: '← Back to Approvals' },
+  veDanhSach: { vi: '← Danh sách phiếu', en: '← List of slips' },
+  kyBaoHuy: { vi: 'Người báo hủy', en: 'Reported by' },
+  kyChungKien: { vi: 'Người chứng kiến', en: 'Witness' },
+  kyQuanLyDuyet: { vi: 'Quản lý duyệt', en: 'Approved by manager' },
+  kyThuKho: { vi: 'Thủ kho', en: 'Storekeeper' },
+  kyNccNhan: { vi: 'Nhà cung cấp nhận', en: 'Received by supplier' },
+  kyKeToan: { vi: 'Kế toán', en: 'Accountant' },
+  kyNguoiXuat: { vi: 'Người xuất', en: 'Issued by' },
+  kyNguoiNhan: { vi: 'Người nhận', en: 'Received by' },
+  kyQuanLy: { vi: 'Quản lý', en: 'Manager' },
+  kyNguoiGiao: { vi: 'Người giao', en: 'Delivered by' },
+});
 
 const idThamSo = Astro.params.id ?? '';
 const moi = idThamSo === 'moi';
 if (moi && !k.duoc('van_hanh')) {
-  return chuyenHuong(Astro, '/noi-bo/kho/xuat', { ok: false, cau: 'Tài khoản của bạn không chuyển, xuất hay báo hủy hàng.' });
+  return chuyenHuong(Astro, '/noi-bo/kho/xuat', kqHai(false, CAU.khongQuyen));
 }
 
 let matHang: MatHang[] = [];
@@ -97,10 +354,10 @@ try {
     if (doc) { phieu = doc.phieu; dongDb = doc.dong; soCai = doc.soCai; }
   }
 } catch (e) {
-  loiDoc = cauLoiKho(e, 'Không đọc được phiếu.');
+  loiDoc = cauLoiKho(e, ch.khongDoc);
 }
 if (!moi && !phieu && !loiDoc) {
-  return chuyenHuong(Astro, '/noi-bo/kho/xuat', { ok: false, cau: 'Không tìm thấy phiếu này.' });
+  return chuyenHuong(Astro, '/noi-bo/kho/xuat', kqHai(false, CAU.khongThay));
 }
 
 // ---------------------------------------------------------------------------
@@ -165,7 +422,8 @@ const loChonKhoa = !!loChon && chiConHan && loChon.tinh_trang_han === 'het_han';
 // Nhân viên quầy chuyển hàng: không phải chọn lô — máy tự lấy hàng hạn gần trước.
 const anTheoLo = vai === 'nhan_vien_quay' && loai === 'chuyen';
 const lyDoLoai = lyDo.filter(l => l.loai === loai);
-const nutGhi = moHuy ? 'Gửi báo hủy' : 'Ghi phiếu';
+const NUT_GHI = moHuy ? CAU.guiBaoHuy : CAU.ghiPhieu;
+const nutGhi = NUT_GHI[nn];
 const tenMh = new Map(matHang.map(m => [m.id, m]));
 // Xuất bếp nhanh: món hay đưa bếp mà nơi lấy đang có (còn hạn).
 const monNhanh = moi && loai === 'xuat_bep'
@@ -192,7 +450,7 @@ const form = await docFormGui(Astro);
 const maGuiCu = String(form?.get('ma_gui') ?? '');
 const maGuiForm = moi && laUuid(maGuiCu) ? maGuiCu : crypto.randomUUID();
 if (Astro.request.method === 'POST' && !form) {
-  bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
+  bao = kqHai(false, CAU.mangDut);
 }
 if (form) {
   // Nút không mang "viec": nút món nhanh (them_mh) và nút lý do ở bước 2 báo hủy.
@@ -205,11 +463,11 @@ if (form) {
   const coLyDo = () => lyDoLoai.some(l => l.id === lyDoForm && l.dang_dung);
   if (moi && ['quet', 'them_dong', 'them_mh', 'ghi', 'buoc_hang', 'buoc_ly_do', 'chon_ly_do'].includes(viec)) {
     if (!tu) {
-      bao = { ok: false, cau: 'Chưa có kho hay quầy nào để lấy hàng.' };
+      bao = kqHai(false, CAU.chuaCoNoi);
     } else if (viec === 'ghi') {
       const kq = await taoPhieuXuat(k.client, cn.id, form, { loai, viTriId: tu.id, matHang, lyDo: lyDoLoai, den });
       if (kq.ok && kq.id) return chuyenHuong(Astro, `/noi-bo/kho/xuat/${kq.id}`, kq);
-      bao = { ok: false, cau: kq.cau };
+      bao = { ok: false, cau: kq.cau, cauEn: kq.cauEn };
       dongA = kq.doc?.dong ?? null;
       dongB = kq.doc?.theoLo ?? null;
       anhGiu = kq.anh ?? [];
@@ -223,12 +481,12 @@ if (form) {
       if (moHuy) {
         const giu = await giuAnhHuy(k.client, cn.id, form, maGuiForm);
         anhGiu = giu.duongDan;
-        luuY.push(...giu.loi);
+        luuY.push(...(nn === 'en' ? giu.loiEn : giu.loi));
         buocHuy = buocHuySau(viec, { hangXong: doc.loi.length === 0 && doc.payload.length > 0, coLyDo: coLyDo() });
         if (viec === 'buoc_ly_do' && buocHuy === 'hang') {
-          bao = { ok: false, cau: doc.loi.length ? doc.loi.join(' · ') : 'Chưa có hàng nào — quét nhãn, chọn món hoặc ghi số ở lô cần hủy.' };
+          bao = kqHai(false, doc.loi.length ? { vi: doc.loi.join(' · '), en: doc.loiEn.join(' · ') } : CAU.chuaCoHang);
         } else if (viec === 'chon_ly_do' && buocHuy === 'ly_do') {
-          bao = { ok: false, cau: 'Lý do này không còn dùng — chọn lý do khác.' };
+          bao = kqHai(false, CAU.lyDoNgung);
         }
       }
       if (viec === 'them_mh') {
@@ -241,20 +499,22 @@ if (form) {
       } else {
         const quet = dongTuQuet(String(form.get('ma_quet') ?? ''), matHang, caiDat?.mau_ma_vach, caiDat?.so_le_kg ?? 3);
         dongA = gopDong(doc.dong, quet.dong);
+        // Câu báo đi qua cookie khi chuyển trang: dựng cả hai thứ tiếng (tham số nn = thứ tiếng của câu).
+        const cauDaDoc = (nn: NgonNguNB) => CAU_DA_DOC[nn](quet.soDoc, tomTatHang(quet.dong, matHang, 3, nn), NUT_GHI[nn]);
         bao = quet.soMa === 0
-          ? { ok: false, cau: 'Ô quét đang trống — quét nhãn vào ô rồi bấm "Đọc mã đã quét".' }
+          ? kqHai(false, CAU.oQuetTrong)
           : quet.soDoc > 0
-            ? { ok: true, cau: `Đã đọc ${quet.soDoc} nhãn: ${tomTatHang(quet.dong, matHang)}. Kiểm lại rồi bấm "${nutGhi}".` }
-            : { ok: false, cau: 'Chưa đọc được nhãn nào.' };
-        luuY.unshift(...quet.loi);
+            ? kqHai(true, { vi: cauDaDoc('vi'), en: cauDaDoc('en') })
+            : kqHai(false, CAU.chuaDocNhan);
+        luuY.unshift(...(nn === 'en' ? quet.loiEn : quet.loi));
         // Món vừa quét mà cũng đang có số ở phần lô: báo ngay, đừng đợi bấm ghi mới bị chặn.
         const coOLo = new Set(doc.theoLo.filter(l => l.so_goi || l.so_kg).map(l => l.mat_hang_id));
         for (const d of quet.dong) {
-          if (coOLo.has(d.mat_hang_id)) luuY.push(`${tenMh.get(d.mat_hang_id)?.ten ?? 'Một món'} vừa quét cũng đang ghi ở phần lô — xóa số ở một chỗ.`);
+          if (coOLo.has(d.mat_hang_id)) luuY.push(ch.vuaQuetCoLo(tenMh.get(d.mat_hang_id)?.ten));
         }
         // Mã cân lạ: chỉ người sửa được danh mục mới thấy mã và chỗ sửa.
         if (quet.maCanLa.length > 0 && k.duoc('danh_muc')) {
-          luuY.push(`Cho quản lý: mã cân ${quet.maCanLa.join(', ')} chưa gắn với món nào — gắn ở Cài đặt → Mặt hàng.`);
+          luuY.push(ch.maCanLa(quet.maCanLa.join(', '), quet.maCanLa.length));
         }
       }
     }
@@ -270,11 +530,14 @@ if (form) {
     } else if (viec === 'huy_chuyen') {
       kq = await huyChuyenDiDuong(k.client, phieu.id, lyDoGo);
       return chuyenHuong(Astro, `/noi-bo/kho/xuat/${phieu.id}`, kq);
-    } else kq = { ok: false, cau: 'Việc không hợp lệ.' };
+    } else if (viec === 'huy_tra') {
+      // Trả hàng NCC còn chờ kế toán xác nhận tiền (0040): hàng về lại chỗ cũ.
+      return chuyenHuong(Astro, `/noi-bo/kho/xuat/${phieu.id}`, await huyTraHangChoTien(k.client, phieu.id, lyDoGo));
+    } else kq = kqHai(false, CAU.viecSai);
     // Duyệt / từ chối xong: về hộp Duyệt, phiếu kế tiếp nằm sẵn ở đó. Lỗi thì ở lại phiếu này.
     return chuyenHuong(Astro, kq.ok ? '/noi-bo/kho/duyet' : `/noi-bo/kho/xuat/${phieu.id}`, kq);
   } else {
-    bao = { ok: false, cau: 'Việc không hợp lệ.' };
+    bao = kqHai(false, CAU.viecSai);
   }
 } else if (moi) {
   // Mở từ link: điền sẵn. Gửi form rồi thì luôn giữ đúng số người dùng đã ghi.
@@ -285,7 +548,7 @@ if (form) {
       so_kg: loChon.dem_goi ? '' : String(loChon.so_kg).replace('.', ','),
     }];
   } else if (loThamSo && !loChon && tu) {
-    luuY.push(`Lô được chọn không còn hàng ở ${tu.ten} — có thể đã chuyển hay hủy rồi.`);
+    luuY.push(ch.loKhongCon(tu.ten));
   }
   if (mhThamSo && loChon?.mat_hang_id !== mhThamSo.id) {
     dongA = [{ mat_hang_id: mhThamSo.id, so_goi: '', so_kg: '' }];
@@ -322,8 +585,8 @@ const anhLinkGiu = anhGiu.length ? await linkAnh(k.client, anhGiu) : new Map<str
 const hienHang = !moHuy || buocHuy === 'hang';
 const dongGiu = (dongA ?? []).filter(d => d.mat_hang_id || d.so_goi || d.so_kg);
 const loGiu = (dongB ?? []).filter(l => l.so_goi || l.so_kg);
-const tomTatGiu = tomTatHang([...dongGiu, ...loGiu], matHang, 6) || 'chưa có hàng';
-const BUOC_HUY: [BuocHuy, string][] = [['hang', 'Hàng'], ['ly_do', 'Lý do'], ['anh', 'Ảnh và gửi']];
+const tomTatGiu = tomTatHang([...dongGiu, ...loGiu], matHang, 6, nn) || ch.chuaCoHangNgan;
+const BUOC_HUY: [BuocHuy, string][] = [['hang', ch.buocHang], ['ly_do', ch.buocLyDo], ['anh', ch.buocAnh]];
 
 const loTheoMa = phieu ? await docThongTinLo(k.client, [...soCai.map(s => s.lo_id), ...dongDb.map(d => d.lo_id ?? '')]) : new Map();
 const ten = phieu ? await tenNhanSu(k.client, [phieu.nguoi_tao, phieu.nguoi_duyet, phieu.nguoi_nhan, phieu.nguoi_xu_ly]) : new Map<string, string>();
@@ -332,8 +595,16 @@ const anhLink = phieu ? await linkAnh(k.client, phieu.anh) : new Map<string, str
 // vai kế toán — kế toán, quản lý, chủ — mở được; thủ kho xem giá nhưng không vào đó).
 const nccTra = phieu?.loai === 'tra_ncc' && k.duoc('ke_toan')
   ? await docNhaCungCapCuaPhieuNhap(k.client, phieu.phieu_nhap_id) : null;
-const [nhanTT, lopTT] = phieu ? (TRANG_THAI_CHUNG_TU[phieu.trang_thai] ?? [phieu.trang_thai, 'tat']) : ['Mới', 'nhap'];
-const tieuDe = moi ? TEN_LOAI_XUAT[loai] : `${TEN_LOAI_XUAT[loai]} ${phieu?.so_phieu ?? ''}`;
+// Trả hàng hai bước (0040): phiếu còn chờ kế toán xác nhận tiền thì người ghi,
+// kế toán hoặc quản lý hủy được (database kiểm lại quyền).
+const huyTraDuoc = phieu?.loai === 'tra_ncc' && phieu.trang_thai === 'cho_xac_nhan_tien'
+  && (phieu.nguoi_tao === k.nhanSu.id || k.duoc('ke_toan') || k.duoc('duyet'));
+// Trạng thái lạ: hiện nguyên mã, màu xám (như trước).
+const [nhanTT, lopTT] = phieu
+  ? ((tt: [string, string]) => [tt[0], tt[1] || 'tat'])(trangThaiKho(phieu.trang_thai, nn))
+  : [ch.moi, 'nhap'];
+const tenLoai = nhanKho(TEN_LOAI_XUAT_NB, loai, nn);
+const tieuDe = moi ? tenLoai : `${tenLoai} ${phieu?.so_phieu ?? ''}`;
 const choToiDuyet = phieu?.trang_thai === 'cho_duyet' && k.duoc('duyet');
 // Phiếu chuyển đi đường (0032): nút nào hiện cho người đang xem.
 const nut = phieu
@@ -353,7 +624,7 @@ const huongDan = choToiDuyet ? 'duyet-huy'
   : loai === 'huy' ? 'bao-huy'
   : loai === 'xuat_bep' ? 'xuat-bep'
   : loai === 'xuat_khac' ? 'xuat-khac'
-  : loai === 'tra_ncc' ? 'tra-ncc'
+  : loai === 'tra_ncc' ? (k.duoc('ke_toan') ? 'tra-ncc' : 'tra-hang')
   : vai === 'nhan_vien_quay' ? (moi ? 'tu-lay-hang' : 'nhan-ra-quay')
   : 'ra-quay';
 // Sổ của phiếu: chỉ các dòng rời nơi lấy (chuyển đi / xuất bếp) — đủ để biết lô nào.
@@ -365,10 +636,9 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
   <BaoKho bao={bao} loiDoc={loiDoc} />
   {!moi && phieu && (
     <>
-      <InDau tieuDe={({ huy: 'BIÊN BẢN HỦY HÀNG', chuyen: 'PHIẾU CHUYỂN KHO', xuat_bep: 'PHIẾU XUẤT BẾP',
-        xuat_khac: 'PHIẾU XUẤT KHÁC', tra_ncc: 'PHIẾU TRẢ HÀNG NHÀ CUNG CẤP' } as Record<string, string>)[phieu.loai] ?? 'PHIẾU XUẤT KHO'}
+      <InDau tieuDe={(TIEU_DE_IN[phieu.loai] ?? TIEU_DE_IN_KHAC)[nn]}
         soPhieu={phieu.so_phieu} chiNhanh={k.chiNhanh?.ten} />
-      <NutIn chu={phieu.loai === 'huy' ? 'In biên bản' : 'In phiếu'} />
+      <NutIn chu={phieu.loai === 'huy' ? ch.inBienBan : ch.inPhieu} />
     </>
   )}
   {luuY.length > 0 && (
@@ -379,20 +649,20 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
     <>
       {hienHang && (
         <>
-          <nav class="kho-dh" aria-label="Loại phiếu">
+          <nav class="kho-dh" aria-label={ch.loaiPhieu}>
             {LOAI_LAP_DUOC.map(l => (
-              <a href={linkLoai(l)} aria-current={l === loai ? 'page' : undefined}>{TEN_LOAI_XUAT[l]}</a>
+              <a href={linkLoai(l)} aria-current={l === loai ? 'page' : undefined}>{nhanKho(TEN_LOAI_XUAT_NB, l, nn)}</a>
             ))}
           </nav>
           <div class="nb-the">
-            <p style="margin:0 0 .4rem"><strong>Lấy từ</strong></p>
-            <nav class="kho-dh" aria-label="Nơi lấy" style="margin:0;padding-bottom:.5rem">
+            <p style="margin:0 0 .4rem"><strong>{ch.layTu}</strong></p>
+            <nav class="kho-dh" aria-label={ch.noiLay} style="margin:0;padding-bottom:.5rem">
               {dungDuoc.map(v => <a href={linkMoi({ tu: v.id, den: den?.id === v.id ? '' : (den?.id ?? '') })} aria-current={v.id === tu?.id ? 'page' : undefined}>{v.ten}</a>)}
             </nav>
             {loai === 'chuyen' && (
               <>
-                <p style="margin:.4rem 0"><strong>Đưa đến</strong></p>
-                <nav class="kho-dh" aria-label="Nơi nhận" style="margin:0;padding-bottom:0">
+                <p style="margin:.4rem 0"><strong>{ch.duaDen}</strong></p>
+                <nav class="kho-dh" aria-label={ch.noiNhan} style="margin:0;padding-bottom:0">
                   {dungDuoc.filter(v => v.id !== tu?.id).map(v => <a href={linkMoi({ den: v.id })} aria-current={v.id === den?.id ? 'page' : undefined}>{v.ten}</a>)}
                 </nav>
               </>
@@ -402,22 +672,22 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
       )}
 
       {moHuy && (
-        <ol class="xh-buoc" aria-label="Các bước báo hủy">
-          {BUOC_HUY.map(([b, t], i) => <li aria-current={b === buocHuy ? 'step' : undefined}>{i + 1} · {t}</li>)}
+        <ol class="xh-buoc" aria-label={ch.cacBuocHuy}>
+          {BUOC_HUY.map(([b, ten], i) => <li aria-current={b === buocHuy ? 'step' : undefined}>{i + 1} · {ten}</li>)}
         </ol>
       )}
 
       {loChonKhoa && loChon && (
         <div class="nb-bao luu-y" role="status">
           <p>
-            Lô {loChon.ma_lo} ({loChon.ten_hang}) đã hết hạn — không {loai === 'chuyen' ? 'đưa ra quầy' : loai === 'xuat_bep' ? 'đưa bếp' : 'xuất'} được.{' '}
-            <a href={`/noi-bo/kho/xuat/moi?loai=huy&tu=${loChon.vi_tri_id}&lo=${loChon.lo_id}`}>Báo hủy lô này</a>
+            {ch.loHetHan(loChon.ma_lo, loChon.ten_hang, loai)}{' '}
+            <a href={`/noi-bo/kho/xuat/moi?loai=huy&tu=${loChon.vi_tri_id}&lo=${loChon.lo_id}`}>{ch.baoHuyLoNay}</a>
           </p>
         </div>
       )}
 
       {!tu || (loai === 'chuyen' && !den) ? (
-        <p class="nb-rong">Cần ít nhất {loai === 'chuyen' ? 'hai vị trí (kho và quầy)' : 'một kho hoặc quầy'} đang dùng. Thêm trong Cài đặt → Vị trí.</p>
+        <p class="nb-rong">{ch.canViTri(loai === 'chuyen')}</p>
       ) : (
         <form method="POST" enctype="multipart/form-data">
           <input type="hidden" name="ma_gui" value={maGuiForm} />
@@ -430,18 +700,18 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
               <input type="hidden" name="so_dong" value={String(dongHienA.length)} />
               <input type="hidden" name="so_lo" value={String(hienTheoLo ? loHien.length : 0)} />
               <p class="nb-dan">
-                {loai === 'chuyen' && <>Chuyển từ <strong>{tu.ten}</strong> sang <strong>{den?.ten}</strong>.</>}
-                {loai === 'xuat_bep' && <>Xuất cho bếp từ <strong>{tu.ten}</strong>.</>}
-                {loai === 'xuat_khac' && <>Xuất từ <strong>{tu.ten}</strong> cho việc khác: dùng nội bộ, tặng khách, hàng mẫu… — phải chọn lý do.</>}
-                {loai === 'huy' && <>Báo hủy hàng ở <strong>{tu.ten}</strong>. Hàng chuyển ngay sang "Hàng chờ hủy"; quản lý duyệt mới ghi mất.</>}
-                {chiConHan && <> Lô <strong>đã hết hạn</strong> được bỏ qua — chỉ báo hủy được.</>}
+                {loai === 'chuyen' && <>{ch.chuyenTu}<strong>{tu.ten}</strong>{ch.sang}<strong>{den?.ten}</strong>.</>}{' '}
+                {loai === 'xuat_bep' && <>{ch.xuatBepTu}<strong>{tu.ten}</strong>.</>}{' '}
+                {loai === 'xuat_khac' && <>{ch.xuatTu}<strong>{tu.ten}</strong>{ch.xuatKhacDuoi}</>}{' '}
+                {loai === 'huy' && <>{ch.baoHuyO}<strong>{tu.ten}</strong>{ch.baoHuyDuoi}</>}
+                {chiConHan && <>{ch.boQua1}<strong>{ch.boQua2}</strong>{ch.boQua3}</>}
               </p>
 
-              <h2>{moHuy ? 'Hàng cần hủy' : 'Hàng lấy ra'}</h2>
+              <h2>{moHuy ? ch.hangCanHuy : ch.hangLayRa}</h2>
               <QuetMa tuFocus />
               {monNhanh.length > 0 && (
                 <div class="xb-nhanh">
-                  <p class="kho-phu" style="margin:.5rem 0 .4rem">Món hay đưa bếp — bấm để thêm một dòng:</p>
+                  <p class="kho-phu" style="margin:.5rem 0 .4rem">{ch.monHayDua}</p>
                   <div class="xb-nhanh-luoi">
                     {monNhanh.map(m => (
                       <button type="submit" name="them_mh" value={m.id} class="nb-nut phu" formnovalidate>{m.ten}</button>
@@ -449,31 +719,31 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                   </div>
                 </div>
               )}
-              <p class="kho-phu">Không quét được thì chọn món và ghi số gói — máy tự lấy hàng hạn gần trước. Hàng theo kg (không đếm gói) thì ghi số kg.</p>
+              <p class="kho-phu">{ch.khongQuetDuoc}</p>
               {dongHienA.map((d, i) => (
                 <div class="kho-dong-hang">
                   <span class="so-thu-tu">{i + 1}</span>
-                  <label class="nb-o" style="margin-top:.4rem"><span>Mặt hàng</span>
-                    <ChonMatHang name={`d${i}_mat_hang`} matHang={mhChon.length ? [...mhChon, ...matHang.filter(m => m.id === d.mat_hang_id && !hangTaiTu.has(m.id))] : matHang} chon={d.mat_hang_id} trong={mhChon.length ? '— chọn mặt hàng —' : '— nơi này đang trống —'} />
+                  <label class="nb-o" style="margin-top:.4rem"><span>{ch.matHang}</span>
+                    <ChonMatHang name={`d${i}_mat_hang`} matHang={mhChon.length ? [...mhChon, ...matHang.filter(m => m.id === d.mat_hang_id && !hangTaiTu.has(m.id))] : matHang} chon={d.mat_hang_id} trong={mhChon.length ? ch.chonMatHang : ch.noiTrong} />
                   </label>
                   <div class="kho-luoi">
-                    <label class="nb-o"><span>Số gói</span>
+                    <label class="nb-o"><span>{ch.soGoi}</span>
                       <input type="text" inputmode="numeric" name={`d${i}_so_goi`} value={d.so_goi} /></label>
-                    <label class="nb-o"><span>Số kg</span>
-                      <input type="text" inputmode="decimal" name={`d${i}_so_kg`} value={d.so_kg} placeholder={i === 0 ? 'hàng theo kg / kg quét được' : undefined} /></label>
+                    <label class="nb-o"><span>{ch.soKg}</span>
+                      <input type="text" inputmode="decimal" name={`d${i}_so_kg`} value={d.so_kg} placeholder={i === 0 ? ch.goiYKg : undefined} /></label>
                   </div>
                 </div>
               ))}
               <div class="kho-thanh-nut" style="margin-top:0">
-                <button type="submit" name="viec" value="them_dong" class="nb-nut phu" formnovalidate>+ Thêm một dòng</button>
+                <button type="submit" name="viec" value="them_dong" class="nb-nut phu" formnovalidate>{ch.themDong}</button>
               </div>
 
               {hienTheoLo && (
                 <details open={moHuy || !!loChon || loCoSo.size > 0}>
-                  <summary style="cursor:pointer;font-weight:600;padding:.5rem 0">{anTheoLo ? 'Lô đã chọn' : moHuy ? 'Chọn lô cần hủy' : 'Hoặc chọn đúng lô cần lấy'}</summary>
-                  <p class="kho-phu" style="margin-top:0">Món đã ghi ở trên thì đừng ghi lại ở đây — mỗi món chỉ ghi một chỗ.</p>
+                  <summary style="cursor:pointer;font-weight:600;padding:.5rem 0">{anTheoLo ? ch.loDaChon : moHuy ? ch.chonLoHuy : ch.hoacChonLo}</summary>
+                  <p class="kho-phu" style="margin-top:0">{ch.motCho}</p>
                   {loHien.length === 0 ? (
-                    <p class="nb-rong">{tu.ten} đang không có hàng.</p>
+                    <p class="nb-rong">{ch.khongCoHang(tu.ten)}</p>
                   ) : (
                     <div class="kho-lo-chon">
                       {loHien.map((t, i) => {
@@ -485,18 +755,18 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                             <input type="hidden" name={`l${i}_mat_hang`} value={t.mat_hang_id} />
                             <div class="dau">
                               <b>{t.ten_hang}</b>
-                              <span class="kho-phu">lô {t.ma_lo} · còn {t.dem_goi ? `${t.so_goi} ${t.don_vi_goi} · ` : ''}{dinhDangKg(t.so_kg)} kg ·{' '}
-                                <span class={`kho-han ${t.tinh_trang_han}`}>HSD {dinhDangNgay(t.han_dung)}</span></span>
+                              <span class="kho-phu">{ch.lo} {t.ma_lo} · {ch.conTruoc}{t.dem_goi ? `${t.so_goi} ${t.don_vi_goi} · ` : ''}{dinhDangKg(t.so_kg, nn)} kg{ch.conSau} ·{' '}
+                                <span class={`kho-han ${t.tinh_trang_han}`}>{ch.hsd} {dinhDangNgay(t.han_dung)}</span></span>
                             </div>
                             {khoa ? (
-                              <p class="kho-phu" style="margin:.2rem 0 .6rem">Đã hết hạn — chỉ báo hủy được.</p>
+                              <p class="kho-phu" style="margin:.2rem 0 .6rem">{ch.chiBaoHuy}</p>
                             ) : (
                               <div class="kho-luoi">
                                 {t.dem_goi && (
-                                  <label class="nb-o"><span>Số {t.don_vi_goi}</span>
+                                  <label class="nb-o"><span>{ch.soDv(t.don_vi_goi)}</span>
                                     <input type="text" inputmode="numeric" name={`l${i}_so_goi`} value={cu?.so_goi ?? ''} /></label>
                                 )}
-                                <label class="nb-o"><span>Số kg{t.dem_goi ? ' (nếu cân)' : ''}</span>
+                                <label class="nb-o"><span>{ch.soKg}{t.dem_goi ? ch.neuCan : ''}</span>
                                   <input type="text" inputmode="decimal" name={`l${i}_so_kg`} value={cu?.so_kg ?? ''} /></label>
                               </div>
                             )}
@@ -529,11 +799,11 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                 </>
               ))}
               <div class="nb-the">
-                <p style="margin:0">Hủy ở <strong>{tu.ten}</strong>: {tomTatGiu}.</p>
-                {buocHuy === 'anh' && lyDoDangChon && <p style="margin:.4rem 0 0">Lý do: <strong>{lyDoDangChon.ten}</strong></p>}
+                <p style="margin:0">{ch.huyO}<strong>{tu.ten}</strong>: {tomTatGiu}.</p>
+                {buocHuy === 'anh' && lyDoDangChon && <p style="margin:.4rem 0 0">{ch.lyDoHai}<strong>{lyDoDangChon.ten}</strong></p>}
                 <div class="kho-thanh-nut" style="margin:.6rem 0 0">
-                  <button type="submit" name="viec" value="buoc_hang" class="nb-nut phu" formnovalidate>← Sửa hàng</button>
-                  {buocHuy === 'anh' && <button type="submit" name="viec" value="buoc_ly_do" class="nb-nut phu" formnovalidate>Đổi lý do</button>}
+                  <button type="submit" name="viec" value="buoc_hang" class="nb-nut phu" formnovalidate>{ch.suaHang}</button>
+                  {buocHuy === 'anh' && <button type="submit" name="viec" value="buoc_ly_do" class="nb-nut phu" formnovalidate>{ch.doiLyDo}</button>}
                 </div>
               </div>
             </>
@@ -541,15 +811,15 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
 
           {moHuy && buocHuy === 'ly_do' && (
             <>
-              <h2>Vì sao phải hủy?</h2>
+              <h2>{ch.viSaoHuy}</h2>
               {lyDoDung.length === 0 ? (
-                <p class="nb-rong">Chưa có lý do hủy nào đang dùng — quản lý thêm trong Cài đặt → Lý do.</p>
+                <p class="nb-rong">{ch.chuaCoLyDoHuy}</p>
               ) : (
                 <div class="xh-ly-do-luoi">
                   {lyDoDung.map(l => (
                     <button type="submit" name="ly_do_id" value={l.id} class={`nb-nut ${l.id === lyDoForm ? '' : 'phu'}`}
                       aria-pressed={l.id === lyDoForm ? 'true' : 'false'}>
-                      {l.ten}{l.can_anh && <small>cần chụp ảnh</small>}
+                      {l.ten}{l.can_anh && <small>{ch.canChupAnh}</small>}
                     </button>
                   ))}
                 </div>
@@ -564,42 +834,42 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
             <div class="nb-the">
               {laXuatRa && (
                 <fieldset class="xk-chon">
-                  <legend>Lý do{loai === 'xuat_khac' ? ' *' : ''}</legend>
+                  <legend>{ch.lyDo}{loai === 'xuat_khac' ? ' *' : ''}</legend>
                   {loai === 'xuat_bep' && (
-                    <label><input type="radio" name="ly_do_id" value="" checked={!lyDoChon.some(l => l.id === lyDoForm)} /> Không ghi</label>
+                    <label><input type="radio" name="ly_do_id" value="" checked={!lyDoChon.some(l => l.id === lyDoForm)} /> {ch.khongGhi}</label>
                   )}
                   {lyDoChon.map(l => (
                     <label><input type="radio" name="ly_do_id" value={l.id} checked={l.id === lyDoForm} required={loai === 'xuat_khac'} /> {l.ten}</label>
                   ))}
                   {loai === 'xuat_khac' && lyDoChon.length === 0 && (
-                    <p class="kho-phu">Chưa có lý do xuất khác nào — quản lý mở Thiết lập kho, bấm Khởi tạo để có sẵn Dùng nội bộ, Tặng khách, Hàng mẫu, Khác.</p>
+                    <p class="kho-phu">{ch.chuaCoLyDoKhac}</p>
                   )}
                 </fieldset>
               )}
               {moHuy && (
                 <>
-                  <label class="nb-o"><span>Ảnh chụp hàng{canAnh ? ' *' : ' (không bắt buộc)'}</span>
-                    <small>{canAnh ? `Lý do "${lyDoDangChon?.ten ?? ''}" cần ảnh.` : 'Lý do này không cần ảnh — có thì càng tốt.'} Chụp rõ nhãn và tình trạng hàng.</small>
+                  <label class="nb-o"><span>{ch.anhHang}{canAnh ? ' *' : ch.khongBatBuoc}</span>
+                    <small>{canAnh ? ch.lyDoCanAnh(lyDoDangChon?.ten ?? '') : ch.khongCanAnh}{ch.chupRo}</small>
                     <input type="file" name="anh" accept="image/*" capture="environment" multiple required={canAnh && anhGiu.length === 0} /></label>
                   {anhGiu.length > 0 && (
                     <>
-                      <p class="kho-phu" style="margin:-.25rem 0 .4rem">Đã có {anhGiu.length} ảnh — không cần chụp lại. Muốn thêm thì chọn tiếp.</p>
+                      <p class="kho-phu" style="margin:-.25rem 0 .4rem">{ch.daCoAnh(anhGiu.length)}</p>
                       <div class="kho-anh">
                         {anhGiu.map(d => anhLinkGiu.get(d)
-                          ? <a href={anhLinkGiu.get(d)} target="_blank" rel="noopener"><img src={anhLinkGiu.get(d)} alt="Ảnh hàng báo hủy đã chụp" loading="lazy" /></a>
+                          ? <a href={anhLinkGiu.get(d)} target="_blank" rel="noopener"><img src={anhLinkGiu.get(d)} alt={ch.altAnhDaChup} loading="lazy" /></a>
                           : <span class="kho-phu">{d.split('/').pop()}</span>)}
                       </div>
                     </>
                   )}
                 </>
               )}
-              <label class="nb-o"><span>Ghi chú</span>
+              <label class="nb-o"><span>{ch.ghiChu}</span>
                 <input type="text" name="ghi_chu" value={ghiChuForm} maxlength="500" /></label>
             </div>
           )}
 
           <div class="kho-thanh-nut dinh">
-            {moHuy && buocHuy === 'hang' && <button type="submit" name="viec" value="buoc_ly_do" class="nb-nut" formnovalidate>Tiếp: chọn lý do →</button>}
+            {moHuy && buocHuy === 'hang' && <button type="submit" name="viec" value="buoc_ly_do" class="nb-nut" formnovalidate>{ch.tiepLyDo}</button>}
             {(!moHuy || buocHuy === 'anh') && <button type="submit" name="viec" value="ghi" class={`nb-nut ${moHuy ? 'kho-nut-xoa' : ''}`}>{nutGhi}</button>}
           </div>
         </form>
@@ -612,54 +882,54 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
     <>
       <p class="nb-dan">
         <span class={`nb-nhan ${lopTT}`}>{nhanTT}</span>
-        {' · '}lập bởi {ten.get(phieu.nguoi_tao ?? '') ?? '—'} lúc {dinhDangThoiDiem(phieu.created_at)}
-        {phieu.duyet_luc && <>{' · '}{phieu.trang_thai === 'tu_choi' ? 'từ chối' : 'duyệt'} bởi {ten.get(phieu.nguoi_duyet ?? '') ?? '—'} {dinhDangThoiDiem(phieu.duyet_luc)}</>}
+        {' · '}{ch.lapBoi(ten.get(phieu.nguoi_tao ?? '') ?? '—', dinhDangThoiDiem(phieu.created_at))}
+        {phieu.duyet_luc && <>{' · '}{phieu.trang_thai === 'tu_choi' ? ch.tuChoiBoi : ch.duyetBoi} {ten.get(phieu.nguoi_duyet ?? '') ?? '—'} {dinhDangThoiDiem(phieu.duyet_luc)}</>}
       </p>
-      {phieu.ly_do_tu_choi && <div class="nb-bao luu-y"><p><strong>Lý do từ chối:</strong> {phieu.ly_do_tu_choi}</p></div>}
+      {phieu.ly_do_tu_choi && <div class="nb-bao luu-y"><p><strong>{ch.lyDoTuChoiHai}</strong> {phieu.ly_do_tu_choi}</p></div>}
       {diDuong && (
         <div class={`nb-bao ${phieu.trang_thai === 'nhan_thieu' ? 'luu-y' : ''}`} role="status">
           {phieu.trang_thai === 'dang_chuyen' && (
-            <p>Hàng đang được mang ra {phieu.ten_vi_tri_den} — <strong>chưa vào quầy</strong>. Quầy kiểm hàng rồi bấm "Đã nhận đủ", thiếu thì ghi số thực nhận.
-              {nut.diNhan && <>{' '}<a href="/noi-bo/kho/quay/nhan">Mở màn Nhận hàng</a></>}</p>
+            <p>{ch.dangMang1(phieu.ten_vi_tri_den ?? '')}<strong>{ch.dangMang2}</strong>{ch.dangMang3}
+              {nut.diNhan && <>{' '}<a href="/noi-bo/kho/quay/nhan">{ch.moNhanHang}</a></>}</p>
           )}
           {phieu.trang_thai === 'nhan_thieu' && (
-            <p>Quầy <strong>nhận thiếu</strong>. Phần thiếu vẫn nằm ở "Đang mang ra quầy" — quản lý chọn trả về {phieu.ten_vi_tri} (hàng còn đó) hoặc ghi mất (rơi vỡ, thất lạc).</p>
+            <p>{ch.thieu1}<strong>{ch.thieu2}</strong>{ch.thieu3(phieu.ten_vi_tri)}</p>
           )}
           {phieu.trang_thai === 'da_tra_ve' && (
-            <p>Quầy nhận thiếu; phần thiếu ({congGoi(traVe) ? `${congGoi(traVe)} gói · ` : ''}{dinhDangKg(congKg(traVe))} kg) đã trả về {phieu.ten_vi_tri}.</p>
+            <p>{ch.daTraVe(`${congGoi(traVe) ? `${ch.soGoiDem(congGoi(traVe))} · ` : ''}${dinhDangKg(congKg(traVe), nn)} kg`, phieu.ten_vi_tri)}</p>
           )}
           {phieu.trang_thai === 'da_nhan' && phieu.xu_ly_thieu === 'mat' && (
-            <p>Quầy nhận thiếu; phần thiếu ({congGoi(ghiMat) ? `${congGoi(ghiMat)} gói · ` : ''}{dinhDangKg(congKg(ghiMat))} kg) đã ghi mất.</p>
+            <p>{ch.daGhiMat(`${congGoi(ghiMat) ? `${ch.soGoiDem(congGoi(ghiMat))} · ` : ''}${dinhDangKg(congKg(ghiMat), nn)} kg`)}</p>
           )}
-          {phieu.trang_thai === 'da_nhan' && !phieu.xu_ly_thieu && <p>Quầy đã nhận đủ hàng.</p>}
-          {phieu.trang_thai === 'da_huy' && <p>Chuyến đã hủy — hàng về lại {phieu.ten_vi_tri}.</p>}
+          {phieu.trang_thai === 'da_nhan' && !phieu.xu_ly_thieu && <p>{ch.nhanDu}</p>}
+          {phieu.trang_thai === 'da_huy' && <p>{ch.chuyenDaHuy(phieu.ten_vi_tri)}</p>}
         </div>
       )}
 
       <div class="nb-the">
         <dl class="kho-dl">
-          <dt>{phieu.loai === 'chuyen' ? 'Từ' : 'Lấy ở'}</dt><dd>{phieu.ten_vi_tri}</dd>
-          {phieu.loai === 'chuyen' && <><dt>Đến</dt><dd>{phieu.ten_vi_tri_den}</dd></>}
-          {phieu.yeu_cau_id && <><dt>Theo yêu cầu</dt><dd><a href={`/noi-bo/kho/quay/yeu-cau/${phieu.yeu_cau_id}`}>{phieu.so_yeu_cau ?? 'của quầy'}</a></dd></>}
+          <dt>{phieu.loai === 'chuyen' ? ch.tu : ch.layO}</dt><dd>{phieu.ten_vi_tri}</dd>
+          {phieu.loai === 'chuyen' && <><dt>{ch.den}</dt><dd>{phieu.ten_vi_tri_den}</dd></>}
+          {phieu.yeu_cau_id && <><dt>{ch.theoYeuCau}</dt><dd><a href={`/noi-bo/kho/quay/yeu-cau/${phieu.yeu_cau_id}`}>{phieu.so_yeu_cau ?? ch.cuaQuay}</a></dd></>}
           {phieu.nhan_luc && (
-            <><dt>Quầy nhận</dt><dd>{ten.get(phieu.nguoi_nhan ?? '') ?? '—'} · {dinhDangThoiDiem(phieu.nhan_luc)}
-              {phieu.tong_goi_nhan !== null && <>{' · '}{phieu.tong_goi_nhan}/{phieu.tong_goi} gói</>}</dd></>
+            <><dt>{ch.quayNhan}</dt><dd>{ten.get(phieu.nguoi_nhan ?? '') ?? '—'} · {dinhDangThoiDiem(phieu.nhan_luc)}
+              {phieu.tong_goi_nhan !== null && <>{' · '}{ch.nhanTrenGoi(phieu.tong_goi_nhan, phieu.tong_goi)}</>}</dd></>
           )}
           {phieu.xu_ly_luc && (
-            <><dt>{phieu.trang_thai === 'da_huy' ? 'Hủy chuyến' : phieu.xu_ly_thieu === 'tra_ve' ? 'Trả về kho' : 'Ghi mất'}</dt>
+            <><dt>{phieu.trang_thai === 'da_huy' ? ch.huyChuyenDt : phieu.xu_ly_thieu === 'tra_ve' ? ch.traVeKhoDt : ch.ghiMatDt}</dt>
               <dd>{ten.get(phieu.nguoi_xu_ly ?? '') ?? '—'} · {dinhDangThoiDiem(phieu.xu_ly_luc)}{phieu.ly_do_xu_ly && <>{' · '}{phieu.ly_do_xu_ly}</>}</dd></>
           )}
           {phieu.loai === 'tra_ncc' && phieu.phieu_nhap_id && (
-            <><dt>Phiếu nhập</dt><dd>{k.duoc('xem_gia') ? <a href={`/noi-bo/kho/nhap/${phieu.phieu_nhap_id}`}>xem phiếu nhập và công nợ</a> : 'trả lại nhà cung cấp'}</dd></>
+            <><dt>{ch.phieuNhap}</dt><dd>{k.duoc('xem_gia') ? <a href={`/noi-bo/kho/nhap/${phieu.phieu_nhap_id}`}>{ch.xemPhieuNhap}</a> : ch.traLaiNcc}</dd></>
           )}
-          <dt>Ngày</dt><dd>{dinhDangNgay(phieu.ngay)}</dd>
-          {phieu.ten_ly_do && <><dt>Lý do</dt><dd>{phieu.ten_ly_do}</dd></>}
-          {phieu.ghi_chu && <><dt>Ghi chú</dt><dd>{phieu.ghi_chu}</dd></>}
+          <dt>{ch.ngay}</dt><dd>{dinhDangNgay(phieu.ngay)}</dd>
+          {phieu.ten_ly_do && <><dt>{ch.lyDo}</dt><dd>{phieu.ten_ly_do}</dd></>}
+          {phieu.ghi_chu && <><dt>{ch.ghiChu}</dt><dd>{dichCau(nn, phieu.ghi_chu)}</dd></>}
         </dl>
         {phieu.anh.length > 0 && (
           <div class="kho-anh">
             {phieu.anh.map(a => anhLink.get(a)
-              ? <a href={anhLink.get(a)} target="_blank" rel="noopener"><img src={anhLink.get(a)} alt="Ảnh hàng báo hủy" loading="lazy" /></a>
+              ? <a href={anhLink.get(a)} target="_blank" rel="noopener"><img src={anhLink.get(a)} alt={ch.altAnh} loading="lazy" /></a>
               : <span class="kho-phu">{a.split('/').pop()}</span>)}
           </div>
         )}
@@ -667,7 +937,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
 
       <div class="kho-bang-khung">
         <table class="kho-bang">
-          <thead><tr><th>Mặt hàng</th><th class="so">Gói</th><th class="so">Kg (sổ)</th><th class="so">Kg quét/cân</th>{coCotNhan && <th class="so">Quầy nhận</th>}<th>Lô chỉ định</th></tr></thead>
+          <thead><tr><th>{ch.matHang}</th><th class="so">{ch.cotGoi}</th><th class="so">{ch.cotKgSo}</th><th class="so">{ch.cotKgQuet}</th>{coCotNhan && <th class="so">{ch.quayNhan}</th>}<th>{ch.cotLoChiDinh}</th></tr></thead>
           <tbody>
             {dongDb.map(d => {
               const m = tenMh.get(d.mat_hang_id);
@@ -677,12 +947,12 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
               <tr>
                 <td>{m?.ten ?? '—'}</td>
                 <td class="so">{d.so_goi || '—'}</td>
-                <td class="so">{dinhDangKg(d.so_kg)}</td>
-                <td class="so">{d.so_kg_do !== null ? dinhDangKg(d.so_kg_do) : '—'}</td>
+                <td class="so">{dinhDangKg(d.so_kg, nn)}</td>
+                <td class="so">{d.so_kg_do !== null ? dinhDangKg(d.so_kg_do, nn) : '—'}</td>
                 {coCotNhan && (
-                  <td class="so">{m?.dem_goi ? (d.so_goi_nhan ?? '—') : d.so_kg_nhan !== null ? dinhDangKg(d.so_kg_nhan) : '—'}{thieu && <strong> (thiếu)</strong>}</td>
+                  <td class="so">{m?.dem_goi ? (d.so_goi_nhan ?? '—') : d.so_kg_nhan !== null ? dinhDangKg(d.so_kg_nhan, nn) : '—'}{thieu && <strong>{ch.thieuNgoac}</strong>}</td>
                 )}
-                <td>{d.lo_id ? loTheoMa.get(d.lo_id)?.ma_lo ?? '—' : 'tự lấy hàng hạn gần trước'}</td>
+                <td>{d.lo_id ? loTheoMa.get(d.lo_id)?.ma_lo ?? '—' : ch.tuLayHang}</td>
               </tr>
               );
             })}
@@ -690,18 +960,18 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
         </table>
       </div>
 
-      <h2>Lô đã lấy</h2>
+      <h2>{ch.loDaLay}</h2>
       <div class="kho-bang-khung">
         <table class="kho-bang">
-          <thead><tr><th>Lô</th><th>Hạn dùng</th><th>Sổ ghi</th><th class="so">Gói</th><th class="so">Kg</th></tr></thead>
+          <thead><tr><th>{ch.cotLo}</th><th>{ch.cotHan}</th><th>{ch.cotSoGhi}</th><th class="so">{ch.cotGoi}</th><th class="so">Kg</th></tr></thead>
           <tbody>
             {soCaiLay.map(s => (
               <tr>
                 <td>{loTheoMa.get(s.lo_id)?.ma_lo ?? '—'}</td>
                 <td>{dinhDangNgay(loTheoMa.get(s.lo_id)?.han_dung)}</td>
-                <td>{TEN_LOAI_SO_CAI[s.loai] ?? s.loai}</td>
+                <td>{nhanKho(TEN_LOAI_SO_CAI_NB, s.loai, nn)}</td>
                 <td class="so">{Math.abs(s.so_goi) || '—'}</td>
-                <td class="so">{dinhDangKg(Math.abs(s.so_kg))}</td>
+                <td class="so">{dinhDangKg(Math.abs(s.so_kg), nn)}</td>
               </tr>
             ))}
           </tbody>
@@ -709,23 +979,23 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
       </div>
       {phieu.loai === 'huy' && (
         <p class="kho-phu">
-          {phieu.trang_thai === 'cho_duyet' && 'Hàng đang nằm ở "Hàng chờ hủy" — không còn tính là hàng ở quầy, chưa ghi mất.'}
-          {phieu.trang_thai === 'da_duyet' && `Đã ghi hủy ${dinhDangKg(Math.abs(daHuy.reduce((s, x) => s + x.so_kg, 0)))} kg.`}
-          {phieu.trang_thai === 'tu_choi' && 'Hàng đã về lại chỗ cũ.'}
+          {phieu.trang_thai === 'cho_duyet' && ch.huyCho}{' '}
+          {phieu.trang_thai === 'da_duyet' && ch.daGhiHuy(dinhDangKg(Math.abs(daHuy.reduce((s, x) => s + x.so_kg, 0)), nn))}{' '}
+          {phieu.trang_thai === 'tu_choi' && ch.veChoCu}
         </p>
       )}
 
       {phieu.loai === 'huy' && choToiDuyet && (
         <div class="nb-the kho-khong-in">
-          <h2 style="margin-top:0">Duyệt báo hủy</h2>
+          <h2 style="margin-top:0">{ch.duyetBaoHuy}</h2>
           <form method="POST" class="kho-thanh-nut">
-            <button type="submit" name="viec" value="duyet" class="nb-nut">Duyệt — ghi hủy</button>
+            <button type="submit" name="viec" value="duyet" class="nb-nut">{ch.duyetGhiHuy}</button>
           </form>
           <details>
-            <summary style="cursor:pointer;font-weight:600">Từ chối — trả hàng về chỗ cũ</summary>
+            <summary style="cursor:pointer;font-weight:600">{ch.tuChoiTraVe}</summary>
             <form method="POST" style="margin-top:.75rem">
-              <label class="nb-o"><span>Lý do từ chối</span><textarea name="ly_do" required maxlength="500"></textarea></label>
-              <button type="submit" name="viec" value="tu_choi" class="nb-nut kho-nut-xoa">Từ chối</button>
+              <label class="nb-o"><span>{ch.lyDoTuChoi}</span><textarea name="ly_do" required maxlength="500"></textarea></label>
+              <button type="submit" name="viec" value="tu_choi" class="nb-nut kho-nut-xoa">{ch.tuChoi}</button>
             </form>
           </details>
         </div>
@@ -733,25 +1003,35 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
 
       {nut.xuLyThieu && (
         <div class="nb-the kho-khong-in">
-          <h2 style="margin-top:0">Xử lý hàng thiếu</h2>
+          <h2 style="margin-top:0">{ch.xuLyThieu}</h2>
           <form method="POST">
-            <label class="nb-o"><span>Lý do *</span>
-              <small>Hàng còn ở {phieu.ten_vi_tri} thì "Trả về kho". Rơi vỡ, thất lạc thì "Ghi mất" — tính vào hao hụt.</small>
+            <label class="nb-o"><span>{ch.lyDoSao}</span>
+              <small>{ch.xuLyGoiY(phieu.ten_vi_tri)}</small>
               <textarea name="ly_do" required maxlength="500"></textarea></label>
             <div class="kho-thanh-nut" style="margin:0">
-              <button type="submit" name="viec" value="tra_ve" class="nb-nut">Trả về kho</button>
-              <button type="submit" name="viec" value="ghi_mat" class="nb-nut kho-nut-xoa">Ghi mất</button>
+              <button type="submit" name="viec" value="tra_ve" class="nb-nut">{ch.nutTraVe}</button>
+              <button type="submit" name="viec" value="ghi_mat" class="nb-nut kho-nut-xoa">{ch.nutGhiMat}</button>
             </div>
           </form>
         </div>
       )}
+      {huyTraDuoc && (
+        <details class="nb-the kho-khong-in">
+          <summary style="cursor:pointer;font-weight:600">{ch.huyTraTieuDe(phieu.ten_vi_tri)}</summary>
+          <form method="POST" style="margin-top:.75rem">
+            <p class="kho-phu" style="margin-top:0">{ch.huyTraGoiY}</p>
+            <label class="nb-o"><span>{ch.lyDoHuy}</span><input type="text" name="ly_do" required maxlength="500" placeholder={ch.viDuHuyTra} /></label>
+            <button type="submit" name="viec" value="huy_tra" class="nb-nut kho-nut-xoa">{ch.nutHuyTra}</button>
+          </form>
+        </details>
+      )}
       {nut.huyChuyen && (
         <details class="nb-the kho-khong-in">
-          <summary style="cursor:pointer;font-weight:600">Hủy chuyến — hàng về lại {phieu.ten_vi_tri}</summary>
+          <summary style="cursor:pointer;font-weight:600">{ch.huyChuyenTieuDe(phieu.ten_vi_tri)}</summary>
           <form method="POST" style="margin-top:.75rem">
-            <p class="kho-phu" style="margin-top:0">Chỉ hủy được khi quầy chưa bấm nhận. Yêu cầu của quầy (nếu có) quay về chờ mang ra.</p>
-            <label class="nb-o"><span>Lý do (không bắt buộc)</span><input type="text" name="ly_do" maxlength="500" /></label>
-            <button type="submit" name="viec" value="huy_chuyen" class="nb-nut kho-nut-xoa">Hủy chuyến</button>
+            <p class="kho-phu" style="margin-top:0">{ch.huyChuyenGoiY}</p>
+            <label class="nb-o"><span>{ch.lyDoKhongBuoc}</span><input type="text" name="ly_do" maxlength="500" /></label>
+            <button type="submit" name="viec" value="huy_chuyen" class="nb-nut kho-nut-xoa">{ch.nutHuyChuyen}</button>
           </form>
         </details>
       )}
@@ -760,14 +1040,14 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
 
   <p class="kho-khong-in" style="margin-top:1.5rem">
     {nccTra
-      ? <a href={`/noi-bo/kho/cong-no/${nccTra}`}>← Công nợ nhà cung cấp</a>
+      ? <a href={`/noi-bo/kho/cong-no/${nccTra}`}>{ch.veCongNo}</a>
       : choToiDuyet
-        ? <a href="/noi-bo/kho/duyet">← Về trang Duyệt</a>
-        : <a href="/noi-bo/kho/xuat">← Danh sách phiếu</a>}
+        ? <a href="/noi-bo/kho/duyet">{ch.veDuyet}</a>
+        : <a href="/noi-bo/kho/xuat">{ch.veDanhSach}</a>}
   </p>
-  {!moi && phieu && <KyTen ten={phieu.loai === 'huy' ? ['Người báo hủy', 'Người chứng kiến', 'Quản lý duyệt']
-    : phieu.loai === 'tra_ncc' ? ['Thủ kho', 'Nhà cung cấp nhận', 'Kế toán']
-    : phieu.loai === 'xuat_khac' ? ['Người xuất', 'Người nhận', 'Quản lý'] : ['Người giao', 'Người nhận']} />}
+  {!moi && phieu && <KyTen ten={phieu.loai === 'huy' ? [ch.kyBaoHuy, ch.kyChungKien, ch.kyQuanLyDuyet]
+    : phieu.loai === 'tra_ncc' ? [ch.kyThuKho, ch.kyNccNhan, ch.kyKeToan]
+    : phieu.loai === 'xuat_khac' ? [ch.kyNguoiXuat, ch.kyNguoiNhan, ch.kyQuanLy] : [ch.kyNguoiGiao, ch.kyNguoiNhan]} />}
 </Kho>
 
 <style>

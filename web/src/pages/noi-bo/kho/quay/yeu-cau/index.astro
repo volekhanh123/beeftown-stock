@@ -22,14 +22,69 @@ import {
   type GoiYRaQuay, type MatHangQuay, type YeuCauQuay,
 } from '../../../../../lib/kho/quay.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangThoiDiem, laUuid, TRANG_THAI_CHUNG_TU, type KetQua,
+  cauLoiKho, dinhDangKg, dinhDangThoiDiem, kqHai, laUuid, trangThaiKho, type HaiThuTieng, type KetQua,
 } from '../../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('van_hanh')) return Astro.redirect('/noi-bo/kho', 302);
 if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const cn = k.chiNhanh;
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const CAU = {
+  viecSai: { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+} satisfies Record<string, HaiThuTieng>;
+const t = dichNB(nn, {
+  khongDocDm: { vi: 'Không đọc được danh mục.', en: 'Could not read the catalog.' },
+  khongDocYc: { vi: 'Không đọc được yêu cầu của quầy.', en: 'Could not read the counter requests.' },
+  goi: { vi: 'gói', en: 'packs' },
+  tieuDe: { vi: 'Quầy cần hàng', en: 'Counter requests' },
+  yeuCauRaQuay: { vi: 'Yêu cầu hàng ra quầy', en: 'Request stock for the counter' },
+  dangChoMang: { vi: 'Đang chờ mang ra', en: 'Waiting to be brought out' },
+  soMon: { vi: (n: number) => `${n} món`, en: (n: number) => `${n} ${s(n, 'item', 'items')}` },
+  soGoi: { vi: (n: number) => `${n} gói`, en: (n: number) => `${n} ${s(n, 'pack', 'packs')}` },
+  xem: { vi: 'Xem', en: 'View' },
+  mangRa: { vi: 'Mang ra', en: 'Bring out' },
+  chuaYeuCau: {
+    vi: 'Quầy chưa yêu cầu gì. Mang hàng ra không cần yêu cầu:',
+    en: 'The counter has not requested anything. To bring goods out without a request:',
+  },
+  lapPhieuChuyen: { vi: 'lập phiếu chuyển', en: 'create a transfer slip' },
+  chuaCoQuay: {
+    vi: 'Chi nhánh chưa có quầy nào đang dùng. Quản lý thêm quầy ở Cài đặt → Vị trí và lý do.',
+    en: 'This branch has no counter in use. A manager adds counters in Setup → Locations and reasons.',
+  },
+  chonQuay: { vi: 'Chọn quầy', en: 'Choose counter' },
+  monSapHet: { vi: 'Món quầy sắp hết', en: 'Counter items running low' },
+  khongDuoiMuc: {
+    vi: 'Không món nào dưới mức tối thiểu. Cần thêm món gì thì ghi ở dưới.',
+    en: 'No items are below their minimum. If you need anything else, add it below.',
+  },
+  soDienSan: {
+    vi: 'Số đã điền sẵn là số nên lấy cho đủ quầy. Sửa được; ghi 0 là không lấy món đó.',
+    en: 'The numbers filled in are what the counter needs to be full. You can change them; enter 0 to skip an item.',
+  },
+  quayCon: { vi: (sl: string) => `Quầy còn ${sl}`, en: (sl: string) => `Counter has ${sl}` },
+  dangMangRa: { vi: (sl: string) => ` · đang mang ra ${sl}`, en: (sl: string) => ` · ${sl} on the way` },
+  khoCon: { vi: (sl: string) => `kho còn ${sl}`, en: (sl: string) => `store has ${sl}` },
+  khoHet: { vi: 'Kho đã hết — báo quản lý đặt hàng.', en: 'The store is out — ask a manager to order more.' },
+  soDvAn: { vi: (ten: string, dv: string) => `${ten} — số ${dv}`, en: (ten: string, dv: string) => `${ten} — quantity (${dv})` },
+  themMon: { vi: 'Thêm món khác', en: 'Add other items' },
+  themMonGoiY: {
+    vi: 'Món đếm gói: ghi số gói. Món bán theo ký: ghi số kg (vd. 1,5).',
+    en: 'Items counted in packs: enter the number of packs. Items sold by weight: enter the kg (e.g. 1.5).',
+  },
+  mon: { vi: (n: number) => `Món ${n}`, en: (n: number) => `Item ${n}` },
+  soLuong: { vi: 'Số lượng', en: 'Quantity' },
+  themDong: { vi: '+ Thêm dòng', en: '+ Add line' },
+  ghiChuThuKho: { vi: 'Ghi chú cho thủ kho (không bắt buộc)', en: 'Note for the storekeeper (optional)' },
+  guiYeuCau: { vi: 'Gửi yêu cầu cho thủ kho', en: 'Send a request to the storekeeper' },
+  ganDay: { vi: 'Gần đây', en: 'Recent' },
+  phieu: { vi: (so: string) => ` · phiếu ${so}`, en: (so: string) => ` · slip ${so}` },
+});
+
 const laQuay = k.nhanSu.vai_tro === 'nhan_vien_quay';
 // Thủ kho là người mang ra, không tự yêu cầu mình. Quản lý / chủ gửi thay quầy được.
 const choGui = laQuay || k.duoc('duyet');
@@ -39,7 +94,7 @@ let matHang: MatHangQuay[] = [];
 let loiDoc = k.loiDoc;
 try {
   [viTri, matHang] = await Promise.all([docViTri(k.client, cn.id), docMatHangQuay(k.client)]);
-} catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được danh mục.'); }
+} catch (e) { loiDoc = cauLoiKho(e, t.khongDocDm); }
 const cacQuay = viTri.filter(v => v.loai === 'quay' && v.dang_dung);
 
 // ---------------------------------------------------------------------------
@@ -59,8 +114,8 @@ if (form && choGui) {
   if (viec === 'them_dong') {
     soDong = Math.min(soDong + 2, 30);
   } else if (viec === 'gui') {
-    const { dong, loi, nguon } = docFormYeuCau(form, matHang, soDong);
-    if (loi.length > 0) bao = { ok: false, cau: loi.join(' ') };
+    const { dong, loi, loiEn, nguon } = docFormYeuCau(form, matHang, soDong);
+    if (loi.length > 0) bao = kqHai(false, { vi: loi.join(' '), en: loiEn.join(' ') });
     else {
       const vt = String(form.get('vi_tri_id') ?? '');
       const kq = await taoYeuCau(k.client, cn.id, maGui, laUuid(vt) ? vt : quay?.id ?? null, nguon,
@@ -69,7 +124,7 @@ if (form && choGui) {
       bao = kq;
     }
   } else {
-    bao = { ok: false, cau: 'Việc không hợp lệ.' };
+    bao = kqHai(false, CAU.viecSai);
   }
 }
 
@@ -86,7 +141,7 @@ try {
   ]);
   goiY = g; yeuCau = y;
   ten = await tenNhanSu(k.client, yeuCau.map(y => y.nguoi_tao));
-} catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, 'Không đọc được yêu cầu của quầy.'); }
+} catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, t.khongDocYc); }
 
 const dangCho = yeuCau.filter(y => y.trang_thai === 'cho').sort((a, b) => a.created_at.localeCompare(b.created_at));
 const khac = yeuCau.filter(y => y.trang_thai !== 'cho');
@@ -97,42 +152,44 @@ const giaTriGoiY = (g: GoiYRaQuay) => {
   const cu = form?.get(`g_${g.mat_hang_id}`);
   if (cu !== null && cu !== undefined) return String(cu);
   const n = soDeNghi(g);
-  return n > 0 ? String(g.dem_goi ? n : dinhDangKg(n)) : '';
+  // Ô nhập: "1,5" hay "1.5" đều đọc được (docKg) — viết theo thói quen của người xem.
+  return n > 0 ? String(g.dem_goi ? n : dinhDangKg(n, nn)) : '';
 };
 const dongThem = Array.from({ length: soDong }, (_, i) => ({
   i, mh: String(form?.get(`t${i}_mat_hang`) ?? ''), so: String(form?.get(`t${i}_so`) ?? ''),
 }));
-const nhan = (tt: string) => TRANG_THAI_CHUNG_TU[tt] ?? [tt, 'nhap'];
+// Trạng thái lạ: hiện nguyên mã, lớp "nhap" (như trước).
+const nhan = (tt: string) => ((x: [string, string]) => [x[0], x[1] || 'nhap'])(trangThaiKho(tt, nn));
 ---
-<Kho k={k} tieuDe="Quầy cần hàng" huongDan={laQuay ? 'yeu-cau' : 'ra-quay'}>
-  <h1>{choGui ? 'Yêu cầu hàng ra quầy' : 'Quầy cần hàng'}</h1>
+<Kho k={k} tieuDe={t.tieuDe} huongDan={laQuay ? 'yeu-cau' : 'ra-quay'}>
+  <h1>{choGui ? t.yeuCauRaQuay : t.tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {/* ======================= Yêu cầu đang chờ ======================= */}
   {dangCho.length > 0 && (
     <section class="kho-khoi">
-      <h2><BieuTuong ten="chuyen" /> Đang chờ mang ra · {dangCho.length}</h2>
+      <h2><BieuTuong ten="chuyen" /> {t.dangChoMang} · {dangCho.length}</h2>
       <ul class="kho-dong-ds">
         {dangCho.map(y => (
           <li>
             <span>
               <strong>{y.so_phieu} · {y.ten_vi_tri}</strong>
-              <small>{y.so_mon} món{y.tong_goi > 0 ? ` · ${y.tong_goi} gói` : ''} · {dinhDangThoiDiem(y.created_at)}{y.nguoi_tao && ten.get(y.nguoi_tao) ? ` · ${ten.get(y.nguoi_tao)}` : ''}</small>
+              <small>{t.soMon(y.so_mon)}{y.tong_goi > 0 ? ` · ${t.soGoi(y.tong_goi)}` : ''} · {dinhDangThoiDiem(y.created_at)}{y.nguoi_tao && ten.get(y.nguoi_tao) ? ` · ${ten.get(y.nguoi_tao)}` : ''}</small>
             </span>
-            <a class="nb-nut yc-nut" href={`/noi-bo/kho/quay/yeu-cau/${y.id}`}>{laQuay ? 'Xem' : 'Mang ra'}</a>
+            <a class="nb-nut yc-nut" href={`/noi-bo/kho/quay/yeu-cau/${y.id}`}>{laQuay ? t.xem : t.mangRa}</a>
           </li>
         ))}
       </ul>
     </section>
   )}
   {!choGui && dangCho.length === 0 && (
-    <p class="nb-rong">Quầy chưa yêu cầu gì. Mang hàng ra không cần yêu cầu:{' '}
-      <a href="/noi-bo/kho/xuat/moi?loai=chuyen">lập phiếu chuyển</a>.</p>
+    <p class="nb-rong">{t.chuaYeuCau}{' '}
+      <a href="/noi-bo/kho/xuat/moi?loai=chuyen">{t.lapPhieuChuyen}</a>.</p>
   )}
 
   {/* ======================= Gửi yêu cầu mới ======================= */}
   {choGui && !quay && (
-    <div class="nb-bao luu-y"><p>Chi nhánh chưa có quầy nào đang dùng. Quản lý thêm quầy ở Cài đặt → Vị trí và lý do.</p></div>
+    <div class="nb-bao luu-y"><p>{t.chuaCoQuay}</p></div>
   )}
   {choGui && quay && (
     <form method="POST" class="nb-the">
@@ -140,36 +197,36 @@ const nhan = (tt: string) => TRANG_THAI_CHUNG_TU[tt] ?? [tt, 'nhap'];
       <input type="hidden" name="so_dong" value={String(soDong)} />
       <input type="hidden" name="vi_tri_id" value={quay.id} />
       {cacQuay.length > 1 && (
-        <nav class="kho-dh" aria-label="Chọn quầy">
+        <nav class="kho-dh" aria-label={t.chonQuay}>
           {cacQuay.map(v => (
             <a href={`/noi-bo/kho/quay/yeu-cau?vt=${v.id}`} aria-current={v.id === quay.id ? 'page' : undefined}>{v.ten}</a>
           ))}
         </nav>
       )}
 
-      <h2 style="margin-top:0">Món quầy sắp hết</h2>
+      <h2 style="margin-top:0">{t.monSapHet}</h2>
       {goiY.length === 0 ? (
-        <p class="kho-phu">Không món nào dưới mức tối thiểu. Cần thêm món gì thì ghi ở dưới.</p>
+        <p class="kho-phu">{t.khongDuoiMuc}</p>
       ) : (
         <>
-          <p class="kho-phu">Số đã điền sẵn là số nên lấy cho đủ quầy. Sửa được; ghi 0 là không lấy món đó.</p>
+          <p class="kho-phu">{t.soDienSan}</p>
           <ul class="kho-dong-ds">
             {goiY.map(g => (
               <li>
                 <span>
                   <strong>{g.ten}</strong>
                   <small>
-                    Quầy còn {cauSoLuong(g, g.so_goi_quay, g.so_kg_quay)}
-                    {(g.so_goi_dang_mang > 0 || g.so_kg_dang_mang > 0) ? ` · đang mang ra ${cauSoLuong(g, g.so_goi_dang_mang, g.so_kg_dang_mang)}` : ''}
-                    {' · '}kho còn {cauSoLuong(g, g.so_goi_kho, g.so_kg_kho)}
+                    {t.quayCon(cauSoLuong(g, g.so_goi_quay, g.so_kg_quay, nn))}
+                    {(g.so_goi_dang_mang > 0 || g.so_kg_dang_mang > 0) ? t.dangMangRa(cauSoLuong(g, g.so_goi_dang_mang, g.so_kg_dang_mang, nn)) : ''}
+                    {' · '}{t.khoCon(cauSoLuong(g, g.so_goi_kho, g.so_kg_kho, nn))}
                   </small>
-                  {(g.dem_goi ? g.so_goi_kho : g.so_kg_kho) <= 0 && <small class="chu-do">Kho đã hết — báo quản lý đặt hàng.</small>}
+                  {(g.dem_goi ? g.so_goi_kho : g.so_kg_kho) <= 0 && <small class="chu-do">{t.khoHet}</small>}
                 </span>
                 <label class="nb-o yc-o">
-                  <span class="an">{g.ten} — số {g.dem_goi ? g.don_vi_goi || 'gói' : 'kg'}</span>
+                  <span class="an">{t.soDvAn(g.ten, g.dem_goi ? g.don_vi_goi || t.goi : 'kg')}</span>
                   <input type="text" inputmode={g.dem_goi ? 'numeric' : 'decimal'} name={`g_${g.mat_hang_id}`}
                     value={giaTriGoiY(g)} autocomplete="off" />
-                  <small>{g.dem_goi ? g.don_vi_goi || 'gói' : 'kg'}</small>
+                  <small>{g.dem_goi ? g.don_vi_goi || t.goi : 'kg'}</small>
                 </label>
               </li>
             ))}
@@ -177,28 +234,28 @@ const nhan = (tt: string) => TRANG_THAI_CHUNG_TU[tt] ?? [tt, 'nhap'];
         </>
       )}
 
-      <h2>Thêm món khác</h2>
-      <p class="kho-phu">Món đếm gói: ghi số gói. Món bán theo ký: ghi số kg (vd. 1,5).</p>
+      <h2>{t.themMon}</h2>
+      <p class="kho-phu">{t.themMonGoiY}</p>
       {dongThem.map(d => (
         <div class="yc-them">
           <label class="nb-o">
-            <span>Món {d.i + 1}</span>
+            <span>{t.mon(d.i + 1)}</span>
             <ChonMatHang name={`t${d.i}_mat_hang`} matHang={matHang.filter(m => !idGoiY.has(m.id) || m.id === d.mh)} chon={d.mh} />
           </label>
           <label class="nb-o">
-            <span>Số lượng{d.mh && mhTheoId.get(d.mh) ? ` (${mhTheoId.get(d.mh)!.dem_goi ? mhTheoId.get(d.mh)!.don_vi_goi || 'gói' : 'kg'})` : ''}</span>
+            <span>{t.soLuong}{d.mh && mhTheoId.get(d.mh) ? ` (${mhTheoId.get(d.mh)!.dem_goi ? mhTheoId.get(d.mh)!.don_vi_goi || t.goi : 'kg'})` : ''}</span>
             <input type="text" inputmode="decimal" name={`t${d.i}_so`} value={d.so} autocomplete="off" />
           </label>
         </div>
       ))}
-      <button type="submit" name="viec" value="them_dong" class="nb-nut phu" formnovalidate>+ Thêm dòng</button>
+      <button type="submit" name="viec" value="them_dong" class="nb-nut phu" formnovalidate>{t.themDong}</button>
 
       <label class="nb-o" style="margin-top:1rem">
-        <span>Ghi chú cho thủ kho (không bắt buộc)</span>
+        <span>{t.ghiChuThuKho}</span>
         <input type="text" name="ghi_chu" maxlength="500" value={String(form?.get('ghi_chu') ?? '')} />
       </label>
       <div class="kho-thanh-nut dinh">
-        <button type="submit" name="viec" value="gui" class="nb-nut yc-lon">Gửi yêu cầu cho thủ kho</button>
+        <button type="submit" name="viec" value="gui" class="nb-nut yc-lon">{t.guiYeuCau}</button>
       </div>
     </form>
   )}
@@ -206,16 +263,16 @@ const nhan = (tt: string) => TRANG_THAI_CHUNG_TU[tt] ?? [tt, 'nhap'];
   {/* ======================= Đã xử lý gần đây ======================= */}
   {khac.length > 0 && (
     <>
-      <h2>Gần đây</h2>
+      <h2>{t.ganDay}</h2>
       <ul class="kho-dong-ds nb-the">
         {khac.map(y => (
           <li>
             <span>
               <strong>{y.so_phieu} · {y.ten_vi_tri}</strong>
-              <small>{y.so_mon} món · {dinhDangThoiDiem(y.created_at)}{y.so_phieu_xuat ? ` · phiếu ${y.so_phieu_xuat}` : ''}</small>
+              <small>{t.soMon(y.so_mon)} · {dinhDangThoiDiem(y.created_at)}{y.so_phieu_xuat ? t.phieu(y.so_phieu_xuat) : ''}</small>
             </span>
             <span class={`nb-nhan ${nhan(y.trang_thai)[1]}`} style="flex:0 0 auto">{nhan(y.trang_thai)[0]}</span>
-            <a class="nb-nut phu yc-nut" href={`/noi-bo/kho/quay/yeu-cau/${y.id}`}>Xem</a>
+            <a class="nb-nut phu yc-nut" href={`/noi-bo/kho/quay/yeu-cau/${y.id}`}>{t.xem}</a>
           </li>
         ))}
       </ul>

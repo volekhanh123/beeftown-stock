@@ -1,0 +1,233 @@
+---
+/**
+ * KHO — ĐỐI CHIẾU HÓA ĐƠN GỘP (GĐ8b, migration 0040) · /cong-no/<ncc>/hoa-don-gop
+ *
+ * Nhà cung cấp xuất MỘT hóa đơn cho NHIỀU lần giao (cuối tuần, cuối tháng):
+ * tích các phiếu nhập nằm trong hóa đơn → gõ số hóa đơn, ngày, tổng tiền,
+ * tiền thuế → "Xem trước" (bảng chia từng phiếu: xemTruocHoaDonGop, soi gương
+ * database — tổng khớp từng đồng) → "Lưu đối chiếu" (kho_doi_chieu_hoa_don_gop,
+ * ma_gui). Tổng hóa đơn lệch tổng phiếu thì bắt buộc lý do lệch.
+ *
+ * Chỉ phiếu nhập MUA đã duyệt, chưa thuộc hóa đơn gộp nào (nợ đầu kỳ không
+ * gộp). Phiếu chưa đối chiếu được tích sẵn. ?tu=&den= lọc theo ngày nhập.
+ * Bỏ đối chiếu gộp: ở trang công nợ của NCC (mục "Hóa đơn gộp").
+ */
+import Kho from '../../../../../layouts/Kho.astro';
+import BaoKho from '../../../../../components/kho/BaoKho.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../../lib/kho/trang.ts';
+import {
+  docTenNcc, docCongNoPhieu, docFormHoaDonGop, xemTruocHoaDonGop, doiChieuGop, dinhDangLech, cauLoiCongNo,
+  type CongNoPhieu, type ChiaHoaDonGop,
+} from '../../../../../lib/kho/cong-no.ts';
+import { dinhDangNgay, dinhDangTien, homNayVn, laUuid, kqHai, type HaiThuTieng, type KetQua } from '../../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../../lib/ngon-ngu-noi-bo.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('ke_toan')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
+const nn = k.nn;
+/** Câu báo của trang — cả hai thứ tiếng đi theo câu báo (KetQua.cauEn). */
+const CAU = {
+  khongThayNcc: { vi: 'Không tìm thấy nhà cung cấp này.', en: 'This supplier was not found.' },
+  mangDut: {
+    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
+    en: 'Could not read what was sent — the connection may have dropped. Please send it again.',
+  },
+  phieuDoi: {
+    vi: 'Có phiếu vừa được đối chiếu ở chỗ khác hoặc không còn trong danh sách — tải lại trang rồi chọn lại.',
+    en: 'A receipt was just reconciled elsewhere or is no longer in the list — reload the page and pick again.',
+  },
+} satisfies Record<string, HaiThuTieng>;
+const cn = k.chiNhanh;
+const ncc = await docTenNcc(k.client, Astro.params.id ?? '');
+if (!ncc) return chuyenHuong(Astro, '/noi-bo/kho/cong-no', kqHai(false, CAU.khongThayNcc));
+const VE = `/noi-bo/kho/cong-no/${ncc.id}`;
+const homNay = homNayVn();
+const sp = Astro.url.searchParams;
+const ngay = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+const tu = ngay(sp.get('tu'));
+const den = ngay(sp.get('den'));
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  tieuDe: { vi: (ten: string) => `Hóa đơn gộp · ${ten}`, en: (ten: string) => `Combined invoice · ${ten}` },
+  h1: { vi: (ten: string) => `Đối chiếu hóa đơn gộp · ${ten}`, en: (ten: string) => `Reconcile a combined invoice · ${ten}` },
+  khongDoc: { vi: 'Không đọc được phiếu nhập.', en: 'Could not read the goods receipts.' },
+  veCongNo: { vi: (ten: string) => `← Công nợ ${ten}`, en: (ten: string) => `← Payables: ${ten}` },
+  dan1: {
+    vi: 'Nhà cung cấp gửi một hóa đơn cho nhiều lần giao: tích các phiếu nhập nằm trong hóa đơn, gõ số tiền trên hóa đơn, bấm ',
+    en: 'The supplier sends one invoice for several deliveries: tick the goods receipts on the invoice, type the invoice amount, press ',
+  },
+  xemTruoc: { vi: 'Xem trước', en: 'Preview' },
+  roi: { vi: ' rồi ', en: ' and then ' },
+  luuDoiChieu: { vi: 'Lưu đối chiếu', en: 'Save reconciliation' },
+  nhapTuNgay: { vi: 'Nhập từ ngày', en: 'Received from' },
+  denNgay: { vi: 'Đến ngày', en: 'To' },
+  locPhieu: { vi: 'Lọc phiếu', en: 'Filter receipts' },
+  rong1: { vi: 'Không có phiếu nhập nào để gộp', en: 'No goods receipts to combine' },
+  rongKhoang: { vi: ' trong khoảng ngày này', en: ' in this date range' },
+  rong2: {
+    vi: '. Phiếu đã thuộc một hóa đơn gộp và phiếu nợ đầu kỳ không hiện ở đây.',
+    en: '. Receipts already in a combined invoice and opening balances are not shown here.',
+  },
+  chon: { vi: 'Chọn', en: 'Pick' },
+  phieu: { vi: 'Phiếu', en: 'Receipt' },
+  ngayNhap: { vi: 'Ngày nhập', en: 'Received' },
+  hoaDonHienTai: { vi: 'Hóa đơn hiện tại', en: 'Current invoice' },
+  tongPhieu: { vi: 'Tổng phiếu', en: 'Receipt total' },
+  conNo: { vi: 'Còn nợ', en: 'Owed' },
+  chonPhieu: { vi: (so: string) => `Chọn phiếu ${so}`, en: (so: string) => `Pick receipt ${so}` },
+  chuaDoiChieu: { vi: 'chưa đối chiếu', en: 'not reconciled' },
+  dangChon: { vi: (n: number) => `Đang chọn ${n} phiếu`, en: (n: number) => `${n} ${s(n, 'receipt', 'receipts')} selected` },
+  soHoaDon: { vi: 'Số hóa đơn', en: 'Invoice no.' },
+  ngayHoaDon: { vi: 'Ngày hóa đơn', en: 'Invoice date' },
+  tongTienHd: { vi: 'Tổng tiền in trên hóa đơn', en: 'Total printed on the invoice' },
+  gomThue: { vi: 'Gồm cả thuế. Ghi đúng số in trên hóa đơn.', en: 'Including tax. Enter exactly what the invoice says.' },
+  viDuTong: { vi: 'ví dụ 25.450.000', en: 'e.g. 25,450,000' },
+  tienThue: { vi: 'Tiền thuế GTGT', en: 'VAT amount' },
+  deTrongThue: { vi: 'Để trống nếu hóa đơn không có thuế.', en: 'Leave empty if the invoice has no tax.' },
+  viDuThue: { vi: 'ví dụ 1.850.000', en: 'e.g. 1,850,000' },
+  lyDoLech: { vi: 'Lý do lệch', en: 'Reason for difference' },
+  batBuocLech: {
+    vi: 'Bắt buộc khi tổng hóa đơn khác tổng các phiếu đã chọn.',
+    en: 'Required when the invoice total differs from the total of the selected receipts.',
+  },
+  viDuLyDo: { vi: 'ví dụ: NCC tính thêm phí giao hàng', en: 'e.g. the supplier added a delivery fee' },
+  hanTraGiai: {
+    vi: (n: number) => `Hạn trả của các phiếu = ngày hóa đơn + ${n} ngày được nợ.`,
+    en: (n: number) => `Due date of the receipts = invoice date + ${n} credit ${s(n, 'day', 'days')}.`,
+  },
+  xemTruocChia: { vi: 'Xem trước: chia hóa đơn vào từng phiếu', en: 'Preview: how the invoice splits across the receipts' },
+  lech: { vi: 'LỆCH', en: 'MISMATCH' },
+  soVoiTong: {
+    vi: (tien: string) => ` so với tổng các phiếu ${tien} — ghi lý do lệch.`,
+    en: (tien: string) => ` against the receipts' total of ${tien} — enter the reason for the difference.`,
+  },
+  phanHoaDon: { vi: 'Phần hóa đơn', en: 'Invoice share' },
+  trongDoThue: { vi: 'Trong đó thuế', en: 'Of which tax' },
+  tong: { vi: 'Tổng', en: 'Total' },
+});
+
+let phieu: CongNoPhieu[] = [];
+let loiDoc = k.loiDoc;
+try {
+  phieu = (await docCongNoPhieu(k.client, cn.id, { nccId: ncc.id }))
+    .filter(p => p.loai !== 'no_dau' && !p.hoa_don_gop_id)
+    .filter(p => (!tu || p.ngay_nhap >= tu) && (!den || p.ngay_nhap <= den))
+    .sort((a, b) => (a.ngay_nhap < b.ngay_nhap ? -1 : a.ngay_nhap > b.ngay_nhap ? 1 : a.so_phieu.localeCompare(b.so_phieu)));
+} catch (e) {
+  loiDoc = cauLoiCongNo(e, t.khongDoc, nn);
+}
+
+let bao: KetQua | null = k.bao;
+let giaTri: Record<string, string> = {};
+let chon = new Set(phieu.filter(p => !p.da_doi_chieu).map(p => p.id));
+let chia: ChiaHoaDonGop | null = null;
+let maGui: string = crypto.randomUUID();
+const form = await docFormGui(Astro);
+if (Astro.request.method === 'POST' && !form) {
+  bao = kqHai(false, CAU.mangDut);
+}
+if (form) {
+  const f = docFormHoaDonGop(form);
+  giaTri = f.giaTri;
+  chon = new Set(f.phieu);
+  const mg = String(form.get('ma_gui') ?? '');
+  if (laUuid(mg)) maGui = mg;
+  const daChon = phieu.filter(p => chon.has(p.id));
+  if (daChon.length !== f.phieu.length) {
+    bao = kqHai(false, CAU.phieuDoi);
+  } else {
+    const tongPhieu = daChon.reduce((a, p) => a + p.tong_tien_phieu, 0);
+    if (f.tongTien !== null && daChon.length >= 2) chia = xemTruocHoaDonGop(daChon, f.tongTien, f.tienThue);
+    if (String(form.get('viec') ?? '') === 'luu') {
+      const kq = await doiChieuGop(k.client, cn.id, ncc.id, form, tongPhieu);
+      if (kq.ok) return chuyenHuong(Astro, VE, kq);
+      bao = kq;
+    } else if (f.loi.length) {
+      bao = { ok: false, cau: f.loi.join(' · '), cauEn: f.loiEn.join(' · ') };
+    }
+  }
+}
+const g = (khoa: string, macDinh = '') => giaTri[khoa] ?? macDinh;
+const tongChon = phieu.filter(p => chon.has(p.id)).reduce((a, p) => a + p.tong_tien_phieu, 0);
+---
+<Kho k={k} huongDan="hoa-don-gop" tieuDe={t.tieuDe(ncc.ten)} rong>
+  <h1>{t.h1(ncc.ten)}</h1>
+  <p><a href={VE}>{t.veCongNo(ncc.ten)}</a></p>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+  <p class="nb-dan">{t.dan1}<strong>{t.xemTruoc}</strong>{t.roi}<strong>{t.luuDoiChieu}</strong>.</p>
+
+  <form method="GET" class="kho-tim-hang" style="margin-bottom:1rem">
+    <label class="nb-o"><span>{t.nhapTuNgay}</span><input type="date" name="tu" value={tu ?? ''} max={homNay} /></label>
+    <label class="nb-o"><span>{t.denNgay}</span><input type="date" name="den" value={den ?? ''} max={homNay} /></label>
+    <button type="submit" class="nb-nut phu">{t.locPhieu}</button>
+  </form>
+
+  {phieu.length === 0 ? (
+    <p class="nb-rong">{t.rong1}{tu || den ? t.rongKhoang : ''}{t.rong2}</p>
+  ) : (
+    <form method="POST">
+      <input type="hidden" name="ma_gui" value={maGui} />
+      <div class="kho-bang-khung">
+        <table class="kho-bang">
+          <thead><tr><th>{t.chon}</th><th>{t.phieu}</th><th>{t.ngayNhap}</th><th>{t.hoaDonHienTai}</th><th class="so">{t.tongPhieu}</th><th class="so">{t.conNo}</th></tr></thead>
+          <tbody>
+            {phieu.map(p => (
+              <tr>
+                <td><input type="checkbox" name="phieu" value={p.id} checked={chon.has(p.id)} aria-label={t.chonPhieu(p.so_phieu)} style="width:1.4rem;height:1.4rem" /></td>
+                <td><a href={`/noi-bo/kho/nhap/${p.id}`}><strong>{p.so_phieu}</strong></a></td>
+                <td>{dinhDangNgay(p.ngay_nhap)}</td>
+                <td>{p.da_doi_chieu ? <>{p.so_hoa_don} · {dinhDangTien(p.tien_hoa_don, nn)}</> : <span class="kho-phu">{t.chuaDoiChieu}</span>}</td>
+                <td class="so">{dinhDangTien(p.tong_tien_phieu, nn)}</td>
+                <td class="so">{dinhDangTien(p.con_no, nn)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot><tr class="tong"><td colspan="4">{t.dangChon(chon.size)}</td><td class="so">{dinhDangTien(tongChon, nn)}</td><td></td></tr></tfoot>
+        </table>
+      </div>
+
+      <div class="nb-the" style="margin-top:1rem">
+        <div class="kho-luoi">
+          <label class="nb-o"><span>{t.soHoaDon}</span><input type="text" name="so_hoa_don" value={g('so_hoa_don')} maxlength="60" required autocapitalize="characters" /></label>
+          <label class="nb-o"><span>{t.ngayHoaDon}</span><input type="date" name="ngay" value={g('ngay', homNay)} max={homNay} required /></label>
+          <label class="nb-o"><span>{t.tongTienHd}</span><small>{t.gomThue}</small>
+            <input type="text" inputmode="numeric" name="tong_tien" value={g('tong_tien')} required placeholder={t.viDuTong} /></label>
+          <label class="nb-o"><span>{t.tienThue}</span><small>{t.deTrongThue}</small>
+            <input type="text" inputmode="numeric" name="tien_thue" value={g('tien_thue')} placeholder={t.viDuThue} /></label>
+        </div>
+        <label class="nb-o"><span>{t.lyDoLech}</span><small>{t.batBuocLech}</small>
+          <input type="text" name="ly_do_lech" value={g('ly_do_lech')} maxlength="500" placeholder={t.viDuLyDo} /></label>
+        <p class="kho-phu" style="margin:0">{t.hanTraGiai(ncc.so_ngay_no)}</p>
+      </div>
+
+      {chia && (
+        <div class="nb-the">
+          <h2 style="margin-top:0">{t.xemTruocChia}</h2>
+          {chia.lech !== 0 && (
+            <p><span class="nb-nhan cho" style="text-transform:none">{t.lech} {dinhDangLech(chia.lech, nn)}</span>{t.soVoiTong(dinhDangTien(chia.tongPhieu, nn))}</p>
+          )}
+          <div class="kho-bang-khung">
+            <table class="kho-bang">
+              <thead><tr><th>{t.phieu}</th><th class="so">{t.tongPhieu}</th><th class="so">{t.phanHoaDon}</th><th class="so">{t.trongDoThue}</th></tr></thead>
+              <tbody>
+                {chia.phieu.map(p => (
+                  <tr><td>{p.so_phieu}</td><td class="so">{dinhDangTien(p.tong_tien_phieu, nn)}</td><td class="so"><strong>{dinhDangTien(p.so_tien, nn)}</strong></td><td class="so">{dinhDangTien(p.tien_thue, nn)}</td></tr>
+                ))}
+              </tbody>
+              <tfoot><tr class="tong"><td>{t.tong}</td><td class="so">{dinhDangTien(chia.tongPhieu, nn)}</td>
+                <td class="so">{dinhDangTien(chia.phieu.reduce((a, p) => a + p.so_tien, 0), nn)}</td>
+                <td class="so">{dinhDangTien(chia.phieu.reduce((a, p) => a + p.tien_thue, 0), nn)}</td></tr></tfoot>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div class="kho-thanh-nut dinh" style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button type="submit" name="viec" value="xem_truoc" class="nb-nut phu">{t.xemTruoc}</button>
+        <button type="submit" name="viec" value="luu" class="nb-nut">{t.luuDoiChieu}</button>
+      </div>
+    </form>
+  )}
+</Kho>

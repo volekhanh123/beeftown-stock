@@ -29,9 +29,9 @@ export async function docViTri(ngonNgu: NgonNgu = 'vi'): Promise<ViTri[]> {
  * giá trị enum và báo lệch với database.
  */
 export const BO_PHAN = {
-  sanh:      { vi: 'Sảnh',      en: 'Floor',        ko: '홀' },
+  sanh:      { vi: 'Sảnh',      en: 'Hall',         ko: '홀' },
   bep:       { vi: 'Bếp',       en: 'Kitchen',      ko: '주방' },
-  quay_thit: { vi: 'Quầy thịt', en: 'Meat counter', ko: '정육 코너' },
+  quay_thit: { vi: 'Quầy thịt', en: 'Butcher',      ko: '정육 코너' },
   quan_ly:   { vi: 'Quản lý',   en: 'Management',   ko: '관리직' },
   marketing: { vi: 'Marketing', en: 'Marketing',    ko: '마케팅' },
 } as const satisfies Record<string, BaThuTieng>;
@@ -42,6 +42,15 @@ export const LOAI_HOP_DONG = {
   thoi_vu:        { vi: 'Thời vụ',        en: 'Seasonal',   ko: '단기 근무' },
   thuc_tap:       { vi: 'Thực tập',       en: 'Internship', ko: '인턴' },
 } as const satisfies Record<string, BaThuTieng>;
+
+/**
+ * Tin chưa chốt loại hợp đồng: cột loai_hop_dong là null (0043). Không nằm
+ * trong LOAI_HOP_DONG vì bảng đó phải khớp đúng từng giá trị của enum
+ * (test-hop-dong-web) — "chưa chốt" là vắng một quyết định, không phải một
+ * loại hợp đồng. Form nội bộ gửi MA_CHUA_CHOT, server đổi thành null.
+ */
+export const MA_CHUA_CHOT = 'chua_chot';
+export const CHUA_CHOT: BaThuTieng = { vi: 'Chưa chốt', en: 'To be confirmed', ko: '미정' };
 
 /** Lương trả theo giờ hay theo tháng — phần đuôi của "25.000 đ/giờ". */
 export const DON_VI_LUONG = {

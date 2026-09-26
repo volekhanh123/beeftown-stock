@@ -161,7 +161,7 @@ await nhom('2 · CÂU CỦA TỪNG BƯỚC — CHỈ SỐ ĐẾM', async () => {
 await nhom('3 · NÚT "LÀM BƯỚC NÀY" VÀ "BỎ QUA"', async () => {
   ok('Mọi bước có ít nhất một nút', BUOC_THIET_LAP.every(b => (LINK_BUOC[b.khoa] ?? []).length > 0));
   const nutCaiDat = MUC_KHO.find(m => m.ma === 'cai_dat');
-  ok('Ô menu đổi tên thành "Thiết lập"', nutCaiDat?.ten === 'Thiết lập');
+  ok('Ô menu đổi tên thành "Thiết lập"', nutCaiDat?.ten?.vi === 'Thiết lập' && nutCaiDat?.ten?.en === 'Setup');
   const hong = [];
   const lechQuyen = [];
   for (const [khoa, ds] of Object.entries(LINK_BUOC)) {
@@ -411,17 +411,20 @@ await nhom('9 · TRANG THIẾT LẬP VÀ TỒN ĐẦU KỲ', async () => {
     ok(`${ten}: thành công thì chuyenHuong`, /chuyenHuong\(Astro,/.test(s));
     ok(`${ten}: không bẫy {x && …} với số`, !/\{\s*[a-zA-Z_.]+\.length\s*&&/.test(s));
   }
-  ok('Thiết lập: có thanh tiến độ và nút Bỏ qua', /cauConLai\(tienDo\)/.test(idx) && /name="viec" value="bo_qua"/.test(idx));
+  ok('Thiết lập: có thanh tiến độ và nút Bỏ qua', /cauConLai\(tienDo, nn\)/.test(idx) && /name="viec" value="bo_qua"/.test(idx));
   ok('Thiết lập: form ngưỡng lưu bằng luuNguong', /luuNguong\(k\.client/.test(idx) && /name="viec" value="nguong"/.test(idx));
   ok('Thiết lập: giữ công tắc quầy (0032) và cài đặt gốc', /chuyen_quay_can_nhan/.test(idx) && /value="goc"/.test(idx));
   ok('Tồn đầu kỳ: chặn bằng quyền nhap', /if \(!k\.duoc\('nhap'\)\) return Astro\.redirect/.test(td));
   ok('Tồn đầu kỳ: xác nhận có ma_gui', /name="ma_gui" value=\{maGui\}/.test(td));
-  ok('Tồn đầu kỳ: cột giá chỉ khi xem giá', (td.match(/Đơn giá\/kg/g) ?? []).length >= 1
-    && [...td.matchAll(/Đơn giá\/kg/g)].every(m => /coGia/.test(td.slice(Math.max(0, m.index - 120), m.index))));
+  // Chữ "Đơn giá/kg" nằm trong bảng câu { vi, en } của trang (khóa donGiaKg); mọi chỗ hiện cột đó
+  // ({t.donGiaKg}) phải nằm sau coGia.
+  const cotGia = [...td.matchAll(/\{t\.donGiaKg\}/g)];
+  ok('Tồn đầu kỳ: cột giá chỉ khi xem giá', /donGiaKg: \{ vi: 'Đơn giá\/kg'/.test(td) && cotGia.length >= 1
+    && cotGia.every(m => /coGia/.test(td.slice(Math.max(0, m.index - 120), m.index))));
   ok('Tồn đầu kỳ: ô nhập trong bảng cỡ 16px, cao 48px', /\.td-o \{[^}]*font-size: 16px[^}]*min-height: 48px/.test(td));
   const lib = readFileSync(join(GOC, 'web/src/lib/kho/thiet-lap.ts'), 'utf8');
   const selMon = /from\('kho_mat_hang'\)\s*\.select\('([^']*)'\)/.exec(lib)?.[1] ?? '';
   ok('Lưới đọc mặt hàng không có cột tiền', selMon !== '' && !/gia|tien/.test(selMon), selMon);
 });
 
-ketThuc('WEB THIẾT LẬP & TỒN ĐẦU KỲ');
+process.exit(ketThuc('WEB THIẾT LẬP & TỒN ĐẦU KỲ'));

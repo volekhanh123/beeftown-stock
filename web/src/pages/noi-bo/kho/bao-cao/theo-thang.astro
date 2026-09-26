@@ -1,0 +1,107 @@
+---
+/**
+ * KHO — BÁO CÁO THEO THÁNG (GĐ8c, migration 0041)
+ *
+ *   /noi-bo/kho/bao-cao/theo-thang?nam=2026
+ *
+ * Mỗi tháng một dòng (kho_bao_cao_theo_thang): tồn đầu, nhập, bán, xuất bếp,
+ * xuất khác, trả NCC, hủy, hao hụt, pha lóc mất, tồn cuối — kg; vai xem giá
+ * thấy thêm tiền, chi phí thịt, doanh thu iPOS, chi phí / doanh thu %.
+ * Mở cho mọi vai xem kho: database trả null cho cột tiền của thủ kho, NV quầy
+ * và trang bỏ hẳn các cột đó (dinhNghiaTheoThang(coGia)). CSV cùng cột.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import BangBaoCao from '../../../../components/kho/BangBaoCao.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import { dinhNghiaTheoThang, docTheoThang, namBaoCao, tinhTong, type DongTheoThang } from '../../../../lib/kho/bao-cao.ts';
+import { homNayVn } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem')) return Astro.redirect('/noi-bo/kho', 302);
+
+const nn = k.nn;
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Báo cáo theo tháng', en: 'Monthly report' },
+  inTieuDe: { vi: 'BÁO CÁO KHO THEO THÁNG', en: 'MONTHLY INVENTORY REPORT' },
+  nam: { vi: (n: number) => `Năm ${n}`, en: (n: number) => `Year ${n}` },
+  h1: { vi: (n: number) => `Theo tháng · năm ${n}`, en: (n: number) => `By month · ${n}` },
+  veBaoCao: { vi: '← Báo cáo kho', en: '← Inventory reports' },
+  chonNam: { vi: 'Chọn năm', en: 'Choose a year' },
+  oNam: { vi: 'Năm', en: 'Year' },
+  xem: { vi: 'Xem', en: 'View' },
+  taiCsv: { vi: 'Tải về Excel (CSV)', en: 'Download to Excel (CSV)' },
+  chiKg: { vi: ' Bảng này chỉ có kg — giá tiền chỉ quản lý, kế toán, chủ quán xem.', en: ' This table shows kg only — prices are only for managers, accountants and the owner.' },
+  chuaBatDau: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory overview' },
+  inBaoCao: { vi: 'In báo cáo', en: 'Print report' },
+  khongIpos: {
+    vi: 'Tháng chưa có hóa đơn iPOS nào thì cột doanh thu để trống (—) và không tính chi phí / doanh thu. Ô % ở dòng tổng cũng chỉ lấy các tháng đã có iPOS.',
+    en: 'Months without any iPOS invoice leave the revenue column empty (—) and have no cost / revenue ratio. The % in the total row also only counts months with iPOS.',
+  },
+  tongTon: {
+    vi: 'Dòng tổng không cộng tồn đầu / tồn cuối qua các tháng: tồn đầu năm là tồn đầu của tháng 1, tồn cuối là của tháng cuối cùng trong bảng.',
+    en: 'The total row does not add up opening / closing stock across months: the opening stock of the year is January\'s opening stock, the closing stock is that of the last month in the table.',
+  },
+});
+
+const homNay = homNayVn();
+const nam = namBaoCao(Astro.url.searchParams, homNay);
+const namNay = Number(homNay.slice(0, 4));
+const coGia = k.duoc('xem_gia');
+const dn = dinhNghiaTheoThang(coGia, nn);
+
+let dong: DongTheoThang[] = [];
+let loiDoc = k.loiDoc;
+let daDoc = false;
+if (k.chiNhanh && k.daKhoiTao) {
+  const kq = await docTheoThang(k.client, k.chiNhanh.id, nam, nn);
+  dong = kq.dong;
+  loiDoc = kq.loi ?? loiDoc;
+  daDoc = !kq.loi;
+}
+const dongBang = dong as unknown as Record<string, unknown>[];
+const tong = tinhTong(dn, dongBang, nn);
+const cacNam = [namNay - 2, namNay - 1, namNay].filter(n => n >= 2020);
+const coThangKhongIpos = coGia && dong.some(d => !d.co_ipos);
+---
+<Kho k={k} huongDan="bao-cao" tieuDe={t.tieuDe} rong>
+  <InDau tieuDe={t.inTieuDe} soPhieu={t.nam(nam)} chiNhanh={k.chiNhanh?.ten} />
+  <h1>{t.h1(nam)}</h1>
+  <p class="kho-khong-in"><a href={`/noi-bo/kho/bao-cao?tu=${nam}-01-01&den=${nam === namNay ? homNay : `${nam}-12-31`}`}>{t.veBaoCao}</a></p>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  <form method="GET" action="/noi-bo/kho/bao-cao/theo-thang" class="nb-the kho-khong-in">
+    <nav class="kho-dh" aria-label={t.chonNam} style="margin:0;padding:0 0 .75rem">
+      {cacNam.map(n => (
+        <a href={`/noi-bo/kho/bao-cao/theo-thang?nam=${n}`} aria-current={n === nam ? 'page' : undefined} style="min-height:48px">{t.nam(n)}</a>
+      ))}
+    </nav>
+    <div class="kho-luoi">
+      <label class="nb-o"><span>{t.oNam}</span><input type="number" name="nam" value={String(nam)} min="2020" max={String(namNay + 1)} inputmode="numeric" required /></label>
+    </div>
+    <div class="kho-thanh-nut" style="margin:0">
+      <button type="submit" class="nb-nut phu">{t.xem}</button>
+      <button type="submit" class="nb-nut phu" formaction="/noi-bo/kho/bao-cao/theo-thang.csv">{t.taiCsv}</button>
+    </div>
+  </form>
+
+  <p class="nb-dan">{dn.moTa}{!coGia && t.chiKg}</p>
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">{t.chuaBatDau} <a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
+  ) : daDoc && (
+    <>
+      <BangBaoCao dn={dn} dong={dongBang} tong={tong} />
+      {dong.length > 0 && <NutIn chu={t.inBaoCao} />}
+      {coThangKhongIpos && (
+        <p class="kho-phu">{t.khongIpos}</p>
+      )}
+      <p class="kho-phu">{t.tongTon}</p>
+    </>
+  )}
+</Kho>

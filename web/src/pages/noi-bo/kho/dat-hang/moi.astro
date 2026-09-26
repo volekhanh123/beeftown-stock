@@ -1,0 +1,319 @@
+---
+/**
+ * KHO — LẬP ĐƠN ĐẶT HÀNG (GĐ8a, migration 0039)
+ *
+ *   1. Chọn nhà cung cấp (link GET ?ncc=<id> — gửi link qua Zalo vẫn đúng NCC).
+ *   2. Bảng gợi ý (kho_goi_y_dat_hang, không tiền): mỗi món NCC này hay giao,
+ *      điền sẵn số kg nên đặt kèm lý do một dòng nhỏ. Sửa được; trống / 0 là
+ *      không đặt. Món khác thêm ở các dòng dưới ("+ Thêm dòng" gửi lại form,
+ *      viec = them_dong, giữ số đã gõ và ma_gui).
+ *   3. "Lưu nháp" → mở /noi-bo/kho/dat-hang/<id>. Quản lý / chủ có thêm "Lưu và
+ *      gửi" (nhap + duyet_nhap) — lưu rồi gửi luôn.
+ *
+ * Ô giá dự kiến chỉ hiện với vai xem giá; thủ kho gửi đơn không có khóa giá
+ * (database từ chối nếu có). Không JavaScript.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import ChonMatHang from '../../../../components/kho/ChonMatHang.astro';
+import NhanHangChon from '../../../../components/kho/NhanHangChon.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import { docMatHang, type MatHang } from '../../../../lib/kho/danh-muc.ts';
+import { docNccNhap, type NccNhap } from '../../../../lib/kho/nhan-hang.ts';
+import {
+  docGoiYDatHang, docFormDonDat, chuFormDonDat, soDongThem, luuDonDat, guiDonDat, oKgGoiY, oGoiGoiY, cauGoiYDat,
+  TOI_DA_DONG_THEM, type GoiYDat, type MonDat, type FormDonDat,
+} from '../../../../lib/kho/dat-hang.ts';
+import {
+  cauLoiKho, dinhDangKg, dinhDangNgayNgan, homNayVn, kqHai, laUuid, type KetQua,
+} from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { dichCau } from '../../../../lib/cau-noi-bo.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('nhap')) return Astro.redirect('/noi-bo/kho', 302);
+if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
+const cn = k.chiNhanh;
+const DS = '/noi-bo/kho/dat-hang';
+const coGia = k.duoc('xem_gia');
+const guiDuoc = k.duoc('duyet_nhap');
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Lập đơn đặt hàng', en: 'New purchase order' },
+  khongDocDanhMuc: { vi: 'Không đọc được danh mục.', en: 'Could not read the catalog.' },
+  khongDocGoiY: {
+    vi: 'Không đọc được gợi ý đặt hàng — vẫn thêm món tay được.',
+    en: 'Could not read the order suggestions — you can still add items by hand.',
+  },
+  datCuaAi: { vi: 'Đặt hàng của ai?', en: 'Order from which supplier?' },
+  chuaCoNcc: { vi: 'Chưa có nhà cung cấp nào.', en: 'No suppliers yet.' },
+  themNcc: { vi: 'Thêm nhà cung cấp', en: 'Add a supplier' },
+  nhoQuanLy: { vi: 'Nhờ quản lý thêm nhà cung cấp.', en: 'Ask a manager to add suppliers.' },
+  ncc: { vi: 'Nhà cung cấp', en: 'Supplier' },
+  giao: { vi: (ngay: string) => `giao ${ngay}`, en: (ngay: string) => `delivered ${ngay}` },
+  nccKhac: { vi: 'Nhà cung cấp khác', en: 'Other supplier' },
+  chonODay: { vi: '— không có ở trên thì chọn ở đây —', en: '— not listed above? Choose here —' },
+  tiepGoiY: { vi: 'Tiếp: xem gợi ý →', en: 'Next: see suggestions →' },
+  giaoSau: {
+    vi: (n: number) => ` · giao sau ${n} ngày kể từ lúc đặt`,
+    en: (n: number) => ` · delivers ${n} ${s(n, 'day', 'days')} after ordering`,
+  },
+  doiNcc: { vi: 'Đổi nhà cung cấp', en: 'Change supplier' },
+  monHayGiao: { vi: 'Món nhà cung cấp này hay giao', en: 'Items this supplier usually delivers' },
+  nenDat: { vi: (n: number) => ` · ${n} món nên đặt`, en: (n: number) => ` · ${n} ${s(n, 'item', 'items')} to order` },
+  chuaCoGoiY: {
+    vi: 'Chưa nhận hàng của nhà cung cấp này lần nào, nên chưa có gợi ý. Thêm món ở phần dưới.',
+    en: 'No goods received from this supplier yet, so there are no suggestions. Add items below.',
+  },
+  giaiThich: {
+    vi: 'Số kg điền sẵn là số nên đặt (tồn kho, hàng đã đặt chưa về, lượng dùng 28 ngày qua). Sửa được; để trống hoặc 0 là không đặt món đó.',
+    en: 'The kg filled in is the suggested order (stock on hand, goods ordered but not yet arrived, use over the last 28 days). You can change it; leave it blank or 0 to not order that item.',
+  },
+  con: { vi: 'Còn', en: 'On hand' },
+  daDatChuaVe: { vi: (kg: string) => ` · đã đặt chưa về ${kg} kg`, en: (kg: string) => ` · ordered, not arrived ${kg} kg` },
+  dung: { vi: (kg: string) => ` · dùng ${kg} kg/ngày`, en: (kg: string) => ` · uses ${kg} kg/day` },
+  anKg: { vi: (ten: string) => `${ten} — số kg đặt`, en: (ten: string) => `${ten} — kg to order` },
+  anGoi: { vi: (ten: string, dv: string) => `${ten} — số ${dv || 'gói'}`, en: (ten: string, dv: string) => `${ten} — number of ${dv || 'packs'}` },
+  goi: { vi: 'gói', en: 'packs' },
+  anGia: { vi: (ten: string) => `${ten} — giá dự kiến / kg`, en: (ten: string) => `${ten} — expected price / kg` },
+  giaKg: { vi: 'giá/kg', en: 'price/kg' },
+  dongKg: { vi: 'đ/kg', en: 'VND/kg' },
+  themMonKhac: { vi: 'Thêm món khác', en: 'Add other items' },
+  monSo: { vi: (n: number) => `Món ${n}`, en: (n: number) => `Item ${n}` },
+  soKg: { vi: 'Số kg', en: 'Kg' },
+  soGoiTang: { vi: 'Số gói / tảng', en: 'Packs / pieces' },
+  giaDuKien: { vi: 'Giá dự kiến/kg', en: 'Expected price/kg' },
+  themDong: { vi: '+ Thêm dòng', en: '+ More lines' },
+  ngayGiao: { vi: 'Ngày giao', en: 'Delivery date' },
+  boTrongNgay: { vi: 'Bỏ trống = tự tính theo số ngày giao của nhà cung cấp.', en: 'Leave blank to work it out from the supplier\'s delivery days.' },
+  ghiChuNcc: { vi: 'Ghi chú cho nhà cung cấp (không bắt buộc)', en: 'Note for the supplier (optional)' },
+  viDuGhiChu: { vi: 'ví dụ: giao trước 9 giờ sáng', en: 'e.g. deliver before 9 am' },
+  quanLySeGui: { vi: 'Quản lý sẽ xem lại và gửi đơn cho nhà cung cấp.', en: 'A manager will review it and send the order to the supplier.' },
+  luuNhap: { vi: 'Lưu nháp', en: 'Save draft' },
+  luuGui: { vi: 'Lưu và gửi →', en: 'Save and send →' },
+  veDs: { vi: '← Danh sách đơn đặt hàng', en: '← Purchase orders list' },
+});
+
+let ncc: NccNhap[] = [];
+let matHang: MatHang[] = [];
+let loiDoc = k.loiDoc;
+try {
+  [ncc, matHang] = await Promise.all([docNccNhap(k.client, cn.id), docMatHang(k.client)]);
+} catch (e) { loiDoc = cauLoiKho(e, t.khongDocDanhMuc); }
+
+const form = await docFormGui(Astro);
+// Ô chọn "Nhà cung cấp khác" có giá trị thì thắng nút lớn (như màn nhận hàng).
+const sp = Astro.url.searchParams;
+const nccId = String(form?.get('ncc') ?? (sp.get('ncc_khac') || sp.get('ncc') || ''));
+const nccChon = ncc.find(n => n.id === nccId) ?? null;
+const mon = new Map<string, MonDat>(matHang.filter(m => m.dang_dung)
+  .map(m => [m.id, { ten: m.ten, dem_goi: m.dem_goi, don_vi_goi: m.don_vi_goi }]));
+
+// ---------------------------------------------------------------------------
+// Gửi form
+// ---------------------------------------------------------------------------
+const maGuiCu = String(form?.get('ma_gui') ?? '');
+const maGui = laUuid(maGuiCu) ? maGuiCu : crypto.randomUUID();
+let soDong = soDongThem(form);
+let bao: KetQua | null = k.bao;
+let chu: FormDonDat | null = null;
+if (Astro.request.method === 'POST' && !form) {
+  bao = kqHai(false, {
+    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
+    en: 'Could not read what was sent — the connection may have dropped. Please send again.',
+  });
+}
+if (form && nccChon) {
+  const viec = String(form.get('viec') ?? '');
+  if (viec === 'them_dong') {
+    chu = chuFormDonDat(form, soDong);
+    soDong = Math.min(soDong + 3, TOI_DA_DONG_THEM);
+  } else if (viec === 'luu' || viec === 'luu_gui') {
+    const r = docFormDonDat(form, mon, { coGia, soDong });
+    chu = r.chu;
+    if (r.loi.length) bao = { ok: false, cau: r.loi.join(' · '), cauEn: r.loiEn.join(' · ') };
+    else {
+      const kq = await luuDonDat(k.client, cn.id, {
+        id: null, maGui, phienBan: null, nccId: nccChon.id, ngayGiao: r.ngayGiao, ghiChu: r.chu.ghiChu, dong: r.dong,
+      });
+      if (kq.ok && kq.id) {
+        if (viec === 'luu_gui' && guiDuoc) {
+          // Gửi luôn với phiên bản vừa lưu. Lỗi gửi thì đơn vẫn là nháp, mở ra xem.
+          const gui = await guiDonDat(k.client, kq.id, kq.phienBan ?? 1);
+          return chuyenHuong(Astro, gui.ok ? `${DS}/${kq.id}/in` : `${DS}/${kq.id}`,
+            gui.ok ? gui : kqHai(false, {
+              vi: `Đã lưu nháp nhưng chưa gửi được: ${gui.cau}`,
+              en: `Draft saved but not sent yet: ${gui.cauEn ?? dichCau('en', gui.cau)}`,
+            }));
+        }
+        return chuyenHuong(Astro, `${DS}/${kq.id}`, kq);
+      }
+      bao = kq;
+    }
+  } else {
+    bao = kqHai(false, { vi: 'Việc không hợp lệ.', en: 'Invalid action.' });
+  }
+} else if (form) {
+  bao = kqHai(false, { vi: 'Chọn nhà cung cấp trước.', en: 'Choose a supplier first.' });
+}
+
+// ---------------------------------------------------------------------------
+// Gợi ý
+// ---------------------------------------------------------------------------
+let goiY: GoiYDat[] = [];
+if (nccChon) {
+  try { goiY = await docGoiYDatHang(k.client, cn.id, nccChon.id); }
+  catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, t.khongDocGoiY); }
+}
+const idGoiY = new Set(goiY.map(g => g.mat_hang_id));
+const soNgayGiao = goiY[0]?.so_ngay_giao ?? null;
+const canDat = goiY.filter(g => g.de_nghi_kg > 0).length;
+/** Giá trị ô: form gửi lại thì giữ chữ đã gõ, lần đầu là số gợi ý. */
+const oGoiY = (g: GoiYDat, o: 'kg' | 'goi' | 'gia') => {
+  const cu = chu?.co.get(g.mat_hang_id);
+  if (cu) return cu[o];
+  return o === 'kg' ? oKgGoiY(g) : o === 'goi' ? oGoiGoiY(g) : '';
+};
+const dongThem = Array.from({ length: soDong }, (_, i) => chu?.them[i] ?? { mh: '', kg: '', goi: '', gia: '' });
+const nccNut = ncc.slice(0, 8);
+const nccKhac = ncc.slice(8);
+---
+<Kho k={k} tieuDe={t.tieuDe} huongDan="dat-hang">
+  <h1>{t.tieuDe}</h1>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {/* ======================= 1 · Chọn nhà cung cấp ======================= */}
+  {!nccChon ? (
+    <form method="GET" class="nb-the">
+      <div class="nb-o">
+        <span>{t.datCuaAi}</span>
+        {ncc.length === 0 && (
+          <small>{t.chuaCoNcc} {k.duoc('ncc') ? <a href="/noi-bo/kho/cai-dat/nha-cung-cap">{t.themNcc}</a> : t.nhoQuanLy}</small>
+        )}
+        <NhanHangChon name="ncc" nhan={t.ncc} chon=""
+          ds={nccNut.map(n => ({ value: n.id, nhan: n.ten, phu: n.lan_cuoi ? t.giao(dinhDangNgayNgan(n.lan_cuoi)) : null }))} />
+      </div>
+      {nccKhac.length > 0 && (
+        <label class="nb-o"><span>{t.nccKhac}</span>
+          <select name="ncc_khac">
+            <option value="">{t.chonODay}</option>
+            {nccKhac.map(n => <option value={n.id}>{n.ten}</option>)}
+          </select></label>
+      )}
+      <div class="kho-thanh-nut dinh">
+        <button type="submit" class="nb-nut dh-lon">{t.tiepGoiY}</button>
+      </div>
+    </form>
+  ) : (
+    /* ======================= 2 · Gợi ý + món ======================= */
+    <form method="POST">
+      <input type="hidden" name="ma_gui" value={maGui} />
+      <input type="hidden" name="ncc" value={nccChon.id} />
+      <input type="hidden" name="so_dong" value={String(soDong)} />
+
+      <div class="nb-the">
+        <p style="margin:0"><strong>{nccChon.ten}</strong>
+          {soNgayGiao !== null && <>{t.giaoSau(soNgayGiao)}</>}
+          {' '}· <a href={`${DS}/moi`}>{t.doiNcc}</a></p>
+      </div>
+
+      <h2>{t.monHayGiao}{canDat > 0 && <>{t.nenDat(canDat)}</>}</h2>
+      {goiY.length === 0 ? (
+        <p class="kho-phu">{t.chuaCoGoiY}</p>
+      ) : (
+        <>
+          <p class="kho-phu">{t.giaiThich}</p>
+          <ul class="kho-dong-ds dh-goi-y">
+            {goiY.map(g => (
+              <li class={g.duoi_toi_thieu ? 'gap' : ''}>
+                <input type="hidden" name="mh" value={g.mat_hang_id} />
+                <span>
+                  <strong>{g.ten}</strong>
+                  <small>{t.con} {dinhDangKg(g.ton_kg + g.dang_chuyen_kg, nn)} kg{g.dang_dat_kg > 0 && t.daDatChuaVe(dinhDangKg(g.dang_dat_kg, nn))}{g.dung_tb_ngay_kg > 0 && t.dung(dinhDangKg(g.dung_tb_ngay_kg, nn))}</small>
+                  <small class="dh-ly-do">{cauGoiYDat(g, nn)}</small>
+                </span>
+                <span class="dh-o-hang">
+                  <label class="nb-o dh-o">
+                    <span class="an">{t.anKg(g.ten)}</span>
+                    <input type="text" inputmode="decimal" name={`kg_${g.mat_hang_id}`} value={oGoiY(g, 'kg')} autocomplete="off" />
+                    <small>kg</small>
+                  </label>
+                  {g.dem_goi && (
+                    <label class="nb-o dh-o">
+                      <span class="an">{t.anGoi(g.ten, g.don_vi_goi)}</span>
+                      <input type="text" inputmode="numeric" name={`goi_${g.mat_hang_id}`} value={oGoiY(g, 'goi')} autocomplete="off" />
+                      <small>{g.don_vi_goi || t.goi}</small>
+                    </label>
+                  )}
+                  {coGia && (
+                    <label class="nb-o dh-o dh-o-gia">
+                      <span class="an">{t.anGia(g.ten)}</span>
+                      <input type="text" inputmode="numeric" name={`gia_${g.mat_hang_id}`} value={oGoiY(g, 'gia')} placeholder={t.giaKg} autocomplete="off" />
+                      <small>{t.dongKg}</small>
+                    </label>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      <h2>{t.themMonKhac}</h2>
+      {dongThem.map((d, i) => (
+        <div class={`dh-them${coGia ? ' co-gia' : ''}`}>
+          <label class="nb-o"><span>{t.monSo(i + 1)}</span>
+            <ChonMatHang name={`t${i}_mh`} matHang={matHang.filter(m => !idGoiY.has(m.id) || m.id === d.mh)} chon={d.mh} /></label>
+          <label class="nb-o"><span>{t.soKg}</span>
+            <input type="text" inputmode="decimal" name={`t${i}_kg`} value={d.kg} autocomplete="off" /></label>
+          <label class="nb-o"><span>{t.soGoiTang}</span>
+            <input type="text" inputmode="numeric" name={`t${i}_goi`} value={d.goi} autocomplete="off" /></label>
+          {coGia && (
+            <label class="nb-o"><span>{t.giaDuKien}</span>
+              <input type="text" inputmode="numeric" name={`t${i}_gia`} value={d.gia} autocomplete="off" /></label>
+          )}
+        </div>
+      ))}
+      {soDong < TOI_DA_DONG_THEM && (
+        <button type="submit" name="viec" value="them_dong" class="nb-nut phu" formnovalidate>{t.themDong}</button>
+      )}
+
+      <div class="nb-the" style="margin-top:1rem">
+        <div class="kho-luoi">
+          <label class="nb-o"><span>{t.ngayGiao}</span>
+            <small>{t.boTrongNgay}</small>
+            <input type="date" name="ngay_giao" value={chu?.ngayGiao ?? ''} min={homNayVn()} /></label>
+        </div>
+        <label class="nb-o"><span>{t.ghiChuNcc}</span>
+          <input type="text" name="ghi_chu" maxlength="500" value={chu?.ghiChu ?? ''} placeholder={t.viDuGhiChu} /></label>
+        {!coGia && <p class="kho-phu" style="margin:0">{t.quanLySeGui}</p>}
+      </div>
+
+      <div class="kho-thanh-nut dinh">
+        <button type="submit" name="viec" value="luu" class={`nb-nut dh-lon${guiDuoc ? ' phu' : ''}`}>{t.luuNhap}</button>
+        {guiDuoc && <button type="submit" name="viec" value="luu_gui" class="nb-nut dh-lon">{t.luuGui}</button>}
+      </div>
+    </form>
+  )}
+
+  <p style="margin-top:1.5rem"><a href={DS}>{t.veDs}</a></p>
+</Kho>
+
+<style>
+  .dh-lon { min-height: 56px; font-size: 1.05rem; }
+  .dh-ly-do { font-size: .78rem !important; line-height: 1.35; }
+  .dh-goi-y li { align-items: center; }
+  .dh-o-hang { display: flex; gap: .4rem; flex-wrap: wrap; flex: 0 0 auto; }
+  .dh-o { display: flex; align-items: center; gap: .3rem; margin: 0; }
+  .dh-o input { width: 5.5rem; text-align: right; font-size: 1.1rem !important; }
+  .dh-o-gia input { width: 7.5rem; }
+  .dh-them { display: grid; grid-template-columns: 1fr 6rem 6rem; gap: .5rem; align-items: end; }
+  .dh-them.co-gia { grid-template-columns: 1fr 6rem 6rem 8rem; }
+  @media (max-width: 560px) {
+    .dh-them, .dh-them.co-gia { grid-template-columns: 1fr 1fr; }
+    .dh-them > label:first-child { grid-column: 1 / -1; }
+  }
+  .an { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>

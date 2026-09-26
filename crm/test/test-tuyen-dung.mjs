@@ -735,6 +735,39 @@ await nhom('12 · LƯƠNG THEO GIỜ HAY THEO THÁNG (0028)', async () => {
      mktDeXuat.loi ?? '');
 });
 
+await nhom('13 · LOẠI HỢP ĐỒNG CHƯA CHỐT (0043)', async () => {
+  // JD chưa chốt loại hợp đồng thì tin không được nói thay nhà hàng: null.
+  const mkt = await duoiDanhNghia(uidMkt,
+    `update vi_tri_tuyen_dung set loai_hop_dong = null
+     where ma = 'nhan-vien-bep' returning ma`);
+  ok('Marketing đặt được loại hợp đồng về chưa chốt (null)',
+     mkt.loi === null && mkt.rows?.length === 1, mkt.loi ?? '');
+
+  const tin = (await duoiDanhNghiaAnon(
+    `select ma, loai_hop_dong from tin_tuyen_dung_cong_khai()
+     where ma = 'nhan-vien-bep'`)).rows?.[0];
+  ok('Tin chưa chốt vẫn công khai, loại hợp đồng trả null',
+     tin !== undefined && tin.loai_hop_dong === null, JSON.stringify(tin));
+
+  const la = await phaiLoi(db,
+    `update vi_tri_tuyen_dung set loai_hop_dong = 'chua_chot' where ma = 'nhan-vien-bep'`);
+  ok('"Chưa chốt" là null, không phải giá trị thứ năm của enum',
+     la !== null, la ?? 'GHI ĐƯỢC chua_chot');
+
+  const { rows: e } = await db.query(
+    `select e.enumlabel from pg_enum e join pg_type t on t.oid = e.enumtypid
+     where t.typname = 'loai_hop_dong' order by e.enumsortorder`);
+  ok('Enum loai_hop_dong giữ đúng bốn loại',
+     e.map(r => r.enumlabel).join(',') === 'toan_thoi_gian,ban_thoi_gian,thoi_vu,thuc_tap',
+     e.map(r => r.enumlabel).join(','));
+
+  const chot = await duoiDanhNghia(uidMkt,
+    `update vi_tri_tuyen_dung set loai_hop_dong = 'toan_thoi_gian'
+     where ma = 'nhan-vien-bep' returning loai_hop_dong`);
+  ok('Chốt lại được một loại thật',
+     chot.loi === null && chot.rows?.[0]?.loai_hop_dong === 'toan_thoi_gian', chot.loi ?? '');
+});
+
 // ===========================================================================
 console.log('\n' + '='.repeat(60));
 if (hong === 0) {

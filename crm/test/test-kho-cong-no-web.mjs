@@ -184,16 +184,19 @@ await nhom('6 · CÁC TRANG CÔNG NỢ', async () => {
   const noDau = docTrang('no-dau.astro');
   const ds = docTrang('index.astro');
   const ncc = docTrang('[id].astro');
-  ok('Trang nợ đầu kỳ: chặn quyền ke_toan, bọc <Kho>', /if \(!k\.duoc\('ke_toan'\)\)/.test(noDau) && /<Kho k=\{k\}[^>]*\stieuDe="Nợ đầu kỳ"/.test(noDau));
+  // Chữ giao diện hai thứ tiếng (dichNB): chỗ cũ là {t.x}, câu tiếng Việt nằm ở x: { vi: '…' }.
+  ok('Trang nợ đầu kỳ: chặn quyền ke_toan, bọc <Kho>', /if \(!k\.duoc\('ke_toan'\)\)/.test(noDau)
+     && /<Kho k=\{k\}[^>]*\stieuDe=\{t\.tieuDe\}/.test(noDau) && /\btieuDe: \{ vi: 'Nợ đầu kỳ'/.test(noDau));
   ok('Xem trước → Ghi, form ghi có ma_gui', /value="xem_truoc"/.test(noDau) && /value="ghi"/.test(noDau)
      && /name="ma_gui" value=\{crypto\.randomUUID\(\)\}/.test(noDau));
-  ok('Dán Excel và nút "Không có nợ đầu kỳ"', /value="dan"/.test(noDau) && /value="khong_no"/.test(noDau) && />Không có nợ đầu kỳ</.test(noDau));
+  ok('Dán Excel và nút "Không có nợ đầu kỳ"', /value="dan"/.test(noDau) && /value="khong_no"/.test(noDau)
+     && />\{t\.khongNo\}</.test(noDau) && /\bkhongNo: \{ vi: 'Không có nợ đầu kỳ'/.test(noDau));
   ok('Hủy phiếu có lý do bắt buộc', /value="huy"/.test(noDau) && /name="ly_do" required/.test(noDau));
   ok('Ô tiền gõ bằng bàn phím số', /inputmode="numeric" name=\{`n\$\{i\}_tien`\}/.test(noDau));
   ok('Trang Công nợ có link "Nợ đầu kỳ"', ds.includes('href="/noi-bo/kho/cong-no/no-dau"'));
   ok('Danh sách lọc: số phiếu dùng linkPhieuCongNo (ND- không mở /nhap/)', /href=\{linkPhieuCongNo\(p\)\}/.test(ds) && !/href=\{`\/noi-bo\/kho\/nhap\/\$\{p\.id\}`\}/.test(ds));
   ok('Trang nhà cung cấp: ND- có nhãn, không đối chiếu, không trả hàng', /const noDau = laNoDau\(p\)/.test(ncc)
-     && />Nợ đầu kỳ</.test(ncc) && ncc.indexOf('{noDau ? (') < ncc.indexOf('tra-hang?phieu='));
+     && />\{t\.noDau\}</.test(ncc) && /\bnoDau: \{ vi: 'Nợ đầu kỳ'/.test(ncc) && ncc.indexOf('{noDau ? (') < ncc.indexOf('tra-hang?phieu='));
   ok('Bẫy Astro: không "{x.length && …}"', ![noDau, ds, ncc].some(s => /\{[a-zA-Z.]+\.length && /.test(s)));
   ok('Không <script> trong trang công nợ', ![noDau, ds, ncc].some(s => /<script/.test(s)));
 });

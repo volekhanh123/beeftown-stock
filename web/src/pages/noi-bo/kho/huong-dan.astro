@@ -11,6 +11,9 @@
  * "?" của màn nào cũng cuộn tới đúng chỗ, dù đang lọc vai nào.
  *
  * Không JavaScript: chip vai là link, câu hỏi dùng <details>.
+ *
+ * Hai thứ tiếng: câu của trang ở bảng t; câu của từng mục, câu hỏi, tên nhóm
+ * là cặp { vi, en } trong huong-dan.ts — luôn đọc [nn].
  */
 import Kho from '../../../layouts/Kho.astro';
 import { moTrangKho } from '../../../lib/kho/trang.ts';
@@ -18,20 +21,37 @@ import {
   MUC_HUONG_DAN, NHOM_VAI, CAU_HOI, dinhDang, vaiHuongDan, nhomCua,
   type MucHuongDan, type VaiHuongDan,
 } from '../../../lib/kho/huong-dan.ts';
+import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
+const nn = k.nn;
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Hướng dẫn', en: 'Help' },
+  h1: { vi: 'Hướng dẫn sử dụng kho', en: 'Inventory user guide' },
+  // Hai nửa câu quanh nút <strong>?</strong> — khoảng trắng nằm sẵn trong câu.
+  dan1: { vi: 'Mỗi việc là vài bước đánh số, chữ in đậm là chữ trên nút cần bấm. Bấm ',
+          en: 'Each task is a few numbered steps; bold text is the label on the button to press. Press ' },
+  dan2: { vi: ' ở góc trên của màn nào thì mở đúng mục của màn đó.',
+          en: ' at the top of any screen to open the section for that screen. The screenshots show the Vietnamese screens.' },
+  xemTheoVai: { vi: 'Xem theo vai', en: 'View by role' },
+  xemTatCa: { vi: 'Xem tất cả', en: 'Show all' },
+  mucLuc: { vi: 'Mục lục', en: 'Contents' },
+  cauHoi: { vi: 'Câu hỏi thường gặp', en: 'Frequently asked questions' },
+  viecCua: { vi: (ten: string) => `Việc của ${ten}`, en: (ten: string) => `${ten} tasks` },
+  vaiKhac: { vi: 'Việc của vai khác', en: 'Tasks for other roles' },
+});
 
 const DUONG = '/noi-bo/kho/huong-dan';
 const thamSo = Astro.url.searchParams.get('vai');
 const tatCa = thamSo === 'tat-ca';
 const vaiChon: VaiHuongDan = tatCa ? 'chung' : vaiHuongDan(thamSo ?? k.nhanSu.vai_tro);
 const locVai = !tatCa && vaiChon !== 'chung';
-const tenVai = (v: VaiHuongDan) => NHOM_VAI.find(n => n.vai === v)?.ten ?? '';
+const tenVai = (v: VaiHuongDan) => NHOM_VAI.find(n => n.vai === v)?.ten[nn] ?? '';
 
 interface Khoi { id: string; ten: string; muc: MucHuongDan[] }
 const theoNhom = (ds: MucHuongDan[]): Khoi[] => NHOM_VAI
-  .map(n => ({ id: `nhom-${n.vai.replace(/_/g, '-')}`, ten: n.ten, muc: ds.filter(m => nhomCua(m) === n.vai) }))
+  .map(n => ({ id: `nhom-${n.vai.replace(/_/g, '-')}`, ten: n.ten[nn], muc: ds.filter(m => nhomCua(m) === n.vai) }))
   .filter(n => n.muc.length > 0);
 
 // "Bắt đầu" luôn trên cùng; rồi việc của vai đang chọn; rồi phần còn lại.
@@ -40,62 +60,61 @@ const cuaToi = locVai ? MUC_HUONG_DAN.filter(m => nhomCua(m) !== 'chung' && m.va
 const conLai = MUC_HUONG_DAN.filter(m => nhomCua(m) !== 'chung' && !cuaToi.includes(m));
 const khoi: Khoi[] = [
   { id: 'nhom-chung', ten: tenVai('chung'), muc: batDau },
-  ...(locVai ? [{ id: 'viec-cua-toi', ten: `Việc của ${tenVai(vaiChon)}`, muc: cuaToi }] : []),
+  ...(locVai ? [{ id: 'viec-cua-toi', ten: t.viecCua(tenVai(vaiChon)), muc: cuaToi }] : []),
 ];
 const khoiKhac = theoNhom(conLai);
 ---
-<Kho k={k} tieuDe="Hướng dẫn">
-  <h1>Hướng dẫn sử dụng kho</h1>
-  <p class="nb-dan">Mỗi việc là vài bước đánh số, chữ in đậm là chữ trên nút cần bấm.
-    Bấm <strong>?</strong> ở góc trên của màn nào thì mở đúng mục của màn đó.</p>
+<Kho k={k} tieuDe={t.tieuDe}>
+  <h1>{t.h1}</h1>
+  <p class="nb-dan">{t.dan1}<strong>?</strong>{t.dan2}</p>
 
-  <nav class="kho-dh" aria-label="Xem theo vai">
+  <nav class="kho-dh" aria-label={t.xemTheoVai}>
     {NHOM_VAI.filter(n => n.vai !== 'chung').map(n => (
-      <a href={`${DUONG}?vai=${n.vai}`} aria-current={locVai && n.vai === vaiChon ? 'page' : undefined}>{n.ten}</a>
+      <a href={`${DUONG}?vai=${n.vai}`} aria-current={locVai && n.vai === vaiChon ? 'page' : undefined}>{n.ten[nn]}</a>
     ))}
-    <a href={`${DUONG}?vai=tat-ca`} aria-current={!locVai ? 'page' : undefined}>Xem tất cả</a>
+    <a href={`${DUONG}?vai=tat-ca`} aria-current={!locVai ? 'page' : undefined}>{t.xemTatCa}</a>
   </nav>
 
   <section class="nb-the hd-muc-luc" aria-labelledby="muc-luc">
-    <h2 id="muc-luc" style="margin-top:0">Mục lục</h2>
+    <h2 id="muc-luc" style="margin-top:0">{t.mucLuc}</h2>
     {[...khoi, ...khoiKhac].map(n => (
       <>
         <p class="hd-nhom-ten"><a href={`#${n.id}`}>{n.ten}</a></p>
-        <ul>{n.muc.map(m => <li><a href={`#${m.id}`}>{m.tieuDe}</a></li>)}</ul>
+        <ul>{n.muc.map(m => <li><a href={`#${m.id}`}>{m.tieuDe[nn]}</a></li>)}</ul>
       </>
     ))}
-    <p class="hd-nhom-ten"><a href="#cau-hoi">Câu hỏi thường gặp</a></p>
+    <p class="hd-nhom-ten"><a href="#cau-hoi">{t.cauHoi}</a></p>
   </section>
 
-  {[...khoi, ...(locVai && khoiKhac.length ? [{ id: 'vai-khac', ten: 'Việc của vai khác', muc: [] }] : []), ...khoiKhac].map(n => (
+  {[...khoi, ...(locVai && khoiKhac.length ? [{ id: 'vai-khac', ten: t.vaiKhac, muc: [] }] : []), ...khoiKhac].map(n => (
     <>
       <h2 id={n.id} class:list={['hd-nhom', { 'hd-vai-khac': n.id === 'vai-khac' }]}>{n.ten}</h2>
       {n.muc.map(m => (
         <section class="nb-the hd-the" id={m.id}>
-          <h3 style="margin-top:0">{m.tieuDe}</h3>
-          <p class="hd-tom-tat" set:html={dinhDang(m.tomTat)} />
-          <ol class="hd-buoc">{m.buoc.map(b => <li set:html={dinhDang(b)} />)}</ol>
+          <h3 style="margin-top:0">{m.tieuDe[nn]}</h3>
+          <p class="hd-tom-tat" set:html={dinhDang(m.tomTat[nn])} />
+          <ol class="hd-buoc">{m.buoc.map(b => <li set:html={dinhDang(b[nn])} />)}</ol>
           {m.meo && m.meo.length > 0 && (
-            <ul class="hd-meo">{m.meo.map(x => <li set:html={dinhDang(x)} />)}</ul>
+            <ul class="hd-meo">{m.meo.map(x => <li set:html={dinhDang(x[nn])} />)}</ul>
           )}
           {m.anh && (
             <figure class="hd-anh">
-              <img src={m.anh.file} alt={m.anh.chu} width={m.anh.rong} height={m.anh.cao} loading="lazy" decoding="async" />
-              <figcaption class="kho-phu">{m.anh.chu}</figcaption>
+              <img src={m.anh.file} alt={m.anh.chu[nn]} width={m.anh.rong} height={m.anh.cao} loading="lazy" decoding="async" />
+              <figcaption class="kho-phu">{m.anh.chu[nn]}</figcaption>
             </figure>
           )}
-          {m.link && <p class="kho-khong-in" style="margin:.75rem 0 0"><a class="nb-nut phu" href={m.link.href}>{m.link.chu} →</a></p>}
+          {m.link && <p class="kho-khong-in" style="margin:.75rem 0 0"><a class="nb-nut phu" href={m.link.href}>{m.link.chu[nn]} →</a></p>}
         </section>
       ))}
     </>
   ))}
 
-  <h2 id="cau-hoi" class="hd-nhom">Câu hỏi thường gặp</h2>
+  <h2 id="cau-hoi" class="hd-nhom">{t.cauHoi}</h2>
   <section class="nb-the hd-hoi">
     {CAU_HOI.map(c => (
       <details id={c.id}>
-        <summary>{c.hoi}</summary>
-        <p set:html={dinhDang(c.dap)} />
+        <summary>{c.hoi[nn]}</summary>
+        <p set:html={dinhDang(c.dap[nn])} />
       </details>
     ))}
   </section>

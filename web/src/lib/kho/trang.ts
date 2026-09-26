@@ -20,7 +20,7 @@
 import type { AstroGlobal } from 'astro';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NhanSu } from '../phien';
-import { duoc as vaiDuoc, cauLoiKho, type KetQua, type ViecKho } from './chung.ts';
+import { duoc as vaiDuoc, cauLoiKho, kqHai, kqLoi, type KetQua, type ViecKho, type HaiThuTieng, type NgonNguNB } from './chung.ts';
 import { docBao, ghiBao } from './bao.ts';
 import type { SoViec } from './dieu-huong.ts';
 import { kiemMayChung, laVaiMay, laDuongMay, DUONG_MAY, type CheDoMay } from './may-chung.ts';
@@ -42,7 +42,21 @@ export interface TrangKho {
   duoc: (viec: ViecKho) => boolean;
   /** Đang ở máy tính bảng dùng chung (GĐ5d). null = máy thường. */
   may: CheDoMay | null;
+  /** Ngôn ngữ giao diện của lượt xem (cookie nb_ngon_ngu, middleware đặt). */
+  nn: NgonNguNB;
 }
+
+const CAU_TRANG = {
+  docChiNhanh: { vi: 'Không đọc được danh sách chi nhánh.', en: 'Could not read the list of branches.' },
+  khoiTaoXong: {
+    vi: 'Đã bắt đầu dùng kho: tạo Kho lạnh, Quầy thịt, chỗ Hàng chờ hủy và các lý do mặc định. Đổi tên được trong Thiết lập kho.',
+    en: 'Stock is ready: created the Cold store, the Meat counter, an Awaiting write-off area and the default reasons. You can rename them in Stock setup.',
+  },
+  khoiTaoRoi: {
+    vi: 'Kho đã được khởi tạo từ trước — không có gì cần tạo thêm.',
+    en: 'Stock was already set up — nothing more to create.',
+  },
+} satisfies Record<string, HaiThuTieng>;
 
 const COOKIE_CN = 'bt_kho_cn';
 
@@ -50,6 +64,7 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
   const phien = Astro.locals.phien;
   if (!phien) return Astro.redirect('/noi-bo/dang-nhap', 302);
   const { client, nhanSu } = phien;
+  const nn: NgonNguNB = Astro.locals.nn ?? 'vi';
 
   // Máy dùng chung: tự khóa khi quá giờ, dời mốc hoạt động khi còn giờ.
   const may = await kiemMayChung(Astro, nhanSu);
@@ -60,7 +75,7 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
     if (!laDuongMay(Astro.url.pathname)) return Astro.redirect(DUONG_MAY, 302);
     return {
       client, nhanSu, chiNhanh: null, cacChiNhanh: [], daKhoiTao: false, viec: null, loiDoc: null,
-      bao: docBao(Astro.cookies), duoc: (viec: ViecKho) => vaiDuoc(nhanSu.vai_tro, viec), may,
+      bao: docBao(Astro.cookies), duoc: (viec: ViecKho) => vaiDuoc(nhanSu.vai_tro, viec), may, nn,
     };
   }
 
@@ -76,7 +91,7 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
       if (error) throw error;
       cacChiNhanh = (data ?? []) as ChiNhanhKho[];
     } catch (e) {
-      loiDoc = cauLoiKho(e, 'Không đọc được danh sách chi nhánh.');
+      loiDoc = cauLoiKho(e, CAU_TRANG.docChiNhanh[nn]);
     }
   };
 
@@ -125,6 +140,7 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
     bao: docBao(Astro.cookies),
     duoc: (viec: ViecKho) => vaiDuoc(nhanSu.vai_tro, viec),
     may,
+    nn,
   };
 }
 
@@ -155,8 +171,6 @@ export async function tenNhanSu(client: SupabaseClient, ids: (string | null | un
 /** Khởi tạo kho cho chi nhánh (ba vị trí, cài đặt, lý do mặc định). */
 export async function khoiTaoKho(client: SupabaseClient, chiNhanhId: string): Promise<KetQua> {
   const { data, error } = await client.rpc('kho_khoi_tao', { p_chi_nhanh_id: chiNhanhId });
-  if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: Number(data) > 0
-    ? 'Đã bắt đầu dùng kho: tạo Kho lạnh, Quầy thịt, chỗ Hàng chờ hủy và các lý do mặc định. Đổi tên được trong Thiết lập kho.'
-    : 'Kho đã được khởi tạo từ trước — không có gì cần tạo thêm.' };
+  if (error) return kqLoi(error);
+  return kqHai(true, Number(data) > 0 ? CAU_TRANG.khoiTaoXong : CAU_TRANG.khoiTaoRoi);
 }

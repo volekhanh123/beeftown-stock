@@ -95,6 +95,27 @@ Hệ quả cụ thể: một người vai `marketing` đăng nhập sẽ soạn 
 
 **Tài khoản do chủ nhà hàng tạo trong Supabase Studio**, rồi nối `auth_uid` vào một dòng trong bảng `nhan_su`. Đăng nhập Supabase thành công mà không có dòng `nhan_su` thì vẫn bị từ chối — Supabase Auth trả lời "ai", bảng `nhan_su` trả lời "có phải nhân viên không".
 
+### Tiếng Anh ở giao diện nội bộ
+
+Mọi trang nội bộ có nút **English / Tiếng Việt** ở đầu trang. Lựa chọn là của **trình duyệt** (cookie `nb_ngon_ngu`, sống dưới `/noi-bo`), không nằm trong đường dẫn như trang công khai: một link `/noi-bo/tin-tuyen-dung/<id>` phải mở đúng tin đó dù người mở đọc tiếng gì. Chưa chọn thì là tiếng Việt.
+
+Viết thêm chữ cho giao diện nội bộ theo hai đường:
+
+- **Chữ của trang** (tiêu đề, nhãn, nút, câu dẫn) nằm ngay trong trang, dạng `{ vi, en }`, đọc qua `dichNB(nn, …)` — `nn` lấy bằng `nnCua(Astro)`. Thư viện trả câu cho người đọc (`lib/cong-tac.ts`, `lib/tin-tuyen-dung.ts`, `lib/cai-dat.ts`…) nhận thêm tham số `nn`, mặc định `'vi'`.
+- **Câu thông báo trang không tự viết** — lỗi `raise exception` của database, lý do máy dịch hỏng lưu trong sổ bản dịch — đi qua `dichCau(nn, câu)` ở `lib/cau-noi-bo.ts`: tra đúng câu tiếng Việt, rồi tới mẫu có `%`. Thêm một `raise exception` mới ở migration phần CRM thì thêm bản tiếng Anh vào đó.
+
+`crm/test/test-noi-bo-tieng-anh.mjs` giữ hai điều này: câu lỗi database mới chưa có bản tiếng Anh, hoặc chữ Việt mới nằm ngoài cặp `{ vi, en }` ở màn CRM, là test đỏ.
+
+**Bẫy khi tách câu:** Astro 7 (`compressHTML: 'jsx'`) bỏ hẳn khoảng trắng có xuống dòng giữa hai nút. Câu cũ viết liền trong một đoạn chữ thì xuống dòng thành dấu cách, nhưng tách thành `{t.cau1}` ⏎ `{t.cau2}` thì hiện "Câu một.Câu hai.". Viết hai mẩu trên cùng dòng cách một dấu cách, hoặc thêm `{' '}`. `crm/test/dinh-chu.mjs` đọc template bằng bộ đọc của Astro và báo những chỗ này cho cả hai thứ tiếng — cả hai test tiếng Anh đều chạy nó.
+
+**Phần kho** dùng cùng nút, cùng cookie, cùng hai đường trên, thêm ba chỗ riêng:
+
+- **Câu báo sau khi ghi** (`KetQua` trong `lib/kho/chung.ts`, đi qua cookie `bt_kho_bao` sang trang sau) mang cả bản tiếng Anh: thư viện trả `kqHai(ok, { vi, en })` hoặc `{ ok, cau, cauEn }`; lỗi thì `kqLoi(error, { vi, en })`. `BaoKho` hiện `cauEn` ở màn tiếng Anh, không có thì tra `dichCau`. Hàm kiểm dữ liệu trả `loi` kèm `loiEn` cùng thứ tự.
+- **Bảng nhãn** có bản hai thứ tiếng tên `…_NB` (`TRANG_THAI_CHUNG_TU_NB`, `TEN_LOAI_SO_CAI_NB`…); bảng tên cũ chỉ tiếng Việt dựng lại từ đó cho code và test cũ. Trang đọc bằng `nhanKho(BANG_NB, ma, nn)` hoặc `trangThaiKho(ma, nn)`. Số: `dinhDangKg/Tien/PhanTram(x, …, nn)` — tiếng Anh viết `1.25`, `450,000 ₫`.
+- **Câu lỗi database của kho** nằm ở `lib/kho/cau-kho-en.ts`: câu cố định đúng từng chữ, câu có `%` viết nguyên câu `raise` và bản tiếng Anh đặt `{1}`, `{2}`… vào chỗ từng giá trị.
+
+Mỗi trang kho lấy ngôn ngữ từ `k.nn` (`moTrangKho`). `crm/test/test-kho-tieng-anh.mjs` giữ các luật này cho kho: chữ Việt ngoài `{ vi, en }` (bộ quét `crm/test/quet-chu-viet.mjs`), trang gọi hàm có tham số `nn` mà không truyền (`crm/test/kiem-nn.mjs`), câu `raise exception` của migration kho chưa có bản tiếng Anh, và chữ dính nhau vì xuống dòng (`crm/test/dinh-chu.mjs`) — đều là test đỏ. Chỗ cố ý giữ tiếng Việt (file MISA, đơn vị lưu trong database như "gói", "khay") ghi ở `CO_Y` / `KHONG_QUET` trong test đó, kèm lý do.
+
 ---
 
 ## Bản dịch tự động (tiếng Anh và tiếng Hàn)

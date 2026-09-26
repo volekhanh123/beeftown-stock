@@ -1,0 +1,228 @@
+---
+/**
+ * KHO — BÁO CÁO · ĐÁNH GIÁ NHÀ CUNG CẤP (GĐ8a, migration 0039)
+ *
+ * Mỗi NCC trong kỳ: số lần giao, kg nhận, đơn giao thiếu / trễ, thu hồi pha
+ * lóc trung bình của tảng NCC đó, kg trả lại, điểm sao 1–5 (công thức ở
+ * kho_bao_cao_ncc). Vai xem giá thấy thêm giá TB/kg, số lần lệch hóa đơn, số
+ * ngày trả tiền TB — database trả null cho vai khác, trang bỏ hẳn các cột đó.
+ *
+ * Mở cho nhap hoặc xem_gia (thủ kho xem kg — biết NCC nào hay giao thiếu).
+ * Kỳ: nút nhanh như trang Báo cáo; CSV bao-cao/ncc.csv cùng cột.
+ *
+ * Hai thứ tiếng: chữ của trang ở đây. Câu bảng trống (dinhNghiaDanhGiaNcc),
+ * công thức điểm sao (CONG_THUC_SAO_NB) và chữ "chưa đủ số liệu" (chuSao) là của
+ * lib/kho/dat-hang.ts (gói nhập hàng) — dùng bản hai thứ tiếng của file đó khi có.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import { kyBaoCao, kyNhanh, tinhTong } from '../../../../lib/kho/bao-cao.ts';
+import {
+  docDanhGiaNcc, dinhNghiaDanhGiaNcc, chuSao, mucSao, CONG_THUC_SAO_NB, type DongDanhGiaNcc,
+} from '../../../../lib/kho/dat-hang.ts';
+import { congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangTien, homNayVn } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('nhap') && !k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 302);
+
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Đánh giá nhà cung cấp', en: 'Supplier rating' },
+  inTieuDe: { vi: 'ĐÁNH GIÁ NHÀ CUNG CẤP', en: 'SUPPLIER RATING' },
+  kyDai: { vi: 'Khoảng ngày dài quá — chọn tối đa 1 năm.', en: 'The date range is too long — choose at most 1 year.' },
+  veBaoCao: { vi: '← Báo cáo kho', en: '← Inventory reports' },
+  donDatHang: { vi: 'Đơn đặt hàng', en: 'Purchase orders' },
+  chonNhanh: { vi: 'Chọn nhanh kỳ', en: 'Quick periods' },
+  tuNgay: { vi: 'Từ ngày', en: 'From' },
+  denNgay: { vi: 'Đến ngày', en: 'To' },
+  xem: { vi: 'Xem', en: 'View' },
+  taiCsv: { vi: 'Tải về Excel (CSV)', en: 'Download to Excel (CSV)' },
+  giai1: { vi: 'Tính theo phiếu nhận hàng', en: 'Based on' },
+  daDuyet: { vi: 'đã duyệt', en: 'approved' },
+  giai2: { vi: 'trong kỳ và đơn đặt hàng có', en: 'receiving notes in the period and purchase orders with a' },
+  ngayGiao: { vi: 'ngày giao', en: 'delivery date' },
+  giai3: { vi: 'trong kỳ.', en: 'in the period.' },
+  giaoThieu: { vi: 'Giao thiếu', en: 'Short delivery' },
+  giaiThieu: {
+    vi: ': đơn đã có hàng về mà còn món chưa đủ (dưới 95% số kg đặt) khi đã qua ngày giao.',
+    en: ': goods arrived for the order but some items are still short (under 95% of the kg ordered) after the delivery date.',
+  },
+  giaoTre: { vi: 'Giao trễ', en: 'Late delivery' },
+  giaiTre: {
+    vi: ': hàng về sau ngày giao, hoặc qua ngày giao mà chưa thấy hàng.',
+    en: ': goods arrived after the delivery date, or the delivery date passed with no goods yet.',
+  },
+  chuaBatDau: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory overview' },
+  moDatHang: { vi: 'Mở Đặt hàng', en: 'Open Purchase orders' },
+  nhaCungCap: { vi: 'Nhà cung cấp', en: 'Supplier' },
+  diem: { vi: 'Điểm', en: 'Rating' },
+  lanGiao: { vi: 'Lần giao', en: 'Deliveries' },
+  kgNhan: { vi: 'Kg nhận', en: 'Kg received' },
+  giaTbKg: { vi: 'Giá TB/kg', en: 'Avg price/kg' },
+  donDat: { vi: 'Đơn đặt', en: 'Orders' },
+  thuHoiTb: { vi: 'Thu hồi pha TB', en: 'Avg butchery yield' },
+  kgTraLai: { vi: 'Kg trả lại', en: 'Kg returned' },
+  lechHoaDon: { vi: 'Lệch hóa đơn', en: 'Invoice differences' },
+  ngayTraTb: { vi: 'Ngày trả tiền TB', en: 'Avg days to pay' },
+  phien: { vi: (n: number) => `${n} phiên`, en: (n: number) => `${n} ${s(n, 'session', 'sessions')}` },
+  soNgay: { vi: (x: string) => `${x} ngày`, en: (x: string) => `${x} ${x === '1' ? 'day' : 'days'}` },
+  tong: { vi: 'Tổng', en: 'Total' },
+  diemSao: { vi: 'Điểm sao:', en: 'Star rating:' },
+  chuaCham: { vi: 'NCC chưa có phiếu hay đơn nào trong kỳ thì chưa chấm.', en: 'Suppliers with no receipts or orders in the period are not rated.' },
+  thuHoiGiai: {
+    vi: ': tỉ lệ thịt giữ lại khi pha lóc tảng của NCC đó (các phiên đã chốt trong kỳ).',
+    en: ': the share of meat kept when butchering that supplier\'s primals (sessions closed in the period).',
+  },
+  lechGiai: { vi: ': phiếu đã đối chiếu mà tiền hóa đơn khác tổng phiếu.', en: ': reconciled receipts where the invoice amount differs from the receipt total.' },
+  ngayTraGiai: { vi: ': từ ngày hóa đơn tới ngày trả, tính theo số tiền.', en: ': from the invoice date to the payment date, weighted by amount.' },
+  inBaoCao: { vi: 'In báo cáo', en: 'Print report' },
+});
+
+const q = Astro.url.searchParams;
+const homNay = homNayVn();
+const { tu, den } = kyBaoCao(q, homNay);
+const cacKy = kyNhanh(homNay, nn);
+const kyDangChon = cacKy.find(x => x.tu === tu && x.den === den)?.ten;
+const coGia = k.duoc('xem_gia');
+const dn = dinhNghiaDanhGiaNcc(coGia, nn);
+
+let dong: DongDanhGiaNcc[] = [];
+let loiDoc = k.loiDoc;
+let daDoc = false;
+if (congNgay(tu, 366) < den) {
+  loiDoc = t.kyDai;
+} else if (k.chiNhanh && k.daKhoiTao) {
+  const kq = await docDanhGiaNcc(k.client, k.chiNhanh.id, tu, den);
+  dong = kq.dong;
+  loiDoc = kq.loi ?? loiDoc;
+  daDoc = !kq.loi;
+}
+const tong = tinhTong(dn, dong as unknown as Record<string, unknown>[], nn)[0];
+const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDangNgay(den)}`;
+const link = (thay: Record<string, string>) => `/noi-bo/kho/bao-cao/ncc?${new URLSearchParams({ tu, den, ...thay }).toString()}`;
+const vungSo = nn === 'en' ? 'en-US' : 'vi-VN';
+const soChu = (n: number) => (n === 0 ? '·' : n.toLocaleString(vungSo));
+// Điểm, số ngày: số lẻ theo ngôn ngữ (4,5 / 4.5).
+const soLe = (x: number) => (nn === 'en' ? String(x) : String(x).replace('.', ','));
+---
+<Kho k={k} huongDan="danh-gia-ncc" tieuDe={t.tieuDe} rong>
+  <InDau tieuDe={t.inTieuDe} soPhieu={kyChu} chiNhanh={k.chiNhanh?.ten} />
+  <h1>{t.tieuDe}</h1>
+  <p>
+    <a href={`/noi-bo/kho/bao-cao?${new URLSearchParams({ tu, den }).toString()}`}>{t.veBaoCao}</a> ·{" "}
+    <a href="/noi-bo/kho/dat-hang">{t.donDatHang}</a>
+  </p>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  <form method="GET" action="/noi-bo/kho/bao-cao/ncc" class="nb-the">
+    <nav class="kho-dh" aria-label={t.chonNhanh} style="margin:0;padding:0 0 .75rem">
+      {cacKy.map(x => (
+        <a href={link({ tu: x.tu, den: x.den })} aria-current={x.ten === kyDangChon ? 'page' : undefined} style="min-height:48px">{x.ten}</a>
+      ))}
+    </nav>
+    <div class="kho-luoi">
+      <label class="nb-o"><span>{t.tuNgay}</span><input type="date" name="tu" value={tu} required /></label>
+      <label class="nb-o"><span>{t.denNgay}</span><input type="date" name="den" value={den} required /></label>
+    </div>
+    <div class="kho-thanh-nut" style="margin:0">
+      <button type="submit" class="nb-nut phu">{t.xem}</button>
+      <button type="submit" class="nb-nut phu" formaction="/noi-bo/kho/bao-cao/ncc.csv">{t.taiCsv}</button>
+    </div>
+  </form>
+
+  <p class="nb-dan">
+    <strong>{kyChu}</strong>. {t.giai1} <strong>{t.daDuyet}</strong> {t.giai2}{' '}
+    <strong>{t.ngayGiao}</strong> {t.giai3} <strong>{t.giaoThieu}</strong>{t.giaiThieu}
+    {' '}<strong>{t.giaoTre}</strong>{t.giaiTre}
+  </p>
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">{t.chuaBatDau} <a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
+  ) : daDoc && (
+    dong.length === 0 ? (
+      <p class="nb-rong">{dn.khiTrong.cau}. <a href="/noi-bo/kho/dat-hang">{t.moDatHang}</a></p>
+    ) : (
+      <>
+        <div class="kho-bang-khung">
+          <table class="kho-bang kho-bao-cao">
+            <thead>
+              <tr>
+                <th>{t.nhaCungCap}</th>
+                <th>{t.diem}</th>
+                <th class="so">{t.lanGiao}</th>
+                <th class="so">{t.kgNhan}</th>
+                {coGia && <th class="so">{t.giaTbKg}</th>}
+                <th class="so">{t.donDat}</th>
+                <th class="so">{t.giaoThieu}</th>
+                <th class="so">{t.giaoTre}</th>
+                <th class="so">{t.thuHoiTb}</th>
+                <th class="so">{t.kgTraLai}</th>
+                {coGia && <th class="so">{t.lechHoaDon}</th>}
+                {coGia && <th class="so">{t.ngayTraTb}</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {dong.map(d => (
+                <tr>
+                  <td><strong>{d.ten}</strong></td>
+                  <td>
+                    <span class={`ncc-sao ${mucSao(d.diem_sao)}`} title={d.diem_sao !== null ? `${soLe(d.diem_sao)} / 5` : undefined}>{chuSao(d.diem_sao, nn)}</span>
+                    {d.diem_sao !== null && <span class="kho-phu"> {soLe(d.diem_sao)}</span>}
+                  </td>
+                  <td class="so">{soChu(d.so_phieu)}</td>
+                  <td class="so">{d.tong_kg ? dinhDangKg(d.tong_kg, nn) : '·'}</td>
+                  {coGia && <td class="so">{d.gia_tb_kg !== null ? dinhDangTien(d.gia_tb_kg, nn) : '—'}</td>}
+                  <td class="so">{soChu(d.so_don)}</td>
+                  <td class="so">{d.so_don_thieu > 0 ? <strong class="chu-do">{d.so_don_thieu}{d.kg_thieu > 0 ? ` · ${dinhDangKg(d.kg_thieu, nn)} kg` : ''}</strong> : '·'}</td>
+                  <td class="so">{d.so_don_tre > 0 ? <strong class="chu-do">{d.so_don_tre}</strong> : '·'}</td>
+                  <td class="so">{d.thu_hoi_tb_pt !== null ? <>{dinhDangPhanTram(d.thu_hoi_tb_pt, 1, nn)}<br /><span class="kho-phu">{t.phien(d.so_phien_pha)}</span></> : '—'}</td>
+                  <td class="so">{d.kg_tra ? dinhDangKg(d.kg_tra, nn) : '·'}</td>
+                  {coGia && <td class="so">{d.so_lan_lech_hoa_don ? <strong class="chu-do">{d.so_lan_lech_hoa_don}</strong> : '·'}</td>}
+                  {coGia && <td class="so">{d.so_ngay_tra_tb !== null ? t.soNgay(soLe(d.so_ngay_tra_tb)) : '—'}</td>}
+                </tr>
+              ))}
+            </tbody>
+            {tong && (
+              <tfoot>
+                <tr class="tong">
+                  <td>{t.tong}</td>
+                  <td></td>
+                  <td class="so">{soChu(tong.so.so_phieu ?? 0)}</td>
+                  <td class="so">{dinhDangKg(tong.so.tong_kg ?? 0, nn)}</td>
+                  {coGia && <td></td>}
+                  <td class="so">{soChu(tong.so.so_don ?? 0)}</td>
+                  <td class="so">{soChu(tong.so.so_don_thieu ?? 0)}</td>
+                  <td class="so">{soChu(tong.so.so_don_tre ?? 0)}</td>
+                  <td></td>
+                  <td class="so">{tong.so.kg_tra ? dinhDangKg(tong.so.kg_tra, nn) : '·'}</td>
+                  {coGia && <td></td>}
+                  {coGia && <td></td>}
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+        <p class="kho-phu"><strong>{t.diemSao}</strong> {CONG_THUC_SAO_NB[nn]} {t.chuaCham}
+          {' '}<strong>{t.thuHoiTb}</strong>{t.thuHoiGiai}
+          {coGia && <> <strong>{t.lechHoaDon}</strong>{t.lechGiai} <strong>{t.ngayTraTb}</strong>{t.ngayTraGiai}</>}
+        </p>
+      </>
+    )
+  )}
+  {daDoc && dong.length > 0 && <NutIn chu={t.inBaoCao} />}
+</Kho>
+
+<style>
+  .ncc-sao { font-size: 1.05rem; letter-spacing: .05em; white-space: nowrap; }
+  .ncc-sao.xanh { color: #1F7A4C; }
+  .ncc-sao.vang { color: #9A6B00; }
+  .ncc-sao.do { color: var(--do); }
+  .ncc-sao.xam { color: var(--muc-nhat); font-size: .8rem; }
+</style>
