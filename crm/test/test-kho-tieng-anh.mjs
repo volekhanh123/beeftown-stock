@@ -167,9 +167,6 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     'pages/noi-bo/kho/huong-dan.astro',
     'pages/noi-bo/kho/quy-trinh.astro',
     // ---- hết gói hướng dẫn ----
-    // ---- thêm cho gói báo cáo (số trong bảng chưa theo ngôn ngữ) ----
-    'components/kho/BangBaoCao.astro',
-    // ---- hết phần thêm ----
   ];
 
   const la = [...CHUA_LAM, ...Object.keys(KHONG_QUET)].filter(f => !TAT_CA.includes(f));
