@@ -161,7 +161,7 @@ await nhom('2 · CÂU CỦA TỪNG BƯỚC — CHỈ SỐ ĐẾM', async () => {
 await nhom('3 · NÚT "LÀM BƯỚC NÀY" VÀ "BỎ QUA"', async () => {
   ok('Mọi bước có ít nhất một nút', BUOC_THIET_LAP.every(b => (LINK_BUOC[b.khoa] ?? []).length > 0));
   const nutCaiDat = MUC_KHO.find(m => m.ma === 'cai_dat');
-  ok('Ô menu đổi tên thành "Thiết lập"', nutCaiDat?.ten === 'Thiết lập');
+  ok('Ô menu đổi tên thành "Thiết lập"', nutCaiDat?.ten?.vi === 'Thiết lập' && nutCaiDat?.ten?.en === 'Setup');
   const hong = [];
   const lechQuyen = [];
   for (const [khoa, ds] of Object.entries(LINK_BUOC)) {
