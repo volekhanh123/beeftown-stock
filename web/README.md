@@ -132,6 +132,12 @@ Chưa có khóa thì web vẫn chạy: ô dịch để trống, trang lùi về 
 GEMINI_MODEL = "gemini-flash-lite-latest"   # hoặc tên một phiên bản cụ thể
 ```
 
+**Mỗi lời gọi phải xong dưới 25 giây** vì việc chạy nền của Worker bị cắt ở khoảng 30 giây. Vì thế máy dịch làm hai việc:
+- Gửi kèm mức suy nghĩ `LOW`. Gemini 3.x mặc định nghĩ ở mức vừa trước khi viết, và dịch theo quy tắc sẵn thì không cần thế.
+- Chia mỗi lượt thành các lời gọi tối đa 2000 chữ, chạy song song. Máy viết cả bản Anh lẫn bản Hàn, nên chữ ra gấp đôi chữ vào.
+
+Thiếu hai việc này, lời gọi 6000 chữ đầu tiên (26/09/2026) đã hết giờ, và sổ bản dịch ghi "Gemini trả lời quá lâu". Nếu đổi `GEMINI_MODEL` sang một mẫu không nhận mức suy nghĩ, máy tự gọi lại không kèm tham số đó.
+
 **Gửi đi những gì:** chỉ chữ sắp lên trang công khai — tin tuyển dụng, thực đơn, chú thích ảnh, dữ kiện công bố. Không bao giờ có tên, số điện thoại hay hồ sơ của khách và ứng viên. Điều này quan trọng vì ở gói miễn phí, Google được dùng dữ liệu gửi lên để cải thiện sản phẩm.
 
 **Thứ tự triển khai:** chạy migration `0036` **trước**, rồi mới deploy web. Làm ngược thì màn soạn tin lỗi vì thiếu cột, và trang `/ko` hiện tiếng Việt.

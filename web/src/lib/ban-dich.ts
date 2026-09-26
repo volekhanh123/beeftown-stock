@@ -23,7 +23,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { env } from 'cloudflare:workers';
 import {
-  dichSangAnhHan, type BanDichCuaCau, type KetQuaNgonNgu, type NgonNguDich,
+  dichSangAnhHan, dichTheoNhom, type BanDichCuaCau, type KetQuaNgonNgu, type NgonNguDich,
 } from './may-dich';
 
 export type { BanDichCuaCau, KetQuaNgonNgu, NgonNguDich };
@@ -70,8 +70,9 @@ export interface TomTatDich {
   loi_dau: string | null;
 }
 
-// Một lượt = một lời gọi API. Giới hạn để lời gọi xong trước khi Worker cắt
-// việc chạy nền (khoảng 30 giây sau khi trả trang); phần còn lại để lượt sau.
+// Một lượt lấy tối đa chừng này rồi chia thành vài lời gọi nhỏ chạy song song
+// (dichTheoNhom). Giới hạn để cả lượt xong trước khi Worker cắt việc chạy nền
+// (khoảng 30 giây sau khi trả trang); phần còn lại để lượt sau.
 const TOI_DA_CAU_MOT_LUOT = 16;
 const TOI_DA_CHU_MOT_LUOT = 6000;
 
@@ -120,7 +121,7 @@ export async function dichBu(
   if (luot.length === 0) return tom;
 
   // Khóa gửi đi là số thứ tự — máy dịch không cần biết id hay tên bảng.
-  const ketQua = await dichSangAnhHan(
+  const ketQua = await dichTheoNhom(
     luot.map((c, i) => ({ khoa: String(i), vi: c.nguon })), cauHinhMayDich());
 
   // ghi_ban_dich nhận một dòng mỗi lần.
