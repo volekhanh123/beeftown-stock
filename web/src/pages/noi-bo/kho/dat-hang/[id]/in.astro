@@ -11,6 +11,9 @@
  *   · "Chia sẻ" = Web Share API (điện thoại): gửi nội dung đơn thành tin nhắn
  *     vào Zalo… Máy không có thì nút không hiện.
  * Không JS vẫn dùng được: in bằng menu trình duyệt, chép tin nhắn ở ô bên dưới.
+ *
+ * Tờ in và tin nhắn viết theo ngôn ngữ của trang (như mọi tờ in của kho). Màn
+ * tiếng Anh nhắc: đổi trang sang tiếng Việt để gửi nhà cung cấp bản tiếng Việt.
  */
 import Kho from '../../../../../layouts/Kho.astro';
 import BaoKho from '../../../../../components/kho/BaoKho.astro';
@@ -18,7 +21,8 @@ import NutIn from '../../../../../components/kho/NutIn.astro';
 import KyTen from '../../../../../components/kho/KyTen.astro';
 import { moTrangKho, chuyenHuong } from '../../../../../lib/kho/trang.ts';
 import { docDonDat, docGiaDonDat, tinNhanDon, nhanTrangThaiDon, type DonDat } from '../../../../../lib/kho/dat-hang.ts';
-import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangTien } from '../../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangTien, kqHai } from '../../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -26,6 +30,63 @@ if (!k.duoc('nhap') && !k.duoc('xem_gia')) return Astro.redirect('/noi-bo/kho', 
 const DS = '/noi-bo/kho/dat-hang';
 const coGia = k.duoc('xem_gia');
 const inGia = coGia && Astro.url.searchParams.get('gia') === '1';
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  khongDoc: { vi: 'Không đọc được đơn đặt hàng.', en: 'Could not read the purchase order.' },
+  tdIn: { vi: (so: string) => `In đơn ${so}`, en: (so: string) => `Print order ${so}` },
+  tdChung: { vi: 'In đơn đặt hàng', en: 'Print purchase order' },
+  conNhap1: { vi: 'Đơn còn là', en: 'This order is still a' },
+  nhapChu: { vi: 'nháp', en: 'draft' },
+  conNhap2: { vi: '— chưa gửi.', en: '— not sent yet.' },
+  bamGui: {
+    vi: 'Bấm Gửi ở trang đơn trước khi gửi cho nhà cung cấp.',
+    en: 'Send it from the order page first, then pass it to the supplier.',
+  },
+  nhoQuanLy: { vi: 'Nhờ quản lý xem lại và gửi.', en: 'Ask a manager to review and send it.' },
+  daHuy1: { vi: 'Đơn này', en: 'This order has been' },
+  daHuy2: { vi: 'đã hủy', en: 'cancelled' },
+  daHuy3: { vi: '— đừng gửi cho nhà cung cấp.', en: '— do not send it to the supplier.' },
+  inKemGia: { vi: 'In kèm giá dự kiến', en: 'Include expected prices' },
+  capNhat: { vi: 'Cập nhật', en: 'Update' },
+  inLuuPdf: { vi: 'In / Lưu PDF', en: 'Print / Save PDF' },
+  donDatSo: { vi: (so: string) => `Đơn đặt hàng ${so}`, en: (so: string) => `Purchase order ${so}` },
+  chiaSe: { vi: 'Chia sẻ (Zalo…)', en: 'Share (Zalo…)' },
+  guiZalo1: { vi: 'Gửi Zalo: bấm', en: 'To send by Zalo: press' },
+  guiZalo2: { vi: '→ chọn', en: '→ choose' },
+  luuThanhPdf: { vi: 'Lưu thành PDF', en: 'Save as PDF' },
+  guiZalo3: { vi: '→ gửi file PDF vào Zalo của nhà cung cấp.', en: '→ send the PDF file to the supplier\'s Zalo.' },
+  guiZalo4: { vi: 'Hoặc chép nội dung tin nhắn bên dưới.', en: 'Or copy the message text below.' },
+  theoNgonNgu: {
+    vi: 'Tờ in và tin nhắn viết theo ngôn ngữ của trang này.',
+    en: 'The printed order and the message are in English because this page is in English. Switch the page to Vietnamese (button at the top) to send them in Vietnamese.',
+  },
+  noiDungTin: { vi: 'Nội dung tin nhắn (chép gửi Zalo)', en: 'Message text (copy and send by Zalo)' },
+  noiDungTinAn: { vi: 'Nội dung tin nhắn', en: 'Message text' },
+  donDatHang: { vi: 'ĐƠN ĐẶT HÀNG', en: 'PURCHASE ORDER' },
+  so: { vi: 'Số:', en: 'No.' },
+  ngayDat: { vi: 'Ngày đặt', en: 'Order date' },
+  banNhap: { vi: ' · BẢN NHÁP', en: ' · DRAFT' },
+  gui: { vi: 'Gửi', en: 'To' },
+  diaChi: { vi: 'Địa chỉ', en: 'Address' },
+  ngayGiao: { vi: 'Ngày giao', en: 'Delivery date' },
+  ghiChu: { vi: 'Ghi chú', en: 'Note' },
+  stt: { vi: 'STT', en: 'No.' },
+  matHang: { vi: 'Mặt hàng', en: 'Item' },
+  soKg: { vi: 'Số kg', en: 'Kg' },
+  soGoiTang: { vi: 'Số gói / tảng', en: 'Packs / pieces' },
+  giaDuKien: { vi: 'Giá dự kiến/kg', en: 'Expected price/kg' },
+  thanhTien: { vi: 'Thành tiền', en: 'Amount' },
+  cong: { vi: (n: number) => `Cộng ${n} món`, en: (n: number) => `Total: ${n} ${s(n, 'item', 'items')}` },
+  ghiChuGiay: {
+    vi: 'Số kg là số đặt; thịt cân lẻ được, giao đúng cân thật. Nhờ nhà cung cấp gửi kèm hóa đơn / phiếu giao hàng.',
+    en: 'The kg shown are the amounts ordered; odd weights are fine — deliver the true weight. Please include the invoice / delivery note.',
+  },
+  kyNguoiDat: { vi: 'Người đặt hàng', en: 'Ordered by' },
+  kyNccXacNhan: { vi: 'Nhà cung cấp xác nhận', en: 'Confirmed by the supplier' },
+  trangThai: { vi: 'Trạng thái đơn:', en: 'Order status:' },
+  veDon: { vi: '← Về đơn đặt hàng', en: '← Back to the order' },
+});
 
 let don: DonDat | null = null;
 let gia = new Map<string, number | null>();
@@ -44,21 +105,24 @@ try {
     ncc = (n.data ?? null) as LienHe | null;
   }
 } catch (e) {
-  loiDoc = cauLoiKho(e, 'Không đọc được đơn đặt hàng.');
+  loiDoc = cauLoiKho(e, t.khongDoc);
 }
-if (!don && !loiDoc) return chuyenHuong(Astro, DS, { ok: false, cau: 'Không tìm thấy đơn đặt hàng này.' });
+if (!don && !loiDoc) {
+  return chuyenHuong(Astro, DS, kqHai(false, { vi: 'Không tìm thấy đơn đặt hàng này.', en: 'This purchase order was not found.' }));
+}
 
 const thanhTien = (mh: string, kg: number) => {
   const g = gia.get(mh);
   return g === null || g === undefined ? null : Math.round(kg * g);
 };
 const tongTien = don && inGia
-  ? don.dong.reduce<number | null>((s, d) => { const t = thanhTien(d.mat_hang_id, d.so_kg_dat); return t === null ? s : (s ?? 0) + t; }, null)
+  ? don.dong.reduce<number | null>((s, d) => { const tt = thanhTien(d.mat_hang_id, d.so_kg_dat); return tt === null ? s : (s ?? 0) + tt; }, null)
   : null;
 const tongKg = don ? don.dong.reduce((s, d) => s + d.so_kg_dat, 0) : 0;
-const tin = don ? tinNhanDon(don, { chiNhanh: k.chiNhanh?.ten, gia: inGia ? gia : null }) : '';
-const [nhanTT] = don ? nhanTrangThaiDon(don.trang_thai) : [''];
-const tieuDe = don ? `In đơn ${don.so_phieu}` : 'In đơn đặt hàng';
+const tin = don ? tinNhanDon(don, { chiNhanh: k.chiNhanh?.ten, gia: inGia ? gia : null }, nn) : '';
+const [nhanTT] = don ? nhanTrangThaiDon(don.trang_thai, nn) : [''];
+const tieuDe = don ? t.tdIn(don.so_phieu) : t.tdChung;
+const tien = (x: number | null | undefined) => dinhDangTien(x, nn);
 ---
 <Kho k={k} tieuDe={tieuDe} huongDan="dat-hang">
   <h1>{tieuDe}</h1>
@@ -68,34 +132,35 @@ const tieuDe = don ? `In đơn ${don.so_phieu}` : 'In đơn đặt hàng';
     <>
       <div class="kho-khong-in">
         {don.trang_thai === 'nhap' && (
-          <div class="nb-bao luu-y"><p style="margin:0">Đơn còn là <strong>nháp</strong> — chưa gửi. {k.duoc('duyet_nhap') ? 'Bấm Gửi ở trang đơn trước khi gửi cho nhà cung cấp.' : 'Nhờ quản lý xem lại và gửi.'}</p></div>
+          <div class="nb-bao luu-y"><p style="margin:0">{t.conNhap1} <strong>{t.nhapChu}</strong> {t.conNhap2} {k.duoc('duyet_nhap') ? t.bamGui : t.nhoQuanLy}</p></div>
         )}
         {don.trang_thai === 'huy' && (
-          <div class="nb-bao loi"><p style="margin:0">Đơn này <strong>đã hủy</strong> — đừng gửi cho nhà cung cấp.</p></div>
+          <div class="nb-bao loi"><p style="margin:0">{t.daHuy1} <strong>{t.daHuy2}</strong> {t.daHuy3}</p></div>
         )}
         {coGia && (
           <form method="GET" class="dh-chon-gia">
             <label>
               <input type="checkbox" name="gia" value="1" checked={inGia} />
-              <span>In kèm giá dự kiến</span>
+              <span>{t.inKemGia}</span>
             </label>
-            <button type="submit" class="nb-nut phu">Cập nhật</button>
+            <button type="submit" class="nb-nut phu">{t.capNhat}</button>
           </form>
         )}
         <div class="dh-nut">
-          <NutIn chu="In / Lưu PDF" />
-          <button type="button" class="nb-nut phu" data-chia-se data-tieu-de={`Đơn đặt hàng ${don.so_phieu}`} data-chu={tin} hidden>
-            Chia sẻ (Zalo…)
+          <NutIn chu={t.inLuuPdf} />
+          <button type="button" class="nb-nut phu" data-chia-se data-tieu-de={t.donDatSo(don.so_phieu)} data-chu={tin} hidden>
+            {t.chiaSe}
           </button>
         </div>
         <p class="kho-phu">
-          Gửi Zalo: bấm <strong>In / Lưu PDF</strong> → chọn <strong>Lưu thành PDF</strong> → gửi file PDF vào Zalo của nhà cung cấp.
-          Hoặc chép nội dung tin nhắn bên dưới.
+          {t.guiZalo1} <strong>{t.inLuuPdf}</strong> {t.guiZalo2} <strong>{t.luuThanhPdf}</strong> {t.guiZalo3}{' '}
+          {t.guiZalo4}
         </p>
+        {nn === 'en' && <p class="kho-phu">{t.theoNgonNgu}</p>}
         <details class="nb-the">
-          <summary style="cursor:pointer;font-weight:600">Nội dung tin nhắn (chép gửi Zalo)</summary>
+          <summary style="cursor:pointer;font-weight:600">{t.noiDungTin}</summary>
           <label class="nb-o" style="margin-top:.5rem">
-            <span class="an">Nội dung tin nhắn</span>
+            <span class="an">{t.noiDungTinAn}</span>
             <textarea readonly rows={Math.min(don.dong.length + 6, 20)}>{tin}</textarea>
           </label>
         </details>
@@ -107,27 +172,27 @@ const tieuDe = don ? `In đơn ${don.so_phieu}` : 'In đơn đặt hàng';
           <img src="/bieu-tuong.svg" alt="" width="56" height="56" />
           <div>
             <p class="dh-quan">BEEFTOWN{k.chiNhanh ? ` · ${k.chiNhanh.ten}` : ''}</p>
-            <p class="dh-ten">ĐƠN ĐẶT HÀNG</p>
-            <p class="dh-so">Số: <strong>{don.so_phieu}</strong> · Ngày đặt {dinhDangNgay(don.ngay_dat)}{don.trang_thai === 'nhap' ? ' · BẢN NHÁP' : ''}</p>
+            <p class="dh-ten">{t.donDatHang}</p>
+            <p class="dh-so">{t.so} <strong>{don.so_phieu}</strong> · {t.ngayDat} {dinhDangNgay(don.ngay_dat)}{don.trang_thai === 'nhap' ? t.banNhap : ''}</p>
           </div>
         </header>
 
         <dl class="kho-dl dh-giay-dl">
-          <dt>Gửi</dt><dd><strong>{don.ten_nha_cung_cap ?? '—'}</strong>{ncc?.nguoi_lien_he ? ` · ${ncc.nguoi_lien_he}` : ''}{ncc?.dien_thoai ? ` · ${ncc.dien_thoai}` : ''}</dd>
-          {ncc?.dia_chi && <><dt>Địa chỉ</dt><dd>{ncc.dia_chi}</dd></>}
-          <dt>Ngày giao</dt><dd><strong>{dinhDangNgay(don.ngay_giao_du_kien)}</strong></dd>
-          {don.ghi_chu && <><dt>Ghi chú</dt><dd>{don.ghi_chu}</dd></>}
+          <dt>{t.gui}</dt><dd><strong>{don.ten_nha_cung_cap ?? '—'}</strong>{ncc?.nguoi_lien_he ? ` · ${ncc.nguoi_lien_he}` : ''}{ncc?.dien_thoai ? ` · ${ncc.dien_thoai}` : ''}</dd>
+          {ncc?.dia_chi && <><dt>{t.diaChi}</dt><dd>{ncc.dia_chi}</dd></>}
+          <dt>{t.ngayGiao}</dt><dd><strong>{dinhDangNgay(don.ngay_giao_du_kien)}</strong></dd>
+          {don.ghi_chu && <><dt>{t.ghiChu}</dt><dd>{don.ghi_chu}</dd></>}
         </dl>
 
         <table class="kho-bang dh-giay-bang">
           <thead>
             <tr>
-              <th class="so">STT</th>
-              <th>Mặt hàng</th>
-              <th class="so">Số kg</th>
-              <th class="so">Số gói / tảng</th>
-              {inGia && <th class="so">Giá dự kiến/kg</th>}
-              {inGia && <th class="so">Thành tiền</th>}
+              <th class="so">{t.stt}</th>
+              <th>{t.matHang}</th>
+              <th class="so">{t.soKg}</th>
+              <th class="so">{t.soGoiTang}</th>
+              {inGia && <th class="so">{t.giaDuKien}</th>}
+              {inGia && <th class="so">{t.thanhTien}</th>}
             </tr>
           </thead>
           <tbody>
@@ -135,33 +200,33 @@ const tieuDe = don ? `In đơn ${don.so_phieu}` : 'In đơn đặt hàng';
               <tr>
                 <td class="so">{i + 1}</td>
                 <td>{d.ten_mat_hang}<span class="kho-phu"> · {d.ma}</span></td>
-                <td class="so"><strong>{dinhDangKg(d.so_kg_dat)}</strong></td>
+                <td class="so"><strong>{dinhDangKg(d.so_kg_dat, nn)}</strong></td>
                 <td class="so">{d.so_goi_dat ? `${d.so_goi_dat} ${d.don_vi_goi}` : ''}</td>
-                {inGia && <td class="so">{gia.get(d.mat_hang_id) != null ? dinhDangTien(gia.get(d.mat_hang_id)) : ''}</td>}
-                {inGia && <td class="so">{thanhTien(d.mat_hang_id, d.so_kg_dat) !== null ? dinhDangTien(thanhTien(d.mat_hang_id, d.so_kg_dat)) : ''}</td>}
+                {inGia && <td class="so">{gia.get(d.mat_hang_id) != null ? tien(gia.get(d.mat_hang_id)) : ''}</td>}
+                {inGia && <td class="so">{thanhTien(d.mat_hang_id, d.so_kg_dat) !== null ? tien(thanhTien(d.mat_hang_id, d.so_kg_dat)) : ''}</td>}
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr class="tong">
               <td></td>
-              <td>Cộng {don.dong.length} món</td>
-              <td class="so">{dinhDangKg(tongKg)}</td>
+              <td>{t.cong(don.dong.length)}</td>
+              <td class="so">{dinhDangKg(tongKg, nn)}</td>
               <td></td>
               {inGia && <td></td>}
-              {inGia && <td class="so">{tongTien !== null ? dinhDangTien(tongTien) : ''}</td>}
+              {inGia && <td class="so">{tongTien !== null ? tien(tongTien) : ''}</td>}
             </tr>
           </tfoot>
         </table>
-        <p class="kho-phu">Số kg là số đặt; thịt cân lẻ được, giao đúng cân thật. Nhờ nhà cung cấp gửi kèm hóa đơn / phiếu giao hàng.</p>
-        <KyTen ten={['Người đặt hàng', 'Nhà cung cấp xác nhận']} />
+        <p class="kho-phu">{t.ghiChuGiay}</p>
+        <KyTen ten={[t.kyNguoiDat, t.kyNccXacNhan]} />
       </article>
 
-      <p class="kho-khong-in kho-phu" style="margin-top:1rem">Trạng thái đơn: {nhanTT}.</p>
+      <p class="kho-khong-in kho-phu" style="margin-top:1rem">{t.trangThai} {nhanTT}.</p>
     </>
   )}
 
-  <p class="kho-khong-in" style="margin-top:1.5rem"><a href={don ? `${DS}/${don.id}` : DS}>← Về đơn đặt hàng</a></p>
+  <p class="kho-khong-in" style="margin-top:1.5rem"><a href={don ? `${DS}/${don.id}` : DS}>{t.veDon}</a></p>
 </Kho>
 
 <style>

@@ -78,19 +78,6 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
   // Danh sách này chỉ được ngắn đi.
   const CHUA_LAM = [
     // ---- gói nhập hàng: nhận hàng · nhập hàng · đặt hàng · duyệt ----
-    'lib/kho/dat-hang.ts',
-    'lib/kho/nhan-hang.ts',
-    'lib/kho/nhap.ts',
-    'pages/noi-bo/kho/dat-hang/[id].astro',
-    'pages/noi-bo/kho/dat-hang/[id]/in.astro',
-    'pages/noi-bo/kho/dat-hang/index.astro',
-    'pages/noi-bo/kho/dat-hang/moi.astro',
-    'pages/noi-bo/kho/duyet.astro',
-    'pages/noi-bo/kho/nhan-hang/[id].astro',
-    'pages/noi-bo/kho/nhan-hang/index.astro',
-    'pages/noi-bo/kho/nhan-hang/moi.astro',
-    'pages/noi-bo/kho/nhap/[id].astro',
-    'pages/noi-bo/kho/nhap/index.astro',
     // ---- hết gói nhập hàng ----
     // ---- gói vận hành: pha lóc · xuất · kiểm kê · quầy · quét · tồn ----
     'lib/kho/dem-quay.ts',

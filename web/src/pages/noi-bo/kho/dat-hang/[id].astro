@@ -22,12 +22,14 @@ import { docMatHang, type MatHang } from '../../../../lib/kho/danh-muc.ts';
 import {
   docDonDat, docGiaDonDat, docFormDonDat, chuFormDonDat, soDongThem, formTuDon, luuDonDat, guiDonDat, huyDonDat,
   taoPhieuTuDon, nhanTrangThaiDon, TOI_DA_DONG_THEM,
-  type DonDat, type DongDatForm, type FormDonDat, type MonDat,
+  type DonDat, type DongDatForm, type FormDonDat, type KetQuaLuuDon, type MonDat,
 } from '../../../../lib/kho/dat-hang.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, homNayVn, TRANG_THAI_CHUNG_TU,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, homNayVn, kqHai, trangThaiKho,
   type KetQua,
 } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -38,6 +40,80 @@ const DS = '/noi-bo/kho/dat-hang';
 const coGia = k.duoc('xem_gia');
 const lapDuoc = k.duoc('nhap');
 const guiDuoc = lapDuoc && k.duoc('duyet_nhap');
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  khongDoc: { vi: 'Không đọc được đơn đặt hàng.', en: 'Could not read the purchase order.' },
+  biTraVe: { vi: 'Bị trả về', en: 'Sent back' },
+  tdDon: { vi: (so: string) => `Đơn đặt ${so}`, en: (so: string) => `Order ${so}` },
+  tdChung: { vi: 'Đơn đặt hàng', en: 'Purchase order' },
+  lapBoi: { vi: 'lập bởi', en: 'made by' },
+  luc: { vi: 'lúc', en: 'at' },
+  gui: { vi: 'gửi', en: 'sent' },
+  boi: { vi: (ten: string) => ` bởi ${ten}`, en: (ten: string) => ` by ${ten}` },
+  quaNgayGiao: { vi: 'Quá ngày giao', en: 'Past the delivery date' },
+  quaNgayGiaoDan: {
+    vi: '— chưa thấy đủ hàng. Gọi nhà cung cấp hỏi lại; không giao nữa thì hủy đơn.',
+    en: '— not all goods have arrived. Call the supplier to check; if they will not deliver, cancel the order.',
+  },
+  daHuy: { vi: 'Đơn đã hủy', en: 'Order cancelled' },
+  lucTg: { vi: (tg: string) => ` lúc ${tg}`, en: (tg: string) => ` at ${tg}` },
+  ncc: { vi: 'Nhà cung cấp', en: 'Supplier' },
+  ngayDat: { vi: 'Ngày đặt', en: 'Order date' },
+  ngayGiao: { vi: 'Ngày giao', en: 'Delivery date' },
+  ghiChu: { vi: 'Ghi chú', en: 'Note' },
+  tienDuKien: { vi: 'Tiền dự kiến', en: 'Expected cost' },
+  inPdfZalo: { vi: 'In · Lưu PDF · Gửi Zalo', en: 'Print · Save PDF · Send by Zalo' },
+  nhanTheoDon: { vi: 'Nhận hàng theo đơn này', en: 'Receive against this order' },
+  monDat: { vi: 'Món đặt', en: 'Items ordered' },
+  soMon: { vi: (n: number) => `${n} món`, en: (n: number) => `${n} ${s(n, 'item', 'items')}` },
+  daNhan: { vi: 'đã nhận', en: 'received' },
+  cotMon: { vi: 'Món', en: 'Item' },
+  cotDat: { vi: 'Đặt', en: 'Ordered' },
+  cotDaNhan: { vi: 'Đã nhận', en: 'Received' },
+  cotConThieu: { vi: 'Còn thiếu', en: 'Still due' },
+  cotGia: { vi: 'Giá dự kiến/kg', en: 'Expected price/kg' },
+  cotThanhTien: { vi: 'Thành tiền', en: 'Amount' },
+  du: { vi: '✓ đủ', en: '✓ complete' },
+  giaiThichDu: {
+    vi: 'Đủ = nhận từ 95% số kg đặt trở lên (thịt cân không tròn số), hoặc đủ số gói đã đặt. Đã nhận tính cả phiếu đang chờ duyệt.',
+    en: 'Complete = at least 95% of the kg ordered has been received (meat never weighs a round number), or all the packs ordered. Received includes notes still awaiting approval.',
+  },
+  monDatNhap: { vi: 'Món đặt (đơn nháp — sửa được)', en: 'Items ordered (draft — can be edited)' },
+  ghi0: { vi: 'Ghi 0 hoặc để trống số kg là bỏ món đó khỏi đơn.', en: 'Enter 0 or leave the kg blank to remove that item from the order.' },
+  anKg: { vi: (ten: string) => `${ten} — số kg`, en: (ten: string) => `${ten} — kg` },
+  anGoi: { vi: (ten: string, dv: string) => `${ten} — số ${dv}`, en: (ten: string, dv: string) => `${ten} — number of ${dv}` },
+  anGia: { vi: (ten: string) => `${ten} — giá dự kiến / kg`, en: (ten: string) => `${ten} — expected price / kg` },
+  giaKg: { vi: 'giá/kg', en: 'price/kg' },
+  dongKg: { vi: 'đ/kg', en: 'VND/kg' },
+  themMon: { vi: 'Thêm món', en: 'Add items' },
+  soKg: { vi: 'Số kg', en: 'Kg' },
+  soGoiTang: { vi: 'Số gói / tảng', en: 'Packs / pieces' },
+  themDong: { vi: '+ Thêm dòng', en: '+ More lines' },
+  ghiChuNcc: { vi: 'Ghi chú cho nhà cung cấp', en: 'Note for the supplier' },
+  nhoQuanLyGui: {
+    vi: 'Lưu xong, nhờ quản lý xem lại và gửi đơn cho nhà cung cấp.',
+    en: 'After saving, ask a manager to review it and send the order to the supplier.',
+  },
+  luu: { vi: 'Lưu', en: 'Save' },
+  luuGui: { vi: 'Lưu và gửi cho nhà cung cấp', en: 'Save and send to the supplier' },
+  phieuTheoDon: { vi: 'Phiếu nhận hàng theo đơn này', en: 'Receiving notes for this order' },
+  nhanNgay: { vi: 'Nhận', en: 'Received' },
+  xem: { vi: 'Xem', en: 'View' },
+  boDonNhap: { vi: 'Bỏ đơn nháp này', en: 'Discard this draft order' },
+  huyDonKhongGiao: { vi: 'Hủy đơn (nhà cung cấp không giao)', en: 'Cancel order (supplier not delivering)' },
+  lyDo: { vi: 'Lý do', en: 'Reason' },
+  khongBatBuoc: { vi: ' (không bắt buộc)', en: ' (optional)' },
+  viDuLyDo: { vi: 'ví dụ: nhà cung cấp hết hàng', en: 'e.g. the supplier is out of stock' },
+  giuPhieu: {
+    vi: 'Phiếu nhận hàng đã gắn vẫn giữ nguyên — hàng đã về là đã về.',
+    en: 'Receiving notes already linked stay as they are — goods that arrived have arrived.',
+  },
+  boDon: { vi: 'Bỏ đơn', en: 'Discard order' },
+  huyDon: { vi: 'Hủy đơn', en: 'Cancel order' },
+  nhoQuanLyHuy: { vi: 'Nhà cung cấp báo không giao? Nhờ quản lý hủy đơn.', en: 'Supplier says they will not deliver? Ask a manager to cancel the order.' },
+  veDs: { vi: '← Danh sách đơn đặt hàng', en: '← Purchase orders list' },
+});
 
 let don: DonDat | null = null;
 let gia = new Map<string, number | null>();
@@ -52,9 +128,11 @@ try {
     ]);
   }
 } catch (e) {
-  loiDoc = cauLoiKho(e, 'Không đọc được đơn đặt hàng.');
+  loiDoc = cauLoiKho(e, t.khongDoc);
 }
-if (!don && !loiDoc) return chuyenHuong(Astro, DS, { ok: false, cau: 'Không tìm thấy đơn đặt hàng này.' });
+if (!don && !loiDoc) {
+  return chuyenHuong(Astro, DS, kqHai(false, { vi: 'Không tìm thấy đơn đặt hàng này.', en: 'This purchase order was not found.' }));
+}
 
 const laNhap = don?.trang_thai === 'nhap';
 const choHang = don?.trang_thai === 'da_gui' || don?.trang_thai === 'nhan_mot_phan';
@@ -71,7 +149,10 @@ let chu: FormDonDat | null = null;
 let soDong = 2;
 const form = await docFormGui(Astro);
 if (Astro.request.method === 'POST' && !form) {
-  bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
+  bao = kqHai(false, {
+    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
+    en: 'Could not read what was sent — the connection may have dropped. Please send again.',
+  });
 }
 if (form && don) {
   const d = don;
@@ -81,14 +162,17 @@ if (form && don) {
   soDong = soDongThem(form, 2);
 
   if (['luu', 'luu_gui', 'them_dong'].includes(viec) && !suaDuoc) {
-    bao = { ok: false, cau: 'Đơn đã gửi hoặc đã hủy — không sửa được nữa. Muốn đổi thì hủy đơn rồi lập đơn mới.' };
+    bao = kqHai(false, {
+      vi: 'Đơn đã gửi hoặc đã hủy — không sửa được nữa. Muốn đổi thì hủy đơn rồi lập đơn mới.',
+      en: 'This order has been sent or cancelled — it can no longer be edited. To change it, cancel the order and make a new one.',
+    });
   } else if (viec === 'them_dong') {
     chu = chuFormDonDat(form, soDong);
     soDong = Math.min(soDong + 3, TOI_DA_DONG_THEM);
   } else if (viec === 'luu' || viec === 'luu_gui') {
     const r = docFormDonDat(form, mon, { coGia, soDong });
     chu = r.chu;
-    if (r.loi.length) bao = { ok: false, cau: r.loi.join(' · ') };
+    if (r.loi.length) bao = { ok: false, cau: r.loi.join(' · '), cauEn: r.loiEn.join(' · ') };
     else {
       const kq = await luuDonDat(k.client, cn.id, {
         id: d.id, maGui: crypto.randomUUID(), phienBan, nccId: d.nha_cung_cap_id,
@@ -97,32 +181,38 @@ if (form && don) {
       if (!kq.ok) bao = kq;
       else if (viec === 'luu_gui' && guiDuoc) {
         const gui = await guiDonDat(k.client, d.id, kq.phienBan ?? phienBan + 1);
-        return gui.ok ? ve(gui, '/in') : ve({ ok: false, cau: `Đã lưu nhưng chưa gửi được: ${gui.cau}` });
+        return gui.ok ? ve(gui, '/in') : ve(kqHai(false, {
+          vi: `Đã lưu nhưng chưa gửi được: ${gui.cau}`,
+          en: `Saved but not sent yet: ${gui.cauEn ?? dichCau('en', gui.cau)}`,
+        }));
       } else return ve(kq);
     }
   } else if (viec === 'gui') {
     const kq = guiDuoc ? await guiDonDat(k.client, d.id, phienBan)
-      : { ok: false, cau: 'Quản lý hoặc chủ quán mới gửi được đơn cho nhà cung cấp.' };
+      : kqHai(false, { vi: 'Quản lý hoặc chủ quán mới gửi được đơn cho nhà cung cấp.', en: 'Only a manager or the owner can send the order to the supplier.' });
     return kq.ok ? ve(kq, '/in') : ve(kq);
   } else if (viec === 'huy') {
     const lyDo = String(form.get('ly_do') ?? '').trim();
-    const kq = !huyDuoc ? { ok: false, cau: 'Tài khoản của bạn không hủy được đơn này — nhờ quản lý.' }
-      : !laNhap && !lyDo ? { ok: false, cau: 'Ghi lý do hủy (ví dụ: nhà cung cấp hết hàng).' }
+    const kq = !huyDuoc ? kqHai(false, { vi: 'Tài khoản của bạn không hủy được đơn này — nhờ quản lý.', en: 'Your account cannot cancel this order — ask a manager.' })
+      : !laNhap && !lyDo ? kqHai(false, {
+        vi: 'Ghi lý do hủy (ví dụ: nhà cung cấp hết hàng).',
+        en: 'Give a reason for cancelling (for example: the supplier is out of stock).',
+      })
       : await huyDonDat(k.client, d.id, lyDo || null);
     return kq.ok && laNhap ? chuyenHuong(Astro, DS, kq) : ve(kq);
   } else if (viec === 'nhan') {
-    const kq = lapDuoc ? await taoPhieuTuDon(k.client, d.id, String(form.get('ma_gui') ?? ''))
-      : { ok: false, cau: 'Tài khoản của bạn không nhận hàng được.' };
+    const kq: KetQuaLuuDon = lapDuoc ? await taoPhieuTuDon(k.client, d.id, String(form.get('ma_gui') ?? ''))
+      : kqHai(false, { vi: 'Tài khoản của bạn không nhận hàng được.', en: 'Your account cannot receive goods.' });
     return kq.ok && kq.id ? chuyenHuong(Astro, `/noi-bo/kho/nhan-hang/${kq.id}`, kq) : ve(kq);
   } else {
-    bao = { ok: false, cau: 'Việc không hợp lệ.' };
+    bao = kqHai(false, { vi: 'Việc không hợp lệ.', en: 'Invalid action.' });
   }
 }
 
 // ---------------------------------------------------------------------------
 // Hiển thị
 // ---------------------------------------------------------------------------
-const [nhanTT, lopTT] = don ? nhanTrangThaiDon(don.trang_thai) : ['', 'tat'];
+const [nhanTT, lopTT] = don ? nhanTrangThaiDon(don.trang_thai, nn) : ['', 'tat'];
 const tongDat = don ? don.dong.reduce((s, d) => s + d.so_kg_dat, 0) : 0;
 const tongNhan = don ? don.dong.reduce((s, d) => s + d.so_kg_da_nhan, 0) : 0;
 const thanhTien = (mh: string, kg: number) => {
@@ -130,7 +220,7 @@ const thanhTien = (mh: string, kg: number) => {
   return g === null || g === undefined ? null : Math.round(kg * g);
 };
 const tongTien = don && coGia
-  ? don.dong.reduce<number | null>((s, d) => { const t = thanhTien(d.mat_hang_id, d.so_kg_dat); return t === null ? s : (s ?? 0) + t; }, null)
+  ? don.dong.reduce<number | null>((s, d) => { const tt = thanhTien(d.mat_hang_id, d.so_kg_dat); return tt === null ? s : (s ?? 0) + tt; }, null)
   : null;
 /** Ô của dòng đang có: form gửi lại thì chữ đã gõ, không thì số trên đơn. */
 const oDong = (mh: string): DongDatForm => {
@@ -142,8 +232,14 @@ const oDong = (mh: string): DongDatForm => {
 const idTrenDon = new Set(don?.dong.map(d => d.mat_hang_id) ?? []);
 const dongThem = Array.from({ length: soDong }, (_, i) => chu?.them[i] ?? { mh: '', kg: '', goi: '', gia: '' });
 const linkPhieu = (id: string) => (lapDuoc ? `/noi-bo/kho/nhan-hang/${id}` : `/noi-bo/kho/nhap/${id}`);
-const nhanPhieu = (tt: string) => (tt === 'tu_choi' ? ['Bị trả về', 'tat'] : TRANG_THAI_CHUNG_TU[tt] ?? [tt, 'tat']);
-const tieuDe = don ? `Đơn đặt ${don.so_phieu}` : 'Đơn đặt hàng';
+const nhanPhieu = (tt: string): [string, string] => {
+  if (tt === 'tu_choi') return [t.biTraVe, 'tat'];
+  const [nhan, lop] = trangThaiKho(tt, nn);
+  return [nhan, lop || 'tat'];
+};
+const tieuDe = don ? t.tdDon(don.so_phieu) : t.tdChung;
+const tien = (x: number | null | undefined) => dinhDangTien(x, nn);
+const kgs = (x: number | null | undefined) => dinhDangKg(x, nn);
 ---
 <Kho k={k} tieuDe={tieuDe} huongDan="dat-hang">
   <h1>{tieuDe}</h1>
@@ -155,28 +251,28 @@ const tieuDe = don ? `Đơn đặt ${don.so_phieu}` : 'Đơn đặt hàng';
       <div class="nb-the">
         <p class="nb-dan" style="margin-top:0">
           <span class={`nb-nhan ${lopTT}`}>{nhanTT}</span>
-          {' '}· lập bởi {don.ten_nguoi_lap ?? '—'} lúc {dinhDangThoiDiem(don.created_at)}
-          {don.gui_luc && <> · gửi {dinhDangThoiDiem(don.gui_luc)}{don.ten_nguoi_gui ? ` bởi ${don.ten_nguoi_gui}` : ''}</>}
+          {' '}· {t.lapBoi} {don.ten_nguoi_lap ?? '—'} {t.luc} {dinhDangThoiDiem(don.created_at)}
+          {don.gui_luc && <> · {t.gui} {dinhDangThoiDiem(don.gui_luc)}{don.ten_nguoi_gui ? t.boi(don.ten_nguoi_gui) : ''}</>}
         </p>
         {don.tre_hen && (
-          <div class="nb-bao loi" role="alert"><p style="margin:0"><strong>Quá ngày giao</strong> — chưa thấy đủ hàng. Gọi nhà cung cấp hỏi lại; không giao nữa thì hủy đơn.</p></div>
+          <div class="nb-bao loi" role="alert"><p style="margin:0"><strong>{t.quaNgayGiao}</strong> {t.quaNgayGiaoDan}</p></div>
         )}
         {don.trang_thai === 'huy' && (
-          <div class="nb-bao luu-y"><p style="margin:0">Đơn đã hủy{don.huy_luc ? ` lúc ${dinhDangThoiDiem(don.huy_luc)}` : ''}{don.ly_do_huy ? `: ${don.ly_do_huy}` : '.'}</p></div>
+          <div class="nb-bao luu-y"><p style="margin:0">{t.daHuy}{don.huy_luc ? t.lucTg(dinhDangThoiDiem(don.huy_luc)) : ''}{don.ly_do_huy ? `: ${don.ly_do_huy}` : '.'}</p></div>
         )}
         <dl class="kho-dl">
-          <dt>Nhà cung cấp</dt><dd><strong>{don.ten_nha_cung_cap ?? '—'}</strong></dd>
-          <dt>Ngày đặt</dt><dd>{dinhDangNgay(don.ngay_dat)}</dd>
-          <dt>Ngày giao</dt><dd><strong>{dinhDangNgay(don.ngay_giao_du_kien)}</strong></dd>
-          {don.ghi_chu && <><dt>Ghi chú</dt><dd>{don.ghi_chu}</dd></>}
-          {coGia && tongTien !== null && <><dt>Tiền dự kiến</dt><dd>{dinhDangTien(tongTien)}</dd></>}
+          <dt>{t.ncc}</dt><dd><strong>{don.ten_nha_cung_cap ?? '—'}</strong></dd>
+          <dt>{t.ngayDat}</dt><dd>{dinhDangNgay(don.ngay_dat)}</dd>
+          <dt>{t.ngayGiao}</dt><dd><strong>{dinhDangNgay(don.ngay_giao_du_kien)}</strong></dd>
+          {don.ghi_chu && <><dt>{t.ghiChu}</dt><dd>{don.ghi_chu}</dd></>}
+          {coGia && tongTien !== null && <><dt>{t.tienDuKien}</dt><dd>{tien(tongTien)}</dd></>}
         </dl>
         <div class="kho-nut-nhanh" style="margin-bottom:0">
-          <a class="nb-nut phu" href={`${DS}/${don.id}/in`}>In · Lưu PDF · Gửi Zalo</a>
+          <a class="nb-nut phu" href={`${DS}/${don.id}/in`}>{t.inPdfZalo}</a>
           {choHang && lapDuoc && (
             <form method="POST">
               <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
-              <button type="submit" name="viec" value="nhan" class="nb-nut dh-lon" style="width:100%">Nhận hàng theo đơn này</button>
+              <button type="submit" name="viec" value="nhan" class="nb-nut dh-lon" style="width:100%">{t.nhanTheoDon}</button>
             </form>
           )}
         </div>
@@ -185,34 +281,34 @@ const tieuDe = don ? `Đơn đặt ${don.so_phieu}` : 'Đơn đặt hàng';
       {/* ======================= Món: xem ======================= */}
       {!suaDuoc && (
         <>
-          <h2>Món đặt · {don.dong.length} món · {dinhDangKg(tongDat)} kg{tongNhan > 0 && <> · đã nhận {dinhDangKg(tongNhan)} kg</>}</h2>
+          <h2>{t.monDat} · {t.soMon(don.dong.length)} · {kgs(tongDat)} kg{tongNhan > 0 && <> · {t.daNhan} {kgs(tongNhan)} kg</>}</h2>
           <div class="kho-bang-khung">
             <table class="kho-bang">
               <thead>
                 <tr>
-                  <th>Món</th>
-                  <th class="so">Đặt</th>
-                  <th class="so">Đã nhận</th>
-                  <th class="so">Còn thiếu</th>
-                  {coGia && <th class="so">Giá dự kiến/kg</th>}
-                  {coGia && <th class="so">Thành tiền</th>}
+                  <th>{t.cotMon}</th>
+                  <th class="so">{t.cotDat}</th>
+                  <th class="so">{t.cotDaNhan}</th>
+                  <th class="so">{t.cotConThieu}</th>
+                  {coGia && <th class="so">{t.cotGia}</th>}
+                  {coGia && <th class="so">{t.cotThanhTien}</th>}
                 </tr>
               </thead>
               <tbody>
                 {don.dong.map(d => (
                   <tr>
                     <td><strong>{d.ten_mat_hang}</strong><br /><span class="kho-phu">{d.ma}</span></td>
-                    <td class="so">{dinhDangKg(d.so_kg_dat)} kg{d.so_goi_dat ? <><br /><span class="kho-phu">{d.so_goi_dat} {d.don_vi_goi}</span></> : null}</td>
-                    <td class="so">{d.so_kg_da_nhan > 0 ? `${dinhDangKg(d.so_kg_da_nhan)} kg` : '·'}</td>
-                    <td class="so">{d.du || d.so_kg_con_lai <= 0 ? '✓ đủ' : `${dinhDangKg(d.so_kg_con_lai)} kg`}</td>
-                    {coGia && <td class="so">{gia.get(d.mat_hang_id) != null ? dinhDangTien(gia.get(d.mat_hang_id)) : '—'}</td>}
-                    {coGia && <td class="so">{thanhTien(d.mat_hang_id, d.so_kg_dat) !== null ? dinhDangTien(thanhTien(d.mat_hang_id, d.so_kg_dat)) : '—'}</td>}
+                    <td class="so">{kgs(d.so_kg_dat)} kg{d.so_goi_dat ? <><br /><span class="kho-phu">{d.so_goi_dat} {d.don_vi_goi}</span></> : null}</td>
+                    <td class="so">{d.so_kg_da_nhan > 0 ? `${kgs(d.so_kg_da_nhan)} kg` : '·'}</td>
+                    <td class="so">{d.du || d.so_kg_con_lai <= 0 ? t.du : `${kgs(d.so_kg_con_lai)} kg`}</td>
+                    {coGia && <td class="so">{gia.get(d.mat_hang_id) != null ? tien(gia.get(d.mat_hang_id)) : '—'}</td>}
+                    {coGia && <td class="so">{thanhTien(d.mat_hang_id, d.so_kg_dat) !== null ? tien(thanhTien(d.mat_hang_id, d.so_kg_dat)) : '—'}</td>}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-          {choHang && <p class="kho-phu">Đủ = nhận từ 95% số kg đặt trở lên (thịt cân không tròn số), hoặc đủ số gói đã đặt. Đã nhận tính cả phiếu đang chờ duyệt.</p>}
+          {choHang && <p class="kho-phu">{t.giaiThichDu}</p>}
         </>
       )}
 
@@ -221,8 +317,8 @@ const tieuDe = don ? `Đơn đặt ${don.so_phieu}` : 'Đơn đặt hàng';
         <form method="POST" class="nb-the">
           <input type="hidden" name="phien_ban" value={String(don.phien_ban)} />
           <input type="hidden" name="so_dong" value={String(soDong)} />
-          <h2 style="margin-top:0">Món đặt (đơn nháp — sửa được)</h2>
-          <p class="kho-phu">Ghi 0 hoặc để trống số kg là bỏ món đó khỏi đơn.</p>
+          <h2 style="margin-top:0">{t.monDatNhap}</h2>
+          <p class="kho-phu">{t.ghi0}</p>
           <ul class="kho-dong-ds">
             {don.dong.map(d => {
               const o = oDong(d.mat_hang_id);
@@ -231,15 +327,15 @@ const tieuDe = don ? `Đơn đặt ${don.so_phieu}` : 'Đơn đặt hàng';
                   <input type="hidden" name="mh" value={d.mat_hang_id} />
                   <span><strong>{d.ten_mat_hang}</strong><small>{d.ma}</small></span>
                   <span class="dh-o-hang">
-                    <label class="nb-o dh-o"><span class="an">{d.ten_mat_hang} — số kg</span>
+                    <label class="nb-o dh-o"><span class="an">{t.anKg(d.ten_mat_hang)}</span>
                       <input type="text" inputmode="decimal" name={`kg_${d.mat_hang_id}`} value={o.kg} autocomplete="off" /><small>kg</small></label>
                     {d.dem_goi && (
-                      <label class="nb-o dh-o"><span class="an">{d.ten_mat_hang} — số {d.don_vi_goi}</span>
+                      <label class="nb-o dh-o"><span class="an">{t.anGoi(d.ten_mat_hang, d.don_vi_goi)}</span>
                         <input type="text" inputmode="numeric" name={`goi_${d.mat_hang_id}`} value={o.goi} autocomplete="off" /><small>{d.don_vi_goi}</small></label>
                     )}
                     {coGia && (
-                      <label class="nb-o dh-o dh-o-gia"><span class="an">{d.ten_mat_hang} — giá dự kiến / kg</span>
-                        <input type="text" inputmode="numeric" name={`gia_${d.mat_hang_id}`} value={o.gia} placeholder="giá/kg" autocomplete="off" /><small>đ/kg</small></label>
+                      <label class="nb-o dh-o dh-o-gia"><span class="an">{t.anGia(d.ten_mat_hang)}</span>
+                        <input type="text" inputmode="numeric" name={`gia_${d.mat_hang_id}`} value={o.gia} placeholder={t.giaKg} autocomplete="off" /><small>{t.dongKg}</small></label>
                     )}
                   </span>
                 </li>
@@ -247,31 +343,31 @@ const tieuDe = don ? `Đơn đặt ${don.so_phieu}` : 'Đơn đặt hàng';
             })}
           </ul>
 
-          <h3>Thêm món</h3>
+          <h3>{t.themMon}</h3>
           {dongThem.map((d, i) => (
             <div class={`dh-them${coGia ? ' co-gia' : ''}`}>
-              <label class="nb-o"><span>Món</span>
+              <label class="nb-o"><span>{t.cotMon}</span>
                 <ChonMatHang name={`t${i}_mh`} matHang={matHang.filter(m => !idTrenDon.has(m.id) || m.id === d.mh)} chon={d.mh} /></label>
-              <label class="nb-o"><span>Số kg</span><input type="text" inputmode="decimal" name={`t${i}_kg`} value={d.kg} autocomplete="off" /></label>
-              <label class="nb-o"><span>Số gói / tảng</span><input type="text" inputmode="numeric" name={`t${i}_goi`} value={d.goi} autocomplete="off" /></label>
-              {coGia && <label class="nb-o"><span>Giá dự kiến/kg</span><input type="text" inputmode="numeric" name={`t${i}_gia`} value={d.gia} autocomplete="off" /></label>}
+              <label class="nb-o"><span>{t.soKg}</span><input type="text" inputmode="decimal" name={`t${i}_kg`} value={d.kg} autocomplete="off" /></label>
+              <label class="nb-o"><span>{t.soGoiTang}</span><input type="text" inputmode="numeric" name={`t${i}_goi`} value={d.goi} autocomplete="off" /></label>
+              {coGia && <label class="nb-o"><span>{t.cotGia}</span><input type="text" inputmode="numeric" name={`t${i}_gia`} value={d.gia} autocomplete="off" /></label>}
             </div>
           ))}
           {soDong < TOI_DA_DONG_THEM && (
-            <button type="submit" name="viec" value="them_dong" class="nb-nut phu" formnovalidate>+ Thêm dòng</button>
+            <button type="submit" name="viec" value="them_dong" class="nb-nut phu" formnovalidate>{t.themDong}</button>
           )}
 
           <div class="kho-luoi" style="margin-top:1rem">
-            <label class="nb-o"><span>Ngày giao</span>
+            <label class="nb-o"><span>{t.ngayGiao}</span>
               <input type="date" name="ngay_giao" value={chu ? chu.ngayGiao : don.ngay_giao_du_kien} min={homNayVn()} /></label>
           </div>
-          <label class="nb-o"><span>Ghi chú cho nhà cung cấp</span>
+          <label class="nb-o"><span>{t.ghiChuNcc}</span>
             <input type="text" name="ghi_chu" maxlength="500" value={chu ? chu.ghiChu : (don.ghi_chu ?? '')} /></label>
-          {!guiDuoc && <p class="kho-phu">Lưu xong, nhờ quản lý xem lại và gửi đơn cho nhà cung cấp.</p>}
+          {!guiDuoc && <p class="kho-phu">{t.nhoQuanLyGui}</p>}
 
           <div class="kho-thanh-nut dinh">
-            <button type="submit" name="viec" value="luu" class={`nb-nut dh-lon${guiDuoc ? ' phu' : ''}`}>Lưu</button>
-            {guiDuoc && <button type="submit" name="viec" value="luu_gui" class="nb-nut dh-lon">Lưu và gửi cho nhà cung cấp</button>}
+            <button type="submit" name="viec" value="luu" class={`nb-nut dh-lon${guiDuoc ? ' phu' : ''}`}>{t.luu}</button>
+            {guiDuoc && <button type="submit" name="viec" value="luu_gui" class="nb-nut dh-lon">{t.luuGui}</button>}
           </div>
         </form>
       )}
@@ -279,16 +375,16 @@ const tieuDe = don ? `Đơn đặt ${don.so_phieu}` : 'Đơn đặt hàng';
       {/* ======================= Phiếu nhận hàng theo đơn ======================= */}
       {don.phieu.length > 0 && (
         <>
-          <h2>Phiếu nhận hàng theo đơn này</h2>
+          <h2>{t.phieuTheoDon}</h2>
           <ul class="kho-dong-ds nb-the">
             {don.phieu.map(p => (
               <li>
                 <span>
                   <strong>{p.so_phieu}</strong>
-                  <small>Nhận {dinhDangNgay(p.ngay_nhap)} · {dinhDangKg(p.tong_kg)} kg</small>
+                  <small>{t.nhanNgay} {dinhDangNgay(p.ngay_nhap)} · {kgs(p.tong_kg)} kg</small>
                 </span>
                 <span class={`nb-nhan ${nhanPhieu(p.trang_thai)[1]}`} style="flex:0 0 auto">{nhanPhieu(p.trang_thai)[0]}</span>
-                <a class="nb-nut phu" href={linkPhieu(p.id)}>Xem</a>
+                <a class="nb-nut phu" href={linkPhieu(p.id)}>{t.xem}</a>
               </li>
             ))}
           </ul>
@@ -298,22 +394,22 @@ const tieuDe = don ? `Đơn đặt ${don.so_phieu}` : 'Đơn đặt hàng';
       {/* ======================= Hủy ======================= */}
       {huyDuoc && (
         <details class="nb-the" style="margin-top:1.5rem">
-          <summary style="cursor:pointer;font-weight:600">{laNhap ? 'Bỏ đơn nháp này' : 'Hủy đơn (nhà cung cấp không giao)'}</summary>
+          <summary style="cursor:pointer;font-weight:600">{laNhap ? t.boDonNhap : t.huyDonKhongGiao}</summary>
           <form method="POST" style="margin-top:.75rem">
-            <label class="nb-o"><span>Lý do{laNhap ? ' (không bắt buộc)' : ' *'}</span>
-              <input type="text" name="ly_do" maxlength="500" required={!laNhap} placeholder="ví dụ: nhà cung cấp hết hàng" /></label>
-            {!laNhap && <p class="kho-phu">Phiếu nhận hàng đã gắn vẫn giữ nguyên — hàng đã về là đã về.</p>}
-            <button type="submit" name="viec" value="huy" class="nb-nut kho-nut-xoa">{laNhap ? 'Bỏ đơn' : 'Hủy đơn'}</button>
+            <label class="nb-o"><span>{t.lyDo}{laNhap ? t.khongBatBuoc : ' *'}</span>
+              <input type="text" name="ly_do" maxlength="500" required={!laNhap} placeholder={t.viDuLyDo} /></label>
+            {!laNhap && <p class="kho-phu">{t.giuPhieu}</p>}
+            <button type="submit" name="viec" value="huy" class="nb-nut kho-nut-xoa">{laNhap ? t.boDon : t.huyDon}</button>
           </form>
         </details>
       )}
       {choHang && lapDuoc && !guiDuoc && (
-        <p class="kho-phu">Nhà cung cấp báo không giao? Nhờ quản lý hủy đơn.</p>
+        <p class="kho-phu">{t.nhoQuanLyHuy}</p>
       )}
     </>
   )}
 
-  <p style="margin-top:1.5rem"><a href={DS}>← Danh sách đơn đặt hàng</a></p>
+  <p style="margin-top:1.5rem"><a href={DS}>{t.veDs}</a></p>
 </Kho>
 
 <style>
