@@ -542,6 +542,50 @@ Khớp món / mặt hàng, kiểm gram, tạo món mới khi áp dụng: **datab
 Test: `test-kho-dinh-luong.mjs` (database), `test-kho-dinh-luong-web.mjs` (hàm thuần, trang), nhóm 10c của
 `test-kho-thu-kho.mjs` (thủ kho / NV quầy không thấy tiền lệch).
 
+## 3l. Đặt hàng nhà cung cấp · nhận theo đơn · đánh giá NCC (GĐ8a, migration 0039)
+
+Chủ quán đã chốt: quán lập đơn đặt hàng NCC ngay trong phần mềm, có **gợi ý số kg**; in / lưu PDF gửi
+Zalo; hàng về thì nhận theo đơn; cuối kỳ xem đánh giá NCC.
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/dat-hang` | `nhap` hoặc `xem_gia` | Danh sách đơn: chip `?loc=nhap\|dang_cho\|da_nhan\|huy` (`dang_cho` = đã gửi + nhận một phần), tìm / ngày / của tôi / trang như GĐ4b. Vai xem giá thấy thêm tiền dự kiến (`kho_v_don_dat`) |
+| `/noi-bo/kho/dat-hang/moi?ncc=<id>` | `nhap` | Chọn NCC (nút lớn như màn nhận hàng) → bảng gợi ý `kho_goi_y_dat_hang` điền sẵn số kg (+ số gói nếu món đếm gói), lý do một dòng nhỏ; sửa được, trống / 0 = không đặt; "+ Thêm dòng" món khác. **Lưu nháp**, hoặc **Lưu và gửi →** (nhap + duyet_nhap) → mở trang in |
+| `/noi-bo/kho/dat-hang/<id>` | `nhap` hoặc `xem_gia` | Nháp: sửa món / kg / ngày giao / ghi chú (`phien_ban`), **Lưu và gửi cho nhà cung cấp**, bỏ đơn. Đã gửi: **Nhận hàng theo đơn này** (`kho_tao_phieu_nhap_tu_don`, `ma_gui`) → `/noi-bo/kho/nhan-hang/<phiếu>`; hủy đơn (quản lý / chủ, bắt buộc lý do). Bảng đặt / đã nhận / còn thiếu; phiếu nhận hàng đã gắn |
+| `/noi-bo/kho/dat-hang/<id>/in` | `nhap` hoặc `xem_gia` | Tờ A4: logo, quán, số đơn, ngày đặt / giao, NCC (liên hệ chỉ vai xem giá — bảng NCC có RLS xem_gia), món, kg, gói, ghi chú, chỗ ký. Giá chỉ khi xem giá **và** tích "In kèm giá dự kiến" (`?gia=1`). Nút **In / Lưu PDF**, **Chia sẻ (Zalo…)** (Web Share, `in-an.js`), ô chép tin nhắn (`tinNhanDon`) |
+| `/noi-bo/kho/bao-cao/ncc?tu=&den=` | `nhap` hoặc `xem_gia` | Đánh giá NCC (`kho_bao_cao_ncc`): lần giao, kg, đơn thiếu / trễ, thu hồi pha TB, kg trả, điểm sao; vai xem giá thêm giá TB/kg, lệch hóa đơn, ngày trả tiền TB. CSV `bao-cao/ncc.csv` (cùng quyền) |
+
+- **Ai làm gì** (database chặn — đầu 0039): lập / sửa **nháp** = `nhap` (thủ kho cũng lập, chỉ kg); giá dự kiến =
+  `nhap + xem_gia`; **gửi** và hủy đơn đã gửi = `nhap + duyet_nhap` (quản lý, chủ — kế toán chỉ xem). Web ẩn nút
+  theo đúng luật đó (`guiDuoc`, `huyDuoc`).
+- **Thủ kho không thấy tiền**: danh sách, đơn, gợi ý đọc bằng `kho_ds_don_dat_kg`, `kho_doc_don_dat_kg`,
+  `kho_goi_y_dat_hang` (không cột tiền). Giá dự kiến đọc thẳng `kho_don_dat_dong` / `kho_v_don_dat` (RLS xem_gia) **chỉ khi**
+  `k.duoc('xem_gia')`. `docFormDonDat(form, mon, { coGia })`: không xem giá thì **không dòng nào có khóa**
+  `don_gia_du_kien` (database từ chối nếu có; dòng thiếu khóa giữ giá cũ theo mặt hàng); xem giá thì mọi dòng có khóa,
+  ô trống = null (xóa giá).
+- **Form đơn** (một dạng cho lập và sửa): dòng có sẵn = ô ẩn `mh` lặp lại + `kg_<mặt hàng>`, `goi_<…>`, `gia_<…>`;
+  dòng thêm = `t<i>_mh`, `t<i>_kg`, `t<i>_goi`, `t<i>_gia`, số dòng `so_dong` (≤ 30). Lỗi thì hiện lại đúng chữ đã gõ
+  (`chuFormDonDat`), giữ `ma_gui`.
+- **Gợi ý** (công thức ở comment `kho_goi_y_dat_hang`): nên đặt = mức cần − (tồn kho + quầy còn hạn + đang mang ra quầy +
+  đã đặt chưa về); mức cần = `kho_toi_da_kg` của món, chưa cài thì dùng TB/ngày 28 ngày × (số ngày giao + 3). Món của NCC
+  = món NCC đó giao gần nhất. Trang chỉ hiện số và `ly_do` database trả — không tính lại ở web.
+- **Nhận theo đơn**: `nhan-hang/moi` có phần "Nhận theo đơn đặt" (đơn `dang_cho`, `docDonChoNhan`) — bấm là tạo phiếu
+  nháp điền sẵn món / kg còn thiếu (món đã đủ — ≥ 95% kg hoặc đủ gói — không điền lại) rồi mở bước 2 (ảnh hóa đơn chụp bằng "Thêm ảnh"). `nhan-hang/<id>` đọc khóa
+  `don_dat` của `kho_doc_phieu_nhap_kg`: mỗi dòng nhãn "Đặt N kg" (món không có trong đơn: "Ngoài đơn"), form thêm món
+  nhắc món trong đơn chưa cân. Trạng thái đơn tự đổi khi phiếu được gửi / duyệt / trả về (trigger 0039).
+- **Cài đặt**: NCC có ô "Số ngày giao hàng" (0–60, trống = 1) và "Thứ giao hàng" (ô tích `thu_giao`; không tích / tích
+  đủ 7 = ngày nào cũng giao → null) — ghi thẳng bảng như các cột NCC khác. Mặt hàng có "Kho lạnh tối thiểu / tối đa
+  (kg)" — `luuMatHang` ghi qua `kho_luu_muc_dat_hang` sau khi lưu mặt hàng (chỉ khi đổi).
+- Menu: ô "Đặt hàng" (`quyen: nhap`, số đỏ `don_dat_tre` — chỉ quản lý / chủ nhận), thao tác nhanh "Đặt hàng" của quản
+  lý / chủ, bước đầu quy trình Nhận hàng. Kế toán vào qua link (Báo cáo → Đánh giá NCC → Đơn đặt hàng).
+- Hướng dẫn: `dat-hang` (quản lý, chủ, kế toán — có nhắc giá), `danh-gia-ncc`, `nhan-theo-don` (thủ kho — không nhắc
+  tiền), câu hỏi `hoi-goi-y-dat-hang`.
+- Chưa làm: cột "NCC chính" của mặt hàng (gợi ý theo NCC giao gần nhất); gửi PDF thật qua Zalo (Web Share chỉ gửi chữ —
+  file PDF lưu bằng hộp in của trình duyệt).
+
+Test: `test-kho-dat-hang.mjs` (database), `test-kho-dat-hang-web.mjs` (hàm thuần, các hàm của `dat-hang.ts` chạy thật trên
+PGlite qua client giả, mã nguồn trang), nhóm 10d của `test-kho-thu-kho.mjs`.
+
 ## 4. Cài như app (PWA)
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng
@@ -571,7 +615,7 @@ dùng ở:
 | `public/kho/js/ean13.js` | (GĐ5b) Giải mã EAN-13 bằng JS thuần cho iPhone — Safari không có `BarcodeDetector` |
 | `public/kho/js/anh-nho.js` | (GĐ5a) Thu ảnh hóa đơn ≤ 1600px trước khi tải |
 | `public/kho/js/may-chung.js` | (GĐ5d) Đếm giờ tự khóa máy dùng chung |
-| `public/kho/js/in-an.js` | Hiện nút "In phiếu" và gọi `window.print()` (GĐ4b); sau này in đơn đặt hàng (GĐ8a) |
+| `public/kho/js/in-an.js` | Hiện nút "In phiếu" và gọi `window.print()` (GĐ4b); nút "Chia sẻ" `[data-chia-se]` của đơn đặt hàng gọi Web Share API khi máy có (GĐ8a) |
 
 Không thêm thư viện npm cho phía trình duyệt. `test-kho-giao-dien.mjs` hỏng nếu có `<script>`,
 `onclick=…` hay file JS ngoài danh sách này.
@@ -613,6 +657,8 @@ node test/test-kho-ipos.mjs           # đồng bộ iPOS: phần database
 node test/test-kho-ipos-web.mjs       # đồng bộ iPOS: ipos.ts, dongBoIpos, cron, quét token (cần build web để kiểm dist)
 node test/test-kho-dinh-luong.mjs     # định lượng món, đối chiếu định mức: phần database
 node test/test-kho-dinh-luong-web.mjs # định lượng: dán Excel, lưới gram, màu lệch, cột tiền, trang
+node test/test-kho-dat-hang.mjs       # đặt hàng NCC, gợi ý, nhận theo đơn, đánh giá NCC: phần database
+node test/test-kho-dat-hang-web.mjs   # đặt hàng: form (thủ kho không gửi giá), dat-hang.ts trên PGlite, trang
 cd ../web && npm run kiem-tra && npm run quet && npm run build
 ```
 

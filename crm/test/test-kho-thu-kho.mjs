@@ -20,6 +20,8 @@
  * tiến độ Thiết lập không trả khóa tiền.
  * Thêm (0038): báo cáo đối chiếu định mức trả kg cho thủ kho / NV quầy, tiền
  * lệch (tien_chenh) chỉ có số với vai xem giá; món, định lượng không có tiền.
+ * Thêm (0039): đặt hàng NCC — thủ kho lập đơn nháp không giá, gửi giá bị từ
+ * chối; đơn, gợi ý, nhận theo đơn, đánh giá NCC không trả tiền cho thủ kho.
  * Cuối cùng: kho_doi_soat_ton() rỗng.
  */
 
@@ -52,7 +54,8 @@ const KHONG_PHAI_TIEN = new Set([
 
 // Khóa JSON khớp mẫu nhưng là CHỮ: "dien_giai" (diễn giải dòng thẻ kho, 0033)
 // có "giai" chứa "gia". Thêm vào đây phải là quyết định có ý thức.
-const KHOA_CHU = new Set(['dien_giai']);
+// 0039: "giao" (ngày giao hàng) cũng chứa "gia".
+const KHOA_CHU = new Set(['dien_giai', 'ngay_giao_du_kien', 'so_ngay_giao']);
 
 /** Mọi khóa tiền trong một giá trị JSON, quét đệ quy. Trả danh sách "đường.dẫn". */
 function khoaTien(v, duong = '') {
@@ -900,6 +903,83 @@ await nhom('10c · ĐỊNH LƯỢNG MÓN, ĐỐI CHIẾU ĐỊNH MỨC (0038) �
      ['number', 'string'].includes(typeof kt.rows?.find(x => x.mat_hang_id === MH['P-VUN'].id)?.tien_chenh),
      kt.loi ?? JSON.stringify(kt.rows));
   await doiSoat('Sau định lượng món');
+});
+
+// ===========================================================================
+// 0039 (GĐ8a): đơn đặt hàng có đơn giá dự kiến (tiền) ở dòng — chỉ vai xem giá
+// đọc được; thủ kho lập nháp chỉ kg, đọc qua hàm _kg, nhận hàng theo đơn.
+await nhom('10d · ĐẶT HÀNG NCC, NHẬN THEO ĐƠN, ĐÁNH GIÁ NCC (0039) — KHÔNG TIỀN', async () => {
+  const luuDon = (f, t) => f(`
+    select * from kho_luu_don_dat(p_id => $1, p_chi_nhanh_id => $2, p_ma_gui => $3, p_phien_ban => $4,
+      p_ncc => $5, p_ngay_giao => null, p_ghi_chu => null, p_dong => $6::jsonb)`,
+    [t.id ?? null, cnA.id, maGui(), t.phienBan ?? null, nccUc, JSON.stringify(t.dong)]);
+  const ql = (sql, p) => duoi(UID.qlA, sql, p);
+
+  const coGia = await luuDon(tk, { dong: [{ mat_hang_id: MH['T-THANNGOAI'].id, so_kg_dat: 10, don_gia_du_kien: GIA.moi_than }] });
+  ok('Thủ kho gửi đơn giá dự kiến → bị từ chối', coGia.loi !== null);
+  const a = await luuDon(tk, { dong: [{ mat_hang_id: MH['T-THANNGOAI'].id, so_kg_dat: 10 }] });
+  ok('Thủ kho lập đơn nháp chỉ kg', a.loi === null, a.loi ?? '');
+  const id = a.rows?.[0]?.don_id;
+  const b = await luuDon(ql, { id, phienBan: a.rows?.[0]?.phien_ban_moi,
+    dong: [{ mat_hang_id: MH['T-THANNGOAI'].id, so_kg_dat: 12, don_gia_du_kien: GIA.moi_than }] });
+  const gui = await ql(`select kho_gui_don_dat($1, $2)`, [id, b.rows?.[0]?.phien_ban_moi]);
+  ok('Quản lý điền giá dự kiến, gửi đơn', b.loi === null && gui.loi === null, b.loi ?? gui.loi ?? '');
+  const tkGui = await tk(`select kho_gui_don_dat($1, 99)`, [id]);
+  ok('Thủ kho KHÔNG gửi được đơn', tkGui.loi !== null);
+
+  const pn = await tk(`select kho_tao_phieu_nhap_tu_don($1, $2) as id`, [id, maGui()]);
+  ok('Thủ kho nhận hàng theo đơn', pn.loi === null, pn.loi ?? '');
+
+  const tu = await ngay(-30), den = await ngay(30);
+  const goi = [
+    ['kho_ds_don_dat_kg', `select * from kho_ds_don_dat_kg($1, null, null, null, null, null, false, 30, 0)`, [cnA.id]],
+    ['kho_doc_don_dat_kg', `select kho_doc_don_dat_kg($1) as d`, [id]],
+    ['kho_goi_y_dat_hang', `select * from kho_goi_y_dat_hang($1, null)`, [cnA.id]],
+    ['kho_doc_phieu_nhap_kg (theo đơn)', `select kho_doc_phieu_nhap_kg($1) as p`, [pn.rows?.[0]?.id]],
+  ];
+  for (const [ten, sql, p] of goi) {
+    const r = await tk(sql, p);
+    ok(`Thủ kho gọi ${ten}: có dữ liệu, không khóa tiền`, r.loi === null && r.rows.length > 0 && khoaTien(r.rows).length === 0,
+       r.loi ?? khoaTien(r.rows).join(', '));
+    ok(`Thủ kho gọi ${ten}: không đơn giá nào lọt ra`, !coTien(JSON.stringify(r.rows)));
+  }
+  const g = await tk(`select * from kho_goi_y_dat_hang($1, null)`, [cnA.id]);
+  ok('Gợi ý có dòng thăn ngoại (đang đặt 12 kg)', Number(g.rows?.find(x => x.mat_hang_id === MH['T-THANNGOAI'].id)?.dang_dat_kg) === 12);
+
+  const bc = await tk(`select * from kho_bao_cao_ncc($1, $2::date, $3::date)`, [cnA.id, tu, den]);
+  ok('Thủ kho xem đánh giá NCC', bc.loi === null && bc.rows.length > 0, bc.loi ?? '');
+  ok('Đánh giá NCC: giá TB, lệch hóa đơn, số ngày trả trống với thủ kho',
+     (bc.rows ?? []).every(x => x.gia_tb_kg === null && x.so_lan_lech_hoa_don === null && x.so_ngay_tra_tb === null));
+  const conLai = (bc.rows ?? []).map(({ gia_tb_kg, ...x }) => x);
+  ok('Đánh giá NCC: ngoài gia_tb_kg (trống) không khóa tiền', khoaTien(conLai).length === 0, khoaTien(conLai).join(', '));
+  ok('Đánh giá NCC: không số tiền nào', !coTien(JSON.stringify(bc.rows)));
+  const nv = await duoi(UID.nvQuayA, `select * from kho_bao_cao_ncc($1, $2::date, $3::date)`, [cnA.id, tu, den]);
+  ok('NV quầy KHÔNG xem được đánh giá NCC', nv.loi !== null);
+  const kt = await duoi(UID.keToanA, `select * from kho_bao_cao_ncc($1, $2::date, $3::date)`, [cnA.id, tu, den]);
+  ok('Đối chứng: kế toán thấy giá TB/kg', kt.rows?.some(x => Number(x.gia_tb_kg) > 0), kt.loi ?? JSON.stringify(kt.rows));
+
+  // Quét cột tiền của các bảng / view mới, lúc ĐÃ có dữ liệu (nhóm 8 chạy trước khi có đơn).
+  const { rows: cot } = await db.query(`
+    select table_name, column_name from information_schema.columns
+    where table_schema = 'public' and table_name in ('kho_don_dat', 'kho_don_dat_dong', 'kho_v_don_dat', 'kho_nha_cung_cap')`);
+  const tien = cot.filter(c => LA_TIEN.test(c.column_name) && !KHONG_PHAI_TIEN.has(`${c.table_name}.${c.column_name}`));
+  ok('Có cột tiền đơn đặt để soát (đơn giá dự kiến, tổng tiền dự kiến)',
+     tien.some(c => c.column_name === 'don_gia_du_kien') && tien.some(c => c.column_name === 'tong_tien_du_kien'));
+  for (const [ai, uid] of [['Thủ kho', UID.thuKhoA], ['NV quầy', UID.nvQuayA]]) {
+    const lo = [];
+    for (const { table_name, column_name } of tien) {
+      const r = await duoi(uid, `select count(*)::int as n from ${table_name} where ${column_name} is not null`);
+      if (r.loi === null && r.rows[0].n > 0) lo.push(`${table_name}.${column_name}(${r.rows[0].n})`);
+    }
+    ok(`${ai} không đọc được cột tiền nào của đơn đặt`, lo.length === 0, lo.join(', '));
+  }
+  const ktDong = await duoi(UID.keToanA, `select count(*)::int as n from kho_don_dat_dong where don_gia_du_kien > 0`);
+  ok('Đối chứng: kế toán đọc được đơn giá dự kiến', ktDong.rows?.[0]?.n > 0);
+
+  // Dọn: hủy đơn và phiếu nháp để các nhóm sau không đổi số.
+  await ql(`select kho_huy_phieu_nhap($1, 'Thử')`, [pn.rows?.[0]?.id]);
+  await ql(`select kho_huy_don_dat($1, 'Thử xong')`, [id]);
+  await doiSoat('Sau đặt hàng NCC');
 });
 
 // ===========================================================================

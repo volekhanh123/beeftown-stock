@@ -11,6 +11,9 @@
  *   · XEM                 : đã gửi / đã duyệt / đã hủy — chỉ xem; người lập
  *                           được "Rút về để sửa" khi phiếu còn chờ duyệt
  *
+ * Phiếu theo đơn đặt (0039, khóa don_dat của kho_doc_phieu_nhap_kg): mỗi dòng có
+ * nhãn "Đặt N kg" cạnh kg nhận; món trong đơn chưa cân được nhắc ở form thêm món.
+ *
  * KHÔNG có tiền ở đây: đọc bằng kho_doc_phieu_nhap_kg, ghi bằng
  * kho_luu_phieu_nhap_kg (migration 0031). Mỗi lệnh lưu CẢ phiếu kèm phien_ban,
  * rồi chuyển hướng 303 — F5 không gửi lại. Gõ sai thì hiện lại đúng chữ đã gõ.
@@ -190,6 +193,17 @@ const tomTatTruong = (gt: GiaTriTruong) => dnLo
   .filter(x => gt?.[x.khoa] !== undefined && gt[x.khoa] !== '')
   .map(x => `${x.nhan}: ${hienThiGiaTri(x, gt[x.khoa])}`).join(' · ');
 const soGoiChu = (so: number, donVi: string) => (so > 0 ? `${so} ${donVi}` : '');
+// Phiếu nhận theo đơn đặt (0039): cột "Đặt" cạnh kg nhận, món trong đơn chưa có trên phiếu.
+const donDat = phieu?.don_dat ?? null;
+const datTheoMon = new Map((donDat?.dong ?? []).map(x => [x.mat_hang_id, x]));
+const chuDat = (mh: string, donVi: string) => {
+  const x = datTheoMon.get(mh);
+  return x ? `Đặt ${dinhDangKg(x.so_kg_dat)} kg${x.so_goi_dat ? ` · ${x.so_goi_dat} ${donVi}` : ''}` : null;
+};
+// Chỉ nhắc món còn thiếu: phiếu đang sửa (nháp / bị trả về) chưa tính vào so_kg_da_nhan, nên
+// món đã về đủ ở phiếu trước (≥ 95% kg đặt — luật "đủ" của 0039) không bị nhắc lại.
+const monDatChuaCan = (donDat?.dong ?? []).filter(x => !phieu?.dong.some(d => d.mat_hang_id === x.mat_hang_id)
+  && x.so_kg_da_nhan < x.so_kg_dat * 0.95);
 const tieuDe = phieu ? `Nhận hàng ${phieu.so_phieu}` : 'Nhận hàng';
 ---
 <Kho k={k} tieuDe={tieuDe} huongDan="nhan-hang-can">
@@ -234,6 +248,7 @@ const tieuDe = phieu ? `Nhận hàng ${phieu.so_phieu}` : 'Nhận hàng';
       </p>
       <dl class="kho-dl">
         {phieu.loai === 'mua' && <><dt>Người giao</dt><dd><strong>{phieu.ten_nha_cung_cap ?? 'chưa chọn'}</strong></dd></>}
+        {donDat && <><dt>Theo đơn đặt</dt><dd><a href={`/noi-bo/kho/dat-hang/${donDat.id}`}>{donDat.so_phieu}</a> · hẹn giao {dinhDangNgay(donDat.ngay_giao_du_kien)}</dd></>}
         <dt>Nhận vào</dt><dd>{phieu.ten_vi_tri ?? '—'}</dd>
         <dt>Ngày nhận</dt><dd>{dinhDangNgay(phieu.ngay_nhap)}</dd>
         {phieu.so_hoa_don && <><dt>Số hóa đơn</dt><dd>{phieu.so_hoa_don}</dd></>}
@@ -309,7 +324,8 @@ const tieuDe = phieu ? `Nhận hàng ${phieu.so_phieu}` : 'Nhận hàng';
                 <span class="nh-so">{i + 1}</span>
                 <strong class="nh-ten">{d.ten_mat_hang}</strong>
               </div>
-              <p class="nh-kg"><b>{dinhDangKg(d.so_kg)} kg</b>{d.so_goi > 0 && <> · {soGoiChu(d.so_goi, d.don_vi_goi)}</>}</p>
+              <p class="nh-kg"><b>{dinhDangKg(d.so_kg)} kg</b>{d.so_goi > 0 && <> · {soGoiChu(d.so_goi, d.don_vi_goi)}</>}
+                {donDat && <span class="nh-dat">{chuDat(d.mat_hang_id, d.don_vi_goi) ?? 'Ngoài đơn'}</span>}</p>
               {(d.han_dung || d.so_lo_ncc || tomTatTruong(d.truong_them)) && (
                 <p class="kho-phu nh-chi-tiet">
                   {[d.han_dung ? `HSD ${dinhDangNgay(d.han_dung)}` : '', d.so_lo_ncc ? `lô NCC ${d.so_lo_ncc}` : '', tomTatTruong(d.truong_them)]
@@ -341,6 +357,9 @@ const tieuDe = phieu ? `Nhận hàng ${phieu.so_phieu}` : 'Nhận hàng';
     <>
       <form method="POST" class="nb-the nh-them" id="them">
         <h2 style="margin-top:0">{dongSua ? `Sửa dòng ${phieu.dong.indexOf(dongSua) + 1}` : phieu.dong.length ? 'Thêm món tiếp' : 'Thêm món'}</h2>
+        {!dongSua && monDatChuaCan.length > 0 && (
+          <p class="kho-phu">Trong đơn {donDat?.so_phieu} còn chưa cân: {monDatChuaCan.map(x => `${x.ten_mat_hang} (còn ${dinhDangKg(Math.max(x.so_kg_dat - x.so_kg_da_nhan, 0))} kg)`).join(', ')}.</p>
+        )}
         <input type="hidden" name="phien_ban" value={String(phieu.phien_ban)} />
         <input type="hidden" name="ma_gui" value={maGuiForm} />
         {dongSua && <input type="hidden" name="dong_id" value={dongSua.id} />}
@@ -464,6 +483,7 @@ const tieuDe = phieu ? `Nhận hàng ${phieu.so_phieu}` : 'Nhận hàng';
   .nh-ten { font-size: 1.05rem; }
   .nh-kg { margin: .35rem 0 .2rem; font-size: 1.05rem; }
   .nh-kg b { font-size: 1.35rem; }
+  .nh-dat { display: inline-block; margin-left: .5rem; padding: .1rem .45rem; border-radius: 4px; background: var(--kem-sau, #f3eee6); font-size: .85rem; color: var(--muc-nhat); }
   .nh-chi-tiet { margin: 0 0 .3rem; }
   .nh-the-nut { display: flex; gap: .5rem; margin-top: .5rem; }
   .nh-the-nut .nb-nut, .nh-the-nut form { flex: 1; }

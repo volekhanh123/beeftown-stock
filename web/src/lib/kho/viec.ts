@@ -178,6 +178,16 @@ export function cauSuKien(su: SuKien): CauSuKien {
                link: `/noi-bo/kho/bao-cao/dinh-muc${ngay(-6) ? `?${q({ tu: ngay(-6), den: ngay(0) })}` : ''}`,
                nut: 'Xem', muc: 'vang' };
     }
+    // ---- 0039 · Đơn đặt hàng quá ngày giao mà chưa nhận ------------------
+    case 'don_dat_tre': {
+      // Quản lý: ma = số đơn, ten = tên NCC, so = số ngày trễ, phu = ngày giao dự kiến (YYYY-MM-DD).
+      const tre = soNguyen(e.so);
+      const hen = /^\d{4}-\d{2}-\d{2}$/.test(e.phu ?? '') ? e.phu!.split('-').reverse().join('/') : null;
+      const phan = [e.ten, hen ? `hẹn giao ${hen}` : '', tre && tre > 0 ? `trễ ${tre} ngày` : ''].filter(Boolean).join(' — ');
+      return { tieuDe: e.ma ? `Đơn đặt ${e.ma} chưa thấy hàng về` : 'Đơn đặt hàng chưa thấy hàng về',
+               chiTiet: `${phan ? `${phan}. ` : ''}Gọi nhà cung cấp hỏi lại; không giao nữa thì hủy đơn.`,
+               link: `/noi-bo/kho/dat-hang/${e.ref_id}`, nut: 'Xem đơn', muc: 'vang' };
+    }
     default:
       return { tieuDe: e.ten || e.ma || 'Có việc mới', link: '/noi-bo/kho', nut: 'Xem', muc: 'xam' };
   }
@@ -196,6 +206,8 @@ export const KHOA_SU_KIEN = [
   'ipos_cho_xu_ly', 'ipos_mat_ket_noi',
   // 0038
   'dinh_muc_lech',
+  // 0039
+  'don_dat_tre',
 ] as const;
 
 /** Sự kiện là "việc cần làm" (có nút làm ngay, không chỉ để biết). */

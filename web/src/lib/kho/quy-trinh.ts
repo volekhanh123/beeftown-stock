@@ -34,10 +34,14 @@ export interface QuyTrinh {
 export const QUY_TRINH: QuyTrinh[] = [
   {
     ma: 'nhan-hang', ten: 'Nhận hàng', bieuTuong: 'nhap',
-    gioiThieu: 'Thủ kho chụp, cân, gửi — không cần biết giá. Kế toán hoặc quản lý điền giá từ ảnh hóa đơn rồi duyệt; hàng chỉ vào tồn khi đã duyệt.',
+    gioiThieu: 'Quản lý đặt hàng (phần mềm gợi ý số kg). Hàng về: thủ kho chụp, cân, gửi — không cần biết giá. Kế toán hoặc quản lý điền giá từ ảnh hóa đơn rồi duyệt; hàng chỉ vào tồn khi đã duyệt.',
     buoc: [
+      // GĐ8a (0039): đặt hàng trước khi hàng về. Số đỏ: đơn quá ngày giao chưa thấy hàng.
+      { ten: 'Đặt hàng nhà cung cấp', ai: 'Quản lý', quyen: ['nhap'],
+        moTa: 'Chọn nhà cung cấp — phần mềm gợi ý số kg nên đặt theo tồn kho và lượng dùng 28 ngày. Sửa số, bấm Gửi, rồi in / lưu PDF gửi Zalo.',
+        link: '/noi-bo/kho/dat-hang/moi', nut: 'Lập đơn', dem: ['don_dat_tre'] },
       { ten: 'Chụp hóa đơn', ai: 'Thủ kho', quyen: ['nhap'],
-        moTa: 'Chọn nhà cung cấp, chụp hóa đơn / phiếu giao hàng. Phiếu mua bắt buộc có ảnh.',
+        moTa: 'Hàng theo đơn đặt: bấm "Nhận theo đơn này" để có sẵn món và kg. Chọn nhà cung cấp, chụp hóa đơn / phiếu giao hàng. Phiếu mua bắt buộc có ảnh.',
         link: '/noi-bo/kho/nhan-hang/moi' },
       { ten: 'Cân, đếm từng món', ai: 'Thủ kho', quyen: ['nhap'],
         moTa: 'Mỗi món một dòng: số kg cân được, số tảng / gói. Không phải ghi giá.',

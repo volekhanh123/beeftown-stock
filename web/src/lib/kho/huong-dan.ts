@@ -258,6 +258,23 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     link: { href: '/noi-bo/kho/nhan-hang', chu: 'Mở danh sách nhận hàng' },
   },
   {
+    id: 'nhan-theo-don', vai: ['thu_kho', 'quan_ly', 'chu_so_huu'],
+    tieuDe: 'Nhận hàng theo đơn đặt',
+    tomTat: 'Hàng về đúng đơn quản lý đã đặt: phiếu có sẵn món và số kg còn thiếu — chỉ việc cân lại, sửa số.',
+    buoc: [
+      'Bấm **Nhận hàng**. Ở phần **Nhận theo đơn đặt**, bấm **Nhận hàng theo đơn này** cạnh đúng đơn (xem tên nhà cung cấp, ngày hẹn giao).',
+      'Phiếu mở ra đã có từng món và số kg đặt. Cân thật từng món, bấm **Sửa** để ghi đúng số cân được. Món không giao thì bấm **Bỏ**.',
+      'Chụp hóa đơn / phiếu giao hàng bằng nút **Thêm ảnh** (bắt buộc).',
+      'Mỗi dòng có nhãn **Đặt … kg** để so. Hàng giao thêm ngoài đơn thì thêm dòng như thường (nhãn **Ngoài đơn**).',
+      'Bấm **Xong, xem lại →** rồi **Gửi cho kế toán / quản lý**.',
+    ],
+    meo: [
+      'Giao thiếu: chỉ ghi số thật. Lần sau hàng về tiếp, bấm lại **Nhận hàng theo đơn này** — phiếu mới chỉ còn phần thiếu.',
+      'Món chưa có hạn dùng mặc định thì ghi hạn theo nhãn trên thùng (mở **Thêm chi tiết**).',
+    ],
+    link: { href: '/noi-bo/kho/nhan-hang/moi', chu: 'Mở màn Nhận hàng' },
+  },
+  {
     id: 'phieu-bi-tra', vai: ['thu_kho'],
     tieuDe: 'Phiếu bị trả về',
     tomTat: 'Kế toán / quản lý thấy sai thì trả phiếu về kèm lý do. Bạn sửa rồi gửi lại.',
@@ -530,6 +547,42 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     meo: ['Số kg sai thì bấm **Sửa dòng hàng, số kg →** thay vì trả về.'],
     anh: anh('dien-gia', 'Phiếu nhập chờ điền giá, có ảnh hóa đơn'),
     link: { href: '/noi-bo/kho/duyet', chu: 'Mở Duyệt' },
+  },
+  {
+    id: 'dat-hang', vai: ['quan_ly', 'chu_so_huu', 'ke_toan'],
+    tieuDe: 'Đặt hàng nhà cung cấp',
+    tomTat: 'Phần mềm gợi ý số kg nên đặt theo tồn kho và lượng dùng 28 ngày qua. Sửa số, gửi, rồi in hoặc lưu PDF gửi Zalo.',
+    buoc: [
+      'Mở **Đặt hàng** → **+ Lập đơn đặt hàng**. Chọn nhà cung cấp, bấm **Tiếp: xem gợi ý →**.',
+      'Mỗi món nhà cung cấp đó hay giao đã có sẵn số kg nên đặt; dòng chữ nhỏ bên dưới nói vì sao. Sửa số nếu cần, để trống là không đặt. Món khác thì thêm ở **Thêm món khác**.',
+      'Chọn **Ngày giao** (bỏ trống = tự tính theo số ngày giao của nhà cung cấp), ghi chú nếu cần. Có thể gõ giá dự kiến/kg để biết trước số tiền.',
+      'Bấm **Lưu và gửi →**. Trang in mở ra: bấm **In / Lưu PDF** (chọn "Lưu thành PDF") rồi gửi file vào Zalo nhà cung cấp, hoặc bấm **Chia sẻ (Zalo…)** trên điện thoại để gửi thành tin nhắn.',
+      'Hàng về: thủ kho bấm **Nhận hàng theo đơn này**. Đơn tự chuyển **Nhận một phần** / **Đã nhận đủ** khi phiếu nhận hàng được gửi.',
+    ],
+    meo: [
+      'Thủ kho lập được đơn **nháp** (không có giá); quản lý mở đơn, điền giá nếu muốn, bấm **Lưu và gửi cho nhà cung cấp**.',
+      'Giá chỉ in khi tích **In kèm giá dự kiến** — mặc định không in giá.',
+      'Số nên đặt = mức cần − (tồn + hàng đang mang ra quầy + hàng đã đặt chưa về). Mức cần = mức tối đa kho lạnh của món, chưa cài thì lấy lượng dùng TB/ngày × (số ngày giao + 3 ngày dự phòng).',
+      'Mức tối thiểu / tối đa kho lạnh sửa ở **Thiết lập** → **Mặt hàng**; số ngày giao, thứ giao ở **Nhà cung cấp**.',
+      'Nhà cung cấp báo không giao: mở đơn → **Hủy đơn** (ghi lý do). Quá ngày giao chưa thấy hàng thì chuông báo quản lý.',
+    ],
+    link: { href: '/noi-bo/kho/dat-hang', chu: 'Mở Đặt hàng' },
+  },
+  {
+    id: 'danh-gia-ncc', vai: ['quan_ly', 'chu_so_huu', 'ke_toan'],
+    tieuDe: 'Đánh giá nhà cung cấp',
+    tomTat: 'Mỗi nhà cung cấp một dòng: giao bao nhiêu lần, bao nhiêu kg, thiếu, trễ, thu hồi pha lóc, hàng trả lại và điểm sao 1–5.',
+    buoc: [
+      'Mở **Báo cáo** → **Đánh giá NCC** (hoặc từ màn **Đặt hàng**).',
+      'Chọn kỳ: **Tháng này**, **Tháng trước**… hoặc hai ngày rồi bấm **Xem**.',
+      'Xem cột **Giao thiếu**, **Giao trễ** (tô đỏ) và **Điểm**. Sao thấp thì hỏi lại nhà cung cấp hoặc cân nhắc đổi nguồn.',
+      'Cần gửi đi: bấm **Tải về Excel (CSV)**.',
+    ],
+    meo: [
+      'Điểm sao bắt đầu 5, trừ theo tỉ lệ đơn giao thiếu (×2), giao trễ (×1), phiếu lệch hóa đơn (×1) và kg trả lại (tối đa 1 sao).',
+      'Giao thiếu / trễ chỉ tính đơn có đặt qua phần mềm — đặt qua điện thoại mà không lập đơn thì không chấm được.',
+    ],
+    link: { href: '/noi-bo/kho/bao-cao/ncc', chu: 'Mở Đánh giá NCC' },
   },
   {
     id: 'nhan-thieu', vai: ['quan_ly', 'chu_so_huu'],
@@ -920,6 +973,8 @@ export const CAU_HOI: CauHoi[] = [
     dap: 'Chỉ quản lý, kế toán và chủ quán. Thủ kho và nhân viên quầy chỉ thấy kg, gói, hạn dùng.' },
   { id: 'hoi-nhan-thieu-quay', hoi: 'Hàng mang ra quầy bị thiếu?',
     dap: 'Nhân viên quầy bấm **Thiếu — ghi số nhận** và ghi số thật. Quản lý sẽ trả phần thiếu về kho hoặc ghi mất.' },
+  { id: 'hoi-goi-y-dat-hang', hoi: 'Số kg gợi ý đặt hàng tính thế nào?',
+    dap: 'Lấy mức cần (mức tối đa kho lạnh của món; chưa cài thì lượng dùng trung bình mỗi ngày trong 28 ngày × số ngày giao + 3 ngày) trừ đi hàng đang có, hàng đang mang ra quầy và hàng đã đặt chưa về. Dòng chữ nhỏ dưới mỗi món ghi rõ từng số.' },
   { id: 'hoi-ipos-khong-tru', hoi: 'Bán trên iPOS mà kho không trừ?',
     dap: 'Mở **Kết nối iPOS** xem đèn: đỏ là mất kết nối — bấm **Cập nhật ngay**. Đèn vàng / số đỏ ở **Bán hàng iPOS**: món chưa ghép hoặc sổ thiếu hàng ở quầy — ghép món, nhận hàng đang mang ra, rồi **Thử lại**.' },
 ];

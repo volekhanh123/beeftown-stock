@@ -337,11 +337,17 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // Định lượng món (0038): món, định lượng, dán Excel, lấy món từ iPOS (danh_muc);
     // đối chiếu định mức (xem — SECURITY DEFINER, tiền chỉ trả khi xem_gia)
     'kho_luu_mon', 'kho_luu_dinh_luong', 'kho_nhap_dinh_luong', 'kho_mon_tu_ipos', 'kho_bao_cao_dinh_muc',
+    // Đặt hàng NCC (0039): lập nháp (nhap), gửi (nhap + duyet_nhap), hủy, đọc chỉ kg,
+    // gợi ý (không tiền), nhận theo đơn (nhap), đánh giá NCC (tiền chỉ xem_gia),
+    // mức kho lạnh của mặt hàng (danh_muc)
+    'kho_luu_don_dat', 'kho_gui_don_dat', 'kho_huy_don_dat', 'kho_ds_don_dat_kg', 'kho_doc_don_dat_kg',
+    'kho_goi_y_dat_hang', 'kho_tao_phieu_nhap_tu_don', 'kho_bao_cao_ncc', 'kho_luu_muc_dat_hang',
     // Hàm trigger — PostgREST không gọi được hàm trả về trigger
     'kho_vi_tri_kiem_sua', 'kho_truong_them_kiem_sua', 'kho_truong_them_kiem',
     'kho_mat_hang_chuan_hoa', 'kho_cong_thuc_pha_kiem', 'kho_lo_chan_sua_xoa',
     'kho_ton_chi_qua_so_cai', 'kho_so_cai_ghi', 'kho_so_cai_chan_sua_xoa',
     'kho_phieu_nhap_chan_huy_da_tra', 'kho_chan_vi_tri_di_duong', 'kho_cai_dat_ghi_moc',
+    'kho_phieu_nhap_kiem_don', 'kho_phieu_nhap_cap_nhat_don',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
@@ -356,6 +362,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ipos_ghi_dong', 'kho_ipos_lay_lo', 'kho_ipos_tu_nhan', 'kho_ipos_dao_dong', 'kho_ipos_mat_ket_noi',
     // 0038: bỏ dấu (cột sinh ten_khong_dau), số suất bán, tính định mức (có giá vốn)
     'kho_khong_dau', 'kho_dinh_muc_ban', 'kho_dinh_muc_tinh',
+    // 0039: số thành chữ, ngày giao mặc định, luật "đủ" của dòng đơn, tính lại kg đã nhận
+    'kho_so_chu', 'kho_ngay_giao_mac_dinh', 'kho_don_dat_dong_du', 'kho_don_dat_tinh_nhan',
   ].sort();
 
   const { rows } = await db.query(`

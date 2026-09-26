@@ -156,6 +156,10 @@ const CHAY_DA_DANG_NHAP = [
   // /noi-bo/kho/bao-cao/dinh-muc và file CSV của nó, bằng client của nhân sự. Không cột tiền
   // nào ở bảng món / định lượng; tiền lệch do database trả null khi không xem giá.
   'web/src/lib/kho/dinh-luong.ts',
+  // Đặt hàng NCC, gợi ý, nhận theo đơn, đánh giá NCC (GĐ8a, 0039) — chỉ gọi từ
+  // /noi-bo/kho/dat-hang/*, nhan-hang/moi, bao-cao/ncc và file CSV của nó, bằng client
+  // của nhân sự. Giá dự kiến chỉ đọc khi xem_gia (bảng / view có RLS xem_gia).
+  'web/src/lib/kho/dat-hang.ts',
   // Một lượt đồng bộ iPOS (GĐ7a): "Cập nhật ngay" chạy bằng client của quản lý / chủ;
   // cron đăng nhập tài khoản máy may_ipos (client anon riêng → sau signIn là authenticated).
   'web/src/lib/kho/ipos-dong-bo.ts',

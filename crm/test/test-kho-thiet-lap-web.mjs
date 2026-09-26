@@ -424,4 +424,4 @@ await nhom('9 · TRANG THIẾT LẬP VÀ TỒN ĐẦU KỲ', async () => {
   ok('Lưới đọc mặt hàng không có cột tiền', selMon !== '' && !/gia|tien/.test(selMon), selMon);
 });
 
-ketThuc('WEB THIẾT LẬP & TỒN ĐẦU KỲ');
+process.exit(ketThuc('WEB THIẾT LẬP & TỒN ĐẦU KỲ'));

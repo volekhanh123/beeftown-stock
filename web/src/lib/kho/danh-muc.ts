@@ -37,6 +37,9 @@ export interface MatHang {
   ton_toi_thieu_kg: number | null;
   /** Sau pha lóc, gói quét nhãn để ở đâu (0033): kho | quay; null = kho lạnh. */
   noi_de_sau_pha: 'kho' | 'quay' | null;
+  /** Mức kho lạnh cho gợi ý đặt hàng (0039, kg); null = chưa cài. */
+  kho_toi_thieu_kg: number | null;
+  kho_toi_da_kg: number | null;
   truong_them: GiaTriTruong;
   dang_dung: boolean;
   thu_tu: number;
@@ -51,6 +54,10 @@ export interface NhaCungCap {
   dia_chi: string | null;
   nguoi_lien_he: string | null;
   so_ngay_no: number;
+  /** Số ngày từ lúc đặt tới lúc hàng về (0039, mặc định 1). */
+  so_ngay_giao: number;
+  /** Thứ NCC giao (1 = Thứ Hai … 7 = Chủ nhật); null = ngày nào cũng giao (0039). */
+  ngay_giao_trong_tuan: number[] | null;
   ngan_hang: string | null;
   so_tai_khoan: string | null;
   ghi_chu: string | null;
@@ -106,6 +113,8 @@ export interface GiaTriFormMatHang {
   gia_ban_kg: string; xu_ly_mac_dinh: string; ma_can: string; ton_toi_thieu_kg: string;
   /** '' = kho lạnh (mặc định), 'quay' = quầy. */
   noi_de_sau_pha: string;
+  /** Mức kho lạnh cho gợi ý đặt hàng (0039). */
+  kho_toi_thieu_kg: string; kho_toi_da_kg: string;
   thu_tu: string; dang_dung: boolean; truong_them: GiaTriTruong; gia_tri_thu_hoi_kg: string;
 }
 
@@ -179,13 +188,15 @@ export async function luuDinhNghia(client: SupabaseClient, form: FormData, daCo:
 export async function docMatHang(client: SupabaseClient): Promise<MatHang[]> {
   const { data, error } = await client
     .from('kho_mat_hang')
-    .select('id, ma, ten, ten_phu, nhom, loai, dem_goi, don_vi_goi, han_dung_ngay, canh_bao_truoc_ngay, gia_ban_kg, xu_ly_mac_dinh, ma_can, ton_toi_thieu_kg, noi_de_sau_pha, truong_them, dang_dung, thu_tu')
+    .select('id, ma, ten, ten_phu, nhom, loai, dem_goi, don_vi_goi, han_dung_ngay, canh_bao_truoc_ngay, gia_ban_kg, xu_ly_mac_dinh, ma_can, ton_toi_thieu_kg, noi_de_sau_pha, kho_toi_thieu_kg, kho_toi_da_kg, truong_them, dang_dung, thu_tu')
     .order('loai').order('thu_tu').order('ten');
   if (error) throw error;
   return (data ?? []).map(r => ({
     ...r,
     gia_ban_kg: r.gia_ban_kg === null ? null : Number(r.gia_ban_kg),
     ton_toi_thieu_kg: r.ton_toi_thieu_kg === null ? null : Number(r.ton_toi_thieu_kg),
+    kho_toi_thieu_kg: r.kho_toi_thieu_kg === null || r.kho_toi_thieu_kg === undefined ? null : Number(r.kho_toi_thieu_kg),
+    kho_toi_da_kg: r.kho_toi_da_kg === null || r.kho_toi_da_kg === undefined ? null : Number(r.kho_toi_da_kg),
     noi_de_sau_pha: r.noi_de_sau_pha === 'kho' || r.noi_de_sau_pha === 'quay' ? r.noi_de_sau_pha : null,
   })) as MatHang[];
 }
@@ -221,6 +232,13 @@ export async function luuMatHang(
   if (Number.isNaN(gia)) return { ok: false, cau: 'Giá bán/kg phải là số đồng, ví dụ 650.000.' };
   if (Number.isNaN(tonMin)) return { ok: false, cau: 'Tồn tối thiểu là số kg, ví dụ 2,5.' };
   if (maCan && !/^[1-9]\d{0,5}$/.test(maCan)) return { ok: false, cau: 'Mã cân là dãy số (tối đa 6 số), đúng như mã hàng cài trên cân.' };
+  // Mức kho lạnh (0039) — chỉ khi form có hai ô này. Ghi qua kho_luu_muc_dat_hang sau khi lưu mặt hàng.
+  const coMucKho = form.has('kho_toi_da_kg') || form.has('kho_toi_thieu_kg');
+  const khoMin = docKg(form.get('kho_toi_thieu_kg'));
+  const khoMax = docKg(form.get('kho_toi_da_kg'));
+  if (Number.isNaN(khoMin) || Number.isNaN(khoMax)) return { ok: false, cau: 'Mức kho lạnh là số kg, ví dụ 20 hoặc 12,5.' };
+  if (khoMax === 0) return { ok: false, cau: 'Mức tối đa kho lạnh phải lớn hơn 0 (bỏ trống nếu không dùng).' };
+  if (khoMin !== null && khoMax !== null && khoMin > khoMax) return { ok: false, cau: 'Mức tối thiểu kho lạnh không được lớn hơn mức tối đa.' };
 
   const { giaTri, loi } = docTruongThem(form, dinhNghia, undefined, cu?.truong_them ?? {});
   if (loi.length) return { ok: false, cau: loi.join(' · ') };
@@ -255,6 +273,13 @@ export async function luuMatHang(
     const { data, error } = await client.from('kho_mat_hang').insert(dong).select('id').single();
     if (error) return { ok: false, cau: cauLoiKho(error) };
     id = data.id;
+  }
+
+  if (coMucKho && id && ((cu?.kho_toi_thieu_kg ?? null) !== khoMin || (cu?.kho_toi_da_kg ?? null) !== khoMax || !cu)) {
+    const { error } = await client.rpc('kho_luu_muc_dat_hang', {
+      p_mat_hang_id: id, p_kho_toi_thieu_kg: khoMin, p_kho_toi_da_kg: khoMax,
+    });
+    if (error) return { ok: false, cau: `Đã lưu mặt hàng, nhưng chưa lưu được mức kho lạnh: ${cauLoiKho(error)}` };
   }
 
   // Giá trị thu hồi phụ phẩm nằm ở bảng riêng (số liệu giá vốn).
@@ -685,7 +710,7 @@ export async function taoDanhMucMau(client: SupabaseClient): Promise<KetQua> {
 export async function docNhaCungCap(client: SupabaseClient): Promise<NhaCungCap[]> {
   const { data, error } = await client
     .from('kho_nha_cung_cap')
-    .select('id, ten, ma_so_thue, dien_thoai, email, dia_chi, nguoi_lien_he, so_ngay_no, ngan_hang, so_tai_khoan, ghi_chu, truong_them, dang_dung')
+    .select('id, ten, ma_so_thue, dien_thoai, email, dia_chi, nguoi_lien_he, so_ngay_no, so_ngay_giao, ngay_giao_trong_tuan, ngan_hang, so_tai_khoan, ghi_chu, truong_them, dang_dung')
     .order('dang_dung', { ascending: false }).order('ten');
   if (error) throw error;
   return (data ?? []) as NhaCungCap[];
@@ -700,6 +725,11 @@ export async function luuNhaCungCap(
   if (mst && !/^\d{10}(-\d{3})?$/.test(mst)) return { ok: false, cau: 'Mã số thuế là 10 số (hoặc 10 số-3 số).' };
   const soNgayNo = docSoNguyen(form.get('so_ngay_no'), 0, 365);
   if (Number.isNaN(soNgayNo)) return { ok: false, cau: 'Số ngày nợ từ 0 đến 365.' };
+  // Đặt hàng (0039): số ngày giao 0–60 (trống = 1), thứ giao là các ô tích `thu_giao`.
+  const soNgayGiao = docSoNguyen(form.get('so_ngay_giao'), 0, 60);
+  if (Number.isNaN(soNgayGiao)) return { ok: false, cau: 'Số ngày giao hàng từ 0 đến 60.' };
+  const thuGiao = [...new Set(form.getAll('thu_giao').map(v => Number(v)))]
+    .filter(n => Number.isInteger(n) && n >= 1 && n <= 7).sort((a, b) => a - b);
 
   const { giaTri, loi } = docTruongThem(form, dinhNghia, undefined, cu?.truong_them ?? {});
   if (loi.length) return { ok: false, cau: loi.join(' · ') };
@@ -712,6 +742,9 @@ export async function luuNhaCungCap(
     dia_chi: sHoacNull(form, 'dia_chi'),
     nguoi_lien_he: sHoacNull(form, 'nguoi_lien_he'),
     so_ngay_no: soNgayNo ?? 0,
+    so_ngay_giao: soNgayGiao ?? 1,
+    // Tích đủ 7 ngày hoặc không tích ngày nào = ngày nào cũng giao.
+    ngay_giao_trong_tuan: thuGiao.length === 0 || thuGiao.length === 7 ? null : thuGiao,
     ngan_hang: sHoacNull(form, 'ngan_hang'),
     so_tai_khoan: sHoacNull(form, 'so_tai_khoan'),
     ghi_chu: sHoacNull(form, 'ghi_chu'),

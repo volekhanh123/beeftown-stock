@@ -64,6 +64,11 @@ export const MUC_KHO: MucKho[] = [
     dem: ['nhap_nhap', 'nhap_bi_tra'] },
   // Nhập hàng: phiếu có tiền — điền giá, duyệt, xem lại (vai xem giá).
   { ma: 'nhap', ten: 'Nhập hàng', link: '/noi-bo/kho/nhap', bieuTuong: 'nhap', quyen: ['xem_gia'] },
+  // GĐ8a (0039): đơn đặt hàng nhà cung cấp — quản lý / chủ lập và gửi, thủ kho lập
+  // nháp chỉ kg (quyền nhap). Số đỏ: đơn đã gửi quá ngày giao mà chưa thấy hàng
+  // (don_dat_tre — chỉ quản lý, chủ nhận). Kế toán xem đơn qua link (trang cho xem_gia).
+  { ma: 'dat_hang', ten: 'Đặt hàng', link: '/noi-bo/kho/dat-hang', bieuTuong: 'dat_hang', quyen: ['nhap'],
+    dem: ['don_dat_tre'] },
   { ma: 'pha_loc', ten: 'Pha lóc', link: '/noi-bo/kho/pha-loc', bieuTuong: 'dao', quyen: ['xem_gia', 'pha_loc'],
     dem: ['pha_nhap', 'thu_hoi_thap'] },   // 0033: quản lý thấy phiên thu hồi thấp chưa xem
   // Quầy yêu cầu → thủ kho mang ra → quầy bấm nhận (0032). Số đỏ: thủ kho thấy
@@ -146,6 +151,7 @@ export const THAO_TAC_NHANH: Record<string, ThaoTac[]> = {
   ],
   quan_ly: [
     { ten: 'Duyệt', link: '/noi-bo/kho/duyet', bieuTuong: 'duyet', quyen: ['duyet', 'duyet_nhap'] },
+    { ten: 'Đặt hàng', link: '/noi-bo/kho/dat-hang/moi', bieuTuong: 'dat_hang', quyen: ['nhap'] },
     { ten: 'Kiểm kê', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['xem'] },
     { ten: 'Tồn kho', link: '/noi-bo/kho/ton', bieuTuong: 'ton', quyen: ['xem'] },
     { ten: 'Báo cáo', link: '/noi-bo/kho/bao-cao', bieuTuong: 'bao_cao', quyen: ['xem_gia'] },

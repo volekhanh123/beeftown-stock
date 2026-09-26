@@ -220,4 +220,4 @@ await nhom('6 · TRANG, MENU, HƯỚNG DẪN, CẢNH BÁO', async () => {
   ok('Có trang cho link cảnh báo', existsSync(join(TRANG, 'noi-bo/kho/bao-cao/dinh-muc.astro')));
 });
 
-ketThuc('WEB ĐỊNH LƯỢNG & ĐỊNH MỨC');
+process.exit(ketThuc('WEB ĐỊNH LƯỢNG & ĐỊNH MỨC'));

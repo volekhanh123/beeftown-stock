@@ -5,6 +5,10 @@
  * Quản lý, chủ nhà hàng và kế toán sửa được (kế toán cần mã số thuế, tài
  * khoản ngân hàng để thanh toán). Số ngày nợ là hạn thanh toán mặc định, tính
  * từ ngày hóa đơn — phiếu nhập tự điền hạn khi được duyệt.
+ *
+ * Đặt hàng (GĐ8a, 0039): số ngày giao (từ lúc đặt tới lúc hàng về, mặc định 1)
+ * và thứ giao trong tuần (không tích = ngày nào cũng giao) — ngày giao dự kiến
+ * và gợi ý số kg nên đặt dùng hai ô này.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -12,6 +16,7 @@ import TruongThem from '../../../../components/kho/TruongThem.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docNhaCungCap, docDinhNghia, luuNhaCungCap, type NhaCungCap } from '../../../../lib/kho/danh-muc.ts';
 import { cauLoiKho, type KetQua } from '../../../../lib/kho/chung.ts';
+import { THU_TRONG_TUAN, chuThuGiao } from '../../../../lib/kho/dat-hang.ts';
 import { docTruongThem, hienThiGiaTri, type DinhNghiaTruong, type GiaTriTruong } from '../../../../lib/kho/truong-them.ts';
 
 const k = await moTrangKho(Astro);
@@ -41,14 +46,17 @@ const dangSua = ds.find(n => n.id === suaId);
 const g = (ten: string, macDinh = '') => (nhapLai ? String(nhapLai.get(ten) ?? '') : macDinh);
 
 type GiaTri = { id?: string; ten: string; ma_so_thue: string; dien_thoai: string; email: string; dia_chi: string;
-  nguoi_lien_he: string; so_ngay_no: string; ngan_hang: string; so_tai_khoan: string; ghi_chu: string;
+  nguoi_lien_he: string; so_ngay_no: string; so_ngay_giao: string; thu_giao: number[]; ngan_hang: string; so_tai_khoan: string; ghi_chu: string;
   dang_dung: boolean; truong_them: GiaTriTruong };
 const tu = (n?: NhaCungCap): GiaTri => ({
   id: n?.id,
   ten: g('ten', n?.ten ?? ''), ma_so_thue: g('ma_so_thue', n?.ma_so_thue ?? ''),
   dien_thoai: g('dien_thoai', n?.dien_thoai ?? ''), email: g('email', n?.email ?? ''),
   dia_chi: g('dia_chi', n?.dia_chi ?? ''), nguoi_lien_he: g('nguoi_lien_he', n?.nguoi_lien_he ?? ''),
-  so_ngay_no: g('so_ngay_no', String(n?.so_ngay_no ?? 0)), ngan_hang: g('ngan_hang', n?.ngan_hang ?? ''),
+  so_ngay_no: g('so_ngay_no', String(n?.so_ngay_no ?? 0)),
+  so_ngay_giao: g('so_ngay_giao', String(n?.so_ngay_giao ?? 1)),
+  thu_giao: nhapLai ? nhapLai.getAll('thu_giao').map(Number) : (n?.ngay_giao_trong_tuan ?? []),
+  ngan_hang: g('ngan_hang', n?.ngan_hang ?? ''),
   so_tai_khoan: g('so_tai_khoan', n?.so_tai_khoan ?? ''), ghi_chu: g('ghi_chu', n?.ghi_chu ?? ''),
   dang_dung: nhapLai ? nhapLai.get('dang_dung') !== 'khong' : (n?.dang_dung ?? true),
   truong_them: nhapLai ? docTruongThem(nhapLai, dinhNghia, undefined, n?.truong_them ?? {}).giaTri : (n?.truong_them ?? {}),
@@ -75,6 +83,9 @@ const moForm = !!dangSua || ds.length === 0 || !!nhapLai;
           <label class="nb-o"><span>Số ngày nợ</span>
             <small>Hạn thanh toán = ngày hóa đơn + số ngày này.</small>
             <input type="text" inputmode="numeric" name="so_ngay_no" value={gt.so_ngay_no} /></label>
+          <label class="nb-o"><span>Số ngày giao hàng</span>
+            <small>Đặt hôm nay thì mấy ngày sau hàng về (0 = trong ngày).</small>
+            <input type="text" inputmode="numeric" name="so_ngay_giao" value={gt.so_ngay_giao} /></label>
           <label class="nb-o"><span>Người liên hệ</span>
             <input type="text" name="nguoi_lien_he" value={gt.nguoi_lien_he} /></label>
           <label class="nb-o"><span>Điện thoại</span>
@@ -82,6 +93,15 @@ const moForm = !!dangSua || ds.length === 0 || !!nhapLai;
           <label class="nb-o"><span>Email</span>
             <input type="email" name="email" value={gt.email} /></label>
         </div>
+        <fieldset class="nb-o ncc-thu">
+          <legend>Thứ giao hàng</legend>
+          <small>Không tích ngày nào = ngày nào cũng giao.</small>
+          <div class="ncc-thu-ds">
+            {THU_TRONG_TUAN.map(([so, ten]) => (
+              <label><input type="checkbox" name="thu_giao" value={String(so)} checked={gt.thu_giao.includes(so)} /> {ten}</label>
+            ))}
+          </div>
+        </fieldset>
         <label class="nb-o"><span>Địa chỉ</span><input type="text" name="dia_chi" value={gt.dia_chi} /></label>
         <div class="kho-luoi">
           <label class="nb-o"><span>Ngân hàng</span><input type="text" name="ngan_hang" value={gt.ngan_hang} /></label>
@@ -110,6 +130,7 @@ const moForm = !!dangSua || ds.length === 0 || !!nhapLai;
       <dl>
         {n.ma_so_thue && <><dt>MST</dt><dd>{n.ma_so_thue}</dd></>}
         <dt>Nợ</dt><dd>{n.so_ngay_no ? `${n.so_ngay_no} ngày` : 'trả ngay'}</dd>
+        <dt>Giao hàng</dt><dd>{n.so_ngay_giao ? `sau ${n.so_ngay_giao} ngày` : 'trong ngày'} · {chuThuGiao(n.ngay_giao_trong_tuan)}</dd>
         {(n.nguoi_lien_he || n.dien_thoai) && <><dt>Liên hệ</dt><dd>{[n.nguoi_lien_he, n.dien_thoai].filter(Boolean).join(' · ')}</dd></>}
         {n.so_tai_khoan && <><dt>Tài khoản</dt><dd>{n.so_tai_khoan}{n.ngan_hang ? ` · ${n.ngan_hang}` : ''}</dd></>}
         {dinhNghia.filter(d => n.truong_them?.[d.khoa] !== undefined).map(d => (
@@ -120,3 +141,12 @@ const moForm = !!dangSua || ds.length === 0 || !!nhapLai;
     </div>
   ))}
 </Kho>
+
+<style>
+  .ncc-thu { border: 0; padding: 0; margin: 0 0 1rem; }
+  .ncc-thu legend { font-weight: 600; padding: 0; }
+  .ncc-thu-ds { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .35rem; }
+  .ncc-thu-ds label { display: flex; align-items: center; gap: .35rem; min-height: 48px; min-width: 3.5rem;
+    padding: 0 .6rem; border: 1px solid var(--kho-vach, #ddd); border-radius: 10px; background: #fff; }
+  .ncc-thu-ds input { width: 1.2rem; height: 1.2rem; }
+</style>
