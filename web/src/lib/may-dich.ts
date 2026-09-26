@@ -56,6 +56,23 @@ export const MAU_MAY_MAC_DINH = 'gemini-flash-latest';
 const DIA_CHI_API = 'https://generativelanguage.googleapis.com/v1beta/models/';
 
 /**
+ * Mức suy nghĩ gửi kèm (Gemini 3.x: thinkingConfig.thinkingLevel). Mặc định
+ * của 3.5 Flash là "medium": máy nghĩ trước rồi mới viết, và lượt dịch bù đầu
+ * tiên sau khi ghim Singapore (26/09/2026) quá 25 giây hết giờ. Dịch theo quy
+ * tắc có sẵn không cần suy luận sâu; "LOW" là mức thấp nhất mọi bản 3.x Flash
+ * đều nhận. Mẫu không nhận tham số này (vd. GEMINI_MODEL trỏ về một bản 2.x)
+ * trả 400 nhắc tới "thinking" — khi đó gọi lại một lần, không kèm mức suy nghĩ.
+ */
+const MUC_NGHI = 'LOW';
+
+/**
+ * Mỗi lời gọi tối đa chừng này chữ tiếng Việt. Máy viết cả bản Anh lẫn bản
+ * Hàn nên chữ ra gấp đôi chữ vào; vài lời gọi nhỏ chạy song song (dichTheoNhom)
+ * xong sớm hơn nhiều so với một lời gọi lớn.
+ */
+export const TOI_DA_CHU_MOT_LOI_GOI = 2000;
+
+/**
  * Quy tắc dịch — viết bằng tiếng Anh vì đó là thứ tiếng máy làm theo sát
  * nhất. Mỗi dòng ở đây trả lời cho một lỗi có thật hoặc một luật thương hiệu:
  *
@@ -120,8 +137,8 @@ interface GeminiTraVe {
 }
 
 /**
- * Dịch một lượt. Một lượt là MỘT lời gọi API, nên người gọi tự chia nhỏ nếu
- * danh sách dài (lib/ban-dich.ts giới hạn số câu và số chữ mỗi lượt).
+ * Dịch trong MỘT lời gọi API. Danh sách dài thì dùng dichTheoNhom — một lời
+ * gọi quá nhiều chữ sẽ hết giờ.
  */
 export async function dichSangAnhHan(
   cau: CauCanDich[], cauHinh: CauHinhMayDich,
@@ -137,30 +154,40 @@ export async function dichSangAnhHan(
 
   const mauMay = cauHinh.mauMay?.trim() || MAU_MAY_MAC_DINH;
   const goi = cauHinh.goi ?? fetch;
+  const khoa = cauHinh.khoa;
+  // Dưới 30 giây: việc chạy nền của Worker bị cắt sau khoảng đó. Một hạn
+  // chung cho lời gọi đầu và lần gọi lại (nếu có).
+  const hetLuc = Date.now() + (cauHinh.hetGioMs ?? 25_000);
+
+  const guiDi = (kemMucNghi: boolean) => goi(`${DIA_CHI_API}${encodeURIComponent(mauMay)}:generateContent`, {
+    method: 'POST',
+    // Khóa đi bằng header, không bằng ?key= trên URL: URL hay nằm lại trong
+    // nhật ký của đủ loại máy trung gian.
+    headers: { 'content-type': 'application/json', 'x-goog-api-key': khoa },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: QUY_TAC_DICH }] },
+      contents: [{
+        role: 'user',
+        parts: [{ text: JSON.stringify(cau.map(c => ({ khoa: c.khoa, vi: c.vi }))) }],
+      }],
+      generationConfig: {
+        // Thấp để hai lần dịch cùng một câu ra gần như cùng một bản.
+        temperature: 0.2,
+        responseMimeType: 'application/json',
+        responseSchema: KHUON_TRA_VE,
+        ...(kemMucNghi ? { thinkingConfig: { thinkingLevel: MUC_NGHI } } : {}),
+      },
+    }),
+    signal: AbortSignal.timeout(Math.max(1, hetLuc - Date.now())),
+  });
 
   let tra: Response;
   try {
-    tra = await goi(`${DIA_CHI_API}${encodeURIComponent(mauMay)}:generateContent`, {
-      method: 'POST',
-      // Khóa đi bằng header, không bằng ?key= trên URL: URL hay nằm lại trong
-      // nhật ký của đủ loại máy trung gian.
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': cauHinh.khoa },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: QUY_TAC_DICH }] },
-        contents: [{
-          role: 'user',
-          parts: [{ text: JSON.stringify(cau.map(c => ({ khoa: c.khoa, vi: c.vi }))) }],
-        }],
-        generationConfig: {
-          // Thấp để hai lần dịch cùng một câu ra gần như cùng một bản.
-          temperature: 0.2,
-          responseMimeType: 'application/json',
-          responseSchema: KHUON_TRA_VE,
-        },
-      }),
-      // Dưới 30 giây: việc chạy nền của Worker bị cắt sau khoảng đó.
-      signal: AbortSignal.timeout(cauHinh.hetGioMs ?? 25_000),
-    });
+    tra = await guiDi(true);
+    // Đọc bản sao: thân gốc còn để moTaLoiHttp đọc nếu lỗi không phải chuyện này.
+    if (tra.status === 400 && /thinking/i.test(await tra.clone().text().catch(() => ''))) {
+      tra = await guiDi(false);
+    }
   } catch (e) {
     const tenLoi = e instanceof Error ? e.name : '';
     return loiChung(tenLoi === 'TimeoutError' || tenLoi === 'AbortError'
@@ -205,6 +232,30 @@ export async function dichSangAnhHan(
     const m = theoKhoa.get(c.khoa);
     return { khoa: c.khoa, en: loc(m?.en), ko: loc(m?.ko) };
   });
+}
+
+/**
+ * Như dichSangAnhHan, nhưng chia danh sách thành các lời gọi tối đa `toiDaChu`
+ * chữ, chạy SONG SONG. Kết quả đúng thứ tự đầu vào. Một câu dài hơn mức đó
+ * vẫn đi một mình trong một lời gọi — không cắt đôi câu.
+ */
+export async function dichTheoNhom(
+  cau: CauCanDich[], cauHinh: CauHinhMayDich, toiDaChu = TOI_DA_CHU_MOT_LOI_GOI,
+): Promise<BanDichCuaCau[]> {
+  const nhom: CauCanDich[][] = [];
+  let dang: CauCanDich[] = [];
+  let chu = 0;
+  for (const c of cau) {
+    if (dang.length > 0 && chu + c.vi.length > toiDaChu) {
+      nhom.push(dang);
+      dang = [];
+      chu = 0;
+    }
+    dang.push(c);
+    chu += c.vi.length;
+  }
+  if (dang.length > 0) nhom.push(dang);
+  return (await Promise.all(nhom.map(g => dichSangAnhHan(g, cauHinh)))).flat();
 }
 
 /** Chuẩn hóa một bản dịch và cho nó qua bộ lọc chữ cấm. */
