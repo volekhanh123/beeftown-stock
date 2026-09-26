@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN KHO — 0043 · LÝ DO XUẤT BẾP KHÔNG TÍNH ĐỊNH MỨC ("Cơm nhân viên")
+-- BEEFTOWN KHO — 0044 · LÝ DO XUẤT BẾP KHÔNG TÍNH ĐỊNH MỨC ("Cơm nhân viên")
 -- =============================================================================
 -- Chủ đã chốt (26/09): phiếu Xuất bếp lý do "Cơm nhân viên" KHÔNG tính vào
 -- định mức bếp. Trước đây kho_dinh_muc_tinh (0038) cộng MỌI dòng sổ xuat_bep
@@ -34,7 +34,7 @@
 alter table kho_ly_do add column tinh_dinh_muc boolean not null default true;
 
 comment on column kho_ly_do.tinh_dinh_muc is
-  'Chỉ với lý do Xuất bếp: false = phiếu Xuất bếp có lý do này KHÔNG cộng vào "bếp nhận" khi đối chiếu định mức (mặc định false cho "Cơm nhân viên"). 0043.';
+  'Chỉ với lý do Xuất bếp: false = phiếu Xuất bếp có lý do này KHÔNG cộng vào "bếp nhận" khi đối chiếu định mức (mặc định false cho "Cơm nhân viên"). 0044.';
 
 update kho_ly_do
 set tinh_dinh_muc = false
@@ -67,7 +67,7 @@ create trigger kho_ly_do_dinh_muc_mac_dinh_trigger
 -- 3 · KG BẾP NHẬN — bỏ phiếu Xuất bếp có lý do không tính định mức
 -- =============================================================================
 -- Theo mặt hàng: kg bếp nhận (xuất bếp + chuyển bếp khi pha, trừ đảo ngược;
--- 0043: trừ phiếu Xuất bếp có lý do tinh_dinh_muc = false), kg lẽ ra dùng
+-- 0044: trừ phiếu Xuất bếp có lý do tinh_dinh_muc = false), kg lẽ ra dùng
 -- (suất × gram), số suất của các món dùng mặt hàng đó, giá vốn trung bình của
 -- phần bếp nhận (đ/kg). Kỳ bếp không nhận mặt hàng đó thì lấy giá vốn trung
 -- bình mọi lô của mặt hàng ở chi nhánh; chưa lô nào có giá → null.
@@ -89,7 +89,7 @@ as $$
     left join kho_lo_gia lg on lg.lo_id = s.lo_id
     where s.chi_nhanh_id = p_chi_nhanh_id and s.ngay between p_tu and p_den
       and coalesce(g.loai, s.loai) = 'xuat_bep'
-      -- 0043: phiếu Xuất bếp có lý do không tính định mức (Cơm nhân viên…)
+      -- 0044: phiếu Xuất bếp có lý do không tính định mức (Cơm nhân viên…)
       and not exists (
         select 1
         from kho_phieu_xuat px
@@ -128,7 +128,7 @@ as $$
 $$;
 
 comment on function kho_dinh_muc_tinh is
-  'NỘI BỘ (0038, 0043). Theo mặt hàng trong kỳ: kg_xuat_bep (sổ loai xuat_bep: phiếu Xuất bếp + chuyển bếp khi chốt pha lóc, trừ đảo ngược; BỎ phiếu Xuất bếp có lý do tinh_dinh_muc = false, mặc định "Cơm nhân viên"), kg_ly_thuyet (suất bán iPOS × gram / 1000), so_suat, gia_von_tb_kg (của phần bếp nhận; bếp không nhận thì TB mọi lô của mặt hàng — CÓ TIỀN, chỉ hàm gọi kiểm xem_gia mới được trả ra).';
+  'NỘI BỘ (0038, 0044). Theo mặt hàng trong kỳ: kg_xuat_bep (sổ loai xuat_bep: phiếu Xuất bếp + chuyển bếp khi chốt pha lóc, trừ đảo ngược; BỎ phiếu Xuất bếp có lý do tinh_dinh_muc = false, mặc định "Cơm nhân viên"), kg_ly_thuyet (suất bán iPOS × gram / 1000), so_suat, gia_von_tb_kg (của phần bếp nhận; bếp không nhận thì TB mọi lô của mặt hàng — CÓ TIỀN, chỉ hàm gọi kiểm xem_gia mới được trả ra).';
 
 
 -- =============================================================================

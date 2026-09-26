@@ -88,7 +88,7 @@ export interface LyDo {
   can_anh: boolean;
   dang_dung: boolean;
   thu_tu: number;
-  /** Chỉ có nghĩa với lý do Xuất bếp (0043): false = phiếu xuất bếp lý do này KHÔNG tính vào định mức (vd Cơm nhân viên). */
+  /** Chỉ có nghĩa với lý do Xuất bếp (0044): false = phiếu xuất bếp lý do này KHÔNG tính vào định mức (vd Cơm nhân viên). */
   tinh_dinh_muc: boolean;
 }
 

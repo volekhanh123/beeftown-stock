@@ -57,7 +57,7 @@ nhom('1 · CÂU LỖI DATABASE PHẦN CRM CÓ BẢN TIẾNG ANH');
 {
   // Migration phần kho (0017–0024, 0029_kho, 0030–0035 và các số sau của nhánh
   // kho) chưa có tiếng Anh — kiểm khi làm đợt kho.
-  const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042)/;
+  const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042|0044_kho)/;
   const tep = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql') && !KHO.test(f)).sort();
   const cau = new Map();
   for (const f of tep) {

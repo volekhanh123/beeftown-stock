@@ -144,7 +144,7 @@ await nhom('2 · VỊ TRÍ + LÝ DO MỘT FORM — HÀM THUẦN', async () => {
   ok('Phiên bản đổi khi có người sửa một chữ', pb !== phienBanViTriLyDo([{ ...vt[0], ten: 'Kho lạnh 1' }, vt[1]], ld)
     && pb === phienBanViTriLyDo([...vt].reverse(), ld));
 
-  // Ô tích "Tính vào định mức bếp" (0043) — chỉ lý do Xuất bếp.
+  // Ô tích "Tính vào định mức bếp" (0044) — chỉ lý do Xuất bếp.
   const ldDm = [
     { id: id(21), loai: 'huy', ten: 'Hết hạn', can_anh: true, dang_dung: true, thu_tu: 1, tinh_dinh_muc: true },
     { id: id(22), loai: 'xuat_bep', ten: 'Cơm nhân viên', can_anh: false, dang_dung: true, thu_tu: 1, tinh_dinh_muc: false },

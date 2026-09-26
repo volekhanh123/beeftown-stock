@@ -16,7 +16,7 @@
  *     dòng đã trừ kho không đếm; thủ kho / NV quầy không thấy tiền;
  *   · cảnh báo dinh_muc_lech khi vượt ngưỡng, không khi dưới / bằng ngưỡng;
  *   · kho không bị trừ theo định lượng — kho_doi_soat_ton() rỗng;
- *   · (0043) phiếu Xuất bếp lý do "Cơm nhân viên" KHÔNG tính vào bếp nhận; quản lý
+ *   · (0044) phiếu Xuất bếp lý do "Cơm nhân viên" KHÔNG tính vào bếp nhận; quản lý
  *     bật lại được (tinh_dinh_muc); lý do mới tên đó mặc định không tính.
  */
 
@@ -473,7 +473,7 @@ await nhom('10 · CẢNH BÁO dinh_muc_lech (7 NGÀY, NGƯỠNG nguong_dinh_muc_
 });
 
 // ===========================================================================
-await nhom('11 · CƠM NHÂN VIÊN KHÔNG TÍNH VÀO ĐỊNH MỨC (0043)', async () => {
+await nhom('11 · CƠM NHÂN VIÊN KHÔNG TÍNH VÀO ĐỊNH MỨC (0044)', async () => {
   const tu = await ngaySau(-1);
   const lyDo = async ten => (await db.query(
     `select id, tinh_dinh_muc from kho_ly_do where loai = 'xuat_bep' and ten = $1`, [ten])).rows[0];
