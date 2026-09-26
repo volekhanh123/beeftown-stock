@@ -224,8 +224,8 @@ nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
   //   (a) format('…') có chữ Việt: tự trích, %s %I %L là chỗ giá trị (chưa hàm kho nào dùng);
   //   (b) câu ghép bằng || và chuỗi cố định: danh sách TRA_VE, viết như lúc chạy, % ở chỗ giá trị;
   //   (c) mọi chuỗi tiếng Việt khác của migration kho phải nằm trong một câu của TRA_VE — trừ dữ
-  //       liệu (dòng mẫu kho_mat_hang / kho_vi_tri / kho_ly_do, mặc định cột), file MISA
-  //       (kho_du_lieu_misa: đúng mẫu tiếng Việt của MISA) và chuỗi so khớp nội bộ.
+  //       liệu (dòng mẫu kho_mat_hang / kho_vi_tri / kho_ly_do, mặc định cột), các hàm ở
+  //       HAM_KHONG_TRA (lý do kèm theo) và chuỗi so khớp nội bộ.
   const dinhDang = [];
   for (const f of tep) {
     const s = readFileSync(join(MIGRATIONS_DIR, f), 'utf8').replace(/--[^\n]*/g, '');
@@ -355,16 +355,6 @@ nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
     'iPOS báo bán % gói "%" — số gói phải là số nguyên. Món này bán theo kg thì đổi "Bán theo" ở Ghép món',
     '"%" tính theo kg mà iPOS bán theo gói — điền "mỗi gói = … kg" ở Ghép món',
   ]) TRA_VE.push(`Chưa ghi được: ${x}`);
-  // 0039 kho_goi_y_dat_hang — lời giải thích gợi ý đặt hàng: đủ tổ hợp phần tùy chọn.
-  const duoi = ['', '. Dưới mức tối thiểu % kg!'];
-  for (const c of ['', ' (đang có % kg)']) for (const d of duoi) {
-    TRA_VE.push(`Chưa bán / dùng trong 28 ngày qua và chưa cài mức tối đa kho lạnh — tự quyết số đặt${c}${d}`);
-  }
-  for (const x of ['mức tối đa kho lạnh', 'dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng'])
-    for (const dd of ['', ', đang mang ra quầy % kg']) for (const dat of ['', ', đã đặt chưa về % kg'])
-      for (const nghi of [' → nên đặt % kg', ' → chưa cần đặt']) for (const d of duoi) {
-        TRA_VE.push(`Cần % kg (${x}); đang có % kg${dd}${dat}${nghi}${d}`);
-      }
   // 0040 kho_cong_no_theo_ky — diễn giải dòng thanh toán: nhãn [+ ": ghi chú"] + " — phiếu …".
   for (const n of ['Trả tiền', 'Trả tiền (chuyển khoản)', 'Trả tiền (tiền mặt)', 'Giảm trừ', 'Bù trừ công nợ',
                    'Nhà cung cấp hoàn tiền', 'Nhà cung cấp hoàn tiền (chuyển khoản)', 'Nhà cung cấp hoàn tiền (tiền mặt)']) {
@@ -372,8 +362,12 @@ nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
   }
   const thieuTV = TRA_VE.filter(c => !dichDuoc(c));
   ok(`${TRA_VE.length} câu hàm kho trả về / ghi cho người đọc đều có bản tiếng Anh`,
-     TRA_VE.length > 200 && thieuTV.length === 0, thieuTV.slice(0, 5).join(' | '));
+     TRA_VE.length > 150 && thieuTV.length === 0, thieuTV.slice(0, 5).join(' | '));
 
+  const HAM_KHONG_TRA = {   // hàm có chuỗi tiếng Việt không tra bảng — kèm lý do
+    kho_du_lieu_misa: 'nội dung file nhập MISA — phải đúng mẫu tiếng Việt của MISA',
+    kho_goi_y_dat_hang: 'lời giải thích gợi ý đặt hàng — lib/kho/dat-hang.ts cauGoiYDat dựng câu tiếng Anh từ các cột số',
+  };
   const NOI_BO = ['đĐ', 'cơm nhân viên'];   // so khớp trong SQL, không hiện cho ai
   const chuaPhu = new Set();
   let soChuoi = 0;
@@ -386,7 +380,7 @@ nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
       const lenh = s.slice(Math.max(s.lastIndexOf(';', m.index), s.lastIndexOf('$$', m.index)) + 1, m.index);
       if (/\braise\s+(exception|notice|warning|info|log|debug)\b/i.test(lenh) || /^\s*comment\s+on\b/i.test(lenh)) continue;
       if (/\binsert\s+into\s+kho_(mat_hang|vi_tri|ly_do)\b/i.test(lenh) || /\bdefault\s*$/i.test(lenh)) continue;
-      if (cacHam.filter(h => h.index < m.index).pop()?.[1] === 'kho_du_lieu_misa' || NOI_BO.includes(c)) continue;
+      if (Object.hasOwn(HAM_KHONG_TRA, cacHam.filter(h => h.index < m.index).pop()?.[1] ?? '') || NOI_BO.includes(c)) continue;
       soChuoi++;
       if (!TRA_VE.some(t => t.includes(c))) chuaPhu.add(`[${f.slice(0, 4)}] ${c}`);
     }
