@@ -217,6 +217,182 @@ nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
   }
   ok('Câu lỗi chung của kho (cauLoiKho) có bản tiếng Anh',
      Object.values(chung.LOI_KHO_CHUNG).every(c => dichCau('en', c.vi) === c.en));
+
+  // ---- Câu hàm kho TRẢ VỀ / GHI vào bảng cho người đọc (không phải raise) -------------
+  // Câu báo xong việc, lý do dòng bán iPOS, ghi chú sổ kho / phiếu, cảnh báo, lỗi từng dòng…
+  // Thư viện hiện chúng qua KetQua.cau hoặc in thẳng — màn tiếng Anh tra dichCau().
+  //   (a) format('…') có chữ Việt: tự trích, %s %I %L là chỗ giá trị (chưa hàm kho nào dùng);
+  //   (b) câu ghép bằng || và chuỗi cố định: danh sách TRA_VE, viết như lúc chạy, % ở chỗ giá trị;
+  //   (c) mọi chuỗi tiếng Việt khác của migration kho phải nằm trong một câu của TRA_VE — trừ dữ
+  //       liệu (dòng mẫu kho_mat_hang / kho_vi_tri / kho_ly_do, mặc định cột), file MISA
+  //       (kho_du_lieu_misa: đúng mẫu tiếng Việt của MISA) và chuỗi so khớp nội bộ.
+  const dinhDang = [];
+  for (const f of tep) {
+    const s = readFileSync(join(MIGRATIONS_DIR, f), 'utf8').replace(/--[^\n]*/g, '');
+    for (const m of s.matchAll(/\bformat\s*\(\s*'((?:[^']|'')*)'/gi)) {
+      const c = m[1].replace(/''/g, "'");
+      if (VIET.test(c)) dinhDang.push(c.split('%%').map(p => p.replace(/%(\d+\$)?-?(\d+|\*)?[sIL]/g, '%')).join('%%'));
+    }
+  }
+  const thieuDD = dinhDang.filter(c => !dichDuoc(c));
+  ok(`${dinhDang.length} mẫu format() có chữ Việt của migration kho đều có bản tiếng Anh`,
+     thieuDD.length === 0, thieuDD.slice(0, 5).join(' | '));
+
+  const TRA_VE = [
+    // 0020 — phiếu nhập: câu báo, ghi chú sổ kho
+    'Phiếu % đã được gửi duyệt trước đó.', 'Đã gửi phiếu % chờ quản lý duyệt.', 'Phiếu % đang là bản nháp.',
+    'Đã rút phiếu % về để sửa.', 'Phiếu % đã được duyệt trước đó.', 'Đã duyệt phiếu %: % lô hàng đã vào kho.',
+    'Phiếu % đã bị từ chối trước đó.', 'Đã từ chối phiếu %.', 'Phiếu % đã bị hủy trước đó.', 'Đã hủy phiếu nháp %.',
+    'Hủy phiếu nhập', 'Đã hủy phiếu % và trả tồn về như trước khi nhập.',
+    // 0022 — pha lóc: cảnh báo, câu báo, ghi chú sổ kho
+    'Chưa có giá bán: % — phiên này chia giá vốn theo kg', 'Phụ phẩm chưa có giá trị thu hồi (tính 0 đ): %',
+    'Không giữ lại phần nào — toàn bộ giá vốn đầu vào thành tổn thất', 'Phiên % đã được chốt trước đó.',
+    'Pha lóc chuyển thẳng bếp', 'Đã chốt phiên %: thu hồi %, % lô mới.', 'Phiên % đang mở để sửa.',
+    'Mở lại phiên pha lóc', 'Đã mở lại phiên % — tồn đã trả về như trước khi chốt. Sửa xong nhớ chốt lại.',
+    'Phiên % đã bị hủy trước đó.', 'Đã hủy phiên nháp %.',
+    // 0023 — báo hủy, kiểm kê
+    'Đã duyệt hủy %: % kg.', 'Từ chối hủy — trả về chỗ cũ', 'Đã từ chối % — hàng đã về lại chỗ cũ.',
+    'Phiếu % đã gửi, đang chờ duyệt.', 'Đã gửi %: % dòng lệch sổ, chờ quản lý duyệt.',
+    'Đã duyệt %: % dòng điều chỉnh, ghi bán % gói (% kg).', 'Đã duyệt %: % dòng điều chỉnh.',
+    'Đã trả % về để đếm lại.', 'Đã hủy phiếu kiểm kê %.',
+    // 0024 — đối chiếu hóa đơn, thanh toán, ghi chú giảm trừ khi trả hàng
+    'Đã đối chiếu % với hóa đơn %: khớp phiếu.',
+    'Đã đối chiếu % với hóa đơn %: LỆCH % đ so với phiếu — công nợ tính theo hóa đơn.', 'Khoản % đã bị hủy trước đó.',
+    'Đã hủy % — công nợ các phiếu liên quan đã trở lại như trước.', 'Trả hàng % của phiếu %',
+    // 0031 — xem thử pha lóc (thủ kho), gửi duyệt
+    'Chưa chọn tảng nào đem pha', 'Chưa nhập phần nào cắt ra', 'Tổng kg ra lớn hơn kg vào — kiểm lại số cân',
+    'Đã gửi phiếu % chờ duyệt.',
+    // 0032 — quầy, hàng thiếu, hủy chuyến, đọc nhãn cân, quét kiểm kê
+    'Yêu cầu % đã hủy trước đó.', 'Đã hủy yêu cầu %.', 'Theo yêu cầu %', 'Đã ghi nhận hàng của phiếu %.',
+    'Đã nhận %: % gói. Thiếu % gói (% kg) — đã báo quản lý.', 'Đã nhận đủ %: % gói (% kg).',
+    'Phiếu % đã được xử lý trước đó.', 'Mất khi mang ra quầy: %', 'Mất khi mang ra quầy', 'Nhận thiếu — trả về kho',
+    'Đã trả % gói thiếu của % về kho.', 'Đã ghi mất % gói (% kg) của %.', 'Phiếu % đã hủy trước đó.',
+    'Hủy chuyến — hàng về lại chỗ cũ', 'Đã hủy % — % gói đã về lại chỗ cũ.', 'Mẫu mã vạch trong Cài đặt không hợp lệ',
+    'Không phải mã 13 số', 'Sai số kiểm tra — quét lại', 'Không phải nhãn cân (đầu mã không khớp mẫu)',
+    'Mã hàng trên nhãn bằng 0', 'Trọng lượng trên nhãn bằng 0', 'Mã hàng % chưa gán cho món nào — báo quản lý',
+    '"%" tính theo kg mà nhãn không có kg — nhập số kg bằng tay',
+    // 0033 — quét nhãn pha lóc, chốt thu hồi thấp, thẻ kho
+    '"%" là hàng đem pha, không phải phần cắt ra', 'Nhãn "%" không có số kg — cân lại in nhãn có kg',
+    '"%" đã ghi bằng tay — xóa dòng đó rồi quét lại',
+    'Đã chốt phiên %: thu hồi %, % lô mới. Thu hồi thấp hơn dự kiến (%) — đã báo quản lý.',
+    'Phiên % đã được xem trước đó.', 'Đã ghi nhận: đã xem kết quả phiên %.', 'Tồn đầu kỳ', 'Nhập', 'Đem pha lóc',
+    'Pha lóc ra', 'Chuyển đi', 'Chuyển đến', 'Bán', 'Xuất bếp', 'Hủy', 'Chênh lệch kiểm kê', 'Hao hụt cân',
+    'Đảo ngược', 'Trả nhà cung cấp', 'Xuất khác', 'Khai tồn đầu kỳ',
+    // 0034 — nhật ký máy dùng chung
+    'gỡ % người', '5 lần sai liên tiếp', '% lần sai trong 30 phút', '% lần sai trong 24 giờ',
+    // 0035 — nợ đầu kỳ
+    'Đã hủy nợ đầu kỳ %.',
+    // 0037 — iPOS: ghi chú sổ kho, lý do dòng bán, lý do không đồng bộ, câu trạng thái
+    'Tự nhận khi iPOS báo đã bán', 'HĐ iPOS sửa / hủy', 'Hóa đơn đã hủy trên iPOS',
+    'Chưa chuyển sang trừ kho theo iPOS', 'Bán trước mốc chuyển sang iPOS — đã tính trong lần đếm quầy',
+    'Không phải hàng kho', 'Mã cân (không đọc được) chưa gán cho món nào', 'Mã cân % chưa gán cho món nào',
+    'Chưa ghép mã iPOS với món trong kho', 'Quầy không đủ "%" trên sổ: cần %', 'Lệch kg nhãn cân · iPOS %',
+    'Đã bán gói thuộc lô HẾT HẠN', 'Đồng bộ iPOS chưa bật ở chi nhánh này',
+    'Chưa cấu hình đủ kết nối iPOS: thiếu đường dẫn lấy hóa đơn, quầy bán',
+    'Chưa cấu hình đủ kết nối iPOS: thiếu %, đường dẫn lấy hóa đơn, quầy bán',
+    'Chưa cấu hình đủ kết nối iPOS: thiếu đường dẫn lấy hóa đơn',
+    'Chưa cấu hình đủ kết nối iPOS: thiếu %, đường dẫn lấy hóa đơn', 'Chưa cấu hình đủ kết nối iPOS: thiếu quầy bán',
+    'Chưa cấu hình đủ kết nối iPOS: thiếu %, quầy bán', 'Chưa cấu hình đủ kết nối iPOS: thiếu %',
+    'Đang có một lượt đồng bộ chạy — đợi ít phút', 'Quá 10 phút không xong — coi như hỏng',
+    'Vừa cập nhật xong — đợi 1 phút rồi bấm lại', 'Dòng đã bỏ khỏi hóa đơn trên iPOS', 'Quản lý bỏ qua',
+    'Hàng ngoài sổ: %', 'Chưa bật đồng bộ iPOS.', 'Chưa cấu hình đủ kết nối iPOS.',
+    'Lần đồng bộ gần nhất bị lỗi — số bán chưa cập nhật.', 'Hơn 30 phút chưa đồng bộ được iPOS.',
+    'Đang đọc iPOS nhưng CHƯA trừ kho — còn dùng đếm quầy làm số bán.',
+    'Có dòng bán chưa trừ được kho — mở Bán hàng iPOS để xử lý.', 'Kho đang tự trừ theo iPOS.',
+    // 0038 — lỗi từng dòng khi dán định lượng món
+    'Dòng %: không đọc được', 'Dòng %: thiếu tên hoặc mã món', 'Dòng %: tên món dài quá (tối đa 120 chữ)',
+    'Dòng %: thiếu mặt hàng', 'Dòng %: có % mặt hàng tên "%" — ghi mã mặt hàng',
+    'Dòng %: không tìm thấy mặt hàng "%" — ghi đúng mã, mã cân hoặc tên',
+    'Dòng %: gram "%" không phải số (ví dụ 150 hoặc 150,5)', 'Dòng %: gram phải lớn hơn 0 và không quá 10.000',
+    'Dòng %: trùng với dòng % (cùng món, cùng mặt hàng)',
+    // 0039 — đặt hàng
+    'Đã lưu mức kho lạnh của %.', 'Đơn % đã được gửi trước đó.', 'Đã gửi đơn % cho %. In hoặc lưu PDF để gửi Zalo.',
+    'Đơn % đã hủy trước đó.', 'Đã hủy đơn %.', 'Nhận theo đơn %. Ghi hạn dùng theo nhãn cho: %', 'Nhận theo đơn %',
+    // 0040 — hóa đơn gộp, trả hàng chờ tiền, sổ công nợ theo kỳ
+    'Hóa đơn gộp % (% phiếu) — lệch: %', 'Hóa đơn gộp % (% phiếu)', 'Hóa đơn gộp % đã được bỏ đối chiếu trước đó.',
+    'Đã bỏ đối chiếu hóa đơn gộp % — % phiếu trở lại như trước khi đối chiếu.', 'Hủy phiếu trả hàng chờ xác nhận',
+    'Đã hủy phiếu trả hàng % — % lô đã về lại chỗ cũ.', 'Nợ đầu kỳ (lúc bắt đầu dùng phần mềm)', 'Nhập hàng',
+    'Số dư đầu kỳ', 'Số dư cuối kỳ',
+    // 0041 — sửa nhanh mặt hàng, nhãn báo cáo
+    'Chưa đổi ô nào — không có gì để lưu.', 'Dòng % không đúng dạng.', 'Dòng %: thiếu mặt hàng.',
+    'Một món được gửi hai lần trong cùng một lần lưu.', 'Không tìm thấy món này — có thể đã bị xóa. Tải lại trang.',
+    '%: thiếu phiên bản của dòng — tải lại trang rồi sửa lại.',
+    '%: vừa được người khác sửa lúc % — tải lại trang để xem số mới rồi sửa lại.',
+    '%: giá bán/kg phải là số đồng, ví dụ 650000.', '%: hạn dùng là số ngày, từ 1 đến 3650.',
+    '%: mã cân là dãy số (tối đa 6 số), đúng như mã hàng cài trên cân.',
+    '%: số gói tối thiểu ở quầy là số nguyên, từ 0.', '%: số gói tối đa ở quầy là số nguyên, từ 1.',
+    '%: tồn tối thiểu là số kg, ví dụ 2,5.', '%: mức tối thiểu kho lạnh là số kg, ví dụ 20 hoặc 12,5.',
+    '%: mức tối đa kho lạnh là số kg lớn hơn 0 (bỏ trống nếu không dùng).',
+    '%: sau pha để ở "kho" (kho lạnh) hoặc "quay" (quầy).', '%: chọn "Đang dùng" hoặc "Ngưng dùng".',
+    '%: số gói tối đa ở quầy phải từ % (số gói tối thiểu) trở lên.',
+    '%: mức tối thiểu kho lạnh không được lớn hơn mức tối đa.', '%: mã cân % đang dùng cho "%".',
+    'Chưa lưu món nào: % ô cần sửa (xem chữ đỏ ở từng dòng).', 'Đã lưu % món.', 'Không ghi nhà cung cấp', 'Trả tiền',
+    'Giảm trừ', 'Bù trừ', 'NCC hoàn tiền', 'Chuyển khoản', 'Tiền mặt', 'Khác',
+    // 0042 — iPOS gửi hóa đơn sang
+    'Món chế biến — chỉ đếm suất, không trừ kho', 'Lệch kg bán theo cân · iPOS %',
+    'Lần cập nhật gần nhất bị lỗi — bấm "Cập nhật ngay" để thử lại.',
+    'Đã hơn % giờ trong giờ mở cửa không nhận được hóa đơn nào từ iPOS — kiểm tra máy iPOS và địa chỉ nhận hóa đơn.',
+    'Đang nhận hóa đơn iPOS nhưng CHƯA trừ kho — còn dùng đếm quầy làm số bán.',
+    // câu rộng (tiền tố + giá trị) — thẻ kho
+    'Nhập từ %', 'Pha lóc %',
+  ];
+  // 0037 raise "Chưa ghi được: %" — giá trị là lý do đã ghi vào kho_ipos_dong.ly_do (hoặc câu lỗi
+  // của raise bên trong kho_ipos_ghi_dong): mỗi lý do một câu.
+  for (const x of [
+    'Hóa đơn đã hủy trên iPOS',
+    'Chưa chuyển sang trừ kho theo iPOS',
+    'Bán trước mốc chuyển sang iPOS — đã tính trong lần đếm quầy',
+    'Không phải hàng kho',
+    'Món chế biến — chỉ đếm suất, không trừ kho',
+    'Mã cân (không đọc được) chưa gán cho món nào',
+    'Mã cân % chưa gán cho món nào',
+    'Chưa ghép mã iPOS với món trong kho',
+    'Quầy không đủ "%" trên sổ: cần %',
+    'Chưa chọn quầy bán trong Kết nối iPOS',
+    'Số gói bán phải lớn hơn 0',
+    '"%" tính theo kg mà dòng iPOS không có số kg',
+    'Số lượng bán trên iPOS phải lớn hơn 0',
+    'iPOS báo bán % gói "%" — số gói phải là số nguyên. Món này bán theo kg thì đổi "Bán theo" ở Ghép món',
+    '"%" tính theo kg mà iPOS bán theo gói — điền "mỗi gói = … kg" ở Ghép món',
+  ]) TRA_VE.push(`Chưa ghi được: ${x}`);
+  // 0039 kho_goi_y_dat_hang — lời giải thích gợi ý đặt hàng: đủ tổ hợp phần tùy chọn.
+  const duoi = ['', '. Dưới mức tối thiểu % kg!'];
+  for (const c of ['', ' (đang có % kg)']) for (const d of duoi) {
+    TRA_VE.push(`Chưa bán / dùng trong 28 ngày qua và chưa cài mức tối đa kho lạnh — tự quyết số đặt${c}${d}`);
+  }
+  for (const x of ['mức tối đa kho lạnh', 'dùng TB % kg/ngày × % ngày: % ngày chờ hàng + 3 ngày dự phòng'])
+    for (const dd of ['', ', đang mang ra quầy % kg']) for (const dat of ['', ', đã đặt chưa về % kg'])
+      for (const nghi of [' → nên đặt % kg', ' → chưa cần đặt']) for (const d of duoi) {
+        TRA_VE.push(`Cần % kg (${x}); đang có % kg${dd}${dat}${nghi}${d}`);
+      }
+  // 0040 kho_cong_no_theo_ky — diễn giải dòng thanh toán: nhãn [+ ": ghi chú"] + " — phiếu …".
+  for (const n of ['Trả tiền', 'Trả tiền (chuyển khoản)', 'Trả tiền (tiền mặt)', 'Giảm trừ', 'Bù trừ công nợ',
+                   'Nhà cung cấp hoàn tiền', 'Nhà cung cấp hoàn tiền (chuyển khoản)', 'Nhà cung cấp hoàn tiền (tiền mặt)']) {
+    TRA_VE.push(`${n}: % — phiếu %`, `${n} — phiếu %`);
+  }
+  const thieuTV = TRA_VE.filter(c => !dichDuoc(c));
+  ok(`${TRA_VE.length} câu hàm kho trả về / ghi cho người đọc đều có bản tiếng Anh`,
+     TRA_VE.length > 200 && thieuTV.length === 0, thieuTV.slice(0, 5).join(' | '));
+
+  const NOI_BO = ['đĐ', 'cơm nhân viên'];   // so khớp trong SQL, không hiện cho ai
+  const chuaPhu = new Set();
+  let soChuoi = 0;
+  for (const f of tep) {
+    const s = readFileSync(join(MIGRATIONS_DIR, f), 'utf8').replace(/--[^\n]*/g, '');
+    const cacHam = [...s.matchAll(/create\s+(?:or\s+replace\s+)?function\s+(\w+)/gi)];
+    for (const m of s.matchAll(/'((?:[^']|'')*)'/g)) {
+      const c = m[1].replace(/''/g, "'");
+      if (!VIET.test(c)) continue;
+      const lenh = s.slice(Math.max(s.lastIndexOf(';', m.index), s.lastIndexOf('$$', m.index)) + 1, m.index);
+      if (/\braise\s+(exception|notice|warning|info|log|debug)\b/i.test(lenh) || /^\s*comment\s+on\b/i.test(lenh)) continue;
+      if (/\binsert\s+into\s+kho_(mat_hang|vi_tri|ly_do)\b/i.test(lenh) || /\bdefault\s*$/i.test(lenh)) continue;
+      if (cacHam.filter(h => h.index < m.index).pop()?.[1] === 'kho_du_lieu_misa' || NOI_BO.includes(c)) continue;
+      soChuoi++;
+      if (!TRA_VE.some(t => t.includes(c))) chuaPhu.add(`[${f.slice(0, 4)}] ${c}`);
+    }
+  }
+  ok(`${soChuoi} chuỗi tiếng Việt khác của migration kho đều nằm trong một câu đã dịch`,
+     soChuoi > 300 && chuaPhu.size === 0, [...chuaPhu].slice(0, 5).join(' | '));
 }
 
 // ===========================================================================
