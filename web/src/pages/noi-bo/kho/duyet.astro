@@ -26,12 +26,44 @@ import { docDanhSachKiemKe, type KiemKeTom } from '../../../lib/kho/kiem-ke.ts';
 import { docDanhSachPhienPha, type PhienPhaTom } from '../../../lib/kho/pha-loc.ts';
 import { cauLoiKho, dinhDangKg, dinhDangTien } from '../../../lib/kho/chung.ts';
 import { thoiGianTruoc } from '../../../lib/kho/viec.ts';
+import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('duyet') && !k.duoc('duyet_nhap')) return Astro.redirect('/noi-bo/kho', 302);
 const duyetNhap = k.duoc('duyet_nhap');
 const duyetKhac = k.duoc('duyet');
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  khongDoc: { vi: 'Không đọc được danh sách chờ duyệt.', en: 'Could not read the approval list.' },
+  tieuDe: { vi: 'Duyệt', en: 'Approvals' },
+  choDuyet: { vi: 'Chờ duyệt', en: 'Awaiting approval' },
+  khongCo: { vi: 'Không có gì chờ duyệt.', en: 'Nothing is waiting for approval.' },
+  phieuNhap: { vi: 'Phiếu nhập', en: 'Goods receipts' },
+  tonDau: { vi: ' · Tồn đầu kỳ', en: ' · Opening stock' },
+  soDong: { vi: (n: number) => `${n} dòng`, en: (n: number) => `${n} ${s(n, 'line', 'lines')}` },
+  chuaCoGia: { vi: ' · chưa có giá', en: ' · no prices yet' },
+  gui: { vi: 'gửi', en: 'sent' },
+  dienGiaDuyet: { vi: 'Điền giá & duyệt', en: 'Add prices & approve' },
+  phienNhap: {
+    vi: (n: number) => `${n} phiên pha lóc còn nháp`,
+    en: (n: number) => `${n} butchery ${s(n, 'session', 'sessions')} still in draft`,
+  },
+  phienNhapDan: {
+    vi: '— kiểm kê ở kho có tảng đang pha sẽ bị chặn cho tới khi phiên được chốt hoặc hủy.',
+    en: '— stocktakes in a store with primals being butchered are blocked until the session is closed or cancelled.',
+  },
+  baoHuy: { vi: 'Báo hủy', en: 'Write-offs' },
+  khongLyDo: { vi: 'Không ghi lý do', en: 'No reason given' },
+  soGoi: { vi: (n: number) => `${n} gói · `, en: (n: number) => `${n} ${s(n, 'pack', 'packs')} · ` },
+  o: { vi: 'ở', en: 'at' },
+  bao: { vi: 'báo', en: 'reported' },
+  xemAnhDuyet: { vi: 'Xem ảnh & duyệt', en: 'See photos & approve' },
+  kiemKe: { vi: 'Kiểm kê', en: 'Stocktakes' },
+  dongDaDem: { vi: (n: number) => `${n} dòng đã đếm`, en: (n: number) => `${n} ${s(n, 'line', 'lines')} counted` },
+  xemChenhLech: { vi: 'Xem chênh lệch', en: 'See differences' },
+});
 
 let nhap: PhieuNhapTom[] = [];
 let huy: PhieuXuatTom[] = [];
@@ -52,32 +84,33 @@ if (k.chiNhanh && k.daKhoiTao) {
     nhap.sort(cu); huy.sort(cu); kiemKe.sort(cu); phaNhap.sort(cu);
     ten = await tenNhanSu(k.client, [...nhap, ...huy, ...kiemKe, ...phaNhap].map(x => x.nguoi_tao));
   } catch (e) {
-    loiDoc = cauLoiKho(e, 'Không đọc được danh sách chờ duyệt.');
+    loiDoc = cauLoiKho(e, t.khongDoc);
   }
 }
 const tong = nhap.length + huy.length + kiemKe.length;
+const truoc = (luc: string) => thoiGianTruoc(luc, new Date(), nn);
 ---
-<Kho k={k} tieuDe="Duyệt" huongDan={duyetKhac ? 'quan-ly-duyet' : 'duyet-nhap'}>
-  <h1>Chờ duyệt{tong > 0 ? ` · ${tong}` : ''}</h1>
+<Kho k={k} tieuDe={t.tieuDe} huongDan={duyetKhac ? 'quan-ly-duyet' : 'duyet-nhap'}>
+  <h1>{t.choDuyet}{tong > 0 ? ` · ${tong}` : ''}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {tong === 0 && phaNhap.length === 0 ? (
-    <p class="nb-rong">Không có gì chờ duyệt.</p>
+    <p class="nb-rong">{t.khongCo}</p>
   ) : (
     <>
       {nhap.length > 0 && (
         <section class="kho-duyet-nhom">
-          <h2><BieuTuong ten="nhap" /> Phiếu nhập · {nhap.length}</h2>
+          <h2><BieuTuong ten="nhap" /> {t.phieuNhap} · {nhap.length}</h2>
           <ul class="kho-duyet-ds">
             {nhap.map(p => (
               <li>
                 <a href={`/noi-bo/kho/nhap/${p.id}?tu=duyet`} class="kho-duyet-the">
                   <span class="kho-duyet-chinh">
-                    <strong>{p.so_phieu}{p.ten_nha_cung_cap ? ` · ${p.ten_nha_cung_cap}` : p.loai === 'ton_dau' ? ' · Tồn đầu kỳ' : ''}</strong>
-                    <span>{dinhDangKg(p.tong_kg)} kg · {p.so_dong} dòng{p.tong_tien > 0 ? ` · ${dinhDangTien(p.tong_tien)}` : ' · chưa có giá'}</span>
-                    <small>{ten.get(p.nguoi_tao ?? '') ?? '—'} gửi · {thoiGianTruoc(p.created_at)}</small>
+                    <strong>{p.so_phieu}{p.ten_nha_cung_cap ? ` · ${p.ten_nha_cung_cap}` : p.loai === 'ton_dau' ? t.tonDau : ''}</strong>
+                    <span>{dinhDangKg(p.tong_kg, nn)} kg · {t.soDong(p.so_dong)}{p.tong_tien > 0 ? ` · ${dinhDangTien(p.tong_tien, nn)}` : t.chuaCoGia}</span>
+                    <small>{ten.get(p.nguoi_tao ?? '') ?? '—'} {t.gui} · {truoc(p.created_at)}</small>
                   </span>
-                  <span class="nb-nut phu">Điền giá & duyệt</span>
+                  <span class="nb-nut phu">{t.dienGiaDuyet}</span>
                 </a>
               </li>
             ))}
@@ -87,8 +120,7 @@ const tong = nhap.length + huy.length + kiemKe.length;
 
       {phaNhap.length > 0 && (
         <div class="nb-bao luu-y">
-          <p><strong>{phaNhap.length} phiên pha lóc còn nháp</strong> — kiểm kê ở kho có tảng đang pha sẽ bị chặn cho tới
-            khi phiên được chốt hoặc hủy.{' '}
+          <p><strong>{t.phienNhap(phaNhap.length)}</strong> {t.phienNhapDan}{' '}
             {phaNhap.slice(0, 3).map((f, i) => <>{i > 0 ? ', ' : ''}<a href={`/noi-bo/kho/pha-loc/${f.id}`}>{f.so_phieu}</a></>)}
           </p>
         </div>
@@ -96,17 +128,17 @@ const tong = nhap.length + huy.length + kiemKe.length;
 
       {huy.length > 0 && (
         <section class="kho-duyet-nhom">
-          <h2><BieuTuong ten="huy" /> Báo hủy · {huy.length}</h2>
+          <h2><BieuTuong ten="huy" /> {t.baoHuy} · {huy.length}</h2>
           <ul class="kho-duyet-ds">
             {huy.map(p => (
               <li>
                 <a href={`/noi-bo/kho/xuat/${p.id}`} class="kho-duyet-the">
                   <span class="kho-duyet-chinh">
-                    <strong>{p.so_phieu} · {p.ten_ly_do ?? 'Không ghi lý do'}</strong>
-                    <span>{p.tong_goi > 0 ? `${p.tong_goi} gói · ` : ''}{dinhDangKg(p.tong_kg)} · ở {p.ten_vi_tri}</span>
-                    <small>{ten.get(p.nguoi_tao ?? '') ?? '—'} báo · {thoiGianTruoc(p.created_at)}</small>
+                    <strong>{p.so_phieu} · {p.ten_ly_do ?? t.khongLyDo}</strong>
+                    <span>{p.tong_goi > 0 ? t.soGoi(p.tong_goi) : ''}{dinhDangKg(p.tong_kg, nn)} · {t.o} {p.ten_vi_tri}</span>
+                    <small>{ten.get(p.nguoi_tao ?? '') ?? '—'} {t.bao} · {truoc(p.created_at)}</small>
                   </span>
-                  <span class="nb-nut phu">Xem ảnh & duyệt</span>
+                  <span class="nb-nut phu">{t.xemAnhDuyet}</span>
                 </a>
               </li>
             ))}
@@ -116,17 +148,17 @@ const tong = nhap.length + huy.length + kiemKe.length;
 
       {kiemKe.length > 0 && (
         <section class="kho-duyet-nhom">
-          <h2><BieuTuong ten="kiem_ke" /> Kiểm kê · {kiemKe.length}</h2>
+          <h2><BieuTuong ten="kiem_ke" /> {t.kiemKe} · {kiemKe.length}</h2>
           <ul class="kho-duyet-ds">
             {kiemKe.map(p => (
               <li>
                 <a href={`/noi-bo/kho/kiem-ke/${p.id}`} class="kho-duyet-the">
                   <span class="kho-duyet-chinh">
                     <strong>{p.so_phieu} · {p.ten_vi_tri}</strong>
-                    <span>{p.so_dong} dòng đã đếm</span>
-                    <small>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {thoiGianTruoc(p.created_at)}</small>
+                    <span>{t.dongDaDem(p.so_dong)}</span>
+                    <small>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {truoc(p.created_at)}</small>
                   </span>
-                  <span class="nb-nut phu">Xem chênh lệch</span>
+                  <span class="nb-nut phu">{t.xemChenhLech}</span>
                 </a>
               </li>
             ))}

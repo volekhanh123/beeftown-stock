@@ -23,13 +23,20 @@
  * `anh_da_tai` cùng ma_gui của form — gõ sai một ô thì ảnh vẫn còn, không phải
  * chụp lại (dùng chung lib/kho/anh.ts với trang nhập cũ). Thủ kho không xem
  * được ảnh (chỉ vai xem giá — 0021), nên trang chỉ hiện "✓ Đã chụp N ảnh".
+ *
+ * HAI THỨ TIẾNG: lỗi đọc form trả loi (tiếng Việt) và loiEn song song; câu báo
+ * KetQua có cauEn. Câu tiếng Anh ở đây cũng KHÔNG nói tới giá, tiền — thủ kho
+ * không thấy tiền ở bất kỳ thứ tiếng nào.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, docKg, docNgay, docSoNguyen, laUuid, type KetQua } from './chung.ts';
+import {
+  boDau, cauLoiKho, docKg, docNgay, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB,
+} from './chung.ts';
 import { docTruongThem, type DinhNghiaTruong, type GiaTriTruong } from './truong-them.ts';
 import { docAnhDaTai, layTepAnh, soThuTuCuoi, taiAnh } from './anh.ts';
 import { CO_TRANG, type TimDs } from './tim-ds.ts';
+import { dichCau } from '../cau-noi-bo.ts';
 
 // -----------------------------------------------------------------------------
 // KIỂU — đúng các khóa hàm _kg trả về, không có trường tiền nào
@@ -157,7 +164,9 @@ export async function docPhieuNhan(client: SupabaseClient, id: string): Promise<
   const { data, error } = await client.rpc('kho_doc_phieu_nhap_kg', { p_id: id });
   if (error) {
     // Hàm báo "không tìm thấy, hoặc không được xem" bằng lỗi quyền — trang coi là không có.
-    if (/Không tìm thấy phiếu nhập/.test(error.message ?? '')) return null;
+    // So câu database "Không tìm thấy phiếu nhập…" trên chữ đã bỏ dấu (boDau): file thư
+    // viện không giữ câu tiếng Việt nào ngoài cặp { vi, en } (test-kho-tieng-anh.mjs).
+    if (/Khong tim thay phieu nhap/.test(boDau(error.message ?? ''))) return null;
     throw error;
   }
   if (!data || typeof data !== 'object') return null;
@@ -246,11 +255,14 @@ export function docFormDauNhan(
   loai: 'mua' | 'ton_dau',
   dinhNghiaPhieu: DinhNghiaTruong[],
   cu: GiaTriTruong = {},
-): { dau: DauNhan; loi: string[] } {
+): { dau: DauNhan; loi: string[]; loiEn: string[] } {
   const s = (ten: string) => String(form.get(ten) ?? '').trim();
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
   const tt = docTruongThem(form, dinhNghiaPhieu, undefined, cu);
   loi.push(...tt.loi);
+  loiEn.push(...tt.loiEn);
   const ncc = loai === 'mua' ? (s('ncc_khac') || s('ncc')) : '';
   const dau: DauNhan = {
     nha_cung_cap_id: ncc,
@@ -259,11 +271,15 @@ export function docFormDauNhan(
     so_hoa_don: loai === 'mua' ? s('so_hoa_don').slice(0, 60) : '',
     truong_them: tt.giaTri,
   };
-  if (loai === 'mua' && !laUuid(dau.nha_cung_cap_id)) loi.push('Chọn nhà cung cấp (người giao hàng)');
-  if (!laUuid(dau.vi_tri_id)) loi.push('Chọn nơi nhận hàng');
+  if (loai === 'mua' && !laUuid(dau.nha_cung_cap_id)) bao({ vi: 'Chọn nhà cung cấp (người giao hàng)', en: 'Choose the supplier (who delivered)' });
+  if (!laUuid(dau.vi_tri_id)) bao({ vi: 'Chọn nơi nhận hàng', en: 'Choose where the goods are received' });
   const ngay = docNgay(dau.ngay_nhap);
-  if (!ngay) loi.push(ngay === null ? 'Chọn ngày nhận hàng' : 'Ngày nhận hàng không phải ngày có thật');
-  return { dau, loi };
+  if (!ngay) {
+    bao(ngay === null
+      ? { vi: 'Chọn ngày nhận hàng', en: 'Choose the receiving date' }
+      : { vi: 'Ngày nhận hàng không phải ngày có thật', en: 'The receiving date is not a real date' });
+  }
+  return { dau, loi, loiEn };
 }
 
 /** Một dòng như đang hiện trên form thêm / sửa dòng — giữ chữ đã gõ để điền lại khi báo lỗi. */
@@ -307,7 +323,7 @@ export function docFormDongNhan(
   dinhNghiaLo: DinhNghiaTruong[],
   mon: Map<string, MonKiem>,
   cu: GiaTriTruong = {},
-): { dong: DongNhanForm; loi: string[]; luu: DongLuu | null } {
+): { dong: DongNhanForm; loi: string[]; loiEn: string[]; luu: DongLuu | null } {
   const s = (ten: string) => String(form.get(ten) ?? '').trim();
   const tt = docTruongThem(form, dinhNghiaLo, 0, cu);
   const dong: DongNhanForm = {
@@ -317,19 +333,26 @@ export function docFormDongNhan(
     truong_them: tt.giaTri,
   };
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
   const m = laUuid(dong.mat_hang_id) ? mon.get(dong.mat_hang_id) : undefined;
-  if (!m) loi.push('Chọn món hàng');
+  if (!m) bao({ vi: 'Chọn món hàng', en: 'Choose an item' });
   const kg = docKg(dong.so_kg);
-  if (kg === null) loi.push('Nhập số kg (ví dụ 12,5)');
-  else if (Number.isNaN(kg) || kg <= 0) loi.push('Số kg chưa đúng (ví dụ 12,5)');
+  if (kg === null) bao({ vi: 'Nhập số kg (ví dụ 12,5)', en: 'Enter the kg (for example 12.5)' });
+  else if (Number.isNaN(kg) || kg <= 0) bao({ vi: 'Số kg chưa đúng (ví dụ 12,5)', en: 'The kg is not valid (for example 12.5)' });
   const goi = docSoNguyen(dong.so_goi, 0, 100000);
-  if (Number.isNaN(goi)) loi.push(`Số ${m?.don_vi_goi ?? 'tảng / gói'} là số nguyên (ví dụ 2)`);
-  else if (m?.dem_goi && !goi) loi.push(`Nhập số ${m.don_vi_goi} của ${m.ten}`);
+  if (Number.isNaN(goi)) {
+    bao({ vi: `Số ${m?.don_vi_goi ?? 'tảng / gói'} là số nguyên (ví dụ 2)`,
+          en: `The number of ${m?.don_vi_goi ?? 'pieces / packs'} must be a whole number (for example 2)` });
+  } else if (m?.dem_goi && !goi) {
+    bao({ vi: `Nhập số ${m.don_vi_goi} của ${m.ten}`, en: `Enter the number of ${m.don_vi_goi} for ${m.ten}` });
+  }
   const hsd = docNgay(dong.han_dung);
   const nsx = docNgay(dong.ngay_san_xuat);
-  if (hsd === undefined) loi.push('Hạn dùng không phải ngày có thật');
-  if (nsx === undefined) loi.push('Ngày sản xuất không phải ngày có thật');
+  if (hsd === undefined) bao({ vi: 'Hạn dùng không phải ngày có thật', en: 'The use-by date is not a real date' });
+  if (nsx === undefined) bao({ vi: 'Ngày sản xuất không phải ngày có thật', en: 'The production date is not a real date' });
   loi.push(...tt.loi);
+  loiEn.push(...tt.loiEn);
 
   const luu: DongLuu | null = loi.length ? null : {
     mat_hang_id: dong.mat_hang_id,
@@ -340,7 +363,7 @@ export function docFormDongNhan(
     han_dung: hsd || null,
     truong_them: tt.giaTri,
   };
-  return { dong, loi, luu };
+  return { dong, loi, loiEn, luu };
 }
 
 /** Dòng đã lưu → dòng gửi lại khi lưu cả phiếu (không mang đơn giá — database tự giữ). */
@@ -379,22 +402,27 @@ export function kiemTruocKhiGui(
   p: Pick<PhieuNhan, 'loai' | 'nha_cung_cap_id' | 'so_anh' | 'truong_them' | 'dong'>,
   dinhNghiaPhieu: DinhNghiaTruong[],
   dinhNghiaLo: DinhNghiaTruong[],
+  nn: NgonNguNB = 'vi',
 ): string[] {
   const loi: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c[nn]); };
   const thieu = (dn: DinhNghiaTruong[], gt: GiaTriTruong) =>
     dn.filter(x => x.dang_dung && x.bat_buoc && (gt?.[x.khoa] === undefined || gt[x.khoa] === null || gt[x.khoa] === ''))
       .map(x => x.nhan);
   if (p.loai === 'mua') {
-    if (!p.nha_cung_cap_id) loi.push('Chưa chọn nhà cung cấp');
-    if (p.so_anh < 1) loi.push('Chưa chụp hóa đơn / phiếu giao hàng');
+    if (!p.nha_cung_cap_id) bao({ vi: 'Chưa chọn nhà cung cấp', en: 'No supplier chosen yet' });
+    if (p.so_anh < 1) bao({ vi: 'Chưa chụp hóa đơn / phiếu giao hàng', en: 'No photo of the invoice / delivery note yet' });
     const o = thieu(dinhNghiaPhieu, p.truong_them);
-    if (o.length) loi.push(`Chưa điền: ${o.join(', ')}`);
+    if (o.length) bao({ vi: `Chưa điền: ${o.join(', ')}`, en: `Not filled in yet: ${o.join(', ')}` });
   }
-  if (p.dong.length === 0) loi.push('Chưa có món hàng nào');
+  if (p.dong.length === 0) bao({ vi: 'Chưa có món hàng nào', en: 'No items yet' });
   if (p.loai === 'mua') {
     p.dong.forEach((d, i) => {
       const o = thieu(dinhNghiaLo, d.truong_them);
-      if (o.length) loi.push(`Dòng ${i + 1} (${d.ten_mat_hang}): chưa điền ${o.join(', ')}`);
+      if (o.length) {
+        bao({ vi: `Dòng ${i + 1} (${d.ten_mat_hang}): chưa điền ${o.join(', ')}`,
+              en: `Line ${i + 1} (${d.ten_mat_hang}): ${o.join(', ')} not filled in yet` });
+      }
     });
   }
   return loi;
@@ -423,21 +451,33 @@ export async function taoPhieuNhan(
 ): Promise<KetQuaTao> {
   const doc = docFormDauNhan(form, ctx.loai, ctx.dinhNghiaPhieu);
   const maGui = String(form.get('ma_gui') ?? '');
-  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang rồi làm lại.', dau: doc.dau };
+  if (!laUuid(maGui)) {
+    return {
+      ...kqHai(false, { vi: 'Form đã cũ — tải lại trang rồi làm lại.', en: 'This form is out of date — reload the page and start again.' }),
+      dau: doc.dau,
+    };
+  }
 
   const daTaiTruoc = docAnhDaTai(form, chiNhanhId, 'nhap', maGui, 24);
   const tai = await taiAnh(client, chiNhanhId, 'nhap', maGui, layTepAnh(form), soThuTuCuoi(daTaiTruoc) + 1);
   const anh = [...daTaiTruoc, ...tai.duongDan];
-  const cauAnh = tai.loi.length ? ` Lưu ý: ${tai.loi.join(' · ')}` : '';
-  const chuaTao = (cau: string): KetQuaTao => ({
+  const cauAnh = cauLoiAnh(tai);
+  const conAnh = cauAnhVanCon(anh.length);
+  const chuaTao = (c: HaiThuTieng): KetQuaTao => ({
     ok: false,
-    cau: cau + (anh.length ? ` · Ảnh vẫn còn (${anh.length} ảnh), không cần chụp lại.` : '') + cauAnh,
+    cau: c.vi + conAnh.vi + cauAnh.vi,
+    cauEn: c.en + conAnh.en + cauAnh.en,
     dau: doc.dau, maGui, anhDaTai: anh,
   });
 
   const loi = [...doc.loi];
-  if (ctx.loai === 'mua' && anh.length === 0) loi.unshift('Chụp hoặc chọn ảnh hóa đơn / phiếu giao hàng trước');
-  if (loi.length) return chuaTao(loi.join(' · '));
+  const loiEn = [...doc.loiEn];
+  if (ctx.loai === 'mua' && anh.length === 0) {
+    const c = { vi: 'Chụp hoặc chọn ảnh hóa đơn / phiếu giao hàng trước', en: 'Take or choose a photo of the invoice / delivery note first' };
+    loi.unshift(c.vi);
+    loiEn.unshift(c.en);
+  }
+  if (loi.length) return chuaTao({ vi: loi.join(' · '), en: loiEn.join(' · ') });
 
   const { data, error } = await client.rpc('kho_luu_phieu_nhap_kg', {
     p_id: null,
@@ -455,13 +495,16 @@ export async function taoPhieuNhan(
     p_truong_them: doc.dau.truong_them,
     p_dong: [],
   });
-  if (error) return chuaTao(cauLoiKho(error));
+  if (error) return chuaTao(hai(cauLoiKho(error)));
   const kq = (Array.isArray(data) ? data[0] : data) as { phieu_id: string; phien_ban_moi: number; da_co: boolean } | undefined;
-  if (!kq) return chuaTao('Không chắc đã lưu hay chưa — mở danh sách Nhận hàng để kiểm tra.');
-  return {
-    ok: true, id: kq.phieu_id,
-    cau: (kq.da_co ? 'Phiếu này đã được tạo từ lần bấm trước.' : 'Đã tạo phiếu. Giờ thêm từng món hàng.') + cauAnh,
-  };
+  if (!kq) {
+    return chuaTao({ vi: 'Không chắc đã lưu hay chưa — mở danh sách Nhận hàng để kiểm tra.',
+                     en: 'Not sure whether it was saved — open the Receive goods list to check.' });
+  }
+  const xong: HaiThuTieng = kq.da_co
+    ? { vi: 'Phiếu này đã được tạo từ lần bấm trước.', en: 'This note was already created the first time you pressed.' }
+    : { vi: 'Đã tạo phiếu. Giờ thêm từng món hàng.', en: 'Note created. Now add each item.' };
+  return { ok: true, id: kq.phieu_id, cau: xong.vi + cauAnh.vi, cauEn: xong.en + cauAnh.en };
 }
 
 export interface KetQuaLuuNhan extends KetQua {
@@ -501,7 +544,7 @@ export async function luuPhieuNhan(
     p_dong: dong,
   });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: !!data, cau: 'Đã lưu.' };
+  return kqHai(!!data, { vi: 'Đã lưu.', en: 'Saved.' });
 }
 
 /**
@@ -512,13 +555,17 @@ export async function themDongNhan(
   client: SupabaseClient, chiNhanhId: string, p: PhieuNhan, phienBan: number, maGui: string, moi: DongLuu,
 ): Promise<KetQua> {
   const kq = await luuPhieuNhan(client, chiNhanhId, p, phienBan, maGui, ghepDongNhan(p.dong, { them: moi })!);
-  if (kq.ok) return { ok: true, cau: 'Đã thêm. Còn món nào thì thêm tiếp, hết thì bấm "Xong, xem lại".' };
-  if (/máy khác/.test(kq.cau)) {
+  if (kq.ok) {
+    return kqHai(true, { vi: 'Đã thêm. Còn món nào thì thêm tiếp, hết thì bấm "Xong, xem lại".',
+                         en: 'Added. Add the next item, or press "Done, review" when you have finished.' });
+  }
+  // Câu database "…đã được sửa ở máy khác…" — so trên chữ đã bỏ dấu (xem docPhieuNhan).
+  if (/may khac/.test(boDau(kq.cau))) {
     const lai = await docPhieuNhan(client, p.id).catch(() => null);
     const cuoi = lai?.dong[lai.dong.length - 1];
     if (lai && lai.dong.length === p.dong.length + 1 && cuoi
         && cuoi.mat_hang_id === moi.mat_hang_id && cuoi.so_kg === moi.so_kg && (cuoi.so_goi || null) === (moi.so_goi || null)) {
-      return { ok: true, cau: 'Dòng này đã được thêm từ lần bấm trước.' };
+      return kqHai(true, { vi: 'Dòng này đã được thêm từ lần bấm trước.', en: 'This line was already added the first time you pressed.' });
     }
   }
   return kq;
@@ -529,22 +576,58 @@ export async function themAnhNhan(
   client: SupabaseClient, chiNhanhId: string, p: PhieuNhan, phienBan: number, form: FormData,
 ): Promise<KetQuaLuuNhan> {
   const maGui = String(form.get('ma_gui') ?? '');
-  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang rồi chụp lại.' };
+  if (!laUuid(maGui)) {
+    return kqHai(false, { vi: 'Form đã cũ — tải lại trang rồi chụp lại.', en: 'This form is out of date — reload the page and take the photo again.' });
+  }
   const daTaiTruoc = docAnhDaTai(form, chiNhanhId, 'nhap', maGui, 24);
   const tai = await taiAnh(client, chiNhanhId, 'nhap', maGui, layTepAnh(form), soThuTuCuoi(daTaiTruoc) + 1);
   const anh = [...daTaiTruoc, ...tai.duongDan];
-  const cauAnh = tai.loi.length ? ` Lưu ý: ${tai.loi.join(' · ')}` : '';
-  if (anh.length === 0) return { ok: false, cau: (tai.loi.length ? tai.loi.join(' · ') : 'Chưa chọn ảnh nào.') };
+  const cauAnh = cauLoiAnh(tai);
+  if (anh.length === 0) {
+    return tai.loi.length
+      ? { ok: false, cau: tai.loi.join(' · '), cauEn: tai.loiEn.join(' · ') }
+      : kqHai(false, { vi: 'Chưa chọn ảnh nào.', en: 'No photo chosen.' });
+  }
   const kq = await luuPhieuNhan(client, chiNhanhId, p, phienBan, maGui, p.dong.map(dongLuuTuPhieu), { anh });
-  if (!kq.ok) return { ok: false, cau: `${kq.cau} · Ảnh đã lên (${anh.length} ảnh) — bấm "Thêm ảnh" lần nữa, không cần chụp lại.${cauAnh}`, maGui, anhDaTai: anh };
-  return { ok: true, cau: `Đã thêm ${anh.length} ảnh.${cauAnh}` };
+  const n = anh.length;
+  const anhChu = n === 1 ? 'photo' : 'photos';
+  if (!kq.ok) {
+    const c: HaiThuTieng = {
+      vi: `${kq.cau} · Ảnh đã lên (${n} ảnh) — bấm "Thêm ảnh" lần nữa, không cần chụp lại.${cauAnh.vi}`,
+      en: `${kq.cauEn ?? dichCau('en', kq.cau)} · ${n} ${anhChu} uploaded — press "Add photos" again, no need to take them again.${cauAnh.en}`,
+    };
+    return { ...kqHai(false, c), maGui, anhDaTai: anh };
+  }
+  return kqHai(true, { vi: `Đã thêm ${n} ảnh.${cauAnh.vi}`, en: `Added ${n} ${anhChu}.${cauAnh.en}` });
 }
 
-/** Các hàm đổi trạng thái trả về một câu tiếng Việt — hiện nguyên văn. */
+/** Câu tiếng Việt từ database / cauLoiKho → cặp hai thứ tiếng (tiếng Anh tra dichCau). */
+function hai(vi: string): HaiThuTieng {
+  return { vi, en: dichCau('en', vi) };
+}
+
+/** " Lưu ý: <lỗi tải ảnh>" nối sau câu báo; không có lỗi thì chuỗi rỗng. */
+function cauLoiAnh(tai: { loi: string[]; loiEn: string[] }): HaiThuTieng {
+  return tai.loi.length ? { vi: ` Lưu ý: ${tai.loi.join(' · ')}`, en: ` Note: ${tai.loiEn.join(' · ')}` } : { vi: '', en: '' };
+}
+
+/** Chưa lưu được mà ảnh đã lên: nhắc không phải chụp lại. */
+function cauAnhVanCon(so: number): HaiThuTieng {
+  return so > 0
+    ? { vi: ` · Ảnh vẫn còn (${so} ảnh), không cần chụp lại.`,
+        en: ` · The photos are kept (${so} ${so === 1 ? 'photo' : 'photos'}) — no need to take them again.` }
+    : { vi: '', en: '' };
+}
+
+/**
+ * Các hàm đổi trạng thái trả về một câu tiếng Việt của database — hiện nguyên
+ * văn (màn tiếng Anh tra dichCau lúc hiện, trong BaoKho).
+ */
 async function cauTraVe(ham: PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<KetQua> {
   const { data, error } = await ham;
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: String(data ?? 'Xong.') };
+  if (data === null || data === undefined) return kqHai(true, { vi: 'Xong.', en: 'Done.' });
+  return { ok: true, cau: String(data) };
 }
 
 export function guiPhieuNhan(client: SupabaseClient, id: string, phienBan: number) {

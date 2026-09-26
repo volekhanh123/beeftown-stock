@@ -7,7 +7,8 @@
  * link GET ?loc=nhap | cho_duyet | tu_choi | da_duyet; tìm / ngày / của tôi /
  * trang như các danh sách khác (lib/kho/tim-ds.ts).
  *
- * Phiếu có giá, điền giá, duyệt: /noi-bo/kho/nhap (vai xem giá).
+ * Phiếu có giá, điền giá, duyệt: /noi-bo/kho/nhap (vai xem giá). Chữ tiếng Anh
+ * của màn này cũng không nói tới giá, tiền.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
@@ -16,19 +17,53 @@ import PhanTrang from '../../../../components/kho/PhanTrang.astro';
 import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { docDsPhieuNhan, type PhieuNhanTom } from '../../../../lib/kho/nhan-hang.ts';
 import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
-import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, TRANG_THAI_CHUNG_TU } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, trangThaiKho } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('nhap')) return Astro.redirect('/noi-bo/kho', 302);
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Nhận hàng', en: 'Receive goods' },
+  khongDoc: { vi: 'Không đọc được danh sách phiếu nhận hàng.', en: 'Could not read the list of receiving notes.' },
+  biTraVe: { vi: 'Bị trả về', en: 'Sent back' },
+  chuaDung: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  trangChuKho: { vi: 'Trang chủ kho', en: 'Inventory home' },
+  dan: {
+    vi: 'Hàng về: chụp hóa đơn → cân từng món → gửi. Kế toán / quản lý điền giá và duyệt, duyệt xong hàng mới vào tồn.',
+    en: 'When goods arrive: photograph the invoice → weigh each item → send. The accountant or manager then checks and approves it — goods go into stock only after approval.',
+  },
+  nhanMoi: { vi: '+ Nhận hàng mới', en: '+ Receive a delivery' },
+  locTrangThai: { vi: 'Lọc theo trạng thái', en: 'Filter by status' },
+  goiY: { vi: 'Số phiếu, nhà cung cấp, số hóa đơn…', en: 'Note no., supplier, invoice no.…' },
+  hetDs: { vi: 'Hết danh sách — bấm "Trang trước".', en: 'End of the list — press "Previous".' },
+  khongKhop: { vi: 'Không tìm thấy phiếu nào khớp bộ lọc.', en: 'No notes match the filter.' },
+  khongCoMuc: { vi: (ten: string) => `Không có phiếu nào ở mục "${ten}".`, en: (ten: string) => `No notes under "${ten}".` },
+  chuaCo: { vi: 'Chưa có phiếu nhận hàng nào.', en: 'No receiving notes yet.' },
+  tonDau: { vi: ' · tồn đầu kỳ', en: ' · opening stock' },
+  lyDoTraVe: { vi: 'Lý do trả về:', en: 'Reason for sending back:' },
+  ncc: { vi: 'Nhà cung cấp', en: 'Supplier' },
+  chuaChon: { vi: 'chưa chọn', en: 'not chosen' },
+  ngayNhan: { vi: 'Ngày nhận', en: 'Received on' },
+  vao: { vi: 'vào', en: 'into' },
+  hang: { vi: 'Hàng', en: 'Goods' },
+  soMon: { vi: (n: number) => `${n} món`, en: (n: number) => `${n} ${s(n, 'item', 'items')}` },
+  tangGoi: { vi: 'tảng/gói', en: 'pieces/packs' },
+  anhHoaDon: { vi: 'Ảnh hóa đơn', en: 'Invoice photo' },
+  soAnh: { vi: (n: number) => `✓ ${n} ảnh`, en: (n: number) => `✓ ${n} ${s(n, 'photo', 'photos')}` },
+  chuaChup: { vi: 'chưa chụp', en: 'not taken yet' },
+  nguoiLap: { vi: 'Người lập', en: 'Made by' },
+});
 
 const LOC = [
-  ['', 'Tất cả'], ['nhap', 'Nháp'], ['cho_duyet', 'Chờ duyệt'],
-  ['tu_choi', 'Bị trả về'], ['da_duyet', 'Đã duyệt'],
+  ['', { vi: 'Tất cả', en: 'All' }], ['nhap', { vi: 'Nháp', en: 'Draft' }], ['cho_duyet', { vi: 'Chờ duyệt', en: 'Awaiting approval' }],
+  ['tu_choi', { vi: 'Bị trả về', en: 'Sent back' }], ['da_duyet', { vi: 'Đã duyệt', en: 'Approved' }],
 ] as const;
 const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc'))
   ? Astro.url.searchParams.get('loc')! : '';
-const tenLoc = LOC.find(([v]) => v === loc)?.[1] ?? '';
+const tenLoc = LOC.find(([v]) => v === loc)?.[1][nn] ?? '';
 
 const tim = docTimDs(Astro.url.searchParams);
 let ds: PhieuNhanTom[] = [];
@@ -38,60 +73,60 @@ if (k.chiNhanh && k.daKhoiTao) {
   try {
     ({ ds, coSau } = catTrang(await docDsPhieuNhan(k.client, k.chiNhanh.id, loc || null, tim)));
   } catch (e) {
-    loiDoc = cauLoiKho(e, 'Không đọc được danh sách phiếu nhận hàng.');
+    loiDoc = cauLoiKho(e, t.khongDoc);
   }
 }
 const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
 // Nhãn trạng thái cho thủ kho: "Bị trả về" dễ hiểu hơn "Bị từ chối".
-const nhanTrangThai = (tt: string): [string, string] =>
-  tt === 'tu_choi' ? ['Bị trả về', 'tat'] : (TRANG_THAI_CHUNG_TU[tt] ?? [tt, 'tat']);
+const nhanTrangThai = (tt: string): [string, string] => {
+  if (tt === 'tu_choi') return [t.biTraVe, 'tat'];
+  const [nhan, lop] = trangThaiKho(tt, nn);
+  return [nhan, lop || 'tat'];
+};
 ---
-<Kho k={k} tieuDe="Nhận hàng" huongDan="nhan-hang">
-  <h1>Nhận hàng</h1>
+<Kho k={k} tieuDe={t.tieuDe} huongDan="nhan-hang">
+  <h1>{t.tieuDe}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {!k.daKhoiTao ? (
-    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Trang chủ kho</a>.</p>
+    <p class="nb-rong">{t.chuaDung} <a href="/noi-bo/kho">{t.trangChuKho}</a>.</p>
   ) : (
     <>
-      <p class="nb-dan">
-        Hàng về: chụp hóa đơn → cân từng món → gửi. Kế toán / quản lý điền giá và duyệt,
-        duyệt xong hàng mới vào tồn.
-      </p>
+      <p class="nb-dan">{t.dan}</p>
 
       <div class="kho-nut-nhanh">
-        <a class="nb-nut nh-lon" href="/noi-bo/kho/nhan-hang/moi">+ Nhận hàng mới</a>
+        <a class="nb-nut nh-lon" href="/noi-bo/kho/nhan-hang/moi">{t.nhanMoi}</a>
       </div>
 
-      <nav class="kho-dh" aria-label="Lọc theo trạng thái">
-        {LOC.map(([v, t]) => (
-          <a href={v ? `/noi-bo/kho/nhan-hang?loc=${v}` : '/noi-bo/kho/nhan-hang'} aria-current={loc === v ? 'page' : undefined}>{t}</a>
+      <nav class="kho-dh" aria-label={t.locTrangThai}>
+        {LOC.map(([v, tenChip]) => (
+          <a href={v ? `/noi-bo/kho/nhan-hang?loc=${v}` : '/noi-bo/kho/nhan-hang'} aria-current={loc === v ? 'page' : undefined}>{tenChip[nn]}</a>
         ))}
       </nav>
 
       <LocDanhSach duong="/noi-bo/kho/nhan-hang" tim={tim} giu={{ loc }} coCuaToi
-        goiY="Số phiếu, nhà cung cấp, số hóa đơn…" />
+        goiY={t.goiY} />
 
       {ds.length === 0 ? (
-        <p class="nb-rong">{tim.trang > 1 ? 'Hết danh sách — bấm "Trang trước".' : dangTim(tim) ? 'Không tìm thấy phiếu nào khớp bộ lọc.'
-          : loc ? `Không có phiếu nào ở mục "${tenLoc}".` : 'Chưa có phiếu nhận hàng nào.'}</p>
+        <p class="nb-rong">{tim.trang > 1 ? t.hetDs : dangTim(tim) ? t.khongKhop
+          : loc ? t.khongCoMuc(tenLoc) : t.chuaCo}</p>
       ) : ds.map(p => {
         const [nhan, lop] = nhanTrangThai(p.trang_thai);
         return (
           <a href={`/noi-bo/kho/nhan-hang/${p.id}`} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
             <div class="nb-dong-dau">
-              <strong>{p.so_phieu}{p.loai === 'ton_dau' && ' · tồn đầu kỳ'}</strong>
+              <strong>{p.so_phieu}{p.loai === 'ton_dau' && t.tonDau}</strong>
               <span class={`nb-nhan ${lop}`}>{nhan}</span>
             </div>
             {p.trang_thai === 'tu_choi' && p.ly_do && (
-              <p class="nh-ly-do">Lý do trả về: {p.ly_do}</p>
+              <p class="nh-ly-do">{t.lyDoTraVe} {p.ly_do}</p>
             )}
             <dl>
-              {p.loai === 'mua' && <><dt>Nhà cung cấp</dt><dd>{p.ten_nha_cung_cap ?? 'chưa chọn'}</dd></>}
-              <dt>Ngày nhận</dt><dd>{dinhDangNgay(p.ngay_nhap)} · vào {p.ten_vi_tri ?? '—'}</dd>
-              <dt>Hàng</dt><dd>{p.so_dong} món · {dinhDangKg(p.tong_kg)} kg{p.tong_goi > 0 && <> · {p.tong_goi} tảng/gói</>}</dd>
-              {p.loai === 'mua' && <><dt>Ảnh hóa đơn</dt><dd>{p.so_anh > 0 ? `✓ ${p.so_anh} ảnh` : 'chưa chụp'}</dd></>}
-              <dt>Người lập</dt><dd>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
+              {p.loai === 'mua' && <><dt>{t.ncc}</dt><dd>{p.ten_nha_cung_cap ?? t.chuaChon}</dd></>}
+              <dt>{t.ngayNhan}</dt><dd>{dinhDangNgay(p.ngay_nhap)} · {t.vao} {p.ten_vi_tri ?? '—'}</dd>
+              <dt>{t.hang}</dt><dd>{t.soMon(p.so_dong)} · {dinhDangKg(p.tong_kg, nn)} kg{p.tong_goi > 0 && <> · {p.tong_goi} {t.tangGoi}</>}</dd>
+              {p.loai === 'mua' && <><dt>{t.anhHoaDon}</dt><dd>{p.so_anh > 0 ? t.soAnh(p.so_anh) : t.chuaChup}</dd></>}
+              <dt>{t.nguoiLap}</dt><dd>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
             </dl>
           </a>
         );

@@ -21,16 +21,20 @@
  * `anh_da_tai` (đường dẫn trong kho file) cùng với ma_gui của form. Lần bấm
  * sau chỉ nhận đường dẫn nằm trong thư mục <chi nhánh>/nhap/<ma_gui này>/ —
  * form không gắn được ảnh của phiếu khác. Ảnh nào cũng có ô "Giữ" (anh_giu).
+ *
+ * HAI THỨ TIẾNG: lỗi đọc form trả loi (tiếng Việt) và loiEn song song; câu báo
+ * KetQua có cauEn. Câu ghép với lỗi database thì phần database tra dichCau().
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  cauLoiKho, chiaSoDuLonNhat, dinhDangPhanTram, dinhDangTien, docKg, docNgay, docSoNguyen, docTien, laUuid,
-  type KetQua,
+  cauLoiKho, chiaSoDuLonNhat, dinhDangPhanTram, dinhDangTien, docKg, docNgay, docSoNguyen, docTien, kqHai, laUuid,
+  type HaiThuTieng, type KetQua, type NgonNguNB,
 } from './chung.ts';
 import { docTruongThem, type DinhNghiaTruong, type GiaTriTruong } from './truong-them.ts';
 import { docAnhDaTai, layTepAnh, soThuTuCuoi, taiAnh } from './anh.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
+import { dichCau } from '../cau-noi-bo.ts';
 
 export interface PhieuNhapTom {
   id: string;
@@ -224,10 +228,21 @@ export function dongTrong(): DongForm {
            ngay_san_xuat: '', han_dung: '', truong_them: {} };
 }
 
+/** Lỗi ô ngày / ô tiền của đầu phiếu — form lập phiếu và form điền giá dùng chung. */
+const LOI_DAU = {
+  ngayNhap: { vi: 'Ngày nhập không phải ngày có thật', en: 'The receipt date is not a real date' },
+  ngayHoaDon: { vi: 'Ngày hóa đơn không phải ngày có thật', en: 'The invoice date is not a real date' },
+  hanTra: { vi: 'Hạn thanh toán không phải ngày có thật', en: 'The payment due date is not a real date' },
+  thue: { vi: 'Tiền thuế là số đồng', en: 'The tax must be an amount in VND' },
+  chiPhi: { vi: 'Chi phí khác là số đồng', en: 'Other costs must be an amount in VND' },
+} satisfies Record<string, HaiThuTieng>;
+
 export interface KetQuaDocForm {
   dau: DauForm;
   dong: DongForm[];
   loi: string[];
+  /** Cùng các lỗi của loi, cùng thứ tự, bằng tiếng Anh. */
+  loiEn: string[];
   /** Gửi thẳng vào p_dong của kho_luu_phieu_nhap. */
   payload: Record<string, unknown>[];
 }
@@ -245,9 +260,12 @@ export function docFormPhieuNhap(
 ): KetQuaDocForm {
   const s = (ten: string) => String(form.get(ten) ?? '').trim();
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
 
   const tt = docTruongThem(form, dinhNghiaPhieu, undefined, cu?.phieu ?? {});
   loi.push(...tt.loi);
+  loiEn.push(...tt.loiEn);
   const dau: DauForm = {
     nha_cung_cap_id: s('nha_cung_cap_id'),
     vi_tri_id: s('vi_tri_id'),
@@ -278,18 +296,22 @@ export function docFormPhieuNhap(
     dong.push(d);
 
     const so = dong.length;
-    if (!laUuid(d.mat_hang_id)) { loi.push(`Dòng ${so}: chưa chọn mặt hàng`); continue; }
+    if (!laUuid(d.mat_hang_id)) { bao({ vi: `Dòng ${so}: chưa chọn mặt hàng`, en: `Line ${so}: no item chosen` }); continue; }
     const kg = docKg(d.so_kg);
     const goi = docSoNguyen(d.so_goi, 0, 100000);
     const gia = docTien(d.don_gia_kg);
     const hsd = docNgay(d.han_dung);
     const nsx = docNgay(d.ngay_san_xuat);
-    if (kg === null || Number.isNaN(kg) || kg <= 0) loi.push(`Dòng ${so}: số kg chưa đúng (ví dụ 12,5)`);
-    if (Number.isNaN(goi)) loi.push(`Dòng ${so}: số gói/tảng là số nguyên`);
-    if (Number.isNaN(gia)) loi.push(`Dòng ${so}: đơn giá là số đồng mỗi kg (ví dụ 480.000)`);
-    if (hsd === undefined) loi.push(`Dòng ${so}: hạn dùng không phải ngày có thật`);
-    if (nsx === undefined) loi.push(`Dòng ${so}: ngày sản xuất không phải ngày có thật`);
-    loi.push(...ttDong.loi.map(x => `Dòng ${so}: ${x}`));
+    if (kg === null || Number.isNaN(kg) || kg <= 0) {
+      bao({ vi: `Dòng ${so}: số kg chưa đúng (ví dụ 12,5)`, en: `Line ${so}: the kg is not valid (for example 12.5)` });
+    }
+    if (Number.isNaN(goi)) bao({ vi: `Dòng ${so}: số gói/tảng là số nguyên`, en: `Line ${so}: the number of packs/pieces must be a whole number` });
+    if (Number.isNaN(gia)) {
+      bao({ vi: `Dòng ${so}: đơn giá là số đồng mỗi kg (ví dụ 480.000)`, en: `Line ${so}: the unit price is VND per kg (for example 480,000)` });
+    }
+    if (hsd === undefined) bao({ vi: `Dòng ${so}: hạn dùng không phải ngày có thật`, en: `Line ${so}: the use-by date is not a real date` });
+    if (nsx === undefined) bao({ vi: `Dòng ${so}: ngày sản xuất không phải ngày có thật`, en: `Line ${so}: the production date is not a real date` });
+    ttDong.loi.forEach((x, j) => bao({ vi: `Dòng ${so}: ${x}`, en: `Line ${so}: ${ttDong.loiEn[j] ?? x}` }));
 
     payload.push({
       mat_hang_id: d.mat_hang_id,
@@ -303,13 +325,13 @@ export function docFormPhieuNhap(
     });
   }
 
-  if (dau.ngay_nhap && docNgay(dau.ngay_nhap) === undefined) loi.push('Ngày nhập không phải ngày có thật');
-  if (dau.ngay_hoa_don && docNgay(dau.ngay_hoa_don) === undefined) loi.push('Ngày hóa đơn không phải ngày có thật');
-  if (dau.han_thanh_toan && docNgay(dau.han_thanh_toan) === undefined) loi.push('Hạn thanh toán không phải ngày có thật');
-  if (Number.isNaN(docTien(dau.tien_thue))) loi.push('Tiền thuế là số đồng');
-  if (Number.isNaN(docTien(dau.chi_phi_khac))) loi.push('Chi phí khác là số đồng');
+  if (dau.ngay_nhap && docNgay(dau.ngay_nhap) === undefined) bao(LOI_DAU.ngayNhap);
+  if (dau.ngay_hoa_don && docNgay(dau.ngay_hoa_don) === undefined) bao(LOI_DAU.ngayHoaDon);
+  if (dau.han_thanh_toan && docNgay(dau.han_thanh_toan) === undefined) bao(LOI_DAU.hanTra);
+  if (Number.isNaN(docTien(dau.tien_thue))) bao(LOI_DAU.thue);
+  if (Number.isNaN(docTien(dau.chi_phi_khac))) bao(LOI_DAU.chiPhi);
 
-  return { dau, dong, loi, payload };
+  return { dau, dong, loi, loiEn, payload };
 }
 
 // -----------------------------------------------------------------------------
@@ -351,7 +373,12 @@ export async function luuPhieuNhap(
   const doc = docFormPhieuNhap(form, ctx.dinhNghiaPhieu, ctx.dinhNghiaLo, ctx.truongThemCu);
 
   const maGui = String(form.get('ma_gui') ?? '');
-  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang rồi nhập lại.', dau: doc.dau, dong: doc.dong };
+  if (!laUuid(maGui)) {
+    return {
+      ...kqHai(false, { vi: 'Form đã cũ — tải lại trang rồi nhập lại.', en: 'This form is out of date — reload the page and enter it again.' }),
+      dau: doc.dau, dong: doc.dong,
+    };
+  }
 
   // Ảnh — làm TRƯỚC khi báo lỗi gõ sai. Giữ ảnh cũ của phiếu và ảnh form này
   // đã tải ở lần bấm trước (nếu còn tích "Giữ"), rồi tải thêm ảnh vừa chọn.
@@ -366,16 +393,18 @@ export async function luuPhieuNhap(
     ...daTaiTruoc.filter(a => tich.has(a)),
     ...tai.duongDan,
   ];
-  const cauAnh = tai.loi.length ? ` Lưu ý: ${tai.loi.join(' · ')}` : '';
+  const cauAnh = cauLoiAnh(tai);
   // Chưa lưu được: trả lại đủ để trang hiện lại form cùng ma_gui và ảnh đã lên.
-  const chuaLuu = (cau: string): KetQuaLuu => ({
+  const conAnh = cauAnhVanCon(anh.length);
+  const chuaLuu = (c: HaiThuTieng): KetQuaLuu => ({
     ok: false,
-    cau: cau + (anh.length ? ` · Ảnh vẫn còn (${anh.length} ảnh), không cần chụp lại.` : '') + cauAnh,
+    cau: c.vi + conAnh.vi + cauAnh.vi,
+    cauEn: c.en + conAnh.en + cauAnh.en,
     dau: doc.dau, dong: doc.dong,
     maGui, anhDaTai: [...daTaiTruoc, ...tai.duongDan], anhGiu: anh,
   });
 
-  if (doc.loi.length) return chuaLuu(doc.loi.join(' · '));
+  if (doc.loi.length) return chuaLuu({ vi: doc.loi.join(' · '), en: doc.loiEn.join(' · ') });
 
   const { data, error } = await client.rpc('kho_luu_phieu_nhap', {
     p_id: ctx.id,
@@ -396,25 +425,53 @@ export async function luuPhieuNhap(
     p_truong_them: doc.dau.truong_them,
     p_dong: doc.payload,
   });
-  if (error) return chuaLuu(cauLoiKho(error));
+  if (error) return chuaLuu(hai(cauLoiKho(error)));
 
   const kq = (Array.isArray(data) ? data[0] : data) as { phieu_id: string; phien_ban_moi: number; da_co: boolean } | undefined;
-  if (!kq) return chuaLuu('Không chắc đã lưu hay chưa — tải lại trang để kiểm tra.');
+  if (!kq) {
+    return chuaLuu({ vi: 'Không chắc đã lưu hay chưa — tải lại trang để kiểm tra.', en: 'Not sure whether it was saved — reload the page to check.' });
+  }
 
+  const xong: HaiThuTieng = kq.da_co
+    ? { vi: 'Phiếu này đã được lưu từ lần bấm trước.', en: 'This receipt was already saved the first time you pressed.' }
+    : { vi: 'Đã lưu nháp.', en: 'Draft saved.' };
   return {
     ok: true,
     id: kq.phieu_id,
     phienBan: kq.phien_ban_moi,
     soDong: doc.payload.length,
-    cau: (kq.da_co ? 'Phiếu này đã được lưu từ lần bấm trước.' : 'Đã lưu nháp.') + cauAnh,
+    cau: xong.vi + cauAnh.vi,
+    cauEn: xong.en + cauAnh.en,
   };
 }
 
-/** Các hàm đổi trạng thái trả về một câu tiếng Việt — hiện nguyên văn. */
+/** Câu tiếng Việt từ database / cauLoiKho → cặp hai thứ tiếng (tiếng Anh tra dichCau). */
+function hai(vi: string): HaiThuTieng {
+  return { vi, en: dichCau('en', vi) };
+}
+
+/** " Lưu ý: <lỗi tải ảnh>" nối sau câu báo; không có lỗi thì chuỗi rỗng. */
+function cauLoiAnh(tai: { loi: string[]; loiEn: string[] }): HaiThuTieng {
+  return tai.loi.length ? { vi: ` Lưu ý: ${tai.loi.join(' · ')}`, en: ` Note: ${tai.loiEn.join(' · ')}` } : { vi: '', en: '' };
+}
+
+/** Chưa lưu được mà ảnh đã lên: nhắc không phải chụp lại. */
+function cauAnhVanCon(so: number): HaiThuTieng {
+  return so > 0
+    ? { vi: ` · Ảnh vẫn còn (${so} ảnh), không cần chụp lại.`,
+        en: ` · The photos are kept (${so} ${so === 1 ? 'photo' : 'photos'}) — no need to take them again.` }
+    : { vi: '', en: '' };
+}
+
+/**
+ * Các hàm đổi trạng thái trả về một câu tiếng Việt của database — hiện nguyên
+ * văn (màn tiếng Anh tra dichCau lúc hiện, trong BaoKho).
+ */
 async function cauTraVe(ham: PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<KetQua> {
   const { data, error } = await ham;
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: String(data ?? 'Xong.') };
+  if (data === null || data === undefined) return kqHai(true, { vi: 'Xong.', en: 'Done.' });
+  return { ok: true, cau: String(data) };
 }
 
 export function guiDuyet(client: SupabaseClient, id: string, phienBan: number | null) {
@@ -488,23 +545,31 @@ export async function docNguongGiaMua(client: SupabaseClient, chiNhanhId: string
   return Number.isFinite(n) && n > 0 ? n : 5;
 }
 
-/** Chữ trên chip của một dòng: "Lần trước 480.000 đ · +8,3%". Chưa có lần trước: null. */
-export function chuSoSanhGia(s: SoSanhGia | undefined): { chu: string; vuot: boolean } | null {
+/**
+ * Chữ trên chip của một dòng: "Lần trước 480.000 đ · +8,3%" (tiếng Anh: "Last time
+ * 480,000 ₫ · +8.3%"). Chưa có lần trước: null.
+ */
+export function chuSoSanhGia(s: SoSanhGia | undefined, nn: NgonNguNB = 'vi'): { chu: string; vuot: boolean } | null {
   if (!s || s.gia_truoc === null) return null;
-  const pt = s.chenh_pt === null ? '' : ` · ${s.chenh_pt > 0 ? '+' : ''}${dinhDangPhanTram(s.chenh_pt)}`;
-  return { chu: `Lần trước ${dinhDangTien(s.gia_truoc)}${pt}`, vuot: s.vuot_nguong };
+  const pt = s.chenh_pt === null ? '' : ` · ${s.chenh_pt > 0 ? '+' : ''}${dinhDangPhanTram(s.chenh_pt, 1, nn)}`;
+  const truoc = dinhDangTien(s.gia_truoc, nn);
+  return { chu: { vi: `Lần trước ${truoc}${pt}`, en: `Last time ${truoc}${pt}` }[nn], vuot: s.vuot_nguong };
 }
 
 /**
  * Câu tóm tắt trong hộp vàng trên nút Duyệt:
  * "2 món giá tăng hơn 5% so với lần trước — kiểm lại hóa đơn". Không món nào vượt: null.
  */
-export function cauCanhBaoGia(ds: Iterable<SoSanhGia>, nguong: number): string | null {
+export function cauCanhBaoGia(ds: Iterable<SoSanhGia>, nguong: number, nn: NgonNguNB = 'vi'): string | null {
   const vuot = [...ds].filter(s => s.vuot_nguong && s.chenh_pt !== null);
   if (vuot.length === 0) return null;
-  const huong = vuot.every(s => (s.chenh_pt ?? 0) > 0) ? 'tăng'
-    : vuot.every(s => (s.chenh_pt ?? 0) < 0) ? 'giảm' : 'lệch';
-  return `${vuot.length} món giá ${huong} hơn ${nguong.toLocaleString('vi-VN')}% so với lần trước — kiểm lại hóa đơn`;
+  const huong: HaiThuTieng = vuot.every(s => (s.chenh_pt ?? 0) > 0) ? { vi: 'tăng', en: 'up' }
+    : vuot.every(s => (s.chenh_pt ?? 0) < 0) ? { vi: 'giảm', en: 'down' } : { vi: 'lệch', en: 'changed' };
+  const n = vuot.length;
+  return {
+    vi: `${n} món giá ${huong.vi} hơn ${nguong.toLocaleString('vi-VN')}% so với lần trước — kiểm lại hóa đơn`,
+    en: `Price ${huong.en} more than ${nguong.toLocaleString('en-US')}% on ${n} ${n === 1 ? 'item' : 'items'} since last time — check the invoice`,
+  }[nn];
 }
 
 /** Chữ đang hiện trên form điền giá — giữ nguyên chữ người dùng gõ để điền lại khi báo lỗi. */
@@ -533,6 +598,8 @@ export function dienGiaTuPhieu(p: PhieuNhap, dong: DongPhieuNhap[]): DienGiaForm
 export interface KetQuaDocDienGia {
   giaTri: DienGiaForm;
   loi: string[];
+  /** Cùng các lỗi của loi, cùng thứ tự, bằng tiếng Anh. */
+  loiEn: string[];
   /** Gửi thẳng vào p_gia của kho_dien_gia_phieu_nhap. */
   payload: { dong_id: string; don_gia_kg: number }[];
 }
@@ -549,6 +616,8 @@ export function docFormDienGia(
 ): KetQuaDocDienGia {
   const s = (ten: string) => String(form.get(ten) ?? '').trim();
   const loi: string[] = [];
+  const loiEn: string[] = [];
+  const bao = (c: HaiThuTieng) => { loi.push(c.vi); loiEn.push(c.en); };
   const giaTri: DienGiaForm = {
     so_hoa_don: s('so_hoa_don'),
     ngay_hoa_don: s('ngay_hoa_don'),
@@ -562,21 +631,24 @@ export function docFormDienGia(
     const chu = s(`gia_${d.id}`);
     giaTri.gia[d.id] = chu;
     const gia = docTien(chu);
-    if (Number.isNaN(gia)) { loi.push(`Dòng ${i + 1}: đơn giá là số đồng mỗi kg (ví dụ 480.000)`); return; }
+    if (Number.isNaN(gia)) {
+      bao({ vi: `Dòng ${i + 1}: đơn giá là số đồng mỗi kg (ví dụ 480.000)`, en: `Line ${i + 1}: the unit price is VND per kg (for example 480,000)` });
+      return;
+    }
     payload.push({ dong_id: d.id, don_gia_kg: gia ?? 0 });
   });
-  if (giaTri.ngay_hoa_don && docNgay(giaTri.ngay_hoa_don) === undefined) loi.push('Ngày hóa đơn không phải ngày có thật');
-  if (giaTri.han_thanh_toan && docNgay(giaTri.han_thanh_toan) === undefined) loi.push('Hạn thanh toán không phải ngày có thật');
-  if (Number.isNaN(docTien(giaTri.tien_thue))) loi.push('Tiền thuế là số đồng');
-  if (Number.isNaN(docTien(giaTri.chi_phi_khac))) loi.push('Chi phí khác là số đồng');
-  return { giaTri, loi, payload };
+  if (giaTri.ngay_hoa_don && docNgay(giaTri.ngay_hoa_don) === undefined) bao(LOI_DAU.ngayHoaDon);
+  if (giaTri.han_thanh_toan && docNgay(giaTri.han_thanh_toan) === undefined) bao(LOI_DAU.hanTra);
+  if (Number.isNaN(docTien(giaTri.tien_thue))) bao(LOI_DAU.thue);
+  if (Number.isNaN(docTien(giaTri.chi_phi_khac))) bao(LOI_DAU.chiPhi);
+  return { giaTri, loi, loiEn, payload };
 }
 
 /** Lưu giá (không đổi trạng thái). Thành công: trả phiên bản mới để duyệt tiếp. */
 export async function dienGiaPhieu(
   client: SupabaseClient, id: string, phienBan: number | null, doc: KetQuaDocDienGia,
 ): Promise<KetQua & { phienBan?: number }> {
-  if (doc.loi.length) return { ok: false, cau: doc.loi.join(' · ') };
+  if (doc.loi.length) return { ok: false, cau: doc.loi.join(' · '), cauEn: doc.loiEn.join(' · ') };
   const g = doc.giaTri;
   const { data, error } = await client.rpc('kho_dien_gia_phieu_nhap', {
     p_id: id,
@@ -589,7 +661,7 @@ export async function dienGiaPhieu(
     p_gia: doc.payload,
   });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return { ok: true, cau: 'Đã lưu giá.', phienBan: Number(data) };
+  return { ...kqHai(true, { vi: 'Đã lưu giá.', en: 'Prices saved.' }), phienBan: Number(data) };
 }
 
 // -----------------------------------------------------------------------------
