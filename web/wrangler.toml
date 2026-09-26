@@ -18,6 +18,15 @@ compatibility_flags = ["nodejs_compat"]
 workers_dev = false
 preview_urls = false
 
+# Chạy code ở trạm Cloudflare gần AWS Singapore (ap-southeast-1) — cùng vùng
+# với Supabase. Không ghim thì người dùng ở Việt Nam hay được đưa vào trạm
+# Hồng Kông, mà Google từ chối mọi lời gọi Gemini đi từ Hồng Kông ("User
+# location is not supported for the API use") — máy dịch hỏng hết. Ảnh, CSS,
+# JS tĩnh vẫn phát từ trạm gần người xem; chỉ phần chạy code (dựng trang, gọi
+# database, gọi Gemini) chạy ở Singapore. Kiểm: header `cf-placement`.
+[placement]
+region = "aws:ap-southeast-1"
+
 # Đồng bộ bán hàng iPOS mỗi 5 phút (giờ UTC; lượt ngoài giờ mở cửa rất nhẹ —
 # không có hóa đơn mới). Bí mật IPOS_ACCESS_TOKEN, KHO_IPOS_EMAIL,
 # KHO_IPOS_MAT_KHAU đặt bằng `npx wrangler secret put …` — KHÔNG ghi ở đây.
