@@ -92,26 +92,6 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     'pages/noi-bo/kho/nhap/index.astro',
     // ---- hết gói nhập hàng ----
     // ---- gói vận hành: pha lóc · xuất · kiểm kê · quầy · quét · tồn ----
-    'lib/kho/dem-quay.ts',
-    'lib/kho/kiem-ke.ts',
-    'lib/kho/pha-loc.ts',
-    'lib/kho/quay.ts',
-    'lib/kho/the-kho.ts',
-    'lib/kho/xuat.ts',
-    'pages/noi-bo/kho/kiem-ke/[id].astro',
-    'pages/noi-bo/kho/kiem-ke/index.astro',
-    'pages/noi-bo/kho/pha-loc/[id].astro',
-    'pages/noi-bo/kho/pha-loc/index.astro',
-    'pages/noi-bo/kho/pha-loc/moi.astro',
-    'pages/noi-bo/kho/quay/dem.astro',
-    'pages/noi-bo/kho/quay/nhan.astro',
-    'pages/noi-bo/kho/quay/yeu-cau/[id].astro',
-    'pages/noi-bo/kho/quay/yeu-cau/index.astro',
-    'pages/noi-bo/kho/quet.astro',
-    'pages/noi-bo/kho/the-kho/[mat_hang_id].astro',
-    'pages/noi-bo/kho/ton.astro',
-    'pages/noi-bo/kho/xuat/[id].astro',
-    'pages/noi-bo/kho/xuat/index.astro',
     // ---- hết gói vận hành ----
     // ---- gói công nợ: công nợ NCC, trả tiền, đối chiếu, trả hàng, MISA ----
     'lib/kho/cong-no.ts',

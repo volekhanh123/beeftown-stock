@@ -30,16 +30,66 @@ import {
   type DongTheKho, type MatHangTheKho,
 } from '../../../../lib/kho/the-kho.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, homNayVn, TEN_LOAI_MAT_HANG, TEN_LOAI_VI_TRI,
+  cauLoiKho, dinhDangKg, dinhDangNgay, homNayVn, nhanKho, TEN_LOAI_MAT_HANG_NB, TEN_LOAI_SO_CAI_NB, TEN_LOAI_VI_TRI_NB,
 } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('xem')) return Astro.redirect('/noi-bo/kho', 302);
+const nn = k.nn;
+const t = dichNB(nn, {
+  khongDocMh: { vi: 'Không đọc được mặt hàng.', en: 'Could not read the item.' },
+  khongDocThe: { vi: 'Không đọc được thẻ kho.', en: 'Could not read the stock card.' },
+  goi: { vi: 'gói', en: 'packs' },
+  caChiNhanh: { vi: 'Cả chi nhánh', en: 'Whole branch' },
+  theKho: { vi: 'Thẻ kho', en: 'Stock card' },
+  tieuDeMon: { vi: (ten: string) => `Thẻ kho · ${ten}`, en: (ten: string) => `Stock card · ${ten}` },
+  inTieuDe: { vi: 'THẺ KHO', en: 'STOCK CARD' },
+  veTon: { vi: '← Tồn kho', en: '← Stock' },
+  h1Mon: { vi: (ten: string) => `Thẻ kho: ${ten}`, en: (ten: string) => `Stock card: ${ten}` },
+  khongThay1: { vi: 'Không tìm thấy mặt hàng này.', en: 'This item was not found.' },
+  veTonKho: { vi: 'Về Tồn kho', en: 'Go to Stock' },
+  khongThay2: { vi: ' rồi bấm "Thẻ kho" ở món cần xem.', en: ' and press "Stock card" on the item you need.' },
+  tuDen: { vi: (a: string, b: string) => `từ ${a} đến ${b}`, en: (a: string, b: string) => `from ${a} to ${b}` },
+  oDau: { vi: 'Ở đâu', en: 'Where' },
+  tuNgay: { vi: 'Từ ngày', en: 'From' },
+  denNgay: { vi: 'Đến ngày', en: 'To' },
+  xem: { vi: 'Xem', en: 'View' },
+  chonNhanh: { vi: 'Chọn nhanh khoảng ngày', en: 'Quick date ranges' },
+  chuaCoQuay: { vi: 'Chi nhánh chưa có quầy nào để xem.', en: 'This branch has no counter to view yet.' },
+  tongKy: { vi: 'Tổng trong kỳ', en: 'Period totals' },
+  tonDau: { vi: 'Tồn đầu kỳ', en: 'Opening stock' },
+  nhapKy: { vi: 'Nhập trong kỳ', en: 'In during period' },
+  xuatKy: { vi: 'Xuất trong kỳ', en: 'Out during period' },
+  tonCuoi: { vi: 'Tồn cuối kỳ', en: 'Closing stock' },
+  inThe: { vi: 'In thẻ kho', en: 'Print stock card' },
+  khongCoDong: { vi: 'Trong khoảng ngày này món không có nhập, xuất nào.', en: 'This item has no stock in or out in this date range.' },
+  ngay: { vi: 'Ngày', en: 'Date' },
+  viec: { vi: 'Việc', en: 'Activity' },
+  chungTu: { vi: 'Chứng từ', en: 'Document' },
+  oDauLo: { vi: 'Ở đâu · lô', en: 'Where · lot' },
+  nhapKg: { vi: 'Nhập kg', en: 'In kg' },
+  xuatKg: { vi: 'Xuất kg', en: 'Out kg' },
+  tonKg: { vi: 'Tồn kg', en: 'Stock kg' },
+  nhapDv: { vi: (dv: string) => `Nhập ${dv}`, en: (dv: string) => `In ${dv}` },
+  xuatDv: { vi: (dv: string) => `Xuất ${dv}`, en: (dv: string) => `Out ${dv}` },
+  tonDv: { vi: (dv: string) => `Tồn ${dv}`, en: (dv: string) => `Stock ${dv}` },
+  ghiChu: { vi: 'Ghi chú', en: 'Note' },
+  caChiNhanhGhiChu: {
+    vi: 'Đang xem cả chi nhánh: hàng chuyển từ kho ra quầy hiện hai dòng (chuyển đi, chuyển đến) — tồn không đổi.',
+    en: 'Viewing the whole branch: goods moved from the store to the counter show two lines (transfer out, transfer in) — stock does not change.',
+  },
+  nguoiLap: { vi: 'Người lập', en: 'Prepared by' },
+  thuKho: { vi: 'Thủ kho', en: 'Storekeeper' },
+  quanLy: { vi: 'Quản lý', en: 'Manager' },
+});
 
 const matHangId = String(Astro.params.mat_hang_id ?? '');
 const homNay = homNayVn();
 const boLocUrl = docBoLocTheKho(Astro.url.searchParams, homNay);
+const loiLink = nn === 'en' ? (boLocUrl.loiEn ?? boLocUrl.loi) : boLocUrl.loi;
 const laQuay = k.nhanSu.vai_tro === 'nhan_vien_quay';
 
 let mh: MatHangTheKho | null = null;
@@ -51,7 +101,7 @@ try {
   if (k.chiNhanh) [mh, viTri] = await Promise.all([docMatHangTheKho(k.client, matHangId), docViTri(k.client, k.chiNhanh.id)]);
   if (!mh) khongCo = true;
 } catch (e) {
-  loiDoc = cauLoiKho(e, 'Không đọc được mặt hàng.');
+  loiDoc = cauLoiKho(e, t.khongDocMh);
 }
 
 // NV quầy chỉ chọn được quầy; không chọn thì quầy đầu tiên.
@@ -65,53 +115,56 @@ if (mh && k.chiNhanh && !loiDoc && !chanQuay) {
   try {
     dong = await docTheKho(k.client, k.chiNhanh.id, mh.id, boLoc);
   } catch (e) {
-    loiDoc = cauLoiKho(e, 'Không đọc được thẻ kho.');
+    loiDoc = cauLoiKho(e, t.khongDocThe);
   }
 }
 
 const tong = tongKy(dong);
 const coGoi = !!mh?.dem_goi;
-const dvg = mh?.don_vi_goi ?? 'gói';
-const tenNoi = boLoc.viTri ? (viTri.find(v => v.id === boLoc.viTri)?.ten ?? '') : 'Cả chi nhánh';
-const nhanh = khoangNhanh(homNay);
+const dvg = mh?.don_vi_goi ?? t.goi;
+const tenNoi = boLoc.viTri ? (viTri.find(v => v.id === boLoc.viTri)?.ten ?? '') : t.caChiNhanh;
+const nhanh = khoangNhanh(homNay, nn);
 const duocXem = (q: 'xem_gia' | 'nhap' | 'pha_loc' | 'xem') => k.duoc(q);
 // Tồn âm không nên có — nếu có thì tô đỏ để người xem để ý.
 const am = (n: number) => n < 0;
-const soKg = (n: number) => (n ? dinhDangKg(n) : '');
+const soKg = (n: number) => (n ? dinhDangKg(n, nn) : '');
 const soGoi = (n: number) => (n ? String(n) : '');
+// Tên việc: màn tiếng Việt giữ đúng chữ database trả (ten_loai); tiếng Anh tra theo mã loại sổ,
+// mã lạ thì dịch chữ database (dichCau).
+const tenLoai = (d: DongTheKho) => (nn === 'vi' ? d.ten_loai : (TEN_LOAI_SO_CAI_NB[d.loai]?.[nn] ?? dichCau(nn, d.ten_loai)));
 ---
-<Kho k={k} tieuDe={mh ? `Thẻ kho · ${mh.ten}` : 'Thẻ kho'} huongDan="the-kho" rong>
-  <InDau tieuDe="THẺ KHO" soPhieu={mh ? `${mh.ma} · ${mh.ten}` : null} chiNhanh={k.chiNhanh?.ten} />
-  <p class="kho-khong-in"><a href="/noi-bo/kho/ton">← Tồn kho</a></p>
-  <h1>Thẻ kho{mh ? `: ${mh.ten}` : ''}</h1>
+<Kho k={k} tieuDe={mh ? t.tieuDeMon(mh.ten) : t.theKho} huongDan="the-kho" rong>
+  <InDau tieuDe={t.inTieuDe} soPhieu={mh ? `${mh.ma} · ${mh.ten}` : null} chiNhanh={k.chiNhanh?.ten} />
+  <p class="kho-khong-in"><a href="/noi-bo/kho/ton">{t.veTon}</a></p>
+  <h1>{mh ? t.h1Mon(mh.ten) : t.theKho}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   {khongCo && !loiDoc && (
-    <p class="nb-rong">Không tìm thấy mặt hàng này. <a href="/noi-bo/kho/ton">Về Tồn kho</a> rồi bấm "Thẻ kho" ở món cần xem.</p>
+    <p class="nb-rong">{t.khongThay1} <a href="/noi-bo/kho/ton">{t.veTonKho}</a>{t.khongThay2}</p>
   )}
 
   {mh && (
     <>
       <p class="kho-phu the-dau">
-        {mh.ma} · {TEN_LOAI_MAT_HANG[mh.loai]} · {tenNoi} · từ {dinhDangNgay(boLoc.tu)} đến {dinhDangNgay(boLoc.den)}
+        {mh.ma} · {nhanKho(TEN_LOAI_MAT_HANG_NB, mh.loai, nn)} · {tenNoi} · {t.tuDen(dinhDangNgay(boLoc.tu), dinhDangNgay(boLoc.den))}
       </p>
-      {boLocUrl.loi && <div class="nb-bao luu-y kho-khong-in" role="status"><p>{boLocUrl.loi}</p></div>}
+      {loiLink && <div class="nb-bao luu-y kho-khong-in" role="status"><p>{loiLink}</p></div>}
 
       <form method="GET" class="nb-the the-loc kho-khong-in">
         <label class="nb-o">
-          <span>Ở đâu</span>
+          <span>{t.oDau}</span>
           <select name="vi_tri">
-            {!laQuay && <option value="" selected={!boLoc.viTri}>Cả chi nhánh</option>}
+            {!laQuay && <option value="" selected={!boLoc.viTri}>{t.caChiNhanh}</option>}
             {chonDuoc.map(v => (
-              <option value={v.id} selected={v.id === boLoc.viTri}>{v.ten} ({TEN_LOAI_VI_TRI[v.loai] ?? v.loai})</option>
+              <option value={v.id} selected={v.id === boLoc.viTri}>{v.ten} ({nhanKho(TEN_LOAI_VI_TRI_NB, v.loai, nn)})</option>
             ))}
           </select>
         </label>
-        <label class="nb-o"><span>Từ ngày</span><input type="date" name="tu" value={boLoc.tu} max={homNay} /></label>
-        <label class="nb-o"><span>Đến ngày</span><input type="date" name="den" value={boLoc.den} max={homNay} /></label>
-        <button type="submit" class="nb-nut">Xem</button>
+        <label class="nb-o"><span>{t.tuNgay}</span><input type="date" name="tu" value={boLoc.tu} max={homNay} /></label>
+        <label class="nb-o"><span>{t.denNgay}</span><input type="date" name="den" value={boLoc.den} max={homNay} /></label>
+        <button type="submit" class="nb-nut">{t.xem}</button>
       </form>
-      <nav class="kho-dh kho-khong-in" aria-label="Chọn nhanh khoảng ngày">
+      <nav class="kho-dh kho-khong-in" aria-label={t.chonNhanh}>
         {nhanh.map(n => (
           <a href={linkTheKho(mh!.id, { viTri: boLoc.viTri, tu: n.tu, den: n.den })}
              aria-current={n.tu === boLoc.tu && n.den === boLoc.den ? 'page' : undefined}>{n.ten}</a>
@@ -119,40 +172,40 @@ const soGoi = (n: number) => (n ? String(n) : '');
       </nav>
 
       {chanQuay ? (
-        <p class="nb-rong">Chi nhánh chưa có quầy nào để xem.</p>
+        <p class="nb-rong">{t.chuaCoQuay}</p>
       ) : !loiDoc && (
         <>
-          <section class="the-tong" aria-label="Tổng trong kỳ">
-            <div><span>Tồn đầu kỳ</span><b>{dinhDangKg(tong.dau_kg)} kg</b>{coGoi && <small>{tong.dau_goi} {dvg}</small>}</div>
-            <div><span>Nhập trong kỳ</span><b>+{dinhDangKg(tong.nhap_kg)} kg</b>{coGoi && <small>+{tong.nhap_goi} {dvg}</small>}</div>
-            <div><span>Xuất trong kỳ</span><b>−{dinhDangKg(tong.xuat_kg)} kg</b>{coGoi && <small>−{tong.xuat_goi} {dvg}</small>}</div>
-            <div class:list={['cuoi', { am: am(tong.cuoi_kg) }]}><span>Tồn cuối kỳ</span><b>{dinhDangKg(tong.cuoi_kg)} kg</b>{coGoi && <small>{tong.cuoi_goi} {dvg}</small>}</div>
+          <section class="the-tong" aria-label={t.tongKy}>
+            <div><span>{t.tonDau}</span><b>{dinhDangKg(tong.dau_kg, nn)} kg</b>{coGoi && <small>{tong.dau_goi} {dvg}</small>}</div>
+            <div><span>{t.nhapKy}</span><b>+{dinhDangKg(tong.nhap_kg, nn)} kg</b>{coGoi && <small>+{tong.nhap_goi} {dvg}</small>}</div>
+            <div><span>{t.xuatKy}</span><b>−{dinhDangKg(tong.xuat_kg, nn)} kg</b>{coGoi && <small>−{tong.xuat_goi} {dvg}</small>}</div>
+            <div class:list={['cuoi', { am: am(tong.cuoi_kg) }]}><span>{t.tonCuoi}</span><b>{dinhDangKg(tong.cuoi_kg, nn)} kg</b>{coGoi && <small>{tong.cuoi_goi} {dvg}</small>}</div>
           </section>
 
-          <NutIn chu="In thẻ kho" />
+          <NutIn chu={t.inThe} />
 
           {tong.so_dong === 0 ? (
-            <p class="nb-rong">Trong khoảng ngày này món không có nhập, xuất nào.</p>
+            <p class="nb-rong">{t.khongCoDong}</p>
           ) : (
             <div class="the-khung">
               <table class="kho-bang the-bang">
                 <thead><tr>
-                  <th>Ngày</th><th>Việc</th><th>Chứng từ</th><th>Ở đâu · lô</th>
-                  <th class="so">Nhập kg</th><th class="so">Xuất kg</th><th class="so">Tồn kg</th>
-                  {coGoi && <><th class="so">Nhập {dvg}</th><th class="so">Xuất {dvg}</th><th class="so">Tồn {dvg}</th></>}
-                  <th>Ghi chú</th>
+                  <th>{t.ngay}</th><th>{t.viec}</th><th>{t.chungTu}</th><th>{t.oDauLo}</th>
+                  <th class="so">{t.nhapKg}</th><th class="so">{t.xuatKg}</th><th class="so">{t.tonKg}</th>
+                  {coGoi && <><th class="so">{t.nhapDv(dvg)}</th><th class="so">{t.xuatDv(dvg)}</th><th class="so">{t.tonDv(dvg)}</th></>}
+                  <th>{t.ghiChu}</th>
                 </tr></thead>
                 <tbody>
                   {dong.map(d => {
                     if (d.loai === 'dau_ky') {
                       return (
                         <tr class="dau-ky">
-                          <td class="o-ngay" data-nhan="Ngày">{dinhDangNgay(d.ngay ?? boLoc.tu)}</td>
-                          <td class="o-viec" data-nhan="Việc"><strong>{d.ten_loai}</strong></td>
+                          <td class="o-ngay" data-nhan={t.ngay}>{dinhDangNgay(d.ngay ?? boLoc.tu)}</td>
+                          <td class="o-viec" data-nhan={t.viec}><strong>{tenLoai(d)}</strong></td>
                           <td class="o-ct"></td><td class="o-noi"></td><td class="so o-nhap"></td><td class="so o-xuat"></td>
-                          <td class:list={['so o-ton', { am: am(d.ton_kg) }]} data-nhan="Tồn kg"><b>{dinhDangKg(d.ton_kg)}</b></td>
+                          <td class:list={['so o-ton', { am: am(d.ton_kg) }]} data-nhan={t.tonKg}><b>{dinhDangKg(d.ton_kg, nn)}</b></td>
                           {coGoi && <><td class="so o-nhapg"></td><td class="so o-xuatg"></td>
-                            <td class="so o-tong" data-nhan={`Tồn ${dvg}`}><b>{d.ton_goi}</b></td></>}
+                            <td class="so o-tong" data-nhan={t.tonDv(dvg)}><b>{d.ton_goi}</b></td></>}
                           <td class="o-ghi"></td>
                         </tr>
                       );
@@ -160,21 +213,21 @@ const soGoi = (n: number) => (n ? String(n) : '');
                     const link = linkChungTu(d.chung_tu_loai, d.chung_tu_id, duocXem);
                     return (
                       <tr>
-                        <td class="o-ngay" data-nhan="Ngày">{dinhDangNgay(d.ngay)}</td>
-                        <td class="o-viec" data-nhan="Việc">{d.ten_loai}</td>
-                        <td class="o-ct" data-nhan="Chứng từ">
+                        <td class="o-ngay" data-nhan={t.ngay}>{dinhDangNgay(d.ngay)}</td>
+                        <td class="o-viec" data-nhan={t.viec}>{tenLoai(d)}</td>
+                        <td class="o-ct" data-nhan={t.chungTu}>
                           {d.so_chung_tu ? (link ? <a href={link}>{d.so_chung_tu}</a> : d.so_chung_tu) : '—'}
                         </td>
-                        <td class="o-noi" data-nhan="Ở đâu · lô">{d.vi_tri ?? '—'}{d.ma_lo && <span class="kho-phu">{' · '}{d.ma_lo}</span>}</td>
-                        <td class="so o-nhap" data-nhan="Nhập kg">{soKg(d.nhap_kg)}</td>
-                        <td class="so o-xuat" data-nhan="Xuất kg">{soKg(d.xuat_kg)}</td>
-                        <td class:list={['so o-ton', { am: am(d.ton_kg) }]} data-nhan="Tồn kg"><b>{dinhDangKg(d.ton_kg)}</b></td>
+                        <td class="o-noi" data-nhan={t.oDauLo}>{d.vi_tri ?? '—'}{d.ma_lo && <span class="kho-phu">{' · '}{d.ma_lo}</span>}</td>
+                        <td class="so o-nhap" data-nhan={t.nhapKg}>{soKg(d.nhap_kg)}</td>
+                        <td class="so o-xuat" data-nhan={t.xuatKg}>{soKg(d.xuat_kg)}</td>
+                        <td class:list={['so o-ton', { am: am(d.ton_kg) }]} data-nhan={t.tonKg}><b>{dinhDangKg(d.ton_kg, nn)}</b></td>
                         {coGoi && <>
-                          <td class="so o-nhapg" data-nhan={`Nhập ${dvg}`}>{soGoi(d.nhap_goi)}</td>
-                          <td class="so o-xuatg" data-nhan={`Xuất ${dvg}`}>{soGoi(d.xuat_goi)}</td>
-                          <td class="so o-tong" data-nhan={`Tồn ${dvg}`}><b>{d.ton_goi}</b></td>
+                          <td class="so o-nhapg" data-nhan={t.nhapDv(dvg)}>{soGoi(d.nhap_goi)}</td>
+                          <td class="so o-xuatg" data-nhan={t.xuatDv(dvg)}>{soGoi(d.xuat_goi)}</td>
+                          <td class="so o-tong" data-nhan={t.tonDv(dvg)}><b>{d.ton_goi}</b></td>
                         </>}
-                        <td class="o-ghi" data-nhan="Ghi chú">{d.dien_giai ?? ''}</td>
+                        <td class="o-ghi" data-nhan={t.ghiChu}>{dichCau(nn, d.dien_giai)}</td>
                       </tr>
                     );
                   })}
@@ -183,11 +236,11 @@ const soGoi = (n: number) => (n ? String(n) : '');
             </div>
           )}
           {!boLoc.viTri && tong.so_dong > 0 && (
-            <p class="kho-phu kho-khong-in">Đang xem cả chi nhánh: hàng chuyển từ kho ra quầy hiện hai dòng (chuyển đi, chuyển đến) — tồn không đổi.</p>
+            <p class="kho-phu kho-khong-in">{t.caChiNhanhGhiChu}</p>
           )}
         </>
       )}
-      <KyTen ten={['Người lập', 'Thủ kho', 'Quản lý']} />
+      <KyTen ten={[t.nguoiLap, t.thuKho, t.quanLy]} />
     </>
   )}
 </Kho>
