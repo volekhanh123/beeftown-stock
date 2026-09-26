@@ -25,9 +25,59 @@ import {
   type HangCongTac,
 } from '../../lib/cong-tac';
 import { moTaO } from '../../lib/ban-dich';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo';
+import { dichCau, moTaKhoa } from '../../lib/cau-noi-bo';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  tieuDe:      { vi: 'Nội dung', en: 'Content' },
+  h1:          { vi: 'Công tắc nội dung', en: 'Content switches' },
+  dan1:        { vi: 'Mỗi ô là một dữ kiện trên trang công khai. Bấm ', en: 'Each card is one fact on the public site. Tap ' },
+  congBo:      { vi: 'Công bố', en: 'Publish' },
+  dan2:        { vi: ' là khách thấy ngay; bấm ', en: ' and guests see it straight away; tap ' },
+  goKhoiTrang: { vi: 'Gỡ khỏi trang', en: 'Remove from site' },
+  dan3:        { vi: ' là biến mất ngay. Không cần ai deploy lại.', en: ' and it disappears straight away. Nobody needs to redeploy.' },
+  khongKhoa:   { vi: (k: string) => `Không có khóa tên "${k}".`, en: (k: string) => `There is no key named "${k}".` },
+  khongDoc:    { vi: 'Không đọc được bảng công tắc.', en: 'Could not read the switch table.' },
+  moTrang1:    { vi: 'Mở ', en: 'Open the ' },
+  trangCK:     { vi: 'trang công khai', en: 'public site' },
+  moTrang2:    { vi: ' để xem lại.', en: ' to check.' },
+  vaiTro1:     { vi: 'Vai trò ', en: 'The role ' },
+  vaiTro2:     { vi: ' soạn được bản nháp nhưng không tự công bố được. Bản nháp KHÔNG hiện trên trang; quản lý hoặc chủ nhà hàng sẽ là người bấm công bố.',
+                 en: ' can write drafts but cannot publish. Drafts do NOT show on the site; a manager or the owner will press Publish.' },
+  conThieu:    { vi: (n: number) => `Còn ${n} dữ kiện bắt buộc chưa công bố.`, en: (n: number) => `${n} required facts are not published yet.` },
+  batBuoc:     { vi: 'Bắt buộc', en: 'Required' },
+  chuNhaHang:  { vi: 'Chủ nhà hàng', en: 'Owner' },
+  dangTrenTrang: { vi: 'Đang trên trang', en: 'Live on the site' },
+  chuaCongBo:  { vi: 'Chưa công bố', en: 'Not published' },
+  trong:       { vi: 'Chưa có gì trên trang — khách không thấy dòng nào cho mục này.', en: 'Nothing on the site yet — guests see no line for this item.' },
+  chiChu:      { vi: 'Chỉ chủ nhà hàng đổi được dữ kiện này.', en: 'Only the owner can change this fact.' },
+  trangThai:   { vi: 'Trạng thái', en: 'Status' },
+  bat:         { vi: 'Bật — hiện trên trang', en: 'On — shown on the site' },
+  tat:         { vi: 'Tắt — ẩn khỏi trang', en: 'Off — hidden from the site' },
+  ngay:        { vi: 'Ngày', en: 'Date' },
+  so:          { vi: 'Số', en: 'Number' },
+  maAnh:       { vi: 'Mã ảnh trong bảng ', en: 'Photo ID in the ' },
+  maAnh2:      { vi: '', en: ' table' },
+  maAnhPhu:    { vi: 'Tải ảnh lên Supabase Storage trước, rồi dán mã dòng vào đây. Màn hình chọn ảnh chưa làm.',
+                 en: 'Upload the photo to Supabase Storage first, then paste the row ID here. The photo picker is not built yet.' },
+  duongDan:    { vi: 'Đường dẫn (bắt đầu bằng https://)', en: 'Link (starting with https://)' },
+  sdt:         { vi: 'Số điện thoại', en: 'Phone number' },
+  noiDungVi:   { vi: 'Nội dung tiếng Việt', en: 'Vietnamese text' },
+  banEn:       { vi: 'Bản tiếng Anh', en: 'English version' },
+  banKo:       { vi: 'Bản tiếng Hàn', en: 'Korean version' },
+  dichPhu:     { vi: 'Để nguyên thì máy tự dịch khi câu tiếng Việt đổi. Sửa tay thì bản của bạn được giữ; xóa trắng là nhờ máy dịch lại.',
+                 en: 'Leave it and the machine translates whenever the Vietnamese changes. Edit it and your version is kept; clear it to have the machine translate again.' },
+  chuaDichKo:  { vi: 'Chưa có bản dịch — trang tiếng Hàn đang hiện bản tiếng Anh. Bấm Công bố để máy dịch.',
+                 en: 'No translation yet — the Korean page shows the English version. Tap Publish to translate.' },
+  chuaDichEn:  { vi: 'Chưa có bản dịch — trang tiếng Anh đang hiện bản tiếng Việt. Bấm Công bố để máy dịch.',
+                 en: 'No translation yet — the English page shows the Vietnamese version. Tap Publish to translate.' },
+  viSao:       { vi: 'Vì sao đổi', en: 'Why the change' },
+  viSaoPhu:    { vi: 'Đọc lại sau sáu tháng vẫn phải hiểu. Có thể để trống.', en: 'Must still make sense six months from now. Can be left empty.' },
+  luuNhap:     { vi: 'Lưu nháp', en: 'Save draft' },
+});
 
 let bao: { ok: boolean; cau: string } | null = null;
 
@@ -38,10 +88,10 @@ if (Astro.request.method === 'POST') {
     const bang = await docBangCongTac(client);
     const hang = bang.find(h => h.khoa === khoa);
     bao = hang
-      ? await ghiCongTac(client, hang, form)
-      : { ok: false, cau: `Không có khóa tên "${khoa}".` };
+      ? await ghiCongTac(client, hang, form, nn)
+      : { ok: false, cau: t.khongKhoa(khoa) };
   } catch (e) {
-    bao = { ok: false, cau: e instanceof Error ? e.message : 'Không đọc được bảng công tắc.' };
+    bao = { ok: false, cau: e instanceof Error ? dichCau(nn, e.message) : t.khongDoc };
   }
 }
 
@@ -50,7 +100,7 @@ let loiDoc: string | null = null;
 try {
   bang = await docBangCongTac(client);
 } catch (e) {
-  loiDoc = e instanceof Error ? e.message : 'Không đọc được bảng công tắc.';
+  loiDoc = e instanceof Error ? dichCau(nn, e.message) : t.khongDoc;
 }
 
 // Nhóm theo cụm, giữ thứ tự sổ đăng ký.
@@ -68,18 +118,16 @@ for (const h of bang) {
 const conThieu = bang.filter(h => h.bat_buoc && !h.dang_song);
 const duocCongBo = ['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro);
 ---
-<NoiBo tieuDe="Nội dung" nhanSu={nhanSu}>
-  <h1>Công tắc nội dung</h1>
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <h1>{t.h1}</h1>
   <p class="nb-dan">
-    Mỗi ô là một dữ kiện trên trang công khai. Bấm <strong>Công bố</strong> là
-    khách thấy ngay; bấm <strong>Gỡ khỏi trang</strong> là biến mất ngay. Không
-    cần ai deploy lại.
+    {t.dan1}<strong>{t.congBo}</strong>{t.dan2}<strong>{t.goKhoiTrang}</strong>{t.dan3}
   </p>
 
   {bao && (
     <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}>
       <p>{bao.cau}</p>
-      {bao.ok && <p>Mở <a href="/" target="_blank" rel="noopener">trang công khai</a> để xem lại.</p>}
+      {bao.ok && <p>{t.moTrang1}<a href="/" target="_blank" rel="noopener">{t.trangCK}</a>{t.moTrang2}</p>}
     </div>
   )}
 
@@ -87,28 +135,24 @@ const duocCongBo = ['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro);
 
   {!duocCongBo && (
     <div class="nb-bao luu-y">
-      <p>
-        Vai trò <strong>{nhanSu.vai_tro}</strong> soạn được bản nháp nhưng
-        không tự công bố được. Bản nháp KHÔNG hiện trên trang; quản lý hoặc chủ
-        nhà hàng sẽ là người bấm công bố.
-      </p>
+      <p>{t.vaiTro1}<strong>{nhanSu.vai_tro}</strong>{t.vaiTro2}</p>
     </div>
   )}
 
   {conThieu.length > 0 && (
     <div class="nb-bao luu-y">
-      <p><strong>Còn {conThieu.length} dữ kiện bắt buộc chưa công bố.</strong></p>
-      <p>{conThieu.map(h => h.mo_ta).join(' · ')}</p>
+      <p><strong>{t.conThieu(conThieu.length)}</strong></p>
+      <p>{conThieu.map(h => moTaKhoa(nn, h.khoa, h.mo_ta)).join(' · ')}</p>
     </div>
   )}
 
   {theoNhom.map(g => (
     <section>
-      <h2>{NHOM[g.ma]?.ten ?? g.ma}</h2>
-      {NHOM[g.ma]?.dan && <p class="nb-dan">{NHOM[g.ma].dan}</p>}
+      <h2>{NHOM[g.ma]?.ten[nn] ?? g.ma}</h2>
+      {NHOM[g.ma]?.dan && <p class="nb-dan">{NHOM[g.ma].dan[nn]}</p>}
 
       {g.hang.map(h => {
-        const hien = motaGiaTri(h);
+        const hien = motaGiaTri(h, nn);
         const sanCo = giaTriHienTai(h);
         const khoaCua = h.chi_chu_so_huu && nhanSu.vai_tro !== 'chu_so_huu';
         return (
@@ -118,59 +162,56 @@ const duocCongBo = ['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro);
             <div class="nb-cong-tac">
               <div class="nb-cong-tac-chu">
                 <strong>
-                  {h.mo_ta}
-                  {h.bat_buoc && <span class="nb-nhan cho" style="margin-left:.5rem">Bắt buộc</span>}
-                  {h.chi_chu_so_huu && <span class="nb-nhan nhap" style="margin-left:.5rem">Chủ nhà hàng</span>}
+                  {moTaKhoa(nn, h.khoa, h.mo_ta)}
+                  {h.bat_buoc && <span class="nb-nhan cho" style="margin-left:.5rem">{t.batBuoc}</span>}
+                  {h.chi_chu_so_huu && <span class="nb-nhan nhap" style="margin-left:.5rem">{t.chuNhaHang}</span>}
                 </strong>
                 <p><code>{h.khoa}</code></p>
               </div>
               <span class={`nb-nhan ${h.dang_song ? 'song' : 'tat'}`}>
-                {h.dang_song ? 'Đang trên trang' : 'Chưa công bố'}
+                {h.dang_song ? t.dangTrenTrang : t.chuaCongBo}
               </span>
             </div>
 
             <p class={`nb-gia-tri ${hien ? '' : 'trong'}`}>
-              {hien ?? 'Chưa có gì trên trang — khách không thấy dòng nào cho mục này.'}
+              {hien ?? t.trong}
             </p>
 
             {khoaCua ? (
               <p class="nb-dan" style="margin:.75rem 0 0;font-size:.85rem">
-                Chỉ chủ nhà hàng đổi được dữ kiện này.
+                {t.chiChu}
               </p>
             ) : (
               <>
                 {h.kieu === 'bool' ? (
                   <label class="nb-o" style="margin-top:.85rem">
-                    <span>Trạng thái</span>
+                    <span>{t.trangThai}</span>
                     <select name="gia_tri">
-                      <option value="bat" selected={sanCo === 'bat'}>Bật — hiện trên trang</option>
-                      <option value="tat" selected={sanCo !== 'bat'}>Tắt — ẩn khỏi trang</option>
+                      <option value="bat" selected={sanCo === 'bat'}>{t.bat}</option>
+                      <option value="tat" selected={sanCo !== 'bat'}>{t.tat}</option>
                     </select>
                   </label>
                 ) : h.kieu === 'ngay' ? (
                   <label class="nb-o" style="margin-top:.85rem">
-                    <span>Ngày</span>
+                    <span>{t.ngay}</span>
                     <input type="date" name="gia_tri" value={sanCo} />
                   </label>
                 ) : h.kieu === 'so' ? (
                   <label class="nb-o" style="margin-top:.85rem">
-                    <span>Số</span>
+                    <span>{t.so}</span>
                     <input type="text" name="gia_tri" value={sanCo} inputmode="numeric" />
                   </label>
                 ) : h.kieu === 'tep' ? (
                   <label class="nb-o" style="margin-top:.85rem">
-                    <span>Mã ảnh trong bảng <code>tep_anh</code></span>
-                    <small>
-                      Tải ảnh lên Supabase Storage trước, rồi dán mã dòng vào đây.
-                      Màn hình chọn ảnh chưa làm.
-                    </small>
+                    <span>{t.maAnh}<code>tep_anh</code>{t.maAnh2}</span>
+                    <small>{t.maAnhPhu}</small>
                     <input type="text" name="gia_tri" value={sanCo} autocapitalize="off" spellcheck="false" />
                   </label>
                 ) : (
                   <>
                     <label class="nb-o" style="margin-top:.85rem">
-                      <span>{h.kieu === 'url' ? 'Đường dẫn (bắt đầu bằng https://)'
-                            : h.kieu === 'sdt' ? 'Số điện thoại' : 'Nội dung tiếng Việt'}</span>
+                      <span>{h.kieu === 'url' ? t.duongDan
+                            : h.kieu === 'sdt' ? t.sdt : t.noiDungVi}</span>
                       {h.kieu === 'van_ban'
                         ? <textarea name="gia_tri" rows="3">{sanCo}</textarea>
                         : <input
@@ -179,26 +220,20 @@ const duocCongBo = ['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro);
                             autocapitalize="off" spellcheck="false"
                           />}
                     </label>
-                    {h.kieu === 'van_ban' && ([['en', 'Bản tiếng Anh'], ['ko', 'Bản tiếng Hàn']] as const).map(([l, nhan]) => {
+                    {h.kieu === 'van_ban' && ([['en', t.banEn], ['ko', t.banKo]] as const).map(([l, nhan]) => {
                       const chu = l === 'en' ? h.gia_tri_text_en : h.gia_tri_text_ko;
-                      const tt = moTaO(h.ban_dich?.gia_tri_text?.[l], false);
+                      const tt = moTaO(h.ban_dich?.gia_tri_text?.[l], false, nn);
                       return (
                         <label class="nb-o">
                           <span>{nhan}</span>
-                          <small>
-                            Để nguyên thì máy tự dịch khi câu tiếng Việt đổi. Sửa tay thì bản
-                            của bạn được giữ; xóa trắng là nhờ máy dịch lại.
-                          </small>
+                          <small>{t.dichPhu}</small>
                           <textarea name={`gia_tri_${l}`} rows="3" lang={l}>{chu ?? ''}</textarea>
                           {/* Chữ lúc mở màn hình — lib/cong-tac.ts so với nó để biết ô nào được sửa tay. */}
                           <input type="hidden" name={`goc_gia_tri_${l}`} value={chu ?? ''} />
                           {tt
                             ? <small class={`nb-dich ${tt.lop}`}>{tt.chu}</small>
                             : h.dang_song && !chu && (
-                                <small class="nb-dich cho">
-                                  Chưa có bản dịch — trang {l === 'ko' ? 'tiếng Hàn đang hiện bản tiếng Anh' : 'tiếng Anh đang hiện bản tiếng Việt'}.
-                                  Bấm Công bố để máy dịch.
-                                </small>
+                                <small class="nb-dich cho">{l === 'ko' ? t.chuaDichKo : t.chuaDichEn}</small>
                               )}
                         </label>
                       );
@@ -207,23 +242,23 @@ const duocCongBo = ['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro);
                 )}
 
                 <label class="nb-o">
-                  <span>Vì sao đổi</span>
-                  <small>Đọc lại sau sáu tháng vẫn phải hiểu. Có thể để trống.</small>
+                  <span>{t.viSao}</span>
+                  <small>{t.viSaoPhu}</small>
                   <input type="text" name="ly_do" autocapitalize="sentences" />
                 </label>
 
                 <div class="nb-dong-nut">
                   {duocCongBo && (
                     <button type="submit" name="viec" value="cong_bo" class="nb-nut">
-                      Công bố
+                      {t.congBo}
                     </button>
                   )}
                   <button type="submit" name="viec" value="nhap" class="nb-nut phu">
-                    Lưu nháp
+                    {t.luuNhap}
                   </button>
                   {h.dang_song && duocCongBo && (
                     <button type="submit" name="viec" value="go" class="nb-nut phu">
-                      Gỡ khỏi trang
+                      {t.goKhoiTrang}
                     </button>
                   )}
                 </div>

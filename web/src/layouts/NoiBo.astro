@@ -14,6 +14,7 @@
 import '../styles/chung.css';
 import '../styles/noi-bo.css';
 import type { NhanSu } from '../lib/phien';
+import { dichNB, nhanNB, nnCua, linkDoiNgonNgu, type HaiThuTieng } from '../lib/ngon-ngu-noi-bo';
 
 interface Props {
   tieuDe: string;
@@ -21,18 +22,26 @@ interface Props {
 }
 const { tieuDe, nhanSu } = Astro.props;
 const duong = Astro.url.pathname.replace(/\/$/, '') || '/noi-bo';
+const nn = nnCua(Astro);
+const doiTieng = linkDoiNgonNgu(Astro.url, nn);
+const t = dichNB(nn, {
+  noiBo:     { vi: 'nội bộ',            en: 'internal' },
+  dangXuat:  { vi: 'Đăng xuất',         en: 'Log out' },
+  khuVuc:    { vi: 'Khu vực nội bộ',    en: 'Internal sections' },
+  tenTrang:  { vi: 'Beeftown nội bộ',   en: 'Beeftown internal' },
+});
 
 // Đúng bảy vai của enum vai_tro (bốn vai CRM ở 0001, ba vai kho ở 0017).
 // Thêm nhãn cho một vai không có trong enum chỉ làm người đọc mã tưởng nó
 // tồn tại.
-const TEN_VAI_TRO: Record<string, string> = {
-  chu_so_huu: 'Chủ nhà hàng',
-  quan_ly: 'Quản lý',
-  thu_ngan: 'Thu ngân',
-  marketing: 'Marketing',
-  thu_kho: 'Thủ kho',
-  nhan_vien_quay: 'NV quầy/bếp',
-  ke_toan: 'Kế toán',
+const TEN_VAI_TRO: Record<string, HaiThuTieng> = {
+  chu_so_huu:     { vi: 'Chủ nhà hàng', en: 'Owner' },
+  quan_ly:        { vi: 'Quản lý',      en: 'Manager' },
+  thu_ngan:       { vi: 'Thu ngân',     en: 'Cashier' },
+  marketing:      { vi: 'Marketing',    en: 'Marketing' },
+  thu_kho:        { vi: 'Thủ kho',      en: 'Storekeeper' },
+  nhan_vien_quay: { vi: 'NV quầy/bếp',  en: 'Counter/kitchen staff' },
+  ke_toan:        { vi: 'Kế toán',      en: 'Accountant' },
 };
 
 // Vai kho không thấy dữ liệu CRM (0018 dựng tường ngăn), nên Tổng quan và
@@ -44,21 +53,21 @@ const VAI_CRM = ['chu_so_huu', 'quan_ly', 'thu_ngan', 'marketing'];
 // phép thì chỉ gây khó chịu; hiện một ô mà RLS chặn thì người dùng bấm vào
 // và nhận lỗi khó hiểu. Cả hai đều tệ, nên hai danh sách phải khớp nhau.
 const MUC = [
-  { duong: '/noi-bo',             ten: 'Tổng quan',  vai: VAI_CRM },
-  { duong: '/noi-bo/noi-dung',    ten: 'Nội dung',   vai: ['chu_so_huu', 'quan_ly', 'marketing'] },
-  { duong: '/noi-bo/dat-ban',     ten: 'Đặt bàn',    vai: VAI_CRM },
-  { duong: '/noi-bo/tuyen-dung',  ten: 'Tuyển dụng', vai: ['chu_so_huu', 'quan_ly'] },
-  { duong: '/noi-bo/kho',         ten: 'Kho',        vai: ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan'] },
-  { duong: '/noi-bo/cai-dat',     ten: 'Cài đặt',    vai: ['chu_so_huu', 'quan_ly'] },
+  { duong: '/noi-bo',             ten: { vi: 'Tổng quan',  en: 'Overview' },    vai: VAI_CRM },
+  { duong: '/noi-bo/noi-dung',    ten: { vi: 'Nội dung',   en: 'Content' },     vai: ['chu_so_huu', 'quan_ly', 'marketing'] },
+  { duong: '/noi-bo/dat-ban',     ten: { vi: 'Đặt bàn',    en: 'Bookings' },    vai: VAI_CRM },
+  { duong: '/noi-bo/tuyen-dung',  ten: { vi: 'Tuyển dụng', en: 'Hiring' },      vai: ['chu_so_huu', 'quan_ly'] },
+  { duong: '/noi-bo/kho',         ten: { vi: 'Kho',        en: 'Inventory' },   vai: ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan'] },
+  { duong: '/noi-bo/cai-dat',     ten: { vi: 'Cài đặt',    en: 'Settings' },    vai: ['chu_so_huu', 'quan_ly'] },
 ];
 const muc = MUC.filter(m => !m.vai || (nhanSu && m.vai.includes(nhanSu.vai_tro)));
 ---
 <!doctype html>
-<html lang="vi">
+<html lang={nn}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>{tieuDe} — Beeftown nội bộ</title>
+    <title>{tieuDe} — {t.tenTrang}</title>
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" href="/bieu-tuong.svg" type="image/svg+xml" />
     <meta name="theme-color" content="#1E160E" />
@@ -73,24 +82,27 @@ const muc = MUC.filter(m => !m.vai || (nhanSu && m.vai.includes(nhanSu.vai_tro))
   <body class="nb-than">
     <header class="nb-dau">
       <div class="nb-khung nb-dau-hang">
-        <a href="/noi-bo" class="nb-hieu">BEEFTOWN<span>nội bộ</span></a>
-        {nhanSu && (
-          <form method="POST" action="/noi-bo/dang-xuat" class="nb-ai">
-            <span class="nb-ten">
-              {nhanSu.ho_ten}
-              <em>{TEN_VAI_TRO[nhanSu.vai_tro] ?? nhanSu.vai_tro}</em>
-            </span>
-            <button type="submit" class="nb-nut-nho">Đăng xuất</button>
-          </form>
-        )}
+        <a href="/noi-bo" class="nb-hieu">BEEFTOWN<span>{t.noiBo}</span></a>
+        <div class="nb-dau-phai">
+          <a href={doiTieng.link} class="nb-nut-nho nb-doi-tieng" lang={doiTieng.nnKia} hreflang={doiTieng.nnKia}>{doiTieng.chu}</a>
+          {nhanSu && (
+            <form method="POST" action="/noi-bo/dang-xuat" class="nb-ai">
+              <span class="nb-ten">
+                {nhanSu.ho_ten}
+                <em>{nhanNB(TEN_VAI_TRO, nhanSu.vai_tro, nn)}</em>
+              </span>
+              <button type="submit" class="nb-nut-nho">{t.dangXuat}</button>
+            </form>
+          )}
+        </div>
       </div>
     </header>
 
     {nhanSu && muc.length > 1 && (
-      <nav class="nb-dieu-huong" aria-label="Khu vực nội bộ">
+      <nav class="nb-dieu-huong" aria-label={t.khuVuc}>
         <div class="nb-khung nb-dieu-huong-hang">
           {muc.map(m => (
-            <a href={m.duong} aria-current={duong === m.duong || (m.duong !== '/noi-bo' && duong.startsWith(m.duong + '/')) ? 'page' : undefined}>{m.ten}</a>
+            <a href={m.duong} aria-current={duong === m.duong || (m.duong !== '/noi-bo' && duong.startsWith(m.duong + '/')) ? 'page' : undefined}>{m.ten[nn]}</a>
           ))}
         </div>
       </nav>

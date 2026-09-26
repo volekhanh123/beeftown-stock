@@ -22,15 +22,97 @@ import {
   type TinTuyenDung, type KetQuaLuu,
 } from '../../../lib/tin-tuyen-dung';
 import { dichBu, chayNen, oDangCho, moTaO, cauTomTat } from '../../../lib/ban-dich';
+import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
+import { dichCau } from '../../../lib/cau-noi-bo';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  tinTD:        { vi: 'Tin tuyển dụng', en: 'Job posting' },
+  daTao:        { vi: 'Đã tạo tin ở dạng nháp. Viết mô tả và yêu cầu, rồi bấm "Lưu và đăng lên trang".',
+                  en: 'Created the posting as a draft. Write the description and requirements, then press "Save and publish".' },
+  khongDocForm: { vi: 'Không đọc được dữ liệu gửi lên. Mạng có thể đã đứt giữa chừng — bạn thử gửi lại.',
+                  en: 'Could not read what was sent. The connection may have dropped — please try again.' },
+  khongDocTin:  { vi: 'Không đọc được tin.', en: 'Could not read the posting.' },
+  dangDich:     { vi: (cau: string) => `${cau} Bản tiếng Anh và tiếng Hàn đang được dịch — tải lại trang sau ít giây để xem.`,
+                  en: (cau: string) => `${cau} The English and Korean versions are being translated — reload in a few seconds to see them.` },
+  tatCaTin:     { vi: '← Tất cả tin tuyển dụng', en: '← All job postings' },
+  khongThay:    { vi: 'Không tìm thấy tin này, hoặc tài khoản của bạn không xem được.', en: 'This posting was not found, or your account cannot view it.' },
+  maTin1:       { vi: 'Mã tin ', en: 'Posting code ' },
+  maTin2:       { vi: ' — cố định, vì form công khai gửi đúng mã này.', en: ' — fixed, because the public form sends exactly this code.' },
+  dangLuc:      { vi: (g: string) => ` Đăng lúc ${g}. `, en: (g: string) => ` Published at ${g}. ` },
+  xemTrang:     { vi: 'Xem trên trang ↗', en: 'View on the site ↗' },
+  quaHan1:      { vi: 'Hạn nộp đã qua, nên tin này ', en: 'The deadline has passed, so this posting is ' },
+  quaHan2:      { vi: 'không còn hiện', en: 'no longer shown' },
+  quaHan3:      { vi: ' trên trang dù vẫn đang đăng. Lùi hạn nộp, hoặc để trống, để tin hiện lại.',
+                  en: ' on the site even though it is live. Move the deadline later, or clear it, to show it again.' },
+  chiDoc:       { vi: 'Chỉ chủ nhà hàng, quản lý và marketing sửa được tin. Bạn đang xem ở chế độ chỉ đọc.',
+                  en: 'Only the owner, managers and marketing can edit postings. You are in read-only mode.' },
+  tenPhanLoai:  { vi: 'Tên và phân loại', en: 'Title and category' },
+  tenViTri:     { vi: 'Tên vị trí', en: 'Position title (in Vietnamese)' },
+  boPhan:       { vi: 'Bộ phận', en: 'Department' },
+  loaiHD:       { vi: 'Loại hợp đồng', en: 'Contract type' },
+  soLuong:      { vi: 'Số lượng cần tuyển', en: 'Openings' },
+  hanNop:       { vi: 'Hạn nộp', en: 'Deadline' },
+  hanNopPhu:    { vi: 'Hạn nộp để trống nếu tuyển liên tục. Qua hạn thì tin tự ẩn khỏi trang.',
+                  en: 'Leave the deadline empty for ongoing hiring. After the deadline the posting hides itself.' },
+  capBac:       { vi: 'Cấp bậc, lộ trình', en: 'Level, career path (in Vietnamese)' },
+  capBacVD:     { vi: 'Ví dụ: 3 bậc · Hướng lên quản lý cửa hàng', en: 'e.g. 3 bậc · Hướng lên quản lý cửa hàng' },
+  caLam:        { vi: 'Ca làm', en: 'Shifts (in Vietnamese)' },
+  caLamVD:      { vi: 'Ví dụ: Ca tối 16:00–22:00', en: 'e.g. Ca tối 16:00–22:00' },
+  noiDungTin:   { vi: 'Nội dung tin', en: 'Posting text' },
+  noiDungPhu1:  { vi: 'Muốn đăng thì phải có mô tả và yêu cầu. Chữ trong ngoặc vuông, kiểu ',
+                  en: 'To publish, the description and requirements must be filled in (in Vietnamese). Text in square brackets, like ' },
+  noiDungPhu2:  { vi: ', được coi là chưa viết xong và chặn việc đăng.', en: ', counts as unfinished and blocks publishing.' },
+  moTa:         { vi: 'Mô tả công việc', en: 'Job description' },
+  yeuCau:       { vi: 'Yêu cầu', en: 'Requirements' },
+  quyenLoi:     { vi: 'Quyền lợi', en: 'Benefits' },
+  khongBatBuoc: { vi: 'Không bắt buộc.', en: 'Optional.' },
+  banDichTom:   { vi: 'Bản tiếng Anh và tiếng Hàn — máy tự dịch', en: 'English and Korean versions — machine translated' },
+  banDichPhu:   { vi: 'Mỗi lần lưu, máy dịch những ô có câu tiếng Việt vừa đổi. Sửa tay ô nào thì ô đó được giữ, cho tới khi câu tiếng Việt của nó đổi. Xóa trắng một ô là nhờ máy dịch lại ô đó.',
+                  en: 'Each save translates the fields whose Vietnamese text changed. A field you edit by hand is kept until its Vietnamese text changes. Clear a field to have it machine-translated again.' },
+  tiengAnh:     { vi: 'Tiếng Anh', en: 'English' },
+  tiengHan:     { vi: 'Tiếng Hàn', en: 'Korean' },
+  luongDeXuat:  { vi: 'Lương đề xuất', en: 'Proposed salary' },
+  dangHien:     { vi: 'Đang hiện trên trang: ', en: 'Shown on the site: ' },
+  chuaCoLuong:  { vi: 'chưa có — trang không hiện lương', en: 'none — the site shows no salary' },
+  luongPhuDuyet:{ vi: '. Lưu mức đề xuất rồi duyệt ở ô "Duyệt lương" bên dưới.', en: '. Save the proposed amount, then approve it under "Approve salary" below.' },
+  luongPhuKhong:{ vi: '. Mức đề xuất chỉ lên trang khi chủ nhà hàng hoặc quản lý duyệt.', en: '. A proposed salary goes on the site only after the owner or a manager approves it.' },
+  tu:           { vi: 'Từ (đồng)', en: 'From (dong)' },
+  den:          { vi: 'Đến (đồng)', en: 'To (dong)' },
+  donVi:        { vi: 'Đơn vị', en: 'Unit' },
+  formHoi:      { vi: 'Form nộp hồ sơ hỏi gì', en: 'What the application form asks' },
+  formHoi1:     { vi: 'Họ tên, số điện thoại và ô đồng ý luôn có. Trường bật vẫn không bắt buộc; trường tắt thì biến khỏi form, và dù có ai gửi lên cũng ',
+                  en: 'Name, phone number and the consent box are always there. Fields that are on are still optional; fields that are off disappear from the form, and even if someone sends them they are ' },
+  formHoi2:     { vi: 'không được lưu', en: 'not saved' },
+  luuDoiNgay:   { vi: 'Lưu — trang đổi ngay', en: 'Save — the site changes right away' },
+  luuVanGo:     { vi: 'Lưu (tin vẫn đang gỡ)', en: 'Save (posting stays down)' },
+  luuNhap:      { vi: 'Lưu nháp', en: 'Save draft' },
+  luuDang:      { vi: 'Lưu và đăng lên trang', en: 'Save and publish' },
+  banDich:      { vi: 'Bản dịch', en: 'Translations' },
+  conCho:       { vi: (n: number) => `Còn ${n} ô tiếng Anh/Hàn đang chờ máy dịch. Máy tự làm sau mỗi lần lưu và khi có người mở trang nội bộ; bấm nút này để dịch ngay và xem kết quả.`,
+                  en: (n: number) => `${n} English/Korean fields are waiting for machine translation. It runs after each save and whenever someone opens the internal app; press this button to translate now and see the result.` },
+  dichNgay:     { vi: 'Dịch ngay', en: 'Translate now' },
+  duyetLuong:   { vi: 'Duyệt lương', en: 'Approve salary' },
+  deXuatDaLuu:  { vi: 'Mức đề xuất đã lưu: ', en: 'Saved proposal: ' },
+  chuaCo:       { vi: 'chưa có', en: 'none' },
+  duyetLuc:     { vi: (g: string) => ` — duyệt lúc ${g}`, en: (g: string) => ` — approved at ${g}` },
+  camKet:       { vi: 'Lương là cam kết với người lao động. Nút duyệt đưa ĐÚNG mức đề xuất đã lưu lên trang; sửa mức đề xuất thì bấm lưu ở trên trước.',
+                  en: 'A salary is a commitment to workers. The approve button puts EXACTLY the saved proposal on the site; if you change the proposal, save it above first.' },
+  duyetDeXuat:  { vi: 'Duyệt mức đề xuất', en: 'Approve the proposal' },
+  boDuyet:      { vi: 'Bỏ duyệt — gỡ lương khỏi trang', en: 'Remove approval — take the salary off the site' },
+  goTin:        { vi: 'Gỡ tin', en: 'Take down' },
+  goTinPhu:     { vi: 'Tin biến khỏi trang tuyển dụng ngay. Hồ sơ đã nộp vẫn còn nguyên, và đăng lại lúc nào cũng được.',
+                  en: 'The posting disappears from the careers page right away. Applications are kept, and you can publish it again any time.' },
+  goKhoiTrang:  { vi: 'Gỡ khỏi trang', en: 'Remove from site' },
+});
 const duocSoan = ['chu_so_huu', 'quan_ly', 'marketing'].includes(nhanSu.vai_tro);
 const duocDuyetLuong = ['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro);
 const id = Astro.params.id ?? '';
 
 let bao: KetQuaLuu | null = Astro.url.searchParams.has('moi')
-  ? { ok: true, cau: 'Đã tạo tin ở dạng nháp. Viết mô tả và yêu cầu, rồi bấm "Lưu và đăng lên trang".' }
+  ? { ok: true, cau: t.daTao }
   : null;
 
 if (Astro.request.method === 'POST') {
@@ -38,18 +120,18 @@ if (Astro.request.method === 'POST') {
   try {
     form = await Astro.request.formData();
   } catch {
-    bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên. Mạng có thể đã đứt giữa chừng — bạn thử gửi lại.' };
+    bao = { ok: false, cau: t.khongDocForm };
   }
 
   if (form) {
     const viec = String(form.get('viec') ?? '');
     const phienBan = String(form.get('phien_ban') ?? '');
-    bao = viec === 'go'       ? await goTin(client, id)
-        : viec === 'duyet'    ? await duyetLuong(client, id, phienBan, true)
-        : viec === 'bo_duyet' ? await duyetLuong(client, id, phienBan, false)
+    bao = viec === 'go'       ? await goTin(client, id, nn)
+        : viec === 'duyet'    ? await duyetLuong(client, id, phienBan, true, nn)
+        : viec === 'bo_duyet' ? await duyetLuong(client, id, phienBan, false, nn)
         // Dịch ngay thì CHỜ kết quả: người bấm nút muốn biết nó xong hay hỏng vì sao.
-        : viec === 'dich'     ? cauTomTat(await dichBu(client, { bang: 'vi_tri_tuyen_dung', dongId: id }))
-        :                       await luuTin(client, id, form);
+        : viec === 'dich'     ? cauTomTat(await dichBu(client, { bang: 'vi_tri_tuyen_dung', dongId: id }), nn)
+        :                       await luuTin(client, id, form, nn);
 
     // Lưu xong thì dịch nền đúng tin này: trang trả về ngay, bản dịch vào sau
     // vài giây. Máy hỏng cũng không làm hỏng lần lưu — xem chayNen().
@@ -64,13 +146,13 @@ let loiDoc: string | null = null;
 try {
   tin = await docTin(client, id);
 } catch (e) {
-  loiDoc = e instanceof Error ? e.message : 'Không đọc được tin.';
+  loiDoc = e instanceof Error ? dichCau(nn, e.message) : t.khongDocTin;
 }
 
 // Ô nào đang chờ máy dịch — ngay sau khi lưu thì gần như mọi ô vừa đổi.
 const dangCho = tin ? await oDangCho(client, 'vi_tri_tuyen_dung', id) : new Set<string>();
 if (bao?.ok && dangCho.size > 0 && Astro.request.method === 'POST') {
-  bao = { ...bao, cau: `${bao.cau} Bản tiếng Anh và tiếng Hàn đang được dịch — tải lại trang sau ít giây để xem.` };
+  bao = { ...bao, cau: t.dangDich(bao.cau) };
 }
 
 // Lưu hỏng thì hiện lại đúng những gì người dùng vừa gõ, không bắt gõ lại.
@@ -78,21 +160,21 @@ const v: TinTuyenDung | null = tin && { ...tin, ...(bao && !bao.ok ? bao.daGo : 
 const dangDang = tin?.trang_thai === 'da_cong_bo';
 const quaHan = !!tin?.han_nop && tin.han_nop < homNayVn();
 const luongDangHien = tin?.luong_da_duyet
-  ? dinhDangLuong(tin.luong_tu, tin.luong_den, tin.luong_don_vi) : null;
+  ? dinhDangLuong(tin.luong_tu, tin.luong_den, tin.luong_don_vi, nn) : null;
 const luongDeXuat = tin
-  ? dinhDangLuong(tin.luong_de_xuat_tu, tin.luong_de_xuat_den, tin.luong_de_xuat_don_vi) : null;
+  ? dinhDangLuong(tin.luong_de_xuat_tu, tin.luong_de_xuat_den, tin.luong_de_xuat_don_vi, nn) : null;
 const donVi = v ? donViDeXuat(v) : 'thang';
-const nhacDonVi = v ? canhBaoDonVi(v.luong_de_xuat_tu, v.luong_de_xuat_den, donVi) : null;
-const gioVn = (iso: string) => new Date(iso).toLocaleString('vi-VN', {
+const nhacDonVi = v ? canhBaoDonVi(v.luong_de_xuat_tu, v.luong_de_xuat_den, donVi, nn) : null;
+const gioVn = (iso: string) => new Date(iso).toLocaleString(nn === 'en' ? 'en-GB' : 'vi-VN', {
   timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit',
   day: 'numeric', month: 'numeric', year: 'numeric',
 });
 // Gửi về đúng đường dẫn tin, bỏ ?moi=1 — không thì F5 lại hiện câu "Đã tạo tin".
 const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
 ---
-<NoiBo tieuDe={tin?.ten_vi ?? 'Tin tuyển dụng'} nhanSu={nhanSu}>
+<NoiBo tieuDe={(nn === 'en' && tin?.ten_en) || tin?.ten_vi || t.tinTD} nhanSu={nhanSu}>
   <p style="margin:0 0 .75rem;font-size:.9rem">
-    <a href="/noi-bo/tin-tuyen-dung">← Tất cả tin tuyển dụng</a>
+    <a href="/noi-bo/tin-tuyen-dung">{t.tatCaTin}</a>
   </p>
 
   {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
@@ -100,35 +182,33 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
 
   {!tin && !loiDoc && (
     <div class="nb-rong">
-      <p style="margin:0">Không tìm thấy tin này, hoặc tài khoản của bạn không xem được.</p>
+      <p style="margin:0">{t.khongThay}</p>
     </div>
   )}
 
   {tin && v && (
     <>
       <div class="nb-dong-dau" style="margin-bottom:.35rem">
-        <h1 style="margin:0">{tin.ten_vi}</h1>
-        <span class={`nb-nhan ${TRANG_THAI[tin.trang_thai].lop}`}>{TRANG_THAI[tin.trang_thai].ten}</span>
+        {/* Tiêu đề theo ngôn ngữ giao diện; ô soạn bên dưới vẫn là tên tiếng Việt (câu gốc). */}
+        <h1 style="margin:0">{(nn === 'en' && tin.ten_en) || tin.ten_vi}</h1>
+        <span class={`nb-nhan ${TRANG_THAI[tin.trang_thai].lop}`}>{TRANG_THAI[tin.trang_thai].ten[nn]}</span>
       </div>
       <p class="nb-dan" style="font-size:.85rem">
-        Mã tin <code>{tin.ma}</code> — cố định, vì form công khai gửi đúng mã này.
+        {t.maTin1}<code>{tin.ma}</code>{t.maTin2}
         {dangDang && tin.cong_bo_luc && (
-          <> Đăng lúc {gioVn(tin.cong_bo_luc)}. <a href="/tuyen-dung" target="_blank" rel="noopener">Xem trên trang ↗</a></>
+          <>{t.dangLuc(gioVn(tin.cong_bo_luc))}<a href={nn === 'en' ? '/en/jobs' : '/tuyen-dung'} target="_blank" rel="noopener">{t.xemTrang}</a></>
         )}
       </p>
 
       {dangDang && quaHan && (
         <div class="nb-bao luu-y">
-          <p>
-            Hạn nộp đã qua, nên tin này <strong>không còn hiện</strong> trên trang dù
-            vẫn đang đăng. Lùi hạn nộp, hoặc để trống, để tin hiện lại.
-          </p>
+          <p>{t.quaHan1}<strong>{t.quaHan2}</strong>{t.quaHan3}</p>
         </div>
       )}
 
       {!duocSoan && (
         <div class="nb-bao luu-y">
-          <p>Chỉ chủ nhà hàng, quản lý và marketing sửa được tin. Bạn đang xem ở chế độ chỉ đọc.</p>
+          <p>{t.chiDoc}</p>
         </div>
       )}
 
@@ -138,92 +218,85 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
         <fieldset disabled={!duocSoan}>
 
           <section class="nb-the">
-            <h2>Tên và phân loại</h2>
+            <h2>{t.tenPhanLoai}</h2>
             <label class="nb-o">
-              <span>Tên vị trí</span>
+              <span>{t.tenViTri}</span>
               <input type="text" name="ten_vi" required maxlength="120" value={v.ten_vi}
                      autocapitalize="sentences" />
             </label>
             <div class="nb-hai">
               <label class="nb-o">
-                <span>Bộ phận</span>
+                <span>{t.boPhan}</span>
                 <select name="bo_phan">
                   {Object.entries(BO_PHAN).map(([ma, nhan]) => (
-                    <option value={ma} selected={ma === v.bo_phan}>{nhan.vi}</option>
+                    <option value={ma} selected={ma === v.bo_phan}>{nhan[nn]}</option>
                   ))}
                 </select>
               </label>
               <label class="nb-o">
-                <span>Loại hợp đồng</span>
+                <span>{t.loaiHD}</span>
                 <select name="loai_hop_dong">
                   {Object.entries(LOAI_HOP_DONG).map(([ma, nhan]) => (
-                    <option value={ma} selected={ma === v.loai_hop_dong}>{nhan.vi}</option>
+                    <option value={ma} selected={ma === v.loai_hop_dong}>{nhan[nn]}</option>
                   ))}
                   {/* Chưa chốt = null (0043): trang công khai không hiện dòng loại hợp đồng. */}
-                  <option value={MA_CHUA_CHOT} selected={v.loai_hop_dong == null}>{CHUA_CHOT.vi}</option>
+                  <option value={MA_CHUA_CHOT} selected={v.loai_hop_dong == null}>{CHUA_CHOT[nn]}</option>
                 </select>
               </label>
               <label class="nb-o">
-                <span>Số lượng cần tuyển</span>
+                <span>{t.soLuong}</span>
                 <input type="number" name="so_luong" min="1" max="999" inputmode="numeric"
                        value={v.so_luong ?? ''} />
               </label>
               <label class="nb-o">
-                <span>Hạn nộp</span>
+                <span>{t.hanNop}</span>
                 <input type="date" name="han_nop" value={v.han_nop ?? ''} />
               </label>
             </div>
-            <p class="nb-dan" style="font-size:.8rem;margin:-.5rem 0 1rem">
-              Hạn nộp để trống nếu tuyển liên tục. Qua hạn thì tin tự ẩn khỏi trang.
-            </p>
+            <p class="nb-dan" style="font-size:.8rem;margin:-.5rem 0 1rem">{t.hanNopPhu}</p>
             <label class="nb-o">
-              <span>Cấp bậc, lộ trình</span>
-              <small>Ví dụ: 3 bậc · Hướng lên quản lý cửa hàng</small>
+              <span>{t.capBac}</span>
+              <small>{t.capBacVD}</small>
               <input type="text" name="cap_bac" value={v.cap_bac ?? ''} />
             </label>
             <label class="nb-o">
-              <span>Ca làm</span>
-              <small>Ví dụ: Ca tối 16:00–22:00</small>
+              <span>{t.caLam}</span>
+              <small>{t.caLamVD}</small>
               <input type="text" name="ca_lam" value={v.ca_lam ?? ''} />
             </label>
           </section>
 
           <section class="nb-the">
-            <h2>Nội dung tin</h2>
+            <h2>{t.noiDungTin}</h2>
             <p class="nb-dan" style="font-size:.85rem">
-              Muốn đăng thì phải có mô tả và yêu cầu. Chữ trong ngoặc vuông,
-              kiểu <code>[chờ duyệt]</code>, được coi là chưa viết xong và chặn việc đăng.
+              {t.noiDungPhu1}<code>[chờ duyệt]</code>{t.noiDungPhu2}
             </p>
             <label class="nb-o">
-              <span>Mô tả công việc</span>
+              <span>{t.moTa}</span>
               <textarea name="mo_ta_vi" rows="5">{v.mo_ta_vi ?? ''}</textarea>
             </label>
             <label class="nb-o">
-              <span>Yêu cầu</span>
+              <span>{t.yeuCau}</span>
               <textarea name="yeu_cau_vi" rows="4">{v.yeu_cau_vi ?? ''}</textarea>
             </label>
             <label class="nb-o">
-              <span>Quyền lợi</span>
-              <small>Không bắt buộc.</small>
+              <span>{t.quyenLoi}</span>
+              <small>{t.khongBatBuoc}</small>
               <textarea name="quyen_loi_vi" rows="4">{v.quyen_loi_vi ?? ''}</textarea>
             </label>
 
             <details class="nb-tieng-anh" open={dangCho.size > 0}>
-              <summary>Bản tiếng Anh và tiếng Hàn — máy tự dịch</summary>
-              <p class="nb-dan" style="font-size:.85rem">
-                Mỗi lần lưu, máy dịch những ô có câu tiếng Việt vừa đổi. Sửa tay ô
-                nào thì ô đó được giữ, cho tới khi câu tiếng Việt của nó đổi. Xóa
-                trắng một ô là nhờ máy dịch lại ô đó.
-              </p>
-              {([['en', 'Tiếng Anh'], ['ko', 'Tiếng Hàn']] as const).map(([l, tenNgonNgu]) => (
+              <summary>{t.banDichTom}</summary>
+              <p class="nb-dan" style="font-size:.85rem">{t.banDichPhu}</p>
+              {([['en', t.tiengAnh], ['ko', t.tiengHan]] as const).map(([l, tenNgonNgu]) => (
                 <fieldset class="nb-ngon-ngu">
                   <legend>{tenNgonNgu}</legend>
                   {O_DICH.map(o => {
                     const ten = `${o.cot}_${l}` as const;
-                    const trangThai = moTaO(tin.ban_dich?.[o.cot]?.[l], dangCho.has(`${o.cot}/${l}`));
+                    const trangThai = moTaO(tin.ban_dich?.[o.cot]?.[l], dangCho.has(`${o.cot}/${l}`), nn);
                     return (
                       <label class="nb-o">
-                        <span>{o.ten} ({l.toUpperCase()})</span>
+                        <span>{o.ten[nn]} ({l.toUpperCase()})</span>
                         {o.dong === 1
                           ? <input type="text" name={ten} lang={l} maxlength={o.cot === 'ten' ? 120 : undefined}
                                    value={v[ten] ?? ''} />
@@ -240,31 +313,28 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
           </section>
 
           <section class="nb-the">
-            <h2>Lương đề xuất</h2>
+            <h2>{t.luongDeXuat}</h2>
             <p class="nb-dan" style="font-size:.85rem">
-              Đang hiện trên trang: <strong>{luongDangHien ?? 'chưa có — trang không hiện lương'}</strong>.
-              {duocDuyetLuong
-                ? ' Lưu mức đề xuất rồi duyệt ở ô "Duyệt lương" bên dưới.'
-                : ' Mức đề xuất chỉ lên trang khi chủ nhà hàng hoặc quản lý duyệt.'}
+              {t.dangHien}<strong>{luongDangHien ?? t.chuaCoLuong}</strong>{duocDuyetLuong ? t.luongPhuDuyet : t.luongPhuKhong}
             </p>
             {/* Bước 100 chứ không 1.000: lương giờ hay lẻ trăm, như 25.500 đ, mà
                 trình duyệt từ chối số lệch bước. */}
             <div class="nb-hai">
               <label class="nb-o">
-                <span>Từ (đồng)</span>
+                <span>{t.tu}</span>
                 <input type="number" name="luong_de_xuat_tu" min="0" step="100" inputmode="numeric"
                        value={v.luong_de_xuat_tu ?? ''} />
               </label>
               <label class="nb-o">
-                <span>Đến (đồng)</span>
+                <span>{t.den}</span>
                 <input type="number" name="luong_de_xuat_den" min="0" step="100" inputmode="numeric"
                        value={v.luong_de_xuat_den ?? ''} />
               </label>
               <label class="nb-o">
-                <span>Đơn vị</span>
+                <span>{t.donVi}</span>
                 <select name="luong_de_xuat_don_vi">
                   {Object.entries(DON_VI_LUONG).map(([ma, nhan]) => (
-                    <option value={ma} selected={ma === donVi}>đ/{nhan.vi}</option>
+                    <option value={ma} selected={ma === donVi}>đ/{nhan[nn]}</option>
                   ))}
                 </select>
               </label>
@@ -273,17 +343,15 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
           </section>
 
           <section class="nb-the">
-            <h2>Form nộp hồ sơ hỏi gì</h2>
+            <h2>{t.formHoi}</h2>
             <p class="nb-dan" style="font-size:.85rem">
-              Họ tên, số điện thoại và ô đồng ý luôn có. Trường bật vẫn không bắt
-              buộc; trường tắt thì biến khỏi form, và dù có ai gửi lên
-              cũng <strong>không được lưu</strong>.
+              {t.formHoi1}<strong>{t.formHoi2}</strong>.
             </p>
             <div class="nb-truong">
               {TRUONG_FORM.map(f => (
                 <label>
                   <input type="checkbox" name={f.cot} value="co" checked={v[f.cot] === true} />
-                  <span>{f.ten}</span>
+                  <span>{f.ten[nn]}</span>
                 </label>
               ))}
             </div>
@@ -292,12 +360,12 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
           {duocSoan && (
             <div class="nb-dong-nut" style="margin-bottom:1.5rem">
               <button type="submit" name="viec" value="luu" class="nb-nut">
-                {dangDang ? 'Lưu — trang đổi ngay'
-                  : tin.trang_thai === 'da_thu_hoi' ? 'Lưu (tin vẫn đang gỡ)' : 'Lưu nháp'}
+                {dangDang ? t.luuDoiNgay
+                  : tin.trang_thai === 'da_thu_hoi' ? t.luuVanGo : t.luuNhap}
               </button>
               {!dangDang && (
                 <button type="submit" name="viec" value="luu_dang" class="nb-nut phu">
-                  Lưu và đăng lên trang
+                  {t.luuDang}
                 </button>
               )}
             </div>
@@ -309,13 +377,9 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
       {duocSoan && dangCho.size > 0 && (
         <form method="POST" action={duongDan} class="nb-the">
           <input type="hidden" name="viec" value="dich" />
-          <h2>Bản dịch</h2>
-          <p class="nb-dan" style="font-size:.85rem">
-            Còn {dangCho.size} ô tiếng Anh/Hàn đang chờ máy dịch. Máy tự làm sau
-            mỗi lần lưu và khi có người mở trang nội bộ; bấm nút này để dịch
-            ngay và xem kết quả.
-          </p>
-          <button type="submit" class="nb-nut phu">Dịch ngay</button>
+          <h2>{t.banDich}</h2>
+          <p class="nb-dan" style="font-size:.85rem">{t.conCho(dangCho.size)}</p>
+          <button type="submit" class="nb-nut phu">{t.dichNgay}</button>
         </form>
       )}
 
@@ -323,25 +387,22 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
       {duocDuyetLuong && (
         <form method="POST" action={duongDan} class="nb-the">
           <input type="hidden" name="phien_ban" value={tin.updated_at} />
-          <h2>Duyệt lương</h2>
-          <p style="margin:0 0 .4rem">Mức đề xuất đã lưu: <strong>{luongDeXuat ?? 'chưa có'}</strong></p>
+          <h2>{t.duyetLuong}</h2>
+          <p style="margin:0 0 .4rem">{t.deXuatDaLuu}<strong>{luongDeXuat ?? t.chuaCo}</strong></p>
           <p style="margin:0 0 .85rem">
-            Đang hiện trên trang: <strong>{luongDangHien ?? 'chưa có'}</strong>
+            {t.dangHien}<strong>{luongDangHien ?? t.chuaCo}</strong>
             {tin.luong_da_duyet && tin.luong_duyet_luc && (
-              <span class="nb-dan"> — duyệt lúc {gioVn(tin.luong_duyet_luc)}</span>
+              <span class="nb-dan">{t.duyetLuc(gioVn(tin.luong_duyet_luc))}</span>
             )}
           </p>
-          <p class="nb-dan" style="font-size:.85rem">
-            Lương là cam kết với người lao động. Nút duyệt đưa ĐÚNG mức đề xuất đã
-            lưu lên trang; sửa mức đề xuất thì bấm lưu ở trên trước.
-          </p>
+          <p class="nb-dan" style="font-size:.85rem">{t.camKet}</p>
           <div class="nb-dong-nut" style="margin-top:0">
             <button type="submit" name="viec" value="duyet" class="nb-nut" disabled={!luongDeXuat}>
-              Duyệt mức đề xuất
+              {t.duyetDeXuat}
             </button>
             {tin.luong_da_duyet && (
               <button type="submit" name="viec" value="bo_duyet" class="nb-nut phu">
-                Bỏ duyệt — gỡ lương khỏi trang
+                {t.boDuyet}
               </button>
             )}
           </div>
@@ -352,12 +413,9 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
       {duocSoan && dangDang && (
         <form method="POST" action={duongDan} class="nb-the">
           <input type="hidden" name="viec" value="go" />
-          <h2>Gỡ tin</h2>
-          <p class="nb-dan" style="font-size:.85rem">
-            Tin biến khỏi trang tuyển dụng ngay. Hồ sơ đã nộp vẫn còn nguyên, và
-            đăng lại lúc nào cũng được.
-          </p>
-          <button type="submit" class="nb-nut phu">Gỡ khỏi trang</button>
+          <h2>{t.goTin}</h2>
+          <p class="nb-dan" style="font-size:.85rem">{t.goTinPhu}</p>
+          <button type="submit" class="nb-nut phu">{t.goKhoiTrang}</button>
         </form>
       )}
     </>

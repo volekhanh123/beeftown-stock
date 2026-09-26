@@ -20,6 +20,45 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo';
+import { dichCau } from './cau-noi-bo';
+
+/** Câu của file này ở hai thứ tiếng giao diện nội bộ (lib/ngon-ngu-noi-bo.ts). */
+const CAU = {
+  khongQuyen:   { vi: 'Tài khoản của bạn không có quyền làm việc này.', en: 'Your account is not allowed to do this.' },
+  trungTen:     { vi: 'Tên này đã có rồi.', en: 'That name already exists.' },
+  maSai:        { vi: 'Mã chi nhánh chỉ gồm chữ thường, số và dấu gạch ngang.', en: 'The branch code may only contain lowercase letters, digits and hyphens.' },
+  chuaTenCN:    { vi: 'Chưa điền tên chi nhánh.', en: 'The branch has no name.' },
+  gioSai:       { vi: 'Giờ phải ở dạng HH:MM.', en: 'Times must be in HH:MM format.' },
+  truaSai:      { vi: 'Giờ đóng trưa phải sau giờ mở trưa.', en: 'Lunch closing time must be after lunch opening time.' },
+  toiSai:       { vi: 'Giờ đóng tối phải sau giờ mở tối.', en: 'Dinner closing time must be after dinner opening time.' },
+  buocSai:      { vi: 'Khoảng cách khung giờ phải từ 15 đến 120 phút.', en: 'The time-slot interval must be 15 to 120 minutes.' },
+  luotSai:      { vi: 'Một lượt ngồi phải từ 30 đến 360 phút.', en: 'A seating must last 30 to 360 minutes.' },
+  giuSai:       { vi: 'Thời gian giữ bàn phải từ 0 đến 120 phút.', en: 'The table hold time must be 0 to 120 minutes.' },
+  khongLuuCN:   { vi: 'Không lưu được chi nhánh.', en: 'Could not save the branch.' },
+  daLuuCN:      { vi: 'Đã lưu chi nhánh. Giờ phục vụ CHƯA lên trang cho tới khi bật công tắc gio_phuc_vu_da_chot ở màn Nội dung.',
+                  en: 'Branch saved. Opening hours are NOT on the site until you turn on the gio_phuc_vu_da_chot switch on the Content screen.' },
+  daTaoCN:      { vi: 'Đã tạo chi nhánh. Nhớ đặt PUBLIC_CHI_NHANH trong web/.env bằng đúng mã vừa nhập.',
+                  en: 'Branch created. Remember to set PUBLIC_CHI_NHANH in web/.env to exactly the code you entered.' },
+  soSai:        { vi: 'Số bắt đầu và số kết thúc phải từ 1 đến 999.', en: 'The start and end numbers must be 1 to 999.' },
+  denNho:       { vi: 'Số kết thúc phải lớn hơn hoặc bằng số bắt đầu.', en: 'The end number must be greater than or equal to the start number.' },
+  toiDa100:     { vi: 'Một lần thêm tối đa 100 bàn.', en: 'You can add at most 100 tables at once.' },
+  soChoSai:     { vi: 'Số chỗ phải từ 1 đến 50.', en: 'Seats must be 1 to 50.' },
+  khongThemBan: { vi: 'Không thêm được bàn.', en: 'Could not add the table.' },
+  daThemNhieu:  { vi: (n: number, a: string, b: string) => `Đã thêm ${n} bàn: ${a}–${b}.`, en: (n: number, a: string, b: string) => `Added ${n} tables: ${a}–${b}.` },
+  chuaTenBan:   { vi: 'Chưa điền tên bàn.', en: 'The table has no name.' },
+  daThemMot:    { vi: (ten: string) => `Đã thêm bàn ${ten}.`, en: (ten: string) => `Added table ${ten}.` },
+  khongDoiBan:  { vi: 'Không đổi được trạng thái bàn.', en: 'Could not change the table status.' },
+  banDungLai:   { vi: 'Đã cho bàn hoạt động lại.', en: 'The table is in use again.' },
+  banNgung:     { vi: 'Đã ngừng dùng bàn. Nó không còn được tính vào sức chứa, nhưng lịch sử đặt bàn cũ giữ nguyên.',
+                  en: 'Table taken out of use. It no longer counts toward capacity, but its booking history is kept.' },
+  khongXoaBan:  { vi: 'Không xóa được bàn.', en: 'Could not delete the table.' },
+  daXoaBan:     { vi: 'Đã xóa bàn.', en: 'Table deleted.' },
+  viecDonSai:   { vi: 'Việc dọn không hợp lệ.', en: 'Invalid clean-up job.' },
+  khongChay:    { vi: 'Không chạy được.', en: 'Could not run it.' },
+  xongKhongCo:  { vi: 'Chạy xong — không có dòng nào cần dọn.', en: 'Done — nothing needed cleaning.' },
+  xongN:        { vi: (n: number) => `Chạy xong — đã xử lý ${n} dòng.`, en: (n: number) => `Done — processed ${n} rows.` },
+} satisfies Record<string, HaiThuTieng<unknown>>;
 
 export interface ChiNhanh {
   id: string;
@@ -49,13 +88,11 @@ export interface BanAn {
 export interface KetQua { ok: boolean; cau: string }
 
 /** Câu lỗi của database viết bằng tiếng Việt và tính cho người đọc. Dùng nguyên văn. */
-function cauLoi(e: { message?: string } | null, mac_dinh: string): string {
+function cauLoi(e: { message?: string } | null, mac_dinh: string, nn: NgonNguNB): string {
   const m = e?.message ?? '';
-  if (/permission denied|violates row-level security/i.test(m)) {
-    return 'Tài khoản của bạn không có quyền làm việc này.';
-  }
-  if (/duplicate key|unique/i.test(m)) return 'Tên này đã có rồi.';
-  return m || mac_dinh;
+  if (/permission denied|violates row-level security/i.test(m)) return CAU.khongQuyen[nn];
+  if (/duplicate key|unique/i.test(m)) return CAU.trungTen[nn];
+  return m ? dichCau(nn, m) : mac_dinh;
 }
 
 function gio(v: FormDataEntryValue | null): string | null {
@@ -82,28 +119,29 @@ export async function docChiNhanh(client: SupabaseClient): Promise<ChiNhanh | nu
 }
 
 export async function luuChiNhanh(
-  client: SupabaseClient, form: FormData, hienCo: ChiNhanh | null,
+  client: SupabaseClient, form: FormData, hienCo: ChiNhanh | null, nn: NgonNguNB = 'vi',
 ): Promise<KetQua> {
+  const t = dichNB(nn, CAU);
   const ma = String(form.get('ma') ?? '').trim().toLowerCase();
   const ten = String(form.get('ten') ?? '').trim();
   if (!/^[a-z0-9-]{1,20}$/.test(ma)) {
-    return { ok: false, cau: 'Mã chi nhánh chỉ gồm chữ thường, số và dấu gạch ngang.' };
+    return { ok: false, cau: t.maSai };
   }
-  if (!ten) return { ok: false, cau: 'Chưa điền tên chi nhánh.' };
+  if (!ten) return { ok: false, cau: t.chuaTenCN };
 
   const tb = gio(form.get('trua_bat_dau')), tk = gio(form.get('trua_ket_thuc'));
   const ob = gio(form.get('toi_bat_dau')),  ok2 = gio(form.get('toi_ket_thuc'));
-  if (!tb || !tk || !ob || !ok2) return { ok: false, cau: 'Giờ phải ở dạng HH:MM.' };
+  if (!tb || !tk || !ob || !ok2) return { ok: false, cau: t.gioSai };
   // Database có ràng buộc y hệt; kiểm ở đây chỉ để câu lỗi dễ đọc hơn.
-  if (tk <= tb) return { ok: false, cau: 'Giờ đóng trưa phải sau giờ mở trưa.' };
-  if (ok2 <= ob) return { ok: false, cau: 'Giờ đóng tối phải sau giờ mở tối.' };
+  if (tk <= tb) return { ok: false, cau: t.truaSai };
+  if (ok2 <= ob) return { ok: false, cau: t.toiSai };
 
   const buoc = so(form.get('buoc_khung_gio_phut'), 15, 120);
-  if (buoc === null) return { ok: false, cau: 'Khoảng cách khung giờ phải từ 15 đến 120 phút.' };
+  if (buoc === null) return { ok: false, cau: t.buocSai };
   const doDai = so(form.get('thoi_luong_bua_phut'), 30, 360);
-  if (doDai === null) return { ok: false, cau: 'Một lượt ngồi phải từ 30 đến 360 phút.' };
+  if (doDai === null) return { ok: false, cau: t.luotSai };
   const giu = so(form.get('giu_ban_phut'), 0, 120);
-  if (giu === null) return { ok: false, cau: 'Thời gian giữ bàn phải từ 0 đến 120 phút.' };
+  if (giu === null) return { ok: false, cau: t.giuSai };
 
   const dong = {
     ma, ten,
@@ -118,13 +156,8 @@ export async function luuChiNhanh(
     ? await client.from('chi_nhanh').update(dong).eq('id', hienCo.id)
     : await client.from('chi_nhanh').insert(dong);
 
-  if (error) return { ok: false, cau: cauLoi(error, 'Không lưu được chi nhánh.') };
-  return {
-    ok: true,
-    cau: hienCo
-      ? 'Đã lưu chi nhánh. Giờ phục vụ CHƯA lên trang cho tới khi bật công tắc gio_phuc_vu_da_chot ở màn Nội dung.'
-      : 'Đã tạo chi nhánh. Nhớ đặt PUBLIC_CHI_NHANH trong web/.env bằng đúng mã vừa nhập.',
-  };
+  if (error) return { ok: false, cau: cauLoi(error, t.khongLuuCN, nn) };
+  return { ok: true, cau: hienCo ? t.daLuuCN : t.daTaoCN };
 }
 
 // -----------------------------------------------------------------------------
@@ -148,18 +181,19 @@ export async function docBanAn(client: SupabaseClient, chiNhanhId: string): Prom
  * mọi khách.
  */
 export async function themNhieuBan(
-  client: SupabaseClient, form: FormData, chiNhanhId: string,
+  client: SupabaseClient, form: FormData, chiNhanhId: string, nn: NgonNguNB = 'vi',
 ): Promise<KetQua> {
+  const t = dichNB(nn, CAU);
   const tien_to = String(form.get('tien_to') ?? 'B').trim() || 'B';
   const tu = so(form.get('tu'), 1, 999);
   const den = so(form.get('den'), 1, 999);
   const soCho = so(form.get('so_cho'), 1, 50);
   const rieng = form.get('la_phong_rieng') === 'co';
 
-  if (tu === null || den === null) return { ok: false, cau: 'Số bắt đầu và số kết thúc phải từ 1 đến 999.' };
-  if (den < tu) return { ok: false, cau: 'Số kết thúc phải lớn hơn hoặc bằng số bắt đầu.' };
-  if (den - tu + 1 > 100) return { ok: false, cau: 'Một lần thêm tối đa 100 bàn.' };
-  if (soCho === null) return { ok: false, cau: 'Số chỗ phải từ 1 đến 50.' };
+  if (tu === null || den === null) return { ok: false, cau: t.soSai };
+  if (den < tu) return { ok: false, cau: t.denNho };
+  if (den - tu + 1 > 100) return { ok: false, cau: t.toiDa100 };
+  if (soCho === null) return { ok: false, cau: t.soChoSai };
 
   const rong = String(den).length >= 2 ? String(den).length : 2;
   const dong = [];
@@ -173,46 +207,44 @@ export async function themNhieuBan(
   }
 
   const { error } = await client.from('ban_an').insert(dong);
-  if (error) return { ok: false, cau: cauLoi(error, 'Không thêm được bàn.') };
-  return { ok: true, cau: `Đã thêm ${dong.length} bàn: ${dong[0].ten}–${dong[dong.length - 1].ten}.` };
+  if (error) return { ok: false, cau: cauLoi(error, t.khongThemBan, nn) };
+  return { ok: true, cau: t.daThemNhieu(dong.length, dong[0].ten, dong[dong.length - 1].ten) };
 }
 
 export async function themMotBan(
-  client: SupabaseClient, form: FormData, chiNhanhId: string,
+  client: SupabaseClient, form: FormData, chiNhanhId: string, nn: NgonNguNB = 'vi',
 ): Promise<KetQua> {
+  const t = dichNB(nn, CAU);
   const ten = String(form.get('ten') ?? '').trim();
   const soCho = so(form.get('so_cho'), 1, 50);
-  if (!ten) return { ok: false, cau: 'Chưa điền tên bàn.' };
-  if (soCho === null) return { ok: false, cau: 'Số chỗ phải từ 1 đến 50.' };
+  if (!ten) return { ok: false, cau: t.chuaTenBan };
+  if (soCho === null) return { ok: false, cau: t.soChoSai };
 
   const { error } = await client.from('ban_an').insert({
     chi_nhanh_id: chiNhanhId, ten, so_cho: soCho,
     la_phong_rieng: form.get('la_phong_rieng') === 'co',
   });
-  if (error) return { ok: false, cau: cauLoi(error, 'Không thêm được bàn.') };
-  return { ok: true, cau: `Đã thêm bàn ${ten}.` };
+  if (error) return { ok: false, cau: cauLoi(error, t.khongThemBan, nn) };
+  return { ok: true, cau: t.daThemMot(ten) };
 }
 
 export async function doiTrangThaiBan(
-  client: SupabaseClient, id: string, dangDung: boolean,
+  client: SupabaseClient, id: string, dangDung: boolean, nn: NgonNguNB = 'vi',
 ): Promise<KetQua> {
+  const t = dichNB(nn, CAU);
   const { error } = await client.from('ban_an').update({ dang_dung: dangDung }).eq('id', id);
-  if (error) return { ok: false, cau: cauLoi(error, 'Không đổi được trạng thái bàn.') };
-  return {
-    ok: true,
-    cau: dangDung
-      ? 'Đã cho bàn hoạt động lại.'
-      : 'Đã ngừng dùng bàn. Nó không còn được tính vào sức chứa, nhưng lịch sử đặt bàn cũ giữ nguyên.',
-  };
+  if (error) return { ok: false, cau: cauLoi(error, t.khongDoiBan, nn) };
+  return { ok: true, cau: dangDung ? t.banDungLai : t.banNgung };
 }
 
-export async function xoaBan(client: SupabaseClient, id: string): Promise<KetQua> {
+export async function xoaBan(client: SupabaseClient, id: string, nn: NgonNguNB = 'vi'): Promise<KetQua> {
+  const t = dichNB(nn, CAU);
   // dat_ban.ban_an_id là `on delete set null`, nên xóa không làm mất lượt đặt
   // nào — chỉ mất thông tin "khách ngồi bàn nào". Với bàn gõ nhầm lúc cài đặt
   // thì xóa là đúng; với bàn đã dùng thật thì nên "ngừng dùng" thay vì xóa.
   const { error } = await client.from('ban_an').delete().eq('id', id);
-  if (error) return { ok: false, cau: cauLoi(error, 'Không xóa được bàn.') };
-  return { ok: true, cau: 'Đã xóa bàn.' };
+  if (error) return { ok: false, cau: cauLoi(error, t.khongXoaBan, nn) };
+  return { ok: true, cau: t.daXoaBan };
 }
 
 // -----------------------------------------------------------------------------
@@ -227,33 +259,32 @@ export async function xoaBan(client: SupabaseClient, id: string): Promise<KetQua
 export const VIEC_DON = [
   {
     ham: 'don_dep_ho_so_het_han',
-    ten: 'Ẩn danh hồ sơ đã quá hạn lưu',
-    giai_thich: 'Xóa họ tên, số điện thoại, email, địa chỉ IP và file CV của các hồ sơ đã quá 6 tháng. Giữ lại dòng để số liệu tuyển dụng không bị hụt. Đây là điều Beeftown đã hứa trên trang quyền riêng tư.',
+    ten: { vi: 'Ẩn danh hồ sơ đã quá hạn lưu', en: 'Anonymise applications past their retention period' },
+    giai_thich: { vi: 'Xóa họ tên, số điện thoại, email, địa chỉ IP và file CV của các hồ sơ đã quá 6 tháng. Giữ lại dòng để số liệu tuyển dụng không bị hụt. Đây là điều Beeftown đã hứa trên trang quyền riêng tư.',
+                  en: 'Deletes the name, phone, email, IP address and CV file of applications older than 6 months. The rows stay so hiring numbers do not drop. This is what Beeftown promised on the privacy page.' },
     chi_chu_so_huu: true,
   },
   {
     ham: 'don_dep_phieu_tai_len',
-    ten: 'Dọn vé tải CV đã hết hạn',
-    giai_thich: 'Vé chỉ sống 15 phút. Dọn định kỳ cho bảng khỏi phình.',
+    ten: { vi: 'Dọn vé tải CV đã hết hạn', en: 'Clean up expired CV upload tickets' },
+    giai_thich: { vi: 'Vé chỉ sống 15 phút. Dọn định kỳ cho bảng khỏi phình.',
+                  en: 'Tickets live only 15 minutes. Clean up regularly so the table does not grow.' },
     chi_chu_so_huu: false,
   },
   {
     ham: 'don_dep_su_kien_web',
-    ten: 'Xóa dữ liệu đo lường quá 90 ngày',
-    giai_thich: 'Trang quyền riêng tư nói chỉ giữ 90 ngày. Nút này là chỗ giữ lời.',
+    ten: { vi: 'Xóa dữ liệu đo lường quá 90 ngày', en: 'Delete analytics data older than 90 days' },
+    giai_thich: { vi: 'Trang quyền riêng tư nói chỉ giữ 90 ngày. Nút này là chỗ giữ lời.',
+                  en: 'The privacy page says data is kept only 90 days. This button keeps that promise.' },
     chi_chu_so_huu: false,
   },
 ] as const;
 
-export async function chayViecDon(client: SupabaseClient, ham: string): Promise<KetQua> {
-  if (!VIEC_DON.some(v => v.ham === ham)) {
-    return { ok: false, cau: 'Việc dọn không hợp lệ.' };
-  }
+export async function chayViecDon(client: SupabaseClient, ham: string, nn: NgonNguNB = 'vi'): Promise<KetQua> {
+  const t = dichNB(nn, CAU);
+  if (!VIEC_DON.some(v => v.ham === ham)) return { ok: false, cau: t.viecDonSai };
   const { data, error } = await client.rpc(ham);
-  if (error) return { ok: false, cau: cauLoi(error, 'Không chạy được.') };
+  if (error) return { ok: false, cau: cauLoi(error, t.khongChay, nn) };
   const n = typeof data === 'number' ? data : 0;
-  return {
-    ok: true,
-    cau: n === 0 ? 'Chạy xong — không có dòng nào cần dọn.' : `Chạy xong — đã xử lý ${n} dòng.`,
-  };
+  return { ok: true, cau: n === 0 ? t.xongKhongCo : t.xongN(n) };
 }

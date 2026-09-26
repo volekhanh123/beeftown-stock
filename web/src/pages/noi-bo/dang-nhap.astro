@@ -11,6 +11,31 @@
  */
 import NoiBo from '../../layouts/NoiBo.astro';
 import { dangNhap, layPhien, coDatabase } from '../../lib/phien';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo';
+import { dichCau } from '../../lib/cau-noi-bo';
+
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  tieuDe:     { vi: 'Đăng nhập',                        en: 'Log in' },
+  h1:         { vi: 'Đăng nhập nội bộ',                 en: 'Staff login' },
+  thieu:      { vi: 'Vui lòng điền email và mật khẩu.', en: 'Please enter your email and password.' },
+  chuaNoi:    { vi: 'Chưa nối database.',               en: 'No database connected.' },
+  chuaNoi1:   { vi: 'Giao diện nội bộ cần một project Supabase đã chạy xong toàn bộ migration trong ',
+                en: 'The internal app needs a Supabase project with every migration in ' },
+  chuaNoi1b:  { vi: '.', en: ' already applied.' },
+  chuaNoi2:   { vi: 'Đặt', en: 'Set' },
+  va:         { vi: 'và', en: 'and' },
+  trong:      { vi: 'trong', en: 'in' },
+  chuaNoi3:   { vi: 'rồi tải lại trang này.', en: 'then reload this page.' },
+  chuaNoi4:   { vi: 'Trang công khai vẫn chạy bình thường mà không cần bước này — nó được thiết kế để đúng và đủ ngay cả khi chưa có database nào.',
+                en: 'The public site keeps working without this step — it is designed to be correct and complete even with no database.' },
+  dan:        { vi: 'Tài khoản do chủ nhà hàng tạo trong Supabase và nối với một dòng trong bảng ',
+                en: 'Accounts are created by the owner in Supabase and linked to a row in the ' },
+  dan2:       { vi: '. Không có đường tự đăng ký.', en: ' table. There is no self sign-up.' },
+  matKhau:    { vi: 'Mật khẩu',                         en: 'Password' },
+  dangNhap:   { vi: 'Đăng nhập',                        en: 'Log in' },
+  veCongKhai: { vi: '← Về trang công khai',             en: '← Back to the public site' },
+});
 
 let loi: string | null = null;
 
@@ -25,9 +50,10 @@ if (Astro.request.method === 'POST') {
   const matKhau = String(form.get('mat_khau') ?? '');
 
   if (!email || !matKhau) {
-    loi = 'Vui lòng điền email và mật khẩu.';
+    loi = t.thieu;
   } else {
-    loi = await dangNhap(Astro.cookies, email, matKhau);
+    const loiDangNhap = await dangNhap(Astro.cookies, email, matKhau);
+    loi = loiDangNhap && dichCau(nn, loiDangNhap);
     // Kho là việc hằng ngày của quản lý và chủ (chủ nhà hàng chọn): vào thẳng
     // "Hôm nay" của kho. Vai chỉ kho đã được /noi-bo chuyển tiếp như cũ.
     if (!loi) return Astro.redirect('/noi-bo/kho', 302);
@@ -36,29 +62,24 @@ if (Astro.request.method === 'POST') {
 
 const noiDuoc = coDatabase();
 ---
-<NoiBo tieuDe="Đăng nhập">
-  <h1>Đăng nhập nội bộ</h1>
+<NoiBo tieuDe={t.tieuDe}>
+  <h1>{t.h1}</h1>
 
   {!noiDuoc ? (
     <div class="nb-bao luu-y">
-      <p><strong>Chưa nối database.</strong></p>
+      <p><strong>{t.chuaNoi}</strong></p>
       <p>
-        Giao diện nội bộ cần một project Supabase đã chạy xong toàn bộ migration
-        trong <code>crm/supabase/migrations/</code>.
-        {' '}Đặt{' '}<code>PUBLIC_SUPABASE_URL</code>{' '}và{' '}
-        <code>PUBLIC_SUPABASE_ANON_KEY</code>{' '}trong{' '}<code>web/.env</code>,
-        rồi tải lại trang này.
+        {t.chuaNoi1}<code>crm/supabase/migrations/</code>{t.chuaNoi1b}
+        {' '}{t.chuaNoi2}{' '}<code>PUBLIC_SUPABASE_URL</code>{' '}{t.va}{' '}
+        <code>PUBLIC_SUPABASE_ANON_KEY</code>{' '}{t.trong}{' '}<code>web/.env</code>,
+        {' '}{t.chuaNoi3}
       </p>
-      <p>
-        Trang công khai vẫn chạy bình thường mà không cần bước này — nó được
-        thiết kế để đúng và đủ ngay cả khi chưa có database nào.
-      </p>
+      <p>{t.chuaNoi4}</p>
     </div>
   ) : (
     <>
       <p class="nb-dan">
-        Tài khoản do chủ nhà hàng tạo trong Supabase và nối với một dòng trong
-        bảng <code>nhan_su</code>. Không có đường tự đăng ký.
+        {t.dan}<code>nhan_su</code>{t.dan2}
       </p>
 
       {loi && <div class="nb-bao loi"><p>{loi}</p></div>}
@@ -73,15 +94,15 @@ const noiDuoc = coDatabase();
           />
         </label>
         <label class="nb-o">
-          <span>Mật khẩu</span>
+          <span>{t.matKhau}</span>
           <input type="password" name="mat_khau" required autocomplete="current-password" />
         </label>
-        <button type="submit" class="nb-nut" style="width:100%">Đăng nhập</button>
+        <button type="submit" class="nb-nut" style="width:100%">{t.dangNhap}</button>
       </form>
     </>
   )}
 
   <p class="nb-dan" style="margin-top:2rem">
-    <a href="/">← Về trang công khai</a>
+    <a href="/">{t.veCongKhai}</a>
   </p>
 </NoiBo>

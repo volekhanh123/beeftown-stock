@@ -194,10 +194,14 @@ for (const { duong, ma } of files) {
     const sel = duoi.match(/\.select\(\s*'([^']*)'/);
     const cot = sel
       ? sel[1]
+          // Bỏ NGUYÊN cụm join lồng nhau "khach_hang(ho_ten, sdt)" trước khi
+          // tách dấu phẩy. Lọc theo dấu ngoặc sau khi tách thì cột ở GIỮA một
+          // cụm ba cột trở lên — "vi_tri_tuyen_dung(ten_vi, ten_en, bo_phan)" —
+          // không có ngoặc nào, và bị tính nhầm là cột của bảng cha.
+          .replace(/[a-z0-9_:!]+\s*\([^()]*\)/gi, '')
           .split(',')
           .map(c => c.trim())
-          // Bỏ phần join lồng nhau "khach_hang(ho_ten, sdt)" và ký tự *
-          .filter(c => c && c !== '*' && !c.includes('(') && !c.includes(')'))
+          .filter(c => c && c !== '*')
           .map(c => c.split(':').pop().trim())
       : [];
     goiBang.push({ duong, bang, cot });

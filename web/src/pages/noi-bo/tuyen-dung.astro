@@ -18,40 +18,88 @@
  */
 import NoiBo from '../../layouts/NoiBo.astro';
 import { dinhDangNgay } from '../../lib/noi-dung';
+import { dichNB, nhanNB, nnCua, type HaiThuTieng } from '../../lib/ngon-ngu-noi-bo';
+import { dichCau } from '../../lib/cau-noi-bo';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
 
-const TEN_TRANG_THAI: Record<string, string> = {
-  moi: 'Chưa ai mở',
-  dang_xem: 'Đang xem',
-  hen_phong_van: 'Đã hẹn phỏng vấn',
-  da_phong_van: 'Đã phỏng vấn',
-  nhan_viec: 'Nhận việc',
-  tu_choi: 'Từ chối',
-  ung_vien_rut: 'Ứng viên rút',
-  da_an_danh: 'Đã ẩn danh (hết hạn lưu)',
+const TEN_TRANG_THAI: Record<string, HaiThuTieng> = {
+  moi:           { vi: 'Chưa ai mở',               en: 'Not opened yet' },
+  dang_xem:      { vi: 'Đang xem',                 en: 'Reviewing' },
+  hen_phong_van: { vi: 'Đã hẹn phỏng vấn',         en: 'Interview scheduled' },
+  da_phong_van:  { vi: 'Đã phỏng vấn',             en: 'Interviewed' },
+  nhan_viec:     { vi: 'Nhận việc',                en: 'Hired' },
+  tu_choi:       { vi: 'Từ chối',                  en: 'Rejected' },
+  ung_vien_rut:  { vi: 'Ứng viên rút',             en: 'Candidate withdrew' },
+  da_an_danh:    { vi: 'Đã ẩn danh (hết hạn lưu)', en: 'Anonymised (retention ended)' },
 };
 
+// Mã ca trong ho_so_ung_tuyen.ca_lam_duoc — cùng bốn mã với form công khai.
+const TEN_CA: Record<string, HaiThuTieng> = {
+  sang:      { vi: 'Ca sáng',   en: 'Morning' },
+  chieu:     { vi: 'Ca chiều',  en: 'Afternoon' },
+  toi:       { vi: 'Ca tối',    en: 'Evening' },
+  cuoi_tuan: { vi: 'Cuối tuần', en: 'Weekends' },
+};
+
+const t = dichNB(nn, {
+  tieuDe:     { vi: 'Tuyển dụng', en: 'Hiring' },
+  h1:         { vi: 'Hồ sơ ứng tuyển', en: 'Job applications' },
+  dan1:       { vi: 'Đây là thông tin cá nhân của người chưa phải khách hàng. Beeftown cam kết với họ là lưu ',
+                en: 'This is personal data of people who are not customers. Beeftown promised them to keep it for ' },
+  sauThang:   { vi: 'sáu tháng', en: 'six months' },
+  dan2:       { vi: ' và chỉ dùng cho tuyển dụng.', en: ' and use it only for hiring.' },
+  dan3:       { vi: 'Form của từng tin hỏi những gì — có hỏi CV hay không — chỉnh ở ',
+                en: 'What each posting\'s form asks — including whether it asks for a CV — is set in ' },
+  tinTD:      { vi: 'Tin tuyển dụng', en: 'Job postings' },
+  sai:        { vi: 'Bước chuyển không hợp lệ.', en: 'That status change is not allowed.' },
+  daXuLy:     { vi: 'Hồ sơ đã được người khác xử lý. Tải lại trang để xem trạng thái mới.',
+                en: 'Someone else already handled this application. Reload the page to see its new status.' },
+  daChuyen:   { vi: (ten: string) => `Đã chuyển sang "${ten}".`, en: (ten: string) => `Moved to "${ten}".` },
+  khongDoc:   { vi: 'Không đọc được danh sách.', en: 'Could not read the list.' },
+  locMoi:     { vi: 'Chưa ai mở', en: 'Not opened' },
+  locDang:    { vi: 'Đang xử lý', en: 'In progress' },
+  locTatCa:   { vi: 'Tất cả', en: 'All' },
+  rong:       { vi: 'Không có hồ sơ nào trong mục này.', en: 'No applications in this view.' },
+  rong1:      { vi: 'Trống cũng có thể nghĩa là cổng nộp hồ sơ chưa bật. Kiểm tra công tắc ',
+                en: 'Empty can also mean the application form is not switched on. Check the switch ' },
+  rong2:      { vi: ' và xem ở ', en: ' and check in ' },
+  rong3:      { vi: ' đã có tin nào đang đăng chưa.', en: ' whether any posting is live.' },
+  anDanh:     { vi: '(đã ẩn danh)', en: '(anonymised)' },
+  viTri:      { vi: 'Vị trí', en: 'Position' },
+  dienThoai:  { vi: 'Điện thoại', en: 'Phone' },
+  namSinh:    { vi: 'Năm sinh', en: 'Year of birth' },
+  caLam:      { vi: 'Ca làm được', en: 'Available shifts' },
+  ngayNop:    { vi: 'Ngày nộp', en: 'Applied on' },
+  luuDen:     { vi: 'Lưu đến', en: 'Kept until' },
+  ma:         { vi: 'Mã', en: 'Code' },
+  cv1:        { vi: 'Có đính kèm CV — mở trong Supabase Storage tại ', en: 'CV attached — open it in Supabase Storage at ' },
+  cv2:        { vi: '. Màn hình xem CV chưa làm; tệp nằm trong bucket riêng tư, không có đường dẫn công khai.',
+                en: '. There is no CV viewer yet; the file is in a private bucket with no public link.' },
+  ghiChu:     { vi: 'Ghi chú (vào nhật ký, không sửa lại được)', en: 'Note (goes into the log, cannot be edited later)' },
+});
+
 // Bước đi tiếp từ mỗi trạng thái. da_an_danh không có bước nào — dòng đó đã
-// không còn thông tin để làm gì nữa.
-const CHUYEN_DUOC: Record<string, { nhan: string; toi: string; phu?: boolean }[]> = {
+// không còn thông tin để làm gì nữa. Nút mang tên trạng thái đích.
+const CHUYEN_DUOC: Record<string, { toi: string; phu?: boolean }[]> = {
   moi: [
-    { nhan: 'Đang xem', toi: 'dang_xem' },
-    { nhan: 'Từ chối', toi: 'tu_choi', phu: true },
+    { toi: 'dang_xem' },
+    { toi: 'tu_choi', phu: true },
   ],
   dang_xem: [
-    { nhan: 'Đã hẹn phỏng vấn', toi: 'hen_phong_van' },
-    { nhan: 'Từ chối', toi: 'tu_choi', phu: true },
-    { nhan: 'Ứng viên rút', toi: 'ung_vien_rut', phu: true },
+    { toi: 'hen_phong_van' },
+    { toi: 'tu_choi', phu: true },
+    { toi: 'ung_vien_rut', phu: true },
   ],
   hen_phong_van: [
-    { nhan: 'Đã phỏng vấn', toi: 'da_phong_van' },
-    { nhan: 'Ứng viên rút', toi: 'ung_vien_rut', phu: true },
+    { toi: 'da_phong_van' },
+    { toi: 'ung_vien_rut', phu: true },
   ],
   da_phong_van: [
-    { nhan: 'Nhận việc', toi: 'nhan_viec' },
-    { nhan: 'Từ chối', toi: 'tu_choi', phu: true },
+    { toi: 'nhan_viec' },
+    { toi: 'tu_choi', phu: true },
   ],
 };
 
@@ -65,7 +113,7 @@ if (Astro.request.method === 'POST') {
   const ghiChu = String(form.get('ghi_chu') ?? '').trim() || null;
 
   if (!id || !CHUYEN_DUOC[tu]?.some(b => b.toi === toi)) {
-    bao = { ok: false, cau: 'Bước chuyển không hợp lệ.' };
+    bao = { ok: false, cau: t.sai };
   } else {
     // MỘT câu UPDATE, MỘT dòng nhật ký.
     //
@@ -85,11 +133,11 @@ if (Astro.request.method === 'POST') {
       .select('id');
 
     if (error) {
-      bao = { ok: false, cau: error.message };
+      bao = { ok: false, cau: dichCau(nn, error.message) };
     } else if (!data || data.length === 0) {
-      bao = { ok: false, cau: 'Hồ sơ đã được người khác xử lý. Tải lại trang để xem trạng thái mới.' };
+      bao = { ok: false, cau: t.daXuLy };
     } else {
-      bao = { ok: true, cau: `Đã chuyển sang "${TEN_TRANG_THAI[toi]}".` };
+      bao = { ok: true, cau: t.daChuyen(nhanNB(TEN_TRANG_THAI, toi, nn)) };
     }
   }
 }
@@ -101,7 +149,7 @@ let ds: any[] = [];
 try {
   let q = client
     .from('ho_so_ung_tuyen')
-    .select('id, ma_ho_so, ho_ten, sdt, email, nam_sinh, gioi_thieu, kinh_nghiem, ca_lam_duoc, duong_dan_cv, trang_thai, ngay_nop, luu_den, da_an_danh, vi_tri_tuyen_dung(ten_vi, bo_phan)')
+    .select('id, ma_ho_so, ho_ten, sdt, email, nam_sinh, gioi_thieu, kinh_nghiem, ca_lam_duoc, duong_dan_cv, trang_thai, ngay_nop, luu_den, da_an_danh, vi_tri_tuyen_dung(ten_vi, ten_en, bo_phan)')
     .order('created_at', { ascending: false })
     .limit(100);
 
@@ -109,27 +157,25 @@ try {
   else if (loc === 'dang_xu_ly') q = q.in('trang_thai', ['dang_xem', 'hen_phong_van', 'da_phong_van']);
 
   const { data, error } = await q;
-  if (error) dsLoi = error.message;
+  if (error) dsLoi = dichCau(nn, error.message);
   else ds = data ?? [];
 } catch (e) {
-  dsLoi = e instanceof Error ? e.message : 'Không đọc được danh sách.';
+  dsLoi = e instanceof Error ? dichCau(nn, e.message) : t.khongDoc;
 }
 
 const BO_LOC = [
-  { ma: 'moi', ten: 'Chưa ai mở' },
-  { ma: 'dang_xu_ly', ten: 'Đang xử lý' },
-  { ma: 'tat_ca', ten: 'Tất cả' },
+  { ma: 'moi', ten: t.locMoi },
+  { ma: 'dang_xu_ly', ten: t.locDang },
+  { ma: 'tat_ca', ten: t.locTatCa },
 ];
 ---
-<NoiBo tieuDe="Tuyển dụng" nhanSu={nhanSu}>
-  <h1>Hồ sơ ứng tuyển</h1>
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <h1>{t.h1}</h1>
   <p class="nb-dan">
-    Đây là thông tin cá nhân của người chưa phải khách hàng. Beeftown cam kết
-    với họ là lưu <strong>sáu tháng</strong> và chỉ dùng cho tuyển dụng.
+    {t.dan1}<strong>{t.sauThang}</strong>{t.dan2}
   </p>
   <p class="nb-dan" style="font-size:.85rem">
-    Form của từng tin hỏi những gì — có hỏi CV hay không — chỉnh
-    ở <a href="/noi-bo/tin-tuyen-dung">Tin tuyển dụng</a>.
+    {t.dan3}<a href="/noi-bo/tin-tuyen-dung">{t.tinTD}</a>.
   </p>
 
   {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
@@ -145,11 +191,9 @@ const BO_LOC = [
 
   {ds.length === 0 && !dsLoi && (
     <div class="nb-rong">
-      <p style="margin:0">Không có hồ sơ nào trong mục này.</p>
+      <p style="margin:0">{t.rong}</p>
       <p style="margin:.5rem 0 0;font-size:.85rem">
-        Trống cũng có thể nghĩa là cổng nộp hồ sơ chưa bật.
-        Kiểm tra công tắc <a href="/noi-bo/noi-dung"><code>hien_tuyen_dung</code></a> và xem
-        ở <a href="/noi-bo/tin-tuyen-dung">Tin tuyển dụng</a> đã có tin nào đang đăng chưa.
+        {t.rong1}<a href="/noi-bo/noi-dung"><code>hien_tuyen_dung</code></a>{t.rong2}<a href="/noi-bo/tin-tuyen-dung">{t.tinTD}</a>{t.rong3}
       </p>
     </div>
   )}
@@ -160,25 +204,25 @@ const BO_LOC = [
     return (
       <div class="nb-dong">
         <div class="nb-dong-dau">
-          <strong>{h.da_an_danh ? '(đã ẩn danh)' : h.ho_ten}</strong>
+          <strong>{h.da_an_danh ? t.anDanh : h.ho_ten}</strong>
           <span class={`nb-nhan ${h.trang_thai === 'moi' ? 'cho'
                         : h.trang_thai === 'nhan_viec' ? 'song' : 'tat'}`}>
-            {TEN_TRANG_THAI[h.trang_thai] ?? h.trang_thai}
+            {nhanNB(TEN_TRANG_THAI, h.trang_thai, nn)}
           </span>
         </div>
 
         <dl>
-          <dt>Vị trí</dt>
-          <dd>{vt?.ten_vi ?? '—'}</dd>
-          {!h.da_an_danh && h.sdt && <><dt>Điện thoại</dt><dd><a href={`tel:${h.sdt}`}>{h.sdt}</a></dd></>}
+          <dt>{t.viTri}</dt>
+          <dd>{(nn === 'en' && vt?.ten_en) || vt?.ten_vi || '—'}</dd>
+          {!h.da_an_danh && h.sdt && <><dt>{t.dienThoai}</dt><dd><a href={`tel:${h.sdt}`}>{h.sdt}</a></dd></>}
           {!h.da_an_danh && h.email && <><dt>Email</dt><dd><a href={`mailto:${h.email}`}>{h.email}</a></dd></>}
-          {h.nam_sinh && <><dt>Năm sinh</dt><dd>{h.nam_sinh}</dd></>}
-          {h.ca_lam_duoc?.length > 0 && <><dt>Ca làm được</dt><dd>{h.ca_lam_duoc.join(', ')}</dd></>}
-          <dt>Ngày nộp</dt>
-          <dd>{dinhDangNgay(h.ngay_nop, 'vi')}</dd>
-          <dt>Lưu đến</dt>
-          <dd>{dinhDangNgay(h.luu_den, 'vi')}</dd>
-          <dt>Mã</dt>
+          {h.nam_sinh && <><dt>{t.namSinh}</dt><dd>{h.nam_sinh}</dd></>}
+          {h.ca_lam_duoc?.length > 0 && <><dt>{t.caLam}</dt><dd>{h.ca_lam_duoc.map((c: string) => nhanNB(TEN_CA, c, nn)).join(', ')}</dd></>}
+          <dt>{t.ngayNop}</dt>
+          <dd>{dinhDangNgay(h.ngay_nop, nn)}</dd>
+          <dt>{t.luuDen}</dt>
+          <dd>{dinhDangNgay(h.luu_den, nn)}</dd>
+          <dt>{t.ma}</dt>
           <dd><code>{h.ma_ho_so}</code></dd>
         </dl>
 
@@ -187,9 +231,7 @@ const BO_LOC = [
 
         {h.duong_dan_cv && (
           <p style="margin:.6rem 0 0;font-size:.85rem">
-            Có đính kèm CV — mở trong Supabase Storage tại <code>{h.duong_dan_cv}</code>.
-            Màn hình xem CV chưa làm; tệp nằm trong bucket riêng tư, không có
-            đường dẫn công khai.
+            {t.cv1}<code>{h.duong_dan_cv}</code>{t.cv2}
           </p>
         )}
 
@@ -198,13 +240,13 @@ const BO_LOC = [
             <input type="hidden" name="id" value={h.id} />
             <input type="hidden" name="tu" value={h.trang_thai} />
             <label class="nb-o" style="margin-bottom:.6rem">
-              <span>Ghi chú (vào nhật ký, không sửa lại được)</span>
+              <span>{t.ghiChu}</span>
               <input type="text" name="ghi_chu" autocapitalize="sentences" />
             </label>
             <div class="nb-dong-nut" style="margin-top:0">
               {buoc.map(b => (
                 <button type="submit" name="toi" value={b.toi}
-                        class={`nb-nut ${b.phu ? 'phu' : ''}`}>{b.nhan}</button>
+                        class={`nb-nut ${b.phu ? 'phu' : ''}`}>{nhanNB(TEN_TRANG_THAI, b.toi, nn)}</button>
               ))}
             </div>
           </form>

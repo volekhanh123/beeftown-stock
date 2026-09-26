@@ -95,6 +95,19 @@ Hệ quả cụ thể: một người vai `marketing` đăng nhập sẽ soạn 
 
 **Tài khoản do chủ nhà hàng tạo trong Supabase Studio**, rồi nối `auth_uid` vào một dòng trong bảng `nhan_su`. Đăng nhập Supabase thành công mà không có dòng `nhan_su` thì vẫn bị từ chối — Supabase Auth trả lời "ai", bảng `nhan_su` trả lời "có phải nhân viên không".
 
+### Tiếng Anh ở giao diện nội bộ
+
+Mọi trang nội bộ có nút **English / Tiếng Việt** ở đầu trang. Lựa chọn là của **trình duyệt** (cookie `nb_ngon_ngu`, sống dưới `/noi-bo`), không nằm trong đường dẫn như trang công khai: một link `/noi-bo/tin-tuyen-dung/<id>` phải mở đúng tin đó dù người mở đọc tiếng gì. Chưa chọn thì là tiếng Việt.
+
+Viết thêm chữ cho giao diện nội bộ theo hai đường:
+
+- **Chữ của trang** (tiêu đề, nhãn, nút, câu dẫn) nằm ngay trong trang, dạng `{ vi, en }`, đọc qua `dichNB(nn, …)` — `nn` lấy bằng `nnCua(Astro)`. Thư viện trả câu cho người đọc (`lib/cong-tac.ts`, `lib/tin-tuyen-dung.ts`, `lib/cai-dat.ts`…) nhận thêm tham số `nn`, mặc định `'vi'`.
+- **Câu thông báo trang không tự viết** — lỗi `raise exception` của database, lý do máy dịch hỏng lưu trong sổ bản dịch — đi qua `dichCau(nn, câu)` ở `lib/cau-noi-bo.ts`: tra đúng câu tiếng Việt, rồi tới mẫu có `%`. Thêm một `raise exception` mới ở migration phần CRM thì thêm bản tiếng Anh vào đó.
+
+`crm/test/test-noi-bo-tieng-anh.mjs` giữ hai điều này: câu lỗi database mới chưa có bản tiếng Anh, hoặc chữ Việt mới nằm ngoài cặp `{ vi, en }` ở màn CRM, là test đỏ.
+
+Phần **kho** chưa có tiếng Anh: nó đang được sửa lớn ở nhánh kho (PR #9), dịch song song thì hai bên đụng nhau ở gần như mọi file.
+
 ---
 
 ## Bản dịch tự động (tiếng Anh và tiếng Hàn)
