@@ -173,10 +173,6 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     'pages/noi-bo/kho/may/index.astro',
     // ---- hết gói máy & iPOS ----
     // ---- gói hướng dẫn: hướng dẫn, quy trình ----
-    'lib/kho/huong-dan.ts',
-    'lib/kho/quy-trinh.ts',
-    'pages/noi-bo/kho/huong-dan.astro',
-    'pages/noi-bo/kho/quy-trinh.astro',
     // ---- hết gói hướng dẫn ----
   ];
 
