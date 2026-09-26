@@ -788,11 +788,12 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
   {
     id: 'dong-bo-can', vai: ['chu_so_huu', 'quan_ly'],
     tieuDe: 'Đồng bộ danh mục xuống cân',
-    tomTat: 'Đưa mã cân, tên, giá bán sang cân in tem qua USB.',
+    tomTat: 'Đưa mã cân, tên, giá bán sang cân in tem qua USB hoặc WiFi.',
     buoc: [
-      'Trên cân: lưu dữ liệu ra USB.',
+      'Trên cân: lưu dữ liệu ra USB (nạp qua WiFi thì dùng file Tài liệu › Beeftown Can › A_000.TMS).',
       'Tải file đó lên màn **Đồng bộ cân**, bấm **Xem trước**.',
-      'Bấm **Tải file**, chép đè vào USB, nạp lại vào cân.',
+      'Bấm **Tải file**, rồi chép đè vào USB và nạp lại vào cân, hoặc chạy chương trình **Nạp cân qua WiFi**.',
+      'Có hàng **Xoá khỏi cân** thì nạp bằng USB — qua WiFi cân chỉ thêm và sửa.',
     ],
     link: { href: '/noi-bo/kho/cai-dat/can', chu: 'Mở Đồng bộ cân' },
   },

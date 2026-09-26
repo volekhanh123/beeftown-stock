@@ -3,10 +3,17 @@
  * KHO — CÀI ĐẶT · ĐỒNG BỘ CÂN
  *
  * Kho là gốc: đưa mã cân, tên, giá bán/kg của danh mục sang cân in tem Dahua
- * TM-A. Cân không nối mạng với phần mềm kho nên đi đường USB:
+ * TM-A. Trang web không nói chuyện thẳng với cân (cân nằm trong WiFi của
+ * quán), nên file đi tay:
  *   1. Trên cân lưu dữ liệu ra USB → file JHSCALE/A_000.TMS
  *   2. Tải file lên đây → xem trước thêm / sửa / xoá
- *   3. Tải file mới về, chép đè vào USB, nạp vào cân
+ *   3. Tải file mới về, rồi nạp vào cân bằng USB, HOẶC chạy chương trình
+ *      public/kho/can-wifi/Nap-Can-WiFi.ps1 trên máy tính ở quán để gửi qua
+ *      WiFi (cổng TCP 33571, nội dung y như file USB — thử trên cân thật
+ *      26/09/2026). Qua WiFi cân chỉ THÊM và SỬA hàng, không xoá: có dòng
+ *      "Xoá khỏi cân" thì lần đó phải nạp bằng USB (USB thay cả danh sách).
+ *      Chương trình giữ bản vừa gửi ở Tài liệu › Beeftown Can › A_000.TMS để
+ *      lần sau tải lên thay cho bước 1.
  *
  * Máy chủ KHÔNG lưu file: bước xem trước mang file theo form dưới dạng base64,
  * bấm "Tải file" là dựng lại từ danh mục MỚI NHẤT lúc bấm. File có tên và mật
@@ -109,12 +116,24 @@ const DEM: [LoaiDong, string][] = [
     </ol>
   </div>
 
+  <div class="nb-the">
+    <p style="margin-top:0"><strong>Nạp qua WiFi, không cần USB.</strong> Trên máy tính Windows cùng WiFi với cân, tải
+      <a href="/kho/can-wifi/Nap-Can-WiFi.ps1" download>chương trình Nạp cân qua WiFi</a> một lần.</p>
+    <ol class="dong-bo-buoc">
+      <li><strong>Lần đầu:</strong> làm bước 1 ở trên, chép file từ USB vào máy tính. Chuột phải vào chương trình → <em>Run with PowerShell</em> → chọn <strong>2</strong> → chọn file đó.</li>
+      <li><strong>Mỗi lần đồng bộ:</strong> tải lên đây file <code>Tài liệu › Beeftown Can › A_000.TMS</code> (thay cho bước 1), bấm Xem trước, tải file mới về.</li>
+      <li>Chạy chương trình → Enter (chọn 1) → Enter để dùng file vừa tải về → Enter để gửi. Gọi thử một hàng trên cân.</li>
+    </ol>
+    <p class="kho-phu">Qua WiFi cân chỉ thêm và sửa hàng, <strong>không xoá được</strong>. Có hàng cần xoá thì lần đó nạp bằng USB — chương trình cũng sẽ báo.
+      Cân đổi địa chỉ (xem trên cân: <kbd>Prog</kbd> → 4 → 2) thì mở chương trình bằng Notepad, sửa dòng <code>$IP_CAN</code>.</p>
+  </div>
+
   {!k.chiNhanh ? <p class="nb-rong">Chưa có chi nhánh nào.</p> : (
     <form method="POST" enctype="multipart/form-data" class="nb-the">
       <input type="hidden" name="viec" value="xem" />
       <label class="nb-o">
         <span>File lưu từ cân</span>
-        <small>File chỉ được đọc trong lần xem này, không lưu lên máy chủ.</small>
+        <small>File trong USB › JHSCALE, hoặc Tài liệu › Beeftown Can › A_000.TMS nếu nạp qua WiFi. File chỉ được đọc trong lần xem này, không lưu lên máy chủ.</small>
         <input type="file" name="tep" accept=".TMS,.tms" required />
       </label>
       <label class="kho-tich"><input type="checkbox" name="giu_ngoai_kho" value="co" checked={giuHangNgoaiKho} />
@@ -179,6 +198,13 @@ const DEM: [LoaiDong, string][] = [
         </p>
         <button type="submit" class="nb-nut">Tải file {tenFile}</button>
       </form>
+
+      {keHoach.dem.xoa > 0 && (
+        <div class="nb-bao loi">
+          <p><strong>{keHoach.dem.xoa} hàng cần xoá khỏi cân.</strong> Nạp qua WiFi không xoá được hàng — lần này hãy nạp bằng USB
+            (cân thay cả danh sách), rồi chạy chương trình Nạp cân qua WiFi, chọn 2 để ghi nhận.</p>
+        </div>
+      )}
 
       <div class="nb-bao luu-y">
         <p>Không để USB cắm sẵn lúc bật cân: cân tự nạp file A_000.TMS có trong USB.</p>
