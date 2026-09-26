@@ -7,7 +7,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { boDau } from './chung.ts';
+import { boDau, type HaiThuTieng, type NgonNguNB } from './chung.ts';
 
 export interface DongTon {
   lo_id: string;
@@ -193,14 +193,21 @@ export function locTon(ds: DongTon[], b: BoLocTon, chiMatHang: Set<string> | nul
  * lấy và đúng lô. Hết hạn → chỉ còn "Báo hủy". Hàng ở chỗ chờ hủy, hàng đang
  * mang ra quầy (0032 — chỉ nhận / hủy chuyến mới đụng được) → không có gì.
  */
-export function viecVoiLo(t: DongTon): { ma: 'chuyen' | 'xuat_bep' | 'huy'; ten: string; link: string }[] {
+export function viecVoiLo(t: DongTon, nn: NgonNguNB = 'vi'): { ma: 'chuyen' | 'xuat_bep' | 'huy'; ten: string; link: string }[] {
   if (t.loai_vi_tri === 'cho_huy' || t.loai_vi_tri === 'dang_chuyen' || (t.so_kg <= 0 && t.so_goi <= 0)) return [];
   const link = (loai: 'chuyen' | 'xuat_bep' | 'huy') =>
     `/noi-bo/kho/xuat/moi?loai=${loai}&tu=${encodeURIComponent(t.vi_tri_id)}&lo=${encodeURIComponent(t.lo_id)}`;
-  if (t.tinh_trang_han === 'het_han') return [{ ma: 'huy', ten: 'Báo hủy', link: link('huy') }];
+  const ten = TEN_VIEC_VOI_LO;
+  if (t.tinh_trang_han === 'het_han') return [{ ma: 'huy', ten: ten.huy[nn], link: link('huy') }];
   return [
-    ...(t.loai_vi_tri === 'kho' ? [{ ma: 'chuyen' as const, ten: 'Ra quầy', link: link('chuyen') }] : []),
-    { ma: 'xuat_bep', ten: 'Đưa bếp', link: link('xuat_bep') },
-    { ma: 'huy', ten: 'Báo hủy', link: link('huy') },
+    ...(t.loai_vi_tri === 'kho' ? [{ ma: 'chuyen' as const, ten: ten.chuyen[nn], link: link('chuyen') }] : []),
+    { ma: 'xuat_bep', ten: ten.xuat_bep[nn], link: link('xuat_bep') },
+    { ma: 'huy', ten: ten.huy[nn], link: link('huy') },
   ];
 }
+
+const TEN_VIEC_VOI_LO = {
+  huy: { vi: 'Báo hủy', en: 'Write off' },
+  chuyen: { vi: 'Ra quầy', en: 'To counter' },
+  xuat_bep: { vi: 'Đưa bếp', en: 'To kitchen' },
+} satisfies Record<string, HaiThuTieng>;

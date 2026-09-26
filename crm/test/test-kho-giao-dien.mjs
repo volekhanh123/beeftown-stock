@@ -136,8 +136,9 @@ await nhom('2 · MENU THEO VAI', async () => {
       (THANH_DAY[vai] ?? []).filter(m => !day.includes(m)).map(m => m.ma).join(', '));
     ok(`${vai}: nút cuối thanh đáy là "Khác"`, day.at(-1)?.link === '/noi-bo/kho/khac');
     ok(`${vai}: nút đầu thanh đáy là trang chủ kho`, day[0]?.link === '/noi-bo/kho');
-    const tenNgan = day.map(m => m.ngan ?? m.ten).filter(t => t.length > 9);
-    ok(`${vai}: chữ trên thanh đáy ≤ 9 ký tự`, tenNgan.length === 0, tenNgan.join(', '));
+    // Tên hai thứ tiếng ({ vi, en }): cả hai bản đều phải vừa nút.
+    const tenNgan = day.flatMap(m => ['vi', 'en'].map(nn => (m.ngan ?? m.ten)[nn])).filter(t => !t || t.length > 9);
+    ok(`${vai}: chữ trên thanh đáy ≤ 9 ký tự (tiếng Việt và tiếng Anh)`, tenNgan.length === 0, tenNgan.join(', '));
     const khongQuyen = thaoTacCuaVai(vai).length !== (THAO_TAC_NHANH[vai] ?? []).length;
     ok(`${vai}: mọi thao tác nhanh đều làm được`, !khongQuyen);
   }
@@ -166,7 +167,7 @@ await nhom('2 · MENU THEO VAI', async () => {
   for (const ma of ['nhan_hang', 'pha_loc', 'viec']) {
     ok(`Thủ kho: thấy ô "${ma}"`, tk.some(m => m.ma === ma));
   }
-  const nhanTk = thaoTacCuaVai('thu_kho').find(t => t.ten === 'Nhận hàng');
+  const nhanTk = thaoTacCuaVai('thu_kho').find(t => t.ten.vi === 'Nhận hàng');
   ok('Thủ kho: "Nhận hàng" mở màn nhận hàng chỉ kg', nhanTk?.link === '/noi-bo/kho/nhan-hang/moi', nhanTk?.link);
   ok('Ô "Nhập hàng" (có tiền) chỉ cho vai xem giá, không số đỏ phiếu nháp',
     (() => { const m = MUC_KHO.find(x => x.ma === 'nhap'); return m && chiTien(m.quyen) && !(m.dem ?? []).some(k => k.startsWith('nhap_')); })());
@@ -636,7 +637,7 @@ await nhom('13 · QUẦY YÊU CẦU → MANG RA → BẤM NHẬN (0032)', async 
     && !/from\('kho_cai_dat'\)\s*\.(update|upsert|insert)/.test(quayLib));
   ok('Màn Cài đặt có công tắc', /chuyen_quay_can_nhan/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'))));
   // GĐ5e: Cài đặt thành "Thiết lập" có tiến độ (0035) — chi tiết ở test-kho-thiet-lap-web.mjs.
-  ok('Ô menu "Thiết lập" mở màn có thanh tiến độ', MUC_KHO.find(m => m.ma === 'cai_dat')?.ten === 'Thiết lập'
+  ok('Ô menu "Thiết lập" mở màn có thanh tiến độ', MUC_KHO.find(m => m.ma === 'cai_dat')?.ten?.vi === 'Thiết lập'
     && /kho_tien_do_thiet_lap/.test(doc(join(GOC, 'web/src/lib/kho/thiet-lap.ts')))
     && /cauConLai\(tienDo\)/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'))));
 });
@@ -686,11 +687,14 @@ await nhom('15 · MÁY TÍNH BẢNG DÙNG CHUNG (GĐ5d, 0034) — TRANG', async 
   ok('Khung: nạp may-chung.js CHỈ khi có người đang dùng máy dùng chung',
     /\{coNguoiDung && k\.may && \(\s*<script is:inline src="\/kho\/js\/may-chung\.js"/.test(khung)
     && (khung.match(/may-chung\.js/g) ?? []).length === 2);
+  // Chữ nút nằm trong bảng câu { vi, en } của khung (t.khoaMay…); kiểm cả câu lẫn chỗ dùng.
   ok('Khung ở chế độ máy: "Khóa máy" và "Gỡ tôi khỏi máy này" gửi về màn máy (viec khoa / go)',
-    /name="viec" value="khoa"[\s\S]{0,200}Khóa máy/.test(khung) && /name="viec" value="go"[\s\S]{0,200}Gỡ tôi khỏi máy này/.test(khung)
+    /name="viec" value="khoa"[\s\S]{0,200}\{t\.khoaMay\}/.test(khung) && /name="viec" value="go"[\s\S]{0,200}\{t\.goToi\}/.test(khung)
+    && /khoaMay: \{ vi: 'Khóa máy'/.test(khung) && /goToi: \{ vi: 'Gỡ tôi khỏi máy này'/.test(khung)
     && /action=\{DUONG_MAY\}/.test(khung));
   ok('Khung ở chế độ máy: không có "Đăng xuất", không menu CRM',
-    /laMay \? \([\s\S]*\) : coNguoiDung \? \([\s\S]*\) : \([\s\S]*Đăng xuất/.test(khung)
+    /laMay \? \([\s\S]*\) : coNguoiDung \? \([\s\S]*\) : \([\s\S]*\{t\.dangXuat\}/.test(khung)
+    && /dangXuat: \{ vi: 'Đăng xuất'/.test(khung)
     && /const crm = cheDoMay \? \[\]/.test(khung));
 
   const man = doc(join(TRANG, 'noi-bo/kho/may/index.astro'));

@@ -6,7 +6,8 @@
  * Mặt hàng đã ngừng dùng chỉ hiện khi đang là giá trị được chọn sẵn (dữ liệu
  * cũ), để form cũ không tự đổi mặt hàng. Không gọi database.
  */
-import { TEN_LOAI_MAT_HANG } from '../../lib/kho/chung.ts';
+import { TEN_LOAI_MAT_HANG_NB } from '../../lib/kho/chung.ts';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
 
 interface MatHangChon {
   id: string; ma: string; ten: string; nhom: string | null;
@@ -20,10 +21,16 @@ interface Props {
   batBuoc?: boolean;
   trong?: string;
 }
-const { name, matHang, chon = '', loai, batBuoc = false, trong = '— chọn mặt hàng —' } = Astro.props;
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  trong: { vi: '— chọn mặt hàng —', en: '— choose an item —' },
+  ma: { vi: 'mã', en: 'code' },
+  ngungDung: { vi: ' — ngừng dùng', en: ' — no longer used' },
+});
+const { name, matHang, chon = '', loai, batBuoc = false, trong = t.trong } = Astro.props;
 const ds = matHang.filter(m => (m.dang_dung || m.id === chon) && (!loai || loai.includes(m.loai)));
 const nhom = ['tang', 'phan_cat', 'phu_pham']
-  .map(l => ({ l, ten: TEN_LOAI_MAT_HANG[l], hang: ds.filter(m => m.loai === l) }))
+  .map(l => ({ l, ten: TEN_LOAI_MAT_HANG_NB[l][nn], hang: ds.filter(m => m.loai === l) }))
   .filter(n => n.hang.length > 0);
 ---
 <select name={name} required={batBuoc}>
@@ -31,8 +38,8 @@ const nhom = ['tang', 'phan_cat', 'phu_pham']
   {nhom.map(n => (
     <optgroup label={n.ten}>
       {n.hang.map(m => (
-        <option value={m.id} selected={m.id === chon} title={`${m.ten} · mã ${m.ma}`}>
-          {m.ten}{m.nhom ? ` · ${m.nhom}` : ''}{!m.dang_dung ? ' — ngừng dùng' : ''}
+        <option value={m.id} selected={m.id === chon} title={`${m.ten} · ${t.ma} ${m.ma}`}>
+          {m.ten}{m.nhom ? ` · ${m.nhom}` : ''}{!m.dang_dung ? t.ngungDung : ''}
         </option>
       ))}
     </optgroup>

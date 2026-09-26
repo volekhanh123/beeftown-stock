@@ -18,6 +18,10 @@
  * đang dùng thì nạp public/kho/js/may-chung.js đếm giờ tự khóa. Chế độ máy
  * đổi "Đăng xuất" thành "Khóa máy" và "Gỡ tôi khỏi máy này"; tài khoản máy
  * (vai may_*) chỉ thấy khung trống, không chuông, không menu.
+ *
+ * Hai thứ tiếng (lib/ngon-ngu-noi-bo.ts): nút "English" / "Tiếng Việt" trên thanh
+ * trên, cùng cookie với phần CRM. Menu, thanh đáy đọc tên { vi, en } của
+ * dieu-huong.ts.
  */
 import '../styles/chung.css';
 import '../styles/noi-bo.css';
@@ -28,8 +32,9 @@ import type { TrangKho } from '../lib/kho/trang.ts';
 import {
   mucCuaVai, thanhDayCuaVai, thaoTacCuaVai, soDo, dangO, nhanSo, MUC_CRM,
 } from '../lib/kho/dieu-huong.ts';
-import { TEN_VAI_KHO } from '../lib/kho/chung.ts';
+import { TEN_VAI_KHO_NB } from '../lib/kho/chung.ts';
 import { laVaiMay, DUONG_MAY } from '../lib/kho/may-chung.ts';
+import { dichNB, nhanNB, nnCua, linkDoiNgonNgu, type HaiThuTieng } from '../lib/ngon-ngu-noi-bo.ts';
 
 interface Props {
   k: Pick<TrangKho, 'nhanSu' | 'chiNhanh' | 'cacChiNhanh' | 'viec'> & Partial<Pick<TrangKho, 'may'>>;
@@ -44,11 +49,41 @@ const vai = k.nhanSu.vai_tro;
 const duong = Astro.url.pathname;
 const timKiem = Astro.url.search;
 
-const TEN_VAI: Record<string, string> = {
-  chu_so_huu: 'Chủ nhà hàng', quan_ly: 'Quản lý', thu_ngan: 'Thu ngân', marketing: 'Marketing',
-  may_chung: 'Máy dùng chung', may_ipos: 'Máy iPOS',
-  ...TEN_VAI_KHO,
+const nn = nnCua(Astro);
+const doiTieng = linkDoiNgonNgu(Astro.url, nn);
+const t = dichNB(nn, {
+  tenApp: { vi: 'Kho Beeftown', en: 'Beeftown Inventory' },
+  kho: { vi: 'Kho', en: 'Inventory' },
+  boQuaMenu: { vi: 'Bỏ qua menu', en: 'Skip menu' },
+  veTrangChu: { vi: 'Kho Beeftown — trang chủ', en: 'Beeftown Inventory — home' },
+  doiChiNhanh: { vi: 'Đổi chi nhánh', en: 'Switch branch' },
+  tienIch: { vi: 'Tiện ích', en: 'Tools' },
+  huongDanManNay: { vi: 'Hướng dẫn cho màn này', en: 'Help for this screen' },
+  huongDan: { vi: 'Hướng dẫn', en: 'Help' },
+  thongBao: { vi: 'Thông báo', en: 'Notifications' },
+  chuaDoc: { vi: (n: number) => `${n} thông báo chưa đọc`, en: (n: number) => `${n} unread notification${n === 1 ? '' : 's'}` },
+  thongBaoChuaDoc: { vi: (n: number) => `Thông báo, ${n} chưa đọc`, en: (n: number) => `Notifications, ${n} unread` },
+  phanKhac: { vi: 'Phần khác của nhà hàng', en: 'Other restaurant areas' },
+  ganToi: { vi: 'Gắn tôi vào máy này', en: 'Add me to this tablet' },
+  dangKyLai: { vi: 'Đăng ký lại máy (quản lý)', en: 'Register this tablet again (manager)' },
+  huongDanSuDung: { vi: 'Hướng dẫn sử dụng', en: 'User guide' },
+  doiPin: { vi: 'Đổi PIN của tôi', en: 'Change my PIN' },
+  khoaMay: { vi: 'Khóa máy', en: 'Lock tablet' },
+  goToi: { vi: 'Gỡ tôi khỏi máy này', en: 'Remove me from this tablet' },
+  dangXuat: { vi: 'Đăng xuất', en: 'Log out' },
+  cacMuc: { vi: 'Các mục kho', en: 'Inventory sections' },
+  thaoTacNhanh: { vi: 'Thao tác nhanh', en: 'Quick actions' },
+  menuChinh: { vi: 'Menu chính', en: 'Main menu' },
+  soViec: { vi: (n: number) => `${n} việc`, en: (n: number) => `${n} to do` },
+});
+
+const TEN_VAI: Record<string, HaiThuTieng> = {
+  chu_so_huu: { vi: 'Chủ nhà hàng', en: 'Owner' }, quan_ly: { vi: 'Quản lý', en: 'Manager' },
+  thu_ngan: { vi: 'Thu ngân', en: 'Cashier' }, marketing: { vi: 'Marketing', en: 'Marketing' },
+  may_chung: { vi: 'Máy dùng chung', en: 'Shared tablet' }, may_ipos: { vi: 'Máy iPOS', en: 'iPOS device' },
+  ...TEN_VAI_KHO_NB,
 };
+const tenVai = nhanNB(TEN_VAI, vai, nn);
 
 // Máy tính bảng dùng chung: laMay = đang mở bằng tài khoản máy (màn khóa);
 // coNguoiDung = một người đã mở khóa bằng PIN.
@@ -65,18 +100,18 @@ const linkHuongDan = `/noi-bo/kho/huong-dan${huongDan ? `#${huongDan}` : ''}`;
 const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.chiNhanh?.id) : [];
 ---
 <!doctype html>
-<html lang="vi">
+<html lang={nn}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <title>{tieuDe} — Kho Beeftown</title>
+    <title>{tieuDe} — {t.tenApp}</title>
     <meta name="robots" content="noindex, nofollow" />
     <link rel="icon" href="/bieu-tuong.svg" type="image/svg+xml" />
     <link rel="manifest" href="/kho/manifest.json" />
     <link rel="apple-touch-icon" href="/kho/bieu-tuong-180.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="Kho Beeftown" />
+    <meta name="apple-mobile-web-app-title" content={t.tenApp} />
     <meta name="apple-mobile-web-app-status-bar-style" content="black" />
     <meta name="theme-color" content="#1E160E" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -86,73 +121,74 @@ const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.
   </head>
 
   <body class="nb-than kho-than">
-    <a class="kho-bo-qua" href="#noi-dung">Bỏ qua menu</a>
+    <a class="kho-bo-qua" href="#noi-dung">{t.boQuaMenu}</a>
 
     <header class="kho-dau">
       <div class="kho-dau-hang">
-        <a href={laMay ? DUONG_MAY : '/noi-bo/kho'} class="kho-hieu" aria-label="Kho Beeftown — trang chủ">
+        <a href={laMay ? DUONG_MAY : '/noi-bo/kho'} class="kho-hieu" aria-label={t.veTrangChu}>
           <img src="/bieu-tuong.svg" alt="" width="30" height="30" />
-          <span>Kho<small>{k.chiNhanh?.ten ?? 'Beeftown'}</small></span>
+          <span>{t.kho}<small>{k.chiNhanh?.ten ?? 'Beeftown'}</small></span>
         </a>
 
         {doiChiNhanh.length > 0 && (
           <details class="kho-cn-chon">
-            <summary>Đổi chi nhánh</summary>
+            <summary>{t.doiChiNhanh}</summary>
             <div>
               {doiChiNhanh.map(c => <a href={`${duong}?cn=${encodeURIComponent(c.ma)}`}>{c.ten}</a>)}
             </div>
           </details>
         )}
 
-        <nav class="kho-dau-nut" aria-label="Tiện ích">
+        <nav class="kho-dau-nut" aria-label={t.tienIch}>
+          <a href={doiTieng.link} class="kho-doi-tieng" lang={doiTieng.nnKia} hreflang={doiTieng.nnKia}>{doiTieng.chu}</a>
           {!laMay && (<>
-          <a href={linkHuongDan} class="kho-nut-tron" title="Hướng dẫn cho màn này">
-            <BieuTuong ten="huong_dan" /><span class="kho-an">Hướng dẫn</span>
+          <a href={linkHuongDan} class="kho-nut-tron" title={t.huongDanManNay}>
+            <BieuTuong ten="huong_dan" /><span class="kho-an">{t.huongDan}</span>
           </a>
           <a href="/noi-bo/kho/thong-bao" class="kho-nut-tron"
              aria-current={dangO({ link: '/noi-bo/kho/thong-bao' }, duong) ? 'page' : undefined}
-             title={chuaDoc > 0 ? `${chuaDoc} thông báo chưa đọc` : 'Thông báo'}>
+             title={chuaDoc > 0 ? t.chuaDoc(chuaDoc) : t.thongBao}>
             <BieuTuong ten="chuong" />
-            <span class="kho-an">Thông báo{chuaDoc > 0 ? `, ${chuaDoc} chưa đọc` : ''}</span>
+            <span class="kho-an">{chuaDoc > 0 ? t.thongBaoChuaDoc(chuaDoc) : t.thongBao}</span>
             {chuaDoc > 0 && <b class="kho-so-do" aria-hidden="true">{nhanSo(chuaDoc)}</b>}
           </a>
           </>)}
           <details class="kho-nguoi">
             <summary>
               <BieuTuong ten="nguoi" />
-              <span class="kho-nguoi-ten">{k.nhanSu.ho_ten}<em>{TEN_VAI[vai] ?? vai}</em></span>
+              <span class="kho-nguoi-ten">{k.nhanSu.ho_ten}<em>{tenVai}</em></span>
             </summary>
             <div class="kho-nguoi-menu">
-              <p><strong>{k.nhanSu.ho_ten}</strong><br />{TEN_VAI[vai] ?? vai}{k.chiNhanh ? ` · ${k.chiNhanh.ten}` : ''}</p>
+              <p><strong>{k.nhanSu.ho_ten}</strong><br />{tenVai}{k.chiNhanh ? ` · ${k.chiNhanh.ten}` : ''}</p>
               {crm.length > 0 && (
                 <>
-                  <p class="kho-nguoi-nhom">Phần khác của nhà hàng</p>
-                  {crm.map(m => <a href={m.link}><BieuTuong ten={m.bieuTuong} co={18} />{m.ten}</a>)}
+                  <p class="kho-nguoi-nhom">{t.phanKhac}</p>
+                  {crm.map(m => <a href={m.link}><BieuTuong ten={m.bieuTuong} co={18} />{m.ten[nn]}</a>)}
                 </>
               )}
               {laMay ? (
                 <>
-                  <a href={`${DUONG_MAY}/gan`}><BieuTuong ten="them" co={18} />Gắn tôi vào máy này</a>
-                  <a href={`${DUONG_MAY}/dang-ky`}><BieuTuong ten="cai_dat" co={18} />Đăng ký lại máy (quản lý)</a>
+                  <a href={`${DUONG_MAY}/gan`}><BieuTuong ten="them" co={18} />{t.ganToi}</a>
+                  <a href={`${DUONG_MAY}/dang-ky`}><BieuTuong ten="cai_dat" co={18} />{t.dangKyLai}</a>
                 </>
               ) : coNguoiDung ? (
                 <>
-                  <a href="/noi-bo/kho/huong-dan"><BieuTuong ten="huong_dan" co={18} />Hướng dẫn sử dụng</a>
-                  <a href={`${DUONG_MAY}/gan`}><BieuTuong ten="cai_dat" co={18} />Đổi PIN của tôi</a>
+                  <a href="/noi-bo/kho/huong-dan"><BieuTuong ten="huong_dan" co={18} />{t.huongDanSuDung}</a>
+                  <a href={`${DUONG_MAY}/gan`}><BieuTuong ten="cai_dat" co={18} />{t.doiPin}</a>
                   <form method="POST" action={DUONG_MAY}>
                     <input type="hidden" name="viec" value="khoa" />
-                    <button type="submit"><BieuTuong ten="dang_xuat" co={18} />Khóa máy</button>
+                    <button type="submit"><BieuTuong ten="dang_xuat" co={18} />{t.khoaMay}</button>
                   </form>
                   <form method="POST" action={DUONG_MAY}>
                     <input type="hidden" name="viec" value="go" />
-                    <button type="submit"><BieuTuong ten="huy" co={18} />Gỡ tôi khỏi máy này</button>
+                    <button type="submit"><BieuTuong ten="huy" co={18} />{t.goToi}</button>
                   </form>
                 </>
               ) : (
                 <>
-                  <a href="/noi-bo/kho/huong-dan"><BieuTuong ten="huong_dan" co={18} />Hướng dẫn sử dụng</a>
+                  <a href="/noi-bo/kho/huong-dan"><BieuTuong ten="huong_dan" co={18} />{t.huongDanSuDung}</a>
                   <form method="POST" action="/noi-bo/dang-xuat">
-                    <button type="submit"><BieuTuong ten="dang_xuat" co={18} />Đăng xuất</button>
+                    <button type="submit"><BieuTuong ten="dang_xuat" co={18} />{t.dangXuat}</button>
                   </form>
                 </>
               )}
@@ -163,7 +199,7 @@ const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.
     </header>
 
     <div class="kho-khung">
-      <nav class="kho-ben" aria-label="Các mục kho">
+      <nav class="kho-ben" aria-label={t.cacMuc}>
         <ul class="kho-o-luoi">
           {cot.map(m => {
             const so = soDo(m, k.viec);
@@ -172,8 +208,8 @@ const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.
               <li>
                 <a href={m.link} class="kho-o" aria-current={dang ? 'page' : undefined}>
                   <BieuTuong ten={m.bieuTuong} co={24} />
-                  <span>{m.ten}</span>
-                  {so > 0 && <b class="kho-so-do" aria-label={`${so} việc`}>{nhanSo(so)}</b>}
+                  <span>{m.ten[nn]}</span>
+                  {so > 0 && <b class="kho-so-do" aria-label={t.soViec(so)}>{nhanSo(so)}</b>}
                 </a>
               </li>
             );
@@ -181,8 +217,8 @@ const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.
         </ul>
         {nhanh.length > 0 && (
           <div class="kho-nhanh-ben">
-            <p>Thao tác nhanh</p>
-            {nhanh.map(t => <a href={t.link}><BieuTuong ten={t.bieuTuong} co={18} />{t.ten}</a>)}
+            <p>{t.thaoTacNhanh}</p>
+            {nhanh.map(x => <a href={x.link}><BieuTuong ten={x.bieuTuong} co={18} />{x.ten[nn]}</a>)}
           </div>
         )}
       </nav>
@@ -192,7 +228,7 @@ const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.
       </main>
     </div>
 
-    <nav class="kho-day" aria-label="Menu chính">
+    <nav class="kho-day" aria-label={t.menuChinh}>
       {day.map(m => {
         const so = soDo(m, k.viec);
         const dang = dangO(m, duong, timKiem);
@@ -201,9 +237,9 @@ const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.
              aria-current={dang ? 'page' : undefined}>
             <span class="kho-day-bt">
               <BieuTuong ten={m.bieuTuong} co={m.ma === 'quet' ? 26 : 22} />
-              {so > 0 && <b class="kho-so-do" aria-label={`${so} việc`}>{nhanSo(so)}</b>}
+              {so > 0 && <b class="kho-so-do" aria-label={t.soViec(so)}>{nhanSo(so)}</b>}
             </span>
-            <span class="kho-day-chu">{m.ngan ?? m.ten}</span>
+            <span class="kho-day-chu">{(m.ngan ?? m.ten)[nn]}</span>
           </a>
         );
       })}

@@ -1,19 +1,26 @@
 ---
 /** "← Trang trước · Trang 2 · Trang sau →" cho danh sách phiếu (GĐ4b). */
 import { linkDs } from '../../lib/kho/tim-ds.ts';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
 
 interface Props { duong: string; trang: number; coSau: boolean }
 const { duong, trang, coSau } = Astro.props;
 const sp = Astro.url.searchParams;
+const t = dichNB(nnCua(Astro), {
+  chuyenTrang: { vi: 'Chuyển trang', en: 'Pages' },
+  truoc: { vi: '← Trang trước', en: '← Previous' },
+  trang: { vi: 'Trang', en: 'Page' },
+  sau: { vi: 'Trang sau →', en: 'Next →' },
+});
 ---
 {(trang > 1 || coSau) && (
-  <nav class="kho-trang" aria-label="Chuyển trang">
+  <nav class="kho-trang" aria-label={t.chuyenTrang}>
     {trang > 1
-      ? <a class="nb-nut phu" href={linkDs(duong, sp, { trang: trang - 1 > 1 ? String(trang - 1) : null })} rel="prev">← Trang trước</a>
+      ? <a class="nb-nut phu" href={linkDs(duong, sp, { trang: trang - 1 > 1 ? String(trang - 1) : null })} rel="prev">{t.truoc}</a>
       : <span></span>}
-    <span class="kho-trang-so">Trang {trang}</span>
+    <span class="kho-trang-so">{t.trang} {trang}</span>
     {coSau
-      ? <a class="nb-nut phu" href={linkDs(duong, sp, { trang: String(trang + 1) })} rel="next">Trang sau →</a>
+      ? <a class="nb-nut phu" href={linkDs(duong, sp, { trang: String(trang + 1) })} rel="next">{t.sau}</a>
       : <span></span>}
   </nav>
 )}

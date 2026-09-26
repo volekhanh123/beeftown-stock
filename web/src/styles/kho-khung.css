@@ -80,6 +80,13 @@
 }
 .kho-nut-tron:hover, .kho-nut-tron[aria-current='page'] { background: rgba(251, 244, 225, .12); }
 .kho-nut-tron .kho-so-do { position: absolute; top: 2px; right: 0; box-shadow: 0 0 0 2px var(--than); }
+/* Nút đổi tiếng (English / Tiếng Việt): chữ nhỏ, viền kem như "Đổi chi nhánh"; đủ 44px để bấm. */
+.kho-doi-tieng {
+  display: inline-flex; align-items: center; min-height: 40px; padding: 0 .6rem; margin-right: .15rem;
+  border: 1px solid var(--vach-kem); border-radius: 8px; color: var(--kem); text-decoration: none;
+  font-size: .75rem; font-weight: 600; white-space: nowrap;
+}
+.kho-doi-tieng:hover { background: rgba(251, 244, 225, .12); }
 
 .kho-cn-chon { position: relative; font-size: .8rem; }
 .kho-cn-chon > summary {

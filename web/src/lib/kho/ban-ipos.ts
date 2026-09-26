@@ -21,7 +21,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { boDau, cauLoiKho, docSoNguyen, laUuid, type KetQua } from './chung.ts';
+import { boDau, cauLoiKho, docSoNguyen, laUuid, type KetQua, type NgonNguNB } from './chung.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 
 // -----------------------------------------------------------------------------
@@ -165,8 +165,11 @@ export function lopDen(den: DenIpos | string | null | undefined): 'xong' | 'luu-
   return den === 'xanh' ? 'xong' : den === 'do' ? 'loi' : 'luu-y';
 }
 
-export function chuDen(den: DenIpos | string | null | undefined): string {
-  return den === 'xanh' ? 'Đang chạy tốt' : den === 'do' ? 'Mất kết nối' : 'Cần xem';
+export function chuDen(den: DenIpos | string | null | undefined, nn: NgonNguNB = 'vi'): string {
+  const c = den === 'xanh' ? { vi: 'Đang chạy tốt', en: 'Running well' }
+    : den === 'do' ? { vi: 'Mất kết nối', en: 'Disconnected' }
+    : { vi: 'Cần xem', en: 'Needs attention' };
+  return c[nn];
 }
 
 /** Cách xử lý dòng chờ mà database nhận. */

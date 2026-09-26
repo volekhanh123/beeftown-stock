@@ -1,13 +1,16 @@
 ---
 /** Hàng chữ ký cuối trang KHI IN (ẩn trên màn hình). */
+import { nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
+
 interface Props { ten: string[] }
 const { ten } = Astro.props;
+const kyTen = { vi: '(ký, ghi rõ họ tên)', en: '(signature and full name)' }[nnCua(Astro)];
 ---
 <section class="kho-chi-in kho-ky" style={`grid-template-columns: repeat(${ten.length}, 1fr)`}>
   {ten.map(t => (
     <div>
       <strong>{t}</strong>
-      <span>(ký, ghi rõ họ tên)</span>
+      <span>{kyTen}</span>
     </div>
   ))}
 </section>

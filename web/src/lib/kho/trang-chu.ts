@@ -7,7 +7,7 @@
  */
 
 import type { DongTon } from './ton.ts';
-import { dinhDangNgayNgan } from './chung.ts';
+import { dinhDangNgayNgan, type HaiThuTieng, type NgonNguNB } from './chung.ts';
 
 export interface GoiYXep {
   mat_hang_id: string;
@@ -26,7 +26,7 @@ export interface GoiYXep {
  * báo hủy, nằm ở danh sách khác). Món có một lô duy nhất và còn xa hạn thì
  * không cần dặn gì.
  */
-export function goiYXepQuay(ton: DongTon[]): GoiYXep[] {
+export function goiYXepQuay(ton: DongTon[], nn: NgonNguNB = 'vi'): GoiYXep[] {
   const theoMon = new Map<string, DongTon[]>();
   for (const t of ton) {
     if (t.loai_vi_tri !== 'quay' || t.tinh_trang_han === 'het_han') continue;
@@ -44,11 +44,15 @@ export function goiYXepQuay(ton: DongTon[]): GoiYXep[] {
     const nhieuHan = sau.some(s => s.han_dung !== truoc.han_dung);
     if (!gap && !nhieuHan) continue;
     const soLuong = truoc.dem_goi && truoc.so_goi > 0 ? `${truoc.so_goi} ${truoc.don_vi_goi}` : `${truoc.so_kg} kg`;
-    const han = truoc.so_ngay_con === 0 ? 'hết hạn hôm nay'
-      : truoc.so_ngay_con === 1 ? 'còn 1 ngày' : `hạn ${dinhDangNgayNgan(truoc.han_dung)}`;
+    const c = (x: HaiThuTieng) => x[nn];
+    const han = truoc.so_ngay_con === 0 ? c({ vi: 'hết hạn hôm nay', en: 'expires today' })
+      : truoc.so_ngay_con === 1 ? c({ vi: 'còn 1 ngày', en: '1 day left' })
+      : c({ vi: `hạn ${dinhDangNgayNgan(truoc.han_dung)}`, en: `use by ${dinhDangNgayNgan(truoc.han_dung)}` });
+    const ngayDong = dinhDangNgayNgan(truoc.ngay_dong_goi);
     ra.push({
       mat_hang_id: id, ten: truoc.ten_hang, truoc, sau, gap,
-      cau: `Để ${soLuong} đóng ngày ${dinhDangNgayNgan(truoc.ngay_dong_goi)} (${han}) lên phía trước.`,
+      cau: c({ vi: `Để ${soLuong} đóng ngày ${ngayDong} (${han}) lên phía trước.`,
+               en: `Put the ${soLuong} packed on ${ngayDong} (${han}) at the front.` }),
     });
   }
   return ra.sort((a, b) => Number(b.gap) - Number(a.gap)
