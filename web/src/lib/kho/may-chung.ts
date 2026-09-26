@@ -37,12 +37,16 @@
  * File này tự ghi cookie bt_phien — ĐÚNG định dạng phien.ts ghi (JSON
  * { access_token, refresh_token }, httpOnly, sameSite lax, path /, 7 ngày).
  * test-kho-may-chung.mjs nhóm 14 so hai chỗ này. KHÔNG sửa phien.ts.
+ *
+ * HAI THỨ TIẾNG: câu báo KetQua mang cả bản tiếng Anh (cauEn); câu lỗi của
+ * database đi nguyên văn, trang tra dichCau lúc hiện.
  */
 
 import type { AstroCookies, AstroGlobal } from 'astro';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
 import { coDatabase, xoaToken, type NhanSu } from '../phien';
-import { cauLoiKho, laUuid, type KetQua } from './chung.ts';
+import { kqHai, kqLoi, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { dichCau } from '../cau-noi-bo.ts';
 import { docBao, ghiBao } from './bao.ts';
 import {
   aadToken, bamPin, biMatHopLe, danKhoaMay, daQuaGioKhoa, giaiMaToken, giayConLai, kiemMoc, kyMoc,
@@ -53,6 +57,20 @@ import {
 
 /** Đường dẫn màn "Ai đang dùng máy?". */
 export const DUONG_MAY = '/noi-bo/kho/may';
+
+/** Câu báo dùng ở nhiều chỗ. */
+const CAU_MAY = {
+  chuaBat: { vi: 'Máy dùng chung chưa được bật.', en: 'The shared tablet feature is not turned on.' },
+  matMay: {
+    vi: 'Máy mất đăng nhập của máy — nhờ quản lý đăng ký lại máy.',
+    en: 'The tablet lost its own login — ask a manager to register the tablet again.',
+  },
+  khongConGiu: {
+    vi: 'Máy không còn giữ đăng nhập của bạn. Bấm "Gắn tôi vào máy này" và đăng nhập lại một lần.',
+    en: 'The tablet no longer holds your login. Tap "Add me to this tablet" and log in once more.',
+  },
+  kiemPinLoi: { vi: 'Chưa kiểm được PIN. Thử lại.', en: 'Could not check the PIN. Try again.' },
+} satisfies Record<string, HaiThuTieng>;
 
 /** Máy đang ở chế độ dùng chung — đưa vào TrangKho.may cho Kho.astro. */
 export interface CheDoMay {
@@ -284,20 +302,21 @@ async function veMayKhoa(
  */
 export async function khoaMay(Astro: AstroGlobal, cach: 'bam' | 'het_gio'): Promise<KetQua> {
   const khoa = await layKhoaMay();
-  if (!khoa) return { ok: false, cau: 'Máy dùng chung chưa được bật.' };
+  if (!khoa) return kqHai(false, CAU_MAY.chuaBat);
   const moc = await docMoc(Astro.cookies, khoa);
-  if (!moc) return { ok: false, cau: 'Máy này không phải máy dùng chung.' };
-  if (!moc.nhanSuId) return { ok: true, cau: 'Máy đã khóa.' };
+  if (!moc) return kqHai(false, { vi: 'Máy này không phải máy dùng chung.', en: 'This device is not a shared tablet.' });
+  if (!moc.nhanSuId) return kqHai(true, { vi: 'Máy đã khóa.', en: 'The tablet is locked.' });
   const phien = Astro.locals.phien;
   if (phien && phien.nhanSu.id === moc.nhanSuId) {
     try { await phien.client.rpc('kho_may_khoa', { p_may_id: moc.mayId, p_cach: cach }); } catch { /* chỉ để ghi nhật ký */ }
   }
   const catNguoi = !!phien && phien.nhanSu.id === moc.nhanSuId;
   const kq = await veMayKhoa(Astro.cookies, khoa, moc, catNguoi);
-  if (kq === 'mat_may') return { ok: false, cau: 'Máy mất đăng nhập của máy — nhờ quản lý đăng ký lại máy.' };
-  return { ok: true, cau: cach === 'het_gio'
-    ? 'Máy đã tự khóa vì lâu không dùng. Chọn tên và nhập PIN để dùng tiếp.'
-    : 'Đã khóa máy.' };
+  if (kq === 'mat_may') return kqHai(false, CAU_MAY.matMay);
+  return kqHai(true, cach === 'het_gio'
+    ? { vi: 'Máy đã tự khóa vì lâu không dùng. Chọn tên và nhập PIN để dùng tiếp.',
+        en: 'The tablet locked itself after a while unused. Choose your name and enter your PIN to continue.' }
+    : { vi: 'Đã khóa máy.', en: 'Tablet locked.' });
 }
 
 /**
@@ -347,8 +366,16 @@ export async function kiemMayChung(Astro: AstroGlobal, nhanSu: NhanSu): Promise<
     // ĐÃ ghi) rồi nối câu "máy đã tự khóa" vào sau.
     const truoc = laPost ? null : docBao(cookies);
     const kq = await khoaMay(Astro, 'het_gio');
-    if (kq.ok && laPost) kq.cau = 'Máy đã khóa — phiếu chưa được ghi. Mở khóa rồi làm lại.';
-    if (truoc) kq.cau = `${truoc.cau} ${kq.cau}`;
+    if (kq.ok && laPost) {
+      const c = { vi: 'Máy đã khóa — phiếu chưa được ghi. Mở khóa rồi làm lại.', en: 'The tablet locked — your form was NOT saved. Unlock it and do it again.' };
+      kq.cau = c.vi;
+      kq.cauEn = c.en;
+    }
+    if (truoc) {
+      // Câu của lần lưu trước có thể là câu database (không có cauEn) — tra dichCau.
+      kq.cauEn = `${truoc.cauEn ?? dichCau('en', truoc.cau)} ${kq.cauEn ?? dichCau('en', kq.cau)}`;
+      kq.cau = `${truoc.cau} ${kq.cau}`;
+    }
     // Câu báo đi theo cookie bt_kho_bao (path /noi-bo/kho) như mọi trang kho.
     ghiBao(cookies, kq);
     return Astro.redirect(kq.ok ? DUONG_MAY : '/noi-bo/dang-nhap', 303);
@@ -403,12 +430,23 @@ export interface ManKhoa {
   nguoi: NguoiTrenManKhoa[];
 }
 
-/** Đọc máy và người đã gắn — gọi bằng phiên MÁY. Lỗi → câu tiếng Việt. */
-export async function docManKhoa(Astro: AstroGlobal, client: SupabaseClient): Promise<ManKhoa | string> {
+/**
+ * Đọc máy và người đã gắn — gọi bằng phiên MÁY. Lỗi → câu theo nn (câu lỗi của
+ * database thì nguyên văn — trang tra dichCau).
+ */
+export async function docManKhoa(Astro: AstroGlobal, client: SupabaseClient, nn: NgonNguNB = 'vi'): Promise<ManKhoa | string> {
+  const r = await docManKhoaKq(Astro, client);
+  return 'ok' in r ? (nn === 'en' && r.cauEn ? r.cauEn : r.cau) : r;
+}
+
+/** Như docManKhoa, lỗi thành KetQua (cả hai thứ tiếng) — cho moKhoaNguoi. */
+async function docManKhoaKq(Astro: AstroGlobal, client: SupabaseClient): Promise<ManKhoa | KetQua> {
   const khoa = await layKhoaMay();
-  if (!khoa) return 'Máy dùng chung chưa được bật.';
+  if (!khoa) return kqHai(false, CAU_MAY.chuaBat);
   const { data, error } = await client.rpc('kho_may_ds_nguoi', {});
-  if (error || !data) return cauLoiKho(error, 'Không đọc được danh sách người dùng máy.');
+  if (error || !data) {
+    return kqLoi(error, { vi: 'Không đọc được danh sách người dùng máy.', en: 'Could not read the list of tablet users.' });
+  }
   const d = data as { may: ManKhoa['may']; nguoi: Omit<NguoiTrenManKhoa, 'coPhien'>[] };
   // Phiên máy chạy được hàm này = đúng là máy d.may.id. Mốc mất / lệch (xóa
   // cookie, đổi bí mật, đăng ký lại) thì dựng lại mốc "đang khóa" cho máy này.
@@ -431,23 +469,30 @@ export function gioPhut(iso: string | null | undefined): string {
 }
 
 /** Kết quả kho_may_kiem_pin → câu cho người đứng trước máy. Hàm thuần. */
-export function cauKiemPin(kq: { ket_qua?: string; con_lan?: number; khoa_den?: string | null } | null): string {
+export function cauKiemPin(
+  kq: { ket_qua?: string; con_lan?: number; khoa_den?: string | null } | null, nn: NgonNguNB = 'vi',
+): string {
+  const c = (x: HaiThuTieng) => x[nn];
   switch (kq?.ket_qua) {
-    case 'dung': return 'Đúng PIN.';
+    case 'dung': return c({ vi: 'Đúng PIN.', en: 'Correct PIN.' });
     case 'sai': {
       const n = Number(kq.con_lan);
       return Number.isInteger(n) && n > 0
-        ? `PIN chưa đúng. Còn ${n} lần thử — sai hết thì tên này bị khóa 15 phút.`
-        : 'PIN chưa đúng.';
+        ? c({ vi: `PIN chưa đúng. Còn ${n} lần thử — sai hết thì tên này bị khóa 15 phút.`,
+              en: `Wrong PIN. ${n} ${n === 1 ? 'try' : 'tries'} left — after that this name is locked for 15 minutes.` })
+        : c({ vi: 'PIN chưa đúng.', en: 'Wrong PIN.' });
     }
     case 'khoa_nguoi': {
       const gio = gioPhut(kq.khoa_den);
       return gio
-        ? `Nhập sai PIN nhiều lần nên tên này đang bị khóa tới ${gio}. Chờ tới giờ đó, hoặc nhờ quản lý mở khóa.`
-        : 'Nhập sai PIN nhiều lần nên tên này đang bị khóa. Chờ 15 phút, hoặc nhờ quản lý mở khóa.';
+        ? c({ vi: `Nhập sai PIN nhiều lần nên tên này đang bị khóa tới ${gio}. Chờ tới giờ đó, hoặc nhờ quản lý mở khóa.`,
+              en: `Too many wrong PINs, so this name is locked until ${gio}. Wait until then, or ask a manager to unlock it.` })
+        : c({ vi: 'Nhập sai PIN nhiều lần nên tên này đang bị khóa. Chờ 15 phút, hoặc nhờ quản lý mở khóa.',
+              en: 'Too many wrong PINs, so this name is locked. Wait 15 minutes, or ask a manager to unlock it.' });
     }
-    case 'khoa_may': return 'Máy đã bị khóa vì nhập sai PIN quá nhiều lần. Nhờ quản lý mở khóa máy.';
-    default: return 'Chưa kiểm được PIN. Thử lại.';
+    case 'khoa_may': return c({ vi: 'Máy đã bị khóa vì nhập sai PIN quá nhiều lần. Nhờ quản lý mở khóa máy.',
+                                en: 'The tablet is locked because of too many wrong PINs. Ask a manager to unlock the tablet.' });
+    default: return c(CAU_MAY.kiemPinLoi);
   }
 }
 
@@ -458,17 +503,19 @@ export function cauKiemPin(kq: { ket_qua?: string; con_lan?: number; khoa_den?: 
 export async function moKhoaNguoi(Astro: AstroGlobal, nhanSuId: string, pin: string): Promise<KetQua> {
   const khoa = await layKhoaMay();
   const phien = Astro.locals.phien;
-  if (!khoa || !phien) return { ok: false, cau: 'Máy dùng chung chưa được bật.' };
+  if (!khoa || !phien) return kqHai(false, CAU_MAY.chuaBat);
   const moc = await docMoc(Astro.cookies, khoa);
   if (!moc || moc.nhanSuId || !laVaiMay(phien.nhanSu.vai_tro)) {
-    return { ok: false, cau: 'Máy không ở màn khóa. Tải lại trang.' };
+    return kqHai(false, { vi: 'Máy không ở màn khóa. Tải lại trang.', en: 'The tablet is not on the lock screen. Reload the page.' });
   }
-  if (!laUuid(nhanSuId)) return { ok: false, cau: 'Chọn tên của bạn trước.' };
-  if (!pinHopLe(pin)) return { ok: false, cau: 'PIN là 4 đến 6 chữ số.' };
+  if (!laUuid(nhanSuId)) return kqHai(false, { vi: 'Chọn tên của bạn trước.', en: 'Choose your name first.' });
+  if (!pinHopLe(pin)) return kqHai(false, { vi: 'PIN là 4 đến 6 chữ số.', en: 'The PIN is 4 to 6 digits.' });
 
-  const man = await docManKhoa(Astro, phien.client);
-  if (typeof man === 'string') return { ok: false, cau: man };
-  if (man.may.id !== moc.mayId) return { ok: false, cau: 'Máy đã được đăng ký lại. Tải lại trang.' };
+  const man = await docManKhoaKq(Astro, phien.client);
+  if ('ok' in man) return man;
+  if (man.may.id !== moc.mayId) {
+    return kqHai(false, { vi: 'Máy đã được đăng ký lại. Tải lại trang.', en: 'The tablet was registered again. Reload the page.' });
+  }
 
   // Máy không còn giữ phiên của người này thì dừng TRƯỚC khi kiểm PIN: PIN
   // đúng cũng không mở được gì, và không để màn khóa thành chỗ dò "PIN này
@@ -477,14 +524,14 @@ export async function moKhoaNguoi(Astro: AstroGlobal, nhanSuId: string, pin: str
   const rt = await giaiMaToken(khoa, Astro.cookies.get(tenCk)?.value, aadToken(moc.mayId, nhanSuId));
   if (!rt) {
     xoaCookieMay(Astro.cookies, tenCk);
-    return { ok: false, cau: 'Máy không còn giữ đăng nhập của bạn. Bấm "Gắn tôi vào máy này" và đăng nhập lại một lần.' };
+    return kqHai(false, CAU_MAY.khongConGiu);
   }
 
   const pinBam = await bamPin(khoa, moc.mayId, nhanSuId, pin);
   const { data, error } = await phien.client.rpc('kho_may_kiem_pin', { p_nhan_su_id: nhanSuId, p_pin_bam: pinBam });
-  if (error) return { ok: false, cau: cauLoiKho(error, 'Chưa kiểm được PIN. Thử lại.') };
+  if (error) return kqLoi(error, CAU_MAY.kiemPinLoi);
   const kq = data as { ket_qua?: string; dung?: boolean; con_lan?: number; khoa_den?: string | null; ho_ten?: string };
-  if (!kq?.dung) return { ok: false, cau: cauKiemPin(kq) };
+  if (!kq?.dung) return { ok: false, cau: cauKiemPin(kq), cauEn: cauKiemPin(kq, 'en') };
 
   // Đúng PIN — đổi phiên đã cất của người này lấy phiên mới.
   const s = await lamMoi(rt);
@@ -492,18 +539,25 @@ export async function moKhoaNguoi(Astro: AstroGlobal, nhanSuId: string, pin: str
     xoaCookieMay(Astro.cookies, tenCk);
     // kho_may_kiem_pin vừa ghi người này đang dùng — trả máy về "không ai dùng".
     try { await phien.client.rpc('kho_may_khoa', { p_may_id: moc.mayId, p_cach: 'bam' }); } catch { /* chỉ nhật ký */ }
-    return { ok: false, cau: 'Máy không còn giữ đăng nhập của bạn (đã hết hạn). Bấm "Gắn tôi vào máy này" và đăng nhập lại một lần.' };
+    return kqHai(false, {
+      vi: 'Máy không còn giữ đăng nhập của bạn (đã hết hạn). Bấm "Gắn tôi vào máy này" và đăng nhập lại một lần.',
+      en: 'The tablet no longer holds your login (it expired). Tap "Add me to this tablet" and log in once more.',
+    });
   }
 
   const may = docPhien(Astro.cookies);
-  if (!may) return { ok: false, cau: 'Máy mất đăng nhập — tải lại trang.' };
+  if (!may) return kqHai(false, { vi: 'Máy mất đăng nhập — tải lại trang.', en: 'The tablet lost its login — reload the page.' });
   await ghiTokenMay(Astro.cookies, khoa, moc.mayId, {
     mayNsId: phien.nhanSu.id, rt: may.refresh_token, phut: man.may.phut_khoa, ten: man.may.ten,
   });
   ghiPhien(Astro.cookies, s);
   xoaCookieMay(Astro.cookies, tenCk);
   await ghiMoc(Astro.cookies, khoa, { mayId: moc.mayId, nhanSuId, luc: Date.now() });
-  return { ok: true, cau: `Chào ${kq.ho_ten ?? 'bạn'}. Máy tự khóa sau ${man.may.phut_khoa} phút không dùng.` };
+  const phut = man.may.phut_khoa;
+  return kqHai(true, {
+    vi: `Chào ${kq.ho_ten ?? 'bạn'}. Máy tự khóa sau ${phut} phút không dùng.`,
+    en: `Hi ${kq.ho_ten ?? 'there'}. The tablet locks itself after ${phut} ${phut === 1 ? 'minute' : 'minutes'} unused.`,
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -512,10 +566,13 @@ export async function moKhoaNguoi(Astro: AstroGlobal, nhanSuId: string, pin: str
 function docPinMoi(form: FormData): string | KetQua {
   const pin = String(form.get('pin') ?? '').trim();
   const pin2 = String(form.get('pin_lai') ?? '').trim();
-  if (!pinHopLe(pin)) return { ok: false, cau: 'PIN phải là 4 đến 6 chữ số.' };
-  if (pin !== pin2) return { ok: false, cau: 'Hai lần nhập PIN không giống nhau.' };
+  if (!pinHopLe(pin)) return kqHai(false, { vi: 'PIN phải là 4 đến 6 chữ số.', en: 'The PIN must be 4 to 6 digits.' });
+  if (pin !== pin2) return kqHai(false, { vi: 'Hai lần nhập PIN không giống nhau.', en: 'The two PINs do not match.' });
   if (/^(\d)\1+$/.test(pin) || '0123456789'.includes(pin) || '9876543210'.includes(pin)) {
-    return { ok: false, cau: 'PIN dễ đoán quá (số lặp hoặc số liền nhau). Chọn PIN khác.' };
+    return kqHai(false, {
+      vi: 'PIN dễ đoán quá (số lặp hoặc số liền nhau). Chọn PIN khác.',
+      en: 'That PIN is too easy to guess (repeated or consecutive digits). Choose another PIN.',
+    });
   }
   return pin;
 }
@@ -528,37 +585,43 @@ function docPinMoi(form: FormData): string | KetQua {
 export async function ganNguoi(Astro: AstroGlobal, form: FormData): Promise<KetQua> {
   const khoa = await layKhoaMay();
   const phien = Astro.locals.phien;
-  if (!khoa || !phien || !coDatabase()) return { ok: false, cau: 'Máy dùng chung chưa được bật.' };
+  if (!khoa || !phien || !coDatabase()) return kqHai(false, CAU_MAY.chuaBat);
   const moc = await docMoc(Astro.cookies, khoa);
   if (!moc || moc.nhanSuId || !laVaiMay(phien.nhanSu.vai_tro)) {
-    return { ok: false, cau: 'Khóa máy trước rồi gắn người mới.' };
+    return kqHai(false, { vi: 'Khóa máy trước rồi gắn người mới.', en: 'Lock the tablet first, then add someone new.' });
   }
   const email = String(form.get('email') ?? '').trim();
   const matKhau = String(form.get('mat_khau') ?? '');
-  if (!email || !matKhau) return { ok: false, cau: 'Điền email và mật khẩu của bạn.' };
+  if (!email || !matKhau) return kqHai(false, { vi: 'Điền email và mật khẩu của bạn.', en: 'Enter your email and password.' });
   const pin = docPinMoi(form);
   if (typeof pin !== 'string') return pin;
 
   const dn = await dangNhapTam(email, matKhau);
-  if (!dn) return { ok: false, cau: 'Email hoặc mật khẩu không đúng.' };
+  if (!dn) return kqHai(false, { vi: 'Email hoặc mật khẩu không đúng.', en: 'Wrong email or password.' });
   const nguoi = taoClientVoiToken(dn.s.access_token);
   const { data: ns } = await nguoi
     .from('nhan_su').select('id, ho_ten').eq('auth_uid', dn.s.user.id).eq('dang_lam', true).maybeSingle();
   const nsDong = ns as { id: string; ho_ten: string } | null;
   if (!nsDong) {
     await dangXuatTam(dn.tam);
-    return { ok: false, cau: 'Tài khoản này chưa được nối với nhân sự nào. Liên hệ chủ nhà hàng.' };
+    return kqHai(false, {
+      vi: 'Tài khoản này chưa được nối với nhân sự nào. Liên hệ chủ nhà hàng.',
+      en: 'This account is not linked to any staff member yet. Please contact the owner.',
+    });
   }
   if (nsDong.id === phien.nhanSu.id) {
     await dangXuatTam(dn.tam);
-    return { ok: false, cau: 'Đây là tài khoản của máy. Mỗi người gắn bằng tài khoản của chính mình.' };
+    return kqHai(false, {
+      vi: 'Đây là tài khoản của máy. Mỗi người gắn bằng tài khoản của chính mình.',
+      en: "This is the tablet's own account. Everyone adds themselves with their own account.",
+    });
   }
 
   const pinBam = await bamPin(khoa, moc.mayId, nsDong.id, pin);
   const { data, error } = await nguoi.rpc('kho_may_gan_nguoi', { p_may_id: moc.mayId, p_pin_bam: pinBam });
   if (error || !data) {
     await dangXuatTam(dn.tam);
-    return { ok: false, cau: cauLoiKho(error, 'Chưa gắn được vào máy.') };
+    return kqLoi(error, { vi: 'Chưa gắn được vào máy.', en: 'Could not add you to the tablet.' });
   }
   const g = data as { phut_khoa?: number; ten_may?: string; gan_lai?: boolean };
 
@@ -566,7 +629,10 @@ export async function ganNguoi(Astro: AstroGlobal, form: FormData): Promise<KetQ
   const may = docPhien(Astro.cookies);
   if (!may) {
     await dangXuatTam(dn.tam);
-    return { ok: false, cau: 'Máy mất đăng nhập — nhờ quản lý đăng ký lại máy.' };
+    return kqHai(false, {
+      vi: 'Máy mất đăng nhập — nhờ quản lý đăng ký lại máy.',
+      en: 'The tablet lost its login — ask a manager to register the tablet again.',
+    });
   }
   await ghiTokenMay(Astro.cookies, khoa, moc.mayId, {
     mayNsId: phien.nhanSu.id, rt: may.refresh_token,
@@ -579,37 +645,47 @@ export async function ganNguoi(Astro: AstroGlobal, form: FormData): Promise<KetQ
   await thuHoi(await giaiMaToken(khoa, Astro.cookies.get(tenCkCu)?.value, aadToken(moc.mayId, nsDong.id)));
   xoaCookieMay(Astro.cookies, tenCkCu);
   await ghiMoc(Astro.cookies, khoa, { mayId: moc.mayId, nhanSuId: nsDong.id, luc: Date.now() });
-  return { ok: true, cau: g.gan_lai
-    ? `Đã đặt PIN mới cho ${nsDong.ho_ten} trên máy này.`
-    : `Đã gắn ${nsDong.ho_ten} vào máy này. Lần sau chỉ cần chọn tên và nhập PIN.` };
+  return kqHai(true, g.gan_lai
+    ? { vi: `Đã đặt PIN mới cho ${nsDong.ho_ten} trên máy này.`, en: `Set a new PIN for ${nsDong.ho_ten} on this tablet.` }
+    : { vi: `Đã gắn ${nsDong.ho_ten} vào máy này. Lần sau chỉ cần chọn tên và nhập PIN.`,
+        en: `Added ${nsDong.ho_ten} to this tablet. Next time, just choose your name and enter your PIN.` });
 }
 
 /** Đổi PIN khi đang dùng máy bằng phiên của chính mình. */
 export async function doiPin(Astro: AstroGlobal, form: FormData, may: CheDoMay): Promise<KetQua> {
   const khoa = await layKhoaMay();
   const phien = Astro.locals.phien;
-  if (!khoa || !phien || may.nhanSuId !== phien.nhanSu.id) return { ok: false, cau: 'Mở khóa máy bằng tên của bạn trước.' };
+  if (!khoa || !phien || may.nhanSuId !== phien.nhanSu.id) {
+    return kqHai(false, { vi: 'Mở khóa máy bằng tên của bạn trước.', en: 'Unlock the tablet with your name first.' });
+  }
   const pin = docPinMoi(form);
   if (typeof pin !== 'string') return pin;
   const pinBam = await bamPin(khoa, may.mayId, phien.nhanSu.id, pin);
   const { error } = await phien.client.rpc('kho_may_dat_pin', { p_may_id: may.mayId, p_pin_bam: pinBam });
-  if (error) return { ok: false, cau: cauLoiKho(error, 'Chưa đổi được PIN.') };
-  return { ok: true, cau: 'Đã đổi PIN. Lần sau mở máy bằng PIN mới.' };
+  if (error) return kqLoi(error, { vi: 'Chưa đổi được PIN.', en: 'Could not change the PIN.' });
+  return kqHai(true, { vi: 'Đã đổi PIN. Lần sau mở máy bằng PIN mới.', en: 'PIN changed. Use the new PIN next time you unlock the tablet.' });
 }
 
 /** "Gỡ tôi khỏi máy này": xóa khỏi danh sách, bỏ phiên của mình trên máy, về màn khóa. */
 export async function goToiKhoiMay(Astro: AstroGlobal, may: CheDoMay): Promise<KetQua> {
   const khoa = await layKhoaMay();
   const phien = Astro.locals.phien;
-  if (!khoa || !phien || may.nhanSuId !== phien.nhanSu.id) return { ok: false, cau: 'Bạn không đang dùng máy này.' };
+  if (!khoa || !phien || may.nhanSuId !== phien.nhanSu.id) {
+    return kqHai(false, { vi: 'Bạn không đang dùng máy này.', en: 'You are not using this tablet.' });
+  }
   const { error } = await phien.client.rpc('kho_may_go', { p_may_id: may.mayId });
-  if (error) return { ok: false, cau: cauLoiKho(error, 'Chưa gỡ được.') };
+  if (error) return kqLoi(error, { vi: 'Chưa gỡ được.', en: 'Could not remove you.' });
   // Thu hồi luôn phiên của mình trên máy (không cất, không để sống).
   await thuHoi(docPhien(Astro.cookies)?.refresh_token);
   const moc: MocHoatDong = { mayId: may.mayId, nhanSuId: may.nhanSuId, luc: Date.now() };
   const kq = await veMayKhoa(Astro.cookies, khoa, moc, false);
-  if (kq === 'mat_may') return { ok: false, cau: 'Đã gỡ bạn khỏi máy. Máy mất đăng nhập của máy — nhờ quản lý đăng ký lại.' };
-  return { ok: true, cau: 'Đã gỡ bạn khỏi máy này. Muốn dùng lại thì gắn lại.' };
+  if (kq === 'mat_may') {
+    return kqHai(false, {
+      vi: 'Đã gỡ bạn khỏi máy. Máy mất đăng nhập của máy — nhờ quản lý đăng ký lại.',
+      en: 'Removed you from the tablet. The tablet lost its own login — ask a manager to register it again.',
+    });
+  }
+  return kqHai(true, { vi: 'Đã gỡ bạn khỏi máy này. Muốn dùng lại thì gắn lại.', en: 'Removed you from this tablet. To use it again, add yourself again.' });
 }
 
 // -----------------------------------------------------------------------------
@@ -627,16 +703,25 @@ export async function goToiKhoiMay(Astro: AstroGlobal, may: CheDoMay): Promise<K
 export async function dangKyMay(Astro: AstroGlobal, form: FormData, coQuyenDuyet: boolean): Promise<KetQua> {
   const khoa = await layKhoaMay();
   const phien = Astro.locals.phien;
-  if (!khoa) return { ok: false, cau: 'Máy dùng chung chưa được bật: Cloudflare chưa có bí mật KHO_MAY_KHOA.' };
-  if (!phien || !coDatabase()) return { ok: false, cau: 'Chưa đăng nhập.' };
+  if (!khoa) {
+    return kqHai(false, {
+      vi: 'Máy dùng chung chưa được bật: Cloudflare chưa có bí mật KHO_MAY_KHOA.',
+      en: 'The shared tablet feature is not turned on: Cloudflare does not have the KHO_MAY_KHOA secret yet.',
+    });
+  }
+  if (!phien || !coDatabase()) return kqHai(false, { vi: 'Chưa đăng nhập.', en: 'Not logged in.' });
 
   const emailMay = String(form.get('email_may') ?? '').trim();
   const mkMay = String(form.get('mat_khau_may') ?? '');
   const ten = String(form.get('ten') ?? '').trim().slice(0, 60);
   const phutChu = String(form.get('phut_khoa') ?? '').trim();
   const phut = phutChu === '' ? PHUT_KHOA_MAC_DINH : Number(phutChu);
-  if (!emailMay || !mkMay) return { ok: false, cau: 'Điền email và mật khẩu của tài khoản máy.' };
-  if (!Number.isInteger(phut) || phut < 1 || phut > 60) return { ok: false, cau: 'Số phút tự khóa phải từ 1 đến 60.' };
+  if (!emailMay || !mkMay) {
+    return kqHai(false, { vi: 'Điền email và mật khẩu của tài khoản máy.', en: 'Enter the email and password of the tablet account.' });
+  }
+  if (!Number.isInteger(phut) || phut < 1 || phut > 60) {
+    return kqHai(false, { vi: 'Số phút tự khóa phải từ 1 đến 60.', en: 'Auto-lock minutes must be between 1 and 60.' });
+  }
 
   // Client quản lý: phiên đang mở nếu là quản lý, không thì đăng nhập tạm.
   let quanLy: SupabaseClient = phien.client;
@@ -644,9 +729,9 @@ export async function dangKyMay(Astro: AstroGlobal, form: FormData, coQuyenDuyet
   if (!coQuyenDuyet) {
     const email = String(form.get('email_ql') ?? '').trim();
     const mk = String(form.get('mat_khau_ql') ?? '');
-    if (!email || !mk) return { ok: false, cau: 'Điền email và mật khẩu của quản lý.' };
+    if (!email || !mk) return kqHai(false, { vi: 'Điền email và mật khẩu của quản lý.', en: "Enter the manager's email and password." });
     const dn = await dangNhapTam(email, mk);
-    if (!dn) return { ok: false, cau: 'Email hoặc mật khẩu của quản lý không đúng.' };
+    if (!dn) return kqHai(false, { vi: 'Email hoặc mật khẩu của quản lý không đúng.', en: 'Wrong manager email or password.' });
     tamQl = dn.tam;
     quanLy = taoClientVoiToken(dn.s.access_token);
   }
@@ -654,7 +739,7 @@ export async function dangKyMay(Astro: AstroGlobal, form: FormData, coQuyenDuyet
   const dnMay = await dangNhapTam(emailMay, mkMay);
   if (!dnMay) {
     if (tamQl) await dangXuatTam(tamQl);
-    return { ok: false, cau: 'Email hoặc mật khẩu của tài khoản máy không đúng.' };
+    return kqHai(false, { vi: 'Email hoặc mật khẩu của tài khoản máy không đúng.', en: 'Wrong tablet account email or password.' });
   }
   const { data, error } = await quanLy.rpc('kho_dang_ky_may', {
     p_auth_uid: dnMay.s.user.id, p_ten: ten || null, p_phut_khoa: phut,
@@ -662,7 +747,7 @@ export async function dangKyMay(Astro: AstroGlobal, form: FormData, coQuyenDuyet
   if (tamQl) await dangXuatTam(tamQl);
   if (error || !data) {
     await dangXuatTam(dnMay.tam);
-    return { ok: false, cau: cauLoiKho(error, 'Chưa đăng ký được máy.') };
+    return kqLoi(error, { vi: 'Chưa đăng ký được máy.', en: 'Could not register the tablet.' });
   }
   const m = data as { may_id: string; ten: string };
 
@@ -682,5 +767,8 @@ export async function dangKyMay(Astro: AstroGlobal, form: FormData, coQuyenDuyet
   xoaCookieMay(Astro.cookies, COOKIE_MAY_TB);
   ghiPhien(Astro.cookies, { access_token: dnMay.s.access_token, refresh_token: dnMay.s.refresh_token });
   await ghiMoc(Astro.cookies, khoa, { mayId: m.may_id, nhanSuId: null, luc: Date.now() });
-  return { ok: true, cau: `Đã đăng ký máy "${m.ten}". Từng người bấm "Gắn tôi vào máy này" và đăng nhập một lần để đặt PIN.` };
+  return kqHai(true, {
+    vi: `Đã đăng ký máy "${m.ten}". Từng người bấm "Gắn tôi vào máy này" và đăng nhập một lần để đặt PIN.`,
+    en: `Registered the tablet "${m.ten}". Each person taps "Add me to this tablet" and logs in once to set a PIN.`,
+  });
 }

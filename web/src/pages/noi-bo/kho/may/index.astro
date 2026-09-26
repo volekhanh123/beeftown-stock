@@ -22,13 +22,15 @@ import {
   giuMay, khoaMay, moKhoaNguoi, goToiKhoiMay, docManKhoa, layKhoaMay, laVaiMay, gioPhut, DUONG_MAY,
   type ManKhoa,
 } from '../../../../lib/kho/may-chung.ts';
-import { laUuid, TEN_VAI_KHO, type KetQua } from '../../../../lib/kho/chung.ts';
+import { kqHai, laUuid, TEN_VAI_KHO_NB, type HaiThuTieng, type KetQua } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 // Nhịp "vẫn đang dùng" của may-chung.js: không cần đọc chi nhánh hay số đỏ.
 if (Astro.url.searchParams.get('giu') === '1') return await giuMay(Astro);
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
+const nn = k.nn;
 
 const batMay = !!(await layKhoaMay());
 const laMay = laVaiMay(k.nhanSu.vai_tro);
@@ -45,7 +47,7 @@ if (form) {
   }
   if (viec === 'khoa' && dangDung) return chuyenHuong(Astro, DUONG_MAY, await khoaMay(Astro, 'bam'));
   if (viec === 'go' && dangDung) return chuyenHuong(Astro, DUONG_MAY, await goToiKhoiMay(Astro, k.may!));
-  bao = { ok: false, cau: 'Việc không hợp lệ. Tải lại trang.' };
+  bao = kqHai(false, { vi: 'Việc không hợp lệ. Tải lại trang.', en: 'Invalid action. Reload the page.' });
 } else if (Astro.url.searchParams.get('khoa') === '1' && dangDung) {
   return chuyenHuong(Astro, DUONG_MAY, await khoaMay(Astro, 'het_gio'));
 }
@@ -54,7 +56,7 @@ if (form) {
 let man: ManKhoa | null = null;
 let loiDoc: string | null = null;
 if (batMay && laMay && k.nhanSu.vai_tro === ('may_chung' as string)) {
-  const r = await docManKhoa(Astro, k.client);
+  const r = await docManKhoa(Astro, k.client, nn);
   if (typeof r === 'string') loiDoc = r; else man = r;
 }
 
@@ -62,35 +64,110 @@ const chonId = Astro.url.searchParams.get('chon');
 const chon = man?.nguoi.find(n => n.nhan_su_id === chonId && n.coPhien) ?? null;
 const coPhien = man?.nguoi.filter(n => n.coPhien) ?? [];
 const canGanLai = man?.nguoi.filter(n => !n.coPhien) ?? [];
-const TEN_VAI: Record<string, string> = { chu_so_huu: 'Chủ nhà hàng', quan_ly: 'Quản lý', ...TEN_VAI_KHO };
+const TEN_VAI: Record<string, HaiThuTieng> = {
+  chu_so_huu: { vi: 'Chủ nhà hàng', en: 'Owner' }, quan_ly: { vi: 'Quản lý', en: 'Manager' }, ...TEN_VAI_KHO_NB,
+};
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Ai đang dùng máy?', en: 'Who is using this tablet?' },
+  mayDungChung: { vi: 'Máy dùng chung', en: 'Shared tablet' },
+  chuaBat: { vi: 'Máy dùng chung chưa được bật.', en: 'The shared tablet feature is not turned on.' },
+  canDat: { vi: 'Người quản trị cần đặt bí mật', en: 'The administrator needs to set the' },
+  choWorker: { vi: 'cho Worker trên Cloudflare (xem web/KHO.md).', en: 'secret for the Worker on Cloudflare (see web/KHO.md).' },
+  trongLucCho: {
+    vi: 'Trong lúc chờ, mỗi người đăng nhập bằng tài khoản của mình như bình thường.',
+    en: 'Meanwhile, everyone logs in with their own account as usual.',
+  },
+  taiKhoanMay: { vi: 'Tài khoản máy', en: 'Device account' },
+  taiKhoanMayGiai: {
+    vi: 'Tài khoản này dành cho máy đồng bộ bán hàng, không dùng để mở kho trên máy tính bảng.',
+    en: 'This account is for the sales sync device; it is not used to open inventory on a tablet.',
+  },
+  mayBiKhoa: { vi: 'Máy đang bị khóa', en: 'The tablet is locked' },
+  saiNhieuLan: { vi: 'vì nhập sai PIN quá nhiều lần.', en: 'because of too many wrong PINs.' },
+  qlMoKhoa: {
+    vi: 'Quản lý mở khóa ở Cài đặt → Nhân viên và máy (trên điện thoại hoặc máy tính của quản lý).',
+    en: "A manager unlocks it in Setup → Staff and shared tablets (on the manager's phone or computer).",
+  },
+  tenBiKhoa: {
+    vi: (gio: string) => `Tên này đang bị khóa tới ${gio} vì nhập sai PIN nhiều lần.`,
+    en: (gio: string) => `This name is locked until ${gio} because of too many wrong PINs.`,
+  },
+  nhapPin: { vi: 'Nhập PIN của bạn', en: 'Enter your PIN' },
+  moMay: { vi: 'Mở máy', en: 'Unlock' },
+  chonNguoiKhac: { vi: 'Chọn người khác', en: 'Choose someone else' },
+  biKhoaToi: { vi: (gio: string) => `Bị khóa tới ${gio}`, en: (gio: string) => `Locked until ${gio}` },
+  chuaAiGan: { vi: 'Chưa ai gắn vào máy này. Bấm', en: 'Nobody has been added to this tablet yet. Tap' },
+  ganToiNgoac: { vi: '"Gắn tôi vào máy này"', en: '"Add me to this tablet"' },
+  benDuoi: { vi: 'bên dưới, đăng nhập một lần và đặt PIN.', en: 'below, log in once and set a PIN.' },
+  canDangNhapLai: { vi: 'Cần đăng nhập lại trên máy này:', en: 'Need to log in again on this tablet:' },
+  canDangNhapLaiGiai: {
+    vi: 'Máy không còn giữ đăng nhập của những người này. Bấm "Gắn tôi vào máy này" và đăng nhập lại.',
+    en: 'The tablet no longer holds these people\'s logins. Tap "Add me to this tablet" and log in again.',
+  },
+  ganToi: { vi: 'Gắn tôi vào máy này', en: 'Add me to this tablet' },
+  dangKyLai: { vi: 'Đăng ký lại máy (quản lý)', en: 'Register this tablet again (manager)' },
+  banDangDung: {
+    vi: (ten: string) => `Bạn đang dùng máy${ten ? ` "${ten}"` : ''}`,
+    en: (ten: string) => `You are using the tablet${ten ? ` "${ten}"` : ''}`,
+  },
+  tuKhoa: {
+    vi: (phut: number | undefined) => `Máy tự khóa sau ${phut ?? ''} phút không dùng. Xong việc thì bấm "Khóa máy" để người sau không làm dưới tên bạn.`,
+    en: (phut: number | undefined) => `The tablet locks itself after ${phut ?? ''} ${phut === 1 ? 'minute' : 'minutes'} unused. When you are done, tap "Lock tablet" so the next person does not work under your name.`,
+  },
+  khoaMay: { vi: 'Khóa máy', en: 'Lock tablet' },
+  veTrangChu: { vi: 'Về trang chủ kho', en: 'Back to inventory home' },
+  doiPin: { vi: 'Đổi PIN của tôi', en: 'Change my PIN' },
+  goToi: { vi: 'Gỡ tôi khỏi máy này', en: 'Remove me from this tablet' },
+  mayTinhBang: { vi: 'Máy tính bảng dùng chung', en: 'Shared tablets' },
+  gioiThieu: {
+    vi: 'Máy ở quầy hoặc bếp nhiều người cùng dùng: mỗi người chọn tên mình và nhập PIN, máy tự khóa sau vài phút',
+    en: 'A counter or kitchen tablet that many people share: each person chooses their name and enters a PIN, and the tablet locks itself after a few minutes',
+  },
+  gioiThieu2: {
+    vi: 'không dùng. Việc ai làm vẫn ghi đúng tên người đó.',
+    en: 'unused. Whatever each person does is still recorded under their own name.',
+  },
+  caiMayMoi: { vi: 'Cài một máy mới', en: 'Set up a new tablet' },
+  buoc1a: { vi: 'Chủ nhà hàng tạo một tài khoản', en: 'The owner creates a' },
+  buoc1b: { vi: 'Máy tính bảng dùng chung', en: 'Shared tablet' },
+  buoc1c: { vi: 'ở Cài đặt → Nhân viên và máy.', en: 'account in Setup → Staff and shared tablets.' },
+  buoc2a: { vi: 'Quản lý mở trang này', en: 'A manager opens this page' },
+  buoc2b: { vi: 'trên chính máy tính bảng đó', en: 'on that tablet itself' },
+  buoc2c: { vi: ', bấm "Đăng ký máy này" và nhập tài khoản máy.', en: ', taps "Register this tablet" and enters the tablet account.' },
+  buoc3: {
+    vi: 'Từng người bấm "Gắn tôi vào máy này", đăng nhập một lần và đặt PIN 4–6 số.',
+    en: 'Each person taps "Add me to this tablet", logs in once and sets a 4–6 digit PIN.',
+  },
+  dangKyMayNay: { vi: 'Đăng ký máy này', en: 'Register this tablet' },
+});
 ---
-<Kho k={k} huongDan="mo-may-pin" tieuDe="Ai đang dùng máy?">
+<Kho k={k} huongDan="mo-may-pin" tieuDe={t.tieuDe}>
   {!batMay ? (
     <>
-      <h1>Máy dùng chung</h1>
+      <h1>{t.mayDungChung}</h1>
       <BaoKho bao={bao} loiDoc={k.loiDoc} />
       <div class="nb-bao luu-y">
-        <p><strong>Máy dùng chung chưa được bật.</strong></p>
-        <p>Người quản trị cần đặt bí mật <code>KHO_MAY_KHOA</code> cho Worker trên Cloudflare (xem web/KHO.md).
-          {' '}Trong lúc chờ, mỗi người đăng nhập bằng tài khoản của mình như bình thường.</p>
+        <p><strong>{t.chuaBat}</strong></p>
+        <p>{t.canDat} <code>KHO_MAY_KHOA</code> {t.choWorker}
+          {' '}{t.trongLucCho}</p>
       </div>
     </>
   ) : laMay && k.nhanSu.vai_tro !== ('may_chung' as string) ? (
     <>
-      <h1>Tài khoản máy</h1>
+      <h1>{t.taiKhoanMay}</h1>
       <BaoKho bao={bao} loiDoc={k.loiDoc} />
-      <p class="nb-dan">Tài khoản này dành cho máy đồng bộ bán hàng, không dùng để mở kho trên máy tính bảng.</p>
+      <p class="nb-dan">{t.taiKhoanMayGiai}</p>
     </>
   ) : laMay ? (
     <>
-      <h1>Ai đang dùng máy?</h1>
+      <h1>{t.tieuDe}</h1>
       {man && <p class="kho-phu may-ten">{man.may.ten}{man.may.ten_chi_nhanh ? ` · ${man.may.ten_chi_nhanh}` : ''}</p>}
       <BaoKho bao={bao} loiDoc={loiDoc} />
 
       {man?.may.bi_khoa && (
         <div class="nb-bao loi" role="alert">
-          <p><strong>Máy đang bị khóa</strong> vì nhập sai PIN quá nhiều lần.</p>
-          <p>Quản lý mở khóa ở Cài đặt → Nhân viên và máy (trên điện thoại hoặc máy tính của quản lý).</p>
+          <p><strong>{t.mayBiKhoa}</strong> {t.saiNhieuLan}</p>
+          <p>{t.qlMoKhoa}</p>
         </div>
       )}
 
@@ -100,15 +177,15 @@ const TEN_VAI: Record<string, string> = { chu_so_huu: 'Chủ nhà hàng', quan_l
           <input type="hidden" name="nhan_su_id" value={chon.nhan_su_id} />
           <p class="may-pin-ten"><strong>{chon.ho_ten}</strong></p>
           {chon.khoa_den && (
-            <p class="nb-bao loi">Tên này đang bị khóa tới {gioPhut(chon.khoa_den)} vì nhập sai PIN nhiều lần.</p>
+            <p class="nb-bao loi">{t.tenBiKhoa(gioPhut(chon.khoa_den))}</p>
           )}
           <label class="nb-o">
-            <span>Nhập PIN của bạn</span>
+            <span>{t.nhapPin}</span>
             <input type="password" name="pin" inputmode="numeric" pattern="[0-9]*" autocomplete="off"
               minlength="4" maxlength="6" required autofocus class="may-o-pin" />
           </label>
-          <button type="submit" class="nb-nut may-nut-mo">Mở máy</button>
-          <a href={DUONG_MAY} class="nb-nut phu may-nut-mo">Chọn người khác</a>
+          <button type="submit" class="nb-nut may-nut-mo">{t.moMay}</button>
+          <a href={DUONG_MAY} class="nb-nut phu may-nut-mo">{t.chonNguoiKhac}</a>
         </form>
       )}
 
@@ -119,67 +196,67 @@ const TEN_VAI: Record<string, string> = { chu_so_huu: 'Chủ nhà hàng', quan_l
               <li>
                 <a href={`${DUONG_MAY}?chon=${n.nhan_su_id}`} class="may-nguoi">
                   <strong>{n.ho_ten}</strong>
-                  <span>{n.khoa_den ? `Bị khóa tới ${gioPhut(n.khoa_den)}` : (TEN_VAI[n.vai_tro] ?? '')}</span>
+                  <span>{n.khoa_den ? t.biKhoaToi(gioPhut(n.khoa_den)) : (TEN_VAI[n.vai_tro]?.[nn] ?? '')}</span>
                 </a>
               </li>
             ))}
           </ul>
         ) : (
           <div class="nb-bao luu-y">
-            <p>Chưa ai gắn vào máy này. Bấm <strong>"Gắn tôi vào máy này"</strong> bên dưới, đăng nhập một lần và đặt PIN.</p>
+            <p>{t.chuaAiGan} <strong>{t.ganToiNgoac}</strong> {t.benDuoi}</p>
           </div>
         )
       )}
 
       {canGanLai.length > 0 && !chon && (
         <div class="nb-the">
-          <p style="margin-top:0"><strong>Cần đăng nhập lại trên máy này:</strong>{' '}{canGanLai.map(n => n.ho_ten).join(', ')}.</p>
-          <p class="kho-phu" style="margin-bottom:0">Máy không còn giữ đăng nhập của những người này. Bấm "Gắn tôi vào máy này" và đăng nhập lại.</p>
+          <p style="margin-top:0"><strong>{t.canDangNhapLai}</strong>{' '}{canGanLai.map(n => n.ho_ten).join(', ')}.</p>
+          <p class="kho-phu" style="margin-bottom:0">{t.canDangNhapLaiGiai}</p>
         </div>
       )}
 
       <div class="may-duoi">
-        <a href={`${DUONG_MAY}/gan`} class="nb-nut phu">Gắn tôi vào máy này</a>
-        <a href={`${DUONG_MAY}/dang-ky`} class="nb-nut phu">Đăng ký lại máy (quản lý)</a>
+        <a href={`${DUONG_MAY}/gan`} class="nb-nut phu">{t.ganToi}</a>
+        <a href={`${DUONG_MAY}/dang-ky`} class="nb-nut phu">{t.dangKyLai}</a>
       </div>
     </>
   ) : dangDung ? (
     <>
-      <h1>Bạn đang dùng máy{k.may?.tenMay ? ` "${k.may.tenMay}"` : ''}</h1>
+      <h1>{t.banDangDung(k.may?.tenMay ?? '')}</h1>
       <BaoKho bao={bao} loiDoc={k.loiDoc} />
-      <p class="nb-dan">Máy tự khóa sau {k.may?.phutKhoa} phút không dùng. Xong việc thì bấm "Khóa máy" để người sau không làm dưới tên bạn.</p>
+      <p class="nb-dan">{t.tuKhoa(k.may?.phutKhoa)}</p>
       <div class="may-duoi">
         <form method="POST">
           <input type="hidden" name="viec" value="khoa" />
-          <button type="submit" class="nb-nut">Khóa máy</button>
+          <button type="submit" class="nb-nut">{t.khoaMay}</button>
         </form>
-        <a href="/noi-bo/kho" class="nb-nut phu">Về trang chủ kho</a>
-        <a href={`${DUONG_MAY}/gan`} class="nb-nut phu">Đổi PIN của tôi</a>
+        <a href="/noi-bo/kho" class="nb-nut phu">{t.veTrangChu}</a>
+        <a href={`${DUONG_MAY}/gan`} class="nb-nut phu">{t.doiPin}</a>
         <form method="POST">
           <input type="hidden" name="viec" value="go" />
-          <button type="submit" class="nb-nut phu">Gỡ tôi khỏi máy này</button>
+          <button type="submit" class="nb-nut phu">{t.goToi}</button>
         </form>
       </div>
     </>
   ) : (
     <>
-      <h1>Máy tính bảng dùng chung</h1>
+      <h1>{t.mayTinhBang}</h1>
       <BaoKho bao={bao} loiDoc={k.loiDoc} />
       <p class="nb-dan">
-        Máy ở quầy hoặc bếp nhiều người cùng dùng: mỗi người chọn tên mình và nhập PIN, máy tự khóa sau vài phút
-        {' '}không dùng. Việc ai làm vẫn ghi đúng tên người đó.
+        {t.gioiThieu}
+        {' '}{t.gioiThieu2}
       </p>
       <div class="nb-the">
-        <p style="margin-top:0"><strong>Cài một máy mới</strong></p>
+        <p style="margin-top:0"><strong>{t.caiMayMoi}</strong></p>
         <ol style="margin:0;padding-left:1.2rem">
-          <li>Chủ nhà hàng tạo một tài khoản <em>Máy tính bảng dùng chung</em> ở Cài đặt → Nhân viên và máy.</li>
-          <li>Quản lý mở trang này <strong>trên chính máy tính bảng đó</strong>, bấm "Đăng ký máy này" và nhập tài khoản máy.</li>
-          <li>Từng người bấm "Gắn tôi vào máy này", đăng nhập một lần và đặt PIN 4–6 số.</li>
+          <li>{t.buoc1a} <em>{t.buoc1b}</em> {t.buoc1c}</li>
+          <li>{t.buoc2a} <strong>{t.buoc2b}</strong>{t.buoc2c}</li>
+          <li>{t.buoc3}</li>
         </ol>
       </div>
       {k.duoc('duyet') && (
         <div class="may-duoi">
-          <a href={`${DUONG_MAY}/dang-ky`} class="nb-nut">Đăng ký máy này</a>
+          <a href={`${DUONG_MAY}/dang-ky`} class="nb-nut">{t.dangKyMayNay}</a>
         </div>
       )}
     </>

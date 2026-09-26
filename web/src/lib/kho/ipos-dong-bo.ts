@@ -23,10 +23,18 @@
  *
  * TOKEN KHÔNG BAO GIỜ rời khỏi hàm gọi iPOS: không vào database, không vào log,
  * không vào câu trả về trang — mọi câu lỗi đi qua `xoaToken`.
+ *
+ * HAI THỨ TIẾNG: kết quả một lượt hiện trên màn Kết nối iPOS nên có bản tiếng
+ * Anh (KetQuaDongBo.cauEn, canhBaoEn); nhật ký lượt trong database chỉ giữ tiếng
+ * Việt — dichLoiIpos() dịch lại lúc hiện. Log của cron (dongBoTatCa) và câu
+ * đăng nhập máy (chỉ vào log) giữ tiếng Việt cho người vận hành — test đọc
+ * nguyên văn.
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { TRUONG_IPOS, phanTichMenu, taoUrlMenu, xoaToken, type NoiIpos } from './ipos.ts';
+import { CAU_MENU_IPOS, TRUONG_IPOS, phanTichMenu, taoUrlMenu, xoaToken, type NoiIpos } from './ipos.ts';
+import type { HaiThuTieng, NgonNguNB } from './chung.ts';
+import { dichCau } from '../cau-noi-bo.ts';
 
 // -----------------------------------------------------------------------------
 // BÍ MẬT
@@ -206,6 +214,8 @@ export interface KetQuaDongBo {
   ok: boolean;
   /** Câu tiếng Việt cho người đọc — đã xóa token. */
   cau: string;
+  /** Bản tiếng Anh của cau (đã xóa token). Vắng khi câu là của database — trang tra dichCau. */
+  cauEn?: string;
   /** Thiếu bí mật IPOS_ACCESS_TOKEN — không đọc được thực đơn (hàng chờ vẫn thử lại). */
   chuaCai?: boolean;
   /** Database từ chối bắt đầu (chưa bật, đang chạy, vừa chạy...) — không phải lỗi. */
@@ -213,6 +223,8 @@ export interface KetQuaDongBo {
   tomTat?: TomTatNhan;
   menu?: KetQuaMenu;
   canhBao?: string[];
+  /** Bản tiếng Anh của canhBao, cùng thứ tự. */
+  canhBaoEn?: string[];
 }
 
 export interface ThamSoDongBo {
@@ -228,6 +240,39 @@ export interface ThamSoDongBo {
 /** Thực đơn cũ hơn chừng này (phút) thì lượt cron đọc lại. */
 export const MENU_MOI_PHUT = 60;
 
+/** Câu có một chỗ thay, ở hai thứ tiếng. */
+type CauMau = { vi: (x: string) => string; en: (x: string) => string };
+
+/**
+ * Câu của một lượt, hai thứ tiếng. Bản tiếng Việt đi vào câu trả về và nhật ký
+ * lượt (kho_ipos_lan_chay.loi); dichLoiIpos() đọc ngược nhật ký cho màn tiếng Anh.
+ */
+const CAU_LUOT = {
+  khongTraLoi: {
+    vi: (giay: string) => `iPOS không trả lời sau ${giay} giây`,
+    en: (giay: string) => `iPOS did not answer within ${giay} seconds`,
+  },
+  loiHttp: { vi: (ma: string) => `iPOS trả lỗi HTTP ${ma}`, en: (ma: string) => `iPOS returned an HTTP ${ma} error` },
+  khongJson: { vi: 'iPOS trả về nội dung không phải JSON', en: 'iPOS returned something that is not JSON' },
+  docMenu: { vi: (x: string) => `Không đọc được thực đơn iPOS: ${x}`, en: (x: string) => `Could not read the iPOS menu: ${x}` },
+  dongBo: { vi: (x: string) => `Không đồng bộ được iPOS: ${x}`, en: (x: string) => `Could not sync iPOS: ${x}` },
+  chuaDongBo: { vi: 'Chưa đồng bộ được.', en: 'Could not sync yet.' },
+} satisfies Record<string, CauMau | HaiThuTieng>;
+
+const hai = (c: CauMau, x: string): HaiThuTieng => ({ vi: c.vi(x), en: c.en(x) });
+
+/** Lỗi mang sẵn bản tiếng Anh (e.en); e.message vẫn là câu tiếng Việt như cũ. */
+function loiHai(c: HaiThuTieng): Error {
+  return Object.assign(new Error(c.vi), { en: c.en });
+}
+
+/** Câu của một lỗi ở hai thứ tiếng: lỗi của loiHai có sẵn bản tiếng Anh; lỗi khác tra dichCau. */
+function cauCuaLoi(e: unknown): HaiThuTieng {
+  const vi = e instanceof Error ? e.message : String(e);
+  const en = (e as { en?: unknown } | null)?.en;
+  return { vi, en: typeof en === 'string' ? en : dichCau('en', vi) };
+}
+
 async function goiIpos(url: string, fetchFn: typeof fetch): Promise<unknown> {
   const huy = new AbortController();
   const hen = setTimeout(() => huy.abort(), TRUONG_IPOS.timeoutMs);
@@ -236,12 +281,12 @@ async function goiIpos(url: string, fetchFn: typeof fetch): Promise<unknown> {
     try {
       res = await fetchFn(url, { headers: { accept: 'application/json' }, signal: huy.signal });
     } catch (e) {
-      if (huy.signal.aborted) throw new Error(`iPOS không trả lời sau ${TRUONG_IPOS.timeoutMs / 1000} giây`);
+      if (huy.signal.aborted) throw loiHai(hai(CAU_LUOT.khongTraLoi, String(TRUONG_IPOS.timeoutMs / 1000)));
       throw e;
     }
-    if (!res.ok) throw new Error(`iPOS trả lỗi HTTP ${res.status}`);
+    if (!res.ok) throw loiHai(hai(CAU_LUOT.loiHttp, String(res.status)));
     const chu = await res.text();
-    try { return JSON.parse(chu); } catch { throw new Error('iPOS trả về nội dung không phải JSON'); }
+    try { return JSON.parse(chu); } catch { throw loiHai(CAU_LUOT.khongJson); }
   } finally {
     clearTimeout(hen);
   }
@@ -256,19 +301,58 @@ export function canDocMenu(o: { menu_luc?: string | null; menu_can_lam_moi?: boo
 }
 
 /** Câu tóm tắt một lượt tốt. */
-export function cauTomTat(t: TomTatNhan | undefined, menu?: KetQuaMenu | null): string {
+export function cauTomTat(t: TomTatNhan | undefined, menu?: KetQuaMenu | null, nn: NgonNguNB = 'vi'): string {
+  const c = (x: HaiThuTieng) => x[nn];
   const phan: string[] = [];
   const d = t?.dong ?? {};
   const soThu = Object.values(d).reduce((a, b) => a + (Number(b) || 0), 0);
-  if (!soThu) phan.push('không có dòng nào đang chờ');
+  if (!soThu) phan.push(c({ vi: 'không có dòng nào đang chờ', en: 'no lines waiting' }));
   else {
-    phan.push(`thử lại ${soThu} dòng đang chờ: ${d.da_ghi ?? 0} đã trừ kho`);
+    phan.push(c({
+      vi: `thử lại ${soThu} dòng đang chờ: ${d.da_ghi ?? 0} đã trừ kho`,
+      en: `retried ${soThu} waiting ${soThu === 1 ? 'line' : 'lines'}: ${d.da_ghi ?? 0} deducted from stock`,
+    }));
     const cho = (d.chua_khop ?? 0) + (d.thieu_hang ?? 0);
-    if (cho) phan.push(`${cho} vẫn chờ xử lý`);
-    if (d.loi) phan.push(`${d.loi} lỗi`);
+    if (cho) phan.push(c({ vi: `${cho} vẫn chờ xử lý`, en: `${cho} still waiting` }));
+    if (d.loi) phan.push(c({ vi: `${d.loi} lỗi`, en: `${d.loi} ${Number(d.loi) === 1 ? 'error' : 'errors'}` }));
   }
-  if (menu) phan.push(`thực đơn iPOS ${menu.so_mon} món${menu.moi ? ` (${menu.moi} món mới)` : ''}`);
-  return `Đã cập nhật: ${phan.join(', ')}.`;
+  if (menu) {
+    phan.push(c({
+      vi: `thực đơn iPOS ${menu.so_mon} món${menu.moi ? ` (${menu.moi} món mới)` : ''}`,
+      en: `iPOS menu ${menu.so_mon} ${Number(menu.so_mon) === 1 ? 'dish' : 'dishes'}${menu.moi ? ` (${menu.moi} new)` : ''}`,
+    }));
+  }
+  return c({ vi: `Đã cập nhật: ${phan.join(', ')}.`, en: `Updated: ${phan.join(', ')}.` });
+}
+
+/**
+ * Câu lỗi của một lượt đọc lại từ database (lan_cuoi_loi, kho_ipos_lan_chay.loi
+ * — chỉ tiếng Việt, cắt ≤ 300 ký tự) → ngôn ngữ đang xem. Câu do file này và
+ * ipos.ts viết thì dịch ở đây; câu của database (lượt treo, lỗi hàm kho) tra dichCau.
+ */
+export function dichLoiIpos(cau: string | null | undefined, nn: NgonNguNB = 'vi'): string {
+  if (!cau) return '';
+  if (nn === 'vi') return cau;
+  for (const c of [CAU_LUOT.docMenu, CAU_LUOT.dongBo]) {
+    const dau = c.vi('');
+    if (cau.startsWith(dau)) return c.en(dichChiTietLoi(cau.slice(dau.length)));
+  }
+  return dichChiTietLoi(cau);
+}
+
+/** Câu lỗi gọi iPOS / đọc thực đơn → tiếng Anh; không nhận ra thì tra dichCau (câu database). */
+function dichChiTietLoi(s: string): string {
+  const M = CAU_MENU_IPOS;
+  for (const c of [CAU_LUOT.khongJson, M.khongObject, M.khongItems]) if (s === c.vi) return c.en;
+  // Câu có một chỗ thay: tách phần trước / sau chỗ thay, giữ nguyên giá trị ở giữa.
+  const CHO = '\u0000';
+  for (const c of [CAU_LUOT.khongTraLoi, CAU_LUOT.loiHttp, M.baoLoi] as CauMau[]) {
+    const [dau, cuoi = ''] = c.vi(CHO).split(CHO);
+    if (s.length >= dau.length + cuoi.length && s.startsWith(dau) && s.endsWith(cuoi)) {
+      return c.en(s.slice(dau.length, s.length - cuoi.length));
+    }
+  }
+  return dichCau('en', s);
 }
 
 /**
@@ -287,7 +371,12 @@ export async function dongBoIpos({ supabase, chiNhanhId, nguon, env, fetchFn, do
     if (e1) return { ok: false, cau: xoaToken(e1.message, token) };
     const b = bd as ({ duoc: boolean; ly_do?: string; lan_id?: string; menu_luc?: string | null;
       menu_can_lam_moi?: boolean } & Partial<NoiIpos>) | null;
-    if (!b?.duoc || !b.lan_id) return { ok: false, tuChoi: true, cau: b?.ly_do ?? 'Chưa đồng bộ được.' };
+    if (!b?.duoc || !b.lan_id) {
+      // Lý do từ chối là câu của database (chưa bật, đang chạy…) — trang tra dichCau.
+      const lyDo = b?.ly_do;
+      return lyDo != null ? { ok: false, tuChoi: true, cau: lyDo }
+        : { ok: false, tuChoi: true, cau: CAU_LUOT.chuaDongBo.vi, cauEn: CAU_LUOT.chuaDongBo.en };
+    }
     lanId = b.lan_id;
 
     // ---- 1 · Thử lại hàng chờ (danh sách hóa đơn rỗng) ----------------------
@@ -299,18 +388,26 @@ export async function dongBoIpos({ supabase, chiNhanhId, nguon, env, fetchFn, do
 
     // ---- 2 · Thực đơn iPOS (khi tới hạn) -----------------------------------
     const canhBao: string[] = [];
+    const canhBaoEn: string[] = [];
+    const canh = (c: HaiThuTieng) => { canhBao.push(c.vi); canhBaoEn.push(c.en); };
     let menu: KetQuaMenu | null = null;
+    // loi (tiếng Việt) vào nhật ký lượt và câu trả về; loiEn chỉ cho câu trả về.
     let loi: string | null = null;
+    let loiEn: string | null = null;
     const toiHan = docMenu ?? (nguon === 'tay' || canDocMenu(b));
     if (toiHan && !token) {
-      canhBao.push(`Chưa cài bí mật ${TEN_BI_MAT.token} — chưa đọc được thực đơn iPOS (hóa đơn vẫn nhận bình thường).`);
+      canh({
+        vi: `Chưa cài bí mật ${TEN_BI_MAT.token} — chưa đọc được thực đơn iPOS (hóa đơn vẫn nhận bình thường).`,
+        en: `The ${TEN_BI_MAT.token} secret is not set — the iPOS menu cannot be read yet (invoices are still received as usual).`,
+      });
     } else if (toiHan && token) {
       const noi: NoiIpos = { api_url: String(b.api_url ?? ''), pos_parent: String(b.pos_parent ?? ''), pos_id: String(b.pos_id ?? '') };
       try {
         const kq = phanTichMenu(await goiIpos(taoUrlMenu(noi, token), goi));
         canhBao.push(...kq.canhBao);
-        if (kq.loi) loi = kq.loi;
-        else if (kq.mon.length === 0) canhBao.push('iPOS trả thực đơn rỗng — giữ thực đơn cũ.');
+        canhBaoEn.push(...kq.canhBaoEn);
+        if (kq.loi) { loi = kq.loi; loiEn = kq.loiEn; }
+        else if (kq.mon.length === 0) canh({ vi: 'iPOS trả thực đơn rỗng — giữ thực đơn cũ.', en: 'iPOS returned an empty menu — keeping the old menu.' });
         else {
           const { data: m, error: e3 } = await supabase.rpc('kho_ipos_luu_menu', {
             p_chi_nhanh_id: chiNhanhId, p_mon: kq.mon,
@@ -319,21 +416,29 @@ export async function dongBoIpos({ supabase, chiNhanhId, nguon, env, fetchFn, do
           menu = m as KetQuaMenu;
         }
       } catch (e) {
-        loi = `Không đọc được thực đơn iPOS: ${e instanceof Error ? e.message : String(e)}`;
+        const ct = cauCuaLoi(e);
+        loi = CAU_LUOT.docMenu.vi(ct.vi);
+        loiEn = CAU_LUOT.docMenu.en(ct.en);
       }
-      if (loi) loi = xoaToken(loi, token).slice(0, 300);
+      if (loi) {
+        loi = xoaToken(loi, token).slice(0, 300);
+        loiEn = xoaToken(loiEn ?? loi, token).slice(0, 300);
+      }
     }
 
     await supabase.rpc('kho_ipos_ket_thuc', { p_lan_id: lanId, p_loi: loi });
     const cau = loi ? `${cauTomTat(tomTat, null)} ${loi}` : cauTomTat(tomTat, menu);
-    return { ok: !loi, cau, tomTat, menu: menu ?? undefined, canhBao, chuaCai: !token || undefined };
+    const cauEn = loi ? `${cauTomTat(tomTat, null, 'en')} ${loiEn}` : cauTomTat(tomTat, menu, 'en');
+    return { ok: !loi, cau, cauEn, tomTat, menu: menu ?? undefined, canhBao, canhBaoEn, chuaCai: !token || undefined };
   } catch (e) {
-    const cau = xoaToken(`Không đồng bộ được iPOS: ${e instanceof Error ? e.message : String(e)}`, token);
+    const ct = cauCuaLoi(e);
+    const cau = xoaToken(CAU_LUOT.dongBo.vi(ct.vi), token);
+    const cauEn = xoaToken(CAU_LUOT.dongBo.en(ct.en), token);
     if (lanId) {
       try { await supabase.rpc('kho_ipos_ket_thuc', { p_lan_id: lanId, p_loi: cau.slice(0, 300) }); }
       catch { /* database sẽ tự coi lượt là hỏng sau 10 phút */ }
     }
-    return { ok: false, cau };
+    return { ok: false, cau, cauEn };
   }
 }
 
