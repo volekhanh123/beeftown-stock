@@ -426,7 +426,8 @@ await nhom('8 · MÃ NGUỒN TRANG', async () => {
   const dmTrang = doc(join(TRANG, 'bao-cao/dinh-muc.astro'));
   ok('Định mức bếp: câu "không tính … Cơm nhân viên" + link Vị trí và lý do chỉ cho danh_muc',
     /không tính định mức \(mặc định: Cơm nhân viên\)/.test(dmTrang)
-    && /k\.duoc\('danh_muc'\) \? <>Đổi ở <a href="\/noi-bo\/kho\/cai-dat\/vi-tri-ly-do"/.test(dmTrang));
+    && /k\.duoc\('danh_muc'\) \? <>\{t\.doiO\} <a href="\/noi-bo\/kho\/cai-dat\/vi-tri-ly-do"/.test(dmTrang)
+    && /doiO: \{ vi: 'Đổi ở'/.test(dmTrang));
   ok('Danh mục đọc cột tinh_dinh_muc của lý do', /select\('id, loai, ten, can_anh, dang_dung, thu_tu, tinh_dinh_muc'\)/.test(doc(join(GOC, 'web/src/lib/kho/danh-muc.ts'))));
 
   const ct = doc(join(TRANG, 'cai-dat/cong-thuc.astro'));

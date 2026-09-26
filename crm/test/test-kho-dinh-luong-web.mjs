@@ -56,6 +56,9 @@ await nhom('1 · TÁCH Ô DÁN EXCEL', async () => {
   const x = tachDanDinhLuong('Gram;Tên món;Mã cân\n150;"Phở; tái";101');
   ok('Tiêu đề xếp tùy ý, dấu ;, bỏ ngoặc kép', x.coTieuDe && x.dong[0].gram === '150' && x.dong[0].mat_hang === '101',
     JSON.stringify(x));
+  const en = tachDanDinhLuong('Dish\tItem\tGrams\nPho\tBrisket\t150.5');
+  ok('Tiêu đề tiếng Anh (màn tiếng Anh hướng dẫn Dish · Item · Gram) cũng hiểu', en.coTieuDe && en.dong.length === 1
+    && en.dong[0].mon === 'Pho' && en.dong[0].mat_hang === 'Brisket' && en.dong[0].gram === '150.5', JSON.stringify(en));
 
   const k = tachDanDinhLuong('Bò nướng\tThăn\t200\nBò nướng\tMỡ\t20');
   ok('Không tiêu đề: thứ tự Món, Mặt hàng, Gram; dòng 1 là dữ liệu', !k.coTieuDe && k.dong.length === 2
@@ -203,7 +206,7 @@ await nhom('6 · TRANG, MENU, HƯỚNG DẪN, CẢNH BÁO', async () => {
   ok('Lưới gram mang phiên bản (không đè người khác vừa sửa)', /name="phien_ban"/.test(dl) && /phienBanDinhLuong\(hienTai\)/.test(dl));
   ok('CSV: dinh-muc mở cho vai xem, file khác vẫn cần xem_gia',
     /ten === 'dinh-muc' \? !duoc\(nhanSu\.vai_tro, 'xem'\) : !duoc\(nhanSu\.vai_tro, 'xem_gia'\)/.test(csvTs));
-  ok('CSV: cột tiền theo quyền người tải', /dinhNghiaDinhMuc\(coGia\)/.test(csvTs) && /const coGia = duoc\(nhanSu\.vai_tro, 'xem_gia'\)/.test(csvTs));
+  ok('CSV: cột tiền theo quyền người tải', /dinhNghiaDinhMuc\(coGia(, nn)?\)/.test(csvTs) && /const coGia = duoc\(nhanSu\.vai_tro, 'xem_gia'\)/.test(csvTs));
   ok('Báo cáo có link từ trang Báo cáo', /\/noi-bo\/kho\/bao-cao\/dinh-muc/.test(doc(join(TRANG, 'noi-bo/kho/bao-cao/index.astro'))));
   ok('Thiết lập có link "Định lượng món"', /\/noi-bo\/kho\/cai-dat\/dinh-luong/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'))));
 

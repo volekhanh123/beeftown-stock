@@ -24,10 +24,11 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import ChonKy from '../../../../components/kho/ChonKy.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import {
-  BAO_CAO, NGAY_TOI_DA_KY, NHOM_BAO_CAO, docBaoCao, docTheoThang, doanhThuKy, kyBaoCao, linkTheBaoCao,
+  BAO_CAO_NB, NGAY_TOI_DA_KY, NHOM_BAO_CAO_NB, chuTheBaoCao, docBaoCao, docTheoThang, doanhThuKy, kyBaoCao, linkTheBaoCao,
   theBaoCaoCuaVai, tomTatXnt, type TomTatKy,
 } from '../../../../lib/kho/bao-cao.ts';
 import { congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangTien, homNayVn } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -35,11 +36,55 @@ if (!k.duoc('xem')) return Astro.redirect('/noi-bo/kho', 302);
 
 const q = Astro.url.searchParams;
 const cu = q.get('bao_cao') ?? '';
-if (Object.hasOwn(BAO_CAO, cu)) {
+if (Object.hasOwn(BAO_CAO_NB, cu)) {
   const giu = new URLSearchParams();
   for (const t of ['tu', 'den']) if (q.get(t)) giu.set(t, q.get(t)!);
   return Astro.redirect(`/noi-bo/kho/bao-cao/${cu}${giu.toString() ? `?${giu.toString()}` : ''}`, 301);
 }
+
+const nn = k.nn;
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Báo cáo kho', en: 'Inventory reports' },
+  kyDai: { vi: 'Khoảng ngày dài quá — chọn tối đa 1 năm.', en: 'The date range is too long — choose at most 1 year.' },
+  bamThe: { vi: 'Bấm một thẻ báo cáo bên dưới — báo cáo mở đúng kỳ này.', en: 'Tap a report card below — the report opens for this period.' },
+  tomTatKy: { vi: 'Tóm tắt kỳ', en: 'Period summary' },
+  nhap: { vi: 'Nhập', en: 'Received' },
+  gomTonDau: { vi: 'kg (gồm tồn đầu kỳ)', en: 'kg (includes opening stock)' },
+  banQuay: { vi: 'Bán ở quầy (giá vốn)', en: 'Sold at the counter (cost)' },
+  haoHut: { vi: 'Hao hụt', en: 'Losses' },
+  haoHutGiai: { vi: 'kg — mất khi ra quầy + kiểm kê thiếu − thừa', en: 'kg — lost on the way to the counter + stocktake shortages − surpluses' },
+  huy: { vi: 'Hủy', en: 'Write-offs' },
+  tonCuoi: { vi: 'Tồn cuối kỳ', en: 'Closing stock' },
+  chiPhiThit: { vi: 'Chi phí thịt', en: 'Meat cost' },
+  doanhThuIpos: { vi: 'Doanh thu iPOS', en: 'iPOS revenue' },
+  chiPhiBang: { vi: 'chi phí bằng', en: 'cost is' },
+  doanhThu: { vi: 'doanh thu', en: 'of revenue' },
+  chiThangIpos: {
+    vi: '(chỉ các tháng đã nối iPOS — xem tỷ lệ từng tháng ở báo cáo Theo tháng)',
+    en: '(only the months with iPOS connected — see each month\'s ratio in the By month report)',
+  },
+  chuaCoHoaDon: { vi: 'Chưa có hóa đơn iPOS trong kỳ', en: 'No iPOS invoices in this period' },
+  chonTronThang: { vi: 'Doanh thu: chọn kỳ trọn tháng (Tháng này, Quý, Năm…)', en: 'Revenue: choose whole months (This month, Quarter, Year…)' },
+  chiPhiGiai: {
+    vi: 'Chi phí thịt = bán + xuất bếp + xuất khác + hủy + hao hụt, theo giá vốn từng lô.',
+    en: 'Meat cost = sold + to kitchen + other issues + write-offs + losses, at the cost of each lot.',
+  },
+  khongGia: {
+    vi: 'Số tổng có tiền chỉ quản lý, kế toán, chủ quán xem. Báo cáo dưới đây của bạn chỉ có kg, gói.',
+    en: 'Totals with money are only for managers, accountants and the owner. Your reports below show kg and packs only.',
+  },
+  chuaBatDau: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory overview' },
+  xem: { vi: 'Xem', en: 'View' },
+  taiCsv: { vi: 'Tải CSV', en: 'Download CSV' },
+  inDuoc1: { vi: 'Mỗi báo cáo in được (nút', en: 'Every report can be printed (the' },
+  inBaoCao: { vi: 'In báo cáo', en: 'Print report' },
+  inDuoc2: {
+    vi: ', hoặc in bằng trình duyệt) và tải về Excel. Không thấy báo cáo cần tìm? Xem',
+    en: ' button, or print from the browser) and downloaded to Excel. Can\'t find the report you need? See',
+  },
+  aiLamGi: { vi: 'Ai làm được gì', en: 'Who can do what' },
+});
 
 const homNay = homNayVn();
 const { tu, den } = kyBaoCao(q, homNay);
@@ -51,18 +96,18 @@ let doanhThu: { doanhThu: number | null; coIpos: boolean; duIpos: boolean } | nu
 let loiDoc = k.loiDoc;
 const kyDai = congNgay(tu, NGAY_TOI_DA_KY) < den;
 if (kyDai) {
-  loiDoc = 'Khoảng ngày dài quá — chọn tối đa 1 năm.';
+  loiDoc = t.kyDai;
 } else if (coGia && k.chiNhanh && k.daKhoiTao) {
   // Tháng của kỳ có thể nằm ở hai năm (tháng 12 → tháng 1): đọc đủ các năm.
   const cacNam = [...new Set([Number(tu.slice(0, 4)), Number(den.slice(0, 4))])];
   const [xnt, ...thang] = await Promise.all([
-    docBaoCao(k.client, 'xuat-nhap-ton', k.chiNhanh.id, tu, den),
-    ...cacNam.map(n => docTheoThang(k.client, k.chiNhanh!.id, n)),
+    docBaoCao(k.client, 'xuat-nhap-ton', k.chiNhanh.id, tu, den, nn),
+    ...cacNam.map(n => docTheoThang(k.client, k.chiNhanh!.id, n, nn)),
   ]);
   if (xnt.loi) loiDoc = xnt.loi;
   else tomTat = tomTatXnt(xnt.dong);
-  if (thang.every(t => !t.loi)) {
-    doanhThu = doanhThuKy(thang.flatMap(t => t.dong), tu, den, homNay);
+  if (thang.every(x => !x.loi)) {
+    doanhThu = doanhThuKy(thang.flatMap(x => x.dong), tu, den, homNay);
   }
 }
 const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDangNgay(den)}`;
@@ -73,90 +118,93 @@ const csvCua = (ten: string, link: string) => {
   if (ten === 'cong-no') return '/noi-bo/kho/bao-cao/cong-no.csv';
   return `/noi-bo/kho/bao-cao/${ten}.csv?${new URLSearchParams({ ...Object.fromEntries(q2), tu, den }).toString()}`;
 };
-const kg = (n: number) => (n === 0 ? '0' : dinhDangKg(n));
+const kg = (n: number) => (n === 0 ? '0' : dinhDangKg(n, nn));
+const tien = (n: number) => dinhDangTien(n, nn);
 ---
-<Kho k={k} huongDan="bao-cao" tieuDe="Báo cáo kho" rong>
-  <h1>Báo cáo kho</h1>
+<Kho k={k} huongDan="bao-cao" tieuDe={t.tieuDe} rong>
+  <h1>{t.tieuDe}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   <ChonKy duong="/noi-bo/kho/bao-cao" tu={tu} den={den} homNay={homNay} />
 
-  <p class="nb-dan"><strong>{kyChu}</strong>. Bấm một thẻ báo cáo bên dưới — báo cáo mở đúng kỳ này.</p>
+  <p class="nb-dan"><strong>{kyChu}</strong>. {t.bamThe}</p>
 
   {coGia && tomTat && (
     <section aria-labelledby="tom-tat">
-      <h2 id="tom-tat">Tóm tắt kỳ</h2>
+      <h2 id="tom-tat">{t.tomTatKy}</h2>
       <div class="kho-the-luoi">
         <a class="kho-the-so" href={`/noi-bo/kho/bao-cao/mua-hang?${new URLSearchParams({ nhom: 'ncc', tu, den }).toString()}`}>
-          <span class="kho-the-so-dau">Nhập</span>
-          <b>{dinhDangTien(tomTat.nhap_tien)}</b>
-          <small>{kg(tomTat.nhap_kg)} kg (gồm tồn đầu kỳ)</small>
+          <span class="kho-the-so-dau">{t.nhap}</span>
+          <b>{tien(tomTat.nhap_tien)}</b>
+          <small>{kg(tomTat.nhap_kg)} {t.gomTonDau}</small>
         </a>
         <a class="kho-the-so" href={`/noi-bo/kho/bao-cao/ban?${new URLSearchParams({ tu, den }).toString()}`}>
-          <span class="kho-the-so-dau">Bán ở quầy (giá vốn)</span>
-          <b>{dinhDangTien(tomTat.ban_tien)}</b>
+          <span class="kho-the-so-dau">{t.banQuay}</span>
+          <b>{tien(tomTat.ban_tien)}</b>
           <small>{kg(tomTat.ban_kg)} kg</small>
         </a>
         <a class:list={['kho-the-so', { vang: tomTat.hao_hut_kg > 0 }]} href={`/noi-bo/kho/bao-cao/hao-hut?${new URLSearchParams({ tu, den }).toString()}`}>
-          <span class="kho-the-so-dau">Hao hụt</span>
-          <b>{dinhDangTien(tomTat.hao_hut_tien)}</b>
-          <small>{kg(tomTat.hao_hut_kg)} kg — mất khi ra quầy + kiểm kê thiếu − thừa</small>
+          <span class="kho-the-so-dau">{t.haoHut}</span>
+          <b>{tien(tomTat.hao_hut_tien)}</b>
+          <small>{kg(tomTat.hao_hut_kg)} {t.haoHutGiai}</small>
         </a>
         <a class:list={['kho-the-so', { vang: tomTat.huy_kg > 0 }]} href={`/noi-bo/kho/bao-cao/hao-hut?${new URLSearchParams({ tu, den }).toString()}`}>
-          <span class="kho-the-so-dau">Hủy</span>
-          <b>{dinhDangTien(tomTat.huy_tien)}</b>
+          <span class="kho-the-so-dau">{t.huy}</span>
+          <b>{tien(tomTat.huy_tien)}</b>
           <small>{kg(tomTat.huy_kg)} kg</small>
         </a>
         <a class="kho-the-so" href={`/noi-bo/kho/bao-cao/xuat-nhap-ton?${new URLSearchParams({ tu, den }).toString()}`}>
-          <span class="kho-the-so-dau">Tồn cuối kỳ</span>
-          <b>{dinhDangTien(tomTat.ton_cuoi_tien)}</b>
+          <span class="kho-the-so-dau">{t.tonCuoi}</span>
+          <b>{tien(tomTat.ton_cuoi_tien)}</b>
           <small>{kg(tomTat.ton_cuoi_kg)} kg</small>
         </a>
         <a class="kho-the-so" href={`/noi-bo/kho/bao-cao/theo-thang?nam=${den.slice(0, 4)}`}>
-          <span class="kho-the-so-dau">Chi phí thịt</span>
-          <b>{dinhDangTien(tomTat.chi_phi_thit)}</b>
+          <span class="kho-the-so-dau">{t.chiPhiThit}</span>
+          <b>{tien(tomTat.chi_phi_thit)}</b>
           <small>
             {doanhThu?.coIpos && doanhThu.doanhThu
               ? (doanhThu.duIpos
-                  ? <>Doanh thu iPOS {dinhDangTien(doanhThu.doanhThu)} · chi phí bằng {dinhDangPhanTram(tomTat.chi_phi_thit / doanhThu.doanhThu * 100)} doanh thu</>
-                  : <>Doanh thu iPOS {dinhDangTien(doanhThu.doanhThu)} (chỉ các tháng đã nối iPOS — xem tỷ lệ từng tháng ở báo cáo Theo tháng)</>)
-              : doanhThu ? 'Chưa có hóa đơn iPOS trong kỳ' : 'Doanh thu: chọn kỳ trọn tháng (Tháng này, Quý, Năm…)'}
+                  ? <>{t.doanhThuIpos} {tien(doanhThu.doanhThu)} · {t.chiPhiBang} {dinhDangPhanTram(tomTat.chi_phi_thit / doanhThu.doanhThu * 100, 1, nn)} {t.doanhThu}</>
+                  : <>{t.doanhThuIpos} {tien(doanhThu.doanhThu)} {t.chiThangIpos}</>)
+              : doanhThu ? t.chuaCoHoaDon : t.chonTronThang}
           </small>
         </a>
       </div>
-      <p class="kho-phu">Chi phí thịt = bán + xuất bếp + xuất khác + hủy + hao hụt, theo giá vốn từng lô.</p>
+      <p class="kho-phu">{t.chiPhiGiai}</p>
     </section>
   )}
   {!coGia && (
-    <p class="kho-phu">Số tổng có tiền chỉ quản lý, kế toán, chủ quán xem. Báo cáo dưới đây của bạn chỉ có kg, gói.</p>
+    <p class="kho-phu">{t.khongGia}</p>
   )}
 
   {!k.daKhoiTao && (
-    <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho. Vào <a href="/noi-bo/kho">Tổng quan kho</a>.</p>
+    <p class="nb-rong">{t.chuaBatDau} <a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
   )}
 
-  {NHOM_BAO_CAO.map(nhom => {
-    const ds = the.filter(t => t.nhom === nhom);
+  {NHOM_BAO_CAO_NB.map(nhom => {
+    const ds = the.filter(bc => bc.nhom === nhom.vi);
     return ds.length > 0 && (
-      <section aria-label={nhom}>
-        <h2>{nhom}</h2>
+      <section aria-label={nhom[nn]}>
+        <h2>{nhom[nn]}</h2>
         <div class="bc-luoi">
-          {ds.map(t => (
-            <div class="nb-the bc-the">
-              <a class="bc-ten" href={linkTheBaoCao(t, tu, den)}><strong>{t.ten}</strong></a>
-              <p class="kho-phu">{t.moTa}</p>
-              <p class="bc-nut">
-                <a class="nb-nut phu" href={linkTheBaoCao(t, tu, den)}>Xem</a>
-                {t.csv && <a class="nb-nut phu" href={csvCua(t.csv, t.link)}>Tải CSV</a>}
-              </p>
-            </div>
-          ))}
+          {ds.map(bc => {
+            const chu = chuTheBaoCao(bc.ma, nn);
+            return (
+              <div class="nb-the bc-the">
+                <a class="bc-ten" href={linkTheBaoCao(bc, tu, den)}><strong>{chu.ten}</strong></a>
+                <p class="kho-phu">{chu.moTa}</p>
+                <p class="bc-nut">
+                  <a class="nb-nut phu" href={linkTheBaoCao(bc, tu, den)}>{t.xem}</a>
+                  {bc.csv && <a class="nb-nut phu" href={csvCua(bc.csv, bc.link)}>{t.taiCsv}</a>}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </section>
     );
   })}
-  <p class="kho-phu">Mỗi báo cáo in được (nút <strong>In báo cáo</strong>, hoặc in bằng trình duyệt) và tải về Excel.
-    Không thấy báo cáo cần tìm? Xem <a href="/noi-bo/kho/cai-dat/quyen">Ai làm được gì</a>.</p>
+  <p class="kho-phu">{t.inDuoc1} <strong>{t.inBaoCao}</strong>{t.inDuoc2} <a href="/noi-bo/kho/cai-dat/quyen">{t.aiLamGi}</a>.</p>
 </Kho>
 
 <style>

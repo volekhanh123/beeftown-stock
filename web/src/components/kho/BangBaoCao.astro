@@ -4,9 +4,14 @@
  * dòng tổng tính bằng tinhTong — cùng hàm với file Excel nên hai bên luôn khớp.
  * Bảng trống: câu "việc gì sinh ra số liệu" và link tới chỗ làm việc đó.
  * Không gọi database, không JavaScript. In được (khung cuộn ngang bỏ khi in).
+ *
+ * Hai thứ tiếng: trang truyền định nghĩa và dòng tổng ĐÃ ở ngôn ngữ đang xem
+ * (BAO_CAO_NB[ten][nn], dinhNghia…(…, nn), tinhTong(…, nn)); ở đây chỉ định
+ * dạng số theo ngôn ngữ.
  */
 import type { DinhNghiaBaoCao, DongTong, CotBaoCao } from '../../lib/kho/bao-cao.ts';
 import { dinhDangKg, dinhDangPhanTram, dinhDangTien } from '../../lib/kho/chung.ts';
+import { nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
 
 interface Props {
   dn: DinhNghiaBaoCao;
@@ -16,12 +21,14 @@ interface Props {
   khoaMo?: string;
 }
 const { dn, dong, tong, khoaMo } = Astro.props;
+const nn = nnCua(Astro);
+const vungSo = nn === 'en' ? 'en-US' : 'vi-VN';
 const hien = (c: CotBaoCao, v: unknown) => {
   if (v === null || v === undefined || v === '') return '—';
-  if (c.kieu === 'kg') return Number(v) === 0 ? '·' : dinhDangKg(Number(v));
-  if (c.kieu === 'tien') return Number(v) === 0 ? '·' : dinhDangTien(Number(v));
-  if (c.kieu === 'so') return Number(v) === 0 ? '·' : Number(v).toLocaleString('vi-VN');
-  if (c.kieu === 'pt') return dinhDangPhanTram(Number(v));
+  if (c.kieu === 'kg') return Number(v) === 0 ? '·' : dinhDangKg(Number(v), nn);
+  if (c.kieu === 'tien') return Number(v) === 0 ? '·' : dinhDangTien(Number(v), nn);
+  if (c.kieu === 'so') return Number(v) === 0 ? '·' : Number(v).toLocaleString(vungSo);
+  if (c.kieu === 'pt') return dinhDangPhanTram(Number(v), 1, nn);
   return String(v);
 };
 ---
