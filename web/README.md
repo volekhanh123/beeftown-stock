@@ -123,6 +123,8 @@ Tiếng Việt là bản gốc duy nhất người ta soạn. Bản tiếng Anh 
 
 Chưa có khóa thì web vẫn chạy: ô dịch để trống, trang lùi về thứ tiếng kế tiếp, màn soạn tin báo "Chưa có khóa GEMINI_API_KEY". Chạy thử trên máy thì đặt khóa trong `web/.dev.vars` (`GEMINI_API_KEY=...`) — file này bị `.gitignore` chặn.
 
+**Đừng gỡ `[placement]` trong `wrangler.toml`.** Mục này ghim Worker vào trạm Cloudflare gần AWS Singapore (`region = "aws:ap-southeast-1"`, cùng vùng với Supabase). Không ghim thì người dùng ở Việt Nam hay được đưa vào trạm Hồng Kông, mà Google từ chối mọi lời gọi Gemini đi từ Hồng Kông: sổ bản dịch ghi lỗi "User location is not supported for the API use" cho mọi ô. Ảnh và file tĩnh vẫn phát từ trạm gần người xem. Muốn biết một trang chạy ở đâu thì xem header `cf-placement` của phản hồi.
+
 **Mẫu máy:** mặc định `gemini-flash-latest`, bí danh Google tự trỏ tới bản Flash mới nhất — để không phải sửa code mỗi lần Google khai tử một phiên bản. Muốn chọn khác thì thêm vào `wrangler.toml`:
 
 ```toml
