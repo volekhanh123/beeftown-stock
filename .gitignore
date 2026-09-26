@@ -46,6 +46,8 @@
 
 # --- ĐƯỢC PHÉP: công cụ nội bộ ---
 !Beeftown_Can_TMA.html
+# Chương trình nạp cân qua WiFi (chạy trên máy tính ở quán, tải ở màn Đồng bộ cân)
+!/web/public/kho/can-wifi/Nap-Can-WiFi.ps1
 
 # --- ĐƯỢC PHÉP: ứng dụng web (Astro + Cloudflare Workers) ---
 # Mở theo ĐUÔI FILE chứ không mở cả thư mục. Nhờ vậy file mật thêm vào web/
