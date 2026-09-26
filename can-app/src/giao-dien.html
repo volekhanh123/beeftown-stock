@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beeftown · Nạp cân</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --do: #B23A2C; --do-dam: #8E2B20; --kem: #FBF4E1; --kem-sau: #F3E8CC; --mu-tat: #F2A900;
+    --than: #1E160E; --da: #B8A98C; --vach: #E4D8BC; --trang: #FFFFFF;
+    --xanh: #1F7A4C; --xanh-nen: #E9F5EE; --do-nen: #FDECEA; --vang-nen: #FFF5DC;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--kem); color: var(--than); font: 15px/1.5 "Segoe UI", system-ui, sans-serif; }
+  header { background: var(--than); color: var(--kem); padding: 14px 24px; display: flex; align-items: baseline; gap: 14px; }
+  header b { font-size: 18px; letter-spacing: .08em; color: var(--mu-tat); }
+  header span { color: var(--da); }
+  header small { margin-left: auto; color: var(--da); }
+  main { max-width: 1120px; margin: 0 auto; padding: 20px 24px 40px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  .the { background: var(--trang); border: 1px solid var(--vach); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .hang { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .o { background: var(--trang); border: 1px solid var(--vach); border-radius: 12px; padding: 12px 16px; }
+  .o .nhan { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #7A6C52; }
+  .o .gt { font-weight: 600; margin-top: 2px; }
+  .o .phu { font-size: 13px; color: #6A5D45; }
+  .den { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--da); margin-right: 6px; }
+  .den.xanh { background: var(--xanh); } .den.do { background: var(--do); }
+  label.truong { display: block; margin-bottom: 10px; }
+  label.truong span { display: block; font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  input[type=text], input[type=email], input[type=password], input[type=number], select {
+    width: 100%; max-width: 380px; padding: 8px 10px; border: 1px solid var(--da); border-radius: 8px; font: inherit; background: #fff;
+  }
+  button { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 16px; cursor: pointer; border: 1px solid var(--da); background: var(--trang); color: var(--than); }
+  button:hover { background: var(--kem-sau); }
+  button.chinh { background: var(--do); border-color: var(--do); color: #fff; }
+  button.chinh:hover { background: var(--do-dam); }
+  button.to { font-size: 17px; padding: 12px 26px; }
+  button:disabled { opacity: .5; cursor: default; }
+  .nut { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .bao { border-radius: 10px; padding: 10px 14px; margin: 10px 0; border-left: 4px solid; }
+  .bao.loi { background: var(--do-nen); border-color: var(--do); }
+  .bao.xong { background: var(--xanh-nen); border-color: var(--xanh); }
+  .bao.luu-y { background: var(--vang-nen); border-color: var(--mu-tat); }
+  .bao p { margin: 4px 0; }
+  .dem { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  .nhan-l { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+  .nhan-l.them { background: var(--xanh-nen); color: var(--xanh); }
+  .nhan-l.sua { background: var(--mu-tat); color: var(--than); }
+  .nhan-l.xoa { background: var(--do); color: #fff; }
+  .nhan-l.giu { background: var(--kem-sau); color: #6A5D45; }
+  .nhan-l.khong-len { border: 1px dashed #6A5D45; color: #6A5D45; }
+  .khung-bang { overflow: auto; max-height: 420px; border: 1px solid var(--vach); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 7px 10px; border-bottom: 1px solid var(--vach); text-align: left; vertical-align: top; }
+  th { position: sticky; top: 0; background: var(--kem-sau); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td.so, th.so { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.mo td { color: #8A7C62; }
+  .phu { font-size: 13px; color: #6A5D45; }
+  details summary { cursor: pointer; font-weight: 600; }
+  code { background: var(--kem-sau); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  .an { display: none !important; }
+  .dang-lam { color: #6A5D45; font-style: italic; }
+  @media (max-width: 760px) { .hang { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header><b>BEEFTOWN</b><span>Nạp cân qua WiFi</span><small id="phien-ban"></small></header>
+<main>
+  <div id="bao-chung"></div>
+
+  <div class="hang">
+    <div class="o"><div class="nhan">Kho</div><div class="gt" id="o-kho">…</div><div class="phu" id="o-kho-phu"></div></div>
+    <div class="o"><div class="nhan">Cân</div><div class="gt"><span class="den" id="den-can"></span><span id="o-can">…</span></div>
+      <div class="phu"><button id="nut-thu-can" style="padding:3px 10px;font-size:13px;margin-top:4px">Kiểm tra kết nối</button></div></div>
+    <div class="o"><div class="nhan">Trên cân</div><div class="gt" id="o-tren-can">…</div><div class="phu" id="o-goc"></div></div>
+  </div>
+
+  <!-- Đăng nhập kho -->
+  <section class="the an" id="the-dang-nhap">
+    <h2>Đăng nhập kho</h2>
+    <p class="phu">Dùng tài khoản quản lý hoặc chủ nhà hàng. Máy này sẽ nhớ đăng nhập.</p>
+    <form id="form-dang-nhap">
+      <label class="truong"><span>Email</span><input type="email" name="email" required autocomplete="username"></label>
+      <label class="truong"><span>Mật khẩu</span><input type="password" name="matKhau" required autocomplete="current-password"></label>
+      <div class="nut"><button class="chinh" type="submit">Đăng nhập</button></div>
+    </form>
+  </section>
+
+  <!-- Bắt đầu: file gốc từ cân -->
+  <section class="the an" id="the-bat-dau">
+    <h2>Bắt đầu: cho chương trình biết cân đang có gì</h2>
+    <p>Làm một lần. Trên cân bấm <b>Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm → Amend</b> để lưu dữ liệu ra USB,
+      rồi chọn file <code>JHSCALE\A_000.TMS</code> trong USB ở đây.</p>
+    <input type="file" accept=".TMS,.tms" class="chon-file-can">
+  </section>
+
+  <!-- Đồng bộ -->
+  <section class="the an" id="the-dong-bo">
+    <h2>Đưa danh mục kho xuống cân</h2>
+    <p class="phu">Mã cân, tên và giá bán/kg lấy thẳng từ <b>Mặt hàng</b> trong kho. Muốn đổi giá hay tên thì sửa trong kho trước.</p>
+    <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0">
+      <input type="checkbox" id="giu-ngoai-kho"><span>Giữ lại hàng đang có trên cân nhưng không có trong kho.</span></label>
+    <div class="nut"><button id="nut-xem">Xem lại thay đổi từ kho</button><span class="dang-lam an" id="dang-xem">Đang lấy danh mục từ kho…</span></div>
+    <div id="ket-qua-xem"></div>
+  </section>
+
+  <details class="the">
+    <summary>Cài đặt và việc khác</summary>
+    <div style="margin-top:12px">
+      <form id="form-cau-hinh">
+        <label class="truong"><span>Địa chỉ cân (trên cân bấm Prog → 4 → 2 để xem)</span><input type="text" name="ipCan"></label>
+        <label class="truong"><span>Cổng của cân</span><input type="number" name="congCan"></label>
+        <label class="truong"><span>Địa chỉ kho</span><input type="text" name="diaChiKho"></label>
+        <label class="truong an" id="o-chi-nhanh"><span>Chi nhánh</span><select name="chiNhanhId"></select></label>
+        <div class="nut"><button type="submit">Lưu cài đặt</button></div>
+      </form>
+      <hr style="border:0;border-top:1px solid var(--vach);margin:18px 0">
+      <p><b>Cập nhật file gốc từ cân.</b> Khi cân có thay đổi mà không qua chương trình này (nạp USB từ nơi khác, sửa tay trên cân):
+        lưu dữ liệu từ cân ra USB rồi chọn file đó.</p>
+      <input type="file" accept=".TMS,.tms" class="chon-file-can">
+      <div class="nut">
+        <button id="nut-mo-thu-muc" type="button">Mở thư mục dữ liệu</button>
+        <button id="nut-dang-xuat" type="button" class="an">Đăng xuất kho</button>
+      </div>
+      <p class="phu" id="duong-thu-muc"></p>
+    </div>
+  </details>
+</main>
+
+<script>
+(() => {
+  const MA = new URLSearchParams(location.search).get('t') || '';
+  const $ = (id) => document.getElementById(id);
+  const e = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const tien = (n) => n === null || n === undefined ? '—' : Number(n).toLocaleString('vi-VN') + ' đ';
+
+  async function goi(duong, than, kieu) {
+    const r = await fetch(duong + '?t=' + MA, {
+      method: 'POST',
+      headers: kieu === 'tep' ? { 'Content-Type': 'application/octet-stream' } : { 'Content-Type': 'application/json' },
+      body: kieu === 'tep' ? than : JSON.stringify(than || {}),
+    });
+    if (!r.ok) throw new Error('Chương trình không trả lời (mã ' + r.status + '). Mở lại chương trình.');
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.loi || 'Có lỗi.');
+    return j;
+  }
+  function bao(noi, loai, html) { noi.innerHTML = html ? `<div class="bao ${loai}">${html}</div>` : ''; }
+  const baoChung = (loai, html) => { bao($('bao-chung'), loai, html); if (html) window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+  // ---- nhịp: cho chương trình biết cửa sổ còn mở --------------------------
+  setInterval(() => { fetch('/api/nhip?t=' + MA, { method: 'POST' }).catch(() => {}); }, 20000);
+  addEventListener('pagehide', () => { navigator.sendBeacon('/api/dong?t=' + MA); });
+
+  let trangThai = null;
+
+  async function taiTrangThai() {
+    const s = await goi('/api/trang-thai');
+    trangThai = s;
+    $('phien-ban').textContent = 'phiên bản ' + s.phienBan;
+    const ch = s.cauHinh;
+    $('o-can').textContent = ch.ipCan + ' · cổng ' + ch.congCan;
+    const f = $('form-cau-hinh');
+    f.ipCan.value = ch.ipCan; f.congCan.value = ch.congCan; f.diaChiKho.value = ch.diaChiKho;
+    $('duong-thu-muc').innerHTML = 'Dữ liệu nằm ở <code>' + e(s.thuMuc) + '</code>';
+
+    if (s.nguoi) {
+      $('o-kho').textContent = s.nguoi.hoTen;
+      $('o-kho-phu').textContent = (s.nguoi.chiNhanh ? s.nguoi.chiNhanh.ten + ' · ' : '') + s.nguoi.email;
+      const sel = f.chiNhanhId;
+      sel.innerHTML = s.nguoi.cacChiNhanh.map(c => `<option value="${e(c.id)}">${e(c.ten)}</option>`).join('');
+      if (s.nguoi.chiNhanh) sel.value = s.nguoi.chiNhanh.id;
+      $('o-chi-nhanh').classList.toggle('an', s.nguoi.cacChiNhanh.length < 2);
+    } else {
+      $('o-kho').textContent = 'Chưa đăng nhập';
+      $('o-kho-phu').textContent = s.loiKho || ch.diaChiKho;
+    }
+    $('nut-dang-xuat').classList.toggle('an', !s.nguoi);
+    $('o-tren-can').textContent = s.goc ? s.soTrenCan + ' hàng' : 'Chưa biết';
+    $('o-goc').textContent = s.goc ? 'File gốc lúc ' + new Date(s.goc.luc).toLocaleString('vi-VN') + ' · cân ' + s.goc.phienBan : 'Chưa có file gốc';
+
+    $('the-dang-nhap').classList.toggle('an', !!s.nguoi);
+    $('the-bat-dau').classList.toggle('an', !s.nguoi || !!s.goc);
+    $('the-dong-bo').classList.toggle('an', !s.nguoi || !s.goc);
+    if (s.nguoi && s.goc) xemTruoc();
+  }
+
+  // ---- xem trước ------------------------------------------------------------
+  const NHAN = { them: ['Thêm', 'them'], sua: ['Sửa', 'sua'], giu: ['Giữ nguyên', 'giu'], xoa: ['Bỏ khỏi cân', 'xoa'],
+                 ngoai_kho: ['Giữ, ngoài kho', 'giu'], bo_qua: ['Không đưa lên', 'khong-len'] };
+  const DEM = [['them', 'thêm'], ['sua', 'sửa'], ['xoa', 'bỏ khỏi cân'], ['giu', 'giữ nguyên'], ['ngoai_kho', 'giữ, ngoài kho'], ['bo_qua', 'không đưa lên']];
+  const giuNgoaiKho = () => $('giu-ngoai-kho').checked;
+
+  async function xemTruoc() {
+    const noi = $('ket-qua-xem');
+    $('dang-xem').classList.remove('an'); $('nut-xem').disabled = true;
+    try {
+      const x = await goi('/api/xem-truoc', { giuHangNgoaiKho: giuNgoaiKho() });
+      let h = '<div class="dem">' + DEM.filter(([k]) => x.dem[k] > 0)
+        .map(([k, chu]) => `<span class="nhan-l ${NHAN[k][1]}">${x.dem[k]} ${chu}</span>`).join('') + '</div>';
+      h += '<div class="khung-bang"><table><thead><tr><th>Thay đổi</th><th class="so">PLU</th><th class="so">Mã cân</th><th>Tên trên tem</th><th class="so">Giá/kg</th></tr></thead><tbody>';
+      for (const d of x.dong) {
+        const mo = d.loai === 'xoa' || d.loai === 'bo_qua';
+        h += `<tr class="${mo ? 'mo' : ''}"><td><span class="nhan-l ${NHAN[d.loai][1]}">${NHAN[d.loai][0]}</span></td>`
+          + `<td class="so">${d.so ?? '—'}</td><td class="so">${e(d.maCan || '—')}</td><td>${e(d.ten)}`
+          + (d.loai === 'sua' && d.tenCu !== d.ten ? `<div class="phu">Trên cân đang là: ${e(d.tenCu)}</div>` : '')
+          + (d.lyDo ? `<div class="phu">${e(d.lyDo)}</div>` : '') + (d.canhBao ? `<div class="phu">${e(d.canhBao)}</div>` : '')
+          + `</td><td class="so">${tien(d.gia)}` + (d.loai === 'sua' && d.giaCu !== d.gia ? `<div class="phu">trước: ${tien(d.giaCu)}</div>` : '') + '</td></tr>';
+      }
+      if (!x.dong.length) h += '<tr><td colspan="5">Kho chưa có mặt hàng nào mang mã cân. Điền mã cân ở Mặt hàng trước.</td></tr>';
+      h += '</tbody></table></div>';
+
+      if (x.conLai.length) {
+        h += `<div class="bao loi"><p><b>${x.conLai.length} hàng sẽ còn nằm trên cân</b> — gửi qua WiFi cân chỉ thêm và sửa, không xoá được:</p><p>`
+          + x.conLai.map(c => `PLU ${c.so} · mã ${e(c.ma || '—')} · ${e(c.ten)}`).join('<br>') + '</p>'
+          + '<p>Muốn xoá hẳn: lưu file rồi nạp bằng USB (cân thay cả danh sách).</p>'
+          + '<div class="nut"><button id="nut-tao-usb">Lưu file để nạp USB</button></div><div id="khung-usb"></div></div>';
+      }
+      h += `<div class="nut" style="margin-top:16px"><button class="chinh to" id="nut-gui">Gửi xuống cân</button>`
+        + `<span class="phu">${x.coThayDoi ? 'Sau khi gửi, cân có ' + x.soHangSauKhiGui + ' hàng từ kho.' : 'Cân đã khớp với kho — không cần gửi.'}</span></div><div id="ket-qua-gui"></div>`;
+      noi.innerHTML = h;
+      $('nut-gui').onclick = gui;
+      if ($('nut-tao-usb')) $('nut-tao-usb').onclick = taoUsb;
+    } catch (err) {
+      bao(noi, 'loi', e(err.message));
+    } finally {
+      $('dang-xem').classList.add('an'); $('nut-xem').disabled = false;
+    }
+  }
+
+  async function gui() {
+    const nut = $('nut-gui'), noi = $('ket-qua-gui');
+    nut.disabled = true; nut.textContent = 'Đang gửi…';
+    try {
+      const k = await goi('/api/gui', { giuHangNgoaiKho: giuNgoaiKho() });
+      // Báo ở đầu trang: bảng bên dưới sẽ được dựng lại từ file vừa gửi.
+      baoChung('xong', `<p><b>Đã gửi ${k.soHang} hàng xuống cân.</b> Trên cân gõ số PLU của một hàng vừa đổi rồi bấm <b>PLU</b> để chắc cân đã nhận.</p>`
+        + (k.conLai.length ? `<p>${k.conLai.length} hàng vẫn còn nằm trên cân — xoá bằng USB khi tiện.</p>` : ''));
+      await taiTrangThai();
+    } catch (err) {
+      bao(noi, 'loi', e(err.message));
+      nut.disabled = false; nut.textContent = 'Gửi xuống cân';
+    }
+  }
+
+  async function taoUsb() {
+    const noi = $('khung-usb');
+    try {
+      const k = await goi('/api/tao-usb', { giuHangNgoaiKho: giuNgoaiKho() });
+      noi.innerHTML = `<div class="bao luu-y"><p>Đã lưu file (${k.soHang} hàng) ở <code>${e(k.duongDan)}</code>.</p>`
+        + '<p>1. Chép file này vào thư mục <b>JHSCALE</b> trên USB (ghi đè). 2. Cắm USB vào cân: <b>Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm</b>. 3. Nạp xong rút USB, rồi bấm nút bên dưới.</p>'
+        + `<div class="nut"><button id="nut-mo-usb">Mở thư mục chứa file</button><a href="/api/tai-usb?t=${MA}" download="A_000.TMS"><button type="button">Tải file về</button></a>`
+        + '<button class="chinh" id="nut-da-nap">Tôi đã nạp USB xong</button></div></div>';
+      $('nut-mo-usb').onclick = () => goi('/api/mo-thu-muc', { cho: 'usb' }).catch(err => baoChung('loi', e(err.message)));
+      $('nut-da-nap').onclick = async () => {
+        try { const r = await goi('/api/da-nap-usb'); baoChung('xong', `Đã ghi nhận: trên cân có ${r.soHang} hàng.`); await taiTrangThai(); }
+        catch (err) { baoChung('loi', e(err.message)); }
+      };
+    } catch (err) { bao(noi, 'loi', e(err.message)); }
+  }
+
+  // ---- các nút khác -----------------------------------------------------
+  $('nut-xem').onclick = xemTruoc;
+  $('giu-ngoai-kho').onchange = xemTruoc;
+
+  $('form-dang-nhap').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const f = ev.target, nut = f.querySelector('button');
+    nut.disabled = true;
+    try { await goi('/api/dang-nhap', { email: f.email.value, matKhau: f.matKhau.value }); f.matKhau.value = ''; baoChung('', ''); await taiTrangThai(); }
+    catch (err) { baoChung('loi', e(err.message)); }
+    finally { nut.disabled = false; }
+  };
+
+  $('form-cau-hinh').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const f = ev.target;
+    try {
+      await goi('/api/cau-hinh', { ipCan: f.ipCan.value, congCan: Number(f.congCan.value), diaChiKho: f.diaChiKho.value,
+        chiNhanhId: trangThai && trangThai.nguoi && trangThai.nguoi.cacChiNhanh.length > 1 ? f.chiNhanhId.value : undefined });
+      baoChung('xong', 'Đã lưu cài đặt.'); await taiTrangThai();
+    } catch (err) { baoChung('loi', e(err.message)); }
+  };
+
+  for (const o of document.querySelectorAll('.chon-file-can')) {
+    o.onchange = async () => {
+      const tep = o.files[0]; if (!tep) return;
+      try {
+        const k = await goi('/api/file-tu-can', await tep.arrayBuffer(), 'tep');
+        baoChung('xong', `Đã ghi nhận file của cân: ${k.soHang} hàng, cân phiên bản ${e(k.phienBan)}.`);
+        await taiTrangThai();
+      } catch (err) { baoChung('loi', e(err.message)); }
+      o.value = '';
+    };
+  }
+
+  $('nut-thu-can').onclick = async () => {
+    const den = $('den-can'); den.className = 'den';
+    try {
+      const k = await goi('/api/thu-can');
+      den.className = 'den ' + (k.thongCan ? 'xanh' : 'do');
+      if (!k.thongCan) baoChung('loi', 'Không kết nối được cân. Cân có đang bật không? Máy tính có cùng WiFi với cân không? Địa chỉ cân có đổi không (trên cân: Prog → 4 → 2)?');
+    } catch (err) { den.className = 'den do'; baoChung('loi', e(err.message)); }
+  };
+  $('nut-mo-thu-muc').onclick = () => goi('/api/mo-thu-muc', {}).catch(err => baoChung('loi', e(err.message)));
+  $('nut-dang-xuat').onclick = async () => { try { await goi('/api/dang-xuat'); await taiTrangThai(); } catch (err) { baoChung('loi', e(err.message)); } };
+
+  taiTrangThai().then(() => $('nut-thu-can').click()).catch(err => baoChung('loi', e(err.message)));
+})();
+</script>
+</body>
+</html>

@@ -208,6 +208,7 @@ Vai kho **không** thấy dữ liệu CRM (khách hàng, đặt bàn, điểm) �
   - Bỏ phần `TIM` trước khi gửi, và giữ bản vừa gửi ở `Tài liệu › Beeftown Can › A_000.TMS` để lần sau tải lên màn Đồng bộ cân thay cho bước lưu ra USB.
   - Trang web không gửi thẳng được: cân nằm trong WiFi của quán, trình duyệt không mở được kết nối TCP. Muốn bấm một nút trên web là xong thì cần một chương trình chạy nền ở quán làm cầu nối — chưa làm.
   - Kiểm tra cú pháp và chạy thử với cân giả: `pwsh` dot-source file (`. ./Nap-Can-WiFi.ps1` chỉ nạp các hàm, không chạy).
+- **Beeftown Cân** (`can-app/`, file .exe): như chương trình trên nhưng lấy danh mục thẳng từ kho (đăng nhập tài khoản quản lý), dùng đúng `lapKeHoach` / `ghiFileCan`. Nó lấy địa chỉ Supabase và khóa anon ở `/kho-can.json` (`src/pages/kho-can.json.ts` — hai giá trị công khai theo thiết kế, không trả gì khác).
 
 **Ảnh chứng từ** (hóa đơn, hàng hỏng) lưu ở kho file riêng `kho-chung-tu` (`0021`) và đi qua Worker — ảnh điện thoại vài MB có thể vượt giới hạn CPU của gói Cloudflare Workers miễn phí. Nếu tải ảnh hay lỗi, chuyển sang gói trả phí.
 

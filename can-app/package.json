@@ -1,0 +1,18 @@
+{
+  "name": "beeftown-can",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Beeftown Cân: đưa danh mục kho xuống cân in tem TM-A qua WiFi (file .exe cho máy tính ở quán)",
+  "scripts": {
+    "thu": "bun test/thu.ts",
+    "chay": "bun src/main.ts --khong-mo",
+    "dong-goi": "bun scripts/dong-goi.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.58.0"
+  },
+  "devDependencies": {
+    "bun": "^1.4.2"
+  }
+}
