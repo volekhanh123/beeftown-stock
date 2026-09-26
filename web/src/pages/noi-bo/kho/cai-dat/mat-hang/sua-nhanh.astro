@@ -16,14 +16,57 @@ import Kho from '../../../../../layouts/Kho.astro';
 import BaoKho from '../../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../../lib/kho/trang.ts';
 import {
-  CHU_XOA, O_SUA_NHANH, docFormSuaNhanh, docMonSuaNhanh, giaTriO, laLoiPhienBan, locMonSuaNhanh, loiTheoMon, suaNhanhMatHang,
-  type MonSuaNhanh, type OSuaNhanh, type LoiDongSuaNhanh,
+  CHU_XOA, NHOM_CHUA_CO, O_SUA_NHANH_NB, docFormSuaNhanh, docMonSuaNhanh, giaTriO, laLoiPhienBan, locMonSuaNhanh, loiTheoMon,
+  suaNhanhMatHang, type MonSuaNhanh, type OSuaNhanh, type LoiDongSuaNhanh,
 } from '../../../../../lib/kho/sua-nhanh.ts';
-import { boDau, cauLoiKho, TEN_LOAI_MAT_HANG, type KetQua } from '../../../../../lib/kho/chung.ts';
+import { boDau, cauLoiKho, kqHai, nhanKho, TEN_LOAI_MAT_HANG_NB, type KetQua } from '../../../../../lib/kho/chung.ts';
+import { dichCau } from '../../../../../lib/cau-noi-bo.ts';
+import { dichNB } from '../../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('danh_muc')) return Astro.redirect('/noi-bo/kho/cai-dat', 302);
+const nn = k.nn;
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Sửa nhanh mặt hàng', en: 'Quick edit items' },
+  veMatHang: { vi: '← Mặt hàng', en: '← Items' },
+  thietLap: { vi: 'Thiết lập kho', en: 'Inventory setup' },
+  khongDoc: { vi: 'Không đọc được danh mục.', en: 'Could not read the catalog.' },
+  gt1: { vi: 'Sửa thẳng trong bảng rồi bấm ', en: 'Edit directly in the table, then press ' },
+  luuTatCa: { vi: 'Lưu tất cả', en: 'Save all' },
+  gt2: { vi: ' — chỉ những món có ô đổi mới được lưu.', en: ' — only items with changed cells are saved.' },
+  oTrong: { vi: 'Ô để trống = giữ nguyên.', en: 'An empty cell = keep as it is.' },
+  gt3: { vi: ' Muốn xóa hẳn một ô (vd bỏ mã cân) thì gõ dấu ', en: ' To clear a cell completely (e.g. remove a scale code), type ' },
+  gt4: { vi: 'Có một ô sai là chưa lưu món nào: chữ đỏ hiện ngay dưới món đó, sửa rồi bấm lại.',
+         en: 'If one cell is wrong, no item is saved: the red text appears right under that item — fix it and press again.' },
+  gt5: { vi: 'Giá vốn không sửa ở đây. Thêm món mới, đổi tên, đổi loại: dùng trang ',
+         en: 'Costs are not edited here. To add items, rename them or change their type, use the ' },
+  matHang: { vi: 'Mặt hàng', en: 'Items' },
+  gt6: { vi: '.', en: ' page.' },
+  locLoai: { vi: 'Lọc theo loại', en: 'Filter by type' },
+  tatCa: { vi: 'Tất cả', en: 'All' },
+  tang: { vi: 'Tảng', en: 'Primals' },
+  phanCat: { vi: 'Phần cắt', en: 'Cuts' },
+  phuPham: { vi: 'Phụ phẩm', en: 'By-products' },
+  locNhom: { vi: 'Lọc theo nhóm', en: 'Filter by category' },
+  moiNhom: { vi: 'Mọi nhóm', en: 'All categories' },
+  chuaCoNhom: { vi: 'Chưa có nhóm', en: 'No category' },
+  timVd: { vi: 'Tìm tên, mã, mã cân…', en: 'Search name, code, scale code…' },
+  tim: { vi: 'Tìm', en: 'Search' },
+  chuaCoMon: { vi: 'Chưa có mặt hàng nào — thêm ở ', en: 'No items yet — add them in ' },
+  khongKhop: { vi: 'Không có món nào khớp bộ lọc.', en: 'No items match the filter.' },
+  soMon: {
+    vi: (n: number, tong: number) => `${n} món${n < tong ? ` (trong ${tong})` : ''}. Kéo ngang để xem hết các cột.`,
+    en: (n: number, tong: number) => `${n} ${n === 1 ? 'item' : 'items'}${n < tong ? ` (of ${tong})` : ''}. Scroll sideways to see all the columns.`,
+  },
+  mon: { vi: 'Món', en: 'Item' },
+  khongDemGoi: { vi: ' · không đếm gói', en: ' · not counted in packs' },
+  khoLanh: { vi: 'Kho lạnh', en: 'Cold store' },
+  quay: { vi: 'Quầy', en: 'Counter' },
+  dangDung: { vi: 'Đang dùng', en: 'In use' },
+  ngungDung: { vi: 'Ngưng dùng', en: 'No longer used' },
+  boOVuaGo: { vi: 'Bỏ các ô vừa gõ', en: 'Discard what I typed' },
+});
 
 const q = Astro.url.searchParams;
 const loc = { loai: q.get('loai') ?? '', nhom: q.get('nhom') ?? '', tim: (q.get('tim') ?? '').trim() };
@@ -35,17 +78,16 @@ let chuGo = new Map<string, Partial<Record<OSuaNhanh, string>>>();
 const form = await docFormGui(Astro);
 if (form) {
   if (!k.chiNhanh) {
-    bao = { ok: false, cau: 'Chưa chọn được chi nhánh — tải lại trang.' };
+    bao = kqHai(false, { vi: 'Chưa chọn được chi nhánh — tải lại trang.', en: 'No branch selected — reload the page.' });
   } else {
     const doc = docFormSuaNhanh(form);
     const kq = await suaNhanhMatHang(k.client, k.chiNhanh.id, doc.dong);
     if (kq.ok) {
-      return chuyenHuong(Astro, duongNay, {
-        ok: true,
-        cau: kq.soLuu > 0 ? `Đã lưu ${kq.soLuu} món.` : kq.cau,
-      });
+      return chuyenHuong(Astro, duongNay, kq.soLuu > 0
+        ? kqHai(true, { vi: `Đã lưu ${kq.soLuu} món.`, en: `Saved ${kq.soLuu} ${kq.soLuu === 1 ? 'item' : 'items'}.` })
+        : { ok: true, cau: kq.cau, cauEn: kq.cauEn });
     }
-    bao = { ok: false, cau: kq.cau };
+    bao = { ok: false, cau: kq.cau, cauEn: kq.cauEn };
     loi = kq.loi;
     chuGo = doc.chuGo;
     // Dòng "người khác vừa sửa": bỏ chữ đã gõ, hiện số mới trong database.
@@ -55,7 +97,7 @@ if (form) {
 
 let mon: MonSuaNhanh[] = [];
 let loiDoc = k.loiDoc;
-try { mon = await docMonSuaNhanh(k.client); } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được danh mục.'); }
+try { mon = await docMonSuaNhanh(k.client); } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
 
 const ds = locMonSuaNhanh(mon, loc, boDau);
 const cacNhom = [...new Set(mon.map(m => m.nhom).filter((x): x is string => !!x))].sort((a, b) => a.localeCompare(b, 'vi'));
@@ -68,55 +110,55 @@ const linkLoc = (thay: Record<string, string>) => {
   const s = p.toString();
   return `/noi-bo/kho/cai-dat/mat-hang/sua-nhanh${s ? `?${s}` : ''}`;
 };
-const oCua = (m: MonSuaNhanh, khoa: OSuaNhanh) => chuGo.get(m.id)?.[khoa] ?? giaTriO(m, khoa);
+const oCua = (m: MonSuaNhanh, khoa: OSuaNhanh) => chuGo.get(m.id)?.[khoa] ?? giaTriO(m, khoa, nn);
 const coO = (m: MonSuaNhanh, khoa: OSuaNhanh) => !(khoa === 'noi_de_sau_pha' && m.loai === 'tang');
 const kieuNhap = (khoa: OSuaNhanh) => (khoa === 'ma_can' || khoa.endsWith('_goi') || khoa === 'han_dung_ngay' || khoa === 'gia_ban_kg' ? 'numeric' : 'decimal');
 ---
-<Kho k={k} huongDan="sua-nhanh" tieuDe="Sửa nhanh mặt hàng" rong>
-  <h1>Sửa nhanh mặt hàng</h1>
-  <p><a href="/noi-bo/kho/cai-dat/mat-hang">← Mặt hàng</a> · <a href="/noi-bo/kho/cai-dat">Thiết lập kho</a></p>
+<Kho k={k} huongDan="sua-nhanh" tieuDe={t.tieuDe} rong>
+  <h1>{t.tieuDe}</h1>
+  <p><a href="/noi-bo/kho/cai-dat/mat-hang">{t.veMatHang}</a> · <a href="/noi-bo/kho/cai-dat">{t.thietLap}</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
   {loiKhongDong.length > 0 && (
-    <div class="nb-bao loi" role="alert"><ul style="margin:0;padding-left:1.1rem">{loiKhongDong.map(l => <li>{l.cau}</li>)}</ul></div>
+    <div class="nb-bao loi" role="alert"><ul style="margin:0;padding-left:1.1rem">{loiKhongDong.map(l => <li>{dichCau(nn, l.cau)}</li>)}</ul></div>
   )}
 
   <div class="nb-dan" style="font-size:.9rem">
-    <p style="margin-top:0">Sửa thẳng trong bảng rồi bấm <strong>Lưu tất cả</strong> — chỉ những món có ô đổi mới được lưu.
-      <strong>Ô để trống = giữ nguyên.</strong> Muốn xóa hẳn một ô (vd bỏ mã cân) thì gõ dấu <strong>{CHU_XOA}</strong>.</p>
-    <p style="margin-bottom:0">Có một ô sai là chưa lưu món nào: chữ đỏ hiện ngay dưới món đó, sửa rồi bấm lại.
-      Giá vốn không sửa ở đây. Thêm món mới, đổi tên, đổi loại: dùng trang <a href="/noi-bo/kho/cai-dat/mat-hang">Mặt hàng</a>.</p>
+    <p style="margin-top:0">{t.gt1}<strong>{t.luuTatCa}</strong>{t.gt2}
+      <strong>{t.oTrong}</strong>{t.gt3}<strong>{CHU_XOA}</strong>.</p>
+    <p style="margin-bottom:0">{t.gt4}
+      {t.gt5}<a href="/noi-bo/kho/cai-dat/mat-hang">{t.matHang}</a>{t.gt6}</p>
   </div>
 
-  <nav class="kho-dh" aria-label="Lọc theo loại">
-    {[['', 'Tất cả'], ['tang', 'Tảng'], ['phan_cat', 'Phần cắt'], ['phu_pham', 'Phụ phẩm']].map(([v, t]) => (
-      <a href={linkLoc({ loai: v })} aria-current={loc.loai === v ? 'page' : undefined}>{t}</a>
+  <nav class="kho-dh" aria-label={t.locLoai}>
+    {[['', t.tatCa], ['tang', t.tang], ['phan_cat', t.phanCat], ['phu_pham', t.phuPham]].map(([v, ten]) => (
+      <a href={linkLoc({ loai: v })} aria-current={loc.loai === v ? 'page' : undefined}>{ten}</a>
     ))}
   </nav>
   {(cacNhom.length > 0) && (
-    <nav class="kho-dh" aria-label="Lọc theo nhóm">
-      <a href={linkLoc({ nhom: '' })} aria-current={!loc.nhom ? 'page' : undefined}>Mọi nhóm</a>
+    <nav class="kho-dh" aria-label={t.locNhom}>
+      <a href={linkLoc({ nhom: '' })} aria-current={!loc.nhom ? 'page' : undefined}>{t.moiNhom}</a>
       {cacNhom.map(n => <a href={linkLoc({ nhom: n })} aria-current={loc.nhom === n ? 'page' : undefined}>{n}</a>)}
-      {coChuaNhom && <a href={linkLoc({ nhom: '(chưa có)' })} aria-current={loc.nhom === '(chưa có)' ? 'page' : undefined}>Chưa có nhóm</a>}
+      {coChuaNhom && <a href={linkLoc({ nhom: NHOM_CHUA_CO })} aria-current={loc.nhom === NHOM_CHUA_CO ? 'page' : undefined}>{t.chuaCoNhom}</a>}
     </nav>
   )}
   <form method="GET" style="display:flex;gap:.5rem;margin-bottom:1rem">
     {loc.loai && <input type="hidden" name="loai" value={loc.loai} />}
     {loc.nhom && <input type="hidden" name="nhom" value={loc.nhom} />}
-    <label class="nb-o" style="flex:1;margin:0"><input type="search" name="tim" value={loc.tim} placeholder="Tìm tên, mã, mã cân…" aria-label="Tìm" /></label>
-    <button type="submit" class="nb-nut phu">Tìm</button>
+    <label class="nb-o" style="flex:1;margin:0"><input type="search" name="tim" value={loc.tim} placeholder={t.timVd} aria-label={t.tim} /></label>
+    <button type="submit" class="nb-nut phu">{t.tim}</button>
   </form>
 
   {ds.length === 0 ? (
-    <p class="nb-rong">{mon.length === 0 ? <>Chưa có mặt hàng nào — thêm ở <a href="/noi-bo/kho/cai-dat/mat-hang">Mặt hàng</a>.</> : 'Không có món nào khớp bộ lọc.'}</p>
+    <p class="nb-rong">{mon.length === 0 ? <>{t.chuaCoMon}<a href="/noi-bo/kho/cai-dat/mat-hang">{t.matHang}</a>.</> : t.khongKhop}</p>
   ) : (
     <form method="POST">
-      <p class="kho-phu">{ds.length} món{ds.length < mon.length ? ` (trong ${mon.length})` : ''}. Kéo ngang để xem hết các cột.</p>
+      <p class="kho-phu">{t.soMon(ds.length, mon.length)}</p>
       <div class="sn-khung">
         <table class="kho-bang sn-bang">
           <thead>
             <tr>
-              <th scope="col" class="sn-ten">Món</th>
-              {O_SUA_NHANH.map(o => <th scope="col">{o.ten}</th>)}
+              <th scope="col" class="sn-ten">{t.mon}</th>
+              {O_SUA_NHANH_NB.map(o => <th scope="col">{o.ten[nn]}</th>)}
             </tr>
           </thead>
           <tbody>
@@ -129,28 +171,29 @@ const kieuNhap = (khoa: OSuaNhanh) => (khoa === 'ma_can' || khoa.endsWith('_goi'
                       <input type="hidden" name="id" value={m.id} />
                       <input type="hidden" name={`pb_${m.id}`} value={m.phien_ban} />
                       <strong>{m.ten}</strong>
-                      <span class="kho-phu">{m.ma} · {TEN_LOAI_MAT_HANG[m.loai]}{m.nhom ? ` · ${m.nhom}` : ''}{!m.dem_goi ? ' · không đếm gói' : ''}</span>
+                      <span class="kho-phu">{m.ma} · {nhanKho(TEN_LOAI_MAT_HANG_NB, m.loai, nn)}{m.nhom ? ` · ${m.nhom}` : ''}{!m.dem_goi ? t.khongDemGoi : ''}</span>
                     </th>
-                    {O_SUA_NHANH.map(o => {
+                    {O_SUA_NHANH_NB.map(o => {
                       const ten = `${o.khoa}_${m.id}`;
+                      const tenCot = o.ten[nn];
                       const sai = !!l?.o.has(o.khoa);
                       if (!coO(m, o.khoa)) return <td class="kho-phu">—</td>;
                       return (
                         <td>
-                          <input type="hidden" name={`cu_${ten}`} value={giaTriO(m, o.khoa)} />
+                          <input type="hidden" name={`cu_${ten}`} value={giaTriO(m, o.khoa, nn)} />
                           {o.kieu === 'noi_de' ? (
-                            <select name={ten} aria-label={`${o.ten} — ${m.ten}`} class:list={{ 'sn-sai': sai }} aria-invalid={sai ? 'true' : undefined}>
-                              <option value="kho" selected={oCua(m, o.khoa) !== 'quay'}>Kho lạnh</option>
-                              <option value="quay" selected={oCua(m, o.khoa) === 'quay'}>Quầy</option>
+                            <select name={ten} aria-label={`${tenCot} — ${m.ten}`} class:list={{ 'sn-sai': sai }} aria-invalid={sai ? 'true' : undefined}>
+                              <option value="kho" selected={oCua(m, o.khoa) !== 'quay'}>{t.khoLanh}</option>
+                              <option value="quay" selected={oCua(m, o.khoa) === 'quay'}>{t.quay}</option>
                             </select>
                           ) : o.kieu === 'dang_dung' ? (
-                            <select name={ten} aria-label={`${o.ten} — ${m.ten}`} class:list={{ 'sn-sai': sai }} aria-invalid={sai ? 'true' : undefined}>
-                              <option value="co" selected={oCua(m, o.khoa) !== 'khong'}>Đang dùng</option>
-                              <option value="khong" selected={oCua(m, o.khoa) === 'khong'}>Ngưng dùng</option>
+                            <select name={ten} aria-label={`${tenCot} — ${m.ten}`} class:list={{ 'sn-sai': sai }} aria-invalid={sai ? 'true' : undefined}>
+                              <option value="co" selected={oCua(m, o.khoa) !== 'khong'}>{t.dangDung}</option>
+                              <option value="khong" selected={oCua(m, o.khoa) === 'khong'}>{t.ngungDung}</option>
                             </select>
                           ) : (
                             <input type="text" name={ten} value={oCua(m, o.khoa)} inputmode={kieuNhap(o.khoa)}
-                              aria-label={`${o.ten} — ${m.ten}`} class:list={{ 'sn-sai': sai }} aria-invalid={sai ? 'true' : undefined}
+                              aria-label={`${tenCot} — ${m.ten}`} class:list={{ 'sn-sai': sai }} aria-invalid={sai ? 'true' : undefined}
                               autocomplete="off" />
                           )}
                         </td>
@@ -159,8 +202,8 @@ const kieuNhap = (khoa: OSuaNhanh) => (khoa === 'ma_can' || khoa.endsWith('_goi'
                   </tr>
                   {l && (
                     <tr class="sn-dong-loi sn-cau">
-                      <td colspan={O_SUA_NHANH.length + 1}>
-                        <ul>{l.cau.map(c => <li>{c}</li>)}</ul>
+                      <td colspan={O_SUA_NHANH_NB.length + 1}>
+                        <ul>{l.cau.map(c => <li>{dichCau(nn, c)}</li>)}</ul>
                       </td>
                     </tr>
                   )}
@@ -171,8 +214,8 @@ const kieuNhap = (khoa: OSuaNhanh) => (khoa === 'ma_can' || khoa.endsWith('_goi'
         </table>
       </div>
       <div class="kho-thanh-nut dinh">
-        <button type="submit" class="nb-nut">Lưu tất cả</button>
-        <a class="nb-nut phu" href={linkLoc({})}>Bỏ các ô vừa gõ</a>
+        <button type="submit" class="nb-nut">{t.luuTatCa}</button>
+        <a class="nb-nut phu" href={linkLoc({})}>{t.boOVuaGo}</a>
       </div>
     </form>
   )}

@@ -7,6 +7,7 @@
 import TruongThem from './TruongThem.astro';
 import type { DinhNghiaTruong } from '../../lib/kho/truong-them.ts';
 import type { GiaTriFormMatHang } from '../../lib/kho/danh-muc.ts';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
 
 interface Props {
   gt: GiaTriFormMatHang;
@@ -15,96 +16,150 @@ interface Props {
   nutLuu: string;
 }
 const { gt, dinhNghia, coXemGia, nutLuu } = Astro.props;
+const t = dichNB(nnCua(Astro), {
+  ten: { vi: 'Tên mặt hàng *', en: 'Item name *' },
+  tenVd: { vi: 'Thăn ngoại cắt lát', en: 'Sliced striploin' },
+  loai: { vi: 'Loại *', en: 'Type *' },
+  loaiPhanCat: { vi: 'Phần cắt (bán ở quầy)', en: 'Cut (sold at the counter)' },
+  loaiTang: { vi: 'Tảng nhập', en: 'Primal (bought in)' },
+  loaiPhuPham: { vi: 'Phụ phẩm (mỡ, gân, vụn…)', en: 'By-product (fat, sinew, trimmings…)' },
+  ma: { vi: 'Mã', en: 'Code' },
+  maGoiY: { vi: 'Bỏ trống = tự đặt theo tên.', en: 'Leave empty to make one from the name.' },
+  nhom: { vi: 'Nhóm', en: 'Category' },
+  nhomGoiY: { vi: 'Để gom khi xem: Thăn, Vai, Sườn…', en: 'To group items when viewing: loin, chuck, ribs…' },
+  tenKhac: { vi: 'Tên khác', en: 'Other name' },
+  tenKhacGoiY: { vi: 'Tên tiếng Anh / tên trên hóa đơn NCC.', en: 'English name / name on the supplier invoice.' },
+  giaBan: { vi: 'Giá bán/kg ở quầy', en: 'Counter sale price/kg' },
+  giaBanGoiY: { vi: 'Dùng để chia giá vốn khi pha lóc.', en: 'Used to split cost in butchery.' },
+  giaBanVd: { vi: '650.000', en: '650,000' },
+  hanDung: { vi: 'Hạn dùng (ngày)', en: 'Use-by (days)' },
+  hanDungGoiY: { vi: 'Tính từ ngày nhập / ngày pha.', en: 'Counted from the receiving / butchery date.' },
+  baoTruoc: { vi: 'Báo trước hạn (ngày)', en: 'Warn before use-by (days)' },
+  baoTruocGoiY: { vi: 'Trống = theo cài đặt chung.', en: 'Empty = use the general setting.' },
+  maCan: { vi: 'Mã hàng trên cân', en: 'Item code on the scale' },
+  maCanGoiY: { vi: '5 số mã hàng cài trên cân Dahua (in trong mã vạch nhãn).', en: 'The 5-digit item code set on the Dahua scale (printed in the label barcode).' },
+  quayMin: { vi: 'Quầy tối thiểu (kg)', en: 'Counter minimum (kg)' },
+  quayMinGoiY: { vi: 'Quầy dưới mức này thì báo cần ra thêm hàng.', en: 'Below this, the counter is told to bring out more.' },
+  khoMin: { vi: 'Kho lạnh tối thiểu (kg)', en: 'Cold store minimum (kg)' },
+  khoMinGoiY: { vi: 'Dưới mức này thì gợi ý đặt hàng báo đỏ.', en: 'Below this, the order suggestion turns red.' },
+  khoMax: { vi: 'Kho lạnh tối đa (kg)', en: 'Cold store maximum (kg)' },
+  khoMaxGoiY: { vi: 'Gợi ý đặt hàng đặt cho đủ tới mức này. Trống = tự tính theo lượng dùng.',
+                en: 'Order suggestions top up to this level. Empty = worked out from usage.' },
+  maMisa: { vi: 'Mã hàng bên MISA', en: 'MISA item code' },
+  maMisaGoiY: { vi: 'Mã kế toán dùng trong MISA. Trống thì file MISA dùng mã ở trên và đánh dấu "thiếu mã".',
+                en: 'The code the accountant uses in MISA. If empty, the MISA file uses the code above and flags it as "missing code".' },
+  demTheo: { vi: 'Đếm theo', en: 'Count by' },
+  demGoi: { vi: 'Gói / tảng và kg', en: 'Packs / primals and kg' },
+  demKg: { vi: 'Chỉ kg (đổ chung khay)', en: 'Kg only (loose in a tray)' },
+  donVi: { vi: 'Tên đơn vị đếm', en: 'Counting unit name' },
+  donViVd: { vi: 'gói / tảng / khay', en: 'pack / primal / tray' },
+  xuLy: { vi: 'Khi là đầu ra pha lóc, mặc định', en: 'As a butchery output, by default' },
+  xuLyGoiY: { vi: 'Chọn lại được ở từng lần pha.', en: 'Can be changed in each butchery session.' },
+  xuLyNhapKho: { vi: 'Nhập kho / ra quầy', en: 'Into stock / to the counter' },
+  xuLyBep: { vi: 'Chuyển bếp dùng lại', en: 'To the kitchen for reuse' },
+  xuLyBo: { vi: 'Bỏ', en: 'Discard' },
+  sauPha: { vi: 'Sau pha để ở', en: 'After butchery goes to' },
+  sauPhaGoiY: { vi: 'Gói quét nhãn lúc pha lóc tự vào chỗ này.', en: 'Packs scanned during butchery go here automatically.' },
+  khoLanh: { vi: 'Kho lạnh', en: 'Cold store' },
+  quay: { vi: 'Quầy', en: 'Counter' },
+  thuHoi: { vi: 'Giá trị thu hồi/kg (phụ phẩm)', en: 'Recovery value/kg (by-products)' },
+  thuHoiGoiY: { vi: 'Phụ phẩm dùng lại được tính giá trị này, trừ vào giá vốn phần thịt. 0 = không tính.',
+                en: 'Reusable by-products are valued at this, taken off the cost of the meat. 0 = not counted.' },
+  thuTu: { vi: 'Thứ tự', en: 'Order' },
+  tinhTrang: { vi: 'Tình trạng', en: 'Status' },
+  dangDung: { vi: 'Đang dùng', en: 'In use' },
+  ngungDung: { vi: 'Ngừng dùng', en: 'No longer used' },
+});
 ---
 <form method="POST" class="nb-the">
   <input type="hidden" name="viec" value="luu" />
   {gt.id && <input type="hidden" name="id" value={gt.id} />}
 
   <div class="kho-luoi">
-    <label class="nb-o"><span>Tên mặt hàng *</span>
-      <input type="text" name="ten" required maxlength="120" value={gt.ten} placeholder="Thăn ngoại cắt lát" /></label>
-    <label class="nb-o"><span>Loại *</span>
+    <label class="nb-o"><span>{t.ten}</span>
+      <input type="text" name="ten" required maxlength="120" value={gt.ten} placeholder={t.tenVd} /></label>
+    <label class="nb-o"><span>{t.loai}</span>
       <select name="loai">
-        <option value="phan_cat" selected={gt.loai === 'phan_cat'}>Phần cắt (bán ở quầy)</option>
-        <option value="tang" selected={gt.loai === 'tang'}>Tảng nhập</option>
-        <option value="phu_pham" selected={gt.loai === 'phu_pham'}>Phụ phẩm (mỡ, gân, vụn…)</option>
+        <option value="phan_cat" selected={gt.loai === 'phan_cat'}>{t.loaiPhanCat}</option>
+        <option value="tang" selected={gt.loai === 'tang'}>{t.loaiTang}</option>
+        <option value="phu_pham" selected={gt.loai === 'phu_pham'}>{t.loaiPhuPham}</option>
       </select></label>
   </div>
 
   <div class="kho-luoi">
-    <label class="nb-o"><span>Mã</span>
-      <small>Bỏ trống = tự đặt theo tên.</small>
+    <label class="nb-o"><span>{t.ma}</span>
+      <small>{t.maGoiY}</small>
       <input type="text" name="ma" maxlength="30" value={gt.ma} autocapitalize="characters" spellcheck="false" placeholder="C-THANNGOAI" /></label>
-    <label class="nb-o"><span>Nhóm</span>
-      <small>Để gom khi xem: Thăn, Vai, Sườn…</small>
+    <label class="nb-o"><span>{t.nhom}</span>
+      <small>{t.nhomGoiY}</small>
       <input type="text" name="nhom" maxlength="40" value={gt.nhom} /></label>
-    <label class="nb-o"><span>Tên khác</span>
-      <small>Tên tiếng Anh / tên trên hóa đơn NCC.</small>
+    <label class="nb-o"><span>{t.tenKhac}</span>
+      <small>{t.tenKhacGoiY}</small>
       <input type="text" name="ten_phu" maxlength="120" value={gt.ten_phu} /></label>
   </div>
 
   <div class="kho-luoi">
-    <label class="nb-o"><span>Giá bán/kg ở quầy</span>
-      <small>Dùng để chia giá vốn khi pha lóc.</small>
-      <input type="text" inputmode="numeric" name="gia_ban_kg" value={gt.gia_ban_kg} placeholder="650.000" /></label>
-    <label class="nb-o"><span>Hạn dùng (ngày)</span>
-      <small>Tính từ ngày nhập / ngày pha.</small>
+    <label class="nb-o"><span>{t.giaBan}</span>
+      <small>{t.giaBanGoiY}</small>
+      <input type="text" inputmode="numeric" name="gia_ban_kg" value={gt.gia_ban_kg} placeholder={t.giaBanVd} /></label>
+    <label class="nb-o"><span>{t.hanDung}</span>
+      <small>{t.hanDungGoiY}</small>
       <input type="text" inputmode="numeric" name="han_dung_ngay" value={gt.han_dung_ngay} placeholder="3" /></label>
-    <label class="nb-o"><span>Báo trước hạn (ngày)</span>
-      <small>Trống = theo cài đặt chung.</small>
+    <label class="nb-o"><span>{t.baoTruoc}</span>
+      <small>{t.baoTruocGoiY}</small>
       <input type="text" inputmode="numeric" name="canh_bao_truoc_ngay" value={gt.canh_bao_truoc_ngay} /></label>
   </div>
 
   <div class="kho-luoi">
-    <label class="nb-o"><span>Mã hàng trên cân</span>
-      <small>5 số mã hàng cài trên cân Dahua (in trong mã vạch nhãn).</small>
+    <label class="nb-o"><span>{t.maCan}</span>
+      <small>{t.maCanGoiY}</small>
       <input type="text" inputmode="numeric" name="ma_can" maxlength="6" value={gt.ma_can} /></label>
-    <label class="nb-o"><span>Quầy tối thiểu (kg)</span>
-      <small>Quầy dưới mức này thì báo cần ra thêm hàng.</small>
+    <label class="nb-o"><span>{t.quayMin}</span>
+      <small>{t.quayMinGoiY}</small>
       <input type="text" inputmode="decimal" name="ton_toi_thieu_kg" value={gt.ton_toi_thieu_kg} /></label>
-    <label class="nb-o"><span>Kho lạnh tối thiểu (kg)</span>
-      <small>Dưới mức này thì gợi ý đặt hàng báo đỏ.</small>
+    <label class="nb-o"><span>{t.khoMin}</span>
+      <small>{t.khoMinGoiY}</small>
       <input type="text" inputmode="decimal" name="kho_toi_thieu_kg" value={gt.kho_toi_thieu_kg} /></label>
-    <label class="nb-o"><span>Kho lạnh tối đa (kg)</span>
-      <small>Gợi ý đặt hàng đặt cho đủ tới mức này. Trống = tự tính theo lượng dùng.</small>
+    <label class="nb-o"><span>{t.khoMax}</span>
+      <small>{t.khoMaxGoiY}</small>
       <input type="text" inputmode="decimal" name="kho_toi_da_kg" value={gt.kho_toi_da_kg} /></label>
-    <label class="nb-o"><span>Mã hàng bên MISA</span>
-      <small>Mã kế toán dùng trong MISA. Trống thì file MISA dùng mã ở trên và đánh dấu "thiếu mã".</small>
+    <label class="nb-o"><span>{t.maMisa}</span>
+      <small>{t.maMisaGoiY}</small>
       <input type="text" name="ma_misa" maxlength="40" value={gt.ma_misa ?? ''} autocapitalize="characters" /></label>
-    <label class="nb-o"><span>Đếm theo</span>
+    <label class="nb-o"><span>{t.demTheo}</span>
       <select name="dem_goi">
-        <option value="co" selected={gt.dem_goi}>Gói / tảng và kg</option>
-        <option value="khong" selected={!gt.dem_goi}>Chỉ kg (đổ chung khay)</option>
+        <option value="co" selected={gt.dem_goi}>{t.demGoi}</option>
+        <option value="khong" selected={!gt.dem_goi}>{t.demKg}</option>
       </select></label>
-    <label class="nb-o"><span>Tên đơn vị đếm</span>
-      <input type="text" name="don_vi_goi" maxlength="20" value={gt.don_vi_goi} placeholder="gói / tảng / khay" /></label>
+    <label class="nb-o"><span>{t.donVi}</span>
+      <input type="text" name="don_vi_goi" maxlength="20" value={gt.don_vi_goi} placeholder={t.donViVd} /></label>
   </div>
 
   <div class="kho-luoi">
-    <label class="nb-o"><span>Khi là đầu ra pha lóc, mặc định</span>
-      <small>Chọn lại được ở từng lần pha.</small>
+    <label class="nb-o"><span>{t.xuLy}</span>
+      <small>{t.xuLyGoiY}</small>
       <select name="xu_ly_mac_dinh">
-        <option value="nhap_kho" selected={gt.xu_ly_mac_dinh === 'nhap_kho'}>Nhập kho / ra quầy</option>
-        <option value="chuyen_bep" selected={gt.xu_ly_mac_dinh === 'chuyen_bep'}>Chuyển bếp dùng lại</option>
-        <option value="bo" selected={gt.xu_ly_mac_dinh === 'bo'}>Bỏ</option>
+        <option value="nhap_kho" selected={gt.xu_ly_mac_dinh === 'nhap_kho'}>{t.xuLyNhapKho}</option>
+        <option value="chuyen_bep" selected={gt.xu_ly_mac_dinh === 'chuyen_bep'}>{t.xuLyBep}</option>
+        <option value="bo" selected={gt.xu_ly_mac_dinh === 'bo'}>{t.xuLyBo}</option>
       </select></label>
-    <label class="nb-o"><span>Sau pha để ở</span>
-      <small>Gói quét nhãn lúc pha lóc tự vào chỗ này.</small>
+    <label class="nb-o"><span>{t.sauPha}</span>
+      <small>{t.sauPhaGoiY}</small>
       <select name="noi_de_sau_pha">
-        <option value="" selected={gt.noi_de_sau_pha !== 'quay'}>Kho lạnh</option>
-        <option value="quay" selected={gt.noi_de_sau_pha === 'quay'}>Quầy</option>
+        <option value="" selected={gt.noi_de_sau_pha !== 'quay'}>{t.khoLanh}</option>
+        <option value="quay" selected={gt.noi_de_sau_pha === 'quay'}>{t.quay}</option>
       </select></label>
     {coXemGia && (
-      <label class="nb-o"><span>Giá trị thu hồi/kg (phụ phẩm)</span>
-        <small>Phụ phẩm dùng lại được tính giá trị này, trừ vào giá vốn phần thịt. 0 = không tính.</small>
+      <label class="nb-o"><span>{t.thuHoi}</span>
+        <small>{t.thuHoiGoiY}</small>
         <input type="text" inputmode="numeric" name="gia_tri_thu_hoi_kg" value={gt.gia_tri_thu_hoi_kg} /></label>
     )}
-    <label class="nb-o"><span>Thứ tự</span>
+    <label class="nb-o"><span>{t.thuTu}</span>
       <input type="text" inputmode="numeric" name="thu_tu" value={gt.thu_tu} /></label>
-    <label class="nb-o"><span>Tình trạng</span>
+    <label class="nb-o"><span>{t.tinhTrang}</span>
       <select name="dang_dung">
-        <option value="co" selected={gt.dang_dung}>Đang dùng</option>
-        <option value="khong" selected={!gt.dang_dung}>Ngừng dùng</option>
+        <option value="co" selected={gt.dang_dung}>{t.dangDung}</option>
+        <option value="khong" selected={!gt.dang_dung}>{t.ngungDung}</option>
       </select></label>
   </div>
 
