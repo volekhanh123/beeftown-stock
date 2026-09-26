@@ -12,8 +12,7 @@
  * tiếng Anh:
  *   1. Màn kho và thư viện của chúng không còn chữ Việt nào ngoài cặp
  *      { vi, en } — trừ vài chỗ cố ý (CO_Y) và các file liệt kê ở KHONG_QUET
- *      kèm lý do. CHUA_LAM là các file chưa dịch xong: danh sách này chỉ được
- *      ngắn đi.
+ *      kèm lý do. File kho mới cũng bị quét ngay (không có danh sách chờ).
  *   2. Mọi câu raise exception của các migration kho đều có bản tiếng Anh.
  *   3. Khung kho có nút đổi tiếng; câu báo, số, câu sự kiện theo ngôn ngữ.
  */
@@ -81,7 +80,7 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     ".replace(/[đĐ]/g, 'd')",                                            // can-tma.ts: bỏ dấu cho mã tìm kiếm trên cân
     ".replace(/đ$|d$|vnd$/i, '')",              // đọc ô tiền: "450.000đ"
     ".replace(/đ/g, 'd').replace(/Đ/g, 'D')",   // bỏ dấu khi sinh mã / tìm không dấu
-    // ---- gói máy & iPOS: câu cho máy / log, không hiện trên màn nào ----
+    // gói máy & iPOS — câu cho máy / log, không hiện trên màn nào:
     // lib/kho/ipos-dong-bo.ts — câu đăng nhập tài khoản máy (chỉ vào log) và log của cron
     // cho người vận hành; test-kho-ipos-web đọc log nguyên văn ("chưa cài", "không đăng
     // nhập được"…). /chưa bật/ nhận câu từ chối của database (kho_ipos_bat_dau).
@@ -126,32 +125,17 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     "cau: 'Event 11 có hơn 500 dòng'",
     "canhBao.push(`${khongMa} dòng thiếu \"item_id\"`)",
     "canhBao.push(`${slHong} dòng thiếu hoặc sai \"quantity\"`)",
-    // ---- hết gói máy & iPOS ----
   ];
 
-  // CHƯA DỊCH XONG — mỗi gói xóa dòng của mình khi xong (giữ dòng đánh dấu).
-  // Danh sách này chỉ được ngắn đi.
-  const CHUA_LAM = [
-    // ---- gói nhập hàng: nhận hàng · nhập hàng · đặt hàng · duyệt ----
-    // ---- hết gói nhập hàng ----
-    // ---- gói vận hành: pha lóc · xuất · kiểm kê · quầy · quét · tồn ----
-    // ---- hết gói vận hành ----
-    // ---- gói công nợ: công nợ NCC, trả tiền, đối chiếu, trả hàng, MISA ----
-    // ---- hết gói công nợ ----
-    // ---- gói báo cáo: báo cáo, định lượng món, định mức bếp ----
-    // ---- hết gói báo cáo ----
-    // ---- gói danh mục: thiết lập, mặt hàng, NCC, vị trí, công thức, cân ----
-    // ---- hết gói danh mục ----
-    // ---- gói máy & iPOS: nhân viên, máy dùng chung, bán hàng iPOS ----
-    // ---- hết gói máy & iPOS ----
-    // ---- gói hướng dẫn: hướng dẫn, quy trình ----
-    // ---- hết gói hướng dẫn ----
-  ];
+  // Mọi file kho đã dịch xong. File kho mới (tự tìm ở trên) được quét ngay —
+  // không có danh sách "chưa dịch" nào để trốn. Chữ cố ý thì vào CO_Y, file
+  // không có chữ cho người dùng thì vào KHONG_QUET, kèm lý do.
+  const CHUA_LAM = [];
 
   const la = [...CHUA_LAM, ...Object.keys(KHONG_QUET)].filter(f => !TAT_CA.includes(f));
   ok('CHUA_LAM / KHONG_QUET chỉ nhắc file có thật', la.length === 0, la.join(', '));
   const quet = TAT_CA.filter(f => !CHUA_LAM.includes(f) && !(f in KHONG_QUET));
-  ok(`Đang kiểm ${quet.length}/${TAT_CA.length} file kho (còn ${CHUA_LAM.length} file chưa dịch)`, quet.length > 0);
+  ok(`Đang kiểm ${quet.length}/${TAT_CA.length} file kho, không còn file nào chưa dịch`, quet.length > 0 && CHUA_LAM.length === 0);
   for (const f of quet) {
     const sot = quetChuViet(doc(f), CO_Y);
     ok(f, sot.length === 0, sot.slice(0, 3).map(([n, d]) => `dòng ${n}: ${d.slice(0, 90)}`).join(' | '));
