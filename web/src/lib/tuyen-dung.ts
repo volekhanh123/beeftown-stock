@@ -43,6 +43,15 @@ export const LOAI_HOP_DONG = {
   thuc_tap:       { vi: 'Thực tập',       en: 'Internship', ko: '인턴' },
 } as const satisfies Record<string, BaThuTieng>;
 
+/**
+ * Tin chưa chốt loại hợp đồng: cột loai_hop_dong là null (0043). Không nằm
+ * trong LOAI_HOP_DONG vì bảng đó phải khớp đúng từng giá trị của enum
+ * (test-hop-dong-web) — "chưa chốt" là vắng một quyết định, không phải một
+ * loại hợp đồng. Form nội bộ gửi MA_CHUA_CHOT, server đổi thành null.
+ */
+export const MA_CHUA_CHOT = 'chua_chot';
+export const CHUA_CHOT: BaThuTieng = { vi: 'Chưa chốt', en: 'To be confirmed', ko: '미정' };
+
 /** Lương trả theo giờ hay theo tháng — phần đuôi của "25.000 đ/giờ". */
 export const DON_VI_LUONG = {
   gio:   { vi: 'giờ',   en: 'hour',  ko: '시간' },
