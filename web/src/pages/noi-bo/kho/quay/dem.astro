@@ -34,7 +34,11 @@ import {
   docPhieuQuay, docMonDaQuet, docDongDemQuay, quetMotLuot, suaQuet, hetHangVaGui, monKhongThay,
   type PhieuDemQuay, type MonDaQuet, type DongDemQuay,
 } from '../../../../lib/kho/dem-quay.ts';
-import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, homNayVn, laUuid, type KetQua } from '../../../../lib/kho/chung.ts';
+import {
+  cauLoiKho, dinhDangKg, dinhDangThoiDiem, homNayVn, kqHai, laUuid, type HaiThuTieng, type KetQua,
+} from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -42,6 +46,88 @@ if (!k.duoc('van_hanh')) return Astro.redirect('/noi-bo/kho', 302);
 if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const chiNhanhId = k.chiNhanh.id;
 const DUONG = '/noi-bo/kho/quay/dem';
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+
+/** Câu báo dựng ở trang (KetQua cần cả hai thứ tiếng — đi qua cookie khi chuyển trang). */
+const CAU = {
+  mangDut: {
+    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
+    en: 'Could not read the submitted data — the connection may have dropped. Try sending again.',
+  },
+  xemLai: { vi: 'Xem lại trước khi gửi quản lý.', en: 'Check before sending to the manager.' },
+  viecSai: { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+} satisfies Record<string, HaiThuTieng>;
+
+const t = dichNB(nn, {
+  khongDocQuay: { vi: 'Không đọc được danh sách quầy.', en: 'Could not read the list of counters.' },
+  khongDocPhieu: { vi: 'Không đọc được phiếu đếm của quầy.', en: 'Could not read the counter count sheet.' },
+  gioNgay: { vi: (gio: string, ngay: string) => `${gio} ngày ${ngay}`, en: (gio: string, ngay: string) => `${gio} on ${ngay}` },
+  tieuDe: { vi: 'Đếm quầy', en: 'Counter count' },
+  h1: { vi: 'Đếm quầy cuối ngày', en: 'End-of-day counter count' },
+  chuaCoQuay: {
+    vi: 'Chi nhánh chưa có quầy nào đang dùng. Báo quản lý thêm quầy trong Thiết lập kho.',
+    en: 'This branch has no counter in use. Ask a manager to add one in Setup.',
+  },
+  chonQuay: { vi: 'Chọn quầy cần đếm.', en: 'Choose the counter to count.' },
+  bamDem: { vi: 'Bấm để đếm', en: 'Press to count' },
+  daGui: {
+    vi: (luc: string | null) => `Đã gửi${luc !== null ? ` lúc ${luc}` : ''} — cảm ơn!`,
+    en: (luc: string | null) => `Sent${luc !== null ? ` at ${luc}` : ''} — thank you!`,
+  },
+  daToiQl: {
+    vi: (quay: string) => `Số đếm ${quay} đã tới quản lý. Cần đếm lại thì quản lý trả về kèm lời nhắn, màn này sẽ mở lại để quét.`,
+    en: (quay: string) => `The count for ${quay} has reached the manager. If a recount is needed, the manager sends it back with a note and this screen opens again for scanning.`,
+  },
+  veQuay: { vi: 'Về trang Quầy', en: 'Back to Counter home' },
+  demTheoLo: {
+    vi: (quay: string, so: string) => `${quay} đang có phiếu ${so} đếm từng lô — không quét cộng dồn được.`,
+    en: (quay: string, so: string) => `${quay} has sheet ${so} counting lot by lot — running scans are not possible.`,
+  },
+  moPhieu: { vi: (so: string) => `Mở phiếu ${so}`, en: (so: string) => `Open sheet ${so}` },
+  chuaDocNhan: { vi: 'Chưa đọc được nhãn cân', en: 'Scale labels cannot be read yet' },
+  chuaDocNhanDuoi: { vi: ' — báo quản lý bật mục Mã vạch trong Thiết lập kho.', en: ' — ask a manager to turn on Barcodes in Setup.' },
+  demTay: { vi: 'Trong lúc chờ, đếm bằng tay ở trang Kiểm kê.', en: 'Meanwhile, count by hand on the Stocktake page.' },
+  moKiemKe: { vi: 'Mở Kiểm kê', en: 'Open Stocktake' },
+  daQuetTom: {
+    vi: (quay: string, nhan: number, mon: number) => `${quay} · đã quét ${nhan} nhãn, ${mon} món.`,
+    en: (quay: string, nhan: number, mon: number) => `${quay} · ${nhan} ${s(nhan, 'label', 'labels')} scanned, ${mon} ${s(mon, 'item', 'items')}.`,
+  },
+  khongThayGoi: { vi: 'Những món này không thấy gói nào — đã bán hết?', en: 'No packs found for these items — sold out?' },
+  conGoi: { vi: 'Còn gói nào thì bấm "Chưa, còn hàng" và quét tiếp các gói đó.', en: 'If any packs are left, press "No, some left" and scan them.' },
+  dungBanHet: { vi: 'Đúng, đã bán hết — Gửi quản lý', en: 'Yes, sold out — Send to manager' },
+  chuaConHang: { vi: 'Chưa, còn hàng — quét tiếp', en: 'No, some left — keep scanning' },
+  duSo: { vi: 'Món nào cũng đã có số.', en: 'Every item has a count.' },
+  guiDeDuyet: { vi: 'Gửi để quản lý xem và duyệt.', en: 'Send it for the manager to check and approve.' },
+  guiQl: { vi: 'Gửi quản lý', en: 'Send to manager' },
+  quetThem: { vi: 'Quét thêm', en: 'Scan more' },
+  doiQuay: { vi: 'đổi quầy', en: 'change counter' },
+  daDemHomNay: {
+    vi: (so: string) => `hôm nay đã đếm một lần (${so}, quản lý đã duyệt)`,
+    en: (so: string) => `already counted once today (${so}, approved by the manager)`,
+  },
+  quanLyTraVe: { vi: 'Quản lý trả về:', en: 'Sent back by the manager:' },
+  congVaoDem: { vi: 'Cộng vào số đếm', en: 'Add to count' },
+  quetGoiY: {
+    vi: 'Quét nhãn từng gói đang có ở quầy. Quét được bao nhiêu thì bấm nút dưới — số được CỘNG thêm, quét làm nhiều đợt cũng được.',
+    en: 'Scan the label of each pack at the counter, then press the button below — the count is ADDED on, so you can scan in several rounds.',
+  },
+  chuaQuet: { vi: 'Chưa quét gói nào', en: 'No packs scanned yet' },
+  moPhieuDau: { vi: ' — lượt quét đầu tiên sẽ mở phiếu đếm', en: ' — the first scan opens the count sheet' },
+  daQuetNhanMon: {
+    vi: (nhan: number, mon: number) => `Đã quét ${nhan} nhãn · ${mon} món`,
+    en: (nhan: number, mon: number) => `${nhan} ${s(nhan, 'label', 'labels')} scanned · ${mon} ${s(mon, 'item', 'items')}`,
+  },
+  ghiTay: { vi: (n: number, dv: string) => `có ${n} ${dv} ghi tay`, en: (n: number, dv: string) => `${n} ${dv} typed in` },
+  botMot: {
+    vi: (dv: string | null, ten: string) => `Bớt 1 ${dv ?? 'nhãn'} ${ten}`,
+    en: (dv: string | null, ten: string) => `Remove 1 ${dv ?? 'label'} of ${ten}`,
+  },
+  boLuot: { vi: 'Bỏ lượt vừa quét', en: 'Undo the last scan' },
+  quetXong: { vi: 'Quét xong', en: 'Done scanning' },
+  matNhan: { vi: 'Gói mất nhãn, hoặc cần ghi tay? ', en: 'Pack without a label, or need to type a number? ' },
+  congVoiQuet: { vi: ' — số ghi tay được cộng với số đã quét.', en: ' — typed numbers are added to the scanned ones.' },
+});
 
 let bao: KetQua | null = k.bao;
 let loiDoc = k.loiDoc;
@@ -52,12 +138,12 @@ try {
   quay = vt.filter(v => v.loai === 'quay' && v.dang_dung);
   caiDat = cd;
 } catch (e) {
-  loiDoc = cauLoiKho(e, 'Không đọc được danh sách quầy.');
+  loiDoc = cauLoiKho(e, t.khongDocQuay);
 }
 
 const form = await docFormGui(Astro);
 if (Astro.request.method === 'POST' && !form) {
-  bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
+  bao = kqHai(false, CAU.mangDut);
 }
 // Quầy đang chọn: form gửi lên, hoặc ?vi_tri=, hoặc quầy duy nhất.
 const viTriChon = String(form?.get('vi_tri_id') ?? Astro.url.searchParams.get('vi_tri') ?? '');
@@ -75,22 +161,23 @@ if (form && quayChon) {
   // ma_gui_mo cố định theo trang, nên gửi lại không mở hai phiếu.
   if ((viec === 'quet' || viec === 'xong') && !laUuid(id)) {
     const mo = await batDauKiemKe(k.client, chiNhanhId, quayChon.id, 'theo_mat_hang', String(form.get('ma_gui_mo') ?? ''));
-    if (!mo.ok || !mo.id) return chuyenHuong(Astro, veQuay(), { ok: false, cau: mo.cau });
+    if (!mo.ok || !mo.id) return chuyenHuong(Astro, veQuay(), { ok: false, cau: mo.cau, cauEn: mo.cauEn });
     id = mo.id;
   }
   if (viec === 'quet') {
     const maGui = String(form.get('ma_gui') ?? '');
     const kq = await quetMotLuot(k.client, id, maGui, String(form.get('ma_quet') ?? ''));
+    const loiEn = (kq.loiNhanEn ?? []).join(' · ');
     if (kq.ok) {
       const loi = kq.loiNhan ?? [];
       // Có nhãn không cộng được: báo đỏ để người đếm để ý (quét lại / báo quản lý).
       return chuyenHuong(Astro, veQuay(), loi.length > 0
-        ? { ok: false, cau: `${kq.cau} Chưa cộng — ${loi.join(' · ')}` }
+        ? kqHai(false, { vi: `${kq.cau} Chưa cộng — ${loi.join(' · ')}`, en: `${kq.cauEn ?? dichCau('en', kq.cau)} Not added — ${loiEn}` })
         : kq);
     }
     if (kq.loiNhan && kq.loiNhan.length > 0) {
       // Không nhãn nào cộng được: ô quét toàn nhãn hỏng / lạ — đi tiếp, không giữ lại.
-      return chuyenHuong(Astro, veQuay(), { ok: false, cau: `Chưa cộng nhãn nào — ${kq.loiNhan.join(' · ')}` });
+      return chuyenHuong(Astro, veQuay(), kqHai(false, { vi: `Chưa cộng nhãn nào — ${kq.loiNhan.join(' · ')}`, en: `No labels added — ${loiEn}` }));
     }
     // Lỗi mạng / database: giữ các mã trong ô và ma_gui — gửi lại không cộng đôi.
     bao = kq;
@@ -101,13 +188,13 @@ if (form && quayChon) {
       viec === 'bo_luot' ? 'lan_cuoi' : 'bot_mot', String(form.get('mat_hang_id') ?? '') || null);
     return chuyenHuong(Astro, veQuay(), kq);
   } else if (viec === 'xong') {
-    return chuyenHuong(Astro, veQuay('&buoc=xong'), { ok: true, cau: 'Xem lại trước khi gửi quản lý.' });
+    return chuyenHuong(Astro, veQuay('&buoc=xong'), kqHai(true, CAU.xemLai));
   } else if (viec === 'gui') {
     const pb = Number(String(form.get('phien_ban') ?? ''));
     const kq = await hetHangVaGui(k.client, id, Number.isInteger(pb) ? pb : -1, form.get('con_mon') === '1');
     return chuyenHuong(Astro, kq.ok ? veQuay() : veQuay('&buoc=xong'), kq);
   } else {
-    bao = { ok: false, cau: 'Việc không hợp lệ.' };
+    bao = kqHai(false, CAU.viecSai);
   }
 }
 
@@ -129,7 +216,7 @@ if (quayChon && !loiDoc) {
       ]);
     }
   } catch (e) {
-    loiDoc = cauLoiKho(e, 'Không đọc được phiếu đếm của quầy.');
+    loiDoc = cauLoiKho(e, t.khongDocPhieu);
   }
 }
 const dangDem = mo?.trang_thai === 'dang_dem' && mo.kieu === 'theo_mat_hang';
@@ -139,32 +226,32 @@ const chuaBatMaVach = !caiDat?.mau_ma_vach;
 const homNay = homNayVn();
 /** "21:42" nếu hôm nay, "21:42 ngày 24/09" nếu hôm khác. */
 const gioLuc = (ts: string | null) => {
-  const t = dinhDangThoiDiem(ts);
-  if (t === '—') return '';
-  const [ngay, gio] = t.split(' ');
-  return ngay === `${homNay.slice(8, 10)}/${homNay.slice(5, 7)}` ? gio : `${gio} ngày ${ngay}`;
+  const tg = dinhDangThoiDiem(ts);
+  if (tg === '—') return '';
+  const [ngay, gio] = tg.split(' ');
+  return ngay === `${homNay.slice(8, 10)}/${homNay.slice(5, 7)}` ? gio : t.gioNgay(gio, ngay);
 };
 const soMon = (m: MonDaQuet) => m.dem_goi
   ? `${m.so_goi_dem ?? 0} ${m.don_vi_goi}`
-  : `${dinhDangKg(m.so_kg_dem)} kg`;
+  : `${dinhDangKg(m.so_kg_dem, nn)} kg`;
 const idPhieu = dangDem ? mo!.id : '';
 ---
-<Kho k={k} tieuDe="Đếm quầy" huongDan="dem-quay">
-  <h1>Đếm quầy cuối ngày</h1>
+<Kho k={k} tieuDe={t.tieuDe} huongDan="dem-quay">
+  <h1>{t.h1}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {quay.length === 0 ? (
-    <p class="nb-rong">Chi nhánh chưa có quầy nào đang dùng. Báo quản lý thêm quầy trong Thiết lập kho.</p>
+    <p class="nb-rong">{t.chuaCoQuay}</p>
   ) : !quayChon ? (
     // ===================================================================
     // CHỌN QUẦY (chi nhánh có nhiều quầy)
     // ===================================================================
     <>
-      <p class="nb-dan">Chọn quầy cần đếm.</p>
+      <p class="nb-dan">{t.chonQuay}</p>
       <div class="kho-o-so-luoi">
         {quay.map(v => (
           <a class="kho-o-so" href={`${DUONG}?vi_tri=${v.id}`}>
-            <b style="font-size:1.2rem">{v.ten}</b><span>Bấm để đếm</span>
+            <b style="font-size:1.2rem">{v.ten}</b><span>{t.bamDem}</span>
           </a>
         ))}
       </div>
@@ -174,29 +261,29 @@ const idPhieu = dangDem ? mo!.id : '';
     // ĐÃ GỬI — cảm ơn, không sổ, không chênh
     // ===================================================================
     <div class="nb-the">
-      <p style="margin:0;font-size:1.3rem"><strong>Đã gửi{mo.gui_luc ? ` lúc ${gioLuc(mo.gui_luc)}` : ''} — cảm ơn!</strong></p>
+      <p style="margin:0;font-size:1.3rem"><strong>{t.daGui(mo.gui_luc ? gioLuc(mo.gui_luc) : null)}</strong></p>
       <p class="nb-dan" style="margin:.5rem 0 0">
-        Số đếm {quayChon.ten} đã tới quản lý. Cần đếm lại thì quản lý trả về kèm lời nhắn, màn này sẽ mở lại để quét.
+        {t.daToiQl(quayChon.ten)}
       </p>
-      <p style="margin:1rem 0 0"><a class="nb-nut phu" href="/noi-bo/kho">Về trang Quầy</a></p>
+      <p style="margin:1rem 0 0"><a class="nb-nut phu" href="/noi-bo/kho">{t.veQuay}</a></p>
     </div>
   ) : mo && mo.kieu === 'theo_lo' ? (
     <div class="nb-the">
-      <p style="margin:0">{quayChon.ten} đang có phiếu {mo.so_phieu} đếm từng lô — không quét cộng dồn được.</p>
-      <p style="margin:1rem 0 0"><a class="nb-nut" href={`/noi-bo/kho/kiem-ke/${mo.id}`}>Mở phiếu {mo.so_phieu}</a></p>
+      <p style="margin:0">{t.demTheoLo(quayChon.ten, mo.so_phieu)}</p>
+      <p style="margin:1rem 0 0"><a class="nb-nut" href={`/noi-bo/kho/kiem-ke/${mo.id}`}>{t.moPhieu(mo.so_phieu)}</a></p>
     </div>
   ) : chuaBatMaVach ? (
     <div class="nb-the">
-      <p style="margin:0"><strong>Chưa đọc được nhãn cân</strong> — báo quản lý bật mục Mã vạch trong Thiết lập kho.</p>
-      <p class="nb-dan" style="margin:.5rem 0 0">Trong lúc chờ, đếm bằng tay ở trang Kiểm kê.</p>
-      <p style="margin:1rem 0 0"><a class="nb-nut" href="/noi-bo/kho/kiem-ke">Mở Kiểm kê</a></p>
+      <p style="margin:0"><strong>{t.chuaDocNhan}</strong>{t.chuaDocNhanDuoi}</p>
+      <p class="nb-dan" style="margin:.5rem 0 0">{t.demTay}</p>
+      <p style="margin:1rem 0 0"><a class="nb-nut" href="/noi-bo/kho/kiem-ke">{t.moKiemKe}</a></p>
     </div>
   ) : buocXong && dangDem ? (
     // ===================================================================
     // QUÉT XONG — món không thấy gói nào = đã bán hết?
     // ===================================================================
     <>
-      <p class="nb-dan">{quayChon.ten} · đã quét {tongNhan} nhãn, {mon.length} món.</p>
+      <p class="nb-dan">{t.daQuetTom(quayChon.ten, tongNhan, mon.length)}</p>
       <form method="POST" action={DUONG} class="nb-the">
         <input type="hidden" name="vi_tri_id" value={quayChon.id} />
         <input type="hidden" name="kiem_ke_id" value={idPhieu} />
@@ -204,23 +291,23 @@ const idPhieu = dangDem ? mo!.id : '';
         {khongThay.length > 0 ? (
           <>
             <input type="hidden" name="con_mon" value="1" />
-            <h2 style="margin-top:0">Những món này không thấy gói nào — đã bán hết?</h2>
+            <h2 style="margin-top:0">{t.khongThayGoi}</h2>
             <ul style="font-size:1.1rem;line-height:1.7;margin:.25rem 0 1rem;padding-left:1.25rem">
               {khongThay.map(d => <li>{d.ten}</li>)}
             </ul>
-            <p class="nb-dan">Còn gói nào thì bấm "Chưa, còn hàng" và quét tiếp các gói đó.</p>
+            <p class="nb-dan">{t.conGoi}</p>
             <div class="kho-thanh-nut">
-              <button type="submit" name="viec" value="gui" class="nb-nut">Đúng, đã bán hết — Gửi quản lý</button>
-              <a class="nb-nut phu" href={veQuay()}>Chưa, còn hàng — quét tiếp</a>
+              <button type="submit" name="viec" value="gui" class="nb-nut">{t.dungBanHet}</button>
+              <a class="nb-nut phu" href={veQuay()}>{t.chuaConHang}</a>
             </div>
           </>
         ) : (
           <>
-            <h2 style="margin-top:0">Món nào cũng đã có số.</h2>
-            <p class="nb-dan">Gửi để quản lý xem và duyệt.</p>
+            <h2 style="margin-top:0">{t.duSo}</h2>
+            <p class="nb-dan">{t.guiDeDuyet}</p>
             <div class="kho-thanh-nut">
-              <button type="submit" name="viec" value="gui" class="nb-nut">Gửi quản lý</button>
-              <a class="nb-nut phu" href={veQuay()}>Quét thêm</a>
+              <button type="submit" name="viec" value="gui" class="nb-nut">{t.guiQl}</button>
+              <a class="nb-nut phu" href={veQuay()}>{t.quetThem}</a>
             </div>
           </>
         )}
@@ -233,11 +320,11 @@ const idPhieu = dangDem ? mo!.id : '';
     <>
       <p class="nb-dan">
         <strong>{quayChon.ten}</strong>
-        {quay.length > 1 && <>{' · '}<a href={DUONG}>đổi quầy</a></>}
-        {!mo && daDuyet?.ngay_kiem === homNay && <>{' · '}hôm nay đã đếm một lần ({daDuyet.so_phieu}, quản lý đã duyệt)</>}
+        {quay.length > 1 && <>{' · '}<a href={DUONG}>{t.doiQuay}</a></>}
+        {!mo && daDuyet?.ngay_kiem === homNay && <>{' · '}{t.daDemHomNay(daDuyet.so_phieu)}</>}
       </p>
       {mo?.ly_do && (
-        <div class="nb-bao luu-y"><p><strong>Quản lý trả về:</strong> {mo.ly_do}</p></div>
+        <div class="nb-bao luu-y"><p><strong>{t.quanLyTraVe}</strong> {mo.ly_do}</p></div>
       )}
 
       <form method="POST" action={DUONG} class="nb-the">
@@ -245,22 +332,22 @@ const idPhieu = dangDem ? mo!.id : '';
         <input type="hidden" name="kiem_ke_id" value={idPhieu} />
         <input type="hidden" name="ma_gui" value={maGuiLai ?? crypto.randomUUID()} />
         <input type="hidden" name="ma_gui_mo" value={crypto.randomUUID()} />
-        <QuetMa nhan="Cộng vào số đếm" tuFocus giaTri={maConLai}
-          goiY="Quét nhãn từng gói đang có ở quầy. Quét được bao nhiêu thì bấm nút dưới — số được CỘNG thêm, quét làm nhiều đợt cũng được." />
+        <QuetMa nhan={t.congVaoDem} tuFocus giaTri={maConLai}
+          goiY={t.quetGoiY} />
       </form>
 
       {mon.length === 0 ? (
-        <p class="nb-rong">Chưa quét gói nào{mo ? '' : ' — lượt quét đầu tiên sẽ mở phiếu đếm'}.</p>
+        <p class="nb-rong">{t.chuaQuet}{mo ? '' : t.moPhieuDau}.</p>
       ) : (
         <>
-          <p style="margin:1rem 0 .5rem;font-size:1.1rem"><strong>Đã quét {tongNhan} nhãn · {mon.length} món</strong></p>
+          <p style="margin:1rem 0 .5rem;font-size:1.1rem"><strong>{t.daQuetNhanMon(tongNhan, mon.length)}</strong></p>
           {mon.map(m => (
             <div class="kho-dong-hang" style="display:flex;align-items:center;gap:.75rem">
               <div style="flex:1;min-width:0">
                 <strong>{m.ten}</strong><br />
                 <span style="font-size:1.15rem">{soMon(m)}</span>
-                {m.dem_goi && m.so_kg_dem !== null && <span class="kho-phu">{' · '}{dinhDangKg(m.so_kg_dem)} kg</span>}
-                {m.so_goi_them > 0 && <><br /><span class="kho-phu">có {m.so_goi_them} {m.don_vi_goi} ghi tay</span></>}
+                {m.dem_goi && m.so_kg_dem !== null && <span class="kho-phu">{' · '}{dinhDangKg(m.so_kg_dem, nn)} kg</span>}
+                {m.so_goi_them > 0 && <><br /><span class="kho-phu">{t.ghiTay(m.so_goi_them, m.don_vi_goi)}</span></>}
               </div>
               {(m.so_nhan > 0 || m.so_goi_them > 0) && (
                 <form method="POST" action={DUONG}>
@@ -269,7 +356,7 @@ const idPhieu = dangDem ? mo!.id : '';
                   <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
                   <input type="hidden" name="mat_hang_id" value={m.mat_hang_id} />
                   <button type="submit" name="viec" value="bot_mot" class="nb-nut phu" style="min-width:64px"
-                    aria-label={`Bớt 1 ${m.dem_goi ? m.don_vi_goi : 'nhãn'} ${m.ten}`}>−1</button>
+                    aria-label={t.botMot(m.dem_goi ? m.don_vi_goi : null, m.ten)}>−1</button>
                 </form>
               )}
             </div>
@@ -278,7 +365,7 @@ const idPhieu = dangDem ? mo!.id : '';
             <input type="hidden" name="vi_tri_id" value={quayChon.id} />
             <input type="hidden" name="kiem_ke_id" value={idPhieu} />
             <input type="hidden" name="ma_gui" value={crypto.randomUUID()} />
-            <button type="submit" name="viec" value="bo_luot" class="nb-nut phu">Bỏ lượt vừa quét</button>
+            <button type="submit" name="viec" value="bo_luot" class="nb-nut phu">{t.boLuot}</button>
           </form>
         </>
       )}
@@ -287,12 +374,12 @@ const idPhieu = dangDem ? mo!.id : '';
         <input type="hidden" name="vi_tri_id" value={quayChon.id} />
         <input type="hidden" name="kiem_ke_id" value={idPhieu} />
         <input type="hidden" name="ma_gui_mo" value={crypto.randomUUID()} />
-        <button type="submit" name="viec" value="xong" class="nb-nut">Quét xong</button>
+        <button type="submit" name="viec" value="xong" class="nb-nut">{t.quetXong}</button>
       </form>
 
       {mo && (
         <p class="nb-dan" style="margin-top:1rem">
-          Gói mất nhãn, hoặc cần ghi tay? <a href={`/noi-bo/kho/kiem-ke/${mo.id}`}>Mở phiếu {mo.so_phieu}</a> — số ghi tay được cộng với số đã quét.
+          {t.matNhan}<a href={`/noi-bo/kho/kiem-ke/${mo.id}`}>{t.moPhieu(mo.so_phieu)}</a>{t.congVoiQuet}
         </p>
       )}
     </>

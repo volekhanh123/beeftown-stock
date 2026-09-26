@@ -15,11 +15,18 @@
  *
  * Nhân viên quầy KHÔNG thấy tiền, sổ hay chênh lệch: đọc bảng kho_kiem_ke_dong
  * (chỉ số đếm) và kho_kiem_ke_quet (từng nhãn đã quét) — không đọc view nào có giá.
+ *
+ * Hai thứ tiếng: câu báo có cauEn (lỗi từng nhãn: loiNhanEn); hàm dựng câu
+ * nhận thêm nn. Câu database lồng trong câu báo thì bản tiếng Anh tra dichCau.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, laUuid, type KetQua } from './chung.ts';
+import { cauLoiKho, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { tachDanhSachMa } from './ma-vach.ts';
+import { dichCau } from '../cau-noi-bo.ts';
+
+/** Đơn vị gói mặc định của cột kho_mat_hang.don_vi_goi (0019) — dữ liệu, chỉ dùng khi không đọc được món. */
+const GOI_MAC_DINH: HaiThuTieng = { vi: 'gói', en: 'packs' };
 
 /** Tối đa nhãn một lượt gửi (kho_quet_kiem_ke chặn ở 300). */
 export const TOI_DA_MOT_LUOT = 300;
@@ -61,12 +68,17 @@ export function maTuO(noiDung: string): string[] {
 
 /**
  * Lỗi từng nhãn database trả về → vài câu ngắn cho nhân viên. Gom các nhãn
- * cùng một lỗi lại: "3 nhãn: Sai số kiểm tra — quét lại".
+ * cùng một lỗi lại: "3 nhãn: Sai số kiểm tra — quét lại". Tiếng Anh: câu
+ * database tra dichCau.
  */
-export function cauLoiNhan(loi: { ma: string; loi: string }[]): string[] {
+export function cauLoiNhan(loi: { ma: string; loi: string }[], nn: NgonNguNB = 'vi'): string[] {
   const dem = new Map<string, number>();
   for (const l of loi) dem.set(l.loi, (dem.get(l.loi) ?? 0) + 1);
-  return [...dem].map(([cau, n]) => (n > 1 ? `${n} nhãn: ${cau}` : `1 nhãn: ${cau}`));
+  // n luôn ≥ 1 (đếm từ danh sách lỗi).
+  return [...dem].map(([cau, n]) => ({
+    vi: `${n} nhãn: ${cau}`,
+    en: `${n} ${n === 1 ? 'label' : 'labels'}: ${dichCau('en', cau)}`,
+  })[nn]);
 }
 
 /**
@@ -80,11 +92,26 @@ export function monKhongThay(dong: DongDemQuay[]): DongDemQuay[] {
 }
 
 /** "Đã cộng 12 nhãn: 5 gói Thăn ngoại, 7 gói Nạc vai." (các món có trong lượt này). */
-export function cauDaCong(soNhan: number, daCo: boolean): string {
-  if (daCo) return 'Lượt quét này đã được cộng từ trước — không cộng thêm lần nữa.';
-  if (soNhan === 0) return 'Chưa cộng được nhãn nào.';
-  return `Đã cộng ${soNhan} nhãn vào số đếm.`;
+export function cauDaCong(soNhan: number, daCo: boolean, nn: NgonNguNB = 'vi'): string {
+  if (daCo) return CAU_DEM.daCong[nn];
+  if (soNhan === 0) return CAU_DEM.chuaCong[nn];
+  return {
+    vi: `Đã cộng ${soNhan} nhãn vào số đếm.`,
+    en: `Added ${soNhan} ${soNhan === 1 ? 'label' : 'labels'} to the count.`,
+  }[nn];
 }
+
+const CAU_DEM = {
+  daCong: { vi: 'Lượt quét này đã được cộng từ trước — không cộng thêm lần nữa.', en: 'This scan was already added — it is not added again.' },
+  chuaCong: { vi: 'Chưa cộng được nhãn nào.', en: 'No labels were added.' },
+  trangCuQuet: { vi: 'Trang đã cũ — tải lại trang rồi quét lại.', en: 'This page is out of date — reload it and scan again.' },
+  trangCu: { vi: 'Trang đã cũ — tải lại trang.', en: 'This page is out of date — reload it.' },
+  oTrong: { vi: 'Ô quét đang trống — chưa đọc nhãn nào.', en: 'The scan box is empty — no labels read yet.' },
+  chuaChonMon: { vi: 'Chưa chọn món.', en: 'No item chosen.' },
+  daSua: { vi: 'Đã sửa từ trước — không sửa thêm lần nữa.', en: 'Already changed — not changed again.' },
+  botMot: { vi: 'Đã bớt 1 gói.', en: 'Removed 1 pack.' },
+  daGui: { vi: 'Đã gửi quản lý. Cảm ơn!', en: 'Sent to the manager. Thank you!' },
+} satisfies Record<string, HaiThuTieng>;
 
 // -----------------------------------------------------------------------------
 // ĐỌC
@@ -159,7 +186,7 @@ export async function docMonDaQuet(client: SupabaseClient, kiemKeId: string): Pr
         mat_hang_id: d.mat_hang_id,
         ten: m?.ten ?? '—',
         dem_goi: m?.dem_goi ?? true,
-        don_vi_goi: m?.don_vi_goi ?? 'gói',
+        don_vi_goi: m?.don_vi_goi ?? GOI_MAC_DINH.vi,
         so_nhan: x?.n ?? 0,
         so_goi_them: Number(d.so_goi_them ?? 0),
         so_goi_dem: soHoacNull(d.so_goi_dem),
@@ -211,6 +238,8 @@ export interface KetQuaLuot extends KetQua {
   soNhan?: number;
   /** Câu vàng cho các nhãn không cộng được (đã gom theo lỗi). */
   loiNhan?: string[];
+  /** Các câu đó bằng tiếng Anh, cùng thứ tự. */
+  loiNhanEn?: string[];
 }
 
 interface TraVeQuet { da_co?: boolean; so_nhan?: number; loi?: { ma: string; loi: string }[] }
@@ -219,33 +248,50 @@ interface TraVeQuet { da_co?: boolean; so_nhan?: number; loi?: { ma: string; loi
 export async function quetMotLuot(
   client: SupabaseClient, kiemKeId: string, maGui: string, noiDung: string,
 ): Promise<KetQuaLuot> {
-  if (!laUuid(kiemKeId) || !laUuid(maGui)) return { ok: false, cau: 'Trang đã cũ — tải lại trang rồi quét lại.' };
+  if (!laUuid(kiemKeId) || !laUuid(maGui)) return kqHai(false, CAU_DEM.trangCuQuet);
   const ma = maTuO(noiDung);
-  if (ma.length === 0) return { ok: false, cau: 'Ô quét đang trống — chưa đọc nhãn nào.' };
-  if (ma.length > TOI_DA_MOT_LUOT) {
-    return { ok: false, cau: `Một lần gửi tối đa ${TOI_DA_MOT_LUOT} nhãn — đang có ${ma.length}. Xóa bớt, gửi, rồi quét tiếp.` };
-  }
+  if (ma.length === 0) return kqHai(false, CAU_DEM.oTrong);
+  if (ma.length > TOI_DA_MOT_LUOT) return kqHai(false, cauQuaNhieuNhan(ma.length));
   const { data, error } = await client.rpc('kho_quet_kiem_ke', { p_id: kiemKeId, p_ma_gui: maGui, p_ma: ma });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const kq = (data ?? {}) as TraVeQuet;
   const soNhan = Number(kq.so_nhan ?? 0);
-  return { ok: soNhan > 0 || !!kq.da_co, cau: cauDaCong(soNhan, !!kq.da_co), soNhan, loiNhan: cauLoiNhan(kq.loi ?? []) };
+  return {
+    ok: soNhan > 0 || !!kq.da_co, cau: cauDaCong(soNhan, !!kq.da_co), cauEn: cauDaCong(soNhan, !!kq.da_co, 'en'),
+    soNhan, loiNhan: cauLoiNhan(kq.loi ?? []), loiNhanEn: cauLoiNhan(kq.loi ?? [], 'en'),
+  };
+}
+
+/** "Một lần gửi tối đa 300 nhãn — đang có 312…" — dùng chung với lượt quét pha lóc. */
+export function cauQuaNhieuNhan(soMa: number): HaiThuTieng {
+  return {
+    vi: `Một lần gửi tối đa ${TOI_DA_MOT_LUOT} nhãn — đang có ${soMa}. Xóa bớt, gửi, rồi quét tiếp.`,
+    en: `You can send at most ${TOI_DA_MOT_LUOT} labels at a time — there are ${soMa}. Remove some, send, then keep scanning.`,
+  };
 }
 
 /** "Bỏ lượt vừa quét" (cach = lan_cuoi) hoặc "−1" một gói của một món (bot_mot). */
 export async function suaQuet(
   client: SupabaseClient, kiemKeId: string, maGui: string, cach: 'lan_cuoi' | 'bot_mot', matHangId: string | null,
 ): Promise<KetQua> {
-  if (!laUuid(kiemKeId) || !laUuid(maGui)) return { ok: false, cau: 'Trang đã cũ — tải lại trang.' };
-  if (cach === 'bot_mot' && !laUuid(matHangId)) return { ok: false, cau: 'Chưa chọn món.' };
+  if (!laUuid(kiemKeId) || !laUuid(maGui)) return kqHai(false, CAU_DEM.trangCu);
+  if (cach === 'bot_mot' && !laUuid(matHangId)) return kqHai(false, CAU_DEM.chuaChonMon);
   const { data, error } = await client.rpc('kho_bo_quet_kiem_ke', {
     p_id: kiemKeId, p_ma_gui: maGui, p_cach: cach, p_mat_hang_id: cach === 'bot_mot' ? matHangId : null,
   });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const kq = (data ?? {}) as TraVeQuet;
-  if (kq.da_co) return { ok: true, cau: 'Đã sửa từ trước — không sửa thêm lần nữa.' };
+  if (kq.da_co) return kqHai(true, CAU_DEM.daSua);
   const n = Number(kq.so_nhan ?? 0);
-  return { ok: true, cau: cach === 'lan_cuoi' ? `Đã bỏ lượt vừa quét (${n} nhãn).` : 'Đã bớt 1 gói.' };
+  return kqHai(true, cach === 'lan_cuoi' ? cauBoLuot(n) : CAU_DEM.botMot);
+}
+
+/** "Đã bỏ lượt vừa quét (3 nhãn)." — dùng chung với lượt quét pha lóc. */
+export function cauBoLuot(n: number): HaiThuTieng {
+  return {
+    vi: `Đã bỏ lượt vừa quét (${n} nhãn).`,
+    en: `Removed the last scan (${n} ${n === 1 ? 'label' : 'labels'}).`,
+  };
 }
 
 /**
@@ -255,7 +301,7 @@ export async function suaQuet(
 export async function hetHangVaGui(
   client: SupabaseClient, kiemKeId: string, phienBan: number, conMonKhongThay: boolean,
 ): Promise<KetQua> {
-  if (!laUuid(kiemKeId)) return { ok: false, cau: 'Trang đã cũ — tải lại trang.' };
+  if (!laUuid(kiemKeId)) return kqHai(false, CAU_DEM.trangCu);
   let pb = phienBan;
   if (conMonKhongThay) {
     const { data, error } = await client.rpc('kho_het_hang_con_lai', { p_id: kiemKeId, p_phien_ban: phienBan });
@@ -264,9 +310,11 @@ export async function hetHangVaGui(
   }
   const { error } = await client.rpc('kho_gui_kiem_ke', { p_id: kiemKeId, p_phien_ban: pb });
   if (error) {
-    return { ok: false, cau: conMonKhongThay
-      ? `Đã ghi các món đó là bán hết nhưng CHƯA gửi được: ${cauLoiKho(error)}`
-      : `Chưa gửi được: ${cauLoiKho(error)}` };
+    const loi = cauLoiKho(error);
+    return kqHai(false, conMonKhongThay
+      ? { vi: `Đã ghi các món đó là bán hết nhưng CHƯA gửi được: ${loi}`,
+          en: `Those items were recorded as sold out, but NOT sent yet: ${dichCau('en', loi)}` }
+      : { vi: `Chưa gửi được: ${loi}`, en: `Not sent yet: ${dichCau('en', loi)}` });
   }
-  return { ok: true, cau: 'Đã gửi quản lý. Cảm ơn!' };
+  return kqHai(true, CAU_DEM.daGui);
 }

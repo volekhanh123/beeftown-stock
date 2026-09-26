@@ -22,8 +22,9 @@ import {
   cauSoLuong, type CaiDatQuay, type DongYeuCau, type HangDangMang, type MatHangQuay, type YeuCauQuay,
 } from '../../../../../lib/kho/quay.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangThoiDiem, laUuid, TRANG_THAI_CHUNG_TU, type KetQua,
+  cauLoiKho, dinhDangKg, dinhDangThoiDiem, kqHai, laUuid, trangThaiKho, type HaiThuTieng, type KetQua,
 } from '../../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -33,6 +34,64 @@ const cn = k.chiNhanh;
 const laQuay = k.nhanSu.vai_tro === 'nhan_vien_quay';
 const id = Astro.params.id ?? '';
 const url = `/noi-bo/kho/quay/yeu-cau/${id}`;
+const nn = k.nn;
+const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
+const CAU = {
+  khongThay: { vi: 'Không tìm thấy yêu cầu này.', en: 'This request was not found.' },
+  viecSai: { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+} satisfies Record<string, HaiThuTieng>;
+const t = dichNB(nn, {
+  khongDocYc: { vi: 'Không đọc được yêu cầu.', en: 'Could not read the request.' },
+  khongDocTon: { vi: 'Không đọc được tồn kho.', en: 'Could not read the stock.' },
+  monDaXoa: { vi: 'Món đã xóa', en: 'Deleted item' },
+  goi: { vi: 'gói', en: 'packs' },
+  yeuCau: { vi: (so: string) => `Yêu cầu ${so}`, en: (so: string) => `Request ${so}` },
+  yeuCauCuaQuay: { vi: 'Yêu cầu của quầy', en: 'Counter request' },
+  veDanhSach: { vi: '← Quầy cần hàng', en: '← Counter requests' },
+  canSoMon: { vi: (n: number) => ` cần ${n} món`, en: (n: number) => ` needs ${n} ${s(n, 'item', 'items')}` },
+  guiLuc: { vi: (tg: string) => `Gửi lúc ${tg}`, en: (tg: string) => `Sent at ${tg}` },
+  theoGoiY: { vi: ' · theo gợi ý của phần mềm', en: ' · suggested by the app' },
+  ghiChu: { vi: 'Ghi chú:', en: 'Note:' },
+  daHuyLuc: { vi: (tg: string) => `Đã hủy lúc ${tg}`, en: (tg: string) => `Cancelled at ${tg}` },
+  aiMangRa: { vi: (ai: string) => `${ai} mang ra`, en: (ai: string) => `${ai} brought it out` },
+  daMangRa: { vi: 'Đã mang ra', en: 'Brought out' },
+  luc: { vi: (tg: string) => ` lúc ${tg}`, en: (tg: string) => ` at ${tg}` },
+  phieu: { vi: ' — phiếu', en: ' — slip' },
+  quayCan: { vi: 'Quầy cần', en: 'The counter needs' },
+  mangRaQuay: { vi: 'Mang ra quầy', en: 'Bring to counter' },
+  tuLayHanGan: {
+    vi: 'Hệ thống tự lấy gói hạn gần trước. Kho không đủ thì sửa số; ghi 0 là không mang món đó.',
+    en: 'The system takes the packs with the nearest use-by date first. If the store does not have enough, change the number; enter 0 to leave an item out.',
+  },
+  can: { vi: (sl: string) => `Cần ${sl}`, en: (sl: string) => `Needed: ${sl}` },
+  khoCon: { vi: (sl: string) => `Kho còn ${sl} còn hạn`, en: (sl: string) => `Store has ${sl} still in date` },
+  khongDu: { vi: ' — không đủ', en: ' — not enough' },
+  soMangRaAn: { vi: (ten: string) => `${ten} — số mang ra`, en: (ten: string) => `${ten} — quantity to bring` },
+  layHangO: { vi: 'Lấy hàng ở', en: 'Take stock from' },
+  khoMacDinh: { vi: 'Kho nhận hàng mặc định', en: 'Default receiving store' },
+  canBamNhan: {
+    vi: 'Hàng sẽ ở "Đang mang ra quầy" cho tới khi nhân viên quầy kiểm và bấm "Đã nhận".',
+    en: 'The goods show as "On the way" until the counter staff check them and press "Received in full".',
+  },
+  vaoThang: { vi: 'Hàng vào thẳng quầy ngay khi bấm.', en: 'The goods go straight into counter stock as soon as you press.' },
+  cacMon: { vi: 'Các món', en: 'Items' },
+  dangMangRa: { vi: (sl: string) => ` · đang mang ra ${sl}`, en: (sl: string) => ` · ${sl} on the way` },
+  hangDangMang: { vi: 'Hàng đang mang ra.', en: 'Goods on the way.' },
+  kiemRoiNhan: { vi: 'Kiểm từng món rồi bấm nhận.', en: 'Check each item, then confirm receipt.' },
+  choQuayNhan: { vi: 'Chờ quầy bấm nhận.', en: 'Waiting for the counter to confirm receipt.' },
+  quaGio: { vi: ' Đã quá giờ — nhắc quầy kiểm hàng.', en: ' Overdue — remind the counter to check the goods.' },
+  kiemVaNhan: { vi: 'Kiểm và nhận hàng', en: 'Check and receive' },
+  huyChuyenTom: { vi: 'Hủy chuyến (mang nhầm, quầy không cần nữa)', en: 'Cancel delivery (wrong goods, or the counter no longer needs them)' },
+  lyDo: { vi: 'Lý do', en: 'Reason' },
+  huyChuyenNut: { vi: 'Hủy chuyến — hàng về lại kho', en: 'Cancel delivery — goods back to store' },
+  huyYcQuay: { vi: 'Hủy yêu cầu (không cần nữa)', en: 'Cancel request (no longer needed)' },
+  huyYcKho: { vi: 'Hủy yêu cầu (kho hết hàng)', en: 'Cancel request (store is out of stock)' },
+  lyDoTuyChon: { vi: 'Lý do (không bắt buộc)', en: 'Reason (optional)' },
+  huyYc: { vi: 'Hủy yêu cầu', en: 'Cancel request' },
+  tuLayDau: { vi: 'Thủ kho chưa ra kịp? Tự lấy hàng ở', en: 'Storekeeper not here yet? Take the stock yourself with a' },
+  tuLayLink: { vi: 'phiếu chuyển ra quầy', en: 'transfer slip to the counter' },
+  tuLayCuoi: { vi: ', rồi hủy yêu cầu này.', en: ', then cancel this request.' },
+});
 
 let yc: YeuCauQuay | null = null;
 let dong: DongYeuCau[] = [];
@@ -42,9 +101,9 @@ try {
   const [doc, mh] = await Promise.all([docYeuCau(k.client, id), docMatHangQuay(k.client)]);
   matHang = mh;
   if (doc) { yc = doc.yc; dong = doc.dong; }
-} catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được yêu cầu.'); }
+} catch (e) { loiDoc = cauLoiKho(e, t.khongDocYc); }
 if (!yc && !loiDoc) {
-  return chuyenHuong(Astro, '/noi-bo/kho/quay/yeu-cau', { ok: false, cau: 'Không tìm thấy yêu cầu này.' });
+  return chuyenHuong(Astro, '/noi-bo/kho/quay/yeu-cau', kqHai(false, CAU.khongThay));
 }
 
 // ---------------------------------------------------------------------------
@@ -60,9 +119,9 @@ if (form && yc) {
   let kq: KetQua;
   let den = url;
   if (viec === 'mang_ra') {
-    const { pDong, loi } = docFormMangRa(form, dong, matHang);
+    const { pDong, loi, loiEn } = docFormMangRa(form, dong, matHang);
     const tu = String(form.get('tu') ?? '');
-    kq = loi.length > 0 ? { ok: false, cau: loi.join(' ') }
+    kq = loi.length > 0 ? kqHai(false, { vi: loi.join(' '), en: loiEn.join(' ') })
       : await chuyenTheoYeuCau(k.client, yc.id, maGui, laUuid(tu) ? tu : null, pDong);
   } else if (viec === 'huy') {
     kq = await huyYeuCau(k.client, yc.id, lyDo);
@@ -70,7 +129,7 @@ if (form && yc) {
   } else if (viec === 'huy_chuyen' && yc.phieu_xuat_id) {
     kq = await huyChuyen(k.client, yc.phieu_xuat_id, lyDo);
   } else {
-    kq = { ok: false, cau: 'Việc không hợp lệ.' };
+    kq = kqHai(false, CAU.viecSai);
   }
   if (kq.ok) return chuyenHuong(Astro, den, kq);
   bao = kq;
@@ -88,18 +147,18 @@ if (yc) {
   try {
     const choMang = yc.trang_thai === 'cho';
     const dangMang = yc.trang_thai_phieu_xuat === 'dang_chuyen';
-    const [t, v, c] = await Promise.all([
+    const [tonDoc, v, c] = await Promise.all([
       choMang ? docTon(k.client, cn.id) : Promise.resolve([] as DongTon[]),
       choMang ? docViTri(k.client, cn.id) : Promise.resolve([] as ViTri[]),
       docCaiDatQuay(k.client, cn.id),
     ]);
-    ton = t; viTri = v; caiDat = c;
+    ton = tonDoc; viTri = v; caiDat = c;
     if (dangMang) {
       chuyen = (await docHangDangMang(k.client, cn.id, caiDat?.gio_nhac_chuyen ?? 2))
         .find(p => p.id === yc!.phieu_xuat_id) ?? null;
     }
     ten = await tenNhanSu(k.client, [yc.nguoi_tao, yc.nguoi_xu_ly, chuyen?.nguoi_tao]);
-  } catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, 'Không đọc được tồn kho.'); }
+  } catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, t.khongDocTon); }
 }
 
 const mhTheoId = new Map(matHang.map(m => [m.id, m]));
@@ -108,40 +167,44 @@ const conKho = (mhId: string) => ton
   .filter(t => t.mat_hang_id === mhId && t.loai_vi_tri === 'kho' && t.tinh_trang_han !== 'het_han')
   .reduce((s, t) => ({ goi: s.goi + t.so_goi, kg: s.kg + t.so_kg }), { goi: 0, kg: 0 });
 const cacKho = viTri.filter(v => v.loai === 'kho' && v.dang_dung);
-const [nhanTt, lopTt] = yc ? TRANG_THAI_CHUNG_TU[yc.trang_thai] ?? [yc.trang_thai, 'nhap'] : ['', ''];
+// Trạng thái lạ: hiện nguyên mã, lớp "nhap" (như trước).
+const [nhanTt, lopTt] = yc ? ((x: [string, string]) => [x[0], x[1] || 'nhap'])(trangThaiKho(yc.trang_thai, nn)) : ['', ''];
+// Trạng thái phiếu chuyển: chỉ hiện khi là trạng thái đã biết (trạng thái đã biết luôn có lớp CSS).
+const ttPhieu = trangThaiKho(yc?.trang_thai_phieu_xuat, nn);
 const laNguoiMang = !!chuyen && chuyen.nguoi_tao === k.nhanSu.id;
 const giaTriMang = (d: DongYeuCau) => {
   const cu = form?.get(`m_${d.mat_hang_id}`);
   if (cu !== null && cu !== undefined) return String(cu);
   const m = mhTheoId.get(d.mat_hang_id);
-  return m?.dem_goi ? String(d.so_goi) : dinhDangKg(d.so_kg);
+  // Ô nhập: "1,5" hay "1.5" đều đọc được (docKg) — viết theo thói quen của người xem.
+  return m?.dem_goi ? String(d.so_goi) : dinhDangKg(d.so_kg, nn);
 };
-const monCua = (mhId: string) => mhTheoId.get(mhId) ?? { ten: 'Món đã xóa', dem_goi: true, don_vi_goi: 'gói' };
+const monCua = (mhId: string) => mhTheoId.get(mhId) ?? { ten: t.monDaXoa, dem_goi: true, don_vi_goi: t.goi };
 ---
-<Kho k={k} tieuDe={yc ? `Yêu cầu ${yc.so_phieu}` : 'Yêu cầu của quầy'} huongDan={laQuay ? 'yeu-cau' : 'ra-quay'}>
-  <p style="margin:0 0 .25rem"><a href="/noi-bo/kho/quay/yeu-cau">← Quầy cần hàng</a></p>
-  <h1>{yc ? `Yêu cầu ${yc.so_phieu}` : 'Yêu cầu của quầy'}</h1>
+<Kho k={k} tieuDe={yc ? t.yeuCau(yc.so_phieu) : t.yeuCauCuaQuay} huongDan={laQuay ? 'yeu-cau' : 'ra-quay'}>
+  <p style="margin:0 0 .25rem"><a href="/noi-bo/kho/quay/yeu-cau">{t.veDanhSach}</a></p>
+  <h1>{yc ? t.yeuCau(yc.so_phieu) : t.yeuCauCuaQuay}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {yc && (
     <>
       <div class="nb-the">
         <p style="margin:0"><span class={`nb-nhan ${lopTt}`}>{nhanTt}</span>{' '}
-          <strong>{yc.ten_vi_tri}</strong> cần {yc.so_mon} món</p>
+          <strong>{yc.ten_vi_tri}</strong>{t.canSoMon(yc.so_mon)}</p>
         <p class="kho-phu" style="margin:.35rem 0 0">
-          Gửi lúc {dinhDangThoiDiem(yc.created_at)}{yc.nguoi_tao && ten.get(yc.nguoi_tao) ? ` · ${ten.get(yc.nguoi_tao)}` : ''}
-          {yc.nguon === 'goi_y' ? ' · theo gợi ý của phần mềm' : ''}
+          {t.guiLuc(dinhDangThoiDiem(yc.created_at))}{yc.nguoi_tao && ten.get(yc.nguoi_tao) ? ` · ${ten.get(yc.nguoi_tao)}` : ''}
+          {yc.nguon === 'goi_y' ? t.theoGoiY : ''}
         </p>
-        {yc.ghi_chu && <p style="margin:.5rem 0 0"><strong>Ghi chú:</strong> {yc.ghi_chu}</p>}
+        {yc.ghi_chu && <p style="margin:.5rem 0 0"><strong>{t.ghiChu}</strong> {yc.ghi_chu}</p>}
         {yc.trang_thai === 'huy' && (
-          <p style="margin:.5rem 0 0">Đã hủy lúc {dinhDangThoiDiem(yc.huy_luc)}{yc.ly_do_huy ? ` — ${yc.ly_do_huy}` : ''}.</p>
+          <p style="margin:.5rem 0 0">{t.daHuyLuc(dinhDangThoiDiem(yc.huy_luc))}{yc.ly_do_huy ? ` — ${yc.ly_do_huy}` : ''}.</p>
         )}
         {yc.so_phieu_xuat && yc.phieu_xuat_id && (
           <p style="margin:.5rem 0 0">
-            {yc.nguoi_xu_ly && ten.get(yc.nguoi_xu_ly) ? `${ten.get(yc.nguoi_xu_ly)} mang ra` : 'Đã mang ra'}
-            {yc.xu_ly_luc ? ` lúc ${dinhDangThoiDiem(yc.xu_ly_luc)}` : ''} — phiếu{' '}
+            {yc.nguoi_xu_ly && ten.get(yc.nguoi_xu_ly) ? t.aiMangRa(ten.get(yc.nguoi_xu_ly)!) : t.daMangRa}
+            {yc.xu_ly_luc ? t.luc(dinhDangThoiDiem(yc.xu_ly_luc)) : ''}{t.phieu}{' '}
             <a href={`/noi-bo/kho/xuat/${yc.phieu_xuat_id}`}>{yc.so_phieu_xuat}</a>
-            {yc.trang_thai_phieu_xuat && TRANG_THAI_CHUNG_TU[yc.trang_thai_phieu_xuat] ? ` (${TRANG_THAI_CHUNG_TU[yc.trang_thai_phieu_xuat][0].toLowerCase()})` : ''}.
+            {ttPhieu[1] ? ` (${ttPhieu[0].toLowerCase()})` : ''}.
           </p>
         )}
       </div>
@@ -150,8 +213,8 @@ const monCua = (mhId: string) => mhTheoId.get(mhId) ?? { ten: 'Món đã xóa', 
       {yc.trang_thai === 'cho' ? (
         <form method="POST">
           <input type="hidden" name="ma_gui" value={maGui} />
-          <h2>{laQuay ? 'Quầy cần' : 'Mang ra quầy'}</h2>
-          {!laQuay && <p class="kho-phu">Hệ thống tự lấy gói hạn gần trước. Kho không đủ thì sửa số; ghi 0 là không mang món đó.</p>}
+          <h2>{laQuay ? t.quayCan : t.mangRaQuay}</h2>
+          {!laQuay && <p class="kho-phu">{t.tuLayHanGan}</p>}
           <ul class="kho-dong-ds nb-the">
             {dong.map(d => {
               const m = monCua(d.mat_hang_id);
@@ -161,17 +224,17 @@ const monCua = (mhId: string) => mhTheoId.get(mhId) ?? { ten: 'Món đã xóa', 
                 <li>
                   <span>
                     <strong>{m.ten}</strong>
-                    <small>Cần {cauSoLuong(m, d.so_goi, d.so_kg)}{d.ghi_chu ? ` · ${d.ghi_chu}` : ''}</small>
+                    <small>{t.can(cauSoLuong(m, d.so_goi, d.so_kg, nn))}{d.ghi_chu ? ` · ${d.ghi_chu}` : ''}</small>
                     {!laQuay && (
-                      <small class:list={{ 'chu-do': !du }}>Kho còn {cauSoLuong(m, con.goi, Math.round(con.kg * 1000) / 1000)} còn hạn{!du ? ' — không đủ' : ''}</small>
+                      <small class:list={{ 'chu-do': !du }}>{t.khoCon(cauSoLuong(m, con.goi, Math.round(con.kg * 1000) / 1000, nn))}{!du ? t.khongDu : ''}</small>
                     )}
                   </span>
                   {!laQuay && (
                     <label class="nb-o yc-o">
-                      <span class="an">{m.ten} — số mang ra</span>
+                      <span class="an">{t.soMangRaAn(m.ten)}</span>
                       <input type="text" inputmode={m.dem_goi ? 'numeric' : 'decimal'} name={`m_${d.mat_hang_id}`}
                         value={giaTriMang(d)} autocomplete="off" />
-                      <small>{m.dem_goi ? m.don_vi_goi || 'gói' : 'kg'}</small>
+                      <small>{m.dem_goi ? m.don_vi_goi || t.goi : 'kg'}</small>
                     </label>
                   )}
                 </li>
@@ -182,25 +245,23 @@ const monCua = (mhId: string) => mhTheoId.get(mhId) ?? { ten: 'Món đã xóa', 
             <>
               {cacKho.length > 1 && (
                 <label class="nb-o">
-                  <span>Lấy hàng ở</span>
+                  <span>{t.layHangO}</span>
                   <select name="tu">
-                    <option value="">Kho nhận hàng mặc định</option>
+                    <option value="">{t.khoMacDinh}</option>
                     {cacKho.map(v => <option value={v.id} selected={String(form?.get('tu') ?? '') === v.id}>{v.ten}</option>)}
                   </select>
                 </label>
               )}
-              <p class="kho-phu">{caiDat?.chuyen_quay_can_nhan
-                ? 'Hàng sẽ ở "Đang mang ra quầy" cho tới khi nhân viên quầy kiểm và bấm "Đã nhận".'
-                : 'Hàng vào thẳng quầy ngay khi bấm.'}</p>
+              <p class="kho-phu">{caiDat?.chuyen_quay_can_nhan ? t.canBamNhan : t.vaoThang}</p>
               <div class="kho-thanh-nut dinh">
-                <button type="submit" name="viec" value="mang_ra" class="nb-nut yc-lon">Mang ra quầy</button>
+                <button type="submit" name="viec" value="mang_ra" class="nb-nut yc-lon">{t.mangRaQuay}</button>
               </div>
             </>
           )}
         </form>
       ) : (
         <>
-          <h2>Các món</h2>
+          <h2>{t.cacMon}</h2>
           <ul class="kho-dong-ds nb-the">
             {dong.map(d => {
               const m = monCua(d.mat_hang_id);
@@ -209,7 +270,7 @@ const monCua = (mhId: string) => mhTheoId.get(mhId) ?? { ten: 'Món đã xóa', 
                 <li>
                   <span>
                     <strong>{m.ten}</strong>
-                    <small>Cần {cauSoLuong(m, d.so_goi, d.so_kg)}{mang ? ` · đang mang ra ${cauSoLuong(m, mang.so_goi, mang.so_kg)}` : ''}</small>
+                    <small>{t.can(cauSoLuong(m, d.so_goi, d.so_kg, nn))}{mang ? t.dangMangRa(cauSoLuong(m, mang.so_goi, mang.so_kg, nn)) : ''}</small>
                   </span>
                 </li>
               );
@@ -222,20 +283,20 @@ const monCua = (mhId: string) => mhTheoId.get(mhId) ?? { ten: 'Món đã xóa', 
       {yc.trang_thai_phieu_xuat === 'dang_chuyen' && (
         <div class:list={['kho-dai', { do: !!chuyen?.qua_gio }]}>
           <span>{laQuay
-            ? <><strong>Hàng đang mang ra.</strong> Kiểm từng món rồi bấm nhận.</>
-            : <><strong>Chờ quầy bấm nhận.</strong>{chuyen?.qua_gio ? ' Đã quá giờ — nhắc quầy kiểm hàng.' : ''}</>}</span>
-          {laQuay && <a class="nb-nut yc-nut" href="/noi-bo/kho/quay/nhan">Kiểm và nhận hàng</a>}
+            ? <><strong>{t.hangDangMang}</strong> {t.kiemRoiNhan}</>
+            : <><strong>{t.choQuayNhan}</strong>{chuyen?.qua_gio ? t.quaGio : ''}</>}</span>
+          {laQuay && <a class="nb-nut yc-nut" href="/noi-bo/kho/quay/nhan">{t.kiemVaNhan}</a>}
         </div>
       )}
       {yc.trang_thai_phieu_xuat === 'dang_chuyen' && yc.phieu_xuat_id && (laNguoiMang || k.duoc('duyet')) && (
         <details class="nb-the">
-          <summary class="yc-tom">Hủy chuyến (mang nhầm, quầy không cần nữa)</summary>
+          <summary class="yc-tom">{t.huyChuyenTom}</summary>
           <form method="POST" style="margin-top:.75rem">
             <label class="nb-o">
-              <span>Lý do</span>
+              <span>{t.lyDo}</span>
               <input type="text" name="ly_do" maxlength="500" />
             </label>
-            <button type="submit" name="viec" value="huy_chuyen" class="nb-nut kho-nut-xoa">Hủy chuyến — hàng về lại kho</button>
+            <button type="submit" name="viec" value="huy_chuyen" class="nb-nut kho-nut-xoa">{t.huyChuyenNut}</button>
           </form>
         </details>
       )}
@@ -243,19 +304,19 @@ const monCua = (mhId: string) => mhTheoId.get(mhId) ?? { ten: 'Món đã xóa', 
       {/* ============ Hủy yêu cầu (chưa ai mang ra) ============ */}
       {yc.trang_thai === 'cho' && (
         <details class="nb-the">
-          <summary class="yc-tom">{laQuay ? 'Hủy yêu cầu (không cần nữa)' : 'Hủy yêu cầu (kho hết hàng)'}</summary>
+          <summary class="yc-tom">{laQuay ? t.huyYcQuay : t.huyYcKho}</summary>
           <form method="POST" style="margin-top:.75rem">
             <label class="nb-o">
-              <span>Lý do (không bắt buộc)</span>
+              <span>{t.lyDoTuyChon}</span>
               <input type="text" name="ly_do" maxlength="500" />
             </label>
-            <button type="submit" name="viec" value="huy" class="nb-nut kho-nut-xoa">Hủy yêu cầu</button>
+            <button type="submit" name="viec" value="huy" class="nb-nut kho-nut-xoa">{t.huyYc}</button>
           </form>
         </details>
       )}
       {laQuay && yc.trang_thai === 'cho' && (
-        <p class="kho-phu">Thủ kho chưa ra kịp? Tự lấy hàng ở{' '}
-          <a href="/noi-bo/kho/xuat/moi?loai=chuyen">phiếu chuyển ra quầy</a>, rồi hủy yêu cầu này.</p>
+        <p class="kho-phu">{t.tuLayDau}{' '}
+          <a href="/noi-bo/kho/xuat/moi?loai=chuyen">{t.tuLayLink}</a>{t.tuLayCuoi}</p>
       )}
     </>
   )}

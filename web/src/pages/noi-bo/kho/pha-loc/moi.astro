@@ -22,13 +22,42 @@ import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
 import {
   docDanhSachPhienPha, taoPhienPha, tomTatTang, vaoMacDinh, type PhienPhaTom,
 } from '../../../../lib/kho/pha-loc.ts';
-import { cauLoiKho, dinhDangKg, dinhDangNgay, laUuid, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, kqHai, laUuid, type HaiThuTieng, type KetQua } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('pha_loc')) return Astro.redirect('/noi-bo/kho/pha-loc', 302);
 if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const cn = k.chiNhanh;
+const nn = k.nn;
+const CAU = {
+  mangDut: {
+    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
+    en: 'Could not read the submitted data — the connection may have dropped. Try sending again.',
+  },
+  viecSai: { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
+} satisfies Record<string, HaiThuTieng>;
+// Bảng chữ tên `ch` (không phải `t`): nút tảng dùng `t` cho từng loại tảng.
+const ch = dichNB(nn, {
+  khongDoc: { vi: 'Không đọc được tồn kho.', en: 'Could not read the stock.' },
+  tieuDe: { vi: 'Pha lóc mới', en: 'New butchery session' },
+  buoc1: { vi: 'Bước 1/3 · Chọn tảng đem pha', en: 'Step 1/3 · Choose the primal to cut' },
+  dangDo: { vi: 'Phiên đang dở', en: 'Sessions in progress' },
+  dangDoGoiY: {
+    vi: 'Đang pha dở thì bấm để làm tiếp — không cần mở phiên mới.',
+    en: 'In the middle of one? Press it to carry on — no need to open a new session.',
+  },
+  daGhiRa: { vi: (kg: string) => `đã ghi ${kg} kg ra`, en: (kg: string) => `${kg} kg out recorded` },
+  chonTang: { vi: 'Đem pha loại tảng nào?', en: 'Which primal are you cutting?' },
+  chuaCoTang: { vi: 'Kho chưa có tảng nào. Tảng vào kho khi nhận hàng xong.', en: 'There are no primals in stock yet. Primals come in once goods are received.' },
+  soLo: { vi: (n: number) => `${n} lô`, en: (n: number) => `${n} ${n === 1 ? 'lot' : 'lots'}` },
+  motLoai: {
+    vi: 'Mỗi phiên một loại tảng. Pha hai loại thì làm hai phiên — để thu hồi của từng loại không lẫn vào nhau.',
+    en: 'One type of primal per session. If you cut two types, make two sessions — so their yields do not get mixed up.',
+  },
+  veDanhSach: { vi: '← Danh sách phiên pha lóc', en: '← Butchery sessions' },
+});
 
 let bao: KetQua | null = k.bao;
 let loiDoc = k.loiDoc;
@@ -40,19 +69,19 @@ try {
     docTon(k.client, cn.id), docCongThuc(k.client), docDanhSachPhienPha(k.client, cn.id, 'nhap'),
   ]);
 } catch (e) {
-  loiDoc = cauLoiKho(e, 'Không đọc được tồn kho.');
+  loiDoc = cauLoiKho(e, ch.khongDoc);
 }
 const tang = tomTatTang(ton);
 
 const form = await docFormGui(Astro);
 if (Astro.request.method === 'POST' && !form) {
-  bao = { ok: false, cau: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.' };
+  bao = kqHai(false, CAU.mangDut);
 }
 if (form) {
   const viec = String(form.get('viec') ?? '');
   const mhId = String(form.get('mat_hang_vao_id') ?? '');
   if (viec !== 'tao' || !laUuid(mhId)) {
-    bao = { ok: false, cau: 'Việc không hợp lệ.' };
+    bao = kqHai(false, CAU.viecSai);
   } else {
     // Đúng một công thức đang dùng → gắn luôn. Nhiều công thức: để trống,
     // database tự lấy công thức đầu tiên khi tính thu hồi dự kiến.
@@ -64,29 +93,29 @@ if (form) {
   }
 }
 ---
-<Kho k={k} tieuDe="Pha lóc mới" huongDan="pha-loc">
-  <p class="pl-buoc">Bước 1/3 · Chọn tảng đem pha</p>
-  <h1>Pha lóc mới</h1>
+<Kho k={k} tieuDe={ch.tieuDe} huongDan="pha-loc">
+  <p class="pl-buoc">{ch.buoc1}</p>
+  <h1>{ch.tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
   {dangDo.length > 0 && (
     <section class="nb-the">
-      <h2 style="margin-top:0">Phiên đang dở</h2>
-      <p class="nb-dan" style="margin-top:0">Đang pha dở thì bấm để làm tiếp — không cần mở phiên mới.</p>
+      <h2 style="margin-top:0">{ch.dangDo}</h2>
+      <p class="nb-dan" style="margin-top:0">{ch.dangDoGoiY}</p>
       <div class="pl-luoi">
         {dangDo.map(p => (
           <a class="nb-nut phu pl-nut" href={`/noi-bo/kho/pha-loc/${p.id}`}>
             <b>{p.ten_mat_hang_vao}</b>
-            <span>{p.so_phieu} · {dinhDangNgay(p.ngay_pha)} · đã ghi {dinhDangKg(p.kg_ra_nhap)} kg ra</span>
+            <span>{p.so_phieu} · {dinhDangNgay(p.ngay_pha)} · {ch.daGhiRa(dinhDangKg(p.kg_ra_nhap, nn))}</span>
           </a>
         ))}
       </div>
     </section>
   )}
 
-  <h2>Đem pha loại tảng nào?</h2>
+  <h2>{ch.chonTang}</h2>
   {tang.length === 0 ? (
-    <p class="nb-rong">Kho chưa có tảng nào. Tảng vào kho khi nhận hàng xong.</p>
+    <p class="nb-rong">{ch.chuaCoTang}</p>
   ) : (
     <div class="pl-luoi">
       {tang.map(t => (
@@ -96,18 +125,18 @@ if (form) {
           <button type="submit" name="viec" value="tao" class="nb-nut pl-nut">
             <b>{t.ten}</b>
             <span>
-              {dinhDangKg(t.so_kg)} kg
+              {dinhDangKg(t.so_kg, nn)} kg
               {t.dem_goi && t.so_goi > 0 && <>{' · '}{t.so_goi} {t.don_vi_goi}</>}
-              {t.so_lo > 1 && <>{' · '}{t.so_lo} lô</>}
+              {t.so_lo > 1 && <>{' · '}{ch.soLo(t.so_lo)}</>}
             </span>
           </button>
         </form>
       ))}
     </div>
   )}
-  <p class="kho-phu">Mỗi phiên một loại tảng. Pha hai loại thì làm hai phiên — để thu hồi của từng loại không lẫn vào nhau.</p>
+  <p class="kho-phu">{ch.motLoai}</p>
 
-  <p style="margin-top:1.5rem"><a href="/noi-bo/kho/pha-loc">← Danh sách phiên pha lóc</a></p>
+  <p style="margin-top:1.5rem"><a href="/noi-bo/kho/pha-loc">{ch.veDanhSach}</a></p>
 </Kho>
 
 <style>

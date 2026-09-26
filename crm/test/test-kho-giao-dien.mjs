@@ -685,7 +685,7 @@ await nhom('14 · THẺ KHO VÀ QUÉT ĐẦY ĐỦ (GĐ5c, 0033)', async () => {
   ok('Tồn kho: mỗi món có nút "Thẻ kho"', /linkTheKho\(g\.mat_hang_id\)/.test(doc(join(TRANG, 'noi-bo/kho/ton.astro'))));
   const quet = doc(join(TRANG, 'noi-bo/kho/quet.astro'));
   ok('Quét: nút Thẻ kho, nút theo lô, Đếm quầy, Thêm vào phiên pha',
-    /linkTheKho\(mh\.id\)/.test(quet) && /viecVoiLo\(l\)/.test(quet) && /\/noi-bo\/kho\/quay\/dem/.test(quet)
+    /linkTheKho\(mh\.id\)/.test(quet) && /viecVoiLo\(l(, nn)?\)/.test(quet) && /\/noi-bo\/kho\/quay\/dem/.test(quet)
     && /themNhanVaoPhienPha\(/.test(quet) && /name="ma_gui"/.test(quet));
   ok('Quét: không có tiền', !/dinhDangTien|docGiaTon/.test(quet));
   const form = doc(join(WEB, 'src/components/kho/FormMatHang.astro'));
