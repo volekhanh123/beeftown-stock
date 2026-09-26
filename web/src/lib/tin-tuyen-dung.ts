@@ -22,7 +22,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { TRUONG_FORM, type CotTruong } from './truong-form';
-import { BO_PHAN, LOAI_HOP_DONG, DON_VI_LUONG } from './tuyen-dung';
+import { BO_PHAN, LOAI_HOP_DONG, DON_VI_LUONG, MA_CHUA_CHOT } from './tuyen-dung';
 import type { SoBanDich } from './ban-dich';
 
 export type TrangThaiTin = 'nhap' | 'da_duyet' | 'da_cong_bo' | 'da_thu_hoi';
@@ -36,7 +36,8 @@ export interface TinTuyenDung {
   ten_en: string | null;
   bo_phan: string;
   cap_bac: string | null;
-  loai_hop_dong: string;
+  /** null = chưa chốt (0043). */
+  loai_hop_dong: string | null;
   so_luong: number | null;
   mo_ta_vi: string | null;
   mo_ta_en: string | null;
@@ -81,7 +82,7 @@ export interface DongTin {
   id: string;
   ten_vi: string;
   bo_phan: string;
-  loai_hop_dong: string;
+  loai_hop_dong: string | null;
   trang_thai: TrangThaiTin;
   han_nop: string | null;
   luong_da_duyet: boolean;
@@ -171,6 +172,16 @@ function chu(form: FormData, ten: string): string | null {
   return s || null;
 }
 
+/**
+ * Loại hợp đồng từ form: một khóa của LOAI_HOP_DONG, null khi người soạn chọn
+ * "Chưa chốt" (0043), undefined khi giá trị lạ hoặc thiếu.
+ */
+function docLoaiHopDong(form: FormData): string | null | undefined {
+  const s = String(form.get('loai_hop_dong') ?? '');
+  if (s === MA_CHUA_CHOT) return null;
+  return s in LOAI_HOP_DONG ? s : undefined;
+}
+
 /** Số nguyên không âm, bỏ qua dấu chấm phân cách. null = để trống, undefined = gõ sai. */
 function soNguyen(form: FormData, ten: string, toiDa: number): number | null | undefined {
   const s = String(form.get(ten) ?? '').replace(/[.,\s]/g, '');
@@ -223,10 +234,10 @@ export async function taoTin(
 ): Promise<{ ok: true; id: string } | { ok: false; cau: string }> {
   const ten = chu(form, 'ten_vi');
   const boPhan = String(form.get('bo_phan') ?? '');
-  const loai = String(form.get('loai_hop_dong') ?? '');
+  const loai = docLoaiHopDong(form);
   if (!ten) return { ok: false, cau: 'Chưa điền tên tin.' };
   if (!(boPhan in BO_PHAN)) return { ok: false, cau: 'Chưa chọn bộ phận.' };
-  if (!(loai in LOAI_HOP_DONG)) return { ok: false, cau: 'Chưa chọn loại hợp đồng.' };
+  if (loai === undefined) return { ok: false, cau: 'Chưa chọn loại hợp đồng.' };
 
   // Mã là duy nhất trên MỌI chi nhánh, kể cả những chi nhánh RLS giấu khỏi
   // người đang tạo — nên không đọc trước được, chỉ thử rồi đổi đuôi.
@@ -288,7 +299,7 @@ function giongNhau(a: string | null, b: string | null): boolean {
 
 function docForm(form: FormData): { dong: Partial<TinTuyenDung>; loi: string | null } {
   const boPhan = String(form.get('bo_phan') ?? '');
-  const loai = String(form.get('loai_hop_dong') ?? '');
+  const loai = docLoaiHopDong(form);
   const soLuong = soNguyen(form, 'so_luong', 999);
   const tu = soNguyen(form, 'luong_de_xuat_tu', 1_000_000_000);
   const den = soNguyen(form, 'luong_de_xuat_den', 1_000_000_000);
@@ -299,7 +310,7 @@ function docForm(form: FormData): { dong: Partial<TinTuyenDung>; loi: string | n
     ten_vi: chu(form, 'ten_vi') ?? '',
     bo_phan: boPhan,
     cap_bac: chu(form, 'cap_bac'),
-    loai_hop_dong: loai,
+    loai_hop_dong: loai ?? null,
     so_luong: soLuong ?? null,
     han_nop: hanNop,
     mo_ta_vi: chu(form, 'mo_ta_vi'),
@@ -333,7 +344,7 @@ function docForm(form: FormData): { dong: Partial<TinTuyenDung>; loi: string | n
   let loi: string | null = null;
   if (!dong.ten_vi) loi = 'Chưa điền tên tin.';
   else if (!(boPhan in BO_PHAN)) loi = 'Chưa chọn bộ phận.';
-  else if (!(loai in LOAI_HOP_DONG)) loi = 'Chưa chọn loại hợp đồng.';
+  else if (loai === undefined) loi = 'Chưa chọn loại hợp đồng.';
   else if (soLuong === undefined || soLuong === 0) loi = 'Số lượng cần tuyển phải là số từ 1 đến 999.';
   else if (tu === undefined || den === undefined) loi = 'Mức lương đề xuất phải là số đồng, ví dụ 25000 hoặc 6000000.';
   else if (tu != null && den != null && den < tu) loi = 'Mức đề xuất "đến" phải lớn hơn hoặc bằng mức "từ".';

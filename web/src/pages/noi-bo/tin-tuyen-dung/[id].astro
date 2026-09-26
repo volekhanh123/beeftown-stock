@@ -16,7 +16,7 @@
  */
 import NoiBo from '../../../layouts/NoiBo.astro';
 import { TRUONG_FORM } from '../../../lib/truong-form';
-import { BO_PHAN, LOAI_HOP_DONG, DON_VI_LUONG, dinhDangLuong } from '../../../lib/tuyen-dung';
+import { BO_PHAN, LOAI_HOP_DONG, MA_CHUA_CHOT, CHUA_CHOT, DON_VI_LUONG, dinhDangLuong } from '../../../lib/tuyen-dung';
 import {
   docTin, luuTin, duyetLuong, goTin, TRANG_THAI, homNayVn, donViDeXuat, canhBaoDonVi, O_DICH,
   type TinTuyenDung, type KetQuaLuu,
@@ -159,6 +159,8 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
                   {Object.entries(LOAI_HOP_DONG).map(([ma, nhan]) => (
                     <option value={ma} selected={ma === v.loai_hop_dong}>{nhan.vi}</option>
                   ))}
+                  {/* Chưa chốt = null (0043): trang công khai không hiện dòng loại hợp đồng. */}
+                  <option value={MA_CHUA_CHOT} selected={v.loai_hop_dong == null}>{CHUA_CHOT.vi}</option>
                 </select>
               </label>
               <label class="nb-o">

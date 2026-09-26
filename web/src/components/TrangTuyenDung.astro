@@ -33,7 +33,8 @@ export interface ViTri extends TruongForm {
   ten: string;
   bo_phan: string;
   cap_bac: string | null;
-  loai_hop_dong: string;
+  /** null = chưa chốt (0043): thẻ không hiện dòng loại hợp đồng. */
+  loai_hop_dong: string | null;
   so_luong: number | null;
   mo_ta: string | null;
   yeu_cau: string | null;
@@ -153,10 +154,13 @@ const tRieng = dich(ngonNgu, {
               <span class="nhan">{nhanEnum(BO_PHAN, v.bo_phan, ngonNgu)}</span>
               <h3>{v.ten}</h3>
               {v.cap_bac && <p class="nho" style="margin:0">{v.cap_bac}</p>}
-              <p class="nho" style="margin:0">
-                {nhanEnum(LOAI_HOP_DONG, v.loai_hop_dong, ngonNgu)}
-                {v.ca_lam && ` · ${v.ca_lam}`}
-              </p>
+              {/* Loại hợp đồng chưa chốt thì không hiện — không đoán thay nhà hàng. */}
+              {(v.loai_hop_dong || v.ca_lam) && (
+                <p class="nho" style="margin:0">
+                  {[v.loai_hop_dong && nhanEnum(LOAI_HOP_DONG, v.loai_hop_dong, ngonNgu), v.ca_lam]
+                    .filter(Boolean).join(' · ')}
+                </p>
+              )}
               {v.so_luong && (
                 <p class="nho" style="margin:0">
                   {tRieng.canNguoi(v.so_luong)}

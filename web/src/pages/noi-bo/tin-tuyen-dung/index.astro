@@ -10,7 +10,7 @@
  */
 import NoiBo from '../../../layouts/NoiBo.astro';
 import { docNoiDung } from '../../../lib/noi-dung';
-import { BO_PHAN, LOAI_HOP_DONG, nhanEnum } from '../../../lib/tuyen-dung';
+import { BO_PHAN, LOAI_HOP_DONG, MA_CHUA_CHOT, CHUA_CHOT, nhanEnum } from '../../../lib/tuyen-dung';
 import {
   docDanhSach, docChiNhanh, taoTin, taoTinMau, TRANG_THAI, homNayVn,
   type DongTin, type ChiNhanh, type KetQua,
@@ -145,7 +145,7 @@ function canhBao(t: DongTin): string[] {
         <p class="nb-tin-phu">
           {[
             nhanEnum(BO_PHAN, t.bo_phan),
-            nhanEnum(LOAI_HOP_DONG, t.loai_hop_dong),
+            t.loai_hop_dong ? nhanEnum(LOAI_HOP_DONG, t.loai_hop_dong) : 'Chưa chốt loại hợp đồng',
             t.hoi_cv ? 'có hỏi CV' : 'không hỏi CV',
             t.han_nop && `hạn nộp ${ngayNgan(t.han_nop)}`,
           ].filter(Boolean).join(' · ')}
@@ -178,6 +178,7 @@ function canhBao(t: DongTin): string[] {
               {Object.entries(LOAI_HOP_DONG).map(([ma, nhan]) => (
                 <option value={ma} selected={ma === 'ban_thoi_gian'}>{nhan.vi}</option>
               ))}
+              <option value={MA_CHUA_CHOT}>{CHUA_CHOT.vi}</option>
             </select>
           </label>
         </div>
