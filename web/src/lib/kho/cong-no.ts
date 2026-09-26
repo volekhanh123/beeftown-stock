@@ -11,8 +11,12 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { boDau, cauLoiKho, docKg, docNgay, docSoNguyen, docTien, laUuid, type KetQua } from './chung.ts';
+import {
+  boDau, cauLoiKho, chiaSoDuLonNhat, docKg, docNgay, docSoNguyen, docTien, homNayVn, laUuid, type KetQua,
+} from './chung.ts';
 import { layTepAnh, taiAnh } from './anh.ts';
+import { catTrang, khoangTrang, locTimNhieuCot, type TimDs } from './tim-ds.ts';
+import type { DongMisa, LoaiMisa } from './misa.ts';
 
 export interface CongNoNcc {
   nha_cung_cap_id: string;
@@ -26,6 +30,13 @@ export interface CongNoNcc {
   con_no: number;
   no_qua_han: number;
   han_gan_nhat: string | null;
+  // 0040: "đã trả" = tien_tra + bu_tru − hoan_tien (công thức còn nợ giữ nguyên).
+  tien_tra: number;
+  bu_tru: number;
+  hoan_tien: number;
+  so_phieu_hoa_don_gop: number;
+  /** Còn nợ của các phiếu có hạn trả trong 7 ngày tới (kể cả hôm nay). */
+  no_den_han_7_ngay: number;
 }
 
 export interface CongNoPhieu {
@@ -47,12 +58,19 @@ export interface CongNoPhieu {
   con_no: number;
   qua_han: boolean;
   so_ngay_qua_han: number;
+  // 0040
+  loai: 'mua' | 'no_dau';
+  tien_tra: number;
+  bu_tru: number;
+  hoan_tien: number;
+  /** Hóa đơn gộp đang chứa phiếu này (null = đối chiếu từng lần). */
+  hoa_don_gop_id: string | null;
 }
 
 export interface ThanhToan {
   id: string;
   so_phieu: string;
-  loai: 'thanh_toan' | 'giam_tru';
+  loai: 'thanh_toan' | 'giam_tru' | 'bu_tru' | 'hoan_tien';
   hinh_thuc: 'chuyen_khoan' | 'tien_mat' | 'khac' | null;
   so_tien: number;
   ngay: string;
@@ -115,7 +133,7 @@ function chiaPhan<T>(ds: T[], co: number): T[][] {
 export async function docCongNoNcc(client: SupabaseClient, chiNhanhId: string, nccId?: string): Promise<CongNoNcc[]> {
   let q = client
     .from('kho_v_cong_no_ncc')
-    .select('nha_cung_cap_id, ten_nha_cung_cap, so_phieu, so_phieu_con_no, so_phieu_chua_doi_chieu, tong_phai_tra, da_tra, giam_tru, con_no, no_qua_han, han_gan_nhat')
+    .select('nha_cung_cap_id, ten_nha_cung_cap, so_phieu, so_phieu_con_no, so_phieu_chua_doi_chieu, tong_phai_tra, da_tra, giam_tru, con_no, no_qua_han, han_gan_nhat, tien_tra, bu_tru, hoan_tien, so_phieu_hoa_don_gop, no_den_han_7_ngay')
     .eq('chi_nhanh_id', chiNhanhId);
   if (nccId) q = q.eq('nha_cung_cap_id', nccId);
   const { data, error } = await q;
@@ -125,6 +143,8 @@ export async function docCongNoNcc(client: SupabaseClient, chiNhanhId: string, n
     so_phieu_chua_doi_chieu: so(r.so_phieu_chua_doi_chieu),
     tong_phai_tra: so(r.tong_phai_tra), da_tra: so(r.da_tra), giam_tru: so(r.giam_tru),
     con_no: so(r.con_no), no_qua_han: so(r.no_qua_han),
+    tien_tra: so(r.tien_tra), bu_tru: so(r.bu_tru), hoan_tien: so(r.hoan_tien),
+    so_phieu_hoa_don_gop: so(r.so_phieu_hoa_don_gop), no_den_han_7_ngay: so(r.no_den_han_7_ngay),
   })) as CongNoNcc[];
 }
 
@@ -138,6 +158,8 @@ export interface LocCongNo {
   hanTrong?: { tu: string; den: string };
   /** Chỉ phiếu còn việc: còn nợ (hoặc nhà cung cấp nợ lại) hoặc chưa đối chiếu. */
   conViec?: boolean;
+  /** Chỉ phiếu thuộc một hóa đơn gộp (0040). */
+  coHoaDonGop?: boolean;
 }
 
 function chuanHoaPhieu(r: Dong): CongNoPhieu {
@@ -146,6 +168,8 @@ function chuanHoaPhieu(r: Dong): CongNoPhieu {
     tien_hoa_don: r.tien_hoa_don === null || r.tien_hoa_don === undefined ? null : so(r.tien_hoa_don),
     tong_tien_phieu: so(r.tong_tien_phieu), phai_tra: so(r.phai_tra), da_tra: so(r.da_tra),
     giam_tru: so(r.giam_tru), con_no: so(r.con_no), so_ngay_qua_han: so(r.so_ngay_qua_han),
+    tien_tra: so(r.tien_tra), bu_tru: so(r.bu_tru), hoan_tien: so(r.hoan_tien),
+    hoa_don_gop_id: (r.hoa_don_gop_id as string | null | undefined) ?? null,
   } as CongNoPhieu;
 }
 
@@ -157,13 +181,14 @@ export async function docCongNoPhieu(client: SupabaseClient, chiNhanhId: string,
   const tao = () => {
     let q = client
       .from('kho_v_cong_no_phieu')
-      .select('id, so_phieu, nha_cung_cap_id, ten_nha_cung_cap, ngay_nhap, so_hoa_don, ngay_hoa_don, han_thanh_toan, tien_hoa_don, da_doi_chieu, ghi_chu_doi_chieu, tong_tien_phieu, phai_tra, da_tra, giam_tru, con_no, qua_han, so_ngay_qua_han', { count: 'exact' })
+      .select('id, so_phieu, nha_cung_cap_id, ten_nha_cung_cap, ngay_nhap, so_hoa_don, ngay_hoa_don, han_thanh_toan, tien_hoa_don, da_doi_chieu, ghi_chu_doi_chieu, tong_tien_phieu, phai_tra, da_tra, giam_tru, con_no, qua_han, so_ngay_qua_han, loai, tien_tra, bu_tru, hoan_tien, hoa_don_gop_id', { count: 'exact' })
       .eq('chi_nhanh_id', chiNhanhId);
     if (loc.nccId) q = q.eq('nha_cung_cap_id', loc.nccId);
     if (loc.chiQuaHan) q = q.eq('qua_han', true);
     if (loc.chuaDoiChieu) q = q.eq('da_doi_chieu', false);
     if (loc.hanTrong) q = q.gt('con_no', 0).gte('han_thanh_toan', loc.hanTrong.tu).lte('han_thanh_toan', loc.hanTrong.den);
     if (loc.conViec) q = q.or('con_no.neq.0,da_doi_chieu.eq.false');
+    if (loc.coHoaDonGop) q = q.not('hoa_don_gop_id', 'is', null);
     // Thứ tự cố định tới tận id — đọc từng trang mới không sót, không trùng.
     return q.order('han_thanh_toan', { ascending: true, nullsFirst: false }).order('ngay_nhap').order('id');
   };
@@ -175,7 +200,7 @@ export async function docCongNoMotPhieu(client: SupabaseClient, id: string): Pro
   if (!laUuid(id)) return null;
   const { data } = await client
     .from('kho_v_cong_no_phieu')
-    .select('id, so_phieu, nha_cung_cap_id, ten_nha_cung_cap, ngay_nhap, so_hoa_don, ngay_hoa_don, han_thanh_toan, tien_hoa_don, da_doi_chieu, ghi_chu_doi_chieu, tong_tien_phieu, phai_tra, da_tra, giam_tru, con_no, qua_han, so_ngay_qua_han')
+    .select('id, so_phieu, nha_cung_cap_id, ten_nha_cung_cap, ngay_nhap, so_hoa_don, ngay_hoa_don, han_thanh_toan, tien_hoa_don, da_doi_chieu, ghi_chu_doi_chieu, tong_tien_phieu, phai_tra, da_tra, giam_tru, con_no, qua_han, so_ngay_qua_han, loai, tien_tra, bu_tru, hoan_tien, hoa_don_gop_id')
     .eq('id', id).maybeSingle();
   return data ? chuanHoaPhieu(data) : null;
 }
@@ -235,9 +260,12 @@ export async function docThanhToan(
   };
 }
 
-export async function docTenNcc(client: SupabaseClient, nccId: string): Promise<{ id: string; ten: string; so_ngay_no: number; ngan_hang: string | null; so_tai_khoan: string | null } | null> {
+export async function docTenNcc(client: SupabaseClient, nccId: string): Promise<{
+  id: string; ten: string; so_ngay_no: number; ngan_hang: string | null; so_tai_khoan: string | null;
+  ma_so_thue: string | null; dia_chi: string | null; kieu_hoa_don: 'tung_lan' | 'gop';
+} | null> {
   if (!laUuid(nccId)) return null;
-  const { data } = await client.from('kho_nha_cung_cap').select('id, ten, so_ngay_no, ngan_hang, so_tai_khoan').eq('id', nccId).maybeSingle();
+  const { data } = await client.from('kho_nha_cung_cap').select('id, ten, so_ngay_no, ngan_hang, so_tai_khoan, ma_so_thue, dia_chi, kieu_hoa_don').eq('id', nccId).maybeSingle();
   return data ?? null;
 }
 
@@ -473,7 +501,7 @@ export async function docNccNoDau(client: SupabaseClient): Promise<NccNoDau[]> {
 export async function docNoDauKy(client: SupabaseClient, chiNhanhId: string): Promise<CongNoPhieu[]> {
   const ds = await docHetTrang((tu, den) => client
     .from('kho_v_cong_no_phieu')
-    .select('id, so_phieu, nha_cung_cap_id, ten_nha_cung_cap, ngay_nhap, so_hoa_don, ngay_hoa_don, han_thanh_toan, tien_hoa_don, da_doi_chieu, ghi_chu_doi_chieu, tong_tien_phieu, phai_tra, da_tra, giam_tru, con_no, qua_han, so_ngay_qua_han', { count: 'exact' })
+    .select('id, so_phieu, nha_cung_cap_id, ten_nha_cung_cap, ngay_nhap, so_hoa_don, ngay_hoa_don, han_thanh_toan, tien_hoa_don, da_doi_chieu, ghi_chu_doi_chieu, tong_tien_phieu, phai_tra, da_tra, giam_tru, con_no, qua_han, so_ngay_qua_han, loai, tien_tra, bu_tru, hoan_tien, hoa_don_gop_id', { count: 'exact' })
     .eq('chi_nhanh_id', chiNhanhId).like('so_phieu', 'ND-%')
     .order('ten_nha_cung_cap').order('id')
     .range(tu, den));
@@ -691,4 +719,727 @@ export async function danhDauKhongNoDau(client: SupabaseClient, chiNhanhId: stri
     cau: boQua ? 'Đã đánh dấu: không có nợ đầu kỳ. Bước này trong Thiết lập đã xong.'
       : 'Đã bỏ đánh dấu "không có nợ đầu kỳ".',
   };
+}
+
+// =============================================================================
+// GĐ8b (migration 0040) — CÔNG NỢ KIỂU iPOS · HÓA ĐƠN GỘP · BÙ TRỪ / HOÀN TIỀN
+//                         · TRẢ HÀNG HAI BƯỚC · CÔNG NỢ THEO KỲ · MISA
+// =============================================================================
+// Mọi con số vẫn do database tính: view công nợ (0040 thêm cột cuối), hàm xem
+// trước cách chia (kho_xem_truoc_thanh_toan), sổ theo kỳ (kho_cong_no_theo_ky).
+// Ở đây chỉ đọc form, gọi hàm và vài hàm thuần để trang hiện số / lọc / chia trang.
+
+export const TEN_LOAI_KHOAN: Record<string, string> = {
+  thanh_toan: 'Trả tiền',
+  giam_tru: 'Giảm trừ',
+  bu_tru: 'Bù trừ',
+  hoan_tien: 'NCC hoàn tiền',
+};
+
+/** Tên một khoản trong lịch sử: "Trả tiền (Chuyển khoản)", "Giảm trừ do trả hàng", "Bù trừ"… */
+export function tenKhoan(t: { loai: string; hinh_thuc: string | null; phieu_xuat_id?: string | null }): string {
+  if (t.loai === 'thanh_toan') return `Trả tiền (${TEN_HINH_THUC[t.hinh_thuc ?? 'khac'] ?? 'Khác'})`;
+  if (t.loai === 'hoan_tien') return `NCC hoàn tiền (${TEN_HINH_THUC[t.hinh_thuc ?? 'khac'] ?? 'Khác'})`;
+  if (t.loai === 'giam_tru') return t.phieu_xuat_id ? 'Giảm trừ do trả hàng' : 'Giảm trừ';
+  return TEN_LOAI_KHOAN[t.loai] ?? t.loai;
+}
+
+// --- Chọn "loại" trên màn Trả tiền ------------------------------------------
+export type KieuTra = 'chuyen_khoan' | 'tien_mat' | 'bu_tru' | 'hoan_tien' | 'giam_tru';
+export const KIEU_TRA: readonly { ma: KieuTra; ten: string; moTa: string }[] = [
+  { ma: 'chuyen_khoan', ten: 'Chuyển khoản', moTa: 'Quán chuyển tiền cho nhà cung cấp' },
+  { ma: 'tien_mat', ten: 'Tiền mặt', moTa: 'Quán trả tiền mặt' },
+  { ma: 'bu_tru', ten: 'Bù trừ', moTa: 'Trừ vào khoản NCC đang nợ quán (tiền cọc, vỏ thùng…) — không chuyển tiền' },
+  { ma: 'hoan_tien', ten: 'NCC hoàn tiền', moTa: 'Nhà cung cấp trả lại tiền cho quán (quán đã trả thừa, trả hàng sau khi trả đủ)' },
+  { ma: 'giam_tru', ten: 'Giảm trừ', moTa: 'Chiết khấu, hàng thiếu — NCC bớt tiền' },
+];
+
+/** Kiểu trên màn → loai + hinh_thuc của kho_ghi_thanh_toan_v2. null = kiểu lạ. */
+export function loaiTuKieu(kieu: string, hinhThucHoan?: string | null): { loai: string; hinh_thuc: string | null } | null {
+  switch (kieu) {
+    case 'chuyen_khoan': case 'tien_mat': return { loai: 'thanh_toan', hinh_thuc: kieu };
+    case 'bu_tru': return { loai: 'bu_tru', hinh_thuc: null };
+    case 'giam_tru': return { loai: 'giam_tru', hinh_thuc: null };
+    case 'hoan_tien': return { loai: 'hoan_tien', hinh_thuc: hinhThucHoan === 'tien_mat' ? 'tien_mat' : 'chuyen_khoan' };
+    default: return null;
+  }
+}
+
+export interface ChiaThanhToan {
+  phieu_nhap_id: string;
+  so_phieu: string;
+  ngay_nhap: string;
+  han_thanh_toan: string | null;
+  /** Phần phiếu nhận được tối đa (còn nợ; với hoàn tiền là số NCC nợ lại). */
+  con_lai: number;
+  /** Phần của khoản này rơi vào phiếu (0 = tiền đã hết trước khi tới). */
+  so_tien: number;
+}
+
+/**
+ * Xem trước cách một khoản được chia vào các phiếu — đúng thứ tự database sẽ
+ * chia (hạn sớm nhất trước; hoàn tiền: phiếu âm, ngày nhập cũ trước).
+ * soTien null = "Trả đủ": mỗi phiếu nhận đúng số còn nợ.
+ */
+export async function xemTruocThanhToan(
+  client: SupabaseClient, chiNhanhId: string, nccId: string, loai: string, soTien: number | null,
+): Promise<{ dong: ChiaThanhToan[]; tongChia: number; tongConLai: number }> {
+  const { data, error } = await client.rpc('kho_xem_truoc_thanh_toan', {
+    p_chi_nhanh_id: chiNhanhId,
+    p_nha_cung_cap_id: nccId,
+    p_loai: loai,
+    p_so_tien: soTien,
+  });
+  if (error) throw error;
+  const dong = ((data ?? []) as Record<string, unknown>[]).map(r => ({
+    phieu_nhap_id: String(r.phieu_nhap_id), so_phieu: String(r.so_phieu ?? ''), ngay_nhap: String(r.ngay_nhap ?? ''),
+    han_thanh_toan: (r.han_thanh_toan as string | null) ?? null, con_lai: so(r.con_lai), so_tien: so(r.so_tien),
+  }));
+  return {
+    dong,
+    tongChia: dong.reduce((a, d) => a + d.so_tien, 0),
+    tongConLai: dong.reduce((a, d) => a + d.con_lai, 0),
+  };
+}
+
+export interface FormTraTien {
+  kieu: KieuTra | '';
+  loai: string | null;
+  hinhThuc: string | null;
+  /** null = chưa gõ (hoặc bấm "Trả đủ"). */
+  soTien: number | null;
+  ngay: string | null;
+  ghiChu: string;
+  /** Rỗng = để database tự chia (người dùng không sửa phần chia gợi ý). */
+  phanBo: { phieu_nhap_id: string; so_tien: number }[];
+  loi: string[];
+  giaTri: Record<string, string>;
+}
+
+/**
+ * Form màn Trả tiền (thuần). Bảng chia: pb{i}_phieu (ẩn), pb{i}_tien (sửa được),
+ * pb{i}_goi_y (ẩn — số database gợi ý lúc xem trước). Không ô nào khác gợi ý
+ * thì phanBo = [] để database tự chia lại lúc ghi (đúng như lúc xem trước).
+ * `ghi` = kiểm đủ để ghi (ngày, ghi chú bù trừ); không thì chỉ kiểm để xem trước.
+ */
+export function docFormTraTien(form: { get(ten: string): unknown }, ghi: boolean): FormTraTien {
+  const s = (t: string) => String(form.get(t) ?? '').trim();
+  const giaTri: Record<string, string> = {};
+  for (const k of ['kieu', 'so_tien', 'ngay', 'ghi_chu', 'hinh_thuc_hoan']) giaTri[k] = s(k);
+  const loi: string[] = [];
+  const kieu = (KIEU_TRA.some(x => x.ma === giaTri.kieu) ? giaTri.kieu : '') as KieuTra | '';
+  const lh = kieu ? loaiTuKieu(kieu, giaTri.hinh_thuc_hoan) : null;
+  if (!lh) loi.push('Chọn cách trả: chuyển khoản, tiền mặt, bù trừ, NCC hoàn tiền hoặc giảm trừ');
+  let soTien = docTien(giaTri.so_tien);
+  if (soTien !== null && (Number.isNaN(soTien) || soTien <= 0)) { loi.push('Số tiền là số đồng lớn hơn 0 (ví dụ 5.450.000)'); soTien = null; }
+  if (ghi && soTien === null && !loi.length) loi.push('Ghi số tiền (hoặc bấm "Trả đủ")');
+  const ngay = docNgay(giaTri.ngay);
+  if (ngay === undefined) loi.push('Ngày không phải ngày có thật');
+  if (ghi && lh?.loai === 'bu_tru' && !giaTri.ghi_chu) loi.push('Bù trừ: ghi rõ khoản nhà cung cấp nợ lại quán (ví dụ tiền cọc, vỏ thùng)');
+
+  const phanBo: { phieu_nhap_id: string; so_tien: number }[] = [];
+  let khacGoiY = false;
+  const soPb = docSoNguyen(form.get('so_pb'), 0, 500) ?? 0;
+  for (let i = 0; i < (Number.isNaN(soPb) ? 0 : soPb); i++) {
+    const id = s(`pb${i}_phieu`);
+    const chu = s(`pb${i}_tien`);
+    giaTri[`pb${i}_tien`] = chu;
+    const goiY = docTien(s(`pb${i}_goi_y`)) ?? 0;
+    const t = chu ? docTien(chu) : 0;
+    if (t === null || Number.isNaN(t) || t < 0 || !laUuid(id)) { loi.push(`Số tiền cho phiếu thứ ${i + 1} chưa đúng`); continue; }
+    if (t !== (Number.isNaN(goiY) ? 0 : goiY)) khacGoiY = true;
+    if (t > 0) phanBo.push({ phieu_nhap_id: id, so_tien: t });
+  }
+  if (!khacGoiY) phanBo.length = 0;
+  else if (soTien !== null) {
+    const tong = phanBo.reduce((a, b) => a + b.so_tien, 0);
+    if (tong !== soTien) {
+      loi.push(`Tổng tiền chia cho các phiếu (${tong.toLocaleString('vi-VN')} đ) phải bằng số tiền (${soTien.toLocaleString('vi-VN')} đ) — hoặc bấm "Xem trước" để chia lại tự động`);
+    }
+  }
+  return {
+    kieu, loai: lh?.loai ?? null, hinhThuc: lh?.hinh_thuc ?? null, soTien,
+    ngay: ngay ?? null, ghiChu: giaTri.ghi_chu, phanBo, loi, giaTri,
+  };
+}
+
+/** Ghi một khoản (4 loại) qua kho_ghi_thanh_toan_v2. Ảnh ủy nhiệm chi tải vào thư mục thanh_toan. */
+export async function ghiThanhToanV2(
+  client: SupabaseClient, chiNhanhId: string, nccId: string, form: FormData,
+): Promise<KetQua & { giaTri?: Record<string, string> }> {
+  const doc = docFormTraTien(form, true);
+  if (doc.loi.length) return { ok: false, cau: doc.loi.join(' · '), giaTri: doc.giaTri };
+  const maGui = String(form.get('ma_gui') ?? '');
+  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang.', giaTri: doc.giaTri };
+
+  const tai = await taiAnh(client, chiNhanhId, 'thanh_toan', maGui, layTepAnh(form));
+  const { data, error } = await client.rpc('kho_ghi_thanh_toan_v2', {
+    p_chi_nhanh_id: chiNhanhId,
+    p_ma_gui: maGui,
+    p_nha_cung_cap_id: nccId,
+    p_loai: doc.loai,
+    p_hinh_thuc: doc.hinhThuc,
+    p_so_tien: doc.soTien,
+    p_ngay: doc.ngay ?? homNayVn(),
+    p_ghi_chu: doc.ghiChu || null,
+    p_anh: tai.duongDan,
+    p_phan_bo: doc.phanBo,
+  });
+  if (error) return { ok: false, cau: cauLoiKho(error), giaTri: doc.giaTri };
+  const kq = (Array.isArray(data) ? data[0] : data) as { so_phieu: string; da_co: boolean } | undefined;
+  const cauAnh = tai.loi.length ? ` Lưu ý: ${tai.loi.join(' · ')}` : '';
+  const ten = TEN_LOAI_KHOAN[doc.loai ?? ''] ?? 'khoản';
+  return {
+    ok: true,
+    cau: (kq?.da_co ? `Khoản ${kq.so_phieu} đã được ghi từ lần bấm trước.`
+      : `Đã ghi ${kq?.so_phieu ?? ''} (${ten.toLowerCase()}): ${(doc.soTien ?? 0).toLocaleString('vi-VN')} đ.`) + cauAnh,
+  };
+}
+
+// --- Công thức trên đầu trang Công nợ ----------------------------------------
+export interface CongThucCongNo { dauKy: number; mua: number; tra: number; giamTru: number; conPhaiTra: number }
+
+/**
+ * "Đầu kỳ + Mua − Trả − Giảm trừ = Còn phải trả" cho cả chi nhánh. Đầu kỳ =
+ * phiếu nợ đầu kỳ (ND-); Trả = tiền trả + bù trừ − NCC hoàn tiền (cột da_tra
+ * của view). Luôn khớp: còn phải trả = tổng còn nợ của view.
+ */
+export function congThucCongNo(ncc: Pick<CongNoNcc, 'tong_phai_tra' | 'da_tra' | 'giam_tru' | 'con_no'>[],
+  noDau: Pick<CongNoPhieu, 'phai_tra'>[]): CongThucCongNo {
+  const dauKy = noDau.reduce((a, p) => a + p.phai_tra, 0);
+  const tongPhaiTra = ncc.reduce((a, n) => a + n.tong_phai_tra, 0);
+  return {
+    dauKy,
+    mua: tongPhaiTra - dauKy,
+    tra: ncc.reduce((a, n) => a + n.da_tra, 0),
+    giamTru: ncc.reduce((a, n) => a + n.giam_tru, 0),
+    conPhaiTra: ncc.reduce((a, n) => a + n.con_no, 0),
+  };
+}
+
+// --- Thẻ "Theo NCC": chip lọc, tìm, chia trang trong bộ nhớ ------------------
+export const CHIP_CONG_NO = {
+  qua_han: 'Quá hạn',
+  den_han: 'Đến hạn 7 ngày',
+  chua_doi_chieu: 'Chưa đối chiếu',
+  gop: 'Có hóa đơn gộp',
+} as const;
+export type ChipCongNo = keyof typeof CHIP_CONG_NO;
+
+export function docChipCongNo(v: string | null): ChipCongNo | '' {
+  return v && Object.hasOwn(CHIP_CONG_NO, v) ? v as ChipCongNo : '';
+}
+
+/** Lọc danh sách NCC theo chip + chữ tìm (không dấu). Nợ nhiều / quá hạn lên trước. */
+export function locNccCongNo(ds: CongNoNcc[], chip: ChipCongNo | '', q: string): CongNoNcc[] {
+  const tim = chuanTenNcc(q);
+  return ds
+    .filter(n => chip === 'qua_han' ? n.no_qua_han > 0
+      : chip === 'den_han' ? n.no_den_han_7_ngay > 0
+      : chip === 'chua_doi_chieu' ? n.so_phieu_chua_doi_chieu > 0
+      : chip === 'gop' ? n.so_phieu_hoa_don_gop > 0 : true)
+    .filter(n => !tim || chuanTenNcc(n.ten_nha_cung_cap).includes(tim))
+    .sort((a, b) => b.no_qua_han - a.no_qua_han || b.con_no - a.con_no || a.ten_nha_cung_cap.localeCompare(b.ten_nha_cung_cap, 'vi'));
+}
+
+/** Chia trang một mảng đã có sẵn (CO_TRANG dòng / trang, như GĐ4b). */
+export function catTrangBoNho<T>(ds: T[], tim: Pick<TimDs, 'trang'>): { ds: T[]; coSau: boolean } {
+  const [dau, cuoi] = khoangTrang({ q: '', tu: null, den: null, cuaToi: false, trang: tim.trang });
+  return catTrang(ds.slice(dau, cuoi + 1));
+}
+
+// --- Thẻ "Theo phiếu" ----------------------------------------------------------
+/** Một trang phiếu công nợ: chip + tìm (số phiếu, NCC, số hóa đơn) + ngày nhập. */
+export async function docCongNoPhieuTrang(
+  client: SupabaseClient, chiNhanhId: string, chip: ChipCongNo | '', tim: TimDs, homNay: string,
+): Promise<{ ds: CongNoPhieu[]; coSau: boolean }> {
+  let q = client
+    .from('kho_v_cong_no_phieu')
+    .select('id, so_phieu, nha_cung_cap_id, ten_nha_cung_cap, ngay_nhap, so_hoa_don, ngay_hoa_don, han_thanh_toan, tien_hoa_don, da_doi_chieu, ghi_chu_doi_chieu, tong_tien_phieu, phai_tra, da_tra, giam_tru, con_no, qua_han, so_ngay_qua_han, loai, tien_tra, bu_tru, hoan_tien, hoa_don_gop_id')
+    .eq('chi_nhanh_id', chiNhanhId);
+  if (chip === 'qua_han') q = q.eq('qua_han', true);
+  if (chip === 'den_han') {
+    const tuan = new Date(Date.parse(homNay) + 7 * 86400000).toISOString().slice(0, 10);
+    q = q.gt('con_no', 0).gte('han_thanh_toan', homNay).lte('han_thanh_toan', tuan);
+  }
+  if (chip === 'chua_doi_chieu') q = q.eq('da_doi_chieu', false);
+  if (chip === 'gop') q = q.not('hoa_don_gop_id', 'is', null);
+  const hoac = locTimNhieuCot(['so_phieu', 'ten_nha_cung_cap', 'so_hoa_don'], tim.q);
+  if (hoac) q = q.or(hoac);
+  if (tim.tu) q = q.gte('ngay_nhap', tim.tu);
+  if (tim.den) q = q.lte('ngay_nhap', tim.den);
+  const [dau, cuoi] = khoangTrang(tim);
+  const { data, error } = await q
+    .order('han_thanh_toan', { ascending: true, nullsFirst: false }).order('ngay_nhap').order('id')
+    .range(dau, cuoi);
+  if (error) throw error;
+  return catTrang(((data ?? []) as Dong[]).map(chuanHoaPhieu));
+}
+
+// --- Thẻ "Thanh toán" ----------------------------------------------------------
+export interface KhoanThanhToan {
+  id: string;
+  so_phieu: string;
+  loai: string;
+  hinh_thuc: string | null;
+  so_tien: number;
+  ngay: string;
+  ghi_chu: string | null;
+  trang_thai: 'hieu_luc' | 'da_huy';
+  nha_cung_cap_id: string;
+  ten_nha_cung_cap: string;
+  phieu_xuat_id: string | null;
+}
+
+/** Mọi khoản trả tiền / giảm trừ / bù trừ / hoàn tiền của chi nhánh, mới nhất trước. */
+export async function docThanhToanTrang(
+  client: SupabaseClient, chiNhanhId: string, tim: TimDs, loai: string | null,
+): Promise<{ ds: KhoanThanhToan[]; coSau: boolean }> {
+  let q = client
+    .from('kho_thanh_toan')
+    .select('id, so_phieu, loai, hinh_thuc, so_tien, ngay, ghi_chu, trang_thai, nha_cung_cap_id, phieu_xuat_id, kho_nha_cung_cap(ten)')
+    .eq('chi_nhanh_id', chiNhanhId);
+  if (loai && Object.hasOwn(TEN_LOAI_KHOAN, loai)) q = q.eq('loai', loai);
+  const hoac = locTimNhieuCot(['so_phieu', 'ghi_chu'], tim.q);
+  if (hoac) q = q.or(hoac);
+  if (tim.tu) q = q.gte('ngay', tim.tu);
+  if (tim.den) q = q.lte('ngay', tim.den);
+  const [dau, cuoi] = khoangTrang(tim);
+  const { data, error } = await q
+    .order('ngay', { ascending: false }).order('created_at', { ascending: false }).order('id')
+    .range(dau, cuoi);
+  if (error) throw error;
+  return catTrang(((data ?? []) as Dong[]).map(r => {
+    const n = r.kho_nha_cung_cap as { ten?: string } | { ten?: string }[] | null;
+    return {
+      ...r, so_tien: so(r.so_tien),
+      ten_nha_cung_cap: (Array.isArray(n) ? n[0]?.ten : n?.ten) ?? '',
+    } as unknown as KhoanThanhToan;
+  }));
+}
+
+/** Tiền một khoản làm công nợ giảm (+) hay tăng (−, NCC hoàn tiền). Khoản đã hủy = 0. */
+export function tienGiamNo(t: Pick<KhoanThanhToan, 'loai' | 'so_tien' | 'trang_thai'>): number {
+  if (t.trang_thai !== 'hieu_luc') return 0;
+  return t.loai === 'hoan_tien' ? -t.so_tien : t.so_tien;
+}
+
+// --- Thẻ "Theo dõi" và biên bản đối chiếu: công nợ theo kỳ --------------------
+export interface DongSoCongNo {
+  thu_tu: number;
+  ngay: string;
+  loai: string;
+  ref_id: string | null;
+  so_chung_tu: string | null;
+  so_hoa_don: string | null;
+  nha_cung_cap_id: string | null;
+  ten_nha_cung_cap: string | null;
+  dien_giai: string;
+  tang: number | null;
+  giam: number | null;
+  so_du: number;
+}
+
+export async function docCongNoTheoKy(
+  client: SupabaseClient, chiNhanhId: string, nccId: string | null, tu: string, den: string,
+): Promise<DongSoCongNo[]> {
+  const { data, error } = await client.rpc('kho_cong_no_theo_ky', {
+    p_chi_nhanh_id: chiNhanhId,
+    p_ncc: nccId,
+    p_tu: tu,
+    p_den: den,
+  });
+  if (error) throw error;
+  return ((data ?? []) as Dong[]).map(r => ({
+    ...r,
+    tang: r.tang === null || r.tang === undefined ? null : so(r.tang),
+    giam: r.giam === null || r.giam === undefined ? null : so(r.giam),
+    so_du: so(r.so_du), thu_tu: so(r.thu_tu),
+  })) as DongSoCongNo[];
+}
+
+/** Tách dòng đầu kỳ / cuối kỳ khỏi các chứng từ; đầu kỳ + tăng − giảm = cuối kỳ. */
+export function tomTatKy(dong: DongSoCongNo[]): { dauKy: number; tang: number; giam: number; cuoiKy: number; chungTu: DongSoCongNo[] } {
+  const dau = dong.find(d => d.loai === 'dau_ky');
+  const cuoi = dong.find(d => d.loai === 'cuoi_ky');
+  const chungTu = dong.filter(d => d.loai !== 'dau_ky' && d.loai !== 'cuoi_ky');
+  const tang = cuoi?.tang ?? chungTu.reduce((a, d) => a + (d.tang ?? 0), 0);
+  const giam = cuoi?.giam ?? chungTu.reduce((a, d) => a + (d.giam ?? 0), 0);
+  const dauKy = dau?.so_du ?? 0;
+  return { dauKy, tang, giam, cuoiKy: cuoi?.so_du ?? dauKy + tang - giam, chungTu };
+}
+
+/** Kỳ từ URL (?tu=&den=), mặc định từ đầu tháng tới hôm nay; ngày sai bị bỏ, đảo nếu ngược. */
+export function docKyCongNo(sp: URLSearchParams, homNay: string): { tu: string; den: string } {
+  const ngay = (k: string) => { const v = sp.get(k) ?? ''; return docNgay(v) && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null; };
+  let tu = ngay('tu') ?? `${homNay.slice(0, 8)}01`;
+  let den = ngay('den') ?? homNay;
+  if (tu > den) [tu, den] = [den, tu];
+  return { tu, den };
+}
+
+export const TEN_LOAI_SO_CONG_NO: Record<string, string> = {
+  mua: 'Nhập mua',
+  no_dau: 'Nợ đầu kỳ',
+  thanh_toan: 'Trả tiền',
+  giam_tru: 'Giảm trừ',
+  bu_tru: 'Bù trừ',
+  hoan_tien: 'NCC hoàn tiền',
+};
+
+// --- Hóa đơn gộp ---------------------------------------------------------------
+export interface HoaDonGop {
+  id: string;
+  so_hoa_don: string;
+  ngay: string;
+  tong_tien: number;
+  tien_thue: number;
+  tong_phieu: number;
+  so_phieu: number;
+  ly_do_lech: string | null;
+  trang_thai: 'hieu_luc' | 'da_bo';
+  ly_do_bo: string | null;
+  created_at: string;
+  phieu: { phieu_id: string; so_phieu: string | null; tong_phieu: number; so_tien: number; tien_thue: number }[];
+}
+
+/** Hóa đơn gộp của một NCC (còn hiệu lực trước, mới nhất trước). */
+export async function docHoaDonGop(client: SupabaseClient, chiNhanhId: string, nccId: string): Promise<HoaDonGop[]> {
+  const { data, error } = await client
+    .from('kho_hoa_don_ncc')
+    .select('id, so_hoa_don, ngay, tong_tien, tien_thue, tong_phieu, so_phieu, ly_do_lech, trang_thai, ly_do_bo, created_at')
+    .eq('chi_nhanh_id', chiNhanhId).eq('nha_cung_cap_id', nccId)
+    .order('trang_thai', { ascending: false }).order('ngay', { ascending: false }).order('id')
+    .limit(50);
+  if (error) throw error;
+  const hd = (data ?? []) as Dong[];
+  const ids = hd.map(h => String(h.id));
+  const phieu = new Map<string, HoaDonGop['phieu']>();
+  if (ids.length) {
+    const { data: ds, error: e2 } = await client
+      .from('kho_hoa_don_phieu')
+      .select('hoa_don_id, phieu_id, tong_phieu, so_tien, tien_thue, thu_tu, kho_phieu_nhap(so_phieu)')
+      .in('hoa_don_id', ids).order('thu_tu');
+    if (e2) throw e2;
+    for (const x of (ds ?? []) as Dong[]) {
+      const pn = x.kho_phieu_nhap as { so_phieu?: string } | { so_phieu?: string }[] | null;
+      const id = String(x.hoa_don_id);
+      phieu.set(id, [...(phieu.get(id) ?? []), {
+        phieu_id: String(x.phieu_id), so_phieu: (Array.isArray(pn) ? pn[0]?.so_phieu : pn?.so_phieu) ?? null,
+        tong_phieu: so(x.tong_phieu), so_tien: so(x.so_tien), tien_thue: so(x.tien_thue),
+      }]);
+    }
+  }
+  return hd.map(h => ({
+    ...h, tong_tien: so(h.tong_tien), tien_thue: so(h.tien_thue), tong_phieu: so(h.tong_phieu), so_phieu: so(h.so_phieu),
+    phieu: phieu.get(String(h.id)) ?? [],
+  })) as unknown as HoaDonGop[];
+}
+
+export interface FormHoaDonGop {
+  soHoaDon: string;
+  ngay: string | null;
+  tongTien: number | null;
+  tienThue: number;
+  lyDo: string;
+  phieu: string[];
+  loi: string[];
+  giaTri: Record<string, string>;
+}
+
+/** Form đối chiếu hóa đơn gộp (thuần): ô tích `phieu` lặp lại, so_hoa_don, ngay, tong_tien, tien_thue, ly_do_lech. */
+export function docFormHoaDonGop(form: { get(ten: string): unknown; getAll(ten: string): unknown[] }): FormHoaDonGop {
+  const s = (t: string) => String(form.get(t) ?? '').trim();
+  const giaTri: Record<string, string> = {};
+  for (const k of ['so_hoa_don', 'ngay', 'tong_tien', 'tien_thue', 'ly_do_lech']) giaTri[k] = s(k);
+  const phieu = [...new Set(form.getAll('phieu').map(v => String(v)).filter(laUuid))];
+  const loi: string[] = [];
+  if (phieu.length < 2) loi.push('Tích ít nhất 2 phiếu nằm trong hóa đơn này (một phiếu thì dùng "Đối chiếu hóa đơn" ở phiếu đó)');
+  if (!giaTri.so_hoa_don) loi.push('Ghi số hóa đơn');
+  else if (giaTri.so_hoa_don.length > 60) loi.push('Số hóa đơn tối đa 60 ký tự');
+  const ngay = docNgay(giaTri.ngay);
+  if (!ngay) loi.push(ngay === undefined ? 'Ngày hóa đơn không phải ngày có thật' : 'Ghi ngày hóa đơn');
+  let tongTien = docTien(giaTri.tong_tien);
+  if (tongTien === null) loi.push('Ghi tổng tiền in trên hóa đơn (ví dụ 25.450.000)');
+  else if (Number.isNaN(tongTien) || tongTien < 0) { loi.push('Tổng tiền là số đồng (ví dụ 25.450.000)'); tongTien = null; }
+  let tienThue = docTien(giaTri.tien_thue) ?? 0;
+  if (Number.isNaN(tienThue) || tienThue < 0) { loi.push('Tiền thuế là số đồng (để trống nếu không có)'); tienThue = 0; }
+  if (tongTien !== null && tienThue > tongTien) loi.push('Tiền thuế không lớn hơn tổng tiền hóa đơn');
+  return { soHoaDon: giaTri.so_hoa_don, ngay: ngay ?? null, tongTien, tienThue, lyDo: giaTri.ly_do_lech, phieu, loi, giaTri };
+}
+
+export interface ChiaHoaDonGop {
+  phieu: { id: string; so_phieu: string; ngay_nhap: string; tong_tien_phieu: number; so_tien: number; tien_thue: number }[];
+  tongPhieu: number;
+  /** Tổng hóa đơn − tổng các phiếu (dương = hóa đơn cao hơn). */
+  lech: number;
+}
+
+/**
+ * Xem trước cách chia một hóa đơn gộp — soi gương kho_doi_chieu_hoa_don_gop:
+ * phiếu xếp theo ngày nhập rồi số phiếu, chia theo tỉ lệ tổng phiếu, phần lẻ
+ * theo số dư lớn nhất → tổng các phần đúng bằng tổng hóa đơn (từng đồng).
+ */
+export function xemTruocHoaDonGop(
+  phieu: { id: string; so_phieu: string; ngay_nhap: string; tong_tien_phieu: number }[], tongTien: number, tienThue: number,
+): ChiaHoaDonGop {
+  const ds = [...phieu].sort((a, b) => (a.ngay_nhap < b.ngay_nhap ? -1 : a.ngay_nhap > b.ngay_nhap ? 1
+    : a.so_phieu < b.so_phieu ? -1 : a.so_phieu > b.so_phieu ? 1 : 0));
+  const ts = ds.map(p => p.tong_tien_phieu);
+  const phan = chiaSoDuLonNhat(tongTien, ts);
+  const thue = chiaSoDuLonNhat(tienThue, ts);
+  const tongPhieu = ts.reduce((a, b) => a + b, 0);
+  return {
+    phieu: ds.map((p, i) => ({ ...p, so_tien: phan[i] ?? 0, tien_thue: thue[i] ?? 0 })),
+    tongPhieu,
+    lech: tongTien - tongPhieu,
+  };
+}
+
+/** Lưu đối chiếu hóa đơn gộp. Lệch tổng phiếu mà chưa ghi lý do thì báo trước khi gửi. */
+export async function doiChieuGop(
+  client: SupabaseClient, chiNhanhId: string, nccId: string, form: FormData, tongPhieu: number,
+): Promise<KetQua & { giaTri?: Record<string, string> }> {
+  const f = docFormHoaDonGop(form);
+  if (f.loi.length) return { ok: false, cau: f.loi.join(' · '), giaTri: f.giaTri };
+  const maGui = String(form.get('ma_gui') ?? '');
+  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang.', giaTri: f.giaTri };
+  const lech = (f.tongTien ?? 0) - tongPhieu;
+  if (lech !== 0 && !f.lyDo) {
+    return { ok: false, giaTri: f.giaTri,
+      cau: `Hóa đơn ${(f.tongTien ?? 0).toLocaleString('vi-VN')} đ lệch tổng các phiếu ${tongPhieu.toLocaleString('vi-VN')} đ (${dinhDangLech(lech)}). Ghi lý do lệch rồi lưu lại.` };
+  }
+  const { data, error } = await client.rpc('kho_doi_chieu_hoa_don_gop', {
+    p_chi_nhanh_id: chiNhanhId,
+    p_ma_gui: maGui,
+    p_ncc: nccId,
+    p_so_hoa_don: f.soHoaDon,
+    p_ngay: f.ngay,
+    p_tong_tien: f.tongTien,
+    p_tien_thue: f.tienThue,
+    p_phieu: f.phieu,
+    p_ly_do_lech: f.lyDo || null,
+  });
+  if (error) return { ok: false, cau: cauLoiKho(error), giaTri: f.giaTri };
+  const kq = (Array.isArray(data) ? data[0] : data) as { da_co?: boolean } | undefined;
+  return {
+    ok: true,
+    cau: kq?.da_co ? `Hóa đơn ${f.soHoaDon} đã được đối chiếu từ lần bấm trước.`
+      : `Đã đối chiếu hóa đơn gộp ${f.soHoaDon} cho ${f.phieu.length} phiếu — tổng ${(f.tongTien ?? 0).toLocaleString('vi-VN')} đ.`,
+  };
+}
+
+export function boDoiChieuGop(client: SupabaseClient, id: string, lyDo: string): Promise<KetQua> {
+  if (!laUuid(id)) return Promise.resolve({ ok: false, cau: 'Hóa đơn không hợp lệ.' });
+  if (!lyDo.trim()) return Promise.resolve({ ok: false, cau: 'Ghi lý do bỏ đối chiếu (ví dụ: chọn nhầm phiếu).' });
+  return cauTraVe(client.rpc('kho_bo_doi_chieu_gop', { p_hoa_don_id: id, p_ly_do: lyDo.trim() }));
+}
+
+// --- Trả hàng hai bước -----------------------------------------------------------
+/** Dòng trả hàng: t{i}_lo (ẩn), t{i}_kg, t{i}_goi; dòng bỏ trống thì bỏ qua. */
+export function docDongTraHang(form: { get(ten: string): unknown }): { dong: Record<string, unknown>[]; loi: string[] } {
+  const s = (t: string) => String(form.get(t) ?? '').trim();
+  const loi: string[] = [];
+  const dong: Record<string, unknown>[] = [];
+  const soDong = docSoNguyen(form.get('so_dong'), 0, 200) ?? 0;
+  for (let i = 0; i < (Number.isNaN(soDong) ? 0 : soDong); i++) {
+    const lo = s(`t${i}_lo`);
+    const kgChu = s(`t${i}_kg`);
+    const goiChu = s(`t${i}_goi`);
+    if (!kgChu && !goiChu) continue;
+    const kg = docKg(kgChu);
+    const goi = docSoNguyen(goiChu, 0, 100000);
+    if (!laUuid(lo)) { loi.push('Lô không hợp lệ — tải lại trang'); continue; }
+    if (kg === null || Number.isNaN(kg) || kg <= 0) { loi.push(`Dòng ${i + 1}: ghi số kg trả (ví dụ 4,5)`); continue; }
+    if (Number.isNaN(goi)) { loi.push(`Dòng ${i + 1}: số tảng / gói là số nguyên`); continue; }
+    dong.push(goi !== null ? { lo_id: lo, so_kg: kg, so_goi: goi } : { lo_id: lo, so_kg: kg });
+  }
+  if (!dong.length && !loi.length) loi.push('Chưa ghi số kg trả.');
+  return { dong, loi };
+}
+
+/**
+ * Trả hàng bước 1 (thủ kho, chỉ kg — kho_tra_hang_ghi_kg): hàng rời kho ngay,
+ * phiếu XT- chờ kế toán xác nhận tiền. phieuNhapId null = database lấy theo lô.
+ * Ảnh biên bản vào thư mục "huy" (thủ kho tải được; hàm nhận /huy/ hoặc /thanh_toan/).
+ */
+export async function traHangGhiKg(
+  client: SupabaseClient, chiNhanhId: string, form: FormData, ctx: { phieuNhapId: string | null; viTriId: string },
+): Promise<KetQua & { id?: string }> {
+  const { dong, loi } = docDongTraHang(form);
+  if (loi.length) return { ok: false, cau: loi.join(' · ') };
+  const maGui = String(form.get('ma_gui') ?? '').trim();
+  if (!laUuid(maGui)) return { ok: false, cau: 'Form đã cũ — tải lại trang.' };
+  const tai = await taiAnh(client, chiNhanhId, 'huy', maGui, layTepAnh(form));
+  const { data, error } = await client.rpc('kho_tra_hang_ghi_kg', {
+    p_chi_nhanh_id: chiNhanhId,
+    p_ma_gui: maGui,
+    p_phieu_nhap_id: ctx.phieuNhapId,
+    p_vi_tri_id: ctx.viTriId,
+    p_ghi_chu: String(form.get('ghi_chu') ?? '').trim() || null,
+    p_anh: tai.duongDan,
+    p_dong: dong,
+  });
+  if (error) return { ok: false, cau: cauLoiKho(error) };
+  const kq = (Array.isArray(data) ? data[0] : data) as { phieu_xuat_id: string; so_phieu: string; da_co: boolean } | undefined;
+  if (!kq) return { ok: false, cau: 'Không chắc đã ghi hay chưa — xem danh sách phiếu để kiểm tra.' };
+  const cauAnh = tai.loi.length ? ` Lưu ý: ${tai.loi.join(' · ')}` : '';
+  return {
+    ok: true, id: kq.phieu_xuat_id,
+    cau: (kq.da_co ? `Phiếu trả hàng ${kq.so_phieu} đã được ghi từ lần bấm trước.`
+      : `Đã ghi phiếu trả hàng ${kq.so_phieu}: hàng đã rời kho. Kế toán sẽ xác nhận với nhà cung cấp.`) + cauAnh,
+  };
+}
+
+export interface TraHangChoTien {
+  phieu_xuat_id: string;
+  so_phieu: string;
+  ngay: string;
+  phieu_nhap_id: string;
+  so_phieu_nhap: string;
+  nha_cung_cap_id: string | null;
+  ten_nha_cung_cap: string | null;
+  tong_kg: number;
+  tong_goi: number;
+  so_dong: number;
+  so_tien_goi_y: number;
+  nguoi_ghi: string | null;
+  ghi_chu: string | null;
+  so_anh: number;
+  created_at: string;
+}
+
+/** Hàng chờ "Trả hàng chờ xác nhận tiền" (kế toán). */
+export async function docTraHangChoTien(client: SupabaseClient, chiNhanhId: string): Promise<TraHangChoTien[]> {
+  const { data, error } = await client.rpc('kho_ds_tra_hang_cho_tien', { p_chi_nhanh_id: chiNhanhId });
+  if (error) throw error;
+  return ((data ?? []) as Dong[]).map(r => ({
+    ...r, tong_kg: so(r.tong_kg), tong_goi: so(r.tong_goi), so_dong: so(r.so_dong),
+    so_tien_goi_y: so(r.so_tien_goi_y), so_anh: so(r.so_anh),
+  })) as TraHangChoTien[];
+}
+
+/** Trả hàng bước 2 (kế toán): so_tien trống = tự tính, 0 = NCC không trừ tiền (đổi hàng mới). */
+export async function xacNhanTienTraHang(client: SupabaseClient, form: FormData): Promise<KetQua> {
+  const id = String(form.get('phieu_xuat_id') ?? '');
+  if (!laUuid(id)) return { ok: false, cau: 'Phiếu không hợp lệ.' };
+  const chu = String(form.get('so_tien') ?? '').trim();
+  const tien = chu ? docTien(chu) : null;
+  if (tien !== null && (Number.isNaN(tien) || tien < 0)) return { ok: false, cau: 'Số tiền giảm trừ là số đồng (để trống = tự tính, 0 = không trừ).' };
+  const { data, error } = await client.rpc('kho_xac_nhan_tien_tra_hang', {
+    p_phieu_xuat_id: id,
+    p_so_tien: tien,
+    p_ghi_chu: String(form.get('ghi_chu') ?? '').trim() || null,
+  });
+  if (error) return { ok: false, cau: cauLoiKho(error) };
+  const kq = (Array.isArray(data) ? data[0] : data) as { so_phieu: string; so_tien_giam_tru: number; da_co: boolean } | undefined;
+  const giam = so(kq?.so_tien_giam_tru);
+  const cauTien = giam > 0 ? `công nợ giảm ${giam.toLocaleString('vi-VN')} đ` : 'không giảm công nợ (0 đ)';
+  return {
+    ok: true,
+    cau: kq?.da_co ? `Phiếu ${kq.so_phieu} đã được xác nhận từ trước: ${cauTien}.` : `Đã xác nhận phiếu ${kq?.so_phieu ?? ''}: ${cauTien}.`,
+  };
+}
+
+/**
+ * Hủy phiếu trả hàng CÒN CHỜ xác nhận tiền (ghi nhầm kg, NCC không nhận lại):
+ * hàng về lại đúng lô, đúng chỗ (kho_huy_tra_hang_cho_tien). Người ghi phiếu,
+ * kế toán hoặc quản lý. Không có tiền trong câu trả về.
+ */
+export function huyTraHangChoTien(client: SupabaseClient, id: string, lyDo: string): Promise<KetQua> {
+  if (!laUuid(id)) return Promise.resolve({ ok: false, cau: 'Phiếu không hợp lệ.' });
+  if (!lyDo.trim()) return Promise.resolve({ ok: false, cau: 'Ghi lý do hủy (ví dụ: ghi nhầm số kg, nhà cung cấp không nhận lại).' });
+  return cauTraVe(client.rpc('kho_huy_tra_hang_cho_tien', { p_phieu_xuat_id: id, p_ly_do: lyDo.trim() }));
+}
+
+// --- Nhật ký đổi tài khoản ngân hàng NCC --------------------------------------
+export interface DoiTaiKhoan {
+  id: string;
+  ngan_hang_cu: string | null;
+  so_tai_khoan_cu: string | null;
+  ngan_hang_moi: string | null;
+  so_tai_khoan_moi: string | null;
+  nguoi_doi: string | null;
+  luc: string;
+}
+
+export async function docNhatKyTaiKhoan(client: SupabaseClient, nccId: string, gioiHan = 10): Promise<DoiTaiKhoan[]> {
+  if (!laUuid(nccId)) return [];
+  const { data, error } = await client
+    .from('kho_ncc_tk_nhat_ky')
+    .select('id, ngan_hang_cu, so_tai_khoan_cu, ngan_hang_moi, so_tai_khoan_moi, nguoi_doi, luc')
+    .eq('nha_cung_cap_id', nccId)
+    .order('luc', { ascending: false })
+    .limit(gioiHan);
+  if (error) throw error;
+  return (data ?? []) as DoiTaiKhoan[];
+}
+
+/**
+ * Lần đổi tài khoản THẬT gần nhất trong `soNgay` ngày (đã có số cũ — điền lần
+ * đầu không tính; số khác (bỏ dấu cách) hoặc ngân hàng khác), đúng như sự kiện
+ * ncc_doi_tai_khoan của database. null = không có.
+ */
+export function doiTaiKhoanGanDay(nk: DoiTaiKhoan[], bayGio: number, soNgay = 30): DoiTaiKhoan | null {
+  const so = (v: string | null) => (v ?? '').replace(/\s/g, '');
+  const nh = (v: string | null) => (v ?? '').trim().toLowerCase();
+  return nk.find(x => !!x.so_tai_khoan_cu
+    && (so(x.so_tai_khoan_cu) !== so(x.so_tai_khoan_moi) || nh(x.ngan_hang_cu) !== nh(x.ngan_hang_moi))
+    && bayGio - Date.parse(x.luc) <= soNgay * 86400000) ?? null;
+}
+
+// --- MISA ----------------------------------------------------------------------
+export async function docDuLieuMisa(
+  client: SupabaseClient, chiNhanhId: string, tu: string, den: string, loai: LoaiMisa,
+): Promise<DongMisa[]> {
+  const { data, error } = await client.rpc('kho_du_lieu_misa', {
+    p_chi_nhanh_id: chiNhanhId,
+    p_tu: tu,
+    p_den: den,
+    p_loai: loai,
+  });
+  if (error) throw error;
+  const soHoacNull = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  return ((data ?? []) as Dong[]).map(r => ({
+    ...r, thu_tu: so(r.thu_tu), so_luong: soHoacNull(r.so_luong), don_gia: soHoacNull(r.don_gia),
+    thanh_tien: soHoacNull(r.thanh_tien), thue_suat: soHoacNull(r.thue_suat), tien_thue: soHoacNull(r.tien_thue),
+    thieu_ma: !!r.thieu_ma,
+  })) as DongMisa[];
+}
+
+/** Mã tài khoản MISA mặc định của chi nhánh (kho_cai_dat.misa_tk). */
+export async function docMisaTk(client: SupabaseClient, chiNhanhId: string): Promise<Record<string, string>> {
+  const { data, error } = await client.from('kho_cai_dat').select('misa_tk').eq('chi_nhanh_id', chiNhanhId).maybeSingle();
+  if (error) throw error;
+  return ((data?.misa_tk ?? {}) as Record<string, string>);
+}
+
+export async function luuMisaTk(client: SupabaseClient, chiNhanhId: string, tk: Record<string, string>): Promise<KetQua> {
+  if (Object.keys(tk).length === 0) return { ok: false, cau: 'Chưa sửa mã tài khoản nào.' };
+  const { error } = await client.rpc('kho_luu_misa_tk', { p_chi_nhanh_id: chiNhanhId, p_misa_tk: tk });
+  if (error) return { ok: false, cau: cauLoiKho(error) };
+  return { ok: true, cau: 'Đã lưu mã tài khoản. File MISA từ giờ dùng các mã mới.' };
+}
+
+/** Kế toán sửa mã MISA của một mặt hàng (bảng mặt hàng chỉ quản lý sửa được — đi qua hàm riêng). */
+export async function luuMaMisaMatHang(client: SupabaseClient, matHangId: string, ma: string | null): Promise<KetQua> {
+  if (!laUuid(matHangId)) return { ok: false, cau: 'Mặt hàng không hợp lệ.' };
+  const { error } = await client.rpc('kho_luu_ma_misa_mat_hang', { p_mat_hang_id: matHangId, p_ma_misa: ma });
+  if (error) return { ok: false, cau: cauLoiKho(error) };
+  return { ok: true, cau: ma ? `Đã lưu mã MISA ${ma}.` : 'Đã xóa mã MISA.' };
+}
+
+/** NCC và mặt hàng kèm mã MISA — để tìm chỗ thiếu mã trên màn MISA. */
+export async function docMaMisaDanhMuc(client: SupabaseClient): Promise<{
+  ncc: { id: string; ten: string; ma_misa: string | null }[];
+  matHang: { id: string; ma: string; ten: string; ma_misa: string | null }[];
+}> {
+  const [a, b] = await Promise.all([
+    client.from('kho_nha_cung_cap').select('id, ten, ma_misa').order('ten'),
+    client.from('kho_mat_hang').select('id, ma, ten, ma_misa').order('ma'),
+  ]);
+  if (a.error) throw a.error;
+  if (b.error) throw b.error;
+  return { ncc: (a.data ?? []) as { id: string; ten: string; ma_misa: string | null }[],
+           matHang: (b.data ?? []) as { id: string; ma: string; ten: string; ma_misa: string | null }[] };
 }

@@ -116,12 +116,14 @@ await nhom('2 · BỘ KHÓA ĐÚNG THEO QUYỀN TỪNG VAI', async () => {
                  'thu_hoi_thap',    // 0033: pha lóc thu hồi thấp, chưa bấm "Đã xem"
                  'ipos_cho_xu_ly',  // 0037: dòng bán iPOS chưa trừ được kho
                  'dinh_muc_lech',   // 0038: mặt hàng bếp nhận lệch định mức 7 ngày
-                 'don_dat_tre'],    // 0039: đơn đặt hàng quá ngày giao chưa nhận
+                 'don_dat_tre',     // 0039: đơn đặt hàng quá ngày giao chưa nhận
+                 'tra_hang_cho_tien'], // 0040: trả hàng NCC chờ kế toán xác nhận tiền (quyền ke_toan)
     'thủ kho':  [...CHUNG, 'quay_chua_dem', 'nhap_bi_tra', 'nhap_nhap', 'huy_bi_tra', 'kiem_ke_tra_ve', 'pha_nhap',
                  'yeu_cau_quay'],
     'NV quầy':  [...CHUNG, 'quay_chua_dem', 'huy_bi_tra', 'kiem_ke_tra_ve', ...DI_DUONG],
     // 0031: kế toán điền giá và duyệt phiếu nhập → có số đỏ duyet_nhap (không có hủy, kiểm kê)
-    'kế toán':  [...CHUNG, 'duyet_nhap', 'cong_no_qua_han', 'cong_no_7_ngay', 'chua_doi_chieu'],
+    'kế toán':  [...CHUNG, 'duyet_nhap', 'cong_no_qua_han', 'cong_no_7_ngay', 'chua_doi_chieu',
+                 'tra_hang_cho_tien'],  // 0040
   };
   const uid = { 'quản lý': UID.qlA, 'thủ kho': UID.thuKhoA, 'NV quầy': UID.nvQuayA, 'kế toán': UID.keToanA };
   for (const [ten, khoa] of Object.entries(mong)) {

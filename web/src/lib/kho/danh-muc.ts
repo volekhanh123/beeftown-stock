@@ -16,6 +16,7 @@ import {
   type KetQua,
 } from './chung.ts';
 import { docTruongThem, taoKhoa, tachLuaChon, type DinhNghiaTruong, type GiaTriTruong } from './truong-them.ts';
+import { docMaMisa } from './misa.ts';
 
 // -----------------------------------------------------------------------------
 // KIỂU
@@ -40,6 +41,8 @@ export interface MatHang {
   /** Mức kho lạnh cho gợi ý đặt hàng (0039, kg); null = chưa cài. */
   kho_toi_thieu_kg: number | null;
   kho_toi_da_kg: number | null;
+  /** Mã hàng bên MISA (0040); null = file MISA dùng mã nội bộ, cờ thiếu mã. */
+  ma_misa?: string | null;
   truong_them: GiaTriTruong;
   dang_dung: boolean;
   thu_tu: number;
@@ -63,6 +66,10 @@ export interface NhaCungCap {
   ghi_chu: string | null;
   truong_them: GiaTriTruong;
   dang_dung: boolean;
+  /** Cách NCC xuất hóa đơn (0040): mỗi lần giao một hóa đơn, hay gộp nhiều lần giao. */
+  kieu_hoa_don?: 'tung_lan' | 'gop';
+  /** Mã NCC bên MISA (0040). */
+  ma_misa?: string | null;
 }
 
 export interface ViTri {
@@ -115,6 +122,8 @@ export interface GiaTriFormMatHang {
   noi_de_sau_pha: string;
   /** Mức kho lạnh cho gợi ý đặt hàng (0039). */
   kho_toi_thieu_kg: string; kho_toi_da_kg: string;
+  /** Mã hàng bên MISA (0040). */
+  ma_misa?: string;
   thu_tu: string; dang_dung: boolean; truong_them: GiaTriTruong; gia_tri_thu_hoi_kg: string;
 }
 
@@ -188,7 +197,7 @@ export async function luuDinhNghia(client: SupabaseClient, form: FormData, daCo:
 export async function docMatHang(client: SupabaseClient): Promise<MatHang[]> {
   const { data, error } = await client
     .from('kho_mat_hang')
-    .select('id, ma, ten, ten_phu, nhom, loai, dem_goi, don_vi_goi, han_dung_ngay, canh_bao_truoc_ngay, gia_ban_kg, xu_ly_mac_dinh, ma_can, ton_toi_thieu_kg, noi_de_sau_pha, kho_toi_thieu_kg, kho_toi_da_kg, truong_them, dang_dung, thu_tu')
+    .select('id, ma, ten, ten_phu, nhom, loai, dem_goi, don_vi_goi, han_dung_ngay, canh_bao_truoc_ngay, gia_ban_kg, xu_ly_mac_dinh, ma_can, ton_toi_thieu_kg, noi_de_sau_pha, kho_toi_thieu_kg, kho_toi_da_kg, ma_misa, truong_them, dang_dung, thu_tu')
     .order('loai').order('thu_tu').order('ten');
   if (error) throw error;
   return (data ?? []).map(r => ({
@@ -243,8 +252,13 @@ export async function luuMatHang(
   const { giaTri, loi } = docTruongThem(form, dinhNghia, undefined, cu?.truong_them ?? {});
   if (loi.length) return { ok: false, cau: loi.join(' · ') };
 
+  // Mã MISA (0040) — chỉ khi form có ô này; trống = xóa mã.
+  const maMisa = form.has('ma_misa') ? docMaMisa(form.get('ma_misa')) : null;
+  if (maMisa === undefined) return { ok: false, cau: 'Mã MISA chỉ gồm chữ không dấu, số và các dấu _ . / - (tối đa 40 ký tự).' };
+
   const thuTu = docSoNguyen(form.get('thu_tu'), 0, 99999);
   const dong = {
+    ...(form.has('ma_misa') ? { ma_misa: maMisa } : {}),
     ma, ten, loai,
     ten_phu: sHoacNull(form, 'ten_phu'),
     nhom: sHoacNull(form, 'nhom'),
@@ -710,7 +724,7 @@ export async function taoDanhMucMau(client: SupabaseClient): Promise<KetQua> {
 export async function docNhaCungCap(client: SupabaseClient): Promise<NhaCungCap[]> {
   const { data, error } = await client
     .from('kho_nha_cung_cap')
-    .select('id, ten, ma_so_thue, dien_thoai, email, dia_chi, nguoi_lien_he, so_ngay_no, so_ngay_giao, ngay_giao_trong_tuan, ngan_hang, so_tai_khoan, ghi_chu, truong_them, dang_dung')
+    .select('id, ten, ma_so_thue, dien_thoai, email, dia_chi, nguoi_lien_he, so_ngay_no, so_ngay_giao, ngay_giao_trong_tuan, ngan_hang, so_tai_khoan, ghi_chu, truong_them, dang_dung, kieu_hoa_don, ma_misa')
     .order('dang_dung', { ascending: false }).order('ten');
   if (error) throw error;
   return (data ?? []) as NhaCungCap[];
@@ -731,10 +745,16 @@ export async function luuNhaCungCap(
   const thuGiao = [...new Set(form.getAll('thu_giao').map(v => Number(v)))]
     .filter(n => Number.isInteger(n) && n >= 1 && n <= 7).sort((a, b) => a - b);
 
+  // Hóa đơn và MISA (0040) — chỉ khi form có ô đó.
+  const maMisa = form.has('ma_misa') ? docMaMisa(form.get('ma_misa')) : null;
+  if (maMisa === undefined) return { ok: false, cau: 'Mã MISA chỉ gồm chữ không dấu, số và các dấu _ . / - (tối đa 40 ký tự).' };
+
   const { giaTri, loi } = docTruongThem(form, dinhNghia, undefined, cu?.truong_them ?? {});
   if (loi.length) return { ok: false, cau: loi.join(' · ') };
 
   const dong = {
+    ...(form.has('kieu_hoa_don') ? { kieu_hoa_don: s(form, 'kieu_hoa_don') === 'gop' ? 'gop' : 'tung_lan' } : {}),
+    ...(form.has('ma_misa') ? { ma_misa: maMisa } : {}),
     ten,
     ma_so_thue: mst || null,
     dien_thoai: sHoacNull(form, 'dien_thoai'),
@@ -756,11 +776,32 @@ export async function luuNhaCungCap(
     const { data, error } = await client.from('kho_nha_cung_cap').update(dong).eq('id', cu.id).select('id');
     if (error) return { ok: false, cau: cauLoiKho(error) };
     if (!data?.length) return { ok: false, cau: 'Không sửa được — tài khoản không có quyền sửa nhà cung cấp.' };
+    // 0040: đổi số tài khoản đã có → database ghi nhật ký và báo chủ quán.
+    if (canhBaoDoiTaiKhoan(cu, dong)) {
+      const truoc = `${cu.so_tai_khoan}${cu.ngan_hang ? ` (${cu.ngan_hang})` : ''}`;
+      const sau = `${dong.so_tai_khoan ?? '(trống)'}${dong.ngan_hang ? ` (${dong.ngan_hang})` : ''}`;
+      return { ok: true, cau: `Đã lưu "${ten}". Tài khoản ngân hàng vừa đổi từ ${truoc} sang ${sau} — đã ghi lại và báo chủ quán. Gọi điện hỏi lại nhà cung cấp trước khi chuyển tiền.` };
+    }
     return { ok: true, cau: `Đã lưu "${ten}".` };
   }
   const { error } = await client.from('kho_nha_cung_cap').insert(dong);
   if (error) return { ok: false, cau: cauLoiKho(error) };
   return { ok: true, cau: `Đã thêm nhà cung cấp "${ten}".` };
+}
+
+/**
+ * Có phải đổi tài khoản THẬT không (đã có số cũ; số mới khác, bỏ dấu cách,
+ * hoặc ngân hàng khác) — khớp sự kiện ncc_doi_tai_khoan của database: điền lần
+ * đầu thì không cảnh báo.
+ */
+export function canhBaoDoiTaiKhoan(
+  cu: (Pick<NhaCungCap, 'so_tai_khoan'> & { ngan_hang?: string | null }) | undefined,
+  moi: { so_tai_khoan: string | null; ngan_hang?: string | null },
+): boolean {
+  const truoc = (cu?.so_tai_khoan ?? '').replace(/\s/g, '');
+  const nh = (v: string | null | undefined) => (v ?? '').trim().toLowerCase();
+  return !!truoc && (truoc !== (moi.so_tai_khoan ?? '').replace(/\s/g, '')
+    || ('ngan_hang' in moi && nh(cu?.ngan_hang) !== nh(moi.ngan_hang)));
 }
 
 // -----------------------------------------------------------------------------

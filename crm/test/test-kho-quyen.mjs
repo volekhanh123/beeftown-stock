@@ -342,12 +342,17 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // mức kho lạnh của mặt hàng (danh_muc)
     'kho_luu_don_dat', 'kho_gui_don_dat', 'kho_huy_don_dat', 'kho_ds_don_dat_kg', 'kho_doc_don_dat_kg',
     'kho_goi_y_dat_hang', 'kho_tao_phieu_nhap_tu_don', 'kho_bao_cao_ncc', 'kho_luu_muc_dat_hang',
+    // Công nợ v2 (0040) — mọi hàm có tiền chỉ ke_toan; bước 1 trả hàng (chỉ kg) nhap hoặc ke_toan
+    'kho_ghi_thanh_toan_v2', 'kho_xem_truoc_thanh_toan', 'kho_doi_chieu_hoa_don_gop', 'kho_bo_doi_chieu_gop',
+    'kho_tra_hang_ghi_kg', 'kho_ds_tra_hang_cho_tien', 'kho_xac_nhan_tien_tra_hang', 'kho_huy_tra_hang_cho_tien',
+    'kho_cong_no_theo_ky', 'kho_du_lieu_misa', 'kho_luu_misa_tk', 'kho_luu_ma_misa_mat_hang',
     // Hàm trigger — PostgREST không gọi được hàm trả về trigger
     'kho_vi_tri_kiem_sua', 'kho_truong_them_kiem_sua', 'kho_truong_them_kiem',
     'kho_mat_hang_chuan_hoa', 'kho_cong_thuc_pha_kiem', 'kho_lo_chan_sua_xoa',
     'kho_ton_chi_qua_so_cai', 'kho_so_cai_ghi', 'kho_so_cai_chan_sua_xoa',
     'kho_phieu_nhap_chan_huy_da_tra', 'kho_chan_vi_tri_di_duong', 'kho_cai_dat_ghi_moc',
     'kho_phieu_nhap_kiem_don', 'kho_phieu_nhap_cap_nhat_don',
+    'kho_ncc_ghi_doi_tai_khoan', 'kho_phieu_nhap_giu_hoa_don_gop',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
@@ -364,6 +369,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_khong_dau', 'kho_dinh_muc_ban', 'kho_dinh_muc_tinh',
     // 0039: số thành chữ, ngày giao mặc định, luật "đủ" của dòng đơn, tính lại kg đã nhận
     'kho_so_chu', 'kho_ngay_giao_mac_dinh', 'kho_don_dat_dong_du', 'kho_don_dat_tinh_nhan',
+    // 0040: tự chia một khoản vào các phiếu (đọc view có tiền), tiền trả hàng tự tính
+    'kho_chia_thanh_toan', 'kho_tien_tra_hang_goi_y',
   ].sort();
 
   const { rows } = await db.query(`

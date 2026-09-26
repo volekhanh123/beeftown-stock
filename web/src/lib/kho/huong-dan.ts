@@ -273,7 +273,23 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
       'Món chưa có hạn dùng mặc định thì ghi hạn theo nhãn trên thùng (mở **Thêm chi tiết**).',
     ],
     link: { href: '/noi-bo/kho/nhan-hang/moi', chu: 'Mở màn Nhận hàng' },
+  },  {
+    id: 'tra-hang', vai: ['thu_kho', 'quan_ly', 'chu_so_huu'],
+    tieuDe: 'Trả hàng cho nhà cung cấp',
+    tomTat: 'Hàng hỏng, sai quy cách cần trả: thủ kho chỉ ghi số kg, hàng rời kho ngay. Kế toán lo phần còn lại với nhà cung cấp.',
+    buoc: [
+      'Mở **Tồn kho**, ở lô cần trả bấm **Trả NCC**. Hoặc mở **Khác** → **Trả hàng NCC**, tìm lô rồi bấm **Trả lô này**.',
+      'Gõ **Số kg trả** (và số gói / tảng nếu có), ghi **Lý do trả**.',
+      'Chụp ảnh hàng trả hoặc biên bản.',
+      'Bấm **Ghi trả hàng**. Màn hình mở phiếu vừa ghi, hiện "Chờ kế toán xác nhận" — thủ kho không phải làm gì thêm.',
+    ],
+    meo: [
+      'Mỗi lần ghi một lô. Trả nhiều lô thì ghi lần lượt từng lô.',
+      'Ghi nhầm số kg: mở phiếu vừa ghi, bấm **Hủy phiếu trả hàng** (hàng về lại chỗ cũ) rồi ghi lại. Kế toán đã xác nhận rồi thì báo quản lý — đừng ghi thêm một phiếu để bù.',
+    ],
+    link: { href: '/noi-bo/kho/cong-no/tra-hang', chu: 'Mở Trả hàng NCC' },
   },
+
   {
     id: 'phieu-bi-tra', vai: ['thu_kho'],
     tieuDe: 'Phiếu bị trả về',
@@ -698,8 +714,9 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     buoc: [
       '**Duyệt:** điền giá và duyệt phiếu nhập thủ kho gửi.',
       '**Công nợ:** đối chiếu hóa đơn VAT cho phiếu đã duyệt.',
-      '**Ghi thanh toán** khi đã chuyển khoản / trả tiền mặt.',
-      'Cuối tháng: **Tải công nợ (Excel)** để nhập sang MISA.',
+      '**Trả tiền** khi đã chuyển khoản / trả tiền mặt; **bù trừ** hay **NCC hoàn tiền** cũng ghi ở đó.',
+      '**Trả hàng chờ xác nhận tiền** (số đỏ ở Công nợ): ghi số tiền NCC trừ cho hàng thủ kho đã trả.',
+      'Cuối tháng: **Xuất sang MISA** (file CSV) và in **biên bản đối chiếu công nợ** gửi nhà cung cấp.',
     ],
     link: { href: '/noi-bo/kho/cong-no', chu: 'Mở Công nợ' },
   },
@@ -718,33 +735,83 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
   },
   {
     id: 'ghi-thanh-toan', vai: ['ke_toan'],
-    tieuDe: 'Ghi thanh toán',
-    tomTat: 'Ghi khoản đã chuyển khoản, tiền mặt hoặc giảm trừ cho nhà cung cấp.',
+    tieuDe: 'Trả tiền nhà cung cấp',
+    tomTat: 'Ghi khoản chuyển khoản, tiền mặt, bù trừ, NCC hoàn tiền hoặc giảm trừ — xem trước tiền chia vào phiếu nào.',
     buoc: [
-      'Mở **Công nợ** → bấm tên nhà cung cấp.',
-      'Ở mục **Ghi thanh toán**: chọn **Loại**, gõ **Số tiền**, **Hình thức**, **Ngày**.',
-      'Chụp ủy nhiệm chi / biên nhận nếu có.',
-      'Bấm **Ghi thanh toán**. Không chia phiếu thì tự trả phiếu đến hạn sớm nhất trước.',
+      'Mở **Công nợ** → bấm tên nhà cung cấp → **Trả tiền**.',
+      'Chọn cách trả: **Chuyển khoản**, **Tiền mặt**, **Bù trừ** (trừ vào khoản NCC nợ lại quán), **NCC hoàn tiền** hoặc **Giảm trừ**.',
+      'Gõ **Số tiền** rồi bấm **Xem trước cách chia** — hoặc bấm **Trả đủ** để điền đúng số còn nợ.',
+      'Xem bảng chia: tiền vào phiếu đến hạn sớm nhất trước. Muốn chia khác thì sửa số ở từng phiếu (tổng phải bằng số tiền).',
+      'Ghi **Ngày**, **Ghi chú** (bù trừ bắt buộc ghi khoản gì), chụp ủy nhiệm chi, bấm nút **Ghi …**.',
     ],
     meo: [
-      'Muốn trả đúng phiếu nào: mở **Chia cho phiếu cụ thể**; tổng phải bằng số tiền trả.',
-      'Ghi nhầm: mở **Hủy khoản này (ghi nhầm)**, ghi lý do, bấm **Hủy khoản**.',
+      'NCC hoàn tiền chỉ dùng khi nhà cung cấp đang nợ lại quán (số âm) — không làm công nợ vượt quá 0.',
+      'Ghi nhầm: ở mục **Các khoản đã ghi** mở **Hủy khoản này (ghi nhầm)**, ghi lý do, bấm **Hủy khoản**.',
+      'Nhà cung cấp vừa đổi số tài khoản thì trang hiện dòng đỏ — gọi hỏi lại trước khi chuyển.',
     ],
     link: { href: '/noi-bo/kho/cong-no', chu: 'Mở Công nợ' },
   },
+
   {
     id: 'cong-no', vai: ['ke_toan', 'chu_so_huu'],
     tieuDe: 'Đọc màn Công nợ',
-    tomTat: 'Còn nợ = Nhập mua − Trả hàng / giảm trừ − Đã thanh toán.',
+    tomTat: 'Còn phải trả = Nợ đầu kỳ + Mua − Đã trả − Giảm trừ.',
     buoc: [
-      'Bốn ô trên cùng: đang nợ, quá hạn, đến hạn trong 7 ngày, phiếu chưa đối chiếu. Bấm ô để lọc.',
-      'Bấm **Xem ví dụ** để xem cách tính.',
+      'Dải trên cùng là phép tính: **Nợ đầu kỳ + Mua − Đã trả − Giảm trừ = Còn phải trả**. Bấm **Xem ví dụ** để xem cách tính.',
+      'Bốn thẻ: **Theo NCC** (mỗi nhà cung cấp một dòng), **Theo phiếu**, **Thanh toán** (mọi khoản đã ghi), **Theo dõi** (sổ công nợ theo kỳ).',
+      'Chip lọc nhanh: **Quá hạn**, **Đến hạn 7 ngày**, **Chưa đối chiếu**, **Có hóa đơn gộp**. Ô tìm và nút trang ở dưới bảng.',
       'Số âm (−): nhà cung cấp đang nợ lại quán, thường do trả hàng sau khi đã trả tiền.',
-      'Tải file: **Tải bảng công nợ tất cả phiếu (Excel)**.',
+      'Tải file: **Tải bảng công nợ tất cả phiếu (Excel)** hoặc **Xuất sang MISA**.',
     ],
     anh: anh('cong-no', 'Màn Công nợ nhà cung cấp'),
     link: { href: '/noi-bo/kho/cong-no', chu: 'Mở Công nợ' },
   },
+  {
+    id: 'hoa-don-gop', vai: ['ke_toan'],
+    tieuDe: 'Hóa đơn gộp (một hóa đơn cho nhiều lần giao)',
+    tomTat: 'Nhà cung cấp xuất hóa đơn cuối tuần / cuối tháng cho nhiều phiếu nhập: đối chiếu một lần, phần mềm tự chia tiền vào từng phiếu.',
+    buoc: [
+      'Mở **Công nợ** → bấm tên nhà cung cấp → **Đối chiếu hóa đơn gộp**.',
+      'Tích các phiếu nhập nằm trong hóa đơn (phiếu chưa đối chiếu đã tích sẵn). Cần ít nhất 2 phiếu.',
+      'Gõ **Số hóa đơn**, **Ngày hóa đơn**, **Tổng tiền in trên hóa đơn**, **Tiền thuế GTGT**.',
+      'Bấm **Xem trước**: bảng chia tiền hóa đơn vào từng phiếu, tổng khớp từng đồng.',
+      'Tổng hóa đơn khác tổng phiếu thì ghi **Lý do lệch**. Bấm **Lưu đối chiếu**.',
+    ],
+    meo: [
+      'Chọn nhầm phiếu: ở trang nhà cung cấp, mục **Hóa đơn gộp** → **Bỏ đối chiếu hóa đơn này** (chỉ khi chưa trả tiền các phiếu đó).',
+      'Ở **Thiết lập** → **Nhà cung cấp**, chọn **Kiểu hóa đơn: Gộp** để nhớ nhà cung cấp nào xuất hóa đơn gộp.',
+    ],
+    link: { href: '/noi-bo/kho/cong-no', chu: 'Mở Công nợ' },
+  },
+  {
+    id: 'doi-chieu-cong-no', vai: ['ke_toan'],
+    tieuDe: 'In biên bản đối chiếu công nợ',
+    tomTat: 'Sổ công nợ của một nhà cung cấp trong kỳ — số dư đầu kỳ, từng chứng từ, số dư cuối kỳ — để hai bên ký.',
+    buoc: [
+      'Mở **Công nợ** → bấm tên nhà cung cấp → **In biên bản đối chiếu**.',
+      'Chọn kỳ: **Tháng này**, **Tháng trước**, **Từ đầu năm** hoặc gõ **Từ ngày**, **Đến ngày** → **Xem kỳ này**.',
+      'Bấm **In / Lưu PDF**. Gửi nhà cung cấp ký, lưu cùng hóa đơn.',
+    ],
+    meo: ['Xem sổ của mọi nhà cung cấp: thẻ **Theo dõi** ở màn Công nợ.'],
+    link: { href: '/noi-bo/kho/cong-no?tab=theo-doi', chu: 'Mở sổ công nợ' },
+  },
+  {
+    id: 'misa', vai: ['ke_toan'],
+    tieuDe: 'Xuất sang MISA',
+    tomTat: 'Tải file CSV mua hàng hoặc thanh toán trong kỳ để nhập khẩu vào MISA.',
+    buoc: [
+      'Mở **Công nợ** → **Xuất sang MISA**.',
+      'Chọn **Từ ngày**, **Đến ngày**, **Loại dữ liệu** (mua hàng / trả tiền) → **Xem trước**.',
+      'Ô **dòng thiếu mã MISA** khác 0: ghi mã cho nhà cung cấp (bấm tên) và mặt hàng (ô **Mã MISA** → **Lưu mã**).',
+      'Bấm **Tải file CSV**. Mở bằng Excel, soát lại rồi nhập khẩu vào MISA.',
+    ],
+    meo: [
+      'Mã tài khoản (331, 1561, 1331…) sửa ở mục **Mã tài khoản mặc định** cuối trang.',
+      'Excel báo lỗi cột: đổi **Ngăn cột bằng** sang dấu phẩy rồi tải lại.',
+    ],
+    link: { href: '/noi-bo/kho/cong-no/misa', chu: 'Mở Xuất sang MISA' },
+  },
+
   {
     id: 'no-dau', vai: ['ke_toan', 'chu_so_huu'],
     tieuDe: 'Nợ đầu kỳ (làm một lần)',
@@ -760,17 +827,22 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
   },
   {
     id: 'tra-ncc', vai: ['ke_toan'],
-    tieuDe: 'Trả hàng nhà cung cấp',
-    tomTat: 'Hàng lỗi trả lại: tồn giảm và công nợ tự giảm theo.',
+    tieuDe: 'Trả hàng nhà cung cấp: xác nhận tiền',
+    tomTat: 'Thủ kho ghi số kg trả, kế toán ghi số tiền nhà cung cấp trừ vào công nợ.',
     buoc: [
-      'Mở **Công nợ** → nhà cung cấp → ở phiếu nhập bấm **Trả hàng cho nhà cung cấp →**.',
-      'Chọn nơi đang để hàng, gõ **Số kg trả** (và số gói).',
-      '**Tiền giảm trừ công nợ**: để trống = tự tính; ghi 0 nếu họ đổi hàng mới.',
-      'Chụp biên bản trả hàng, bấm **Ghi trả hàng**.',
+      'Số đỏ ở **Công nợ** hoặc mục **Việc** → **Xác nhận tiền** (hoặc **Công nợ** → **Trả hàng nhà cung cấp**).',
+      'Ở **Trả hàng chờ xác nhận tiền**: xem kg trả, lý do, ảnh, số **Tự tính** (kg × đơn giá mua + phần thuế).',
+      '**Tiền nhà cung cấp trừ**: để trống = lấy số tự tính; ghi đúng số trên biên bản nếu khác; ghi 0 nếu họ đổi hàng mới.',
+      'Bấm **Xác nhận** — công nợ giảm ngay.',
     ],
-    meo: ['Thủ kho thấy hàng lỗi thì để riêng và báo kế toán.'],
-    link: { href: '/noi-bo/kho/cong-no', chu: 'Mở Công nợ' },
+    meo: [
+      'Trả một bước (tự ghi luôn tiền): **Công nợ** → nhà cung cấp → ở phiếu nhập bấm **Trả hàng cho nhà cung cấp →**.',
+      'Đã trả đủ tiền rồi mới trả hàng: nhà cung cấp nợ lại quán (số âm) — ghi **Bù trừ** lần sau hoặc **NCC hoàn tiền**.',
+      'Thủ kho ghi nhầm kg, hoặc nhà cung cấp không nhận lại hàng: bấm **Hủy phiếu này** dưới phiếu đó — hàng về lại đúng chỗ cũ, công nợ không đổi.',
+    ],
+    link: { href: '/noi-bo/kho/cong-no/tra-hang', chu: 'Mở Trả hàng NCC' },
   },
+
 
   // ===========================================================================
   // CHỦ QUÁN
@@ -977,6 +1049,10 @@ export const CAU_HOI: CauHoi[] = [
     dap: 'Lấy mức cần (mức tối đa kho lạnh của món; chưa cài thì lượng dùng trung bình mỗi ngày trong 28 ngày × số ngày giao + 3 ngày) trừ đi hàng đang có, hàng đang mang ra quầy và hàng đã đặt chưa về. Dòng chữ nhỏ dưới mỗi món ghi rõ từng số.' },
   { id: 'hoi-ipos-khong-tru', hoi: 'Bán trên iPOS mà kho không trừ?',
     dap: 'Mở **Kết nối iPOS** xem đèn: đỏ là mất kết nối — bấm **Cập nhật ngay**. Đèn vàng / số đỏ ở **Bán hàng iPOS**: món chưa ghép hoặc sổ thiếu hàng ở quầy — ghép món, nhận hàng đang mang ra, rồi **Thử lại**.' },
+  { id: 'hoi-bu-tru-hoan-tien', hoi: 'Bù trừ và NCC hoàn tiền khác nhau thế nào?',
+    dap: '**Bù trừ**: quán trừ vào tiền phải trả một khoản nhà cung cấp đang nợ quán (tiền cọc, vỏ thùng…) — không có tiền đi ra. **NCC hoàn tiền**: nhà cung cấp chuyển trả tiền lại cho quán khi quán đã trả thừa — chỉ ghi được khi nhà cung cấp đang nợ lại quán (số âm).' },
+  { id: 'hoi-doi-so-tai-khoan', hoi: 'Nhà cung cấp báo đổi số tài khoản?',
+    dap: 'Gọi lại số điện thoại cũ của nhà cung cấp để hỏi chắc trước khi sửa — kẻ gian hay giả làm nhà cung cấp để nhận tiền. Mỗi lần sửa số tài khoản đều được ghi lại và báo chủ quán.' },
 ];
 
 /** Mục thuộc vai (có vai trong danh sách `vai`). */

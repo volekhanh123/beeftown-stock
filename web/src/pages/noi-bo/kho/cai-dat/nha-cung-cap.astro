@@ -9,13 +9,20 @@
  * Đặt hàng (GĐ8a, 0039): số ngày giao (từ lúc đặt tới lúc hàng về, mặc định 1)
  * và thứ giao trong tuần (không tích = ngày nào cũng giao) — ngày giao dự kiến
  * và gợi ý số kg nên đặt dùng hai ô này.
+ *
+ * Công nợ v2 (GĐ8b, 0040): "Kiểu hóa đơn" (từng lần / gộp nhiều lần giao) và
+ * "Mã MISA". Đổi số tài khoản đã có: database ghi nhật ký (cũ → mới, ai, lúc)
+ * và báo chủ quán (sự kiện ncc_doi_tai_khoan, link ?sua=<id> về đây) — màn sửa
+ * hiện các lần đổi gần nhất để soát.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import TruongThem from '../../../../components/kho/TruongThem.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docNhaCungCap, docDinhNghia, luuNhaCungCap, type NhaCungCap } from '../../../../lib/kho/danh-muc.ts';
-import { cauLoiKho, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangThoiDiem, type KetQua } from '../../../../lib/kho/chung.ts';
+import { docNhatKyTaiKhoan, type DoiTaiKhoan } from '../../../../lib/kho/cong-no.ts';
+import { tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { THU_TRONG_TUAN, chuThuGiao } from '../../../../lib/kho/dat-hang.ts';
 import { docTruongThem, hienThiGiaTri, type DinhNghiaTruong, type GiaTriTruong } from '../../../../lib/kho/truong-them.ts';
 
@@ -47,7 +54,7 @@ const g = (ten: string, macDinh = '') => (nhapLai ? String(nhapLai.get(ten) ?? '
 
 type GiaTri = { id?: string; ten: string; ma_so_thue: string; dien_thoai: string; email: string; dia_chi: string;
   nguoi_lien_he: string; so_ngay_no: string; so_ngay_giao: string; thu_giao: number[]; ngan_hang: string; so_tai_khoan: string; ghi_chu: string;
-  dang_dung: boolean; truong_them: GiaTriTruong };
+  dang_dung: boolean; truong_them: GiaTriTruong; kieu_hoa_don: string; ma_misa: string };
 const tu = (n?: NhaCungCap): GiaTri => ({
   id: n?.id,
   ten: g('ten', n?.ten ?? ''), ma_so_thue: g('ma_so_thue', n?.ma_so_thue ?? ''),
@@ -59,11 +66,21 @@ const tu = (n?: NhaCungCap): GiaTri => ({
   ngan_hang: g('ngan_hang', n?.ngan_hang ?? ''),
   so_tai_khoan: g('so_tai_khoan', n?.so_tai_khoan ?? ''), ghi_chu: g('ghi_chu', n?.ghi_chu ?? ''),
   dang_dung: nhapLai ? nhapLai.get('dang_dung') !== 'khong' : (n?.dang_dung ?? true),
+  kieu_hoa_don: g('kieu_hoa_don', n?.kieu_hoa_don ?? 'tung_lan'), ma_misa: g('ma_misa', n?.ma_misa ?? ''),
   truong_them: nhapLai ? docTruongThem(nhapLai, dinhNghia, undefined, n?.truong_them ?? {}).giaTri : (n?.truong_them ?? {}),
 });
 // Một form duy nhất: đang sửa thì điền nhà cung cấp đó, không thì là form thêm mới.
 const gt = dangSua ? tu(dangSua) : tu();
 const moForm = !!dangSua || ds.length === 0 || !!nhapLai;
+// Các lần đổi tài khoản ngân hàng của NCC đang sửa (nhật ký 0040, quyền ncc).
+let nhatKy: DoiTaiKhoan[] = [];
+let tenNguoi = new Map<string, string>();
+if (dangSua) {
+  try {
+    nhatKy = await docNhatKyTaiKhoan(k.client, dangSua.id, 10);
+    tenNguoi = await tenNhanSu(k.client, nhatKy.map(x => x.nguoi_doi));
+  } catch { /* nhật ký chỉ để xem — lỗi đọc không chặn việc sửa */ }
+}
 ---
 <Kho k={k} huongDan="nha-cung-cap" tieuDe="Nhà cung cấp">
   <h1>Nhà cung cấp</h1>
@@ -105,7 +122,20 @@ const moForm = !!dangSua || ds.length === 0 || !!nhapLai;
         <label class="nb-o"><span>Địa chỉ</span><input type="text" name="dia_chi" value={gt.dia_chi} /></label>
         <div class="kho-luoi">
           <label class="nb-o"><span>Ngân hàng</span><input type="text" name="ngan_hang" value={gt.ngan_hang} /></label>
-          <label class="nb-o"><span>Số tài khoản</span><input type="text" inputmode="numeric" name="so_tai_khoan" value={gt.so_tai_khoan} /></label>
+          <label class="nb-o"><span>Số tài khoản</span>
+            {gt.id && gt.so_tai_khoan && <small>Đổi số tài khoản sẽ được ghi lại và báo chủ quán — gọi hỏi lại nhà cung cấp trước khi đổi.</small>}
+            <input type="text" inputmode="numeric" name="so_tai_khoan" value={gt.so_tai_khoan} /></label>
+        </div>
+        <div class="kho-luoi">
+          <label class="nb-o"><span>Kiểu hóa đơn</span>
+            <small>Gộp = nhà cung cấp xuất một hóa đơn cho nhiều lần giao (cuối tuần, cuối tháng).</small>
+            <select name="kieu_hoa_don">
+              <option value="tung_lan" selected={gt.kieu_hoa_don !== 'gop'}>Mỗi lần giao một hóa đơn</option>
+              <option value="gop" selected={gt.kieu_hoa_don === 'gop'}>Gộp nhiều lần giao một hóa đơn</option>
+            </select></label>
+          <label class="nb-o"><span>Mã nhà cung cấp bên MISA</span>
+            <small>Trống thì file MISA dùng mã số thuế và đánh dấu "thiếu mã".</small>
+            <input type="text" name="ma_misa" maxlength="40" value={gt.ma_misa} autocapitalize="characters" /></label>
         </div>
         <TruongThem dinhNghia={dinhNghia} giaTri={gt.truong_them} />
         <label class="nb-o"><span>Ghi chú</span><input type="text" name="ghi_chu" value={gt.ghi_chu} /></label>
@@ -116,6 +146,18 @@ const moForm = !!dangSua || ds.length === 0 || !!nhapLai;
           </select></label>
         <button type="submit" class="nb-nut" style="width:100%">{gt.id ? 'Lưu thay đổi' : 'Thêm nhà cung cấp'}</button>
       </form>
+      {dangSua && nhatKy.length > 0 && (
+        <div style="margin-top:1rem">
+          <h3 style="margin:0 0 .5rem">Các lần đổi tài khoản ngân hàng</h3>
+          <ul class="nb-viec">
+            {nhatKy.map(x => (
+              <li><span class={`dau ${x.so_tai_khoan_cu ? 'chua' : 'xong'}`}>{x.so_tai_khoan_cu ? '!' : '✓'}</span>
+                <span>{dinhDangThoiDiem(x.luc)} · {tenNguoi.get(x.nguoi_doi ?? '') ?? '—'}:{' '}
+                  {x.so_tai_khoan_cu ?? '(trống)'}{x.ngan_hang_cu ? ` (${x.ngan_hang_cu})` : ''} → <strong>{x.so_tai_khoan_moi ?? '(trống)'}</strong>{x.ngan_hang_moi ? ` (${x.ngan_hang_moi})` : ''}</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
       {dangSua && <p style="margin:.75rem 0 0"><a href="/noi-bo/kho/cai-dat/nha-cung-cap">Đóng, không sửa nữa</a></p>}
     </details>
   )}
@@ -133,6 +175,7 @@ const moForm = !!dangSua || ds.length === 0 || !!nhapLai;
         <dt>Giao hàng</dt><dd>{n.so_ngay_giao ? `sau ${n.so_ngay_giao} ngày` : 'trong ngày'} · {chuThuGiao(n.ngay_giao_trong_tuan)}</dd>
         {(n.nguoi_lien_he || n.dien_thoai) && <><dt>Liên hệ</dt><dd>{[n.nguoi_lien_he, n.dien_thoai].filter(Boolean).join(' · ')}</dd></>}
         {n.so_tai_khoan && <><dt>Tài khoản</dt><dd>{n.so_tai_khoan}{n.ngan_hang ? ` · ${n.ngan_hang}` : ''}</dd></>}
+        <dt>Hóa đơn</dt><dd>{n.kieu_hoa_don === 'gop' ? 'Gộp nhiều lần giao' : 'Mỗi lần giao một hóa đơn'}{n.ma_misa ? ` · MISA ${n.ma_misa}` : ''}</dd>
         {dinhNghia.filter(d => n.truong_them?.[d.khoa] !== undefined).map(d => (
           <><dt>{d.nhan}</dt><dd>{hienThiGiaTri(d, n.truong_them[d.khoa])}</dd></>
         ))}

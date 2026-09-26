@@ -46,7 +46,8 @@ export const KHOA_VIEC_TAY = [
   'yeu_cau_quay', 'hang_dang_chuyen',
 ];
 export const KHOA_DUYET = ['duyet_nhap', 'duyet_huy', 'duyet_kiem_ke'];
-export const KHOA_CONG_NO = ['cong_no_qua_han', 'chua_doi_chieu'];
+// 0040: + phiếu trả hàng thủ kho đã ghi kg, chờ kế toán xác nhận tiền.
+export const KHOA_CONG_NO = ['cong_no_qua_han', 'chua_doi_chieu', 'tra_hang_cho_tien'];
 
 export const MUC_KHO: MucKho[] = [
   { ma: 'trang_chu', ten: 'Trang chủ', link: '/noi-bo/kho', bieuTuong: 'nha', quyen: ['xem'] },
@@ -140,6 +141,8 @@ export const THAO_TAC_NHANH: Record<string, ThaoTac[]> = {
     { ten: 'Quầy cần hàng', link: '/noi-bo/kho/quay/yeu-cau', bieuTuong: 'chuyen', quyen: ['van_hanh'] },
     { ten: 'Báo hủy', link: '/noi-bo/kho/xuat/moi?loai=huy', bieuTuong: 'huy', quyen: ['van_hanh'] },
     { ten: 'Kiểm kê', link: '/noi-bo/kho/kiem-ke', bieuTuong: 'kiem_ke', quyen: ['van_hanh'] },
+    // GĐ8b (0040): trả hàng NCC hai bước — thủ kho chỉ ghi kg.
+    { ten: 'Trả hàng NCC', link: '/noi-bo/kho/cong-no/tra-hang', bieuTuong: 'chuyen', quyen: ['nhap'] },
   ],
   nhan_vien_quay: [
     { ten: 'Yêu cầu hàng', link: '/noi-bo/kho/quay/yeu-cau', bieuTuong: 'chuyen', quyen: ['van_hanh'] },
@@ -161,6 +164,7 @@ export const THAO_TAC_NHANH: Record<string, ThaoTac[]> = {
     { ten: 'Đối chiếu hóa đơn', link: '/noi-bo/kho/cong-no?loc=chua_doi_chieu', bieuTuong: 'viec', quyen: ['ke_toan'] },
     { ten: 'Ghi thanh toán', link: '/noi-bo/kho/cong-no', bieuTuong: 'cong_no', quyen: ['ke_toan'] },
     { ten: 'Tải công nợ (Excel)', link: '/noi-bo/kho/bao-cao/cong-no.csv', bieuTuong: 'bao_cao', quyen: ['ke_toan'] },
+    { ten: 'Xuất sang MISA', link: '/noi-bo/kho/cong-no/misa', bieuTuong: 'bao_cao', quyen: ['ke_toan'] },
   ],
 };
 THAO_TAC_NHANH.chu_so_huu = THAO_TAC_NHANH.quan_ly;

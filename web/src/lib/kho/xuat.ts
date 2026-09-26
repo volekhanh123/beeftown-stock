@@ -54,7 +54,10 @@ export const LOAI_LAP_DUOC = ['chuyen', 'xuat_bep', 'xuat_khac', 'huy'] as const
 export type TrangThaiXuat =
   | 'da_ghi' | 'cho_duyet' | 'da_duyet' | 'tu_choi'
   // Hàng đi đường (0032) — chỉ phiếu chuyển
-  | 'dang_chuyen' | 'da_nhan' | 'nhan_thieu' | 'da_tra_ve' | 'da_huy';
+  | 'dang_chuyen' | 'da_nhan' | 'nhan_thieu' | 'da_tra_ve' | 'da_huy'
+  // Trả hàng NCC hai bước (0040): thủ kho đã ghi kg, chờ kế toán xác nhận tiền
+  // (hủy được khi còn chờ → da_huy).
+  | 'cho_xac_nhan_tien';
 
 /**
  * Vị trí chọn được làm nơi lấy / nơi nhận: kho hoặc quầy đang dùng. "Hàng chờ

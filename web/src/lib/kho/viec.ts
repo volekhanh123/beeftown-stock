@@ -188,6 +188,22 @@ export function cauSuKien(su: SuKien): CauSuKien {
                chiTiet: `${phan ? `${phan}. ` : ''}Gọi nhà cung cấp hỏi lại; không giao nữa thì hủy đơn.`,
                link: `/noi-bo/kho/dat-hang/${e.ref_id}`, nut: 'Xem đơn', muc: 'vang' };
     }
+    // ---- 0040 · Trả hàng hai bước; NCC đổi số tài khoản ngân hàng ------------
+    case 'tra_hang_cho_tien': {
+      // Kế toán: ma = số phiếu trả hàng (XT-), ten = tên NCC, so = tổng kg trả.
+      const phan = [e.ten, kg(e.so)].filter(Boolean).join(' — ');
+      return { tieuDe: e.ma ? `Trả hàng ${e.ma} chờ xác nhận tiền` : 'Trả hàng chờ xác nhận tiền',
+               chiTiet: `${phan ? `${phan}. ` : ''}Thủ kho đã ghi số kg trả — ghi số tiền nhà cung cấp trừ vào công nợ.`,
+               link: '/noi-bo/kho/cong-no/tra-hang#cho-tien', nut: 'Xác nhận tiền', muc: 'vang' };
+    }
+    case 'ncc_doi_tai_khoan': {
+      // Chủ: ma = số tài khoản mới, ten = tên NCC, phu = người đổi.
+      return { tieuDe: `Số tài khoản của ${e.ten || 'nhà cung cấp'} vừa bị đổi`,
+               chiTiet: `${e.ma ? `Số mới: ${e.ma}. ` : ''}${e.phu ? `Người đổi: ${e.phu}. ` : ''}`
+                 + 'Gọi điện hỏi lại nhà cung cấp trước khi chuyển tiền — kẻ gian hay giả làm NCC để đổi số tài khoản.',
+               link: su.ref2 ? `/noi-bo/kho/cai-dat/nha-cung-cap?${q({ sua: su.ref2 })}` : '/noi-bo/kho/cai-dat/nha-cung-cap',
+               nut: 'Xem', muc: 'do' };
+    }
     default:
       return { tieuDe: e.ten || e.ma || 'Có việc mới', link: '/noi-bo/kho', nut: 'Xem', muc: 'xam' };
   }
@@ -208,6 +224,8 @@ export const KHOA_SU_KIEN = [
   'dinh_muc_lech',
   // 0039
   'don_dat_tre',
+  // 0040
+  'tra_hang_cho_tien', 'ncc_doi_tai_khoan',
 ] as const;
 
 /** Sự kiện là "việc cần làm" (có nút làm ngay, không chỉ để biết). */

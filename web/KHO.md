@@ -106,7 +106,8 @@ Link dùng chung giữa các trang (trang nhận phải đọc được các tha
 - `/noi-bo/kho/nhap?loc=nhap|cho_duyet|tu_choi` (vai xem giá), `/noi-bo/kho/nhan-hang?loc=nhap|cho_duyet|tu_choi|da_duyet`
   (thủ kho), `/noi-bo/kho/nhan-hang/moi?loai=ton_dau`, `/noi-bo/kho/pha-loc?loc=nhap`,
   `/noi-bo/kho/pha-loc/<id>?buoc=ket-qua|xong&ma=<mã>`, `/noi-bo/kho/the-kho/<mặt hàng>?vi_tri=&tu=&den=`
-- `/noi-bo/kho/cong-no?loc=qua_han|den_han|chua_doi_chieu`
+- `/noi-bo/kho/cong-no?tab=ncc|phieu|thanh-toan|theo-doi&loc=qua_han|den_han|chua_doi_chieu|gop` (`?loc=` không `tab` = thẻ Theo phiếu),
+  `/noi-bo/kho/cong-no/tra-hang?lo=<lô>&vi_tri=<nơi>` (trả hàng chỉ kg), `/noi-bo/kho/cong-no/<ncc>/tra-tien?kieu=<cách trả>`
 
 ## 3b. Danh sách phiếu, trang in (GĐ4b)
 
@@ -586,6 +587,66 @@ Zalo; hàng về thì nhận theo đơn; cuối kỳ xem đánh giá NCC.
 Test: `test-kho-dat-hang.mjs` (database), `test-kho-dat-hang-web.mjs` (hàm thuần, các hàm của `dat-hang.ts` chạy thật trên
 PGlite qua client giả, mã nguồn trang), nhóm 10d của `test-kho-thu-kho.mjs`.
 
+## 3m. Công nợ kiểu iPOS · hóa đơn gộp · bù trừ / hoàn tiền · trả hàng hai bước · MISA (GĐ8b, migration 0040)
+
+Chủ quán đã chốt: hóa đơn NCC có **cả hai kiểu** (mỗi lần giao một hóa đơn, hoặc gộp nhiều lần giao);
+kế toán dùng **MISA** nhưng chưa có file mẫu. Chỉ vai `ke_toan` (chủ, quản lý, kế toán) thấy các màn
+tiền ở giai đoạn này; thủ kho chỉ làm phần **kg** của trả hàng.
+
+| Trang | Ai | Việc |
+|---|---|---|
+| `/noi-bo/kho/cong-no` | `ke_toan` | Dải công thức **Nợ đầu kỳ + Mua − Đã trả − Giảm trừ = Còn phải trả** (`congThucCongNo`, "Xem ví dụ" là `<details>`), 4 ô số (quá hạn, đến hạn 7 ngày, chưa đối chiếu, trả hàng chờ tiền), thẻ `?tab=ncc\|phieu\|thanh-toan\|theo-doi`, chip `?loc=qua_han\|den_han\|chua_doi_chieu\|gop`, tìm + ngày + trang như GĐ4b, dòng tổng cuối bảng. Link cũ `?loc=…` không có `tab` mở thẻ Theo phiếu |
+| `/noi-bo/kho/cong-no/<ncc>` | `ke_toan` | Số dư, phiếu còn việc, nút **Trả tiền** / **Đối chiếu hóa đơn gộp** / **In biên bản đối chiếu**, mục "Hóa đơn gộp" (bỏ đối chiếu, bắt buộc lý do), dòng đỏ khi số tài khoản vừa đổi ≤ 30 ngày (`doiTaiKhoanGanDay`). Phiếu trong hóa đơn gộp không có form đối chiếu lẻ |
+| `/noi-bo/kho/cong-no/<ncc>/tra-tien` | `ke_toan` | Bước 1: cách trả (`KIEU_TRA`: chuyển khoản, tiền mặt, bù trừ, NCC hoàn tiền, giảm trừ) + số tiền → **Xem trước cách chia** hoặc **Trả đủ** (`kho_xem_truoc_thanh_toan`, `p_so_tien` null). Bước 2: bảng chia sửa được, ngày, ghi chú, ảnh → `kho_ghi_thanh_toan_v2` (`ma_gui`) |
+| `/noi-bo/kho/cong-no/<ncc>/hoa-don-gop` | `ke_toan` | Tích phiếu (chưa đối chiếu tích sẵn; `?tu=&den=` lọc ngày nhập), số HĐ, ngày, tổng, thuế → **Xem trước** (`xemTruocHoaDonGop`) → **Lưu đối chiếu** (`kho_doi_chieu_hoa_don_gop`, `ma_gui`); lệch tổng phiếu bắt buộc lý do |
+| `/noi-bo/kho/cong-no/<ncc>/doi-chieu?tu=&den=` | `ke_toan` | Biên bản đối chiếu công nợ A4 (`kho_cong_no_theo_ky`): đầu kỳ, từng chứng từ, số dư chạy, cuối kỳ, câu xác nhận, chỗ ký. `InDau` + `KyTen` + `NutIn` |
+| `/noi-bo/kho/cong-no/tra-hang` | `nhap` hoặc `ke_toan` | Không tham số: danh sách lô **nhập mua** ở kho / quầy (tìm, trang) → **Trả lô này**; kế toán thấy thêm `#cho-tien`. `?lo=&vi_tri=`: ghi **kg** (`kho_tra_hang_ghi_kg`, ảnh vào thư mục `huy`). `?phieu=` (kế toán): trả một bước có tiền như GĐ3 |
+| `/noi-bo/kho/cong-no/misa` | `ke_toan` | Kỳ + loại (`mua_hang` / `thanh_toan`) + dấu ngăn → xem trước 50 dòng (đúng cột file), số dòng thiếu mã (link sửa NCC, ô mã MISA mặt hàng ngay tại chỗ — `kho_luu_ma_misa_mat_hang`), mã tài khoản mặc định (`kho_luu_misa_tk`). Tải: `/noi-bo/kho/cong-no/misa.csv?tu=&den=&loai=&ngan=phay` |
+
+**Thanh toán bốn loại.** View giữ công thức cũ: `da_tra` = tiền trả + bù trừ − NCC hoàn tiền, nên
+còn nợ = phải trả − đã trả − giảm trừ không đổi và mọi chỗ cũ chạy đúng. Chi tiết ở cột cuối view
+(`tien_tra`, `bu_tru`, `hoan_tien`, `hoa_don_gop_id`; view NCC thêm `so_phieu_hoa_don_gop`,
+`no_den_han_7_ngay`). Bù trừ bắt buộc ghi chú; NCC hoàn tiền chỉ chia vào phiếu đang âm, không vượt 0.
+Form Trả tiền: bảng chia có ô ẩn `pb<i>_goi_y` (số database gợi ý). Không ô nào khác gợi ý →
+`docFormTraTien` gửi `p_phan_bo` rỗng, database tự chia lại lúc ghi; sửa bất kỳ ô nào → gửi đủ phần chia,
+tổng phải bằng số tiền. Hàm cũ `kho_ghi_thanh_toan` / `ghiThanhToan` giữ nguyên (không trang nào gọi nữa).
+
+**Hóa đơn gộp.** Web xếp phiếu theo ngày nhập rồi số phiếu và chia bằng `chiaSoDuLonNhat` — y như
+database; test so từng đồng với `kho_hoa_don_phieu`. Chỉ phiếu mua (không gộp nợ đầu kỳ), ≥ 2 phiếu.
+Bỏ đối chiếu gộp chỉ khi các phiếu chưa có khoản tiền nào. Cài đặt NCC có "Kiểu hóa đơn" (chỉ để
+nhớ — không chặn gì) và "Mã MISA".
+
+**Trả hàng hai bước.** Thủ kho: Tồn kho (link nhỏ **Trả NCC** ở lô `nguon = 'nhap'`, người có `nhap`),
+thao tác nhanh **Trả hàng NCC**, hoặc trang trả hàng → ghi kg một lô. Phiếu XT- `cho_xac_nhan_tien`
+(nhãn "Chờ kế toán xác nhận"). Kế toán: số đỏ `tra_hang_cho_tien` trên ô Công nợ (`KHOA_CONG_NO`) và
+bước "Trả hàng nhà cung cấp" của quy trình; câu ở `viec.ts` trỏ `/noi-bo/kho/cong-no/tra-hang#cho-tien`.
+Ô tiền trống = số tự tính (`so_tien_goi_y`), 0 = không trừ. Ghi xong thủ kho sang trang phiếu XT-.
+Phiếu còn chờ tiền hủy được (`kho_huy_tra_hang_cho_tien`, bắt buộc lý do): người ghi phiếu ở trang
+phiếu (`xuat/<id>`), kế toán / quản lý ở hàng chờ `#cho-tien` — đảo sổ `tra_ncc` (hàng về lại đúng lô,
+đúng chỗ), phiếu `da_huy`. Đã xác nhận tiền thì không hủy được (như trả một bước 0024).
+
+**Đổi số tài khoản NCC.** Trigger ghi `kho_ncc_tk_nhat_ky`; sự kiện `ncc_doi_tai_khoan` cho chủ (link
+`cai-dat/nha-cung-cap?sua=<id>`, màn sửa hiện các lần đổi). Chỉ báo khi đã có số cũ và số (bỏ dấu
+cách) hoặc ngân hàng thật sự khác; lưu NCC như vậy → câu báo nhắc gọi hỏi lại (`canhBaoDoiTaiKhoan`,
+`doiTaiKhoanGanDay` — cùng luật với database; điền lần đầu, gõ thêm dấu cách không báo).
+
+### MISA — chỉnh `COT_MISA` khi có file mẫu
+
+`lib/kho/misa.ts` là file **thuần** (không import, không gọi database). Mọi giả định nằm ở hai hằng đầu
+file ghi "CHỈNH KHI CÓ FILE MẪU": `COT_MISA` (thứ tự, tên cột của hai loại file) và `DINH_DANG_MISA`
+(ngày `dd/MM/yyyy`; dấu ngăn `;` thì số lẻ dùng `,`, dấu `,` thì số lẻ dùng `.`). CSV: BOM UTF-8, CRLF,
+ô có dấu ngăn / nháy / xuống dòng bọc `"…"`, tiền là số nguyên **không** phân cách nghìn, ô chữ bắt đầu
+bằng `= + - @` thêm `'` (Excel không chạy công thức), cột cuối "Thiếu mã MISA" = `x`. Không xuất
+`.xlsx` — Excel mở CSV rồi lưu lại nếu MISA đòi. Dữ liệu (TK nợ / có, mã thay thế khi thiếu, thuế
+chia từng dòng) do `kho_du_lieu_misa` quyết định. Có file mẫu thì: sửa hai hằng, sửa test nhóm 1 của
+`test-kho-cong-no-v2-web.mjs`. Mã số thuế / số hóa đơn có số 0 ở đầu vẫn ghi nguyên trong CSV, nhưng
+Excel mở thẳng sẽ bỏ số 0 — trang MISA dặn kế toán mở bằng "Từ văn bản/CSV" và chọn kiểu Văn bản; khi
+có file mẫu, xem MISA nhận cột đó dạng nào rồi mới đổi cách ghi (không tự thêm `="…"`).
+
+Test: `test-kho-cong-no-v2.mjs` (database), `test-kho-cong-no-v2-web.mjs` (misa.ts, hàm thuần của
+cong-no.ts, vòng thật trên PGlite: chia hóa đơn gộp web = database, form Trả tiền → v2, sổ theo kỳ khớp
+view, CSV từ dữ liệu MISA thật; mã nguồn trang), nhóm 10e của `test-kho-thu-kho.mjs`.
+
 ## 4. Cài như app (PWA)
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng
@@ -659,6 +720,8 @@ node test/test-kho-dinh-luong.mjs     # định lượng món, đối chiếu đ
 node test/test-kho-dinh-luong-web.mjs # định lượng: dán Excel, lưới gram, màu lệch, cột tiền, trang
 node test/test-kho-dat-hang.mjs       # đặt hàng NCC, gợi ý, nhận theo đơn, đánh giá NCC: phần database
 node test/test-kho-dat-hang-web.mjs   # đặt hàng: form (thủ kho không gửi giá), dat-hang.ts trên PGlite, trang
+node test/test-kho-cong-no-v2.mjs     # công nợ v2: bù trừ, hoàn tiền, hóa đơn gộp, trả hàng 2 bước, sổ kỳ, MISA — database
+node test/test-kho-cong-no-v2-web.mjs # công nợ v2: misa.ts, form Trả tiền, hóa đơn gộp web = database, trang
 cd ../web && npm run kiem-tra && npm run quet && npm run build
 ```
 

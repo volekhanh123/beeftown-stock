@@ -273,6 +273,8 @@ export const TRANG_THAI_CHUNG_TU: Record<string, [string, string]> = {
   da_nhan: ['Quầy đã nhận', 'song'],
   nhan_thieu: ['Nhận thiếu', 'cho'],
   da_tra_ve: ['Đã trả về kho', 'tat'],
+  // Trả hàng NCC hai bước (0040): thủ kho đã ghi kg, chờ kế toán xác nhận số tiền
+  cho_xac_nhan_tien: ['Chờ kế toán xác nhận', 'cho'],
   // Yêu cầu của quầy (0032)
   cho: ['Chờ mang ra', 'cho'],
   dang_lam: ['Đang mang ra', 'nhap'],

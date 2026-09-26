@@ -22,6 +22,9 @@
  * lệch (tien_chenh) chỉ có số với vai xem giá; món, định lượng không có tiền.
  * Thêm (0039): đặt hàng NCC — thủ kho lập đơn nháp không giá, gửi giá bị từ
  * chối; đơn, gợi ý, nhận theo đơn, đánh giá NCC không trả tiền cho thủ kho.
+ * Thêm (0040): trả hàng hai bước — thủ kho chỉ ghi kg, mọi hàm có tiền (hàng
+ * chờ, xác nhận tiền, công nợ theo kỳ, MISA, thanh toán v2) từ chối thủ kho /
+ * NV quầy; bảng hóa đơn gộp, nhật ký tài khoản NCC đọc ra 0 dòng.
  * Cuối cùng: kho_doi_soat_ton() rỗng.
  */
 
@@ -980,6 +983,96 @@ await nhom('10d · ĐẶT HÀNG NCC, NHẬN THEO ĐƠN, ĐÁNH GIÁ NCC (0039) �
   await ql(`select kho_huy_phieu_nhap($1, 'Thử')`, [pn.rows?.[0]?.id]);
   await ql(`select kho_huy_don_dat($1, 'Thử xong')`, [id]);
   await doiSoat('Sau đặt hàng NCC');
+});
+
+// ===========================================================================
+await nhom('10e · CÔNG NỢ V2 (0040): TRẢ HÀNG HAI BƯỚC, HÓA ĐƠN GỘP, MISA — KHÔNG TIỀN', async () => {
+  const { rows: [lo] } = await db.query(`
+    select l.id, d.phieu_nhap_id, p.nha_cung_cap_id from kho_lo l
+    join kho_phieu_nhap_dong d on d.id = l.phieu_nhap_dong_id
+    join kho_phieu_nhap p on p.id = d.phieu_nhap_id
+    join kho_ton t on t.lo_id = l.id and t.vi_tri_id = $1
+    where p.chi_nhanh_id = $2 and p.loai = 'mua' and p.trang_thai = 'da_duyet' and t.so_kg >= 0.5
+    order by p.ngay_nhap limit 1`, [viTri.kho, cnA.id]);
+  ok('Có lô hàng mua còn tồn để trả', !!lo);
+
+  const ghi = await tk(`
+    select * from kho_tra_hang_ghi_kg(p_chi_nhanh_id => $1, p_ma_gui => $2, p_phieu_nhap_id => null, p_vi_tri_id => $3,
+      p_ghi_chu => 'Hàng dập', p_anh => '{}'::text[], p_dong => $4::jsonb)`,
+    [cnA.id, maGui(), viTri.kho, JSON.stringify([{ lo_id: lo.id, so_kg: 0.2 }])]);
+  ok('Thủ kho ghi kg hàng trả NCC (bước 1)', ghi.loi === null, ghi.loi ?? '');
+  ok('Bước 1: kết quả không khóa tiền, không số tiền', khoaTien(ghi.rows).length === 0 && !coTien(JSON.stringify(ghi.rows)));
+  const quaKg = await tk(`
+    select * from kho_tra_hang_ghi_kg(p_chi_nhanh_id => $1, p_ma_gui => $2, p_phieu_nhap_id => null, p_vi_tri_id => $3,
+      p_ghi_chu => null, p_anh => '{}'::text[], p_dong => $4::jsonb)`,
+    [cnA.id, maGui(), viTri.kho, JSON.stringify([{ lo_id: lo.id, so_kg: 9999 }])]);
+  ok('Trả quá số kg: câu lỗi chỉ nói kg', quaKg.loi !== null && /kg/.test(quaKg.loi));
+  const nvGhi = await duoi(UID.nvQuayA, `
+    select * from kho_tra_hang_ghi_kg($1, $2, null, $3, null, '{}'::text[], $4::jsonb)`,
+    [cnA.id, maGui(), viTri.kho, JSON.stringify([{ lo_id: lo.id, so_kg: 0.1 }])]);
+  ok('NV quầy KHÔNG ghi được trả hàng', nvGhi.loi !== null);
+
+  const v = (await duoi(UID.thuKhoA, `select kho_dem_viec($1) as v`, [cnA.id])).rows[0].v;
+  ok('Số đỏ thủ kho KHÔNG có tra_hang_cho_tien', !('tra_hang_cho_tien' in v));
+  const tu = await ngay(-60);
+  for (const [uid, ai] of [[UID.thuKhoA, 'Thủ kho'], [UID.nvQuayA, 'NV quầy']]) {
+    const lot = [];
+    for (const [ten, sql, p] of [
+      ['kho_ds_tra_hang_cho_tien', `select * from kho_ds_tra_hang_cho_tien($1)`, [cnA.id]],
+      ['kho_xac_nhan_tien_tra_hang', `select * from kho_xac_nhan_tien_tra_hang($1, null, null)`, [ghi.rows?.[0]?.phieu_xuat_id]],
+      ['kho_cong_no_theo_ky', `select * from kho_cong_no_theo_ky($1, null, $2::date, $3::date)`, [cnA.id, tu, homNay]],
+      ['kho_du_lieu_misa', `select * from kho_du_lieu_misa($1, $2::date, $3::date, 'mua_hang')`, [cnA.id, tu, homNay]],
+      ['kho_xem_truoc_thanh_toan', `select * from kho_xem_truoc_thanh_toan($1, $2, 'thanh_toan', null)`, [cnA.id, lo.nha_cung_cap_id]],
+      ['kho_ghi_thanh_toan_v2', `select * from kho_ghi_thanh_toan_v2($1, $2, $3, 'thanh_toan', 'tien_mat', 1, $4::date, null, '{}'::text[], '[]'::jsonb)`,
+        [cnA.id, maGui(), lo.nha_cung_cap_id, homNay]],
+    ]) {
+      const r = uid === UID.thuKhoA ? await tk(sql, p) : await duoi(uid, sql, p);
+      if (r.loi === null) lot.push(ten);
+    }
+    ok(`${ai} bị từ chối mọi hàm có tiền của 0040`, lot.length === 0, lot.join(', '));
+  }
+
+  // Kế toán làm bước 2 và một hóa đơn gộp → bảng mới có dữ liệu tiền để soát.
+  const xn = await duoi(UID.keToanA, `select * from kho_xac_nhan_tien_tra_hang($1, null, null)`, [ghi.rows?.[0]?.phieu_xuat_id]);
+  ok('Kế toán xác nhận tiền (bước 2)', xn.loi === null && Number(xn.rows[0].so_tien_giam_tru) > 0, xn.loi ?? '');
+  const { rows: pn } = await db.query(`
+    select p.id from kho_phieu_nhap p
+    where p.chi_nhanh_id = $1 and p.loai = 'mua' and p.trang_thai = 'da_duyet' and p.nha_cung_cap_id = $2
+      and not exists (select 1 from kho_hoa_don_phieu hp where hp.phieu_id = p.id)
+    order by p.ngay_nhap limit 2`, [cnA.id, lo.nha_cung_cap_id]);
+  const tong = (await db.query(`select sum(tong_tien_phieu)::bigint as t from kho_v_cong_no_phieu where id = any($1::uuid[])`,
+    [pn.map(r => r.id)])).rows[0].t;
+  const gop = await duoi(UID.keToanA, `
+    select * from kho_doi_chieu_hoa_don_gop($1, $2, $3, 'HD-GOP-TK', $4::date, $5, 0, $6::uuid[], null)`,
+    [cnA.id, maGui(), lo.nha_cung_cap_id, homNay, tong, pn.map(r => r.id)]);
+  ok('Kế toán đối chiếu hóa đơn gộp', pn.length === 2 && gop.loi === null, gop.loi ?? `${pn.length}`);
+  await duoi(UID.keToanA, `update kho_nha_cung_cap set so_tai_khoan = coalesce(so_tai_khoan, '') || '1' where id = $1`, [lo.nha_cung_cap_id]);
+
+  const { rows: cot } = await db.query(`
+    select table_name, column_name from information_schema.columns
+    where table_schema = 'public'
+      and table_name in ('kho_hoa_don_ncc', 'kho_hoa_don_phieu', 'kho_ncc_tk_nhat_ky', 'kho_v_cong_no_phieu',
+                         'kho_v_cong_no_ncc', 'kho_thanh_toan', 'kho_thanh_toan_phan_bo', 'kho_phieu_xuat', 'kho_cai_dat')`);
+  const tien = cot.filter(c => LA_TIEN.test(c.column_name) && !KHONG_PHAI_TIEN.has(`${c.table_name}.${c.column_name}`));
+  ok('Có cột tiền của hóa đơn gộp để soát', tien.some(c => c.table_name === 'kho_hoa_don_ncc' && c.column_name === 'tong_tien')
+     && tien.some(c => c.table_name === 'kho_hoa_don_phieu' && c.column_name === 'truoc_tien_hoa_don'));
+  for (const [ai, uid] of [['Thủ kho', UID.thuKhoA], ['NV quầy', UID.nvQuayA]]) {
+    const lo2 = [];
+    for (const { table_name, column_name } of tien) {
+      const r = await duoi(uid, `select count(*)::int as n from ${table_name} where ${column_name} is not null`);
+      if (r.loi === null && r.rows[0].n > 0) lo2.push(`${table_name}.${column_name}(${r.rows[0].n})`);
+    }
+    ok(`${ai} không đọc được cột tiền nào của công nợ v2`, lo2.length === 0, lo2.join(', '));
+    for (const b of ['kho_hoa_don_ncc', 'kho_hoa_don_phieu', 'kho_ncc_tk_nhat_ky']) {
+      const r = await duoi(uid, `select count(*)::int as n from ${b}`);
+      ok(`${ai} đọc ra 0 dòng ở ${b}`, r.loi !== null || r.rows[0].n === 0);
+    }
+  }
+  const ktHd = await duoi(UID.keToanA, `select count(*)::int as n from kho_hoa_don_phieu where so_tien > 0`);
+  ok('Đối chứng: kế toán đọc được phần tiền hóa đơn gộp', ktHd.rows?.[0]?.n === 2);
+  const phieuTra = await tk(`select * from kho_v_phieu_xuat where id = $1`, [ghi.rows?.[0]?.phieu_xuat_id]);
+  ok('Thủ kho xem phiếu trả hàng: không khóa tiền', phieuTra.loi === null && khoaTien(phieuTra.rows).length === 0, phieuTra.loi ?? '');
+  await doiSoat('Sau trả hàng hai bước');
 });
 
 // ===========================================================================
