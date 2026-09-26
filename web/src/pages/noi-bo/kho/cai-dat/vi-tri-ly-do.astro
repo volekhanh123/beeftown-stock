@@ -21,13 +21,60 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docViTri, docLyDo, type ViTri, type LyDo } from '../../../../lib/kho/danh-muc.ts';
 import {
-  LOAI_LY_DO, SO_DONG_THEM, docFormViTriLyDo, laViTriHeThong, luuViTriLyDo, phienBanViTriLyDo, tinhDinhMuc,
+  LOAI_LY_DO_NB, SO_DONG_THEM, docFormViTriLyDo, laViTriHeThong, luuViTriLyDo, phienBanViTriLyDo, tinhDinhMuc,
 } from '../../../../lib/kho/sua-nhanh.ts';
-import { cauLoiKho, TEN_LOAI_VI_TRI, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, kqHai, nhanKho, TEN_LOAI_VI_TRI_NB, type KetQua } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('danh_muc')) return Astro.redirect('/noi-bo/kho/cai-dat', 302);
+const nn = k.nn;
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Vị trí và lý do', en: 'Locations and reasons' },
+  veThietLap: { vi: '← Thiết lập kho', en: '← Inventory setup' },
+  khongDoc: { vi: 'Không đọc được vị trí và lý do.', en: 'Could not read the locations and reasons.' },
+  gt1: { vi: 'Sửa thẳng trong các bảng, điền dòng trống để thêm mới, rồi bấm ', en: 'Edit directly in the tables, fill in the empty rows to add new ones, then press ' },
+  luuTatCa: { vi: 'Lưu tất cả', en: 'Save all' },
+  gt2: { vi: ' một lần.', en: ' once.' },
+  gt3: { vi: 'Muốn bỏ một vị trí hay lý do thì chọn ', en: 'To stop using a location or reason, choose ' },
+  ngungDung: { vi: 'Ngừng dùng', en: 'No longer used' },
+  gt4: { vi: ' (không xóa — phiếu cũ vẫn cần tên).', en: ' (nothing is deleted — old documents still need the name).' },
+  viTriDeHang: { vi: 'Vị trí để hàng', en: 'Storage locations' },
+  chuaCoViTri: { vi: 'Chưa có vị trí nào — bấm "Bắt đầu dùng kho" ở Tổng quan kho.',
+                 en: 'No locations yet — press "Start using inventory" on the inventory home page.' },
+  cotTen: { vi: 'Tên', en: 'Name' },
+  cotLoai: { vi: 'Loại', en: 'Type' },
+  cotThuTu: { vi: 'Thứ tự', en: 'Order' },
+  cotTinhTrang: { vi: 'Tình trạng', en: 'Status' },
+  ariaTenViTri: { vi: (ten: string) => `Tên vị trí ${ten}`, en: (ten: string) => `Location name ${ten}` },
+  heThong: { vi: '(hệ thống)', en: '(system)' },
+  ariaLoaiViTri: { vi: (ten: string) => `Loại vị trí ${ten}`, en: (ten: string) => `Location type ${ten}` },
+  kho: { vi: 'Kho', en: 'Store' },
+  quay: { vi: 'Quầy', en: 'Counter' },
+  ariaThuTu: { vi: (ten: string) => `Thứ tự ${ten}`, en: (ten: string) => `Order ${ten}` },
+  luonDung: { vi: 'Luôn dùng', en: 'Always in use' },
+  ariaTinhTrang: { vi: (ten: string) => `Tình trạng ${ten}`, en: (ten: string) => `Status ${ten}` },
+  dangDung: { vi: 'Đang dùng', en: 'In use' },
+  viTriMoiVd: { vi: '+ Vị trí mới, vd Tủ mát số 2', en: '+ New location, e.g. Chiller 2' },
+  viTriMoi: { vi: '+ Vị trí mới', en: '+ New location' },
+  ariaTenViTriMoi: { vi: (n: number) => `Tên vị trí mới ${n}`, en: (n: number) => `New location name ${n}` },
+  ariaLoaiViTriMoi: { vi: (n: number) => `Loại vị trí mới ${n}`, en: (n: number) => `New location type ${n}` },
+  ariaThuTuViTriMoi: { vi: (n: number) => `Thứ tự vị trí mới ${n}`, en: (n: number) => `New location order ${n}` },
+  moi: { vi: 'Mới', en: 'New' },
+  boTich: { vi: 'Bỏ tích ', en: 'Untick ' },
+  tinhDinhMuc: { vi: 'Tính vào định mức bếp', en: 'Count in kitchen usage' },
+  xuatBepGoiY: { vi: ' với phần bếp lấy không để nấu món bán (vd Cơm nhân viên): kho vẫn trừ đủ số kg, nhưng báo cáo Định mức bếp không cộng phần này nên không báo lệch oan.',
+                 en: ' for what the kitchen takes that is not for dishes on sale (e.g. staff meals): stock still goes down by the full kg, but the Kitchen usage report leaves it out, so it does not show a false variance.' },
+  cotLyDo: { vi: 'Lý do', en: 'Reason' },
+  batBuocAnh: { vi: 'Bắt buộc ảnh', en: 'Photo required' },
+  dinhMucBep: { vi: 'Định mức bếp', en: 'Kitchen usage' },
+  ariaLyDo: { vi: (ten: string) => `Lý do ${ten}`, en: (ten: string) => `Reason ${ten}` },
+  phaiChupAnh: { vi: 'Phải chụp ảnh', en: 'Photo required' },
+  lyDoMoi: { vi: '+ Lý do mới', en: '+ New reason' },
+  ariaLyDoMoi: { vi: (loai: string, n: number) => `${loai} mới ${n}`, en: (loai: string, n: number) => `${loai}, new row ${n}` },
+  boOVuaGo: { vi: 'Bỏ các ô vừa gõ', en: 'Discard what I typed' },
+});
 
 let viTri: ViTri[] = [];
 let lyDo: LyDo[] = [];
@@ -37,7 +84,7 @@ const doc = async () => {
   try {
     [viTri, lyDo] = await Promise.all([docViTri(k.client, k.chiNhanh.id), docLyDo(k.client)]);
     loiDoc = k.loiDoc;
-  } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được vị trí và lý do.'); }
+  } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
 };
 await doc();
 
@@ -47,9 +94,12 @@ let go: FormData | null = null;
 const form = await docFormGui(Astro);
 if (form && k.chiNhanh) {
   let kq: KetQua;
-  if (loiDoc) kq = { ok: false, cau: 'Chưa đọc được dữ liệu hiện tại — tải lại trang rồi lưu lại.' };
-  else if (String(form.get('phien_ban') ?? '') !== phienBanViTriLyDo(viTri, lyDo)) {
-    kq = { ok: false, cau: 'Vị trí / lý do vừa được người khác sửa — trang đã hiện số mới, gõ lại phần của bạn rồi bấm Lưu tất cả.' };
+  if (loiDoc) {
+    kq = kqHai(false, { vi: 'Chưa đọc được dữ liệu hiện tại — tải lại trang rồi lưu lại.',
+                        en: 'Could not read the current data — reload the page and save again.' });
+  } else if (String(form.get('phien_ban') ?? '') !== phienBanViTriLyDo(viTri, lyDo)) {
+    kq = kqHai(false, { vi: 'Vị trí / lý do vừa được người khác sửa — trang đã hiện số mới, gõ lại phần của bạn rồi bấm Lưu tất cả.',
+                        en: 'Someone else just changed the locations / reasons — the page now shows the new values; type your changes again and press Save all.' });
   } else {
     const luu = await luuViTriLyDo(k.client, k.chiNhanh.id, docFormViTriLyDo(form, viTri, lyDo));
     kq = luu;
@@ -68,106 +118,105 @@ if (form && k.chiNhanh) {
 const o = (ten: string, macDinh: string) => (go && go.has(ten) ? String(go.get(ten) ?? '') : macDinh);
 const tich = (ten: string, macDinh: boolean, coO: string) => (go && go.has(coO) ? go.get(ten) === 'co' : macDinh);
 ---
-<Kho k={k} huongDan="vi-tri-ly-do" tieuDe="Vị trí và lý do" rong>
-  <h1>Vị trí và lý do</h1>
-  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
+<Kho k={k} huongDan="vi-tri-ly-do" tieuDe={t.tieuDe} rong>
+  <h1>{t.tieuDe}</h1>
+  <p><a href="/noi-bo/kho/cai-dat">{t.veThietLap}</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
-  <p class="nb-dan" style="font-size:.9rem">Sửa thẳng trong các bảng, điền dòng trống để thêm mới, rồi bấm <strong>Lưu tất cả</strong> một lần.
-    Muốn bỏ một vị trí hay lý do thì chọn <strong>Ngừng dùng</strong> (không xóa — phiếu cũ vẫn cần tên).</p>
+  <p class="nb-dan" style="font-size:.9rem">{t.gt1}<strong>{t.luuTatCa}</strong>{t.gt2}
+    {t.gt3}<strong>{t.ngungDung}</strong>{t.gt4}</p>
 
   <form method="POST">
     <input type="hidden" name="phien_ban" value={phienBanViTriLyDo(viTri, lyDo)} />
 
-    <h2>Vị trí để hàng — {k.chiNhanh?.ten}</h2>
-    {viTri.length === 0 && <p class="nb-rong">Chưa có vị trí nào — bấm "Bắt đầu dùng kho" ở Tổng quan kho.</p>}
+    <h2>{t.viTriDeHang} — {k.chiNhanh?.ten}</h2>
+    {viTri.length === 0 && <p class="nb-rong">{t.chuaCoViTri}</p>}
     <div class="kho-bang-khung">
       <table class="kho-bang vl-bang">
-        <thead><tr><th>Tên</th><th>Loại</th><th class="so">Thứ tự</th><th>Tình trạng</th></tr></thead>
+        <thead><tr><th>{t.cotTen}</th><th>{t.cotLoai}</th><th class="so">{t.cotThuTu}</th><th>{t.cotTinhTrang}</th></tr></thead>
         <tbody>
           {viTri.map(v => (
             <tr style={v.dang_dung ? undefined : 'opacity:.6'}>
-              <td><input type="text" name={`vt_ten_${v.id}`} value={o(`vt_ten_${v.id}`, v.ten)} maxlength="60" aria-label={`Tên vị trí ${v.ten}`} /></td>
+              <td><input type="text" name={`vt_ten_${v.id}`} value={o(`vt_ten_${v.id}`, v.ten)} maxlength="60" aria-label={t.ariaTenViTri(v.ten)} /></td>
               <td>
                 {laViTriHeThong(v)
-                  ? <>{TEN_LOAI_VI_TRI[v.loai]} <span class="kho-phu">(hệ thống)</span></>
-                  : <select name={`vt_loai_${v.id}`} aria-label={`Loại vị trí ${v.ten}`}>
-                      <option value="kho" selected={o(`vt_loai_${v.id}`, v.loai) === 'kho'}>Kho</option>
-                      <option value="quay" selected={o(`vt_loai_${v.id}`, v.loai) === 'quay'}>Quầy</option>
+                  ? <>{nhanKho(TEN_LOAI_VI_TRI_NB, v.loai, nn)} <span class="kho-phu">{t.heThong}</span></>
+                  : <select name={`vt_loai_${v.id}`} aria-label={t.ariaLoaiViTri(v.ten)}>
+                      <option value="kho" selected={o(`vt_loai_${v.id}`, v.loai) === 'kho'}>{t.kho}</option>
+                      <option value="quay" selected={o(`vt_loai_${v.id}`, v.loai) === 'quay'}>{t.quay}</option>
                     </select>}
               </td>
-              <td class="so"><input type="text" inputmode="numeric" name={`vt_thu_tu_${v.id}`} value={o(`vt_thu_tu_${v.id}`, String(v.thu_tu))} class="vl-so" aria-label={`Thứ tự ${v.ten}`} /></td>
+              <td class="so"><input type="text" inputmode="numeric" name={`vt_thu_tu_${v.id}`} value={o(`vt_thu_tu_${v.id}`, String(v.thu_tu))} class="vl-so" aria-label={t.ariaThuTu(v.ten)} /></td>
               <td>
                 {laViTriHeThong(v)
-                  ? 'Luôn dùng'
-                  : <select name={`vt_dang_dung_${v.id}`} aria-label={`Tình trạng ${v.ten}`}>
-                      <option value="co" selected={o(`vt_dang_dung_${v.id}`, v.dang_dung ? 'co' : 'khong') === 'co'}>Đang dùng</option>
-                      <option value="khong" selected={o(`vt_dang_dung_${v.id}`, v.dang_dung ? 'co' : 'khong') === 'khong'}>Ngừng dùng</option>
+                  ? t.luonDung
+                  : <select name={`vt_dang_dung_${v.id}`} aria-label={t.ariaTinhTrang(v.ten)}>
+                      <option value="co" selected={o(`vt_dang_dung_${v.id}`, v.dang_dung ? 'co' : 'khong') === 'co'}>{t.dangDung}</option>
+                      <option value="khong" selected={o(`vt_dang_dung_${v.id}`, v.dang_dung ? 'co' : 'khong') === 'khong'}>{t.ngungDung}</option>
                     </select>}
               </td>
             </tr>
           ))}
           {Array.from({ length: SO_DONG_THEM }, (_, i) => (
             <tr class="vl-moi">
-              <td><input type="text" name={`vt_moi_ten_${i}`} value={o(`vt_moi_ten_${i}`, '')} maxlength="60" placeholder={i === 0 ? '+ Vị trí mới, vd Tủ mát số 2' : '+ Vị trí mới'} aria-label={`Tên vị trí mới ${i + 1}`} /></td>
+              <td><input type="text" name={`vt_moi_ten_${i}`} value={o(`vt_moi_ten_${i}`, '')} maxlength="60" placeholder={i === 0 ? t.viTriMoiVd : t.viTriMoi} aria-label={t.ariaTenViTriMoi(i + 1)} /></td>
               <td>
-                <select name={`vt_moi_loai_${i}`} aria-label={`Loại vị trí mới ${i + 1}`}>
-                  <option value="kho" selected={o(`vt_moi_loai_${i}`, 'kho') === 'kho'}>Kho</option>
-                  <option value="quay" selected={o(`vt_moi_loai_${i}`, 'kho') === 'quay'}>Quầy</option>
+                <select name={`vt_moi_loai_${i}`} aria-label={t.ariaLoaiViTriMoi(i + 1)}>
+                  <option value="kho" selected={o(`vt_moi_loai_${i}`, 'kho') === 'kho'}>{t.kho}</option>
+                  <option value="quay" selected={o(`vt_moi_loai_${i}`, 'kho') === 'quay'}>{t.quay}</option>
                 </select>
               </td>
-              <td class="so"><input type="text" inputmode="numeric" name={`vt_moi_thu_tu_${i}`} value={o(`vt_moi_thu_tu_${i}`, '5')} class="vl-so" aria-label={`Thứ tự vị trí mới ${i + 1}`} /></td>
-              <td class="kho-phu">Mới</td>
+              <td class="so"><input type="text" inputmode="numeric" name={`vt_moi_thu_tu_${i}`} value={o(`vt_moi_thu_tu_${i}`, '5')} class="vl-so" aria-label={t.ariaThuTuViTriMoi(i + 1)} /></td>
+              <td class="kho-phu">{t.moi}</td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
 
-    {LOAI_LY_DO.map(([loai, tieuDe]) => (
+    {LOAI_LY_DO_NB.map(([loai, tenLoai]) => (
       <>
-        <h2>{tieuDe}</h2>
-        {loai === 'xuat_bep' && <p class="nb-dan" style="font-size:.9rem">Bỏ tích <strong>Tính vào định mức bếp</strong> với phần bếp lấy không để nấu món bán (vd Cơm nhân viên):
-          kho vẫn trừ đủ số kg, nhưng báo cáo Định mức bếp không cộng phần này nên không báo lệch oan.</p>}
+        <h2>{tenLoai[nn]}</h2>
+        {loai === 'xuat_bep' && <p class="nb-dan" style="font-size:.9rem">{t.boTich}<strong>{t.tinhDinhMuc}</strong>{t.xuatBepGoiY}</p>}
         <div class="kho-bang-khung">
           <table class="kho-bang vl-bang">
-            <thead><tr><th>Lý do</th><th class="so">Thứ tự</th><th>Tình trạng</th>{loai === 'huy' && <th>Bắt buộc ảnh</th>}{loai === 'xuat_bep' && <th>Định mức bếp</th>}</tr></thead>
+            <thead><tr><th>{t.cotLyDo}</th><th class="so">{t.cotThuTu}</th><th>{t.cotTinhTrang}</th>{loai === 'huy' && <th>{t.batBuocAnh}</th>}{loai === 'xuat_bep' && <th>{t.dinhMucBep}</th>}</tr></thead>
             <tbody>
               {lyDo.filter(l => l.loai === loai).map(l => (
                 <tr style={l.dang_dung ? undefined : 'opacity:.6'}>
-                  <td><input type="text" name={`ld_ten_${l.id}`} value={o(`ld_ten_${l.id}`, l.ten)} maxlength="80" aria-label={`Lý do ${l.ten}`} /></td>
-                  <td class="so"><input type="text" inputmode="numeric" name={`ld_thu_tu_${l.id}`} value={o(`ld_thu_tu_${l.id}`, String(l.thu_tu))} class="vl-so" aria-label={`Thứ tự ${l.ten}`} /></td>
+                  <td><input type="text" name={`ld_ten_${l.id}`} value={o(`ld_ten_${l.id}`, l.ten)} maxlength="80" aria-label={t.ariaLyDo(l.ten)} /></td>
+                  <td class="so"><input type="text" inputmode="numeric" name={`ld_thu_tu_${l.id}`} value={o(`ld_thu_tu_${l.id}`, String(l.thu_tu))} class="vl-so" aria-label={t.ariaThuTu(l.ten)} /></td>
                   <td>
-                    <select name={`ld_dang_dung_${l.id}`} aria-label={`Tình trạng ${l.ten}`}>
-                      <option value="co" selected={o(`ld_dang_dung_${l.id}`, l.dang_dung ? 'co' : 'khong') === 'co'}>Đang dùng</option>
-                      <option value="khong" selected={o(`ld_dang_dung_${l.id}`, l.dang_dung ? 'co' : 'khong') === 'khong'}>Ngừng dùng</option>
+                    <select name={`ld_dang_dung_${l.id}`} aria-label={t.ariaTinhTrang(l.ten)}>
+                      <option value="co" selected={o(`ld_dang_dung_${l.id}`, l.dang_dung ? 'co' : 'khong') === 'co'}>{t.dangDung}</option>
+                      <option value="khong" selected={o(`ld_dang_dung_${l.id}`, l.dang_dung ? 'co' : 'khong') === 'khong'}>{t.ngungDung}</option>
                     </select>
                   </td>
                   {loai === 'huy' && (
                     <td>
                       <input type="hidden" name={`ld_co_anh_${l.id}`} value="1" />
-                      <label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_can_anh_${l.id}`} value="co" checked={tich(`ld_can_anh_${l.id}`, l.can_anh, `ld_co_anh_${l.id}`)} /> Phải chụp ảnh</label>
+                      <label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_can_anh_${l.id}`} value="co" checked={tich(`ld_can_anh_${l.id}`, l.can_anh, `ld_co_anh_${l.id}`)} /> {t.phaiChupAnh}</label>
                     </td>
                   )}
                   {loai === 'xuat_bep' && (
                     <td>
                       <input type="hidden" name={`ld_co_dm_${l.id}`} value="1" />
-                      <label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_tinh_dm_${l.id}`} value="co" checked={tich(`ld_tinh_dm_${l.id}`, tinhDinhMuc(l), `ld_co_dm_${l.id}`)} /> Tính vào định mức bếp</label>
+                      <label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_tinh_dm_${l.id}`} value="co" checked={tich(`ld_tinh_dm_${l.id}`, tinhDinhMuc(l), `ld_co_dm_${l.id}`)} /> {t.tinhDinhMuc}</label>
                     </td>
                   )}
                 </tr>
               ))}
               {Array.from({ length: SO_DONG_THEM }, (_, i) => (
                 <tr class="vl-moi">
-                  <td><input type="text" name={`ld_moi_ten_${loai}_${i}`} value={o(`ld_moi_ten_${loai}_${i}`, '')} maxlength="80" placeholder="+ Lý do mới" aria-label={`${tieuDe} mới ${i + 1}`} /></td>
+                  <td><input type="text" name={`ld_moi_ten_${loai}_${i}`} value={o(`ld_moi_ten_${loai}_${i}`, '')} maxlength="80" placeholder={t.lyDoMoi} aria-label={t.ariaLyDoMoi(tenLoai[nn], i + 1)} /></td>
                   <td class="kho-phu so">—</td>
-                  <td class="kho-phu">Mới</td>
+                  <td class="kho-phu">{t.moi}</td>
                   {loai === 'huy' && (
-                    <td><label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_moi_can_anh_${loai}_${i}`} value="co" checked={go ? go.get(`ld_moi_can_anh_${loai}_${i}`) === 'co' : true} /> Phải chụp ảnh</label></td>
+                    <td><label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_moi_can_anh_${loai}_${i}`} value="co" checked={go ? go.get(`ld_moi_can_anh_${loai}_${i}`) === 'co' : true} /> {t.phaiChupAnh}</label></td>
                   )}
                   {loai === 'xuat_bep' && (
                     <td>
                       <input type="hidden" name={`ld_moi_co_dm_${loai}_${i}`} value="1" />
-                      <label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_moi_tinh_dm_${loai}_${i}`} value="co" checked={go ? go.get(`ld_moi_tinh_dm_${loai}_${i}`) === 'co' : true} /> Tính vào định mức bếp</label>
+                      <label class="kho-tich" style="margin:0"><input type="checkbox" name={`ld_moi_tinh_dm_${loai}_${i}`} value="co" checked={go ? go.get(`ld_moi_tinh_dm_${loai}_${i}`) === 'co' : true} /> {t.tinhDinhMuc}</label>
                     </td>
                   )}
                 </tr>
@@ -179,8 +228,8 @@ const tich = (ten: string, macDinh: boolean, coO: string) => (go && go.has(coO) 
     ))}
 
     <div class="kho-thanh-nut dinh">
-      <button type="submit" class="nb-nut">Lưu tất cả</button>
-      <a class="nb-nut phu" href="/noi-bo/kho/cai-dat/vi-tri-ly-do">Bỏ các ô vừa gõ</a>
+      <button type="submit" class="nb-nut">{t.luuTatCa}</button>
+      <a class="nb-nut phu" href="/noi-bo/kho/cai-dat/vi-tri-ly-do">{t.boOVuaGo}</a>
     </div>
   </form>
 </Kho>

@@ -639,7 +639,7 @@ await nhom('13 · QUẦY YÊU CẦU → MANG RA → BẤM NHẬN (0032)', async 
   // GĐ5e: Cài đặt thành "Thiết lập" có tiến độ (0035) — chi tiết ở test-kho-thiet-lap-web.mjs.
   ok('Ô menu "Thiết lập" mở màn có thanh tiến độ', MUC_KHO.find(m => m.ma === 'cai_dat')?.ten?.vi === 'Thiết lập'
     && /kho_tien_do_thiet_lap/.test(doc(join(GOC, 'web/src/lib/kho/thiet-lap.ts')))
-    && /cauConLai\(tienDo\)/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'))));
+    && /cauConLai\(tienDo, nn\)/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'))));
 });
 
 // ===========================================================================
@@ -747,8 +747,9 @@ await nhom('16 · AI LÀM ĐƯỢC GÌ · TRUNG TÂM BÁO CÁO ẨN THEO QUYỀN
   const vaiThieu = [...vaiCo].filter(v => !VAI_BANG_QUYEN.includes(v) || !TEN_VAI_DAY[v]);
   ok('Mọi vai có trong QUYEN_KHO đều hiện trên trang (có tên)', vaiThieu.length === 0, vaiThieu.join(', '));
   const trangQuyen = doc(join(TRANG, 'noi-bo/kho/cai-dat/quyen.astro'));
-  ok('Trang quyền dựng từ QUYEN_KHO + MO_TA_VIEC, mở cho mọi vai xem kho',
-    /Object\.keys\(QUYEN_KHO\)/.test(trangQuyen) && /MO_TA_VIEC\[x\]/.test(trangQuyen)
+  // Trang đọc bản hai thứ tiếng MO_TA_VIEC_NB (MO_TA_VIEC là bản tiếng Việt dựng từ đó).
+  ok('Trang quyền dựng từ QUYEN_KHO + MO_TA_VIEC_NB, mở cho mọi vai xem kho',
+    /Object\.keys\(QUYEN_KHO\)/.test(trangQuyen) && /MO_TA_VIEC_NB\[x\]/.test(trangQuyen)
     && /if \(!k\.duoc\('xem'\)\) return Astro\.redirect/.test(trangQuyen));
   // Mỗi việc mà một vai người làm được đều có dòng trên bảng (bảng chỉ bỏ việc chỉ-máy).
   const vaiNguoi = VAI_BANG_QUYEN.filter(v => !v.startsWith('may_'));

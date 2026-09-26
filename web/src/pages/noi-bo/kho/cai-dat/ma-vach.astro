@@ -12,10 +12,47 @@ import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.t
 import { docCaiDat, docMatHang, luuCaiDat, type CaiDat, type MatHang } from '../../../../lib/kho/danh-muc.ts';
 import { docMaVach, MAU_MAC_DINH } from '../../../../lib/kho/ma-vach.ts';
 import { cauLoiKho, dinhDangKg, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 if (!k.duoc('danh_muc')) return Astro.redirect('/noi-bo/kho/cai-dat', 302);
+const nn = k.nn;
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Mã vạch cân', en: 'Scale barcodes' },
+  veThietLap: { vi: '← Thiết lập kho', en: '← Inventory setup' },
+  khongDoc: { vi: 'Không đọc được cài đặt.', en: 'Could not read the settings.' },
+  chuaBatDau: { vi: 'Chi nhánh chưa bắt đầu dùng kho.', en: 'This branch has not started using inventory yet.' },
+  thuNhan: { vi: 'Thử một nhãn thật', en: 'Test a real label' },
+  thuGoiY: { vi: 'Gõ đúng 13 số in dưới mã vạch của một nhãn cân (hoặc quét bằng máy quét cầm tay vào ô này).',
+             en: 'Type the 13 digits printed under the barcode of a scale label (or scan it into this box with a handheld scanner).' },
+  maVach: { vi: 'Mã vạch', en: 'Barcode' },
+  docThu: { vi: 'Đọc thử', en: 'Test read' },
+  maHangTrenCan: { vi: 'Mã hàng trên cân: ', en: 'Item code on the scale: ' },
+  nang: { vi: ' · nặng ', en: ' · weight ' },
+  thanhTien: { vi: ' · thành tiền ', en: ' · amount ' },
+  khop: { vi: 'Khớp mặt hàng ', en: 'Matches the item ' },
+  chuaCo1: { vi: 'Chưa có mặt hàng nào mang mã cân ', en: 'No item has the scale code ' },
+  chuaCo2: { vi: ' — vào ', en: ' yet — go to ' },
+  matHang: { vi: 'Mặt hàng', en: 'Items' },
+  chuaCo3: { vi: ' điền mã cân cho đúng phần cắt.', en: ' and fill in the scale code for the right cut.' },
+  neuKg: { vi: 'Nếu số kg khác số in trên nhãn: đổi "số lẻ của trọng lượng" hoặc mẫu bên dưới.',
+           en: 'If the kg differs from the label: change "Weight decimals" or the pattern below.' },
+  cachDoc: { vi: 'Cách đọc nhãn', en: 'How labels are read' },
+  mau: { vi: 'Mẫu mã vạch (13 ký tự)', en: 'Barcode pattern (13 characters)' },
+  mauGoiY1: { vi: '0–9 = số cố định · X = số bất kỳ · C = mã hàng · W = trọng lượng · P = thành tiền · K = số kiểm tra.',
+              en: '0–9 = fixed digit · X = any digit · C = item code · W = weight · P = amount · K = check digit.' },
+  mauGoiY2: { vi: 'Cân Dahua 2+5+5+1: ', en: 'Dahua scale 2+5+5+1: ' },
+  mauGoiY3: { vi: '. Để trống = tắt đọc nhãn.', en: '. Leave empty to turn off label reading.' },
+  soLe: { vi: 'Số lẻ của trọng lượng', en: 'Weight decimals' },
+  soLeGoiY: { vi: '3 = trọng lượng in theo gram (01250 = 1,250 kg). Cân cài khác thì đổi.',
+              en: '3 = weight printed in grams (01250 = 1.250 kg). Change it if the scale is set up differently.' },
+  luuCachDoc: { vi: 'Lưu cách đọc nhãn', en: 'Save label settings' },
+  thieuMaCan: { vi: (n: number) => `${n} phần cắt chưa có mã cân`, en: (n: number) => `${n} ${n === 1 ? 'cut has' : 'cuts have'} no scale code` },
+  thieuMaCan2: { vi: ' — quét nhãn những phần này sẽ không nhận ra mặt hàng.', en: ' — scanning their labels will not find the item.' },
+  bamTen: { vi: 'Bấm vào tên để điền mã cân:', en: 'Tap a name to fill in its scale code:' },
+  vaKhac: { vi: (n: number) => `… và ${n} phần khác — xem ở `, en: (n: number) => `… and ${n} more — see ` },
+});
 
 let bao: KetQua | null = k.bao;
 const form = await docFormGui(Astro);
@@ -31,7 +68,7 @@ let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
     [caiDat, matHang] = await Promise.all([docCaiDat(k.client, k.chiNhanh.id), docMatHang(k.client)]);
-  } catch (e) { loiDoc = cauLoiKho(e, 'Không đọc được cài đặt.'); }
+  } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
 }
 
 const mau = caiDat?.mau_ma_vach ?? '';
@@ -42,66 +79,66 @@ const chuaCoMaCan = matHang.filter(m => m.dang_dung && m.loai === 'phan_cat' && 
 /** Số tên hiện thành nút sửa; còn lại dồn vào link "Mặt hàng". */
 const HIEN_TOI_DA = 12;
 ---
-<Kho k={k} huongDan="ma-vach" tieuDe="Mã vạch cân">
-  <h1>Mã vạch cân</h1>
-  <p><a href="/noi-bo/kho/cai-dat">← Thiết lập kho</a></p>
+<Kho k={k} huongDan="ma-vach" tieuDe={t.tieuDe}>
+  <h1>{t.tieuDe}</h1>
+  <p><a href="/noi-bo/kho/cai-dat">{t.veThietLap}</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
-  {!caiDat ? <p class="nb-rong">Chi nhánh chưa bắt đầu dùng kho.</p> : (
+  {!caiDat ? <p class="nb-rong">{t.chuaBatDau}</p> : (
     <>
       <div class="nb-the">
-        <h2 style="margin-top:0">Thử một nhãn thật</h2>
-        <p class="nb-dan" style="font-size:.88rem">Gõ đúng 13 số in dưới mã vạch của một nhãn cân (hoặc quét bằng máy quét cầm tay vào ô này).</p>
+        <h2 style="margin-top:0">{t.thuNhan}</h2>
+        <p class="nb-dan" style="font-size:.88rem">{t.thuGoiY}</p>
         <form method="GET" style="display:flex;gap:.5rem;flex-wrap:wrap">
           <label class="nb-o" style="flex:1 1 12rem;margin:0">
-            <input type="text" inputmode="numeric" name="thu" value={thu} maxlength="20" placeholder="2012345012509" aria-label="Mã vạch" autofocus />
+            <input type="text" inputmode="numeric" name="thu" value={thu} maxlength="20" placeholder="2012345012509" aria-label={t.maVach} autofocus />
           </label>
-          <button type="submit" class="nb-nut">Đọc thử</button>
+          <button type="submit" class="nb-nut">{t.docThu}</button>
         </form>
         {kq && (kq.hopLe ? (
           <div class="nb-bao xong" style="margin:1rem 0 0">
-            <p>Mã hàng trên cân: <strong>{kq.maCan}</strong>
-              {kq.soKg !== null && <> · nặng <strong>{dinhDangKg(kq.soKg)} kg</strong></>}
-              {kq.thanhTien !== null && <> · thành tiền <strong>{dinhDangTien(kq.thanhTien)}</strong></>}</p>
-            <p>{mh ? <>Khớp mặt hàng <strong>{mh.ten}</strong> ({mh.ma}).</> : <>Chưa có mặt hàng nào mang mã cân <strong>{kq.maCan}</strong> — vào <a href="/noi-bo/kho/cai-dat/mat-hang">Mặt hàng</a> điền mã cân cho đúng phần cắt.</>}</p>
-            <p class="kho-phu">Nếu số kg khác số in trên nhãn: đổi "số lẻ của trọng lượng" hoặc mẫu bên dưới.</p>
+            <p>{t.maHangTrenCan}<strong>{kq.maCan}</strong>
+              {kq.soKg !== null && <>{t.nang}<strong>{dinhDangKg(kq.soKg, nn)} kg</strong></>}
+              {kq.thanhTien !== null && <>{t.thanhTien}<strong>{dinhDangTien(kq.thanhTien, nn)}</strong></>}</p>
+            <p>{mh ? <>{t.khop}<strong>{mh.ten}</strong> ({mh.ma}).</> : <>{t.chuaCo1}<strong>{kq.maCan}</strong>{t.chuaCo2}<a href="/noi-bo/kho/cai-dat/mat-hang">{t.matHang}</a>{t.chuaCo3}</>}</p>
+            <p class="kho-phu">{t.neuKg}</p>
           </div>
         ) : (
-          <div class="nb-bao loi" style="margin:1rem 0 0"><p>{kq.loi}</p></div>
+          <div class="nb-bao loi" style="margin:1rem 0 0"><p>{nn === 'en' ? kq.loiEn : kq.loi}</p></div>
         ))}
       </div>
 
       <form method="POST" class="nb-the">
-        <h2 style="margin-top:0">Cách đọc nhãn</h2>
+        <h2 style="margin-top:0">{t.cachDoc}</h2>
         <input type="hidden" name="vi_tri_nhan_hang_id" value={caiDat.vi_tri_nhan_hang_id ?? ''} />
         <input type="hidden" name="canh_bao_truoc_ngay" value={String(caiDat.canh_bao_truoc_ngay)} />
         <label class="nb-o">
-          <span>Mẫu mã vạch (13 ký tự)</span>
-          <small>0–9 = số cố định · X = số bất kỳ · C = mã hàng · W = trọng lượng · P = thành tiền · K = số kiểm tra.
-            Cân Dahua 2+5+5+1: <code>{MAU_MAC_DINH}</code>. Để trống = tắt đọc nhãn.</small>
+          <span>{t.mau}</span>
+          <small>{t.mauGoiY1}
+            {t.mauGoiY2}<code>{MAU_MAC_DINH}</code>{t.mauGoiY3}</small>
           <input type="text" name="mau_ma_vach" value={mau} maxlength="13" autocapitalize="characters" spellcheck="false" style="font-family:monospace;letter-spacing:.15em" />
         </label>
         <label class="nb-o">
-          <span>Số lẻ của trọng lượng</span>
-          <small>3 = trọng lượng in theo gram (01250 = 1,250 kg). Cân cài khác thì đổi.</small>
+          <span>{t.soLe}</span>
+          <small>{t.soLeGoiY}</small>
           <select name="so_le_kg">
             {[3, 2, 1, 0].map(n => <option value={String(n)} selected={caiDat!.so_le_kg === n}>{n}</option>)}
           </select>
         </label>
-        <button type="submit" class="nb-nut">Lưu cách đọc nhãn</button>
+        <button type="submit" class="nb-nut">{t.luuCachDoc}</button>
       </form>
 
       {chuaCoMaCan.length > 0 && (
         <div class="nb-bao luu-y">
-          <p><strong>{chuaCoMaCan.length} phần cắt chưa có mã cân</strong> — quét nhãn những phần này sẽ không nhận ra mặt hàng.
-            Bấm vào tên để điền mã cân:</p>
+          <p><strong>{t.thieuMaCan(chuaCoMaCan.length)}</strong>{t.thieuMaCan2}
+            {t.bamTen}</p>
           <ul class="thieu-ma-can">
             {chuaCoMaCan.slice(0, HIEN_TOI_DA).map(m => (
               <li><a href={`/noi-bo/kho/cai-dat/mat-hang?sua=${m.id}`}>{m.ten}</a></li>
             ))}
           </ul>
           {chuaCoMaCan.length > HIEN_TOI_DA && (
-            <p>… và {chuaCoMaCan.length - HIEN_TOI_DA} phần khác — xem ở <a href="/noi-bo/kho/cai-dat/mat-hang?loai=phan_cat">Mặt hàng</a>.</p>
+            <p>{t.vaKhac(chuaCoMaCan.length - HIEN_TOI_DA)}<a href="/noi-bo/kho/cai-dat/mat-hang?loai=phan_cat">{t.matHang}</a>.</p>
           )}
         </div>
       )}

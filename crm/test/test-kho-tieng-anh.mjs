@@ -69,6 +69,15 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
 
   // Chữ Việt CỐ Ý, không phải câu giao diện bị sót. Mỗi dòng một lý do.
   const CO_Y = [
+    // gói danh mục — dữ liệu lưu vào database, câu database, mã lọc:
+    "(loai === 'tang' ? 'tảng' : 'gói')",                                // danh-muc.ts: đơn vị đếm mặc định lưu vào kho_mat_hang.don_vi_goi
+    "loai === 'tang' ? 'tảng' : loai === 'phu_pham' ? 'khay' : 'gói'",   // danh-muc.ts: đơn vị đếm mặc định của hàng mới khi dán Excel
+    "String(r.don_vi_goi ?? 'gói')",                                     // sua-nhanh.ts: đơn vị đếm mặc định khi database để trống
+    "don_vi_goi: m?.don_vi_goi ?? 'gói'",                                // thiet-lap.ts: đơn vị đếm mặc định khi món không còn trong danh mục
+    "`${ct.ten} (bản sao)`",                                             // cong-thuc.ts: tên bản sao lưu vào database (dữ liệu chung)
+    "/người khác sửa|thiếu phiên bản/",                                  // sua-nhanh.ts: nhận câu tiếng Việt của kho_sua_nhanh_mat_hang
+    "NHOM_CHUA_CO = '(chưa có)'",                                        // sua-nhanh.ts: mã lọc "chưa có nhóm" trên đường dẫn, không hiện
+    ".replace(/[đĐ]/g, 'd')",                                            // can-tma.ts: bỏ dấu cho mã tìm kiếm trên cân
     ".replace(/đ$|d$|vnd$/i, '')",              // đọc ô tiền: "450.000đ"
     ".replace(/đ/g, 'd').replace(/Đ/g, 'D')",   // bỏ dấu khi sinh mã / tìm không dấu
   ];
@@ -139,23 +148,6 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     'pages/noi-bo/kho/cai-dat/dinh-luong.astro',
     // ---- hết gói báo cáo ----
     // ---- gói danh mục: thiết lập, mặt hàng, NCC, vị trí, công thức, cân ----
-    'components/kho/FormMatHang.astro',
-    'lib/kho/can-tma.ts',
-    'lib/kho/cong-thuc.ts',
-    'lib/kho/danh-muc.ts',
-    'lib/kho/sua-nhanh.ts',
-    'lib/kho/thiet-lap.ts',
-    'pages/noi-bo/kho/cai-dat/can.astro',
-    'pages/noi-bo/kho/cai-dat/cong-thuc.astro',
-    'pages/noi-bo/kho/cai-dat/index.astro',
-    'pages/noi-bo/kho/cai-dat/ma-vach.astro',
-    'pages/noi-bo/kho/cai-dat/mat-hang.astro',
-    'pages/noi-bo/kho/cai-dat/mat-hang/sua-nhanh.astro',
-    'pages/noi-bo/kho/cai-dat/nha-cung-cap.astro',
-    'pages/noi-bo/kho/cai-dat/o-thong-tin.astro',
-    'pages/noi-bo/kho/cai-dat/quyen.astro',
-    'pages/noi-bo/kho/cai-dat/ton-dau.astro',
-    'pages/noi-bo/kho/cai-dat/vi-tri-ly-do.astro',
     // ---- hết gói danh mục ----
     // ---- gói máy & iPOS: nhân viên, máy dùng chung, bán hàng iPOS ----
     'lib/kho/ban-ipos.ts',
