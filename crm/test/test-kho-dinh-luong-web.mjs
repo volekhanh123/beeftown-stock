@@ -120,6 +120,10 @@ await nhom('2 · LƯỚI GRAM CỦA MỘT MÓN', async () => {
   ok('Phiên bản đổi khi gram đổi',
     phienBanDinhLuong([{ mat_hang_id: 'a', gram: 1 }]) !== phienBanDinhLuong([{ mat_hang_id: 'a', gram: 1.5 }]));
   ok('hienGram: 150,5 · 200 · null → trống', hienGram(150.5) === '150,5' && hienGram(200) === '200' && hienGram(null) === '');
+  // Số gram điền lại vào ô phải đọc lại được: không dấu ngăn nghìn ("1.000" docGram coi là sai).
+  ok('hienGram không ngăn nghìn: 1500 → "1500", đọc lại đúng ở cả hai thứ tiếng',
+     hienGram(1500) === '1500' && docGram(hienGram(1500)) === 1500
+     && hienGram(1250.5, 'en') === '1250.5' && docGram(hienGram(1250.5, 'en')) === 1250.5);
 });
 
 // ===========================================================================

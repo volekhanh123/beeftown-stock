@@ -154,7 +154,9 @@ export function phienBanDinhLuong(dong: { mat_hang_id: string; gram: number }[])
 /** Hiện gram: 150 → "150", 150.5 → "150,5" (tiếng Anh: "150.5"). */
 export function hienGram(g: number | null | undefined, nn: NgonNguNB = 'vi'): string {
   if (g === null || g === undefined || !Number.isFinite(Number(g))) return '';
-  return Number(g).toLocaleString(VUNG[nn], { maximumFractionDigits: 2 });
+  // Không có dấu ngăn nghìn: số này điền lại vào ô gram, và docGram coi "1.000"
+  // / "1,000" là sai (đọc như số lẻ) — suất 1 kg trở lên thì lưu lại bị từ chối.
+  return Number(g).toLocaleString(VUNG[nn], { maximumFractionDigits: 2, useGrouping: false });
 }
 
 // -----------------------------------------------------------------------------
