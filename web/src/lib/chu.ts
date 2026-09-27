@@ -257,6 +257,7 @@ export const CAP_DUONG_DAN: ReadonlyArray<readonly [vi: string, en: string, ko: 
   ['/tuyen-dung',     '/en/jobs',    '/ko/jobs'],
   ['/dat-ban',        '/en/book',    '/ko/book'],
   ['/quyen-rieng-tu', '/en/privacy', '/ko/privacy'],
+  ['/xoa-du-lieu',    '/en/data-deletion', '/ko/data-deletion'],
 ] as const;
 
 /**

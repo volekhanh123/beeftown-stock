@@ -152,7 +152,7 @@ await nhom('3 · BỐN VAI CRM Y NHƯ TRƯỚC', async () => {
 // ===========================================================================
 await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
   const VAI = ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan', 'thu_ngan', 'marketing',
-               'may_chung', 'may_ipos', 'may_zalo'];
+               'may_chung', 'may_ipos', 'may_zalo', 'may_messenger'];
 
   for (const viec of Object.keys(QUYEN_KHO)) {
     const { rows: [{ ds }] } = await db.query(`select kho_vai_duoc($1)::text[] as ds`, [viec]);
@@ -203,9 +203,15 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
        QUYEN_KHO[viec].includes(vai) === mong);
   }
   const { rows: [{ n: soVai }] } = await db.query(`select count(*)::int as n from unnest(enum_range(null::vai_tro))`);
-  ok('Bảng có đủ 10 vai để tra (khớp enum vai_tro)', VAI.length === 10 && soVai === 10, `enum có ${soVai}`);
+  ok('Bảng có đủ 11 vai để tra (khớp enum vai_tro)', VAI.length === 11 && soVai === 11, `enum có ${soVai}`);
   // 0048: may_zalo (máy gửi tin Zalo) không có việc kho nào — cả ở database lẫn bản soi gương.
   ok('may_zalo không có việc kho nào', Object.keys(QUYEN_KHO).every(v => !QUYEN_KHO[v].includes('may_zalo')));
+  // 0052: may_messenger (bot Messenger) cũng vậy.
+  ok('may_messenger không có việc kho nào', Object.keys(QUYEN_KHO).every(v => !QUYEN_KHO[v].includes('may_messenger')));
+  const { rows: [{ n: soViecMess }] } = await db.query(
+    `select count(*)::int as n from unnest($1::text[]) v where 'may_messenger'::vai_tro = any(kho_vai_duoc(v))`,
+    [Object.keys(QUYEN_KHO)]);
+  ok('may_messenger không có việc kho nào trong database (kho_vai_duoc)', soViecMess === 0, `${soViecMess} việc`);
   // Vai máy không được việc nào của người. Riêng việc may_chung (0034) chỉ có
   // đúng vai may_chung; việc dong_bo_ban (0037) là việc DUY NHẤT của may_ipos.
   for (const viec of Object.keys(QUYEN_KHO).filter(v => v !== 'may_chung' && v !== 'dong_bo_ban')) {

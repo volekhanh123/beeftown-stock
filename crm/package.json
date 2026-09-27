@@ -4,7 +4,7 @@
   "private": true,
   "description": "Hệ thống CRM & thẻ thành viên Beeftown",
   "scripts": {
-    "test": "node test/chay-test.mjs && node test/test-phan-quyen.mjs && node test/test-an-toan.mjs && node test/test-cong-bo.mjs && node test/test-thuc-don.mjs && node test/test-tuyen-dung.mjs && node test/test-cong-khai.mjs && node test/test-dat-noi-dung.mjs && node test/test-ban-dich.mjs && node test/test-hop-dong-web.mjs && node test/test-noi-bo-tieng-anh.mjs && node test/chay-kho.mjs && node test/test-quyen-ham-crm.mjs && node test/test-zalo.mjs && node test/test-zalo-web.mjs",
+    "test": "node test/chay-test.mjs && node test/test-phan-quyen.mjs && node test/test-an-toan.mjs && node test/test-cong-bo.mjs && node test/test-thuc-don.mjs && node test/test-tuyen-dung.mjs && node test/test-cong-khai.mjs && node test/test-dat-noi-dung.mjs && node test/test-ban-dich.mjs && node test/test-hop-dong-web.mjs && node test/test-noi-bo-tieng-anh.mjs && node test/chay-kho.mjs && node test/test-quyen-ham-crm.mjs && node test/test-zalo.mjs && node test/test-zalo-web.mjs && node test/test-messenger.mjs && node test/test-messenger-web.mjs",
     "test:db": "node test/chay-test.mjs",
     "test:rls": "node test/test-phan-quyen.mjs",
     "test:an-toan": "node test/test-an-toan.mjs",
@@ -20,7 +20,9 @@
     "test:can": "node test/test-kho-can.mjs",
     "test:quyen-ham": "node test/test-quyen-ham-crm.mjs",
     "test:zalo": "node test/test-zalo.mjs",
-    "test:zalo-web": "node test/test-zalo-web.mjs"
+    "test:zalo-web": "node test/test-zalo-web.mjs",
+    "test:messenger": "node test/test-messenger.mjs",
+    "test:messenger-web": "node test/test-messenger-web.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.17"

@@ -1,0 +1,44 @@
+---
+/* Translated from /xoa-du-lieu, idea for idea — no extra promises. */
+import Trang from '../../layouts/Trang.astro';
+import { docNoiDung } from '../../lib/noi-dung';
+const nd = await docNoiDung('en');
+---
+<Trang ngonNgu="en" noiDung={nd} duongDan="/en/data-deletion"
+       tieuDe="Data deletion — Beeftown"
+       moTa="How to ask Beeftown to delete your information, including information from Messenger.">
+  <section class="muc" style="padding-top:20px">
+    <div class="khung" style="max-width:68ch">
+      <p class="hieu">Data deletion</p>
+      <h1 style="font-size:clamp(30px,5vw,48px)">How to delete your information</h1>
+
+      <h2 style="font-size:24px; margin-top:40px">Information from Messenger</h2>
+      <p>Beeftown's automated assistant on Messenger does not store the text of
+        your messages. It only keeps a one-way encrypted ID and what you are in the
+        middle of entering (date, time, number of guests, name, phone number). This
+        is <strong>deleted automatically after 30 days</strong> without a
+        conversation — you do not need to do anything.</p>
+      <p>To delete it now: send <strong>xóa dữ liệu</strong> ("delete data") to the
+        Beeftown Page on Messenger. The assistant clears what you were entering and
+        asks a member of staff to handle the rest.</p>
+
+      <h2 style="font-size:24px; margin-top:34px">Booking requests and job applications</h2>
+      <p>Table requests (sent on the website or on Messenger) and job applications
+        are kept as described on the <a href="/en/privacy">Privacy</a> page. To
+        have them deleted, send a request with the phone number you used —
+        {nd.email_lien_he
+          ? <>by email to <a href={`mailto:${nd.email_lien_he}`}>{nd.email_lien_he}</a>, or by messaging the Beeftown Page on Messenger.</>
+          : <>by messaging the Beeftown Page on Messenger.</>}
+        The restaurant deletes your name, phone number and related details, then
+        lets you know.</p>
+
+      <h2 style="font-size:24px; margin-top:34px">Data Meta keeps</h2>
+      <p>Meta keeps its copy of the Messenger conversation under Meta's own policy.
+        You can delete the conversation in the Messenger app; that does not affect
+        a table request you have already sent.</p>
+
+      <p class="nho" style="margin-top:34px">In line with Decree 13/2023/ND-CP on
+        personal data protection (Vietnam).</p>
+    </div>
+  </section>
+</Trang>
