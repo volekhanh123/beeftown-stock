@@ -54,6 +54,8 @@ import {
 } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
+import { docGiaoOMa, docSoTang, giaoOMa, type GiaoOMa } from '../../../../lib/kho/o-ma.ts';
+import { soTangChu } from '../../../../lib/kho/tang.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -260,6 +262,17 @@ const t = dichNB(nn, {
   lyDoMoLaiNhan: { vi: 'Lý do mở lại', en: 'Reason for reopening' },
   moLaiPhien: { vi: 'Mở lại phiên', en: 'Reopen session' },
   veDanhSach: { vi: '← Danh sách phiên pha lóc', en: '← Butchery sessions' },
+  // 0047 — ô mã (món theo dõi theo tảng)
+  oMaTd: { vi: 'Ô mã của tảng này', en: 'Rotating codes for this primal' },
+  oMaGt: {
+    vi: 'Món theo dõi theo tảng: mỗi phiên một tảng. Giao ô mã cho phần cắt, rồi mở Beeftown Cân bấm Gửi xuống cân — cân đổi tên phím thành tên phần cắt kèm số tảng. Cân, in tem bằng đúng phím đó.',
+    en: 'Items tracked per primal: one primal per session. Assign rotating codes to the cuts, then open Beeftown Scale and press Send to scale — the scale key is renamed to the cut plus the primal number. Weigh and print with that key.',
+  },
+  oMaTang: { vi: (so: string) => `Tảng ${so}`, en: (so: string) => `Primal ${so}` },
+  oMaDong: { vi: (so: number, ma: string) => `ô ${so} · mã ${ma}`, en: (so: number, ma: string) => `slot ${so} · code ${ma}` },
+  oMaChuaGiao: { vi: 'Chưa giao ô mã.', en: 'No rotating code assigned yet.' },
+  oMaNut: { vi: 'Giao ô mã cho phần cắt', en: 'Assign rotating codes to the cuts' },
+  oMaChonTang: { vi: 'Chọn đúng một tảng ở mục Tảng đem pha rồi mới giao ô mã.', en: 'Choose exactly one primal under Primal cut before assigning codes.' },
 });
 // Thủ kho (pha_loc, không xem giá) không thấy cột / chữ tiền nào (0031).
 const xemGia = k.duoc('xem_gia');
@@ -394,6 +407,9 @@ if (form && phien) {
       return ve(await suaQuetPhienPha(k.client, phien.id, String(form.get('ma_gui_sua') ?? ''), cach,
         q.get('mon') || null));
     }
+  } else if (viec === 'giao_o_ma') {
+    if (!soanDuoc) return ve(khongSua);
+    return ve(await giaoOMa(k.client, phien.id));
   } else if (viec === 'chot') {
     if (!soanDuoc) return ve(khongSua);
     const pb = Number(String(form.get('phien_ban') ?? ''));
@@ -414,6 +430,17 @@ if (form && phien) {
 // Dữ liệu hiển thị
 // ---------------------------------------------------------------------------
 const buoc = phien ? buocPhien(phien.trang_thai, soanDuoc, q.get('buoc')) : 'xem';
+// 0047: món theo tảng — ô mã đang giao cho phiên và số tảng đem pha.
+let oMaPhien: GiaoOMa[] = [];
+let soTangPhien = '';
+const loVaoPhien = [...new Set(vaoDb.map(v => v.lo_id))];
+if (phien && mhVao?.theo_tang && !loiDoc) {
+  try {
+    const [g, st] = await Promise.all([docGiaoOMa(k.client, cn.id, phien.id), docSoTang(k.client, loVaoPhien)]);
+    oMaPhien = g;
+    soTangPhien = loVaoPhien.length === 1 ? soTangChu(st.get(loVaoPhien[0])) : '';
+  } catch { /* không đọc được ô mã: khung ô mã hiện "chưa giao" */ }
+}
 const tenMh = new Map(matHang.map(m => [m.id, m]));
 const viTriRa = viTri.filter(v => v.loai !== 'cho_huy' && v.loai !== 'dang_chuyen' && v.dang_dung);
 const tenNoiDe = (id: string | null) => {
@@ -542,6 +569,23 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
       {/* MỘT form cho cả bước (GĐ5e): ô quét, −1 / bỏ lượt / bỏ món và các ô gõ
           kg. Bấm nút nào máy chủ cũng lưu phần gõ tay trước (VIEC_LUU_GO_TAY_TRUOC)
           — gõ kg phụ phẩm rồi quét nhãn ngay thì số vừa gõ không mất. */}
+      {mhVao?.theo_tang && (
+        <section class="nb-the">
+          <h2 style="margin-top:0">{t.oMaTd}{soTangPhien && <> · {t.oMaTang(soTangPhien)}</>}</h2>
+          <p class="kho-phu">{t.oMaGt}</p>
+          {oMaPhien.length === 0 ? <p class="nb-rong">{t.oMaChuaGiao}</p> : (
+            <ul>
+              {oMaPhien.map(o => <li><strong>{o.ten_hang}</strong> — {t.oMaDong(o.so_o, o.ma_can)}</li>)}
+            </ul>
+          )}
+          {loVaoPhien.length === 1 ? (
+            <form method="POST" action={DUONG}>
+              <button type="submit" name="viec" value="giao_o_ma" class="nb-nut phu">{t.oMaNut}</button>
+            </form>
+          ) : <p class="kho-phu">{t.oMaChonTang}</p>}
+        </section>
+      )}
+
       <form method="POST" action={DUONG}>
         <input type="hidden" name="ma_gui" value={maGuiLai ?? maGuiForm} />
         <input type="hidden" name="ma_gui_sua" value={crypto.randomUUID()} />

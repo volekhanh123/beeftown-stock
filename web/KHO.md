@@ -785,7 +785,14 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   luật với `kho_so_ngay_u`, test so từng tuổi).
 - **Màn Tảng · ủ** (`/noi-bo/kho/tang`, view `kho_v_tang`): tảng còn tồn — sẵn sàng lóc / đang ủ còn
   mấy ngày / chưa có bảng ủ. Không có tiền.
-- Tiếp theo (kế hoạch): ô mã xoay vòng khi lóc một tảng (0047), bán qua iPOS trừ đúng tảng (0048),
+- **Ô mã xoay vòng (0047)**: phần cắt của món theo tảng có vài ô mã cố định (`kho_o_ma`, form mặt hàng
+  gõ `10011-10019`; tạo một lần trên FABi cùng giá). Mã ô không trùng mã cân món đang dùng (trigger hai
+  phía). Phiên lóc món theo tảng chỉ **một tảng**; bấm **Giao ô mã cho phần cắt** (`kho_giao_o_ma`, quyền
+  pha_loc) → mỗi phần cắt có ô trong công thức của tảng nhận một ô trống ở chi nhánh. Nhãn in bằng mã ô
+  phải thuộc ô của chính phiên. Chốt → ô gắn lô ra (`kho_o_ma_giao.lo_id`); mở lại → bỏ; huỷ phiên → trả
+  ô. Lô ra hết tồn thì lần giao sau tự đóng ô cũ; quản lý giải phóng tay được (`kho_giai_phong_o_ma`).
+  Quét kiểm kê cũng nhận nhãn mã ô (`kho_mat_hang_theo_ma_can`). View `kho_v_o_ma_giao`.
+- Tiếp theo (kế hoạch): cân đổi tên PLU theo tảng + tự gửi (GĐ3), bán qua iPOS trừ đúng tảng (0048),
   màn truy vết và huỷ cả tảng.
 
 ## 4. Cài như app (PWA)

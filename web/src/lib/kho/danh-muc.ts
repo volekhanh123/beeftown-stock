@@ -24,6 +24,7 @@ import { dichCau } from '../cau-noi-bo.ts';
 import { docTruongThem, taoKhoa, tachLuaChon, type DinhNghiaTruong, type GiaTriTruong } from './truong-them.ts';
 import { docMaMisa } from './misa.ts';
 import { docChuBangU, luuBangU } from './tang.ts';
+import { docChuOMa, luuOMa } from './o-ma.ts';
 
 // -----------------------------------------------------------------------------
 // KIỂU
@@ -138,6 +139,8 @@ export interface GiaTriFormMatHang {
   /** Theo dõi theo tảng và bảng ủ dạng chữ "5:18, 10:14, 10" (0046). */
   theo_tang?: boolean;
   bang_u?: string;
+  /** Ô mã của phần cắt theo tảng, dạng "10011-10019" (0047). */
+  o_ma?: string;
   thu_tu: string; dang_dung: boolean; truong_them: GiaTriTruong; gia_tri_thu_hoi_kg: string;
 }
 
@@ -308,6 +311,12 @@ export async function luuMatHang(
   const theoTang = form.has('theo_tang') ? loai === 'tang' && form.get('theo_tang') === 'co' : undefined;
   const bangU = form.has('bang_u') ? docChuBangU(String(form.get('bang_u') ?? '')) : null;
   if (bangU?.loi) return kqHai(false, bangU.loi);
+  // Ô mã (0047) — chỉ phần cắt; đọc TRƯỚC khi ghi gì.
+  const oMa = form.has('o_ma') ? docChuOMa(String(form.get('o_ma') ?? '')) : null;
+  if (oMa?.loi) return kqHai(false, oMa.loi);
+  if (oMa && oMa.ma.length && loai !== 'phan_cat') {
+    return kqHai(false, { vi: 'Ô mã chỉ dành cho phần cắt.', en: 'Rotating codes are only for cuts.' });
+  }
 
   const thuTu = docSoNguyen(form.get('thu_tu'), 0, 99999);
   const dong = {
@@ -353,6 +362,14 @@ export async function luuMatHang(
       const l = loiHai(error);
       return kqHai(false, { vi: `Đã lưu mặt hàng, nhưng chưa lưu được mức kho lạnh: ${l.vi}`,
                             en: `The item was saved, but the cold store levels were not: ${l.en}` });
+    }
+  }
+
+  if (oMa && id && (oMa.ma.length || cu)) {
+    const kq = await luuOMa(client, id, oMa.ma);
+    if (!kq.ok) {
+      return kqHai(false, { vi: `Đã lưu mặt hàng, nhưng chưa lưu được ô mã: ${kq.cau}`,
+                            en: `The item was saved, but the rotating codes were not: ${kq.cauEn ?? dichCau('en', kq.cau)}` });
     }
   }
 

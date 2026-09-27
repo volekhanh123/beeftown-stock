@@ -366,6 +366,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ncc_ghi_doi_tai_khoan', 'kho_phieu_nhap_giu_hoa_don_gop',
     // 0044: thêm lý do Xuất bếp "Cơm nhân viên" → mặc định không tính định mức
     'kho_ly_do_dinh_muc_mac_dinh',
+    // 0047: giao ô mã cho phiên lóc một tảng, quản lý giải phóng ô
+    'kho_giao_o_ma', 'kho_giai_phong_o_ma',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
@@ -389,6 +391,9 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ipos_bo_pii', 'kho_ipos_goi_theo_kg', 'kho_ipos_moc_nhan', 'kho_ipos_nhan_hd',
     // 0046: số tảng tăng dần, tra số ngày ủ theo bảng ủ
     'kho_sinh_so_tang', 'kho_so_ngay_u',
+    // 0047: món theo mã cân (mã món hoặc mã ô), ô còn giữ, các trigger ô mã
+    'kho_mat_hang_theo_ma_can', 'kho_o_ma_con_giu', 'kho_o_ma_kiem', 'kho_mat_hang_ma_can_khong_trung_o',
+    'kho_phien_pha_vao_mot_tang', 'kho_phien_pha_ra_o_ma', 'kho_phien_pha_tra_o_ma',
   ].sort();
 
   const { rows } = await db.query(`

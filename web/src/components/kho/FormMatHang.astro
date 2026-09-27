@@ -74,6 +74,9 @@ const t = dichNB(nnCua(Astro), {
   bangU: { vi: 'Bảng ủ (tuổi thịt lúc nhận : số ngày ủ)', en: 'Aging table (age when received : aging days)' },
   bangUGoiY: { vi: 'Ví dụ "5:18, 10:14, 10": mổ ≤ 5 ngày thì ủ 18 ngày, ≤ 10 ngày ủ 14, còn lại ủ 10. Trống = không tính ngày ủ.',
                en: 'For example "5:18, 10:14, 10": slaughtered ≤ 5 days ago → age 18 days, ≤ 10 → 14, otherwise 10. Empty = no aging date.' },
+  oMa: { vi: 'Ô mã (phần cắt theo tảng)', en: 'Rotating codes (per-primal cuts)' },
+  oMaGoiY: { vi: 'Chỉ với phần cắt của món theo tảng. Ví dụ "10011-10019": 9 mã, tạo một lần trên FABi cùng giá. Lóc tảng nào thì kho giao một ô cho tảng đó.',
+             en: 'Only for cuts of items tracked per primal. For example "10011-10019": 9 codes, created once on FABi at the same price. Each primal being cut is given one code.' },
   tinhTrang: { vi: 'Tình trạng', en: 'Status' },
   dangDung: { vi: 'Đang dùng', en: 'In use' },
   ngungDung: { vi: 'Ngừng dùng', en: 'No longer used' },
@@ -181,6 +184,9 @@ const t = dichNB(nnCua(Astro), {
     <label class="nb-o"><span>{t.bangU}</span>
       <small>{t.bangUGoiY}</small>
       <input type="text" name="bang_u" maxlength="120" value={gt.bang_u ?? ''} placeholder="5:18, 10:14, 10" /></label>
+    <label class="nb-o"><span>{t.oMa}</span>
+      <small>{t.oMaGoiY}</small>
+      <input type="text" name="o_ma" maxlength="200" value={gt.o_ma ?? ''} placeholder="10011-10019" inputmode="numeric" /></label>
   </div>
 
   <TruongThem dinhNghia={dinhNghia} giaTri={gt.truong_them} />
