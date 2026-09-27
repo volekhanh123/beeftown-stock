@@ -284,8 +284,13 @@ Việt kèm chỗ bấm để sửa: `cauLoiDangKy`. Không có khóa `service_r
 ### Việc cần bật một lần
 
 **Supabase** (Authentication → Sign In / Providers):
-- Bật **Allow new users to sign up** — để máy chủ tạo được tài khoản bằng khóa anon. An toàn: người lạ tự
-  đăng ký được tài khoản Supabase thì vẫn không thấy gì, vì không có dòng `nhan_su` (`layPhien` trả null).
+- Bật **Allow new users to sign up** — để máy chủ tạo được tài khoản bằng khóa anon. Chỉ bật SAU khi
+  database đã chạy `0045`. Người lạ tự đăng ký được tài khoản Supabase thì vào `/noi-bo` không thấy gì
+  (không có dòng `nhan_su`, `layPhien` trả null), nhưng vẫn gọi thẳng được REST của database bằng khóa
+  anon công khai: bảng thì RLS chặn, hàm `SECURITY DEFINER` phải tự kiểm vai. Hàm kho kiểm bằng
+  `kho_duoc` / `kho_cn_duoc`; ba hàm CRM `ghi_luot_ghe`, `tim_hoac_tao_khach`, `xep_hang_gui_tin` kiểm
+  từ `0045` (trước đó tài khoản lạ tra được hồ sơ khách theo số điện thoại). Hàm definer mới mà
+  `authenticated` gọi được thì phải có bước kiểm vai như vậy — `test-quyen-ham-crm.mjs` là mẫu.
 - Email → tắt **Confirm email** — nếu không, người mới phải bấm link trong thư trước khi đăng nhập, và máy
   gửi thư có sẵn của Supabase chỉ gửi cho thành viên dự án (email nhân viên sẽ bị từ chối).
 - Không bật captcha cho đăng ký (máy chủ không giải được captcha).
