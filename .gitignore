@@ -34,6 +34,8 @@
 !crm/package.json
 !crm/package-lock.json
 !crm/supabase/migrations/*.sql
+!crm/supabase/thu/*.sql
+!crm/supabase/thu/README.md
 !crm/test/*.mjs
 
 # --- ĐƯỢC PHÉP: tài liệu thiết kế dạng web ---
