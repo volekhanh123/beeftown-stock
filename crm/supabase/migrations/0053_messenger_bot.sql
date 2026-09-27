@@ -1,8 +1,8 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0052 · MESSENGER · BOT ĐẶT BÀN: PHIÊN HỘI THOẠI, CẤU HÌNH,
+-- BEEFTOWN CRM — 0053 · MESSENGER · BOT ĐẶT BÀN: PHIÊN HỘI THOẠI, CẤU HÌNH,
 --                      THỐNG KÊ, RPC MÁY VÀ NGƯỜI
 -- =============================================================================
--- PHẢI CHẠY SAU 0051 (một mình) — dùng 'may_messenger' vừa thêm ở đó.
+-- PHẢI CHẠY SAU 0052 (một mình) — dùng 'may_messenger' vừa thêm ở đó.
 --
 -- Khách nhắn Trang Facebook để đặt bàn, tra / hủy đặt bàn, hỏi giờ mở cửa,
 -- gặp nhân viên. Worker (web/src/lib/messenger-hook.ts) nhận webhook Meta,
@@ -177,7 +177,7 @@ create table mess_phien (
 );
 
 comment on table mess_phien is
-  'Bước hội thoại của bot Messenger cho từng khách. Khóa là HMAC của PSID (không lưu PSID thô), không lưu nội dung tin nhắn. Tự xóa sau 30 ngày không động tới (0052).';
+  'Bước hội thoại của bot Messenger cho từng khách. Khóa là HMAC của PSID (không lưu PSID thô), không lưu nội dung tin nhắn. Tự xóa sau 30 ngày không động tới (0053).';
 comment on column mess_phien.psid_bam     is 'HMAC-SHA256(PSID, MESS_KHOA_BAM) — 64 ký tự hex thường, web tính.';
 comment on column mess_phien.du_lieu      is 'Thứ bot đang hỏi dở: ngày, giờ, số khách, tên, SĐT. Xóa khi xong việc.';
 comment on column mess_phien.tam_dung_den is 'Nhân viên đang trực cho khách này — bot im tới mốc này.';
@@ -207,7 +207,7 @@ create table mess_cau_hinh (
 );
 
 comment on table mess_cau_hinh is
-  'Bot Messenger, một dòng: bật/tắt (mặc định tắt), lời chào, số phút bot im khi khách gặp nhân viên, lần nhận tin cuối, lỗi cuối (0052).';
+  'Bot Messenger, một dòng: bật/tắt (mặc định tắt), lời chào, số phút bot im khi khách gặp nhân viên, lần nhận tin cuối, lỗi cuối (0053).';
 
 insert into mess_cau_hinh (id) values (1) on conflict (id) do nothing;
 
@@ -228,7 +228,7 @@ create table mess_thong_ke_ngay (
 );
 
 comment on table mess_thong_ke_ngay is
-  'Số sự kiện của bot Messenger theo ngày giờ VN và loại — để chủ xem bot có chạy không. Không PSID, không SĐT (0052).';
+  'Số sự kiện của bot Messenger theo ngày giờ VN và loại — để chủ xem bot có chạy không. Không PSID, không SĐT (0053).';
 
 
 -- =============================================================================
@@ -397,7 +397,7 @@ end;
 $$;
 
 comment on function mess_lay_phien is
-  'Máy Messenger: bước hội thoại của một khách (theo PSID đã băm) + bot bật/tắt, lời chào. Đếm tin nhận, hội thoại mới; dọn phiên > 30 ngày (0052).';
+  'Máy Messenger: bước hội thoại của một khách (theo PSID đã băm) + bot bật/tắt, lời chào. Đếm tin nhận, hội thoại mới; dọn phiên > 30 ngày (0053).';
 
 create or replace function mess_luu_phien(
   p_psid_bam      text,
@@ -454,7 +454,7 @@ end;
 $$;
 
 comment on function mess_luu_phien is
-  'Máy Messenger: lưu bước / dữ liệu hỏi dở / tạm dừng bot của một khách. Tham số null = giữ nguyên; p_tam_dung_phut 0 = bỏ tạm dừng (0052).';
+  'Máy Messenger: lưu bước / dữ liệu hỏi dở / tạm dừng bot của một khách. Tham số null = giữ nguyên; p_tam_dung_phut 0 = bỏ tạm dừng (0053).';
 
 create or replace function mess_ghi_tra_cuu(p_psid_bam text, p_thanh_cong boolean)
 returns jsonb
@@ -512,7 +512,7 @@ end;
 $$;
 
 comment on function mess_ghi_tra_cuu is
-  'Máy Messenger: ghi một lần tra cứu / hủy đặt bàn đúng hay sai. ≥ 5 lần sai trong 15 phút → bi_khoa, khóa 15 phút kể từ lần sai gần nhất (0052).';
+  'Máy Messenger: ghi một lần tra cứu / hủy đặt bàn đúng hay sai. ≥ 5 lần sai trong 15 phút → bi_khoa, khóa 15 phút kể từ lần sai gần nhất (0053).';
 
 create or replace function mess_xin_dat_ban(p_psid_bam text)
 returns jsonb
@@ -554,7 +554,7 @@ end;
 $$;
 
 comment on function mess_xin_dat_ban is
-  'Máy Messenger: xin gửi một yêu cầu đặt bàn cho một khách — chặn lần gửi trùng trong 5 giây và quá 5 lần / ngày VN (0052).';
+  'Máy Messenger: xin gửi một yêu cầu đặt bàn cho một khách — chặn lần gửi trùng trong 5 giây và quá 5 lần / ngày VN (0053).';
 
 create or replace function mess_ghi_su_kien(p_loai text, p_loi text default null)
 returns jsonb
@@ -591,7 +591,7 @@ end;
 $$;
 
 comment on function mess_ghi_su_kien is
-  'Máy Messenger: cộng 1 vào thống kê ngày của một loại sự kiện (danh sách cố định); kèm câu lỗi thì lưu loi_cuoi đã xóa bí mật (0052).';
+  'Máy Messenger: cộng 1 vào thống kê ngày của một loại sự kiện (danh sách cố định); kèm câu lỗi thì lưu loi_cuoi đã xóa bí mật (0053).';
 
 
 -- =============================================================================

@@ -125,7 +125,7 @@ nhom('3 · MÀN CRM KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     // Gửi tin Zalo (0047): ba màn + nhãn dùng chung.
     'pages/noi-bo/zalo/index.astro', 'pages/noi-bo/zalo/chien-dich/moi.astro', 'pages/noi-bo/zalo/cai-dat.astro',
     'lib/zalo-trang.ts', 'lib/zalo-bao.ts',
-    // Bot Messenger (0052): màn cài đặt + câu báo sau chuyển hướng.
+    // Bot Messenger (0053): màn cài đặt + câu báo sau chuyển hướng.
     'pages/noi-bo/messenger.astro', 'lib/messenger-bao.ts',
   ];
   // Chữ Việt CỐ Ý, không phải câu giao diện bị sót. Mỗi dòng một lý do.

@@ -106,6 +106,10 @@ export interface DongIpos {
   ly_do: string | null;
   lo_het_han: boolean;
   xu_ly_luc: string | null;
+  /** 0051: ô mã của dòng, số tảng của lô ô lúc bán, có lệch ô (trừ theo hạn gần nhất). */
+  so_o?: number | null;
+  so_tang?: number | null;
+  lech_o?: boolean;
 }
 
 export type DonViBan = 'kg' | 'goi' | 'suat';
@@ -115,6 +119,8 @@ export interface MaIposDaGhep {
   ten_ipos: string | null;
   kieu: 'goi_can' | 'mon' | 'bo_qua';
   mat_hang_id: string | null;
+  /** Ô mã (0051): bán món này trừ đúng lô của tảng đang giữ ô. */
+  o_ma_id?: string | null;
   /** Bán theo (0042): null = theo món kho. */
   don_vi_ban: DonViBan | null;
   kg_moi_don_vi: number | null;
@@ -430,7 +436,7 @@ export async function docDongIpos(
   client: SupabaseClient, chiNhanhId: string, trangThai: TrangThaiDong[], tim: TimDs,
 ): Promise<DongIpos[]> {
   const q = client.from('kho_v_ipos_dong')
-    .select('id, ma_hd, thoi_diem_ban, ngay_ban, ma_ipos, ten_ipos, ma_vach, ma_can, so_kg, so_goi, so_luong, thanh_tien, mat_hang_id, ten_mat_hang, trang_thai, so_lan_thu, ly_do, lo_het_han, xu_ly_luc')
+    .select('id, ma_hd, thoi_diem_ban, ngay_ban, ma_ipos, ten_ipos, ma_vach, ma_can, so_kg, so_goi, so_luong, thanh_tien, mat_hang_id, ten_mat_hang, trang_thai, so_lan_thu, ly_do, lo_het_han, xu_ly_luc, so_o, so_tang, lech_o')
     .eq('chi_nhanh_id', chiNhanhId)
     .in('trang_thai', trangThai)
     .order('thoi_diem_ban', { ascending: false })
@@ -459,7 +465,7 @@ export async function docMaChuaGhep(client: SupabaseClient, chiNhanhId: string):
 
 export async function docMaDaGhep(client: SupabaseClient, chiNhanhId: string): Promise<MaIposDaGhep[]> {
   const { data, error } = await client.from('kho_ipos_ma_hang')
-    .select('ma_ipos, ten_ipos, kieu, mat_hang_id, don_vi_ban, kg_moi_don_vi')
+    .select('ma_ipos, ten_ipos, kieu, mat_hang_id, don_vi_ban, kg_moi_don_vi, o_ma_id')
     .eq('chi_nhanh_id', chiNhanhId)
     .order('ma_ipos');
   if (error) throw error;
@@ -576,11 +582,14 @@ export interface GhepGui {
   matHang: string | null;
   donVi: DonViBan | null;
   kgMoiDonVi: number | null;
+  /** 0051: ghép với một ô mã (chọn "o:<id>") — món kho là món của ô. */
+  oMa?: string | null;
 }
 
 /**
  * Form Ghép món → tham số kho_ipos_gan_ma_v2 (thuần). mat_hang_id: id món kho
- * | "goi_can" (hàng cân nhãn) | "bo_qua" (không phải hàng kho) | "bo_ghep".
+ * | "goi_can" (hàng cân nhãn) | "bo_qua" (không phải hàng kho) | "bo_ghep"
+ * | "o:<id ô mã>" (0051 — món ô trên FABi: bán theo kg hoặc gói, mặc định kg).
  * don_vi_ban: '' | kg | goi | suat — suất = món chế biến: không cần chọn món kho.
  * loiEn: bản tiếng Anh của loi.
  */
@@ -594,6 +603,12 @@ export function docFormGhep(form: FormData): { ghep: GhepGui | null; loi: string
   const donVi = (dvChu || null) as DonViBan | null;
 
   if (chon === 'bo_ghep') return { ghep: { ma, kieu: null, matHang: null, donVi: null, kgMoiDonVi: null }, loi: null, loiEn: null };
+  if (chon.startsWith('o:')) {
+    const oMa = chon.slice(2);
+    if (!laUuid(oMa)) return hong({ vi: 'Chọn lại ô mã.', en: 'Choose the rotating code again.' });
+    if (donVi === 'suat') return hong({ vi: 'Món ô mã bán theo kg hoặc gói.', en: 'A rotating-code dish is sold by kg or by pack.' });
+    return { ghep: { ma, kieu: 'mon', matHang: null, donVi: donVi ?? 'kg', kgMoiDonVi: null, oMa }, loi: null, loiEn: null };
+  }
   if (donVi === 'suat') return { ghep: { ma, kieu: 'bo_qua', matHang: null, donVi, kgMoiDonVi: null }, loi: null, loiEn: null };
 
   let kieu: GhepGui['kieu'];
@@ -622,6 +637,16 @@ export function docFormGhep(form: FormData): { ghep: GhepGui | null; loi: string
 export async function ganMaIpos(client: SupabaseClient, chiNhanhId: string, form: FormData): Promise<KetQua> {
   const { ghep, loi, loiEn } = docFormGhep(form);
   if (!ghep) return { ok: false, cau: loi ?? YEU_CAU_HONG.vi, cauEn: loiEn ?? YEU_CAU_HONG.en };
+  if (ghep.oMa) {
+    const { data, error } = await client.rpc('kho_ipos_gan_o_ma', {
+      p_chi_nhanh_id: chiNhanhId, p_ma_ipos: ghep.ma, p_o_ma_id: ghep.oMa, p_don_vi_ban: ghep.donVi,
+    });
+    if (error) return { ok: false, cau: cauLoiKho(error) };
+    const kqO = data as { so_o: number; ma_can: string; so_dong?: number; dong?: Record<string, number> };
+    const kem = { vi: ` Bán món này trừ đúng lô của tảng đang giữ ô ${kqO.so_o} (mã ${kqO.ma_can}).`,
+                  en: ` Selling it deducts the exact lot of the primal holding slot ${kqO.so_o} (code ${kqO.ma_can}).` };
+    return { ok: true, cau: cauKetQuaGhep(ghep.ma, kqO) + kem.vi, cauEn: cauKetQuaGhep(ghep.ma, kqO, false, 'en') + kem.en };
+  }
   const { data, error } = await client.rpc('kho_ipos_gan_ma_v2', {
     p_chi_nhanh_id: chiNhanhId, p_ma_ipos: ghep.ma, p_kieu: ghep.kieu, p_mat_hang_id: ghep.matHang,
     p_don_vi_ban: ghep.donVi, p_kg_moi_don_vi: ghep.kgMoiDonVi,
@@ -642,4 +667,16 @@ export async function ganMaIpos(client: SupabaseClient, chiNhanhId: string, form
   const kqGhep = data as { so_dong?: number; dong?: Record<string, number> };
   const boGhep = ghep.kieu === null;
   return { ok: true, cau: cauKetQuaGhep(ghep.ma, kqGhep, boGhep), cauEn: cauKetQuaGhep(ghep.ma, kqGhep, boGhep, 'en') };
+}
+
+/**
+ * 0051: ô mã gợi ý cho một mã iPOS — mã món iPOS (bỏ số 0 đầu) hoặc mã cân trên
+ * nhãn trùng mã ô. Món ô trên FABi thường đặt mã = mã cân của ô.
+ */
+export function goiYOMa<T extends { id: string; ma_can: string }>(
+  ma: { ma_ipos: string; ma_can: string | null }, oMa: T[],
+): T | null {
+  const bo0 = (x: string | null | undefined) => String(x ?? '').trim().replace(/^0+/, '');
+  const a = bo0(ma.ma_ipos), b = bo0(ma.ma_can);
+  return oMa.find(o => o.ma_can === a || (b !== '' && o.ma_can === b)) ?? null;
 }

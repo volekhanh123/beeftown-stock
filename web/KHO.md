@@ -768,7 +768,7 @@ Test: `test-kho-sua-nhanh.mjs` (database), `test-kho-sua-nhanh-web.mjs` (hàm th
 form → `kho_sua_nhanh_mat_hang` trên PGlite; báo cáo theo quyền; mã nguồn trang), `test-kho-giao-dien.mjs` nhóm 16
 (trang quyền phủ đủ việc, thẻ báo cáo ẩn theo quyền = dòng chặn trang, CSV có nhánh).
 
-## 3o. Theo dõi theo tảng · bảng ủ · repack · truy vết (migration 0048–0050)
+## 3o. Theo dõi theo tảng · bảng ủ · repack · truy vết · bán theo ô (migration 0048–0051)
 
 Thịt ủ (ribeye, striploin…) phải truy tới **từng tảng**: mỗi tảng có ngày mổ riêng → số ngày ủ, hạn
 dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Chỉ với món bật `kho_mat_hang.theo_tang`
@@ -822,7 +822,12 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   chỉ vai xem giá): mỗi tảng nhận trong kỳ — hao repack, thu hồi, bán / bếp / huỷ / còn, số ngày từ lóc
   tới bán hết, tình trạng chưa lóc / đang bán / đã hết.
 - **Xếp quầy**: `goiYXepQuay(ton, nn, soTang)` — câu dặn nói số tảng trên tem ("tảng #0142").
-- Tiếp theo (kế hoạch): bán qua iPOS trừ đúng tảng (**0051**, chờ iPOS xác nhận).
+- **Bán qua iPOS theo ô mã (0051)**: iPOS gửi `item_id` riêng cho từng món, nên mỗi ô là một món FABi.
+  Dòng bán biết ô khi: ghép món với ô (màn Ghép món, nhóm "Ô mã" — `kho_ipos_gan_o_ma`, mặc định bán theo
+  kg); mã món iPOS trùng mã ô (chưa ghép — tự nhận); hoặc nhãn cân in bằng mã ô. Có ô → lấy lô gắn với ô
+  **lúc bán** (`kho_ipos_lo_cua_o`) và trừ đúng lô đó ở quầy (`kho_ipos_lay_lo_cua_lo`); lô không đủ / ô chưa
+  gắn lô → trừ theo hạn gần nhất như cũ, `kho_ipos_dong.lech_o` + câu lý do, màn Bán hàng iPOS hiện "Lệch ô".
+  Ghép lại bằng `kho_ipos_gan_ma_v2` bỏ ô. `kho_v_ipos_dong` thêm `so_o`, `ma_can_o`, `so_tang`, `lech_o`.
 
 ## 4. Cài như app (PWA)
 

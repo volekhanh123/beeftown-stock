@@ -1,5 +1,5 @@
 /**
- * WEBHOOK BOT MESSENGER — GET / POST /hook/messenger (0052)
+ * WEBHOOK BOT MESSENGER — GET / POST /hook/messenger (0053)
  *
  * Trang công khai (ngoài /noi-bo — middleware không chặn, không cookie). Mọi
  * việc nằm ở lib/messenger-hook.ts (xuLyHookMessenger). Trên Worker thật,

@@ -1,5 +1,5 @@
 /**
- * BOT MESSENGER ĐẶT BÀN — phần THUẦN (0051, 0052)
+ * BOT MESSENGER ĐẶT BÀN — phần THUẦN (0052, 0053)
  * ===============================================
  *
  * Không gọi mạng, không đọc bí mật, không đọc đồng hồ: mọi thứ vào qua tham số.
@@ -81,7 +81,7 @@ export const META_API = {
 // =============================================================================
 export const KHACH_TOI_DA = 8;
 export const NGAY_TOI_DA = 60;
-/** Số lần gửi yêu cầu đặt bàn tối đa mỗi khách (PSID) mỗi ngày giờ VN — như mess_xin_dat_ban (0052). */
+/** Số lần gửi yêu cầu đặt bàn tối đa mỗi khách (PSID) mỗi ngày giờ VN — như mess_xin_dat_ban (0053). */
 export const DAT_BAN_TOI_DA_NGAY = 5;
 /** Phiên đang làm dở mà khách im quá lâu → coi như bắt đầu lại từ menu. */
 export const PHIEN_CU_MS = 12 * 60 * 60 * 1000;

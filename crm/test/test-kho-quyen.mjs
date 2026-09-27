@@ -206,7 +206,7 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
   ok('Bảng có đủ 11 vai để tra (khớp enum vai_tro)', VAI.length === 11 && soVai === 11, `enum có ${soVai}`);
   // 0048: may_zalo (máy gửi tin Zalo) không có việc kho nào — cả ở database lẫn bản soi gương.
   ok('may_zalo không có việc kho nào', Object.keys(QUYEN_KHO).every(v => !QUYEN_KHO[v].includes('may_zalo')));
-  // 0051: may_messenger (bot Messenger) cũng vậy.
+  // 0052: may_messenger (bot Messenger) cũng vậy.
   ok('may_messenger không có việc kho nào', Object.keys(QUYEN_KHO).every(v => !QUYEN_KHO[v].includes('may_messenger')));
   const { rows: [{ n: soViecMess }] } = await db.query(
     `select count(*)::int as n from unnest($1::text[]) v where 'may_messenger'::vai_tro = any(kho_vai_duoc(v))`,
@@ -378,6 +378,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_giao_o_ma', 'kho_giai_phong_o_ma',
     // 0050: truy vết một tảng, báo cáo theo tảng, huỷ cả tảng
     'kho_truy_vet_tang', 'kho_bao_cao_tang', 'kho_huy_ca_tang',
+    // 0051: ghép món iPOS với ô mã
+    'kho_ipos_gan_o_ma',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
@@ -406,6 +408,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_phien_pha_vao_mot_tang', 'kho_phien_pha_ra_o_ma', 'kho_phien_pha_tra_o_ma',
     // 0050: trigger gán tảng gốc cho lô ra
     'kho_lo_gan_tang_goc',
+    // 0051: lô của ô lúc bán, lấy đúng một lô, số gói theo kg của một lô
+    'kho_ipos_lo_cua_o', 'kho_ipos_lay_lo_cua_lo', 'kho_ipos_goi_theo_kg_lo',
   ].sort();
 
   const { rows } = await db.query(`

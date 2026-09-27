@@ -992,6 +992,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
         en: 'Do not want to deduct that line? Press **Skip**.' },
     ],
     meo: [
+      { vi: 'Món theo tảng: tạo mỗi ô mã một món trên FABi (mã món = mã ô, vd 10012) rồi ở **Ghép món** chọn đúng ô trong nhóm **Ô mã**. Bán món đó kho trừ đúng lô của tảng đang giữ ô. Dòng có chữ **Lệch ô** là lô của tảng không đủ — kiểm tem ở quầy.',
+        en: 'Per-primal items: create one FABi dish per rotating code (dish code = slot code, e.g. 10012), then in **Match dishes** choose the slot in the **Rotating codes** group. Selling that dish deducts the exact lot of the primal holding the slot. Lines marked **Code mismatch** mean the primal\'s lot was short — check the labels at the counter.' },
       { vi: 'Dòng chờ tự thử lại mỗi 5 phút — phần lớn tự hết khi giấy tờ đi kịp thực tế.',
         en: 'Waiting lines retry every 5 minutes — most clear by themselves once the paperwork catches up with reality.' },
       { vi: 'Món bếp nấu (phở, lẩu…) chọn **Bán theo suất**: kho không trừ, chỉ đếm suất để so với định lượng.',

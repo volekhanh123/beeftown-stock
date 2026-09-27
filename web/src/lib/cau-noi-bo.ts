@@ -24,7 +24,7 @@ import type { NgonNguNB } from './ngon-ngu-noi-bo';
 import { CAU_KHO_EN, MAU_KHO_EN } from './kho/cau-kho-en.ts';
 // Câu của phần gửi tin Zalo (0047) — bảng riêng, cùng cách tra.
 import { CAU_ZALO_EN, MAU_ZALO_EN } from './zalo-cau-en.ts';
-// Câu của bot Messenger (0052) — bảng riêng, cùng cách tra.
+// Câu của bot Messenger (0053) — bảng riêng, cùng cách tra.
 import { CAU_MESSENGER_EN, MAU_MESSENGER_EN } from './messenger-cau-en.ts';
 
 /** Câu cố định: đúng từng chữ, kể cả dấu chấm cuối. */

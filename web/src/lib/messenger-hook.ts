@@ -1,5 +1,5 @@
 /**
- * BOT MESSENGER ĐẶT BÀN — WEBHOOK META (phần I/O; 0051, 0052)
+ * BOT MESSENGER ĐẶT BÀN — WEBHOOK META (phần I/O; 0052, 0053)
  * ===========================================================
  *
  * Meta gọi `https://<web>/hook/messenger`:
@@ -530,7 +530,7 @@ async function motSuKien(sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: Phu
 }
 
 /**
- * mess_xin_dat_ban (0052) ngay trước tao_dat_ban: 'ok' = được gửi; 'dang_gui' = vừa có
+ * mess_xin_dat_ban (0053) ngay trước tao_dat_ban: 'ok' = được gửi; 'dang_gui' = vừa có
  * một lần gửi cho khách này trong vài giây (sự kiện lặp / song song); 'qua_luot' = hết
  * DAT_BAN_TOI_DA_NGAY lần trong ngày; 'loi' = không hỏi được database → không gửi.
  */

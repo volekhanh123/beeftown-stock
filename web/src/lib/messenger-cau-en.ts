@@ -1,5 +1,5 @@
 /**
- * CÂU THÔNG BÁO CỦA PHẦN BOT MESSENGER (0052) Ở TIẾNG ANH
+ * CÂU THÔNG BÁO CỦA PHẦN BOT MESSENGER (0053) Ở TIẾNG ANH
  * =====================================================
  *
  * Database bot Messenger nói bằng tiếng Việt ở `raise exception '…'` của các
@@ -12,7 +12,7 @@
 
 /** Câu cố định: đúng từng chữ. */
 export const CAU_MESSENGER_EN: Readonly<Record<string, string>> = {
-  // raise exception — 0052
+  // raise exception — 0053
   'Chỉ tài khoản máy Messenger mới gọi được hàm này': 'Only the Messenger machine account can call this function',
   'Mã khách Messenger phải là chuỗi băm 64 ký tự hex': 'The Messenger customer key must be a 64-character hex hash',
   'Bước hội thoại không hợp lệ': 'Invalid conversation step',

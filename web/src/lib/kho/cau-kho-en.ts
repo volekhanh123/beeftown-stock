@@ -709,6 +709,14 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Ô % (mã %) đã trống từ trước.', en: 'Slot {1} (code {2}) was already free.' },
   { vi: 'Mã ô % không giao cho phiên này — bấm "Giao ô mã" rồi in bằng đúng phím trên cân',
     en: 'Rotating code {1} is not assigned to this session — press "Assign codes", then print with the right key on the scale' },
+  // 0051 — bán qua iPOS theo ô mã
+  { vi: 'Món ô mã bán theo kg hoặc gói', en: 'A rotating-code dish is sold by kg or by pack' },
+  { vi: 'Không tìm thấy ô mã', en: 'Rotating code not found' },
+  { vi: 'Món của ô mã đã ngừng dùng', en: 'The item of this rotating code is no longer used' },
+  { vi: 'Ô % (mã %): lô của tảng không đủ — đã trừ theo hạn gần nhất',
+    en: 'Slot {1} (code {2}): the primal\'s lot did not have enough — deducted by nearest expiry' },
+  { vi: 'Ô % (mã %): ô chưa gắn tảng lúc bán — đã trừ theo hạn gần nhất',
+    en: 'Slot {1} (code {2}): no primal held the slot at the time of sale — deducted by nearest expiry' },
   // 0050 — repack, truy vết tảng, huỷ cả tảng
   { vi: 'Dòng % (%): kg sau repack không hợp lệ', en: 'Line {1} ({2}): the weight after repack is not valid' },
   { vi: 'Dòng % (%): kg sau repack phải lớn hơn 0, tối đa 3 số lẻ',

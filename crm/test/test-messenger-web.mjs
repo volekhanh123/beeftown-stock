@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN CRM — Kiểm thử phần WEB của bot Messenger đặt bàn (0051, 0052)
+ * BEEFTOWN CRM — Kiểm thử phần WEB của bot Messenger đặt bàn (0052, 0053)
  * ======================================================================
  *
  *     node test/test-messenger-web.mjs
@@ -64,7 +64,7 @@ const PSID = { a: '7001002003004005', b: '7001002003004006', c: '700100200300400
                e: '7001002003004009', f: '7001002003004010', g: '7001002003004011', h: '7001002003004012' };
 
 // ---------------------------------------------------------------------------
-// Client máy giả — giữ phiên theo psid_bam giống 0052
+// Client máy giả — giữ phiên theo psid_bam giống 0053
 // ---------------------------------------------------------------------------
 function mayGia({ dangBat = true, phut = 60, loiChao = 'Chào bạn! Beeftown có thể giúp gì?' } = {}) {
   const st = { cfg: { dang_bat: dangBat, loi_chao: loiChao, phut_tam_dung: phut }, phien: new Map(), goi: [], suKien: [], bayGio: BAY_GIO };

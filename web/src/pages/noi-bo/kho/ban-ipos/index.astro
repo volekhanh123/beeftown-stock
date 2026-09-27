@@ -27,6 +27,7 @@ import {
   docDongIpos, docTrangThaiIpos, docThe, xuLyDongIpos, lopDen, trangThaiDong, THE_DONG_NB,
   type DongIpos, type TrangThaiIpos,
 } from '../../../../lib/kho/ban-ipos.ts';
+import { soTangChu } from '../../../../lib/kho/tang.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
@@ -69,6 +70,15 @@ const t = dichNB(nn, {
   soLan: { vi: (n: number) => `${n} lần`, en: (n: number) => `${n} ${n === 1 ? 'time' : 'times'}` },
   luuY: { vi: 'Lưu ý', en: 'Note' },
   loHetHan: { vi: 'Trừ vào lô đã hết hạn — kiểm lại quầy.', en: 'Deducted from an expired lot — check the counter.' },
+  oMa: { vi: 'Ô mã', en: 'Rotating code' },
+  oChu: {
+    vi: (so: number, tang: string) => `ô ${so}${tang ? ` · tảng ${tang}` : ''}`,
+    en: (so: number, tang: string) => `slot ${so}${tang ? ` · primal ${tang}` : ''}`,
+  },
+  lechO: {
+    vi: 'Lệch ô: không trừ được lô của tảng giữ ô — đã trừ theo hạn gần nhất. Kiểm tem ở quầy.',
+    en: 'Code mismatch: the lot of the primal holding the slot could not be used — deducted by nearest expiry. Check the labels at the counter.',
+  },
   ghepMon: { vi: 'Ghép món', en: 'Match dish' },
   thuLai: { vi: 'Thử lại', en: 'Retry' },
   boQua: { vi: 'Bỏ qua', en: 'Skip' },
@@ -162,6 +172,8 @@ const theDau = THE_DONG_NB[0].ma;
           {d.ly_do && <><dt>{t.lyDo}</dt><dd>{dichCau(nn, d.ly_do)}</dd></>}
           {d.so_lan_thu > 1 && d.trang_thai !== 'da_ghi' && <><dt>{t.daThu}</dt><dd>{t.soLan(d.so_lan_thu)}</dd></>}
           {d.lo_het_han && <><dt>{t.luuY}</dt><dd>{t.loHetHan}</dd></>}
+          {d.so_o != null && <><dt>{t.oMa}</dt><dd>{t.oChu(d.so_o, soTangChu(d.so_tang))}</dd></>}
+          {d.lech_o && <><dt>{t.luuY}</dt><dd>{t.lechO}</dd></>}
         </dl>
 
         {(d.trang_thai === 'chua_khop' || (d.trang_thai === 'loi' && !d.mat_hang_id)) && d.ma_ipos && (

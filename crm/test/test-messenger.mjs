@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN CRM — Kiểm thử: bot Messenger đặt bàn, phần database (0051, 0052)
+ * BEEFTOWN CRM — Kiểm thử: bot Messenger đặt bàn, phần database (0052, 0053)
  * ==========================================================================
  *
  *     node test/test-messenger.mjs
@@ -26,7 +26,7 @@ import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const MIG = join(__dirname, '..', 'supabase', 'migrations');
 
-const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — BOT MESSENGER ĐẶT BÀN (0051, 0052)');
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — BOT MESSENGER ĐẶT BÀN (0052, 0053)');
 const { db, cnA, duoiAnon } = await dungDatabase();
 
 // ---------------------------------------------------------------------------
@@ -92,9 +92,9 @@ const NOI_BO = ['mess_loai_su_kien', 'mess_kiem_psid', 'mess_dem', 'mess_don_phi
 // ===========================================================================
 await nhom('0 · TIỀN ĐỀ — enum, file riêng, chữ ký, quyền gọi hàm, khóa bảng', async () => {
   const vai = (await q(`select unnest(enum_range(null::vai_tro))::text as v`)).map(r => r.v);
-  ok('0051: vai_tro có may_messenger', vai.includes('may_messenger'));
-  const f51 = readFileSync(join(MIG, '0051_messenger_vai_may.sql'), 'utf8').replace(/--[^\n]*/g, '').trim();
-  ok('0051 chỉ có đúng một lệnh thêm enum (chạy riêng, trước 0052)',
+  ok('0052: vai_tro có may_messenger', vai.includes('may_messenger'));
+  const f51 = readFileSync(join(MIG, '0052_messenger_vai_may.sql'), 'utf8').replace(/--[^\n]*/g, '').trim();
+  ok('0052 chỉ có đúng một lệnh thêm enum (chạy riêng, trước 0053)',
      f51 === `alter type vai_tro add value if not exists 'may_messenger';`, f51.slice(0, 200));
 
   for (const ham of ['tao_dat_ban', 'tra_cuu_dat_ban', 'huy_dat_ban', 'ghi_nhat_ky_tra_cuu', 'lich_trong_theo_ma',
@@ -104,8 +104,8 @@ await nhom('0 · TIỀN ĐỀ — enum, file riêng, chữ ký, quyền gọi h�
                               where s.nspname = 'public' and p.proname = $1`, [ham]);
     ok(`${ham}() vẫn chỉ có MỘT bản (không đẻ overload)`, n === 1, `${n} bản`);
   }
-  const f52 = readFileSync(join(MIG, '0052_messenger_bot.sql'), 'utf8');
-  ok('0052 không thay thân hàm có sẵn nào (chỉ tạo hàm mess_*)',
+  const f52 = readFileSync(join(MIG, '0053_messenger_bot.sql'), 'utf8');
+  ok('0053 không thay thân hàm có sẵn nào (chỉ tạo hàm mess_*)',
      [...f52.matchAll(/create\s+or\s+replace\s+function\s+(\w+)/gi)].every(m => m[1].startsWith('mess_')));
 
   const ds = await q(`select p.proname, has_function_privilege('authenticated', p.oid, 'execute') as goi,
@@ -579,7 +579,7 @@ await nhom('7 · MÁY MESSENGER KHÔNG ĐỌC / GHI ĐƯỢC CRM, KHÔNG CÓ VI�
 
 // ===========================================================================
 await nhom('8 · ANON VÀ CHỐT QUYỀN KHÔNG ĐỔI', async () => {
-  // Chép từ DUOC_PHEP của test-an-toan.mjs — 0052 không được thêm hàm nào cho anon.
+  // Chép từ DUOC_PHEP của test-an-toan.mjs — 0053 không được thêm hàm nào cho anon.
   const DUOC_PHEP = ['chi_nhanh_cong_khai', 'ghi_nhat_ky_tra_cuu', 'ghi_su_kien_web', 'huy_dat_ban', 'lich_trong_theo_ma',
                      'noi_dung_cong_khai', 'nop_ho_so_ung_tuyen', 'tao_dat_ban', 'thuc_don_cong_khai',
                      'tin_tuyen_dung_cong_khai', 'tra_cuu_dat_ban', 've_con_hieu_luc', 'xin_phieu_tai_cv'].sort();
@@ -595,8 +595,8 @@ await nhom('8 · ANON VÀ CHỐT QUYỀN KHÔNG ĐỔI', async () => {
     const s = readFileSync(join(MIG, f), 'utf8');
     return s.slice(s.lastIndexOf('-- CHỐT QUYỀN'));
   };
-  ok('Khối CHỐT QUYỀN cuối 0052 chép NGUYÊN VĂN từ 0050', khoi('0052_messenger_bot.sql') === khoi('0050_kho_repack_truy_vet_tang.sql'));
-  ok('…và có dòng ve_con_hieu_luc(text)', khoi('0052_messenger_bot.sql').includes('ve_con_hieu_luc(text)'));
+  ok('Khối CHỐT QUYỀN cuối 0053 chép NGUYÊN VĂN từ 0051', khoi('0053_messenger_bot.sql') === khoi('0051_kho_ipos_o_ma.sql'));
+  ok('…và có dòng ve_con_hieu_luc(text)', khoi('0053_messenger_bot.sql').includes('ve_con_hieu_luc(text)'));
 });
 
 process.exit(ketThuc('BOT MESSENGER'));
