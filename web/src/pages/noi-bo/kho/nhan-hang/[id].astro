@@ -29,11 +29,11 @@ import { docDinhNghia, docMatHang, docViTri, type MatHang, type ViTri } from '..
 import {
   docPhieuNhan, docNccNhap, docMonGanDay, gopMonGanDay, docFormDongNhan, docFormDauNhan, dongNhanTrong,
   dongNhanVaoForm, dongLuuTuPhieu, ghepDongNhan, luuPhieuNhan, themDongNhan, themAnhNhan, kiemTruocKhiGui,
-  guiPhieuNhan, rutPhieuNhan, huyPhieuNhan,
+  guiPhieuNhan, rutPhieuNhan, huyPhieuNhan, haoRepack,
   type DauNhan, type DongNhanForm, type MonKiem, type NccNhap, type PhieuNhan,
 } from '../../../../lib/kho/nhan-hang.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, homNayVn, kqHai, trangThaiKho, type KetQua,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, homNayVn, kqHai, trangThaiKho, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { hienThiGiaTri, type DinhNghiaTruong, type GiaTriTruong } from '../../../../lib/kho/truong-them.ts';
 import { soTangChu } from '../../../../lib/kho/tang.ts';
@@ -124,6 +124,17 @@ const t = dichNB(nn, {
     vi: 'Xem trên nhãn thùng. Món theo tảng: mỗi lần thêm là MỘT tảng — cân riêng từng tảng, bỏ trống ô số tảng.',
     en: 'See the box label. Items tracked per primal: each line is ONE primal — weigh each primal on its own, leave the count empty.',
   },
+  kgThuc: { vi: 'Kg sau repack', en: 'Weight after repack (kg)' },
+  kgThucGoiY: {
+    vi: 'Mở túi, kiểm tra, bỏ nước rỉ, đóng lại rồi cân. Ô "Số kg" ở trên là kg trên nhãn / hoá đơn nhà cung cấp. Chưa repack thì để trống — lưu nháp được, nhưng chưa gửi được.',
+    en: 'Open the bag, check it, drain the drip, reseal, then weigh. "Weight" above is the supplier label / invoice weight. Not repacked yet? Leave blank — you can save a draft but not send it.',
+  },
+  kgThucMonThuong: { vi: 'Kg sau repack (nếu có repack)', en: 'Weight after repack (if repacked)' },
+  sauRepack: {
+    vi: (kg: string, hao: string, pt: string) => `→ ${kg} kg sau repack (hao ${hao} kg · ${pt})`,
+    en: (kg: string, hao: string, pt: string) => `→ ${kg} kg after repack (loss ${hao} kg · ${pt})`,
+  },
+  chuaRepack: { vi: 'chưa repack', en: 'not repacked yet' },
   motTang: { vi: '1 tảng', en: '1 primal' },
   moNgay: { vi: (ngay: string) => `mổ ${ngay}`, en: (ngay: string) => `slaughtered ${ngay}` },
   themChiTiet: { vi: 'Thêm chi tiết: hạn dùng, ngày sản xuất, số lô', en: 'More details: use-by date, production date, lot no.' },
@@ -460,6 +471,9 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
               </div>
               <p class="nh-kg"><b>{dinhDangKg(d.so_kg, nn)} kg</b>{d.theo_tang ? <> · {t.motTang}{d.so_tang ? ` ${soTangChu(d.so_tang)}` : ''}</> : d.so_goi > 0 && <> · {soGoiChu(d.so_goi, d.don_vi_goi)}</>}
                 {d.ngay_mo && <> · {t.moNgay(dinhDangNgay(d.ngay_mo))}</>}
+                {(() => { const h = haoRepack(d.so_kg, d.so_kg_thuc); return h
+                  ? <span class="nh-repack">{t.sauRepack(dinhDangKg(d.so_kg_thuc as number, nn), dinhDangKg(h.kg, nn), dinhDangPhanTram(h.pt, 1, nn))}</span>
+                  : d.theo_tang && <span class="nh-repack thieu">{t.chuaRepack}</span>; })()}
                 {donDat && <span class="nh-dat">{chuDat(d.mat_hang_id, d.don_vi_goi) ?? t.ngoaiDon}</span>}</p>
               {(d.han_dung || d.so_lo_ncc || tomTatTruong(d.truong_them)) && (
                 <p class="kho-phu nh-chi-tiet">
@@ -519,10 +533,15 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
             <small>{t.ngayMoGoiY}</small>
             <input type="date" name="ngay_mo" value={dongHien.ngay_mo} /></label>
         )}
+        {coTheoTang && (
+          <label class="nb-o"><span>{t.kgThuc}</span>
+            <small>{t.kgThucGoiY}</small>
+            <input type="text" inputmode="decimal" name="kg_thuc" value={dongHien.so_kg_thuc} placeholder={t.viDuKg} class="nh-o-lon" /></label>
+        )}
 
         <TruongThem dinhNghia={dnLo.filter(x => x.bat_buoc)} giaTri={dongHien.truong_them} dong={0} />
 
-        <details open={!!(dongHien.han_dung || dongHien.ngay_san_xuat || dongHien.so_lo_ncc) || undefined}>
+        <details open={!!(dongHien.han_dung || dongHien.ngay_san_xuat || dongHien.so_lo_ncc || (!coTheoTang && dongHien.so_kg_thuc)) || undefined}>
           <summary>{t.themChiTiet}{dnLo.some(x => !x.bat_buoc && x.dang_dung) ? t.thongTinKhac : ''}</summary>
           <div class="kho-luoi">
             <label class="nb-o"><span>{t.hanDung}</span>
@@ -532,6 +551,10 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
               <input type="date" name="nsx" value={dongHien.ngay_san_xuat} /></label>
             <label class="nb-o"><span>{t.soLo}</span>
               <input type="text" name="so_lo_ncc" value={dongHien.so_lo_ncc} maxlength="60" autocapitalize="characters" /></label>
+            {!coTheoTang && (
+              <label class="nb-o"><span>{t.kgThucMonThuong}</span>
+                <input type="text" inputmode="decimal" name="kg_thuc" value={dongHien.so_kg_thuc} placeholder={t.viDuKg} /></label>
+            )}
           </div>
           <TruongThem dinhNghia={dnLo.filter(x => !x.bat_buoc)} giaTri={dongHien.truong_them} dong={0} />
         </details>
@@ -624,6 +647,8 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
   .nh-ten { font-size: 1.05rem; }
   .nh-kg { margin: .35rem 0 .2rem; font-size: 1.05rem; }
   .nh-kg b { font-size: 1.35rem; }
+  .nh-repack { display: block; font-size: .95rem; color: var(--muc-nhat); }
+  .nh-repack.thieu { color: var(--do, #b3261e); font-weight: 600; }
   .nh-dat { display: inline-block; margin-left: .5rem; padding: .1rem .45rem; border-radius: 4px; background: var(--kem-sau, #f3eee6); font-size: .85rem; color: var(--muc-nhat); }
   .nh-chi-tiet { margin: 0 0 .3rem; }
   .nh-the-nut { display: flex; gap: .5rem; margin-top: .5rem; }

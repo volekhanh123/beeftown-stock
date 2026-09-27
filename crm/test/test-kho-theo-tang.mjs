@@ -106,9 +106,9 @@ let phieu1;
 await nhom('3 · DUYỆT: 3 TẢNG → 3 LÔ, SỐ TẢNG, NGÀY Ủ XONG', async () => {
   const tl = MH['T-THANLUNG'].id;
   phieu1 = await nhanVaDuyet({ dong: [
-    { mat_hang_id: tl, so_kg: 6.2, ngay_mo: await ngay(-3) },     // tuổi 3 → ủ 18
-    { mat_hang_id: tl, so_kg: 5.9, ngay_mo: await ngay(-8) },     // tuổi 8 → ủ 14
-    { mat_hang_id: tl, so_kg: 6.4, ngay_mo: await ngay(-12) },    // tuổi 12 → ủ 10
+    { mat_hang_id: tl, so_kg: 6.2, so_kg_thuc: 6.2, ngay_mo: await ngay(-3) },     // tuổi 3 → ủ 18
+    { mat_hang_id: tl, so_kg: 5.9, so_kg_thuc: 5.9, ngay_mo: await ngay(-8) },     // tuổi 8 → ủ 14
+    { mat_hang_id: tl, so_kg: 6.4, so_kg_thuc: 6.4, ngay_mo: await ngay(-12) },    // tuổi 12 → ủ 10
     { mat_hang_id: MH['T-NACVAI'].id, so_goi: 2, so_kg: 9 },       // món thường
   ] });
   const lo = await loCuaPhieu(phieu1);
@@ -131,15 +131,15 @@ await nhom('3 · DUYỆT: 3 TẢNG → 3 LÔ, SỐ TẢNG, NGÀY Ủ XONG', asyn
   ok('Đọc phiếu: dòng có theo_tang, ngay_mo, so_tang', dongDoc[0]?.theo_tang === true && dongDoc[0]?.ngay_mo === (await ngay(-3))
      && dongDoc[2]?.so_tang === 3 && dongDoc[3]?.theo_tang === false, JSON.stringify(dongDoc[0]));
 
-  const pB = await nhanVaDuyet({ cn: cnB.id, viTri: vtB, dong: [{ mat_hang_id: tl, so_kg: 6, ngay_mo: await ngay(-4) }] });
+  const pB = await nhanVaDuyet({ cn: cnB.id, viTri: vtB, dong: [{ mat_hang_id: tl, so_kg: 6, so_kg_thuc: 6, ngay_mo: await ngay(-4) }] });
   ok('Chi nhánh B đếm số tảng riêng (bắt đầu từ 1)', (await loCuaPhieu(pB))[0].so_tang === 1);
 });
 
 // ===========================================================================
 await nhom('4 · kho_v_tang: ĐANG Ủ / SẴN SÀNG / CHƯA CÓ BẢNG', async () => {
   // Nhận 20 ngày trước, tuổi 3 → ủ 18 → xong 2 ngày trước → sẵn sàng.
-  await nhanVaDuyet({ ngay: await ngay(-20), dong: [{ mat_hang_id: MH['T-THANLUNG'].id, so_kg: 6.1, ngay_mo: await ngay(-23) }] });
-  await nhanVaDuyet({ dong: [{ mat_hang_id: MH['T-THANNGOAI'].id, so_kg: 7, ngay_mo: await ngay(-2) }] });
+  await nhanVaDuyet({ ngay: await ngay(-20), dong: [{ mat_hang_id: MH['T-THANLUNG'].id, so_kg: 6.1, so_kg_thuc: 6.1, ngay_mo: await ngay(-23) }] });
+  await nhanVaDuyet({ dong: [{ mat_hang_id: MH['T-THANNGOAI'].id, so_kg: 7, so_kg_thuc: 7, ngay_mo: await ngay(-2) }] });
 
   const v = await duoi(UID.nvQuayA, `select * from kho_v_tang where chi_nhanh_id = $1 order by so_tang`, [cnA.id]);
   ok('NV quầy đọc được danh sách tảng', v.loi === null && v.rows.length === 5, v.loi ?? String(v.rows?.length));
@@ -156,7 +156,7 @@ await nhom('4 · kho_v_tang: ĐANG Ủ / SẴN SÀNG / CHƯA CÓ BẢNG', async 
 
 // ===========================================================================
 await nhom('5 · DUYỆT CHẶN DÒNG TẢNG CHƯA TÁCH (VD PHIẾU TỪ ĐƠN ĐẶT)', async () => {
-  const l = await luuKg(UID.thuKhoA, { dong: [{ mat_hang_id: MH['T-THANLUNG'].id, so_kg: 6, ngay_mo: await ngay(-2) }] });
+  const l = await luuKg(UID.thuKhoA, { dong: [{ mat_hang_id: MH['T-THANLUNG'].id, so_kg: 6, so_kg_thuc: 5.9, ngay_mo: await ngay(-2) }] });
   const id = l.rows[0].phieu_id;
   const dongId = (await db.query(`select id from kho_phieu_nhap_dong where phieu_nhap_id = $1`, [id])).rows[0].id;
   // Giả lập dòng sinh từ đơn đặt hàng: 3 tảng một dòng, chưa có ngày mổ.

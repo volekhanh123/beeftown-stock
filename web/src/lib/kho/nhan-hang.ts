@@ -79,6 +79,8 @@ export interface DongNhan {
   theo_tang?: boolean;
   ngay_mo?: string | null;
   so_tang?: number | null;
+  /** Kg sau repack (0048) — null = như so_kg. so_kg vẫn là kg nhà cung cấp (tính tiền). */
+  so_kg_thuc?: number | null;
 }
 
 export interface PhieuNhan {
@@ -129,6 +131,8 @@ export interface DongLuu {
   truong_them: GiaTriTruong;
   /** Ngày mổ — bắt buộc với món theo dõi theo tảng (0046). */
   ngay_mo?: string | null;
+  /** Kg sau repack (0048) — món theo tảng phải có trước khi gửi duyệt. */
+  so_kg_thuc?: number | null;
 }
 
 // -----------------------------------------------------------------------------
@@ -298,10 +302,11 @@ export interface DongNhanForm {
   so_lo_ncc: string;
   truong_them: GiaTriTruong;
   ngay_mo: string;
+  so_kg_thuc: string;
 }
 
 export function dongNhanTrong(): DongNhanForm {
-  return { mat_hang_id: '', so_kg: '', so_goi: '', han_dung: '', ngay_san_xuat: '', so_lo_ncc: '', truong_them: {}, ngay_mo: '' };
+  return { mat_hang_id: '', so_kg: '', so_goi: '', han_dung: '', ngay_san_xuat: '', so_lo_ncc: '', truong_them: {}, ngay_mo: '', so_kg_thuc: '' };
 }
 
 /** Dòng đã lưu → chữ điền vào form sửa. */
@@ -315,6 +320,7 @@ export function dongNhanVaoForm(d: DongNhan): DongNhanForm {
     so_lo_ncc: d.so_lo_ncc ?? '',
     truong_them: d.truong_them ?? {},
     ngay_mo: d.ngay_mo ?? '',
+    so_kg_thuc: d.so_kg_thuc != null ? String(d.so_kg_thuc).replace('.', ',') : '',
   };
 }
 
@@ -340,6 +346,7 @@ export function docFormDongNhan(
     han_dung: s('hsd'), ngay_san_xuat: s('nsx'), so_lo_ncc: s('so_lo_ncc').slice(0, 60),
     truong_them: tt.giaTri,
     ngay_mo: s('ngay_mo'),
+    so_kg_thuc: s('kg_thuc'),
   };
   const loi: string[] = [];
   const loiEn: string[] = [];
@@ -358,6 +365,14 @@ export function docFormDongNhan(
           en: `${m.ten} is tracked per primal: one line per primal, weighed on its own` });
   } else if (m?.dem_goi && !goi && !m.theo_tang) {
     bao({ vi: `Nhập số ${m.don_vi_goi} của ${m.ten}`, en: `Enter the number of ${m.don_vi_goi} for ${m.ten}` });
+  }
+  // 0048: kg sau repack — tuỳ chọn khi lưu (chưa repack thì để trống), không
+  // lớn hơn kg nhà cung cấp quá 1% (sai số cân). Gửi duyệt mới bắt buộc với tảng.
+  const thuc = docKg(dong.so_kg_thuc);
+  if (thuc !== null && (Number.isNaN(thuc) || thuc <= 0)) {
+    bao({ vi: 'Kg sau repack chưa đúng (ví dụ 11,8)', en: 'The weight after repack is not valid (for example 11.8)' });
+  } else if (thuc !== null && typeof kg === 'number' && kg > 0 && thuc > kg * 1.01) {
+    bao({ vi: 'Kg sau repack lớn hơn kg nhà cung cấp — kiểm tra lại cân', en: 'The weight after repack is more than the supplier weight — check the scale' });
   }
   const mo = docNgay(dong.ngay_mo);
   if (mo === undefined) bao({ vi: 'Ngày mổ không phải ngày có thật', en: 'The slaughter date is not a real date' });
@@ -380,6 +395,7 @@ export function docFormDongNhan(
     han_dung: hsd || null,
     truong_them: tt.giaTri,
     ...(mo ? { ngay_mo: mo } : {}),
+    ...(thuc !== null ? { so_kg_thuc: thuc } : {}),
   };
   if (luu && m?.theo_tang) luu.so_goi = 1;
   return { dong, loi, loiEn, luu };
@@ -396,7 +412,23 @@ export function dongLuuTuPhieu(d: DongNhan): DongLuu {
     han_dung: d.han_dung,
     truong_them: d.truong_them ?? {},
     ...(d.ngay_mo ? { ngay_mo: d.ngay_mo } : {}),
+    ...(d.so_kg_thuc != null ? { so_kg_thuc: d.so_kg_thuc } : {}),
   };
+}
+
+/**
+ * Hao hụt repack của một dòng: kg nhà cung cấp → kg sau repack. null khi dòng
+ * chưa ghi kg sau repack. pt: % hao (2 số lẻ), có thể âm nếu cân lại nặng hơn chút.
+ */
+export function haoRepack(soKg: number, soKgThuc: number | null | undefined): { kg: number; pt: number } | null {
+  if (soKgThuc == null || !(soKg > 0)) return null;
+  const kg = Math.round((soKg - soKgThuc) * 1000) / 1000;
+  return { kg, pt: Math.round(kg * 10000 / soKg) / 100 };
+}
+
+/** Tảng chưa có kg sau repack — chưa gửi duyệt được. */
+export function tangChuaRepack(dong: DongNhan[]): DongNhan[] {
+  return dong.filter(d => d.theo_tang && d.so_kg_thuc == null);
 }
 
 /**
@@ -442,6 +474,13 @@ export function kiemTruocKhiGui(
       if (o.length) {
         bao({ vi: `Dòng ${i + 1} (${d.ten_mat_hang}): chưa điền ${o.join(', ')}`,
               en: `Line ${i + 1} (${d.ten_mat_hang}): ${o.join(', ')} not filled in yet` });
+      }
+    });
+    // 0048: tảng phải có kg sau repack (database cũng chặn).
+    p.dong.forEach((d, i) => {
+      if (d.theo_tang && d.so_kg_thuc == null) {
+        bao({ vi: `Dòng ${i + 1} (${d.ten_mat_hang}): chưa có kg sau repack — repack, cân rồi sửa dòng`,
+              en: `Line ${i + 1} (${d.ten_mat_hang}): no weight after repack yet — repack, weigh, then edit the line` });
       }
     });
   }

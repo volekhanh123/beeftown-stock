@@ -1,0 +1,95 @@
+---
+/**
+ * KHO — BÁO CÁO THEO TẢNG (0048)
+ *
+ * Mỗi tảng nhận trong kỳ một dòng: kg nhà cung cấp → sau repack → vào lóc →
+ * thịt / bỏ / hao hụt → bán / bếp / huỷ / còn, số ngày từ lóc tới bán hết.
+ * Vai xem giá thấy thêm giá NCC, giá vốn sau repack, giá vốn thịt ra —
+ * kho_bao_cao_tang trả null cho vai khác, trang bỏ hẳn các cột đó.
+ *
+ * Mở cho mọi vai xem kho. Kỳ: nút nhanh như trang Báo cáo; CSV
+ * bao-cao/theo-tang.csv cùng cột. Bấm số tảng ở danh sách tảng để truy vết.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import ChonKy from '../../../../components/kho/ChonKy.astro';
+import BangBaoCao from '../../../../components/kho/BangBaoCao.astro';
+import InDau from '../../../../components/kho/InDau.astro';
+import NutIn from '../../../../components/kho/NutIn.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import { kyBaoCao, tinhTong } from '../../../../lib/kho/bao-cao.ts';
+import { cauLoiKho, congNgay, dinhDangNgay, homNayVn } from '../../../../lib/kho/chung.ts';
+import { docBaoCaoTang, dinhNghiaTheoTang, dongBangTheoTang } from '../../../../lib/kho/tang.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.duoc('xem')) return Astro.redirect('/noi-bo/kho', 302);
+
+const nn = k.nn;
+const t = dichNB(nn, {
+  kyDai: { vi: 'Khoảng ngày dài quá — chọn tối đa 1 năm.', en: 'The date range is too long — choose at most 1 year.' },
+  khongDoc: { vi: 'Không đọc được báo cáo theo tảng.', en: 'Could not read the by-primal report.' },
+  veBaoCao: { vi: '← Báo cáo kho', en: '← Inventory reports' },
+  dsTang: { vi: 'Tảng · ủ', en: 'Primals · aging' },
+  chuaBatDau: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
+  tongQuan: { vi: 'Tổng quan kho', en: 'Inventory overview' },
+  inBaoCao: { vi: 'In báo cáo', en: 'Print report' },
+  moTang: { vi: 'Mở một tảng', en: 'Open a primal' },
+  soTang: { vi: 'Số tảng (vd 142)', en: 'Primal no. (e.g. 142)' },
+  mo: { vi: 'Mở', en: 'Open' },
+  giai: {
+    vi: 'Hao repack: nước rỉ bỏ khi mở túi. Hao hụt: phần nhẹ đi lúc ủ và lúc lóc. Tổng tiền mua giữ nguyên nên mỗi lần hao, giá vốn mỗi kg còn lại tăng lên.',
+    en: 'Repack loss: drip drained when the bag is opened. Loss: weight lost during aging and cutting. The total purchase cost stays the same, so each loss raises the cost of every remaining kg.',
+  },
+});
+
+const homNay = homNayVn();
+const { tu, den } = kyBaoCao(Astro.url.searchParams, homNay);
+const coGia = k.duoc('xem_gia');
+const dn = dinhNghiaTheoTang(coGia, nn);
+
+let dong: Record<string, unknown>[] = [];
+let loiDoc = k.loiDoc;
+let daDoc = false;
+if (congNgay(tu, 366) < den) {
+  loiDoc = t.kyDai;
+} else if (k.chiNhanh && k.daKhoiTao) {
+  try {
+    dong = dongBangTheoTang(await docBaoCaoTang(k.client, k.chiNhanh.id, tu, den), nn);
+    daDoc = true;
+  } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
+}
+const tong = tinhTong(dn, dong, nn);
+const kyChu = tu === den ? dinhDangNgay(tu) : `${dinhDangNgay(tu)} – ${dinhDangNgay(den)}`;
+---
+<Kho k={k} huongDan="truy-vet-tang" tieuDe={dn.ten} rong>
+  <InDau tieuDe={dn.ten.toUpperCase()} soPhieu={kyChu} chiNhanh={k.chiNhanh?.ten} />
+  <h1>{dn.ten}</h1>
+  <p class="kho-khong-in">
+    <a href={`/noi-bo/kho/bao-cao?${new URLSearchParams({ tu, den }).toString()}`}>{t.veBaoCao}</a> ·{' '}
+    <a href="/noi-bo/kho/tang">{t.dsTang}</a>
+  </p>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+
+  <ChonKy duong="/noi-bo/kho/bao-cao/theo-tang" tu={tu} den={den} homNay={homNay} csv="/noi-bo/kho/bao-cao/theo-tang.csv" />
+
+  <p class="nb-dan"><strong>{kyChu}</strong>. {dn.moTa}</p>
+
+  {!k.daKhoiTao ? (
+    <p class="nb-rong">{t.chuaBatDau} <a href="/noi-bo/kho">{t.tongQuan}</a>.</p>
+  ) : daDoc && (
+    <>
+      <BangBaoCao dn={dn} dong={dong} tong={tong} />
+      {dong.length > 0 && <p class="kho-phu">{t.giai}</p>}
+      {dong.length > 0 && (
+        <form method="GET" action="/noi-bo/kho/tang" class="kho-khong-in kho-thanh-nut">
+          <label class="nb-o" style="margin:0"><span>{t.moTang}</span>
+            <input type="text" name="tim" inputmode="numeric" placeholder={t.soTang} /></label>
+          <button type="submit" class="nb-nut phu">{t.mo}</button>
+        </form>
+      )}
+      {dong.length > 0 && <NutIn chu={t.inBaoCao} />}
+    </>
+  )}
+</Kho>

@@ -146,6 +146,10 @@ export interface DongDanhGiaNcc {
   kg_thieu: number;
   so_don_tre: number;
   diem_sao: number | null;
+  /** 0048: hao repack — chỉ các dòng có ghi kg sau repack. null = chưa có dòng nào. */
+  kg_repack_ncc: number | null;
+  kg_repack_thuc: number | null;
+  hao_repack_pt: number | null;
 }
 
 /** Một dòng gửi vào p_dong của kho_luu_don_dat. */
@@ -436,6 +440,9 @@ export function cotDanhGiaNcc(coGia: boolean, nn: NgonNguNB = 'vi'): CotBaoCao[]
     { khoa: 'thu_hoi_tb_pt', ten: c({ vi: 'Thu hồi pha lóc TB %', en: 'Avg butchery yield %' }), kieu: 'pt' },
     { khoa: 'so_phien_pha', ten: c({ vi: 'Số phiên pha', en: 'Butchery sessions' }), kieu: 'so' },
     { khoa: 'kg_tra', ten: c({ vi: 'Kg trả lại', en: 'Kg returned' }), kieu: 'kg' },
+    { khoa: 'kg_repack_ncc', ten: c({ vi: 'Kg NCC (có repack)', en: 'Supplier kg (repacked)' }), kieu: 'kg' },
+    { khoa: 'kg_repack_thuc', ten: c({ vi: 'Kg sau repack', en: 'Kg after repack' }), kieu: 'kg' },
+    { khoa: 'hao_repack_pt', ten: c({ vi: 'Hao repack %', en: 'Repack loss %' }), kieu: 'pt' },
     ...(coGia ? [
       { khoa: 'so_lan_lech_hoa_don', ten: c({ vi: 'Lần lệch hóa đơn', en: 'Invoice mismatches' }), kieu: 'so' as const, tienMat: true },
       { khoa: 'so_ngay_tra_tb', ten: c({ vi: 'Ngày trả tiền TB', en: 'Avg days to pay' }), kieu: 'pt' as const, tienMat: true },
@@ -573,6 +580,8 @@ export async function docDanhGiaNcc(
     so_lan_lech_hoa_don: soHoacNull(r.so_lan_lech_hoa_don), so_ngay_tra_tb: soHoacNull(r.so_ngay_tra_tb),
     so_don: so(r.so_don), so_don_thieu: so(r.so_don_thieu), kg_thieu: so(r.kg_thieu), so_don_tre: so(r.so_don_tre),
     diem_sao: soHoacNull(r.diem_sao),
+    kg_repack_ncc: soHoacNull(r.kg_repack_ncc), kg_repack_thuc: soHoacNull(r.kg_repack_thuc),
+    hao_repack_pt: soHoacNull(r.hao_repack_pt),
   }));
   return { dong, loi: null };
 }

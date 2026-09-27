@@ -89,7 +89,7 @@ await nhom('1 · CHUẨN BỊ: TẢNG THEO DÕI, CÔNG THỨC, BỐN TẢNG', as
   }
   ncc = (await duoi(UID.qlA, `insert into kho_nha_cung_cap (ten) values ('NCC Úc') returning id`)).rows[0].id;
   const mo = await ngay(-14);
-  tang = await nhapTang(cnA.id, [1, 2, 3, 4, 5].map(i => ({ mat_hang_id: MH['T-THANNGOAI'].id, so_kg: 6 + i / 10, don_gia_kg: 500000, ngay_mo: mo })));
+  tang = await nhapTang(cnA.id, [1, 2, 3, 4, 5].map(i => ({ mat_hang_id: MH['T-THANNGOAI'].id, so_kg: 6 + i / 10, so_kg_thuc: 6 + i / 10, don_gia_kg: 500000, ngay_mo: mo })));
   ok('Năm tảng thăn ngoại, số tảng 1–5', tang.map(l => l.so_tang).join() === '1,2,3,4,5');
 });
 
@@ -190,7 +190,7 @@ await nhom('5 · TẢNG BÁN HẾT → Ô DÙNG LẠI · GIẢI PHÓNG TAY', asy
 
 // ===========================================================================
 await nhom('6 · MỖI CHI NHÁNH MỘT BỘ Ô · KIỂM KÊ NHẬN MÃ Ô', async () => {
-  const tB = await nhapTang(cnB.id, [{ mat_hang_id: MH['T-THANNGOAI'].id, so_kg: 6, don_gia_kg: 500000, ngay_mo: await ngay(-12) }]);
+  const tB = await nhapTang(cnB.id, [{ mat_hang_id: MH['T-THANNGOAI'].id, so_kg: 6, so_kg_thuc: 6, don_gia_kg: 500000, ngay_mo: await ngay(-12) }]);
   const pB = (await luuPhien(UID.thuKhoB, { cn: cnB.id, vao: [{ lo_id: tB[0].id, vi_tri_id: vtB.kho }] })).rows?.[0]?.phien_id;
   const gB = await giao(UID.thuKhoB, pB);
   ok('Chi nhánh B nhận ô 1 dù A đang giữ ô 1', gB.rows?.[0]?.kq?.[0]?.so_o === 1, gB.loi ?? '');

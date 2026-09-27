@@ -20,6 +20,7 @@ import BieuTuong from '../../../../components/kho/BieuTuong.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
 import { goiYXepQuay } from '../../../../lib/kho/trang-chu.ts';
+import { docSoTangCuaLo } from '../../../../lib/kho/tang.ts';
 import {
   docHangDangMang, docMatHangQuay, docCaiDatQuay, docFormNhan, nhanHangChuyen, huyChuyen, cauSoLuong,
   type HangDangMang, type MatHangQuay,
@@ -142,12 +143,15 @@ if (form) {
 // ---------------------------------------------------------------------------
 let ton: DongTon[] = [];
 let ten = new Map<string, string>();
+let soTang = new Map<string, number>();
 try {
-  const [tonDoc, n] = await Promise.all([
+  const [tonDoc, n, st] = await Promise.all([
     laQuay ? docTon(k.client, cn.id) : Promise.resolve([] as DongTon[]),
     tenNhanSu(k.client, ds.map(p => p.nguoi_tao)),
+    // 0048: số tảng trên tem cho gợi ý xếp quầy. Lỗi đọc thì bỏ qua.
+    laQuay ? docSoTangCuaLo(k.client, cn.id).catch(() => new Map<string, number>()) : Promise.resolve(new Map<string, number>()),
   ]);
-  ton = tonDoc; ten = n;
+  ton = tonDoc; ten = n; soTang = st;
 } catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, t.khongDocQuay); }
 
 const mhTheoId = new Map(matHang.map(m => [m.id, m]));
@@ -161,7 +165,7 @@ const giaTriNhan = (pId: string, m: { dem_goi: boolean }, mon: { mat_hang_id: st
   // Ô nhập: "1,5" hay "1.5" đều đọc được (docKg) — viết theo thói quen của người xem.
   return m.dem_goi ? String(mon.so_goi) : dinhDangKg(mon.so_kg, nn);
 };
-const xep = goiYXepQuay(ton, nn);
+const xep = goiYXepQuay(ton, nn, soTang);
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan={laQuay ? 'nhan-ra-quay' : 'ra-quay'}>
   <h1>{t.tieuDe}</h1>

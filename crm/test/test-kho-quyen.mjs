@@ -368,6 +368,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ly_do_dinh_muc_mac_dinh',
     // 0047: giao ô mã cho phiên lóc một tảng, quản lý giải phóng ô
     'kho_giao_o_ma', 'kho_giai_phong_o_ma',
+    // 0048: truy vết một tảng, báo cáo theo tảng, huỷ cả tảng
+    'kho_truy_vet_tang', 'kho_bao_cao_tang', 'kho_huy_ca_tang',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
@@ -394,6 +396,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // 0047: món theo mã cân (mã món hoặc mã ô), ô còn giữ, các trigger ô mã
     'kho_mat_hang_theo_ma_can', 'kho_o_ma_con_giu', 'kho_o_ma_kiem', 'kho_mat_hang_ma_can_khong_trung_o',
     'kho_phien_pha_vao_mot_tang', 'kho_phien_pha_ra_o_ma', 'kho_phien_pha_tra_o_ma',
+    // 0048: trigger gán tảng gốc cho lô ra
+    'kho_lo_gan_tang_goc',
   ].sort();
 
   const { rows } = await db.query(`

@@ -135,7 +135,10 @@ await nhom('2 · CHỮ HIỂN THỊ', async () => {
 
 // ===========================================================================
 await nhom('3 · CỘT ĐÁNH GIÁ NCC, CSV', async () => {
-  const tra = SQL.slice(SQL.indexOf('create or replace function kho_bao_cao_ncc('));
+  // Bản kho_bao_cao_ncc mới nhất (0048 thêm cột hao repack).
+  const sqlNcc = readdirSync(MIG).filter(f => /^\d{4}_.+\.sql$/.test(f)).sort().reverse()
+    .map(f => doc(join(MIG, f))).find(s => s.includes('create or replace function kho_bao_cao_ncc(')) ?? '';
+  const tra = sqlNcc.slice(sqlNcc.indexOf('create or replace function kho_bao_cao_ncc('));
   const cotSql = tra.slice(tra.indexOf('returns table ('), tra.indexOf(')\nlanguage'));
   const cot = cotDanhGiaNcc(true);
   ok('Mọi cột bảng là cột kho_bao_cao_ncc trả về', cot.every(c => new RegExp(`\\b${c.khoa}\\b`).test(cotSql)),

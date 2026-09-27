@@ -98,6 +98,10 @@ export interface DongPhieuNhap {
   han_dung: string;
   truong_them: GiaTriTruong;
   lo_id: string | null;
+  /** Ngày mổ của tảng (0046). */
+  ngay_mo: string | null;
+  /** Kg sau repack (0048) — null = như so_kg. so_kg là kg nhà cung cấp (tính tiền). */
+  so_kg_thuc: number | null;
 }
 
 /** Một dòng như đang hiện trên form — giữ nguyên chữ người dùng gõ để điền lại khi báo lỗi. */
@@ -110,6 +114,9 @@ export interface DongForm {
   ngay_san_xuat: string;
   han_dung: string;
   truong_them: GiaTriTruong;
+  /** 0046 / 0048: ngày mổ, kg sau repack — giữ lại khi lưu cả phiếu. */
+  ngay_mo: string;
+  so_kg_thuc: string;
 }
 
 export interface DauForm {
@@ -171,7 +178,7 @@ export async function docPhieuNhap(
 
   const { data: dong, error: loiDong } = await client
     .from('kho_phieu_nhap_dong')
-    .select('id, thu_tu, mat_hang_id, so_goi, so_kg, don_gia_kg, thanh_tien, so_lo_ncc, ngay_san_xuat, han_dung, truong_them, lo_id')
+    .select('id, thu_tu, mat_hang_id, so_goi, so_kg, don_gia_kg, thanh_tien, so_lo_ncc, ngay_san_xuat, han_dung, truong_them, lo_id, ngay_mo, so_kg_thuc')
     .eq('phieu_nhap_id', id).order('thu_tu');
   if (loiDong) throw loiDong;
 
@@ -186,6 +193,7 @@ export async function docPhieuNhap(
     phieu: { ...phieu, tien_thue: Number(phieu.tien_thue), chi_phi_khac: Number(phieu.chi_phi_khac) } as PhieuNhap,
     dong: (dong ?? []).map(d => ({
       ...d, so_kg: Number(d.so_kg), don_gia_kg: Number(d.don_gia_kg), thanh_tien: Number(d.thanh_tien),
+      so_kg_thuc: d.so_kg_thuc == null ? null : Number(d.so_kg_thuc),
     })) as DongPhieuNhap[],
     maLo,
   };
@@ -220,12 +228,14 @@ export function dongTuPhieu(ds: DongPhieuNhap[]): DongForm[] {
     ngay_san_xuat: d.ngay_san_xuat ?? '',
     han_dung: d.han_dung ?? '',
     truong_them: d.truong_them ?? {},
+    ngay_mo: d.ngay_mo ?? '',
+    so_kg_thuc: d.so_kg_thuc != null ? String(d.so_kg_thuc).replace('.', ',') : '',
   }));
 }
 
 export function dongTrong(): DongForm {
   return { mat_hang_id: '', so_goi: '', so_kg: '', don_gia_kg: '', so_lo_ncc: '',
-           ngay_san_xuat: '', han_dung: '', truong_them: {} };
+           ngay_san_xuat: '', han_dung: '', truong_them: {}, ngay_mo: '', so_kg_thuc: '' };
 }
 
 /** Lỗi ô ngày / ô tiền của đầu phiếu — form lập phiếu và form điền giá dùng chung. */
@@ -290,6 +300,7 @@ export function docFormPhieuNhap(
       mat_hang_id: g('mat_hang'), so_goi: g('so_goi'), so_kg: g('so_kg'),
       don_gia_kg: g('don_gia'), so_lo_ncc: g('so_lo_ncc'),
       ngay_san_xuat: g('nsx'), han_dung: g('hsd'), truong_them: ttDong.giaTri,
+      ngay_mo: g('ngay_mo'), so_kg_thuc: g('kg_thuc'),
     };
     if (form.get(`d${i}_xoa`) === 'co') continue;
     if (!d.mat_hang_id && !d.so_kg && !d.so_goi) continue;   // dòng trống
@@ -311,6 +322,12 @@ export function docFormPhieuNhap(
     }
     if (hsd === undefined) bao({ vi: `Dòng ${so}: hạn dùng không phải ngày có thật`, en: `Line ${so}: the use-by date is not a real date` });
     if (nsx === undefined) bao({ vi: `Dòng ${so}: ngày sản xuất không phải ngày có thật`, en: `Line ${so}: the production date is not a real date` });
+    const mo = docNgay(d.ngay_mo);
+    if (mo === undefined) bao({ vi: `Dòng ${so}: ngày mổ không phải ngày có thật`, en: `Line ${so}: the slaughter date is not a real date` });
+    const thuc = docKg(d.so_kg_thuc);
+    if (thuc !== null && (Number.isNaN(thuc) || thuc <= 0)) {
+      bao({ vi: `Dòng ${so}: kg sau repack chưa đúng (ví dụ 11,8)`, en: `Line ${so}: the weight after repack is not valid (for example 11.8)` });
+    }
     ttDong.loi.forEach((x, j) => bao({ vi: `Dòng ${so}: ${x}`, en: `Line ${so}: ${ttDong.loiEn[j] ?? x}` }));
 
     payload.push({
@@ -322,6 +339,8 @@ export function docFormPhieuNhap(
       ngay_san_xuat: nsx || null,
       han_dung: hsd || null,
       truong_them: ttDong.giaTri,
+      ...(mo ? { ngay_mo: mo } : {}),
+      ...(thuc !== null && !Number.isNaN(thuc) ? { so_kg_thuc: thuc } : {}),
     });
   }
 
@@ -672,7 +691,7 @@ export async function dienGiaPhieu(
  * theo kg + thuế chia theo tiền hàng (mỗi khoản khi cài đặt bật).
  */
 export function xemTruocGiaVon(
-  dong: { so_kg: number; thanh_tien: number }[],
+  dong: { so_kg: number; thanh_tien: number; so_kg_thuc?: number | null }[],
   chiPhiKhac: number,
   tienThue: number,
   caiDat: { chi_phi_vao_gia_von: boolean; vat_vao_gia_von: boolean } | null,
@@ -684,6 +703,8 @@ export function xemTruocGiaVon(
   const vat = chiaSoDuLonNhat(caiDat?.vat_vao_gia_von ? tienThue : 0, tongHang > 0 ? hang : kg);
   return dong.map((d, i) => {
     const giaTri = d.thanh_tien + cp[i] + vat[i];
-    return { gia_tri: giaTri, gia_von_kg: d.so_kg > 0 ? giaTri / d.so_kg : 0 };
+    // 0048: kho nhập theo kg sau repack — tổng tiền giữ nguyên, chia cho kg còn lại.
+    const kgVao = d.so_kg_thuc ?? d.so_kg;
+    return { gia_tri: giaTri, gia_von_kg: kgVao > 0 ? giaTri / kgVao : 0 };
   });
 }

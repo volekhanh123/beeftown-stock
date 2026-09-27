@@ -29,6 +29,7 @@ import { docCongNoNcc, type CongNoNcc } from '../../../lib/kho/cong-no.ts';
 import { docThongBao, docChiSoQuanTri, type ChiSoQuanTri } from '../../../lib/kho/thong-bao.ts';
 import { cauSuKien, laViec, type SuKien } from '../../../lib/kho/viec.ts';
 import { goiYXepQuay, dauThang, thayDoiPt } from '../../../lib/kho/trang-chu.ts';
+import { docSoTangCuaLo } from '../../../lib/kho/tang.ts';
 import { docDanhSachYeuCau, type YeuCauQuay } from '../../../lib/kho/quay.ts';
 import { docTrangThaiIposNhe, chuDen, type TrangThaiIpos } from '../../../lib/kho/ban-ipos.ts';
 import { thaoTacCuaVai, soDo, KHOA_DUYET } from '../../../lib/kho/dieu-huong.ts';
@@ -184,6 +185,7 @@ const n = (khoa: string) => (typeof v[khoa] === 'number' ? (v[khoa] as number) :
 const homNay = homNayVn();
 
 let ton: DongTon[] = [];
+let soTang = new Map<string, number>();
 let matHang: MatHang[] = [];
 let suKien: SuKien[] = [];
 let congNo: CongNoNcc[] = [];
@@ -197,6 +199,8 @@ if (k.chiNhanh && k.daKhoiTao) {
     const viec = docThongBao(k.client, cn, 200, nn).then(r => { suKien = r.suKien.filter(laViec); if (r.loi) loiDoc = r.loi; });
     const cho: Promise<unknown>[] = [viec];
     if (laQuay || vai === 'thu_kho') cho.push(docTon(k.client, cn).then(r => { ton = r; }));
+    // 0048: số tảng trên tem cho gợi ý xếp quầy. Lỗi đọc thì câu dặn không có số tảng.
+    if (laQuay) cho.push(docSoTangCuaLo(k.client, cn).then(r => { soTang = r; }, () => {}));
     if (k.duoc('danh_muc')) cho.push(docMatHang(k.client).then(r => { matHang = r; }));
     if (k.duoc('ke_toan')) cho.push(docCongNoNcc(k.client, cn).then(r => { congNo = r; }));
     // Thủ kho: yêu cầu của quầy đang chờ mang ra (0032). Lỗi đọc thì bỏ thẻ này, không hỏng trang.
@@ -222,7 +226,7 @@ const viecSom = suKien.filter(e => cauSuKien(e, nn).muc === 'vang' && !(yeuCauCh
   .sort((a, b) => a.luc.localeCompare(b.luc));
 
 // NV quầy
-const xep = goiYXepQuay(ton, nn);
+const xep = goiYXepQuay(ton, nn, soTang);
 const hetHanQuay = ton.filter(t => t.loai_vi_tri === 'quay' && t.tinh_trang_han === 'het_han');
 const quayThieu = suKien.filter(e => e.khoa === 'quay_duoi_muc');
 

@@ -11,6 +11,8 @@
  *        chỉ khi người tải xem giá)
  *   /noi-bo/kho/bao-cao/mua-hang.csv?tu=&den=&nhom=ncc|mat_hang   (GĐ8c — xem_gia)
  *   /noi-bo/kho/bao-cao/so-thanh-toan.csv?tu=&den=               (GĐ8c — ke_toan)
+ *   /noi-bo/kho/bao-cao/theo-tang.csv?tu=&den=  (0048 — mọi vai xem kho; cột tiền chỉ
+ *        khi người tải xem giá)
  *
  * Đi qua middleware như mọi đường /noi-bo — chưa đăng nhập thì bị chuyển về
  * trang đăng nhập. Dữ liệu lấy bằng client mang token của người đang dùng,
@@ -25,7 +27,7 @@
  * lib/kho/dat-hang.ts (gói nhập hàng).
  */
 import type { APIRoute } from 'astro';
-import { congNgay, duoc, homNayVn, nhanKho, TEN_LOAI_PHIEU_NHAP_NB } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, congNgay, duoc, homNayVn, nhanKho, TEN_LOAI_PHIEU_NHAP_NB } from '../../../../lib/kho/chung.ts';
 import {
   BAO_CAO_NB, COT_CONG_NO_NB, docBaoCao, kyBaoCao, taoCsv, tieuDeCsv, tinhTong,
   DN_SO_THANH_TOAN_NB, NGAY_TOI_DA_KY, dinhNghiaMuaHang, dinhNghiaTheoThang, docMuaHang, docSoThanhToan, docTheoThang, namBaoCao,
@@ -33,6 +35,7 @@ import {
 import { docCongNoPhieu, laNoDau } from '../../../../lib/kho/cong-no.ts';
 import { docBaoCaoDinhMuc, dinhNghiaDinhMuc, NGAY_TOI_DA_DINH_MUC } from '../../../../lib/kho/dinh-luong.ts';
 import { docDanhGiaNcc, dinhNghiaDanhGiaNcc } from '../../../../lib/kho/dat-hang.ts';
+import { docBaoCaoTang, dinhNghiaTheoTang, dongBangTheoTang } from '../../../../lib/kho/tang.ts';
 import { dichNB, nnCua } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
@@ -64,6 +67,9 @@ export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
     if (!(duoc(nhanSu.vai_tro, 'nhap') || duoc(nhanSu.vai_tro, 'xem_gia'))) {
       return new Response(t.khongXemKho, { status: 403 });
     }
+  } else if (ten === 'theo-tang') {
+    // 0048: theo tảng mở cho mọi vai xem kho (thủ kho, NV quầy: chỉ kg).
+    if (!duoc(nhanSu.vai_tro, 'xem')) return new Response(t.khongXemKho, { status: 403 });
   } else if (ten === 'theo-thang') {
     // GĐ8c: theo tháng mở cho mọi vai xem kho (thủ kho, NV quầy: chỉ kg).
     if (!duoc(nhanSu.vai_tro, 'xem')) return new Response(t.khongXemKho, { status: 403 });
@@ -124,6 +130,17 @@ export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
     const dong = kq.dong as unknown as Record<string, unknown>[];
     csv = taoCsv(dn.cot, dong, { tieuDe: [cn.ten, dn.ten, t.nam(nam)].join(' · '), tong: tinhTong(dn, dong, nn) });
     tenTep = `kho-theo-thang-${cn.ma}-${nam}.csv`;
+  } else if (ten === 'theo-tang') {
+    if (congNgay(tu, 366) < den) return new Response(t.kyToiDa, { status: 400 });
+    const dn = dinhNghiaTheoTang(duoc(nhanSu.vai_tro, 'xem_gia'), nn);
+    let dong: Record<string, unknown>[];
+    try {
+      dong = dongBangTheoTang(await docBaoCaoTang(client, cn.id, tu, den), nn);
+    } catch (e) {
+      return loi(cauLoiKho(e), 500);
+    }
+    csv = taoCsv(dn.cot, dong, { tieuDe: tieuDeCsv(cn.ten, dn.ten, tu, den), tong: tinhTong(dn, dong, nn) });
+    tenTep = `kho-theo-tang-${cn.ma}-${tu}-${den}.csv`;
   } else if (ten === 'mua-hang') {
     if (congNgay(tu, NGAY_TOI_DA_KY) < den) return new Response(t.kyToiDa, { status: 400 });
     const nhom = url.searchParams.get('nhom') === 'mat_hang' ? 'mat_hang' : 'ncc';
