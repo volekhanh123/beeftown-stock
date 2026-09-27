@@ -1,0 +1,319 @@
+---
+/**
+ * TIN ZALO — TỔNG QUAN, HÀNG CHỜ, NHẬT KÝ, CHIẾN DỊCH (0047)
+ *
+ * Chủ, quản lý, marketing — đúng chi nhánh (zalo_tong_quan, RLS của
+ * nhat_ky_tin). Đọc: zalo_tong_quan (chỉ đếm) + v_zalo_nhat_ky (SĐT che giữa).
+ * Ghi: "Thử lại" một tin thất bại (zalo_thu_lai), "Dừng" một chiến dịch
+ * (zalo_dung_chien_dich). Ghi xong chuyển hướng 303 kèm câu báo (lib/zalo-bao.ts)
+ * — F5 không bấm lại lần nữa. Không JavaScript.
+ *
+ * Việc gửi thật do Worker làm 5 phút một lần (lib/zalo-gui.ts) — trang này
+ * không bao giờ gọi Zalo và không bao giờ thấy token.
+ */
+import NoiBo from '../../../layouts/NoiBo.astro';
+import { dichNB, nhanNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
+import { dichCau } from '../../../lib/cau-noi-bo';
+import { dichLoiZalo } from '../../../lib/zalo';
+import { ghiBaoZalo, docBaoZalo, type BaoZalo } from '../../../lib/zalo-bao';
+import {
+  duocVaoZalo, chonChiNhanh, gioVn, laUuid, TEN_KET_QUA, TEN_LOAI_TIN, TEN_NHOM, TEN_TRANG_THAI_CD,
+} from '../../../lib/zalo-trang';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+if (!duocVaoZalo(nhanSu.vai_tro)) return Astro.redirect('/noi-bo', 302);
+const laChu = nhanSu.vai_tro === 'chu_so_huu';
+
+const t = dichNB(nn, {
+  tieuDe:     { vi: 'Tin Zalo', en: 'Zalo messages' },
+  dan:        { vi: 'Tin Zalo gửi cho khách: xác nhận đặt bàn, nhắc lịch, và tin chăm sóc gửi theo đợt. Máy tự gửi 5 phút một lần.',
+                en: 'Zalo messages to customers: booking confirmations, reminders, and marketing messages sent in campaigns. The system sends every 5 minutes.' },
+  chiNhanh:   { vi: 'Chi nhánh', en: 'Branch' },
+  chuaCN:     { vi: 'Chưa có chi nhánh nào.', en: 'There is no branch yet.' },
+  ketNoi:     { vi: 'Kết nối', en: 'Connection' },
+  dangBat:    { vi: 'Đang gửi', en: 'Sending' },
+  dangTat:    { vi: 'Đang tắt', en: 'Off' },
+  cheDoThu:   { vi: 'Chế độ thử', en: 'Test mode' },
+  cheDoThuDan:{ vi: 'Chế độ thử: chỉ tài khoản quản trị của Zalo OA nhận được tin. Khách thật chưa nhận gì.',
+                en: 'Test mode: only admin accounts of the Zalo OA receive messages. Real customers receive nothing yet.' },
+  chuaToken:  { vi: 'Chưa nối tài khoản Zalo.', en: 'The Zalo account is not connected yet.' },
+  tatDan:     { vi: 'Chưa gửi tin nào cho tới khi chủ nhà hàng bật ở Cài đặt Zalo.',
+                en: 'Nothing is sent until the owner turns it on in Zalo settings.' },
+  lanChay:    { vi: 'Lần chạy gần nhất', en: 'Last run' },
+  chuaChay:   { vi: 'chưa chạy lần nào', en: 'never run' },
+  dangChay:   { vi: 'đang chạy', en: 'running now' },
+  loiCuoi:    { vi: 'Lỗi gần nhất', en: 'Latest error' },
+  quota:      { vi: 'Số tin Zalo còn cho gửi hôm nay', en: 'Zalo messages left for today' },
+  khungGio:   { vi: 'Giờ gửi tin chăm sóc', en: 'Marketing message hours' },
+  tranNhan:   { vi: 'Trần mỗi tháng', en: 'Monthly cap' },
+  tran:       { vi: (n: number) => `mỗi khách tối đa ${n} tin chăm sóc`, en: (n: number) => `at most ${n} marketing ${n === 1 ? 'message' : 'messages'} per customer` },
+  caiDat:     { vi: 'Cài đặt Zalo', en: 'Zalo settings' },
+  chienDichMoi: { vi: 'Gửi chiến dịch mới', en: 'New campaign' },
+  soLieu:     { vi: 'Số liệu', en: 'Numbers' },
+  demCho:     { vi: 'Đang chờ gửi', en: 'Waiting' },
+  demHomNay:  { vi: 'Đã gửi hôm nay', en: 'Sent today' },
+  dem30:      { vi: 'Đã gửi 30 ngày', en: 'Sent in 30 days' },
+  demThatBai: { vi: 'Thất bại', en: 'Failed' },
+  demTuChoi:  { vi: 'Không gửi được', en: 'Not allowed' },
+  demHuy:     { vi: 'Đã hủy', en: 'Cancelled' },
+  mauTin:     { vi: 'Mẫu tin', en: 'Templates' },
+  sanSang:    { vi: 'Sẵn sàng', en: 'Ready' },
+  chuaDuyet:  { vi: 'Chưa duyệt', en: 'Not approved' },
+  tuDong:     { vi: 'tự động', en: 'automatic' },
+  chienDich:  { vi: 'Chiến dịch', en: 'Campaigns' },
+  chuaCD:     { vi: 'Chưa có chiến dịch nào.', en: 'No campaigns yet.' },
+  nhom:       { vi: 'Nhóm', en: 'Group' },
+  batDau:     { vi: 'Bắt đầu', en: 'Starts' },
+  soTin:      { vi: 'Số tin', en: 'Messages' },
+  daGui:      { vi: 'đã gửi', en: 'sent' },
+  thatBai:    { vi: 'thất bại', en: 'failed' },
+  choGui:     { vi: 'chờ', en: 'waiting' },
+  dung:       { vi: 'Dừng chiến dịch', en: 'Stop campaign' },
+  hangCho:    { vi: 'Hàng chờ và nhật ký', en: 'Queue and log' },
+  locTatCa:   { vi: 'Tất cả', en: 'All' },
+  rongLoc:    { vi: 'Không có tin nào trong mục này.', en: 'No messages in this view.' },
+  khach:      { vi: 'Khách', en: 'Customer' },
+  chuaTen:    { vi: 'Khách chưa cho tên', en: 'No name given' },
+  mau:        { vi: 'Mẫu', en: 'Template' },
+  luc:        { vi: 'Lúc', en: 'Time' },
+  henGui:     { vi: 'Hẹn gửi', en: 'Scheduled for' },
+  thuLaiLuc:  { vi: 'Thử lại lúc', en: 'Retry at' },
+  lanThu:     { vi: 'Số lần thử', en: 'Attempts' },
+  lyDo:       { vi: 'Lý do', en: 'Reason' },
+  thuLai:     { vi: 'Thử lại', en: 'Retry' },
+  viecSai:    { vi: 'Không rõ việc cần làm.', en: 'Unknown action.' },
+  khongDocForm: { vi: 'Không đọc được dữ liệu gửi lên — bạn thử lại.', en: 'Could not read the submitted form — please try again.' },
+  khongDoc:   { vi: 'Không đọc được dữ liệu Zalo.', en: 'Could not read Zalo data.' },
+});
+
+// Câu báo sau khi ghi: giữ cả hai thứ tiếng trong cookie (người bấm có thể đổi tiếng).
+const CAU_BAO = {
+  thuLaiXong: { vi: 'Đã đưa tin vào hàng chờ, máy gửi lại trong vòng 5 phút.', en: 'The message is back in the queue and will be resent within 5 minutes.' },
+  dungXong:   { vi: (n: number) => `Đã dừng chiến dịch, hủy ${n} tin chưa gửi.`,
+                en: (n: number) => `Campaign stopped, ${n} unsent ${n === 1 ? 'message' : 'messages'} cancelled.` },
+};
+
+const { chiNhanh, cacChiNhanh, loi: loiCN } = await chonChiNhanh(client, nhanSu, Astro.url, Astro.cookies);
+
+// ---- GHI -------------------------------------------------------------------
+if (Astro.request.method === 'POST') {
+  let bao: BaoZalo;
+  try {
+    const form = await Astro.request.formData();
+    const viec = String(form.get('viec') ?? '');
+    const id = String(form.get('id') ?? '');
+    if (viec === 'thu_lai' && laUuid(id)) {
+      const { error } = await client.rpc('zalo_thu_lai', { p_id: id });
+      bao = error ? { ok: false, cau: error.message } : { ok: true, cau: CAU_BAO.thuLaiXong.vi, cauEn: CAU_BAO.thuLaiXong.en };
+    } else if (viec === 'dung' && laUuid(id)) {
+      const { data, error } = await client.rpc('zalo_dung_chien_dich', { p_chien_dich_id: id });
+      const n = Number((data as { so_huy?: number } | null)?.so_huy ?? 0);
+      bao = error ? { ok: false, cau: error.message } : { ok: true, cau: CAU_BAO.dungXong.vi(n), cauEn: CAU_BAO.dungXong.en(n) };
+    } else {
+      bao = { ok: false, cau: t.viecSai };
+    }
+  } catch {
+    bao = { ok: false, cau: t.khongDocForm };
+  }
+  ghiBaoZalo(Astro.cookies, bao);
+  return Astro.redirect(Astro.url.pathname + Astro.url.search, 303);
+}
+
+// ---- ĐỌC -------------------------------------------------------------------
+const baoDoc = docBaoZalo(Astro.cookies);
+const bao = baoDoc && { ok: baoDoc.ok, cau: nn === 'en' ? (baoDoc.cauEn ?? dichCau(nn, baoDoc.cau)) : baoDoc.cau };
+
+const LOC = ['tat_ca', 'cho_gui', 'that_bai', 'da_gui', 'bi_tu_choi', 'da_huy'] as const;
+const locThamSo = Astro.url.searchParams.get('loc') ?? 'tat_ca';
+const loc = (LOC as readonly string[]).includes(locThamSo) ? locThamSo : 'tat_ca';
+
+let loiDoc: string | null = loiCN ? dichCau(nn, loiCN) : null;
+let tq: any = null;
+let ds: any[] = [];
+if (chiNhanh) {
+  try {
+    const [a, b] = await Promise.all([
+      client.rpc('zalo_tong_quan', { p_chi_nhanh_id: chiNhanh.id }),
+      (() => {
+        let q = client
+          .from('v_zalo_nhat_ky')
+          .select('id, ho_ten, sdt_an, mau_ma, mau_ten, loai_tin, chien_dich_ten, ket_qua, loi, lan_thu, gui_sau, thu_lai_luc, gui_luc, created_at, moc')
+          .eq('chi_nhanh_id', chiNhanh.id)
+          .order('moc', { ascending: false })
+          .limit(50);
+        if (loc !== 'tat_ca') q = q.eq('ket_qua', loc);
+        return q;
+      })(),
+    ]);
+    if (a.error) loiDoc = dichCau(nn, a.error.message);
+    else tq = a.data;
+    if (b.error) loiDoc = loiDoc ?? dichCau(nn, b.error.message);
+    else ds = b.data ?? [];
+  } catch (e) {
+    loiDoc = e instanceof Error ? dichCau(nn, e.message) : t.khongDoc;
+  }
+}
+
+const kn = tq?.ket_noi ?? {};
+const dem = tq?.dem ?? {};
+const cds: any[] = Array.isArray(tq?.chien_dich) ? tq.chien_dich : [];
+const maus: any[] = Array.isArray(tq?.mau) ? tq.mau : [];
+const dichLoi = (s: string | null | undefined) => dichLoiZalo(s, nn, x => dichCau(nn, x));
+const cnQ = !nhanSu.chi_nhanh_id && chiNhanh ? `cn=${encodeURIComponent(chiNhanh.ma)}&` : '';
+const SO = [
+  { ten: t.demCho, so: dem.cho_gui }, { ten: t.demHomNay, so: dem.da_gui_hom_nay }, { ten: t.dem30, so: dem.da_gui_30_ngay },
+  { ten: t.demThatBai, so: dem.that_bai }, { ten: t.demTuChoi, so: dem.bi_tu_choi }, { ten: t.demHuy, so: dem.da_huy },
+];
+---
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <h1>{t.tieuDe}</h1>
+  <p class="nb-dan">{t.dan}</p>
+
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+  {loiDoc && <div class="nb-bao loi"><p>{loiDoc}</p></div>}
+
+  {cacChiNhanh.length > 1 && (
+    <nav class="z-hang-nut" aria-label={t.chiNhanh}>
+      {cacChiNhanh.map(c => (
+        <a href={`/noi-bo/zalo?cn=${encodeURIComponent(c.ma)}`} class={`nb-nut ${c.id === chiNhanh?.id ? '' : 'phu'} z-nut-nho`}
+           aria-current={c.id === chiNhanh?.id ? 'page' : undefined}>{c.ten}</a>
+      ))}
+    </nav>
+  )}
+
+  {!chiNhanh && !loiDoc && <div class="nb-rong"><p style="margin:0">{t.chuaCN}</p></div>}
+
+  {tq && (
+    <>
+      <div class="z-hang-nut">
+        <a href={`/noi-bo/zalo/chien-dich/moi${cnQ ? '?' + cnQ.slice(0, -1) : ''}`} class="nb-nut">{t.chienDichMoi}</a>
+        {laChu && <a href="/noi-bo/zalo/cai-dat" class="nb-nut phu">{t.caiDat}</a>}
+      </div>
+
+      <h2>{t.ketNoi}</h2>
+      <div class="nb-the">
+        <div class="nb-dong-dau">
+          <strong>Zalo OA</strong>
+          <span>
+            <span class={`nb-nhan ${kn.dang_bat && kn.co_token ? 'song' : 'tat'}`}>{kn.dang_bat && kn.co_token ? t.dangBat : t.dangTat}</span>
+            {kn.che_do === 'thu' && <span class="nb-nhan nhap">{t.cheDoThu}</span>}
+          </span>
+        </div>
+        {!kn.co_token && <p class="z-phu">{t.chuaToken}</p>}
+        {!kn.dang_bat && <p class="z-phu">{t.tatDan}</p>}
+        {kn.che_do === 'thu' && kn.dang_bat && <p class="z-phu">{t.cheDoThuDan}</p>}
+        <dl class="z-dl">
+          <dt>{t.lanChay}</dt>
+          <dd>{kn.dang_chay ? t.dangChay : kn.lan_chay_cuoi ? gioVn(kn.lan_chay_cuoi, nn) : t.chuaChay}</dd>
+          {kn.quota_con !== null && kn.quota_con !== undefined && <><dt>{t.quota}</dt><dd>{kn.quota_con}</dd></>}
+          <dt>{t.khungGio}</dt>
+          <dd>{String(kn.gio_tu ?? '').slice(0, 5)}–{String(kn.gio_den ?? '').slice(0, 5)}</dd>
+          <dt>{t.tranNhan}</dt>
+          <dd>{t.tran(Number(kn.tran_cham_soc_thang ?? 2))}</dd>
+          {kn.loi_cuoi && <><dt>{t.loiCuoi}</dt><dd class="z-loi">{dichLoi(kn.loi_cuoi)}</dd></>}
+        </dl>
+      </div>
+
+      <h2>{t.soLieu}</h2>
+      <div class="z-so">
+        {SO.map(s => <div class="nb-the z-o-so"><strong>{Number(s.so ?? 0)}</strong><span>{s.ten}</span></div>)}
+      </div>
+
+      <h2>{t.mauTin}</h2>
+      <div class="nb-the">
+        <ul class="z-ds-mau">
+          {maus.map(m => (
+            <li>
+              <span><code>{m.ma}</code> {m.ten}</span>
+              <span>
+                <span class={`nb-nhan ${m.san_sang ? 'song' : 'tat'}`}>{m.san_sang ? t.sanSang : t.chuaDuyet}</span>
+                {m.bat_tu_dong && <span class="nb-nhan nhap">{t.tuDong}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <h2>{t.chienDich}</h2>
+      {cds.length === 0 && <div class="nb-rong"><p style="margin:0">{t.chuaCD}</p></div>}
+      {cds.map(c => (
+        <div class="nb-dong">
+          <div class="nb-dong-dau">
+            <strong>{c.ten}</strong>
+            <span class={`nb-nhan ${c.trang_thai === 'dang_chay' ? 'song' : 'tat'}`}>{nhanNB(TEN_TRANG_THAI_CD, c.trang_thai, nn)}</span>
+          </div>
+          <dl>
+            <dt>{t.mau}</dt><dd><code>{c.mau_ma}</code></dd>
+            <dt>{t.nhom}</dt><dd>{nhanNB(TEN_NHOM, c.nhom ?? 'tat_ca', nn)}</dd>
+            {c.bat_dau && <><dt>{t.batDau}</dt><dd>{gioVn(c.bat_dau, nn)}</dd></>}
+            <dt>{t.soTin}</dt>
+            <dd>{c.so_tin} · {c.da_gui} {t.daGui} · {c.that_bai} {t.thatBai} · {c.cho_gui} {t.choGui}</dd>
+          </dl>
+          {(c.trang_thai === 'dang_chay' || c.trang_thai === 'nhap') && (
+            <form method="POST" class="nb-dong-nut">
+              <input type="hidden" name="viec" value="dung" />
+              <input type="hidden" name="id" value={c.id} />
+              <button type="submit" class="nb-nut phu">{t.dung}</button>
+            </form>
+          )}
+        </div>
+      ))}
+
+      <h2 id="nhat-ky">{t.hangCho}</h2>
+      <nav class="z-hang-nut" aria-label={t.hangCho}>
+        {LOC.map(l => (
+          <a href={`/noi-bo/zalo?${cnQ}loc=${l}#nhat-ky`} class={`nb-nut ${loc === l ? '' : 'phu'} z-nut-nho`}
+             aria-current={loc === l ? 'page' : undefined}>{l === 'tat_ca' ? t.locTatCa : nhanNB(TEN_KET_QUA, l, nn)}</a>
+        ))}
+      </nav>
+      {ds.length === 0 && <div class="nb-rong"><p style="margin:0">{t.rongLoc}</p></div>}
+      {ds.map(d => (
+        <div class="nb-dong">
+          <div class="nb-dong-dau">
+            <strong>{d.ho_ten || t.chuaTen}</strong>
+            <span class={`nb-nhan ${d.ket_qua === 'da_gui' ? 'song' : d.ket_qua === 'that_bai' ? 'cho' : d.ket_qua === 'cho_gui' ? 'nhap' : 'tat'}`}>
+              {nhanNB(TEN_KET_QUA, d.ket_qua, nn)}
+            </span>
+          </div>
+          <dl>
+            <dt>{t.khach}</dt><dd>{d.sdt_an}</dd>
+            <dt>{t.mau}</dt><dd><code>{d.mau_ma}</code> {nhanNB(TEN_LOAI_TIN, d.loai_tin, nn)}{d.chien_dich_ten ? ` · ${d.chien_dich_ten}` : ''}</dd>
+            {d.gui_luc ? <><dt>{t.luc}</dt><dd>{gioVn(d.gui_luc, nn)}</dd></>
+              : d.thu_lai_luc && d.ket_qua === 'cho_gui' ? <><dt>{t.thuLaiLuc}</dt><dd>{gioVn(d.thu_lai_luc, nn)}</dd></>
+              : d.gui_sau && d.ket_qua === 'cho_gui' ? <><dt>{t.henGui}</dt><dd>{gioVn(d.gui_sau, nn)}</dd></>
+              : <><dt>{t.luc}</dt><dd>{gioVn(d.moc, nn)}</dd></>}
+            {Number(d.lan_thu) > 0 && <><dt>{t.lanThu}</dt><dd>{d.lan_thu}</dd></>}
+            {d.loi && <><dt>{t.lyDo}</dt><dd class="z-loi">{dichLoi(d.loi)}</dd></>}
+          </dl>
+          {d.ket_qua === 'that_bai' && (
+            <form method="POST" class="nb-dong-nut">
+              <input type="hidden" name="viec" value="thu_lai" />
+              <input type="hidden" name="id" value={d.id} />
+              <button type="submit" class="nb-nut phu">{t.thuLai}</button>
+            </form>
+          )}
+        </div>
+      ))}
+    </>
+  )}
+</NoiBo>
+
+<style>
+  .z-hang-nut { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1rem; }
+  .z-nut-nho { font-size: .85rem; padding: .55rem .85rem; min-height: 42px; }
+  .z-phu { margin: .5rem 0 0; font-size: .88rem; color: var(--muc-nhat); }
+  .z-dl { display: grid; grid-template-columns: auto 1fr; gap: .25rem .75rem; margin: .85rem 0 0; font-size: .9rem; }
+  .z-dl dt { color: var(--muc-nhat); }
+  .z-dl dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  .z-loi { color: var(--do); overflow-wrap: anywhere; }
+  .z-so { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: .5rem; }
+  .z-o-so { margin: 0; display: flex; flex-direction: column; gap: .15rem; }
+  .z-o-so strong { font-size: 1.4rem; }
+  .z-o-so span { font-size: .82rem; color: var(--muc-nhat); }
+  .z-ds-mau { list-style: none; margin: 0; padding: 0; }
+  .z-ds-mau li { display: flex; justify-content: space-between; gap: .5rem; flex-wrap: wrap;
+                 padding: .5rem 0; border-bottom: 1px solid var(--vach); font-size: .9rem; }
+  .z-ds-mau li:last-child { border-bottom: none; }
+</style>

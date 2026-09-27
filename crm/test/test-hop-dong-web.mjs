@@ -174,6 +174,12 @@ const CHAY_DA_DANG_NHAP = [
   // database đi bằng tài khoản máy may_ipos đã đăng nhập (client anon riêng + signInWithPassword,
   // sau đó là authenticated) — chỉ sau khi khóa bí mật IPOS_CALLBACK_KHOA khớp. Không bao giờ chạy vai anon.
   'web/src/lib/kho/ipos-hook.ts',
+  // Gửi tin Zalo ZBS (0047): cron (src/worker.ts) đăng nhập tài khoản máy may_zalo (client anon
+  // riêng + signInWithPassword, sau đó là authenticated) rồi mới gọi các RPC zalo_* của máy.
+  // Không bao giờ chạy vai anon: thiếu tài khoản máy thì không gọi database nào.
+  'web/src/lib/zalo-gui.ts',
+  // Chọn chi nhánh cho ba trang /noi-bo/zalo — chỉ gọi từ các trang đó, bằng client của nhân sự.
+  'web/src/lib/zalo-trang.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
   // Bản dịch tự động (0036) — gọi từ màn soạn tin, màn công tắc và middleware

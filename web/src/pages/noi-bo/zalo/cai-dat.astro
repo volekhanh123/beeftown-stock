@@ -1,0 +1,317 @@
+---
+/**
+ * TIN ZALO — CÀI ĐẶT (chỉ chủ nhà hàng; 0047)
+ *
+ * App ID, OA ID, chế độ thử / thật, bật gửi, khung giờ tin chăm sóc, trần
+ * tháng (zalo_luu_cau_hinh); mã mẫu Zalo + đã duyệt + tự động cho từng mẫu
+ * (zalo_luu_mau); ô dán refresh token (zalo_luu_refresh_token).
+ *
+ * REFRESH TOKEN: ô mật khẩu. Trang MÃ HÓA token bằng bí mật Worker ZALO_KHOA
+ * (lib/zalo-ma-hoa.ts) rồi mới gửi database — database chỉ nhận bản mã
+ * "v1.…" (CHECK). Không bao giờ hiện lại token, chỉ nói "đã có / chưa có".
+ * Secret key của App KHÔNG dán ở đây: nó là bí mật Worker ZALO_SECRET_KEY;
+ * trang chỉ nói bí mật nào đã cài (có / không), không bao giờ giá trị.
+ *
+ * Mọi POST chuyển hướng 303 về chính trang, kèm câu báo (lib/zalo-bao.ts).
+ */
+import NoiBo from '../../../layouts/NoiBo.astro';
+import { dichNB, nhanNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
+import { dichCau } from '../../../lib/cau-noi-bo';
+import { dichLoiZalo } from '../../../lib/zalo';
+import { maHoaRefreshToken, trangThaiBiMatZalo, TEN_BI_MAT_ZALO } from '../../../lib/zalo-gui';
+import { ghiBaoZalo, docBaoZalo, type BaoZalo } from '../../../lib/zalo-bao';
+import { gioVn, TEN_LOAI_TIN } from '../../../lib/zalo-trang';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+if (nhanSu.vai_tro !== 'chu_so_huu') return Astro.redirect('/noi-bo/zalo', 302);
+const DUONG = '/noi-bo/zalo/cai-dat';
+
+const t = dichNB(nn, {
+  tieuDe:     { vi: 'Cài đặt Zalo', en: 'Zalo settings' },
+  ve:         { vi: '← Tin Zalo', en: '← Zalo messages' },
+  dan:        { vi: 'Nối tài khoản Zalo của quán để hệ thống tự gửi tin xác nhận đặt bàn, nhắc lịch và tin chăm sóc.',
+                en: 'Connect the restaurant Zalo account so the system can send booking confirmations, reminders and marketing messages.' },
+  buocTieuDe: { vi: '4 bước chuẩn bị với Zalo', en: '4 steps to prepare with Zalo' },
+  buoc1:      { vi: 'Zalo OA của quán phải được xác thực (có dấu tích). Làm ở oa.zalo.me.',
+                en: 'The restaurant Zalo OA must be verified (has the tick). Done at oa.zalo.me.' },
+  buoc2:      { vi: 'Đăng ký dịch vụ gửi tin ZBS với Zalo và nạp tiền. Tạo một ứng dụng (App) ở developers.zalo.me và nối nó với OA. Chép App ID và OA ID vào ô bên dưới. Secret key của App thì đưa cho người kỹ thuật cài — không dán vào đây.',
+                en: 'Sign up for the ZBS messaging service with Zalo and top up. Create an App at developers.zalo.me and link it to the OA. Copy the App ID and OA ID into the boxes below. Give the App secret key to the tech person to install — do not paste it here.' },
+  buoc3:      { vi: 'Đăng ký từng mẫu tin trên trang ZBS, chép ĐÚNG nội dung và tên các chữ trong < > như ở mục Mẫu tin bên dưới. Zalo duyệt xong thì chép mã mẫu Zalo vào ô của mẫu đó và đánh dấu "Zalo đã duyệt".',
+                en: 'Register each template on the ZBS site, copying the text and the names in < > EXACTLY as shown under Templates below. Once Zalo approves it, copy the Zalo template ID into that template and tick "Approved by Zalo".' },
+  buoc4:      { vi: 'Người kỹ thuật lấy refresh token (xem web/README.md, mục Zalo) — dán vào ô bên dưới. Để chế độ THỬ, bật gửi, đặt thử một bàn bằng số của tài khoản quản trị OA. Nhận được tin rồi mới chuyển sang chế độ THẬT.',
+                en: 'The tech person gets a refresh token (see web/README.md, Zalo section) — paste it in the box below. Keep TEST mode, turn sending on, and make a test booking with the phone number of an OA admin account. Only switch to LIVE mode once that message arrives.' },
+  biMat:      { vi: 'Bí mật trên máy chủ', en: 'Secrets on the server' },
+  biMatDan:   { vi: 'Người kỹ thuật cài bốn bí mật này trên Cloudflare. Trang chỉ cho biết đã cài hay chưa.',
+                en: 'The tech person installs these four secrets on Cloudflare. This page only shows whether they are set.' },
+  co:         { vi: 'Đã cài', en: 'Set' },
+  khong:      { vi: 'Chưa cài', en: 'Not set' },
+  bmSecret:   { vi: 'Secret key của App Zalo', en: 'Zalo App secret key' },
+  bmKhoa:     { vi: 'Khóa mã hóa token (ít nhất 32 ký tự)', en: 'Token encryption key (at least 32 characters)' },
+  bmMay:      { vi: 'Tài khoản máy gửi tin', en: 'Sending machine account' },
+  ketNoi:     { vi: 'Kết nối', en: 'Connection' },
+  appId:      { vi: 'App ID', en: 'App ID' },
+  oaId:       { vi: 'OA ID', en: 'OA ID' },
+  cheDo:      { vi: 'Chế độ', en: 'Mode' },
+  cheDoThu:   { vi: 'Thử — chỉ tài khoản quản trị của OA nhận được tin', en: 'Test — only OA admin accounts receive messages' },
+  cheDoThat:  { vi: 'Thật — gửi cho khách', en: 'Live — send to customers' },
+  batGui:     { vi: 'Bật gửi tin Zalo', en: 'Turn Zalo sending on' },
+  batGuiGoiY: { vi: 'Cần đủ App ID, OA ID và refresh token.', en: 'Needs the App ID, OA ID and a refresh token.' },
+  gioTu:      { vi: 'Gửi tin chăm sóc từ', en: 'Send marketing messages from' },
+  gioDen:     { vi: 'đến', en: 'until' },
+  gioGoiY:    { vi: 'Giờ Việt Nam. Tin xác nhận và nhắc đặt bàn gửi bất kỳ lúc nào.', en: 'Vietnam time. Booking confirmations and reminders go out at any time.' },
+  tran:       { vi: 'Tối đa tin chăm sóc cho mỗi khách, mỗi tháng', en: 'Max marketing messages per customer per month' },
+  luu:        { vi: 'Lưu', en: 'Save' },
+  token:      { vi: 'Refresh token', en: 'Refresh token' },
+  coToken:    { vi: 'Đã có refresh token', en: 'A refresh token is saved' },
+  chuaToken:  { vi: 'Chưa có refresh token', en: 'No refresh token yet' },
+  capNhatLuc: { vi: 'cập nhật', en: 'updated' },
+  tokenDan:   { vi: 'Dán refresh token mới', en: 'Paste a new refresh token' },
+  tokenGoiY:  { vi: 'Token được mã hóa trước khi lưu và không bao giờ hiện lại. Máy tự làm mới token mỗi ngày — chỉ cần dán lại khi trang Tin Zalo báo lỗi token.',
+                en: 'The token is encrypted before saving and is never shown again. The system refreshes it every day — paste it again only when the Zalo messages page reports a token error.' },
+  luuToken:   { vi: 'Lưu token', en: 'Save token' },
+  ngat:       { vi: 'Ngắt kết nối Zalo', en: 'Disconnect Zalo' },
+  ngatGoiY:   { vi: 'Xóa token và tắt gửi tin.', en: 'Deletes the tokens and turns sending off.' },
+  mauTin:     { vi: 'Mẫu tin', en: 'Templates' },
+  thamSo:     { vi: 'Chữ trong < > (đăng ký đúng các tên này trên Zalo)', en: 'Words in < > (register exactly these names with Zalo)' },
+  maZalo:     { vi: 'Mã mẫu Zalo (template ID)', en: 'Zalo template ID' },
+  daDuyet:    { vi: 'Zalo đã duyệt', en: 'Approved by Zalo' },
+  tuDong:     { vi: 'Tự động gửi', en: 'Send automatically' },
+  tuDongGd:   { vi: 'ZBS-01 gửi ngay khi khách đặt bàn; ZBS-02 gửi trước giờ hẹn 2 tiếng.', en: 'ZBS-01 is sent as soon as a customer books; ZBS-02 is sent 2 hours before the booking.' },
+  tuDongSau:  { vi: 'Chưa tự động được — sẽ có khi làm xong màn tích điểm. Dùng Gửi chiến dịch mới để gửi tay.',
+                en: 'Not automatic yet — it comes with the loyalty-points screen. Use New campaign to send it manually.' },
+  ngungDung:  { vi: 'Mẫu đang ngừng dùng', en: 'Template is not in use' },
+  luuMau:     { vi: 'Lưu mẫu', en: 'Save template' },
+  loiCuoi:    { vi: 'Lỗi gần nhất của máy gửi', en: 'Latest sending error' },
+  khongDocForm: { vi: 'Không đọc được dữ liệu gửi lên — bạn thử lại.', en: 'Could not read the submitted form — please try again.' },
+  viecSai:    { vi: 'Không rõ việc cần làm.', en: 'Unknown action.' },
+});
+
+const CAU_BAO = {
+  luuXong:   { vi: 'Đã lưu cài đặt Zalo.', en: 'Zalo settings saved.' },
+  tokenXong: { vi: 'Đã lưu refresh token. Máy lấy access token mới ở lượt gửi kế tiếp (trong vòng 5 phút).',
+               en: 'Refresh token saved. The system gets a new access token on the next run (within 5 minutes).' },
+  ngatXong:  { vi: 'Đã ngắt kết nối Zalo và tắt gửi tin.', en: 'Zalo disconnected and sending turned off.' },
+  mauXong:   { vi: (ma: string) => `Đã lưu mẫu ${ma}.`, en: (ma: string) => `Template ${ma} saved.` },
+  tokenTrong:{ vi: 'Chưa dán refresh token.', en: 'No refresh token was pasted.' },
+  tokenSai:  { vi: 'Refresh token trông không đúng — chỉ dán đúng chuỗi token, không có dấu cách.',
+               en: 'That does not look like a refresh token — paste only the token itself, with no spaces.' },
+  chuaKhoa:  { vi: `Máy chủ chưa cài bí mật ${TEN_BI_MAT_ZALO.khoa} — chưa mã hóa được token. Nhờ người kỹ thuật cài trước.`,
+               en: `The server secret ${TEN_BI_MAT_ZALO.khoa} is not set — the token cannot be encrypted. Ask the tech person to set it first.` },
+};
+
+// ---- GHI -------------------------------------------------------------------
+if (Astro.request.method === 'POST') {
+  let bao: BaoZalo;
+  const hai = (c: { vi: string; en: string }, ok = true): BaoZalo => ({ ok, cau: c.vi, cauEn: c.en });
+  try {
+    const form = await Astro.request.formData();
+    const viec = String(form.get('viec') ?? '');
+    const chu = (k: string) => String(form.get(k) ?? '').trim();
+    if (viec === 'ket_noi') {
+      const tran = Number(chu('tran'));
+      const { error } = await client.rpc('zalo_luu_cau_hinh', {
+        p_app_id: chu('app_id'), p_oa_id: chu('oa_id'),
+        p_che_do: chu('che_do') === 'that' ? 'that' : 'thu',
+        p_dang_bat: form.get('dang_bat') === '1',
+        p_gio_tu: /^\d{2}:\d{2}$/.test(chu('gio_tu')) ? chu('gio_tu') : null,
+        p_gio_den: /^\d{2}:\d{2}$/.test(chu('gio_den')) ? chu('gio_den') : null,
+        p_tran_cham_soc_thang: Number.isInteger(tran) ? tran : null,
+      });
+      bao = error ? { ok: false, cau: error.message } : hai(CAU_BAO.luuXong);
+    } else if (viec === 'token') {
+      const token = chu('refresh_token');
+      if (!token) bao = hai(CAU_BAO.tokenTrong, false);
+      else if (token.length < 16 || token.length > 4000 || /\s/.test(token)) bao = hai(CAU_BAO.tokenSai, false);
+      else {
+        const banMa = await maHoaRefreshToken(token);
+        if (!banMa) bao = hai(CAU_BAO.chuaKhoa, false);
+        else {
+          const { error } = await client.rpc('zalo_luu_refresh_token', { p_ma_hoa: banMa });
+          bao = error ? { ok: false, cau: error.message } : hai(CAU_BAO.tokenXong);
+        }
+      }
+    } else if (viec === 'ngat') {
+      const { error } = await client.rpc('zalo_luu_refresh_token', { p_ma_hoa: null });
+      bao = error ? { ok: false, cau: error.message } : hai(CAU_BAO.ngatXong);
+    } else if (viec === 'mau') {
+      const ma = chu('ma');
+      const { error } = await client.rpc('zalo_luu_mau', {
+        p_ma: ma, p_ma_zalo: chu('ma_zalo') || null,
+        p_da_duyet: form.get('da_duyet') === '1', p_bat_tu_dong: form.get('bat_tu_dong') === '1',
+      });
+      bao = error ? { ok: false, cau: error.message } : { ok: true, cau: CAU_BAO.mauXong.vi(ma), cauEn: CAU_BAO.mauXong.en(ma) };
+    } else {
+      bao = { ok: false, cau: t.viecSai };
+    }
+  } catch {
+    // Không in chi tiết: câu lỗi lạ có thể mang theo token vừa dán.
+    bao = { ok: false, cau: t.khongDocForm };
+  }
+  ghiBaoZalo(Astro.cookies, bao);
+  return Astro.redirect(DUONG, 303);
+}
+
+// ---- ĐỌC -------------------------------------------------------------------
+const baoDoc = docBaoZalo(Astro.cookies);
+const bao = baoDoc && { ok: baoDoc.ok, cau: nn === 'en' ? (baoDoc.cauEn ?? dichCau(nn, baoDoc.cau)) : baoDoc.cau };
+
+let cfg: any = null;
+let loiDoc: string | null = null;
+try {
+  const { data, error } = await client.rpc('zalo_doc_cau_hinh');
+  if (error) loiDoc = dichCau(nn, error.message);
+  else cfg = data;
+} catch (e) {
+  loiDoc = e instanceof Error ? dichCau(nn, e.message) : t.khongDocForm;
+}
+const bm = await trangThaiBiMatZalo();
+const BI_MAT = [
+  { ten: TEN_BI_MAT_ZALO.secretKey, nhan: t.bmSecret, co: bm.secretKey },
+  { ten: TEN_BI_MAT_ZALO.khoa, nhan: t.bmKhoa, co: bm.khoa },
+  { ten: `${TEN_BI_MAT_ZALO.email} + ${TEN_BI_MAT_ZALO.matKhau}`, nhan: t.bmMay, co: bm.taiKhoanMay },
+];
+const maus: any[] = Array.isArray(cfg?.mau) ? cfg.mau : [];
+const hhmm = (s: unknown) => String(s ?? '').slice(0, 5);
+---
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <p style="margin:0 0 .5rem"><a href="/noi-bo/zalo">{t.ve}</a></p>
+  <h1>{t.tieuDe}</h1>
+  <p class="nb-dan">{t.dan}</p>
+
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+  {loiDoc && <div class="nb-bao loi"><p>{loiDoc}</p></div>}
+
+  <div class="nb-bao luu-y">
+    <p><strong>{t.buocTieuDe}</strong></p>
+    <ol class="z-buoc">
+      <li>{t.buoc1}</li>
+      <li>{t.buoc2}</li>
+      <li>{t.buoc3}</li>
+      <li>{t.buoc4}</li>
+    </ol>
+  </div>
+
+  <h2>{t.biMat}</h2>
+  <div class="nb-the">
+    <p class="z-phu" style="margin-top:0">{t.biMatDan}</p>
+    <ul class="z-ds">
+      {BI_MAT.map(b => (
+        <li>
+          <span>{b.nhan}<br /><code>{b.ten}</code></span>
+          <span class={`nb-nhan ${b.co ? 'song' : 'cho'}`}>{b.co ? t.co : t.khong}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  {cfg && (
+    <>
+      <h2>{t.ketNoi}</h2>
+      {cfg.loi_cuoi && <div class="nb-bao loi"><p><strong>{t.loiCuoi}:</strong> {dichLoiZalo(cfg.loi_cuoi, nn, s => dichCau(nn, s))}</p></div>}
+      <form method="POST" class="nb-the">
+        <input type="hidden" name="viec" value="ket_noi" />
+        <label class="nb-o">
+          <span>{t.appId}</span>
+          <input type="text" name="app_id" value={cfg.app_id ?? ''} maxlength="64" pattern="[A-Za-z0-9_\-]*" autocomplete="off" inputmode="numeric" />
+        </label>
+        <label class="nb-o">
+          <span>{t.oaId}</span>
+          <input type="text" name="oa_id" value={cfg.oa_id ?? ''} maxlength="64" pattern="[A-Za-z0-9_\-]*" autocomplete="off" inputmode="numeric" />
+        </label>
+        <fieldset class="z-nhom-o">
+          <legend>{t.cheDo}</legend>
+          <label class="z-chon"><input type="radio" name="che_do" value="thu" checked={cfg.che_do !== 'that'} /><span>{t.cheDoThu}</span></label>
+          <label class="z-chon"><input type="radio" name="che_do" value="that" checked={cfg.che_do === 'that'} /><span>{t.cheDoThat}</span></label>
+        </fieldset>
+        <label class="z-chon">
+          <input type="checkbox" name="dang_bat" value="1" checked={!!cfg.dang_bat} />
+          <span><strong>{t.batGui}</strong><small>{t.batGuiGoiY}</small></span>
+        </label>
+        <div class="z-hai-o">
+          <label class="nb-o"><span>{t.gioTu}</span><input type="time" name="gio_tu" value={hhmm(cfg.gio_tu)} /></label>
+          <label class="nb-o"><span>{t.gioDen}</span><input type="time" name="gio_den" value={hhmm(cfg.gio_den)} /></label>
+        </div>
+        <p class="z-phu" style="margin:-.5rem 0 1rem">{t.gioGoiY}</p>
+        <label class="nb-o">
+          <span>{t.tran}</span>
+          <select name="tran">
+            {[0, 1, 2].map(n => <option value={String(n)} selected={Number(cfg.tran_cham_soc_thang) === n}>{n}</option>)}
+          </select>
+        </label>
+        <button type="submit" class="nb-nut">{t.luu}</button>
+      </form>
+
+      <h2>{t.token}</h2>
+      <div class="nb-the">
+        <p style="margin-top:0">
+          <span class={`nb-nhan ${cfg.co_refresh_token ? 'song' : 'cho'}`}>{cfg.co_refresh_token ? t.coToken : t.chuaToken}</span>
+          {cfg.co_refresh_token && cfg.token_cap_nhat_luc && <span class="z-phu"> {t.capNhatLuc} {gioVn(cfg.token_cap_nhat_luc, nn)}</span>}
+        </p>
+        <form method="POST">
+          <input type="hidden" name="viec" value="token" />
+          <label class="nb-o">
+            <span>{t.tokenDan}</span>
+            <small>{t.tokenGoiY}</small>
+            <input type="password" name="refresh_token" value="" autocomplete="off" spellcheck="false" autocapitalize="off" />
+          </label>
+          <button type="submit" class="nb-nut">{t.luuToken}</button>
+        </form>
+        {cfg.co_refresh_token && (
+          <form method="POST" class="nb-dong-nut">
+            <input type="hidden" name="viec" value="ngat" />
+            <button type="submit" class="nb-nut phu">{t.ngat}</button>
+            <span class="z-phu" style="align-self:center;margin:0">{t.ngatGoiY}</span>
+          </form>
+        )}
+      </div>
+
+      <h2>{t.mauTin}</h2>
+      {maus.map(m => (
+        <form method="POST" class="nb-the">
+          <input type="hidden" name="viec" value="mau" />
+          <input type="hidden" name="ma" value={m.ma} />
+          <div class="nb-dong-dau">
+            <strong><code>{m.ma}</code> {m.ten}</strong>
+            <span class="nb-nhan tat">{nhanNB(TEN_LOAI_TIN, m.loai, nn)}</span>
+          </div>
+          {!m.dang_dung && <p class="z-phu">{t.ngungDung}</p>}
+          <p class="nb-gia-tri z-noi-dung">{m.noi_dung}</p>
+          {Array.isArray(m.tham_so) && m.tham_so.length > 0 && (
+            <p class="z-phu">{t.thamSo}: {m.tham_so.map((x: string) => <code class="z-the">{x}</code>)}</p>
+          )}
+          <label class="nb-o" style="margin-top:.85rem">
+            <span>{t.maZalo}</span>
+            <input type="text" name="ma_zalo" value={m.ma_zalo ?? ''} maxlength="64" pattern="[A-Za-z0-9_\-]*" autocomplete="off" />
+          </label>
+          <label class="z-chon"><input type="checkbox" name="da_duyet" value="1" checked={!!m.da_duyet} /><span>{t.daDuyet}</span></label>
+          <label class="z-chon">
+            <input type="checkbox" name="bat_tu_dong" value="1" checked={!!m.bat_tu_dong} />
+            <span>{t.tuDong}<small>{m.ma === 'ZBS-01' || m.ma === 'ZBS-02' ? t.tuDongGd : t.tuDongSau}</small></span>
+          </label>
+          <button type="submit" class="nb-nut phu" style="margin-top:.5rem">{t.luuMau}</button>
+        </form>
+      ))}
+    </>
+  )}
+</NoiBo>
+
+<style>
+  .z-buoc { margin: .5rem 0 0; padding-left: 1.3rem; }
+  .z-buoc li { margin-bottom: .45rem; }
+  .z-phu { margin: .5rem 0 0; font-size: .88rem; color: var(--muc-nhat); }
+  .z-ds { list-style: none; margin: 0; padding: 0; }
+  .z-ds li { display: flex; justify-content: space-between; align-items: center; gap: .75rem;
+             padding: .55rem 0; border-bottom: 1px solid var(--vach); font-size: .9rem; }
+  .z-ds li:last-child { border-bottom: none; }
+  .z-ds code { font-size: .78rem; overflow-wrap: anywhere; }
+  .z-nhom-o { border: 0; padding: 0; margin: 0 0 1rem; min-width: 0; }
+  .z-nhom-o legend { font-weight: 600; font-size: .88rem; margin-bottom: .35rem; padding: 0; }
+  .z-chon { display: flex; gap: .6rem; align-items: flex-start; padding: .55rem 0; cursor: pointer; }
+  .z-chon input { width: 1.25rem; height: 1.25rem; margin-top: .15rem; flex-shrink: 0; }
+  .z-chon small { display: block; color: var(--muc-nhat); font-size: .82rem; margin-top: .2rem; }
+  .z-hai-o { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: .75rem; }
+  .z-noi-dung { white-space: pre-line; font-size: .85rem; }
+  .z-the { display: inline-block; margin: .15rem .25rem 0 0; padding: .05rem .35rem; border-radius: 4px; background: var(--kem-sau); }
+</style>
