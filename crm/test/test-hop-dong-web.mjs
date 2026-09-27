@@ -189,6 +189,12 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/zalo-gui.ts',
   // Chọn chi nhánh cho ba trang /noi-bo/zalo — chỉ gọi từ các trang đó, bằng client của nhân sự.
   'web/src/lib/zalo-trang.ts',
+  // Bot Messenger (0052): webhook công khai /hook/messenger, nhưng MỌI lời gọi trong file này đi bằng tài
+  // khoản máy may_messenger đã đăng nhập (client anon riêng + signInWithPassword, sau đó là authenticated) —
+  // chỉ sau khi chữ ký X-Hub-Signature-256 khớp; chỉ các RPC máy mess_*. Đặt bàn / tra / hủy / nội dung công
+  // khai của bot KHÔNG ở đây mà ở lib/messenger-anon.ts — file đó chạy vai anon, nên phép thử mục 5 vẫn đòi
+  // nó chỉ gọi hàm trong danh sách anon.
+  'web/src/lib/messenger-hook.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
   // Bản dịch tự động (0036) — gọi từ màn soạn tin, màn công tắc và middleware

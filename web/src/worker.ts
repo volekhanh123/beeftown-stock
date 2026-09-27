@@ -6,6 +6,10 @@
  *     hóa đơn sang. Chặn TRƯỚC Astro vì chốt chống CSRF của Astro
  *     (security.checkOrigin) trả 403 cho POST "text/plain" không có Origin —
  *     đúng kiểu Hub có thể gửi. Hook không dùng cookie.
+ *   · /hook/messenger → xuLyHookMessenger (lib/messenger-hook.ts) — webhook Meta
+ *     của bot Messenger đặt bàn (GET xác minh, POST sự kiện có chữ ký). Cũng
+ *     chặn trước Astro: Meta không gửi Origin, hook không dùng cookie. Truyền
+ *     ctx để hook trả 200 ngay và xử lý tin trong ctx.waitUntil.
  *   · mọi đường dẫn khác: đúng handler mặc định của @astrojs/cloudflare.
  * `scheduled`: Cron Trigger khai ở wrangler.toml `[triggers] crons` — mỗi 5 phút
  * chạy `dongBoTatCa` (lib/kho/ipos-dong-bo.ts): thử lại hàng chờ + đọc thực đơn
@@ -24,6 +28,7 @@ import { handle } from '@astrojs/cloudflare/handler';
 import { dongBoTatCa } from './lib/kho/ipos-dong-bo.ts';
 import { xuLyHookIpos, khoaTuDuong, DUONG_HOOK } from './lib/kho/ipos-hook.ts';
 import { guiZaloTatCa } from './lib/zalo-gui.ts';
+import { xuLyHookMessenger, DUONG_MESSENGER } from './lib/messenger-hook.ts';
 
 interface NguCanh {
   waitUntil(p: Promise<unknown>): void;
@@ -36,6 +41,9 @@ export default {
       const khoa = khoaTuDuong(duong);
       if (khoa === null) return new Response('Không tìm thấy', { status: 404 });
       return xuLyHookIpos(request, khoa, { env });
+    }
+    if (duong === DUONG_MESSENGER || duong === DUONG_MESSENGER + '/') {
+      return xuLyHookMessenger(request, { env, ctx });
     }
     // Kiểu của handle là Request / Env / ExecutionContext của workerd — dự án không cài kiểu đó.
     return handle(request as never, env as never, ctx as never);

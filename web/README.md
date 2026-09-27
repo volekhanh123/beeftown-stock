@@ -275,6 +275,66 @@ Kiểm thử: `node crm/test/test-zalo.mjs` (database) và `node crm/test/test-z
 
 ---
 
+## Messenger (`/noi-bo/messenger`)
+
+Bot trả lời tin nhắn Trang Facebook: **đặt bàn** (ngày → giờ còn nhận → số khách 1–8 → tên → SĐT → xác nhận), **tra / hủy đặt bàn** (mã + SĐT), **giờ mở cửa & địa chỉ**, **thực đơn**, **gặp nhân viên** (bot im một lúc cho nhân viên trả lời). Lệnh `menu`, `bắt đầu lại`, `hủy` dùng được mọi lúc. Database ở `crm/supabase/migrations/0051_*`, `0052_*` (đầu file 0052 liệt kê mọi RPC).
+
+| Màn | Ai | Việc |
+|---|---|---|
+| `/noi-bo/messenger` | chủ sửa, quản lý xem | Bật / tắt bot (mặc định **tắt**), lời chào, số phút bot im khi khách gặp nhân viên; số liệu 7 ngày (chỉ đếm); bí mật nào đã cài; địa chỉ webhook; nút **Cài nút Bắt đầu + menu Messenger**; hộp "Các bước với Meta" |
+
+**Luồng:** Meta gọi `https://beeftown.vn/hook/messenger` (`src/worker.ts` chặn trước Astro như `/hook/ipos`; `src/pages/hook/messenger.ts` cho `astro dev`). `src/lib/messenger-hook.ts` kiểm chữ ký `X-Hub-Signature-256`, trả 200 ngay, rồi trong `ctx.waitUntil`: băm PSID (HMAC với `MESS_KHOA_BAM` — database không bao giờ thấy PSID thô, không lưu nội dung tin) → `mess_lay_phien` → máy trạng thái thuần `buocTiep` (`src/lib/messenger.ts`) → việc cần làm (đặt bàn, lịch trống, tra / hủy, nội dung công khai — `src/lib/messenger-anon.ts`, **client anon không phiên**, đúng các hàm website dùng; đặt bàn ghi `utm_source = messenger`, `utm_medium = chatbot`) → `mess_luu_phien` → Send API. Bot nói "Beeftown **đã nhận yêu cầu**", không bao giờ "đặt bàn thành công". Tin nhân viên gõ trên Trang (echo không mang `metadata: beeftown_bot`) làm bot im cho khách đó.
+
+> **Chưa đối chiếu tài liệu Meta.** Lúc viết, proxy chặn developers.facebook.com. Mọi chi tiết API (Graph `v21.0`, `/me/messages`, `/me/messenger_profile`, quick reply `user_phone_number`, giới hạn 13 quick reply / 20 ký tự / 640 ký tự / 3 nút / lời chào 160 ký tự, `metadata` để nhận ra echo của bot) nằm trong **một** hằng `META_API` đầu `src/lib/messenger.ts` ("CHỈNH KHI CÓ TÀI LIỆU"). Sửa ở đó rồi chạy `node crm/test/test-messenger-web.mjs`.
+
+### Sáu bí mật Worker
+
+Đặt như các bí mật khác (dashboard Cloudflare → Workers & Pages → `beeftown` → Settings → Variables and Secrets → **Secret**, hoặc `npx wrangler secret put <TÊN>` trong `web/`). **Không** ghi vào `wrangler.toml`, `.env`, `.env.example`, chat hay repo.
+
+| Bí mật | Là gì |
+|---|---|
+| `META_APP_SECRET` | App Secret của App Meta (App → App settings → Basic). Dùng kiểm chữ ký webhook |
+| `META_PAGE_TOKEN` | Page Access Token của Trang (App → Messenger → Messenger API settings → Generate token; nên dùng token **không hết hạn** của System User trong Business Portfolio, quyền `pages_messaging`) |
+| `META_VERIFY_TOKEN` | Chuỗi ngẫu nhiên ≥ 32 ký tự bạn tự đặt (`openssl rand -hex 24`) — dán đúng chuỗi này vào ô *Verify token* khi khai webhook |
+| `MESS_MAY_EMAIL`, `MESS_MAY_MAT_KHAU` | Tài khoản máy vai `may_messenger` (bên dưới) |
+| `MESS_KHOA_BAM` | Khóa băm PSID ≥ 32 ký tự (`openssl rand -base64 32`). Đổi khóa = mọi hội thoại dở dang bắt đầu lại, không mất gì khác |
+
+Tùy chọn, không bí mật: `META_APP_ID` (nhận ra echo của App mình — không đặt cũng được, bot đã gắn `metadata`). Thiếu bí mật nào thì `/hook/messenger` trả **503** và ghi **một** dòng log nêu tên bí mật thiếu; web khác vẫn chạy. Màn `/noi-bo/messenger` hiện **đã cài / chưa cài** — không bao giờ hiện giá trị. Chạy thử trên máy: đặt trong `web/.dev.vars` (bị `.gitignore` chặn).
+
+### Tạo tài khoản máy `may_messenger` — một lần
+
+1. Supabase Studio → **Authentication → Users → Add user**: email riêng (vd. `may-messenger@<tên miền của quán>`), mật khẩu dài ngẫu nhiên, tích **Auto confirm**. Chép `User UID`.
+2. SQL Editor:
+   ```sql
+   insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro)
+   values ('<User UID>', (select id from chi_nhanh order by ma limit 1), 'Máy bot Messenger', 'may_messenger');
+   ```
+3. Đặt `MESS_MAY_EMAIL`, `MESS_MAY_MAT_KHAU` bằng đúng email / mật khẩu đó.
+
+Vai `may_messenger` **không** đọc / ghi được bảng CRM hay kho nào; nó chỉ gọi bốn RPC máy (`mess_lay_phien`, `mess_luu_phien`, `mess_ghi_tra_cuu`, `mess_ghi_su_kien`). Đặt bàn, tra / hủy đi bằng client anon như website.
+
+### Nối với Meta
+
+1. Trang Facebook nằm trong Business Portfolio của chủ. **Tắt** "Trả lời tự động" / "Tin nhắn vắng mặt" / câu hỏi thường gặp tự động trong Meta Business Suite — tin tự động của Meta đến như tin nhân viên và làm bot im.
+2. developers.facebook.com → tạo App loại **Business** → thêm sản phẩm **Messenger** → nối App với Trang, tạo Page Access Token → cài `META_APP_SECRET`, `META_PAGE_TOKEN`, `META_VERIFY_TOKEN` (và đủ các bí mật còn lại — thiếu cái nào thì bước xác minh nhận 503).
+3. App → Messenger → **Webhooks**: *Callback URL* `https://beeftown.vn/hook/messenger` (màn `/noi-bo/messenger` in sẵn), *Verify token* = `META_VERIFY_TOKEN` → **Verify and save**. Đăng ký cho Trang ba trường: **`messages`**, **`messaging_postbacks`**, **`message_echoes`**.
+4. Chủ vào `/noi-bo/messenger`: bật bot, sửa lời chào, bấm **Cài nút Bắt đầu + menu Messenger** (gọi Messenger Profile API: `get_started`, `greeting` ≤ 160 ký tự, `persistent_menu` = 5 mục của menu chính). Bấm lại mỗi lần đổi lời chào.
+5. Nhắn thử Trang bằng tài khoản có vai trò trong App (trước khi được duyệt, chỉ những người này nhắn được với bot): đặt một bàn, tra rồi hủy nó, bấm Gặp nhân viên. Đặt bàn qua bot hiện ở `/noi-bo/dat-ban` như đặt trên web; tin Zalo ZBS-01 tự gửi như thường.
+
+### Xin quyền `pages_messaging` (App Review)
+
+App → **App Review → Permissions and features** → `pages_messaging` → Request. Meta cần:
+
+- **Video quay màn hình** (1–3 phút): mở Messenger, nhắn Trang → bấm Bắt đầu → Đặt bàn từng bước tới lúc bot báo "đã nhận yêu cầu" + mã → Tra/hủy đặt bàn → Gặp nhân viên. Quay cả màn `/noi-bo/dat-ban` hiện đặt bàn vừa tạo.
+- Mô tả ngắn: bot giúp khách đặt bàn / tra / hủy và hỏi giờ mở cửa; chỉ trả lời khi khách nhắn trước, trong 24 giờ (`messaging_type: RESPONSE`), không gửi quảng cáo.
+- **Privacy Policy URL**: `https://beeftown.vn/quyen-rieng-tu` (có bản `/en/privacy`).
+- **Data Deletion Instructions URL**: `https://beeftown.vn/xoa-du-lieu` (có bản `/en/data-deletion`). Khách nhắn "xóa dữ liệu" thì bot xóa phần đang lưu dở và gọi nhân viên xử lý phần đặt bàn; phiên bot tự xóa sau 30 ngày.
+- App ở chế độ **Live** sau khi được duyệt.
+
+Kiểm thử: `node crm/test/test-messenger.mjs` (database) và `node crm/test/test-messenger-web.mjs` (phần web: chữ ký, hội thoại trọn vòng với client giả + một vòng thật trên PGlite; `IN_HOI_THOAI=1` in bản hội thoại mẫu). Không gọi Meta thật.
+
+---
+
 ## Cấu hình
 
 Chép `.env.example` thành `.env`:

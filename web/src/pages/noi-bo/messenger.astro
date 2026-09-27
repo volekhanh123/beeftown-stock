@@ -1,0 +1,301 @@
+---
+/**
+ * BOT MESSENGER ĐẶT BÀN (0051, 0052) — chủ sửa, quản lý xem
+ *
+ * Bật / tắt bot, lời chào, số phút bot im khi khách gặp nhân viên
+ * (mess_luu_cau_hinh — chỉ chủ); số liệu 7 ngày (mess_tong_quan — chủ, quản
+ * lý); bí mật nào đã cài (chỉ có / không); địa chỉ webhook để dán vào App Meta;
+ * nút "Cài nút Bắt đầu + menu Messenger" (chỉ chủ — gọi Messenger Profile API
+ * bằng META_PAGE_TOKEN ở máy chủ); hộp "Các bước với Meta".
+ *
+ * Mọi POST chuyển hướng 303 về chính trang, kèm câu báo (lib/messenger-bao.ts).
+ * Không có script chạy trên trình duyệt.
+ */
+import NoiBo from '../../layouts/NoiBo.astro';
+import { dichNB, nnCua, type HaiThuTieng } from '../../lib/ngon-ngu-noi-bo';
+import { dichCau } from '../../lib/cau-noi-bo';
+import { gioVn } from '../../lib/zalo-trang';
+import { META_API } from '../../lib/messenger';
+import { trangThaiBiMatMess, caiHoSoMessenger, TEN_BI_MAT_MESS, DUONG_MESSENGER, MESS_KHOA_TOI_THIEU } from '../../lib/messenger-hook';
+import { ghiBaoMess, docBaoMess, type BaoMess } from '../../lib/messenger-bao';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+const laChu = nhanSu.vai_tro === 'chu_so_huu';
+if (!laChu && nhanSu.vai_tro !== 'quan_ly') return Astro.redirect('/noi-bo', 302);
+const DUONG = '/noi-bo/messenger';
+
+const t = dichNB(nn, {
+  tieuDe:     { vi: 'Bot Messenger', en: 'Messenger bot' },
+  dan:        { vi: 'Bot trả lời tin nhắn Trang Facebook của quán: đặt bàn, tra / hủy đặt bàn, giờ mở cửa và địa chỉ, thực đơn, gặp nhân viên. Đặt bàn qua bot vào đúng danh sách Đặt bàn, ghi nguồn "messenger".',
+                en: 'The bot answers messages to the restaurant Facebook Page: bookings, looking up / cancelling a booking, opening hours and address, the menu, talking to staff. Bot bookings land in the normal Bookings list with source "messenger".' },
+  xemThoi:    { vi: 'Bạn đang xem. Chỉ chủ nhà hàng sửa được cài đặt.', en: 'View only. Only the owner can change the settings.' },
+  trangThai:  { vi: 'Trạng thái', en: 'Status' },
+  dangBat:    { vi: 'Bot đang bật', en: 'The bot is on' },
+  dangTat:    { vi: 'Bot đang tắt — khách nhắn vẫn tới hộp thư Trang như thường, bot không trả lời', en: 'The bot is off — messages still reach the Page inbox, the bot does not reply' },
+  lanNhan:    { vi: 'Tin gần nhất bot nhận', en: 'Latest message received by the bot' },
+  chuaNhan:   { vi: 'Chưa nhận tin nào', en: 'No message received yet' },
+  loiCuoi:    { vi: 'Lỗi gần nhất', en: 'Latest error' },
+  hoatDong:   { vi: 'Khách trò chuyện trong 24 giờ', en: 'Customers chatting in the last 24 hours' },
+  dangDung:   { vi: 'Đang chờ nhân viên (bot im)', en: 'Waiting for staff (bot quiet)' },
+  biKhoa:     { vi: 'Tra cứu đang bị khóa vì nhập sai', en: 'Lookups locked after wrong attempts' },
+  caiDat:     { vi: 'Cài đặt', en: 'Settings' },
+  batBot:     { vi: 'Bật bot', en: 'Turn the bot on' },
+  batBotGoiY: { vi: 'Tắt thì bot im hoàn toàn; nhân viên trả lời tay trong hộp thư Trang.', en: 'When off the bot stays silent; staff reply by hand in the Page inbox.' },
+  loiChao:    { vi: 'Lời chào', en: 'Greeting' },
+  loiChaoGoiY:{ vi: `Bot gửi khi khách bấm Bắt đầu hoặc chào. Tối đa 300 ký tự; lời chào trên màn Messenger (trước khi khách nhắn) chỉ lấy ${META_API.gioiHan.loiChao} ký tự đầu.`,
+                en: `Sent when a customer taps Get Started or says hello. Up to 300 characters; the greeting shown in Messenger before the first message only uses the first ${META_API.gioiHan.loiChao} characters.` },
+  phut:       { vi: 'Số phút bot im khi khách gặp nhân viên', en: 'Minutes the bot stays quiet after a customer asks for staff' },
+  phutGoiY:   { vi: 'Từ 5 đến 1440. Bot cũng im chừng đó phút mỗi khi nhân viên tự trả lời khách trên Trang.', en: 'From 5 to 1440. The bot also stays quiet this long whenever staff reply to the customer on the Page.' },
+  luu:        { vi: 'Lưu', en: 'Save' },
+  soLieu:     { vi: 'Số liệu 7 ngày', en: 'Last 7 days' },
+  soLieuGoiY: { vi: 'Chỉ đếm — không lưu tên, số điện thoại hay nội dung tin.', en: 'Counts only — no names, phone numbers or message text are stored.' },
+  ngay:       { vi: 'Ngày', en: 'Day' },
+  tong:       { vi: 'Tổng', en: 'Total' },
+  biMat:      { vi: 'Bí mật trên máy chủ', en: 'Secrets on the server' },
+  biMatDan:   { vi: 'Người kỹ thuật cài các bí mật này trên Cloudflare (xem web/README.md, mục Messenger). Trang chỉ cho biết đã cài hay chưa.',
+                en: 'The tech person installs these secrets on Cloudflare (see web/README.md, Messenger section). This page only shows whether they are set.' },
+  co:         { vi: 'Đã cài', en: 'Set' },
+  khong:      { vi: 'Chưa cài', en: 'Not set' },
+  bmAppSecret:{ vi: 'App Secret của App Meta', en: 'Meta App Secret' },
+  bmToken:    { vi: 'Page Access Token của Trang', en: 'Page Access Token' },
+  bmVerify:   { vi: `Mã xác minh webhook (ít nhất ${MESS_KHOA_TOI_THIEU} ký tự)`, en: `Webhook verify token (at least ${MESS_KHOA_TOI_THIEU} characters)` },
+  bmMay:      { vi: 'Tài khoản máy của bot', en: 'Bot machine account' },
+  bmBam:      { vi: `Khóa băm mã khách (ít nhất ${MESS_KHOA_TOI_THIEU} ký tự)`, en: `Customer ID hashing key (at least ${MESS_KHOA_TOI_THIEU} characters)` },
+  ketNoi:     { vi: 'Kết nối với Meta', en: 'Connecting to Meta' },
+  webhook:    { vi: 'Địa chỉ webhook (Callback URL) — dán vào App Meta', en: 'Webhook address (Callback URL) — paste into the Meta App' },
+  truong:     { vi: 'Các trường webhook cần đăng ký', en: 'Webhook fields to subscribe' },
+  caiMenu:    { vi: 'Cài nút Bắt đầu + menu Messenger', en: 'Install Get Started + Messenger menu' },
+  caiMenuGoiY:{ vi: 'Gửi lên Meta: nút Bắt đầu, lời chào ở trên và menu cố định (Đặt bàn · Tra/hủy đặt bàn · Giờ mở cửa & địa chỉ · Thực đơn · Gặp nhân viên). Bấm lại sau mỗi lần đổi lời chào.',
+                en: 'Sends to Meta: the Get Started button, the greeting above and the persistent menu (Book · Look up/cancel · Hours & address · Menu · Talk to staff). Press again after changing the greeting.' },
+  buocTieuDe: { vi: 'Các bước với Meta', en: 'Steps with Meta' },
+  buoc1:      { vi: 'Trang Facebook của quán nằm trong Business Portfolio (business.facebook.com) của chủ. Tắt "Trả lời tự động" / "Tin nhắn vắng mặt" trong Meta Business Suite — tin tự động của Meta sẽ làm bot tưởng nhân viên đang trả lời và im đi.',
+                en: 'The restaurant Facebook Page belongs to the owner Business Portfolio (business.facebook.com). Turn off "Instant reply" / "Away message" in Meta Business Suite — Meta automatic replies make the bot think staff are replying and it goes quiet.' },
+  buoc2:      { vi: 'Tạo App loại Business ở developers.facebook.com, thêm sản phẩm Messenger, nối App với Trang. Lấy App Secret và Page Access Token đưa người kỹ thuật cài — không dán vào đây.',
+                en: 'Create a Business-type App at developers.facebook.com, add the Messenger product and connect the App to the Page. Give the App Secret and the Page Access Token to the tech person to install — do not paste them here.' },
+  buoc3:      { vi: 'Trong App → Messenger → Webhooks: dán địa chỉ webhook ở trên và mã xác minh (người kỹ thuật giữ), bấm Xác minh và lưu, rồi đăng ký các trường ở trên cho Trang.',
+                en: 'In the App → Messenger → Webhooks: paste the webhook address above and the verify token (kept by the tech person), press Verify and save, then subscribe the Page to the fields above.' },
+  buoc4:      { vi: 'Bật bot ở mục Cài đặt, bấm "Cài nút Bắt đầu + menu Messenger". Nhắn thử Trang bằng tài khoản quản trị App: đặt một bàn, tra rồi hủy nó, bấm Gặp nhân viên.',
+                en: 'Turn the bot on under Settings, then press "Install Get Started + Messenger menu". Message the Page from an App admin account: make a booking, look it up and cancel it, press Talk to staff.' },
+  buoc5:      { vi: 'Xin quyền pages_messaging (App Review): quay video màn hình cuộc trò chuyện ở bước 4, kèm link Quyền riêng tư và Hướng dẫn xóa dữ liệu bên dưới. Trước khi được duyệt, chỉ người có vai trò trong App nhắn được với bot.',
+                en: 'Request pages_messaging (App Review): record a screen video of the conversation in step 4, with the Privacy and Data deletion links below. Until approved, only people with a role on the App can chat with the bot.' },
+  linkRiengTu:{ vi: 'Quyền riêng tư', en: 'Privacy policy' },
+  linkXoa:    { vi: 'Hướng dẫn xóa dữ liệu', en: 'Data deletion instructions' },
+  khongDocForm: { vi: 'Không đọc được dữ liệu gửi lên — bạn thử lại.', en: 'Could not read the submitted form — please try again.' },
+  viecSai:    { vi: 'Không rõ việc cần làm.', en: 'Unknown action.' },
+  chiChu:     { vi: 'Chỉ chủ nhà hàng làm được việc này.', en: 'Only the owner can do this.' },
+});
+
+const CAU_BAO = {
+  luuXong:    { vi: 'Đã lưu cài đặt bot Messenger.', en: 'Messenger bot settings saved.' },
+} as const;
+
+// Tên các loại sự kiện của mess_tong_quan (0052) — cột nào hiện ở bảng.
+const TEN_LOAI: Record<string, HaiThuTieng> = {
+  tin_nhan:          { vi: 'Tin khách gửi', en: 'Customer messages' },
+  hoi_thoai_moi:     { vi: 'Khách mới', en: 'New conversations' },
+  dat_ban:           { vi: 'Đặt bàn qua bot', en: 'Bot bookings' },
+  dat_ban_that_bai:  { vi: 'Đặt bàn bị từ chối', en: 'Bookings refused' },
+  tra_cuu:           { vi: 'Lượt tra cứu', en: 'Lookups' },
+  huy_dat_ban:       { vi: 'Hủy qua bot', en: 'Cancelled via bot' },
+  bi_khoa:           { vi: 'Bị khóa tra cứu', en: 'Lookup locks' },
+  hoi_dap:           { vi: 'Hỏi giờ / thực đơn', en: 'Hours / menu questions' },
+  gap_nhan_vien:     { vi: 'Gặp nhân viên', en: 'Asked for staff' },
+  nhan_vien_tra_loi: { vi: 'Nhân viên trả lời', en: 'Staff replies' },
+  loi:               { vi: 'Lỗi', en: 'Errors' },
+};
+const COT_BANG = ['tin_nhan', 'dat_ban', 'gap_nhan_vien', 'loi'];
+
+// ---- GHI -------------------------------------------------------------------
+if (Astro.request.method === 'POST') {
+  let bao: BaoMess;
+  if (!laChu) {
+    bao = { ok: false, cau: t.chiChu };
+  } else {
+    try {
+      const form = await Astro.request.formData();
+      const viec = String(form.get('viec') ?? '');
+      if (viec === 'luu') {
+        const phut = Number(String(form.get('phut_tam_dung') ?? '').trim());
+        const { error } = await client.rpc('mess_luu_cau_hinh', {
+          p_dang_bat: form.get('dang_bat') === '1',
+          p_loi_chao: String(form.get('loi_chao') ?? ''),
+          p_phut_tam_dung: Number.isInteger(phut) ? phut : null,
+        });
+        bao = error ? { ok: false, cau: error.message } : { ok: true, cau: CAU_BAO.luuXong.vi, cauEn: CAU_BAO.luuXong.en };
+      } else if (viec === 'cai_menu') {
+        const { data, error } = await client.rpc('mess_doc_cau_hinh');
+        if (error) bao = { ok: false, cau: error.message };
+        else {
+          const kq = await caiHoSoMessenger(String((data as { loi_chao?: string } | null)?.loi_chao ?? ''));
+          bao = { ok: kq.ok, cau: kq.cau, cauEn: kq.cauEn };
+        }
+      } else {
+        bao = { ok: false, cau: t.viecSai };
+      }
+    } catch {
+      bao = { ok: false, cau: t.khongDocForm };
+    }
+  }
+  ghiBaoMess(Astro.cookies, bao);
+  return Astro.redirect(DUONG, 303);
+}
+
+// ---- ĐỌC -------------------------------------------------------------------
+const baoDoc = docBaoMess(Astro.cookies);
+const bao = baoDoc && { ok: baoDoc.ok, cau: nn === 'en' ? (baoDoc.cauEn ?? dichCau(nn, baoDoc.cau)) : baoDoc.cau };
+
+let tq: any = null;
+let loiDoc: string | null = null;
+try {
+  const { data, error } = await client.rpc('mess_tong_quan');
+  if (error) loiDoc = dichCau(nn, error.message);
+  else tq = data;
+} catch (e) {
+  loiDoc = e instanceof Error ? dichCau(nn, e.message) : t.khongDocForm;
+}
+const cfg = tq?.cau_hinh ?? null;
+const cacNgay: any[] = Array.isArray(tq?.ngay) ? tq.ngay : [];
+const tong: Record<string, number> = tq?.tong ?? {};
+const loaiHien: string[] = Array.isArray(tq?.loai) ? tq.loai.filter((l: string) => l in TEN_LOAI) : Object.keys(TEN_LOAI);
+
+const bm = await trangThaiBiMatMess();
+const BI_MAT = [
+  { ten: TEN_BI_MAT_MESS.appSecret, nhan: t.bmAppSecret, co: bm.appSecret },
+  { ten: TEN_BI_MAT_MESS.pageToken, nhan: t.bmToken, co: bm.pageToken },
+  { ten: TEN_BI_MAT_MESS.verifyToken, nhan: t.bmVerify, co: bm.verifyToken },
+  { ten: `${TEN_BI_MAT_MESS.email} + ${TEN_BI_MAT_MESS.matKhau}`, nhan: t.bmMay, co: bm.taiKhoanMay },
+  { ten: TEN_BI_MAT_MESS.khoaBam, nhan: t.bmBam, co: bm.khoaBam },
+];
+const goc = (Astro.site ?? Astro.url).origin;
+const urlWebhook = goc + DUONG_MESSENGER;
+const urlRiengTu = goc + '/quyen-rieng-tu';
+const urlXoa = goc + '/xoa-du-lieu';
+const ngayNgan = (iso: string) => { const [, m, d] = String(iso).split('-'); return `${Number(d)}/${Number(m)}`; };
+---
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <h1>{t.tieuDe}</h1>
+  <p class="nb-dan">{t.dan}</p>
+  {!laChu && <p class="m-phu">{t.xemThoi}</p>}
+
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+  {loiDoc && <div class="nb-bao loi"><p>{loiDoc}</p></div>}
+
+  {cfg && (
+    <>
+      <h2>{t.trangThai}</h2>
+      <div class="nb-the">
+        <p style="margin-top:0"><span class={`nb-nhan ${cfg.dang_bat ? 'song' : 'cho'}`}>{cfg.dang_bat ? t.dangBat : t.dangTat}</span></p>
+        <ul class="m-ds">
+          <li><span>{t.lanNhan}</span><span>{cfg.lan_nhan_cuoi ? gioVn(cfg.lan_nhan_cuoi, nn) : t.chuaNhan}</span></li>
+          <li><span>{t.hoatDong}</span><span>{tq?.phien?.hoat_dong_24h ?? 0}</span></li>
+          <li><span>{t.dangDung}</span><span>{tq?.phien?.dang_tam_dung ?? 0}</span></li>
+          <li><span>{t.biKhoa}</span><span>{tq?.phien?.bi_khoa ?? 0}</span></li>
+        </ul>
+        {cfg.loi_cuoi && <p class="m-phu"><strong>{t.loiCuoi}</strong> ({gioVn(cfg.loi_cuoi_luc, nn)}): {dichCau(nn, cfg.loi_cuoi)}</p>}
+      </div>
+
+      <h2>{t.caiDat}</h2>
+      <form method="POST" class="nb-the">
+        <input type="hidden" name="viec" value="luu" />
+        <label class="m-chon">
+          <input type="checkbox" name="dang_bat" value="1" checked={!!cfg.dang_bat} disabled={!laChu} />
+          <span><strong>{t.batBot}</strong><small>{t.batBotGoiY}</small></span>
+        </label>
+        <label class="nb-o">
+          <span>{t.loiChao}</span>
+          <small>{t.loiChaoGoiY}</small>
+          <textarea name="loi_chao" rows="3" maxlength="300" required disabled={!laChu}>{cfg.loi_chao ?? ''}</textarea>
+        </label>
+        <label class="nb-o">
+          <span>{t.phut}</span>
+          <small>{t.phutGoiY}</small>
+          <input type="number" name="phut_tam_dung" min="5" max="1440" step="1" value={String(cfg.phut_tam_dung ?? 60)} inputmode="numeric" disabled={!laChu} />
+        </label>
+        {laChu && <button type="submit" class="nb-nut">{t.luu}</button>}
+      </form>
+
+      <h2>{t.soLieu}</h2>
+      <div class="nb-the">
+        <p class="m-phu" style="margin-top:0">{t.soLieuGoiY}</p>
+        <div class="m-cuon">
+          <table class="m-bang">
+            <thead>
+              <tr><th>{t.ngay}</th>{COT_BANG.map(l => <th>{TEN_LOAI[l][nn]}</th>)}</tr>
+            </thead>
+            <tbody>
+              {cacNgay.map(d => (
+                <tr><td>{ngayNgan(d.ngay)}</td>{COT_BANG.map(l => <td>{d.dem?.[l] ?? 0}</td>)}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <ul class="m-ds" style="margin-top:.75rem">
+          {loaiHien.map(l => <li><span>{TEN_LOAI[l][nn]} · {t.tong}</span><span>{tong[l] ?? 0}</span></li>)}
+        </ul>
+      </div>
+    </>
+  )}
+
+  <h2>{t.biMat}</h2>
+  <div class="nb-the">
+    <p class="m-phu" style="margin-top:0">{t.biMatDan}</p>
+    <ul class="m-ds">
+      {BI_MAT.map(b => (
+        <li>
+          <span>{b.nhan}<br /><code>{b.ten}</code></span>
+          <span class={`nb-nhan ${b.co ? 'song' : 'cho'}`}>{b.co ? t.co : t.khong}</span>
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <h2>{t.ketNoi}</h2>
+  <div class="nb-the">
+    <p style="margin-top:0"><strong>{t.webhook}</strong></p>
+    <p class="nb-gia-tri"><code class="m-url">{urlWebhook}</code></p>
+    <p><strong>{t.truong}</strong></p>
+    <p>{META_API.truongDangKy.map(f => <code class="m-the">{f}</code>)}</p>
+    {laChu && (
+      <form method="POST" style="margin-top:1rem">
+        <input type="hidden" name="viec" value="cai_menu" />
+        <p class="m-phu" style="margin-top:0">{t.caiMenuGoiY}</p>
+        <button type="submit" class="nb-nut phu">{t.caiMenu}</button>
+      </form>
+    )}
+  </div>
+
+  <div class="nb-bao luu-y">
+    <p><strong>{t.buocTieuDe}</strong></p>
+    <ol class="m-buoc">
+      <li>{t.buoc1}</li>
+      <li>{t.buoc2}</li>
+      <li>{t.buoc3}</li>
+      <li>{t.buoc4}</li>
+      <li>{t.buoc5}</li>
+    </ol>
+    <p>{t.linkRiengTu}: <code class="m-url">{urlRiengTu}</code></p>
+    <p>{t.linkXoa}: <code class="m-url">{urlXoa}</code></p>
+  </div>
+</NoiBo>
+
+<style>
+  .m-buoc { margin: .5rem 0 0; padding-left: 1.3rem; }
+  .m-buoc li { margin-bottom: .45rem; }
+  .m-phu { margin: .5rem 0 0; font-size: .88rem; color: var(--muc-nhat); }
+  .m-ds { list-style: none; margin: 0; padding: 0; }
+  .m-ds li { display: flex; justify-content: space-between; align-items: center; gap: .75rem;
+             padding: .55rem 0; border-bottom: 1px solid var(--vach); font-size: .9rem; }
+  .m-ds li:last-child { border-bottom: none; }
+  .m-ds code { font-size: .78rem; overflow-wrap: anywhere; }
+  .m-chon { display: flex; gap: .6rem; align-items: flex-start; padding: .55rem 0; cursor: pointer; }
+  .m-chon input { width: 1.25rem; height: 1.25rem; margin-top: .15rem; flex-shrink: 0; }
+  .m-chon small { display: block; color: var(--muc-nhat); font-size: .82rem; margin-top: .2rem; }
+  .m-cuon { overflow-x: auto; }
+  .m-bang { width: 100%; border-collapse: collapse; font-size: .88rem; }
+  .m-bang th, .m-bang td { padding: .45rem .5rem; border-bottom: 1px solid var(--vach); text-align: right; white-space: nowrap; }
+  .m-bang th:first-child, .m-bang td:first-child { text-align: left; }
+  .m-url { overflow-wrap: anywhere; font-size: .85rem; }
+  .m-the { display: inline-block; margin: .15rem .35rem 0 0; padding: .05rem .4rem; border-radius: 4px; background: var(--kem-sau); }
+</style>
