@@ -13,7 +13,7 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 | 1 | Đặt bàn thật (thay Google Sheet) | ✅ Schema xong, form chờ giờ phục vụ và bảng bàn |
 | 2 | Lõi CRM — hồ sơ khách, phân nhóm | 🔜 Schema xong, chờ giao diện |
 | 3 | Thẻ tích điểm | 🔜 Schema xong, chờ giao diện |
-| 4 | Chiến dịch ZBS | 🔜 Schema xong, chờ nối API Zalo |
+| 4 | Chiến dịch ZBS | ✅ Database xong (`0046`–`0047`): ZBS-01/02 tự động khi đặt bàn, chiến dịch gửi tay, máy gửi `may_zalo`, trần 2 tin chăm sóc/tháng, khung giờ — chờ tick vàng, ZBS, App và mẫu được Zalo duyệt |
 | 5 | Báo cáo BI | ✅ Hàm chỉ số xong (`chi_so_crm`, `phieu_do_launch`) |
 | 6 | **Cổng nội dung** — công tắc cho từng dữ kiện | ✅ Xong (`0010`) |
 | 7 | **Thực đơn** — 31 món, duyệt giá từng món | ✅ Xong (`0011`) |
@@ -57,6 +57,7 @@ cd crm && npm install && npm test
 | `npm run test:kho` | **kho**: tường ngăn CRM, bảng quyền, phiếu nhập, sổ kho, giá vốn, mã vạch nhãn cân, form và CSV; pha lóc; chuyển, xuất bếp, hủy, kiểm kê; công nợ và báo cáo; đồng bộ cân | 77 + 117 + 99 + 115 + 120 + 91 + 55 |
 | `npm run test:can` | đồng bộ danh mục sang cân in tem: đọc/ghi file `A_000.TMS`, dòng không đổi giữ nguyên từng byte | 55 |
 | `npm run test:quyen-ham` | **ba hàm definer CRM ở `0045`**: ai bị từ chối (kể cả tài khoản không có dòng `nhan_su`), ai vẫn ghi được, website vẫn đặt bàn | 36 |
+| `npm run test:zalo` | **gửi tin Zalo `0046`–`0047`**: đặt bàn → đúng một ZBS-01 + một ZBS-02 (giờ hẹn − 2 tiếng), không trùng khi gọi lại; hủy / đổi giờ; mẫu chưa duyệt / Zalo tắt → không xếp; khách lần đầu nhận giao dịch nhưng không nhận chăm sóc; trần 2 tin/tháng tính cả tin chờ; khung giờ; xem trước chiến dịch; lượt gửi của máy (khóa 10 phút, kiểm lại, thử lại); máy không đọc được bảng CRM, không ai ngoài máy lấy được token | 170 |
 
 **Chạy lại toàn bộ kiểm thử sau mỗi lần sửa migration.** Chúng đã bắt được lỗi thật, không phải một lần:
 
@@ -116,7 +117,9 @@ crm/
 │   ├── 0042_kho_ipos_callback.sql      KHO · iPOS tự đẩy hóa đơn (callback Event 11): nhận gói gọn một lời gọi, chống trùng theo mã HĐ · bán theo kg / gói / suất (món chế biến chỉ đếm suất) · danh mục món iPOS (không giá) · mất kết nối = lâu không nhận hóa đơn trong giờ mở cửa · đếm quầy không bị chặn khi quán vắng · bỏ thông tin khách khỏi raw
 │   ├── 0043_loai_hop_dong_chua_chot.sql  loại hợp đồng của vị trí tuyển được để trống = "chưa chốt" (trang công khai không hiện dòng đó)
 │   ├── 0044_kho_ly_do_dinh_muc.sql     KHO · lý do Xuất bếp "không tính định mức" (cột tinh_dinh_muc, mặc định tắt cho "Cơm nhân viên", kể cả lý do thêm sau) · bếp nhận trong đối chiếu định mức và cảnh báo lệch bỏ các phiếu Xuất bếp đó
-│   └── 0045_va_quyen_ham_crm.sql       ⚠ VÁ — ghi_luot_ghe, tim_hoac_tao_khach, xep_hang_gui_tin tự kiểm vai (phải chạy TRƯỚC khi bật đăng ký tài khoản trên Supabase Auth)
+│   ├── 0045_va_quyen_ham_crm.sql       ⚠ VÁ — ghi_luot_ghe, tim_hoac_tao_khach, xep_hang_gui_tin tự kiểm vai (phải chạy TRƯỚC khi bật đăng ký tài khoản trên Supabase Auth)
+│   ├── 0046_zalo_vai_may.sql           ZALO · vai máy may_zalo + trạng thái tin da_huy — ⚠ CHẠY RIÊNG, trước 0047
+│   └── 0047_zalo_gui_tin.sql           ZALO · hàng gửi (khoa_gui chống trùng, hẹn giờ, thử lại) · đặt bàn → ZBS-01 ngay + ZBS-02 trước 2 tiếng · đặt bàn = giao dịch · trần 2 tin chăm sóc/tháng + khung giờ · zalo_cau_hinh (token chỉ bản mã) · RPC máy may_zalo + RPC chiến dịch (danh sách ở đầu file)
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```
@@ -127,11 +130,12 @@ crm/
 - **`0009` và `0011` phụ thuộc vòng.** `tep_anh.mon_an_id` trỏ tới `mon_an` chưa tồn tại; cột ra đời ở `0009` không kèm khóa ngoại, khóa ngoại được thêm ở cuối `0011`.
 - **File nào tạo hàm thì PHẢI kết thúc bằng khối chốt quyền.** Xem `0008` mục 6.
 - **View mới PHẢI khai `security_invoker = true` tường minh.** Mặc định của Postgres là view chạy dưới quyền người tạo, tức đi xuyên qua RLS của bảng bên dưới — đúng lỗ hổng số 2 mà `0008` đã vá. `0008` chỉ sửa được 7 view có mặt lúc đó. `test-an-toan.mjs` mục 2 liệt kê `pg_class` và bắt đúng chuyện quên này; nó đã bắt được `v_bang_cong_tac` ngay lần chạy đầu tiên của `0015`.
+- **`0046` phải chạy RIÊNG, một mình, trước `0047`** — cùng lý do với `0017` (thêm `may_zalo` vào `vai_tro`, `da_huy` vào `ket_qua_gui`).
 - **`0017` phải chạy RIÊNG, một mình, trước `0018`.** Nó thêm giá trị vào enum `vai_tro`; Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa thêm nó.
 - **Đừng tạo tài khoản vai kho trước khi chạy `0018`.** `0018` là tường ngăn: trước nó, một thủ kho đọc được số điện thoại khách.
 - **`0014` là file duy nhất PGlite không chạy.** Toàn bộ DDL kho file bọc trong khối kiểm tra schema `storage`. Danh sách kiểm tra bằng tay nằm ở cuối file đó — **bắt buộc làm trên Supabase thật.**
 - **Khối chốt quyền từ `0025` trở đi PHẢI giữ dòng `ve_con_hieu_luc(text)`.** Policy tải CV trên `storage.objects` gọi hàm đó dưới vai `anon`. Chép danh sách từ một file cũ hơn là CV lại rơi im lặng, và PGlite không có storage để thấy; `DUOC_PHEP` trong `test-an-toan.mjs` và mục 7 của `test-dat-noi-dung.mjs` mới bắt được.
-- **Số migration không được trùng giữa các nhánh làm song song.** Supabase CLI coi phần số là phiên bản, nên hai file cùng số không cùng tồn tại được. Nhánh kho dùng `0017`–`0024`. Nhánh này lúc đầu dùng `0023`, `0025`, `0026` — `0023` trùng với nhánh kho — nên ngày 25/09/2026 đã đánh lại thành `0025`, `0026`, `0027`, giữ nguyên thứ tự giữa ba file. Bản vá quyền hàm CRM viết ở nhánh `gom-ve-local` với số `0022` rồi `0031` (đều trùng số kho), khi đưa vào main (27/09/2026) đã đánh lại thành `0045`. Migration mới lấy số sau số lớn nhất trên **mọi** nhánh đang mở: `0028` là đơn vị lương; nhánh kho giai đoạn 4–5 (PR #9) giữ `0029`–`0035`; tiếng Hàn và bản dịch là `0036`; đồng bộ iPOS của kho là `0037`; định lượng món của kho là `0038`; đặt hàng NCC của kho là `0039`; công nợ v2 của kho là `0040`; sửa hàng loạt và báo cáo của kho là `0041`; iPOS đẩy hóa đơn (callback) của kho là `0042`; loại hợp đồng "chưa chốt" là `0043`; lý do Xuất bếp không tính định mức (cơm nhân viên) của kho là `0044` — PR #9 viết nó là `0043`, trùng với `0043` đã chạy trên production trước, nên khi gộp đã đánh lại thành `0044` (26/09/2026); vá quyền ba hàm CRM là `0045` — nên số kế tiếp là `0046`. `0036` đã chạy trên project Supabase với tên lịch sử `0029_tieng_han_va_ban_dich`, đặt trước khi thấy PR #9 — nội dung y hệt file. Khối chốt quyền của mọi file nhánh khác đều viết trước `0025` nên thiếu dòng `ve_con_hieu_luc(text)`: sau khi gộp, khối chốt quyền **chạy cuối cùng** phải có dòng đó, và `DUOC_PHEP` sẽ đỏ nếu thiếu. Trên một database đã có sẵn, đừng chạy file nào có khối chốt quyền thiếu dòng đó sau `0025`.
+- **Số migration không được trùng giữa các nhánh làm song song.** Supabase CLI coi phần số là phiên bản, nên hai file cùng số không cùng tồn tại được. Nhánh kho dùng `0017`–`0024`. Nhánh này lúc đầu dùng `0023`, `0025`, `0026` — `0023` trùng với nhánh kho — nên ngày 25/09/2026 đã đánh lại thành `0025`, `0026`, `0027`, giữ nguyên thứ tự giữa ba file. Bản vá quyền hàm CRM viết ở nhánh `gom-ve-local` với số `0022` rồi `0031` (đều trùng số kho), khi đưa vào main (27/09/2026) đã đánh lại thành `0045`. Migration mới lấy số sau số lớn nhất trên **mọi** nhánh đang mở: `0028` là đơn vị lương; nhánh kho giai đoạn 4–5 (PR #9) giữ `0029`–`0035`; tiếng Hàn và bản dịch là `0036`; đồng bộ iPOS của kho là `0037`; định lượng món của kho là `0038`; đặt hàng NCC của kho là `0039`; công nợ v2 của kho là `0040`; sửa hàng loạt và báo cáo của kho là `0041`; iPOS đẩy hóa đơn (callback) của kho là `0042`; loại hợp đồng "chưa chốt" là `0043`; lý do Xuất bếp không tính định mức (cơm nhân viên) của kho là `0044` — PR #9 viết nó là `0043`, trùng với `0043` đã chạy trên production trước, nên khi gộp đã đánh lại thành `0044` (26/09/2026); vá quyền ba hàm CRM là `0045`; gửi tin Zalo ZBS là `0046` (vai máy, chạy riêng) và `0047` — nên số kế tiếp là `0048`. `0036` đã chạy trên project Supabase với tên lịch sử `0029_tieng_han_va_ban_dich`, đặt trước khi thấy PR #9 — nội dung y hệt file. Khối chốt quyền của mọi file nhánh khác đều viết trước `0025` nên thiếu dòng `ve_con_hieu_luc(text)`: sau khi gộp, khối chốt quyền **chạy cuối cùng** phải có dòng đó, và `DUOC_PHEP` sẽ đỏ nếu thiếu. Trên một database đã có sẵn, đừng chạy file nào có khối chốt quyền thiếu dòng đó sau `0025`.
 
 ## Nhật ký kiểm tay kho file
 
@@ -231,7 +235,8 @@ Ngoài ra `cau_hinh_tich_diem.ty_le_tich` có **trần cứng 20%** — biên đ
 | `tao_dat_ban()` | Website tạo đặt bàn | **Công khai (anon)** |
 | `lich_trong_theo_ngay()` | Website xem khung giờ trống | **Công khai (anon)** |
 | `so_ban_con_trong()` | Số bàn còn nhận tại một khung giờ | **Công khai (anon)** |
-| `duoc_phep_gui()` | Chốt chặn trước khi gửi tin | Nội bộ |
+| `duoc_phep_gui()` | Chốt chặn trước khi gửi tin — đặt bàn chưa hủy tính là giao dịch, tin chăm sóc có trần tháng (`0047`) | Nội bộ |
+| `zalo_*()` | Gửi tin Zalo: 4 RPC máy (`may_zalo`), RPC cài đặt (chủ), RPC chiến dịch (chủ / quản lý / marketing đúng chi nhánh) — chữ ký và JSON trả về ở đầu `0047` | Xem `0047` |
 | `chi_so_crm()` | 6 chỉ số theo dõi | Quản lý, chủ sở hữu |
 
 Website công khai **không có quyền vào bảng nào cả** — chỉ gọi được danh sách hàm `SECURITY DEFINER` trong khối chốt quyền ở cuối migration MỚI NHẤT có khối đó. Đừng chép số lượng vào đây: bảng trên đã từng nói "ba hàm" trong khi thực tế là 12, và nó lạc hậu suốt tám migration mà không ai để ý. `test-an-toan.mjs` canh danh sách đó.

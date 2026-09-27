@@ -207,6 +207,67 @@ Vai kho **không** thấy dữ liệu CRM (khách hàng, đặt bàn, điểm) �
 
 ---
 
+## Zalo (`/noi-bo/zalo`)
+
+Gửi tin Zalo ZBS cho khách: **ZBS-01** xác nhận đặt bàn (ngay khi khách đặt trên web), **ZBS-02** nhắc lịch (trước giờ hẹn 2 tiếng), và tin chăm sóc gửi theo **chiến dịch** bấm tay. Database ở `crm/supabase/migrations/0046_*`, `0047_*` (đầu file 0047 liệt kê mọi RPC).
+
+| Màn | Ai | Việc |
+|---|---|---|
+| `/noi-bo/zalo` | chủ, quản lý, marketing | Đèn kết nối, lần chạy cuối, quota, số chờ / đã gửi / thất bại, hàng chờ + nhật ký (SĐT che giữa, nút **Thử lại**), danh sách chiến dịch (nút **Dừng**) |
+| `/noi-bo/zalo/chien-dich/moi` | chủ, quản lý, marketing | Chọn mẫu chăm sóc → nhóm khách → xem trước số người nhận và lý do bị loại → gửi ngay / hẹn giờ |
+| `/noi-bo/zalo/cai-dat` | chỉ chủ | App ID, OA ID, dán refresh token, chế độ thử / thật, bật gửi, khung giờ, trần tin/tháng, mã mẫu Zalo + đã duyệt + tự động; hộp "4 bước chuẩn bị với Zalo"; bí mật nào đã cài |
+
+**Ai gửi:** Cron 5 phút (`src/worker.ts`, cùng cron với iPOS, chạy song song — việc này hỏng không chặn việc kia) gọi `guiZaloTatCa` trong `src/lib/zalo-gui.ts`: đăng nhập tài khoản máy `may_zalo` → `zalo_bat_dau_luot` (khóa lượt, lấy lô tin đến hạn — database đã kiểm lại đồng ý, trần tháng, khung giờ) → làm mới access token khi còn dưới 1 giờ → gửi → `zalo_ghi_ket_qua` → `zalo_ket_thuc_luot`. Chi tiết API Zalo (địa chỉ, tên trường, mã lỗi) nằm trong **một** hằng `ZALO_API` đầu `src/lib/zalo.ts`.
+
+> **Chưa đối chiếu tài liệu Zalo.** Lúc viết, proxy mạng chặn `developers.zalo.me`, `business.openapi.zalo.me`, `oauth.zaloapp.com`. Code làm theo chuẩn ZNS/ZBS đã biết (làm mới token: OAuth v4 `refresh_token` + header `secret_key`; gửi: `POST /message/template`, header `access_token`, `phone` dạng `84…`, `tracking_id` = id nhật ký, `mode: "development"` khi chế độ thử). Bảng mã lỗi → cách xử lý là **giả định**. Khi mở được tài liệu, chỉ sửa hằng `ZALO_API` (và `XU_LY_LOI` ngay dưới nó), chạy `node crm/test/test-zalo-web.mjs`.
+
+### Bốn bí mật Worker
+
+Đặt như `GEMINI_API_KEY` ở trên: dashboard Cloudflare → Workers & Pages → `beeftown` → Settings → Variables and Secrets → kiểu **Secret**; hoặc `npx wrangler secret put <TÊN>` trong `web/`. **Không** ghi vào `wrangler.toml`, `.env`, `.env.example`, chat hay repo.
+
+| Bí mật | Là gì |
+|---|---|
+| `ZALO_SECRET_KEY` | Secret key của App Zalo (developers.zalo.me → App → Cài đặt). Chỉ dùng để làm mới token. App ID **không** bí mật — chủ nhập ở màn Cài đặt Zalo |
+| `ZALO_KHOA` | Khóa mã hóa token trong database, ít nhất 32 ký tự: `openssl rand -base64 32`. Đổi khóa = token cũ hết dùng được, chủ phải dán lại refresh token (cũng là cách thu hồi khi nghi lộ) |
+| `ZALO_MAY_EMAIL`, `ZALO_MAY_MAT_KHAU` | Tài khoản máy vai `may_zalo` (bên dưới) |
+
+Thiếu bí mật nào thì cron chỉ ghi một dòng log "chưa cài …" và bỏ qua; web vẫn chạy. Màn Cài đặt Zalo hiện **đã cài / chưa cài** cho từng cái — không bao giờ hiện giá trị. Chạy thử trên máy: đặt trong `web/.dev.vars` (bị `.gitignore` chặn).
+
+### Tạo tài khoản máy `may_zalo` — một lần
+
+1. Supabase Studio → **Authentication → Users → Add user**: email riêng (vd. `may-zalo@<tên miền của quán>`), mật khẩu dài ngẫu nhiên, tích **Auto confirm**. Chép `User UID`.
+2. SQL Editor (chi nhánh nào cũng được — máy gửi cho cả thương hiệu, nhưng bảng `nhan_su` bắt vai khác chủ phải có chi nhánh):
+   ```sql
+   insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro)
+   values ('<User UID>', (select id from chi_nhanh order by ma limit 1), 'Máy gửi Zalo', 'may_zalo');
+   ```
+3. Đặt `ZALO_MAY_EMAIL`, `ZALO_MAY_MAT_KHAU` bằng đúng email / mật khẩu đó.
+
+Vai `may_zalo` **không** đọc được bảng khách nào; nó chỉ gọi được bốn RPC máy (`zalo_bat_dau_luot`, `zalo_ghi_ket_qua`, `zalo_luu_token`, `zalo_ket_thuc_luot`). Cả tên, SĐT khách đều không vào log.
+
+### Lấy refresh token đầu tiên
+
+Refresh token của Zalo **dùng một lần**: mỗi lần làm mới, Zalo trả một cái mới và cái cũ chết ngay. Máy lưu cái mới (mã hóa) vào database **trước** khi gửi tin, và làm mới ít nhất mỗi ngày (access token sống ~25 giờ) nên refresh token (~3 tháng) không bao giờ hết hạn khi cron còn chạy. Chỉ cần lấy tay **một lần** (hoặc khi màn Tin Zalo báo "Zalo từ chối refresh token"):
+
+1. developers.zalo.me → App của quán → **Official Account** → mục cấp quyền: đặt *Callback URL* (vd. `https://beeftown.vn/`), bật các quyền gửi tin ZBS/ZNS.
+2. Chủ OA (đang đăng nhập Zalo) mở `https://oauth.zaloapp.com/v4/oa/permission?app_id=<APP_ID>&redirect_uri=<Callback URL>` → **Cho phép**. Trình duyệt chuyển về Callback URL kèm `?code=…&oa_id=…` — chép `code` (sống vài phút) và `oa_id`.
+3. Đổi `code` lấy token (trên máy của người kỹ thuật, không dán secret key vào đâu khác):
+   ```bash
+   curl -s -X POST https://oauth.zaloapp.com/v4/oa/access_token \
+     -H "secret_key: <SECRET_KEY của App>" \
+     -d app_id=<APP_ID> -d grant_type=authorization_code -d code=<code>
+   ```
+   Kết quả có `refresh_token`. (Công cụ *API Explorer* trên developers.zalo.me cũng cấp được cặp token cho OA — cách nào cũng được.)
+4. Chủ vào **/noi-bo/zalo/cai-dat**, dán vào ô **Refresh token** → Lưu. Trang mã hóa bằng `ZALO_KHOA` rồi mới gửi database; database từ chối mọi chuỗi không phải bản mã `v1.…`. Không bao giờ hiện lại. Xóa token khỏi lịch sử terminal / ghi chú sau khi dán.
+
+### Chế độ thử → thật
+
+Mặc định `zalo_cau_hinh.che_do = 'thu'`: mọi tin gửi kèm `mode: "development"` — Zalo chỉ giao cho **tài khoản quản trị của OA / App**, khách thật không nhận gì và (theo chuẩn ZNS) không tính phí. Thử: bật gửi ở chế độ thử, duyệt + bật tự động ZBS-01, đặt một bàn trên web bằng SĐT của một quản trị viên OA → trong 5 phút phải nhận tin, và `/noi-bo/zalo` ghi "Đã gửi". Ổn rồi mới chuyển **Chế độ → Thật**. Tin lỗi mã `-126` ở chế độ thử thường nghĩa là số nhận không phải quản trị viên.
+
+Kiểm thử: `node crm/test/test-zalo.mjs` (database) và `node crm/test/test-zalo-web.mjs` (phần web, fetch giả — không gọi Zalo thật).
+
+---
+
 ## Cấu hình
 
 Chép `.env.example` thành `.env`:
