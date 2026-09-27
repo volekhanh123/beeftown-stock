@@ -75,6 +75,10 @@ export interface DongNhan {
   han_dung: string | null;
   truong_them: GiaTriTruong;
   lo_id: string | null;
+  /** Món theo dõi theo tảng (0046): dòng là MỘT tảng, có ngày mổ; số tảng có khi đã duyệt. */
+  theo_tang?: boolean;
+  ngay_mo?: string | null;
+  so_tang?: number | null;
 }
 
 export interface PhieuNhan {
@@ -123,6 +127,8 @@ export interface DongLuu {
   ngay_san_xuat: string | null;
   han_dung: string | null;
   truong_them: GiaTriTruong;
+  /** Ngày mổ — bắt buộc với món theo dõi theo tảng (0046). */
+  ngay_mo?: string | null;
 }
 
 // -----------------------------------------------------------------------------
@@ -291,10 +297,11 @@ export interface DongNhanForm {
   ngay_san_xuat: string;
   so_lo_ncc: string;
   truong_them: GiaTriTruong;
+  ngay_mo: string;
 }
 
 export function dongNhanTrong(): DongNhanForm {
-  return { mat_hang_id: '', so_kg: '', so_goi: '', han_dung: '', ngay_san_xuat: '', so_lo_ncc: '', truong_them: {} };
+  return { mat_hang_id: '', so_kg: '', so_goi: '', han_dung: '', ngay_san_xuat: '', so_lo_ncc: '', truong_them: {}, ngay_mo: '' };
 }
 
 /** Dòng đã lưu → chữ điền vào form sửa. */
@@ -307,11 +314,12 @@ export function dongNhanVaoForm(d: DongNhan): DongNhanForm {
     ngay_san_xuat: d.ngay_san_xuat ?? '',
     so_lo_ncc: d.so_lo_ncc ?? '',
     truong_them: d.truong_them ?? {},
+    ngay_mo: d.ngay_mo ?? '',
   };
 }
 
 /** Thông tin mặt hàng cần để kiểm dòng: có đếm tảng/gói không, gọi là gì. */
-export interface MonKiem { ten: string; dem_goi: boolean; don_vi_goi: string }
+export interface MonKiem { ten: string; dem_goi: boolean; don_vi_goi: string; theo_tang?: boolean }
 
 /**
  * Đọc form MỘT dòng (bước 2). Mặt hàng: nút lớn (radio `mh`) hoặc ô chọn
@@ -331,6 +339,7 @@ export function docFormDongNhan(
     so_kg: s('so_kg'), so_goi: s('so_goi'),
     han_dung: s('hsd'), ngay_san_xuat: s('nsx'), so_lo_ncc: s('so_lo_ncc').slice(0, 60),
     truong_them: tt.giaTri,
+    ngay_mo: s('ngay_mo'),
   };
   const loi: string[] = [];
   const loiEn: string[] = [];
@@ -344,8 +353,16 @@ export function docFormDongNhan(
   if (Number.isNaN(goi)) {
     bao({ vi: `Số ${m?.don_vi_goi ?? 'tảng / gói'} là số nguyên (ví dụ 2)`,
           en: `The number of ${m?.don_vi_goi ?? 'pieces / packs'} must be a whole number (for example 2)` });
-  } else if (m?.dem_goi && !goi) {
+  } else if (m?.theo_tang && goi !== null && goi > 1) {
+    bao({ vi: `${m.ten} theo dõi theo tảng: mỗi tảng một dòng, cân riêng`,
+          en: `${m.ten} is tracked per primal: one line per primal, weighed on its own` });
+  } else if (m?.dem_goi && !goi && !m.theo_tang) {
     bao({ vi: `Nhập số ${m.don_vi_goi} của ${m.ten}`, en: `Enter the number of ${m.don_vi_goi} for ${m.ten}` });
+  }
+  const mo = docNgay(dong.ngay_mo);
+  if (mo === undefined) bao({ vi: 'Ngày mổ không phải ngày có thật', en: 'The slaughter date is not a real date' });
+  else if (m?.theo_tang && !mo) {
+    bao({ vi: `Nhập ngày mổ của tảng ${m.ten} (xem nhãn thùng)`, en: `Enter the slaughter date of this ${m.ten} primal (see the box label)` });
   }
   const hsd = docNgay(dong.han_dung);
   const nsx = docNgay(dong.ngay_san_xuat);
@@ -362,7 +379,9 @@ export function docFormDongNhan(
     ngay_san_xuat: nsx || null,
     han_dung: hsd || null,
     truong_them: tt.giaTri,
+    ...(mo ? { ngay_mo: mo } : {}),
   };
+  if (luu && m?.theo_tang) luu.so_goi = 1;
   return { dong, loi, loiEn, luu };
 }
 
@@ -376,6 +395,7 @@ export function dongLuuTuPhieu(d: DongNhan): DongLuu {
     ngay_san_xuat: d.ngay_san_xuat,
     han_dung: d.han_dung,
     truong_them: d.truong_them ?? {},
+    ...(d.ngay_mo ? { ngay_mo: d.ngay_mo } : {}),
   };
 }
 

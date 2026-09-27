@@ -174,6 +174,9 @@ const CHAY_DA_DANG_NHAP = [
   // database đi bằng tài khoản máy may_ipos đã đăng nhập (client anon riêng + signInWithPassword,
   // sau đó là authenticated) — chỉ sau khi khóa bí mật IPOS_CALLBACK_KHOA khớp. Không bao giờ chạy vai anon.
   'web/src/lib/kho/ipos-hook.ts',
+  // Theo dõi theo tảng (0046): bảng ủ (kho_bang_u, sửa bằng quyền danh mục) và tảng còn tồn
+  // (kho_v_tang) — chỉ gọi từ /noi-bo/kho (Thiết lập → Mặt hàng, Tảng · ủ) bằng client của nhân sự. Không tiền.
+  'web/src/lib/kho/tang.ts',
   // Soạn tin tuyển dụng — chỉ gọi từ /noi-bo/tin-tuyen-dung.
   'web/src/lib/tin-tuyen-dung.ts',
   // Bản dịch tự động (0036) — gọi từ màn soạn tin, màn công tắc và middleware

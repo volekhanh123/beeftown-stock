@@ -387,6 +387,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // 0042: bỏ thông tin khách khỏi raw, số gói theo kg, mốc "lâu không nhận hóa đơn",
     // lõi nhận hóa đơn (chung cho lượt và callback)
     'kho_ipos_bo_pii', 'kho_ipos_goi_theo_kg', 'kho_ipos_moc_nhan', 'kho_ipos_nhan_hd',
+    // 0046: số tảng tăng dần, tra số ngày ủ theo bảng ủ
+    'kho_sinh_so_tang', 'kho_so_ngay_u',
   ].sort();
 
   const { rows } = await db.query(`

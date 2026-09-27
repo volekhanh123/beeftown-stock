@@ -30,6 +30,7 @@ import {
   type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { docTruongThem, type DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
+import { chuBangU, docBangU, moTaBangU, type DongBangU } from '../../../../lib/kho/tang.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -60,6 +61,7 @@ const t = dichNB(nn, {
   cotSeDoi: { vi: 'Sẽ thay đổi', en: 'Will change' },
   capNhat: { vi: 'Cập nhật', en: 'Update' },
   ngungDungNho: { vi: ' · ngừng dùng', en: ' · no longer used' },
+  theoTangNho: { vi: 'theo dõi theo tảng', en: 'tracked per primal' },
   themMoi: { vi: 'Thêm mới', en: 'New' },
   chiCoTen: { vi: 'Chỉ có tên — điền giá, hạn dùng sau.', en: 'Name only — fill in the price and use-by later.' },
   xacNhanNhap: { vi: 'Xác nhận nhập', en: 'Confirm import' },
@@ -129,11 +131,12 @@ const suaId = q.get('sua') ?? '';
 
 let matHang: MatHang[] = [];
 let thuHoi = new Map<string, number | null>();
+let bangU = new Map<string, DongBangU[]>();
 let dinhNghia: DinhNghiaTruong[] = [];
 let loiDoc = k.loiDoc;
 try {
-  [matHang, thuHoi, dinhNghia] = await Promise.all([
-    docMatHang(k.client), docGiaTriThuHoi(k.client), docDinhNghia(k.client, 'mat_hang'),
+  [matHang, thuHoi, dinhNghia, bangU] = await Promise.all([
+    docMatHang(k.client), docGiaTriThuHoi(k.client), docDinhNghia(k.client, 'mat_hang'), docBangU(k.client),
   ]);
 } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
 
@@ -201,6 +204,7 @@ const tuDb = (m: MatHang): GiaTriFormMatHang => ({
   kho_toi_thieu_kg: oKg(m.kho_toi_thieu_kg),
   kho_toi_da_kg: oKg(m.kho_toi_da_kg),
   ma_misa: m.ma_misa ?? '',
+  theo_tang: !!m.theo_tang, bang_u: chuBangU(bangU.get(m.id) ?? []),
   thu_tu: String(m.thu_tu), dang_dung: m.dang_dung, truong_them: m.truong_them ?? {},
   gia_tri_thu_hoi_kg: oTien(thuHoi.get(m.id)),
 });
@@ -213,6 +217,7 @@ const tuForm = (f: FormData, id?: string): GiaTriFormMatHang => {
     canh_bao_truoc_ngay: g('canh_bao_truoc_ngay'), gia_ban_kg: g('gia_ban_kg'), xu_ly_mac_dinh: g('xu_ly_mac_dinh'),
     ma_can: g('ma_can'), ton_toi_thieu_kg: g('ton_toi_thieu_kg'), noi_de_sau_pha: g('noi_de_sau_pha') === 'quay' ? 'quay' : '',
     kho_toi_thieu_kg: g('kho_toi_thieu_kg'), kho_toi_da_kg: g('kho_toi_da_kg'), ma_misa: g('ma_misa'),
+    theo_tang: g('theo_tang') === 'co', bang_u: g('bang_u'),
     thu_tu: g('thu_tu'),
     dang_dung: g('dang_dung') !== 'khong', truong_them: tt, gia_tri_thu_hoi_kg: g('gia_tri_thu_hoi_kg'),
   };
@@ -381,7 +386,7 @@ const coXemGia = k.duoc('xem_gia');
           {ds.map(m => (
             <tr style={m.dang_dung ? '' : 'opacity:.5'}>
               <td><strong>{m.ten}</strong><br /><span class="kho-phu">{m.ma}{m.nhom ? ` · ${m.nhom}` : ''}{m.ten_phu ? ` · ${m.ten_phu}` : ''}{!m.dang_dung ? t.ngungDungNho : ''}</span></td>
-              <td>{nhanKho(TEN_LOAI_MAT_HANG_NB, m.loai, nn)}</td>
+              <td>{nhanKho(TEN_LOAI_MAT_HANG_NB, m.loai, nn)}{m.theo_tang && <><br /><span class="kho-phu" title={moTaBangU(bangU.get(m.id) ?? [], nn)}>{t.theoTangNho}</span></>}</td>
               <td class="so">{m.gia_ban_kg !== null ? dinhDangTien(m.gia_ban_kg, nn) : (m.loai === 'phan_cat' ? <span class="kho-han sap_het">{t.chuaCoGia}</span> : '—')}</td>
               <td class="so">{m.han_dung_ngay ? t.soNgay(m.han_dung_ngay) : '—'}</td>
               <td>{m.ma_can ?? '—'}</td>

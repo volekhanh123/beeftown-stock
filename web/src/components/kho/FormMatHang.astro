@@ -66,6 +66,14 @@ const t = dichNB(nnCua(Astro), {
   thuHoiGoiY: { vi: 'Phụ phẩm dùng lại được tính giá trị này, trừ vào giá vốn phần thịt. 0 = không tính.',
                 en: 'Reusable by-products are valued at this, taken off the cost of the meat. 0 = not counted.' },
   thuTu: { vi: 'Thứ tự', en: 'Order' },
+  theoTang: { vi: 'Theo dõi theo tảng', en: 'Track each primal' },
+  theoTangGoiY: { vi: 'Chỉ với Tảng nhập. Mỗi tảng nhận vào là một lô riêng: cân riêng, ghi ngày mổ, có số tảng in trên tem.',
+                  en: 'Primals only. Each primal received becomes its own lot: weighed on its own, with its slaughter date and a primal number printed on the label.' },
+  theoTangCo: { vi: 'Có — mỗi tảng một lô', en: 'Yes — one lot per primal' },
+  theoTangKhong: { vi: 'Không', en: 'No' },
+  bangU: { vi: 'Bảng ủ (tuổi thịt lúc nhận : số ngày ủ)', en: 'Aging table (age when received : aging days)' },
+  bangUGoiY: { vi: 'Ví dụ "5:18, 10:14, 10": mổ ≤ 5 ngày thì ủ 18 ngày, ≤ 10 ngày ủ 14, còn lại ủ 10. Trống = không tính ngày ủ.',
+               en: 'For example "5:18, 10:14, 10": slaughtered ≤ 5 days ago → age 18 days, ≤ 10 → 14, otherwise 10. Empty = no aging date.' },
   tinhTrang: { vi: 'Tình trạng', en: 'Status' },
   dangDung: { vi: 'Đang dùng', en: 'In use' },
   ngungDung: { vi: 'Ngừng dùng', en: 'No longer used' },
@@ -161,6 +169,18 @@ const t = dichNB(nnCua(Astro), {
         <option value="co" selected={gt.dang_dung}>{t.dangDung}</option>
         <option value="khong" selected={!gt.dang_dung}>{t.ngungDung}</option>
       </select></label>
+  </div>
+
+  <div class="kho-luoi">
+    <label class="nb-o"><span>{t.theoTang}</span>
+      <small>{t.theoTangGoiY}</small>
+      <select name="theo_tang">
+        <option value="khong" selected={!gt.theo_tang}>{t.theoTangKhong}</option>
+        <option value="co" selected={!!gt.theo_tang}>{t.theoTangCo}</option>
+      </select></label>
+    <label class="nb-o"><span>{t.bangU}</span>
+      <small>{t.bangUGoiY}</small>
+      <input type="text" name="bang_u" maxlength="120" value={gt.bang_u ?? ''} placeholder="5:18, 10:14, 10" /></label>
   </div>
 
   <TruongThem dinhNghia={dinhNghia} giaTri={gt.truong_them} />

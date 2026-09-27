@@ -36,6 +36,7 @@ import {
   cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, homNayVn, kqHai, trangThaiKho, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { hienThiGiaTri, type DinhNghiaTruong, type GiaTriTruong } from '../../../../lib/kho/truong-them.ts';
+import { soTangChu } from '../../../../lib/kho/tang.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -118,6 +119,13 @@ const t = dichNB(nn, {
     en: (dv: string | undefined) => `Number of ${dv ?? 'pieces / packs'}`,
   },
   viDuGoi: { vi: 'ví dụ 2', en: 'e.g. 2' },
+  ngayMo: { vi: 'Ngày mổ (món theo dõi theo tảng)', en: 'Slaughter date (items tracked per primal)' },
+  ngayMoGoiY: {
+    vi: 'Xem trên nhãn thùng. Món theo tảng: mỗi lần thêm là MỘT tảng — cân riêng từng tảng, bỏ trống ô số tảng.',
+    en: 'See the box label. Items tracked per primal: each line is ONE primal — weigh each primal on its own, leave the count empty.',
+  },
+  motTang: { vi: '1 tảng', en: '1 primal' },
+  moNgay: { vi: (ngay: string) => `mổ ${ngay}`, en: (ngay: string) => `slaughtered ${ngay}` },
   themChiTiet: { vi: 'Thêm chi tiết: hạn dùng, ngày sản xuất, số lô', en: 'More details: use-by date, production date, lot no.' },
   thongTinKhac: { vi: ', thông tin khác', en: ', other info' },
   hanDung: { vi: 'Hạn dùng', en: 'Use-by date' },
@@ -165,7 +173,9 @@ if (!phieu && !loiDoc) {
 
 const soanDuoc = !!phieu && (phieu.trang_thai === 'nhap' || phieu.trang_thai === 'tu_choi');
 const laNguoiTao = !!phieu?.nguoi_tao && phieu.nguoi_tao === k.nhanSu.id;
-const mon = new Map<string, MonKiem>(matHang.map(m => [m.id, { ten: m.ten, dem_goi: m.dem_goi, don_vi_goi: m.don_vi_goi }]));
+const mon = new Map<string, MonKiem>(matHang.map(m => [m.id, { ten: m.ten, dem_goi: m.dem_goi, don_vi_goi: m.don_vi_goi, theo_tang: !!m.theo_tang }]));
+// 0046: có món theo dõi theo tảng thì form thêm dòng có ô ngày mổ.
+const coTheoTang = matHang.some(m => m.theo_tang && m.dang_dung);
 
 // ---------------------------------------------------------------------------
 // Xử lý lệnh gửi lên
@@ -218,6 +228,12 @@ if (form && phieu) {
       bao = kq; dongForm = r.dong; suaId = dongId;
     } else {
       const kq = await themDongNhan(k.client, cn.id, p, phienBan, maGui, r.luu);
+      // Món theo tảng: điền sẵn món và ngày mổ cho tảng tiếp theo (tảng cùng thùng hay cùng ngày mổ).
+      if (kq.ok && mon.get(r.luu.mat_hang_id)?.theo_tang) {
+        return ve(kqHai(true, { vi: 'Đã thêm tảng. Cân tảng tiếp theo, hoặc bấm "Xong, xem lại".',
+                                en: 'Primal added. Weigh the next primal, or press "Done, review".' }),
+                  `?tiep=${r.luu.mat_hang_id}&mo=${r.luu.ngay_mo ?? ''}#them`);
+      }
       if (kq.ok) return ve(kq, '#them');
       bao = kq; dongForm = r.dong;
     }
@@ -264,7 +280,11 @@ const man: 'them' | 'gui' | 'xong' | 'xem' = !phieu ? 'xem'
   : buocUrl === 'xong' && phieu.trang_thai === 'cho_duyet' ? 'xong' : 'xem';
 
 const dongSua = soanDuoc && suaId ? phieu?.dong.find(d => d.id === suaId) ?? null : null;
-const dongHien: DongNhanForm = dongForm ?? (dongSua ? dongNhanVaoForm(dongSua) : dongNhanTrong());
+const tiep = Astro.url.searchParams.get('tiep') ?? '';
+const tiepMo = Astro.url.searchParams.get('mo') ?? '';
+const dongHien: DongNhanForm = dongForm ?? (dongSua ? dongNhanVaoForm(dongSua)
+  : mon.get(tiep)?.theo_tang ? { ...dongNhanTrong(), mat_hang_id: tiep, ngay_mo: /^\d{4}-\d{2}-\d{2}$/.test(tiepMo) ? tiepMo : '' }
+  : dongNhanTrong());
 
 // Món hay giao: món đã có trên phiếu này trước, rồi món của vài phiếu gần nhất cùng nhà cung cấp.
 let monNut: MatHang[] = [];
@@ -438,7 +458,8 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
                 <span class="nh-so">{i + 1}</span>
                 <strong class="nh-ten">{d.ten_mat_hang}</strong>
               </div>
-              <p class="nh-kg"><b>{dinhDangKg(d.so_kg, nn)} kg</b>{d.so_goi > 0 && <> · {soGoiChu(d.so_goi, d.don_vi_goi)}</>}
+              <p class="nh-kg"><b>{dinhDangKg(d.so_kg, nn)} kg</b>{d.theo_tang ? <> · {t.motTang}{d.so_tang ? ` ${soTangChu(d.so_tang)}` : ''}</> : d.so_goi > 0 && <> · {soGoiChu(d.so_goi, d.don_vi_goi)}</>}
+                {d.ngay_mo && <> · {t.moNgay(dinhDangNgay(d.ngay_mo))}</>}
                 {donDat && <span class="nh-dat">{chuDat(d.mat_hang_id, d.don_vi_goi) ?? t.ngoaiDon}</span>}</p>
               {(d.han_dung || d.so_lo_ncc || tomTatTruong(d.truong_them)) && (
                 <p class="kho-phu nh-chi-tiet">
@@ -492,6 +513,12 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
           <label class="nb-o"><span>{t.soDonVi(monDangChon?.don_vi_goi)}</span>
             <input type="text" inputmode="numeric" name="so_goi" value={dongHien.so_goi} placeholder={t.viDuGoi} class="nh-o-lon" /></label>
         </div>
+
+        {coTheoTang && (
+          <label class="nb-o"><span>{t.ngayMo}</span>
+            <small>{t.ngayMoGoiY}</small>
+            <input type="date" name="ngay_mo" value={dongHien.ngay_mo} /></label>
+        )}
 
         <TruongThem dinhNghia={dnLo.filter(x => x.bat_buoc)} giaTri={dongHien.truong_them} dong={0} />
 

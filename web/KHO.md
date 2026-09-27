@@ -768,6 +768,26 @@ Test: `test-kho-sua-nhanh.mjs` (database), `test-kho-sua-nhanh-web.mjs` (hàm th
 form → `kho_sua_nhanh_mat_hang` trên PGlite; báo cáo theo quyền; mã nguồn trang), `test-kho-giao-dien.mjs` nhóm 16
 (trang quyền phủ đủ việc, thẻ báo cáo ẩn theo quyền = dòng chặn trang, CSV có nhánh).
 
+## 3o. Theo dõi theo tảng · bảng ủ (truy vết tảng GĐ1, migration 0046)
+
+Thịt ủ (ribeye, striploin…) phải truy tới **từng tảng**: mỗi tảng có ngày mổ riêng → số ngày ủ, hạn
+dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Chỉ với món bật `kho_mat_hang.theo_tang`
+(Thiết lập → Mặt hàng, món loại Tảng) — món khác không đổi gì.
+
+- **Nhận hàng**: mỗi dòng là **một tảng** (`so_goi = 1`), cân riêng, có `ngay_mo`. Vẫn giữ luật
+  "một dòng phiếu nhập = một lô", nên duyệt, huỷ, trả NCC, công nợ, kiểm kê không phải sửa. Thêm một tảng
+  xong, form điền sẵn món và ngày mổ cho tảng sau (`?tiep=&mo=`).
+- **Duyệt**: lô tảng mang `so_tang` (tăng dần theo chi nhánh, bộ đếm `kho_so_thu_tu` loại `T`, hiện
+  "#0142"), `ngay_mo`, `ngay_u_xong = ngày nhận + kho_so_ngay_u(món, ngày nhận − ngày mổ)`. Phiếu mua có
+  dòng tảng chưa tách / thiếu ngày mổ (ví dụ tạo từ đơn đặt hàng) thì chưa duyệt được.
+- **Bảng ủ** `kho_bang_u` (dùng chung toàn thương hiệu, sửa bằng quyền danh mục): gõ dạng
+  `5:18, 10:14, 10` ở form mặt hàng (`docChuBangU` / `chuBangU` trong `lib/kho/tang.ts`; `soNgayU` cùng
+  luật với `kho_so_ngay_u`, test so từng tuổi).
+- **Màn Tảng · ủ** (`/noi-bo/kho/tang`, view `kho_v_tang`): tảng còn tồn — sẵn sàng lóc / đang ủ còn
+  mấy ngày / chưa có bảng ủ. Không có tiền.
+- Tiếp theo (kế hoạch): ô mã xoay vòng khi lóc một tảng (0047), bán qua iPOS trừ đúng tảng (0048),
+  màn truy vết và huỷ cả tảng.
+
 ## 4. Cài như app (PWA)
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng
