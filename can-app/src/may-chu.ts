@@ -10,10 +10,18 @@ import * as path from 'node:path';
 import { exec } from 'node:child_process';
 import GIAO_DIEN from './giao-dien.html' with { type: 'text' };
 import { UngDung, cauLoi } from './nghiep-vu.ts';
+import type { ThayDoiTem } from './tem.ts';
 
 const json = (v: unknown, status = 200) =>
   new Response(JSON.stringify(v), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 const loi = (e: unknown) => json({ ok: false, loi: cauLoi(e) }, 200);
+/** Thay đổi tem từ trang: chỉ nhận đúng dạng, bỏ phần thừa. */
+function thayDoiTem(b: Record<string, unknown>): ThayDoiTem {
+  const chuoi = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
+  const chu: Record<string, string> = {};
+  if (b.chu && typeof b.chu === 'object') for (const [k, v] of Object.entries(b.chu)) if (typeof v === 'string') chu[k] = v;
+  return { chu, tat: chuoi(b.tat), bat: chuoi(b.bat) };
+}
 const docThan = async (req: Request) => { try { return await req.json() as Record<string, unknown>; } catch { return {}; } };
 
 export function moMayChu(ud: UngDung, tuy: {
@@ -89,6 +97,10 @@ export function moMayChu(ud: UngDung, tuy: {
               'Content-Type': 'application/octet-stream', 'Content-Disposition': 'attachment; filename="A_000.TMS"', 'Cache-Control': 'no-store',
             } });
           }
+          case '/api/hang': return json({ ok: true, ...(await ud.tatCaHang()) });
+          case '/api/tem': return json({ ok: true, ...ud.tem() });
+          case '/api/tem/gui': return json({ ok: true, ...(await ud.guiTem(thayDoiTem(await docThan(req)))) });
+          case '/api/tem/usb': return json({ ok: true, ...ud.taoFileUsbTem(thayDoiTem(await docThan(req))) });
           case '/api/da-nap-usb': return json({ ok: true, ...ud.daNapUsb() });
           case '/api/thu-can': return json({ ok: true, thongCan: await ud.thuCan() });
           case '/api/mo-thu-muc': {

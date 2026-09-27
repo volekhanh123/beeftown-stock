@@ -1,6 +1,9 @@
 /**
  * BEEFTOWN CÂN — PHẦN VIỆC (không có giao diện, kiểm thử bằng test/thu.ts)
  *
+ * Ba việc: gửi danh mục kho xuống cân · xem tất cả hàng trên cân (tatCaHang)
+ * · chỉnh mẫu tem (tem, guiTem, taoFileUsbTem — cách đọc tem ở tem.ts).
+ *
  * Nối thẳng kho Beeftown với cân in tem TM-A qua WiFi:
  *   kho (Supabase, đăng nhập bằng tài khoản quản lý)
  *     → danh mục mặt hàng (mã cân, tên, giá bán/kg)
@@ -17,6 +20,7 @@
  *                 của cân (mẫu tem, mã vạch...) được giữ nguyên từ file này.
  *   tren-can.tsv  các dòng PLU đang nằm trên cân, kể cả dòng đã bỏ khỏi kho
  *                 mà WiFi không xoá được → hiện thành "còn nằm trên cân".
+ *   tem-da-tat.json  các ô đã tắt trên mẫu tem, để bật lại được (xem tem.ts).
  *
  * File .TMS có tên và mật khẩu WiFi của quán: chỉ ghi trên máy này và gửi tới
  * cân, không gửi lên kho hay đi đâu khác.
@@ -28,9 +32,10 @@ import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
-  docFileCan, ghiFileCan, lapKeHoach, soChuSoMa, LoiFileCan,
-  type DongKeHoach, type FileCan, type HangKho, type LoaiDong,
+  docFileCan, ghiFileCan, giaTuFile, lapKeHoach, soChuSoMa, LoiFileCan,
+  type DongKeHoach, type FileCan, type HangKho, type KeHoach, type LoaiDong,
 } from '../../web/src/lib/kho/can-tma.ts';
+import { LoiTem, phimTat, suaTem, xemTem, type DaTat, type TemXem, type ThayDoiTem } from './tem.ts';
 import { docCaiDat, docMatHang } from '../../web/src/lib/kho/danh-muc.ts';
 import { QUYEN_KHO } from '../../web/src/lib/kho/chung.ts';
 
@@ -165,6 +170,32 @@ export interface XemTruoc {
   phienBanCan: string;
 }
 
+/** Một dòng ở thẻ "Tất cả hàng": hàng trên cân, đối chiếu với kho. */
+export type TinhTrangHang =
+  | 'khop'        // trên cân, đúng như kho
+  | 'lech'        // trên cân, tên/giá khác kho (hoặc kho thiếu giá nên để nguyên)
+  | 'ngoai_kho'   // trên cân, kho không có
+  | 'con_lai'     // đã bỏ khỏi file nhưng WiFi không xoá được — vẫn nằm trên cân
+  | 'chua_len'    // kho có, chưa lên cân
+  | 'khong_len'   // kho có nhưng thiếu giá / mã quá dài — không đưa lên được
+  | 'tren_can';   // chưa đăng nhập kho nên chưa đối chiếu
+export interface HangXem {
+  so: number | null;
+  phim: string | null;
+  maCan: string;
+  maFabi: string;          // mã hàng 5 số trong mã vạch — khớp "mã vạch" của món trên FABi
+  ten: string;
+  gia: number | null;
+  theoGoi: boolean;
+  tinhTrang: TinhTrangHang;
+  tenKho?: string;
+  giaKho?: number | null;
+  ghiChu?: string;
+}
+export interface TatCaHang { hang: HangXem[]; coKho: boolean; loiKho: string | null }
+
+const KHONG_DOI: KeHoach = { dong: [], dem: { them: 0, sua: 0, giu: 0, xoa: 0, ngoai_kho: 0, bo_qua: 0 }, coThayDoi: false };
+
 // -----------------------------------------------------------------------------
 // ỨNG DỤNG
 // -----------------------------------------------------------------------------
@@ -175,6 +206,8 @@ export class UngDung {
   readonly fileTrenCan: string;
   readonly thuMucDaGui: string;
   readonly fileChoUsb: string;
+  readonly fileDaTat: string;
+  readonly fileDaTatChoUsb: string;
   private client: SupabaseClient | null = null;
 
   constructor(
@@ -193,6 +226,8 @@ export class UngDung {
     this.fileTrenCan = path.join(dd.duLieu, 'tren-can.tsv');
     this.thuMucDaGui = path.join(dd.duLieu, 'da-gui');
     this.fileChoUsb = path.join(dd.duLieu, 'cho-usb', 'A_000.TMS');
+    this.fileDaTat = path.join(dd.duLieu, 'tem-da-tat.json');
+    this.fileDaTatChoUsb = path.join(dd.duLieu, 'cho-usb', 'tem-da-tat.json');
   }
 
   // ---- cấu hình --------------------------------------------------------------
@@ -343,9 +378,13 @@ export class UngDung {
   }
 
   // ---- xem trước, gửi --------------------------------------------------------
-  private async dung(giuHangNgoaiKho: boolean) {
+  private docGoc(): Uint8Array {
     if (!this.coFileGoc()) throw new LoiCan('Chưa có file gốc của cân. Làm bước "Bắt đầu" trước.');
-    const goc = docFileCan(new Uint8Array(fs.readFileSync(this.fileGoc)));
+    return new Uint8Array(fs.readFileSync(this.fileGoc));
+  }
+
+  private async dung(giuHangNgoaiKho: boolean) {
+    const goc = docFileCan(this.docGoc());
     const dm = await this.layDanhMuc();
     const tuy = { giuHangNgoaiKho, giuGioCan: true, soChuSoMa: soChuSoMa(dm.mauMaVach) };
     const kh = lapKeHoach(goc, dm.matHang, tuy, 'vi');
@@ -383,14 +422,98 @@ export class UngDung {
     const { du, moi } = await this.dung(giuHangNgoaiKho);
     fs.mkdirSync(path.dirname(this.fileChoUsb), { recursive: true });
     fs.writeFileSync(this.fileChoUsb, du);
+    fs.rmSync(this.fileDaTatChoUsb, { force: true });
     return { duongDan: this.fileChoUsb, soHang: moi.plu.length };
+  }
+
+  // ---- tất cả hàng -------------------------------------------------------------
+  /** Mọi hàng trên cân (theo file gốc và tren-can.tsv), đối chiếu kho nếu đã đăng nhập. */
+  async tatCaHang(): Promise<TatCaHang> {
+    const goc = docFileCan(this.docGoc());
+    const phim = phimTat(goc);
+    let dm: DanhMucKho | null = null, loiKho: string | null = null;
+    try { dm = await this.layDanhMuc(); } catch (e) { loiKho = cauLoi(e); }
+    const soChuSo = soChuSoMa(dm?.mauMaVach);
+    const fabi = (ma: string) => (ma ? ma.padStart(soChuSo, '0') : '');
+    const hang: HangXem[] = [];
+    const theoGoi = new Map(goc.plu.map(p => [p.so, p.cachBan === '2']));
+
+    if (dm) {
+      const kh = lapKeHoach(goc, dm.matHang, { giuHangNgoaiKho: false, giuGioCan: true, soChuSoMa: soChuSo }, 'vi');
+      for (const d of kh.dong) {
+        const base = { phim: d.so !== null && d.goc ? phim.get(d.so) ?? null : null, maCan: d.maCan, maFabi: fabi(d.maCan) };
+        if (d.loai === 'them') hang.push({ ...base, so: null, ten: d.ten, gia: d.gia, theoGoi: false, tinhTrang: 'chua_len', tenKho: d.ten, giaKho: d.gia });
+        else if (d.loai === 'bo_qua') hang.push({ ...base, so: null, ten: d.ten, gia: d.gia, theoGoi: false, tinhTrang: 'khong_len', ghiChu: d.lyDo });
+        else if (d.loai === 'xoa') hang.push({ ...base, so: d.so, ten: d.ten, gia: d.gia, theoGoi: theoGoi.get(d.so!) ?? false, tinhTrang: 'ngoai_kho', ghiChu: d.lyDo });
+        else if (d.loai === 'sua') {
+          hang.push({ ...base, so: d.so, ten: d.tenCu ?? d.ten, gia: d.giaCu ?? null, theoGoi: theoGoi.get(d.so!) ?? false, tinhTrang: 'lech',
+            tenKho: d.ten, giaKho: d.gia });
+        } else {
+          hang.push({ ...base, so: d.so, ten: d.ten, gia: d.gia, theoGoi: theoGoi.get(d.so!) ?? false,
+            tinhTrang: d.lyDo ? 'lech' : 'khop', ghiChu: d.lyDo });
+        }
+      }
+    } else {
+      for (const p of goc.plu) {
+        hang.push({ so: p.so, phim: phim.get(p.so) ?? null, maCan: p.ma, maFabi: fabi(p.ma), ten: p.ten, gia: p.gia,
+          theoGoi: p.cachBan === '2', tinhTrang: 'tren_can' });
+      }
+    }
+
+    const trongFile = new Set(goc.plu.map(p => p.so));
+    for (const h of this.docTrenCan().values()) {
+      if (trongFile.has(h.so)) continue;
+      hang.push({ so: h.so, phim: null, maCan: h.ma, maFabi: fabi(h.ma), ten: h.ten, gia: giaTuFile(h.gia, goc.soLeGia),
+        theoGoi: false, tinhTrang: 'con_lai', ghiChu: 'Đã bỏ khỏi danh sách nhưng gửi qua WiFi không xoá được — nạp USB để xoá hẳn.' });
+    }
+    hang.sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity) || Number(a.maCan) - Number(b.maCan));
+    return { hang, coKho: dm !== null, loiKho };
+  }
+
+  // ---- mẫu tem -----------------------------------------------------------------
+  private docDaTat(): DaTat { return docJson<DaTat>(this.fileDaTat, {}); }
+
+  /** Mẫu tem cân đang dùng, và một hàng trên cân để vẽ tem mẫu. */
+  tem(): { tem: TemXem | null; hangMau: { so: number; ten: string; gia: number | null; theoGoi: boolean } | null } {
+    const goc = docFileCan(this.docGoc());
+    const p = goc.plu.filter(x => x.ten).sort((a, b) => a.so - b.so)[0];
+    return { tem: xemTem(goc, this.docDaTat()), hangMau: p ? { so: p.so, ten: p.ten, gia: p.gia, theoGoi: p.cachBan === '2' } : null };
+  }
+
+  /** File để gửi: file gốc với tem đã sửa, bỏ phần giờ. PLU giữ nguyên. */
+  private dungTem(thay: ThayDoiTem): { du: Uint8Array; daTat: DaTat } {
+    let kq;
+    try { kq = suaTem(this.docGoc(), this.docDaTat(), thay); }
+    catch (e) { if (e instanceof LoiTem) throw new LoiCan(e.message); throw e; }
+    if (!kq.coDoi) throw new LoiCan('Tem chưa có gì thay đổi.');
+    return { du: ghiFileCan(docFileCan(kq.du), KHONG_DOI, { giuGioCan: true }), daTat: kq.daTat };
+  }
+
+  async guiTem(thay: ThayDoiTem): Promise<{ ok: true }> {
+    const { du, daTat } = this.dungTem(thay);
+    const ch = this.cauHinh();
+    await (this.phu.gui ?? guiTcp)(ch.ipCan, ch.congCan, du);
+    this.luuGoc(du);
+    ghiJson(this.fileDaTat, daTat);
+    return { ok: true };
+  }
+
+  taoFileUsbTem(thay: ThayDoiTem): { duongDan: string; soHang: number } {
+    const { du, daTat } = this.dungTem(thay);
+    fs.mkdirSync(path.dirname(this.fileChoUsb), { recursive: true });
+    fs.writeFileSync(this.fileChoUsb, du);
+    ghiJson(this.fileDaTatChoUsb, daTat);
+    return { duongDan: this.fileChoUsb, soHang: docFileCan(du).plu.length };
   }
 
   /** Đã nạp file cho-usb vào cân bằng USB → cân có đúng file đó. */
   daNapUsb(): { soHang: number } {
     if (!fs.existsSync(this.fileChoUsb)) throw new LoiCan('Chưa có file nạp USB. Bấm "Lưu file để nạp USB" trước.');
     const kq = this.ghiNhanFileTuCan(new Uint8Array(fs.readFileSync(this.fileChoUsb)));
+    // File USB làm từ thẻ Tem: giờ cân mới thật sự có tem đó.
+    if (fs.existsSync(this.fileDaTatChoUsb)) ghiJson(this.fileDaTat, docJson<DaTat>(this.fileDaTatChoUsb, {}));
     fs.rmSync(this.fileChoUsb, { force: true });
+    fs.rmSync(this.fileDaTatChoUsb, { force: true });
     return { soHang: kq.soHang };
   }
 
@@ -402,7 +525,7 @@ export class UngDung {
 
 /** Câu lỗi cho người dùng — lỗi lạ thì nói chung chung, không lộ chi tiết kỹ thuật. */
 export function cauLoi(e: unknown): string {
-  if (e instanceof LoiCan || e instanceof LoiFileCan) return e.message;
+  if (e instanceof LoiCan || e instanceof LoiFileCan || e instanceof LoiTem) return e.message;
   const m = e instanceof Error ? e.message : String(e);
   if (/fetch|network|ENOTFOUND|ECONNREFUSED|timed? ?out/i.test(m)) return 'Mất kết nối mạng. Kiểm tra internet rồi thử lại.';
   if (/JWT|refresh|session/i.test(m)) return 'Phiên đăng nhập đã hết. Đăng nhập lại.';

@@ -12,7 +12,7 @@ import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { UngDung, guiTcp, thuKetNoi, type DanhMucKho } from '../src/nghiep-vu.ts';
+import { LoiCan, UngDung, guiTcp, thuKetNoi, type DanhMucKho } from '../src/nghiep-vu.ts';
 import { docFileCan } from '../../web/src/lib/kho/can-tma.ts';
 import type { HangKho } from '../../web/src/lib/kho/can-tma.ts';
 
@@ -25,9 +25,19 @@ const ok = (ten: string, dieuKien: boolean, chiTiet = '') => {
 const KHUON = 'PLU\t{1}\t{2}\t\t{4}\t{5}\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t9\t{15}\t\t\t\t\t\t\t\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t0\t{64}\t0\t0\t0\t';
 const plu = (so: number, ma: string, gia: string, ten: string) => KHUON.replace('{1}', String(so)).replace('{2}', ma)
   .replace('{4}', '1').replace('{5}', gia).replace('{15}', ten).replace('{64}', 'x');
+// Mẫu tem 58×40 mm như trên cân của quán: dòng LAB, 14 ô LAS, LAE.
+const LAS = [
+  [1,0,0,1,0,0,408,43,5],[1,0,6,1,408,1,54,34,5],[3,3,0,1,281,52,152,26,4],[3,1,0,2,6,55,115,26,5],
+  [3,0,0,1,137,56,107,26,5],[1,0,1,1,4,90,116,26,5],[1,0,4,1,131,90,111,25,0],[2,27,0,1,260,108,204,35,5],
+  [0,0,0,1,3,120,257,74,0],[3,4,0,1,2,198,112,21,5],[2,3,0,1,121,198,156,20,5],[1,0,15,1,114,220,200,26,0],
+  [3,16,0,1,1,224,94,23,0],[3,12,0,1,220,255,220,50,0],
+].map(([loai, chu, du, dk, x, y, w, h, co]) => `LAS\t29\t${loai}\t${chu}\t${du}\t${dk}\t0\t${co}\t1\t${x}\t${y}\t${w}\t${h}\t`);
+const MAU_TEM = ['LAB\t28\tBEEFTOWN\t1\t58\t40\tĐơn giá\tTrọng Lượng\t\tThành Tiền\tNgày đóng gói\t\t\t\t\t\t\t\tBEEFTOWN\t\t\t\t1\tHSD\t', ...LAS, 'LAE\t'];
+
 function fileCan(dong: string[]): Uint8Array {
   const L = ['ECS\tVER\tV3.14E8\t', '', 'DWL\tPLU\t', ...dong, 'END\tPLU\t', '',
-    'DWL\tLAB\t', 'LAB\t28\tBEEFTOWN\t1\t58\t40\t', 'END\tLAB\t', '',
+    'DWL\tLAB\t', ...MAU_TEM, 'END\tLAB\t', '',
+    'DWL\tSCP\t', 'SCP\t0\t1\t1\t', 'SCP\t0\t2\t2\t', 'SCP\t0\t3\t3\t', 'END\tSCP\t', '',
     'DWL\tTMS\t', 'TMS\t0\t28\t', 'TMS\t202\t3\t', 'END\tTMS\t', '',
     'DWL\tTIM\t', 'TIM\t26\t9\t25\t16\t54\t12\t', 'END\tTIM\t', '', 'END\tECS\t', ''];
   const u = new TextEncoder().encode(L.join('\r\n'));
@@ -114,6 +124,28 @@ ok('Cân giả (chỉ thêm/sửa) đúng là vẫn còn PLU 3', trenCanGia.has(
 const x3 = await ud.xemTruoc();
 ok('Lần xem sau vẫn nhớ hàng còn nằm lại (dù file gốc không còn nó)', x3.conLai.length === 1 && x3.conLai[0].so === 3, JSON.stringify(x3.conLai));
 
+console.log('4b · Tất cả hàng (SKU)');
+const dmCu = danhMuc;
+danhMuc = { ...danhMuc, matHang: [
+  ...danhMuc.matHang.map(h => (h.ma === 'LOI-VAI' ? { ...h, gia_ban_kg: 860000 } : h)),
+  hang('BA-CHI', '10005', 'Ba chỉ bò cuộn', 516000), hang('NAM-BO', '10006', 'Nạm bò', null),
+] };
+const tc1 = await ud.tatCaHang();
+const theoMa = (ma: string) => tc1.hang.find(h => h.maCan === ma);
+ok('Đối chiếu được với kho', tc1.coKho && tc1.loiKho === null);
+ok('Lõi vai: trên cân, giá khác kho (850.000 ≠ 860.000)', theoMa('10001')?.tinhTrang === 'lech' && theoMa('10001')?.gia === 850000 && theoMa('10001')?.giaKho === 860000, JSON.stringify(theoMa('10001')));
+ok('Thăn lưng: khớp kho, PLU 2, phím B', theoMa('10004')?.tinhTrang === 'khop' && theoMa('10004')?.so === 2 && theoMa('10004')?.phim === 'B', JSON.stringify(theoMa('10004')));
+ok('Gầu bò: còn nằm lại trên cân (PLU 3)', theoMa('10003')?.tinhTrang === 'con_lai' && theoMa('10003')?.so === 3 && theoMa('10003')?.gia === 695000, JSON.stringify(theoMa('10003')));
+ok('Ba chỉ: kho có, chưa lên cân', theoMa('10005')?.tinhTrang === 'chua_len' && theoMa('10005')?.so === null);
+ok('Nạm bò: không lên được, có lý do', theoMa('10006')?.tinhTrang === 'khong_len' && /giá/.test(theoMa('10006')?.ghiChu ?? ''));
+ok('Mã FABi đủ 5 số', tc1.hang.every(h => /^\d{5}$/.test(h.maFabi)), tc1.hang.map(h => h.maFabi).join());
+ok('Xếp theo số PLU, hàng chưa lên cân ở cuối', tc1.hang.map(h => h.so ?? 99).join() === '1,2,3,99,99', tc1.hang.map(h => h.so).join());
+const udKhongKho = new UngDung(dd, { danhMuc: async () => { throw new LoiCan('Chưa đăng nhập kho.'); } });
+const tc2 = await udKhongKho.tatCaHang();
+ok('Chưa đăng nhập kho: vẫn xem được hàng trên cân', !tc2.coKho && /Chưa đăng nhập/.test(tc2.loiKho ?? '')
+  && tc2.hang.filter(h => h.tinhTrang === 'tren_can').length === 2 && tc2.hang.some(h => h.tinhTrang === 'con_lai'), JSON.stringify(tc2));
+danhMuc = dmCu;
+
 console.log('5 · Nạp USB để xoá');
 let loiUsb = '';
 try { ud.daNapUsb(); } catch (e) { loiUsb = (e as Error).message; }
@@ -123,6 +155,52 @@ ok('Lưu file USB: 2 hàng', u.soHang === 2 && fs.existsSync(u.duongDan));
 ud.daNapUsb();
 ok('Sau khi nạp USB: trên cân còn 2 hàng, hết hàng nằm lại', ud.docTrenCan().size === 2 && (await ud.xemTruoc()).conLai.length === 0);
 ok('File USB đã dọn', !fs.existsSync(ud.fileChoUsb));
+
+// =============================================================================
+console.log('5b · Mẫu tem');
+const t0 = ud.tem();
+ok('Đọc mẫu tem 28 "BEEFTOWN" 58×40, 14 ô đang in', t0.tem?.id === '28' && t0.tem.ten === 'BEEFTOWN' && t0.tem.rong === 58 && t0.tem.o.length === 14 && t0.tem.o.every(o => o.bat), JSON.stringify(t0.tem?.o.length));
+ok('Chữ cố định đọc đúng (Đơn giá, HSD, BEEFTOWN)', t0.tem?.chu[6] === 'Đơn giá' && t0.tem.chu[23] === 'HSD' && t0.tem.chu[18] === 'BEEFTOWN', JSON.stringify(t0.tem?.chu));
+ok('Gọi tên ô: mã vạch, thành tiền, hạn dùng', ['Mã vạch', 'Thành tiền', 'Hạn dùng', 'Tên hàng'].every(t => t0.tem?.o.some(o => o.ten === t)));
+ok('Hàng mẫu để vẽ tem là PLU 1', t0.hangMau?.so === 1 && t0.hangMau.ten === 'Lõi vai bò Mỹ');
+const khoaVach = t0.tem!.o.find(o => o.ten === 'Mã vạch')!.khoa;
+const pluTruocTem = docFileCan(new Uint8Array(fs.readFileSync(ud.fileGoc))).plu.map(p => p.tho).join('\n');
+let loiTem = '';
+try { await ud.guiTem({}); } catch (e) { loiTem = (e as Error).message; }
+ok('Chưa đổi gì mà bấm gửi → báo', /chưa có gì thay đổi/.test(loiTem), loiTem);
+try { await ud.guiTem({ tat: ['o:99'] }); loiTem = ''; } catch (e) { loiTem = (e as Error).message; }
+ok('Ô không có → báo mở lại thẻ Tem', /Mở lại thẻ Tem/.test(loiTem), loiTem);
+try { await ud.guiTem({ chu: { 23: 'x'.repeat(41) } }); loiTem = ''; } catch (e) { loiTem = (e as Error).message; }
+ok('Chữ quá 40 ký tự → báo', /dài quá 40/.test(loiTem), loiTem);
+try { await ud.guiTem({ chu: { 11: 'lạ' } }); loiTem = ''; } catch (e) { loiTem = (e as Error).message; }
+ok('Cột chữ không có trên tem → báo', /không có trên tem/.test(loiTem), loiTem);
+const soGuiTruocTem = nhan.length;
+await ud.guiTem({ chu: { 23: 'Hạn dùng' }, tat: [khoaVach] });
+const guiTem = nhan[nhan.length - 1];
+ok('Gửi tem: cân giả nhận thêm 1 lần', nhan.length === soGuiTruocTem + 1);
+const fTem = docFileCan(new Uint8Array(guiTem));
+const dongLab = fTem.dong.find(d => d.startsWith('LAB\t'))!;
+ok('Dòng LAB có chữ mới "Hạn dùng" (UTF-8), chữ khác giữ nguyên', new TextDecoder().decode(Buffer.from(dongLab, 'latin1')).split('\t')[23] === 'Hạn dùng'
+  && new TextDecoder().decode(Buffer.from(dongLab, 'latin1')).split('\t')[6] === 'Đơn giá');
+ok('Bỏ đúng ô mã vạch: còn 13 ô LAS', fTem.dong.filter(d => d.startsWith('LAS\t')).length === 13 && !fTem.dong.includes(LAS[8]));
+ok('Phần hàng (PLU) giữ nguyên từng byte', fTem.plu.map(p => p.tho).join('\n') === pluTruocTem);
+ok('Không gửi phần giờ, giữ byte không phải UTF-8', !guiTem.includes(Buffer.from('DWL\tTIM')) && guiTem[guiTem.length - 1] === 0xFF);
+ok('File gốc = bản tem vừa gửi', Buffer.compare(fs.readFileSync(ud.fileGoc), guiTem) === 0);
+const t1 = ud.tem();
+ok('Thẻ Tem: 13 ô đang in + mã vạch đã tắt (bật lại được)', t1.tem!.o.filter(o => o.bat).length === 13 && t1.tem!.o.some(o => !o.bat && o.ten === 'Mã vạch' && o.khoa === 't:0'), JSON.stringify(t1.tem!.o.filter(o => !o.bat)));
+await ud.guiTem({ bat: ['t:0'], chu: { 23: 'HSD' } });
+const fTem2 = docFileCan(new Uint8Array(nhan[nhan.length - 1]));
+ok('Bật lại mã vạch + trả chữ HSD: mẫu tem y như lúc đầu', fTem2.dong.slice(fTem2.dong.findIndex(d => d.startsWith('LAB\t')), fTem2.dong.indexOf('LAE\t') + 1).join('\n')
+  === MAU_TEM.map(d => Buffer.from(d, 'utf8').toString('latin1')).join('\n'));
+ok('Hết ô đã tắt', ud.tem().tem!.o.every(o => o.bat));
+const soGuiTruocUsb = nhan.length;
+const uTem = ud.taoFileUsbTem({ tat: [khoaVach] });
+ok('Tem qua USB: lưu file, không gửi WiFi', fs.existsSync(uTem.duongDan) && nhan.length === soGuiTruocUsb && uTem.soHang === 2);
+ok('Chưa nạp USB: thẻ Tem vẫn như cân đang có', ud.tem().tem!.o.every(o => o.bat));
+ud.daNapUsb();
+ok('Nạp USB xong: mã vạch thành ô đã tắt', ud.tem().tem!.o.filter(o => !o.bat).map(o => o.ten).join() === 'Mã vạch');
+await ud.guiTem({ bat: ['t:0'] });
+ok('Bật lại qua WiFi', ud.tem().tem!.o.length === 14 && ud.tem().tem!.o.every(o => o.bat));
 
 // =============================================================================
 console.log('6 · Kết nối cân');
@@ -160,6 +238,14 @@ const ch = await (await api('/api/cau-hinh', JSON.stringify({ ipCan: '127.0.0.1'
 ok('Lưu cài đặt cân', ch.ok);
 const fc = await (await api('/api/file-tu-can', Buffer.from(fileUsb), 'application/octet-stream')).json() as { ok: boolean; soHang: number };
 ok('Tải file từ cân lên chương trình', fc.ok && fc.soHang === 3, JSON.stringify(fc));
+const hApi = await (await api('/api/hang')).json() as { ok: boolean; hang: unknown[]; coKho: boolean };
+ok('API tất cả hàng: 3 hàng, chưa đăng nhập kho', hApi.ok && hApi.hang.length === 3 && !hApi.coKho, JSON.stringify(hApi).slice(0, 200));
+const tApi = await (await api('/api/tem')).json() as { ok: boolean; tem: { o: { khoa: string }[] } };
+ok('API mẫu tem: 14 ô', tApi.ok && tApi.tem.o.length === 14);
+const guiTemApi = await (await api('/api/tem/gui', JSON.stringify({ chu: { 23: 'Hạn dùng' }, tat: 'khong-phai-mang' }))).json() as { ok: boolean };
+ok('API gửi tem qua cân giả', guiTemApi.ok, JSON.stringify(guiTemApi));
+const tApi2 = await (await api('/api/tem')).json() as { tem: { chu: Record<string, string> } };
+ok('API mẫu tem sau khi gửi: chữ mới', tApi2.tem.chu[23] === 'Hạn dùng');
 const tc = await (await api('/api/thu-can')).json() as { thongCan: boolean };
 ok('Nút kiểm tra kết nối cân', tc.thongCan === true);
 const dong = await (await api('/api/dong')).json() as { ok: boolean };
