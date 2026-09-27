@@ -370,9 +370,23 @@ await nhom('7 · NGƯỜI GỬI: LÀM MỚI TOKEN — LƯU TOKEN MỚI TRƯỚC 
     token: { status: 400, body: { error: -14014, error_name: 'Invalid parameter', error_description: `Invalid refresh token ${REFRESH_CU}` } } });
   await chay(tuChoi);
   const ktT = tuChoi.rpc('zalo_ket_thuc_luot')[0].ts;
-  ok('Zalo từ chối refresh token, không có access token → không gửi, không ghi kết quả (tin về hàng chờ), loi_cuoi dặn dán lại',
-     tuChoi.fetch().length === 1 && tuChoi.rpc('zalo_ghi_ket_qua').length === 0 && /từ chối refresh token/.test(ktT.p_loi)
+  const kqT = tuChoi.rpc('zalo_ghi_ket_qua').map(s => s.ts);
+  ok('Zalo từ chối refresh token, không có access token → không gửi, loi_cuoi dặn dán lại',
+     tuChoi.fetch().length === 1 && /từ chối refresh token/.test(ktT.p_loi)
      && /dán lại/.test(ktT.p_loi) && !ktT.p_loi.includes(REFRESH_CU), ktT.p_loi);
+  // Hồi quy: trước đây tin bị bỏ im → zalo_ket_thuc_luot trả về hàng chờ 5 phút một lần, lan_thu + 1
+  // mỗi lượt → sau 25 phút thành that_bai "Đã thử 5 lần mà không nhận được kết quả" (sai lý do).
+  ok('Hồi quy: token hỏng → MỖI tin của lô ghi "Chưa gửi — <lý do>", hẹn thử lại 1 giờ (không bị đốt 5 lượt trong 25 phút)',
+     kqT.length === 2 && kqT.every(k => k.p_ket_qua === 'that_bai' && k.p_thu_lai_sau === 3600
+       && /^Chưa gửi — .*từ chối refresh token/.test(k.p_loi) && !k.p_loi.includes(REFRESH_CU))
+     && kqT.map(k => k.p_id).join() === 'c1,c2', JSON.stringify(kqT));
+
+  const mangTat = dungGia({ batDau: await luot([tin('c6')], { access: null }), token: new Error('fetch failed ECONNRESET') });
+  await chay(mangTat);
+  const kqM = mangTat.rpc('zalo_ghi_ket_qua').map(s => s.ts);
+  ok('Hồi quy: làm mới lỗi mạng, không có access token → tin "Chưa gửi", hẹn thử lại như lỗi tạm (300 giây)',
+     mangTat.fetch().length === 1 && kqM.length === 1 && kqM[0].p_ket_qua === 'that_bai' && kqM[0].p_thu_lai_sau === 300
+     && /^Chưa gửi — Không làm mới được token/.test(kqM[0].p_loi), JSON.stringify(kqM));
 
   const mangLoi = dungGia({ batDau: await luot([tin('c3')], { hetPhut: 20 }), token: new Error('fetch failed ECONNRESET') });
   await chay(mangLoi);
@@ -384,6 +398,9 @@ await nhom('7 · NGƯỜI GỬI: LÀM MỚI TOKEN — LƯU TOKEN MỚI TRƯỚC 
   await chay(khac);
   ok('Token mã hóa bằng khóa khác (ZALO_KHOA đã đổi) → không gọi Zalo, loi_cuoi "dán lại refresh token"',
      khac.fetch().length === 0 && /ZALO_KHOA/.test(khac.rpc('zalo_ket_thuc_luot')[0].ts.p_loi));
+  ok('Hồi quy: ZALO_KHOA đổi → tin của lô ghi "Chưa gửi", hẹn 1 giờ',
+     khac.rpc('zalo_ghi_ket_qua').length === 1 && /^Chưa gửi — .*ZALO_KHOA/.test(khac.rpc('zalo_ghi_ket_qua')[0].ts.p_loi)
+     && khac.rpc('zalo_ghi_ket_qua')[0].ts.p_thu_lai_sau === 3600);
 
   const chuaToken = dungGia({ batDau: await luot([tin('c5')], { refresh: null, access: null }) });
   await chay(chuaToken);
@@ -458,7 +475,13 @@ await nhom('9 · NGƯỜI GỬI KHÔNG BAO GIỜ NÉM LỖI', async () => {
   let log;
   try { log = await guiZaloTatCa(ENV, { taoClient: () => nem, ghiLog: () => { throw new Error('log hỏng'); } }); } catch { log = null; }
   ok('rpc ném, signOut ném, ghiLog ném → vẫn trả log, không ném', Array.isArray(log) && log.length >= 1 && !log.join().includes(SECRET_GIA), JSON.stringify(log));
-  const g = dungGia({ batDau: await luot([tin('h1')]), rpcLoi: { zalo_ghi_ket_qua: 1, zalo_ket_thuc_luot: 1 } });
+  // Hồi quy: ghi "da_gui" lỗi mạng một lần → thử ghi lại, không để tin về hàng chờ rồi gửi khách lần hai.
+  const mot = dungGia({ batDau: await luot([tin('h0')]), rpcLoi: { zalo_ghi_ket_qua: 1 } });
+  const logMot = await chay(mot);
+  ok('Hồi quy: zalo_ghi_ket_qua lỗi MỘT lần → gọi lại đúng tham số, ghi được da_gui, không log lỗi',
+     mot.rpc('zalo_ghi_ket_qua').length === 2 && mot.rpc('zalo_ghi_ket_qua').every(s => s.ts.p_ket_qua === 'da_gui' && s.ts.p_id === 'h0')
+     && mot.fetch().length === 1 && !/không ghi được kết quả/.test(logMot.join()) && /đã gửi 1/.test(logMot.join()), logMot.join());
+  const g = dungGia({ batDau: await luot([tin('h1')]), rpcLoi: { zalo_ghi_ket_qua: 2, zalo_ket_thuc_luot: 1 } });
   let log2;
   try { log2 = await chay(g); } catch { log2 = null; }
   ok('Ghi kết quả / kết thúc lượt lỗi → log, không ném', Array.isArray(log2) && /không ghi được kết quả/.test(log2.join())

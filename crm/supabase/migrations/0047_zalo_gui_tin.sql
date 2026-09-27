@@ -1286,6 +1286,12 @@ begin
     raise exception 'Thiếu mã gửi' using errcode = 'check_violation';
   end if;
 
+  -- Tạo chiến dịch lần lượt, không song song: (1) bấm gửi hai lần cùng lúc thì
+  -- lời thứ hai chờ, rồi thấy chiến dịch của lời thứ nhất (không vỡ unique
+  -- ma_gui); (2) hai chiến dịch tạo cùng lúc không cùng thấy khách "còn 1 chỗ"
+  -- trong trần tháng rồi cùng xếp. Khóa nhả khi giao dịch kết thúc.
+  perform pg_advisory_xact_lock(hashtext('zalo_tao_chien_dich'));
+
   -- Bấm gửi hai lần: trả lại chiến dịch đã tạo.
   select * into v_cd from chien_dich where ma_gui = p_ma_gui;
   if found then

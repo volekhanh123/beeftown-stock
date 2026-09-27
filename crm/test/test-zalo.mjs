@@ -413,6 +413,25 @@ await nhom('6 · CHIẾN DỊCH — xem trước, loại người không đủ �
   const qua = await rpc(UID_MKT_C, `zalo_tao_chien_dich($1, $2::uuid, 'ZBS-03', null, 'Quá khứ', $3::jsonb, now() - interval '1 hour')`,
                         [cnC.id, crypto.randomUUID(), DL]);
   ok('Giờ gửi đã qua → bị từ chối', qua.ma === '23514', vi(qua));
+
+  // Hồi quy: hai lời tạo cùng lúc (bấm hai lần / hai người cùng tạo) từng chạy song song — lời
+  // thứ hai vỡ unique ma_gui (23505 hiện thẳng ra màn), hoặc hai chiến dịch cùng thấy khách "còn
+  // chỗ" trong trần tháng. PGlite chỉ có một kết nối nên kiểm bằng thân hàm: khóa giao dịch nằm
+  // TRƯỚC chỗ tìm ma_gui và trước chỗ đếm trần.
+  const { src } = await mot(`select prosrc as src from pg_proc where proname = 'zalo_tao_chien_dich'`);
+  const iKhoa = src.indexOf('pg_advisory_xact_lock('), iTim = src.indexOf('where ma_gui = p_ma_gui'), iDem = src.indexOf('kiem_duoc_phep_gui(');
+  ok('Hồi quy: zalo_tao_chien_dich khóa pg_advisory_xact_lock trước khi tìm ma_gui và đếm trần',
+     iKhoa > 0 && iKhoa < iTim && iKhoa < iDem, `${iKhoa} / ${iTim} / ${iDem}`);
+  const maLai = crypto.randomUUID();
+  const lan1 = await rpc(UID_MKT_C, `zalo_tao_chien_dich($1, $2::uuid, 'ZBS-03', 'tat_ca', 'Hai lần', $3::jsonb, $4::timestamptz)`,
+                         [cnC.id, maLai, DL, dau]);
+  const lan2 = await rpc(UID_MKT_C, `zalo_tao_chien_dich($1, $2::uuid, 'ZBS-03', 'tat_ca', 'Hai lần', $3::jsonb, $4::timestamptz)`,
+                         [cnC.id, maLai, DL, dau]);
+  ok('Cùng ma_gui gọi hai lần (có khóa) → lần hai trung, cùng chiến dịch',
+     lan1.kq?.ok && lan2.kq?.trung === true && lan2.kq.chien_dich_id === lan1.kq.chien_dich_id, vi(lan2));
+  // Dọn để các nhóm sau đếm chiến dịch / tin như cũ.
+  await db.query(`delete from nhat_ky_tin where chien_dich_id = $1`, [lan1.kq?.chien_dich_id]);
+  await db.query(`delete from chien_dich where id = $1`, [lan1.kq?.chien_dich_id]);
 });
 
 // ===========================================================================

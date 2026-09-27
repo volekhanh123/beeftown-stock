@@ -292,29 +292,61 @@ async function motLuot(
     if (lo.length || loiLuot || tom.lam_moi_token) ghi(`${phan.join(', ')}${loiLuot ? ` — ${loiLuot}` : ''}`);
   };
 
+  // Ghi kết quả một tin. Lỗi mạng khi ghi thì thử lại MỘT lần: tin đã tới Zalo
+  // mà không ghi được "da_gui" sẽ bị zalo_ket_thuc_luot trả về hàng chờ và gửi
+  // lần hai cho khách. Gọi lại an toàn — tin đã ở trạng thái cuối thì bo_qua.
+  const ghiKetQua = async (tin: TinLuot, ketQua: 'da_gui' | 'that_bai' | 'bi_tu_choi',
+    o: { maZalo?: string | null; loi?: string | null; thuLaiSau?: number | null; chuaGui?: boolean } = {}) => {
+    const thamSo = {
+      p_id: tin.id, p_ket_qua: ketQua, p_ma_zalo: o.maZalo ?? null,
+      p_loi: o.loi ? sach(o.loi).slice(0, 500) : null, p_thu_lai_sau: o.thuLaiSau ?? null,
+    };
+    let { data, error } = await client.rpc('zalo_ghi_ket_qua', thamSo);
+    if (error) ({ data, error } = await client.rpc('zalo_ghi_ket_qua', thamSo));
+    if (error) { ghi(`không ghi được kết quả tin ${tin.id.slice(0, 8)}: ${error.message}`); return; }
+    if ((data as { ok?: boolean } | null)?.ok === false) ghi(`tin ${tin.id.slice(0, 8)}: ${(data as { loi?: string }).loi ?? 'không ghi được'}`);
+    if (o.chuaGui) tom.chua_gui++;
+    else if (ketQua === 'da_gui') tom.da_gui++;
+    else if (ketQua === 'bi_tu_choi') tom.bi_tu_choi++;
+    else tom.that_bai++;
+  };
+
+  // Không có token dùng được → KHÔNG gửi tin nào của lô, nhưng vẫn báo từng tin
+  // "Chưa gửi — <lý do>" kèm hẹn thử lại. Để im thì zalo_ket_thuc_luot trả tin
+  // về hàng chờ 5 phút một lần, mỗi lần lan_thu + 1 — sau 25 phút mọi tin đến
+  // hạn thành that_bai "Đã thử 5 lần mà không nhận được kết quả" (sai lý do,
+  // và chủ không kịp dán lại token).
+  const khongGuiLo = async (cau: string, thuLaiSau: number) => {
+    loiLuot = cau;
+    for (const tin of lo) await ghiKetQua(tin, 'that_bai', { loi: CAU_GUI.chuaGui.vi(cau), thuLaiSau, chuaGui: true });
+  };
+  /** Lỗi cần người làm (dán lại token, sửa bí mật) → hẹn 1 giờ; lỗi tạm → như lỗi mạng. */
+  const HEN_CAN_NGUOI = XU_LY_LOI.cau_hinh.thuLaiSau ?? 3600;
+  const HEN_TAM = XU_LY_LOI.thu_lai.thuLaiSau ?? 300;
+
   try {
     const cfg = b.cau_hinh;
     const khoa = await danKhoaZalo(bm.khoa);
 
     // ---- 1 · Token -------------------------------------------------------
-    if (!cfg?.refresh_token_ma_hoa || !cfg.app_id) { loiLuot = CAU_GUI.chuaCoToken.vi; return; }
+    if (!cfg?.refresh_token_ma_hoa || !cfg.app_id) { await khongGuiLo(CAU_GUI.chuaCoToken.vi, HEN_CAN_NGUOI); return; }
     let refresh = await giaiMaTokenZalo(khoa, cfg.refresh_token_ma_hoa, 'refresh');
     let access = cfg.access_token_ma_hoa ? await giaiMaTokenZalo(khoa, cfg.access_token_ma_hoa, 'access') : null;
-    if (!refresh) { loiLuot = CAU_GUI.tokenHong.vi; return; }
+    if (!refresh) { await khongGuiLo(CAU_GUI.tokenHong.vi, HEN_CAN_NGUOI); return; }
     biMat.push(refresh);
     if (access) biMat.push(access);
     let hetHan = cfg.het_han_luc ? Date.parse(cfg.het_han_luc) : NaN;
     const appId = cfg.app_id;
 
     /** Làm mới token; lưu token mới NGAY. Trả câu lỗi (null = xong). */
-    const lamMoi = async (): Promise<{ loi: string | null; dung: boolean }> => {
+    const lamMoi = async (): Promise<{ loi: string | null; dung: boolean; tamThoi?: boolean }> => {
       const kq = await goiZalo(dungYeuCauToken({ appId, refreshToken: refresh!, secretKey: bm.secretKey }), goi);
       const ph: PhanHoiToken = 'loiMang' in kq
         ? { ok: false, tamThoi: true, cau: kq.loiMang }
         : docPhanHoiToken(kq.status, kq.json);
       if (!ph.ok) {
         const cau = ph.tamThoi ? CAU_GUI.lamMoiLoi.vi(ph.cau) : CAU_GUI.lamMoiTuChoi.vi(ph.cau);
-        return { loi: cau, dung: true };
+        return { loi: cau, dung: true, tamThoi: ph.tamThoi };
       }
       biMat.push(ph.accessToken);
       if (ph.refreshToken) biMat.push(ph.refreshToken);
@@ -345,24 +377,13 @@ async function motLuot(
       const lm = await lamMoi();
       if (lm.loi) loiLuot = lm.loi;
       // Làm mới hỏng: còn access token chưa hết hạn thì vẫn dùng.
-      if (lm.dung && !(access && Number.isFinite(hetHan) && hetHan > bayGio())) return;
+      if (lm.dung && !(access && Number.isFinite(hetHan) && hetHan > bayGio())) {
+        await khongGuiLo(lm.loi ?? CAU_GUI.chuaCoToken.vi, lm.tamThoi ? HEN_TAM : HEN_CAN_NGUOI);
+        return;
+      }
     }
 
     // ---- 2 · Gửi ---------------------------------------------------------
-    const ghiKetQua = async (tin: TinLuot, ketQua: 'da_gui' | 'that_bai' | 'bi_tu_choi',
-      o: { maZalo?: string | null; loi?: string | null; thuLaiSau?: number | null; chuaGui?: boolean } = {}) => {
-      const { data, error } = await client.rpc('zalo_ghi_ket_qua', {
-        p_id: tin.id, p_ket_qua: ketQua, p_ma_zalo: o.maZalo ?? null,
-        p_loi: o.loi ? sach(o.loi).slice(0, 500) : null, p_thu_lai_sau: o.thuLaiSau ?? null,
-      });
-      if (error) { ghi(`không ghi được kết quả tin ${tin.id.slice(0, 8)}: ${error.message}`); return; }
-      if ((data as { ok?: boolean } | null)?.ok === false) ghi(`tin ${tin.id.slice(0, 8)}: ${(data as { loi?: string }).loi ?? 'không ghi được'}`);
-      if (o.chuaGui) tom.chua_gui++;
-      else if (ketQua === 'da_gui') tom.da_gui++;
-      else if (ketQua === 'bi_tu_choi') tom.bi_tu_choi++;
-      else tom.that_bai++;
-    };
-
     const guiMot = async (tin: TinLuot, sdt84: string): Promise<PhanHoiGui> => {
       const kq = await goiZalo(dungYeuCauGui({
         sdt84, templateId: String(tin.template_id), duLieu: tin.du_lieu, trackingId: tin.id, cheDo: cfg.che_do === 'that' ? 'that' : 'thu',
