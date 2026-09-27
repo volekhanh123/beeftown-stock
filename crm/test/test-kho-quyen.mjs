@@ -372,6 +372,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_giao_o_ma', 'kho_giai_phong_o_ma',
     // 0050: truy vết một tảng, báo cáo theo tảng, huỷ cả tảng
     'kho_truy_vet_tang', 'kho_bao_cao_tang', 'kho_huy_ca_tang',
+    // 0051: ghép món iPOS với ô mã
+    'kho_ipos_gan_o_ma',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
@@ -400,6 +402,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_phien_pha_vao_mot_tang', 'kho_phien_pha_ra_o_ma', 'kho_phien_pha_tra_o_ma',
     // 0050: trigger gán tảng gốc cho lô ra
     'kho_lo_gan_tang_goc',
+    // 0051: lô của ô lúc bán, lấy đúng một lô, số gói theo kg của một lô
+    'kho_ipos_lo_cua_o', 'kho_ipos_lay_lo_cua_lo', 'kho_ipos_goi_theo_kg_lo',
   ].sort();
 
   const { rows } = await db.query(`
