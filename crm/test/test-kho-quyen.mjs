@@ -380,6 +380,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_truy_vet_tang', 'kho_bao_cao_tang', 'kho_huy_ca_tang',
     // 0051: ghép món iPOS với ô mã
     'kho_ipos_gan_o_ma',
+    // 0054: máy quầy — mã giảm giá, bảng quầy, tảng & ô, báo cáo bán theo giờ
+    'kho_luu_ma_giam', 'kho_bat_ma_giam', 'kho_bang_quay', 'kho_can_o_ma', 'kho_bao_cao_ban_gio',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
@@ -410,6 +412,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_lo_gan_tang_goc',
     // 0051: lô của ô lúc bán, lấy đúng một lô, số gói theo kg của một lô
     'kho_ipos_lo_cua_o', 'kho_ipos_lay_lo_cua_lo', 'kho_ipos_goi_theo_kg_lo',
+    // 0054: giá sau giảm, các trigger chống trùng mã cân giữa món / ô / mã giảm
+    'kho_gia_giam', 'kho_ma_giam_kiem', 'kho_o_ma_khong_trung_giam', 'kho_mat_hang_ma_can_khong_trung_giam',
   ].sort();
 
   const { rows } = await db.query(`

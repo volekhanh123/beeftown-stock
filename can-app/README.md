@@ -1,6 +1,23 @@
-# Beeftown Cân — phần mềm quản lý cân in tem qua WiFi
+# Beeftown Cân — máy quầy: cân in tem, quầy, giảm giá cận date, tảng & ô, báo cáo
 
-Chương trình Windows (`BeeftownCan.exe`) cho máy tính ở quán, thay phần mềm của hãng cân. Ba thẻ:
+Chương trình Windows (`BeeftownCan.exe`) cho máy tính ở quầy, thay phần mềm của hãng cân. Đăng nhập bằng
+**tài khoản kho của mình** (NV quầy, thủ kho, kế toán, quản lý, chủ) — thẻ hiện theo vai.
+
+Máy quầy (từ 2.0.0, cần migration 0054):
+
+- **Quầy** (mọi vai) — việc cần làm ngay: gói **hết hạn** → chọn lô, chụp ảnh, **tạo phiếu huỷ** (chờ quản lý
+  duyệt); gói **cận date** → "xếp ra trước" và "cân lại bằng PLU n · mã 90001 · −30%"; món **dưới mức** →
+  sửa số, **gửi yêu cầu lấy hàng** cho thủ kho. Tồn quầy từng món, yêu cầu đang chờ, hàng đang mang ra. Tự
+  tải lại mỗi phút.
+- **Tảng & ô mã** (mọi vai) — mỗi ô đang giữ tảng nào, lóc ra / đã bán / huỷ / còn, % bán, số lần lệch ô;
+  báo **cân chưa đổi tên theo tảng** (so tên trên cân với tên kho muốn).
+- **Giảm giá cận date** — FABi không đọc giá trên tem, nên mỗi mức giảm là **một mã cân riêng**. Quản lý / chủ
+  tạo mã (món + mức, mã tự lấy từ 90001), bật / tắt; tải danh sách để tạo món trên FABi (mã món = mã cân,
+  giá = giá đã giảm); mã lên cân ở lần gửi sau. Bán ra kho tự ghi là bán giảm giá.
+- **Báo cáo** (chủ, quản lý, kế toán) — doanh thu / kg theo giờ, theo ngày, món bán chạy; bán giảm giá (tiền
+  đã giảm, **giảm sớm** — gói còn hạn xa mà bán giảm); lệch ô; theo tảng (thu hồi, % bán). Tải Excel.
+
+Với cân (quản lý, chủ):
 
 - **Gửi giá từ kho** — đăng nhập kho Beeftown, lấy **mã cân, tên, giá bán/kg** từ Mặt hàng, xem trước thay đổi, bấm **Gửi xuống cân**. Không cần USB.
 - **Tất cả hàng (SKU)** — mọi hàng đang có trên cân: số PLU, phím tắt, mã cân, **mã FABi** (5 số trong mã vạch), tên, giá, và đối chiếu với kho (khớp / khác kho / kho không có / còn nằm lại / chưa lên cân / không lên được). Có tìm kiếm, lọc, tải về Excel (CSV). Xem được cả khi chưa đăng nhập kho.
@@ -20,7 +37,7 @@ Phần tính "thêm / sửa / bỏ" là **đúng code của màn Đồng bộ c�
 
 1. Chép `BeeftownCan.exe` vào máy tính ở quán (máy phải cùng WiFi với cân). Nháy đúp để mở.
    File không ký số: lần đầu Windows có thể báo *"Windows protected your PC"* → **More info** → **Run anyway**.
-2. **Đăng nhập kho** bằng tài khoản quản lý hoặc chủ. Máy nhớ đăng nhập.
+2. **Đăng nhập kho** bằng tài khoản kho (NV quầy dùng thẻ Quầy, Tảng & ô; gửi giá xuống cân, tem, mã giảm: quản lý hoặc chủ). Máy nhớ đăng nhập.
 3. **Bắt đầu** (một lần): trên cân lưu dữ liệu ra USB (`Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm → Amend`), chọn file `JHSCALE\A_000.TMS`.
 4. Mỗi lần đổi giá / thêm món trong kho: mở chương trình → xem bảng thay đổi → **Gửi xuống cân** → gọi thử một hàng trên cân.
 5. Đổi tem: thẻ **Mẫu tem** → bỏ chọn / chọn ô, sửa chữ → **Gửi tem xuống cân** → cân thử một món, in một tem xem đã đổi chưa. Nếu chưa đổi: **Lưu file nạp USB**.
@@ -50,7 +67,8 @@ BeeftownCan.exe ── máy chủ nhỏ 127.0.0.1:<cổng ngẫu nhiên>/?t=<mã
       ├─ mở cửa sổ Edge dạng ứng dụng trỏ vào đó; đóng cửa sổ → chương trình tắt
       ├─ kho: https://beeftown.vn/kho-can.json → địa chỉ Supabase + khóa anon (công khai theo thiết kế)
       │        đăng nhập Supabase Auth; phiên lưu ở %APPDATA%\BeeftownCan\phien.json
-      │        quyền như màn Đồng bộ cân: vai có việc danh_muc (chủ, quản lý)
+      │        mọi vai kho (xem); gửi cân / tem / mã giảm cần danh_muc, báo cáo cần xem_gia
+      │        máy quầy: kho_bang_quay, kho_can_o_ma, kho_bao_cao_ban_gio, kho_luu_ma_giam… (src/quay.ts)
       └─ cân: TCP <IP cân>:33571 (src/nghiep-vu.ts → guiTcp)
 ```
 
@@ -68,8 +86,8 @@ Máy chủ chỉ nghe `127.0.0.1` và mọi yêu cầu phải mang đúng mã b�
 
 ```bash
 cd can-app && npm ci
-npx bun test/thu.ts              # 80 kiểm tra: cân giả, kho giả, tem, danh sách hàng, tự gửi, chạy cả src/main.ts
-npx bun test/xem-giao-dien.ts    # mở giao diện với dữ liệu giả để xem / chụp màn hình
+npx bun test/thu.ts              # 112 kiểm tra: cân giả, kho giả (test/kho-gia.ts), tem, danh sách hàng, tự gửi, máy quầy, chạy cả src/main.ts
+npx bun test/xem-giao-dien.ts    # mở giao diện với dữ liệu giả để xem / chụp màn hình (--vai nhan_vien_quay để xem như NV quầy)
 npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói được từ Linux
 ```
 

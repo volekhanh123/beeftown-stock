@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Beeftown · Nạp cân</title>
+<title>Beeftown · Máy quầy</title>
 <link rel="icon" href="data:,">
 <style>
   :root {
@@ -84,11 +84,34 @@
   .o-tem label.chon-o { display: flex; gap: 8px; align-items: center; cursor: pointer; }
   .o-tem input[type=text] { margin-top: 6px; }
   .o-tem.doi { border-color: var(--mu-tat); box-shadow: 0 0 0 1px var(--mu-tat); }
-  @media (max-width: 760px) { .hang, .tem-luoi { grid-template-columns: 1fr; } }
+  .so-o { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 4px 0 14px; }
+  .so-o .o { padding: 10px 14px; }
+  .so-o .gt { font-size: 24px; font-weight: 700; line-height: 1.2; }
+  .so-o .o.do { border-color: var(--do); background: var(--do-nen); }
+  .so-o .o.vang { border-color: var(--mu-tat); background: var(--vang-nen); }
+  .so-o .o.xanh { border-color: var(--xanh); background: var(--xanh-nen); }
+  h3 { font-size: 15px; margin: 18px 0 6px; display: flex; gap: 8px; align-items: center; }
+  .nhan-l.do { background: var(--do); color: #fff; }
+  .nhan-l.vang { background: var(--mu-tat); color: var(--than); }
+  .nhan-l.xanh { background: var(--xanh-nen); color: var(--xanh); }
+  .nhan-l.xam { background: var(--kem-sau); color: #6A5D45; }
+  .giam { display: inline-block; margin: 2px 6px 2px 0; padding: 2px 8px; border: 1px solid var(--mu-tat); border-radius: 6px; background: var(--vang-nen); font-size: 13px; }
+  .khung-form { border: 1px solid var(--vach); border-radius: 10px; padding: 12px 14px; margin-top: 10px; background: var(--kem); }
+  input.nho { width: 80px; padding: 4px 6px; border: 1px solid var(--da); border-radius: 6px; font: inherit; text-align: right; }
+  textarea { width: 100%; max-width: 520px; padding: 8px 10px; border: 1px solid var(--da); border-radius: 8px; font: inherit; min-height: 54px; }
+  .thanh { height: 8px; background: var(--kem-sau); border-radius: 4px; overflow: hidden; min-width: 60px; }
+  .thanh > span { display: block; height: 100%; background: var(--xanh); }
+  .cot-gio { display: flex; align-items: flex-end; gap: 4px; height: 140px; padding: 8px 4px 0; border-bottom: 1px solid var(--vach); }
+  .cot-gio div { flex: 1; background: var(--do); border-radius: 3px 3px 0 0; min-height: 1px; position: relative; }
+  .cot-gio div:hover { background: var(--do-dam); }
+  .nhan-gio { display: flex; gap: 4px; padding: 0 4px; font-size: 11px; color: #6A5D45; }
+  .nhan-gio span { flex: 1; text-align: center; }
+  .hai-cot { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 760px) { .hang, .tem-luoi, .hai-cot { grid-template-columns: 1fr; } .so-o { grid-template-columns: repeat(2, 1fr); } }
 </style>
 </head>
 <body>
-<header><b>BEEFTOWN</b><span>Nạp cân qua WiFi</span><small id="phien-ban"></small></header>
+<header><b>BEEFTOWN</b><span>Máy quầy · cân in tem</span><small id="phien-ban"></small></header>
 <main>
   <div id="bao-chung"></div>
 
@@ -103,7 +126,8 @@
   <!-- Đăng nhập kho -->
   <section class="the an" id="the-dang-nhap">
     <h2>Đăng nhập kho</h2>
-    <p class="phu">Dùng tài khoản quản lý hoặc chủ nhà hàng. Máy này sẽ nhớ đăng nhập.</p>
+    <p class="phu">Dùng tài khoản kho của bạn (NV quầy, thủ kho, kế toán, quản lý hoặc chủ). Máy này sẽ nhớ đăng nhập.
+      NV quầy dùng thẻ Quầy, Tảng &amp; ô; gửi giá xuống cân, sửa tem, tạo mã giảm giá cần quản lý hoặc chủ.</p>
     <form id="form-dang-nhap">
       <label class="truong"><span>Email</span><input type="email" name="email" required autocomplete="username"></label>
       <label class="truong"><span>Mật khẩu</span><input type="password" name="matKhau" required autocomplete="current-password"></label>
@@ -120,10 +144,59 @@
   </section>
 
   <nav class="thanh-tab an" id="thanh-tab">
+    <button data-tab="quay">Quầy</button>
+    <button data-tab="tang-o">Tảng &amp; ô mã</button>
+    <button data-tab="giam">Giảm giá cận date</button>
+    <button data-tab="bao-cao">Báo cáo</button>
     <button data-tab="dong-bo">Gửi giá từ kho</button>
     <button data-tab="hang">Tất cả hàng (SKU)</button>
     <button data-tab="tem">Mẫu tem</button>
   </nav>
+
+  <!-- Quầy -->
+  <section class="the an" id="the-quay">
+    <div class="nut" style="margin-top:0;justify-content:space-between">
+      <h2 style="margin:0">Việc ở quầy hôm nay</h2>
+      <span><span class="phu" id="quay-luc"></span> <button id="nut-tai-quay">Tải lại</button></span>
+    </div>
+    <div id="quay-noi-dung"><p class="dang-lam">Đang đọc quầy…</p></div>
+  </section>
+
+  <!-- Tảng & ô mã -->
+  <section class="the an" id="the-tang-o">
+    <div class="nut" style="margin-top:0;justify-content:space-between">
+      <h2 style="margin:0">Tảng &amp; ô mã</h2>
+      <button id="nut-tai-tang-o">Tải lại</button>
+    </div>
+    <p class="phu">Mỗi ô mã là một hàng trên cân. Khi bếp lóc một tảng, kho giao một ô trống cho tảng đó — tem in bằng ô đó mang số tảng,
+      FABi bán theo mã ô, kho trừ đúng lô của tảng. <b>Lệch ô</b> = bán mã ô mà lô của tảng không đủ (in nhầm ô, hoặc ô chưa gắn tảng).</p>
+    <div id="tang-o-noi-dung"></div>
+  </section>
+
+  <!-- Giảm giá -->
+  <section class="the an" id="the-giam">
+    <h2>Giảm giá hàng cận date</h2>
+    <div class="bao luu-y">
+      <p><b>Cách làm:</b> máy tính tiền FABi không đọc giá trên tem — tem chỉ có mã hàng và trọng lượng. Nên mỗi mức giảm là <b>một mã cân riêng</b>:</p>
+      <p>1. Quản lý tạo mã giảm ở đây (ví dụ Ribeye −30% → mã 90001). &nbsp;2. Trên FABi tạo món <b>cùng mã, cùng giá đã giảm</b> (bảng bên dưới, nút tải danh sách).
+        &nbsp;3. Thẻ <b>Gửi giá từ kho</b> → gửi xuống cân.</p>
+      <p><b>NV quầy:</b> gói cận date → đặt lên cân, gọi hàng mã giảm (số PLU hiện ở thẻ Quầy) → in tem mới, dán đè tem cũ. Kho tự biết gói đó bán giảm giá.</p>
+    </div>
+    <div id="giam-noi-dung"></div>
+  </section>
+
+  <!-- Báo cáo -->
+  <section class="the an" id="the-bao-cao">
+    <h2>Báo cáo bán</h2>
+    <div class="nut" style="margin-top:0">
+      <label>Từ <input type="date" id="bc-tu"></label>
+      <label>đến <input type="date" id="bc-den"></label>
+      <button data-ngay="0">Hôm nay</button><button data-ngay="6">7 ngày</button><button data-ngay="29">30 ngày</button>
+      <button class="chinh" id="nut-bao-cao">Xem</button>
+    </div>
+    <p class="phu">Theo dòng bán iPOS đã trừ kho (chi nhánh đang dùng iPOS). Hoá đơn huỷ không tính. Tiền đã giảm ước theo giá bán hiện tại.</p>
+    <div id="bao-cao-noi-dung"></div>
+  </section>
 
   <!-- Đồng bộ -->
   <section class="the an" id="the-dong-bo">
@@ -252,28 +325,36 @@
     $('o-tren-can').textContent = s.goc ? s.soTrenCan + ' hàng' : 'Chưa biết';
     $('o-goc').textContent = s.goc ? 'File gốc lúc ' + new Date(s.goc.luc).toLocaleString('vi-VN') + ' · cân ' + s.goc.phienBan : 'Chưa có file gốc';
 
+    const q = s.nguoi ? s.nguoi.quyen : null;
     $('the-dang-nhap').classList.toggle('an', !!s.nguoi);
-    $('the-bat-dau').classList.toggle('an', !!s.goc);
-    $('thanh-tab').classList.toggle('an', !s.goc);
+    // Nạp file gốc của cân là việc của quản lý / chủ.
+    $('the-bat-dau').classList.toggle('an', !!s.goc || (!!q && !q.danhMuc));
+    // Thẻ nào hiện: theo vai người đăng nhập, và cân đã có file gốc chưa.
+    coThe = { quay: !!q, 'tang-o': !!q, giam: !!q, 'bao-cao': !!(q && q.xemGia),
+              'dong-bo': !!s.goc && (!q || q.danhMuc), hang: !!s.goc, tem: !!s.goc && (!q || q.danhMuc) };
+    for (const b of document.querySelectorAll('#thanh-tab button')) b.classList.toggle('an', !coThe[b.dataset.tab]);
+    $('thanh-tab').classList.toggle('an', !Object.values(coThe).some(Boolean));
     $('dong-bo-can-kho').classList.toggle('an', !!s.nguoi);
     $('dong-bo-noi-dung').classList.toggle('an', !s.nguoi);
-    if (!tab) tab = s.nguoi ? 'dong-bo' : 'hang';
-    dsHang = null; temDL = null;
+    if (!tab || !coThe[tab]) tab = ['quay', 'hang', 'dong-bo'].find(t => coThe[t]) || null;
+    dsHang = null; temDL = null; tangO = null; giamDL = null;
     hienTab();
   }
 
   // ---- thẻ ------------------------------------------------------------------
-  let tab = null;
+  let tab = null, coThe = {};
+  const CAC_THE = ['quay', 'tang-o', 'giam', 'bao-cao', 'dong-bo', 'hang', 'tem'];
   function hienTab() {
-    const co = !!(trangThai && trangThai.goc);
     for (const b of document.querySelectorAll('#thanh-tab button')) b.classList.toggle('chon', b.dataset.tab === tab);
-    $('the-dong-bo').classList.toggle('an', !co || tab !== 'dong-bo');
-    $('the-hang').classList.toggle('an', !co || tab !== 'hang');
-    $('the-tem').classList.toggle('an', !co || tab !== 'tem');
-    if (!co) return;
+    for (const t of CAC_THE) $('the-' + t).classList.toggle('an', !coThe[t] || tab !== t);
+    if (!tab || !coThe[tab]) return;
     if (tab === 'dong-bo' && trangThai.nguoi) xemTruoc();
     if (tab === 'hang' && !dsHang) taiHang();
     if (tab === 'tem' && !temDL) taiTem();
+    if (tab === 'quay') taiQuay();
+    if (tab === 'tang-o' && !tangO) taiTangO();
+    if (tab === 'giam' && !giamDL) taiGiam();
+    if (tab === 'bao-cao' && !bcDL) taiBaoCao();
   }
   for (const b of document.querySelectorAll('#thanh-tab button')) b.onclick = () => { tab = b.dataset.tab; hienTab(); };
 
@@ -570,6 +651,337 @@
     catch (err) { bao($('khung-usb-tem'), 'loi', e(err.message)); }
   };
   $('nut-bo-tem').onclick = () => { temSua = { chu: {}, bat: {} }; veDanhSachO(); veTem(); capNutTem(); };
+
+  // =====================================================================
+  // MÁY QUẦY (0054)
+  // =====================================================================
+  const kgChu = (n) => n === null || n === undefined ? '—' : Number(n).toLocaleString('vi-VN', { maximumFractionDigits: 3 }) + ' kg';
+  const soChu = (n) => Number(n || 0).toLocaleString('vi-VN');
+  const ngayVn = (d) => { if (!d) return '—'; const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}/${m}`; };
+  const lucVn = (t) => t ? new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—';
+  const maGuiMoi = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
+  const conNgay = (n) => n === null || n === undefined ? '' : n < 0 ? `quá ${-n} ngày` : n === 0 ? 'hết hạn hôm nay' : `còn ${n} ngày`;
+  function taiCsv(ten, dong) {
+    const o = (v) => { const t = String(v ?? ''); return /[",\n;]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+    const chu = '﻿' + dong.map(r => r.map(o).join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([chu], { type: 'text/csv;charset=utf-8' }));
+    a.download = ten; document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  function docAnh(tep) {
+    return Promise.all([...tep].slice(0, 8).map(f => new Promise((xong, hong) => {
+      const r = new FileReader();
+      r.onload = () => xong({ ten: f.name, loai: f.type || 'image/jpeg', base64: String(r.result).split(',')[1] || '' });
+      r.onerror = () => hong(new Error('Không đọc được ảnh ' + f.name));
+      r.readAsDataURL(f);
+    })));
+  }
+
+  // ---- thẻ Quầy ----------------------------------------------------------
+  let quay = null, dangSuaQuay = false, maGuiHuy = null, maGuiYc = null;
+  async function taiQuay(imLang) {
+    if (!imLang) $('quay-noi-dung').innerHTML = quay ? $('quay-noi-dung').innerHTML : '<p class="dang-lam">Đang đọc quầy…</p>';
+    try { quay = await goi('/api/quay'); veQuay(); $('quay-luc').textContent = 'Cập nhật ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }); }
+    catch (err) { bao($('quay-noi-dung'), 'loi', e(err.message)); }
+  }
+  // Tự tải lại mỗi phút khi đang mở thẻ Quầy và không đang điền form.
+  setInterval(() => { if (tab === 'quay' && coThe.quay && !dangSuaQuay && document.visibilityState === 'visible') taiQuay(true); }, 60000);
+
+  function veQuay() {
+    const q = quay, vh = q.quyen.vanHanh;
+    let h = '<div class="so-o">'
+      + `<div class="o ${q.dem.hetHan ? 'do' : ''}"><div class="nhan">Hết hạn — phải huỷ</div><div class="gt">${q.dem.hetHan}</div><div class="phu">lô ở quầy</div></div>`
+      + `<div class="o ${q.dem.canDate ? 'vang' : ''}"><div class="nhan">Cận date — bán trước</div><div class="gt">${q.dem.canDate}</div><div class="phu">lô ở quầy</div></div>`
+      + `<div class="o ${q.dem.canLay ? 'vang' : ''}"><div class="nhan">Dưới mức — lấy thêm</div><div class="gt">${q.dem.canLay}</div><div class="phu">món</div></div>`
+      + `<div class="o"><div class="nhan">Yêu cầu đang chờ</div><div class="gt">${q.dem.yeuCau}</div><div class="phu">${q.dangMang.length ? q.dangMang.length + ' chuyến đang mang ra' : 'phiếu'}</div></div>`
+      + '</div>';
+    if (!q.dem.hetHan && !q.dem.canDate && !q.dem.canLay) h += '<div class="bao xong">Quầy ổn: không có gói hết hạn, cận date hay món dưới mức.</div>';
+
+    const hangLo = (l, chon) => `<tr><td>${vh ? `<input type="checkbox" class="chon-huy" data-lo="${e(l.lo_id)}" ${chon ? 'checked' : ''}>` : ''}</td>`
+      + `<td><b>${e(l.ten)}</b>${l.so_tang ? ` <span class="nhan-l xam">tảng ${e(l.so_tang)}</span>` : ''}<div class="phu">Lô ${e(l.ma_lo)}</div></td>`
+      + `<td class="so">${l.dem_goi ? soChu(l.so_goi) + ' ' + e(l.don_vi_goi) : ''}<div class="phu">${kgChu(l.so_kg)}</div></td>`
+      + `<td>${ngayVn(l.han_dung)}<div class="phu">${conNgay(l.so_ngay_con)}</div></td>`;
+
+    if (q.hetHan.length) {
+      h += '<h3><span class="nhan-l do">Phải huỷ</span> Hết hạn — không bán, bỏ riêng ra rồi tạo phiếu huỷ</h3>'
+        + '<div class="khung-bang"><table><thead><tr><th></th><th>Món</th><th class="so">Còn</th><th>Hạn</th></tr></thead><tbody>'
+        + q.hetHan.map(l => hangLo(l, true) + '</tr>').join('') + '</tbody></table></div>';
+    }
+    if (q.canDate.length) {
+      h += '<h3><span class="nhan-l vang">Cận date</span> Bán trước — xếp ra phía trước, hoặc cân lại bằng mã giảm giá</h3>'
+        + '<div class="khung-bang"><table><thead><tr><th></th><th>Món</th><th class="so">Còn</th><th>Hạn</th><th>Làm gì</th></tr></thead><tbody>'
+        + q.canDate.map(l => hangLo(l, false) + '<td>'
+          + (l.xepTruoc ? '<div><span class="nhan-l xanh">Xếp ra trước</span> <span class="phu">quầy có lô hạn xa hơn</span></div>' : '')
+          + (l.maGiam.length
+            ? l.maGiam.map(g => `<span class="giam">Cân lại bằng ${g.plu ? `<b>PLU ${g.plu}</b> · ` : ''}mã <b>${e(g.ma_can)}</b> · −${g.phan_tram}% · ${tien(g.gia_giam_kg)}/kg</span>`).join('')
+              + (l.maGiam.some(g => !g.plu) ? '<div class="phu">Mã chưa lên cân: quản lý bấm Gửi giá từ kho.</div>' : '')
+            : '<span class="phu">Chưa có mã giảm giá cho món này (quản lý tạo ở thẻ Giảm giá).</span>')
+          + '</td></tr>').join('') + '</tbody></table></div>';
+    }
+    if (vh && (q.hetHan.length || q.canDate.length)) {
+      h += '<div class="nut"><button class="chinh" id="nut-mo-huy">Tạo phiếu huỷ các lô đã chọn</button><span class="phu" id="dem-huy"></span></div><div id="khung-huy"></div>';
+    }
+
+    if (q.canLay.length) {
+      h += '<h3><span class="nhan-l vang">Dưới mức</span> Cần lấy thêm từ kho</h3>'
+        + '<div class="khung-bang"><table><thead><tr><th></th><th>Món</th><th class="so">Ở quầy</th><th class="so">Đang mang ra</th><th class="so">Kho còn</th><th class="so">Tối thiểu</th><th class="so">Xin thêm</th></tr></thead><tbody>'
+        + q.canLay.map(c => {
+          const de = c.dem_goi ? (c.deNghi ?? 0) : (c.deNghiKg ?? 0);
+          return `<tr><td>${vh ? `<input type="checkbox" class="chon-lay" data-mh="${e(c.mat_hang_id)}" ${de > 0 ? 'checked' : ''}>` : ''}</td>`
+            + `<td><b>${e(c.ten)}</b></td><td class="so">${c.dem_goi ? soChu(c.soQuay) + ' ' + e(c.don_vi_goi) : kgChu(c.kgQuay)}</td>`
+            + `<td class="so">${c.dangMang ? soChu(c.dangMang) : '—'}</td>`
+            + `<td class="so">${c.dem_goi ? soChu(c.khoCon) : kgChu(c.kgKho)}${c.khoCon === 0 && c.kgKho === 0 ? '<div class="phu">kho hết — báo quản lý</div>' : ''}</td>`
+            + `<td class="so">${c.toiThieu ?? '—'}</td>`
+            + `<td class="so">${vh ? `<input class="nho so-lay" data-mh="${e(c.mat_hang_id)}" type="number" min="0" step="${c.dem_goi ? 1 : 0.1}" value="${de || ''}"> ${c.dem_goi ? e(c.don_vi_goi) : 'kg'}` : (de || '—')}</td></tr>`;
+        }).join('') + '</tbody></table></div>';
+      if (vh) h += '<div class="nut"><input type="text" id="ghi-chu-lay" placeholder="Ghi chú cho thủ kho (không bắt buộc)" style="max-width:380px">'
+        + '<button class="chinh" id="nut-gui-lay">Gửi yêu cầu lấy hàng</button></div><div id="kq-lay"></div>';
+    }
+
+    // Tồn quầy từng món.
+    const TT = { het: ['Hết ở quầy', 'do'], duoi_muc: ['Dưới mức', 'vang'], co_het_han: ['Có gói hết hạn', 'do'], du: ['Đủ', 'xanh'] };
+    h += '<h3>Tồn quầy</h3><div class="nut" style="margin-top:0"><input type="search" id="tim-ton" placeholder="Tìm món…"></div>'
+      + '<div class="khung-bang" style="max-height:520px"><table><thead><tr><th>Món</th><th class="so">Mã cân</th><th class="so">Còn</th><th class="so">Số lô</th><th>Hạn gần nhất</th><th>Tình trạng</th></tr></thead><tbody id="bang-ton"></tbody></table></div>';
+
+    // Đang chờ.
+    if (q.yeuCau.length || q.dangMang.length || q.choDuyetHuy.length) {
+      h += '<h3>Đang chờ</h3><div class="hai-cot"><div>';
+      if (q.yeuCau.length) {
+        h += '<p><b>Yêu cầu lấy hàng</b></p>' + q.yeuCau.map(y => `<div class="khung-form" style="margin-top:6px"><b>${e(y.so_phieu)}</b> · `
+          + `<span class="nhan-l ${y.trang_thai === 'cho' ? 'vang' : 'xanh'}">${y.trang_thai === 'cho' ? 'Chờ thủ kho' : 'Đang soạn'}</span> <span class="phu">${lucVn(y.created_at)}${y.nguoi ? ' · ' + e(y.nguoi) : ''}</span>`
+          + `<div class="phu">${y.dong.map(d => e(d.ten) + ' ' + (d.so_kg ? kgChu(d.so_kg) : soChu(d.so_goi) + ' ' + e(d.don_vi_goi || 'gói'))).join(' · ')}</div></div>`).join('');
+      }
+      h += '</div><div>';
+      if (q.dangMang.length) {
+        h += '<p><b>Hàng đang mang ra quầy</b> <span class="phu">— nhận đủ thì bấm "Đã nhận" trên trang kho (điện thoại)</span></p>'
+          + q.dangMang.map(x => `<div class="phu">${e(x.so_phieu)} · ${soChu(x.so_goi)} gói · ${lucVn(x.created_at)}</div>`).join('');
+      }
+      if (q.choDuyetHuy.length) {
+        h += '<p><b>Phiếu huỷ chờ quản lý duyệt</b></p>'
+          + q.choDuyetHuy.map(x => `<div class="phu">${e(x.so_phieu)} · ${lucVn(x.created_at)}${x.ghi_chu ? ' · ' + e(x.ghi_chu) : ''}</div>`).join('');
+      }
+      h += '</div></div>';
+    }
+    $('quay-noi-dung').innerHTML = h;
+
+    const veTon = () => {
+      const t = boDau($('tim-ton').value.trim());
+      const ds = q.ton.filter(m => !t || boDau(m.ten).includes(t) || String(m.ma_can || '').includes(t));
+      $('bang-ton').innerHTML = ds.map(m => `<tr class="${m.tinhTrang === 'het' ? 'mo' : ''}"><td><b>${e(m.ten)}</b>${m.nhom ? `<div class="phu">${e(m.nhom)}</div>` : ''}</td>`
+        + `<td class="so">${e(m.ma_can || '—')}</td><td class="so">${m.dem_goi ? soChu(m.soGoi) + ' ' + e(m.don_vi_goi) : ''}<div class="phu">${kgChu(m.soKg)}</div></td>`
+        + `<td class="so">${m.soLo}</td><td>${ngayVn(m.hanGanNhat)}<div class="phu">${conNgay(m.soNgayCon)}</div></td>`
+        + `<td><span class="nhan-l ${TT[m.tinhTrang][1]}">${TT[m.tinhTrang][0]}</span>${m.soGoiHetHan ? `<div class="phu">${m.soGoiHetHan} gói hết hạn</div>` : ''}</td></tr>`).join('')
+        || '<tr><td colspan="6">Không có món nào.</td></tr>';
+    };
+    $('tim-ton').oninput = veTon; veTon();
+
+    if ($('nut-mo-huy')) {
+      const capDem = () => { const n = document.querySelectorAll('.chon-huy:checked').length; $('dem-huy').textContent = n ? `${n} lô đã chọn` : 'Chọn lô ở bảng trên'; };
+      for (const c of document.querySelectorAll('.chon-huy')) c.onchange = capDem;
+      capDem();
+      $('nut-mo-huy').onclick = moFormHuy;
+    }
+    if ($('nut-gui-lay')) $('nut-gui-lay').onclick = guiYeuCau;
+  }
+
+  function moFormHuy() {
+    const chon = [...document.querySelectorAll('.chon-huy:checked')].map(c => c.dataset.lo);
+    if (!chon.length) { bao($('khung-huy'), 'loi', 'Chọn ít nhất một lô ở bảng trên.'); return; }
+    dangSuaQuay = true;
+    maGuiHuy = maGuiMoi();
+    const tatCa = [...quay.hetHan, ...quay.canDate];
+    const lo = chon.map(id => tatCa.find(l => l.lo_id === id)).filter(Boolean);
+    const macDinh = quay.lyDoHuy.find(l => /hạn/i.test(l.ten)) || quay.lyDoHuy[0];
+    $('khung-huy').innerHTML = '<div class="khung-form"><p style="margin-top:0"><b>Phiếu huỷ</b> — chờ quản lý duyệt. Bỏ hàng vào khu chờ huỷ.</p>'
+      + '<table><thead><tr><th>Lô</th><th class="so">Huỷ</th></tr></thead><tbody>'
+      + lo.map(l => `<tr><td>${e(l.ten)} <span class="phu">lô ${e(l.ma_lo)}${l.so_tang ? ' · tảng ' + e(l.so_tang) : ''}</span></td>`
+        + `<td class="so">${l.dem_goi ? `<input class="nho so-huy" data-lo="${e(l.lo_id)}" type="number" min="1" max="${l.so_goi}" step="1" value="${l.so_goi}"> ${e(l.don_vi_goi)}`
+          : `<input class="nho so-huy" data-lo="${e(l.lo_id)}" data-kg="1" type="number" min="0.001" max="${l.so_kg}" step="0.001" value="${l.so_kg}"> kg`}</td></tr>`).join('')
+      + '</tbody></table>'
+      + `<label class="truong" style="margin-top:10px"><span>Lý do</span><select id="ly-do-huy">${quay.lyDoHuy.map(l => `<option value="${e(l.id)}" ${l === macDinh ? 'selected' : ''}>${e(l.ten)}${l.can_anh ? ' (cần ảnh)' : ''}</option>`).join('')}</select></label>`
+      + '<label class="truong"><span>Ảnh chụp hàng</span><input type="file" id="anh-huy" accept="image/*" multiple></label>'
+      + '<label class="truong"><span>Ghi chú</span><textarea id="ghi-chu-huy" maxlength="500"></textarea></label>'
+      + '<div class="nut"><button class="chinh" id="nut-gui-huy">Gửi phiếu huỷ</button><button id="nut-bo-huy">Thôi</button></div><div id="kq-huy"></div></div>';
+    $('nut-bo-huy').onclick = () => { dangSuaQuay = false; $('khung-huy').innerHTML = ''; };
+    $('nut-gui-huy').onclick = async () => {
+      const nut = $('nut-gui-huy'); nut.disabled = true; nut.textContent = 'Đang gửi…';
+      try {
+        const dong = [...document.querySelectorAll('.so-huy')].map(i => i.dataset.kg ? { lo_id: i.dataset.lo, so_kg: Number(i.value) } : { lo_id: i.dataset.lo, so_goi: Number(i.value) });
+        const anh = await docAnh($('anh-huy').files);
+        const k = await goi('/api/quay/huy', { maGui: maGuiHuy, lyDoId: $('ly-do-huy').value, ghiChu: $('ghi-chu-huy').value, dong, anh });
+        dangSuaQuay = false;
+        baoChung('xong', `<p><b>${k.daCo ? 'Phiếu này đã gửi trước đó' : 'Đã gửi phiếu huỷ'} ${e(k.soPhieu)}</b> — chờ quản lý duyệt.</p>`
+          + (k.loiAnh.length ? `<p>Lưu ý ảnh: ${e(k.loiAnh.join(' · '))}</p>` : ''));
+        await taiQuay();
+      } catch (err) { bao($('kq-huy'), 'loi', e(err.message)); nut.disabled = false; nut.textContent = 'Gửi phiếu huỷ'; }
+    };
+  }
+
+  async function guiYeuCau() {
+    const nut = $('nut-gui-lay');
+    const chon = new Set([...document.querySelectorAll('.chon-lay:checked')].map(c => c.dataset.mh));
+    const dong = [...document.querySelectorAll('.so-lay')].filter(i => chon.has(i.dataset.mh) && Number(i.value) > 0).map(i => {
+      const c = quay.canLay.find(x => x.mat_hang_id === i.dataset.mh);
+      return c && c.dem_goi ? { mat_hang_id: i.dataset.mh, so_goi: Number(i.value) } : { mat_hang_id: i.dataset.mh, so_kg: Number(i.value) };
+    });
+    if (!dong.length) { bao($('kq-lay'), 'loi', 'Chọn món và điền số cần lấy.'); return; }
+    if (!maGuiYc) maGuiYc = maGuiMoi();
+    nut.disabled = true; nut.textContent = 'Đang gửi…';
+    try {
+      const k = await goi('/api/quay/yeu-cau', { maGui: maGuiYc, nguon: 'goi_y', ghiChu: $('ghi-chu-lay').value, dong });
+      maGuiYc = null;
+      baoChung('xong', `<b>${k.daCo ? 'Yêu cầu này đã gửi trước đó' : 'Đã gửi yêu cầu lấy hàng'} ${e(k.soPhieu)}</b> — thủ kho sẽ mang ra.`);
+      await taiQuay();
+    } catch (err) { bao($('kq-lay'), 'loi', e(err.message)); nut.disabled = false; nut.textContent = 'Gửi yêu cầu lấy hàng'; }
+  }
+  $('nut-tai-quay').onclick = () => { dangSuaQuay = false; taiQuay(); };
+
+  // ---- thẻ Tảng & ô --------------------------------------------------------
+  let tangO = null;
+  async function taiTangO() {
+    $('tang-o-noi-dung').innerHTML = '<p class="dang-lam">Đang đọc ô mã…</p>';
+    try { tangO = await goi('/api/tang-o'); veTangO(); }
+    catch (err) { bao($('tang-o-noi-dung'), 'loi', e(err.message)); }
+  }
+  function veTangO() {
+    const d = tangO;
+    if (!d.nhom.length) { $('tang-o-noi-dung').innerHTML = '<p>Chưa có món nào dùng ô mã. Quản lý điền "Ô mã" ở Mặt hàng (phần cắt theo tảng) trên trang kho.</p>'; return; }
+    const TT = { trong: ['Trống', 'xam'], dang_loc: ['Đang lóc', 'vang'], dang_ban: ['Đang bán', 'xanh'], het_hang: ['Bán hết — chờ trả ô', 'xam'] };
+    let chuaDoi = 0;
+    let h = '';
+    for (const n of d.nhom) {
+      h += `<h3>${e(n.ten)} <span class="phu" style="font-weight:400">${n.dangBan}/${n.o.length} ô đang dùng${n.lech ? ` · <b style="color:var(--do)">${n.lech} lần lệch ô</b>` : ''}</span></h3>`
+        + '<div class="khung-bang"><table><thead><tr><th class="so">Ô</th><th class="so">Mã cân</th><th>Tảng</th><th>Hạn</th><th class="so">Lóc ra</th><th class="so">Đã bán</th><th class="so">Huỷ</th><th class="so">Còn</th><th>Bán</th><th class="so">Lệch ô</th><th>Trên cân</th></tr></thead><tbody>';
+      for (const o of n.o) {
+        const [nhan, lop] = TT[o.tinhTrang];
+        let can;
+        if (o.tenTrenCan === null) can = '<span class="phu">chưa lên cân</span>';
+        else if (o.canDaDoi) can = '<span class="nhan-l xanh">Đúng</span>';
+        else { chuaDoi++; can = `<span class="nhan-l vang">Cân chưa đổi</span><div class="phu">đang in: ${e(o.tenTrenCan)}</div>`; }
+        h += `<tr class="${o.tinhTrang === 'trong' ? 'mo' : ''}"><td class="so"><b>${o.so_o}</b></td><td class="so">${e(o.ma_can)}</td>`
+          + `<td><span class="nhan-l ${lop}">${nhan}</span>${o.soTang ? ` <b>${e(o.soTang)}</b>` : ''}${o.so_phieu_loc ? `<div class="phu">${e(o.so_phieu_loc)} · từ ${lucVn(o.tu_luc)}</div>` : ''}</td>`
+          + `<td>${ngayVn(o.han_dung)}</td>`
+          + `<td class="so">${o.kg_ra === null ? '—' : kgChu(o.kg_ra)}${o.goi_ra ? `<div class="phu">${o.goi_ra} gói</div>` : ''}</td>`
+          + `<td class="so">${o.giao_id ? kgChu(o.kg_ban) : '—'}${o.goi_ban ? `<div class="phu">${o.goi_ban} gói</div>` : ''}</td>`
+          + `<td class="so">${o.kg_huy ? kgChu(o.kg_huy) : '—'}</td>`
+          + `<td class="so">${o.giao_id ? kgChu(o.con_kg) : '—'}${o.con_goi ? `<div class="phu">${o.con_goi} gói</div>` : ''}</td>`
+          + `<td>${o.banPt === null ? '' : `<div class="thanh" title="${o.banPt}%"><span style="width:${Math.min(o.banPt, 100)}%"></span></div><div class="phu">${o.banPt}%</div>`}</td>`
+          + `<td class="so">${o.so_lech_o ? `<b style="color:var(--do)">${o.so_lech_o}</b>` : '0'}</td><td>${can}</td></tr>`;
+      }
+      h += '</tbody></table></div>';
+    }
+    const dau = (!d.coFileGoc ? '<div class="bao luu-y">Chưa có file gốc của cân nên chưa so được tên trên cân.</div>' : '')
+      + (chuaDoi ? `<div class="bao luu-y"><b>${chuaDoi} ô: cân chưa đổi tên theo tảng.</b> Tem in ra sẽ sai số tảng — quản lý mở thẻ <b>Gửi giá từ kho</b> và gửi xuống cân (hoặc bật Tự gửi ở Cài đặt).</div>` : '');
+    $('tang-o-noi-dung').innerHTML = dau + h;
+  }
+  $('nut-tai-tang-o').onclick = taiTangO;
+
+  // ---- thẻ Giảm giá --------------------------------------------------------
+  let giamDL = null;
+  async function taiGiam() {
+    $('giam-noi-dung').innerHTML = '<p class="dang-lam">Đang đọc mã giảm giá…</p>';
+    try { giamDL = await goi('/api/ma-giam'); veGiam(); }
+    catch (err) { bao($('giam-noi-dung'), 'loi', e(err.message)); }
+  }
+  function veGiam() {
+    const d = giamDL;
+    let h = '';
+    if (d.sua) {
+      h += '<div class="khung-form" style="margin-bottom:12px"><b>Tạo mã giảm giá</b><div class="nut">'
+        + `<select id="giam-mon" style="max-width:320px"><option value="">— Chọn món —</option>${d.monTaoDuoc.map(m => `<option value="${e(m.id)}">${e(m.ten)} · ${tien(m.gia_ban_kg)}/kg</option>`).join('')}</select>`
+        + '<select id="giam-pt" style="max-width:120px">' + [10, 15, 20, 25, 30, 40, 50].map(p => `<option value="${p}" ${p === 30 ? 'selected' : ''}>−${p}%</option>`).join('') + '</select>'
+        + '<input type="text" id="giam-ma" placeholder="Mã cân (để trống: tự lấy từ 90001)" style="max-width:260px">'
+        + '<button class="chinh" id="nut-tao-giam">Tạo</button></div><div class="phu" id="giam-xem-truoc"></div><div id="kq-giam"></div></div>';
+    }
+    if (!d.ds.length) h += '<p>Chưa có mã giảm giá nào.' + (d.sua ? '' : ' Quản lý hoặc chủ tạo ở đây.') + '</p>';
+    else {
+      h += '<div class="nut" style="margin-top:0"><button id="nut-csv-giam">Tải danh sách cho FABi (Excel)</button></div>'
+        + '<div class="khung-bang"><table><thead><tr><th>Món</th><th class="so">Mức</th><th class="so">Mã cân / mã FABi</th><th>Tên trên cân</th><th class="so">Giá gốc</th><th class="so">Giá đã giảm</th><th>Trên cân</th><th></th></tr></thead><tbody>'
+        + d.ds.map(g => `<tr class="${g.dang_dung ? '' : 'mo'}"><td><b>${e(g.ten)}</b></td><td class="so">−${g.phan_tram}%</td><td class="so"><b>${e(g.ma_can)}</b></td>`
+          + `<td>${e(g.tenTrenCan)}</td><td class="so">${tien(g.giaGoc)}</td><td class="so"><b>${tien(g.giaGiam)}</b></td>`
+          + `<td>${g.dang_dung ? (g.daLenCan ? '<span class="nhan-l xanh">Đã lên cân</span>' : '<span class="nhan-l vang">Chưa gửi</span>') : '<span class="nhan-l xam">Đã tắt</span>'}</td>`
+          + `<td>${d.sua ? `<button class="bat-giam" data-id="${e(g.id)}" data-bat="${g.dang_dung ? '0' : '1'}" style="padding:3px 10px;font-size:13px">${g.dang_dung ? 'Tắt' : 'Bật lại'}</button>` : ''}</td></tr>`).join('')
+        + '</tbody></table></div>'
+        + '<p class="phu">Mỗi mã cần một món trên FABi: <b>mã món = mã cân</b>, bán theo kg, giá = giá đã giảm. Đổi giá món trong kho thì giá giảm đổi theo — sửa cả trên FABi.</p>';
+    }
+    $('giam-noi-dung').innerHTML = h;
+    if (d.sua) {
+      const xem = () => {
+        const m = d.monTaoDuoc.find(x => x.id === $('giam-mon').value), pt = Number($('giam-pt').value);
+        $('giam-xem-truoc').textContent = m ? `${m.ten} −${pt}%: ${tien(Math.round(m.gia_ban_kg * (100 - pt) / 100000) * 1000)}/kg (làm tròn 1.000 đ)` : '';
+      };
+      $('giam-mon').onchange = xem; $('giam-pt').onchange = xem;
+      $('nut-tao-giam').onclick = async () => {
+        try {
+          const k = await goi('/api/ma-giam/luu', { matHangId: $('giam-mon').value, phanTram: Number($('giam-pt').value), maCan: $('giam-ma').value });
+          baoChung('xong', `<p><b>Đã tạo mã ${e(k.maCan)}</b>: ${e(k.ten)} −${k.phanTram}% · ${tien(k.giaGiam)}/kg.</p>`
+            + `<p>Việc tiếp: trên FABi tạo món mã <b>${e(k.maCan)}</b>, giá ${tien(k.giaGiam)}/kg — rồi thẻ <b>Gửi giá từ kho</b> → gửi xuống cân.</p>`);
+          await taiGiam();
+        } catch (err) { bao($('kq-giam'), 'loi', e(err.message)); }
+      };
+      for (const b of document.querySelectorAll('.bat-giam')) b.onclick = async () => {
+        try { const k = await goi('/api/ma-giam/bat', { id: b.dataset.id, bat: b.dataset.bat === '1' }); baoChung('xong', e(k.cau)); await taiGiam(); }
+        catch (err) { baoChung('loi', e(err.message)); }
+      };
+    }
+    if ($('nut-csv-giam')) $('nut-csv-giam').onclick = () => taiCsv('ma-giam-cho-fabi.csv', [['Mã món FABi (= mã cân)', 'Tên', 'Giá/kg đã giảm', 'Mức giảm', 'Giá gốc/kg', 'Đang dùng'],
+      ...d.ds.map(g => [g.ma_can, g.tenTrenCan, g.giaGiam ?? '', g.phan_tram + '%', g.giaGoc ?? '', g.dang_dung ? 'Có' : 'Không'])]);
+  }
+
+  // ---- thẻ Báo cáo ---------------------------------------------------------
+  let bcDL = null;
+  const ngayIso = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  function datKhoang(n) { const den = new Date(), tu = new Date(); tu.setDate(tu.getDate() - n); $('bc-tu').value = ngayIso(tu); $('bc-den').value = ngayIso(den); }
+  datKhoang(6);
+  for (const b of document.querySelectorAll('#the-bao-cao button[data-ngay]')) b.onclick = () => { datKhoang(Number(b.dataset.ngay)); taiBaoCao(); };
+  $('nut-bao-cao').onclick = taiBaoCao;
+  async function taiBaoCao() {
+    $('bao-cao-noi-dung').innerHTML = '<p class="dang-lam">Đang tính…</p>';
+    try { bcDL = await goi('/api/bao-cao', { tu: $('bc-tu').value, den: $('bc-den').value }); veBaoCao(); }
+    catch (err) { bao($('bao-cao-noi-dung'), 'loi', e(err.message)); }
+  }
+  function veBaoCao() {
+    const b = bcDL, t = b.tong;
+    let h = '<div class="so-o">'
+      + `<div class="o"><div class="nhan">Doanh thu</div><div class="gt">${tien(t.doanhThu)}</div><div class="phu">${t.soNgay} ngày có bán</div></div>`
+      + `<div class="o"><div class="nhan">Đã bán</div><div class="gt">${kgChu(t.kg)}</div><div class="phu">${soChu(t.soDong)} dòng bán</div></div>`
+      + `<div class="o ${t.soDongGiam ? 'vang' : ''}"><div class="nhan">Bán giảm giá</div><div class="gt">${tien(t.doanhThuGiam)}</div><div class="phu">${kgChu(t.kgGiam)} · đã giảm ~${tien(t.tienGiam)}</div></div>`
+      + `<div class="o ${t.soDongLechO ? 'do' : ''}"><div class="nhan">Lệch ô</div><div class="gt">${soChu(t.soDongLechO)}</div><div class="phu">dòng bán không khớp tảng</div></div></div>`;
+    if (t.soDongGiamSom) h += `<div class="bao loi"><b>${t.soDongGiamSom} lần bán bằng mã giảm giá cho gói còn hạn xa</b> (hơn mức cảnh báo cận date). Kiểm tra lại với NV quầy.</div>`;
+    if (!t.soDong) h += '<div class="bao luu-y">Không có dòng bán iPOS nào trong khoảng này. Chi nhánh chưa trừ kho theo iPOS thì số bán lấy từ đếm quầy — xem báo cáo trên trang kho.</div>';
+    else {
+      const max = Math.max(...b.theoGio.map(g => g.doanhThu), 1);
+      const theoGio = new Map(b.theoGio.map(g => [g.gio, g]));
+      const gioTu = Math.min(...b.theoGio.map(g => g.gio), 9), gioDen = Math.max(...b.theoGio.map(g => g.gio), 21);
+      const cacGio = []; for (let g = gioTu; g <= gioDen; g++) cacGio.push(g);
+      h += '<h3>Theo giờ trong ngày</h3><div class="cot-gio">'
+        + cacGio.map(g => { const x = theoGio.get(g); return `<div style="height:${x ? Math.max(x.doanhThu / max * 100, 1) : 0}%" title="${g}h: ${x ? tien(x.doanhThu) + ' · ' + kgChu(x.kg) : 'không bán'}"></div>`; }).join('')
+        + '</div><div class="nhan-gio">' + cacGio.map(g => `<span>${g}h</span>`).join('') + '</div>';
+      h += '<div class="hai-cot"><div><h3>Theo ngày</h3><div class="khung-bang"><table><thead><tr><th>Ngày</th><th class="so">Doanh thu</th><th class="so">Kg</th><th class="so">Giảm giá</th></tr></thead><tbody>'
+        + b.theoNgay.map(n => `<tr><td>${ngayVn(n.ngay)}</td><td class="so">${tien(n.doanhThu)}</td><td class="so">${kgChu(n.kg)}</td><td class="so">${n.doanhThuGiam ? tien(n.doanhThuGiam) : '—'}</td></tr>`).join('')
+        + '</tbody></table></div></div>';
+      h += '<div><h3>Món bán chạy <button id="nut-csv-mon" style="padding:3px 10px;font-size:13px">Excel</button></h3><div class="khung-bang"><table><thead><tr><th>Món</th><th class="so">Doanh thu</th><th class="so">Kg</th><th class="so">Giảm / lệch</th></tr></thead><tbody>'
+        + b.theoMon.map(m => `<tr><td>${e(m.ten)}</td><td class="so">${tien(m.doanhThu)}</td><td class="so">${kgChu(m.kg)}</td>`
+          + `<td class="so">${m.kgGiam ? kgChu(m.kgGiam) + (m.soDongGiamSom ? ` <span class="nhan-l do">${m.soDongGiamSom} sớm</span>` : '') : ''}${m.soDongLechO ? `<div class="phu">${m.soDongLechO} lệch ô</div>` : ''}</td></tr>`).join('')
+        + '</tbody></table></div></div></div>';
+    }
+    if (b.tang.length) {
+      const TT = { chua_loc: 'Chưa lóc', dang_ban: 'Đang bán', het: 'Bán hết' };
+      h += '<h3>Theo tảng nhận trong kỳ <button id="nut-csv-tang" style="padding:3px 10px;font-size:13px">Excel</button></h3>'
+        + '<div class="khung-bang"><table><thead><tr><th>Tảng</th><th>Món</th><th class="so">Kg NCC</th><th class="so">Kg thịt</th><th class="so">Thu hồi</th><th class="so">Đã bán</th><th class="so">Huỷ</th><th class="so">Còn</th><th>Tình trạng</th></tr></thead><tbody>'
+        + b.tang.map(x => `<tr><td><b>${x.so_tang ? '#' + String(x.so_tang).padStart(4, '0') : e(x.ma_lo)}</b><div class="phu">${e(x.ten_ncc || '')}</div></td><td>${e(x.ten_hang)}</td>`
+          + `<td class="so">${kgChu(x.kg_ncc)}</td><td class="so">${kgChu(x.kg_thit)}</td><td class="so">${x.thu_hoi_pt === null ? '—' : x.thu_hoi_pt + '%'}</td>`
+          + `<td class="so">${kgChu(x.kg_ban)}${x.ban_pt === null ? '' : `<div class="phu">${x.ban_pt}%</div>`}</td><td class="so">${x.kg_huy ? kgChu(x.kg_huy) : '—'}</td>`
+          + `<td class="so">${kgChu(x.kg_con)}</td><td>${e(TT[x.tinh_trang] || x.tinh_trang)}</td></tr>`).join('')
+        + '</tbody></table></div>';
+    }
+    $('bao-cao-noi-dung').innerHTML = h;
+    if ($('nut-csv-mon')) $('nut-csv-mon').onclick = () => taiCsv(`ban-theo-mon-${b.tu}-${b.den}.csv`, [['Món', 'Nhóm', 'Doanh thu', 'Kg', 'Gói', 'Số dòng', 'Kg bán giảm giá', 'Tiền đã giảm (ước)', 'Giảm sớm', 'Lệch ô'],
+      ...b.theoMon.map(m => [m.ten, m.nhom || '', m.doanhThu, m.kg, m.soGoi, m.soDong, m.kgGiam, m.tienGiam, m.soDongGiamSom, m.soDongLechO])]);
+    if ($('nut-csv-tang')) $('nut-csv-tang').onclick = () => taiCsv(`theo-tang-${b.tu}-${b.den}.csv`, [['Số tảng', 'Mã lô', 'Món', 'NCC', 'Ngày nhận', 'Ngày lóc', 'Kg NCC', 'Kg repack', 'Kg vào lóc', 'Kg thịt', 'Thu hồi %', 'Kg bán', 'Bán %', 'Kg huỷ', 'Kg còn', 'Số ngày bán', 'Tình trạng'],
+      ...b.tang.map(x => [x.so_tang ?? '', x.ma_lo, x.ten_hang, x.ten_ncc ?? '', x.ngay_nhan ?? '', x.ngay_loc ?? '', x.kg_ncc ?? '', x.kg_repack ?? '', x.kg_vao_loc ?? '', x.kg_thit ?? '', x.thu_hoi_pt ?? '', x.kg_ban ?? '', x.ban_pt ?? '', x.kg_huy ?? '', x.kg_con ?? '', x.so_ngay_ban ?? '', x.tinh_trang])]);
+  }
 
   // ---- các nút khác -----------------------------------------------------
   $('nut-xem').onclick = xemTruoc;

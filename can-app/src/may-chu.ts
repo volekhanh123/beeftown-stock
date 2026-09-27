@@ -105,6 +105,15 @@ export function moMayChu(ud: UngDung, tuy: {
           case '/api/tem/usb': return json({ ok: true, ...ud.taoFileUsbTem(thayDoiTem(await docThan(req))) });
           case '/api/da-nap-usb': return json({ ok: true, ...ud.daNapUsb() });
           case '/api/thu-can': return json({ ok: true, thongCan: await ud.thuCan() });
+          // ---- máy quầy (0054) ----
+          case '/api/quay': return json({ ok: true, ...(await ud.bangQuay()) });
+          case '/api/quay/yeu-cau': return json({ ok: true, ...(await ud.taoYeuCau(await docThan(req))) });
+          case '/api/quay/huy': return json({ ok: true, ...(await ud.taoPhieuHuy(await docThan(req))) });
+          case '/api/tang-o': return json({ ok: true, ...(await ud.tangVaO()) });
+          case '/api/ma-giam': return json({ ok: true, ...(await ud.maGiam()) });
+          case '/api/ma-giam/luu': return json({ ok: true, ...(await ud.luuMaGiam(await docThan(req))) });
+          case '/api/ma-giam/bat': return json({ ok: true, ...(await ud.batMaGiam(await docThan(req))) });
+          case '/api/bao-cao': return json({ ok: true, ...(await ud.baoCao(await docThan(req))) });
           case '/api/mo-thu-muc': {
             const b = await docThan(req);
             const dich = b.cho === 'usb' ? path.dirname(ud.fileChoUsb) : ud.dd.duLieu;

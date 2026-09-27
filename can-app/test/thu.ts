@@ -5,14 +5,16 @@
  *
  * Cân giả: một máy chủ TCP cục bộ ghi lại mọi byte nhận được, và làm đúng
  * như cân thật đã thử (26/09/2026): chỉ THÊM / SỬA dòng PLU, không xoá.
- * Kho giả: danh mục cho sẵn, đưa qua tuỳ chọn `danhMuc` của UngDung.
+ * Kho giả: danh mục cho sẵn, đưa qua tuỳ chọn `danhMuc` của UngDung; máy
+ * quầy (0054) qua tuỳ chọn `kho` (ghi lại mọi lần gọi hàm kho) và `nguoi`.
  * Phần cuối chạy src/main.ts thật và gọi máy chủ của nó.
  */
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { LoiCan, UngDung, guiTcp, thuKetNoi, type DanhMucKho } from '../src/nghiep-vu.ts';
+import { LoiCan, UngDung, guiTcp, quyenCuaVai, thuKetNoi, type DanhMucKho, type NguoiDung } from '../src/nghiep-vu.ts';
+import { taoKhoGia } from './kho-gia.ts';
 import { docFileCan } from '../../web/src/lib/kho/can-tma.ts';
 import type { HangKho } from '../../web/src/lib/kho/can-tma.ts';
 
@@ -223,6 +225,88 @@ console.log('5c · Tự gửi khi kho đổi (GĐ3)');
 }
 
 // =============================================================================
+console.log('5d · Máy quầy (0054) — kho giả');
+{
+  const { kho, goiKho, anhDaTai, MH, Q1, LD, L } = taoKhoGia();
+  const cn = { id: 'cn1', ma: 'q1', ten: 'Hàm Nghi' };
+  const nguoi = (vai: string): NguoiDung => ({ email: vai + '@b', hoTen: vai, vaiTro: vai, chiNhanh: cn, cacChiNhanh: [cn], quyen: quyenCuaVai(vai) });
+  const dd3 = { cauHinh: path.join(tam, 'appdata3'), duLieu: path.join(tam, 'tai-lieu3') };
+  const nv = new UngDung(dd3, { kho, nguoi: nguoi('nhan_vien_quay') });
+  const ql = new UngDung(dd3, { kho, nguoi: nguoi('quan_ly') });
+  const kt = new UngDung(dd3, { kho, nguoi: nguoi('ke_toan') });
+  // Cân đang có: mã giảm 90001 ở PLU 5; ô 1 in tên cũ (tảng #0142), ô 2 tên món.
+  nv.ghiNhanFileTuCan(fileCan([plu(1, '107', '1350,0', 'Steak Ribeye Angus'), plu(5, '90001', '945,0', 'Steak Ribeye Angus -30%'),
+    plu(6, '10071', '1350,0', 'Steak Ribeye Angus #0142'), plu(7, '10072', '1350,0', 'Steak Ribeye Angus')]));
+  const loiCua = async (f: () => Promise<unknown>) => { try { await f(); return ''; } catch (e) { return (e as Error).message; } };
+
+  ok('Quyền theo vai: NV quầy vận hành, không danh mục / giá; kế toán xem giá', nguoi('nhan_vien_quay').quyen.vanHanh && !nguoi('nhan_vien_quay').quyen.danhMuc
+    && !nguoi('nhan_vien_quay').quyen.xemGia && nguoi('ke_toan').quyen.xemGia && !nguoi('ke_toan').quyen.vanHanh);
+
+  const q = await nv.bangQuay();
+  ok('Bảng quầy: 1 lô hết hạn, 2 lô cận date, 2 món dưới mức', q.dem.hetHan === 1 && q.dem.canDate === 2 && q.dem.canLay === 2, JSON.stringify(q.dem));
+  const rib = q.canDate.find(l => l.lo_id === L.can)!;
+  ok('Lô Ribeye cận date: xếp ra trước (quầy có lô hạn xa hơn), gợi ý mã giảm 90001 ở PLU 5',
+    rib.xepTruoc && rib.maGiam.length === 1 && rib.maGiam[0].ma_can === '90001' && rib.maGiam[0].plu === 5 && rib.maGiam[0].gia_giam_kg === 945000, JSON.stringify(rib));
+  ok('Lô bắp cận date: không có lô khác → không "xếp trước", không mã giảm', !q.canDate.find(l => l.lo_id === L.q2)!.xepTruoc
+    && q.canDate.find(l => l.lo_id === L.q2)!.maGiam.length === 0);
+  ok('Lô hết hạn có số tảng #0142', q.hetHan[0].so_tang === '#0142');
+  const tonRib = q.ton.find(t => t.mat_hang_id === MH.rib)!;
+  ok('Tồn Ribeye: 7 gói còn hạn (không tính gói hết hạn), có gói hết hạn', tonRib.soGoi === 7 && tonRib.soGoiHetHan === 2 && tonRib.tinhTrang === 'co_het_han'
+    && tonRib.hanGanNhat === '2026-09-29', JSON.stringify(tonRib));
+  ok('Tồn xúc xích: hết ở quầy', q.ton.find(t => t.mat_hang_id === MH.xx)!.tinhTrang === 'het');
+  ok('Trả quyền cho trang', q.quyen.vanHanh && !q.quyen.danhMuc);
+
+  const mg = crypto.randomUUID();
+  const yc = await nv.taoYeuCau({ maGui: mg, nguon: 'goi_y', ghiChu: '  Ca tối ', dong: [{ mat_hang_id: MH.rib, so_goi: 9 }] });
+  const gYc = goiKho.find(x => x.ten === 'kho_tao_yeu_cau')!;
+  ok('NV quầy gửi yêu cầu lấy hàng: đúng quầy đầu tiên, nguồn gợi ý, ghi chú gọn', yc.soPhieu === 'YC-0001' && gYc.thamSo.p_vi_tri_id === Q1
+    && gYc.thamSo.p_nguon === 'goi_y' && gYc.thamSo.p_ghi_chu === 'Ca tối' && gYc.thamSo.p_ma_gui === mg, JSON.stringify(gYc));
+  ok('Yêu cầu: số gói không nguyên → báo', /số nguyên/.test(await loiCua(() => nv.taoYeuCau({ maGui: crypto.randomUUID(), dong: [{ mat_hang_id: MH.rib, so_goi: 1.5 }] }))));
+  ok('Yêu cầu: không có ma_gui → báo', /Mở lại form/.test(await loiCua(() => nv.taoYeuCau({ dong: [{ mat_hang_id: MH.rib, so_goi: 1 }] }))));
+  ok('Kế toán không tạo được yêu cầu', /không tạo được/.test(await loiCua(() => kt.taoYeuCau({ maGui: crypto.randomUUID(), dong: [] }))));
+
+  const mgH = crypto.randomUUID();
+  ok('Huỷ lý do cần ảnh mà không có ảnh → báo', /cần ảnh/.test(await loiCua(() => nv.taoPhieuHuy({ maGui: mgH, lyDoId: LD.han, dong: [{ lo_id: L.het }] }))));
+  ok('Huỷ quá số gói → báo', /từ 1 đến 2/.test(await loiCua(() => nv.taoPhieuHuy({ maGui: mgH, lyDoId: LD.khac, dong: [{ lo_id: L.het, so_goi: 3 }] }))));
+  ok('Huỷ hai quầy một phiếu → báo', /một quầy/.test(await loiCua(() => nv.taoPhieuHuy({ maGui: mgH, lyDoId: LD.khac, dong: [{ lo_id: L.het }, { lo_id: L.q2 }] }))));
+  const anh = { ten: 'hang.jpg', loai: 'image/jpeg', base64: Buffer.from('anh-gia').toString('base64') };
+  const h = await nv.taoPhieuHuy({ maGui: mgH, lyDoId: LD.han, ghiChu: 'bỏ', dong: [{ lo_id: L.het }, { lo_id: L.can, so_goi: 1 }], anh: [anh] });
+  const gH = goiKho.find(x => x.ten === 'kho_tao_phieu_xuat')!;
+  ok('Phiếu huỷ: tải ảnh trước, gọi kho loại huy ở quầy, đủ dòng lô', h.soPhieu === 'PX-0009' && anhDaTai.length === 1
+    && gH.thamSo.p_loai === 'huy' && gH.thamSo.p_vi_tri_id === Q1 && (gH.thamSo.p_anh as string[])[0] === anhDaTai[0]
+    && JSON.stringify(gH.thamSo.p_dong) === JSON.stringify([{ mat_hang_id: MH.rib, lo_id: L.het, so_goi: 2 }, { mat_hang_id: MH.rib, lo_id: L.can, so_goi: 1 }]),
+    JSON.stringify(gH.thamSo));
+
+  ok('NV quầy không gửi được xuống cân (danh mục)', /quản lý hoặc chủ/.test(await loiCua(() => nv.xemTruoc())));
+  ok('NV quầy không tạo được mã giảm', /quản lý hoặc chủ/.test(await loiCua(() => nv.luuMaGiam({ matHangId: MH.rib, phanTram: 30 }))));
+  ok('NV quầy không xem được báo cáo doanh thu', /chủ, quản lý, kế toán/.test(await loiCua(() => nv.baoCao({ tu: '2026-09-22', den: '2026-09-28' }))));
+
+  const to = await nv.tangVaO();
+  const o1 = to.nhom[0].o.find(o => o.so_o === 1)!, o2 = to.nhom[0].o.find(o => o.so_o === 2)!;
+  ok('Tảng & ô: ô 1 đang bán tảng #0150, bán 25%, lệch 2', o1.tinhTrang === 'dang_ban' && o1.soTang === '#0150' && o1.banPt === 25 && o1.so_lech_o === 2
+    && to.nhom[0].lech === 2 && to.nhom[0].dangBan === 1, JSON.stringify(o1));
+  ok('Ô 1: cân chưa đổi tên (đang in #0142, kho muốn #0150)', !o1.canDaDoi && o1.tenTrenCan === 'Steak Ribeye Angus #0142' && o1.tenMuon === 'Steak Ribeye Angus #0150');
+  ok('Ô 2 trống: tên món, cân đúng', o2.tinhTrang === 'trong' && o2.canDaDoi);
+
+  const gv = await nv.maGiam();
+  ok('Mã giảm (NV xem được, không sửa): -30% đã lên cân, giá 945.000', !gv.sua && gv.ds.find(g => g.ma_can === '90001')?.daLenCan === true
+    && gv.ds.find(g => g.ma_can === '90001')?.giaGiam === 945000 && gv.ds.find(g => g.ma_can === '90003')?.dang_dung === false, JSON.stringify(gv.ds));
+  ok('Món tạo được mã giảm: có mã cân và giá (không tảng, không món thiếu mã)', gv.monTaoDuoc.map(m => m.ma).join() === 'C-BAP,C-RIB', gv.monTaoDuoc.map(m => m.ma).join());
+
+  ok('Quản lý: mức 3% → báo', /5% đến 90%/.test(await loiCua(() => ql.luuMaGiam({ matHangId: MH.rib, phanTram: 3 }))));
+  const tao = await ql.luuMaGiam({ matHangId: MH.rib, phanTram: 50, maCan: '' });
+  ok('Quản lý tạo mã giảm -50%: gọi kho, mã tự lấy', tao.maCan === '90002' && goiKho.some(x => x.ten === 'kho_luu_ma_giam' && x.thamSo.p_ma_can === null && x.thamSo.p_phan_tram === 50));
+  ok('Quản lý tắt mã giảm', /Đã tắt/.test((await ql.batMaGiam({ id: 'aaaaaaaa-aaaa-4aaa-8aaa-000000000001', bat: false })).cau));
+  ok('Quản lý thấy nút sửa mã giảm', (await ql.maGiam()).sua);
+
+  ok('Báo cáo: khoảng ngày ngược → báo', /trước ngày kết thúc/.test(await loiCua(() => kt.baoCao({ tu: '2026-09-28', den: '2026-09-01' }))));
+  const bc = await kt.baoCao({ tu: '2026-09-22', den: '2026-09-28' });
+  ok('Báo cáo (kế toán): tổng doanh thu, kg, giảm giá, giảm sớm, lệch ô', bc.tong.doanhThu === 2505000 && bc.tong.kg === 2.5 && bc.tong.tienGiam === 202500
+    && bc.tong.soDongGiamSom === 1 && bc.tong.soDongLechO === 1 && bc.tong.soNgay === 2, JSON.stringify(bc.tong));
+  ok('Báo cáo: theo giờ 11h, 18h; món chạy nhất Ribeye; có tảng', bc.theoGio.map(g => g.gio).join() === '11,18' && bc.theoMon[0].mat_hang_id === MH.rib && bc.tang.length === 1);
+}
+
+// =============================================================================
 console.log('6 · Kết nối cân');
 ok('Thử kết nối cân giả: thông', await ud.thuCan());
 const congDong = await new Promise<number>((xong) => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = (s.address() as net.AddressInfo).port; s.close(() => xong(p)); }); });
@@ -266,6 +350,8 @@ const guiTemApi = await (await api('/api/tem/gui', JSON.stringify({ chu: { 23: '
 ok('API gửi tem qua cân giả', guiTemApi.ok, JSON.stringify(guiTemApi));
 const tApi2 = await (await api('/api/tem')).json() as { tem: { chu: Record<string, string> } };
 ok('API mẫu tem sau khi gửi: chữ mới', tApi2.tem.chu[23] === 'Hạn dùng');
+const qApi = await (await api('/api/quay')).json() as { ok: boolean; loi?: string };
+ok('API quầy khi chưa đăng nhập kho → báo đăng nhập (không sập)', !qApi.ok && /[Đđ]ăng nhập|kết nối|mạng|mở được/i.test(qApi.loi ?? ''), JSON.stringify(qApi));
 const tc = await (await api('/api/thu-can')).json() as { thongCan: boolean };
 ok('Nút kiểm tra kết nối cân', tc.thongCan === true);
 const dong = await (await api('/api/dong')).json() as { ok: boolean };
