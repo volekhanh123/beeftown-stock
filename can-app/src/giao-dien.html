@@ -95,7 +95,8 @@
   <div class="hang">
     <div class="o"><div class="nhan">Kho</div><div class="gt" id="o-kho">…</div><div class="phu" id="o-kho-phu"></div></div>
     <div class="o"><div class="nhan">Cân</div><div class="gt"><span class="den" id="den-can"></span><span id="o-can">…</span></div>
-      <div class="phu"><button id="nut-thu-can" style="padding:3px 10px;font-size:13px;margin-top:4px">Kiểm tra kết nối</button></div></div>
+      <div class="phu"><button id="nut-thu-can" style="padding:3px 10px;font-size:13px;margin-top:4px">Kiểm tra kết nối</button></div>
+      <div class="phu" id="o-tu-gui"></div></div>
     <div class="o"><div class="nhan">Trên cân</div><div class="gt" id="o-tren-can">…</div><div class="phu" id="o-goc"></div></div>
   </div>
 
@@ -176,6 +177,8 @@
         <label class="truong"><span>Địa chỉ cân (trên cân bấm Prog → 4 → 2 để xem)</span><input type="text" name="ipCan"></label>
         <label class="truong"><span>Cổng của cân</span><input type="number" name="congCan"></label>
         <label class="truong"><span>Địa chỉ kho</span><input type="text" name="diaChiKho"></label>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" name="tuGui">
+          <span>Tự gửi xuống cân khi kho đổi (mỗi phút, khi cửa sổ này đang mở) — đổi giá, lóc tảng mới là cân tự cập nhật tên, giá.</span></label>
         <label class="truong an" id="o-chi-nhanh"><span>Chi nhánh</span><select name="chiNhanhId"></select></label>
         <div class="nut"><button type="submit">Lưu cài đặt</button></div>
       </form>
@@ -227,6 +230,11 @@
     $('o-can').textContent = ch.ipCan + ' · cổng ' + ch.congCan;
     const f = $('form-cau-hinh');
     f.ipCan.value = ch.ipCan; f.congCan.value = ch.congCan; f.diaChiKho.value = ch.diaChiKho;
+    f.tuGui.checked = !!ch.tuGui;
+    const tg = s.lanTuGui;
+    $('o-tu-gui').textContent = ch.tuGui
+      ? 'Tự gửi: bật' + (tg ? ' · ' + new Date(tg.luc).toLocaleTimeString('vi-VN') + ' — ' + tg.cau : ' · chờ lần đầu')
+      : '';
     $('duong-thu-muc').innerHTML = 'Dữ liệu nằm ở <code>' + e(s.thuMuc) + '</code>';
 
     if (s.nguoi) {
@@ -580,7 +588,7 @@
     ev.preventDefault();
     const f = ev.target;
     try {
-      await goi('/api/cau-hinh', { ipCan: f.ipCan.value, congCan: Number(f.congCan.value), diaChiKho: f.diaChiKho.value,
+      await goi('/api/cau-hinh', { ipCan: f.ipCan.value, congCan: Number(f.congCan.value), diaChiKho: f.diaChiKho.value, tuGui: f.tuGui.checked,
         chiNhanhId: trangThai && trangThai.nguoi && trangThai.nguoi.cacChiNhanh.length > 1 ? f.chiNhanhId.value : undefined });
       baoChung('xong', 'Đã lưu cài đặt.'); await taiTrangThai();
     } catch (err) { baoChung('loi', e(err.message)); }

@@ -792,8 +792,12 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   phải thuộc ô của chính phiên. Chốt → ô gắn lô ra (`kho_o_ma_giao.lo_id`); mở lại → bỏ; huỷ phiên → trả
   ô. Lô ra hết tồn thì lần giao sau tự đóng ô cũ; quản lý giải phóng tay được (`kho_giai_phong_o_ma`).
   Quét kiểm kê cũng nhận nhãn mã ô (`kho_mat_hang_theo_ma_can`). View `kho_v_o_ma_giao`.
-- Tiếp theo (kế hoạch): cân đổi tên PLU theo tảng + tự gửi (GĐ3), bán qua iPOS trừ đúng tảng (0048),
-  màn truy vết và huỷ cả tảng.
+- **Cân theo tảng (GĐ3)**: `lib/kho/danh-muc-can.ts` (`hangChoCan`) — nguồn chung của màn Đồng bộ cân và
+  Beeftown Cân: mỗi ô mã một dòng, cùng giá món, tên kèm số tảng đang giữ ô ("… #0142", cắt tên cho vừa
+  24 ký tự, không cắt số tảng); ô trống vẫn ở trên cân nên PLU không đổi. Beeftown Cân có tuỳ chọn **Tự gửi
+  xuống cân khi kho đổi** (mỗi phút khi cửa sổ mở, chỉ khi có thêm / sửa). Hạn dùng theo tảng trên tem còn
+  chờ tìm cột số ngày trong dòng PLU.
+- Tiếp theo (kế hoạch): bán qua iPOS trừ đúng tảng (0048, chờ iPOS xác nhận), màn truy vết và huỷ cả tảng.
 
 ## 4. Cài như app (PWA)
 

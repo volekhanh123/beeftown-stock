@@ -76,6 +76,14 @@ const mayChu = moMayChu(ud, {
 fs.mkdirSync(ud.dd.cauHinh, { recursive: true });
 fs.writeFileSync(fileDangChay, JSON.stringify({ cong: mayChu.port, ma: MA }), 'utf8');
 
+// Tự gửi xuống cân khi kho đổi (bật ở Cài đặt): mỗi phút, khi đã có file gốc.
+let dangTuGui = false;
+setInterval(async () => {
+  if (dangTuGui || !ud.cauHinh().tuGui || !ud.coFileGoc()) return;
+  dangTuGui = true;
+  try { await ud.tuGuiMotLan(); } finally { dangTuGui = false; }
+}, 60_000);
+
 // Lâu không nghe nhịp từ trang (cửa sổ đã đóng mà không kịp báo) → tắt.
 // Cửa sổ thu nhỏ vẫn gửi nhịp chậm nhất mỗi phút, nên chờ tới 4 phút.
 setInterval(() => { if (Date.now() - nhipCuoi > 4 * 60_000) process.exit(0); }, 30_000);

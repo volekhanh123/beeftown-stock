@@ -8,6 +8,12 @@ Chương trình Windows (`BeeftownCan.exe`) cho máy tính ở quán, thay phầ
 
 Tên và giá hàng chỉ sửa ở kho (kho là gốc); chương trình không sửa tay SKU.
 
+**Truy vết theo tảng:** phần cắt có **ô mã** (ví dụ 10011–10019) thì mỗi ô là một PLU trên cân. Khi bếp lóc
+một tảng và bấm "Giao ô mã" trong kho, ô đó đổi tên thành "Thăn ngoại cắt lát #0142" ở lần gửi sau — tem in
+ra có số tảng, FABi bán theo mã ô. Bật **Tự gửi xuống cân khi kho đổi** (Cài đặt) để chương trình tự gửi
+mỗi phút khi kho có thêm / sửa (chỉ khi cửa sổ đang mở). Danh mục lấy từ `web/src/lib/kho/danh-muc-can.ts`,
+dùng chung với màn Đồng bộ cân.
+
 Phần tính "thêm / sửa / bỏ" là **đúng code của màn Đồng bộ cân** (`web/src/lib/kho/can-tma.ts`), nên hai nơi luôn ra cùng một kết quả.
 
 ## Dùng
@@ -62,7 +68,7 @@ Máy chủ chỉ nghe `127.0.0.1` và mọi yêu cầu phải mang đúng mã b�
 
 ```bash
 cd can-app && npm ci
-npx bun test/thu.ts              # 73 kiểm tra: cân giả, kho giả, tem, danh sách hàng, chạy cả src/main.ts
+npx bun test/thu.ts              # 80 kiểm tra: cân giả, kho giả, tem, danh sách hàng, tự gửi, chạy cả src/main.ts
 npx bun test/xem-giao-dien.ts    # mở giao diện với dữ liệu giả để xem / chụp màn hình
 npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói được từ Linux
 ```

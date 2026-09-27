@@ -203,6 +203,26 @@ await ud.guiTem({ bat: ['t:0'] });
 ok('Bật lại qua WiFi', ud.tem().tem!.o.length === 14 && ud.tem().tem!.o.every(o => o.bat));
 
 // =============================================================================
+console.log('5c · Tự gửi khi kho đổi (GĐ3)');
+{
+  const soGui0 = nhan.length;
+  const t1 = await ud.tuGuiMotLan();
+  ok('Kho không đổi → không gửi', !t1.daGui && nhan.length === soGui0 && /khớp/.test(t1.cau), JSON.stringify(t1));
+  danhMuc = { ...danhMuc, matHang: danhMuc.matHang.map(h => (h.ma === 'LOI-VAI' ? { ...h, gia_ban_kg: 870000 } : h)) };
+  const t2 = await ud.tuGuiMotLan();
+  ok('Đổi giá lõi vai → tự gửi 1 sửa', t2.daGui && nhan.length === soGui0 + 1 && /1 sửa/.test(t2.cau), JSON.stringify(t2));
+  ok('Cân giả nhận giá mới 870', docFileCan(new Uint8Array(nhan[nhan.length - 1])).plu.some(p => p.ma === '10001' && p.gia === 870000));
+  const t3 = await ud.tuGuiMotLan();
+  ok('Gửi xong lần sau không gửi lại', !t3.daGui && nhan.length === soGui0 + 1);
+  ok('Trạng thái nhớ lần tự gửi gần nhất', ud.lanTuGui?.cau === t3.cau);
+  ud.luuCauHinh({ tuGui: true });
+  ok('Lưu cài đặt bật tự gửi', ud.cauHinh().tuGui === true);
+  ud.luuCauHinh({ ipCan: '127.0.0.1' });
+  ok('Lưu cài đặt khác không tắt tự gửi', ud.cauHinh().tuGui === true);
+  ud.luuCauHinh({ tuGui: false });
+}
+
+// =============================================================================
 console.log('6 · Kết nối cân');
 ok('Thử kết nối cân giả: thông', await ud.thuCan());
 const congDong = await new Promise<number>((xong) => { const s = net.createServer(); s.listen(0, '127.0.0.1', () => { const p = (s.address() as net.AddressInfo).port; s.close(() => xong(p)); }); });

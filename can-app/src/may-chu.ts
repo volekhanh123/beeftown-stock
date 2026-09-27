@@ -60,6 +60,7 @@ export function moMayChu(ud: UngDung, tuy: {
             return json({
               ok: true, phienBan: tuy.phienBan, cauHinh: ud.cauHinh(), nguoi, loiKho,
               goc: ud.thongTinGoc(), soTrenCan: ud.docTrenCan().size, thuMuc: ud.dd.duLieu,
+              lanTuGui: ud.lanTuGui,
             });
           }
           case '/api/cau-hinh': {
@@ -67,6 +68,7 @@ export function moMayChu(ud: UngDung, tuy: {
             const ch = ud.luuCauHinh({
               ipCan: b.ipCan as string | undefined, congCan: b.congCan as number | undefined,
               diaChiKho: b.diaChiKho as string | undefined, chiNhanhId: b.chiNhanhId as string | undefined,
+              tuGui: typeof b.tuGui === 'boolean' ? b.tuGui : undefined,
             });
             return json({ ok: true, cauHinh: ch });
           }

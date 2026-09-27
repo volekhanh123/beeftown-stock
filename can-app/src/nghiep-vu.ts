@@ -37,6 +37,7 @@ import {
 } from '../../web/src/lib/kho/can-tma.ts';
 import { LoiTem, phimTat, suaTem, xemTem, type DaTat, type TemXem, type ThayDoiTem } from './tem.ts';
 import { docCaiDat, docMatHang } from '../../web/src/lib/kho/danh-muc.ts';
+import { hangChoCan } from '../../web/src/lib/kho/danh-muc-can.ts';
 import { QUYEN_KHO } from '../../web/src/lib/kho/chung.ts';
 
 // -----------------------------------------------------------------------------
@@ -77,7 +78,12 @@ export interface CauHinh {
   supabaseUrl?: string;
   anonKey?: string;
   chiNhanhId?: string;
+  /** Tự gửi xuống cân khi kho đổi (mỗi phút, khi cửa sổ đang mở) — truy vết tảng GĐ3. */
+  tuGui?: boolean;
 }
+
+/** Kết quả lần tự gửi gần nhất (giữ trong bộ nhớ, hiện ở ô Cân). */
+export interface LanTuGui { luc: string; daGui: boolean; cau: string }
 
 const CAU_HINH_MAC_DINH: CauHinh = { ipCan: '192.168.1.22', congCan: 33571, diaChiKho: 'https://beeftown.vn' };
 
@@ -245,6 +251,7 @@ export class UngDung {
     const kq: CauHinh = {
       ...cu, ipCan: ip, congCan: cong, diaChiKho: kho,
       ...(moi.chiNhanhId !== undefined ? { chiNhanhId: moi.chiNhanhId || undefined } : {}),
+      ...(moi.tuGui !== undefined ? { tuGui: moi.tuGui === true } : {}),
     };
     if (doiKho) { delete kq.supabaseUrl; delete kq.anonKey; this.client = null; }
     ghiJson(this.fileCauHinh, kq);
@@ -328,7 +335,8 @@ export class UngDung {
     if (!nd.chiNhanh) throw new LoiCan('Chưa chọn chi nhánh.');
     const c = await this.layClient();
     const [caiDat, matHang] = await Promise.all([docCaiDat(c, nd.chiNhanh.id), docMatHang(c)]);
-    return { matHang, mauMaVach: caiDat?.mau_ma_vach ?? null };
+    // Truy vết tảng (GĐ3): mỗi ô mã một dòng, tên kèm số tảng đang giữ ô.
+    return { matHang: await hangChoCan(c, nd.chiNhanh.id, matHang), mauMaVach: caiDat?.mau_ma_vach ?? null };
   }
 
   // ---- file gốc và tren-can.tsv ---------------------------------------------
@@ -415,6 +423,28 @@ export class UngDung {
     this.ghiTrenCan(tren);
     const soMoi = new Set(moi.plu.map(p => p.so));
     return { soHang: moi.plu.length, conLai: [...tren.values()].filter(h => !soMoi.has(h.so)) };
+  }
+
+  /**
+   * Tự gửi (GĐ3): kho có thêm / sửa hàng so với cân (đổi giá, lóc tảng mới →
+   * ô mã đổi tên theo số tảng) thì gửi qua WiFi. Không có gì đổi thì thôi.
+   * Hàng cần xoá không tính — WiFi không xoá được, để người bấm nạp USB.
+   */
+  lanTuGui: LanTuGui | null = null;
+  async tuGuiMotLan(): Promise<LanTuGui> {
+    const luc = new Date().toISOString();
+    try {
+      const x = await this.xemTruoc(false);
+      if (x.dem.them + x.dem.sua === 0) {
+        this.lanTuGui = { luc, daGui: false, cau: 'Cân đã khớp kho.' };
+      } else {
+        const k = await this.guiXuongCan(false);
+        this.lanTuGui = { luc, daGui: true, cau: `Đã tự gửi ${x.dem.them} thêm, ${x.dem.sua} sửa (${k.soHang} hàng).` };
+      }
+    } catch (e) {
+      this.lanTuGui = { luc, daGui: false, cau: cauLoi(e) };
+    }
+    return this.lanTuGui;
   }
 
   /** Dựng file để nạp bằng USB (cân sẽ thay cả danh sách → xoá được hàng). */

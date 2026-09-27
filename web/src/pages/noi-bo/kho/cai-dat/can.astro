@@ -25,6 +25,7 @@ import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docMatHang } from '../../../../lib/kho/danh-muc.ts';
+import { hangChoCan } from '../../../../lib/kho/danh-muc-can.ts';
 import { cauLoiKho, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
 import {
   docFileCan, lapKeHoach, ghiFileCan, soChuSoMa, tenFileCan, sangBase64, tuBase64,
@@ -153,8 +154,10 @@ if (form && k.chiNhanh) {
     }
     const file = docFileCan(tep);
     const [caiDat, matHang] = await Promise.all([docCaiDat(k.client, k.chiNhanh.id), docMatHang(k.client)]);
+    // GĐ3 truy vết tảng: thêm mỗi ô mã một dòng, tên kèm số tảng đang giữ ô.
+    const hang = await hangChoCan(k.client, k.chiNhanh.id, matHang);
     const tuy = { giuHangNgoaiKho, giuGioCan, soChuSoMa: soChuSoMa(caiDat?.mau_ma_vach) };
-    const kh = lapKeHoach(file, matHang, tuy, nn);
+    const kh = lapKeHoach(file, hang, tuy, nn);
     if (viec === 'tai') {
       return new Response(new Blob([ghiFileCan(file, kh, tuy)]), {
         headers: {
