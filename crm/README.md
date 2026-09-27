@@ -245,7 +245,7 @@ Ngoài ra `cau_hinh_tich_diem.ty_le_tich` có **trần cứng 20%** — biên đ
 | `so_ban_con_trong()` | Số bàn còn nhận tại một khung giờ | **Công khai (anon)** |
 | `duoc_phep_gui()` | Chốt chặn trước khi gửi tin — đặt bàn chưa hủy tính là giao dịch, tin chăm sóc có trần tháng (`0047`) | Nội bộ |
 | `zalo_*()` | Gửi tin Zalo: 4 RPC máy (`may_zalo`), RPC cài đặt (chủ), RPC chiến dịch (chủ / quản lý / marketing đúng chi nhánh) — chữ ký và JSON trả về ở đầu `0047` | Xem `0047` |
-| `mess_*()` | Bot Messenger: 4 RPC máy (`may_messenger`), cài đặt (chủ), tổng quan 7 ngày (chủ / quản lý) — chữ ký và JSON trả về ở đầu `0052`. Đặt bàn / tra / hủy của bot đi qua các hàm anon của website | Xem `0052` |
+| `mess_*()` | Bot Messenger: 5 RPC máy (`may_messenger`), cài đặt (chủ), tổng quan 7 ngày (chủ / quản lý) — chữ ký và JSON trả về ở đầu `0052`. Đặt bàn / tra / hủy của bot đi qua các hàm anon của website | Xem `0052` |
 | `chi_so_crm()` | 6 chỉ số theo dõi | Quản lý, chủ sở hữu |
 
 Website công khai **không có quyền vào bảng nào cả** — chỉ gọi được danh sách hàm `SECURITY DEFINER` trong khối chốt quyền ở cuối migration MỚI NHẤT có khối đó. Đừng chép số lượng vào đây: bảng trên đã từng nói "ba hàm" trong khi thực tế là 12, và nó lạc hậu suốt tám migration mà không ai để ý. `test-an-toan.mjs` canh danh sách đó.

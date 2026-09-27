@@ -130,7 +130,7 @@ export async function dungDatabase() {
     if (uid) await db.query(`insert into auth._phien (uid) values ($1)`, [uid]);
     await db.exec(`set role authenticated`);
     try { return { rows: (await db.query(sql, params)).rows, loi: null }; }
-    catch (e) { return { rows: null, loi: e.message }; }
+    catch (e) { return { rows: null, loi: e.message, ma: e.code ?? null }; }
     finally {
       await db.exec(`reset role`);
       // Dọn phiên: câu lệnh superuser chạy sau đó không được mang danh ai.
@@ -142,7 +142,7 @@ export async function dungDatabase() {
     await db.query(`delete from auth._phien`);
     await db.exec(`set role anon`);
     try { return { rows: (await db.query(sql, params)).rows, loi: null }; }
-    catch (e) { return { rows: null, loi: e.message }; }
+    catch (e) { return { rows: null, loi: e.message, ma: e.code ?? null }; }
     finally { await db.exec(`reset role`); }
   }
 

@@ -311,7 +311,7 @@ Tùy chọn, không bí mật: `META_APP_ID` (nhận ra echo của App mình —
    ```
 3. Đặt `MESS_MAY_EMAIL`, `MESS_MAY_MAT_KHAU` bằng đúng email / mật khẩu đó.
 
-Vai `may_messenger` **không** đọc / ghi được bảng CRM hay kho nào; nó chỉ gọi bốn RPC máy (`mess_lay_phien`, `mess_luu_phien`, `mess_ghi_tra_cuu`, `mess_ghi_su_kien`). Đặt bàn, tra / hủy đi bằng client anon như website.
+Vai `may_messenger` **không** đọc / ghi được bảng CRM hay kho nào; nó chỉ gọi năm RPC máy (`mess_lay_phien`, `mess_luu_phien`, `mess_ghi_tra_cuu`, `mess_xin_dat_ban`, `mess_ghi_su_kien`). Trước mỗi `tao_dat_ban` bot gọi `mess_xin_dat_ban`: chặn gửi trùng trong 5 giây (Meta giao lặp / bấm hai lần) và tối đa 5 lần gửi đặt bàn mỗi khách mỗi ngày. Đặt bàn, tra / hủy đi bằng client anon như website.
 
 ### Nối với Meta
 

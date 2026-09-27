@@ -59,7 +59,11 @@ export async function taoDatBanMess(
       p_trang_gioi_thieu: null,
       p_ip: null,
     });
-    if (error) return { ok: false, loi: error.message ?? '' };
+    // supabase-js KHÔNG ném khi đứt mạng / hết giờ / cổng 502–504: nó trả error không có
+    // mã (code rỗng, status 0 hoặc body không phải JSON). Khi đó yêu cầu có thể đã ghi
+    // xong rồi mới đứt → "không chắc", không bao giờ nói "chưa ghi nhận". Lỗi thật của
+    // database / PostgREST luôn có mã (SQLSTATE 5 ký tự hoặc PGRSTxxx).
+    if (error) return error.code ? { ok: false, loi: error.message ?? '' } : { ok: false, khongChac: true };
     // tao_dat_ban trả cả con_trong — chỉ lấy mã; con số sức chứa dừng ở đây.
     const dong = (Array.isArray(data) ? data[0] : data) as { ma_dat_ban?: string } | null;
     if (!dong?.ma_dat_ban) return { ok: false, khongChac: true };

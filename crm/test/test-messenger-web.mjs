@@ -27,7 +27,7 @@
 import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
 import * as M from '../../web/src/lib/messenger.ts';
 import {
-  xuLyHookMessenger, trangThaiBiMatMess, caiHoSoMessenger, TEN_BI_MAT_MESS, quenDaBao, DUONG_MESSENGER,
+  xuLyHookMessenger, trangThaiBiMatMess, caiHoSoMessenger, TEN_BI_MAT_MESS, quenDaBao, DUONG_MESSENGER, quenTrangThaiMess,
 } from '../../web/src/lib/messenger-hook.ts';
 import { timChuoiCam } from '../../web/src/lib/chuoi-cam.js';
 import { createHmac } from 'node:crypto';
@@ -113,6 +113,17 @@ function mayGia({ dangBat = true, phut = 60, loiChao = 'Chào bạn! Beeftown c�
         st.phien.set(ts.p_psid_bam, p);
         return { data: { ok: true, bi_khoa: !!khoa(p), tra_cuu_sai: p.sai }, error: null };
       }
+      if (ten === 'mess_xin_dat_ban') {
+        if (st.xinLoi) return { data: null, error: { message: 'mất kết nối database' } };
+        const p = st.phien.get(ts.p_psid_bam) ?? moi();
+        st.phien.set(ts.p_psid_bam, p);
+        const nay = M.ngayVn(st.bayGio);
+        if (p.datBanLuc !== undefined && st.bayGio - p.datBanLuc < 5_000) return { data: { ok: false, ly_do: 'dang_gui' }, error: null };
+        if (p.datBanNgay !== nay) p.datBanDem = 0;
+        if (p.datBanDem >= 5) return { data: { ok: false, ly_do: 'qua_luot' }, error: null };
+        p.datBanNgay = nay; p.datBanDem++; p.datBanLuc = st.bayGio;
+        return { data: { ok: true, con_lai: 5 - p.datBanDem }, error: null };
+      }
       if (ten === 'mess_ghi_su_kien') {
         if (!LOAI.includes(ts.p_loai)) return { data: null, error: { message: `Loại sự kiện Messenger không hợp lệ: ${ts.p_loai}` } };
         st.suKien.push(ts.p_loai);
@@ -145,7 +156,8 @@ function anonGia({ kin = [], loiDatBan = null, formMo = true, gioChot = true, hi
             gio: g + ':00', buoi: b, con_cho: !st.kin.has(ts.p_ngay), da_qua: ts.p_ngay < homNay || (ts.p_ngay === homNay && g <= gioNay),
           })), error: null };
         case 'tao_dat_ban': {
-          if (st.loiDatBan) { const m = st.loiDatBan; st.loiDatBan = null; return { data: null, error: { message: m } }; }
+          if (st.loiDatBan) { const m = st.loiDatBan; st.loiDatBan = null; return { data: null, error: { message: m, code: '23514' } }; }
+          if (st.dutMang) { st.dutMang = false; return { data: null, error: { message: 'TypeError: fetch failed', details: '', hint: '', code: '' } }; }
           const ma = MA[st.soMa++ % MA.length];
           st.datBan.set(ma, { ma, sdt: ts.p_sdt, ho_ten: ts.p_ho_ten, ngay: ts.p_ngay, gio: ts.p_gio, so_khach: ts.p_so_khach, trang_thai: 'cho_xac_nhan' });
           return { data: [{ dat_ban_id: 'id-' + ma, ma_dat_ban: ma, con_trong: 3 }], error: null };
@@ -172,7 +184,7 @@ function anonGia({ kin = [], loiDatBan = null, formMo = true, gioChot = true, hi
             trua_bat_dau: st.gioChot ? '11:00:00' : null, trua_ket_thuc: st.gioChot ? '14:00:00' : null,
             toi_bat_dau: st.gioChot ? '17:00:00' : null, toi_ket_thuc: st.gioChot ? '22:00:00' : null }], error: null };
       }
-      return { data: null, error: { message: `permission denied for function ${ten}` } };
+      return { data: null, error: { message: `permission denied for function ${ten}`, code: '42501' } };
     },
   };
   return { client, st };
@@ -479,6 +491,7 @@ await nhom('5 · HẾT BÀN, NGÀY QUÁ KHỨ / QUÁ XA, NGÀY GÕ TAY, SĐT SAI
   await c.gui(suNut(PSID.b, 'BT_BUOI:trua'), '[Buổi trưa]');
   r = await c.gui(suNut(PSID.b, 'BT_GIO:12:00'), '[12:00]');
   ok('Chọn giờ khác → thẳng tới tóm tắt (đã có số khách, tên, SĐT)', /Giờ: 12:00/.test(r.chu) && /Xác nhận/.test(r.body[0].message.quick_replies[0].title), r.chu);
+  c.may.st.bayGio += 20_000;   // khách chọn lại giờ mất vài chục giây (chốt chống gửi trùng là 5 giây)
   r = await c.gui(suTin(PSID.b, 'ok'), 'ok');
   ok('Gõ "ok" ở bước xác nhận = Xác nhận → đã nhận yêu cầu', /đã nhận yêu cầu/.test(r.chu) && cuoiCung(c.goi('tao_dat_ban')).ts.p_gio === '12:00');
 
@@ -676,6 +689,113 @@ await nhom('10 · SEND API LỖI, DATABASE LỖI, LOG SẠCH, GIỚI HẠN MỌI
 });
 
 // ===========================================================================
+await nhom('10b · RÀ SOÁT: "đúng"/"dừng", đứt mạng khi đặt, gửi trùng, giới hạn / ngày, database lỗi', async () => {
+  const D = { ngay: '2026-10-03', gio: '19:00', so_khach: 4, ho_ten: 'Nguyễn Văn An', sdt: SDT, khung: { ngay: '2026-10-03', trua: [], toi: ['19:00'] } };
+  const datPhien = async (cuoc, psid, buoc = 'dat_xac_nhan', du_lieu = D) => {
+    const pb = await M.bamPsid(psid, KHOA_BAM);
+    const cu = cuoc.may.st.phien.get(pb) ?? { tamDungDen: 0, sai: 0, saiTu: 0 };
+    cuoc.may.st.phien.set(pb, { ...cu, buoc, du_lieu: JSON.parse(JSON.stringify(du_lieu)), capNhat: cuoc.may.st.bayGio });
+    return pb;
+  };
+
+  // "Đúng" = xác nhận (bỏ dấu trùng với "dừng").
+  const a = taoCuoc();
+  await datPhien(a, PSID.c);
+  let r = await a.gui(suTin(PSID.c, 'Đúng rồi'), 'Đúng rồi');
+  ok('Bước xác nhận, khách gõ "Đúng rồi" → gửi tao_dat_ban (không bị hiểu là "dừng")',
+     a.goi('tao_dat_ban').length === 1 && /đã nhận yêu cầu/.test(r.chu), r.chu);
+  await datPhien(a, PSID.c);
+  r = await a.gui(suTin(PSID.c, 'dung'), 'dung (không dấu)');
+  ok('Gõ "dung" không dấu ở bước xác nhận → hỏi lại bằng nút, KHÔNG xóa đặt bàn đang điền, không gửi',
+     a.goi('tao_dat_ban').length === 1 && /chọn một nút/.test(r.chu) && /Bạn kiểm tra lại/.test(r.chu), r.chu);
+  r = await a.gui(suTin(PSID.c, 'dừng'), 'dừng');
+  ok('"dừng" → dừng việc đang làm', /Đã dừng việc đang làm/.test(r.chu) && a.goi('tao_dat_ban').length === 1, r.chu);
+  await datPhien(a, PSID.c, 'huy_xac_nhan', { ma: 'K7M2QX', sdt: SDT });
+  r = await a.gui(suTin(PSID.c, 'hủy'), 'hủy (khi đang hỏi chắc chắn hủy bàn?)');
+  ok('Đang hỏi "chắc chắn hủy bàn?" mà gõ "hủy" → nói rõ bàn VẪN GIỮ NGUYÊN, không gọi huy_dat_ban',
+     /vẫn giữ nguyên/.test(r.chu) && !/Đã dừng/.test(r.chu) && a.goi('huy_dat_ban').length === 0, r.chu);
+
+  // Đứt mạng giữa lúc gửi: supabase-js trả error KHÔNG mã (không ném) → "không chắc", không bao giờ "CHƯA ghi nhận".
+  const b = taoCuoc();
+  await datPhien(b, PSID.d);
+  b.anon.st.dutMang = true;
+  r = await b.gui(suNut(PSID.d, M.PAYLOAD.xacNhan), '[Xác nhận] (đứt mạng)');
+  ok('tao_dat_ban đứt mạng (error.code rỗng) → "KHÔNG CHẮC… đừng gửi lại", không nói "CHƯA được ghi nhận"',
+     /KHÔNG CHẮC/.test(r.chu) && !/CHƯA được ghi nhận/.test(r.chu) && !/đã nhận yêu cầu/.test(r.chu), r.chu);
+
+  // Hai sự kiện "Xác nhận" chạy song song (Meta giao lặp / bấm hai lần) → đúng MỘT đặt bàn.
+  const s2 = taoCuoc();
+  await datPhien(s2, PSID.e);
+  // tao_dat_ban chậm 30 ms: lần thứ hai đọc phiên (vẫn "dat_xac_nhan") trước khi lần đầu kịp lưu.
+  const rpcAnon = s2.anon.client.rpc;
+  s2.anon.client.rpc = async (ten, ts) => { if (ten === 'tao_dat_ban') await new Promise(k => setTimeout(k, 30)); return rpcAnon(ten, ts); };
+  const cho = [];
+  const pt = { env: ENV, ctx: { waitUntil: p => cho.push(p) }, taoClientMay: () => s2.may.client, taoClientAnon: () => s2.anon.client,
+               fetchFn: s2.f.fn, ghiLog: x => LOG.push(x), bayGio: () => s2.may.st.bayGio, nhoPhien: false };
+  await Promise.all([xuLyHookMessenger(yeuCau(suNut(PSID.e, M.PAYLOAD.xacNhan)), pt), xuLyHookMessenger(yeuCau(suTin(PSID.e, 'ok')), pt)]);
+  await Promise.all(cho);
+  const chu2 = s2.f.goi.map(g => nhin(g.body)).filter(Boolean).join('\n');
+  ok('Hai lần xác nhận song song → tao_dat_ban ĐÚNG MỘT LẦN; lần kia báo "đang xử lý", không lưu đè phiên',
+     s2.goi('tao_dat_ban').length === 1 && s2.goi('mess_xin_dat_ban').length === 2 && /đang xử lý yêu cầu đặt bàn/.test(chu2)
+     && (chu2.match(/đã nhận yêu cầu/g) ?? []).length === 1 && s2.goi('mess_luu_phien').length === 1, chu2);
+
+  // Tối đa 5 lần gửi / khách / ngày.
+  const g = taoCuoc();
+  for (let i = 0; i < 5; i++) {
+    await datPhien(g, PSID.f);
+    g.may.st.bayGio += 60_000;
+    await g.gui(suNut(PSID.f, M.PAYLOAD.xacNhan), '[Xác nhận]');
+  }
+  await datPhien(g, PSID.f);
+  g.may.st.bayGio += 60_000;
+  r = await g.gui(suNut(PSID.f, M.PAYLOAD.xacNhan), '[Xác nhận] lần 6 trong ngày');
+  ok('Lần gửi thứ 6 trong ngày → KHÔNG gọi tao_dat_ban, báo CHƯA được ghi nhận + Gặp nhân viên',
+     g.goi('tao_dat_ban').length === 5 && /CHƯA được ghi nhận/.test(r.chu) && /Gặp nhân viên/.test(r.chu) && !/đã nhận yêu cầu/.test(r.chu), r.chu);
+
+  // mess_xin_dat_ban lỗi → không gửi (không bỏ qua chốt).
+  const x = taoCuoc();
+  await datPhien(x, PSID.g);
+  x.may.st.xinLoi = true;
+  r = await x.gui(suNut(PSID.g, M.PAYLOAD.xacNhan), '[Xác nhận] (không xin được lượt)');
+  ok('mess_xin_dat_ban lỗi → không gọi tao_dat_ban, báo CHƯA được ghi nhận', x.goi('tao_dat_ban').length === 0 && /CHƯA được ghi nhận/.test(r.chu), r.chu);
+
+  // Hủy đứt mạng không bị tính là một lần đoán sai.
+  const h = taoCuoc();
+  await datPhien(h, PSID.h, 'huy_xac_nhan', { ma: 'K7M2QX', sdt: SDT });
+  h.anon.client.rpc = async () => ({ data: null, error: { message: 'TypeError: fetch failed', code: '' } });
+  r = await h.gui(suNut(PSID.h, M.PAYLOAD.huyCo), '[Có, hủy bàn] (đứt mạng)');
+  ok('huy_dat_ban đứt mạng → "chưa tra cứu được", KHÔNG ghi lượt sai (mess_ghi_tra_cuu)',
+     /Chưa tra cứu được/.test(r.chu) && h.goi('mess_ghi_tra_cuu').length === 0, r.chu);
+
+  // Buổi có hơn 11 khung (bước 15 phút): giờ không vừa nút vẫn được nêu để khách gõ, và gõ được.
+  const nhieu = { ngay: '2026-10-03', trua: [], toi: Array.from({ length: 16 }, (_, i) => `${String(17 + Math.floor(i / 4)).padStart(2, '0')}:${String((i % 4) * 15).padStart(2, '0')}`) };
+  const kb = M.buocTiep({ buoc: 'dat_gio', duLieu: { ngay: '2026-10-03', khung: nhieu } }, { loai: 'nut', psid: '1', payload: 'BT_BUOI:toi' },
+    { bayGio: BAY_GIO, loiChao: '', phutTamDung: 60, biKhoa: false, web: 'https://beeftown.vn' });
+  ok('Buổi 16 khung → 11 nút giờ + nêu 5 giờ còn lại (20:00…20:45) trong chữ; gõ "20:45" được nhận',
+     kb.tin[0].nutNhanh.length === 13 && /Còn nhận thêm.*20:00, 20:15, 20:30, 20:45/.test(kb.tin[0].chu)
+     && M.buocTiep(kb.phien, { loai: 'tin', psid: '1', chu: '20:45' }, { bayGio: BAY_GIO, loiChao: '', phutTamDung: 60, biKhoa: false, web: '' }).phien.duLieu.gio === '20:45',
+     kb.tin[0].chu);
+
+  // Database của bot lỗi khi bot đang bật → khách được báo, không im giữa chừng; không lặp; bot tắt → im.
+  const l = taoCuoc();
+  await l.gui(suTin(PSID.a, 'hi'), 'hi');   // biết bot đang bật
+  const rpcCu = l.may.client.rpc;
+  l.may.client.rpc = async (ten, ts) => (ten === 'mess_lay_phien' ? { data: null, error: { message: 'timeout' } } : rpcCu(ten, ts));
+  r = await l.gui(suNut(PSID.a, M.PAYLOAD.xacNhan), '[Xác nhận] (database của bot lỗi)');
+  ok('mess_lay_phien lỗi (bot đang bật) → báo "đang gặp trục trặc… CHƯA được gửi", không gọi tao_dat_ban',
+     /trục trặc/.test(r.chu) && /CHƯA được gửi/.test(r.chu) && l.goi('tao_dat_ban').length === 0, r.chu);
+  r = await l.gui(suTin(PSID.a, 'alo'), 'alo (vẫn lỗi)');
+  ok('…không gửi lặp câu trục trặc cho cùng khách trong 10 phút', r.tin.length === 0);
+  quenTrangThaiMess();
+  const o = taoCuoc({ may: mayGia({ dangBat: false }) });
+  await o.gui(suTin(PSID.b, 'hi'), 'hi (bot tắt)');
+  o.may.client.rpc = async () => ({ data: null, error: { message: 'timeout' } });
+  r = await o.gui(suTin(PSID.b, 'hi'), 'hi (bot tắt, database lỗi)');
+  ok('Bot tắt (lần đọc gần nhất) + database lỗi → vẫn im', r.tin.length === 0);
+  quenTrangThaiMess();
+});
+
+// ===========================================================================
 await nhom('11 · CHẠY THẬT TRÊN PGLITE: ĐẶT BÀN QUA BOT → dat_ban (utm), mess_phien CHỈ PSID ĐÃ BĂM', async () => {
   const { db, cnA, duoi, duoiAnon } = await dungDatabase();
   const UID_MAY_MESS = '00000000-0000-4000-8000-0000000000d1';
@@ -696,7 +816,7 @@ await nhom('11 · CHẠY THẬT TRÊN PGLITE: ĐẶT BÀN QUA BOT → dat_ban (u
   const goiDb = chay => async (ten, ts = {}) => {
     const { sql, params } = sqlGoi(ten, ts);
     const r = await chay(sql, params);
-    return r.loi ? { data: null, error: { message: r.loi } } : { data: r.rows[0].kq, error: null };
+    return r.loi ? { data: null, error: { message: r.loi, code: r.ma ?? '' } } : { data: r.rows[0].kq, error: null };
   };
   const auth = { signInWithPassword: async () => ({ data: { session: { access_token: 'x' } }, error: null }), signOut: async () => ({ error: null }) };
   const may = { rpc: goiDb((s, p) => duoi(UID_MAY_MESS, s, p)), auth };

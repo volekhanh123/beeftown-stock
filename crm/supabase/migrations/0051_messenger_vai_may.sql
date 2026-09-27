@@ -6,9 +6,9 @@
 --
 --   may_messenger : tài khoản máy của Worker trả lời tin nhắn Facebook
 --                   Messenger (bot đặt bàn, web/src/lib/messenger-hook.ts). Nó
---                   KHÔNG đọc được bảng CRM hay kho nào; mọi việc đi qua bốn
+--                   KHÔNG đọc được bảng CRM hay kho nào; mọi việc đi qua năm
 --                   RPC máy ở 0052 (mess_lay_phien, mess_luu_phien,
---                   mess_ghi_tra_cuu, mess_ghi_su_kien). Đặt bàn, tra cứu, hủy
+--                   mess_ghi_tra_cuu, mess_xin_dat_ban, mess_ghi_su_kien). Đặt bàn, tra cứu, hủy
 --                   thì Worker gọi bằng client anon KHÔNG phiên — y như website.
 --                   duoc_truy_cap_chi_nhanh() (0018) không nhắc tới vai này —
 --                   và KHÔNG được thêm vào; kho_vai_duoc() cũng không.

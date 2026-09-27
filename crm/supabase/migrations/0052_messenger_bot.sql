@@ -27,6 +27,11 @@
 --     sai_tu thì bộ đếm về 0 ở lần ghi kế tiếp. Messenger không có IP nên đây
 --     là thứ thay cho giới hạn theo IP của website; web vẫn gọi
 --     ghi_nhat_ky_tra_cuu(null, mã, đúng/sai) như website.
+--   · Gửi đặt bàn: web gọi mess_xin_dat_ban NGAY TRƯỚC tao_dat_ban. Cùng một
+--     khách: lần gửi trước chưa quá 5 giây → 'dang_gui' (Meta giao lặp sự
+--     kiện / khách bấm hai lần chạy song song — không đặt hai bàn); đã gửi 5
+--     lần trong ngày giờ VN → 'qua_luot' (chống spam đặt bàn qua bot; website
+--     không đổi). Khóa dòng (for update) nên hai lần gọi song song không cùng lọt.
 --   · mess_thong_ke_ngay chỉ ĐẾM theo (ngày giờ VN, loại sự kiện) — không PSID,
 --     không SĐT, không nội dung. Giữ 400 ngày.
 --   · Bot mặc định TẮT (mess_cau_hinh.dang_bat = false). Chỉ chủ bật được.
@@ -85,6 +90,14 @@
 --   (thanh_cong = tìm thấy đặt bàn). Tạo phiên nếu chưa có. Đếm 'tra_cuu'
 --   mỗi lần; đếm 'bi_khoa' đúng một lần khi vừa chuyển sang khóa.
 --   → { "ok": true, "bi_khoa": bool, "tra_cuu_sai": int, "khoa_den": ts | null }
+--
+-- mess_xin_dat_ban(p_psid_bam text)
+--   Gọi ngay TRƯỚC mỗi lần tao_dat_ban của bot. Tạo phiên nếu chưa có. Được →
+--   ghi mốc dat_ban_luc = now(), cộng dat_ban_dem (về 0 khi sang ngày VN mới).
+--   → { "ok": true, "con_lai": int }
+--   | { "ok": false, "ly_do": "dang_gui" }  lần trước của khách này < 5 giây
+--   | { "ok": false, "ly_do": "qua_luot" }  đã 5 lần hôm nay (giờ VN)
+--   Không được → web KHÔNG gọi tao_dat_ban.
 --
 -- mess_ghi_su_kien(p_loai text, p_loi text default null)
 --   Cộng 1 vào (hôm nay giờ VN, p_loai). p_loai phải thuộc danh sách web ghi:
@@ -151,11 +164,16 @@ create table mess_phien (
   tra_cuu_sai  smallint not null default 0,
   sai_tu       timestamptz,
   cap_nhat     timestamptz not null default now(),
+  -- Chốt gửi đặt bàn (mess_xin_dat_ban): số lần gửi trong ngày dat_ban_ngay, mốc lần gần nhất.
+  dat_ban_ngay date,
+  dat_ban_dem  smallint not null default 0,
+  dat_ban_luc  timestamptz,
 
   constraint mess_phien_psid_bam check (psid_bam ~ '^[0-9a-f]{64}$'),
   constraint mess_phien_buoc check (buoc ~ '^[a-z][a-z0-9_]{0,39}$'),
   constraint mess_phien_du_lieu check (jsonb_typeof(du_lieu) = 'object' and octet_length(du_lieu::text) <= 4000),
-  constraint mess_phien_tra_cuu_sai check (tra_cuu_sai between 0 and 1000)
+  constraint mess_phien_tra_cuu_sai check (tra_cuu_sai between 0 and 1000),
+  constraint mess_phien_dat_ban_dem check (dat_ban_dem between 0 and 1000)
 );
 
 comment on table mess_phien is
@@ -163,6 +181,7 @@ comment on table mess_phien is
 comment on column mess_phien.psid_bam     is 'HMAC-SHA256(PSID, MESS_KHOA_BAM) — 64 ký tự hex thường, web tính.';
 comment on column mess_phien.du_lieu      is 'Thứ bot đang hỏi dở: ngày, giờ, số khách, tên, SĐT. Xóa khi xong việc.';
 comment on column mess_phien.tam_dung_den is 'Nhân viên đang trực cho khách này — bot im tới mốc này.';
+comment on column mess_phien.dat_ban_dem  is 'Số lần bot gửi tao_dat_ban cho khách này trong ngày dat_ban_ngay (giờ VN) — tối đa 5.';
 comment on column mess_phien.tra_cuu_sai  is 'Số lần tra cứu / hủy đặt bàn sai tính từ sai_tu. ≥ 5 trong 15 phút = khóa.';
 
 create index mess_phien_cap_nhat_idx on mess_phien (cap_nhat);
@@ -494,6 +513,48 @@ $$;
 
 comment on function mess_ghi_tra_cuu is
   'Máy Messenger: ghi một lần tra cứu / hủy đặt bàn đúng hay sai. ≥ 5 lần sai trong 15 phút → bi_khoa, khóa 15 phút kể từ lần sai gần nhất (0052).';
+
+create or replace function mess_xin_dat_ban(p_psid_bam text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_p   mess_phien;
+  v_nay date := hom_nay_vn();
+  v_dem smallint;
+begin
+  if not co_vai_tro(array['may_messenger']::vai_tro[]) then
+    raise exception 'Chỉ tài khoản máy Messenger mới gọi được hàm này'
+      using errcode = 'insufficient_privilege';
+  end if;
+  perform mess_kiem_psid(p_psid_bam);
+
+  perform mess_don_phien();
+
+  insert into mess_phien (psid_bam) values (p_psid_bam) on conflict (psid_bam) do nothing;
+  select * into v_p from mess_phien where psid_bam = p_psid_bam for update;
+
+  if v_p.dat_ban_luc is not null and v_p.dat_ban_luc > now() - interval '5 seconds' then
+    return jsonb_build_object('ok', false, 'ly_do', 'dang_gui');
+  end if;
+
+  v_dem := case when v_p.dat_ban_ngay is distinct from v_nay then 0 else v_p.dat_ban_dem end;
+  if v_dem >= 5 then
+    return jsonb_build_object('ok', false, 'ly_do', 'qua_luot');
+  end if;
+
+  update mess_phien
+  set dat_ban_ngay = v_nay, dat_ban_dem = v_dem + 1, dat_ban_luc = now(), cap_nhat = now()
+  where psid_bam = p_psid_bam;
+
+  return jsonb_build_object('ok', true, 'con_lai', 5 - (v_dem + 1));
+end;
+$$;
+
+comment on function mess_xin_dat_ban is
+  'Máy Messenger: xin gửi một yêu cầu đặt bàn cho một khách — chặn lần gửi trùng trong 5 giây và quá 5 lần / ngày VN (0052).';
 
 create or replace function mess_ghi_su_kien(p_loai text, p_loi text default null)
 returns jsonb

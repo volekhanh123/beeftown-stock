@@ -18,7 +18,10 @@
  *   thô) → mess_lay_phien (ĐÚNG MỘT LẦN) → bot tắt / đang tạm dừng → im →
  *   "đang gõ" → buocTiep (lib/messenger.ts), chạy việc nó yêu cầu (đặt bàn,
  *   lịch trống, tra / hủy, nội dung công khai — lib/messenger-anon.ts, client
- *   anon KHÔNG phiên) → mess_luu_phien → mess_ghi_su_kien → Send API.
+ *   anon KHÔNG phiên; riêng tao_dat_ban phải qua mess_xin_dat_ban trước: chặn
+ *   gửi trùng + tối đa DAT_BAN_TOI_DA_NGAY lần / khách / ngày) → mess_luu_phien
+ *   → mess_ghi_su_kien → Send API. Database / tài khoản máy lỗi khi bot đang
+ *   bật → khách nhận một câu "đang trục trặc" (không bao giờ im giữa chừng).
  * ECHO: của bot (metadata "beeftown_bot", hoặc app_id = META_APP_ID nếu cài) →
  *   bỏ qua, KHÔNG gọi mess_lay_phien. Của người trực Trang → tạm dừng bot cho
  *   khách đó (mess_luu_phien(psid, null, null, phút)) + đếm 'nhan_vien_tra_loi'.
@@ -41,7 +44,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { taoClient, maChiNhanh } from './noi-dung.ts';
 import {
   META_API, kiemChuKy, xacMinhWebhook, tachSuKien, bamPsid, xoaBiMat, buocTiep, thanTin, thanDangGo, thanHoSo,
-  dungYeuCauMeta, type SuKien, type DauVao, type PhienBot, type NguCanh, type YeuCauGoi, type KetQuaGoi, type LoaiDem, type Tin,
+  dungYeuCauMeta, CAU_BOT, type SuKien, type DauVao, type PhienBot, type NguCanh, type YeuCauGoi, type KetQuaGoi, type LoaiDem, type Tin,
 } from './messenger.ts';
 import {
   docLichTrong, taoDatBanMess, traCuuMess, ghiNhatKyTraCuuMess, huyDatBanMess, docThongTinCongKhai,
@@ -243,6 +246,30 @@ async function dangNhapMayMessNho(bm: BiMatMess, pt: PhuThuocMess, bayGio = Date
  */
 let phutTamDungNho = 60;
 
+/**
+ * Bot đang bật theo lần mess_lay_phien thành công gần nhất trong isolate này
+ * (null = chưa biết). Khi database / tài khoản máy lỗi, chỉ báo khách "đang trục
+ * trặc" nếu biết chắc bot đang bật — bot tắt thì nhân viên đang trả lời tay, im.
+ */
+let dangBatNho: boolean | null = null;
+/** PSID đã nhận câu "đang trục trặc" gần đây (chỉ trong bộ nhớ) — không gửi lặp mỗi tin. */
+const daBaoTrucTrac = new Map<string, number>();
+const BAO_TRUC_TRAC_MOI_MS = 10 * 60_000;
+/** Cho test: quên trạng thái bật / tắt đã nhớ và các khách đã được báo trục trặc. */
+export function quenTrangThaiMess(): void { dangBatNho = null; daBaoTrucTrac.clear(); }
+
+/** Database / tài khoản máy lỗi: báo khách một câu (không để khách chờ trong im lặng giữa lúc đặt bàn). */
+async function baoTrucTrac(sk: SuKien, bm: BiMatMess, pt: PhuThuocMess, ghi: (c: string) => void): Promise<void> {
+  if (sk.loai === 'echo' || dangBatNho !== true) return;
+  const bayGio = (pt.bayGio ?? Date.now)();
+  const truoc = daBaoTrucTrac.get(sk.psid);
+  if (truoc !== undefined && bayGio - truoc < BAO_TRUC_TRAC_MOI_MS) return;
+  if (daBaoTrucTrac.size > 500) daBaoTrucTrac.clear();
+  daBaoTrucTrac.set(sk.psid, bayGio);
+  const r = await goiMeta(META_API.urlGuiTin, bm.pageToken!, thanTin(sk.psid, { chu: CAU_BOT.heThongBan }), pt.fetchFn ?? fetch);
+  if (!r.ok) ghi(`không gửi được câu báo trục trặc: ${r.cau}`);
+}
+
 // -----------------------------------------------------------------------------
 // HTTP
 // -----------------------------------------------------------------------------
@@ -337,13 +364,18 @@ export async function xuLyHookMessenger(req: Request, pt: PhuThuocMess = {}): Pr
 async function xuLyCacSuKien(ds: SuKien[], bm: BiMatMess, pt: PhuThuocMess, ghi: (c: string) => void): Promise<void> {
   const nho = pt.nhoPhien ?? !pt.taoClientMay;
   const dn = nho ? await dangNhapMayMessNho(bm, pt) : await dangNhapMayMess(bm, pt);
-  if (!dn.ok) { ghi(dn.cau); return; }
+  if (!dn.ok) {
+    ghi(dn.cau);
+    for (const sk of ds) await baoTrucTrac(sk, bm, pt, ghi);
+    return;
+  }
   try {
     for (const sk of ds) {
       try { await motSuKien(sk, dn.client, bm, pt, ghi); }
       catch (e) {
         if (nho) quenPhienMayMess();
         ghi(`lỗi xử lý sự kiện: ${e instanceof Error ? e.message : String(e)}`);
+        await baoTrucTrac(sk, bm, pt, ghi);
       }
     }
   } finally {
@@ -386,11 +418,13 @@ async function motSuKien(sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: Phu
   if (error) {
     ghi(`không đọc được phiên: ${error.message}`);
     await demSuKien('loi', `mess_lay_phien: ${error.message}`);
+    await baoTrucTrac(sk, bm, pt, ghi);
     return;
   }
   const lp = (data ?? {}) as KetQuaLayPhien;
   const phut = Number.isInteger(lp.phut_tam_dung) && Number(lp.phut_tam_dung) > 0 ? Number(lp.phut_tam_dung) : 60;
   phutTamDungNho = phut;
+  dangBatNho = lp.dang_bat === true;
   if (lp.dang_bat !== true) return;               // bot tắt → im
   if (lp.phien?.dang_tam_dung === true) return;   // nhân viên đang trực → im
 
@@ -427,6 +461,10 @@ async function motSuKien(sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: Phu
         return { goi: 'lich_trong', ok: true, khung: r.khung };
       }
       case 'tao_dat_ban': {
+        // Chốt theo khách TRƯỚC khi gửi: chặn gửi trùng (Meta giao lặp / bấm hai lần chạy song
+        // song ở hai isolate) và giới hạn số lần gửi mỗi ngày. Không xin được → không gửi.
+        const xin = await xinDatBan(may, psidBam, ghi);
+        if (xin !== 'ok') return { goi: 'tao_dat_ban', ok: false, gioiHan: xin === 'loi' ? undefined : xin };
         const r = await taoDatBanMess(anon, { chiNhanhMa, ngay: g.ngay, gio: g.gio, soKhach: g.soKhach, hoTen: g.hoTen, sdt: g.sdt });
         if (!r.ok) ghi(r.khongChac ? 'tao_dat_ban không trả lời — không chắc đã ghi' : `tao_dat_ban từ chối: ${r.loi ?? ''}`);
         return r.ok ? { goi: 'tao_dat_ban', ok: true, ma: r.ma } : { goi: 'tao_dat_ban', ok: false, loi: r.loi, khongChac: r.khongChac };
@@ -441,11 +479,11 @@ async function motSuKien(sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: Phu
       }
       case 'huy': {
         const r = await huyDatBanMess(anon, g.ma, g.sdt);
-        // huy_dat_ban tự ghi nhật ký tra cứu. Lỗi database = tìm thấy nhưng không hủy được nữa.
-        const thay = r.ok ? r.daHuy : /[À-ỹ]/.test(r.loi);
-        if (!r.ok) ghi(`huy_dat_ban: ${r.loi}`);
-        const biKhoa = await ghiTraCuu(may, psidBam, thay, ghi);
-        return r.ok ? { goi: 'huy', ok: true, daHuy: r.daHuy, biKhoa } : { goi: 'huy', ok: false, loi: r.loi };
+        // huy_dat_ban tự ghi nhật ký tra cứu. Lỗi (database: tìm thấy nhưng không hủy được
+        // nữa; hoặc đứt mạng) không phải một lần đoán sai → không ghi lượt sai.
+        if (!r.ok) { ghi(`huy_dat_ban: ${r.loi}`); return { goi: 'huy', ok: false, loi: r.loi }; }
+        const biKhoa = await ghiTraCuu(may, psidBam, r.daHuy, ghi);
+        return { goi: 'huy', ok: true, daHuy: r.daHuy, biKhoa };
       }
       case 'thong_tin': {
         const r = await docThongTinCongKhai(anon, chiNhanhMa);
@@ -458,12 +496,14 @@ async function motSuKien(sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: Phu
   const tin: Tin[] = [];
   const dem: LoaiDem[] = [];
   let tamDung = false;
+  let khongLuu = false;
   let vao: DauVao = sk;
   for (let i = 0; i < 5; i++) {
     const r = buocTiep(phien, vao, nc);
     tin.push(...r.tin);
     dem.push(...r.dem);
     tamDung = tamDung || !!r.tamDung;
+    khongLuu = !!r.khongLuu;
     phien = r.phien;
     if (!r.goi) break;
     const kq = await thucHien(r.goi);
@@ -471,7 +511,7 @@ async function motSuKien(sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: Phu
     vao = { loai: 'ket_qua', kq };
   }
 
-  if (phien) {
+  if (phien && !khongLuu) {
     const { error: e2 } = await may.rpc('mess_luu_phien', {
       p_psid_bam: psidBam, p_buoc: phien.buoc, p_du_lieu: phien.duLieu, p_tam_dung_phut: tamDung ? phut : null,
     });
@@ -487,6 +527,25 @@ async function motSuKien(sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: Phu
       break;
     }
   }
+}
+
+/**
+ * mess_xin_dat_ban (0052) ngay trước tao_dat_ban: 'ok' = được gửi; 'dang_gui' = vừa có
+ * một lần gửi cho khách này trong vài giây (sự kiện lặp / song song); 'qua_luot' = hết
+ * DAT_BAN_TOI_DA_NGAY lần trong ngày; 'loi' = không hỏi được database → không gửi.
+ */
+async function xinDatBan(may: SupabaseClient, psidBam: string, ghi: (c: string) => void): Promise<'ok' | 'dang_gui' | 'qua_luot' | 'loi'> {
+  try {
+    const { data, error } = await may.rpc('mess_xin_dat_ban', { p_psid_bam: psidBam });
+    if (error) { ghi(`không xin được lượt đặt bàn: ${error.message}`); return 'loi'; }
+    const d = data as { ok?: boolean; ly_do?: string } | null;
+    if (d?.ok === true) return 'ok';
+    if (d?.ly_do === 'dang_gui' || d?.ly_do === 'qua_luot') {
+      ghi(d.ly_do === 'dang_gui' ? 'bỏ lần gửi đặt bàn trùng (vừa gửi vài giây trước)' : 'khách đã hết lượt gửi đặt bàn hôm nay');
+      return d.ly_do;
+    }
+    return 'loi';
+  } catch (e) { ghi(`không xin được lượt đặt bàn: ${e instanceof Error ? e.message : String(e)}`); return 'loi'; }
 }
 
 /** mess_ghi_tra_cuu sau mỗi lần tra / hủy theo mã + SĐT khách gõ → đang bị khóa chưa. */

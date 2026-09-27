@@ -81,6 +81,8 @@ export const META_API = {
 // =============================================================================
 export const KHACH_TOI_DA = 8;
 export const NGAY_TOI_DA = 60;
+/** Số lần gửi yêu cầu đặt bàn tối đa mỗi khách (PSID) mỗi ngày giờ VN — như mess_xin_dat_ban (0052). */
+export const DAT_BAN_TOI_DA_NGAY = 5;
 /** Phiên đang làm dở mà khách im quá lâu → coi như bắt đầu lại từ menu. */
 export const PHIEN_CU_MS = 12 * 60 * 60 * 1000;
 
@@ -574,8 +576,12 @@ export type YeuCauGoi =
 export type KetQuaGoi =
   | { goi: 'lich_trong'; ok: true; khung: KhungGio[] }
   | { goi: 'tao_dat_ban'; ok: true; ma: string }
-  /** loi = câu database (tiếng Việt); khongChac = đứt giữa chừng, không biết đã ghi chưa. */
-  | { goi: 'tao_dat_ban'; ok: false; loi?: string; khongChac?: boolean }
+  /**
+   * loi = câu database (tiếng Việt); khongChac = đứt giữa chừng, không biết đã ghi chưa;
+   * gioiHan = hook chưa gọi tao_dat_ban vì mess_xin_dat_ban từ chối: 'dang_gui' (vừa có
+   * một lần gửi cho khách này — sự kiện lặp / bấm hai lần), 'qua_luot' (hết lượt trong ngày).
+   */
+  | { goi: 'tao_dat_ban'; ok: false; loi?: string; khongChac?: boolean; gioiHan?: 'dang_gui' | 'qua_luot' }
   | { goi: 'tra_cuu'; ok: true; dong: DongTraCuu | null; biKhoa: boolean }
   | { goi: 'huy'; ok: true; daHuy: boolean; biKhoa: boolean }
   | { goi: 'huy'; ok: false; loi?: string }
@@ -591,6 +597,8 @@ export interface KetQuaBuoc {
   goi?: YeuCauGoi;
   /** Khách cần người thật: hook tạm dừng bot phut_tam_dung phút cho PSID này. */
   tamDung?: boolean;
+  /** Không lưu phiên lượt này (một lần gửi khác của cùng khách đang chạy — để nó lưu). */
+  khongLuu?: boolean;
   dem: LoaiDem[];
 }
 
@@ -649,6 +657,11 @@ export const CAU_BOT = {
   chuaGhi: 'Chưa gửi được yêu cầu. Yêu cầu của bạn CHƯA được ghi nhận.',
   khongChac: 'Không nhận được phản hồi. Beeftown KHÔNG CHẮC yêu cầu đã được ghi nhận hay chưa. '
     + 'Bạn chọn "Gặp nhân viên" để kiểm tra — đừng gửi lại nhiều lần.',
+  dangGui: 'Beeftown đang xử lý yêu cầu đặt bàn bạn vừa gửi — bạn đợi tin trả lời trong giây lát nhé, không cần gửi lại.',
+  quaLuot: `Hôm nay bạn đã gửi ${DAT_BAN_TOI_DA_NGAY} yêu cầu đặt bàn qua tin nhắn nên yêu cầu này CHƯA được ghi nhận. `
+    + 'Cần đặt thêm, bạn chọn "Gặp nhân viên" để nhân viên hỗ trợ nhé.',
+  heThongBan: 'Xin lỗi, trợ lý tự động của Beeftown đang gặp trục trặc nên chưa trả lời được. '
+    + 'Nếu bạn đang đặt bàn, yêu cầu CHƯA được gửi. Nhân viên sẽ xem tin nhắn và trả lời bạn sớm.',
   // Tra / hủy
   hoiMa: 'Bạn gõ mã đặt bàn (6 ký tự, có trong tin Beeftown gửi khi nhận yêu cầu):',
   maSai: 'Mã đặt bàn gồm chữ và số, vd K7M2QX. Bạn gõ lại giúp mình nhé.',
@@ -734,7 +747,10 @@ function tinHoiGio(d: DuLieu): Tin {
     if (k.toi.length) nut.push({ tieuDe: 'Buổi tối', payload: PAYLOAD.buoi + 'toi' });
     return { chu: CAU_BOT.hoiBuoi(tieuDeNgay), nutNhanh: nut.concat(cuoi) };
   }
-  return { chu: CAU_BOT.hoiGio(tieuDeNgay), nutNhanh: k[buoi].slice(0, GIO_TOI_DA).map((g): NutNhanh => ({ tieuDe: g, payload: PAYLOAD.gio + g })).concat(cuoi) };
+  // Buổi có hơn 11 khung (bước 15 phút…): nút chỉ chứa 11 giờ đầu — ghi rõ các giờ còn lại để khách gõ.
+  const conLai = k[buoi].slice(GIO_TOI_DA);
+  const chu = CAU_BOT.hoiGio(tieuDeNgay) + (conLai.length ? `\nCòn nhận thêm (gõ giờ để chọn): ${conLai.join(', ')}` : '');
+  return { chu, nutNhanh: k[buoi].slice(0, GIO_TOI_DA).map((g): NutNhanh => ({ tieuDe: g, payload: PAYLOAD.gio + g })).concat(cuoi) };
 }
 
 function qrKhach(): NutNhanh[] {
@@ -861,9 +877,18 @@ export function buocTiep(phienVao: PhienBot | null, vao: DauVao, nc: NguCanh): K
 
   const chu = String(vao.chu ?? '').trim();
   const bd = boDau(chu).replace(/[.!?,;~…]+$/g, '').trim();
+  // Bỏ dấu thì "đúng" (xác nhận) và "dừng" (thôi) cùng là "dung" — xét chữ có dấu.
+  const thuong = chu.normalize('NFC').toLowerCase().replace(/[.!?,;~…]+$/g, '').replace(/\s+/g, ' ').trim();
+  const noiDung = /^đúng( rồi| vậy| ạ| rồi ạ)?$/.test(thuong);
+  const buocHoiChac = phien.buoc === 'dat_xac_nhan' || phien.buoc === 'huy_xac_nhan';
+  const dungKhongDau = bd === 'dung' && thuong === 'dung';
 
   if (LENH_MENU.has(bd)) return veMenu();
-  if (LENH_HUY.has(bd)) return veMenu(phien.buoc === 'menu' ? [] : [CAU_BOT.daDung]);
+  if (LENH_HUY.has(bd) && !noiDung && !(dungKhongDau && buocHoiChac)) {
+    // Đang hỏi "chắc chắn hủy bàn?" mà khách gõ "hủy / thôi": nói rõ bàn vẫn giữ.
+    if (phien.buoc === 'huy_xac_nhan') return veMenu([CAU_BOT.giuNguyen]);
+    return veMenu(phien.buoc === 'menu' ? [] : [CAU_BOT.daDung]);
+  }
   if (/^((xoa|xoa het) (du lieu|thong tin)( cua toi)?|delete (my )?data)$/.test(bd)) return gapNhanVien(nc, CAU_BOT.xoaDuLieu);
 
   const d = phien.duLieu;
@@ -897,7 +922,7 @@ export function buocTiep(phienVao: PhienBot | null, vao: DauVao, nc: NguCanh): K
       return diTiep({ ...d, sdt }, nc);
     }
     case 'dat_xac_nhan':
-      if (/^(xac nhan|ok|oke|okay|dong y|co|yes|gui|chot)$/.test(bd)) return xacNhanDatBan(d, nc);
+      if (noiDung || /^(xac nhan|ok|oke|okay|dong y|co|yes|gui|chot)$/.test(bd)) return xacNhanDatBan(d, nc);
       if (/^(sua|sua lai)$/.test(bd)) return kq('dat_sua', d, [{ chu: CAU_BOT.hoiSua, nutNhanh: QR_SUA }]);
       return hoiLai(phien, nc, CAU_BOT.chonNut);
     case 'dat_sua':
@@ -914,7 +939,7 @@ export function buocTiep(phienVao: PhienBot | null, vao: DauVao, nc: NguCanh): K
       return kq('tra_ket_qua', { ma: d.ma, sdt }, [], { goi: { goi: 'tra_cuu', ma: d.ma, sdt } });
     }
     case 'huy_xac_nhan':
-      if (/^(co|dong y|yes|ok|huy ban|co huy)$/.test(bd)) return xuLyNut(phien, PAYLOAD.huyCo, nc);
+      if (noiDung || /^(co|dong y|yes|ok|huy ban|co huy)$/.test(bd)) return xuLyNut(phien, PAYLOAD.huyCo, nc);
       if (/^(khong|ko|no|thoi)$/.test(bd)) return xuLyNut(phien, PAYLOAD.huyKhong, nc);
       return hoiLai(phien, nc, CAU_BOT.chonNut);
     default:
@@ -1076,6 +1101,8 @@ function xuLyKetQua(phien: PhienBot, r: KetQuaGoi, nc: NguCanh): KetQuaBuoc {
     case 'tao_dat_ban': {
       if (r.ok) return veMenu([CAU_BOT.daNhan(r.ma, d)], { dem: ['dat_ban'] });
       if (r.khongChac) return veMenu([CAU_BOT.khongChac], { dem: ['loi'] });
+      if (r.gioiHan === 'dang_gui') return kq(phien.buoc, d, [{ chu: CAU_BOT.dangGui }], { khongLuu: true });
+      if (r.gioiHan === 'qua_luot') return veMenu([CAU_BOT.quaLuot], { dem: ['dat_ban_that_bai'] });
       const loi = String(r.loi ?? '');
       const that = { dem: ['dat_ban_that_bai'] as LoaiDem[] };
       if (/đã hết bàn/.test(loi)) return diTiep({ ...d, gio: undefined, khung: undefined, buoi: undefined }, nc, [CAU_BOT.vuaHetCho(d.gio ?? '')], that);

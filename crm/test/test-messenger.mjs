@@ -84,7 +84,7 @@ const PSID_THO = '24681357902468135';   // PSID thật của Meta là chuỗi s�
 const demHomNay = async loai => (await mot(
   `select coalesce((select dem from mess_thong_ke_ngay where ngay = hom_nay_vn() and loai = $1), 0)::int as n`, [loai])).n;
 
-const GOI_DUOC = ['mess_lay_phien', 'mess_luu_phien', 'mess_ghi_tra_cuu', 'mess_ghi_su_kien',
+const GOI_DUOC = ['mess_lay_phien', 'mess_luu_phien', 'mess_ghi_tra_cuu', 'mess_xin_dat_ban', 'mess_ghi_su_kien',
                   'mess_doc_cau_hinh', 'mess_luu_cau_hinh', 'mess_tong_quan'].sort();
 const NOI_BO = ['mess_loai_su_kien', 'mess_kiem_psid', 'mess_dem', 'mess_don_phien', 'mess_sach_loi',
                 'mess_phien_json', 'mess_cau_hinh_json'].sort();
@@ -143,8 +143,8 @@ await nhom('0 · TIỀN ĐỀ — enum, file riêng, chữ ký, quyền gọi h�
   // KHÔNG lưu PSID thô, KHÔNG lưu nội dung tin nhắn: đúng các cột này, không hơn.
   const cot = (await q(`select column_name from information_schema.columns where table_name = 'mess_phien' order by ordinal_position`))
     .map(r => r.column_name).join();
-  ok('mess_phien chỉ có psid_bam, buoc, du_lieu, tam_dung_den, tra_cuu_sai, sai_tu, cap_nhat',
-     cot === 'psid_bam,buoc,du_lieu,tam_dung_den,tra_cuu_sai,sai_tu,cap_nhat', cot);
+  ok('mess_phien chỉ có psid_bam, buoc, du_lieu, tam_dung_den, tra_cuu_sai, sai_tu, cap_nhat + bộ đếm gửi đặt bàn',
+     cot === 'psid_bam,buoc,du_lieu,tam_dung_den,tra_cuu_sai,sai_tu,cap_nhat,dat_ban_ngay,dat_ban_dem,dat_ban_luc', cot);
   const cotTk = (await q(`select column_name from information_schema.columns where table_name = 'mess_thong_ke_ngay' order by ordinal_position`))
     .map(r => r.column_name).join();
   ok('mess_thong_ke_ngay chỉ đếm (ngay, loai, dem)', cotTk === 'ngay,loai,dem', cotTk);
@@ -272,6 +272,34 @@ await nhom('2 · KHÓA TRA CỨU SAI — ≥ 5 lần trong 15 phút', async () =
   const khac = (await may(`mess_ghi_tra_cuu($1, false)`, [P4])).kq;
   ok('Khóa theo từng khách: khách khác không bị ảnh hưởng, phiên được tạo', khac?.bi_khoa === false && khac.tra_cuu_sai === 1,
      JSON.stringify(khac));
+});
+
+// ===========================================================================
+await nhom('2b · CHỐT GỬI ĐẶT BÀN — chặn gửi trùng 5 giây, tối đa 5 lần / khách / ngày', async () => {
+  const P5 = bam('khach-5'), P6 = bam('khach-6');
+  const x1 = (await may(`mess_xin_dat_ban($1)`, [P5])).kq;
+  ok('Lần đầu: được gửi, còn 4 lượt; tạo phiên', x1?.ok === true && x1.con_lai === 4
+     && (await mot(`select count(*)::int as n from mess_phien where psid_bam = $1`, [P5])).n === 1, JSON.stringify(x1));
+  const x2 = (await may(`mess_xin_dat_ban($1)`, [P5])).kq;
+  ok('Gọi lại ngay (Meta giao lặp / bấm hai lần) → dang_gui, KHÔNG đếm lượt', x2?.ok === false && x2.ly_do === 'dang_gui'
+     && (await mot(`select dat_ban_dem as n from mess_phien where psid_bam = $1`, [P5])).n === 1, JSON.stringify(x2));
+  const lan = [];
+  for (let i = 0; i < 5; i++) {
+    await db.query(`update mess_phien set dat_ban_luc = now() - interval '11 seconds' where psid_bam = $1`, [P5]);
+    lan.push((await may(`mess_xin_dat_ban($1)`, [P5])).kq);
+  }
+  ok('Cách nhau > 5 giây: lượt 2–5 được, lượt 6 trong cùng ngày → qua_luot',
+     lan.slice(0, 4).every(k => k?.ok === true) && lan[3].con_lai === 0 && lan[4]?.ok === false && lan[4].ly_do === 'qua_luot', JSON.stringify(lan));
+  const khac = (await may(`mess_xin_dat_ban($1)`, [P6])).kq;
+  ok('Khách khác không bị ảnh hưởng', khac?.ok === true && khac.con_lai === 4, JSON.stringify(khac));
+  await db.query(`update mess_phien set dat_ban_ngay = hom_nay_vn() - 1, dat_ban_luc = now() - interval '1 day' where psid_bam = $1`, [P5]);
+  const homSau = (await may(`mess_xin_dat_ban($1)`, [P5])).kq;
+  ok('Sang ngày VN mới → đếm lại từ đầu', homSau?.ok === true && homSau.con_lai === 4, JSON.stringify(homSau));
+  await may(`mess_luu_phien($1, 'menu', '{}'::jsonb, 0)`, [P5]);
+  ok('mess_luu_phien KHÔNG rửa được bộ đếm gửi đặt bàn',
+     (await mot(`select dat_ban_dem as n from mess_phien where psid_bam = $1`, [P5])).n === 1);
+  const saiDang = await may(`mess_xin_dat_ban($1)`, [PSID_THO]);
+  ok('PSID thô → 23514', saiDuLieu(saiDang), vi(saiDang));
 });
 
 // ===========================================================================
@@ -415,6 +443,7 @@ await nhom('6 · AI GỌI ĐƯỢC GÌ — máy chỉ gọi RPC máy, người k
     ['mess_lay_phien', `mess_lay_phien($1)`, [P1]],
     ['mess_luu_phien', `mess_luu_phien($1, 'menu')`, [P1]],
     ['mess_ghi_tra_cuu', `mess_ghi_tra_cuu($1, false)`, [P1]],
+    ['mess_xin_dat_ban', `mess_xin_dat_ban($1)`, [P1]],
     ['mess_ghi_su_kien', `mess_ghi_su_kien('dat_ban')`, []],
   ];
   for (const [ai, uid] of [['Chủ sở hữu', UID.chu], ['Quản lý', UID.qlA], ['Marketing', UID.mktA], ['Thu ngân', UID.thuNganA],
@@ -435,7 +464,7 @@ await nhom('6 · AI GỌI ĐƯỢC GÌ — máy chỉ gọi RPC máy, người k
     const e = await db.query(`select ${sql}`, p).then(() => null, e => e);
     if (!(e && e.code === '42501')) lot.push(`${ten}: ${e ? e.code + ' ' + e.message : 'CHẠY ĐƯỢC'}`);
   }
-  ok('Không có phiên đăng nhập → cả bốn RPC máy bị từ chối 42501', lot.length === 0, lot.join(' | '));
+  ok('Không có phiên đăng nhập → cả năm RPC máy bị từ chối 42501', lot.length === 0, lot.join(' | '));
 
   const NGUOI = [
     ['mess_doc_cau_hinh', `mess_doc_cau_hinh()`],
