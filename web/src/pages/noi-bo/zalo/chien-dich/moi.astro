@@ -67,8 +67,8 @@ const t = dichNB(nn, {
 
 // Câu báo sang trang sau: cả hai thứ tiếng.
 const CAU_BAO = {
-  xong:  { vi: (n: number, loai: number) => `Đã xếp ${n} tin gửi Zalo (${loai} khách không đủ điều kiện). Máy gửi dần 5 phút một lượt.`,
-           en: (n: number, loai: number) => `Queued ${n} Zalo ${n === 1 ? 'message' : 'messages'} (${loai} ${loai === 1 ? 'customer' : 'customers'} not eligible). They go out every 5 minutes.` },
+  xong:  { vi: (n: number, loai: number) => `Đã xếp ${n} tin gửi Zalo${loai ? ` (${loai} khách bị bỏ qua lúc xếp)` : ''}. Máy gửi dần 5 phút một lượt.`,
+           en: (n: number, loai: number) => `Queued ${n} Zalo ${n === 1 ? 'message' : 'messages'}${loai ? ` (${loai} ${loai === 1 ? 'customer' : 'customers'} skipped)` : ''}. They go out every 5 minutes.` },
   trung: { vi: 'Chiến dịch này đã được tạo trước đó — không tạo thêm.', en: 'This campaign was already created — nothing new was added.' },
 };
 
