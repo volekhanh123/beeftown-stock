@@ -27,9 +27,10 @@ import { docMatHang, type MatHang } from '../../../../lib/kho/danh-muc.ts';
 import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, type KetQua } from '../../../../lib/kho/chung.ts';
 import { docTimDs, catTrang, linkDs } from '../../../../lib/kho/tim-ds.ts';
 import {
-  docMaChuaGhep, docMaDaGhep, docMenuIpos, docMonMenu, ganMaIpos, goiYMatHang, tenDonViBan, CHON_DON_VI_BAN_NB,
+  docMaChuaGhep, docMaDaGhep, docMenuIpos, docMonMenu, ganMaIpos, goiYMatHang, goiYOMa, tenDonViBan, CHON_DON_VI_BAN_NB,
   type MaChuaGhep, type MaIposDaGhep, type MonMenuIpos,
 } from '../../../../lib/kho/ban-ipos.ts';
+import { docOMa, type DongOMa } from '../../../../lib/kho/o-ma.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -109,6 +110,15 @@ const t = dichNB(nn, {
   khongPhaiHangKhoNgan: { vi: 'Không phải hàng kho', en: 'Not a stock item' },
   hangCanNhan: { vi: 'Hàng cân nhãn', en: 'Scale-labelled goods' },
   motGoi: { vi: (kg: string) => ` · 1 gói = ${kg} kg`, en: (kg: string) => ` · 1 pack = ${kg} kg` },
+  nhomOMa: { vi: 'Ô mã (món theo tảng — trừ đúng lô của tảng)', en: 'Rotating codes (per-primal items — deduct the exact primal lot)' },
+  oChu: {
+    vi: (ten: string, so: number, ma: string) => `${ten} — ô ${so} (mã ${ma})`,
+    en: (ten: string, so: number, ma: string) => `${ten} — slot ${so} (code ${ma})`,
+  },
+  oGiai: {
+    vi: 'Món ô mã trên FABi bán theo cân: để "Bán theo" trống hoặc chọn kg.',
+    en: 'Rotating-code dishes on FABi are sold by weight: leave "Sold by" empty or choose kg.',
+  },
 });
 
 let bao: KetQua | null = k.bao;
@@ -124,6 +134,7 @@ let daGhep: MaIposDaGhep[] = [];
 let matHang: MatHang[] = [];
 let menu: MonMenuIpos[] = [];
 let menuCoSau = false;
+let oMaTheoMon = new Map<string, DongOMa[]>();
 let monChon: MonMenuIpos | null = null;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
@@ -135,6 +146,8 @@ if (k.chiNhanh && k.daKhoiTao) {
       maChon ? docMonMenu(k.client, k.chiNhanh.id, maChon) : Promise.resolve(null),
     ]);
     ({ ds: menu, coSau: menuCoSau } = catTrang(trangMenu));
+    // 0051: ô mã để ghép món ô trên FABi. Lỗi đọc (database chưa có 0049) → không có nhóm này.
+    oMaTheoMon = await docOMa(k.client).catch(() => new Map<string, DongOMa[]>());
   } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
 }
 // Mã được chọn lên đầu; chưa có trong danh sách (đã ghép rồi / chỉ có trên thực đơn) thì vẫn cho ghép.
@@ -149,7 +162,13 @@ if (maChon) {
 const daGhepTheoMa = new Map(daGhep.map(m => [m.ma_ipos, m]));
 const dangDung = matHang.filter(m => m.dang_dung);
 const tenMon = new Map(matHang.map(m => [m.id, m.ten]));
-const chuKieu = (m: MaIposDaGhep) => m.don_vi_ban === 'suat' ? t.monCheBien
+const cacO = [...oMaTheoMon.values()].flat()
+  .map(o => ({ ...o, ten: tenMon.get(o.mat_hang_id) ?? '—' }))
+  .sort((a, b) => a.ten.localeCompare(b.ten, 'vi') || a.so_o - b.so_o);
+const oTheoId = new Map(cacO.map(o => [o.id, o]));
+const chuKieu = (m: MaIposDaGhep) => m.o_ma_id && oTheoId.has(m.o_ma_id)
+  ? t.oChu(oTheoId.get(m.o_ma_id)!.ten, oTheoId.get(m.o_ma_id)!.so_o, oTheoId.get(m.o_ma_id)!.ma_can)
+  : m.don_vi_ban === 'suat' ? t.monCheBien
   : m.kieu === 'bo_qua' ? t.khongPhaiHangKhoNgan
   : m.kieu === 'goi_can' ? `${t.hangCanNhan}${m.mat_hang_id ? ` (${tenMon.get(m.mat_hang_id) ?? '—'})` : ''}`
   : tenMon.get(m.mat_hang_id ?? '') ?? '—';
@@ -174,7 +193,9 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
         const goiY = goiYMatHang(m, dangDung);
         const cu = daGhepTheoMa.get(m.ma_ipos);
         // Đang ghép (bấm Sửa) → chọn sẵn đúng cái đang ghép; chưa ghép → gợi ý đầu tiên.
-        const dangChon = !cu ? (goiY[0]?.id ?? '')
+        const oGoiY = goiYOMa(m, cacO);
+        const dangChon = !cu ? (oGoiY ? `o:${oGoiY.id}` : goiY[0]?.id ?? '')
+          : cu.o_ma_id ? `o:${cu.o_ma_id}`
           : cu.don_vi_ban === 'suat' ? ''
           : cu.kieu === 'mon' ? (cu.mat_hang_id ?? '')
           : cu.kieu;
@@ -198,6 +219,11 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
                     {goiY.map(g => <option value={g.id} selected={g.id === dangChon}>{g.ten} ({g.ma})</option>)}
                   </optgroup>
                 )}
+                {cacO.length > 0 && (
+                  <optgroup label={t.nhomOMa}>
+                    {cacO.map(o => <option value={`o:${o.id}`} selected={dangChon === `o:${o.id}`}>{t.oChu(o.ten, o.so_o, o.ma_can)}</option>)}
+                  </optgroup>
+                )}
                 <optgroup label={t.nhomKhac}>
                   <option value="goi_can" selected={dangChon === 'goi_can'}>{t.goiCan}</option>
                   <option value="bo_qua" selected={dangChon === 'bo_qua'}>{t.khongPhaiHangKho}</option>
@@ -209,6 +235,7 @@ const idMa = (ma: string) => `ma-${ma.replace(/[^A-Za-z0-9_-]/g, '_')}`;
             </label>
             <fieldset class="nb-o">
               <legend>{t.banTheo}</legend>
+              {cacO.length > 0 && <small>{t.oGiai}</small>}
               {CHON_DON_VI_BAN_NB.map(c => (
                 <label class="kho-tich"><input type="radio" name="don_vi_ban" value={c.ma}
                     checked={(cu?.don_vi_ban ?? '') === c.ma} />
