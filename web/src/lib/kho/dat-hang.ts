@@ -146,7 +146,7 @@ export interface DongDanhGiaNcc {
   kg_thieu: number;
   so_don_tre: number;
   diem_sao: number | null;
-  /** 0048: hao repack — chỉ các dòng có ghi kg sau repack. null = chưa có dòng nào. */
+  /** 0050: hao repack — chỉ các dòng có ghi kg sau repack. null = chưa có dòng nào. */
   kg_repack_ncc: number | null;
   kg_repack_thuc: number | null;
   hao_repack_pt: number | null;

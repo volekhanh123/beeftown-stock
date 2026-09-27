@@ -199,7 +199,7 @@ if (k.chiNhanh && k.daKhoiTao) {
     const viec = docThongBao(k.client, cn, 200, nn).then(r => { suKien = r.suKien.filter(laViec); if (r.loi) loiDoc = r.loi; });
     const cho: Promise<unknown>[] = [viec];
     if (laQuay || vai === 'thu_kho') cho.push(docTon(k.client, cn).then(r => { ton = r; }));
-    // 0048: số tảng trên tem cho gợi ý xếp quầy. Lỗi đọc thì câu dặn không có số tảng.
+    // 0050: số tảng trên tem cho gợi ý xếp quầy. Lỗi đọc thì câu dặn không có số tảng.
     if (laQuay) cho.push(docSoTangCuaLo(k.client, cn).then(r => { soTang = r; }, () => {}));
     if (k.duoc('danh_muc')) cho.push(docMatHang(k.client).then(r => { matHang = r; }));
     if (k.duoc('ke_toan')) cho.push(docCongNoNcc(k.client, cn).then(r => { congNo = r; }));

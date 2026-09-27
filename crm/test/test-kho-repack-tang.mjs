@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN KHO — Kiểm thử repack, truy vết tảng, huỷ cả tảng, báo cáo (0048)
+ * BEEFTOWN KHO — Kiểm thử repack, truy vết tảng, huỷ cả tảng, báo cáo (0050)
  * =========================================================================
  *
  *     node test/test-kho-repack-tang.mjs

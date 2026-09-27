@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN KHO — Kiểm thử web theo dõi theo tảng (0046)
+ * BEEFTOWN KHO — Kiểm thử web theo dõi theo tảng (0048)
  * =====================================================
  *
  *     node test/test-kho-theo-tang-web.mjs

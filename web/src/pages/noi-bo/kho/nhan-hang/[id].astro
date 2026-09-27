@@ -185,7 +185,7 @@ if (!phieu && !loiDoc) {
 const soanDuoc = !!phieu && (phieu.trang_thai === 'nhap' || phieu.trang_thai === 'tu_choi');
 const laNguoiTao = !!phieu?.nguoi_tao && phieu.nguoi_tao === k.nhanSu.id;
 const mon = new Map<string, MonKiem>(matHang.map(m => [m.id, { ten: m.ten, dem_goi: m.dem_goi, don_vi_goi: m.don_vi_goi, theo_tang: !!m.theo_tang }]));
-// 0046: có món theo dõi theo tảng thì form thêm dòng có ô ngày mổ.
+// 0048: có món theo dõi theo tảng thì form thêm dòng có ô ngày mổ.
 const coTheoTang = matHang.some(m => m.theo_tang && m.dang_dung);
 
 // ---------------------------------------------------------------------------

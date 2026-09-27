@@ -688,7 +688,7 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Dòng %: mặt hàng không có hoặc đã ngừng dùng',
     en: 'Line {1}: the item does not exist or is no longer in use' },
   { vi: 'Dòng % (%): chưa nhập số kg', en: 'Line {1} ({2}): kg not entered' },
-  // 0047 — ô mã xoay vòng, phiên lóc một tảng
+  // 0049 — ô mã xoay vòng, phiên lóc một tảng
   { vi: 'Ô mã chỉ dành cho phần cắt', en: 'Rotating codes are only for cuts' },
   { vi: 'Mã % đang là mã cân của món khác — chọn mã ô khác', en: 'Code {1} is already the scale code of another item — choose another rotating code' },
   { vi: 'Mã cân % đang là ô mã của một phần cắt theo tảng — chọn mã khác',
@@ -709,7 +709,7 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Ô % (mã %) đã trống từ trước.', en: 'Slot {1} (code {2}) was already free.' },
   { vi: 'Mã ô % không giao cho phiên này — bấm "Giao ô mã" rồi in bằng đúng phím trên cân',
     en: 'Rotating code {1} is not assigned to this session — press "Assign codes", then print with the right key on the scale' },
-  // 0048 — repack, truy vết tảng, huỷ cả tảng
+  // 0050 — repack, truy vết tảng, huỷ cả tảng
   { vi: 'Dòng % (%): kg sau repack không hợp lệ', en: 'Line {1} ({2}): the weight after repack is not valid' },
   { vi: 'Dòng % (%): kg sau repack phải lớn hơn 0, tối đa 3 số lẻ',
     en: 'Line {1} ({2}): the weight after repack must be greater than 0, with at most 3 decimal places' },
@@ -724,7 +724,7 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Không tìm thấy tảng, hoặc tài khoản không được xem', en: 'Primal not found, or this account cannot view it' },
   { vi: 'Lô % không thuộc tảng nào (món không theo dõi theo tảng)',
     en: 'Lot {1} does not belong to any primal (the item is not tracked per primal)' },
-  // 0046 — theo dõi theo tảng
+  // 0048 — theo dõi theo tảng
   { vi: 'Dòng % (%): ngày mổ không hợp lệ', en: 'Line {1} ({2}): the slaughter date is not valid' },
   { vi: 'Dòng % (%): ngày mổ không được sau ngày nhận hàng', en: 'Line {1} ({2}): the slaughter date cannot be after the receiving date' },
   { vi: 'Dòng % (%): ngày mổ quá một năm trước ngày nhận — kiểm tra lại',

@@ -152,7 +152,7 @@ await nhom('3 · BỐN VAI CRM Y NHƯ TRƯỚC', async () => {
 // ===========================================================================
 await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
   const VAI = ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan', 'thu_ngan', 'marketing',
-               'may_chung', 'may_ipos'];
+               'may_chung', 'may_ipos', 'may_zalo'];
 
   for (const viec of Object.keys(QUYEN_KHO)) {
     const { rows: [{ ds }] } = await db.query(`select kho_vai_duoc($1)::text[] as ds`, [viec]);
@@ -203,7 +203,9 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
        QUYEN_KHO[viec].includes(vai) === mong);
   }
   const { rows: [{ n: soVai }] } = await db.query(`select count(*)::int as n from unnest(enum_range(null::vai_tro))`);
-  ok('Bảng có đủ 9 vai để tra (khớp enum vai_tro)', VAI.length === 9 && soVai === 9, `enum có ${soVai}`);
+  ok('Bảng có đủ 10 vai để tra (khớp enum vai_tro)', VAI.length === 10 && soVai === 10, `enum có ${soVai}`);
+  // 0048: may_zalo (máy gửi tin Zalo) không có việc kho nào — cả ở database lẫn bản soi gương.
+  ok('may_zalo không có việc kho nào', Object.keys(QUYEN_KHO).every(v => !QUYEN_KHO[v].includes('may_zalo')));
   // Vai máy không được việc nào của người. Riêng việc may_chung (0034) chỉ có
   // đúng vai may_chung; việc dong_bo_ban (0037) là việc DUY NHẤT của may_ipos.
   for (const viec of Object.keys(QUYEN_KHO).filter(v => v !== 'may_chung' && v !== 'dong_bo_ban')) {
@@ -366,9 +368,9 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ncc_ghi_doi_tai_khoan', 'kho_phieu_nhap_giu_hoa_don_gop',
     // 0044: thêm lý do Xuất bếp "Cơm nhân viên" → mặc định không tính định mức
     'kho_ly_do_dinh_muc_mac_dinh',
-    // 0047: giao ô mã cho phiên lóc một tảng, quản lý giải phóng ô
+    // 0049: giao ô mã cho phiên lóc một tảng, quản lý giải phóng ô
     'kho_giao_o_ma', 'kho_giai_phong_o_ma',
-    // 0048: truy vết một tảng, báo cáo theo tảng, huỷ cả tảng
+    // 0050: truy vết một tảng, báo cáo theo tảng, huỷ cả tảng
     'kho_truy_vet_tang', 'kho_bao_cao_tang', 'kho_huy_ca_tang',
   ].sort();
   const NOI_BO = [
@@ -391,12 +393,12 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // 0042: bỏ thông tin khách khỏi raw, số gói theo kg, mốc "lâu không nhận hóa đơn",
     // lõi nhận hóa đơn (chung cho lượt và callback)
     'kho_ipos_bo_pii', 'kho_ipos_goi_theo_kg', 'kho_ipos_moc_nhan', 'kho_ipos_nhan_hd',
-    // 0046: số tảng tăng dần, tra số ngày ủ theo bảng ủ
+    // 0048: số tảng tăng dần, tra số ngày ủ theo bảng ủ
     'kho_sinh_so_tang', 'kho_so_ngay_u',
-    // 0047: món theo mã cân (mã món hoặc mã ô), ô còn giữ, các trigger ô mã
+    // 0049: món theo mã cân (mã món hoặc mã ô), ô còn giữ, các trigger ô mã
     'kho_mat_hang_theo_ma_can', 'kho_o_ma_con_giu', 'kho_o_ma_kiem', 'kho_mat_hang_ma_can_khong_trung_o',
     'kho_phien_pha_vao_mot_tang', 'kho_phien_pha_ra_o_ma', 'kho_phien_pha_tra_o_ma',
-    // 0048: trigger gán tảng gốc cho lô ra
+    // 0050: trigger gán tảng gốc cho lô ra
     'kho_lo_gan_tang_goc',
   ].sort();
 

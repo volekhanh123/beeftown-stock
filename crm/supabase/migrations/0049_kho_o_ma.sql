@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN KHO — 0047 · Ô MÃ XOAY VÒNG · PHIÊN LÓC MỘT TẢNG (truy vết tảng GĐ2)
+-- BEEFTOWN KHO — 0049 · Ô MÃ XOAY VÒNG · PHIÊN LÓC MỘT TẢNG (truy vết tảng GĐ2)
 -- =============================================================================
 -- FABi chỉ đọc mã vạch 13 số (2 + mã hàng 5 số + trọng lượng + kiểm tra) và
 -- iPOS gửi về kho mã món + số lượng. Để biết miếng bán ra thuộc tảng nào, mỗi
@@ -27,7 +27,7 @@
 --   kho_quet_phien_pha — chép 0033 (chưa file nào thay); thêm: nhãn mã ô phải
 --                        thuộc ô đang giao cho chính phiên.
 --   kho_quet_kiem_ke   — chép 0032 (chưa file nào thay).
--- iPOS (bán theo mã ô → trừ đúng lô) để 0048.
+-- iPOS (bán theo mã ô → trừ đúng lô) để 0051.
 -- =============================================================================
 
 
@@ -48,7 +48,7 @@ create table kho_o_ma (
 );
 
 comment on table kho_o_ma is
-  'Ô mã của phần cắt theo tảng (0047): mã cân cố định, tạo một lần trên FABi; khi lóc một tảng thì một ô được giao cho tảng đó. Dùng chung toàn thương hiệu.';
+  'Ô mã của phần cắt theo tảng (0049): mã cân cố định, tạo một lần trên FABi; khi lóc một tảng thì một ô được giao cho tảng đó. Dùng chung toàn thương hiệu.';
 
 alter table kho_o_ma enable row level security;
 create policy kho_o_ma_doc on kho_o_ma
@@ -119,7 +119,7 @@ as $$
 $$;
 
 comment on function kho_mat_hang_theo_ma_can is
-  'NỘI BỘ (0047). Món của một mã cân đọc từ nhãn: mã của món, hoặc mã một ô mã của món.';
+  'NỘI BỘ (0049). Món của một mã cân đọc từ nhãn: mã của món, hoặc mã một ô mã của món.';
 
 
 -- =============================================================================
@@ -141,7 +141,7 @@ create index kho_o_ma_giao_phien_idx on kho_o_ma_giao(phien_pha_id);
 create index kho_o_ma_giao_lo_idx on kho_o_ma_giao(lo_id);
 
 comment on table kho_o_ma_giao is
-  'Lần giao một ô mã cho phiên lóc (một tảng) ở một chi nhánh (0047). lo_id = lô phần cắt ra khi phiên chốt. den_luc null = ô đang giữ. Chỉ ghi qua hàm.';
+  'Lần giao một ô mã cho phiên lóc (một tảng) ở một chi nhánh (0049). lo_id = lô phần cắt ra khi phiên chốt. den_luc null = ô đang giữ. Chỉ ghi qua hàm.';
 
 alter table kho_o_ma_giao enable row level security;
 create policy kho_o_ma_giao_doc on kho_o_ma_giao
@@ -161,7 +161,7 @@ as $$
 $$;
 
 comment on function kho_o_ma_con_giu is
-  'NỘI BỘ (0047). Ô còn giữ: phiên còn đang lóc, hoặc lô phần cắt ra còn tồn.';
+  'NỘI BỘ (0049). Ô còn giữ: phiên còn đang lóc, hoặc lô phần cắt ra còn tồn.';
 
 create or replace function kho_giao_o_ma(p_id uuid, p_mat_hang_id uuid default null)
 returns jsonb
@@ -250,7 +250,7 @@ end;
 $$;
 
 comment on function kho_giao_o_ma is
-  'Giao ô mã trống cho phần cắt của phiên lóc một tảng (quyền pha_loc, 0047). p_mat_hang_id null = mọi phần cắt có ô mã trong công thức của tảng. Bấm lại không lấy thêm ô. Trả [{giao_id, mat_hang_id, ten, so_o, ma_can}].';
+  'Giao ô mã trống cho phần cắt của phiên lóc một tảng (quyền pha_loc, 0049). p_mat_hang_id null = mọi phần cắt có ô mã trong công thức của tảng. Bấm lại không lấy thêm ô. Trả [{giao_id, mat_hang_id, ten, so_o, ma_can}].';
 
 create or replace function kho_giai_phong_o_ma(p_giao_id uuid)
 returns text
@@ -279,7 +279,7 @@ end;
 $$;
 
 comment on function kho_giai_phong_o_ma is
-  'Trả một ô mã về trống (quyền duyet — quản lý, chủ; 0047). Dùng khi tảng đã hết mà sổ còn lẻ, hoặc giao nhầm.';
+  'Trả một ô mã về trống (quyền duyet — quản lý, chủ; 0049). Dùng khi tảng đã hết mà sổ còn lẻ, hoặc giao nhầm.';
 
 
 -- =============================================================================
@@ -385,7 +385,7 @@ left join lateral (select sum(t.so_kg) as so_kg, sum(t.so_goi) as so_goi from kh
 where g.den_luc is null;
 
 comment on view kho_v_o_ma_giao is
-  'Ô mã đang giao (0047): phần cắt, số ô, mã, phiên lóc, số tảng, lô ra, hạn dùng, còn bao nhiêu, còn giữ không. Không tiền.';
+  'Ô mã đang giao (0049): phần cắt, số ô, mã, phiên lóc, số tảng, lô ra, hạn dùng, còn bao nhiêu, còn giữ không. Không tiền.';
 
 
 -- =============================================================================
@@ -456,14 +456,14 @@ begin
       v_loi := v_loi || jsonb_build_object('ma', v_ma, 'loi', v_doc.loi);
       continue;
     end if;
-    -- 0047: mã cân của món, hoặc mã của một ô (món theo tảng).
+    -- 0049: mã cân của món, hoặc mã của một ô (món theo tảng).
     select * into v_mh from kho_mat_hang_theo_ma_can(v_doc.ma_can);
     if not found then
       v_loi := v_loi || jsonb_build_object('ma', v_ma,
         'loi', 'Mã hàng ' || v_doc.ma_can || ' chưa gán cho món nào — báo quản lý');
       continue;
     end if;
-    -- 0047: nhãn in bằng mã ô phải là ô đang giao cho CHÍNH phiên này.
+    -- 0049: nhãn in bằng mã ô phải là ô đang giao cho CHÍNH phiên này.
     if exists (select 1 from kho_o_ma o where o.ma_can = v_doc.ma_can)
        and not exists (select 1 from kho_o_ma_giao g join kho_o_ma o on o.id = g.o_ma_id
                        where g.phien_pha_id = p_id and g.den_luc is null and o.ma_can = v_doc.ma_can) then
@@ -575,7 +575,7 @@ begin
       v_loi := v_loi || jsonb_build_object('ma', v_ma, 'loi', v_doc.loi);
       continue;
     end if;
-    -- 0047: mã cân của món, hoặc mã của một ô (món theo tảng).
+    -- 0049: mã cân của món, hoặc mã của một ô (món theo tảng).
     select * into v_mh from kho_mat_hang_theo_ma_can(v_doc.ma_can);
     if not found then
       v_loi := v_loi || jsonb_build_object('ma', v_ma,

@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN KHO — 0048 · REPACK, TRUY VẾT TẢNG, HUỶ CẢ TẢNG, BÁO CÁO THEO TẢNG
+-- BEEFTOWN KHO — 0050 · REPACK, TRUY VẾT TẢNG, HUỶ CẢ TẢNG, BÁO CÁO THEO TẢNG
 -- =============================================================================
 -- Quy trình thịt ủ (Lee Sang, 27/09): Nhập → REPACK cả tảng (mở túi, kiểm
 -- tra, bỏ nước rỉ) → cân → Ủ → lấy ra lóc.
@@ -24,10 +24,10 @@
 --     phiếu XH, vẫn chờ duyệt như cũ.
 --
 -- THAY THÂN (cùng chữ ký):
---   kho_ghi_dong_phieu_nhap  — chép 0046, thêm khóa so_kg_thuc.
+--   kho_ghi_dong_phieu_nhap  — chép 0048, thêm khóa so_kg_thuc.
 --   kho_gui_duyet_phieu_nhap — chép 0031, chặn tảng thiếu kg sau repack.
---   kho_duyet_phieu_nhap     — chép 0046, như trên + lô theo kg sau repack.
---   kho_doc_phieu_nhap_kg    — chép 0046, dòng thêm so_kg_thuc.
+--   kho_duyet_phieu_nhap     — chép 0048, như trên + lô theo kg sau repack.
+--   kho_doc_phieu_nhap_kg    — chép 0048, dòng thêm so_kg_thuc.
 --   kho_kg_tb_goi            — kg TB mỗi gói theo kg sau repack.
 -- ĐỔI KIỂU TRẢ VỀ (drop + create): kho_bao_cao_ncc — chép 0039, thêm 3 cột.
 -- =============================================================================
@@ -41,13 +41,13 @@ alter table kho_phieu_nhap_dong add constraint kho_phieu_nhap_dong_kg_thuc_hop_l
   check (so_kg_thuc is null or (so_kg_thuc > 0 and so_kg_thuc <= so_kg * 1.01));
 
 comment on column kho_phieu_nhap_dong.so_kg_thuc is
-  'Kg sau repack (0048): cân lại sau khi mở túi, bỏ nước rỉ. Kho nhập theo số này; so_kg vẫn là kg nhà cung cấp (tính tiền). Null = như so_kg. Bắt buộc với món theo dõi theo tảng khi gửi / duyệt phiếu mua.';
+  'Kg sau repack (0050): cân lại sau khi mở túi, bỏ nước rỉ. Kho nhập theo số này; so_kg vẫn là kg nhà cung cấp (tính tiền). Null = như so_kg. Bắt buộc với món theo dõi theo tảng khi gửi / duyệt phiếu mua.';
 
 alter table kho_lo add column tang_goc_id uuid references kho_lo(id) on delete restrict;
 create index kho_lo_tang_goc_idx on kho_lo(tang_goc_id) where tang_goc_id is not null;
 
 comment on column kho_lo.tang_goc_id is
-  'Tảng gốc của lô phần cắt (0048): lô sinh ra từ phiên lóc có tảng (lô mang so_tang) vào. Điền lúc tạo lô.';
+  'Tảng gốc của lô phần cắt (0050): lô sinh ra từ phiên lóc có tảng (lô mang so_tang) vào. Điền lúc tạo lô.';
 
 -- Lô ra của phiên lóc nhớ tảng gốc. Lô bất biến — chỉ gán lúc INSERT.
 create or replace function kho_lo_gan_tang_goc()
@@ -74,7 +74,7 @@ create trigger kho_lo_gan_tang_goc
   before insert on kho_lo
   for each row execute function kho_lo_gan_tang_goc();
 
--- Lô đã có trước file này (0046/0047 chạy trước): gán một lần. Tắt tạm trigger
+-- Lô đã có trước file này (0048/0049 chạy trước): gán một lần. Tắt tạm trigger
 -- chặn sửa — chỉ điền cột mới, không đụng số liệu.
 alter table kho_lo disable trigger kho_lo_chan_sua;
 do $$
@@ -108,11 +108,11 @@ left join kho_lo g on g.id = l.tang_goc_id
 where l.so_tang is not null or l.tang_goc_id is not null;
 
 comment on view kho_v_lo_tang is
-  'Lô → tảng gốc và số tảng (0048): chính tảng và các lô phần cắt ra từ nó. Không có tiền.';
+  'Lô → tảng gốc và số tảng (0050): chính tảng và các lô phần cắt ra từ nó. Không có tiền.';
 
 
 -- =============================================================================
--- 2 · GHI DÒNG PHIẾU NHẬP — thêm so_kg_thuc (chép 0046)
+-- 2 · GHI DÒNG PHIẾU NHẬP — thêm so_kg_thuc (chép 0048)
 -- =============================================================================
 create or replace function kho_ghi_dong_phieu_nhap(
   p_phieu_id     uuid,
@@ -187,12 +187,12 @@ begin
       end if;
       v_goi := (v_dong ->> 'so_goi')::int;
     end if;
-    if v_mh.dem_goi and v_goi = 0 and not v_mh.theo_tang then   -- 0046: dòng tảng tự là 1 tảng
+    if v_mh.dem_goi and v_goi = 0 and not v_mh.theo_tang then   -- 0048: dòng tảng tự là 1 tảng
       raise exception 'Dòng % (%): chưa nhập số %', v_i, v_mh.ten, v_mh.don_vi_goi
         using errcode = 'check_violation';
     end if;
 
-    -- MỚI (0046): món theo dõi theo tảng — mỗi dòng là MỘT tảng, có ngày mổ.
+    -- MỚI (0048): món theo dõi theo tảng — mỗi dòng là MỘT tảng, có ngày mổ.
     v_mo := null;
     if coalesce(v_dong ->> 'ngay_mo', '') <> '' then
       begin
@@ -222,7 +222,7 @@ begin
       end if;
     end if;
 
-    -- MỚI (0048): kg sau repack (cân lại sau khi mở túi, bỏ nước rỉ). so_kg
+    -- MỚI (0050): kg sau repack (cân lại sau khi mở túi, bỏ nước rỉ). so_kg
     -- vẫn là kg nhà cung cấp — cơ sở tính tiền; kho nhập theo kg sau repack.
     v_thuc := null;
     if v_dong ? 'so_kg_thuc' and v_dong -> 'so_kg_thuc' <> 'null'::jsonb then
@@ -335,7 +335,7 @@ begin
     raise exception 'Phiếu chưa có dòng hàng nào' using errcode = 'check_violation';
   end if;
 
-  -- MỚI (0048): tảng phải có kg sau repack trước khi gửi — kho nhập theo số
+  -- MỚI (0050): tảng phải có kg sau repack trước khi gửi — kho nhập theo số
   -- này. Chưa repack xong thì để phiếu nháp.
   if v_pn.loai = 'mua' then
     select d.thu_tu, m.ten into v_tt, v_ten
@@ -371,7 +371,7 @@ end;
 $$;
 
 -- =============================================================================
--- 4 · DUYỆT — lô theo kg sau repack (chép 0046)
+-- 4 · DUYỆT — lô theo kg sau repack (chép 0048)
 -- =============================================================================
 create or replace function kho_duyet_phieu_nhap(p_id uuid)
 returns text
@@ -435,7 +435,7 @@ begin
     end if;
   end if;
 
-  -- MỚI (0046): món theo dõi theo tảng phải mỗi dòng một tảng, có ngày mổ —
+  -- MỚI (0048): món theo dõi theo tảng phải mỗi dòng một tảng, có ngày mổ —
   -- phiếu tạo từ đơn đặt hàng chưa được thủ kho cân từng tảng thì chưa duyệt.
   if v_pn.loai = 'mua' then
     select d.thu_tu, m.ten into v_thieu_tt, v_thieu_ten
@@ -450,7 +450,7 @@ begin
     end if;
   end if;
 
-  -- MỚI (0048): tảng phải có kg sau repack.
+  -- MỚI (0050): tảng phải có kg sau repack.
   if v_pn.loai = 'mua' then
     select d.thu_tu, m.ten into v_thieu_tt, v_thieu_ten
     from kho_phieu_nhap_dong d
@@ -496,7 +496,7 @@ begin
   loop
     v_i := v_i + 1;
 
-    -- MỚI (0046): tảng của món theo dõi theo tảng có số tảng tăng dần của chi
+    -- MỚI (0048): tảng của món theo dõi theo tảng có số tảng tăng dần của chi
     -- nhánh, và ngày ủ xong tra theo bảng ủ của món.
     select * into v_mh from kho_mat_hang where id = v_dong.mat_hang_id;
     v_so_tang := case when v_mh.theo_tang and v_dong.so_goi <= 1
@@ -549,10 +549,10 @@ end;
 $$;
 
 comment on function kho_duyet_phieu_nhap is
-  'Duyệt phiếu nhập (quyền duyet_nhap — chủ, quản lý, kế toán): mỗi dòng thành một lô, có giá vốn nhập kho (cộng chi phí và thuế theo cài đặt, chia không lệch một đồng), và một dòng sổ kho. Phiếu mua phải có đơn giá ở mọi dòng (0031). Món theo dõi theo tảng: mỗi dòng một tảng có ngày mổ và kg sau repack; lô mang số tảng và ngày ủ xong (0046). Lô và sổ kho theo kg sau repack, giá trị lô vẫn là tiền hàng → giá vốn/kg chia lại (0048). Chỉ lúc này tồn mới cộng.';
+  'Duyệt phiếu nhập (quyền duyet_nhap — chủ, quản lý, kế toán): mỗi dòng thành một lô, có giá vốn nhập kho (cộng chi phí và thuế theo cài đặt, chia không lệch một đồng), và một dòng sổ kho. Phiếu mua phải có đơn giá ở mọi dòng (0031). Món theo dõi theo tảng: mỗi dòng một tảng có ngày mổ và kg sau repack; lô mang số tảng và ngày ủ xong (0048). Lô và sổ kho theo kg sau repack, giá trị lô vẫn là tiền hàng → giá vốn/kg chia lại (0050). Chỉ lúc này tồn mới cộng.';
 
 -- =============================================================================
--- 5 · ĐỌC PHIẾU NHẬN HÀNG — dòng thêm so_kg_thuc (chép 0046)
+-- 5 · ĐỌC PHIẾU NHẬN HÀNG — dòng thêm so_kg_thuc (chép 0048)
 -- =============================================================================
 create or replace function kho_doc_phieu_nhap_kg(p_id uuid)
 returns jsonb
@@ -609,11 +609,11 @@ begin
                'han_dung',      d.han_dung,
                'truong_them',   d.truong_them,
                'lo_id',         d.lo_id,
-               -- 0046: món theo dõi theo tảng — mỗi dòng một tảng.
+               -- 0048: món theo dõi theo tảng — mỗi dòng một tảng.
                'theo_tang',     m.theo_tang,
                'ngay_mo',       d.ngay_mo,
                'so_tang',       (select l.so_tang from kho_lo l where l.id = d.lo_id),
-               -- 0048: kg sau repack (null = như kg nhà cung cấp).
+               -- 0050: kg sau repack (null = như kg nhà cung cấp).
                'so_kg_thuc',    d.so_kg_thuc)
              order by d.thu_tu, d.id)
       from kho_phieu_nhap_dong d
@@ -714,7 +714,7 @@ begin
                               and pn.tien_hoa_don <> pn.tien_hang + pn.tien_thue + pn.chi_phi_khac)::int as lech
     from pn group by pn.ncc
   ),
-  -- 0048: hao hụt repack — chỉ các dòng đã ghi kg sau repack.
+  -- 0050: hao hụt repack — chỉ các dòng đã ghi kg sau repack.
   repack as (
     select pn.ncc, sum(d.so_kg) as kg_ncc, sum(d.so_kg_thuc) as kg_thuc
     from pn join kho_phieu_nhap_dong d on d.phieu_nhap_id = pn.id
@@ -819,7 +819,7 @@ end;
 $$;
 
 comment on function kho_bao_cao_ncc is
-  'Đánh giá nhà cung cấp (nhap hoặc xem_gia; 0039): theo phiếu mua đã duyệt trong kỳ và đơn đặt có ngày giao trong kỳ — số phiếu, kg, giá TB/kg, thu hồi pha lóc TB, kg trả, số lần lệch hóa đơn, số ngày trả tiền TB, đơn giao thiếu / trễ, điểm sao 1–5 (công thức ở migration). 0048: kg nhà cung cấp / kg sau repack / % hao repack của các dòng có ghi kg sau repack. gia_tb_kg, so_lan_lech_hoa_don, so_ngay_tra_tb chỉ vai xem_gia, không thì null.';
+  'Đánh giá nhà cung cấp (nhap hoặc xem_gia; 0039): theo phiếu mua đã duyệt trong kỳ và đơn đặt có ngày giao trong kỳ — số phiếu, kg, giá TB/kg, thu hồi pha lóc TB, kg trả, số lần lệch hóa đơn, số ngày trả tiền TB, đơn giao thiếu / trễ, điểm sao 1–5 (công thức ở migration). 0050: kg nhà cung cấp / kg sau repack / % hao repack của các dòng có ghi kg sau repack. gia_tb_kg, so_lan_lech_hoa_don, so_ngay_tra_tb chỉ vai xem_gia, không thì null.';
 
 
 -- =============================================================================
@@ -942,7 +942,7 @@ end;
 $$;
 
 comment on function kho_bao_cao_tang is
-  'Báo cáo theo tảng (quyền xem; 0048): mỗi tảng nhận trong kỳ — kg nhà cung cấp → sau repack → vào lóc → thịt / phụ phẩm / bỏ / hao hụt, đã bán / bếp / huỷ / còn, số ngày từ lóc tới bán hết, tình trạng chua_loc / dang_ban / het. Cột tiền (don_gia_ncc, gia_von_repack_kg, gia_von_thit_kg) và phieu_nhap_id chỉ vai xem_gia, không thì null.';
+  'Báo cáo theo tảng (quyền xem; 0050): mỗi tảng nhận trong kỳ — kg nhà cung cấp → sau repack → vào lóc → thịt / phụ phẩm / bỏ / hao hụt, đã bán / bếp / huỷ / còn, số ngày từ lóc tới bán hết, tình trạng chua_loc / dang_ban / het. Cột tiền (don_gia_ncc, gia_von_repack_kg, gia_von_thit_kg) và phieu_nhap_id chỉ vai xem_gia, không thì null.';
 
 
 -- =============================================================================
@@ -968,14 +968,14 @@ create table kho_huy_tang (
 create index kho_huy_tang_tang_idx on kho_huy_tang(tang_id);
 
 comment on table kho_huy_tang is
-  'Lần báo huỷ cả tảng (0048). Các phiếu XH sinh ra trỏ về đây qua kho_phieu_xuat.huy_tang_id. Chỉ ghi qua kho_huy_ca_tang.';
+  'Lần báo huỷ cả tảng (0050). Các phiếu XH sinh ra trỏ về đây qua kho_phieu_xuat.huy_tang_id. Chỉ ghi qua kho_huy_ca_tang.';
 
 alter table kho_huy_tang enable row level security;
 create policy kho_huy_tang_doc on kho_huy_tang
   for select using (chi_nhanh_id = any ((select kho_cn_duoc('xem'))::uuid[]));
 
 alter table kho_phieu_xuat add column huy_tang_id uuid references kho_huy_tang(id) on delete restrict;
-comment on column kho_phieu_xuat.huy_tang_id is 'Phiếu huỷ sinh ra từ "Huỷ cả tảng" (0048).';
+comment on column kho_phieu_xuat.huy_tang_id is 'Phiếu huỷ sinh ra từ "Huỷ cả tảng" (0050).';
 
 create or replace function kho_huy_ca_tang(
   p_lo_id    uuid,
@@ -1083,7 +1083,7 @@ end;
 $$;
 
 comment on function kho_huy_ca_tang is
-  'Huỷ cả tảng (quyền van_hanh; 0048): p_lo_id là tảng hoặc bất kỳ lô cắt ra từ nó. Mỗi vị trí còn hàng của tảng một phiếu báo huỷ XH (lý do bắt buộc, ảnh như phiếu huỷ thường), chờ duyệt như cũ. Cùng p_ma_gui = cùng lần bấm. Trả {da_co, so_tang, kg_dang_chuyen, phieu[{id, so_phieu}]}.';
+  'Huỷ cả tảng (quyền van_hanh; 0050): p_lo_id là tảng hoặc bất kỳ lô cắt ra từ nó. Mỗi vị trí còn hàng của tảng một phiếu báo huỷ XH (lý do bắt buộc, ảnh như phiếu huỷ thường), chờ duyệt như cũ. Cùng p_ma_gui = cùng lần bấm. Trả {da_co, so_tang, kg_dang_chuyen, phieu[{id, so_phieu}]}.';
 
 
 -- =============================================================================
@@ -1171,7 +1171,7 @@ end;
 $$;
 
 comment on function kho_truy_vet_tang is
-  'Truy vết một tảng (quyền xem; 0048): p_lo_id là tảng hoặc lô cắt ra từ nó. Trả {co_gia, tang (một dòng kho_bao_cao_tang), ton_tang[], phien[], lo_ra[{…, o_ma, kg_ban, kg_bep, kg_huy, con[]}], phieu_huy[]}. gia_von_kg và cột tiền của tang chỉ vai xem_gia.';
+  'Truy vết một tảng (quyền xem; 0050): p_lo_id là tảng hoặc lô cắt ra từ nó. Trả {co_gia, tang (một dòng kho_bao_cao_tang), ton_tang[], phien[], lo_ra[{…, o_ma, kg_ban, kg_bep, kg_huy, con[]}], phieu_huy[]}. gia_von_kg và cột tiền của tang chỉ vai xem_gia.';
 
 
 -- =============================================================================

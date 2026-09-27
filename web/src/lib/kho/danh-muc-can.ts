@@ -6,7 +6,7 @@
  * file của cân.
  *
  *   · Món thường: một dòng theo mã cân của món, như trước.
- *   · Phần cắt có ô mã (0047): thêm MỖI Ô một dòng, cùng giá với món. Ô đang
+ *   · Phần cắt có ô mã (0049): thêm MỖI Ô một dòng, cùng giá với món. Ô đang
  *     giao cho một tảng còn hàng thì tên kèm số tảng — "Thăn ngoại cắt lát
  *     #0142" — để tem in ra có số tảng; ô trống thì tên món. Ô trống vẫn nằm
  *     trên cân, nên số PLU của ô không đổi qua các lần lóc.

@@ -1,5 +1,5 @@
 /**
- * KHO — THEO DÕI THEO TẢNG (0046): bảng ủ, số tảng, danh sách tảng đang ủ.
+ * KHO — THEO DÕI THEO TẢNG (0048): bảng ủ, số tảng, danh sách tảng đang ủ.
  *
  * Món bật "Theo dõi theo tảng" (kho_mat_hang.theo_tang): nhận hàng mỗi dòng một
  * tảng có ngày mổ; duyệt thì mỗi tảng thành một lô mang số tảng tăng dần theo
@@ -86,7 +86,7 @@ export function moTaBangU(dong: DongBangU[], nn: NgonNguNB = 'vi'): string {
   }).join(' · ');
 }
 
-/** Tra số ngày ủ — cùng luật với kho_so_ngay_u (0046). null = món chưa có bảng. */
+/** Tra số ngày ủ — cùng luật với kho_so_ngay_u (0048). null = món chưa có bảng. */
 export function soNgayU(dong: DongBangU[], tuoi: number): number | null {
   const moc = sapBangU(dong).find(d => d.tuoi_den_ngay !== null && d.tuoi_den_ngay >= Math.max(tuoi, 0));
   if (moc) return moc.so_ngay_u;
@@ -196,7 +196,7 @@ export function cauConU(t: Pick<TangTon, 'tinh_trang_u' | 'con_ngay_u'>, nn: Ngo
 }
 
 // -----------------------------------------------------------------------------
-// TRUY VẾT, BÁO CÁO, HUỶ CẢ TẢNG (0048)
+// TRUY VẾT, BÁO CÁO, HUỶ CẢ TẢNG (0050)
 // -----------------------------------------------------------------------------
 export type TinhTrangBan = 'chua_loc' | 'dang_ban' | 'het';
 

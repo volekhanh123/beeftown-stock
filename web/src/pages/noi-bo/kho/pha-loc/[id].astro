@@ -262,7 +262,7 @@ const t = dichNB(nn, {
   lyDoMoLaiNhan: { vi: 'Lý do mở lại', en: 'Reason for reopening' },
   moLaiPhien: { vi: 'Mở lại phiên', en: 'Reopen session' },
   veDanhSach: { vi: '← Danh sách phiên pha lóc', en: '← Butchery sessions' },
-  // 0047 — ô mã (món theo dõi theo tảng)
+  // 0049 — ô mã (món theo dõi theo tảng)
   oMaTd: { vi: 'Ô mã của tảng này', en: 'Rotating codes for this primal' },
   oMaGt: {
     vi: 'Món theo dõi theo tảng: mỗi phiên một tảng. Giao ô mã cho phần cắt, rồi mở Beeftown Cân bấm Gửi xuống cân — cân đổi tên phím thành tên phần cắt kèm số tảng. Cân, in tem bằng đúng phím đó.',
@@ -430,7 +430,7 @@ if (form && phien) {
 // Dữ liệu hiển thị
 // ---------------------------------------------------------------------------
 const buoc = phien ? buocPhien(phien.trang_thai, soanDuoc, q.get('buoc')) : 'xem';
-// 0047: món theo tảng — ô mã đang giao cho phiên và số tảng đem pha.
+// 0049: món theo tảng — ô mã đang giao cho phiên và số tảng đem pha.
 let oMaPhien: GiaoOMa[] = [];
 let soTangPhien = '';
 const loVaoPhien = [...new Set(vaoDb.map(v => v.lo_id))];

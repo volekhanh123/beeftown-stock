@@ -98,9 +98,9 @@ export interface DongPhieuNhap {
   han_dung: string;
   truong_them: GiaTriTruong;
   lo_id: string | null;
-  /** Ngày mổ của tảng (0046). */
+  /** Ngày mổ của tảng (0048). */
   ngay_mo: string | null;
-  /** Kg sau repack (0048) — null = như so_kg. so_kg là kg nhà cung cấp (tính tiền). */
+  /** Kg sau repack (0050) — null = như so_kg. so_kg là kg nhà cung cấp (tính tiền). */
   so_kg_thuc: number | null;
 }
 
@@ -114,7 +114,7 @@ export interface DongForm {
   ngay_san_xuat: string;
   han_dung: string;
   truong_them: GiaTriTruong;
-  /** 0046 / 0048: ngày mổ, kg sau repack — giữ lại khi lưu cả phiếu. */
+  /** 0048 / 0050: ngày mổ, kg sau repack — giữ lại khi lưu cả phiếu. */
   ngay_mo: string;
   so_kg_thuc: string;
 }
@@ -703,7 +703,7 @@ export function xemTruocGiaVon(
   const vat = chiaSoDuLonNhat(caiDat?.vat_vao_gia_von ? tienThue : 0, tongHang > 0 ? hang : kg);
   return dong.map((d, i) => {
     const giaTri = d.thanh_tien + cp[i] + vat[i];
-    // 0048: kho nhập theo kg sau repack — tổng tiền giữ nguyên, chia cho kg còn lại.
+    // 0050: kho nhập theo kg sau repack — tổng tiền giữ nguyên, chia cho kg còn lại.
     const kgVao = d.so_kg_thuc ?? d.so_kg;
     return { gia_tri: giaTri, gia_von_kg: kgVao > 0 ? giaTri / kgVao : 0 };
   });

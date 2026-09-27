@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN KHO — Kiểm thử ô mã xoay vòng, phiên lóc một tảng (0047)
+ * BEEFTOWN KHO — Kiểm thử ô mã xoay vòng, phiên lóc một tảng (0049)
  * =================================================================
  *
  *     node test/test-kho-o-ma.mjs

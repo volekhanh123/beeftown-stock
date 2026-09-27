@@ -11,7 +11,7 @@
  *        chỉ khi người tải xem giá)
  *   /noi-bo/kho/bao-cao/mua-hang.csv?tu=&den=&nhom=ncc|mat_hang   (GĐ8c — xem_gia)
  *   /noi-bo/kho/bao-cao/so-thanh-toan.csv?tu=&den=               (GĐ8c — ke_toan)
- *   /noi-bo/kho/bao-cao/theo-tang.csv?tu=&den=  (0048 — mọi vai xem kho; cột tiền chỉ
+ *   /noi-bo/kho/bao-cao/theo-tang.csv?tu=&den=  (0050 — mọi vai xem kho; cột tiền chỉ
  *        khi người tải xem giá)
  *
  * Đi qua middleware như mọi đường /noi-bo — chưa đăng nhập thì bị chuyển về
@@ -68,7 +68,7 @@ export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
       return new Response(t.khongXemKho, { status: 403 });
     }
   } else if (ten === 'theo-tang') {
-    // 0048: theo tảng mở cho mọi vai xem kho (thủ kho, NV quầy: chỉ kg).
+    // 0050: theo tảng mở cho mọi vai xem kho (thủ kho, NV quầy: chỉ kg).
     if (!duoc(nhanSu.vai_tro, 'xem')) return new Response(t.khongXemKho, { status: 403 });
   } else if (ten === 'theo-thang') {
     // GĐ8c: theo tháng mở cho mọi vai xem kho (thủ kho, NV quầy: chỉ kg).

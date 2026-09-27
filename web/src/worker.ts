@@ -10,6 +10,9 @@
  * `scheduled`: Cron Trigger khai ở wrangler.toml `[triggers] crons` — mỗi 5 phút
  * chạy `dongBoTatCa` (lib/kho/ipos-dong-bo.ts): thử lại hàng chờ + đọc thực đơn
  * iPOS khi tới hạn. Thiếu bí mật thì chỉ ghi một dòng log; web không bị ảnh hưởng.
+ * Cùng cron đó chạy SONG SONG `guiZaloTatCa` (lib/zalo-gui.ts): gửi tin Zalo ZBS
+ * đến hạn. Hai việc là hai lời waitUntil riêng — cả hai không bao giờ ném lỗi,
+ * và việc này hỏng / chậm không chặn việc kia.
  *
  * wrangler.toml khai `main = "./src/worker.ts"` (file NGUỒN — adapter chỉ tự
  * điền main khi nó vắng mặt, và build lại file này bằng Vite).
@@ -20,6 +23,7 @@
 import { handle } from '@astrojs/cloudflare/handler';
 import { dongBoTatCa } from './lib/kho/ipos-dong-bo.ts';
 import { xuLyHookIpos, khoaTuDuong, DUONG_HOOK } from './lib/kho/ipos-hook.ts';
+import { guiZaloTatCa } from './lib/zalo-gui.ts';
 
 interface NguCanh {
   waitUntil(p: Promise<unknown>): void;
@@ -37,6 +41,8 @@ export default {
     return handle(request as never, env as never, ctx as never);
   },
   async scheduled(_ctrl: unknown, env: Record<string, unknown>, ctx: NguCanh) {
+    // Hai việc độc lập, chạy song song: mỗi promise một waitUntil.
     ctx.waitUntil(dongBoTatCa(env));
+    ctx.waitUntil(guiZaloTatCa(env));
   },
 };

@@ -51,7 +51,7 @@ export interface MatHang {
   kho_toi_da_kg: number | null;
   /** Mã hàng bên MISA (0040); null = file MISA dùng mã nội bộ, cờ thiếu mã. */
   ma_misa?: string | null;
-  /** Theo dõi theo tảng (0046): mỗi tảng nhận vào là một lô có ngày mổ, số tảng. Chỉ món loại tảng. */
+  /** Theo dõi theo tảng (0048): mỗi tảng nhận vào là một lô có ngày mổ, số tảng. Chỉ món loại tảng. */
   theo_tang?: boolean;
   truong_them: GiaTriTruong;
   dang_dung: boolean;
@@ -136,10 +136,10 @@ export interface GiaTriFormMatHang {
   kho_toi_thieu_kg: string; kho_toi_da_kg: string;
   /** Mã hàng bên MISA (0040). */
   ma_misa?: string;
-  /** Theo dõi theo tảng và bảng ủ dạng chữ "5:18, 10:14, 10" (0046). */
+  /** Theo dõi theo tảng và bảng ủ dạng chữ "5:18, 10:14, 10" (0048). */
   theo_tang?: boolean;
   bang_u?: string;
-  /** Ô mã của phần cắt theo tảng, dạng "10011-10019" (0047). */
+  /** Ô mã của phần cắt theo tảng, dạng "10011-10019" (0049). */
   o_ma?: string;
   thu_tu: string; dang_dung: boolean; truong_them: GiaTriTruong; gia_tri_thu_hoi_kg: string;
 }
@@ -307,11 +307,11 @@ export async function luuMatHang(
   const maMisa = form.has('ma_misa') ? docMaMisa(form.get('ma_misa')) : null;
   if (maMisa === undefined) return kqHai(false, CAU.maMisa);
 
-  // Theo dõi theo tảng + bảng ủ (0046) — chỉ khi form có hai ô này. Đọc bảng ủ TRƯỚC khi ghi gì.
+  // Theo dõi theo tảng + bảng ủ (0048) — chỉ khi form có hai ô này. Đọc bảng ủ TRƯỚC khi ghi gì.
   const theoTang = form.has('theo_tang') ? loai === 'tang' && form.get('theo_tang') === 'co' : undefined;
   const bangU = form.has('bang_u') ? docChuBangU(String(form.get('bang_u') ?? '')) : null;
   if (bangU?.loi) return kqHai(false, bangU.loi);
-  // Ô mã (0047) — chỉ phần cắt; đọc TRƯỚC khi ghi gì.
+  // Ô mã (0049) — chỉ phần cắt; đọc TRƯỚC khi ghi gì.
   const oMa = form.has('o_ma') ? docChuOMa(String(form.get('o_ma') ?? '')) : null;
   if (oMa?.loi) return kqHai(false, oMa.loi);
   if (oMa && oMa.ma.length && loai !== 'phan_cat') {

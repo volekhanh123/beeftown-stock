@@ -148,7 +148,7 @@ try {
   const [tonDoc, n, st] = await Promise.all([
     laQuay ? docTon(k.client, cn.id) : Promise.resolve([] as DongTon[]),
     tenNhanSu(k.client, ds.map(p => p.nguoi_tao)),
-    // 0048: số tảng trên tem cho gợi ý xếp quầy. Lỗi đọc thì bỏ qua.
+    // 0050: số tảng trên tem cho gợi ý xếp quầy. Lỗi đọc thì bỏ qua.
     laQuay ? docSoTangCuaLo(k.client, cn.id).catch(() => new Map<string, number>()) : Promise.resolve(new Map<string, number>()),
   ]);
   ton = tonDoc; ten = n; soTang = st;

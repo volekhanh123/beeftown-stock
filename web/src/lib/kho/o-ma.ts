@@ -1,5 +1,5 @@
 /**
- * KHO — Ô MÃ XOAY VÒNG (0047, truy vết tảng GĐ2)
+ * KHO — Ô MÃ XOAY VÒNG (0049, truy vết tảng GĐ2)
  *
  * Phần cắt của món theo tảng có vài ô mã cố định (mã cân riêng, tạo một lần
  * trên FABi, cùng giá). Lóc một tảng thì kho giao một ô trống cho phần cắt; cân

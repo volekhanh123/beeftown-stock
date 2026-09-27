@@ -19,7 +19,7 @@ export interface GoiYXep {
   /** Câu dặn ngắn cho nhân viên. */
   cau: string;
   gap: boolean;
-  /** Số tảng gốc của lô phía trước (món theo tảng, 0048) — null khi không theo tảng. */
+  /** Số tảng gốc của lô phía trước (món theo tảng, 0050) — null khi không theo tảng. */
   so_tang: number | null;
 }
 
@@ -28,7 +28,7 @@ export interface GoiYXep {
  * báo hủy, nằm ở danh sách khác). Món có một lô duy nhất và còn xa hạn thì
  * không cần dặn gì.
  *
- * soTang (0048, kho_v_lo_tang): lô → số tảng gốc. Có thì câu dặn nói số tảng
+ * soTang (0050, kho_v_lo_tang): lô → số tảng gốc. Có thì câu dặn nói số tảng
  * trên tem ("tảng #0142") — nhân viên nhìn tem là biết gói nào.
  */
 export function goiYXepQuay(ton: DongTon[], nn: NgonNguNB = 'vi', soTang?: ReadonlyMap<string, number>): GoiYXep[] {

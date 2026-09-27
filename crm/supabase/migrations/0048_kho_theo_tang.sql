@@ -1,10 +1,10 @@
 -- =============================================================================
--- BEEFTOWN KHO — 0046 · THEO DÕI THEO TẢNG: MỖI TẢNG MỘT LÔ, NGÀY MỔ, BẢNG Ủ
+-- BEEFTOWN KHO — 0048 · THEO DÕI THEO TẢNG: MỖI TẢNG MỘT LÔ, NGÀY MỔ, BẢNG Ủ
 -- =============================================================================
 -- Chủ đã chốt (27/09): thịt ủ (ribeye, striploin…) phải truy được tới TỪNG TẢNG
 -- — mỗi tảng có ngày mổ riêng nên số ngày ủ và hạn dùng khác nhau; có sự cố
 -- thì huỷ đúng các miếng của tảng đó. Kế hoạch đầy đủ: GĐ1 (file này) → ô mã
--- xoay vòng khi lóc (0047) → bán qua iPOS trừ đúng tảng (0048).
+-- xoay vòng khi lóc (0049) → bán qua iPOS trừ đúng tảng (0051).
 --
 -- Làm ở đây, chỉ với món bật kho_mat_hang.theo_tang (món khác không đổi gì):
 --   · Nhận hàng: MỖI DÒNG LÀ MỘT TẢNG (so_goi = 1), cân riêng, có ngay_mo.
@@ -35,20 +35,20 @@ alter table kho_mat_hang add constraint kho_mat_hang_theo_tang_hop_le
   check (not theo_tang or loai = 'tang');
 
 comment on column kho_mat_hang.theo_tang is
-  'Theo dõi theo tảng (0046): mỗi tảng nhận vào là một lô riêng có ngày mổ, số tảng, ngày ủ xong. Chỉ với món loại tảng.';
+  'Theo dõi theo tảng (0048): mỗi tảng nhận vào là một lô riêng có ngày mổ, số tảng, ngày ủ xong. Chỉ với món loại tảng.';
 
 alter table kho_phieu_nhap_dong add column ngay_mo date;
 comment on column kho_phieu_nhap_dong.ngay_mo is
-  'Ngày mổ của tảng (đọc trên nhãn thùng). Bắt buộc với món theo dõi theo tảng — khi đó mỗi dòng là một tảng. 0046.';
+  'Ngày mổ của tảng (đọc trên nhãn thùng). Bắt buộc với món theo dõi theo tảng — khi đó mỗi dòng là một tảng. 0048.';
 
 alter table kho_lo add column ngay_mo date;
 alter table kho_lo add column ngay_u_xong date;
 alter table kho_lo add column so_tang int;
 alter table kho_lo add constraint kho_lo_so_tang_duy_nhat unique (chi_nhanh_id, so_tang);
 
-comment on column kho_lo.ngay_mo is 'Ngày mổ của tảng (0046).';
-comment on column kho_lo.ngay_u_xong is 'Ngày ủ xong = ngày nhận + số ngày ủ tra từ kho_bang_u theo tuổi thịt lúc nhận. Null khi món chưa có bảng ủ (0046).';
-comment on column kho_lo.so_tang is 'Số tảng tăng dần theo chi nhánh (in trên tem "#0142"). Chỉ với món theo dõi theo tảng (0046).';
+comment on column kho_lo.ngay_mo is 'Ngày mổ của tảng (0048).';
+comment on column kho_lo.ngay_u_xong is 'Ngày ủ xong = ngày nhận + số ngày ủ tra từ kho_bang_u theo tuổi thịt lúc nhận. Null khi món chưa có bảng ủ (0048).';
+comment on column kho_lo.so_tang is 'Số tảng tăng dần theo chi nhánh (in trên tem "#0142"). Chỉ với món theo dõi theo tảng (0048).';
 
 
 -- =============================================================================
@@ -71,7 +71,7 @@ create unique index kho_bang_u_moc_idx on kho_bang_u(mat_hang_id, tuoi_den_ngay)
 create unique index kho_bang_u_con_lai_idx on kho_bang_u(mat_hang_id) where tuoi_den_ngay is null;
 
 comment on table kho_bang_u is
-  'Bảng ủ của món theo dõi theo tảng (0046): tuổi thịt lúc nhận (ngày) → số ngày ủ. Dùng chung toàn thương hiệu như kho_mat_hang.';
+  'Bảng ủ của món theo dõi theo tảng (0048): tuổi thịt lúc nhận (ngày) → số ngày ủ. Dùng chung toàn thương hiệu như kho_mat_hang.';
 
 alter table kho_bang_u enable row level security;
 create policy kho_bang_u_doc on kho_bang_u
@@ -96,7 +96,7 @@ as $$
 $$;
 
 comment on function kho_so_ngay_u is
-  'Số ngày ủ theo bảng ủ của món cho tuổi thịt lúc nhận; null khi món chưa có bảng. Nội bộ (0046).';
+  'Số ngày ủ theo bảng ủ của món cho tuổi thịt lúc nhận; null khi món chưa có bảng. Nội bộ (0048).';
 
 
 -- =============================================================================
@@ -121,7 +121,7 @@ end;
 $$;
 
 comment on function kho_sinh_so_tang is
-  'Số tảng kế tiếp của chi nhánh (1, 2, 3…) — in trên tem "#0142". Nội bộ (0046).';
+  'Số tảng kế tiếp của chi nhánh (1, 2, 3…) — in trên tem "#0142". Nội bộ (0048).';
 
 
 -- =============================================================================
@@ -199,12 +199,12 @@ begin
       end if;
       v_goi := (v_dong ->> 'so_goi')::int;
     end if;
-    if v_mh.dem_goi and v_goi = 0 and not v_mh.theo_tang then   -- 0046: dòng tảng tự là 1 tảng
+    if v_mh.dem_goi and v_goi = 0 and not v_mh.theo_tang then   -- 0048: dòng tảng tự là 1 tảng
       raise exception 'Dòng % (%): chưa nhập số %', v_i, v_mh.ten, v_mh.don_vi_goi
         using errcode = 'check_violation';
     end if;
 
-    -- MỚI (0046): món theo dõi theo tảng — mỗi dòng là MỘT tảng, có ngày mổ.
+    -- MỚI (0048): món theo dõi theo tảng — mỗi dòng là MỘT tảng, có ngày mổ.
     v_mo := null;
     if coalesce(v_dong ->> 'ngay_mo', '') <> '' then
       begin
@@ -347,7 +347,7 @@ begin
     end if;
   end if;
 
-  -- MỚI (0046): món theo dõi theo tảng phải mỗi dòng một tảng, có ngày mổ —
+  -- MỚI (0048): món theo dõi theo tảng phải mỗi dòng một tảng, có ngày mổ —
   -- phiếu tạo từ đơn đặt hàng chưa được thủ kho cân từng tảng thì chưa duyệt.
   if v_pn.loai = 'mua' then
     select d.thu_tu, m.ten into v_thieu_tt, v_thieu_ten
@@ -394,7 +394,7 @@ begin
   loop
     v_i := v_i + 1;
 
-    -- MỚI (0046): tảng của món theo dõi theo tảng có số tảng tăng dần của chi
+    -- MỚI (0048): tảng của món theo dõi theo tảng có số tảng tăng dần của chi
     -- nhánh, và ngày ủ xong tra theo bảng ủ của món.
     select * into v_mh from kho_mat_hang where id = v_dong.mat_hang_id;
     v_so_tang := case when v_mh.theo_tang and v_dong.so_goi <= 1
@@ -447,7 +447,7 @@ end;
 $$;
 
 comment on function kho_duyet_phieu_nhap is
-  'Duyệt phiếu nhập (quyền duyet_nhap — chủ, quản lý, kế toán): mỗi dòng thành một lô, có giá vốn nhập kho (cộng chi phí và thuế theo cài đặt, chia không lệch một đồng), và một dòng sổ kho. Phiếu mua phải có đơn giá ở mọi dòng (0031). Món theo dõi theo tảng: mỗi dòng một tảng có ngày mổ; lô mang số tảng và ngày ủ xong (0046). Chỉ lúc này tồn mới cộng.';
+  'Duyệt phiếu nhập (quyền duyet_nhap — chủ, quản lý, kế toán): mỗi dòng thành một lô, có giá vốn nhập kho (cộng chi phí và thuế theo cài đặt, chia không lệch một đồng), và một dòng sổ kho. Phiếu mua phải có đơn giá ở mọi dòng (0031). Món theo dõi theo tảng: mỗi dòng một tảng có ngày mổ; lô mang số tảng và ngày ủ xong (0048). Chỉ lúc này tồn mới cộng.';
 
 
 -- =============================================================================
@@ -508,7 +508,7 @@ begin
                'han_dung',      d.han_dung,
                'truong_them',   d.truong_them,
                'lo_id',         d.lo_id,
-               -- 0046: món theo dõi theo tảng — mỗi dòng một tảng.
+               -- 0048: món theo dõi theo tảng — mỗi dòng một tảng.
                'theo_tang',     m.theo_tang,
                'ngay_mo',       d.ngay_mo,
                'so_tang',       (select l.so_tang from kho_lo l where l.id = d.lo_id))
@@ -578,7 +578,7 @@ join lateral (
 where m.theo_tang and l.nguon in ('nhap', 'ton_dau');
 
 comment on view kho_v_tang is
-  'Tảng (lô của món theo dõi theo tảng) còn tồn: số tảng, ngày mổ, tuổi thịt, ngày ủ xong, tình trạng (dang_u / san_sang / chua_co_bang_u). Không có tiền (0046).';
+  'Tảng (lô của món theo dõi theo tảng) còn tồn: số tảng, ngày mổ, tuổi thịt, ngày ủ xong, tình trạng (dang_u / san_sang / chua_co_bang_u). Không có tiền (0048).';
 
 
 -- =============================================================================

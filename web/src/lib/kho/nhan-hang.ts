@@ -75,11 +75,11 @@ export interface DongNhan {
   han_dung: string | null;
   truong_them: GiaTriTruong;
   lo_id: string | null;
-  /** Món theo dõi theo tảng (0046): dòng là MỘT tảng, có ngày mổ; số tảng có khi đã duyệt. */
+  /** Món theo dõi theo tảng (0048): dòng là MỘT tảng, có ngày mổ; số tảng có khi đã duyệt. */
   theo_tang?: boolean;
   ngay_mo?: string | null;
   so_tang?: number | null;
-  /** Kg sau repack (0048) — null = như so_kg. so_kg vẫn là kg nhà cung cấp (tính tiền). */
+  /** Kg sau repack (0050) — null = như so_kg. so_kg vẫn là kg nhà cung cấp (tính tiền). */
   so_kg_thuc?: number | null;
 }
 
@@ -129,9 +129,9 @@ export interface DongLuu {
   ngay_san_xuat: string | null;
   han_dung: string | null;
   truong_them: GiaTriTruong;
-  /** Ngày mổ — bắt buộc với món theo dõi theo tảng (0046). */
+  /** Ngày mổ — bắt buộc với món theo dõi theo tảng (0048). */
   ngay_mo?: string | null;
-  /** Kg sau repack (0048) — món theo tảng phải có trước khi gửi duyệt. */
+  /** Kg sau repack (0050) — món theo tảng phải có trước khi gửi duyệt. */
   so_kg_thuc?: number | null;
 }
 
@@ -366,7 +366,7 @@ export function docFormDongNhan(
   } else if (m?.dem_goi && !goi && !m.theo_tang) {
     bao({ vi: `Nhập số ${m.don_vi_goi} của ${m.ten}`, en: `Enter the number of ${m.don_vi_goi} for ${m.ten}` });
   }
-  // 0048: kg sau repack — tuỳ chọn khi lưu (chưa repack thì để trống), không
+  // 0050: kg sau repack — tuỳ chọn khi lưu (chưa repack thì để trống), không
   // lớn hơn kg nhà cung cấp quá 1% (sai số cân). Gửi duyệt mới bắt buộc với tảng.
   const thuc = docKg(dong.so_kg_thuc);
   if (thuc !== null && (Number.isNaN(thuc) || thuc <= 0)) {
@@ -476,7 +476,7 @@ export function kiemTruocKhiGui(
               en: `Line ${i + 1} (${d.ten_mat_hang}): ${o.join(', ')} not filled in yet` });
       }
     });
-    // 0048: tảng phải có kg sau repack (database cũng chặn).
+    // 0050: tảng phải có kg sau repack (database cũng chặn).
     p.dong.forEach((d, i) => {
       if (d.theo_tang && d.so_kg_thuc == null) {
         bao({ vi: `Dòng ${i + 1} (${d.ten_mat_hang}): chưa có kg sau repack — repack, cân rồi sửa dòng`,

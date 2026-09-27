@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN KHO — Kiểm thử theo dõi theo tảng (0046, GĐ1 truy vết tảng)
+ * BEEFTOWN KHO — Kiểm thử theo dõi theo tảng (0048, GĐ1 truy vết tảng)
  * =====================================================================
  *
  *     node test/test-kho-theo-tang.mjs
