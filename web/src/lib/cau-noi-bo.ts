@@ -24,6 +24,8 @@ import type { NgonNguNB } from './ngon-ngu-noi-bo';
 import { CAU_KHO_EN, MAU_KHO_EN } from './kho/cau-kho-en.ts';
 // Câu của phần gửi tin Zalo (0047) — bảng riêng, cùng cách tra.
 import { CAU_ZALO_EN, MAU_ZALO_EN } from './zalo-cau-en.ts';
+// Câu của bot Messenger (0052) — bảng riêng, cùng cách tra.
+import { CAU_MESSENGER_EN, MAU_MESSENGER_EN } from './messenger-cau-en.ts';
 
 /** Câu cố định: đúng từng chữ, kể cả dấu chấm cuối. */
 export const CAU_EN: Readonly<Record<string, string>> = {
@@ -239,9 +241,9 @@ export function dichCau(nn: NgonNguNB, cau: string | null | undefined): string {
   if (!cau) return '';
   if (nn === 'vi') return cau;
   const gon = cau.trim();
-  const coDinh = CAU_EN[gon] ?? CAU_KHO_EN[gon] ?? CAU_ZALO_EN[gon];
+  const coDinh = CAU_EN[gon] ?? CAU_KHO_EN[gon] ?? CAU_ZALO_EN[gon] ?? CAU_MESSENGER_EN[gon];
   if (coDinh) return coDinh;
-  for (const [mau, dung] of [...MAU_EN, ...MAU_KHO_EN, ...MAU_ZALO_EN]) {
+  for (const [mau, dung] of [...MAU_EN, ...MAU_KHO_EN, ...MAU_ZALO_EN, ...MAU_MESSENGER_EN]) {
     const m = gon.match(mau);
     if (m) return dung(m);
   }
