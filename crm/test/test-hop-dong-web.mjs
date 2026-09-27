@@ -174,6 +174,15 @@ const CHAY_DA_DANG_NHAP = [
   // database đi bằng tài khoản máy may_ipos đã đăng nhập (client anon riêng + signInWithPassword,
   // sau đó là authenticated) — chỉ sau khi khóa bí mật IPOS_CALLBACK_KHOA khớp. Không bao giờ chạy vai anon.
   'web/src/lib/kho/ipos-hook.ts',
+  // Theo dõi theo tảng (0048): bảng ủ (kho_bang_u, sửa bằng quyền danh mục) và tảng còn tồn
+  // (kho_v_tang) — chỉ gọi từ /noi-bo/kho (Thiết lập → Mặt hàng, Tảng · ủ) bằng client của nhân sự. Không tiền.
+  'web/src/lib/kho/tang.ts',
+  // Ô mã xoay vòng (0049): danh mục ô (kho_o_ma, quyền danh mục), ô đang giao (kho_v_o_ma_giao), số tảng
+  // của lô, giao / giải phóng ô qua RPC — chỉ gọi từ /noi-bo/kho bằng client của nhân sự. Không tiền.
+  'web/src/lib/kho/o-ma.ts',
+  // Danh mục đưa xuống cân (GĐ3): mặt hàng + ô mã + ô đang giao — gọi từ cai-dat/can và can-app bằng
+  // client của quản lý đã đăng nhập. Chỉ đọc qua o-ma.ts, không tự from() bảng nào.
+  'web/src/lib/kho/danh-muc-can.ts',
   // Gửi tin Zalo ZBS (0047): cron (src/worker.ts) đăng nhập tài khoản máy may_zalo (client anon
   // riêng + signInWithPassword, sau đó là authenticated) rồi mới gọi các RPC zalo_* của máy.
   // Không bao giờ chạy vai anon: thiếu tài khoản máy thì không gọi database nào.

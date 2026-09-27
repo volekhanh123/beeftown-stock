@@ -18,6 +18,11 @@
  *     Cửa sổ đơn giá có 6 chữ số: tối đa 999.999đ/kg.
  *   - Phần TIM là giờ lúc lưu. Bỏ đi khi xuất để cân giữ nguyên đồng hồ.
  *
+ * QUA WIFI (thử trên cân thật 26/09/2026): gửi nguyên nội dung file này vào
+ * cổng TCP 33571 của cân là cân nạp — nhưng chỉ THÊM và SỬA dòng PLU, không
+ * xoá dòng vắng mặt (nạp USB thì thay cả danh sách). Chương trình gửi:
+ * web/public/kho/can-wifi/Nap-Can-WiFi.ps1.
+ *
  * NGUYÊN TẮC: dòng không đổi phải ghi lại y nguyên từng byte. File của một số
  * cân có byte không phải UTF-8, nên cả file được giữ dạng "chuỗi byte" (mỗi ký
  * tự = 1 byte); chỉ khi hiện tên lên màn hình hoặc ghi tên mới mới đổi qua lại

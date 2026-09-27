@@ -204,7 +204,7 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
   }
   const { rows: [{ n: soVai }] } = await db.query(`select count(*)::int as n from unnest(enum_range(null::vai_tro))`);
   ok('Bảng có đủ 10 vai để tra (khớp enum vai_tro)', VAI.length === 10 && soVai === 10, `enum có ${soVai}`);
-  // 0046: may_zalo (máy gửi tin Zalo) không có việc kho nào — cả ở database lẫn bản soi gương.
+  // 0048: may_zalo (máy gửi tin Zalo) không có việc kho nào — cả ở database lẫn bản soi gương.
   ok('may_zalo không có việc kho nào', Object.keys(QUYEN_KHO).every(v => !QUYEN_KHO[v].includes('may_zalo')));
   // Vai máy không được việc nào của người. Riêng việc may_chung (0034) chỉ có
   // đúng vai may_chung; việc dong_bo_ban (0037) là việc DUY NHẤT của may_ipos.
@@ -368,6 +368,10 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ncc_ghi_doi_tai_khoan', 'kho_phieu_nhap_giu_hoa_don_gop',
     // 0044: thêm lý do Xuất bếp "Cơm nhân viên" → mặc định không tính định mức
     'kho_ly_do_dinh_muc_mac_dinh',
+    // 0049: giao ô mã cho phiên lóc một tảng, quản lý giải phóng ô
+    'kho_giao_o_ma', 'kho_giai_phong_o_ma',
+    // 0050: truy vết một tảng, báo cáo theo tảng, huỷ cả tảng
+    'kho_truy_vet_tang', 'kho_bao_cao_tang', 'kho_huy_ca_tang',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
@@ -389,6 +393,13 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     // 0042: bỏ thông tin khách khỏi raw, số gói theo kg, mốc "lâu không nhận hóa đơn",
     // lõi nhận hóa đơn (chung cho lượt và callback)
     'kho_ipos_bo_pii', 'kho_ipos_goi_theo_kg', 'kho_ipos_moc_nhan', 'kho_ipos_nhan_hd',
+    // 0048: số tảng tăng dần, tra số ngày ủ theo bảng ủ
+    'kho_sinh_so_tang', 'kho_so_ngay_u',
+    // 0049: món theo mã cân (mã món hoặc mã ô), ô còn giữ, các trigger ô mã
+    'kho_mat_hang_theo_ma_can', 'kho_o_ma_con_giu', 'kho_o_ma_kiem', 'kho_mat_hang_ma_can_khong_trung_o',
+    'kho_phien_pha_vao_mot_tang', 'kho_phien_pha_ra_o_ma', 'kho_phien_pha_tra_o_ma',
+    // 0050: trigger gán tảng gốc cho lô ra
+    'kho_lo_gan_tang_goc',
   ].sort();
 
   const { rows } = await db.query(`

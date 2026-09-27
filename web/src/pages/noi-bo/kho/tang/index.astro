@@ -1,0 +1,149 @@
+---
+/**
+ * KHO — TẢNG · Ủ (0048)
+ *
+ * Món bật "Theo dõi theo tảng": mỗi tảng là một lô có số tảng (#0142), ngày mổ
+ * và ngày ủ xong (tra bảng ủ theo tuổi thịt lúc nhận). Màn này cho phòng ủ và
+ * bếp lóc biết tảng nào sẵn sàng lóc, tảng nào còn ủ mấy ngày. Không có tiền.
+ *
+ * 0050: bấm số tảng để truy vết (tang/[lo_id]); ô tìm "#0142" (?tim=) mở thẳng
+ * tảng đó; mục "Đã lóc" (tảng nhận trong 90 ngày, đã lóc) cho biết bán được
+ * bao nhiêu, còn bao nhiêu — đọc bằng kho_bao_cao_tang.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
+import { cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, homNayVn, nhanKho } from '../../../../lib/kho/chung.ts';
+import {
+  cauConU, docBaoCaoTang, docTangTon, soTangChu, timTangTheoSo, TINH_TRANG_BAN_NB, TINH_TRANG_U_NB,
+  type DongTang, type TangTon, type TinhTrangU,
+} from '../../../../lib/kho/tang.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+const nn = k.nn;
+const cn = k.chiNhanh;
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Tảng · ủ', en: 'Primals · aging' },
+  khongDoc: { vi: 'Không đọc được danh sách tảng.', en: 'Could not read the primals.' },
+  gioiThieu: {
+    vi: 'Món theo dõi theo tảng: mỗi tảng có số riêng (ghi trên túi tảng), ngày mổ và ngày ủ xong theo bảng ủ của món.',
+    en: 'Items tracked per primal: each primal has its own number (written on its bag), slaughter date and aging end date from the item\'s aging table.',
+  },
+  rong: {
+    vi: 'Chưa có tảng nào. Bật "Theo dõi theo tảng" cho món ở Thiết lập → Mặt hàng, rồi nhận hàng từng tảng có ngày mổ.',
+    en: 'No primals yet. Turn on "Track each primal" for the item in Setup → Items, then receive each primal with its slaughter date.',
+  },
+  so: { vi: 'Số tảng', en: 'Primal no.' },
+  mon: { vi: 'Món', en: 'Item' },
+  ngayMo: { vi: 'Ngày mổ', en: 'Slaughtered' },
+  tuoi: { vi: 'Tuổi', en: 'Age' },
+  uXong: { vi: 'Ủ xong', en: 'Aging ends' },
+  kg: { vi: 'Kg', en: 'Kg' },
+  han: { vi: 'Hạn dùng', en: 'Use-by' },
+  oDau: { vi: 'Ở đâu', en: 'Where' },
+  ngay: { vi: (n: number) => `${n} ngày`, en: (n: number) => `${n} ${n === 1 ? 'day' : 'days'}` },
+  soTang: { vi: (n: number) => `${n} tảng`, en: (n: number) => `${n} ${n === 1 ? 'primal' : 'primals'}` },
+  tim: { vi: 'Tìm tảng theo số', en: 'Find a primal by number' },
+  timGoiY: { vi: 'vd 142 hoặc #0142', en: 'e.g. 142 or #0142' },
+  mo: { vi: 'Mở', en: 'Open' },
+  khongThay: { vi: (x: string) => `Không thấy tảng "${x}" trong 90 ngày gần đây.`, en: (x: string) => `No primal "${x}" in the last 90 days.` },
+  daLoc: { vi: 'Đã lóc (nhận trong 90 ngày)', en: 'Cut (received in the last 90 days)' },
+  baoCao: { vi: 'Báo cáo theo tảng', en: 'By-primal report' },
+  ngayLoc: { vi: 'Ngày lóc', en: 'Cut on' },
+  thuHoi: { vi: 'Thu hồi', en: 'Yield' },
+  daBan: { vi: 'Đã bán', en: 'Sold' },
+  con: { vi: 'Còn', en: 'Left' },
+  tinhTrang: { vi: 'Tình trạng', en: 'Status' },
+});
+
+let ds: TangTon[] = [];
+let daLoc: DongTang[] = [];
+let loiDoc = k.loiDoc;
+const homNay = homNayVn();
+const tim = (Astro.url.searchParams.get('tim') ?? '').trim().slice(0, 12);
+if (cn) {
+  try {
+    [ds, daLoc] = await Promise.all([docTangTon(k.client, cn.id), docBaoCaoTang(k.client, cn.id, congNgay(homNay, -90), homNay)]);
+  } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
+}
+if (tim) {
+  const loId = timTangTheoSo([...ds, ...daLoc], tim);
+  if (loId) return Astro.redirect(`/noi-bo/kho/tang/${loId}`, 302);
+}
+const daLocHien = daLoc.filter(d => d.ngay_loc !== null);
+const NHOM: TinhTrangU[] = ['san_sang', 'dang_u', 'chua_co_bang_u'];
+const theoNhom = NHOM.map(tt => ({ tt, ds: ds.filter(x => x.tinh_trang_u === tt) })).filter(x => x.ds.length);
+---
+<Kho k={k} tieuDe={t.tieuDe} huongDan="theo-tang">
+  <h1>{t.tieuDe}</h1>
+  <p class="kho-phu">{t.gioiThieu}</p>
+  <p><a href="/noi-bo/kho/bao-cao/theo-tang">{t.baoCao}</a></p>
+  <BaoKho bao={k.bao} loiDoc={loiDoc} />
+  {tim && <div class="nb-bao loi" role="alert"><p>{t.khongThay(tim)}</p></div>}
+
+  <form method="GET" action="/noi-bo/kho/tang" class="kho-thanh-nut">
+    <label class="nb-o" style="margin:0"><span>{t.tim}</span>
+      <input type="text" name="tim" value={tim} placeholder={t.timGoiY} /></label>
+    <button type="submit" class="nb-nut phu">{t.mo}</button>
+  </form>
+
+  {!loiDoc && ds.length === 0 && daLocHien.length === 0 && <p class="nb-rong">{t.rong}</p>}
+
+  {theoNhom.map(g => (
+    <section class="nb-the">
+      <h2 style="margin-top:0">{nhanKho(TINH_TRANG_U_NB, g.tt, nn)} · {t.soTang(g.ds.length)}</h2>
+      <div class="kho-bang-khung">
+        <table class="kho-bang">
+          <thead><tr>
+            <th>{t.so}</th><th>{t.mon}</th><th>{t.ngayMo}</th><th class="so">{t.tuoi}</th>
+            <th>{t.uXong}</th><th class="so">{t.kg}</th><th>{t.han}</th><th>{t.oDau}</th>
+          </tr></thead>
+          <tbody>
+            {g.ds.map(x => (
+              <tr>
+                <td><a href={`/noi-bo/kho/tang/${x.lo_id}`}><strong>{soTangChu(x.so_tang) || x.ma_lo}</strong></a></td>
+                <td>{x.ten_hang}</td>
+                <td>{x.ngay_mo ? dinhDangNgay(x.ngay_mo) : '—'}</td>
+                <td class="so">{x.tuoi_ngay === null ? '—' : t.ngay(x.tuoi_ngay)}</td>
+                <td>{x.ngay_u_xong ? dinhDangNgay(x.ngay_u_xong) : '—'}{cauConU(x, nn) && <><br /><span class="kho-phu">{cauConU(x, nn)}</span></>}</td>
+                <td class="so">{dinhDangKg(x.so_kg, nn)}</td>
+                <td>{dinhDangNgay(x.han_dung)}</td>
+                <td>{x.vi_tri ?? '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  ))}
+
+  {daLocHien.length > 0 && (
+    <section class="nb-the">
+      <h2 style="margin-top:0">{t.daLoc} · {t.soTang(daLocHien.length)}</h2>
+      <div class="kho-bang-khung">
+        <table class="kho-bang">
+          <thead><tr>
+            <th>{t.so}</th><th>{t.mon}</th><th>{t.ngayLoc}</th><th class="so">{t.thuHoi}</th>
+            <th class="so">{t.daBan}</th><th class="so">{t.con}</th><th>{t.han}</th><th>{t.tinhTrang}</th>
+          </tr></thead>
+          <tbody>
+            {daLocHien.map(x => (
+              <tr>
+                <td><a href={`/noi-bo/kho/tang/${x.lo_id}`}><strong>{soTangChu(x.so_tang)}</strong></a></td>
+                <td>{x.ten_hang}</td>
+                <td>{x.ngay_loc ? dinhDangNgay(x.ngay_loc) : '—'}</td>
+                <td class="so">{dinhDangPhanTram(x.thu_hoi_pt, 1, nn)}</td>
+                <td class="so">{dinhDangKg(x.kg_ban, nn)}{x.ban_pt !== null && <><br /><span class="kho-phu">{dinhDangPhanTram(x.ban_pt, 0, nn)}</span></>}</td>
+                <td class="so">{x.kg_con > 0 ? dinhDangKg(x.kg_con, nn) : '·'}</td>
+                <td>{dinhDangNgay(x.han_dung)}</td>
+                <td>{nhanKho(TINH_TRANG_BAN_NB, x.tinh_trang, nn)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  )}
+</Kho>

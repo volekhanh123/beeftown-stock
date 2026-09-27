@@ -19,14 +19,19 @@ export interface GoiYXep {
   /** Câu dặn ngắn cho nhân viên. */
   cau: string;
   gap: boolean;
+  /** Số tảng gốc của lô phía trước (món theo tảng, 0050) — null khi không theo tảng. */
+  so_tang: number | null;
 }
 
 /**
  * Gợi ý xếp quầy. Chỉ tính hàng ở QUẦY và CÒN HẠN (hàng hết hạn không bán —
  * báo hủy, nằm ở danh sách khác). Món có một lô duy nhất và còn xa hạn thì
  * không cần dặn gì.
+ *
+ * soTang (0050, kho_v_lo_tang): lô → số tảng gốc. Có thì câu dặn nói số tảng
+ * trên tem ("tảng #0142") — nhân viên nhìn tem là biết gói nào.
  */
-export function goiYXepQuay(ton: DongTon[], nn: NgonNguNB = 'vi'): GoiYXep[] {
+export function goiYXepQuay(ton: DongTon[], nn: NgonNguNB = 'vi', soTang?: ReadonlyMap<string, number>): GoiYXep[] {
   const theoMon = new Map<string, DongTon[]>();
   for (const t of ton) {
     if (t.loai_vi_tri !== 'quay' || t.tinh_trang_han === 'het_han') continue;
@@ -49,10 +54,15 @@ export function goiYXepQuay(ton: DongTon[], nn: NgonNguNB = 'vi'): GoiYXep[] {
       : truoc.so_ngay_con === 1 ? c({ vi: 'còn 1 ngày', en: '1 day left' })
       : c({ vi: `hạn ${dinhDangNgayNgan(truoc.han_dung)}`, en: `use by ${dinhDangNgayNgan(truoc.han_dung)}` });
     const ngayDong = dinhDangNgayNgan(truoc.ngay_dong_goi);
+    const tang = soTang?.get(truoc.lo_id) ?? null;
+    const soTangChu = tang === null ? '' : `#${String(tang).padStart(4, '0')}`;
     ra.push({
-      mat_hang_id: id, ten: truoc.ten_hang, truoc, sau, gap,
-      cau: c({ vi: `Để ${soLuong} đóng ngày ${ngayDong} (${han}) lên phía trước.`,
-               en: `Put the ${soLuong} packed on ${ngayDong} (${han}) at the front.` }),
+      mat_hang_id: id, ten: truoc.ten_hang, truoc, sau, gap, so_tang: tang,
+      cau: tang === null
+        ? c({ vi: `Để ${soLuong} đóng ngày ${ngayDong} (${han}) lên phía trước.`,
+              en: `Put the ${soLuong} packed on ${ngayDong} (${han}) at the front.` })
+        : c({ vi: `Để ${soLuong} tảng ${soTangChu} (tem ghi ${soTangChu}, ${han}) lên phía trước.`,
+              en: `Put the ${soLuong} from primal ${soTangChu} (label shows ${soTangChu}, ${han}) at the front.` }),
     });
   }
   return ra.sort((a, b) => Number(b.gap) - Number(a.gap)

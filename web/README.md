@@ -202,6 +202,13 @@ Vai kho **không** thấy dữ liệu CRM (khách hàng, đặt bàn, điểm) �
 - **Máy chủ không lưu file**: file có tên và mật khẩu WiFi của quán. Bước xem trước mang file theo form dưới dạng base64; bấm tải là dựng lại từ danh mục mới nhất. Không ghi gì vào database.
 - Đọc/ghi file ở `lib/kho/can-tma.ts` (cách đọc file ghi ở đầu file đó), kiểm bằng `crm/test/test-kho-can.mjs`. Dòng không đổi được ghi lại y nguyên từng byte.
 - Hạn dùng chưa đưa sang cân được: chưa biết cân lưu số ngày hạn dùng ở cột nào của dòng PLU.
+- **Nạp qua WiFi** (`public/kho/can-wifi/Nap-Can-WiFi.ps1`, tải ở màn Đồng bộ cân): chương trình PowerShell chạy trên máy tính Windows ở quán, gửi file vừa tải về thẳng xuống cân. Đã thử trên cân thật (26/09/2026, V3.14E8):
+  - Cân nhận ở **cổng TCP 33571**, nội dung **y như file USB**; gửi xong đóng chiều gửi (`Shutdown(Send)`), cân không trả lời gì. Cân tự phát `UDP<tab>33581<tab><tab>\r\n` mỗi ~15 giây từ cổng UDP 33583 tới 255.255.255.255:33584, nhưng gửi vào cổng 33581 thì cân không nạp.
+  - **Qua WiFi cân chỉ thêm và sửa hàng, không xoá.** Nạp bằng USB thì cân thay cả danh sách. Chương trình nhớ hàng đang nằm trên cân (`Tài liệu › Beeftown Can › tren-can.tsv`) và báo khi có hàng cần xoá; màn Đồng bộ cân cũng báo khi kế hoạch có dòng "Xoá khỏi cân".
+  - Bỏ phần `TIM` trước khi gửi, và giữ bản vừa gửi ở `Tài liệu › Beeftown Can › A_000.TMS` để lần sau tải lên màn Đồng bộ cân thay cho bước lưu ra USB.
+  - Trang web không gửi thẳng được: cân nằm trong WiFi của quán, trình duyệt không mở được kết nối TCP. Muốn bấm một nút trên web là xong thì cần một chương trình chạy nền ở quán làm cầu nối — chưa làm.
+  - Kiểm tra cú pháp và chạy thử với cân giả: `pwsh` dot-source file (`. ./Nap-Can-WiFi.ps1` chỉ nạp các hàm, không chạy).
+- **Beeftown Cân** (`can-app/`, file .exe): như chương trình trên nhưng lấy danh mục thẳng từ kho (đăng nhập tài khoản quản lý), dùng đúng `lapKeHoach` / `ghiFileCan`. Nó lấy địa chỉ Supabase và khóa anon ở `/kho-can.json` (`src/pages/kho-can.json.ts` — hai giá trị công khai theo thiết kế, không trả gì khác).
 
 **Ảnh chứng từ** (hóa đơn, hàng hỏng) lưu ở kho file riêng `kho-chung-tu` (`0021`) và đi qua Worker — ảnh điện thoại vài MB có thể vượt giới hạn CPU của gói Cloudflare Workers miễn phí. Nếu tải ảnh hay lỗi, chuyển sang gói trả phí.
 

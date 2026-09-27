@@ -69,6 +69,11 @@ const t = dichNB(nn, {
   donDat: { vi: 'Đơn đặt', en: 'Orders' },
   thuHoiTb: { vi: 'Thu hồi pha TB', en: 'Avg butchery yield' },
   kgTraLai: { vi: 'Kg trả lại', en: 'Kg returned' },
+  haoRepack: { vi: 'Hao repack', en: 'Repack loss' },
+  haoRepackGiai: {
+    vi: ': kg nhà cung cấp (nhãn / hoá đơn) so với kg cân lại sau khi mở túi, bỏ nước rỉ — chỉ các dòng có ghi kg sau repack.',
+    en: ': supplier kg (label / invoice) against the weight after opening the bag and draining the drip — only lines with a weight after repack.',
+  },
   lechHoaDon: { vi: 'Lệch hóa đơn', en: 'Invoice differences' },
   ngayTraTb: { vi: 'Ngày trả tiền TB', en: 'Avg days to pay' },
   phien: { vi: (n: number) => `${n} phiên`, en: (n: number) => `${n} ${s(n, 'session', 'sessions')}` },
@@ -164,6 +169,7 @@ const soLe = (x: number) => (nn === 'en' ? String(x) : String(x).replace('.', ',
                 <th class="so">{t.giaoTre}</th>
                 <th class="so">{t.thuHoiTb}</th>
                 <th class="so">{t.kgTraLai}</th>
+                <th class="so">{t.haoRepack}</th>
                 {coGia && <th class="so">{t.lechHoaDon}</th>}
                 {coGia && <th class="so">{t.ngayTraTb}</th>}
               </tr>
@@ -184,6 +190,7 @@ const soLe = (x: number) => (nn === 'en' ? String(x) : String(x).replace('.', ',
                   <td class="so">{d.so_don_tre > 0 ? <strong class="chu-do">{d.so_don_tre}</strong> : '·'}</td>
                   <td class="so">{d.thu_hoi_tb_pt !== null ? <>{dinhDangPhanTram(d.thu_hoi_tb_pt, 1, nn)}<br /><span class="kho-phu">{t.phien(d.so_phien_pha)}</span></> : '—'}</td>
                   <td class="so">{d.kg_tra ? dinhDangKg(d.kg_tra, nn) : '·'}</td>
+                  <td class="so">{d.hao_repack_pt !== null ? <>{dinhDangPhanTram(d.hao_repack_pt, 2, nn)}<br /><span class="kho-phu">{dinhDangKg(d.kg_repack_ncc, nn)} → {dinhDangKg(d.kg_repack_thuc, nn)} kg</span></> : '—'}</td>
                   {coGia && <td class="so">{d.so_lan_lech_hoa_don ? <strong class="chu-do">{d.so_lan_lech_hoa_don}</strong> : '·'}</td>}
                   {coGia && <td class="so">{d.so_ngay_tra_tb !== null ? t.soNgay(soLe(d.so_ngay_tra_tb)) : '—'}</td>}
                 </tr>
@@ -202,6 +209,7 @@ const soLe = (x: number) => (nn === 'en' ? String(x) : String(x).replace('.', ',
                   <td class="so">{soChu(tong.so.so_don_tre ?? 0)}</td>
                   <td></td>
                   <td class="so">{tong.so.kg_tra ? dinhDangKg(tong.so.kg_tra, nn) : '·'}</td>
+                  <td></td>
                   {coGia && <td></td>}
                   {coGia && <td></td>}
                 </tr>
@@ -211,6 +219,7 @@ const soLe = (x: number) => (nn === 'en' ? String(x) : String(x).replace('.', ',
         </div>
         <p class="kho-phu"><strong>{t.diemSao}</strong> {CONG_THUC_SAO_NB[nn]} {t.chuaCham}
           {' '}<strong>{t.thuHoiTb}</strong>{t.thuHoiGiai}
+          {' '}<strong>{t.haoRepack}</strong>{t.haoRepackGiai}
           {coGia && <> <strong>{t.lechHoaDon}</strong>{t.lechGiai} <strong>{t.ngayTraTb}</strong>{t.ngayTraGiai}</>}
         </p>
       </>

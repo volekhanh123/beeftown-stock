@@ -46,6 +46,16 @@
 
 # --- ĐƯỢC PHÉP: công cụ nội bộ ---
 !Beeftown_Can_TMA.html
+# Chương trình nạp cân qua WiFi (chạy trên máy tính ở quán, tải ở màn Đồng bộ cân)
+!/web/public/kho/can-wifi/Nap-Can-WiFi.ps1
+# Chương trình Beeftown Cân (.exe) — mã nguồn; dist/ và node_modules/ vẫn bị chặn
+!/can-app/README.md
+!/can-app/package.json
+!/can-app/package-lock.json
+!/can-app/src/*.ts
+!/can-app/src/*.html
+!/can-app/test/*.ts
+!/can-app/scripts/*.ts
 
 # --- ĐƯỢC PHÉP: ứng dụng web (Astro + Cloudflare Workers) ---
 # Mở theo ĐUÔI FILE chứ không mở cả thư mục. Nhờ vậy file mật thêm vào web/

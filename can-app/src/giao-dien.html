@@ -1,0 +1,624 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beeftown · Nạp cân</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --do: #B23A2C; --do-dam: #8E2B20; --kem: #FBF4E1; --kem-sau: #F3E8CC; --mu-tat: #F2A900;
+    --than: #1E160E; --da: #B8A98C; --vach: #E4D8BC; --trang: #FFFFFF;
+    --xanh: #1F7A4C; --xanh-nen: #E9F5EE; --do-nen: #FDECEA; --vang-nen: #FFF5DC;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--kem); color: var(--than); font: 15px/1.5 "Segoe UI", system-ui, sans-serif; }
+  header { background: var(--than); color: var(--kem); padding: 14px 24px; display: flex; align-items: baseline; gap: 14px; }
+  header b { font-size: 18px; letter-spacing: .08em; color: var(--mu-tat); }
+  header span { color: var(--da); }
+  header small { margin-left: auto; color: var(--da); }
+  main { max-width: 1120px; margin: 0 auto; padding: 20px 24px 40px; }
+  h2 { font-size: 17px; margin: 0 0 10px; }
+  .the { background: var(--trang); border: 1px solid var(--vach); border-radius: 12px; padding: 18px 20px; margin-bottom: 16px; }
+  .hang { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .o { background: var(--trang); border: 1px solid var(--vach); border-radius: 12px; padding: 12px 16px; }
+  .o .nhan { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: #7A6C52; }
+  .o .gt { font-weight: 600; margin-top: 2px; }
+  .o .phu { font-size: 13px; color: #6A5D45; }
+  .den { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--da); margin-right: 6px; }
+  .den.xanh { background: var(--xanh); } .den.do { background: var(--do); }
+  label.truong { display: block; margin-bottom: 10px; }
+  label.truong span { display: block; font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  input[type=text], input[type=email], input[type=password], input[type=number], select {
+    width: 100%; max-width: 380px; padding: 8px 10px; border: 1px solid var(--da); border-radius: 8px; font: inherit; background: #fff;
+  }
+  button { font: inherit; font-weight: 600; border-radius: 8px; padding: 9px 16px; cursor: pointer; border: 1px solid var(--da); background: var(--trang); color: var(--than); }
+  button:hover { background: var(--kem-sau); }
+  button.chinh { background: var(--do); border-color: var(--do); color: #fff; }
+  button.chinh:hover { background: var(--do-dam); }
+  button.to { font-size: 17px; padding: 12px 26px; }
+  button:disabled { opacity: .5; cursor: default; }
+  .nut { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+  .bao { border-radius: 10px; padding: 10px 14px; margin: 10px 0; border-left: 4px solid; }
+  .bao.loi { background: var(--do-nen); border-color: var(--do); }
+  .bao.xong { background: var(--xanh-nen); border-color: var(--xanh); }
+  .bao.luu-y { background: var(--vang-nen); border-color: var(--mu-tat); }
+  .bao p { margin: 4px 0; }
+  .dem { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+  .nhan-l { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; white-space: nowrap; }
+  .nhan-l.them { background: var(--xanh-nen); color: var(--xanh); }
+  .nhan-l.sua { background: var(--mu-tat); color: var(--than); }
+  .nhan-l.xoa { background: var(--do); color: #fff; }
+  .nhan-l.giu { background: var(--kem-sau); color: #6A5D45; }
+  .nhan-l.khong-len { border: 1px dashed #6A5D45; color: #6A5D45; }
+  .khung-bang { overflow: auto; max-height: 420px; border: 1px solid var(--vach); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { padding: 7px 10px; border-bottom: 1px solid var(--vach); text-align: left; vertical-align: top; }
+  th { position: sticky; top: 0; background: var(--kem-sau); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  td.so, th.so { text-align: right; font-variant-numeric: tabular-nums; }
+  tr.mo td { color: #8A7C62; }
+  .phu { font-size: 13px; color: #6A5D45; }
+  details summary { cursor: pointer; font-weight: 600; }
+  code { background: var(--kem-sau); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
+  .an { display: none !important; }
+  .dang-lam { color: #6A5D45; font-style: italic; }
+  .thanh-tab { display: flex; gap: 4px; border-bottom: 2px solid var(--vach); margin: 4px 0 16px; }
+  .thanh-tab button { border: 0; border-radius: 8px 8px 0 0; background: transparent; padding: 10px 18px; color: #6A5D45; margin-bottom: -2px; border-bottom: 3px solid transparent; }
+  .thanh-tab button:hover { background: var(--kem-sau); }
+  .thanh-tab button.chon { color: var(--than); border-bottom-color: var(--do); background: var(--trang); }
+  .loc { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .loc button { padding: 4px 12px; font-size: 13px; border-radius: 999px; }
+  .loc button.chon { background: var(--than); border-color: var(--than); color: var(--kem); }
+  input[type=search] { width: 100%; max-width: 380px; padding: 8px 10px; border: 1px solid var(--da); border-radius: 8px; font: inherit; background: #fff; }
+  .phim { display: inline-grid; place-items: center; min-width: 26px; height: 24px; padding: 0 5px; border: 1px solid var(--da); border-bottom-width: 3px; border-radius: 5px; font-size: 12px; font-weight: 700; background: #fff; }
+  .tem-luoi { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; margin-top: 12px; }
+  .giay { position: relative; width: 100%; max-width: 420px; background: #fff; color: #111; border-radius: 6px; box-shadow: 0 1px 2px rgba(0,0,0,.18), 0 8px 24px rgba(30,22,14,.12); container-type: inline-size; overflow: hidden; }
+  .giay .el { position: absolute; display: flex; align-items: center; white-space: nowrap; overflow: hidden; line-height: 1; font-family: "Segoe UI", Arial, sans-serif; font-weight: 600; }
+  .giay .el.dam { font-weight: 800; }
+  .giay .el.trong { outline: 1px dashed #b9b9b9; outline-offset: -1px; }
+  .giay .el.sang { background: rgba(242,169,0,.4); }
+  .giay .vach { width: 100%; height: 100%; }
+  .o-tem { border: 1px solid var(--vach); border-radius: 8px; padding: 8px 12px; margin-bottom: 6px; background: #fff; }
+  .o-tem.tat { background: var(--kem); }
+  .o-tem.tat .ten-o { color: #8A7C62; text-decoration: line-through; }
+  .o-tem label.chon-o { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+  .o-tem input[type=text] { margin-top: 6px; }
+  .o-tem.doi { border-color: var(--mu-tat); box-shadow: 0 0 0 1px var(--mu-tat); }
+  @media (max-width: 760px) { .hang, .tem-luoi { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header><b>BEEFTOWN</b><span>Nạp cân qua WiFi</span><small id="phien-ban"></small></header>
+<main>
+  <div id="bao-chung"></div>
+
+  <div class="hang">
+    <div class="o"><div class="nhan">Kho</div><div class="gt" id="o-kho">…</div><div class="phu" id="o-kho-phu"></div></div>
+    <div class="o"><div class="nhan">Cân</div><div class="gt"><span class="den" id="den-can"></span><span id="o-can">…</span></div>
+      <div class="phu"><button id="nut-thu-can" style="padding:3px 10px;font-size:13px;margin-top:4px">Kiểm tra kết nối</button></div>
+      <div class="phu" id="o-tu-gui"></div></div>
+    <div class="o"><div class="nhan">Trên cân</div><div class="gt" id="o-tren-can">…</div><div class="phu" id="o-goc"></div></div>
+  </div>
+
+  <!-- Đăng nhập kho -->
+  <section class="the an" id="the-dang-nhap">
+    <h2>Đăng nhập kho</h2>
+    <p class="phu">Dùng tài khoản quản lý hoặc chủ nhà hàng. Máy này sẽ nhớ đăng nhập.</p>
+    <form id="form-dang-nhap">
+      <label class="truong"><span>Email</span><input type="email" name="email" required autocomplete="username"></label>
+      <label class="truong"><span>Mật khẩu</span><input type="password" name="matKhau" required autocomplete="current-password"></label>
+      <div class="nut"><button class="chinh" type="submit">Đăng nhập</button></div>
+    </form>
+  </section>
+
+  <!-- Bắt đầu: file gốc từ cân -->
+  <section class="the an" id="the-bat-dau">
+    <h2>Bắt đầu: cho chương trình biết cân đang có gì</h2>
+    <p>Làm một lần. Trên cân bấm <b>Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm → Amend</b> để lưu dữ liệu ra USB,
+      rồi chọn file <code>JHSCALE\A_000.TMS</code> trong USB ở đây.</p>
+    <input type="file" accept=".TMS,.tms" class="chon-file-can">
+  </section>
+
+  <nav class="thanh-tab an" id="thanh-tab">
+    <button data-tab="dong-bo">Gửi giá từ kho</button>
+    <button data-tab="hang">Tất cả hàng (SKU)</button>
+    <button data-tab="tem">Mẫu tem</button>
+  </nav>
+
+  <!-- Đồng bộ -->
+  <section class="the an" id="the-dong-bo">
+    <div class="bao luu-y an" id="dong-bo-can-kho">Đăng nhập kho ở trên để gửi giá từ kho xuống cân.</div>
+    <div id="dong-bo-noi-dung">
+    <h2>Đưa danh mục kho xuống cân</h2>
+    <p class="phu">Mã cân, tên và giá bán/kg lấy thẳng từ <b>Mặt hàng</b> trong kho. Muốn đổi giá hay tên thì sửa trong kho trước.</p>
+    <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0">
+      <input type="checkbox" id="giu-ngoai-kho"><span>Giữ lại hàng đang có trên cân nhưng không có trong kho.</span></label>
+    <div class="nut"><button id="nut-xem">Xem lại thay đổi từ kho</button><span class="dang-lam an" id="dang-xem">Đang lấy danh mục từ kho…</span></div>
+    <div id="ket-qua-xem"></div>
+    </div>
+  </section>
+
+  <!-- Tất cả hàng -->
+  <section class="the an" id="the-hang">
+    <h2>Tất cả hàng trên cân</h2>
+    <p class="phu" id="hang-mo-ta"></p>
+    <div class="nut" style="margin-top:4px">
+      <input type="search" id="tim-hang" placeholder="Tìm theo tên, mã cân, số PLU…">
+      <button id="nut-tai-hang">Tải lại</button>
+      <button id="nut-xuat-hang">Tải danh sách (Excel)</button>
+    </div>
+    <div class="loc" id="loc-hang"></div>
+    <div id="bang-hang"></div>
+  </section>
+
+  <!-- Mẫu tem -->
+  <section class="the an" id="the-tem">
+    <h2>Mẫu tem</h2>
+    <p class="phu" id="tem-mo-ta"></p>
+    <div class="bao luu-y"><p>Chọn ô nào được in và sửa chữ cố định trên tem. Tên hàng, giá, trọng lượng lấy từ hàng khi in.</p>
+      <p><b>Lần đầu đổi tem:</b> sau khi gửi, cân thử một món rồi in một tem xem đã đổi chưa. Nếu tem chưa đổi, dùng <b>Lưu file nạp USB</b>.</p></div>
+    <div class="tem-luoi">
+      <div><div class="giay" id="giay"></div><p class="phu" style="margin-top:8px">Sơ đồ gần đúng theo cấu hình trong file, vẽ với hàng mẫu nặng 0,215 kg. Tem thật in trên cân.</p></div>
+      <div id="tem-o"></div>
+    </div>
+    <div class="nut" style="margin-top:16px">
+      <button class="chinh to" id="nut-gui-tem" disabled>Gửi tem xuống cân</button>
+      <button id="nut-usb-tem" disabled>Lưu file nạp USB</button>
+      <button id="nut-bo-tem" disabled>Bỏ thay đổi</button>
+      <span class="phu" id="tem-dem"></span>
+    </div>
+    <div id="khung-usb-tem"></div>
+  </section>
+
+  <details class="the">
+    <summary>Cài đặt và việc khác</summary>
+    <div style="margin-top:12px">
+      <form id="form-cau-hinh">
+        <label class="truong"><span>Địa chỉ cân (trên cân bấm Prog → 4 → 2 để xem)</span><input type="text" name="ipCan"></label>
+        <label class="truong"><span>Cổng của cân</span><input type="number" name="congCan"></label>
+        <label class="truong"><span>Địa chỉ kho</span><input type="text" name="diaChiKho"></label>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" name="tuGui">
+          <span>Tự gửi xuống cân khi kho đổi (mỗi phút, khi cửa sổ này đang mở) — đổi giá, lóc tảng mới là cân tự cập nhật tên, giá.</span></label>
+        <label class="truong an" id="o-chi-nhanh"><span>Chi nhánh</span><select name="chiNhanhId"></select></label>
+        <div class="nut"><button type="submit">Lưu cài đặt</button></div>
+      </form>
+      <hr style="border:0;border-top:1px solid var(--vach);margin:18px 0">
+      <p><b>Cập nhật file gốc từ cân.</b> Khi cân có thay đổi mà không qua chương trình này (nạp USB từ nơi khác, sửa tay trên cân):
+        lưu dữ liệu từ cân ra USB rồi chọn file đó.</p>
+      <input type="file" accept=".TMS,.tms" class="chon-file-can">
+      <div class="nut">
+        <button id="nut-mo-thu-muc" type="button">Mở thư mục dữ liệu</button>
+        <button id="nut-dang-xuat" type="button" class="an">Đăng xuất kho</button>
+      </div>
+      <p class="phu" id="duong-thu-muc"></p>
+    </div>
+  </details>
+</main>
+
+<script>
+(() => {
+  const MA = new URLSearchParams(location.search).get('t') || '';
+  const $ = (id) => document.getElementById(id);
+  const e = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const tien = (n) => n === null || n === undefined ? '—' : Number(n).toLocaleString('vi-VN') + ' đ';
+
+  async function goi(duong, than, kieu) {
+    const r = await fetch(duong + '?t=' + MA, {
+      method: 'POST',
+      headers: kieu === 'tep' ? { 'Content-Type': 'application/octet-stream' } : { 'Content-Type': 'application/json' },
+      body: kieu === 'tep' ? than : JSON.stringify(than || {}),
+    });
+    if (!r.ok) throw new Error('Chương trình không trả lời (mã ' + r.status + '). Mở lại chương trình.');
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.loi || 'Có lỗi.');
+    return j;
+  }
+  function bao(noi, loai, html) { noi.innerHTML = html ? `<div class="bao ${loai}">${html}</div>` : ''; }
+  const baoChung = (loai, html) => { bao($('bao-chung'), loai, html); if (html) window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
+  // ---- nhịp: cho chương trình biết cửa sổ còn mở --------------------------
+  setInterval(() => { fetch('/api/nhip?t=' + MA, { method: 'POST' }).catch(() => {}); }, 20000);
+  addEventListener('pagehide', () => { navigator.sendBeacon('/api/dong?t=' + MA); });
+
+  let trangThai = null;
+
+  async function taiTrangThai() {
+    const s = await goi('/api/trang-thai');
+    trangThai = s;
+    $('phien-ban').textContent = 'phiên bản ' + s.phienBan;
+    const ch = s.cauHinh;
+    $('o-can').textContent = ch.ipCan + ' · cổng ' + ch.congCan;
+    const f = $('form-cau-hinh');
+    f.ipCan.value = ch.ipCan; f.congCan.value = ch.congCan; f.diaChiKho.value = ch.diaChiKho;
+    f.tuGui.checked = !!ch.tuGui;
+    const tg = s.lanTuGui;
+    $('o-tu-gui').textContent = ch.tuGui
+      ? 'Tự gửi: bật' + (tg ? ' · ' + new Date(tg.luc).toLocaleTimeString('vi-VN') + ' — ' + tg.cau : ' · chờ lần đầu')
+      : '';
+    $('duong-thu-muc').innerHTML = 'Dữ liệu nằm ở <code>' + e(s.thuMuc) + '</code>';
+
+    if (s.nguoi) {
+      $('o-kho').textContent = s.nguoi.hoTen;
+      $('o-kho-phu').textContent = (s.nguoi.chiNhanh ? s.nguoi.chiNhanh.ten + ' · ' : '') + s.nguoi.email;
+      const sel = f.chiNhanhId;
+      sel.innerHTML = s.nguoi.cacChiNhanh.map(c => `<option value="${e(c.id)}">${e(c.ten)}</option>`).join('');
+      if (s.nguoi.chiNhanh) sel.value = s.nguoi.chiNhanh.id;
+      $('o-chi-nhanh').classList.toggle('an', s.nguoi.cacChiNhanh.length < 2);
+    } else {
+      $('o-kho').textContent = 'Chưa đăng nhập';
+      $('o-kho-phu').textContent = s.loiKho || ch.diaChiKho;
+    }
+    $('nut-dang-xuat').classList.toggle('an', !s.nguoi);
+    $('o-tren-can').textContent = s.goc ? s.soTrenCan + ' hàng' : 'Chưa biết';
+    $('o-goc').textContent = s.goc ? 'File gốc lúc ' + new Date(s.goc.luc).toLocaleString('vi-VN') + ' · cân ' + s.goc.phienBan : 'Chưa có file gốc';
+
+    $('the-dang-nhap').classList.toggle('an', !!s.nguoi);
+    $('the-bat-dau').classList.toggle('an', !!s.goc);
+    $('thanh-tab').classList.toggle('an', !s.goc);
+    $('dong-bo-can-kho').classList.toggle('an', !!s.nguoi);
+    $('dong-bo-noi-dung').classList.toggle('an', !s.nguoi);
+    if (!tab) tab = s.nguoi ? 'dong-bo' : 'hang';
+    dsHang = null; temDL = null;
+    hienTab();
+  }
+
+  // ---- thẻ ------------------------------------------------------------------
+  let tab = null;
+  function hienTab() {
+    const co = !!(trangThai && trangThai.goc);
+    for (const b of document.querySelectorAll('#thanh-tab button')) b.classList.toggle('chon', b.dataset.tab === tab);
+    $('the-dong-bo').classList.toggle('an', !co || tab !== 'dong-bo');
+    $('the-hang').classList.toggle('an', !co || tab !== 'hang');
+    $('the-tem').classList.toggle('an', !co || tab !== 'tem');
+    if (!co) return;
+    if (tab === 'dong-bo' && trangThai.nguoi) xemTruoc();
+    if (tab === 'hang' && !dsHang) taiHang();
+    if (tab === 'tem' && !temDL) taiTem();
+  }
+  for (const b of document.querySelectorAll('#thanh-tab button')) b.onclick = () => { tab = b.dataset.tab; hienTab(); };
+
+  // ---- xem trước ------------------------------------------------------------
+  const NHAN = { them: ['Thêm', 'them'], sua: ['Sửa', 'sua'], giu: ['Giữ nguyên', 'giu'], xoa: ['Bỏ khỏi cân', 'xoa'],
+                 ngoai_kho: ['Giữ, ngoài kho', 'giu'], bo_qua: ['Không đưa lên', 'khong-len'] };
+  const DEM = [['them', 'thêm'], ['sua', 'sửa'], ['xoa', 'bỏ khỏi cân'], ['giu', 'giữ nguyên'], ['ngoai_kho', 'giữ, ngoài kho'], ['bo_qua', 'không đưa lên']];
+  const giuNgoaiKho = () => $('giu-ngoai-kho').checked;
+
+  async function xemTruoc() {
+    const noi = $('ket-qua-xem');
+    $('dang-xem').classList.remove('an'); $('nut-xem').disabled = true;
+    try {
+      const x = await goi('/api/xem-truoc', { giuHangNgoaiKho: giuNgoaiKho() });
+      let h = '<div class="dem">' + DEM.filter(([k]) => x.dem[k] > 0)
+        .map(([k, chu]) => `<span class="nhan-l ${NHAN[k][1]}">${x.dem[k]} ${chu}</span>`).join('') + '</div>';
+      h += '<div class="khung-bang"><table><thead><tr><th>Thay đổi</th><th class="so">PLU</th><th class="so">Mã cân</th><th>Tên trên tem</th><th class="so">Giá/kg</th></tr></thead><tbody>';
+      for (const d of x.dong) {
+        const mo = d.loai === 'xoa' || d.loai === 'bo_qua';
+        h += `<tr class="${mo ? 'mo' : ''}"><td><span class="nhan-l ${NHAN[d.loai][1]}">${NHAN[d.loai][0]}</span></td>`
+          + `<td class="so">${d.so ?? '—'}</td><td class="so">${e(d.maCan || '—')}</td><td>${e(d.ten)}`
+          + (d.loai === 'sua' && d.tenCu !== d.ten ? `<div class="phu">Trên cân đang là: ${e(d.tenCu)}</div>` : '')
+          + (d.lyDo ? `<div class="phu">${e(d.lyDo)}</div>` : '') + (d.canhBao ? `<div class="phu">${e(d.canhBao)}</div>` : '')
+          + `</td><td class="so">${tien(d.gia)}` + (d.loai === 'sua' && d.giaCu !== d.gia ? `<div class="phu">trước: ${tien(d.giaCu)}</div>` : '') + '</td></tr>';
+      }
+      if (!x.dong.length) h += '<tr><td colspan="5">Kho chưa có mặt hàng nào mang mã cân. Điền mã cân ở Mặt hàng trước.</td></tr>';
+      h += '</tbody></table></div>';
+
+      if (x.conLai.length) {
+        h += `<div class="bao loi"><p><b>${x.conLai.length} hàng sẽ còn nằm trên cân</b> — gửi qua WiFi cân chỉ thêm và sửa, không xoá được:</p><p>`
+          + x.conLai.map(c => `PLU ${c.so} · mã ${e(c.ma || '—')} · ${e(c.ten)}`).join('<br>') + '</p>'
+          + '<p>Muốn xoá hẳn: lưu file rồi nạp bằng USB (cân thay cả danh sách).</p>'
+          + '<div class="nut"><button id="nut-tao-usb">Lưu file để nạp USB</button></div><div id="khung-usb"></div></div>';
+      }
+      h += `<div class="nut" style="margin-top:16px"><button class="chinh to" id="nut-gui">Gửi xuống cân</button>`
+        + `<span class="phu">${x.coThayDoi ? 'Sau khi gửi, cân có ' + x.soHangSauKhiGui + ' hàng từ kho.' : 'Cân đã khớp với kho — không cần gửi.'}</span></div><div id="ket-qua-gui"></div>`;
+      noi.innerHTML = h;
+      $('nut-gui').onclick = gui;
+      if ($('nut-tao-usb')) $('nut-tao-usb').onclick = taoUsb;
+    } catch (err) {
+      bao(noi, 'loi', e(err.message));
+    } finally {
+      $('dang-xem').classList.add('an'); $('nut-xem').disabled = false;
+    }
+  }
+
+  async function gui() {
+    const nut = $('nut-gui'), noi = $('ket-qua-gui');
+    nut.disabled = true; nut.textContent = 'Đang gửi…';
+    try {
+      const k = await goi('/api/gui', { giuHangNgoaiKho: giuNgoaiKho() });
+      // Báo ở đầu trang: bảng bên dưới sẽ được dựng lại từ file vừa gửi.
+      baoChung('xong', `<p><b>Đã gửi ${k.soHang} hàng xuống cân.</b> Trên cân gõ số PLU của một hàng vừa đổi rồi bấm <b>PLU</b> để chắc cân đã nhận.</p>`
+        + (k.conLai.length ? `<p>${k.conLai.length} hàng vẫn còn nằm trên cân — xoá bằng USB khi tiện.</p>` : ''));
+      await taiTrangThai();
+    } catch (err) {
+      bao(noi, 'loi', e(err.message));
+      nut.disabled = false; nut.textContent = 'Gửi xuống cân';
+    }
+  }
+
+  async function taoUsb() {
+    try { hienUsb($('khung-usb'), await goi('/api/tao-usb', { giuHangNgoaiKho: giuNgoaiKho() })); }
+    catch (err) { bao($('khung-usb'), 'loi', e(err.message)); }
+  }
+
+  /** Khung hướng dẫn nạp USB sau khi đã lưu file cho-usb. */
+  function hienUsb(noi, k) {
+      noi.innerHTML = `<div class="bao luu-y"><p>Đã lưu file (${k.soHang} hàng) ở <code>${e(k.duongDan)}</code>.</p>`
+        + '<p>1. Chép file này vào thư mục <b>JHSCALE</b> trên USB (ghi đè). 2. Cắm USB vào cân: <b>Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm</b>. 3. Nạp xong rút USB, rồi bấm nút bên dưới.</p>'
+        + `<div class="nut"><button class="mo-usb">Mở thư mục chứa file</button><a href="/api/tai-usb?t=${MA}" download="A_000.TMS"><button type="button">Tải file về</button></a>`
+        + '<button class="chinh da-nap">Tôi đã nạp USB xong</button></div></div>';
+      noi.querySelector('.mo-usb').onclick = () => goi('/api/mo-thu-muc', { cho: 'usb' }).catch(err => baoChung('loi', e(err.message)));
+      noi.querySelector('.da-nap').onclick = async () => {
+        try { const r = await goi('/api/da-nap-usb'); baoChung('xong', `Đã ghi nhận: trên cân có ${r.soHang} hàng.`); await taiTrangThai(); }
+        catch (err) { baoChung('loi', e(err.message)); }
+      };
+  }
+
+  // ---- tất cả hàng -------------------------------------------------------------
+  const TINH_TRANG = {
+    khop: ['Khớp kho', 'them'], lech: ['Khác kho', 'sua'], ngoai_kho: ['Kho không có', 'xoa'], con_lai: ['Còn nằm lại', 'xoa'],
+    chua_len: ['Chưa lên cân', 'giu'], khong_len: ['Không lên được', 'khong-len'], tren_can: ['Trên cân', 'giu'],
+  };
+  let dsHang = null, locHang = 'tat_ca';
+  const boDau = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').toLowerCase();
+
+  async function taiHang() {
+    $('bang-hang').innerHTML = '<p class="dang-lam">Đang đọc danh sách…</p>';
+    try { dsHang = await goi('/api/hang'); veHang(); }
+    catch (err) { bao($('bang-hang'), 'loi', e(err.message)); }
+  }
+
+  function hangDangLoc() {
+    const q = boDau($('tim-hang').value.trim());
+    return dsHang.hang.filter(h => (locHang === 'tat_ca' || h.tinhTrang === locHang)
+      && (!q || boDau(h.ten).includes(q) || h.maCan.includes(q) || String(h.so ?? '') === q || boDau(h.tenKho).includes(q)));
+  }
+
+  function veHang() {
+    if (!dsHang) return;
+    const d = dsHang, trenCan = d.hang.filter(h => h.so !== null).length;
+    $('hang-mo-ta').innerHTML = `Cân đang có <b>${trenCan}</b> hàng.`
+      + (d.coKho ? ' Đã đối chiếu với Mặt hàng trong kho.' : ` Chưa đối chiếu với kho${d.loiKho ? ': ' + e(d.loiKho) : ''}.`)
+      + ' <b>Mã FABi</b> là mã 5 số nằm trong mã vạch trên tem — trùng với ô "mã vạch" của món trên FABi.';
+    const dem = { tat_ca: d.hang.length };
+    for (const h of d.hang) dem[h.tinhTrang] = (dem[h.tinhTrang] || 0) + 1;
+    if (locHang !== 'tat_ca' && !dem[locHang]) locHang = 'tat_ca';
+    $('loc-hang').innerHTML = [['tat_ca', 'Tất cả'], ...Object.entries(TINH_TRANG).map(([k, v]) => [k, v[0]])]
+      .filter(([k]) => dem[k]).map(([k, chu]) => `<button data-loc="${k}" class="${k === locHang ? 'chon' : ''}">${chu} · ${dem[k]}</button>`).join('');
+    for (const b of $('loc-hang').querySelectorAll('button')) b.onclick = () => { locHang = b.dataset.loc; veHang(); };
+
+    const ds = hangDangLoc();
+    let h = '<div class="khung-bang" style="max-height:560px"><table><thead><tr><th class="so">PLU</th><th>Phím</th><th class="so">Mã cân</th><th class="so">Mã FABi</th>'
+      + '<th>Tên trên cân</th><th class="so">Giá/kg</th><th>Bán</th><th>Tình trạng</th></tr></thead><tbody>';
+    for (const x of ds) {
+      const [nhan, lop] = TINH_TRANG[x.tinhTrang];
+      const khac = [];
+      if (x.tenKho && x.tenKho !== x.ten) khac.push('tên kho: ' + e(x.tenKho));
+      if (x.giaKho !== undefined && x.giaKho !== x.gia && x.tinhTrang === 'lech') khac.push('giá kho: ' + tien(x.giaKho));
+      h += `<tr class="${x.so === null || x.tinhTrang === 'con_lai' ? 'mo' : ''}"><td class="so">${x.so ?? '—'}</td>`
+        + `<td>${x.phim ? `<span class="phim" title="Phím tắt trên bàn phím cân">${e(x.phim)}</span>` : ''}</td>`
+        + `<td class="so">${e(x.maCan || '—')}</td><td class="so"><b>${e(x.maFabi || '—')}</b></td><td>${e(x.ten)}</td>`
+        + `<td class="so">${tien(x.gia)}</td><td>${x.theoGoi ? 'Theo gói' : 'Cân ký'}</td>`
+        + `<td><span class="nhan-l ${lop}">${nhan}</span>`
+        + (khac.length ? `<div class="phu">${khac.join(' · ')}</div>` : '') + (x.ghiChu ? `<div class="phu">${e(x.ghiChu)}</div>` : '') + '</td></tr>';
+    }
+    if (!ds.length) h += '<tr><td colspan="8">Không có hàng nào khớp.</td></tr>';
+    h += '</tbody></table></div>';
+    if (d.hang.some(x => x.tinhTrang === 'lech' || x.tinhTrang === 'chua_len' || x.tinhTrang === 'ngoai_kho')) {
+      h += '<p class="phu" style="margin-top:8px">Muốn cân khớp kho: sang thẻ <b>Gửi giá từ kho</b>.</p>';
+    }
+    $('bang-hang').innerHTML = h;
+  }
+
+  function xuatHang() {
+    if (!dsHang) return;
+    const o = (v) => { const t = String(v ?? ''); return /[",\n;]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+    const dong = [['PLU', 'Phím', 'Mã cân', 'Mã FABi', 'Tên trên cân', 'Giá/kg', 'Cách bán', 'Tình trạng', 'Tên trong kho', 'Giá kho', 'Ghi chú']];
+    for (const x of hangDangLoc()) {
+      dong.push([x.so ?? '', x.phim ?? '', x.maCan, x.maFabi ? '="' + x.maFabi + '"' : '', x.ten, x.gia ?? '', x.theoGoi ? 'Theo gói' : 'Cân ký',
+        TINH_TRANG[x.tinhTrang][0], x.tenKho ?? '', x.giaKho ?? '', x.ghiChu ?? '']);
+    }
+    const chu = '\ufeff' + dong.map(r => r.map((v, i) => i === 3 ? v : o(v)).join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([chu], { type: 'text/csv;charset=utf-8' }));
+    const n = new Date(), p2 = (x) => String(x).padStart(2, '0');
+    a.download = `hang-tren-can-${n.getFullYear()}${p2(n.getMonth() + 1)}${p2(n.getDate())}.csv`;
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  $('tim-hang').oninput = veHang;
+  $('nut-tai-hang').onclick = taiHang;
+  $('nut-xuat-hang').onclick = xuatHang;
+
+  // ---- mẫu tem -----------------------------------------------------------------
+  let temDL = null, temSua = { chu: {}, bat: {} };
+  const p2 = (n) => String(n).padStart(2, '0');
+
+  async function taiTem() {
+    $('tem-o').innerHTML = '<p class="dang-lam">Đang đọc mẫu tem…</p>';
+    try {
+      temDL = await goi('/api/tem');
+      temSua = { chu: {}, bat: {} };
+      if (!temDL.tem) { $('tem-o').innerHTML = ''; $('giay').innerHTML = ''; $('tem-mo-ta').textContent = 'File của cân không có mẫu tem.'; capNutTem(); return; }
+      const t = temDL.tem;
+      $('tem-mo-ta').innerHTML = `Mẫu số <b>${e(t.id)}</b> "${e(t.ten)}" · ${t.rong}×${t.cao} mm`
+        + (t.soMau > 1 ? ` · cân có ${t.soMau} mẫu tem, đây là mẫu đang dùng.` : '.');
+      veDanhSachO(); veTem(); capNutTem();
+    } catch (err) { bao($('tem-o'), 'loi', e(err.message)); }
+  }
+
+  const oBat = (o) => (o.khoa in temSua.bat ? temSua.bat[o.khoa] : o.bat);
+  const chuO = (col) => (col in temSua.chu ? temSua.chu[col] : temDL.tem.chu[col] ?? '');
+
+  function thayDoiTem() {
+    const t = temDL.tem, chu = {};
+    for (const [c, v] of Object.entries(temSua.chu)) if (v !== (t.chu[c] ?? '')) chu[c] = v;
+    return {
+      chu,
+      tat: t.o.filter(o => o.bat && !oBat(o)).map(o => o.khoa),
+      bat: t.o.filter(o => !o.bat && oBat(o)).map(o => o.khoa),
+    };
+  }
+  function capNutTem() {
+    const td = temDL && temDL.tem ? thayDoiTem() : { chu: {}, tat: [], bat: [] };
+    const n = Object.keys(td.chu).length + td.tat.length + td.bat.length;
+    for (const id of ['nut-gui-tem', 'nut-usb-tem', 'nut-bo-tem']) $(id).disabled = n === 0;
+    $('tem-dem').textContent = n ? `${n} thay đổi chưa gửi` : 'Chưa có thay đổi';
+  }
+
+  function viTriO(o, t) {
+    const W = t.rong * 8, H = t.cao * 8, cy = o.y + o.h / 2, cx = o.x + o.w / 2;
+    return (cy < H / 3 ? 'phía trên' : cy < H * 2 / 3 ? 'ở giữa' : 'phía dưới') + (cx < W / 3 ? ', bên trái' : cx < W * 2 / 3 ? '' : ', bên phải')
+      + (o.dieuKien === '2' ? ' · chỉ in với hàng cân ký' : o.dieuKien === '3' ? ' · chỉ in với hàng theo gói' : '');
+  }
+
+  function veDanhSachO() {
+    const t = temDL.tem, noi = $('tem-o');
+    noi.innerHTML = '<p style="margin:0 0 8px"><b>Ô in trên tem</b> <span class="phu">— bỏ chọn để không in ô đó</span></p>';
+    const ds = t.o.slice().sort((a, b) => a.y - b.y || a.x - b.x);
+    for (const o of ds) {
+      const the = document.createElement('div');
+      the.className = 'o-tem';
+      const id = 'o-' + o.khoa.replace(':', '-');
+      the.innerHTML = `<label class="chon-o"><input type="checkbox" id="${id}"><span><span class="ten-o"><b>${e(o.ten)}</b></span> <span class="phu">${viTriO(o, t)}</span></span></label>`
+        + (o.cot !== undefined ? `<input type="text" maxlength="40" placeholder="(để trống)" value="${e(chuO(o.cot))}">` : '');
+      const hop = the.querySelector('input[type=checkbox]'), o_chu = the.querySelector('input[type=text]');
+      const cap = () => {
+        const bat = oBat(o);
+        hop.checked = bat;
+        the.classList.toggle('tat', !bat);
+        the.classList.toggle('doi', bat !== o.bat || (o.cot !== undefined && chuO(o.cot) !== (t.chu[o.cot] ?? '')));
+        if (o_chu) o_chu.disabled = !bat;
+      };
+      hop.onchange = () => { temSua.bat[o.khoa] = hop.checked; if (hop.checked === o.bat) delete temSua.bat[o.khoa]; cap(); veTem(); capNutTem(); };
+      if (o_chu) {
+        o_chu.oninput = () => { temSua.chu[o.cot] = o_chu.value; for (const k of noi.querySelectorAll('.o-tem')) k.dispatchEvent(new Event('cap')); veTem(); capNutTem(); };
+        o_chu.onfocus = () => sangO(o.cot, true);
+        o_chu.onblur = () => sangO(o.cot, false);
+      }
+      the.addEventListener('cap', cap);
+      the.onmouseenter = () => sangKhoa(o.khoa, true);
+      the.onmouseleave = () => sangKhoa(o.khoa, false);
+      cap();
+      noi.append(the);
+    }
+  }
+  function sangO(col, on) { for (const el of document.querySelectorAll(`#giay .el[data-cot="${col}"]`)) el.classList.toggle('sang', on); }
+  function sangKhoa(k, on) { for (const el of document.querySelectorAll(`#giay .el[data-khoa="${k}"]`)) el.classList.toggle('sang', on); }
+
+  function vachMa() {
+    const vach = [2,1,1,3,1,2,2,1,3,1,1,2,1,1,2,3,1,2,1,1,3,2,1,1,2,1,3,1,1,2,2,1,1,3,2,1,1,2,1,2,3,1,1,1,2,2];
+    const tong = vach.reduce((s, b) => s + b + 1, 0);
+    let x = 0; const dung = [];
+    for (const b of vach) {
+      const a = x / tong * 100, z = (x + b) / tong * 100;
+      dung.push(`#111 ${a.toFixed(2)}% ${z.toFixed(2)}%`, `transparent ${z.toFixed(2)}% ${((x + b + 1) / tong * 100).toFixed(2)}%`);
+      x += b + 1;
+    }
+    const d = document.createElement('div'); d.className = 'vach';
+    d.style.background = `linear-gradient(90deg, ${dung.join(', ')})`;
+    return d;
+  }
+
+  function veTem() {
+    const t = temDL.tem, giay = $('giay');
+    const W = t.rong * 8, H = t.cao * 8;      // máy in 203 dpi = 8 chấm/mm
+    giay.innerHTML = '';
+    giay.style.aspectRatio = `${t.rong} / ${t.cao}`;
+    const hm = temDL.hangMau || { so: 1, ten: 'Lõi vai bò Mỹ', gia: 845000, theoGoi: false };
+    const kg = 0.215, bay = new Date(), ngay = `${p2(bay.getDate())}/${p2(bay.getMonth() + 1)}/${bay.getFullYear()}`;
+    const so = (n) => n == null ? '' : Math.round(n).toLocaleString('vi-VN');
+    const thanhTien = hm.theoGoi ? hm.gia : Math.round((hm.gia || 0) * kg);
+    for (const o of t.o) {
+      if (!oBat(o)) continue;
+      if (o.dieuKien === '2' && hm.theoGoi) continue;
+      if (o.dieuKien === '3' && !hm.theoGoi) continue;
+      const el = document.createElement('div');
+      el.className = 'el'; el.dataset.khoa = o.khoa;
+      el.style.left = (o.x / W * 100) + '%'; el.style.top = (o.y / H * 100) + '%';
+      el.style.width = (o.w / W * 100) + '%'; el.style.height = (o.h / H * 100) + '%';
+      el.style.fontSize = (o.h / W * 100 * 0.62).toFixed(2) + 'cqw';
+      let chu = null;
+      if (o.loai === '0') el.append(vachMa());
+      else if (o.loai === '3') { chu = chuO(o.cot); el.dataset.cot = o.cot; }
+      else if (o.loai === '1') {
+        chu = { 0: hm.ten, 1: hm.theoGoi ? '1' : kg.toFixed(3), 4: so(hm.gia), 6: String(hm.so), 15: ngay }[o.duLieu] ?? null;
+        if (o.duLieu === 0) el.classList.add('dam');
+      } else if (o.loai === '2') {
+        chu = { 3: ngay, 4: `${p2(bay.getHours())}:${p2(bay.getMinutes())}`, 27: so(thanhTien) }[o.chu] ?? null;
+        if (o.chu === 27) el.classList.add('dam');
+      }
+      if (o.loai !== '0') { if (!chu) el.classList.add('trong'); else el.textContent = chu; }
+      giay.append(el);
+    }
+  }
+
+  async function guiTem() {
+    const nut = $('nut-gui-tem');
+    nut.disabled = true; nut.textContent = 'Đang gửi…';
+    try {
+      await goi('/api/tem/gui', thayDoiTem());
+      baoChung('xong', '<p><b>Đã gửi tem xuống cân.</b> Cân thử một món rồi in một tem để xem tem mới.</p>'
+        + '<p>Nếu tem chưa đổi: mở thẻ Mẫu tem, sửa lại như vừa rồi và bấm <b>Lưu file nạp USB</b> — nạp USB thì cân nhận chắc chắn.</p>');
+      $('khung-usb-tem').innerHTML = '';
+      await taiTrangThai();
+    } catch (err) { baoChung('loi', e(err.message)); }
+    finally { nut.textContent = 'Gửi tem xuống cân'; capNutTem(); }
+  }
+  $('nut-gui-tem').onclick = guiTem;
+  $('nut-usb-tem').onclick = async () => {
+    try { hienUsb($('khung-usb-tem'), await goi('/api/tem/usb', thayDoiTem())); }
+    catch (err) { bao($('khung-usb-tem'), 'loi', e(err.message)); }
+  };
+  $('nut-bo-tem').onclick = () => { temSua = { chu: {}, bat: {} }; veDanhSachO(); veTem(); capNutTem(); };
+
+  // ---- các nút khác -----------------------------------------------------
+  $('nut-xem').onclick = xemTruoc;
+  $('giu-ngoai-kho').onchange = xemTruoc;
+
+  $('form-dang-nhap').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const f = ev.target, nut = f.querySelector('button');
+    nut.disabled = true;
+    try { await goi('/api/dang-nhap', { email: f.email.value, matKhau: f.matKhau.value }); f.matKhau.value = ''; baoChung('', ''); await taiTrangThai(); }
+    catch (err) { baoChung('loi', e(err.message)); }
+    finally { nut.disabled = false; }
+  };
+
+  $('form-cau-hinh').onsubmit = async (ev) => {
+    ev.preventDefault();
+    const f = ev.target;
+    try {
+      await goi('/api/cau-hinh', { ipCan: f.ipCan.value, congCan: Number(f.congCan.value), diaChiKho: f.diaChiKho.value, tuGui: f.tuGui.checked,
+        chiNhanhId: trangThai && trangThai.nguoi && trangThai.nguoi.cacChiNhanh.length > 1 ? f.chiNhanhId.value : undefined });
+      baoChung('xong', 'Đã lưu cài đặt.'); await taiTrangThai();
+    } catch (err) { baoChung('loi', e(err.message)); }
+  };
+
+  for (const o of document.querySelectorAll('.chon-file-can')) {
+    o.onchange = async () => {
+      const tep = o.files[0]; if (!tep) return;
+      try {
+        const k = await goi('/api/file-tu-can', await tep.arrayBuffer(), 'tep');
+        baoChung('xong', `Đã ghi nhận file của cân: ${k.soHang} hàng, cân phiên bản ${e(k.phienBan)}.`);
+        await taiTrangThai();
+      } catch (err) { baoChung('loi', e(err.message)); }
+      o.value = '';
+    };
+  }
+
+  $('nut-thu-can').onclick = async () => {
+    const den = $('den-can'); den.className = 'den';
+    try {
+      const k = await goi('/api/thu-can');
+      den.className = 'den ' + (k.thongCan ? 'xanh' : 'do');
+      if (!k.thongCan) baoChung('loi', 'Không kết nối được cân. Cân có đang bật không? Máy tính có cùng WiFi với cân không? Địa chỉ cân có đổi không (trên cân: Prog → 4 → 2)?');
+    } catch (err) { den.className = 'den do'; baoChung('loi', e(err.message)); }
+  };
+  $('nut-mo-thu-muc').onclick = () => goi('/api/mo-thu-muc', {}).catch(err => baoChung('loi', e(err.message)));
+  $('nut-dang-xuat').onclick = async () => { try { await goi('/api/dang-xuat'); await taiTrangThai(); } catch (err) { baoChung('loi', e(err.message)); } };
+
+  taiTrangThai().then(() => $('nut-thu-can').click()).catch(err => baoChung('loi', e(err.message)));
+})();
+</script>
+</body>
+</html>

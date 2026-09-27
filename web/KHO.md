@@ -768,6 +768,62 @@ Test: `test-kho-sua-nhanh.mjs` (database), `test-kho-sua-nhanh-web.mjs` (hàm th
 form → `kho_sua_nhanh_mat_hang` trên PGlite; báo cáo theo quyền; mã nguồn trang), `test-kho-giao-dien.mjs` nhóm 16
 (trang quyền phủ đủ việc, thẻ báo cáo ẩn theo quyền = dòng chặn trang, CSV có nhánh).
 
+## 3o. Theo dõi theo tảng · bảng ủ · repack · truy vết (migration 0048–0050)
+
+Thịt ủ (ribeye, striploin…) phải truy tới **từng tảng**: mỗi tảng có ngày mổ riêng → số ngày ủ, hạn
+dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Chỉ với món bật `kho_mat_hang.theo_tang`
+(Thiết lập → Mặt hàng, món loại Tảng) — món khác không đổi gì.
+
+- **Nhận hàng**: mỗi dòng là **một tảng** (`so_goi = 1`), cân riêng, có `ngay_mo`. Vẫn giữ luật
+  "một dòng phiếu nhập = một lô", nên duyệt, huỷ, trả NCC, công nợ, kiểm kê không phải sửa. Thêm một tảng
+  xong, form điền sẵn món và ngày mổ cho tảng sau (`?tiep=&mo=`).
+- **Duyệt**: lô tảng mang `so_tang` (tăng dần theo chi nhánh, bộ đếm `kho_so_thu_tu` loại `T`, hiện
+  "#0142"), `ngay_mo`, `ngay_u_xong = ngày nhận + kho_so_ngay_u(món, ngày nhận − ngày mổ)`. Phiếu mua có
+  dòng tảng chưa tách / thiếu ngày mổ (ví dụ tạo từ đơn đặt hàng) thì chưa duyệt được.
+- **Bảng ủ** `kho_bang_u` (dùng chung toàn thương hiệu, sửa bằng quyền danh mục): gõ dạng
+  `5:18, 10:14, 10` ở form mặt hàng (`docChuBangU` / `chuBangU` trong `lib/kho/tang.ts`; `soNgayU` cùng
+  luật với `kho_so_ngay_u`, test so từng tuổi).
+- **Màn Tảng · ủ** (`/noi-bo/kho/tang`, view `kho_v_tang`): tảng còn tồn — sẵn sàng lóc / đang ủ còn
+  mấy ngày / chưa có bảng ủ. Không có tiền.
+- **Ô mã xoay vòng (0049)**: phần cắt của món theo tảng có vài ô mã cố định (`kho_o_ma`, form mặt hàng
+  gõ `10011-10019`; tạo một lần trên FABi cùng giá). Mã ô không trùng mã cân món đang dùng (trigger hai
+  phía). Phiên lóc món theo tảng chỉ **một tảng**; bấm **Giao ô mã cho phần cắt** (`kho_giao_o_ma`, quyền
+  pha_loc) → mỗi phần cắt có ô trong công thức của tảng nhận một ô trống ở chi nhánh. Nhãn in bằng mã ô
+  phải thuộc ô của chính phiên. Chốt → ô gắn lô ra (`kho_o_ma_giao.lo_id`); mở lại → bỏ; huỷ phiên → trả
+  ô. Lô ra hết tồn thì lần giao sau tự đóng ô cũ; quản lý giải phóng tay được (`kho_giai_phong_o_ma`).
+  Quét kiểm kê cũng nhận nhãn mã ô (`kho_mat_hang_theo_ma_can`). View `kho_v_o_ma_giao`.
+- **Cân theo tảng (GĐ3)**: `lib/kho/danh-muc-can.ts` (`hangChoCan`) — nguồn chung của màn Đồng bộ cân và
+  Beeftown Cân: mỗi ô mã một dòng, cùng giá món, tên kèm số tảng đang giữ ô ("… #0142", cắt tên cho vừa
+  24 ký tự, không cắt số tảng); ô trống vẫn ở trên cân nên PLU không đổi. Beeftown Cân có tuỳ chọn **Tự gửi
+  xuống cân khi kho đổi** (mỗi phút khi cửa sổ mở, chỉ khi có thêm / sửa). Hạn dùng theo tảng trên tem còn
+  chờ tìm cột số ngày trong dòng PLU.
+- **Repack (0050)**: quy trình Nhập → repack cả tảng (mở túi, bỏ nước rỉ) → cân → ủ → lóc. Dòng phiếu nhập
+  có `so_kg_thuc` (kg sau repack); `so_kg` **giữ nghĩa kg nhà cung cấp** — `thanh_tien`, công nợ,
+  `kho_v_phieu_nhap`, đơn đặt không đổi. Duyệt: lô và dòng sổ kho `nhap` theo `coalesce(so_kg_thuc, so_kg)`,
+  giá trị lô vẫn là tiền hàng (+ chi phí, thuế) → giá vốn/kg tự chia lại (12 kg × 450.000 → 11,8 kg =
+  457.627 đ/kg). Món theo tảng thiếu kg sau repack: lưu nháp được, **gửi / duyệt bị chặn**. Tối đa kg NCC
+  + 1% (sai số cân). Form nhận hàng: ô "Kg sau repack" (món theo tảng hiện ngay, món khác trong "Thêm chi
+  tiết"); màn điền giá hiện kg NCC → sau repack (hao %) và giá vốn/kg dự kiến (`xemTruocGiaVon` chia theo
+  kg sau repack). Form phiếu nhập đầy đủ giữ ngày mổ và kg sau repack khi lưu lại. Hao ủ, phần bỏ khi lóc
+  vẫn như 0022: giá trị tảng dồn hết vào thịt giữ lại. `kho_bao_cao_ncc` thêm `kg_repack_ncc`,
+  `kg_repack_thuc`, `hao_repack_pt` (trang Đánh giá NCC có cột Hao repack).
+- **Tảng gốc của lô cắt (0050)**: `kho_lo.tang_goc_id` gán lúc tạo lô ra (trigger `kho_lo_gan_tang_goc`,
+  lô vẫn bất biến; file 0050 gán một lần cho lô đã có). View `kho_v_lo_tang` (lô → số tảng, không tiền).
+- **Truy vết một tảng** (`/noi-bo/kho/tang/<lo_id>`, `kho_truy_vet_tang`, quyền xem, tiền chỉ vai xem giá):
+  kg NCC → sau repack → vào lóc → thịt / phụ phẩm / bỏ / hao hụt; giá NCC → giá vốn sau repack → giá vốn
+  thịt ra; các lô cắt ra (ô mã, đã bán, bếp, huỷ, còn ở đâu); phiếu huỷ của tảng. Mở bằng lô tảng hoặc
+  bất kỳ lô cắt ra. Màn Tảng · ủ: số tảng là link, ô **Tìm tảng theo số** (`?tim=142` / `#0142`), mục
+  **Đã lóc** (tảng nhận trong 90 ngày).
+- **Huỷ cả tảng** (`kho_huy_ca_tang`, quyền van_hanh): mỗi vị trí còn hàng của tảng (kể cả tảng chưa lóc
+  hết) một phiếu `XH` qua `kho_ghi_phieu_xuat`, lý do bắt buộc, ảnh như phiếu huỷ thường, chờ duyệt như
+  cũ. `kho_huy_tang` giữ lần bấm (`ma_gui` — bấm lại không thêm phiếu), `kho_phieu_xuat.huy_tang_id`.
+  Hàng đang chờ huỷ bỏ qua; hàng đang mang ra quầy báo lại số kg. Duyệt xong ô mã tự trống.
+- **Báo cáo theo tảng** (`/noi-bo/kho/bao-cao/theo-tang` + CSV, `kho_bao_cao_tang`, quyền xem, cột tiền
+  chỉ vai xem giá): mỗi tảng nhận trong kỳ — hao repack, thu hồi, bán / bếp / huỷ / còn, số ngày từ lóc
+  tới bán hết, tình trạng chưa lóc / đang bán / đã hết.
+- **Xếp quầy**: `goiYXepQuay(ton, nn, soTang)` — câu dặn nói số tảng trên tem ("tảng #0142").
+- Tiếp theo (kế hoạch): bán qua iPOS trừ đúng tảng (**0051**, chờ iPOS xác nhận).
+
 ## 4. Cài như app (PWA)
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng

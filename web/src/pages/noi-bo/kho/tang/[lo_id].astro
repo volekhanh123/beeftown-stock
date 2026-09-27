@@ -1,0 +1,304 @@
+---
+/**
+ * KHO — TRUY VẾT MỘT TẢNG (0050)
+ *
+ * Một tảng từ lúc nhận tới lúc bán hết: kg nhà cung cấp → kg sau repack →
+ * vào lóc → thịt / phụ phẩm / bỏ / hao hụt → các lô cắt ra (ô mã, đã bán,
+ * bếp, huỷ, còn ở đâu). Mở bằng lô tảng hoặc bất kỳ lô cắt ra từ nó.
+ *
+ * Tiền (giá NCC → giá vốn sau repack → giá vốn thịt ra) chỉ vai xem giá —
+ * kho_truy_vet_tang trả null cho vai khác.
+ *
+ * "Huỷ cả tảng" (quyền van_hanh): mỗi vị trí còn hàng một phiếu báo huỷ, vẫn
+ * chờ quản lý duyệt như phiếu huỷ thường. Ảnh tải ngay và giữ qua lần gửi lại
+ * (giuAnhHuy), cùng ma_gui — F5 không tạo thêm phiếu.
+ */
+import Kho from '../../../../layouts/Kho.astro';
+import BaoKho from '../../../../components/kho/BaoKho.astro';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
+import {
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangTien, kqHai, laUuid, nhanKho, trangThaiKho, type KetQua,
+} from '../../../../lib/kho/chung.ts';
+import { docLyDo, type LyDo } from '../../../../lib/kho/danh-muc.ts';
+import { giuAnhHuy } from '../../../../lib/kho/xuat.ts';
+import {
+  docTruyVetTang, huyCaTang, soTangChu, TINH_TRANG_BAN_NB, type ChoCon, type TruyVetTang,
+} from '../../../../lib/kho/tang.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+
+const k = await moTrangKho(Astro);
+if (k instanceof Response) return k;
+if (!k.chiNhanh) return Astro.redirect('/noi-bo/kho', 302);
+const cn = k.chiNhanh;
+const nn = k.nn;
+const loId = Astro.params.lo_id ?? '';
+const DS = '/noi-bo/kho/tang';
+const t = dichNB(nn, {
+  tieuDe: { vi: (so: string, ten: string) => `Tảng ${so} · ${ten}`, en: (so: string, ten: string) => `Primal ${so} · ${ten}` },
+  tdChung: { vi: 'Truy vết tảng', en: 'Primal trace' },
+  khongDoc: { vi: 'Không đọc được tảng này.', en: 'Could not read this primal.' },
+  veDs: { vi: '← Tảng · ủ', en: '← Primals · aging' },
+  hanhTrinh: { vi: 'Từ nhà cung cấp tới quầy', en: 'From supplier to counter' },
+  nhan: { vi: 'Nhận hàng', en: 'Received' },
+  tuNcc: { vi: (ncc: string) => `từ ${ncc}`, en: (ncc: string) => `from ${ncc}` },
+  phieu: { vi: 'phiếu', en: 'note' },
+  kgNcc: { vi: 'Kg nhà cung cấp', en: 'Supplier kg' },
+  sauRepack: { vi: 'Sau repack', en: 'After repack' },
+  hao: { vi: (kg: string, pt: string) => `hao ${kg} kg · ${pt}`, en: (kg: string, pt: string) => `loss ${kg} kg · ${pt}` },
+  chuaRepack: { vi: 'chưa ghi kg sau repack', en: 'no weight after repack recorded' },
+  ngayMo: { vi: 'Ngày mổ', en: 'Slaughtered' },
+  uXong: { vi: 'Ủ xong', en: 'Aging ends' },
+  han: { vi: 'Hạn dùng tảng', en: 'Primal use-by' },
+  loc: { vi: 'Lóc', en: 'Cut' },
+  chuaLoc: { vi: 'Chưa lóc.', en: 'Not cut yet.' },
+  vaoLoc: { vi: 'Vào lóc', en: 'Into cutting' },
+  thit: { vi: 'Thịt giữ lại', en: 'Meat kept' },
+  phuPham: { vi: 'Phụ phẩm', en: 'By-products' },
+  bo: { vi: 'Bỏ', en: 'Discarded' },
+  haoHut: { vi: 'Hao hụt (nước, ủ)', en: 'Loss (drip, aging)' },
+  thuHoi: { vi: 'Thu hồi thịt', en: 'Meat yield' },
+  ban: { vi: 'Bán', en: 'Sold' },
+  daBan: { vi: 'Đã bán', en: 'Sold' },
+  bep: { vi: 'Xuất bếp', en: 'To kitchen' },
+  huy: { vi: 'Huỷ', en: 'Written off' },
+  con: { vi: 'Còn', en: 'Left' },
+  phanTramThit: { vi: (pt: string) => `${pt} số thịt`, en: (pt: string) => `${pt} of the meat` },
+  hetNgay: {
+    vi: (ngay: string, n: number | null) => `Hết ngày ${ngay}${n !== null ? ` — ${n} ngày sau khi lóc` : ''}`,
+    en: (ngay: string, n: number | null) => `Sold out on ${ngay}${n !== null ? ` — ${n} ${n === 1 ? 'day' : 'days'} after cutting` : ''}`,
+  },
+  gia: { vi: 'Giá vốn', en: 'Cost' },
+  giaNcc: { vi: 'Giá nhà cung cấp', en: 'Supplier price' },
+  giaRepack: { vi: 'Giá vốn sau repack', en: 'Cost after repack' },
+  giaThit: { vi: 'Giá vốn thịt ra', en: 'Cost of meat cut' },
+  moiKg: { vi: '/kg', en: '/kg' },
+  giaGiaiThich: {
+    vi: 'Tổng tiền mua giữ nguyên; hao repack, hao ủ, phần bỏ khi lóc làm giá mỗi kg còn lại tăng lên.',
+    en: 'The total purchase cost stays the same; repack loss, aging loss and trim raise the cost of each remaining kg.',
+  },
+  tangNguyen: { vi: 'Tảng còn nguyên', en: 'Primal still whole' },
+  loRa: { vi: 'Các lô cắt ra', en: 'Lots cut from this primal' },
+  chuaCoLoRa: { vi: 'Chưa có lô nào cắt ra.', en: 'No lots cut yet.' },
+  cotMon: { vi: 'Món', en: 'Item' },
+  cotLo: { vi: 'Lô', en: 'Lot' },
+  cotO: { vi: 'Ô mã', en: 'Code' },
+  cotRa: { vi: 'Kg ra', en: 'Kg out' },
+  cotCon: { vi: 'Còn ở đâu', en: 'Where left' },
+  cotHan: { vi: 'Hạn dùng', en: 'Use-by' },
+  cotGiaVon: { vi: 'Giá vốn/kg', en: 'Cost/kg' },
+  oChu: {
+    vi: (so: number, ma: string, giu: boolean) => `ô ${so} · ${ma}${giu ? '' : ' (đã trả)'}`,
+    en: (so: number, ma: string, giu: boolean) => `slot ${so} · ${ma}${giu ? '' : ' (freed)'}`,
+  },
+  het: { vi: 'hết', en: 'none' },
+  phieuHuy: { vi: 'Phiếu huỷ của tảng', en: 'Write-off notes for this primal' },
+  huyCaTang: { vi: 'Huỷ cả tảng', en: 'Write off the whole primal' },
+  huyGiaiThich: {
+    vi: (so: string, kg: string) => `Lập phiếu báo huỷ cho MỌI thứ còn lại của tảng ${so} (${kg} kg, ở kho và quầy) — mỗi nơi một phiếu, chờ quản lý duyệt. Dùng khi có sự cố với cả tảng: nhiệt độ tủ ủ, nhà cung cấp thu hồi, mùi lạ…`,
+    en: (so: string, kg: string) => `Creates write-off notes for EVERYTHING left of primal ${so} (${kg} kg, in the store and at the counter) — one note per place, waiting for manager approval. Use it when the whole primal has a problem: aging fridge temperature, supplier recall, off smell…`,
+  },
+  lyDo: { vi: 'Lý do *', en: 'Reason *' },
+  chonLyDo: { vi: '— chọn lý do —', en: '— choose a reason —' },
+  ghiChu: { vi: 'Ghi chú (sự cố gì)', en: 'Note (what happened)' },
+  anh: { vi: 'Ảnh chụp hàng', en: 'Photo of the goods' },
+  daCoAnh: { vi: (n: number) => `Đã có ${n} ảnh.`, en: (n: number) => `${n} photo(s) attached.` },
+  nutHuy: { vi: 'Lập phiếu huỷ cả tảng', en: 'Create write-off notes for the whole primal' },
+  canLyDo: { vi: 'Chọn lý do huỷ.', en: 'Choose a reason.' },
+  canAnh: { vi: (ten: string) => `Lý do "${ten}" cần ảnh.`, en: (ten: string) => `The reason "${ten}" needs a photo.` },
+  khongDuocHuy: { vi: 'Tài khoản của bạn không được báo huỷ hàng.', en: 'Your account cannot report write-offs.' },
+});
+
+if (!laUuid(loId)) return Astro.redirect(DS, 302);
+
+let bao: KetQua | null = k.bao;
+let lyDo: LyDo[] = [];
+let anhGiu: string[] = [];
+let maGuiGiu: string | null = null;
+let form: { ly_do_id: string; ghi_chu: string } = { ly_do_id: '', ghi_chu: '' };
+
+const duocHuy = k.duoc('van_hanh');
+if (duocHuy) {
+  try { lyDo = (await docLyDo(k.client)).filter(l => l.loai === 'huy' && l.dang_dung); } catch { /* không có lý do thì không huỷ được */ }
+}
+
+const fd = await docFormGui(Astro);
+if (fd && fd.get('viec') === 'huy_tang') {
+  if (!duocHuy) {
+    bao = kqHai(false, { vi: t.khongDuocHuy, en: t.khongDuocHuy });
+  } else {
+    const maGui = String(fd.get('ma_gui') ?? '');
+    form = { ly_do_id: String(fd.get('ly_do_id') ?? ''), ghi_chu: String(fd.get('ghi_chu') ?? '').trim().slice(0, 500) };
+    const ld = lyDo.find(l => l.id === form.ly_do_id) ?? null;
+    const giu = laUuid(maGui) ? await giuAnhHuy(k.client, cn.id, fd, maGui) : { duongDan: [], loi: [], loiEn: [] };
+    anhGiu = giu.duongDan;
+    maGuiGiu = laUuid(maGui) ? maGui : null;
+    if (!laUuid(maGui)) bao = kqHai(false, { vi: 'Thiếu mã gửi — tải lại trang rồi làm lại', en: 'Missing submission code — reload the page and try again' });
+    else if (!ld) bao = kqHai(false, { vi: t.canLyDo, en: t.canLyDo });
+    else if (ld.can_anh && anhGiu.length === 0) bao = kqHai(false, { vi: t.canAnh(ld.ten), en: t.canAnh(ld.ten) });
+    else if (giu.loi.length) bao = { ok: false, cau: giu.loi.join(' '), cauEn: giu.loiEn.join(' ') };
+    else {
+      const kq = await huyCaTang(k.client, { loId, maGui, lyDoId: ld.id, ghiChu: form.ghi_chu, anh: anhGiu });
+      if (kq.ok) return chuyenHuong(Astro, `${DS}/${loId}`, kq);
+      bao = kq;
+    }
+  }
+}
+
+let tv: TruyVetTang | null = null;
+let loiDoc = k.loiDoc;
+try {
+  const r = await docTruyVetTang(k.client, loId);
+  tv = r.tv;
+  if (!tv) loiDoc = r.cau ?? t.khongDoc;
+} catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
+
+const g = tv?.tang;
+const so = g ? soTangChu(g.so_tang) : '';
+const kgs = (x: number | null | undefined) => dinhDangKg(x, nn);
+const tien = (x: number | null | undefined) => dinhDangTien(x, nn);
+const pt = (x: number | null | undefined) => dinhDangPhanTram(x, 1, nn);
+const choCon = (ds: ChoCon[]) => ds.map(c => `${c.vi_tri} ${kgs(c.so_kg)} kg`).join(' · ');
+const haoKg = g && g.kg_ncc !== null && g.kg_repack !== null ? g.kg_ncc - g.kg_repack : null;
+const maGuiForm = maGuiGiu ?? crypto.randomUUID();
+const lyDoChon = lyDo.find(l => l.id === form.ly_do_id) ?? null;
+const nhanTT = g ? nhanKho(TINH_TRANG_BAN_NB, g.tinh_trang, nn) : '';
+---
+<Kho k={k} tieuDe={g ? t.tieuDe(so, g.ten_hang) : t.tdChung} huongDan="truy-vet-tang">
+  <p><a href={DS}>{t.veDs}</a></p>
+  <h1>{g ? t.tieuDe(so, g.ten_hang) : t.tdChung}{g && <> <span class={`nb-nhan ${g.tinh_trang === 'het' ? 'tat' : g.tinh_trang === 'dang_ban' ? 'song' : 'nhap'}`}>{nhanTT}</span></>}</h1>
+  <BaoKho bao={bao} loiDoc={loiDoc} />
+
+  {tv && g && (
+    <>
+      <section class="nb-the">
+        <h2 style="margin-top:0">{t.hanhTrinh}</h2>
+        <dl class="tv-dl">
+          <dt>{t.nhan}</dt>
+          <dd>{dinhDangNgay(g.ngay_nhan)}{g.ten_ncc && <> · {t.tuNcc(g.ten_ncc)}</>}{g.so_phieu_nhap && <> · {t.phieu} {g.phieu_nhap_id
+            ? <a href={`/noi-bo/kho/nhap/${g.phieu_nhap_id}`}>{g.so_phieu_nhap}</a> : g.so_phieu_nhap}</>} · {g.ma_lo}</dd>
+          <dt>{t.kgNcc}</dt><dd><b>{kgs(g.kg_ncc)} kg</b></dd>
+          <dt>{t.sauRepack}</dt>
+          <dd>{g.hao_repack_pt !== null
+            ? <><b>{kgs(g.kg_repack)} kg</b> <span class="kho-phu">({t.hao(kgs(haoKg), pt(g.hao_repack_pt))})</span></>
+            : <span class="kho-phu">{t.chuaRepack}</span>}</dd>
+          <dt>{t.ngayMo}</dt><dd>{g.ngay_mo ? dinhDangNgay(g.ngay_mo) : '—'}</dd>
+          <dt>{t.uXong}</dt><dd>{g.ngay_u_xong ? dinhDangNgay(g.ngay_u_xong) : '—'}</dd>
+          <dt>{t.han}</dt><dd>{dinhDangNgay(g.han_dung)}</dd>
+          <dt>{t.loc}</dt>
+          <dd>{tv.phien.length === 0 ? t.chuaLoc : tv.phien.map(p => (
+            <><a href={`/noi-bo/kho/pha-loc/${p.id}`}>{p.so_phieu}</a> · {dinhDangNgay(p.ngay_pha)}{p.trang_thai !== 'da_chot' && <> · {trangThaiKho(p.trang_thai, nn)[0]}</>}<br /></>
+          ))}</dd>
+          {g.kg_vao_loc !== null && <>
+            <dt>{t.vaoLoc}</dt><dd><b>{kgs(g.kg_vao_loc)} kg</b></dd>
+            <dt>{t.thit}</dt><dd>{kgs(g.kg_thit)} kg · {t.thuHoi} <b>{pt(g.thu_hoi_pt)}</b></dd>
+            {!!g.kg_phu_pham && <><dt>{t.phuPham}</dt><dd>{kgs(g.kg_phu_pham)} kg</dd></>}
+            {!!g.kg_bo && <><dt>{t.bo}</dt><dd>{kgs(g.kg_bo)} kg</dd></>}
+            <dt>{t.haoHut}</dt><dd>{kgs(g.kg_hao_hut)} kg</dd>
+          </>}
+          <dt>{t.daBan}</dt><dd><b>{kgs(g.kg_ban)} kg</b>{g.ban_pt !== null && <> <span class="kho-phu">({t.phanTramThit(pt(g.ban_pt))})</span></>}</dd>
+          {g.kg_bep > 0 && <><dt>{t.bep}</dt><dd>{kgs(g.kg_bep)} kg</dd></>}
+          {g.kg_huy > 0 && <><dt>{t.huy}</dt><dd>{kgs(g.kg_huy)} kg</dd></>}
+          <dt>{t.con}</dt><dd><b>{kgs(g.kg_con)} kg</b></dd>
+        </dl>
+        {g.ngay_het && <p class="kho-phu">{t.hetNgay(dinhDangNgay(g.ngay_het), g.so_ngay_ban)}</p>}
+      </section>
+
+      {tv.co_gia && (
+        <section class="nb-the">
+          <h2 style="margin-top:0">{t.gia}</h2>
+          <p class="tv-gia">
+            <span>{t.giaNcc}<br /><b>{tien(g.don_gia_ncc)}{t.moiKg}</b></span>
+            <span aria-hidden="true">→</span>
+            <span>{t.giaRepack}<br /><b>{tien(g.gia_von_repack_kg)}{t.moiKg}</b></span>
+            {g.gia_von_thit_kg !== null && <>
+              <span aria-hidden="true">→</span>
+              <span>{t.giaThit}<br /><b>{tien(g.gia_von_thit_kg)}{t.moiKg}</b></span>
+            </>}
+          </p>
+          <p class="kho-phu">{t.giaGiaiThich}</p>
+        </section>
+      )}
+
+      {tv.ton_tang.length > 0 && (
+        <section class="nb-the">
+          <h2 style="margin-top:0">{t.tangNguyen}</h2>
+          <p>{choCon(tv.ton_tang)}</p>
+        </section>
+      )}
+
+      <h2>{t.loRa}</h2>
+      {tv.lo_ra.length === 0 ? <p class="nb-rong">{t.chuaCoLoRa}</p> : (
+        <div class="kho-bang-khung">
+          <table class="kho-bang">
+            <thead><tr>
+              <th>{t.cotMon}</th><th>{t.cotLo}</th><th>{t.cotO}</th><th class="so">{t.cotRa}</th>
+              <th class="so">{t.daBan}</th><th class="so">{t.bep}</th><th class="so">{t.huy}</th>
+              <th>{t.cotCon}</th><th>{t.cotHan}</th>
+              {tv.co_gia && <th class="so">{t.cotGiaVon}</th>}
+            </tr></thead>
+            <tbody>
+              {tv.lo_ra.map(l => (
+                <tr>
+                  <td>{l.ten_hang}</td>
+                  <td>{l.ma_lo}</td>
+                  <td>{l.o_ma ? t.oChu(l.o_ma.so_o, l.o_ma.ma_can, l.o_ma.dang_giu) : '—'}</td>
+                  <td class="so">{kgs(l.kg_ra)}</td>
+                  <td class="so">{l.kg_ban ? kgs(l.kg_ban) : '—'}</td>
+                  <td class="so">{l.kg_bep ? kgs(l.kg_bep) : '—'}</td>
+                  <td class="so">{l.kg_huy ? kgs(l.kg_huy) : '—'}</td>
+                  <td>{l.con.length ? choCon(l.con) : <span class="kho-phu">{t.het}</span>}</td>
+                  <td>{dinhDangNgay(l.han_dung)}</td>
+                  {tv.co_gia && <td class="so">{tien(l.gia_von_kg)}</td>}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tv.phieu_huy.length > 0 && (
+        <>
+          <h2>{t.phieuHuy}</h2>
+          <ul>
+            {tv.phieu_huy.map(p => (
+              <li><a href={`/noi-bo/kho/xuat/${p.id}`}>{p.so_phieu}</a> · {kgs(p.so_kg)} kg · {trangThaiKho(p.trang_thai, nn)[0]}</li>
+            ))}
+          </ul>
+        </>
+      )}
+
+      {duocHuy && g.kg_con > 0 && lyDo.length > 0 && (
+        <details class="nb-the tv-huy" open={!!(fd && fd.get('viec') === 'huy_tang' && bao && !bao.ok) || undefined}>
+          <summary>{t.huyCaTang}</summary>
+          <p class="kho-phu">{t.huyGiaiThich(so, kgs(g.kg_con))}</p>
+          <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="ma_gui" value={maGuiForm} />
+            {anhGiu.map(d => <input type="hidden" name="anh_da_tai" value={d} />)}
+            <label class="nb-o"><span>{t.lyDo}</span>
+              <select name="ly_do_id" required>
+                <option value="">{t.chonLyDo}</option>
+                {lyDo.map(l => <option value={l.id} selected={l.id === form.ly_do_id}>{l.ten}</option>)}
+              </select></label>
+            <label class="nb-o"><span>{t.ghiChu}</span>
+              <input type="text" name="ghi_chu" value={form.ghi_chu} maxlength="500" /></label>
+            <label class="nb-o"><span>{t.anh}</span>
+              {anhGiu.length > 0 && <small>{t.daCoAnh(anhGiu.length)}</small>}
+              <input type="file" name="anh" accept="image/*" capture="environment" multiple
+                required={(lyDoChon?.can_anh ?? lyDo.every(l => l.can_anh)) && anhGiu.length === 0} /></label>
+            <button type="submit" name="viec" value="huy_tang" class="nb-nut kho-nut-xoa">{t.nutHuy}</button>
+          </form>
+        </details>
+      )}
+    </>
+  )}
+</Kho>
+
+<style>
+  .tv-dl { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1rem; margin: 0; }
+  .tv-dl dt { color: var(--muc-nhat); }
+  .tv-dl dd { margin: 0; }
+  .tv-gia { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem 1rem; margin: 0 0 .5rem; }
+  .tv-gia b { font-size: 1.15rem; }
+  .tv-huy summary { cursor: pointer; font-weight: 700; color: var(--do, #b3261e); }
+  @media (max-width: 480px) { .tv-dl { grid-template-columns: 1fr; } .tv-dl dd { margin-bottom: .4rem; } }
+</style>

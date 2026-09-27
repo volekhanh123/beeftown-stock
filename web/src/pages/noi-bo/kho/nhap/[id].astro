@@ -48,10 +48,11 @@ import {
 import { linkAnh } from '../../../../lib/kho/anh.ts';
 import { docCongNoMotPhieu } from '../../../../lib/kho/cong-no.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, docTien, homNayVn, kqHai, laUuid,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, dinhDangTien, docTien, homNayVn, kqHai, laUuid,
   trangThaiKho, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { CO_KHONG, type DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
+import { haoRepack } from '../../../../lib/kho/nhan-hang.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
@@ -172,6 +173,13 @@ const t = dichNB(nn, {
   phieu: { vi: 'phiếu', en: 'receipt' },
   thanhTienTam: { vi: 'Thành tiền tạm tính:', en: 'Estimated amount:' },
   vaoKho: { vi: 'vào kho ≈', en: 'into stock ≈' },
+  sauRepack: {
+    vi: (kg: string, pt: string) => `→ ${kg} kg sau repack (hao ${pt})`,
+    en: (kg: string, pt: string) => `→ ${kg} kg after repack (loss ${pt})`,
+  },
+  kgNcc: { vi: 'kg NCC', en: 'supplier kg' },
+  ngayMo: { vi: 'Ngày mổ (tảng)', en: 'Slaughter date (primal)' },
+  kgThuc: { vi: 'Kg sau repack', en: 'Weight after repack (kg)' },
   hoaDon: { vi: 'Hóa đơn', en: 'Invoice' },
   tonDauGhiChu: {
     vi: 'Tồn đầu kỳ: giá vốn ước tính/kg để báo cáo giá trị tồn có số. Không có hóa đơn, thuế hay chi phí.',
@@ -606,7 +614,7 @@ const huongDan = 'duyet-nhap';
       <h2>{t.hangNhap}</h2>
       {dongHien.map((d, i) => {
         const mh = tenMh.get(d.mat_hang_id);
-        const coChiTiet = !!(d.ngay_san_xuat || d.so_lo_ncc);
+        const coChiTiet = !!(d.ngay_san_xuat || d.so_lo_ncc || d.ngay_mo || d.so_kg_thuc);
         return (
           <div class="kho-dong-hang">
             <span class="so-thu-tu">{i + 1}</span>
@@ -632,6 +640,10 @@ const huongDan = 'duyet-nhap';
                   <input type="date" name={`d${i}_nsx`} value={d.ngay_san_xuat} /></label>
                 <label class="nb-o"><span>{t.soLoNcc}</span>
                   <input type="text" name={`d${i}_so_lo_ncc`} value={d.so_lo_ncc} autocapitalize="characters" /></label>
+                <label class="nb-o"><span>{t.ngayMo}</span>
+                  <input type="date" name={`d${i}_ngay_mo`} value={d.ngay_mo} /></label>
+                <label class="nb-o"><span>{t.kgThuc}</span>
+                  <input type="text" inputmode="decimal" name={`d${i}_kg_thuc`} value={d.so_kg_thuc} /></label>
               </div>
               <TruongThem dinhNghia={dnLo.filter(x => !x.bat_buoc)} giaTri={d.truong_them} dong={i} />
             </details>
@@ -700,7 +712,7 @@ const huongDan = 'duyet-nhap';
               <span class="so-thu-tu">{i + 1}</span>
               <p class="dg-ten">
                 <strong>{mh?.ten ?? '—'}</strong><br />
-                <span class="kho-phu">{kgs(d.so_kg)} kg{d.so_goi ? ` · ${d.so_goi} ${mh?.don_vi_goi ?? t.goi}` : ''} · {t.han} {dinhDangNgay(d.han_dung)}{d.so_lo_ncc ? ` · ${t.loNcc(d.so_lo_ncc)}` : ''}</span>
+                <span class="kho-phu">{kgs(d.so_kg)} {d.so_kg_thuc != null ? t.kgNcc : 'kg'}{d.so_kg_thuc != null && <> {t.sauRepack(kgs(d.so_kg_thuc), dinhDangPhanTram(haoRepack(d.so_kg, d.so_kg_thuc)?.pt, 1, nn))}</>}{d.so_goi ? ` · ${d.so_goi} ${mh?.don_vi_goi ?? t.goi}` : ''} · {t.han} {dinhDangNgay(d.han_dung)}{d.so_lo_ncc ? ` · ${t.loNcc(d.so_lo_ncc)}` : ''}</span>
               </p>
               <label class="nb-o"><span>{phieu.loai === 'ton_dau' ? t.giaVonUocTinh : t.donGiaKg}</span>
                 <input type="text" inputmode="numeric" name={`gia_${d.id}`} value={gf.gia[d.id] ?? ''}
@@ -819,7 +831,7 @@ const huongDan = 'duyet-nhap';
                     <><br /><span class="kho-phu">{dnLo.filter(x => d.truong_them?.[x.khoa] !== undefined).map(x => `${x.nhan}: ${d.truong_them[x.khoa] === true ? CO_KHONG.co[nn] : d.truong_them[x.khoa] === false ? CO_KHONG.khong[nn] : d.truong_them[x.khoa]}`).join(' · ')}</span></>
                   )}
                 </td>
-                <td class="so">{kgs(d.so_kg)}</td>
+                <td class="so">{kgs(d.so_kg)}{d.so_kg_thuc != null && <><br /><span class="kho-phu">{t.sauRepack(kgs(d.so_kg_thuc), dinhDangPhanTram(haoRepack(d.so_kg, d.so_kg_thuc)?.pt, 1, nn))}</span></>}</td>
                 <td class="so">{d.so_goi || '—'}</td>
                 <td class="so">{tien(d.don_gia_kg)}</td>
                 <td class="so">{tien(d.thanh_tien)}</td>

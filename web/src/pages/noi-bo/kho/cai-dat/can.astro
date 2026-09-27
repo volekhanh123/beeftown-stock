@@ -3,10 +3,17 @@
  * KHO — CÀI ĐẶT · ĐỒNG BỘ CÂN
  *
  * Kho là gốc: đưa mã cân, tên, giá bán/kg của danh mục sang cân in tem Dahua
- * TM-A. Cân không nối mạng với phần mềm kho nên đi đường USB:
+ * TM-A. Trang web không nói chuyện thẳng với cân (cân nằm trong WiFi của
+ * quán), nên file đi tay:
  *   1. Trên cân lưu dữ liệu ra USB → file JHSCALE/A_000.TMS
  *   2. Tải file lên đây → xem trước thêm / sửa / xoá
- *   3. Tải file mới về, chép đè vào USB, nạp vào cân
+ *   3. Tải file mới về, rồi nạp vào cân bằng USB, HOẶC chạy chương trình
+ *      public/kho/can-wifi/Nap-Can-WiFi.ps1 trên máy tính ở quán để gửi qua
+ *      WiFi (cổng TCP 33571, nội dung y như file USB — thử trên cân thật
+ *      26/09/2026). Qua WiFi cân chỉ THÊM và SỬA hàng, không xoá: có dòng
+ *      "Xoá khỏi cân" thì lần đó phải nạp bằng USB (USB thay cả danh sách).
+ *      Chương trình giữ bản vừa gửi ở Tài liệu › Beeftown Can › A_000.TMS để
+ *      lần sau tải lên thay cho bước 1.
  *
  * Máy chủ KHÔNG lưu file: bước xem trước mang file theo form dưới dạng base64,
  * bấm "Tải file" là dựng lại từ danh mục MỚI NHẤT lúc bấm. File có tên và mật
@@ -18,6 +25,7 @@ import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docMatHang } from '../../../../lib/kho/danh-muc.ts';
+import { hangChoCan } from '../../../../lib/kho/danh-muc-can.ts';
 import { cauLoiKho, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
 import {
   docFileCan, lapKeHoach, ghiFileCan, soChuSoMa, tenFileCan, sangBase64, tuBase64,
@@ -53,8 +61,33 @@ const t = dichNB(nn, {
   b3Xong: { vi: '. Nạp xong rút USB ra và in thử một tem.', en: '. When loading is done, unplug the USB stick and print a test label.' },
   chuaCoCN: { vi: 'Chưa có chi nhánh nào.', en: 'There are no branches yet.' },
   fileTuCan: { vi: 'File lưu từ cân', en: 'File saved from the scale' },
-  fileGoiY: { vi: 'File chỉ được đọc trong lần xem này, không lưu lên máy chủ.',
-              en: 'The file is only read for this preview; it is not stored on the server.' },
+  fileGoiY: { vi: 'File trong USB › JHSCALE, hoặc Tài liệu › Beeftown Can › A_000.TMS nếu nạp qua WiFi. File chỉ được đọc trong lần xem này, không lưu lên máy chủ.',
+              en: 'The file in USB › JHSCALE, or Documents › Beeftown Can › A_000.TMS if you load over WiFi. The file is only read for this preview; it is not stored on the server.' },
+  wf1: { vi: 'Nạp qua WiFi, không cần USB.', en: 'Load over WiFi, no USB stick needed.' },
+  wf2: { vi: ' Trên máy tính Windows cùng WiFi với cân, tải ', en: ' On a Windows computer on the same WiFi as the scale, download the ' },
+  wfLink: { vi: 'chương trình Nạp cân qua WiFi', en: 'Load scale over WiFi program' },
+  wf3: { vi: ' một lần.', en: ' once.' },
+  wfLanDau: { vi: 'Lần đầu:', en: 'First time:' },
+  wfLanDau2: { vi: ' làm bước 1 ở trên, chép file từ USB vào máy tính. Chuột phải vào chương trình → ',
+               en: ' do step 1 above and copy the file from the USB stick to the computer. Right-click the program → ' },
+  wfLanDau3: { vi: ' → chọn 2 → chọn file đó.', en: ' → choose 2 → pick that file.' },
+  wfMoiLan: { vi: 'Mỗi lần đồng bộ:', en: 'Each sync:' },
+  wfDuong: { vi: 'Tài liệu › Beeftown Can › A_000.TMS', en: 'Documents › Beeftown Can › A_000.TMS' },
+  wfMoiLan2: { vi: ' tải lên đây file ', en: ' upload the file ' },
+  wfMoiLan3: { vi: ' (thay cho bước 1), bấm Xem trước, tải file mới về.', en: ' here (instead of step 1), press Preview, download the new file.' },
+  wfChay: { vi: 'Chạy chương trình → Enter (chọn 1) → Enter để dùng file vừa tải về → Enter để gửi. Gọi thử một hàng trên cân.',
+            en: 'Run the program → Enter (choose 1) → Enter to use the file you just downloaded → Enter to send. Call up one item on the scale to check.' },
+  wfKhongXoa1: { vi: 'Qua WiFi cân chỉ thêm và sửa hàng, ', en: 'Over WiFi the scale only adds and updates items; ' },
+  wfKhongXoa2: { vi: 'không xoá được', en: 'it cannot delete them' },
+  wfKhongXoa3: { vi: '. Có hàng cần xoá thì lần đó nạp bằng USB — chương trình cũng sẽ báo. Cân đổi địa chỉ (xem trên cân: ',
+                 en: '. When an item has to be deleted, load by USB that time — the program will tell you too. If the scale\'s address changes (check on the scale: ' },
+  wfKhongXoa4: { vi: ' → 4 → 2) thì mở chương trình bằng Notepad, sửa dòng ', en: ' → 4 → 2), open the program in Notepad and edit the line ' },
+  canXoa: {
+    vi: (n: number) => `${n} hàng cần xoá khỏi cân.`,
+    en: (n: number) => `${n} ${n === 1 ? 'item needs' : 'items need'} to be deleted from the scale.`,
+  },
+  canXoa2: { vi: ' Nạp qua WiFi không xoá được hàng — lần này hãy nạp bằng USB (cân thay cả danh sách), rồi chạy chương trình Nạp cân qua WiFi, chọn 2 để ghi nhận.',
+             en: ' Loading over WiFi cannot delete items — load by USB this time (the scale replaces its whole list), then run the Load scale over WiFi program and choose 2 to record it.' },
   giuNgoaiKho: { vi: 'Giữ lại hàng đang có trên cân nhưng không có trong kho. Không tích thì những hàng đó bị xoá khỏi cân.',
                  en: 'Keep items that are on the scale but not in inventory. If unticked, those items are deleted from the scale.' },
   giuGio: { vi: 'Giữ nguyên giờ trên cân — bỏ phần giờ lưu trong file, để lúc nạp đồng hồ cân không bị chỉnh về giờ cũ.',
@@ -121,8 +154,10 @@ if (form && k.chiNhanh) {
     }
     const file = docFileCan(tep);
     const [caiDat, matHang] = await Promise.all([docCaiDat(k.client, k.chiNhanh.id), docMatHang(k.client)]);
+    // GĐ3 truy vết tảng: thêm mỗi ô mã một dòng, tên kèm số tảng đang giữ ô.
+    const hang = await hangChoCan(k.client, k.chiNhanh.id, matHang);
     const tuy = { giuHangNgoaiKho, giuGioCan, soChuSoMa: soChuSoMa(caiDat?.mau_ma_vach) };
-    const kh = lapKeHoach(file, matHang, tuy, nn);
+    const kh = lapKeHoach(file, hang, tuy, nn);
     if (viec === 'tai') {
       return new Response(new Blob([ghiFileCan(file, kh, tuy)]), {
         headers: {
@@ -168,6 +203,16 @@ const DEM: [LoaiDong, HaiThuTieng][] = [
       <li><strong>{t.b2}</strong>{t.b2File}<code>JHSCALE/A_000.TMS</code>{t.b2Usb}</li>
       <li><strong>{t.b3}</strong>{t.b3Chep}<kbd>Prog</kbd>, <kbd>↓ V3</kbd>{t.toiP4} <kbd>Accu/Confirm</kbd>, <kbd>Accu/Confirm</kbd>{t.b3Xong}</li>
     </ol>
+  </div>
+
+  <div class="nb-the">
+    <p style="margin-top:0"><strong>{t.wf1}</strong>{t.wf2}<a href="/kho/can-wifi/Nap-Can-WiFi.ps1" download>{t.wfLink}</a>{t.wf3}</p>
+    <ol class="dong-bo-buoc">
+      <li><strong>{t.wfLanDau}</strong>{t.wfLanDau2}<em>Run with PowerShell</em>{t.wfLanDau3}</li>
+      <li><strong>{t.wfMoiLan}</strong>{t.wfMoiLan2}<code>{t.wfDuong}</code>{t.wfMoiLan3}</li>
+      <li>{t.wfChay}</li>
+    </ol>
+    <p class="kho-phu">{t.wfKhongXoa1}<strong>{t.wfKhongXoa2}</strong>{t.wfKhongXoa3}<kbd>Prog</kbd>{t.wfKhongXoa4}<code>$IP_CAN</code>.</p>
   </div>
 
   {!k.chiNhanh ? <p class="nb-rong">{t.chuaCoCN}</p> : (
@@ -238,6 +283,12 @@ const DEM: [LoaiDong, HaiThuTieng][] = [
         </p>
         <button type="submit" class="nb-nut">{t.taiFile(tenFile)}</button>
       </form>
+
+      {keHoach.dem.xoa > 0 && (
+        <div class="nb-bao loi">
+          <p><strong>{t.canXoa(keHoach.dem.xoa)}</strong>{t.canXoa2}</p>
+        </div>
+      )}
 
       <div class="nb-bao luu-y">
         <p>{t.luuY1}</p>

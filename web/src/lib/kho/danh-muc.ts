@@ -23,6 +23,8 @@ import {
 import { dichCau } from '../cau-noi-bo.ts';
 import { docTruongThem, taoKhoa, tachLuaChon, type DinhNghiaTruong, type GiaTriTruong } from './truong-them.ts';
 import { docMaMisa } from './misa.ts';
+import { docChuBangU, luuBangU } from './tang.ts';
+import { docChuOMa, luuOMa } from './o-ma.ts';
 
 // -----------------------------------------------------------------------------
 // KIỂU
@@ -49,6 +51,8 @@ export interface MatHang {
   kho_toi_da_kg: number | null;
   /** Mã hàng bên MISA (0040); null = file MISA dùng mã nội bộ, cờ thiếu mã. */
   ma_misa?: string | null;
+  /** Theo dõi theo tảng (0048): mỗi tảng nhận vào là một lô có ngày mổ, số tảng. Chỉ món loại tảng. */
+  theo_tang?: boolean;
   truong_them: GiaTriTruong;
   dang_dung: boolean;
   thu_tu: number;
@@ -132,6 +136,11 @@ export interface GiaTriFormMatHang {
   kho_toi_thieu_kg: string; kho_toi_da_kg: string;
   /** Mã hàng bên MISA (0040). */
   ma_misa?: string;
+  /** Theo dõi theo tảng và bảng ủ dạng chữ "5:18, 10:14, 10" (0048). */
+  theo_tang?: boolean;
+  bang_u?: string;
+  /** Ô mã của phần cắt theo tảng, dạng "10011-10019" (0049). */
+  o_ma?: string;
   thu_tu: string; dang_dung: boolean; truong_them: GiaTriTruong; gia_tri_thu_hoi_kg: string;
 }
 
@@ -227,7 +236,7 @@ export async function luuDinhNghia(client: SupabaseClient, form: FormData, daCo:
 export async function docMatHang(client: SupabaseClient): Promise<MatHang[]> {
   const { data, error } = await client
     .from('kho_mat_hang')
-    .select('id, ma, ten, ten_phu, nhom, loai, dem_goi, don_vi_goi, han_dung_ngay, canh_bao_truoc_ngay, gia_ban_kg, xu_ly_mac_dinh, ma_can, ton_toi_thieu_kg, noi_de_sau_pha, kho_toi_thieu_kg, kho_toi_da_kg, ma_misa, truong_them, dang_dung, thu_tu')
+    .select('id, ma, ten, ten_phu, nhom, loai, dem_goi, don_vi_goi, han_dung_ngay, canh_bao_truoc_ngay, gia_ban_kg, xu_ly_mac_dinh, ma_can, ton_toi_thieu_kg, noi_de_sau_pha, kho_toi_thieu_kg, kho_toi_da_kg, ma_misa, theo_tang, truong_them, dang_dung, thu_tu')
     .order('loai').order('thu_tu').order('ten');
   if (error) throw error;
   return (data ?? []).map(r => ({
@@ -298,9 +307,21 @@ export async function luuMatHang(
   const maMisa = form.has('ma_misa') ? docMaMisa(form.get('ma_misa')) : null;
   if (maMisa === undefined) return kqHai(false, CAU.maMisa);
 
+  // Theo dõi theo tảng + bảng ủ (0048) — chỉ khi form có hai ô này. Đọc bảng ủ TRƯỚC khi ghi gì.
+  const theoTang = form.has('theo_tang') ? loai === 'tang' && form.get('theo_tang') === 'co' : undefined;
+  const bangU = form.has('bang_u') ? docChuBangU(String(form.get('bang_u') ?? '')) : null;
+  if (bangU?.loi) return kqHai(false, bangU.loi);
+  // Ô mã (0049) — chỉ phần cắt; đọc TRƯỚC khi ghi gì.
+  const oMa = form.has('o_ma') ? docChuOMa(String(form.get('o_ma') ?? '')) : null;
+  if (oMa?.loi) return kqHai(false, oMa.loi);
+  if (oMa && oMa.ma.length && loai !== 'phan_cat') {
+    return kqHai(false, { vi: 'Ô mã chỉ dành cho phần cắt.', en: 'Rotating codes are only for cuts.' });
+  }
+
   const thuTu = docSoNguyen(form.get('thu_tu'), 0, 99999);
   const dong = {
     ...(form.has('ma_misa') ? { ma_misa: maMisa } : {}),
+    ...(theoTang !== undefined ? { theo_tang: theoTang } : {}),
     ma, ten, loai,
     ten_phu: sHoacNull(form, 'ten_phu'),
     nhom: sHoacNull(form, 'nhom'),
@@ -341,6 +362,22 @@ export async function luuMatHang(
       const l = loiHai(error);
       return kqHai(false, { vi: `Đã lưu mặt hàng, nhưng chưa lưu được mức kho lạnh: ${l.vi}`,
                             en: `The item was saved, but the cold store levels were not: ${l.en}` });
+    }
+  }
+
+  if (oMa && id && (oMa.ma.length || cu)) {
+    const kq = await luuOMa(client, id, oMa.ma);
+    if (!kq.ok) {
+      return kqHai(false, { vi: `Đã lưu mặt hàng, nhưng chưa lưu được ô mã: ${kq.cau}`,
+                            en: `The item was saved, but the rotating codes were not: ${kq.cauEn ?? dichCau('en', kq.cau)}` });
+    }
+  }
+
+  if (bangU && id) {
+    const kq = await luuBangU(client, id, bangU.dong);
+    if (!kq.ok) {
+      return kqHai(false, { vi: `Đã lưu mặt hàng, nhưng chưa lưu được bảng ủ: ${kq.cau}`,
+                            en: `The item was saved, but the aging table was not: ${kq.cau}` });
     }
   }
 

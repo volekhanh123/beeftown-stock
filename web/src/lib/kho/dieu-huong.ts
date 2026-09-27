@@ -60,6 +60,8 @@ export const MUC_KHO: MucKho[] = [
   { ma: 'quet', ten: { vi: 'Quét nhãn', en: 'Scan label' }, ngan: { vi: 'Quét', en: 'Scan' }, link: '/noi-bo/kho/quet', bieuTuong: 'quet', quyen: ['xem'] },
   { ma: 'ton', ten: { vi: 'Tồn kho', en: 'Stock on hand' }, ngan: { vi: 'Tồn kho', en: 'Stock' }, link: '/noi-bo/kho/ton', bieuTuong: 'ton', quyen: ['xem'], dem: ['het_han'],
     khop: ['/noi-bo/kho/the-kho'] },
+  // 0048: món theo dõi theo tảng — tảng đang ủ / sẵn sàng lóc.
+  { ma: 'tang', ten: { vi: 'Tảng · ủ', en: 'Primals · aging' }, link: '/noi-bo/kho/tang', bieuTuong: 'ton', quyen: ['xem'] },
   // Nhận hàng: màn chỉ kg của người nhận hàng (thủ kho). Số đỏ = phiếu của
   // chính mình còn nháp hoặc bị trả về.
   { ma: 'nhan_hang', ten: { vi: 'Nhận hàng', en: 'Receive goods' }, link: '/noi-bo/kho/nhan-hang', bieuTuong: 'nhap', quyen: ['nhap'],
