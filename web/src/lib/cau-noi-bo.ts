@@ -125,6 +125,15 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'p_muc phải là một mảng': 'p_muc must be an array',
   'Ngôn ngữ dịch phải là en hoặc ko': 'The translation language must be en or ko',
   'Thiếu bam của câu gốc': 'The source sentence hash (bam) is missing',
+
+  // 0045 — ba hàm definer của CRM tự kiểm vai
+  'Chỉ chủ sở hữu, quản lý hoặc thu ngân của chi nhánh này mới ghi được lượt ghé và điểm tích lũy':
+    'Only the owner, a manager or a cashier of this branch can record visits and loyalty points',
+  'Không ghi được lượt ghé dưới tên một nhân sự khác': 'A visit cannot be recorded under another staff member’s name',
+  'Chỉ chủ sở hữu, quản lý hoặc thu ngân mới tra cứu hay tạo được hồ sơ khách':
+    'Only the owner, a manager or a cashier can look up or create customer records',
+  'Chỉ chủ sở hữu, quản lý hoặc marketing của chi nhánh này mới xếp được tin gửi khách':
+    'Only the owner, a manager or marketing staff of this branch can queue messages to customers',
 };
 
 /**
