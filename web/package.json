@@ -11,7 +11,8 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "wrangler dev",
-    "deploy": "npm run quet && astro build && wrangler deploy",
+    "deploy": "node kiem-tra/truoc-deploy.mjs && npm run quet && astro build && wrangler deploy",
+    "deploy:khan-cap": "node kiem-tra/truoc-deploy.mjs --khan-cap && npm run quet && astro build && wrangler deploy",
     "kiem-tra": "astro check",
     "quet": "node kiem-tra/quet-chuoi-cam.mjs"
   },

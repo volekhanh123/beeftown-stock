@@ -652,6 +652,17 @@ const CAU_DB: ReadonlyArray<HaiThuTieng> = [
     en: 'The last update failed — press "Update now" to try again.' },
   { vi: 'Đang nhận hóa đơn iPOS nhưng CHƯA trừ kho — còn dùng đếm quầy làm số bán.',
     en: 'Receiving iPOS invoices but NOT deducting stock yet — the counter count is still the sales figure.' },
+
+  // 0054_kho_may_quay — máy quầy: mã giảm giá cận date, báo cáo bán
+  { vi: 'Chỉ quản lý hoặc chủ được tạo mã giảm giá', en: 'Only a manager or the owner can create discount codes' },
+  { vi: 'Chỉ quản lý hoặc chủ được sửa mã giảm giá', en: 'Only a manager or the owner can change discount codes' },
+  { vi: 'Không thấy món này, hoặc món đã ngừng dùng', en: 'Item not found, or it is no longer in use' },
+  { vi: 'Không thấy mã giảm giá này', en: 'Discount code not found' },
+  { vi: 'Mã cân là số, tối đa 6 chữ số', en: 'A scale code is a number of at most 6 digits' },
+  { vi: 'Hết mã trống để tạo mã giảm giá — nhập mã tay',
+    en: 'No free code left for a discount code — enter a code by hand' },
+  { vi: 'Báo cáo bán có doanh thu — chỉ chủ, quản lý, kế toán xem được',
+    en: 'The sales report shows revenue — only the owner, managers and accountants can view it' },
 ];
 
 /** Câu cố định: đúng từng chữ. */
@@ -717,6 +728,17 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
     en: 'Slot {1} (code {2}): the primal\'s lot did not have enough — deducted by nearest expiry' },
   { vi: 'Ô % (mã %): ô chưa gắn tảng lúc bán — đã trừ theo hạn gần nhất',
     en: 'Slot {1} (code {2}): no primal held the slot at the time of sale — deducted by nearest expiry' },
+  // 0054 — mã giảm giá cận date (đứng sau câu "Mã cân % đang là ô mã…" của 0049: "Mã %" cũng khớp câu đó)
+  { vi: 'Mã % đang là mã cân của một món — chọn mã khác', en: 'Code {1} is already the scale code of an item — choose another code' },
+  { vi: 'Mã % đang là ô mã của một phần cắt theo tảng — chọn mã khác',
+    en: 'Code {1} is already a rotating code of a per-primal cut — choose another code' },
+  { vi: 'Mã % đang là mã giảm giá — chọn mã ô khác', en: 'Code {1} is already a discount code — choose another rotating code' },
+  { vi: 'Mã cân % đang là mã giảm giá — chọn mã khác', en: 'Scale code {1} is already a discount code — choose another code' },
+  { vi: '"%" chưa có giá bán/kg — điền giá ở Mặt hàng trước',
+    en: '"{1}" has no selling price per kg — fill in the price in Items first' },
+  { vi: '"%" không bán qua cân (chưa có mã cân) — mã giảm giá chỉ dùng cho hàng cân',
+    en: '"{1}" is not sold by the scale (no scale code) — discount codes are only for weighed items' },
+  { vi: 'Mức giảm từ 5%% đến 90%%', en: 'The discount must be from 5% to 90%' },
   // 0050 — repack, truy vết tảng, huỷ cả tảng
   { vi: 'Dòng % (%): kg sau repack không hợp lệ', en: 'Line {1} ({2}): the weight after repack is not valid' },
   { vi: 'Dòng % (%): kg sau repack phải lớn hơn 0, tối đa 3 số lẻ',

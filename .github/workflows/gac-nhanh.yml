@@ -1,0 +1,32 @@
+# Gác nhanh — mỗi lần đẩy một nhánh (chưa cần mở PR): chỉ kiểm số migration, khoảng 30 giây.
+#
+# Không cài thư viện, không chạy test: rẻ tới mức chạy được cho mọi lần đẩy. Bắt sớm lỗi hay gặp
+# nhất khi làm song song — hai nhánh cùng lấy một số migration, hoặc sửa migration đã có trên main —
+# trước khi PR được mở. Toàn bộ kiểm thử chạy ở workflow "Kiểm thử" khi mở PR.
+
+name: Gác số migration
+
+on:
+  push:
+    branches-ignore: [main]
+    paths:
+      - 'crm/supabase/migrations/**'
+      - 'crm/test/kiem-migration.mjs'
+      - '.github/workflows/gac-nhanh.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  gac:
+    name: Số migration hợp lệ, không trùng nhánh khác
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # cần main và mọi nhánh khác để so số
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: web/.node-version
+      - run: node crm/test/kiem-migration.mjs --so-voi origin/main --canh-bao-nhanh-khac

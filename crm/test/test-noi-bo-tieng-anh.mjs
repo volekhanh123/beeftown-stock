@@ -69,8 +69,9 @@ nhom('1 · CÂU LỖI DATABASE PHẦN CRM CÓ BẢN TIẾNG ANH');
       if (VIET.test(c) && !cau.has(c)) cau.set(c, f);
     }
   }
-  // Postgres thay % bằng giá trị; thử với một giá trị mẫu.
-  const thieu = [...cau.keys()].filter(c => !dichDuoc(c.replace(/%/g, '12')));
+  // Postgres thay % bằng giá trị (%% là dấu phần trăm); thử với một giá trị mẫu.
+  const mau = c => c.split('%%').map(p => p.replace(/%/g, '12')).join('%');
+  const thieu = [...cau.keys()].filter(c => !dichDuoc(mau(c)));
   ok(`${cau.size} câu raise exception của ${tep.length} migration CRM đều có bản tiếng Anh`,
      cau.size > 40 && thieu.length === 0,
      thieu.map(c => `[${cau.get(c).slice(0, 4)}] ${c}`).join(' | '));
