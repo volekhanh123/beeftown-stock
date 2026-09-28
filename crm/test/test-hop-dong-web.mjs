@@ -181,8 +181,10 @@ const CHAY_DA_DANG_NHAP = [
   // của lô, giao / giải phóng ô qua RPC — chỉ gọi từ /noi-bo/kho bằng client của nhân sự. Không tiền.
   'web/src/lib/kho/o-ma.ts',
   // Danh mục đưa xuống cân (GĐ3): mặt hàng + ô mã + ô đang giao — gọi từ cai-dat/can và can-app bằng
-  // client của quản lý đã đăng nhập. Chỉ đọc qua o-ma.ts, không tự from() bảng nào.
+  // client của quản lý đã đăng nhập. Chỉ đọc qua o-ma.ts và ma-giam.ts, không tự from() bảng nào.
   'web/src/lib/kho/danh-muc-can.ts',
+  // Mã giảm giá cận date (0054): đọc kho_ma_giam — chỉ gọi qua hangChoCan ở trên, cùng client đã đăng nhập.
+  'web/src/lib/kho/ma-giam.ts',
   // Gửi tin Zalo ZBS (0047): cron (src/worker.ts) đăng nhập tài khoản máy may_zalo (client anon
   // riêng + signInWithPassword, sau đó là authenticated) rồi mới gọi các RPC zalo_* của máy.
   // Không bao giờ chạy vai anon: thiếu tài khoản máy thì không gọi database nào.

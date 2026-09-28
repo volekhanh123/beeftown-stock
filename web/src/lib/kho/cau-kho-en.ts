@@ -652,6 +652,17 @@ const CAU_DB: ReadonlyArray<HaiThuTieng> = [
     en: 'The last update failed — press "Update now" to try again.' },
   { vi: 'Đang nhận hóa đơn iPOS nhưng CHƯA trừ kho — còn dùng đếm quầy làm số bán.',
     en: 'Receiving iPOS invoices but NOT deducting stock yet — the counter count is still the sales figure.' },
+
+  // 0054_kho_may_quay — mã giảm giá cận date, báo cáo bán
+  { vi: 'Chỉ quản lý hoặc chủ được tạo mã giảm giá', en: 'Only a manager or the owner can create discount codes' },
+  { vi: 'Chỉ quản lý hoặc chủ được sửa mã giảm giá', en: 'Only a manager or the owner can change discount codes' },
+  { vi: 'Không thấy món này, hoặc món đã ngừng dùng', en: 'This item was not found, or it is no longer in use' },
+  { vi: 'Không thấy mã giảm giá này', en: 'Discount code not found' },
+  { vi: 'Mã cân là số, tối đa 6 chữ số', en: 'The scale code must be a number with up to 6 digits' },
+  { vi: 'Hết mã trống để tạo mã giảm giá — nhập mã tay',
+    en: 'No free codes left to create a discount code — enter a code manually' },
+  { vi: 'Báo cáo bán có doanh thu — chỉ chủ, quản lý, kế toán xem được',
+    en: 'The sales report shows revenue — only the owner, managers and accountants can view it' },
 ];
 
 /** Câu cố định: đúng từng chữ. */
@@ -732,6 +743,9 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Không tìm thấy tảng, hoặc tài khoản không được xem', en: 'Primal not found, or this account cannot view it' },
   { vi: 'Lô % không thuộc tảng nào (món không theo dõi theo tảng)',
     en: 'Lot {1} does not belong to any primal (the item is not tracked per primal)' },
+  //   · ghi chú phiếu huỷ khi huỷ cả tảng
+  { vi: 'Huỷ cả tảng #%: %', en: 'Write-off of whole primal #{1}: {2}' },
+  { vi: 'Huỷ cả tảng #%', en: 'Write-off of whole primal #{1}' },
   // 0048 — theo dõi theo tảng
   { vi: 'Dòng % (%): ngày mổ không hợp lệ', en: 'Line {1} ({2}): the slaughter date is not valid' },
   { vi: 'Dòng % (%): ngày mổ không được sau ngày nhận hàng', en: 'Line {1} ({2}): the slaughter date cannot be after the receiving date' },
@@ -1262,6 +1276,23 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Đơn % %', en: 'Order {1}: {2}' },
   { vi: 'Nhập từ %', en: 'Received from {1}' },
   { vi: 'Pha lóc %', en: 'Butchery of {1}' },
+
+  // 0054_kho_may_quay — mã giảm giá cận date. Đứng sau 0049: "Mã % đang là ô mã…" cũng khớp "Mã cân % đang là ô mã…".
+  { vi: 'Mã % đang là mã cân của một món — chọn mã khác',
+    en: 'Code {1} is already the scale code of an item — choose another code' },
+  { vi: 'Mã % đang là ô mã của một phần cắt theo tảng — chọn mã khác',
+    en: 'Code {1} is already a rotating code of a per-primal cut — choose another code' },
+  { vi: 'Mã % đang là mã giảm giá — chọn mã ô khác', en: 'Code {1} is already a discount code — choose another rotating code' },
+  { vi: 'Mã cân % đang là mã giảm giá — chọn mã khác', en: 'Scale code {1} is already a discount code — choose another code' },
+  { vi: '"%" chưa có giá bán/kg — điền giá ở Mặt hàng trước',
+    en: '"{1}" has no sale price/kg yet — fill in the price in Items first' },
+  { vi: '"%" không bán qua cân (chưa có mã cân) — mã giảm giá chỉ dùng cho hàng cân',
+    en: '"{1}" is not sold through the scale (it has no scale code) — discount codes are only for items weighed on the scale' },
+  { vi: 'Mức giảm từ 5%% đến 90%%', en: 'The discount must be from 5% to 90%' },
+  //   · kho_bat_ma_giam trả về; giá trị thứ hai của câu bật gồm cả dấu phần trăm (30%)
+  { vi: 'Đã bật mã % (giảm %).', en: 'Turned on discount code {1} ({2} off).' },
+  { vi: 'Đã tắt mã %. Lần gửi xuống cân sau sẽ bỏ hàng này (qua WiFi thì còn nằm trên cân, nạp USB để xoá hẳn).',
+    en: 'Turned off discount code {1}. The next send to the scale will drop this item (over WiFi it stays on the scale — load by USB to delete it completely).' },
 ];
 
 type Mau = readonly [RegExp, (m: RegExpMatchArray) => string];

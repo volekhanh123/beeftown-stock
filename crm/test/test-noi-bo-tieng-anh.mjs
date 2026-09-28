@@ -56,9 +56,9 @@ console.log('='.repeat(60));
 // ===========================================================================
 nhom('1 · CÂU LỖI DATABASE PHẦN CRM CÓ BẢN TIẾNG ANH');
 {
-  // Migration phần kho (0017–0024, 0029_kho, 0030–0035 và các số sau của nhánh
-  // kho) chưa có tiếng Anh — kiểm khi làm đợt kho.
-  const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042|0044_kho)/;
+  // Migration phần kho kiểm ở test-kho-tieng-anh.mjs (chặt hơn: cả câu hàm kho trả về). Danh
+  // sách giữ giống hệt bên đó — migration kho mới (tên 00NN_kho_…) thêm vào cả hai.
+  const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042|0044_kho|0048_kho|0049_kho|0050_kho|0051_kho|0054_kho)/;
   const tep = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql') && !KHO.test(f)).sort();
   const cau = new Map();
   for (const f of tep) {
@@ -69,8 +69,9 @@ nhom('1 · CÂU LỖI DATABASE PHẦN CRM CÓ BẢN TIẾNG ANH');
       if (VIET.test(c) && !cau.has(c)) cau.set(c, f);
     }
   }
-  // Postgres thay % bằng giá trị; thử với một giá trị mẫu.
-  const thieu = [...cau.keys()].filter(c => !dichDuoc(c.replace(/%/g, '12')));
+  // Postgres thay % bằng giá trị (%% là dấu phần trăm); thử với một giá trị mẫu.
+  const mau = c => c.split('%%').map(p => p.replace(/%/g, '12')).join('%');
+  const thieu = [...cau.keys()].filter(c => !dichDuoc(mau(c)));
   ok(`${cau.size} câu raise exception của ${tep.length} migration CRM đều có bản tiếng Anh`,
      cau.size > 40 && thieu.length === 0,
      thieu.map(c => `[${cau.get(c).slice(0, 4)}] ${c}`).join(' | '));
