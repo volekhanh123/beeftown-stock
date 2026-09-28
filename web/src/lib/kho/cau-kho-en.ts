@@ -743,6 +743,9 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Không tìm thấy tảng, hoặc tài khoản không được xem', en: 'Primal not found, or this account cannot view it' },
   { vi: 'Lô % không thuộc tảng nào (món không theo dõi theo tảng)',
     en: 'Lot {1} does not belong to any primal (the item is not tracked per primal)' },
+  //   · ghi chú phiếu huỷ khi huỷ cả tảng
+  { vi: 'Huỷ cả tảng #%: %', en: 'Write-off of whole primal #{1}: {2}' },
+  { vi: 'Huỷ cả tảng #%', en: 'Write-off of whole primal #{1}' },
   // 0048 — theo dõi theo tảng
   { vi: 'Dòng % (%): ngày mổ không hợp lệ', en: 'Line {1} ({2}): the slaughter date is not valid' },
   { vi: 'Dòng % (%): ngày mổ không được sau ngày nhận hàng', en: 'Line {1} ({2}): the slaughter date cannot be after the receiving date' },
@@ -1286,6 +1289,10 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: '"%" không bán qua cân (chưa có mã cân) — mã giảm giá chỉ dùng cho hàng cân',
     en: '"{1}" is not sold through the scale (it has no scale code) — discount codes are only for items weighed on the scale' },
   { vi: 'Mức giảm từ 5%% đến 90%%', en: 'The discount must be from 5% to 90%' },
+  //   · kho_bat_ma_giam trả về; giá trị thứ hai của câu bật gồm cả dấu phần trăm (30%)
+  { vi: 'Đã bật mã % (giảm %).', en: 'Turned on discount code {1} ({2} off).' },
+  { vi: 'Đã tắt mã %. Lần gửi xuống cân sau sẽ bỏ hàng này (qua WiFi thì còn nằm trên cân, nạp USB để xoá hẳn).',
+    en: 'Turned off discount code {1}. The next send to the scale will drop this item (over WiFi it stays on the scale — load by USB to delete it completely).' },
 ];
 
 type Mau = readonly [RegExp, (m: RegExpMatchArray) => string];
