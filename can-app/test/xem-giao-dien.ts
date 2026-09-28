@@ -5,12 +5,14 @@
  *     cd can-app && npx bun test/xem-giao-dien.ts
  *
  * In ra đường dẫn; mở bằng trình duyệt. Ctrl+C để tắt.
+ * `--vai nhan_vien_quay` (hoặc ke_toan, thu_kho…) để xem như vai đó; mặc định quản lý.
  */
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { UngDung } from '../src/nghiep-vu.ts';
+import { UngDung, quyenCuaVai } from '../src/nghiep-vu.ts';
+import { taoKhoGia } from './kho-gia.ts';
 import { moMayChu } from '../src/may-chu.ts';
 
 const KHUON = 'PLU\t{1}\t{2}\t\t1\t{5}\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t9\t{15}\t\t\t\t\t\t\t\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t0\tx\t0\t0\t0\t';
@@ -25,6 +27,8 @@ const LAS = [
 const file = new TextEncoder().encode(['ECS\tVER\tV3.14E8\t', '', 'DWL\tPLU\t',
   plu(1, '10001', '845,0', 'Lõi vai bò Mỹ'), plu(2, '10002', '876,0', 'Sườn bò Hàn Quốc'),
   plu(3, '10003', '695,0', 'Gầu bò'), plu(5, '10005', '516,0', 'Ba chỉ bò cuộn'),
+  plu(6, '90001', '945,0', 'Steak Ribeye Angus -30%'), plu(7, '10071', '1350,0', 'Steak Ribeye Angus #0142'),
+  plu(8, '10072', '1350,0', 'Steak Ribeye Angus'),
   'END\tPLU\t', '',
   'DWL\tLAB\t', 'LAB\t28\tBEEFTOWN\t1\t58\t40\tĐơn giá\tTrọng Lượng\t\tThành Tiền\tNgày đóng gói\t\t\t\t\t\t\t\tBEEFTOWN\t\t\t\t1\tHSD\t', ...LAS, 'LAE\t', 'END\tLAB\t', '',
   'DWL\tSCP\t', 'SCP\t0\t1\t1\t', 'SCP\t0\t2\t2\t', 'SCP\t0\t3\t3\t', 'SCP\t0\t5\t5\t', 'END\tSCP\t', '',
@@ -35,7 +39,13 @@ const can = net.createServer(s => { s.on('data', () => {}); s.on('end', () => s.
 await new Promise<void>(x => can.listen(0, '127.0.0.1', () => x()));
 
 const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'beeftown-can-xem-'));
+const iVai = process.argv.indexOf('--vai');
+const vai = iVai > 0 ? process.argv[iVai + 1] : 'quan_ly';
+const cn = { id: 'cn1', ma: 'q1', ten: 'Beeftown Hàm Nghi' };
 const ud = new UngDung({ cauHinh: path.join(tam, 'a'), duLieu: path.join(tam, 'd') }, {
+  kho: taoKhoGia().kho,
+  nguoi: { email: vai + '@beeftown.vn', hoTen: vai === 'quan_ly' ? 'Quản lý (xem thử)' : 'Nhân viên (xem thử)', vaiTro: vai,
+           chiNhanh: cn, cacChiNhanh: [cn], quyen: quyenCuaVai(vai) },
   danhMuc: async () => ({ mauMaVach: '2XCCCCCWWWWWK', matHang: [
     { ma: 'LOI-VAI', ma_can: '10001', ten: 'Lõi vai bò Mỹ', gia_ban_kg: 850000, dang_dung: true },
     { ma: 'GAU-BO', ma_can: '10003', ten: 'Gầu bò', gia_ban_kg: 695000, dang_dung: true },

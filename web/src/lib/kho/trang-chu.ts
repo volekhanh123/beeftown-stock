@@ -1,9 +1,9 @@
 /**
  * KHO — TÍNH TOÁN CHO TRANG CHỦ (thuần, test được bằng Node)
  *
- * "Xếp ra bán trước": chủ nhà hàng không giảm giá hàng sắp hết hạn — thay vào
- * đó nhân viên quầy xếp gói hạn gần lên phía trước để khách lấy trước. Phần
- * mềm chỉ ra gói nào: mỗi món ở quầy, lô còn hạn gần nhất.
+ * "Xếp ra bán trước": nhân viên quầy xếp gói hạn gần lên phía trước để khách
+ * lấy trước. Phần mềm chỉ ra gói nào: mỗi món ở quầy, lô còn hạn gần nhất.
+ * (Từ 0054 có thêm mã giảm giá cận date — lib/kho/ma-giam.ts, Beeftown Cân.)
  */
 
 import type { DongTon } from './ton.ts';

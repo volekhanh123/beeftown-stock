@@ -98,8 +98,9 @@ migration.
 | `/noi-bo/kho/bao-cao` | Trung tâm báo cáo (GĐ8c, mục 3n): mốc nhanh, tóm tắt kỳ, thẻ báo cáo ẩn theo quyền |
 | `/noi-bo/kho/cai-dat/quyen` | Ai làm được gì — bảng vai × việc bằng lời (mục 3n) |
 
-"Xếp ra bán trước" (`goiYXepQuay` trong `lib/kho/trang-chu.ts`): Beeftown **không giảm giá**
-hàng sắp hết hạn. Thay vào đó, mỗi món ở quầy chỉ ra lô còn hạn gần nhất để xếp lên trước.
+"Xếp ra bán trước" (`goiYXepQuay` trong `lib/kho/trang-chu.ts`): mỗi món ở quầy chỉ ra lô còn hạn gần
+nhất để xếp lên trước. Từ 0054 chủ cho **giảm giá hàng cận date bằng mã cân riêng** (mục 3p) — xếp trước
+vẫn là việc đầu tiên, mã giảm là thêm.
 
 Link dùng chung giữa các trang (trang nhận phải đọc được các tham số này):
 
@@ -828,6 +829,31 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   **lúc bán** (`kho_ipos_lo_cua_o`) và trừ đúng lô đó ở quầy (`kho_ipos_lay_lo_cua_lo`); lô không đủ / ô chưa
   gắn lô → trừ theo hạn gần nhất như cũ, `kho_ipos_dong.lech_o` + câu lý do, màn Bán hàng iPOS hiện "Lệch ô".
   Ghép lại bằng `kho_ipos_gan_ma_v2` bỏ ô. `kho_v_ipos_dong` thêm `so_o`, `ma_can_o`, `so_tang`, `lech_o`.
+
+## 3p. Máy quầy — Beeftown Cân: bảng quầy · mã giảm giá cận date · tảng & ô · báo cáo (migration 0054)
+
+Beeftown Cân (`can-app/`) thành phần mềm của quầy: đăng nhập bằng **mọi vai kho** (quyền `xem`), thẻ hiện
+theo vai. Gửi xuống cân, sửa tem, tạo mã giảm: quản lý / chủ (`danh_muc`); báo cáo doanh thu: `xem_gia`.
+
+- **Mã giảm giá (`kho_ma_giam`)**: FABi không đọc giá trên tem (mã vạch chỉ có mã hàng + trọng lượng), nên mỗi
+  mức giảm của một món là **một mã cân riêng**. `kho_luu_ma_giam(món, %, mã?)` (danh_muc; mã trống → mã
+  trống nhỏ nhất từ 90001), `kho_bat_ma_giam`. Giá = `kho_gia_giam` / `giaGiam` (`lib/kho/ma-giam.ts`) — làm
+  tròn 1.000 đ, hai bản phải giống nhau. Mã không trùng mã món / ô mã (trigger ba phía). `hangChoCan` thêm
+  mỗi mã đang bật một dòng "<tên> -30%" giá đã giảm; tắt → bỏ khỏi cân. Trên FABi tạo món **mã = mã cân,
+  giá = giá đã giảm**. Bán: `kho_ipos_ghi_dong` nhận mã giảm như ô mã (mã món iPOS chưa ghép trùng mã giảm,
+  hoặc nhãn in bằng mã giảm) → trừ đúng món theo hạn gần nhất, ghi `kho_ipos_dong.ma_giam_id`; mã đã tắt vẫn
+  nhận (tem cũ). `kho_mat_hang_theo_ma_can` nhận cả mã giảm (quét đếm quầy / kiểm kê).
+  `kho_v_ipos_dong` thêm `ma_giam_id`, `giam_pt`, `ma_can_giam`.
+- **Bảng quầy** `kho_bang_quay(cn)` (quyền xem, một lần gọi, không giá vốn): lô ở quầy (hạn, số tảng), món,
+  gợi ý mang ra (`kho_goi_y_ra_quay`), mã giảm đang bật, yêu cầu chưa xong, hàng đang mang ra, phiếu huỷ chờ
+  duyệt, lý do huỷ. Máy gộp ở `can-app/src/quay.ts`: hết hạn → phiếu huỷ (ảnh tải lên `kho-chung-tu`, rồi
+  `kho_tao_phieu_xuat`); cận date → xếp trước + "cân lại bằng PLU n · mã 90001"; dưới mức → `kho_tao_yeu_cau`.
+- **Tảng & ô** `kho_can_o_ma(cn)` (quyền xem — NV quầy không đọc được phiên lóc nên hàm SECURITY DEFINER):
+  mỗi ô — tảng đang giữ, lóc ra / bán / huỷ / còn, số lần bán đúng ô và lệch ô. Máy so tên trên cân với tên
+  kho muốn → báo "cân chưa đổi tên theo tảng".
+- **Báo cáo bán theo giờ** `kho_bao_cao_ban_gio(cn, từ, đến)` (xem_gia): ngày × giờ × món từ dòng iPOS đã trừ
+  kho; phần bán giảm giá (kg, doanh thu, tiền đã giảm ước theo giá hiện tại) và **giảm sớm** — lô đã trừ còn hạn
+  xa hơn mức cảnh báo (bắt giảm giá gói còn tươi); lệch ô. Máy thêm bảng theo tảng (`kho_bao_cao_tang`).
 
 ## 4. Cài như app (PWA)
 
