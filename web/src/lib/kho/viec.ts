@@ -11,6 +11,7 @@
  */
 
 import type { HaiThuTieng, NgonNguNB } from './chung.ts';
+import { congNgay, gioVnTuMs, homNayVn } from '../gio-vn.ts';
 
 export type NhomSuKien = 'van_hanh' | 'nhac_nho' | 'he_thong';
 
@@ -230,7 +231,7 @@ export function cauSuKien(su: SuKien, nn: NgonNguNB = 'vi'): CauSuKien {
       const pt = soNguyen(e.so);
       const lechKg = soNguyen(e.phu);
       const t = new Date(e.luc).getTime();
-      const ngay = (n: number) => Number.isFinite(t) ? new Date(t + 7 * 3600000 + n * 86400000).toISOString().slice(0, 10) : null;
+      const ngay = (n: number) => Number.isFinite(t) ? congNgay(homNayVn(t), n) : null;
       const nhieu = (lechKg ?? pt ?? 0) >= 0;
       const mon = e.ten || e.ma || c({ vi: 'một mặt hàng', en: 'an item' });
       const lechPt = pt !== null && Number.isFinite(pt)
@@ -315,6 +316,7 @@ export function laViec(e: SuKien): boolean {
 export function thoiGianTruoc(luc: string, bayGio = new Date(), nn: NgonNguNB = 'vi'): string {
   const c = (x: HaiThuTieng) => x[nn];
   const t = new Date(luc).getTime();
+  if (!Number.isFinite(t)) return '—';
   const phut = Math.round((bayGio.getTime() - t) / 60000);
   if (phut < 1) return c({ vi: 'vừa xong', en: 'just now' });
   if (phut < 60) return c({ vi: `${phut} phút trước`, en: `${phut} min ago` });
@@ -323,6 +325,6 @@ export function thoiGianTruoc(luc: string, bayGio = new Date(), nn: NgonNguNB = 
   const ngay = Math.round(gio / 24);
   if (ngay === 1) return c({ vi: 'hôm qua', en: 'yesterday' });
   if (ngay < 7) return c({ vi: `${ngay} ngày trước`, en: `${ngay} days ago` });
-  const d = new Date(t + 7 * 3600000);
-  return `${String(d.getUTCDate()).padStart(2, '0')}/${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  const vn = gioVnTuMs(t);
+  return `${vn.slice(8, 10)}/${vn.slice(5, 7)}`;
 }

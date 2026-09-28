@@ -57,17 +57,24 @@ export const CAM = [
  * Mỗi mẫu báo tối đa ba chỗ khác nhau — đủ để người đọc thấy vấn đề, không
  * đủ để làm ngập màn hình khi một trang lặp một từ hai chục lần.
  *
- * Chuẩn hóa về dạng dựng sẵn (NFC) trước khi so: chữ gõ bằng Unikey chế độ
- * "Unicode tổ hợp" hay dán từ PDF có "ò" là "o" + dấu huyền rời, nên "phòng riêng"
- * không khớp mẫu và lọt qua (tiếng Hàn tách thành chữ cái rời cũng vậy).
- * crm/test/test-chuoi-cam.mjs giữ chuyện này.
+ * Chuẩn hóa trước khi so (NFKC): chữ gõ bằng Unikey chế độ "Unicode tổ hợp" hay dán
+ * từ PDF có "ò" là "o" + dấu huyền rời, nên "phòng riêng" không khớp mẫu và lọt qua
+ * (tiếng Hàn tách thành chữ cái rời cũng vậy); NFKC còn đổi dấu cách không ngắt và
+ * chữ số toàn khổ ("２２９") về dạng thường. Ký tự vô hình (gạch nối mềm, ký tự rộng 0)
+ * có thể nằm giữa một từ ("Wag​yu") hoặc thay dấu cách ("phòng​riêng") — thử cả hai
+ * cách đọc. crm/test/test-chuoi-cam.mjs giữ chuyện này.
  */
+const CO_VO_HINH = /[­​-‍⁠﻿]/;
+const VO_HINH = new RegExp(CO_VO_HINH.source, 'g');
+
 export function timChuoiCam(chu) {
   const thay = [];
-  const nfc = String(chu ?? '').normalize('NFC');
+  const goc = String(chu ?? '').normalize('NFKC');
+  const cacBan = CO_VO_HINH.test(goc) ? [goc.replace(VO_HINH, ''), goc.replace(VO_HINH, ' ')] : [goc];
   for (const { re, vi_sao } of CAM) {
-    const m = nfc.match(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'));
-    if (m) thay.push({ tim_thay: [...new Set(m)].slice(0, 3).join(' · '), vi_sao });
+    const tim = new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g');
+    const m = cacBan.flatMap(ban => ban.match(tim) ?? []);
+    if (m.length) thay.push({ tim_thay: [...new Set(m)].slice(0, 3).join(' · '), vi_sao });
   }
   return thay;
 }

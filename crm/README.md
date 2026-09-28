@@ -31,7 +31,7 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 | 11 | **Kho · GĐ2** — pha lóc (tỉ lệ thu hồi, giá vốn thật), chuyển quầy, xuất bếp, báo hủy có duyệt, kiểm kê dựng lại tồn | ✅ Xong (`0022`–`0023`) |
 | 12 | **Kho · GĐ3** — đối chiếu hóa đơn, công nợ nhà cung cấp, thanh toán, trả hàng NCC, báo cáo xuất–nhập–tồn / thu hồi / hao hụt / bán, tải CSV | ✅ Xong (`0024`) |
 
-Mọi kiểm thử đều đạt — số kiểm tra xem ở dòng cuối của `npm test` hoặc Summary của CI (README không ghi số đếm tay: số đó luôn cũ — từng ghi 1374 khi bộ thật đã hơn 5.800). Database hoàn chỉnh. Trang công khai ở
+Mọi kiểm thử đều đạt — số kiểm tra xem ở dòng cuối của `npm test` hoặc Summary của CI (README không ghi số đếm tay: số đó luôn cũ — từng ghi 1374 khi bộ thật đã lớn gấp mấy lần). Database hoàn chỉnh. Trang công khai ở
 `../web/` có 12 đường dẫn ở ba thứ tiếng Việt–Anh–Hàn, giao diện nội bộ
 `/noi-bo` và hai form công khai đều đã dựng.
 
@@ -47,7 +47,7 @@ cd ../crm && npm ci && npm test
 | Lệnh | Kiểm gì |
 |---|---|
 | `npm test` | **tất cả**: tự tìm `chay-test.mjs` và mọi `test-*.mjs`, chạy song song 4 file, in tổng số kiểm tra. File test mới tự được chạy — không sửa `package.json` |
-| `npm run kiem-migration` | **gác số migration**: không trùng số, liền mạch, không sửa migration đã có trên `origin/main`, số mới lớn hơn main, không `current_date` |
+| `npm run kiem-migration` | **gác số migration**: không trùng số (số hở chỉ cảnh báo, kèm nhánh đang giữ số đó), không sửa migration đã có trên `origin/main` (so bằng mã blob của git — máy Windows CRLF vẫn đúng), số mới lớn hơn main, không `current_date` |
 | `npm run so-migration` | in số migration kế tiếp, tính trên **mọi** nhánh `origin/*` (chạy `git fetch origin --prune` trước) |
 | `npm run test:quy-trinh` | **quy trình**: hàm SQL mới phải có test nhắc tên, không file mã nguồn nào bị `.gitignore` chặn, CI còn đủ bước, CLAUDE.md và mẫu PR đủ 9 mục |
 | `npm run test:db` | nghiệp vụ: chuẩn hóa SĐT, sổ cái điểm, ba luật tính điểm, đặt bàn, phân nhóm |

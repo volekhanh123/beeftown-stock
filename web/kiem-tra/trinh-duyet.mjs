@@ -2,7 +2,8 @@
  * KIỂM THỬ BẰNG TRÌNH DUYỆT THẬT — khách mở trang, bấm form
  * ==========================================================
  *
- *     npm run thu-trinh-duyet                    ← dùng bản build ở dist/ (tự build nếu chưa có), bật wrangler dev
+ *     npm run thu-trinh-duyet                    ← build lại, bật wrangler dev trên bản build, chạy thử
+ *     npm run thu-trinh-duyet -- --khong-build   ← dùng dist/ có sẵn (CI: bước trước vừa build)
  *     npm run thu-trinh-duyet -- --url https://… ← chạy trên một trang đang chạy thật (chỉ phần xem trang)
  *
  * Các phép thử khác đọc mã hoặc HTML. File này mở trang trong Chromium thật, ở ba cỡ
@@ -62,8 +63,9 @@ async function song(goc) {
 }
 
 async function batMayChu() {
-  if (!existsSync(join(WEB, 'dist', 'server'))) {
-    console.log('Chưa có bản build — chạy astro build…');
+  // Mặc định luôn build lại: thử trên dist/ cũ thì sửa mã rồi chạy vẫn xanh — lỗi vừa thêm không ai thấy.
+  if (!process.argv.includes('--khong-build') || !existsSync(join(WEB, 'dist', 'server'))) {
+    console.log('Build lại bản mới nhất (astro build)…');
     const b = spawnSync(process.execPath, [join(WEB, 'node_modules', 'astro', 'bin', 'astro.mjs'), 'build'], { cwd: WEB, stdio: 'inherit' });
     if (b.status !== 0) throw new Error('astro build hỏng');
   }
@@ -111,6 +113,9 @@ const i = process.argv.indexOf('--url');
 const URL_NGOAI = i > -1 ? process.argv[i + 1] : null;
 
 rmSync(ANH_LOI, { recursive: true, force: true });
+// wrangler dev chạy ở nhóm tiến trình riêng nên không nhận Ctrl+C — tự tắt nó trước khi thoát, kẻo nó giữ cổng.
+let mayChuDangChay = null;
+for (const tin of ['SIGINT', 'SIGTERM']) process.on(tin, () => { tatMayChu(mayChuDangChay); process.exit(130); });
 console.log('\x1b[1m\nBEEFTOWN — KIỂM THỬ BẰNG TRÌNH DUYỆT THẬT\x1b[0m');
 console.log('='.repeat(60));
 
@@ -118,6 +123,7 @@ let mayChu = null;
 let trinhDuyet = null;
 try {
   const goc = URL_NGOAI ?? (mayChu = await batMayChu()).goc;
+  mayChuDangChay = mayChu?.p ?? null;
   console.log(`Trang: ${goc}`);
   trinhDuyet = await chromium.launch();
   const trang = await danhSachTrang(goc);

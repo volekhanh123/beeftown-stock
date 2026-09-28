@@ -28,7 +28,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { boDau, cauLoiKho, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
-import { docGioVnDiaPhuong } from '../gio-vn.ts';
+import { docGioVnDiaPhuong, gioVnTuMs } from '../gio-vn.ts';
 
 // -----------------------------------------------------------------------------
 // KIỂU
@@ -305,7 +305,7 @@ export function oMocChuyen(ts: string | null | undefined): string {
   if (!ts) return '';
   const t = new Date(ts);
   if (Number.isNaN(t.getTime())) return '';
-  return new Date(t.getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 16);
+  return gioVnTuMs(t.getTime()).slice(0, 16);
 }
 
 // -----------------------------------------------------------------------------
@@ -529,7 +529,7 @@ export async function chuyenSangIpos(client: SupabaseClient, chiNhanhId: string,
   const { data, error } = await client.rpc('kho_ipos_chuyen_sang', { p_chi_nhanh_id: chiNhanhId, p_tu_luc: moc });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const tu = (data as { ipos_tu_luc?: string } | null)?.ipos_tu_luc;
-  const luc = tu ? new Date(new Date(tu).getTime() + 7 * 3600e3).toISOString().slice(0, 16).replace('T', ' ') : '';
+  const luc = tu ? gioVnTuMs(new Date(tu).getTime()).slice(0, 16).replace('T', ' ') : '';
   return kqHai(true, {
     vi: `Đã chuyển sang trừ kho theo iPOS${tu ? ` từ ${luc}` : ''}. Bán trước mốc này được bỏ qua (đã tính trong lần đếm quầy).`,
     en: `Switched to deducting stock from iPOS${tu ? ` from ${luc}` : ''}. Sales before this time are skipped (already covered by the counter count).`,

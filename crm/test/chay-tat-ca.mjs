@@ -15,7 +15,7 @@
  * chuỗi && cũ); --tat-ca chạy hết để một lượt CI báo được mọi chỗ hỏng.
  *
  * Cuối cùng in tổng số kiểm tra của cả bộ — README không ghi số đếm tay nữa, vì
- * số đếm tay luôn cũ (README từng ghi 1374 khi bộ thật đã hơn 4.000).
+ * số đếm tay luôn cũ (README từng ghi 1374 khi bộ thật đã lớn gấp mấy lần).
  */
 
 import { readdirSync, appendFileSync, mkdtempSync, openSync, closeSync, readFileSync, rmSync } from 'node:fs';
@@ -65,7 +65,9 @@ if (lac.length) {
   console.error('Bài test phải tên test-*.mjs để được chạy; thư viện dùng chung thì thêm vào THU_VIEN trong chay-tat-ca.mjs.');
   process.exit(1);
 }
-const coFile = tatCaMjs.filter(la);
+// Trên CI, workflow đã chạy kiem-migration.mjs riêng với đúng ref để so (nhánh gốc của PR / commit trước);
+// chạy lại ở đây thì so với origin/main — trên main là so với chính nó, không kiểm được gì.
+const coFile = tatCaMjs.filter(la).filter(f => !(TRONG_CI && f === 'kiem-migration.mjs'));
 const thuTu = [...TRUOC.filter(f => coFile.includes(f)), ...coFile.filter(f => !TRUOC.includes(f)).sort()];
 
 // ---------------------------------------------------------------------------
@@ -78,6 +80,9 @@ function docTong(ra) {
   if (dat) return { soKiem: Number(dat[1]), soHong: 0 };
   const hong = [...s.matchAll(/(\d+) HỎNG \/ (\d+) KIỂM TRA/g)].pop();
   if (hong) return { soKiem: Number(hong[2]), soHong: Number(hong[1]) };
+  // Kiểu cũ của chay-test.mjs và test-phan-quyen.mjs: "2 KIỂM TRA HỎNG (đạt 95)"
+  const cu = [...s.matchAll(/(\d+) KIỂM TRA HỎNG\s*\(đạt (\d+)\)/g)].pop();
+  if (cu) return { soKiem: Number(cu[1]) + Number(cu[2]), soHong: Number(cu[1]) };
   return { soKiem: null, soHong: null };
 }
 

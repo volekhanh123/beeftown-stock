@@ -17,17 +17,22 @@
  *
  * Kiểm tĩnh (luôn chạy):
  *   · tên file đúng mẫu 0000_chu_thuong.sql (chữ ASCII — Supabase CLI đọc phần số);
- *   · không trùng số, số liền mạch từ 0001;
- *   · mọi hàm security definer có set search_path (cả 313 hàm hiện có đều có);
- *   · từ sau 0008 (vá múi giờ): không dùng current_date / current_time / localtime /
- *     now()::date — dùng hom_nay_vn() / gio_hien_tai_vn().
+ *   · không trùng số;
+ *   · số bị hở chỉ CẢNH BÁO (kèm nhánh nào đang giữ số đó) — lấy số bằng --so-tiep khi nhánh
+ *     khác đang giữ số nhỏ hơn thì hở là đúng, Supabase CLI chỉ cần thứ tự;
+ *   · file mới / đã đổi: mọi hàm security definer có set search_path (cả 313 hàm hiện có
+ *     đều có); từ sau 0008 (vá múi giờ) không dùng current_date / current_time / localtime /
+ *     now()::date — dùng hom_nay_vn() / bay_gio_vn() / gio_vn().
  *
  * So với ref (mặc định origin/main; ref không có thì bỏ qua, có báo):
- *   · migration đã có trên ref phải giống TỪNG BYTE — nó đã (hoặc sắp) chạy trên
- *     production, sửa file không sửa được database. Muốn đổi thì viết migration mới.
- *     Ngoại lệ ghi vào DUOC_SUA kèm lý do, để ngoại lệ hiện ra trong diff của PR;
+ *   · migration đã có trên ref phải GIỐNG HỆT — nó đã (hoặc sắp) chạy trên production, sửa
+ *     file không sửa được database. Muốn đổi thì viết migration mới. Ngoại lệ ghi vào
+ *     DUOC_SUA kèm lý do, để ngoại lệ hiện ra trong diff của PR;
  *   · migration đã có ở điểm rẽ nhánh không được xóa hay đổi tên;
  *   · migration mới phải có số LỚN HƠN số lớn nhất trên ref.
+ *
+ * "Giống hệt" so bằng mã blob của git, không so byte trên đĩa: máy Windows (Git for Windows
+ * mặc định core.autocrlf=true) lưu file với CRLF, byte khác nhưng nội dung trong git y nguyên.
  */
 
 import { readdirSync, readFileSync, appendFileSync } from 'node:fs';
@@ -58,45 +63,57 @@ const TRONG_CI = !!process.env.GITHUB_ACTIONS;
 // ---------------------------------------------------------------------------
 // git
 // ---------------------------------------------------------------------------
-function git(args, opts = {}) {
-  return execFileSync('git', args, { cwd: GOC, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 << 20, ...opts });
+function git(args) {
+  return execFileSync('git', args, { cwd: GOC, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], maxBuffer: 256 << 20 });
 }
 function coRef(ref) {
   if (!ref || /^0+$/.test(ref)) return false;
   try { git(['rev-parse', '--verify', '--quiet', `${ref}^{commit}`]); return true; } catch { return false; }
 }
-/** Tên file migration tại một ref (null = thư mục đang mở). Ref không có thư mục → []. */
-function dsTep(ref) {
-  if (ref === null) return readdirSync(join(GOC, THU_MUC)).filter(f => f.endsWith('.sql')).sort();
+/** Migration tại một ref: Map tên file → mã blob. Ref không có thư mục → Map rỗng. Một lệnh git cho cả thư mục. */
+function blobTaiRef(ref) {
   try {
-    return git(['ls-tree', '--name-only', `${ref}:${THU_MUC}`]).split('\n').filter(f => f.endsWith('.sql')).sort();
-  } catch { return []; }
+    return new Map(git(['ls-tree', '-r', ref, '--', THU_MUC]).split('\n').filter(Boolean)
+      .map(dong => { const [dau, duong] = dong.split('\t'); return [duong.split('/').pop(), dau.split(' ')[2]]; })
+      .filter(([ten]) => ten.endsWith('.sql')));
+  } catch { return new Map(); }
 }
-/** Nội dung một file tại một ref, dạng byte. */
+/** Migration trong thư mục đang mở: Map tên file → mã blob, tính QUA git (áp core.autocrlf như lúc commit). */
+function blobDangMo() {
+  const ds = readdirSync(join(GOC, THU_MUC)).filter(f => f.endsWith('.sql')).sort();
+  if (!ds.length) return new Map();
+  const ma = git(['hash-object', '--', ...ds.map(f => `${THU_MUC}/${f}`)]).split('\n').filter(Boolean);
+  return new Map(ds.map((f, i) => [f, ma[i]]));
+}
+/** Nội dung một file (thư mục đang mở, hoặc tại một ref). */
 function docTep(ref, ten) {
-  if (ref === null) return readFileSync(join(GOC, THU_MUC, ten));
-  return execFileSync('git', ['show', `${ref}:${THU_MUC}/${ten}`], { cwd: GOC, maxBuffer: 64 << 20 });
+  if (ref === null) return readFileSync(join(GOC, THU_MUC, ten), 'utf8');
+  return git(['show', `${ref}:${THU_MUC}/${ten}`]);
 }
 const so = ten => Number(ten.slice(0, 4));
-const soLonNhat = ds => ds.reduce((m, f) => (TEN_HOP_LE.test(f) ? Math.max(m, so(f)) : m), 0);
+const soLonNhat = ds => [...ds].reduce((m, f) => (TEN_HOP_LE.test(f) ? Math.max(m, so(f)) : m), 0);
 const bonSo = n => String(n).padStart(4, '0');
+const gon = ds => (ds.length > 4 ? [...ds.slice(0, 3), `… ${ds.at(-1)}`] : ds).join(', ');
 
+/** Mọi nhánh origin/* (bỏ HEAD) → Map nhánh → tên file migration. Tính một lần. */
+let _nhanhKhac = null;
+function nhanhKhac() {
+  if (_nhanhKhac) return _nhanhKhac;
+  let refs = [];
+  try { refs = git(['for-each-ref', '--format=%(refname:short)', 'refs/remotes/origin']).split('\n').filter(Boolean); } catch { /* không có remote */ }
+  _nhanhKhac = new Map(refs.filter(r => !r.endsWith('/HEAD') && r !== 'origin').map(r => [r, [...blobTaiRef(r).keys()]]));
+  return _nhanhKhac;
+}
 /** Số lớn nhất trên mọi nhánh origin/* và thư mục đang mở → số kế tiếp. */
 function soTiep() {
-  let lon = soLonNhat(dsTep(null));
-  let refs = [];
-  try { refs = git(['for-each-ref', '--format=%(refname)', 'refs/remotes/origin']).split('\n').filter(Boolean); } catch { /* không có remote */ }
-  for (const r of refs) {
-    if (r.endsWith('/HEAD')) continue;
-    try { lon = Math.max(lon, soLonNhat(dsTep(r))); } catch { /* nhánh không có thư mục migration */ }
-  }
-  return { so: lon + 1, soNhanh: refs.length };
+  let lon = soLonNhat(readdirSync(join(GOC, THU_MUC)));
+  for (const ds of nhanhKhac().values()) lon = Math.max(lon, soLonNhat(ds));
+  return lon + 1;
 }
 
 if (co('--so-tiep')) {
-  const { so: n, soNhanh } = soTiep();
-  console.log(bonSo(n));
-  if (!soNhanh) console.error('(chưa có nhánh origin/* nào — chạy git fetch origin --prune để tính đúng)');
+  console.log(bonSo(soTiep()));
+  if (!nhanhKhac().size) console.error('(chưa có nhánh origin/* nào — chạy git fetch origin --prune để tính đúng)');
   process.exit(0);
 }
 
@@ -121,6 +138,7 @@ function bao(cau) {
 
 const NHANH = giaTri('--nhanh') ?? null;       // null = thư mục đang mở
 const TEN_NGUON = NHANH ?? 'thư mục đang mở';
+const SO_VOI = giaTri('--so-voi') ?? 'origin/main';
 
 console.log(`\x1b[1m\nBEEFTOWN — GÁC SỐ MIGRATION (${TEN_NGUON})\x1b[0m`);
 console.log('='.repeat(60));
@@ -129,9 +147,10 @@ if (NHANH !== null && !coRef(NHANH)) {
   console.log(`\x1b[31mKhông thấy ref ${NHANH}\x1b[0m`);
   process.exit(1);
 }
-const H = dsTep(NHANH);
-const SO_VOI = giaTri('--so-voi') ?? 'origin/main';
+const blobH = NHANH === null ? blobDangMo() : blobTaiRef(NHANH);
+const H = [...blobH.keys()].sort();
 const CO_SO_VOI = coRef(SO_VOI);
+const blobM = CO_SO_VOI ? blobTaiRef(SO_VOI) : new Map();
 
 // ===========================================================================
 console.log('\n\x1b[1m1 · TÊN VÀ SỐ\x1b[0m');
@@ -143,23 +162,30 @@ console.log('\n\x1b[1m1 · TÊN VÀ SỐ\x1b[0m');
   for (const f of H.filter(f => TEN_HOP_LE.test(f))) theoSo.set(so(f), [...(theoSo.get(so(f)) ?? []), f]);
   const trung = [...theoSo.values()].filter(ds => ds.length > 1);
   ok('Không có hai file cùng số', trung.length === 0,
-     trung.map(ds => ds.join(' = ')).join(' · ') + (trung.length ? ` — đổi số file mới thành ${bonSo(soTiep().so)}` : ''));
+     trung.map(ds => ds.join(' = ')).join(' · ') + (trung.length ? ` — đổi số file mới thành ${bonSo(soTiep())}` : ''));
 
-  const lon = soLonNhat(H);
-  const thieu = [];
-  for (let i = 1; i <= lon; i++) if (!theoSo.has(i)) thieu.push(bonSo(i));
-  const trenGoc = CO_SO_VOI ? new Set(dsTep(SO_VOI).map(so)) : new Set();
-  const doCham = thieu.length > 0 && thieu.every(s => trenGoc.has(Number(s)));
-  ok(`Số liền mạch 0001–${bonSo(lon)}`, thieu.length === 0,
-     `thiếu ${thieu.join(', ')}` + (doCham ? ` — các số này có trên ${SO_VOI}: gộp ${SO_VOI} vào nhánh` : ''));
+  // Số hở: chỉ cảnh báo. Lấy số bằng --so-tiep khi nhánh khác đang giữ số nhỏ hơn thì hở là ĐÚNG.
+  const hoi = [];
+  for (let i = 1; i <= soLonNhat(H); i++) if (!theoSo.has(i)) hoi.push(i);
+  if (hoi.length) {
+    const giu = i => (blobM.size && [...blobM.keys()].some(f => so(f) === i) ? SO_VOI
+      : [...nhanhKhac()].find(([, ds]) => ds.some(f => so(f) === i))?.[0]);
+    const coChu = hoi.map(i => (giu(i) ? `${bonSo(i)} (${giu(i)} giữ)` : bonSo(i)));
+    const trenGoc = hoi.every(i => giu(i) === SO_VOI);
+    bao(`Số bị hở: ${gon(coChu)}` + (trenGoc ? ` — các số này có trên ${SO_VOI}: gộp ${SO_VOI} vào nhánh` : ''));
+  } else {
+    console.log(`  \x1b[32m✓\x1b[0m Số liền mạch 0001–${bonSo(soLonNhat(H))}`);
+  }
 }
 
 // ===========================================================================
-console.log('\n\x1b[1m2 · QUY ƯỚC TRONG FILE\x1b[0m');
+// File đã có y nguyên trên SO_VOI thì đã được kiểm ở lượt của SO_VOI — chỉ đọc file mới / đã đổi.
+const canDoc = H.filter(f => TEN_HOP_LE.test(f) && blobM.get(f) !== blobH.get(f));
+console.log(`\n\x1b[1m2 · QUY ƯỚC TRONG FILE (${canDoc.length} file mới hoặc đã đổi so với ${CO_SO_VOI ? SO_VOI : 'không có gì'})\x1b[0m`);
 {
   const thieuPath = [], gioUtc = [];
-  for (const f of H.filter(f => TEN_HOP_LE.test(f))) {
-    const sql = docTep(NHANH, f).toString('utf8').replace(/--[^\n]*/g, '');
+  for (const f of canDoc) {
+    const sql = docTep(NHANH, f).replace(/--[^\n]*/g, '');
     // Tách theo từng câu create function; phần thuộc tính nằm trước thân $…$ hoặc sau nó.
     for (const khoi of sql.split(/(?=create\s+(?:or\s+replace\s+)?function)/i)) {
       if (!/^create/i.test(khoi)) continue;
@@ -189,32 +215,29 @@ let tomTat = '';
 if (!CO_SO_VOI) {
   bao(`Không có ref ${SO_VOI} — bỏ qua phần so sánh (chạy git fetch origin để kiểm đủ)`);
 } else {
-  const M = dsTep(SO_VOI);
+  const M = [...blobM.keys()].sort();
   const dauNhanh = NHANH ?? 'HEAD';
-  let B = M;
-  try { B = dsTep(git(['merge-base', dauNhanh, SO_VOI]).trim()); }
+  let B = new Set(M);
+  try { B = new Set(blobTaiRef(git(['merge-base', dauNhanh, SO_VOI]).trim()).keys()); }
   catch { bao(`Không tìm được điểm rẽ nhánh giữa ${dauNhanh} và ${SO_VOI} — coi như rẽ từ ${SO_VOI}`); }
-
-  const tapH = new Set(H), tapM = new Set(M), tapB = new Set(B);
-  const gon = ds => (ds.length > 4 ? [...ds.slice(0, 3), `… ${ds.at(-1)}`] : ds).join(', ');
   const choSua = new Set(DUOC_SUA.map(x => x.tep));
 
-  const daSua = M.filter(f => tapH.has(f) && !choSua.has(f) && !docTep(SO_VOI, f).equals(docTep(NHANH, f)));
+  const daSua = M.filter(f => blobH.has(f) && !choSua.has(f) && blobH.get(f) !== blobM.get(f));
   ok(`Không sửa migration đã có trên ${SO_VOI} (${M.length} file)`, daSua.length === 0,
-     daSua.length ? `${daSua.join(', ')} — file này đã/sắp chạy trên production; muốn đổi thì viết migration MỚI` : '');
+     daSua.length ? `${gon(daSua)} — file này đã/sắp chạy trên production; muốn đổi thì viết migration MỚI` : '');
 
-  const daXoa = B.filter(f => !tapH.has(f));
+  const daXoa = [...B].filter(f => !blobH.has(f)).sort();
   ok('Không xóa hay đổi tên migration đã có từ điểm rẽ nhánh', daXoa.length === 0, gon(daXoa));
 
-  const chamHon = M.filter(f => !tapB.has(f) && !tapH.has(f));
+  const chamHon = M.filter(f => !B.has(f) && !blobH.has(f));
   if (chamHon.length) bao(`Nhánh chậm hơn ${SO_VOI} ${chamHon.length} migration (${gon(chamHon)}) — gộp ${SO_VOI} vào nhánh trước khi mở PR`);
 
   const lonM = soLonNhat(M);
-  const moi = H.filter(f => !tapM.has(f));
+  const moi = H.filter(f => !blobM.has(f));
   const soNho = moi.filter(f => TEN_HOP_LE.test(f) && so(f) <= lonM);
-  ok(`Migration mới (${moi.length ? moi.join(', ') : 'không có'}) có số lớn hơn ${bonSo(lonM)} của ${SO_VOI}`,
+  ok(`Migration mới (${moi.length ? gon(moi) : 'không có'}) có số lớn hơn ${bonSo(lonM)} của ${SO_VOI}`,
      soNho.length === 0,
-     soNho.length ? `${soNho.join(', ')} — đổi thành ${bonSo(Math.max(lonM, soLonNhat(H.filter(f => !soNho.includes(f)))) + 1)} trở đi` : '');
+     soNho.length ? `${soNho.join(', ')} — đổi thành ${bonSo(soTiep())} trở đi (npm run so-migration)` : '');
 
   tomTat = moi.length ? `Migration mới: ${moi.join(', ')}` : 'Không có migration mới';
 }
@@ -222,19 +245,14 @@ if (!CO_SO_VOI) {
 // ===========================================================================
 if (co('--canh-bao-nhanh-khac') && CO_SO_VOI) {
   console.log('\n\x1b[1m4 · NHÁNH KHÁC ĐANG DÙNG CÙNG SỐ?\x1b[0m');
-  const M = new Set(dsTep(SO_VOI));
-  const cuaTa = new Map(H.filter(f => !M.has(f) && TEN_HOP_LE.test(f)).map(f => [so(f), f]));
+  const cuaTa = new Map(H.filter(f => !blobM.has(f) && TEN_HOP_LE.test(f)).map(f => [so(f), f]));
   let hienTai = '';
   try { hienTai = git(['rev-parse', '--abbrev-ref', 'HEAD']).trim(); } catch { /* HEAD rời */ }
-  let refs = [];
-  try { refs = git(['for-each-ref', '--format=%(refname:short)', 'refs/remotes/origin']).split('\n').filter(Boolean); } catch { /* không có remote */ }
   let dung = 0;
-  for (const r of refs) {
-    if (r.endsWith('/HEAD') || r === SO_VOI || r === `origin/${hienTai}` || (NHANH && r === NHANH)) continue;
-    let ds = [];
-    try { ds = dsTep(r); } catch { continue; }
+  for (const [r, ds] of nhanhKhac()) {
+    if (r === SO_VOI || r === `origin/${hienTai}` || (NHANH && r === NHANH)) continue;
     for (const f of ds) {
-      if (M.has(f) || !TEN_HOP_LE.test(f)) continue;
+      if (blobM.has(f) || !TEN_HOP_LE.test(f)) continue;
       const ta = cuaTa.get(so(f));
       if (ta && ta !== f) { dung++; bao(`${r} cũng dùng số ${bonSo(so(f))} (${f}) — nhánh nào gộp sau phải đổi số`); }
     }
@@ -243,7 +261,7 @@ if (co('--canh-bao-nhanh-khac') && CO_SO_VOI) {
 }
 
 // ===========================================================================
-const tiep = bonSo(soTiep().so);
+const tiep = bonSo(soTiep());
 console.log(`\nSố migration kế tiếp (tính trên mọi nhánh origin/*): ${tiep}`);
 if (process.env.GITHUB_STEP_SUMMARY) {
   const dong = [`### Migration (${TEN_NGUON})`, '',

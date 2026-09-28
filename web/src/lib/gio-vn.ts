@@ -21,6 +21,14 @@ export function homNayVn(ms: number = Date.now()): string {
   return new Date(ms + LECH_VN_MS).toISOString().slice(0, 10);
 }
 
+/**
+ * Mốc ms → giờ Việt Nam dạng "YYYY-MM-DDTHH:MM:SS" (không múi) — cắt lấy ngày (0–10), giờ:phút
+ * (11–16)… Mốc không hợp lệ → "" (không ném lỗi giữa lúc dựng trang).
+ */
+export function gioVnTuMs(ms: number): string {
+  return Number.isFinite(ms) ? new Date(ms + LECH_VN_MS).toISOString().slice(0, 19) : '';
+}
+
 /** Năm theo giờ Việt Nam — 00:30 ngày 01/01 giờ VN đã là năm mới dù UTC còn năm cũ. */
 export function namVn(ms: number = Date.now()): number {
   return Number(homNayVn(ms).slice(0, 4));

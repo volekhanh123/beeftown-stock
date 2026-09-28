@@ -333,18 +333,19 @@ export function dinhDangNgayNgan(iso: string | null | undefined): string {
 
 /**
  * Thời điểm (timestamptz từ database) → "25/09 14:30" giờ Việt Nam.
- * Worker chạy giờ UTC, nên cộng 7 tiếng bằng tay — cùng cách với hom_nay_vn().
+ * Worker chạy giờ UTC; giờ VN tính ở gio-vn.ts — cùng cách với hom_nay_vn().
  */
 export function dinhDangThoiDiem(ts: string | null | undefined): string {
   if (!ts) return '—';
   const t = new Date(ts);
   if (Number.isNaN(t.getTime())) return '—';
-  const vn = new Date(t.getTime() + 7 * 60 * 60 * 1000).toISOString();
+  const vn = gioVnTuMs(t.getTime());
   return `${vn.slice(8, 10)}/${vn.slice(5, 7)} ${vn.slice(11, 16)}`;
 }
 
 /** Ngày hôm nay theo giờ Việt Nam (YYYY-MM-DD) và cộng ngày — một chỗ duy nhất ở gio-vn.ts. */
 export { homNayVn, congNgay } from '../gio-vn.ts';
+import { gioVnTuMs } from '../gio-vn.ts';
 
 // -----------------------------------------------------------------------------
 // CHIA TIỀN KHÔNG LỆCH MỘT ĐỒNG — bản soi gương của kho_chia_so_du_lon_nhat()

@@ -24,6 +24,8 @@
  * có hiệu lực khi nhân viên gọi xác nhận. Không nói số bàn còn trống, không giá.
  */
 
+import { homNayVn, gioVnTuMs, congNgay as congNgayVn } from './gio-vn.ts';
+
 // =============================================================================
 // CHỈNH KHI CÓ TÀI LIỆU — mọi chi tiết API của Meta nằm ở đúng một chỗ này.
 // Lúc viết (27/09/2026) proxy chặn developers.facebook.com, nên các giá trị dưới
@@ -253,22 +255,19 @@ export function cheSdt(sdt: string): string {
   return sdt.length >= 7 ? sdt.slice(0, 2) + '*'.repeat(sdt.length - 6) + sdt.slice(-4) : '***';
 }
 
-// --- Ngày --------------------------------------------------------------------
-const NGAY_MS = 86_400_000;
+// --- Ngày (tính ở gio-vn.ts — một chỗ duy nhất cho giờ Việt Nam) ---------------
 
 /** Ngày hôm nay giờ Việt Nam (UTC+7) từ mốc ms. */
 export function ngayVn(ms: number): string {
-  return new Date(ms + 7 * 3_600_000).toISOString().slice(0, 10);
+  return homNayVn(ms);
 }
 
 /** Giờ:phút hiện tại giờ Việt Nam. */
 export function gioVnHienTai(ms: number): string {
-  return new Date(ms + 7 * 3_600_000).toISOString().slice(11, 16);
+  return gioVnTuMs(ms).slice(11, 16);
 }
 
-export function congNgay(iso: string, n: number): string {
-  return new Date(Date.parse(iso + 'T00:00:00Z') + n * NGAY_MS).toISOString().slice(0, 10);
-}
+export const congNgay = congNgayVn;
 
 function thuCua(iso: string): number {
   return new Date(iso + 'T00:00:00Z').getUTCDay();

@@ -47,8 +47,11 @@ const tuChoi = (...dong) => { console.log(DO('\nKHÔNG DEPLOY.')); for (const d 
 console.log('\x1b[1mCổng trước khi deploy\x1b[0m');
 
 // ---------------------------------------------------------------------------
-// 1 · Số migration
+// 1 · Số migration — so với main MỚI NHẤT, nên lấy main về trước
 // ---------------------------------------------------------------------------
+let coMainMoi = true;
+try { chay('git', ['fetch', '--quiet', 'origin', 'main'], { timeout: 20000 }); }
+catch { coMainMoi = false; console.log(VANG('  ! Không lấy được main mới nhất (mất mạng?) — so với bản main đã có trên máy')); }
 {
   const r = spawnSync(process.execPath, [join(GOC, 'crm', 'test', 'kiem-migration.mjs')], { cwd: GOC, encoding: 'utf8' });
   if (r.status !== 0) {
@@ -72,12 +75,9 @@ const sha = chay('git', ['rev-parse', 'HEAD']);
   }
   console.log(XANH('  ✓ web/ không có thay đổi chưa commit'));
 
-  try {
-    chay('git', ['fetch', '--quiet', 'origin', 'main'], { timeout: 20000 });
-    if (chay('git', ['rev-parse', 'origin/main']) !== sha) {
-      console.log(VANG(`  ! Commit đang deploy (${sha.slice(0, 7)}) không phải main mới nhất — chắc chắn đây là bản muốn đưa lên?`));
-    }
-  } catch { console.log(VANG('  ! Không lấy được main mới nhất (mất mạng?) — bỏ qua so sánh với main')); }
+  if (coMainMoi && chay('git', ['rev-parse', 'origin/main']) !== sha) {
+    console.log(VANG(`  ! Commit đang deploy (${sha.slice(0, 7)}) không phải main mới nhất — chắc chắn đây là bản muốn đưa lên?`));
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -100,14 +100,16 @@ function hoiCi() {
     const khongCo = e.code === 'ENOENT';
     return { kq: 'khong-hoi-duoc', ly_do: khongCo ? 'máy chưa cài gh (winget install GitHub.cli, rồi gh auth login)' : 'gh không hỏi được GitHub (chưa gh auth login, hoặc mất mạng)' };
   }
-  const luot = (JSON.parse(json).workflow_runs ?? []).sort((a, b) => b.run_number - a.run_number);
+  // LƯỢT MỚI NHẤT quyết định (bỏ lượt bị hủy vì có lượt sau thay): lượt đêm giờ VN đỏ trên cùng commit
+  // mà push trước đó xanh thì vẫn là đỏ — lượt đêm chạy chính để bắt lỗi múi giờ mà lượt kia không thấy.
+  const luot = (JSON.parse(json).workflow_runs ?? [])
+    .filter(l => l.conclusion !== 'cancelled' && l.conclusion !== 'skipped')
+    .sort((a, b) => b.run_number - a.run_number);
   if (!luot.length) return { kq: 'chua-co' };
-  const xanh = luot.find(l => l.status === 'completed' && l.conclusion === 'success');
-  if (xanh) return { kq: 'xanh', link: xanh.html_url };
-  const dang = luot.find(l => l.status !== 'completed');
-  if (dang) return { kq: 'dang-chay', link: dang.html_url };
-  const hong = luot.find(l => l.conclusion !== 'cancelled') ?? luot[0];
-  return { kq: 'do', link: hong.html_url, ly_do: hong.conclusion };
+  const moiNhat = luot[0];
+  if (moiNhat.status !== 'completed') return { kq: 'dang-chay', link: moiNhat.html_url };
+  if (moiNhat.conclusion === 'success') return { kq: 'xanh', link: moiNhat.html_url };
+  return { kq: 'do', link: moiNhat.html_url, ly_do: moiNhat.conclusion };
 }
 
 const ci = hoiCi();

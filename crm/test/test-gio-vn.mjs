@@ -109,7 +109,13 @@ await nhom('2 · NGÀY GIỜ KHÔNG CÓ THẬT BỊ TỪ CHỐI', async () => {
 
 // ===========================================================================
 await nhom('3 · NĂM TÍNH THEO GIỜ VIỆT NAM', async () => {
-  const { namVn } = await nap('gio-vn.ts');
+  const { namVn, gioVnTuMs } = await nap('gio-vn.ts');
+  ok('gioVnTuMs: 17:00Z là 00:00 ngày hôm sau giờ VN', gioVnTuMs(Date.parse('2026-12-31T17:00:00Z')) === '2027-01-01T00:00:00');
+  ok('gioVnTuMs: mốc không hợp lệ → "" (không ném lỗi giữa lúc dựng trang)', gioVnTuMs(NaN) === '');
+  const { thoiGianTruoc } = await nap('kho/viec.ts');
+  ok('thoiGianTruoc: ngày cũ ghi theo ngày VN (17:30Z 30/09 → "01/10")',
+     thoiGianTruoc('2026-09-30T17:30:00Z', new Date('2026-10-20T00:00:00Z')) === '01/10');
+  ok('thoiGianTruoc: mốc hỏng → "—", không phải "NaN/NaN"', thoiGianTruoc('khong-phai-ngay') === '—');
   datGio('2026-12-31T17:30:00Z');   // 00:30 ngày 01/01/2027 giờ VN
   try { ok('00:30 ngày 01/01 giờ VN: năm là năm mới', namVn() === 2027, String(namVn())); } finally { traGio(); }
 
@@ -134,7 +140,8 @@ await nhom('4 · MÃ MỚI DÙNG gio-vn.ts, KHÔNG TỰ CỘNG 7 TIẾNG', async
   const di = d => { for (const f of readdirSync(d)) { const p = join(d, f); statSync(p).isDirectory() ? di(p) : /\.(ts|astro|js|mjs)$/.test(f) && tep.push(p); } };
   di(join(GOC, 'web', 'src'));
   const CAM = [
-    [/Date\.now\(\)\s*\+\s*7\s*\*/, 'Date.now() + 7 * … (tự cộng 7 tiếng) — dùng homNayVn() / congNgay() của gio-vn.ts'],
+    // Mọi cách viết "+ 7 tiếng": 7 * 60 * 60 * 1000, 7 * 3600000, 7 * 3_600_000, 7 * 3600e3…
+    [/\+\s*7\s*\*\s*(60\s*\*\s*60|3_?600)/, '+ 7 * 60 * 60… (tự cộng 7 tiếng) — dùng homNayVn() / gioVnTuMs() / congNgay() của gio-vn.ts'],
     [/\.get(UTC)?FullYear\(\)/, 'getFullYear() / getUTCFullYear() (năm theo máy hoặc UTC) — dùng namVn() của gio-vn.ts'],
   ];
   const sai = [];

@@ -11,6 +11,7 @@
  *   1. Mỗi nhóm chữ cấm bắt được ở cả ba thứ tiếng.
  *   2. Chữ Việt dạng TỔ HỢP (NFD — Unikey chế độ "Unicode tổ hợp", chữ dán từ PDF) cũng
  *      bị bắt: "phòng riêng" gõ tổ hợp là "pho" + dấu huyền rời + "ng", trước đây lọt qua.
+ *      Cả dấu cách không ngắt, ký tự vô hình, chữ số toàn khổ — dấu vết khác của chữ dán.
  *   3. Câu đúng giọng thương hiệu không bị bắt nhầm.
  */
 
@@ -66,6 +67,15 @@ await nhom('2 · CHỮ VIỆT DẠNG TỔ HỢP (NFD) CŨNG BỊ BẮT', async (
     if (nfd === cau) continue;   // câu không có dấu tổ hợp được — mục 1 đã thử
     ok(`Bắt dạng tổ hợp: "${cau}" (${nhomCam})`, bat(nfd), `NFD dài ${nfd.length} ký tự, NFC ${cau.length}`);
   }
+  // Các dấu vết khác của chữ dán từ PDF / Word: dấu cách không ngắt, ký tự rộng, ký tự vô hình.
+  for (const [cau, mo] of [
+    ['Đặt bàn\u00a0thành công', 'dấu cách không ngắt (NBSP)'],
+    ['Rẻ\u00a0hơn quán khác', 'NBSP giữa "rẻ hơn"'],
+    ['Có phòng\u200briêng', 'ký tự rộng 0 (zero-width space)'],
+    ['Đặt bàn thành\u00adcông', 'gạch nối mềm (soft hyphen)'],
+    ['Combo ２２９.０００đ', 'chữ số toàn khổ (fullwidth)'],
+  ]) ok(`Bắt được khi có ${mo}`, bat(cau), JSON.stringify(cau));
+
   const tim = timChuoiCam('Có phòng riêng'.normalize('NFD'));
   ok('Chỗ tìm thấy báo ra ở dạng dựng sẵn (NFC), đọc được', tim.length > 0 && tim[0].tim_thay === tim[0].tim_thay.normalize('NFC'),
      JSON.stringify(tim));

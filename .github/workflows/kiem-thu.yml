@@ -30,7 +30,9 @@ permissions:
   contents: read
 
 concurrency:
-  group: kiem-thu-${{ github.event.pull_request.number || github.ref }}
+  # Tên nhóm có cả loại sự kiện: lượt đêm không chung nhóm với lượt push lên main, nên một lần push
+  # không thể hủy lượt đêm đang chờ (GitHub chỉ giữ MỘT lượt chờ mỗi nhóm).
+  group: kiem-thu-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   # Đẩy commit mới vào PR thì bỏ lượt cũ đang chạy (tiết kiệm phút CI); main và lượt đêm chạy hết.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
@@ -102,7 +104,7 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Kiểm thử trình duyệt (khách thật mở trang, bấm form)
         working-directory: web
-        run: npm run thu-trinh-duyet
+        run: npm run thu-trinh-duyet -- --khong-build   # bước Build ở trên vừa build
       - name: Ảnh chụp khi hỏng
         if: failure()
         uses: actions/upload-artifact@v4

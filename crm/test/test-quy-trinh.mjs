@@ -81,9 +81,12 @@ await nhom('2 · KHÔNG FILE MÃ NGUỒN NÀO BỊ .gitignore CHẶN ÂM THẦM'
   // Chỉ những chỗ chứa mã nguồn. Chỗ khác bị chặn là CÓ Ý (tài liệu mật, ảnh, .env, file cân .TMS).
   const CHO_MA = /^(web\/(src|kiem-tra)\/|crm\/(test|supabase)\/|can-app\/(src|test|scripts)\/|\.github\/|CLAUDE\.md$)/;
   const DUOI_MA = /\.(ts|tsx|mjs|js|astro|sql|ya?ml|md|json|css|html|ps1)$/;
-  // --directory: thư mục bị chặn cả khối (node_modules, dist) hiện một dòng "thư mục/" thay vì từng file.
+  // --directory: thư mục bị chặn cả khối (node_modules, dist, ảnh lỗi) hiện một dòng "thư mục/" thay vì từng
+  // file. Thư mục bị chặn chỉ đáng ngờ khi nằm trong chỗ CHỈ chứa mã nguồn — web/kiem-tra/anh-loi/ hay
+  // crm/supabase/.temp/ là cố ý chặn.
+  const THU_MUC_MA = /^(web\/src|crm\/test|crm\/supabase\/(migrations|thu)|can-app\/(src|test|scripts)|\.github)\//;
   const biChan = git(['ls-files', '--others', '--ignored', '--exclude-standard', '--directory'])
-    .split('\n').filter(f => CHO_MA.test(f) && (DUOI_MA.test(f) || f.endsWith('/')) && !/node_modules\//.test(f));
+    .split('\n').filter(f => (f.endsWith('/') ? THU_MUC_MA.test(f) : CHO_MA.test(f) && DUOI_MA.test(f)) && !/node_modules\//.test(f));
   ok('Mọi file mã nguồn đều được git thấy', biChan.length === 0,
      biChan.length ? `${biChan.slice(0, 8).join(', ')} — thêm một dòng !đường-dẫn vào mục ĐƯỢC PHÉP của .gitignore` : '');
 });
