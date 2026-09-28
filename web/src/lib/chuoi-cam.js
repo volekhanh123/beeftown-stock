@@ -56,11 +56,17 @@ export const CAM = [
  * Tìm mọi mẫu cấm trong một đoạn chữ. Trả về mảng rỗng nếu sạch.
  * Mỗi mẫu báo tối đa ba chỗ khác nhau — đủ để người đọc thấy vấn đề, không
  * đủ để làm ngập màn hình khi một trang lặp một từ hai chục lần.
+ *
+ * Chuẩn hóa về dạng dựng sẵn (NFC) trước khi so: chữ gõ bằng Unikey chế độ
+ * "Unicode tổ hợp" hay dán từ PDF có "ò" là "o" + dấu huyền rời, nên "phòng riêng"
+ * không khớp mẫu và lọt qua (tiếng Hàn tách thành chữ cái rời cũng vậy).
+ * crm/test/test-chuoi-cam.mjs giữ chuyện này.
  */
 export function timChuoiCam(chu) {
   const thay = [];
+  const nfc = String(chu ?? '').normalize('NFC');
   for (const { re, vi_sao } of CAM) {
-    const m = chu.match(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'));
+    const m = nfc.match(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'));
     if (m) thay.push({ tim_thay: [...new Set(m)].slice(0, 3).join(' · '), vi_sao });
   }
   return thay;

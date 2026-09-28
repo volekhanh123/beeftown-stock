@@ -416,9 +416,9 @@ await nhom('7 · CÀI NHƯ APP (manifest + biểu tượng)', async () => {
 // ===========================================================================
 await nhom('8 · JAVASCRIPT CHỈ Ở CHỖ ĐÃ CHO PHÉP', async () => {
   // Trang kho phải chạy đủ khi tắt JavaScript. JS chỉ để "tăng cường": camera
-  // quét nhãn, thu nhỏ ảnh, khóa máy dùng chung, in đơn đặt hàng.
+  // quét nhãn, khóa máy dùng chung, in đơn đặt hàng.
   const DUOC_SCRIPT = new Set(['web/src/components/kho/QuetMa.astro']);
-  const DUOC_JS = new Set(['ean13.js', 'anh-nho.js', 'may-chung.js', 'in-an.js']);
+  const DUOC_JS = new Set(['ean13.js', 'may-chung.js', 'in-an.js']);
   const nguon = [
     ...moiFile(join(TRANG, 'noi-bo/kho')),
     ...moiFile(join(WEB, 'src/components/kho')),

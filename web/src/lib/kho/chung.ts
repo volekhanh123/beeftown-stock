@@ -343,17 +343,8 @@ export function dinhDangThoiDiem(ts: string | null | undefined): string {
   return `${vn.slice(8, 10)}/${vn.slice(5, 7)} ${vn.slice(11, 16)}`;
 }
 
-/** Ngày hôm nay theo giờ Việt Nam, dạng YYYY-MM-DD. */
-export function homNayVn(): string {
-  return new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
-}
-
-/** Cộng số ngày vào một ngày YYYY-MM-DD. */
-export function congNgay(iso: string, soNgay: number): string {
-  const d = new Date(iso + 'T00:00:00Z');
-  d.setUTCDate(d.getUTCDate() + soNgay);
-  return d.toISOString().slice(0, 10);
-}
+/** Ngày hôm nay theo giờ Việt Nam (YYYY-MM-DD) và cộng ngày — một chỗ duy nhất ở gio-vn.ts. */
+export { homNayVn, congNgay } from '../gio-vn.ts';
 
 // -----------------------------------------------------------------------------
 // CHIA TIỀN KHÔNG LỆCH MỘT ĐỒNG — bản soi gương của kho_chia_so_du_lon_nhat()

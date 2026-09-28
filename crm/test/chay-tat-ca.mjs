@@ -18,9 +18,9 @@
  * số đếm tay luôn cũ (README từng ghi 1374 khi bộ thật đã hơn 4.000).
  */
 
-import { readdirSync, appendFileSync } from 'node:fs';
+import { readdirSync, appendFileSync, mkdtempSync, openSync, closeSync, readFileSync, rmSync } from 'node:fs';
 import { spawn } from 'node:child_process';
-import { availableParallelism } from 'node:os';
+import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -81,19 +81,30 @@ function docTong(ra) {
   return { soKiem: null, soHong: null };
 }
 
+// File test in rồi gọi process.exit() ngay. Qua PIPE, phần chữ chưa kịp ghi bị cắt mất (đo được: test-hop-dong-web
+// mất dòng tổng 1/3 số lần) — nên mỗi file ghi thẳng vào một FILE tạm: ghi file là đồng bộ, không mất chữ.
+const THU_MUC_TAM = mkdtempSync(join(tmpdir(), 'beeftown-test-'));
+process.on('exit', () => { try { rmSync(THU_MUC_TAM, { recursive: true, force: true }); } catch { /* bỏ qua */ } });
+
 function chayMot(f) {
   return new Promise(xong => {
     const batDau = Date.now();
+    const duongRa = join(THU_MUC_TAM, `${f}.log`);
+    const fd = openSync(duongRa, 'w');
     const con = spawn(process.execPath, [join(THU_MUC, f)], {
-      cwd: join(THU_MUC, '..'), env: { ...process.env, FORCE_COLOR: '1' },
+      cwd: join(THU_MUC, '..'), env: { ...process.env, FORCE_COLOR: '1' }, stdio: ['ignore', fd, fd],
     });
-    let ra = '';
-    con.stdout.on('data', d => { ra += d; });
-    con.stderr.on('data', d => { ra += d; });
-    const hen = setTimeout(() => { ra += `\nQUÁ ${GIOI_HAN_MS / 60000} PHÚT — dừng file này.\n`; con.kill('SIGKILL'); }, GIOI_HAN_MS);
+    let quaGio = false;
+    const hen = setTimeout(() => { quaGio = true; con.kill('SIGKILL'); }, GIOI_HAN_MS);
     con.on('close', (ma, tinHieu) => {
       clearTimeout(hen);
-      xong({ f, ma: ma ?? tinHieu, dat: ma === 0, ms: Date.now() - batDau, ra, ...docTong(ra) });
+      closeSync(fd);
+      let ra = readFileSync(duongRa, 'utf8') + (quaGio ? `\nQUÁ ${GIOI_HAN_MS / 60000} PHÚT — dừng file này.\n` : '');
+      const tong = docTong(ra);
+      // Thoát mã 0 mà không in dòng tổng: file dừng giữa chừng mà không báo (await treo, thiếu ketThuc…).
+      const thieuTong = ma === 0 && tong.soKiem === null;
+      if (thieuTong) ra += '\n✗ File thoát mã 0 nhưng không in dòng "TẤT CẢ n KIỂM TRA" / "n HỎNG / m KIỂM TRA" — có chạy hết không?\n';
+      xong({ f, ma: ma ?? tinHieu, dat: ma === 0 && !thieuTong, ms: Date.now() - batDau, ra, ...tong });
     });
   });
 }

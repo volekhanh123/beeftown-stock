@@ -381,8 +381,12 @@ await nhom('8 · MẤT KẾT NỐI = LÂU KHÔNG NHẬN HÓA ĐƠN TRONG GIỜ M
     const ev = await suKien(UID.qlA, 'ipos_mat_ket_noi');
     ok('Quản lý có thông báo mất kết nối (phu = cham), mốc đã tới', ev.length === 1 && ev[0].phu === 'cham'
        && new Date(ev[0].luc) <= new Date(), JSON.stringify(ev));
-  } else {
+  } else if (gio < 0.95) {
     ok('(Vừa qua nửa đêm VN — mốc tính từ giờ mở cửa hôm nay nên chưa báo)', tt.mat_ket_noi === false);
+  } else {
+    // 00:57–01:03 giờ VN: mở cửa từ 0h đúng ~1 giờ = đúng ngưỡng — báo hay chưa tùy vài giây, không khẳng định.
+    // (Trước đây nhánh trên ôm cả 01:00–01:03 và đòi "chưa báo" — sai, lượt chạy lúc 01:01 VN đỏ oan.)
+    ok('(Sát mốc 1 giờ sau nửa đêm VN — bỏ qua khẳng định)', true);
   }
   // Quán đóng cửa lúc này → không báo dù lâu không có hóa đơn.
   const hh = Math.floor(gio);

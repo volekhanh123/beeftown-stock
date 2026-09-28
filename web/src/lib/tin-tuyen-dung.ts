@@ -162,10 +162,8 @@ export const TRANG_THAI: Record<TrangThaiTin, { ten: HaiThuTieng; lop: string }>
   da_thu_hoi: { ten: { vi: 'Đã gỡ',     en: 'Taken down' }, lop: 'tat' },
 };
 
-/** Hôm nay theo giờ Việt Nam, dạng YYYY-MM-DD — khớp hom_nay_vn() của database. */
-export function homNayVn(): string {
-  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' });
-}
+/** Hôm nay theo giờ Việt Nam, dạng YYYY-MM-DD — một chỗ duy nhất ở gio-vn.ts, khớp hom_nay_vn() của database. */
+export { homNayVn } from './gio-vn.ts';
 
 /**
  * Đơn vị chọn sẵn ở ô lương đề xuất. Tin chưa có mức đề xuất thì đơn vị đang

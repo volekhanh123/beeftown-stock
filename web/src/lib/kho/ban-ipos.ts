@@ -28,6 +28,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { boDau, cauLoiKho, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
+import { docGioVnDiaPhuong } from '../gio-vn.ts';
 
 // -----------------------------------------------------------------------------
 // KIỂU
@@ -291,15 +292,12 @@ export function docFormCauHinhIpos(form: FormData): { cauHinh: CauHinhGui | null
 /**
  * Ô "datetime-local" (giờ Việt Nam, "2026-09-25T08:30") → ISO có múi +07:00.
  * Trống → null (database lấy lúc gửi của lần đếm quầy đã duyệt gần nhất).
- * Sai dạng → undefined.
+ * Sai dạng, hoặc ngày giờ không có thật (31/02, 24:00) → undefined.
  */
 export function docMocChuyen(v: unknown): string | null | undefined {
   const s = String(v ?? '').trim();
   if (s === '') return null;
-  const m = s.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
-  if (!m) return undefined;
-  const iso = `${m[1]}T${m[2]}:${m[3]}:${m[4] ?? '00'}+07:00`;
-  return Number.isNaN(new Date(iso).getTime()) ? undefined : iso;
+  return docGioVnDiaPhuong(s) ?? undefined;
 }
 
 /** timestamptz → giá trị cho ô datetime-local giờ Việt Nam ("2026-09-25T08:30"). */

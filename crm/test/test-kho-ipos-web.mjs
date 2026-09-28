@@ -224,7 +224,12 @@ await nhom('3 · HÀM NHỎ: GIỜ, URL, TOKEN, KHÓA, FORM', async () => {
   ok('Form cấu hình: dán token → từ chối', /token/i.test(docFormCauHinhIpos(f({ pos_id: `x${TEN_TS}` })).loi ?? ''));
 
   const nguon = readFileSync(join(GOC, 'web/src/lib/kho/ipos.ts'), 'utf8');
-  ok('ipos.ts thuần: không import gì', ![...nguon.matchAll(/^import /gm)].length);
+  // Thuần = không mạng, không database. Chỉ được import gio-vn.ts (đọc ngày giờ VN), và chính file đó cũng không import gì.
+  const cacImport = [...nguon.matchAll(/^import .* from '([^']+)'/gm)].map(m => m[1]);
+  const nguonGioVn = readFileSync(join(GOC, 'web/src/lib/gio-vn.ts'), 'utf8');
+  ok('ipos.ts thuần: chỉ import gio-vn.ts, và gio-vn.ts không import gì',
+     cacImport.every(d => d === '../gio-vn.ts') && [...nguon.matchAll(/^import /gm)].length === cacImport.length
+     && ![...nguonGioVn.matchAll(/^import /gm)].length, cacImport.join(', '));
   ok('TRUONG_IPOS ghi nguồn tài liệu Postman', /IPOS HUB API INTERGRATION FOR MERCHANT[\s\S]{0,4000}export const TRUONG_IPOS/.test(nguon)
      && /IPOS HUB API INTERGRATION FOR MERCHANT/.test(TRUONG_IPOS.nguon));
 });

@@ -46,9 +46,11 @@ Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô 
    bước thử tay trên project Beeftown-thu. *(4868551, 5021735, f9bcde0, 8cbf5fc)*
 2. `bam-hai-lan` — **Gửi hai lần.** Bấm đúp, Meta / iPOS gửi lại webhook, hai lượt cron chồng nhau:
    chỉ đúng một bản ghi, không trừ kho hai lần, không gửi tin hai lần. *(861ff7f, 702ff11, b98c845)*
-3. `gio-vn` — **Giờ Việt Nam.** Database dùng `hom_nay_vn()` / `bay_gio_vn()`, không `current_date`
-   (`kiem-migration.mjs` chặn). Web dùng `homNayVn()`. Thử mốc 23:50 và 00:10 giờ VN và ngày không
-   có thật (31/02). *(4868551)*
+3. `gio-vn` — **Giờ Việt Nam.** Database dùng `hom_nay_vn()` / `bay_gio_vn()` / `gio_vn()`, không
+   `current_date` (`kiem-migration.mjs` chặn). Web dùng `web/src/lib/gio-vn.ts` (`homNayVn`, `namVn`,
+   `congNgay`, `docGioVnDiaPhuong` cho ô giờ người nhập / máy ngoài gửi) — `test-gio-vn.mjs` chặn tự
+   cộng 7 tiếng. Thử mốc 23:50 và 00:10 giờ VN (đồng hồ giả `dong-ho-gia.mjs`) và ngày không có
+   thật (31/02). *(4868551)*
 4. `chu-va-so` — **Chữ có dấu và số kiểu Việt.** "1.000" là một nghìn, "1,5" là một phẩy năm; tên
    file có dấu thành khóa ASCII; chữ không dính nhau khi xuống dòng (`compressHTML`); so khớp câu có
    dấu đúng ("Đúng" không phải "dừng"). *(6b1fddc, 52d0937, 1bb55ac, b98c845)*

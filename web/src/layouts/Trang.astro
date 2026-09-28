@@ -25,6 +25,7 @@
 import '../styles/chung.css';
 import { THUONG_HIEU, NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import { namVn } from '../lib/gio-vn';
 
 interface Props {
   ngonNgu: NgonNgu;
@@ -169,7 +170,7 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     <footer class="chan-trang">
       <div class="khung chan-hang">
         <span>
-          © {new Date().getFullYear()} {t.banQuyen} ·
+          © {namVn()} {t.banQuyen} ·
           <span lang="en">{THUONG_HIEU.descriptor}</span>
         </span>
         <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a>
