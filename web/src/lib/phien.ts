@@ -29,6 +29,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AstroCookies } from 'astro';
+import { phanLoaiLoiAuth, laTraLoiTamThoi, ghiQuaTai, QUA_TAI } from './qua-tai';
 
 const COOKIE_PHIEN = 'bt_phien';
 const COOKIE_KET_QUA = 'bt_kq';
@@ -102,8 +103,12 @@ function taoClientVoiToken(accessToken: string): SupabaseClient {
  * chưa có cookie, token hỏng, hoặc đã đăng nhập Supabase nhưng KHÔNG có dòng
  * trong bảng nhan_su. Trường hợp cuối quan trọng: một tài khoản Supabase Auth
  * tự đăng ký được thì cũng chỉ là một tài khoản trống, không phải nhân viên.
+ *
+ * Trả về QUA_TAI khi KHÔNG KIỂM ĐƯỢC vì Supabase bận hoặc mất mạng (xem
+ * lib/qua-tai.ts). Khi đó cookie còn nguyên — token chưa bị đụng tới, nên
+ * không có lý do gì bắt người ta đăng nhập lại.
  */
-export async function layPhien(cookies: AstroCookies): Promise<Phien | null> {
+export async function layPhien(cookies: AstroCookies): Promise<Phien | null | typeof QUA_TAI> {
   if (!coDatabase()) return null;
   const t = docToken(cookies);
   if (!t) return null;
@@ -112,16 +117,23 @@ export async function layPhien(cookies: AstroCookies): Promise<Phien | null> {
   let uid: string | null = null;
   let email = '';
 
-  const { data: u } = await client.auth.getUser(t.access_token);
+  const { data: u, error: loiUser } = await client.auth.getUser(t.access_token);
   if (u?.user) {
     uid = u.user.id;
     email = u.user.email ?? '';
+  } else if (loiUser && phanLoaiLoiAuth(loiUser) !== 'tu_choi') {
+    // Supabase bận / mất mạng — access token có thể vẫn còn hạn. Làm mới lúc
+    // này là tiêu thêm một lượt của hạn mức chung, và làm mới hỏng thì mất phiên.
+    ghiQuaTai('kiểm phiên', loiUser);
+    return QUA_TAI;
   } else {
-    // Access token hết hạn — thử refresh token. Thất bại thì coi như đăng xuất.
+    // Access token hết hạn — thử refresh token. Bị TỪ CHỐI thì coi như đăng
+    // xuất. Supabase bận / mất mạng thì refresh token vẫn còn: giữ cookie.
     try {
       const tam = createClient(layBien('PUBLIC_SUPABASE_URL')!, layBien('PUBLIC_SUPABASE_ANON_KEY')!,
         { auth: { persistSession: false, autoRefreshToken: false } });
       const { data, error } = await tam.auth.refreshSession({ refresh_token: t.refresh_token });
+      if (error && phanLoaiLoiAuth(error) !== 'tu_choi') { ghiQuaTai('gia hạn phiên', error); return QUA_TAI; }
       if (error || !data.session) { xoaToken(cookies); return null; }
       ghiToken(cookies, {
         access_token: data.session.access_token,
@@ -130,17 +142,20 @@ export async function layPhien(cookies: AstroCookies): Promise<Phien | null> {
       client = taoClientVoiToken(data.session.access_token);
       uid = data.session.user.id;
       email = data.session.user.email ?? '';
-    } catch { xoaToken(cookies); return null; }
+    } catch (e) { ghiQuaTai('gia hạn phiên', e); return QUA_TAI; }
   }
 
   // Ai là nhân viên do bảng nhan_su quyết định, không do Supabase Auth.
-  const { data: ns, error } = await client
+  const { data: ns, error, status } = await client
     .from('nhan_su')
     .select('id, ho_ten, vai_tro, chi_nhanh_id')
     .eq('auth_uid', uid)
     .eq('dang_lam', true)
     .maybeSingle();
 
+  // Database bận / mất mạng: chưa biết có phải nhân viên không — đừng trả null
+  // (null là "không phải nhân viên", đưa về trang đăng nhập).
+  if (error && laTraLoiTamThoi(status)) { ghiQuaTai('đọc nhân sự', status); return QUA_TAI; }
   if (error || !ns) return null;
 
   return { client, nhanSu: { ...(ns as Omit<NhanSu, 'email'>), email } };
@@ -157,6 +172,17 @@ export async function dangNhap(
 
   const { data, error } = await tam.auth.signInWithPassword({ email, password: matKhau });
   if (error || !data.session) {
+    // Bận / mất mạng KHÔNG phải sai mật khẩu. Báo "sai mật khẩu" ở đây thì
+    // người ta gõ lại liên tục — mỗi lần gõ lại là thêm một lượt vào đúng cái
+    // hạn mức đang cạn (lib/qua-tai.ts). Câu lấy từ CAU_DANG_NHAP_TAM.
+    const loai = error ? phanLoaiLoiAuth(error) : 'mat_ket_noi';
+    if (loai !== 'tu_choi') ghiQuaTai('đăng nhập', error);
+    if (loai === 'qua_tai') {
+      return 'Đang có nhiều người đăng nhập cùng lúc. Đợi khoảng một phút rồi thử lại — không phải do sai mật khẩu.';
+    }
+    if (loai === 'mat_ket_noi') {
+      return 'Chưa kết nối được máy chủ đăng nhập. Đợi vài phút rồi thử lại — không phải do sai mật khẩu.';
+    }
     // Cố ý không nói "email này không tồn tại" — đó là một đường dò tài khoản.
     return 'Email hoặc mật khẩu không đúng.';
   }
@@ -170,6 +196,10 @@ export async function dangNhap(
   // xóa cookie ngay, để không ai ở trạng thái "đã đăng nhập mà không thấy gì"
   // rồi tưởng giao diện hỏng.
   const phien = await layPhien(cookies);
+  // Đăng nhập đã xong nhưng database bận nên chưa kiểm được nhân sự: giữ
+  // phiên, cho vào — middleware kiểm lại ở MỌI trang sau, bận thì trang tự
+  // tải lại. Xóa cookie ở đây là bắt người ta đăng nhập thêm một lượt nữa.
+  if (phien === QUA_TAI) return null;
   if (!phien) {
     xoaToken(cookies);
     return 'Tài khoản này chưa được nối với nhân sự nào. Liên hệ chủ nhà hàng.';

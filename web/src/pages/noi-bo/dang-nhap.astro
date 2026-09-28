@@ -39,7 +39,9 @@ const t = dichNB(nn, {
 
 let loi: string | null = null;
 
-// Đã đăng nhập rồi thì đi thẳng vào trong, không hiện lại form.
+// Đã đăng nhập rồi thì đi thẳng vào trong, không hiện lại form. Supabase bận
+// (layPhien trả QUA_TAI) cũng vào trong: phiên còn nguyên, và trang trong tự
+// tải lại khi hết bận — hiện form ở đây là mời người ta đăng nhập thêm lượt nữa.
 if (Astro.request.method === 'GET' && coDatabase()) {
   if (await layPhien(Astro.cookies)) return Astro.redirect('/noi-bo', 302);
 }

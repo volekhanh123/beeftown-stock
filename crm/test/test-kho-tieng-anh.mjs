@@ -126,6 +126,12 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     "cau: 'Event 11 có hơn 500 dòng'",
     "canhBao.push(`${khongMa} dòng thiếu \"item_id\"`)",
     "canhBao.push(`${slHong} dòng thiếu hoặc sai \"quantity\"`)",
+    // lib/kho/may-chung.ts — nhãn dòng nhật ký "[qua-tai]" (lib/qua-tai.ts ghiQuaTai) cho người
+    // vận hành tìm trong Cloudflare Logs; không lên màn nào. test-qua-tai.mjs đọc nhật ký này.
+    "ghiQuaTai('máy dùng chung · đổi phiên', error)",
+    "ghiQuaTai('máy dùng chung · đổi phiên', e)",
+    "ghiQuaTai('máy dùng chung · đăng nhập', error)",
+    "ghiQuaTai('máy dùng chung · đăng nhập', e)",
   ];
 
   // Mọi file kho đã dịch xong. File kho mới (tự tìm ở trên) được quét ngay —
