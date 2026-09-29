@@ -8,12 +8,16 @@
  * theo `luc` của database, nên ở đây thử từng phút giờ Việt Nam (21:59 / 22:00, 06:59 / 07:00,
  * 07:59 / 08:00, 23:50 / 00:10) bằng số liệu giả. bao-dong-tin.ts soạn một tin mỗi lượt;
  * bao-dong-kenh.ts là hợp đồng của kênh (chưa chọn kênh nào). Phần database: test-bao-dong.mjs.
+ *
+ * Nhóm 13 trở đi chạy ĐẦU–CUỐI: baoDongTatCa (bao-dong.ts) trên database thật (PGlite) với
+ * client Supabase giả (rpc chạy thật dưới danh nghĩa máy may_bao_dong) và kênh giả — nối kênh,
+ * mới đỏ, hết đỏ, gửi hỏng, đánh dấu hỏng, mất mạng, số liệu hỏng, khóa, cron riêng.
  */
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { taoBoDem } from './kho-chung.mjs';
+import { taoBoDem, dungDatabase, UID } from './kho-chung.mjs';
 import { datGio, traGio } from './dong-ho-gia.mjs';
 import { VIET } from './quet-chu-viet.mjs';
 
@@ -388,6 +392,364 @@ await nhom('12 · HỢP ĐỒNG KÊNH (CHƯA CHỌN KÊNH NÀO)', async () => {
   ok('Bản này chonKenhBaoDong luôn trả KENH_KHONG (kể cả khi env có đủ thứ)',
      chonKenhBaoDong(undefined) === KENH_KHONG && chonKenhBaoDong({ TELEGRAM_BOT_TOKEN: 'x', BAO_DONG_KENH: 'telegram' }) === KENH_KHONG);
   ok('Mã kênh khớp ràng buộc của database (^[a-z_]{1,20}$)', /^[a-z_]{1,20}$/.test(KENH_KHONG.ma));
+});
+
+// ===========================================================================
+// ĐẦU–CUỐI trên database thật
+// ===========================================================================
+const { baoDongTatCa, CRON_BAO_DONG, HET_GIO, taoFetchCoHan, guiCoHan, xoaBiMatBaoDong } = await import(join(WEB, 'lib', 'bao-dong.ts'));
+const { db, cnA, cnB, duoi } = await dungDatabase();
+const UID_MAY = '00000000-0000-4000-8000-0000000000f1';
+await db.query(`insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro) values ($1, $2, 'Máy báo động', 'may_bao_dong')`, [UID_MAY, cnA.id]);
+// Mỗi chi nhánh một bàn: form đặt bàn mở mà chưa có bàn là đèn KHÁCH đỏ — báo hay giữ tùy giờ chạy
+// test. Các nhóm dưới chỉ dùng đèn HỆ THỐNG (Zalo) nên chạy giờ nào cũng cùng kết quả.
+for (const cn of [cnA, cnB]) await db.query(`insert into ban_an (chi_nhanh_id, ten) values ($1, 'Bàn 1')`, [cn.id]);
+
+const MAT_KHAU = 'MatKhauMay-Bi-Mat-123';
+const ENV = { BAO_DONG_MAY_EMAIL: 'may-bao-dong@beeftown.test', BAO_DONG_MAY_MAT_KHAU: MAT_KHAU };
+const TOKEN_KENH = 'TOKEN-KENH-BI-MAT-999';
+const KIEU = {
+  bao_dong_bat_dau_luot: [['p_kenh', 'text']],
+  bao_dong_ghi_luot: [['p_luot', 'uuid'], ['p_den', 'jsonb'], ['p_day_du', 'boolean']],
+  bao_dong_da_gui: [['p_kenh', 'text'], ['p_mo', 'uuid[]'], ['p_het', 'uuid[]'], ['p_tom_tat', 'boolean']],
+  bao_dong_ket_thuc_luot: [['p_luot', 'uuid'], ['p_dong', 'uuid[]'], ['p_loi', 'text']],
+};
+/** Client Supabase giả: rpc chạy THẬT trên PGlite dưới danh nghĩa máy. hong[hàm] = { con: số lần hỏng, kieu: 'loi' | 'nem' }. */
+function clientGia(o = {}) {
+  const goi = [];
+  return {
+    goi,
+    auth: {
+      async signInWithPassword({ email, password }) {
+        goi.push('signIn');
+        if (o.dangNhap === 'nem') throw new Error('fetch failed');
+        if (o.dangNhap === '429') return { data: { session: null }, error: { message: 'Request rate limit reached', status: 429 } };
+        if (email !== ENV.BAO_DONG_MAY_EMAIL || password !== MAT_KHAU) return { data: { session: null }, error: { message: 'Invalid login credentials' } };
+        return { data: { session: { access_token: 'phien-gia' } }, error: null };
+      },
+      async signOut() { goi.push('signOut'); return { error: null }; },
+    },
+    async rpc(ham, thamSo = {}) {
+      goi.push(ham);
+      const h = o.hong?.[ham];
+      if (h && h.con > 0) {
+        h.con--;
+        if (h.kieu === 'nem') throw new Error('fetch failed: mất mạng giữa chừng');
+        return { data: null, error: { message: 'Lỗi 503 giả của PostgREST' } };
+      }
+      const kieu = KIEU[ham];
+      if (!kieu) return { data: null, error: { message: `hàm lạ ${ham}` } };
+      const p = kieu.map(([ten, k]) => {
+        const v = thamSo[ten];
+        if (v === undefined || v === null) return null;
+        return k === 'jsonb' ? JSON.stringify(v) : k === 'uuid[]' ? `{${v.join(',')}}` : v;
+      });
+      const r = await duoi(UID_MAY, `select ${ham}(${kieu.map(([, k], i) => `$${i + 1}::${k}`).join(', ')}) as kq`, p);
+      return r.loi ? { data: null, error: { message: r.loi, code: r.ma } } : { data: r.rows[0].kq, error: null };
+    },
+  };
+}
+/** Kênh giả ghi lại mọi tin. kieu: 'ok' | 'hong' | 'nem' | 'treo' | 'la'. */
+function kenhGia(kieu = 'ok') {
+  const tin = [];
+  return {
+    tin, ma: 'telegram', ten: 'Telegram', gioiHanKyTu: 4096, biMat: [TOKEN_KENH],
+    async gui(t) {
+      tin.push(t.vanBan);
+      if (kieu === 'nem') throw new Error(`lỗi mạng khi gọi bot${TOKEN_KENH}`);
+      if (kieu === 'treo') return new Promise(() => {});
+      if (kieu === 'hong') return { ok: false, tamThoi: true, cau: `HTTP 502 bot${TOKEN_KENH}` };
+      if (kieu === 'la') return 'ok';
+      return { ok: true };
+    },
+  };
+}
+const moiLog = [];
+/** Một lượt: trả { log, c (client) }. */
+async function chay(o = {}) {
+  const c = o.client ?? clientGia(o.clientO);
+  const log = await baoDongTatCa(o.env ?? ENV, {
+    taoClient: () => c, kenh: o.kenh, hetGio: o.hetGio, ghiLog: () => {}, nn: 'vi',
+  });
+  moiLog.push(...log);
+  return { log, c };
+}
+const mot = async (sql, p = []) => (await db.query(sql, p)).rows[0];
+const trangThai = () => mot(`select * from bao_dong_trang_thai where id = 1`);
+const suCoMo = khoa => mot(`select * from bao_dong_su_co where khoa = $1 and het_luc is null`, [khoa]);
+/** Giả thời gian trôi: lùi mốc của sự cố đang mở (database không có đồng hồ giả). */
+const lui = (khoa, cot, phut) => db.query(
+  `update bao_dong_su_co set ${cot} = ${cot} - make_interval(mins => $2) where khoa = $1 and het_luc is null`, [khoa, phut]);
+const zaloDo = () => db.query(`
+  update zalo_cau_hinh set app_id = '123', oa_id = '456', refresh_token_ma_hoa = 'v1.' || repeat('BANMABIMAT', 5),
+         dang_bat = true, che_do = 'that', lan_chay_cuoi = now(), loi_cuoi = 'Lỗi thử — gọi 0912345678' where id = 1`);
+const zaloXanh = () => db.query(`update zalo_cau_hinh set loi_cuoi = null, lan_chay_cuoi = now() where id = 1`);
+const denBaoDong = async () => {
+  const r = await duoi(UID.chu, `select suc_khoe_he_thong() as k`);
+  const k = r.rows?.[0]?.k;
+  return { o: k?.bao_dong, d: danhGiaSucKhoe(k, 'vi', true).khoi[0].den.find(x => x.ma === 'bao_dong') };
+};
+
+// ===========================================================================
+await nhom('13 · KHÔNG CÓ TÀI KHOẢN MÁY, ĐĂNG NHẬP HỎNG → BỎ LƯỢT, KHÔNG NÉM', async () => {
+  let log = await baoDongTatCa({}, { taoClient: () => { throw new Error('không được tạo client'); }, ghiLog: () => {} });
+  ok('Thiếu hai bí mật → đúng một dòng "chưa cài … — bỏ qua", không gọi database',
+     log.length === 1 && log[0] === '[bao-dong] chưa cài BAO_DONG_MAY_EMAIL / BAO_DONG_MAY_MAT_KHAU — bỏ qua', log.join(' | '));
+  for (const [ten, o, mau] of [['Supabase trả 429 (quá giới hạn đăng nhập)', { dangNhap: '429' }, /Request rate limit reached/],
+                               ['mất mạng lúc đăng nhập', { dangNhap: 'nem' }, /fetch failed/]]) {
+    const r = await chay({ clientO: o });
+    ok(`${ten} → bỏ lượt, một dòng log, không gọi RPC nào`, r.c.goi.join() === 'signIn' && r.log.length === 1
+       && /tài khoản máy báo động không đăng nhập được/.test(r.log[0]) && mau.test(r.log[0]) && /— bỏ qua$/.test(r.log[0]), r.log.join(' | '));
+  }
+  const sai = await chay({ env: { ...ENV, BAO_DONG_MAY_MAT_KHAU: 'sai-mat-khau-456' } });
+  ok('Sai mật khẩu → bỏ lượt; log không có mật khẩu', /Invalid login credentials/.test(sai.log[0]) && !sai.log[0].includes('sai-mat-khau-456'),
+     sai.log.join(' | '));
+
+  // Client Supabase THẬT, chỉ fetch là giả: 429 và treo.
+  const envThat = { ...ENV, PUBLIC_SUPABASE_URL: 'https://gia.supabase.co', PUBLIC_SUPABASE_ANON_KEY: 'anon-gia' };
+  const f429 = async () => new Response(JSON.stringify({ code: 429, error_code: 'over_request_rate_limit', msg: 'Request rate limit reached' }),
+                                        { status: 429, headers: { 'content-type': 'application/json' } });
+  log = await baoDongTatCa(envThat, { fetchFn: f429, ghiLog: () => {} });
+  ok('Client Supabase thật, Supabase trả 429 → bỏ lượt, không ném', log.length === 1 && /không đăng nhập được/.test(log[0]), log.join(' | '));
+  const fTreo = (_u, init) => new Promise((_, loi) => init?.signal?.addEventListener('abort', () => loi(init.signal.reason ?? new Error('aborted'))));
+  const t0 = Date.now();
+  log = await baoDongTatCa(envThat, { fetchFn: fTreo, hetGio: { goiMs: 1000 }, ghiLog: () => {} });
+  ok('Supabase treo → lời gọi hết giờ (goiMs), bỏ lượt, không treo Worker', Date.now() - t0 < 8000 && log.length === 1
+     && /không đăng nhập được/.test(log[0]), `${Date.now() - t0} ms · ${log.join(' | ')}`);
+  ok('Mật khẩu máy không bao giờ nằm trong log', ![...log, ...moiLog].some(l => l.includes(MAT_KHAU)));
+});
+
+// ===========================================================================
+await nhom('14 · CHƯA CHỌN KÊNH: CHẠY TRỌN LƯỢT, THEO DÕI, KHÔNG GỬI, KHÔNG ĐÁNH DẤU', async () => {
+  const r = await chay();
+  ok('Lượt trọn: đăng nhập → bắt đầu → ghi → kết thúc → đăng xuất',
+     r.c.goi.join() === 'signIn,bao_dong_bat_dau_luot,bao_dong_ghi_luot,bao_dong_ket_thuc_luot,signOut', r.c.goi.join());
+  ok('Log đúng một dòng "lượt xong — 0 đèn đỏ · chưa chọn kênh"', r.log.length === 1
+     && r.log[0] === '[bao-dong] lượt xong — 0 đèn đỏ · chưa chọn kênh', r.log.join(' | '));
+  const tt = await trangThai();
+  ok('Database: nhịp tim, kênh "khong", không lỗi, nhả khóa', tt.lan_chay_cuoi !== null && tt.kenh === 'khong' && tt.loi_cuoi === null
+     && tt.dang_chay_tu === null && tt.luot === null, JSON.stringify(tt));
+  const { d } = await denBaoDong();
+  ok('Đèn Báo động trên bảng: xám "chưa chọn kênh"', d?.mau === 'tat' && /chưa chọn kênh/.test(d?.cau), `${d?.mau} — ${d?.cau}`);
+  ok('Không có sự cố nào (mọi đèn không đỏ)', (await mot(`select count(*)::int as n from bao_dong_su_co`)).n === 0);
+
+  await zaloDo();
+  await chay();
+  const s1 = await suCoMo('zalo');
+  ok('Đèn Zalo đỏ → sự cố mở, chưa báo', !!s1 && s1.bao_mo_luc === null && s1.het_do_tu === null);
+  await lui('zalo', 'bat_dau_luc', 6);
+  await chay();
+  const s2 = await suCoMo('zalo');
+  ok('Đỏ đủ lâu mà chưa có kênh → vẫn KHÔNG đánh dấu "đã báo" (để tin nối kênh nói lại)', s2.id === s1.id && s2.bao_mo_luc === null);
+});
+
+// ===========================================================================
+const kenh = kenhGia('ok');
+await nhom('15 · CÓ KÊNH: TIN NỐI KÊNH, KHÔNG LẶP, HẾT ĐỎ, MỚI ĐỎ', async () => {
+  let r = await chay({ kenh });
+  ok('Lượt đầu có kênh → tin "đã nối kênh" liệt kê mục đang đỏ', kenh.tin.length === 1
+     && kenh.tin[0].startsWith('Beeftown — đã nối kênh báo động (Telegram)\nĐang đỏ:\n• Bộ gửi tin Zalo: Lượt gửi gần nhất bị lỗi'), kenh.tin[0]);
+  ok('Log "đã gửi" SAU khi kênh trả ok, rồi "lượt xong"',
+     r.log.join('\n') === '[bao-dong] đã gửi qua Telegram: tin nối kênh (1 đang đỏ)\n[bao-dong] lượt xong — 1 đèn đỏ · kênh Telegram',
+     r.log.join(' | '));
+  const tt = await trangThai();
+  ok('Database: kênh telegram, lúc tóm tắt, lần gửi, sự cố Zalo đã báo', tt.kenh === 'telegram' && tt.tom_tat_luc !== null
+     && tt.lan_gui_cuoi !== null && (await suCoMo('zalo')).bao_mo_luc !== null);
+  ok('Tin không mang câu lỗi thô hay số điện thoại của lượt Zalo', !kenh.tin[0].includes('0912345678') && !kenh.tin[0].includes('Lỗi thử'));
+  r = await chay({ kenh });
+  ok('Lượt sau, vẫn đỏ → KHÔNG gửi lại (một đèn đỏ = một tin)', kenh.tin.length === 1 && r.log.length === 1, r.log.join(' | '));
+
+  await zaloXanh();
+  await chay({ kenh });
+  ok('Hết đỏ → chưa báo ngay (chờ 15 phút)', kenh.tin.length === 1 && (await suCoMo('zalo'))?.het_do_tu !== null);
+  await lui('zalo', 'het_do_tu', 16);
+  await chay({ kenh });
+  ok('Hết đỏ 16 phút → tin "hết đỏ: đã ổn lại"', kenh.tin.length === 2 && /— 1 mục hết đỏ\nHết đỏ:\n• Bộ gửi tin Zalo: đã ổn lại\./.test(kenh.tin[1]),
+     kenh.tin[1]);
+  const dong = await mot(`select * from bao_dong_su_co where khoa = 'zalo' order by bat_dau_luc desc limit 1`);
+  ok('…sự cố đóng SAU khi gửi và đánh dấu', dong.het_luc !== null && dong.bao_het_luc !== null && !(await suCoMo('zalo')));
+
+  await zaloDo();
+  await chay({ kenh });
+  ok('Đỏ lại → sự cố MỚI, lượt đầu chưa báo', kenh.tin.length === 2 && (await suCoMo('zalo'))?.bao_mo_luc === null);
+  await lui('zalo', 'bat_dau_luc', 6);
+  await chay({ kenh });
+  ok('Lượt thứ hai → tin "mới đỏ"', kenh.tin.length === 3 && /^Beeftown \d\d:\d\d — 1 mục mới đỏ\nMới đỏ:\n• Bộ gửi tin Zalo: Lượt gửi gần nhất bị lỗi/.test(kenh.tin[2]),
+     kenh.tin[2]);
+  await chay({ kenh });
+  ok('…và chỉ một lần', kenh.tin.length === 3);
+  const { d } = await denBaoDong();
+  ok('Đèn Báo động: xanh "Báo qua Telegram"', d?.mau === 'xanh' && /^Báo qua Telegram/.test(d?.cau), `${d?.mau} — ${d?.cau}`);
+});
+
+// ===========================================================================
+await nhom('16 · GỬI HỎNG → KHÔNG ĐÁNH DẤU, ĐÈN ĐỎ, LƯỢT SAU GỬI LẠI', async () => {
+  await zaloXanh();
+  await chay({ kenh });
+  await lui('zalo', 'het_do_tu', 16);
+  for (const [ten, k, o] of [['kênh trả lỗi 502', kenhGia('hong'), {}], ['kênh ném lỗi mạng', kenhGia('nem'), {}],
+                             ['kênh trả kết quả sai hợp đồng', kenhGia('la'), {}],
+                             ['kênh treo', kenhGia('treo'), { hetGio: { kenhMs: 300 } }]]) {
+    const t0 = Date.now();
+    const r = await chay({ kenh: k, ...o });
+    const s = await suCoMo('zalo');
+    const tt = await trangThai();
+    ok(`${ten} → sự cố vẫn mở, chưa đánh dấu hết đỏ, lỗi lưu lại (không token kênh), không "đã gửi"`,
+       k.tin.length === 1 && !!s && s.bao_het_luc === null && /gửi qua Telegram hỏng/.test(tt.loi_cuoi ?? '')
+       && !(tt.loi_cuoi ?? '').includes(TOKEN_KENH) && !r.log.some(l => l.includes('đã gửi')) && tt.dang_chay_tu === null,
+       `${tt.loi_cuoi} · ${r.log.join(' | ')}`);
+    if (ten === 'kênh treo') ok('…kênh treo hết giờ, lượt vẫn kết thúc', Date.now() - t0 < 5000, `${Date.now() - t0} ms`);
+  }
+  let { o, d } = await denBaoDong();
+  ok('Đèn Báo động ĐỎ "lượt gần nhất bị lỗi"', o?.co_loi === true && d?.mau === 'do' && /bị lỗi/.test(d?.cau), `${d?.mau} — ${d?.cau}`);
+  const truoc = kenh.tin.length;
+  await chay({ kenh });
+  ok('Kênh hoạt động lại → gửi tin hết đỏ đúng một lần, đóng sự cố, hết lỗi', kenh.tin.length === truoc + 1
+     && /đã ổn lại/.test(kenh.tin.at(-1)) && !(await suCoMo('zalo')) && (await trangThai()).loi_cuoi === null);
+  ({ o, d } = await denBaoDong());
+  ok('…đèn Báo động xanh lại', d?.mau === 'xanh', `${d?.mau} — ${d?.cau}`);
+});
+
+// ===========================================================================
+await nhom('17 · GỬI ĐƯỢC MÀ ĐÁNH DẤU HỎNG → LẶP ĐÚNG MỘT TIN', async () => {
+  await zaloDo();
+  await chay({ kenh });
+  await lui('zalo', 'bat_dau_luc', 6);
+  const truoc = kenh.tin.length;
+  let r = await chay({ kenh, clientO: { hong: { bao_dong_da_gui: { con: 2 } } } });
+  ok('Tin tới kênh, đánh dấu hỏng hai lần → log "đã gửi" + lỗi "không đánh dấu được"', kenh.tin.length === truoc + 1
+     && r.log.some(l => l.startsWith('[bao-dong] đã gửi qua Telegram: 1 mới đỏ'))
+     && /không đánh dấu được/.test((await trangThai()).loi_cuoi ?? '') && (await suCoMo('zalo')).bao_mo_luc === null, r.log.join(' | '));
+  await chay({ kenh });
+  ok('Lượt sau gửi LẠI đúng tin đó (thà lặp còn hơn mất), lần này đánh dấu được', kenh.tin.length === truoc + 2
+     && kenh.tin.at(-1).split('\n').slice(1).join() === kenh.tin.at(-2).split('\n').slice(1).join() && (await suCoMo('zalo')).bao_mo_luc !== null);
+  await chay({ kenh });
+  ok('…rồi thôi: đúng một lần lặp', kenh.tin.length === truoc + 2);
+  await zaloXanh();
+  await chay({ kenh });
+  await lui('zalo', 'het_do_tu', 16);
+  r = await chay({ kenh, clientO: { hong: { bao_dong_da_gui: { con: 1 } } } });
+  ok('Đánh dấu hỏng MỘT lần → thử lại được ngay, không lặp tin, sự cố đóng', kenh.tin.length === truoc + 3 && !(await suCoMo('zalo'))
+     && (await trangThai()).loi_cuoi === null, r.log.join(' | '));
+});
+
+// ===========================================================================
+await nhom('18 · MẤT MẠNG / DATABASE LỖI GIỮA CHỪNG → KHÔNG GỬI, VẪN NHẢ KHÓA', async () => {
+  await zaloDo();
+  const truoc = kenh.tin.length;
+  for (const [ten, hong] of [['ghi lượt trả lỗi', { bao_dong_ghi_luot: { con: 1 } }],
+                             ['ghi lượt mất mạng (ném lỗi)', { bao_dong_ghi_luot: { con: 1, kieu: 'nem' } }]]) {
+    const r = await chay({ kenh, clientO: { hong } });
+    const tt = await trangThai();
+    ok(`${ten} → không gửi, kết thúc lượt, nhả khóa, lỗi lưu lại`, kenh.tin.length === truoc && r.c.goi.includes('bao_dong_ket_thuc_luot')
+       && tt.dang_chay_tu === null && /không ghi được lượt|lỗi: fetch failed/.test(tt.loi_cuoi ?? ''), `${tt.loi_cuoi} · ${r.c.goi.join()}`);
+  }
+  let r = await chay({ kenh, clientO: { hong: { bao_dong_bat_dau_luot: { con: 1, kieu: 'nem' } } } });
+  ok('Mất mạng ngay lúc bắt đầu lượt → log lỗi, vẫn đăng xuất, không ném', r.log.some(l => /lỗi: fetch failed/.test(l))
+     && r.c.goi.at(-1) === 'signOut', r.log.join(' | '));
+  r = await chay({ kenh, clientO: { hong: { bao_dong_ket_thuc_luot: { con: 1 } } } });
+  ok('Không kết thúc được lượt → log nói khóa tự hết sau 10 phút', r.log.some(l => /không kết thúc được lượt \(khóa tự hết sau 10 phút\)/.test(l)),
+     r.log.join(' | '));
+  r = await chay({ kenh });
+  ok('…lượt ngay sau: "lượt khác đang chạy — bỏ qua", không ghi, không nhả khóa của lượt kia',
+     r.log.includes('[bao-dong] lượt khác đang chạy — bỏ qua') && !r.c.goi.includes('bao_dong_ghi_luot')
+     && !r.c.goi.includes('bao_dong_ket_thuc_luot') && (await trangThai()).dang_chay_tu !== null, r.log.join(' | '));
+  await db.query(`update bao_dong_trang_thai set dang_chay_tu = now() - interval '11 minutes' where id = 1`);
+  r = await chay({ kenh });
+  ok('…khóa treo quá 10 phút → lượt mới chạy bình thường', r.c.goi.includes('bao_dong_ghi_luot') && (await trangThai()).dang_chay_tu === null);
+  await lui('zalo', 'bat_dau_luc', 6);
+  await chay({ kenh });
+  ok('Đèn đỏ trong lúc lỗi vẫn được báo khi database ổn lại', kenh.tin.length === truoc + 1 && /1 mục mới đỏ/.test(kenh.tin.at(-1)));
+});
+
+// ===========================================================================
+await nhom('19 · KHÔNG ĐỌC ĐƯỢC SỐ LIỆU → ĐÈN GIẢ doc_so_lieu, KHÔNG "ĐÃ ỔN LẠI" GIẢ', async () => {
+  const soLieuThat = (() => {
+    const m = readFileSync(join(GOC, 'crm', 'supabase', 'migrations', '0057_bao_dong.sql'), 'utf8');
+    const i = m.indexOf('create or replace function suc_khoe_so_lieu(');
+    return m.slice(i, m.indexOf('\n$$;', i) + 4);
+  })();
+  const truoc = kenh.tin.length;
+  await db.exec(`create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[]) returns jsonb language plpgsql stable
+    security invoker set search_path = public as $$ begin raise exception 'hỏng thử'; end $$;`);
+  try {
+    await zaloXanh();
+    await chay({ kenh });
+    const zalo = await suCoMo('zalo');
+    ok('Mù một lượt: mở sự cố doc_so_lieu, sự cố Zalo vẫn ĐỎ (dù Zalo đã ổn — không ai biết)', !!(await suCoMo('doc_so_lieu'))
+       && zalo?.het_do_tu === null && kenh.tin.length === truoc, JSON.stringify(zalo));
+    ok('…lỗi lưu lại: không đọc được số liệu', /không đọc được số liệu sức khỏe/.test((await trangThai()).loi_cuoi ?? ''));
+    await lui('doc_so_lieu', 'bat_dau_luc', 6);
+    await chay({ kenh });
+    ok('Mù hai lượt → một tin "báo động đang mù"', kenh.tin.length === truoc + 1
+       && kenh.tin.at(-1).includes('• Báo động: không đọc được số liệu sức khỏe hệ thống'), kenh.tin.at(-1));
+    ok('…không tin "đã ổn lại" nào, không đóng sự cố nào', !kenh.tin.at(-1).includes('ổn lại') && !!(await suCoMo('zalo')));
+  } finally {
+    await db.exec(soLieuThat);
+  }
+  await chay({ kenh });
+  ok('Đọc lại được → Zalo và doc_so_lieu bắt đầu chờ hết đỏ', (await suCoMo('zalo'))?.het_do_tu !== null
+     && (await suCoMo('doc_so_lieu'))?.het_do_tu !== null);
+  await lui('zalo', 'het_do_tu', 16);
+  await lui('doc_so_lieu', 'het_do_tu', 16);
+  await chay({ kenh });
+  ok('…15 phút sau: MỘT tin báo cả hai đã ổn lại', kenh.tin.length === truoc + 2 && /2 mục hết đỏ/.test(kenh.tin.at(-1))
+     && kenh.tin.at(-1).includes('• Bộ gửi tin Zalo: đã ổn lại.') && kenh.tin.at(-1).includes('• Báo động: đã ổn lại.'), kenh.tin.at(-1));
+});
+
+// ===========================================================================
+await nhom('20 · LOG VÀ TIN KHÔNG LỘ GÌ', async () => {
+  ok(`${moiLog.length} dòng log: không mật khẩu máy, không token kênh, không số điện thoại`,
+     moiLog.length > 20 && !moiLog.some(l => l.includes(MAT_KHAU) || l.includes(TOKEN_KENH) || l.includes('0912345678')),
+     moiLog.find(l => l.includes(MAT_KHAU) || l.includes(TOKEN_KENH) || l.includes('0912345678')));
+  ok('Mọi dòng log có tiền tố [bao-dong]', moiLog.every(l => l.startsWith('[bao-dong] ')));
+  ok(`${kenh.tin.length} tin: không "thành công", không số điện thoại`,
+     !kenh.tin.some(t => /thành công/i.test(t) || t.includes('0912345678')));
+  ok('xoaBiMatBaoDong: bí mật đã biết, token Telegram, SĐT, token=…',
+     xoaBiMatBaoDong(`a ${TOKEN_KENH} b 123456789:AAH${'f'.repeat(32)} c 0901 234 567 d token=abc123`, [TOKEN_KENH])
+       === 'a *** b *** c *** d token=***', xoaBiMatBaoDong(`a ${TOKEN_KENH} b 123456789:AAH${'f'.repeat(32)} c 0901 234 567 d token=abc123`, [TOKEN_KENH]));
+});
+
+// ===========================================================================
+await nhom('21 · CRON RIÊNG, HẾT GIỜ, WORKER', async () => {
+  const w = readFileSync(join(WEB, 'worker.ts'), 'utf8');
+  const sch = w.slice(w.indexOf('async scheduled('));
+  ok('worker.ts: cron báo động chỉ chạy baoDongTatCa (waitUntil) rồi dừng — TRƯỚC hai việc cũ',
+     /import \{ baoDongTatCa, CRON_BAO_DONG \} from '\.\/lib\/bao-dong\.ts'/.test(w)
+     && /if \(dieuKhien\?\.cron === CRON_BAO_DONG\) \{\s*ctx\.waitUntil\(baoDongTatCa\(env\)\);\s*return;\s*\}/.test(sch)
+     && sch.indexOf('CRON_BAO_DONG') < sch.indexOf('dongBoTatCa') && sch.indexOf('CRON_BAO_DONG') < sch.indexOf('guiZaloTatCa'));
+  const t = readFileSync(join(GOC, 'web', 'wrangler.toml'), 'utf8');
+  const crons = JSON.parse(t.match(/^crons = (\[.*\])$/m)?.[1] ?? '[]');
+  ok('wrangler.toml: đúng hai cron, cron báo động = CRON_BAO_DONG, lệch cron iPOS / Zalo',
+     crons.length === 2 && crons[0] === '*/5 * * * *' && crons[1] === CRON_BAO_DONG && CRON_BAO_DONG === '2-59/5 * * * *', JSON.stringify(crons));
+  const ban = join(GOC, 'web', 'dist', 'server', 'wrangler.json');
+  if (existsSync(ban)) {
+    const j = JSON.parse(readFileSync(ban, 'utf8'));
+    ok('Bản build (dist/server/wrangler.json) có cả hai cron', JSON.stringify(j.triggers?.crons) === JSON.stringify(crons), JSON.stringify(j.triggers));
+  } else {
+    console.log('  (chưa build web — bỏ qua kiểm dist/server/wrangler.json)');
+  }
+  ok('Hết giờ: mỗi lời gọi 20 giây, kênh 10 giây, cả lượt 60 giây, kết thúc lượt thêm 15 giây',
+     HET_GIO.goiMs === 20000 && HET_GIO.kenhMs === 10000 && HET_GIO.luotMs === 60000 && HET_GIO.ketThucMs === 15000);
+  const treo = (_u, init) => new Promise((_, loi) => init.signal.addEventListener('abort', () => loi(init.signal.reason)));
+  let t0 = Date.now(), loi = null;
+  try { await taoFetchCoHan(treo, () => Date.now() + 60000, 1000)('https://x'); } catch (e) { loi = e; }
+  ok('fetch có hạn: treo → hủy sau goiMs với câu "quá … giây không trả lời"', loi !== null && Date.now() - t0 < 3000
+     && /quá 1 giây không trả lời/.test(loi?.message ?? ''), `${Date.now() - t0} ms · ${loi?.message}`);
+  t0 = Date.now(); loi = null;
+  try { await taoFetchCoHan(treo, () => Date.now() - 5000, 20000)('https://x'); } catch (e) { loi = e; }
+  ok('Quá hạn chót của lượt → lời gọi còn lại hỏng nhanh (1 giây), không chờ đủ 20 giây', loi !== null && Date.now() - t0 < 3000,
+     `${Date.now() - t0} ms`);
+  const ngoai = new AbortController();
+  const p = taoFetchCoHan(treo, () => Date.now() + 60000, 20000)('https://x', { signal: ngoai.signal });
+  ngoai.abort(new Error('người gọi hủy'));
+  loi = null;
+  try { await p; } catch (e) { loi = e; }
+  ok('Giữ tín hiệu hủy của người gọi (supabase-js)', /người gọi hủy/.test(loi?.message ?? ''), loi?.message);
+  const kq = await guiCoHan(kenhGia('treo'), { vanBan: 'x' }, 200);
+  ok('guiCoHan: kênh treo → { ok:false, tamThoi:true } sau hạn giờ', kq.ok === false && kq.tamThoi === true, JSON.stringify(kq));
+  const { rows } = await db.query(`select * from kho_doi_soat_ton()`);
+  ok('Sổ kho không bị đụng: kho_doi_soat_ton() rỗng', rows.length === 0);
 });
 
 process.exit(ketThuc('BÁO ĐỘNG PHÍA WEB'));

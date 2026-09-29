@@ -44,5 +44,7 @@ invocation_logs = false
 # dòng bán đang chờ và đọc thực đơn iPOS mỗi giờ — lượt rất nhẹ. Bí mật
 # IPOS_CALLBACK_KHOA, IPOS_ACCESS_TOKEN, KHO_IPOS_EMAIL, KHO_IPOS_MAT_KHAU đặt
 # bằng `npx wrangler secret put …` — KHÔNG ghi ở đây.
+# Cron thứ hai "2-59/5 * * * *" (phút 2, 7, 12…): việc báo động (src/lib/bao-dong.ts,
+# CRON_BAO_DONG phải trùng chuỗi này). Bí mật BAO_DONG_MAY_EMAIL, BAO_DONG_MAY_MAT_KHAU.
 [triggers]
-crons = ["*/5 * * * *"]
+crons = ["*/5 * * * *", "2-59/5 * * * *"]
