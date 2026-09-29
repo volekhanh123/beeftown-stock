@@ -131,6 +131,58 @@ export async function docGiaoOMa(client: SupabaseClient, chiNhanhId: string, phi
   return (data ?? []).map(r => ({ ...r, con_kg: Number(r.con_kg), con_goi: Number(r.con_goi) })) as GiaoOMa[];
 }
 
+/**
+ * Phiên lóc còn nháp của một ô đang giữ — đủ để tính hạn của lô phần cắt SẼ sinh ra lúc chốt (danh-muc-can.ts, tem cân
+ * in mã ô trong lúc phiên còn mở). Không tiền.
+ */
+export interface PhienLocHsd {
+  id: string;
+  so_phieu: string;
+  /** Ngày lóc 'YYYY-MM-DD' (kho_phien_pha.ngay_pha — có thể trước hôm nay: phiên mở từ hôm qua, ghi lùi ngày). */
+  ngay_pha: string;
+  /** Hạn SỚM NHẤT của các lô vào (tảng) — đọc thẳng kho_lo, kể cả lô đã hết tồn. null: không đọc được lô vào nào / một lô vào. */
+  han_tang: string | null;
+  /** Các dòng ra đã nhập (han_dung: hạn gõ tay, hay còn lại từ lần chốt trước khi phiên được mở lại). */
+  ra: { mat_hang_id: string; han_dung: string | null; xu_ly: string }[];
+}
+
+/**
+ * Đọc các phiên lóc theo id: ngày lóc, dòng ra, hạn các lô vào (kho_phien_pha, kho_phien_pha_ra, kho_phien_pha_vao,
+ * kho_lo) — RLS: xem giá hay pha lóc ở đúng chi nhánh (quản lý, chủ, thủ kho); kho_lo: xem kho. Đọc thẳng các bảng chứ
+ * không lấy từ tồn (kho_v_ton): tảng đã hết tồn vẫn là hạn chặn của lô ra. Phiên không đọc được (RLS) thì không có trong
+ * kết quả; lỗi đọc thì ném (không đoán HSD).
+ */
+export async function docPhienLocHsd(client: SupabaseClient, phienIds: string[]): Promise<Map<string, PhienLocHsd>> {
+  const ids = [...new Set(phienIds.filter(Boolean))];
+  const ra = new Map<string, PhienLocHsd>();
+  if (!ids.length) return ra;
+  const [ph, dongRa, vao] = await Promise.all([
+    client.from('kho_phien_pha').select('id, so_phieu, ngay_pha').in('id', ids),
+    client.from('kho_phien_pha_ra').select('phien_pha_id, mat_hang_id, han_dung, xu_ly').in('phien_pha_id', ids),
+    client.from('kho_phien_pha_vao').select('phien_pha_id, lo_id').in('phien_pha_id', ids),
+  ]);
+  for (const kq of [ph, dongRa, vao]) if (kq.error) throw kq.error;
+  const dsVao = (vao.data ?? []) as { phien_pha_id: string; lo_id: string }[];
+  const loIds = [...new Set(dsVao.map(v => v.lo_id))];
+  const hanLo = new Map<string, string>();
+  if (loIds.length) {
+    const lo = await client.from('kho_lo').select('id, han_dung').in('id', loIds);
+    if (lo.error) throw lo.error;
+    for (const l of (lo.data ?? []) as { id: string; han_dung: string }[]) hanLo.set(l.id, String(l.han_dung).slice(0, 10));
+  }
+  for (const p of (ph.data ?? []) as { id: string; so_phieu: string; ngay_pha: string }[]) {
+    const han = dsVao.filter(v => v.phien_pha_id === p.id).map(v => hanLo.get(v.lo_id) ?? null);
+    ra.set(p.id, {
+      id: p.id, so_phieu: p.so_phieu, ngay_pha: String(p.ngay_pha).slice(0, 10),
+      han_tang: han.length && han.every(h => h !== null) ? (han as string[]).reduce((a, b) => (b < a ? b : a)) : null,
+      ra: ((dongRa.data ?? []) as { phien_pha_id: string; mat_hang_id: string; han_dung: string | null; xu_ly: string }[])
+        .filter(r => r.phien_pha_id === p.id)
+        .map(r => ({ mat_hang_id: r.mat_hang_id, han_dung: r.han_dung === null ? null : String(r.han_dung).slice(0, 10), xu_ly: r.xu_ly })),
+    });
+  }
+  return ra;
+}
+
 /** Số tảng của các lô (lô vào của phiên lóc). */
 export async function docSoTang(client: SupabaseClient, loIds: string[]): Promise<Map<string, number | null>> {
   if (!loIds.length) return new Map();

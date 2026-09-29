@@ -179,10 +179,13 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/kho/tang.ts',
   // Ô mã xoay vòng (0049): danh mục ô (kho_o_ma, quyền danh mục), ô đang giao (kho_v_o_ma_giao), số tảng
   // của lô, giao / giải phóng ô qua RPC — chỉ gọi từ /noi-bo/kho bằng client của nhân sự. Không tiền.
+  // docPhienLocHsd (HSD ô mã trên cân): kho_phien_pha, kho_phien_pha_ra, kho_phien_pha_vao (RLS xem giá / pha lóc,
+  // đúng chi nhánh) và kho_lo (xem kho) — gọi qua hangChoCan bằng client của quản lý / chủ (test-kho-o-ma.mjs 6b).
   'web/src/lib/kho/o-ma.ts',
-  // Danh mục đưa xuống cân (GĐ3): mặt hàng + ô mã + ô đang giao + lô còn tồn (HSD = số ngày còn lại của lô) — gọi từ
-  // cai-dat/can và can-app bằng client của quản lý đã đăng nhập. Chỉ đọc qua o-ma.ts, ma-giam.ts và ton.ts
-  // (docLoConTon: kho_v_ton, RLS kho_ton / kho_lo vai xem kho, đúng chi nhánh), không tự from() bảng nào.
+  // Danh mục đưa xuống cân (GĐ3): mặt hàng + ô mã + ô đang giao + lô còn tồn (HSD = số ngày còn lại của lô) + phiên
+  // lóc nháp của ô đang giữ — gọi từ cai-dat/can và can-app bằng client của quản lý đã đăng nhập. Chỉ đọc qua o-ma.ts
+  // (docPhienLocHsd), ma-giam.ts và ton.ts (docLoConTon: kho_v_ton, RLS kho_ton / kho_lo vai xem kho, đúng chi nhánh),
+  // không tự from() bảng nào.
   'web/src/lib/kho/danh-muc-can.ts',
   // Mã giảm giá cận date (0054): đọc kho_ma_giam — chỉ gọi qua hangChoCan ở trên, cùng client đã đăng nhập.
   'web/src/lib/kho/ma-giam.ts',

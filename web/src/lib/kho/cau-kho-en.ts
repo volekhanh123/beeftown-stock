@@ -20,6 +20,7 @@
  */
 
 import { LOI_KHO_CHUNG, type HaiThuTieng } from './chung.ts';
+import { CAU_QUA_NHIEU_LO } from './ton.ts';
 
 /**
  * Câu KHÔNG có % của database kho — vi đúng từng chữ. Viết dạng { vi, en } như mọi câu hai
@@ -671,6 +672,8 @@ export const CAU_KHO_EN: Readonly<Record<string, string>> = {
   ...Object.fromEntries(Object.values(LOI_KHO_CHUNG).map(c => [c.vi, c.en])),
   // câu của các migration kho
   ...Object.fromEntries(CAU_DB.map(c => [c.vi, c.en])),
+  // docLoConTon (ton.ts) ném câu tiếng Việt — màn Đồng bộ cân tiếng Anh dịch qua dichCau.
+  [CAU_QUA_NHIEU_LO.vi]: CAU_QUA_NHIEU_LO.en,
 };
 
 /**

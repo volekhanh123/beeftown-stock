@@ -386,7 +386,8 @@
         <label class="truong"><span>Địa chỉ kho</span><input type="text" name="diaChiKho"></label>
         <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" name="tuGui">
           <span>Tự gửi xuống cân khi kho đổi (mỗi phút, khi cửa sổ này đang mở) — đổi giá, lóc tảng mới là cân tự cập nhật tên, giá;
-            sang ngày mới là cân tự nhận HSD đếm ngược theo lô (bật / tắt in HSD vẫn phải xem trước rồi bấm Gửi).</span></label>
+            sang ngày mới là cân tự nhận HSD đếm ngược theo lô. Kho bật / tắt in HSD của một hàng (lô hết hạn, món mới có hạn) thì
+            tự gửi giữ lại riêng hàng đó, vẫn gửi phần còn lại, và khung đỏ HSD còn tới khi quản lý xem trước rồi bấm Gửi.</span></label>
         <label class="truong an" id="o-chi-nhanh"><span>Chi nhánh</span><select name="chiNhanhId"></select></label>
         <div class="nut"><button type="submit">Lưu cài đặt</button></div>
       </form>
@@ -532,11 +533,20 @@
   const ngayChu = (iso) => (iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '');
   function baoHsdCu(h) {
     if (!h || !h.cu) return '';
-    return '<div class="bao loi"><p><b>' + (h.tinhNgay ? `HSD trên cân tính cho ngày ${ngayChu(h.tinhNgay)}` : 'Chưa biết HSD trên cân tính cho ngày nào')
-      + ' — mỗi ngày chưa gửi lại là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói.</b></p>'
-      + `<p>Hôm nay ${e(ngayChu(h.homNay))}. HSD trên tem = ngày in (đồng hồ cân) + số ngày còn lại của lô, tính cho ngày gửi. `
-      + 'Quản lý / chủ: thẻ <b>Gửi giá từ kho</b> → <b>Gửi xuống cân</b>, hoặc bật <b>Tự gửi</b> ở Cài đặt và để chương trình mở. '
-      + 'Đồng hồ cân phải đúng ngày. In HSD chưa thử trên cân thật.</p></div>';
+    let s = '<div class="bao loi">';
+    if (h.coInHsd && (!h.tinhNgay || h.tinhNgay < h.homNay)) {
+      s += '<p><b>' + (h.tinhNgay ? `HSD trên cân tính cho ngày ${ngayChu(h.tinhNgay)}` : 'Chưa biết HSD trên cân tính cho ngày nào')
+        + ' — mỗi ngày trễ là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói.</b></p>'
+        + `<p>Hôm nay ${e(ngayChu(h.homNay))}. HSD trên tem = ngày in (đồng hồ cân) + số ngày còn lại của lô, tính cho ngày gửi. `
+        + (h.choBatTat ? `Có ${h.choBatTat} hàng bật / tắt in HSD chờ xem trước — tự gửi không làm việc này (chỉ gửi phần còn lại), nên không xoá được khung này: quản lý / chủ mở thẻ <b>Gửi giá từ kho</b>, xem lại rồi bấm <b>Gửi xuống cân</b>. `
+          : 'Quản lý / chủ: thẻ <b>Gửi giá từ kho</b> → <b>Gửi xuống cân</b>, hoặc bật <b>Tự gửi</b> ở Cài đặt và để chương trình mở. ')
+        + 'WiFi hỏng: thẻ Gửi giá từ kho → <b>Lưu file để nạp USB</b> (lưu hôm nay) rồi nạp. Đồng hồ cân phải đúng ngày. In HSD chưa thử trên cân thật.</p>';
+    }
+    if (h.giuCu && h.giuCu.length) {
+      s += `<p><b>${h.giuCu.length} hàng trên cân vẫn in HSD cũ</b> — chương trình không tính lại được, gửi lại cũng không hết:</p><p>`
+        + h.giuCu.map(x => `PLU ${x.so} · mã ${e(x.maCan || '—')} · ${e(x.ten)} (${x.hsd === null ? 'không rõ HSD' : e(hsdChu(x.hsd))}) — ${e(x.lyDo)}`).join('<br>') + '</p>';
+    }
+    return s + '</div>';
   }
   /** Chương trình vừa tự đổi địa chỉ cân: cập nhật ô Cân, không tải lại cả trang. */
   function daDoiDiaChi(doi) {
@@ -627,11 +637,13 @@
       h += '</tbody></table></div>';
       if (x.doiHsd) {
         h += `<div class="bao luu-y"><p><b>Bật / tắt in hạn dùng (HSD) trên tem cho ${x.doiHsd} hàng.</b> HSD in ra = ngày in tem + số ngày, theo đồng hồ của cân. `
-          + 'In HSD chưa thử trên cân thật: gửi xong in thử một tem món vừa đổi. Tự gửi không bật / tắt HSD — phải bấm Gửi ở đây.</p></div>';
+          + 'In HSD chưa thử trên cân thật: gửi xong in thử một tem món vừa đổi. Tự gửi giữ lại các hàng này (vẫn gửi giá, tên, HSD đếm ngược của hàng khác) — phải bấm Gửi ở đây.</p></div>';
       }
       if (x.demNguocHsd) {
         h += `<div class="bao luu-y"><p><b>HSD đếm ngược theo lô: ${x.demNguocHsd} hàng đổi số ngày</b> (số ngày còn lại của lô, tính cho ngày ${e(ngayChu(x.ngayHsd))}). `
-          + 'Tự gửi gửi được thay đổi này. Gửi trong ngày, trước khi đóng gói; gửi xong in thử một tem.</p></div>';
+          + (x.doiHsd ? `Tự gửi gửi được phần này nhưng giữ lại ${x.doiHsd} hàng bật / tắt in HSD, và không ghi HSD trên cân là đã tính cho hôm nay — khung đỏ HSD còn tới khi bấm Gửi ở đây. `
+            : 'Tự gửi gửi được thay đổi này. ')
+          + 'Gửi trong ngày, trước khi đóng gói; gửi xong in thử một tem.</p></div>';
       }
 
       if (x.conLai.length) {
@@ -696,7 +708,9 @@
     const conLai = x.conLai;
     const ds = conLai.map(c => `PLU ${c.so} · mã ${c.ma || '—'} · ${c.ten}`).join('\n');
     const kem = x.dem.them + x.dem.sua
-      ? `\nCả danh sách gửi lại mang theo ${x.dem.them} hàng thêm, ${x.dem.sua} hàng sửa (giá / tên) từ kho — như bấm Gửi xuống cân.\n` : '';
+      ? `\nCả danh sách gửi lại mang theo ${x.dem.them} hàng thêm, ${x.dem.sua} hàng sửa (giá / tên`
+        + (x.demNguocHsd ? ` / số ngày HSD — ${x.demNguocHsd} hàng HSD đếm ngược, tính cho ngày ${ngayChu(x.ngayHsd)}` : '')
+        + ') từ kho — như bấm Gửi xuống cân.\n' : '';
     if (!confirm(`Thử XOÁ HẲN ${conLai.length} hàng còn nằm lại qua WiFi?\n\n${ds}\n${kem}\n`
       + 'CHƯA THỬ TRÊN CÂN THẬT. Chương trình sẽ:\n'
       + '1. đọc danh sách hàng trên cân (thử đường WiFi hai chiều, cổng 33581) — chưa ghi gì; cân có hàng chương trình không biết thì dừng;\n'
@@ -725,6 +739,9 @@
       if (k.phim && k.phim.length) kem.push(`${k.phim.length} phím tắt đang sửa`);
       noi.innerHTML = `<div class="bao luu-y"><p>Đã lưu file (${k.soHang} hàng) ở <code>${e(k.duongDan)}</code>.`
         + (kem.length ? ` File có cả ${kem.join(' và ')} — nạp USB xong là cân nhận.` : '') + '</p>'
+        // File làm từ kho (thẻ Gửi giá) mang HSD tính cho hôm nay — nạp hôm sau là HSD muộn thêm 1 ngày.
+        + (k.ngayHsd ? `<p><b>HSD trong file tính cho ngày ${ngayChu(k.ngayHsd)} — nạp vào cân trong ngày.</b> `
+          + 'Để sang hôm sau mới nạp thì mỗi ngày trễ là HSD in ra muộn thêm 1 ngày — khi đó bấm Lưu file để nạp USB lại.</p>' : '')
         + '<p>1. Chép file này vào thư mục <b>JHSCALE</b> trên USB (ghi đè). 2. Cắm USB vào cân: <b>Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm</b> (hiện 000) '
         + '→ <b>Accu/Confirm</b> lần thứ ba để nạp (đã hiện Dw-Data thì thôi; lần bấm thứ ba chưa thử trên cân thật). '
         + '3. Chờ hiện <b>Finish</b>, số lỗi = 0, rồi mới rút USB và bấm nút bên dưới.</p>'
@@ -785,13 +802,14 @@
       const khac = [];
       if (x.tenKho && x.tenKho !== x.ten) khac.push('tên kho: ' + e(x.tenKho));
       if (x.giaKho !== undefined && x.giaKho !== x.gia && x.tinhTrang === 'lech') khac.push('giá kho: ' + tien(x.giaKho));
-      if (x.hsdKho !== undefined && x.hsd !== undefined && x.hsdKho !== x.hsd) khac.push('HSD kho: ' + e(hsdChu(x.hsdKho)));
+      if (x.hsdKho !== undefined && x.hsd !== undefined && x.hsdKho !== x.hsd && !x.hsdNguon) khac.push('HSD kho: ' + e(hsdChu(x.hsdKho)));
       h += `<tr class="${x.so === null || x.tinhTrang === 'con_lai' ? 'mo' : ''}"><td class="so">${x.so ?? '—'}</td>`
         + `<td>${x.phim ? `<span class="phim" title="Phím tắt trên bàn phím cân">${e(x.phim)}</span>` : ''}</td>`
         + `<td class="so">${e(x.maCan || '—')}</td><td class="so"><b>${e(x.maFabi || '—')}</b></td><td>${e(x.ten)}</td>`
         + `<td class="so">${tien(x.gia)}</td>`
         + `<td>${x.hsd !== undefined ? e(hsdChu(x.hsd)) : x.hsdKho !== undefined ? `<span class="phu">kho: ${e(hsdChu(x.hsdKho))}</span>` : ''}`
-        + (x.hsdNguon ? `<div class="phu">${e(x.hsdNguon)}</div>` : '') + '</td>'
+        // Nguồn HSD giải thích số KHO: lệch với số trên cân thì ghi kèm số kho ("kho: 3 ngày · lô …").
+        + (x.hsdNguon ? `<div class="phu">${x.hsd !== undefined && x.hsdKho !== undefined && x.hsd !== x.hsdKho ? 'kho: ' + e(hsdChu(x.hsdKho)) + ' · ' : ''}${e(x.hsdNguon)}</div>` : '') + '</td>'
         + `<td>${x.theoGoi ? 'Theo gói' : 'Cân ký'}</td>`
         + `<td><span class="nhan-l ${lop}">${nhan}</span>`
         + (khac.length ? `<div class="phu">${khac.join(' · ')}</div>` : '') + (x.ghiChu ? `<div class="phu">${e(x.ghiChu)}</div>` : '') + '</td></tr>';
@@ -1651,7 +1669,7 @@
       const x = await goi('/api/xem-truoc', { giuHangNgoaiKho: giu });
       if (!x.conLai.length) { bao(noi, 'xong', 'Không có hàng nào còn nằm lại trên cân — không cần xoá.'); return; }
       if (x.doiHsd) {
-        bao(noi, 'luu-y', `Kho có thay đổi hạn dùng (HSD) của ${x.doiHsd} hàng chưa gửi — gửi ở thẻ Gửi giá từ kho (xem trước, in thử tem) rồi mới xoá qua WiFi.`);
+        bao(noi, 'luu-y', `Kho bật / tắt in hạn dùng (HSD) của ${x.doiHsd} hàng chưa gửi — gửi ở thẻ Gửi giá từ kho (xem trước, in thử tem) rồi mới xoá qua WiFi.`);
         return;
       }
       bao(noi, 'luu-y', `<p>${x.conLai.length} hàng còn nằm lại: ${x.conLai.map(c => `PLU ${c.so} · ${e(c.ten)}`).join(' · ')}</p>`);

@@ -103,11 +103,14 @@ Quy tắc:
 - **Đọc dữ liệu từ cân qua WiFi** không ghi nhận khi cân trả 0 hàng / 0 thông số, hay thiếu PLU đang có trên cân — dùng USB.
 - **Tự gửi gửi HSD đếm ngược, không tự bật / tắt in HSD**: đổi số ngày (số → số: sang ngày mới, đổi lô) tự gửi gửi như đổi
   giá; bật / tắt in HSD của hàng trên cân (không in ↔ có số — lô hết hạn, món mới có hạn), hay bật HSD cho hàng mới khi cân
-  chưa in HSD hàng nào, thì tự gửi **không gửi gì** và báo ở ô Cân — quản lý xem trước rồi bấm Gửi. Tự gửi kiểm và gửi trên
-  cùng một lần đọc kho.
+  chưa in HSD hàng nào, thì tự gửi **giữ lại riêng các hàng đó** (dòng cũ y nguyên từng byte, hàng mới chưa lên, đổi giá /
+  tên cùng dòng cũng chờ), vẫn gửi phần còn lại, **không ghi ngày tính HSD** (khung đỏ còn) và báo ở ô Cân hàng nào bị giữ
+  — quản lý xem trước rồi bấm Gửi (`dongBatTatHsd`, `boBatTat`). Tự gửi kiểm và gửi trên cùng một lần đọc kho.
 - **HSD = số ngày còn lại của lô** (`danh-muc-can.ts`): cân in HSD = ngày in tem (đồng hồ cân) + số ngày ở cột 32. Kho biết
   hạn của lô (`kho_lo.han_dung`, đọc từ `kho_v_ton` của chi nhánh bằng tài khoản đã đăng nhập), nên gửi hạn − hôm nay:
-  ô mã đang giữ tảng → lô lóc ra (phiên lóc còn nháp: không muộn hơn hạn tảng); món, ô trống → lô **sớm nhất** còn tồn (mọi
+  ô mã đang giữ tảng → lô lóc ra (phiên lóc còn nháp: hạn của lô **sẽ sinh ra** lúc chốt — hạn ghi ở dòng ra, hay
+  ngày lóc + hạn của món, không muộn hơn hạn tảng; đọc thẳng phiên và `kho_lo`, không đọc được → không in); món, ô trống
+  → lô **sớm nhất** còn tồn (mọi
   vị trí); chưa có lô → `han_dung_ngay` của món (không có → không in); hạn đã qua → không in + cảnh báo "xem thẻ Quầy";
   quá 999 ngày → không in; mã giảm giá → không in. Số này chỉ đúng **trong ngày tính**: mỗi sáng mở Beeftown Cân và gửi
   (hay bật tự gửi) **trước khi đóng gói**, đồng hồ cân phải đúng ngày.
@@ -115,10 +118,15 @@ Quy tắc:
   tên): ghi khi gửi đủ danh sách thành công (bấm Gửi, tự gửi), xoá qua WiFi đọc lại khớp, "đã nạp USB" file lưu từ thẻ Gửi
   giá (ngày lúc **lưu file**, ở `cho-usb/hsd-tinh-ngay.txt`), hay khi xem trước / tự gửi / Tất cả hàng thấy HSD trên cân
   đã đúng số tính hôm nay. Gửi hỏng thì không ghi. Cập nhật file gốc từ cân có HSD khác bản đã gửi → quên ngày (chưa
-  biết). `/api/trang-thai` và `/api/can` trả `hsd: { homNay, tinhNgay, coInHsd, cu }` (hôm nay giờ VN của chương trình —
-  trang không dùng đồng hồ trình duyệt); `cu` → khung đỏ "HSD trên cân tính cho ngày dd/mm — mỗi ngày chưa gửi lại là HSD
-  in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói." Hàng kho không đưa lên được (thiếu giá…) và hàng giữ lại
-  ngoài kho: HSD trên cân của các hàng đó không được đếm ngược.
+  biết). Xem trước / tự gửi / Tất cả hàng chỉ ghi khi file gốc còn y như lúc dựng kế hoạch (đọc kho vắt qua "Cập nhật
+  file gốc" thì không ghi). `/api/trang-thai` và `/api/can` trả `hsd: { homNay, tinhNgay, coInHsd, cu, giuCu, choBatTat }`
+  (hôm nay giờ VN của chương trình — trang không dùng đồng hồ trình duyệt); `cu` → khung đỏ "HSD trên cân tính cho ngày
+  dd/mm — mỗi ngày trễ là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói."
+- **Hàng vẫn in HSD cũ** — `hsd-giu-cu.json`, ghi cùng lúc với ngày tính (`hangGiuHsdCu`): hàng trên cân đang in HSD mà
+  kế hoạch không tính lại — kho không đưa lên được (thiếu giá, giá vượt 999.999 đ/kg, mã dài), giữ lại ngoài kho, bỏ khỏi
+  kho mà còn nằm trên cân (WiFi không xoá được; `tren-can.tsv` có thêm cột 5 = HSD đang in, trống = không in, không có
+  cột = không biết → coi như có in). Có hàng nào → `cu` luôn đúng, khung đỏ kê từng hàng kèm cách sửa (sửa kho, hay xoá
+  bằng USB); nạp USB / xoá qua WiFi thay cả danh sách nên hàng còn nằm lại hết.
 - **Nhật ký cân: tên hàng là tên trên cân lúc đọc**, không phải lúc bán; mã cân chỉ gắn khi đơn giá và cách bán của dòng
   khớp hàng đang ở số PLU đó (bảng PLU của cùng file USB, hoặc đọc qua WiFi ngay sau nhật ký). Đọc thường xuyên, và trước
   khi gửi giá / hàng mới. Gộp giữ bản đọc sớm nhất (khoá: mã máy + số giao dịch + giờ + dòng).
@@ -285,6 +293,4 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 - Thử bản 2.2 trên cân thật (mục "Thử bản 2.2 ở quán") và sửa `CAN-TMA.md` theo kết quả.
 - Nghe cân tự báo qua UDP 33583 / 33584 (mở cổng nghe thì Windows hỏi tường lửa); giữ kết nối 33581 (hãng hỏi `UPL TIM` mỗi 30 giây).
 - Nhật ký cân: ghi lịch sử bảng PLU (lúc nào số PLU nào mang mã nào) để gắn mã cân cho dòng cũ chắc hơn; đưa nhật ký lên kho.
-- HSD đếm ngược: tự gửi đang dừng cả loạt khi có một hàng bật / tắt in HSD — có thể gửi phần đếm ngược và giữ riêng hàng
-  bật / tắt. Hàng kho không lên được / ngoài kho mà cân đang in HSD: chưa báo riêng.
 - Chữ ngoài bảng chữ của cân (ký hiệu đặc biệt) trên tem: chưa biết cân in ra sao.

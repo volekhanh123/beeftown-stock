@@ -647,7 +647,7 @@
   <li><b>Cân</b>: địa chỉ và cổng của cân. Chấm <b style="color:var(--xanh)">xanh</b> = nối được cân, <b style="color:var(--do)">đỏ</b> = không. Nút <span class="n">Kiểm tra kết nối</span> thử lại. Bên dưới có dòng báo cân vừa đổi địa chỉ, và dòng "Tự gửi" khi đã bật tự gửi.</li>
   <li><b>Trên cân</b>: cân đang có bao nhiêu hàng, "file gốc" lấy lúc nào. File gốc là bản dữ liệu cân mới nhất mà chương trình biết.</li>
 </ul>
-<p>Khung đỏ <b>"HSD trên cân tính cho ngày dd/mm — mỗi ngày chưa gửi lại là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói."</b> dưới ba ô: cân in HSD mà hôm nay chưa gửi. Quản lý gửi (<a href="#the-gui-gia">mục 17</a>), hoặc bật tự gửi. "Hôm nay" là ngày giờ Việt Nam của chương trình, không theo đồng hồ trình duyệt.</p>
+<p>Khung đỏ <b>"HSD trên cân tính cho ngày dd/mm — mỗi ngày trễ là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói."</b> dưới ba ô: cân in HSD mà hôm nay chưa gửi. Quản lý gửi (<a href="#the-gui-gia">mục 17</a>), hoặc bật tự gửi. "Hôm nay" là ngày giờ Việt Nam của chương trình, không theo đồng hồ trình duyệt. Khung đỏ còn kê các hàng <b>vẫn in HSD cũ</b> — gửi lại không hết, xem <a href="#hsd-kho">mục 23</a>.</p>
 <p><span class="nhan moi">Mới 2.2</span> Nút <span class="n">Hướng dẫn</span> mở trang này.</p>
 
 <h3>Ai thấy thẻ nào</h3>
@@ -751,7 +751,7 @@
       <li><b>Thêm</b>: hàng mới lên cân. <b>Sửa</b>: đổi tên / giá (dòng nhỏ ghi giá trị cũ). <b>Giữ nguyên</b>: không đổi.</li>
       <li><b>Bỏ khỏi cân</b>: hàng không còn trong kho. <b>Giữ, ngoài kho</b>: hàng chỉ có trên cân, được giữ lại.</li>
       <li><b>Không đưa lên</b>: hàng kho không đưa lên cân được — lý do ghi ngay dưới tên.</li>
-      <li><span class="nhan moi">Mới 2.2</span> Cột HSD: số ngày HSD sẽ ghi trên cân; dòng nhỏ là số cũ và HSD lấy từ đâu — "lô L0012 hết hạn 03/10", "tảng #0142 · hết hạn 03/10", "theo hạn dùng của món (chưa có lô)". Khung vàng "Bật / tắt in hạn dùng" (tự gửi không làm — phải bấm Gửi ở đây) và "HSD đếm ngược theo lô" (tự gửi làm được).</li>
+      <li><span class="nhan moi">Mới 2.2</span> Cột HSD: số ngày HSD sẽ ghi trên cân; dòng nhỏ là số cũ và HSD lấy từ đâu — "lô L0012 hết hạn 03/10", "tảng #0142 · hết hạn 03/10", "theo hạn dùng của món (chưa có lô)". Khung vàng "Bật / tắt in hạn dùng" (tự gửi giữ lại các hàng đó — phải bấm Gửi ở đây) và "HSD đếm ngược theo lô" (tự gửi làm được; khi có hàng bật / tắt thì tự gửi vẫn gửi phần đếm ngược, nhưng khung đỏ HSD còn tới khi bấm Gửi).</li>
     </ul></li>
   <li>Ô <b>"Giữ lại hàng đang có trên cân nhưng không có trong kho"</b>: đánh dấu khi muốn giữ các hàng chỉ có trên cân.</li>
   <li>Cân đang ở màn hình bán hàng (không ở trong menu <kbd class="p">Prog</kbd> hay <kbd class="p">Account</kbd>).</li>
@@ -762,7 +762,7 @@
   <p><b>Khung đỏ "… hàng sẽ còn nằm trên cân":</b> gửi qua WiFi cân chỉ <b>thêm và sửa</b>, không xoá được (<span class="nhan da">Đã làm ở quán</span>). Muốn xoá hẳn: bấm <span class="n">Lưu file để nạp USB</span> rồi làm theo <a href="#usb-du-phong">mục 25</a>. Nạp USB thì cân thay cả danh sách.</p>
   <p><span class="nhan moi">Mới 2.2</span> Khi có hàng còn nằm lại, chương trình cho <b>thử xoá qua WiFi</b> — <span class="nhan chua">Chưa thử trên cân thật</span>. Đọc kỹ <a href="#chua-thu">mục 28</a> trước khi dùng. Hỏng thì chương trình chỉ đường USB.</p>
 </div>
-<p><b>Tự gửi:</b> ở Cài đặt, đánh dấu "Tự gửi xuống cân khi kho đổi". Chương trình tự gửi mỗi phút khi kho có thêm / sửa — kể cả HSD đếm ngược sang ngày mới — chỉ khi cửa sổ chương trình đang mở. Máy tính tắt qua đêm: sáng mở chương trình là trong một phút tự gửi chạy. Kho bật / tắt in HSD của một hàng (lô hết hạn, món bắt đầu có hạn) thì tự gửi dừng, không gửi gì, và báo ở ô Cân: xem trước rồi bấm Gửi. Ô Cân ghi lần tự gửi gần nhất.</p>
+<p><b>Tự gửi:</b> ở Cài đặt, đánh dấu "Tự gửi xuống cân khi kho đổi". Chương trình tự gửi mỗi phút khi kho có thêm / sửa — kể cả HSD đếm ngược sang ngày mới — chỉ khi cửa sổ chương trình đang mở. Máy tính tắt qua đêm: sáng mở chương trình là trong một phút tự gửi chạy. Kho bật / tắt in HSD của một hàng (lô hết hạn, món bắt đầu có hạn) thì tự gửi giữ lại riêng hàng đó (dòng cũ trên cân để y nguyên), vẫn gửi giá, tên, HSD đếm ngược của hàng khác, và không ghi là HSD đã tính cho hôm nay — khung đỏ còn, ô Cân ghi hàng nào đang bị giữ: xem trước rồi bấm Gửi. Ô Cân ghi lần tự gửi gần nhất.</p>
 <p class="phu">Gửi hỏng giữa chừng (đã nối được cân) thì chương trình không tự gửi lại — người bấm quyết. Bấm gửi lại; hỏng mãi thì dùng USB.</p>
 
 <!-- ================================================================== -->
@@ -869,7 +869,7 @@
 <div class="khung-bang"><table>
   <thead><tr><th>Hàng</th><th>HSD gửi xuống cân</th></tr></thead>
   <tbody>
-    <tr><td>Ô mã đang giữ tảng</td><td>Theo lô lóc ra từ tảng đó ("tảng #0142 · hết hạn 03/10"). Tảng còn đang lóc (phiếu pha chưa xong): không muộn hơn hạn của tảng.</td></tr>
+    <tr><td>Ô mã đang giữ tảng</td><td>Theo lô lóc ra từ tảng đó ("tảng #0142 · hết hạn 03/10"). Tảng còn đang lóc (phiếu pha chưa xong): theo hạn lô phần cắt sẽ có lúc chốt phiếu — ngày lóc + hạn của món, không muộn hơn hạn của tảng ("tảng #0150 đang lóc · phiên PL0012 lóc 28/09 + 3 ngày · hết hạn 01/10"). Chương trình không đọc được phiếu pha thì ô đó không in HSD.</td></tr>
     <tr><td>Món, ô mã trống</td><td>Theo lô <b>sớm nhất</b> còn tồn ở chi nhánh, mọi vị trí ("lô L0012 hết hạn 03/10") — HSD in ra không bao giờ muộn hơn lô cũ nhất còn trong kho.</td></tr>
     <tr><td>Món chưa có lô nào</td><td>Theo <b>Mặt hàng › Hạn dùng (ngày)</b> — hàng về hôm nay có hạn tối đa ngần ấy ngày. Món không có hạn dùng: không in HSD.</td></tr>
     <tr><td>Lô sớm nhất đã hết hạn</td><td><b>Không in HSD</b>, xem trước có cảnh báo — bỏ riêng gói hết hạn, huỷ hay bán giảm giá ở thẻ Quầy.</td></tr>
@@ -883,12 +883,13 @@
     <li>Mở Beeftown Cân. Đã bật tự gửi (Cài đặt) thì trong một phút chương trình tự gửi HSD mới. Chưa bật: thẻ <b>Gửi giá từ kho</b> → <span class="n">Gửi xuống cân</span>.</li>
     <li>Dưới ba ô trên cùng không còn khung đỏ "HSD trên cân tính cho ngày …" thì mới đóng gói, in tem.</li>
   </ol>
-  <p>Khung đỏ còn đó dù đã bật tự gửi: đọc dòng "Tự gửi" ở ô Cân — kho bật / tắt in HSD của một hàng (lô hết hạn, món mới có hạn) thì tự gửi dừng, chờ quản lý xem trước rồi bấm Gửi.</p>
+  <p>Khung đỏ còn đó dù đã bật tự gửi: đọc dòng "Tự gửi" ở ô Cân — kho bật / tắt in HSD của một hàng (lô hết hạn, món mới có hạn) thì tự gửi giữ lại riêng hàng đó, chờ quản lý xem trước rồi bấm Gửi.</p>
+  <p>Khung đỏ kê hàng <b>vẫn in HSD cũ</b> (giá trong kho vượt mức cân hay chưa có giá, món ngừng dùng mà còn nằm trên cân, hàng giữ lại ngoài kho): chương trình không tính lại số ngày của các hàng đó — gửi lại không hết. Sửa trong kho rồi gửi, hay xoá hàng khỏi cân bằng USB (<a href="#usb-du-phong">mục 25</a>); tới lúc đó đừng đóng gói hàng đó bằng số PLU cũ.</p>
 </div>
 <ul>
   <li>Chương trình ghi HSD trên cân tính cho ngày nào (Tài liệu › Beeftown Can › hsd-tinh-ngay.txt): khi gửi đủ danh sách thành công, xoá qua WiFi đọc lại khớp, nạp USB file lưu ở thẻ Gửi giá (ngày lúc <b>lưu file</b>, không phải lúc nạp), hay khi xem trước thấy HSD trên cân đã đúng số hôm nay. Gửi hỏng thì không ghi.</li>
   <li>Nạp USB file từ màn Đồng bộ cân trên web: HSD tính cho ngày tải file — nạp trong ngày. Cập nhật file gốc từ cân mà HSD khác bản chương trình đã gửi (đặt tay trên cân): chương trình không biết ngày tính, báo đỏ tới lần gửi sau.</li>
-  <li>Hàng kho không đưa lên cân được (thiếu giá…) và hàng giữ lại ngoài kho: HSD trên cân của các hàng này không được đếm ngược — đừng bật HSD tay cho chúng.</li>
+  <li>Hàng kho không đưa lên cân được (thiếu giá…), hàng giữ lại ngoài kho, hàng bỏ khỏi kho mà còn nằm trên cân: HSD trên cân của các hàng này không được đếm ngược — khung đỏ kê từng hàng "vẫn in HSD cũ" (Tài liệu › Beeftown Can › hsd-giu-cu.json). Đừng bật HSD tay cho chúng.</li>
   <li>Tem vẫn in chữ "HSD" cho hàng không có hạn: thẻ Mẫu tem → nút <span class="n">Chỉ in HSD khi hàng có hạn dùng</span>.</li>
   <li>Muốn ngày dễ đọc: đổi kiểu ngày sang ngày/tháng/năm (<a href="#the-thong-so">mục 20</a>).</li>
 </ul>
@@ -928,7 +929,7 @@
 </ul>
 <h3>Trên máy tính</h3>
 <ol class="buoc">
-  <li>Bấm <span class="n">Lưu file để nạp USB</span> (thẻ Gửi giá từ kho, trong khung đỏ) hoặc <span class="n">Lưu file nạp USB</span> (thẻ Mẫu tem, Cân &amp; thông số, Phím tắt). Tem vừa gửi mà chưa đổi: bấm ở thẻ Mẫu tem, không cần sửa lại — file đã có tem vừa gửi. Ở thẻ Cân &amp; thông số và Phím tắt, file có cả thay đổi đang sửa trên màn hình. Chương trình lưu file và hiện đường dẫn (thư mục <b>cho-usb</b>).</li>
+  <li>Bấm <span class="n">Lưu file để nạp USB</span> (thẻ Gửi giá từ kho, trong khung đỏ) hoặc <span class="n">Lưu file nạp USB</span> (thẻ Mẫu tem, Cân &amp; thông số, Phím tắt). Tem vừa gửi mà chưa đổi: bấm ở thẻ Mẫu tem, không cần sửa lại — file đã có tem vừa gửi. Ở thẻ Cân &amp; thông số và Phím tắt, file có cả thay đổi đang sửa trên màn hình. Chương trình lưu file và hiện đường dẫn (thư mục <b>cho-usb</b>). File lưu ở thẻ Gửi giá từ kho mang HSD tính cho ngày lưu file: nạp vào cân <b>trong ngày</b>; sang hôm sau thì bấm lưu lại rồi mới nạp (mỗi ngày trễ là HSD in ra muộn thêm 1 ngày).</li>
   <li>Bấm <span class="n">Mở thư mục chứa file</span> (hoặc <span class="n">Tải file về</span>).</li>
   <li>Cắm USB (FAT32). Trên USB, mở thư mục <b>JHSCALE</b> (chưa có thì tạo thư mục tên JHSCALE).</li>
   <li>Muốn giữ bản cũ trên USB: chép <b>A_000.TMS</b> cũ ra máy tính trước.</li>

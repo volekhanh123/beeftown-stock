@@ -11,6 +11,8 @@
  */
 
 import { dungDatabase, taoBoDem, UID, maGui } from './kho-chung.mjs';
+import { docPhienLocHsd } from '../../web/src/lib/kho/o-ma.ts';
+import { hanLoRaDuKien } from '../../web/src/lib/kho/danh-muc-can.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — Ô MÃ · PHIÊN LÓC MỘT TẢNG');
 const { db, cnA, cnB, duoi } = await dungDatabase();
@@ -198,6 +200,56 @@ await nhom('6 · MỖI CHI NHÁNH MỘT BỘ Ô · KIỂM KÊ NHẬN MÃ Ô', as
   ok('Chi nhánh B không thấy ô của A', vB.rows?.[0]?.n === 0);
   const def = (await db.query(`select pg_get_functiondef('kho_quet_kiem_ke(uuid,uuid,jsonb)'::regprocedure) as d`)).rows[0].d;
   ok('Quét kiểm kê tra mã qua kho_mat_hang_theo_ma_can', /kho_mat_hang_theo_ma_can/.test(def));
+});
+
+// ===========================================================================
+// HSD ô mã trên cân (danh-muc-can.ts, cách b): tem ô in lúc phiên còn nháp thuộc lô phần cắt SẼ sinh ra lúc chốt.
+// Beeftown Cân / màn Đồng bộ cân đọc ngày lóc, dòng ra, lô vào, hạn tảng bằng tài khoản quản lý / chủ (docPhienLocHsd):
+// kiểm RLS thật, và hạn dự kiến (hanLoRaDuKien) đúng bằng hạn lô ra khi chốt.
+// ===========================================================================
+/** Client tối thiểu cho docPhienLocHsd: from().select().in() chạy thành SQL dưới vai `uid` — RLS thật; ngày trả dạng 'YYYY-MM-DD' như PostgREST. */
+const clientDuoi = uid => ({
+  from(bang) {
+    const q = { cot: '*', loc: [] };
+    const b = {
+      select(c) { q.cot = c; return b; },
+      in(k, v) { q.loc.push([k, v]); return b; },
+      then(xong, hong) {
+        const dk = q.loc.map(([k], i) => `${k} = any($${i + 1}::uuid[])`).join(' and ');
+        return duoi(uid, `select row_to_json(t)::text as j from (select ${q.cot} from ${bang}${dk ? ` where ${dk}` : ''}) t`, q.loc.map(([, v]) => v))
+          .then(r => (r.loi ? { data: null, error: { message: r.loi } } : { data: r.rows.map(x => JSON.parse(x.j)), error: null }))
+          .then(xong, hong);
+      },
+    };
+    return b;
+  },
+});
+
+await nhom('6b · HSD Ô MÃ CỦA PHIÊN NHÁP: QUẢN LÝ / CHỦ ĐỌC ĐƯỢC, HẠN DỰ KIẾN = HẠN LÔ LÚC CHỐT', async () => {
+  const cat = MH['C-THANNGOAI'];
+  const hanTang = (await db.query(`select han_dung::text h from kho_lo where id = $1`, [tang[4].id])).rows[0].h;
+  const ql = await docPhienLocHsd(clientDuoi(UID.qlA), [P[5]]);
+  const p = ql.get(P[5]);
+  ok('Quản lý đọc được phiên nháp tảng #5: số phiếu, ngày lóc hôm nay, hạn tảng (lô vào, đọc thẳng kho_lo)',
+     !!p && !!p.so_phieu && p.ngay_pha === homNay && p.han_tang === hanTang && Array.isArray(p.ra), JSON.stringify(p));
+  const chu = (await docPhienLocHsd(clientDuoi(UID.chu), [P[5]])).get(P[5]);
+  ok('Chủ đọc được y như quản lý', JSON.stringify(chu) === JSON.stringify(p), JSON.stringify(chu));
+  ok('Nhân viên quầy (không xem giá, không pha lóc) và quản lý chi nhánh khác: không đọc được → ô không in HSD',
+     (await docPhienLocHsd(clientDuoi(UID.nvQuayA), [P[5]])).size === 0 && (await docPhienLocHsd(clientDuoi(UID.qlB), [P[5]])).size === 0);
+  const du = hanLoRaDuKien(p, cat.id, cat.han_dung_ngay);
+  const q = await quet(P[5], [nhan(10011, 0.45)]);
+  const c = await chot(P[5]);
+  const hanRa = (await db.query(`select l.han_dung::text h from kho_phien_pha_ra r join kho_lo l on l.id = r.lo_id
+    where r.phien_pha_id = $1 and r.mat_hang_id = $2`, [P[5], cat.id])).rows[0]?.h;
+  ok('Hạn dự kiến lúc phiên còn nháp = hạn lô phần cắt khi chốt (0033)', q.loi === null && c.loi === null && !!du && du.han === hanRa,
+     `${q.loi ?? ''} ${c.loi ?? ''} dự kiến ${JSON.stringify(du)} · chốt ${hanRa}`);
+  const m = await duoi(UID.qlA, `select kho_mo_lai_phien_pha($1, 'Cân lại')`, [P[5]]);
+  const lai = (await docPhienLocHsd(clientDuoi(UID.qlA), [P[5]])).get(P[5]);
+  const duLai = hanLoRaDuKien(lai, cat.id, cat.han_dung_ngay);
+  ok('Mở lại phiên: dòng ra còn hạn lần chốt trước → hạn dự kiến theo dòng ra, vẫn bằng hạn lô', m.loi === null
+     && duLai?.theo === 'ra' && duLai.han === hanRa, `${m.loi ?? ''} ${JSON.stringify(duLai)}`);
+  const c2 = await chot(P[5]);
+  ok('Chốt lại', c2.loi === null, c2.loi ?? '');
 });
 
 await nhom('7 · ĐỐI SOÁT', async () => {
