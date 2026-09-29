@@ -16,6 +16,9 @@
 # Cách tải cho người không đọc code: can-app/README.md, mục "Tải BeeftownCan.exe về".
 
 name: Đóng gói Beeftown Cân
+# Lượt bản thử PR chạy trên nhánh main nên danh sách Actions cũng ghi "main" — đặt tên riêng cho khỏi nhầm với
+# bản chính thức. Chuỗi rỗng thì GitHub đặt tên như thường (dòng commit, hay tên workflow khi chạy tay).
+run-name: ${{ inputs.so_pr != '' && format('🧪 Bản thử PR {0} — chỉ để thử, không dùng lâu ở quán', inputs.so_pr) || '' }}
 
 on:
   push:

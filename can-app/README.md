@@ -49,7 +49,7 @@ Release chỉ có thêm khi số phiên bản tăng.
 **Bản mới nhất trên main — tab Actions** (có cả những sửa đổi chưa lên số phiên bản):
 
 1. Tab **Actions** → cột trái bấm **Đóng gói Beeftown Cân**.
-2. Bấm lượt chạy trên cùng có dấu ✓ xanh và nhánh **main**.
+2. Bấm lượt chạy trên cùng có dấu ✓ xanh và nhánh **main** — bỏ qua lượt tên **🧪 Bản thử PR …** (bản thử, xem dưới).
 3. Trang **Summary**: bấm dòng **⬇ Tải BeeftownCan-…** (ví dụ `BeeftownCan-2.0.0`), hoặc kéo xuống mục **Artifacts** → bấm tên đó.
 
 Tab Actions chỉ giữ **một** bản chính thức, bản mới nhất: repo private có hạn mức dung lượng nên bản cũ tự xoá.
