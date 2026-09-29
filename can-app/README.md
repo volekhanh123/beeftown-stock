@@ -36,7 +36,7 @@ Phần tính "thêm / sửa / bỏ" là **đúng code của màn Đồng bộ c�
 ## Tải BeeftownCan.exe về (không cần gõ lệnh)
 
 GitHub tự đóng gói chương trình mỗi khi main có thay đổi cho Beeftown Cân. Cần đăng nhập GitHub bằng tài khoản vào
-được repo này. File tải về là **file zip** (~38 MB): chuột phải → **Extract All…** (Giải nén tất cả) → được
+được repo này. File tải về là **file zip** (~39 MB): chuột phải → **Extract All…** (Giải nén tất cả) → được
 `BeeftownCan.exe` (~83 MB), rồi làm tiếp như mục **Dùng** bên dưới.
 
 **Bản dùng ở quán — Releases** (mỗi phiên bản một bản, giữ mãi):
@@ -59,7 +59,7 @@ Dấu ✗ đỏ nghĩa là kiểm thử hoặc đóng gói hỏng, lượt đó 
 
 1. Tab **Actions** → **Đóng gói Beeftown Cân** → nút **Run workflow** (bên phải).
 2. Ô **Số PR muốn lấy bản thử** gõ số của PR (số sau dấu `#`, ví dụ `31`) → bấm nút xanh **Run workflow**.
-3. Chờ chừng 3 phút, bấm lượt chạy mới, tải như bản trên main. Tên bản thử có chữ `thu` và số PR, ví dụ
+3. Chờ chừng 1–2 phút, bấm lượt chạy mới, tải như bản trên main. Tên bản thử có chữ `thu` và số PR, ví dụ
    `BeeftownCan-2.0.0-thu-PR31-a1b2c3d`; giữ 7 ngày. Thử xong thì quay về bản ở Releases.
 
 **Thay bản cũ ở quán:** đóng cửa sổ Beeftown Cân, chờ chừng 10 giây cho chương trình tắt hẳn, rồi chép file mới đè

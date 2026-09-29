@@ -89,6 +89,7 @@ jobs:
           node-version-file: web/.node-version
           # Bản thử PR chạy mã chưa gộp trên nhánh main: không cho nó lưu bộ nhớ đệm npm mà lượt chính thức sẽ dùng lại.
           cache: ${{ inputs.so_pr == '' && 'npm' || '' }}
+          package-manager-cache: false   # setup-node v5 tự bật cache nếu package.json gốc có packageManager — chỉ theo dòng trên
           cache-dependency-path: can-app/package-lock.json
       - name: Cài thư viện
         working-directory: can-app
