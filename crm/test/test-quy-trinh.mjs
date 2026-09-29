@@ -97,6 +97,7 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
     'CLAUDE.md',
     '.github/workflows/kiem-thu.yml',
     '.github/workflows/gac-nhanh.yml',
+    '.github/workflows/dong-goi-can.yml',
     '.github/pull_request_template.md',
     '.github/ISSUE_TEMPLATE/bao-loi.yml',
   ];
@@ -121,6 +122,24 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
   ];
   const thieu = BUOC.filter(([, m]) => !m.test(yml)).map(([t]) => t);
   ok('Workflow kiểm thử còn đủ các bước', thieu.length === 0, `thiếu: ${thieu.join(', ')}`);
+
+  // Đóng gói Beeftown Cân: file .exe tải từ GitHub về máy quầy. Kiểm thử phải chạy TRƯỚC — đóng gói bản hỏng
+  // rồi đưa lên Releases là đưa bản hỏng ra quán. Tên artifact và Release lấy từ dòng PHIEN_BAN của main.ts.
+  const goi = existsSync(join(GOC, '.github/workflows/dong-goi-can.yml'))
+    ? readFileSync(join(GOC, '.github/workflows/dong-goi-can.yml'), 'utf8') : '';
+  const viTriThu = goi.search(/bun test\/thu\.ts/), viTriGoi = goi.search(/bun scripts\/dong-goi\.ts/);
+  ok('Workflow đóng gói Beeftown Cân chạy kiểm thử TRƯỚC khi đóng gói', viTriThu >= 0 && viTriGoi > viTriThu,
+     viTriThu < 0 ? 'không thấy bun test/thu.ts' : viTriGoi < 0 ? 'không thấy bun scripts/dong-goi.ts' : 'đóng gói đứng trước kiểm thử');
+  const BUOC_GOI = [
+    ['chạy khi main đổi can-app/', /push:\s*\n\s*branches: \[main\]\s*\n\s*paths:\s*\n(?:\s*- .*\n)*?\s*- 'can-app\/\*\*'/],
+    ['chạy tay (Run workflow)', /workflow_dispatch:/],
+    ['tải lên thành artifact', /actions\/upload-artifact@/],
+  ];
+  const thieuGoi = BUOC_GOI.filter(([, m]) => !m.test(goi)).map(([t]) => t);
+  ok('Workflow đóng gói Beeftown Cân còn đủ các bước', thieuGoi.length === 0, `thiếu: ${thieuGoi.join(', ')}`);
+  const dongPhienBan = readFileSync(join(GOC, 'can-app', 'src', 'main.ts'), 'utf8').match(/^const PHIEN_BAN = '\d+\.\d+\.\d+';/gm) ?? [];
+  ok('can-app/src/main.ts có đúng một dòng PHIEN_BAN mà workflow đóng gói đọc được', dongPhienBan.length === 1,
+     `${dongPhienBan.length} dòng — cần đúng một dòng dạng  const PHIEN_BAN = '2.1.0';  (tên artifact, Release lấy từ đây)`);
 
   const pkg = JSON.parse(readFileSync(join(GOC, 'crm', 'package.json'), 'utf8'));
   ok('npm test chạy bằng chay-tat-ca.mjs (file test mới tự được chạy)', /chay-tat-ca\.mjs/.test(pkg.scripts?.test ?? ''),

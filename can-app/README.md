@@ -33,9 +33,41 @@ dùng chung với màn Đồng bộ cân.
 
 Phần tính "thêm / sửa / bỏ" là **đúng code của màn Đồng bộ cân** (`web/src/lib/kho/can-tma.ts`), nên hai nơi luôn ra cùng một kết quả.
 
+## Tải BeeftownCan.exe về (không cần gõ lệnh)
+
+GitHub tự đóng gói chương trình mỗi khi main có thay đổi cho Beeftown Cân. Cần đăng nhập GitHub bằng tài khoản vào
+được repo này. File tải về là **file zip** (~38 MB): chuột phải → **Extract All…** (Giải nén tất cả) → được
+`BeeftownCan.exe` (~83 MB), rồi làm tiếp như mục **Dùng** bên dưới.
+
+**Bản dùng ở quán — Releases** (mỗi phiên bản một bản, giữ mãi):
+
+1. Trang repo trên GitHub → cột bên phải, mục **Releases** → bấm bản mới nhất, ví dụ **Beeftown Cân 2.1.0**.
+2. Mục **Assets** → bấm **BeeftownCan-2.1.0.zip**. Không bấm "Source code" — đó là mã nguồn, không chạy được.
+
+Release chỉ có thêm khi số phiên bản tăng.
+
+**Bản mới nhất trên main — tab Actions** (có cả những sửa đổi chưa lên số phiên bản):
+
+1. Tab **Actions** → cột trái bấm **Đóng gói Beeftown Cân**.
+2. Bấm lượt chạy trên cùng có dấu ✓ xanh và nhánh **main**.
+3. Trang **Summary**: bấm dòng **⬇ Tải BeeftownCan-2.1.0**, hoặc kéo xuống mục **Artifacts** → bấm **BeeftownCan-2.1.0**.
+
+Tab Actions chỉ giữ **một** bản chính thức, bản mới nhất: repo private có hạn mức dung lượng nên bản cũ tự xoá.
+Dấu ✗ đỏ nghĩa là kiểm thử hoặc đóng gói hỏng, lượt đó không có file — báo người làm, tạm dùng bản ở Releases.
+
+**Bản thử của một PR, trước khi gộp:**
+
+1. Tab **Actions** → **Đóng gói Beeftown Cân** → nút **Run workflow** (bên phải).
+2. Ô **Số PR muốn lấy bản thử** gõ số của PR (số sau dấu `#`, ví dụ `31`) → bấm nút xanh **Run workflow**.
+3. Chờ chừng 3 phút, bấm lượt chạy mới, tải như bản trên main. Tên bản thử có chữ `thu` và số PR, ví dụ
+   `BeeftownCan-2.1.0-thu-PR31-a1b2c3d`; giữ 7 ngày. Thử xong thì quay về bản ở Releases.
+
+**Thay bản cũ ở quán:** đóng cửa sổ Beeftown Cân, chờ chừng 10 giây cho chương trình tắt hẳn, rồi chép file mới đè
+lên file cũ. Cài đặt, đăng nhập, file gốc của cân không mất — chúng nằm ở `%APPDATA%` và `Tài liệu`, không nằm cạnh file .exe.
+
 ## Dùng
 
-1. Chép `BeeftownCan.exe` vào máy tính ở quán (máy phải cùng WiFi với cân). Nháy đúp để mở.
+1. Chép `BeeftownCan.exe` (tải ở mục trên) vào máy tính ở quán (máy phải cùng WiFi với cân). Nháy đúp để mở.
    File không ký số: lần đầu Windows có thể báo *"Windows protected your PC"* → **More info** → **Run anyway**.
 2. **Đăng nhập kho** bằng tài khoản kho (NV quầy dùng thẻ Quầy, Tảng & ô; gửi giá xuống cân, tem, mã giảm: quản lý hoặc chủ). Máy nhớ đăng nhập.
 3. **Bắt đầu** (một lần): trên cân lưu dữ liệu ra USB (`Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm → Amend`), chọn file `JHSCALE\A_000.TMS`.
@@ -93,7 +125,12 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 
 - Cần bản web có `/kho-can.json` (`web/src/pages/kho-can.json.ts`) đã triển khai.
 - Đóng gói trên Linux thì file .exe chưa có biểu tượng riêng (Bun chỉ gắn biểu tượng khi đóng gói trên Windows).
-- `dist/` và `node_modules/` không vào repo. File .exe quá lớn để để trong repo hoặc trên web (Cloudflare giới hạn 25 MB một file) — gửi tay, hoặc đưa lên GitHub Releases.
+- `dist/` và `node_modules/` không vào repo. File .exe quá lớn để để trong repo hoặc trên web (Cloudflare giới hạn 25 MB một file) — GitHub đóng gói và giữ nó (mục **Tải BeeftownCan.exe về** ở trên).
+- `.github/workflows/dong-goi-can.yml`: main đổi `can-app/` hoặc `web/src/lib/` (.exe gói cả mã dùng chung ở đó) →
+  `npx bun test/thu.ts` → đóng gói → artifact `BeeftownCan-<PHIEN_BAN>`, xoá artifact chính thức cũ; phiên bản chưa có
+  Release thì tạo Release, tag `can-v<PHIEN_BAN>`. PR đụng `can-app/` chỉ kiểm đóng gói, không tải lên. Chạy tay: gõ số
+  PR, hoặc để trống và chọn nhánh ở *Use workflow from* (nhánh đó phải có file workflow này). Muốn Release mới thì tăng
+  `PHIEN_BAN` trong `src/main.ts`, giữ đúng dạng `const PHIEN_BAN = '2.1.0';` — workflow đọc dòng này (`test-quy-trinh.mjs` kiểm).
 
 ## Chưa làm
 
