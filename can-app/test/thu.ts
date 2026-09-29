@@ -15,7 +15,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { LoiCan, LoiKhongNoi, UngDung, cauLoi, guiTcp, quyenCuaVai, thuKetNoi, type DanhMucKho, type NguoiDung } from '../src/nghiep-vu.ts';
 import { daiCanDo } from '../src/tim-can.ts';
-import { docDsCom, docKetQua, type ChayPs } from '../src/day-rs232.ts';
+import { GUI_FILE, LENH_KICH_BAN, chuoiKichBan, docDsCom, docKetQua, docKichBan, gioTrongBuoc, tocDoTuThongSo, type ChayPs } from '../src/day-rs232.ts';
 import { moMayChu } from '../src/may-chu.ts';
 import { taoKhoGia } from './kho-gia.ts';
 import { docFileCan } from '../../web/src/lib/kho/can-tma.ts';
@@ -516,11 +516,45 @@ console.log('6c · Dây RS232 (thử) — PowerShell giả');
   ok('Dấu BOM đầu dòng (Windows PowerShell 5.1) không làm hỏng kết quả', bom[0] === '3000' && bom[1] === 'COM3'
     && /COM3 đang bị/.test(loiDoc("\uFEFFLOI\tUnauthorizedAccessException\tdenied\r\n")), JSON.stringify(bom));
 
+  // Cổng và trình tự như phần mềm TM-xA của hãng (SaveForm.cs SaveToSerial).
+  ok('Cổng như phần mềm hãng: 8 bit, không chẵn lẻ, 1 bit dừng, điều khiển luồng XOn/XOff, không bật DTR / RTS',
+    /Parity\]::None, 8, \[System\.IO\.Ports\.StopBits\]::One/.test(LENH_KICH_BAN) && /Handshake\]::XOnXOff/.test(LENH_KICH_BAN)
+    && !/DtrEnable|RtsEnable/.test(LENH_KICH_BAN));
+  const kbChu = chuoiKichBan(GUI_FILE).split(';').map(b => (b.startsWith('GHI:') ? 'GHI:' + Buffer.from(b.slice(4), 'base64').toString('latin1') : b));
+  ok('Trình tự gửi như hãng: hỏi giờ, đọc tới END, UPL END, dòng trống, file; rồi hỏi giờ thêm một lần để xác nhận',
+    JSON.stringify(kbChu) === JSON.stringify(['GHI:UPL\tTIM\t\r\n', 'DOC:5000', 'GHI:UPL\tEND\t\r\n', 'GHI:\r\n', 'GHITEP',
+      'GHI:\r\nUPL\tTIM\t\r\n', 'DOC:30000', 'GHI:UPL\tEND\t\r\n']), JSON.stringify(kbChu));
+  const TIM_DAY = 'TIM\t26\t9\t25\t16\t54\t12\t';
+  const b64 = (chu: string) => Buffer.from(chu, 'latin1').toString('base64');
+  const kqMau = docKichBan(`DONG\t1\t${b64(TIM_DAY)}\r\nDONG\t1\t${b64('END\tTIM\t')}\r\nOK\t42\r\n`, 'COM3');
+  ok('Đọc kết quả kịch bản: dòng theo bước, số byte đã ghi, giờ trên cân', kqMau.soByte === 42 && kqMau.hetGio === null && kqMau.dong.length === 2
+    && JSON.stringify(gioTrongBuoc(kqMau, 1)) === JSON.stringify({ nam: 2026, thang: 9, ngay: 25, gio: 16, phut: 54, giay: 12 }), JSON.stringify(kqMau));
+  ok('Đọc kết quả kịch bản: quá giờ ở bước 1 → hetGio 1; BOM đầu dòng không sao', docKichBan('﻿HET\t1\r\nOK\t10\r\n', 'COM3').hetGio === 1);
+  ok('Thông số 41 → tốc độ (0 = 300, 5 = 9600, 9 = 115200; lạ → không biết)', tocDoTuThongSo('5') === 9600 && tocDoTuThongSo('9') === 115200
+    && tocDoTuThongSo('0') === 300 && tocDoTuThongSo('10') === null && tocDoTuThongSo('x') === null && tocDoTuThongSo(undefined) === null);
+
+  // PowerShell giả = cân giả ở đầu dây: chạy kịch bản BT_KICH_BAN như LENH_KICH_BAN.
+  type CheDoDay = 'tra-loi' | 'im-lang' | 'lon-xon' | 'khong-xac-nhan';
+  let cheDo: CheDoDay = 'tra-loi';
+  let traLoiKhac: ((bien: Record<string, string>) => string) | null = null;
   const goiPs: { lenh: string; bien: Record<string, string>; tep: Buffer | null }[] = [];
-  let traLoi: (bien: Record<string, string>) => string = () => 'OK\r\n';
   const chayPs: ChayPs = async (lenh, bien) => {
     goiPs.push({ lenh, bien, tep: bien.BT_TEP ? fs.readFileSync(bien.BT_TEP) : null });
-    return traLoi(bien);
+    if (traLoiKhac) return traLoiKhac(bien);
+    const ra: string[] = [];
+    let tong = 0, lanDoc = 0;
+    for (const [i, b] of (bien.BT_KICH_BAN ?? '').split(';').entries()) {
+      const [loai, gt = ''] = b.split(':');
+      if (loai === 'GHI') tong += Buffer.from(gt, 'base64').length;
+      else if (loai === 'GHITEP') tong += fs.statSync(bien.BT_TEP).size;
+      else if (loai === 'DOC') {
+        lanDoc++;
+        if (cheDo === 'im-lang' || (cheDo === 'khong-xac-nhan' && lanDoc === 2)) { ra.push(`HET\t${i}`); break; }
+        if (cheDo === 'lon-xon') { ra.push(`DONG\t${i}\t${b64('øæx\u0012à')}`, `HET\t${i}`); break; }
+        ra.push(`DONG\t${i}\t${b64(TIM_DAY)}`, `DONG\t${i}\t${b64('END\tTIM\t')}`);
+      }
+    }
+    return [...ra, `OK\t${tong}`, ''].join('\r\n');
   };
   const dd6 = { cauHinh: path.join(tam, 'appdata6'), duLieu: path.join(tam, 'tai-lieu6') };
   const ud6 = new UngDung(dd6, { danhMuc: async () => danhMuc, chayPs });
@@ -533,30 +567,58 @@ console.log('6c · Dây RS232 (thử) — PowerShell giả');
 
   danhMuc = { mauMaVach: '2XCCCCCWWWWWK', matHang: [hang('LOI-VAI', '10001', 'Lõi vai bò Mỹ', 860000), hang('GAU-BO', '10003', 'Gầu bò', 695000)] };
   const gocTruoc = fs.readFileSync(ud6.fileGoc), trenTruoc = fs.readFileSync(ud6.fileTrenCan);
-  traLoi = (b) => `OK\t${fs.statSync(b.BT_TEP).size}\r\n`;
   const g6 = await ud6.guiThuQuaDay({ com: 'COM3', baud: 9600 });
   const lan = goiPs[goiPs.length - 1];
-  ok('Gửi thử: cổng, tốc độ, file tạm qua biến môi trường; đẩy từng 1 KB', lan.bien.BT_COM === 'COM3' && lan.bien.BT_BAUD === '9600'
-    && /\$p\.Write\(\$b, \$i,/.test(lan.lenh) && Number(lan.bien.BT_CHO_KHOI) >= 5000, JSON.stringify(lan.bien));
+  ok('Gửi thử: cổng, tốc độ, kịch bản, file tạm qua biến môi trường; mỗi lần ghi chờ được lâu (cân báo XOFF khi bận)',
+    lan.bien.BT_COM === 'COM3' && lan.bien.BT_BAUD === '9600' && lan.bien.BT_KICH_BAN === chuoiKichBan(GUI_FILE) && lan.lenh === LENH_KICH_BAN
+    && Number(lan.bien.BT_CHO_KHOI) >= 30000, JSON.stringify(lan.bien));
   const fDay = docFileCan(new Uint8Array(lan.tep!));
   ok('Gửi thử: nội dung như gửi WiFi, giữ cả hàng ngoài kho (sườn), không có phần giờ', fDay.plu.map(p => `${p.so}:${p.ma}:${p.gia}`).join() === '1:10001:860000,2:10002:876000,3:10003:695000'
     && !lan.tep!.includes(Buffer.from('DWL\tTIM')), fDay.plu.map(p => `${p.so}:${p.ma}:${p.gia}`).join());
-  ok('Gửi thử: trả hàng để gọi thử trên cân (PLU 1, 845.000 → 860.000)', g6.hang.so === 1 && g6.hang.gia === 860000 && g6.hang.giaCu === 845000 && g6.soByte === lan.tep!.length, JSON.stringify(g6));
+  ok('Gửi thử: cân trả lời sau khi nhận → daXacNhan, giờ trên cân; trả hàng để gọi thử (PLU 1, 845.000 → 860.000)',
+    g6.daXacNhan && g6.gio?.nam === 2026 && g6.hang.so === 1 && g6.hang.gia === 860000 && g6.hang.giaCu === 845000
+    && g6.soByte === lan.tep!.length, JSON.stringify(g6));
   ok('Gửi thử: xoá file tạm (có mật khẩu WiFi)', !fs.existsSync(lan.bien.BT_TEP));
   ok('Gửi thử: không ghi nhận gì (file gốc, tren-can giữ nguyên); nhớ cổng và tốc độ', Buffer.compare(fs.readFileSync(ud6.fileGoc), gocTruoc) === 0
     && Buffer.compare(fs.readFileSync(ud6.fileTrenCan), trenTruoc) === 0 && ud6.cauHinh().com === 'COM3' && ud6.cauHinh().baud === 9600);
 
-  traLoi = () => `OK\t${Buffer.from([...Buffer.from('ST,GS,+0001.234kg\r\n'), 0x00, 0xff]).toString('base64')}\r\n`;
-  const n6 = await ud6.ngheQuaDay({ com: 'COM3', baud: 9600, giay: 5 });
-  ok('Nghe cân: đếm byte, phần trăm đọc được, đoạn đầu', n6.soByte === 21 && n6.docDuoc === 90 && n6.chu === 'ST,GS,+0001.234kg↵↵··'
-    && goiPs[goiPs.length - 1].bien.BT_CHO === '5000', JSON.stringify(n6));
-  traLoi = () => "LOI\tUnauthorizedAccessException\tAccess to the port 'COM3' is denied.\r\n";
-  ok('Lỗi PowerShell tới trang thành câu dễ hiểu', /đang bị chương trình khác dùng/.test(await loiCua(() => ud6.ngheQuaDay({ com: 'COM3', baud: 9600 }))));
-  traLoi = () => 'COM\tCOM4\r\nTEN\tProlific USB-to-Serial Comm Port (COM4)\r\nOK\r\n';
-  const d6 = await ud6.dsCom();
-  ok('Danh sách cổng + nhớ cổng, tốc độ lần trước', d6.cong.length === 1 && d6.cong[0].moTa.startsWith('Prolific') && d6.com === 'COM3' && d6.baud === 9600);
+  cheDo = 'im-lang';
+  const loiIm = await loiCua(() => ud6.guiThuQuaDay({ com: 'COM3', baud: 9600 }));
+  ok('Gửi thử: cân không trả lời lần hỏi đầu → báo lỗi chỉ Prog → 4 → 3, tốc độ, dây; nói rõ chưa gửi gì',
+    /không trả lời qua COM3/.test(loiIm) && /Prog → 4 → 3/.test(loiIm) && /SP\.041/.test(loiIm) && /chưa gửi gì/.test(loiIm), loiIm);
+  ok('Gửi thử hỏng: file gốc, tren-can giữ nguyên', Buffer.compare(fs.readFileSync(ud6.fileGoc), gocTruoc) === 0
+    && Buffer.compare(fs.readFileSync(ud6.fileTrenCan), trenTruoc) === 0);
+  cheDo = 'khong-xac-nhan';
+  const gKhong = await ud6.guiThuQuaDay({ com: 'COM3', baud: 9600 });
+  ok('Gửi thử: cân không trả lời lần hỏi sau khi nhận → daXacNhan false (chưa chắc), không báo lỗi, không ghi nhận',
+    gKhong.daXacNhan === false && gKhong.gio === null && Buffer.compare(fs.readFileSync(ud6.fileTrenCan), trenTruoc) === 0, JSON.stringify(gKhong));
 
-  traLoi = (b) => `OK\t${fs.statSync(b.BT_TEP).size}\r\n`;
+  cheDo = 'tra-loi';
+  const soGoi = goiPs.length;
+  const k6 = await ud6.kiemTraDay({ com: 'COM4', baud: 19200 });
+  const lanKiem = goiPs[goiPs.length - 1];
+  ok('Kiểm tra dây: chỉ hỏi giờ (UPL TIM … UPL END), không gửi file; trả giờ trên cân; nhớ cổng và tốc độ',
+    goiPs.length === soGoi + 1 && !lanKiem.bien.BT_KICH_BAN.includes('GHITEP') && lanKiem.bien.BT_TEP === ''
+    && k6.gio?.gio === 16 && k6.gio.phut === 54 && ud6.cauHinh().com === 'COM4' && ud6.cauHinh().baud === 19200, JSON.stringify(k6));
+  cheDo = 'im-lang';
+  ok('Kiểm tra dây: cân im lặng → câu chỉ Prog → 4 → 3', /Prog → 4 → 3/.test(await loiCua(() => ud6.kiemTraDay({ com: 'COM4', baud: 9600 }))));
+  cheDo = 'lon-xon';
+  const loiLon = await loiCua(() => ud6.kiemTraDay({ com: 'COM4', baud: 9600 }));
+  ok('Kiểm tra dây: nghe thấy chữ lộn xộn → báo có lẽ sai tốc độ, chỉ thông số 41', /sai tốc độ/.test(loiLon) && /SP\.041/.test(loiLon), loiLon);
+  cheDo = 'tra-loi';
+  traLoiKhac = () => "LOI\tUnauthorizedAccessException\tAccess to the port 'COM3' is denied.\r\n";
+  ok('Lỗi PowerShell tới trang thành câu dễ hiểu', /đang bị chương trình khác dùng/.test(await loiCua(() => ud6.kiemTraDay({ com: 'COM3', baud: 9600 }))));
+  traLoiKhac = () => 'COM\tCOM4\r\nTEN\tProlific USB-to-Serial Comm Port (COM4)\r\nOK\r\n';
+  const d6 = await ud6.dsCom();
+  ok('Danh sách cổng + nhớ cổng, tốc độ lần trước; file gốc không có thông số 41 → không biết tốc độ của cân',
+    d6.cong.length === 1 && d6.cong[0].moTa.startsWith('Prolific') && d6.com === 'COM4' && d6.baud === 19200 && d6.baudCan === null, JSON.stringify(d6));
+  const dd6b = { cauHinh: path.join(tam, 'appdata6b'), duLieu: path.join(tam, 'tai-lieu6b') };
+  const ud6b = new UngDung(dd6b, { danhMuc: async () => danhMuc, chayPs });
+  ud6b.ghiNhanFileTuCan(new Uint8Array(Buffer.from(Buffer.from(fileUsb).toString('latin1').replace('TMS\t202\t3\t', 'TMS\t41\t6\t\r\nTMS\t202\t3\t'), 'latin1')));
+  const d6b = await ud6b.dsCom();
+  ok('Thông số 41 của cân = 6 → gợi ý tốc độ 19200 khi chưa thử lần nào', d6b.baudCan === 19200 && d6b.baud === 19200 && d6b.com === null, JSON.stringify(d6b));
+  traLoiKhac = null;
+
   danhMuc = { mauMaVach: '2XCCCCCWWWWWK', matHang: [hang('LOI-VAI', '10001', 'Lõi vai bò Mỹ #0142', 845000), hang('GAU-BO', '10003', 'Gầu bò', 700000)] };
   const g7 = await ud6.guiThuQuaDay({ com: 'COM3', baud: 9600 });
   ok('Gửi thử: hàng chỉ đổi tên (tảng) đứng trước → vẫn chọn hàng đổi giá để gọi thử', g7.hang.so === 3 && g7.hang.gia === 700000 && g7.hang.giaCu === 695000, JSON.stringify(g7.hang));
@@ -830,9 +892,10 @@ console.log('6d · Bản 2.2: cổng hai chiều, nhật ký cân, thông số, 
     () => nvQuay.chinhGioCan(), () => nvQuay.phim(), () => nvQuay.suaPhim({ thay: [{ trang: 0, phim: 5, plu: 1 }] }),
     () => nvQuay.guiTem({ sua: [{ khoa: 'o:0', x: 24 }] }),
     () => nvQuay.taoFileUsbTem(voiDau(nvQuay, { sua: [{ khoa: 'o:0', x: 24 }] })), () => nvQuay.taoFileUsbGoc({ thongSo: { 104: '4' } }),
+    () => nvQuay.kiemTraDay({ com: 'COM3', baud: 9600 }),
   ].map(f => loiCua(f)));
-  ok('NV quầy: 14 việc đều bị từ chối "chỉ dành cho quản lý hoặc chủ" (kể cả lưu file nạp USB tem / thông số), không nối cân, không gửi, không ghi file USB',
-    tuChoi.length === 14 && tuChoi.every(l => /quản lý hoặc chủ/.test(l)) && nhan.length === soN && can2.ketNoi.length === soK
+  ok('NV quầy: 15 việc đều bị từ chối "chỉ dành cho quản lý hoặc chủ" (kể cả lưu file nạp USB tem / thông số, kiểm tra dây RS232), không nối cân, không gửi, không ghi file USB',
+    tuChoi.length === 15 && tuChoi.every(l => /quản lý hoặc chủ/.test(l)) && nhan.length === soN && can2.ketNoi.length === soK
     && !fs.existsSync(nvQuay.fileChoUsb), JSON.stringify(tuChoi));
   const mcNv = moMayChu(nvQuay, { ma: 'nv', phienBan: 'thu', khiCoNhip: () => {}, khiDong: () => {} });
   const temUsbNv = await (await fetch(`http://127.0.0.1:${mcNv.port}/api/tem/usb?t=nv`, { method: 'POST',
@@ -1391,7 +1454,7 @@ if (!thuMucTam) {
   process.exit(1);
 }
 ok('Trạng thái: chưa có file gốc, cân mặc định 192.168.1.22', tt.ok && tt.goc === null && tt.cauHinh.ipCan === '192.168.1.22', JSON.stringify(tt));
-ok('Phiên bản 2.2.1', (tt as unknown as { phienBan: string }).phienBan === '2.2.1');
+ok('Phiên bản 2.3.0', (tt as unknown as { phienBan: string }).phienBan === '2.3.0');
 ok('Trang hướng dẫn của chương trình thật: có mã bí mật mới mở được', (await fetch(`${goc.origin}/huong-dan?t=${ma}`)).status === 200
   && (await fetch(`${goc.origin}/huong-dan`)).status === 403);
 const ch = await (await api('/api/cau-hinh', JSON.stringify({ ipCan: '127.0.0.1', congCan: congCan }))).json() as { ok: boolean };

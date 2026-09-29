@@ -395,23 +395,29 @@
         lưu dữ liệu từ cân ra USB rồi chọn file đó.</p>
       <input type="file" accept=".TMS,.tms" class="chon-file-can">
       <hr style="border:0;border-top:1px solid var(--vach);margin:18px 0">
-      <p><b>Dây RS232 (thử).</b> Mới chắc cân nhận danh mục qua WiFi và USB; qua dây RS232 thì chưa biết — thử ở đây.
-        Cắm dây từ máy tính vào cổng RS232 của cân (dây USB–RS232 cần driver, Windows thường tự cài), rồi bấm Tìm cổng COM.</p>
+      <p><b>Dây RS232 (thử).</b> Mới chắc cân nhận danh mục qua WiFi và USB; qua dây RS232 thì chưa thử trên cân thật — thử ở đây.
+        Chương trình nói với cân qua dây đúng như phần mềm của hãng (8 bit, không chẵn lẻ, 1 bit dừng, điều khiển luồng XOn/XOff).</p>
+      <ol class="phu" style="margin:6px 0 10px 18px;padding:0">
+        <li>Cắm dây từ máy tính vào cổng RS232 của cân (dây USB–RS232 cần driver, Windows thường tự cài), bấm <b>Tìm cổng COM</b>.</li>
+        <li><b>Trên cân bấm <code>Prog → 4 → 3</code></b> (P43 RS-232) và để cân ở màn hình đó — cân chỉ nghe dây khi đang ở đây.</li>
+        <li>Bấm <b>Kiểm tra dây</b>: cân trả lời giờ của nó là dây, cổng, tốc độ đều đúng. Xong mới <b>Gửi thử qua dây</b>.</li>
+      </ol>
       <div class="nut">
         <select id="com-cong" style="max-width:320px"><option value="">— bấm Tìm cổng COM —</option></select>
         <button type="button" id="nut-tim-com">Tìm cổng COM</button>
         <label>Tốc độ <select id="com-toc-do" style="width:auto">
-          <option>2400</option><option>4800</option><option selected>9600</option><option>19200</option>
-          <option>38400</option><option>57600</option><option>115200</option></select></label>
+          <option>300</option><option>600</option><option>1200</option><option>2400</option><option>4800</option>
+          <option selected>9600</option><option>19200</option><option>38400</option><option>57600</option><option>115200</option></select></label>
+        <span class="phu" id="com-toc-do-can"></span>
       </div>
       <div class="nut">
-        <button type="button" id="nut-nghe-com">Nghe cân 10 giây</button>
+        <button type="button" id="nut-kiem-com">Kiểm tra dây</button>
         <button type="button" id="nut-gui-com">Gửi thử qua dây</button>
         <span class="dang-lam an" id="dang-com"></span>
       </div>
-      <p class="phu"><b>Nghe cân</b>: xem cân có tự gửi gì qua dây không (đúng tốc độ thì ra chữ đọc được). <b>Gửi thử</b> (quản lý, chủ):
-        đẩy các thay đổi từ kho qua dây như khi gửi WiFi, rồi gọi hàng trên cân xem cân đã nhận chưa. Chương trình không ghi nhận
-        lần gửi thử — lần gửi WiFi sau vẫn gửi lại các thay đổi đó.</p>
+      <p class="phu"><b>Kiểm tra dây</b>: hỏi giờ cân qua dây, không đổi gì trên cân. <b>Gửi thử</b> (quản lý, chủ): hỏi cân trước
+        (cân không trả lời thì không gửi gì), đẩy các thay đổi từ kho qua dây như khi gửi WiFi, rồi hỏi cân thêm một lần để biết
+        cân đã đọc hết. Chương trình không ghi nhận lần gửi thử — lần gửi WiFi sau vẫn gửi lại các thay đổi đó.</p>
       <div id="ket-qua-com"></div>
       <hr style="border:0;border-top:1px solid var(--vach);margin:18px 0">
       <div class="nut">
@@ -2016,12 +2022,12 @@
   const comChon = () => ({ com: $('com-cong').value, baud: Number($('com-toc-do').value) });
   async function lamCom(chu, viec) {
     const noi = $('ket-qua-com');
-    for (const b of [$('nut-tim-com'), $('nut-nghe-com'), $('nut-gui-com')]) b.disabled = true;
+    for (const b of [$('nut-tim-com'), $('nut-kiem-com'), $('nut-gui-com')]) b.disabled = true;
     $('dang-com').textContent = chu; $('dang-com').classList.remove('an'); bao(noi, '', '');
     try { await viec(noi); }
     catch (err) { bao(noi, 'loi', e(err.message)); }
     finally {
-      for (const b of [$('nut-tim-com'), $('nut-nghe-com'), $('nut-gui-com')]) b.disabled = false;
+      for (const b of [$('nut-tim-com'), $('nut-kiem-com'), $('nut-gui-com')]) b.disabled = false;
       $('dang-com').classList.add('an');
     }
   }
@@ -2033,17 +2039,13 @@
       : '<option value="">— không thấy cổng COM —</option>';
     if (k.com && k.cong.some(c => c.ten === k.com)) sel.value = k.com;
     $('com-toc-do').value = String(k.baud);
+    $('com-toc-do-can').textContent = k.baudCan ? `Cân đang để ${k.baudCan} (thông số 41)` : '';
     if (!k.cong.length) bao(noi, 'loi', 'Không thấy cổng COM nào. Dây đã cắm chưa? Dây USB–RS232 cần driver (CH340, PL2303, FTDI…) — cắm vào mạng cho Windows tự cài, hoặc cài từ đĩa kèm dây.');
   });
-  $('nut-nghe-com').onclick = () => lamCom('Đang nghe 10 giây…', async (noi) => {
-    const k = await goi('/api/com/nghe', { ...comChon(), giay: 10 });
-    if (!k.soByte) {
-      bao(noi, 'luu-y', `Không nghe thấy gì trong ${k.giay} giây ở ${k.com}, tốc độ ${k.baud}. Có thể cân chỉ trả lời khi được hỏi — chưa nói lên được gì; thử <b>Gửi thử qua dây</b>.`);
-      return;
-    }
-    bao(noi, k.docDuoc >= 80 ? 'xong' : 'luu-y', `<p>Nghe được ${soChu(k.soByte)} byte ở ${e(k.com)}, tốc độ ${k.baud} — ${k.docDuoc}% là chữ đọc được.</p>`
-      + `<p><code style="word-break:break-all">${e(k.chu)}</code></p>`
-      + (k.docDuoc >= 80 ? `<p>Tốc độ ${k.baud} có vẻ đúng: dây và cổng đã thông với cân.</p>` : '<p>Chữ lộn xộn: có thể sai tốc độ — chọn tốc độ khác rồi nghe lại.</p>'));
+  $('nut-kiem-com').onclick = () => lamCom('Đang hỏi cân qua dây…', async (noi) => {
+    const k = await goi('/api/com/kiem', comChon());
+    bao(noi, 'xong', `<p>Dây thông: cân trả lời qua ${e(k.com)}, tốc độ ${k.baud}`
+      + (k.gio ? ` — giờ trên cân <b>${gioChu(k.gio)}</b>.` : '.') + '</p><p>Giờ có thể bấm <b>Gửi thử qua dây</b> (cân vẫn ở màn hình Prog → 4 → 3).</p>');
   });
   $('nut-gui-com').onclick = () => lamCom('Đang gửi qua dây… (tốc độ 9600 có thể mất 1–2 phút)', async (noi) => {
     const k = await goi('/api/com/gui', comChon());
@@ -2053,9 +2055,12 @@
       : h.gia !== h.giaCu
         ? `trên cân gọi <b>PLU ${h.so}</b> (${e(h.ten)}): nếu giá là <b>${tien(h.gia)}</b>/kg (trước là ${tien(h.giaCu)})`
         : `trên cân gọi <b>PLU ${h.so}</b> rồi in thử một tem: nếu tên là <b>${e(h.ten)}</b> (trước là ${e(h.tenCu)})`;
-    bao(noi, 'luu-y', `<p>Đã đẩy ${soChu(Math.ceil(k.soByte / 1024))} KB ra ${e(k.com)}, tốc độ ${k.baud}, trong ${k.giay} giây.</p>`
+    const dau = `<p>Đã đẩy ${soChu(Math.ceil(k.soByte / 1024))} KB ra ${e(k.com)}, tốc độ ${k.baud}, trong ${k.giay} giây.</p>`;
+    bao(noi, 'luu-y', dau + (k.daXacNhan
+      ? '<p>Cân trả lời sau khi nhận: cân đã đọc hết dữ liệu gửi qua dây.</p>'
+      : '<p><b>Cân không trả lời sau khi nhận</b> — chưa chắc cân đã nhận hết.</p>')
       + `<p>Giờ ${kiem} là cân đã nhận qua dây — báo lại để làm hẳn cách gửi bằng dây.</p>`
-      + '<p>Nếu cân chưa đổi: thử tốc độ khác (9600 → 115200 → 38400 → 19200 → 4800), gửi lại. Thử hết mà không được thì cân không nhận danh mục qua dây này — dùng WiFi.</p>');
+      + '<p>Nếu cân chưa đổi: vào lại <code>Prog → 4 → 3</code> trên cân, bấm Kiểm tra dây rồi gửi lại. Vẫn không đổi thì cân không nhận danh mục qua dây này — dùng WiFi.</p>');
   });
 
   $('nut-mo-thu-muc').onclick = () => goi('/api/mo-thu-muc', {}).catch(err => baoChung('loi', e(err.message)));

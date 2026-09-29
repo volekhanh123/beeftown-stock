@@ -1158,6 +1158,23 @@ Nếu TM-xA đang chạy trên một máy trong quán, nó tự:
 
 ---
 
+### 10.6 Dây RS-232 — [hãng], **chưa thử trên cân thật với chương trình mình**
+
+Cùng văn bản như file và mạng (mục 2), đi qua cổng COM. Nguồn: `SaveForm.cs` `SaveToSerial` / `OpenFromSerial`,
+`ReportForm.cs` (nhật ký qua dây), `TM-xA.exe.Config`, sách hướng dẫn V3.04A mục 5.6.3.
+
+- **Cổng**: tốc độ theo thông số 41 của cân (0 = 300, 1 = 600, 2 = 1200, 3 = 2400, 4 = 4800, 5 = 9600 mặc định,
+  6 = 19200, 7 = 38400, 8 = 57600, 9 = 115200); 8 bit dữ liệu, không chẵn lẻ, 1 bit dừng, **điều khiển luồng XOn/XOff**
+  (cài mặc định của hãng); hãng không bật DTR / RTS. Bảng mã như đường mạng (UTF-8 ở máy của quán), xuống dòng CRLF.
+- **Trên cân**: phải vào `Prog → 4 → 3` (P43 RS-232) trước — cân chỉ nghe dây khi đang ở màn hình đó. Sách ghi máy bản
+  cơ bản chỉ có P41 (USB); cân của quán có P43 (Khánh xem 29/09/2026).
+- **Gửi (hãng)**: `UPL⇥TIM⇥` → chờ tối đa 3 giây cho hơn 10 byte → đọc dòng tới dòng có cột 0 là `END` → `UPL⇥END⇥` →
+  một dòng trống → các khối `DWL … END` (có `CLR⇥SCP⇥` khi tích xoá — chỉ đường dây có). **Không** có hàng rào cuối.
+- **Đọc (hãng)**: `UPL⇥<PHẦN>⇥` như mạng; nhật ký bán `UPL⇥REP⇥<FID>⇥` (không có dấu `-`, không +1; `-1` = tất cả).
+- **Chương trình mình** (`src/day-rs232.ts`): bắt tay như hãng nhưng chờ 5 giây và đọc tới `END` đứng **sau** dòng `TIM`;
+  gửi nội dung file như đường 33571; rồi hỏi `UPL⇥TIM⇥` thêm một lần (chờ 30 giây) làm hàng rào như đường mạng —
+  cân trả lời là đã đọc hết dữ liệu trước đó, không trả lời thì "chưa chắc đã nhận".
+
 ## 11. Rủi ro tổng hợp
 
 1. **File cân chứa tên và mật khẩu WiFi dạng chữ thường** (TMT 15 / 16). Không commit, không đưa vào kiểm thử,
