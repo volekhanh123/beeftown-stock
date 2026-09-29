@@ -430,11 +430,14 @@ PLU⇥1⇥10001⇥⇥1⇥845,0⇥0,0⇥0,0⇥0⇥0⇥0⇥0⇥0⇥0⇥9⇥Sườn
 - Định dạng ngày: thông số **104** (§8). Hạn sử dụng chỉ đúng khi **đồng hồ cân đúng**.
 - Kho → cân (`can-tma.ts`): `HangKho.han_dung_ngay` `undefined` = không quản (giữ cột cân); `null` = không in
   (27 = 0, 32 = 0); n = in (27 = 1, 32 = n); n > 999 → không in, kèm cảnh báo.
-- Danh mục kho (`danh-muc-can.ts`) **không** đưa `kho_mat_hang.han_dung_ngay` lên cân: kho tính hạn từ ngày nhập /
-  ngày lóc (lô phần cắt còn bị chặn bởi hạn của tảng), cân tính từ **ngày in** — tem in muộn hơn ngày nhập, hay ô lóc
-  từ tảng sắp hết hạn, sẽ in HSD muộn hơn hạn của lô. Món: `undefined` (cột ngày trên cân giữ nguyên). Ô mã và mã
-  giảm giá cận date: `null` (tắt HSD). Giới hạn đã biết: HSD trên tem = ngày in + N, nên HSD đặt trên cân vẫn có thể
-  muộn hơn hạn của lô khi tảng hết hạn sớm hơn hay tem in muộn.
+- Danh mục kho (`danh-muc-can.ts`, cách b — 29/09/2026) gửi **số ngày còn lại của lô** = `kho_lo.han_dung` − hôm nay
+  (giờ VN, `homNayVn`): ô mã đang giữ tảng → lô lóc ra (phiên còn nháp: không muộn hơn hạn tảng); món và ô trống → lô
+  **sớm nhất** còn tồn ở chi nhánh (`kho_v_ton`, mọi vị trí); chưa có lô → `han_dung_ngay` của món (null → không in);
+  hạn đã qua → `null` + cảnh báo; mã giảm giá cận date → `null`. `HangKho.nguon_hsd` / `canh_bao_hsd` đi tới
+  `DongKeHoach.hsdNguon` / `canhBao` (chỉ để hiện, không ghi file). Vì cột 32 là số **tương đối**, số gửi hôm nay in
+  ngày mai là HSD muộn thêm 1 ngày: phải gửi lại **mỗi ngày** trước khi đóng gói. Beeftown Cân ghi ngày tính
+  (`hsd-tinh-ngay.txt`) và báo đỏ khi cũ; tự gửi gửi được đếm ngược (số → số), không tự bật / tắt in (null ↔ số);
+  màn Đồng bộ cân ghi "HSD tính cho ngày xuất file — nạp vào cân trong ngày". Đồng hồ cân sai ngày → HSD sai theo.
 - Phần mềm hãng có cột Excel "Shelf date data(+print)": nhập n ≥ 1 thì bật in, nhập 0 thì **tắt** in (không
   diễn tả được "hết hạn trong ngày"). Nhập Excel của hãng đè **mọi** cột của PLU đã có, kể cả hạn sử dụng.
 
@@ -1202,6 +1205,7 @@ Nếu TM-xA đang chạy trên một máy trong quán, nó tự:
 | Đổi mẫu tem (LAB) qua 33571 hoặc 33581 | **Chưa thử trên cân thật** | USB thì cân nhận chắc |
 | File nhỏ chỉ TMS / SCP qua 33571 (`fileNho`) | **Chưa thử trên cân thật** | |
 | In hạn sử dụng (cột 27 = 1, cột 32 = n) | **Chưa thử trên cân thật** | |
+| HSD đếm ngược theo lô, gửi mỗi ngày (`danh-muc-can.ts` cách b) | **Chưa thử trên cân thật** | Chỉ kiểm bằng kiểm thử |
 | Điều kiện in 9 trên ô hạn dùng / chữ "HSD" | **Chưa thử trên cân thật** | |
 | Thông số 104 = 4 (`DD/MM/YY`) trên tem | **Chưa thử trên cân thật** | |
 | Thêm / di chuyển ô, đổi cỡ chữ trên tem (`suaTem`) | **Chưa thử trên cân thật** | |
@@ -1237,6 +1241,7 @@ Nếu TM-xA đang chạy trên một máy trong quán, nó tự:
 | Tắt `ASK` (58 = 0) | Không cần trừ khi `ASK` gây rối: ghi `TMS 58 0` qua 33581, đọc lại `UPL TMS`. |
 | Đổi tem qua WiFi (LAB qua 33571 / 33581) | Đổi **một chữ cố định** của tem 28, gửi, in thử một tem PLU thử. Không đổi → nạp bằng USB. |
 | In hạn sử dụng; cân in gì ở ô hạn khi PLU không bật hạn | PLU thử với cột 27 = 1, cột 32 = 3 → in tem, xem ngày = hôm nay + 3. PLU thử khác cột 27 = 0 → in tem xem ô hạn. |
+| HSD đếm ngược theo lô đúng hạn của lô | Sau lần gửi đầu: in một tem món có lô, so HSD với hạn của lô sớm nhất trong kho. Hôm sau gửi lại, in lại: số ngày giảm 1, ngày in ra không đổi. |
 | Điều kiện in 9 | Đổi ô hạn dùng và chữ "HSD" của tem 28 sang 9, in hai PLU thử (có / không hạn). |
 | 104 = 4 đổi ngày trên tem | Đổi trên cân (`Prog 1 2`, `×`, `104`, Confirm, 4, Amend), in một tem, đổi lại nếu không ưng. |
 | Thông số 105 chế độ "số ngày" (4–6), "PLU không đặt" | Không cần cho quán. Nếu cần: đổi 105 sau giờ bán, in PLU thử, trả 105 = 0. |

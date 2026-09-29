@@ -50,6 +50,13 @@
  *     (boPhanChiDoc), nên file gốc sau lần gửi đầu không còn nhật ký.
  *   · Mẫu tem sửa kỹ hơn (tem.ts: di chuyển, cỡ chữ, điều kiện in, thêm ô).
  *   · Quyền: mọi việc mới với cân theo quy tắc thẻ Mẫu tem (kiemQuyenCan).
+ *
+ * HSD = SỐ NGÀY CÒN LẠI CỦA LÔ (cách b, 29/09/2026 — danh-muc-can.ts): kho gửi hạn của lô − hôm nay (giờ VN), cân in
+ * HSD = ngày in + số đó, nên số trên cân chỉ đúng trong ngày tính. Chương trình ghi ngày tính của HSD đang nằm trên
+ * cân vào Tài liệu › Beeftown Can › hsd-tinh-ngay.txt (ghi khi gửi đủ danh sách thành công, xoá qua WiFi đọc lại khớp,
+ * nạp USB file làm từ kho, hay xem trước thấy HSD trên cân đã đúng hôm nay); ô Cân / Gửi giá / Tất cả hàng báo đỏ khi
+ * cân in HSD mà ngày đó trước hôm nay (hsdTrenCan). Tự gửi gửi được HSD đếm ngược (số → số), không tự bật / tắt in HSD
+ * (null ↔ số) — demBatTatHsd. In HSD: chưa thử trên cân thật.
  */
 import * as fs from 'node:fs';
 import * as net from 'node:net';
@@ -81,7 +88,8 @@ import {
 import { LA_IP, layMac, thuKetNoi, timCan as doTimCan, type KetQuaTim, type MangMay } from './tim-can.ts';
 import { LoiDay, dsCongCom, giayDay, guiCom, kiemCom, ngheCom, tomTatNghe, type ChayPs, type CongCom } from './day-rs232.ts';
 import { docCaiDat, docMatHang } from '../../web/src/lib/kho/danh-muc.ts';
-import { hangChoCan } from '../../web/src/lib/kho/danh-muc-can.ts';
+import { hangChoCan, ngayNgan } from '../../web/src/lib/kho/danh-muc-can.ts';
+import { homNayVn } from '../../web/src/lib/gio-vn.ts';
 import { QUYEN_KHO, cauLoiKho, duoc } from '../../web/src/lib/kho/chung.ts';
 import { taiAnh } from '../../web/src/lib/kho/anh.ts';
 import {
@@ -317,14 +325,38 @@ export interface XemTruoc {
    * xem thì kế hoạch lúc bấm khác cái người đã xem → không xoá.
    */
   dauVan: string;
-  /** Số dòng đổi hạn dùng (HSD) trên cân, kể cả hàng mới lần đầu in HSD (demDoiHsd) — tự gửi và xoá qua WiFi không mang theo. */
+  /**
+   * Số dòng BẬT / TẮT in hạn dùng (HSD) trên tem (null ↔ số), kể cả hàng mới lần đầu in HSD khi cân chưa in HSD hàng
+   * nào (demBatTatHsd) — tự gửi và xoá qua WiFi không mang theo, phải xem trước rồi bấm Gửi.
+   */
   doiHsd: number;
+  /** Số dòng chỉ đổi số ngày HSD (số → số: đếm ngược hằng ngày, đổi lô) — tự gửi và xoá qua WiFi gửi được. */
+  demNguocHsd: number;
+  /** Ngày (giờ VN, 'YYYY-MM-DD') các số ngày HSD của kế hoạch này được tính cho. */
+  ngayHsd: string;
+  /** HSD đang nằm trên cân tính cho ngày nào, có cũ không (hsdTrenCan) — sau khi xem trước. */
+  hsdTrenCan: TrangThaiHsd;
   /** Lần xoá qua WiFi hỏng sau khi đã gửi lệnh xoá: cân có thể đang thiếu hàng (null: không có). */
   canChuaRo: CanChuaRo | null;
 }
 
 /** Dấu "hàng trên cân chưa rõ" (can-chua-ro.json): xoá qua WiFi hỏng sau khi đã gửi lệnh xoá cả danh sách. */
 export interface CanChuaRo { luc: string; cau: string }
+
+/**
+ * HSD đang nằm trên cân tính cho ngày nào (hsd-tinh-ngay.txt). Cân in HSD = ngày in + số ngày còn lại của lô tính cho
+ * ngày đó, nên mỗi ngày chưa gửi lại là HSD in ra muộn thêm 1 ngày.
+ */
+export interface TrangThaiHsd {
+  /** Hôm nay theo giờ VN ('YYYY-MM-DD') của chương trình — trang so với ngày này, không theo đồng hồ trình duyệt. */
+  homNay: string;
+  /** Ngày (giờ VN) HSD trên cân được tính — lần gửi / xác nhận gần nhất. null: chưa biết. */
+  tinhNgay: string | null;
+  /** Có hàng nào trên cân (file gốc) đang in HSD. */
+  coInHsd: boolean;
+  /** Cân in HSD mà ngày tính trước hôm nay, hay chưa biết ngày tính → báo đỏ, gửi xuống cân trước khi đóng gói. */
+  cu: boolean;
+}
 
 /** Một dòng ở thẻ "Tất cả hàng": hàng trên cân, đối chiếu với kho. */
 export type TinhTrangHang =
@@ -351,11 +383,15 @@ export interface HangXem {
   hsd?: number | null;
   /** Hạn dùng kho muốn — chỉ khi kho quản HSD của hàng (han_dung_ngay). */
   hsdKho?: number | null;
+  /** HSD kho lấy từ đâu ("lô L0012 hết hạn 03/10", "tảng #0142 · …") — chỉ khi có hsdKho. */
+  hsdNguon?: string;
 }
 export interface TatCaHang {
   hang: HangXem[]; coKho: boolean; loiKho: string | null;
   /** Xoá qua WiFi hỏng giữa chừng: "khớp kho" ở đây là so với file gốc, cân thật có thể đang thiếu hàng. */
   canChuaRo: CanChuaRo | null;
+  /** HSD trên cân tính cho ngày nào, có cũ không. */
+  hsdTrenCan: TrangThaiHsd;
 }
 
 // -----------------------------------------------------------------------------
@@ -406,10 +442,15 @@ export interface ThongSoXem {
 
 export interface PhimXemHang extends PhimXem { ten: string | null; maCan: string | null }
 
-/** Kế hoạch gửi dựng từ file gốc + kho (UngDung.dung): file sẽ gửi (du, moi) và hàng sẽ còn nằm lại trên cân (conLai). */
+/**
+ * Kế hoạch gửi dựng từ file gốc + kho (UngDung.dung): file sẽ gửi (du, moi) và hàng sẽ còn nằm lại trên cân (conLai).
+ * ngayHsd: hôm nay (giờ VN) lấy TRƯỚC khi đọc kho — kho tính số ngày HSD cho ngày đó hoặc (đọc vắt qua nửa đêm) ngày
+ * sau; ghi ngày sớm hơn thì trang báo HSD cũ sớm hơn, không bao giờ muộn hơn.
+ */
 interface KeHoachGui {
   goc: FileCan; kh: KeHoach; du: Uint8Array; moi: FileCan;
   tren: Map<number, HangTrenCan>; conLai: HangTrenCan[];
+  ngayHsd: string;
 }
 
 /** Trang chỉ nhận tối đa chừng này dòng nhật ký một lần (bảng dài hơn thì tải CSV). */
@@ -433,6 +474,10 @@ export class UngDung {
   readonly fileNhatKy: string;
   /** Tài liệu\Beeftown Can\can-chua-ro.json — xoá qua WiFi hỏng sau khi đã gửi lệnh xoá (CanChuaRo). */
   readonly fileCanChuaRo: string;
+  /** Tài liệu\Beeftown Can\hsd-tinh-ngay.txt — HSD trên cân tính cho ngày nào (TrangThaiHsd), một dòng 'YYYY-MM-DD'. */
+  readonly fileHsdNgay: string;
+  /** Tài liệu\Beeftown Can\cho-usb\hsd-tinh-ngay.txt — ngày tính HSD của file nạp USB làm từ kho; "đã nạp USB" chép sang. */
+  readonly fileHsdNgayChoUsb: string;
   private client: SupabaseClient | null = null;
 
   constructor(
@@ -454,6 +499,8 @@ export class UngDung {
       mac?: (ip: string) => Promise<string | null>;
       /** Kiểm thử: thời gian chờ của giao thức hai chiều (cổng 33581) — ngắn hơn 30 giây của hãng. */
       tuyHaiChieu?: TuyChonKetNoi;
+      /** Kiểm thử: "hôm nay" theo giờ VN ('YYYY-MM-DD') thay cho homNayVn(). */
+      homNay?: () => string;
     } = {},
   ) {
     this.fileCauHinh = path.join(dd.cauHinh, 'cau-hinh.json');
@@ -466,7 +513,12 @@ export class UngDung {
     this.fileDaTatChoUsb = path.join(dd.duLieu, 'cho-usb', 'tem-da-tat.json');
     this.fileNhatKy = path.join(dd.duLieu, 'nhat-ky-can.tsv');
     this.fileCanChuaRo = path.join(dd.duLieu, 'can-chua-ro.json');
+    this.fileHsdNgay = path.join(dd.duLieu, 'hsd-tinh-ngay.txt');
+    this.fileHsdNgayChoUsb = path.join(dd.duLieu, 'cho-usb', 'hsd-tinh-ngay.txt');
   }
+
+  /** Hôm nay theo giờ Việt Nam ('YYYY-MM-DD') — gio-vn.ts, máy tính để múi giờ nào cũng vậy. */
+  private homNay(): string { return this.phu.homNay ? this.phu.homNay() : homNayVn(); }
 
   // ---- cấu hình --------------------------------------------------------------
   cauHinh(): CauHinh { return docJson(this.fileCauHinh, CAU_HINH_MAC_DINH); }
@@ -798,6 +850,45 @@ export class UngDung {
   /** Cân vừa nhận đủ danh sách (ghi nhận file từ cân / đã nạp USB, gửi đủ danh sách, xoá qua WiFi đọc lại khớp). */
   private xoaCanChuaRo() { fs.rmSync(this.fileCanChuaRo, { force: true }); }
 
+  // ---- HSD trên cân tính cho ngày nào (hsd-tinh-ngay.txt) -----------------------------
+  /** HSD trên cân tính cho ngày nào, cân có in HSD không, và có cũ không (trước hôm nay giờ VN, hay chưa biết). */
+  hsdTrenCan(): TrangThaiHsd {
+    const homNay = this.homNay();
+    const tinhNgay = docNgayHsd(this.fileHsdNgay);
+    let coInHsd = false;
+    if (this.coFileGoc()) {
+      try { coInHsd = docFileCan(this.docGoc()).plu.some(p => p.hsd !== null); } catch { /* file hỏng: không nói gì về HSD */ }
+    }
+    return { homNay, tinhNgay, coInHsd, cu: coInHsd && (tinhNgay === null || tinhNgay < homNay) };
+  }
+
+  /**
+   * Ghi ngày tính HSD đang nằm trên cân. Ghi file tạm rồi đổi tên (tắt máy giữa chừng không để lại file dở). Không ghi
+   * được thì thôi: việc gửi đã xong, ngày cũ chỉ làm trang báo HSD cũ — hướng an toàn.
+   */
+  private ghiNgayHsd(ngay: string, file = this.fileHsdNgay) {
+    if (!LA_NGAY.test(ngay)) return;
+    try {
+      fs.mkdirSync(path.dirname(file), { recursive: true });
+      const tam = file + '.tam';
+      fs.writeFileSync(tam, ngay + '\r\n', 'utf8');
+      fs.renameSync(tam, file);
+    } catch { /* xem trên */ }
+  }
+
+  /** Không biết HSD trên cân tính cho ngày nào nữa (file gốc mới có HSD khác bản chương trình đã gửi). */
+  private quenNgayHsd() { try { fs.rmSync(this.fileHsdNgay, { force: true }); } catch { /* thôi — ngày cũ vẫn là ngày trước */ } }
+
+  /**
+   * Kế hoạch tính cho `ngay` không đổi HSD của hàng nào đang trên cân (mọi hàng kho quản HSD: số trên cân = số tính
+   * hôm nay) → HSD trên cân đúng cho ngày đó, như vừa gửi. Lần xoá qua WiFi trước hỏng (chưa rõ cân có gì) thì không.
+   */
+  private ghiNhanHsdKhop(kh: KeHoach, ngay: string) {
+    if (this.canChuaRo()) return;
+    if (kh.dong.some(d => d.hsd !== undefined && d.hsdCu !== undefined && d.hsd !== d.hsdCu)) return;
+    if (docNgayHsd(this.fileHsdNgay) !== ngay) this.ghiNgayHsd(ngay);
+  }
+
   /**
    * File vừa lưu từ cân ra USB (hoặc vừa nạp bằng USB, hoặc đọc qua WiFi): cân đang có ĐÚNG file này.
    * File có nhật ký bán (phần REP — lưu ra USB bằng Amend) thì gộp ngay vào nhat-ky-can.tsv: lần gửi sau
@@ -811,6 +902,11 @@ export class UngDung {
       throw new LoiFileCan('File này có lệnh xoá cả danh sách hàng (CLR — phần mềm của hãng tích "Clear Data"), không phải dữ liệu cân tự lưu. '
         + 'Trên cân lưu dữ liệu ra USB (Amend) rồi chọn file A_000.TMS trong thư mục JHSCALE.');
     }
+    // HSD trong file mới khác bản chương trình đã gửi (đặt trên cân, file của màn Đồng bộ cân / Nap-Can-WiFi…): không
+    // biết số đó tính cho ngày nào → quên ngày tính, trang báo đỏ tới lần gửi sau.
+    let cu: FileCan | null = null;
+    if (this.coFileGoc()) { try { cu = docFileCan(this.docGoc()); } catch { cu = null; } }
+    if (!cungHsd(cu, f)) this.quenNgayHsd();
     this.luuGoc(du);
     this.ghiTrenCan(hangTuFile(f));
     this.xoaCanChuaRo();
@@ -837,6 +933,7 @@ export class UngDung {
 
   private async dung(giuHangNgoaiKho: boolean): Promise<KeHoachGui> {
     const goc = docFileCan(this.docGoc());
+    const ngayHsd = this.homNay();   // trước khi đọc kho — xem KeHoachGui
     const dm = await this.layDanhMuc();
     // boPhanChiDoc: không bao giờ gửi lại nhật ký bán (REP) / thông tin máy (INF) cũ xuống cân (2.2).
     const tuy = { giuHangNgoaiKho, giuGioCan: true, soChuSoMa: soChuSoMa(dm.mauMaVach), boPhanChiDoc: true };
@@ -846,22 +943,26 @@ export class UngDung {
     const tren = this.docTrenCan();
     const soMoi = new Set(moi.plu.map(p => p.so));
     const conLai = [...tren.values()].filter(h => !soMoi.has(h.so)).sort((a, b) => a.so - b.so);
-    return { goc, kh, du, moi, tren, conLai };
+    return { goc, kh, du, moi, tren, conLai, ngayHsd };
   }
 
   async xemTruoc(giuHangNgoaiKho = false): Promise<XemTruoc> {
-    const { goc, kh, moi, conLai } = await this.dung(giuHangNgoaiKho);
+    const { goc, kh, moi, conLai, ngayHsd } = await this.dung(giuHangNgoaiKho);
+    // HSD trên cân đã đúng số tính hôm nay (không dòng nào đổi) → ghi nhận như vừa gửi.
+    this.ghiNhanHsdKhop(kh, ngayHsd);
     return {
       dong: kh.dong.map(({ goc: _bo, ...d }) => d),
       dem: kh.dem, conLai, soHangSauKhiGui: moi.plu.length, coThayDoi: kh.coThayDoi || conLai.length > 0,
       phienBanCan: goc.phienBan,
-      dauVan: dauKeHoach(conLai, moi), doiHsd: demDoiHsd(kh.dong, goc), canChuaRo: this.canChuaRo(),
+      dauVan: dauKeHoach(conLai, moi), doiHsd: demBatTatHsd(kh.dong, goc), demNguocHsd: demDemNguocHsd(kh.dong),
+      ngayHsd, hsdTrenCan: this.hsdTrenCan(), canChuaRo: this.canChuaRo(),
     };
   }
 
   /**
    * Gửi một kế hoạch đã dựng (dung) qua 33571 rồi ghi nhận. Tự gửi dùng thẳng kế hoạch nó vừa kiểm — không đọc kho
-   * lần hai (kho đổi giữa hai lần đọc thì thứ gửi đi khác thứ đã kiểm). Gửi đủ danh sách → hết dấu "chưa rõ".
+   * lần hai (kho đổi giữa hai lần đọc thì thứ gửi đi khác thứ đã kiểm). Gửi đủ danh sách → hết dấu "chưa rõ", và HSD
+   * trên cân là số tính cho ngày của kế hoạch (hsd-tinh-ngay.txt). Gửi hỏng → không ghi gì.
    */
   private async guiKeHoach(p: KeHoachGui, timLai: boolean): Promise<{ soHang: number; conLai: HangTrenCan[]; doiDiaChi: DoiDiaChi | null }> {
     const { du, moi, tren } = p;
@@ -871,6 +972,7 @@ export class UngDung {
     this.luuGoc(du);
     this.ghiTrenCan(tren);
     this.xoaCanChuaRo();
+    this.ghiNgayHsd(p.ngayHsd);
     const soMoi = new Set(moi.plu.map(x => x.so));
     return { soHang: moi.plu.length, conLai: [...tren.values()].filter(h => !soMoi.has(h.so)), doiDiaChi };
   }
@@ -894,8 +996,9 @@ export class UngDung {
 
   /**
    * Tự gửi (GĐ3): kho có thêm / sửa hàng so với cân (đổi giá, lóc tảng mới →
-   * ô mã đổi tên theo số tảng) thì gửi qua WiFi. Không có gì đổi thì thôi.
-   * Hàng cần xoá không tính — WiFi không xoá được, để người bấm nạp USB.
+   * ô mã đổi tên theo số tảng, HSD đếm ngược sang ngày mới) thì gửi qua WiFi.
+   * Không có gì đổi thì thôi. Hàng cần xoá không tính — WiFi không xoá được,
+   * để người bấm nạp USB.
    */
   lanTuGui: LanTuGui | null = null;
   async tuGuiMotLan(): Promise<LanTuGui> {
@@ -906,25 +1009,30 @@ export class UngDung {
       this.lanTuGui = await this.motLuc(async (): Promise<LanTuGui> => {
         const p = await this.dung(false);
         const chuaRo = this.canChuaRo();
-        // Đổi hạn dùng (HSD) của hàng trên cân, hay hàng mới bật in HSD khi cân chưa in HSD hàng nào (lần đầu là bật in HSD
-        // cho cả loạt hàng): tem in khác hẳn, và cân in HSD ra sao chưa thử trên cân thật → không tự gửi, để quản lý xem
-        // trước rồi bấm Gửi.
-        const doiHsd = demDoiHsd(p.kh.dong, p.goc);
-        if (doiHsd > 0) {
+        // Bật / tắt in hạn dùng (HSD) của hàng trên cân (null ↔ số), hay hàng mới bật in HSD khi cân chưa in HSD hàng nào
+        // (lần đầu là bật in HSD cho cả loạt hàng): tem in khác hẳn, và cân in HSD ra sao chưa thử trên cân thật → không
+        // tự gửi, để quản lý xem trước rồi bấm Gửi. Chỉ đổi số ngày (đếm ngược hằng ngày, đổi lô) thì gửi như đổi giá.
+        const batTat = demBatTatHsd(p.kh.dong, p.goc);
+        if (batTat > 0) {
           return { luc, daGui: false, cau: (chuaRo ? 'Lần xoá qua WiFi trước hỏng giữa chừng — cân có thể thiếu hàng, nạp USB ngay. ' : '')
-            + `Kho đổi hạn dùng (HSD) của ${doiHsd} hàng (hàng trên cân, hay hàng mới lần đầu in HSD) — tự gửi không gửi thay đổi HSD. `
-            + 'Mở thẻ Gửi giá từ kho, xem lại rồi bấm Gửi xuống cân (in HSD chưa thử trên cân thật).' };
+            + `Kho bật / tắt in hạn dùng (HSD) của ${batTat} hàng (hàng trên cân, hay hàng mới lần đầu in HSD) — tự gửi không bật / tắt HSD, `
+            + 'nên chưa gửi gì (cả HSD đếm ngược của hàng khác). Mở thẻ Gửi giá từ kho, xem lại rồi bấm Gửi xuống cân (in HSD chưa thử trên cân thật).' };
         }
         // Xoá qua WiFi hỏng giữa chừng: file gốc không nói được cân đang có gì — không bao giờ báo "khớp kho"; gửi lại cả
         // danh sách qua 33571 (cân thêm / sửa theo số PLU nên đặt lại mọi hàng lệnh xoá có thể đã xoá).
-        if (!chuaRo && p.kh.dem.them + p.kh.dem.sua === 0) return { luc, daGui: false, cau: 'Cân đã khớp kho.' };
+        if (!chuaRo && p.kh.dem.them + p.kh.dem.sua === 0) {
+          this.ghiNhanHsdKhop(p.kh, p.ngayHsd);   // HSD trên cân đúng số tính hôm nay
+          return { luc, daGui: false, cau: 'Cân đã khớp kho.' };
+        }
+        const demNguoc = demDemNguocHsd(p.kh.dong);
         const k = await this.guiKeHoach(p, Date.now() - this.lanDoHong >= DO_LAI_SAU_MS);
         const diaChi = k.doiDiaChi ? ` — cân đổi địa chỉ, đã tìm thấy ở ${k.doiDiaChi.den}.` : '.';
         if (chuaRo) {
           return { luc, daGui: true, cau: `Đã gửi lại cả danh sách ${k.soHang} hàng sau lần xoá qua WiFi hỏng — vẫn nên nạp USB để chắc cân đủ hàng`
             + diaChi };
         }
-        return { luc, daGui: true, cau: `Đã tự gửi ${p.kh.dem.them} thêm, ${p.kh.dem.sua} sửa (${k.soHang} hàng)` + diaChi };
+        return { luc, daGui: true, cau: `Đã tự gửi ${p.kh.dem.them} thêm, ${p.kh.dem.sua} sửa (${k.soHang} hàng)`
+          + (demNguoc ? `, HSD đếm ngược ${demNguoc} hàng — tính cho ngày ${ngayNgan(p.ngayHsd)}` : '') + diaChi };
       });
     } catch (e) {
       this.lanTuGui = { luc, daGui: false, cau: cauLoi(e) };
@@ -933,12 +1041,15 @@ export class UngDung {
   }
 
   /** Dựng file để nạp bằng USB (cân sẽ thay cả danh sách → xoá được hàng). */
-  async taoFileUsb(giuHangNgoaiKho = false): Promise<{ duongDan: string; soHang: number }> {
-    const { du, moi } = await this.dung(giuHangNgoaiKho);
+  async taoFileUsb(giuHangNgoaiKho = false): Promise<{ duongDan: string; soHang: number; ngayHsd: string }> {
+    const { du, moi, ngayHsd } = await this.dung(giuHangNgoaiKho);
     fs.mkdirSync(path.dirname(this.fileChoUsb), { recursive: true });
     fs.writeFileSync(this.fileChoUsb, du);
     fs.rmSync(this.fileDaTatChoUsb, { force: true });
-    return { duongDan: this.fileChoUsb, soHang: moi.plu.length };
+    // HSD trong file tính cho hôm nay: nạp vào hôm sau thì "đã nạp USB" ghi đúng ngày tính, trang báo HSD cũ.
+    fs.rmSync(this.fileHsdNgayChoUsb, { force: true });
+    this.ghiNgayHsd(ngayHsd, this.fileHsdNgayChoUsb);
+    return { duongDan: this.fileChoUsb, soHang: moi.plu.length, ngayHsd };
   }
 
   /**
@@ -966,6 +1077,7 @@ export class UngDung {
     fs.mkdirSync(path.dirname(this.fileChoUsb), { recursive: true });
     fs.writeFileSync(this.fileChoUsb, ra);
     fs.rmSync(this.fileDaTatChoUsb, { force: true });
+    fs.rmSync(this.fileHsdNgayChoUsb, { force: true });   // PLU như file gốc: HSD vẫn tính cho ngày cũ
     return { duongDan: this.fileChoUsb, soHang: goc.plu.length, thongSo: doiTs, phim: doiPhim };
   }
 
@@ -974,6 +1086,7 @@ export class UngDung {
   async tatCaHang(): Promise<TatCaHang> {
     const goc = docFileCan(this.docGoc());
     const phim = phimTheoPlu(goc);
+    const ngayHsd = this.homNay();   // trước khi đọc kho — xem KeHoachGui
     let dm: DanhMucKho | null = null, loiKho: string | null = null;
     try { dm = await this.layDanhMuc(); } catch (e) { loiKho = cauLoi(e); }
     const soChuSo = soChuSoMa(dm?.mauMaVach);
@@ -983,10 +1096,12 @@ export class UngDung {
 
     if (dm) {
       const kh = lapKeHoach(goc, dm.matHang, { giuHangNgoaiKho: false, giuGioCan: true, soChuSoMa: soChuSo }, 'vi');
+      this.ghiNhanHsdKhop(kh, ngayHsd);   // HSD trên cân đã đúng số tính hôm nay → ghi nhận
       for (const d of kh.dong) {
         const base = { phim: d.so !== null && d.goc ? phim.get(d.so) ?? null : null, maCan: d.maCan, maFabi: fabi(d.maCan) };
-        // HSD: đang ghi trên cân (dòng gốc), và kho muốn (chỉ khi kho quản HSD của hàng).
-        const hsd = { ...(d.goc ? { hsd: d.goc.hsd } : {}), ...(d.hsd !== undefined ? { hsdKho: d.hsd } : {}) };
+        // HSD: đang ghi trên cân (dòng gốc), và kho muốn (chỉ khi kho quản HSD của hàng) kèm nguồn.
+        const hsd = { ...(d.goc ? { hsd: d.goc.hsd } : {}), ...(d.hsd !== undefined ? { hsdKho: d.hsd } : {}),
+                      ...(d.hsd !== undefined && d.hsdNguon ? { hsdNguon: d.hsdNguon } : {}) };
         if (d.loai === 'them') hang.push({ ...base, ...hsd, so: null, ten: d.ten, gia: d.gia, theoGoi: false, tinhTrang: 'chua_len', tenKho: d.ten, giaKho: d.gia });
         else if (d.loai === 'bo_qua') hang.push({ ...base, so: null, ten: d.ten, gia: d.gia, theoGoi: false, tinhTrang: 'khong_len', ghiChu: d.lyDo });
         else if (d.loai === 'xoa') hang.push({ ...base, ...hsd, so: d.so, ten: d.ten, gia: d.gia, theoGoi: theoGoi.get(d.so!) ?? false, tinhTrang: 'ngoai_kho', ghiChu: d.lyDo });
@@ -1012,7 +1127,7 @@ export class UngDung {
         theoGoi: false, tinhTrang: 'con_lai', ghiChu: 'Đã bỏ khỏi danh sách nhưng gửi qua WiFi không xoá được — nạp USB để xoá hẳn.' });
     }
     hang.sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity) || Number(a.maCan) - Number(b.maCan));
-    return { hang, coKho: dm !== null, loiKho, canChuaRo: this.canChuaRo() };
+    return { hang, coKho: dm !== null, loiKho, canChuaRo: this.canChuaRo(), hsdTrenCan: this.hsdTrenCan() };
   }
 
   // ---- mẫu tem -----------------------------------------------------------------
@@ -1077,17 +1192,24 @@ export class UngDung {
     fs.mkdirSync(path.dirname(this.fileChoUsb), { recursive: true });
     fs.writeFileSync(this.fileChoUsb, du);
     ghiJson(this.fileDaTatChoUsb, daTat);
+    fs.rmSync(this.fileHsdNgayChoUsb, { force: true });   // PLU như file gốc: HSD vẫn tính cho ngày cũ
     return { duongDan: this.fileChoUsb, soHang: docFileCan(du).plu.length, canhBao };
   }
 
-  /** Đã nạp file cho-usb vào cân bằng USB → cân có đúng file đó. */
+  /**
+   * Đã nạp file cho-usb vào cân bằng USB → cân có đúng file đó. File làm từ kho (taoFileUsb) mang ngày tính HSD của
+   * lúc lưu file — ghi ngày đó (không phải hôm nay): nạp file hôm qua thì trang vẫn báo HSD cũ.
+   */
   daNapUsb(): { soHang: number } {
     if (!fs.existsSync(this.fileChoUsb)) throw new LoiCan('Chưa có file nạp USB. Bấm "Lưu file để nạp USB" trước.');
     const kq = this.ghiNhanFileTuCan(new Uint8Array(fs.readFileSync(this.fileChoUsb)));
     // File USB làm từ thẻ Tem: giờ cân mới thật sự có tem đó.
     if (fs.existsSync(this.fileDaTatChoUsb)) ghiJson(this.fileDaTat, docJson<DaTat>(this.fileDaTatChoUsb, {}));
+    const ngayHsd = docNgayHsd(this.fileHsdNgayChoUsb);
+    if (ngayHsd) this.ghiNgayHsd(ngayHsd);
     fs.rmSync(this.fileChoUsb, { force: true });
     fs.rmSync(this.fileDaTatChoUsb, { force: true });
+    fs.rmSync(this.fileHsdNgayChoUsb, { force: true });
     return { soHang: kq.soHang };
   }
 
@@ -1199,7 +1321,8 @@ export class UngDung {
 
   /**
    * Xoá hẳn hàng "còn nằm lại" qua WiFi — THỬ, CHƯA THỬ TRÊN CÂN THẬT. Cân không có lệnh xoá một PLU, nên:
-   *   0. chỉ chạy đúng kế hoạch người đã xem (dauVan của xemTruoc), không mang thay đổi HSD chưa gửi, và chỉ với cân
+   *   0. chỉ chạy đúng kế hoạch người đã xem (dauVan của xemTruoc), không mang bật / tắt in HSD chưa gửi (HSD đếm
+   *      ngược thì được — cả danh sách gửi lại mang số ngày tính hôm nay), và chỉ với cân
    *      đã biết mã máy (bấm "Đọc thông tin cân" trước) — chưa nối cân nếu không đủ;
    *   1. đọc danh sách PLU qua cổng 33581 (chưa gửi gì) và KIỂM: cân trả rỗng, hay có PLU chương trình không biết
    *      (số + mã không có trong tren-can.tsv / file gốc: thêm trên bàn phím, phần mềm hãng, cân khác) → không xoá;
@@ -1216,13 +1339,13 @@ export class UngDung {
       throw new LoiCan('Thiếu danh sách đã xem trước — bấm Xem lại (thẻ Gửi giá từ kho, hay "Xem hàng còn nằm lại") rồi thử lại. Chưa gửi gì xuống cân.');
     }
     return this.motLuc(async () => {
-      const { goc, kh, du, moi, tren, conLai } = await this.dung(giuHangNgoaiKho);
+      const { goc, kh, du, moi, tren, conLai, ngayHsd } = await this.dung(giuHangNgoaiKho);
       if (!conLai.length) throw new LoiCan('Không có hàng nào còn nằm lại trên cân — không cần xoá.');
       if (dauKeHoach(conLai, moi) !== dauVan) {
         throw new LoiCan('Danh sách trên cân hoặc trong kho đã đổi từ lúc xem trước — bấm Xem lại rồi thử lại. Chưa gửi gì xuống cân.');
       }
-      if (demDoiHsd(kh.dong, goc) > 0) {
-        throw new LoiCan('Kho có thay đổi hạn dùng (HSD) chưa gửi — gửi ở thẻ Gửi giá từ kho (xem trước, in thử tem) rồi mới xoá. Chưa gửi gì xuống cân.');
+      if (demBatTatHsd(kh.dong, goc) > 0) {
+        throw new LoiCan('Kho bật / tắt in hạn dùng (HSD) của hàng chưa gửi — gửi ở thẻ Gửi giá từ kho (xem trước, in thử tem) rồi mới xoá. Chưa gửi gì xuống cân.');
       }
       if (!this.cauHinh().macHaiChieu) {
         throw new LoiCan('Chưa biết mã máy của cân qua cổng hai chiều — bấm "Đọc thông tin cân" (thẻ Cân & thông số), xem đúng cân của quầy rồi mới xoá. '
@@ -1278,6 +1401,7 @@ export class UngDung {
       this.luuGoc(du);
       this.ghiTrenCan(hangTuFile(moi));
       this.xoaCanChuaRo();
+      this.ghiNgayHsd(ngayHsd);   // cân đọc lại đúng cả danh sách vừa gửi: HSD tính cho ngày của kế hoạch
       return { soHang: moi.plu.length, daXoa: conLai };
     });
   }
@@ -1650,14 +1774,41 @@ function dauKeHoach(conLai: HangTrenCan[], moi: FileCan): string {
 }
 
 /**
- * Số dòng kế hoạch đổi hạn dùng (HSD) trên tem: hàng trên cân đổi HSD, và hàng MỚI bật in HSD khi trên cân chưa hàng
- * nào in HSD (lần đầu bật HSD). Tự gửi và xoá qua WiFi không mang các thay đổi này — quản lý xem trước rồi bấm Gửi.
+ * Số dòng kế hoạch BẬT / TẮT in hạn dùng (HSD) trên tem: hàng trên cân đổi giữa không in (null) và có số ngày, và hàng
+ * MỚI bật in HSD khi trên cân chưa hàng nào in HSD (lần đầu bật HSD). Tự gửi và xoá qua WiFi không mang các thay đổi
+ * này — tem in khác hẳn, quản lý xem trước rồi bấm Gửi. Chỉ đổi số ngày (demDemNguocHsd) thì không tính.
  */
-function demDoiHsd(dong: DongKeHoach[], goc: FileCan): number {
+function demBatTatHsd(dong: DongKeHoach[], goc: FileCan): number {
   const daInHsd = goc.plu.some(p => p.hsd !== null);
   return dong.filter(d => d.hsd !== undefined && (d.hsdCu !== undefined
-    ? d.hsd !== d.hsdCu
+    ? (d.hsd === null) !== (d.hsdCu === null)
     : d.loai === 'them' && d.hsd !== null && !daInHsd)).length;
+}
+
+/**
+ * Số dòng chỉ đổi SỐ NGÀY HSD của hàng trên cân (cả cũ và mới đều là số): đếm ngược hằng ngày, đổi sang lô khác.
+ * HSD = số ngày còn lại của lô nên đổi mỗi ngày — tự gửi gửi như đổi giá.
+ */
+function demDemNguocHsd(dong: DongKeHoach[]): number {
+  return dong.filter(d => typeof d.hsd === 'number' && typeof d.hsdCu === 'number' && d.hsd !== d.hsdCu).length;
+}
+
+const LA_NGAY = /^\d{4}-\d{2}-\d{2}$/;
+
+/** Ngày trong hsd-tinh-ngay.txt ('YYYY-MM-DD'); không có file, sai dạng → null (chưa biết). */
+function docNgayHsd(file: string): string | null {
+  let chu = '';
+  try { chu = fs.readFileSync(file, 'utf8').trim(); } catch { return null; }
+  return LA_NGAY.test(chu) ? chu : null;
+}
+
+/**
+ * Hai file cân có cùng HSD trên mọi hàng đang in HSD của file mới (theo số PLU + mã cân)? Hàng không in HSD không
+ * tính. Không có file cũ: cùng khi file mới không in HSD hàng nào.
+ */
+function cungHsd(cu: FileCan | null, moi: FileCan): boolean {
+  const truoc = new Map((cu?.plu ?? []).map(p => [`${p.so}\t${p.ma}`, p.hsd]));
+  return moi.plu.every(p => p.hsd === null || truoc.get(`${p.so}\t${p.ma}`) === p.hsd);
 }
 
 /** Số PLU → chữ trên phím tắt tầng 1 gọi nó (NHAN_PHIM của thong-so.ts: phím 58 là "_", không phải gạch dài). */

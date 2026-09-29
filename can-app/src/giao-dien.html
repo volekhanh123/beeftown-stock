@@ -150,6 +150,7 @@
       <div class="phu" id="o-tu-gui"></div></div>
     <div class="o"><div class="nhan">Trên cân</div><div class="gt" id="o-tren-can">…</div><div class="phu" id="o-goc"></div></div>
   </div>
+  <div id="bao-hsd"></div>
 
   <!-- Đăng nhập kho -->
   <section class="the an" id="the-dang-nhap">
@@ -384,7 +385,8 @@
           <input type="number" name="congHaiChieu" placeholder="33581"></label>
         <label class="truong"><span>Địa chỉ kho</span><input type="text" name="diaChiKho"></label>
         <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" name="tuGui">
-          <span>Tự gửi xuống cân khi kho đổi (mỗi phút, khi cửa sổ này đang mở) — đổi giá, lóc tảng mới là cân tự cập nhật tên, giá.</span></label>
+          <span>Tự gửi xuống cân khi kho đổi (mỗi phút, khi cửa sổ này đang mở) — đổi giá, lóc tảng mới là cân tự cập nhật tên, giá;
+            sang ngày mới là cân tự nhận HSD đếm ngược theo lô (bật / tắt in HSD vẫn phải xem trước rồi bấm Gửi).</span></label>
         <label class="truong an" id="o-chi-nhanh"><span>Chi nhánh</span><select name="chiNhanhId"></select></label>
         <div class="nut"><button type="submit">Lưu cài đặt</button></div>
       </form>
@@ -520,6 +522,21 @@
     $('o-tu-gui').textContent = ch.tuGui
       ? 'Tự gửi: bật' + (tg ? ' · ' + new Date(tg.luc).toLocaleTimeString('vi-VN') + ' — ' + tg.cau : ' · chờ lần đầu')
       : '';
+    $('bao-hsd').innerHTML = baoHsdCu(trangThai.hsd);
+  }
+
+  /**
+   * Khung đỏ khi cân in HSD mà HSD trên cân tính cho ngày trước hôm nay (hay chưa biết ngày nào). "Hôm nay" và "cũ" là
+   * của chương trình (giờ VN — /api/trang-thai, /api/can, xem trước, tất cả hàng), không theo đồng hồ trình duyệt.
+   */
+  const ngayChu = (iso) => (iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '');
+  function baoHsdCu(h) {
+    if (!h || !h.cu) return '';
+    return '<div class="bao loi"><p><b>' + (h.tinhNgay ? `HSD trên cân tính cho ngày ${ngayChu(h.tinhNgay)}` : 'Chưa biết HSD trên cân tính cho ngày nào')
+      + ' — mỗi ngày chưa gửi lại là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói.</b></p>'
+      + `<p>Hôm nay ${e(ngayChu(h.homNay))}. HSD trên tem = ngày in (đồng hồ cân) + số ngày còn lại của lô, tính cho ngày gửi. `
+      + 'Quản lý / chủ: thẻ <b>Gửi giá từ kho</b> → <b>Gửi xuống cân</b>, hoặc bật <b>Tự gửi</b> ở Cài đặt và để chương trình mở. '
+      + 'Đồng hồ cân phải đúng ngày. In HSD chưa thử trên cân thật.</p></div>';
   }
   /** Chương trình vừa tự đổi địa chỉ cân: cập nhật ô Cân, không tải lại cả trang. */
   function daDoiDiaChi(doi) {
@@ -587,11 +604,13 @@
     try {
       const giu = giuNgoaiKho();
       const x = await goi('/api/xem-truoc', { giuHangNgoaiKho: giu });
-      let h = baoCanChuaRo(x.canChuaRo) + '<div class="dem">' + DEM.filter(([k]) => x.dem[k] > 0)
+      // Xem trước có thể vừa ghi nhận HSD trên cân đã đúng hôm nay: cập nhật cả khung ở ô Cân.
+      if (x.hsdTrenCan) { trangThai.hsd = x.hsdTrenCan; $('bao-hsd').innerHTML = baoHsdCu(trangThai.hsd); }
+      let h = baoHsdCu(x.hsdTrenCan) + baoCanChuaRo(x.canChuaRo) + '<div class="dem">' + DEM.filter(([k]) => x.dem[k] > 0)
         .map(([k, chu]) => `<span class="nhan-l ${NHAN[k][1]}">${x.dem[k]} ${chu}</span>`).join('') + '</div>';
       const coHsd = x.dong.some(d => d.hsd !== undefined);
       h += '<div class="khung-bang"><table><thead><tr><th>Thay đổi</th><th class="so">PLU</th><th class="so">Mã cân</th><th>Tên trên tem</th><th class="so">Giá/kg</th>'
-        + (coHsd ? '<th>HSD</th>' : '') + '</tr></thead><tbody>';
+        + (coHsd ? `<th title="Số ngày in trên tem = số ngày còn lại của lô, tính cho ngày ${e(ngayChu(x.ngayHsd))}">HSD</th>` : '') + '</tr></thead><tbody>';
       for (const d of x.dong) {
         const mo = d.loai === 'xoa' || d.loai === 'bo_qua';
         h += `<tr class="${mo ? 'mo' : ''}"><td><span class="nhan-l ${NHAN[d.loai][1]}">${NHAN[d.loai][0]}</span></td>`
@@ -600,14 +619,19 @@
           + (d.lyDo ? `<div class="phu">${e(d.lyDo)}</div>` : '') + (d.canhBao ? `<div class="phu">${e(d.canhBao)}</div>` : '')
           + `</td><td class="so">${tien(d.gia)}` + (d.loai === 'sua' && d.giaCu !== d.gia ? `<div class="phu">trước: ${tien(d.giaCu)}</div>` : '') + '</td>'
           + (coHsd ? `<td>${d.hsd === undefined ? '<span class="phu">kho không đặt</span>' : e(hsdChu(d.hsd))}`
-            + (d.hsdCu !== undefined && d.hsdCu !== d.hsd ? `<div class="phu">trước: ${e(hsdChu(d.hsdCu))}</div>` : '') + '</td>' : '')
+            + (d.hsdCu !== undefined && d.hsdCu !== d.hsd ? `<div class="phu">trước: ${e(hsdChu(d.hsdCu))}</div>` : '')
+            + (d.hsdNguon ? `<div class="phu">${e(d.hsdNguon)}</div>` : '') + '</td>' : '')
           + '</tr>';
       }
       if (!x.dong.length) h += `<tr><td colspan="${coHsd ? 6 : 5}">Kho chưa có mặt hàng nào mang mã cân. Điền mã cân ở Mặt hàng trước.</td></tr>`;
       h += '</tbody></table></div>';
-      if (x.dong.some(d => d.hsd !== undefined && d.hsdCu !== undefined && d.hsd !== d.hsdCu)) {
-        h += '<div class="bao luu-y"><p><b>Đổi hạn dùng (HSD) trên tem.</b> HSD in ra = ngày in tem + số ngày, theo đồng hồ của cân. In HSD chưa thử trên cân thật: '
-          + 'gửi xong in thử một tem món vừa đổi. Tự gửi không gửi thay đổi HSD — phải bấm Gửi ở đây.</p></div>';
+      if (x.doiHsd) {
+        h += `<div class="bao luu-y"><p><b>Bật / tắt in hạn dùng (HSD) trên tem cho ${x.doiHsd} hàng.</b> HSD in ra = ngày in tem + số ngày, theo đồng hồ của cân. `
+          + 'In HSD chưa thử trên cân thật: gửi xong in thử một tem món vừa đổi. Tự gửi không bật / tắt HSD — phải bấm Gửi ở đây.</p></div>';
+      }
+      if (x.demNguocHsd) {
+        h += `<div class="bao luu-y"><p><b>HSD đếm ngược theo lô: ${x.demNguocHsd} hàng đổi số ngày</b> (số ngày còn lại của lô, tính cho ngày ${e(ngayChu(x.ngayHsd))}). `
+          + 'Tự gửi gửi được thay đổi này. Gửi trong ngày, trước khi đóng gói; gửi xong in thử một tem.</p></div>';
       }
 
       if (x.conLai.length) {
@@ -723,7 +747,11 @@
 
   async function taiHang() {
     $('bang-hang').innerHTML = '<p class="dang-lam">Đang đọc danh sách…</p>';
-    try { dsHang = await goi('/api/hang'); veHang(); }
+    try {
+      dsHang = await goi('/api/hang');
+      if (dsHang.hsdTrenCan) { trangThai.hsd = dsHang.hsdTrenCan; $('bao-hsd').innerHTML = baoHsdCu(trangThai.hsd); }
+      veHang();
+    }
     catch (err) { bao($('bang-hang'), 'loi', e(err.message)); }
   }
 
@@ -762,7 +790,8 @@
         + `<td>${x.phim ? `<span class="phim" title="Phím tắt trên bàn phím cân">${e(x.phim)}</span>` : ''}</td>`
         + `<td class="so">${e(x.maCan || '—')}</td><td class="so"><b>${e(x.maFabi || '—')}</b></td><td>${e(x.ten)}</td>`
         + `<td class="so">${tien(x.gia)}</td>`
-        + `<td>${x.hsd !== undefined ? e(hsdChu(x.hsd)) : x.hsdKho !== undefined ? `<span class="phu">kho: ${e(hsdChu(x.hsdKho))}</span>` : ''}</td>`
+        + `<td>${x.hsd !== undefined ? e(hsdChu(x.hsd)) : x.hsdKho !== undefined ? `<span class="phu">kho: ${e(hsdChu(x.hsdKho))}</span>` : ''}`
+        + (x.hsdNguon ? `<div class="phu">${e(x.hsdNguon)}</div>` : '') + '</td>'
         + `<td>${x.theoGoi ? 'Theo gói' : 'Cân ký'}</td>`
         + `<td><span class="nhan-l ${lop}">${nhan}</span>`
         + (khac.length ? `<div class="phu">${khac.join(' · ')}</div>` : '') + (x.ghiChu ? `<div class="phu">${e(x.ghiChu)}</div>` : '') + '</td></tr>';
@@ -772,17 +801,17 @@
     if (d.hang.some(x => x.tinhTrang === 'lech' || x.tinhTrang === 'chua_len' || x.tinhTrang === 'ngoai_kho')) {
       h += '<p class="phu" style="margin-top:8px">Muốn cân khớp kho: sang thẻ <b>Gửi giá từ kho</b>.</p>';
     }
-    $('bang-hang').innerHTML = baoCanChuaRo(d.canChuaRo) + h;
+    $('bang-hang').innerHTML = baoHsdCu(d.hsdTrenCan) + baoCanChuaRo(d.canChuaRo) + h;
   }
 
   function xuatHang() {
     if (!dsHang) return;
     const o = (v) => { const t = String(v ?? ''); return /[",\n;]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
     const dong = [['PLU', 'Phím', 'Mã cân', 'Mã FABi', 'Tên trên cân', 'Giá/kg', 'Cách bán', 'Tình trạng', 'Tên trong kho', 'Giá kho', 'Ghi chú',
-      'HSD trên cân', 'HSD kho']];
+      'HSD trên cân', 'HSD kho', 'Nguồn HSD']];
     for (const x of hangDangLoc()) {
       dong.push([x.so ?? '', x.phim ?? '', x.maCan, x.maFabi ? '="' + x.maFabi + '"' : '', x.ten, x.gia ?? '', x.theoGoi ? 'Theo gói' : 'Cân ký',
-        tinhTrangChu(x.tinhTrang)[0], x.tenKho ?? '', x.giaKho ?? '', x.ghiChu ?? '', hsdChu(x.hsd), hsdChu(x.hsdKho)]);
+        tinhTrangChu(x.tinhTrang)[0], x.tenKho ?? '', x.giaKho ?? '', x.ghiChu ?? '', hsdChu(x.hsd), hsdChu(x.hsdKho), x.hsdNguon ?? '']);
     }
     const chu = '\ufeff' + dong.map(r => r.map((v, i) => i === 3 ? v : o(v)).join(',')).join('\r\n');
     const a = document.createElement('a');
@@ -1967,7 +1996,7 @@
   // Tự gửi chạy ngầm mỗi phút (có thể vừa gửi, vừa tìm ra cân ở địa chỉ mới): làm mới ô Cân, không đụng kho.
   setInterval(async () => {
     if (!trangThai || document.visibilityState !== 'visible') return;
-    try { const s = await goi('/api/can'); trangThai.cauHinh = s.cauHinh; trangThai.lanTuGui = s.lanTuGui; veOCan(); } catch { /* lần sau */ }
+    try { const s = await goi('/api/can'); trangThai.cauHinh = s.cauHinh; trangThai.lanTuGui = s.lanTuGui; trangThai.hsd = s.hsd; veOCan(); } catch { /* lần sau */ }
   }, 60000);
   $('nut-tim-can').onclick = async () => {
     const nut = $('nut-tim-can'), noi = $('ket-qua-tim-can');
