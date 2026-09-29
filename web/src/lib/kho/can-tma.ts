@@ -527,9 +527,17 @@ export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo
 // -----------------------------------------------------------------------------
 // GHI FILE
 // -----------------------------------------------------------------------------
+/**
+ * Khuôn cho dòng hàng mới. File không phải 69 cột thì chép dòng PLU đầu, nhưng
+ * bỏ các ngày in trên tem của món đó (cột 23–32 về 0, như khuôn 69 cột) — không
+ * thì hàng mới in HSD / ngày đóng gói của món 1 mà xem trước báo "không in".
+ */
 function cotMoi(file: FileCan): string[] {
   const co69 = file.plu.length === 0 || file.plu.some(p => p.cot.length === 69);
-  return co69 ? KHUON_PLU.split('\t') : file.plu[0].cot.slice();
+  if (co69) return KHUON_PLU.split('\t');
+  const c = file.plu[0].cot.slice();
+  for (let i = COT_NGAY.IN_NGAY_BAN; i <= COT_NGAY.SO_NGAY_HSD && i < c.length; i++) c[i] = '0';
+  return c;
 }
 
 function dongPlu(d: DongKeHoach, file: FileCan): string | null {
@@ -573,8 +581,10 @@ export function ghiFileCan(file: FileCan, kh: KeHoach,
     for (let i = k.dau; i <= k.cuoi; i++) bo.add(i);
     if (L[k.cuoi + 1] === '' && k.cuoi + 1 !== L.length - 1) bo.add(k.cuoi + 1);
   };
-  if (tuy.giuGioCan && file.phan.TIM) boKhoi(file.phan.TIM);
-  if (tuy.boPhanChiDoc) for (const k of quetPhan(L, 0)) if (PHAN_CHI_DOC.includes(k.ten)) boKhoi(k);
+  // Mọi khối TIM, không chỉ khối cuối (file.phan giữ lần sau cùng): gửi lại một khối giờ cũ là lùi đồng hồ cân.
+  for (const k of quetPhan(L, 0)) {
+    if ((tuy.giuGioCan && k.ten === 'TIM') || (tuy.boPhanChiDoc && PHAN_CHI_DOC.includes(k.ten))) boKhoi(k);
+  }
 
   const ra: string[] = [];
   for (let i = 0; i < L.length; i++) {

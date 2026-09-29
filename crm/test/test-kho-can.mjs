@@ -454,4 +454,41 @@ await nhom('12 · BỎ PHẦN CHỈ ĐỌC (REP, INF) KHI boPhanChiDoc', async (
   ok('Không bật boPhanChiDoc: hai khối REP và khối INF còn nguyên', giongHet(ghiFileCan(fp, lapKeHoach(fp, DANH_MUC, TUY), TUY), vp));
 });
 
+await nhom('13 · HỒI QUY SAU /code-review: GIỜ CÂN, HSD CỦA HÀNG MỚI', async () => {
+  // File liền có hai khối TIM (file TM-xA, hay hai lần lưu ghép lại): gửi lại khối cũ là lùi đồng hồ cân
+  // → tem in sai ngày đóng gói, sai HSD.
+  const TIM_CU = ['TIM\t24\t6\t17\t10\t0\t0\t'], TIM_MOI = ['TIM\t26\t9\t25\t16\t54\t12\t'];
+  const vt = taoFilePc({ dongPlu: HANG_BEEFTOWN, them: [['TIM', TIM_CU], ['TIM', TIM_MOI]] });
+  const ft = docFileCan(vt);
+  const raGio = ghiFileCan(ft, lapKeHoach(ft, DANH_MUC, TUY), { giuGioCan: true });
+  ok('HỒI QUY: giuGioCan bỏ MỌI khối TIM, không chỉ khối cuối (không lùi đồng hồ cân)',
+     giongHet(raGio, taoFilePc({ dongPlu: HANG_BEEFTOWN })),
+     Buffer.from(raGio).toString('latin1').split('\r\n').filter(d => d.startsWith('TIM\t')).join(' | '));
+  ok('giuGioCan: false → hai khối TIM còn nguyên', giongHet(ghiFileCan(ft, lapKeHoach(ft, DANH_MUC, TUY), { giuGioCan: false }), vt));
+
+  // Dòng PLU không phải 69 cột (firmware khác) → hàng mới lấy dòng PLU đầu làm khuôn. Khuôn không được mang
+  // theo HSD của món đó: xem trước báo "không in" thì tem cũng phải không in.
+  const bot = d => d.split('\t').slice(0, 68).join('\t');   // 68 phần tử: vẫn đủ cột 32
+  const coHsd = datCot(HANG_BEEFTOWN[0], { 23: 1, 25: 1, 27: 1, 28: 2, 30: 1, 32: 5 });
+  const f68 = docFileCan(taoFile({ dongPlu: [bot(coHsd), ...HANG_BEEFTOWN.slice(1).map(bot)] }));
+  ok('File 68 cột: món 1 đang in HSD 5 ngày', f68.plu[0].cot.length === 68 && f68.plu[0].hsd === 5);
+  const dmMoi = [...DANH_MUC, hang('NAM-BO', '10007', 'Nạm bò', 400000)];
+  const khMoi = lapKeHoach(f68, dmMoi, TUY);
+  const moi = khMoi.dong.find(d => d.maCan === '10007');
+  const dongMoi = Buffer.from(ghiFileCan(f68, khMoi, TUY)).toString('utf8').split('\r\n').find(d => d.split('\t')[2] === '10007');
+  const cm = dongMoi?.split('\t') ?? [];
+  ok('HỒI QUY: hàng mới không quản HSD không thừa hưởng HSD của món 1 (cột 27 = 0, cột 32 = 0)',
+     moi?.loai === 'them' && moi.hsd === undefined && cm[27] === '0' && cm[32] === '0', dongMoi);
+  ok('HỒI QUY: hàng mới cũng không thừa hưởng ngày bán / đóng gói của món 1 (cột 23–32 đều 0)',
+     cm.length === 68 && cm.slice(23, 33).every(v => v === '0'), cm.slice(23, 33).join(','));
+  ok('Hàng mới có HSD trên file 68 cột: cột 27 = 1, cột 32 = số ngày',
+     (() => {
+       const kh = lapKeHoach(f68, [...DANH_MUC, { ...hang('NAM-BO', '10007', 'Nạm bò', 400000), han_dung_ngay: 4 }], TUY);
+       const c = Buffer.from(ghiFileCan(f68, kh, TUY)).toString('utf8').split('\r\n').find(d => d.split('\t')[2] === '10007')?.split('\t') ?? [];
+       return c[27] === '1' && c[32] === '4' && c[23] === '0' && c[28] === '0';
+     })());
+  ok('Món cũ giữ nguyên dòng của nó (không bị khuôn làm sạch)',
+     Buffer.from(ghiFileCan(f68, khMoi, TUY)).toString('utf8').split('\r\n').includes(bot(coHsd)));
+});
+
 process.exit(ketThuc('ĐỒNG BỘ CÂN'));
