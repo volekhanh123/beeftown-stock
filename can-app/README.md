@@ -49,9 +49,41 @@ dùng chung với màn Đồng bộ cân.
 
 Phần tính "thêm / sửa / bỏ" là **đúng code của màn Đồng bộ cân** (`web/src/lib/kho/can-tma.ts`), nên hai nơi luôn ra cùng một kết quả.
 
+## Tải BeeftownCan.exe về (không cần gõ lệnh)
+
+GitHub tự đóng gói chương trình mỗi khi main có thay đổi cho Beeftown Cân. Cần đăng nhập GitHub bằng tài khoản vào
+được repo này. File tải về là **file zip** (~39 MB): chuột phải → **Extract All…** (Giải nén tất cả) → được
+`BeeftownCan.exe` (~83 MB), rồi làm tiếp như mục **Dùng** bên dưới.
+
+**Bản dùng ở quán — Releases** (mỗi phiên bản một bản, giữ mãi):
+
+1. Trang repo trên GitHub → cột bên phải, mục **Releases** → bấm bản mới nhất, ví dụ **Beeftown Cân 2.0.0**.
+2. Mục **Assets** → bấm file zip mang số phiên bản, ví dụ **BeeftownCan-2.0.0.zip**. Không bấm "Source code" — đó là mã nguồn, không chạy được.
+
+Release chỉ có thêm khi số phiên bản tăng.
+
+**Bản mới nhất trên main — tab Actions** (có cả những sửa đổi chưa lên số phiên bản):
+
+1. Tab **Actions** → cột trái bấm **Đóng gói Beeftown Cân**.
+2. Bấm lượt chạy trên cùng có dấu ✓ xanh và nhánh **main** — bỏ qua lượt tên **🧪 Bản thử PR …** (bản thử, xem dưới).
+3. Trang **Summary**: bấm dòng **⬇ Tải BeeftownCan-…** (ví dụ `BeeftownCan-2.0.0`), hoặc kéo xuống mục **Artifacts** → bấm tên đó.
+
+Tab Actions chỉ giữ **một** bản chính thức, bản mới nhất: repo private có hạn mức dung lượng nên bản cũ tự xoá.
+Dấu ✗ đỏ nghĩa là kiểm thử hoặc đóng gói hỏng, lượt đó không có file — báo người làm, tạm dùng bản ở Releases.
+
+**Bản thử của một PR, trước khi gộp:**
+
+1. Tab **Actions** → **Đóng gói Beeftown Cân** → nút **Run workflow** (bên phải).
+2. Ô **Số PR muốn lấy bản thử** gõ số của PR (số sau dấu `#`, ví dụ `31`) → bấm nút xanh **Run workflow**.
+3. Chờ chừng 1–2 phút, bấm lượt chạy mới, tải như bản trên main. Tên bản thử có chữ `thu` và số PR, ví dụ
+   `BeeftownCan-2.0.0-thu-PR31-a1b2c3d`; giữ 7 ngày. Thử xong thì quay về bản ở Releases.
+
+**Thay bản cũ ở quán:** đóng cửa sổ Beeftown Cân, chờ chừng 10 giây cho chương trình tắt hẳn, rồi chép file mới đè
+lên file cũ. Cài đặt, đăng nhập, file gốc của cân không mất — chúng nằm ở `%APPDATA%` và `Tài liệu`, không nằm cạnh file .exe.
+
 ## Dùng
 
-1. Chép `BeeftownCan.exe` vào máy tính ở quán (máy phải cùng WiFi với cân). Nháy đúp để mở.
+1. Chép `BeeftownCan.exe` (tải ở mục trên) vào máy tính ở quán (máy phải cùng WiFi với cân). Nháy đúp để mở.
    File không ký số: lần đầu Windows có thể báo *"Windows protected your PC"* → **More info** → **Run anyway**.
 2. **Đăng nhập kho** bằng tài khoản kho (NV quầy dùng thẻ Quầy, Tảng & ô; gửi giá xuống cân, tem, mã giảm: quản lý hoặc chủ). Máy nhớ đăng nhập.
 3. **Bắt đầu** (một lần): trên cân lưu dữ liệu ra USB (`Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm → Amend`), chọn file `JHSCALE\A_000.TMS`.
@@ -200,6 +232,23 @@ hàng không (như USB).
 - **Chưa thử trên cân thật:** đổi mẫu tem qua WiFi. Cân nhận chắc chắn khi nạp USB (thay cả file); qua WiFi cân có nhận phần LAB hay không thì phải in thử một tem để biết.
 - **Chưa thử trên cân thật:** mọi việc của bản 2.2 (bảng ở mục "Bản 2.2").
 
+## Menu `Prog` trên cân (chép từ cân thật 29/09/2026, TM-xA V3.14E8)
+
+Bấm `Prog`, đi bằng `↓ V3` / `↑ V1` hoặc bấm thẳng số mục (`Prog → 4 → 2`), `Accu/Confirm` để vào, `Sale` để về màn bán hàng.
+
+| Mục | Mục con |
+|---|---|
+| P1 Parameter | 1 Time · 2 Spec · 3 String · 4 Shortcut of PLU · 5 Shortcut of Func |
+| P2 Database | 1 Dept · 2 Class · 3 PLU · 5 Barcode · 6 Print Format · 7 Salesman |
+| P3 Data Asst | có Delete — **không vào**; cân hỏi mã 9958 là sắp xoá dữ liệu: bấm `Cancel` |
+| P4 Communication | USB: `Accu/Confirm` hai lần là nạp file, thêm `Amend` là lưu ra USB · mục 2: địa chỉ cân trong mạng |
+| P5 Hardware Asst | **không vào** |
+
+- Sửa một hàng ngay trên cân: `Prog → 2 → 3` (P2 Database › PLU).
+- P2 **không có mục 4**. Thứ tự P2 trùng thứ tự các phần trong file .TMS (DPT, CLS, PLU, **UNT**, BAR, LAB, SAL),
+  nên mục 4 nhiều khả năng là **Unit** (đơn vị tính) mà cân ẩn đi — sổ tay TM-xA ghi cân ẩn bớt phần sửa đơn vị.
+  Chưa kiểm trên cân.
+
 ## Mẫu tem trong file .TMS (`src/tem.ts`)
 
 - Phần `LAB`: mỗi mẫu tem là một dòng `LAB`, các dòng `LAS` (mỗi dòng một ô in), rồi `LAE`. Phần `TMS` dòng số 0 cho biết cân đang dùng mẫu số mấy.
@@ -260,7 +309,12 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 
 - Cần bản web có `/kho-can.json` (`web/src/pages/kho-can.json.ts`) đã triển khai.
 - Đóng gói trên Linux thì file .exe chưa có biểu tượng riêng (Bun chỉ gắn biểu tượng khi đóng gói trên Windows).
-- `dist/` và `node_modules/` không vào repo. File .exe quá lớn để để trong repo hoặc trên web (Cloudflare giới hạn 25 MB một file) — gửi tay, hoặc đưa lên GitHub Releases.
+- `dist/` và `node_modules/` không vào repo. File .exe quá lớn để để trong repo hoặc trên web (Cloudflare giới hạn 25 MB một file) — GitHub đóng gói và giữ nó (mục **Tải BeeftownCan.exe về** ở trên).
+- `.github/workflows/dong-goi-can.yml`: main đổi `can-app/` hoặc `web/src/lib/` (.exe gói cả mã dùng chung ở đó) →
+  `npx bun test/thu.ts` → đóng gói → artifact `BeeftownCan-<PHIEN_BAN>`, xoá artifact chính thức cũ; phiên bản chưa có
+  Release thì tạo Release, tag `can-v<PHIEN_BAN>`. PR đụng cùng những chỗ đó chỉ đóng gói thử, không tải lên. Chạy tay: gõ số
+  PR, hoặc để trống và chọn nhánh ở *Use workflow from* (nhánh đó phải có file workflow này). Muốn Release mới thì tăng
+  `PHIEN_BAN` trong `src/main.ts`, giữ đúng dạng `const PHIEN_BAN = '2.1.0';` — workflow đọc dòng này (`test-quy-trinh.mjs` kiểm).
 
 ## Chưa làm
 
@@ -270,3 +324,8 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 - HSD trên tem từ kho: cần tuỳ chọn riêng cho từng món "HSD trên tem, số ngày tính từ ngày in" (khác `han_dung_ngay`, tính
   từ ngày nhập / lóc); với ô mã giữ tảng: số ngày theo hạn còn lại của lô / tảng, gửi lại mỗi ngày.
 - Chữ ngoài bảng chữ của cân (ký hiệu đặc biệt) trên tem: chưa biết cân in ra sao.
+- Giá từ 1.000.000 đ/kg: ô đơn giá trên cân có 6 chữ số (tối đa 999.999), nên chương trình không gửi món giá cao
+  hơn. Hướng đi: món vượt mức gửi theo đơn vị **100g** (giá kho chia 10); kho vẫn giữ giá/kg, FABi không đổi vì mã
+  vạch chỉ mang mã món và trọng lượng. Theo phần mềm của hãng, đơn vị 100g là `UnitID 8` ở cột 4 của dòng PLU
+  (`CAN-TMA.md`, bảng cột PLU) — chưa thử trên cân thật. Còn phải thử: ô thành tiền có quá 6 chữ số không (gói trên
+  999.999 đ có in được tem không), và thông số 188 (số chữ số ô đơn giá, cân quán đang để 6).
