@@ -376,6 +376,12 @@ export async function thuGiaoThuc(ok: Ok): Promise<void> {
     const gT = await moc(canGio);
     const g0 = await knGio.docGio();
     ok('docGio: 25/09/2026 16:54:12 (năm = 2000 + YY)', JSON.stringify(g0) === JSON.stringify({ nam: 2026, thang: 9, ngay: 25, gio: 16, phut: 54, giay: 12 }), JSON.stringify(g0));
+    const canNam4 = await canMoi({ hong: { loai: 'nam-4-so' } });
+    const knNam4 = await moKetNoi(IP, canNam4.cong, NHANH);
+    const g4 = await knNam4.docGio();
+    ok('HỒI QUY: dòng TIM có năm 4 số ("2026") → năm 2026, không phải 4026 (như lucTuRep đọc nhật ký)',
+      g4.nam === 2026 && g4.ngay === 25, JSON.stringify(g4));
+    await knNam4.dong(); await canNam4.dong();
     ok('Byte đọc giờ: CRLF, UPL TIM, UPL END', await canGio.choNhan(() => canGio.nhanTu().subarray(gT).equals(B('\r\nUPL\tTIM\t\r\nUPL\tEND\t\r\n'))),
       hien(canGio.nhanTu().subarray(gT)));
     const dT = await moc(canGio);

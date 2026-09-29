@@ -53,6 +53,7 @@
  * byte); dòng đã đổi sang chữ cũng đọc được.
  */
 import { chuanMa, giaTuFile, tuChuoiByte, type FileCan } from '../../web/src/lib/kho/can-tma.ts';
+import { macTuInm } from './giao-thuc.ts';
 
 // -----------------------------------------------------------------------------
 // KIỂU DỮ LIỆU
@@ -398,11 +399,16 @@ export function pluLucDocTuDong(dong: string[], soLeDonGia: number): Map<number,
   return m;
 }
 
-/** MAC trong dòng INM của file USB ('' nếu không có). */
-function macTuDong(dong: string[]): string {
+/**
+ * MAC trong dòng INM của file USB ('' nếu không có): cột 2 như đường WiFi (macTuInm — một giao dịch đọc qua hai
+ * đường phải cùng khoá, không thì doanh số bị cộng đôi); cột 2 không dùng được thì mới lấy cột 1.
+ */
+export function macTuDong(dong: string[]): string {
   for (const d of dong) {
     const c = d.split('\t');
-    if (c[0] === 'INM' && /^[0-9A-Fa-f]{12}$/.test(c[1] ?? '')) return c[1].toUpperCase();
+    if (c[0] !== 'INM') continue;
+    const m = macTuInm(c) || (/^[0-9A-Fa-f]{12}$/.test(c[1] ?? '') ? c[1].toUpperCase() : '');
+    if (m) return m;
   }
   return '';
 }

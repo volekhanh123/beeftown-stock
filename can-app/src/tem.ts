@@ -732,24 +732,3 @@ export function suaTem(du: Uint8Array, daTat: DaTat, thay: ThayDoiTem): KetQuaSu
   if (file.coBom) { ra = new Uint8Array(than.length + 3); ra.set([0xEF, 0xBB, 0xBF]); ra.set(than, 3); }
   return { du: ra, daTat: { ...daTat, [m.id]: [...conTat, ...moiTat] }, coDoi, canhBao };
 }
-
-// -----------------------------------------------------------------------------
-// PHÍM TẮT
-// -----------------------------------------------------------------------------
-// Chữ trên các phím của bàn phím cân, theo số nhỏ in trên phím (1–63).
-const TEN_PHIM = ['', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-  'SP', '<', '=', '>', '!', '?', '.', ',', ';', '+', '−', '*', '/', '(', ')', '{', '}', '[', ']', '‘', '“', '@', '#', '&', '$', '%', '^', '`', ':', '|', '\\', '—', '~', 'End', 'Del', 'Ins', 'IME'];
-
-/** Số PLU → chữ trên phím tắt tầng 1 gọi nó. */
-export function phimTat(file: FileCan): Map<number, string> {
-  const ra = new Map<number, string>();
-  const S = file.phan.SCP;
-  if (!S) return ra;
-  for (let i = S.dau + 1; i < S.cuoi; i++) {
-    const f = file.dong[i].split('\t');
-    if (f[0] !== 'SCP' || f[1] !== '0') continue;
-    const phim = soNguyen(f[2], 0), so = soNguyen(f[3], 0);
-    if (so > 0 && phim > 0 && TEN_PHIM[phim] && !ra.has(so)) ra.set(so, TEN_PHIM[phim]);
-  }
-  return ra;
-}

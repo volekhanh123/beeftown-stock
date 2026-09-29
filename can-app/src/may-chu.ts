@@ -102,7 +102,8 @@ export function moMayChu(ud: UngDung, tuy: {
               ipCan: b.ipCan as string | undefined, congCan: b.congCan as number | undefined,
               diaChiKho: b.diaChiKho as string | undefined, chiNhanhId: b.chiNhanhId as string | undefined,
               tuGui: typeof b.tuGui === 'boolean' ? b.tuGui : undefined,
-              congHaiChieu: b.congHaiChieu === undefined || b.congHaiChieu === null || b.congHaiChieu === '' ? undefined : b.congHaiChieu as number,
+              // Ô để trống (null / '') → về mặc định; không gửi ô đó → giữ nguyên.
+              congHaiChieu: b.congHaiChieu === undefined ? undefined : b.congHaiChieu === null || b.congHaiChieu === '' ? null : b.congHaiChieu as number,
             });
             return json({ ok: true, cauHinh: ch });
           }
