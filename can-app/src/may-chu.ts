@@ -176,7 +176,7 @@ export function moMayChu(ud: UngDung, tuy: {
           // ---- dây RS232 (thử) ----
           case '/api/com': return json({ ok: true, ...(await ud.dsCom()) });
           case '/api/com/gui': return json({ ok: true, ...(await ud.guiThuQuaDay(await docThan(req))) });
-          case '/api/com/nghe': return json({ ok: true, ...(await ud.ngheQuaDay(await docThan(req))) });
+          case '/api/com/kiem': return json({ ok: true, ...(await ud.kiemTraDay(await docThan(req))) });
           // ---- máy quầy (0054) ----
           case '/api/quay': return json({ ok: true, ...(await ud.bangQuay()) });
           case '/api/quay/yeu-cau': return json({ ok: true, ...(await ud.taoYeuCau(await docThan(req))) });

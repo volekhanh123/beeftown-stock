@@ -225,25 +225,34 @@ nhất, làm một lần là xong.
 Không nghe tiếng cân tự phát mỗi ~15 giây (UDP 33584): mở cổng nghe thì Windows hiện hộp hỏi tường lửa với nhân
 viên quầy. Dò bằng kết nối ra ngoài thì không.
 
-## Dây RS232 (thử, từ 2.1.0)
+## Dây RS232 (thử, từ 2.1.0; làm như phần mềm hãng từ 2.3.0)
 
-Mới chắc cân nhận danh mục qua **USB** và **WiFi**. Qua dây RS232 thì **chưa biết** — thẻ Cài đặt có phần thử
-(`src/day-rs232.ts`), mở cổng COM bằng PowerShell có sẵn trong Windows (8 bit, không chẵn lẻ, 1 bit dừng, bật DTR/RTS):
+Mới chắc cân nhận danh mục qua **USB** và **WiFi**. Qua dây RS232 thì **chưa thử trên cân thật**. Cân của quán có menu
+`Prog → 4 → 3` (P43 RS-232), tức có cổng RS232. Thẻ Cài đặt có phần thử (`src/day-rs232.ts`): mở cổng COM bằng
+PowerShell có sẵn trong Windows, cài **đúng như phần mềm TM-xA của hãng**: 8 bit, không chẵn lẻ, 1 bit dừng, điều
+khiển luồng **XOn/XOff**, không bật DTR / RTS. Chi tiết: `CAN-TMA.md` mục 10.6.
 
 1. Cắm dây từ máy tính vào cổng RS232 của cân (dây USB–RS232 hiện thành COM3, COM4…; cần driver CH340 / PL2303 /
-   FTDI — Windows thường tự cài). **Cài đặt → Tìm cổng COM** → chọn cổng, tốc độ (cân thường để 9600).
-2. **Nghe cân 10 giây**: cân có tự gửi gì qua dây không. Ra chữ đọc được = dây, cổng, tốc độ đúng. Không nghe thấy gì
-   thì chưa nói lên được gì (cân có thể chỉ trả lời khi được hỏi).
-3. **Gửi thử qua dây** (quản lý, chủ; lúc kho có thay đổi chưa lên cân): đẩy đúng nội dung như gửi WiFi (giữ cả hàng
-   ngoài kho), rồi trang chỉ một hàng để gọi thử trên cân — ưu tiên hàng đổi giá; chỉ có hàng đổi tên (tảng) thì
-   in thử một tem xem tên. Cân đổi = cân nhận qua dây. Chưa đổi thì thử tốc độ khác.
-   Dây không báo "đã nhận" như WiFi, nên chương trình **không ghi nhận** lần gửi thử — lần gửi WiFi sau vẫn gửi lại.
+   FTDI — Windows thường tự cài). **Cài đặt → Tìm cổng COM** → chọn cổng. Tốc độ phải khớp **thông số 41** của cân
+   (mặc định 9600); file gốc có thông số 41 thì trang ghi "Cân đang để …" và chọn sẵn tốc độ đó.
+2. **Trên cân bấm `Prog → 4 → 3`** và để cân ở màn hình đó — cân chỉ nghe dây khi đang ở đây (sách hướng dẫn V3.04A,
+   mục 5.6.3). Mỗi lần dùng dây đều phải vào lại.
+3. **Kiểm tra dây**: hỏi giờ cân qua dây (`UPL TIM`, như hãng bắt tay). Cân trả lời giờ = dây, cổng, tốc độ, màn hình
+   P43 đều đúng. Không trả lời trong 5 giây: trang chỉ lần lượt P43, thông số 41 (`Prog → 1 → 2`, SP.041: 5 = 9600),
+   rồi đầu chuyển null-modem (sách của hãng không ghi dây thẳng hay dây chéo). Nghe thấy chữ lộn xộn: có lẽ sai tốc độ.
+4. **Gửi thử qua dây** (quản lý, chủ; lúc kho có thay đổi chưa lên cân): bắt tay như trên (cân không trả lời thì
+   **không gửi gì**), một dòng trống, rồi đúng nội dung như gửi WiFi (giữ cả hàng ngoài kho). Gửi xong hỏi giờ thêm một
+   lần: cân trả lời = cân đã đọc hết (hãng không làm bước này; chương trình làm như hàng rào của đường mạng). Rồi trang
+   chỉ một hàng để gọi thử trên cân — ưu tiên hàng đổi giá; chỉ có hàng đổi tên (tảng) thì in thử một tem xem tên.
+   Chương trình **không ghi nhận** lần gửi thử — lần gửi WiFi sau vẫn gửi lại.
 
-Cân nhận qua dây thì làm tiếp: chọn dây hay WiFi ở Cài đặt, tự gửi qua dây; và thử xem qua dây cân có xoá được
-hàng không (như USB).
+9600 bit/giây là khoảng 1 KB mỗi giây: file cân 100 KB mất gần 2 phút. Dây chỉ nên là **đường dự phòng** khi WiFi
+hỏng. Cân nhận qua dây thì làm tiếp: chọn dây hay WiFi ở Cài đặt; qua dây đọc lại dữ liệu và nhật ký bán (hãng có
+`UPL` qua dây như qua mạng).
 
-- Đoạn lệnh PowerShell đã chạy thật với PowerShell 7 + cổng COM giả (pty trên Linux): gửi đủ byte, nghe được, lỗi
-  cổng không có hiện đúng câu. Chưa chạy trên Windows PowerShell 5.1 và dây thật.
+- PowerShell chỉ làm đường ống theo kịch bản (ghi byte, ghi file, đọc dòng tới `END` sau dòng `TIM`); trình tự và cách
+  đọc kết quả nằm trong TypeScript, kiểm thử bằng PowerShell giả đóng vai cân (`test/thu.ts` mục 6c). Đoạn lệnh
+  PowerShell mới **chưa chạy** trên Windows PowerShell 5.1 và dây thật.
 
 ## Điều đã thử trên cân thật (26/09/2026, TM-xA V3.14E8)
 

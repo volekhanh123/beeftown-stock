@@ -9,7 +9,7 @@
  * `--can-doi-dia-chi`: cân giả "đổi địa chỉ" — lúc mở trang, Kiểm tra kết nối tự dò ra cân.
  * `--hai-can`: như trên nhưng WiFi có hai cân (127.0.0.1 và .5) — trang hiện nút chọn cân.
  * `--chua-co-goc`: chưa có file gốc (thấy bước Bắt đầu, có nút đọc từ cân qua WiFi).
- * Dây RS232 dùng PowerShell giả: có cổng COM3, gửi thử luôn được, nghe ra chữ của cân.
+ * Dây RS232 dùng PowerShell giả: có cổng COM3, cân ở đầu dây luôn trả lời giờ (kiểm tra dây, gửi thử đều được).
  *
  * Bản 2.2: cân giả hai chiều (test/can-gia-hai-chieu.ts) trên 127.0.0.1 cho thẻ Cân & thông số, Nhật ký
  * cân (đọc qua WiFi), xoá qua WiFi; file gốc có nhật ký bán (REP) 7 ngày gần đây, đủ thông số và phím tắt;
@@ -20,7 +20,7 @@ import * as net from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { UngDung, quyenCuaVai } from '../src/nghiep-vu.ts';
-import { LENH_DS, LENH_NGHE, type ChayPs } from '../src/day-rs232.ts';
+import { LENH_DS, type ChayPs } from '../src/day-rs232.ts';
 import { taoKhoGia } from './kho-gia.ts';
 import { moMayChu } from '../src/may-chu.ts';
 import { chuoiByte, moCanGia } from './can-gia-hai-chieu.ts';
@@ -98,11 +98,14 @@ const iVai = process.argv.indexOf('--vai');
 const vai = iVai > 0 ? process.argv[iVai + 1] : 'quan_ly';
 const cn = { id: 'cn1', ma: 'q1', ten: 'Beeftown Hàm Nghi' };
 const doiDiaChi = haiCan || process.argv.includes('--can-doi-dia-chi');
-const chayPs: ChayPs = async (lenh) => {
+const chayPs: ChayPs = async (lenh, bien) => {
   await Bun.sleep(600);
   if (lenh === LENH_DS) return 'COM\tCOM1\r\nCOM\tCOM3\r\nTEN\tCổng Giao tiếp (COM1)\r\nTEN\tUSB-SERIAL CH340 (COM3)\r\nOK\r\n';
-  if (lenh === LENH_NGHE) return `OK\t${Buffer.from('ST,GS,+0000.215kg\r\n'.repeat(12)).toString('base64')}\r\n`;
-  return 'OK\t4096\r\n';
+  // Cân ở đầu dây trả lời mỗi lần hỏi giờ (bước DOC của kịch bản).
+  const b64 = (chu: string) => Buffer.from(chu, 'latin1').toString('base64');
+  const ra = (bien.BT_KICH_BAN ?? '').split(';').flatMap((b, i) => (b.startsWith('DOC:')
+    ? [`DONG\t${i}\t${b64('TIM\t26\t9\t29\t17\t5\t40\t')}`, `DONG\t${i}\t${b64('END\tTIM\t')}`] : []));
+  return [...ra, 'OK\t4096', ''].join('\r\n');
 };
 const ud = new UngDung({ cauHinh: path.join(tam, 'a'), duLieu: path.join(tam, 'd') }, {
   // Dò mạng giả 127.0.0.0/24 (máy "ở" .254) — cân giả nằm ở 127.0.0.1.

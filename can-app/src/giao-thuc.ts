@@ -389,7 +389,8 @@ const TEN_PHAN: Record<PhanDoc, string> = {
   PLU: 'danh sách hàng (PLU)', BAR: 'kiểu mã vạch (BAR)', LAB: 'mẫu tem (LAB)', SAL: 'nhân viên bán (SAL)',
 };
 
-function docDongTim(f: string[]): GioCan | null {
+/** Dòng TIM của cân (đã tách cột) → giờ; dòng sai → null. Dùng cả cho dây RS232 (day-rs232.ts). */
+export function docDongTim(f: string[]): GioCan | null {
   if (f.length < 7 || !f.slice(1, 7).every(x => LA_SO_NGUYEN.test(x))) return null;
   const [yy, thang, ngay, gio, phut, s] = f.slice(1, 7).map(x => parseInt(x, 10));
   // Hãng cộng 2000 (cân gửi năm 2 số); năm đã đủ 4 số thì giữ nguyên, như lucTuRep đọc nhật ký bán.

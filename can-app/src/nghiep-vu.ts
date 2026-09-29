@@ -30,7 +30,7 @@
  *
  * Cân đổi địa chỉ (router phát lại): nối không được thì dò WiFi tìm cân
  * (tim-can.ts), thấy đúng một cân thì dùng địa chỉ mới và gửi lại (guiDenCan).
- * Dây RS232 mới có phần gửi thử (day-rs232.ts) — chưa biết cân có nhận qua dây.
+ * Dây RS232 mới có phần thử (day-rs232.ts, làm như phần mềm hãng) — chưa thử trên cân thật.
  *
  * File .TMS có tên và mật khẩu WiFi của quán: chỉ ghi trên máy này và gửi tới
  * cân, không gửi lên kho hay đi đâu khác.
@@ -86,7 +86,7 @@ import {
   suaPhim as suaPhimTrongFile, suaThongSo as suaThongSoTrongFile, type MucThongSo, type PhimXem,
 } from './thong-so.ts';
 import { LA_IP, layMac, thuKetNoi, timCan as doTimCan, type KetQuaTim, type MangMay } from './tim-can.ts';
-import { LoiDay, dsCongCom, giayDay, guiCom, kiemCom, ngheCom, tomTatNghe, type ChayPs, type CongCom } from './day-rs232.ts';
+import { LoiDay, dsCongCom, giayDay, guiCom, hoiGioQuaDay, kiemCom, tocDoTuThongSo, type ChayPs, type CongCom } from './day-rs232.ts';
 import { docCaiDat, docMatHang } from '../../web/src/lib/kho/danh-muc.ts';
 import { hangChoCan, ngayNgan } from '../../web/src/lib/kho/danh-muc-can.ts';
 import { homNayVn } from '../../web/src/lib/gio-vn.ts';
@@ -1711,20 +1711,28 @@ export class UngDung {
   }
 
   // ---- dây RS232 (thử — xem day-rs232.ts) --------------------------------------
-  async dsCom(): Promise<{ cong: CongCom[]; com: string | null; baud: number }> {
+  /**
+   * Cổng COM của máy, cổng và tốc độ lần thử trước, và tốc độ cân đang để theo thông số 41 trong file gốc (null =
+   * chưa có file gốc / không đọc được). Tốc độ gợi ý: lần trước, không có thì theo cân, không có nữa thì 9600.
+   */
+  async dsCom(): Promise<{ cong: CongCom[]; com: string | null; baud: number; baudCan: number | null }> {
     const ch = this.cauHinh();
-    return { cong: await dsCongCom(this.phu.chayPs), com: ch.com ?? null, baud: ch.baud ?? 9600 };
+    let baudCan: number | null = null;
+    try { baudCan = tocDoTuThongSo(docThongSo(docFileCan(this.docGoc())).get(41)); } catch { /* chưa có file gốc */ }
+    return { cong: await dsCongCom(this.phu.chayPs), com: ch.com ?? null, baud: ch.baud ?? baudCan ?? 9600, baudCan };
   }
 
   /**
    * Gửi thử qua dây: đúng nội dung như gửi qua WiFi, giữ cả hàng ngoài kho (lỡ
-   * qua dây cân thay cả danh sách như USB thì cũng không mất hàng). KHÔNG ghi
-   * nhận là cân đã nhận — lần gửi WiFi sau vẫn gửi lại các thay đổi này. Trả một
-   * hàng vừa đổi để gọi thử trên cân: ưu tiên hàng đổi giá (nhìn là thấy), rồi
-   * hàng thêm, cuối cùng hàng chỉ đổi tên (đổi tên theo tảng).
+   * qua dây cân thay cả danh sách như USB thì cũng không mất hàng). Bắt tay như
+   * hãng trước khi gửi (cân không trả lời → báo, không gửi gì); gửi xong hỏi giờ
+   * thêm một lần — daXacNhan là cân đã đọc hết. KHÔNG ghi nhận là cân đã nhận —
+   * lần gửi WiFi sau vẫn gửi lại các thay đổi này. Trả một hàng vừa đổi để gọi
+   * thử trên cân: ưu tiên hàng đổi giá (nhìn là thấy), rồi hàng thêm, cuối cùng
+   * hàng chỉ đổi tên (đổi tên theo tảng).
    */
   guiThuQuaDay(b: { com?: unknown; baud?: unknown }): Promise<{
-    com: string; baud: number; soByte: number; giay: number;
+    com: string; baud: number; soByte: number; giay: number; daXacNhan: boolean; gio: GioCan | null;
     hang: { so: number | null; ten: string; tenCu: string | null; gia: number | null; giaCu: number | null; loai: string };
   }> {
     const com = String(b.com ?? ''), baud = Number(b.baud);
@@ -1739,22 +1747,29 @@ export class UngDung {
           '(thẻ Gửi giá từ kho có dòng Thêm / Sửa) — hoặc tạm sửa giá một món ít bán trong kho, thử xong sửa lại.');
       }
       const bd = Date.now();
-      await guiCom(com, baud, du, this.phu.chayPs);
+      const kq = await guiCom(com, baud, du, this.phu.chayPs);
       this.ghiThem({ com, baud });
       return {
         com, baud, soByte: du.length, giay: Math.max(giayDay(du.length, baud), Math.round((Date.now() - bd) / 1000)),
+        daXacNhan: kq.daXacNhan, gio: kq.gio,
         hang: { so: hang.so, ten: hang.ten, tenCu: hang.tenCu ?? null, gia: hang.gia, giaCu: hang.giaCu ?? null, loai: hang.loai },
       };
     });
   }
 
-  /** Nghe cân qua dây `giay` giây: đúng tốc độ thì chữ đọc được; cân không tự gửi gì thì trống (chưa nói lên được gì). */
-  async ngheQuaDay(b: { com?: unknown; baud?: unknown; giay?: unknown }): Promise<ReturnType<typeof tomTatNghe> & { com: string; baud: number; giay: number }> {
+  /**
+   * Kiểm tra dây: bắt tay như hãng (hỏi giờ cân qua dây). Trả lời được = dây, cổng, tốc độ đúng và cân đang ở
+   * màn hình Prog → 4 → 3. Chỉ đọc, không đổi gì trên cân.
+   */
+  async kiemTraDay(b: { com?: unknown; baud?: unknown }): Promise<{ com: string; baud: number; gio: GioCan | null }> {
+    await this.kiemQuyenCan('Kiểm tra dây RS232');
     const com = String(b.com ?? ''), baud = Number(b.baud);
-    const giay = Math.min(60, Math.max(1, Math.round(Number(b.giay) || 10)));
-    const du = await ngheCom(com, baud, giay * 1000, this.phu.chayPs);
-    this.ghiThem({ com, baud });
-    return { ...tomTatNghe(du), com, baud, giay };
+    kiemCom(com, baud);
+    return this.motLuc(async () => {
+      const gio = await hoiGioQuaDay(com, baud, this.phu.chayPs);
+      this.ghiThem({ com, baud });
+      return { com, baud, gio };
+    });
   }
 }
 
