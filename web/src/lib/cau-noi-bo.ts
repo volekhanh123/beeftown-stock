@@ -142,6 +142,9 @@ export const CAU_EN: Readonly<Record<string, string>> = {
     'Only the owner, a manager or a cashier can look up or create customer records',
   'Chỉ chủ sở hữu, quản lý hoặc marketing của chi nhánh này mới xếp được tin gửi khách':
     'Only the owner, a manager or marketing staff of this branch can queue messages to customers',
+  // 0055 — bảng sức khỏe hệ thống
+  'Chỉ chủ sở hữu hoặc quản lý mới xem được sức khỏe hệ thống':
+    'Only the owner or a manager can view the system health panel',
 };
 
 /**
