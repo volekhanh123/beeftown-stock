@@ -17,6 +17,17 @@
  *
  * Tên + số tảng giữ trong 24 ký tự (dài hơn dễ bị cắt khi in): cắt bớt tên món,
  * không bao giờ cắt số tảng.
+ *
+ * Hạn dùng (HSD) trên tem: cân in HSD = NGÀY IN TEM + số ngày (cột 32). Còn
+ * kho_mat_hang.han_dung_ngay tính từ ngày NHẬP / ngày LÓC, và hạn của lô phần
+ * cắt còn bị chặn bởi hạn của tảng (least(ngày lóc + N, hạn sớm nhất của đầu
+ * vào)). Đưa số đó lên cân thì tem in muộn hơn hạn của lô trong kho (in tem vài
+ * ngày sau khi nhập, hay tảng sắp hết hạn) — nên:
+ *   · món: KHÔNG mang han_dung_ngay (undefined) — cột ngày trên cân giữ nguyên
+ *     như cân đang có, không tự bật in HSD. Muốn in HSD cần một tuỳ chọn riêng
+ *     "HSD trên tem, số ngày tính từ ngày in" cho từng món (chưa có).
+ *   · ô mã (hàng lóc từ tảng) và mã giảm giá (gói cận date): luôn null — tắt HSD
+ *     trên tem; không số N nào tính từ ngày in chắc chắn không vượt hạn của lô.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { HangKho } from './can-tma.ts';
@@ -44,6 +55,7 @@ export function tenTheoTang(ten: string, soTang: number | null | undefined): str
 export function ghepHangChoCan(matHang: MatHang[], oMa: Map<string, DongOMa[]>, giao: GiaoOMa[],
                                maGiam: DongMaGiam[] = []): HangKho[] {
   const tangCuaO = new Map(giao.filter(g => g.con_giu).map(g => [g.o_ma_id, g.so_tang]));
+  // Món: không có khoá han_dung_ngay — hạn dùng trong kho tính từ ngày nhập, cân tính từ ngày in (xem đầu file).
   const ra: HangKho[] = matHang.map(m => ({
     ma: m.ma, ma_can: m.ma_can, ten: m.ten, gia_ban_kg: m.gia_ban_kg, dang_dung: m.dang_dung,
   }));
@@ -55,6 +67,9 @@ export function ghepHangChoCan(matHang: MatHang[], oMa: Map<string, DongOMa[]>, 
         ten: tenTheoTang(m.ten, tangCuaO.get(o.id)),
         gia_ban_kg: m.gia_ban_kg,
         dang_dung: m.dang_dung,
+        // Hạn của lô lóc bị chặn bởi hạn của tảng, cân lại tính từ ngày in tem: in HSD có thể muộn hơn
+        // hạn thật của lô — như mã giảm giá, null = tắt HSD trên tem.
+        han_dung_ngay: null,
       });
     }
   }
@@ -68,6 +83,10 @@ export function ghepHangChoCan(matHang: MatHang[], oMa: Map<string, DongOMa[]>, 
       ten: tenGiam(m.ten, g.phan_tram, TEN_CAN_TOI_DA),
       gia_ban_kg: m.gia_ban_kg === null || m.gia_ban_kg === undefined ? m.gia_ban_kg : giaGiam(m.gia_ban_kg, g.phan_tram),
       dang_dung: m.dang_dung && g.dang_dung,
+      // Gói cận date được dán lại tem giảm giá: HSD thật của gói ngắn hơn hạn
+      // dùng của món (đã qua bao nhiêu ngày thì không biết), nên KHÔNG in HSD
+      // mới tính từ hôm nay — in sai hạn còn tệ hơn không in. null = tắt HSD.
+      han_dung_ngay: null,
     });
   }
   return ra;

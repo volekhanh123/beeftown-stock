@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
 import { ghepHangChoCan, tenTheoTang, TEN_CAN_TOI_DA } from '../../web/src/lib/kho/danh-muc-can.ts';
 import { docFileCan, lapKeHoach } from '../../web/src/lib/kho/can-tma.ts';
+import { ghiFileCan } from '../../web/src/lib/kho/can-tma.ts';
 import { giaGiam, tenGiam } from '../../web/src/lib/kho/ma-giam.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — DANH MỤC CÂN THEO TẢNG');
@@ -83,6 +84,60 @@ await nhom('3 · MÃ GIẢM GIÁ (0054)', async () => {
 await nhom('4 · NƠI DÙNG', async () => {
   ok('Màn Đồng bộ cân dùng hangChoCan', /hangChoCan\(k\.client, k\.chiNhanh\.id, matHang\)/.test(doc('web/src/pages/noi-bo/kho/cai-dat/can.astro')));
   ok('Beeftown Cân dùng hangChoCan', /hangChoCan\(c, nd\.chiNhanh\.id, matHang\)/.test(doc('can-app/src/nghiep-vu.ts')));
+});
+
+// Hạn dùng (HSD) trên tem: cân tính từ NGÀY IN, kho tính han_dung_ngay từ ngày nhập / ngày lóc (hạn lô phần cắt
+// còn bị chặn bởi hạn của tảng) — đưa han_dung_ngay của kho lên cân thì tem in HSD muộn hơn hạn của lô. Nên món
+// không mang HSD (cân giữ nguyên cột ngày), ô mã và mã giảm luôn tắt HSD.
+await nhom('5 · HẠN DÙNG (HSD) KHÔNG LẤY TỪ han_dung_ngay CỦA KHO', async () => {
+  // Thăn nội 950.000 đ (giá 1.200.000 của MH vượt mức cân → không đưa lên, không xét HSD).
+  const MHH = [{ ...MH[0], han_dung_ngay: 3 }, { ...MH[1], gia_ban_kg: 950000, han_dung_ngay: null }];
+  const G = [{ id: 'g1', mat_hang_id: 'a', phan_tram: 30, ma_can: '90001', dang_dung: true }];
+  const ds = ghepHangChoCan(MHH, O, [g('o1', 142)], G);
+  ok('HỒI QUY: món có hạn dùng 3 ngày trong kho (tính từ ngày nhập) → không mang HSD xuống cân (undefined: cột ngày trên cân giữ nguyên)',
+     ds.filter(x => x.ma_can === '301' || x.ma_can === '302').every(x => x.han_dung_ngay === undefined && !('han_dung_ngay' in x)),
+     JSON.stringify(ds.filter(x => x.ma_can === '301' || x.ma_can === '302')));
+  ok('HỒI QUY: ba ô mã (kể cả ô đang giữ tảng #0142, hạn lô bị chặn bởi hạn tảng) → null: tắt HSD, không in ngày in + N',
+     ['10011', '10012', '10013'].every(m => ds.find(x => x.ma_can === m)?.han_dung_ngay === null));
+  ok('Mã giảm giá (gói cận date) luôn null — không in HSD mới tính từ hôm nay', ds.find(x => x.ma_can === '90001')?.han_dung_ngay === null);
+  const cu = ghepHangChoCan(MH, O, [], G);
+  ok('Món không có cột han_dung_ngay → vẫn undefined; ô mã và mã giảm null',
+     cu.every(x => (x.ma_can === '90001' || x.ma_can.startsWith('1001') ? x.han_dung_ngay === null : x.han_dung_ngay === undefined)));
+
+  // Qua lapKeHoach + ghiFileCan: cân có 301 (không in HSD) và 302 (HSD 5 đặt tay trên cân).
+  const K = 'PLU\t{1}\t{2}\t\t1\t{5}\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t9\t{15}\t\t\t\t\t\t\t\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t0\tx\t0\t0\t0\t';
+  const plu = (so, ma, gia, ten) => K.replace('{1}', so).replace('{2}', ma).replace('{5}', gia).replace('{15}', ten);
+  const hsd5 = plu(2, '302', '950,0', 'Thăn nội').split('\t');
+  hsd5[27] = '1'; hsd5[32] = '5';
+  const file = docFileCan(new TextEncoder().encode(['ECS\tVER\tV3.14E8\t', '', 'DWL\tPLU\t',
+    plu(1, '301', '900,0', 'Thăn ngoại cắt lát'), hsd5.join('\t'),
+    'END\tPLU\t', '', 'DWL\tTMS\t', 'TMS\t202\t3\t', 'END\tTMS\t', '', 'END\tECS\t', ''].join('\r\n')));
+  const kh = lapKeHoach(file, ds, { giuHangNgoaiKho: false, giuGioCan: true, soChuSoMa: 5 });
+  const theo = new Map(kh.dong.map(d => [d.maCan, d]));
+  ok('HỒI QUY: kế hoạch — 301 và 302 giữ nguyên (kho không đổi HSD trên cân), 3 ô + mã giảm thêm với HSD tắt',
+     theo.get('301')?.loai === 'giu' && !('hsd' in theo.get('301')) && theo.get('302')?.loai === 'giu' && !('hsd' in theo.get('302'))
+     && kh.dem.them === 4 && kh.dong.filter(d => d.loai === 'them').every(d => d.hsd === null), JSON.stringify(kh.dem));
+  const ra = docFileCan(ghiFileCan(file, kh, { giuGioCan: true }));
+  const hsdTheoMa = Object.fromEntries(ra.plu.map(p => [p.ma, p.hsd]));
+  ok('HỒI QUY: file ra — 301 không in HSD như cũ, 302 giữ HSD 5 đặt tay trên cân; ba ô và mã giảm không in HSD',
+     hsdTheoMa['301'] === null && hsdTheoMa['302'] === 5 && hsdTheoMa['10011'] === null && hsdTheoMa['10012'] === null
+     && hsdTheoMa['10013'] === null && hsdTheoMa['90001'] === null, JSON.stringify(hsdTheoMa));
+  const dong302 = ra.plu.find(p => p.ma === '302').cot;
+  ok('Dòng 302 y nguyên cột ngày (cột 27 = 1, cột 32 = 5)', dong302[27] === '1' && dong302[32] === '5');
+});
+
+await nhom('6 · MÀN ĐỒNG BỘ CÂN (2.2)', async () => {
+  const can = doc('web/src/pages/noi-bo/kho/cai-dat/can.astro');
+  ok('Tải file: bỏ phần REP / INF (boPhanChiDoc: true)', /ghiFileCan\(file, kh, \{ \.\.\.tuy, boPhanChiDoc: true \}\)/.test(can));
+  ok('Bảng xem trước có cột HSD hai thứ tiếng và dòng "trước:" khi HSD đổi',
+     /cotHsd: \{ vi: 'HSD', en: 'Use-by' \}/.test(can) && /oHsd\(d\)\.cu !== null/.test(can) && /hsdKhongIn: \{ vi: 'không in', en: 'not printed' \}/.test(can));
+  ok('Câu về HSD và REP/INF trên màn ghi rõ chưa thử trên cân thật (vi và en)',
+     (can.match(/Chưa thử trên cân thật/g) ?? []).length >= 2 && (can.match(/Not yet tested on the real scale/g) ?? []).length >= 2);
+  ok('HỒI QUY: ghi chú HSD không còn hứa "món không có hạn dùng thì tem không in HSD" (tem 28 đang "Luôn in" chữ HSD), không hứa HSD = ngày in + hạn dùng kho',
+     !/tem không in HSD/.test(can) && !/print no use-by date/.test(can) && /Luôn in/.test(can) && /Always print/.test(can)
+     && !/ngày in tem \+ số ngày ở Mặt hàng/.test(can));
+  ok('HỒI QUY: bước nạp USB có lần bấm Accu/Confirm thứ ba (màn hình 000) và chờ Finish, vi và en',
+     /lần thứ ba/.test(can) && /a third time/.test(can) && /Finish/.test(can));
 });
 
 process.exit(ketThuc('DANH MỤC CÂN THEO TẢNG'));
