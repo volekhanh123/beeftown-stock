@@ -152,7 +152,7 @@ await nhom('3 · BỐN VAI CRM Y NHƯ TRƯỚC', async () => {
 // ===========================================================================
 await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
   const VAI = ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan', 'thu_ngan', 'marketing',
-               'may_chung', 'may_ipos', 'may_zalo', 'may_messenger'];
+               'may_chung', 'may_ipos', 'may_zalo', 'may_messenger', 'may_bao_dong'];
 
   for (const viec of Object.keys(QUYEN_KHO)) {
     const { rows: [{ ds }] } = await db.query(`select kho_vai_duoc($1)::text[] as ds`, [viec]);
@@ -203,7 +203,7 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
        QUYEN_KHO[viec].includes(vai) === mong);
   }
   const { rows: [{ n: soVai }] } = await db.query(`select count(*)::int as n from unnest(enum_range(null::vai_tro))`);
-  ok('Bảng có đủ 11 vai để tra (khớp enum vai_tro)', VAI.length === 11 && soVai === 11, `enum có ${soVai}`);
+  ok('Bảng có đủ 12 vai để tra (khớp enum vai_tro)', VAI.length === 12 && soVai === 12, `enum có ${soVai}`);
   // 0048: may_zalo (máy gửi tin Zalo) không có việc kho nào — cả ở database lẫn bản soi gương.
   ok('may_zalo không có việc kho nào', Object.keys(QUYEN_KHO).every(v => !QUYEN_KHO[v].includes('may_zalo')));
   // 0052: may_messenger (bot Messenger) cũng vậy.
@@ -212,6 +212,12 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
     `select count(*)::int as n from unnest($1::text[]) v where 'may_messenger'::vai_tro = any(kho_vai_duoc(v))`,
     [Object.keys(QUYEN_KHO)]);
   ok('may_messenger không có việc kho nào trong database (kho_vai_duoc)', soViecMess === 0, `${soViecMess} việc`);
+  // 0056: may_bao_dong (việc chạy nền báo động) cũng vậy — nó chỉ gọi bốn RPC máy của 0057.
+  ok('may_bao_dong không có việc kho nào', Object.keys(QUYEN_KHO).every(v => !QUYEN_KHO[v].includes('may_bao_dong')));
+  const { rows: [{ n: soViecBaoDong }] } = await db.query(
+    `select count(*)::int as n from unnest($1::text[]) v where 'may_bao_dong'::vai_tro = any(kho_vai_duoc(v))`,
+    [Object.keys(QUYEN_KHO)]);
+  ok('may_bao_dong không có việc kho nào trong database (kho_vai_duoc)', soViecBaoDong === 0, `${soViecBaoDong} việc`);
   // Vai máy không được việc nào của người. Riêng việc may_chung (0034) chỉ có
   // đúng vai may_chung; việc dong_bo_ban (0037) là việc DUY NHẤT của may_ipos.
   for (const viec of Object.keys(QUYEN_KHO).filter(v => v !== 'may_chung' && v !== 'dong_bo_ban')) {
@@ -414,6 +420,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ipos_lo_cua_o', 'kho_ipos_lay_lo_cua_lo', 'kho_ipos_goi_theo_kg_lo',
     // 0054: giá sau giảm, các trigger chống trùng mã cân giữa món / ô / mã giảm
     'kho_gia_giam', 'kho_ma_giam_kiem', 'kho_o_ma_khong_trung_giam', 'kho_mat_hang_ma_can_khong_trung_giam',
+    // 0057: phần tính của kho_ipos_trang_thai, không kiểm quyền — máy báo động đọc qua suc_khoe_so_lieu
+    'kho_ipos_trang_thai_goc',
   ].sort();
 
   const { rows } = await db.query(`
