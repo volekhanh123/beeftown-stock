@@ -1,0 +1,117 @@
+---
+/**
+ * BẢNG SỨC KHỎE HỆ THỐNG — trên trang Tổng quan, cho chủ và quản lý.
+ *
+ * Mục có vấn đề (đỏ, vàng) hiện đủ: tên (bấm để mở màn xử lý), nhãn mức độ, câu vì sao và làm
+ * gì. Mục ổn và mục chưa bật gộp vào một dòng thu gọn — trang này trả lời "hôm nay còn vướng
+ * gì", không phải liệt kê thứ đang chạy tốt. Mở dòng đó ra thì thấy câu của từng mục.
+ *
+ * Màu và câu do lib/suc-khoe.ts quyết định; component chỉ vẽ. Không đọc được số liệu thì nói
+ * thẳng là không đọc được — không bao giờ để trống như thể mọi thứ đều ổn.
+ */
+import { bangSucKhoe, type KetQuaDoc } from '../lib/suc-khoe';
+import { dichNB, type NgonNguNB } from '../lib/ngon-ngu-noi-bo';
+
+interface Props {
+  ketQua: KetQuaDoc;
+  nn: NgonNguNB;
+  /** Chủ sở hữu: link Zalo mở thẳng màn cài đặt. */
+  laChu: boolean;
+}
+const { ketQua, nn, laChu } = Astro.props;
+
+const t = dichNB(nn, {
+  tieuDe:    { vi: 'Sức khỏe hệ thống', en: 'System health' },
+  luc:       { vi: (gio: string) => `Số liệu lúc ${gio}`, en: (gio: string) => `Data as of ${gio}` },
+  nhanDo:    { vi: 'Xử lý ngay', en: 'Act now' },
+  nhanVang:  { vi: 'Xem hôm nay', en: 'Check today' },
+  on:        { vi: 'Ổn', en: 'OK' },
+  chuaBat:   { vi: 'Chưa bật', en: 'Not in use' },
+});
+
+const bang = bangSucKhoe(ketQua, nn, laChu);
+const sk = bang.sk;
+const khoi = (sk?.khoi ?? []).map(k => ({
+  ...k,
+  canXem: k.den.filter(d => d.mau === 'do').concat(k.den.filter(d => d.mau === 'vang')),
+  on: k.den.filter(d => d.mau === 'xanh'),
+  tat: k.den.filter(d => d.mau === 'tat'),
+}));
+---
+<section class="sk" aria-labelledby="sk-tieu-de">
+  <h2 id="sk-tieu-de">{t.tieuDe}</h2>
+  {sk ? (
+    <>
+      <p class="sk-tom"><span class={`sk-den ${bang.mau}`} aria-hidden="true"></span><span><strong>{bang.tom}</strong> <small>{t.luc(sk.gio)}</small></span></p>
+      {khoi.map(k => (
+        <div class="nb-the sk-khoi">
+          <h3>{k.ten}</h3>
+          {k.canXem.length > 0 && (
+            <ul class="sk-ds">
+              {k.canXem.map(d => (
+                <li>
+                  <span class={`sk-den ${d.mau}`} aria-hidden="true"></span>
+                  <div>
+                    {d.di ? <a href={d.di}><strong>{d.ten}</strong></a> : <strong>{d.ten}</strong>} <span class={`sk-nhan ${d.mau}`}>{d.mau === 'do' ? t.nhanDo : t.nhanVang}</span>
+                    <p>{d.cau}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {(k.on.length > 0 || k.tat.length > 0) && (
+            <details class="sk-gon">
+              <summary>{k.on.length > 0 && <span class="sk-cum"><span class="sk-nhom"><span class="sk-den xanh" aria-hidden="true"></span>{t.on}:</span> {k.on.map(d => d.ten).join(' · ')}</span>}{' '}{k.tat.length > 0 && <span class="sk-cum"><span class="sk-nhom"><span class="sk-den tat" aria-hidden="true"></span>{t.chuaBat}:</span> {k.tat.map(d => d.ten).join(' · ')}</span>}</summary>
+              <ul class="sk-ds sk-phu">
+                {k.on.concat(k.tat).map(d => (
+                  <li>
+                    <span class={`sk-den ${d.mau}`} aria-hidden="true"></span>
+                    <div>
+                      {d.di ? <a href={d.di}><strong>{d.ten}</strong></a> : <strong>{d.ten}</strong>}
+                      <p>{d.cau}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      ))}
+    </>
+  ) : (
+    <div class={`nb-bao ${bang.loai === 'chua_co_ham' ? 'luu-y' : 'loi'}`}><p>{bang.tom}</p></div>
+  )}
+</section>
+
+<style>
+  .sk-tom { display: flex; align-items: flex-start; gap: .55rem; margin: 0 0 .75rem; font-size: 1rem; }
+  .sk-tom small { color: var(--muc-nhat); font-size: .8rem; white-space: nowrap; }
+  .sk-khoi h3 { margin: 0 0 .5rem; font-size: .95rem; }
+  .sk-ds { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+  .sk-ds li { display: flex; gap: .6rem; align-items: flex-start; }
+  .sk-ds p { margin: .15rem 0 0; font-size: .88rem; overflow-wrap: anywhere; }
+  .sk-phu p { color: var(--muc-nhat); font-size: .82rem; }
+  .sk-phu { margin-top: .6rem; }
+  .sk-ds a { color: inherit; }
+  .sk-den {
+    flex: none; display: inline-block; width: .8rem; height: .8rem; border-radius: 50%;
+    margin-top: .3rem; background: var(--vach);
+  }
+  .sk-tom .sk-den { margin-top: .2rem; width: 1rem; height: 1rem; }
+  .sk-den.do   { background: var(--do); }
+  .sk-den.vang { background: var(--mu-tat); }
+  .sk-den.xanh { background: #1F7A4C; }
+  .sk-den.tat  { background: transparent; border: 2px solid var(--vach); }
+  .sk-nhan {
+    display: inline-block; font-size: .68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
+    padding: .15rem .45rem; border-radius: 4px; margin-left: .35rem; white-space: nowrap; vertical-align: .1em;
+  }
+  .sk-nhan.do   { background: var(--do); color: #fff; }
+  .sk-nhan.vang { background: var(--mu-tat); color: var(--than); }
+  .sk-gon { margin-top: .6rem; font-size: .85rem; }
+  .sk-gon summary { cursor: pointer; color: var(--muc-nhat); padding: .4rem 0; line-height: 1.8; }
+  .sk-cum { margin-right: .9rem; }
+  .sk-nhom { white-space: nowrap; }
+  .sk-cum .sk-den { margin: 0 .4rem 0 .15rem; vertical-align: -.05em; }
+  .sk-khoi .sk-ds + .sk-gon { border-top: 1px solid var(--vach); padding-top: .5rem; }
+</style>

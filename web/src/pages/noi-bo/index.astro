@@ -12,10 +12,16 @@
  * Con số đặt bàn và hồ sơ ứng tuyển là số ĐANG CHỜ NGƯỜI XỬ LÝ, không phải
  * tổng tích lũy. Rủi ro lớn nhất của cả hệ thống không phải nó hỏng, mà là
  * hồ sơ và yêu cầu nằm im trong database không ai mở.
+ *
+ * Bảng sức khỏe hệ thống (components/SucKhoeHeThong.astro, lib/suc-khoe.ts)
+ * đứng đầu trang cho chủ và quản lý: việc chạy nền có còn chạy, Zalo /
+ * Messenger / iPOS có hỏng, yêu cầu nào đã nằm im quá lâu.
  */
 import NoiBo from '../../layouts/NoiBo.astro';
+import SucKhoeHeThong from '../../components/SucKhoeHeThong.astro';
 import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo';
 import { moTaKhoa, tenKhungAnh } from '../../lib/cau-noi-bo';
+import { docSucKhoe } from '../../lib/suc-khoe';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
@@ -82,10 +88,14 @@ async function docView<T>(ten: string, cot: string): Promise<T[] | null> {
   } catch { return null; }
 }
 
+// Bảng sức khỏe (0055): chỉ chủ và quản lý — hàm database từ chối mọi vai khác.
+const xemSucKhoe = ['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro);
+
 const [
   congBoThieu, anhThieu, monVuong,
   banChoXacNhan, hoSoMoi, tinDangTuyen,
   dichCho, dichNoiDung,
+  sucKhoe,
 ] = await Promise.all([
   docView<{ khoa: string; mo_ta: string }>('v_cong_bo_con_thieu', 'khoa, mo_ta'),
   docView<{ ma: string; ten: string; bat_buoc: boolean }>('v_anh_con_thieu', 'ma, ten, bat_buoc'),
@@ -97,6 +107,7 @@ const [
   // thứ khác, còn dữ kiện thì chỉ dịch khi có người bấm Công bố lại.
   dem('v_viec_dich', (q: any) => q.neq('bang', 'noi_dung_cong_bo')),
   dem('v_viec_dich', (q: any) => q.eq('bang', 'noi_dung_cong_bo')),
+  xemSucKhoe ? docSucKhoe(client) : Promise.resolve(null),
 ]);
 
 const anhBatBuocThieu = anhThieu?.filter(a => a.bat_buoc) ?? [];
@@ -157,6 +168,8 @@ const viec = [
 <NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
   <h1>{t.chao(nhanSu.ho_ten.split(' ').slice(-1)[0])}</h1>
   <p class="nb-dan">{t.dan}</p>
+
+  {sucKhoe && <SucKhoeHeThong ketQua={sucKhoe} nn={nn} laChu={nhanSu.vai_tro === 'chu_so_huu'} />}
 
   <h2>{t.dangCho}</h2>
   <div style="display:grid;gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))">

@@ -128,6 +128,30 @@ Mỗi trang kho lấy ngôn ngữ từ `k.nn` (`moTrangKho`). `crm/test/test-kho
 
 ---
 
+## Sức khỏe hệ thống (đầu trang Tổng quan)
+
+Chủ và quản lý mở `/noi-bo` là thấy ngay phần nào đang hỏng, thay vì đợi khách báo. Trước đây việc chạy nền 5 phút dừng (ví dụ mất bí mật Worker sau một lần deploy) thì chỉ có log của Worker biết.
+
+- **Database** (`suc_khoe_he_thong()`, migration `0055`) chỉ trả số đếm và mốc giờ, không bảng mới, không dữ liệu cá nhân, không câu lỗi thô. Chủ thấy mọi chi nhánh đang hoạt động, quản lý thấy chi nhánh của mình.
+- **Màu và câu vi/en** do `src/lib/suc-khoe.ts` quyết định; `src/components/SucKhoeHeThong.astro` chỉ vẽ. Ngưỡng so với mốc giờ (nhịp tim, lỗi mới, im lặng) nằm ở đầu file đó; ngưỡng đếm (2 / 24 giờ, 2 / 7 ngày, 30 phút tin kẹt) nằm trong SQL của `0055`.
+
+| Đèn | Đỏ — xử lý ngay | Vàng — xem hôm nay |
+|---|---|---|
+| Bộ gửi tin Zalo | quá 30 phút không có lượt gửi nào CHẠY XONG (tính từ lúc bật — `bat_luc`, không phải `updated_at`, vì lượt nào bắt đầu cũng làm mới nó); lượt gần nhất lỗi | chế độ thử — khách thật chưa nhận gì |
+| Bot Messenger | tin gần nhất của khách bị lỗi, trong 60 phút qua | có lỗi trong 7 ngày; bật mà 72 giờ không nhận được tin nào (tính từ tin gần nhất hoặc lúc bật — sửa lời chào không xóa cảnh báo) |
+| Máy dịch | — | ô máy tự dịch bị lỗi quá 15 phút (không tính dữ kiện công bố — nó có dòng việc riêng trên trang) |
+| Đặt bàn (từng chi nhánh) | yêu cầu đã qua giờ hẹn / chưa tới hẹn mà chờ quá 24 giờ; form mở mà chi nhánh chưa có bàn | chờ 2–24 giờ (ba nhóm không chồng nhau) |
+| iPOS | quá 30 phút không có lượt cron TỰ CHẠY XONG; đèn đỏ của màn Kết nối iPOS | chưa cấu hình đủ; đèn vàng của màn Kết nối iPOS |
+| Sổ kho | lô có tồn lệch sổ kho (dữ liệu đã sai — báo người quản trị kỹ thuật) | — |
+| Tin Zalo | tin giao dịch đến hạn quá 30 phút mà chưa gửi | tin đến hạn trong 24 giờ qua mà hỏng / bị từ chối |
+| Hồ sơ ứng tuyển | chưa ai mở quá 7 ngày | chưa ai mở 2–7 ngày |
+
+Xám = chưa bật / chưa dùng. **Không đọc được số liệu thì bảng nói thẳng là không đọc được** — không bao giờ hiện "mọi thứ đang chạy tốt" khi không biết. Database chưa chạy `0055` thì bảng báo cần migration đó.
+
+Bảng chỉ hiện khi có người mở trang — chưa có kênh báo tự động (Telegram / email / Zalo). Khi chọn kênh, việc báo dùng lại `danhGiaSucKhoe()` để cùng ngưỡng với bảng. Hàm database hiện từ chối mọi tài khoản máy, nên việc chạy nền muốn đọc số liệu phải được mở quyền có kiểm soát trong một migration mới.
+
+Thêm việc chạy nền hay dịch vụ ngoài mới: xem mục 9 của `CLAUDE.md`.
+
 ## Bản dịch tự động (tiếng Anh và tiếng Hàn)
 
 Tiếng Việt là bản gốc duy nhất người ta soạn. Bản tiếng Anh và tiếng Hàn do **Gemini** dịch mỗi khi câu tiếng Việt đổi, rồi lên trang ngay — sau khi qua **đúng bộ lọc chữ cấm** mà `npm run quet` dùng (`src/lib/chuoi-cam.js`). Bộ lọc có cả mẫu tiếng Anh và tiếng Hàn: máy dịch rất hay biến "nướng tại bàn" thành 숯불구이 (nướng than), trong khi nhà hàng nướng vỉ gas.

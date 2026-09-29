@@ -203,6 +203,8 @@ const CHAY_DA_DANG_NHAP = [
   // Bản dịch tự động (0036) — gọi từ màn soạn tin, màn công tắc và middleware
   // của /noi-bo, luôn bằng client của nhân sự đang đăng nhập.
   'web/src/lib/ban-dich.ts',
+  // Bảng sức khỏe hệ thống (0055) — chỉ gọi từ trang Tổng quan /noi-bo, cho chủ và quản lý.
+  'web/src/lib/suc-khoe.ts',
 ];
 
 function laAnon(g) {
