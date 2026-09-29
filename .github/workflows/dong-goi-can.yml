@@ -1,10 +1,11 @@
 # Đóng gói Beeftown Cân — ra file BeeftownCan.exe để tải về từ GitHub, không cần gõ lệnh.
 #
-#   · Main nhận commit đụng can-app/ hoặc web/src/lib/ (file .exe gói cả mã dùng chung ở đó: can-tma.ts,
-#     danh-muc-can.ts, gio-vn.ts, câu tiếng Anh…): kiểm thử → đóng gói → artifact "BeeftownCan-<phiên bản>"
-#     (PHIEN_BAN trong can-app/src/main.ts). Phiên bản chưa có Release thì tạo Release "Beeftown Cân <phiên bản>"
-#     kèm file zip — Release giữ mãi.
-#   · PR đụng can-app/: kiểm thử và đóng gói thử, bắt lỗi đóng gói trước khi gộp. KHÔNG tải file lên.
+#   · Main nhận commit đụng thứ đi vào file .exe — can-app/, mã dùng chung trong web/src/lib/ (can-tma.ts,
+#     danh-muc-can.ts, gio-vn.ts, câu tiếng Anh…), ảnh biểu tượng dong-goi.ts đọc: kiểm thử → đóng gói → artifact
+#     "BeeftownCan-<phiên bản>" (PHIEN_BAN trong can-app/src/main.ts). Phiên bản chưa có Release thì tạo Release
+#     "Beeftown Cân <phiên bản>" kèm file zip — Release giữ mãi.
+#   · PR đụng cùng những chỗ đó: chỉ đóng gói thử, bắt lỗi đóng gói trước khi gộp (kiểm thử Beeftown Cân đã chạy
+#     ở kiem-thu.yml). KHÔNG tải file lên.
 #   · Chạy tay: Actions → Đóng gói Beeftown Cân → Run workflow. Gõ số PR (ví dụ 31) để lấy bản thử của PR
 #     trước khi gộp; để trống thì đóng gói nhánh chọn ở "Use workflow from".
 #
@@ -22,10 +23,13 @@ on:
     paths:
       - 'can-app/**'
       - 'web/src/lib/**'
+      - 'web/public/kho/bieu-tuong-192.png'
       - '.github/workflows/dong-goi-can.yml'
   pull_request:
-    paths:
+    paths:   # giống hệt push ở trên
       - 'can-app/**'
+      - 'web/src/lib/**'
+      - 'web/public/kho/bieu-tuong-192.png'
       - '.github/workflows/dong-goi-can.yml'
   workflow_dispatch:
     inputs:
@@ -46,7 +50,7 @@ concurrency:
 
 jobs:
   dong-goi:
-    name: Kiểm thử rồi đóng gói BeeftownCan.exe
+    name: Đóng gói BeeftownCan.exe
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -80,7 +84,8 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: web/.node-version
-          cache: npm
+          # Bản thử PR chạy mã chưa gộp trên nhánh main: không cho nó lưu bộ nhớ đệm npm mà lượt chính thức sẽ dùng lại.
+          cache: ${{ inputs.so_pr == '' && 'npm' || '' }}
           cache-dependency-path: can-app/package-lock.json
       - name: Cài thư viện
         working-directory: can-app
@@ -109,6 +114,8 @@ jobs:
           } >> "$GITHUB_OUTPUT"
           echo "Beeftown Cân $PHIEN_BAN → $TEN"
       - name: Kiểm thử Beeftown Cân (cân giả, kho giả)
+        # Lượt PR không tải file lên, và kiem-thu.yml đã chạy đúng kiểm thử này trên PR.
+        if: github.event_name != 'pull_request'
         working-directory: can-app
         run: npx bun test/thu.ts
       - name: Đóng gói BeeftownCan.exe (Bun tự tải bộ chạy cho Windows)
@@ -141,6 +148,7 @@ jobs:
           name: ${{ steps.ten.outputs.ten }}
           path: can-app/dist/BeeftownCan.exe
           if-no-files-found: error
+          overwrite: true   # bấm "Re-run" một lượt đã tải lên thì thay file của chính lượt đó
           # Bản chính thức chỉ còn một (job phat-hanh xoá bản cũ), nên giữ lâu cũng không tốn thêm.
           retention-days: ${{ env.CHINH_THUC == 'true' && 90 || 7 }}
       - name: Ghi cách tải vào Summary
@@ -161,7 +169,7 @@ jobs:
             if [ "$SU_KIEN" = pull_request ]; then
               echo "## ✅ Beeftown Cân $PHIEN_BAN — đóng gói được (lượt kiểm PR #$PR_SU_KIEN)"
               echo
-              echo "Kiểm thử đạt, đóng gói ra \`BeeftownCan.exe\` $MB MB. Lượt kiểm PR **không tải file lên** (tiết kiệm dung lượng)."
+              echo "Đóng gói ra \`BeeftownCan.exe\` $MB MB, đúng file chạy Windows. Lượt kiểm PR **không tải file lên** (tiết kiệm dung lượng); kiểm thử Beeftown Cân chạy ở workflow **Kiểm thử**."
               echo
               echo "Muốn tải bản thử của PR này: tab **Actions** → **Đóng gói Beeftown Cân** → **Run workflow** → ô số PR gõ **$PR_SU_KIEN** → **Run workflow**."
             else
@@ -212,12 +220,21 @@ jobs:
             echo "::error::Job dong-goi không trả về phiên bản / tên file."
             exit 1
           fi
-          if gh release view "can-v$PHIEN_BAN" > /dev/null 2>&1; then
+          # Chỉ "release not found" mới là chưa có. Lỗi khác (mạng, GitHub 5xx) thì dừng, không đoán.
+          if HOI=$(gh release view "can-v$PHIEN_BAN" --json tagName 2>&1); then
             echo "co=true" >> "$GITHUB_OUTPUT"
             echo "Beeftown Cân $PHIEN_BAN đã có Release — không tạo lại. Muốn có Release mới: tăng PHIEN_BAN trong can-app/src/main.ts." \
               | tee -a "$GITHUB_STEP_SUMMARY"
-          else
+          elif [[ "$HOI" == *"release not found"* ]]; then
+            # Tag còn mà Release đã bị xoá: tạo Release lúc này sẽ gắn file mới vào commit cũ của tag.
+            if gh api "repos/$GH_REPO/git/ref/tags/can-v$PHIEN_BAN" > /dev/null 2>&1; then
+              echo "::error::Tag can-v$PHIEN_BAN còn mà Release đã bị xoá. Muốn tạo lại Release: xoá tag đó (trang repo → Tags) rồi chạy lại; hoặc tăng PHIEN_BAN."
+              exit 1
+            fi
             echo "co=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::Không hỏi được GitHub phiên bản $PHIEN_BAN đã có Release chưa: $HOI"
+            exit 1
           fi
       - name: Lấy file vừa đóng gói
         if: steps.da-co.outputs.co == 'false'
@@ -243,15 +260,19 @@ jobs:
                    --title "Beeftown Cân $PHIEN_BAN" --notes-file ghi-chu.md)
           echo "📦 Đã tạo Release [Beeftown Cân $PHIEN_BAN]($LINK) kèm $TEN.zip — giữ mãi." | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Tab Actions chỉ giữ bản chính thức mới nhất
+        # Tạo Release hỏng thì vẫn dọn: file của lượt này đã tải lên xong ở job dong-goi.
+        if: ${{ !cancelled() }}
         run: |
           # Bản chính thức tên đúng "BeeftownCan-<số>.<số>.<số>"; bản thử có thêm "-thu-…" nên không bị đụng.
-          gh api --paginate "repos/$GH_REPO/actions/artifacts?per_page=100" \
+          # Chỉ xoá bản của lượt CŨ HƠN (số lượt nhỏ hơn): bấm "Re-run" một lượt cũ không được xoá bản mới nhất.
+          # Đọc hết danh sách rồi mới xoá — xoá trong lúc đang lật trang làm trang sau lệch, sót bản cũ.
+          CU=$(gh api --paginate "repos/$GH_REPO/actions/artifacts?per_page=100" \
             | jq -r --argjson luot "$GITHUB_RUN_ID" '.artifacts[]
                 | select(.expired | not)
                 | select(.name | test("^BeeftownCan-[0-9]+[.][0-9]+[.][0-9]+$"))
-                | select(.workflow_run.id != $luot)
-                | .id' \
-            | while read -r ID; do
-                gh api -X DELETE "repos/$GH_REPO/actions/artifacts/$ID"
-                echo "Đã xoá artifact cũ $ID"
-              done
+                | select(.workflow_run.id < $luot)
+                | .id')
+          for ID in $CU; do
+            gh api -X DELETE "repos/$GH_REPO/actions/artifacts/$ID"
+            echo "Đã xoá artifact cũ $ID"
+          done

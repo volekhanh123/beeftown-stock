@@ -102,7 +102,7 @@ Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô 
 | Mở / cập nhật PR | `kiem-thu.yml`: database, kho, Zalo, Messenger, Beeftown Cân; web: astro check, build, đóng gói thử, chữ cấm, trình duyệt | ~10 phút |
 | Main nhận commit | như PR, rồi comment vào PR đang mở nào vừa bị trùng số migration | ~10 phút |
 | 00:30 giờ VN mỗi đêm | toàn bộ với `TZ=Asia/Ho_Chi_Minh` + quét chữ cấm trên beeftown.vn thật | ~10 phút |
-| Main đổi `can-app/` hoặc `web/src/lib/`; PR đổi `can-app/`; chạy tay (gõ số PR) | `dong-goi-can.yml`: kiểm thử Beeftown Cân rồi đóng gói `BeeftownCan.exe` → artifact (PR chỉ kiểm, không tải lên), Release khi `PHIEN_BAN` mới | ~2 phút |
+| Main hoặc PR đổi `can-app/`, `web/src/lib/`; chạy tay (gõ số PR) | `dong-goi-can.yml`: kiểm thử Beeftown Cân rồi đóng gói `BeeftownCan.exe` → artifact, Release khi `PHIEN_BAN` mới (PR: chỉ đóng gói thử, không tải lên) | ~2 phút |
 
 Kết quả: tab Actions → lượt chạy → **Summary** (bảng từng file, số migration kế tiếp).
 CI chạy Node 24 (`web/.node-version`); máy cần Node ≥ 22.18 để đọc thẳng file `.ts`.

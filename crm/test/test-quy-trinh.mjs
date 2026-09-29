@@ -127,16 +127,30 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
   // rồi đưa lên Releases là đưa bản hỏng ra quán. Tên artifact và Release lấy từ dòng PHIEN_BAN của main.ts.
   const goi = existsSync(join(GOC, '.github/workflows/dong-goi-can.yml'))
     ? readFileSync(join(GOC, '.github/workflows/dong-goi-can.yml'), 'utf8') : '';
-  const viTriThu = goi.search(/bun test\/thu\.ts/), viTriGoi = goi.search(/bun scripts\/dong-goi\.ts/);
+  // Tìm trên dòng "run:", không phải chữ bất kỳ — chú thích nhắc tên lệnh không được làm lệch thứ tự.
+  const viTriThu = goi.search(/run: npx bun test\/thu\.ts/), viTriGoi = goi.search(/run: npx bun scripts\/dong-goi\.ts/);
   ok('Workflow đóng gói Beeftown Cân chạy kiểm thử TRƯỚC khi đóng gói', viTriThu >= 0 && viTriGoi > viTriThu,
-     viTriThu < 0 ? 'không thấy bun test/thu.ts' : viTriGoi < 0 ? 'không thấy bun scripts/dong-goi.ts' : 'đóng gói đứng trước kiểm thử');
+     viTriThu < 0 ? 'không thấy run: npx bun test/thu.ts' : viTriGoi < 0 ? 'không thấy run: npx bun scripts/dong-goi.ts' : 'đóng gói đứng trước kiểm thử');
+  // .exe gói cả mã dùng chung trong web/src/lib — đổi ở đó cũng phải đóng gói lại (main) và đóng gói thử (PR).
+  const duongDan = khoi => (goi.match(new RegExp(`\\n  ${khoi}:\\n(?:    .*\\n)*?    paths:.*\\n((?:      - .*\\n)+)`))?.[1] ?? '');
   const BUOC_GOI = [
-    ['chạy khi main đổi can-app/', /push:\s*\n\s*branches: \[main\]\s*\n\s*paths:\s*\n(?:\s*- .*\n)*?\s*- 'can-app\/\*\*'/],
-    ['chạy tay (Run workflow)', /workflow_dispatch:/],
-    ['tải lên thành artifact', /actions\/upload-artifact@/],
+    ['main đổi can-app/', duongDan('push').includes("'can-app/**'") && /\n  push:\n    branches: \[main\]\n/.test(goi)],
+    ['main đổi web/src/lib/', duongDan('push').includes("'web/src/lib/**'")],
+    ['PR đổi can-app/, web/src/lib/', duongDan('pull_request').includes("'can-app/**'") && duongDan('pull_request').includes("'web/src/lib/**'")],
+    ['chạy tay (Run workflow)', /\n  workflow_dispatch:\n/.test(goi)],
+    ['tải lên thành artifact', /uses: actions\/upload-artifact@/.test(goi)],
   ];
-  const thieuGoi = BUOC_GOI.filter(([, m]) => !m.test(goi)).map(([t]) => t);
+  const thieuGoi = BUOC_GOI.filter(([, co]) => !co).map(([t]) => t);
   ok('Workflow đóng gói Beeftown Cân còn đủ các bước', thieuGoi.length === 0, `thiếu: ${thieuGoi.join(', ')}`);
+  // Job phat-hanh có quyền ghi (tạo Release, xoá artifact). Lượt "bản thử PR" chạy mã chưa gộp trong job dong-goi,
+  // nên điều kiện mở job phat-hanh chỉ được đọc từ ngữ cảnh GitHub — không từ needs.* / steps.* (mã chưa gộp ghi được) —
+  // và phải trùng khít CHINH_THUC của job dong-goi, nếu không tên artifact và việc tạo Release lệch nhau.
+  const chinhThuc = goi.match(/\n      CHINH_THUC: \$\{\{ (.+) \}\}\n/)?.[1];
+  const moPhatHanh = goi.match(/\n  phat-hanh:\n(?:    .*\n|\s*\n)*?    if: (.+)\n/)?.[1];
+  ok('Job phat-hanh (quyền ghi) chỉ mở cho bản chính thức, theo điều kiện đọc thẳng từ GitHub',
+     !!chinhThuc && moPhatHanh === chinhThuc && !/needs\.|steps\./.test(moPhatHanh)
+       && ["github.ref == 'refs/heads/main'", "github.event_name != 'pull_request'", "inputs.so_pr == ''"].every(d => moPhatHanh.includes(d)),
+     `CHINH_THUC: ${chinhThuc} · if của phat-hanh: ${moPhatHanh}`);
   const dongPhienBan = readFileSync(join(GOC, 'can-app', 'src', 'main.ts'), 'utf8').match(/^const PHIEN_BAN = '\d+\.\d+\.\d+';/gm) ?? [];
   ok('can-app/src/main.ts có đúng một dòng PHIEN_BAN mà workflow đóng gói đọc được', dongPhienBan.length === 1,
      `${dongPhienBan.length} dòng — cần đúng một dòng dạng  const PHIEN_BAN = '2.1.0';  (tên artifact, Release lấy từ đây)`);
