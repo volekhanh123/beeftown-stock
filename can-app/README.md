@@ -99,6 +99,10 @@ lên file cũ. Cài đặt, đăng nhập, file gốc của cân không mất �
 Dựng lại từ phần mềm TM-xA của hãng (đọc mã dịch ngược, không chạy). Tài liệu kỹ thuật đầy đủ (định dạng file,
 giao thức, bảng mã tem, bảng "đã thử / chưa thử"): **`CAN-TMA.md`**.
 
+**2.2.1** (sửa sau rà soát, PR #34): không gửi lại khối giờ cũ (đồng hồ cân không bị lùi); hàng mới không thừa hưởng
+HSD của món khác; nhật ký qua WiFi đọc tiếp từ giao dịch mới nhất sau khi cân đếm lại số; một giao dịch đọc qua USB
+rồi WiFi không bị lưu hai lần; ô cổng hai chiều để trống thì về 33581. Bản **2.2.0** ở Releases chưa có các sửa này.
+
 | Việc | Đường | Mã | Đã thử trên cân thật? |
 |---|---|---|---|
 | Gửi giá / tên (2.1) | TCP 33571, file như USB | `nghiep-vu.ts` `guiTcp` | **Đã thử** (26/09/2026): chỉ thêm / sửa, không xoá |

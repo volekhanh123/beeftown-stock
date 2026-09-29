@@ -1983,7 +1983,7 @@
     try {
       await goi('/api/cau-hinh', { ipCan: ipDangSua ? f.ipCan.value : undefined, congCan: Number(f.congCan.value), diaChiKho: f.diaChiKho.value,
         tuGui: f.tuGui.checked, chiNhanhId: trangThai && trangThai.nguoi && trangThai.nguoi.cacChiNhanh.length > 1 ? f.chiNhanhId.value : undefined,
-        congHaiChieu: f.congHaiChieu.value.trim() ? Number(f.congHaiChieu.value) : undefined });
+        congHaiChieu: f.congHaiChieu.value.trim() ? Number(f.congHaiChieu.value) : null });
       ipDangSua = false;
       baoChung('xong', 'Đã lưu cài đặt.'); await taiTrangThai();
     } catch (err) { baoChung('loi', e(err.message)); }

@@ -81,7 +81,7 @@ import {
   type GioCan, type KetNoiCan, type ThongTinCan, type TuyChonKetNoi,
 } from './giao-thuc.ts';
 import {
-  docKhoNhatKy, docNhatKy, ghiChuDong, ghiKhoNhatKy, gopNhatKy, khoa as khoaNhatKy, nhatKyTuFile, pluLucDocTuDong, sangCsv, tomTatNhatKy,
+  docKhoNhatKy, docNhatKy, ghiChuDong, ghiKhoNhatKy, gopNhatKy, khoa as khoaNhatKy, macTuDong, nhatKyTuFile, pluLucDocTuDong, sangCsv, tomTatNhatKy,
   tuyChonTuThongSo, type DongBanCan, type KetQuaNhatKy, type SuKienCan, type TomTatNhatKy,
 } from './bao-cao-can.ts';
 import {
@@ -563,7 +563,8 @@ export class UngDung {
   // ---- cấu hình --------------------------------------------------------------
   cauHinh(): CauHinh { return docJson(this.fileCauHinh, CAU_HINH_MAC_DINH); }
 
-  luuCauHinh(moi: Partial<CauHinh>): CauHinh {
+  /** congHaiChieu: null = xoá trống ô → về mặc định (33581); undefined = không đổi. */
+  luuCauHinh(moi: Partial<Omit<CauHinh, 'congHaiChieu'>> & { congHaiChieu?: number | null }): CauHinh {
     const cu = this.cauHinh();
     const ip = String(moi.ipCan ?? cu.ipCan).trim();
     if (!LA_IP.test(ip)) throw new LoiCan('Địa chỉ cân phải có dạng 192.168.1.22.');
@@ -572,16 +573,17 @@ export class UngDung {
     let kho = String(moi.diaChiKho ?? cu.diaChiKho).trim().replace(/\/+$/, '');
     if (!/^https?:\/\//i.test(kho)) kho = 'https://' + kho;
     const doiKho = kho !== cu.diaChiKho;
-    const congHc = moi.congHaiChieu === undefined ? undefined : Number(moi.congHaiChieu);
-    if (congHc !== undefined && (!Number.isInteger(congHc) || congHc < 1 || congHc > 65535)) {
+    const congHc = moi.congHaiChieu === undefined || moi.congHaiChieu === null ? moi.congHaiChieu : Number(moi.congHaiChieu);
+    if (typeof congHc === 'number' && (!Number.isInteger(congHc) || congHc < 1 || congHc > 65535)) {
       throw new LoiCan('Cổng hai chiều của cân là một số, thường là 33581.');
     }
     const kq: CauHinh = {
       ...cu, ipCan: ip, congCan: cong, diaChiKho: kho,
       ...(moi.chiNhanhId !== undefined ? { chiNhanhId: moi.chiNhanhId || undefined } : {}),
       ...(moi.tuGui !== undefined ? { tuGui: moi.tuGui === true } : {}),
-      ...(congHc !== undefined ? { congHaiChieu: congHc } : {}),
+      ...(typeof congHc === 'number' ? { congHaiChieu: congHc } : {}),
     };
+    if (congHc === null) delete kq.congHaiChieu;
     if (doiKho) { delete kq.supabaseUrl; delete kq.anonKey; this.client = null; }
     // Người chọn cân khác: mã máy cũ không còn đúng — lần nối được tới sẽ nhớ lại.
     if (ip !== cu.ipCan) delete kq.macCan;
@@ -1579,8 +1581,7 @@ export class UngDung {
 
   /** Nhật ký trong một file cân: MAC ở dòng INM; file không có INM thì dùng mã máy cân đã nhớ (bảng ARP). */
   private nhatKyCuaFile(f: FileCan): KetQuaNhatKy {
-    const coInm = f.dong.some(d => /^INM\t[0-9A-Fa-f]{12}\t/.test(d));
-    return nhatKyTuFile(f, coInm ? undefined : this.cauHinh().macCan);
+    return nhatKyTuFile(f, macTuDong(f.dong) ? undefined : this.cauHinh().macCan);
   }
 
   /**
@@ -1608,8 +1609,14 @@ export class UngDung {
       doc = await this.motLuc(async () => {
         const r = await this.voiKetNoi(async (kn) => {
           const mac = kn.thongTin.mac;
+          // Giao dịch MỚI NHẤT đã lưu (theo giờ của cân, cùng giờ thì số lớn hơn) — không phải số lớn nhất: sau khi cân
+          // đếm lại, số cũ lớn hơn số mới và lần đọc nào cũng phải đọc lại từ giao dịch 1.
           let cuoi: DongBanCan | null = null;
-          if (b.tuDau !== true) for (const d of this.docNhatKyDaLuu()) if (d.mac === mac && (!cuoi || d.fid > cuoi.fid)) cuoi = d;
+          if (b.tuDau !== true) {
+            for (const d of this.docNhatKyDaLuu()) {
+              if (d.mac === mac && (!cuoi || d.luc > cuoi.luc || (d.luc === cuoi.luc && d.fid > cuoi.fid))) cuoi = d;
+            }
+          }
           let tuFid = cuoi ? cuoi.fid : 1;
           let dong = await kn.docBaoCao(tuFid);
           const loiThem: string[] = [];

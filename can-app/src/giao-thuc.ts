@@ -265,6 +265,18 @@ export function kiemKhoiGhi(dong: string[]): void {
   if (soKhoi === 0) throw loiChan('không có khối DWL/CLR nào');
 }
 
+/**
+ * Mã máy trong dòng INM (đã tách cột): cột 2, như hãng đọc qua mạng (NetForm.cs:2088–2100). "ZZZZ…" (cân không có
+ * mã) → '000000000000'; cột 2 không phải 12 số hex → '' (người gọi tự chọn mã khác). Đường WiFi và đường file USB
+ * (bao-cao-can.ts) cùng dùng hàm này, để một giao dịch đọc qua hai đường có cùng khoá nhật ký — phần mềm hãng thì
+ * lệch: nhập file USB theo cột 1, nên sau "New MAC" nhật ký hai đường nằm ở hai cân khác nhau.
+ */
+export function macTuInm(f: readonly string[]): string {
+  const m = f[2] ?? '';
+  if (m.startsWith('ZZZZ')) return '000000000000';
+  return /^[0-9A-Fa-f]{12}$/.test(m) ? m.toUpperCase() : '';
+}
+
 /** Firmware từ 2.38 hỏi nhật ký bằng dấu trừ (§4.2, §5.10): từ thứ 3 của model, ký tự 1–4. */
 export function coDauTru(model: string): boolean {
   const tu = model.split(' ');
@@ -380,7 +392,8 @@ const TEN_PHAN: Record<PhanDoc, string> = {
 function docDongTim(f: string[]): GioCan | null {
   if (f.length < 7 || !f.slice(1, 7).every(x => LA_SO_NGUYEN.test(x))) return null;
   const [yy, thang, ngay, gio, phut, s] = f.slice(1, 7).map(x => parseInt(x, 10));
-  return { nam: yy + 2000, thang, ngay, gio, phut, giay: s };
+  // Hãng cộng 2000 (cân gửi năm 2 số); năm đã đủ 4 số thì giữ nguyên, như lucTuRep đọc nhật ký bán.
+  return { nam: yy < 100 ? yy + 2000 : yy, thang, ngay, gio, phut, giay: s };
 }
 const msCua = (g: GioCan) => Date.UTC(g.nam, g.thang - 1, g.ngay, g.gio, g.phut, g.giay);
 const hienGio = (g: GioCan) => {
@@ -527,9 +540,8 @@ class KetNoi implements KetNoiCan {
       if (!LA_SO_NGUYEN.test(inf[3])) throw loiDuLieu(ncInf, 'số máy trong dòng INF không phải số');
 
       // Dòng INM có mã máy thì dùng nó như hãng; mã lạ (không đủ 12 số hex) thì giữ mã ở dòng MAC.
-      const macInm = inm?.[2] ?? '';
-      if (macInm.startsWith('ZZZZ')) mac = '000000000000';
-      else if (/^[0-9A-Fa-f]{12}$/.test(macInm)) mac = macInm.toUpperCase();
+      const macInm = inm ? macTuInm(inm) : '';
+      if (macInm) mac = macInm;
 
       // Bảng mã: enc2 khi enc1 trống hay trùng enc2, không thì enc1; enc2 trống = cân không báo (§4.2).
       const enc1 = ina?.[1] ?? '', enc2 = ina?.[2] ?? '';

@@ -59,7 +59,9 @@ export type CheDoHong =
   /** Nhận DWL TIM nhưng không đổi giờ. */
   | { loai: 'bo-qua-gio' }
   /** Chèn các dòng này trước câu trả lời mỗi UPL <phần>. */
-  | { loai: 'chen-dong'; dong: string[] };
+  | { loai: 'chen-dong'; dong: string[] }
+  /** Dòng TIM ghi năm đủ 4 số ("2026") thay vì 2 số ("26") như hãng đọc. */
+  | { loai: 'nam-4-so' };
 
 export interface KetNoiGia {
   /** Các đoạn byte nhận được, theo thứ tự. */
@@ -266,7 +268,7 @@ export async function moCanGia(tuy: { du?: Partial<DuLieuCanGia>; hong?: CheDoHo
         if (h?.loai === 'hang-rao-cham') await nghi(h.ms);
         if (h?.loai === 'end-thua' && h.tim) await nghi(h.tim);
         const g = can.du.gio;
-        tra([`TIM\t${g.nam % 100}\t${g.thang}\t${g.ngay}\t${g.gio}\t${g.phut}\t${g.giay}\t`, 'END\tTIM\t']);
+        tra([`TIM\t${h?.loai === 'nam-4-so' ? g.nam : g.nam % 100}\t${g.thang}\t${g.ngay}\t${g.gio}\t${g.phut}\t${g.giay}\t`, 'END\tTIM\t']);
         can.lucTraTim = Date.now();
         return;
       }

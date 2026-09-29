@@ -1037,6 +1037,27 @@ console.log('6f · Sửa sau rà soát 2.2');
     const n2 = await thu(() => u.nhatKyCan({ nguon: 'wifi' }));
     ok('HỒI QUY: cân đếm lại số giao dịch → tự đọc lại từ giao dịch 1: thêm đủ 2 dòng mới, có câu báo "đếm lại"',
       n2?.doc?.soMoi === 2 && n2.tongDaLuu === 5 && n2.doc.tuFid === 1 && n2.doc.loi.some(l => /đếm lại/.test(l)), JSON.stringify(n2?.doc));
+    // Bán thêm giao dịch 3 sau khi đếm lại. Đã lưu có giao dịch 3 CŨ (28/9) — số lớn nhất không phải giao dịch mới nhất.
+    can.du.baoCao = [...can.du.baoCao, repF(3, 29, 11), resF(2, '400,3', '350400,3', '876000,3'), 'REE\t'];
+    const n3 = await thu(() => u.nhatKyCan({ nguon: 'wifi' }));
+    ok('HỒI QUY: sau khi cân đếm lại, lần đọc sau hỏi từ giao dịch MỚI NHẤT đã lưu (số 2 lúc 29/9 10:00), không đọc lại từ 1 và không báo "đếm lại"',
+      n3?.doc?.soMoi === 1 && n3.tongDaLuu === 6 && n3.doc.tuFid === 2 && !n3.doc.loi.some(l => /đếm lại/.test(l)), JSON.stringify(n3?.doc));
+    await can.dong();
+  }
+
+  console.log('6f7b · Nhật ký: cùng giao dịch đọc qua USB rồi qua WiFi không bị lưu hai lần');
+  {
+    const { can, u } = await moF(() => dmF('10001', '10002', '10003'));
+    // Dòng INM có mã hiện tại ([1]) khác mã gốc ([2]) — như sau "New MAC". Đường WiFi dùng [2] như hãng.
+    const INM_LECH = 'INM\t0023F01AECB2\t0023F01AECB1\t1\t';
+    can.du.inm = INM_LECH;
+    can.du.baoCao = GD_F.slice();
+    const usb = new TextEncoder().encode(new TextDecoder().decode(fileRepF(GD_F)).replace('INM\t0023F01AECB1\t0023F01AECB1\t0\t', INM_LECH));
+    const g = await thu(() => u.ghiNhanFileTuCan(usb));
+    ok('Ghi nhận file USB: 3 dòng nhật ký', (g?.nhatKy as { soMoi?: number } | null)?.soMoi === 3, JSON.stringify(g?.nhatKy));
+    const w = await thu(() => u.nhatKyCan({ nguon: 'wifi', tuDau: true }));
+    ok('HỒI QUY: đọc lại đúng các giao dịch đó qua WiFi → 0 dòng mới, vẫn 3 dòng (cùng MAC gốc ở cột 2 của INM, không cộng đôi doanh số)',
+      w?.doc?.soMoi === 0 && w.tongDaLuu === 3 && w.dong.every(d => d.mac === '0023F01AECB1'), JSON.stringify({ doc: w?.doc, mac: w?.dong.map(d => d.mac) }));
     await can.dong();
   }
 
@@ -1489,11 +1510,17 @@ if (!thuMucTam) {
   process.exit(1);
 }
 ok('Trạng thái: chưa có file gốc, cân mặc định 192.168.1.22', tt.ok && tt.goc === null && tt.cauHinh.ipCan === '192.168.1.22', JSON.stringify(tt));
-ok('Phiên bản 2.2.0', (tt as unknown as { phienBan: string }).phienBan === '2.2.0');
+ok('Phiên bản 2.2.1', (tt as unknown as { phienBan: string }).phienBan === '2.2.1');
 ok('Trang hướng dẫn của chương trình thật: có mã bí mật mới mở được', (await fetch(`${goc.origin}/huong-dan?t=${ma}`)).status === 200
   && (await fetch(`${goc.origin}/huong-dan`)).status === 403);
 const ch = await (await api('/api/cau-hinh', JSON.stringify({ ipCan: '127.0.0.1', congCan: congCan }))).json() as { ok: boolean };
 ok('Lưu cài đặt cân', ch.ok);
+const chHc = await (await api('/api/cau-hinh', JSON.stringify({ congHaiChieu: 33582 }))).json() as { cauHinh?: { congHaiChieu?: number } };
+const chRong = await (await api('/api/cau-hinh', JSON.stringify({ congHaiChieu: null }))).json() as { cauHinh?: { congHaiChieu?: number } };
+const chKhong = await (await api('/api/cau-hinh', JSON.stringify({ ipCan: '127.0.0.1' }))).json() as { cauHinh?: { congHaiChieu?: number } };
+ok('HỒI QUY: xoá trống ô cổng hai chiều rồi Lưu → về mặc định (33581), không giữ cổng gõ sai; không gửi ô đó thì giữ nguyên',
+  chHc.cauHinh?.congHaiChieu === 33582 && chRong.cauHinh?.congHaiChieu === undefined && chKhong.cauHinh?.congHaiChieu === undefined,
+  JSON.stringify([chHc.cauHinh?.congHaiChieu, chRong.cauHinh?.congHaiChieu]));
 const fc = await (await api('/api/file-tu-can', Buffer.from(fileUsb), 'application/octet-stream')).json() as { ok: boolean; soHang: number };
 ok('Tải file từ cân lên chương trình', fc.ok && fc.soHang === 3, JSON.stringify(fc));
 const hApi = await (await api('/api/hang')).json() as { ok: boolean; hang: unknown[]; coKho: boolean };

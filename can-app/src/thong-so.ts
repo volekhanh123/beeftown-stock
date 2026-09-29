@@ -512,8 +512,8 @@ export function fileNho(phienBan: string, khoi: string[]): Uint8Array<ArrayBuffe
 // PHÍM TẮT (SCP)
 // -----------------------------------------------------------------------------
 /**
- * Chữ in trên phím, theo số nhỏ ở góc phím (bàn phím có cột của cân TM-A): như TEN_PHIM của tem.ts nhưng
- * phím 58 là "_" (không phải gạch dài) và phím 37 là dấu "-" thường — đúng hình bàn phím của hãng.
+ * Chữ in trên phím, theo số nhỏ ở góc phím (bàn phím có cột của cân TM-A): phím 58 là "_" (không phải gạch
+ * dài) và phím 37 là dấu "-" thường — đúng hình bàn phím của hãng.
  * 64–73 là phím chức năng in sẵn (không gán hàng được).
  */
 export const NHAN_PHIM: string[] = ['',
