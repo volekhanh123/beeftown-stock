@@ -10,11 +10,13 @@
  *   · trên cân phải vào Prog → 4 → 3 (P43 RS-232) trước — cân chỉ nghe dây khi
  *     đang ở màn hình đó (sách hướng dẫn V3.04A, mục 5.6.3);
  *   · bắt tay: gửi "UPL<tab>TIM<tab>", đọc tới dòng END, gửi "UPL<tab>END<tab>";
- *     cân không trả lời = dây / tốc độ / màn hình P43 chưa đúng, không gửi gì;
+ *     cân không trả lời = dây / tốc độ / màn hình P43 chưa đúng, không gửi gì
+ *     (vẫn gửi "UPL<tab>END<tab>" để đóng lượt hỏi, như mọi lần hỏi);
  *   · gửi: một dòng trống rồi đúng nội dung file như gửi qua WiFi;
  *   · xác nhận: hãng không làm, chương trình này hỏi giờ thêm một lần sau khi gửi
- *     (như hàng rào của đường mạng) — cân trả lời = cân đã đọc hết dữ liệu trước
- *     đó. Không trả lời thì CHƯA CHẮC cân đã nhận.
+ *     (như hàng rào của đường mạng), đọc tới dòng END đứng SAU dòng TIM — cân trả
+ *     lời = cân đã nghe tới hết phần gửi (chưa nói cân lưu đúng hết: gọi thử hàng
+ *     trên cân). Không trả lời thì CHƯA CHẮC cân đã nhận.
  *
  * Mở cổng COM bằng PowerShell (System.IO.Ports.SerialPort có sẵn trong Windows),
  * không cài thêm gì. PowerShell chỉ làm đường ống theo một kịch bản (ghi byte,
@@ -52,7 +54,7 @@ export const chayPowerShell: ChayPs = (lenh, bien, choMs) => new Promise((xong, 
     { env: { ...process.env, ...bien }, windowsHide: true, timeout: choMs, maxBuffer: 8 * 1024 * 1024, encoding: 'utf8' },
     (loi, ra) => {
       // Đoạn lệnh báo lỗi bằng dòng LOI và thoát mã 2 — vẫn là kết quả đọc được.
-      if (/^﻿?(OK|LOI)(\t|\r?$)/m.test(ra ?? '')) xong(ra);
+      if (/^\uFEFF?(OK|LOI)(\t|\r?$)/m.test(ra ?? '')) xong(ra);
       else if (loi?.killed) hong(new LoiDay('Quá lâu không xong. Rút dây ra cắm lại rồi thử lại.'));
       else hong(new LoiDay(`Không chạy được PowerShell: ${loi?.message ?? 'không rõ lỗi'}`));
     });
@@ -80,11 +82,14 @@ export const LENH_DS = khung(String.raw`  foreach ($t in [System.IO.Ports.Serial
 /**
  * Chạy kịch bản BT_KICH_BAN trên cổng BT_COM, tốc độ BT_BAUD (cài như hãng: XOn/XOff, không DTR / RTS).
  * Kịch bản: các bước cách nhau bằng ";":
- *   GHI:<base64>  ghi các byte đó;
- *   GHITEP        ghi file BT_TEP, từng 1 KB;
- *   DOC:<ms>      đọc dòng (CR hay LF là hết dòng) tới dòng END đứng SAU một dòng TIM — in mỗi dòng thành
- *                 DONG<tab>bước<tab>base64; quá <ms> mà chưa tới thì in HET<tab>bước và dừng cả kịch bản.
- * Mỗi lần ghi chờ tối đa BT_CHO_KHOI mili giây (cân báo XOFF khi bận). Xong: chờ cổng đẩy hết rồi mới đóng.
+ *   GHI:<base64>        ghi các byte đó;
+ *   GHITEP              ghi file BT_TEP, từng 1 KB;
+ *   DOC:<ms>:<canTim>   đọc dòng (CR hay LF là hết dòng) tới dòng có cột đầu là END (canTim = 1: END phải đứng
+ *                       SAU một dòng TIM) — in mỗi dòng thành DONG<tab>bước<tab>base64; quá <ms> mà chưa tới thì
+ *                       in cả phần dòng dở (chữ lộn xộn khi sai tốc độ thường không có CR / LF), in HET<tab>bước,
+ *                       gửi "UPL<tab>END<tab>" để đóng lượt hỏi và dừng cả kịch bản.
+ * So chữ phân biệt hoa thường (-ceq), như TypeScript. Mỗi lần ghi chờ tối đa BT_CHO_KHOI mili giây (cân báo XOFF
+ * khi bận). Xong: chờ cổng đẩy hết rồi mới đóng.
  */
 export const LENH_KICH_BAN = khung(String.raw`  $buoc = $env:BT_KICH_BAN -split ';'
   $p = [System.IO.Ports.SerialPort]::new($env:BT_COM, [int]$env:BT_BAUD, [System.IO.Ports.Parity]::None, 8, [System.IO.Ports.StopBits]::One)
@@ -98,7 +103,7 @@ export const LENH_KICH_BAN = khung(String.raw`  $buoc = $env:BT_KICH_BAN -split 
     Start-Sleep -Milliseconds 200
     $p.DiscardInBuffer()
     for ($i = 0; $i -lt $buoc.Length -and -not $dung; $i++) {
-      $f = $buoc[$i] -split ':', 2
+      $f = $buoc[$i] -split ':'
       if ($f[0] -eq 'GHI') {
         $b = [Convert]::FromBase64String($f[1])
         $p.Write($b, 0, $b.Length)
@@ -109,6 +114,7 @@ export const LENH_KICH_BAN = khung(String.raw`  $buoc = $env:BT_KICH_BAN -split 
         $tong += $b.Length
       } elseif ($f[0] -eq 'DOC') {
         $het = [DateTime]::UtcNow.AddMilliseconds([int]$f[1])
+        $canTim = $f[2] -ceq '1'
         $dong = New-Object 'System.Collections.Generic.List[byte]'
         $coTim = $false
         $xong = $false
@@ -124,13 +130,20 @@ export const LENH_KICH_BAN = khung(String.raw`  $buoc = $env:BT_KICH_BAN -split 
                 $mang = $dong.ToArray()
                 'DONG' + [char]9 + $i + [char]9 + [Convert]::ToBase64String($mang)
                 $dau = ([System.Text.Encoding]::ASCII.GetString($mang) -split [char]9)[0]
-                if ($dau -eq 'TIM') { $coTim = $true } elseif ($dau -eq 'END' -and $coTim) { $xong = $true }
+                if ($dau -ceq 'TIM') { $coTim = $true } elseif ($dau -ceq 'END' -and ($coTim -or -not $canTim)) { $xong = $true }
                 $dong.Clear()
               }
             } else { $dong.Add($c) }
           }
         }
-        if (-not $xong) { 'HET' + [char]9 + $i; $dung = $true }
+        if (-not $xong) {
+          if ($dong.Count -gt 0) { 'DONG' + [char]9 + $i + [char]9 + [Convert]::ToBase64String($dong.ToArray()) }
+          'HET' + [char]9 + $i
+          $dung = $true
+          $b = [System.Text.Encoding]::ASCII.GetBytes('UPL' + [char]9 + 'END' + [char]9 + [char]13 + [char]10)
+          $p.Write($b, 0, $b.Length)
+          $tong += $b.Length
+        }
       }
     }
     $het = [DateTime]::UtcNow.AddSeconds(30)
@@ -144,7 +157,7 @@ export const LENH_KICH_BAN = khung(String.raw`  $buoc = $env:BT_KICH_BAN -split 
  * đầu dòng: Windows PowerShell 5.1 có máy vẫn in BOM trước dòng đầu.
  */
 export function docKetQua(ra: string, com: string): string {
-  const dong = ra.split(/\r?\n/).map(d => d.replace(/^﻿/, ''));
+  const dong = ra.split(/\r?\n/).map(d => d.replace(/^\uFEFF/, ''));
   const loi = dong.find(d => d.startsWith('LOI\t'));
   if (loi) {
     const [, loai = '', cau = ''] = loi.split('\t');
@@ -166,7 +179,7 @@ export function docDsCom(ra: string): CongCom[] {
   docKetQua(ra, 'COM');
   const moTa = new Map<string, string>();
   const ten = new Set<string>();
-  for (const d of ra.split(/\r?\n/).map(x => x.replace(/^﻿/, ''))) {
+  for (const d of ra.split(/\r?\n/).map(x => x.replace(/^\uFEFF/, ''))) {
     const [loai, gt = ''] = d.split('\t');
     // Vài driver trả tên dính ký tự lạ ở cuối ("COM3\0") — chỉ lấy COMn.
     const m = loai === 'COM' ? /^COM\d{1,3}/i.exec(gt.trim()) : loai === 'TEN' ? /\((COM\d{1,3})\)/i.exec(gt) : null;
@@ -199,18 +212,22 @@ export async function dsCongCom(chay: ChayPs = chayPowerShell): Promise<CongCom[
 // -----------------------------------------------------------------------------
 // KỊCH BẢN (trình tự như phần mềm hãng)
 // -----------------------------------------------------------------------------
-export type BuocDay = { ghi: string } | { ghiTep: true } | { doc: number };
+/** doc: chờ tối đa bao nhiêu mili giây; canTim: dòng END phải đứng sau một dòng TIM (không thì END nào cũng xong). */
+export type BuocDay = { ghi: string } | { ghiTep: true } | { doc: number; canTim: boolean };
 
 const b64 = (chu: string) => Buffer.from(chu, 'latin1').toString('base64');
 /** Kịch bản → chuỗi BT_KICH_BAN cho LENH_KICH_BAN. */
 export const chuoiKichBan = (buoc: BuocDay[]) =>
-  buoc.map(b => ('ghi' in b ? `GHI:${b64(b.ghi)}` : 'ghiTep' in b ? 'GHITEP' : `DOC:${b.doc}`)).join(';');
+  buoc.map(b => ('ghi' in b ? `GHI:${b64(b.ghi)}` : 'ghiTep' in b ? 'GHITEP' : `DOC:${b.doc}:${b.canTim ? 1 : 0}`)).join(';');
 
-/** Bắt tay như hãng: hỏi giờ, đọc tới END, báo xong. */
-export const BAT_TAY: BuocDay[] = [{ ghi: 'UPL\tTIM\t\r\n' }, { doc: CHO_BAT_TAY_MS }, { ghi: 'UPL\tEND\t\r\n' }];
-/** Gửi: bắt tay, một dòng trống, nội dung file, rồi hỏi giờ thêm một lần để biết cân đã đọc hết. */
+/** Bắt tay như hãng: hỏi giờ, đọc tới dòng END (dòng END nào cũng được, như hãng), báo xong. */
+export const BAT_TAY: BuocDay[] = [{ ghi: 'UPL\tTIM\t\r\n' }, { doc: CHO_BAT_TAY_MS, canTim: false }, { ghi: 'UPL\tEND\t\r\n' }];
+/**
+ * Gửi: bắt tay, một dòng trống, nội dung file, rồi hỏi giờ thêm một lần để biết cân đã nghe hết — lần này END phải
+ * đứng sau dòng TIM (như hàng rào đường mạng: cân có thể báo END cho các khối vừa nhận trước câu trả lời giờ).
+ */
 export const GUI_FILE: BuocDay[] = [...BAT_TAY, { ghi: '\r\n' }, { ghiTep: true },
-  { ghi: '\r\nUPL\tTIM\t\r\n' }, { doc: CHO_XAC_NHAN_MS }, { ghi: 'UPL\tEND\t\r\n' }];
+  { ghi: '\r\nUPL\tTIM\t\r\n' }, { doc: CHO_XAC_NHAN_MS, canTim: true }, { ghi: 'UPL\tEND\t\r\n' }];
 
 export interface KetQuaKichBan {
   /** Số byte đã ghi ra dây. */
@@ -226,7 +243,7 @@ export function docKichBan(ra: string, com: string): KetQuaKichBan {
   const soByte = Number(docKetQua(ra, com)) || 0;
   const dong: KetQuaKichBan['dong'] = [];
   let hetGio: number | null = null;
-  for (const d of ra.split(/\r?\n/).map(x => x.replace(/^﻿/, '').trimEnd())) {
+  for (const d of ra.split(/\r?\n/).map(x => x.replace(/^\uFEFF/, '').trimEnd())) {
     const c = d.split('\t');
     if (c[0] === 'DONG' && c.length === 3) dong.push({ buoc: Number(c[1]), chu: Buffer.from(c[2], 'base64').toString('latin1') });
     else if (c[0] === 'HET' && hetGio === null) hetGio = Number(c[1]);
@@ -242,13 +259,18 @@ export function gioTrongBuoc(kq: KetQuaKichBan, buoc: number): GioCan | null {
 
 const buocDoc = (kb: BuocDay[]) => kb.flatMap((b, i) => ('doc' in b ? [i] : []));
 
-/** Câu báo khi bắt tay không được: cân không trả lời, hay trả lời mà không đúng. */
+/** Câu báo khi bắt tay không được: cân im lặng, nghe chữ lộn xộn (sai tốc độ), hay chữ rõ mà không trọn câu. */
 function loiBatTay(kq: KetQuaKichBan, com: string, baud: number): LoiDay {
-  const nghe = kq.dong.filter(d => d.buoc === buocDoc(BAT_TAY)[0]);
-  if (nghe.length) {
-    const dau = nghe[0].chu.replace(/[^\x20-\x7e]/g, '·').slice(0, 40);
-    return new LoiDay(`Có nghe thấy cân qua ${com} nhưng không đúng câu trả lời (nhận "${dau}"). Thường là sai tốc độ: `
-      + `xem thông số 41 của cân (Prog → 1 → 2, SP.041: 5 = 9600) rồi chọn đúng tốc độ, thử lại.`);
+  const nghe = kq.dong.filter(d => d.buoc === buocDoc(BAT_TAY)[0]).map(d => d.chu).join('\n');
+  if (nghe) {
+    const dau = nghe.replace(/\n/g, ' ').replace(/[^\x20-\x7e]/g, '·').slice(0, 40);
+    const docDuoc = [...nghe].filter(c => /[\x20-\x7e\t\n]/.test(c)).length / nghe.length;
+    if (docDuoc < 0.9) {
+      return new LoiDay(`Có nghe thấy cân qua ${com} nhưng chữ lộn xộn (nhận "${dau}") — chưa gửi gì xuống cân. Thường là sai tốc độ: `
+        + `xem thông số 41 của cân (Prog → 1 → 2, SP.041: 5 = 9600) rồi chọn đúng tốc độ, thử lại.`);
+    }
+    return new LoiDay(`Cân có trả lời qua ${com} (dây và tốc độ có vẻ đúng) nhưng không trọn câu (nhận "${dau}") — chưa gửi gì xuống cân. `
+      + 'Trên cân vào lại Prog → 4 → 3 rồi thử lại; vẫn vậy thì chụp lại câu này gửi người làm chương trình.');
   }
   return new LoiDay(`Cân không trả lời qua ${com} (tốc độ ${baud}) trong ${Math.round(CHO_BAT_TAY_MS / 1000)} giây — chưa gửi gì xuống cân. `
     + 'Kiểm lần lượt: (1) trên cân bấm Prog → 4 → 3 (P43 RS-232) và để cân ở màn hình đó; (2) tốc độ khớp thông số 41 '
@@ -263,8 +285,10 @@ async function chayKichBan(com: string, baud: number, kb: BuocDay[], du: Uint8Ar
   try {
     const choKhoi = Math.max(CHO_XAC_NHAN_MS, giayDay(1024, baud) * 2000);
     const choDoc = kb.reduce((s, b) => s + ('doc' in b ? b.doc : 0), 0);
+    // Đủ cho: các bước đọc, đẩy hết file (gấp đôi), một lần cân giữ XOFF tới hết giờ ghi (để PowerShell tự báo đúng
+    // lỗi quá giờ thay vì bị cắt ngang), 30 giây chờ cổng đẩy hết, và PowerShell khởi động.
     const ra = await chay(LENH_KICH_BAN, { BT_COM: com, BT_BAUD: String(baud), BT_KICH_BAN: chuoiKichBan(kb), BT_TEP: tep,
-      BT_CHO_KHOI: String(choKhoi) }, choDoc + giayDay(du?.length ?? 0, baud) * 2000 + 60_000);
+      BT_CHO_KHOI: String(choKhoi) }, choDoc + giayDay(du?.length ?? 0, baud) * 2000 + choKhoi + 30_000 + 60_000);
     return docKichBan(ra, com);
   } finally {
     if (du) fs.rmSync(tep, { force: true });

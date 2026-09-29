@@ -522,19 +522,24 @@ console.log('6c · Dây RS232 (thử) — PowerShell giả');
     && !/DtrEnable|RtsEnable/.test(LENH_KICH_BAN));
   const kbChu = chuoiKichBan(GUI_FILE).split(';').map(b => (b.startsWith('GHI:') ? 'GHI:' + Buffer.from(b.slice(4), 'base64').toString('latin1') : b));
   ok('Trình tự gửi như hãng: hỏi giờ, đọc tới END, UPL END, dòng trống, file; rồi hỏi giờ thêm một lần để xác nhận',
-    JSON.stringify(kbChu) === JSON.stringify(['GHI:UPL\tTIM\t\r\n', 'DOC:5000', 'GHI:UPL\tEND\t\r\n', 'GHI:\r\n', 'GHITEP',
-      'GHI:\r\nUPL\tTIM\t\r\n', 'DOC:30000', 'GHI:UPL\tEND\t\r\n']), JSON.stringify(kbChu));
+    JSON.stringify(kbChu) === JSON.stringify(['GHI:UPL\tTIM\t\r\n', 'DOC:5000:0', 'GHI:UPL\tEND\t\r\n', 'GHI:\r\n', 'GHITEP',
+      'GHI:\r\nUPL\tTIM\t\r\n', 'DOC:30000:1', 'GHI:UPL\tEND\t\r\n']), JSON.stringify(kbChu));
+  ok('HỒI QUY: đoạn PowerShell so chữ phân biệt hoa thường (-ceq, như TypeScript), quá giờ thì in cả phần dòng dở '
+    + '(chữ lộn xộn thường không có CR / LF) và vẫn gửi UPL END để đóng lượt hỏi',
+    /\$dau -ceq 'TIM'/.test(LENH_KICH_BAN) && /\$dau -ceq 'END'/.test(LENH_KICH_BAN) && !/\$dau -eq/.test(LENH_KICH_BAN)
+    && /if \(-not \$xong\) \{\s*if \(\$dong\.Count -gt 0\) \{ 'DONG'/.test(LENH_KICH_BAN)
+    && /'HET' \+ \[char\]9 \+ \$i[\s\S]{0,80}\$dung = \$true[\s\S]{0,120}'UPL' \+ \[char\]9 \+ 'END'/.test(LENH_KICH_BAN));
   const TIM_DAY = 'TIM\t26\t9\t25\t16\t54\t12\t';
   const b64 = (chu: string) => Buffer.from(chu, 'latin1').toString('base64');
   const kqMau = docKichBan(`DONG\t1\t${b64(TIM_DAY)}\r\nDONG\t1\t${b64('END\tTIM\t')}\r\nOK\t42\r\n`, 'COM3');
   ok('Đọc kết quả kịch bản: dòng theo bước, số byte đã ghi, giờ trên cân', kqMau.soByte === 42 && kqMau.hetGio === null && kqMau.dong.length === 2
     && JSON.stringify(gioTrongBuoc(kqMau, 1)) === JSON.stringify({ nam: 2026, thang: 9, ngay: 25, gio: 16, phut: 54, giay: 12 }), JSON.stringify(kqMau));
-  ok('Đọc kết quả kịch bản: quá giờ ở bước 1 → hetGio 1; BOM đầu dòng không sao', docKichBan('﻿HET\t1\r\nOK\t10\r\n', 'COM3').hetGio === 1);
+  ok('Đọc kết quả kịch bản: quá giờ ở bước 1 → hetGio 1; BOM đầu dòng không sao', docKichBan('\uFEFFHET\t1\r\nOK\t10\r\n', 'COM3').hetGio === 1);
   ok('Thông số 41 → tốc độ (0 = 300, 5 = 9600, 9 = 115200; lạ → không biết)', tocDoTuThongSo('5') === 9600 && tocDoTuThongSo('9') === 115200
     && tocDoTuThongSo('0') === 300 && tocDoTuThongSo('10') === null && tocDoTuThongSo('x') === null && tocDoTuThongSo(undefined) === null);
 
   // PowerShell giả = cân giả ở đầu dây: chạy kịch bản BT_KICH_BAN như LENH_KICH_BAN.
-  type CheDoDay = 'tra-loi' | 'im-lang' | 'lon-xon' | 'khong-xac-nhan';
+  type CheDoDay = 'tra-loi' | 'im-lang' | 'lon-xon' | 'khong-xac-nhan' | 'chi-end' | 'chu-sach';
   let cheDo: CheDoDay = 'tra-loi';
   let traLoiKhac: ((bien: Record<string, string>) => string) | null = null;
   const goiPs: { lenh: string; bien: Record<string, string>; tep: Buffer | null }[] = [];
@@ -550,7 +555,14 @@ console.log('6c · Dây RS232 (thử) — PowerShell giả');
       else if (loai === 'DOC') {
         lanDoc++;
         if (cheDo === 'im-lang' || (cheDo === 'khong-xac-nhan' && lanDoc === 2)) { ra.push(`HET\t${i}`); break; }
-        if (cheDo === 'lon-xon') { ra.push(`DONG\t${i}\t${b64('øæx\u0012à')}`, `HET\t${i}`); break; }
+        if (cheDo === 'lon-xon') { ra.push(`DONG\t${i}\t${b64('\u00f8\u00e6x\u0012\u00e0')}`, `HET\t${i}`); break; }
+        if (cheDo === 'chu-sach') { ra.push(`DONG\t${i}\t${b64('ASK\tREP\t')}`, `HET\t${i}`); break; }
+        // Cân chỉ trả END (không có dòng TIM): bước bắt tay (canTim 0) nhận như hãng; bước xác nhận (canTim 1) thì không.
+        if (cheDo === 'chi-end') {
+          ra.push(`DONG\t${i}\t${b64('END\tTIM\t')}`);
+          if (b.endsWith(':1')) { ra.push(`HET\t${i}`); break; }
+          continue;
+        }
         ra.push(`DONG\t${i}\t${b64(TIM_DAY)}`, `DONG\t${i}\t${b64('END\tTIM\t')}`);
       }
     }
@@ -605,13 +617,22 @@ console.log('6c · Dây RS232 (thử) — PowerShell giả');
   cheDo = 'lon-xon';
   const loiLon = await loiCua(() => ud6.kiemTraDay({ com: 'COM4', baud: 9600 }));
   ok('Kiểm tra dây: nghe thấy chữ lộn xộn → báo có lẽ sai tốc độ, chỉ thông số 41', /sai tốc độ/.test(loiLon) && /SP\.041/.test(loiLon), loiLon);
+  cheDo = 'chu-sach';
+  const loiSach = await loiCua(() => ud6.kiemTraDay({ com: 'COM4', baud: 9600 }));
+  ok('HỒI QUY: nghe thấy chữ rõ mà không trọn câu → không đổ cho tốc độ (dây và tốc độ có vẻ đúng)',
+    /không trọn câu/.test(loiSach) && !/sai tốc độ/.test(loiSach), loiSach);
+  cheDo = 'chi-end';
+  const kEnd = await ud6.kiemTraDay({ com: 'COM4', baud: 9600 });
+  ok('Kiểm tra dây: cân chỉ trả END (không có dòng giờ) → vẫn là dây thông, như hãng; giờ null', kEnd.gio === null, JSON.stringify(kEnd));
+  const gEnd = await ud6.guiThuQuaDay({ com: 'COM3', baud: 9600 });
+  ok('Gửi thử: lần hỏi sau khi nhận chỉ có END mà không có dòng giờ → chưa xác nhận (daXacNhan false)', gEnd.daXacNhan === false, JSON.stringify(gEnd));
   cheDo = 'tra-loi';
   traLoiKhac = () => "LOI\tUnauthorizedAccessException\tAccess to the port 'COM3' is denied.\r\n";
   ok('Lỗi PowerShell tới trang thành câu dễ hiểu', /đang bị chương trình khác dùng/.test(await loiCua(() => ud6.kiemTraDay({ com: 'COM3', baud: 9600 }))));
   traLoiKhac = () => 'COM\tCOM4\r\nTEN\tProlific USB-to-Serial Comm Port (COM4)\r\nOK\r\n';
   const d6 = await ud6.dsCom();
   ok('Danh sách cổng + nhớ cổng, tốc độ lần trước; file gốc không có thông số 41 → không biết tốc độ của cân',
-    d6.cong.length === 1 && d6.cong[0].moTa.startsWith('Prolific') && d6.com === 'COM4' && d6.baud === 19200 && d6.baudCan === null, JSON.stringify(d6));
+    d6.cong.length === 1 && d6.cong[0].moTa.startsWith('Prolific') && d6.com === 'COM3' && d6.baud === 9600 && d6.baudCan === null, JSON.stringify(d6));
   const dd6b = { cauHinh: path.join(tam, 'appdata6b'), duLieu: path.join(tam, 'tai-lieu6b') };
   const ud6b = new UngDung(dd6b, { danhMuc: async () => danhMuc, chayPs });
   ud6b.ghiNhanFileTuCan(new Uint8Array(Buffer.from(Buffer.from(fileUsb).toString('latin1').replace('TMS\t202\t3\t', 'TMS\t41\t6\t\r\nTMS\t202\t3\t'), 'latin1')));

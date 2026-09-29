@@ -2047,7 +2047,8 @@
     bao(noi, 'xong', `<p>Dây thông: cân trả lời qua ${e(k.com)}, tốc độ ${k.baud}`
       + (k.gio ? ` — giờ trên cân <b>${gioChu(k.gio)}</b>.` : '.') + '</p><p>Giờ có thể bấm <b>Gửi thử qua dây</b> (cân vẫn ở màn hình Prog → 4 → 3).</p>');
   });
-  $('nut-gui-com').onclick = () => lamCom('Đang gửi qua dây… (tốc độ 9600 có thể mất 1–2 phút)', async (noi) => {
+  $('nut-gui-com').onclick = () => lamCom(`Đang gửi qua dây ở ${comChon().baud} bit/giây (khoảng ${soChu(Math.max(1, Math.round(comChon().baud / 10)))} byte mỗi giây) — `
+    + 'đừng rút dây hay tắt chương trình…', async (noi) => {
     const k = await goi('/api/com/gui', comChon());
     const h = k.hang;
     const kiem = h.loai === 'them'
@@ -2057,7 +2058,7 @@
         : `trên cân gọi <b>PLU ${h.so}</b> rồi in thử một tem: nếu tên là <b>${e(h.ten)}</b> (trước là ${e(h.tenCu)})`;
     const dau = `<p>Đã đẩy ${soChu(Math.ceil(k.soByte / 1024))} KB ra ${e(k.com)}, tốc độ ${k.baud}, trong ${k.giay} giây.</p>`;
     bao(noi, 'luu-y', dau + (k.daXacNhan
-      ? '<p>Cân trả lời sau khi nhận: cân đã đọc hết dữ liệu gửi qua dây.</p>'
+      ? '<p>Cân trả lời lần hỏi sau cùng: cân đã nghe tới hết phần gửi qua dây. Cân có lưu đúng không thì gọi thử hàng dưới đây.</p>'
       : '<p><b>Cân không trả lời sau khi nhận</b> — chưa chắc cân đã nhận hết.</p>')
       + `<p>Giờ ${kiem} là cân đã nhận qua dây — báo lại để làm hẳn cách gửi bằng dây.</p>`
       + '<p>Nếu cân chưa đổi: vào lại <code>Prog → 4 → 3</code> trên cân, bấm Kiểm tra dây rồi gửi lại. Vẫn không đổi thì cân không nhận danh mục qua dây này — dùng WiFi.</p>');
