@@ -109,18 +109,42 @@ await nhom('3 · ĐẶT BÀN CHỜ GỌI LẠI', async () => {
   await them(cnA, 'cho_xac_nhan', -1, '50 minutes', 'BT-SK-04');  // hẹn hôm qua — đã qua giờ hẹn
   await them(cnA, 'da_xac_nhan', 2, '40 hours', 'BT-SK-05');      // đã xử lý — không đếm
   await them(cnB, 'cho_xac_nhan', 2, '30 hours', 'BT-SK-06');     // chi nhánh khác
+  await them(cnA, 'cho_xac_nhan', -1, '30 hours', 'BT-SK-07');    // vừa quá hẹn VỪA chờ quá 24 giờ — chỉ đếm quá hẹn
 
   const { k } = await doc(UID.chu);
   const a = cua(k, cnA)?.dat_ban, b = cua(k, cnB)?.dat_ban;
-  ok('Q1: 4 yêu cầu chờ (không đếm yêu cầu đã xác nhận)', a?.cho === 4, JSON.stringify(a));
-  ok('Q1: 2 yêu cầu chờ quá 2 giờ', a?.cho_qua_2_gio === 2, JSON.stringify(a));
-  ok('Q1: 1 yêu cầu chờ quá 24 giờ', a?.cho_qua_24_gio === 1, JSON.stringify(a));
-  ok('Q1: 1 yêu cầu đã qua giờ hẹn mà chưa ai xử lý (theo giờ Việt Nam)', a?.qua_gio_hen === 1, JSON.stringify(a));
+  ok('Q1: 5 yêu cầu chờ (không đếm yêu cầu đã xác nhận)', a?.cho === 5, JSON.stringify(a));
+  ok('Q1: 2 yêu cầu đã qua giờ hẹn mà chưa ai xử lý (theo giờ Việt Nam)', a?.qua_gio_hen === 2, JSON.stringify(a));
+  ok('Q1: 1 yêu cầu chưa tới hẹn mà chờ quá 24 giờ (yêu cầu đã quá hẹn không đếm lại)', a?.cho_qua_24_gio === 1,
+     JSON.stringify(a));
+  ok('Q1: 1 yêu cầu chờ 2–24 giờ (yêu cầu đã quá 24 giờ không đếm lại)', a?.cho_qua_2_gio === 1, JSON.stringify(a));
+  ok('Ba nhóm không chồng nhau: cộng lại không vượt số yêu cầu đang chờ',
+     a?.qua_gio_hen + a?.cho_qua_24_gio + a?.cho_qua_2_gio <= a?.cho, JSON.stringify(a));
   ok('Q1: form đặt bàn đang mở, có 1 bàn', a?.form_mo === true && a?.so_ban === 1, JSON.stringify(a));
   ok('Q7: chỉ đếm yêu cầu của Q7; chưa có bàn nào', b?.cho === 1 && b?.cho_qua_24_gio === 1 && b?.so_ban === 0,
      JSON.stringify(b));
   const ql = cua((await doc(UID.qlA)).k, cnA)?.dat_ban;
   ok('Quản lý Q1 thấy đúng số như chủ', JSON.stringify(ql) === JSON.stringify(a), JSON.stringify(ql));
+});
+
+// ===========================================================================
+// CLAUDE.md mục gio-vn. "Đã qua giờ hẹn" so ngày + giờ hẹn (giờ VN, không múi) với bay_gio_vn().
+// Đồng hồ giả chỉ giả được Date của JS, không giả được now() của database — nên đặt giờ hẹn cách
+// giờ VN hiện tại ±1–2 phút, tính ngay trong SQL. Dùng nhầm now() / current_date (UTC) thì lệch
+// 7 tiếng và kiểm tra này đỏ ở BẤT KỲ giờ nào trong ngày (CI chạy TZ=UTC); lượt CI đêm (00:30
+// giờ VN, TZ=Asia/Ho_Chi_Minh) phủ thêm khung qua nửa đêm, khi ngày UTC vẫn là hôm qua.
+await nhom('3b · QUA GIỜ HẸN TÍNH THEO GIỜ VIỆT NAM (±1 phút quanh bây giờ)', async () => {
+  const { rows: [q9] } = await db.query(`insert into chi_nhanh (ma, ten) values ('q9', 'Beeftown Quận 9') returning *`);
+  const hen = (lech, ma) => db.query(
+    `insert into dat_ban (chi_nhanh_id, khach_hang_id, ngay, gio, so_khach, trang_thai, ma_dat_ban)
+     select $1, $2, (bay_gio_vn() + $3::interval)::date, (bay_gio_vn() + $3::interval)::time, 2, 'cho_xac_nhan', $4`,
+    [q9.id, khach.id, lech, ma]);
+  await hen('-1 minute', 'BT-SK-91');     // hẹn 1 phút trước (giờ VN) — đã qua
+  await hen('2 minutes', 'BT-SK-92');     // hẹn 2 phút nữa — chưa qua
+  const d = cua((await doc(UID.chu)).k, q9)?.dat_ban;
+  ok('Hẹn 1 phút trước theo giờ VN → đã qua giờ hẹn; hẹn 2 phút nữa → chưa', d?.cho === 2 && d?.qua_gio_hen === 1,
+     JSON.stringify(d));
+  await db.query(`update chi_nhanh set dang_hoat_dong = false where id = $1`, [q9.id]);   // các nhóm sau: chỉ Q1, Q7
 });
 
 // ===========================================================================
@@ -148,9 +172,10 @@ await nhom('4 · HỒ SƠ ỨNG TUYỂN NẰM IM', async () => {
   const { k } = await doc(UID.chu);
   const a = cua(k, cnA)?.tuyen_dung, b = cua(k, cnB)?.tuyen_dung;
   ok('Q1: 3 hồ sơ mới chưa ai mở', a?.moi === 3, JSON.stringify(a));
-  ok('Q1: 2 hồ sơ nằm im quá 2 ngày, 1 quá 7 ngày', a?.moi_qua_2_ngay === 2 && a?.moi_qua_7_ngay === 1,
+  ok('Q1: 1 hồ sơ nằm im quá 7 ngày, 1 hồ sơ 2–7 ngày (hồ sơ quá 7 ngày không đếm lại)',
+     a?.moi_qua_2_ngay === 1 && a?.moi_qua_7_ngay === 1,
      JSON.stringify(a));
-  ok('Q7: đếm riêng', b?.moi === 1 && b?.moi_qua_7_ngay === 1, JSON.stringify(b));
+  ok('Q7: đếm riêng', b?.moi === 1 && b?.moi_qua_7_ngay === 1 && b?.moi_qua_2_ngay === 0, JSON.stringify(b));
 });
 
 // ===========================================================================
@@ -183,8 +208,8 @@ await nhom('5 · TIN ZALO: BỘ GỬI CÓ CHẠY, TIN HỎNG, TIN KẸT', async 
   ok('Zalo đang bật, chế độ thật', k?.zalo?.dang_bat === true && k?.zalo?.che_do === 'that', JSON.stringify(k?.zalo));
   ok('Lượt gửi gần nhất ~45 phút trước (web dùng làm nhịp tim của việc chạy nền)',
      Math.abs(phutTruoc(k?.zalo?.lan_chay_cuoi) - 45) < 2, k?.zalo?.lan_chay_cuoi);
-  ok('Mốc sửa cấu hình = lúc dòng Zalo vừa đổi (trigger updated_at) — web không báo "bộ gửi không chạy" khi vừa bật',
-     phutTruoc(k?.zalo?.sua_luc) < 2, k?.zalo?.sua_luc);
+  ok('Vừa bật → bat_luc = bây giờ (trigger ghi_luc_bat) — web không báo "bộ gửi không chạy" khi lượt đầu chưa tới',
+     phutTruoc(k?.zalo?.bat_luc) < 2, k?.zalo?.bat_luc);
   ok('Lượt gửi gần nhất có lỗi → co_loi (không trả nguyên câu lỗi)', k?.zalo?.co_loi === true
      && !JSON.stringify(k).includes('Lỗi thử của lượt gửi'), JSON.stringify(k?.zalo));
   const a = cua(k, cnA)?.tin_zalo, b = cua(k, cnB)?.tin_zalo;
@@ -193,27 +218,49 @@ await nhom('5 · TIN ZALO: BỘ GỬI CÓ CHẠY, TIN HỎNG, TIN KẸT', async 
   ok('Q1: 1 tin giao dịch kẹt quá 30 phút (không đếm tin chăm sóc, tin hẹn giờ, tin chờ thử lại)',
      a?.cho_qua_han === 1, JSON.stringify(a));
   ok('Q7: đếm riêng', b?.that_bai_24h === 1 && b?.cho_qua_han === 0, JSON.stringify(b));
+
+  // bat_luc chỉ đổi khi tắt → bật. Mỗi lượt gửi làm mới updated_at (trigger của 0047) — dùng nó
+  // làm mốc thì bộ gửi mà lượt nào cũng chết giữa chừng vẫn trông như đang chạy.
+  const batLuc = async () => (await db.query(`select bat_luc::text as b from zalo_cau_hinh where id = 1`)).rows[0].b;
+  await db.query(`update zalo_cau_hinh set bat_luc = now() - interval '2 days' where id = 1`);
+  const cu = await batLuc();
+  await db.query(`update zalo_cau_hinh set dang_chay_tu = now() where id = 1`);            // một lượt bắt đầu
+  await db.query(`update zalo_cau_hinh set dang_bat = true, lan_chay_cuoi = now() where id = 1`);  // lưu lại khi đang bật
+  ok('Lượt gửi bắt đầu / lưu cấu hình khi đang bật: bat_luc giữ nguyên', await batLuc() === cu, `${cu} → ${await batLuc()}`);
+  await db.query(`update zalo_cau_hinh set dang_bat = false where id = 1`);
+  await db.query(`update zalo_cau_hinh set dang_bat = true where id = 1`);
+  ok('Tắt rồi bật lại → bat_luc mới', phutTruoc(await batLuc()) < 2, await batLuc());
+  await db.query(`update zalo_cau_hinh set dang_chay_tu = null, lan_chay_cuoi = now() - interval '45 minutes',
+                         bat_luc = now() - interval '2 days' where id = 1`);
 });
 
 // ===========================================================================
 await nhom('6 · BOT MESSENGER', async () => {
   await db.query(`
     update mess_cau_hinh set dang_bat = true, loi_cuoi = 'Lỗi bí mật 0901234567',
-           loi_cuoi_luc = now() - interval '20 minutes', lan_nhan_cuoi = now() - interval '5 minutes',
-           cap_nhat = now() - interval '3 days'
+           loi_cuoi_luc = now() - interval '20 minutes', lan_nhan_cuoi = now() - interval '5 minutes'
      where id = 1`);
+  const batLucMoi = (await db.query(`select bat_luc from mess_cau_hinh where id = 1`)).rows[0].bat_luc;
+  await db.query(`update mess_cau_hinh set bat_luc = now() - interval '3 days' where id = 1`);
+  // Chủ sửa lời chào (lưu cấu hình khi bot đang bật): cap_nhat đổi, bat_luc KHÔNG đổi — sửa lời
+  // chào không làm một webhook đã chết sống lại, nên không được xóa cảnh báo "im lặng 72 giờ".
+  const luu = await duoi(UID.chu, `select mess_luu_cau_hinh(p_dang_bat => true, p_loi_chao => 'Chào anh/chị, Beeftown đây ạ!')`);
+  ok('(chuẩn bị) Chủ lưu cấu hình Messenger', luu.loi === null, luu.loi ?? '');
   await db.query(`
     insert into mess_thong_ke_ngay (ngay, loai, dem) values
       (hom_nay_vn(), 'loi', 3), (hom_nay_vn() - 3, 'loi', 2), (hom_nay_vn() - 10, 'loi', 7),
+      (hom_nay_vn() - 6, 'loi', 1), (hom_nay_vn() - 7, 'loi', 4),
       (hom_nay_vn(), 'dat_ban', 5)`);
   const { k } = await doc(UID.qlA);
   ok('Quản lý thấy bot đang bật', k?.messenger?.dang_bat === true, JSON.stringify(k?.messenger));
-  ok('5 lỗi trong 7 ngày (không tính lỗi 10 ngày trước, không tính loại khác)', k?.messenger?.loi_7_ngay === 5,
+  ok('Vừa bật → bat_luc = bây giờ (trigger ghi_luc_bat)', phutTruoc(batLucMoi) < 2, String(batLucMoi));
+  ok('Lưu cấu hình khi đang bật (sửa lời chào) KHÔNG đổi bat_luc', Math.abs(phutTruoc(k?.messenger?.bat_luc) - 3 * 24 * 60) < 2,
+     k?.messenger?.bat_luc);
+  ok('6 lỗi trong 7 ngày theo ngày VN: tính hôm nay … hôm nay − 6, không tính hôm nay − 7, không tính loại khác',
+     k?.messenger?.loi_7_ngay === 6,
      JSON.stringify(k?.messenger));
   ok('Lỗi gần nhất ~20 phút trước', Math.abs(phutTruoc(k?.messenger?.loi_cuoi_luc) - 20) < 2, k?.messenger?.loi_cuoi_luc);
-  ok('Tin gần nhất nhận ~5 phút trước; cấu hình lưu ~3 ngày trước',
-     Math.abs(phutTruoc(k?.messenger?.lan_nhan_cuoi) - 5) < 2 && Math.abs(phutTruoc(k?.messenger?.sua_luc) - 3 * 24 * 60) < 2,
-     JSON.stringify(k?.messenger));
+  ok('Tin gần nhất nhận ~5 phút trước', Math.abs(phutTruoc(k?.messenger?.lan_nhan_cuoi) - 5) < 2, JSON.stringify(k?.messenger));
   ok('Không trả nguyên câu lỗi (có thể chứa SĐT khách)', !JSON.stringify(k).includes('Lỗi bí mật'));
 });
 
@@ -226,12 +273,26 @@ await nhom('7 · BẢN DỊCH TỰ ĐỘNG', async () => {
       tt: 'loi', ly_do: 'Gemini 503' }])]);
   await db.query(`update vi_tri_tuyen_dung set ban_dich = jsonb_set(ban_dich, '{ten,en,luc}',
                   to_jsonb(now() - interval '20 minutes')) where id = $1`, [v.id]);
+  // Một dữ kiện đã công bố mà bản dịch lỗi (en, ko) từ 20 phút trước. Dữ kiện chỉ dịch lại khi có
+  // người bấm Công bố lại — lỗi của nó đứng yên mãi, không nói gì về máy dịch bây giờ.
+  const cau = 'Câu thử sức khỏe hệ thống';
+  await db.query(`set session_replication_role = replica`);
+  await db.query(`
+    insert into noi_dung_cong_bo (khoa, kieu, gia_tri_text, trang_thai, ban_dich)
+    values ('suc_khoe.thu', 'van_ban', $1, 'da_cong_bo', jsonb_build_object('gia_tri_text', jsonb_build_object(
+      'en', jsonb_build_object('tt', 'loi', 'bam', bam_nguon($1), 'luc', now() - interval '20 minutes'),
+      'ko', jsonb_build_object('tt', 'loi', 'bam', bam_nguon($1), 'luc', now() - interval '20 minutes'))))`, [cau]);
+  await db.query(`set session_replication_role = origin`);
+
   const { rows: [dem] } = await db.query(`
-    select count(*) filter (where ly_do in ('thieu', 'cu'))::int as cho,
-           count(*) filter (where ly_do = 'thu_lai')::int as loi from v_viec_dich`);
+    select count(*) filter (where ly_do in ('thieu', 'cu') and bang <> 'noi_dung_cong_bo')::int as cho,
+           count(*) filter (where ly_do = 'thu_lai' and bang <> 'noi_dung_cong_bo')::int as loi,
+           count(*) filter (where ly_do = 'thu_lai' and bang = 'noi_dung_cong_bo')::int as loi_du_kien from v_viec_dich`);
   const { k } = await doc(UID.chu);
-  ok('Có việc chờ dịch (tin mẫu chưa dịch)', dem.cho > 0 && k?.dich?.cho === dem.cho, `${k?.dich?.cho} / ${dem.cho}`);
+  ok('Có việc chờ máy tự dịch (tin mẫu chưa dịch)', dem.cho > 0 && k?.dich?.cho === dem.cho, `${k?.dich?.cho} / ${dem.cho}`);
   ok('1 ô dịch lỗi đã quá 15 phút', dem.loi === 1 && k?.dich?.loi === 1, `${k?.dich?.loi} / ${dem.loi}`);
+  ok('Lỗi dịch của dữ kiện công bố KHÔNG tính (trang Tổng quan có dòng việc riêng; máy không tự dịch lại nó)',
+     dem.loi_du_kien === 2 && k?.dich?.loi === 1, `view: ${dem.loi_du_kien} ô dữ kiện lỗi`);
 });
 
 // ===========================================================================
@@ -243,9 +304,12 @@ await nhom('8 · iPOS: ĐÈN GIỐNG MÀN KẾT NỐI iPOS, NHỊP TIM VIỆC CH
   const bat = await duoi(UID.chu, `select kho_ipos_luu_cau_hinh($1, $2::jsonb) as v`,
     [cnA.id, JSON.stringify({ bat: true, pos_parent: 'BT', pos_id: '1', vi_tri_ban_id: quay.id })]);
   ok('(chuẩn bị) Chủ bật iPOS ở Q1', bat.loi === null, bat.loi ?? '');
-  await db.query(`insert into kho_ipos_lan_chay (chi_nhanh_id, nguon, bat_dau_luc) values
-      ($1, 'cron', now() - interval '40 minutes'), ($1, 'callback', now() - interval '2 minutes'),
-      ($1, 'tay', now() - interval '1 minute')`, [cnA.id]);
+  await db.query(`insert into kho_ipos_lan_chay (chi_nhanh_id, nguon, bat_dau_luc, ket_thuc_luc, loi) values
+      ($1, 'cron', now() - interval '40 minutes', now() - interval '40 minutes' + interval '5 seconds', null),
+      ($1, 'cron', now() - interval '20 minutes', now() - interval '9 minutes', 'Quá 10 phút không xong — coi như hỏng'),
+      ($1, 'cron', now() - interval '1 minute', null, null),
+      ($1, 'callback', now() - interval '2 minutes', now() - interval '2 minutes', null),
+      ($1, 'tay', now() - interval '1 minute', now() - interval '1 minute', null)`, [cnA.id]);
 
   const { k } = await doc(UID.chu);
   const a = cua(k, cnA)?.ipos, b = cua(k, cnB)?.ipos;
@@ -254,7 +318,8 @@ await nhom('8 · iPOS: ĐÈN GIỐNG MÀN KẾT NỐI iPOS, NHỊP TIM VIỆC CH
   ok('Q1: đèn giống hệt kho_ipos_trang_thai (màn Kết nối iPOS)', a?.den === goc.den && a?.mat_ket_noi === goc.mat_ket_noi,
      `${a?.den} / ${goc.den}`);
   ok('Q1: có mốc bật iPOS', typeof a?.bat_luc === 'string', a?.bat_luc);
-  ok('Q1: nhịp tim = lượt CRON gần nhất ~40 phút trước (không tính lượt bấm tay, lượt iPOS đẩy sang)',
+  ok('Q1: nhịp tim = lượt CRON TỰ CHẠY XONG gần nhất ~40 phút trước (không tính lượt đang chạy, lượt chết bị lượt sau '
+     + 'đóng hộ, lượt bấm tay, lượt iPOS đẩy sang)',
      Math.abs(phutTruoc(a?.cron_cuoi) - 40) < 2, a?.cron_cuoi);
   ok('Q7: chưa có cấu hình', b?.co_cau_hinh === false && b?.cron_cuoi === null, JSON.stringify(b));
 });
@@ -311,8 +376,8 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
 
   const KHOA = {
     goc:        ['luc', 'zalo', 'messenger', 'dich', 'chi_nhanh'],
-    zalo:       ['dang_bat', 'che_do', 'lan_chay_cuoi', 'sua_luc', 'co_loi'],
-    messenger:  ['dang_bat', 'loi_cuoi_luc', 'lan_nhan_cuoi', 'sua_luc', 'loi_7_ngay'],
+    zalo:       ['dang_bat', 'che_do', 'bat_luc', 'lan_chay_cuoi', 'co_loi'],
+    messenger:  ['dang_bat', 'bat_luc', 'lan_nhan_cuoi', 'loi_cuoi_luc', 'loi_7_ngay'],
     dich:       ['cho', 'loi'],
     chi_nhanh:  ['id', 'ma', 'ten', 'ipos', 'tin_zalo', 'dat_ban', 'tuyen_dung', 'so_kho'],
     ipos:       ['co_cau_hinh', 'bat', 'cau_hinh_du', 'den', 'mat_ket_noi', 'loi_tu_luc', 'nhan_hd_luc', 'gio_mat_ket_noi',
@@ -336,12 +401,14 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
   const den = (khoi, ma) => sk.khoi.find(x => x.ma === khoi)?.den.find(d => d.ma === ma);
   const q1 = ma => den(cnA.id, ma), q7 = ma => den(cnB.id, ma), th = ma => den('thuong_hieu', ma);
   const tom = d => `${d?.mau} — ${d?.cau}`;
-  ok('Q1 đặt bàn đỏ: yêu cầu qua giờ hẹn, chờ quá 24 giờ', q1('dat_ban')?.mau === 'do'
-     && /1 yêu cầu đã qua giờ hẹn/.test(q1('dat_ban')?.cau) && /1 yêu cầu chờ quá 24 giờ/.test(q1('dat_ban')?.cau), tom(q1('dat_ban')));
+  ok('Q1 đặt bàn đỏ: 2 qua giờ hẹn, 1 chờ quá 24 giờ, 1 chờ quá 2 giờ — mỗi yêu cầu đếm một lần', q1('dat_ban')?.mau === 'do'
+     && /^2 yêu cầu đã qua giờ hẹn/.test(q1('dat_ban')?.cau) && /1 yêu cầu chờ quá 24 giờ/.test(q1('dat_ban')?.cau)
+     && /1 yêu cầu chờ quá 2 giờ/.test(q1('dat_ban')?.cau), tom(q1('dat_ban')));
   ok('Q7 đặt bàn đỏ: form mở mà chi nhánh chưa có bàn', q7('dat_ban')?.mau === 'do' && /chưa có bàn nào/.test(q7('dat_ban')?.cau),
      tom(q7('dat_ban')));
-  ok('Q1 hồ sơ đỏ: 1 hồ sơ nằm im quá 7 ngày', q1('tuyen_dung')?.mau === 'do'
-     && /1 hồ sơ chưa ai mở quá 7 ngày/.test(q1('tuyen_dung')?.cau), tom(q1('tuyen_dung')));
+  ok('Q1 hồ sơ đỏ: 1 hồ sơ quá 7 ngày, 1 hồ sơ quá 2 ngày', q1('tuyen_dung')?.mau === 'do'
+     && /^1 hồ sơ chưa ai mở quá 7 ngày/.test(q1('tuyen_dung')?.cau) && /1 hồ sơ chưa ai mở quá 2 ngày/.test(q1('tuyen_dung')?.cau),
+     tom(q1('tuyen_dung')));
   ok('Q1 tin Zalo đỏ: 1 tin giao dịch kẹt', q1('tin_zalo')?.mau === 'do' && /^1 tin giao dịch/.test(q1('tin_zalo')?.cau),
      tom(q1('tin_zalo')));
   ok('Q7 tin Zalo vàng: 1 tin hỏng trong 24 giờ', q7('tin_zalo')?.mau === 'vang', tom(q7('tin_zalo')));
@@ -350,10 +417,11 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
   ok('Q1 iPOS vàng như màn Kết nối iPOS: nhận hóa đơn mà chưa trừ kho (vừa bật nên lượt cron cũ chưa tính là dừng)',
      a?.ipos?.den === 'vang' && q1('ipos')?.mau === 'vang' && /CHƯA trừ kho/.test(q1('ipos')?.cau), tom(q1('ipos')));
   ok('Q7 iPOS xám: chưa cấu hình', q7('ipos')?.mau === 'tat', tom(q7('ipos')));
-  ok('Bộ gửi Zalo đỏ: lượt gần nhất bị lỗi', th('zalo')?.mau === 'do' && /Lượt gửi gần nhất bị lỗi/.test(th('zalo')?.cau),
-     tom(th('zalo')));
-  ok('Messenger vàng: có tin đến sau lỗi, 5 lỗi trong 7 ngày', th('messenger')?.mau === 'vang'
-     && /^5 lỗi trong 7 ngày/.test(th('messenger')?.cau), tom(th('messenger')));
+  ok('Bộ gửi Zalo đỏ: bật 2 ngày mà lượt chạy xong gần nhất 45 phút trước (đã dừng), lượt đó bị lỗi',
+     th('zalo')?.mau === 'do' && /Bộ gửi đã dừng \(lượt gần nhất 45 phút trước\)/.test(th('zalo')?.cau)
+     && /Lượt gửi gần nhất bị lỗi/.test(th('zalo')?.cau), tom(th('zalo')));
+  ok('Messenger vàng: có tin đến sau lỗi, 6 lỗi trong 7 ngày', th('messenger')?.mau === 'vang'
+     && /^6 lỗi trong 7 ngày/.test(th('messenger')?.cau), tom(th('messenger')));
   ok('Máy dịch vàng: 1 ô lỗi', th('dich')?.mau === 'vang' && /^1 ô dịch bị lỗi/.test(th('dich')?.cau), tom(th('dich')));
 });
 

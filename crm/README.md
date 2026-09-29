@@ -150,7 +150,7 @@ crm/
 │   ├── 0053_messenger_vai_may.sql      MESSENGER · vai máy may_messenger — ⚠ CHẠY RIÊNG, trước 0053
 │   ├── 0053_messenger_bot.sql          MESSENGER · mess_phien (khóa = HMAC của PSID, tự xóa sau 30 ngày, khóa tra cứu sai ≥ 5 lần/15 phút) · mess_cau_hinh (bot mặc định tắt) · mess_thong_ke_ngay (chỉ đếm) · RPC máy may_messenger + RPC cài đặt (chủ) + tổng quan (chủ / quản lý) — danh sách ở đầu file
 │   ├── 0054_kho_may_quay.sql           KHO · máy quầy (Beeftown Cân): mã giảm giá hàng cận date, bảng quầy, tảng & ô mã, báo cáo bán theo giờ
-│   └── 0055_suc_khoe_he_thong.sql      SỨC KHỎE · suc_khoe_he_thong(): số liệu cho bảng đèn ở /noi-bo (chủ: mọi chi nhánh, quản lý: chi nhánh của mình) — chỉ số đếm và mốc giờ, không bảng mới
+│   └── 0055_suc_khoe_he_thong.sql      SỨC KHỎE · suc_khoe_he_thong(): số liệu cho bảng đèn ở /noi-bo (chủ: mọi chi nhánh, quản lý: chi nhánh của mình) — chỉ số đếm và mốc giờ, không bảng mới · cột bat_luc (trigger ghi_luc_bat) ở zalo_cau_hinh, mess_cau_hinh
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```

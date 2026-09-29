@@ -3,8 +3,15 @@
  * =====================================================================
  *
  * Database (suc_khoe_he_thong, migration 0055) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
- * quyết định MÀU và CÂU hai thứ tiếng — ngưỡng nằm ở một chỗ, đổi không cần migration, và
- * crm/test/test-suc-khoe-web.mjs thử từng ngưỡng bằng dữ liệu giả, không cần database.
+ * quyết định MÀU và CÂU hai thứ tiếng; crm/test/test-suc-khoe-web.mjs thử từng ngưỡng bằng dữ
+ * liệu giả, không cần database.
+ *
+ * Hai loại ngưỡng, ở hai chỗ:
+ *   · so với MỐC GIỜ (nhịp tim việc chạy nền, lỗi Messenger mới, Messenger im lặng) — ở đây,
+ *     đổi không cần migration;
+ *   · ĐẾM (yêu cầu chờ quá 2 / 24 giờ, hồ sơ quá 2 / 7 ngày, tin kẹt quá 30 phút, tin hỏng
+ *     24 giờ, lỗi Messenger 7 ngày) — trong SQL của 0055. Câu chữ ở đây phải nói đúng con số
+ *     đó; PHUT_TIN_KET được test đối chiếu với file migration.
  *
  * Nghĩa của màu (người đọc là chủ / quản lý, không phải lập trình viên):
  *   đỏ   — cần xử lý NGAY: có thứ đang hỏng, hoặc khách đang bị bỏ quên.
@@ -32,6 +39,8 @@ export const PHUT_NHIP_TIM = 30;
 export const PHUT_LOI_MOI = 60;
 /** Bot Messenger bật mà chừng này giờ không nhận được tin nào → xem lại webhook. */
 export const GIO_KHONG_CO_TIN = 72;
+/** Tin giao dịch kẹt: đến hạn quá chừng này phút mà chưa gửi. PHẢI bằng interval của cho_qua_han trong 0055. */
+export const PHUT_TIN_KET = 30;
 
 // -----------------------------------------------------------------------------
 // SỐ LIỆU THÔ — đúng dạng suc_khoe_he_thong() trả về
@@ -49,7 +58,9 @@ export interface ChiNhanhTho {
   id: string; ma: string; ten: string;
   ipos: IposTho;
   tin_zalo: { that_bai_24h: number; cho_qua_han: number };
+  /** Ba nhóm KHÔNG chồng nhau: qua giờ hẹn; chưa tới hẹn mà chờ quá 24 giờ; chưa tới hẹn, chờ 2–24 giờ. */
   dat_ban: { form_mo: boolean; so_ban: number; cho: number; cho_qua_2_gio: number; cho_qua_24_gio: number; qua_gio_hen: number };
+  /** Hai nhóm KHÔNG chồng nhau: quá 7 ngày; 2–7 ngày. */
   tuyen_dung: { moi: number; moi_qua_2_ngay: number; moi_qua_7_ngay: number };
   so_kho: { co_kho: boolean; lech: number };
 }
@@ -57,8 +68,9 @@ export interface ChiNhanhTho {
 export interface SucKhoeTho {
   /** now() của database — mọi phép "bao lâu trước" tính theo mốc này, không theo đồng hồ Worker. */
   luc: string;
-  zalo: { dang_bat: boolean; che_do: string | null; lan_chay_cuoi: string | null; sua_luc: string | null; co_loi: boolean };
-  messenger: { dang_bat: boolean; loi_cuoi_luc: string | null; lan_nhan_cuoi: string | null; sua_luc: string | null; loi_7_ngay: number };
+  /** bat_luc: lần gần nhất chuyển từ tắt sang bật (0055) — không đổi khi lưu cấu hình hay khi gửi. */
+  zalo: { dang_bat: boolean; che_do: string | null; bat_luc: string | null; lan_chay_cuoi: string | null; co_loi: boolean };
+  messenger: { dang_bat: boolean; bat_luc: string | null; lan_nhan_cuoi: string | null; loi_cuoi_luc: string | null; loi_7_ngay: number };
   dich: { cho: number; loi: number };
   chi_nhanh: ChiNhanhTho[];
 }
@@ -79,11 +91,15 @@ export function laSucKhoeTho(v: unknown): v is SucKhoeTho {
     && Array.isArray(v.chi_nhanh) && v.chi_nhanh.every(c => laDoiTuong(c) && typeof c.id === 'string');
 }
 
-/** Lỗi "không có hàm này" của PostgREST (PGRST202) hoặc Postgres (42883). */
+/**
+ * Chính suc_khoe_he_thong() chưa có (database chưa chạy 0055): PGRST202 của PostgREST hoặc 42883
+ * của Postgres, VÀ câu lỗi nhắc đúng tên hàm. Chỉ xét mã thì một hàm CON bị đổi / xóa (42883
+ * "function kho_ipos_trang_thai(uuid) does not exist") thành "chưa chạy migration" màu vàng,
+ * không log — hỏng thật bị giấu đi.
+ */
 export function laThieuHam(e: { code?: string | null; message?: string | null } | null | undefined): boolean {
   if (!e) return false;
-  return e.code === 'PGRST202' || e.code === '42883'
-    || /could not find the function|function .*suc_khoe_he_thong.* does not exist/i.test(e.message ?? '');
+  return (e.code === 'PGRST202' || e.code === '42883') && /\bsuc_khoe_he_thong\b/.test(e.message ?? '');
 }
 
 /**
@@ -216,10 +232,9 @@ function denDatBan(d: Partial<ChiNhanhTho['dat_ban']> | undefined, nn: NgonNguNB
   if (qua24 > 0) v.push({ muc: 'do', cau: {
     vi: `${qua24} yêu cầu chờ quá 24 giờ chưa ai gọi lại`,
     en: `${qua24} request${s(qua24)} waiting over 24 hours for a call back` } });
-  const chi2 = qua2 - qua24;
-  if (chi2 > 0) v.push({ muc: 'vang', cau: {
-    vi: `${chi2} yêu cầu chờ quá 2 giờ`,
-    en: `${chi2} request${s(chi2)} waiting over 2 hours` } });
+  if (qua2 > 0) v.push({ muc: 'vang', cau: {
+    vi: `${qua2} yêu cầu chờ quá 2 giờ`,
+    en: `${qua2} request${s(qua2)} waiting over 2 hours` } });
   const khiTot: Cau = cho > 0
     ? { vi: `${cho} yêu cầu mới đang chờ gọi lại (chưa quá 2 giờ).`, en: `${cho} new request${s(cho)} waiting for a call back (under 2 hours).` }
     : { vi: 'Không có yêu cầu nào đang chờ.', en: 'No request is waiting.' };
@@ -233,10 +248,9 @@ function denTuyenDung(d: Partial<ChiNhanhTho['tuyen_dung']> | undefined, nn: Ngo
   if (qua7 > 0) v.push({ muc: 'do', cau: {
     vi: `${qua7} hồ sơ chưa ai mở quá 7 ngày — ứng viên có thể đã nhận việc chỗ khác`,
     en: `${qua7} application${s(qua7)} unopened for over 7 days — the candidate may have taken another job` } });
-  const chi2 = qua2 - qua7;
-  if (chi2 > 0) v.push({ muc: 'vang', cau: {
-    vi: `${chi2} hồ sơ chưa ai mở quá 2 ngày`,
-    en: `${chi2} application${s(chi2)} unopened for over 2 days` } });
+  if (qua2 > 0) v.push({ muc: 'vang', cau: {
+    vi: `${qua2} hồ sơ chưa ai mở quá 2 ngày`,
+    en: `${qua2} application${s(qua2)} unopened for over 2 days` } });
   const khiTot: Cau = moi > 0
     ? { vi: `${moi} hồ sơ mới (chưa quá 2 ngày).`, en: `${moi} new application${s(moi)} (under 2 days).` }
     : { vi: 'Không có hồ sơ nào nằm chờ.', en: 'No application is waiting.' };
@@ -321,11 +335,11 @@ function denTinZalo(d: Partial<ChiNhanhTho['tin_zalo']> | undefined, zaloBat: bo
   const ket = so(d?.cho_qua_han), hong = so(d?.that_bai_24h);
   const v: VanDe[] = [];
   if (ket > 0) v.push({ muc: 'do', cau: {
-    vi: `${ket} tin giao dịch đến hạn quá ${PHUT_NHIP_TIM} phút mà chưa gửi`,
-    en: `${ket} transactional message${s(ket)} due over ${PHUT_NHIP_TIM} min ago and still not sent` } });
+    vi: `${ket} tin giao dịch đến hạn quá ${PHUT_TIN_KET} phút mà chưa gửi`,
+    en: `${ket} transactional message${s(ket)} due over ${PHUT_TIN_KET} min ago and still not sent` } });
   if (hong > 0) v.push({ muc: 'vang', cau: {
-    vi: `${hong} tin hỏng hoặc bị Zalo từ chối trong 24 giờ qua`,
-    en: `${hong} message${s(hong)} failed or rejected by Zalo in the last 24 hours` } });
+    vi: `${hong} tin đến hạn trong 24 giờ qua đã hỏng hoặc bị Zalo từ chối`,
+    en: `${hong} message${s(hong)} due in the last 24 hours failed or ${hong === 1 ? 'was' : 'were'} rejected by Zalo` } });
   return denTu('tin_zalo', v, { vi: 'Tin gửi bình thường.', en: 'Messages go out normally.' }, di, nn);
 }
 
@@ -333,15 +347,18 @@ function denTinZalo(d: Partial<ChiNhanhTho['tin_zalo']> | undefined, zaloBat: bo
 function denZalo(z: Partial<SucKhoeTho['zalo']>, laChu: boolean, bayGio: number, nn: NgonNguNB): Den {
   const di = laChu ? '/noi-bo/zalo/cai-dat' : '/noi-bo/zalo';
   if (z.dang_bat !== true) return denTat('zalo', { vi: 'Chưa bật.', en: 'Not turned on.' }, di, nn);
-  const chay = ms(z.lan_chay_cuoi), sua = ms(z.sua_luc);
-  const moc = Math.max(chay ?? -Infinity, sua ?? -Infinity);
+  // Lượt chạy TỪ KHI BẬT: lượt cũ trước một lần tắt / bật lại không nói gì về bộ gửi bây giờ.
+  const batLuc = ms(z.bat_luc), chayCu = ms(z.lan_chay_cuoi);
+  const chay = chayCu !== null && (batLuc === null || chayCu >= batLuc) ? chayCu : null;
+  const moc = Math.max(chay ?? -Infinity, batLuc ?? -Infinity);
   const v: VanDe[] = [];
   if (!Number.isFinite(moc) || bayGio - moc > PHUT_NHIP_TIM * 60000) v.push({ muc: 'do', cau: chay === null
     ? { vi: 'Bộ gửi chưa chạy lượt nào kể từ khi bật — báo người quản trị kỹ thuật kiểm tra Cron và bí mật Zalo của Worker',
         en: 'The sender has not run once since it was turned on — ask the technical admin to check the Cron trigger and the Worker Zalo secrets' }
     : { vi: `Bộ gửi đã dừng (lượt gần nhất ${tuTruoc(bayGio, chay).vi}) — báo người quản trị kỹ thuật kiểm tra Cron và bí mật Zalo của Worker`,
         en: `The sender has stopped (last run ${tuTruoc(bayGio, chay).en}) — ask the technical admin to check the Cron trigger and the Worker Zalo secrets` } });
-  else if (z.co_loi === true) v.push({ muc: 'do', cau: {
+  // Cả hai cùng hiện: lỗi của lượt cuối thường là lý do bộ gửi dừng (token hỏng, thiếu bí mật).
+  if (z.co_loi === true) v.push({ muc: 'do', cau: {
     vi: 'Lượt gửi gần nhất bị lỗi — mở màn Zalo để xem lỗi',
     en: 'The latest sending run failed — open the Zalo screen to see the error' } });
   if (z.che_do === 'thu') v.push({ muc: 'vang', cau: {
@@ -357,7 +374,7 @@ function denZalo(z: Partial<SucKhoeTho['zalo']>, laChu: boolean, bayGio: number,
 function denMessenger(m: Partial<SucKhoeTho['messenger']>, bayGio: number, nn: NgonNguNB): Den {
   const di = '/noi-bo/messenger';
   if (m.dang_bat !== true) return denTat('messenger', { vi: 'Chưa bật.', en: 'Not turned on.' }, di, nn);
-  const loiLuc = ms(m.loi_cuoi_luc), nhan = ms(m.lan_nhan_cuoi), sua = ms(m.sua_luc), loi7 = so(m.loi_7_ngay);
+  const loiLuc = ms(m.loi_cuoi_luc), nhan = ms(m.lan_nhan_cuoi), batLuc = ms(m.bat_luc), loi7 = so(m.loi_7_ngay);
   const v: VanDe[] = [];
   // Lỗi mới VÀ không có tin nào đến sau lỗi đó: tin gần nhất của khách chưa được trả lời.
   // (Tin đến sau mà trả lời được thì bot đã chạy lại — chỉ còn là "có lỗi trong tuần".)
@@ -370,12 +387,15 @@ function denMessenger(m: Partial<SucKhoeTho['messenger']>, bayGio: number, nn: N
       vi: `${loi7} lỗi trong 7 ngày qua`,
       en: `${loi7} error${s(loi7)} in the last 7 days` } });
   }
-  const moc = Math.max(nhan ?? -Infinity, sua ?? -Infinity);
-  if (Number.isFinite(moc) && bayGio - moc > GIO_KHONG_CO_TIN * 3600000) v.push({ muc: 'vang', cau: nhan === null
+  // Im lặng tính từ tin gần nhất, hoặc từ lúc bật nếu từ khi bật chưa có tin nào. KHÔNG tính từ
+  // lần lưu cấu hình: sửa lời chào không làm webhook sống lại.
+  const nhanTuKhiBat = nhan !== null && (batLuc === null || nhan >= batLuc) ? nhan : null;
+  const moc = Math.max(nhanTuKhiBat ?? -Infinity, batLuc ?? -Infinity);
+  if (Number.isFinite(moc) && bayGio - moc > GIO_KHONG_CO_TIN * 3600000) v.push({ muc: 'vang', cau: nhanTuKhiBat === null
     ? { vi: 'Chưa nhận được tin nào từ Facebook kể từ khi bật — nhắn thử vào Trang để kiểm tra webhook',
         en: 'No message from Facebook since it was turned on — send a test message to the Page to check the webhook' }
-    : { vi: `Không nhận được tin nào từ Facebook ${khoangThoiGian((bayGio - nhan) / 60000).vi} nay — nhắn thử vào Trang để kiểm tra webhook`,
-        en: `No message from Facebook for ${khoangThoiGian((bayGio - nhan) / 60000).en} — send a test message to the Page to check the webhook` } });
+    : { vi: `Không nhận được tin nào từ Facebook ${khoangThoiGian((bayGio - nhanTuKhiBat) / 60000).vi} nay — nhắn thử vào Trang để kiểm tra webhook`,
+        en: `No message from Facebook for ${khoangThoiGian((bayGio - nhanTuKhiBat) / 60000).en} — send a test message to the Page to check the webhook` } });
   return denTu('messenger', v, nhan === null
     ? { vi: 'Bot đang bật, chưa có tin nào.', en: 'The bot is on, no message yet.' }
     : { vi: `Bot trả lời bình thường — tin gần nhất ${tuTruoc(bayGio, nhan).vi}.`,

@@ -17,13 +17,14 @@ import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
+import { datGio, traGio } from './dong-ho-gia.mjs';
 import { VIET, boChuThich } from './quet-chu-viet.mjs';
 
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WEB = join(GOC, 'web', 'src');
 const {
   danhGiaSucKhoe, bangSucKhoe, cauTomTat, docSucKhoe, laSucKhoeTho, laThieuHam, khoangThoiGian, tuTruoc,
-  PHUT_NHIP_TIM, GIO_KHONG_CO_TIN,
+  PHUT_NHIP_TIM, GIO_KHONG_CO_TIN, PHUT_TIN_KET,
 } = await import(join(WEB, 'lib', 'suc-khoe.ts'));
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — SỨC KHỎE HỆ THỐNG, PHÍA WEB');
@@ -49,8 +50,8 @@ function cnGoc() {
 function thoGoc() {
   return {
     luc: LUC,
-    zalo: { dang_bat: false, che_do: 'thu', lan_chay_cuoi: null, sua_luc: truoc(24 * 60), co_loi: false },
-    messenger: { dang_bat: false, loi_cuoi_luc: null, lan_nhan_cuoi: null, sua_luc: truoc(24 * 60), loi_7_ngay: 0 },
+    zalo: { dang_bat: false, che_do: 'thu', bat_luc: null, lan_chay_cuoi: null, co_loi: false },
+    messenger: { dang_bat: false, bat_luc: null, lan_nhan_cuoi: null, loi_cuoi_luc: null, loi_7_ngay: 0 },
     dich: { cho: 0, loi: 0 },
     chi_nhanh: [cnGoc()],
   };
@@ -65,8 +66,8 @@ const IPOS_CHAY = {
   co_cau_hinh: true, bat: true, cau_hinh_du: true, den: 'xanh', mat_ket_noi: false, loi_tu_luc: null,
   dang_tru_kho: true, bat_luc: truoc(3 * 24 * 60), cron_cuoi: truoc(4), nhan_hd_luc: truoc(12),
 };
-const ZALO_CHAY = { dang_bat: true, che_do: 'that', lan_chay_cuoi: truoc(3), sua_luc: truoc(3), co_loi: false };
-const MESS_CHAY = { dang_bat: true, loi_cuoi_luc: null, lan_nhan_cuoi: truoc(10), sua_luc: truoc(30 * 24 * 60), loi_7_ngay: 0 };
+const ZALO_CHAY = { dang_bat: true, che_do: 'that', bat_luc: truoc(3 * 24 * 60), lan_chay_cuoi: truoc(3), co_loi: false };
+const MESS_CHAY = { dang_bat: true, bat_luc: truoc(30 * 24 * 60), loi_cuoi_luc: null, lan_nhan_cuoi: truoc(10), loi_7_ngay: 0 };
 
 // ===========================================================================
 await nhom('1 · DATABASE MỚI, CHƯA BẬT GÌ → KHÔNG BÁO NHẦM', async () => {
@@ -95,9 +96,9 @@ await nhom('2 · ĐẶT BÀN', async () => {
   d = den(voi((t, c) => { Object.assign(c.dat_ban, { form_mo: false, cho: 1, cho_qua_2_gio: 1 }); }), 'dat_ban');
   ok('Form đã đóng nhưng còn yêu cầu chờ quá 2 giờ → vàng (không xám)', d.mau === 'vang' && /1 yêu cầu chờ quá 2 giờ/.test(d.cau), tom(d));
   d = den(voi((t, c) => {
-    Object.assign(c.dat_ban, { form_mo: true, so_ban: 5, cho: 4, cho_qua_2_gio: 3, cho_qua_24_gio: 1, qua_gio_hen: 1 });
+    Object.assign(c.dat_ban, { form_mo: true, so_ban: 5, cho: 4, cho_qua_2_gio: 2, cho_qua_24_gio: 1, qua_gio_hen: 1 });
   }), 'dat_ban');
-  ok('Qua giờ hẹn / chờ quá 24 giờ → đỏ; đếm quá 2 giờ KHÔNG tính lại yêu cầu đã quá 24 giờ',
+  ok('Qua giờ hẹn / chờ quá 24 giờ → đỏ; ba nhóm database đã tách sẵn, web nói đúng từng số (không trừ, không cộng)',
      d.mau === 'do' && /1 yêu cầu đã qua giờ hẹn/.test(d.cau) && /1 yêu cầu chờ quá 24 giờ/.test(d.cau)
      && /2 yêu cầu chờ quá 2 giờ/.test(d.cau), tom(d));
   ok('Câu đỏ đứng trước câu vàng', d.cau.indexOf('qua giờ hẹn') < d.cau.indexOf('chờ quá 2 giờ')
@@ -109,8 +110,8 @@ await nhom('2 · ĐẶT BÀN', async () => {
 
 // ===========================================================================
 await nhom('3 · HỒ SƠ ỨNG TUYỂN', async () => {
-  let d = den(voi((t, c) => { Object.assign(c.tuyen_dung, { moi: 3, moi_qua_2_ngay: 2, moi_qua_7_ngay: 1 }); }), 'tuyen_dung');
-  ok('Nằm im quá 7 ngày → đỏ; quá 2 ngày không tính lại hồ sơ đã quá 7 ngày',
+  let d = den(voi((t, c) => { Object.assign(c.tuyen_dung, { moi: 3, moi_qua_2_ngay: 1, moi_qua_7_ngay: 1 }); }), 'tuyen_dung');
+  ok('Nằm im quá 7 ngày → đỏ; nhóm 2–7 ngày đi sau, đúng số database trả',
      d.mau === 'do' && /1 hồ sơ chưa ai mở quá 7 ngày/.test(d.cau) && /1 hồ sơ chưa ai mở quá 2 ngày/.test(d.cau), tom(d));
   d = den(voi((t, c) => { Object.assign(c.tuyen_dung, { moi: 1, moi_qua_2_ngay: 1 }); }), 'tuyen_dung');
   ok('Quá 2 ngày → vàng', d.mau === 'vang', tom(d));
@@ -166,7 +167,8 @@ await nhom('6 · TIN ZALO CỦA CHI NHÁNH', async () => {
   ok('Zalo chưa bật → xám, dù có tin chờ', d.mau === 'tat', tom(d));
   d = den(voi((t, c) => { Object.assign(t.zalo, ZALO_CHAY); c.tin_zalo.cho_qua_han = 1; c.tin_zalo.that_bai_24h = 2; }), 'tin_zalo');
   ok('Tin giao dịch kẹt → đỏ; tin hỏng trong 24 giờ đi sau',
-     d.mau === 'do' && /^1 tin giao dịch đến hạn quá 30 phút/.test(d.cau) && /2 tin hỏng/.test(d.cau), tom(d));
+     d.mau === 'do' && /^1 tin giao dịch đến hạn quá 30 phút/.test(d.cau) && /2 tin đến hạn trong 24 giờ qua đã hỏng/.test(d.cau),
+     tom(d));
   d = den(voi((t, c) => { Object.assign(t.zalo, ZALO_CHAY); c.tin_zalo.that_bai_24h = 2; }), 'tin_zalo');
   ok('Chỉ có tin hỏng → vàng', d.mau === 'vang', tom(d));
 });
@@ -178,14 +180,23 @@ await nhom('7 · BỘ GỬI TIN ZALO (NHỊP TIM VIỆC CHẠY NỀN)', async ()
   ok('Chạy đều → xanh, nói lượt gần nhất', d.mau === 'xanh' && /lượt gần nhất 3 phút trước/.test(d.cau), tom(d));
   ok('Chủ mở màn cài đặt Zalo; quản lý mở màn Zalo chung',
      d.di === '/noi-bo/zalo/cai-dat' && zalo({}, false).di === '/noi-bo/zalo', `${d.di} / ${zalo({}, false).di}`);
-  d = zalo({ lan_chay_cuoi: truoc(45), sua_luc: truoc(45) });
-  ok('Không chạy 45 phút → đỏ', d.mau === 'do' && /Bộ gửi đã dừng \(lượt gần nhất 45 phút trước\)/.test(d.cau), tom(d));
-  d = zalo({ lan_chay_cuoi: null, sua_luc: truoc(5) });
+  d = zalo({ lan_chay_cuoi: truoc(45) });
+  ok('Bật 3 ngày, lượt chạy xong gần nhất 45 phút trước → đỏ', d.mau === 'do'
+     && /Bộ gửi đã dừng \(lượt gần nhất 45 phút trước\)/.test(d.cau), tom(d));
+  d = zalo({ lan_chay_cuoi: null, bat_luc: truoc(5) });
   ok('Vừa bật 5 phút, chưa có lượt → chưa đỏ', d.mau === 'xanh' && /vừa bật/.test(d.cau), tom(d));
-  d = zalo({ lan_chay_cuoi: null, sua_luc: truoc(40) });
+  d = zalo({ lan_chay_cuoi: null, bat_luc: truoc(40) });
   ok('Bật 40 phút mà chưa chạy lượt nào → đỏ', d.mau === 'do' && /chưa chạy lượt nào/.test(d.cau), tom(d));
+  d = zalo({ lan_chay_cuoi: truoc(3 * 24 * 60), bat_luc: truoc(5) });
+  ok('Bật lại 5 phút trước: lượt cũ từ trước khi tắt không tính, chưa đỏ', d.mau === 'xanh' && /vừa bật/.test(d.cau), tom(d));
+  d = zalo({ lan_chay_cuoi: truoc(3 * 24 * 60), bat_luc: truoc(40) });
+  ok('Bật lại 40 phút mà chưa có lượt mới → đỏ "chưa chạy lượt nào kể từ khi bật" (không nói "lượt gần nhất 3 ngày")',
+     d.mau === 'do' && /chưa chạy lượt nào kể từ khi bật/.test(d.cau), tom(d));
   d = zalo({ co_loi: true });
   ok('Lượt gần nhất lỗi → đỏ', d.mau === 'do' && /Lượt gửi gần nhất bị lỗi/.test(d.cau), tom(d));
+  d = zalo({ lan_chay_cuoi: truoc(45), co_loi: true });
+  ok('Đã dừng VÀ lượt cuối lỗi → cả hai câu (lỗi thường là lý do dừng)',
+     d.mau === 'do' && /đã dừng/.test(d.cau) && /Lượt gửi gần nhất bị lỗi/.test(d.cau), tom(d));
   d = zalo({ che_do: 'thu' });
   ok('Chế độ thử → vàng: khách thật chưa nhận gì', d.mau === 'vang' && /khách thật chưa nhận gì/.test(d.cau), tom(d));
 });
@@ -206,9 +217,12 @@ await nhom('8 · BOT MESSENGER', async () => {
   d = mess({ lan_nhan_cuoi: truoc(4 * 24 * 60) });
   ok(`Bật mà ${GIO_KHONG_CO_TIN} giờ+ không nhận được tin nào → vàng, bảo nhắn thử kiểm tra webhook`,
      d.mau === 'vang' && /Không nhận được tin nào từ Facebook 4 ngày nay/.test(d.cau) && /webhook/.test(d.cau), tom(d));
-  d = mess({ lan_nhan_cuoi: null, sua_luc: truoc(4 * 24 * 60) });
+  d = mess({ lan_nhan_cuoi: null, bat_luc: truoc(4 * 24 * 60) });
   ok('Bật 4 ngày mà chưa từng nhận tin → vàng', d.mau === 'vang' && /Chưa nhận được tin nào/.test(d.cau), tom(d));
-  d = mess({ lan_nhan_cuoi: null, sua_luc: truoc(24 * 60) });
+  d = mess({ lan_nhan_cuoi: truoc(10 * 24 * 60), bat_luc: truoc(4 * 24 * 60) });
+  ok('Bật lại 4 ngày, tin gần nhất từ trước lần bật → vàng "chưa nhận được tin nào kể từ khi bật"',
+     d.mau === 'vang' && /Chưa nhận được tin nào từ Facebook kể từ khi bật/.test(d.cau), tom(d));
+  d = mess({ lan_nhan_cuoi: null, bat_luc: truoc(24 * 60) });
   ok('Bật 1 ngày chưa có tin → vẫn xanh (chưa đủ lâu để nghi)', d.mau === 'xanh', tom(d));
 });
 
@@ -273,6 +287,10 @@ await nhom('11 · docSucKhoe: KHÔNG BAO GIỜ NÉM LỖI, KHÔNG BAO GIỜ ĐO�
     ok('Thiếu hàm không phải lỗi vận hành → không ghi log', log.length === 0, log.join(' | '));
 
     kq = await docSucKhoe(client(() => ({ data: null, error: {
+      code: '42883', message: 'function kho_ipos_trang_thai(uuid) does not exist' } })));
+    ok('Hàm CON bị đổi / xóa (42883 nhắc tên hàm khác) → hỏng thật, không phải "chưa chạy migration"',
+       kq.ok === false && kq.chuaCoHam === false && log.length === 1, JSON.stringify(kq));
+    kq = await docSucKhoe(client(() => ({ data: null, error: {
       code: '42501', message: 'Chỉ chủ sở hữu hoặc quản lý mới xem được sức khỏe hệ thống' } })));
     ok('Bị từ chối quyền → không đọc được (không phải "chưa có hàm")', kq.ok === false && kq.chuaCoHam === false, JSON.stringify(kq));
     kq = await docSucKhoe(client(() => ({ data: null, error: { code: '', message: 'upstream request timeout' } })));
@@ -283,14 +301,17 @@ await nhom('11 · docSucKhoe: KHÔNG BAO GIỜ NÉM LỖI, KHÔNG BAO GIỜ ĐO�
     ok('Không lỗi mà không có số liệu → không đọc được', kq.ok === false);
     kq = await docSucKhoe(client(() => ({ data: { luc: 'không phải ngày', zalo: {}, messenger: {}, dich: {}, chi_nhanh: [] }, error: null })));
     ok('Số liệu sai dạng → không đọc được (không đoán)', kq.ok === false);
-    ok('Mỗi lần không đọc được đều ghi một dòng log [suc-khoe]', log.length === 5 && log.every(l => l.startsWith('[suc-khoe]')),
+    ok('Mỗi lần không đọc được đều ghi một dòng log [suc-khoe]', log.length === 6 && log.every(l => l.startsWith('[suc-khoe]')),
        log.join(' | '));
   } finally {
     console.error = goc;
   }
 
-  ok('laThieuHam: chỉ đúng mã / câu "không có hàm"',
-     laThieuHam({ code: 'PGRST202' }) && laThieuHam({ code: '42883' }) && !laThieuHam({ code: '42501', message: 'x' })
+  ok('laThieuHam: đúng mã VÀ câu lỗi nhắc chính suc_khoe_he_thong',
+     laThieuHam({ code: 'PGRST202', message: 'Could not find the function public.suc_khoe_he_thong without parameters' })
+     && laThieuHam({ code: '42883', message: 'function suc_khoe_he_thong() does not exist' })
+     && !laThieuHam({ code: '42883', message: 'function kho_ipos_trang_thai(uuid) does not exist' })
+     && !laThieuHam({ code: 'PGRST202' }) && !laThieuHam({ code: '42501', message: 'suc_khoe_he_thong' })
      && !laThieuHam(null) && !laThieuHam({ code: 'PGRST301', message: 'JWT expired' }));
   ok('laSucKhoeTho: từ chối null, {}, mảng, thiếu chi_nhanh, luc không phải ngày',
      [null, {}, [], { ...thoGoc(), chi_nhanh: undefined }, { ...thoGoc(), luc: 'x' }, { ...thoGoc(), chi_nhanh: [{}] }]
@@ -312,7 +333,7 @@ await nhom('13 · TIẾNG ANH KHÔNG LẪN CHỮ VIỆT', async () => {
   const kichBan = [
     thoGoc(),
     voi((t, c) => {
-      Object.assign(t.zalo, ZALO_CHAY, { lan_chay_cuoi: truoc(45), sua_luc: truoc(45), che_do: 'thu' });
+      Object.assign(t.zalo, ZALO_CHAY, { lan_chay_cuoi: truoc(45), che_do: 'thu', co_loi: true });
       Object.assign(t.messenger, MESS_CHAY, { loi_cuoi_luc: truoc(20), lan_nhan_cuoi: truoc(30), loi_7_ngay: 3 });
       Object.assign(t.dich, { cho: 4, loi: 2 });
       Object.assign(c.dat_ban, { form_mo: true, so_ban: 0, cho: 4, cho_qua_2_gio: 3, cho_qua_24_gio: 1, qua_gio_hen: 1 });
@@ -322,8 +343,8 @@ await nhom('13 · TIẾNG ANH KHÔNG LẪN CHỮ VIỆT', async () => {
       Object.assign(c.so_kho, { co_kho: true, lech: 1 });
     }),
     voi((t, c) => {
-      Object.assign(t.zalo, ZALO_CHAY, { lan_chay_cuoi: null, sua_luc: truoc(40) });
-      Object.assign(t.messenger, MESS_CHAY, { lan_nhan_cuoi: null, sua_luc: truoc(5 * 24 * 60) });
+      Object.assign(t.zalo, ZALO_CHAY, { lan_chay_cuoi: null, bat_luc: truoc(40) });
+      Object.assign(t.messenger, MESS_CHAY, { lan_nhan_cuoi: null, bat_luc: truoc(5 * 24 * 60) });
       Object.assign(c.ipos, IPOS_CHAY, { den: 'vang', cho_xu_ly: 1 });
     }),
     voi((t, c) => { Object.assign(t.zalo, ZALO_CHAY); Object.assign(t.messenger, MESS_CHAY); Object.assign(c.ipos, IPOS_CHAY, { den: 'do', mat_ket_noi: true, loi_tu_luc: truoc(90) }); }),
@@ -366,6 +387,35 @@ await nhom('14 · TRANG TỔNG QUAN', async () => {
      /bangSucKhoe\(ketQua, nn, laChu\)/.test(comp) && !/chạy tốt|running well/.test(boChuThich(comp)));
   ok('Component không có <script> (chỉ vẽ)', !/<script/i.test(comp));
   ok('Gọi RPC bằng tên trong nháy đơn (test-hop-dong-web đọc được)', /\.rpc\('suc_khoe_he_thong'\)/.test(lib));
+  const mig = readFileSync(join(GOC, 'crm', 'supabase', 'migrations', '0055_suc_khoe_he_thong.sql'), 'utf8');
+  const choQuaHan = mig.slice(mig.indexOf("'cho_qua_han'"), mig.indexOf('from nhat_ky_tin'));
+  ok(`Câu "tin kẹt quá ${PHUT_TIN_KET} phút" khớp đúng ngưỡng đếm trong SQL của 0055`,
+     choQuaHan.includes(`interval '${PHUT_TIN_KET} minutes'`), choQuaHan.slice(0, 200));
+});
+
+// ===========================================================================
+// CLAUDE.md mục gio-vn: thử 23:50 và 00:10 giờ VN. Mọi phép "bao lâu trước" tính theo luc của
+// database — đồng hồ máy chạy Worker (lệch, hay qua nửa đêm) không được đổi một chữ nào.
+await nhom('15 · ĐỒNG HỒ MÁY KHÔNG ẢNH HƯỞNG (23:50 và 00:10 giờ VN)', async () => {
+  const tho = voi((t, c) => {
+    Object.assign(t.zalo, ZALO_CHAY, { lan_chay_cuoi: truoc(45) });
+    Object.assign(t.messenger, MESS_CHAY, { loi_cuoi_luc: truoc(20), lan_nhan_cuoi: truoc(30) });
+    Object.assign(c.ipos, IPOS_CHAY);
+  });
+  const chup = () => JSON.stringify(bangSucKhoe({ ok: true, tho }, 'vi', true));
+  const that = chup();
+  const ketQua = [];
+  try {
+    for (const gio of ['2026-09-29T16:50:00Z', '2026-09-29T17:10:00Z', '2031-01-01T00:00:00Z']) {
+      datGio(gio);
+      ketQua.push(chup());
+    }
+  } finally { traGio(); }
+  ok('Đồng hồ máy ở 23:50, 00:10 giờ VN hay lệch hẳn năm năm → cùng một bảng', ketQua.every(k => k === that));
+  const luc2350 = danhGiaSucKhoe({ ...tho, luc: '2026-09-29T16:50:00Z' }, 'vi');
+  const luc0010 = danhGiaSucKhoe({ ...tho, luc: '2026-09-29T17:10:00Z' }, 'vi');
+  ok('Giờ số liệu lấy từ database: 16:50 UTC → 23:50, 17:10 UTC → 00:10 hôm sau', luc2350.gio === '23:50' && luc0010.gio === '00:10',
+     `${luc2350.gio} / ${luc0010.gio}`);
 });
 
 process.exit(ketThuc('SỨC KHỎE HỆ THỐNG PHÍA WEB'));
