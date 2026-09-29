@@ -320,6 +320,11 @@
     <h3>5. Thông số</h3>
     <p class="phu">Chỉ vài thông số an toàn được sửa ở đây; thông số khác chỉ xem. Gửi qua cổng 33571 như gửi giá.</p>
     <div id="can-thong-so"></div>
+
+    <h3>6. Chữ cài đặt chung</h3>
+    <p class="phu">Tên quán, tên cân, đơn vị tiền và các dòng "Ghi chú cân" in trên tem, hoá đơn. Tên và mật khẩu WiFi không hiện, không sửa ở đây.
+      Gửi qua cổng 33571 như gửi giá.</p>
+    <div id="can-chu-chung"></div>
   </section>
 
   <!-- Phím tắt (2.2) -->
@@ -729,6 +734,7 @@
       const kem = [];
       if (k.thongSo && k.thongSo.length) kem.push(`${k.thongSo.length} thông số đang sửa (số ${k.thongSo.join(', ')})`);
       if (k.phim && k.phim.length) kem.push(`${k.phim.length} phím tắt đang sửa`);
+      if (k.chuChung && k.chuChung.length) kem.push(`${k.chuChung.length} chữ cài đặt chung đang sửa (chữ số ${k.chuChung.join(', ')})`);
       noi.innerHTML = `<div class="bao luu-y"><p>Đã lưu file (${k.soHang} hàng) ở <code>${e(k.duongDan)}</code>.`
         + (kem.length ? ` File có cả ${kem.join(' và ')} — nạp USB xong là cân nhận.` : '') + '</p>'
         + '<p>1. Chép file này vào thư mục <b>JHSCALE</b> trên USB (ghi đè). 2. Cắm USB vào cân: <b>Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm</b> (hiện 000) '
@@ -1583,10 +1589,11 @@
 
   /**
    * Việc ở thẻ Cân: khoá các nút của thẻ khi đang làm, hiện chữ "đang…" trong khung kết quả. Không đụng nút của mục
-   * Thông số (#can-thong-so): veThongSo / capNutTs tự bật tắt chúng theo thay đổi đang sửa.
+   * Thông số (#can-thong-so) và Chữ cài đặt chung (#can-chu-chung): veThongSo / capNutTs, veChuChung / capNutCc tự bật
+   * tắt chúng theo thay đổi đang sửa.
    */
   async function lamCan(noi, chuDang, viec) {
-    const nut = [...$('the-can').querySelectorAll('button')].filter(b => !b.closest('#can-thong-so'));
+    const nut = [...$('the-can').querySelectorAll('button')].filter(b => !b.closest('#can-thong-so')).filter(b => !b.closest('#can-chu-chung'));
     for (const b of nut) b.disabled = true;
     noi.innerHTML = `<p class="dang-lam">${e(chuDang)}</p>`;
     try { await viec(noi); }
@@ -1681,14 +1688,40 @@
     return l ? `${l.gt} — ${l.ten}` : String(v);
   };
   const cungGiaTri = (a, b) => a !== null && b !== null && String(a).trim() !== '' && Number(a) === Number(b);
+  /**
+   * Tải lại ngay sau khi gửi thông số / chữ chung (giuKhiTaiLai): file gốc chỉ vừa đổi đúng chỗ đã gửi, nên giữ thay đổi
+   * đang sửa của mục kia — mục nào giá trị trong file đã khác thì vẫn bỏ. Mọi lần tải lại khác (file gốc mới, đăng nhập…)
+   * bỏ hết thay đổi đang sửa: file gốc có thể là của cân khác.
+   */
+  const giuThayDoi = (sua, cu, moi) => Object.fromEntries(Object.entries(sua).filter(([id]) => {
+    const a = cu && cu.muc && cu.muc.find(x => x.id === Number(id)), b = moi.muc.find(x => x.id === Number(id));
+    return !!a && !!b && !b.chiXem && a.giaTri === b.giaTri;
+  }));
+  let tsTruoc = null;         // thông số lần đọc trước (canDL bị xoá mỗi lần tải lại trạng thái)
+  let giuKhiTaiLai = false;   // chỉ bật trong lúc tải lại ngay sau một lần gửi ở thẻ Cân
+  let lanTaiCan = 0;          // lần tải thẻ Cân mới nhất — câu trả lời của lần cũ về muộn thì bỏ
+  /** Tải lại trạng thái sau khi gửi ở thẻ Cân, giữ thay đổi đang sửa của mục kia. */
+  async function taiLaiSauKhiGui() {
+    giuKhiTaiLai = true;
+    try { await taiTrangThai(); } finally { giuKhiTaiLai = false; }
+  }
 
   async function taiCan() {
     canDL = { dang: true };
+    const lan = ++lanTaiCan, giu = giuKhiTaiLai;
     const noi = $('can-thong-so');
-    if (!trangThai.goc) { bao(noi, 'luu-y', 'Chưa có file gốc của cân — làm bước Bắt đầu (USB), hoặc đọc dữ liệu từ cân qua WiFi ở mục 3.'); return; }
+    if (!trangThai.goc) {
+      bao(noi, 'luu-y', 'Chưa có file gốc của cân — làm bước Bắt đầu (USB), hoặc đọc dữ liệu từ cân qua WiFi ở mục 3.');
+      $('can-chu-chung').innerHTML = '';
+      return;
+    }
     noi.innerHTML = '<p class="dang-lam">Đang đọc thông số…</p>';
-    try { canDL = await goi('/api/thong-so'); tsSua = {}; veThongSo(); }
-    catch (err) { bao(noi, 'loi', e(err.message)); }
+    taiChuChung(lan, giu);
+    try {
+      const moi = await goi('/api/thong-so');
+      if (lan !== lanTaiCan) return;
+      canDL = moi; tsSua = giu ? giuThayDoi(tsSua, tsTruoc, moi) : {}; tsTruoc = moi; veThongSo();
+    } catch (err) { if (lan === lanTaiCan) bao(noi, 'loi', e(err.message)); }
   }
 
   function veThongSo() {
@@ -1753,11 +1786,108 @@
         baoChung('luu-y', `<p><b>Đã gửi ${k.doi.length} thông số xuống cân</b> (số ${k.doi.join(', ')}) qua cổng 33571. Chưa thử trên cân thật: cân không trả lời, `
           + 'nên chưa biết cân đã nhận. In thử một tem, xem màn hình cân.</p><p>Cân chưa đổi: thẻ Cân &amp; thông số → <b>Lưu file nạp USB</b> '
           + '(file có sẵn thay đổi vừa gửi) rồi nạp USB.</p>' + daDoiDiaChi(k.doiDiaChi));
-        await taiTrangThai();
+        await taiLaiSauKhiGui();
       } catch (err) { bao($('kq-ts'), 'loi', e(err.message)); }
       finally {
         dangGuiTs = false; $('can-thong-so').inert = false;
         if ($('nut-gui-ts')) { $('nut-gui-ts').textContent = 'Gửi thông số đã đổi xuống cân'; capNutTs(); }
+      }
+    };
+  }
+
+  // ---- chữ cài đặt chung (2.4) ------------------------------------------------
+  // Như mục Thông số. dangGuiCc: đang gửi — nút Gửi / Bỏ không bật lại, ô chữ không sửa được.
+  // Trang không bao giờ nhận tên, mật khẩu WiFi hay tên miền (chữ số 15, 16, 19): máy chủ không trả, không nhận.
+  let ccDL = null, ccSua = {}, dangGuiCc = false;
+  /** Chữ như chương trình sẽ gửi (kiemChuChung): tab / xuống dòng thành dấu cách, bỏ ký tự điều khiển, bỏ cách hai đầu, NFC. */
+  const gonChu = (v) => String(v).replace(/[\t\r\n\v\f]+/g, ' ').replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim().normalize('NFC');
+  const chuHien = (v) => (v === null || v === undefined ? '(file không có)' : v === '' ? '(trống)' : `"${v}"`);
+  function capNutCc() {
+    const n = Object.keys(ccSua).length;
+    if (!$('nut-gui-cc')) return;
+    $('nut-gui-cc').disabled = dangGuiCc || !n; $('nut-bo-cc').disabled = dangGuiCc || !n; $('nut-usb-cc').disabled = dangGuiCc;
+    $('cc-dem').textContent = dangGuiCc ? 'Đang gửi…' : n ? n + ' thay đổi chưa gửi' : 'Chưa có thay đổi';
+  }
+  /** Đếm ký tự như máy chủ đếm (sau khi gọn, NFC); quá thì tô đỏ — máy chủ sẽ từ chối. */
+  function demChu(i, m) {
+    const n = [...gonChu(i.value)].length, o = i.parentElement.querySelector('.dem-chu');
+    o.textContent = `${n}/${m.toiDa} ký tự${m.batBuoc ? ', không để trống' : ''}`;
+    o.style.color = n > m.toiDa || (m.batBuoc && n === 0) ? 'var(--do-dam)' : '';
+  }
+
+  async function taiChuChung(lan, giu) {
+    const noi = $('can-chu-chung');
+    noi.innerHTML = '<p class="dang-lam">Đang đọc chữ cài đặt chung…</p>';
+    try {
+      const moi = await goi('/api/chu-chung');
+      if (lan !== lanTaiCan) return;
+      ccSua = giu ? giuThayDoi(ccSua, ccDL, moi) : {}; ccDL = moi; veChuChung();
+    } catch (err) { if (lan === lanTaiCan) bao(noi, 'loi', e(err.message)); }
+  }
+
+  function veChuChung() {
+    const d = ccDL;
+    let h = '';
+    for (const nhom of d.nhom) {
+      const ds = d.muc.filter(m => m.nhom === nhom);
+      if (!ds.length) continue;
+      h += `<h4 class="nhom-ts">${e(nhom)}</h4>`;
+      for (const m of ds) {
+        const doi = m.id in ccSua;
+        const dk = m.chiXem ? `<span class="nhan-l xam">Chỉ xem</span> <b>${e(chuHien(m.giaTri))}</b>`
+          : `<input type="text" data-cc="${m.id}" value="${e(doi ? ccSua[m.id] : (m.giaTri ?? ''))}" style="width:100%;max-width:420px"> <span class="phu dem-chu"></span>`;
+        h += `<div class="ts ${doi ? 'doi' : ''}"><div><b>${e(m.ten)}</b> <span class="phu">chữ số ${m.id}${doi ? ' · trên cân (file gốc) đang là ' + e(chuHien(m.giaTri)) : ''}</span></div>`
+          + `<div class="phu">${e(m.moTa)}</div><div style="margin-top:4px">${dk}</div>`
+          + (m.trenTem.length ? `<div class="phu">Có ô in chữ này: ${e(m.trenTem.join(' · '))}</div>` : '')
+          + (m.docDuoc ? '' : `<div class="canh-bao-o">Chữ trong file không đọc được (cân không lưu dạng UTF-8)${m.chiXem ? '.' : ' — muốn sửa thì xoá cả ô, gõ lại cả chữ.'}</div>`)
+          + (m.canhBao ? `<div class="canh-bao">${e(m.canhBao)}</div>` : '') + '</div>';
+      }
+    }
+    h += `<div class="nut" style="margin-top:14px"><button class="chinh" id="nut-gui-cc">Gửi chữ đã đổi xuống cân</button>`
+      + '<button id="nut-bo-cc">Bỏ thay đổi</button><button id="nut-usb-cc">Lưu file nạp USB</button>'
+      + '<span class="phu" id="cc-dem"></span></div><div id="kq-cc"></div>';
+    $('can-chu-chung').innerHTML = h;
+    $('can-chu-chung').inert = dangGuiCc;
+    capNutCc();
+    for (const i of $('can-chu-chung').querySelectorAll('[data-cc]')) {
+      const m = ccDL.muc.find(x => x.id === Number(i.dataset.cc));
+      demChu(i, m);
+      // Cập nhật khi gõ, không vẽ lại (giữ con trỏ trong ô; cú bấm vào Gửi không bị mất).
+      i.oninput = () => {
+        if (gonChu(i.value) === (m.giaTri ?? '')) delete ccSua[m.id]; else ccSua[m.id] = i.value;
+        i.closest('.ts').classList.toggle('doi', m.id in ccSua);
+        demChu(i, m);
+        capNutCc();
+      };
+    }
+    $('nut-bo-cc').onclick = () => { ccSua = {}; veChuChung(); };
+    $('nut-usb-cc').onclick = async () => {
+      // File USB mang cả chữ đang sửa (chưa gửi WiFi) — gửi WiFi hỏng thì nạp USB luôn. Chỉ chữ của mục này: một thay đổi
+      // sai ở mục Thông số không chặn đường USB của mục này (và ngược lại).
+      try { hienUsb($('kq-cc'), await goi('/api/tao-usb-goc', { chuChung: ccSua })); } catch (err) { bao($('kq-cc'), 'loi', e(err.message)); }
+    };
+    $('nut-gui-cc').onclick = async () => {
+      if (dangGuiCc || !Object.keys(ccSua).length) return;
+      const ds = Object.entries(ccSua).map(([id, v]) => {
+        const m = ccDL.muc.find(x => x.id === Number(id));
+        return `• ${m.ten} (chữ số ${id}): ${chuHien(m.giaTri)} → ${chuHien(gonChu(v))}`;
+      }).join('\n');
+      if (!confirm(`Gửi ${Object.keys(ccSua).length} chữ cài đặt chung xuống cân?\n\n${ds}\n\nGửi qua cổng 33571 như gửi giá — CHƯA THỬ TRÊN CÂN THẬT: `
+        + 'cân không trả lời, nên chưa biết cân đã nhận. Gửi xong in thử một tem có ô chữ đó, xem màn hình cân.')) return;
+      const nut = $('nut-gui-cc');
+      dangGuiCc = true; $('can-chu-chung').inert = true; nut.textContent = 'Đang gửi…'; capNutCc();
+      try {
+        const k = await goi('/api/chu-chung/gui', { thay: ccSua });
+        ccSua = {};   // đã gửi: không gửi lại lần nữa
+        baoChung('luu-y', `<p><b>Đã gửi ${k.doi.length} chữ cài đặt chung xuống cân</b> (chữ số ${k.doi.join(', ')}) qua cổng 33571. Chưa thử trên cân thật: `
+          + 'cân không trả lời, nên chưa biết cân đã nhận. In thử một tem có ô chữ đó (Tên quán, Ghi chú cân…), xem màn hình cân.</p>'
+          + '<p>Cân chưa đổi: thẻ Cân &amp; thông số → mục 6 → <b>Lưu file nạp USB</b> (file có sẵn thay đổi vừa gửi) rồi nạp USB.</p>'
+          + daDoiDiaChi(k.doiDiaChi));
+        await taiLaiSauKhiGui();
+      } catch (err) { bao($('kq-cc'), 'loi', e(err.message)); }
+      finally {
+        dangGuiCc = false; $('can-chu-chung').inert = false;
+        if ($('nut-gui-cc')) { $('nut-gui-cc').textContent = 'Gửi chữ đã đổi xuống cân'; capNutCc(); }
       }
     };
   }

@@ -70,8 +70,8 @@ import {
   type DongKeHoach, type FileCan, type HangKho, type KeHoach, type LoaiDong,
 } from '../../web/src/lib/kho/can-tma.ts';
 import {
-  CANH_CHU, CAU_DOI, CO_CHU, DIEU_KIEN_IN, LoiTem, O_THEM_DUOC, XOAY, dauTem, goiYHsd, suaTem, xemTem,
-  type DaTat, type TemXem, type ThayDoiTem,
+  CANH_CHU, CAU_DOI, CO_CHU, DIEU_KIEN_IN, LoiTem, O_THEM_DUOC, XOAY, dauTem, docTem, goiYHsd, suaTem, xemTem,
+  type DaTat, type MauTem, type TemXem, type ThayDoiTem,
 } from './tem.ts';
 import {
   CONG_HAI_CHIEU, LoiGiaoThuc, docTuCan, ghepFileUsb, khoiTim, khoiXoaVaNapPlu, moKetNoi,
@@ -82,8 +82,9 @@ import {
   tuyChonTuThongSo, type DongBanCan, type KetQuaNhatKy, type SuKienCan, type TomTatNhatKy,
 } from './bao-cao-can.ts';
 import {
-  LoiThongSo, NHOM_THONG_SO, PHIM_CHU_TOI_DA, THONG_SO, docPhim, docThongSo, fileNho,
-  suaPhim as suaPhimTrongFile, suaThongSo as suaThongSoTrongFile, type MucThongSo, type PhimXem,
+  CHU_CHUNG, LoiThongSo, NHOM_CHU_CHUNG, NHOM_THONG_SO, PHIM_CHU_TOI_DA, THONG_SO, docChuChung, docPhim, docThongSo, fileNho,
+  suaChuChung as suaChuChungTrongFile, suaPhim as suaPhimTrongFile, suaThongSo as suaThongSoTrongFile,
+  type MucChuChung, type MucThongSo, type PhimXem,
 } from './thong-so.ts';
 import { LA_IP, layMac, thuKetNoi, timCan as doTimCan, type KetQuaTim, type MangMay } from './tim-can.ts';
 import { LoiDay, dsCongCom, giayDay, guiCom, hoiGioQuaDay, kiemCom, tocDoTuThongSo, type ChayPs, type CongCom } from './day-rs232.ts';
@@ -441,6 +442,19 @@ export interface ThongSoXem {
 }
 
 export interface PhimXemHang extends PhimXem { ten: string | null; maCan: string | null }
+
+/** Chữ cài đặt chung (TMT) để xem / sửa — không bao giờ có tên, mật khẩu WiFi hay tên miền (15, 16, 19). */
+export interface ChuChungXem {
+  muc: (MucChuChung & {
+    /** Chữ trong file gốc; null = file không có dòng này. */
+    giaTri: string | null;
+    /** false: chữ trong file không phải UTF-8 (giaTri có ký tự thay thế). */
+    docDuoc: boolean;
+    /** Mẫu tem có ô in chữ này, ví dụ 'Mẫu 28 "Tem hàng" (cân đang dùng)'. */
+    trenTem: string[];
+  })[];
+  nhom: readonly string[];
+}
 
 /**
  * Kế hoạch gửi dựng từ file gốc + kho (UngDung.dung): file sẽ gửi (du, moi) và hàng sẽ còn nằm lại trên cân (conLai).
@@ -1056,10 +1070,10 @@ export class UngDung {
    * File nạp USB từ file gốc (2.2): đường lui khi gửi thông số / phím / tem / giờ qua WiFi mà cân chưa đổi — file gốc
    * đã có sẵn thay đổi vừa gửi. Kèm thay đổi thông số / phím ĐANG SỬA trên trang mà chưa gửi (`thongSo`, `phim` — gửi
    * WiFi hỏng thì đi USB luôn): chỉ vào file USB, KHÔNG ghi file gốc — "Tôi đã nạp USB xong" (daNapUsb) mới ghi nhận.
-   * Bỏ phần giờ, nhật ký bán, thông tin máy như mọi lần gửi.
+   * 2.4: kèm cả chữ cài đặt chung đang sửa (`chuChung`). Bỏ phần giờ, nhật ký bán, thông tin máy như mọi lần gửi.
    */
-  async taoFileUsbGoc(b: { thongSo?: unknown; phim?: unknown } = {}): Promise<{
-    duongDan: string; soHang: number; thongSo: number[]; phim: { trang: number; phim: number }[];
+  async taoFileUsbGoc(b: { thongSo?: unknown; phim?: unknown; chuChung?: unknown } = {}): Promise<{
+    duongDan: string; soHang: number; thongSo: number[]; phim: { trang: number; phim: number }[]; chuChung: number[];
   }> {
     await this.kiemQuyenCan('Lưu file nạp USB');
     const thay: Record<string, string | number> = {};
@@ -1068,17 +1082,19 @@ export class UngDung {
     }
     const thayPhim = (Array.isArray(b.phim) ? b.phim : []).filter(laDoiTuong).slice(0, 300)
       .map(t => ({ trang: Number(t.trang), phim: Number(t.phim), plu: Number(t.plu) }));
+    const thayChu = layThayChu(b.chuChung);
     let du = this.docGoc();
-    let doiTs: number[] = [], doiPhim: { trang: number; phim: number }[] = [];
+    let doiTs: number[] = [], doiPhim: { trang: number; phim: number }[] = [], doiChu: number[] = [];
     if (Object.keys(thay).length) ({ du, doi: doiTs } = suaThongSoTrongFile(du, thay));
     if (thayPhim.length) ({ du, doi: doiPhim } = suaPhimTrongFile(du, thayPhim));
+    if (Object.keys(thayChu).length) ({ du, doi: doiChu } = suaChuChungTrongFile(du, thayChu));
     const goc = docFileCan(du);
     const ra = ghiFileCan(goc, KHONG_DOI, { giuGioCan: true, boPhanChiDoc: true });
     fs.mkdirSync(path.dirname(this.fileChoUsb), { recursive: true });
     fs.writeFileSync(this.fileChoUsb, ra);
     fs.rmSync(this.fileDaTatChoUsb, { force: true });
     fs.rmSync(this.fileHsdNgayChoUsb, { force: true });   // PLU như file gốc: HSD vẫn tính cho ngày cũ
-    return { duongDan: this.fileChoUsb, soHang: goc.plu.length, thongSo: doiTs, phim: doiPhim };
+    return { duongDan: this.fileChoUsb, soHang: goc.plu.length, thongSo: doiTs, phim: doiPhim, chuChung: doiChu };
   }
 
   // ---- tất cả hàng -------------------------------------------------------------
@@ -1549,6 +1565,43 @@ export class UngDung {
     });
   }
 
+  // ---- 2.4: chữ cài đặt chung (TMT) — thong-so.ts ------------------------------------
+  /** Chữ cài đặt chung trong file gốc, kèm các mẫu tem có ô in chữ đó. Không bao giờ trả TMT 15, 16, 19. */
+  async chuChung(): Promise<ChuChungXem> {
+    await this.kiemQuyenCan('Chữ cài đặt chung');
+    const goc = docFileCan(this.docGoc());
+    const gt = docChuChung(goc);
+    let cacMau: MauTem[] = [], dangDung: MauTem | null = null;
+    try { ({ cacMau, dangDung } = docTem(goc)); } catch { /* phần tem hỏng: không nói gì về tem */ }
+    const tenMau = (t: MauTem) => `Mẫu ${t.id}${t.ten.trim() ? ` "${t.ten.trim()}"` : ''}${t === dangDung ? ' (cân đang dùng)' : ''}`;
+    return {
+      muc: CHU_CHUNG.map(m => ({
+        ...m, giaTri: gt.get(m.id)?.giaTri ?? null, docDuoc: gt.get(m.id)?.docDuoc ?? true,
+        trenTem: m.oTem === undefined ? [] : cacMau.filter(t => t.o.some(o => o.loai === '2' && o.chu === m.oTem)).map(tenMau),
+      })),
+      nhom: NHOM_CHU_CHUNG,
+    };
+  }
+
+  /**
+   * Sửa chữ cài đặt chung: như suaThongSo — sửa đúng dòng TMT trong file gốc, gửi file nhỏ chỉ có khối TMT đổi qua
+   * cổng 33571, gửi xong mới thay file gốc. Tên, mật khẩu WiFi, tên miền (15, 16, 19) bị từ chối. CHƯA THỬ TRÊN CÂN
+   * THẬT — cân không trả lời, nên trang nói "đã gửi", không nói "đã đổi".
+   */
+  async suaChuChung(b: { thay?: unknown } = {}): Promise<{ doi: number[]; doiDiaChi: DoiDiaChi | null }> {
+    await this.kiemQuyenCan('Gửi chữ cài đặt chung xuống cân');
+    const thay = layThayChu(b.thay);
+    return this.motLuc(async () => {
+      const goc = this.docGoc();
+      const kq = suaChuChungTrongFile(goc, thay);
+      if (!kq.khoi.length) throw new LoiCan('Chữ cài đặt chung chưa có gì thay đổi — không gửi gì.');
+      const nho = fileNho(docFileCan(goc).phienBan, kq.khoi);
+      const doiDiaChi = await this.guiDenCan(nho);
+      this.luuGoc(kq.du, nho);
+      return { doi: kq.doi, doiDiaChi };
+    });
+  }
+
   /** Phím tắt trong file gốc (mọi tầng), kèm tên hàng phím đang gọi, và danh sách hàng để chọn. */
   async phim(): Promise<{ phim: PhimXemHang[]; hang: { so: number; ma: string; ten: string }[] }> {
     await this.kiemQuyenCan('Phím tắt');
@@ -1778,6 +1831,11 @@ export class UngDung {
 // -----------------------------------------------------------------------------
 const hai = (n: number) => String(n).padStart(2, '0');
 const laDoiTuong = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+/**
+ * Chữ cài đặt chung định sửa, từ thân yêu cầu: số chữ → giá trị, giữ nguyên để kiemChuChung kiểm từng mục (giá trị không
+ * phải chữ → báo "phải là chữ", không lặng lẽ bỏ). Thân không phải đối tượng → không sửa gì.
+ */
+const layThayChu = (v: unknown): Record<string, unknown> => (laDoiTuong(v) ? { ...v } : {});
 
 /**
  * Dấu của một kế hoạch xoá qua WiFi: hàng sẽ còn nằm lại (số PLU + mã) và nguyên văn các dòng PLU sẽ gửi lại. Trang gửi

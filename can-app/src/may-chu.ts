@@ -128,7 +128,7 @@ export function moMayChu(ud: UngDung, tuy: {
             const b = await docThan(req);
             return json({ ok: true, ...(await ud.taoFileUsb(b.giuHangNgoaiKho === true)) });
           }
-          // Thân (tuỳ chọn): { thongSo, phim } — thay đổi đang sửa trên trang, chưa gửi WiFi, đưa vào file USB.
+          // Thân (tuỳ chọn): { thongSo, phim, chuChung } — thay đổi đang sửa trên trang, chưa gửi WiFi, đưa vào file USB.
           case '/api/tao-usb-goc': return json({ ok: true, ...(await ud.taoFileUsbGoc(await docThan(req))) });
           case '/api/tai-usb': {
             if (!fs.existsSync(ud.fileChoUsb)) return new Response('Chưa có file', { status: 404 });
@@ -158,6 +158,9 @@ export function moMayChu(ud: UngDung, tuy: {
           // ---- 2.2: thông số, phím tắt (gửi qua 33571 — chưa thử trên cân thật) ----
           case '/api/thong-so': return json({ ok: true, ...(await ud.thongSo()) });
           case '/api/thong-so/gui': return json({ ok: true, ...(await ud.suaThongSo(await docThan(req))) });
+          // ---- 2.4: chữ cài đặt chung (TMT; gửi qua 33571 — chưa thử trên cân thật). Không bao giờ có TMT 15, 16, 19. ----
+          case '/api/chu-chung': return json({ ok: true, ...(await ud.chuChung()) });
+          case '/api/chu-chung/gui': return json({ ok: true, ...(await ud.suaChuChung(await docThan(req))) });
           case '/api/phim': return json({ ok: true, ...(await ud.phim()) });
           case '/api/phim/gui': return json({ ok: true, ...(await ud.suaPhim(await docThan(req))) });
           // ---- 2.2: nhật ký bán của cân ----

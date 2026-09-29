@@ -31,6 +31,8 @@
  * kết nối bị đóng (không đoán tiếp trạng thái dòng dữ liệu), các lệnh sau báo lỗi.
  */
 import * as net from 'node:net';
+// Chữ cài đặt mạng: 15 tên WiFi, 16 mật khẩu WiFi, 19 tên miền máy chủ — một danh sách chung với đường 33571 / USB.
+import { CHU_MANG } from './thong-so.ts';
 
 export const CONG_HAI_CHIEU = 33581;
 
@@ -204,8 +206,6 @@ export const PHAN_GHI_DUOC: readonly PhanDoc[] = ['TMS', 'TMT', 'SCP', 'DPT', 'C
 export const PHAN_XOA_DUOC: readonly PhanDoc[] = ['PLU'];
 /** Thông số mạng (§9.2): gửi sai là cân rời WiFi tới khi sửa bằng tay trên cân. */
 const laThongSoMang = (id: number) => (id >= 43 && id <= 53) || (id >= 150 && id <= 173) || (id >= 430 && id <= 441);
-/** Chữ cài đặt mạng: 15 tên WiFi, 16 mật khẩu WiFi, 19 tên miền máy chủ. */
-const CHU_MANG = new Set([15, 16, 19]);
 
 /**
  * Kiểm dữ liệu trước khi gửi bằng `ghi`: chỉ các khối DWL/CLR…END đúng dạng,

@@ -112,6 +112,7 @@ rồi WiFi không bị lưu hai lần; ô cổng hai chiều để trống thì 
 | Xoá hẳn hàng còn nằm lại | 33581 — đọc PLU (kiểm: không rỗng, không có PLU lạ), bản sao vào `da-gui`, `CLR PLU` + gửi lại cả danh sách, đọc lại để so | `xoaQuaWifi` | Chưa thử |
 | Nhật ký bán | phần `REP` của file USB; hoặc 33581 `UPL REP -N` (đọc hai lần cho khớp) | `bao-cao-can.ts` | File USB: đã đối chiếu file thật; WiFi: chưa thử |
 | Thông số, phím tắt | file nhỏ chỉ có khối `TMS` / `SCP` đổi, qua 33571 | `thong-so.ts` | Chưa thử |
+| Chữ cài đặt chung (2.4) | file nhỏ chỉ có khối `TMT` đổi, qua 33571 | `thong-so.ts` `suaChuChung` | Chưa thử |
 | Sửa / thêm ô tem | cả file như 2.1, qua 33571 | `tem.ts` | Chưa thử (tắt / bật ô, sửa chữ: như 2.1) |
 | HSD trên dòng PLU | cột 27 / 32 (`web/src/lib/kho/can-tma.ts`) — số ngày còn lại của lô, tính mỗi ngày (`danh-muc-can.ts`) | `lapKeHoach`, `hangChoCan` | Chưa thử |
 
@@ -191,6 +192,26 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
     (chưa gửi): ô Cân có khung đỏ; gửi (hay tự gửi) → số ngày giảm 1, HSD trên tem vẫn đúng hạn của lô.
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
+
+## Bản 2.4 — chữ cài đặt chung (TMT)
+
+Thẻ Cân & thông số, **mục 6**: sửa các dòng chữ lưu trong cân (phần `TMT` của file .TMS, "Global Text" / `Prog → 1 → 3`
+trên cân) — tên quán, tên cân, chữ trước / sau số tiền, Ghi chú cân 1–8 (in trên tem khi mẫu tem có ô đó; thẻ Mẫu tem
+thêm được ô "Ghi chú cân 1–8"), chữ tuỳ ý 1–8 (màn hình lúc chờ). Chữ dự phòng 12, 13, 17, 18 và dấu ngành hàng 14 chỉ xem.
+
+- **Tên WiFi, mật khẩu WiFi, tên miền (TMT 15, 16, 19) không bao giờ đọc ra trang, không bao giờ ghi**: `docChuChung` bỏ
+  qua, `kiemChuChung` từ chối (kể cả viết "016"), `fileNho` từ chối dòng đó. Dòng của chúng trong file gốc giữ y nguyên byte.
+- Chữ ghi dạng UTF-8 như tên hàng; tab / xuống dòng thành dấu cách, bỏ ký tự điều khiển, NFC; tối đa 40 ký tự (chữ trước /
+  sau số tiền, dấu ngành hàng: 8); biểu tượng cảm xúc bị từ chối. Tên quán, tên cân không để trống.
+- Gửi như thông số: sửa đúng dòng trong file gốc, file nhỏ chỉ có khối `TMT` đổi qua 33571, gửi xong mới thay file gốc;
+  cân không trả lời → trang nói "đã gửi", chỉ cách kiểm (in thử một tem có ô chữ đó) và nút **Lưu file nạp USB** (file mang
+  cả chữ và thông số đang sửa). **Chưa thử trên cân thật**: cân có nhận khối `TMT` gửi riêng qua 33571, cân chứa được bao
+  nhiêu ký tự, phông của cân in được chữ có dấu ở các ô này.
+- Quyền như thông số (`kiemQuyenCan`). Đường API: `/api/chu-chung`, `/api/chu-chung/gui`, `/api/tao-usb-goc` (`chuChung`).
+
+Thử ở quán (sau bước 6 ở trên): đổi **Ghi chú cân 1** thành số điện thoại của quán, gửi; thẻ Mẫu tem → thêm ô
+"Ghi chú cân 1" vào một mẫu tem thử (không phải mẫu 28 đang bán), in thử — dòng chữ đúng, có dấu. Tên quán: gửi rồi bấm
+**Đọc thông tin cân** (mục 1) — "Tên quán trên cân" đổi theo.
 
 ## Cân đổi địa chỉ — chương trình tự tìm cân (từ 2.1.0)
 
