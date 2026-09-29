@@ -1,0 +1,2447 @@
+﻿<?xml version="1.0"  encoding="utf-8" standalone="yes"?>
+<UIDataSet>
+  <!--فارسی(Persian)-->
+  <Spec_Info>
+    <SpecID>0</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 1 : فرمت چاپ تک کالا (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>1</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 1 : فرمت بارکد تک کالا (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>2</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 1 : فلگ بارکد تک کالا (0 - 99999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>3</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 1 : تعداد پرینت تک کالا (0 - 99 )</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>4</SpecID>
+    <Type>1</Type>
+    <Display>فاکتور 1 : پرینت برعکس تک کالا|0|0:نرمال|1|1:برعکس</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>5</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 1 : فرمت چاپ تجمیع (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>6</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 1 : فرمت بارکد تجمیع (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>7</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 1 : فلگ بارکد تجمیع (0 - 99999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>8</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 1 : تعداد پرینت تجمیع (0 - 99 )</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>9</SpecID>
+    <Type>1</Type>
+    <Display>فاکتور 1 : پرینت برعکس تجمیع |0|0:نرمال|1|1:برعکس</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>10</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 2 : فرمت چاپ تک کالا (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>11</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 2 : فرمت بارکد تک کالا (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>12</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 2 : فلگ بارکد تک کالا (0 - 99999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>13</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 2 : تعداد پرینت تک کالا (0 - 99 )</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>14</SpecID>
+    <Type>1</Type>
+    <Display>فاکتور 2 : پرینت برعکس تک کالا|0|0:نرمال|1|1:برعکس</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>15</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 2 : فرمت چاپ تجمیع (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>16</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 2 : فرمت بارکد تجمیع (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>17</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 2 : فلگ بارکد تجمیع (0 - 99999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>18</SpecID>
+    <Type>0</Type>
+    <Display>فاکتور 2 : تعداد پرینت تجمیع (0 - 99 )</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>19</SpecID>
+    <Type>1</Type>
+    <Display>فاکتور 2 : پرینت برعکس تجمیع |0|0:نرمال|1|1:برعکس</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>20</SpecID>
+    <Type>0</Type>
+    <Display>سرعت چاپ پرینتر (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>21</SpecID>
+    <Type>1</Type>
+    <Display>نوع کاغذ|0|0:رسید|1|1:لیبل</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>22</SpecID>
+    <Type>0</Type>
+    <Display>پررنگی پرینتر درحالت لیبل (0 - 15)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>23</SpecID>
+    <Type>0</Type>
+    <Display>پررنگی پرینتر درحالت رسید (0 - 15)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>24</SpecID>
+    <Type>0</Type>
+    <Display>فاصله هر چاپ در حالت رسید(0~99mm)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>25</SpecID>
+    <Type>0</Type>
+    <Display>محل برش در حالت رسید(0~99mm)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>26</SpecID>
+    <Type>0</Type>
+    <Display>فاصله از کاغذگذاری در حالت رسید(0~1999, دستگاه کاغذگذاری را برعکس انجام میدهد در صورت انتخاب عدد بیشتر از 1000)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>27</SpecID>
+    <Type>0</Type>
+    <Display>عرض چاپ گزارش(0~99mm)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>28</SpecID>
+    <Type>1</Type>
+    <Display>فونت برای چاپ گزارش|0|0:10*18|1|1:18*26|2|2:26*34</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>29</SpecID>
+    <Type>0</Type>
+    <Display>محافظت گرمای هد پرینتر(0~30s)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>30</SpecID>
+    <Type>0</Type>
+    <Display>موقعیت سنسور کاغذگذاری(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>31</SpecID>
+    <Type>0</Type>
+    <Display>فاصله میله های بارکد(0~9,0 پیش فرض)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>32</SpecID>
+    <Type>0</Type>
+    <Display>عرض میله های بارکد(0~19,0 به معنای پیش فرض)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>33</SpecID>
+    <Type>0</Type>
+    <Display>فونت کاراکترهای بارکد(0~2)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>34</SpecID>
+    <Type>0</Type>
+    <Display>توزین ضد لرزش در حالت چاپ(0~19, ویژگی های سخت افزاری)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>35</SpecID>
+    <Type>1</Type>
+    <Display>حالت خودکار خط جدید|0|0:ممنوع|1|1:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>36</SpecID>
+    <Type>1</Type>
+    <Display>ITF25 حالت قالب|0|0:بدون قالب|1|1:قالب بالا و پایین|2|2:قالب اطراف</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>37</SpecID>
+    <Type>0</Type>
+    <Display>ITF25 عرض قالب(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>38</SpecID>
+    <Type>0</Type>
+    <Display>ITF25 عرض فضای خلی چپ و راست قالب(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>39</SpecID>
+    <Type>0</Type>
+    <Display>لیبل: فاصله تا کاغذگذاری(0~1999, دستگاه در صورت عدد بیشتر از 1000 کاغذگذاری را برعکس انجام میدهد)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>40</SpecID>
+    <Type>0</Type>
+    <Display>شماره دستگاه(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>41</SpecID>
+    <Type>1</Type>
+    <Display>باود ریت سریال|0|0:300|1|1:600|2|2:1200|3|3:2400|4|4:4800|5|5:9600|6|6:19200|7|7:38400|8|8:57600|9|9:115200</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>42</SpecID>
+    <Type>1</Type>
+    <Display>آپدیت خودکار فلش مموری|0|0:بدون آپدیت|1|1:آپدیت خودکار</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>43</SpecID>
+    <Type>1</Type>
+    <Display>اتصال شبکه|0|0:بدون اتصال|1|1:حالت سرور|2|2:حالت کلاینت</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>44</SpecID>
+    <Type>0</Type>
+    <Display>اتصال مجدد خودکار شبکه (0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>45</SpecID>
+    <Type>1</Type>
+    <Display>راه اندازی مجدد خودکار شبکه در صورت تغییر تنظیمات|0|0:غیر فعال|1|1:فعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>46</SpecID>
+    <Type>0</Type>
+    <Display>زمان تاخیر لینک فلش مموری(0~99,هر 10 عدد برای 1 ثانیه,0 برای پیش فرض)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>47</SpecID>
+    <Type>1</Type>
+    <Display>روشن بودن تغذیه فلش مموری|0|0:غیرفعال|1|1:فعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>48</SpecID>
+    <Type>0</Type>
+    <Display>فاصله زمان اضافه کار شبکه(0~31s)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>49</SpecID>
+    <Type>1</Type>
+    <Display>مجوز رمز عبور|0|0:فقط عملیات داخلی|1|1:عملیات ارتباطات مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>50</SpecID>
+    <Type>1</Type>
+    <Display>نوع شبکه|0|0:فقط شبکه کابلی, توقف کار وای فای|1|1:شبکه وای فای در حالت STA, توقف کار کابل|2|2:شبکه وای فای در حالت اکسس پوینت, توقف کار وای فای|3|3:توقف وای فای/کابل|4|4:شبکه کابلی به صورت اولیه و وای فای ثانویه|5|5:شبکه وای فای به صورت اولیه و کابلی ثانویه|6|6:شبکه اکسس پوینت وای فای اولیه و کابلی ثانویه|7|7:شبکه کابلی اولیه و وای فای اکسس پوینت ثانویه</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>51</SpecID>
+    <Type>1</Type>
+    <Display>حالت امنیتی|0|0:بدون امنیت|1|1:WEP|2|2:WPA/WPA2</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>52</SpecID>
+    <Type>1</Type>
+    <Display>گزینه امنیتی|0|0:سیستم باز|1|1:کلید مشترک</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>53</SpecID>
+    <Type>1</Type>
+    <Display>نوع دامنه|0|0:FCC|1|1:IC|2|2:ETSI|3|3:Spain|4|4:France|5|5:JapanA|6|6:JapanB</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>54</SpecID>
+    <Type>1</Type>
+    <Display>فرمت چاپ و بارکد|0|0:استفاده از فرمت چاپ و بارکد پیش فرض|1|1:استفاده از پارامتر فرمت چاپ، بارکد پیش فرض|2|2:استفاده از فرمت چاپ کلاس،بارکد پیش فرض|10|10:استفاده از فرمت چاپ پیش فرض، پارامتر بارکد|20|20:استفاده از فرمت پرینت پیش فرض، بارکد کلاس|21|21:استفاده از پارامتر فرمت چاپ، بارکد کلاس|22|22:استفاده از فرمت چاپ و بارکد کلاس</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>55</SpecID>
+    <Type>0</Type>
+    <Display>فیلتر حافظه با کلاس(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>56</SpecID>
+    <Type>1</Type>
+    <Display>عملکرد چاپ|0|0:چاپ همه طبق تنظیمات|1|1:پرینت فاکتور 1|2|2:پرینت فاکتور 2|3|3:پرینت در پرینتر اکسترنال|4|4:چاپ ممنوع</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>57</SpecID>
+    <Type>0</Type>
+    <Display>پروتکل پوز(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>60</SpecID>
+    <Type>1</Type>
+    <Display>حالت نقد|0|0:بدون حالت نقد|1|1:حالت نقد با تغییر صفر پیش فرض, بدون نمایش تغییر صفر|2|2:حالت نقد با تغییر صفر پیش فرض, نمایش همیشگی تغییر صفر|3|3:حالت نقد بدون تغییر صفر پیش فرض</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>61</SpecID>
+    <Type>1</Type>
+    <Display>عملیات فروش|0|0:بدون باز کردن کشوی پول|1|1:باز کردن کشوی 1|2|2:باز کردن کشوی 2|3|3:باز کردن کشوی 1 و 2|4|4:هشدار برای مجموع ممنوعه</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>62</SpecID>
+    <Type>1</Type>
+    <Display>حالت فروش: زدن کشوی پول|0|0:بدون باز کردن کشوی پول|1|1:باز کردن کشوی 1|2|2:باز کردن کشوی 2|3|3:باز کردن کشوی 1 و 2|4|4:هشدار برای مجموع ممنوعه</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>63</SpecID>
+    <Type>1</Type>
+    <Display>حالت تنظیمات: زدن کشوی پول|0|0:بدون باز کردن کشوی پول|1|1:باز کردن کشوی 1|2|2:باز کردن کشوی 2|3|3:باز کردن کشوی 1 و 2</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>64</SpecID>
+    <Type>1</Type>
+    <Display>حالت حسابداری: زدن کشوی پول|0|0:بدون باز کردن کشوی پول|1|1:باز کردن کشوی 1|2|2:باز کردن کشوی 2|3|3:باز کردن کشوی 1 و 2</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>65</SpecID>
+    <Type>1</Type>
+    <Display>تنظیم چاپ مجدد|0|0:چاپ مجدد غیرفعال|1|1:چاپ فاکتور 1|2|2:چاپ فاکتور 2|3|3:پرینت در پرینتر اکسترنال|4|4:پرینت همه طبق تنظیمات</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>66</SpecID>
+    <Type>0</Type>
+    <Display>خروج تغییر نمایشگر (0: زدن یک کلید برای خروج; 1~99: خروج خودکار طبق زمان مشخص شده)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>67</SpecID>
+    <Type>1</Type>
+    <Display>تعداد پارسنگ|0|0:غیر فعال|1|1:وارد کردن مقدار پارسنگ|2|2:مقدار شناور پارسنگ</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>68</SpecID>
+    <Type>1</Type>
+    <Display>انتخاب پارسنگ|0|0:فقط پارسنگ دستی|1|1:ابتدا پارسنگ دستی|2|2:ابندا پارسنگ حافظه|3|3:فقط پارسنگ حافظه</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>69</SpecID>
+    <Type>1</Type>
+    <Display>فروش با برگشت به صفر|0|0:بازگشت به صفر همیشگی|1|1:برگشت به صفر در صورت تغییر وزن|2|2:بدون برگشت صفر|3|3:برگشت به صفر برای حافظه وزنی جدید|4|4:نگه داشتن صفر برای حافظه وزنی جدید</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>70</SpecID>
+    <Type>1</Type>
+    <Display>اجازه خرید صفر|0|0:غیر مجاز|1|1:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>71</SpecID>
+    <Type>1</Type>
+    <Display>فروش بدون وزن برای حافظه وزنی|0|0:غیر مجاز|1|1:مجاز, 1 عدد فقط|2|2:مجاز, مجاز برای تعداد</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>72</SpecID>
+    <Type>1</Type>
+    <Display>پاک کردن بافر فروش با زدن فروش|0|0:پاک نکردن|1|1:پاک کردن</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>73</SpecID>
+    <Type>1</Type>
+    <Display>عملکرد فروش موقت شبیه تبدیل قیمت واحد|0|0:غیر مجاز|1|1:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>74</SpecID>
+    <Type>0</Type>
+    <Display>برگشت خرید(0~31, 0 غیر فعال کردن همه, +1 برای گزارش موجود برگشت خرید, +2 برای ورود جدید برگشت خرید, +4 برای ترکیب با فروش, +8 برای تغییر مقدار, +16 برای تغییر مبلغ)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>75</SpecID>
+    <Type>1</Type>
+    <Display>حافظه ممنوع|0|0:بدون ممنوعیت|1|1:حافظه وزنی ممنوع|2|2:حافظه تعدادی ممنوع|3|3:تمام حافظه ها ممنوع</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>76</SpecID>
+    <Type>1</Type>
+    <Display>ممنوعیت فروش موقت|0|0:بدون ممنوعیت|1|1:فروش وزن موقت ممنوع|2|2:فروش تعداد موقت ممنوع|3|3:فروش موقت ممنوع</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>77</SpecID>
+    <Type>1</Type>
+    <Display>وارد کردن وزن دستی|0|0:غیر فعال|1|1:فعال در حالت خودکار حالت دسته|2|2:فعال در حالت خودکارد در حالت بسته بندی|3|3:فعال در نبود حالت خودکار</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>78</SpecID>
+    <Type>1</Type>
+    <Display>حالت خودکار در حالت فروش ویژه|0|0:حالت خودکار ممنوع|1|1:تغییر به حالت دسته بندی|2|2:تغییر به حالت بسته بندی|3|3:تغییر به حالت قفل حافظه|4|4:تغییر به حالت چاپ خودکار</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>79</SpecID>
+    <Type>1</Type>
+    <Display>انتخاب حالت فروش|0|0:ممنوع|1|1:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>80</SpecID>
+    <Type>1</Type>
+    <Display>تنظیم سریع حافظه|0|0:ممنوع|1|1:فعال با احراز هویت|2|2:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>81</SpecID>
+    <Type>1</Type>
+    <Display>تنظیم سریع کلیدهای سریع|0|0:ممنوع|1|1:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>82</SpecID>
+    <Type>1</Type>
+    <Display>تنظیم سریع تنیمات|0|0:ممنوع|1|1:مجاز با احراز هویت|2|2:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>83</SpecID>
+    <Type>1</Type>
+    <Display>تغییر قیمت سریع|0|0:ممنوع|1|1:نگه داشتن کلید تغییر قیمت|2|2:زدن کلید تغییر قیمت|3|3:زدن کلید تغییر قیمت برای قیمت حافظه, و نگه داشتن برای نام حافظه|4|4: اصلاح خودکار قیمت حافظه بعد از تایید.</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>85</SpecID>
+    <Type>0</Type>
+    <Display>زمان ثبات وزن: تنظیم صفر(0~99, هر 10 عدد برای 1 ثانیه)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>86</SpecID>
+    <Type>0</Type>
+    <Display>زمان ثبات وزن: فروش(0~99, هر 10 عدد برای 1 ثانیه)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>87</SpecID>
+    <Type>1</Type>
+    <Display>حافظه مجازی|0|0:غیرفعال|1|1:فعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>88</SpecID>
+    <Type>0</Type>
+    <Display>کلیدسریع مجازی(0=غیرفعال,دیگر=حافظه در اولین کلید سریع, ورژن بالاتر از 2.50E)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>89</SpecID>
+    <Type>1</Type>
+    <Display>تنظیمات کلیدهای سریع همانند تنظیمات سریع حافظه|0|0:غیرفعال|1|1:فعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>90</SpecID>
+    <Type>1</Type>
+    <Display>محاسبه گزارشات در پس زمینه|0|0:ممنوع|1|1:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>91</SpecID>
+    <Type>1</Type>
+    <Display>عملکرد حساب|0|0:فعال|1|1:غیرفعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>92</SpecID>
+    <Type>1</Type>
+    <Display>شماره مجازی|0|0:غیرفعال|1|1:حافظه مجازی|2|2:فروشنده مجازی|3|3:حافظه و فروشنده مجازی</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>96</SpecID>
+    <Type>1</Type>
+    <Display>E-Log Function|0|0:Enable|1|1:Enable without upload|2|2:Disable</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>97</SpecID>
+    <Type>1</Type>
+    <Display>وارد کردن بارکد کالا با کیبرد|0|0:ممنوع|1|1:فقط عدد|2|2:عدد و کاراکتر</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>98</SpecID>
+    <Type>1</Type>
+    <Display>فروش تک کالا: روش گزارش تخفیف و رند کردن|0|0:عدم ثبت|1|1:رکورد مستقل تخفیف، بدون گرد کردن|2|2:ثبت جدا تخفیف بدون رند کردن|3|3:ثبت مستقل تخفیف و رند کردن|4|4:رکورد مستقل تخفیف، رکورد جدا رند کردن|5|5:ثبت جدا تخفیف و رند کردن</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>99</SpecID>
+    <Type>1</Type>
+    <Display>فروش چند کالا: گزارش روش حساب تخفیف و گرد کردن|0|0:بدون ثبت رکورد|1|1:ثبت مستقل تخفیف، بدون رند کردن|2|2:ثبت جدا تخفیف، بدون رند کردن|3|3:ثبت مستقل تخفیف و رند کردن|4|4:ثبت مستقل تخفیف و ثبت جدا رند کردن|5|5:ثبت جدا تخفیف و رند کردن</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>100</SpecID>
+    <Type>1</Type>
+    <Display>روش رند کردن برای یک جمع|0|0:گرد کردن مشترک برای رفع اشکالات رقمی|1|1:گرد کردن مشترک برای آخرین رقم|2|2:مشترک گرد برای آخرین 2 رقم|3|3:گرد کردن بانکدار برای رفع اشکالات رقمی|4|4:گرد کردن بانکدار برای آخرین رقم|5|5:گرد کردن بانکدار برای آخرین 2 رقم|6|6:گرد کردن پایین برای رفع اشکالات رقمی|7|7:گرد کردن پایین برای آخرین رقم|8|:گرد کردن پایین برای آخرین 2 رقم|9|9:گرد کردن به 0/5 برای آخرین رقم|10|10:گرد کردن به 0/5 برای آخرین 2 رقم|11|11:گرد کردن به 0/5 برای آخرین 3 رقم</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>101</SpecID>
+    <Type>1</Type>
+    <Display>روش رند کردن برای جمع تجمیع|0|0:گرد کردن مشترک برای رفع اشکالات رقمی|1|1:گرد کردن مشترک برای آخرین رقم|2|2:مشترک گرد برای آخرین 2 رقم|3|3:گرد کردن بانکدار برای رفع اشکالات رقمی|4|4:گرد کردن بانکدار برای آخرین رقم|5|5:گرد کردن بانکدار برای آخرین 2 رقم|6|6:گرد کردن پایین برای رفع اشکالات رقمی|7|7:گرد کردن پایین برای آخرین رقم|8|8:گرد کردن پایین برای آخرین 2 رقم|9|9:گرد کردن به 0/5 برای آخرین رقم|10|10:گرد کردن به 0/5 برای آخرین 2 رقم|11|11:گرد کردن به 0/5 برای آخرین 3 رقم</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>102</SpecID>
+    <Type>1</Type>
+    <Display>چاپ با اطلاعات انباشته شده|0|0:فعال|1|1:غیرفعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>103</SpecID>
+    <Type>1</Type>
+    <Display>جبران خسارت برابر ظروف، خالص و ناخالص|0|0:بدون جبران خسارت، گرد کردن به طور مستقل|1|1:پارسنگ=ناخالصی|2|2:خالص = پارسنگ-ناخالصی|3|3:ناخالصی = خالص + پارسنگ</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>104</SpecID>
+    <Type>1</Type>
+    <Display>فرمت تاریخ و زمان|0|0:YYYY.MM.DD 24H|1|1:YY.MM.DD 24H|2|2:MM/DD/YY 24H|3|3:MM-DD-YY 24H|4|4:DD/MM/YY 24H|5|5:DD-MM-YY 24H|6|6:تقویم فارسی(-2) 24H|7|7:تقویم فارسی(-1) 24H|8|8:تقویم فارسی 24H|9|9:تقویم فارسی(+1) 24H|10|10:تقویم فارسی(+2) 24H|100|100:YYYY.MM.DD 12H|101|101:YY.MM.DD 12H|102|102:MM/DD/YY 12H|103|103:MM-DD-YY 12H|104|104:DD/MM/YY 12H|105|105:DD-MM-YY 12H|106|106:تقویم فارسی(-2) 12H|107|107:تقویم فارسی(-1) 12H|108|108:تقویم فارسی 12H|109|109:تقویم فارسی(+1) 12H|110|110:تقویم فارسی(+2) 12H</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>105</SpecID>
+    <Type>1</Type>
+    <Display>چاپ تاریخ انقضا|0|0:استفاده از تنظیم حافظه|1|1:استفاده از پارامتر 106 اگر در حافظه ثبت نشده|2|2:استفاده از پارامتر 106|3|3:عدم چاپ انقضا|4|4:استفاده از تنیمات حافظه(حالت روز)|5|5:استفاده از پارامتر 106 اگر در حافظه ثبت نشده (روز)|6|6:استفاده از پارامتر 106 (روز)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>106</SpecID>
+    <Type>0</Type>
+    <Display>روز انقضا(0~999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>107</SpecID>
+    <Type>0</Type>
+    <Display>تعداد بافرهای فروش(0~,0 به معنای پیش فرض)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>108</SpecID>
+    <Type>0</Type>
+    <Display>حداکثر تعداد تجمیع(0-65535، 0 به معنای پیش فرض)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>109</SpecID>
+    <Type>1</Type>
+    <Display>عملیات تقسیم قیمت حافظه|0|0:عملیات عادی|1|1:عملیات تقسیم</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>110</SpecID>
+    <Type>1</Type>
+    <Display>تخفیف دستی: ممنوع|0|0:همه مجاز|1|1:ممنوع تخفیف قیمت واحد|2|2:ممنوع تخفیف قیمت کل|3|3:ممنوع همه تخفیف</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>111</SpecID>
+    <Type>0</Type>
+    <Display>تخفیف دستی: حداقل مجاز(0~255, درصد)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>112</SpecID>
+    <Type>0</Type>
+    <Display>تخفیف دستی: حداکثر مجاز(0~255, درصد)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>113</SpecID>
+    <Type>1</Type>
+    <Display>درصد تخفیف حساب|0|0:تفریق کردن درصد|1|1:اضافه کردن درصد</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>114</SpecID>
+    <Type>0</Type>
+    <Display>مقدار درصد تخفیف اتوماتیک(0: بدون حالت خودکار, 1~99: مقدار اتوماتیک)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>115</SpecID>
+    <Type>1</Type>
+    <Display>تخفیف اتوماتیک: قفل قیمت|0|0:بدون تخفیف اتوماتیک|1|1:قفل قیمت اگر تخفیف اتوماتیک موثر است|2|2:قفل قیمت اگر تخفیف اتوماتیک تنظیم|3|3:قفل قیمت برای همه حافظه</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>116</SpecID>
+    <Type>1</Type>
+    <Display>حالت مالیات|0|0:بدون حالت مالیات|1|1:مالیات حالت حذف|2|2:مالیات حالت حذف,قیمت حافظه بعد از تخفیف|3|3:حالت شامل مالیات</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>117</SpecID>
+    <Type>0</Type>
+    <Display>مقدار مالیات (یک در هر ده هزار %,0~9999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>118</SpecID>
+    <Type>1</Type>
+    <Display>حالت اصلاح در فروش|0|0:عملیات دستی (بدون ثبت رکورد)|1|1:پاک کردن همه (رکورد)|2|2:پاک همه (بدون ثبت رکورد)|3|3:عملیات دستی (رکورد)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>119</SpecID>
+    <Type>1</Type>
+    <Display>پرداخت اسکنر|0|0:بدون, بدون اطلاعات زائد|1|1:پرداخت, بدون اطلاعات زائد|2|2:پرداخت, بدون بدون اطلاعات زائد</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>120</SpecID>
+    <Type>1</Type>
+    <Display>اسکن بارکد|0|0:بدون انجام کاری|1|1:مقابله با بارکد خارجی (حالت بارکد کالا)|2|2:مقابله با بارکد داخلی(کد کالا حالت)|3|3:مقابله با همه حالت</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>121</SpecID>
+    <Type>1</Type>
+    <Display>روش مقابله با کد کالا=0|0|0:جست جو کاربر حافظه|1|1:مقابله با فروش موقت وزنی|2|2:مقابله با فروش موقت تعدادی</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>122</SpecID>
+    <Type>0</Type>
+    <Display>بارکد داخلی 1: شماره فرمت(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>123</SpecID>
+    <Type>0</Type>
+    <Display>بارکد داخلی 1: فلگ(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>124</SpecID>
+    <Type>0</Type>
+    <Display>بارکد داخلی 2: شماره فرمت(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>125</SpecID>
+    <Type>0</Type>
+    <Display>بارکد داخلی 2: فلگ(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>126</SpecID>
+    <Type>0</Type>
+    <Display>بارکد داخلی 3: شماره فرمت(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>127</SpecID>
+    <Type>0</Type>
+    <Display>بارکد داخلی 3: فلگ(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>128</SpecID>
+    <Type>0</Type>
+    <Display>بارکد داخلی 4: شماره فرمت(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>129</SpecID>
+    <Type>0</Type>
+    <Display>بارکد داخلی 4: فلگ(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>130</SpecID>
+    <Type>1</Type>
+    <Display>قیمت کل قبل از چاپ|0|0:غیر فعال|1|1:فعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>131</SpecID>
+    <Type>1</Type>
+    <Display>چاپ خودکار بعد از برگشت به صفر|0|0:غیر فعال|3|3:اتوماتیک چاپ بعد از برگشت به صفر|4|4:اجبار اتوماتیک چاپ بعد از برگشت به صفر</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>132</SpecID>
+    <Type>1</Type>
+    <Display>حالت جمع کردن: انتقال حافظه با زدن کلید|0|0:غیر فعال|1|1:فعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>133</SpecID>
+    <Type>1</Type>
+    <Display>حالت جمع کردن: انتقال حافظه با بارکد خاجی|0|0:غیر فعال|1|1:فعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>134</SpecID>
+    <Type>1</Type>
+    <Display>حالت جمع کردن: انتقال حافظه با بارکد داخلی|0|0:غیر فعال|1|1:فعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>135</SpecID>
+    <Type>1</Type>
+    <Display>ورود فروشنده|0|0:غیر فعال، ذخیره با فروشنده 0|1|1:غیر فعال،ذخیره با فروشنده 1 تا 4|2|2:فعال،1 تا 4 کنترل با فروشنده مشابه|3|3:فعال،1 تا 4 کنترل با فروشنده متفاوت|4|4:فعال،1 تا 4 کنترل با فروشنده مشابه، رمز عبور=0 فروشنده نمیتواند وارد شود|5|5:فعال،1 تا 4 کنترل با فروشنده متفاوت، رمز عبور=0 فروشنده نمیتواند وارد شود|6|6:فعال،خروج فروشنده 1 تا 4 زمان تغییر، رمز عبور=0 فروشنده نمیتواند وارد شود</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>136</SpecID>
+    <Type>1</Type>
+    <Display>پیشخدمت حالت|0|0: غیر فعال کردن|1|1: فعال، پرسنل ساختگی ممنوع|2|2: فعال، پرسنل ساختگی مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>137</SpecID>
+    <Type>1</Type>
+    <Display>پیشخدمت حالت حافظه|0|0:همیشه روشن|1|1:حافظه یکی از آخرین|2|2:حافظه در بافر</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>139</SpecID>
+    <Type>1</Type>
+    <Display>EAN / UCC CRC|0|0:استاندارد|1|1:غیر استاندارد</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>140</SpecID>
+    <Type>1</Type>
+    <Display>صفر شدن خودکار شماره فاکتور|0|0:بدون صفر شدن|1|1:نمیه روز(12ظهر،12نیمه شب)|2|2:روزانه|3|3:هر یکشنبه|4|4:هر دوشنبه|5|5:ماهانه|6|6:فصلی</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>141</SpecID>
+    <Type>1</Type>
+    <Display>گزارش موجودی|0|0:غیرفعال(گزارش 44 فعال)|1|1:فعال(گزارش 44 غیرفعال)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>142</SpecID>
+    <Type>1</Type>
+    <Display>حالت اصلاح واحد موجودی|0|0: تنها واحد حافظه مجاز|1|1:پیش فرض توسط واحد وزن و توسط واحد تعداد مجاز|2|2: تمام واحد سیستم مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>143</SpecID>
+    <Type>0</Type>
+    <Display>حالت پرینت شماره فاکتور/آی دی فاکتور(0:پرینت حالت عدد،1-9:پرینت با طول مشخص با "#")</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>149</SpecID>
+    <Type>1</Type>
+    <Display>انتخاب تک کلیدی از چند کلید|0|0:ممنوعه|1|1: فعال کردن فقط شماره کلید|2|2: فعال کردن برای همه کلید های تابع (کلید به جز میانبر کلید)|3|3: فعال کردن برای همه</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>150</SpecID>
+    <Type>0</Type>
+    <Display>آی پی شبکه 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>151</SpecID>
+    <Type>0</Type>
+    <Display>آی پی شبکه 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>152</SpecID>
+    <Type>0</Type>
+    <Display>آی پی شبکه 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>153</SpecID>
+    <Type>0</Type>
+    <Display>آی پی شبکه 4(0~255, 0 به معنای حالت DHCP)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>154</SpecID>
+    <Type>0</Type>
+    <Display>آی پی شبکه کامپیوتر 1(0~255, فقط در حال کلاینت)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>155</SpecID>
+    <Type>0</Type>
+    <Display>آی پی شبکه کامپیوتر 2(0~255, فقط در حال کلاینت)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>156</SpecID>
+    <Type>0</Type>
+    <Display>آی پی شبکه کامپیوتر 3(0~255, فقط در حال کلاینت)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>157</SpecID>
+    <Type>0</Type>
+    <Display>آی پی شبکه کامپیوتر 4(0~255, فقط در حال کلاینت)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>158</SpecID>
+    <Type>0</Type>
+    <Display>آی پی گیت وی 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>159</SpecID>
+    <Type>0</Type>
+    <Display>آی پی گیت وی 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>160</SpecID>
+    <Type>0</Type>
+    <Display>آی پی گیت وی 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>161</SpecID>
+    <Type>0</Type>
+    <Display>آی پی گیت وی 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>162</SpecID>
+    <Type>0</Type>
+    <Display>آی پی ماسک 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>163</SpecID>
+    <Type>0</Type>
+    <Display>آی پی ماسک 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>164</SpecID>
+    <Type>0</Type>
+    <Display>آی پی ماسک 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>165</SpecID>
+    <Type>0</Type>
+    <Display>آی پی ماسک 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>166</SpecID>
+    <Type>0</Type>
+    <Display>سوکت حالت سرور(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>167</SpecID>
+    <Type>0</Type>
+    <Display>سوکت حالت کلاینت(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>168</SpecID>
+    <Type>0</Type>
+    <Display>سوکت گوش دادن UDP(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>169</SpecID>
+    <Type>0</Type>
+    <Display>سوکت پخش UDP(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>170</SpecID>
+    <Type>0</Type>
+    <Display>دی ان اس اولیه 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>171</SpecID>
+    <Type>0</Type>
+    <Display>دی ان اس اولیه 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>172</SpecID>
+    <Type>0</Type>
+    <Display>دی ان اس اولیه 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>173</SpecID>
+    <Type>0</Type>
+    <Display>دی ان اس اولیه 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>179</SpecID>
+    <Type>1</Type>
+    <Display>پروتکل سفارشی|0|0:هیچ|1|1:Dahua China|2|2:METTLER TOLEDO(RL00)|3|3:Taico China(ACS-FB)|4|4:ACLAS|5|5:Digi SM-80</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>180</SpecID>
+    <Type>1</Type>
+    <Display>نمایش و چاپ ممیز|0|0:نقطه|1|1: با کاما</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>181</SpecID>
+    <Type>1</Type>
+    <Display>چاپ کیلو (هزار)|0|0:بدون چاپ|1|1:نقطه|2|2:با کاما|3|3:علامت کوتیشن</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>182</SpecID>
+    <Type>1</Type>
+    <Display>نمایش کیلو (هزار)|0|0:بدون نمایش|1|1:نمایش بر اساس پارامتر 181</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>185</SpecID>
+    <Type>1</Type>
+    <Display>چاپ واحد وزن|0|0:بدون چاپ|1|1: چاپ</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>186</SpecID>
+    <Type>1</Type>
+    <Display>چاپ واحد قیمت واحد|0|0:بدون چاپ|1|1: چاپ</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>187</SpecID>
+    <Type>1</Type>
+    <Display>چاپ واحد پول|0|0:بدون چاپ|1|1: چاپ</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>188</SpecID>
+    <Type>0</Type>
+    <Display>طول قیمت واحد(0:اتوماتیک،1-7)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>189</SpecID>
+    <Type>0</Type>
+    <Display>طول قیمت کل(0:اتوماتیک،1-7)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>190</SpecID>
+    <Type>1</Type>
+    <Display>ترازو دارای ال سی دی:نمایش اطلاعات حافظه ها|0|0:درست کردن خودکار|1|1:فونت 1 نمایشگر|2|2:فونت 0 نمایشگر|3|3:حالت 2 خط</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>191</SpecID>
+    <Type>1</Type>
+    <Display>ترازو دارای ال سی دی: نمایش متن ها|0|0:درست کردن خودکار|1|1:فونت 1 نمایشگر|2|2:فونت 0 نمایشگر|3|3:حالت 2 خط</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>192</SpecID>
+    <Type>1</Type>
+    <Display>ترازو دارای ال سی دی:نمایش در حالت آماده به کار|0|0:نمایش زمان|1|1:رزرو شده|2|2: رزرو شده|3|3:رزرو شده|4|4:نام فروشگاه|5|5:نام دستگاه|6|6:پیشوند واحد پول|7|7:پسوند واحد پول|8|8:متن اضافی دستگاه 1|9|9:متن اضافی دستگاه 2|10|10:متن اضافی دستگاه 3|11|11:متن اضافی دستگاه 4|12|12:متن اضافی دستگاه 5|13|13:متن اضافی دستگاه 6|14|14:متن اضافی دستگاه 7|15|15:متن اضافی دستگاه 8|16|16:رزرو شده 1|17|17:رزرو شده 2|18|18:علامت تجاری|19|19:نام شبکه وایرلس|20|20:رمز عبور وایرلس|21|21:رزرو شده 6|22|22:رزرو شده 7|23|23:نام دامنه و سرور |24|24:متن سفارشی 1|25|25:متن سفارشی 2|26|26:متن سفارشی 3|27|27:متن سفارشی 4|28|28:متن سفارشی 5|29|29:متن سفارشی 6|30|30:متن سفارشی 7|31|31:متن سفارشی 8</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>193</SpecID>
+    <Type>1</Type>
+    <Display>ترازو دارای ال سی دی: منبع ها در حالت آماده به کار|0|0:نمایش اطلاعات جمع (نمایش مجموع تعداد)|1|1:نمایش پیام|2|2:نمایش اطلاعات جمع (نمایش جمع زمان)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>194</SpecID>
+    <Type>1</Type>
+    <Display>ترازو دارای ال سی دی: منبع اطلاعات حافظه 1|0|0:نام حافظه|1|1:متن 1|2|2:متن 2|3|3:متن 3|4|4:متن 4|5|5:متن 5|6|6:متن 6|7|7: متن 7</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>195</SpecID>
+    <Type>1</Type>
+    <Display>ترازو دارای ال سی دی: منبع اطلاعات حافظه 2|0|0:نام حافظه|1|1:متن 1|2|2:متن 2|3|3:متن 3|4|4:متن 4|5|5:متن 5|6|6:متن 6|7|7: متن 7</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>196</SpecID>
+    <Type>0</Type>
+    <Display>تعداد ممیز تعداد در بارکد(0-5)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>197</SpecID>
+    <Type>0</Type>
+    <Display>سرعت به وزن رسیدن(0: پیش فرض، 1-4: بزرگتر و سریعتر)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>198</SpecID>
+    <Type>0</Type>
+    <Display>تاخیر صفر وزن(0-19)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>199</SpecID>
+    <Type>0</Type>
+    <Display>تاخیر ثبات وزن(0-19)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>200</SpecID>
+    <Type>1</Type>
+    <Display>تعداد ممیز: پارسنگ(0-3)|0|0:0|1|1:0.0|2|2:0.00|3|3:0.000</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>201</SpecID>
+    <Type>1</Type>
+    <Display>تعداد ممیز: وزن(0-3)|0|0:0|1|1:0.0|2|2:0.00|3|3:0.000</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>202</SpecID>
+    <Type>1</Type>
+    <Display>تعداد ممیز: قیمت واحد(0-5)|0|0:0|1|1:0.0|2|2:0.00|3|3:0.000|4|4:0.0000|5|5:0.00000</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>203</SpecID>
+    <Type>1</Type>
+    <Display>تعداد ممیز: قیمت کل(0-5)|0|0:0|1|1:0.0|2|2:0.00|3|3:0.000|4|4:0.0000|5|5:0.00000</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>204</SpecID>
+    <Type>1</Type>
+    <Display>رفع تعداد ممیز: پارسنگ|0|0:بدون درست کردن|1|1:رفع</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>205</SpecID>
+    <Type>1</Type>
+    <Display>رفع تعداد ممیز: وزن|0|0:بدون درست کردن|1|1:رفع</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>206</SpecID>
+    <Type>1</Type>
+    <Display>رفع تعداد ممیز: قیمت واحد|0|0:بدون درست کردن|1|1:رفع برای تخفیف|2|2:رفع برای خروج حافظه|3|3:رفع همیشگی</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>207</SpecID>
+    <Type>1</Type>
+    <Display>رفع تعداد ممیز: قیمت کل|0|0:بدون درست کردن|1|1:رفع بر مبنای پارامتر 100|2|2:رند کردن مشترک قبل از رفع بر مبنای پارامتر 100</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>208</SpecID>
+    <Type>0</Type>
+    <Display>تعداد ممیز وزن در بارکد(0-5)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>209</SpecID>
+    <Type>0</Type>
+    <Display>تعداد ممیز قیمت در بارکد(0-5)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>210</SpecID>
+    <Type>1</Type>
+    <Display>واحد فروش موقت|0|0:پیش فرض سیستم|3|3:واحد کیلوگرم|4|4:واحد گرم|5|5:واحد تن|6|6:واحد پوند|7|7:واحد 500گرم|8|8:واحد 100گرم</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>211</SpecID>
+    <Type>1</Type>
+    <Display>واحد قیمت واحد|0|0:پیش فرض سیستم|3|3:واحد کیلوگرم|4|4:واحد گرم|5|5:واحد تن|6|6:واحد پوند|7|7:واحد 500گرم|8|8:واحد 100گرم</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>212</SpecID>
+    <Type>1</Type>
+    <Display>واحد وزن|0|0:پیش فرض سیستم|3|3:واحد کیلوگرم|4|4:واحد گرم|5|5:واحد تن|6|6:واحد پوند|7|7:واحد 500گرم|8|8:واحد 100گرم</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>213</SpecID>
+    <Type>1</Type>
+    <Display>دقت وزن|0|0:دقت 0|1|1:دقت 1|2|2:دقت 2|3|3:دقت 3</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>214</SpecID>
+    <Type>1</Type>
+    <Display>مرتب سازی پیش فرض اندازه گیری|0|0:با حالت وزن|1|1:با حالت تعداد</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>215</SpecID>
+    <Type>0</Type>
+    <Display>اطلاعات سخت افزار: حداکثر درجه سرریز(0-99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>216</SpecID>
+    <Type>0</Type>
+    <Display>اطلاعات سخت افزار: حداکثر درجه پاریز(0-99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>217</SpecID>
+    <Type>0</Type>
+    <Display>اطلاعات سخت افزار: حداقل درجه فروش(0-99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>218</SpecID>
+    <Type>0</Type>
+    <Display>اطلاعات سخت افزار: درجه مسیر صفر(0-99)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>219</SpecID>
+    <Type>0</Type>
+    <Display>اطلاعات سخت افزار: رنج پارسنگ(0-99، بدون محدودیت با انتخاب صفر)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>220</SpecID>
+    <Type>0</Type>
+    <Display>اطلاعات سخت افزار: رنج صفر اولیه(0-99، عدد درصد، بدون محدودیت با انتخاب صفر)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>221</SpecID>
+    <Type>0</Type>
+    <Display>اطلاعات سخت افزار: رنج تک صفر دستی(0-99، عدد درصد، بدون محدودیت با انتخاب صفر)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>222</SpecID>
+    <Type>0</Type>
+    <Display>اطلاعات سخت افزار: رنج جمع صفر(0-99، عدد درصد، بدون محدودیت با انتخاب صفر)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>223</SpecID>
+    <Type>0</Type>
+    <Display>اطلاعات سخت افزار: رنج فلگ صفر(0-99، عدد درصد، بدون محدودیت با انتخاب صفر)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>224</SpecID>
+    <Type>0</Type>
+    <Display>اطلاعات سخت افزار: رنج مسیر صفر(0-99، عدد درصد، بدون محدودیت با انتخاب صفر)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>225</SpecID>
+    <Type>0</Type>
+    <Display>اطلاعات سخت افزار: رنج فلگ ثبات وزن(0-99، عدد درصد، بدون محدودیت با انتخاب صفر)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>226</SpecID>
+    <Type>1</Type>
+    <Display>پارسنگ می تواند دوباره انجام شود در رنج وزن|0|0:ممنوع|1|1:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>227</SpecID>
+    <Type>1</Type>
+    <Display>آپدیت پارسنگ|0|0:مجاز فقط اضافه|1|1:ممنوع|2|2:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>228</SpecID>
+    <Type>1</Type>
+    <Display>تبدیل قیمت بین واحد وزن مختلف|0|0:مجاز|1|1:تنها پیش فرض وزن مجاز|2|2:ممنوع</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>229</SpecID>
+    <Type>1</Type>
+    <Display>سوییچ وزن|0|0:غیر مجاز|1|1:برای تغییر نگه دارید|2|2:تنها فشار دهید برای تغییر</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>230</SpecID>
+    <Type>0</Type>
+    <Display>فاصله زمانی نمایش وزن(0-7)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>231</SpecID>
+    <Type>1</Type>
+    <Display>صفر ممنوع در حالت حافظه|0|0:مجاز|1|1:ممنوع</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>232</SpecID>
+    <Type>1</Type>
+    <Display>ممیز شناور وزن|0|0:همیشه در ظرفیت کم|1|1:بر اساس ظرفیت فعلی، الویت کم|2|2:بر اساس ظرفیت فعلی، الویت بالا</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>233</SpecID>
+    <Type>1</Type>
+    <Display>برگشت به صفر نیاز است در تغییر سریع وزن|0|0:نیاز نیست|1|1:نیاز است</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>234</SpecID>
+    <Type>0</Type>
+    <Display>درجه برگشت به صفر(0-31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>235</SpecID>
+    <Type>1</Type>
+    <Display>تشخیص ماژول تغذیه|0|0:فعال کردن|1|1:غیر فعال کردن</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>236</SpecID>
+    <Type>1</Type>
+    <Display>چاپ در حالت باتری|0|0:چاپ|1|1:عدم چاپ</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>237</SpecID>
+    <Type>0</Type>
+    <Display>فاسله زمانی اسکن کیبرد(0-4)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>238</SpecID>
+    <Type>0</Type>
+    <Display>حالت ضد لرزش اسکن کلیدها(0-4)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>239</SpecID>
+    <Type>0</Type>
+    <Display>زمان باز کردن کشوی پول(0-9999 میلی ثانیه)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>240</SpecID>
+    <Type>0</Type>
+    <Display>عرض هد حرارتی(0-64 میلیمتر)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>241</SpecID>
+    <Type>1</Type>
+    <Display>مجوز واحد وزن|0|0:غیر مجاز|1|1:مجاز</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>244</SpecID>
+    <Type>1</Type>
+    <Display>نادیده گرفتن چاپ خطا (قسمت 1)|0|0:بدون نادیده گرفتن|1|:نادیده گرفتن PBS (E7.12)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>245</SpecID>
+    <Type>1</Type>
+    <Display>نادیده گرفتن چاپ خطا (قسمت 2)|0|0:بدون نادیده گرفتن|1|1:نادیده گرفتن PDS(E7.11)|2|2:نادیده گرفتن خنک کردن (E7.18)|3|3:نادیده گرفتن PDS(E7.11) و خنک کردن  (E7.18)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>246</SpecID>
+    <Type>1</Type>
+    <Display>نادیده گرفتن سنسور PPS پرینتر|0|0:بدون نادیده گرفتن|1|1:نادیده گرفتن</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>247</SpecID>
+    <Type>1</Type>
+    <Display>رمز عبور عملکرد نگه داشتن|0|0:غیر فعال کردن|1|1:نگه داشتن رمز عبور کشو|2|2:نگه داشتن رمز عبور به جز محیط مدیریت|3|3:نگه داشتن تمام کلمات عبور</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>249</SpecID>
+    <Type>1</Type>
+    <Display>حالت ذخیره سازی حافظه(اندازه متن حافظه=اندازه کل-150)|0|0:حالت پیش فرض سیستم|1|1:حالت 256 بایت|2|2:حالت 512 بایت|3|3:حالت 1024 بایت|4|4:حالت 2048 بایت</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>250</SpecID>
+    <Type>1</Type>
+    <Display>حالت بدون جمع، عملکرد شبیه چاپ|0|0:غیر فعال|1|1:فعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>251</SpecID>
+    <Type>1</Type>
+    <Display>منو های تخفیف قیمت واحد|0|0:منوی تخفیف غیر فعال|1|1:فعال، حالت پیش فرض در کلید|2|2:فعال، حالت پیش فرض حالت درصد است|3|3:فعال، حالت پیش فرض حالت منها|4|4:فعال، حالت پیش فرض حالت ثابت است</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>252</SpecID>
+    <Type>1</Type>
+    <Display>منو های تخفیف قیمت کل|0|0:منوی تخفیف غیر فعال|1|1:فعال، حالت پیش فرض در کلید|2|2:فعال، حالت پیش فرض حالت درصد است|3|3:فعال، حالت پیش فرض حالت منها|4|4:فعال، حالت پیش فرض حالت ثابت است</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>253</SpecID>
+    <Type>1</Type>
+    <Display>فراخوانی حافظه با کد حافظه زمان زدن کلید [حافظه]|0|0:بر اساس شماره حافظه|1|1:بر اساس کد حافظه</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>254</SpecID>
+    <Type>1</Type>
+    <Display>توابع اتوماتیک حافظه|0|0:غیر فعال کردن|1|1: فعال در حالت آماده به کار|2|2: فعال کردن در حالت حافظه|3|3: فعال کردن در تمام حالت</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>255</SpecID>
+    <Type>1</Type>
+    <Display>چگونگی عملکرد اتوماتیک [حافظه]|0|0:غیر فعال کردن|1|1:حافظه 1 رقمی|2|2:حافظه 2 رقمی|3|3:حافظه 3 رقمی|4|4:حافظه 4 رقمی|5|5:حافظه 5 رقمی|6|6:حافظه 6 رقمی|7|7:حافظه 7 رقمی|8|8: تمام حافظه ها بلافاصله|9|9: تمام حافظه ها 1 ثانیه تاخیر|10|10: همه حافظه ها 2 ثانیه تاخیر|11|11: همه حافظه ها 3 ثانیه تاخیر</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>256</SpecID>
+    <Type>1</Type>
+    <Display>توابع قبل از چاپ|0|0: قبل از چاپ ممنوع|1|1: چاپ رسید 1|2|2: چاپ رسید 2|3|3: چاپ در پرینتر جانبی|4|4: چاپ همه به مانند تنظیمات</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>257</SpecID>
+    <Type>1</Type>
+    <Display>جبران درجه حرارت|0|0: غیر فعال کردن|1|1: صفر افست|2|2: به دست آوردن افست|3|3: مجموع افست</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>258</SpecID>
+    <Type>0</Type>
+    <Display>حداکثر تعداد کاراکتر مجاز ایجاد خط جدید (0 ~ 31)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>259</SpecID>
+    <Type>0</Type>
+    <Display>حالت خودکار خروج(0 ~ 15: 1: چاپ دسته، 2:بسته بندی دوباره، 4: قفل حافظه، 8:چاپ خودکار)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>260</SpecID>
+    <Type>0</Type>
+    <Display>نیاز به رمز عبور admin در حالت خاص(0 ~ 31: +1: فروش، +2: تنظیمات، +4:گزارشات، +8:کشو، +16: قیمت واحد)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>261</SpecID>
+    <Type>0</Type>
+    <Display>حافظه وزنی ممنوع در حالت خاص(0 ~ 15: +1: چاپ دسته، +2:بسته بندی دوباره، +4: قفل حافظه، +8:چاپ خودکار)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>262</SpecID>
+    <Type>0</Type>
+    <Display>حافظه تعدادی ممنوع در حالت خاص(0 ~ 15: +1: چاپ دسته، +2:بسته بندی دوباره، +4: قفل حافظه، +8:چاپ خودکار)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>263</SpecID>
+    <Type>0</Type>
+    <Display>فراخوانی حافظه در حالت آماده به کار(0-9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>264</SpecID>
+    <Type>0</Type>
+    <Display>حالت ویژه ضبط خودکار حالت است(0 ~ 15: +1: چاپ دسته، +2:بسته بندی دوباره، +4: قفل حافظه، +8:چاپ خودکار)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>265</SpecID>
+    <Type>1</Type>
+    <Display>حالت چاپ تاریخ: ماه|0|0:شماره|1|1: دو کاراکتر</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>266</SpecID>
+    <Type>1</Type>
+    <Display>حالت نمایش تاریخ|0|0:پیش فرض|1|1:با استفاده از پارامتر 104 و 265</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>267</SpecID>
+    <Type>1</Type>
+    <Display>سوئیچ سریع با واحد وزن|0|0: پیش فرض|1|1: ممنوع غیر استاندارد</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>268</SpecID>
+    <Type>1</Type>
+    <Display>قفل خودکار پارسنگ|0|0: پیش فرض|1|1:قفل خودکار</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>269</SpecID>
+    <Type>1</Type>
+    <Display>چاپ ممنوع|0|0: پیش فرض|1|1:ممنوع</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>270</SpecID>
+    <Type>1</Type>
+    <Display>نمایش وزن پنهان|0|0:پیش فرض|1|1:زمان بدون حافظه|2|2: زمان بدون قیمت</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>271</SpecID>
+    <Type>1</Type>
+    <Display>آپدیت خودکار|0|0:غیر فعال کردن|1|1:فعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>272</SpecID>
+    <Type>1</Type>
+    <Display>حالت فیلتر|0|0:پیش فرض|1|1:چند میانگین|2|2:مناسب-میانگین|3|3:اواسط مسیر|10|10:ترازو دسکتاپ|11|11:ترازو پلت فرم|12|12:ترازو معلق</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>274</SpecID>
+    <Type>0</Type>
+    <Display>حداکثر تعداد حافظه(0-9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>275</SpecID>
+    <Type>1</Type>
+    <Display>خط غیر مشترک|0|0:غیر فعال کردن|1|1: RTL در LTR (پیشنهاد)|2|2: LTR در RTL</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>277</SpecID>
+    <Type>1</Type>
+    <Display>حالت پیش فرض کار|0|0:عادی|1|1:چاپ دسته|2|2:بسته بندی دوباره|3|3:قفل حافظه|4|4:چاپ خودکار</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>278</SpecID>
+    <Type>0</Type>
+    <Display>فرمت چاپ رسید معوق(0 ~ 99،0 برای پیش فرض)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>279</SpecID>
+    <Type>1</Type>
+    <Display>معوق و برگشت|0|0:ممنوع|1|1: تنها رسید معوق می تواند برای یک بار|2|2: فقط رسید معوق می تواند،بدون محدودیت دفعات|3|3:تمام رسیدها می تواند</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>280</SpecID>
+    <Type>1</Type>
+    <Display>مجوز فروشنده|0|0:ممنوع|1|1:فعال</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>281</SpecID>
+    <Type>1</Type>
+    <Display>Pause Menu|0|0:Disable|1|1:Enable|2|2:Enable - Reserved|3|3:Enable - Reserved|4|4:Enable - Display Store Name|5|5:Enable - Display Device Name|6|6:Enable - Display Prefix of Money Unit|7|7:Enable - Display Suffix of Money Unit|8|8:Enable - Display Device Postil 1|9|9:Enable - Display Device Postil 2|10|10:Enable - Display Device Postil 3|11|11:Enable - Display Device Postil 4|12|12:Enable - Display Device Postil 5|13|13:Enable - Display Device Postil 6|14|14:Enable - Display Device Postil 7|15|15:Enable - Display Device Postil 8|16|16:Enable - Display Reserved 1|17|17:Enable - Display Reserved 2|18|18:Enable - Display Industry Mark|19|19:Enable - Display Wireless SSID|20|20:Enable - Display Wireless Password|21|21:Enable - Display Reserved 6|22|22:Enable - Display Reserved 7|23|23:Enable - Display Server's Domain Name|24|24:Enable - Display Custom Text 1|25|25:Enable - Display Custom Text 2|26|26:Enable - Display Custom Text 3|27|27:Enable - Display Custom Text 4|28|28:Enable - Display Custom Text 5|29|29:Enable - Display Custom Text 6|30|30:Enable - Display Custom Text 7|31|31:Enable - Display Custom Text 8</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>282</SpecID>
+    <Type>0</Type>
+    <Display>عملیات پرداخت ممنوع(0 ~ 63،0 برای همه فعال کنید، +2: کارت ممنوع، +4:پرداخت دیگر 1 ممنوع، +8:پرداخت دیگر 2 ممنوع، +16:پرداخت دیگر 3 ممنوع، +32: پرداخت فروشگاه ممنوع)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>283</SpecID>
+    <Type>1</Type>
+    <Display>ثبت اطلاعات تایید نشده|0|0:غیر فعال کردن|1|1:ثبت عملیات قیمت|2|2:ثبت عملیات قیمت/عملیات وزن</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>285</SpecID>
+    <Type>1</Type>
+    <Display>فرمت اعداد|0|0: شماره انگلیسی|1|1:شماره عربی|2|2:شماره فارسی</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>287</SpecID>
+    <Type>0</Type>
+    <Display>درصد تخفیف غیر فعال مشتری ویژه(0 ~ 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>288</SpecID>
+    <Type>0</Type>
+    <Display>درصد پیش فرض تخفیف مشتری ویژه(0 ~ 99،0 معنی همان پارامتر287)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>289</SpecID>
+    <Type>0</Type>
+    <Display>فرمت چاپ تراکنش دیگر(0-99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>290</SpecID>
+    <Type>1</Type>
+    <Display>ورود متن 1|0|0:غیر فعال کردن|1|1:نام حافظه|2|2:متن 1|3|3:متن 2|4|4:متن 3|5|5:متن 4|6|6:متن 5|7|7:متن 6|8|8:متن 7|9|9:کد کالا|10|10:بارکد کالا|11|11:اطلاعات سفارشی 1|12|12:اطلاعات سفارشی 2|13|13:اطلاعات سفارشی 3|14|14:اطلاعات سفارشی 4|15|15:شماره کارت در کارت های پرداخت</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>291</SpecID>
+    <Type>1</Type>
+    <Display>ورود متن 2|0|0:غیر فعال کردن|1|1:نام حافظه|2|2:متن 1|3|3:متن 2|4|4:متن 3|5|5:متن 4|6|6:متن 5|7|7:متن 6|8|8:متن 7|9|9:کد کالا|10|10:بارکد کالا|11|11:اطلاعات سفارشی 1|12|12:اطلاعات سفارشی 2|13|13:اطلاعات سفارشی 3|14|14:اطلاعات سفارشی 4|15|15:شماره کارت در کارت های پرداخت</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>292</SpecID>
+    <Type>1</Type>
+    <Display>ورود متن 3|0|0:غیر فعال کردن|1|1:نام حافظه|2|2:متن 1|3|3:متن 2|4|4:متن 3|5|5:متن 4|6|6:متن 5|7|7:متن 6|8|8:متن 7|9|9:کد کالا|10|10:بارکد کالا|11|11:اطلاعات سفارشی 1|12|12:اطلاعات سفارشی 2|13|13:اطلاعات سفارشی 3|14|14:اطلاعات سفارشی 4|15|15:شماره کارت در کارت های پرداخت</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>293</SpecID>
+    <Type>1</Type>
+    <Display>ورود متن 4|0|0:غیر فعال کردن|1|1:نام حافظه|2|2:متن 1|3|3:متن 2|4|4:متن 3|5|5:متن 4|6|6:متن 5|7|7:متن 6|8|8:متن 7|9|9:کد کالا|10|10:بارکد کالا|11|11:اطلاعات سفارشی 1|12|12:اطلاعات سفارشی 2|13|13:اطلاعات سفارشی 3|14|14:اطلاعات سفارشی 4|15|15:شماره کارت در کارت های پرداخت</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>294</SpecID>
+    <Type>1</Type>
+    <Display>نگه داری سفارشی اطلاعات|0|0:غیر فعال کردن|1|1:نگه داشتن سفارشی اطلاعات 1|2|2:نگه داشتن اطلاعات سفارشی 2|3|3:نگه داشتن سفارشی اطلاعات 1 و 2|4|4:نگه داشتن سفارشی اطلاعات 3|5|5:نگه داشتن سفارشی اطلاعات 1 و 3|6|6:نگه داشتن اطلاعات سفارشی 2 و 3|7|7:نگه داشتن اطلاعات سفارشی 1 و 2 و 3|8|8:نگه داشتن سفارشی اطلاعات 4|9|9:نگه داشتن سفارشی اطلاعات 1 و 4|10|10:نگه داشتن اطلاعات سفارشی 2 و 4|11|11:نگه داشتن اطلاعات سفارشی 1 و 2 و 4|12|12:نگه داشتن سفارشی اطلاعات 3 و 4|13|13:نگه داشتن سفارشی اطلاعات 1 و 3 و 4|14|14:نگه داشتن اطلاعات سفارشی 2 و 3 و 4|15|15:نگه داشتن سفارشی اطلاعات 1 و 2 و 3 و 4</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>295</SpecID>
+    <Type>1</Type>
+    <Display>فراخوانی اطلاعات سفارشی به عنوان حافظه|0|0:غیر فعال کردن|1|1:اطلاعات سفارشی 1 فراخوانی به عنوان حافظه|2|2:اطلاعات سفارشی 2 فراخوانی به عنوان حافظه|3|3:سفارشی اطلاعات 1 و 2 را به عنوان حافظه|4|4:اطلاعات سفارشی 3 فراخوانی به عنوان حافظه|5|5:اطلاعات سفارشی 1 و 3 را به عنوان حافظه|6|6:اطلاعات سفارشی 2 و 3 را به عنوان حافظه|7|7:سفارشی اطلاعات 1 و 2 و 3 را به عنوان حافظه|8|8:اطلاعات سفارشی 4 فراخوانی به عنوان حافظه|9|9:سفارشی اطلاعات 1 و 4 را به عنوان حافظه|10|10:اطلاعات سفارشی 2 و 4 را به عنوان حافظه|11|11:سفارشی اطلاعات 1 و 2 و 4 را به عنوان حافظه|12|12:سفارشی اطلاعات 3 و 4 را به عنوان حافظه|13|13:سفارشی اطلاعات 1 و 3 و 4 را به عنوان حافظه|14|14:اطلاعات سفارشی 2 و 3 و 4 را به عنوان حافظه|15|15:اطلاعات سفارشی 1 و 2 و 3 و 4 را به عنوان حافظه</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>297</SpecID>
+    <Type>3</Type>
+    <Display>تبادل واحد پول دوم</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>298</SpecID>
+    <Type>1</Type>
+    <Display>ممیز واحد پول دوم|0|0:0|1|1:0.0|2|2:0.00|3|3:0.000|4|4:0.0000|5|5:0.00000</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>300</SpecID>
+    <Type>1</Type>
+    <Display>آیتم هزینه خدمات|0|0:ممنوع|1|1:مجاز، بدون جمع آوری درصد کل دوباره|2|2:مجاز، با جمع آوری درصد کل دوباره</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>301</SpecID>
+    <Type>1</Type>
+    <Display>آیتم هزینه خدمات:روش پیش فرض|0|0:حالت قیمت واحد|1|1:حالت قیمت کل|2|2:حالت درصد</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>302</SpecID>
+    <Type>1</Type>
+    <Display>مجموع هزینه خدمات: روش ورودی|0|0:فراخوان دستی،قیمت ورودی|1|1:فراخوان دستی، درصد ورودی|2|2:فراخوان دستی، قیمت خودکار|3|3:فراخوان دستی، درصد اتوماتیک|4|4:فراخوان خودکار، قیمت خودکار|5|5:فراخوان خودکار، درصد خودکار</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>303</SpecID>
+    <Type>0</Type>
+    <Display>مجموع هزینه خدمات: تعداد خوکار بر اساس(% یا شماره قیمت)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>304</SpecID>
+    <Type>1</Type>
+    <Display>هزینه خدمات: تعداد درصد مجموعه بر اساس|0|0:قبل از مالیات|1|1:پس از کسر مالیات</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>305</SpecID>
+    <Type>1</Type>
+    <Display>مالیات مرتب کردن بر اساس هزینه خدمات|0|0:بدون سرویس هزینه مالیات|1|1:مالیات حالت کم کردن|2|2:مالیات حالت کم کردن،قیت حافظه است پس از کسر مالیات|3|3:مالیات شامل حالت افزودن</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>306</SpecID>
+    <Type>0</Type>
+    <Display>نرخ مالیات از هزینه خدمات(یک در هر ده هزار %، 0 ~ 9999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>307</SpecID>
+    <Type>1</Type>
+    <Display>دسترسی هزینه خدمات|0|0:ممنوع|1|1:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>308</SpecID>
+    <Type>1</Type>
+    <Display>خدمات هزینه دوباره ورودی|0|0:ممنوع|1|1:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>318</SpecID>
+    <Type>0</Type>
+    <Display>تخفیف اتوماتیک: روز شروع (0 به معنی همیشه، فرمت: YYMMDD)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>319</SpecID>
+    <Type>0</Type>
+    <Display>تخفیف اتوماتیک: آخرین روز (فرمت: YYMMDD)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>320</SpecID>
+    <Type>1</Type>
+    <Display>سنسور وزن|0|0:داخلی|1|1: RS232 مدل</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>330</SpecID>
+    <Type>0</Type>
+    <Display>پروتکل پرداخت کارت</Display>
+    <Visible>admin</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>332</SpecID>
+    <Type>0</Type>
+    <Display>آی پی سرور پرداخت کارت 1(0~255)</Display>
+    <Visible>admin</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>333</SpecID>
+    <Type>0</Type>
+    <Display>آی پی سرور پرداخت کارت 2(0~255)</Display>
+    <Visible>admin</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>334</SpecID>
+    <Type>0</Type>
+    <Display>آی پی سرور پرداخت کارت 3(0~255)</Display>
+    <Visible>admin</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>335</SpecID>
+    <Type>0</Type>
+    <Display>آی پی سرور پرداخت کارت 4(0~255)</Display>
+    <Visible>admin</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>336</SpecID>
+    <Type>0</Type>
+    <Display>پورت سرور پرداخت کارت(0~65535)</Display>
+    <Visible>admin</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>340</SpecID>
+    <Type>0</Type>
+    <Display>کنتراست ال سی دی دات ماتریکس(0~7)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>341</SpecID>
+    <Type>0</Type>
+    <Display>روشنایی ال سی دی دات ماتریکس(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>350</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: فرمت چاپ تک کالا (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>351</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: فرمت بارکد تک کالا (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>352</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: فلگ بارکد تک کالا (0 - 99999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>353</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: تعداد پرینت تک کالا (0 - 99 )</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>354</SpecID>
+    <Type>1</Type>
+    <Display>پرینتر جانبی: پرینت برعکس تک کالا|0|0:نرمال|1|1:برعکس</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>355</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: فرمت چاپ تجمیع (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>356</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: فرمت بارکد تجمیع (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>357</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: فلگ بارکد تجمیع (0 - 99999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>358</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: تعداد پرینت تجمیع (0 - 99 )</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>359</SpecID>
+    <Type>1</Type>
+    <Display>پرینتر جانبی: پرینت برعکس تجمیع |0|0:نرمال|1|1:برعکس</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>360</SpecID>
+    <Type>1</Type>
+    <Display>پرینتر جانبی: توابع پرینت شبکه|0|0:غیر فعال|1|1:فعال، صبرکنید تا پرینت تمام شود|2|2:فعال، صبر کنید تا پرینت شروع شود|3|3:فعال، صبر کنید تا ارسال اطلاعات تمام شود</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>361</SpecID>
+    <Type>1</Type>
+    <Display>پرینتر جانبی: وضعیت گره پرینتر|0|0:بدون عملیات|1|1:گره آنلاین/آفلاین|2|2:گره آنلاین/آفلاین، آلارم وقت بدون پرینت رتبه|3|3:گره آنلاین/آفلاین، خطا وقت پرینت بدون رتبه</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>362</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: رتبه شماره پرینتر جانبی(0-20)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>363</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: بررسی فاصله زمانی(0-65535 ثانیه)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>364</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: اولین آی پی 1(0-255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>365</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: اولین آی پی 2(0-255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>366</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: اولین آی پی 3(0-255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>367</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: اولین آی پی 4(0-255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>368</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: دومین آی پی 1(0-255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>369</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: دومین آی پی 2(0-255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>370</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: دومین آی پی 3(0-255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>371</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: دومین آی پی 4(0-255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>372</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: سومین آی پی 1(0-255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>373</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: سومین آی پی 2(0-255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>374</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: سومین آی پی 3(0-255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>375</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: سومین آی پی 4(0-255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>376</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: سوکت سرور(0-65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>377</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: سوکت کلایت(0-65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>378</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: سوکت داخلی UDP(0-65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>379</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: سوکت ریموت UDP(0-65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>400</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: سرعت چاپ پرینتر (0 - 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>401</SpecID>
+    <Type>1</Type>
+    <Display>پرینتر جانبی: نوع کاغذ|0|0:رسید|1|1:لیبل</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>402</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: پررنگی پرینتر درحالت لیبل (0 - 15)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>403</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: پررنگی پرینتر درحالت رسید (0 - 15)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>404</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: فاصله هر چاپ در حالت رسید(0~99mm)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>405</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: محل برش در حالت رسید(0~99mm)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>406</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: فاصله از کاغذگذاری در حالت رسید(0~99 میلیمتر)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>407</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: عرض چاپ گزارش(0~99 میلیمتر)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>408</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: فونت پیش فرض(0-9)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>409</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: محافظت گرمای هد پرینتر(0~30 ثانیه)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>410</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: موقعیت سنسور کاغذگذاری(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>411</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: فاصله میله های بارکد(0-9، 0 پیش فرض)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>412</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: عرض میله های بارکد(0-19، 0 به معنای پیش فرض)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>413</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: فونت کاراکترهای بارکد(0~2)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>415</SpecID>
+    <Type>1</Type>
+    <Display>پرینتر جانبی: حالت خودکار خط جدید|0|0:ممنوع|1|1:مجاز</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>416</SpecID>
+    <Type>1</Type>
+    <Display>پرینتر جانبی: ITF25 حالت قالب|0|0:بدون قالب|1|1:قالب بالا و پایین|2|2:قالب اطراف</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>417</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: ITF25 عرض قالب(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>418</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: ITF25 عرض فضای خلی چپ و راست قالب(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>419</SpecID>
+    <Type>0</Type>
+    <Display>پرینتر جانبی: لیبل: فاصله تا کاغذگذاری(0~1999, دستگاه در صورت عدد بیشتر از 1000 کاغذگذاری را برعکس انجام میدهد)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>420</SpecID>
+    <Type>1</Type>
+    <Display>پرینتر جانبی: نادیده گرفتن سنسور PBS|0|0:بدون نادیده گرفتن|1|1:نادیده گرفتن</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>421</SpecID>
+    <Type>1</Type>
+    <Display>پرینتر جانبی: نادیده گرفتن سنسور PDS|0|0:بدون نادیده گرفتن|1|1:نادیده گرفتن</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>422</SpecID>
+    <Type>1</Type>
+    <Display>پرینتر جانبی: نادیده گرفتن سنسور PPS|0|0:بدون نادیده گرفتن|1|1:نادیده گرفتن</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>430</SpecID>
+    <Type>0</Type>
+    <Display>آی پی شبکه ثانویه 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>431</SpecID>
+    <Type>0</Type>
+    <Display>آی پی شبکه ثانویه 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>432</SpecID>
+    <Type>0</Type>
+    <Display>آی پی شبکه ثانویه 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>433</SpecID>
+    <Type>0</Type>
+    <Display>آی پی شبکه ثانویه 4(0~255, 0 به معنای حالت DHCP)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>434</SpecID>
+    <Type>0</Type>
+    <Display>آی پی گیت وی ثانویه 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>435</SpecID>
+    <Type>0</Type>
+    <Display>آی پی گیت وی ثانویه 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>436</SpecID>
+    <Type>0</Type>
+    <Display>آی پی گیت وی ثانویه 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>437</SpecID>
+    <Type>0</Type>
+    <Display>آی پی گیت وی ثانویه 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>438</SpecID>
+    <Type>0</Type>
+    <Display>آی پی ماسک ثانویه 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>439</SpecID>
+    <Type>0</Type>
+    <Display>آی پی ماسک ثانویه 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>440</SpecID>
+    <Type>0</Type>
+    <Display>آی پی ماسک ثانویه 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>441</SpecID>
+    <Type>0</Type>
+    <Display>آی پی ماسک ثانویه 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>450</SpecID>
+    <Type>0</Type>
+    <Display>PDF417: سطح کنترلی (0~9, 9: سطح پیش فرض سیستم)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>451</SpecID>
+    <Type>0</Type>
+    <Display>PDF417: تعداد ستون(0~30, 0:سایز خودکار)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>452</SpecID>
+    <Type>0</Type>
+    <Display>PDF417: تعداد ردیف(0~90, 0:سایز خودکار)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>453</SpecID>
+    <Type>0</Type>
+    <Display>PDF417: عرض بارکد(0~6, 0: پیش فرض</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>454</SpecID>
+    <Type>0</Type>
+    <Display>PDF417: طول بارکد(0~18, 0: پیش فرض 6)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>455</SpecID>
+    <Type>0</Type>
+    <Display>QR: بررسی سطح(0~3)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>456</SpecID>
+    <Type>0</Type>
+    <Display>QR: ورژن(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>457</SpecID>
+    <Type>0</Type>
+    <Display>سایز بارکد دوبعدی: (0-6, 0 به معنای پیش فرض，پیش فرض 3)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>480</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>481</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>482</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>483</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>484</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>485</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>486</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>487</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>488</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>489</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>490</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>491</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>492</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>493</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>494</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>495</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>496</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>497</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>498</SpecID>
+    <Type>0</Type>
+    <Display>رزرو برای ورژن خاص</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+
+  －－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－
+
+  <String_Info>
+    <StringID>0</StringID>
+    <Display>نام فروشگاه</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>1</StringID>
+    <Display>نام دستگاه</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>2</StringID>
+    <Display>پیشوند واحد پول</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>3</StringID>
+    <Display>پسوند واحد پول</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>4</StringID>
+    <Display>متن اضافی 1</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>5</StringID>
+    <Display>متن اضافی 2</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>6</StringID>
+    <Display>متن اضافی 3</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>7</StringID>
+    <Display>متن اضافی 4</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>8</StringID>
+    <Display>متن اضافی 5</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>9</StringID>
+    <Display>متن اضافی 6</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>10</StringID>
+    <Display>متن اضافی 7</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>11</StringID>
+    <Display>متن اضافی 8</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>12</StringID>
+    <Display>رزرو 1</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>13</StringID>
+    <Display>رزرو 2</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>14</StringID>
+    <Display>علامت تجاری</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>15</StringID>
+    <Display>نام شبکه وایرلس</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>16</StringID>
+    <Display>رمز عبور وایرلس</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>17</StringID>
+    <Display>رزرو 6</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>18</StringID>
+    <Display>رزرو 7</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>19</StringID>
+    <Display>نام دامین سرور</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>20</StringID>
+    <Display>متن سفارشی 1</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>21</StringID>
+    <Display>متن سفارشی 2</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>22</StringID>
+    <Display>متن سفارشی 3</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>23</StringID>
+    <Display>متن سفارشی 4</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>24</StringID>
+    <Display>متن سفارشی 5</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>25</StringID>
+    <Display>متن سفارشی 6</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>26</StringID>
+    <Display>متن سفارشی 7</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>27</StringID>
+    <Display>متن سفارشی 8</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+</UIDataSet>
+
+<!--فارسی(Persian)-->

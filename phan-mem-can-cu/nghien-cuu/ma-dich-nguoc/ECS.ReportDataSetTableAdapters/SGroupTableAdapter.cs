@@ -1,0 +1,398 @@
+using System;
+using System.CodeDom.Compiler;
+using System.ComponentModel;
+using System.ComponentModel.Design;
+using System.Data;
+using System.Data.Common;
+using System.Data.OleDb;
+using System.Diagnostics;
+using ECS.Properties;
+
+namespace ECS.ReportDataSetTableAdapters;
+
+[DesignerCategory("code")]
+[Designer("Microsoft.VSDesigner.DataSource.Design.TableAdapterDesigner, Microsoft.VSDesigner, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a")]
+[HelpKeyword("vs.data.TableAdapter")]
+[ToolboxItem(true)]
+[DataObject(true)]
+public class SGroupTableAdapter : Component
+{
+	private OleDbDataAdapter _adapter;
+
+	private OleDbConnection _connection;
+
+	private OleDbCommand[] _commandCollection;
+
+	private bool _clearBeforeFill;
+
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[DebuggerNonUserCode]
+	private OleDbDataAdapter Adapter
+	{
+		get
+		{
+			if (_adapter == null)
+			{
+				InitAdapter();
+			}
+			return _adapter;
+		}
+	}
+
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[DebuggerNonUserCode]
+	internal OleDbConnection Connection
+	{
+		get
+		{
+			if (_connection == null)
+			{
+				InitConnection();
+			}
+			return _connection;
+		}
+		set
+		{
+			_connection = value;
+			if (Adapter.InsertCommand != null)
+			{
+				Adapter.InsertCommand.Connection = value;
+			}
+			if (Adapter.DeleteCommand != null)
+			{
+				Adapter.DeleteCommand.Connection = value;
+			}
+			if (Adapter.UpdateCommand != null)
+			{
+				Adapter.UpdateCommand.Connection = value;
+			}
+			for (int i = 0; i < CommandCollection.Length; i++)
+			{
+				if (CommandCollection[i] != null)
+				{
+					CommandCollection[i].Connection = value;
+				}
+			}
+		}
+	}
+
+	[DebuggerNonUserCode]
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	protected OleDbCommand[] CommandCollection
+	{
+		get
+		{
+			if (_commandCollection == null)
+			{
+				InitCommandCollection();
+			}
+			return _commandCollection;
+		}
+	}
+
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[DebuggerNonUserCode]
+	public bool ClearBeforeFill
+	{
+		get
+		{
+			return _clearBeforeFill;
+		}
+		set
+		{
+			_clearBeforeFill = value;
+		}
+	}
+
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[DebuggerNonUserCode]
+	public SGroupTableAdapter()
+	{
+		ClearBeforeFill = true;
+	}
+
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[DebuggerNonUserCode]
+	private void InitAdapter()
+	{
+		_adapter = new OleDbDataAdapter();
+		DataTableMapping dataTableMapping = new DataTableMapping();
+		dataTableMapping.SourceTable = "Table";
+		dataTableMapping.DataSetTable = "SGroup";
+		dataTableMapping.ColumnMappings.Add("GID", "GID");
+		dataTableMapping.ColumnMappings.Add("Name", "Name");
+		_adapter.TableMappings.Add(dataTableMapping);
+		_adapter.DeleteCommand = new OleDbCommand();
+		_adapter.DeleteCommand.Connection = Connection;
+		_adapter.DeleteCommand.CommandText = "DELETE FROM `SGroup` WHERE ((`GID` = ?))";
+		_adapter.DeleteCommand.CommandType = CommandType.Text;
+		_adapter.DeleteCommand.Parameters.Add(new OleDbParameter("Original_GID", OleDbType.Integer, 0, ParameterDirection.Input, 0, 0, "GID", DataRowVersion.Original, sourceColumnNullMapping: false, null));
+		_adapter.InsertCommand = new OleDbCommand();
+		_adapter.InsertCommand.Connection = Connection;
+		_adapter.InsertCommand.CommandText = "INSERT INTO `SGroup` (`GID`, `Name`) VALUES (?, ?)";
+		_adapter.InsertCommand.CommandType = CommandType.Text;
+		_adapter.InsertCommand.Parameters.Add(new OleDbParameter("GID", OleDbType.Integer, 0, ParameterDirection.Input, 0, 0, "GID", DataRowVersion.Current, sourceColumnNullMapping: false, null));
+		_adapter.InsertCommand.Parameters.Add(new OleDbParameter("Name", OleDbType.VarWChar, 0, ParameterDirection.Input, 0, 0, "Name", DataRowVersion.Current, sourceColumnNullMapping: false, null));
+		_adapter.UpdateCommand = new OleDbCommand();
+		_adapter.UpdateCommand.Connection = Connection;
+		_adapter.UpdateCommand.CommandText = "UPDATE `SGroup` SET `GID` = ?, `Name` = ? WHERE ((`GID` = ?))";
+		_adapter.UpdateCommand.CommandType = CommandType.Text;
+		_adapter.UpdateCommand.Parameters.Add(new OleDbParameter("GID", OleDbType.Integer, 0, ParameterDirection.Input, 0, 0, "GID", DataRowVersion.Current, sourceColumnNullMapping: false, null));
+		_adapter.UpdateCommand.Parameters.Add(new OleDbParameter("Name", OleDbType.VarWChar, 0, ParameterDirection.Input, 0, 0, "Name", DataRowVersion.Current, sourceColumnNullMapping: false, null));
+		_adapter.UpdateCommand.Parameters.Add(new OleDbParameter("Original_GID", OleDbType.Integer, 0, ParameterDirection.Input, 0, 0, "GID", DataRowVersion.Original, sourceColumnNullMapping: false, null));
+	}
+
+	[DebuggerNonUserCode]
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	private void InitConnection()
+	{
+		_connection = new OleDbConnection();
+		_connection.ConnectionString = Settings.Default.ReportConnectionString;
+	}
+
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[DebuggerNonUserCode]
+	private void InitCommandCollection()
+	{
+		_commandCollection = new OleDbCommand[3];
+		_commandCollection[0] = new OleDbCommand();
+		_commandCollection[0].Connection = Connection;
+		_commandCollection[0].CommandText = "SELECT SGroup.*\r\nFROM SGroup";
+		_commandCollection[0].CommandType = CommandType.Text;
+		_commandCollection[1] = new OleDbCommand();
+		_commandCollection[1].Connection = Connection;
+		_commandCollection[1].CommandText = "DELETE FROM `SGroup`";
+		_commandCollection[1].CommandType = CommandType.Text;
+		_commandCollection[2] = new OleDbCommand();
+		_commandCollection[2].Connection = Connection;
+		_commandCollection[2].CommandText = "DELETE FROM `SGroup` WHERE ((`GID` = CheckGID))";
+		_commandCollection[2].CommandType = CommandType.Text;
+		_commandCollection[2].Parameters.Add(new OleDbParameter("CheckGID", OleDbType.Integer, 0, ParameterDirection.Input, 0, 0, null, DataRowVersion.Current, sourceColumnNullMapping: false, null));
+	}
+
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[DebuggerNonUserCode]
+	[HelpKeyword("vs.data.TableAdapter")]
+	[DataObjectMethod(DataObjectMethodType.Fill, true)]
+	public virtual int Fill(ReportDataSet.SGroupDataTable dataTable)
+	{
+		Adapter.SelectCommand = CommandCollection[0];
+		if (ClearBeforeFill)
+		{
+			dataTable.Clear();
+		}
+		return Adapter.Fill(dataTable);
+	}
+
+	[DebuggerNonUserCode]
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[HelpKeyword("vs.data.TableAdapter")]
+	public virtual int Update(ReportDataSet.SGroupDataTable dataTable)
+	{
+		return Adapter.Update(dataTable);
+	}
+
+	[DebuggerNonUserCode]
+	[HelpKeyword("vs.data.TableAdapter")]
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	public virtual int Update(ReportDataSet dataSet)
+	{
+		return Adapter.Update(dataSet, "SGroup");
+	}
+
+	[DebuggerNonUserCode]
+	[HelpKeyword("vs.data.TableAdapter")]
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	public virtual int Update(DataRow dataRow)
+	{
+		return Adapter.Update(new DataRow[1] { dataRow });
+	}
+
+	[HelpKeyword("vs.data.TableAdapter")]
+	[DebuggerNonUserCode]
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	public virtual int Update(DataRow[] dataRows)
+	{
+		return Adapter.Update(dataRows);
+	}
+
+	[DebuggerNonUserCode]
+	[DataObjectMethod(DataObjectMethodType.Delete, true)]
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[HelpKeyword("vs.data.TableAdapter")]
+	public virtual int Delete(int? Original_GID)
+	{
+		if (Original_GID.HasValue)
+		{
+			Adapter.DeleteCommand.Parameters[0].Value = Original_GID.Value;
+		}
+		else
+		{
+			Adapter.DeleteCommand.Parameters[0].Value = DBNull.Value;
+		}
+		ConnectionState state = Adapter.DeleteCommand.Connection.State;
+		if ((Adapter.DeleteCommand.Connection.State & ConnectionState.Open) != ConnectionState.Open)
+		{
+			Adapter.DeleteCommand.Connection.Open();
+		}
+		try
+		{
+			return Adapter.DeleteCommand.ExecuteNonQuery();
+		}
+		finally
+		{
+			if (state == ConnectionState.Closed)
+			{
+				Adapter.DeleteCommand.Connection.Close();
+			}
+		}
+	}
+
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[DebuggerNonUserCode]
+	[DataObjectMethod(DataObjectMethodType.Insert, true)]
+	[HelpKeyword("vs.data.TableAdapter")]
+	public virtual int Insert(int? GID, string Name)
+	{
+		if (GID.HasValue)
+		{
+			Adapter.InsertCommand.Parameters[0].Value = GID.Value;
+		}
+		else
+		{
+			Adapter.InsertCommand.Parameters[0].Value = DBNull.Value;
+		}
+		if (Name == null)
+		{
+			Adapter.InsertCommand.Parameters[1].Value = DBNull.Value;
+		}
+		else
+		{
+			Adapter.InsertCommand.Parameters[1].Value = Name;
+		}
+		ConnectionState state = Adapter.InsertCommand.Connection.State;
+		if ((Adapter.InsertCommand.Connection.State & ConnectionState.Open) != ConnectionState.Open)
+		{
+			Adapter.InsertCommand.Connection.Open();
+		}
+		try
+		{
+			return Adapter.InsertCommand.ExecuteNonQuery();
+		}
+		finally
+		{
+			if (state == ConnectionState.Closed)
+			{
+				Adapter.InsertCommand.Connection.Close();
+			}
+		}
+	}
+
+	[DebuggerNonUserCode]
+	[DataObjectMethod(DataObjectMethodType.Update, true)]
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[HelpKeyword("vs.data.TableAdapter")]
+	public virtual int Update(int? GID, string Name, int? Original_GID)
+	{
+		if (GID.HasValue)
+		{
+			Adapter.UpdateCommand.Parameters[0].Value = GID.Value;
+		}
+		else
+		{
+			Adapter.UpdateCommand.Parameters[0].Value = DBNull.Value;
+		}
+		if (Name == null)
+		{
+			Adapter.UpdateCommand.Parameters[1].Value = DBNull.Value;
+		}
+		else
+		{
+			Adapter.UpdateCommand.Parameters[1].Value = Name;
+		}
+		if (Original_GID.HasValue)
+		{
+			Adapter.UpdateCommand.Parameters[2].Value = Original_GID.Value;
+		}
+		else
+		{
+			Adapter.UpdateCommand.Parameters[2].Value = DBNull.Value;
+		}
+		ConnectionState state = Adapter.UpdateCommand.Connection.State;
+		if ((Adapter.UpdateCommand.Connection.State & ConnectionState.Open) != ConnectionState.Open)
+		{
+			Adapter.UpdateCommand.Connection.Open();
+		}
+		try
+		{
+			return Adapter.UpdateCommand.ExecuteNonQuery();
+		}
+		finally
+		{
+			if (state == ConnectionState.Closed)
+			{
+				Adapter.UpdateCommand.Connection.Close();
+			}
+		}
+	}
+
+	[HelpKeyword("vs.data.TableAdapter")]
+	[DataObjectMethod(DataObjectMethodType.Update, true)]
+	[DebuggerNonUserCode]
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	public virtual int Update(string Name, int? Original_GID)
+	{
+		return Update(Original_GID, Name, Original_GID);
+	}
+
+	[DataObjectMethod(DataObjectMethodType.Delete, false)]
+	[DebuggerNonUserCode]
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[HelpKeyword("vs.data.TableAdapter")]
+	public virtual int DeleteAll()
+	{
+		OleDbCommand oleDbCommand = CommandCollection[1];
+		ConnectionState state = oleDbCommand.Connection.State;
+		if ((oleDbCommand.Connection.State & ConnectionState.Open) != ConnectionState.Open)
+		{
+			oleDbCommand.Connection.Open();
+		}
+		try
+		{
+			return oleDbCommand.ExecuteNonQuery();
+		}
+		finally
+		{
+			if (state == ConnectionState.Closed)
+			{
+				oleDbCommand.Connection.Close();
+			}
+		}
+	}
+
+	[DebuggerNonUserCode]
+	[DataObjectMethod(DataObjectMethodType.Delete, false)]
+	[GeneratedCode("System.Data.Design.TypedDataSetGenerator", "4.0.0.0")]
+	[HelpKeyword("vs.data.TableAdapter")]
+	public virtual int DeleteGID(int CheckGID)
+	{
+		OleDbCommand oleDbCommand = CommandCollection[2];
+		oleDbCommand.Parameters[0].Value = CheckGID;
+		ConnectionState state = oleDbCommand.Connection.State;
+		if ((oleDbCommand.Connection.State & ConnectionState.Open) != ConnectionState.Open)
+		{
+			oleDbCommand.Connection.Open();
+		}
+		try
+		{
+			return oleDbCommand.ExecuteNonQuery();
+		}
+		finally
+		{
+			if (state == ConnectionState.Closed)
+			{
+				oleDbCommand.Connection.Close();
+			}
+		}
+	}
+}

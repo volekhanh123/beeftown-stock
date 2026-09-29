@@ -1,0 +1,39 @@
+﻿<?xml version="1.0"  encoding="utf-8" standalone="yes"?>
+<UIDataSet>
+  <Config>
+    <Name>English</Name>
+    <Folder>en</Folder>
+    <Lang>en-US</Lang>
+    <Encoding>utf-8</Encoding>
+  </Config>
+  <Config>
+    <Name>Español</Name>
+    <Folder>es</Folder>
+    <Lang>es-ES</Lang>
+    <Encoding>utf-8</Encoding>
+  </Config>
+  <Config>
+    <Name>Português</Name>
+    <Folder>pt</Folder>
+    <Lang>pt-PT</Lang>
+    <Encoding>utf-8</Encoding>
+  </Config>
+  <Config>
+    <Name>русский</Name>
+    <Folder>ru</Folder>
+    <Lang>ru-ru</Lang>
+    <Encoding>utf-8</Encoding>
+  </Config>
+  <Config>
+    <Name>简体中文</Name>
+    <Folder>zh-CHS</Folder>
+    <Lang>zh-CN</Lang>
+    <Encoding>utf-8</Encoding>
+  </Config>
+  <Config>
+    <Name>繁體中文</Name>
+    <Folder>zh-CHT</Folder>
+    <Lang>zh-HK</Lang>
+    <Encoding>utf-8</Encoding>
+  </Config>
+</UIDataSet>

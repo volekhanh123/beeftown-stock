@@ -1,0 +1,35 @@
+<?xml version="1.0" standalone="yes"?>
+<UIDataSet>
+  <Network_Auto>
+    <ID>0</ID>
+    <Task>3</Task>
+    <Due>1</Due>
+    <DateTime>2000-01-01T00:00:00+08:00</DateTime>
+    <Repeat>true</Repeat>
+    <Day>0</Day>
+    <Hour>0</Hour>
+    <Minute>0</Minute>
+    <Second>30</Second>
+    <Uri>ftp://</Uri>
+    <File>ECS.mdb</File>
+    <Login>false</Login>
+    <User />
+    <Password />
+  </Network_Auto>
+  <Network_Auto>
+    <ID>1</ID>
+    <Task>4</Task>
+    <Due>2</Due>
+    <DateTime>2000-01-01T00:00:00+08:00</DateTime>
+    <Repeat>false</Repeat>
+    <Day>0</Day>
+    <Hour>1</Hour>
+    <Minute>0</Minute>
+    <Second>0</Second>
+    <Uri>ftp://</Uri>
+    <File>ECS.mdb</File>
+    <Login>false</Login>
+    <User />
+    <Password />
+  </Network_Auto>
+</UIDataSet>

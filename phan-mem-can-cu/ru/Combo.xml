@@ -1,0 +1,1279 @@
+﻿<?xml version="1.0"  encoding="utf-8" standalone="yes"?>
+<!--Russian-->
+<UIDataSet>
+  <PLU_PS_Date>
+    <Value>0</Value>
+    <Display>Not Print</Display>
+  </PLU_PS_Date>
+  <PLU_PS_Date>
+    <Value>1</Value>
+    <Display>Print</Display>
+  </PLU_PS_Date>
+  <PLU_PS_Time>
+    <Value>0</Value>
+    <Display>Not Print</Display>
+  </PLU_PS_Time>
+  <PLU_PS_Time>
+    <Value>1</Value>
+    <Display>Print Input Time</Display>
+  </PLU_PS_Time>
+  <PLU_PS_Time>
+    <Value>2</Value>
+    <Display>Print Current Time</Display>
+  </PLU_PS_Time>
+  <PLU_DF_U>
+    <Value>0</Value>
+    <Display>System Default</Display>
+  </PLU_DF_U>
+  <PLU_DF_U>
+    <Value>1</Value>
+    <Display>No Upper Limit</Display>
+  </PLU_DF_U>
+  <PLU_DF_U>
+    <Value>2</Value>
+    <Display>First Price</Display>
+  </PLU_DF_U>
+  <PLU_DF_U>
+    <Value>3</Value>
+    <Display>Setting Number</Display>
+  </PLU_DF_U>
+  <PLU_DF_D>
+    <Value>0</Value>
+    <Display>System Default</Display>
+  </PLU_DF_D>
+  <PLU_DF_D>
+    <Value>1</Value>
+    <Display>No Lower Limit</Display>
+  </PLU_DF_D>
+  <PLU_DF_D>
+    <Value>2</Value>
+    <Display>First Price</Display>
+  </PLU_DF_D>
+  <PLU_DF_D>
+    <Value>3</Value>
+    <Display>Setting Number</Display>
+  </PLU_DF_D>
+  <PLU_DA_Sort>
+    <Value>0</Value>
+    <Display>Inefficacy</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>1</Value>
+    <Display>Amount Discount</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>2</Value>
+    <Display>Time Discount</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>3</Value>
+    <Display>Total Forbidden-1</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>4</Value>
+    <Display>VIP: A-Level Discount</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>5</Value>
+    <Display>VIP: B-Level Discount</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>6</Value>
+    <Display>VIP: C-Level Discount</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>7</Value>
+    <Display>VIP: D-Level Discount</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>8</Value>
+    <Display>Amount Forbidden-1</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>9</Value>
+    <Display>Amount Forbidden-2</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>10</Value>
+    <Display>Total Forbidden-2</Display>
+  </PLU_DA_Sort>
+  <LabelItem_Print>
+    <Value>0</Value>
+    <Display>Not Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>1</Value>
+    <Display>Always Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>2</Value>
+    <Display>Weight Item Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>3</Value>
+    <Display>Count Item Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>4</Value>
+    <Display>T-Sale Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>5</Value>
+    <Display>Tared Item Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>6</Value>
+    <Display>Free Item Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>7</Value>
+    <Display>Sale Date Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>8</Value>
+    <Display>Pack Date Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>9</Value>
+    <Display>Shelf Date Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>10</Value>
+    <Display>Not 1pcs Item Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>11</Value>
+    <Display>Item Service Fee Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>12</Value>
+    <Display>Service Fee Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>13</Value>
+    <Display>Taxed Item Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>14</Value>
+    <Display>Cash Pay</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>15</Value>
+    <Display>Card Pay</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>16</Value>
+    <Display>Total Discounted</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>17</Value>
+    <Display>Payment 1</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>18</Value>
+    <Display>Payment 2</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>19</Value>
+    <Display>Payment 3</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>20</Value>
+    <Display>VIP Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>21</Value>
+    <Display>Normal Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>22</Value>
+    <Display>Re-Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>23</Value>
+    <Display>Pre-Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>24</Value>
+    <Display>Only 1pcs Item Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>25</Value>
+    <Display>Not T-Sale Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>26</Value>
+    <Display>Not Tared Item Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>27</Value>
+    <Display>Not Free Item Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>28</Value>
+    <Display>Tax Free Item Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>29</Value>
+    <Display>Not VIP Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>30</Value>
+    <Display>Default Tared Item Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>31</Value>
+    <Display>Card Info Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>32</Value>
+    <Display>Cloud Pay Print</Display>
+  </LabelItem_Print>
+  <LabelItem_Angle>
+    <Value>0</Value>
+    <Display>0°</Display>
+  </LabelItem_Angle>
+  <LabelItem_Angle>
+    <Value>1</Value>
+    <Display>90°</Display>
+  </LabelItem_Angle>
+  <LabelItem_Angle>
+    <Value>2</Value>
+    <Display>180°</Display>
+  </LabelItem_Angle>
+  <LabelItem_Angle>
+    <Value>3</Value>
+    <Display>270°</Display>
+  </LabelItem_Angle>
+  <LabelItem_Font2>
+    <Value>0</Value>
+    <Display>10 * 18</Display>
+    <Size>10</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>1</Value>
+    <Display>14 * 26</Display>
+    <Size>14</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>2</Value>
+    <Display>18 * 34</Display>
+    <Size>18</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>3</Value>
+    <Display>10 * 36</Display>
+    <Size>10</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>4</Value>
+    <Display>14 * 52</Display>
+    <Size>14</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>5</Value>
+    <Display>18 * 68</Display>
+    <Size>18</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>6</Value>
+    <Display>28 * 52</Display>
+    <Size>28</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>7</Value>
+    <Display>36 * 68</Display>
+    <Size>36</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>8</Value>
+    <Display>36 * 136</Display>
+    <Size>36</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>9</Value>
+    <Display>54 * 102</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>10</Value>
+    <Display>#NULL#</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>11</Value>
+    <Display>#NULL#</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>12</Value>
+    <Display>#NULL#</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>13</Value>
+    <Display>#NULL#</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>14</Value>
+    <Display>#NULL#</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>15</Value>
+    <Display>#NULL#</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Align>
+    <Value>0</Value>
+    <Display>Default</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>1</Value>
+    <Display>Top Left</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>2</Value>
+    <Display>Top Center</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>3</Value>
+    <Display>Top Right</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>4</Value>
+    <Display>Middle Left</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>5</Value>
+    <Display>Middle Center</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>6</Value>
+    <Display>Middle Right</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>7</Value>
+    <Display>Bottom Left</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>8</Value>
+    <Display>Bottom Center</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>9</Value>
+    <Display>Bottom Right</Display>
+  </LabelItem_Align>
+  <Label_Sort>
+    <Value>1</Value>
+    <Display>Item Label</Display>
+  </Label_Sort>
+  <Label_Sort>
+    <Value>2</Value>
+    <Display>Sum Label</Display>
+  </Label_Sort>
+  <Label_Sort>
+    <Value>3</Value>
+    <Display>Receipt</Display>
+  </Label_Sort>
+  <Label_Sort>
+    <Value>4</Value>
+    <Display>List</Display>
+  </Label_Sort>
+  <Label_Version>
+    <Value>1</Value>
+    <Display>New Font Mode (V2.xx)</Display>
+  </Label_Version>
+  <Barcode_Source>
+    <Value>-4</Value>
+    <Display>Symbol</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>-3</Value>
+    <Display>Const Text</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>-2</Value>
+    <Display>Custom</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>-1</Value>
+    <Display>Text</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>0</Value>
+    <Display>Not Print</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>1</Value>
+    <Display>Spec Flag</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>2</Value>
+    <Display>Const Num 1</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>3</Value>
+    <Display>Const Num 2</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>4</Value>
+    <Display>PLU Number</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>5</Value>
+    <Display>PLU Item Code</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>6</Value>
+    <Display>PLU Index Barcode</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>7</Value>
+    <Display>PLU Flag</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>8</Value>
+    <Display>PLU U.Price</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>9</Value>
+    <Display>PLU Weight/Pcs</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>10</Value>
+    <Display>PLU T.Price</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>11</Value>
+    <Display>Sale T.Price</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>12</Value>
+    <Display>Sale T.Count</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>13</Value>
+    <Display>Sale T.Weight</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>14</Value>
+    <Display>Add-up Times</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>15</Value>
+    <Display>Salesman No.</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>16</Value>
+    <Display>Print Date: Year</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>17</Value>
+    <Display>Print Date: Month</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>18</Value>
+    <Display>Print Date: Day</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>19</Value>
+    <Display>Print Time: Hour</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>20</Value>
+    <Display>Print Time: Minute</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>21</Value>
+    <Display>Print Time: Second</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>22</Value>
+    <Display>SID</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>23</Value>
+    <Display>Device Number</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>24</Value>
+    <Display>PLU Tax</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>25</Value>
+    <Display>Sale T.Tax</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>26</Value>
+    <Display>Shelf Term</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>27</Value>
+    <Display>Shelf Date: Year</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>28</Value>
+    <Display>Shelf Date: Month</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>29</Value>
+    <Display>Shelf Date: Day</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>30</Value>
+    <Display>(Decimal)PLU U.Price</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>31</Value>
+    <Display>(Decimal)PLU Weight/Pcs</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>32</Value>
+    <Display>(Decimal)PLU T.Price</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>33</Value>
+    <Display>(Decimal)Sale T.Price</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>34</Value>
+    <Display>(Decimal)Sale T.Count</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>35</Value>
+    <Display>(Decimal)Sale T.Weight</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>36</Value>
+    <Display>(Decimal)PLU Tax</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>37</Value>
+    <Display>(Decimal)Sale T.Tax</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>38</Value>
+    <Display>FID</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>39</Value>
+    <Display>Measure:Count|Weight</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>40</Value>
+    <Display>Price without Tax</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>41</Value>
+    <Display>Total Price without Tax</Display>
+  </Barcode_Source>
+  <Barcode_Over>
+    <Value>0</Value>
+    <Display>Not Print</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>1</Value>
+    <Display>Cut Off Print</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>2</Value>
+    <Display>Fill With 0</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>3</Value>
+    <Display>Fill With 9</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>4</Value>
+    <Display>Extend</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>5</Value>
+    <Display>Reserved</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>6</Value>
+    <Display>Reserved</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>7</Value>
+    <Display>Reserved</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>8</Value>
+    <Display>Reserved</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>9</Value>
+    <Display>Reserved</Display>
+  </Barcode_Over>
+  <Barcode_Format>
+    <Value>0</Value>
+    <Display>Default</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>1</Value>
+    <Display>EAN13</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>2</Value>
+    <Display>EAN8</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>3</Value>
+    <Display>UPC A</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>4</Value>
+    <Display>UPC E</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>5</Value>
+    <Display>EAN-128C(Number Mode)</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>6</Value>
+    <Display>Code-128C(Number Mode)</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>7</Value>
+    <Display>ITF25</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>8</Value>
+    <Display>PDF417</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>9</Value>
+    <Display>EAN-128(CHAR Mode)</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>10</Value>
+    <Display>Code-128(CHAR Mode)</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>11</Value>
+    <Display>QR</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>12</Value>
+    <Display>Code39-Std</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>13</Value>
+    <Display>Code39-Ext</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>14</Value>
+    <Display>Code93</Display>
+  </Barcode_Format>
+  <Barcode_Check>
+    <Value>0</Value>
+    <Display>Try to Add Check Digit</Display>
+  </Barcode_Check>
+  <Barcode_Check>
+    <Value>3</Value>
+    <Display>Never Add Check Digit</Display>
+  </Barcode_Check>
+  <Unit_Type>
+    <Value>1</Value>
+    <Display>Weight</Display>
+  </Unit_Type>
+  <Unit_Type>
+    <Value>2</Value>
+    <Display>Count</Display>
+  </Unit_Type>
+  <PLU_TaxType>
+    <Value>0</Value>
+    <Display>No Tax</Display>
+  </PLU_TaxType>
+  <PLU_TaxType>
+    <Value>1</Value>
+    <Display>Exclude Tax</Display>
+  </PLU_TaxType>
+  <PLU_TaxType>
+    <Value>2</Value>
+    <Display>Exclude Tax, PLU's Price is after Tax</Display>
+  </PLU_TaxType>
+  <PLU_TaxType>
+    <Value>3</Value>
+    <Display>Include Tax</Display>
+  </PLU_TaxType>
+  <PLU_Col>
+    <Field></Field>
+    <Display>(NULL)</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PLUID</Field>
+    <Display>Number</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Name</Field>
+    <Display>Name</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Price</Field>
+    <Display>Price</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>UnitID</Field>
+    <Display>Unit</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>[Unit].[Name]</Field>
+    <Display>Unit Name</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Cost</Field>
+    <Display>Cost</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Tare</Field>
+    <Display>Tare</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>ClassID</Field>
+    <Display>Class Number</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Index</Field>
+    <Display>Index Barcode</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Remark</Field>
+    <Display>Item Code</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>BarF1</Field>
+    <Display>Barcode flag of bill 1st bill</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>BarF2</Field>
+    <Display>Barcode flag of bill 2nd bill</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>BarT1</Field>
+    <Display>Barcode number of 1st bill</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>BarT2</Field>
+    <Display>Barcode number of 2nd bill</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>LabelID1</Field>
+    <Display>Print format number of 1st bill</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>LabelID2</Field>
+    <Display>Print format number of 2nd bill</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Bitmap</Field>
+    <Display>Bitmap</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Tax</Field>
+    <Display>Tax Sort</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>TaxType</Field>
+    <Display>Tax Rate</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PS_SD</Field>
+    <Display>Sale time print</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PS_ST</Field>
+    <Display>Sale time print</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PS_PD</Field>
+    <Display>Packing date print</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PS_PT</Field>
+    <Display>Packing time print</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PS_UD</Field>
+    <Display>Shelf date print</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PC_SD</Field>
+    <Display>Sale date data</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PC_ST</Field>
+    <Display>Sale time data</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PC_PD</Field>
+    <Display>Packing date print</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PC_PT</Field>
+    <Display>Packing time data</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PC_UD</Field>
+    <Display>Shelf date data</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PC_UD_Plus</Field>
+    <Display>Shelf date data(+print)</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DF_U</Field>
+    <Display>Manual discount upper limit</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DF_D</Field>
+    <Display>Manual discount lower limit</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DF_UN</Field>
+    <Display>Value of manual discount upper limit</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DF_DN</Field>
+    <Display>Value of manual discount lower limit</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text1</Field>
+    <Display>Text 1</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text2</Field>
+    <Display>Text 2</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text3</Field>
+    <Display>Text 3</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text4</Field>
+    <Display>Text 4</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text5</Field>
+    <Display>Text 5</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text6</Field>
+    <Display>Text 6</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text7</Field>
+    <Display>Text 7</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>SspValue1</Field>
+    <Display>SSP Value1</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>SspValue2</Field>
+    <Display>SSP Value2</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>SspValue3</Field>
+    <Display>SSP Value3</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>SspValue4</Field>
+    <Display>SSP Value4</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Sort1</Field>
+    <Display>Авто рабат 1: Сорт</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Day1</Field>
+    <Display>Авто рабат 1: День</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Dn1</Field>
+    <Display>Авто рабат 1: нижнее поле значение</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Up1</Field>
+    <Display>Авто рабат 1: поля верхнее значение</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Num1</Field>
+    <Display>Авто рабат 1: скидка значение</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Sort2</Field>
+    <Display>Авто рабат 2: Сорт</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Day2</Field>
+    <Display>Авто рабат 2: День</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Dn2</Field>
+    <Display>Авто рабат 2: нижнее поле значение</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Up2</Field>
+    <Display>Авто рабат 2: поля верхнее значение</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Num2</Field>
+    <Display>Авто рабат 2: скидка значение</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Sort3</Field>
+    <Display>Авто рабат 3: Сорт</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Day3</Field>
+    <Display>Авто рабат 3: День</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Dn3</Field>
+    <Display>Авто рабат 3: нижнее поле значение</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Up3</Field>
+    <Display>Авто рабат 3: поля верхнее значение</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Num3</Field>
+    <Display>Авто рабат 3: скидка значение</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Sort4</Field>
+    <Display>Авто рабат 4: Сорт</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Day4</Field>
+    <Display>Авто рабат 4: День</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Dn4</Field>
+    <Display>Авто рабат 4: нижнее поле значение</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Up4</Field>
+    <Display>Авто рабат 4: поля верхнее значение</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Num4</Field>
+    <Display>Авто рабат 4: скидка значение</Display>
+  </PLU_Col>
+  <Report_Col>
+    <Field></Field>
+    <Display>(NULL)</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Device].[GID]</Field>
+    <Display>Stock Group</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[SGroup].[Name]</Field>
+    <Display>Stock Name</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Device].[MAC]</Field>
+    <Display>MAC</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Device].[Name]</Field>
+    <Display>Device</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Log].[DateTime]</Field>
+    <Display>Date and Time</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Log].[FID]</Field>
+    <Display>FID</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Log].[SID]</Field>
+    <Display>SID</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Log].[Salesman]</Field>
+    <Display>Salesman Number</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[SubID]</Field>
+    <Display>Sub ID</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[PLU]</Field>
+    <Display>PLU Number</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[rPLU].[Name]</Field>
+    <Display>PLU Name</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Dept]</Field>
+    <Display>Dept No</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Class]</Field>
+    <Display>Class No</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Unit]</Field>
+    <Display>Unit Number</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[rUnit].[Name]</Field>
+    <Display>Unit Name</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Price]</Field>
+    <Display>Price</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Cost]</Field>
+    <Display>Cost</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Tax]</Field>
+    <Display>Tax</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Amount]</Field>
+    <Display>Weight/Pcs</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Type]</Field>
+    <Display>Type</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[CoFID]</Field>
+    <Display>Related FID</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Text1]</Field>
+    <Display>Text 1</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Text2]</Field>
+    <Display>Text 2</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Text3]</Field>
+    <Display>Text 3</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Text4]</Field>
+    <Display>Text 4</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[UnitPrice]</Field>
+    <Display>Unit Price</Display>
+  </Report_Col>
+  <Network_Task>
+    <Value>1</Value>
+    <Display>Initialize</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>2</Value>
+    <Display>Rename</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>3</Value>
+    <Display>Link Test</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>4</Value>
+    <Display>Time Synchronization</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>5</Value>
+    <Display>Upload data</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>6</Value>
+    <Display>Download data</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>7</Value>
+    <Display>Upload report</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>8</Value>
+    <Display>Upload database</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>9</Value>
+    <Display>Download database</Display>
+  </Network_Task>
+  <Network_Due>
+    <Value>0</Value>
+    <Display>Immediately</Display>
+  </Network_Due>
+  <Network_Due>
+    <Value>1</Value>
+    <Display>Date and Time</Display>
+  </Network_Due>
+  <Network_Due>
+    <Value>2</Value>
+    <Display>Online</Display>
+  </Network_Due>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KA</Layout>
+    <Display>08's Bar Code Printing Scale</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KAB</Layout>
+    <Display>12's/15's/17's Bar Code Printing Scale(Pole)</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KAD</Layout>
+    <Display>12's/15's Bar Code Printing Scale(No Pole)</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KB</Layout>
+    <Display>Price Printing Scale</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KC</Layout>
+    <Display>Cash Register Scale</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KD</Layout>
+    <Display>Cash Register</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KE</Layout>
+    <Display>A1 Indicator</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KF</Layout>
+    <Display>A2 Indicator</Display>
+  </ScPLU_Layout>
+  <ScPLU_Page>
+    <Page>Page 1</Page>
+    <Display>Single page mode</Display>
+  </ScPLU_Page>
+  <ScPLU_Page>
+    <Page>D-Page-TB</Page>
+    <Display>Double page mode(top to bottom)</Display>
+  </ScPLU_Page>
+  <ScPLU_Page>
+    <Page>D-Page-BT</Page>
+    <Display>Double page mode(bottom to top)</Display>
+  </ScPLU_Page>
+  <ScPLU_Page>
+    <Page>T-Page-TB</Page>
+    <Display>Triple page mode(top to bottom)</Display>
+  </ScPLU_Page>
+  <ScPLU_Page>
+    <Page>T-Page-BT</Page>
+    <Display>Triple page mode(bottom to top)</Display>
+  </ScPLU_Page>
+  <SimCombo>
+    <Name>PLU SType</Name>
+    <ValueDisplay>0|0:Normal|1|1:Tare Only|2|2:Custom Info 1|3|3:Custom Info 2|4|4:Custom Info 3|5|5:Custom Info 4|6|6:Custom Info Common</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>All Text</Name>
+    <ValueDisplay>0|0:PLU Text|1|1:System String|2|2:Print Format Text|3|3:Other Text</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>PLU Text</Name>
+    <ValueDisplay>0|0:PLU Name|1|1:Text 1|2|2:Text 2|3|3:Text 3|4|4:Text 4|5|5:Text 5|6|6:Text 6|7|7:Text 7|8|8:Index Barcode</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Global Text</Name>
+    <ValueDisplay>0|0:Store Name|1|1:Device Name|2|2:Prefix of Money Unit|3|3:Suffix of Money Unit|4|4:Device Postil 1|5|5:Device Postil 2|6|6:Device Postil 3|7|7:Device Postil 4|8|8:Device Postil 5|9|9:Device Postil 6|10|10:Device Postil 7|11|11:Device Postil 8|12|12:Reserved 1|13|13:Reserved 2|14|14:Industry Mark|15|15:Wireless SSID|16|16:Wireless Password|17|17:Reserved 6|18|18:Reserved 7|19|19:Server's Domain Name|20|20:Custom Text 1|21|21:Custom Text 2|22|22:Custom Text 3|23|23:Custom Text 4|24|24:Custom Text 5|25|25:Custom Text 6|26|26:Custom Text 7|27|27:Custom Text 8</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Print Format Text</Name>
+    <ValueDisplay>0|0:Text 0|1|1:Text 1|2|2:Text 2|3|3:Text 3|4|4:Text 4|5|5:Text 5|6|6:Text 6|7|7:Text 7|8|8:Text 8|9|9:Text 9|10|10:Text 10|11|11:Text 11|12|12:Text 12|13|13:Text 13|14|14:Text 14|15|15:Text 15</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>BOther Text</Name>
+    <ValueDisplay>0|0:Salesman Name|1|1:Serviceman Name|2|2:Custom Info 1|3|3:Custom Info 2|4|4:Custom Info 3|5|5:Custom Info 4|6|6:MAC</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>All Symbol</Name>
+    <ValueDisplay>0|0:Partition|1|1:Checksum|2|2:Unreadable bytes</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Symbol Area</Name>
+    <ValueDisplay>0|0:Normal area flag|1|1:Loop area flag|2|2:Loop quit flag</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Symbol Checksum</Name>
+    <ValueDisplay>0|EAN/UPC Auto|1|EAN/UPC 1+1|2|EAN/UPC 2+1|3|EAN/UPC 3+1|4|EAN/UPC 4+1|5|EAN/UPC 5+1|6|EAN/UPC 6+1|7|EAN/UPC 7+1|8|EAN/UPC 8+1|9|EAN/UPC 9+1|10|EAN/UPC 10+1|11|EAN/UPC 11+1|12|EAN/UPC 12+1|13|EAN/UPC 13+1|14|EAN/UPC 14+1|15|EAN/UPC 15+1|16|EAN/UPC 16+1|17|EAN/UPC 17+1|18|EAN/UPC 18+1|19|EAN/UPC 19+1|20|EAN/UPC 20+1|21|EAN/UPC 21+1|22|EAN/UPC 22+1|23|EAN/UPC 23+1|24|EAN/UPC 24+1|25|EAN/UPC 25+1|26|EAN/UPC 26+1|27|EAN/UPC 27+1|28|EAN/UPC 28+1|29|EAN/UPC 29+1|30|EAN/UPC 30+1|31|EAN/UPC 31+1|50|Pre-PCDV4|51|Post-PCDV4|52|Pre-PCDV5|53|Post-PCDV5</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Symbol Unreadable</Name>
+    <ValueDisplay>0|0:Enter(\r\n)|1|1:Enter(\r)|2|2:Enter(\n)</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>VIP Discount Sort</Name>
+    <ValueDisplay>0|0:Default Discount|1|1-99:Custom Discount|101|101:A-Level Discount|102|102:B-Level Discount|103|103:C-Level Discount|104|104:D-Level Discount</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Stock Type Full</Name>
+    <ValueDisplay>-1|NULL|0|0:Sale|1|1:Buy Back|10|10:Inbound|11|11:Outbound|12|12:Stocktaking|13|13:Order|14|14:Spoilage|252|252:Produce|253|253:Unpacking(Increase)|254|254:Unpacking(Decrease)</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Logs Type Full</Name>
+    <ValueDisplay>-1|NULL|0|0:Sale|1|1:Buy Back|2|2:Unconfirmed|3|3:Deleted|4|4:Hangup|5|5:Auto Mode|6|6:SP06|7|7:SP07|8|8:SP08|9|9:SP09|10|10:Inbound|11|11:Outbound|12|12:Stocktaking|13|13:Order|14|14:Spoilage|15|15:SP15|252|252:Produce|253|253:Unpacking(Increase)|254|254:Unpacking(Decrease)|255|255:Error|256|256:Unknown Error|257|257:FID Lost|258|258:FID Repeat|259|259:IlleageBoot|308|308:A52|777|777:P521|778|778:P522|779|779:P523|780|780:P524|1249|1249:E9.93|1253|1253:E9.97-Flash ReInit|1254|1254:E9.98-Firmware Upgrade</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Logs Type Sim</Name>
+    <ValueDisplay>Sale|Buy Back|Unconfirmed|Deleted|Hangup|Auto Mode|SP06|SP07|SP08|SP09|Inbound|Outbound|Stocktaking|Order|Spoilage|SP15</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Report Title</Name>
+    <ValueDisplay>Report of Sale List|Filter|Time Range|From|To|Bill Count|Bill Report|PLU Total Report|PLU List Report|Type|Add-up Time|Total Count|Total Weight|Total Tax|Total Cash|Total Card|Total {0}|Total {0}|Total {0}|Total Income|PLU No.|PLU Name|Total Cost|Profit|Total Profit|Total Discount and Rounding|Total Cost|Total Service Fee|Total Cash|Actual Sales|All Devices|Total {0}|Total {0}|Total {0}|Total {0}|Total {0}|Total {0}|Total {0}|Total {0}|Total not-Cash</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>PLU Default</Name>
+    <ValueDisplay>9999999|T-Weight PLU|9999998|T-Count PLU|9999997|Service Fee|9999996|Discount and Rounding|9999995|Card Payment|9999994|{0}|9999993|{0}|9999992|{0}|9999991|Store Payments</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Shortcut Fuction</Name>
+    <ValueDisplay>1|Number:0|2|Number:1|3|Number:2|4|Number:3|5|Number:4|6|Number:5|7|Number:6|8|Number:7|9|Number:8|10|Number:9|11|Number:00|68|Number:000|12|Clear|13|Cancel|14|Accu/Confirm|15|Cash/Print|16|PLU|17|F-Prog|18|V1|19|V2|20|V3|21|V4|22|Amend|23|×|24|Feed|25|SetZero|26|SetTare|27|Sale|28|Prog|29|Account|30|Time|31|-%|32|-Num|33|@Price|34|TSale|35|CashBox|38|Manual Weight|39|Paper Type|40|Pre/Re Print|41|Shift|44|Print2|45|CCard|46|MoveDot|47|U.W. Sample|48|Weight Accu|49|Division|50|UnitChange|51|Lock Tare|52|Auto Mode|53|Normal Mode|54|Batch Mode|55|PrePack Mode|56|LockPLU Mode|57|AutoPrint Mode|58|Service Fee|59|←V→|60|Mode|62|On/Off|63|{0}|64|{0}|65|{0}|66|VIP|67|Other Transactions|69|BuyBuy Back: FID|70|Weight Sensor|76|Custom Info 1|77|Custom Info 2|78|Custom Info 3|79|Custom Info 4</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>EPay Type</Name>
+    <ValueDisplay>|||||||</ValueDisplay>
+  </SimCombo>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</UIDataSet>
+
+
+<!--Russian-->

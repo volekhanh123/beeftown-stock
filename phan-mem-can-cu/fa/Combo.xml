@@ -1,0 +1,1279 @@
+﻿<?xml version="1.0"  encoding="utf-8" standalone="yes"?>
+<!--فارسی(Persian)-->
+<UIDataSet>
+  <PLU_PS_Date>
+    <Value>0</Value>
+    <Display>عدم چاپ</Display>
+  </PLU_PS_Date>
+  <PLU_PS_Date>
+    <Value>1</Value>
+    <Display>چاپ</Display>
+  </PLU_PS_Date>
+  <PLU_PS_Time>
+    <Value>0</Value>
+    <Display>عدم چاپ</Display>
+  </PLU_PS_Time>
+  <PLU_PS_Time>
+    <Value>1</Value>
+    <Display>چاپ زمان ورودی</Display>
+  </PLU_PS_Time>
+  <PLU_PS_Time>
+    <Value>2</Value>
+    <Display>چاپ زمان کنونی</Display>
+  </PLU_PS_Time>
+  <PLU_DF_U>
+    <Value>0</Value>
+    <Display>پیش فرض سیستم</Display>
+  </PLU_DF_U>
+  <PLU_DF_U>
+    <Value>1</Value>
+    <Display>بدون محدودیت حد بالا</Display>
+  </PLU_DF_U>
+  <PLU_DF_U>
+    <Value>2</Value>
+    <Display>اولین قیمت</Display>
+  </PLU_DF_U>
+  <PLU_DF_U>
+    <Value>3</Value>
+    <Display>شماره تنظیمات</Display>
+  </PLU_DF_U>
+  <PLU_DF_D>
+    <Value>0</Value>
+    <Display>پیش فرض سیستم</Display>
+  </PLU_DF_D>
+  <PLU_DF_D>
+    <Value>1</Value>
+    <Display>بدون محدودیت حد پایین</Display>
+  </PLU_DF_D>
+  <PLU_DF_D>
+    <Value>2</Value>
+    <Display>اولین قیمت</Display>
+  </PLU_DF_D>
+  <PLU_DF_D>
+    <Value>3</Value>
+    <Display>شماره تنظیمات</Display>
+  </PLU_DF_D>
+  <PLU_DA_Sort>
+    <Value>0</Value>
+    <Display>بی اثر</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>1</Value>
+    <Display>مقدار تخفیف</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>2</Value>
+    <Display>زمان تخفیف</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>3</Value>
+    <Display>مجموع ممنوعه 1</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>4</Value>
+    <Display>مشتری ویژه: سطح تخفیف 1</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>5</Value>
+    <Display>مشتری ویژه: سطح تخفیف 2</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>6</Value>
+    <Display>مشتری ویژه: سطح تخفیف 3</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>7</Value>
+    <Display>مشتری ویژه: سطح تخفیف 4</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>8</Value>
+    <Display>مقدار ممنوعه 1</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>9</Value>
+    <Display>مقدار ممنوعه 2</Display>
+  </PLU_DA_Sort>
+  <PLU_DA_Sort>
+    <Value>10</Value>
+    <Display>مجموع ممنوعه 2</Display>
+  </PLU_DA_Sort>
+  <LabelItem_Print>
+    <Value>0</Value>
+    <Display>عدم چاپ</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>1</Value>
+    <Display>همیشه چاپ</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>2</Value>
+    <Display>چاپ آیتم وزنی</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>3</Value>
+    <Display>چاپ آیتم تعدادی</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>4</Value>
+    <Display>چاپ فروش موقت</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>5</Value>
+    <Display>چاپ آیتم پارسنگ شده</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>6</Value>
+    <Display>چاپ آیتم رایگان</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>7</Value>
+    <Display>چاپ تاریخ فروش</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>8</Value>
+    <Display>چاپ تاریخ بسته بندی</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>9</Value>
+    <Display>چاپ تاریخ انقضا</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>10</Value>
+    <Display>عدم چاپ در آیتم تک کالا</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>11</Value>
+    <Display>چاپ آیتم هزینه خدمات</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>12</Value>
+    <Display>چاپ هزینه خدمات</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>13</Value>
+    <Display>چاپ آیتم مالیات دار</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>14</Value>
+    <Display>پرداخت نقدی</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>15</Value>
+    <Display>پرداخت کارت</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>16</Value>
+    <Display>تخفیف کل</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>17</Value>
+    <Display>پرداخت 1</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>18</Value>
+    <Display>پرداخت 2</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>19</Value>
+    <Display>پرداخت 3</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>20</Value>
+    <Display>مشتری ویژه</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>21</Value>
+    <Display>چاپ نرمال</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>22</Value>
+    <Display>چاپ مجدد</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>23</Value>
+    <Display>قبل از چاپ</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>24</Value>
+    <Display>فقط چاپ آیتم تک کالا</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>25</Value>
+    <Display>عدم چاپ فروش موقت</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>26</Value>
+    <Display>عدم چاپ آیتم پارسنگ شده</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>27</Value>
+    <Display>عدم چاپ آیتم رایگان</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>28</Value>
+    <Display>چاپ آیتم مالیات رایگان</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>29</Value>
+    <Display>عدم مشتری ویژه</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>30</Value>
+    <Display>چاپ آیتم پارسنگ شده پیش فرض</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>31</Value>
+    <Display>کارت اطلاعات چاپ</Display>
+  </LabelItem_Print>
+  <LabelItem_Print>
+    <Value>32</Value>
+    <Display>چاپ پرداخت ابر</Display>
+  </LabelItem_Print>
+  <LabelItem_Angle>
+    <Value>0</Value>
+    <Display>0°</Display>
+  </LabelItem_Angle>
+  <LabelItem_Angle>
+    <Value>1</Value>
+    <Display>90°</Display>
+  </LabelItem_Angle>
+  <LabelItem_Angle>
+    <Value>2</Value>
+    <Display>180°</Display>
+  </LabelItem_Angle>
+  <LabelItem_Angle>
+    <Value>3</Value>
+    <Display>270°</Display>
+  </LabelItem_Angle>
+  <LabelItem_Font2>
+    <Value>0</Value>
+    <Display>10 * 18</Display>
+    <Size>10</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>1</Value>
+    <Display>14 * 26</Display>
+    <Size>14</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>2</Value>
+    <Display>18 * 34</Display>
+    <Size>18</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>3</Value>
+    <Display>10 * 36</Display>
+    <Size>10</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>4</Value>
+    <Display>14 * 52</Display>
+    <Size>14</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>5</Value>
+    <Display>18 * 68</Display>
+    <Size>18</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>6</Value>
+    <Display>28 * 52</Display>
+    <Size>28</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>7</Value>
+    <Display>36 * 68</Display>
+    <Size>36</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>8</Value>
+    <Display>36 * 136</Display>
+    <Size>36</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>9</Value>
+    <Display>54 * 102</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>10</Value>
+    <Display>خالی</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>11</Value>
+    <Display>خالی</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>12</Value>
+    <Display>خالی</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>13</Value>
+    <Display>خالی</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>14</Value>
+    <Display>خالی</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Font2>
+    <Value>15</Value>
+    <Display>خالی</Display>
+    <Size>52</Size>
+  </LabelItem_Font2>
+  <LabelItem_Align>
+    <Value>0</Value>
+    <Display>پیش فرض</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>1</Value>
+    <Display>بالا چپ</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>2</Value>
+    <Display>بالا وسط</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>3</Value>
+    <Display>بالا راست</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>4</Value>
+    <Display>مرکز چپ</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>5</Value>
+    <Display>مرکز وسط</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>6</Value>
+    <Display>مرکز راست</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>7</Value>
+    <Display>پایین چپ</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>8</Value>
+    <Display>پایین وسط</Display>
+  </LabelItem_Align>
+  <LabelItem_Align>
+    <Value>9</Value>
+    <Display>پایین راست</Display>
+  </LabelItem_Align>
+  <Label_Sort>
+    <Value>1</Value>
+    <Display>آیتم لیبل</Display>
+  </Label_Sort>
+  <Label_Sort>
+    <Value>2</Value>
+    <Display>لیبل تجمیع</Display>
+  </Label_Sort>
+  <Label_Sort>
+    <Value>3</Value>
+    <Display>رسید</Display>
+  </Label_Sort>
+  <Label_Sort>
+    <Value>4</Value>
+    <Display>لیست</Display>
+  </Label_Sort>
+  <Label_Version>
+    <Value>1</Value>
+    <Display>فونت حالت جدید (ورژن 2.00)</Display>
+  </Label_Version>
+  <Barcode_Source>
+    <Value>-4</Value>
+    <Display>نماد</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>-3</Value>
+    <Display>توابع متنی</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>-2</Value>
+    <Display>سفارشی</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>-1</Value>
+    <Display>متن</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>0</Value>
+    <Display>عدم چاپ</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>1</Value>
+    <Display>فلگ پارامترها</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>2</Value>
+    <Display>توابع متنی 1</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>3</Value>
+    <Display>توابع متنی 2</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>4</Value>
+    <Display>شماره حافظه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>5</Value>
+    <Display>کد حافظه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>6</Value>
+    <Display>بارکد حافظه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>7</Value>
+    <Display>فلگ حافظه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>8</Value>
+    <Display>قیمت واحد حافظه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>9</Value>
+    <Display>وزن/تعداد حافظه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>10</Value>
+    <Display>قیمت کل حافظه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>11</Value>
+    <Display>قیمت کل فروش</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>12</Value>
+    <Display>تعداد کل فروش</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>13</Value>
+    <Display>وزن کل فروش</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>14</Value>
+    <Display>دفعات اضافه کردن</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>15</Value>
+    <Display>شماره فروشنده</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>16</Value>
+    <Display>چاپ تاریخ: سال</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>17</Value>
+    <Display>چاپ تاریخ: ماه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>18</Value>
+    <Display>چاپ تاریخ: روز</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>19</Value>
+    <Display>چاپ زمان: ساعت</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>20</Value>
+    <Display>چاپ زمان: دقیقه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>21</Value>
+    <Display>چاپ زمان: ثانیه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>22</Value>
+    <Display>شماره فاکتور</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>23</Value>
+    <Display>شماره دستگاه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>24</Value>
+    <Display>مالیات حافظه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>25</Value>
+    <Display>مالیات کل فروش</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>26</Value>
+    <Display>مدت انقضا</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>27</Value>
+    <Display>تاریخ انقضا: سال</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>28</Value>
+    <Display>تاریخ انقضا: ماه</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>29</Value>
+    <Display>تاریخ انقضا: روز</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>30</Value>
+    <Display>قیمت واحد حافظه (اعشاری)</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>31</Value>
+    <Display>وزن/تعداد حافظه (اعشاری)</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>32</Value>
+    <Display>قیمت کل حافظه (اعشاری)</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>33</Value>
+    <Display>قیمت کل فروش (اعشاری)</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>34</Value>
+    <Display>تعداد کل فروش (اعشاری)</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>35</Value>
+    <Display>وزن کل فروش (اعشاری)</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>36</Value>
+    <Display>مالیات حافظه (اعشاری)</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>37</Value>
+    <Display>مالیات کل (اعشاری)</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>38</Value>
+    <Display>آی دی فاکتور</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>39</Value>
+    <Display>واحد: تعداد|وزن</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>40</Value>
+    <Display>قیمت بدون مالیات</Display>
+  </Barcode_Source>
+  <Barcode_Source>
+    <Value>41</Value>
+    <Display>قیمت کل بدون مالیات</Display>
+  </Barcode_Source>
+  <Barcode_Over>
+    <Value>0</Value>
+    <Display>عدم چاپ</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>1</Value>
+    <Display>برش و چاپ</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>2</Value>
+    <Display>پر کردن با 0</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>3</Value>
+    <Display>پر کردن با 9</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>4</Value>
+    <Display>گسترش</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>5</Value>
+    <Display>رزرو شده</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>6</Value>
+    <Display>رزرو شده</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>7</Value>
+    <Display>رزرو شده</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>8</Value>
+    <Display>رزرو شده</Display>
+  </Barcode_Over>
+  <Barcode_Over>
+    <Value>9</Value>
+    <Display>رزرو شده</Display>
+  </Barcode_Over>
+  <Barcode_Format>
+    <Value>0</Value>
+    <Display>پیش فرض</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>1</Value>
+    <Display>EAN13</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>2</Value>
+    <Display>EAN8</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>3</Value>
+    <Display>UPC A</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>4</Value>
+    <Display>UPC E</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>5</Value>
+    <Display>EAN-128C(حالت عددی)</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>6</Value>
+    <Display>Code-128C(حالت عددی)</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>7</Value>
+    <Display>ITF25</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>8</Value>
+    <Display>PDF417</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>9</Value>
+    <Display>EAN-128(حالت کاراکتری)</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>10</Value>
+    <Display>Code-128(حالت کاراکتری)</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>11</Value>
+    <Display>QR</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>12</Value>
+    <Display>Code39-استاندارد</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>13</Value>
+    <Display>Code39-گسترش یافته</Display>
+  </Barcode_Format>
+  <Barcode_Format>
+    <Value>14</Value>
+    <Display>Code93</Display>
+  </Barcode_Format>
+  <Barcode_Check>
+    <Value>0</Value>
+    <Display>دارای چک سام</Display>
+  </Barcode_Check>
+  <Barcode_Check>
+    <Value>3</Value>
+    <Display>بدون چک سام</Display>
+  </Barcode_Check>
+  <Unit_Type>
+    <Value>1</Value>
+    <Display>وزن</Display>
+  </Unit_Type>
+  <Unit_Type>
+    <Value>2</Value>
+    <Display>تعداد</Display>
+  </Unit_Type>
+  <PLU_TaxType>
+    <Value>0</Value>
+    <Display>بدون مالیات</Display>
+  </PLU_TaxType>
+  <PLU_TaxType>
+    <Value>1</Value>
+    <Display>حذف مالیات</Display>
+  </PLU_TaxType>
+  <PLU_TaxType>
+    <Value>2</Value>
+    <Display>حذف مالیات، قیمت حافظه بعد از مالیات</Display>
+  </PLU_TaxType>
+  <PLU_TaxType>
+    <Value>3</Value>
+    <Display>شامل مالیات</Display>
+  </PLU_TaxType>
+  <PLU_Col>
+    <Field></Field>
+    <Display>خالی</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PLUID</Field>
+    <Display>شماره</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Name</Field>
+    <Display>نام</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Price</Field>
+    <Display>قیمت</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>UnitID</Field>
+    <Display>واحد</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>[Unit].[Name]</Field>
+    <Display>نام واحد</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Cost</Field>
+    <Display>هزینه</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Tare</Field>
+    <Display>پارسنگ</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>ClassID</Field>
+    <Display>شماره کلاس</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Index</Field>
+    <Display>بارکد</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Remark</Field>
+    <Display>کد</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>BarF1</Field>
+    <Display>فلگ بارکد رسید 1</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>BarF2</Field>
+    <Display>فلگ بارکد رسید 2</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>BarT1</Field>
+    <Display>شماره بارکد رسید 1</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>BarT2</Field>
+    <Display>شماره بارکد رسید 2</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>LabelID1</Field>
+    <Display>شماره فرمت چاپ رسید 1</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>LabelID2</Field>
+    <Display>شماره فرمت چاپ رسید 2</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Bitmap</Field>
+    <Display>لوگو</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Tax</Field>
+    <Display>شماره مالیات</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>TaxType</Field>
+    <Display>مقدار مالیات</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PS_SD</Field>
+    <Display>چاپ تاریخ فروش</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PS_ST</Field>
+    <Display>چاپ زمان فروش</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PS_PD</Field>
+    <Display>چاپ تاریخ بسته بندی</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PS_PT</Field>
+    <Display>چاپ زمان بسته بندی</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PS_UD</Field>
+    <Display>چاپ تاریخ انقضا</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PC_SD</Field>
+    <Display>اطلاعات تاریخ فروش</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PC_ST</Field>
+    <Display>اطلاعات زمان فروش</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PC_PD</Field>
+    <Display>چاپ تاریخ بسته بندی</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PC_PT</Field>
+    <Display>اطلاعات زمان بسته بندی</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PC_UD</Field>
+    <Display>اطلاعات تاریخ انقضا</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>PC_UD_Plus</Field>
+    <Display>اطلاعات تاریخ انقضا (+چاپ)</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DF_U</Field>
+    <Display>حد بالا تخفیف دستی</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DF_D</Field>
+    <Display>حد پایین تخفیف دستی</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DF_UN</Field>
+    <Display>مقدار حد بالای تخفیف دستی</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DF_DN</Field>
+    <Display>مقدار حد پایین تخفیف دستی</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text1</Field>
+    <Display>متن 1</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text2</Field>
+    <Display>متن 2</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text3</Field>
+    <Display>متن 3</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text4</Field>
+    <Display>متن 4</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text5</Field>
+    <Display>متن 5</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text6</Field>
+    <Display>متن 6</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>Text7</Field>
+    <Display>متن 7</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>SspValue1</Field>
+    <Display>زیر مقدار 1</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>SspValue2</Field>
+    <Display>زیر مقدار 2</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>SspValue3</Field>
+    <Display>زیر مقدار 3</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>SspValue4</Field>
+    <Display>زیر مقدار 4</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Sort1</Field>
+    <Display>تخفیف اتوماتیک 1: شماره</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Day1</Field>
+    <Display>تخفیف اتوماتیک 1: روز فعال</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Dn1</Field>
+    <Display>تخفیف اتوماتیک 1: مقدار حد پایین</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Up1</Field>
+    <Display>تخفیف اتوماتیک 1: مقدار حد بالا</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Num1</Field>
+    <Display>تخفیف اتوماتیک 1: مقدار تخفیف</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Sort2</Field>
+    <Display>تخفیف اتوماتیک 2: شماره</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Day2</Field>
+    <Display>تخفیف اتوماتیک 2: روز فعال</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Dn2</Field>
+    <Display>تخفیف اتوماتیک 2: مقدار حد پایین</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Up2</Field>
+    <Display>تخفیف اتوماتیک 2: مقدار حد بالا</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Num2</Field>
+    <Display>تخفیف اتوماتیک 2: مقدار تخفیف</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Sort3</Field>
+    <Display>تخفیف اتوماتیک 3: شماره</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Day3</Field>
+    <Display>تخفیف اتوماتیک 3: روز فعال</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Dn3</Field>
+    <Display>تخفیف اتوماتیک 3: مقدار حد پایین</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Up3</Field>
+    <Display>تخفیف اتوماتیک 3: مقدار حد بالا</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Num3</Field>
+    <Display>تخفیف اتوماتیک 3: مقدار تخفیف</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Sort4</Field>
+    <Display>تخفیف اتوماتیک 4: شماره</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Day4</Field>
+    <Display>تخفیف اتوماتیک 4: روز فعال</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Dn4</Field>
+    <Display>تخفیف اتوماتیک 4: مقدار حد پایین</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Up4</Field>
+    <Display>تخفیف اتوماتیک 4: مقدار حد بالا</Display>
+  </PLU_Col>
+  <PLU_Col>
+    <Field>DA_Num4</Field>
+    <Display>تخفیف اتوماتیک 4: مقدار تخفیف</Display>
+  </PLU_Col>
+  <Report_Col>
+    <Field></Field>
+    <Display>خالی</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Device].[GID]</Field>
+    <Display>گروه موجودی</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[SGroup].[Name]</Field>
+    <Display>نام گروه موجودی</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Device].[MAC]</Field>
+    <Display>مک آدرس</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Device].[Name]</Field>
+    <Display>دستگاه</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Log].[DateTime]</Field>
+    <Display>تاریخ و زمان</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Log].[FID]</Field>
+    <Display>FID</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Log].[SID]</Field>
+    <Display>SID</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[Log].[Salesman]</Field>
+    <Display>شماره فروشنده</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[SubID]</Field>
+    <Display>شماره ردیف</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[PLU]</Field>
+    <Display>شماره حافظه</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[rPLU].[Name]</Field>
+    <Display>نام حافظه</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Dept]</Field>
+    <Display>شماره دپارتمان</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Class]</Field>
+    <Display>شماره کلاس</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Unit]</Field>
+    <Display>شماره واحد</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[rUnit].[Name]</Field>
+    <Display>نام واحد</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Price]</Field>
+    <Display>قیمت</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Cost]</Field>
+    <Display>هزینه</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Tax]</Field>
+    <Display>مالیات</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Amount]</Field>
+    <Display>وزن/تعداد</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Type]</Field>
+    <Display>نوع</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[CoFID]</Field>
+    <Display>شماره آی دی فاکتور مرتبط</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Text1]</Field>
+    <Display>متن 1</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Text2]</Field>
+    <Display>متن 2</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Text3]</Field>
+    <Display>متن 3</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[Text4]</Field>
+    <Display>متن 4</Display>
+  </Report_Col>
+  <Report_Col>
+    <Field>[LogItem].[UnitPrice]</Field>
+    <Display>قیمت واحد</Display>
+  </Report_Col>
+  <Network_Task>
+    <Value>1</Value>
+    <Display>مقداردهی اولیه</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>2</Value>
+    <Display>تغییر نام</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>3</Value>
+    <Display>تست ارتباط</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>4</Value>
+    <Display>هماهنگ سازی</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>5</Value>
+    <Display>آپلود اطلاعات</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>6</Value>
+    <Display>دانلود اطلاعات</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>7</Value>
+    <Display>آپلود گزارش</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>8</Value>
+    <Display>آپلود دیتابیس</Display>
+  </Network_Task>
+  <Network_Task>
+    <Value>9</Value>
+    <Display>دانلود دیتابیس</Display>
+  </Network_Task>
+  <Network_Due>
+    <Value>0</Value>
+    <Display>بلافاصله</Display>
+  </Network_Due>
+  <Network_Due>
+    <Value>1</Value>
+    <Display>تاریخ و زمان</Display>
+  </Network_Due>
+  <Network_Due>
+    <Value>2</Value>
+    <Display>آنلاین</Display>
+  </Network_Due>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KA</Layout>
+    <Display>ترازو سری 2008</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KAB</Layout>
+    <Display>ترازو سری 2012/2015/2017 (با علمک)</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KAD</Layout>
+    <Display>ترازو سری 2012/2015 (بدون علمک)</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KB</Layout>
+    <Display>ترازو پرینتردار</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KC</Layout>
+    <Display>ترازو صندوق فروشگاهی</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KD</Layout>
+    <Display>صندوق فروشگاهی</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KE</Layout>
+    <Display>نمایشگر وزن A1</Display>
+  </ScPLU_Layout>
+  <ScPLU_Layout>
+    <Layout>ScPLU_KF</Layout>
+    #REF!
+  </ScPLU_Layout>
+  <ScPLU_Page>
+    <Page>Page 1</Page>
+    <Display>حالت تک صفحه ای</Display>
+  </ScPLU_Page>
+  <ScPLU_Page>
+    <Page>D-Page-TB</Page>
+    <Display>حالت دو صفحه ای(بالا به پایین)</Display>
+  </ScPLU_Page>
+  <ScPLU_Page>
+    <Page>D-Page-BT</Page>
+    <Display>حالت دو صفحه ای(پایین به بالا)</Display>
+  </ScPLU_Page>
+  <ScPLU_Page>
+    <Page>T-Page-TB</Page>
+    <Display>حالت سه صفحه ای(بالا به پایین)</Display>
+  </ScPLU_Page>
+  <ScPLU_Page>
+    <Page>T-Page-BT</Page>
+    <Display>حالت سه صفحه ای(پایین به بالا)</Display>
+  </ScPLU_Page>
+  <SimCombo>
+    <Name>PLU SType</Name>
+    <ValueDisplay>0|0:نرمال 1|1|1:فقط پارسنگ|2|2:اطلاعات سفارشی 1|3|3:اطلاعات سفارشی 2|4|4:اطلاعات سفارشی 3|5|5:اطلاعات سفارشی 4|6|6:اطلاعات سفارشی مشترک</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>All Text</Name>
+    <ValueDisplay>0|0:متن حافظه|1|1:استرینگ سیستم|2|2:متن فرمت چاپ|3|3:متن دیگر</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>PLU Text</Name>
+    <ValueDisplay>0|0:نام حفظه|1|1:متن 1|2|2:متن 2|3|3:متن 3|4|4:متن 4|5|5:متن 5|6|6:متن 6|7|7:متن 7|8|8:بارکد</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Global Text</Name>
+    <ValueDisplay>0|0:نام فروشگاه|1|1:نام دستگاه|2|2:پیشوند واحد پول|3|3:پسوند واحد پول|4|4:متن اضافی 1|5|5:متن اضافی 2|6|6:متن اضافی 3|7|7:متن اضافی 4|8|8:متن اضافی 5|9|9:متن اضافی 6|10|10:متن اضافی 7|11|11:متن اضافی 8|12|12:رزرو 1|13|13:رزرو 2|14|14:علامت تجاری|15|15:نام شبکه وایرلس|16|16:رمز عبور وایرلس|17|17:رزرو 6|18|18:رزرو 7|19|19:نام دامین سرور|20|20:متن سفارشی 1|21|21:متن سفارشی 2|22|22:متن سفارشی 3|23|23:متن سفارشی 4|24|24:متن سفارشی 5|25|25:متن سفارشی 6|26|26:متن سفارشی 7|27|27:متن سفارشی 8</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Print Format Text</Name>
+    <ValueDisplay>0|0:متن 0|1|1:متن 1|2|2:متن 2|3|3:متن 3|4|4:متن 4|5|5:متن 5|6|6:متن 6|7|7:متن 7|8|8:متن 8|9|9:متن 9|10|10:متن 10|11|11:متن 11|12|12:متن 12|13|13:متن 13|14|14:متن 14|15|15:متن 15</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>BOther Text</Name>
+    <ValueDisplay>0|0:نام فروشنده|1|1:نام مستخدم|2|2:اطلاعات سفارشی 1|3|3:اطلاعات سفارشی 2|4|4:اطلاعات سفارشی 3|5|5:اطلاعات سفارشی 4</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>All Symbol</Name>
+    <ValueDisplay>0|0:Partition|1|1:Checksum|2|2:Unreadable bytes</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Symbol Area</Name>
+    <ValueDisplay>0|0:Normal area flag|1|1:Loop area flag|2|2:Loop quit flag</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Symbol Checksum</Name>
+    <ValueDisplay>0|EAN/UPC Auto|1|EAN/UPC 1+1|2|EAN/UPC 2+1|3|EAN/UPC 3+1|4|EAN/UPC 4+1|5|EAN/UPC 5+1|6|EAN/UPC 6+1|7|EAN/UPC 7+1|8|EAN/UPC 8+1|9|EAN/UPC 9+1|10|EAN/UPC 10+1|11|EAN/UPC 11+1|12|EAN/UPC 12+1|13|EAN/UPC 13+1|14|EAN/UPC 14+1|15|EAN/UPC 15+1|16|EAN/UPC 16+1|17|EAN/UPC 17+1|18|EAN/UPC 18+1|19|EAN/UPC 19+1|20|EAN/UPC 20+1|21|EAN/UPC 21+1|22|EAN/UPC 22+1|23|EAN/UPC 23+1|24|EAN/UPC 24+1|25|EAN/UPC 25+1|26|EAN/UPC 26+1|27|EAN/UPC 27+1|28|EAN/UPC 28+1|29|EAN/UPC 29+1|30|EAN/UPC 30+1|31|EAN/UPC 31+1|50|Pre-PCDV4|51|Post-PCDV4|52|Pre-PCDV5|53|Post-PCDV5</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Symbol Unreadable</Name>
+    <ValueDisplay>0|0:Enter(\r\n)|1|1:Enter(\r)|2|2:Enter(\n)</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>VIP Discount Sort</Name>
+    <ValueDisplay>0|0:تخفیف پیش فرض|1|1-99:تخفیف سفارشی|101|101:تخفیف سطح 1|102|102:تخفیف سطح 2|103|103:تخفیف سطح 3|104|104:تخفیف سطح 4</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Stock Type Full</Name>
+    <ValueDisplay>-1|خالی|0|0:فروش|1|1:برگشت فروش|10|10:به درون|11|11:به خارج|12|12:پیگیری|13|13:سفارش|14|14:فاسد|252|252:تولید کردن|253|253:باز A1198کردن بسته بندی(افزایش)|254|254:باز کردن بسته بندی (کاهش)</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Logs Type Full</Name>
+    <ValueDisplay>-1|خالی|0|0:فروش|1|1:برگشت فروش|2|2:تایید نشده|3|3:پاک شده|4|4:معوق|5|5:حالت خودکار|6|6:پارامتر 06|7|7:پارامتر 07|8|8: پارامتر 08|9|9:پارامتر 09|10|10:به درون|11|11:به خارج|12|12:پیگیری|13|13:سفارش|14|14:فاسد|15|15:پارامتر 15|253|253:باز A1198کردن بسته بن|255|255:Error|256|256:Unknown Error|257|257:FID Lost|258|258:FID Repeat|259|259:IlleageBoot|308|308:A52|777|777:P521|778|778:P522|779|779:P523|780|780:P524|1249|1249:E9.93|1253|1253:E9.97-Flash ReInit|1254|1254:E9.98-Firmware Upgrade</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Logs Type Sim</Name>
+    <ValueDisplay>فروش|برگشت از خرید|تایید نشده|پاک شده|معوق|حالت خودکار|پارامتر06|پارامتر07|پارامتر08|پارامتر09|به داخل|به خارج|پیگیری|سفارش|فاسد|پارامتر15</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Report Title</Name>
+    <ValueDisplay>گزارش لیست فروش|فیلتر|رنج زمان|از|به|تعداد رسید|گزارش رسید|گزارش کل حافظه|گزارش لیست حافظه|نوع|دفعات اضافه شدن|تعداد کل|وزن کل|مالیات کل|کل نقدی|کل کارت|کل {0}|کل {0}|کل {0}|درآمد کلی|شماره حافظه|نام حافظه|هزینه کل|سود|جمع کل سود|تخفیف و رند کردن کل|هزینه کل|کل هزینه خدمات|جمع نقدی|فروش واقعی|تمام دستگاه های|کل {0}|کل {0}|کل {0}|کل {0}|کل {0}|کل {0}|کل {0}|کل {0}|Total not-Cash</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>PLU Default</Name>
+    <ValueDisplay>9999999|حافظه وزن موقت|9999998|حافظه تعدادی موقت|9999997|هزینه خدمات|9999996|تخفیف و رند کردن|9999995|پرداخت کارت|9999994|{0}|9999993|{0}|9999992|{0}|9999991|پرداخت های فروشگاه</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>Shortcut Fuction</Name>
+    <ValueDisplay>1|شماره:0|2|شماره:1|3|شماره:2|4|شماره:3|5|شماره:4|6|شماره:5|7|شماره:6|8|شماره:7|9|شماره:8|10|شماره:9|11|شماره:00|68|شماره:000|12|پاک کردن|13|لغو|14|تایید|15|پرینت|16|حافظه|17|تنظیم سریع|18|مشتری 1|19|مشتری 2|20|مشتری 3|21|مشتری 4|22|اصلاح|23|×|24|کاغذگذاری|25|تنظیم صفر|26|تنظیم پارسنگ|27|فروش|28|تنظیم|29|گزارشات|30|زمان|31|درصد تخفیف|32|تخفیف کل|33|تغییر قیمت|34|فروش موقت|35|کشوی پول|38|وزن دستی|39|نوع کاغذ|40|چاپ مجدد|41|Shift|44|چاپ2|45|اعتباری|46|حرکت نقطه|47|وزن نمونه|48|گزارشات وزن|49|دقت|50|تغییر واحد|51|قفل پارسنگ|52|حالت خودکار|53|حالت عدی|54|حالت دسته|55|حلت بسته بندی|56|حالت قفل حافظه|57|حالت چاپ خودکار|58|هزینه خدمات|59|←V→|60|حالت|62|خاموش/روشن|63|{0}|64|{0}|65|{0}|66|مشتری ویژه|67|تراکنش دیگر|69|برگست از فروش: آی دی فاکتور|70|سنسور وزن|76|اطلاعات سفارشی 1|77|اطلاعات سفارشی 2|78|اطلاعات سفارشی 3|79|اطلاعات سفارشی 4</ValueDisplay>
+  </SimCombo>
+  <SimCombo>
+    <Name>EPay Type</Name>
+    <ValueDisplay>|||||||</ValueDisplay>
+  </SimCombo>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</UIDataSet>
+
+
+<!--فارسی(Persian)-->

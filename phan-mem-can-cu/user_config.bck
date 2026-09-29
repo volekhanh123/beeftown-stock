@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+    <userSettings>
+        <ECS.Properties.Settings>
+            <setting name="configFolder" serializeAs="String">
+                <value>en</value>
+            </setting>
+            <setting name="faceFont" serializeAs="String">
+                <value>Times New Roman, 12pt</value>
+            </setting>
+            <setting name="fileName" serializeAs="String">
+                <value>Default</value>
+            </setting>
+            <setting name="ipList" serializeAs="Xml">
+                <value>
+                    <ArrayOfString xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                        xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+                        <string>192.168.2.64:33581
+&lt;&lt;Factory&gt;&gt;
+&lt;&lt;Factory Device&gt;&gt;
+&lt;&lt;0&gt;&gt;
+&lt;&lt;TM-xA UA006 V3.15C5(UTF-8)&gt;&gt;
+&lt;&lt;0023F01AD114&gt;&gt;</string>
+                        <string>192.168.2.105:33581
+&lt;&lt;Factory&gt;&gt;
+&lt;&lt;Factory Device&gt;&gt;
+&lt;&lt;0&gt;&gt;
+&lt;&lt;TM-xA UA006 V3.15D(UTF-8)&gt;&gt;
+&lt;&lt;0023F01B20EE&gt;&gt;</string>
+                        <string>192.168.2.37:33581
+&lt;&lt;Factory&gt;&gt;
+&lt;&lt;Factory Device&gt;&gt;
+&lt;&lt;0&gt;&gt;
+&lt;&lt;TM-xA UA006 V3.15D(UTF-8)&gt;&gt;
+&lt;&lt;0023F01B20EE&gt;&gt;</string>
+                        <string>192.168.2.42:33581
+&lt;&lt;Factory&gt;&gt;
+&lt;&lt;Factory Device&gt;&gt;
+&lt;&lt;0&gt;&gt;
+&lt;&lt;TM-xA UA006 V3.15D(UTF-8)&gt;&gt;
+&lt;&lt;0023F01B20D6&gt;&gt;</string>
+                    </ArrayOfString>
+                </value>
+            </setting>
+            <setting name="dirty" serializeAs="String">
+                <value>False</value>
+            </setting>
+            <setting name="maxUserPLUID" serializeAs="String">
+                <value>9999990</value>
+            </setting>
+            <setting name="ScFile_ScaleID" serializeAs="String">
+                <value>Default</value>
+            </setting>
+            <setting name="reboot" serializeAs="String">
+                <value>False</value>
+            </setting>
+            <setting name="configEncoding" serializeAs="String">
+                <value>utf-8</value>
+            </setting>
+            <setting name="configName" serializeAs="String">
+                <value>English</value>
+            </setting>
+        </ECS.Properties.Settings>
+    </userSettings>
+</configuration>

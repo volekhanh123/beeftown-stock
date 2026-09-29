@@ -1,0 +1,155 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+<resheader name="resmimetype"><value>text/microsoft-resx</value></resheader><resheader name="version"><value>1.3</value></resheader><resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader><resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader><data name="&gt;&gt;dontAskCheckBox.Type" xml:space="preserve"><value>System.Windows.Forms.CheckBox, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></data>
+  <data name="&gt;&gt;dontAskCheckBox.Name" xml:space="preserve"><value>dontAskCheckBox</value></data>
+  <data name="dontAskCheckBox.TabIndex" type="System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"><value>1</value></data>
+  <data name="yesButton.TabIndex" type="System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"><value>2</value></data>
+  <data name="promptLabel.AutoSize" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"><value>True</value></data>
+  <data name="$this.Icon" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABNTeXN0
+ZW0uRHJhd2luZy5JY29uAgAAAAhJY29uRGF0YQhJY29uU2l6ZQcEAhNTeXN0ZW0uRHJhd2luZy5T
+aXplAgAAAAIAAAAJAwAAAAX8////E1N5c3RlbS5EcmF3aW5nLlNpemUCAAAABXdpZHRoBmhlaWdo
+dAAACAgCAAAAAAAAAAAAAAAPAwAAAL4MAAACAAABAAEAICAAAAEAGACoDAAAFgAAACgAAAAgAAAA
+QAAAAAEAGAAAAAAAgAwAAAAAAAAAAAAAAAAAAAAAAAD/////////////////////////////////
+//////////////////////////////7///7/////////////////////////////////////////
+///////////////////////////////////////////////////////u7vvOzfiopPOblfKblvKb
+mfWbmfSbmPScl/OamvOamPWloPXLwPjt5vv/////////////////////////////////////////
+///////////////////////29v7a2fqsrPR+gO9hZOtdXO1cXetbYe5cX+1cX+1cYO1eWexeWO5i
+XO57ce+mnPPTzfjy7v3////////////////////////////////////////////////9/f7w8P3I
+yPmYlvNma+4/XuwvcO00cfE0b+45X+1BTeo9Vuw2au9BT+pESOtCQ+pGQupiWeuPhe/Auffv7fz9
+/f7////////////////////////////////////+/v739/3Hx/hrau5KRew/T+0wh/IW0PgY0fwY
+y/owi/JEWew5dvAjsfc1gvA9cO1EX+tITu1GQulJROZjX+vDuvX28/39/f7/////////////////
+///////////////19f7P0fpQUutDQ+tIRuxLSew8cvAaxvgS4fwS3fs8cPFLSO08cPAdwfgM7P4M
+7P8nqPdEX+9NROxJSOxFROhLQum7pvTv6vz////////////////////////////09P3HyPhoae5G
+ROtKSOtMRupIUus0hPAU1vgK8/0K7fwtlvNFWO49avAfuvcL7v0N6f0tlvNEWexMRelJSOtJSOtG
+RetcU+u5r/Tu6fv////////////////////9/f7Z2PmSkfJGRepGQ+xJRetJQupEUOw0e/Act/cV
+yfoaufcwhfFBVu06Zu8hqvUR0voTzfosjvNAV+1IQupHRepHR+xGRuxCQOuCdu7Oxvf7+f3/////
+///////////29fy6u/ZqbO5HSutOUO5OT+1OTexMVe1Fau86hvM3jvQ8fvJEbO9MWe1IY+47hvIy
+m/QzmPVAevJLWu5QTexQTutQUOxRT+1JSu1dVeyqovTt6Pv////////////////t7fuwtPVvd+9v
+evFxevJwevJxe/J0efF2dvB4cu92dvF3cPF3dPF3ePB4ePB5dPB4d/B5dvF5dvF5ePF4efF3efB3
+ePB4dvF1dfFnZ++cmPTe2Pr////////////////9/v/5/P72+v71+f71+f71+f73+v74+/74+v74
++v74+v72+f72+f74+f76+f76+P76+P76+f74+P74+P74+P75+f75+f75+f73+P7s7/3v8P34+P7/
+///////////////9+/78+/7+/P7+/v7+/v7+/P7+/P7+/P7+/f7+/f7+/v7+/v7+/v7+/f7+/f7+
+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v7+/v79/f79/f7+/v7////////////k6Pmxr/OYkfKr
+oPXe0vr////Iy/ikn/WblPWdmPaemfa4q/f8+v7x9f3Av/igm/WgmvWgmvWlm/bi1vv49P7g4Pu3
+tPejmfOqofKroPOrofSqovO4sPXa0vj////////N0/d8fO5UT+trX+6qmPP9+v66xvdwc/FYVe9a
+V/BcWfB1Z/Hm3Pvt8P2hp/VlZvBbVu9dWfBfV/G4qPfs5vzS1/qNkvNbVe5lXu5lXe1lXe5iW+x6
+ce22rfT////////Bxvdnae07O+lJROt0ZOz07PzT4fpyf/JGSu5AQO5BQu5IQe6/rvbt7fytuvhg
+a/A+P+1CQ+89Pe+Nf/Pd1/rb4/qSofQ/Ru1AQO5BQOxBP+w8O+lXU+qfmPL////////Fw/hrae5B
+QOlGQ+tWTOzczvn7+f6ksPdeZfBDQO5GQ+4+Pu6MgPHm4/ve6v2SofdFSu9IR+9FRu9wZPHSyvr5
++/7I0/pcbPFEQu5JQu5IQ+1DQOtbWOygnPL////////P0Plxb+1DQOlEQ+xIRuymlvH18/zR2vt8
+hPNDRe5ISO9DRe9iWe/Wyfj69v2/xPpdZfJCQO9HSO9OSO+qmPXq3vvk6fybqPY+QOxER+xFROxC
+P+paVu2fmvX////////S1flycu1BPuhDQepFRuxwY+3n3/rp7f2WofZKUu5CQe9GR/BKR+6pm/Tm
+3/rP1vp6h/M9Pu9HSO9EQ+94afHFtvfx7/zEz/pGTO5EQ+1FRO1CQetaWO2gnfX////////a4fp4
+fe5DQulCQOpDQ+xRSOzPwvfw7vy0vvhjbfE+O+1GRu9AQO6EefHVzvnj6fygrvdBSO9GRu9DRO9a
+Ue6omvTw6Pvh5vxgbfBCQ+xFQ+1DQeteW+ymo/X////////p8fyKkvFMT+pBP+pDQexDPuyrm/Pp
+4/vR2PqDjvQ+Pe1FRO4/QO5nXvDAuPjw7/3Gz/pXYfFDQu9ERu5KR+6NgfLg0/rx8/2KmvNCROtE
+QexFQetoZOy1tPX////////9//+rsvZfZO1APupFRuw/Pe5+be7Yzvno6vylrvdDSu1EQe9DQu9P
+Se6llfbs3/zj5fyAifQ9Pe9ERO5DQ+5zaPHCsvj29v2/y/hHS+tCP+tJRet7ee/R0vf/////////
+///R1vmChfFCQOtKSOxDSe5NSe2xnvXt4vzK0vpecPE/Pe9HQ+9CP+51ZfDCtPf09P3IyvpCQu9H
+R+9CRO9UTe+TgfLz5/zr+P5XZO9CQu1aWO6hpPT3+/7////////////s8fyeqfVKVO1GRO5FRu1C
+P+2Fd/HRyPni6fybrPdARO9GRe9DRO5WUe+ckvTv5/vu8f1pdPNHRu5DQ+5IRu5sZPDFtvf7/f6Q
+pfRNU+x2e/DHzPn9/v7////////////5+/7AyflsefE/PuxHRu5CQe5rYO++tffy8v3I0/tQWPBE
+RO9ERu5JSO6CevLb0Pn4+v6SofZLTO9DRO5EQ+5aVO+fkvT//v/G1/l1gvCeqPXk6Pz/////////
+///////////g5vyfqvVOU+xERO1FRO5XUO6kmfXs5fzk6f1uefNBQe9ERe5ERO5sZfC7rfb7+v68
+yvlTWPBERu5DQ+5PS+58cfHz6/3r8/yzwffN1/r3+f7////////////////////5+/7W3fqBjPBG
+SexGRu1HQ+2DePLRxfnv8f2YpvZBQe5DQu5DRO5YUu6UhvL38v3j7P1lbvFISu5ERO5IR+1dVO7V
+xfn6+v70+/74/P7////////////////////////////9/v/v8/1tee1DQelCPelnXu6wp/f4+/7U
+5vxLWO1DRe1ERO5IRu5tZfDh0/v///+MnfZTVfBEP+5EQu1FQuuaj/P39v7/////////////////
+///////////////////+/v/7/P3i5vt+jPFLVetNSeuOgfLy5fz7/f6DlvVNT+5EQu5FRO5cVe+1
+o/X///+9zPhlbPA+QO1GS+1mcPDDzPr5+v7////////////////////////////////////////+
+/v75+v7S3fuesfZtf/Bxdu+8rvX//v+1w/lZW+9CQe5DQe5OSO5+bPDz5vzf5/t/kvNkdvCMmfTA
+y/nt8f39/f7////////////////////////////////////////////////6///e6vywxPeVpvSt
+rvX+/P/a5Pxud/FIT+5ESu5LT+5hXu7Zzfnw8/23yvitv/fR2vvy+P3/////////////////////
+///////////////////////////////////////////x+v3Y6fvI1vn9+//y+P6aq/Vvg/FnefJu
+f/N6ivLNy/j29/3v+v7y+/7/////////////////////////////////////////////////////
+///////////////////////////+///+///+///u+//c9f7V8f7b9P7q+f/4/f/9/v//////////
+//////////////////////////////////8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAs=</value></data><data name="$this.Text" xml:space="preserve"><value>PromptForm</value></data>
+  <data name="&gt;&gt;promptLabel.ZOrder" xml:space="preserve"><value>4</value></data>
+  <data name="&gt;&gt;promptLabel.Parent" xml:space="preserve"><value>$this</value></data>
+  <data name="$this.ClientSize" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABNTeXN0
+ZW0uRHJhd2luZy5TaXplAgAAAAV3aWR0aAZoZWlnaHQAAAgIAgAAAEoBAAB+AAAACw==</value></data><data name="dontAskCheckBox.Size" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABNTeXN0
+ZW0uRHJhd2luZy5TaXplAgAAAAV3aWR0aAZoZWlnaHQAAAgIAgAAAHIAAAAQAAAACw==</value></data><data name="dontAskCheckBox.Text" xml:space="preserve"><value>dontAskCheckBox</value></data>
+  <data name="&gt;&gt;iconBox.Type" xml:space="preserve"><value>System.Windows.Forms.PictureBox, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></data>
+  <data name="&gt;&gt;iconBox.Name" xml:space="preserve"><value>iconBox</value></data>
+  <data name="noButton.Text" xml:space="preserve"><value>noButton</value></data>
+  <data name="noButton.Size" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABNTeXN0
+ZW0uRHJhd2luZy5TaXplAgAAAAV3aWR0aAZoZWlnaHQAAAgIAgAAAEsAAAAXAAAACw==</value></data><data name="&gt;&gt;yesButton.Parent" xml:space="preserve"><value>$this</value></data>
+  <data name="&gt;&gt;yesButton.ZOrder" xml:space="preserve"><value>2</value></data>
+  <data name="iconBox.Size" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABNTeXN0
+ZW0uRHJhd2luZy5TaXplAgAAAAV3aWR0aAZoZWlnaHQAAAgIAgAAACAAAAAgAAAACw==</value></data><data name="&gt;&gt;noButton.ZOrder" xml:space="preserve"><value>1</value></data>
+  <data name="&gt;&gt;noButton.Parent" xml:space="preserve"><value>$this</value></data>
+  <data name="promptLabel.Location" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABRTeXN0
+ZW0uRHJhd2luZy5Qb2ludAIAAAABeAF5AAAICAIAAABMAAAAEgAAAAs=</value></data><data name="&gt;&gt;yesButton.Type" xml:space="preserve"><value>System.Windows.Forms.Button, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></data>
+  <data name="&gt;&gt;yesButton.Name" xml:space="preserve"><value>yesButton</value></data>
+  <data name="iconBox.SizeMode" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFdTeXN0ZW0uV2luZG93cy5Gb3JtcywgVmVyc2lvbj0yLjAu
+MC4wLCBDdWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWI3N2E1YzU2MTkzNGUwODkFAQAA
+ACdTeXN0ZW0uV2luZG93cy5Gb3Jtcy5QaWN0dXJlQm94U2l6ZU1vZGUBAAAAB3ZhbHVlX18ACAIA
+AAACAAAACw==</value></data><data name="dontAskCheckBox.AutoSize" type="System.Boolean, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"><value>True</value></data>
+  <data name="iconBox.Location" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABRTeXN0
+ZW0uRHJhd2luZy5Qb2ludAIAAAABeAF5AAAICAIAAAAXAAAAEgAAAAs=</value></data><data name="promptLabel.TabIndex" type="System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"><value>0</value></data>
+  <data name="noButton.Location" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABRTeXN0
+ZW0uRHJhd2luZy5Qb2ludAIAAAABeAF5AAAICAIAAACZAAAAVgAAAAs=</value></data><data name="&gt;&gt;dontAskCheckBox.Parent" xml:space="preserve"><value>$this</value></data>
+  <data name="&gt;&gt;noButton.Type" xml:space="preserve"><value>System.Windows.Forms.Button, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></data>
+  <data name="&gt;&gt;noButton.Name" xml:space="preserve"><value>noButton</value></data>
+  <data name="&gt;&gt;iconBox.Parent" xml:space="preserve"><value>$this</value></data>
+  <data name="promptLabel.Size" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABNTeXN0
+ZW0uRHJhd2luZy5TaXplAgAAAAV3aWR0aAZoZWlnaHQAAAgIAgAAAEcAAAAMAAAACw==</value></data><data name="promptLabel.Text" xml:space="preserve"><value>promptLabel</value></data>
+  <data name="yesButton.Size" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABNTeXN0
+ZW0uRHJhd2luZy5TaXplAgAAAAV3aWR0aAZoZWlnaHQAAAgIAgAAAEsAAAAXAAAACw==</value></data><data name="yesButton.Text" xml:space="preserve"><value>yesButton</value></data>
+  <data name="&gt;&gt;dontAskCheckBox.ZOrder" xml:space="preserve"><value>3</value></data>
+  <data name="&gt;&gt;$this.Name" xml:space="preserve"><value>PromptForm</value></data>
+  <data name="&gt;&gt;$this.Type" xml:space="preserve"><value>System.Windows.Forms.Form, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></data>
+  <data name="&gt;&gt;promptLabel.Name" xml:space="preserve"><value>promptLabel</value></data>
+  <data name="&gt;&gt;promptLabel.Type" xml:space="preserve"><value>System.Windows.Forms.Label, System.Windows.Forms, Version=2.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></data>
+  <data name="yesButton.Location" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABRTeXN0
+ZW0uRHJhd2luZy5Qb2ludAIAAAABeAF5AAAICAIAAABIAAAAVgAAAAs=</value></data><data name="&gt;&gt;iconBox.ZOrder" xml:space="preserve"><value>0</value></data>
+  <data name="$this.StartPosition" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFdTeXN0ZW0uV2luZG93cy5Gb3JtcywgVmVyc2lvbj0yLjAu
+MC4wLCBDdWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWI3N2E1YzU2MTkzNGUwODkFAQAA
+ACZTeXN0ZW0uV2luZG93cy5Gb3Jtcy5Gb3JtU3RhcnRQb3NpdGlvbgEAAAAHdmFsdWVfXwAIAgAA
+AAEAAAAL</value></data><data name="iconBox.TabIndex" type="System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"><value>4</value></data>
+  <data name="noButton.TabIndex" type="System.Int32, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089"><value>3</value></data>
+  <data name="$this.AutoScaleDimensions" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABRTeXN0
+ZW0uRHJhd2luZy5TaXplRgIAAAAFd2lkdGgGaGVpZ2h0AAALCwIAAAAAAMBAAABAQQs=</value></data><data name="dontAskCheckBox.Location" mimetype="application/x-microsoft.net.object.binary.base64"><value>AAEAAAD/////AQAAAAAAAAAMAgAAAFFTeXN0ZW0uRHJhd2luZywgVmVyc2lvbj0yLjAuMC4wLCBD
+dWx0dXJlPW5ldXRyYWwsIFB1YmxpY0tleVRva2VuPWIwM2Y1ZjdmMTFkNTBhM2EFAQAAABRTeXN0
+ZW0uRHJhd2luZy5Qb2ludAIAAAABeAF5AAAICAIAAABOAAAAMgAAAAs=</value></data></root>

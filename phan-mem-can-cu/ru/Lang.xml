@@ -1,0 +1,3190 @@
+﻿<?xml version="1.0"  encoding="utf-8" standalone="yes"?>
+<UIDataSet>
+  <!--Russian-->
+  <Lang>
+    <Name>pw_AllPLU</Name>
+    <Display>All PLUs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_2008_s</Name>
+    <Display>2008's</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_2012_s</Name>
+    <Display>2012's</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_2011_s</Name>
+    <Display>2011's</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_2015_sA</Name>
+    <Display>2015's</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_2015_sC</Name>
+    <Display>2015's</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_2017_sA</Name>
+    <Display>2017's</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_30mm*40mm</Name>
+    <Display>30mm * 40mm</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_40mm*30mm</Name>
+    <Display>40mm * 30mm</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_40mmwidth</Name>
+    <Display>40mm width</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_4Windows</Name>
+    <Display>4 Windows</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_57mmwidth</Name>
+    <Display>57mm width</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_5Windows</Name>
+    <Display>5 Windows</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_60mm*30mm</Name>
+    <Display>60mm * 30mm</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_60mm*40mm</Name>
+    <Display>60mm * 40mm</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_60mmwidth</Name>
+    <Display>60mm width</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_A1Indicator</Name>
+    <Display>A1 Indicator</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_A2Indicator</Name>
+    <Display>A2 Indicator</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_About</Name>
+    <Display>Справка</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_About_sA</Name>
+    <Display>Справка(&amp;A)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Account</Name>
+    <Display>Account</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Accumulated</Name>
+    <Display>Accumulated</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Accumulatedbufferclear_Press_Amend__</Name>
+    <Display>Accumulated buffer clear ( Press [Amend] )</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AccumulatedInfo_0</Name>
+    <Display>Accumulated Info(Display Total Pcs)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AccumulatedInfo_2</Name>
+    <Display>Accumulated Info(Display Accumulated Times)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ActiveDay_sl_</Name>
+    <Display>День:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Add_0__</Name>
+    <Display>Добавить {0}?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AddAll</Name>
+    <Display>добавить все</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AddDevice</Name>
+    <Display>Добавить весы</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AddNew</Name>
+    <Display>Добавить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Address</Name>
+    <Display>Адрес</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Admin</Name>
+    <Display>Admin</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AdmininCharge_Theseoperationneed_Admin_Password_</Name>
+    <Display>Admin in Charge (These operation need "Admin" Password)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AdminPassword</Name>
+    <Display>Пароль адм.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AdvancedSetting</Name>
+    <Display>Advanced Setting</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AdvancedSetting_sT</Name>
+    <Display>Advanced Setting(&amp;T)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AdvancedSetting_wInfo</Name>
+    <Display>Advanced Setting: Some advanced setting about software working</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_All</Name>
+    <Display>Все</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Allbillcanbeload</Name>
+    <Display>All bill can be load</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Allowed</Name>
+    <Display>Allowed</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlwaysDockEthernet</Name>
+    <Display>Always Dock [Ethernet]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlwaysDockReport</Name>
+    <Display>Always Dock [Report]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlwaysShowSystemTrayIcon</Name>
+    <Display>Always show system tray icon</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlwaysZeroReturn</Name>
+    <Display>Always Zero-Return</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Amend</Name>
+    <Display>Amend</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Amount</Name>
+    <Display>Кол-во</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AmountBalance</Name>
+    <Display>Amount Balance</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AmountInStock</Name>
+    <Display>Amount In Stock</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Amountswith</Name>
+    <Display>Amount swith</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Analysis</Name>
+    <Display>анализ</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AndOr</Name>
+    <Display>And / Or</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Angle_sl_</Name>
+    <Display>Угол:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Areyousuretoclearallreports_</Name>
+    <Display>Вы уверены, что хотите удалить все отчеты?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Arrange_sA</Name>
+    <Display>Выравнивание(&amp;A)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AssistID</Name>
+    <Display>помощь код</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Attachautomatically</Name>
+    <Display>Прикрепите автоматически</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Attachnew</Name>
+    <Display>Attach new</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Attachoccupied</Name>
+    <Display>Attach occupied</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Attachold</Name>
+    <Display>Attach old</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AttachTable</Name>
+    <Display>Присоединить таблицу</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoAllocation</Name>
+    <Display>Авто назначается</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoDiscount</Name>
+    <Display>Авто скидка</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoDiscount1</Name>
+    <Display>Авто рабат 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoDiscount2</Name>
+    <Display>Авто рабат 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoDiscount3</Name>
+    <Display>Авто рабат 3</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoDiscount4</Name>
+    <Display>Авто рабат 4</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Automaticallysaveaftertransaction</Name>
+    <Display>Automatically save after transaction</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Autoprint</Name>
+    <Display>Auto print</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Autoprint_can_tcancel</Name>
+    <Display>Auto print, can't cancel</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Autoprintingafterzero_return</Name>
+    <Display>Auto printing after zero-return</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoRunning</Name>
+    <Display>Авто запуск</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoTask</Name>
+    <Display>Авто задание</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_B1_sl_BarcodeFlag</Name>
+    <Display>B1: Флаг ШК</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_B1_sl_BarcodeFormat</Name>
+    <Display>B1: Формат ШК</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_B1_sl_PrintFormat</Name>
+    <Display>B1: Шаблон</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_B2_sl_BarcodeFlag</Name>
+    <Display>B2: Флаг ШК</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_B2_sl_BarcodeFormat</Name>
+    <Display>B2: Формат ШК</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_B2_sl_PrintFormat</Name>
+    <Display>B2: Шаблон</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Backupbeforerestore_Choose_Yes_tobackupbeforeclearingallreports_Choose_No_toclearallreportswithoutbackup_Choose_Cancel_toreservecurrentreports_</Name>
+    <Display>Сделать резервную копию? "Да", чтобы сделать копию перед удалением отчетов. "Нет", чтобы удалить без резерной копии. "Отменить", чтобы сохранить отчеты.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BackupReport</Name>
+    <Display>Backup Report</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BackuptoTMSFile</Name>
+    <Display>Назад в TMS</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Barcode</Name>
+    <Display>ШК</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Barcode_sB</Name>
+    <Display>ШК(&amp;B)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BarcodeforCashRegister</Name>
+    <Display>Barcode for Cash Register</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BarCodePrintingScale</Name>
+    <Display>Bar Code Printing Scale</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BarcodeType</Name>
+    <Display>Barcode Type</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BaseUnit</Name>
+    <Display>Базовая единица</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BasicInfo</Name>
+    <Display>Инфо</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill1_cl_BarcodeFlag_cl_</Name>
+    <Display>Этикетка 1: Флаг ШК:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill1_cl_BarcodeFormat_cl_</Name>
+    <Display>Этикетка 1: Формат ШК:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill1_cl_PrintFormat_cl_</Name>
+    <Display>Этикетка 1: Шаблон:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill2_cl_BarcodeFlag_cl_</Name>
+    <Display>Этикетка 2: Флаг ШК:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill2_cl_BarcodeFormat_cl_</Name>
+    <Display>Этикетка 2: Формат ШК:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill2_cl_PrintFormat_cl_</Name>
+    <Display>Этикетка 2: Шаблон:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BINFile___bin____bin_AllFile_________</Name>
+    <Display>BIN File (*.bin;*.1v3)|*.bin;*.1v3|All File (*.*)|*.*</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bitmap</Name>
+    <Display>Bitmap</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BitmapBuilder_sB</Name>
+    <Display>Картинки(&amp;B)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BootFile</Name>
+    <Display>Boot File</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BottomCenter</Name>
+    <Display>Снизу-Центр</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BottomLeft</Name>
+    <Display>Снизу-Слева</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BottomRight</Name>
+    <Display>Снизу-Спрва</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BuyBack_OT</Name>
+    <Display>выкуп(Прочие операции)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Cancel</Name>
+    <Display>Отменить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Cancelled</Name>
+    <Display>Отменено</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Cascade_sC</Name>
+    <Display>Каскадом(&amp;C)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Cash</Name>
+    <Display>Cash</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CashRegister</Name>
+    <Display>Cash Register</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Cashregistermode_sl_printreceipt_itemaccumulates</Name>
+    <Display>Cash register mode: print receipt, item accumulates</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CashRegisterScale</Name>
+    <Display>Cash Register Scale</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Changemachinenumber</Name>
+    <Display>Change machine number</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ChangePassword</Name>
+    <Display>Сменить пароль</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ChangePassword_sP</Name>
+    <Display>изменить пароль(&amp;P)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Character_0_</Name>
+    <Display>Character '0'</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Checkout</Name>
+    <Display>Контроль</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CheckSum</Name>
+    <Display>Checksum</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Choose</Name>
+    <Display>выбирать</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_cInfo_MultiDevice</Name>
+    <Display>{0} devices</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_cInfo_SingleDevice</Name>
+    <Display>MAC={0}, IP={1}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_cInfo_SingleDevice2</Name>
+    <Display>MAC={0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Clear</Name>
+    <Display>Очист.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Clear_0__</Name>
+    <Display>очистить {0}?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearAll</Name>
+    <Display>Очистить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearAllFirst</Name>
+    <Display>Очистить сначала</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearAll_NotRecord_</Name>
+    <Display>Clear All (Not Record)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearAll_Record_</Name>
+    <Display>Clear All (Record)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearData</Name>
+    <Display>Очист</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearList</Name>
+    <Display>Очистить список</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Clearolddata</Name>
+    <Display>ясно старые данные</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearPLUbeforeoperation</Name>
+    <Display>Очистить PLU до операции</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Clicktoaddnew</Name>
+    <Display>Нажмите, чтобы добавить новые</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Clicktocloneone</Name>
+    <Display>Нажмите, чтобы клонировать</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Clone</Name>
+    <Display>Копир.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CloseAll_sL</Name>
+    <Display>Закрыть все(&amp;L)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CloseDevice</Name>
+    <Display>Закрыть</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CloseTable</Name>
+    <Display>Закрыть табл.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Code</Name>
+    <Display>код</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Collision</Name>
+    <Display>столкновение</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Config</Name>
+    <Display>Config</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ConfigWizard</Name>
+    <Display>Config Wizard</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ConfigWizard_sW</Name>
+    <Display>Config Wizard(&amp;W)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ConfigWizard_wInfo</Name>
+    <Display>Config Wizard: Open config wizard, to edit parameter and data of devices</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Constant</Name>
+    <Display>Constant</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Constant1_cl_</Name>
+    <Display>Флаг 1:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Constant2_cl_</Name>
+    <Display>Флаг 2:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ConstantText</Name>
+    <Display>Constant Text</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Cost</Name>
+    <Display>Себест.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CostFromDevice_____</Name>
+    <Display>Используйте стоимость от устройства(>=3.00A)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Count</Name>
+    <Display>Count</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CreatNewDatabase</Name>
+    <Display>Создать БД</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Current</Name>
+    <Display>Текущий</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CurrentMonth</Name>
+    <Display>Месяц</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CurrentQuarter</Name>
+    <Display>Квартал</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CurrentWeek</Name>
+    <Display>Неделя</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CurrentYear</Name>
+    <Display>Год</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Custom</Name>
+    <Display>Custom</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomDesigner_sC</Name>
+    <Display>Дизайнер(&amp;C)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomFile</Name>
+    <Display>Custom File</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomFile_sC</Name>
+    <Display>Custom File(&amp;C)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomFile_wInfo</Name>
+    <Display>Custom File: Import PLU data from other format of .TXT file</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomIDmustbetween10_29</Name>
+    <Display>Custom ID must between {0} ~ {1}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomSize</Name>
+    <Display>Custom Size</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomText</Name>
+    <Display>Custom Text</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Data</Name>
+    <Display>Данные</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Database</Name>
+    <Display>БД</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Database_sD</Name>
+    <Display>БД(&amp;D)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Databaseisinuse_</Name>
+    <Display>БД занята</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DataFile</Name>
+    <Display>Дата</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DateTime</Name>
+    <Display>Дата-Время</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Day_sl_</Name>
+    <Display>День:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DecimalPointinBarcode</Name>
+    <Display>Decimal Point in Barcode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Default</Name>
+    <Display>дефолт</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Defaultgateway_sl_</Name>
+    <Display>Default gateway:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DefaultValue</Name>
+    <Display>По-умолчанию</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Delete</Name>
+    <Display>Удалить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Delete_0__</Name>
+    <Display>Удалить {0}?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeleteDevice</Name>
+    <Display>Удалить весы</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeleteFileafterReading</Name>
+    <Display>Удалить файл после прочтения</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeletePernamently</Name>
+    <Display>Удалить совсем</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AffiliatedDept</Name>
+    <Display>Аффилированные Отдел.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Dept</Name>
+    <Display>Отдел.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Dept_sD</Name>
+    <Display>Отдел.(&amp;D)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeptNo</Name>
+    <Display>Отдел. No.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AffiliatedClass</Name>
+    <Display>Аффилированные Класс</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Class</Name>
+    <Display>Класс</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Class_sC</Name>
+    <Display>Класс(&amp;C)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClassNo</Name>
+    <Display>Класс No.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Description</Name>
+    <Display>Описание</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Detachcurrent</Name>
+    <Display>Detach current</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Detail_sl_</Name>
+    <Display>подробность:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DetailInfo</Name>
+    <Display>Подробно</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DettachTable</Name>
+    <Display>Удалить таблицу</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Device</Name>
+    <Display>устройство</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Device_0_hasbeendisconnectedfromthenetwork_</Name>
+    <Display>Устройство {0} отключено.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeviceLogs</Name>
+    <Display>Device Logs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeviceName</Name>
+    <Display>устройство</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Devices</Name>
+    <Display>Устройство</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Deviceswithouttable</Name>
+    <Display>Devices without table</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Deviceswithtable</Name>
+    <Display>Devices with table</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Disable</Name>
+    <Display>Disable</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Discount_pct_</Name>
+    <Display>скидка(%)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DiscountInfo</Name>
+    <Display>Скидки</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DiscountUPrice_sl_</Name>
+    <Display>Скидка Цены:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DisplayOf5thWindows</Name>
+    <Display>Display of 5th Windows</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Dither_0_7</Name>
+    <Display>Dither(0...7)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DockEthernet</Name>
+    <Display>Dock [Ethernet]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DockEthernet_wInfo</Name>
+    <Display>Dock [Ethernet]: Dock [Ethernet] menu in backgroud</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DockEthernetWhenStartup</Name>
+    <Display>Dock [Ethernet] when Startup</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DockReport</Name>
+    <Display>Dock [Report]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DockReport_wInfo</Name>
+    <Display>Dock [Report]: Dock [Report] menu in backgroud</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DockReportWhenStartup</Name>
+    <Display>Dock [Report] when Startup</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DoFilter</Name>
+    <Display>Фильтр</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Don'taskmeagain</Name>
+    <Display>Больше не задавать этот вопрос</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DoubleSource</Name>
+    <Display>Double Source</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Download</Name>
+    <Display>Загрузить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Download_CustomFile</Name>
+    <Display>Загрузить: Custom File</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Download_ExcelCSVFile</Name>
+    <Display>Загрузить: Excel/CSV File</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DownloadData</Name>
+    <Display>Загрузить данные</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DownloadDatabase</Name>
+    <Display>Загрузить БД</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DownloadToDevice</Name>
+    <Display>Загрузить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Doyouwanttorestoreformlyunsaveddata_</Name>
+    <Display>Вы хотите восстановить несохраненные данные?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Doyouwanttosavemodifieddata?</Name>
+    <Display>Хотите сохранить изменения?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Drawer</Name>
+    <Display>денежный ящик</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Edit</Name>
+    <Display>Правка</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_EditCloneTo</Name>
+    <Display>Edit(Clone to {0})</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_EditStock</Name>
+    <Display>Edit Stock</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Editworkingdataonly</Name>
+    <Display>Edit working data only</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Entrance_sl_Press_PLU_+_Amend__Switch_sl_Press_x_</Name>
+    <Display>Entrance: Press [Amend]+[PLU], Switch: Press [×]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Error_OperationFailed</Name>
+    <Display>Оператор не найден</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Ethernet</Name>
+    <Display>Ethernet</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Ethernet_sN</Name>
+    <Display>Ethernet(&amp;N)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Excel_CSVFile___XLS___XLSX___CSV____xls___xlsx___csv</Name>
+    <Display>Excel,CSV File (*.XLS;*.XLSX;*.CSV)|*.xls;*.xlsx;*.csv|All File (*.*)|*.*</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelCSVExport</Name>
+    <Display>Excel/CSV Экспорт</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelCSVFile</Name>
+    <Display>Excel/CSV файл</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelCSVFile_sE</Name>
+    <Display>Excel/CSV файл(&amp;E)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelCSVFile_wInfo</Name>
+    <Display>Excel/CSV File: Import Excel/CSV data from EXCEL/CSV file</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelCSVImport</Name>
+    <Display>Excel/CSV Импорт</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelCSVImport_Export</Name>
+    <Display>Excel/CSV Импорт/Экспорт</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelFile___XLS____xls</Name>
+    <Display>Excel File (*.XLS)|*.xls</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelFile___XLS____xls_CSVFile___CSV____csv</Name>
+    <Display>Excel File (*.XLS)|*.xls|CSV File (*.CSV)|*.csv</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExchangeTable</Name>
+    <Display>Сменить табл.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Execute</Name>
+    <Display>Выполнить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Existlogbuyback</Name>
+    <Display>Exist log buy back</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExistStock</Name>
+    <Display>Exist Stock</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExistTable</Name>
+    <Display>Открыть табл.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Exit</Name>
+    <Display>Выход</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Exit_sX</Name>
+    <Display>Выход(&amp;X)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Expand</Name>
+    <Display>Expand</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Export_TMSFile_</Name>
+    <Display>Экспорт (TMS файл)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Export_ToDevice_</Name>
+    <Display>Экспорт (на весы)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Export_ToExcel_CSV_</Name>
+    <Display>Экспорт (в Excel/CSV)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Export_ToFile_</Name>
+    <Display>Экспорт (в файл)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Exportconfiganddatadirectly</Name>
+    <Display>Export config and data directly</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExporttoExcelFile</Name>
+    <Display>Экспорт в Excel</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExportToUSBDisk</Name>
+    <Display>Export to USB Disk</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Expression</Name>
+    <Display>Выражение</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Failed</Name>
+    <Display>Failed</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Failed_DataOverlap</Name>
+    <Display>Failed: Data overlap</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Failed_NoValidData</Name>
+    <Display>Failed: No valid Data</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FailedGettingintoCustomFileAuto_Mode</Name>
+    <Display>Failed Getting into Custom File Auto-Mode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FID</Name>
+    <Display>FID</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FieldName</Name>
+    <Display>Имя поля</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_File_sF</Name>
+    <Display>Файл(&amp;F)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FileFormat</Name>
+    <Display>Формат файлов</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FileName</Name>
+    <Display>Имя файла</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Filter</Name>
+    <Display>Фильтр</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FilterTerm</Name>
+    <Display>Фильтр срок</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FindDevice</Name>
+    <Display>Найти</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Finish</Name>
+    <Display>Finish</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Firstconfigorchangeconfig</Name>
+    <Display>First config or change config</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FirstRecord</Name>
+    <Display>В начало</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Flag</Name>
+    <Display>Flag</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Folder</Name>
+    <Display>Папка</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Font</Name>
+    <Display>Фрифт</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Font_sl_</Name>
+    <Display>Шрифт:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Font0</Name>
+    <Display>Font 0</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Font1</Name>
+    <Display>Font 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FontBuilder</Name>
+    <Display>Шрифты</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FontBuilder_sF</Name>
+    <Display>Шрифты(&amp;F)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Forbidden</Name>
+    <Display>Forbidden</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ForbiddenInside</Name>
+    <Display>Запрещено внутрь</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ForbiddenOutside</Name>
+    <Display>Запрещено снаружи</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Format</Name>
+    <Display>Format</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FProgofPrice</Name>
+    <Display>FProg of Price</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Fri</Name>
+    <Display>Пт.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_From</Name>
+    <Display>От</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FromCOM</Name>
+    <Display>Из COM</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FromExcelColumn</Name>
+    <Display>From EXCEL column</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FromFile</Name>
+    <Display>Из файла</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FullRight</Name>
+    <Display>Full Right</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FunctionKey</Name>
+    <Display>функциональная клавиша</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GapPaper</Name>
+    <Display>Gap Paper</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GapPaper_W_H</Name>
+    <Display>Gap Paper(W*H)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GeneralSetting</Name>
+    <Display>General Setting</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GlobalSpec</Name>
+    <Display>Spec</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GlobalSpec_sS</Name>
+    <Display>Spec(&amp;S)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GlobalText</Name>
+    <Display>глобального текста</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GlobalText_sT</Name>
+    <Display>глобального текста(&amp;T)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GrandTotal</Name>
+    <Display>Grand Total</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GrandTotalChange</Name>
+    <Display>Grand Total Change</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GrandTotalRounding</Name>
+    <Display>Grand Total Rounding</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GrayLevel</Name>
+    <Display>Gray Level</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GridElement</Name>
+    <Display>Grid Element</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Group</Name>
+    <Display>группа</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GroupName</Name>
+    <Display>название</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_HangupandLoadback_Press_Shift_and_Amend__</Name>
+    <Display>Hangup and Loadback ( Press [Shift]+[Amend] )</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_HangupBill</Name>
+    <Display>зависание законопроект</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Height_sl_</Name>
+    <Display>Высота:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Help_sH</Name>
+    <Display>Помощь(&amp;H)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_HHMM</Name>
+    <Display>HHMM</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_HideToSystemTrayWhenClose</Name>
+    <Display>Hide to System Tray when close</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Horizon_sl_</Name>
+    <Display>Горизонт:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Horizonal_sH</Name>
+    <Display>По горизонтали(&amp;H)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Hour</Name>
+    <Display>Час</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ID</Name>
+    <Display>ID</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Idle</Name>
+    <Display>Idle</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_IllegalReboot</Name>
+    <Display>Illegal Reboot</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Import</Name>
+    <Display>Импорт</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Import_Export</Name>
+    <Display>Импорт/Экспорт</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Import_Export_sI</Name>
+    <Display>Импорт-Экспорт(&amp;I)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Import_ExportAll</Name>
+    <Display>Импорт/Экспорт всё</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Import_ToSoftware_</Name>
+    <Display>Импорт (в прогармму)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ImportfromFile</Name>
+    <Display>Импорт из файла</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ImportfromRS232</Name>
+    <Display>Импорт из RS232</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Inbound</Name>
+    <Display>Inbound</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_IncludeSubFolders</Name>
+    <Display>Включая поддиректории</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_IndexBarcode</Name>
+    <Display>Индекс</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Initialize</Name>
+    <Display>Инициализация</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_InputPassword</Name>
+    <Display>Ввести пароль</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Invalidate</Name>
+    <Display>Отменить проверку</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_InventoryGroup</Name>
+    <Display>Инвентаризация группы</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_IPAddress</Name>
+    <Display>IP-адрес</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_IPAddress_Backup</Name>
+    <Display>IP-адрес(резервный)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Item_sl_Part1</Name>
+    <Display>Item: Part 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Item_sl_Part2</Name>
+    <Display>Item: Part 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Item_sl_Part3</Name>
+    <Display>Item: Part 3</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Item_sl_Part4</Name>
+    <Display>Item: Part 4</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ItemCode</Name>
+    <Display>Артикул</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ItemTotalRounding</Name>
+    <Display>Item Total Rounding</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_JPEGFile___jpg____jpg_AllFile_________</Name>
+    <Display>JPEG File (*.jpg)|*.jpg|All File (*.*)|*.*</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_KeepatZerofornewbyweightPLU</Name>
+    <Display>Keep at Zero for new by-weight PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_KeepZeroDataItem</Name>
+    <Display>Keep Zero Data Item</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_kg</Name>
+    <Display>kg</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LabelPrintmode_sl_printbarcode_whichscannedbycashregister</Name>
+    <Display>Label Print mode: print barcode, which scanned by cash register</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LableDesigner_sL</Name>
+    <Display>Релактор шаблонов(&amp;L)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LastRecord</Name>
+    <Display>В конец</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LastStocktaking</Name>
+    <Display>Последняя инвентаризация</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LastUpdate</Name>
+    <Display>Last Update</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Layout</Name>
+    <Display>Шаблон</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Length_sl_</Name>
+    <Display>Длина:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Like</Name>
+    <Display>Like</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LimitedRight</Name>
+    <Display>Limited Right</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LinkTest</Name>
+    <Display>Тест связи</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_List</Name>
+    <Display>список</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Load</Name>
+    <Display>Load</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LoadbackBill</Name>
+    <Display>загрузка законопроект</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Login</Name>
+    <Display>Логин</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Login_sL</Name>
+    <Display>Логин(&amp;L)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Logs</Name>
+    <Display>журналы</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Longpress__Price_</Name>
+    <Display>Long press 【@Price】</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Lost</Name>
+    <Display>потерянный</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LowerLimit_sl_</Name>
+    <Display>Нижний предел:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LowStock</Name>
+    <Display>Товар заканчивается</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MachineName</Name>
+    <Display>Имя весов</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MachineNo</Name>
+    <Display>Номер весов</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Management</Name>
+    <Display>Management</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Manual_sM</Name>
+    <Display>Вручную(&amp;M)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ManualDiscount</Name>
+    <Display>Ручная скидка</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ManualEditBarcode</Name>
+    <Display>Manual Edit Barcode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ManualOperation_NotRecord_</Name>
+    <Display>Manual Operation (Not Record)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ManualOperation_Record_</Name>
+    <Display>Manual Operation (Record)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MDBerrororversionnotcompatibility</Name>
+    <Display>MDB ошибка</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MeasureUnit_sl_</Name>
+    <Display>Ед. изм.:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MenuEnable</Name>
+    <Display>еню включить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MiddleCenter</Name>
+    <Display>Середина-Центр</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MiddleLeft</Name>
+    <Display>Середина-Слева</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MiddleRight</Name>
+    <Display>Середина-Справа</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MinimizetoSystemTray</Name>
+    <Display>Minimize to System Tray</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MinimizetoSystemTray_sM</Name>
+    <Display>Minimize to System Tray(&amp;M)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Minute</Name>
+    <Display>Минуты</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Mixallowedwithsale</Name>
+    <Display>Mix allowed with sale</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Modify</Name>
+    <Display>Сменить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Mon</Name>
+    <Display>Пн.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Money</Name>
+    <Display>деньги</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MoneyBalance</Name>
+    <Display>Money Balance</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MoneyStringFixed</Name>
+    <Display>false|</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Z_ConfigWizard_DeviceMenu</Name>
+    <Display>true</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MoneyUnit</Name>
+    <Display>Money Unit</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MultiStock</Name>
+    <Display>Multi-Stock Mode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MultiStockItem</Name>
+    <Display>Multi Stock Items</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Name</Name>
+    <Display>Имя</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Networkoperation</Name>
+    <Display>работа в сети</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NetworkStatus</Name>
+    <Display>Статус сети</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Newinputbuyback</Name>
+    <Display>New input buy back</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NewMAC</Name>
+    <Display>новое MAC</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NewStock</Name>
+    <Display>New Stock</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NewStockItem</Name>
+    <Display>новое Инвентаризация записи</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NewTable</Name>
+    <Display>Новая таблица</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Next</Name>
+    <Display>Next</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NextCloneTo</Name>
+    <Display>Next(Clone to {0})</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NextRecord</Name>
+    <Display>След.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_No</Name>
+    <Display>Нет</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Non_standard</Name>
+    <Display>Non-standard</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NoPLUInfoDisplay</Name>
+    <Display>Display of No PLU Menu</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NoPole</Name>
+    <Display>No Pole</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NoRight</Name>
+    <Display>No Right</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NormalStartup</Name>
+    <Display>Normal Startup</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NoSale</Name>
+    <Display>не оставляйте</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Not</Name>
+    <Display>Нет</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NoZeroReturn</Name>
+    <Display>No Zero-Return</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Number</Name>
+    <Display>Номер</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ObtainanIPaddressautomatically</Name>
+    <Display>Obtain an IP address automatically</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Offline</Name>
+    <Display>Не в сети</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OK</Name>
+    <Display>OK</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Oneitembillonly_Noaccumulateallowed_</Name>
+    <Display>One item bill only ( No accumulate allowed )</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Online</Name>
+    <Display>онлайн</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OnlyInIdle</Name>
+    <Display>Только в режиме холостого хода</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Onlyhangupbillcanbeload_notimeslimit</Name>
+    <Display>Only hangup bill can be load, no times limit</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Onlyhangupbillcanbeloadonce</Name>
+    <Display>Only hangup bill can be load once</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OpenGuider</Name>
+    <Display>Open [Guider]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OpenMainPanel</Name>
+    <Display>Open main panel</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OperationMode</Name>
+    <Display>Operation Mode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OperationSuccess</Name>
+    <Display>Успешно</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Order</Name>
+    <Display>заказ</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OriginalSize</Name>
+    <Display>Original Size</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Other</Name>
+    <Display>Other</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ServiceFee</Name>
+    <Display>Service Fee</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DisRound</Name>
+    <Display>Discount and Rounding</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Payment1</Name>
+    <Display>Payment 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Payment2</Name>
+    <Display>Payment 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Payment3</Name>
+    <Display>Payment 3</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CardPay</Name>
+    <Display>Card Payment</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CardPay_9999995_</Name>
+    <Display>Card Payment(9999995)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OtherPay1_9999994_</Name>
+    <Display>{0}(9999994)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OtherPay2_9999993_</Name>
+    <Display>{0}(9999993)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OtherPay3_9999992_</Name>
+    <Display>{0}(9999992)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OtherTransactions</Name>
+    <Display>Прочие операции</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Outbound</Name>
+    <Display>Outbound</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Overflow_sl_</Name>
+    <Display>Перполн.:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Package</Name>
+    <Display>Упаковка</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PackageDays</Name>
+    <Display>Дата упаковки</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PackagePLU</Name>
+    <Display>Package PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PackagePLUAndPiecesPLUMustBeByCountPLU</Name>
+    <Display>Package PLU and Pieces PLU must be By-Count PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MaterialPLUMustBeByWeightPLU</Name>
+    <Display>Material PLU must be By-Weight PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PackagePLUExist</Name>
+    <Display>Package PLU Exist</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ProductMaterialExist</Name>
+    <Display>Product/Material Exist</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PackagePLUMustDifferToPiecesPLU</Name>
+    <Display>Package PLU must differ to Pieces PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ProductPLUMustDifferToMaterialPLU</Name>
+    <Display>Product PLU must differ to Material PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PackageTime</Name>
+    <Display>Время упаковки</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Page</Name>
+    <Display>Стр.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Parameter_sP</Name>
+    <Display>Параметры(&amp;P)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ParseError</Name>
+    <Display>Разбираем ошибки</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Password</Name>
+    <Display>Пароль</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PasswordError</Name>
+    <Display>Ошибка пароля</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Path</Name>
+    <Display>Путь</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Payments</Name>
+    <Display>Payments</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SaveAsWeight</Name>
+    <Display>Save as weight</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_pcs</Name>
+    <Display>pcs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Picture</Name>
+    <Display>Картинка</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PictureofConfigWizard</Name>
+    <Display>Picture of Config Wizard</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PiecesInPackageMaterialInProduct</Name>
+    <Display>Pieces in Package/Material in Product</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PiecesInPackage</Name>
+    <Display>Pieces in Package</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PiecesPLU</Name>
+    <Display>Pieces PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MaterialInProduct</Name>
+    <Display>Material in Product</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MaterialPLU</Name>
+    <Display>Material PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ProductPLU</Name>
+    <Display>Product PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PlainPapper</Name>
+    <Display>Plain Papper</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Pleaseclonefromtemplate_onlyID_10_29isallowed</Name>
+    <Display>Please clone from template, only ID=10~29 is allowed</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PleaseInput</Name>
+    <Display>Введите</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLU</Name>
+    <Display>PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLU_sP</Name>
+    <Display>PLU(&amp;P)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUInfo</Name>
+    <Display>PLU Info</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUInfoDisplay</Name>
+    <Display>Display of PLU Menu</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUKey</Name>
+    <Display>PLU кнопку</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUName</Name>
+    <Display>PLU название</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUNo</Name>
+    <Display>PLU номер</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUNumber</Name>
+    <Display>PLU Number</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUQuit</Name>
+    <Display>PLU Quit</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Points</Name>
+    <Display>пунктов</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PortNumber</Name>
+    <Display>Порт №</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Prefix</Name>
+    <Display>Prefix</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Pre-print</Name>
+    <Display>Pre-print</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Press__Price_</Name>
+    <Display>Press 【@Price】</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Press__Price__longforName</Name>
+    <Display>Press【@Price】, long for Name</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Previous</Name>
+    <Display>Previous</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PreviousRecord</Name>
+    <Display>Пред.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Price</Name>
+    <Display>цена</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PriceAndUnit</Name>
+    <Display>Price and Unit</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PriceChangeHigh_pct_</Name>
+    <Display>Price Change High(%)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PriceChangeLow_pct_</Name>
+    <Display>Price Change Low(%)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PriceF_Prog</Name>
+    <Display>Price F-Prog</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PricePrintingScale</Name>
+    <Display>Price Printing Scale</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Priceswith</Name>
+    <Display>Price swith allowed</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrimaryID</Name>
+    <Display>Основной код</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Print</Name>
+    <Display>Печать</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Print_sl_</Name>
+    <Display>Печать:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintFormat</Name>
+    <Display>Шаблоны</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintFormat_sF</Name>
+    <Display>Шаблоны(&amp;F)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintFormatAndBarcode</Name>
+    <Display>Print Format and Barcode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintFormatOfItemLabel</Name>
+    <Display>Print Format of Item Label</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintFormatOfReceipt</Name>
+    <Display>Print Format of Receipt</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintFormatOfSumLabel</Name>
+    <Display>Print Format of Sum Label</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintInfo</Name>
+    <Display>Этикетки</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Printoncepress_Confirm_</Name>
+    <Display>Print once press [Confirm]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintPackageDate</Name>
+    <Display>Статус даты упак.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintPackageTime</Name>
+    <Display>Статус времени упак.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintSaleDate</Name>
+    <Display>Статус годности (дни)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintSaleTime</Name>
+    <Display>Статус годности (час)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintShelfDate</Name>
+    <Display>Статус размещения</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Printunitwithmoney</Name>
+    <Display>Print unit with money</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Printunitwithunitprice</Name>
+    <Display>Print unit with unit price</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Printunitwithweight_pcs</Name>
+    <Display>Print unit with weight/pcs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Prog</Name>
+    <Display>Prog</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PromptSave</Name>
+    <Display>Сохр.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PromptSaveWhenExit_sS</Name>
+    <Display>Сохр. при выходе(&amp;S)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Protectdata</Name>
+    <Display>Защит. Данные</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Query</Name>
+    <Display>Очередь</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_QuickChangeofDefaultUnitPrice_PriceF_Prog</Name>
+    <Display>Quick Change of Default Unit Price (Price F-Prog)  Note:【-@】is same as【@Price】</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_QuickSet</Name>
+    <Display>Quick Set</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_QuickSet_sQ</Name>
+    <Display>Quick Set(&amp;Q)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Ready</Name>
+    <Display>Готово</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Realtimesynchronization</Name>
+    <Display>синхронизация в реальном времени</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RecordofUnconfirmedData</Name>
+    <Display>Record of Unconfirmed Data</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RecordPriced_WeightedOperation</Name>
+    <Display>Record Priced/Weighted Operation</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RecordPricedOperation</Name>
+    <Display>Record Priced Operation</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Recover</Name>
+    <Display>Восстановить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Recycled</Name>
+    <Display>Recycled</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Refresh</Name>
+    <Display>обновление</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RelatedFID</Name>
+    <Display>Связанные FID</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RemoveZeroDataItem</Name>
+    <Display>Remove Zero Data Item</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Rename</Name>
+    <Display>Переименовать</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Repeat</Name>
+    <Display>Повтор</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RepeatPassword</Name>
+    <Display>Повтор пароля</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Report</Name>
+    <Display>Отчет</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Report_sR</Name>
+    <Display>Отчет(&amp;R)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Re-print</Name>
+    <Display>Re-print</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ResetConfigWizard</Name>
+    <Display>Reset Config Wizard</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ResetReport</Name>
+    <Display>Reset Report</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ResetReport_Warnning</Name>
+    <Display>Do you want to Reset Report? All logs and stocks will clear.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RestorefromTMSFile</Name>
+    <Display>Восстановить из TMS</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RestoreMAC</Name>
+    <Display>восстановление MAC</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RestoreReport</Name>
+    <Display>Restore Report</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RestoreReport_Warnning</Name>
+    <Display>Do you want to Restore Report? All current logs and stocks will clear.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Re-Upload</Name>
+    <Display>Считать заново</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RightFB_sl_</Name>
+    <Display>Right FB:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RightTable</Name>
+    <Display>Right Table</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Rotate180_</Name>
+    <Display>Rotate 180°</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RunCustomFileInEthernet</Name>
+    <Display>Run Custom File in Ethernet</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RunExcelCSVFileInEthernet</Name>
+    <Display>Run Excel/CSV File in Ethernet</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SafetyStock</Name>
+    <Display>Страховой запас</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sale</Name>
+    <Display>продажа</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SaleDays</Name>
+    <Display>Употребить до (день)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SaleOperation</Name>
+    <Display>Sale Operation</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Salesman</Name>
+    <Display>Оператор</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Salesman_sS</Name>
+    <Display>Оператор(&amp;S)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SalesmanNo</Name>
+    <Display>Оператор No.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SaleTime</Name>
+    <Display>Употребить до (час)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SameasIdle</Name>
+    <Display>Same as Idle</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sat</Name>
+    <Display>Сб.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Save</Name>
+    <Display>Сохранить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SavealltoExcel</Name>
+    <Display>Сохранить все в Excel</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SavetoExcel</Name>
+    <Display>Сохранить в Excel</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ScanBarcodePrintedbyScales</Name>
+    <Display>Need scan barcode printed by scales</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Second</Name>
+    <Display>Второй</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Select</Name>
+    <Display>Выбрать</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectAll</Name>
+    <Display>Выбрать все</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectAllDevices</Name>
+    <Display>Выбрать все устройство</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectDevice</Name>
+    <Display>Select Device</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectFile</Name>
+    <Display>Select File</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectFolder</Name>
+    <Display>Импорт из папки</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectPackagePLUAndPiecesPLU</Name>
+    <Display>Select Package PLU and Pieces PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectProductPLUAndMaterialPLU</Name>
+    <Display>Select Product PLU and Material PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectStockTable</Name>
+    <Display>выбиратьакции</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Self_adapting</Name>
+    <Display>Self-adapting</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sendall_VerySlow</Name>
+    <Display>Отправить все</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SetAsStartup</Name>
+    <Display>Set as Startup</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SetIP</Name>
+    <Display>Установить IP</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ShelfDays</Name>
+    <Display>Дата размещения</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Shift_sl_</Name>
+    <Display>Расшир.:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ShopName</Name>
+    <Display>Название магазина</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Shortcutkey</Name>
+    <Display>Раскладки</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ShortcutKey_sK</Name>
+    <Display>Раскладки(&amp;K)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Show</Name>
+    <Display>Показать</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ShowTips</Name>
+    <Display>Show tips</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ShowTipsOnSystemTrayIcon</Name>
+    <Display>Show tips on system tray icon</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Shrink</Name>
+    <Display>Shrink</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SID</Name>
+    <Display>SID</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Snap_sl_</Name>
+    <Display>Выравнивание:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SnaptoGrid</Name>
+    <Display>По сетке</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SomefunctionsofthisConfigWizardneeddeviceversionafterV2_49A</Name>
+    <Display>Some functions of this "Config Wizard" need device version after V2.49A</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SomeSpecialBarcode</Name>
+    <Display>Some Special Barcode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sort</Name>
+    <Display>Сорт</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Source</Name>
+    <Display>Source</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Source_sl_</Name>
+    <Display>Источник:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SpecialMode</Name>
+    <Display>Специальный режим</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SpecifyLoginAccount</Name>
+    <Display>Specify Login Account</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SpecifyStock</Name>
+    <Display>Укажите инвентаризации</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Spoilage</Name>
+    <Display>порча</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SSPValue1</Name>
+    <Display>Коэффициент 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SSPValue2</Name>
+    <Display>Коэффициент 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SSPValue3</Name>
+    <Display>Коэффициент 3</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SSPValue4</Name>
+    <Display>Коэффициент 4</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Standard</Name>
+    <Display>Standard</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Start</Name>
+    <Display>начало</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_StartupConfig</Name>
+    <Display>Startup Config</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Stock</Name>
+    <Display>акции</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_StockTable</Name>
+    <Display>акции</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_StockTableNumber</Name>
+    <Display>номер акции</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Stocktaking</Name>
+    <Display>Stocktaking</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_StoreName</Name>
+    <Display>Store Name</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_StorePayments_9999991_</Name>
+    <Display>Store Payments (9999991)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SubID</Name>
+    <Display>Под ID</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Success</Name>
+    <Display>Успешно</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Suffix</Name>
+    <Display>Suffix</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sum_sl_Part1and2</Name>
+    <Display>Sum: Part 1 and 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sum_sl_Part3or4</Name>
+    <Display>Sum: Part 3 or 4</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SumFlag</Name>
+    <Display>Sum Flag</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sun</Name>
+    <Display>Вс.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SuperAdmin</Name>
+    <Display>Супер-Админ</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SupportbydeviceafterV238A</Name>
+    <Display>Поддержка после V2.38A</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SupportbydeviceafterV238B</Name>
+    <Display>Поддержка после V2.38B</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Switchto</Name>
+    <Display>Перекл.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SystemDefault</Name>
+    <Display>системы по умолчанию</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SystemTrayIcon</Name>
+    <Display>System tray icon</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Table</Name>
+    <Display>Таблицы</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Tableattachoperation</Name>
+    <Display>Таблица операция присоединения</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TableName</Name>
+    <Display>Имя таблицы</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Tare</Name>
+    <Display>Тара</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Task</Name>
+    <Display>Задание</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Tax</Name>
+    <Display>Налог</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TaxRate</Name>
+    <Display>Налог</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TaxType</Name>
+    <Display>Тип налога</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text1</Name>
+    <Display>Текст 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text2</Name>
+    <Display>Текст 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text3</Name>
+    <Display>Текст 3</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text4</Name>
+    <Display>Текст 4</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text5</Name>
+    <Display>Текст 5</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text6</Name>
+    <Display>Текст 6</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text7</Name>
+    <Display>Текст 7</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TextInfo</Name>
+    <Display>Текст</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Threshold_0_255</Name>
+    <Display>Threshold(0...255)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Thurs</Name>
+    <Display>Чт.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Time</Name>
+    <Display>Время</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TimeInfo</Name>
+    <Display>Сроки</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TimeSynchronization</Name>
+    <Display>Синхронизация времени</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TM_xAManagementProgram</Name>
+    <Display>CheckWay Scale</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TMSFile</Name>
+    <Display>Файл</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TMSFile___TMS____tms_AllFile_________</Name>
+    <Display>TMS File (*.TMS)|*.tms|All File (*.*)|*.*</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TMSFile_sF</Name>
+    <Display>Файл(&amp;F)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TMSFile_wInfo</Name>
+    <Display>TMS File: Export Config and data to TMS file, stored in a USB-Disk, which can be load by devices</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_To</Name>
+    <Display>До</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Today</Name>
+    <Display>Сегодня</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Tool_sT</Name>
+    <Display>Инструменты(&amp;T)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TopCenter</Name>
+    <Display>Сверху-Цент</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TopLeft</Name>
+    <Display>Сверху-Слева</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TopRight</Name>
+    <Display>Сверху-Справа</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Total</Name>
+    <Display>общий</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TotalPcs</Name>
+    <Display>Total Pcs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TotalPrice</Name>
+    <Display>Общая стоимость</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TotalPriceFromExcelColumn</Name>
+    <Display>Total price from EXCEL column</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TotalRadixPoint</Name>
+    <Display>Total Radix Point</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TotalWeight</Name>
+    <Display>Total Weight</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Transaction_sl_</Name>
+    <Display>Трудыы:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TrytoAddCheckDigit</Name>
+    <Display>Try to Add Check Digit</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TSale_CT</Name>
+    <Display>By-Count TSale</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TSale_WT</Name>
+    <Display>By-Weight TSale</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Tues</Name>
+    <Display>Вт.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Type</Name>
+    <Display>Тип</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TypeNo</Name>
+    <Display>тип Номер</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Unattached</Name>
+    <Display>Открепить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UndockEthernet</Name>
+    <Display>Undock [Ethernet]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UndockEthernet_wInfo</Name>
+    <Display>Undock [Ethernet]: Stop docking of [Ethernet] menu in backgroud</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UndockReport</Name>
+    <Display>Undock [Report]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UndockReport_wInfo</Name>
+    <Display>Undock [Report]: Stop docking of [Report] menu in backgroud</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Unit</Name>
+    <Display>Ценовая база</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Unit_sU</Name>
+    <Display>Ценовая база(&amp;U)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitAndDisplay</Name>
+    <Display>Unit and Display</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitName</Name>
+    <Display>База цены</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitNo</Name>
+    <Display>База Номер</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitPrice</Name>
+    <Display>Цена</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitPriceChange</Name>
+    <Display>Unit Price Change</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitPriceFromExcelColumn</Name>
+    <Display>Unit price from EXCEL column</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitPriceRadixPoint</Name>
+    <Display>Unit Price Radix Point</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitSetting</Name>
+    <Display>Unit Setting</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UpdateFilter</Name>
+    <Display>Обновить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UpdatePoints</Name>
+    <Display>обновления пунктов</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UpdateSoftware</Name>
+    <Display>Update Software</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UpdatingDatabase</Name>
+    <Display>Обновление БД</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Upgrade</Name>
+    <Display>модернизировать</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Upload</Name>
+    <Display>Считать</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Upload_ToSoftware_</Name>
+    <Display>Считать</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UploadAll</Name>
+    <Display>Считать все</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UploadData</Name>
+    <Display>Считать данные</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UploadDatabase</Name>
+    <Display>Считать БД</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UploadReport</Name>
+    <Display>Считать отчет</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UpperLimit_sl_</Name>
+    <Display>Верхний предел:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UppertwoarelowerprioritythenSpec110_112</Name>
+    <Display>Upper two are lower priority then Spec110-112.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UPrice</Name>
+    <Display>Цена</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Uri</Name>
+    <Display>Uri</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Use1stItemInformation</Name>
+    <Display>Use 1st Item Information</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UsePLUCost</Name>
+    <Display>Use PLU cost</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UsePLUPrice</Name>
+    <Display>Use PLU price</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UsePLUUnit</Name>
+    <Display>Use PLU unit</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_User</Name>
+    <Display>пользователь</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UserName</Name>
+    <Display>Пользователь</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UserPassword</Name>
+    <Display>Пароль пользов.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UsethefollowingIPaddress</Name>
+    <Display>Use the following IP address</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UseValue0</Name>
+    <Display>Use value "0"</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Usingupdatesoftwaredatabase</Name>
+    <Display>Using and update software database</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Validate</Name>
+    <Display>Проверить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Value</Name>
+    <Display>Значение</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ValueField</Name>
+    <Display>значением интервала</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Version</Name>
+    <Display>Версия</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Vertical_sl_</Name>
+    <Display>Вертикаль:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Vertical_sV</Name>
+    <Display>По вертикали(&amp;V)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ViewOnly</Name>
+    <Display>View Only</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_VIP</Name>
+    <Display>членство</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_VIP_sV</Name>
+    <Display>членство(&amp;V)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_WaitingDeviceUpdate</Name>
+    <Display>Waiting Device Update</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Wed</Name>
+    <Display>Ср.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Weight</Name>
+    <Display>Weight</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Weight_Pcs</Name>
+    <Display>Weight/Pcs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_WhatToDo</Name>
+    <Display>What to do?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Width_sl_</Name>
+    <Display>Ширина:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Windows_sW</Name>
+    <Display>Окно(&amp;W)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_XxxDigitsYyy</Name>
+    <Display>{0}-Digit {1}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Yes</Name>
+    <Display>Да</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ZeroReturnfornewbyweightPLU</Name>
+    <Display>Zero-Return for new by-weight PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ZeroReturnForWeightSale</Name>
+    <Display>Zero-Return For Weight Sale</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ZeroReturnForWeightSale_Value</Name>
+    <Display>1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ZeroReturnifWeightChanged</Name>
+    <Display>Zero-Return if Weight Changed</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Zoom</Name>
+    <Display>Zoom</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUFunctionEnable</Name>
+    <Display>функция позволит PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlphaSearch</Name>
+    <Display>альфа - поиск</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MeasureWord</Name>
+    <Display>счётное слово</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PercentTare</Name>
+    <Display>% тары</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FixedWeight</Name>
+    <Display>фиксированного веса</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill1</Name>
+    <Display>Этикетка 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill2</Name>
+    <Display>билл 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UselessSSP</Name>
+    <Display>бесполезно SSP</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BarcodeFlag</Name>
+    <Display>Флаг ШК</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AllUnitMeasure</Name>
+    <Display>Weight|pcs|kg|g|ton|lb|500g|100g|1/4lb</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Common</Name>
+    <Display>общий</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Display</Name>
+    <Display>дисплей</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_EnableDisable</Name>
+    <Display>Включить выключить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUImport</Name>
+    <Display>PLU импорт</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_KeepSegement</Name>
+    <Display>Держите сегмент</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Function</Name>
+    <Display>функция</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlphaAutoGenerate</Name>
+    <Display>автоматический генератор Альфа</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UsedForXandY</Name>
+    <Display>Используется для {0} и {1}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BlockQuantity</Name>
+    <Display>количество блоков</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlignUp</Name>
+    <Display>Совместите вверх</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BlockOccupied____</Name>
+    <Display>Блок занимал, по-прежнему обновлять и удалять из них занятые?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OccupiedBlocks</Name>
+    <Display>Занятый блок</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeleteOldLogs</Name>
+    <Display>Удалить старые журналы</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Days</Name>
+    <Display>дней</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MoveUp</Name>
+    <Display>Переместить вверх</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MoveDown</Name>
+    <Display>Переместить вниз</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SummaryInEAN</Name>
+    <Display>Резюме(EAN13/128): информация только сумма</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DetailsInQR</Name>
+    <Display>Подробности(QR): каждый элемент в одной строке</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ItemBarcodeAlsoPrintInQR</Name>
+    <Display>Одиночный деталь транзакции штрих-код также распечатать в QR</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LastEnterDoNotIncluded</Name>
+    <Display>Последний "Enter" не выводить</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SumBarcodeType</Name>
+    <Display>Сумма штрих-кода</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MonitorDelay</Name>
+    <Display>задержка монитора</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_QRVersion</Name>
+    <Display>QR Version</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUIE_Display</Name>
+    <Display>Number(ID)|Item Code|Index Barcode|Unit number of PLU. 1=weight, 2=pcs, 3=kg, 6=lb|Price|Cost|Tare|Label in bill 1|Barcode in bill 1|PLU Flag in Barcode in bill 1|Label in bill 2|Barcode in bill 2|PLU Flag in Barcode in bill 2|Class|PLU name|Text 1|Text 2|Text 3|Text 4|Text 5|Text 6|Text 7|Print Sale Data state|Print Sale Time state|Print Pack Data state|Print Pack Time state|Print Shelf Data state: 0 for not print, 1 for print|Print Sale Data data|Print Sale Time data|Print Pack Data data|Print Pack Time data|Print Shelf Data data: number of shelf days|Lower of manual discount sort|Upper of manual discount sort|Lower of manual discount data|Upper of manual discount data|Auto Discount 1: Sort|Auto Discount 1: Weekdays|Auto Discount 1: Range Lower|Auto Discount 1: Range Upper|Auto Discount 1: Target Value|Auto Discount 2: Sort|Auto Discount 2: Weekdays|Auto Discount 2: Range Lower|Auto Discount 2: Range Upper|Auto Discount 2: Target Value|Auto Discount 3: Sort|Auto Discount 3: Weekdays|Auto Discount 3: Range Lower|Auto Discount 3: Range Upper|Auto Discount 3: Target Value|Auto Discount 4: Sort|Auto Discount 4: Weekdays|Auto Discount 4: Range Lower|Auto Discount 4: Range Upper|Auto Discount 4: Target Value|Tax sort|Tax rate|SspValue 1|SspValue 2|SspValue 3|SspValue 4|PLU Type: 0=Normal, 1=Tare only|PLU Flag|PLU Flag Value|Bitmap</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUIE_SpWords</Name>
+    <Display>TAB|&#x9;|SPACE| |','|,|':'|:|';'|;|'+'|+|'-'|-|'*'|*|'/'|/|'\'|\\|'('|(|')'|)|'['|[|']'|]|'{'|{|'}'|}|'#'|\x23|'##'|\x23\x23</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUIE_ReadMark</Name>
+    <Display>RowCount(0...n)|RowCount|RowNo(1...n)|RowNo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUIE_Code</Name>
+    <Display></Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ReadFrom</Name>
+    <Display>Read From</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Calculate</Name>
+    <Display>Calculate</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_WriteTo</Name>
+    <Display>Write To</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_KeepDataFromUpperLine</Name>
+    <Display>Keep Data From Upper Line</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_KeepDataFromLowerLine</Name>
+    <Display>Keep Data From Lower Line</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ReadUntil_e0</Name>
+    <Display>Read until {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ReadUntilSpecialCHAR</Name>
+    <Display>Read until Special CHAR:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Read</Name>
+    <Display>Read</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Read_0_bytes</Name>
+    <Display>Read {0} bytes</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ReadConst_e0</Name>
+    <Display>Read Const {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ReadMark_0</Name>
+    <Display>Read Mark {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BYTES</Name>
+    <Display>Bytes</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DropUntilNOTCHAR_0</Name>
+    <Display>Drop until NOT CHAR {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DoNothing</Name>
+    <Display>Do nothing</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Negative</Name>
+    <Display>Negative</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ConvertIntoDecimal_0</Name>
+    <Display>Convert into decimal {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CutdownStringInto_0</Name>
+    <Display>Cutdown string into {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Table_Default</Name>
+    <Display>Table: Default</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TableConvertTo_0</Name>
+    <Display>Table convert to {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SaveTo_0</Name>
+    <Display>Save To {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GoOnIfe_e0</Name>
+    <Display>Go on if = {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_JudgeMark_0</Name>
+    <Display>Judge Mark {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LoadFrom_0</Name>
+    <Display>Load From {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_WriteDirectly</Name>
+    <Display>Write Directly</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_WriteWith_e0</Name>
+    <Display>Write With {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_WriteWithSpecialCHAR</Name>
+    <Display>Write Wit Special CHAR:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Write</Name>
+    <Display>Write</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Write_0_bytes</Name>
+    <Display>Write {0} bytes</Display>
+  </Lang>
+
+</UIDataSet>
+<!--Russian-->

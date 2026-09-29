@@ -1,0 +1,9 @@
+<?xml version="1.0" standalone="yes"?>
+<UIDataSet>
+
+  <Lang>
+    <Name>pw_PLUIE_Value</Name>pw_PLUIE_Display
+    <Display>Number|ItemCode|Index|Unit|Price|Cost|Tare|B1_Print|B1_Bar|B1_BarFlag|B2_Print|B2_Bar|B2_BarFlag|Class|Name|Text1|Text2|Text3|Text4|Text5|Text6|Text7|PS_SaleDate|PS_SaleTime|PS_PackDate|PS_PackTime|PS_ShelfDate|PC_SaleDate|PC_SaleTime|PC_PackDate|PC_PackTime|PC_ShelfDate|DF_LowerSort|DF_UpperSort|DF_LowerNumber|DF_UpperNumber|DA1_Sort|DA1_Day|DA1_LowerLimit|DA1_UpperLimit|DA1_Number|DA2_Sort|DA2_Day|DA2_LowerLimit|DA2_UpperLimit|DA2_Number|DA3_Sort|DA3_Day|DA3_LowerLimit|DA3_UpperLimit|DA3_Number|DA4_Sort|DA4_Day|DA4_LowerLimit|DA4_UpperLimit|DA4_Number|TaxType|TaxRate|SspValue1|SspValue2|SspValue3|SspValue4|SType|Flag|Flag_Value|Bitmap</Display>
+  </Lang>
+
+</UIDataSet>

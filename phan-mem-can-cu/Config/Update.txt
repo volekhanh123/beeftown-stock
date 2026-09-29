@@ -1,0 +1,9 @@
+V2.41A
+1. Database automatically update between menus. No need close/open again.
+2. Download txt or excel to file automatically. Software can be icony.
+3. Scale identified by MAC
+4. Multi shortcut key config
+5. Edit of Print Format improved. Multi-select allowed, select by mouse drag or SHIFT or CTRL. multi-select items can be move together or move by arrow key
+6. STOCK FUNCTION beta version.
+7. Seperate Clear and Cancel in PLU-Select of face menu, double click to select PLU.
+8. Menu Parameter added.

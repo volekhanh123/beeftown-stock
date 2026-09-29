@@ -1,0 +1,3190 @@
+﻿<?xml version="1.0"  encoding="utf-8" standalone="yes"?>
+<UIDataSet>
+  <!--Spanish-->
+  <Lang>
+    <Name>pw_AllPLU</Name>
+    <Display>Todos PLUs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_2008_s</Name>
+    <Display>2008's</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_2012_s</Name>
+    <Display>2012's</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_2011_s</Name>
+    <Display>2011's</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_2015_sA</Name>
+    <Display>2015's</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_2015_sC</Name>
+    <Display>2015's</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_2017_sA</Name>
+    <Display>2017's</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_30mm*40mm</Name>
+    <Display>30mm * 40mm</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_40mm*30mm</Name>
+    <Display>40mm * 30mm</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_40mmwidth</Name>
+    <Display>Ancho de 40mm</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_4Windows</Name>
+    <Display>4 Pantallas</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_57mmwidth</Name>
+    <Display>Ancho de 57mm</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_5Windows</Name>
+    <Display>5 Pantallas</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_60mm*30mm</Name>
+    <Display>60mm * 30mm</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_60mm*40mm</Name>
+    <Display>60mm * 40mm</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_60mmwidth</Name>
+    <Display>Ancho 60mm</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_A1Indicator</Name>
+    <Display>A1 Indicator</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_A2Indicator</Name>
+    <Display>A2 Indicator</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_About</Name>
+    <Display>Acerca de</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_About_sA</Name>
+    <Display>Acerca de(&amp;A)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Account</Name>
+    <Display>Cuentas</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Accumulated</Name>
+    <Display>Acumulado</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Accumulatedbufferclear_Press_Amend__</Name>
+    <Display>Acumulación em el buffer ( Press [Cambio])</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AccumulatedInfo_0</Name>
+    <Display>Información acumulada(Pantallas Total Pcs)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AccumulatedInfo_2</Name>
+    <Display>Información acumulada(pantallas tiempo acumulativo)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ActiveDay_sl_</Name>
+    <Display>Día ativo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Add_0__</Name>
+    <Display>Agregar {0}?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AddAll</Name>
+    <Display>Agregar Todo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AddDevice</Name>
+    <Display>Agregar Dispositivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AddNew</Name>
+    <Display>Agregar Nuevo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Address</Name>
+    <Display>Dirección</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Admin</Name>
+    <Display>Administrador</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AdmininCharge_Theseoperationneed_Admin_Password_</Name>
+    <Display>Administrador Responsable(Esta operación necesita introducir la contrasenã)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AdminPassword</Name>
+    <Display>Contraseña Administrador</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AdvancedSetting</Name>
+    <Display>Configuraciones Avanzadas</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AdvancedSetting_sT</Name>
+    <Display>Configuraciones Avanzadas(&amp;T)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AdvancedSetting_wInfo</Name>
+    <Display>Configuraciones Avanzadas: Alguns definiciones sobre el modo de trabaajo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_All</Name>
+    <Display>Todos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Allbillcanbeload</Name>
+    <Display>Toda la informaciones se puede cargar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Allowed</Name>
+    <Display>Permitido</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlwaysDockEthernet</Name>
+    <Display>Siempre por {Ethernet}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlwaysDockReport</Name>
+    <Display>Siempre por {Informe}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlwaysShowSystemTrayIcon</Name>
+    <Display>Siempre mostrar icono del sistema</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlwaysZeroReturn</Name>
+    <Display>Siempre volver a cero</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Amend</Name>
+    <Display>Investigar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Amount</Name>
+    <Display>Cantidad</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AmountBalance</Name>
+    <Display>Cantidad de balanzas</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AmountInStock</Name>
+    <Display>Cantidad de stock</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Amountswith</Name>
+    <Display>Cantidad de puertas</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Analysis</Name>
+    <Display>Análisis</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AndOr</Name>
+    <Display>Y/O</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Angle_sl_</Name>
+    <Display>Angulo:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Areyousuretoclearallreports_</Name>
+    <Display>¿Esta seguro de borrar todos los reportes?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Arrange_sA</Name>
+    <Display>Organizar(&amp;A)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AssistID</Name>
+    <Display>Ayudar ID</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Attachautomatically</Name>
+    <Display>Adjuntar automáticamente</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Attachnew</Name>
+    <Display>Adjutar nuevo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Attachoccupied</Name>
+    <Display>Adjunto ocupado</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Attachold</Name>
+    <Display>Antiguo anexo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AttachTable</Name>
+    <Display>Adjuntar tabla</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoAllocation</Name>
+    <Display>Asignarción Automatica</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoDiscount</Name>
+    <Display>Descuento atumatico</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoDiscount1</Name>
+    <Display>Descuento automático 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoDiscount2</Name>
+    <Display>Descuento automático 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoDiscount3</Name>
+    <Display>Descuento automático 3</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoDiscount4</Name>
+    <Display>Descuento automático 4</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Automaticallysaveaftertransaction</Name>
+    <Display>Guardar automáticamente depués de la operación</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Autoprint</Name>
+    <Display>Impresión automática</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Autoprint_can_tcancel</Name>
+    <Display>Impresión autom´tica, no pued cancelar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Autoprintingafterzero_return</Name>
+    <Display>Impresión automática después del retorno a cero</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoRunning</Name>
+    <Display>Modo rápido</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AutoTask</Name>
+    <Display>Tarea automática</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_B1_sl_BarcodeFlag</Name>
+    <Display>B1: Bandera de Codigo de Barras</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_B1_sl_BarcodeFormat</Name>
+    <Display>B1: Formato de Codigo de Barras</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_B1_sl_PrintFormat</Name>
+    <Display>B1: Formato de Impresión</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_B2_sl_BarcodeFlag</Name>
+    <Display>B2: Bandera de Codigo de Barras</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_B2_sl_BarcodeFormat</Name>
+    <Display>B2: Formato de Codigo de Barras</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_B2_sl_PrintFormat</Name>
+    <Display>B2: Formato de Impresión</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Backupbeforerestore_Choose_Yes_tobackupbeforeclearingallreports_Choose_No_toclearallreportswithoutbackup_Choose_Cancel_toreservecurrentreports_</Name>
+    <Display>¿Respaldar antes de reiniciar? Seleccione "Si" Para Respaldar antes de borrar reportes. Seleccione "No" Para borrar reortes s/respaldo. Seleccione "Cancel" para conservar reportes actuales.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BackupReport</Name>
+    <Display>Backup del informe</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BackuptoTMSFile</Name>
+    <Display>Backup para archivos TMS</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Barcode</Name>
+    <Display>Códig de barras</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Barcode_sB</Name>
+    <Display>Editar código de barras(&amp;B)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BarcodeforCashRegister</Name>
+    <Display>Código de barras para caja registradora</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BarCodePrintingScale</Name>
+    <Display>Código de barras imprimiendo en la balanza</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BarcodeType</Name>
+    <Display>Tipo de código de barras</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BaseUnit</Name>
+    <Display>Unidad</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BasicInfo</Name>
+    <Display>Información Basica</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill1_cl_BarcodeFlag_cl_</Name>
+    <Display>Bill 1: Bandera del Codigo de Barras:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill1_cl_BarcodeFormat_cl_</Name>
+    <Display>Bill 1: Formato de Codigo de Barras:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill1_cl_PrintFormat_cl_</Name>
+    <Display>Bill 1: Formato de Impresión:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill2_cl_BarcodeFlag_cl_</Name>
+    <Display>Bill 2: Bandera de Codigo de Basrras:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill2_cl_BarcodeFormat_cl_</Name>
+    <Display>Bill 2: Formato de Codigo de Barras::</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill2_cl_PrintFormat_cl_</Name>
+    <Display>Bill 2: Formato de Impresión:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BINFile___bin____bin_AllFile_________</Name>
+    <Display>Archivo bin(*.bin;*.1v3)|*.bin;*.1v3|All File (*.*)|*.*</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bitmap</Name>
+    <Display>Imágenes</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BitmapBuilder_sB</Name>
+    <Display>Subir Imagen(&amp;B)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BootFile</Name>
+    <Display>Archivo de Arranque</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BottomCenter</Name>
+    <Display>Inferior Centro</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BottomLeft</Name>
+    <Display>Inferior Izquierda</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BottomRight</Name>
+    <Display>Inferior Derecha</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BuyBack_OT</Name>
+    <Display>Recompra(Otras transacciones)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Cancel</Name>
+    <Display>Cancelar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Cancelled</Name>
+    <Display>Cancelado</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Cascade_sC</Name>
+    <Display>Cascada(&amp;C)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Cash</Name>
+    <Display>Dinero</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CashRegister</Name>
+    <Display>Registrar dinero</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Cashregistermode_sl_printreceipt_itemaccumulates</Name>
+    <Display>Modo de registo de dinero: después impresión, artículo acumula</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CashRegisterScale</Name>
+    <Display>Balanza de caja registradora</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Changemachinenumber</Name>
+    <Display>Cambiar el número</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ChangePassword</Name>
+    <Display>Cambiar la contraseña</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ChangePassword_sP</Name>
+    <Display>Cambiar senha(&amp;P</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Character_0_</Name>
+    <Display>Carácter "0"</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Checkout</Name>
+    <Display>Verificador</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CheckSum</Name>
+    <Display>Checksum</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Choose</Name>
+    <Display>Elegir</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_cInfo_MultiDevice</Name>
+    <Display>{0} devices</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_cInfo_SingleDevice</Name>
+    <Display>MAC={0}, IP={1}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_cInfo_SingleDevice2</Name>
+    <Display>MAC={0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Clear</Name>
+    <Display>Borrar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Clear_0__</Name>
+    <Display>Borrar {0}?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearAll</Name>
+    <Display>Borrar todo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearAllFirst</Name>
+    <Display>Limpiar todo primero</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearAll_NotRecord_</Name>
+    <Display>Limpiar todo (sin guardar)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearAll_Record_</Name>
+    <Display>Limpiar todo  (guardar)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearData</Name>
+    <Display>Limpiar Datos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearList</Name>
+    <Display>Borrar lista</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Clearolddata</Name>
+    <Display>datos antiguos claras</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClearPLUbeforeoperation</Name>
+    <Display>Borrar PLU antes de la operación</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Clicktoaddnew</Name>
+    <Display>Haga clic para add nuevo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Clicktocloneone</Name>
+    <Display>Haga clic para clonar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Clone</Name>
+    <Display>Clonar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CloseAll_sL</Name>
+    <Display>Cerrar Todo(&amp;L)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CloseDevice</Name>
+    <Display>Cerrar Dispositivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CloseTable</Name>
+    <Display>Cerrar Tabla</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Code</Name>
+    <Display>código</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Collision</Name>
+    <Display>Colisión</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Config</Name>
+    <Display>Config</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ConfigWizard</Name>
+    <Display>Assistente de configuración</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ConfigWizard_sW</Name>
+    <Display>Assistente de configuración(&amp;W)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ConfigWizard_wInfo</Name>
+    <Display>Assistente de configuración: Abra el assistente de configuración, para editar parâmetros e datos de dispositivos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Constant</Name>
+    <Display>Constant</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Constant1_cl_</Name>
+    <Display>Prefijo 1:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Constant2_cl_</Name>
+    <Display>Prefijo 2:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ConstantText</Name>
+    <Display>Texto constante</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Cost</Name>
+    <Display>Costo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CostFromDevice_____</Name>
+    <Display>Utilice el costo del dispositivo(>=3.00A)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Count</Name>
+    <Display>Count</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CreatNewDatabase</Name>
+    <Display>Crear Nueva Base de Datos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Current</Name>
+    <Display>Corriente</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CurrentMonth</Name>
+    <Display>Mes Corriente</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CurrentQuarter</Name>
+    <Display>Cuarto Corriente</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CurrentWeek</Name>
+    <Display>Semana Corriente</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CurrentYear</Name>
+    <Display>Año Corriente</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Custom</Name>
+    <Display>Custom</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomDesigner_sC</Name>
+    <Display>Diseño Perzonalizado(&amp;C)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomFile</Name>
+    <Display>Otros tipos de archivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomFile_sC</Name>
+    <Display>Otros tipos de archivo(&amp;C)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomFile_wInfo</Name>
+    <Display>Custom File: Import PLU data from other format of .TXT file</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomIDmustbetween10_29</Name>
+    <Display>ID Debera entre {0} ~ {1}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomSize</Name>
+    <Display>Personaliza tamaño</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CustomText</Name>
+    <Display>Personalizar texto</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Data</Name>
+    <Display>Datos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Database</Name>
+    <Display>Base de Datos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Database_sD</Name>
+    <Display>Base de Datos(&amp;D)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Databaseisinuse_</Name>
+    <Display>Base de Datos en Uso</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DataFile</Name>
+    <Display>Empresal</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DateTime</Name>
+    <Display>Fecha y Hora</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Day_sl_</Name>
+    <Display>Día:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DecimalPointinBarcode</Name>
+    <Display>Punto decimal en código de barras</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Default</Name>
+    <Display>Defecto</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Defaultgateway_sl_</Name>
+    <Display>Default gateway:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DefaultValue</Name>
+    <Display>Valores predeterminados</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Delete</Name>
+    <Display>Borrar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Delete_0__</Name>
+    <Display>Borrar {0}?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeleteDevice</Name>
+    <Display>Borrar Dispositivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeleteFileafterReading</Name>
+    <Display>Eliminar archivos después de la lectura</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeletePernamently</Name>
+    <Display>Borrar Permanentemente</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AffiliatedDept</Name>
+    <Display>Afiliado Departamento</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Dept</Name>
+    <Display>Departamento</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Dept_sD</Name>
+    <Display>Departamento(&amp;D)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeptNo</Name>
+    <Display>Departamento No.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AffiliatedClass</Name>
+    <Display>Afiliado Clase</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Class</Name>
+    <Display>Clase</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Class_sC</Name>
+    <Display>Clases(&amp;C)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ClassNo</Name>
+    <Display>Clase No.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Description</Name>
+    <Display>Descripción</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Detachcurrent</Name>
+    <Display>Detach current</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Detail_sl_</Name>
+    <Display>Detalle:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DetailInfo</Name>
+    <Display>Información Detallada</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DettachTable</Name>
+    <Display>Dettach Table</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Device</Name>
+    <Display>Dispositivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Device_0_hasbeendisconnectedfromthenetwork_</Name>
+    <Display>Dispositivo {0} Sera desconectado de la RED.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeviceLogs</Name>
+    <Display>Device Logs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeviceName</Name>
+    <Display>Nombre del Dispositivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Devices</Name>
+    <Display>Dispositivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Deviceswithouttable</Name>
+    <Display>Devices without table</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Deviceswithtable</Name>
+    <Display>Devices with table</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Disable</Name>
+    <Display>Disable</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Discount_pct_</Name>
+    <Display>Descuento(%)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DiscountInfo</Name>
+    <Display>Información de Descuentos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DiscountUPrice_sl_</Name>
+    <Display>Descontar el Precio Unitario:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DisplayOf5thWindows</Name>
+    <Display>Display of 5th Windows</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Dither_0_7</Name>
+    <Display>Dither(0...7)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DockEthernet</Name>
+    <Display>Dock [Ethernet]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DockEthernet_wInfo</Name>
+    <Display>Dock [Ethernet]: Dock [Ethernet] menu in backgroud</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DockEthernetWhenStartup</Name>
+    <Display>Dock [Ethernet] when Startup</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DockReport</Name>
+    <Display>Dock [Report]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DockReport_wInfo</Name>
+    <Display>Dock [Report]: Dock [Report] menu in backgroud</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DockReportWhenStartup</Name>
+    <Display>Dock [Report] when Startup</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DoFilter</Name>
+    <Display>Filtrar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Don'taskmeagain</Name>
+    <Display>No Volver a Preguntar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DoubleSource</Name>
+    <Display>Double Source</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Download</Name>
+    <Display>Descargar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Download_CustomFile</Name>
+    <Display>Bajar: Otros tipos de archivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Download_ExcelCSVFile</Name>
+    <Display>Bajar: Archivo de Excel/CSV</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DownloadData</Name>
+    <Display>Bajar Información</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DownloadDatabase</Name>
+    <Display>Descargar Base de Datos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DownloadToDevice</Name>
+    <Display>Descargar Archivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Doyouwanttorestoreformlyunsaveddata_</Name>
+    <Display>¿Desea reinicar los datos no guardados?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Doyouwanttosavemodifieddata?</Name>
+    <Display>¿Desea grabar los datos modificados?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Drawer</Name>
+    <Display>cajón de dinero en efectivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Edit</Name>
+    <Display>Editar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_EditCloneTo</Name>
+    <Display>Edit(Clone to {0})</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_EditStock</Name>
+    <Display>Edit Stock</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Editworkingdataonly</Name>
+    <Display>Edit working data only</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Entrance_sl_Press_PLU_+_Amend__Switch_sl_Press_x_</Name>
+    <Display>Entrance: Press [Amend]+[PLU], Switch: Press [×]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Error_OperationFailed</Name>
+    <Display>Error, Operación Fallida</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Ethernet</Name>
+    <Display>Ethernet</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Ethernet_sN</Name>
+    <Display>Ethernet(&amp;N)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Excel_CSVFile___XLS___XLSX___CSV____xls___xlsx___csv</Name>
+    <Display>Excel,CSV File (*.XLS;*.XLSX;*.CSV)|*.xls;*.xlsx;*.csv|All File (*.*)|*.*</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelCSVExport</Name>
+    <Display>Excel/CSV Exportar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelCSVFile</Name>
+    <Display>Archivo de Excel/CSV</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelCSVFile_sE</Name>
+    <Display>Archivo de Excel/CSV(&amp;E)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelCSVFile_wInfo</Name>
+    <Display>Excel/CSV File: Import Excel/CSV data from EXCEL/CSV file</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelCSVImport</Name>
+    <Display>Excel/CSV Importar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelCSVImport_Export</Name>
+    <Display>Excel/CSV Importar/Exportar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelFile___XLS____xls</Name>
+    <Display>Excel File (*.XLS)|*.xls</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExcelFile___XLS____xls_CSVFile___CSV____csv</Name>
+    <Display>Excel File (*.XLS)|*.xls|CSV File (*.CSV)|*.csv</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExchangeTable</Name>
+    <Display>Cambio de Tabla</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Execute</Name>
+    <Display>Ejecutar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Existlogbuyback</Name>
+    <Display>Exist log buy back</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExistStock</Name>
+    <Display>Exist Stock</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExistTable</Name>
+    <Display>Abrir Tabla</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Exit</Name>
+    <Display>Salir</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Exit_sX</Name>
+    <Display>Salir(&amp;X)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Expand</Name>
+    <Display>Expand</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Export_TMSFile_</Name>
+    <Display>Exportar (TMS archivo)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Export_ToDevice_</Name>
+    <Display>Exportar al Dispositivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Export_ToExcel_CSV_</Name>
+    <Display>Exportar a Excel/CSV</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Export_ToFile_</Name>
+    <Display>Exportar a archivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Exportconfiganddatadirectly</Name>
+    <Display>Export config and data directly</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExporttoExcelFile</Name>
+    <Display>Exportar a archivo de Excel</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ExportToUSBDisk</Name>
+    <Display>Export to USB Disk</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Expression</Name>
+    <Display>Expresión</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Failed</Name>
+    <Display>Failed</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Failed_DataOverlap</Name>
+    <Display>Error: la superposición de datos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Failed_NoValidData</Name>
+    <Display>Error: No hay Datos válida</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FailedGettingintoCustomFileAuto_Mode</Name>
+    <Display>Failed Getting into Custom File Auto-Mode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FID</Name>
+    <Display>FID</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FieldName</Name>
+    <Display>Nombre del Camp;o</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_File_sF</Name>
+    <Display>Archivo(&amp;F)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FileFormat</Name>
+    <Display>Formato del Archivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FileName</Name>
+    <Display>Nombre del Archivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Filter</Name>
+    <Display>Filtrar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FilterTerm</Name>
+    <Display>Tipo de Filtrado</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FindDevice</Name>
+    <Display>Buscar Dispositivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Finish</Name>
+    <Display>Finish</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Firstconfigorchangeconfig</Name>
+    <Display>First config or change config</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FirstRecord</Name>
+    <Display>Primer Registro</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Flag</Name>
+    <Display>Flag</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Folder</Name>
+    <Display>Folder</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Font</Name>
+    <Display>Fuente</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Font_sl_</Name>
+    <Display>Fuente:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Font0</Name>
+    <Display>Font 0</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Font1</Name>
+    <Display>Font 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FontBuilder</Name>
+    <Display>Subir nuevas fuentes</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FontBuilder_sF</Name>
+    <Display>Subir nuevas fuentes(&amp;F)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Forbidden</Name>
+    <Display>Forbidden</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ForbiddenInside</Name>
+    <Display>Prohibido adentro</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ForbiddenOutside</Name>
+    <Display>Prohibido afuera</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Format</Name>
+    <Display>Format</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FProgofPrice</Name>
+    <Display>FProg of Price</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Fri</Name>
+    <Display>Viernes.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_From</Name>
+    <Display>De</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FromCOM</Name>
+    <Display>From COM</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FromExcelColumn</Name>
+    <Display>De la EXCEL columna</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FromFile</Name>
+    <Display>Desde Archivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FullRight</Name>
+    <Display>Full Right</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FunctionKey</Name>
+    <Display>Función del botón</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GapPaper</Name>
+    <Display>Gap Paper</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GapPaper_W_H</Name>
+    <Display>Gap Paper(W*H)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GeneralSetting</Name>
+    <Display>General Setting</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GlobalSpec</Name>
+    <Display>Especificaciones</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GlobalSpec_sS</Name>
+    <Display>Especificaciones(&amp;S)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GlobalText</Name>
+    <Display>Global del Texto</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GlobalText_sT</Name>
+    <Display>Global del Texto(&amp;T)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GrandTotal</Name>
+    <Display>Grand Total</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GrandTotalChange</Name>
+    <Display>Grand Total Change</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GrandTotalRounding</Name>
+    <Display>Grand Total Rounding</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GrayLevel</Name>
+    <Display>Gray Level</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GridElement</Name>
+    <Display>Grid Element</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Group</Name>
+    <Display>Grupo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GroupName</Name>
+    <Display>Nombre del Grupo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_HangupandLoadback_Press_Shift_and_Amend__</Name>
+    <Display>Hangup and Loadback ( Press [Shift]+[Amend] )</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_HangupBill</Name>
+    <Display>Colgar Factura</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Height_sl_</Name>
+    <Display>Alto:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Help_sH</Name>
+    <Display>Ayuda(&amp;H)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_HHMM</Name>
+    <Display>HHMM</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_HideToSystemTrayWhenClose</Name>
+    <Display>Hide to System Tray when close</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Horizon_sl_</Name>
+    <Display>Horizonte:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Horizonal_sH</Name>
+    <Display>Horizontal(&amp;H)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Hour</Name>
+    <Display>Hora</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ID</Name>
+    <Display>ID</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Idle</Name>
+    <Display>Idle</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_IllegalReboot</Name>
+    <Display>Illegal Reboot</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Import</Name>
+    <Display>Importar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Import_Export</Name>
+    <Display>Importar/Exportar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Import_Export_sI</Name>
+    <Display>Importar/Exportar(&amp;I)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Import_ExportAll</Name>
+    <Display>Importar/Exportar Todo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Import_ToSoftware_</Name>
+    <Display>Importar al Software</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ImportfromFile</Name>
+    <Display>Importar desde archivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ImportfromRS232</Name>
+    <Display>Importar de RS232</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Inbound</Name>
+    <Display>Inbound</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_IncludeSubFolders</Name>
+    <Display>Incluir Sub carpetas</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_IndexBarcode</Name>
+    <Display>Index</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Initialize</Name>
+    <Display>Inicializar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_InputPassword</Name>
+    <Display>Ingresar Password</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Invalidate</Name>
+    <Display>Invalidar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_InventoryGroup</Name>
+    <Display>Grupo de Inventario</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_IPAddress</Name>
+    <Display>Dirección IP</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_IPAddress_Backup</Name>
+    <Display>Dirección IP(Apoyo)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Item_sl_Part1</Name>
+    <Display>Item: Part 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Item_sl_Part2</Name>
+    <Display>Item: Part 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Item_sl_Part3</Name>
+    <Display>Item: Part 3</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Item_sl_Part4</Name>
+    <Display>Item: Part 4</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ItemCode</Name>
+    <Display>Codigo de Producto (SKU)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ItemTotalRounding</Name>
+    <Display>Item Total Rounding</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_JPEGFile___jpg____jpg_AllFile_________</Name>
+    <Display>JPEG File (*.jpg)|*.jpg|All File (*.*)|*.*</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_KeepatZerofornewbyweightPLU</Name>
+    <Display>Mantener cero en PLU-Pesado</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_KeepZeroDataItem</Name>
+    <Display>Keep Zero Data Item</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_kg</Name>
+    <Display>kg</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LabelPrintmode_sl_printbarcode_whichscannedbycashregister</Name>
+    <Display>Label Print mode: print barcode, which scanned by cash register</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LableDesigner_sL</Name>
+    <Display>Lable Designer(&amp;L)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LastRecord</Name>
+    <Display>Ultimo Registro</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LastStocktaking</Name>
+    <Display>Última Inventario</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LastUpdate</Name>
+    <Display>Last Update</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Layout</Name>
+    <Display>Hoja</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Length_sl_</Name>
+    <Display>Longitud:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Like</Name>
+    <Display>Gusta</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LimitedRight</Name>
+    <Display>Limited Right</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LinkTest</Name>
+    <Display>Prueba de Enlace</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_List</Name>
+    <Display>Lista</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Load</Name>
+    <Display>Load</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LoadbackBill</Name>
+    <Display>cargar de nuevo factura</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Login</Name>
+    <Display>Ingresar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Login_sL</Name>
+    <Display>Ingresar(&amp;L)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Logs</Name>
+    <Display>Logs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Longpress__Price_</Name>
+    <Display>Long press 【@Price】</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Lost</Name>
+    <Display>Perdido</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LowerLimit_sl_</Name>
+    <Display>Limite Inferior:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LowStock</Name>
+    <Display>Bajo Stock</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MachineName</Name>
+    <Display>Nombre de la Báscula</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MachineNo</Name>
+    <Display>Numero de Báscula</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Management</Name>
+    <Display>Management</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Manual_sM</Name>
+    <Display>Manual(&amp;M)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ManualDiscount</Name>
+    <Display>Descuento Manual</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ManualEditBarcode</Name>
+    <Display>Manual Edit Barcode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ManualOperation_NotRecord_</Name>
+    <Display>Manual Operation (Not Record)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ManualOperation_Record_</Name>
+    <Display>Manual Operation (Record)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MDBerrororversionnotcompatibility</Name>
+    <Display>MDB error o versión no compatibles</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MeasureUnit_sl_</Name>
+    <Display>Unidad de Medida:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MenuEnable</Name>
+    <Display>Menú Permitir</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MiddleCenter</Name>
+    <Display>Centro-Centro</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MiddleLeft</Name>
+    <Display>Centro Izquierda</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MiddleRight</Name>
+    <Display>Centro Derecha</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MinimizetoSystemTray</Name>
+    <Display>Minimize to System Tray</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MinimizetoSystemTray_sM</Name>
+    <Display>Minimize to System Tray(&amp;M)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Minute</Name>
+    <Display>Minuto</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Mixallowedwithsale</Name>
+    <Display>Mix allowed with sale</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Modify</Name>
+    <Display>Modificar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Mon</Name>
+    <Display>Lunes.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Money</Name>
+    <Display>Dinero</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MoneyBalance</Name>
+    <Display>Dinero de equilibrio</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MoneyStringFixed</Name>
+    <Display>false|</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Z_ConfigWizard_DeviceMenu</Name>
+    <Display>true</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MoneyUnit</Name>
+    <Display>Money Unit</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MultiStock</Name>
+    <Display>Multi-Stock Mode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MultiStockItem</Name>
+    <Display>Multi Stock Items</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Name</Name>
+    <Display>Nombre</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Networkoperation</Name>
+    <Display>funcionamiento en red</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NetworkStatus</Name>
+    <Display>Estado de la Red</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Newinputbuyback</Name>
+    <Display>New input buy back</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NewMAC</Name>
+    <Display>Nuevo MAC</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NewStock</Name>
+    <Display>New Stock</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NewStockItem</Name>
+    <Display>Nuevo registros de inventario</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NewTable</Name>
+    <Display>Nueva Tabla</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Next</Name>
+    <Display>Next</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NextCloneTo</Name>
+    <Display>Next(Clone to {0})</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NextRecord</Name>
+    <Display>Proximo Registro</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_No</Name>
+    <Display>No</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Non_standard</Name>
+    <Display>Non-standard</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NoPLUInfoDisplay</Name>
+    <Display>Display of No PLU Menu</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NoPole</Name>
+    <Display>No Pole</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NoRight</Name>
+    <Display>No Right</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NormalStartup</Name>
+    <Display>Normal Startup</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NoSale</Name>
+    <Display>No Hay Venta</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Not</Name>
+    <Display>No</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_NoZeroReturn</Name>
+    <Display>No retornar a Cero</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Number</Name>
+    <Display>Numero</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ObtainanIPaddressautomatically</Name>
+    <Display>Obtain an IP address automatically</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Offline</Name>
+    <Display>Desconectado de la Red</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OK</Name>
+    <Display>OK</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Oneitembillonly_Noaccumulateallowed_</Name>
+    <Display>One item bill only ( No accumulate allowed )</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Online</Name>
+    <Display>conectado de la Red</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OnlyInIdle</Name>
+    <Display>Solo al ralentí</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Onlyhangupbillcanbeload_notimeslimit</Name>
+    <Display>Only hangup bill can be load, no times limit</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Onlyhangupbillcanbeloadonce</Name>
+    <Display>Only hangup bill can be load once</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OpenGuider</Name>
+    <Display>Open [Guider]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OpenMainPanel</Name>
+    <Display>Open main panel</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OperationMode</Name>
+    <Display>Operation Mode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OperationSuccess</Name>
+    <Display>Operación Exitosa</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Order</Name>
+    <Display>Orden</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OriginalSize</Name>
+    <Display>Original Size</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Other</Name>
+    <Display>Other</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ServiceFee</Name>
+    <Display>Cargo por servicio</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DisRound</Name>
+    <Display>Descuentos y Redondeo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Payment1</Name>
+    <Display>Pago 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Payment2</Name>
+    <Display>Pago 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Payment3</Name>
+    <Display>Pago 3</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CardPay</Name>
+    <Display>Tarjeta Pago</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CardPay_9999995_</Name>
+    <Display>Tarjeta Pago(9999995)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OtherPay1_9999994_</Name>
+    <Display>{0}(9999994)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OtherPay2_9999993_</Name>
+    <Display>{0}(9999993)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OtherPay3_9999992_</Name>
+    <Display>{0}(9999992)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OtherTransactions</Name>
+    <Display>Otras transacciones</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Outbound</Name>
+    <Display>Outbound</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Overflow_sl_</Name>
+    <Display>Excede Longitud:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Package</Name>
+    <Display>Paquete</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PackageDays</Name>
+    <Display>Fecha de Empacado</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PackagePLU</Name>
+    <Display>Package PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PackagePLUAndPiecesPLUMustBeByCountPLU</Name>
+    <Display>Package PLU and Pieces PLU must be By-Count PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MaterialPLUMustBeByWeightPLU</Name>
+    <Display>Material PLU must be By-Weight PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PackagePLUExist</Name>
+    <Display>Package PLU Exist</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ProductMaterialExist</Name>
+    <Display>Product/Material Exist</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PackagePLUMustDifferToPiecesPLU</Name>
+    <Display>Package PLU must differ to Pieces PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ProductPLUMustDifferToMaterialPLU</Name>
+    <Display>Product PLU must differ to Material PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PackageTime</Name>
+    <Display>Hora de Empacado</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Page</Name>
+    <Display>Pagina</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Parameter_sP</Name>
+    <Display>Parametros(&amp;P)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ParseError</Name>
+    <Display>Error de Análisis</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Password</Name>
+    <Display>Password</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PasswordError</Name>
+    <Display>Password Error</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Path</Name>
+    <Display>Path</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Payments</Name>
+    <Display>Payments</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SaveAsWeight</Name>
+    <Display>Ahorre como peso</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_pcs</Name>
+    <Display>pcs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Picture</Name>
+    <Display>Imagen</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PictureofConfigWizard</Name>
+    <Display>Picture of Config Wizard</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PiecesInPackageMaterialInProduct</Name>
+    <Display>Pieces in Package/Material in Product</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PiecesInPackage</Name>
+    <Display>Pieces in Package</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PiecesPLU</Name>
+    <Display>Pieces PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MaterialInProduct</Name>
+    <Display>Material in Product</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MaterialPLU</Name>
+    <Display>Material PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ProductPLU</Name>
+    <Display>Product PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PlainPapper</Name>
+    <Display>Plain Papper</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Pleaseclonefromtemplate_onlyID_10_29isallowed</Name>
+    <Display>Please clone from template, only ID=10~29 is allowed</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PleaseInput</Name>
+    <Display>Ingresar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLU</Name>
+    <Display>PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLU_sP</Name>
+    <Display>PLU(&amp;P)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUInfo</Name>
+    <Display>PLU Info</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUInfoDisplay</Name>
+    <Display>Display of PLU Menu</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUKey</Name>
+    <Display>PLU botón</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUName</Name>
+    <Display>Nombre PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUNo</Name>
+    <Display>No. PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUNumber</Name>
+    <Display>PLU Number</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUQuit</Name>
+    <Display>PLU Quit</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Points</Name>
+    <Display>Puntos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PortNumber</Name>
+    <Display># de Puerto</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Prefix</Name>
+    <Display>Prefix</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Pre-print</Name>
+    <Display>Pre-print</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Press__Price_</Name>
+    <Display>Press 【@Price】</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Press__Price__longforName</Name>
+    <Display>Press【@Price】, long for Name</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Previous</Name>
+    <Display>Previous</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PreviousRecord</Name>
+    <Display>Registro Previo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Price</Name>
+    <Display>Total</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PriceAndUnit</Name>
+    <Display>Price and Unit</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PriceChangeHigh_pct_</Name>
+    <Display>Price Change High(%)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PriceChangeLow_pct_</Name>
+    <Display>Price Change Low(%)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PriceF_Prog</Name>
+    <Display>Price F-Prog</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PricePrintingScale</Name>
+    <Display>Price Printing Scale</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Priceswith</Name>
+    <Display>Price swith allowed</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrimaryID</Name>
+    <Display>Primario ID</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Print</Name>
+    <Display>Imprimir</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Print_sl_</Name>
+    <Display>Imprimir:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintFormat</Name>
+    <Display>Formato de Impresión</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintFormat_sF</Name>
+    <Display>Formato de Impresión(&amp;F)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintFormatAndBarcode</Name>
+    <Display>Print Format and Barcode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintFormatOfItemLabel</Name>
+    <Display>Print Format of Item Label</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintFormatOfReceipt</Name>
+    <Display>Print Format of Receipt</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintFormatOfSumLabel</Name>
+    <Display>Print Format of Sum Label</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintInfo</Name>
+    <Display>Información para Imprimir</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Printoncepress_Confirm_</Name>
+    <Display>Print once press [Confirm]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintPackageDate</Name>
+    <Display>Imprimir Fecha de Empacado</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintPackageTime</Name>
+    <Display>Imprimir Hora de Emapcado</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintSaleDate</Name>
+    <Display>Imprimir Fecha de Venta</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintSaleTime</Name>
+    <Display>Imprimir Hora de Venta</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PrintShelfDate</Name>
+    <Display>Imprimir Fecha de Caducidad</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Printunitwithmoney</Name>
+    <Display>Print unit with money</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Printunitwithunitprice</Name>
+    <Display>Print unit with unit price</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Printunitwithweight_pcs</Name>
+    <Display>Print unit with weight/pcs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Prog</Name>
+    <Display>Prog</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PromptSave</Name>
+    <Display>Preguntar GUARDAR</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PromptSaveWhenExit_sS</Name>
+    <Display>Grabar Informacion al Salir(&amp;S)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Protectdata</Name>
+    <Display>Proteger Datos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Query</Name>
+    <Display>Pregunta</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_QuickChangeofDefaultUnitPrice_PriceF_Prog</Name>
+    <Display>Quick Change of Default Unit Price (Price F-Prog)  Note:【-@】is same as【@Price】</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_QuickSet</Name>
+    <Display>Configuración Rápida</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_QuickSet_sQ</Name>
+    <Display>Configuración Rapida(&amp;Q)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Ready</Name>
+    <Display>Listo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Realtimesynchronization</Name>
+    <Display>sincronización en tiempo real</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RecordofUnconfirmedData</Name>
+    <Display>Record of Unconfirmed Data</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RecordPriced_WeightedOperation</Name>
+    <Display>Record Priced/Weighted Operation</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RecordPricedOperation</Name>
+    <Display>Record Priced Operation</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Recover</Name>
+    <Display>Recuperar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Recycled</Name>
+    <Display>Recycled</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Refresh</Name>
+    <Display>Refrescar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RelatedFID</Name>
+    <Display>Relacionado FID</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RemoveZeroDataItem</Name>
+    <Display>Remove Zero Data Item</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Rename</Name>
+    <Display>Renombrar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Repeat</Name>
+    <Display>Repetir</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RepeatPassword</Name>
+    <Display>Repetir Password</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Report</Name>
+    <Display>Reporte</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Report_sR</Name>
+    <Display>Reporte(&amp;R)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Re-print</Name>
+    <Display>Re-print</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ResetConfigWizard</Name>
+    <Display>Reset Config Wizard</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ResetReport</Name>
+    <Display>Reset Report</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ResetReport_Warnning</Name>
+    <Display>Do you want to Reset Report? All logs and stocks will clear.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RestorefromTMSFile</Name>
+    <Display>Rcuperar desde archivos TMS</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RestoreMAC</Name>
+    <Display>Restaurar MAC</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RestoreReport</Name>
+    <Display>Restore Report</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RestoreReport_Warnning</Name>
+    <Display>Do you want to Restore Report? All current logs and stocks will clear.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Re-Upload</Name>
+    <Display>Cargar nuevamente</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RightFB_sl_</Name>
+    <Display>Right FB:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RightTable</Name>
+    <Display>Right Table</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Rotate180_</Name>
+    <Display>Rotate 180°</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RunCustomFileInEthernet</Name>
+    <Display>Run Custom File in Ethernet</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_RunExcelCSVFileInEthernet</Name>
+    <Display>Run Excel/CSV File in Ethernet</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SafetyStock</Name>
+    <Display>Stock de Seguridad</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sale</Name>
+    <Display>Venta</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SaleDays</Name>
+    <Display>Fecha de Venta</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SaleOperation</Name>
+    <Display>Sale Operation</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Salesman</Name>
+    <Display>Vendedor</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Salesman_sS</Name>
+    <Display>Vendedor(&amp;S)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SalesmanNo</Name>
+    <Display>Vendedor No.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SaleTime</Name>
+    <Display>Hora de Venta</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SameasIdle</Name>
+    <Display>Same as Idle</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sat</Name>
+    <Display>Sabado.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Save</Name>
+    <Display>Guardar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SavealltoExcel</Name>
+    <Display>Guardar todo para Excel</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SavetoExcel</Name>
+    <Display>Guardar para Excel</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ScanBarcodePrintedbyScales</Name>
+    <Display>Need scan barcode printed by scales</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Second</Name>
+    <Display>Second</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Select</Name>
+    <Display>Seleccionar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectAll</Name>
+    <Display>Seleccionar Todos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectAllDevices</Name>
+    <Display>Seleccionar Todos Dispositivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectDevice</Name>
+    <Display>Select Device</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectFile</Name>
+    <Display>Seleccione Archivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectFolder</Name>
+    <Display>Seleccione Folder</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectPackagePLUAndPiecesPLU</Name>
+    <Display>Select Package PLU and Pieces PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectProductPLUAndMaterialPLU</Name>
+    <Display>Select Product PLU and Material PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SelectStockTable</Name>
+    <Display>Seleccionar Tabla de Stock</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Self_adapting</Name>
+    <Display>Self-adapting</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sendall_VerySlow</Name>
+    <Display>Enviar Todo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SetAsStartup</Name>
+    <Display>Set as Startup</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SetIP</Name>
+    <Display>Set IP</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ShelfDays</Name>
+    <Display>Fecha de Caducidad</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Shift_sl_</Name>
+    <Display>Cambiar A:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ShopName</Name>
+    <Display>Nombre del Negocio</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Shortcutkey</Name>
+    <Display>Accesos Directos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ShortcutKey_sK</Name>
+    <Display>Accesos Directos(&amp;K)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Show</Name>
+    <Display>Mostrar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ShowTips</Name>
+    <Display>Show tips</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ShowTipsOnSystemTrayIcon</Name>
+    <Display>Show tips on system tray icon</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Shrink</Name>
+    <Display>Shrink</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SID</Name>
+    <Display>SID</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Snap_sl_</Name>
+    <Display>Ubicación:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SnaptoGrid</Name>
+    <Display>Ajustar al cuadro</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SomefunctionsofthisConfigWizardneeddeviceversionafterV2_49A</Name>
+    <Display>Some functions of this "Config Wizard" need device version after V2.49A</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SomeSpecialBarcode</Name>
+    <Display>Some Special Barcode</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sort</Name>
+    <Display>Tipo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Source</Name>
+    <Display>Source</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Source_sl_</Name>
+    <Display>Datos:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SpecialMode</Name>
+    <Display>Modo especial</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SpecifyLoginAccount</Name>
+    <Display>Specify Login Account</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SpecifyStock</Name>
+    <Display>Especifique Inventario</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Spoilage</Name>
+    <Display>Deterioro</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SSPValue1</Name>
+    <Display>SSP Valor 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SSPValue2</Name>
+    <Display>SSP Valor 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SSPValue3</Name>
+    <Display>SSP Valor 3</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SSPValue4</Name>
+    <Display>SSP Valor 4</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Standard</Name>
+    <Display>Standard</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Start</Name>
+    <Display>Iniciar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_StartupConfig</Name>
+    <Display>Startup Config</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Stock</Name>
+    <Display>Stock</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_StockTable</Name>
+    <Display>Stock Tabla</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_StockTableNumber</Name>
+    <Display>Número de Stock Tabla</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Stocktaking</Name>
+    <Display>Stocktaking</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_StoreName</Name>
+    <Display>Store Name</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_StorePayments_9999991_</Name>
+    <Display>Store Payments (9999991)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SubID</Name>
+    <Display>Sub ID</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Success</Name>
+    <Display>Exitosa</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Suffix</Name>
+    <Display>Suffix</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sum_sl_Part1and2</Name>
+    <Display>Sum: Part 1 and 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sum_sl_Part3or4</Name>
+    <Display>Sum: Part 3 or 4</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SumFlag</Name>
+    <Display>Sum Flag</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Sun</Name>
+    <Display>Domingo.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SuperAdmin</Name>
+    <Display>Super Administrador</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SupportbydeviceafterV238A</Name>
+    <Display>Apoyo después de V2.38A</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SupportbydeviceafterV238B</Name>
+    <Display>Apoyo después de V2.38B</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Switchto</Name>
+    <Display>Activar:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SystemDefault</Name>
+    <Display>Sistema Defecto</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SystemTrayIcon</Name>
+    <Display>System tray icon</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Table</Name>
+    <Display>Tabla</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Tableattachoperation</Name>
+    <Display>Tabla adjuntar operación</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TableName</Name>
+    <Display>Nombre de Tabla</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Tare</Name>
+    <Display>Tara</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Task</Name>
+    <Display>Tarea</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Tax</Name>
+    <Display>Impuesto</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TaxRate</Name>
+    <Display>Tasa de Impuesto</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TaxType</Name>
+    <Display>Tipo de Impuesto</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text1</Name>
+    <Display>Texto 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text2</Name>
+    <Display>Texto 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text3</Name>
+    <Display>Texto 3</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text4</Name>
+    <Display>Texto 4</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text5</Name>
+    <Display>Texto 5</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text6</Name>
+    <Display>Texto 6</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Text7</Name>
+    <Display>Texto 7</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TextInfo</Name>
+    <Display>Texto Informativo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Threshold_0_255</Name>
+    <Display>Threshold(0...255)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Thurs</Name>
+    <Display>Jueves.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Time</Name>
+    <Display>Hora</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TimeInfo</Name>
+    <Display>Información de Horas</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TimeSynchronization</Name>
+    <Display>Sincronización de la Hora</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TM_xAManagementProgram</Name>
+    <Display>TM-xA Management Program</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TMSFile</Name>
+    <Display>TMS File</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TMSFile___TMS____tms_AllFile_________</Name>
+    <Display>TMS File (*.TMS)|*.tms|All File (*.*)|*.*</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TMSFile_sF</Name>
+    <Display>TMS File(&amp;F)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TMSFile_wInfo</Name>
+    <Display>TMS File: Export Config and data to TMS file, stored in a USB-Disk, which can be load by devices</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_To</Name>
+    <Display>A</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Today</Name>
+    <Display>Hoy</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Tool_sT</Name>
+    <Display>Herramientas(&amp;T)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TopCenter</Name>
+    <Display>Superior Centro</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TopLeft</Name>
+    <Display>Superior Izquierda</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TopRight</Name>
+    <Display>Superior Derecha</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Total</Name>
+    <Display>Total</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TotalPcs</Name>
+    <Display>Total Pcs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TotalPrice</Name>
+    <Display>Precio total</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TotalPriceFromExcelColumn</Name>
+    <Display>precio total de la columna EXCEL</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TotalRadixPoint</Name>
+    <Display>Total Radix Point</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TotalWeight</Name>
+    <Display>Total Weight</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Transaction_sl_</Name>
+    <Display>Transacción:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TrytoAddCheckDigit</Name>
+    <Display>Try to Add Check Digit</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TSale_CT</Name>
+    <Display>By-Count TSale</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TSale_WT</Name>
+    <Display>By-Weight TSale</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Tues</Name>
+    <Display>Martes.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Type</Name>
+    <Display>Tipo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TypeNo</Name>
+    <Display>No. de Tipo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Unattached</Name>
+    <Display>Desprendidos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UndockEthernet</Name>
+    <Display>Undock [Ethernet]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UndockEthernet_wInfo</Name>
+    <Display>Undock [Ethernet]: Stop docking of [Ethernet] menu in backgroud</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UndockReport</Name>
+    <Display>Undock [Report]</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UndockReport_wInfo</Name>
+    <Display>Undock [Report]: Stop docking of [Report] menu in backgroud</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Unit</Name>
+    <Display>Unidad de Venta</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Unit_sU</Name>
+    <Display>Unidad de Venta(&amp;U)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitAndDisplay</Name>
+    <Display>Unit and Display</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitName</Name>
+    <Display>Nombre de la Unidad</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitNo</Name>
+    <Display>No. de Unidad</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitPrice</Name>
+    <Display>Precio Unitario</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitPriceChange</Name>
+    <Display>Unit Price Change</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitPriceFromExcelColumn</Name>
+    <Display>Precio Unitario de la columna EXCEL</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitPriceRadixPoint</Name>
+    <Display>Unit Price Radix Point</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UnitSetting</Name>
+    <Display>Unit Setting</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UpdateFilter</Name>
+    <Display>Actualizar Filtro</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UpdatePoints</Name>
+    <Display>Actualizar Puntos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UpdateSoftware</Name>
+    <Display>Update Software</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UpdatingDatabase</Name>
+    <Display>Actualizando Base de Datos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Upgrade</Name>
+    <Display>Actualizar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Upload</Name>
+    <Display>Cargar Archivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Upload_ToSoftware_</Name>
+    <Display>Cargar Archivo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UploadAll</Name>
+    <Display>Cargar Todo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UploadData</Name>
+    <Display>Cargar Datos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UploadDatabase</Name>
+    <Display>Cargar Base de Datos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UploadReport</Name>
+    <Display>Cargar Reporte</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UpperLimit_sl_</Name>
+    <Display>Limite Superior:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UppertwoarelowerprioritythenSpec110_112</Name>
+    <Display>Upper two are lower priority then Spec110-112.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UPrice</Name>
+    <Display>Precio Unitario</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Uri</Name>
+    <Display>Uri</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Use1stItemInformation</Name>
+    <Display>Use 1st Item Information</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UsePLUCost</Name>
+    <Display>Utilice costo PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UsePLUPrice</Name>
+    <Display>Utilice precio PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UsePLUUnit</Name>
+    <Display>Utilice unidad PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_User</Name>
+    <Display>Usuario</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UserName</Name>
+    <Display>Nombre de Usuario</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UserPassword</Name>
+    <Display>Password de Usuario</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UsethefollowingIPaddress</Name>
+    <Display>Use the following IP address</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UseValue0</Name>
+    <Display>El valor de uso "0"</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Usingupdatesoftwaredatabase</Name>
+    <Display>Using and update software database</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Validate</Name>
+    <Display>Validar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Value</Name>
+    <Display>Valor</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ValueField</Name>
+    <Display>Valor de Intervalo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Version</Name>
+    <Display>Versión</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Vertical_sl_</Name>
+    <Display>Vertical:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Vertical_sV</Name>
+    <Display>Vertical(&amp;V)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ViewOnly</Name>
+    <Display>Solo Vista</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_VIP</Name>
+    <Display>VIP</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_VIP_sV</Name>
+    <Display>VIP(&amp;V)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_WaitingDeviceUpdate</Name>
+    <Display>Espere, Dispositivo Actualizandose</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Wed</Name>
+    <Display>Miercoles.</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Weight</Name>
+    <Display>Weight</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Weight_Pcs</Name>
+    <Display>Weight/Pcs</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_WhatToDo</Name>
+    <Display>What to do?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Width_sl_</Name>
+    <Display>Ancho:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Windows_sW</Name>
+    <Display>Windows(&amp;W)</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_XxxDigitsYyy</Name>
+    <Display>{0}-Digit {1}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Yes</Name>
+    <Display>Si</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ZeroReturnfornewbyweightPLU</Name>
+    <Display>Retornar Peso a Cero en PLU-Pesado</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ZeroReturnForWeightSale</Name>
+    <Display>Retornar Peso a Cero en venta</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ZeroReturnForWeightSale_Value</Name>
+    <Display>1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ZeroReturnifWeightChanged</Name>
+    <Display>Retornar siu el Peso Cambia</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Zoom</Name>
+    <Display>Zoom</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUFunctionEnable</Name>
+    <Display>PLU función permitir</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlphaSearch</Name>
+    <Display>Alpha search</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MeasureWord</Name>
+    <Display>Medir la palabra</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PercentTare</Name>
+    <Display>Por ciento de Tara</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_FixedWeight</Name>
+    <Display>Peso fijo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill1</Name>
+    <Display>Bill 1</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Bill2</Name>
+    <Display>Bill 2</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UselessSSP</Name>
+    <Display>Inútil SSP</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BarcodeFlag</Name>
+    <Display>Bandera del Codigo de Barras</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AllUnitMeasure</Name>
+    <Display>Weight|pcs|kg|g|ton|lb|500g|100g|1/4lb</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Common</Name>
+    <Display>Común</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Display</Name>
+    <Display>Monitor</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_EnableDisable</Name>
+    <Display>Habilitar deshabilitar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUImport</Name>
+    <Display>Importación de PLU</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_KeepSegement</Name>
+    <Display>Mantenga segmento</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Function</Name>
+    <Display>Función</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlphaAutoGenerate</Name>
+    <Display>Generador automático alfa</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_UsedForXandY</Name>
+    <Display>Se utiliza para {0} y {1}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BlockQuantity</Name>
+    <Display>Cantidad de bloques</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_AlignUp</Name>
+    <Display>Alinear arriba</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BlockOccupied____</Name>
+    <Display>Bloque ocupada, todavía actualizar y borrar los ocupados?</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_OccupiedBlocks</Name>
+    <Display>Bloques ocupado</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DeleteOldLogs</Name>
+    <Display>Eliminar registros antiguos</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Days</Name>
+    <Display>Días</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MoveUp</Name>
+    <Display>Subir</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MoveDown</Name>
+    <Display>Bajar</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SummaryInEAN</Name>
+    <Display>Resumen(EAN13/128): suma única información</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DetailsInQR</Name>
+    <Display>Detalles(QR): cada elemento en una línea</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ItemBarcodeAlsoPrintInQR</Name>
+    <Display>Código de barras sola transacción producto también imprimir en QR</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LastEnterDoNotIncluded</Name>
+    <Display>Última "Enter" no se genera</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SumBarcodeType</Name>
+    <Display>Suma tipo de código de barras</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_MonitorDelay</Name>
+    <Display>Retardo del monitor</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_QRVersion</Name>
+    <Display>QR Version</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUIE_Display</Name>
+    <Display>Numero(ID)|Codigo Prod.|Index Codigo Barras|Unidad. 1=peso, 2=pcs, 3=kg, 6=lb|Precio|Costoo|Tara|Fromato de Impresión del recibo 1|Codigo de Barras # para el recibo 1|Bandera Codigo Barras p/recibo 1|Fromato de Impresión del recibo 2|Codigo de Barras # para el recibo 2|Bandera Codigo Barras p/recibo 2|Clase|Nombre PLU|Texto 1|Texto 2|Texto 3|Texto 4|Texto 5|Texto 6|Texto 7|Imprimir Hora de Venta|Imprimir Hora de Venta|Imprimir Fecha de Empacado|Imprimir Hora de Empacado|Imprimir Fecha de Caducidad|Dato Fecha de Venta|Dato Hora de Venta|Dato Fecah de Empaque|Dato de Hora de Empaque|Dato Fecha Caducidad|Menor de la clasificación de descuentos manuales|Superior de la clase de descuentos manuales|Menor de los datos de descuentos manuales|Superior de los datos de descuentos manuales|Descuento atumatico 1: Tipo|Descuento atumatico 1: Día laborable|Descuento atumatico 1: Rango bajo|Descuento atumatico 1: Rango alta|Descuento atumatico 1: Valor|Descuento atumatico 2: Tipo|Descuento atumatico 2: Día laborable|Descuento atumatico 2: Rango bajo|Descuento atumatico 2: Rango alta|Descuento atumatico 2: Valor|Descuento atumatico 3: Tipo|Descuento atumatico 3: Día laborable|Descuento atumatico 3: Rango bajo|Descuento atumatico 3: Rango alta|Descuento atumatico 3: Valor|Descuento atumatico 4: Tipo|Descuento atumatico 4: Día laborable|Descuento atumatico 4: Rango bajo|Descuento atumatico 4: Rango alta|Descuento atumatico 4: Valor|Tipo de impuesto|Tasa de impuesto|SspValue 1|SspValue 2|SspValue 3|SspValue 4|PLU tipo: 0=Normal, 1=Sólo tara|PLU bandera|Valor de la PLU bandera|Mapa de Bits</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUIE_SpWords</Name>
+    <Display>TAB|&#x9;|Espacio| |','|,|':'|:|';'|;|'+'|+|'-'|-|'*'|*|'/'|/|'\'|\\|'('|(|')'|)|'['|[|']'|]|'{'|{|'}'|}|'#'|\x23|'##'|\x23\x23</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUIE_ReadMark</Name>
+    <Display>Contar de filas(0 ... n)|RowCount|Número de filas(1 ... n)|RowNo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_PLUIE_Code</Name>
+    <Display></Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ReadFrom</Name>
+    <Display>Leer desde</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Calculate</Name>
+    <Display>Calcular</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_WriteTo</Name>
+    <Display>Escribir a</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_KeepDataFromUpperLine</Name>
+    <Display>Mantenga los datos de la línea superior</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_KeepDataFromLowerLine</Name>
+    <Display>Mantenga los datos de la línea inferior</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ReadUntil_e0</Name>
+    <Display>Leer hasta {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ReadUntilSpecialCHAR</Name>
+    <Display>Leer hasta CHAR Especial:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Read</Name>
+    <Display>Leer</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Read_0_bytes</Name>
+    <Display>Leer {0} bytes</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ReadConst_e0</Name>
+    <Display>Leer Cons {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ReadMark_0</Name>
+    <Display>Leer Marca {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_BYTES</Name>
+    <Display>Bytes</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DropUntilNOTCHAR_0</Name>
+    <Display>Suelte hasta NO CHAR {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_DoNothing</Name>
+    <Display>Hacer nada</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Negative</Name>
+    <Display>Negativo</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_ConvertIntoDecimal_0</Name>
+    <Display>Convertir en decimal {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_CutdownStringInto_0</Name>
+    <Display>Reducir cadena en {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Table_Default</Name>
+    <Display>Tabla: Predeterminado</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_TableConvertTo_0</Name>
+    <Display>Conversión de tabla a {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_SaveTo_0</Name>
+    <Display>Guardar en {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_GoOnIfe_e0</Name>
+    <Display>Continúe si = {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_JudgeMark_0</Name>
+    <Display>Juez Mark {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_LoadFrom_0</Name>
+    <Display>Cargar desde {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_WriteDirectly</Name>
+    <Display>Escriba directamente</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_WriteWith_e0</Name>
+    <Display>Escribir con {0}</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_WriteWithSpecialCHAR</Name>
+    <Display>Escribir ingenio CHAR especiales:</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Write</Name>
+    <Display>Escribir</Display>
+  </Lang>
+  <Lang>
+    <Name>pw_Write_0_bytes</Name>
+    <Display>Escribir {0} bytes</Display>
+  </Lang>
+
+</UIDataSet>
+<!--Spanish-->

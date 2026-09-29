@@ -1,0 +1,2447 @@
+﻿<?xml version="1.0"  encoding="utf-8" standalone="yes"?>
+<UIDataSet>
+  <!--Spanish-->
+  <Spec_Info>
+    <SpecID>0</SpecID>
+    <Type>0</Type>
+    <Display>Bill 1: Formato de Impresión/Prodcuto(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>1</SpecID>
+    <Type>0</Type>
+    <Display>Bill 1: Formato de Codigo Barras/Prodcuto(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>2</SpecID>
+    <Type>0</Type>
+    <Display>Bill 1: Bandera Codigo Barras/Prodcuto(0~99999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>3</SpecID>
+    <Type>0</Type>
+    <Display>Bill 1: Imprimir # Productos(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>4</SpecID>
+    <Type>1</Type>
+    <Display>Bill 1: Imprimir Producto Invertido|0|0:Normal|1|1:Invertido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>5</SpecID>
+    <Type>0</Type>
+    <Display>Bill 1: Formato de Impresión suma(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>6</SpecID>
+    <Type>0</Type>
+    <Display>Bill 1: Formato Codigo Barras suma(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>7</SpecID>
+    <Type>0</Type>
+    <Display>Bill 1: Bandera Codigo Barras Suma(0~99999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>8</SpecID>
+    <Type>0</Type>
+    <Display>Bill 1: Imprimir # de Sumas(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>9</SpecID>
+    <Type>1</Type>
+    <Display>Bill 1: Imprimir Suma Invertida|0|0:Normal|1|1:Invertido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>10</SpecID>
+    <Type>0</Type>
+    <Display>Bill 2: Formato de Impresión/Prodcuto(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>11</SpecID>
+    <Type>0</Type>
+    <Display>Bill 2: Formato de Codigo Barras/Prodcuto(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>12</SpecID>
+    <Type>0</Type>
+    <Display>Bill 2: Bandera Codigo Barras/Prodcuto(0~99999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>13</SpecID>
+    <Type>0</Type>
+    <Display>Bill 2: Imprimir # Productos(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>14</SpecID>
+    <Type>1</Type>
+    <Display>Bill 2: Imprimir Productos Invertidos|0|0:Normal|1|1:Invertido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>15</SpecID>
+    <Type>0</Type>
+    <Display>Bill 2: Formato de Impresión Suma(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>16</SpecID>
+    <Type>0</Type>
+    <Display>Bill 2: Formato Codigo Barras suma(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>17</SpecID>
+    <Type>0</Type>
+    <Display>Bill 2: Bandera Codigo Barras suma(0~99999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>18</SpecID>
+    <Type>0</Type>
+    <Display>Bill 2: Sum Imprimir # Productos(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>19</SpecID>
+    <Type>1</Type>
+    <Display>Bill 2: Imprimir Suma Invertida Invertido|0|0:Normal|1|1:Invertido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>20</SpecID>
+    <Type>0</Type>
+    <Display>Imprimir Reducir Velocidad(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>21</SpecID>
+    <Type>1</Type>
+    <Display>Paper Type|0|0:Papel Continuo|1|1:Etiqueta c/separador</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>22</SpecID>
+    <Type>0</Type>
+    <Display>Nitidez de impresión en Etiqueta c/separador(0~15)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>23</SpecID>
+    <Type>0</Type>
+    <Display>Nitidez de impresión en Papel Continuo(0~15)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>24</SpecID>
+    <Type>0</Type>
+    <Display>Papel Continuo: Intervalo de cada impresión(0~99mm)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>25</SpecID>
+    <Type>0</Type>
+    <Display>Papel Continuo: Posición de Corte(0~99mm)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>26</SpecID>
+    <Type>0</Type>
+    <Display>Papel Continuo: Distancia de Pre-Alimentación(0~1999, Device is reverse feed if number > 1000)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>27</SpecID>
+    <Type>0</Type>
+    <Display>Ancho de impresión de reportes(0~99mm)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>28</SpecID>
+    <Type>1</Type>
+    <Display>Fuente de impresion de reportes|0|0:10*18|1|1:18*26|2|2:26*34</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>29</SpecID>
+    <Type>0</Type>
+    <Display>Protección Termica(0~30s)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>30</SpecID>
+    <Type>0</Type>
+    <Display>Posición del sensor de Alimentación(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>31</SpecID>
+    <Type>0</Type>
+    <Display>Codigo de barras c/Barra Estrecha(0~9,0 means default)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>32</SpecID>
+    <Type>0</Type>
+    <Display>Codigo de Barras c/Barra Gruesa(0~19,0 means default)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>33</SpecID>
+    <Type>0</Type>
+    <Display>Fuente de Caracteres del Codigo de Barras(0~2)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>34</SpecID>
+    <Type>0</Type>
+    <Display>Anti-Vibración del Peso durante la impresión(0~19, Atributo del Hardware)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>35</SpecID>
+    <Type>1</Type>
+    <Display>Renglon Nuevo Attuomatico|0|0:Prohibido|1|1:Permitido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>36</SpecID>
+    <Type>1</Type>
+    <Display>ITF25 Borde|0|0:Sin Borde|1|1:Bordes Arriva y Abajo|2|2:Contorno</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>37</SpecID>
+    <Type>0</Type>
+    <Display>ITF25 Ancho de Borde(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>38</SpecID>
+    <Type>0</Type>
+    <Display>ITF25 Espacio en blanco en los extremos(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>39</SpecID>
+    <Type>0</Type>
+    <Display>Etiqueta c/separador: Distancia de Pre-Alimentación(0~1999, Si el numero es> 1000 se invierte)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>40</SpecID>
+    <Type>0</Type>
+    <Display>Numero de la Báscula(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>41</SpecID>
+    <Type>1</Type>
+    <Display>RS232 Baud Rate|0|0:300|1|1:600|2|2:1200|3|3:2400|4|4:4800|5|5:9600|6|6:19200|7|7:38400|8|8:57600|9|9:115200</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>42</SpecID>
+    <Type>1</Type>
+    <Display>Actualización Automatica con USB|0|0:No Actualizar|1|1:Actualización Automatica</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>43</SpecID>
+    <Type>1</Type>
+    <Display>Ethernet, Conección|0|0:No conectar|1|1:Modo de Servidor|2|2:Modo de Cliente o Satelite</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>44</SpecID>
+    <Type>0</Type>
+    <Display>Ethernet, Reconección Automatica(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>45</SpecID>
+    <Type>1</Type>
+    <Display>Ethernet, Reiniciar si cambio la configuración|0|0:Desactivar|1|1:Activar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>46</SpecID>
+    <Type>0</Type>
+    <Display>Tiempo de Espera para conectar con USB(0~99, 10 por 1s,0 por Default)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>47</SpecID>
+    <Type>1</Type>
+    <Display>USB Siempre Encendido|0|0:Desactivar|1|1:Activar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>48</SpecID>
+    <Type>0</Type>
+    <Display>Ethernet, Intervalo de Sobretiempo(0~31s)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>49</SpecID>
+    <Type>1</Type>
+    <Display>Activación de Password|0|0:Operación Local Solamente|1|1:Permitir operaciones de Comunicacion</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>50</SpecID>
+    <Type>1</Type>
+    <Display>Tipo Ethernet|0|0:Red de cable única, obra parada Wi-Fi|1|1:Red Wi-Fi en modo STA, el trabajo tope del cable|2|2:Red Wi-Fi en modo AP, el trabajo tope del cable|3|3:Cable / Wi-Fi tanto dejar de trabajar|4|4:Primaria a la red por cable, red Wi-Fi STA secundaria|5|5:Wi-Fi STA primaria de la red, a la red por cable secundaria|6|6:Wi-Fi AP primaria de la red, la red de cable secundario|7|7:Primaria a la red por cable, red Wi-Fi AP secundaria</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>51</SpecID>
+    <Type>1</Type>
+    <Display>Modo de Securidad|0|0:Sin Securidad|1|1:WEP|2|2:WPA/WPA2</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>52</SpecID>
+    <Type>1</Type>
+    <Display>Opciones de Securidad|0|0:Sistema Abierto|1|1:Protegido con Cable</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>53</SpecID>
+    <Type>1</Type>
+    <Display>Tipo de Dominio|0|0:FCC|1|1:IC|2|2:ETSI|3|3:España|4|4:Francia|5|5:JapónA|6|6:JapónB</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>54</SpecID>
+    <Type>1</Type>
+    <Display>Formato de impresión y de código de barras Seleccione|0|0: Usar el formato de impresión predeterminado y código de barras|1|1: formato de impresión Uso de especificaciones, código de barras por defecto|2|2: Usar el formato de impresión de clase, código de barras por defecto|10|10: Usar el formato de impresión predeterminado, Spec código de barras|11|11: formato de impresión uso de especificaciones y código de barras|12|12: Usar el formato de impresión de clase, especificación del código de barras|20|20: Usar el formato de impresión por defecto, el código de barras de clase|21|21: El uso de especificaciones de formato de impresión, código de barras de clase|22|22: uso del formato de impresión de código de barras y la clase</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>55</SpecID>
+    <Type>0</Type>
+    <Display>Filtrar PLU con Clase (0 ~ 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>56</SpecID>
+    <Type>1</Type>
+    <Display>Función de Imprimir|0|0:Imprimir todo como ajuste|1|1:Imprimir Bill 1|2|2:Imprimir Bill 2|3|3:Imprimir PTR|4|4:Prohibido|5|5:Imprimir bill 1 si etiqueta c/separador, imprimir bill 2 si papel continuo|6|6:Imprimir bill 1 si papel continuo, imprimir bill 2 si etiqueta c/separador</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>57</SpecID>
+    <Type>0</Type>
+    <Display>Protocolo POS (0 ~ 99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>60</SpecID>
+    <Type>1</Type>
+    <Display>Modo de Caja Registradora|0|0:Desactivado|1|1:Activado para cambio en $0 x Default, No Mostrar con cambio $0|2|2:Activado para cambio en $0 x Default, Siempre Mostrar|3|3:Activado para cambio diferente a $0 Default</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>61</SpecID>
+    <Type>1</Type>
+    <Display>Cajon de dinero en operaciópn de venta|0|0:No abrir|1|1:Abrir cajon#1|2|2:Abrir cajon#2|3|3:Abrir Cajones 1 y 2|4|4:Advertir de prohibido|5|5:Interfaz de cuatro relés y placa</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>62</SpecID>
+    <Type>1</Type>
+    <Display>Modo de Venta: Al Presionar【Drawer】|0|0:No Abrir Cajon|1|1:Abrir cajon#1|2|2:Abrir Cajon#2|3|3:Abrir Cajon 1 y 2|4|4:Advertir de prohibido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>63</SpecID>
+    <Type>1</Type>
+    <Display>Modo de Programación: Al Presionar【Drawer】|0|0:No Abrir Cajon|1|1:Abrir cajon#1|2|2:Abrir Cajon#2|3|3:Abrir Cajon 1 y 2</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>64</SpecID>
+    <Type>1</Type>
+    <Display>Modo de Reportes (Account): Al Presionar【Drawer】|0|0:No Abrir Cajon|1|1:Abrir cajon#1|2|2:Abrir Cajon#2|3|3:Abrir Cajon 1 y 2</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>65</SpecID>
+    <Type>1</Type>
+    <Display>Función de Re-Imprimir|0|0:Prohibido|1|1:Imprimir Bill 1|2|2:Imprimir Bill 2|3|3:Imprimir PTR|4|4:Imprimir todo como ajuste|5|5:Imprimir bill 1 si etiqueta c/separador, imprimir bill 2 si papel continuo|6|6:Imprimir bill 1 si papel continuo, imprimir bill 2 si etiqueta c/separador</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>66</SpecID>
+    <Type>0</Type>
+    <Display>Salida Rapida de Pantalla (0: Presiones cualquier Tecla para salir; 1~99: Especificar Tiempo de Salida Automatica)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>67</SpecID>
+    <Type>1</Type>
+    <Display>Nummero de Tara|0|0:Prohibido|1|1:Ingresar Valor de Tar|2|2:Punto Flotante en valor de Tara</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>68</SpecID>
+    <Type>1</Type>
+    <Display>Tare selection|0|0:Manual Tare Only|1|1:Manual Tare First|2|2:PLU Tare First|3|3:PLU Tare Only</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>69</SpecID>
+    <Type>1</Type>
+    <Display>Retornar Peso a Cero en venta|0|0:Siempre Retornar a Cero|1|1:Retornar siu el Peso Cambia|2|2:No retornar a Cero(Imprimir "Ind:" Antes de Pesar, Esta aplicación solo es usada por la industria)|3|3:Retornar Peso a Cero en PLU-Pesado|4|4:Mantener cero en PLU-Pesado</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>70</SpecID>
+    <Type>1</Type>
+    <Display>Permitir Ventas e Cero|0|0:Prohibido|1|1:Permitido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>71</SpecID>
+    <Type>1</Type>
+    <Display>No Pesar venta de PLU Pesados|0|0:Prohibido|1|1:Permitido, 1 pza Solamente|2|2:Permitido, multi-Piezas</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>72</SpecID>
+    <Type>1</Type>
+    <Display>Limpiar Venta abierta al oprimir【Sale】|0|0:No Limpiar|1|1:Limpiar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>73</SpecID>
+    <Type>1</Type>
+    <Display>Considerar【T-Sale】Como【Precio Unitario, Convertir】|0|0:Prohibido|1|1:Permitido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>74</SpecID>
+    <Type>0</Type>
+    <Display>Devolución de productos(0~31, 0 for disable all, +1 for exist log buy back, +2 for new input buy back, +4 for mix allowed with sale, +8 for amount swith, +16 for price swith)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>75</SpecID>
+    <Type>1</Type>
+    <Display>PLU Prohibido|0|0:Permitido|1|1:PLU-Pesado Prohibido|2|2:PLU-No-Pesado Prohibido|3|3:Todos los PLU Prohibidos</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>76</SpecID>
+    <Type>1</Type>
+    <Display>Uso de T-Sale Prohibido|0|0:Permitido|1|1:T-Sale PLU Pesado Prohibido|2|2:T-Sale PLU No-Pesado Prohibido|3|3:Todo PLU T-Sale Prohibido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>77</SpecID>
+    <Type>1</Type>
+    <Display>Ingresar Peso Manuamente|0|0:No Permitido|1|1:Permitido en impresión por lote en modo automatica|2|2:Permitido solo en pre-pack en modo Atuomatico|3|3:Permitido con Modo atoumatico desactivado</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>78</SpecID>
+    <Type>1</Type>
+    <Display>【Auto mode】Ingresr a Modo especial de Venta|0|0:Modo Automatico Prohibido|1|1:Cambiar a modo de impresión por lote|2|2:Cambiar a Modo de pre-pack|3|3:Cambiar a Modo de PLU fijo|4|4:Cambiar a Modo Automatico</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>79</SpecID>
+    <Type>1</Type>
+    <Display>Seleccionar Modo de Venta|0|0:Prohibir|1|1:Permitir</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>80</SpecID>
+    <Type>1</Type>
+    <Display>Programación Rapida de PLU|0|0:Prohibido|1|1:Permitido con Identificación|2|2:Permitido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>81</SpecID>
+    <Type>1</Type>
+    <Display>Programación Rapida de accesos Directos (ScPLU)|0|0:Prohibido|1|1:Permitido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>82</SpecID>
+    <Type>1</Type>
+    <Display>Programación Rapida de Especificaciones Spec|0|0:Prohibido|1|1:Permitido con Identificación|2|2:Permitido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>83</SpecID>
+    <Type>1</Type>
+    <Display>Programación Rapida de Precio Unitario|0|0:Prohibido|1|1:Mantener Presionado【@Price】(or【-@】)para modificar el precio del PLU|2|2:Presionar【@Price】(or【-@】)para modificar el precio del PLU|3|3:Presionar【@Price】(or【-@】)para modificar el precio precio, y mantener presionada para cambiar nombre del PLU|4|4:Modificar PLU Precio automáticamente después de confirmar.</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>85</SpecID>
+    <Type>0</Type>
+    <Display>Tiempo de estabilización: Configurar Cero(0~99, 1 Segundo por c/10)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>86</SpecID>
+    <Type>0</Type>
+    <Display>Tiempo de estabilización: Venta(0~99, 1 Segundo por c/10)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>87</SpecID>
+    <Type>1</Type>
+    <Display>PLU Vacio|0|0:Desactivar|1|1:Activar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>88</SpecID>
+    <Type>0</Type>
+    <Display>Acceso Directo para PLU Vacio(0=Desactivar,Otros = 1 de PLU Vacio,firmware>V2.50E)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>89</SpecID>
+    <Type>1</Type>
+    <Display>Omitir paso Prog. Rapida de PLU Igual a Prog. de PLU(P32 Igual a P31)|0|0:Desactivar|1|1:Activar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>90</SpecID>
+    <Type>1</Type>
+    <Display>Calcular Fondo de Cuenta|0|0:Prohibido|1|1:Permitido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>91</SpecID>
+    <Type>1</Type>
+    <Display>Función de Ceuntas (Reportes de Venta y estadisticas)|0|0:Activar|1|1:sólo registro, ningún informe|2|2:Desactivar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>92</SpecID>
+    <Type>1</Type>
+    <Display>Número Vacio|0|0:Desactivar|1|1:PLU Vacio|2|2:Vendedor Vacio|3|3:Vendedor Vacio</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>96</SpecID>
+    <Type>1</Type>
+    <Display>E-Log Function|0|0:Enable|1|1:Enable without upload|2|2:Disable</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>97</SpecID>
+    <Type>1</Type>
+    <Display>Indexar Codigo ded Barras|0|0:Prohibido|1|1:Indexar Numeros Solamente|2|2:Indexar Numeros y Caracteres</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>98</SpecID>
+    <Type>1</Type>
+    <Display>Venta Individual de Productos: Metodo de reportes de cuentas por Descuento y Redondeo|0|0:No Grabar|1|1:Grabar Descuentos Independientes, Sin Redondeo|2|2:Gabras por separado los descuentos, Sin Redondeo|3|3:Grabar Independientemente Descuentos y Redondeo|4|4:Grabar Descuentos Idependientes, Grabar por separdo el redondeo|5|5:Grabar por separado descuentos y redondeo</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>99</SpecID>
+    <Type>1</Type>
+    <Display>Venta Multiple de productos: Metodo de reportes de cuentas por Descuento y Redondeo|0|0:No Grabar|1|1:Grabar Descuentos Independientes, Sin Redondeo|2|2:Gabras por separado los descuentos, Sin Redondeo|3|3:Grabar Independientemente Descuentos y Redondeo|4|4:Grabar Descuentos Idependientes, Grabar por separdo el redondeo|5|5:Grabar por separado descuentos y redondeo</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>100</SpecID>
+    <Type>1</Type>
+    <Display>Redondeo del Total de una venta individual|0|0:Redondeo comun para toda la cantidad|1|1:Redondeo comun para el ultimo digito|2|2:Redondeo Comun para los ultimos dos digitos|3|3:Redondeo de banquero para toda la cantidad|4|4:Redondeo de banquero para el ultimo digito|5|5:Redondeo de banquero para los ultimos dos digitos|6|6:Redoder hacia abajo toda la cantidad|7|7:Redondear hacia abajo el ultimo digito|8|:Redondear hacia abajo los ultimos dos dogitos|9|9:Redondear a 0/5 el ultimo digito|10|10:Redondear a 0/5 los ultimos dos digitos|11|11:Redondear a 0/5 los ultimos 3 digitos</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>101</SpecID>
+    <Type>1</Type>
+    <Display>Redondeo del total de una venta multiple|0|0:Redondeo comun para toda la cantidad|1|1:Redondeo comun para el ultimo digito|2|2:Redondeo Comun para los ultimos dos digitos|3|3:Redondeo de banquero para toda la cantidad|4|4:Redondeo de banquero para el ultimo digito|5|5:Redondeo de banquero para los ultimos dos digitos|6|6:Redoder hacia abajo toda la cantidad|7|7:Redondear hacia abajo el ultimo digito|8|:Redondear hacia abajo los ultimos dos dogitos|9|9:Redondear a 0/5 el ultimo digito|10|10:Redondear a 0/5 los ultimos dos digitos|11|11:Redondear a 0/5 los ultimos 3 digitos</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>102</SpecID>
+    <Type>1</Type>
+    <Display>Imprimir con datos acumulados|0|0:Activar|1|1:Desactivar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>103</SpecID>
+    <Type>1</Type>
+    <Display>Igualar ajuste de Tara para, Peso Neto - Peso Bruto|0|0:No Igualar, redondeo Independiente|1|1:Tara=Peso Bruto-Peso Neto|2|2:Peso Neto=Peso Bruto-Tara|3|3:Peso Bruto=Peso Neto+Tara</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>104</SpecID>
+    <Type>1</Type>
+    <Display>Formato Fecha|0|0:AAAA.MM.DD 24H|1|1:AA.MM.DD 24H|2|2:MM/DD/AA 24H|3|3:MM-DD-AA 24H|4|4:DD/MM/AA 24H|5|5:DD-MM-AA 24H|6|6:Calendario persa(-2) 24H|7|7:Calendario persa(-1) 24H|8|8:Calendario persa 24H|9|9:Calendario persa(+1) 24H|10|10:Calendario persa(+2) 24H|100|100:AAAA.MM.DD 12H|101|101:AA.MM.DD 12H|102|102:MM/DD/AA 12H|103|103:MM-DD-AA 12H|104|104:DD/MM/AA 12H|105|105:DD-MM-AA 12H|106|106:Calendario persa(-2) 12H|107|107:Calendario persa(-1) 12H|108|108:Calendario persa 12H|109|109:Calendario persa(+1) 12H|110|110:Calendario persa(+2) 12H</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>105</SpecID>
+    <Type>1</Type>
+    <Display>Imprimir dias de caducidad|0|0:Usando config. del PLU(fecha de vencimiento)|1|1:Se imprimira basado en Spec106 si el PLU no tiene dias de caducidad(fecha de vencimiento)|2|2:Se imprimira basado en Spec106(fecha de vencimiento)|3|3:No imprimir caducidad|4|4:Usando config. del PLU(días)|5|5:Se imprimira basado en Spec106 si el PLU no tiene dias de caducidad(días)|6|6:Se imprimira basado en Spec106(días)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>106</SpecID>
+    <Type>0</Type>
+    <Display>Días de Caducidad(0~999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>107</SpecID>
+    <Type>0</Type>
+    <Display>Numero de ventas en Espera(0~,0 x default)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>108</SpecID>
+    <Type>0</Type>
+    <Display>Maximo numero de acumulaciones(0~65535,0 x default)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>109</SpecID>
+    <Type>1</Type>
+    <Display>Operación en báscula de Precio de PLU|0|0:Operación Normal|1|1:Dividir Operación</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>110</SpecID>
+    <Type>1</Type>
+    <Display>Descuento Manual: Prohibido|0|0:All Permitido|1|1:Prohibido Descuento en Precio Unitario|2|2:Prohibido Descuento en Precio Total|3|3:Prohibidos todos los descuentos</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>111</SpecID>
+    <Type>0</Type>
+    <Display>Descuento Manual Limite Inferior(0~255, Porcentaje)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>112</SpecID>
+    <Type>0</Type>
+    <Display>Dscuento Manual Limite Superior(0~255, Porcentaje)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>113</SpecID>
+    <Type>1</Type>
+    <Display>Descuento Aritmetico %|0|0:Restar %|1|1:Sumar %|2|2:Convertirse %</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>114</SpecID>
+    <Type>0</Type>
+    <Display>Descuento Atuomatico en %(0: No Automatico, 1~99: Automatico)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>115</SpecID>
+    <Type>1</Type>
+    <Display>Descuento Automatico: Prefio Fijo|0|0:No Autodescuento|1|1:Precio fijo si el descuento automatico efectivo|2|2:Precio Fijo, si autodescuento es confirgurado|3|3:Precio Fijo para todos los PLUs</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>116</SpecID>
+    <Type>1</Type>
+    <Display>Orden Global de Impuestos|0|0:No Ordenar|1|1:Impuestos Excluidos|2|2:TImpuestos Excluidos,Precios del PLU despues de impuestos|3|3:Impuestos Excluidos</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>117</SpecID>
+    <Type>0</Type>
+    <Display>Tasa Global de Impuesto(1/10000 ‱,0~9999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>118</SpecID>
+    <Type>1</Type>
+    <Display>Amend en Modo de Venta|0|0:Manual|1|1:Grabar y Limpiar|2|2:No grabar y Limpiar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>119</SpecID>
+    <Type>1</Type>
+    <Display>Escanner|0|0:No checkout, ignorar informacion|1|1:Checkout, ignorar information|2|2:Checkout, no ignorar information</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>120</SpecID>
+    <Type>1</Type>
+    <Display>Codigo de barras escaneado|0|0:No hacer Nada|1|1:Trabajar con el Codigo Externo(Indexar)|2|2:Trabjar con el codigo Interno(Modo de ItemCode)|3|3:Trabajar con todos los modos</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>121</SpecID>
+    <Type>1</Type>
+    <Display>Trabajar en Modo de ItemCode=0|0|0:Buscar PLU|1|1:Trabajar con Prod. Pesados en T-Sale PLU|2|2:Trabajar con Prod. No-Pesados en T-Sale PLU</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>122</SpecID>
+    <Type>0</Type>
+    <Display>Coldigo de Barras Interno 1: Numero de Formato(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>123</SpecID>
+    <Type>0</Type>
+    <Display>Codigo de Barras Interno 1: Numero de Bandera(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>124</SpecID>
+    <Type>0</Type>
+    <Display>Codigo de Barras Interno 2: Numero de Formato(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>125</SpecID>
+    <Type>0</Type>
+    <Display>Codigo de Barras Interno 2: Numero de Bandera(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>126</SpecID>
+    <Type>0</Type>
+    <Display>Codigo de Barras Interno 3: Numero de Formato(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>127</SpecID>
+    <Type>0</Type>
+    <Display>Codigo de Barras Interno 3: Numero de Bandera(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>128</SpecID>
+    <Type>0</Type>
+    <Display>Codigo de Barras Interno 4: Numero de Formato(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>129</SpecID>
+    <Type>0</Type>
+    <Display>Codigo de Barras Interno 4: Numero de Bandera(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>130</SpecID>
+    <Type>1</Type>
+    <Display>Mascara del Precio Total antes de Imprimir|0|0:Desactivado|1|1:Activar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>131</SpecID>
+    <Type>1</Type>
+    <Display>Impreción Atuomatica al Regresar a Cero|0|0:No Activado|1|1:Acumulación despues de Retornar a Cero|2|2:Forzar acumulación despues de retornar a Cero|3|3:Impresión despues de Retornar a Cero|4|4:Forzar impresión despues de retornar a Cero|5|5:Acumulación y imprimir despues de Retornar a Cero|6|6:Forzar acumulación y impresión despues de retornar a Cero</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>132</SpecID>
+    <Type>1</Type>
+    <Display>Modo de Sumar Productos: Recordar PLU por teclado|0|0:Desactivar|1|1:Activar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>133</SpecID>
+    <Type>1</Type>
+    <Display>Modo de Sumar Productos: Recordar PLU c/codigo de barras Externo|0|0:Desactivar|1|1:Activar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>134</SpecID>
+    <Type>1</Type>
+    <Display>Modo de Sumar Productos: Recordar PLU c/codigo Interno|0|0:Desactivar|1|1:Activar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>135</SpecID>
+    <Type>1</Type>
+    <Display>Modo de Vendedores|0|0:No Disponible, Ingresar c/vendedor 0|1|1:Ingresar con V1~V4 p/vendedores 1~4, sin password|2|2:Activar Password, V1~V4 Controlado por el mismo vendedor|3|3:Activar Password, V1~V4 Controlado por diferente  vendedor|4|4:Activar Password, Controlado por el mismo vendedor, Pass=0 el vendedor no puede ingresar|5|5:Activar Password, V1~V4 Controlado por diferente vendedor, Pass=0 Vendedor no puede ingresar|6|6:Activar Password, Cierre de sesión mientras el interruptor V1~V4, Pass=0 Vendedor no puede ingresar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>136</SpecID>
+    <Type>1</Type>
+    <Display>Modo de Venta en espera|0|0:Desactivar|1|1:Activar, Prohibido persona ficticia|2|2:Activar, permite presona ficticia</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>137</SpecID>
+    <Type>1</Type>
+    <Display>Modo de venta en espera en memoria|0|0:Siempre limpiar|1|1:En memoria la ultima|2|2:Memoria en buffer</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>139</SpecID>
+    <Type>1</Type>
+    <Display>EAN/UCC CRC|0|0:Estandard|1|1:No-Estandard</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>140</SpecID>
+    <Type>1</Type>
+    <Display>SID Auto-Borrar|0|0:No borrar|1|1:1/2 Day(12:00和0:00)|2|2:Diario|3|3:Cada Domingo|4|4:Cada Lunes|5|5:Mensualmente|6|6:Cada Cuarto de año</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>141</SpecID>
+    <Type>1</Type>
+    <Display>Reporte de Inventarios|0|0:Desactivar(Activar Reporte A44)|1|1:Activar(Desactivar Reporte A44)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>142</SpecID>
+    <Type>1</Type>
+    <Display>Modo para modificar unidad de inventario|0|0:Solo unidades de PLU Permitido|1|1:Default Prod. Pesado y Prod. No-Peado Permitido|2|2:Permiti todas las undiades del sistema</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>143</SpecID>
+    <Type>0</Type>
+    <Display>FID/SID Modo de Impresion Modo(0:Imprimir como numero; 1~9:Imprimir con longitud especificada ’#’)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>149</SpecID>
+    <Type>1</Type>
+    <Display>Recoger Individual-Key de Multi-Key|0|0:Forbidden|1|1:Habilitar sólo Número-Key|2|2:Habilitar para todas las teclas de función.|2|2:Habilitar para todas las teclas de función.|3|3:Habilitar para todos</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>150</SpecID>
+    <Type>0</Type>
+    <Display>Ethernet IP 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>151</SpecID>
+    <Type>0</Type>
+    <Display>Ethernet IP 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>152</SpecID>
+    <Type>0</Type>
+    <Display>Ethernet IP 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>153</SpecID>
+    <Type>0</Type>
+    <Display>Ethernet IP 4(0~255, 0 Modo DHCP)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>154</SpecID>
+    <Type>0</Type>
+    <Display>PC's Ethernet IP 1(0~255, efectivo solo en modo de cliente)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>155</SpecID>
+    <Type>0</Type>
+    <Display>PC's Ethernet IP 2(0~255, efectivo solo en modo de cliente)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>156</SpecID>
+    <Type>0</Type>
+    <Display>PC's Ethernet IP 3(0~255, efectivo solo en modo de cliente)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>157</SpecID>
+    <Type>0</Type>
+    <Display>PC's Ethernet IP 4(0~255, efectivo solo en modo de cliente)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>158</SpecID>
+    <Type>0</Type>
+    <Display>Gateway IP 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>159</SpecID>
+    <Type>0</Type>
+    <Display>Gateway IP 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>160</SpecID>
+    <Type>0</Type>
+    <Display>Gateway IP 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>161</SpecID>
+    <Type>0</Type>
+    <Display>Gateway IP 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>162</SpecID>
+    <Type>0</Type>
+    <Display>Mask IP 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>163</SpecID>
+    <Type>0</Type>
+    <Display>Mask IP 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>164</SpecID>
+    <Type>0</Type>
+    <Display>Mask IP 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>165</SpecID>
+    <Type>0</Type>
+    <Display>Mask IP 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>166</SpecID>
+    <Type>0</Type>
+    <Display>Modo de Servidor Socket(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>167</SpecID>
+    <Type>0</Type>
+    <Display>Modo de Servidor Socket(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>168</SpecID>
+    <Type>0</Type>
+    <Display>UDP Socket de recepción(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>169</SpecID>
+    <Type>0</Type>
+    <Display>UDP Socket de Transmisión(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>170</SpecID>
+    <Type>0</Type>
+    <Display>DNS primario 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>171</SpecID>
+    <Type>0</Type>
+    <Display>DNS primario 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>172</SpecID>
+    <Type>0</Type>
+    <Display>DNS primario 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>173</SpecID>
+    <Type>0</Type>
+    <Display>DNS primario 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>179</SpecID>
+    <Type>1</Type>
+    <Display>Custom Protocol|0|0:None|1|1:Dahua China|2|2:METTLER TOLEDO(RL00)|3|3:Taico China(ACS-FB)|4|4:ACLAS|5|5:Digi SM-80</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>180</SpecID>
+    <Type>1</Type>
+    <Display>Mostrar e Imprimir punto decimal|0|0:Dot|1|1:Coma</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>181</SpecID>
+    <Type>1</Type>
+    <Display>Imprimir Kilocaracter|0|0:No imprimir|1|1:Punto|2|2:Coma|3|3:Marca de cotización</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>182</SpecID>
+    <Type>1</Type>
+    <Display>Mostrar Kilocaracter|0|0:No Mostrar|1|1:Mostrar en base a Spec181</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>185</SpecID>
+    <Type>1</Type>
+    <Display>Imprmir Unidad de Peso|0|0:No Imprimir|1|1:Imprimir</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>186</SpecID>
+    <Type>1</Type>
+    <Display>Imprimir unidad de precio unitario|0|0:No imprimir|1|1:Imprimir</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>187</SpecID>
+    <Type>1</Type>
+    <Display>Imprimir unidad de moneda|0|0:No imprimir|1|1:Imprimir</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>188</SpecID>
+    <Type>0</Type>
+    <Display>Longitud de unidad de precio(0:Automatico, 1~7)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>189</SpecID>
+    <Type>0</Type>
+    <Display>Longitud del Total(0:Automatic, 1~7)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>190</SpecID>
+    <Type>1</Type>
+    <Display>Pantalla de información y Mensajes: Mostrar informacion del PLU|0|0:Auto-Ajuste|1|1:Mostrar con Fuente 1|2|2:Mostrar con fuente 0|3|3:2-Modo de Linea</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>191</SpecID>
+    <Type>1</Type>
+    <Display>Pantalla de información y Mensajes: Mostrar Mensaje agregado|0|0:Auto-Ajustar|1|1:Mostrar con Fuente 1|2|2:Mostrar con Fuente 0|3|3:2-Modo de Linea</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>192</SpecID>
+    <Type>1</Type>
+    <Display>Pantalla de información y Mensajes: Mostrar en Modo de Espera|0|0:Mostrar Hora|1|1:Reservado|2|2:Reservado|3|3:Reservado|4|4:Nombre del Negocio|5|5:Nombre del Equipos|6|6:Texto de Prefijo de Moneda|7|7:Texto Sufijo de Moneeda|8|8:Textos Fijos de Básculas 1|9|9:Textos Fijos de Básculas 2|10|10:Textos Fijos de Básculas 3|11|11:Textos Fijos de Básculas 4|12|12:Textos Fijos de Básculas 5|13|13:Textos Fijos de Básculas 6|14|14:Textos Fijos de Básculas 7|15|15:Textos Fijos de Básculas 8|16|16:Reservado 1|17|17:Reservado 2|18|18:Marca de la Industria|19|19:Wireless SSID|20|20:Wireless Password|21|21:Reservado 6|22|22:Reservado 7|23|23:Servidor de Nombres de Dominio|24|24:Texto de encargo 1|25|25:Texto de encargo 2|26|26:Texto de encargo 3|27|27:Texto de encargo 4|28|28:Texto de encargo 5|29|29:Texto de encargo 6|30|30:Texto de encargo 7|31|31:Texto de encargo 8</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>193</SpecID>
+    <Type>1</Type>
+    <Display>Pantalla de información y Mensajes: Mostrar en modo de espera, cambiando(Mostrar piezas totales)|0|0:Mostrar Informacion de venta Acumulado|1|1:Mostrar Mensaje agregado|2|2:Mostrar Informacion de venta Acumulado(Mostrar acumulada Tiempos)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>194</SpecID>
+    <Type>1</Type>
+    <Display>Pantalla de información y Mensajes: Cambiar informacion de PLU 1|0|0:Nombre del PLU|1|1:Texto 1|2|2:Texto 2|3|3:Texto 3|4|4:Texto 4|5|5:Texto 5|6|6:Texto 6|7|7:Texto 7</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>195</SpecID>
+    <Type>1</Type>
+    <Display>Pantalla de información y Mensajes: Cambiar informacion de PLU 2|0|0:Nombre del PLU|1|1:Texto 1|2|2:Texto 2|3|3:Texto 3|4|4:Texto 4|5|5:Texto 5|6|6:Texto 6|7|7:Texto 7</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>196</SpecID>
+    <Type>0</Type>
+    <Display>Imprimir Punto decimal p/Prod. No-Pesado en codigo de barras(0~5)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>197</SpecID>
+    <Type>0</Type>
+    <Display>Pesaje Rapido(0:Nivel x Default, 1~4:El mayoy es el mas rapido)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>198</SpecID>
+    <Type>0</Type>
+    <Display>Retardo para ajuste a Cero(0~19)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>199</SpecID>
+    <Type>0</Type>
+    <Display>Retardo para Estabilizar(0~19)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>200</SpecID>
+    <Type>1</Type>
+    <Display>Punto Decimal: Tara(0~3)|0|0:0|1|1:0.0|2|2:0.00|3|3:0.000</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>201</SpecID>
+    <Type>1</Type>
+    <Display>Punto Decimal: Peso(0~3)|0|0:0|1|1:0.0|2|2:0.00|3|3:0.000</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>202</SpecID>
+    <Type>1</Type>
+    <Display>Punto Decimal: Precio Unitario(0~5)|0|0:0|1|1:0.0|2|2:0.00|3|3:0.000|4|4:0.0000|5|5:0.00000</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>203</SpecID>
+    <Type>1</Type>
+    <Display>Punto Decimal: Precio Total(0~5)|0|0:0|1|1:0.0|2|2:0.00|3|3:0.000|4|4:0.0000|5|5:0.00000</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>204</SpecID>
+    <Type>1</Type>
+    <Display>Punto Decimal Fijo: Tara|0|0:No Fijo|1|1:Fijo</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>205</SpecID>
+    <Type>1</Type>
+    <Display>Punto Decimal Fijo: Peso|0|0:No Fijo|1|1:Fijo</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>206</SpecID>
+    <Type>1</Type>
+    <Display>Punto Decimal Fijo: Precio Unitario|0|0:No Fijo|1|1:Fijo para descuento|2|2:Fijo al recordar PLU|3|3:Siempre Fijo</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>207</SpecID>
+    <Type>1</Type>
+    <Display>Punto Decimal Fijo: Precio Total|0|0:No Fijo|1|1:Fijo basado en Spec100|2|2:Redondeo Comun despues fijo basado en Spec100</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>208</SpecID>
+    <Type>0</Type>
+    <Display>Imprimir Punto Decimal del Peso en Codigo de Barras(0~5)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>209</SpecID>
+    <Type>0</Type>
+    <Display>Punto Decimal de lam oneda en Codigo de Barras Imprimir(0~5)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>210</SpecID>
+    <Type>1</Type>
+    <Display>Unidad del T-Sale|0|0:X Default|3|3:Unidad Kg|4|4:Unidad gr|5|5:Unidad ton|6|6:Unidad lb|7|7:Unidad 500g|8|8:Unidad 100g</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>211</SpecID>
+    <Type>1</Type>
+    <Display>Unidad del Sistema p/ Precio Unitario|0|0:x Default|3|3:Unidad Kg|4|4:Unidad gr|5|5:Unidad ton|6|6:Unidad lb|7|7:Unidad 500g|8|8:Unidad 100g</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>212</SpecID>
+    <Type>1</Type>
+    <Display>Unidad del Sistema de Peso|0|0:x Default|3|3:Unidad Kg|4|4:Unidad gr|5|5:Unidad ton|6|6:Unidad lb|7|7:Unidad 500g|8|8:Unidad 100g</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>213</SpecID>
+    <Type>1</Type>
+    <Display>Precisión de Peso|0|0:Precision 0|1|1:Precision 1|2|2:Precision 2|3|3:Precision 3</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>214</SpecID>
+    <Type>1</Type>
+    <Display>Ordenar por Precisión|0|0:Modo Pesado|1|1:Modo No-Pesado</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>215</SpecID>
+    <Type>0</Type>
+    <Display>Hardware Info: Grado maximo de Overflow(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>216</SpecID>
+    <Type>0</Type>
+    <Display>Hardware Info: Maximo Grado Underflow(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>217</SpecID>
+    <Type>0</Type>
+    <Display>Hardware Info: Minim Grado de Venta(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>218</SpecID>
+    <Type>0</Type>
+    <Display>Hardware Info: Grado de Cero-Tracking(0~99)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>219</SpecID>
+    <Type>0</Type>
+    <Display>Hardware Info: Rango Tara Range(0~99, Sin Limite si el numero especificado es 0)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>220</SpecID>
+    <Type>0</Type>
+    <Display>Hardware Info: Rango del Ceri Iinicial(0~99, Numero %, Sin Limite, si el numero especificado es 0)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>221</SpecID>
+    <Type>0</Type>
+    <Display>Hardware Info: Rango del Cero Manual(0~99, Numero %, Sin limite si el numero especificado es 0)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>222</SpecID>
+    <Type>0</Type>
+    <Display>Hardware Info: Rango de acumulacion manual de venta(0~99, Numero de %, Sin limite si el numero especificado es 0)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>223</SpecID>
+    <Type>0</Type>
+    <Display>Hardware Info: Rango de bandera de Cero(0~99, Numero de %, Sin limite, si el numero especificado es 0)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>224</SpecID>
+    <Type>0</Type>
+    <Display>Hardware Info: Zero Tracking Range(0~99, Percentage Number, Sin limite, si el numero especificado es 0)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>225</SpecID>
+    <Type>0</Type>
+    <Display>Hardware Info: Rango de Bandera de Estable(0~99, Numero de %, Sin limite, si el numero especificado es 0)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>226</SpecID>
+    <Type>1</Type>
+    <Display>Tara puede ser saturada con la primer pesada|0|0:Prohibido|1|1:Permitido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>227</SpecID>
+    <Type>1</Type>
+    <Display>Actualizar Tara|0|0:Permitir agregar sólo|1|1:Prohibido|2|2:Permitido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>228</SpecID>
+    <Type>1</Type>
+    <Display>Conversion de Precio entre diferentes unidades de Peso|0|0:Permitido|1|1:Solo en peso x Default Permitido|2|2:Prohibido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>229</SpecID>
+    <Type>1</Type>
+    <Display>Cambiar Peso|0|0:No Permitido|1|1:Mantener Precionado para cambiar|2|2:Un solo toque para cambiar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>230</SpecID>
+    <Type>0</Type>
+    <Display>Mostrar Intervalo de peso(0~7)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>231</SpecID>
+    <Type>1</Type>
+    <Display>Cero Prohibido en modo PLU|0|0:Permitido|1|1:Prohibido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>232</SpecID>
+    <Type>1</Type>
+    <Display>Punto Flotante de Peso|0|0:Siempre Basado en baja capacidad|1|1:Basado en capacidad actual, Baja Capacidad es prioridad|2|2:Basado en capacidad actual, Alta Capacidad es prioridad</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>233</SpecID>
+    <Type>1</Type>
+    <Display>Retorno a Cero es necesario para cambiar de unida de peso|0|0:No necesario|1|1:Necesario</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>234</SpecID>
+    <Type>0</Type>
+    <Display>Grados de retorno a Cero(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>235</SpecID>
+    <Type>1</Type>
+    <Display>Modulo de detección de Poder|0|0:Activar|1|1:Desactivar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>236</SpecID>
+    <Type>1</Type>
+    <Display>Imprimir en Modo de Batería|0|0:Imprimir|1|1:Not print</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>237</SpecID>
+    <Type>0</Type>
+    <Display>Intervalo del escaner(0~4)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>238</SpecID>
+    <Type>0</Type>
+    <Display>Anti-Vibración de escaner(0~4)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>239</SpecID>
+    <Type>0</Type>
+    <Display>Tiempo de apertura del cajón de dinero(ms:0~9999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>240</SpecID>
+    <Type>0</Type>
+    <Display>Ancho del cabezal de Impresión(mm:0~64)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>241</SpecID>
+    <Type>1</Type>
+    <Display>Unidad de peso Permitida|0|0:Prohibido|1|1:Permitido</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>244</SpecID>
+    <Type>1</Type>
+    <Display>Ignorar error en la impresora(Parte 1)|0|0:No Ignorar|1|1:Ignorar PBS(E7.12)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>245</SpecID>
+    <Type>1</Type>
+    <Display>Ignorar error en la impresora(Parte 2)|0|0:No Ignorar|1|1:Ignorar PDS(E7.11)|2|2:Ignorar enfriamiento(E7.18)|3|3:Ignorar PDS(E7.11) y enfriamiento(E7.18)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>246</SpecID>
+    <Type>1</Type>
+    <Display>Ignorar impresora PPS Sensor|0|0:No ignorar|1|1:Ignorar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>247</SpecID>
+    <Type>1</Type>
+    <Display>Mantener Password en función|0|0:Desactivar|1|1:Mantener Password solo p/cajón de dinero|2|2:Mantener Passwords excepto Admin|3|3:Mantener todos c/Passwords</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>249</SpecID>
+    <Type>1</Type>
+    <Display>Modo de almacenaje de PLU(Tecto de PLU Longitud≈Total Longitud-150)|0|0:Modo x default|1|1:256 Bytes|2|2:512 Bytes|3|3:1024 Bytes|4|4:2048 Bytes</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>250</SpecID>
+    <Type>1</Type>
+    <Display>Modo de No-Acumulación【Accu】Hace la misma operación que【Imprimir】|0|0:Desactivar|1|1:Activar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>251</SpecID>
+    <Type>1</Type>
+    <Display>Menu de Descuentos p/Precio Unitario|0|0:Desactivar Menu|1|1:Activar, x default basado en valor capturado por teclado 【Key】|2|2:Activar,  en % x default|3|3:Activar|4|4:Activar, x default es modo de ajuste</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>252</SpecID>
+    <Type>1</Type>
+    <Display>Menu de Descuentos p/Precio Total|0|0:Desactivar Menu|1|1:Activar, x default basado en valor capturado por teclado 【Key】|2|2:Activar,  en % x default|3|3:Activar|4|4:Activar, x default es modo de ajuste</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>253</SpecID>
+    <Type>1</Type>
+    <Display>Recordar PLU "ItemCode" cuando Presione 【PLU】|0|0:Basado en el numero de PLU|1|1:Basado en la ItemCode del PLU</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>254</SpecID>
+    <Type>1</Type>
+    <Display>Función de Auto【PLU】|0|0:Desactivar|1|1:Activar en modo de espera|2|2:Activar en modo de PLU|3|3:Activar en todos los modos</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>255</SpecID>
+    <Type>1</Type>
+    <Display>Trabajo Auto【PLU】|0|0: Desactivada|1|1: 1 dígito PLU|2|2: 2 dígitos PLU|3|3: 3 dígitos PLU|4|4: 4 dígitos PLU|5|5: 5 los dígitos PLU|6|6: 6 dígitos PLU|7|7: 7 dígitos PLU|8|8: Todas las PLU inmediatamente|9|9: Todas las PLU 1 segundo de retraso|10|10: Todas las PLU demora de 2 segundos|11|11 : Todas las PLU retraso de 3 segundos</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>256</SpecID>
+    <Type>1</Type>
+    <Display>Función de Pre-Imprimir|0|0:Prohibido|1|1:Imprimir Bill 1|2|2:Imprimir Bill 2|3|3:Imprimir PTR|4|4:Imprimir todo como ajuste</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>257</SpecID>
+    <Type>1</Type>
+    <Display>Compensación por Temperatura|0|0:Desactivar|1|1:Ajustar a Cero|2|2:Ajustar Ganacia|3|3:Ajustar Variacion total</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>258</SpecID>
+    <Type>0</Type>
+    <Display>Maximo de Caracteres a tomar por un nuevo renglon(0~31)</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>259</SpecID>
+    <Type>0</Type>
+    <Display>Modo de Salida-Automatica(0~15: +1:Imprimir a solicitud, +2:PrePack, +4:PLU Fijo, +8:Auto-Impresión)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>260</SpecID>
+    <Type>0</Type>
+    <Display>Activar Password de Admin en ciertos modos de operacion(0~31: +1: Modo de Venta, +2:Programación, +4:Reportes y Estadisticas, +8:Cajón de Dinero, +16:Unida de Precio)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>261</SpecID>
+    <Type>0</Type>
+    <Display>PLU-Pesado Prohibido en ciertos modos de operación(0~15: +1:Imprimir a solicitud, +2:PrePack, +4:PLU Fijo, +8:Auto-Impresión)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>262</SpecID>
+    <Type>0</Type>
+    <Display>PLU No-PesadoProhibido en ciertos modos de operación(0~15: +1:Imprimir a solicitud, +2:PrePack, +4:PLU Fijo, +8:Auto-Impresión)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>263</SpecID>
+    <Type>0</Type>
+    <Display>Llamar PLU in en Modo Inactivo(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>264</SpecID>
+    <Type>0</Type>
+    <Display>El modo especial está grabando como modo automático(0~15: +1:Imprimir a solicitud, +2:PrePack, +4:PLU Fijo, +8:Auto-Impresión)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>265</SpecID>
+    <Type>1</Type>
+    <Display>Formato de Impresión de Fecha:Mes|0|0:Digitos|1|1:Dos Caracteres</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>266</SpecID>
+    <Type>1</Type>
+    <Display>Formato en Display de fecha|0|0:X Default|1|1:Usando Spec104 y 265</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>267</SpecID>
+    <Type>1</Type>
+    <Display>Cambio Rapido de Unidad de Pesaje|0|0:X Default|1|1:Prohibido No-Estandard</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>268</SpecID>
+    <Type>1</Type>
+    <Display>Fijar Tara-Automatica|0|0:X Default|1|1:Auto-Bloqueo</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>269</SpecID>
+    <Type>1</Type>
+    <Display>Imprimir Prohibido|0|0:Default|1|1:Prohibido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>270</SpecID>
+    <Type>1</Type>
+    <Display>Ocultar Indicación de Peso|0|0:X Default|1|1:Cuando no exista PLU|2|2:Caundo no exista Precio</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>271</SpecID>
+    <Type>1</Type>
+    <Display>Actualización Automatica|0|0:Desactivar|1|1:Activar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>272</SpecID>
+    <Type>1</Type>
+    <Display>Filter Mode|0|0:Default|1|1:Multi-Rango|2|2:Fijo|3|3:Medio|10|10:Desktop Scale|11|11:Platform Scale|12|12:Hanging Scale</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>274</SpecID>
+    <Type>0</Type>
+    <Display>Maximo numero de PLU(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>275</SpecID>
+    <Type>1</Type>
+    <Display>Unistribe Script|0|0:Desactivar|1|1:RTL en LTR(Suggest)|2|2:LTR en RTL</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>277</SpecID>
+    <Type>1</Type>
+    <Display>Default Working Mode|0|0:Normal|1|1:Batch Print|2|2:PrePack|3|3:Lock PLU|4|4:Auto Print</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>278</SpecID>
+    <Type>0</Type>
+    <Display>Hangup Bill Print Format(0~99,0 for default)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>279</SpecID>
+    <Type>1</Type>
+    <Display>Hangup and Loadback|0|0:Forbidden|1|1:Only hangup bill can be load once|2|2:Only hangup bill can be load, no times limit|3|3:All bill can be load</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>280</SpecID>
+    <Type>1</Type>
+    <Display>Salesman authorization|0|0:Forbidden|1|1:Enable</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>281</SpecID>
+    <Type>1</Type>
+    <Display>Pause Menu|0|0:Disable|1|1:Enable|2|2:Enable - Reserved|3|3:Enable - Reserved|4|4:Enable - Display Store Name|5|5:Enable - Display Device Name|6|6:Enable - Display Prefix of Money Unit|7|7:Enable - Display Suffix of Money Unit|8|8:Enable - Display Device Postil 1|9|9:Enable - Display Device Postil 2|10|10:Enable - Display Device Postil 3|11|11:Enable - Display Device Postil 4|12|12:Enable - Display Device Postil 5|13|13:Enable - Display Device Postil 6|14|14:Enable - Display Device Postil 7|15|15:Enable - Display Device Postil 8|16|16:Enable - Display Reserved 1|17|17:Enable - Display Reserved 2|18|18:Enable - Display Industry Mark|19|19:Enable - Display Wireless SSID|20|20:Enable - Display Wireless Password|21|21:Enable - Display Reserved 6|22|22:Enable - Display Reserved 7|23|23:Enable - Display Server's Domain Name|24|24:Enable - Display Custom Text 1|25|25:Enable - Display Custom Text 2|26|26:Enable - Display Custom Text 3|27|27:Enable - Display Custom Text 4|28|28:Enable - Display Custom Text 5|29|29:Enable - Display Custom Text 6|30|30:Enable - Display Custom Text 7|31|31:Enable - Display Custom Text 8</Display>
+    <Visible>FALSE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>282</SpecID>
+    <Type>0</Type>
+    <Display>Payment Operation Forbidden(0~63,0 for all enable,+2:Card Forbidden,+4:Other Payment 1 Forbidden,+8:Other Payment 2 Forbidden,+16:Other Payment 3 Forbidden,+32:Store Payments Forbidden)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>283</SpecID>
+    <Type>1</Type>
+    <Display>Record of Unconfirmed Data|0|0:Disable|1|1:Record Priced Operation|2|2:Record Priced/Weighted Operation</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>285</SpecID>
+    <Type>1</Type>
+    <Display>Number|0|0:English Number|1|1:Arabic Number|2|2:Persian Number</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>287</SpecID>
+    <Type>0</Type>
+    <Display>non-VIP Discount Percent Off(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>288</SpecID>
+    <Type>0</Type>
+    <Display>VIP Default Discount Percent Off(0~99,0 means same as Spec287)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>289</SpecID>
+    <Type>0</Type>
+    <Display>Other Transaction Print Format(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>290</SpecID>
+    <Type>1</Type>
+    <Display>Log Text 1|0|0:Disable|1|1:PLU Name|2|2:Text 1|3|3:Text 2|4|4:Text 3|5|5:Text 4|6|6:Text 5|7|7:Text 6|8|8:Text 7|9|9:Item Code|10|10:Barcode Index|11|11:Custom Info 1|12|12:Custom Info 2|13|13:Custom Info 3|14|14:Custom Info 4|15|15:Card Number in Card Payment</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>291</SpecID>
+    <Type>1</Type>
+    <Display>Log Text 2|0|0:Disable|1|1:PLU Name|2|2:Text 1|3|3:Text 2|4|4:Text 3|5|5:Text 4|6|6:Text 5|7|7:Text 6|8|8:Text 7|9|9:Item Code|10|10:Barcode Index|11|11:Custom Info 1|12|12:Custom Info 2|13|13:Custom Info 3|14|14:Custom Info 4|15|15:Card Number in Card Payment</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>292</SpecID>
+    <Type>1</Type>
+    <Display>Log Text 3|0|0:Disable|1|1:PLU Name|2|2:Text 1|3|3:Text 2|4|4:Text 3|5|5:Text 4|6|6:Text 5|7|7:Text 6|8|8:Text 7|9|9:Item Code|10|10:Barcode Index|11|11:Custom Info 1|12|12:Custom Info 2|13|13:Custom Info 3|14|14:Custom Info 4|15|15:Card Number in Card Payment</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>293</SpecID>
+    <Type>1</Type>
+    <Display>Log Text 4|0|0:Disable|1|1:PLU Name|2|2:Text 1|3|3:Text 2|4|4:Text 3|5|5:Text 4|6|6:Text 5|7|7:Text 6|8|8:Text 7|9|9:Item Code|10|10:Barcode Index|11|11:Custom Info 1|12|12:Custom Info 2|13|13:Custom Info 3|14|14:Custom Info 4|15|15:Card Number in Card Payment</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>294</SpecID>
+    <Type>1</Type>
+    <Display>Keep Custom Info|0|0:Disable|1|1:Keep Custom Info 1|2|2:Keep Custom Info 2|3|3:Keep Custom Info 1&amp;2|4|4:Keep Custom Info 3|5|5:Keep Custom Info 1&amp;3|6|6:Keep Custom Info 2&amp;3|7|7:Keep Custom Info 1&amp;2&amp;3|8|8:Keep Custom Info 4|9|9:Keep Custom Info 1&amp;4|10|10:Keep Custom Info 2&amp;4|11|11:Keep Custom Info 1&amp;2&amp;4|12|12:Keep Custom Info 3&amp;4|13|13:Keep Custom Info 1&amp;3&amp;4|14|14:Keep Custom Info 2&amp;3&amp;4|15|15:Keep Custom Info 1&amp;2&amp;3&amp;4</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>295</SpecID>
+    <Type>1</Type>
+    <Display>Custom Info Call as PLU|0|0:Disable|1|1:Custom Info 1 Call as PLU|2|2:Custom Info 2 Call as PLU|3|3:Custom Info 1&amp;2 Call as PLU|4|4:Custom Info 3 Call as PLU|5|5:Custom Info 1&amp;3 Call as PLU|6|6:Custom Info 2&amp;3 Call as PLU|7|7:Custom Info 1&amp;2&amp;3 Call as PLU|8|8:Custom Info 4 Call as PLU|9|9:Custom Info 1&amp;4 Call as PLU|10|10:Custom Info 2&amp;4 Call as PLU|11|11:Custom Info 1&amp;2&amp;4 Call as PLU|12|12:Custom Info 3&amp;4 Call as PLU|13|13:Custom Info 1&amp;3&amp;4 Call as PLU|14|14:Custom Info 2&amp;3&amp;4 Call as PLU|15|15:Custom Info 1&amp;2&amp;3&amp;4 Call as PLU</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>297</SpecID>
+    <Type>3</Type>
+    <Display>Second Currency Exchange</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>298</SpecID>
+    <Type>1</Type>
+    <Display>Second Currency Decimal Dot|0|0:0|1|1:0.0|2|2:0.00|3|3:0.000|4|4:0.0000|5|5:0.00000</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>300</SpecID>
+    <Type>1</Type>
+    <Display>Cargo por Servicio/Producto ITEM|0|0:Prohibido|1|1:Permitido, No tomar el % Total nuevamente|2|2:Permitido, Tomar el % Nuevamente</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>301</SpecID>
+    <Type>1</Type>
+    <Display>Cargo por Servicio/Producto: X Default|0|0:Modo de Precio Unitario|1|1:Modo de precio Total|2|2:Modo de %</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>302</SpecID>
+    <Type>1</Type>
+    <Display>Cargo por Servicio en el Total: Ingresar Metodo|0|0:Recordar Manualmente, Ingresar Precio|1|1:Recordar Manualmente, Ingresar %|2|2:Recordar Manualmente, Precio Automarico|3|3:Recordar Manualmente, Auto Percent|4|4:Auto-Recordar, Price Automatico|5|5:Auto-Recordar, Porcentaje-Automatico</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>303</SpecID>
+    <Type>0</Type>
+    <Display>Cargo por Servicio en el Total: Colectar Automaticamente basado en el numero(‱ o numro de precio)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>304</SpecID>
+    <Type>1</Type>
+    <Display>Cargo por Servicio: Colectar Automaticamente basado en el numero|0|0:Antes-Impuestos|1|1:Despues-Impuestos</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>305</SpecID>
+    <Type>1</Type>
+    <Display>Ordenar Impuesto del Cargo por Servicio|0|0:No Ordenar Impuesto de Cargo por Servicio|1|1:Modo de Impuesto Excluidos|2|2:Modo de Impuesto Excluido, Precio de PLU despues de impuesto|3|3:Modo Impuesto incluido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>306</SpecID>
+    <Type>0</Type>
+    <Display>Rango de Impuestos para cargo por Servicio(Uno por cada 10,000‱,0~9999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>307</SpecID>
+    <Type>1</Type>
+    <Display>Permitir Cargo por Servicio|0|0:Prohibido|1|1:Permitido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>308</SpecID>
+    <Type>1</Type>
+    <Display>Cargo por Servicio Re-Input|0|0:Prohibido|1|1:Permitido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>318</SpecID>
+    <Type>0</Type>
+    <Display>Descuento Automatico: empezar días(0 significa siempre, formato: YYMMDD)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>319</SpecID>
+    <Type>0</Type>
+    <Display>Descuento Automatico: último día(formato: YYMMDD)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>320</SpecID>
+    <Type>1</Type>
+    <Display>Sensor de Peso|0|0:Interior|1|1:Modelo RS232</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>330</SpecID>
+    <Type>0</Type>
+    <Display>Card Payment Protocol</Display>
+    <Visible>admin</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>332</SpecID>
+    <Type>0</Type>
+    <Display>Card Payment Server IP 1(0~255)</Display>
+    <Visible>admin</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>333</SpecID>
+    <Type>0</Type>
+    <Display>Card Payment Server IP 2(0~255)</Display>
+    <Visible>admin</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>334</SpecID>
+    <Type>0</Type>
+    <Display>Card Payment Server IP 3(0~255)</Display>
+    <Visible>admin</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>335</SpecID>
+    <Type>0</Type>
+    <Display>Card Payment Server IP 4(0~255)</Display>
+    <Visible>admin</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>336</SpecID>
+    <Type>0</Type>
+    <Display>Card Payment Server Port(0~65535)</Display>
+    <Visible>admin</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>340</SpecID>
+    <Type>0</Type>
+    <Display>Contraste pantalla LCD's(0~7)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>341</SpecID>
+    <Type>0</Type>
+    <Display>Brillo del display LCD's(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>350</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Formato de Impresión/Prodcuto(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>351</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Formato de Codigo Barras/Prodcuto(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>352</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Bandera Codigo Barras/Prodcuto(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>353</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Imprimir # Productos(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>354</SpecID>
+    <Type>1</Type>
+    <Display>PTR: Imprimir Productos Invertidos|0|0:Normal|1|1:Invertido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>355</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Formato de Impresión Suma(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>356</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Formato Codigo Barras suma(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>357</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Bandera Codigo Barras suma(0~9999999)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>358</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Sum Imprimir # Productos(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>359</SpecID>
+    <Type>1</Type>
+    <Display>PTR: Imprimir Suma Invertida Invertido|0|0:Normal|1|1:Invertido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>360</SpecID>
+    <Type>1</Type>
+    <Display>PTR: Network Imprimir Function|0|0:Desactivar|1|1:Activar, wait till printing finished|2|2:Activar, wait till printing started|3|3:Activar, wait till data sending finished</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>361</SpecID>
+    <Type>1</Type>
+    <Display>PTR: Imprimir Estatus  de pista|0|0:No Operación|1|1:Online/offline clew|2|2:Online/offline clew, alarm when there is no rating printing|3|3:Online/offline clew, error when there is no rating printing</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>362</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Rating del numero PTR(0~20)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>363</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Checar Intervalo(0~65535 s)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>364</SpecID>
+    <Type>0</Type>
+    <Display>PTR: 1st IP: 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>365</SpecID>
+    <Type>0</Type>
+    <Display>PTR: 1st IP: 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>366</SpecID>
+    <Type>0</Type>
+    <Display>PTR: 1st IP: 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>367</SpecID>
+    <Type>0</Type>
+    <Display>PTR: 1st IP: 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>368</SpecID>
+    <Type>0</Type>
+    <Display>PTR: 2nd IP: 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>369</SpecID>
+    <Type>0</Type>
+    <Display>PTR: 2nd IP: 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>370</SpecID>
+    <Type>0</Type>
+    <Display>PTR: 2nd IP: 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>371</SpecID>
+    <Type>0</Type>
+    <Display>PTR: 2nd IP: 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>372</SpecID>
+    <Type>0</Type>
+    <Display>PTR: 3rd IP: 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>373</SpecID>
+    <Type>0</Type>
+    <Display>PTR: 3rd IP: 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>374</SpecID>
+    <Type>0</Type>
+    <Display>PTR: 3rd IP: 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>375</SpecID>
+    <Type>0</Type>
+    <Display>PTR: 3rd IP: 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>376</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Socket Servidor(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>377</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Socket Cliente(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>378</SpecID>
+    <Type>0</Type>
+    <Display>PTR: UDP Socket Local(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>379</SpecID>
+    <Type>0</Type>
+    <Display>PTR: UDP Socket Remoto(0~65535)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>400</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Reducir velocidad de Impreción(0~99)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>401</SpecID>
+    <Type>1</Type>
+    <Display>PTR: Tipo de Papel|0|0:Papel Continuo|1|1:Etiqueta c/separador</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>402</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Nitidez de impresión en Etiqueta c/separador(0~15)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>403</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Nitidez de impresión en Papel Continuo(0~15)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>404</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Papel Continuo: Espacion entre cada impresión(0~99mm)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>405</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Papel Continuo: Posición de Corte(0~99mm)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>406</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Papel Continuo: Distancia de Pre-Alimentación(0~99mm)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>407</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Ancho de Impresión de reportes(0~99mm)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>408</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Fuente X Default Font(0~9)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>409</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Protección de Temperatura(0~30s)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>410</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Sensor de posición de alimentación(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>411</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Codigo de Barras, de barras delgadas(0~9,0 means default)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>412</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Codigo de Barras, de barras anchas(0~19,0 means default)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>413</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Fuente (Tamaño letras) del Codigo de Barras(0~2)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>415</SpecID>
+    <Type>1</Type>
+    <Display>PTR: Modo de Linea Automatico|0|0:Prohibido|1|1:Permitido</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>416</SpecID>
+    <Type>1</Type>
+    <Display>PTR: ITF25 Bordes|0|0:Sin Bordes|1|1:Borde Arriva y Abajo|2|2:Contorno</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>417</SpecID>
+    <Type>0</Type>
+    <Display>PTR: ITF25 Ancho de Borde(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>418</SpecID>
+    <Type>0</Type>
+    <Display>PTR: ITF25 Espacio en blanco a los lados (Izquierda-Derecha),(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>419</SpecID>
+    <Type>0</Type>
+    <Display>PTR: Etiqueta c/separador: Distancia de Pre-Aliemntación(0~1999, Es reversa si el numnero es > 1000)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>420</SpecID>
+    <Type>1</Type>
+    <Display>PTR: ignorar sensor PBS|0|0:No ignorar|1|1:ignorar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>421</SpecID>
+    <Type>1</Type>
+    <Display>PTR: ignorar sensor PDS|0|0:No ignorar|1|1:ignorar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>422</SpecID>
+    <Type>1</Type>
+    <Display>PTR: ignorar sensor PPS|0|0:No ignorar|1|1:ignorar</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>430</SpecID>
+    <Type>0</Type>
+    <Display>SecundariaEthernet IP 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>431</SpecID>
+    <Type>0</Type>
+    <Display>SecundariaEthernet IP 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>432</SpecID>
+    <Type>0</Type>
+    <Display>SecundariaEthernet IP 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>433</SpecID>
+    <Type>0</Type>
+    <Display>SecundariaEthernet IP 4(0~255, 0 Modo DHCP)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>434</SpecID>
+    <Type>0</Type>
+    <Display>SecundariaGateway IP 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>435</SpecID>
+    <Type>0</Type>
+    <Display>SecundariaGateway IP 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>436</SpecID>
+    <Type>0</Type>
+    <Display>SecundariaGateway IP 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>437</SpecID>
+    <Type>0</Type>
+    <Display>SecundariaGateway IP 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>438</SpecID>
+    <Type>0</Type>
+    <Display>SecundariaMask IP 1(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>439</SpecID>
+    <Type>0</Type>
+    <Display>SecundariaMask IP 2(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>440</SpecID>
+    <Type>0</Type>
+    <Display>SecundariaMask IP 3(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>441</SpecID>
+    <Type>0</Type>
+    <Display>SecundariaMask IP 4(0~255)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>450</SpecID>
+    <Type>0</Type>
+    <Display>PDF417: Nivel de Checksum(0~9, 9: X Default)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>451</SpecID>
+    <Type>0</Type>
+    <Display>PDF417: Numero de Columnas(0~30, 0:Auto-Ajuste)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>452</SpecID>
+    <Type>0</Type>
+    <Display>PDF417: Numero de Filas(0~90, 0:Auto-Ajuste)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>453</SpecID>
+    <Type>0</Type>
+    <Display>PDF417: Ancho de Barra(0~6, 0: X Default 3)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>454</SpecID>
+    <Type>0</Type>
+    <Display>PDF417: Alto de Barra(0~18, 0: X Default 6)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>455</SpecID>
+    <Type>0</Type>
+    <Display>QR: Revisar Nivel(0~3)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>456</SpecID>
+    <Type>0</Type>
+    <Display>QR: Version(0~31)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>457</SpecID>
+    <Type>0</Type>
+    <Display>QR: Tamaño Barra(0~6, 0 X Default，X Default is 3)</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>480</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 0</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>481</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 1</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>482</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 2</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>483</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 3</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>484</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 4</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>485</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 5</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>486</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 6</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>487</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 7</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>488</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 8</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>489</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 9</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>490</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 10</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>491</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 11</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>492</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 12</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>493</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 13</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>494</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 14</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>495</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 15</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>496</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 16</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>497</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 17</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+  <Spec_Info>
+    <SpecID>498</SpecID>
+    <Type>0</Type>
+    <Display>Special Version Spec: 18</Display>
+    <Visible>TRUE</Visible>
+  </Spec_Info>
+
+  －－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－－
+
+  <String_Info>
+    <StringID>0</StringID>
+    <Display>Nombre del Negocio</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>1</StringID>
+    <Display>Nombre del equipo</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>2</StringID>
+    <Display>Texto de Prefijo de Moneda</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>3</StringID>
+    <Display>Texto Sufijo de Moneeda</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>4</StringID>
+    <Display>Textos Fijos de Básculas 1</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>5</StringID>
+    <Display>Textos Fijos de Básculas 2</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>6</StringID>
+    <Display>Textos Fijos de Básculas 3</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>7</StringID>
+    <Display>Textos Fijos de Básculas 4</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>8</StringID>
+    <Display>Textos Fijos de Básculas 5</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>9</StringID>
+    <Display>Textos Fijos de Básculas 6</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>10</StringID>
+    <Display>Textos Fijos de Básculas 7</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>11</StringID>
+    <Display>Textos Fijos de Básculas 8</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>12</StringID>
+    <Display>Reservado 1</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>13</StringID>
+    <Display>Reservado 2</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>14</StringID>
+    <Display>Marca de la Industria</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>15</StringID>
+    <Display>Wireless SSID</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>16</StringID>
+    <Display>Wireless Password</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>17</StringID>
+    <Display>Reservado 6</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>18</StringID>
+    <Display>Reservado 7</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>19</StringID>
+    <Display>Servidor de Nombres de Dominio</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>20</StringID>
+    <Display>Texto de encargo 1</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>21</StringID>
+    <Display>Texto de encargo 2</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>22</StringID>
+    <Display>Texto de encargo 3</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>23</StringID>
+    <Display>Texto de encargo 4</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>24</StringID>
+    <Display>Texto de encargo 5</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>25</StringID>
+    <Display>Texto de encargo 6</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>26</StringID>
+    <Display>Texto de encargo 7</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+  <String_Info>
+    <StringID>27</StringID>
+    <Display>Texto de encargo 8</Display>
+    <Visible>TRUE</Visible>
+  </String_Info>
+</UIDataSet>
+
+<!--Spanish-->
