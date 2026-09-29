@@ -70,8 +70,9 @@ Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô 
    giả định và nguồn của nó; có kiểm thử giả cho từng kiểu hỏng; liệt kê việc Khánh phải thử thật.
    Việc chạy nền hay dịch vụ ngoài MỚI phải có đèn trong bảng sức khỏe ở `/noi-bo`: số liệu vào
    `suc_khoe_he_thong()` (migration mới), màu và câu vào `web/src/lib/suc-khoe.ts`, kiểm ở
-   `test-suc-khoe.mjs` (ô mới trong danh sách `KHOA`) và `test-suc-khoe-web.mjs` — hỏng thì chủ thấy
-   ngay, không đợi khách báo. *(0c92b10, 0410c58, 5d03c40)*
+   `test-suc-khoe.mjs` (ô mới trong danh sách `KHOA`) và `test-suc-khoe-web.mjs`; đèn mới xếp vào `NHOM`
+   của `web/src/lib/bao-dong-chinh-sach.ts` (đỏ ban đêm có báo ngay không) — hỏng thì chủ thấy ngay,
+   không đợi khách báo. *(0c92b10, 0410c58, 5d03c40)*
 
 ## Sửa lỗi
 
