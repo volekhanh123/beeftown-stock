@@ -27,11 +27,17 @@
  *   - Phần mềm hãng chỉ ghi những phím có hàng; phím không ghi thì cân giữ gán
  *     cũ. Muốn bỏ phím phải ghi tường minh dòng "SCP<tab>tầng<tab>phím<tab>0<tab>".
  *
- * GỬI XUỐNG CÂN: suaThongSo / suaPhim sửa đúng dòng trong file gốc (dòng khác
- * giữ y nguyên từng byte, kể cả byte không phải UTF-8) và trả thêm `khoi` chỉ
- * gồm các dòng đổi; fileNho gói các khối đó thành một file nhỏ dạng USB để gửi
- * vào cổng 33571 (cổng Beeftown Cân 2.1 đã gửi được file PLU).
- * CHƯA THỬ TRÊN CÂN THẬT: cân có nhận khối TMS / SCP gửi riêng qua cổng 33571
+ * PHẦN TMT (2.4) — chữ cài đặt chung: "TMT<tab>số<tab>chữ<tab>", số 0–27 (tên
+ *   quán, tên cân, đơn vị tiền, ghi chú cân 1–8…). Hãng ghi chữ nguyên văn (không
+ *   đổi xuống dòng thành \v); cân của quán lưu chữ dạng UTF-8 như tên hàng.
+ *   15, 16, 19 là tên WiFi, mật khẩu WiFi, tên miền máy chủ: KHÔNG BAO GIỜ đọc ra
+ *   giao diện, không bao giờ ghi (sai là cân rời WiFi).
+ *
+ * GỬI XUỐNG CÂN: suaThongSo / suaChuChung / suaPhim sửa đúng dòng trong file gốc
+ * (dòng khác giữ y nguyên từng byte, kể cả byte không phải UTF-8) và trả thêm
+ * `khoi` chỉ gồm các dòng đổi; fileNho gói các khối đó thành một file nhỏ dạng
+ * USB để gửi vào cổng 33571 (cổng Beeftown Cân 2.1 đã gửi được file PLU).
+ * CHƯA THỬ TRÊN CÂN THẬT: cân có nhận khối TMS / TMT / SCP gửi riêng qua cổng 33571
  * hay không, và tác dụng thật của từng lựa chọn dưới đây — mọi câu trên giao
  * diện phải nói rõ điều đó, không báo "đã đổi" khi chưa thấy trên cân.
  *
@@ -435,17 +441,28 @@ export function suaThongSo(du: Uint8Array, thay: Record<string, string | number>
     moi.set(id, gt);
   }
 
+  return suaDongSo(du, 'TMS', moi, (cu, gt) => chuanGiaTri(cu) === gt,
+    'Phần thông số (TMS) trong file bị hỏng (thiếu dòng kết thúc). Lưu lại dữ liệu từ cân ra USB rồi tải lên lại.');
+}
+
+/**
+ * Sửa các dòng "<phần><tab>số<tab>giá trị<tab>" của phần TMS / TMT (dùng chung cho suaThongSo, suaChuChung):
+ *   - `moi`: số → giá trị mới (đã kiểm, đã ở dạng chuỗi byte). `giong(cu, moi)`: giá trị trong file đã bằng giá trị mới.
+ *   - Số có dòng: sửa cột 2 ở mọi dòng của số đó (mọi khối); dòng thiếu cột thì viết lại đủ dạng. Số chưa có dòng: thêm vào
+ *     cuối khối sau cùng (không có khối → khối mới trước "END ECS"). Dòng khác giữ y nguyên từng byte.
+ *   - `khoi`: DWL, mỗi số đổi một dòng (xếp theo số), END — rỗng nếu không có gì đổi (khi đó `du` là bản sao file cũ).
+ */
+function suaDongSo(du: Uint8Array, phan: 'TMS' | 'TMT', moi: Map<number, string>, giong: (cu: string, moi: string) => boolean,
+  cauHong: string): { du: Uint8Array<ArrayBuffer>; khoi: string[]; doi: number[] } {
   const f = tachDong(du);
-  const { khoi, hong } = timKhoi(f.dong, 'TMS');
-  if (hong) {
-    throw new LoiThongSo('Phần thông số (TMS) trong file bị hỏng (thiếu dòng kết thúc). Lưu lại dữ liệu từ cân ra USB rồi tải lên lại.');
-  }
+  const { khoi, hong } = timKhoi(f.dong, phan);
+  if (hong) throw new LoiThongSo(cauHong);
   const viTri = new Map<number, number[]>();
   const hienTai = new Map<number, string>();
   for (const k of khoi) {
     for (let i = k.dau + 1; i < k.cuoi; i++) {
       const c = f.dong[i].split('\t');
-      if (c[0] !== 'TMS' || !/^\d+$/.test(c[1] ?? '')) continue;
+      if (c[0] !== phan || !/^\d+$/.test(c[1] ?? '')) continue;
       const id = parseInt(c[1], 10);
       viTri.set(id, [...(viTri.get(id) ?? []), i]);
       hienTai.set(id, c[2] ?? '');
@@ -457,25 +474,201 @@ export function suaThongSo(du: Uint8Array, thay: Record<string, string | number>
   const dongThem: string[] = [];
   for (const [id, gt] of [...moi].sort((a, b) => a[0] - b[0])) {
     const cu = hienTai.get(id);
-    if (cu !== undefined && chuanGiaTri(cu) === gt) continue;
+    if (cu !== undefined && giong(cu, gt)) continue;
     doi.push(id);
     const ds = viTri.get(id);
-    if (!ds) { dongThem.push(`TMS\t${id}\t${gt}\t`); continue; }
+    if (!ds) { dongThem.push(`${phan}\t${id}\t${gt}\t`); continue; }
     for (const i of ds) {
       const c = dong[i].split('\t');
-      if (c.length >= 4) { c[2] = gt; dong[i] = c.join('\t'); } else dong[i] = `TMS\t${id}\t${gt}\t`;
+      if (c.length >= 4) { c[2] = gt; dong[i] = c.join('\t'); } else dong[i] = `${phan}\t${id}\t${gt}\t`;
     }
   }
   if (doi.length === 0) return { du: new Uint8Array(du), khoi: [], doi: [] };
   if (dongThem.length) {
     if (khoi.length) dong.splice(khoi[khoi.length - 1].cuoi, 0, ...dongThem);
-    else chenKhoiMoi(dong, ['DWL\tTMS\t', ...dongThem, 'END\tTMS\t']);
+    else chenKhoiMoi(dong, [`DWL\t${phan}\t`, ...dongThem, `END\t${phan}\t`]);
   }
   return {
     du: ghepDong(f, dong),
-    khoi: ['DWL\tTMS\t', ...doi.map(id => `TMS\t${id}\t${moi.get(id)}\t`), 'END\tTMS\t'],
+    khoi: [`DWL\t${phan}\t`, ...doi.map(id => `${phan}\t${id}\t${moi.get(id)}\t`), `END\t${phan}\t`],
     doi,
   };
+}
+
+// -----------------------------------------------------------------------------
+// CHỮ CÀI ĐẶT CHUNG (TMT) — 2.4
+// -----------------------------------------------------------------------------
+export interface MucChuChung {
+  id: number;
+  ten: string;
+  moTa: string;
+  nhom: string;
+  /** Số ký tự tối đa (đếm ký tự, không đếm byte). */
+  toiDa: number;
+  /** Không được để trống. */
+  batBuoc?: boolean;
+  /** Chỉ xem: suaChuChung từ chối sửa. */
+  chiXem?: boolean;
+  /** Mã ô "Thông tin lúc in" (LAS cột 2 = 2) in chữ này trên tem (tem.ts TRUONG_BAN); không có = không in trên tem. */
+  oTem?: number;
+  canhBao?: string;
+}
+
+/** Thứ tự nhóm để giao diện xếp các chữ. */
+export const NHOM_CHU_CHUNG = ['Tên quán và tên cân', 'Đơn vị tiền', 'Ghi chú cân (in trên tem, hoá đơn)', 'Chữ tuỳ ý', 'Chỉ xem'] as const;
+
+/** Tên WiFi (15), mật khẩu WiFi (16), tên miền máy chủ (19): không đọc ra, không ghi. */
+export const CHU_MANG = new Set([15, 16, 19]);
+
+/** Số ký tự tối đa của một chữ — bằng tên hàng (TEN_TOI_DA của can-tma.ts). Cân chứa được bao nhiêu: chưa thử trên cân thật. */
+export const CHU_CHUNG_TOI_DA = 40;
+
+const CHUA_THU_CHU = 'Chưa thử trên cân thật. Gửi xong in thử một tem có ô này (hay xem màn hình cân) để biết cân đã đổi.';
+// Vị trí in trên hoá đơn giấy thường (sổ tay cân, trang 88): 4–7 đầu phiếu, 8–11 cuối phiếu.
+const VI_TRI_HOA_DON = ['đầu phiếu, giữa dòng', 'đầu phiếu, sát trái', 'đầu phiếu, giữa dòng', 'đầu phiếu, sát trái',
+  'cuối phiếu, giữa dòng', 'cuối phiếu, sát trái', 'cuối phiếu, giữa dòng', 'cuối phiếu, sát trái'];
+
+/**
+ * Sửa được: 0, 1 (tên), 2, 3 (đơn vị tiền), 4–11 (ghi chú cân 1–8), 20–27 (chữ tuỳ ý 1–8).
+ * Chỉ xem: 12, 13, 17, 18 (chữ dự phòng — chưa rõ cân dùng vào đâu), 14 (dấu ngành hàng).
+ * Không có trong danh sách, không đọc ra, không ghi: 15, 16, 19 (CHU_MANG).
+ * Nguồn: Tm.xml (String_Info) và sổ tay cân của hãng; số ô tem theo WizardForm.cs của hãng (CAN-TMA §3.2).
+ */
+export const CHU_CHUNG: MucChuChung[] = [
+  {
+    id: 0, ten: 'Tên quán', nhom: 'Tên quán và tên cân', toiDa: CHU_CHUNG_TOI_DA, batBuoc: true, oTem: 0,
+    moTa: 'Tên cửa hàng lưu trong cân: in ở đầu hoá đơn giấy thường, và in trên tem khi mẫu tem có ô "Tên quán". '
+      + 'Mục 1 (Thông tin cân) và phần mềm của hãng cũng hiện tên này.',
+    canhBao: `${CHUA_THU_CHU} Không để trống: phần mềm của hãng nhận ra cân nhờ tên quán và tên cân.`,
+  },
+  {
+    id: 1, ten: 'Tên cân', nhom: 'Tên quán và tên cân', toiDa: CHU_CHUNG_TOI_DA, batBuoc: true, oTem: 1,
+    moTa: 'Tên đặt cho chiếc cân, ví dụ "Cân quầy 1" — có ích khi quán có nhiều cân. Thường không in; mẫu tem có ô "Tên cân" thì in.',
+    canhBao: `${CHUA_THU_CHU} Không để trống: phần mềm của hãng nhận ra cân nhờ tên quán và tên cân.`,
+  },
+  {
+    id: 2, ten: 'Chữ trước số tiền', nhom: 'Đơn vị tiền', toiDa: 8,
+    moTa: 'Chữ in liền trước số tiền khi cân bật in đơn vị (thông số 186, 187). Mặc định của hãng là "$"; quán ở Việt Nam để trống.',
+    canhBao: CHUA_THU_CHU,
+  },
+  {
+    id: 3, ten: 'Chữ sau số tiền', nhom: 'Đơn vị tiền', toiDa: 8,
+    moTa: 'Chữ in sau số tiền khi cân bật in đơn vị (thông số 186, 187), ví dụ "VND" hay "đ". Trình cài đặt của hãng cho Việt Nam ghi "VND".',
+    canhBao: `${CHUA_THU_CHU} Chữ dài có thể lấn sang ô bên cạnh trên tem.`,
+  },
+  ...VI_TRI_HOA_DON.map((viTri, i): MucChuChung => ({
+    id: 4 + i, ten: `Ghi chú cân ${i + 1}`, nhom: 'Ghi chú cân (in trên tem, hoá đơn)', toiDa: CHU_CHUNG_TOI_DA, oTem: 17 + i,
+    moTa: `Dòng chữ tự đặt, in trên tem khi mẫu tem có ô "Ghi chú cân ${i + 1}" — ví dụ số điện thoại, địa chỉ, "Giữ lạnh 0–4 độ". `
+      + `Trên hoá đơn giấy thường in ở ${viTri} (theo sổ tay cân).${i === 4 ? ' Mặc định của hãng là "Thank You".' : ''}`,
+    canhBao: CHUA_THU_CHU,
+  })),
+  ...Array.from({ length: 8 }, (_, i): MucChuChung => ({
+    id: 20 + i, ten: `Chữ tuỳ ý ${i + 1}`, nhom: 'Chữ tuỳ ý', toiDa: CHU_CHUNG_TOI_DA,
+    moTa: `Chữ hiện trên màn hình cân lúc chờ, khi thông số 192 hay 281 chọn chữ này (giá trị ${24 + i}). Không in trên tem.`,
+    canhBao: 'Chưa thử trên cân thật. Cân của quán có hiện chữ này không còn tuỳ loại màn hình.',
+  })),
+  {
+    id: 12, ten: 'Chữ dự phòng 1', nhom: 'Chỉ xem', toiDa: CHU_CHUNG_TOI_DA, chiXem: true, oTem: 36,
+    moTa: 'Sổ tay cân gọi là chữ của phí dịch vụ theo hàng; trình cài đặt của hãng ghi chữ màn hình lúc chờ vào đây.',
+    canhBao: 'Chỉ xem: chưa rõ cân dùng vào đâu. Dùng "Ghi chú cân" để in chữ tự đặt.',
+  },
+  {
+    id: 13, ten: 'Chữ dự phòng 2', nhom: 'Chỉ xem', toiDa: CHU_CHUNG_TOI_DA, chiXem: true, oTem: 37,
+    moTa: 'Sổ tay cân gọi là chữ của phí dịch vụ.',
+    canhBao: 'Chỉ xem: chưa rõ cân dùng vào đâu. Dùng "Ghi chú cân" để in chữ tự đặt.',
+  },
+  {
+    id: 14, ten: 'Dấu ngành hàng', nhom: 'Chỉ xem', toiDa: 8, chiXem: true, oTem: 38,
+    moTa: 'Dấu cân in trước trọng lượng khi cân theo độ chính xác "ngành hàng" (mặc định "*").',
+    canhBao: 'Chỉ xem: đổi dấu này làm tem in trọng lượng khác đi.',
+  },
+  {
+    id: 17, ten: 'Chữ dự phòng 6', nhom: 'Chỉ xem', toiDa: CHU_CHUNG_TOI_DA, chiXem: true, oTem: 41,
+    moTa: 'Chữ dự phòng của hãng. Mẫu tem có ô "Chữ dự phòng 6" thì in chữ này; ngoài ra chưa thấy cân dùng vào đâu.',
+    canhBao: 'Chỉ xem: chưa rõ cân dùng vào đâu.',
+  },
+  {
+    id: 18, ten: 'Chữ dự phòng 7', nhom: 'Chỉ xem', toiDa: CHU_CHUNG_TOI_DA, chiXem: true, oTem: 42,
+    moTa: 'Chữ dự phòng của hãng. Mẫu tem có ô "Chữ dự phòng 7" thì in chữ này; ngoài ra chưa thấy cân dùng vào đâu.',
+    canhBao: 'Chỉ xem: chưa rõ cân dùng vào đâu.',
+  },
+];
+
+const MUC_CHU = new Map<number, MucChuChung>(CHU_CHUNG.map(m => [m.id, m]));
+const UTF8_CHAT = new TextDecoder('utf-8', { fatal: true });
+const UTF8_LONG = new TextDecoder('utf-8');
+const sangByteUtf8 = (t: string) => sangChuoiByte(new TextEncoder().encode(t));
+
+const loiChuMang = (id: number) => new LoiThongSo(`Chữ số ${id} là ${id === 15 ? 'tên WiFi' : id === 16 ? 'mật khẩu WiFi' : 'tên miền máy chủ'} `
+  + 'của cân — không đọc, không sửa ở đây: sửa sai là cân rời WiFi. Sửa trên cân (Prog → 1 → 3).');
+
+/**
+ * Kiểm một chữ định sửa, trả dạng chuẩn: tab / xuống dòng thành một dấu cách, bỏ ký tự điều khiển, bỏ cách thừa
+ * hai đầu, NFC. Không có trong CHU_CHUNG, là chữ mạng (15, 16, 19), chỉ xem, không phải chữ, trống khi bắt buộc, dài
+ * quá, có ký tự thay thế U+FFFD (chữ trong file không đọc được mà chưa gõ lại), hay có biểu tượng (❤ ☎ ✅, biểu tượng cảm
+ * xúc, ký tự ngoài bảng chữ cơ bản) → LoiThongSo. Phông của cân in được ký tự nào: chưa thử trên cân thật.
+ */
+export function kiemChuChung(id: number | string, giaTri: unknown): string {
+  const so = typeof id === 'number' ? id : /^\s*\d+\s*$/.test(id) ? Number(id) : NaN;
+  if (CHU_MANG.has(so)) throw loiChuMang(so);
+  const muc = MUC_CHU.get(so);
+  if (!muc) throw new LoiThongSo(`Chữ số ${String(id).trim() || '(trống)'} không có trong danh sách được sửa ở đây.`);
+  if (muc.chiXem) throw new LoiThongSo(`"${muc.ten}" (chữ số ${muc.id}) chỉ được xem, không sửa ở đây.`);
+  if (typeof giaTri !== 'string' && typeof giaTri !== 'number') throw new LoiThongSo(`"${muc.ten}" phải là chữ.`);
+  const moi = String(giaTri).replace(/[\t\r\n\v\f]+/g, ' ').replace(/[\x00-\x1F\x7F-\x9F]/g, '').trim().normalize('NFC');
+  if (moi.includes('\uFFFD')) {
+    throw new LoiThongSo(`"${muc.ten}" có ký tự "\uFFFD" (chữ trong file không đọc được) — xoá cả ô, gõ lại cả chữ rồi gửi.`);
+  }
+  if (/[\uD800-\uDFFF\u200D\uFE00-\uFE0F]|\p{Extended_Pictographic}/u.test(moi)) {
+    throw new LoiThongSo(`"${muc.ten}" có ký tự cân không in được (biểu tượng như ❤ ☎ ✅, biểu tượng cảm xúc) — bỏ ký tự đó rồi gửi lại.`);
+  }
+  if (muc.batBuoc && moi === '') throw new LoiThongSo(`"${muc.ten}" không được để trống.`);
+  if ([...moi].length > muc.toiDa) throw new LoiThongSo(`"${muc.ten}" dài quá ${muc.toiDa} ký tự.`);
+  return moi;
+}
+
+/**
+ * Chữ trong file (đã đổi UTF-8 sang chữ), chỉ các số có trong CHU_CHUNG — tên / mật khẩu WiFi, tên miền (15, 16, 19)
+ * không bao giờ đọc ra. File có nhiều khối TMT thì khối sau thắng. `docDuoc` = false: chữ trong file không phải
+ * UTF-8 (cân đặt bảng mã khác) — `giaTri` khi đó có ký tự thay thế.
+ */
+export function docChuChung(f: FileCan): Map<number, { giaTri: string; docDuoc: boolean }> {
+  const ra = new Map<number, { giaTri: string; docDuoc: boolean }>();
+  for (const k of timKhoi(f.dong, 'TMT').khoi) {
+    for (let i = k.dau + 1; i < k.cuoi; i++) {
+      const c = f.dong[i].split('\t');
+      if (c[0] !== 'TMT' || !/^\d+$/.test(c[1] ?? '')) continue;
+      const id = parseInt(c[1], 10);
+      if (!MUC_CHU.has(id)) continue;
+      const du = tuChuoiByte(c[2] ?? '');
+      let giaTri: string, docDuoc = true;
+      try { giaTri = UTF8_CHAT.decode(du); } catch { giaTri = UTF8_LONG.decode(du); docDuoc = false; }
+      ra.set(id, { giaTri, docDuoc });
+    }
+  }
+  return ra;
+}
+
+/**
+ * Sửa chữ cài đặt chung trong file gốc — như suaThongSo:
+ *   - `thay`: số chữ → chữ mới. Kiểm TẤT CẢ trước khi sửa (một chữ sai → LoiThongSo, không sửa gì).
+ *   - Chữ ghi dạng UTF-8 như tên hàng. Sửa đúng dòng TMT của số đó (có ở nhiều khối thì sửa mọi dòng); dòng khác
+ *     (kể cả TMT 15, 16, 19) giữ y nguyên từng byte. Số chưa có dòng → thêm vào cuối khối TMT sau cùng (không có
+ *     khối TMT → thêm khối mới trước "END ECS").
+ *   - `khoi`: ["DWL\tTMT\t", "TMT\t0\t<chữ>\t", …, "END\tTMT\t"] — chỉ các chữ thật sự đổi, xếp theo số; rỗng nếu
+ *     không có gì đổi (khi đó `du` là bản sao file cũ). `doi`: các số đã đổi.
+ * Cân có nhận khối TMT gửi riêng qua cổng 33571 hay không: chưa thử trên cân thật.
+ */
+export function suaChuChung(du: Uint8Array, thay: Record<string, unknown>): { du: Uint8Array<ArrayBuffer>; khoi: string[]; doi: number[] } {
+  const moi = new Map<number, string>();
+  for (const [k, v] of Object.entries(thay ?? {})) {
+    const chu = kiemChuChung(k, v);
+    const id = Number(k);
+    if (moi.has(id)) throw new LoiThongSo(`Chữ số ${id} được sửa hai lần trong cùng một lần gửi.`);
+    moi.set(id, sangByteUtf8(chu));
+  }
+  return suaDongSo(du, 'TMT', moi, (cu, chu) => cu === chu,
+    'Phần chữ cài đặt chung (TMT) trong file bị hỏng (thiếu dòng kết thúc). Lưu lại dữ liệu từ cân ra USB rồi tải lên lại.');
 }
 
 // -----------------------------------------------------------------------------
@@ -484,7 +677,8 @@ export function suaThongSo(du: Uint8Array, thay: Record<string, string | number>
 /**
  * File nhỏ dạng USB: "ECS\tVER\t<phiên bản>\t", dòng trống, các khối, dòng trống, "END\tECS\t", xuống dòng CRLF —
  * bố cục như file cân tự lưu ra USB, không BOM. `khoi` có thể gồm nhiều khối (TMS rồi SCP…).
- * Từ chối: khối rỗng, dòng CLR (xoá bảng — không bao giờ gửi theo đường này), dòng ngoài khối, khối không đóng.
+ * Từ chối: khối rỗng, dòng CLR (xoá bảng — không bao giờ gửi theo đường này), dòng ngoài khối, khối không đóng,
+ * dòng TMT 15 / 16 / 19 (tên, mật khẩu WiFi, tên miền — CHU_MANG).
  * Phiên bản trống → "100" (số phần mềm của hãng luôn ghi).
  * Cân có nạp file nhỏ chỉ gồm TMS / SCP qua cổng 33571 không: chưa thử trên cân thật.
  */
@@ -502,6 +696,7 @@ export function fileNho(phienBan: string, khoi: string[]): Uint8Array<ArrayBuffe
     if (laDongMo(c)) { if (mo !== null) throw khoiHong(); mo = c[1]; }
     else if (c[0] === 'END') { if (mo === null || c[1] !== mo) throw khoiHong(); mo = null; }
     else if (mo === null) throw khoiHong();
+    else if (c[0] === 'TMT' && /^\d+$/.test(c[1] ?? '') && CHU_MANG.has(parseInt(c[1], 10))) throw loiChuMang(parseInt(c[1], 10));
   }
   if (mo !== null) throw khoiHong();
   const pb = String(phienBan ?? '').replace(/[^\x21-\x7E]/g, '') || '100';

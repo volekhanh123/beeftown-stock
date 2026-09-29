@@ -72,6 +72,9 @@ const file = new TextEncoder().encode(['ECS\tVER\tV3.14E8\t', '', 'DWL\tPLU\t', 
   'DWL\tLAB\t', ...MAU_TEM, 'END\tLAB\t', '',
   'DWL\tSCP\t', ...SCP, 'END\tSCP\t', '',
   'DWL\tTMS\t', ...TMS, 'END\tTMS\t', '',
+  // Chữ cài đặt chung (2.4) — chữ giả; tên / mật khẩu WiFi giả để thấy trang không hiện chúng.
+  'DWL\tTMT\t', 'TMT\t0\tBEEFTOWN THU\t', 'TMT\t1\tCân quầy 1\t', 'TMT\t2\t\t', 'TMT\t3\tVND\t', 'TMT\t8\tThank You\t', 'TMT\t14\t*\t',
+  'TMT\t15\tWIFI-GIA\t', 'TMT\t16\tmat-khau-gia\t', 'END\tTMT\t', '',
   'DWL\tREP\t', ...NHAT_KY, 'END\tREP\t', '',
   'DWL\tINF\t', 'INA\t0\tUTF-8\t0\t0\t8388608\t7\t7\t', 'INM\t0023F01AECB1\t0023F01AECB1\t0\t', 'END\tINF\t', '',
   'END\tECS\t', ''].join('\r\n'));

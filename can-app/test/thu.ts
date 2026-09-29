@@ -1392,6 +1392,95 @@ console.log('6f · Sửa sau rà soát 2.2');
       && /<span class="nhan chua">Chưa thử trên cân thật<\/span> Cân in HSD ra sao/.test(hd));
   }
 
+  console.log('6f17 · Chữ cài đặt chung (2.4): không lộ WiFi, gửi khối TMT qua 33571, bấm hai lần, mất mạng, file USB, quyền');
+  {
+    // File lưu từ cân ra USB có chữ chung, kể cả tên / mật khẩu WiFi và tên miền giả (15, 16, 19), và một mẫu tem có ô "Ghi chú cân 1".
+    const MAU_GHI_CHU = ['LAB\t5\tTEM GHI CHU\t0\t58\t40\t', 'LAS\t0\t2\t17\t0\t1\t0\t0\t1\t8\t8\t300\t24\t', 'LAE\t'];
+    const fileTmt = new TextEncoder().encode(['ECS\tVER\tV3.14E8\t', '', 'DWL\tPLU\t', ...PLU_F, 'END\tPLU\t', '',
+      'DWL\tLAB\t', ...MAU_TEM, ...MAU_GHI_CHU, 'END\tLAB\t', '', 'DWL\tTMS\t', ...TMS_F, 'END\tTMS\t', '',
+      'DWL\tTMT\t', 'TMT\t0\tQuán thử\t', 'TMT\t1\tCân quầy\t', 'TMT\t3\tVND\t', 'TMT\t8\tThank You\t',
+      'TMT\t15\tWIFI-GIA\t', 'TMT\t16\tmat-khau-gia\t', 'TMT\t19\tmay-chu.gia\t', 'END\tTMT\t', '', 'END\tECS\t', ''].join('\r\n'));
+    const MANG = ['WIFI-GIA', 'mat-khau-gia', 'may-chu.gia'];
+    const dongGuiF = (b: Buffer) => b.toString('latin1').split('\r\n');
+    const u = new UngDung(ddMoi(), { danhMuc: async () => dmF('10001', '10002', '10003'), mang: [], mac: async () => null });
+    u.luuCauHinh({ ipCan: '127.0.0.1', congCan });
+    u.ghiNhanFileTuCan(fileTmt);
+
+    const cc = await u.chuChung();
+    const gt = (id: number) => cc.muc.find(m => m.id === id);
+    ok('Đọc chữ chung: tên quán, tên cân (UTF-8), chữ sau số tiền, ghi chú 5; số chưa có dòng → null',
+      gt(0)?.giaTri === 'Quán thử' && gt(1)?.giaTri === 'Cân quầy' && gt(3)?.giaTri === 'VND' && gt(8)?.giaTri === 'Thank You'
+      && gt(4)?.giaTri === null && cc.muc.every(m => m.docDuoc), JSON.stringify(cc.muc.map(m => [m.id, m.giaTri])));
+    ok('Không bao giờ trả tên / mật khẩu WiFi, tên miền (15, 16, 19) — cả số lẫn chữ', !cc.muc.some(m => [15, 16, 19].includes(m.id))
+      && MANG.every(t => !JSON.stringify(cc).includes(t)));
+    ok('Chữ nào đang in trên mẫu tem nào: Ghi chú cân 1 → mẫu 5; tên quán không mẫu nào in',
+      JSON.stringify(gt(4)?.trenTem) === JSON.stringify(['Mẫu 5 "TEM GHI CHU"']) && gt(0)?.trenTem.length === 0, JSON.stringify(gt(4)?.trenTem));
+    const mc = moMayChu(u, { ma: 'cc', phienBan: 'thu', khiCoNhip: () => {}, khiDong: () => {} });
+    const apiCc = async (d: string, than?: unknown) => (await fetch(`http://127.0.0.1:${mc.port}${d}?t=cc`, { method: 'POST',
+      body: JSON.stringify(than ?? {}), headers: { 'Content-Type': 'application/json' } })).text();
+    const chuApi = await apiCc('/api/chu-chung');
+    ok('API /api/chu-chung: có tên quán, không có chữ mạng nào', /"ok":true/.test(chuApi) && chuApi.includes('Quán thử') && MANG.every(t => !chuApi.includes(t)));
+
+    const goc0 = docGocF(u), soNhan = nhan.length;
+    const k1 = await thu(() => u.suaChuChung({ thay: { 0: '  Beeftown\tQuận 1 ', 4: 'ĐT 0909 000 000' } }));
+    const b = (t: string) => Buffer.from(t, 'utf8').toString('latin1');
+    ok('Gửi tên quán + ghi chú 1: cân giả 33571 nhận đúng một file nhỏ chỉ có khối TMT (UTF-8, tab và cách thừa đã gọn)',
+      k1?.doi.join() === '0,4' && nhan.length === soNhan + 1 && JSON.stringify(dongGuiF(nhan[nhan.length - 1])) === JSON.stringify(['ECS\tVER\tV3.14E8\t', '',
+        'DWL\tTMT\t', `TMT\t0\t${b('Beeftown Quận 1')}\t`, `TMT\t4\t${b('ĐT 0909 000 000')}\t`, 'END\tTMT\t', '', 'END\tECS\t', '']),
+      JSON.stringify(dongGuiF(nhan[nhan.length - 1] ?? Buffer.alloc(0))));
+    const goc1 = docGocF(u).toString('latin1');
+    ok('File gốc đã có chữ mới; dòng WiFi, tên miền y nguyên; file nhỏ vừa gửi không mang dòng mạng',
+      (await u.chuChung()).muc.find(m => m.id === 0)?.giaTri === 'Beeftown Quận 1' && goc1.includes('TMT\t16\tmat-khau-gia\t')
+      && goc1.includes('TMT\t15\tWIFI-GIA\t') && goc1.includes('TMT\t19\tmay-chu.gia\t') && MANG.every(t => !nhan[nhan.length - 1].toString('latin1').includes(t))
+      && Buffer.compare(docGocF(u), goc0) !== 0);
+
+    const soN1 = nhan.length, goc2 = docGocF(u);
+    const tuChoi = [
+      ['Chữ như cũ → "chưa có gì thay đổi"', { 0: 'Beeftown Quận 1' }, /chưa có gì thay đổi/],
+      ['Mật khẩu WiFi (16) → từ chối, rời WiFi', { 16: 'abc' }, /rời WiFi/],
+      ['Tên WiFi viết "015" → vẫn từ chối', { '015': 'abc' }, /rời WiFi/],
+      ['Tên miền (19) kèm một chữ đúng → từ chối cả lần gửi', { 5: 'Được', 19: 'x.vn' }, /rời WiFi/],
+      ['Dấu ngành hàng (14) chỉ xem', { 14: '#' }, /chỉ được xem/],
+      ['Tên quán trống', { 0: '   ' }, /không được để trống/],
+      ['Dài quá 40 ký tự', { 5: 'ư'.repeat(41) }, /dài quá 40/],
+      ['Biểu tượng cảm xúc', { 5: 'Bò 🐄' }, /không in được/],
+      ['Giá trị không phải chữ (null) → báo, không lặng lẽ bỏ', { 0: null }, /phải là chữ/],
+    ] as const;
+    const kqTuChoi = await Promise.all(tuChoi.map(([, thay]) => loiCua(() => u.suaChuChung({ thay }))));
+    ok('Từ chối trước khi nối cân: ' + tuChoi.map(t => t[0]).join('; '), kqTuChoi.every((l, i) => tuChoi[i][2].test(l))
+      && nhan.length === soN1 && Buffer.compare(docGocF(u), goc2) === 0, JSON.stringify(kqTuChoi));
+    ok('Qua API cũng từ chối mật khẩu WiFi, không gửi', /rời WiFi/.test(await apiCc('/api/chu-chung/gui', { thay: { 16: 'abc' } })) && nhan.length === soN1);
+
+    const [h1, h2] = await Promise.all([loiCua(() => u.suaChuChung({ thay: { 9: 'Cảm ơn quý khách' } })), loiCua(() => u.suaChuChung({ thay: { 9: 'Cảm ơn quý khách' } }))]);
+    ok('Bấm gửi hai lần cùng lúc: chạy lần lượt, chỉ một lần gửi xuống cân, lần sau báo chưa có gì thay đổi',
+      [h1, h2].filter(l => l === '').length === 1 && [h1, h2].some(l => /chưa có gì thay đổi/.test(l)) && nhan.length === soN1 + 1, JSON.stringify([h1, h2]));
+
+    u.luuCauHinh({ congCan: congDong });
+    const goc3 = docGocF(u), soN2 = nhan.length;
+    const loiMat = await loiCua(() => u.suaChuChung({ thay: { 10: 'Giữ lạnh 0–4 độ' } }));
+    ok('Cân không nhận (cổng đóng): báo lỗi, không nói "đã gửi", file gốc y nguyên (lần sau gửi lại được)',
+      loiMat !== '' && !/[Đđ]ã gửi/.test(loiMat) && nhan.length === soN2 && Buffer.compare(docGocF(u), goc3) === 0
+      && (await u.chuChung()).muc.find(m => m.id === 10)?.giaTri === null, loiMat);
+    u.luuCauHinh({ congCan });
+
+    const k = await thu(() => u.taoFileUsbGoc({ chuChung: { 10: 'Giữ lạnh 0–4 độ' }, thongSo: { 104: '4' } }));
+    const fu = k && fs.existsSync(k.duongDan) ? fs.readFileSync(k.duongDan).toString('latin1') : '';
+    ok('Lưu file nạp USB kèm chữ đang sửa (và thông số đang sửa); file gốc chưa đổi', k?.chuChung?.join() === '10' && k.thongSo.join() === '104'
+      && fu.includes(`TMT\t10\t${b('Giữ lạnh 0–4 độ')}\t`) && fu.includes('TMS\t104\t4\t') && Buffer.compare(docGocF(u), goc3) === 0, JSON.stringify(k));
+    ok('File nạp USB với chữ WiFi → từ chối', /rời WiFi/.test(await loiCua(() => u.taoFileUsbGoc({ chuChung: { 15: 'x' } }))));
+    fs.rmSync(u.fileChoUsb, { force: true });
+
+    const cnC = { id: 'cn1', ma: 'q1', ten: 'Chi nhánh thử' };
+    const nv = new UngDung(ddMoi(), { mang: [], mac: async () => null,
+      nguoi: { email: 'nv@b', hoTen: 'NV', vaiTro: 'nhan_vien_quay', chiNhanh: cnC, cacChiNhanh: [cnC], quyen: quyenCuaVai('nhan_vien_quay') } });
+    const soN3 = nhan.length;
+    const loiNv = await Promise.all([() => nv.chuChung(), () => nv.suaChuChung({ thay: { 0: 'Quán khác' } }), () => nv.taoFileUsbGoc({ chuChung: { 0: 'Quán khác' } })]
+      .map(f => loiCua(f)));
+    ok('NV quầy: xem, gửi, lưu file USB chữ chung đều bị từ chối "chỉ dành cho quản lý hoặc chủ", không gửi gì',
+      loiNv.every(l => /quản lý hoặc chủ/.test(l)) && nhan.length === soN3 && !fs.existsSync(nv.fileChoUsb), JSON.stringify(loiNv));
+    mc.stop(true);
+  }
+
   console.log('6f13 · Giao diện (mã trang)');
   {
     const gd = fs.readFileSync(path.join(import.meta.dir, '..', 'src', 'giao-dien.html'), 'utf8');
@@ -1412,6 +1501,14 @@ console.log('6f · Sửa sau rà soát 2.2');
       /goi\('\/api\/tao-usb-goc', \{ thongSo: tsSua \}\)/.test(gd) && /goi\('\/api\/tao-usb-goc', \{ phim: thayPhim\(\) \}\)/.test(gd));
     ok('HỒI QUY: thẻ Cân — lamCan không bật lại nút của mục Thông số; ô số cập nhật khi gõ, không vẽ lại',
       /querySelectorAll\('button'\)\]\.filter\(b => !b\.closest\('#can-thong-so'\)\)/.test(gd) && /else i\.oninput = \(\) => \{ capNhat\(\);/.test(gd));
+    ok('Chữ cài đặt chung (2.4): lamCan không bật lại nút của mục; đang gửi thì Gửi / Bỏ không bật lại, gửi xong bỏ thay đổi đã gửi; tải lại giữ thay đổi đang sửa của mục khác',
+      /\.filter\(b => !b\.closest\('#can-thong-so'\)\)\.filter\(b => !b\.closest\('#can-chu-chung'\)\)/.test(gd)
+      && /\$\('nut-gui-cc'\)\.disabled = dangGuiCc \|\| !n/.test(gd) && /ccSua = \{\};   \/\/ đã gửi/.test(gd) && /\.inert = dangGuiCc/.test(gd)
+      && /tsSua = giu \? giuThayDoi\(tsSua, tsTruoc, moi\) : \{\}/.test(gd) && /ccSua = giu \? giuThayDoi\(ccSua, ccDL, moi\) : \{\}/.test(gd)
+      && (gd.match(/await taiLaiSauKhiGui\(\);/g) ?? []).length === 2 && /if \(lan !== lanTaiCan\) return;/.test(gd)
+      && /goi\('\/api\/chu-chung\/gui', \{ thay: ccSua \}\)/.test(gd) && /CHƯA THỬ TRÊN CÂN THẬT/.test(gd));
+    ok('Chữ cài đặt chung: "Lưu file nạp USB" của mục chỉ mang chữ đang sửa (thông số sai không chặn đường USB, và ngược lại)',
+      /goi\('\/api\/tao-usb-goc', \{ chuChung: ccSua \}\)/.test(gd) && !/thongSo: tsSua, chuChung/.test(gd));
     ok('HỒI QUY: Phím tắt / Thông số — đang gửi thì nút Gửi không bật lại, gửi xong bỏ thay đổi đã gửi',
       /\$\('nut-gui-phim'\)\.disabled = dangGuiPhim \|\| n === 0/.test(gd) && /phimSua = \{\};   \/\/ đã gửi/.test(gd)
       && /\$\('nut-gui-ts'\)\.disabled = dangGuiTs \|\| !n/.test(gd) && /tsSua = \{\};   \/\/ đã gửi/.test(gd));
@@ -1475,7 +1572,7 @@ if (!thuMucTam) {
   process.exit(1);
 }
 ok('Trạng thái: chưa có file gốc, cân mặc định 192.168.1.22', tt.ok && tt.goc === null && tt.cauHinh.ipCan === '192.168.1.22', JSON.stringify(tt));
-ok('Phiên bản 2.3.0', (tt as unknown as { phienBan: string }).phienBan === '2.3.0');
+ok('Phiên bản 2.4.0', (tt as unknown as { phienBan: string }).phienBan === '2.4.0');
 ok('Trang hướng dẫn của chương trình thật: có mã bí mật mới mở được', (await fetch(`${goc.origin}/huong-dan?t=${ma}`)).status === 200
   && (await fetch(`${goc.origin}/huong-dan`)).status === 403);
 const ch = await (await api('/api/cau-hinh', JSON.stringify({ ipCan: '127.0.0.1', congCan: congCan }))).json() as { ok: boolean };

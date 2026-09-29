@@ -1,5 +1,5 @@
 /**
- * Kiểm thử thông số cân (TMS) và phím tắt (SCP) — src/thong-so.ts.
+ * Kiểm thử thông số cân (TMS), chữ cài đặt chung (TMT) và phím tắt (SCP) — src/thong-so.ts.
  *
  *     cd can-app && npx bun test/thu-thong-so.ts
  *
@@ -11,8 +11,10 @@
 import * as net from 'node:net';
 import { docFileCan, sangChuoiByte, tuChuoiByte, type FileCan } from '../../web/src/lib/kho/can-tma.ts';
 import {
-  LoiThongSo, NHAN_PHIM, NHOM_THONG_SO, THONG_SO, docPhim, docThongSo, fileNho, kiemThongSo, suaPhim, suaThongSo,
+  CHU_CHUNG, CHU_MANG, LoiThongSo, NHAN_PHIM, NHOM_CHU_CHUNG, NHOM_THONG_SO, THONG_SO, docChuChung, docPhim, docThongSo, fileNho,
+  kiemChuChung, kiemThongSo, suaChuChung, suaPhim, suaThongSo,
 } from '../src/thong-so.ts';
+import { O_THEM_DUOC, TRUONG_BAN } from '../src/tem.ts';
 
 type Ok = (ten: string, dk: boolean, ct?: string) => void;
 
@@ -104,7 +106,7 @@ function quaMang(du: Uint8Array): Promise<Uint8Array> {
 
 // ---- Kiểm thử ----------------------------------------------------------------------------
 export async function thuThongSo(ok: Ok): Promise<void> {
-  console.log('\n— Thông số cân (TMS) và phím tắt (SCP)');
+  console.log('\n— Thông số cân (TMS), chữ cài đặt chung (TMT) và phím tắt (SCP)');
 
   // Danh mục
   const ids = THONG_SO.map(m => m.id);
@@ -219,6 +221,76 @@ export async function thuThongSo(ok: Ok): Promise<void> {
   ok('fileNho: từ chối khối không đóng / dòng ngoài khối / dòng có xuống dòng',
     [['DWL\tTMS\t', 'TMS\t104\t4\t'], ['TMS\t104\t4\t'], ['DWL\tTMS\t', 'TMS\t104\t4\r\n', 'END\tTMS\t'], ['DWL\tTMS\t', 'END\tSCP\t']]
       .every(k => { const m = loi(() => fileNho('V3.14E8', k)); return m !== '' && !m.startsWith('KHÁC'); }));
+
+  // ---- Chữ cài đặt chung (TMT, 2.4) --------------------------------------------------------
+  const idsChu = CHU_CHUNG.map(m => m.id);
+  ok('Danh mục chữ chung: không trùng số, không có 15, 16, 19 (tên / mật khẩu WiFi, tên miền)', new Set(idsChu).size === idsChu.length
+    && ![15, 16, 19].some(id => idsChu.includes(id)) && [15, 16, 19].every(id => CHU_MANG.has(id)) && CHU_MANG.size === 3, idsChu.join());
+  const suaDuocChu = CHU_CHUNG.filter(m => !m.chiXem).map(m => m.id).sort((a, b) => a - b);
+  ok('Sửa được đúng 0–11 và 20–27; chỉ xem 12, 13, 14, 17, 18', suaDuocChu.join() === '0,1,2,3,4,5,6,7,8,9,10,11,20,21,22,23,24,25,26,27'
+    && CHU_CHUNG.filter(m => m.chiXem).map(m => m.id).sort((a, b) => a - b).join() === '12,13,14,17,18', suaDuocChu.join());
+  ok('Mỗi chữ có tên, mô tả tiếng Việt, nhóm hợp lệ; chữ sửa được ghi "chưa thử trên cân thật"', CHU_CHUNG.every(m => m.ten && m.moTa.length > 15
+    && /[ăâđêôơư]/i.test(m.moTa) && (NHOM_CHU_CHUNG as readonly string[]).includes(m.nhom))
+    && CHU_CHUNG.filter(m => !m.chiXem).every(m => /chưa thử trên cân thật/i.test(m.canhBao ?? '')) && CHU_CHUNG.filter(m => m.chiXem).every(m => /Chỉ xem/.test(m.canhBao ?? '')));
+  ok('Ô tem in chữ (Thông tin lúc in) khớp tên ô của tem.ts: 0 → 0, 1 → 1, 4–11 → 17–24, 12–14 → 36–38, 17–18 → 41–42',
+    CHU_CHUNG.filter(m => m.oTem !== undefined).every(m => TRUONG_BAN[m.oTem!] === m.ten)
+    && CHU_CHUNG.filter(m => m.oTem !== undefined).map(m => `${m.id}:${m.oTem}`).join()
+      === '0:0,1:1,4:17,5:18,6:19,7:20,8:21,9:22,10:23,11:24,12:36,13:37,14:38,17:41,18:42',
+    CHU_CHUNG.map(m => `${m.id}:${m.oTem}`).join());
+
+  ok('Thẻ Mẫu tem thêm được ô "Ghi chú cân 1–8" (thông tin lúc in 17–24) và "Tên quán" — in được chữ sửa ở đây',
+    CHU_CHUNG.filter(m => m.id === 0 || (m.id >= 4 && m.id <= 11)).every(m => O_THEM_DUOC.some(o => o.flag1 === 2 && o.flag2 === m.oTem && o.ten === m.ten)));
+  ok('kiemChuChung: bỏ tab / xuống dòng / ký tự điều khiển, cách thừa hai đầu; NFD → NFC', kiemChuChung(4, ' Giữ\tlạnh\r\n0–4 độ\x07 ') === 'Giữ lạnh 0–4 độ'
+    && kiemChuChung('5', 'Quán'.normalize('NFD')) === 'Quán' && kiemChuChung(5, 123) === '123');
+  ok('kiemChuChung: 40 ký tự có dấu được, 41 thì không; chữ sau số tiền tối đa 8', kiemChuChung(4, 'ệ'.repeat(40)).length === 40
+    && /dài quá 40/.test(loi(() => kiemChuChung(4, 'ệ'.repeat(41)))) && /dài quá 8/.test(loi(() => kiemChuChung(3, 'VND VND V'))));
+  ok('kiemChuChung: 15, 16, 19 (cả "016", " 19 ") → từ chối, nói rõ cân rời WiFi', [15, '016', ' 19 '].every(id => /rời WiFi/.test(loi(() => kiemChuChung(id, 'x')))));
+  ok('kiemChuChung: chỉ xem (14), số lạ (28, "abc"), không phải chữ (null, {}), trống khi bắt buộc (0, 1), biểu tượng cảm xúc / nửa ký tự',
+    /chỉ được xem/.test(loi(() => kiemChuChung(14, '#'))) && /không có trong danh sách/.test(loi(() => kiemChuChung(28, 'x')))
+    && /không có trong danh sách/.test(loi(() => kiemChuChung('abc', 'x'))) && [null, {}].every(v => /phải là chữ/.test(loi(() => kiemChuChung(4, v))))
+    && [0, 1].every(id => /không được để trống/.test(loi(() => kiemChuChung(id, ' \t ')))) && kiemChuChung(4, '') === ''
+    && ['Bò 🐄', 'a\uD800b'].every(v => /không in được/.test(loi(() => kiemChuChung(4, v)))));
+  ok('kiemChuChung: biểu tượng trong bảng chữ cơ bản (❤ ☎ ✅ ☕, dấu biến thể FE0F) → từ chối; ° – “ ” ₫ … vẫn được',
+    ['Cảm ơn ❤', '☎ 0909', '✅ Tươi', '☕', 'x\uFE0F'].every(v => /không in được/.test(loi(() => kiemChuChung(4, v))))
+    && kiemChuChung(4, 'Giữ lạnh 0–4 °C “ngon” 845₫…') === 'Giữ lạnh 0–4 °C “ngon” 845₫…');
+  ok('kiemChuChung: ký tự thay thế U+FFFD (chữ không đọc được mà chỉ gõ thêm) → bảo gõ lại cả chữ',
+    /gõ lại cả chữ/.test(loi(() => kiemChuChung(0, 'Qu\uFFFDn thử Q1'))));
+
+  const cc = docChuChung(fc);
+  ok('docChuChung: tên quán UTF-8; không bao giờ đọc 15, 16 dù file có', cc.get(0)?.giaTri === 'Quán thử' && cc.get(0)?.docDuoc === true
+    && !cc.has(15) && !cc.has(16) && cc.size === 1);
+
+  const c1 = suaChuChung(goc, { 0: 'Beeftown Quận 1', 4: 'ĐT 0909 000 000' });
+  ok('suaChuChung: khối gửi chỉ có chữ đổi, UTF-8, xếp theo số', JSON.stringify(c1.khoi)
+    === JSON.stringify(['DWL\tTMT\t', `TMT\t0\t${utf8('Beeftown Quận 1')}\t`, `TMT\t4\t${utf8('ĐT 0909 000 000')}\t`, 'END\tTMT\t']) && c1.doi.join() === '0,4', JSON.stringify(c1.khoi));
+  const Lc1 = tach(c1.du).dong;
+  const kc1 = dongKhac(goc, taoFile(Lc1.filter(d => d !== `TMT\t4\t${utf8('ĐT 0909 000 000')}\t`)));
+  ok('suaChuChung: chỉ dòng TMT 0 đổi, thêm dòng TMT 4 ngay trước END TMT; mọi dòng khác (kể cả WiFi, byte 0xFF) y nguyên',
+    kc1 !== null && kc1.length === 1 && L[kc1[0]] === `TMT\t0\t${utf8('Quán thử')}\t` && Lc1[Lc1.indexOf('END\tTMT\t') - 1] === `TMT\t4\t${utf8('ĐT 0909 000 000')}\t`
+    && Lc1.includes('TMT\t15\tWIFI-GIA\t') && Lc1.includes('TMT\t16\tmatkhau-gia\t') && c1.du.includes(0xFF) && tach(c1.du).xd === '\r\n', JSON.stringify(kc1));
+  const cc1 = docChuChung(docFileCan(c1.du));
+  ok('Đọc lại: tên quán, ghi chú 1 mới', cc1.get(0)?.giaTri === 'Beeftown Quận 1' && cc1.get(4)?.giaTri === 'ĐT 0909 000 000');
+  ok('Chữ như cũ → khối rỗng, file y nguyên', (() => { const r = suaChuChung(goc, { 0: ' Quán thử ' }); return r.khoi.length === 0 && bang(r.du, goc); })()
+    && suaChuChung(goc, {}).khoi.length === 0);
+  ok('Một chữ sai (16) thì không sửa gì; cùng số hai lần ("4", "04") → LoiThongSo', /rời WiFi/.test(loi(() => suaChuChung(goc, { 0: 'Mới', 16: 'x' })))
+    && /hai lần/.test(loi(() => suaChuChung(goc, { 4: 'a', '04': 'b' }))));
+  ok('Phần TMT thiếu dòng END → LoiThongSo', /TMT.*bị hỏng/.test(loi(() => suaChuChung(taoFile(dongFileCan().filter(d => d !== 'END\tTMT\t')), { 0: 'Mới' }))));
+  const khongTmt = dongFileCan().filter(d => !d.startsWith('TMT\t') && d !== 'DWL\tTMT\t' && d !== 'END\tTMT\t');
+  const c2 = tach(suaChuChung(taoFile(khongTmt), { 3: 'đ' }).du).dong;
+  const eEcs2 = c2.indexOf('END\tECS\t');
+  ok('Không có phần TMT: thêm khối mới trước END ECS, có dòng trống như file cân',
+    c2.slice(eEcs2 - 4, eEcs2).join('|') === `DWL\tTMT\t|TMT\t3\t${utf8('đ')}\t|END\tTMT\t|`, c2.slice(eEcs2 - 5, eEcs2 + 1).join('|'));
+  const c3 = suaChuChung(fHang, { 3: 'đ' });
+  const t3 = tach(c3.du);
+  ok('File kiểu phần mềm hãng (BOM, LF, TMT 3 "VND"): sửa đúng dòng, giữ BOM và LF', t3.bom && t3.xd === '\n' && t3.dong[7] === `TMT\t3\t${utf8('đ')}\t`
+    && dongKhac(fHang, c3.du)?.join() === '7');
+  const thieuCot = taoFile(dongFileCan().map(d => (d.startsWith('TMT\t0\t') ? 'TMT\t0' : d)));
+  ok('Dòng TMT thiếu cột ("TMT<tab>0") → viết lại đủ dạng', tach(suaChuChung(thieuCot, { 0: 'Mới' }).du).dong.includes('TMT\t0\tM\xE1\xBB\x9Bi\t'));
+  const khongUtf8 = taoFile(dongFileCan().map(d => (d.startsWith('TMT\t0\t') ? 'TMT\t0\tQu\xE1n\t' : d)));
+  ok('Chữ trong file không phải UTF-8 → docDuoc = false (trang báo gõ lại)', docChuChung(docFileCan(khongUtf8)).get(0)?.docDuoc === false);
+  ok('fileNho: khối TMT đọc lại đủ; từ chối dòng TMT 15 / 16 / 19 (phòng khi chỗ khác gọi sai)',
+    docChuChung(fileCanTho(fileNho('V3.14E8', c1.khoi))).get(4)?.giaTri === 'ĐT 0909 000 000'
+    && [15, 16, 19].every(id => /rời WiFi/.test(loi(() => fileNho('V3.14E8', ['DWL\tTMT\t', `TMT\t${id}\tx\t`, 'END\tTMT\t'])))));
 
   // Phím tắt
   ok('NHAN_PHIM: 74 phím, 1 = A, 26 = Z, 58 = "_", 63 = IME, 64 = Shift, 73 = Drawer',

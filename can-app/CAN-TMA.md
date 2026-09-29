@@ -260,6 +260,13 @@ kể cả TMT 15/16/19 và TMS 43, 50, 150–165 nếu file gốc có. File gố
 đè cài đặt mới (§10.1). File gốc đọc qua WiFi (`docTuCan`) không giữ các dòng mạng này — giá trị cân trả qua cổng chưa
 thử không được thành cài đặt gửi ngược xuống cân.
 
+**Beeftown Cân 2.4 sửa chữ chung** (`thong-so.ts` `CHU_CHUNG`, `suaChuChung`; thẻ Cân & thông số mục 6): sửa được 0–11
+và 20–27, chỉ xem 12, 13, 14, 17, 18; 15, 16, 19 không đọc ra, không ghi (`fileNho` cũng chặn). Chữ ghi UTF-8 (cân quán
+báo `INA … UTF-8`), một dòng, tối đa 40 ký tự — [suy luận] từ tên hàng; phần mềm hãng cho 255 (`String.Value`), giới hạn
+của cân chưa biết. Gửi: file nhỏ `DWL TMT` … `END TMT` qua 33571 — **chưa thử trên cân thật**. Ô tem in chữ chung:
+"Thông tin lúc in" 0 → TMT 0, 1 → 1, 17–24 → 4–11, 36–43 → 12–19 (`WizardForm.cs` của hãng); chữ trước / sau số tiền
+(TMT 2, 3) có lẽ in ở ô 16 "Đơn vị tiền" khi thông số 186 / 187 = 1 [suy luận].
+
 ### 3.3 `SCP` — phím tắt
 
 `SCP⇥<trang>⇥<phím>⇥<PLU>⇥`. Chi tiết ở §7.
