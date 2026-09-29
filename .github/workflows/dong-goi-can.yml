@@ -8,6 +8,10 @@
 #     ở kiem-thu.yml). KHÔNG tải file lên.
 #   · Chạy tay: Actions → Đóng gói Beeftown Cân → Run workflow. Gõ số PR (ví dụ 31) để lấy bản thử của PR
 #     trước khi gộp; để trống thì đóng gói nhánh chọn ở "Use workflow from".
+#   · 2.5 — nút "Cập nhật" trong chương trình: job phat-hanh đưa BeeftownCan.exe + phien-ban.json (phiên bản, SHA-256,
+#     cỡ) lên kho CÔNG KHAI volekhanh123/beeftown-can-ban-cai (chỉ file cài, không mã nguồn), bằng secret
+#     TOKEN_BAN_CAI_CAN (token chỉ ghi được kho đó). Chưa có secret thì chỉ cảnh báo ở Summary. Thêm secret muộn:
+#     Run workflow trên main để đưa bù phiên bản hiện tại.
 #
 # Dung lượng: repo private có hạn mức lưu trữ artifact (gói Free 500 MB, tính theo giờ), mỗi bản ~40 MB.
 # Nên tab Actions chỉ giữ MỘT bản chính thức (bản mới xoá bản cũ), bản thử giữ 7 ngày, lượt PR không tải lên.
@@ -247,6 +251,7 @@ jobs:
           name: ${{ env.TEN }}
           path: ra
       - name: Tạo Release "Beeftown Cân ${{ env.PHIEN_BAN }}"
+        id: tao-release
         if: steps.da-co.outputs.co == 'false'
         working-directory: ra
         run: |
@@ -263,6 +268,65 @@ jobs:
           LINK=$(gh release create "can-v$PHIEN_BAN" "$TEN.zip" --target "$GITHUB_SHA" \
                    --title "Beeftown Cân $PHIEN_BAN" --notes-file ghi-chu.md)
           echo "📦 Đã tạo Release [Beeftown Cân $PHIEN_BAN]($LINK) kèm $TEN.zip — giữ mãi." | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Bản cài công khai cho nút "Cập nhật" trong chương trình
+        # Chương trình ở quán tự hỏi và tải từ kho công khai này (can-app/src/cap-nhat.ts, REPO_BAN_CAI — test-quy-trinh
+        # kiểm hai chỗ trùng nhau). File .exe lấy từ Release riêng ở trên (vừa tạo, hoặc đã có khi chạy bù), đúng từng
+        # byte bản đã phát hành. Token CHỈ ở bước này và chỉ ghi được kho công khai; không bao giờ ở job dong-goi (lượt
+        # bản thử PR chạy mã chưa gộp ở đó).
+        # Chỉ khi Release riêng chắc chắn có: vừa tạo xong, hoặc đã có từ trước (chạy bù). Hỏi / lấy file hỏng → không chạy.
+        if: ${{ !cancelled() && steps.da-co.outcome == 'success' && (steps.da-co.outputs.co == 'true' || steps.tao-release.outcome == 'success') }}
+        env:
+          TOKEN_BAN_CAI: ${{ secrets.TOKEN_BAN_CAI_CAN }}
+          REPO_BAN_CAI: volekhanh123/beeftown-can-ban-cai
+        run: |
+          if [ -z "$TOKEN_BAN_CAI" ]; then
+            echo "::warning::Chưa có secret TOKEN_BAN_CAI_CAN — bản $PHIEN_BAN chưa lên $REPO_BAN_CAI, máy quầy chưa thấy nút Cập nhật. Release riêng vẫn đủ."
+            echo "⚠️ Chưa có secret **TOKEN_BAN_CAI_CAN**: máy quầy chưa thấy bản $PHIEN_BAN qua nút Cập nhật. Cách thêm: can-app/README.md, mục \"Bản 2.5 — tự cập nhật\"." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          # Đã công bố → thôi. Còn nháp (lần trước hỏng giữa chừng — có thể thiếu file) → xoá nháp, làm lại từ đầu; không
+          # bao giờ công bố một nháp chưa rõ đủ file. Chỉ "release not found" mới là chưa có; lỗi khác (token hết hạn, sai
+          # quyền) → đỏ, để máy quầy không lặng lẽ thôi nhận bản mới.
+          if HOI=$(GH_TOKEN="$TOKEN_BAN_CAI" gh release view "can-v$PHIEN_BAN" --repo "$REPO_BAN_CAI" --json isDraft -q .isDraft 2>&1); then
+            if [ "$HOI" = "false" ]; then
+              echo "Bản cài $PHIEN_BAN đã có trên $REPO_BAN_CAI." | tee -a "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+            GH_TOKEN="$TOKEN_BAN_CAI" gh release delete "can-v$PHIEN_BAN" --repo "$REPO_BAN_CAI" --yes
+            echo "Đã xoá bản nháp dở can-v$PHIEN_BAN trên $REPO_BAN_CAI — làm lại."
+          elif [[ "$HOI" == *"release not found"* ]]; then
+            :
+          else
+            echo "::error::Không hỏi được $REPO_BAN_CAI (secret TOKEN_BAN_CAI_CAN hết hạn hay sai quyền?): $HOI"
+            exit 1
+          fi
+          # Bản mới hơn đã là "mới nhất" (chạy bù bản cũ) thì không giành lại chữ "mới nhất".
+          MOI_NHAT=$(GH_TOKEN="$TOKEN_BAN_CAI" gh release view --repo "$REPO_BAN_CAI" --json tagName -q .tagName 2>/dev/null || true)
+          LATEST=--latest
+          if [ -n "$MOI_NHAT" ] && [ "$(printf '%s\n%s\n' "${MOI_NHAT#can-v}" "$PHIEN_BAN" | sort -V | tail -n 1)" != "$PHIEN_BAN" ]; then
+            LATEST=--latest=false
+          fi
+          mkdir -p ban-cai && cd ban-cai
+          gh release download "can-v$PHIEN_BAN" --pattern "$TEN.zip"
+          unzip -q "$TEN.zip" BeeftownCan.exe
+          case "$(file -b BeeftownCan.exe)" in
+            *PE32+*GUI*x86-64*) ;;
+            *) echo "::error::BeeftownCan.exe trong Release không phải file chạy Windows 64-bit: $(file -b BeeftownCan.exe)"; exit 1 ;;
+          esac
+          jq -n --arg phienBan "$PHIEN_BAN" --arg sha256 "$(sha256sum BeeftownCan.exe | cut -d' ' -f1)" \
+            --argjson kichThuoc "$(stat -c %s BeeftownCan.exe)" --arg ngay "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{dang: 1, phienBan: $phienBan, tep: "BeeftownCan.exe", sha256: $sha256, kichThuoc: $kichThuoc, ngay: $ngay}' > phien-ban.json
+          # Tạo nháp (tải đủ hai file) rồi mới công bố: phiếu không bao giờ hiện trước file; "mới nhất" chỉ đổi lúc công bố.
+          GH_TOKEN="$TOKEN_BAN_CAI" gh release create "can-v$PHIEN_BAN" BeeftownCan.exe phien-ban.json --repo "$REPO_BAN_CAI" \
+            --draft --title "Beeftown Cân $PHIEN_BAN" \
+            --notes "Bản cài Beeftown Cân $PHIEN_BAN — chương trình ở quán tự tải qua nút Cập nhật. Kho này chỉ chứa file cài, không có mã nguồn."
+          TEP=$(GH_TOKEN="$TOKEN_BAN_CAI" gh release view "can-v$PHIEN_BAN" --repo "$REPO_BAN_CAI" --json assets -q '[.assets[].name] | sort | join(",")')
+          if [ "$TEP" != "BeeftownCan.exe,phien-ban.json" ]; then
+            echo "::error::Bản nháp can-v$PHIEN_BAN trên $REPO_BAN_CAI thiếu file ($TEP) — không công bố. Chạy lại workflow."
+            exit 1
+          fi
+          GH_TOKEN="$TOKEN_BAN_CAI" gh release edit "can-v$PHIEN_BAN" --repo "$REPO_BAN_CAI" --draft=false "$LATEST"
+          echo "🔄 Đã đưa bản cài $PHIEN_BAN lên $REPO_BAN_CAI — máy quầy thấy nút Cập nhật ở lần mở sau." | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Tab Actions chỉ giữ bản chính thức mới nhất
         # Tạo Release hỏng thì vẫn dọn: file của lượt này đã tải lên xong ở job dong-goi.
         if: ${{ !cancelled() }}

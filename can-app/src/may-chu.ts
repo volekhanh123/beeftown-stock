@@ -12,6 +12,7 @@ import { exec } from 'node:child_process';
 import GIAO_DIEN from './giao-dien.html' with { type: 'text' };
 import HUONG_DAN from './huong-dan.html' with { type: 'text' };
 import { UngDung, cauLoi } from './nghiep-vu.ts';
+import { LoiCapNhat } from './cap-nhat.ts';
 import type { SuaO, ThayDoiTem, ThemO } from './tem.ts';
 
 const json = (v: unknown, status = 200) =>
@@ -59,6 +60,11 @@ export function moMayChu(ud: UngDung, tuy: {
   khiCoNhip: () => void;
   /** Trang báo đóng cửa sổ. */
   khiDong: () => void;
+  /**
+   * 2.5: bản mới đã vào chỗ — main.ts dừng máy chủ này, mở bản mới, chờ nó trả lời (hỏng thì quay về bản cũ) rồi
+   * thoát. Không có (kiểm thử, bun) → /api/cap-nhat từ chối trước khi làm gì.
+   */
+  khoiDongLai?: (phienBanMoi: string) => void;
 }) {
   const MA = tuy.ma;
 
@@ -94,7 +100,23 @@ export function moMayChu(ud: UngDung, tuy: {
               lanTuGui: ud.lanTuGui,
               // HSD trên cân tính cho ngày nào (giờ VN), cân có in HSD không, có cũ không — trang báo đỏ khi cũ.
               hsd: ud.hsdTrenCan(),
+              capNhat: ud.trangThaiCapNhat(),
             });
+          }
+          // ---- 2.5: tự cập nhật (cap-nhat.ts) ----
+          case '/api/ban-moi': {
+            // chiXem: chỉ tiến độ (trang hỏi mỗi giây lúc đang cập nhật), không hỏi mạng. hoiLai: bỏ qua bản nhớ 30 phút.
+            const b = await docThan(req);
+            if (b.chiXem === true) return json({ ok: true, ...ud.trangThaiCapNhat() });
+            return json({ ok: true, ...(await ud.kiemBanMoi(b.hoiLai === true)) });
+          }
+          case '/api/cap-nhat': {
+            if (!tuy.khoiDongLai) throw new LoiCapNhat('Bản này không tự khởi động lại được — cập nhật bằng tay (trang Releases).');
+            const kq = await ud.capNhat();
+            // Trả lời trang trước, rồi mới dừng máy chủ và mở bản mới.
+            const khoiDongLai = tuy.khoiDongLai;
+            setTimeout(() => khoiDongLai(kq.phienBan), 500);
+            return json({ ok: true, ...kq });
           }
           case '/api/cau-hinh': {
             const b = await docThan(req);

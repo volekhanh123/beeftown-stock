@@ -61,7 +61,7 @@ export const chayPowerShell: ChayPs = (lenh, bien, choMs) => new Promise((xong, 
 });
 
 /** Khung chung cho mọi đoạn lệnh. */
-const khung = (than: string) => String.raw`$ErrorActionPreference = 'Stop'
+export const khung = (than: string) => String.raw`$ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
 try {
 ` + than + String.raw`
