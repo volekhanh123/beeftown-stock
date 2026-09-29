@@ -46,7 +46,7 @@ import {
   type DongKeHoach, type FileCan, type HangKho, type KeHoach, type LoaiDong,
 } from '../../web/src/lib/kho/can-tma.ts';
 import { LoiTem, phimTat, suaTem, xemTem, type DaTat, type TemXem, type ThayDoiTem } from './tem.ts';
-import { LA_IP, thuKetNoi, timCan as doTimCan, type KetQuaTim, type MangMay } from './tim-can.ts';
+import { LA_IP, layMac, thuKetNoi, timCan as doTimCan, type KetQuaTim, type MangMay } from './tim-can.ts';
 import { LoiDay, dsCongCom, giayDay, guiCom, kiemCom, ngheCom, tomTatNghe, type ChayPs, type CongCom } from './day-rs232.ts';
 import { docCaiDat, docMatHang } from '../../web/src/lib/kho/danh-muc.ts';
 import { hangChoCan } from '../../web/src/lib/kho/danh-muc-can.ts';
@@ -99,6 +99,8 @@ export interface CauHinh {
   tuGui?: boolean;
   /** Những lần cân đổi địa chỉ mà chương trình tự tìm ra, mới nhất trước (tối đa 10). */
   doiDiaChi?: DoiDiaChi[];
+  /** Mã máy (MAC) của cân đang dùng — cân đổi địa chỉ thì chỉ tự theo khi máy thấy trong WiFi cùng mã. */
+  macCan?: string;
   /** Cổng COM và tốc độ chọn lần thử dây RS232 gần nhất. */
   com?: string;
   baud?: number;
@@ -152,8 +154,11 @@ const KHONG_THAY_CAN = (ip: string, cong: number, kq: KetQuaTim) => kq.dai.lengt
 const NHIEU_CAN = (thay: string[]) =>
   `Thấy ${thay.length} cân trong WiFi (${thay.join(', ')}) nên chưa biết gửi cho cân nào. ` +
   'Trên cân bấm Prog → 4 → 2 xem địa chỉ, rồi chọn đúng cân ở Cài đặt → Tìm cân.';
-/** Tự gửi mỗi phút: cân tắt (tối, nghỉ) thì không dò WiFi mỗi phút mà 10 phút một lần. */
-const DO_LAI_SAU_MS = 10 * 60_000;
+const KHAC_MAY = (ip: string) =>
+  `Thấy một cân ở ${ip} nhưng không phải cân vẫn dùng (mã máy khác), nên không tự gửi sang. ` +
+  `Nếu đúng là cân của quầy (vừa thay cân, hay quán có hai cân): trên cân bấm Prog → 4 → 2 xem địa chỉ, rồi chọn cân ở Cài đặt → Tìm cân.`;
+/** Tự gửi mỗi phút: vừa dò mà không thấy cân (tối, nghỉ) thì 5 phút sau mới dò lại, không dò mỗi phút. */
+const DO_LAI_SAU_MS = 5 * 60_000;
 
 /**
  * Gửi nguyên nội dung file vào cân, đóng chiều gửi (cân coi đó là "đã gửi
@@ -318,6 +323,8 @@ export class UngDung {
       mang?: MangMay[];
       /** Kiểm thử: PowerShell giả cho dây RS232. */
       chayPs?: ChayPs;
+      /** Kiểm thử: mã máy (MAC) theo địa chỉ thay cho bảng ARP thật. */
+      mac?: (ip: string) => Promise<string | null>;
     } = {},
   ) {
     this.fileCauHinh = path.join(dd.cauHinh, 'cau-hinh.json');
@@ -348,6 +355,8 @@ export class UngDung {
       ...(moi.tuGui !== undefined ? { tuGui: moi.tuGui === true } : {}),
     };
     if (doiKho) { delete kq.supabaseUrl; delete kq.anonKey; this.client = null; }
+    // Người chọn cân khác: mã máy cũ không còn đúng — lần nối được tới sẽ nhớ lại.
+    if (ip !== cu.ipCan) delete kq.macCan;
     ghiJson(this.fileCauHinh, kq);
     return kq;
   }
@@ -665,15 +674,29 @@ export class UngDung {
   }
 
   /** `timLai: false` — nối cân không được thì báo luôn, không dò WiFi (xem guiDenCan). */
-  async guiXuongCan(giuHangNgoaiKho = false, timLai = true): Promise<{ soHang: number; conLai: HangTrenCan[]; doiDiaChi: DoiDiaChi | null }> {
-    const { du, moi, tren } = await this.dung(giuHangNgoaiKho);
-    const doiDiaChi = await this.guiDenCan(du, timLai);
-    // Cân chỉ thêm / sửa: dòng cũ vẫn nằm lại.
-    for (const [so, h] of hangTuFile(moi)) tren.set(so, h);
-    this.luuGoc(du);
-    this.ghiTrenCan(tren);
-    const soMoi = new Set(moi.plu.map(p => p.so));
-    return { soHang: moi.plu.length, conLai: [...tren.values()].filter(h => !soMoi.has(h.so)), doiDiaChi };
+  guiXuongCan(giuHangNgoaiKho = false, timLai = true): Promise<{ soHang: number; conLai: HangTrenCan[]; doiDiaChi: DoiDiaChi | null }> {
+    return this.motLuc(async () => {
+      const { du, moi, tren } = await this.dung(giuHangNgoaiKho);
+      const doiDiaChi = await this.guiDenCan(du, timLai);
+      // Cân chỉ thêm / sửa: dòng cũ vẫn nằm lại.
+      for (const [so, h] of hangTuFile(moi)) tren.set(so, h);
+      this.luuGoc(du);
+      this.ghiTrenCan(tren);
+      const soMoi = new Set(moi.plu.map(p => p.so));
+      return { soHang: moi.plu.length, conLai: [...tren.values()].filter(h => !soMoi.has(h.so)), doiDiaChi };
+    });
+  }
+
+  /**
+   * Việc ghi xuống cân chạy lần lượt: tự gửi, bấm Gửi, gửi tem, gửi thử qua dây
+   * không chồng nhau — hai file chồng nhau thì không biết cân giữ bản nào, và
+   * việc sau lập kế hoạch từ file gốc việc trước vừa ghi.
+   */
+  private hangDoi: Promise<unknown> = Promise.resolve();
+  private motLuc<T>(viec: () => Promise<T>): Promise<T> {
+    const lan = this.hangDoi.then(viec);
+    this.hangDoi = lan.then(() => {}, () => {});
+    return lan;
   }
 
   /**
@@ -689,7 +712,7 @@ export class UngDung {
       if (x.dem.them + x.dem.sua === 0) {
         this.lanTuGui = { luc, daGui: false, cau: 'Cân đã khớp kho.' };
       } else {
-        const k = await this.guiXuongCan(false, Date.now() - this.lanDo >= DO_LAI_SAU_MS);
+        const k = await this.guiXuongCan(false, Date.now() - this.lanDoHong >= DO_LAI_SAU_MS);
         this.lanTuGui = { luc, daGui: true, cau: `Đã tự gửi ${x.dem.them} thêm, ${x.dem.sua} sửa (${k.soHang} hàng)`
           + (k.doiDiaChi ? ` — cân đổi địa chỉ, đã tìm thấy ở ${k.doiDiaChi.den}.` : '.') };
       }
@@ -771,12 +794,14 @@ export class UngDung {
     return { du: ghiFileCan(docFileCan(kq.du), KHONG_DOI, { giuGioCan: true }), daTat: kq.daTat };
   }
 
-  async guiTem(thay: ThayDoiTem): Promise<{ ok: true; doiDiaChi: DoiDiaChi | null }> {
-    const { du, daTat } = this.dungTem(thay);
-    const doiDiaChi = await this.guiDenCan(du);
-    this.luuGoc(du);
-    ghiJson(this.fileDaTat, daTat);
-    return { ok: true, doiDiaChi };
+  guiTem(thay: ThayDoiTem): Promise<{ ok: true; doiDiaChi: DoiDiaChi | null }> {
+    return this.motLuc(async () => {
+      const { du, daTat } = this.dungTem(thay);
+      const doiDiaChi = await this.guiDenCan(du);
+      this.luuGoc(du);
+      ghiJson(this.fileDaTat, daTat);
+      return { ok: true as const, doiDiaChi };
+    });
   }
 
   taoFileUsbTem(thay: ThayDoiTem): { duongDan: string; soHang: number } {
@@ -801,62 +826,93 @@ export class UngDung {
   // ---- nối cân, tìm cân khi cân đổi địa chỉ ------------------------------------
   /**
    * Gửi tới cân. Không nối được (chưa gửi byte nào) thì dò WiFi tìm cân: thấy
-   * đúng một cân thì dùng địa chỉ đó (đổi thì lưu lại) và gửi lại một lần.
-   * Đang gửi dở mà hỏng thì không gửi lại — để người bấm quyết.
+   * đúng cân đang dùng ở địa chỉ khác thì dùng địa chỉ đó (lưu lại) và gửi lại
+   * một lần. Đang gửi dở mà hỏng thì không gửi lại — để người bấm quyết.
    */
   private async guiDenCan(du: Uint8Array, timLai = true): Promise<DoiDiaChi | null> {
     const gui = this.phu.gui ?? guiTcp;
     const ch = this.cauHinh();
     try {
       await gui(ch.ipCan, ch.congCan, du);
+      await this.nhoMac(ch.ipCan);
       return null;
     } catch (e) {
       if (!(e instanceof LoiKhongNoi) || !timLai) throw e;
     }
     const kq = await this.timCan();
-    // Không thấy cân: vẫn là "chưa nối được". Thấy nhiều cân: phải chọn, không tự đoán.
+    // Không thấy cân: vẫn là "chưa nối được". Thấy nhiều cân / cân khác máy: phải chọn, không tự đoán.
     if (!kq.thongCan) throw kq.thay.length ? new LoiCan(kq.loi!) : new LoiKhongNoi(kq.loi!);
     await gui(kq.ipCan, ch.congCan, du);
+    await this.nhoMac(kq.ipCan);
     return kq.doi;
   }
 
   /** Nút "Kiểm tra kết nối" (chạy cả lúc mở chương trình): nối không được thì dò WiFi tìm cân. */
   async thuCan(): Promise<KetQuaTimCan> {
     const ch = this.cauHinh();
-    if (await (this.phu.thu ?? thuKetNoi)(ch.ipCan, ch.congCan)) {
+    // Chờ ngắn như mỗi địa chỉ khi dò: cân tắt thì khỏi chờ lâu rồi mới dò.
+    if (await (this.phu.thu ?? thuKetNoi)(ch.ipCan, ch.congCan, 2000)) {
+      await this.nhoMac(ch.ipCan);
       return { thongCan: true, ipCan: ch.ipCan, doi: null, loi: null, thay: [ch.ipCan], daThu: 0, dai: [] };
     }
     return this.timCan();
   }
 
-  /** Dò WiFi tìm cân (nút "Tìm cân"). Thấy đúng một cân ở địa chỉ khác thì dùng luôn địa chỉ đó. */
+  /**
+   * Dò WiFi tìm cân (nút "Tìm cân"). Thấy đúng một cân ở địa chỉ khác thì dùng
+   * luôn địa chỉ đó — trừ khi đã biết mã máy của cân mà máy vừa thấy khác mã
+   * (cân khác, không phải cân vẫn dùng đổi địa chỉ).
+   */
   async timCan(): Promise<KetQuaTimCan> {
-    const kq = await this.doMang(this.cauHinh());
-    // Đọc lại sau khi dò: hai lần dò cùng lúc (tự gửi và nút bấm) chỉ ghi một lần đổi.
-    const cu = this.cauHinh().ipCan;
-    const doi = kq.thay.length === 1 && kq.thay[0] !== cu ? this.ghiDoiDiaChi(cu, kq.thay[0]) : null;
+    const truoc = this.cauHinh();
+    const kq = await this.doMang(truoc);
+    // Cài đặt đổi trong lúc dò (người gõ địa chỉ / cổng khác, hay lượt dò chung với tự gửi vừa
+    // đổi địa chỉ): kết quả dò không còn đúng — kiểm lại theo cài đặt mới, không tự đổi đè lên.
+    const vanNhu = () => { const c = this.cauHinh(); return c.ipCan === truoc.ipCan && c.congCan === truoc.congCan; };
+    if (!vanNhu()) return this.thuCan();
+    let doi: DoiDiaChi | null = null, khacMay: string | null = null;
+    if (kq.thay.length === 1 && kq.thay[0] !== truoc.ipCan) {
+      const moi = kq.thay[0];
+      const mac = await (this.phu.mac ?? layMac)(moi);
+      if (!vanNhu()) return this.thuCan();
+      const cu = this.cauHinh();
+      if (cu.macCan && mac && mac !== cu.macCan) khacMay = moi;
+      else doi = this.ghiDoiDiaChi(cu.ipCan, moi, mac ?? cu.macCan);
+    }
     const ch = this.cauHinh();
-    const thongCan = kq.thay.includes(ch.ipCan);
-    const loi = thongCan ? null : kq.thay.length ? NHIEU_CAN(kq.thay) : KHONG_THAY_CAN(ch.ipCan, ch.congCan, kq);
+    const thongCan = !khacMay && kq.thay.includes(ch.ipCan);
+    const loi = thongCan ? null : khacMay ? KHAC_MAY(khacMay) : kq.thay.length ? NHIEU_CAN(kq.thay) : KHONG_THAY_CAN(ch.ipCan, ch.congCan, kq);
+    this.lanDoHong = thongCan ? 0 : Date.now();
     return { ...kq, thongCan, ipCan: ch.ipCan, doi, loi };
   }
 
-  /** Lúc dò WiFi gần nhất (ms) — tự gửi không dò lại trong 10 phút. */
-  lanDo = 0;
-  private dangDo: Promise<KetQuaTim> | null = null;
+  /** Lúc dò WiFi gần nhất mà không nối được cân (ms, 0: lần dò gần nhất thấy cân) — tự gửi chờ 5 phút mới dò lại. */
+  lanDoHong = 0;
+  private dangDo: { khoa: string; kq: Promise<KetQuaTim> } | null = null;
+  /** Một lượt dò mỗi lúc cho cùng địa chỉ cũ và cổng; bấm Tìm cân khi tự gửi đang dò thì dùng chung lượt đó. */
   private doMang(ch: CauHinh): Promise<KetQuaTim> {
-    if (!this.dangDo) {
-      this.lanDo = Date.now();
-      this.dangDo = doTimCan(ch.congCan, ch.ipCan, this.phu.mang).finally(() => { this.dangDo = null; });
+    const khoa = `${ch.ipCan}:${ch.congCan}`;
+    if (this.dangDo?.khoa !== khoa) {
+      const kq = doTimCan(ch.congCan, ch.ipCan, this.phu.mang)
+        .finally(() => { if (this.dangDo?.kq === kq) this.dangDo = null; });
+      this.dangDo = { khoa, kq };
     }
-    return this.dangDo;
+    return this.dangDo.kq;
   }
 
   /** Cân đổi địa chỉ: dùng địa chỉ mới, nhớ 10 lần gần nhất — cân hay đổi thì trang nhắc giữ cố định trong router. */
-  private ghiDoiDiaChi(tu: string, den: string): DoiDiaChi {
+  private ghiDoiDiaChi(tu: string, den: string, mac: string | undefined): DoiDiaChi {
     const doi = { luc: new Date().toISOString(), tu, den };
-    this.ghiThem({ ipCan: den, doiDiaChi: [doi, ...(this.cauHinh().doiDiaChi ?? [])].slice(0, 10) });
+    this.ghiThem({ ipCan: den, macCan: mac, doiDiaChi: [doi, ...(this.cauHinh().doiDiaChi ?? [])].slice(0, 10) });
     return doi;
+  }
+
+  /** Vừa nối được cân ở địa chỉ đang dùng mà chưa biết mã máy: đọc và nhớ (một lần). */
+  private async nhoMac(ip: string) {
+    if (this.cauHinh().macCan || this.cauHinh().ipCan !== ip) return;
+    const mac = await (this.phu.mac ?? layMac)(ip);
+    const ch = this.cauHinh();
+    if (mac && ch.ipCan === ip && !ch.macCan) this.ghiThem({ macCan: mac });
   }
 
   // ---- dây RS232 (thử — xem day-rs232.ts) --------------------------------------
@@ -869,27 +925,32 @@ export class UngDung {
    * Gửi thử qua dây: đúng nội dung như gửi qua WiFi, giữ cả hàng ngoài kho (lỡ
    * qua dây cân thay cả danh sách như USB thì cũng không mất hàng). KHÔNG ghi
    * nhận là cân đã nhận — lần gửi WiFi sau vẫn gửi lại các thay đổi này. Trả một
-   * hàng vừa đổi để gọi thử trên cân.
+   * hàng vừa đổi để gọi thử trên cân: ưu tiên hàng đổi giá (nhìn là thấy), rồi
+   * hàng thêm, cuối cùng hàng chỉ đổi tên (đổi tên theo tảng).
    */
-  async guiThuQuaDay(b: { com?: unknown; baud?: unknown }): Promise<{
+  guiThuQuaDay(b: { com?: unknown; baud?: unknown }): Promise<{
     com: string; baud: number; soByte: number; giay: number;
-    hang: { so: number | null; ten: string; gia: number | null; loai: string; giaCu: number | null };
+    hang: { so: number | null; ten: string; tenCu: string | null; gia: number | null; giaCu: number | null; loai: string };
   }> {
     const com = String(b.com ?? ''), baud = Number(b.baud);
     kiemCom(com, baud);
-    const { kh, du } = await this.dung(true);
-    const hang = kh.dong.find(d => d.loai === 'sua' || d.loai === 'them');
-    if (!hang) {
-      throw new LoiCan('Kho và cân đang khớp nên gửi thử sẽ không thấy gì đổi trên cân. Thử lúc kho có đổi giá hoặc thêm món ' +
-        '(thẻ Gửi giá từ kho có dòng Thêm / Sửa) — hoặc tạm sửa giá một món ít bán trong kho, thử xong sửa lại.');
-    }
-    const bd = Date.now();
-    await guiCom(com, baud, du, this.phu.chayPs);
-    this.ghiThem({ com, baud });
-    return {
-      com, baud, soByte: du.length, giay: Math.max(giayDay(du.length, baud), Math.round((Date.now() - bd) / 1000)),
-      hang: { so: hang.so, ten: hang.ten, gia: hang.gia, loai: hang.loai, giaCu: hang.giaCu ?? null },
-    };
+    return this.motLuc(async () => {
+      const { kh, du } = await this.dung(true);
+      const doi = kh.dong.filter(d => d.loai === 'sua' || d.loai === 'them');
+      const hang = doi.find(d => d.loai === 'sua' && d.giaCu !== undefined && d.gia !== d.giaCu)
+        ?? doi.find(d => d.loai === 'them') ?? doi[0];
+      if (!hang) {
+        throw new LoiCan('Kho và cân đang khớp nên gửi thử sẽ không thấy gì đổi trên cân. Thử lúc kho có đổi giá hoặc thêm món ' +
+          '(thẻ Gửi giá từ kho có dòng Thêm / Sửa) — hoặc tạm sửa giá một món ít bán trong kho, thử xong sửa lại.');
+      }
+      const bd = Date.now();
+      await guiCom(com, baud, du, this.phu.chayPs);
+      this.ghiThem({ com, baud });
+      return {
+        com, baud, soByte: du.length, giay: Math.max(giayDay(du.length, baud), Math.round((Date.now() - bd) / 1000)),
+        hang: { so: hang.so, ten: hang.ten, tenCu: hang.tenCu ?? null, gia: hang.gia, giaCu: hang.giaCu ?? null, loai: hang.loai },
+      };
+    });
   }
 
   /** Nghe cân qua dây `giay` giây: đúng tốc độ thì chữ đọc được; cân không tự gửi gì thì trống (chưa nói lên được gì). */

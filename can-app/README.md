@@ -52,10 +52,20 @@ Router tự phát địa chỉ cho cân, nên sau khi cân hay router khởi đ�
   **dò WiFi tìm cân**: thử nối cổng 33571 ở mọi địa chỉ trong mạng của máy tính — trong WiFi của quán chỉ cân mở
   cổng này. Mỗi địa chỉ chỉ mở rồi đóng kết nối, không gửi gì. Dải /24 (254 địa chỉ) mất chừng 4 giây.
 - Thấy **đúng một cân** → dùng địa chỉ mới, lưu vào Cài đặt, gửi lại; trang báo "Cân đã đổi địa chỉ (cũ → mới)".
+- **Chắc là đúng cân**: chương trình nhớ mã máy (MAC) của cân lần đầu nối được (bảng ARP của Windows,
+  `arp -a`). Máy vừa thấy khác mã máy (quán có cân thứ hai, vừa thay cân) → không tự chuyển, không gửi danh mục
+  sang; trang hiện nút "Dùng cân …". Chọn cân khác bằng tay thì chương trình quên mã cũ, nhớ mã cân mới.
+  Không đọc được mã máy thì vẫn tự theo (không biết thì không chặn).
 - Thấy **nhiều cân** → không tự chọn: trang hiện nút "Dùng cân …" từng địa chỉ (xem trên cân: `Prog → 4 → 2`).
 - Không thấy cân → báo đã dò bao nhiêu địa chỉ, và các việc cần xem (cân bật chưa, cùng WiFi không…).
 - Gửi hỏng giữa chừng (đã nối được) thì không tự gửi lại — người bấm quyết.
-- Tự gửi mỗi phút: cân tắt (tối, nghỉ) thì chỉ dò lại 10 phút một lần.
+- Tự gửi mỗi phút: vừa dò mà không thấy cân (tối, cân tắt) thì 5 phút sau mới dò lại; lần dò trước thấy cân
+  mà cân lại đổi địa chỉ thì dò ngay.
+- Việc ghi xuống cân (tự gửi, bấm Gửi, gửi tem, gửi thử qua dây) chạy **lần lượt**, không chồng nhau; việc sau
+  lập kế hoạch từ file gốc việc trước vừa ghi.
+- Đang dò mà người gõ địa chỉ khác ở Cài đặt → kiểm lại theo địa chỉ mới, không tự đổi đè lên. Ô địa chỉ ở
+  Cài đặt chỉ gửi khi người gõ vào đó, nên lưu cài đặt khác không đè địa chỉ chương trình vừa tự tìm ra; ô Cân
+  tự làm mới mỗi phút.
 - Nút **Tìm cân trong WiFi** (Cài đặt) dò bất cứ lúc nào. Mạng lớn hơn /22 chỉ dò dải /24 quanh máy tính và quanh
   địa chỉ cũ của cân.
 
@@ -76,7 +86,8 @@ Mới chắc cân nhận danh mục qua **USB** và **WiFi**. Qua dây RS232 th�
 2. **Nghe cân 10 giây**: cân có tự gửi gì qua dây không. Ra chữ đọc được = dây, cổng, tốc độ đúng. Không nghe thấy gì
    thì chưa nói lên được gì (cân có thể chỉ trả lời khi được hỏi).
 3. **Gửi thử qua dây** (quản lý, chủ; lúc kho có thay đổi chưa lên cân): đẩy đúng nội dung như gửi WiFi (giữ cả hàng
-   ngoài kho), rồi trang chỉ một hàng để gọi thử trên cân. Giá đổi = cân nhận qua dây. Chưa đổi thì thử tốc độ khác.
+   ngoài kho), rồi trang chỉ một hàng để gọi thử trên cân — ưu tiên hàng đổi giá; chỉ có hàng đổi tên (tảng) thì
+   in thử một tem xem tên. Cân đổi = cân nhận qua dây. Chưa đổi thì thử tốc độ khác.
    Dây không báo "đã nhận" như WiFi, nên chương trình **không ghi nhận** lần gửi thử — lần gửi WiFi sau vẫn gửi lại.
 
 Cân nhận qua dây thì làm tiếp: chọn dây hay WiFi ở Cài đặt, tự gửi qua dây; và thử xem qua dây cân có xoá được

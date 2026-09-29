@@ -9,9 +9,14 @@
  *
  * Không nghe tiếng cân tự phát mỗi ~15 giây (UDP 33584, xem web/README.md): mở
  * cổng nghe thì Windows hiện hộp hỏi tường lửa với nhân viên quầy.
+ *
+ * Thấy một máy mở cổng 33571 chưa chắc là cân vẫn dùng (quán có hai cân, vừa
+ * thay cân): layMac đọc mã máy (MAC) trong bảng ARP của máy tính để so.
  */
+import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as os from 'node:os';
+import { execFile } from 'node:child_process';
 
 /** Một mạng IPv4 của máy tính (WiFi, dây mạng…). */
 export interface MangMay { ip: string; mask: string }
@@ -72,6 +77,31 @@ export function daiCanDo(mang: MangMay[], ipCu?: string): DaiDo[] {
   }
   // Cân thường chỉ đổi địa chỉ trong cùng mạng: dò dải có địa chỉ cũ trước.
   return kq.sort((a, b) => Number(b.coCu) - Number(a.coCu)).map(({ ten, ds }) => ({ ten, ds }));
+}
+
+const LA_MAC = /^([0-9a-f]{2}[-:]){5}[0-9a-f]{2}$/i;
+
+/**
+ * Mã máy (MAC) của một địa chỉ trong WiFi, đọc từ bảng ARP của máy tính — vừa
+ * nối tới địa chỉ đó là bảng có. Windows: `arp -a <ip>`; Linux: /proc/net/arp.
+ * Không đọc được thì null (không biết, không phải "khác máy").
+ */
+export async function layMac(ip: string): Promise<string | null> {
+  if (!LA_IP.test(ip)) return null;
+  let bang = '';
+  try {
+    bang = process.platform === 'win32'
+      ? await new Promise<string>((xong) => execFile('arp', ['-a', ip], { windowsHide: true, timeout: 5000, encoding: 'utf8' }, (_loi, ra) => xong(ra ?? '')))
+      : fs.readFileSync('/proc/net/arp', 'utf8');
+  } catch { return null; }
+  for (const dong of bang.split(/\r?\n/)) {
+    const cot = dong.trim().split(/\s+/);
+    if (cot[0] !== ip) continue;
+    const mac = cot.find(c => LA_MAC.test(c))?.toLowerCase().replace(/-/g, ':');
+    // Dòng chưa xong (00:00…) hay địa chỉ phát (ff:ff…) không phải mã máy.
+    if (mac && mac !== '00:00:00:00:00:00' && mac !== 'ff:ff:ff:ff:ff:ff') return mac;
+  }
+  return null;
 }
 
 /** Chỉ mở rồi đóng kết nối — không gửi gì. */

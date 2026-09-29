@@ -106,6 +106,8 @@ export function moMayChu(ud: UngDung, tuy: {
           case '/api/tem/gui': return json({ ok: true, ...(await ud.guiTem(thayDoiTem(await docThan(req)))) });
           case '/api/tem/usb': return json({ ok: true, ...ud.taoFileUsbTem(thayDoiTem(await docThan(req))) });
           case '/api/da-nap-usb': return json({ ok: true, ...ud.daNapUsb() });
+          // Ô Cân tự làm mới mỗi phút: chỉ đọc cài đặt và lần tự gửi, không gọi kho.
+          case '/api/can': return json({ ok: true, cauHinh: ud.cauHinh(), lanTuGui: ud.lanTuGui });
           case '/api/thu-can': return json({ ok: true, ...(await ud.thuCan()) });
           case '/api/tim-can': return json({ ok: true, ...(await ud.timCan()) });
           // ---- dây RS232 (thử) ----

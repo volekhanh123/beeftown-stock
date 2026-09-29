@@ -37,7 +37,7 @@ export const chayPowerShell: ChayPs = (lenh, bien, choMs) => new Promise((xong, 
     { env: { ...process.env, ...bien }, windowsHide: true, timeout: choMs, maxBuffer: 8 * 1024 * 1024, encoding: 'utf8' },
     (loi, ra) => {
       // Đoạn lệnh báo lỗi bằng dòng LOI và thoát mã 2 — vẫn là kết quả đọc được.
-      if (/^(OK|LOI)(\t|\r?$)/m.test(ra ?? '')) xong(ra);
+      if (/^\uFEFF?(OK|LOI)(\t|\r?$)/m.test(ra ?? '')) xong(ra);
       else if (loi?.killed) hong(new LoiDay('Quá lâu không xong. Rút dây ra cắm lại rồi thử lại.'));
       else hong(new LoiDay(`Không chạy được PowerShell: ${loi?.message ?? 'không rõ lỗi'}`));
     });
@@ -45,7 +45,7 @@ export const chayPowerShell: ChayPs = (lenh, bien, choMs) => new Promise((xong, 
 
 /** Khung chung cho mọi đoạn lệnh. */
 const khung = (than: string) => String.raw`$ErrorActionPreference = 'Stop'
-[Console]::OutputEncoding = [Text.Encoding]::UTF8
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
 try {
 ` + than + String.raw`
 } catch {
@@ -95,9 +95,12 @@ export const LENH_NGHE = khung(MO_CONG + String.raw`  $p.Open()
   } finally { $p.Close() }
   'OK' + [char]9 + [Convert]::ToBase64String($ms.ToArray())`);
 
-/** Dòng OK → phần sau "OK<tab>"; dòng LOI → LoiDay có câu dễ hiểu. */
+/**
+ * Dòng OK → phần sau "OK<tab>"; dòng LOI → LoiDay có câu dễ hiểu. Bỏ dấu BOM
+ * đầu dòng: Windows PowerShell 5.1 có máy vẫn in BOM trước dòng đầu.
+ */
 export function docKetQua(ra: string, com: string): string {
-  const dong = ra.split(/\r?\n/);
+  const dong = ra.split(/\r?\n/).map(d => d.replace(/^\uFEFF/, ''));
   const loi = dong.find(d => d.startsWith('LOI\t'));
   if (loi) {
     const [, loai = '', cau = ''] = loi.split('\t');
@@ -116,7 +119,7 @@ export function docDsCom(ra: string): CongCom[] {
   docKetQua(ra, 'COM');
   const moTa = new Map<string, string>();
   const ten = new Set<string>();
-  for (const d of ra.split(/\r?\n/)) {
+  for (const d of ra.split(/\r?\n/).map(x => x.replace(/^\uFEFF/, ''))) {
     const [loai, gt = ''] = d.split('\t');
     // Vài driver trả tên dính ký tự lạ ở cuối ("COM3\0") — chỉ lấy COMn.
     const m = loai === 'COM' ? /^COM\d{1,3}/i.exec(gt.trim()) : loai === 'TEN' ? /\((COM\d{1,3})\)/i.exec(gt) : null;

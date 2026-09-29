@@ -321,7 +321,9 @@
   setInterval(() => { fetch('/api/nhip?t=' + MA, { method: 'POST' }).catch(() => {}); }, 20000);
   addEventListener('pagehide', () => { navigator.sendBeacon('/api/dong?t=' + MA); });
 
-  let trangThai = null, daDienCom = false;
+  // ipDangSua: người đang gõ địa chỉ cân ở Cài đặt — không đè ô đó, và chỉ ô đó mới gửi địa chỉ khi Lưu
+  // (địa chỉ chương trình tự tìm ra lúc chạy ngầm không bị ô cũ đè lại).
+  let trangThai = null, daDienCom = false, ipDangSua = false;
 
   async function taiTrangThai() {
     const s = await goi('/api/trang-thai');
@@ -376,7 +378,7 @@
   function veOCan() {
     const ch = trangThai.cauHinh;
     $('o-can').textContent = ch.ipCan + ' · cổng ' + ch.congCan;
-    $('form-cau-hinh').ipCan.value = ch.ipCan;
+    if (!ipDangSua) $('form-cau-hinh').ipCan.value = ch.ipCan;
     const ds = ch.doiDiaChi || [];
     // Cân đổi địa chỉ từ 2 lần trong 30 ngày: nhắc giữ cố định trong router.
     const ganDay = ds.filter(d => Date.now() - new Date(d.luc).getTime() < 30 * 86400000).length;
@@ -1082,8 +1084,9 @@
     ev.preventDefault();
     const f = ev.target;
     try {
-      await goi('/api/cau-hinh', { ipCan: f.ipCan.value, congCan: Number(f.congCan.value), diaChiKho: f.diaChiKho.value, tuGui: f.tuGui.checked,
-        chiNhanhId: trangThai && trangThai.nguoi && trangThai.nguoi.cacChiNhanh.length > 1 ? f.chiNhanhId.value : undefined });
+      await goi('/api/cau-hinh', { ipCan: ipDangSua ? f.ipCan.value : undefined, congCan: Number(f.congCan.value), diaChiKho: f.diaChiKho.value,
+        tuGui: f.tuGui.checked, chiNhanhId: trangThai && trangThai.nguoi && trangThai.nguoi.cacChiNhanh.length > 1 ? f.chiNhanhId.value : undefined });
+      ipDangSua = false;
       baoChung('xong', 'Đã lưu cài đặt.'); await taiTrangThai();
     } catch (err) { baoChung('loi', e(err.message)); }
   };
@@ -1101,6 +1104,12 @@
   }
 
   $('nut-thu-can').onclick = kiemTraCan;
+  $('form-cau-hinh').ipCan.addEventListener('input', () => { ipDangSua = true; });
+  // Tự gửi chạy ngầm mỗi phút (có thể vừa gửi, vừa tìm ra cân ở địa chỉ mới): làm mới ô Cân, không đụng kho.
+  setInterval(async () => {
+    if (!trangThai || document.visibilityState !== 'visible') return;
+    try { const s = await goi('/api/can'); trangThai.cauHinh = s.cauHinh; trangThai.lanTuGui = s.lanTuGui; veOCan(); } catch { /* lần sau */ }
+  }, 60000);
   $('nut-tim-can').onclick = async () => {
     const nut = $('nut-tim-can'), noi = $('ket-qua-tim-can');
     nut.disabled = true; $('dang-tim-can-2').classList.remove('an'); bao(noi, '', '');
@@ -1153,7 +1162,9 @@
     const h = k.hang;
     const kiem = h.loai === 'them'
       ? `trên cân gọi <b>PLU ${h.so}</b>: nếu có hàng <b>${e(h.ten)}</b> giá <b>${tien(h.gia)}</b>/kg`
-      : `trên cân gọi <b>PLU ${h.so}</b> (${e(h.ten)}): nếu giá là <b>${tien(h.gia)}</b>/kg (trước là ${tien(h.giaCu)})`;
+      : h.gia !== h.giaCu
+        ? `trên cân gọi <b>PLU ${h.so}</b> (${e(h.ten)}): nếu giá là <b>${tien(h.gia)}</b>/kg (trước là ${tien(h.giaCu)})`
+        : `trên cân gọi <b>PLU ${h.so}</b> rồi in thử một tem: nếu tên là <b>${e(h.ten)}</b> (trước là ${e(h.tenCu)})`;
     bao(noi, 'luu-y', `<p>Đã đẩy ${soChu(Math.ceil(k.soByte / 1024))} KB ra ${e(k.com)}, tốc độ ${k.baud}, trong ${k.giay} giây.</p>`
       + `<p>Giờ ${kiem} là cân đã nhận qua dây — báo lại để làm hẳn cách gửi bằng dây.</p>`
       + '<p>Nếu cân chưa đổi: thử tốc độ khác (9600 → 115200 → 38400 → 19200 → 4800), gửi lại. Thử hết mà không được thì cân không nhận danh mục qua dây này — dùng WiFi.</p>');

@@ -389,33 +389,103 @@ console.log('6b · Cân đổi địa chỉ: tự dò WiFi tìm cân');
     try { await new UngDung(dd4, { danhMuc: async () => danhMuc, mang: [] }).guiXuongCan(); loi4 = ''; } catch (e) { loi4 = (e as Error).message; }
     ok('Máy tính chưa vào mạng nào → nói thẳng', /chưa vào mạng nào/.test(loi4), loi4);
 
-    const doTruoc = ud4.lanDo;
     danhMuc = { ...danhMuc, matHang: danhMuc.matHang.map(h => (h.ma === 'LOI-VAI' ? { ...h, gia_ban_kg: 880000 } : h)) };
     const tg1 = await ud4.tuGuiMotLan();
-    ok('Tự gửi khi cân tắt: vừa dò xong thì không dò lại (10 phút một lần)', !tg1.daGui && ud4.lanDo === doTruoc && /Không kết nối được cân ở 127\.0\.0\.38/.test(tg1.cau), tg1.cau);
+    ok('Tự gửi khi cân tắt: vừa dò không thấy cân thì chưa dò lại (5 phút một lần)', !tg1.daGui && ud4.lanDoHong > 0
+      && /Không kết nối được cân ở 127\.0\.0\.38/.test(tg1.cau) && !/dò cả/.test(tg1.cau), tg1.cau);
     const can41 = await canTai('127.0.0.41', cong);
-    ud4.lanDo = Date.now() - 11 * 60_000;
+    ud4.lanDoHong = Date.now() - 6 * 60_000;
     const tg2 = await ud4.tuGuiMotLan();
-    ok('Tự gửi quá 10 phút: dò lại, thấy cân ở .41, gửi', tg2.daGui && /1 sửa.*đã tìm thấy ở 127\.0\.0\.41/.test(tg2.cau) && ud4.cauHinh().ipCan === '127.0.0.41'
-      && docFileCan(new Uint8Array(nhanMoi[nhanMoi.length - 1])).plu.some(p => p.ma === '10001' && p.gia === 880000), tg2.cau);
+    ok('Tự gửi quá 5 phút: dò lại, thấy cân ở .41, gửi', tg2.daGui && /1 sửa.*đã tìm thấy ở 127\.0\.0\.41/.test(tg2.cau) && ud4.cauHinh().ipCan === '127.0.0.41'
+      && ud4.lanDoHong === 0 && docFileCan(new Uint8Array(nhanMoi[nhanMoi.length - 1])).plu.some(p => p.ma === '10001' && p.gia === 880000), tg2.cau);
+    await dong(can41);
+    const can43 = await canTai('127.0.0.43', cong);
+    danhMuc = { ...danhMuc, matHang: danhMuc.matHang.map(h => (h.ma === 'LOI-VAI' ? { ...h, gia_ban_kg: 890000 } : h)) };
+    const tg3 = await ud4.tuGuiMotLan();
+    ok('Lần dò trước thấy cân mà cân lại đổi địa chỉ: tự gửi dò ngay, không chờ 5 phút', tg3.daGui && ud4.cauHinh().ipCan === '127.0.0.43', tg3.cau);
+
+    await dong(can43);
+    const can44 = await canTai('127.0.0.44', cong);
+    const soDoi = ud4.cauHinh().doiDiaChi?.length;
+    const dangTim = ud4.timCan();
+    ud4.luuCauHinh({ ipCan: '127.0.0.44' });
+    const t5 = await dangTim;
+    ok('Đang dò mà người gõ địa chỉ tay: kiểm lại theo địa chỉ mới, không tự đổi đè lên', t5.thongCan && t5.doi === null && t5.ipCan === '127.0.0.44'
+      && ud4.cauHinh().ipCan === '127.0.0.44' && ud4.cauHinh().doiDiaChi?.length === soDoi, JSON.stringify(t5));
+    const dangTim2 = ud4.timCan();
+    ud4.luuCauHinh({ ipCan: '127.0.0.99' });
+    const t6 = await dangTim2;
+    ok('Đang dò mà người gõ nhầm địa chỉ: kiểm lại theo địa chỉ mới, vẫn tìm ra cân ở .44', t6.thongCan && t6.ipCan === '127.0.0.44'
+      && t6.doi?.tu === '127.0.0.99' && t6.loi === null, JSON.stringify(t6));
 
     let lanGui = 0;
     const ud5 = new UngDung(dd4, { danhMuc: async () => danhMuc, mang: [{ ip: '127.0.0.1', mask: '255.255.255.0' }],
       gui: async () => { lanGui++; throw new LoiCan('Cân đóng kết nối trước khi nhận hết. Gửi lại.'); } });
-    const doTruoc5 = ud5.lanDo;
     try { await ud5.guiXuongCan(); loi4 = ''; } catch (e) { loi4 = (e as Error).message; }
-    ok('Hỏng khi đang gửi dở: không dò, không tự gửi lại', /trước khi nhận hết/.test(loi4) && lanGui === 1 && ud5.lanDo === doTruoc5, loi4);
+    ok('Hỏng khi đang gửi dở: không dò, không tự gửi lại', /trước khi nhận hết/.test(loi4) && lanGui === 1 && ud5.lanDoHong === 0, loi4);
 
     const mc = moMayChu(ud4, { ma: 'thu', phienBan: 'thu', khiCoNhip: () => {}, khiDong: () => {} });
     const goiApi = async (d: string) => (await fetch(`http://127.0.0.1:${mc.port}${d}?t=thu`, { method: 'POST' })).json() as Promise<Record<string, unknown>>;
-    await dong(can41);
-    const can42 = await canTai('127.0.0.42', cong);
+    await dong(can44);
+    const can45 = await canTai('127.0.0.45', cong);
     const a1 = await goiApi('/api/tim-can');
-    ok('API tìm cân: thấy .42, tự dùng', a1.ok === true && a1.thongCan === true && (a1.doi as { den: string })?.den === '127.0.0.42' && a1.ipCan === '127.0.0.42', JSON.stringify(a1));
+    ok('API tìm cân: thấy .45, tự dùng', a1.ok === true && a1.thongCan === true && (a1.doi as { den: string })?.den === '127.0.0.45' && a1.ipCan === '127.0.0.45', JSON.stringify(a1));
     const a2 = await goiApi('/api/trang-thai');
-    ok('API trạng thái: có lịch sử đổi địa chỉ', ((a2.cauHinh as { doiDiaChi: unknown[] }).doiDiaChi).length === 4, JSON.stringify(a2.cauHinh));
+    ok('API trạng thái: có lịch sử đổi địa chỉ', ((a2.cauHinh as { doiDiaChi: unknown[] }).doiDiaChi).length === 6, JSON.stringify(a2.cauHinh));
+    const a3 = await goiApi('/api/can');
+    ok('API ô Cân (trang làm mới mỗi phút): địa chỉ mới, lần tự gửi', a3.ok === true && (a3.cauHinh as { ipCan: string }).ipCan === '127.0.0.45'
+      && /đã tìm thấy ở 127\.0\.0\.43/.test((a3.lanTuGui as { cau: string }).cau), JSON.stringify(a3.lanTuGui));
     mc.stop(true);
-    await dong(can42);
+    await dong(can45);
+
+    console.log('6b2 · Máy khác (khác mã máy) mở cổng cân: không tự chuyển sang');
+    const macCua: Record<string, string> = {};
+    const dd7 = { cauHinh: path.join(tam, 'appdata7'), duLieu: path.join(tam, 'tai-lieu7') };
+    const ud7 = new UngDung(dd7, { danhMuc: async () => danhMuc, mang: [{ ip: '127.0.0.1', mask: '255.255.255.0' }], mac: async (ip) => macCua[ip] ?? null });
+    ud7.ghiNhanFileTuCan(fileUsb);
+    const can51 = await canTai('127.0.0.51', cong);
+    macCua['127.0.0.51'] = 'aa:aa:aa:00:00:01';
+    ud7.luuCauHinh({ ipCan: '127.0.0.51', congCan: cong });
+    ok('Nối được cân: nhớ mã máy', (await ud7.thuCan()).thongCan && ud7.cauHinh().macCan === 'aa:aa:aa:00:00:01');
+    await dong(can51);
+    const can52 = await canTai('127.0.0.52', cong);
+    macCua['127.0.0.52'] = 'aa:aa:aa:00:00:01';
+    const m1 = await ud7.thuCan();
+    ok('Cân đổi địa chỉ, cùng mã máy → tự theo', m1.thongCan && m1.doi?.den === '127.0.0.52' && ud7.cauHinh().macCan === 'aa:aa:aa:00:00:01', JSON.stringify(m1));
+    await dong(can52);
+    const can53 = await canTai('127.0.0.53', cong);
+    macCua['127.0.0.53'] = 'bb:bb:bb:00:00:02';
+    const m2 = await ud7.thuCan();
+    ok('Chỉ thấy một cân nhưng khác mã máy (cân khác) → không tự chuyển, trả địa chỉ để chọn', !m2.thongCan && m2.doi === null
+      && m2.thay.join() === '127.0.0.53' && /không phải cân vẫn dùng/.test(m2.loi ?? '') && ud7.cauHinh().ipCan === '127.0.0.52', JSON.stringify(m2));
+    const soNhan7 = nhanMoi.length;
+    let loi7 = '';
+    try { await ud7.guiXuongCan(); } catch (e) { loi7 = (e as Error).message; }
+    ok('Gửi lúc đó: không gửi danh mục sang cân khác', /không phải cân vẫn dùng/.test(loi7) && nhanMoi.length === soNhan7, loi7);
+    ud7.luuCauHinh({ ipCan: '127.0.0.53' });
+    ok('Người chọn cân .53: quên mã máy cũ', ud7.cauHinh().macCan === undefined);
+    ok('… nối được thì nhớ mã máy mới', (await ud7.thuCan()).thongCan && ud7.cauHinh().macCan === 'bb:bb:bb:00:00:02');
+    await dong(can53);
+    const can54 = await canTai('127.0.0.54', cong);
+    const m3 = await ud7.thuCan();
+    ok('Không đọc được mã máy của máy mới → vẫn tự theo (không biết thì không chặn), giữ mã máy cũ', m3.thongCan && m3.doi?.den === '127.0.0.54'
+      && ud7.cauHinh().macCan === 'bb:bb:bb:00:00:02', JSON.stringify(m3));
+    await dong(can54);
+  }
+
+  console.log('6b3 · Việc ghi xuống cân chạy lần lượt');
+  {
+    let dangGui = 0, nhieuNhat = 0, soLan = 0;
+    const dd8 = { cauHinh: path.join(tam, 'appdata8'), duLieu: path.join(tam, 'tai-lieu8') };
+    const ud8 = new UngDung(dd8, { danhMuc: async () => danhMuc,
+      gui: async () => { dangGui++; soLan++; nhieuNhat = Math.max(nhieuNhat, dangGui); await Bun.sleep(40); dangGui--; } });
+    ud8.ghiNhanFileTuCan(fileUsb);
+    await Promise.all([ud8.guiXuongCan(), ud8.tuGuiMotLan(), ud8.guiTem({ chu: { 23: 'Hạn dùng' } })]);
+    const goc8 = docFileCan(new Uint8Array(fs.readFileSync(ud8.fileGoc)));
+    ok('Tự gửi + bấm Gửi + gửi tem cùng lúc: lần lượt, không chồng nhau', nhieuNhat === 1 && soLan >= 2, `${nhieuNhat} cùng lúc, ${soLan} lần`);
+    const giaLoiVai = danhMuc.matHang.find(h => h.ma === 'LOI-VAI')!.gia_ban_kg;
+    ok('Việc sau làm trên kết quả việc trước: file gốc có cả giá kho lẫn tem mới', goc8.plu.some(p => p.ma === '10001' && p.gia === giaLoiVai)
+      && new TextDecoder().decode(Buffer.from(goc8.dong.find(d => d.startsWith('LAB\t'))!, 'latin1')).split('\t')[23] === 'Hạn dùng');
   }
 }
 
@@ -432,6 +502,10 @@ console.log('6c · Dây RS232 (thử) — PowerShell giả');
   ok('Lỗi quá giờ → câu dễ hiểu', /quá giờ/.test(loiDoc('LOI\tTimeoutException\tThe write timed out.\r\n')));
   ok('PowerShell không in dòng OK → báo', /không trả kết quả/.test(loiDoc('Windows PowerShell\r\n')));
   ok('Dòng OK trống (không nghe được gì) đọc được', loiDoc('OK\t\r\n') === '' && docKetQua('OK\t\r\n', 'COM3') === '');
+  const khongNem = <T>(f: () => T): T | string => { try { return f(); } catch (e) { return `ném lỗi: ${(e as Error).message}`; } };
+  const bom = [khongNem(() => docKetQua('\uFEFFOK\t3000\r\n', 'COM3')), khongNem(() => docDsCom('\uFEFFCOM\tCOM3\r\nOK\r\n').map(c => c.ten).join())];
+  ok('Dấu BOM đầu dòng (Windows PowerShell 5.1) không làm hỏng kết quả', bom[0] === '3000' && bom[1] === 'COM3'
+    && /COM3 đang bị/.test(loiDoc("\uFEFFLOI\tUnauthorizedAccessException\tdenied\r\n")), JSON.stringify(bom));
 
   const goiPs: { lenh: string; bien: Record<string, string>; tep: Buffer | null }[] = [];
   let traLoi: (bien: Record<string, string>) => string = () => 'OK\r\n';
@@ -472,6 +546,15 @@ console.log('6c · Dây RS232 (thử) — PowerShell giả');
   traLoi = () => 'COM\tCOM4\r\nTEN\tProlific USB-to-Serial Comm Port (COM4)\r\nOK\r\n';
   const d6 = await ud6.dsCom();
   ok('Danh sách cổng + nhớ cổng, tốc độ lần trước', d6.cong.length === 1 && d6.cong[0].moTa.startsWith('Prolific') && d6.com === 'COM3' && d6.baud === 9600);
+
+  traLoi = (b) => `OK\t${fs.statSync(b.BT_TEP).size}\r\n`;
+  danhMuc = { mauMaVach: '2XCCCCCWWWWWK', matHang: [hang('LOI-VAI', '10001', 'Lõi vai bò Mỹ #0142', 845000), hang('GAU-BO', '10003', 'Gầu bò', 700000)] };
+  const g7 = await ud6.guiThuQuaDay({ com: 'COM3', baud: 9600 });
+  ok('Gửi thử: hàng chỉ đổi tên (tảng) đứng trước → vẫn chọn hàng đổi giá để gọi thử', g7.hang.so === 3 && g7.hang.gia === 700000 && g7.hang.giaCu === 695000, JSON.stringify(g7.hang));
+  danhMuc = { mauMaVach: '2XCCCCCWWWWWK', matHang: [hang('LOI-VAI', '10001', 'Lõi vai bò Mỹ #0142', 845000), hang('GAU-BO', '10003', 'Gầu bò', 695000)] };
+  const g8 = await ud6.guiThuQuaDay({ com: 'COM3', baud: 9600 });
+  ok('Gửi thử: chỉ có hàng đổi tên → trả tên cũ, tên mới (xem trên tem)', g8.hang.so === 1 && g8.hang.tenCu === 'Lõi vai bò Mỹ'
+    && g8.hang.ten === 'Lõi vai bò Mỹ #0142' && g8.hang.gia === g8.hang.giaCu, JSON.stringify(g8.hang));
   danhMuc = dmCu;
 }
 
