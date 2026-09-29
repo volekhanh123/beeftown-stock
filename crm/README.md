@@ -53,6 +53,7 @@ cd ../crm && npm ci && npm test
 | `npm run test:db` | nghiệp vụ: chuẩn hóa SĐT, sổ cái điểm, ba luật tính điểm, đặt bàn, phân nhóm |
 | `npm run test:rls` | phân quyền: tách dữ liệu giữa chi nhánh, vai trò, website công khai |
 | `npm run test:an-toan` | **bốn lỗ hổng ở `0008`** và hai lỗi chỉ số |
+| `npm run test:qua-tai` | **Supabase bận không phải là hết phiên** (`web/src/lib/qua-tai.ts`): lỗi thật của supabase-js dựng bằng fetch giả — 429, 5xx, 52x của Cloudflare, mất mạng là TẠM THỜI; token hết hạn / thu hồi, sai mật khẩu là TỪ CHỐI; câu báo hai thứ tiếng; trang "đang bận" 503 (GET tự tải lại, POST nói rõ CHƯA ghi); nhật ký `[qua-tai]` không chép token / email; `phien.ts`, `middleware.ts`, `kho/may-chung.ts` không xóa cookie / token khi lỗi tạm thời. Không cần PGlite |
 | `npm run test:cong-bo` | cổng nội dung và ảnh |
 | `npm run test:thuc-don` | thực đơn và duyệt giá |
 | `npm run test:tuyen-dung` | tuyển dụng, dữ liệu cá nhân, nhật ký bất biến, form theo từng tin, duyệt lương, lương giờ/tháng |
@@ -65,6 +66,8 @@ cd ../crm && npm ci && npm test
 | `npm run test:quyen-ham` | **ba hàm definer CRM ở `0045`**: ai bị từ chối (kể cả tài khoản không có dòng `nhan_su`), ai vẫn ghi được, website vẫn đặt bàn |
 | `npm run test:zalo` | **gửi tin Zalo `0046`–`0047`**: đặt bàn → đúng một ZBS-01 + một ZBS-02 (giờ hẹn − 2 tiếng), không trùng khi gọi lại; hủy / đổi giờ; mẫu chưa duyệt / Zalo tắt → không xếp; khách lần đầu nhận giao dịch nhưng không nhận chăm sóc; trần 2 tin/tháng tính cả tin chờ; khung giờ; xem trước chiến dịch; lượt gửi của máy (khóa 10 phút, kiểm lại, thử lại); máy không đọc được bảng CRM, không ai ngoài máy lấy được token |
 | `npm run test:messenger` | **bot Messenger `0052`–`0053`**: quyền từng RPC (máy chỉ gọi RPC máy, người không gọi RPC máy, không phiên cũng bị từ chối); máy không đọc / ghi bảng CRM, không có việc kho, đọc đúng bằng máy Zalo; anon không gọi được `mess_*`, danh sách của anon không đổi, khối chốt quyền chép nguyên văn; chỉ lưu PSID đã băm; phiên giữ nguyên khi null, tạm dừng / bỏ tạm dừng; khóa ≥ 5 lần tra sai / 15 phút; dọn phiên > 30 ngày; thống kê, câu lỗi không lộ token / SĐT; cài đặt của chủ, tổng quan 7 ngày |
+
+**Thử tải** (không nằm trong `npm test` — gọi project Supabase thật qua mạng): `npm run thu-tai` mô phỏng N nhân viên mở các trang kho trên **Beeftown-thu**, chỉ đọc, dừng ngay nếu database có chi nhánh nào tên không chứa "BẢN THỬ". Cách chạy và ngưỡng đạt ở README gốc, mục "Hạ tầng cho 100 người dùng cùng lúc".
 
 **Chạy lại toàn bộ kiểm thử sau mỗi lần sửa migration.** Chúng đã bắt được lỗi thật, không phải một lần:
 

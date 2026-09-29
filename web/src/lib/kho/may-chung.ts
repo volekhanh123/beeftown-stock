@@ -40,6 +40,13 @@
  *
  * HAI THỨ TIẾNG: câu báo KetQua mang cả bản tiếng Anh (cauEn); câu lỗi của
  * database đi nguyên văn, trang tra dichCau lúc hiện.
+ *
+ * SUPABASE BẬN (lib/qua-tai.ts): mở khóa, khóa máy, gắn người đều đổi token
+ * qua /auth/v1/token — cửa có hạn mức chung cho cả quán. Bị từ chối vì bận hay
+ * mất mạng thì token VẪN CÒN: không xóa cookie cất, không bỏ token máy, không
+ * đổi phiên nào — báo "đợi vài giây rồi thử lại". Máy chưa khóa được vì bận thì
+ * không ai dùng tiếp dưới tên người trước: mọi trang kho trả trang "đang bận"
+ * (tự tải lại) cho tới khi khóa được.
  */
 
 import type { AstroCookies, AstroGlobal } from 'astro';
@@ -48,6 +55,7 @@ import { coDatabase, xoaToken, type NhanSu } from '../phien';
 import { kqHai, kqLoi, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 import { docBao, ghiBao } from './bao.ts';
+import { phanLoaiLoiAuth, trangQuaTai, ghiQuaTai, CAU_DANG_NHAP_TAM, type LoaiLoiAuth } from '../qua-tai.ts';
 import {
   aadToken, bamPin, biMatHopLe, danKhoaMay, daQuaGioKhoa, giaiMaToken, giayConLai, kiemMoc, kyMoc,
   maHoaToken, pinHopLe, tenCookieNguoi,
@@ -70,7 +78,24 @@ const CAU_MAY = {
     en: 'The tablet no longer holds your login. Tap "Add me to this tablet" and log in once more.',
   },
   kiemPinLoi: { vi: 'Chưa kiểm được PIN. Thử lại.', en: 'Could not check the PIN. Try again.' },
+  quaTaiMo: {
+    vi: 'PIN đúng, nhưng hệ thống đăng nhập đang bận nên máy chưa mở được. Đợi vài giây rồi nhập PIN lại.',
+    en: 'Your PIN is correct, but the login system is busy so the tablet could not open yet. Wait a few seconds, then enter your PIN again.',
+  },
+  quaTaiKhoa: {
+    vi: 'Hệ thống đăng nhập đang bận nên máy CHƯA khóa. Đợi vài giây rồi bấm Khóa máy lại.',
+    en: 'The login system is busy, so the tablet is NOT locked yet. Wait a few seconds, then tap Lock tablet again.',
+  },
+  quaTaiGo: {
+    vi: 'Đã gỡ bạn khỏi máy, nhưng hệ thống đăng nhập đang bận nên máy CHƯA khóa. Đợi vài giây rồi bấm Khóa máy.',
+    en: 'Removed you from the tablet, but the login system is busy so the tablet is NOT locked yet. Wait a few seconds, then tap Lock tablet.',
+  },
 } satisfies Record<string, HaiThuTieng>;
+
+/** Câu khi đăng nhập email / mật khẩu thất bại: sai mật khẩu, hay chỉ là Supabase bận. */
+function cauDangNhapHong(loai: LoaiLoiAuth, saiMatKhau: HaiThuTieng): KetQua {
+  return kqHai(false, loai === 'tu_choi' ? saiMatKhau : CAU_DANG_NHAP_TAM[loai]);
+}
 
 /** Máy đang ở chế độ dùng chung — đưa vào TrangKho.may cho Kho.astro. */
 export interface CheDoMay {
@@ -229,21 +254,37 @@ function taoClientVoiToken(accessToken: string): SupabaseClient {
   });
 }
 
-/** Đổi refresh token lấy phiên mới (token cũ hết hiệu lực — vẫn chỉ một bản). */
-async function lamMoi(rt: string): Promise<Session | null> {
+/** lamMoi / veMayKhoa: Supabase bận hoặc mất mạng — token VẪN CÒN, chưa đổi gì. */
+const TAM_LOI = 'tam_loi' as const;
+
+/**
+ * Đổi refresh token lấy phiên mới (token cũ hết hiệu lực — vẫn chỉ một bản).
+ * null = token bị TỪ CHỐI (hết hạn, thu hồi). TAM_LOI = Supabase bận / mất
+ * mạng: token chưa bị đụng tới — người gọi phải giữ nguyên nó.
+ */
+async function lamMoi(rt: string): Promise<Session | typeof TAM_LOI | null> {
   try {
     const { data, error } = await taoClientTam().auth.refreshSession({ refresh_token: rt });
-    return error || !data.session ? null : data.session;
-  } catch { return null; }
+    if (error && phanLoaiLoiAuth(error) === 'tu_choi') return null;
+    if (error) { ghiQuaTai('máy dùng chung · đổi phiên', error); return TAM_LOI; }
+    return data.session ?? null;
+  } catch (e) { ghiQuaTai('máy dùng chung · đổi phiên', e); return TAM_LOI; }
 }
 
-/** Đăng nhập email / mật khẩu bằng client riêng. Trả client đó (để đăng xuất nếu cần) và phiên. */
-async function dangNhapTam(email: string, matKhau: string): Promise<{ tam: SupabaseClient; s: Session } | null> {
+/**
+ * Đăng nhập email / mật khẩu bằng client riêng. Trả client đó (để đăng xuất
+ * nếu cần) và phiên — hoặc loại lỗi: 'tu_choi' là sai email / mật khẩu, hai
+ * loại kia là Supabase bận / mất mạng (không phải lỗi của người gõ).
+ */
+async function dangNhapTam(email: string, matKhau: string): Promise<{ tam: SupabaseClient; s: Session } | LoaiLoiAuth> {
   try {
     const tam = taoClientTam();
     const { data, error } = await tam.auth.signInWithPassword({ email, password: matKhau });
-    return error || !data.session ? null : { tam, s: data.session };
-  } catch { return null; }
+    const loai = error ? phanLoaiLoiAuth(error) : null;
+    if (loai && loai !== 'tu_choi') ghiQuaTai('máy dùng chung · đăng nhập', error);
+    if (loai) return loai;
+    return data.session ? { tam, s: data.session } : 'mat_ket_noi';
+  } catch (e) { ghiQuaTai('máy dùng chung · đăng nhập', e); return 'mat_ket_noi'; }
 }
 
 /** Thu hồi phiên vừa đăng nhập tạm (không để token nào sống mà không ai giữ). */
@@ -275,16 +316,21 @@ async function thuHoi(rt: string | null | undefined) {
  * Trả 'mat_may' khi token máy hỏng / hết hạn: không còn phiên máy để quay về.
  * Khi đó token người vẫn được cất, bt_phien và mốc bị xóa — máy thành máy
  * thường đã đăng xuất; quản lý đăng ký lại là mọi người dùng tiếp được.
+ *
+ * Trả TAM_LOI khi Supabase bận / mất mạng. Token máy được làm mới TRƯỚC khi
+ * đụng cookie nào, nên lúc đó chưa có gì thay đổi: người đang dùng vẫn đang
+ * dùng, token máy vẫn cất. Người gọi báo "chưa khóa được" hoặc chặn trang.
  */
 async function veMayKhoa(
   cookies: AstroCookies, khoa: KhoaMay, moc: MocHoatDong, catNguoi: boolean,
-): Promise<'ok' | 'mat_may'> {
+): Promise<'ok' | 'mat_may' | typeof TAM_LOI> {
+  const tb = await docTokenMay(cookies, khoa, moc.mayId);
+  const s = tb ? await lamMoi(tb.rt) : null;
+  if (s === TAM_LOI) return TAM_LOI;
   const nguoi = docPhien(cookies);
   if (catNguoi && nguoi && moc.nhanSuId) {
     await catTokenNguoi(cookies, khoa, moc.mayId, moc.nhanSuId, nguoi.refresh_token);
   }
-  const tb = await docTokenMay(cookies, khoa, moc.mayId);
-  const s = tb ? await lamMoi(tb.rt) : null;
   xoaCookieMay(cookies, COOKIE_MAY_TB);
   if (!s) {
     xoaToken(cookies);
@@ -300,7 +346,7 @@ async function veMayKhoa(
  * Khóa máy (nút "Khóa máy", hết giờ, may-chung.js chuyển ?khoa=1).
  * Ghi kho_may_khoa bằng phiên người đang dùng (nhật ký máy biết ai rời máy).
  */
-export async function khoaMay(Astro: AstroGlobal, cach: 'bam' | 'het_gio'): Promise<KetQua> {
+export async function khoaMay(Astro: AstroGlobal, cach: 'bam' | 'het_gio'): Promise<KetQua & { quaTai?: true }> {
   const khoa = await layKhoaMay();
   if (!khoa) return kqHai(false, CAU_MAY.chuaBat);
   const moc = await docMoc(Astro.cookies, khoa);
@@ -312,6 +358,8 @@ export async function khoaMay(Astro: AstroGlobal, cach: 'bam' | 'het_gio'): Prom
   }
   const catNguoi = !!phien && phien.nhanSu.id === moc.nhanSuId;
   const kq = await veMayKhoa(Astro.cookies, khoa, moc, catNguoi);
+  // quaTai: kiemMayChung cần phân biệt để chặn trang thay vì đưa về đăng nhập.
+  if (kq === TAM_LOI) return { ...kqHai(false, CAU_MAY.quaTaiKhoa), quaTai: true };
   if (kq === 'mat_may') return kqHai(false, CAU_MAY.matMay);
   return kqHai(true, cach === 'het_gio'
     ? { vi: 'Máy đã tự khóa vì lâu không dùng. Chọn tên và nhập PIN để dùng tiếp.',
@@ -348,6 +396,8 @@ export async function kiemMayChung(Astro: AstroGlobal, nhanSu: NhanSu): Promise<
   // trang đăng nhập thường): về màn khóa, KHÔNG cất phiên lạ đó.
   if (moc.nhanSuId !== nhanSu.id) {
     const kq = await veMayKhoa(cookies, khoa, moc, false);
+    // Bận: chưa về được màn khóa — chặn trang, không cho phiên lạ dùng kho.
+    if (kq === TAM_LOI) return trangQuaTai(Astro.locals.nn ?? 'vi', Astro.request.method === 'POST', Astro.url);
     return Astro.redirect(kq === 'ok' ? DUONG_MAY : '/noi-bo/dang-nhap', 302);
   }
 
@@ -362,10 +412,14 @@ export async function kiemMayChung(Astro: AstroGlobal, nhanSu: NhanSu): Promise<
   const bayGio = Date.now();
   const laPost = Astro.request.method === 'POST';
   if (daQuaGioKhoa(moc.luc, bayGio, tb.phut, laPost)) {
+    const kq = await khoaMay(Astro, 'het_gio');
+    // Supabase bận nên CHƯA khóa được: không ai dùng tiếp dưới tên người trước.
+    // Chặn trang ("đang bận", GET tự tải lại) cho tới khi khóa được. Câu báo
+    // của lần lưu trước vẫn nằm trong cookie cho lần mở trang sau.
+    if (kq.quaTai) return trangQuaTai(Astro.locals.nn ?? 'vi', laPost, Astro.url);
     // GET ngay sau một POST trong ân hạn: giữ câu báo của lần lưu đó (phiếu
     // ĐÃ ghi) rồi nối câu "máy đã tự khóa" vào sau.
     const truoc = laPost ? null : docBao(cookies);
-    const kq = await khoaMay(Astro, 'het_gio');
     if (kq.ok && laPost) {
       const c = { vi: 'Máy đã khóa — phiếu chưa được ghi. Mở khóa rồi làm lại.', en: 'The tablet locked — your form was NOT saved. Unlock it and do it again.' };
       kq.cau = c.vi;
@@ -535,6 +589,13 @@ export async function moKhoaNguoi(Astro: AstroGlobal, nhanSuId: string, pin: str
 
   // Đúng PIN — đổi phiên đã cất của người này lấy phiên mới.
   const s = await lamMoi(rt);
+  if (s === TAM_LOI) {
+    // Supabase bận: phiên đã cất VẪN CÒN — giữ cookie cất (xóa là bắt người ta
+    // đăng nhập lại và đặt PIN lại giữa ca). kho_may_kiem_pin vừa ghi người này
+    // đang dùng — trả máy về "không ai dùng"; nhập PIN lại là mở được.
+    try { await phien.client.rpc('kho_may_khoa', { p_may_id: moc.mayId, p_cach: 'bam' }); } catch { /* chỉ nhật ký */ }
+    return kqHai(false, CAU_MAY.quaTaiMo);
+  }
   if (!s) {
     xoaCookieMay(Astro.cookies, tenCk);
     // kho_may_kiem_pin vừa ghi người này đang dùng — trả máy về "không ai dùng".
@@ -597,7 +658,7 @@ export async function ganNguoi(Astro: AstroGlobal, form: FormData): Promise<KetQ
   if (typeof pin !== 'string') return pin;
 
   const dn = await dangNhapTam(email, matKhau);
-  if (!dn) return kqHai(false, { vi: 'Email hoặc mật khẩu không đúng.', en: 'Wrong email or password.' });
+  if (typeof dn === 'string') return cauDangNhapHong(dn, { vi: 'Email hoặc mật khẩu không đúng.', en: 'Wrong email or password.' });
   const nguoi = taoClientVoiToken(dn.s.access_token);
   const { data: ns } = await nguoi
     .from('nhan_su').select('id, ho_ten').eq('auth_uid', dn.s.user.id).eq('dang_lam', true).maybeSingle();
@@ -675,10 +736,14 @@ export async function goToiKhoiMay(Astro: AstroGlobal, may: CheDoMay): Promise<K
   }
   const { error } = await phien.client.rpc('kho_may_go', { p_may_id: may.mayId });
   if (error) return kqLoi(error, { vi: 'Chưa gỡ được.', en: 'Could not remove you.' });
-  // Thu hồi luôn phiên của mình trên máy (không cất, không để sống).
-  await thuHoi(docPhien(Astro.cookies)?.refresh_token);
+  // Về màn khóa TRƯỚC, rồi mới thu hồi phiên của mình trên máy (không cất,
+  // không để sống). Làm ngược lại mà Supabase bận thì máy đang cầm một phiên
+  // đã thu hồi và không về được màn khóa.
+  const rtCuaToi = docPhien(Astro.cookies)?.refresh_token;
   const moc: MocHoatDong = { mayId: may.mayId, nhanSuId: may.nhanSuId, luc: Date.now() };
   const kq = await veMayKhoa(Astro.cookies, khoa, moc, false);
+  if (kq === TAM_LOI) return kqHai(false, CAU_MAY.quaTaiGo);
+  await thuHoi(rtCuaToi);
   if (kq === 'mat_may') {
     return kqHai(false, {
       vi: 'Đã gỡ bạn khỏi máy. Máy mất đăng nhập của máy — nhờ quản lý đăng ký lại.',
@@ -731,15 +796,17 @@ export async function dangKyMay(Astro: AstroGlobal, form: FormData, coQuyenDuyet
     const mk = String(form.get('mat_khau_ql') ?? '');
     if (!email || !mk) return kqHai(false, { vi: 'Điền email và mật khẩu của quản lý.', en: "Enter the manager's email and password." });
     const dn = await dangNhapTam(email, mk);
-    if (!dn) return kqHai(false, { vi: 'Email hoặc mật khẩu của quản lý không đúng.', en: 'Wrong manager email or password.' });
+    if (typeof dn === 'string') {
+      return cauDangNhapHong(dn, { vi: 'Email hoặc mật khẩu của quản lý không đúng.', en: 'Wrong manager email or password.' });
+    }
     tamQl = dn.tam;
     quanLy = taoClientVoiToken(dn.s.access_token);
   }
 
   const dnMay = await dangNhapTam(emailMay, mkMay);
-  if (!dnMay) {
+  if (typeof dnMay === 'string') {
     if (tamQl) await dangXuatTam(tamQl);
-    return kqHai(false, { vi: 'Email hoặc mật khẩu của tài khoản máy không đúng.', en: 'Wrong tablet account email or password.' });
+    return cauDangNhapHong(dnMay, { vi: 'Email hoặc mật khẩu của tài khoản máy không đúng.', en: 'Wrong tablet account email or password.' });
   }
   const { data, error } = await quanLy.rpc('kho_dang_ky_may', {
     p_auth_uid: dnMay.s.user.id, p_ten: ten || null, p_phut_khoa: phut,

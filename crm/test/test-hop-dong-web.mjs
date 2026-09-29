@@ -183,8 +183,7 @@ const CHAY_DA_DANG_NHAP = [
   // Danh mục đưa xuống cân (GĐ3): mặt hàng + ô mã + ô đang giao — gọi từ cai-dat/can và can-app bằng
   // client của quản lý đã đăng nhập. Chỉ đọc qua o-ma.ts và ma-giam.ts, không tự from() bảng nào.
   'web/src/lib/kho/danh-muc-can.ts',
-  // Mã giảm giá cận date (0054): đọc kho_ma_giam (RLS vai xem) — chỉ gọi qua danh-muc-can.ts, tức là
-  // từ /noi-bo/kho/cai-dat/can và Beeftown Cân, cả hai bằng client của nhân sự đã đăng nhập.
+  // Mã giảm giá cận date (0054): đọc kho_ma_giam — chỉ gọi qua hangChoCan ở trên, cùng client đã đăng nhập.
   'web/src/lib/kho/ma-giam.ts',
   // Gửi tin Zalo ZBS (0047): cron (src/worker.ts) đăng nhập tài khoản máy may_zalo (client anon
   // riêng + signInWithPassword, sau đó là authenticated) rồi mới gọi các RPC zalo_* của máy.

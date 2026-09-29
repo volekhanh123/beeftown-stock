@@ -26,6 +26,8 @@ import { CAU_KHO_EN, MAU_KHO_EN } from './kho/cau-kho-en.ts';
 import { CAU_ZALO_EN, MAU_ZALO_EN } from './zalo-cau-en.ts';
 // Câu của bot Messenger (0053) — bảng riêng, cùng cách tra.
 import { CAU_MESSENGER_EN, MAU_MESSENGER_EN } from './messenger-cau-en.ts';
+// Đăng nhập khi Supabase bận / mất mạng — cặp { vi, en } nằm ở lib/qua-tai.ts.
+import { CAU_DANG_NHAP_TAM } from './qua-tai.ts';
 
 /** Câu cố định: đúng từng chữ, kể cả dấu chấm cuối. */
 export const CAU_EN: Readonly<Record<string, string>> = {
@@ -36,6 +38,8 @@ export const CAU_EN: Readonly<Record<string, string>> = {
     'Wrong email or password.',
   'Tài khoản này chưa được nối với nhân sự nào. Liên hệ chủ nhà hàng.':
     'This account is not linked to any staff member yet. Please contact the owner.',
+  // lib/phien.ts — đăng nhập khi Supabase bận / mất mạng (một nguồn: lib/qua-tai.ts)
+  ...Object.fromEntries(Object.values(CAU_DANG_NHAP_TAM).map(c => [c.vi, c.en])),
 
   // lib/cong-tac.ts — câu chung khi database từ chối
   'Tài khoản của bạn không có quyền làm việc này.':

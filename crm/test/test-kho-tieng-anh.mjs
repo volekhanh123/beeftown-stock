@@ -126,6 +126,12 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     "cau: 'Event 11 có hơn 500 dòng'",
     "canhBao.push(`${khongMa} dòng thiếu \"item_id\"`)",
     "canhBao.push(`${slHong} dòng thiếu hoặc sai \"quantity\"`)",
+    // lib/kho/may-chung.ts — nhãn dòng nhật ký "[qua-tai]" (lib/qua-tai.ts ghiQuaTai) cho người
+    // vận hành tìm trong Cloudflare Logs; không lên màn nào. test-qua-tai.mjs đọc nhật ký này.
+    "ghiQuaTai('máy dùng chung · đổi phiên', error)",
+    "ghiQuaTai('máy dùng chung · đổi phiên', e)",
+    "ghiQuaTai('máy dùng chung · đăng nhập', error)",
+    "ghiQuaTai('máy dùng chung · đăng nhập', e)",
   ];
 
   // Mọi file kho đã dịch xong. File kho mới (tự tìm ở trên) được quét ngay —
@@ -156,8 +162,13 @@ nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
 {
   // Gói "câu database" bật cờ này khi lib/kho/cau-kho-en.ts đã đủ câu.
   const DA_DICH_DU = true;
-  const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042|0044_kho)/;
+  // Giữ giống hệt danh sách ở test-noi-bo-tieng-anh.mjs — bên đó kiểm các migration còn lại.
+  const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042|0044_kho|0048_kho|0049_kho|0050_kho|0051_kho|0054_kho)/;
   const tep = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql') && KHO.test(f)).sort();
+  // Quên thêm migration kho vào KHO thì câu hàm kho trả về của nó không ai kiểm (0048–0051, 0054 đã lọt).
+  const sotKho = readdirSync(MIGRATIONS_DIR).filter(f => /^\d{4}_kho_.*\.sql$/.test(f) && !KHO.test(f));
+  ok('Mọi migration kho (tên 00NN_kho_…) nằm trong danh sách KHO', sotKho.length === 0,
+     `thêm vào KHO ở đây và ở test-noi-bo-tieng-anh.mjs: ${sotKho.join(', ')}`);
   const cau = new Map();
   for (const f of tep) {
     const s = readFileSync(join(MIGRATIONS_DIR, f), 'utf8').replace(/--[^\n]*/g, '');
@@ -294,6 +305,17 @@ nhom('2 · CÂU LỖI DATABASE CỦA KHO CÓ BẢN TIẾNG ANH');
     'Lần cập nhật gần nhất bị lỗi — bấm "Cập nhật ngay" để thử lại.',
     'Đã hơn % giờ trong giờ mở cửa không nhận được hóa đơn nào từ iPOS — kiểm tra máy iPOS và địa chỉ nhận hóa đơn.',
     'Đang nhận hóa đơn iPOS nhưng CHƯA trừ kho — còn dùng đếm quầy làm số bán.',
+    // 0049 — giải phóng ô mã, quét nhãn ô không giao cho phiên lóc
+    'Đã giải phóng ô % (mã %).', 'Ô % (mã %) đã trống từ trước.',
+    'Mã ô % không giao cho phiên này — bấm "Giao ô mã" rồi in bằng đúng phím trên cân',
+    // 0050 — ghi chú phiếu huỷ khi huỷ cả tảng (kèm ghi chú của người báo, nếu có)
+    'Huỷ cả tảng #%: %', 'Huỷ cả tảng #%',
+    // 0051, 0054 — dòng bán iPOS theo ô mã lệch ô
+    'Ô % (mã %): ô chưa gắn tảng lúc bán — đã trừ theo hạn gần nhất',
+    'Ô % (mã %): lô của tảng không đủ — đã trừ theo hạn gần nhất',
+    // 0054 — bật / tắt mã giảm giá; giá trị thứ hai của câu bật gồm cả dấu phần trăm (30%)
+    'Đã bật mã % (giảm %).',
+    'Đã tắt mã %. Lần gửi xuống cân sau sẽ bỏ hàng này (qua WiFi thì còn nằm trên cân, nạp USB để xoá hẳn).',
     // câu rộng (tiền tố + giá trị) — thẻ kho
     'Nhập từ %', 'Pha lóc %',
   ];

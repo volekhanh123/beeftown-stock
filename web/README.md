@@ -103,6 +103,8 @@ Hệ quả cụ thể: một người vai `marketing` đăng nhập sẽ soạn 
 
 **Tài khoản do chủ nhà hàng tạo trong Supabase Studio**, rồi nối `auth_uid` vào một dòng trong bảng `nhan_su`. Đăng nhập Supabase thành công mà không có dòng `nhan_su` thì vẫn bị từ chối — Supabase Auth trả lời "ai", bảng `nhan_su` trả lời "có phải nhân viên không".
 
+**Supabase bận không phải là hết phiên** (`src/lib/qua-tai.ts`). Đăng nhập, gia hạn phiên và mở máy tính bảng bằng PIN đi qua một cửa của Supabase Auth có hạn mức chung cho cả quán (Worker gọi từ Cloudflare nên cả quán là một IP). Bị từ chối vì bận (429), vì Supabase trục trặc (5xx) hay mất mạng thì token vẫn còn nguyên: `layPhien` trả `QUA_TAI` thay vì `null`, middleware trả trang 503 "hệ thống đang bận" (GET tự tải lại sau 5–10 giây, ngẫu nhiên để các máy không thử lại cùng lúc; POST nói rõ thao tác CHƯA được ghi), cookie giữ nguyên. Chỉ khi Supabase TỪ CHỐI token (hết hạn, bị thu hồi) mới đăng xuất. Đăng nhập bị 429 báo "nhiều người đăng nhập cùng lúc — không phải do sai mật khẩu". Mỗi lần gặp lỗi tạm thời ghi một dòng `[qua-tai]` vào nhật ký Worker (không token, không email). Nâng hạn mức và các việc hạ tầng khác: README gốc, mục "Hạ tầng cho 100 người dùng cùng lúc".
+
 ### Tiếng Anh ở giao diện nội bộ
 
 Mọi trang nội bộ có nút **English / Tiếng Việt** ở đầu trang. Lựa chọn là của **trình duyệt** (cookie `nb_ngon_ngu`, sống dưới `/noi-bo`), không nằm trong đường dẫn như trang công khai: một link `/noi-bo/tin-tuyen-dung/<id>` phải mở đúng tin đó dù người mở đọc tiếng gì. Chưa chọn thì là tiếng Việt.

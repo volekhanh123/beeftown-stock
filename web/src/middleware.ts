@@ -11,6 +11,7 @@
 
 import { defineMiddleware } from 'astro:middleware';
 import { layPhien, coDatabase } from './lib/phien';
+import { QUA_TAI, trangQuaTai } from './lib/qua-tai';
 import { dichBu, chayNen, denLuotDichBu, VAI_BIEN_TAP } from './lib/ban-dich';
 import { docNgonNguNB, ghiNgonNguNB, laNgonNguNB } from './lib/ngon-ngu-noi-bo';
 
@@ -40,6 +41,12 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (MO_CHO_MOI_NGUOI.includes(duong)) return next();
 
   const phien = await layPhien(context.cookies);
+  if (phien === QUA_TAI) {
+    // Supabase bận / mất mạng: KHÔNG đưa về trang đăng nhập (người ta sẽ đăng
+    // nhập lại, thêm một lượt vào đúng hạn mức đang cạn). Cookie còn nguyên;
+    // GET tự tải lại sau 5–10 giây (ngẫu nhiên), POST báo rõ là CHƯA ghi.
+    return trangQuaTai(context.locals.nn ?? 'vi', context.request.method === 'POST', context.url);
+  }
   if (!phien) {
     // Không kèm đường dẫn cũ vào URL chuyển hướng. Một tham số ?tiep=... là
     // một lỗ open-redirect đang chờ người ta quên kiểm tra nó.

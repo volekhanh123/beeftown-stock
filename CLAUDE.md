@@ -31,6 +31,8 @@ cd ../web && npx astro check && npm run quet && npm run thu-trinh-duyet
 ```
 
 File test mới tên `crm/test/test-<khu>-<ten>.mjs` **tự được chạy** — không sửa `package.json`.
+`crm/test/thu-tai.mjs` (`npm run thu-tai`) là thử tải trên project Supabase THẬT Beeftown-thu — chỉ chạy tay,
+không nằm trong `npm test` hay CI (xem README gốc, mục "Hạ tầng cho 100 người dùng cùng lúc").
 Dùng khung chung `kho-chung.mjs` (`dungDatabase`, `taoBoDem`, `duoi(uid, sql)`, `duoiAnon(sql)`).
 
 ## Định nghĩa "xong" — 9 mục

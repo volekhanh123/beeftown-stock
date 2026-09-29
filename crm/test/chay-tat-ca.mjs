@@ -26,10 +26,13 @@ import { fileURLToPath } from 'node:url';
 
 const THU_MUC = dirname(fileURLToPath(import.meta.url));
 
-/** File .mjs trong thư mục test mà KHÔNG phải bài test — thư viện dùng chung và bộ chạy. */
+/**
+ * File .mjs trong thư mục test mà KHÔNG phải bài test — thư viện dùng chung, bộ chạy, và công cụ chạy
+ * tay (thu-tai.mjs: thử tải trên project Supabase THẬT Beeftown-thu qua mạng — không bao giờ tự chạy).
+ */
 const THU_VIEN = new Set([
   'chay-tat-ca.mjs', 'chay-kho.mjs', 'kho-chung.mjs', 'dinh-chu.mjs', 'kiem-nn.mjs',
-  'quet-chu-viet.mjs', 'dong-ho-gia.mjs',
+  'quet-chu-viet.mjs', 'dong-ho-gia.mjs', 'thu-tai.mjs',
 ]);
 
 /** Chạy trước: rẻ nhất và hay hỏng nhất khi gộp nhánh; rồi thứ tự của chuỗi && cũ. */

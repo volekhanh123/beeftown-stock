@@ -12,6 +12,7 @@
     "test:db": "node test/chay-test.mjs",
     "test:rls": "node test/test-phan-quyen.mjs",
     "test:an-toan": "node test/test-an-toan.mjs",
+    "test:qua-tai": "node test/test-qua-tai.mjs",
     "test:cong-bo": "node test/test-cong-bo.mjs",
     "test:thuc-don": "node test/test-thuc-don.mjs",
     "test:tuyen-dung": "node test/test-tuyen-dung.mjs",
@@ -26,7 +27,8 @@
     "test:zalo": "node test/test-zalo.mjs",
     "test:zalo-web": "node test/test-zalo-web.mjs",
     "test:messenger": "node test/test-messenger.mjs",
-    "test:messenger-web": "node test/test-messenger-web.mjs"
+    "test:messenger-web": "node test/test-messenger-web.mjs",
+    "thu-tai": "node test/thu-tai.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.2.17"

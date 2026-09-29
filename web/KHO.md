@@ -219,6 +219,13 @@ Tablet ở quầy/bếp dùng chung 1–2 máy: đổi người bằng **PIN**, 
 Việc ai làm vẫn ghi đúng người đó, vì mọi thao tác chạy bằng **phiên của chính người đó** — PIN chỉ
 là cách lấy lại phiên đã cất, không phải một lối đăng nhập mới.
 
+**Supabase bận** (`lib/qua-tai.ts`): mỗi lần mở khóa, khóa máy, gắn người là một lượt đổi token ở Supabase
+Auth — cửa có hạn mức chung cho cả quán. Bị từ chối vì bận / mất mạng thì token vẫn còn: mở bằng PIN báo
+"PIN đúng … đợi vài giây rồi nhập lại" và **giữ** đăng nhập đã cất; bấm Khóa máy báo "máy CHƯA khóa";
+hết giờ tự khóa mà chưa khóa được thì mọi trang kho trả trang "đang bận" (tự tải lại) — không ai dùng tiếp
+dưới tên người trước, không token máy nào bị bỏ. Chỉ khi token bị TỪ CHỐI (hết hạn, thu hồi) mới như cũ:
+bắt gắn lại / đăng ký lại máy.
+
 | Trang | Ai | Việc |
 |---|---|---|
 | `/noi-bo/kho/may` | Máy (vai `may_chung`) | "Ai đang dùng máy?": nút tên người đã gắn → ô PIN → đổi phiên sang người đó |

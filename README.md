@@ -158,6 +158,7 @@ Những chỗ dễ làm hỏng nếu không biết trước:
 - [ ] **Một hộp thư có người đọc.**
 - [ ] Đăng ký tên miền `.vn` — cần giấy tờ, **1–5 ngày làm việc**. Trong lúc chờ, chạy trên tên miền tạm của Cloudflare. **Bạt chỉ in tên Facebook**, không in địa chỉ web, để hai đường không kẹt nhau.
 - [ ] **Supabase gói trả phí trước khi mở bất kỳ form công khai nào** — gói miễn phí tự ngủ sau 7 ngày không dùng, và nó sẽ ngủ đúng hôm form lên sóng.
+- [ ] **Hạ tầng cho nhiều nhân viên dùng cùng lúc** — hạn mức đăng nhập, gói Cloudflare, mạng tại quán: xem mục riêng [bên dưới](#hạ-tầng-cho-100-người-dùng-cùng-lúc).
 
 ### Việc kỹ thuật — theo đúng thứ tự này
 
@@ -177,6 +178,73 @@ Những chỗ dễ làm hỏng nếu không biết trước:
 
 - [ ] **Nhập bàn thật vào `ban_an` trước khi mở đặt bàn.** Công tắc `form_dat_ban_dang_mo` được seed sẵn `true` ở migration `0010` (để tám kiểm tra cũ không hỏng), nhưng bảng `ban_an` thì trống trên database vừa cài. Website có chốt chặn thứ hai — nó hỏi database xem còn khung giờ nào trống trong 14 ngày tới, không có thì hiện "chưa mở đặt bàn" thay vì dựng một cái form chỉ để báo *"hết bàn"*. Nhưng chốt chặn đó chỉ giấu triệu chứng; bàn vẫn phải nhập.
 - [ ] **Email báo về khi có hồ sơ hoặc yêu cầu mới — chưa làm, và đây là việc quan trọng nhất còn lại.** Rủi ro lớn nhất của cả hệ thống không phải nó hỏng, mà là hồ sơ và yêu cầu nằm im trong database không ai mở. Cho tới khi có email, **`/noi-bo` phải được mở ra xem hằng ngày** — đó là điều kiện để bật bất kỳ form nào.
+
+---
+
+## Hạ tầng cho 100 người dùng cùng lúc
+
+**Ngắn gọn:** 100 nhân viên là tải nhẹ với Cloudflare + Supabase, và database đã viết đúng cho nhiều người cùng ghi — số phiếu cấp bằng bộ đếm có khóa dòng (không trùng số), `ma_gui` chống bấm Lưu hai lần, `phien_ban` chống hai máy ghi đè nhau, sổ kho chỉ ghi thêm. Chỗ gây sự cố thật nằm ở ba nơi: **hạn mức đăng nhập của Supabase, gói dịch vụ, và mạng tại quán.**
+
+### Đo được — Beeftown-thu, 28/09/2026, khoảng 5 tuần dữ liệu mô phỏng
+
+| Việc | Database tốn | Chạy khi nào |
+|---|---|---|
+| `kho_dem_viec` — số đỏ trên menu | ~44 ms | **mỗi lần mở một trang kho** |
+| `kho_thong_bao` | ~32 ms | trang Hôm nay, Thông báo, Việc cần làm |
+| `kho_chi_so_quan_tri` | ~32 ms | trang Hôm nay của quản lý |
+| `kho_v_ton`, `kho_v_phieu_nhap`, … | ~1 ms | các trang danh sách |
+| `noi_dung_cong_khai` — trang chủ công khai | ~0,6 ms | mỗi lượt khách vào web |
+
+Mở một trang kho tốn khoảng 50–110 ms database. 100 người, mỗi người 15 giây mở một trang (dồn dập hơn thật) ≈ 7 trang/giây ≈ nửa nhân CPU: vừa sức gói Pro. Chỗ tối ưu đầu tiên nếu CPU cao là `kho_dem_viec` — phần lớn thời gian của nó nằm ở `kho_su_kien`. Trang công khai rẻ: 100 khách/giây mới tốn khoảng 10% một nhân, nên **chưa cần bộ nhớ đệm** — công tắc nội dung vẫn đổi trang ngay.
+
+### Hạn mức đăng nhập — đọc trước
+
+Đăng nhập bằng mật khẩu, gia hạn phiên (mỗi người một lần mỗi giờ) và **mở máy tính bảng bằng PIN** đều đi qua `/auth/v1/token` của Supabase. Cửa này có hạn mức theo địa chỉ IP: mặc định dồn được 30 lượt, rồi mỗi 2 giây thêm một lượt (150 lượt / 5 phút). Worker gọi Supabase từ máy chủ Cloudflare, nên với Supabase **cả quán là một IP** — đầu ca, sau buổi họp, ngày tập huấn là chạm trần.
+
+Chạm trần thì web **giữ phiên** và báo "hệ thống đang bận, đợi vài giây" (`web/src/lib/qua-tai.ts`): không đăng xuất ai, không xóa đăng nhập đã cất trên máy tính bảng, không bắt quản lý đăng ký lại máy, không báo "sai mật khẩu" cho người gõ đúng. Bản trước làm cả bốn điều đó. Nhưng người ta vẫn phải chờ — nên nâng hạn mức (việc 1 bên dưới).
+
+Không dùng cách "chuyển tiếp IP" (`Sb-Forwarded-For`) trong tài liệu Supabase: nó bắt đặt khóa bí mật đi xuyên RLS vào Worker — trái nguyên tắc ở đầu `web/src/lib/phien.ts` — và cũng vô ích, vì nhân viên dùng chung một IP WiFi.
+
+### Việc của Khánh
+
+1. [ ] **Supabase → Authentication → Rate Limits → "Rate limit for token refreshes"**: 150 → **450–600** lượt / 5 phút, ở **cả hai** project (Beeftown và Beeftown-thu). Mục này tính cả lượt đăng nhập bằng mật khẩu, không chỉ gia hạn. Kiểm: `npm run thu-tai -- --dang-nhap-don 60` trên Beeftown-thu (xem "Thử tải" bên dưới) — không lượt nào bị 429 là được. Nâng hạn mức cũng là cho dò mật khẩu nhanh hơn: làm cùng việc 3, và mật khẩu nhân viên từ 10 ký tự.
+2. [ ] **Cloudflare Workers Paid — 5 USD/tháng.** Gói Free cho 100.000 lượt/ngày dùng **chung** cho web khách và hệ thống kho — một chiến dịch quảng cáo chạy tốt là đủ làm kho báo lỗi 1027 giữa ca — và mỗi lượt chỉ được 10 ms CPU, trang báo cáo và tải ảnh chứng từ vượt.
+3. [ ] **Cloudflare → Security → WAF → Rate limiting rules** (gói Free có một luật, chỉ lọc theo đường dẫn, đếm 10 giây, chặn 10 giây): URI Path equals `/noi-bo/dang-nhap`, theo IP, **10 lượt / 10 giây** → Block. Chặn một máy bên ngoài dò mật khẩu hay cố tình đốt hạn mức đăng nhập chung của quán. Ngày tập huấn cả nhóm đăng nhập cùng lúc từ WiFi quán: tắt tạm luật này.
+4. [ ] **Supabase Pro + cỡ máy Small** (~15 USD/tháng; Pro đã kèm 10 USD cho cỡ Micro). Giờ cao điểm CPU (Supabase → Reports → Database) thường xuyên trên 70% thì làm theo "Nếu chậm". Đổi cỡ máy làm gián đoạn vài phút — làm ngoài giờ. Small và Medium thêm RAM, CPU vẫn dùng chung; muốn CPU riêng phải lên Large.
+5. [ ] **Tạo tài khoản cho 100 nhân viên theo đợt.** Tạo tài khoản tính vào hạn mức khác, "sign ups and sign ins" (30 / 5 phút). Màn Nhân viên đã báo "Tạo quá nhiều tài khoản liền nhau — chờ vài phút"; muốn tạo một lần thì nâng tạm hạn mức đó trong ngày tạo. Nhân viên quầy, bếp dùng **máy tính bảng dùng chung** (đổi người bằng PIN, `web/KHO.md` mục 3f) — ít thiết bị phải đăng nhập, ít lượt vào hạn mức.
+6. [ ] **Mạng tại quán**
+   - Hai đường cáp quang của **hai nhà mạng khác nhau**, router dual-WAN tự chuyển đường khi một đường đứt, cộng **4G dự phòng**. Web nội bộ rất nhẹ — 100 Mbps là đủ cho nhân viên.
+   - **WiFi doanh nghiệp có bộ quản lý chung** (Ruijie Reyee, TP-Link Omada, UniFi…), mỗi điểm phát khoảng 25–30 thiết bị đang dùng, đặt theo khu: quầy, bếp, kho, từng tầng. Modem nhà mạng tặng thường chỉ chịu tốt 20–30 thiết bị.
+   - **Kho lạnh chặn sóng WiFi**: đặt điểm phát ngay cửa kho lạnh, và thử quét mã bên trong trước khai trương.
+   - **Ba mạng riêng**: nhân viên / thiết bị (iPOS, cân, máy in, máy tính bảng — IP cố định; cân phải giữ đúng `192.168.1.22`) / khách (cách ly, giới hạn băng thông).
+   - **Bộ lưu điện (UPS)** cho router, switch, điểm phát.
+7. [ ] **Khi mất mạng**: cân in tem vẫn chạy. Hỏi iPOS xác nhận máy bán hàng bán được khi mất mạng — nếu được, hóa đơn tự về kho khi có mạng lại (hook đã chống trùng theo mã hóa đơn). Kho **không** chạy khi mất mạng: in sẵn phiếu giấy (nhập, xuất, hủy, đếm quầy) để ở quầy và kho, có mạng lại thì nhập vào.
+8. [ ] **Diễn tập trước khai trương**: 30 phút, 30–50 nhân viên trên máy thật, làm đúng việc hằng ngày; giữa chừng rút dây mạng chính, xem 4G có tự đỡ không.
+
+### Thử tải trước khi mở cửa
+
+`crm/test/thu-tai.mjs` mô phỏng N nhân viên mở các trang kho — gọi đúng các lời gọi Supabase mà Worker làm cho mỗi trang (Hôm nay, Tồn kho, Thông báo, Nhập hàng, Đếm quầy), **chỉ đọc**, và dừng ngay nếu database có chi nhánh nào tên không chứa "BẢN THỬ". Chạy trên máy tính (Windows PowerShell):
+
+```powershell
+cd crm
+$env:SUPABASE_URL="https://<mã Beeftown-thu>.supabase.co"
+$env:SUPABASE_ANON_KEY="<khóa anon của Beeftown-thu>"
+$env:TAI_KHOAN="<email quản lý tập>:<mật khẩu>,<email thủ kho tập>:<mật khẩu>,<email NV quầy tập>:<mật khẩu>"
+npm run thu-tai -- --nguoi 150 --phut 10
+```
+
+**Đạt** khi: không lời gọi nào hỏng (429, 5xx, mất mạng), 95% số lần mở trang dưới 2 giây, và CPU database (Supabase → Reports) dưới 70% trong lúc chạy. Lặp email NV quầy nhiều lần trong `TAI_KHOAN` để tăng tỉ lệ người dùng quầy. Thời gian đo từ máy ở Việt Nam nên cộng thêm độ trễ mạng sang Singapore; con số đáng so là mức chậm đi giữa lúc rảnh (pha 1) và lúc tải (pha 2).
+
+### Theo dõi khi đang chạy thật
+
+- **Cloudflare → Workers & Pages → beeftown → Metrics**: lượt gọi, tỉ lệ lỗi, thời gian CPU. **Logs** (bật trong `web/wrangler.toml`, giữ 7 ngày): tìm `[qua-tai]` — mỗi dòng là một lần nhân viên gặp trang "hệ thống đang bận". `qua_tai` = chạm hạn mức → việc 1; `mat_ket_noi` = Supabase trục trặc hoặc mất mạng. Nhật ký từng lượt gọi (invocation logs) cố ý tắt: nó chép nguyên URL, mà địa chỉ nhận hóa đơn iPOS mang khóa bí mật ngay trong đường dẫn.
+- **Supabase → Reports → Database**: CPU, RAM giờ cao điểm.
+
+### Nếu chậm — làm theo thứ tự
+
+1. Nhiều dòng `[qua-tai] … qua_tai` → nâng thêm hạn mức token (việc 1).
+2. CPU database trên 70% giờ cao điểm → nhớ kết quả `kho_dem_viec` khoảng 30 giây cho mỗi người trong Worker (xóa khi chính người đó ghi), hoặc tối ưu `kho_su_kien` — cả hai bớt phần lớn tải của mỗi lần mở trang.
+3. Vẫn cao → nâng cỡ máy Supabase (CPU riêng từ cỡ Large).
 
 ---
 

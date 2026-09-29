@@ -27,6 +27,19 @@ preview_urls = false
 [placement]
 region = "aws:ap-southeast-1"
 
+# Nhật ký (Workers Logs, giữ 7 ngày): Cloudflare → Workers & Pages → beeftown →
+# Logs. Chỉ ghi các dòng console.* của code — mọi dòng đó đã bỏ token, email,
+# số điện thoại, nội dung tin (sach / xoaBiMat / ghiQuaTai). TẮT nhật ký từng
+# lượt gọi (invocation_logs): nó chép nguyên URL, mà /hook/ipos/<khóa> mang khóa
+# bí mật ngay trong đường dẫn. Số lượt, tỉ lệ lỗi, thời gian CPU vẫn xem ở tab
+# Metrics. Tìm "[qua-tai]" để biết nhân viên gặp trang "hệ thống đang bận" bao
+# nhiêu lần — nhiều thì nâng hạn mức ở Supabase (README, mục Hạ tầng).
+[observability]
+enabled = true
+
+[observability.logs]
+invocation_logs = false
+
 # iPOS tự đẩy hóa đơn sang /hook/ipos/<khóa> (GĐ7c). Cron 5 phút chỉ thử lại
 # dòng bán đang chờ và đọc thực đơn iPOS mỗi giờ — lượt rất nhẹ. Bí mật
 # IPOS_CALLBACK_KHOA, IPOS_ACCESS_TOKEN, KHO_IPOS_EMAIL, KHO_IPOS_MAT_KHAU đặt
