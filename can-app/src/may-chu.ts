@@ -92,6 +92,8 @@ export function moMayChu(ud: UngDung, tuy: {
               ok: true, phienBan: tuy.phienBan, cauHinh: ud.cauHinh(), nguoi, loiKho,
               goc: ud.thongTinGoc(), soTrenCan: ud.docTrenCan().size, thuMuc: ud.dd.duLieu,
               lanTuGui: ud.lanTuGui,
+              // HSD trên cân tính cho ngày nào (giờ VN), cân có in HSD không, có cũ không — trang báo đỏ khi cũ.
+              hsd: ud.hsdTrenCan(),
             });
           }
           case '/api/cau-hinh': {
@@ -138,8 +140,8 @@ export function moMayChu(ud: UngDung, tuy: {
           case '/api/tem/gui': return json({ ok: true, ...(await ud.guiTem(thayDoiTem(await docThan(req)))) });
           case '/api/tem/usb': return json({ ok: true, ...(await ud.taoFileUsbTem(thayDoiTem(await docThan(req)))) });
           case '/api/da-nap-usb': return json({ ok: true, ...ud.daNapUsb() });
-          // Ô Cân tự làm mới mỗi phút: chỉ đọc cài đặt và lần tự gửi, không gọi kho.
-          case '/api/can': return json({ ok: true, cauHinh: ud.cauHinh(), lanTuGui: ud.lanTuGui });
+          // Ô Cân tự làm mới mỗi phút: chỉ đọc cài đặt, lần tự gửi và ngày tính HSD trên cân (qua nửa đêm thì báo HSD cũ), không gọi kho.
+          case '/api/can': return json({ ok: true, cauHinh: ud.cauHinh(), lanTuGui: ud.lanTuGui, hsd: ud.hsdTrenCan() });
           case '/api/thu-can': return json({ ok: true, ...(await ud.thuCan()) });
           case '/api/tim-can': return json({ ok: true, ...(await ud.timCan()) });
           // ---- 2.2: cổng hai chiều 33581 (chưa thử trên cân thật) ----

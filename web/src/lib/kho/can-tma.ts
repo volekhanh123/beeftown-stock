@@ -36,7 +36,8 @@
  * số ngày ở cột 32 (PC_UD, 0…999; 0 = hết hạn trong ngày); cột 27 = 0 thì
  * không in và cột 32 bị bỏ qua. Mẫu tem phải có ô "Hạn dùng" (tem 28 của quán
  * có). Không đụng cột 25/30 (ngày đóng gói): tem 28 in ngày đóng gói bằng ô
- * "Ngày in".
+ * "Ngày in". Số ngày gửi xuống là số ngày CÒN LẠI của lô tính cho một ngày
+ * (danh-muc-can.ts) — file này chỉ ghi số đó, không biết nó tính cho ngày nào.
  *
  * QUA WIFI (thử trên cân thật 26/09/2026): gửi nguyên nội dung file này vào
  * cổng TCP 33571 của cân là cân nạp — nhưng chỉ THÊM và SỬA dòng PLU, không
@@ -344,6 +345,14 @@ export interface HangKho {
    * Chưa thử trên cân thật.
    */
   han_dung_ngay?: number | null;
+  /**
+   * Hạn dùng lấy từ đâu (danh-muc-can.ts): "lô L0012 hết hạn 03/10", "tảng #0142 · hết hạn 03/10", "theo hạn dùng của
+   * món (chưa có lô)"… Chỉ để xem trước hiện (DongKeHoach.hsdNguon) — không ghi xuống cân. Bỏ qua khi han_dung_ngay
+   * là undefined.
+   */
+  nguon_hsd?: HaiThuTieng;
+  /** Cảnh báo về hạn dùng của nơi tính HSD (vd. lô đã hết hạn) — lapKeHoach nối vào canhBao. Bỏ qua khi han_dung_ngay là undefined. */
+  canh_bao_hsd?: HaiThuTieng;
 }
 
 export interface TuyChonDongBo {
@@ -383,6 +392,8 @@ export interface DongKeHoach {
    */
   hsd?: number | null;
   hsdCu?: number | null;
+  /** HSD lấy từ đâu (HangKho.nguon_hsd theo nn) — chỉ khi có hsd và hàng kho có nguon_hsd. */
+  hsdNguon?: string;
   /** Dòng PLU gốc trên cân (khi có). */
   goc?: DongPlu;
 }
@@ -393,22 +404,27 @@ export interface KeHoach {
   coThayDoi: boolean;
 }
 
-/** hsd: undefined = không quản HSD; null = không in; số = số ngày. */
-interface HangHopLe { hang: HangKho; ma: string; ten: string; gia: number; hsd?: number | null; canhBao?: string }
+/** hsd: undefined = không quản HSD; null = không in; số = số ngày. hsdNguon: HSD lấy từ đâu (chỉ để hiện). */
+interface HangHopLe { hang: HangKho; ma: string; ten: string; gia: number; hsd?: number | null; hsdNguon?: string; canhBao?: string }
 
-/** Hạn dùng của hàng kho → giá trị ghi lên cân, kèm cảnh báo khi cân không nhận được. */
-function kiemHsd(h: HangKho, nn: NgonNguNB): { hsd?: number | null; canhBao?: string } {
+/**
+ * Hạn dùng của hàng kho → giá trị ghi lên cân, kèm cảnh báo khi cân không nhận được, cảnh báo của nơi tính HSD
+ * (canh_bao_hsd) và nguồn HSD (nguon_hsd) — hai thứ sau chỉ khi hàng kho quản HSD.
+ */
+function kiemHsd(h: HangKho, nn: NgonNguNB): { hsd?: number | null; canhBao?: string; nguon?: string } {
   const c = (x: HaiThuTieng) => x[nn];
   const n = h.han_dung_ngay;
   if (n === undefined) return {};
-  if (n === null || hsdHopLe(n)) return { hsd: n };
+  const nguon = h.nguon_hsd ? c(h.nguon_hsd) : undefined;
+  const noi = (canhBao?: string) => [h.canh_bao_hsd ? c(h.canh_bao_hsd) : '', canhBao ?? ''].filter(Boolean).join(' ') || undefined;
+  if (n === null || hsdHopLe(n)) return { hsd: n, canhBao: noi(), nguon };
   if (Number.isInteger(n) && n > HSD_TOI_DA) {
-    return { hsd: null, canhBao: c({
+    return { hsd: null, nguon, canhBao: noi(c({
       vi: `Hạn dùng ${n.toLocaleString('vi-VN')} ngày vượt mức cân nhận (${HSD_TOI_DA} ngày) — tem sẽ không in HSD.`,
-      en: `A use-by of ${n.toLocaleString('en-US')} days is more than the scale accepts (${HSD_TOI_DA} days) — the label will not print a use-by date.` }) };
+      en: `A use-by of ${n.toLocaleString('en-US')} days is more than the scale accepts (${HSD_TOI_DA} days) — the label will not print a use-by date.` })) };
   }
-  return { hsd: null, canhBao: c({ vi: `Hạn dùng "${n}" không hợp lệ — tem sẽ không in HSD.`,
-                                   en: `The use-by "${n}" is not valid — the label will not print a use-by date.` }) };
+  return { hsd: null, nguon, canhBao: noi(c({ vi: `Hạn dùng "${n}" không hợp lệ — tem sẽ không in HSD.`,
+                                              en: `The use-by "${n}" is not valid — the label will not print a use-by date.` })) };
 }
 
 function kiemHang(h: HangKho, soChuSo: number, nn: NgonNguNB): { ok: true; v: HangHopLe } | { ok: false; lyDo: string } {
@@ -436,7 +452,10 @@ function kiemHang(h: HangKho, soChuSo: number, nn: NgonNguNB): { ok: true; v: Ha
   const hsd = kiemHsd(h, nn);
   if (hsd.canhBao) canhBao = canhBao ? `${canhBao} ${hsd.canhBao}` : hsd.canhBao;
   const v: HangHopLe = { hang: h, ma, ten, gia: Math.round(h.gia_ban_kg), canhBao };
-  if (hsd.hsd !== undefined) v.hsd = hsd.hsd;
+  if (hsd.hsd !== undefined) {
+    v.hsd = hsd.hsd;
+    if (hsd.nguon) v.hsdNguon = hsd.nguon;
+  }
   return { ok: true, v };
 }
 
@@ -449,6 +468,7 @@ function kiemHang(h: HangKho, soChuSo: number, nn: NgonNguNB): { ok: true; v: Ha
  *    đã có trên cân thì để nguyên dòng cũ và báo lý do.
  *  - Hạn dùng: chỉ hàng kho có khoá han_dung_ngay mới được so và ghi; đổi HSD
  *    là "sua". Hàng không có khoá đó: cột ngày trên cân giữ nguyên như cũ.
+ *    Hàng quản HSD mang theo nguồn HSD (hsdNguon) và cảnh báo của nơi tính HSD.
  * nn chỉ đổi câu lý do / cảnh báo; số PLU, tên, giá ghi vào file không đổi.
  */
 export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo, nn: NgonNguNB = 'vi'): KeHoach {
@@ -478,7 +498,10 @@ export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo
       const doi = p.ten !== hang.ten || p.gia !== hang.gia || p.cachBan !== '1' || (quanHsd && p.hsd !== hang.hsd);
       const d: DongKeHoach = { loai: doi ? 'sua' : 'giu', so: p.so, maCan: p.ma, ten: hang.ten, gia: hang.gia, maKho: hang.hang.ma,
         tenCu: p.ten, giaCu: p.gia, canhBao: hang.canhBao, goc: p };
-      if (quanHsd) { d.hsd = hang.hsd; d.hsdCu = p.hsd; }
+      if (quanHsd) {
+        d.hsd = hang.hsd; d.hsdCu = p.hsd;
+        if (hang.hsdNguon) d.hsdNguon = hang.hsdNguon;
+      }
       ra.push(d);
     } else if (loi && !daKhop.has(p.ma)) {
       daKhop.add(p.ma);
@@ -508,7 +531,10 @@ export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo
     while (soDaDung.has(soKe)) soKe++;
     soDaDung.add(soKe);
     const d: DongKeHoach = { loai: 'them', so: soKe, maCan: h.ma, ten: h.ten, gia: h.gia, maKho: h.hang.ma, canhBao: h.canhBao };
-    if (h.hsd !== undefined && khuonCoHsd) d.hsd = h.hsd;
+    if (h.hsd !== undefined && khuonCoHsd) {
+      d.hsd = h.hsd;
+      if (h.hsdNguon) d.hsdNguon = h.hsdNguon;
+    }
     ra.push(d);
   }
 

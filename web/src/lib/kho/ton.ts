@@ -44,6 +44,41 @@ export async function docTon(client: SupabaseClient, chiNhanhId: string): Promis
   return (data ?? []).map(r => ({ ...r, so_kg: Number(r.so_kg), so_ngay_con: Number(r.so_ngay_con) })) as DongTon[];
 }
 
+/** Một dòng lô × vị trí còn tồn (kho_v_ton) — chỉ phần để tính hạn dùng in trên tem cân (danh-muc-can.ts). */
+export interface LoTon { lo_id: string; mat_hang_id: string; ma_lo: string; han_dung: string }
+
+const TRANG_LO = 1000;
+const TOI_DA_LO = 100_000;
+/** Quá TOI_DA_LO dòng tồn: có gì đó sai — báo lỗi chứ không cắt cụt. */
+export const CAU_QUA_NHIEU_LO: HaiThuTieng = {
+  vi: `Chi nhánh có hơn ${TOI_DA_LO.toLocaleString('vi-VN')} dòng tồn — không đọc hết được để tính hạn dùng cho cân.`,
+  en: `The branch has more than ${TOI_DA_LO.toLocaleString('en-US')} stock lines — they cannot all be read to work out the use-by for the scale.`,
+};
+
+/**
+ * Mọi lô còn tồn ở chi nhánh (kho_v_ton chỉ giữ dòng so_kg > 0 hoặc so_goi > 0), mọi vị trí — để tính số ngày HSD
+ * còn lại cho cân. Đọc từng trang 1.000 dòng tới hết: thiếu lô cũ nhất là tem in hạn muộn hơn hạn thật, nên không
+ * bao giờ cắt cụt lặng lẽ (quá TOI_DA_LO dòng → ném lỗi). Không tiền; RLS kho_ton / kho_lo: vai xem kho, đúng chi nhánh.
+ */
+export async function docLoConTon(client: SupabaseClient, chiNhanhId: string): Promise<LoTon[]> {
+  const ra: LoTon[] = [];
+  for (let dau = 0; dau < TOI_DA_LO; dau += TRANG_LO) {
+    const { data, error } = await client
+      .from('kho_v_ton')
+      .select('lo_id, mat_hang_id, ma_lo, han_dung, vi_tri_id')
+      .eq('chi_nhanh_id', chiNhanhId)
+      .order('han_dung')
+      .order('lo_id')
+      .order('vi_tri_id')
+      .range(dau, dau + TRANG_LO - 1);
+    if (error) throw error;
+    const ds = (data ?? []) as (LoTon & { vi_tri_id: string })[];
+    for (const r of ds) ra.push({ lo_id: r.lo_id, mat_hang_id: r.mat_hang_id, ma_lo: r.ma_lo, han_dung: String(r.han_dung) });
+    if (ds.length < TRANG_LO) return ra;
+  }
+  throw new Error(CAU_QUA_NHIEU_LO.vi);
+}
+
 /** Giá trị tồn theo "lo_id|vi_tri_id". Vai không xem giá: Map rỗng. */
 export async function docGiaTon(client: SupabaseClient, chiNhanhId: string): Promise<Map<string, { gia_von_kg: number; gia_tri: number }>> {
   const ra = new Map<string, { gia_von_kg: number; gia_tri: number }>();

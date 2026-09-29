@@ -21,9 +21,12 @@
  *
  * Beeftown Cân 2.2 (chưa thử trên cân thật): file tải về bỏ phần REP (nhật ký
  * bán) + INF (thông tin máy) như phần mềm của hãng (boPhanChiDoc), và không bao
- * giờ mang dòng CLR (lệnh xoá bảng). Hạn dùng (HSD): món giữ nguyên cột ngày
- * trên cân (kho tính hạn từ ngày nhập, cân tính từ ngày in — danh-muc-can.ts),
- * ô mã và mã giảm giá tắt HSD. Bảng xem trước có cột HSD: cũ → mới.
+ * giờ mang dòng CLR (lệnh xoá bảng). Hạn dùng (HSD, cách b — danh-muc-can.ts):
+ * số ngày CÒN LẠI của lô tính cho hôm nay (giờ VN) — ô mã đang giữ tảng theo lô
+ * lóc ra, món và ô trống theo lô sớm nhất còn tồn, chưa có lô theo hạn dùng của
+ * món; lô hết hạn và mã giảm giá không in HSD. Cân in HSD = ngày in + số ngày,
+ * nên file chỉ đúng trong ngày xuất: trang ghi "HSD tính cho ngày xuất file —
+ * nạp vào cân trong ngày". Bảng xem trước có cột HSD: cũ → mới, kèm nguồn HSD.
  *
  * Quyền: như sửa danh mục (danh_muc). Không ghi gì vào database.
  */
@@ -38,6 +41,7 @@ import {
   LoiFileCan, type DongKeHoach, type KeHoach, type LoaiDong,
 } from '../../../../lib/kho/can-tma.ts';
 import { dichNB, type HaiThuTieng } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { homNayVn } from '../../../../lib/gio-vn.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -119,8 +123,12 @@ const t = dichNB(nn, {
   hsdKhongIn: { vi: 'không in', en: 'not printed' },
   trenCan: { vi: 'Trên cân đang là: ', en: 'On the scale now: ' },
   truoc: { vi: 'trước: ', en: 'before: ' },
-  ghiChuHsd: { vi: 'Cột HSD: hạn dùng đang ghi trên cân — cân in HSD = ngày in tem + số ngày đó. Kho không đưa Mặt hàng › Hạn dùng (ngày) lên cân: hạn trong kho tính từ ngày nhập / ngày lóc, cân tính từ ngày in, nên tem sẽ in hạn muộn hơn hạn của lô. Món giữ nguyên HSD đang có trên cân; ô mã (hàng lóc từ tảng) và mã giảm giá (gói cận date) luôn tắt HSD. Tem 28 hiện vẫn in chữ "HSD" (ô đó đang "Luôn in") và chưa biết ô ngày in gì khi hàng không có HSD — đổi điều kiện in của ô Hạn dùng và chữ "HSD" sang "Chỉ khi hàng có hạn dùng" trong Beeftown Cân › Mẫu tem. Chưa thử trên cân thật — nạp xong in thử một tem hàng có HSD và một tem hàng không có HSD, xem dòng HSD.',
-               en: 'Use-by column: the use-by currently set on the scale — the scale prints use-by = label print date + those days. Inventory does not send Items › Use-by (days) to the scale: inventory counts from the receiving / breakdown date, the scale counts from the print date, so the label would show a later date than the lot\'s. Items keep the use-by the scale already has; code cells (cuts from a primal) and discount codes (near-date packs) always have use-by turned off. Label 28 still prints the "HSD" caption (that field is set to "Always print") and what the date field shows for an item without a use-by is unknown — change the print condition of the Use-by field and the "HSD" text to "Only when the item has a use-by" in Beeftown Cân › Label. Not yet tested on the real scale — after loading, print one test label for an item with a use-by and one without, and check the use-by line.' },
+  ghiChuHsd: { vi: 'Cột HSD: số ngày in trên tem — cân in HSD = ngày in tem (đồng hồ cân) + số ngày đó. Kho gửi số ngày CÒN LẠI của lô, tính cho hôm nay: ô mã đang giữ tảng theo hạn của lô lóc ra; món và ô trống theo lô sớm nhất còn tồn ở chi nhánh; chưa có lô thì theo Mặt hàng › Hạn dùng (ngày); lô đã hết hạn và mã giảm giá (gói cận date) không in HSD. Dòng nhỏ dưới số ngày cho biết HSD lấy từ lô nào. Tem 28 hiện vẫn in chữ "HSD" (ô đó đang "Luôn in") và chưa biết ô ngày in gì khi hàng không có HSD — đổi điều kiện in của ô Hạn dùng và chữ "HSD" sang "Chỉ khi hàng có hạn dùng" trong Beeftown Cân › Mẫu tem. Chưa thử trên cân thật — nạp xong in thử một tem hàng có HSD và một tem hàng không có HSD, xem dòng HSD.',
+               en: 'Use-by column: the days printed on the label — the scale prints use-by = label print date (scale clock) + those days. Inventory sends the days LEFT on the lot, worked out for today: a code cell holding a primal follows the lot cut from it; items and empty cells follow the earliest lot still in stock at the branch; with no lot yet, Items › Use-by (days); an expired lot and discount codes (near-date packs) print no use-by. The small line under the days shows which lot the use-by comes from. Label 28 still prints the "HSD" caption (that field is set to "Always print") and what the date field shows for an item without a use-by is unknown — change the print condition of the Use-by field and the "HSD" text to "Only when the item has a use-by" in Beeftown Scale › Label. Not yet tested on the real scale — after loading, print one test label for an item with a use-by and one without, and check the use-by line.' },
+  hsdNgayXuat: {
+    vi: (ngay: string) => `HSD tính cho ngày xuất file — nạp vào cân trong ngày (file tải lúc này tính cho ngày ${ngay}). Để sang hôm sau mới nạp thì mỗi ngày trễ là HSD in ra muộn hơn hạn của lô thêm 1 ngày — khi đó tải lại file. Đồng hồ cân phải đúng ngày.`,
+    en: (ngay: string) => `The use-by is worked out for the day the file is downloaded — load it into the scale the same day (a file downloaded now is for ${ngay}). Each day it waits, the printed use-by is one more day later than the lot\'s — download the file again then. The scale clock must show the right date.`,
+  },
   boPhanChiDoc: { vi: 'File mới bỏ phần nhật ký bán (REP) và thông tin máy (INF) của file cũ, như phần mềm của hãng — để không gửi lại nhật ký bán cũ xuống cân. Chưa thử trên cân thật.',
                   en: 'The new file leaves out the sales log (REP) and device info (INF) sections of the old file, as the vendor software does — so an old sales log is not sent back to the scale. Not yet tested on the real scale.' },
   dungLai: { vi: 'File được dựng lại từ danh mục ngay lúc bấm, nên vừa sửa Mặt hàng xong có thể tải lại luôn.',
@@ -218,6 +226,8 @@ function oHsd(d: DongKeHoach): { chu: string; cu: string | null } {
   const doi = d.loai === 'sua' && d.hsd !== undefined && d.hsdCu !== undefined && d.hsdCu !== d.hsd;
   return { chu: sau === undefined || (sau === null && !doi) ? '—' : hsdChu(sau), cu: doi ? hsdChu(d.hsdCu ?? null) : null };
 }
+/** Ngày (giờ VN) HSD trong file được tính — file tải về dựng lại lúc bấm, nên là hôm nay. */
+const ngayXuat = homNayVn().split('-').reverse().join('/');
 const DEM: [LoaiDong, HaiThuTieng][] = [
   ['them', { vi: 'thêm', en: 'to add' }], ['sua', { vi: 'sửa', en: 'to update' }],
   ['xoa', { vi: 'xoá khỏi cân', en: 'to delete from the scale' }], ['giu', { vi: 'giữ nguyên', en: 'unchanged' }],
@@ -302,6 +312,7 @@ const DEM: [LoaiDong, HaiThuTieng][] = [
                   <td class="so">
                     {oHsd(d).chu}
                     {oHsd(d).cu !== null && <div class="kho-phu">{t.truoc}{oHsd(d).cu}</div>}
+                    {d.hsdNguon && <div class="kho-phu">{d.hsdNguon}</div>}
                   </td>
                 </tr>
               ))}
@@ -320,6 +331,7 @@ const DEM: [LoaiDong, HaiThuTieng][] = [
         <p style="margin-top:0">
           {keHoach.coThayDoi ? t.dungLai : t.daKhop}
         </p>
+        {keHoach.dong.some(d => d.hsd !== undefined) && <p class="kho-phu"><strong>{t.hsdNgayXuat(ngayXuat)}</strong></p>}
         <p class="kho-phu">{t.boPhanChiDoc}</p>
         <button type="submit" class="nb-nut">{t.taiFile(tenFile)}</button>
       </form>
