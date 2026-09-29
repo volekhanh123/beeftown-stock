@@ -431,12 +431,16 @@ PLU⇥1⇥10001⇥⇥1⇥845,0⇥0,0⇥0,0⇥0⇥0⇥0⇥0⇥0⇥0⇥9⇥Sườn
 - Kho → cân (`can-tma.ts`): `HangKho.han_dung_ngay` `undefined` = không quản (giữ cột cân); `null` = không in
   (27 = 0, 32 = 0); n = in (27 = 1, 32 = n); n > 999 → không in, kèm cảnh báo.
 - Danh mục kho (`danh-muc-can.ts`, cách b — 29/09/2026) gửi **số ngày còn lại của lô** = `kho_lo.han_dung` − hôm nay
-  (giờ VN, `homNayVn`): ô mã đang giữ tảng → lô lóc ra (phiên còn nháp: không muộn hơn hạn tảng); món và ô trống → lô
+  (giờ VN, `homNayVn`): ô mã đang giữ tảng → lô lóc ra (phiên còn nháp: hạn của lô sẽ sinh ra lúc chốt =
+  `coalesce(ra.han_dung, least(ngay_pha + han_dung_ngay, hạn tảng))` như 0033, `hanLoRaDuKien`; không đọc được phiên →
+  không in); món và ô trống → lô
   **sớm nhất** còn tồn ở chi nhánh (`kho_v_ton`, mọi vị trí); chưa có lô → `han_dung_ngay` của món (null → không in);
   hạn đã qua → `null` + cảnh báo; mã giảm giá cận date → `null`. `HangKho.nguon_hsd` / `canh_bao_hsd` đi tới
   `DongKeHoach.hsdNguon` / `canhBao` (chỉ để hiện, không ghi file). Vì cột 32 là số **tương đối**, số gửi hôm nay in
   ngày mai là HSD muộn thêm 1 ngày: phải gửi lại **mỗi ngày** trước khi đóng gói. Beeftown Cân ghi ngày tính
-  (`hsd-tinh-ngay.txt`) và báo đỏ khi cũ; tự gửi gửi được đếm ngược (số → số), không tự bật / tắt in (null ↔ số);
+  (`hsd-tinh-ngay.txt`) và báo đỏ khi cũ, kê hàng vẫn in HSD cũ mà không tính lại được (`hsd-giu-cu.json`: kho không
+  đưa lên được, ngoài kho, còn nằm lại); tự gửi gửi được đếm ngược (số → số), giữ lại riêng hàng bật / tắt in (null ↔ số)
+  và khi đó không ghi ngày tính;
   màn Đồng bộ cân ghi "HSD tính cho ngày xuất file — nạp vào cân trong ngày". Đồng hồ cân sai ngày → HSD sai theo.
 - Phần mềm hãng có cột Excel "Shelf date data(+print)": nhập n ≥ 1 thì bật in, nhập 0 thì **tắt** in (không
   diễn tả được "hết hạn trong ngày"). Nhập Excel của hãng đè **mọi** cột của PLU đã có, kể cả hạn sử dụng.

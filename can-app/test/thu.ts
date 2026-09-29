@@ -1198,11 +1198,23 @@ console.log('6f · Sửa sau rà soát 2.2');
 
     dm = dmH(null, 3, 7);   // lô lõi vai hết hạn (tắt HSD), gầu bò bắt đầu có hạn (bật HSD)
     const soNhan2 = nhan.length;
+    const truoc2 = new Map(docFileCan(new Uint8Array(fs.readFileSync(u.fileGoc))).plu.map(p => [p.so, p.tho]));
     const t2 = await u.tuGuiMotLan();
+    const f2a = nhan.length > soNhan2 ? docFileCan(new Uint8Array(nhan[nhan.length - 1])) : null;
     const x2 = await u.xemTruoc();
-    ok('HỒI QUY: bật / tắt in HSD (số → không in, không in → số) → tự gửi KHÔNG gửi gì (cả HSD đếm ngược của hàng khác), báo mở Gửi giá từ kho',
-      !t2.daGui && nhan.length === soNhan2 && /bật \/ tắt in hạn dùng \(HSD\) của 2 hàng/.test(t2.cau) && /chưa thử trên cân thật/.test(t2.cau)
-      && x2.doiHsd === 2 && x2.demNguocHsd === 1 && u.hsdTrenCan?.().tinhNgay === '2026-09-30', `${t2.cau} ${x2.doiHsd}/${x2.demNguocHsd}`);
+    // Rà soát: trước đây một hàng bật / tắt làm tự gửi không gửi gì — cả HSD đếm ngược của mọi hàng khác, sáng nào có lô
+    // hết hạn qua đêm là cả cân in HSD hôm qua. Giờ: giữ riêng hàng bật / tắt (y nguyên từng byte), gửi phần còn lại,
+    // không ghi ngày tính (khung đỏ còn tới khi người xem trước rồi bấm Gửi).
+    ok('HỒI QUY: bật / tắt in HSD (số → không in, không in → số) → tự gửi vẫn gửi HSD đếm ngược của hàng khác (PLU 2: 4 → 3), giữ y nguyên từng byte hai hàng bật / tắt, không ghi ngày tính, báo giữ lại 2 hàng',
+      t2.daGui && !!f2a && f2a.plu.find(p => p.so === 2)?.hsd === 3 && f2a.plu.find(p => p.so === 1)?.tho === truoc2.get(1)
+      && f2a.plu.find(p => p.so === 3)?.tho === truoc2.get(3) && /[Gg]iữ lại bật \/ tắt in hạn dùng \(HSD\) của 2 hàng/.test(t2.cau)
+      && /chưa thử trên cân thật/.test(t2.cau) && x2.doiHsd === 2 && x2.demNguocHsd === 0
+      && u.hsdTrenCan?.().tinhNgay === '2026-09-30' && u.hsdTrenCan?.().cu === true && u.hsdTrenCan?.().choBatTat === 2
+      && x2.hsdTrenCan?.choBatTat === 2, `${t2.cau} ${x2.doiHsd}/${x2.demNguocHsd} ${JSON.stringify(u.hsdTrenCan?.())}`);
+    const soNhan2b = nhan.length;
+    const t2b = await u.tuGuiMotLan();
+    ok('Chỉ còn bật / tắt (phần khác đã gửi) → tự gửi không gửi gì, vẫn báo giữ lại 2 hàng', !t2b.daGui && nhan.length === soNhan2b
+      && /[Gg]iữ lại bật \/ tắt in hạn dùng \(HSD\) của 2 hàng/.test(t2b.cau) && u.hsdTrenCan?.().tinhNgay === '2026-09-30', t2b.cau);
     await u.guiXuongCan();
     const f2 = docFileCan(new Uint8Array(nhan[nhan.length - 1]));
     ok('Bấm Gửi (đã xem trước): bật / tắt HSD xuống cân, ghi ngày tính 01/10', f2.plu.find(p => p.so === 1)?.hsd === null
@@ -1270,21 +1282,128 @@ console.log('6f · Sửa sau rà soát 2.2');
     const gd = fs.readFileSync(path.join(import.meta.dir, '..', 'src', 'giao-dien.html'), 'utf8');
     const hd = fs.readFileSync(path.join(import.meta.dir, '..', 'src', 'huong-dan.html'), 'utf8');
     const than = /function baoHsdCu\(h\) \{([\s\S]*?)\n {2}\}/.exec(gd)?.[1] ?? '';
-    ok('Khung đỏ HSD cũ: đúng câu, theo trạng thái của chương trình (h.cu, h.tinhNgay, h.homNay) — không dùng đồng hồ trình duyệt',
+    // Câu Khánh chọn (thiet-ke, 29/09) — đúng từng chữ, ở trang, hướng dẫn và README.
+    const CAU_KHANH = ' — mỗi ngày trễ là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói.';
+    ok('Khung đỏ HSD cũ: đúng câu Khánh chọn, theo trạng thái của chương trình (h.cu, h.tinhNgay, h.homNay) — không dùng đồng hồ trình duyệt',
       /if \(!h \|\| !h\.cu\) return '';/.test(than) && /HSD trên cân tính cho ngày \$\{ngayChu\(h\.tinhNgay\)\}/.test(than)
-      && than.includes(' — mỗi ngày chưa gửi lại là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói.')
+      && than.includes(CAU_KHANH) && !/mỗi ngày chưa gửi lại/.test(than)
+      && hd.includes(`HSD trên cân tính cho ngày dd/mm${CAU_KHANH}`) && !/mỗi ngày chưa gửi lại/.test(hd)
+      && fs.readFileSync(path.join(import.meta.dir, '..', 'README.md'), 'utf8').replace(/\s*\n\s*/g, ' ').includes(`HSD trên cân tính cho ngày dd/mm${CAU_KHANH}`)
       && !/new Date|Date\.now/.test(than), than.slice(0, 200));
+    ok('HỒI QUY: khung đỏ kê hàng vẫn in HSD cũ (h.giuCu) kèm cách sửa; tự gửi đang giữ bật / tắt (h.choBatTat) thì không bảo "bật Tự gửi"; WiFi hỏng thì chỉ USB lưu hôm nay',
+      /h\.giuCu && h\.giuCu\.length/.test(than) && /vẫn in HSD cũ/.test(than) && /h\.choBatTat \?/.test(than)
+      && /Có \$\{h\.choBatTat\} hàng bật \/ tắt in HSD chờ xem trước — tự gửi không làm việc này/.test(than) && /WiFi hỏng/.test(than) && /lưu hôm nay/.test(than), than.slice(0, 300));
+    ok('HỒI QUY: Xem trước — khung "HSD đếm ngược" không hứa tự gửi gửi hết khi có hàng bật / tắt (x.doiHsd); khung bật / tắt nói tự gửi giữ lại',
+      /\(x\.doiHsd \? `Tự gửi gửi được phần này nhưng giữ lại \$\{x\.doiHsd\} hàng bật \/ tắt in HSD/.test(gd) && /: 'Tự gửi gửi được thay đổi này\. '\)/.test(gd)
+      && /Tự gửi giữ lại các hàng này/.test(gd) && !/Tự gửi không bật \/ tắt HSD — phải bấm Gửi ở đây/.test(gd));
+    ok('HỒI QUY: Cài đặt và hướng dẫn §17 / §23 nói đúng tự gửi khi có bật / tắt HSD (giữ riêng hàng đó, khung đỏ còn), không còn "dừng, không gửi gì"',
+      /tự gửi giữ lại riêng hàng đó/.test(gd) && !/bật \/ tắt in HSD vẫn phải xem trước rồi bấm Gửi\)/.test(gd)
+      && !/tự gửi dừng/.test(hd) && !/\(tự gửi làm được\)\./.test(hd) && /tự gửi giữ lại riêng hàng đó/.test(hd) && /vẫn in HSD cũ/.test(hd));
+    ok('HỒI QUY: xoá qua WiFi — hộp hỏi kể cả HSD đếm ngược (x.demNguocHsd), "Xem hàng còn nằm lại" nói bật / tắt in HSD như máy chủ',
+      /x\.demNguocHsd \? ` \/ số ngày HSD — \$\{x\.demNguocHsd\} hàng HSD đếm ngược, tính cho ngày \$\{ngayChu\(x\.ngayHsd\)\}`/.test(gd)
+      && /Kho bật \/ tắt in hạn dùng \(HSD\) của \$\{x\.doiHsd\} hàng chưa gửi — gửi ở thẻ Gửi giá từ kho \(xem trước, in thử tem\) rồi mới xoá qua WiFi\./.test(gd)
+      && !/Kho có thay đổi hạn dùng \(HSD\) của/.test(gd));
+    ok('HỒI QUY: khung nạp USB ghi HSD trong file tính cho ngày nào, nạp trong ngày (k.ngayHsd); hướng dẫn §25 cũng vậy',
+      /k\.ngayHsd \? `<p><b>HSD trong file tính cho ngày \$\{ngayChu\(k\.ngayHsd\)\} — nạp vào cân trong ngày\.<\/b>/.test(gd)
+      && /mang HSD tính cho ngày lưu file/.test(hd));
+    ok('HỒI QUY: Tất cả hàng — HSD lệch kho thì nguồn HSD đi kèm số kho ("kho: 3 ngày · lô …"), không nằm dưới số trên cân một mình; không lặp "HSD kho"',
+      /x\.hsdNguon \? `<div class="phu">\$\{x\.hsd !== undefined && x\.hsdKho !== undefined && x\.hsd !== x\.hsdKho \? 'kho: ' \+ e\(hsdChu\(x\.hsdKho\)\) \+ ' · ' : ''\}\$\{e\(x\.hsdNguon\)\}<\/div>`/.test(gd)
+      && /x\.hsdKho !== x\.hsd && !x\.hsdNguon\) khac\.push\('HSD kho: '/.test(gd));
     ok('Khung đỏ ở ô Cân (cả lần làm mới mỗi phút), thẻ Gửi giá từ kho và Tất cả hàng',
       /<div id="bao-hsd"><\/div>/.test(gd) && /\$\('bao-hsd'\)\.innerHTML = baoHsdCu\(trangThai\.hsd\)/.test(gd) && /trangThai\.hsd = s\.hsd; veOCan\(\)/.test(gd)
       && /let h = baoHsdCu\(x\.hsdTrenCan\)/.test(gd) && /baoHsdCu\(d\.hsdTrenCan\) \+ baoCanChuaRo\(d\.canChuaRo\)/.test(gd));
     ok('Xem trước và Tất cả hàng hiện nguồn HSD; bật / tắt HSD báo riêng với HSD đếm ngược; CSV có cột Nguồn HSD',
-      /d\.hsdNguon \? `<div class="phu">\$\{e\(d\.hsdNguon\)\}<\/div>`/.test(gd) && /x\.hsdNguon \? `<div class="phu">\$\{e\(x\.hsdNguon\)\}<\/div>`/.test(gd)
+      /d\.hsdNguon \? `<div class="phu">\$\{e\(d\.hsdNguon\)\}<\/div>`/.test(gd) && /x\.hsdNguon \? `<div class="phu">\$\{/.test(gd) && /\$\{e\(x\.hsdNguon\)\}<\/div>`/.test(gd)
       && /if \(x\.doiHsd\)/.test(gd) && /if \(x\.demNguocHsd\)/.test(gd) && /'Nguồn HSD'/.test(gd));
     ok('Hướng dẫn: sáng mở Beeftown Cân, gửi (hay tự gửi) TRƯỚC khi đóng gói, đồng hồ cân đúng ngày; không còn nói kho không đưa HSD xuống cân',
       /Mỗi sáng, trước khi đóng gói/.test(hd) && /Trước khi đóng gói, in tem:/.test(hd) && /số ngày còn lại của lô/.test(hd)
       && /Đồng hồ cân sai một ngày là HSD sai một ngày/.test(hd) && !/Kho <b>không<\/b> đưa hạn dùng/.test(hd)
       && !/Hạn dùng của món trong kho <b>không<\/b>/.test(hd) && !/Kho không đưa hạn dùng/i.test(hd)
       && /<span class="nhan chua">Chưa thử trên cân thật<\/span> Cân in HSD ra sao/.test(hd));
+  }
+
+  // ===========================================================================
+  // Rà soát HSD đếm ngược: hàng nằm trên cân vẫn in HSD mà chương trình không tính lại; đọc kho chồng "Cập nhật file gốc".
+  // ===========================================================================
+  console.log('6f17 · HSD: hàng vẫn in HSD cũ, đọc kho chồng Cập nhật file gốc');
+  {
+    let ngay = '2026-09-29';
+    const pluH = (so: number, ma: string, gia: string, ten: string, n?: number) => {
+      const c = plu(so, ma, gia, ten).split('\t');
+      if (n !== undefined) { c[27] = '1'; c[32] = String(n); }
+      return c.join('\t');
+    };
+    const PLU_H = [pluH(1, '10001', '845,0', 'Loi vai bo My', 3), pluH(2, '10002', '876,0', 'Suon bo Han Quoc', 5), pluH(3, '10003', '695,0', 'Gau bo')];
+    /** Kho: HSD lõi vai (a), sườn (b); giá sườn, sườn còn dùng không; gầu bò không in HSD. */
+    const dmG = (a: number | null, b: number | null, giaB = 876000, dungB = true): DanhMucKho => ({ mauMaVach: '2XCCCCCWWWWWK', matHang: [
+      { ...hang('LOI-VAI', '10001', 'Loi vai bo My', 845000), han_dung_ngay: a },
+      { ...hang('SUON', '10002', 'Suon bo Han Quoc', giaB, dungB), han_dung_ngay: b },
+      { ...hang('GAU-BO', '10003', 'Gau bo', 695000), han_dung_ngay: null }] });
+    let dm = dmG(3, 5);
+    const ddG = ddMoi();
+    const u = new UngDung(ddG, { danhMuc: async () => dm, mang: [], mac: async () => null, homNay: () => ngay });
+    u.luuCauHinh({ ipCan: '127.0.0.1', congCan });
+    u.ghiNhanFileTuCan(fileCan(PLU_H));
+    await u.tuGuiMotLan();   // khớp → HSD trên cân tính cho 29/09
+
+    // (a) Giá kho vượt mức cân: sườn "để nguyên trên cân" với HSD 5 tính hôm qua — mỗi ngày muộn thêm 1 ngày.
+    ngay = '2026-09-30'; dm = dmG(2, 4, 1_200_000);
+    const ta = await u.tuGuiMotLan();
+    const ha = u.hsdTrenCan?.();
+    ok('HỒI QUY: giá kho vượt mức cân → PLU 2 "để nguyên" vẫn in HSD 5 tính hôm qua: tự gửi gửi phần khác, trạng thái HSD vẫn báo cũ, kê PLU 2 kèm lý do và cách sửa; câu tự gửi nói ra',
+      ta.daGui && ha?.tinhNgay === '2026-09-30' && ha.cu === true && ha.giuCu?.length === 1 && ha.giuCu[0].so === 2 && ha.giuCu[0].hsd === 5
+      && /999\.999/.test(ha.giuCu[0].lyDo) && /sửa trong kho/.test(ha.giuCu[0].lyDo) && /USB/.test(ha.giuCu[0].lyDo)
+      && /1 hàng vẫn in HSD cũ \(PLU 2\)/.test(ta.cau) && fs.existsSync(path.join(ddG.duLieu, 'hsd-giu-cu.json')), `${ta.cau} ${JSON.stringify(ha)}`);
+    dm = dmG(2, 4);
+    await u.tuGuiMotLan();
+    ok('Sửa giá trong kho rồi gửi lại → PLU 2 được tính lại (4 ngày), hết danh sách, hết báo cũ',
+      u.hsdTrenCan?.().giuCu?.length === 0 && u.hsdTrenCan?.().cu === false && trenCanGia.get(2)?.split('\t')[32] === '4', JSON.stringify(u.hsdTrenCan?.()));
+
+    // (b) Món ngừng dùng: PLU 2 bỏ khỏi kho nhưng WiFi không xoá được — vẫn in HSD 4 trên cân.
+    dm = dmG(2, 4, 876000, false);
+    const tb = await u.tuGuiMotLan();
+    ok('HỒI QUY: món ngừng dùng (PLU 2 còn nằm trên cân) vẫn in HSD 4 → "khớp kho" nhưng trạng thái HSD báo cũ, kê PLU 2 "xoá bằng USB"',
+      !tb.daGui && u.hsdTrenCan?.().cu === true && u.hsdTrenCan?.().giuCu?.map(x => x.so).join() === '2' && /USB/.test(u.hsdTrenCan?.().giuCu?.[0]?.lyDo ?? '')
+      && /1 hàng vẫn in HSD cũ \(PLU 2\)/.test(tb.cau), `${tb.cau} ${JSON.stringify(u.hsdTrenCan?.())}`);
+    await u.guiXuongCan();
+    ngay = '2026-10-01'; dm = dmG(1, 3, 876000, false);
+    await u.tuGuiMotLan();
+    const hb = u.hsdTrenCan?.();
+    ok('Qua ngày, đã gửi lại (PLU 2 không còn trong file gốc, chỉ trong tren-can.tsv kèm cột HSD) → vẫn kê PLU 2, HSD 4 ngày',
+      hb?.tinhNgay === '2026-10-01' && hb.cu === true && hb.giuCu?.some(x => x.so === 2 && x.hsd === 4) === true
+      && !docFileCan(new Uint8Array(fs.readFileSync(u.fileGoc))).plu.some(p => p.so === 2), JSON.stringify(hb));
+    await u.taoFileUsb();
+    u.daNapUsb();
+    ok('Nạp USB (cân thay cả danh sách, PLU 2 hết) → hết danh sách, hết báo cũ', u.hsdTrenCan?.().giuCu?.length === 0 && u.hsdTrenCan?.().cu === false,
+      JSON.stringify(u.hsdTrenCan?.()));
+
+    // (c) Hàng giữ lại ngoài kho có HSD đặt tay trên cân: không ai đếm ngược.
+    const x0 = await u.xemTruoc();
+    ok('(Trước (c): cân khớp, không hàng nào giữ HSD cũ)', x0.hsdTrenCan?.giuCu?.length === 0);
+    u.ghiNhanFileTuCan(fileCan([...docFileCan(new Uint8Array(fs.readFileSync(u.fileGoc))).plu.map(p => p.tho), pluH(9, '10009', '500,0', 'Hang ngoai kho', 7)]));
+    const xc = await u.xemTruoc(true);
+    ok('Hàng giữ lại ngoài kho đang in HSD 7 → Xem trước (giữ hàng ngoài kho) kê PLU 9 vẫn in HSD cũ', xc.hsdTrenCan?.giuCu?.some(x => x.so === 9 && x.hsd === 7) === true,
+      JSON.stringify(xc.hsdTrenCan));
+
+    // (d) Đọc kho vắt qua "Cập nhật file gốc" có HSD khác: kế hoạch dựng trên file gốc CŨ không được ghi ngày tính.
+    let tha: (() => void) | null = null;
+    const dmR = dmG(3, 5);
+    const uR = new UngDung(ddMoi(), { danhMuc: () => new Promise<DanhMucKho>(r => { tha = () => r(dmR); }), mang: [], mac: async () => null,
+      homNay: () => '2026-09-29' });
+    uR.luuCauHinh({ ipCan: '127.0.0.1', congCan });
+    const khac = fileCan([pluH(1, '10001', '845,0', 'Loi vai bo My', 9), pluH(2, '10002', '876,0', 'Suon bo Han Quoc', 9), pluH(3, '10003', '695,0', 'Gau bo')]);
+    const viec: [string, () => Promise<unknown>][] = [['Xem trước', () => uR.xemTruoc()], ['Tự gửi', () => uR.tuGuiMotLan()], ['Tất cả hàng', () => uR.tatCaHang()]];
+    for (const [ten, lam] of viec) {
+      uR.ghiNhanFileTuCan(fileCan(PLU_H));   // file gốc có HSD như kho; chưa biết ngày tính
+      tha = null;
+      const dang = lam();
+      while (!tha) await new Promise(r => setTimeout(r, 1));
+      uR.ghiNhanFileTuCan(khac);   // trong lúc chờ kho: "Cập nhật file gốc" — cân có HSD khác, không biết tính cho ngày nào
+      (tha as () => void)();
+      await dang.catch(() => {});
+      ok(`HỒI QUY: ${ten} đọc kho vắt qua "Cập nhật file gốc" (HSD khác) → không ghi ngày tính HSD, vẫn báo cũ`,
+        uR.hsdTrenCan?.().tinhNgay === null && uR.hsdTrenCan?.().cu === true, JSON.stringify(uR.hsdTrenCan?.()));
+    }
   }
 
   console.log('6f13 · Giao diện (mã trang)');

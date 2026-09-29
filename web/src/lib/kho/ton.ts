@@ -59,24 +59,34 @@ export const CAU_QUA_NHIEU_LO: HaiThuTieng = {
  * Mọi lô còn tồn ở chi nhánh (kho_v_ton chỉ giữ dòng so_kg > 0 hoặc so_goi > 0), mọi vị trí — để tính số ngày HSD
  * còn lại cho cân. Đọc từng trang 1.000 dòng tới hết: thiếu lô cũ nhất là tem in hạn muộn hơn hạn thật, nên không
  * bao giờ cắt cụt lặng lẽ (quá TOI_DA_LO dòng → ném lỗi). Không tiền; RLS kho_ton / kho_lo: vai xem kho, đúng chi nhánh.
+ *
+ * Trang theo KHOÁ (han_dung, lo_id, vi_tri_id), không theo vị trí (range/offset): giữa hai trang mà một dòng trang trước
+ * hết tồn (bán, chuyển) thì mọi dòng sau dồn lên một chỗ, dòng đầu trang sau rơi vào chỗ đã đọc và bị bỏ sót — có thể
+ * đúng lô sớm nhất của một món, tem in hạn muộn hơn mà không ai biết. Theo khoá thì trang sau bắt đầu ngay sau dòng cuối
+ * đã đọc. Dòng mới chen vào phía trước (lô mới, vị trí mới) có thể không đọc tới, nhưng hạn SỚM NHẤT của mỗi món vẫn đúng
+ * với tồn lúc bắt đầu đọc. Khoá chỉ là ngày và uuid — không có dấu phẩy, ngoặc để thoát trong bộ lọc `or`.
  */
 export async function docLoConTon(client: SupabaseClient, chiNhanhId: string): Promise<LoTon[]> {
   const ra: LoTon[] = [];
-  for (let dau = 0; dau < TOI_DA_LO; dau += TRANG_LO) {
-    const { data, error } = await client
+  let sau: { han: string; lo: string; viTri: string } | null = null;
+  for (;;) {
+    let q = client
       .from('kho_v_ton')
       .select('lo_id, mat_hang_id, ma_lo, han_dung, vi_tri_id')
-      .eq('chi_nhanh_id', chiNhanhId)
-      .order('han_dung')
-      .order('lo_id')
-      .order('vi_tri_id')
-      .range(dau, dau + TRANG_LO - 1);
+      .eq('chi_nhanh_id', chiNhanhId);
+    if (sau) {
+      const { han, lo, viTri } = sau;
+      q = q.or(`han_dung.gt.${han},and(han_dung.eq.${han},lo_id.gt.${lo}),and(han_dung.eq.${han},lo_id.eq.${lo},vi_tri_id.gt.${viTri})`);
+    }
+    const { data, error } = await q.order('han_dung').order('lo_id').order('vi_tri_id').limit(TRANG_LO);
     if (error) throw error;
     const ds = (data ?? []) as (LoTon & { vi_tri_id: string })[];
     for (const r of ds) ra.push({ lo_id: r.lo_id, mat_hang_id: r.mat_hang_id, ma_lo: r.ma_lo, han_dung: String(r.han_dung) });
     if (ds.length < TRANG_LO) return ra;
+    if (ra.length >= TOI_DA_LO) throw new Error(CAU_QUA_NHIEU_LO.vi);
+    const cuoi = ds[ds.length - 1];
+    sau = { han: String(cuoi.han_dung), lo: String(cuoi.lo_id), viTri: String(cuoi.vi_tri_id) };
   }
-  throw new Error(CAU_QUA_NHIEU_LO.vi);
 }
 
 /** Giá trị tồn theo "lo_id|vi_tri_id". Vai không xem giá: Map rỗng. */
