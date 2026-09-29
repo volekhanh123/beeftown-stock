@@ -80,11 +80,17 @@ function thuMucTaiLieu(): string {
   return path.join(os.homedir(), 'Documents');
 }
 
+/**
+ * BEEFTOWN_CAN_DU_LIEU đặt thẳng thư mục dữ liệu (kiểm thử dùng). Không có nó thì
+ * hỏi Windows thư mục Tài liệu — Windows không theo USERPROFILE, nên kiểm thử chỉ
+ * đổi USERPROFILE vẫn ghi vào Tài liệu thật (đã ghi đè file gốc thật 29/09/2026).
+ */
 export function duongDanMacDinh(): DuongDan {
   const appData = process.env.APPDATA;
+  const duLieu = process.env.BEEFTOWN_CAN_DU_LIEU?.trim();
   return {
     cauHinh: appData ? path.join(appData, 'BeeftownCan') : path.join(os.homedir(), '.beeftown-can'),
-    duLieu: path.join(thuMucTaiLieu(), 'Beeftown Can'),
+    duLieu: duLieu ? path.resolve(duLieu) : path.join(thuMucTaiLieu(), 'Beeftown Can'),
   };
 }
 

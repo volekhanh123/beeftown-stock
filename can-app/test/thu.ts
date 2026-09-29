@@ -562,7 +562,8 @@ console.log('6c · Dây RS232 (thử) — PowerShell giả');
 console.log('7 · Chạy src/main.ts thật');
 const tam2 = fs.mkdtempSync(path.join(os.tmpdir(), 'beeftown-can-main-'));
 const p = Bun.spawn([process.execPath, path.join(import.meta.dir, '..', 'src', 'main.ts'), '--khong-mo'], {
-  env: { ...process.env, APPDATA: path.join(tam2, 'appdata'), HOME: tam2, USERPROFILE: tam2 }, stdout: 'pipe', stderr: 'pipe',
+  env: { ...process.env, APPDATA: path.join(tam2, 'appdata'), HOME: tam2, USERPROFILE: tam2, BEEFTOWN_CAN_DU_LIEU: path.join(tam2, 'tai-lieu') },
+  stdout: 'pipe', stderr: 'pipe',
 });
 const doc = p.stdout.getReader();
 let chu = '';
@@ -576,7 +577,20 @@ const api = (d: string, than?: BodyInit, loai = 'application/json') =>
 ok('Trang giao diện mở được', (await fetch(duong)).status === 200);
 ok('Thiếu mã bí mật → 403', (await fetch(`${goc.origin}/api/trang-thai`, { method: 'POST' })).status === 403);
 ok('Sai mã bí mật → 403', (await fetch(`${goc.origin}/api/trang-thai?t=sai`, { method: 'POST' })).status === 403);
-const tt = await (await api('/api/trang-thai')).json() as { ok: boolean; goc: unknown; cauHinh: { ipCan: string } };
+const tt = await (await api('/api/trang-thai')).json() as { ok: boolean; goc: unknown; cauHinh: { ipCan: string }; thuMuc: string };
+// Trên Windows thư mục Tài liệu hỏi thẳng Windows (không theo USERPROFILE): nếu
+// chương trình không ghi vào thư mục tạm thì DỪNG ngay — các bước sau ghi file giả
+// đè lên file gốc thật của máy đang chạy kiểm thử (đã xảy ra 29/09/2026).
+const thuMucTam = path.resolve(tt.thuMuc ?? '').startsWith(path.resolve(tam2) + path.sep);
+ok('HỒI QUY: dữ liệu của chương trình nằm trong thư mục tạm, không phải Tài liệu thật', thuMucTam, tt.thuMuc);
+if (!thuMucTam) {
+  p.kill();
+  mayCan.close();
+  fs.rmSync(tam, { recursive: true, force: true });
+  fs.rmSync(tam2, { recursive: true, force: true });
+  console.log(`\nDỪNG: chương trình đang dùng thư mục thật ${tt.thuMuc} — không chạy tiếp để khỏi ghi đè dữ liệu thật.`);
+  process.exit(1);
+}
 ok('Trạng thái: chưa có file gốc, cân mặc định 192.168.1.22', tt.ok && tt.goc === null && tt.cauHinh.ipCan === '192.168.1.22', JSON.stringify(tt));
 const ch = await (await api('/api/cau-hinh', JSON.stringify({ ipCan: '127.0.0.1', congCan: congCan }))).json() as { ok: boolean };
 ok('Lưu cài đặt cân', ch.ok);
