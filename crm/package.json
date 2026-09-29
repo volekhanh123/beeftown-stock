@@ -4,7 +4,11 @@
   "private": true,
   "description": "Hệ thống CRM & thẻ thành viên Beeftown",
   "scripts": {
-    "test": "node test/chay-test.mjs && node test/test-phan-quyen.mjs && node test/test-an-toan.mjs && node test/test-qua-tai.mjs && node test/test-cong-bo.mjs && node test/test-thuc-don.mjs && node test/test-tuyen-dung.mjs && node test/test-cong-khai.mjs && node test/test-dat-noi-dung.mjs && node test/test-ban-dich.mjs && node test/test-hop-dong-web.mjs && node test/test-noi-bo-tieng-anh.mjs && node test/chay-kho.mjs && node test/test-quyen-ham-crm.mjs && node test/test-zalo.mjs && node test/test-zalo-web.mjs && node test/test-messenger.mjs && node test/test-messenger-web.mjs",
+    "test": "node test/chay-tat-ca.mjs",
+    "test:ci": "node test/chay-tat-ca.mjs --tat-ca",
+    "kiem-migration": "node test/kiem-migration.mjs",
+    "so-migration": "node test/kiem-migration.mjs --so-tiep",
+    "test:quy-trinh": "node test/test-quy-trinh.mjs",
     "test:db": "node test/chay-test.mjs",
     "test:rls": "node test/test-phan-quyen.mjs",
     "test:an-toan": "node test/test-an-toan.mjs",

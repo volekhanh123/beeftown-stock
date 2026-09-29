@@ -19,7 +19,7 @@
  *    bò tại Quận 1" — nằm trong mã nguồn và không có công tắc nào tắt được.
  */
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
 export type NgonNgu = 'vi' | 'en' | 'ko';
 
@@ -114,16 +114,24 @@ export function maChiNhanh(): string {
  * cho cùng một kết quả: mọi dữ kiện null, trang hiện bản nền và nói đúng sự
  * thật. Một trang ra mắt hỏng vì database chậm thì tệ hơn hẳn một trang ra
  * mắt chỉ có tên, địa chỉ và nút theo dõi.
+ *
+ * Nhưng KHÔNG im lặng: đã cấu hình database mà đọc lỗi thì ghi một dòng log
+ * (Cloudflare → Workers → Logs). Không có dòng đó, một database chết trông y hệt
+ * một trang chưa công bố gì — không ai biết để sửa.
  */
-export async function docNoiDung(ngonNgu: NgonNgu = 'vi'): Promise<NoiDung> {
-  const client = taoClient();
+export async function docNoiDung(
+  ngonNgu: NgonNgu = 'vi',
+  client: Pick<SupabaseClient, 'rpc'> | null = taoClient(),
+): Promise<NoiDung> {
   if (!client) return RONG;
 
   try {
     const { data, error } = await client.rpc('noi_dung_cong_khai', { p_ngon_ngu: ngonNgu });
+    if (error) console.error('[noi-dung] không đọc được nội dung công khai:', error.code ?? '', error.message);
     if (error || !data) return RONG;
     return { ...RONG, ...(data as Partial<NoiDung>) };
-  } catch {
+  } catch (e) {
+    console.error('[noi-dung] không gọi được database:', e instanceof Error ? e.message : String(e));
     return RONG;
   }
 }
@@ -148,11 +156,8 @@ export function tinhGiaiDoan(nd: NoiDung, homNay: string): GiaiDoan {
   return 'truoc_bang_ron';
 }
 
-/** Ngày hôm nay theo giờ Việt Nam (UTC+7). Cùng cách tính với hom_nay_vn() trong database. */
-export function homNayVn(): string {
-  const t = new Date(Date.now() + 7 * 60 * 60 * 1000);
-  return t.toISOString().slice(0, 10);
-}
+/** Ngày hôm nay theo giờ Việt Nam (UTC+7) — một chỗ duy nhất ở gio-vn.ts, khớp hom_nay_vn() trong database. */
+export { homNayVn } from './gio-vn.ts';
 
 const THANG_EN = ['January','February','March','April','May','June',
                   'July','August','September','October','November','December'];

@@ -889,12 +889,14 @@ dùng ở:
 |---|---|
 | `components/kho/QuetMa.astro` (script trong file) | Camera đọc mã (`BarcodeDetector` trên Chrome Android; không có thì nạp `ean13.js`), đếm gói trùng mã, bấm "Xong" tự gửi form |
 | `public/kho/js/ean13.js` | (GĐ5b) Giải mã EAN-13 bằng JS thuần cho iPhone — Safari không có `BarcodeDetector` |
-| `public/kho/js/anh-nho.js` | (GĐ5a) Thu ảnh hóa đơn ≤ 1600px trước khi tải |
 | `public/kho/js/may-chung.js` | (GĐ5d) Đếm giờ tự khóa máy dùng chung |
 | `public/kho/js/in-an.js` | Hiện nút "In phiếu" và gọi `window.print()` (GĐ4b); nút "Chia sẻ" `[data-chia-se]` của đơn đặt hàng gọi Web Share API khi máy có (GĐ8a) |
 
 Không thêm thư viện npm cho phía trình duyệt. `test-kho-giao-dien.mjs` hỏng nếu có `<script>`,
 `onclick=…` hay file JS ngoài danh sách này.
+
+**Chưa làm:** thu nhỏ ảnh hóa đơn trước khi tải (≤ 1600px). Bảng này từng ghi file `anh-nho.js` (GĐ5a)
+nhưng file chưa bao giờ được viết — ảnh chụp bằng điện thoại vẫn lên nguyên cỡ (tối đa 10 MB mỗi ảnh).
 
 ## 6. Vai máy (dành chỗ sẵn, migration 0029)
 

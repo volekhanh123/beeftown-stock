@@ -41,7 +41,15 @@ Mở http://localhost:4321. Không cần Supabase.
 | `npm run dev` | Chạy thử trên máy |
 | `npm run build` | Dựng bản deploy vào `dist/` |
 | `npm run kiem-tra` | Kiểm tra kiểu dữ liệu (`astro check`) |
-| `npm run deploy` | Build rồi đẩy lên Cloudflare |
+| `npm run deploy` | **Cổng kiểm thử** (`kiem-tra/truoc-deploy.mjs`: chỉ commit đã có CI xanh) → quét chữ cấm → build → đẩy lên Cloudflare |
+| `npm run deploy:khan-cap` | Như trên nhưng bỏ qua cổng kiểm thử — chỉ khi khẩn cấp |
+| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): trang công khai ở ba cỡ màn hình, form không bao giờ báo thành công khi chưa ghi được |
+
+**Cổng deploy.** `npm run deploy` chỉ đưa lên commit mà GitHub Actions đã chạy xanh: nó hỏi kết quả
+workflow "Kiểm thử" của commit đang deploy bằng lệnh `gh`. Cài một lần trên máy deploy:
+`winget install GitHub.cli`, rồi `gh auth login`. Chưa cài `gh` (hoặc mất mạng) thì cổng tự chạy
+`astro check` và toàn bộ kiểm thử database ngay trên máy — cần `npm ci` trong `crm/` — mất vài phút.
+Thư mục `web/` có thay đổi chưa commit thì cổng từ chối: bản deploy phải đúng là bản CI đã kiểm.
 
 ---
 

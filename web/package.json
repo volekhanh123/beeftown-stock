@@ -11,9 +11,11 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "wrangler dev",
-    "deploy": "npm run quet && astro build && wrangler deploy",
+    "deploy": "node kiem-tra/truoc-deploy.mjs && npm run quet && astro build && wrangler deploy",
+    "deploy:khan-cap": "node kiem-tra/truoc-deploy.mjs --khan-cap && npm run quet && astro build && wrangler deploy",
     "kiem-tra": "astro check",
-    "quet": "node kiem-tra/quet-chuoi-cam.mjs"
+    "quet": "node kiem-tra/quet-chuoi-cam.mjs",
+    "thu-trinh-duyet": "node kiem-tra/trinh-duyet.mjs"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.3.2",
@@ -22,6 +24,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
+    "playwright": "1.56.1",
     "typescript": "^6.0.3",
     "wrangler": "^4.42.2"
   }

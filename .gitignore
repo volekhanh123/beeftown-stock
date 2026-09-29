@@ -24,6 +24,12 @@
 # sẽ khớp mọi README.md ở mọi cấp, kéo theo cả file trong node_modules.
 !/.gitignore
 !/README.md
+# Quy trình kiểm thử: hướng dẫn cho mọi phiên Claude, CI, mẫu PR, mẫu báo lỗi.
+# Thiếu dòng mở thì file chỉ nằm trên máy người viết — test-quy-trinh.mjs bắt chuyện này.
+!/CLAUDE.md
+!/.github/workflows/*.yml
+!/.github/pull_request_template.md
+!/.github/ISSUE_TEMPLATE/*.yml
 
 # --- ĐƯỢC PHÉP: website ---
 !Beeftown_Website/index.html
@@ -103,6 +109,10 @@ web/dist/
 web/.astro/
 web/.wrangler/
 .wrangler/
+# Ảnh chụp và kết quả khi kiểm thử trình duyệt hỏng — CI tải lên làm artifact, không commit.
+web/kiem-tra/anh-loi/
+web/test-results/
+web/playwright-report/
 
 # Thư viện cài bằng npm — không bao giờ commit, cài lại bằng `npm install`
 node_modules/

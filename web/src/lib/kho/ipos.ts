@@ -1,8 +1,8 @@
 /**
  * KHO — ĐỌC DỮ LIỆU iPOS (GĐ7a, sửa lại theo tài liệu thật ở GĐ7c, migration 0042)
  *
- * File THUẦN: không gọi mạng, không gọi database, không import gì. Test Node
- * nạp thẳng được (crm/test/test-kho-ipos-web.mjs).
+ * File THUẦN: không gọi mạng, không gọi database, chỉ import gio-vn.ts (cũng
+ * thuần). Test Node nạp thẳng được (crm/test/test-kho-ipos-web.mjs).
  *
  * HAI THỨ TIẾNG: câu đọc thực đơn (lỗi, cảnh báo) hiện trên màn Kết nối iPOS
  * nên có bản tiếng Anh (CAU_MENU_IPOS; phanTichMenu trả thêm loiEn,
@@ -34,6 +34,8 @@
  *
  * KHÔNG BAO GIỜ đưa GIÁ TRỊ vào câu cảnh báo — chỉ tên khóa.
  */
+
+import { isoGioVn } from '../gio-vn.ts';
 
 /** Câu hai thứ tiếng — cùng khuôn HaiThuTieng (lib/ngon-ngu-noi-bo.ts); file này không import gì. */
 type HaiThuTieng = { readonly vi: string; readonly en: string };
@@ -130,8 +132,6 @@ function so(v: unknown): number | undefined {
   return undefined;
 }
 
-const hai = (n: number) => String(n).padStart(2, '0');
-
 /**
  * Đọc thời điểm bán → ISO có múi giờ, hoặc null.
  *  - "YYYY-MM-DD[T ]HH:mm[:ss[.sss]]" có hoặc không múi giờ (không múi → +07:00)
@@ -148,20 +148,21 @@ export function docThoiDiem(v: unknown): string | null {
   if (typeof v !== 'string') return null;
   const s = v.trim();
 
+  // Ngày giờ không có thật (31/02, 25:00) → null: JS tự "lăn" 31/02 sang 03/03, còn Postgres từ chối —
+  // chuyển xuống database thì hook trả 500 và iPOS Hub gửi lại mãi đúng hóa đơn đó (test-gio-vn.mjs).
   let m = s.match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})(?::(\d{2})(\.\d{1,6})?)?\s*(Z|[+-]\d{2}:?\d{2}|[+-]\d{2})?$/i);
   if (m) {
     const [, y, mo, d, h, mi, se = '00', le = '', mui] = m;
-    if (!mui) {
-      const iso = `${y}-${mo}-${d}T${h}:${mi}:${se}${le}+07:00`;
-      return Number.isNaN(new Date(iso).getTime()) ? null : iso;
-    }
+    const vn = isoGioVn(+y, +mo, +d, +h, +mi, +se, le);
+    if (!vn) return null;
+    if (!mui) return vn;
     const dt = new Date(`${y}-${mo}-${d}T${h}:${mi}:${se}${le}${mui.length === 3 ? mui + ':00' : mui}`);
     return Number.isNaN(dt.getTime()) ? null : dt.toISOString();
   }
   m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/);
   if (m) {
     const [, d, mo, y, h, mi, se = '00'] = m;
-    return `${y}-${hai(+mo)}-${hai(+d)}T${hai(+h)}:${mi}:${se}+07:00`;
+    return isoGioVn(+y, +mo, +d, +h, +mi, +se);
   }
   return null;
 }

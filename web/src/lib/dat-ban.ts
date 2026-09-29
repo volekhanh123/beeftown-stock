@@ -27,6 +27,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { taoClient, maChiNhanh, homNayVn, type NgonNgu } from './noi-dung';
+import { congNgay } from './gio-vn';
 import { cauLoiDatabase, dich, type BaThuTieng } from './chu';
 
 export interface KhungGio {
@@ -48,11 +49,8 @@ export interface TinhTrangDatBan {
 
 /** 14 ngày tới, đủ xa để biết nhà hàng có bàn hay không. */
 function cacNgayToi(n = 14): string[] {
-  const goc = new Date(Date.now() + 7 * 60 * 60 * 1000);
-  return Array.from({ length: n }, (_, i) => {
-    const d = new Date(goc.getTime() + i * 86400000);
-    return d.toISOString().slice(0, 10);
-  });
+  const homNay = homNayVn();
+  return Array.from({ length: n }, (_, i) => congNgay(homNay, i));
 }
 
 async function docKhung(

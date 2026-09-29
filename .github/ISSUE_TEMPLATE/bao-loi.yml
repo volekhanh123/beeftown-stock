@@ -1,0 +1,68 @@
+name: Báo lỗi
+description: Phần mềm chạy sai khi vận hành (web, /noi-bo, kho, máy quầy, cân, Zalo, Messenger, iPOS)
+title: "Lỗi: "
+labels: [loi-that]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Mỗi lỗi báo ở đây sẽ có một **kiểm thử hồi quy** viết trước khi sửa (tên bắt đầu bằng `HỒI QUY #<số issue>`),
+        để lỗi không quay lại. Nhân viên báo qua Zalo thì chép nguyên lời và gửi kèm ảnh chụp.
+  - type: dropdown
+    id: muc_do
+    attributes:
+      label: Mức độ
+      options:
+        - Chặn bán hàng / chặn khách đặt bàn
+        - Phiền, có cách làm tạm
+        - Nhỏ (chữ sai, hiển thị lệch)
+    validations:
+      required: true
+  - type: input
+    id: man_hinh
+    attributes:
+      label: Màn hình hoặc đường dẫn
+      placeholder: "/noi-bo/kho/nhan-hang/moi, máy quầy, Beeftown Cân, tin Zalo đặt bàn…"
+    validations:
+      required: true
+  - type: input
+    id: vai_tro
+    attributes:
+      label: Ai gặp lỗi (vai trò)
+      placeholder: "khách, thủ kho, nhân viên quầy, quản lý, kế toán…"
+  - type: input
+    id: gio
+    attributes:
+      label: Lúc nào (giờ Việt Nam)
+      description: Ghi cả ngày. Lỗi lúc 0h–7h sáng thường là lỗi múi giờ.
+      placeholder: "29/09/2026 00:40"
+    validations:
+      required: true
+  - type: textarea
+    id: cac_buoc
+    attributes:
+      label: Các bước để thấy lỗi
+      placeholder: |
+        1. Mở …
+        2. Bấm …
+        3. …
+    validations:
+      required: true
+  - type: textarea
+    id: mong_doi
+    attributes:
+      label: Đáng lẽ phải thế nào
+    validations:
+      required: true
+  - type: textarea
+    id: thuc_te
+    attributes:
+      label: Thực tế ra sao
+      description: Chép nguyên câu báo lỗi trên màn hình. Kéo thả ảnh chụp vào đây.
+    validations:
+      required: true
+  - type: input
+    id: thiet_bi
+    attributes:
+      label: Thiết bị
+      placeholder: "iPhone Safari, máy tính bảng quầy, máy tính ở quán (Windows), 4G / wifi…"

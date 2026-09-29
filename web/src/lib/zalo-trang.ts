@@ -10,6 +10,7 @@
 import type { AstroCookies } from 'astro';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { HaiThuTieng, NgonNguNB } from './ngon-ngu-noi-bo.ts';
+import { docGioVnDiaPhuong, namVn } from './gio-vn.ts';
 
 /** Vai xem / chạy chiến dịch Zalo — khớp zalo_tong_quan, zalo_tao_chien_dich (0047). */
 export const VAI_ZALO = ['chu_so_huu', 'quan_ly', 'marketing'] as const;
@@ -84,19 +85,18 @@ export function gioVn(iso: string | null | undefined, nn: NgonNguNB = 'vi'): str
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  const cungNam = new Date().getUTCFullYear() === d.getUTCFullYear();
+  const cungNam = namVn() === namVn(d.getTime());
   return new Intl.DateTimeFormat(nn === 'en' ? 'en-GB' : 'vi-VN', {
     timeZone: 'Asia/Ho_Chi_Minh', day: '2-digit', month: '2-digit', ...(cungNam ? {} : { year: 'numeric' }),
     hour: '2-digit', minute: '2-digit', hour12: false,
   }).format(d);
 }
 
-/** Ô datetime-local (giờ VN, "2026-09-30T18:00") → ISO có múi +07:00. Sai dạng → null. */
+/** Ô datetime-local (giờ VN, "2026-09-30T18:00") → ISO có múi +07:00. Sai dạng / không có thật → null. */
 export function gioHenSangIso(s: string | null | undefined): string | null {
   const v = String(s ?? '').trim();
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)) return null;
-  const iso = `${v}:00+07:00`;
-  return Number.isNaN(Date.parse(iso)) ? null : iso;
+  return docGioVnDiaPhuong(v);
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

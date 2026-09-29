@@ -1,0 +1,194 @@
+# Kiểm thử tự động — chạy toàn bộ kiểm tra của repo.
+#
+#   · Mỗi PR (và mỗi lần đẩy thêm vào PR): database + kho + Zalo + Messenger + Beeftown Cân,
+#     và web (astro check, build, thử đóng gói Cloudflare, quét chữ cấm, trình duyệt thật).
+#     PR thử trên COMMIT GỘP với main — đúng chỗ hai nhánh làm song song đụng nhau.
+#   · Mỗi lần main nhận commit: chạy lại như trên, rồi báo vào PR đang mở nào vừa bị trùng số migration.
+#   · Mỗi đêm 00:30 giờ Việt Nam (17:30 UTC): chạy lại toàn bộ với múi giờ Việt Nam, đúng khung
+#     0h–7h khi ngày UTC còn là hôm qua — lỗi múi giờ lộ ra ở đây — và quét chữ cấm trên trang thật.
+#
+# Đọc kết quả: tab Actions → lượt chạy → Summary (bảng từng file, số migration kế tiếp).
+# Chạy tay: Actions → Kiểm thử → Run workflow (chọn múi giờ).
+
+name: Kiểm thử
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '30 17 * * *'   # 00:30 giờ Việt Nam
+  workflow_dispatch:
+    inputs:
+      mui_gio:
+        description: Múi giờ của máy chạy kiểm thử
+        type: choice
+        options: [UTC, Asia/Ho_Chi_Minh]
+        default: UTC
+
+permissions:
+  contents: read
+
+concurrency:
+  # Tên nhóm có cả loại sự kiện: lượt đêm không chung nhóm với lượt push lên main, nên một lần push
+  # không thể hủy lượt đêm đang chờ (GitHub chỉ giữ MỘT lượt chờ mỗi nhóm).
+  group: kiem-thu-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  # Đẩy commit mới vào PR thì bỏ lượt cũ đang chạy (tiết kiệm phút CI); main và lượt đêm chạy hết.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  database-va-can:
+    name: Database · kho · Zalo · Messenger · Beeftown Cân
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # PR và main: UTC như Cloudflare Workers và Supabase. Lượt đêm: giờ Việt Nam như máy ở quán.
+      TZ: ${{ inputs.mui_gio || (github.event_name == 'schedule' && 'Asia/Ho_Chi_Minh') || 'UTC' }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0   # cần lịch sử và mọi nhánh: so migration với main, test quét git ls-files
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: web/.node-version
+          cache: npm
+          cache-dependency-path: |
+            web/package-lock.json
+            crm/package-lock.json
+            can-app/package-lock.json
+      - name: Cài thư viện (web trước — test database đọc cả mã web)
+        run: |
+          npm ci --prefix web --no-audit --no-fund
+          npm ci --prefix crm --no-audit --no-fund
+          npm ci --prefix can-app --no-audit --no-fund
+      - name: Gác số migration
+        env:
+          SO_VOI: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || (github.event_name == 'push' && github.event.before) || 'origin/main' }}
+        run: node crm/test/kiem-migration.mjs --so-voi "$SO_VOI"
+      - name: Toàn bộ kiểm thử database, kho, Zalo, Messenger
+        working-directory: crm
+        run: node test/chay-tat-ca.mjs --tat-ca
+      - name: Kiểm thử Beeftown Cân (cân giả, kho giả)
+        working-directory: can-app
+        run: npx bun test/thu.ts
+
+  web:
+    name: Web · astro check · build · chữ cấm · trình duyệt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    # KHÔNG có web/.env: trang công khai phải đúng và đủ khi chưa nối database (README của web).
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: web/.node-version
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Cài thư viện
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+      - name: Kiểm tra kiểu (astro check)
+        working-directory: web
+        run: npx astro check
+      - name: Build
+        working-directory: web
+        run: npx astro build
+      - name: Thử đóng gói Cloudflare (không deploy)
+        working-directory: web
+        run: npx wrangler deploy --dry-run --outdir "$RUNNER_TEMP/wrangler"
+      - name: Quét chữ cấm trên trang công khai
+        working-directory: web
+        run: npm run quet
+      - name: Cài Chromium
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Kiểm thử trình duyệt (khách thật mở trang, bấm form)
+        working-directory: web
+        run: npm run thu-trinh-duyet -- --khong-build   # bước Build ở trên vừa build
+      - name: Ảnh chụp khi hỏng
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: anh-loi-trinh-duyet
+          path: web/kiem-tra/anh-loi/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  quet-trang-that:
+    name: Quét chữ cấm trên trang đang chạy thật
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      # Đổi địa chỉ ở Settings → Secrets and variables → Actions → Variables → DIA_CHI_WEB.
+      DIA_CHI_WEB: ${{ vars.DIA_CHI_WEB || 'https://beeftown.vn' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: web/.node-version
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Cài thư viện
+        working-directory: web
+        run: npm ci --no-audit --no-fund
+      # Nội dung thật do công tắc trong /noi-bo quyết định, không nằm trong code — chỉ lượt này thấy nó.
+      # Trang không trả lời cũng làm bước này đỏ: lượt đêm kiêm luôn việc kiểm tra trang còn sống.
+      - name: Quét ${{ env.DIA_CHI_WEB }}
+        working-directory: web
+        run: npm run quet -- --url "$DIA_CHI_WEB"
+
+  bao-pr-trung-so:
+    name: Báo PR đang mở bị trùng số migration
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: web/.node-version
+      # PR xanh lúc mở vẫn có thể hỏng khi PR khác gộp trước với cùng số migration — CI của nó không tự
+      # chạy lại. Bước này kiểm lại từng PR ngay khi main đổi và comment vào PR đó (sửa comment cũ, không
+      # đăng thêm). Phiên Claude đang theo dõi PR nhận được comment và tự đánh lại số.
+      - name: Kiểm từng PR đang mở
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+        run: |
+          DAU='<!-- gac-migration -->'
+          DS=$(gh pr list --repo "$REPO" --state open --limit 100 \
+            --json number,headRefName,isCrossRepository \
+            --jq '.[] | select(.isCrossRepository | not) | "\(.number) \(.headRefName)"')
+          # Đọc danh sách qua fd 3 để lệnh bên trong vòng lặp không nuốt mất stdin.
+          while read -r SO NHANH <&3; do
+            [ -n "$SO" ] || continue
+            git rev-parse --verify --quiet "origin/$NHANH" >/dev/null || continue
+            if node crm/test/kiem-migration.mjs --nhanh "origin/$NHANH" > ket-qua.txt 2>&1; then DAT=1; else DAT=0; fi
+            CU=$(gh api "repos/$REPO/issues/$SO/comments" --paginate \
+                  --jq "[.[] | select(.body | contains(\"$DAU\"))][0].id // empty" | head -n 1)
+            if [ "$DAT" = 0 ]; then
+              LOI=$(sed 's/\x1b\[[0-9;]*m//g' ket-qua.txt | grep -E '✗|! ' | sed 's/^ *//')
+              printf '%s\n### ⚠️ Số migration của PR này không còn hợp lệ\n\nMain vừa nhận commit %s. Kiểm lại nhánh `%s`:\n\n```\n%s\n```\n\n**Cách sửa:** gộp `origin/main` vào nhánh, đổi số migration mới thành số kế tiếp (`cd crm && npm run so-migration`), rồi chạy lại `npm test`.\n' \
+                "$DAU" "$SHA" "$NHANH" "$LOI" > noi-dung.md
+              echo "PR #$SO ($NHANH): KHÔNG hợp lệ"
+            elif [ -n "$CU" ]; then
+              printf '%s\n### ✅ Số migration của PR này đã hợp lệ trở lại\n\n(kiểm lúc main ở commit %s)\n' "$DAU" "$SHA" > noi-dung.md
+              echo "PR #$SO ($NHANH): đã hợp lệ trở lại"
+            else
+              echo "PR #$SO ($NHANH): hợp lệ"
+              continue
+            fi
+            if [ -n "$CU" ]; then
+              gh api -X PATCH "repos/$REPO/issues/comments/$CU" -F body=@noi-dung.md > /dev/null
+            else
+              gh pr comment "$SO" --repo "$REPO" --body-file noi-dung.md
+            fi
+          done 3<<< "$DS"

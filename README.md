@@ -21,7 +21,9 @@ Bò nhập khẩu tươi mát được pha lóc và **đóng gói sẵn theo t�
 | File | Nội dung |
 |---|---|
 | `web/` | **Website đang dùng.** Astro trên Cloudflare Workers, ba thứ tiếng Việt–Anh–Hàn (bản Anh và Hàn do máy dịch khi câu tiếng Việt đổi). Xem `web/README.md`. |
-| `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động. 1374 kiểm tra. |
+| `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động — và **toàn bộ kiểm thử** (`crm/test/`). |
+| `CLAUDE.md` | **Quy trình kiểm thử bắt buộc** cho mọi tính năng mới: 9 mục "định nghĩa xong", cách chạy test, việc trước khi mở PR. |
+| `.github/` | Kiểm thử tự động (GitHub Actions) mỗi PR, mỗi lần gộp và mỗi đêm 00:30 giờ VN; mẫu PR; mẫu báo lỗi. |
 | ~~`Beeftown_Website/index.html`~~ | ⚠️ **BẢN NHÁP CŨ — KHÔNG PHÁT HÀNH.** Xem cảnh báo bên dưới. |
 | ~~`Beeftown_Website/google-apps-script.gs`~~ | ⚠️ Đã thay bằng `tao_dat_ban()` trong database. |
 | `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên. |
@@ -283,3 +285,19 @@ npm run thu-tai -- --nguoi 150 --phut 10
 - [ ] Có người nhận email trong 5 phút, đọc được trên điện thoại.
 - [ ] Nếu bật tải CV: dán đường dẫn file vào cửa sổ ẩn danh → **phải bị từ chối**.
 - [ ] Hỏi người phụ trách hộp thư: "có hồ sơ về thì anh/chị làm gì?" — phải có câu trả lời.
+
+---
+
+## Kiểm thử tự động — Khánh cần biết
+
+Mỗi PR, mỗi lần gộp vào main và mỗi đêm lúc 00:30 giờ Việt Nam, GitHub tự chạy toàn bộ kiểm thử
+(database, kho, Zalo, Messenger, Beeftown Cân, trang web trên trình duyệt thật). Chi tiết ở `CLAUDE.md`.
+
+- **Chỉ bấm Merge khi PR có dấu ✓ xanh.** Dấu ✗ đỏ nghĩa là có kiểm thử hỏng — phiên Claude đang theo dõi
+  PR sẽ tự sửa; đừng gộp trong lúc chờ.
+- **Deploy tự chặn** commit chưa có CI xanh (`npm run deploy`). Cài `gh` một lần trên máy deploy:
+  `winget install GitHub.cli`, rồi `gh auth login`.
+- **Gặp lỗi khi vận hành** → GitHub → Issues → New issue → **Báo lỗi**. Mỗi lỗi báo ở đó sẽ có một kiểm thử
+  riêng viết trước khi sửa, để không quay lại.
+- **Email báo lỗi của lượt đêm**: bật ở GitHub → Settings → Notifications → Actions. Lượt đêm còn quét
+  beeftown.vn thật, nên trang sập hay có chữ cấm vừa bật lên cũng sẽ báo đỏ.

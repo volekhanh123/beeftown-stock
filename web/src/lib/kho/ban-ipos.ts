@@ -28,6 +28,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { boDau, cauLoiKho, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
+import { docGioVnDiaPhuong, gioVnTuMs } from '../gio-vn.ts';
 
 // -----------------------------------------------------------------------------
 // KIỂU
@@ -291,15 +292,12 @@ export function docFormCauHinhIpos(form: FormData): { cauHinh: CauHinhGui | null
 /**
  * Ô "datetime-local" (giờ Việt Nam, "2026-09-25T08:30") → ISO có múi +07:00.
  * Trống → null (database lấy lúc gửi của lần đếm quầy đã duyệt gần nhất).
- * Sai dạng → undefined.
+ * Sai dạng, hoặc ngày giờ không có thật (31/02, 24:00) → undefined.
  */
 export function docMocChuyen(v: unknown): string | null | undefined {
   const s = String(v ?? '').trim();
   if (s === '') return null;
-  const m = s.match(/^(\d{4}-\d{2}-\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/);
-  if (!m) return undefined;
-  const iso = `${m[1]}T${m[2]}:${m[3]}:${m[4] ?? '00'}+07:00`;
-  return Number.isNaN(new Date(iso).getTime()) ? undefined : iso;
+  return docGioVnDiaPhuong(s) ?? undefined;
 }
 
 /** timestamptz → giá trị cho ô datetime-local giờ Việt Nam ("2026-09-25T08:30"). */
@@ -307,7 +305,7 @@ export function oMocChuyen(ts: string | null | undefined): string {
   if (!ts) return '';
   const t = new Date(ts);
   if (Number.isNaN(t.getTime())) return '';
-  return new Date(t.getTime() + 7 * 60 * 60 * 1000).toISOString().slice(0, 16);
+  return gioVnTuMs(t.getTime()).slice(0, 16);
 }
 
 // -----------------------------------------------------------------------------
@@ -531,7 +529,7 @@ export async function chuyenSangIpos(client: SupabaseClient, chiNhanhId: string,
   const { data, error } = await client.rpc('kho_ipos_chuyen_sang', { p_chi_nhanh_id: chiNhanhId, p_tu_luc: moc });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const tu = (data as { ipos_tu_luc?: string } | null)?.ipos_tu_luc;
-  const luc = tu ? new Date(new Date(tu).getTime() + 7 * 3600e3).toISOString().slice(0, 16).replace('T', ' ') : '';
+  const luc = tu ? gioVnTuMs(new Date(tu).getTime()).slice(0, 16).replace('T', ' ') : '';
   return kqHai(true, {
     vi: `Đã chuyển sang trừ kho theo iPOS${tu ? ` từ ${luc}` : ''}. Bán trước mốc này được bỏ qua (đã tính trong lần đếm quầy).`,
     en: `Switched to deducting stock from iPOS${tu ? ` from ${luc}` : ''}. Sales before this time are skipped (already covered by the counter count).`,
