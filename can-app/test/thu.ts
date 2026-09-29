@@ -1391,7 +1391,7 @@ if (!thuMucTam) {
   process.exit(1);
 }
 ok('Trạng thái: chưa có file gốc, cân mặc định 192.168.1.22', tt.ok && tt.goc === null && tt.cauHinh.ipCan === '192.168.1.22', JSON.stringify(tt));
-ok('Phiên bản 2.2.0', (tt as unknown as { phienBan: string }).phienBan === '2.2.0');
+ok('Phiên bản 2.2.1', (tt as unknown as { phienBan: string }).phienBan === '2.2.1');
 ok('Trang hướng dẫn của chương trình thật: có mã bí mật mới mở được', (await fetch(`${goc.origin}/huong-dan?t=${ma}`)).status === 200
   && (await fetch(`${goc.origin}/huong-dan`)).status === 403);
 const ch = await (await api('/api/cau-hinh', JSON.stringify({ ipCan: '127.0.0.1', congCan: congCan }))).json() as { ok: boolean };
