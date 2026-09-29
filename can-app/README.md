@@ -84,6 +84,23 @@ Cân đổi địa chỉ (trên cân: `Prog → 4 → 2`) thì sửa ở **Cài 
 
 - **Chưa thử trên cân thật:** đổi mẫu tem qua WiFi. Cân nhận chắc chắn khi nạp USB (thay cả file); qua WiFi cân có nhận phần LAB hay không thì phải in thử một tem để biết.
 
+## Menu `Prog` trên cân (chép từ cân thật 29/09/2026, TM-xA V3.14E8)
+
+Bấm `Prog`, đi bằng `↓ V3` / `↑ V1` hoặc bấm thẳng số mục (`Prog → 4 → 2`), `Accu/Confirm` để vào, `Sale` để về màn bán hàng.
+
+| Mục | Mục con |
+|---|---|
+| P1 Parameter | 1 Time · 2 Spec · 3 String · 4 Shortcut of PLU · 5 Shortcut of Func |
+| P2 Database | 1 Dept · 2 Class · 3 PLU · 5 Barcode · 6 Print Format · 7 Salesman |
+| P3 Data Asst | có Delete — **không vào**; cân hỏi mã 9958 là sắp xoá dữ liệu: bấm `Cancel` |
+| P4 Communication | USB: `Accu/Confirm` hai lần là nạp file, thêm `Amend` là lưu ra USB · mục 2: địa chỉ cân trong mạng |
+| P5 Hardware Asst | **không vào** |
+
+- Sửa một hàng ngay trên cân: `Prog → 2 → 3` (P2 Database › PLU).
+- P2 **không có mục 4**. Thứ tự P2 trùng thứ tự các phần trong file .TMS (DPT, CLS, PLU, **UNT**, BAR, LAB, SAL),
+  nên mục 4 nhiều khả năng là **Unit** (đơn vị tính) mà cân ẩn đi — sổ tay TM-xA ghi cân ẩn bớt phần sửa đơn vị.
+  Chưa kiểm trên cân.
+
 ## Mẫu tem trong file .TMS (`src/tem.ts`)
 
 - Phần `LAB`: mỗi mẫu tem là một dòng `LAB`, các dòng `LAS` (mỗi dòng một ô in), rồi `LAE`. Phần `TMS` dòng số 0 cho biết cân đang dùng mẫu số mấy.
@@ -138,3 +155,7 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 - Đọc danh sách hàng từ cân qua WiFi (để khỏi cần file gốc từ USB lần đầu).
 - Hạn dùng trên tem: chưa biết cột nào của dòng PLU (số ngày), nên chưa đặt hạn dùng theo từng món.
 - Kéo thả vị trí ô, đổi cỡ chữ, thêm ô mới trên tem.
+- Giá từ 1.000.000 đ/kg: ô đơn giá trên cân có 6 chữ số (tối đa 999.999), nên chương trình không gửi món giá cao
+  hơn. Hướng đi: món vượt mức gửi theo đơn vị **100g** (giá kho chia 10); kho vẫn giữ giá/kg, FABi không đổi vì mã
+  vạch chỉ mang mã món và trọng lượng. Cần biết trước trên cân thật: đơn vị 100g ghi thế nào trong dòng PLU, và ô
+  thành tiền có quá 6 chữ số không (gói trên 999.999 đ có in được tem không).
