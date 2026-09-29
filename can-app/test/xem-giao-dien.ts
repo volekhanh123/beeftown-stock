@@ -24,6 +24,7 @@ import { LENH_DS, LENH_NGHE, type ChayPs } from '../src/day-rs232.ts';
 import { taoKhoGia } from './kho-gia.ts';
 import { moMayChu } from '../src/may-chu.ts';
 import { chuoiByte, moCanGia } from './can-gia-hai-chieu.ts';
+import { congNgay, homNayVn } from '../../web/src/lib/gio-vn.ts';
 
 const KHUON = 'PLU\t{1}\t{2}\t\t1\t{5}\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t9\t{15}\t\t\t\t\t\t\t\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t0\tx\t0\t0\t0\t';
 const plu = (so: number, ma: string, gia: string, ten: string) => KHUON.replace('{1}', String(so)).replace('{2}', ma).replace('{5}', gia).replace('{15}', ten);
@@ -36,8 +37,11 @@ const LAS = [
   [3,16,0,1,1,224,94,23],[3,12,0,1,220,255,220,50],
 ].map(([loai, chu, du, dk, x, y, w, h], i) => `LAS\t${[0, 1, 4, 5, 10, 12, 15, 16, 17, 20, 26, 27, 28, 29][i]}\t${loai}\t${chu}\t${du}\t${dk}\t0\t5\t${CO[i]}\t${x}\t${y}\t${w}\t${h}\t`);
 const MAU_TEM = ['LAB\t28\tBEEFTOWN\t1\t58\t40\tĐơn giá\tTrọng Lượng\t\tThành Tiền\tNgày đóng gói\t\t\t\t\t\t\t\tBEEFTOWN\t\t\t\t1\tHSD\t', ...LAS, 'LAE\t'];
+/** Dòng PLU có HSD n ngày (cột 27 = 1, cột 32 = n). */
+const coHsd = (dong: string, n: number) => { const c = dong.split('\t'); c[27] = '1'; c[32] = String(n); return c.join('\t'); };
+// Gầu bò đang in HSD 6 ngày, tính từ hôm qua (hsd-tinh-ngay.txt bên dưới) — thấy khung đỏ "HSD trên cân tính cho ngày …".
 const PLU = [plu(1, '10001', '845,0', 'Lõi vai bò Mỹ'), plu(2, '10002', '876,0', 'Sườn bò Hàn Quốc'),
-  plu(3, '10003', '695,0', 'Gầu bò'), plu(5, '10005', '516,0', 'Ba chỉ bò cuộn'),
+  coHsd(plu(3, '10003', '695,0', 'Gầu bò'), 6), plu(5, '10005', '516,0', 'Ba chỉ bò cuộn'),
   plu(6, '90001', '945,0', 'Steak Ribeye Angus -30%'), plu(7, '10071', '1350,0', 'Steak Ribeye Angus #0142'),
   plu(8, '10072', '1350,0', 'Steak Ribeye Angus')];
 // Thông số: các mục THONG_SO của thong-so.ts, giá trị như cân của quán (chỉ số, không có tên / WiFi).
@@ -109,15 +113,24 @@ const ud = new UngDung({ cauHinh: path.join(tam, 'a'), duLieu: path.join(tam, 'd
   nguoi: { email: vai + '@beeftown.vn', hoTen: vai === 'quan_ly' ? 'Quản lý (xem thử)' : 'Nhân viên (xem thử)', vaiTro: vai,
            chiNhanh: cn, cacChiNhanh: [cn], quyen: quyenCuaVai(vai) },
   danhMuc: async () => ({ mauMaVach: '2XCCCCCWWWWWK', matHang: [
-    { ma: 'LOI-VAI', ma_can: '10001', ten: 'Lõi vai bò Mỹ', gia_ban_kg: 850000, dang_dung: true, han_dung_ngay: 3 },
-    { ma: 'GAU-BO', ma_can: '10003', ten: 'Gầu bò', gia_ban_kg: 695000, dang_dung: true, han_dung_ngay: 5 },
-    { ma: 'BA-CHI', ma_can: '10005', ten: 'Ba chỉ bò cuộn', gia_ban_kg: 516000, dang_dung: true, han_dung_ngay: null },
-    { ma: 'THAN-LUNG', ma_can: '10004', ten: 'Thăn lưng bò Úc', gia_ban_kg: 990000, dang_dung: true, han_dung_ngay: 4 },
+    // HSD và nguồn HSD như danh-muc-can.ts đưa ra (số ngày còn lại của lô, tính cho hôm nay).
+    { ma: 'LOI-VAI', ma_can: '10001', ten: 'Lõi vai bò Mỹ', gia_ban_kg: 850000, dang_dung: true, han_dung_ngay: 3,
+      nguon_hsd: { vi: 'lô L0012 hết hạn trong 3 ngày', en: 'lot L0012' } },
+    { ma: 'GAU-BO', ma_can: '10003', ten: 'Gầu bò', gia_ban_kg: 695000, dang_dung: true, han_dung_ngay: 5,
+      nguon_hsd: { vi: 'lô L0007 hết hạn trong 5 ngày', en: 'lot L0007' } },
+    { ma: 'BA-CHI', ma_can: '10005', ten: 'Ba chỉ bò cuộn', gia_ban_kg: 516000, dang_dung: true, han_dung_ngay: null,
+      nguon_hsd: { vi: 'lô L0003 hết hạn hôm qua', en: 'lot L0003' },
+      canh_bao_hsd: { vi: 'Lô L0003 đã hết hạn — không in HSD lên tem. Xem thẻ Quầy: huỷ hay bán giảm giá lô này.', en: 'Lot L0003 expired.' } },
+    { ma: 'THAN-LUNG', ma_can: '10004', ten: 'Thăn lưng bò Úc', gia_ban_kg: 990000, dang_dung: true, han_dung_ngay: 4,
+      nguon_hsd: { vi: 'theo hạn dùng của món (chưa có lô)', en: 'from the item shelf life (no lot yet)' } },
     { ma: 'NAM-BO', ma_can: '10006', ten: 'Nạm bò', gia_ban_kg: null, dang_dung: true },
   ] }),
 });
 ud.luuCauHinh({ ipCan: doiDiaChi ? '127.0.0.2' : '127.0.0.1', congCan: (can.address() as net.AddressInfo).port, congHaiChieu: canHaiChieu.cong });
-if (!process.argv.includes('--chua-co-goc')) ud.ghiNhanFileTuCan(file);
+if (!process.argv.includes('--chua-co-goc')) {
+  ud.ghiNhanFileTuCan(file);
+  fs.writeFileSync(ud.fileHsdNgay, congNgay(homNayVn(), -1) + '\r\n');   // HSD trên cân tính cho hôm qua
+}
 const ma = 'xem';
 const mc = moMayChu(ud, { ma, phienBan: 'xem thử', khiCoNhip: () => {}, khiDong: () => {} });
 console.log(`Mở: http://127.0.0.1:${mc.port}/?t=${ma}`);

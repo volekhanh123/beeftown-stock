@@ -454,4 +454,31 @@ await nhom('12 · BỎ PHẦN CHỈ ĐỌC (REP, INF) KHI boPhanChiDoc', async (
   ok('Không bật boPhanChiDoc: hai khối REP và khối INF còn nguyên', giongHet(ghiFileCan(fp, lapKeHoach(fp, DANH_MUC, TUY), TUY), vp));
 });
 
+// HSD = số ngày còn lại của lô (danh-muc-can.ts, cách b): hàng kho mang nguồn HSD và cảnh báo của nơi tính HSD — chỉ để
+// xem trước hiện, không ghi vào file.
+await nhom('13 · NGUỒN HSD (nguon_hsd) VÀ CẢNH BÁO CỦA NƠI TÍNH HSD (canh_bao_hsd)', async () => {
+  const f = docFileCan(taoFile({ dongPlu: [datCot(HANG_BEEFTOWN[2], { 27: 1, 32: 4 }), HANG_BEEFTOWN[3]] }));
+  const NGUON = { vi: 'lô L-7 hết hạn 02/10', en: 'lot L-7, use-by 02/10' };
+  const HET = { vi: 'Lô L-9 đã hết hạn (28/09).', en: 'Lot L-9 expired on 28/09.' };
+  const dm = [{ ...DANH_MUC[2], han_dung_ngay: 3, nguon_hsd: NGUON },                              // Gầu bò 4 → 3 (đếm ngược)
+              { ...DANH_MUC[3], han_dung_ngay: null, nguon_hsd: { vi: 'lô L-9', en: 'lot L-9' }, canh_bao_hsd: HET },
+              { ...DANH_MUC[0], han_dung_ngay: 2, nguon_hsd: { vi: 'tảng #0142', en: 'primal #0142' } }];   // hàng mới
+  const t = theoMaCan(lapKeHoach(f, dm, TUY));
+  ok('Hàng quản HSD mang nguồn HSD (hsdNguon) theo ngôn ngữ — dòng sửa và dòng mới', t.get('10003')?.loai === 'sua'
+     && t.get('10003').hsd === 3 && t.get('10003').hsdCu === 4 && t.get('10003').hsdNguon === 'lô L-7 hết hạn 02/10'
+     && t.get('10001')?.loai === 'them' && t.get('10001').hsdNguon === 'tảng #0142', JSON.stringify([t.get('10003'), t.get('10001')]));
+  ok('Cảnh báo của nơi tính HSD (lô hết hạn) nằm trong canhBao, HSD không in', t.get('10005')?.hsd === null
+     && t.get('10005').canhBao === 'Lô L-9 đã hết hạn (28/09).', JSON.stringify(t.get('10005')));
+  const e = theoMaCan(lapKeHoach(f, dm, TUY, 'en'));
+  ok('nn = en: nguồn và cảnh báo tiếng Anh', e.get('10003')?.hsdNguon === 'lot L-7, use-by 02/10' && e.get('10005')?.canhBao === 'Lot L-9 expired on 28/09.');
+  const hai = theoMaCan(lapKeHoach(f, [{ ...dm[1], han_dung_ngay: 1200 }], TUY));
+  ok('Cảnh báo nơi tính HSD đứng trước cảnh báo quá 999 ngày', /^Lô L-9 đã hết hạn \(28\/09\)\. Hạn dùng 1\.200 ngày vượt mức cân nhận/.test(hai.get('10005')?.canhBao ?? ''),
+     hai.get('10005')?.canhBao);
+  const khong = theoMaCan(lapKeHoach(f, [{ ...DANH_MUC[2], nguon_hsd: NGUON, canh_bao_hsd: HET }], TUY));
+  ok('Không quản HSD (han_dung_ngay undefined): bỏ qua nguồn và cảnh báo HSD — dòng như cũ', khong.get('10003')?.loai === 'giu'
+     && !('hsdNguon' in khong.get('10003')) && !('hsd' in khong.get('10003')) && !khong.get('10003').canhBao, JSON.stringify(khong.get('10003')));
+  const khongNguon = lapKeHoach(f, dm.map(({ nguon_hsd: _n, canh_bao_hsd: _c, ...h }) => h), TUY);
+  ok('Nguồn HSD không ghi vào file: file ra y hệt khi không có nguồn', giongHet(ghiFileCan(f, lapKeHoach(f, dm, TUY), TUY), ghiFileCan(f, khongNguon, TUY)));
+});
+
 process.exit(ketThuc('ĐỒNG BỘ CÂN'));
