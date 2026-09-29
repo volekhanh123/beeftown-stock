@@ -118,7 +118,9 @@
   <div class="hang">
     <div class="o"><div class="nhan">Kho</div><div class="gt" id="o-kho">…</div><div class="phu" id="o-kho-phu"></div></div>
     <div class="o"><div class="nhan">Cân</div><div class="gt"><span class="den" id="den-can"></span><span id="o-can">…</span></div>
-      <div class="phu"><button id="nut-thu-can" style="padding:3px 10px;font-size:13px;margin-top:4px">Kiểm tra kết nối</button></div>
+      <div class="phu"><button id="nut-thu-can" style="padding:3px 10px;font-size:13px;margin-top:4px">Kiểm tra kết nối</button>
+        <span class="dang-lam an" id="dang-tim-can">Đang dò WiFi tìm cân…</span></div>
+      <div class="phu" id="o-doi-dia-chi"></div>
       <div class="phu" id="o-tu-gui"></div></div>
     <div class="o"><div class="nhan">Trên cân</div><div class="gt" id="o-tren-can">…</div><div class="phu" id="o-goc"></div></div>
   </div>
@@ -248,6 +250,12 @@
     <div style="margin-top:12px">
       <form id="form-cau-hinh">
         <label class="truong"><span>Địa chỉ cân (trên cân bấm Prog → 4 → 2 để xem)</span><input type="text" name="ipCan"></label>
+        <div class="nut" style="margin:-4px 0 6px"><button type="button" id="nut-tim-can">Tìm cân trong WiFi</button>
+          <span class="dang-lam an" id="dang-tim-can-2">Đang dò… (vài giây)</span></div>
+        <div id="ket-qua-tim-can"></div>
+        <p class="phu" style="margin:0 0 12px">Cân đổi địa chỉ (router phát lại sau khi cân hay router khởi động lại) thì chương trình tự dò WiFi
+          tìm lại cân. Muốn cân khỏi đổi: nhờ người lo mạng vào trang quản trị router, mục <b>DHCP</b>, giữ cố định địa chỉ cho cân
+          (<i>DHCP Reservation</i> / <i>Static Lease</i> / <i>Address Binding</i>).</p>
         <label class="truong"><span>Cổng của cân</span><input type="number" name="congCan"></label>
         <label class="truong"><span>Địa chỉ kho</span><input type="text" name="diaChiKho"></label>
         <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" name="tuGui">
@@ -259,6 +267,26 @@
       <p><b>Cập nhật file gốc từ cân.</b> Khi cân có thay đổi mà không qua chương trình này (nạp USB từ nơi khác, sửa tay trên cân):
         lưu dữ liệu từ cân ra USB rồi chọn file đó.</p>
       <input type="file" accept=".TMS,.tms" class="chon-file-can">
+      <hr style="border:0;border-top:1px solid var(--vach);margin:18px 0">
+      <p><b>Dây RS232 (thử).</b> Mới chắc cân nhận danh mục qua WiFi và USB; qua dây RS232 thì chưa biết — thử ở đây.
+        Cắm dây từ máy tính vào cổng RS232 của cân (dây USB–RS232 cần driver, Windows thường tự cài), rồi bấm Tìm cổng COM.</p>
+      <div class="nut">
+        <select id="com-cong" style="max-width:320px"><option value="">— bấm Tìm cổng COM —</option></select>
+        <button type="button" id="nut-tim-com">Tìm cổng COM</button>
+        <label>Tốc độ <select id="com-toc-do" style="width:auto">
+          <option>2400</option><option>4800</option><option selected>9600</option><option>19200</option>
+          <option>38400</option><option>57600</option><option>115200</option></select></label>
+      </div>
+      <div class="nut">
+        <button type="button" id="nut-nghe-com">Nghe cân 10 giây</button>
+        <button type="button" id="nut-gui-com">Gửi thử qua dây</button>
+        <span class="dang-lam an" id="dang-com"></span>
+      </div>
+      <p class="phu"><b>Nghe cân</b>: xem cân có tự gửi gì qua dây không (đúng tốc độ thì ra chữ đọc được). <b>Gửi thử</b> (quản lý, chủ):
+        đẩy các thay đổi từ kho qua dây như khi gửi WiFi, rồi gọi hàng trên cân xem cân đã nhận chưa. Chương trình không ghi nhận
+        lần gửi thử — lần gửi WiFi sau vẫn gửi lại các thay đổi đó.</p>
+      <div id="ket-qua-com"></div>
+      <hr style="border:0;border-top:1px solid var(--vach);margin:18px 0">
       <div class="nut">
         <button id="nut-mo-thu-muc" type="button">Mở thư mục dữ liệu</button>
         <button id="nut-dang-xuat" type="button" class="an">Đăng xuất kho</button>
@@ -293,21 +321,23 @@
   setInterval(() => { fetch('/api/nhip?t=' + MA, { method: 'POST' }).catch(() => {}); }, 20000);
   addEventListener('pagehide', () => { navigator.sendBeacon('/api/dong?t=' + MA); });
 
-  let trangThai = null;
+  let trangThai = null, daDienCom = false;
 
   async function taiTrangThai() {
     const s = await goi('/api/trang-thai');
     trangThai = s;
     $('phien-ban').textContent = 'phiên bản ' + s.phienBan;
     const ch = s.cauHinh;
-    $('o-can').textContent = ch.ipCan + ' · cổng ' + ch.congCan;
     const f = $('form-cau-hinh');
-    f.ipCan.value = ch.ipCan; f.congCan.value = ch.congCan; f.diaChiKho.value = ch.diaChiKho;
+    f.congCan.value = ch.congCan; f.diaChiKho.value = ch.diaChiKho;
     f.tuGui.checked = !!ch.tuGui;
-    const tg = s.lanTuGui;
-    $('o-tu-gui').textContent = ch.tuGui
-      ? 'Tự gửi: bật' + (tg ? ' · ' + new Date(tg.luc).toLocaleTimeString('vi-VN') + ' — ' + tg.cau : ' · chờ lần đầu')
-      : '';
+    veOCan();
+    // Cổng COM, tốc độ lần thử trước: chỉ điền lúc mở trang, không đè lựa chọn đang làm dở.
+    if (!daDienCom) {
+      daDienCom = true;
+      if (ch.com) $('com-cong').innerHTML = `<option value="${e(ch.com)}">${e(ch.com)}</option>`;
+      if (ch.baud) $('com-toc-do').value = String(ch.baud);
+    }
     $('duong-thu-muc').innerHTML = 'Dữ liệu nằm ở <code>' + e(s.thuMuc) + '</code>';
 
     if (s.nguoi) {
@@ -339,6 +369,56 @@
     if (!tab || !coThe[tab]) tab = ['quay', 'hang', 'dong-bo'].find(t => coThe[t]) || null;
     dsHang = null; temDL = null; tangO = null; giamDL = null;
     hienTab();
+  }
+
+  // ---- ô Cân: địa chỉ, lần tự đổi địa chỉ, tự gửi ---------------------------
+  const lucNgan = (t) => new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+  function veOCan() {
+    const ch = trangThai.cauHinh;
+    $('o-can').textContent = ch.ipCan + ' · cổng ' + ch.congCan;
+    $('form-cau-hinh').ipCan.value = ch.ipCan;
+    const ds = ch.doiDiaChi || [];
+    // Cân đổi địa chỉ từ 2 lần trong 30 ngày: nhắc giữ cố định trong router.
+    const ganDay = ds.filter(d => Date.now() - new Date(d.luc).getTime() < 30 * 86400000).length;
+    $('o-doi-dia-chi').innerHTML = ds.length
+      ? `Tự tìm thấy cân ở địa chỉ mới lúc ${e(lucNgan(ds[0].luc))} (trước: ${e(ds[0].tu)}).`
+        + (ganDay >= 2 ? ` <b>Cân đã đổi địa chỉ ${ganDay} lần trong 30 ngày</b> — nên giữ cố định địa chỉ cho cân trong router (xem Cài đặt).` : '')
+      : '';
+    const tg = trangThai.lanTuGui;
+    $('o-tu-gui').textContent = ch.tuGui
+      ? 'Tự gửi: bật' + (tg ? ' · ' + new Date(tg.luc).toLocaleTimeString('vi-VN') + ' — ' + tg.cau : ' · chờ lần đầu')
+      : '';
+  }
+  /** Chương trình vừa tự đổi địa chỉ cân: cập nhật ô Cân, không tải lại cả trang. */
+  function daDoiDiaChi(doi) {
+    if (!doi) return '';
+    trangThai.cauHinh.ipCan = doi.den;
+    trangThai.cauHinh.doiDiaChi = [doi, ...(trangThai.cauHinh.doiDiaChi || [])];
+    veOCan();
+    return `<p>Cân đã đổi địa chỉ (${e(doi.tu)} → ${e(doi.den)}). Chương trình đã tự dò WiFi tìm thấy cân và dùng địa chỉ mới.</p>`;
+  }
+  /** Nối cân không được: câu lỗi, và nút chọn khi thấy nhiều cân. */
+  function baoKhongThongCan(noi, k) {
+    bao(noi, k.thay.length ? 'luu-y' : 'loi', e(k.loi) + (k.thay.length
+      ? '<div class="nut">' + k.thay.map(ip => `<button type="button" class="chon-can" data-ip="${e(ip)}">Dùng cân ${e(ip)}</button>`).join('') + '</div>' : ''));
+    for (const b of noi.querySelectorAll('.chon-can')) {
+      b.onclick = async () => {
+        try { await goi('/api/cau-hinh', { ipCan: b.dataset.ip }); bao(noi, '', ''); await taiTrangThai(); await kiemTraCan(); }
+        catch (err) { baoChung('loi', e(err.message)); }
+      };
+    }
+  }
+  async function kiemTraCan() {
+    const den = $('den-can'), nut = $('nut-thu-can');
+    den.className = 'den'; nut.disabled = true;
+    const hen = setTimeout(() => $('dang-tim-can').classList.remove('an'), 800);
+    try {
+      const k = await goi('/api/thu-can');
+      den.className = 'den ' + (k.thongCan ? 'xanh' : 'do');
+      if (k.doi) baoChung('xong', daDoiDiaChi(k.doi));
+      else if (!k.thongCan) baoKhongThongCan($('bao-chung'), k);
+    } catch (err) { den.className = 'den do'; baoChung('loi', e(err.message)); }
+    finally { clearTimeout(hen); $('dang-tim-can').classList.add('an'); nut.disabled = false; }
   }
 
   // ---- thẻ ------------------------------------------------------------------
@@ -408,7 +488,8 @@
       const k = await goi('/api/gui', { giuHangNgoaiKho: giuNgoaiKho() });
       // Báo ở đầu trang: bảng bên dưới sẽ được dựng lại từ file vừa gửi.
       baoChung('xong', `<p><b>Đã gửi ${k.soHang} hàng xuống cân.</b> Trên cân gõ số PLU của một hàng vừa đổi rồi bấm <b>PLU</b> để chắc cân đã nhận.</p>`
-        + (k.conLai.length ? `<p>${k.conLai.length} hàng vẫn còn nằm trên cân — xoá bằng USB khi tiện.</p>` : ''));
+        + (k.conLai.length ? `<p>${k.conLai.length} hàng vẫn còn nằm trên cân — xoá bằng USB khi tiện.</p>` : '')
+        + daDoiDiaChi(k.doiDiaChi));
       await taiTrangThai();
     } catch (err) {
       bao(noi, 'loi', e(err.message));
@@ -637,9 +718,10 @@
     const nut = $('nut-gui-tem');
     nut.disabled = true; nut.textContent = 'Đang gửi…';
     try {
-      await goi('/api/tem/gui', thayDoiTem());
+      const k = await goi('/api/tem/gui', thayDoiTem());
       baoChung('xong', '<p><b>Đã gửi tem xuống cân.</b> Cân thử một món rồi in một tem để xem tem mới.</p>'
-        + '<p>Nếu tem chưa đổi: mở thẻ Mẫu tem, sửa lại như vừa rồi và bấm <b>Lưu file nạp USB</b> — nạp USB thì cân nhận chắc chắn.</p>');
+        + '<p>Nếu tem chưa đổi: mở thẻ Mẫu tem, sửa lại như vừa rồi và bấm <b>Lưu file nạp USB</b> — nạp USB thì cân nhận chắc chắn.</p>'
+        + daDoiDiaChi(k.doiDiaChi));
       $('khung-usb-tem').innerHTML = '';
       await taiTrangThai();
     } catch (err) { baoChung('loi', e(err.message)); }
@@ -1018,18 +1100,69 @@
     };
   }
 
-  $('nut-thu-can').onclick = async () => {
-    const den = $('den-can'); den.className = 'den';
+  $('nut-thu-can').onclick = kiemTraCan;
+  $('nut-tim-can').onclick = async () => {
+    const nut = $('nut-tim-can'), noi = $('ket-qua-tim-can');
+    nut.disabled = true; $('dang-tim-can-2').classList.remove('an'); bao(noi, '', '');
     try {
-      const k = await goi('/api/thu-can');
-      den.className = 'den ' + (k.thongCan ? 'xanh' : 'do');
-      if (!k.thongCan) baoChung('loi', 'Không kết nối được cân. Cân có đang bật không? Máy tính có cùng WiFi với cân không? Địa chỉ cân có đổi không (trên cân: Prog → 4 → 2)?');
-    } catch (err) { den.className = 'den do'; baoChung('loi', e(err.message)); }
+      const k = await goi('/api/tim-can');
+      $('den-can').className = 'den ' + (k.thongCan ? 'xanh' : 'do');
+      if (k.doi) bao(noi, 'xong', daDoiDiaChi(k.doi));
+      else if (!k.thongCan) baoKhongThongCan(noi, k);
+      else bao(noi, 'xong', `Cân ở ${e(k.ipCan)} — đúng địa chỉ đang dùng.`
+        + (k.thay.length > 1 ? ` Trong WiFi còn ${k.thay.length - 1} cân khác: ${k.thay.filter(ip => ip !== k.ipCan).map(e).join(', ')}.` : ''));
+    } catch (err) { bao(noi, 'loi', e(err.message)); }
+    finally { nut.disabled = false; $('dang-tim-can-2').classList.add('an'); }
   };
+
+  // ---- dây RS232 (thử) ---------------------------------------------------------
+  const comChon = () => ({ com: $('com-cong').value, baud: Number($('com-toc-do').value) });
+  async function lamCom(chu, viec) {
+    const noi = $('ket-qua-com');
+    for (const b of [$('nut-tim-com'), $('nut-nghe-com'), $('nut-gui-com')]) b.disabled = true;
+    $('dang-com').textContent = chu; $('dang-com').classList.remove('an'); bao(noi, '', '');
+    try { await viec(noi); }
+    catch (err) { bao(noi, 'loi', e(err.message)); }
+    finally {
+      for (const b of [$('nut-tim-com'), $('nut-nghe-com'), $('nut-gui-com')]) b.disabled = false;
+      $('dang-com').classList.add('an');
+    }
+  }
+  $('nut-tim-com').onclick = () => lamCom('Đang tìm cổng…', async (noi) => {
+    const k = await goi('/api/com');
+    const sel = $('com-cong');
+    sel.innerHTML = k.cong.length
+      ? k.cong.map(c => `<option value="${e(c.ten)}">${e(c.moTa === c.ten ? c.ten : c.ten + ' — ' + c.moTa)}</option>`).join('')
+      : '<option value="">— không thấy cổng COM —</option>';
+    if (k.com && k.cong.some(c => c.ten === k.com)) sel.value = k.com;
+    $('com-toc-do').value = String(k.baud);
+    if (!k.cong.length) bao(noi, 'loi', 'Không thấy cổng COM nào. Dây đã cắm chưa? Dây USB–RS232 cần driver (CH340, PL2303, FTDI…) — cắm vào mạng cho Windows tự cài, hoặc cài từ đĩa kèm dây.');
+  });
+  $('nut-nghe-com').onclick = () => lamCom('Đang nghe 10 giây…', async (noi) => {
+    const k = await goi('/api/com/nghe', { ...comChon(), giay: 10 });
+    if (!k.soByte) {
+      bao(noi, 'luu-y', `Không nghe thấy gì trong ${k.giay} giây ở ${k.com}, tốc độ ${k.baud}. Có thể cân chỉ trả lời khi được hỏi — chưa nói lên được gì; thử <b>Gửi thử qua dây</b>.`);
+      return;
+    }
+    bao(noi, k.docDuoc >= 80 ? 'xong' : 'luu-y', `<p>Nghe được ${soChu(k.soByte)} byte ở ${e(k.com)}, tốc độ ${k.baud} — ${k.docDuoc}% là chữ đọc được.</p>`
+      + `<p><code style="word-break:break-all">${e(k.chu)}</code></p>`
+      + (k.docDuoc >= 80 ? `<p>Tốc độ ${k.baud} có vẻ đúng: dây và cổng đã thông với cân.</p>` : '<p>Chữ lộn xộn: có thể sai tốc độ — chọn tốc độ khác rồi nghe lại.</p>'));
+  });
+  $('nut-gui-com').onclick = () => lamCom('Đang gửi qua dây… (tốc độ 9600 có thể mất 1–2 phút)', async (noi) => {
+    const k = await goi('/api/com/gui', comChon());
+    const h = k.hang;
+    const kiem = h.loai === 'them'
+      ? `trên cân gọi <b>PLU ${h.so}</b>: nếu có hàng <b>${e(h.ten)}</b> giá <b>${tien(h.gia)}</b>/kg`
+      : `trên cân gọi <b>PLU ${h.so}</b> (${e(h.ten)}): nếu giá là <b>${tien(h.gia)}</b>/kg (trước là ${tien(h.giaCu)})`;
+    bao(noi, 'luu-y', `<p>Đã đẩy ${soChu(Math.ceil(k.soByte / 1024))} KB ra ${e(k.com)}, tốc độ ${k.baud}, trong ${k.giay} giây.</p>`
+      + `<p>Giờ ${kiem} là cân đã nhận qua dây — báo lại để làm hẳn cách gửi bằng dây.</p>`
+      + '<p>Nếu cân chưa đổi: thử tốc độ khác (9600 → 115200 → 38400 → 19200 → 4800), gửi lại. Thử hết mà không được thì cân không nhận danh mục qua dây này — dùng WiFi.</p>');
+  });
+
   $('nut-mo-thu-muc').onclick = () => goi('/api/mo-thu-muc', {}).catch(err => baoChung('loi', e(err.message)));
   $('nut-dang-xuat').onclick = async () => { try { await goi('/api/dang-xuat'); await taiTrangThai(); } catch (err) { baoChung('loi', e(err.message)); } };
 
-  taiTrangThai().then(() => $('nut-thu-can').click()).catch(err => baoChung('loi', e(err.message)));
+  taiTrangThai().then(kiemTraCan).catch(err => baoChung('loi', e(err.message)));
 })();
 </script>
 </body>

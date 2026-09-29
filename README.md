@@ -46,7 +46,7 @@ Cân in tem TM-A 30kg (dòng TM-xA, firmware V3.14E8) không có phần mềm đ
 
 **Nạp qua WiFi đã chạy được** (thử trên cân thật 26/09/2026): cân ở `192.168.1.22`, nhận ở cổng TCP **33571** đúng nội dung file USB. Qua WiFi cân chỉ thêm và sửa hàng, không xoá; nạp USB thì thay cả danh sách. Chương trình cho máy tính ở quán: `web/public/kho/can-wifi/Nap-Can-WiFi.ps1` (tải ở màn Đồng bộ cân) — chi tiết ở `web/README.md`, mục "Đồng bộ cân".
 
-**Beeftown Cân (`can-app/`, file `BeeftownCan.exe`)**: chương trình Windows quản lý cân — gửi giá từ kho xuống cân (đăng nhập kho, xem thay đổi, bấm Gửi; không cần USB), xem tất cả hàng (SKU) trên cân đối chiếu với kho, và chỉnh mẫu tem (chọn ô được in, sửa chữ cố định). Xem `can-app/README.md`.
+**Beeftown Cân (`can-app/`, file `BeeftownCan.exe`)**: chương trình Windows quản lý cân — gửi giá từ kho xuống cân (đăng nhập kho, xem thay đổi, bấm Gửi; không cần USB), xem tất cả hàng (SKU) trên cân đối chiếu với kho, và chỉnh mẫu tem (chọn ô được in, sửa chữ cố định). Cân đổi địa chỉ (router phát lại) thì chương trình tự dò WiFi tìm lại cân. Xem `can-app/README.md`.
 
 **Hằng ngày dùng màn Kho › Cài đặt › Đồng bộ cân** (`/noi-bo/kho/cai-dat/can`): kho là gốc, mã cân, tên, giá lấy thẳng từ danh mục mặt hàng — xem `web/README.md`, mục "Đồng bộ cân". File HTML độc lập giữ lại cho hai việc màn đồng bộ chưa làm: sửa chữ in trên tem, và sửa nhanh khi không mở được phần mềm kho. Hai bên dùng chung cách đọc file (`web/src/lib/kho/can-tma.ts`).
 

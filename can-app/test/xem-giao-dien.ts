@@ -6,12 +6,16 @@
  *
  * In ra đường dẫn; mở bằng trình duyệt. Ctrl+C để tắt.
  * `--vai nhan_vien_quay` (hoặc ke_toan, thu_kho…) để xem như vai đó; mặc định quản lý.
+ * `--can-doi-dia-chi`: cân giả "đổi địa chỉ" — lúc mở trang, Kiểm tra kết nối tự dò ra cân.
+ * `--hai-can`: như trên nhưng WiFi có hai cân (127.0.0.1 và .5) — trang hiện nút chọn cân.
+ * Dây RS232 dùng PowerShell giả: có cổng COM3, gửi thử luôn được, nghe ra chữ của cân.
  */
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { UngDung, quyenCuaVai } from '../src/nghiep-vu.ts';
+import { LENH_DS, LENH_NGHE, type ChayPs } from '../src/day-rs232.ts';
 import { taoKhoGia } from './kho-gia.ts';
 import { moMayChu } from '../src/may-chu.ts';
 
@@ -37,12 +41,27 @@ const file = new TextEncoder().encode(['ECS\tVER\tV3.14E8\t', '', 'DWL\tPLU\t',
 
 const can = net.createServer(s => { s.on('data', () => {}); s.on('end', () => s.end()); });
 await new Promise<void>(x => can.listen(0, '127.0.0.1', () => x()));
+const haiCan = process.argv.includes('--hai-can');
+if (haiCan) {
+  const can2 = net.createServer(s => { s.on('data', () => {}); s.on('end', () => s.end()); });
+  await new Promise<void>(x => can2.listen((can.address() as net.AddressInfo).port, '127.0.0.5', () => x()));
+}
 
 const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'beeftown-can-xem-'));
 const iVai = process.argv.indexOf('--vai');
 const vai = iVai > 0 ? process.argv[iVai + 1] : 'quan_ly';
 const cn = { id: 'cn1', ma: 'q1', ten: 'Beeftown Hàm Nghi' };
+const doiDiaChi = haiCan || process.argv.includes('--can-doi-dia-chi');
+const chayPs: ChayPs = async (lenh) => {
+  await Bun.sleep(600);
+  if (lenh === LENH_DS) return 'COM\tCOM1\r\nCOM\tCOM3\r\nTEN\tCổng Giao tiếp (COM1)\r\nTEN\tUSB-SERIAL CH340 (COM3)\r\nOK\r\n';
+  if (lenh === LENH_NGHE) return `OK\t${Buffer.from('ST,GS,+0000.215kg\r\n'.repeat(12)).toString('base64')}\r\n`;
+  return 'OK\t4096\r\n';
+};
 const ud = new UngDung({ cauHinh: path.join(tam, 'a'), duLieu: path.join(tam, 'd') }, {
+  // Dò mạng giả 127.0.0.0/24 (máy "ở" .254) — cân giả nằm ở 127.0.0.1.
+  mang: [{ ip: '127.0.0.254', mask: '255.255.255.0' }],
+  chayPs,
   kho: taoKhoGia().kho,
   nguoi: { email: vai + '@beeftown.vn', hoTen: vai === 'quan_ly' ? 'Quản lý (xem thử)' : 'Nhân viên (xem thử)', vaiTro: vai,
            chiNhanh: cn, cacChiNhanh: [cn], quyen: quyenCuaVai(vai) },
@@ -54,7 +73,7 @@ const ud = new UngDung({ cauHinh: path.join(tam, 'a'), duLieu: path.join(tam, 'd
     { ma: 'NAM-BO', ma_can: '10006', ten: 'Nạm bò', gia_ban_kg: null, dang_dung: true },
   ] }),
 });
-ud.luuCauHinh({ ipCan: '127.0.0.1', congCan: (can.address() as net.AddressInfo).port });
+ud.luuCauHinh({ ipCan: doiDiaChi ? '127.0.0.2' : '127.0.0.1', congCan: (can.address() as net.AddressInfo).port });
 if (!process.argv.includes('--chua-co-goc')) ud.ghiNhanFileTuCan(file);
 const ma = 'xem';
 const mc = moMayChu(ud, { ma, phienBan: 'xem thử', khiCoNhip: () => {}, khiDong: () => {} });

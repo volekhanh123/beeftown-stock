@@ -42,6 +42,8 @@ export function moMayChu(ud: UngDung, tuy: {
       if (req.headers.get('host') !== `127.0.0.1:${mayChu.port}` || url.searchParams.get('t') !== MA) {
         return new Response('Không được phép', { status: 403 });
       }
+      // Bun cắt yêu cầu quá 10 giây — gửi qua dây RS232, dò WiFi tìm cân, kho chậm có thể lâu hơn.
+      mayChu.timeout(req, 0);
       tuy.khiCoNhip();
       const p = url.pathname;
       try {
@@ -104,7 +106,12 @@ export function moMayChu(ud: UngDung, tuy: {
           case '/api/tem/gui': return json({ ok: true, ...(await ud.guiTem(thayDoiTem(await docThan(req)))) });
           case '/api/tem/usb': return json({ ok: true, ...ud.taoFileUsbTem(thayDoiTem(await docThan(req))) });
           case '/api/da-nap-usb': return json({ ok: true, ...ud.daNapUsb() });
-          case '/api/thu-can': return json({ ok: true, thongCan: await ud.thuCan() });
+          case '/api/thu-can': return json({ ok: true, ...(await ud.thuCan()) });
+          case '/api/tim-can': return json({ ok: true, ...(await ud.timCan()) });
+          // ---- dây RS232 (thử) ----
+          case '/api/com': return json({ ok: true, ...(await ud.dsCom()) });
+          case '/api/com/gui': return json({ ok: true, ...(await ud.guiThuQuaDay(await docThan(req))) });
+          case '/api/com/nghe': return json({ ok: true, ...(await ud.ngheQuaDay(await docThan(req))) });
           // ---- máy quầy (0054) ----
           case '/api/quay': return json({ ok: true, ...(await ud.bangQuay()) });
           case '/api/quay/yeu-cau': return json({ ok: true, ...(await ud.taoYeuCau(await docThan(req))) });
