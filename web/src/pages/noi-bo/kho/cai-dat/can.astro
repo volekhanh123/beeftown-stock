@@ -19,6 +19,15 @@
  * bấm "Tải file" là dựng lại từ danh mục MỚI NHẤT lúc bấm. File có tên và mật
  * khẩu WiFi của quán — không ghi vào đâu cả.
  *
+ * Beeftown Cân 2.2 (chưa thử trên cân thật): file tải về bỏ phần REP (nhật ký
+ * bán) + INF (thông tin máy) như phần mềm của hãng (boPhanChiDoc), và không bao
+ * giờ mang dòng CLR (lệnh xoá bảng). Hạn dùng (HSD, cách b — danh-muc-can.ts):
+ * số ngày CÒN LẠI của lô tính cho hôm nay (giờ VN) — ô mã đang giữ tảng theo lô
+ * lóc ra, món và ô trống theo lô sớm nhất còn tồn, chưa có lô theo hạn dùng của
+ * món; lô hết hạn và mã giảm giá không in HSD. Cân in HSD = ngày in + số ngày,
+ * nên file chỉ đúng trong ngày xuất: trang ghi "HSD tính cho ngày xuất file —
+ * nạp vào cân trong ngày". Bảng xem trước có cột HSD: cũ → mới, kèm nguồn HSD.
+ *
  * Quyền: như sửa danh mục (danh_muc). Không ghi gì vào database.
  */
 import Kho from '../../../../layouts/Kho.astro';
@@ -29,9 +38,10 @@ import { hangChoCan } from '../../../../lib/kho/danh-muc-can.ts';
 import { cauLoiKho, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
 import {
   docFileCan, lapKeHoach, ghiFileCan, soChuSoMa, tenFileCan, sangBase64, tuBase64,
-  LoiFileCan, type KeHoach, type LoaiDong,
+  LoiFileCan, type DongKeHoach, type KeHoach, type LoaiDong,
 } from '../../../../lib/kho/can-tma.ts';
 import { dichNB, type HaiThuTieng } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { homNayVn } from '../../../../lib/gio-vn.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -58,7 +68,8 @@ const t = dichNB(nn, {
   b2Usb: { vi: ' trong USB — và xem trước.', en: ' file on the USB stick — and preview it.' },
   b3: { vi: 'Tải file mới về', en: 'Download the new file' },
   b3Chep: { vi: ', chép đè vào USB › JHSCALE. Cắm vào cân: ', en: ', copy it over the old one in USB › JHSCALE. Plug the stick into the scale: ' },
-  b3Xong: { vi: '. Nạp xong rút USB ra và in thử một tem.', en: '. When loading is done, unplug the USB stick and print a test label.' },
+  b3Xong: { vi: ' (màn hình hiện 000), rồi bấm Accu/Confirm lần thứ ba để nạp — nếu đã hiện Dw-Data thì không bấm thêm. Chờ tới khi hiện Finish và số đầu tiên (số lỗi) là 0 rồi mới rút USB, sau đó in thử một tem. (Lần bấm thứ ba: chưa thử trên cân thật.)',
+            en: ' (the screen shows 000), then press Accu/Confirm a third time to load — if Dw-Data is already showing, press nothing more. Wait for Finish with the first number (error count) at 0 before unplugging, then print a test label. (Third press: not yet tested on the real scale.)' },
   chuaCoCN: { vi: 'Chưa có chi nhánh nào.', en: 'There are no branches yet.' },
   fileTuCan: { vi: 'File lưu từ cân', en: 'File saved from the scale' },
   fileGoiY: { vi: 'File trong USB › JHSCALE, hoặc Tài liệu › Beeftown Can › A_000.TMS nếu nạp qua WiFi. File chỉ được đọc trong lần xem này, không lưu lên máy chủ.',
@@ -105,8 +116,21 @@ const t = dichNB(nn, {
   cotMaCan: { vi: 'Mã cân', en: 'Scale code' },
   cotTen: { vi: 'Tên trên tem', en: 'Name on label' },
   cotGia: { vi: 'Giá/kg', en: 'Price/kg' },
+  cotHsd: { vi: 'HSD', en: 'Use-by' },
+  hsdTieuDe: { vi: 'Hạn dùng in trên tem: số ngày tính từ ngày in', en: 'Use-by date printed on the label: days counted from the print date' },
+  hsdNgay: { vi: (n: number) => `${n} ngày`, en: (n: number) => `${n} ${n === 1 ? 'day' : 'days'}` },
+  hsdTrongNgay: { vi: 'trong ngày', en: 'same day' },
+  hsdKhongIn: { vi: 'không in', en: 'not printed' },
   trenCan: { vi: 'Trên cân đang là: ', en: 'On the scale now: ' },
   truoc: { vi: 'trước: ', en: 'before: ' },
+  ghiChuHsd: { vi: 'Cột HSD: số ngày in trên tem — cân in HSD = ngày in tem (đồng hồ cân) + số ngày đó. Kho gửi số ngày CÒN LẠI của lô, tính cho hôm nay: ô mã đang giữ tảng theo hạn của lô lóc ra; món và ô trống theo lô sớm nhất còn tồn ở chi nhánh; chưa có lô thì theo Mặt hàng › Hạn dùng (ngày); lô đã hết hạn và mã giảm giá (gói cận date) không in HSD. Dòng nhỏ dưới số ngày cho biết HSD lấy từ lô nào. Tem 28 hiện vẫn in chữ "HSD" (ô đó đang "Luôn in") và chưa biết ô ngày in gì khi hàng không có HSD — đổi điều kiện in của ô Hạn dùng và chữ "HSD" sang "Chỉ khi hàng có hạn dùng" trong Beeftown Cân › Mẫu tem. Chưa thử trên cân thật — nạp xong in thử một tem hàng có HSD và một tem hàng không có HSD, xem dòng HSD.',
+               en: 'Use-by column: the days printed on the label — the scale prints use-by = label print date (scale clock) + those days. Inventory sends the days LEFT on the lot, worked out for today: a code cell holding a primal follows the lot cut from it; items and empty cells follow the earliest lot still in stock at the branch; with no lot yet, Items › Use-by (days); an expired lot and discount codes (near-date packs) print no use-by. The small line under the days shows which lot the use-by comes from. Label 28 still prints the "HSD" caption (that field is set to "Always print") and what the date field shows for an item without a use-by is unknown — change the print condition of the Use-by field and the "HSD" text to "Only when the item has a use-by" in Beeftown Scale › Label. Not yet tested on the real scale — after loading, print one test label for an item with a use-by and one without, and check the use-by line.' },
+  hsdNgayXuat: {
+    vi: (ngay: string) => `HSD tính cho ngày xuất file — nạp vào cân trong ngày (file tải lúc này tính cho ngày ${ngay}). Để sang hôm sau mới nạp thì mỗi ngày trễ là HSD in ra muộn hơn hạn của lô thêm 1 ngày — khi đó tải lại file. Đồng hồ cân phải đúng ngày.`,
+    en: (ngay: string) => `The use-by is worked out for the day the file is downloaded — load it into the scale the same day (a file downloaded now is for ${ngay}). Each day it waits, the printed use-by is one more day later than the lot\'s — download the file again then. The scale clock must show the right date.`,
+  },
+  boPhanChiDoc: { vi: 'File mới bỏ phần nhật ký bán (REP) và thông tin máy (INF) của file cũ, như phần mềm của hãng — để không gửi lại nhật ký bán cũ xuống cân. Chưa thử trên cân thật.',
+                  en: 'The new file leaves out the sales log (REP) and device info (INF) sections of the old file, as the vendor software does — so an old sales log is not sent back to the scale. Not yet tested on the real scale.' },
   dungLai: { vi: 'File được dựng lại từ danh mục ngay lúc bấm, nên vừa sửa Mặt hàng xong có thể tải lại luôn.',
              en: 'The file is rebuilt from the catalog when you press the button, so after editing Items you can download it again straight away.' },
   daKhop: { vi: 'Hàng trên cân đã khớp với kho — không cần nạp lại.', en: 'The items on the scale already match inventory — no need to load it again.' },
@@ -159,7 +183,9 @@ if (form && k.chiNhanh) {
     const tuy = { giuHangNgoaiKho, giuGioCan, soChuSoMa: soChuSoMa(caiDat?.mau_ma_vach) };
     const kh = lapKeHoach(file, hang, tuy, nn);
     if (viec === 'tai') {
-      return new Response(new Blob([ghiFileCan(file, kh, tuy)]), {
+      // Bỏ REP (nhật ký bán) và INF (thông tin máy): phần mềm của hãng không bao
+      // giờ gửi hai phần này xuống cân (chưa thử trên cân thật).
+      return new Response(new Blob([ghiFileCan(file, kh, { ...tuy, boPhanChiDoc: true })]), {
         headers: {
           'Content-Type': 'application/octet-stream',
           'Content-Disposition': `attachment; filename="${tenFile}"`,
@@ -185,6 +211,23 @@ const NHAN: Record<LoaiDong, [HaiThuTieng, string]> = {
   // đẩy ra ngoài màn hình), nhãn sẽ biến mất.
   bo_qua: [{ vi: 'Không đưa lên', en: 'Not sent' }, 'khong-len'],
 };
+/** HSD để hiện: số ngày, "trong ngày" (0), hoặc "không in" (null). */
+const hsdChu = (n: number | null): string => (n === null ? t.hsdKhongIn : n === 0 ? t.hsdTrongNgay : t.hsdNgay(n));
+/**
+ * HSD của dòng sau khi nạp: hàng kho quản HSD → d.hsd; không quản → cột ngày
+ * trên cân giữ nguyên (d.goc.hsd); hàng mới không quản → khuôn không in HSD.
+ * Dòng bị xoá / không đưa lên: không có.
+ */
+const hsdSau = (d: DongKeHoach): number | null | undefined =>
+  d.loai === 'xoa' || d.loai === 'bo_qua' ? undefined : d.hsd !== undefined ? d.hsd : d.goc ? d.goc.hsd : null;
+/** Ô HSD của bảng: giá trị sau khi nạp ("—" khi không in và không đổi), và giá trị cũ khi đổi. */
+function oHsd(d: DongKeHoach): { chu: string; cu: string | null } {
+  const sau = hsdSau(d);
+  const doi = d.loai === 'sua' && d.hsd !== undefined && d.hsdCu !== undefined && d.hsdCu !== d.hsd;
+  return { chu: sau === undefined || (sau === null && !doi) ? '—' : hsdChu(sau), cu: doi ? hsdChu(d.hsdCu ?? null) : null };
+}
+/** Ngày (giờ VN) HSD trong file được tính — file tải về dựng lại lúc bấm, nên là hôm nay. */
+const ngayXuat = homNayVn().split('-').reverse().join('/');
 const DEM: [LoaiDong, HaiThuTieng][] = [
   ['them', { vi: 'thêm', en: 'to add' }], ['sua', { vi: 'sửa', en: 'to update' }],
   ['xoa', { vi: 'xoá khỏi cân', en: 'to delete from the scale' }], ['giu', { vi: 'giữ nguyên', en: 'unchanged' }],
@@ -248,6 +291,7 @@ const DEM: [LoaiDong, HaiThuTieng][] = [
           <table class="kho-bang">
             <thead><tr>
               <th>{t.cotThayDoi}</th><th class="so">PLU</th><th class="so">{t.cotMaCan}</th><th>{t.cotTen}</th><th class="so">{t.cotGia}</th>
+              <th class="so" title={t.hsdTieuDe}>{t.cotHsd}</th>
             </tr></thead>
             <tbody>
               {keHoach.dong.map(d => (
@@ -265,12 +309,18 @@ const DEM: [LoaiDong, HaiThuTieng][] = [
                     {dinhDangTien(d.gia, nn)}
                     {d.loai === 'sua' && d.giaCu !== d.gia && <div class="kho-phu">{t.truoc}{dinhDangTien(d.giaCu, nn)}</div>}
                   </td>
+                  <td class="so">
+                    {oHsd(d).chu}
+                    {oHsd(d).cu !== null && <div class="kho-phu">{t.truoc}{oHsd(d).cu}</div>}
+                    {d.hsdNguon && <div class="kho-phu">{d.hsdNguon}</div>}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       )}
+      {keHoach.dong.length > 0 && <p class="kho-phu">{t.ghiChuHsd}</p>}
 
       <form method="POST" class="nb-the">
         <input type="hidden" name="viec" value="tai" />
@@ -281,6 +331,8 @@ const DEM: [LoaiDong, HaiThuTieng][] = [
         <p style="margin-top:0">
           {keHoach.coThayDoi ? t.dungLai : t.daKhop}
         </p>
+        {keHoach.dong.some(d => d.hsd !== undefined) && <p class="kho-phu"><strong>{t.hsdNgayXuat(ngayXuat)}</strong></p>}
+        <p class="kho-phu">{t.boPhanChiDoc}</p>
         <button type="submit" class="nb-nut">{t.taiFile(tenFile)}</button>
       </form>
 

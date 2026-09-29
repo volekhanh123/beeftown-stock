@@ -803,8 +803,12 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
 - **Cân theo tảng (GĐ3)**: `lib/kho/danh-muc-can.ts` (`hangChoCan`) — nguồn chung của màn Đồng bộ cân và
   Beeftown Cân: mỗi ô mã một dòng, cùng giá món, tên kèm số tảng đang giữ ô ("… #0142", cắt tên cho vừa
   24 ký tự, không cắt số tảng); ô trống vẫn ở trên cân nên PLU không đổi. Beeftown Cân có tuỳ chọn **Tự gửi
-  xuống cân khi kho đổi** (mỗi phút khi cửa sổ mở, chỉ khi có thêm / sửa). Hạn dùng theo tảng trên tem còn
-  chờ tìm cột số ngày trong dòng PLU.
+  xuống cân khi kho đổi** (mỗi phút khi cửa sổ mở, chỉ khi có thêm / sửa). Hạn dùng trên tem (cách b,
+  29/09/2026): **số ngày còn lại của lô** = hạn − hôm nay giờ VN — ô mã giữ tảng theo lô lóc ra, món và ô trống
+  theo lô sớm nhất còn tồn (`kho_v_ton`, `ton.ts` `docLoConTon`), chưa có lô theo `han_dung_ngay`, hạn đã qua và
+  mã giảm giá không in. Cân tính HSD từ ngày in tem nên số này phải gửi lại mỗi ngày: Beeftown Cân tự gửi đếm
+  ngược và báo đỏ khi HSD trên cân tính cho ngày cũ; màn Đồng bộ cân ghi "HSD tính cho ngày xuất file — nạp vào
+  cân trong ngày". Chưa thử trên cân thật — chi tiết ở `can-app/README.md` (bản 2.2).
 - **Repack (0050)**: quy trình Nhập → repack cả tảng (mở túi, bỏ nước rỉ) → cân → ủ → lóc. Dòng phiếu nhập
   có `so_kg_thuc` (kg sau repack); `so_kg` **giữ nghĩa kg nhà cung cấp** — `thanh_tien`, công nợ,
   `kho_v_phieu_nhap`, đơn đặt không đổi. Duyệt: lô và dòng sổ kho `nhap` theo `coalesce(so_kg_thuc, so_kg)`,

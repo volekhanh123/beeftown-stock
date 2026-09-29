@@ -2,27 +2,56 @@
  * BEEFTOWN CÂN — MÁY CHỦ CỤC BỘ (nút bấm của giao diện → việc trong nghiep-vu.ts)
  *
  * Chỉ nghe 127.0.0.1, và mọi yêu cầu phải mang đúng mã bí mật `ma` trên đường
- * dẫn (?t=…) — trang web lạ mở trên cùng máy không gọi được. Tách khỏi main.ts
- * để kiểm thử được với kho giả.
+ * dẫn (?t=…) — trang web lạ mở trên cùng máy không gọi được. Kể cả trang
+ * hướng dẫn /huong-dan và các file tải về. Tách khỏi main.ts để kiểm thử được
+ * với kho giả.
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { exec } from 'node:child_process';
 import GIAO_DIEN from './giao-dien.html' with { type: 'text' };
+import HUONG_DAN from './huong-dan.html' with { type: 'text' };
 import { UngDung, cauLoi } from './nghiep-vu.ts';
-import type { ThayDoiTem } from './tem.ts';
+import type { SuaO, ThayDoiTem, ThemO } from './tem.ts';
 
 const json = (v: unknown, status = 200) =>
   new Response(JSON.stringify(v), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
 const loi = (e: unknown) => json({ ok: false, loi: cauLoi(e) }, 200);
-/** Thay đổi tem từ trang: chỉ nhận đúng dạng, bỏ phần thừa. */
+const html = (chu: string) => new Response(chu, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
+
+/** Mảng các đối tượng (bỏ phần tử lạ), tối đa `toiDa` phần tử. */
+const mangDoiTuong = (v: unknown, toiDa = 200): Record<string, unknown>[] =>
+  (Array.isArray(v) ? v : []).filter((x): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x)).slice(0, toiDa);
+/** Số (hoặc chữ số) người gửi — suaTem tự kiểm khoảng; thứ khác bỏ. */
+const soGui = (v: unknown): number | undefined =>
+  (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && /^\s*\d{1,6}\s*$/.test(v) ? Number(v) : undefined);
+
+/** Thay đổi tem từ trang: chỉ nhận đúng dạng, bỏ phần thừa. suaTem (tem.ts) kiểm từng giá trị. */
 function thayDoiTem(b: Record<string, unknown>): ThayDoiTem {
   const chuoi = (v: unknown) => (Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []);
   const chu: Record<string, string> = {};
   if (b.chu && typeof b.chu === 'object') for (const [k, v] of Object.entries(b.chu)) if (typeof v === 'string') chu[k] = v;
-  return { chu, tat: chuoi(b.tat), bat: chuoi(b.bat) };
+  const truongSo = ['x', 'y', 'w', 'h', 'font', 'inKhi', 'canh', 'xoay'] as const;
+  const sua: SuaO[] = mangDoiTuong(b.sua).map(s => {
+    const o: SuaO = { khoa: String(s.khoa ?? '') };
+    for (const k of truongSo) { const n = soGui(s[k]); if (n !== undefined) o[k] = n; }
+    return o;
+  });
+  const them: ThemO[] = mangDoiTuong(b.them).map(t => {
+    // x, y bắt buộc: gửi nguyên (kể cả sai) để suaTem báo câu rõ ràng.
+    const o: ThemO = { mau: String(t.mau ?? ''), x: soGui(t.x) ?? (t.x as number), y: soGui(t.y) ?? (t.y as number) };
+    for (const k of ['w', 'h', 'font', 'inKhi', 'canh', 'xoay'] as const) { const n = soGui(t[k]); if (n !== undefined) o[k] = n; }
+    if (typeof t.chu === 'string') o.chu = t.chu;
+    return o;
+  });
+  // dau: dấu mẫu tem lúc trang mở — thiếu thì '' (nghiep-vu từ chối: không biết thay đổi này dựa trên mẫu tem nào).
+  return { chu, tat: chuoi(b.tat), bat: chuoi(b.bat), ...(sua.length ? { sua } : {}), ...(them.length ? { them } : {}),
+           dau: typeof b.dau === 'string' ? b.dau : '' };
 }
 const docThan = async (req: Request) => { try { return await req.json() as Record<string, unknown>; } catch { return {}; } };
+
+/** Đường được gọi bằng GET (trang, hướng dẫn, file tải về); mọi đường khác chỉ POST. */
+const DUOC_GET = new Set(['/', '/huong-dan', '/api/tai-usb', '/api/nhat-ky-can.csv']);
 
 export function moMayChu(ud: UngDung, tuy: {
   ma: string; phienBan: string;
@@ -42,15 +71,15 @@ export function moMayChu(ud: UngDung, tuy: {
       if (req.headers.get('host') !== `127.0.0.1:${mayChu.port}` || url.searchParams.get('t') !== MA) {
         return new Response('Không được phép', { status: 403 });
       }
-      // Bun cắt yêu cầu quá 10 giây — gửi qua dây RS232, dò WiFi tìm cân, kho chậm có thể lâu hơn.
+      // Bun cắt yêu cầu quá 10 giây — gửi qua dây RS232, dò WiFi tìm cân, kho chậm, cổng hai chiều (chờ tới
+      // 60 giây cho hàng rào) có thể lâu hơn.
       mayChu.timeout(req, 0);
       tuy.khiCoNhip();
       const p = url.pathname;
       try {
-        if (req.method === 'GET' && p === '/') {
-          return new Response(GIAO_DIEN, { headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
-        }
-        if (req.method !== 'POST' && p !== '/api/tai-usb') return new Response('Sai cách gọi', { status: 405 });
+        if (req.method === 'GET' && p === '/') return html(GIAO_DIEN);
+        if (req.method === 'GET' && p === '/huong-dan') return html(HUONG_DAN);
+        if (req.method !== 'POST' && !(req.method === 'GET' && DUOC_GET.has(p))) return new Response('Sai cách gọi', { status: 405 });
         switch (p) {
           case '/api/nhip': return json({ ok: true });
           case '/api/dong':
@@ -63,6 +92,8 @@ export function moMayChu(ud: UngDung, tuy: {
               ok: true, phienBan: tuy.phienBan, cauHinh: ud.cauHinh(), nguoi, loiKho,
               goc: ud.thongTinGoc(), soTrenCan: ud.docTrenCan().size, thuMuc: ud.dd.duLieu,
               lanTuGui: ud.lanTuGui,
+              // HSD trên cân tính cho ngày nào (giờ VN), cân có in HSD không, có cũ không — trang báo đỏ khi cũ.
+              hsd: ud.hsdTrenCan(),
             });
           }
           case '/api/cau-hinh': {
@@ -71,6 +102,7 @@ export function moMayChu(ud: UngDung, tuy: {
               ipCan: b.ipCan as string | undefined, congCan: b.congCan as number | undefined,
               diaChiKho: b.diaChiKho as string | undefined, chiNhanhId: b.chiNhanhId as string | undefined,
               tuGui: typeof b.tuGui === 'boolean' ? b.tuGui : undefined,
+              congHaiChieu: b.congHaiChieu === undefined || b.congHaiChieu === null || b.congHaiChieu === '' ? undefined : b.congHaiChieu as number,
             });
             return json({ ok: true, cauHinh: ch });
           }
@@ -95,6 +127,8 @@ export function moMayChu(ud: UngDung, tuy: {
             const b = await docThan(req);
             return json({ ok: true, ...(await ud.taoFileUsb(b.giuHangNgoaiKho === true)) });
           }
+          // Thân (tuỳ chọn): { thongSo, phim } — thay đổi đang sửa trên trang, chưa gửi WiFi, đưa vào file USB.
+          case '/api/tao-usb-goc': return json({ ok: true, ...(await ud.taoFileUsbGoc(await docThan(req))) });
           case '/api/tai-usb': {
             if (!fs.existsSync(ud.fileChoUsb)) return new Response('Chưa có file', { status: 404 });
             return new Response(fs.readFileSync(ud.fileChoUsb), { headers: {
@@ -104,12 +138,40 @@ export function moMayChu(ud: UngDung, tuy: {
           case '/api/hang': return json({ ok: true, ...(await ud.tatCaHang()) });
           case '/api/tem': return json({ ok: true, ...ud.tem() });
           case '/api/tem/gui': return json({ ok: true, ...(await ud.guiTem(thayDoiTem(await docThan(req)))) });
-          case '/api/tem/usb': return json({ ok: true, ...ud.taoFileUsbTem(thayDoiTem(await docThan(req))) });
+          case '/api/tem/usb': return json({ ok: true, ...(await ud.taoFileUsbTem(thayDoiTem(await docThan(req)))) });
           case '/api/da-nap-usb': return json({ ok: true, ...ud.daNapUsb() });
-          // Ô Cân tự làm mới mỗi phút: chỉ đọc cài đặt và lần tự gửi, không gọi kho.
-          case '/api/can': return json({ ok: true, cauHinh: ud.cauHinh(), lanTuGui: ud.lanTuGui });
+          // Ô Cân tự làm mới mỗi phút: chỉ đọc cài đặt, lần tự gửi và ngày tính HSD trên cân (qua nửa đêm thì báo HSD cũ), không gọi kho.
+          case '/api/can': return json({ ok: true, cauHinh: ud.cauHinh(), lanTuGui: ud.lanTuGui, hsd: ud.hsdTrenCan() });
           case '/api/thu-can': return json({ ok: true, ...(await ud.thuCan()) });
           case '/api/tim-can': return json({ ok: true, ...(await ud.timCan()) });
+          // ---- 2.2: cổng hai chiều 33581 (chưa thử trên cân thật) ----
+          case '/api/can/thong-tin': return json({ ok: true, ...(await ud.thongTinCanHaiChieu()) });
+          case '/api/can/doc-wifi': return json({ ok: true, ...(await ud.docTuCanQuaWifi()) });
+          case '/api/can/xoa-wifi': {
+            // dauVan: dấu kế hoạch của lần xem trước — thiếu / không phải chữ thì xoaQuaWifi từ chối, chưa nối cân.
+            const b = await docThan(req);
+            return json({ ok: true, ...(await ud.xoaQuaWifi(b.giuHangNgoaiKho === true, typeof b.dauVan === 'string' ? b.dauVan : undefined)) });
+          }
+          case '/api/gio-can': return json({ ok: true, ...(await ud.gioCan()) });
+          case '/api/gio-can/chinh': return json({ ok: true, ...(await ud.chinhGioCan(await docThan(req))) });
+          // ---- 2.2: thông số, phím tắt (gửi qua 33571 — chưa thử trên cân thật) ----
+          case '/api/thong-so': return json({ ok: true, ...(await ud.thongSo()) });
+          case '/api/thong-so/gui': return json({ ok: true, ...(await ud.suaThongSo(await docThan(req))) });
+          case '/api/phim': return json({ ok: true, ...(await ud.phim()) });
+          case '/api/phim/gui': return json({ ok: true, ...(await ud.suaPhim(await docThan(req))) });
+          // ---- 2.2: nhật ký bán của cân ----
+          case '/api/nhat-ky-can': return json({ ok: true, ...(await ud.nhatKyCan(await docThan(req))) });
+          case '/api/nhat-ky-can.csv': {
+            // Tải về bằng đường dẫn (thẻ <a>): lỗi trả chữ thường, không phải JSON.
+            try {
+              const k = await ud.taiNhatKyCsv({ tu: url.searchParams.get('tu') ?? '', den: url.searchParams.get('den') ?? '' });
+              return new Response(k.chu, { headers: {
+                'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="${k.ten}"`, 'Cache-Control': 'no-store',
+              } });
+            } catch (e) {
+              return new Response(cauLoi(e), { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' } });
+            }
+          }
           // ---- dây RS232 (thử) ----
           case '/api/com': return json({ ok: true, ...(await ud.dsCom()) });
           case '/api/com/gui': return json({ ok: true, ...(await ud.guiThuQuaDay(await docThan(req))) });

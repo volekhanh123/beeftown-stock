@@ -9,14 +9,35 @@
  *
  * FILE .TMS — đã đối chiếu trên cân thật (firmware V3.14E8, 25/09/2026):
  *   - Văn bản tách cột bằng tab, xuống dòng CRLF. Mỗi phần mở bằng
- *     "DWL<tab>TÊN<tab>" (đời V3.15 dùng "XD1") và đóng bằng "END<tab>TÊN<tab>".
+ *     "DWL<tab>TÊN<tab>" và đóng bằng "END<tab>TÊN<tab>". "XD1" chỉ có trong
+ *     một file mẫu tự dựng (không thấy ở cân thật hay phần mềm hãng) — vẫn đọc
+ *     được. Dòng "CLR<tab>TÊN<tab>" + "CLR<tab>END<tab>" (lệnh xoá cả bảng mà
+ *     phần mềm TM-xA của hãng ghi khi tích "Clear Data") KHÔNG mở phần nào.
+ *     File có lệnh xoá bảng khác PLU (CLR TMS / TMT / LAB…) bị từ chối: gửi
+ *     lại là xoá cả thông số, chữ cài đặt (có WiFi) của cân. Khi ghi file,
+ *     mọi dòng CLR đều bị bỏ (ghiFileCan) — không đường gửi nào mang lệnh xoá.
+ *   - File do phần mềm TM-xA tạo có dấu BOM và một dòng trống trước
+ *     "ECS<tab>VER<tab>100<tab>"; file cân tự lưu thì dòng đầu là "ECS…". Dòng
+ *     đầu tiên khác rỗng là dòng đầu file.
  *   - Dòng PLU: cột 1 số PLU · 2 mã hàng (= ma_can) · 4 cách bán (1 cân ký,
- *     2 theo gói) · 5 đơn giá · 15 tên · 64 mã tìm kiếm không dấu. Cột khác
- *     chưa rõ nghĩa (trong đó có hạn dùng) — giữ nguyên.
+ *     2 theo gói) · 5 đơn giá · 15 tên · 64 mã tìm kiếm không dấu · 23–32 các
+ *     ngày in trên tem (COT_NGAY; hạn dùng = cột 27 bật in + cột 32 số ngày,
+ *     theo phần mềm TM-xA v3.10 của hãng). Cột khác giữ nguyên.
  *   - Giá ghi "mantissa,số-lẻ": "845,0" = 845; "1105,1" = 110,5. Cân hiện giá
  *     với Spec202 số lẻ; cân của quán để 3, nên 845 hiện "845.000" = 845.000đ.
  *     Cửa sổ đơn giá có 6 chữ số: tối đa 999.999đ/kg.
  *   - Phần TIM là giờ lúc lưu. Bỏ đi khi xuất để cân giữ nguyên đồng hồ.
+ *   - Phần REP (nhật ký bán) và INF (thông tin máy) chỉ cân ghi ra; phần mềm
+ *     của hãng không bao giờ gửi hai phần này xuống cân. Tuỳ chọn boPhanChiDoc
+ *     bỏ chúng khi xuất (chưa thử trên cân thật).
+ *
+ * HẠN DÙNG (HSD) — chưa thử trên cân thật: lấy từ mã nguồn và sách hướng dẫn
+ * của hãng. Cột 27 (PS_UD) = 1 thì cân in HSD = ngày in tem (đồng hồ cân) +
+ * số ngày ở cột 32 (PC_UD, 0…999; 0 = hết hạn trong ngày); cột 27 = 0 thì
+ * không in và cột 32 bị bỏ qua. Mẫu tem phải có ô "Hạn dùng" (tem 28 của quán
+ * có). Không đụng cột 25/30 (ngày đóng gói): tem 28 in ngày đóng gói bằng ô
+ * "Ngày in". Số ngày gửi xuống là số ngày CÒN LẠI của lô tính cho một ngày
+ * (danh-muc-can.ts) — file này chỉ ghi số đó, không biết nó tính cho ngày nào.
  *
  * QUA WIFI (thử trên cân thật 26/09/2026): gửi nguyên nội dung file này vào
  * cổng TCP 33571 của cân là cân nạp — nhưng chỉ THÊM và SỬA dòng PLU, không
@@ -44,7 +65,25 @@ export const TEN_TOI_DA = 40;          // dài hơn thì cắt bớt khi đưa l
 export const TEN_DAI = 24;             // dài hơn dễ bị cắt khi in trên tem
 export const CO_FILE_TOI_DA = 5_000_000;
 
+/** Hạn dùng tối đa cân nhận: cột 32 của dòng PLU là 0…999 ngày. */
+export const HSD_TOI_DA = 999;
+
+/**
+ * Cột ngày của dòng PLU (chỉ số sau split('\t'), [0] = "PLU") — theo phần mềm
+ * TM-xA của hãng. IN_* là công tắc in: ngày 0 không in / 1 in; giờ 0 không in /
+ * 1 in giờ cố định / 2 in giờ lúc in. NGAY_* và SO_NGAY_HSD là số ngày cộng vào
+ * ngày in tem (0…999); GIO_* là giờ cố định HHMM (0…2359).
+ */
+export const COT_NGAY = {
+  IN_NGAY_BAN: 23, IN_GIO_BAN: 24, IN_NGAY_DONG_GOI: 25, IN_GIO_DONG_GOI: 26, IN_HSD: 27,
+  NGAY_BAN: 28, GIO_BAN: 29, NGAY_DONG_GOI: 30, GIO_DONG_GOI: 31, SO_NGAY_HSD: 32,
+} as const;
+
 const CAC_PHAN = ['DPT', 'CLS', 'PLU', 'UNT', 'BAR', 'LAB', 'SAL', 'REP', 'SCP', 'TMS', 'TMT', 'INF', 'TIM'];
+/** Chỉ hai dấu này mở một phần. CLR (xoá bảng), UPL (hỏi cân) thì không. */
+const DAU_MO_PHAN = ['DWL', 'XD1'];
+/** Phần chỉ cân ghi ra (nhật ký bán, thông tin máy) — bỏ khi boPhanChiDoc. */
+const PHAN_CHI_DOC = ['REP', 'INF'];
 const COT = { SO: 1, MA: 2, CACH_BAN: 4, GIA: 5, TEN: 15, TIM_KIEM: 64 };
 // Dòng hàng 69 cột của firmware V3.14E8, rút từ file cân thật; {n} là các cột tự điền.
 const KHUON_PLU = 'PLU\t{1}\t{2}\t\t{4}\t{5}\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t9\t{15}\t\t\t\t\t\t\t\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t127\t0,0\t0,0\t0,0\t0\t0\t0\t0\t0\t0\t0\t{64}\t0\t0\t0\t';
@@ -140,6 +179,44 @@ export function tenFileCan(ten: string | null | undefined): string {
 const sachTen = (t: string): string => t.replace(/[\t\r\n]+/g, ' ').trim().normalize('NFC');
 
 // -----------------------------------------------------------------------------
+// HẠN DÙNG (chưa thử trên cân thật — xem đầu file)
+// -----------------------------------------------------------------------------
+/** Số nguyên kiểu phần mềm của hãng đọc: không phải số → 0. */
+function soNguyenCan(s: string | undefined): number {
+  const t = (s ?? '').trim();
+  return /^[+-]?\d+$/.test(t) ? parseInt(t, 10) : 0;
+}
+
+/** Dòng đủ dài để có cột hạn dùng (dòng 69 cột của firmware luôn đủ). */
+const coCotHsd = (cot: string[]): boolean => cot.length > COT_NGAY.SO_NGAY_HSD;
+
+/** Số ngày hạn dùng cân nhận được: số nguyên 0…999. */
+const hsdHopLe = (n: number): boolean => Number.isInteger(n) && n >= 0 && n <= HSD_TOI_DA;
+
+/**
+ * Hạn dùng đang ghi trên một dòng PLU (cột đã tách): cột 27 = 1 → số ngày ở
+ * cột 32; cột 27 khác 1 (không in) hoặc dòng thiếu cột → null.
+ */
+export function dongHsd(cot: string[]): number | null {
+  if (!coCotHsd(cot) || soNguyenCan(cot[COT_NGAY.IN_HSD]) !== 1) return null;
+  return soNguyenCan(cot[COT_NGAY.SO_NGAY_HSD]);
+}
+
+/**
+ * Ghi hạn dùng vào dòng PLU (sửa mảng cot tại chỗ). n = số ngày 0…999 → cột
+ * 27 = 1, cột 32 = n (tem in HSD = ngày in + n). null → không in: 27 = 0,
+ * 32 = 0. Số ngoài 0…999 (cân không nhận) cũng ghi là không in — lapKeHoach
+ * báo cảnh báo trước khi tới đây. Dòng thiếu cột 32 thì để nguyên, không nối
+ * thêm cột (nối thêm sẽ lệch cả dòng).
+ */
+export function datHsd(cot: string[], n: number | null): void {
+  if (!coCotHsd(cot)) return;
+  const inHsd = n !== null && hsdHopLe(n);
+  cot[COT_NGAY.IN_HSD] = inHsd ? '1' : '0';
+  cot[COT_NGAY.SO_NGAY_HSD] = inHsd ? String(n) : '0';
+}
+
+// -----------------------------------------------------------------------------
 // ĐỌC FILE
 // -----------------------------------------------------------------------------
 export interface DongPlu {
@@ -151,6 +228,7 @@ export interface DongPlu {
   cachBan: string;
   gia: number | null;    // đồng
   ten: string;           // đã đổi sang chữ để hiện
+  hsd: number | null;    // hạn dùng đang ghi (dongHsd): số ngày, null = không in
 }
 
 export interface FileCan {
@@ -176,22 +254,28 @@ export function docFileCan(u8: Uint8Array): FileCan {
   const noiDung = sangChuoiByte(coBom ? u8.subarray(3) : u8);
   const xuongDong = noiDung.includes('\r\n') ? '\r\n' : '\n';
   const dong = noiDung.split(xuongDong);
-  const dau = dong[0].split('\t');
+  // File của phần mềm TM-xA: BOM + dòng trống rồi mới tới "ECS VER" — dòng
+  // đầu tiên khác rỗng mới là dòng đầu file.
+  const viTriDau = dong.findIndex(d => d !== '');
+  const dau = viTriDau < 0 ? [] : dong[viTriDau].split('\t');
   if (dau[0] !== 'ECS' || dau[1] !== 'VER') {
     throw loiFile({ vi: 'Đây không phải file dữ liệu của cân. Chọn file A_000.TMS trong thư mục JHSCALE của USB.',
                 en: 'This is not a scale data file. Choose the A_000.TMS file in the JHSCALE folder on the USB stick.' });
   }
 
-  const phan: Record<string, { dau: number; cuoi: number }> = {};
-  let mo: { ten: string; dau: number } | null = null;
-  for (let i = 1; i < dong.length; i++) {
+  // Lệnh xoá cả bảng khác PLU (phần mềm TM-xA tích "Clear Data"): CLR TMS / TMT đặt lại cả thông số và chữ
+  // cài đặt của cân, kể cả WiFi — file như vậy không dùng làm file gốc, không đưa xuống cân.
+  for (let i = viTriDau + 1; i < dong.length; i++) {
     const c = dong[i].split('\t');
-    if (c[0] === 'END') {
-      if (mo && c[1] === mo.ten) { phan[mo.ten] = { dau: mo.dau, cuoi: i }; mo = null; }
-    } else if (!mo && c.length === 3 && c[2] === '' && CAC_PHAN.includes(c[1]) && c[0] !== c[1]) {
-      mo = { ten: c[1], dau: i };
+    if (c[0] === 'CLR' && c[1] !== 'PLU' && c[1] !== 'END') {
+      throw loiFile({ vi: 'File này do phần mềm của hãng (TM-xA) tạo với lệnh xoá dữ liệu ("Clear Data") — gửi xuống cân sẽ xoá cả thông số, chữ cài đặt (có WiFi) của cân, nên không dùng được. Trên cân lưu dữ liệu ra USB (Amend) rồi chọn file A_000.TMS trong thư mục JHSCALE.',
+                      en: 'This file was made by the vendor software (TM-xA) with "Clear Data" — sending it would wipe the scale\'s settings and texts (including WiFi), so it cannot be used. Save the data from the scale to the USB stick (Amend) and choose the A_000.TMS file in the JHSCALE folder.' });
     }
   }
+
+  // Phần xuất hiện nhiều lần thì lấy lần sau cùng (như trước).
+  const phan: Record<string, { dau: number; cuoi: number }> = {};
+  for (const k of quetPhan(dong, viTriDau + 1)) phan[k.ten] = { dau: k.dau, cuoi: k.cuoi };
   if (!phan.PLU) {
     throw loiFile({ vi: 'File không có phần hàng hoá (PLU). Lưu lại dữ liệu từ cân ra USB rồi tải lên lại.',
                 en: 'The file has no items section (PLU). Save the data from the scale to the USB stick again, then upload it.' });
@@ -218,9 +302,29 @@ export function docFileCan(u8: Uint8Array): FileCan {
       cachBan: cot[COT.CACH_BAN] ?? '1',
       gia: giaTuFile(cot[COT.GIA], soLeGia),
       ten: docChu(cot[COT.TEN]),
+      hsd: dongHsd(cot),
     });
   }
   return { coBom, xuongDong, dong, phan, soLeGia, phienBan: dau[2] ?? '', plu };
+}
+
+/**
+ * Mọi phần trong file, theo thứ tự, từ dòng `tu`: mở bằng "DWL<tab>TÊN<tab>"
+ * (hay "XD1"), đóng bằng "END<tab>TÊN<tab>" cùng tên. Đang mở một phần thì
+ * dòng mở khác bị bỏ qua; phần không có dòng END thì không tính.
+ */
+function quetPhan(dong: string[], tu: number): { ten: string; dau: number; cuoi: number }[] {
+  const ra: { ten: string; dau: number; cuoi: number }[] = [];
+  let mo: { ten: string; dau: number } | null = null;
+  for (let i = tu; i < dong.length; i++) {
+    const c = dong[i].split('\t');
+    if (c[0] === 'END') {
+      if (mo && c[1] === mo.ten) { ra.push({ ten: mo.ten, dau: mo.dau, cuoi: i }); mo = null; }
+    } else if (!mo && c.length === 3 && c[2] === '' && DAU_MO_PHAN.includes(c[0]) && CAC_PHAN.includes(c[1])) {
+      mo = { ten: c[1], dau: i };
+    }
+  }
+  return ra;
 }
 
 // -----------------------------------------------------------------------------
@@ -233,6 +337,22 @@ export interface HangKho {
   ten: string;
   gia_ban_kg: number | null;
   dang_dung: boolean;
+  /**
+   * Hạn dùng in trên tem, số ngày tính từ ngày in (kho_mat_hang.han_dung_ngay).
+   *   undefined (không có khoá) — không quản HSD: cột ngày trên cân giữ nguyên, như cũ;
+   *   null — không in HSD (cột 27 = 0, cột 32 = 0);
+   *   n — in HSD = ngày in + n (cột 27 = 1, cột 32 = n); n > 999 thì không in, kèm cảnh báo.
+   * Chưa thử trên cân thật.
+   */
+  han_dung_ngay?: number | null;
+  /**
+   * Hạn dùng lấy từ đâu (danh-muc-can.ts): "lô L0012 hết hạn 03/10", "tảng #0142 · hết hạn 03/10", "theo hạn dùng của
+   * món (chưa có lô)"… Chỉ để xem trước hiện (DongKeHoach.hsdNguon) — không ghi xuống cân. Bỏ qua khi han_dung_ngay
+   * là undefined.
+   */
+  nguon_hsd?: HaiThuTieng;
+  /** Cảnh báo về hạn dùng của nơi tính HSD (vd. lô đã hết hạn) — lapKeHoach nối vào canhBao. Bỏ qua khi han_dung_ngay là undefined. */
+  canh_bao_hsd?: HaiThuTieng;
 }
 
 export interface TuyChonDongBo {
@@ -242,6 +362,14 @@ export interface TuyChonDongBo {
   giuGioCan: boolean;
   /** Số chữ số mã hàng trong mẫu mã vạch (thường 5). */
   soChuSoMa: number;
+  /**
+   * Bỏ hẳn phần REP (nhật ký bán) và INF (thông tin máy) khi ghi file — từ
+   * dòng DWL tới dòng END và dòng trống ngay sau, như cách bỏ phần giờ. Phần
+   * mềm TM-xA của hãng không bao giờ ghi hai phần này vào file gửi cân, và gửi
+   * lại nhật ký bán cũ có thể đè nhật ký mới trên cân. Mặc định false: file ra
+   * y như cũ. Chưa thử trên cân thật.
+   */
+  boPhanChiDoc?: boolean;
 }
 
 export type LoaiDong = 'them' | 'sua' | 'giu' | 'xoa' | 'ngoai_kho' | 'bo_qua';
@@ -257,6 +385,15 @@ export interface DongKeHoach {
   giaCu?: number | null;
   lyDo?: string;                // vì sao bỏ qua / giữ nguyên / xoá
   canhBao?: string;
+  /**
+   * Chỉ có khi hàng kho quản HSD (han_dung_ngay khác undefined): hạn dùng sau
+   * khi nạp (số ngày, null = không in) và hạn dùng đang ghi trên cân (hsdCu,
+   * chỉ khi hàng đã có trên cân).
+   */
+  hsd?: number | null;
+  hsdCu?: number | null;
+  /** HSD lấy từ đâu (HangKho.nguon_hsd theo nn) — chỉ khi có hsd và hàng kho có nguon_hsd. */
+  hsdNguon?: string;
   /** Dòng PLU gốc trên cân (khi có). */
   goc?: DongPlu;
 }
@@ -267,7 +404,28 @@ export interface KeHoach {
   coThayDoi: boolean;
 }
 
-interface HangHopLe { hang: HangKho; ma: string; ten: string; gia: number; canhBao?: string }
+/** hsd: undefined = không quản HSD; null = không in; số = số ngày. hsdNguon: HSD lấy từ đâu (chỉ để hiện). */
+interface HangHopLe { hang: HangKho; ma: string; ten: string; gia: number; hsd?: number | null; hsdNguon?: string; canhBao?: string }
+
+/**
+ * Hạn dùng của hàng kho → giá trị ghi lên cân, kèm cảnh báo khi cân không nhận được, cảnh báo của nơi tính HSD
+ * (canh_bao_hsd) và nguồn HSD (nguon_hsd) — hai thứ sau chỉ khi hàng kho quản HSD.
+ */
+function kiemHsd(h: HangKho, nn: NgonNguNB): { hsd?: number | null; canhBao?: string; nguon?: string } {
+  const c = (x: HaiThuTieng) => x[nn];
+  const n = h.han_dung_ngay;
+  if (n === undefined) return {};
+  const nguon = h.nguon_hsd ? c(h.nguon_hsd) : undefined;
+  const noi = (canhBao?: string) => [h.canh_bao_hsd ? c(h.canh_bao_hsd) : '', canhBao ?? ''].filter(Boolean).join(' ') || undefined;
+  if (n === null || hsdHopLe(n)) return { hsd: n, canhBao: noi(), nguon };
+  if (Number.isInteger(n) && n > HSD_TOI_DA) {
+    return { hsd: null, nguon, canhBao: noi(c({
+      vi: `Hạn dùng ${n.toLocaleString('vi-VN')} ngày vượt mức cân nhận (${HSD_TOI_DA} ngày) — tem sẽ không in HSD.`,
+      en: `A use-by of ${n.toLocaleString('en-US')} days is more than the scale accepts (${HSD_TOI_DA} days) — the label will not print a use-by date.` })) };
+  }
+  return { hsd: null, nguon, canhBao: noi(c({ vi: `Hạn dùng "${n}" không hợp lệ — tem sẽ không in HSD.`,
+                                              en: `The use-by "${n}" is not valid — the label will not print a use-by date.` })) };
+}
 
 function kiemHang(h: HangKho, soChuSo: number, nn: NgonNguNB): { ok: true; v: HangHopLe } | { ok: false; lyDo: string } {
   const c = (x: HaiThuTieng) => x[nn];
@@ -291,7 +449,14 @@ function kiemHang(h: HangKho, soChuSo: number, nn: NgonNguNB): { ok: true; v: Ha
   } else if ([...ten].length > TEN_DAI) {
     canhBao = c({ vi: 'Tên dài, có thể bị cắt khi in trên tem.', en: 'Long name — it may be cut off when printed on the label.' });
   }
-  return { ok: true, v: { hang: h, ma, ten, gia: Math.round(h.gia_ban_kg), canhBao } };
+  const hsd = kiemHsd(h, nn);
+  if (hsd.canhBao) canhBao = canhBao ? `${canhBao} ${hsd.canhBao}` : hsd.canhBao;
+  const v: HangHopLe = { hang: h, ma, ten, gia: Math.round(h.gia_ban_kg), canhBao };
+  if (hsd.hsd !== undefined) {
+    v.hsd = hsd.hsd;
+    if (hsd.nguon) v.hsdNguon = hsd.nguon;
+  }
+  return { ok: true, v };
 }
 
 /**
@@ -301,6 +466,9 @@ function kiemHang(h: HangKho, soChuSo: number, nn: NgonNguNB): { ok: true; v: Ha
  *  - Hàng trên cân không có trong kho bị xoá (trừ khi chọn giữ lại).
  *  - Hàng kho thiếu giá, giá quá mức hay mã quá dài: không đưa lên cân; nếu
  *    đã có trên cân thì để nguyên dòng cũ và báo lý do.
+ *  - Hạn dùng: chỉ hàng kho có khoá han_dung_ngay mới được so và ghi; đổi HSD
+ *    là "sua". Hàng không có khoá đó: cột ngày trên cân giữ nguyên như cũ.
+ *    Hàng quản HSD mang theo nguồn HSD (hsdNguon) và cảnh báo của nơi tính HSD.
  * nn chỉ đổi câu lý do / cảnh báo; số PLU, tên, giá ghi vào file không đổi.
  */
 export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo, nn: NgonNguNB = 'vi'): KeHoach {
@@ -325,9 +493,16 @@ export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo
     if (hang && !daKhop.has(p.ma)) {
       daKhop.add(p.ma);
       soDaDung.add(p.so);
-      const doi = p.ten !== hang.ten || p.gia !== hang.gia || p.cachBan !== '1';
-      ra.push({ loai: doi ? 'sua' : 'giu', so: p.so, maCan: p.ma, ten: hang.ten, gia: hang.gia, maKho: hang.hang.ma,
-        tenCu: p.ten, giaCu: p.gia, canhBao: hang.canhBao, goc: p });
+      // Dòng thiếu cột 32 (không gặp ở firmware thật) thì không ghi được HSD — coi như không quản.
+      const quanHsd = hang.hsd !== undefined && coCotHsd(p.cot);
+      const doi = p.ten !== hang.ten || p.gia !== hang.gia || p.cachBan !== '1' || (quanHsd && p.hsd !== hang.hsd);
+      const d: DongKeHoach = { loai: doi ? 'sua' : 'giu', so: p.so, maCan: p.ma, ten: hang.ten, gia: hang.gia, maKho: hang.hang.ma,
+        tenCu: p.ten, giaCu: p.gia, canhBao: hang.canhBao, goc: p };
+      if (quanHsd) {
+        d.hsd = hang.hsd; d.hsdCu = p.hsd;
+        if (hang.hsdNguon) d.hsdNguon = hang.hsdNguon;
+      }
+      ra.push(d);
     } else if (loi && !daKhop.has(p.ma)) {
       daKhop.add(p.ma);
       soDaDung.add(p.so);
@@ -350,11 +525,17 @@ export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo
   }
 
   const moi = [...hopLe.values()].filter(h => !daKhop.has(h.ma)).sort((a, b) => Number(a.ma) - Number(b.ma));
+  const khuonCoHsd = coCotHsd(cotMoi(file));
   let soKe = 1;
   for (const h of moi) {
     while (soDaDung.has(soKe)) soKe++;
     soDaDung.add(soKe);
-    ra.push({ loai: 'them', so: soKe, maCan: h.ma, ten: h.ten, gia: h.gia, maKho: h.hang.ma, canhBao: h.canhBao });
+    const d: DongKeHoach = { loai: 'them', so: soKe, maCan: h.ma, ten: h.ten, gia: h.gia, maKho: h.hang.ma, canhBao: h.canhBao };
+    if (h.hsd !== undefined && khuonCoHsd) {
+      d.hsd = h.hsd;
+      if (h.hsdNguon) d.hsdNguon = h.hsdNguon;
+    }
+    ra.push(d);
   }
 
   for (const [ma, loi] of loiTheoMa) {
@@ -390,20 +571,41 @@ function dongPlu(d: DongKeHoach, file: FileCan): string | null {
     c[COT.TEN] = ghiChu(d.ten);
     if (c.length > COT.TIM_KIEM) c[COT.TIM_KIEM] = maTimKiem(d.ten);
   }
+  // Hạn dùng: chỉ khi hàng kho quản HSD và giá trị khác trên cân. Cột 25/30
+  // (ngày đóng gói) không đụng tới.
+  if (d.hsd !== undefined && (!goc || goc.hsd !== d.hsd)) datHsd(c, d.hsd);
   return c.join('\t');
 }
 
-/** Dựng file .TMS mới theo kế hoạch. Không có thay đổi thì phần PLU giữ y thứ tự cũ. */
-export function ghiFileCan(file: FileCan, kh: KeHoach, tuy: Pick<TuyChonDongBo, 'giuGioCan'>): Uint8Array<ArrayBuffer> {
+/**
+ * Dựng file .TMS mới theo kế hoạch. Không có thay đổi thì phần PLU giữ y thứ tự cũ.
+ * giuGioCan bỏ phần TIM; boPhanChiDoc bỏ mọi phần REP và INF. Dòng lệnh xoá
+ * cả bảng ("CLR<tab>X<tab>", "CLR<tab>END<tab>" — phần mềm hãng ghi khi tích
+ * "Clear Data") luôn bị bỏ: file này đi xuống cân qua 33571, USB, dây, trang
+ * web, và gửi lại lệnh xoá là xoá bảng của cân mỗi lần gửi (CAN-TMA §2.5 quy
+ * tắc 4). Mọi dòng khác (kể cả dòng trống đầu file) giữ y nguyên từng byte —
+ * file cân tự lưu không có dòng CLR nên ra y như trước.
+ */
+export function ghiFileCan(file: FileCan, kh: KeHoach,
+                           tuy: Pick<TuyChonDongBo, 'giuGioCan' | 'boPhanChiDoc'>): Uint8Array<ArrayBuffer> {
   const dongPluMoi = kh.coThayDoi
     ? kh.dong.map(d => dongPlu(d, file)).filter((x): x is string => x !== null)
     : file.plu.map(p => p.tho);
 
-  const L = file.dong, P = file.phan.PLU, T = tuy.giuGioCan ? file.phan.TIM : undefined;
+  const L = file.dong, P = file.phan.PLU;
+  // Dòng bỏ đi: cả khối DWL…END và một dòng trống ngay sau (trừ dòng cuối file).
+  const bo = new Set<number>();
+  const boKhoi = (k: { dau: number; cuoi: number }) => {
+    for (let i = k.dau; i <= k.cuoi; i++) bo.add(i);
+    if (L[k.cuoi + 1] === '' && k.cuoi + 1 !== L.length - 1) bo.add(k.cuoi + 1);
+  };
+  if (tuy.giuGioCan && file.phan.TIM) boKhoi(file.phan.TIM);
+  if (tuy.boPhanChiDoc) for (const k of quetPhan(L, 0)) if (PHAN_CHI_DOC.includes(k.ten)) boKhoi(k);
+
   const ra: string[] = [];
   for (let i = 0; i < L.length; i++) {
-    if (T && i >= T.dau && i <= T.cuoi) continue;
-    if (T && i === T.cuoi + 1 && L[i] === '' && i !== L.length - 1) continue;
+    if (bo.has(i)) continue;
+    if (L[i].startsWith('CLR\t')) continue;   // CLR<tab>X<tab>, CLR<tab>END<tab>: không bao giờ gửi lại lệnh xoá bảng
     if (i > P.dau && i < P.cuoi && L[i].startsWith('PLU\t')) continue;
     ra.push(L[i]);
     if (i === P.dau) ra.push(...dongPluMoi);

@@ -24,6 +24,24 @@ Với cân (quản lý, chủ):
 - **Mẫu tem** — sơ đồ tem đang dùng; chọn ô nào được in (tên hàng, số PLU, trọng lượng, đơn giá, thành tiền, mã vạch, ngày đóng gói, hạn dùng…) và sửa chữ cố định (tên quán, "Đơn giá", "HSD"…), rồi gửi xuống cân hoặc lưu file nạp USB.
 - **Cân đổi địa chỉ** (từ 2.1.0) — nối cân không được thì chương trình tự dò WiFi tìm cân, dùng địa chỉ mới và gửi lại (xem mục bên dưới).
 
+Từ 2.2.0 (quản lý, chủ — **chưa thử trên cân thật**, xem mục "Bản 2.2" bên dưới):
+
+- **Cân & thông số** — hỏi cân qua cổng hai chiều 33581 (mã máy, loại máy, giờ trên cân: *chỉ đọc*), chỉnh giờ cân theo
+  máy tính, **đọc dữ liệu từ cân qua WiFi** thay bước USB "Bắt đầu", **xoá hẳn hàng còn nằm lại qua WiFi** (thử), và
+  vài thông số an toàn có tả tiếng Việt (kiểu ngày in, HSD chung, cách in tem mỗi lần cân, độ đậm…; thông số khác chỉ xem).
+- **Phím tắt** — phím chữ nào (tầng 1 và tầng Shift) gọi hàng nào, đổi phím, gửi xuống cân.
+- **Nhật ký cân** — nhật ký bán của cân (mỗi lần in tem, cả lần cân mà không in) đọc từ file lưu ra USB hoặc qua WiFi,
+  gộp vào `nhat-ky-can.tsv` không trùng dòng; tóm tắt theo ngày / theo hàng, lọc, tải Excel (CSV).
+- **Mẫu tem** sửa kỹ hơn — bấm chọn ô, kéo để dời (bước 1 mm), kéo góc để đổi cỡ, cỡ chữ, canh, xoay, khi nào in, thêm ô
+  (ngày in, HSD, chữ cố định…), nút **Chỉ in HSD khi hàng có hạn dùng**; sơ đồ vẽ theo cỡ chữ, xoay, canh của cân.
+- **HSD = số ngày còn lại của lô** (cách b, Khánh chọn 29/09/2026 — `web/src/lib/kho/danh-muc-can.ts`): cân in HSD = ngày in
+  + số ngày, nên chương trình gửi **hạn của lô − hôm nay (giờ VN)** và phải gửi lại **mỗi ngày**. Ô mã đang giữ tảng theo lô
+  lóc ra; món và ô trống theo lô sớm nhất còn tồn ở chi nhánh; chưa có lô thì theo hạn dùng của món; lô đã hết hạn và mã
+  giảm giá không in HSD. Cột HSD ở Gửi giá từ kho và Tất cả hàng kèm nguồn ("lô L0012 hết hạn 03/10", "tảng #0142 · …").
+  **Khung đỏ** ở ô Cân / Gửi giá / Tất cả hàng khi cân in HSD mà HSD trên cân tính cho ngày trước hôm nay. In HSD: chưa
+  thử trên cân thật.
+- Nút **Hướng dẫn** ở đầu trang: hướng dẫn dùng cân TM-A và chương trình (`src/huong-dan.html`, in được khổ A4).
+
 Tên và giá hàng chỉ sửa ở kho (kho là gốc); chương trình không sửa tay SKU.
 
 **Truy vết theo tảng:** phần cắt có **ô mã** (ví dụ 10011–10019) thì mỗi ô là một PLU trên cân. Khi bếp lóc
@@ -74,6 +92,101 @@ lên file cũ. Cài đặt, đăng nhập, file gốc của cân không mất �
 3. **Bắt đầu** (một lần): trên cân lưu dữ liệu ra USB (`Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm → Amend`), chọn file `JHSCALE\A_000.TMS`.
 4. Mỗi lần đổi giá / thêm món trong kho: mở chương trình → xem bảng thay đổi → **Gửi xuống cân** → gọi thử một hàng trên cân.
 5. Đổi tem: thẻ **Mẫu tem** → bỏ chọn / chọn ô, sửa chữ → **Gửi tem xuống cân** → cân thử một món, in một tem xem đã đổi chưa. Nếu chưa đổi: **Lưu file nạp USB**.
+6. Việc mới của 2.2: thử theo thứ tự ở mục **"Thử bản 2.2 ở quán"** bên dưới — bắt đầu bằng việc chỉ đọc.
+
+## Bản 2.2 — cổng hai chiều, thông số, phím, nhật ký, HSD, sửa tem
+
+Dựng lại từ phần mềm TM-xA của hãng (đọc mã dịch ngược, không chạy). Tài liệu kỹ thuật đầy đủ (định dạng file,
+giao thức, bảng mã tem, bảng "đã thử / chưa thử"): **`CAN-TMA.md`**.
+
+| Việc | Đường | Mã | Đã thử trên cân thật? |
+|---|---|---|---|
+| Gửi giá / tên (2.1) | TCP 33571, file như USB | `nghiep-vu.ts` `guiTcp` | **Đã thử** (26/09/2026): chỉ thêm / sửa, không xoá |
+| Thông tin cân, giờ cân (chỉ đọc) | TCP 33581 — bắt tay MAC / INF, `UPL TIM` | `giao-thuc.ts` | Chưa thử |
+| Đọc dữ liệu từ cân qua WiFi | 33581 — `UPL TMS…LAB`, ghép thành file như USB | `docTuCan` | Chưa thử |
+| Chỉnh giờ cân | 33581 `DWL TIM` + đọc lại giờ; hỏng thì khối giờ qua 33571 | `chinhGioCan` | Chưa thử (cả hai đường) |
+| Xoá hẳn hàng còn nằm lại | 33581 — đọc PLU (kiểm: không rỗng, không có PLU lạ), bản sao vào `da-gui`, `CLR PLU` + gửi lại cả danh sách, đọc lại để so | `xoaQuaWifi` | Chưa thử |
+| Nhật ký bán | phần `REP` của file USB; hoặc 33581 `UPL REP -N` (đọc hai lần cho khớp) | `bao-cao-can.ts` | File USB: đã đối chiếu file thật; WiFi: chưa thử |
+| Thông số, phím tắt | file nhỏ chỉ có khối `TMS` / `SCP` đổi, qua 33571 | `thong-so.ts` | Chưa thử |
+| Sửa / thêm ô tem | cả file như 2.1, qua 33571 | `tem.ts` | Chưa thử (tắt / bật ô, sửa chữ: như 2.1) |
+| HSD trên dòng PLU | cột 27 / 32 (`web/src/lib/kho/can-tma.ts`) — số ngày còn lại của lô, tính mỗi ngày (`danh-muc-can.ts`) | `lapKeHoach`, `hangChoCan` | Chưa thử |
+
+Quy tắc:
+
+- **Không báo "đã đổi" khi cân chưa xác nhận.** Qua 33571 cân không trả lời → trang nói "đã gửi", chỉ cách kiểm trên cân
+  và nút **Lưu file nạp USB**. Qua 33581 chương trình đọc lại (giờ, danh sách PLU) rồi mới báo xong.
+- **Mọi lần gửi xuống cân bỏ phần `REP` (nhật ký bán) và `INF` (thông tin máy)** (`boPhanChiDoc`): TM-xA không bao giờ
+  gửi hai phần này, và gửi lại nhật ký cũ có thể đè nhật ký mới trên cân. Vì vậy file USB có nhật ký thì chương trình
+  gộp nhật ký vào `nhat-ky-can.tsv` **ngay lúc ghi nhận file** — file gốc sau lần gửi đầu không còn nhật ký.
+- Việc ghi xuống cân và mọi việc qua 33581 chạy **lần lượt** qua hàng đợi của 2.1. Mỗi việc mở một kết nối 33581 rồi
+  đóng (không giữ kết nối). Nối 33581 không được mà cân đã đổi địa chỉ (cổng 33571 ở địa chỉ mới) thì thử lại ở đó.
+- Không bao giờ gửi qua 33581 (`kiemKhoiGhi`): `CLR` phần nào khác PLU, thông số mạng, tên / mật khẩu WiFi (TMT 15/16/19),
+  `REP`, `INF`, `TIM`. Xoá cả danh sách PLU chỉ khi danh sách mới không rỗng.
+- **Không file nào gửi xuống cân mang dòng `CLR`**: `ghiFileCan` bỏ mọi dòng `CLR` (33571, USB, dây, trang web); file của
+  TM-xA tích "Clear Data" (có `CLR TMS` / `TMT`…) bị từ chối lúc đọc, và file gốc không nhận file có dòng `CLR` nào.
+- Đường 33571 gửi **cả file gốc**: các dòng TMS / TMT trong file gốc (kể cả TMT 15/16/19 và thông số mạng nếu file lưu từ
+  cân ra USB có) đi lại xuống cân mỗi lần gửi — `kiemKhoiGhi` không chặn đường này (CAN-TMA §8). File đọc qua WiFi
+  (`docTuCan`) thì bỏ hẳn các dòng mạng: giá trị cân trả qua cổng chưa thử không được thành cài đặt gửi ngược xuống cân.
+- **Xoá qua WiFi chỉ chạy khi chắc**: đúng kế hoạch đã xem trước (dấu `dauVan`), không kèm bật / tắt in HSD (HSD đếm ngược
+  thì được — cả danh sách gửi lại mang số ngày tính hôm nay), cân đã biết mã máy
+  (bấm **Đọc thông tin cân** trước; cân ở địa chỉ đó mà khác mã máy thì mọi việc 33581 dừng), danh sách đọc trước không rỗng
+  và không có PLU chương trình không biết. Hỏng sau khi đã gửi lệnh xoá → `can-chua-ro.json`: tự gửi, Tất cả hàng, Xem trước
+  không coi cân là "khớp kho", tự gửi gửi lại cả danh sách qua 33571, tới khi gửi đủ / nạp USB.
+- **Đọc dữ liệu từ cân qua WiFi** không ghi nhận khi cân trả 0 hàng / 0 thông số, hay thiếu PLU đang có trên cân — dùng USB.
+- **Tự gửi gửi HSD đếm ngược, không tự bật / tắt in HSD**: đổi số ngày (số → số: sang ngày mới, đổi lô) tự gửi gửi như đổi
+  giá; bật / tắt in HSD của hàng trên cân (không in ↔ có số — lô hết hạn, món mới có hạn), hay bật HSD cho hàng mới khi cân
+  chưa in HSD hàng nào, thì tự gửi **không gửi gì** và báo ở ô Cân — quản lý xem trước rồi bấm Gửi. Tự gửi kiểm và gửi trên
+  cùng một lần đọc kho.
+- **HSD = số ngày còn lại của lô** (`danh-muc-can.ts`): cân in HSD = ngày in tem (đồng hồ cân) + số ngày ở cột 32. Kho biết
+  hạn của lô (`kho_lo.han_dung`, đọc từ `kho_v_ton` của chi nhánh bằng tài khoản đã đăng nhập), nên gửi hạn − hôm nay:
+  ô mã đang giữ tảng → lô lóc ra (phiên lóc còn nháp: không muộn hơn hạn tảng); món, ô trống → lô **sớm nhất** còn tồn (mọi
+  vị trí); chưa có lô → `han_dung_ngay` của món (không có → không in); hạn đã qua → không in + cảnh báo "xem thẻ Quầy";
+  quá 999 ngày → không in; mã giảm giá → không in. Số này chỉ đúng **trong ngày tính**: mỗi sáng mở Beeftown Cân và gửi
+  (hay bật tự gửi) **trước khi đóng gói**, đồng hồ cân phải đúng ngày.
+- **Ngày tính HSD trên cân** — `Tài liệu › Beeftown Can › hsd-tinh-ngay.txt` (một dòng `YYYY-MM-DD`, ghi file tạm rồi đổi
+  tên): ghi khi gửi đủ danh sách thành công (bấm Gửi, tự gửi), xoá qua WiFi đọc lại khớp, "đã nạp USB" file lưu từ thẻ Gửi
+  giá (ngày lúc **lưu file**, ở `cho-usb/hsd-tinh-ngay.txt`), hay khi xem trước / tự gửi / Tất cả hàng thấy HSD trên cân
+  đã đúng số tính hôm nay. Gửi hỏng thì không ghi. Cập nhật file gốc từ cân có HSD khác bản đã gửi → quên ngày (chưa
+  biết). `/api/trang-thai` và `/api/can` trả `hsd: { homNay, tinhNgay, coInHsd, cu }` (hôm nay giờ VN của chương trình —
+  trang không dùng đồng hồ trình duyệt); `cu` → khung đỏ "HSD trên cân tính cho ngày dd/mm — mỗi ngày chưa gửi lại là HSD
+  in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói." Hàng kho không đưa lên được (thiếu giá…) và hàng giữ lại
+  ngoài kho: HSD trên cân của các hàng đó không được đếm ngược.
+- **Nhật ký cân: tên hàng là tên trên cân lúc đọc**, không phải lúc bán; mã cân chỉ gắn khi đơn giá và cách bán của dòng
+  khớp hàng đang ở số PLU đó (bảng PLU của cùng file USB, hoặc đọc qua WiFi ngay sau nhật ký). Đọc thường xuyên, và trước
+  khi gửi giá / hàng mới. Gộp giữ bản đọc sớm nhất (khoá: mã máy + số giao dịch + giờ + dòng).
+
+Quyền (phía máy chủ, `kiemQuyenCan`): mọi việc mới của 2.2 theo quy tắc thẻ Mẫu tem — chưa đăng nhập kho thì làm được
+(máy của quản lý chạy không cần kho; không đọc được kho vì mất mạng cũng coi như chưa đăng nhập), đã đăng nhập mà vai
+không có `danh_muc` (NV quầy, thủ kho, kế toán) thì bị từ chối. Ba thẻ mới chỉ hiện cho quản lý, chủ (hoặc khi chưa đăng nhập).
+
+### Thử bản 2.2 ở quán (theo thứ tự — dừng ở bước nào hỏng thì dùng USB như 2.1)
+
+Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn USB và file lưu từ cân ra USB gần nhất.
+
+1. **Chỉ đọc:** thẻ Cân & thông số → **Đọc thông tin cân**. Đúng khi hiện mã máy `0023F019CFCA`, loại máy
+   `TM-xA UA006 V3.14E8` và giờ cân (chương trình nhớ mã máy này; xoá qua WiFi cần bước này). Không được: ghi lại câu báo
+   nguyên văn (cổng 33581 có mở không — Spec166 = 33581, Spec43 = 1).
+2. **Chỉ đọc:** **Đọc giờ cân** — so với màn hình cân (bấm **Time**).
+3. **Chỉ đọc (cân), thay file gốc (máy tính):** **Đọc dữ liệu từ cân qua WiFi** — số hàng ở ô "Trên cân" khớp; thẻ Tất cả
+   hàng đúng tên, giá. Không ghi gì xuống cân.
+4. **Chỉ đọc:** thẻ Nhật ký cân → **Đọc qua WiFi (thử)** — so vài dòng với tem đã in hôm nay.
+5. **Ghi, đổi lại được:** **Chỉnh giờ cân theo máy tính** — xem trang báo đường nào (33581: cân báo lại giờ; 33571: chưa
+   xác nhận), rồi bấm **Time** trên cân.
+6. **Ghi, đổi lại được:** đổi một thông số nhẹ (ví dụ Độ đậm khi in tem 9 → 10), gửi, in thử một tem; đổi lại.
+7. **Ghi:** đổi một phím ít dùng ở tầng Shift, gửi, bấm thử trên cân; đổi lại.
+8. **HSD, với một PLU thử** (CAN-TMA §13 — số PLU và mã cân không món thật nào dùng; **không** dùng "Gửi giá từ kho" cho
+   việc này): trên cân đặt PLU thử PS-UD = 1, PC-UD = 3 (sửa nhanh `F-Prog` + `PLU`), hoặc bằng file USB. In một tem: HSD =
+   hôm nay + 3, đúng kiểu ngày của cân (Spec104).
+9. **Ghi:** thẻ Mẫu tem → **Chỉ in HSD khi hàng có hạn dùng** (ô Hạn dùng và chữ "HSD" sang "chỉ khi có HSD") → gửi → in
+   PLU thử (có HSD) và một món thật (không HSD): món thật không còn chữ "HSD" lẻ loi.
+10. **Rủi ro nhất, làm sau cùng:** khi có hàng "còn nằm lại", **Xoá hẳn qua WiFi (thử)** (cần bước 1 trước). Chương trình
+    kiểm danh sách trên cân trước khi xoá, đọc lại để so; lệch hay hỏng thì nạp USB ngay (khung đỏ có nút **Lưu file để nạp USB**).
+11. **Ngoài giờ bán, sau các bước trên:** bấm **Gửi giá từ kho** lần đầu với bản 2.2 — xem các dòng "Sửa" trước khi bấm Gửi:
+    lần đầu này bật in HSD (số ngày còn lại của lô) cho các món có lô / hạn dùng, và tắt HSD của mã giảm giá. Để sẵn file USB
+    lưu từ cân trước khi thử. Gửi xong in một tem món có lô: HSD trên tem phải đúng hạn của lô (thẻ Quầy / Tồn kho). Hôm sau
+    (chưa gửi): ô Cân có khung đỏ; gửi (hay tự gửi) → số ngày giảm 1, HSD trên tem vẫn đúng hạn của lô.
+
+Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
 ## Cân đổi địa chỉ — chương trình tự tìm cân (từ 2.1.0)
 
@@ -135,6 +248,7 @@ hàng không (như USB).
   → Chương trình nhớ các hàng đang nằm trên cân (`Tài liệu\Beeftown Can\tren-can.tsv`). Hàng đã bỏ khỏi kho mà còn trên cân được báo đỏ, kèm nút **Lưu file để nạp USB** và **Tôi đã nạp USB xong**.
 
 - **Chưa thử trên cân thật:** đổi mẫu tem qua WiFi. Cân nhận chắc chắn khi nạp USB (thay cả file); qua WiFi cân có nhận phần LAB hay không thì phải in thử một tem để biết.
+- **Chưa thử trên cân thật:** mọi việc của bản 2.2 (bảng ở mục "Bản 2.2").
 
 ## Menu `Prog` trên cân (chép từ cân thật 29/09/2026, TM-xA V3.14E8)
 
@@ -157,8 +271,10 @@ Bấm `Prog`, đi bằng `↓ V3` / `↑ V1` hoặc bấm thẳng số mục (`P
 
 - Phần `LAB`: mỗi mẫu tem là một dòng `LAB`, các dòng `LAS` (mỗi dòng một ô in), rồi `LAE`. Phần `TMS` dòng số 0 cho biết cân đang dùng mẫu số mấy.
 - Dòng `LAB`: cột 1 số mẫu · 2 tên · 4–5 rộng × cao (mm) · từ cột 6 là chữ cố định (cột 22 là cờ).
-- Dòng `LAS`: cột 2 loại ô (0 mã vạch · 1 dữ liệu hàng · 2 số tính lúc in · 3 chữ cố định) · 3–4 ô nào · 5 điều kiện in · 9–12 vị trí và cỡ (chấm, 8 chấm/mm).
+- Dòng `LAS`: cột 1 số thứ tự ô (0–99) · 2 loại ô (0 mã vạch · 1 dữ liệu hàng · 2 thông tin lúc in · 3 chữ cố định · 5 phân vùng…) · 3–4 ô nào · 5 điều kiện in · 6 xoay · 7 canh chữ (4 bit thấp; bit cao giữ nguyên) · 8 cỡ chữ (0–9) · 9–12 vị trí và khung (chấm, 8 chấm/mm). Bản 2.1 đọc nhầm cột 7 là cỡ chữ.
 - **Tắt ô** = bỏ dòng `LAS`; dòng bỏ được nhớ trong `Tài liệu\Beeftown Can\tem-da-tat.json` để **bật lại** đúng chỗ. Dòng không sửa giữ y nguyên từng byte.
+- **Sửa ô** (2.2) chỉ đổi đúng cột có giá trị mới; **thêm ô** lấy số thứ tự lớn nhất + 1 (tối đa 99, tối đa 100 ô), ô chữ mới
+  lấy ô chữ trống đầu tiên của dòng `LAB`. Ô ra ngoài mép tem chỉ cảnh báo. Mẫu tem có ô Phân vùng thì chỉ sửa chữ và tắt / bật.
 
 ## Cách chạy bên trong
 
@@ -172,6 +288,11 @@ BeeftownCan.exe ── máy chủ nhỏ 127.0.0.1:<cổng ngẫu nhiên>/?t=<mã
       │        máy quầy: kho_bang_quay, kho_can_o_ma, kho_bao_cao_ban_gio, kho_luu_ma_giam… (src/quay.ts)
       ├─ cân: TCP <IP cân>:33571 (src/nghiep-vu.ts → guiDenCan → guiTcp)
       │        nối không được → dò WiFi tìm cân (src/tim-can.ts), thấy một cân thì gửi lại ở đó
+      │        2.2: file nhỏ chỉ có khối TMS / SCP / TIM (src/thong-so.ts fileNho) cũng qua đường này
+      ├─ cân, 2.2: TCP <IP cân>:33581 hai chiều (src/giao-thuc.ts) — thông tin, giờ, đọc dữ liệu, nhật ký, xoá PLU
+      │        mỗi việc một kết nối; chưa thử trên cân thật
+      ├─ nhật ký bán: src/bao-cao-can.ts → Tài liệu\Beeftown Can\nhat-ky-can.tsv
+      ├─ GET /huong-dan: src/huong-dan.html (cũng cần mã bí mật ?t=)
       └─ dây RS232 (thử): PowerShell System.IO.Ports.SerialPort (src/day-rs232.ts)
 ```
 
@@ -180,8 +301,8 @@ dò WiFi hay kho chậm có thể lâu hơn.
 
 | Nơi | Có gì |
 |---|---|
-| `%APPDATA%\BeeftownCan\` | `cau-hinh.json` (IP cân, cổng, địa chỉ kho, các lần cân đổi địa chỉ, cổng COM lần thử trước), `phien.json` (đăng nhập), `loi.txt` (lỗi) |
-| `Tài liệu\Beeftown Can\` | `A_000.TMS` (file gốc = bản gần nhất đã nạp vào cân), `tren-can.tsv`, `tem-da-tat.json`, `da-gui\` (mỗi lần gửi một bản), `cho-usb\` |
+| `%APPDATA%\BeeftownCan\` | `cau-hinh.json` (IP cân, cổng, cổng hai chiều `congHaiChieu`, địa chỉ kho, các lần cân đổi địa chỉ, cổng COM lần thử trước), `phien.json` (đăng nhập), `loi.txt` (lỗi) |
+| `Tài liệu\Beeftown Can\` | `A_000.TMS` (file gốc = bản gần nhất đã nạp vào cân), `tren-can.tsv`, `tem-da-tat.json`, `nhat-ky-can.tsv` (nhật ký bán của cân, TSV UTF-8 có tiêu đề; có dòng không đọc được thì giữ bản sao `nhat-ky-can-ban-sao-….tsv` trước khi ghi đè), `da-gui\` (mỗi lần gửi một bản; thông số / phím / giờ: đúng file nhỏ đã gửi), `cho-usb\` |
 
 Thư mục `Tài liệu\Beeftown Can` dùng chung với `web/public/kho/can-wifi/Nap-Can-WiFi.ps1`.
 **File .TMS có tên và mật khẩu WiFi của quán** — chỉ nằm trên máy này và gửi tới cân, không lên kho, không commit.
@@ -193,9 +314,14 @@ Máy chủ chỉ nghe `127.0.0.1` và mọi yêu cầu phải mang đúng mã b�
 ```bash
 cd can-app && npm ci
 npx bun test/thu.ts              # cân giả, kho giả (test/kho-gia.ts), tem, danh sách hàng, tự gửi, máy quầy,
-                                 # cân đổi địa chỉ (cân giả ở 127.0.0.37, .38…), dây RS232 (PowerShell giả), chạy cả src/main.ts
+                                 # cân đổi địa chỉ (cân giả ở 127.0.0.37, .38…), dây RS232 (PowerShell giả),
+                                 # 2.2: cân giả hai chiều (test/can-gia-hai-chieu.ts) + cân giả 33571 — nhật ký, xoá qua WiFi,
+                                 # thông số, giờ, phím, sửa tem, quyền, /huong-dan; rồi kiểm thử từng module
+                                 # (thu-giao-thuc, thu-tem, thu-bao-cao-can, thu-thong-so — mỗi file cũng chạy riêng được);
+                                 # cuối cùng chạy src/main.ts thật với BEEFTOWN_CAN_DU_LIEU trỏ vào thư mục tạm
 npx bun test/xem-giao-dien.ts    # mở giao diện với dữ liệu giả để xem / chụp màn hình (--vai nhan_vien_quay để xem như NV quầy;
-                                 # --can-doi-dia-chi: lúc mở tự dò ra cân; --hai-can: WiFi có hai cân, hiện nút chọn)
+                                 # --can-doi-dia-chi: lúc mở tự dò ra cân; --hai-can: WiFi có hai cân, hiện nút chọn;
+                                 # --chua-co-goc: chưa có file gốc). Có cân giả hai chiều, nhật ký 7 ngày, thông số, phím, HSD.
 npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói được từ Linux
 ```
 
@@ -210,11 +336,14 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 
 ## Chưa làm
 
-- Xoá hàng qua WiFi: chưa biết lệnh xoá của cân.
-- Đọc danh sách hàng từ cân qua WiFi (để khỏi cần file gốc từ USB lần đầu).
-- Hạn dùng trên tem: chưa biết cột nào của dòng PLU (số ngày), nên chưa đặt hạn dùng theo từng món.
-- Kéo thả vị trí ô, đổi cỡ chữ, thêm ô mới trên tem.
+- Thử bản 2.2 trên cân thật (mục "Thử bản 2.2 ở quán") và sửa `CAN-TMA.md` theo kết quả.
+- Nghe cân tự báo qua UDP 33583 / 33584 (mở cổng nghe thì Windows hỏi tường lửa); giữ kết nối 33581 (hãng hỏi `UPL TIM` mỗi 30 giây).
+- Nhật ký cân: ghi lịch sử bảng PLU (lúc nào số PLU nào mang mã nào) để gắn mã cân cho dòng cũ chắc hơn; đưa nhật ký lên kho.
+- HSD đếm ngược: tự gửi đang dừng cả loạt khi có một hàng bật / tắt in HSD — có thể gửi phần đếm ngược và giữ riêng hàng
+  bật / tắt. Hàng kho không lên được / ngoài kho mà cân đang in HSD: chưa báo riêng.
+- Chữ ngoài bảng chữ của cân (ký hiệu đặc biệt) trên tem: chưa biết cân in ra sao.
 - Giá từ 1.000.000 đ/kg: ô đơn giá trên cân có 6 chữ số (tối đa 999.999), nên chương trình không gửi món giá cao
   hơn. Hướng đi: món vượt mức gửi theo đơn vị **100g** (giá kho chia 10); kho vẫn giữ giá/kg, FABi không đổi vì mã
-  vạch chỉ mang mã món và trọng lượng. Cần biết trước trên cân thật: đơn vị 100g ghi thế nào trong dòng PLU, và ô
-  thành tiền có quá 6 chữ số không (gói trên 999.999 đ có in được tem không).
+  vạch chỉ mang mã món và trọng lượng. Theo phần mềm của hãng, đơn vị 100g là `UnitID 8` ở cột 4 của dòng PLU
+  (`CAN-TMA.md`, bảng cột PLU) — chưa thử trên cân thật. Còn phải thử: ô thành tiền có quá 6 chữ số không (gói trên
+  999.999 đ có in được tem không), và thông số 188 (số chữ số ô đơn giá, cân quán đang để 6).

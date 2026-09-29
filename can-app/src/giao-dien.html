@@ -62,8 +62,8 @@
   code { background: var(--kem-sau); padding: 1px 5px; border-radius: 4px; font-size: 13px; }
   .an { display: none !important; }
   .dang-lam { color: #6A5D45; font-style: italic; }
-  .thanh-tab { display: flex; gap: 4px; border-bottom: 2px solid var(--vach); margin: 4px 0 16px; }
-  .thanh-tab button { border: 0; border-radius: 8px 8px 0 0; background: transparent; padding: 10px 18px; color: #6A5D45; margin-bottom: -2px; border-bottom: 3px solid transparent; }
+  .thanh-tab { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 2px solid var(--vach); margin: 4px 0 16px; }
+  .thanh-tab button { border: 0; border-radius: 8px 8px 0 0; background: transparent; padding: 10px 11px; font-size: 14px; color: #6A5D45; margin-bottom: -2px; border-bottom: 3px solid transparent; }
   .thanh-tab button:hover { background: var(--kem-sau); }
   .thanh-tab button.chon { color: var(--than); border-bottom-color: var(--do); background: var(--trang); }
   .loc { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
@@ -107,11 +107,37 @@
   .nhan-gio { display: flex; gap: 4px; padding: 0 4px; font-size: 11px; color: #6A5D45; }
   .nhan-gio span { flex: 1; text-align: center; }
   .hai-cot { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  /* 2.2 */
+  header .nut-dau { margin-left: 12px; padding: 4px 12px; font-size: 13px; background: transparent; color: var(--kem); border-color: #6A5D45; }
+  header .nut-dau:hover { background: #3A2D20; }
+  .giay { user-select: none; }
+  .giay.sua-duoc { touch-action: none; }
+  .giay.sua-duoc .el { cursor: move; }
+  .giay .el { transform-origin: 0 0; }
+  .giay .el .noi { display: inline-block; white-space: pre; }
+  .giay .el.chon { outline: 2px solid var(--do); outline-offset: -1px; z-index: 2; }
+  .giay .el.khong-in { opacity: .3; }
+  .giay .el.moi { outline: 1px dashed var(--xanh); outline-offset: -1px; }
+  .giay .el.ngoai { outline: 2px dashed var(--do); outline-offset: -2px; }
+  .giay .tay-keo { position: absolute; right: 0; bottom: 0; width: 10px; height: 10px; background: var(--do); cursor: nwse-resize; }
+  .o-tem.chon { border-color: var(--do); box-shadow: 0 0 0 1px var(--do); }
+  .o-tem .sua-nho { font-size: 12px; padding: 2px 8px; margin-left: 6px; }
+  .luoi-o { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin: 6px 0; }
+  .truong-nho span { display: block; font-size: 12px; font-weight: 600; }
+  .truong-nho input[type=number] { width: 88px; padding: 4px 6px; }
+  .truong-nho select { padding: 4px 6px; }
+  .ts { border-top: 1px solid var(--vach); padding: 10px 8px; }
+  .ts.doi { background: var(--vang-nen); }
+  .ts .canh-bao { color: #7A5200; font-size: 13px; margin-top: 4px; }
+  .ts .canh-bao-o { color: var(--do-dam); font-size: 13px; font-weight: 600; margin-top: 4px; }
+  h4.nhom-ts { margin: 18px 0 2px; font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #7A6C52; }
+  tr.doi-phim td { background: var(--vang-nen); }
+  .bang-tt td:first-child { color: #6A5D45; white-space: nowrap; }
   @media (max-width: 760px) { .hang, .tem-luoi, .hai-cot { grid-template-columns: 1fr; } .so-o { grid-template-columns: repeat(2, 1fr); } }
 </style>
 </head>
 <body>
-<header><b>BEEFTOWN</b><span>Máy quầy · cân in tem</span><small id="phien-ban"></small></header>
+<header><b>BEEFTOWN</b><span>Máy quầy · cân in tem</span><small id="phien-ban"></small><button type="button" class="nut-dau" id="nut-huong-dan">Hướng dẫn</button></header>
 <main>
   <div id="bao-chung"></div>
 
@@ -124,6 +150,7 @@
       <div class="phu" id="o-tu-gui"></div></div>
     <div class="o"><div class="nhan">Trên cân</div><div class="gt" id="o-tren-can">…</div><div class="phu" id="o-goc"></div></div>
   </div>
+  <div id="bao-hsd"></div>
 
   <!-- Đăng nhập kho -->
   <section class="the an" id="the-dang-nhap">
@@ -143,6 +170,9 @@
     <p>Làm một lần. Trên cân bấm <b>Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm → Amend</b> để lưu dữ liệu ra USB,
       rồi chọn file <code>JHSCALE\A_000.TMS</code> trong USB ở đây.</p>
     <input type="file" accept=".TMS,.tms" class="chon-file-can">
+    <p class="phu" style="margin-top:14px">Hoặc đọc thẳng từ cân qua WiFi (cổng hai chiều 33581) — <b>chưa thử trên cân thật</b>; không được thì dùng USB như trên.
+      Không ghi gì xuống cân.</p>
+    <div class="nut"><button type="button" class="doc-wifi">Đọc dữ liệu từ cân qua WiFi</button><span class="dang-lam an">Đang đọc từ cân… (có thể tới 1 phút)</span></div>
   </section>
 
   <nav class="thanh-tab an" id="thanh-tab">
@@ -153,6 +183,9 @@
     <button data-tab="dong-bo">Gửi giá từ kho</button>
     <button data-tab="hang">Tất cả hàng (SKU)</button>
     <button data-tab="tem">Mẫu tem</button>
+    <button data-tab="can">Cân &amp; thông số</button>
+    <button data-tab="phim">Phím tắt</button>
+    <button data-tab="nhat-ky">Nhật ký cân</button>
   </nav>
 
   <!-- Quầy -->
@@ -182,7 +215,8 @@
       <p><b>Cách làm:</b> máy tính tiền FABi không đọc giá trên tem — tem chỉ có mã hàng và trọng lượng. Nên mỗi mức giảm là <b>một mã cân riêng</b>:</p>
       <p>1. Quản lý tạo mã giảm ở đây (ví dụ Ribeye −30% → mã 90001). &nbsp;2. Trên FABi tạo món <b>cùng mã, cùng giá đã giảm</b> (bảng bên dưới, nút tải danh sách).
         &nbsp;3. Thẻ <b>Gửi giá từ kho</b> → gửi xuống cân.</p>
-      <p><b>NV quầy:</b> gói cận date → đặt lên cân, gọi hàng mã giảm (số PLU hiện ở thẻ Quầy) → in tem mới, dán đè tem cũ. Kho tự biết gói đó bán giảm giá.</p>
+      <p><b>NV quầy:</b> gói cận date → đặt lên cân, gọi hàng mã giảm (số PLU hiện ở thẻ Quầy) → in tem mới, dán lệch lên trên tem cũ,
+        <b>chừa dòng ngày đóng gói và HSD của tem cũ</b> (tem mã giảm không in HSD). Kho tự biết gói đó bán giảm giá.</p>
     </div>
     <div id="giam-noi-dung"></div>
   </section>
@@ -230,12 +264,23 @@
   <section class="the an" id="the-tem">
     <h2>Mẫu tem</h2>
     <p class="phu" id="tem-mo-ta"></p>
-    <div class="bao luu-y"><p>Chọn ô nào được in và sửa chữ cố định trên tem. Tên hàng, giá, trọng lượng lấy từ hàng khi in.</p>
-      <p><b>Lần đầu đổi tem:</b> sau khi gửi, cân thử một món rồi in một tem xem đã đổi chưa. Nếu tem chưa đổi, dùng <b>Lưu file nạp USB</b>.</p></div>
+    <div class="bao luu-y"><p>Chọn ô nào được in và sửa chữ cố định trên tem. Tên hàng, giá, trọng lượng lấy từ hàng khi in.
+      Bấm vào một ô trên sơ đồ để dời chỗ, đổi cỡ, cỡ chữ, khi nào in; thêm ô ở dưới danh sách.</p>
+      <p><b>Lần đầu đổi tem:</b> sau khi gửi, cân thử một món rồi in một tem xem đã đổi chưa. Nếu tem chưa đổi: bấm <b>Lưu file nạp USB</b> ở đây (không cần sửa lại — file đã có tem vừa gửi) rồi nạp USB.
+        Dời ô, đổi cỡ chữ, thêm ô: <b>chưa thử trên cân thật</b> — in thử một tem trước khi bán.</p></div>
+    <div id="tem-goi-y"></div>
     <div class="tem-luoi">
-      <div><div class="giay" id="giay"></div><p class="phu" style="margin-top:8px">Sơ đồ gần đúng theo cấu hình trong file, vẽ với hàng mẫu nặng 0,215 kg. Tem thật in trên cân.</p></div>
-      <div id="tem-o"></div>
+      <div><div class="giay" id="giay"></div>
+        <div class="nut" style="margin-top:8px"><label class="phu">Xem tem với
+          <select id="tem-xem-voi" style="width:auto;padding:4px 8px">
+            <option value="ky-hsd">hàng cân ký, có hạn dùng</option><option value="ky">hàng cân ký, không hạn dùng</option>
+            <option value="goi-hsd">hàng theo gói, có hạn dùng</option><option value="goi">hàng theo gói, không hạn dùng</option></select></label></div>
+        <p class="phu" style="margin-top:4px">Sơ đồ gần đúng theo cấu hình trong file (cỡ chữ, canh, xoay), vẽ với hàng mẫu nặng 0,215 kg. Ô mờ: không in với hàng đang xem. Tem thật in trên cân.</p>
+        <div class="khung-form" id="tem-sua-o"></div>
+      </div>
+      <div><div id="tem-o"></div><div class="khung-form an" id="tem-them"></div></div>
     </div>
+    <div id="tem-canh-bao"></div>
     <div class="nut" style="margin-top:16px">
       <button class="chinh to" id="nut-gui-tem" disabled>Gửi tem xuống cân</button>
       <button id="nut-usb-tem" disabled>Lưu file nạp USB</button>
@@ -243,6 +288,85 @@
       <span class="phu" id="tem-dem"></span>
     </div>
     <div id="khung-usb-tem"></div>
+  </section>
+
+  <!-- Cân & thông số (2.2) -->
+  <section class="the an" id="the-can">
+    <h2>Cân &amp; thông số</h2>
+    <div class="bao luu-y"><p><b>Chưa thử trên cân thật.</b> Đọc / ghi qua cổng hai chiều (33581) và gửi thông số qua cổng 33571 dựng lại từ
+      phần mềm của hãng, chưa lần nào thử với cân của quán. Sau mỗi việc, xem lại trên cân (bấm <b>Time</b>, in thử một tem).
+      Không được thì dùng USB. Đóng phần mềm TM-xA của hãng trên mọi máy trước khi dùng.</p></div>
+
+    <h3>1. Thông tin cân <span class="phu" style="font-weight:400">— chỉ đọc, nên thử đầu tiên</span></h3>
+    <p class="phu">Hỏi cân qua WiFi hai chiều: mã máy, loại máy, phiên bản, giờ trên cân. Không ghi gì xuống cân. Cân trả lời được là đường hai chiều thông.</p>
+    <div class="nut"><button type="button" id="nut-thong-tin-can">Đọc thông tin cân</button></div>
+    <div id="kq-thong-tin"></div>
+
+    <h3>2. Giờ trên cân</h3>
+    <p class="phu">Ngày đóng gói và HSD in trên tem theo đồng hồ của cân. Chỉnh giờ cân theo giờ máy tính — xem giờ máy tính (góc dưới bên phải màn hình) đúng chưa trước.</p>
+    <div class="nut"><button type="button" id="nut-doc-gio">Đọc giờ cân</button><button type="button" id="nut-chinh-gio">Chỉnh giờ cân theo máy tính</button></div>
+    <div id="kq-gio"></div>
+
+    <h3>3. Đọc dữ liệu từ cân qua WiFi</h3>
+    <p class="phu">Thay bước USB "Bắt đầu" / "Cập nhật file gốc từ cân": đọc hàng, mẫu tem, phím, thông số trên cân rồi ghi nhận làm file gốc. Không ghi gì xuống cân.</p>
+    <div class="nut"><button type="button" class="doc-wifi">Đọc dữ liệu từ cân qua WiFi</button><span class="dang-lam an">Đang đọc từ cân… (có thể tới 1 phút)</span></div>
+
+    <h3>4. Xoá hẳn hàng còn nằm lại (thử)</h3>
+    <p class="phu">Gửi qua cổng 33571 cân không xoá hàng. Cổng hai chiều có lệnh xoá cả danh sách rồi nạp lại — chương trình đọc lại để kiểm. Cần đăng nhập kho.
+      Đường chắc chắn vẫn là nạp USB (thẻ Gửi giá từ kho).</p>
+    <div class="nut"><button type="button" id="nut-xem-con-lai">Xem hàng còn nằm lại và xoá qua WiFi</button></div>
+    <div id="kq-con-lai"></div>
+
+    <h3>5. Thông số</h3>
+    <p class="phu">Chỉ vài thông số an toàn được sửa ở đây; thông số khác chỉ xem. Gửi qua cổng 33571 như gửi giá.</p>
+    <div id="can-thong-so"></div>
+  </section>
+
+  <!-- Phím tắt (2.2) -->
+  <section class="the an" id="the-phim">
+    <h2>Phím tắt</h2>
+    <p class="phu">Phím chữ trên bàn phím cân gọi thẳng một hàng. <b>Tầng 1</b>: bấm thẳng phím. <b>Tầng 2</b>: bấm <b>Shift</b> rồi bấm phím.
+      Chọn hàng (số PLU) cho phím rồi gửi xuống cân. Phím chức năng (Shift, Re-Print…) không đổi được.</p>
+    <div class="bao luu-y"><p><b>Chưa thử trên cân thật:</b> gửi phím qua cổng 33571. Gửi xong bấm thử từng phím vừa đổi trên cân; chưa đổi thì
+      <b>Lưu file nạp USB</b> rồi nạp USB — file có sẵn phím đã gửi và cả phím đang sửa trên màn hình (chưa gửi WiFi cũng được). Đổi phím xong, dán lại tên hàng lên phím.</p></div>
+    <div class="loc" id="loc-phim"><button data-tang="0" class="chon">Tầng 1 (bấm thẳng)</button><button data-tang="1">Tầng 2 (Shift)</button></div>
+    <div class="nut" style="margin-top:0"><input type="search" id="tim-phim" placeholder="Tìm phím, số PLU, tên hàng…"></div>
+    <div id="phim-noi-dung"></div>
+    <div class="nut" style="margin-top:14px">
+      <button class="chinh" id="nut-gui-phim" disabled>Gửi phím xuống cân</button>
+      <button id="nut-bo-phim" disabled>Bỏ thay đổi</button>
+      <button id="nut-usb-phim">Lưu file nạp USB</button>
+      <span class="phu" id="phim-dem"></span>
+    </div>
+    <div id="khung-usb-phim"></div>
+  </section>
+
+  <!-- Nhật ký cân (2.2) -->
+  <section class="the an" id="the-nhat-ky">
+    <h2>Nhật ký cân</h2>
+    <div class="bao luu-y">
+      <p><b>Tên hàng là tên trên cân LÚC ĐỌC nhật ký</b>, không phải lúc bán: cân chỉ ghi số PLU. Số PLU đã đổi sang hàng khác (ô mã đổi tảng…)
+        thì dòng cũ mang tên mới. Vì vậy đọc nhật ký thường xuyên — mỗi ngày, và trước khi gửi giá / hàng mới xuống cân. Chương trình giữ tên và
+        mã của lần đọc sớm nhất; mã cân chỉ gắn khi đơn giá khớp hàng đang ở số PLU đó.</p>
+      <p>Giờ theo đồng hồ của cân. Số bán chính thức là iPOS / FABi (thẻ Báo cáo) — nhật ký cân để đối chiếu tem đã in, gói in mà không bán.
+        Đọc nhật ký không xoá gì trên cân.</p>
+    </div>
+    <div class="nut" style="margin-top:0">
+      <label>Từ <input type="date" id="nk-tu"></label>
+      <label>đến <input type="date" id="nk-den"></label>
+      <button data-nk-ngay="0">Hôm nay</button><button data-nk-ngay="6">7 ngày</button><button data-nk-ngay="29">30 ngày</button><button data-nk-ngay="-1">Tất cả</button>
+      <button id="nut-nk-xem">Xem</button>
+    </div>
+    <div class="nut">
+      <button class="chinh" id="nut-nk-file">Đọc từ file gốc (USB)</button>
+      <button class="chinh" id="nut-nk-wifi">Đọc qua WiFi (thử)</button>
+      <label class="phu" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="nk-tu-dau"> Đọc lại từ đầu (cân vừa xoá báo cáo)</label>
+      <button id="nut-nk-csv">Tải Excel (CSV)</button>
+      <span class="dang-lam an" id="dang-nk"></span>
+    </div>
+    <p class="phu">Đọc từ file gốc: chỉ có nhật ký khi file gốc là file lưu từ cân ra USB bằng <b>Amend</b> (chương trình đã tự gộp lúc ghi nhận file đó).
+      Đọc qua WiFi: <b>chưa thử trên cân thật</b>. Nhật ký lưu ở <code>nhat-ky-can.tsv</code> trong thư mục dữ liệu.</p>
+    <div id="nk-noi-dung"></div>
   </section>
 
   <details class="the">
@@ -257,9 +381,12 @@
           tìm lại cân. Muốn cân khỏi đổi: nhờ người lo mạng vào trang quản trị router, mục <b>DHCP</b>, giữ cố định địa chỉ cho cân
           (<i>DHCP Reservation</i> / <i>Static Lease</i> / <i>Address Binding</i>).</p>
         <label class="truong"><span>Cổng của cân</span><input type="number" name="congCan"></label>
+        <label class="truong"><span>Cổng hai chiều của cân (thường 33581 — đọc thông tin, giờ, nhật ký, xoá qua WiFi; chưa thử trên cân thật)</span>
+          <input type="number" name="congHaiChieu" placeholder="33581"></label>
         <label class="truong"><span>Địa chỉ kho</span><input type="text" name="diaChiKho"></label>
         <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" name="tuGui">
-          <span>Tự gửi xuống cân khi kho đổi (mỗi phút, khi cửa sổ này đang mở) — đổi giá, lóc tảng mới là cân tự cập nhật tên, giá.</span></label>
+          <span>Tự gửi xuống cân khi kho đổi (mỗi phút, khi cửa sổ này đang mở) — đổi giá, lóc tảng mới là cân tự cập nhật tên, giá;
+            sang ngày mới là cân tự nhận HSD đếm ngược theo lô (bật / tắt in HSD vẫn phải xem trước rồi bấm Gửi).</span></label>
         <label class="truong an" id="o-chi-nhanh"><span>Chi nhánh</span><select name="chiNhanhId"></select></label>
         <div class="nut"><button type="submit">Lưu cài đặt</button></div>
       </form>
@@ -332,6 +459,7 @@
     const ch = s.cauHinh;
     const f = $('form-cau-hinh');
     f.congCan.value = ch.congCan; f.diaChiKho.value = ch.diaChiKho;
+    f.congHaiChieu.value = ch.congHaiChieu ?? '';
     f.tuGui.checked = !!ch.tuGui;
     veOCan();
     // Cổng COM, tốc độ lần thử trước: chỉ điền lúc mở trang, không đè lựa chọn đang làm dở.
@@ -362,14 +490,18 @@
     // Nạp file gốc của cân là việc của quản lý / chủ.
     $('the-bat-dau').classList.toggle('an', !!s.goc || (!!q && !q.danhMuc));
     // Thẻ nào hiện: theo vai người đăng nhập, và cân đã có file gốc chưa.
+    // 2.2: Cân & thông số, Phím tắt, Nhật ký cân theo quy tắc thẻ Mẫu tem (quản lý, chủ; hoặc chưa đăng nhập kho).
+    const canCan = !q || q.danhMuc;
     coThe = { quay: !!q, 'tang-o': !!q, giam: !!q, 'bao-cao': !!(q && q.xemGia),
-              'dong-bo': !!s.goc && (!q || q.danhMuc), hang: !!s.goc, tem: !!s.goc && (!q || q.danhMuc) };
+              'dong-bo': !!s.goc && (!q || q.danhMuc), hang: !!s.goc, tem: !!s.goc && (!q || q.danhMuc),
+              can: canCan, phim: !!s.goc && canCan, 'nhat-ky': canCan };
     for (const b of document.querySelectorAll('#thanh-tab button')) b.classList.toggle('an', !coThe[b.dataset.tab]);
     $('thanh-tab').classList.toggle('an', !Object.values(coThe).some(Boolean));
     $('dong-bo-can-kho').classList.toggle('an', !!s.nguoi);
     $('dong-bo-noi-dung').classList.toggle('an', !s.nguoi);
-    if (!tab || !coThe[tab]) tab = ['quay', 'hang', 'dong-bo'].find(t => coThe[t]) || null;
-    dsHang = null; temDL = null; tangO = null; giamDL = null;
+    for (const b of document.querySelectorAll('.doc-wifi')) b.classList.toggle('an', !canCan);
+    if (!tab || !coThe[tab]) tab = ['quay', 'hang', 'dong-bo', 'can'].find(t => coThe[t]) || null;
+    dsHang = null; temDL = null; tangO = null; giamDL = null; canDL = null; phimDL = null; nkDL = null;
     hienTab();
   }
 
@@ -390,6 +522,21 @@
     $('o-tu-gui').textContent = ch.tuGui
       ? 'Tự gửi: bật' + (tg ? ' · ' + new Date(tg.luc).toLocaleTimeString('vi-VN') + ' — ' + tg.cau : ' · chờ lần đầu')
       : '';
+    $('bao-hsd').innerHTML = baoHsdCu(trangThai.hsd);
+  }
+
+  /**
+   * Khung đỏ khi cân in HSD mà HSD trên cân tính cho ngày trước hôm nay (hay chưa biết ngày nào). "Hôm nay" và "cũ" là
+   * của chương trình (giờ VN — /api/trang-thai, /api/can, xem trước, tất cả hàng), không theo đồng hồ trình duyệt.
+   */
+  const ngayChu = (iso) => (iso ? iso.slice(8, 10) + '/' + iso.slice(5, 7) : '');
+  function baoHsdCu(h) {
+    if (!h || !h.cu) return '';
+    return '<div class="bao loi"><p><b>' + (h.tinhNgay ? `HSD trên cân tính cho ngày ${ngayChu(h.tinhNgay)}` : 'Chưa biết HSD trên cân tính cho ngày nào')
+      + ' — mỗi ngày chưa gửi lại là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói.</b></p>'
+      + `<p>Hôm nay ${e(ngayChu(h.homNay))}. HSD trên tem = ngày in (đồng hồ cân) + số ngày còn lại của lô, tính cho ngày gửi. `
+      + 'Quản lý / chủ: thẻ <b>Gửi giá từ kho</b> → <b>Gửi xuống cân</b>, hoặc bật <b>Tự gửi</b> ở Cài đặt và để chương trình mở. '
+      + 'Đồng hồ cân phải đúng ngày. In HSD chưa thử trên cân thật.</p></div>';
   }
   /** Chương trình vừa tự đổi địa chỉ cân: cập nhật ô Cân, không tải lại cả trang. */
   function daDoiDiaChi(doi) {
@@ -425,7 +572,9 @@
 
   // ---- thẻ ------------------------------------------------------------------
   let tab = null, coThe = {};
-  const CAC_THE = ['quay', 'tang-o', 'giam', 'bao-cao', 'dong-bo', 'hang', 'tem'];
+  // Dữ liệu các thẻ 2.2 (khai báo ở đây: taiTrangThai đặt lại chúng trước khi tới phần của từng thẻ).
+  let canDL = null, phimDL = null, nkDL = null;
+  const CAC_THE = ['quay', 'tang-o', 'giam', 'bao-cao', 'dong-bo', 'hang', 'tem', 'can', 'phim', 'nhat-ky'];
   function hienTab() {
     for (const b of document.querySelectorAll('#thanh-tab button')) b.classList.toggle('chon', b.dataset.tab === tab);
     for (const t of CAC_THE) $('the-' + t).classList.toggle('an', !coThe[t] || tab !== t);
@@ -437,6 +586,9 @@
     if (tab === 'tang-o' && !tangO) taiTangO();
     if (tab === 'giam' && !giamDL) taiGiam();
     if (tab === 'bao-cao' && !bcDL) taiBaoCao();
+    if (tab === 'can' && !canDL) taiCan();
+    if (tab === 'phim' && !phimDL) taiPhim();
+    if (tab === 'nhat-ky' && !nkDL) taiNhatKy('luu');
   }
   for (const b of document.querySelectorAll('#thanh-tab button')) b.onclick = () => { tab = b.dataset.tab; hienTab(); };
 
@@ -450,32 +602,51 @@
     const noi = $('ket-qua-xem');
     $('dang-xem').classList.remove('an'); $('nut-xem').disabled = true;
     try {
-      const x = await goi('/api/xem-truoc', { giuHangNgoaiKho: giuNgoaiKho() });
-      let h = '<div class="dem">' + DEM.filter(([k]) => x.dem[k] > 0)
+      const giu = giuNgoaiKho();
+      const x = await goi('/api/xem-truoc', { giuHangNgoaiKho: giu });
+      // Xem trước có thể vừa ghi nhận HSD trên cân đã đúng hôm nay: cập nhật cả khung ở ô Cân.
+      if (x.hsdTrenCan) { trangThai.hsd = x.hsdTrenCan; $('bao-hsd').innerHTML = baoHsdCu(trangThai.hsd); }
+      let h = baoHsdCu(x.hsdTrenCan) + baoCanChuaRo(x.canChuaRo) + '<div class="dem">' + DEM.filter(([k]) => x.dem[k] > 0)
         .map(([k, chu]) => `<span class="nhan-l ${NHAN[k][1]}">${x.dem[k]} ${chu}</span>`).join('') + '</div>';
-      h += '<div class="khung-bang"><table><thead><tr><th>Thay đổi</th><th class="so">PLU</th><th class="so">Mã cân</th><th>Tên trên tem</th><th class="so">Giá/kg</th></tr></thead><tbody>';
+      const coHsd = x.dong.some(d => d.hsd !== undefined);
+      h += '<div class="khung-bang"><table><thead><tr><th>Thay đổi</th><th class="so">PLU</th><th class="so">Mã cân</th><th>Tên trên tem</th><th class="so">Giá/kg</th>'
+        + (coHsd ? `<th title="Số ngày in trên tem = số ngày còn lại của lô, tính cho ngày ${e(ngayChu(x.ngayHsd))}">HSD</th>` : '') + '</tr></thead><tbody>';
       for (const d of x.dong) {
         const mo = d.loai === 'xoa' || d.loai === 'bo_qua';
         h += `<tr class="${mo ? 'mo' : ''}"><td><span class="nhan-l ${NHAN[d.loai][1]}">${NHAN[d.loai][0]}</span></td>`
           + `<td class="so">${d.so ?? '—'}</td><td class="so">${e(d.maCan || '—')}</td><td>${e(d.ten)}`
           + (d.loai === 'sua' && d.tenCu !== d.ten ? `<div class="phu">Trên cân đang là: ${e(d.tenCu)}</div>` : '')
           + (d.lyDo ? `<div class="phu">${e(d.lyDo)}</div>` : '') + (d.canhBao ? `<div class="phu">${e(d.canhBao)}</div>` : '')
-          + `</td><td class="so">${tien(d.gia)}` + (d.loai === 'sua' && d.giaCu !== d.gia ? `<div class="phu">trước: ${tien(d.giaCu)}</div>` : '') + '</td></tr>';
+          + `</td><td class="so">${tien(d.gia)}` + (d.loai === 'sua' && d.giaCu !== d.gia ? `<div class="phu">trước: ${tien(d.giaCu)}</div>` : '') + '</td>'
+          + (coHsd ? `<td>${d.hsd === undefined ? '<span class="phu">kho không đặt</span>' : e(hsdChu(d.hsd))}`
+            + (d.hsdCu !== undefined && d.hsdCu !== d.hsd ? `<div class="phu">trước: ${e(hsdChu(d.hsdCu))}</div>` : '')
+            + (d.hsdNguon ? `<div class="phu">${e(d.hsdNguon)}</div>` : '') + '</td>' : '')
+          + '</tr>';
       }
-      if (!x.dong.length) h += '<tr><td colspan="5">Kho chưa có mặt hàng nào mang mã cân. Điền mã cân ở Mặt hàng trước.</td></tr>';
+      if (!x.dong.length) h += `<tr><td colspan="${coHsd ? 6 : 5}">Kho chưa có mặt hàng nào mang mã cân. Điền mã cân ở Mặt hàng trước.</td></tr>`;
       h += '</tbody></table></div>';
+      if (x.doiHsd) {
+        h += `<div class="bao luu-y"><p><b>Bật / tắt in hạn dùng (HSD) trên tem cho ${x.doiHsd} hàng.</b> HSD in ra = ngày in tem + số ngày, theo đồng hồ của cân. `
+          + 'In HSD chưa thử trên cân thật: gửi xong in thử một tem món vừa đổi. Tự gửi không bật / tắt HSD — phải bấm Gửi ở đây.</p></div>';
+      }
+      if (x.demNguocHsd) {
+        h += `<div class="bao luu-y"><p><b>HSD đếm ngược theo lô: ${x.demNguocHsd} hàng đổi số ngày</b> (số ngày còn lại của lô, tính cho ngày ${e(ngayChu(x.ngayHsd))}). `
+          + 'Tự gửi gửi được thay đổi này. Gửi trong ngày, trước khi đóng gói; gửi xong in thử một tem.</p></div>';
+      }
 
       if (x.conLai.length) {
         h += `<div class="bao loi"><p><b>${x.conLai.length} hàng sẽ còn nằm trên cân</b> — gửi qua WiFi cân chỉ thêm và sửa, không xoá được:</p><p>`
           + x.conLai.map(c => `PLU ${c.so} · mã ${e(c.ma || '—')} · ${e(c.ten)}`).join('<br>') + '</p>'
-          + '<p>Muốn xoá hẳn: lưu file rồi nạp bằng USB (cân thay cả danh sách).</p>'
-          + '<div class="nut"><button id="nut-tao-usb">Lưu file để nạp USB</button></div><div id="khung-usb"></div></div>';
+          + '<p>Muốn xoá hẳn: lưu file rồi nạp bằng USB (cân thay cả danh sách). Hoặc thử xoá qua cổng hai chiều — <b>chưa thử trên cân thật</b>.</p>'
+          + '<div class="nut"><button id="nut-tao-usb">Lưu file để nạp USB</button><button id="nut-xoa-wifi">Xoá hẳn qua WiFi (thử)</button></div><div id="khung-usb"></div></div>';
       }
       h += `<div class="nut" style="margin-top:16px"><button class="chinh to" id="nut-gui">Gửi xuống cân</button>`
-        + `<span class="phu">${x.coThayDoi ? 'Sau khi gửi, cân có ' + x.soHangSauKhiGui + ' hàng từ kho.' : 'Cân đã khớp với kho — không cần gửi.'}</span></div><div id="ket-qua-gui"></div>`;
+        + `<span class="phu">${x.canChuaRo ? 'Lần xoá qua WiFi trước hỏng — bấm Gửi để gửi lại cả danh sách ' + x.soHangSauKhiGui + ' hàng, hoặc nạp USB.'
+          : x.coThayDoi ? 'Sau khi gửi, cân có ' + x.soHangSauKhiGui + ' hàng từ kho.' : 'Cân đã khớp với kho — không cần gửi.'}</span></div><div id="ket-qua-gui"></div>`;
       noi.innerHTML = h;
       $('nut-gui').onclick = gui;
       if ($('nut-tao-usb')) $('nut-tao-usb').onclick = taoUsb;
+      if ($('nut-xoa-wifi')) $('nut-xoa-wifi').onclick = () => xoaQuaWifi($('khung-usb'), x, giu, $('nut-xoa-wifi'));
     } catch (err) {
       bao(noi, 'loi', e(err.message));
     } finally {
@@ -504,10 +675,59 @@
     catch (err) { bao($('khung-usb'), 'loi', e(err.message)); }
   }
 
+  /** Hạn dùng để hiện: số ngày, null = không in HSD. */
+  const hsdChu = (v) => (v === undefined ? '' : v === null ? 'không in' : `${Number(v).toLocaleString('vi-VN')} ngày`);
+
+  /** Khung đỏ khi lần xoá qua WiFi trước hỏng sau khi đã gửi lệnh xoá (can-chua-ro.json) — cân có thể đang thiếu hàng. */
+  function baoCanChuaRo(c) {
+    if (!c) return '';
+    return `<div class="bao loi"><p><b>Hàng trên cân chưa rõ${c.luc ? ' từ ' + e(lucNgan(c.luc)) : ''}:</b> ${e(c.cau)}</p>`
+      + '<p>Cân có thể đang thiếu hàng. Nạp USB ngay (thẻ Gửi giá từ kho → Lưu file để nạp USB), hoặc bấm Gửi xuống cân để gửi lại cả danh sách qua WiFi. '
+      + 'Tới lúc đó chương trình không coi cân là "khớp kho".</p></div>';
+  }
+
+  /**
+   * Xoá hẳn hàng còn nằm lại qua cổng hai chiều (2.2, chưa thử trên cân thật): hỏi kỹ trước, vì cách duy nhất
+   * là xoá cả danh sách hàng trên cân rồi nạp lại. Chương trình đọc lại để kiểm; hỏng thì chỉ đường USB.
+   * x: kết quả Xem trước người đang nhìn (giu: lựa chọn "giữ hàng ngoài kho" lúc xem) — gửi kèm dấu kế hoạch x.dauVan:
+   * kho / cân đổi sau lúc xem thì chương trình từ chối, không chạy kế hoạch khác cái đã hỏi.
+   */
+  async function xoaQuaWifi(noi, x, giu, nut) {
+    const conLai = x.conLai;
+    const ds = conLai.map(c => `PLU ${c.so} · mã ${c.ma || '—'} · ${c.ten}`).join('\n');
+    const kem = x.dem.them + x.dem.sua
+      ? `\nCả danh sách gửi lại mang theo ${x.dem.them} hàng thêm, ${x.dem.sua} hàng sửa (giá / tên) từ kho — như bấm Gửi xuống cân.\n` : '';
+    if (!confirm(`Thử XOÁ HẲN ${conLai.length} hàng còn nằm lại qua WiFi?\n\n${ds}\n${kem}\n`
+      + 'CHƯA THỬ TRÊN CÂN THẬT. Chương trình sẽ:\n'
+      + '1. đọc danh sách hàng trên cân (thử đường WiFi hai chiều, cổng 33581) — chưa ghi gì; cân có hàng chương trình không biết thì dừng;\n'
+      + `2. XOÁ CẢ danh sách hàng trên cân rồi gửi lại ${x.soHangSauKhiGui} hàng;\n`
+      + '3. đọc lại danh sách trên cân để kiểm.\n\n'
+      + 'Hỏng giữa chừng thì cân có thể thiếu hàng tới khi nạp USB. Làm lúc quầy vắng, có sẵn USB. '
+      + 'Đóng phần mềm TM-xA của hãng trên máy khác trước.')) return;
+    const chuNut = nut ? nut.textContent : '';
+    if (nut) { nut.disabled = true; nut.textContent = 'Đang xoá qua WiFi…'; }
+    bao(noi, '', '');
+    try {
+      const k = await goi('/api/can/xoa-wifi', { giuHangNgoaiKho: giu, dauVan: x.dauVan });
+      baoChung('xong', `<p><b>Đã xoá qua WiFi:</b> cân đọc lại đúng ${k.soHang} hàng; ${k.daXoa.length} hàng còn nằm lại đã hết `
+        + `(${k.daXoa.map(c => 'PLU ' + c.so).join(', ')}).</p><p>Gọi thử trên cân số PLU của một hàng vừa xoá: cân không còn hàng đó là đúng.</p>`);
+      await taiTrangThai();
+    } catch (err) {
+      bao(noi, 'loi', `<p>${e(err.message)}</p><p>Đường chắc chắn: bấm <b>Lưu file để nạp USB</b> (thẻ Gửi giá từ kho) rồi nạp USB.</p>`);
+    } finally { if (nut) { nut.disabled = false; nut.textContent = chuNut; } }
+  }
+
   /** Khung hướng dẫn nạp USB sau khi đã lưu file cho-usb. */
   function hienUsb(noi, k) {
-      noi.innerHTML = `<div class="bao luu-y"><p>Đã lưu file (${k.soHang} hàng) ở <code>${e(k.duongDan)}</code>.</p>`
-        + '<p>1. Chép file này vào thư mục <b>JHSCALE</b> trên USB (ghi đè). 2. Cắm USB vào cân: <b>Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm</b>. 3. Nạp xong rút USB, rồi bấm nút bên dưới.</p>'
+      // File từ thẻ Cân & thông số / Phím tắt mang cả thay đổi đang sửa trên trang (chưa gửi WiFi).
+      const kem = [];
+      if (k.thongSo && k.thongSo.length) kem.push(`${k.thongSo.length} thông số đang sửa (số ${k.thongSo.join(', ')})`);
+      if (k.phim && k.phim.length) kem.push(`${k.phim.length} phím tắt đang sửa`);
+      noi.innerHTML = `<div class="bao luu-y"><p>Đã lưu file (${k.soHang} hàng) ở <code>${e(k.duongDan)}</code>.`
+        + (kem.length ? ` File có cả ${kem.join(' và ')} — nạp USB xong là cân nhận.` : '') + '</p>'
+        + '<p>1. Chép file này vào thư mục <b>JHSCALE</b> trên USB (ghi đè). 2. Cắm USB vào cân: <b>Prog → ↓ V3 tới P4 → Accu/Confirm → Accu/Confirm</b> (hiện 000) '
+        + '→ <b>Accu/Confirm</b> lần thứ ba để nạp (đã hiện Dw-Data thì thôi; lần bấm thứ ba chưa thử trên cân thật). '
+        + '3. Chờ hiện <b>Finish</b>, số lỗi = 0, rồi mới rút USB và bấm nút bên dưới.</p>'
         + `<div class="nut"><button class="mo-usb">Mở thư mục chứa file</button><a href="/api/tai-usb?t=${MA}" download="A_000.TMS"><button type="button">Tải file về</button></a>`
         + '<button class="chinh da-nap">Tôi đã nạp USB xong</button></div></div>';
       noi.querySelector('.mo-usb').onclick = () => goi('/api/mo-thu-muc', { cho: 'usb' }).catch(err => baoChung('loi', e(err.message)));
@@ -527,7 +747,11 @@
 
   async function taiHang() {
     $('bang-hang').innerHTML = '<p class="dang-lam">Đang đọc danh sách…</p>';
-    try { dsHang = await goi('/api/hang'); veHang(); }
+    try {
+      dsHang = await goi('/api/hang');
+      if (dsHang.hsdTrenCan) { trangThai.hsd = dsHang.hsdTrenCan; $('bao-hsd').innerHTML = baoHsdCu(trangThai.hsd); }
+      veHang();
+    }
     catch (err) { bao($('bang-hang'), 'loi', e(err.message)); }
   }
 
@@ -536,6 +760,9 @@
     return dsHang.hang.filter(h => (locHang === 'tat_ca' || h.tinhTrang === locHang)
       && (!q || boDau(h.ten).includes(q) || h.maCan.includes(q) || String(h.so ?? '') === q || boDau(h.tenKho).includes(q)));
   }
+
+  /** Nhãn tình trạng: lần xoá qua WiFi trước hỏng (canChuaRo) thì "khớp" chỉ là khớp file gốc — cân thật chưa rõ. */
+  const tinhTrangChu = (k) => (k === 'khop' && dsHang && dsHang.canChuaRo ? ['Chưa rõ trên cân', 'xoa'] : TINH_TRANG[k]);
 
   function veHang() {
     if (!dsHang) return;
@@ -546,40 +773,45 @@
     const dem = { tat_ca: d.hang.length };
     for (const h of d.hang) dem[h.tinhTrang] = (dem[h.tinhTrang] || 0) + 1;
     if (locHang !== 'tat_ca' && !dem[locHang]) locHang = 'tat_ca';
-    $('loc-hang').innerHTML = [['tat_ca', 'Tất cả'], ...Object.entries(TINH_TRANG).map(([k, v]) => [k, v[0]])]
+    $('loc-hang').innerHTML = [['tat_ca', 'Tất cả'], ...Object.keys(TINH_TRANG).map(k => [k, tinhTrangChu(k)[0]])]
       .filter(([k]) => dem[k]).map(([k, chu]) => `<button data-loc="${k}" class="${k === locHang ? 'chon' : ''}">${chu} · ${dem[k]}</button>`).join('');
     for (const b of $('loc-hang').querySelectorAll('button')) b.onclick = () => { locHang = b.dataset.loc; veHang(); };
 
     const ds = hangDangLoc();
     let h = '<div class="khung-bang" style="max-height:560px"><table><thead><tr><th class="so">PLU</th><th>Phím</th><th class="so">Mã cân</th><th class="so">Mã FABi</th>'
-      + '<th>Tên trên cân</th><th class="so">Giá/kg</th><th>Bán</th><th>Tình trạng</th></tr></thead><tbody>';
+      + '<th>Tên trên cân</th><th class="so">Giá/kg</th><th>HSD</th><th>Bán</th><th>Tình trạng</th></tr></thead><tbody>';
     for (const x of ds) {
-      const [nhan, lop] = TINH_TRANG[x.tinhTrang];
+      const [nhan, lop] = tinhTrangChu(x.tinhTrang);
       const khac = [];
       if (x.tenKho && x.tenKho !== x.ten) khac.push('tên kho: ' + e(x.tenKho));
       if (x.giaKho !== undefined && x.giaKho !== x.gia && x.tinhTrang === 'lech') khac.push('giá kho: ' + tien(x.giaKho));
+      if (x.hsdKho !== undefined && x.hsd !== undefined && x.hsdKho !== x.hsd) khac.push('HSD kho: ' + e(hsdChu(x.hsdKho)));
       h += `<tr class="${x.so === null || x.tinhTrang === 'con_lai' ? 'mo' : ''}"><td class="so">${x.so ?? '—'}</td>`
         + `<td>${x.phim ? `<span class="phim" title="Phím tắt trên bàn phím cân">${e(x.phim)}</span>` : ''}</td>`
         + `<td class="so">${e(x.maCan || '—')}</td><td class="so"><b>${e(x.maFabi || '—')}</b></td><td>${e(x.ten)}</td>`
-        + `<td class="so">${tien(x.gia)}</td><td>${x.theoGoi ? 'Theo gói' : 'Cân ký'}</td>`
+        + `<td class="so">${tien(x.gia)}</td>`
+        + `<td>${x.hsd !== undefined ? e(hsdChu(x.hsd)) : x.hsdKho !== undefined ? `<span class="phu">kho: ${e(hsdChu(x.hsdKho))}</span>` : ''}`
+        + (x.hsdNguon ? `<div class="phu">${e(x.hsdNguon)}</div>` : '') + '</td>'
+        + `<td>${x.theoGoi ? 'Theo gói' : 'Cân ký'}</td>`
         + `<td><span class="nhan-l ${lop}">${nhan}</span>`
         + (khac.length ? `<div class="phu">${khac.join(' · ')}</div>` : '') + (x.ghiChu ? `<div class="phu">${e(x.ghiChu)}</div>` : '') + '</td></tr>';
     }
-    if (!ds.length) h += '<tr><td colspan="8">Không có hàng nào khớp.</td></tr>';
+    if (!ds.length) h += '<tr><td colspan="9">Không có hàng nào khớp.</td></tr>';
     h += '</tbody></table></div>';
     if (d.hang.some(x => x.tinhTrang === 'lech' || x.tinhTrang === 'chua_len' || x.tinhTrang === 'ngoai_kho')) {
       h += '<p class="phu" style="margin-top:8px">Muốn cân khớp kho: sang thẻ <b>Gửi giá từ kho</b>.</p>';
     }
-    $('bang-hang').innerHTML = h;
+    $('bang-hang').innerHTML = baoHsdCu(d.hsdTrenCan) + baoCanChuaRo(d.canChuaRo) + h;
   }
 
   function xuatHang() {
     if (!dsHang) return;
     const o = (v) => { const t = String(v ?? ''); return /[",\n;]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
-    const dong = [['PLU', 'Phím', 'Mã cân', 'Mã FABi', 'Tên trên cân', 'Giá/kg', 'Cách bán', 'Tình trạng', 'Tên trong kho', 'Giá kho', 'Ghi chú']];
+    const dong = [['PLU', 'Phím', 'Mã cân', 'Mã FABi', 'Tên trên cân', 'Giá/kg', 'Cách bán', 'Tình trạng', 'Tên trong kho', 'Giá kho', 'Ghi chú',
+      'HSD trên cân', 'HSD kho', 'Nguồn HSD']];
     for (const x of hangDangLoc()) {
       dong.push([x.so ?? '', x.phim ?? '', x.maCan, x.maFabi ? '="' + x.maFabi + '"' : '', x.ten, x.gia ?? '', x.theoGoi ? 'Theo gói' : 'Cân ký',
-        TINH_TRANG[x.tinhTrang][0], x.tenKho ?? '', x.giaKho ?? '', x.ghiChu ?? '']);
+        tinhTrangChu(x.tinhTrang)[0], x.tenKho ?? '', x.giaKho ?? '', x.ghiChu ?? '', hsdChu(x.hsd), hsdChu(x.hsdKho), x.hsdNguon ?? '']);
     }
     const chu = '\ufeff' + dong.map(r => r.map((v, i) => i === 3 ? v : o(v)).join(',')).join('\r\n');
     const a = document.createElement('a');
@@ -594,24 +826,65 @@
   $('nut-xuat-hang').onclick = xuatHang;
 
   // ---- mẫu tem -----------------------------------------------------------------
-  let temDL = null, temSua = { chu: {}, bat: {} };
+  // temSua: chữ cố định (chu: cột LAB → chữ), tắt / bật (bat: khoá → có in), sửa ô đang in (sua: khoá → trường đổi),
+  // ô mới (them: như O_THEM_DUOC của tem.ts). chonO: khoá ô đang chọn trên sơ đồ ("o:i" ô của tem, "m:j" ô mới).
+  // dangGuiTem: đang gửi tem — mọi nút và chỗ sửa tem khoá lại (bấm lần hai, sửa giữa chừng sẽ gửi lại thay đổi cũ).
+  let temDL = null, temSua = moiTemSua(), chonO = null, keo = null, dangGuiTem = false;
+  function moiTemSua() { return { chu: {}, bat: {}, sua: {}, them: [] }; }
   const p2 = (n) => String(n).padStart(2, '0');
+  const CHAM = 8;   // máy in của cân 203 dpi = 8 chấm mỗi mm
+  const mm = (c) => (Number(c) / CHAM).toLocaleString('vi-VN', { maximumFractionDigits: 1 }) + ' mm';
+  // Canh chữ (4 bit thấp cột 7 của dòng LAS) → [dọc, ngang]. 0 = mặc định: phần mềm của hãng vẽ ở giữa.
+  const CANH = { 0: ['center', 'center'], 1: ['flex-start', 'flex-start'], 2: ['flex-start', 'center'], 3: ['flex-start', 'flex-end'],
+    4: ['center', 'flex-start'], 5: ['center', 'center'], 6: ['center', 'flex-end'], 7: ['flex-end', 'flex-start'],
+    8: ['flex-end', 'center'], 9: ['flex-end', 'flex-end'] };
 
   async function taiTem() {
     $('tem-o').innerHTML = '<p class="dang-lam">Đang đọc mẫu tem…</p>';
     try {
       temDL = await goi('/api/tem');
-      temSua = { chu: {}, bat: {} };
-      if (!temDL.tem) { $('tem-o').innerHTML = ''; $('giay').innerHTML = ''; $('tem-mo-ta').textContent = 'File của cân không có mẫu tem.'; capNutTem(); return; }
-      const t = temDL.tem;
-      $('tem-mo-ta').innerHTML = `Mẫu số <b>${e(t.id)}</b> "${e(t.ten)}" · ${t.rong}×${t.cao} mm`
+      temSua = moiTemSua(); chonO = null; keo = null;
+      if (!temDL.tem) {
+        for (const id of ['tem-o', 'giay', 'tem-sua-o', 'tem-goi-y', 'tem-canh-bao']) $(id).innerHTML = '';
+        $('tem-them').classList.add('an');
+        $('tem-mo-ta').textContent = 'File của cân không có mẫu tem.'; capNutTem(); return;
+      }
+      const t = temDL.tem, hm = temDL.hangMau;
+      $('tem-mo-ta').innerHTML = `Mẫu số <b>${e(t.id)}</b> "${e(t.ten)}" · ${t.rong}×${t.cao} mm (${t.rong * CHAM}×${t.cao * CHAM} chấm)`
         + (t.soMau > 1 ? ` · cân có ${t.soMau} mẫu tem, đây là mẫu đang dùng.` : '.');
-      veDanhSachO(); veTem(); capNutTem();
+      $('tem-xem-voi').value = (hm && hm.theoGoi ? 'goi' : 'ky') + (hm && hm.hsd !== null && hm.hsd !== undefined ? '-hsd' : '');
+      veTemHet();
     } catch (err) { bao($('tem-o'), 'loi', e(err.message)); }
   }
+  function veTemHet() { veGoiYHsd(); veDanhSachO(); veTem(); veSuaO(); veThemO(); capNutTem(); }
 
-  const oBat = (o) => (o.khoa in temSua.bat ? temSua.bat[o.khoa] : o.bat);
+  const oBat = (o) => (o.moi ? true : o.khoa in temSua.bat ? temSua.bat[o.khoa] : o.bat);
   const chuO = (col) => (col in temSua.chu ? temSua.chu[col] : temDL.tem.chu[col] ?? '');
+
+  /** Mọi ô để vẽ và sửa: ô của tem (kèm phần đã sửa; canh = 4 bit thấp) và ô mới thêm. */
+  function dsO() {
+    const t = temDL.tem, dm = temDL.danhMuc;
+    const cu = t.o.map(o => ({ ...o, canh: o.canh & 15, ...(temSua.sua[o.khoa] || {}), moi: false, goc: o }));
+    const moi = temSua.them.map((x, j) => {
+      const mau = dm.oThem.find(m => m.khoa === x.mau);
+      return { ...x, khoa: 'm:' + j, bat: true, moi: true, mau, loai: String(mau.flag1), chu: mau.flag2, duLieu: mau.flag3,
+        ten: mau.flag1 === 3 ? `Chữ "${x.chu || ''}"` : mau.ten, chuMoi: x.chu, subId: null };
+    });
+    return [...cu, ...moi];
+  }
+  const timO = (khoa) => (khoa ? dsO().find(x => x.khoa === khoa) : undefined);
+
+  /** Sửa được vị trí / cỡ: mẫu không có Phân vùng, và ô đang in từ trước (ô vừa bật lại phải gửi trước) hoặc ô mới. */
+  const suaDuoc = (o) => !temDL.tem.chanSua && (o.moi || (o.goc.bat && oBat(o)));
+
+  function datO(khoa, truong, v) {
+    if (khoa.startsWith('m:')) { temSua.them[Number(khoa.slice(2))][truong] = v; return; }
+    const o = temDL.tem.o.find(x => x.khoa === khoa);
+    const cu = truong === 'canh' ? (o.canh & 15) : o[truong];
+    const s = temSua.sua[khoa] || (temSua.sua[khoa] = {});
+    if (v === cu) delete s[truong]; else s[truong] = v;
+    if (!Object.keys(s).length) delete temSua.sua[khoa];
+  }
 
   function thayDoiTem() {
     const t = temDL.tem, chu = {};
@@ -620,52 +893,77 @@
       chu,
       tat: t.o.filter(o => o.bat && !oBat(o)).map(o => o.khoa),
       bat: t.o.filter(o => !o.bat && oBat(o)).map(o => o.khoa),
+      // Ô sắp tắt thì không gửi phần sửa (ô tắt được nhớ đúng như trên cân để bật lại).
+      sua: t.o.filter(o => o.bat && oBat(o) && temSua.sua[o.khoa]).map(o => ({ khoa: o.khoa, ...temSua.sua[o.khoa] })),
+      them: temSua.them.map(x => ({ ...x })),
+      // Dấu mẫu tem lúc mở thẻ: mẫu đã đổi (vừa gửi, thẻ khác gửi) thì chương trình từ chối, không áp nhầm ô.
+      dau: temDL.dau,
     };
   }
+  const demThayDoiTem = (td) => Object.keys(td.chu).length + td.tat.length + td.bat.length + td.sua.length + td.them.length;
   function capNutTem() {
-    const td = temDL && temDL.tem ? thayDoiTem() : { chu: {}, tat: [], bat: [] };
-    const n = Object.keys(td.chu).length + td.tat.length + td.bat.length;
-    for (const id of ['nut-gui-tem', 'nut-usb-tem', 'nut-bo-tem']) $(id).disabled = n === 0;
-    $('tem-dem').textContent = n ? `${n} thay đổi chưa gửi` : 'Chưa có thay đổi';
+    const n = temDL && temDL.tem ? demThayDoiTem(thayDoiTem()) : 0;
+    $('nut-gui-tem').disabled = dangGuiTem || n === 0; $('nut-bo-tem').disabled = dangGuiTem || n === 0;
+    // Lưu file nạp USB được cả khi chưa sửa gì: file lấy từ file gốc — đã có tem vừa gửi (gửi WiFi mà tem chưa đổi thì nạp USB).
+    $('nut-usb-tem').disabled = dangGuiTem || !(temDL && temDL.tem);
+    // Đang gửi: khoá sơ đồ, danh sách ô, khung sửa, thêm ô (inert: không bấm, không gõ, không Tab vào được).
+    for (const id of ['giay', 'tem-o', 'tem-sua-o', 'tem-them', 'tem-goi-y', 'tem-xem-voi']) $(id).inert = dangGuiTem;
+    $('tem-dem').textContent = dangGuiTem ? 'Đang gửi…' : n ? `${n} thay đổi chưa gửi` : 'Chưa có thay đổi';
   }
 
   function viTriO(o, t) {
-    const W = t.rong * 8, H = t.cao * 8, cy = o.y + o.h / 2, cx = o.x + o.w / 2;
+    const W = t.rong * CHAM, H = t.cao * CHAM, cy = o.y + o.h / 2, cx = o.x + o.w / 2;
+    const dk = temDL.danhMuc.dieuKienIn[o.inKhi];
     return (cy < H / 3 ? 'phía trên' : cy < H * 2 / 3 ? 'ở giữa' : 'phía dưới') + (cx < W / 3 ? ', bên trái' : cx < W * 2 / 3 ? '' : ', bên phải')
-      + (o.dieuKien === '2' ? ' · chỉ in với hàng cân ký' : o.dieuKien === '3' ? ' · chỉ in với hàng theo gói' : '');
+      + (o.inKhi !== 1 ? ' · ' + (dk ? dk.toLowerCase() : 'điều kiện in ' + o.inKhi) : '');
   }
 
   function veDanhSachO() {
     const t = temDL.tem, noi = $('tem-o');
-    noi.innerHTML = '<p style="margin:0 0 8px"><b>Ô in trên tem</b> <span class="phu">— bỏ chọn để không in ô đó</span></p>';
-    const ds = t.o.slice().sort((a, b) => a.y - b.y || a.x - b.x);
+    noi.innerHTML = '<p style="margin:0 0 8px"><b>Ô in trên tem</b> <span class="phu">— bỏ chọn để không in ô đó; bấm tên ô để sửa</span></p>';
+    const ds = dsO().sort((a, b) => Number(a.moi) - Number(b.moi) || (a.goc || a).y - (b.goc || b).y || (a.goc || a).x - (b.goc || b).x);
     for (const o of ds) {
       const the = document.createElement('div');
-      the.className = 'o-tem';
-      const id = 'o-' + o.khoa.replace(':', '-');
-      the.innerHTML = `<label class="chon-o"><input type="checkbox" id="${id}"><span><span class="ten-o"><b>${e(o.ten)}</b></span> <span class="phu">${viTriO(o, t)}</span></span></label>`
-        + (o.cot !== undefined ? `<input type="text" maxlength="40" placeholder="(để trống)" value="${e(chuO(o.cot))}">` : '');
-      const hop = the.querySelector('input[type=checkbox]'), o_chu = the.querySelector('input[type=text]');
-      const cap = () => {
-        const bat = oBat(o);
-        hop.checked = bat;
-        the.classList.toggle('tat', !bat);
-        the.classList.toggle('doi', bat !== o.bat || (o.cot !== undefined && chuO(o.cot) !== (t.chu[o.cot] ?? '')));
-        if (o_chu) o_chu.disabled = !bat;
-      };
-      hop.onchange = () => { temSua.bat[o.khoa] = hop.checked; if (hop.checked === o.bat) delete temSua.bat[o.khoa]; cap(); veTem(); capNutTem(); };
-      if (o_chu) {
-        o_chu.oninput = () => { temSua.chu[o.cot] = o_chu.value; for (const k of noi.querySelectorAll('.o-tem')) k.dispatchEvent(new Event('cap')); veTem(); capNutTem(); };
-        o_chu.onfocus = () => sangO(o.cot, true);
-        o_chu.onblur = () => sangO(o.cot, false);
+      the.className = 'o-tem'; the.dataset.khoa = o.khoa;
+      if (o.moi) {
+        the.innerHTML = '<div style="display:flex;gap:8px;align-items:center"><span class="nhan-l xanh">Ô mới</span>'
+          + `<span class="ten-o" style="cursor:pointer"><b>${e(o.ten)}</b></span><button type="button" class="sua-nho bo-moi">Bỏ</button></div>`;
+        the.querySelector('.bo-moi').onclick = () => { temSua.them.splice(Number(o.khoa.slice(2)), 1); chonO = null; veTemHet(); };
+        the.addEventListener('cap', () => the.classList.toggle('chon', o.khoa === chonO));
+      } else {
+        the.innerHTML = `<div style="display:flex;gap:8px;align-items:center"><input type="checkbox" title="In ô này">`
+          + `<span style="cursor:pointer"><span class="ten-o"><b>${e(o.ten)}</b></span> <span class="phu">${viTriO(o.goc, t)}</span> <span class="phu da-sua"></span></span></div>`
+          + (o.cot !== undefined ? `<input type="text" maxlength="40" placeholder="(để trống)" value="${e(chuO(o.cot))}">` : '');
+        const hop = the.querySelector('input[type=checkbox]'), o_chu = the.querySelector('input[type=text]');
+        const cap = () => {
+          const bat = oBat(o);
+          hop.checked = bat;
+          the.classList.toggle('tat', !bat);
+          the.classList.toggle('doi', bat !== o.bat || !!temSua.sua[o.khoa] || (o.cot !== undefined && chuO(o.cot) !== (t.chu[o.cot] ?? '')));
+          the.classList.toggle('chon', o.khoa === chonO);
+          the.querySelector('.da-sua').textContent = temSua.sua[o.khoa] ? '· đã sửa vị trí / cỡ / điều kiện in' : '';
+          if (o_chu) o_chu.disabled = !bat;
+        };
+        hop.onchange = () => {
+          temSua.bat[o.khoa] = hop.checked; if (hop.checked === o.bat) delete temSua.bat[o.khoa];
+          cap(); veTem(); veSuaO(); veGoiYHsd(); capNutTem();
+        };
+        if (o_chu) {
+          o_chu.oninput = () => { temSua.chu[o.cot] = o_chu.value; danhDauDanhSach(); veTem(); capNutTem(); };
+          o_chu.onfocus = () => sangO(o.cot, true);
+          o_chu.onblur = () => sangO(o.cot, false);
+        }
+        the.addEventListener('cap', cap);
+        cap();
       }
-      the.addEventListener('cap', cap);
+      // Bấm vào thẻ (không phải ô đánh dấu / ô chữ / nút) = chọn ô đó trên sơ đồ.
+      the.addEventListener('click', (ev) => { if (ev.target.closest('input, button')) return; chonO = o.khoa; veTem(); veSuaO(); danhDauDanhSach(); });
       the.onmouseenter = () => sangKhoa(o.khoa, true);
       the.onmouseleave = () => sangKhoa(o.khoa, false);
-      cap();
       noi.append(the);
     }
   }
+  function danhDauDanhSach() { for (const k of $('tem-o').querySelectorAll('.o-tem')) k.dispatchEvent(new Event('cap')); }
   function sangO(col, on) { for (const el of document.querySelectorAll(`#giay .el[data-cot="${col}"]`)) el.classList.toggle('sang', on); }
   function sangKhoa(k, on) { for (const el of document.querySelectorAll(`#giay .el[data-khoa="${k}"]`)) el.classList.toggle('sang', on); }
 
@@ -683,58 +981,256 @@
     return d;
   }
 
-  function veTem() {
-    const t = temDL.tem, giay = $('giay');
-    const W = t.rong * 8, H = t.cao * 8;      // máy in 203 dpi = 8 chấm/mm
-    giay.innerHTML = '';
-    giay.style.aspectRatio = `${t.rong} / ${t.cao}`;
-    const hm = temDL.hangMau || { so: 1, ten: 'Lõi vai bò Mỹ', gia: 845000, theoGoi: false };
-    const kg = 0.215, bay = new Date(), ngay = `${p2(bay.getDate())}/${p2(bay.getMonth() + 1)}/${bay.getFullYear()}`;
-    const so = (n) => n == null ? '' : Math.round(n).toLocaleString('vi-VN');
-    const thanhTien = hm.theoGoi ? hm.gia : Math.round((hm.gia || 0) * kg);
-    for (const o of t.o) {
-      if (!oBat(o)) continue;
-      if (o.dieuKien === '2' && hm.theoGoi) continue;
-      if (o.dieuKien === '3' && !hm.theoGoi) continue;
-      const el = document.createElement('div');
-      el.className = 'el'; el.dataset.khoa = o.khoa;
-      el.style.left = (o.x / W * 100) + '%'; el.style.top = (o.y / H * 100) + '%';
-      el.style.width = (o.w / W * 100) + '%'; el.style.height = (o.h / H * 100) + '%';
-      el.style.fontSize = (o.h / W * 100 * 0.62).toFixed(2) + 'cqw';
-      let chu = null;
-      if (o.loai === '0') el.append(vachMa());
-      else if (o.loai === '3') { chu = chuO(o.cot); el.dataset.cot = o.cot; }
-      else if (o.loai === '1') {
-        chu = { 0: hm.ten, 1: hm.theoGoi ? '1' : kg.toFixed(3), 4: so(hm.gia), 6: String(hm.so), 15: ngay }[o.duLieu] ?? null;
-        if (o.duLieu === 0) el.classList.add('dam');
-      } else if (o.loai === '2') {
-        chu = { 3: ngay, 4: `${p2(bay.getHours())}:${p2(bay.getMinutes())}`, 27: so(thanhTien) }[o.chu] ?? null;
-        if (o.chu === 27) el.classList.add('dam');
-      }
-      if (o.loai !== '0') { if (!chu) el.classList.add('trong'); else el.textContent = chu; }
-      giay.append(el);
+  /** Hàng mẫu để vẽ tem, theo ô "Xem tem với" (cân ký / theo gói, có / không hạn dùng). */
+  function hangXem() {
+    const hm = temDL.hangMau || { so: 1, ten: 'Hàng mẫu', gia: 845000, theoGoi: false, hsd: null, maCan: '10001' };
+    const v = $('tem-xem-voi').value;
+    return { ...hm, theoGoi: v.startsWith('goi'), hsd: v.endsWith('-hsd') ? (hm.hsd ?? 3) : null };
+  }
+  /** Ô có in với hàng này không (điều kiện in DIEU_KIEN_IN; điều kiện lạ thì vẽ như in). */
+  function inVoiHang(k, hm) {
+    if (k === 0 || k === 7 || k === 8) return false;   // không in; chỉ khi hàng có ngày bán / ngày đóng gói riêng
+    if (k === 2) return !hm.theoGoi;
+    if (k === 3) return hm.theoGoi;
+    if (k === 9) return hm.hsd !== null;
+    return true;
+  }
+  /** Ngày theo kiểu ngày in của cân (Spec104; từ 100 là giờ 12 tiếng, cùng kiểu ngày). */
+  function ngayTheoKieu(d, kieu) {
+    const Y = String(d.getFullYear()), y = Y.slice(2), m = p2(d.getMonth() + 1), n = p2(d.getDate());
+    return { 0: `${Y}.${m}.${n}`, 1: `${y}.${m}.${n}`, 2: `${m}/${n}/${y}`, 3: `${m}-${n}-${y}`, 4: `${n}/${m}/${y}`, 5: `${n}-${m}-${y}` }[kieu % 100] ?? `${Y}.${m}.${n}`;
+  }
+  /** Khung thật trên giấy (tem.ts khungThat): xoay quanh góc (x, y) theo chiều kim đồng hồ. */
+  function khung(o) {
+    const { x, y, w, h } = o;
+    switch (((o.xoay % 4) + 4) % 4) {
+      case 1: return { x: x - h, y, w: h, h: w };
+      case 2: return { x: x - w, y: y - h, w, h };
+      case 3: return { x, y: y - w, w: h, h: w };
+      default: return { x, y, w, h };
     }
   }
+  const ngoaiTem = (o, t) => { const k = khung(o); return k.x < 0 || k.y < 0 || k.x + k.w > t.rong * CHAM || k.y + k.h > t.cao * CHAM; };
+
+  function veTem() {
+    const t = temDL.tem, giay = $('giay');
+    const W = t.rong * CHAM, H = t.cao * CHAM;
+    giay.innerHTML = '';
+    giay.style.aspectRatio = `${t.rong} / ${t.cao}`;
+    giay.classList.toggle('sua-duoc', !t.chanSua);
+    const hm = hangXem(), kieu = temDL.kieuNgay || 0;
+    const kg = 0.215, bay = new Date(), ngay = ngayTheoKieu(bay, kieu);
+    const hsd = hm.hsd === null ? null : ngayTheoKieu(new Date(bay.getFullYear(), bay.getMonth(), bay.getDate() + hm.hsd), kieu);
+    const so = (n) => n == null ? '' : Math.round(n).toLocaleString('vi-VN');
+    const thanhTien = hm.theoGoi ? hm.gia : Math.round((hm.gia || 0) * kg);
+    const coChu = temDL.danhMuc.coChu;
+    for (const o of dsO()) {
+      if (!oBat(o)) continue;
+      const el = document.createElement('div');
+      el.className = 'el' + (inVoiHang(o.inKhi, hm) ? '' : ' khong-in') + (o.khoa === chonO ? ' chon' : '') + (o.moi ? ' moi' : '')
+        + (ngoaiTem(o, t) ? ' ngoai' : '');
+      el.dataset.khoa = o.khoa;
+      el.style.left = (o.x / W * 100) + '%'; el.style.top = (o.y / H * 100) + '%';
+      el.style.width = (o.w / W * 100) + '%'; el.style.height = (o.h / H * 100) + '%';
+      const xoay = ((o.xoay % 4) + 4) % 4;
+      if (xoay) el.style.transform = `rotate(${xoay * 90}deg)`;   // quanh góc (x, y) như cân (transform-origin 0 0)
+      let chu = null;
+      if (o.loai === '0') el.append(vachMa());
+      else if (o.loai === '3') { chu = o.moi ? o.chuMoi : chuO(o.cot); if (!o.moi) el.dataset.cot = o.cot; }
+      else if (o.loai === '1') {
+        chu = { 0: hm.ten, 1: hm.theoGoi ? '1' : kg.toFixed(3), 4: so(hm.gia), 6: String(hm.so), 10: hm.maCan || '', 15: hsd, 24: hm.theoGoi ? 'cái' : 'kg' }[o.duLieu] ?? null;
+        if (o.duLieu === 0) el.classList.add('dam');
+      } else if (o.loai === '2') {
+        chu = { 0: 'Tên quán', 3: ngay, 4: `${p2(bay.getHours())}:${p2(bay.getMinutes())}`, 16: 'đ', 27: so(thanhTien) }[o.chu] ?? null;
+        if (o.chu === 27) el.classList.add('dam');
+      }
+      if (o.loai !== '0') {
+        if (!chu) el.classList.add('trong');
+        else {
+          // Cỡ chữ của cân: rộng một chữ Latin × cao dòng (chấm). Chữ vẽ cao ~82% dòng, rồi kéo ngang cho đúng bề rộng chữ.
+          const f = coChu[o.font] || coChu[0], co = f.cao * 0.82;
+          el.style.fontSize = (co / W * 100).toFixed(3) + 'cqw';
+          const [doc, ngang] = CANH[o.canh] || CANH[0];
+          el.style.alignItems = doc; el.style.justifyContent = ngang;
+          const s = document.createElement('span');
+          s.className = 'noi'; s.textContent = chu;
+          s.style.transform = `scaleX(${(f.rong / (co * 0.56)).toFixed(3)})`;
+          s.style.transformOrigin = ngang === 'flex-start' ? 'left center' : ngang === 'flex-end' ? 'right center' : 'center';
+          el.append(s);
+        }
+      }
+      if (o.khoa === chonO && suaDuoc(o)) { const tay = document.createElement('div'); tay.className = 'tay-keo'; tay.dataset.tay = '1'; tay.title = 'Kéo để đổi cỡ'; el.append(tay); }
+      giay.append(el);
+    }
+    const ngoai = dsO().filter(o => oBat(o) && ngoaiTem(o, t));
+    $('tem-canh-bao').innerHTML = ngoai.length ? '<div class="bao luu-y"><p>' + ngoai.map(o => `Ô <b>${e(o.ten)}</b> nằm một phần ngoài tem `
+      + `${t.rong}×${t.cao} mm — phần ra ngoài mép có thể không in ra.`).join('<br>') + '</p></div>' : '';
+  }
+
+  /** Khung sửa ô đang chọn: vị trí, khung (chấm và mm), cỡ chữ, canh, xoay, khi nào in. */
+  function veSuaO() {
+    const noi = $('tem-sua-o'), o = timO(chonO);
+    if (!o) {
+      noi.innerHTML = '<p class="phu" style="margin:0">Bấm vào một ô trên tem để sửa: kéo để dời chỗ (mỗi bước 1 mm; giữ Shift: từng chấm), '
+        + 'kéo ô vuông đỏ ở góc để đổi cỡ, phím mũi tên dời 1 mm.' + (temDL.tem.chanSua ? `</p><p class="phu">${e(temDL.tem.chanSua)}` : '') + '</p>';
+      return;
+    }
+    const dm = temDL.danhMuc, sua = suaDuoc(o);
+    const lyDo = temDL.tem.chanSua ? temDL.tem.chanSua : !oBat(o) ? 'Ô đang tắt — bật lại ở danh sách bên phải.'
+      : (!o.moi && !o.goc.bat) ? 'Ô vừa bật lại: gửi tem xuống cân trước, rồi mới sửa được vị trí / cỡ chữ.' : '';
+    const dis = sua ? '' : 'disabled';
+    const so = (k, ten, min) => `<label class="truong-nho"><span>${ten}</span><input type="number" min="${min}" max="65535" step="1" data-truong="${k}" value="${o[k]}" ${dis}> `
+      + `<span class="phu" data-mm="${k}">${mm(o[k])}</span></label>`;
+    const chon = (k, ten, ds) => `<label class="truong-nho"><span>${ten}</span><select data-truong="${k}" ${dis}>${ds}</select></label>`;
+    const opts = (obj, v, soTruoc) => Object.entries(obj).map(([k, ten]) => `<option value="${k}" ${Number(k) === v ? 'selected' : ''}>${soTruoc ? k + ' · ' : ''}${e(ten)}</option>`).join('')
+      + (obj[v] === undefined ? `<option value="${v}" selected>${v} · (mã khác của hãng)</option>` : '');
+    const coChu = dm.coChu.map((c, i) => `<option value="${i}" ${i === o.font ? 'selected' : ''}>${i} · ${e(c.ten)} (${c.rong}×${c.cao} chấm)</option>`).join('');
+    noi.innerHTML = `<p style="margin:0 0 6px"><b>${e(o.ten)}</b> <span class="phu">${o.moi ? 'ô mới, chưa gửi' : 'ô số ' + o.subId}</span></p>`
+      + (lyDo ? `<p class="phu">${e(lyDo)}</p>` : '')
+      + `<div class="luoi-o">${so('x', 'Ngang (x), chấm', 0)}${so('y', 'Dọc (y), chấm', 0)}${so('w', 'Rộng, chấm', 1)}${so('h', 'Cao, chấm', 1)}</div>`
+      + '<div class="luoi-o">' + (o.loai !== '0' ? chon('font', 'Cỡ chữ', coChu) + chon('canh', 'Canh chữ', opts(dm.canhChu, o.canh, false)) : '')
+      + chon('xoay', 'Xoay', opts(dm.xoay, o.xoay, false)) + chon('inKhi', 'Khi nào in', opts(dm.dieuKienIn, o.inKhi, true)) + '</div>'
+      + (o.moi && o.mau.flag1 === 3 ? `<label class="truong"><span>Chữ in ra (tối đa 40 ký tự)</span><input type="text" maxlength="40" id="chu-o-moi" value="${e(o.chuMoi || '')}"></label>` : '')
+      + (o.moi && o.mau.ghiChu ? `<p class="phu">${e(o.mau.ghiChu)}</p>` : '')
+      + '<p class="phu" style="margin:4px 0 0">8 chấm = 1 mm. Dời ô, đổi cỡ, khi nào in: chưa thử trên cân thật — in thử một tem.</p>';
+    for (const i of noi.querySelectorAll('[data-truong]')) {
+      i.onchange = () => {
+        const v = Number(i.value), k = i.dataset.truong;
+        if (!Number.isInteger(v) || v < (k === 'w' || k === 'h' ? 1 : 0) || v > 65535) { i.value = timO(chonO)[k]; return; }
+        datO(o.khoa, k, v); veTem(); capSuaO(); danhDauDanhSach(); veGoiYHsd(); capNutTem();
+      };
+    }
+    if ($('chu-o-moi')) $('chu-o-moi').oninput = () => {
+      datO(o.khoa, 'chu', $('chu-o-moi').value);
+      veTem(); capNutTem();
+      const ten = $('tem-o').querySelector(`.o-tem[data-khoa="${o.khoa}"] .ten-o b`);
+      if (ten) ten.textContent = `Chữ "${$('chu-o-moi').value}"`;
+    };
+  }
+  /** Đang kéo: cập nhật số trong khung sửa, không vẽ lại khung (giữ ô đang gõ). */
+  function capSuaO() {
+    const o = timO(chonO); if (!o) return;
+    for (const i of $('tem-sua-o').querySelectorAll('input[data-truong]')) if (document.activeElement !== i) i.value = o[i.dataset.truong];
+    for (const s of $('tem-sua-o').querySelectorAll('[data-mm]')) s.textContent = mm(o[s.dataset.mm]);
+  }
+
+  /** Thêm ô (O_THEM_DUOC của tem.ts) — đặt giữa tem, chọn luôn để kéo tới chỗ cần. */
+  function veThemO() {
+    const noi = $('tem-them'), dm = temDL.danhMuc;
+    noi.classList.toggle('an', !!temDL.tem.chanSua);
+    if (temDL.tem.chanSua) { noi.innerHTML = ''; return; }
+    noi.innerHTML = '<p style="margin:0 0 6px"><b>Thêm ô</b> <span class="phu">— chưa thử trên cân thật, in thử sau khi gửi</span></p>'
+      + `<div class="nut" style="margin-top:0"><select id="tem-them-mau" style="max-width:240px">${dm.oThem.map(m => `<option value="${e(m.khoa)}">${e(m.ten)}</option>`).join('')}</select>`
+      + '<input type="text" id="tem-them-chu" maxlength="40" placeholder="Chữ in ra" style="max-width:170px">'
+      + '<button type="button" id="nut-them-o">Thêm</button></div><p class="phu" id="tem-them-ghi-chu" style="margin:4px 0 0"></p>';
+    const mau = () => dm.oThem.find(x => x.khoa === $('tem-them-mau').value);
+    const capMau = () => {
+      const m = mau();
+      $('tem-them-chu').classList.toggle('an', m.flag1 !== 3);
+      $('tem-them-chu').value = m.flag1 === 3 ? (m.chu || '') : '';
+      $('tem-them-ghi-chu').textContent = m.ghiChu || '';
+    };
+    $('tem-them-mau').onchange = capMau; capMau();
+    $('nut-them-o').onclick = () => {
+      const m = mau(), chu = $('tem-them-chu').value.trim();
+      if (m.flag1 === 3 && !chu) { $('tem-them-ghi-chu').textContent = 'Nhập chữ cho ô chữ mới.'; return; }
+      const W = temDL.tem.rong * CHAM, H = temDL.tem.cao * CHAM;
+      const x = Math.max(0, Math.round((W - m.w) / 2 / CHAM) * CHAM), y = Math.max(0, Math.round((H - m.h) / 2 / CHAM) * CHAM);
+      temSua.them.push({ mau: m.khoa, x, y, w: m.w, h: m.h, font: m.font, inKhi: m.inKhi, canh: m.canh, xoay: 0, ...(m.flag1 === 3 ? { chu } : {}) });
+      chonO = 'm:' + (temSua.them.length - 1);
+      veTemHet();
+    };
+  }
+
+  /** Gợi ý "Chỉ in HSD khi hàng có hạn dùng" (tem.ts goiYHsd): ô Hạn dùng / chữ "HSD" đang "Luôn in". */
+  function veGoiYHsd() {
+    const noi = $('tem-goi-y'), t = temDL.tem;
+    const ds = (temDL.goiYHsd || []).filter(k => { const o = timO(k); return o && oBat(o) && o.inKhi === 1; });
+    if (!ds.length || t.chanSua) { noi.innerHTML = ''; return; }
+    noi.innerHTML = '<div class="bao luu-y"><p>Tem đang in ô <b>Hạn dùng</b> / chữ <b>"HSD"</b> với mọi hàng ("Luôn in"): hàng không có hạn dùng vẫn in chữ "HSD". '
+      + 'Nên đổi sang "Chỉ khi hàng có hạn dùng". Cân in gì ở ô ngày khi hàng không có HSD: chưa thử trên cân thật.</p>'
+      + '<div class="nut"><button type="button" id="nut-goi-y-hsd">Chỉ in HSD khi hàng có hạn dùng</button><span class="phu">rồi bấm Gửi tem xuống cân</span></div></div>';
+    $('nut-goi-y-hsd').onclick = () => { for (const k of ds) datO(k, 'inKhi', 9); veGoiYHsd(); veTem(); veSuaO(); danhDauDanhSach(); capNutTem(); };
+  }
+
+  // Kéo thả trên sơ đồ: kéo ô = dời chỗ, kéo ô vuông đỏ ở góc = đổi cỡ. Mỗi bước 8 chấm (1 mm); giữ Shift: từng chấm.
+  $('giay').addEventListener('pointerdown', (ev) => {
+    if (!temDL || !temDL.tem || ev.button !== 0) return;
+    const el = ev.target.closest('.el');
+    if (!el) { if (chonO) { chonO = null; veTem(); veSuaO(); danhDauDanhSach(); } return; }
+    const o = timO(el.dataset.khoa); if (!o) return;
+    chonO = o.khoa;
+    if (suaDuoc(o)) {
+      // preventDefault bên dưới giữ nguyên chỗ đang focus (nút thẻ, ô đánh dấu…) — bỏ focus đó để phím mũi tên dời được ô.
+      if (document.activeElement && document.activeElement !== document.body) document.activeElement.blur();
+      keo = { khoa: o.khoa, doiCo: !!ev.target.dataset.tay, px: ev.clientX, py: ev.clientY, x: o.x, y: o.y, w: o.w, h: o.h,
+              xoay: ((o.xoay % 4) + 4) % 4, daKeo: false };
+      $('giay').setPointerCapture(ev.pointerId);
+      ev.preventDefault();
+    }
+    veTem(); veSuaO(); danhDauDanhSach();
+  });
+  $('giay').addEventListener('pointermove', (ev) => {
+    if (!keo) return;
+    const k = temDL.tem.rong * CHAM / $('giay').clientWidth;      // chấm trên mỗi điểm ảnh
+    const sx = (ev.clientX - keo.px) * k, sy = (ev.clientY - keo.py) * k;
+    const buoc = (v) => (ev.shiftKey ? Math.round(v) : Math.round(v / CHAM) * CHAM);
+    if (!keo.doiCo) {
+      datO(keo.khoa, 'x', Math.max(0, keo.x + buoc(sx)));
+      datO(keo.khoa, 'y', Math.max(0, keo.y + buoc(sy)));
+    } else {
+      // Ô xoay thì trục rộng / cao của ô xoay theo: đổi hướng kéo về trục của ô.
+      const g = keo.xoay * Math.PI / 2, c = Math.round(Math.cos(g)), s = Math.round(Math.sin(g));
+      const nho = ev.shiftKey ? 1 : CHAM;
+      datO(keo.khoa, 'w', Math.max(nho, keo.w + buoc(c * sx + s * sy)));
+      datO(keo.khoa, 'h', Math.max(nho, keo.h + buoc(-s * sx + c * sy)));
+    }
+    keo.daKeo = true;
+    veTem(); capSuaO(); capNutTem();
+  });
+  const thaKeo = () => { if (!keo) return; const daKeo = keo.daKeo; keo = null; if (daKeo) { danhDauDanhSach(); veGoiYHsd(); capNutTem(); } };
+  $('giay').addEventListener('pointerup', thaKeo);
+  $('giay').addEventListener('pointercancel', thaKeo);
+  // Phím mũi tên dời ô đang chọn 1 mm (Shift: 1 chấm) — khi đang ở thẻ Mẫu tem và không gõ trong ô nhập.
+  document.addEventListener('keydown', (ev) => {
+    if (tab !== 'tem' || dangGuiTem || !chonO || !temDL || !temDL.tem) return;
+    if (/^(INPUT|SELECT|TEXTAREA|BUTTON)$/.test(document.activeElement ? document.activeElement.tagName : '')) return;
+    const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[ev.key];
+    const o = timO(chonO);
+    if (!d || !o || !suaDuoc(o)) return;
+    const b = ev.shiftKey ? 1 : CHAM;
+    datO(chonO, 'x', Math.max(0, o.x + d[0] * b)); datO(chonO, 'y', Math.max(0, o.y + d[1] * b));
+    ev.preventDefault(); veTem(); capSuaO(); danhDauDanhSach(); capNutTem();
+  });
+  $('tem-xem-voi').onchange = () => { if (temDL && temDL.tem) veTem(); };
 
   async function guiTem() {
+    if (dangGuiTem) return;
     const nut = $('nut-gui-tem');
-    nut.disabled = true; nut.textContent = 'Đang gửi…';
+    dangGuiTem = true; nut.textContent = 'Đang gửi…'; capNutTem();
     try {
       const k = await goi('/api/tem/gui', thayDoiTem());
       baoChung('xong', '<p><b>Đã gửi tem xuống cân.</b> Cân thử một món rồi in một tem để xem tem mới.</p>'
-        + '<p>Nếu tem chưa đổi: mở thẻ Mẫu tem, sửa lại như vừa rồi và bấm <b>Lưu file nạp USB</b> — nạp USB thì cân nhận chắc chắn.</p>'
+        + '<p>Nếu tem chưa đổi: bấm <b>Lưu file nạp USB</b> ở thẻ Mẫu tem (không cần sửa lại — file đã có tem vừa gửi) rồi nạp USB; nạp USB thì cân nhận chắc chắn.</p>'
+        + (k.canhBao && k.canhBao.length ? `<p>${k.canhBao.map(e).join('<br>')}</p>` : '')
         + daDoiDiaChi(k.doiDiaChi));
       $('khung-usb-tem').innerHTML = '';
       await taiTrangThai();
     } catch (err) { baoChung('loi', e(err.message)); }
-    finally { nut.textContent = 'Gửi tem xuống cân'; capNutTem(); }
+    finally { dangGuiTem = false; nut.textContent = 'Gửi tem xuống cân'; capNutTem(); }
   }
   $('nut-gui-tem').onclick = guiTem;
   $('nut-usb-tem').onclick = async () => {
-    try { hienUsb($('khung-usb-tem'), await goi('/api/tem/usb', thayDoiTem())); }
-    catch (err) { bao($('khung-usb-tem'), 'loi', e(err.message)); }
+    if (dangGuiTem || !temDL || !temDL.tem) return;
+    try {
+      // Chưa sửa gì: file lấy từ file gốc (đã có tem vừa gửi qua WiFi). Có sửa: file có tem đã sửa, file gốc chưa đổi.
+      const td = thayDoiTem();
+      const k = demThayDoiTem(td) ? await goi('/api/tem/usb', td) : await goi('/api/tao-usb-goc');
+      hienUsb($('khung-usb-tem'), k);
+      if (k.canhBao && k.canhBao.length) $('khung-usb-tem').insertAdjacentHTML('afterbegin', `<div class="bao luu-y"><p>${k.canhBao.map(e).join('<br>')}</p></div>`);
+    } catch (err) { bao($('khung-usb-tem'), 'loi', e(err.message)); }
   };
-  $('nut-bo-tem').onclick = () => { temSua = { chu: {}, bat: {} }; veDanhSachO(); veTem(); capNutTem(); };
+  $('nut-bo-tem').onclick = () => { temSua = moiTemSua(); chonO = null; veTemHet(); };
 
   // =====================================================================
   // MÁY QUẦY (0054)
@@ -1067,6 +1563,389 @@
       ...b.tang.map(x => [x.so_tang ?? '', x.ma_lo, x.ten_hang, x.ten_ncc ?? '', x.ngay_nhan ?? '', x.ngay_loc ?? '', x.kg_ncc ?? '', x.kg_repack ?? '', x.kg_vao_loc ?? '', x.kg_thit ?? '', x.thu_hoi_pt ?? '', x.kg_ban ?? '', x.ban_pt ?? '', x.kg_huy ?? '', x.kg_con ?? '', x.so_ngay_ban ?? '', x.tinh_trang])]);
   }
 
+  // =====================================================================
+  // BẢN 2.2: Cân & thông số, Phím tắt, Nhật ký cân (chưa thử trên cân thật)
+  // =====================================================================
+  const gioChu = (g) => `${p2(g.gio)}:${p2(g.phut)}:${p2(g.giay)} ngày ${p2(g.ngay)}/${p2(g.thang)}/${g.nam}`;
+  /** Giờ cân − giờ máy tính (giây) → câu dễ đọc: "lệch 12 giây", "cân chậm hơn 3 ngày 21 giờ". */
+  const lechChu = (s) => {
+    const a = Math.abs(s), ngay = Math.floor(a / 86400), gio = Math.floor(a % 86400 / 3600), phut = Math.round(a % 3600 / 60);
+    if (a < 60) return `lệch ${a} giây`;
+    const chu = ngay ? `${ngay} ngày${gio ? ' ' + gio + ' giờ' : ''}` : gio ? `${gio} giờ${phut ? ' ' + phut + ' phút' : ''}` : `${phut} phút`;
+    return `cân ${s > 0 ? 'nhanh' : 'chậm'} hơn ${chu}`;
+  };
+
+  /**
+   * Việc ở thẻ Cân: khoá các nút của thẻ khi đang làm, hiện chữ "đang…" trong khung kết quả. Không đụng nút của mục
+   * Thông số (#can-thong-so): veThongSo / capNutTs tự bật tắt chúng theo thay đổi đang sửa.
+   */
+  async function lamCan(noi, chuDang, viec) {
+    const nut = [...$('the-can').querySelectorAll('button')].filter(b => !b.closest('#can-thong-so'));
+    for (const b of nut) b.disabled = true;
+    noi.innerHTML = `<p class="dang-lam">${e(chuDang)}</p>`;
+    try { await viec(noi); }
+    catch (err) { bao(noi, 'loi', e(err.message)); }
+    finally { for (const b of nut) b.disabled = false; }
+  }
+
+  $('nut-thong-tin-can').onclick = () => lamCan($('kq-thong-tin'), 'Đang hỏi cân qua cổng hai chiều… (tới 30 giây)', async (noi) => {
+    const k = await goi('/api/can/thong-tin');
+    const t = k.thongTin, lech = Math.abs(k.lechGiay) > 120;
+    bao(noi, 'xong', `<p><b>Cân trả lời qua cổng hai chiều ${k.cong}</b> ở ${e(k.ip)} — đường WiFi hai chiều thông.</p>`
+      + '<table class="bang-tt"><tbody>'
+      + `<tr><td>Mã máy (MAC)</td><td><b>${e(t.mac)}</b></td></tr>`
+      + `<tr><td>Loại máy</td><td>${e(t.model)}</td></tr>`
+      + `<tr><td>Tên cân · số máy</td><td>${e(t.tenMay || '—')} · ${t.soMay}</td></tr>`
+      + `<tr><td>Tên quán trên cân</td><td>${e(t.cuaHang || '—')}</td></tr>`
+      + `<tr><td>Bảng mã chữ</td><td>${e(t.maHoa || 'cân không báo')}</td></tr>`
+      + `<tr><td>Giờ trên cân</td><td><b>${gioChu(k.gio)}</b> · máy tính ${e(k.gioMay)} (${lechChu(k.lechGiay)})</td></tr>`
+      + '</tbody></table>'
+      + (lech ? '<p>Giờ cân lệch nhiều: ngày đóng gói, HSD in trên tem theo giờ cân. Xem giờ máy tính đúng chưa rồi bấm <b>Chỉnh giờ cân theo máy tính</b>.</p>' : ''));
+  });
+
+  $('nut-doc-gio').onclick = () => lamCan($('kq-gio'), 'Đang đọc giờ cân…', async (noi) => {
+    const k = await goi('/api/gio-can');
+    const lech = Math.abs(k.lechGiay) > 120;
+    bao(noi, lech ? 'luu-y' : 'xong', `<p>Giờ trên cân: <b>${gioChu(k.gio)}</b> · máy tính ${e(k.gioMay)} (${lechChu(k.lechGiay)}).</p>`
+      + (lech ? '<p>Lệch nhiều: xem giờ máy tính đúng chưa rồi bấm <b>Chỉnh giờ cân theo máy tính</b>.</p>' : ''));
+  });
+
+  $('nut-chinh-gio').onclick = () => {
+    if (!confirm(`Đặt giờ cân theo giờ máy tính (bây giờ: ${new Date().toLocaleString('vi-VN')})?\n\n`
+      + 'Xem giờ máy tính đúng chưa trước khi bấm. Chưa thử trên cân thật: chỉnh xong bấm Time trên cân xem lại.')) return;
+    lamCan($('kq-gio'), 'Đang chỉnh giờ cân…', async (noi) => {
+      const k = await goi('/api/gio-can/chinh', {});
+      if (k.cach === '33581') {
+        bao(noi, 'xong', `<p>Cân đã báo lại giờ mới: <b>${gioChu(k.gio)}</b> (qua cổng hai chiều — cách này chưa thử trên cân thật). Bấm <b>Time</b> trên cân xem lại.</p>`);
+      } else {
+        bao(noi, 'luu-y', `<p><b>Đã gửi giờ ${gioChu(k.gio)} qua cổng 33571</b> — cách này chưa thử trên cân thật, và cân không trả lời nên chưa biết cân đã nhận chưa. `
+          + 'Bấm <b>Time</b> trên cân xem giờ; chưa đổi thì chỉnh ngay trên cân (Prog → 1 → 1).</p>'
+          + `<p class="phu">Cổng hai chiều không được: ${e(k.loiHaiChieu)}</p>` + daDoiDiaChi(k.doiDiaChi));
+      }
+    });
+  };
+
+  for (const b of document.querySelectorAll('.doc-wifi')) {
+    b.onclick = async () => {
+      if (trangThai.goc && !confirm('Đọc lại dữ liệu từ cân qua WiFi và thay file gốc của chương trình?\n\n'
+        + 'Chưa thử trên cân thật. Không ghi gì xuống cân. Đóng phần mềm TM-xA của hãng trên máy khác trước.')) return;
+      const dang = b.parentElement.querySelector('.dang-lam');
+      b.disabled = true; if (dang) dang.classList.remove('an');
+      try {
+        const k = await goi('/api/can/doc-wifi');
+        baoChung('xong', `<p><b>Đã đọc dữ liệu từ cân qua WiFi</b> và ghi nhận làm file gốc: ${k.soHang} hàng, cân ${e(k.phienBan)} (mã máy ${e(k.thongTin.mac)}).</p>`
+          + '<p class="phu">Cách đọc qua cổng hai chiều chưa thử trên cân thật — mở thẻ Tất cả hàng xem có đúng hàng trên cân không.</p>');
+        await taiTrangThai();
+      } catch (err) { baoChung('loi', e(err.message)); }
+      finally { b.disabled = false; if (dang) dang.classList.add('an'); }
+    };
+  }
+
+  $('nut-xem-con-lai').onclick = async () => {
+    const noi = $('kq-con-lai'), nut = $('nut-xem-con-lai');
+    if (!trangThai.goc) { bao(noi, 'luu-y', 'Chưa có file gốc của cân — làm bước Bắt đầu trước.'); return; }
+    if (!trangThai.nguoi) { bao(noi, 'luu-y', 'Đăng nhập kho trước: chương trình cần danh mục kho để biết cân phải còn những hàng nào.'); return; }
+    bao(noi, '', '<p class="dang-lam">Đang lấy danh mục từ kho…</p>');
+    try {
+      const giu = giuNgoaiKho();
+      const x = await goi('/api/xem-truoc', { giuHangNgoaiKho: giu });
+      if (!x.conLai.length) { bao(noi, 'xong', 'Không có hàng nào còn nằm lại trên cân — không cần xoá.'); return; }
+      if (x.doiHsd) {
+        bao(noi, 'luu-y', `Kho có thay đổi hạn dùng (HSD) của ${x.doiHsd} hàng chưa gửi — gửi ở thẻ Gửi giá từ kho (xem trước, in thử tem) rồi mới xoá qua WiFi.`);
+        return;
+      }
+      bao(noi, 'luu-y', `<p>${x.conLai.length} hàng còn nằm lại: ${x.conLai.map(c => `PLU ${c.so} · ${e(c.ten)}`).join(' · ')}</p>`);
+      await xoaQuaWifi(noi, x, giu, nut);
+    } catch (err) { bao(noi, 'loi', e(err.message)); }
+  };
+
+  // ---- thông số -------------------------------------------------------------
+  // dangGuiTs: đang gửi thông số — nút Gửi / Bỏ không bật lại (bấm lần hai gửi lại thay đổi đã gửi, báo lỗi đè câu "đã gửi").
+  let tsSua = {}, dangGuiTs = false;
+  /** Bật tắt nút và đếm thay đổi của mục Thông số, không vẽ lại (giữ ô đang gõ, cú bấm vào Gửi không bị mất). */
+  function capNutTs() {
+    const n = Object.keys(tsSua).length;
+    if (!$('nut-gui-ts')) return;
+    $('nut-gui-ts').disabled = dangGuiTs || !n; $('nut-bo-ts').disabled = dangGuiTs || !n; $('nut-usb-ts').disabled = dangGuiTs;
+    $('ts-dem').textContent = dangGuiTs ? 'Đang gửi…' : n ? n + ' thay đổi chưa gửi' : 'Chưa có thay đổi';
+  }
+  const tenGiaTri = (m, v) => {
+    if (v === null || v === undefined || v === '') return '(file không có)';
+    const l = (m.luaChon || []).find(x => x.gt === String(Number(v)) || x.gt === v);
+    return l ? `${l.gt} — ${l.ten}` : String(v);
+  };
+  const cungGiaTri = (a, b) => a !== null && b !== null && String(a).trim() !== '' && Number(a) === Number(b);
+
+  async function taiCan() {
+    canDL = { dang: true };
+    const noi = $('can-thong-so');
+    if (!trangThai.goc) { bao(noi, 'luu-y', 'Chưa có file gốc của cân — làm bước Bắt đầu (USB), hoặc đọc dữ liệu từ cân qua WiFi ở mục 3.'); return; }
+    noi.innerHTML = '<p class="dang-lam">Đang đọc thông số…</p>';
+    try { canDL = await goi('/api/thong-so'); tsSua = {}; veThongSo(); }
+    catch (err) { bao(noi, 'loi', e(err.message)); }
+  }
+
+  function veThongSo() {
+    const d = canDL;
+    let h = '';
+    for (const nhom of d.nhom) {
+      const ds = d.muc.filter(m => m.nhom === nhom);
+      if (!ds.length) continue;
+      h += `<h4 class="nhom-ts">${e(nhom)}</h4>`;
+      for (const m of ds) {
+        const doi = m.id in tsSua, gt = doi ? tsSua[m.id] : m.giaTri;
+        let dk;
+        if (m.chiXem) dk = `<span class="nhan-l xam">Chỉ xem</span> <b>${e(tenGiaTri(m, m.giaTri))}</b>`;
+        else if (m.kieu === 'chon') {
+          const coGt = (m.luaChon || []).some(l => cungGiaTri(l.gt, gt));
+          dk = `<select data-ts="${m.id}" style="max-width:560px">`
+            + (coGt ? '' : `<option value="" selected disabled>${e(tenGiaTri(m, gt))}</option>`)
+            + (m.luaChon || []).map(l => `<option value="${e(l.gt)}" ${cungGiaTri(l.gt, gt) ? 'selected' : ''}>${e(l.gt)} — ${e(l.ten)}</option>`).join('') + '</select>';
+        } else {
+          dk = `<input type="number" data-ts="${m.id}" min="${m.toiThieu ?? 0}" ${m.toiDa !== undefined ? `max="${m.toiDa}"` : ''} step="1" value="${e(gt ?? '')}" style="width:120px"> `
+            + `<span class="phu">từ ${Number(m.toiThieu ?? 0).toLocaleString('vi-VN')} đến ${Number(m.toiDa).toLocaleString('vi-VN')}</span>`;
+        }
+        const lc = (m.luaChon || []).find(l => cungGiaTri(l.gt, gt));
+        h += `<div class="ts ${doi ? 'doi' : ''}"><div><b>${e(m.ten)}</b> <span class="phu">thông số ${m.id}${doi ? ' · trên cân (file gốc) đang là ' + e(tenGiaTri(m, m.giaTri)) : ''}</span></div>`
+          + `<div class="phu">${e(m.moTa)}</div><div style="margin-top:4px">${dk}</div>`
+          + (m.canhBao ? `<div class="canh-bao">${e(m.canhBao)}</div>` : '')
+          + (doi && lc && lc.canhBao ? `<div class="canh-bao-o">${e(lc.canhBao)}</div>` : '') + '</div>';
+      }
+    }
+    h += `<div class="nut" style="margin-top:14px"><button class="chinh" id="nut-gui-ts">Gửi thông số đã đổi xuống cân</button>`
+      + '<button id="nut-bo-ts">Bỏ thay đổi</button><button id="nut-usb-ts">Lưu file nạp USB</button>'
+      + '<span class="phu" id="ts-dem"></span></div><div id="kq-ts"></div>';
+    $('can-thong-so').innerHTML = h;
+    $('can-thong-so').inert = dangGuiTs;
+    capNutTs();
+    for (const i of $('can-thong-so').querySelectorAll('[data-ts]')) {
+      const m = canDL.muc.find(x => x.id === Number(i.dataset.ts));
+      const capNhat = () => { if (i.value === '' || cungGiaTri(i.value, m.giaTri)) delete tsSua[m.id]; else tsSua[m.id] = i.value; };
+      // Chọn: vẽ lại (hiện cảnh báo của lựa chọn). Ô số: cập nhật khi gõ, không vẽ lại — vẽ lại lúc ô mất focus
+      // (bấm Gửi) sẽ thay nút Gửi dưới con trỏ và cú bấm đó bị mất.
+      if (i.tagName === 'SELECT') i.onchange = () => { capNhat(); veThongSo(); };
+      else i.oninput = () => { capNhat(); i.closest('.ts').classList.toggle('doi', m.id in tsSua); capNutTs(); };
+    }
+    $('nut-bo-ts').onclick = () => { tsSua = {}; veThongSo(); };
+    $('nut-usb-ts').onclick = async () => {
+      // File USB mang cả thay đổi đang sửa (chưa gửi WiFi) — gửi WiFi hỏng thì nạp USB luôn.
+      try { hienUsb($('kq-ts'), await goi('/api/tao-usb-goc', { thongSo: tsSua })); } catch (err) { bao($('kq-ts'), 'loi', e(err.message)); }
+    };
+    $('nut-gui-ts').onclick = async () => {
+      if (dangGuiTs || !Object.keys(tsSua).length) return;
+      const ds = Object.entries(tsSua).map(([id, v]) => {
+        const m = canDL.muc.find(x => x.id === Number(id));
+        return `• ${m.ten} (${id}): ${tenGiaTri(m, m.giaTri)} → ${tenGiaTri(m, v)}`;
+      }).join('\n');
+      if (!confirm(`Gửi ${Object.keys(tsSua).length} thông số xuống cân?\n\n${ds}\n\nGửi qua cổng 33571 như gửi giá — CHƯA THỬ TRÊN CÂN THẬT: `
+        + 'cân không trả lời, nên chưa biết cân đã nhận. Gửi xong in thử một tem, xem màn hình cân.')) return;
+      const nut = $('nut-gui-ts');
+      dangGuiTs = true; $('can-thong-so').inert = true; nut.textContent = 'Đang gửi…'; capNutTs();
+      try {
+        const k = await goi('/api/thong-so/gui', { thay: tsSua });
+        tsSua = {};   // đã gửi: không gửi lại lần nữa
+        baoChung('luu-y', `<p><b>Đã gửi ${k.doi.length} thông số xuống cân</b> (số ${k.doi.join(', ')}) qua cổng 33571. Chưa thử trên cân thật: cân không trả lời, `
+          + 'nên chưa biết cân đã nhận. In thử một tem, xem màn hình cân.</p><p>Cân chưa đổi: thẻ Cân &amp; thông số → <b>Lưu file nạp USB</b> '
+          + '(file có sẵn thay đổi vừa gửi) rồi nạp USB.</p>' + daDoiDiaChi(k.doiDiaChi));
+        await taiTrangThai();
+      } catch (err) { bao($('kq-ts'), 'loi', e(err.message)); }
+      finally {
+        dangGuiTs = false; $('can-thong-so').inert = false;
+        if ($('nut-gui-ts')) { $('nut-gui-ts').textContent = 'Gửi thông số đã đổi xuống cân'; capNutTs(); }
+      }
+    };
+  }
+
+  // ---- thẻ Phím tắt -----------------------------------------------------------
+  // dangGuiPhim: đang gửi phím — nút Gửi / Bỏ không bật lại, bảng phím không sửa được (thay đổi giữa chừng lẫn vào lần sau).
+  let phimSua = {}, phimTang = 0, dangGuiPhim = false;
+  async function taiPhim() {
+    phimDL = { dang: true };
+    $('phim-noi-dung').innerHTML = '<p class="dang-lam">Đang đọc phím tắt…</p>';
+    try { phimDL = await goi('/api/phim'); phimSua = {}; vePhim(); }
+    catch (err) { bao($('phim-noi-dung'), 'loi', e(err.message)); }
+  }
+  function capNutPhim() {
+    const n = Object.keys(phimSua).length;
+    $('nut-gui-phim').disabled = dangGuiPhim || n === 0; $('nut-bo-phim').disabled = dangGuiPhim || n === 0;
+    $('nut-usb-phim').disabled = dangGuiPhim;
+    for (const id of ['phim-noi-dung', 'loc-phim']) $(id).inert = dangGuiPhim;
+    $('phim-dem').textContent = dangGuiPhim ? 'Đang gửi…' : n ? `${n} phím đổi chưa gửi` : 'Chưa có thay đổi';
+  }
+  /** Phím đang sửa, dạng gửi cho chương trình. */
+  const thayPhim = () => Object.entries(phimSua).map(([k, plu]) => { const [trang, phim] = k.split(':').map(Number); return { trang, phim, plu }; });
+  function vePhim() {
+    const d = phimDL;
+    if (!d || !d.phim) return;
+    for (const b of $('loc-phim').querySelectorAll('button')) b.classList.toggle('chon', Number(b.dataset.tang) === phimTang);
+    const q = boDau($('tim-phim').value.trim());
+    const theoSo = new Map(d.hang.map(x => [x.so, x]));
+    const ds = d.phim.filter(k => k.trang === phimTang && (!q || boDau(k.nhan).includes(q) || String(k.phim) === q || String(k.plu) === q
+      || boDau(k.ten || '').includes(q) || (phimSua[`${k.trang}:${k.phim}`] !== undefined && boDau((theoSo.get(phimSua[`${k.trang}:${k.phim}`]) || {}).ten).includes(q))));
+    let h = '<div class="khung-bang" style="max-height:560px"><table><thead><tr><th>Phím</th><th class="so">Số</th><th>Đang gọi</th><th>Đổi thành</th></tr></thead><tbody>';
+    for (const k of ds) {
+      const khoa = `${k.trang}:${k.phim}`, moi = khoa in phimSua ? phimSua[khoa] : k.plu;
+      const dang = k.plu > 0 ? `PLU ${k.plu}${k.ten ? ' · ' + e(k.ten) : ' · <span class="phu">không có trên cân</span>'}`
+        : k.plu < 0 || !k.suaDuoc ? '<span class="phu">phím chức năng</span>' : '<span class="phu">trống</span>';
+      const chon = k.suaDuoc
+        ? `<select data-phim="${khoa}" style="max-width:360px"><option value="0" ${moi === 0 ? 'selected' : ''}>— trống —</option>`
+          + (moi > 0 && !theoSo.has(moi) ? `<option value="${moi}" selected>PLU ${moi} (không có trên cân)</option>` : '')
+          + d.hang.map(x => `<option value="${x.so}" ${x.so === moi ? 'selected' : ''}>PLU ${x.so} · ${e(x.ten)}${x.ma ? ' · mã ' + e(x.ma) : ''}</option>`).join('') + '</select>'
+        : `<span class="phu">${e(k.ghiChu || '')}</span>`;
+      h += `<tr class="${khoa in phimSua ? 'doi-phim' : ''}"><td><span class="phim">${e(k.nhan)}</span></td><td class="so">${k.phim}</td><td>${dang}</td><td>${chon}</td></tr>`;
+    }
+    if (!ds.length) h += '<tr><td colspan="4">Không có phím nào khớp.</td></tr>';
+    $('phim-noi-dung').innerHTML = h + '</tbody></table></div>';
+    for (const s of $('phim-noi-dung').querySelectorAll('select[data-phim]')) {
+      s.onchange = () => {
+        const [trang, phim] = s.dataset.phim.split(':').map(Number);
+        const k = d.phim.find(x => x.trang === trang && x.phim === phim), v = Number(s.value);
+        if (v === k.plu) delete phimSua[s.dataset.phim]; else phimSua[s.dataset.phim] = v;
+        s.closest('tr').classList.toggle('doi-phim', s.dataset.phim in phimSua);
+        capNutPhim();
+      };
+    }
+    capNutPhim();
+  }
+  for (const b of $('loc-phim').querySelectorAll('button')) b.onclick = () => { phimTang = Number(b.dataset.tang); vePhim(); };
+  $('tim-phim').oninput = vePhim;
+  $('nut-bo-phim').onclick = () => { phimSua = {}; vePhim(); };
+  $('nut-usb-phim').onclick = async () => {
+    if (dangGuiPhim) return;
+    // File USB mang cả phím đang sửa (chưa gửi WiFi) — gửi WiFi hỏng thì nạp USB luôn.
+    try { hienUsb($('khung-usb-phim'), await goi('/api/tao-usb-goc', { phim: thayPhim() })); } catch (err) { bao($('khung-usb-phim'), 'loi', e(err.message)); }
+  };
+  $('nut-gui-phim').onclick = async () => {
+    if (dangGuiPhim) return;
+    const theoSo = new Map(phimDL.hang.map(x => [x.so, x]));
+    const thay = thayPhim();
+    const ds = thay.map(t => {
+      const k = phimDL.phim.find(x => x.trang === t.trang && x.phim === t.phim);
+      return `• ${t.trang === 1 ? 'Shift + ' : ''}${k.nhan}: ${t.plu ? 'PLU ' + t.plu + ' · ' + ((theoSo.get(t.plu) || {}).ten || '') : 'bỏ trống'}`;
+    }).join('\n');
+    if (!confirm(`Gửi ${thay.length} phím tắt xuống cân?\n\n${ds}\n\nGửi qua cổng 33571 — CHƯA THỬ TRÊN CÂN THẬT. Gửi xong bấm thử từng phím trên cân.`)) return;
+    const nut = $('nut-gui-phim');
+    dangGuiPhim = true; nut.textContent = 'Đang gửi…'; capNutPhim();
+    try {
+      const k = await goi('/api/phim/gui', { thay });
+      phimSua = {};   // đã gửi: không gửi lại lần nữa
+      baoChung('luu-y', `<p><b>Đã gửi ${k.doi.length} phím tắt xuống cân</b> qua cổng 33571. Chưa thử trên cân thật: bấm thử từng phím vừa đổi trên cân `
+        + '(tầng 2: bấm Shift trước). Chưa đổi: thẻ Phím tắt → <b>Lưu file nạp USB</b> rồi nạp USB.</p>' + daDoiDiaChi(k.doiDiaChi));
+      await taiTrangThai();
+    } catch (err) { baoChung('loi', e(err.message)); }
+    finally { dangGuiPhim = false; nut.textContent = 'Gửi phím xuống cân'; capNutPhim(); }
+  };
+
+  // ---- thẻ Nhật ký cân ---------------------------------------------------------
+  let nkLoc = 'tat_ca';
+  const LOAI_NK = { tat_ca: ['Tất cả', () => true], ban: ['Bán', (x) => x.loai === 0], tra: ['Trả hàng', (x) => x.loai === 1],
+    chua_in: ['Cân chưa in tem', (x) => x.loai === 2], khac: ['Loại khác', (x) => x.loai > 2 || x.loai < 0] };
+  function datKhoangNk(n) {
+    if (n < 0) { $('nk-tu').value = ''; $('nk-den').value = ''; return; }
+    const den = new Date(), tu = new Date(); tu.setDate(tu.getDate() - n);
+    $('nk-tu').value = ngayIso(tu); $('nk-den').value = ngayIso(den);
+  }
+  datKhoangNk(6);
+  const nutNk = () => [$('nut-nk-xem'), $('nut-nk-file'), $('nut-nk-wifi'), $('nut-nk-csv')];
+
+  async function taiNhatKy(nguon) {
+    nkDL = nkDL || { dang: true };
+    const noi = $('nk-noi-dung'), dang = $('dang-nk');
+    dang.textContent = nguon === 'wifi' ? 'Đang đọc nhật ký qua WiFi… (có thể tới 1 phút)' : nguon === 'file' ? 'Đang đọc nhật ký trong file gốc…' : 'Đang xem…';
+    dang.classList.remove('an');
+    for (const b of nutNk()) b.disabled = true;
+    try {
+      nkDL = await goi('/api/nhat-ky-can', { nguon, tu: $('nk-tu').value, den: $('nk-den').value, tuDau: nguon === 'wifi' && $('nk-tu-dau').checked });
+      veNhatKy();
+    } catch (err) { bao(noi, 'loi', e(err.message)); }
+    finally { dang.classList.add('an'); for (const b of nutNk()) b.disabled = false; }
+  }
+
+  function veNhatKy() {
+    const d = nkDL, t = d.tomTat.tong;
+    let h = '';
+    if (d.doc) {
+      h += `<div class="bao ${d.doc.loi.length ? 'luu-y' : 'xong'}"><p>Đã đọc ${soChu(d.doc.soDong)} dòng hàng `
+        + (d.nguon === 'wifi' ? `qua WiFi (từ giao dịch số ${d.doc.tuFid}; đọc qua WiFi chưa thử trên cân thật)` : 'trong file gốc')
+        + `: <b>${soChu(d.doc.soMoi)} dòng mới</b>, còn lại đã có từ lần đọc trước.</p>`
+        + (d.doc.loi.length ? `<details><summary>${d.doc.loi.length} điều cần xem</summary><p class="phu">${d.doc.loi.map(e).join('<br>')}</p></details>` : '')
+        + (d.doc.suKien.length ? `<details><summary>${d.doc.suKien.length} dòng sự kiện / thanh toán của cân</summary><p class="phu">`
+          + d.doc.suKien.map(s => `${e(s.luc)} · giao dịch ${s.fid} · ${e(s.tenLoai)}${s.ghiChu ? ' · ' + e(s.ghiChu) : ''}`).join('<br>') + '</p></details>' : '')
+        + '</div>';
+    }
+    if (!d.tongDaLuu) {
+      $('nk-noi-dung').innerHTML = h + '<div class="bao luu-y">Chưa có nhật ký nào. Trên cân lưu dữ liệu ra USB bằng <b>Amend</b> rồi nạp file đó (bước Bắt đầu / Cập nhật file gốc), '
+        + 'hoặc bấm <b>Đọc qua WiFi (thử)</b>.</div>';
+      return;
+    }
+    const khoang = d.tu || d.den ? `${d.tu ? ngayVn(d.tu) : 'đầu'} → ${d.den ? ngayVn(d.den) : 'nay'}` : 'mọi ngày';
+    h += `<p class="phu">${soChu(d.tongDaLuu)} dòng đã lưu; ${soChu(d.soDongTrongKhoang)} dòng trong khoảng ${khoang} (theo giờ cân).</p>`;
+    h += '<div class="so-o">'
+      + `<div class="o"><div class="nhan">Gói bán (trừ trả hàng)</div><div class="gt">${soChu(t.soGoi)}</div><div class="phu">chỉ dòng tính kho</div></div>`
+      + `<div class="o"><div class="nhan">Trọng lượng</div><div class="gt">${kgChu(t.kg)}</div><div class="phu">${t.cai ? soChu(t.cai) + ' cái' : 'hàng cân ký'}</div></div>`
+      + `<div class="o"><div class="nhan">Thành tiền trên tem</div><div class="gt">${tien(t.tien)}</div><div class="phu">theo giá trên cân lúc in</div></div>`
+      + `<div class="o ${d.tomTat.chuaIn ? 'vang' : ''}"><div class="nhan">Cân chưa in tem</div><div class="gt">${soChu(d.tomTat.chuaIn)}</div>`
+      + `<div class="phu">${d.tomTat.khongRoMa ? `${soChu(d.tomTat.khongRoMa)} dòng chưa rõ mã cân` : 'mọi dòng đã rõ mã cân'}</div></div></div>`;
+    h += '<div class="hai-cot"><div><h3>Theo ngày</h3><div class="khung-bang" style="max-height:300px"><table><thead><tr><th>Ngày</th><th class="so">Gói</th><th class="so">Kg</th><th class="so">Thành tiền</th></tr></thead><tbody>'
+      + (d.tomTat.theoNgay.map(n => `<tr><td>${ngayVn(n.ngay)}</td><td class="so">${soChu(n.soGoi)}</td><td class="so">${kgChu(n.kg)}</td><td class="so">${tien(n.tien)}</td></tr>`).join('')
+        || '<tr><td colspan="4">Không có dòng bán.</td></tr>')
+      + '</tbody></table></div></div><div><h3>Theo hàng</h3><div class="khung-bang" style="max-height:300px"><table><thead><tr><th class="so">Mã cân</th><th>Tên (lúc đọc)</th><th class="so">Gói</th><th class="so">Kg</th><th class="so">Thành tiền</th></tr></thead><tbody>'
+      + (d.tomTat.theoHang.map(x => `<tr><td class="so">${x.maCan ? e(x.maCan) : '<span class="phu">chưa rõ</span>'}</td><td>${e(x.ten)}<div class="phu">PLU ${x.plu}</div></td>`
+        + `<td class="so">${soChu(x.soGoi)}</td><td class="so">${kgChu(x.kg)}</td><td class="so">${tien(x.tien)}</td></tr>`).join('') || '<tr><td colspan="5">Không có dòng bán.</td></tr>')
+      + '</tbody></table></div></div></div>';
+    h += '<h3>Từng dòng</h3><div class="loc" id="loc-nk"></div><div class="nut" style="margin-top:0"><input type="search" id="tim-nk" placeholder="Tìm tên, PLU, mã cân…"></div><div id="bang-nk"></div>';
+    $('nk-noi-dung').innerHTML = h;
+    $('tim-nk').oninput = veDongNk;
+    veDongNk();
+  }
+
+  function veDongNk() {
+    const d = nkDL, q = boDau($('tim-nk').value.trim());
+    const dem = {};
+    for (const [k, [, loc]] of Object.entries(LOAI_NK)) dem[k] = d.dong.filter(loc).length;
+    if (!dem[nkLoc]) nkLoc = 'tat_ca';
+    $('loc-nk').innerHTML = Object.entries(LOAI_NK).filter(([k]) => dem[k]).map(([k, [chu]]) => `<button data-loc="${k}" class="${k === nkLoc ? 'chon' : ''}">${chu} · ${dem[k]}</button>`).join('');
+    for (const b of $('loc-nk').querySelectorAll('button')) b.onclick = () => { nkLoc = b.dataset.loc; veDongNk(); };
+    const ds = d.dong.filter(x => LOAI_NK[nkLoc][1](x) && (!q || boDau(x.ten).includes(q) || String(x.plu) === q || x.maCan.includes(q)));
+    const TOI_DA = 500;
+    let h = '<div class="khung-bang" style="max-height:520px"><table><thead><tr><th>Giờ cân</th><th class="so">Giao dịch</th><th class="so">PLU</th><th class="so">Mã cân</th>'
+      + '<th>Tên (lúc đọc)</th><th>Loại</th><th class="so">Số lượng</th><th class="so">Đơn giá</th><th class="so">Thành tiền</th></tr></thead><tbody>';
+    for (const x of ds.slice(0, TOI_DA)) {
+      h += `<tr class="${x.tinhKho ? '' : 'mo'}"><td>${e(x.luc.slice(8, 10) + '/' + x.luc.slice(5, 7) + ' ' + x.luc.slice(11, 16))}</td><td class="so">${x.fid}</td>`
+        + `<td class="so">${x.plu}</td><td class="so">${e(x.maCan || '—')}</td><td>${e(x.ten)}${x.ghiChu ? `<div class="phu">${e(x.ghiChu)}</div>` : ''}</td>`
+        + `<td>${e(x.tenLoai)}</td><td class="so">${x.theoCai ? soChu(x.soLuong) + ' cái' : kgChu(x.soLuong)}</td><td class="so">${tien(x.donGia)}</td><td class="so">${tien(x.thanhTien)}</td></tr>`;
+    }
+    if (!ds.length) h += '<tr><td colspan="9">Không có dòng nào khớp.</td></tr>';
+    h += '</tbody></table></div>';
+    if (ds.length > TOI_DA) h += `<p class="phu">Hiện ${TOI_DA} dòng mới nhất trên ${soChu(ds.length)} — tải Excel để xem hết.</p>`;
+    if (d.soDongTrongKhoang > d.dong.length) h += `<p class="phu">Khoảng ngày này có ${soChu(d.soDongTrongKhoang)} dòng; chương trình chỉ đưa ${soChu(d.dong.length)} dòng mới nhất lên trang — tải Excel để có đủ.</p>`;
+    $('bang-nk').innerHTML = h;
+  }
+
+  for (const b of document.querySelectorAll('#the-nhat-ky button[data-nk-ngay]')) b.onclick = () => { datKhoangNk(Number(b.dataset.nkNgay)); taiNhatKy('luu'); };
+  $('nut-nk-xem').onclick = () => taiNhatKy('luu');
+  $('nut-nk-file').onclick = () => taiNhatKy('file');
+  $('nut-nk-wifi').onclick = () => {
+    if (!confirm('Đọc nhật ký bán qua WiFi (cổng hai chiều 33581)?\n\nChưa thử trên cân thật. Chỉ đọc, không xoá gì trên cân. '
+      + 'Đóng phần mềm TM-xA của hãng trên máy khác trước.')) return;
+    taiNhatKy('wifi');
+  };
+  // Tải CSV bằng fetch (không phải thẻ <a>): lỗi (quyền, ngày sai) hiện câu báo thay vì tải về một file lỗi.
+  $('nut-nk-csv').onclick = async () => {
+    try {
+      const q = new URLSearchParams({ t: MA, tu: $('nk-tu').value, den: $('nk-den').value });
+      const r = await fetch('/api/nhat-ky-can.csv?' + q);
+      if (!r.ok) throw new Error(await r.text());
+      const ten = /filename="([^"]+)"/.exec(r.headers.get('content-disposition') || '')?.[1] || 'nhat-ky-can.csv';
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(await r.blob());
+      a.download = ten; document.body.append(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    } catch (err) { bao($('nk-noi-dung'), 'loi', e(err.message)); }
+  };
+
+  $('nut-huong-dan').onclick = () => window.open('/huong-dan?t=' + MA, '_blank');
+
   // ---- các nút khác -----------------------------------------------------
   $('nut-xem').onclick = xemTruoc;
   $('giu-ngoai-kho').onchange = xemTruoc;
@@ -1085,7 +1964,8 @@
     const f = ev.target;
     try {
       await goi('/api/cau-hinh', { ipCan: ipDangSua ? f.ipCan.value : undefined, congCan: Number(f.congCan.value), diaChiKho: f.diaChiKho.value,
-        tuGui: f.tuGui.checked, chiNhanhId: trangThai && trangThai.nguoi && trangThai.nguoi.cacChiNhanh.length > 1 ? f.chiNhanhId.value : undefined });
+        tuGui: f.tuGui.checked, chiNhanhId: trangThai && trangThai.nguoi && trangThai.nguoi.cacChiNhanh.length > 1 ? f.chiNhanhId.value : undefined,
+        congHaiChieu: f.congHaiChieu.value.trim() ? Number(f.congHaiChieu.value) : undefined });
       ipDangSua = false;
       baoChung('xong', 'Đã lưu cài đặt.'); await taiTrangThai();
     } catch (err) { baoChung('loi', e(err.message)); }
@@ -1096,7 +1976,15 @@
       const tep = o.files[0]; if (!tep) return;
       try {
         const k = await goi('/api/file-tu-can', await tep.arrayBuffer(), 'tep');
-        baoChung('xong', `Đã ghi nhận file của cân: ${k.soHang} hàng, cân phiên bản ${e(k.phienBan)}.`);
+        if (k.nhatKy && k.nhatKy.loi) {
+          // File đã ghi nhận, nhật ký bán CHƯA gộp: gửi xuống cân lần sau là file gốc mất phần nhật ký — báo rõ, đừng im.
+          baoChung('luu-y', `<p>Đã ghi nhận file của cân: ${k.soHang} hàng, cân phiên bản ${e(k.phienBan)}.</p>`
+            + `<p><b>Nhật ký bán trong file CHƯA gộp được</b> (${e(k.nhatKy.loi)}). File nhat-ky-can.tsv có thể đang mở trong Excel: đóng file đó, `
+            + 'mở thẻ Nhật ký cân, bấm <b>Đọc từ file gốc (USB)</b> — làm trước khi gửi gì xuống cân (gửi xong file gốc không còn nhật ký).</p>');
+        } else {
+          baoChung('xong', `Đã ghi nhận file của cân: ${k.soHang} hàng, cân phiên bản ${e(k.phienBan)}.`
+            + (k.nhatKy ? ` File có nhật ký bán: ${soChu(k.nhatKy.soDong)} dòng, ${soChu(k.nhatKy.soMoi)} dòng mới đã gộp vào thẻ Nhật ký cân.` : ''));
+        }
         await taiTrangThai();
       } catch (err) { baoChung('loi', e(err.message)); }
       o.value = '';
@@ -1108,7 +1996,7 @@
   // Tự gửi chạy ngầm mỗi phút (có thể vừa gửi, vừa tìm ra cân ở địa chỉ mới): làm mới ô Cân, không đụng kho.
   setInterval(async () => {
     if (!trangThai || document.visibilityState !== 'visible') return;
-    try { const s = await goi('/api/can'); trangThai.cauHinh = s.cauHinh; trangThai.lanTuGui = s.lanTuGui; veOCan(); } catch { /* lần sau */ }
+    try { const s = await goi('/api/can'); trangThai.cauHinh = s.cauHinh; trangThai.lanTuGui = s.lanTuGui; trangThai.hsd = s.hsd; veOCan(); } catch { /* lần sau */ }
   }, 60000);
   $('nut-tim-can').onclick = async () => {
     const nut = $('nut-tim-can'), noi = $('ket-qua-tim-can');

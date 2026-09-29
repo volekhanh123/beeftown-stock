@@ -2,8 +2,8 @@
  * KHO — DANH MỤC ĐƯA XUỐNG CÂN (truy vết tảng GĐ3)
  *
  * Nguồn chung cho màn Đồng bộ cân (cai-dat/can.astro) và chương trình Beeftown
- * Cân (can-app): danh sách hàng {mã cân, tên, giá bán/kg} để lapKeHoach so với
- * file của cân.
+ * Cân (can-app): danh sách hàng {mã cân, tên, giá bán/kg, hạn dùng} để
+ * lapKeHoach so với file của cân.
  *
  *   · Món thường: một dòng theo mã cân của món, như trước.
  *   · Phần cắt có ô mã (0049): thêm MỖI Ô một dòng, cùng giá với món. Ô đang
@@ -17,13 +17,48 @@
  *
  * Tên + số tảng giữ trong 24 ký tự (dài hơn dễ bị cắt khi in): cắt bớt tên món,
  * không bao giờ cắt số tảng.
+ *
+ * HẠN DÙNG (HSD) TRÊN TEM = SỐ NGÀY CÒN LẠI CỦA LÔ (Khánh chọn 29/09/2026, cách b).
+ * Cân in HSD = NGÀY IN TEM (đồng hồ cân) + số ngày ở cột 32. Hạn trong kho là
+ * một NGÀY (kho_lo.han_dung — tính từ ngày nhập / ngày lóc, lô phần cắt còn bị
+ * chặn bởi hạn của tảng), nên chương trình gửi xuống hạn của lô − hôm nay (giờ
+ * VN), và số đó phải gửi lại MỖI NGÀY: số tính hôm qua mà in hôm nay là HSD
+ * muộn thêm 1 ngày. Beeftown Cân ghi ngày tính và báo đỏ khi cũ (nghiep-vu.ts);
+ * màn Đồng bộ cân ghi "HSD tính cho ngày xuất file — nạp vào cân trong ngày".
+ * Từng dòng (tinhHsdMon, tinhHsdO — hàm thuần, test bằng node):
+ *   1. Ô mã có tảng đang giữ và lô đầu ra đã có (GiaoOMa.con_giu + han_dung):
+ *      han_dung − hôm nay. Phiên lóc còn nháp (chưa có lô đầu ra): như ô trống,
+ *      nhưng không muộn hơn hạn của tảng đang lóc nếu lô tảng còn tồn — lô ra
+ *      sẽ có hạn least(ngày lóc + hạn của món, hạn tảng) (0022 / 0033).
+ *   2. Món thường và ô trống: các lô của món còn tồn ở chi nhánh (kho_v_ton —
+ *      so_kg > 0 hoặc so_goi > 0, mọi vị trí) → hạn SỚM NHẤT: HSD in ra không
+ *      bao giờ muộn hơn lô cũ nhất còn trong kho.
+ *   3. Không lô nào còn tồn: han_dung_ngay của món (hàng về hôm nay có hạn tối
+ *      đa ngần ấy ngày); món không có han_dung_ngay → null (không in HSD).
+ *   4. Hạn đã qua (số ngày < 0): null — không in ngày đã qua — và cảnh báo
+ *      "lô đã hết hạn, xem thẻ Quầy". Quá 999 ngày: lapKeHoach (can-tma.ts)
+ *      không in, kèm cảnh báo, như trước.
+ *   5. Mã giảm giá (gói cận date): null — HSD thật của gói ngắn hơn hạn của
+ *      món và không biết gói đã qua bao nhiêu ngày; in sai hạn còn tệ hơn không in.
+ * Mỗi dòng mang nguồn HSD (nguon_hsd) để xem trước hiện: "lô L0012 hết hạn
+ * 03/10", "tảng #0142 · hết hạn 03/10", "theo hạn dùng của món (chưa có lô)".
+ * In HSD: chưa thử trên cân thật.
+ *
+ * ghepHangChoCan không kèm dữ liệu lô (tham số hsd) thì như trước bản này:
+ * món không mang HSD (undefined — cân giữ nguyên cột ngày), ô mã và mã giảm
+ * tắt HSD (null). hangChoCan luôn kèm.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { HangKho } from './can-tma.ts';
+import type { HaiThuTieng } from './chung.ts';
 import type { MatHang } from './danh-muc.ts';
+import { congNgay, homNayVn, laNgayCoThat } from '../gio-vn.ts';
 import { docGiaoOMa, docOMa, type DongOMa, type GiaoOMa } from './o-ma.ts';
 import { docMaGiam, giaGiam, tenGiam, type DongMaGiam } from './ma-giam.ts';
 import { soTangChu } from './tang.ts';
+import { docLoConTon, type LoTon } from './ton.ts';
+
+export type { LoTon };
 
 export const TEN_CAN_TOI_DA = 24;
 
@@ -37,15 +72,132 @@ export function tenTheoTang(ten: string, soTang: number | null | undefined): str
   return `${goc} ${duoi}`;
 }
 
+// -----------------------------------------------------------------------------
+// HẠN DÙNG TỪNG DÒNG (xem đầu file)
+// -----------------------------------------------------------------------------
+/** Dữ liệu để tính HSD: hôm nay theo giờ VN ('YYYY-MM-DD' — homNayVn()) và các lô còn tồn ở chi nhánh của cân. */
+export interface DuLieuHsd { homNay: string; lo: LoTon[] }
+
+/** HSD của một dòng lên cân: số ngày (null = không in), lấy từ đâu, cảnh báo (lô đã hết hạn). */
+export interface HsdDong { soNgay: number | null; nguon: HaiThuTieng; canhBao?: HaiThuTieng }
+
+/** 'YYYY-MM-DD' (phần đầu) → số ngày kể từ 01/01/1970, tính trên lịch (không múi giờ). Sai dạng / ngày không có thật → null. */
+function soNgayLich(iso: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? ''));
+  if (!m || !laNgayCoThat(+m[1], +m[2], +m[3])) return null;
+  return Math.round(Date.UTC(+m[1], +m[2] - 1, +m[3]) / 86_400_000);
+}
+
+/** Số ngày từ homNay tới hanDung (cả hai 'YYYY-MM-DD'); âm = hạn đã qua. Ngày sai dạng → null. */
+export function soNgayConLai(hanDung: string, homNay: string): number | null {
+  const a = soNgayLich(homNay), b = soNgayLich(hanDung);
+  return a === null || b === null ? null : b - a;
+}
+
+/** '2026-10-03' → '03/10'. */
+export const ngayNgan = (iso: string): string => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+
+const THEO_MON: HaiThuTieng = { vi: 'theo hạn dùng của món (chưa có lô)', en: 'from the item\'s shelf life (no lot yet)' };
+const KHONG_HAN: HaiThuTieng = { vi: 'món không có hạn dùng, chưa có lô — không in HSD', en: 'the item has no shelf life and no lot — no use-by printed' };
+const NGUON_GIAM: HaiThuTieng = { vi: 'mã giảm giá cận date — không in HSD', en: 'near-date discount code — no use-by printed' };
+/** Lỗi lập trình: "hôm nay" không phải 'YYYY-MM-DD' (hangChoCan luôn truyền homNayVn()). */
+const LOI_HOM_NAY: HaiThuTieng = { vi: 'ghepHangChoCan: hôm nay phải có dạng YYYY-MM-DD.', en: 'ghepHangChoCan: today must be YYYY-MM-DD.' };
+
+/** Một hạn có thể dùng cho dòng: ngày hạn, câu nguồn, và tên để nói "… đã hết hạn". */
+interface UngVien { han: string; nguon: HaiThuTieng; ten: HaiThuTieng }
+
+const ungVienLo = (l: LoTon): UngVien => ({
+  han: l.han_dung,
+  nguon: { vi: `lô ${l.ma_lo} hết hạn ${ngayNgan(l.han_dung)}`, en: `lot ${l.ma_lo}, use-by ${ngayNgan(l.han_dung)}` },
+  ten: { vi: `Lô ${l.ma_lo}`, en: `Lot ${l.ma_lo}` },
+});
+
+/** Hạn → số ngày còn lại tính cho homNay; hạn đã qua → null + cảnh báo. Không tính được (ngày sai dạng) → null: không in. */
+function tuUngVien(u: UngVien, homNay: string): HsdDong {
+  const n = soNgayConLai(u.han, homNay);
+  if (n === null) return { soNgay: null, nguon: u.nguon };
+  if (n >= 0) return { soNgay: n, nguon: u.nguon };
+  return { soNgay: null, nguon: u.nguon, canhBao: {
+    vi: `${u.ten.vi} đã hết hạn (${ngayNgan(u.han)}) — không in HSD lên tem. Xem thẻ Quầy: huỷ hay bán giảm giá lô này.`,
+    en: `${u.ten.en} expired on ${ngayNgan(u.han)} — no use-by is printed on the label. See the Counter tab: dispose of or discount this lot.`,
+  } };
+}
+
+/** Lô còn tồn có hạn SỚM NHẤT của mỗi món (bỏ dòng hạn không đọc được). */
+export function loSomNhatTheoMon(lo: LoTon[]): Map<string, LoTon> {
+  const ra = new Map<string, LoTon>();
+  for (const l of lo) {
+    if (soNgayLich(l.han_dung) === null) continue;
+    const cu = ra.get(l.mat_hang_id);
+    if (!cu || l.han_dung.slice(0, 10) < cu.han_dung.slice(0, 10)) ra.set(l.mat_hang_id, l);
+  }
+  return ra;
+}
+
+/**
+ * HSD của món thường, hay ô mã trống (quy tắc 2, 3, 4): lô sớm nhất của món còn tồn (loSom) → hạn − homNay;
+ * không lô nào → han_dung_ngay của món; không có → null.
+ */
+export function tinhHsdMon(m: Pick<MatHang, 'han_dung_ngay'>, loSom: LoTon | undefined, homNay: string): HsdDong {
+  if (loSom) return tuUngVien(ungVienLo(loSom), homNay);
+  if (m.han_dung_ngay === null || m.han_dung_ngay === undefined) return { soNgay: null, nguon: KHONG_HAN };
+  return { soNgay: m.han_dung_ngay, nguon: THEO_MON };
+}
+
+/**
+ * HSD của một ô mã (quy tắc 1): tảng đang giữ ô và lô đầu ra đã có → hạn lô đó − homNay. Còn lại như món
+ * (tinhHsdMon); phiên lóc còn nháp thì không muộn hơn hạn của tảng đang lóc (lô vào, tìm trong loTheoId).
+ */
+export function tinhHsdO(m: Pick<MatHang, 'han_dung_ngay'>, giu: GiaoOMa | undefined, loSom: LoTon | undefined,
+                         loTheoId: Map<string, LoTon>, homNay: string): HsdDong {
+  const tang = (g: GiaoOMa): HaiThuTieng => (g.so_tang !== null && g.so_tang !== undefined
+    ? { vi: `tảng ${soTangChu(g.so_tang)}`, en: `primal ${soTangChu(g.so_tang)}` }
+    : { vi: `tảng lô ${g.ma_lo_tang ?? '?'}`, en: `primal lot ${g.ma_lo_tang ?? '?'}` });
+  if (giu && giu.han_dung && soNgayLich(giu.han_dung) !== null) {
+    const t = tang(giu), dm = ngayNgan(giu.han_dung);
+    return tuUngVien({ han: giu.han_dung, nguon: { vi: `${t.vi} · hết hạn ${dm}`, en: `${t.en} · use-by ${dm}` },
+                       ten: { vi: `Lô của ${t.vi}`, en: `The lot from ${t.en}` } }, homNay);
+  }
+  const mon = tinhHsdMon(m, loSom, homNay);
+  const loTang = giu && !giu.lo_id && giu.lo_vao_id ? loTheoId.get(giu.lo_vao_id) : undefined;
+  if (giu && loTang && soNgayLich(loTang.han_dung) !== null && soNgayLich(homNay) !== null) {
+    // Hạn của món tính theo ngày: lô sớm nhất, hay hôm nay + han_dung_ngay; món không hạn thì lô ra lấy hạn tảng.
+    const hanMon = loSom ? loSom.han_dung : m.han_dung_ngay === null || m.han_dung_ngay === undefined ? null : congNgay(homNay, m.han_dung_ngay);
+    if (hanMon === null || loTang.han_dung.slice(0, 10) < hanMon.slice(0, 10)) {
+      const t = tang(giu), dm = ngayNgan(loTang.han_dung);
+      return tuUngVien({ han: loTang.han_dung, nguon: { vi: `${t.vi} đang lóc · hết hạn ${dm}`, en: `${t.en} being broken down · use-by ${dm}` },
+                         ten: { vi: `${t.vi[0].toUpperCase()}${t.vi.slice(1)} đang lóc`, en: `${t.en[0].toUpperCase()}${t.en.slice(1)} being broken down` } }, homNay);
+    }
+  }
+  return mon;
+}
+
+/** HSD → các trường của HangKho. */
+const theoHsd = (x: HsdDong): Pick<HangKho, 'han_dung_ngay' | 'nguon_hsd' | 'canh_bao_hsd'> =>
+  ({ han_dung_ngay: x.soNgay, nguon_hsd: x.nguon, ...(x.canhBao ? { canh_bao_hsd: x.canhBao } : {}) });
+
+// -----------------------------------------------------------------------------
+// GHÉP DANH MỤC
+// -----------------------------------------------------------------------------
 /**
  * Ghép danh sách hàng cho cân (hàm thuần — test bằng node).
  * giao: ô đang giao ở CHI NHÁNH của cân (kho_v_o_ma_giao).
+ * hsd: hôm nay (giờ VN) + lô còn tồn ở chi nhánh — tính HSD từng dòng (xem đầu file). Không có thì như trước bản
+ * này: món không mang HSD, ô mã và mã giảm tắt HSD.
  */
 export function ghepHangChoCan(matHang: MatHang[], oMa: Map<string, DongOMa[]>, giao: GiaoOMa[],
-                               maGiam: DongMaGiam[] = []): HangKho[] {
-  const tangCuaO = new Map(giao.filter(g => g.con_giu).map(g => [g.o_ma_id, g.so_tang]));
+                               maGiam: DongMaGiam[] = [], hsd?: DuLieuHsd): HangKho[] {
+  if (hsd && soNgayLich(hsd.homNay) === null) throw new Error(LOI_HOM_NAY.vi);
+  const giu = giao.filter(g => g.con_giu);
+  const tangCuaO = new Map(giu.map(g => [g.o_ma_id, g.so_tang]));
+  const giuCuaO = new Map(giu.map(g => [g.o_ma_id, g]));
+  const loSom = hsd ? loSomNhatTheoMon(hsd.lo) : new Map<string, LoTon>();
+  const loTheoId = new Map((hsd?.lo ?? []).map(l => [l.lo_id, l]));
+
   const ra: HangKho[] = matHang.map(m => ({
     ma: m.ma, ma_can: m.ma_can, ten: m.ten, gia_ban_kg: m.gia_ban_kg, dang_dung: m.dang_dung,
+    // Không có dữ liệu lô: không có khoá han_dung_ngay — cân giữ nguyên cột ngày (như trước).
+    ...(hsd ? theoHsd(tinhHsdMon(m, loSom.get(m.id), hsd.homNay)) : {}),
   }));
   for (const m of matHang) {
     for (const o of oMa.get(m.id) ?? []) {
@@ -55,6 +207,8 @@ export function ghepHangChoCan(matHang: MatHang[], oMa: Map<string, DongOMa[]>, 
         ten: tenTheoTang(m.ten, tangCuaO.get(o.id)),
         gia_ban_kg: m.gia_ban_kg,
         dang_dung: m.dang_dung,
+        // Không có dữ liệu lô: null = tắt HSD — không số nào tính từ ngày in chắc không vượt hạn của lô lóc.
+        ...(hsd ? theoHsd(tinhHsdO(m, giuCuaO.get(o.id), loSom.get(m.id), loTheoId, hsd.homNay)) : { han_dung_ngay: null }),
       });
     }
   }
@@ -68,13 +222,24 @@ export function ghepHangChoCan(matHang: MatHang[], oMa: Map<string, DongOMa[]>, 
       ten: tenGiam(m.ten, g.phan_tram, TEN_CAN_TOI_DA),
       gia_ban_kg: m.gia_ban_kg === null || m.gia_ban_kg === undefined ? m.gia_ban_kg : giaGiam(m.gia_ban_kg, g.phan_tram),
       dang_dung: m.dang_dung && g.dang_dung,
+      // Gói cận date được dán lại tem giảm giá: HSD thật của gói ngắn hơn hạn
+      // dùng của món (đã qua bao nhiêu ngày thì không biết), nên KHÔNG in HSD
+      // mới tính từ hôm nay — in sai hạn còn tệ hơn không in. null = tắt HSD.
+      han_dung_ngay: null,
+      ...(hsd ? { nguon_hsd: NGUON_GIAM } : {}),
     });
   }
   return ra;
 }
 
-/** Đọc từ kho rồi ghép — dùng ở màn Đồng bộ cân và Beeftown Cân. */
+/**
+ * Đọc từ kho rồi ghép — dùng ở màn Đồng bộ cân và Beeftown Cân, bằng client của người đã đăng nhập (quản lý / chủ).
+ * "Hôm nay" (giờ VN) lấy SAU khi đọc xong: đọc vắt qua nửa đêm thì số ngày tính cho ngày mới (ngắn hơn), không
+ * tính cho hôm qua (HSD in ra muộn thêm 1 ngày).
+ */
 export async function hangChoCan(client: SupabaseClient, chiNhanhId: string, matHang: MatHang[]): Promise<HangKho[]> {
-  const [oMa, giao, maGiam] = await Promise.all([docOMa(client), docGiaoOMa(client, chiNhanhId), docMaGiam(client)]);
-  return ghepHangChoCan(matHang, oMa, giao, maGiam);
+  const [oMa, giao, maGiam, lo] = await Promise.all([
+    docOMa(client), docGiaoOMa(client, chiNhanhId), docMaGiam(client), docLoConTon(client, chiNhanhId),
+  ]);
+  return ghepHangChoCan(matHang, oMa, giao, maGiam, { homNay: homNayVn(), lo });
 }

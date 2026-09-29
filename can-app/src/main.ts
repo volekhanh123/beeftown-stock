@@ -18,7 +18,7 @@ import { randomBytes } from 'node:crypto';
 import { UngDung, duongDanMacDinh } from './nghiep-vu.ts';
 import { moMayChu } from './may-chu.ts';
 
-const PHIEN_BAN = '2.1.0';
+const PHIEN_BAN = '2.2.0';
 const khongMo = process.argv.includes('--khong-mo');
 const ud = new UngDung(duongDanMacDinh());
 const fileDangChay = path.join(ud.dd.cauHinh, 'dang-chay.json');
