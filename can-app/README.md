@@ -54,6 +54,9 @@ Phần tính "thêm / sửa / bỏ" là **đúng code của màn Đồng bộ c�
 
 ## Tải BeeftownCan.exe về (không cần gõ lệnh)
 
+**Từ bản 2.5 chỉ cần làm việc này một lần**: sau đó chương trình tự báo có bản mới và cập nhật bằng một nút (mục
+"Bản 2.5 — tự cập nhật" bên dưới). Bản 2.4 trở về trước chưa có nút — cài 2.5 bằng tay theo các bước dưới đây.
+
 GitHub tự đóng gói chương trình mỗi khi main có thay đổi cho Beeftown Cân. Cần đăng nhập GitHub bằng tài khoản vào
 được repo này. File tải về là **file zip** (~39 MB): chuột phải → **Extract All…** (Giải nén tất cả) → được
 `BeeftownCan.exe` (~83 MB), rồi làm tiếp như mục **Dùng** bên dưới.
@@ -192,6 +195,49 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
     (chưa gửi): ô Cân có khung đỏ; gửi (hay tự gửi) → số ngày giảm 1, HSD trên tem vẫn đúng hạn của lô.
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
+
+## Bản 2.5 — tự cập nhật
+
+Mỗi lần mở, chương trình hỏi kho **công khai** `volekhanh123/beeftown-can-ban-cai` (chỉ chứa file cài — mã nguồn vẫn ở
+repo riêng này) có bản mới hơn không; có thì đầu trang hiện nút vàng **"Có bản mới x.y.z — Cập nhật"** (cũng ở Cài đặt →
+Phiên bản). Bấm → tải `BeeftownCan.exe` về cạnh file đang chạy → kiểm → đổi file → tự mở lại. Mã: `src/cap-nhat.ts`.
+
+- **Kiểm gì trước khi thay:** phiếu `phien-ban.json` (`dang: 1`, phiên bản, SHA-256, cỡ) do CI tạo từ đúng file đã phát
+  hành; chỉ nhận phiên bản MỚI HƠN (không bao giờ hạ); đường tải dựng từ khuôn cố định (không dùng đường nào ghi trong
+  phiếu); file tải về phải đúng cỡ, đúng SHA-256, là file chạy Windows 64-bit giao diện (như CI kiểm). Sai một điều → xoá
+  file tải, "Chưa đổi gì".
+- **Đổi file:** Windows cho đổi tên file đang chạy (không cho ghi đè): `BeeftownCan.exe` → `BeeftownCan.cu.exe`, file mới
+  vào chỗ. Việc đang ghi xuống cân (hàng đợi) chạy xong trước. Thư mục không ghi được (Program Files, USB chỉ đọc) → báo
+  trước khi tải.
+- **Khởi động lại:** dừng máy chủ, xoá `dang-chay.json` (còn trỏ tới máy chủ cũ thì bản mới tưởng "đang có bản chạy" rồi
+  thoát), mở bản mới bằng PowerShell `Start-Process` (tách khỏi chương trình cũ), **chờ bản mới trả lời** (ghi
+  `dang-chay.json` với phiên bản mới). 90 giây không trả lời → tắt nó, bản mới thành `BeeftownCan.loi.exe`, bản cũ về chỗ,
+  mở lại bản cũ với dòng đỏ. Trang mới báo "Đã cập nhật lên x (trước là y)".
+- **Quay về bằng tay:** đóng chương trình → đổi `BeeftownCan.exe` thành `BeeftownCan.moi.exe` → đổi `BeeftownCan.cu.exe`
+  thành `BeeftownCan.exe` → mở. Chỉ giữ một bản cũ (lần cập nhật sau thay nó).
+- **Ai bấm được:** mọi vai (máy quầy thường chỉ NV quầy đăng nhập) — chỉ cài bản chính thức, không đụng dữ liệu.
+- **Không ký số:** token đưa file lên kho công khai và khoá ký (nếu có) đều nằm trong Secrets của GitHub — lộ một là lộ cả
+  hai, chữ ký không thêm được gì. Giữ an toàn bằng: token fine-grained chỉ ghi được kho công khai, chỉ ở một bước của job
+  `phat-hanh` (không ở job chạy mã PR), hạn 1 năm; bật email báo mỗi Release của kho công khai (Watch → Releases). Bản lỗi
+  đã phát hành: xoá Release đó (hoặc đánh dấu pre-release) ở kho công khai — "mới nhất" lùi về bản trước.
+- **Đường đi của bản cài:** `dong-goi-can.yml` job `phat-hanh`, bước "Bản cài công khai…": lấy `.exe` từ Release riêng,
+  kiểm PE, tạo `phien-ban.json`, tạo Release nháp ở kho công khai rồi công bố (`--latest`, trừ khi đang chạy bù bản cũ).
+  Chưa có secret → cảnh báo ở Summary, Release riêng vẫn đủ. Thêm secret muộn: Actions → Đóng gói Beeftown Cân → Run
+  workflow trên main để đưa bù phiên bản hiện tại.
+
+**Việc làm một lần (chủ repo):**
+1. Tạo kho công khai `volekhanh123/beeftown-can-ban-cai` (có README, không mã nguồn).
+2. GitHub → Settings → Developer settings → Fine-grained tokens → token mới: chỉ kho `beeftown-can-ban-cai`, quyền
+   **Contents: Read and write**, hạn 1 năm (đặt lịch gia hạn).
+3. Repo `beeftown-stock` → Settings → Secrets and variables → Actions → New repository secret `TOKEN_BAN_CAI_CAN` = token.
+4. Gộp PR có `PHIEN_BAN` mới → Summary của lượt "Đóng gói Beeftown Cân" có dòng "Đã đưa bản cài … lên …".
+5. Cài 2.5.0 bằng tay một lần ở mỗi máy quầy, để ở Desktop (không Program Files).
+
+**Thử trên Windows thật** (CI không thử được: đổi tên file đang chạy, tiến trình mới sống sót, Defender): trước khi gộp
+dùng kho giả `test/may-cap-nhat-gia.ts` (xem đầu file) + biến `BEEFTOWN_CAN_NGUON_CAP_NHAT` (chỉ nhận 127.0.0.1) để thử
+tải, kiểm, đổi file và tự quay về; sau khi gộp thử trọn vòng 2.5.0 → 2.5.1 trên máy của chủ trước khi báo quầy. Kiểm:
+bản mới còn sống sau 2 phút, chỉ một tiến trình BeeftownCan; cửa sổ cũ tự đóng; đường dẫn có dấu, dấu cách; rút mạng giữa
+chừng → "Chưa đổi gì"; đang gửi xuống cân thì cập nhật chờ.
 
 ## Bản 2.4 — chữ cài đặt chung (TMT)
 

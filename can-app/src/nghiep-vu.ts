@@ -88,6 +88,10 @@ import {
 } from './thong-so.ts';
 import { LA_IP, layMac, thuKetNoi, timCan as doTimCan, type KetQuaTim, type MangMay } from './tim-can.ts';
 import { LoiDay, dsCongCom, giayDay, guiCom, hoiGioQuaDay, kiemCom, tocDoTuThongSo, type ChayPs, type CongCom } from './day-rs232.ts';
+import {
+  CHO_MAC_DINH, FS_THAT, GIOI_HAN_MAC_DINH, GOC_BAN_CAI, LoiCapNhat, cacTepCapNhat, doiTep, duongTepBanMoi, hoiBanMoi, moTaMb,
+  ngayPhatHanhVn, taiVaKiem, thuGhiThuMuc, type FsHam,
+} from './cap-nhat.ts';
 import { docCaiDat, docMatHang } from '../../web/src/lib/kho/danh-muc.ts';
 import { hangChoCan, ngayNgan } from '../../web/src/lib/kho/danh-muc-can.ts';
 import { homNayVn } from '../../web/src/lib/gio-vn.ts';
@@ -443,6 +447,26 @@ export interface ThongSoXem {
 
 export interface PhimXemHang extends PhimXem { ten: string | null; maCan: string | null }
 
+/** 2.5: kết quả hỏi bản mới (kiemBanMoi). phienBanMoi null = không có bản mới hơn (hoặc không cập nhật được). */
+export interface BanMoiXem {
+  coTheCapNhat: boolean;
+  phienBan: string;
+  phienBanMoi: string | null;
+  kichThuocChu: string | null;
+  ngayChu: string | null;
+  /** Bản mới này đã không mở được trên máy này lần trước — trang không tự mời cập nhật. */
+  daHongTruoc: boolean;
+  cau: string;
+}
+
+export interface TrangThaiCapNhat {
+  coTheCapNhat: boolean;
+  dangCapNhat: boolean;
+  cauTienDo: string | null;
+  vuaCapNhatTu: string | null;
+  capNhatHong: string | null;
+}
+
 /** Chữ cài đặt chung (TMT) để xem / sửa — không bao giờ có tên, mật khẩu WiFi hay tên miền (15, 16, 19). */
 export interface ChuChungXem {
   muc: (MucChuChung & {
@@ -515,6 +539,24 @@ export class UngDung {
       tuyHaiChieu?: TuyChonKetNoi;
       /** Kiểm thử: "hôm nay" theo giờ VN ('YYYY-MM-DD') thay cho homNayVn(). */
       homNay?: () => string;
+      /**
+       * 2.5: tự cập nhật (cap-nhat.ts). main.ts truyền phiên bản, file đang chạy (process.execPath) và có phải bản
+       * .exe đóng gói không; kiểm thử thêm gốc GitHub giả, thao tác file giả, thời gian chờ ngắn. Không có → không
+       * cập nhật được (chạy bằng bun, kiểm thử khác).
+       */
+      capNhat?: {
+        phienBan: string;
+        tepChay: string;
+        laBanDongGoi: boolean;
+        goc?: string;
+        fsHam?: FsHam;
+        choMs?: { hoi: number; tong: number; lang: number };
+        gioiHan?: { nhoNhat: number; lonNhat: number };
+        /** Lần mở này ngay sau khi cập nhật từ bản đó (--vua-cap-nhat=). */
+        vuaCapNhatTu?: string | null;
+        /** Bản mới này không mở được, đã quay về (--cap-nhat-hong=). */
+        capNhatHong?: string | null;
+      };
     } = {},
   ) {
     this.fileCauHinh = path.join(dd.cauHinh, 'cau-hinh.json');
@@ -1003,7 +1045,11 @@ export class UngDung {
    */
   private hangDoi: Promise<unknown> = Promise.resolve();
   private motLuc<T>(viec: () => Promise<T>): Promise<T> {
-    const lan = this.hangDoi.then(viec);
+    // Kiểm lúc việc BẮT ĐẦU (không phải lúc xếp hàng): việc xếp sau lần đổi file cập nhật thì dừng gọn.
+    const lan = this.hangDoi.then(() => {
+      if (this.dangKhoiDongLai) throw new LoiCan('Chương trình đang khởi động lại để cập nhật — chờ cửa sổ mới mở rồi làm lại.');
+      return viec();
+    });
     this.hangDoi = lan.then(() => {}, () => {});
     return lan;
   }
@@ -1535,6 +1581,130 @@ export class UngDung {
     return { ten: `nhat-ky-can${tu ? '-tu-' + tu : ''}${den ? '-den-' + den : ''}.csv`, chu: sangCsv(ds) };
   }
 
+  // ---- 2.5: tự cập nhật — cap-nhat.ts ----------------------------------------------------
+  /** Đã đổi file xong, main.ts đang mở bản mới: việc ghi xuống cân mới (motLuc) và lần cập nhật khác đều dừng. */
+  private dangKhoiDongLai = false;
+  private dangCapNhat = false;
+  private tienDoCapNhat: { buoc: 'tai' | 'cho-can' | 'doi-tep' | null; daTai: number; tong: number } = { buoc: null, daTai: 0, tong: 0 };
+  private banMoiNho: { luc: number; kq: BanMoiXem } | null = null;
+  private dangHoiBanMoi: Promise<BanMoiXem> | null = null;
+  private daXetBanHong = false;
+
+  /** Đã đổi file xong, đang khởi động lại — main.ts không tự tắt, không tự gửi trong lúc này. */
+  dangDoiFile(): boolean { return this.dangKhoiDongLai; }
+
+  /**
+   * Bản đã không mở được trên máy này (lần mở với --cap-nhat-hong=X ghi lại vào %APPDATA%\BeeftownCan\
+   * ban-cap-nhat-hong.txt): trang KHÔNG tự mời cập nhật lên X nữa (chỉ nút "Kiểm tra bản mới" mới hiện, kèm lời báo).
+   * Cập nhật được lên bản khác (--vua-cap-nhat=) thì xoá.
+   */
+  private banCapNhatHong(): string | null {
+    const cn = this.phu.capNhat;
+    const tep = path.join(this.dd.cauHinh, 'ban-cap-nhat-hong.txt');
+    if (!this.daXetBanHong) {
+      this.daXetBanHong = true;
+      try {
+        if (cn?.capNhatHong) { fs.mkdirSync(this.dd.cauHinh, { recursive: true }); fs.writeFileSync(tep, cn.capNhatHong, 'utf8'); }
+        else if (cn?.vuaCapNhatTu) fs.rmSync(tep, { force: true });
+      } catch { /* không ghi được: chỉ mất lời nhắc */ }
+    }
+    try { const v = fs.readFileSync(tep, 'utf8').trim(); return /^\d+\.\d+\.\d+$/.test(v) ? v : null; } catch { return null; }
+  }
+
+  private goiCapNhat() {
+    const cn = this.phu.capNhat;
+    return {
+      cn, goc: cn?.goc ?? GOC_BAN_CAI, fsHam: cn?.fsHam ?? FS_THAT, choMs: cn?.choMs ?? CHO_MAC_DINH,
+      gioiHan: cn?.gioiHan ?? GIOI_HAN_MAC_DINH, fetch: this.phu.fetch ?? fetch,
+    };
+  }
+
+  /**
+   * Có bản mới không (trang hỏi lúc mở, và nút "Kiểm tra bản mới" với hoiLai). Không phải bản .exe → trả ngay, không
+   * hỏi mạng. Nhớ 30 phút; hai lời hỏi cùng lúc dùng chung một lần hỏi. Mọi vai đều xem được.
+   */
+  async kiemBanMoi(hoiLai = false): Promise<BanMoiXem> {
+    const { cn, goc, choMs, gioiHan, fetch: f } = this.goiCapNhat();
+    const phienBan = cn?.phienBan ?? '';
+    if (!cn || !cn.laBanDongGoi) {
+      return { coTheCapNhat: false, phienBan, phienBanMoi: null, kichThuocChu: null, ngayChu: null, daHongTruoc: false,
+        cau: 'Chỉ cập nhật được bản BeeftownCan.exe chạy trên Windows.' };
+    }
+    if (!hoiLai && this.banMoiNho && Date.now() - this.banMoiNho.luc < 30 * 60_000) return this.banMoiNho.kq;
+    if (this.dangHoiBanMoi) return this.dangHoiBanMoi;
+    this.dangHoiBanMoi = (async () => {
+      const { phieu, coBanMoi } = await hoiBanMoi({ fetch: f, goc, phienBanDangChay: phienBan, choMs: choMs.hoi, gioiHan });
+      const daHongTruoc = coBanMoi && this.banCapNhatHong() === phieu.phienBan;
+      const kq: BanMoiXem = coBanMoi
+        ? { coTheCapNhat: true, phienBan, phienBanMoi: phieu.phienBan, kichThuocChu: moTaMb(phieu.kichThuoc),
+            ngayChu: phieu.ngay ? ngayPhatHanhVn(phieu.ngay) : null, daHongTruoc,
+            cau: daHongTruoc
+              ? `Bản ${phieu.phienBan} đã không mở được trên máy này lần trước. Đã xử lý (phần mềm diệt virus…) thì bấm Cập nhật để `
+                + 'thử lại; không thì chờ bản sau.'
+              : `Có bản mới ${phieu.phienBan} (${moTaMb(phieu.kichThuoc)}${phieu.ngay ? `, phát hành ${ngayPhatHanhVn(phieu.ngay)}` : ''}).` }
+        : { coTheCapNhat: true, phienBan, phienBanMoi: null, kichThuocChu: null, ngayChu: null, daHongTruoc: false,
+            cau: `Đang dùng bản mới nhất (${phienBan}).` };
+      this.banMoiNho = { luc: Date.now(), kq };
+      return kq;
+    })();
+    try { return await this.dangHoiBanMoi; } finally { this.dangHoiBanMoi = null; }
+  }
+
+  /**
+   * Cập nhật lên bản mới nhất: kiểm thư mục ghi được → hỏi lại phiếu (không tin phiên bản trang gửi) → tải và kiểm
+   * NGOÀI hàng đợi (1–3 phút tải không chặn việc gửi xuống cân) → đổi file TRONG hàng đợi (chờ việc ghi xuống cân
+   * đang chạy xong) → dangKhoiDongLai. Trả về rồi máy chủ mới hẹn main.ts khởi động lại (may-chu.ts). Bấm hai lần →
+   * lần sau bị từ chối. Mọi vai bấm được: chỉ cài bản chính thức từ kho cập nhật, không đụng dữ liệu.
+   */
+  async capNhat(): Promise<{ phienBan: string; phienBanCu: string; cau: string }> {
+    const { cn, goc, fsHam, choMs, gioiHan, fetch: f } = this.goiCapNhat();
+    if (!cn || !cn.laBanDongGoi) {
+      throw new LoiCapNhat('Chỉ cập nhật được bản BeeftownCan.exe chạy trên Windows (bản đang chạy bằng bun — dùng git pull).');
+    }
+    if (this.dangKhoiDongLai) throw new LoiCapNhat('Chương trình đang khởi động lại để cập nhật — chờ cửa sổ mới mở.');
+    if (this.dangCapNhat) throw new LoiCapNhat('Đang cập nhật — chờ lần bấm trước xong.');
+    this.dangCapNhat = true;
+    try {
+      const t = cacTepCapNhat(cn.tepChay);
+      if (/\.(cu|loi)\.exe$/i.test(t.tepChay)) {
+        throw new LoiCapNhat(`Đang chạy bản dự phòng (${path.basename(t.tepChay)}) — đổi tên lại thành BeeftownCan.exe rồi mở lại.`);
+      }
+      thuGhiThuMuc(t, fsHam);
+      const { phieu, coBanMoi } = await hoiBanMoi({ fetch: f, goc, phienBanDangChay: cn.phienBan, choMs: choMs.hoi, gioiHan });
+      if (!coBanMoi) throw new LoiCapNhat(`Đang dùng bản mới nhất (${cn.phienBan}).`);
+      this.tienDoCapNhat = { buoc: 'tai', daTai: 0, tong: phieu.kichThuoc };
+      await taiVaKiem({ fetch: f, url: duongTepBanMoi(phieu.phienBan, goc), dich: t.tepDangTai, phieu,
+        choMs: { tong: choMs.tong, lang: choMs.lang }, khiTien: n => { this.tienDoCapNhat.daTai = n; } });
+      this.tienDoCapNhat.buoc = 'cho-can';
+      await this.motLuc(async () => {
+        this.tienDoCapNhat.buoc = 'doi-tep';
+        doiTep(t, fsHam);
+        this.dangKhoiDongLai = true;
+      });
+      return {
+        phienBan: phieu.phienBan, phienBanCu: cn.phienBan,
+        cau: `Đã tải và kiểm tra bản ${phieu.phienBan}. Đang khởi động lại — cửa sổ mới sẽ tự mở (có thể 1–2 phút), `
+          + 'cửa sổ này tự đóng. Quá 2 phút chưa thấy: mở lại Beeftown Cân như mọi khi.',
+      };
+    } finally {
+      this.dangCapNhat = false;
+      if (!this.dangKhoiDongLai) this.tienDoCapNhat = { buoc: null, daTai: 0, tong: 0 };
+    }
+  }
+
+  /** Trạng thái cập nhật cho trang (không hỏi mạng): tiến độ đang tải, vừa cập nhật từ bản nào, bản mới hỏng. */
+  trangThaiCapNhat(): TrangThaiCapNhat {
+    const cn = this.phu.capNhat;
+    const td = this.tienDoCapNhat;
+    const cauTienDo = td.buoc === 'tai' ? `Đang tải ${moTaMb(td.daTai)} / ${moTaMb(td.tong)}…`
+      : td.buoc === 'cho-can' ? 'Đã tải xong. Đang chờ việc gửi xuống cân xong…'
+      : td.buoc === 'doi-tep' || this.dangKhoiDongLai ? 'Đang khởi động lại…' : null;
+    return {
+      coTheCapNhat: !!cn?.laBanDongGoi, dangCapNhat: this.dangCapNhat || this.dangKhoiDongLai, cauTienDo,
+      vuaCapNhatTu: cn?.vuaCapNhatTu ?? null, capNhatHong: cn?.capNhatHong ?? null,
+    };
+  }
+
   // ---- 2.2: thông số (TMS) và phím tắt (SCP) — thong-so.ts ------------------------------
   async thongSo(): Promise<ThongSoXem> {
     await this.kiemQuyenCan('Thông số cân');
@@ -1931,7 +2101,7 @@ const trongKhoang = (d: DongBanCan, tu: string, den: string) => {
 /** Câu lỗi cho người dùng — lỗi lạ thì nói chung chung, không lộ chi tiết kỹ thuật. */
 export function cauLoi(e: unknown): string {
   if (e instanceof LoiCan || e instanceof LoiFileCan || e instanceof LoiTem || e instanceof LoiDay
-    || e instanceof LoiGiaoThuc || e instanceof LoiThongSo) return e.message;
+    || e instanceof LoiGiaoThuc || e instanceof LoiThongSo || e instanceof LoiCapNhat) return e.message;
   const m = e instanceof Error ? e.message : String(e);
   if (/fetch|network|ENOTFOUND|ECONNREFUSED|timed? ?out/i.test(m)) return 'Mất kết nối mạng. Kiểm tra internet rồi thử lại.';
   if (/JWT|refresh|session/i.test(m)) return 'Phiên đăng nhập đã hết. Đăng nhập lại.';

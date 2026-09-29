@@ -27,6 +27,7 @@ import { thuGiaoThuc } from './thu-giao-thuc.ts';
 import { thuTem } from './thu-tem.ts';
 import { thuBaoCaoCan } from './thu-bao-cao-can.ts';
 import { thuThongSo } from './thu-thong-so.ts';
+import { thuCapNhat } from './thu-cap-nhat.ts';
 
 let dat = 0, hong = 0;
 const ok = (ten: string, dieuKien: boolean, chiTiet = '') => {
@@ -1531,6 +1532,7 @@ await thuGiaoThuc(ok);
 await thuTem(ok);
 await thuBaoCaoCan(ok);
 await thuThongSo(ok);
+await thuCapNhat(ok);
 
 // =============================================================================
 console.log('7 · Chạy src/main.ts thật');
@@ -1572,7 +1574,19 @@ if (!thuMucTam) {
   process.exit(1);
 }
 ok('Trạng thái: chưa có file gốc, cân mặc định 192.168.1.22', tt.ok && tt.goc === null && tt.cauHinh.ipCan === '192.168.1.22', JSON.stringify(tt));
-ok('Phiên bản 2.4.0', (tt as unknown as { phienBan: string }).phienBan === '2.4.0');
+ok('Phiên bản 2.5.0', (tt as unknown as { phienBan: string }).phienBan === '2.5.0');
+{
+  // 2.5: dang-chay.json ghi phiên bản (lúc cập nhật, bản cũ chờ bản mới ghi phiên bản của nó). Chạy bằng bun (không phải
+  // BeeftownCan.exe) → không cập nhật được, và KHÔNG hỏi mạng (không bao giờ gọi github.com trong kiểm thử).
+  const dangChay = JSON.parse(fs.readFileSync(path.join(tam2, 'appdata', 'BeeftownCan', 'dang-chay.json'), 'utf8')) as { phienBan?: string };
+  const bm = await (await api('/api/ban-moi', JSON.stringify({ hoiLai: true }))).json() as { ok: boolean; coTheCapNhat: boolean; cau: string };
+  const cnApi = await (await api('/api/cap-nhat')).json() as { ok: boolean; loi?: string };
+  const ttCn = (tt as unknown as { capNhat?: { coTheCapNhat: boolean; vuaCapNhatTu: string | null } }).capNhat;
+  ok('2.5: dang-chay.json có phiên bản; chạy bằng bun → không cập nhật được, không hỏi mạng; /api/cap-nhat từ chối',
+    dangChay.phienBan === '2.5.0' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
+    && !cnApi.ok && /Chỉ cập nhật được/.test(cnApi.loi ?? '') && ttCn?.coTheCapNhat === false && ttCn.vuaCapNhatTu === null,
+    JSON.stringify([dangChay, bm, cnApi, ttCn]));
+}
 ok('Trang hướng dẫn của chương trình thật: có mã bí mật mới mở được', (await fetch(`${goc.origin}/huong-dan?t=${ma}`)).status === 200
   && (await fetch(`${goc.origin}/huong-dan`)).status === 403);
 const ch = await (await api('/api/cau-hinh', JSON.stringify({ ipCan: '127.0.0.1', congCan: congCan }))).json() as { ok: boolean };

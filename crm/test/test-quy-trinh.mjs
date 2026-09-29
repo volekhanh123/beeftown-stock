@@ -155,6 +155,27 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
   ok('can-app/src/main.ts có đúng một dòng PHIEN_BAN mà workflow đóng gói đọc được', dongPhienBan.length === 1,
      `${dongPhienBan.length} dòng — cần đúng một dòng dạng  const PHIEN_BAN = '2.1.0';  (tên artifact, Release lấy từ đây)`);
 
+  // 2.5 — bản cài công khai cho nút "Cập nhật": token là secret DUY NHẤT của workflow đóng gói, chỉ ở env của một bước
+  // trong job phat-hanh (không bao giờ ở job dong-goi — lượt bản thử PR chạy mã chưa gộp ở đó). Thiếu secret thì chỉ cảnh
+  // báo, không làm hỏng Release riêng. Tên kho công khai ở workflow và ở can-app/src/cap-nhat.ts phải trùng nhau, và phiếu
+  // phiên bản có đủ trường docPhieuPhienBan đọc.
+  const biMat = [...goi.matchAll(/secrets\.([A-Za-z0-9_]+)/g)];
+  const viTriPhatHanh = goi.indexOf('\n  phat-hanh:\n');
+  ok('Workflow đóng gói: secret duy nhất là TOKEN_BAN_CAI_CAN, một lần, trong env của một bước ở job phat-hanh',
+     biMat.length === 1 && biMat[0][1] === 'TOKEN_BAN_CAI_CAN' && viTriPhatHanh > 0 && biMat[0].index > viTriPhatHanh
+       && /\n          TOKEN_BAN_CAI: \$\{\{ secrets\.TOKEN_BAN_CAI_CAN \}\}\n/.test(goi),
+     biMat.map(m => m[1]).join(', ') || 'không thấy secret nào');
+  ok('Workflow đóng gói: chưa có secret → cảnh báo ở Summary, thoát 0 (Release riêng vẫn đủ)',
+     /if \[ -z "\$TOKEN_BAN_CAI" \]; then\n\s+echo "::warning::[^\n]*\n\s+echo [^\n]*>> "\$GITHUB_STEP_SUMMARY"\n\s+exit 0\n/.test(goi));
+  const khoWorkflow = goi.match(/\n\s+REPO_BAN_CAI: (\S+)\n/)?.[1];
+  const capNhat = existsSync(join(GOC, 'can-app', 'src', 'cap-nhat.ts')) ? readFileSync(join(GOC, 'can-app', 'src', 'cap-nhat.ts'), 'utf8') : '';
+  const khoChuongTrinh = capNhat.match(/export const REPO_BAN_CAI = '([^']+)';/)?.[1];
+  ok('Kho bản cài công khai ở workflow trùng REPO_BAN_CAI của can-app/src/cap-nhat.ts', !!khoWorkflow && khoWorkflow === khoChuongTrinh,
+     `workflow: ${khoWorkflow} · cap-nhat.ts: ${khoChuongTrinh}`);
+  ok('Bản cài công khai: .exe lấy từ Release riêng, đưa lên cùng phien-ban.json có đủ dang, phienBan, tep, sha256, kichThuoc, ngay',
+     /gh release download "can-v\$PHIEN_BAN"/.test(goi) && /gh release create "can-v\$PHIEN_BAN" BeeftownCan\.exe phien-ban\.json --repo "\$REPO_BAN_CAI"/.test(goi)
+       && ['dang: 1', 'phienBan: $phienBan', 'tep: "BeeftownCan.exe"', 'sha256: $sha256', 'kichThuoc: $kichThuoc', 'ngay: $ngay'].every(t => goi.includes(t)));
+
   const pkg = JSON.parse(readFileSync(join(GOC, 'crm', 'package.json'), 'utf8'));
   ok('npm test chạy bằng chay-tat-ca.mjs (file test mới tự được chạy)', /chay-tat-ca\.mjs/.test(pkg.scripts?.test ?? ''),
      pkg.scripts?.test);
