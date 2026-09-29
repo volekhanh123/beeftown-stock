@@ -505,6 +505,9 @@ export async function thuCapNhat(ok: Ok): Promise<void> {
       ok('main.ts: đang có khoá "đang cập nhật" thì lần mở tay báo chờ và thoát (không hai bản cùng chạy); bản mở sau cập nhật được qua',
         /if \(!moSauCapNhat && khoaCapNhatConHan\(fileKhoaCapNhat\)\)/.test(main) && main.indexOf('khoaCapNhatConHan(fileKhoaCapNhat)') < main.indexOf('Đã có một bản đang chạy?')
         && /fileKhoa: fileKhoaCapNhat/.test(main) && /cauQuayVeBangTay\(t\)/.test(main));
+      ok('main.ts: hộp báo lỗi nhận câu qua biến môi trường BT_CHU, không ghép vào lệnh PowerShell (câu có đường dẫn thư mục — tên có dấu nháy ’ không phá được lệnh)',
+        /\[System\.Windows\.MessageBox\]::Show\(\$env:BT_CHU, /.test(main) && /BT_CHU: `Beeftown Cân không chạy được:/.test(main)
+        && !/::Show\('\$\{/.test(main) && !/replace\(\/'\/g, "''"\)/.test(main));
     }
   } finally {
     await gh.dong();

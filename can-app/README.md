@@ -210,7 +210,8 @@ Phiên bản). Bấm → tải `BeeftownCan.exe` về cạnh file đang chạy �
   vào chỗ. Việc đang ghi xuống cân (hàng đợi) chạy xong trước. Thư mục không ghi được (Program Files, USB chỉ đọc) → báo
   trước khi tải.
 - **Khởi động lại:** dừng máy chủ, xoá `dang-chay.json` (còn trỏ tới máy chủ cũ thì bản mới tưởng "đang có bản chạy" rồi
-  thoát), mở bản mới bằng PowerShell `Start-Process` (tách khỏi chương trình cũ), **chờ bản mới trả lời** (ghi
+  thoát), mở bản mới qua PowerShell bằng `[Diagnostics.Process]::Start` (tách khỏi chương trình cũ; không dùng `Start-Process`
+  vì nó hỏng với thư mục tên có `[ ]`; đường dẫn chỉ đi qua biến môi trường), **chờ bản mới trả lời** (ghi
   `dang-chay.json` với phiên bản mới). 90 giây không trả lời → tắt nó, bản mới thành `BeeftownCan.loi.exe`, bản cũ về chỗ,
   mở lại bản cũ với dòng đỏ. Trang mới báo "Đã cập nhật lên x (trước là y)".
 - **Quay về bằng tay:** đóng chương trình → đổi `BeeftownCan.exe` thành `BeeftownCan.moi.exe` → đổi `BeeftownCan.cu.exe`

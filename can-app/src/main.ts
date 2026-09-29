@@ -63,11 +63,12 @@ function baoLoi(e: unknown) {
     fs.appendFileSync(path.join(ud.dd.cauHinh, 'loi.txt'), `${new Date().toISOString()} ${e instanceof Error ? e.stack : cau}\n`);
   } catch { /* không ghi được thì thôi */ }
   if (process.platform === 'win32' && !khongMo) {
-    const chu = `Beeftown Cân không chạy được:\n\n${cau}`.replace(/'/g, "''");
+    // Câu đi qua biến môi trường, không ghép vào lệnh: câu có thể chứa đường dẫn thư mục (tên có dấu nháy ’ ‘ — PowerShell
+    // cũng coi là nháy đơn — sẽ phá lệnh).
     try {
       execFileSync('powershell.exe', ['-NoProfile', '-Command',
-        `Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show('${chu}', 'Beeftown Cân') | Out-Null`],
-        { windowsHide: true, timeout: 120000 });
+        "Add-Type -AssemblyName PresentationFramework; [System.Windows.MessageBox]::Show($env:BT_CHU, 'Beeftown Cân') | Out-Null"],
+        { windowsHide: true, timeout: 120000, env: { ...process.env, BT_CHU: `Beeftown Cân không chạy được:\n\n${cau}` } });
     } catch { /* thôi */ }
   } else console.error(cau);
 }
