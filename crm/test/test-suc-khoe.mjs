@@ -474,11 +474,20 @@ await nhom('12 · 0057 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
     + "    raise exception 'Chỉ chủ sở hữu hoặc quản lý mới xem được sức khỏe hệ thống'\n"
     + "      using errcode = 'insufficient_privilege';\n"
     + "  end if;\n\n";
+  const DOI_SOAT = "  select coalesce(jsonb_object_agg(x.chi_nhanh_id, x.n), '{}'::jsonb) into v_lech\n"
+    + "  from (select v.chi_nhanh_id, count(*) as n\n"
+    + "        from kho_doi_soat_ton() d\n"
+    + "        join kho_vi_tri v on v.id = d.vi_tri_id\n"
+    + "        group by v.chi_nhanh_id) x;";
+  const lechMoi = (() => { const i = m57.indexOf('create or replace function suc_khoe_lech_so_kho()'); return m57.slice(i, m57.indexOf('\n$$;', i)); })();
+  ok('suc_khoe_lech_so_kho = đối soát sổ kho của 0055 NGUYÊN VĂN (bỏ "into v_lech")',
+     cu55.includes(DOI_SOAT) && lechMoi.endsWith('\n' + DOI_SOAT.replace(' into v_lech', '')), lechMoi.slice(-300));
   // Mọi chỗ sửa so với 0055 — ngoài danh sách này (và ô bao_dong bên dưới) phải nguyên văn.
   const SUA = [
-    ['create or replace function suc_khoe_he_thong()', 'create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[])'],
+    ['create or replace function suc_khoe_he_thong()', 'create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[], p_lech jsonb default null)'],
     ['stable\nsecurity definer\n', 'stable\nsecurity invoker\n'],
     ['  v_ns   nhan_su;\n', ''],
+    [DOI_SOAT + '\n', '  v_lech := coalesce(p_lech, suc_khoe_lech_so_kho());\n'],
     ["  v_ds   jsonb := '[]'::jsonb;\n", "  v_bd   bao_dong_trang_thai;\n  v_ds   jsonb := '[]'::jsonb;\n"],
     [KIEM_VAI, ''],
     ["      and (v_ns.vai_tro = 'chu_so_huu' or c.id = v_ns.chi_nhanh_id)\n", '      and c.id = any(p_chi_nhanh_ids)\n'],
@@ -546,6 +555,9 @@ await nhom('12 · 0057 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
   const { rows: [{ k: chu }] } = await duoi(UID.chu, `select suc_khoe_he_thong() as k`);
   const { rows: [{ k: tatCa }] } = await db.query(`select suc_khoe_so_lieu(array[$1, $2]::uuid[]) as k`, [cnA.id, cnB.id]);
   ok('suc_khoe_so_lieu(mọi chi nhánh) = đúng số liệu chủ thấy', JSON.stringify(bo(tatCa, 'luc')) === JSON.stringify(bo(chu, 'luc')));
+  const { rows: [{ k: daLuu }] } = await db.query(`select suc_khoe_so_lieu(array[$1]::uuid[], jsonb_build_object($1::text, 7)) as k`, [cnA.id]);
+  ok('Truyền kết quả đối soát đã có (máy báo động) → dùng đúng số đó, không quét', cua(daLuu, cnA)?.so_kho?.lech === 7,
+     JSON.stringify(cua(daLuu, cnA)?.so_kho));
   const { rows: [{ k: rong }] } = await db.query(`select suc_khoe_so_lieu('{}'::uuid[]) as k`);
   ok('Danh sách rỗng → không chi nhánh nào (phần cả thương hiệu vẫn có)',
      Array.isArray(rong?.chi_nhanh) && rong.chi_nhanh.length === 0 && typeof rong?.zalo === 'object', JSON.stringify(rong?.chi_nhanh));
@@ -556,20 +568,23 @@ await nhom('12 · 0057 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
      ngung?.chi_nhanh?.length === 1 && ngung.chi_nhanh[0].id === cnA.id, JSON.stringify(ngung?.chi_nhanh?.map(c => c.ten)));
 
   // Hai hàm nội bộ: không ai đăng nhập gọi thẳng được — chỉ chạy bên trong hàm definer đã kiểm vai.
-  for (const [ten, sql] of [['kho_ipos_trang_thai_goc', `select kho_ipos_trang_thai_goc($1)`],
-                            ['suc_khoe_so_lieu', `select suc_khoe_so_lieu(array[$1]::uuid[])`]]) {
-    const c = await duoi(UID.chu, sql, [cnA.id]);
+  for (const [ten, sql, p] of [['kho_ipos_trang_thai_goc', `select kho_ipos_trang_thai_goc($1)`, [cnA.id]],
+                               ['suc_khoe_so_lieu', `select suc_khoe_so_lieu(array[$1]::uuid[])`, [cnA.id]],
+                               ['suc_khoe_lech_so_kho', `select suc_khoe_lech_so_kho()`, []]]) {
+    const c = await duoi(UID.chu, sql, p);
     ok(`Chủ cũng KHÔNG gọi thẳng được ${ten} (nội bộ)`, c.loi !== null && /permission denied/.test(c.loi), c.loi ?? 'GỌI ĐƯỢC');
-    const a = await duoiAnon(sql, [cnA.id]);
+    const a = await duoiAnon(sql, p);
     ok(`anon không gọi được ${ten}`, a.loi !== null, a.loi ?? 'GỌI ĐƯỢC');
   }
   const { rows: [q] } = await db.query(`
     select has_function_privilege('authenticated', 'kho_ipos_trang_thai_goc(uuid)', 'execute') as goc,
-           has_function_privilege('authenticated', 'suc_khoe_so_lieu(uuid[])', 'execute') as so_lieu,
+           has_function_privilege('authenticated', 'suc_khoe_so_lieu(uuid[], jsonb)', 'execute') as so_lieu,
+           has_function_privilege('authenticated', 'suc_khoe_lech_so_kho()', 'execute') as lech,
            (select prosecdef from pg_proc where oid = 'kho_ipos_trang_thai_goc(uuid)'::regprocedure) as goc_definer,
-           (select prosecdef from pg_proc where oid = 'suc_khoe_so_lieu(uuid[])'::regprocedure) as so_lieu_definer`);
-  ok('Hai hàm nội bộ là security invoker và authenticated không có quyền execute',
-     !q.goc && !q.so_lieu && !q.goc_definer && !q.so_lieu_definer, JSON.stringify(q));
+           (select prosecdef from pg_proc where oid = 'suc_khoe_so_lieu(uuid[], jsonb)'::regprocedure) as so_lieu_definer,
+           (select prosecdef from pg_proc where oid = 'suc_khoe_lech_so_kho()'::regprocedure) as lech_definer`);
+  ok('Ba hàm nội bộ là security invoker và authenticated không có quyền execute',
+     !q.goc && !q.so_lieu && !q.lech && !q.goc_definer && !q.so_lieu_definer && !q.lech_definer, JSON.stringify(q));
 });
 
 process.exit(ketThuc('SỨC KHỎE HỆ THỐNG'));

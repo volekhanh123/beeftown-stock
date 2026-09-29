@@ -12,13 +12,15 @@
 -- Việt Nam bằng đồng hồ `luc` của database.
 --
 --   1 · bao_dong_trang_thai (một dòng): khóa lượt + mã lượt, nhịp tim, lỗi gần nhất (đã xóa bí
---       mật), kênh đang dùng và từ lúc nào, lần tóm tắt / gửi gần nhất.
+--       mật), kênh đang dùng và từ lúc nào, lần tóm tắt / gửi gần nhất, kết quả đối soát sổ kho
+--       gần nhất (quét cả sổ — việc báo động làm mới tối đa 30 phút một lần, như 0055 đã dặn).
 --   2 · bao_dong_su_co: mỗi đèn đỏ là một sự cố — MỘT sự cố đang mở cho mỗi đèn (chỉ mục duy
 --       nhất). Không lưu câu chữ: câu soạn lại từ số liệu lúc gửi, nên không có chỗ nào để dữ
---       liệu cá nhân nằm lại. Sự cố đã đóng quá 90 ngày tự dọn.
+--       liệu cá nhân nằm lại. Đã báo hết đỏ thì đã đóng (ràng buộc). Đóng quá 90 ngày tự dọn.
 --   3 · Tách phần KIỂM QUYỀN khỏi phần TÍNH SỐ LIỆU, để máy đọc được mà không mở quyền kho /
 --       CRM nào: kho_ipos_trang_thai_goc (thân 0042 nguyên văn, trừ đúng ba dòng kiểm
---       kho_duoc), suc_khoe_so_lieu(uuid[]) (thân 0055, không kiểm vai). Cả hai là SECURITY
+--       kho_duoc), suc_khoe_so_lieu(uuid[], jsonb) (thân 0055, không kiểm vai; đối soát sổ kho
+--       tách thành suc_khoe_lech_so_kho() để máy dùng lại kết quả đã lưu). Cả ba là SECURITY
 --       INVOKER và bị thu quyền authenticated: chỉ chạy được bên trong một hàm definer đã kiểm
 --       vai. Hai hàm cũ giữ nguyên chữ ký, câu từ chối và kết quả. Hai bảng tạo TRƯỚC mục này:
 --       suc_khoe_so_lieu khai báo biến kiểu bao_dong_trang_thai.
@@ -42,6 +44,8 @@ create table bao_dong_trang_thai (
   kenh_tu_luc   timestamptz,                    -- lần đổi kênh gần nhất (nối kênh → tin "đã nối kênh")
   tom_tat_luc   timestamptz,                    -- lần gửi tóm tắt (sáng / nối kênh) gần nhất
   lan_gui_cuoi  timestamptz,                    -- lần gửi được tin gần nhất
+  so_kho_lech   jsonb,                          -- đối soát sổ kho gần nhất: {id chi nhánh: số lô lệch}
+  so_kho_luc    timestamptz,                    -- lúc đối soát đó (làm mới khi quá 30 phút)
 
   constraint bao_dong_trang_thai_mot_dong check (id = 1),
   constraint bao_dong_trang_thai_kenh check (kenh ~ '^[a-z_]{1,20}$'),
@@ -49,7 +53,7 @@ create table bao_dong_trang_thai (
 );
 
 comment on table bao_dong_trang_thai is
-  'Một dòng: khóa lượt, nhịp tim, lỗi gần nhất, kênh, mốc tóm tắt của việc chạy nền báo động (0057). Chỉ đọc / ghi qua RPC máy và suc_khoe_so_lieu.';
+  'Một dòng: khóa lượt, nhịp tim, lỗi gần nhất, kênh, mốc tóm tắt, đối soát sổ kho gần nhất của việc chạy nền báo động (0057). Chỉ đọc / ghi qua RPC máy và suc_khoe_so_lieu.';
 
 insert into bao_dong_trang_thai (id) values (1) on conflict (id) do nothing;
 
@@ -75,7 +79,10 @@ create table bao_dong_su_co (
   constraint bao_dong_su_co_ma_den check (ma_den ~ '^[a-z_]{1,40}$'),
   constraint bao_dong_su_co_khoa check (khoa = ma_den || coalesce(':' || chi_nhanh_id::text, '')),
   constraint bao_dong_su_co_mau_sau check (mau_sau is null or mau_sau in ('xanh', 'vang', 'tat', 'mat')),
-  constraint bao_dong_su_co_kenh check (bao_mo_kenh is null or bao_mo_kenh ~ '^[a-z_]{1,20}$')
+  constraint bao_dong_su_co_kenh check (bao_mo_kenh is null or bao_mo_kenh ~ '^[a-z_]{1,20}$'),
+  -- Một sự cố "đã báo hết đỏ" mà còn mở sẽ bị lần đỏ sau dùng lại (on conflict) với dấu đã báo
+  -- cũ — lần đỏ đó không bao giờ được báo. bao_dong_da_gui đóng sự cố trong cùng câu lệnh.
+  constraint bao_dong_su_co_het_bao check (bao_het_luc is null or het_luc is not null)
 );
 
 comment on table bao_dong_su_co is
@@ -198,8 +205,28 @@ $$;
 comment on function kho_ipos_trang_thai is
   'Trạng thái đồng bộ iPOS (xem, không tiền): cấu hình (không token), đèn xanh | vang | do + câu dễ hiểu, lần nhận hóa đơn cuối (nhan_hd_luc), lần xử lý hộp thư cuối (hop_thu_luc), thực đơn (menu_luc, menu_can_lam_moi, so_mon_menu), số dòng theo trạng thái, 10 lượt gần nhất. 0042: không cần đường dẫn hóa đơn; mất kết nối = lượt lỗi hoặc quá gio_mat_ket_noi giờ không nhận hóa đơn trong giờ mở cửa. 0057: kiểm quyền rồi gọi kho_ipos_trang_thai_goc (kết quả không đổi).';
 
--- Thân 0055, không kiểm vai; danh sách chi nhánh do hàm gọi quyết định. Thêm ô bao_dong.
-create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[])
+-- Đối soát sổ kho của 0055 NGUYÊN VĂN (bỏ "into v_lech"): quét cả sổ, nên máy báo động lưu kết quả
+-- và chỉ gọi lại khi quá 30 phút; bảng ở /noi-bo vẫn gọi mỗi lần mở trang như trước.
+create or replace function suc_khoe_lech_so_kho()
+returns jsonb
+language sql
+stable
+security invoker
+set search_path = public
+as $$
+  select coalesce(jsonb_object_agg(x.chi_nhanh_id, x.n), '{}'::jsonb)
+  from (select v.chi_nhanh_id, count(*) as n
+        from kho_doi_soat_ton() d
+        join kho_vi_tri v on v.id = d.vi_tri_id
+        group by v.chi_nhanh_id) x;
+$$;
+
+comment on function suc_khoe_lech_so_kho() is
+  'NỘI BỘ (0057): số lô có tồn lệch sổ kho theo chi nhánh {id: số} — quét cả sổ (kho_doi_soat_ton). Chỉ gọi từ suc_khoe_so_lieu và bao_dong_bat_dau_luot.';
+
+-- Thân 0055, không kiểm vai; danh sách chi nhánh do hàm gọi quyết định. Thêm ô bao_dong. p_lech: kết
+-- quả đối soát đã có (máy báo động) — null thì quét như 0055.
+create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[], p_lech jsonb default null)
 returns jsonb
 language plpgsql
 stable
@@ -216,11 +243,7 @@ declare
   v_bd   bao_dong_trang_thai;
   v_ds   jsonb := '[]'::jsonb;
 begin
-  select coalesce(jsonb_object_agg(x.chi_nhanh_id, x.n), '{}'::jsonb) into v_lech
-  from (select v.chi_nhanh_id, count(*) as n
-        from kho_doi_soat_ton() d
-        join kho_vi_tri v on v.id = d.vi_tri_id
-        group by v.chi_nhanh_id) x;
+  v_lech := coalesce(p_lech, suc_khoe_lech_so_kho());
 
   -- Chi nhánh đã ngừng hoạt động không nhận đặt bàn (tao_dat_ban lọc dang_hoat_dong) — không báo gì.
   for v_cn in
@@ -342,8 +365,8 @@ begin
 end;
 $$;
 
-comment on function suc_khoe_so_lieu(uuid[]) is
-  'NỘI BỘ (0057): số liệu bảng sức khỏe cho các chi nhánh ĐANG HOẠT ĐỘNG trong danh sách, không kiểm vai. Chỉ gọi từ suc_khoe_he_thong() (chủ / quản lý) và bao_dong_bat_dau_luot() (máy báo động). Không ai đăng nhập gọi thẳng được.';
+comment on function suc_khoe_so_lieu(uuid[], jsonb) is
+  'NỘI BỘ (0057): số liệu bảng sức khỏe cho các chi nhánh ĐANG HOẠT ĐỘNG trong danh sách, không kiểm vai. p_lech: đối soát sổ kho đã có (null = quét). Chỉ gọi từ suc_khoe_he_thong() (chủ / quản lý) và bao_dong_bat_dau_luot() (máy báo động). Không ai đăng nhập gọi thẳng được.';
 
 create or replace function suc_khoe_he_thong()
 returns jsonb
@@ -379,7 +402,7 @@ comment on function suc_khoe_he_thong() is
 -- =============================================================================
 -- 4 · RPC CỦA MÁY BÁO ĐỘNG — chỉ may_bao_dong
 -- =============================================================================
--- Câu lỗi lưu lại: xóa token kiểu Telegram (123456:AA…) TRƯỚC — mess_sach_loi (0053) còn xóa
+-- Câu lỗi lưu lại: xóa token kiểu Telegram (123456:AA…, cả dạng mã hóa URL %3A) TRƯỚC — mess_sach_loi (0053) còn xóa
 -- token / mật khẩu / chuỗi hex / số điện thoại, nhưng sẽ chỉ cắt mất phần số của token Telegram.
 create or replace function bao_dong_sach_loi(p_loi text)
 returns text
@@ -387,14 +410,15 @@ language sql
 immutable
 set search_path = public
 as $$
-  select mess_sach_loi(regexp_replace(p_loi, '[0-9]{6,}:[A-Za-z0-9_-]{30,}', '***', 'g'));
+  select mess_sach_loi(regexp_replace(p_loi, '[0-9]{6,}(:|%3[Aa])[A-Za-z0-9_-]{30,}', '***', 'g'));
 $$;
 
 comment on function bao_dong_sach_loi(text) is
   'NỘI BỘ (0057): câu lỗi của việc báo động trước khi lưu — xóa token Telegram rồi mess_sach_loi (token, mật khẩu, hex, SĐT), tối đa 500 ký tự.';
 
 -- Bắt đầu lượt: khóa (lượt treo quá 10 phút coi như đã chết), mã lượt, số liệu mọi chi nhánh
--- đang hoạt động (hỏng thì null + lỗi — lượt vẫn chạy để ghi đèn giả doc_so_lieu), trạng thái
+-- đang hoạt động (đối soát sổ kho dùng lại kết quả dưới 30 phút; hỏng hay hết giờ thì null + lỗi —
+-- lượt vẫn chạy để ghi đèn giả doc_so_lieu), trạng thái
 -- cho luật báo, và các lần "đã báo" trong 48 giờ (trần tin của mỗi đèn tính từ 8 giờ sáng giờ VN).
 create or replace function bao_dong_bat_dau_luot(p_kenh text)
 returns jsonb
@@ -410,6 +434,7 @@ declare
   v_so   jsonb;
   v_loi  text;
   v_bao  jsonb;
+  v_lech jsonb;
 begin
   if not co_vai_tro(array['may_bao_dong']::vai_tro[]) then
     raise exception 'Chỉ tài khoản máy báo động mới gọi được hàm này'
@@ -435,12 +460,24 @@ begin
 
   delete from bao_dong_su_co where het_luc < now() - interval '90 days';
 
+  -- Đọc hỏng → so_lieu null + câu lỗi, KHÔNG ném: lượt vẫn chạy để Worker ghi đèn giả doc_so_lieu.
+  -- "when others" không bắt query_canceled — mà statement_timeout của Supabase (8 giây cho vai
+  -- authenticated) báo đúng mã đó khi sổ kho lớn; nên bắt riêng.
   begin
     select coalesce(array_agg(c.id), '{}'::uuid[]) into v_ids from chi_nhanh c where c.dang_hoat_dong;
-    v_so := suc_khoe_so_lieu(v_ids);
-  exception when others then
-    v_so  := null;
-    v_loi := bao_dong_sach_loi(sqlerrm);
+    v_lech := v_tt.so_kho_lech;
+    if v_lech is null or v_tt.so_kho_luc is null or v_tt.so_kho_luc <= now() - interval '30 minutes' then
+      v_lech := suc_khoe_lech_so_kho();
+      update bao_dong_trang_thai set so_kho_lech = v_lech, so_kho_luc = now() where id = 1;
+    end if;
+    v_so := suc_khoe_so_lieu(v_ids, v_lech);
+  exception
+    when query_canceled then
+      v_so  := null;
+      v_loi := bao_dong_sach_loi(sqlerrm);
+    when others then
+      v_so  := null;
+      v_loi := bao_dong_sach_loi(sqlerrm);
   end;
 
   select coalesce(jsonb_agg(jsonb_build_object('khoa', s.khoa, 'bao_mo_luc', s.bao_mo_luc)
@@ -555,7 +592,8 @@ comment on function bao_dong_ghi_luot(uuid, jsonb, boolean) is
   'Máy báo động (0057): ghi màu MỌI đèn của lượt [{ma_den, chi_nhanh_id|null, mau: xanh|vang|do|tat}]. Đỏ → mở / tiếp tục sự cố; màu khác → chờ hết đỏ. p_day_du: sự cố của đèn không còn → mau_sau mat. Cần đúng mã lượt. Trả {luc, su_co[] đang mở}.';
 
 -- Đánh dấu đã gửi. Không cần mã lượt: là sự thật về một tin ĐÃ gửi, ghi mấy lần cũng giữ mốc
--- đầu. p_mo: tin "mới đỏ" hoặc tóm tắt; p_het: tin hết đỏ (chỉ sự cố đã báo và đang chờ hết).
+-- đầu. p_mo: tin "mới đỏ" hoặc tóm tắt; p_het: tin hết đỏ (chỉ sự cố đã báo và đang chờ hết) —
+-- ĐÓNG sự cố trong cùng câu lệnh: kết thúc lượt có hỏng sau đó thì lần đỏ sau vẫn là sự cố mới.
 create or replace function bao_dong_da_gui(p_kenh text, p_mo uuid[] default '{}', p_het uuid[] default '{}',
                                            p_tom_tat boolean default false)
 returns jsonb
@@ -582,9 +620,9 @@ begin
   get diagnostics v_mo = row_count;
 
   update bao_dong_su_co
-     set bao_het_luc = now()
+     set bao_het_luc = now(), het_luc = now()
    where id = any(coalesce(p_het, '{}'::uuid[]))
-     and bao_mo_luc is not null and bao_het_luc is null and het_do_tu is not null;
+     and bao_mo_luc is not null and bao_het_luc is null and het_do_tu is not null and het_luc is null;
   get diagnostics v_het = row_count;
 
   update bao_dong_trang_thai
@@ -599,7 +637,7 @@ end;
 $$;
 
 comment on function bao_dong_da_gui(text, uuid[], uuid[], boolean) is
-  'Máy báo động (0057): đánh dấu đã gửi qua p_kenh (không phải khong). p_mo → bao_mo_luc (chỉ lần đầu), p_het → bao_het_luc (chỉ sự cố đã báo, đang chờ hết đỏ), p_tom_tat → tom_tat_luc. Gọi lại không đổi mốc đã có.';
+  'Máy báo động (0057): đánh dấu đã gửi qua p_kenh (không phải khong). p_mo → bao_mo_luc (chỉ lần đầu), p_het → bao_het_luc VÀ đóng sự cố (chỉ sự cố đã báo, đang chờ hết đỏ), p_tom_tat → tom_tat_luc. Gọi lại không đổi mốc đã có.';
 
 -- Kết thúc lượt: đóng các sự cố Worker đã quyết (chỉ sự cố đang chờ hết đỏ — đỏ lại thì
 -- không đóng), ghi nhịp tim và lỗi (đã xóa bí mật), nhả khóa CHỈ khi đúng lượt của mình.
@@ -653,7 +691,8 @@ begin
     execute 'revoke all on bao_dong_trang_thai from anon, authenticated';
     execute 'revoke all on bao_dong_su_co from anon, authenticated';
     execute 'revoke execute on function kho_ipos_trang_thai_goc(uuid) from authenticated';
-    execute 'revoke execute on function suc_khoe_so_lieu(uuid[]) from authenticated';
+    execute 'revoke execute on function suc_khoe_so_lieu(uuid[], jsonb) from authenticated';
+    execute 'revoke execute on function suc_khoe_lech_so_kho() from authenticated';
     execute 'revoke execute on function bao_dong_sach_loi(text) from authenticated';
   end if;
 end

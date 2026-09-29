@@ -131,7 +131,7 @@ export interface KeHoach {
   moiDo: SuCo[];
   /** Khóa của các mục trong moiDo vừa tới trần — câu ghi "sẽ không nhắn riêng nữa". */
   chamTran: string[];
-  /** Báo hết đỏ — sự cố đóng SAU khi tin tới kênh và đã đánh dấu. */
+  /** Báo hết đỏ — bao_dong_da_gui đóng sự cố CÙNG câu lệnh đánh dấu, sau khi tin tới kênh. */
   hetDo: SuCo[];
   /** id sự cố đóng im lặng: chưa từng báo, đã báo hết đỏ, đèn không còn, hoặc chưa có kênh. */
   dongIm: string[];

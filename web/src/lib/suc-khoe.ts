@@ -446,8 +446,8 @@ function denBaoDong(b: Partial<NonNullable<SucKhoeTho['bao_dong']>>, bayGio: num
     null, nn);
   const v: VanDe[] = [];
   if (bayGio - chay > PHUT_NHIP_TIM * 60000) v.push({ muc: 'do', cau: {
-    vi: `Việc báo động đã dừng (lượt gần nhất ${tuTruoc(bayGio, chay).vi}) — đèn chuyển đỏ sẽ không được báo. Báo người quản trị kỹ thuật kiểm tra Cron và bí mật báo động của Worker`,
-    en: `The alert job has stopped (last run ${tuTruoc(bayGio, chay).en}) — red lights will not be reported. Ask the technical admin to check the Cron trigger and the Worker alert secrets` } });
+    vi: `Việc báo động đã dừng (lượt gần nhất ${tuTruoc(bayGio, chay).vi}) — đèn chuyển đỏ sẽ không được báo. Báo người quản trị kỹ thuật xem log [bao-dong] của Worker (Cron, bí mật báo động, database)`,
+    en: `The alert job has stopped (last run ${tuTruoc(bayGio, chay).en}) — red lights will not be reported. Ask the technical admin to check the [bao-dong] lines in the Worker log (Cron trigger, alert secrets, database)` } });
   if (b.co_loi === true) v.push({ muc: 'do', cau: {
     vi: 'Lượt báo động gần nhất bị lỗi — tin báo có thể chưa tới. Báo người quản trị kỹ thuật xem log [bao-dong] của Worker',
     en: 'The latest alert run failed — alerts may not have been delivered. Ask the technical admin to check the [bao-dong] lines in the Worker log' } });

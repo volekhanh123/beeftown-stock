@@ -156,6 +156,7 @@ await nhom('2 · MÁY KHÔNG ĐỌC ĐƯỢC GÌ NGOÀI BỐN HÀM CỦA NÓ', a
     ['suc_khoe_he_thong (chỉ chủ / quản lý)', `suc_khoe_he_thong()`, /Chỉ chủ sở hữu hoặc quản lý/],
     ['kho_ipos_trang_thai (cần quyền xem kho)', `kho_ipos_trang_thai('${cnA.id}')`, /không xem được kho/],
     ['suc_khoe_so_lieu (nội bộ)', `suc_khoe_so_lieu(array['${cnA.id}']::uuid[])`, /permission denied/],
+    ['suc_khoe_lech_so_kho (nội bộ)', `suc_khoe_lech_so_kho()`, /permission denied/],
     ['kho_ipos_trang_thai_goc (nội bộ)', `kho_ipos_trang_thai_goc('${cnA.id}')`, /permission denied/],
     ['bao_dong_sach_loi (nội bộ)', `bao_dong_sach_loi('x')`, /permission denied/],
     ['zalo_bat_dau_luot (máy Zalo)', `zalo_bat_dau_luot(50)`, /^Chỉ tài khoản máy Zalo mới gọi được hàm này$/],
@@ -322,7 +323,16 @@ await nhom('5 · ĐÁNH DẤU ĐÃ GỬI: GỌI LẠI KHÔNG ĐỔI MỐC', asyn
   ok('Tin hết đỏ cho sự cố CHƯA BÁO → không đánh dấu', (await DA_GUI('telegram', [], [a.id])).kq?.so_het === 0);
   await GHI(luot, [den('zalo', 'xanh'), den('so_kho', 'do', cnA), den('so_kho', 'do', cnB), den('doc_so_lieu', 'xanh')]);
   r = await DA_GUI('telegram', [], [z.id]);
-  ok('Đã báo + đang chờ hết đỏ → đánh dấu tin hết đỏ', r.kq?.so_het === 1 && (await suCoMo('zalo')).bao_het_luc !== null, vi(r));
+  const zHet = await mot(`select bao_het_luc, het_luc from bao_dong_su_co where id = $1`, [z.id]);
+  ok('Đã báo + đang chờ hết đỏ → đánh dấu tin hết đỏ', r.kq?.so_het === 1 && zHet.bao_het_luc !== null, vi(r));
+  ok('Rà soát: đánh dấu "đã báo hết đỏ" ĐÓNG luôn sự cố trong cùng câu lệnh — không còn sự cố "đã báo hết đỏ" mà vẫn mở',
+     zHet.het_luc !== null && !(await suCoMo('zalo')), JSON.stringify(zHet));
+  const moMa = await (async () => {
+    try { await db.query(`update bao_dong_su_co set bao_het_luc = now() where id = $1`, [a.id]); return null; }
+    catch (e) { return e.message; }
+  })();
+  ok('Database chặn "đã báo hết đỏ" trên sự cố còn mở (lần đỏ sau sẽ bị nuốt)', moMa !== null && /bao_dong_su_co_het_bao/.test(moMa),
+     moMa ?? 'GHI ĐƯỢC');
   ok('…gọi lại → không đánh dấu thêm', (await DA_GUI('telegram', [], [z.id])).kq?.so_het === 0);
   ok('id không có thật → không lỗi, không đánh dấu', (await DA_GUI('telegram', [crypto.randomUUID()])).kq?.so_mo === 0);
   const truoc = await trangThai();
@@ -339,11 +349,16 @@ await nhom('5 · ĐÁNH DẤU ĐÃ GỬI: GỌI LẠI KHÔNG ĐỔI MỐC', asyn
 
 // ===========================================================================
 await nhom('6 · KẾT THÚC LƯỢT: CHỈ ĐÓNG SỰ CỐ ĐANG CHỜ, CÂU LỖI ĐÃ XÓA BÍ MẬT', async () => {
-  const z = await suCoMo('zalo'), a = await suCoMo(khoa('so_kho', cnA));
+  // Zalo: đã báo rồi đã báo hết đỏ ở nhóm 5. Máy dịch: đỏ rồi hết đỏ — đang chờ.
+  const z = await mot(`select * from bao_dong_su_co where khoa = 'zalo' order by bat_dau_luc desc limit 1`);
+  const phan = [den('so_kho', 'do', cnA), den('so_kho', 'do', cnB), den('doc_so_lieu', 'xanh'), den('zalo', 'xanh')];
+  await GHI(luot, [den('dich', 'do'), ...phan]);
+  await GHI(luot, [den('dich', 'xanh'), ...phan]);
+  const d = await suCoMo('dich'), a = await suCoMo(khoa('so_kho', cnA));
   await db.query(`update bao_dong_su_co set bao_mo_luc = now() - interval '1 hour' where id = $1`, [z.id]);
-  const k = await KET_THUC(luot, [z.id, a.id]);
+  const k = await KET_THUC(luot, [d.id, a.id]);
   ok('Đóng: chỉ sự cố đang chờ hết đỏ; sự cố còn đỏ trong danh sách không bị đóng', k.kq?.so_dong === 1
-     && (await mot(`select het_luc from bao_dong_su_co where id = $1`, [z.id])).het_luc !== null
+     && (await mot(`select het_luc from bao_dong_su_co where id = $1`, [d.id])).het_luc !== null
      && (await suCoMo(khoa('so_kho', cnA)))?.id === a.id, vi(k));
   const tt = await trangThai();
   ok('Nhịp tim ghi, không lỗi, nhả khóa', k.kq?.nha_khoa === true && tt.lan_chay_cuoi !== null && tt.loi_cuoi === null
@@ -366,6 +381,8 @@ await nhom('6 · KẾT THÚC LƯỢT: CHỈ ĐÓNG SỰ CỐ ĐANG CHỜ, CÂU L
   ok('bao_dong_sach_loi: null → null (lượt không lỗi)', (await mot(`select bao_dong_sach_loi(null) as x`)).x === null);
   ok('bao_dong_sach_loi xóa token Telegram TRƯỚC (mess_sach_loi một mình chỉ cắt mất phần số)',
      (await mot(`select bao_dong_sach_loi($1) as x`, [`bot${TELEGRAM_GIA}/getMe`])).x === 'bot***/getMe');
+  const maHoa = (await mot(`select bao_dong_sach_loi($1) as x`, [`bot${TELEGRAM_GIA.replace(':', '%3A')}/getMe`])).x;
+  ok('Rà soát: bao_dong_sach_loi xóa cả token Telegram mã hóa URL (%3A)', maHoa === 'bot***/getMe', maHoa);
   const chu = (await rpc(UID.chu, `suc_khoe_he_thong()`)).kq;
   ok('Đèn Báo động thấy lượt lỗi (co_loi) — không thấy câu lỗi', chu?.bao_dong?.co_loi === true
      && !JSON.stringify(chu.bao_dong).includes('gửi hỏng'), JSON.stringify(chu?.bao_dong));
@@ -381,7 +398,7 @@ await nhom('7 · SỐ LIỆU HỎNG: LƯỢT VẪN CHẠY, KHÔNG LỘ BÍ MẬT
     const s = tep('0057_'), i = s.indexOf('create or replace function suc_khoe_so_lieu(');
     return s.slice(i, s.indexOf('\n$$;', i) + 4);
   })();
-  await db.exec(`create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[]) returns jsonb language plpgsql stable
+  await db.exec(`create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[], p_lech jsonb default null) returns jsonb language plpgsql stable
     security invoker set search_path = public as $$ begin
       raise exception 'hỏng: ${TS_GIA} gọi 0901234567 bot ${TELEGRAM_GIA}';
     end $$;`);
@@ -393,11 +410,57 @@ await nhom('7 · SỐ LIỆU HỎNG: LƯỢT VẪN CHẠY, KHÔNG LỘ BÍ MẬT
   ok('Câu lỗi số liệu đã xóa token, SĐT, token Telegram', typeof b.kq?.loi_so_lieu === 'string' && !conBiMat(b.kq.loi_so_lieu),
      b.kq?.loi_so_lieu);
   await KET_THUC(b.kq.luot);
-  const { q } = await mot(`select has_function_privilege('authenticated', 'suc_khoe_so_lieu(uuid[])', 'execute') as q`);
+  await db.exec(`create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[], p_lech jsonb default null) returns jsonb language plpgsql stable
+    security invoker set search_path = public as $$ begin
+      raise exception 'canceling statement due to statement timeout' using errcode = 'query_canceled';
+    end $$;`);
+  let h;
+  try { h = await BAT_DAU('telegram'); }
+  finally { await db.exec(soLieuThat); }
+  ok('Rà soát: hết giờ khi đọc số liệu (statement_timeout, 57014 — "when others" không bắt) → lượt vẫn chạy, so_lieu null',
+     h.loi === null && !!h.kq?.luot && h.kq.so_lieu === null && /statement timeout/.test(h.kq.loi_so_lieu ?? ''), vi(h));
+  if (h.kq?.luot) await KET_THUC(h.kq.luot);
+  const { q } = await mot(`select has_function_privilege('authenticated', 'suc_khoe_so_lieu(uuid[], jsonb)', 'execute') as q`);
   ok('Dựng lại hàm thật → vẫn là hàm nội bộ', q === false);
   const lai = await BAT_DAU('telegram');
   ok('…và đọc lại được số liệu', lai.kq?.so_lieu?.chi_nhanh?.length === 2, vi(lai));
   await KET_THUC(lai.kq.luot);
+});
+
+// ===========================================================================
+// kho_doi_soat_ton() quét cả sổ kho (0055: "sổ lớn thì lưu kết quả đối soát định kỳ"). Bảng ở
+// /noi-bo vẫn quét mỗi lần mở; máy báo động (288 lượt / ngày) dùng lại kết quả dưới 30 phút.
+await nhom('7b · ĐỐI SOÁT SỔ KHO: MÁY DÙNG LẠI KẾT QUẢ DƯỚI 30 PHÚT, BẢNG VẪN QUÉT MỚI', async () => {
+  const lechThat = (() => {
+    const s = tep('0057_'), i = s.indexOf('create or replace function suc_khoe_lech_so_kho(');
+    return s.slice(i, s.indexOf('\n$$;', i) + 4);
+  })();
+  const lechA = so => so?.chi_nhanh?.find(c => c.id === cnA.id)?.so_kho?.lech;
+  await db.query(`update bao_dong_trang_thai set so_kho_luc = null, so_kho_lech = null where id = 1`);
+  let b = await BAT_DAU('telegram');
+  await KET_THUC(b.kq.luot);
+  const tt = await trangThai();
+  ok('Lượt đầu: quét sổ, lưu kết quả và lúc quét', lechA(b.kq.so_lieu) === 0 && tt.so_kho_luc !== null
+     && JSON.stringify(tt.so_kho_lech) === '{}', JSON.stringify(tt.so_kho_lech));
+  await db.exec(`create or replace function suc_khoe_lech_so_kho() returns jsonb language sql stable security invoker
+    set search_path = public as $$ select jsonb_build_object('${cnA.id}', 3) $$;`);
+  try {
+    b = await BAT_DAU('telegram');
+    await KET_THUC(b.kq.luot);
+    ok('Lượt sau trong 30 phút → dùng kết quả đã lưu, KHÔNG quét lại', lechA(b.kq.so_lieu) === 0, `${lechA(b.kq.so_lieu)}`);
+    const chu = (await rpc(UID.chu, `suc_khoe_he_thong()`)).kq;
+    ok('Bảng ở /noi-bo vẫn quét mới mỗi lần mở (như 0055)', lechA(chu) === 3, `${lechA(chu)}`);
+    await db.query(`update bao_dong_trang_thai set so_kho_luc = now() - interval '31 minutes' where id = 1`);
+    b = await BAT_DAU('telegram');
+    await KET_THUC(b.kq.luot);
+    ok('Kết quả đã lưu quá 30 phút → quét lại, thấy lô lệch mới', lechA(b.kq.so_lieu) === 3
+       && (await trangThai()).so_kho_lech?.[cnA.id] === 3, `${lechA(b.kq.so_lieu)}`);
+  } finally {
+    await db.exec(lechThat);
+  }
+  await db.query(`update bao_dong_trang_thai set so_kho_luc = null, so_kho_lech = null where id = 1`);
+  const { q } = await mot(`select has_function_privilege('authenticated', 'suc_khoe_lech_so_kho()', 'execute') as q`);
+  ok('Dựng lại hàm đối soát thật → vẫn là hàm nội bộ', q === false);
 });
 
 // ===========================================================================

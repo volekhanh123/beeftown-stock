@@ -10,8 +10,8 @@
  *     số liệu → chỉ đèn giả doc_so_lieu, danh sách không đầy đủ: database không đóng sự cố nào
  *   → bao_dong_ghi_luot: màu mọi đèn → sổ sự cố
  *   → lapKeHoach (luật, bao-dong-chinh-sach.ts) → soanTin (bao-dong-tin.ts) → gửi qua kênh
- *     (bao-dong-kenh.ts) → bao_dong_da_gui (thử lại một lần)
- *   → trong finally: bao_dong_ket_thuc_luot (đóng sự cố, nhịp tim, lỗi) → đăng xuất.
+ *     (bao-dong-kenh.ts) → bao_dong_da_gui (thử lại một lần; đóng luôn sự cố vừa báo hết đỏ)
+ *   → trong finally: bao_dong_ket_thuc_luot (đóng sự cố im lặng, nhịp tim, lỗi) → đăng xuất.
  *
  * Cron riêng, lệch 2 phút so với iPOS / Zalo: hai việc đó quá tải hay treo không kéo việc báo
  * động chết theo — và đèn "Báo động" trên bảng đỏ khi chính việc này dừng.
@@ -37,6 +37,7 @@ import { danhGiaSucKhoe, laSucKhoeTho } from './suc-khoe.ts';
 import { lapKeHoach, type DaBao, type KeHoach, type SuCo } from './bao-dong-chinh-sach.ts';
 import { soanTin, type Tin } from './bao-dong-tin.ts';
 import { chonKenhBaoDong, type KenhBaoDong, type KetQuaGui } from './bao-dong-kenh.ts';
+import { xoaBiMat } from './messenger.ts';
 
 // -----------------------------------------------------------------------------
 // HẰNG SỐ, BÍ MẬT
@@ -73,10 +74,10 @@ function docChuoi(ten: string, ...nguon: Env[]): string | undefined {
 
 const envNode = (): Env => (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
 
-function layBienCong(ten: string, env: Env, w: Env): string | undefined {
+function layBienCong(ten: string, env: Env): string | undefined {
   const v = (import.meta as { env?: Record<string, unknown> }).env?.[ten];
   if (typeof v === 'string' && v) return v;
-  return docChuoi(ten, env, w, envNode());
+  return docChuoi(ten, env, envNode());
 }
 
 /** Đọc tài khoản máy báo động. Không có → undefined; không bao giờ ném lỗi. */
@@ -89,14 +90,14 @@ export async function layBiMatBaoDong(env?: Env): Promise<BiMatBaoDong> {
   };
 }
 
-/** Xóa bí mật khỏi một câu log / câu lỗi: chuỗi bí mật đã biết, token kiểu Telegram, số điện thoại. */
+/**
+ * Xóa bí mật khỏi một câu log / câu lỗi: token kiểu Telegram (cả dạng mã hóa URL "%3A") TRƯỚC —
+ * bộ lọc số điện thoại chỉ cắt được phần số của nó — rồi xoaBiMat của Messenger (bí mật đã biết
+ * cả dạng mã hóa URL, token=…, token Meta, số điện thoại).
+ */
 export function xoaBiMatBaoDong(c: unknown, biMat: readonly string[] = []): string {
-  let s = c instanceof Error ? c.message : String(c ?? '');
-  for (const b of biMat) if (b && b.length >= 4) s = s.split(b).join('***');
-  return s
-    .replace(/[0-9]{6,}:[A-Za-z0-9_-]{30,}/g, '***')
-    .replace(/(access_token|token|secret|password|mat_khau|authorization)("?\s*[:=]\s*"?)(bearer\s+)?[^\s"&,;}]+/gi, '$1$2***')
-    .replace(/\+?[0-9][0-9 .]{7,}[0-9]/g, '***');
+  const s = (c instanceof Error ? c.message : String(c ?? '')).replace(/[0-9]{6,}(?::|%3A)[A-Za-z0-9_-]{30,}/gi, '***');
+  return xoaBiMat(s, ...biMat);
 }
 
 // -----------------------------------------------------------------------------
@@ -155,9 +156,8 @@ export async function dangNhapMayBaoDong(
   let client: SupabaseClient;
   if (phuThuoc.taoClient) client = phuThuoc.taoClient();
   else {
-    const w = await envWorker();
-    const url = layBienCong('PUBLIC_SUPABASE_URL', env, w);
-    const anon = layBienCong('PUBLIC_SUPABASE_ANON_KEY', env, w);
+    const url = layBienCong('PUBLIC_SUPABASE_URL', env);
+    const anon = layBienCong('PUBLIC_SUPABASE_ANON_KEY', env);
     if (!url || !anon) return { ok: false, cau: 'chưa nối database' };
     client = createClient(url, anon, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -272,7 +272,7 @@ export async function baoDongTatCa(env?: Env, phuThuoc: PhuThuocBaoDong = {}): P
     if (!dn.ok) { ghi(`${dn.cau} — bỏ qua`); return log; }
     try {
       const w = await envWorker();
-      const web = (docChuoi('SITE_URL', env, w, envNode()) ?? layBienCong('SITE_URL', env, w) ?? 'https://beeftown.vn').replace(/\/+$/, '');
+      const web = (docChuoi('SITE_URL', env, w, envNode()) ?? layBienCong('SITE_URL', env) ?? 'https://beeftown.vn').replace(/\/+$/, '');
       await motLuot(dn.client, kenh, {
         ghi, sach, web, nn: phuThuoc.nn ?? 'vi', kenhMs: () => Math.min(hetGio.kenhMs, Math.max(1000, hanChot - bayGio())),
         choKetThuc: () => { hanChot = Math.max(hanChot, bayGio() + hetGio.ketThucMs); },
@@ -350,16 +350,15 @@ async function motLuot(client: SupabaseClient, kenh: KenhBaoDong, o: NguCanhLuot
     }
     ghi(`đã gửi qua ${kenh.ten}: ${moTaKeHoach(kh)}${tin.soMucBoBot ? ` (bỏ bớt ${tin.soMucBoBot} mục vì tin quá dài)` : ''}`);
 
-    // 5 · Đánh dấu. Hỏng hai lần → lượt sau gửi lặp đúng tin này (thà lặp còn hơn mất).
+    // 5 · Đánh dấu — database đóng luôn các sự cố vừa báo hết đỏ trong cùng câu lệnh. Hỏng hai lần →
+    //     lượt sau gửi lặp đúng tin này (thà lặp còn hơn mất).
     const thamSo = { p_kenh: kenh.ma, p_mo: kh.danhDauMo, p_het: kh.hetDo.map(sc => sc.id), p_tom_tat: kh.tomTat !== null };
     let { error: e3 } = await client.rpc('bao_dong_da_gui', thamSo);
     if (e3) ({ error: e3 } = await client.rpc('bao_dong_da_gui', thamSo));
     if (e3) {
       const them = `đã gửi nhưng không đánh dấu được — lượt sau có thể gửi lặp một tin: ${e3.message}`;
       loi = loi ? `${loi} · ${them}` : them;
-      return;
     }
-    dong.push(...kh.hetDo.map(sc => sc.id));
   } catch (e) {
     const them = `lỗi: ${e instanceof Error ? e.message : String(e)}`;
     loi = loi ? `${loi} · ${them}` : them;

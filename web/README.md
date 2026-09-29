@@ -159,7 +159,7 @@ Việc chạy nền đọc đúng số liệu của bảng sức khỏe 5 phút 
 
 **Trạng thái: phần lõi xong, CHƯA chọn kênh.** Việc báo động chạy, giữ sổ sự cố, có đèn "Báo động" trên bảng — nhưng chưa gửi tin đi đâu (đèn xám "chưa chọn kênh"). Chọn kênh: cuối mục này.
 
-- **Database** — `0056` (vai máy `may_bao_dong`, **chạy riêng**) và `0057`: sổ sự cố (mỗi đèn đỏ một sự cố đang mở, không lưu câu chữ), khóa lượt, bốn RPC chỉ máy gọi được. Máy đọc số liệu qua `suc_khoe_so_lieu` — đúng số liệu bảng thấy, không mở quyền kho / CRM nào.
+- **Database** — `0056` (vai máy `may_bao_dong`, **chạy riêng**) và `0057`: sổ sự cố (mỗi đèn đỏ một sự cố đang mở, không lưu câu chữ), khóa lượt, bốn RPC chỉ máy gọi được. Máy đọc số liệu qua `suc_khoe_so_lieu` — đúng số liệu bảng thấy, không mở quyền kho / CRM nào. Riêng đối soát sổ kho (quét cả sổ) máy dùng lại kết quả dưới 30 phút, như `0055` đã dặn cho sổ lớn — nên đèn Sổ kho trong tin báo có thể chậm tới 30 phút so với bảng (bảng vẫn quét mỗi lần mở).
 - **Web** — luật `src/lib/bao-dong-chinh-sach.ts` (thuần, theo giờ của database), câu chữ `src/lib/bao-dong-tin.ts`, hợp đồng kênh `src/lib/bao-dong-kenh.ts`, việc chạy nền `src/lib/bao-dong.ts`.
 - **Cron riêng** `2-59/5 * * * *` (phút 2, 7, 12…) — lệch cron iPOS / Zalo, để hai việc đó quá tải hay treo không kéo việc báo động chết theo.
 

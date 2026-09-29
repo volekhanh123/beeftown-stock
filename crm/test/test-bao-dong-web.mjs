@@ -670,7 +670,7 @@ await nhom('19 · KHÔNG ĐỌC ĐƯỢC SỐ LIỆU → ĐÈN GIẢ doc_so_lieu
     return m.slice(i, m.indexOf('\n$$;', i) + 4);
   })();
   const truoc = kenh.tin.length;
-  await db.exec(`create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[]) returns jsonb language plpgsql stable
+  await db.exec(`create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[], p_lech jsonb default null) returns jsonb language plpgsql stable
     security invoker set search_path = public as $$ begin raise exception 'hỏng thử'; end $$;`);
   try {
     await zaloXanh();
@@ -698,6 +698,35 @@ await nhom('19 · KHÔNG ĐỌC ĐƯỢC SỐ LIỆU → ĐÈN GIẢ doc_so_lieu
 });
 
 // ===========================================================================
+await nhom('19b · ĐÃ BÁO HẾT ĐỎ MÀ KHÔNG KẾT THÚC ĐƯỢC LƯỢT → LẦN ĐỎ SAU VẪN ĐƯỢC BÁO', async () => {
+  // Các nhóm trên đã báo Zalo đủ 5 lần từ 8 giờ sáng — đẩy các lần đó ra khỏi chu kỳ, để nhóm này
+  // thử đúng một điều (trần tin đã thử ở nhóm 5).
+  await db.query(`update bao_dong_su_co set bao_mo_luc = bao_mo_luc - interval '3 days' where khoa = 'zalo' and het_luc is not null`);
+  await zaloDo();
+  await chay({ kenh });
+  await lui('zalo', 'bat_dau_luc', 6);
+  await chay({ kenh });
+  await zaloXanh();
+  await chay({ kenh });
+  await lui('zalo', 'het_do_tu', 16);
+  const truoc = kenh.tin.length;
+  await chay({ kenh, clientO: { hong: { bao_dong_ket_thuc_luot: { con: 1 } } } });
+  ok('Tin "đã ổn lại" tới kênh và đã đánh dấu, nhưng lượt không kết thúc được', kenh.tin.length === truoc + 1
+     && /đã ổn lại/.test(kenh.tin.at(-1)) && (await trangThai()).dang_chay_tu !== null);
+  await db.query(`update bao_dong_trang_thai set dang_chay_tu = now() - interval '11 minutes' where id = 1`);
+  await zaloDo();
+  await chay({ kenh });
+  await lui('zalo', 'bat_dau_luc', 6);
+  await chay({ kenh });
+  ok('Rà soát: Zalo đỏ lại sau đó → vẫn có tin "mới đỏ" (không bị nuốt vì sự cố cũ đã đánh dấu hết đỏ)',
+     kenh.tin.length === truoc + 2 && /1 mục mới đỏ/.test(kenh.tin.at(-1) ?? ''), kenh.tin.at(-1));
+  await zaloXanh();
+  await chay({ kenh });
+  await lui('zalo', 'het_do_tu', 16);
+  await chay({ kenh });
+});
+
+// ===========================================================================
 await nhom('20 · LOG VÀ TIN KHÔNG LỘ GÌ', async () => {
   ok(`${moiLog.length} dòng log: không mật khẩu máy, không token kênh, không số điện thoại`,
      moiLog.length > 20 && !moiLog.some(l => l.includes(MAT_KHAU) || l.includes(TOKEN_KENH) || l.includes('0912345678')),
@@ -705,6 +734,8 @@ await nhom('20 · LOG VÀ TIN KHÔNG LỘ GÌ', async () => {
   ok('Mọi dòng log có tiền tố [bao-dong]', moiLog.every(l => l.startsWith('[bao-dong] ')));
   ok(`${kenh.tin.length} tin: không "thành công", không số điện thoại`,
      !kenh.tin.some(t => /thành công/i.test(t) || t.includes('0912345678')));
+  const maHoa = xoaBiMatBaoDong(`gọi bot123456789%3AAAH${'f'.repeat(32)}/getMe`);
+  ok('Rà soát: xoaBiMatBaoDong xóa cả token Telegram mã hóa URL (%3A) — không chỉ phần số', maHoa === 'gọi bot***/getMe', maHoa);
   ok('xoaBiMatBaoDong: bí mật đã biết, token Telegram, SĐT, token=…',
      xoaBiMatBaoDong(`a ${TOKEN_KENH} b 123456789:AAH${'f'.repeat(32)} c 0901 234 567 d token=abc123`, [TOKEN_KENH])
        === 'a *** b *** c *** d token=***', xoaBiMatBaoDong(`a ${TOKEN_KENH} b 123456789:AAH${'f'.repeat(32)} c 0901 234 567 d token=abc123`, [TOKEN_KENH]));
