@@ -646,7 +646,7 @@ await nhom('13 · 0060 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
      slVo.includes('\nsecurity definer\nset search_path = public\n') && slVo.includes(KIEM_VAI.trimEnd())
      && slVo.indexOf(KIEM_VAI.trimEnd()) < slVo.indexOf('return suc_khoe_sao_luu_so_lieu();'), slVo);
 
-  // Dựng lại hai hàm CŨ (nguyên văn, đổi tên) và so kết quả trên cùng dữ liệu.
+  // Dựng lại ba hàm CŨ (nguyên văn, đổi tên) và so kết quả trên cùng dữ liệu.
   await db.exec(cu42.replace('function kho_ipos_trang_thai(', 'function kho_ipos_trang_thai_cu('));
   await db.exec(cu55.replace('function suc_khoe_he_thong()', 'function suc_khoe_he_thong_cu()')
                     .replace('kho_ipos_trang_thai(v_cn.id)', 'kho_ipos_trang_thai_cu(v_cn.id)'));
@@ -706,7 +706,7 @@ await nhom('13 · 0060 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
   ok('Chi nhánh đã ngừng hoạt động không được tính, kể cả khi có trong danh sách',
      ngung?.chi_nhanh?.length === 1 && ngung.chi_nhanh[0].id === cnA.id, JSON.stringify(ngung?.chi_nhanh?.map(c => c.ten)));
 
-  // Hai hàm nội bộ: không ai đăng nhập gọi thẳng được — chỉ chạy bên trong hàm definer đã kiểm vai.
+  // Bốn hàm nội bộ: không ai đăng nhập gọi thẳng được — chỉ chạy bên trong hàm definer đã kiểm vai.
   for (const [ten, sql, p] of [['kho_ipos_trang_thai_goc', `select kho_ipos_trang_thai_goc($1)`, [cnA.id]],
                                ['suc_khoe_so_lieu', `select suc_khoe_so_lieu(array[$1]::uuid[])`, [cnA.id]],
                                ['suc_khoe_lech_so_kho', `select suc_khoe_lech_so_kho()`, []],

@@ -194,6 +194,22 @@ await nhom('3 · BẮT ĐẦU LƯỢT: KHÓA 10 PHÚT, MÃ LƯỢT, SỐ LIỆU 
   const slChu = (await rpc(UID.chu, `suc_khoe_sao_luu()`)).kq;
   ok('…kèm ô sao_luu = đúng số liệu sao lưu chủ thấy (đèn "Sao lưu dữ liệu" cũng được báo)',
      slChu !== null && JSON.stringify(b1.kq?.so_lieu?.sao_luu) === JSON.stringify(slChu), JSON.stringify(b1.kq?.so_lieu?.sao_luu));
+  // Trang /noi-bo đọc số liệu bằng docSucKhoeVaSaoLuu (suc_khoe_he_thong + hàm riêng của đèn Sao lưu). Đèn
+  // nào đọc bằng hàm riêng mà quên gắn vào bao_dong_bat_dau_luot thì lượt báo động không bao giờ thấy nó đỏ.
+  const { danhGiaSucKhoe, docSucKhoeVaSaoLuu } = await import(join(GOC, 'web', 'src', 'lib', 'suc-khoe.ts'));
+  const clientChu = {
+    async rpc(ham) {
+      const r = await duoi(UID.chu, `select ${ham}() as k`);
+      return r.loi ? { data: null, error: { message: r.loi, code: r.ma } } : { data: r.rows[0].k, error: null };
+    },
+  };
+  const trang = await docSucKhoeVaSaoLuu(clientChu);
+  const denCua = tho => danhGiaSucKhoe(tho, 'vi', true).khoi
+    .flatMap(k => k.den.filter(d => d.ma !== 'bao_dong').map(d => `${k.ma}/${d.ma}: ${d.mau} — ${d.cau}`));
+  const denTrang = trang.ok ? denCua(trang.tho) : [], denMay = denCua(b1.kq?.so_lieu);
+  ok('Mọi đèn trang /noi-bo thấy, lượt báo động thấy y hệt (màu và câu) — kể cả đèn đọc bằng hàm riêng',
+     trang.ok && denTrang.length >= 10 && JSON.stringify(denMay) === JSON.stringify(denTrang),
+     JSON.stringify(denTrang.filter(x => !denMay.includes(x))));
   ok('Trả trạng thái cho luật báo: kênh, lần đổi kênh, lần tóm tắt, lượt trước',
      JSON.stringify(Object.keys(b1.kq?.trang_thai ?? {}).sort()) === '["kenh","kenh_tu_luc","lan_chay_cuoi","tom_tat_luc"]'
      && b1.kq.trang_thai.kenh === 'khong' && b1.kq.trang_thai.kenh_tu_luc === null, JSON.stringify(b1.kq?.trang_thai));

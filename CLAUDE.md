@@ -69,7 +69,8 @@ Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô 
 9. `dich-vu-ngoai` — **Dịch vụ ngoài** (iPOS, Zalo, Meta, Gemini, Supabase Storage, Cloudflare): ghi rõ
    giả định và nguồn của nó; có kiểm thử giả cho từng kiểu hỏng; liệt kê việc Khánh phải thử thật.
    Việc chạy nền hay dịch vụ ngoài MỚI phải có đèn trong bảng sức khỏe ở `/noi-bo`: số liệu vào
-   `suc_khoe_he_thong()` (migration mới), màu và câu vào `web/src/lib/suc-khoe.ts`, kiểm ở
+   `suc_khoe_so_lieu()` (migration mới; đọc bằng hàm riêng như sao lưu thì gắn thêm vào
+   `bao_dong_bat_dau_luot`, không thì không bao giờ được báo), màu và câu vào `web/src/lib/suc-khoe.ts`, kiểm ở
    `test-suc-khoe.mjs` (ô mới trong danh sách `KHOA`) và `test-suc-khoe-web.mjs`; đèn mới xếp vào `NHOM`
    của `web/src/lib/bao-dong-chinh-sach.ts` (đỏ ban đêm có báo ngay không) — hỏng thì chủ thấy ngay,
    không đợi khách báo. *(0c92b10, 0410c58, 5d03c40)*

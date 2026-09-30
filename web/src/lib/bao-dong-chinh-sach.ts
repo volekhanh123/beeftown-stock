@@ -49,7 +49,9 @@ export const NHOM: Readonly<Record<MaDenBaoDong, NhomDen>> = {
   ipos: 'he_thong',
   so_kho: 'he_thong',
   dich: 'he_thong',
-  // Sao lưu (0058) chạy 02:00; đèn đỏ khi quá 36 giờ không có bản dùng được — thường rơi vào ban ngày.
+  // Sao lưu (0058) chạy 02:00; đèn đỏ khi quá 36 giờ không có bản dùng được, nên tin "mới đỏ" thường
+  // rơi vào ban ngày. Tin "hết đỏ" thì ngược lại: bản đêm sau dùng được là đèn xanh, 15 phút sau có tin
+  // khoảng 02:30–03:50 — đèn hệ thống báo hết đỏ cả ban đêm (cố ý, như mọi đèn trong nhóm này).
   sao_luu: 'he_thong',
   bao_dong: 'he_thong',
   doc_so_lieu: 'he_thong',

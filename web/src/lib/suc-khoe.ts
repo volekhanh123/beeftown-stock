@@ -22,9 +22,12 @@
  * Không đọc được số liệu thì KHÔNG BAO GIỜ hiện "mọi thứ đang chạy tốt" — bảng nói thẳng là
  * không đọc được (xem docSucKhoe). Im lặng khi hỏng chính là thứ bảng này sinh ra để chặn.
  *
- * Thêm một việc chạy nền hay một dịch vụ ngoài mới: thêm số liệu của nó vào
- * suc_khoe_he_thong() (migration mới) và một đèn ở đây, kèm kiểm thử ở cả hai file test — và
- * xếp mã đèn vào NHOM của web/src/lib/bao-dong-chinh-sach.ts (đèn đỏ ban đêm có báo ngay không).
+ * Thêm một việc chạy nền hay một dịch vụ ngoài mới: thêm số liệu của nó vào suc_khoe_so_lieu()
+ * (migration mới — suc_khoe_he_thong() từ 0060 chỉ còn kiểm vai rồi gọi hàm này, lượt báo động
+ * cũng gọi nó) và một đèn ở đây, kèm kiểm thử ở cả hai file test — và xếp mã đèn vào NHOM của
+ * web/src/lib/bao-dong-chinh-sach.ts (đèn đỏ ban đêm có báo ngay không). Số liệu đọc bằng hàm
+ * riêng (như docSaoLuu) thì phải gắn thêm vào bao_dong_bat_dau_luot, không thì lượt báo động không
+ * bao giờ thấy đèn đó đỏ — test-bao-dong.mjs so mọi đèn trang thấy với đèn lượt báo động thấy.
  *
  * Việc chạy nền báo động (web/src/lib/bao-dong.ts) đánh giá bằng CHÍNH danhGiaSucKhoe() này, nên
  * ngưỡng của bảng và của tin báo là một.

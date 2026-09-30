@@ -99,7 +99,7 @@ alter table bao_dong_su_co enable row level security;
 -- =============================================================================
 -- 3 · TÁCH KIỂM QUYỀN KHỎI TÍNH SỐ LIỆU
 -- =============================================================================
--- Thân 0042 NGUYÊN VĂN, trừ đúng ba dòng kiểm kho_duoc — crm/test/test-suc-khoe.mjs (nhóm 12) so
+-- Thân 0042 NGUYÊN VĂN, trừ đúng ba dòng kiểm kho_duoc — crm/test/test-suc-khoe.mjs (nhóm 13) so
 -- với 0042 và so kết quả với hàm cũ dựng lại. SECURITY INVOKER: gọi thẳng (nếu lỡ có quyền) thì
 -- RLS của người gọi áp dụng.
 create or replace function kho_ipos_trang_thai_goc(p_chi_nhanh_id uuid)

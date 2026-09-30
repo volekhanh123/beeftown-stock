@@ -405,7 +405,8 @@ await db.query(`insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro) va
 // Mỗi chi nhánh một bàn: form đặt bàn mở mà chưa có bàn là đèn KHÁCH đỏ — báo hay giữ tùy giờ chạy
 // test. Các nhóm dưới chỉ dùng đèn HỆ THỐNG (Zalo) nên chạy giờ nào cũng cùng kết quả.
 for (const cn of [cnA, cnB]) await db.query(`insert into ban_an (chi_nhanh_id, ten) values ($1, 'Bàn 1')`, [cn.id]);
-// Một lượt sao lưu tốt 2 giờ trước: đèn "Sao lưu dữ liệu" xanh (chưa có bản nào là ĐỎ — nhóm 19c thử đường đó).
+// Một lượt sao lưu tốt 2 giờ trước: đèn "Sao lưu dữ liệu" xanh — bảng trống thì đèn đỏ "chưa có bản nào" và
+// nhóm nào cũng thêm một tin đỏ không liên quan. Nhóm 19c thử đường đỏ (bản dùng được cuối quá 36 giờ).
 const SAO_LUU_TOT = `insert into he_thong_sao_luu (bat_dau_luc, ok, kich_thuoc, so_bang, so_dong, thu_khoi_phuc, luot_chay)
                      values (now() - interval '2 hours', true, 829275, 118, 10325, 'dat', '1001-1')`;
 await db.query(SAO_LUU_TOT);
