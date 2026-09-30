@@ -14,6 +14,10 @@
  *      tin Zalo hỏng / kẹt, lỗi bot Messenger, việc dịch chờ / lỗi, iPOS (đèn giống hệt
  *      màn Kết nối iPOS + nhịp tim của việc chạy nền 5 phút), sổ kho lệch tồn.
  *   4. Không lộ dữ liệu cá nhân hay bí mật: chỉ có số đếm và mốc giờ.
+ *   5. (0058) Sao lưu hằng đêm: bảng he_thong_sao_luu không ai đọc / ghi được qua API; câu SQL mà
+ *      workflow dùng để ghi lượt (crm/sao-luu/ghi-luot.sql) chạy đúng trên database thật; mỗi lượt
+ *      một dòng; suc_khoe_sao_luu() (chủ + quản lý) trả lượt gần nhất và bản DÙNG ĐƯỢC gần nhất
+ *      (khôi phục thử đạt).
  */
 
 import { readFileSync } from 'node:fs';
@@ -22,6 +26,7 @@ import { fileURLToPath } from 'node:url';
 import { dungDatabase, taoBoDem, UID, themMayIpos, UID_MAY_IPOS } from './kho-chung.mjs';
 
 const LIB_SUC_KHOE = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'web', 'src', 'lib', 'suc-khoe.ts');
+const GHI_LUOT = join(dirname(fileURLToPath(import.meta.url)), '..', 'sao-luu', 'ghi-luot.sql');
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — SỨC KHỎE HỆ THỐNG');
 const { db, cnA, cnB, duoi, duoiAnon } = await dungDatabase();
@@ -30,6 +35,11 @@ await themMayIpos(db, cnA, cnB);
 /** Đọc suc_khoe_he_thong() dưới danh nghĩa một người. */
 async function doc(uid) {
   const r = await duoi(uid, `select suc_khoe_he_thong() as k`);
+  return { k: r.rows?.[0]?.k ?? null, loi: r.loi, ma: r.ma };
+}
+/** Đọc suc_khoe_sao_luu() (0058) dưới danh nghĩa một người. */
+async function docSl(uid) {
+  const r = await duoi(uid, `select suc_khoe_sao_luu() as k`);
   return { k: r.rows?.[0]?.k ?? null, loi: r.loi, ma: r.ma };
 }
 const cua = (k, cn) => k?.chi_nhanh?.find(c => c.id === cn.id);
@@ -91,6 +101,10 @@ await nhom('2 · DATABASE MỚI, CHƯA DÙNG GÌ → KHÔNG BÁO NHẦM', async 
      JSON.stringify(a?.so_kho));
   ok('Zalo Q1: không có tin hỏng / kẹt', a?.tin_zalo?.that_bai_24h === 0 && a?.tin_zalo?.cho_qua_han === 0,
      JSON.stringify(a?.tin_zalo));
+  const sl = (await docSl(UID.chu)).k;
+  ok('Sao lưu (suc_khoe_sao_luu): chưa có lượt nào — mọi ô null (web báo đỏ "chưa có bản sao lưu nào")',
+     sl && Object.values(sl).length === 5 && Object.values(sl).every(v => v === null), JSON.stringify(sl));
+  ok('suc_khoe_he_thong() không đổi ở 0058 (không có ô sao_lưu — hàm đọc riêng)', !('sao_luu' in (k ?? {})));
 });
 
 // ===========================================================================
@@ -376,6 +390,7 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
 
   const KHOA = {
     goc:        ['luc', 'zalo', 'messenger', 'dich', 'chi_nhanh'],
+    sao_luu:    ['lan_cuoi', 'lan_cuoi_ok', 'lan_cuoi_thu', 'dung_duoc_cuoi', 'kich_thuoc'],
     zalo:       ['dang_bat', 'che_do', 'bat_luc', 'lan_chay_cuoi', 'co_loi'],
     messenger:  ['dang_bat', 'bat_luc', 'lan_nhan_cuoi', 'loi_cuoi_luc', 'loi_7_ngay'],
     dich:       ['cho', 'loi'],
@@ -388,7 +403,8 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
     so_kho:     ['co_kho', 'lech'],
   };
   const a = cua(k, cnA);
-  const thuc = { goc: k, zalo: k?.zalo, messenger: k?.messenger, dich: k?.dich, chi_nhanh: a,
+  const saoLuu = (await docSl(UID.chu)).k;
+  const thuc = { goc: k, zalo: k?.zalo, messenger: k?.messenger, dich: k?.dich, sao_luu: saoLuu, chi_nhanh: a,
                  ipos: a?.ipos, tin_zalo: a?.tin_zalo, dat_ban: a?.dat_ban, tuyen_dung: a?.tuyen_dung, so_kho: a?.so_kho };
   for (const [phan, ds] of Object.entries(KHOA)) {
     const co = Object.keys(thuc[phan] ?? {}).sort();
@@ -397,7 +413,7 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
     ok(`${phan}: lib/suc-khoe.ts đọc đúng những ô đó`, khongDoc.length === 0, khongDoc.join(', '));
   }
 
-  const sk = danhGiaSucKhoe(k, 'vi', true);
+  const sk = danhGiaSucKhoe({ ...k, sao_luu: saoLuu }, 'vi', true);
   const den = (khoi, ma) => sk.khoi.find(x => x.ma === khoi)?.den.find(d => d.ma === ma);
   const q1 = ma => den(cnA.id, ma), q7 = ma => den(cnB.id, ma), th = ma => den('thuong_hieu', ma);
   const tom = d => `${d?.mau} — ${d?.cau}`;
@@ -423,6 +439,106 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
   ok('Messenger vàng: có tin đến sau lỗi, 6 lỗi trong 7 ngày', th('messenger')?.mau === 'vang'
      && /^6 lỗi trong 7 ngày/.test(th('messenger')?.cau), tom(th('messenger')));
   ok('Máy dịch vàng: 1 ô lỗi', th('dich')?.mau === 'vang' && /^1 ô dịch bị lỗi/.test(th('dich')?.cau), tom(th('dich')));
+  ok('Sao lưu đỏ: database chưa có lượt sao lưu nào', th('sao_luu')?.mau === 'do'
+     && /^Chưa có bản sao lưu nào/.test(th('sao_luu')?.cau), tom(th('sao_luu')));
+});
+
+// ===========================================================================
+// 0058. Workflow .github/workflows/sao-luu.yml ghi lượt bằng psql -v … -f crm/sao-luu/ghi-luot.sql.
+// PGlite không có psql: thay :'ten' bằng chuỗi SQL đúng như psql làm (nháy đơn, nháy trong nhân đôi)
+// rồi chạy CHÍNH file đó — đổi tên cột ở migration mà quên file này thì đỏ ở đây, không đợi đêm.
+await nhom('12 · SAO LƯU HẰNG ĐÊM (0058 · he_thong_sao_luu)', async () => {
+  // psql không thay biến trong chú thích — bỏ các dòng "--" như psql.
+  const ghiLuot = readFileSync(GHI_LUOT, 'utf8').split('\n').filter(l => !l.trimStart().startsWith('--')).join('\n');
+  const ghi = bien => {
+    const sql = ghiLuot.replace(/:'([a-z_]+)'/g, (_, ten) => {
+      if (!(ten in bien)) throw new Error(`ghi-luot.sql cần biến ${ten}`);
+      return `'${String(bien[ten]).replaceAll("'", "''")}'`;
+    });
+    return db.query(sql);
+  };
+  const luot = (sua = {}) => ({ bat_dau_luc: new Date(Date.now() - 5 * 60000).toISOString(), ok: 'true', kich_thuoc: '829275',
+                                so_bang: '118', so_dong: '10325', thu_khoi_phuc: 'dat', loi: '', luot_chay: '1001-1', ...sua });
+  const dem = async () => Number((await db.query(`select count(*) n from he_thong_sao_luu`)).rows[0].n);
+
+  const bienTrongFile = [...new Set([...ghiLuot.matchAll(/:'([a-z_]+)'/g)].map(m => m[1]))].sort();
+  ok('ghi-luot.sql dùng đúng tám biến workflow truyền (-v …)', JSON.stringify(bienTrongFile) === JSON.stringify(
+     ['bat_dau_luc', 'kich_thuoc', 'loi', 'luot_chay', 'ok', 'so_bang', 'so_dong', 'thu_khoi_phuc']), bienTrongFile.join(', '));
+
+  await ghi(luot());
+  const dong = (await db.query(`select * from he_thong_sao_luu`)).rows[0];
+  ok('Lượt tốt: ghi đủ cỡ, số bảng, số dòng, khôi phục thử đạt; ô lỗi trống → null',
+     dong?.ok === true && Number(dong.kich_thuoc) === 829275 && dong.so_bang === 118 && Number(dong.so_dong) === 10325
+     && dong.thu_khoi_phuc === 'dat' && dong.loi === null, JSON.stringify(dong));
+  await ghi(luot());
+  ok('bam-hai-lan: chạy lại bước ghi của cùng một lượt (run_id-attempt) → vẫn một dòng', await dem() === 1, String(await dem()));
+
+  const loiThu = `Bước hỏng'); drop table he_thong_sao_luu; --`;
+  await ghi(luot({ luot_chay: '1002-1', ok: 'false', kich_thuoc: '', so_bang: '', so_dong: '', thu_khoi_phuc: 'chua_thu',
+                   loi: loiThu, bat_dau_luc: new Date(Date.now() - 60000).toISOString() }));
+  const hong = (await db.query(`select * from he_thong_sao_luu where luot_chay = '1002-1'`)).rows[0];
+  ok('Lượt hỏng: ô số trống → null; câu lỗi có dấu nháy ghi nguyên văn, không thành lệnh SQL',
+     hong?.ok === false && hong.kich_thuoc === null && hong.loi === loiThu && await dem() === 2, JSON.stringify(hong));
+  const dai = 'x'.repeat(500);
+  await ghi(luot({ luot_chay: '1003-1', ok: 'false', kich_thuoc: '', so_bang: '', so_dong: '', thu_khoi_phuc: 'chua_thu', loi: dai,
+                   bat_dau_luc: new Date(Date.now() - 2 * 3600000).toISOString() }));
+  ok('Câu lỗi quá dài bị cắt còn 300 ký tự (không làm hỏng lượt ghi)',
+     (await db.query(`select char_length(loi) n from he_thong_sao_luu where luot_chay = '1003-1'`)).rows[0]?.n === 300);
+
+  const phaiLoi = async (sua, ten) => {
+    let e = null;
+    try { await ghi(luot(sua)); } catch (x) { e = x.message; }
+    ok(`Database từ chối: ${ten}`, e !== null, e ?? 'GHI ĐƯỢC');
+  };
+  await phaiLoi({ luot_chay: '1004-1', kich_thuoc: '' }, 'lượt "tốt" mà không có cỡ file');
+  await phaiLoi({ luot_chay: '1004-2', so_dong: '' }, 'lượt "tốt" mà không có số dòng');
+  await phaiLoi({ luot_chay: '1005-1', ok: 'false', kich_thuoc: '', so_bang: '', so_dong: '' }, 'lượt hỏng mà ghi "đã khôi phục thử"');
+  await phaiLoi({ luot_chay: 'abc; drop' }, 'mã lượt không đúng dạng run_id-attempt');
+  await phaiLoi({ luot_chay: '1006-1', thu_khoi_phuc: 'gia' }, 'kết quả khôi phục thử lạ');
+
+  const sl = (await docSl(UID.chu)).k;
+  ok('suc_khoe_sao_luu: lượt gần nhất là lượt hỏng 1 phút trước; bản dùng được gần nhất là lượt 5 phút trước',
+     sl?.lan_cuoi_ok === false && sl.lan_cuoi_thu === 'chua_thu' && Math.abs(phutTruoc(sl.lan_cuoi) - 1) < 1
+     && Math.abs(phutTruoc(sl.dung_duoc_cuoi) - 5) < 1 && sl.kich_thuoc === 829275, JSON.stringify(sl));
+  const ql = (await docSl(UID.qlA)).k;
+  ok('Quản lý thấy cùng số liệu sao lưu (cấp thương hiệu)', JSON.stringify(ql) === JSON.stringify(sl), JSON.stringify(ql));
+  const { danhGiaSucKhoe } = await import(LIB_SUC_KHOE);
+  const tho = { ...(await doc(UID.chu)).k, sao_luu: sl };
+  const d = danhGiaSucKhoe(tho, 'vi', true).khoi[0].den.find(x => x.ma === 'sao_luu');
+  ok('Đèn trên số liệu thật: vàng — lượt gần nhất hỏng, còn bản dùng được 5 phút trước', d?.mau === 'vang'
+     && /^Lượt sao lưu gần nhất \(1 phút trước\) bị lỗi — bản dùng được gần nhất: 5 phút trước/.test(d.cau), `${d?.mau} — ${d?.cau}`);
+
+  // Lượt mới hơn sao lưu được nhưng khôi phục thử HỎNG: không phải bản dùng được — mốc bản dùng được giữ nguyên.
+  await ghi(luot({ luot_chay: '1007-1', thu_khoi_phuc: 'hong', loi: 'Khôi phục thử không đạt', kich_thuoc: '900000',
+                   bat_dau_luc: new Date(Date.now() - 30000).toISOString() }));
+  const sl2 = (await docSl(UID.chu)).k;
+  ok('Bản sao khôi phục thử hỏng KHÔNG thành "bản dùng được"; lượt gần nhất ghi đúng "hong"',
+     sl2?.lan_cuoi_ok === true && sl2.lan_cuoi_thu === 'hong' && sl2.dung_duoc_cuoi === sl.dung_duoc_cuoi && sl2.kich_thuoc === 829275,
+     JSON.stringify(sl2));
+
+  for (const [ten, uid] of [
+    ['Thủ kho', UID.thuKhoA], ['Nhân viên quầy', UID.nvQuayA], ['Kế toán', UID.keToanA], ['Thu ngân', UID.thuNganA],
+    ['Marketing', UID.mktA], ['Người đã nghỉ', UID.nghiViec], ['Tài khoản máy iPOS', UID_MAY_IPOS.mayIposA],
+    ['Tài khoản không có dòng nhan_su', null],
+  ]) {
+    const r = await docSl(uid);
+    ok(`suc_khoe_sao_luu: ${ten} bị từ chối (insufficient_privilege, cùng câu với suc_khoe_he_thong)`,
+       r.loi !== null && /Chỉ chủ sở hữu hoặc quản lý/.test(r.loi) && r.ma === '42501', r.loi ?? 'ĐỌC ĐƯỢC');
+  }
+  const anonSl = await duoiAnon(`select suc_khoe_sao_luu()`);
+  ok('suc_khoe_sao_luu: anon không gọi được', anonSl.loi !== null, anonSl.loi ?? 'GỌI ĐƯỢC');
+
+  for (const [ten, uid] of [['Chủ', UID.chu], ['Quản lý', UID.qlA], ['Kế toán', UID.keToanA]]) {
+    const r = await duoi(uid, `select count(*) from he_thong_sao_luu`);
+    ok(`${ten} không đọc thẳng được bảng (chỉ qua suc_khoe_he_thong)`, r.loi !== null, r.loi ?? 'ĐỌC ĐƯỢC');
+  }
+  const ghiChu = await duoi(UID.chu, `insert into he_thong_sao_luu (bat_dau_luc, ok, luot_chay) values (now(), false, '9-1')`);
+  ok('Chủ không tự ghi được một lượt "sao lưu" giả qua API', ghiChu.loi !== null, ghiChu.loi ?? 'GHI ĐƯỢC');
+  const anon = await duoiAnon(`insert into he_thong_sao_luu (bat_dau_luc, ok, luot_chay) values (now(), true, '9-2')`);
+  ok('anon không ghi được', anon.loi !== null, anon.loi ?? 'GHI ĐƯỢC');
+  const rls = (await db.query(`select relrowsecurity r from pg_class where relname = 'he_thong_sao_luu'`)).rows[0]?.r;
+  ok('RLS bật, không có policy nào', rls === true
+     && Number((await db.query(`select count(*) n from pg_policies where tablename = 'he_thong_sao_luu'`)).rows[0].n) === 0);
 });
 
 process.exit(ketThuc('SỨC KHỎE HỆ THỐNG'));
