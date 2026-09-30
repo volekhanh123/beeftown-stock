@@ -1,7 +1,7 @@
 -- =============================================================================
--- BEEFTOWN — 0057 · BÁO ĐỘNG (tự báo khi đèn sức khỏe chuyển đỏ)
+-- BEEFTOWN — 0060 · BÁO ĐỘNG (tự báo khi đèn sức khỏe chuyển đỏ)
 -- =============================================================================
--- PHẢI CHẠY SAU 0056 (một mình — thêm vai may_bao_dong) VÀ SAU 0055 (bảng sức khỏe).
+-- PHẢI CHẠY SAU 0059 (một mình — thêm vai may_bao_dong), SAU 0055 (bảng sức khỏe) VÀ 0058 (sao lưu).
 --
 -- Bảng sức khỏe (0055) chỉ hiện khi có người mở /noi-bo. Việc chạy nền báo động
 -- (web/src/lib/bao-dong.ts, cron riêng "2-59/5 * * * *") đọc ĐÚNG số liệu đó bằng tài khoản
@@ -22,7 +22,8 @@
 --       kho_duoc), suc_khoe_so_lieu(uuid[], jsonb) (thân 0055, không kiểm vai; đối soát sổ kho
 --       tách thành suc_khoe_lech_so_kho() để máy dùng lại kết quả đã lưu). Cả ba là SECURITY
 --       INVOKER và bị thu quyền authenticated: chỉ chạy được bên trong một hàm definer đã kiểm
---       vai. Hai hàm cũ giữ nguyên chữ ký, câu từ chối và kết quả. Hai bảng tạo TRƯỚC mục này:
+--       vai. Hai hàm cũ giữ nguyên chữ ký, câu từ chối và kết quả. suc_khoe_sao_luu() (0058) tách
+--       y hệt (suc_khoe_sao_luu_so_lieu) để lượt báo động thấy cả đèn Sao lưu. Hai bảng tạo TRƯỚC mục này:
 --       suc_khoe_so_lieu khai báo biến kiểu bao_dong_trang_thai.
 --   4 · Bốn RPC chỉ cho may_bao_dong: bắt đầu lượt (khóa 10 phút, mã lượt), ghi lượt (MỌI đèn
 --       kèm màu — thiếu dữ liệu thì không đóng gì), đánh dấu đã gửi (không lặp), kết thúc lượt
@@ -53,7 +54,7 @@ create table bao_dong_trang_thai (
 );
 
 comment on table bao_dong_trang_thai is
-  'Một dòng: khóa lượt, nhịp tim, lỗi gần nhất, kênh, mốc tóm tắt, đối soát sổ kho gần nhất của việc chạy nền báo động (0057). Chỉ đọc / ghi qua RPC máy và suc_khoe_so_lieu.';
+  'Một dòng: khóa lượt, nhịp tim, lỗi gần nhất, kênh, mốc tóm tắt, đối soát sổ kho gần nhất của việc chạy nền báo động (0060). Chỉ đọc / ghi qua RPC máy và suc_khoe_so_lieu.';
 
 insert into bao_dong_trang_thai (id) values (1) on conflict (id) do nothing;
 
@@ -86,7 +87,7 @@ create table bao_dong_su_co (
 );
 
 comment on table bao_dong_su_co is
-  'Sự cố của việc báo động (0057): một đèn đỏ = một sự cố, một sự cố đang mở cho mỗi khoa. Không lưu câu chữ. Chỉ đọc / ghi qua RPC máy báo động.';
+  'Sự cố của việc báo động (0060): một đèn đỏ = một sự cố, một sự cố đang mở cho mỗi khoa. Không lưu câu chữ. Chỉ đọc / ghi qua RPC máy báo động.';
 
 create unique index bao_dong_su_co_mo_idx on bao_dong_su_co(khoa) where het_luc is null;
 create index bao_dong_su_co_het_idx on bao_dong_su_co(het_luc) where het_luc is not null;
@@ -185,7 +186,7 @@ end;
 $$;
 
 comment on function kho_ipos_trang_thai_goc is
-  'NỘI BỘ (0057): phần tính của kho_ipos_trang_thai, không kiểm quyền. Chỉ gọi từ hàm definer đã kiểm vai (kho_ipos_trang_thai, suc_khoe_so_lieu). Không ai đăng nhập gọi thẳng được.';
+  'NỘI BỘ (0060): phần tính của kho_ipos_trang_thai, không kiểm quyền. Chỉ gọi từ hàm definer đã kiểm vai (kho_ipos_trang_thai, suc_khoe_so_lieu). Không ai đăng nhập gọi thẳng được.';
 
 create or replace function kho_ipos_trang_thai(p_chi_nhanh_id uuid)
 returns jsonb
@@ -203,7 +204,7 @@ end;
 $$;
 
 comment on function kho_ipos_trang_thai is
-  'Trạng thái đồng bộ iPOS (xem, không tiền): cấu hình (không token), đèn xanh | vang | do + câu dễ hiểu, lần nhận hóa đơn cuối (nhan_hd_luc), lần xử lý hộp thư cuối (hop_thu_luc), thực đơn (menu_luc, menu_can_lam_moi, so_mon_menu), số dòng theo trạng thái, 10 lượt gần nhất. 0042: không cần đường dẫn hóa đơn; mất kết nối = lượt lỗi hoặc quá gio_mat_ket_noi giờ không nhận hóa đơn trong giờ mở cửa. 0057: kiểm quyền rồi gọi kho_ipos_trang_thai_goc (kết quả không đổi).';
+  'Trạng thái đồng bộ iPOS (xem, không tiền): cấu hình (không token), đèn xanh | vang | do + câu dễ hiểu, lần nhận hóa đơn cuối (nhan_hd_luc), lần xử lý hộp thư cuối (hop_thu_luc), thực đơn (menu_luc, menu_can_lam_moi, so_mon_menu), số dòng theo trạng thái, 10 lượt gần nhất. 0042: không cần đường dẫn hóa đơn; mất kết nối = lượt lỗi hoặc quá gio_mat_ket_noi giờ không nhận hóa đơn trong giờ mở cửa. 0060: kiểm quyền rồi gọi kho_ipos_trang_thai_goc (kết quả không đổi).';
 
 -- Đối soát sổ kho của 0055 NGUYÊN VĂN (bỏ "into v_lech"): quét cả sổ, nên máy báo động lưu kết quả
 -- và chỉ gọi lại khi quá 30 phút; bảng ở /noi-bo vẫn gọi mỗi lần mở trang như trước.
@@ -222,7 +223,7 @@ as $$
 $$;
 
 comment on function suc_khoe_lech_so_kho() is
-  'NỘI BỘ (0057): số lô có tồn lệch sổ kho theo chi nhánh {id: số} — quét cả sổ (kho_doi_soat_ton). Chỉ gọi từ suc_khoe_so_lieu và bao_dong_bat_dau_luot.';
+  'NỘI BỘ (0060): số lô có tồn lệch sổ kho theo chi nhánh {id: số} — quét cả sổ (kho_doi_soat_ton). Chỉ gọi từ suc_khoe_so_lieu và bao_dong_bat_dau_luot.';
 
 -- Thân 0055, không kiểm vai; danh sách chi nhánh do hàm gọi quyết định. Thêm ô bao_dong. p_lech: kết
 -- quả đối soát đã có (máy báo động) — null thì quét như 0055.
@@ -355,7 +356,7 @@ begin
         'loi', count(*) filter (where v.ly_do = 'thu_lai'))
       from v_viec_dich v
       where v.bang <> 'noi_dung_cong_bo'),
-    -- 0057: việc chạy nền báo động — đèn "Báo động" của bảng (web/src/lib/suc-khoe.ts).
+    -- 0060: việc chạy nền báo động — đèn "Báo động" của bảng (web/src/lib/suc-khoe.ts).
     'bao_dong', jsonb_build_object(
       'lan_chay_cuoi', v_bd.lan_chay_cuoi,
       'kenh',          coalesce(v_bd.kenh, 'khong'),
@@ -366,7 +367,7 @@ end;
 $$;
 
 comment on function suc_khoe_so_lieu(uuid[], jsonb) is
-  'NỘI BỘ (0057): số liệu bảng sức khỏe cho các chi nhánh ĐANG HOẠT ĐỘNG trong danh sách, không kiểm vai. p_lech: đối soát sổ kho đã có (null = quét). Chỉ gọi từ suc_khoe_he_thong() (chủ / quản lý) và bao_dong_bat_dau_luot() (máy báo động). Không ai đăng nhập gọi thẳng được.';
+  'NỘI BỘ (0060): số liệu bảng sức khỏe cho các chi nhánh ĐANG HOẠT ĐỘNG trong danh sách, không kiểm vai. p_lech: đối soát sổ kho đã có (null = quét). Chỉ gọi từ suc_khoe_he_thong() (chủ / quản lý) và bao_dong_bat_dau_luot() (máy báo động). Không ai đăng nhập gọi thẳng được.';
 
 create or replace function suc_khoe_he_thong()
 returns jsonb
@@ -396,7 +397,65 @@ $$;
 
 comment on function suc_khoe_he_thong() is
   'Số liệu cho bảng đèn sức khỏe hệ thống ở /noi-bo. Chủ: mọi chi nhánh đang hoạt động; quản lý: chi nhánh của mình. '
-  'Chỉ số đếm và mốc giờ — màu và câu chữ ở web/src/lib/suc-khoe.ts. 0057: kiểm vai rồi gọi suc_khoe_so_lieu.';
+  'Chỉ số đếm và mốc giờ — màu và câu chữ ở web/src/lib/suc-khoe.ts. 0060: kiểm vai rồi gọi suc_khoe_so_lieu.';
+
+
+-- 0058 đọc sao lưu bằng hàm RIÊNG suc_khoe_sao_luu() (chủ / quản lý). Tách y như hai hàm trên để máy
+-- báo động thấy đèn "Sao lưu dữ liệu": thân 0058 NGUYÊN VĂN, trừ khai báo v_ns và đoạn kiểm vai.
+create or replace function suc_khoe_sao_luu_so_lieu()
+returns jsonb
+language plpgsql
+stable
+security invoker
+set search_path = public
+as $$
+declare
+  v_cuoi he_thong_sao_luu;
+  v_dung he_thong_sao_luu;
+begin
+  -- Lượt gần nhất, bất kể kết quả.
+  select * into v_cuoi from he_thong_sao_luu s order by s.bat_dau_luc desc, s.id desc limit 1;
+  -- Bản DÙNG ĐƯỢC gần nhất: sao lưu xong, đã lưu, VÀ khôi phục thử đạt. Mốc là lúc lượt bắt đầu —
+  -- dữ liệu trong bản sao là của lúc đó.
+  select * into v_dung from he_thong_sao_luu s
+  where s.ok and s.thu_khoi_phuc = 'dat'
+  order by s.bat_dau_luc desc, s.id desc limit 1;
+
+  return jsonb_build_object(
+    'lan_cuoi',       v_cuoi.bat_dau_luc,
+    'lan_cuoi_ok',    v_cuoi.ok,
+    'lan_cuoi_thu',   v_cuoi.thu_khoi_phuc,
+    'dung_duoc_cuoi', v_dung.bat_dau_luc,
+    'kich_thuoc',     v_dung.kich_thuoc);
+end;
+$$;
+
+comment on function suc_khoe_sao_luu_so_lieu() is
+  'NỘI BỘ (0060): phần tính của suc_khoe_sao_luu (0058), không kiểm vai. Chỉ gọi từ suc_khoe_sao_luu() (chủ / quản lý) và bao_dong_bat_dau_luot() (máy báo động). Không ai đăng nhập gọi thẳng được.';
+
+create or replace function suc_khoe_sao_luu()
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  v_ns nhan_su;
+begin
+  v_ns := nhan_su_hien_tai();
+  if v_ns.id is null or v_ns.vai_tro not in ('chu_so_huu', 'quan_ly') then
+    raise exception 'Chỉ chủ sở hữu hoặc quản lý mới xem được sức khỏe hệ thống'
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  return suc_khoe_sao_luu_so_lieu();
+end;
+$$;
+
+comment on function suc_khoe_sao_luu() is
+  'Số liệu cho đèn "Sao lưu dữ liệu" ở /noi-bo (0058): lượt sao lưu gần nhất và bản dùng được (khôi phục thử đạt) gần nhất. '
+  'Chủ và quản lý. Màu và câu chữ ở web/src/lib/suc-khoe.ts. 0060: kiểm vai rồi gọi suc_khoe_sao_luu_so_lieu (kết quả không đổi).';
 
 
 -- =============================================================================
@@ -414,7 +473,7 @@ as $$
 $$;
 
 comment on function bao_dong_sach_loi(text) is
-  'NỘI BỘ (0057): câu lỗi của việc báo động trước khi lưu — xóa token Telegram rồi mess_sach_loi (token, mật khẩu, hex, SĐT), tối đa 500 ký tự.';
+  'NỘI BỘ (0060): câu lỗi của việc báo động trước khi lưu — xóa token Telegram rồi mess_sach_loi (token, mật khẩu, hex, SĐT), tối đa 500 ký tự.';
 
 -- Bắt đầu lượt: khóa (lượt treo quá 10 phút coi như đã chết), mã lượt, số liệu mọi chi nhánh
 -- đang hoạt động (đối soát sổ kho dùng lại kết quả dưới 30 phút; hỏng hay hết giờ thì null + lỗi —
@@ -470,7 +529,8 @@ begin
       v_lech := suc_khoe_lech_so_kho();
       update bao_dong_trang_thai set so_kho_lech = v_lech, so_kho_luc = now() where id = 1;
     end if;
-    v_so := suc_khoe_so_lieu(v_ids, v_lech);
+    -- Số liệu sao lưu gắn thêm như trang /noi-bo gắn (docSucKhoeVaSaoLuu): cùng đèn, cùng ngưỡng.
+    v_so := suc_khoe_so_lieu(v_ids, v_lech) || jsonb_build_object('sao_luu', suc_khoe_sao_luu_so_lieu());
   exception
     when query_canceled then
       v_so  := null;
@@ -501,7 +561,7 @@ end;
 $$;
 
 comment on function bao_dong_bat_dau_luot(text) is
-  'Máy báo động (0057): bắt đầu lượt. {bi_khoa:true, dang_chay_tu} nếu lượt khác đang chạy (dưới 10 phút); không thì {bi_khoa:false, luot, so_lieu|null, loi_so_lieu, trang_thai{kenh, kenh_tu_luc, tom_tat_luc, lan_chay_cuoi}, da_bao_48_gio[{khoa, bao_mo_luc}]}. Ghi kênh Worker đang dùng; dọn sự cố đóng quá 90 ngày.';
+  'Máy báo động (0060): bắt đầu lượt. {bi_khoa:true, dang_chay_tu} nếu lượt khác đang chạy (dưới 10 phút); không thì {bi_khoa:false, luot, so_lieu|null (số liệu bảng sức khỏe + ô sao_luu), loi_so_lieu, trang_thai{kenh, kenh_tu_luc, tom_tat_luc, lan_chay_cuoi}, da_bao_48_gio[{khoa, bao_mo_luc}]}. Ghi kênh Worker đang dùng; dọn sự cố đóng quá 90 ngày.';
 
 -- Ghi lượt: MỌI đèn đã đánh giá kèm màu. Đỏ → mở sự cố mới hoặc tiếp tục sự cố đang mở (kể
 -- cả khi nó đang chờ hết đỏ — chập chờn vẫn là MỘT sự cố). Màu khác → bắt đầu / tiếp tục chờ
@@ -589,7 +649,7 @@ end;
 $$;
 
 comment on function bao_dong_ghi_luot(uuid, jsonb, boolean) is
-  'Máy báo động (0057): ghi màu MỌI đèn của lượt [{ma_den, chi_nhanh_id|null, mau: xanh|vang|do|tat}]. Đỏ → mở / tiếp tục sự cố; màu khác → chờ hết đỏ. p_day_du: sự cố của đèn không còn → mau_sau mat. Cần đúng mã lượt. Trả {luc, su_co[] đang mở}.';
+  'Máy báo động (0060): ghi màu MỌI đèn của lượt [{ma_den, chi_nhanh_id|null, mau: xanh|vang|do|tat}]. Đỏ → mở / tiếp tục sự cố; màu khác → chờ hết đỏ. p_day_du: sự cố của đèn không còn → mau_sau mat. Cần đúng mã lượt. Trả {luc, su_co[] đang mở}.';
 
 -- Đánh dấu đã gửi. Không cần mã lượt: là sự thật về một tin ĐÃ gửi, ghi mấy lần cũng giữ mốc
 -- đầu. p_mo: tin "mới đỏ" hoặc tóm tắt; p_het: tin hết đỏ (chỉ sự cố đã báo và đang chờ hết) —
@@ -637,7 +697,7 @@ end;
 $$;
 
 comment on function bao_dong_da_gui(text, uuid[], uuid[], boolean) is
-  'Máy báo động (0057): đánh dấu đã gửi qua p_kenh (không phải khong). p_mo → bao_mo_luc (chỉ lần đầu), p_het → bao_het_luc VÀ đóng sự cố (chỉ sự cố đã báo, đang chờ hết đỏ), p_tom_tat → tom_tat_luc. Gọi lại không đổi mốc đã có.';
+  'Máy báo động (0060): đánh dấu đã gửi qua p_kenh (không phải khong). p_mo → bao_mo_luc (chỉ lần đầu), p_het → bao_het_luc VÀ đóng sự cố (chỉ sự cố đã báo, đang chờ hết đỏ), p_tom_tat → tom_tat_luc. Gọi lại không đổi mốc đã có.';
 
 -- Kết thúc lượt: đóng các sự cố Worker đã quyết (chỉ sự cố đang chờ hết đỏ — đỏ lại thì
 -- không đóng), ghi nhịp tim và lỗi (đã xóa bí mật), nhả khóa CHỈ khi đúng lượt của mình.
@@ -677,7 +737,7 @@ end;
 $$;
 
 comment on function bao_dong_ket_thuc_luot(uuid, uuid[], text) is
-  'Máy báo động (0057): kết thúc lượt — đóng các sự cố trong p_dong (chỉ khi đang chờ hết đỏ), ghi lan_chay_cuoi và loi_cuoi (bao_dong_sach_loi; null = không lỗi), nhả khóa chỉ khi p_luot đúng lượt đang giữ.';
+  'Máy báo động (0060): kết thúc lượt — đóng các sự cố trong p_dong (chỉ khi đang chờ hết đỏ), ghi lan_chay_cuoi và loi_cuoi (bao_dong_sach_loi; null = không lỗi), nhả khóa chỉ khi p_luot đúng lượt đang giữ.';
 
 
 -- =============================================================================
@@ -693,6 +753,7 @@ begin
     execute 'revoke execute on function kho_ipos_trang_thai_goc(uuid) from authenticated';
     execute 'revoke execute on function suc_khoe_so_lieu(uuid[], jsonb) from authenticated';
     execute 'revoke execute on function suc_khoe_lech_so_kho() from authenticated';
+    execute 'revoke execute on function suc_khoe_sao_luu_so_lieu() from authenticated';
     execute 'revoke execute on function bao_dong_sach_loi(text) from authenticated';
   end if;
 end

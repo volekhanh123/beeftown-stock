@@ -14,7 +14,11 @@
  *      tin Zalo hỏng / kẹt, lỗi bot Messenger, việc dịch chờ / lỗi, iPOS (đèn giống hệt
  *      màn Kết nối iPOS + nhịp tim của việc chạy nền 5 phút), sổ kho lệch tồn.
  *   4. Không lộ dữ liệu cá nhân hay bí mật: chỉ có số đếm và mốc giờ.
- *   5. 0057 tách phần kiểm quyền khỏi phần tính (kho_ipos_trang_thai_goc, suc_khoe_so_lieu)
+ *   5. (0058) Sao lưu hằng đêm: bảng he_thong_sao_luu không ai đọc / ghi được qua API; câu SQL mà
+ *      workflow dùng để ghi lượt (crm/sao-luu/ghi-luot.sql) chạy đúng trên database thật; mỗi lượt
+ *      một dòng; suc_khoe_sao_luu() (chủ + quản lý) trả lượt gần nhất và bản DÙNG ĐƯỢC gần nhất
+ *      (khôi phục thử đạt).
+ *   6. 0060 tách phần kiểm quyền khỏi phần tính (kho_ipos_trang_thai_goc, suc_khoe_so_lieu, suc_khoe_sao_luu_so_lieu)
  *      cho máy báo động: thân hàm đúng nguyên văn, người xem thấy y hệt trước khi tách, hàm
  *      nội bộ không ai đăng nhập gọi thẳng được. Phần báo động: test-bao-dong.mjs.
  */
@@ -25,6 +29,7 @@ import { fileURLToPath } from 'node:url';
 import { dungDatabase, taoBoDem, UID, themMayIpos, UID_MAY_IPOS } from './kho-chung.mjs';
 
 const LIB_SUC_KHOE = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'web', 'src', 'lib', 'suc-khoe.ts');
+const GHI_LUOT = join(dirname(fileURLToPath(import.meta.url)), '..', 'sao-luu', 'ghi-luot.sql');
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — SỨC KHỎE HỆ THỐNG');
 const { db, cnA, cnB, duoi, duoiAnon } = await dungDatabase();
@@ -33,6 +38,11 @@ await themMayIpos(db, cnA, cnB);
 /** Đọc suc_khoe_he_thong() dưới danh nghĩa một người. */
 async function doc(uid) {
   const r = await duoi(uid, `select suc_khoe_he_thong() as k`);
+  return { k: r.rows?.[0]?.k ?? null, loi: r.loi, ma: r.ma };
+}
+/** Đọc suc_khoe_sao_luu() (0058) dưới danh nghĩa một người. */
+async function docSl(uid) {
+  const r = await duoi(uid, `select suc_khoe_sao_luu() as k`);
   return { k: r.rows?.[0]?.k ?? null, loi: r.loi, ma: r.ma };
 }
 const cua = (k, cn) => k?.chi_nhanh?.find(c => c.id === cn.id);
@@ -94,9 +104,13 @@ await nhom('2 · DATABASE MỚI, CHƯA DÙNG GÌ → KHÔNG BÁO NHẦM', async 
      JSON.stringify(a?.so_kho));
   ok('Zalo Q1: không có tin hỏng / kẹt', a?.tin_zalo?.that_bai_24h === 0 && a?.tin_zalo?.cho_qua_han === 0,
      JSON.stringify(a?.tin_zalo));
-  ok('Báo động (0057): chưa chạy lần nào, chưa có kênh, không lỗi, chưa gửi tin nào',
+  ok('Báo động (0060): chưa chạy lần nào, chưa có kênh, không lỗi, chưa gửi tin nào',
      k?.bao_dong?.lan_chay_cuoi === null && k?.bao_dong?.kenh === 'khong' && k?.bao_dong?.co_loi === false
      && k?.bao_dong?.lan_gui_cuoi === null, JSON.stringify(k?.bao_dong));
+  const sl = (await docSl(UID.chu)).k;
+  ok('Sao lưu (suc_khoe_sao_luu): chưa có lượt nào — mọi ô null (web báo đỏ "chưa có bản sao lưu nào")',
+     sl && Object.values(sl).length === 5 && Object.values(sl).every(v => v === null), JSON.stringify(sl));
+  ok('suc_khoe_he_thong() không đổi ở 0058 (không có ô sao_lưu — hàm đọc riêng)', !('sao_luu' in (k ?? {})));
 });
 
 // ===========================================================================
@@ -382,6 +396,7 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
 
   const KHOA = {
     goc:        ['luc', 'zalo', 'messenger', 'dich', 'bao_dong', 'chi_nhanh'],
+    sao_luu:    ['lan_cuoi', 'lan_cuoi_ok', 'lan_cuoi_thu', 'dung_duoc_cuoi', 'kich_thuoc'],
     zalo:       ['dang_bat', 'che_do', 'bat_luc', 'lan_chay_cuoi', 'co_loi'],
     messenger:  ['dang_bat', 'bat_luc', 'lan_nhan_cuoi', 'loi_cuoi_luc', 'loi_7_ngay'],
     dich:       ['cho', 'loi'],
@@ -395,7 +410,8 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
     so_kho:     ['co_kho', 'lech'],
   };
   const a = cua(k, cnA);
-  const thuc = { goc: k, zalo: k?.zalo, messenger: k?.messenger, dich: k?.dich, bao_dong: k?.bao_dong, chi_nhanh: a,
+  const saoLuu = (await docSl(UID.chu)).k;
+  const thuc = { goc: k, zalo: k?.zalo, messenger: k?.messenger, dich: k?.dich, bao_dong: k?.bao_dong, sao_luu: saoLuu, chi_nhanh: a,
                  ipos: a?.ipos, tin_zalo: a?.tin_zalo, dat_ban: a?.dat_ban, tuyen_dung: a?.tuyen_dung, so_kho: a?.so_kho };
   for (const [phan, ds] of Object.entries(KHOA)) {
     const co = Object.keys(thuc[phan] ?? {}).sort();
@@ -404,7 +420,7 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
     ok(`${phan}: lib/suc-khoe.ts đọc đúng những ô đó`, khongDoc.length === 0, khongDoc.join(', '));
   }
 
-  const sk = danhGiaSucKhoe(k, 'vi', true);
+  const sk = danhGiaSucKhoe({ ...k, sao_luu: saoLuu }, 'vi', true);
   const den = (khoi, ma) => sk.khoi.find(x => x.ma === khoi)?.den.find(d => d.ma === ma);
   const q1 = ma => den(cnA.id, ma), q7 = ma => den(cnB.id, ma), th = ma => den('thuong_hieu', ma);
   const tom = d => `${d?.mau} — ${d?.cau}`;
@@ -430,13 +446,113 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
   ok('Messenger vàng: có tin đến sau lỗi, 6 lỗi trong 7 ngày', th('messenger')?.mau === 'vang'
      && /^6 lỗi trong 7 ngày/.test(th('messenger')?.cau), tom(th('messenger')));
   ok('Máy dịch vàng: 1 ô lỗi', th('dich')?.mau === 'vang' && /^1 ô dịch bị lỗi/.test(th('dich')?.cau), tom(th('dich')));
+  ok('Sao lưu đỏ: database chưa có lượt sao lưu nào', th('sao_luu')?.mau === 'do'
+     && /^Chưa có bản sao lưu nào/.test(th('sao_luu')?.cau), tom(th('sao_luu')));
 });
 
 // ===========================================================================
-// 0057 tách phần KIỂM QUYỀN khỏi phần TÍNH của hai hàm, để máy báo động đọc được số liệu mà
-// không mở quyền kho / CRM nào. Nhóm này dựng lại hai hàm CŨ đúng nguyên văn 0042 / 0055 (đổi
-// tên thành *_cu) trên cùng database rồi so: ai xem cũng thấy y hệt, chỉ thêm ô bao_dong.
-await nhom('12 · 0057 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯỚC KHI TÁCH', async () => {
+// 0058. Workflow .github/workflows/sao-luu.yml ghi lượt bằng psql -v … -f crm/sao-luu/ghi-luot.sql.
+// PGlite không có psql: thay :'ten' bằng chuỗi SQL đúng như psql làm (nháy đơn, nháy trong nhân đôi)
+// rồi chạy CHÍNH file đó — đổi tên cột ở migration mà quên file này thì đỏ ở đây, không đợi đêm.
+await nhom('12 · SAO LƯU HẰNG ĐÊM (0058 · he_thong_sao_luu)', async () => {
+  // psql không thay biến trong chú thích — bỏ các dòng "--" như psql.
+  const ghiLuot = readFileSync(GHI_LUOT, 'utf8').split('\n').filter(l => !l.trimStart().startsWith('--')).join('\n');
+  const ghi = bien => {
+    const sql = ghiLuot.replace(/:'([a-z_]+)'/g, (_, ten) => {
+      if (!(ten in bien)) throw new Error(`ghi-luot.sql cần biến ${ten}`);
+      return `'${String(bien[ten]).replaceAll("'", "''")}'`;
+    });
+    return db.query(sql);
+  };
+  const luot = (sua = {}) => ({ bat_dau_luc: new Date(Date.now() - 5 * 60000).toISOString(), ok: 'true', kich_thuoc: '829275',
+                                so_bang: '118', so_dong: '10325', thu_khoi_phuc: 'dat', loi: '', luot_chay: '1001-1', ...sua });
+  const dem = async () => Number((await db.query(`select count(*) n from he_thong_sao_luu`)).rows[0].n);
+
+  const bienTrongFile = [...new Set([...ghiLuot.matchAll(/:'([a-z_]+)'/g)].map(m => m[1]))].sort();
+  ok('ghi-luot.sql dùng đúng tám biến workflow truyền (-v …)', JSON.stringify(bienTrongFile) === JSON.stringify(
+     ['bat_dau_luc', 'kich_thuoc', 'loi', 'luot_chay', 'ok', 'so_bang', 'so_dong', 'thu_khoi_phuc']), bienTrongFile.join(', '));
+
+  await ghi(luot());
+  const dong = (await db.query(`select * from he_thong_sao_luu`)).rows[0];
+  ok('Lượt tốt: ghi đủ cỡ, số bảng, số dòng, khôi phục thử đạt; ô lỗi trống → null',
+     dong?.ok === true && Number(dong.kich_thuoc) === 829275 && dong.so_bang === 118 && Number(dong.so_dong) === 10325
+     && dong.thu_khoi_phuc === 'dat' && dong.loi === null, JSON.stringify(dong));
+  await ghi(luot());
+  ok('bam-hai-lan: chạy lại bước ghi của cùng một lượt (run_id-attempt) → vẫn một dòng', await dem() === 1, String(await dem()));
+
+  const loiThu = `Bước hỏng'); drop table he_thong_sao_luu; --`;
+  await ghi(luot({ luot_chay: '1002-1', ok: 'false', kich_thuoc: '', so_bang: '', so_dong: '', thu_khoi_phuc: 'chua_thu',
+                   loi: loiThu, bat_dau_luc: new Date(Date.now() - 60000).toISOString() }));
+  const hong = (await db.query(`select * from he_thong_sao_luu where luot_chay = '1002-1'`)).rows[0];
+  ok('Lượt hỏng: ô số trống → null; câu lỗi có dấu nháy ghi nguyên văn, không thành lệnh SQL',
+     hong?.ok === false && hong.kich_thuoc === null && hong.loi === loiThu && await dem() === 2, JSON.stringify(hong));
+  const dai = 'x'.repeat(500);
+  await ghi(luot({ luot_chay: '1003-1', ok: 'false', kich_thuoc: '', so_bang: '', so_dong: '', thu_khoi_phuc: 'chua_thu', loi: dai,
+                   bat_dau_luc: new Date(Date.now() - 2 * 3600000).toISOString() }));
+  ok('Câu lỗi quá dài bị cắt còn 300 ký tự (không làm hỏng lượt ghi)',
+     (await db.query(`select char_length(loi) n from he_thong_sao_luu where luot_chay = '1003-1'`)).rows[0]?.n === 300);
+
+  const phaiLoi = async (sua, ten) => {
+    let e = null;
+    try { await ghi(luot(sua)); } catch (x) { e = x.message; }
+    ok(`Database từ chối: ${ten}`, e !== null, e ?? 'GHI ĐƯỢC');
+  };
+  await phaiLoi({ luot_chay: '1004-1', kich_thuoc: '' }, 'lượt "tốt" mà không có cỡ file');
+  await phaiLoi({ luot_chay: '1004-2', so_dong: '' }, 'lượt "tốt" mà không có số dòng');
+  await phaiLoi({ luot_chay: '1005-1', ok: 'false', kich_thuoc: '', so_bang: '', so_dong: '' }, 'lượt hỏng mà ghi "đã khôi phục thử"');
+  await phaiLoi({ luot_chay: 'abc; drop' }, 'mã lượt không đúng dạng run_id-attempt');
+  await phaiLoi({ luot_chay: '1006-1', thu_khoi_phuc: 'gia' }, 'kết quả khôi phục thử lạ');
+
+  const sl = (await docSl(UID.chu)).k;
+  ok('suc_khoe_sao_luu: lượt gần nhất là lượt hỏng 1 phút trước; bản dùng được gần nhất là lượt 5 phút trước',
+     sl?.lan_cuoi_ok === false && sl.lan_cuoi_thu === 'chua_thu' && Math.abs(phutTruoc(sl.lan_cuoi) - 1) < 1
+     && Math.abs(phutTruoc(sl.dung_duoc_cuoi) - 5) < 1 && sl.kich_thuoc === 829275, JSON.stringify(sl));
+  const ql = (await docSl(UID.qlA)).k;
+  ok('Quản lý thấy cùng số liệu sao lưu (cấp thương hiệu)', JSON.stringify(ql) === JSON.stringify(sl), JSON.stringify(ql));
+  const { danhGiaSucKhoe } = await import(LIB_SUC_KHOE);
+  const tho = { ...(await doc(UID.chu)).k, sao_luu: sl };
+  const d = danhGiaSucKhoe(tho, 'vi', true).khoi[0].den.find(x => x.ma === 'sao_luu');
+  ok('Đèn trên số liệu thật: vàng — lượt gần nhất hỏng, còn bản dùng được 5 phút trước', d?.mau === 'vang'
+     && /^Lượt sao lưu gần nhất \(1 phút trước\) bị lỗi — bản dùng được gần nhất: 5 phút trước/.test(d.cau), `${d?.mau} — ${d?.cau}`);
+
+  // Lượt mới hơn sao lưu được nhưng khôi phục thử HỎNG: không phải bản dùng được — mốc bản dùng được giữ nguyên.
+  await ghi(luot({ luot_chay: '1007-1', thu_khoi_phuc: 'hong', loi: 'Khôi phục thử không đạt', kich_thuoc: '900000',
+                   bat_dau_luc: new Date(Date.now() - 30000).toISOString() }));
+  const sl2 = (await docSl(UID.chu)).k;
+  ok('Bản sao khôi phục thử hỏng KHÔNG thành "bản dùng được"; lượt gần nhất ghi đúng "hong"',
+     sl2?.lan_cuoi_ok === true && sl2.lan_cuoi_thu === 'hong' && sl2.dung_duoc_cuoi === sl.dung_duoc_cuoi && sl2.kich_thuoc === 829275,
+     JSON.stringify(sl2));
+
+  for (const [ten, uid] of [
+    ['Thủ kho', UID.thuKhoA], ['Nhân viên quầy', UID.nvQuayA], ['Kế toán', UID.keToanA], ['Thu ngân', UID.thuNganA],
+    ['Marketing', UID.mktA], ['Người đã nghỉ', UID.nghiViec], ['Tài khoản máy iPOS', UID_MAY_IPOS.mayIposA],
+    ['Tài khoản không có dòng nhan_su', null],
+  ]) {
+    const r = await docSl(uid);
+    ok(`suc_khoe_sao_luu: ${ten} bị từ chối (insufficient_privilege, cùng câu với suc_khoe_he_thong)`,
+       r.loi !== null && /Chỉ chủ sở hữu hoặc quản lý/.test(r.loi) && r.ma === '42501', r.loi ?? 'ĐỌC ĐƯỢC');
+  }
+  const anonSl = await duoiAnon(`select suc_khoe_sao_luu()`);
+  ok('suc_khoe_sao_luu: anon không gọi được', anonSl.loi !== null, anonSl.loi ?? 'GỌI ĐƯỢC');
+
+  for (const [ten, uid] of [['Chủ', UID.chu], ['Quản lý', UID.qlA], ['Kế toán', UID.keToanA]]) {
+    const r = await duoi(uid, `select count(*) from he_thong_sao_luu`);
+    ok(`${ten} không đọc thẳng được bảng (chỉ qua suc_khoe_he_thong)`, r.loi !== null, r.loi ?? 'ĐỌC ĐƯỢC');
+  }
+  const ghiChu = await duoi(UID.chu, `insert into he_thong_sao_luu (bat_dau_luc, ok, luot_chay) values (now(), false, '9-1')`);
+  ok('Chủ không tự ghi được một lượt "sao lưu" giả qua API', ghiChu.loi !== null, ghiChu.loi ?? 'GHI ĐƯỢC');
+  const anon = await duoiAnon(`insert into he_thong_sao_luu (bat_dau_luc, ok, luot_chay) values (now(), true, '9-2')`);
+  ok('anon không ghi được', anon.loi !== null, anon.loi ?? 'GHI ĐƯỢC');
+  const rls = (await db.query(`select relrowsecurity r from pg_class where relname = 'he_thong_sao_luu'`)).rows[0]?.r;
+  ok('RLS bật, không có policy nào', rls === true
+     && Number((await db.query(`select count(*) n from pg_policies where tablename = 'he_thong_sao_luu'`)).rows[0].n) === 0);
+});
+
+// ===========================================================================
+// 0060 tách phần KIỂM QUYỀN khỏi phần TÍNH của ba hàm, để máy báo động đọc được số liệu mà
+// không mở quyền kho / CRM nào. Nhóm này dựng lại ba hàm CŨ đúng nguyên văn 0042 / 0055 / 0058
+// (đổi tên thành *_cu) trên cùng database rồi so: ai xem cũng thấy y hệt, chỉ thêm ô bao_dong.
+await nhom('13 · 0060 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯỚC KHI TÁCH', async () => {
   const MIG = join(dirname(fileURLToPath(import.meta.url)), '..', 'supabase', 'migrations');
   const tep = dau => readFileSync(join(MIG, readdirSync(MIG).find(f => f.startsWith(dau))), 'utf8');
   /** Nguyên văn một hàm: từ "create or replace function <ten>(" tới dòng "$$;" đầu tiên sau đó. */
@@ -451,20 +567,20 @@ await nhom('12 · 0057 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
     const i = x.findIndex((d, n) => d !== y[n]);
     return i < 0 ? (x.length === y.length ? '' : `số dòng ${x.length} ≠ ${y.length}`) : `dòng ${i + 1}: «${x[i]}» ≠ «${y[i]}»`;
   };
-  const m42 = tep('0042_'), m55 = tep('0055_'), m57 = tep('0057_');
+  const m42 = tep('0042_'), m55 = tep('0055_'), m58 = tep('0058_'), m60 = tep('0060_');
 
   const KIEM_KHO = "  if not kho_duoc(p_chi_nhanh_id, 'xem') then\n"
     + "    raise exception 'Tài khoản của bạn không xem được kho của chi nhánh này' using errcode = 'insufficient_privilege';\n"
     + "  end if;\n";
   const cu42 = ham(m42, 'kho_ipos_trang_thai');
   ok('0042: kho_ipos_trang_thai có đúng một đoạn kiểm kho_duoc', cu42.split(KIEM_KHO).length === 2);
-  const goc = ham(m57, 'kho_ipos_trang_thai_goc');
+  const goc = ham(m60, 'kho_ipos_trang_thai_goc');
   const gocDung = cu42.replace('function kho_ipos_trang_thai(', 'function kho_ipos_trang_thai_goc(')
     .replace('\nsecurity definer\n', '\nsecurity invoker\n').replace(KIEM_KHO, '');
   ok('kho_ipos_trang_thai_goc = thân 0042 NGUYÊN VĂN, trừ đúng ba dòng kiểm kho_duoc (và là security invoker)',
      goc !== '' && goc === gocDung, lech(goc, gocDung));
-  const vo = ham(m57, 'kho_ipos_trang_thai');
-  ok('kho_ipos_trang_thai (0057) vẫn là definer, vẫn kiểm kho_duoc với đúng câu từ chối cũ, rồi gọi phần tính',
+  const vo = ham(m60, 'kho_ipos_trang_thai');
+  ok('kho_ipos_trang_thai (0060) vẫn là definer, vẫn kiểm kho_duoc với đúng câu từ chối cũ, rồi gọi phần tính',
      vo.includes('\nsecurity definer\nset search_path = public\n') && vo.includes(KIEM_KHO)
      && vo.indexOf(KIEM_KHO) < vo.indexOf('return kho_ipos_trang_thai_goc(p_chi_nhanh_id);'), vo.slice(0, 300));
 
@@ -479,7 +595,7 @@ await nhom('12 · 0057 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
     + "        from kho_doi_soat_ton() d\n"
     + "        join kho_vi_tri v on v.id = d.vi_tri_id\n"
     + "        group by v.chi_nhanh_id) x;";
-  const lechMoi = (() => { const i = m57.indexOf('create or replace function suc_khoe_lech_so_kho()'); return m57.slice(i, m57.indexOf('\n$$;', i)); })();
+  const lechMoi = (() => { const i = m60.indexOf('create or replace function suc_khoe_lech_so_kho()'); return m60.slice(i, m60.indexOf('\n$$;', i)); })();
   ok('suc_khoe_lech_so_kho = đối soát sổ kho của 0055 NGUYÊN VĂN (bỏ "into v_lech")',
      cu55.includes(DOI_SOAT) && lechMoi.endsWith('\n' + DOI_SOAT.replace(' into v_lech', '')), lechMoi.slice(-300));
   // Mọi chỗ sửa so với 0055 — ngoài danh sách này (và ô bao_dong bên dưới) phải nguyên văn.
@@ -502,8 +618,8 @@ await nhom('12 · 0057 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
     soLieuDung = soLieuDung.replace(a, b);
   }
   ok('0055: mỗi chỗ sửa xuất hiện đúng một lần trong suc_khoe_he_thong', khongThay.length === 0, khongThay.join(' | '));
-  const soLieu = ham(m57, 'suc_khoe_so_lieu');
-  const iO = soLieu.indexOf('    -- 0057:'), jO = soLieu.indexOf("    'chi_nhanh', v_ds);");
+  const soLieu = ham(m60, 'suc_khoe_so_lieu');
+  const iO = soLieu.indexOf('    -- 0060:'), jO = soLieu.indexOf("    'chi_nhanh', v_ds);");
   const oBaoDong = iO > 0 && jO > iO ? soLieu.slice(iO, jO) : '';
   ok('suc_khoe_so_lieu thêm đúng một ô bao_dong gồm lan_chay_cuoi, kenh, co_loi, lan_gui_cuoi',
      /'bao_dong', jsonb_build_object\(/.test(oBaoDong)
@@ -512,20 +628,34 @@ await nhom('12 · 0057 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
   const soLieuKhongO = soLieu.slice(0, iO) + soLieu.slice(jO);
   ok('suc_khoe_so_lieu = thân 0055 NGUYÊN VĂN, trừ bỏ kiểm vai, lọc theo danh sách chi nhánh, gọi phần tính iPOS',
      soLieu !== '' && soLieuKhongO === soLieuDung, lech(soLieuKhongO, soLieuDung));
-  const vo55 = ham(m57, 'suc_khoe_he_thong');
-  ok('suc_khoe_he_thong (0057) vẫn là definer, vẫn kiểm vai với đúng câu từ chối cũ, rồi gọi suc_khoe_so_lieu',
+  const vo55 = ham(m60, 'suc_khoe_he_thong');
+  ok('suc_khoe_he_thong (0060) vẫn là definer, vẫn kiểm vai với đúng câu từ chối cũ, rồi gọi suc_khoe_so_lieu',
      vo55.includes('\nsecurity definer\nset search_path = public\n') && vo55.includes(KIEM_VAI.trimEnd())
      && vo55.indexOf(KIEM_VAI.trimEnd()) < vo55.indexOf('return suc_khoe_so_lieu(v_ids);'), vo55);
+
+  // suc_khoe_sao_luu (0058) tách y hệt: phần tính = thân 0058 trừ khai báo v_ns và đoạn kiểm vai.
+  const cu58 = ham(m58, 'suc_khoe_sao_luu');
+  const slGoc = ham(m60, 'suc_khoe_sao_luu_so_lieu');
+  const slDung = cu58.replace('function suc_khoe_sao_luu()', 'function suc_khoe_sao_luu_so_lieu()')
+    .replace('\nsecurity definer\n', '\nsecurity invoker\n').replace('  v_ns nhan_su;\n', '').replace(KIEM_VAI, '');
+  ok('0058: suc_khoe_sao_luu có đúng một đoạn kiểm vai', cu58.split(KIEM_VAI).length === 2);
+  ok('suc_khoe_sao_luu_so_lieu = thân 0058 NGUYÊN VĂN, trừ khai báo v_ns và đoạn kiểm vai (và là security invoker)',
+     slGoc !== '' && slGoc === slDung, lech(slGoc, slDung));
+  const slVo = ham(m60, 'suc_khoe_sao_luu');
+  ok('suc_khoe_sao_luu (0060) vẫn là definer, vẫn kiểm vai với đúng câu từ chối cũ, rồi gọi phần tính',
+     slVo.includes('\nsecurity definer\nset search_path = public\n') && slVo.includes(KIEM_VAI.trimEnd())
+     && slVo.indexOf(KIEM_VAI.trimEnd()) < slVo.indexOf('return suc_khoe_sao_luu_so_lieu();'), slVo);
 
   // Dựng lại hai hàm CŨ (nguyên văn, đổi tên) và so kết quả trên cùng dữ liệu.
   await db.exec(cu42.replace('function kho_ipos_trang_thai(', 'function kho_ipos_trang_thai_cu('));
   await db.exec(cu55.replace('function suc_khoe_he_thong()', 'function suc_khoe_he_thong_cu()')
                     .replace('kho_ipos_trang_thai(v_cn.id)', 'kho_ipos_trang_thai_cu(v_cn.id)'));
+  await db.exec(cu58.replace('function suc_khoe_sao_luu()', 'function suc_khoe_sao_luu_cu()'));
   const bo = (k, ...khoa) => { if (!k || typeof k !== 'object') return k; const c = { ...k }; for (const x of khoa) delete c[x]; return c; };
   const NGUOI = [['Chủ', UID.chu], ['Quản lý Q1', UID.qlA], ['Quản lý Q7', UID.qlB], ['Thủ kho Q1', UID.thuKhoA],
                  ['Kế toán Q1', UID.keToanA], ['Marketing Q1', UID.mktA], ['Người đã nghỉ', UID.nghiViec],
                  ['Máy iPOS Q1', UID_MAY_IPOS.mayIposA], ['Tài khoản không có dòng nhan_su', null]];
-  const lechSk = [], lechIpos = [];
+  const lechSk = [], lechIpos = [], lechSl = [];
   let skDuoc = 0, skTuChoi = 0, iposDuoc = 0, iposTuChoi = 0;
   for (const [ten, uid] of NGUOI) {
     const moi = await duoi(uid, `select suc_khoe_he_thong() as k`);
@@ -535,6 +665,11 @@ await nhom('12 · 0057 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
       lechSk.push(`${ten}: ${moi.loi ?? 'đọc được'} / ${cu.loi ?? 'đọc được'}`);
     }
     moi.loi ? skTuChoi++ : skDuoc++;
+    const slMoi = await duoi(uid, `select suc_khoe_sao_luu() as k`);
+    const slCu = await duoi(uid, `select suc_khoe_sao_luu_cu() as k`);
+    if (slMoi.loi !== slCu.loi || slMoi.ma !== slCu.ma || JSON.stringify(slMoi.rows?.[0]?.k) !== JSON.stringify(slCu.rows?.[0]?.k)) {
+      lechSl.push(`${ten}: ${slMoi.loi ?? 'đọc được'} / ${slCu.loi ?? 'đọc được'}`);
+    }
     for (const cn of [cnA, cnB]) {
       const m = await duoi(uid, `select kho_ipos_trang_thai($1) as k`, [cn.id]);
       const c = await duoi(uid, `select kho_ipos_trang_thai_cu($1) as k`, [cn.id]);
@@ -549,7 +684,11 @@ await nhom('12 · 0057 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
   ok(`kho_ipos_trang_thai(): ${NGUOI.length} người × 2 chi nhánh — kết quả và câu từ chối y hệt trước khi tách`,
      lechIpos.length === 0 && iposDuoc >= 4 && iposTuChoi >= 4,
      lechIpos.join(' | ') || `${iposDuoc} đọc được, ${iposTuChoi} bị từ chối`);
-  await db.exec(`drop function suc_khoe_he_thong_cu(); drop function kho_ipos_trang_thai_cu(uuid);`);
+  ok(`suc_khoe_sao_luu(): ${NGUOI.length} người — số liệu và câu từ chối y hệt trước khi tách`,
+     lechSl.length === 0, lechSl.join(' | '));
+  const { rows: [{ n: soLuotSl }] } = await db.query(`select count(*)::int as n from he_thong_sao_luu`);
+  ok('…so trên dữ liệu có lượt sao lưu thật (nhóm 12)', soLuotSl > 0, `${soLuotSl} lượt`);
+  await db.exec(`drop function suc_khoe_he_thong_cu(); drop function kho_ipos_trang_thai_cu(uuid); drop function suc_khoe_sao_luu_cu();`);
 
   // Phần tính nhận danh sách chi nhánh từ hàm gọi, và chỉ tính chi nhánh đang hoạt động.
   const { rows: [{ k: chu }] } = await duoi(UID.chu, `select suc_khoe_he_thong() as k`);
@@ -570,7 +709,8 @@ await nhom('12 · 0057 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
   // Hai hàm nội bộ: không ai đăng nhập gọi thẳng được — chỉ chạy bên trong hàm definer đã kiểm vai.
   for (const [ten, sql, p] of [['kho_ipos_trang_thai_goc', `select kho_ipos_trang_thai_goc($1)`, [cnA.id]],
                                ['suc_khoe_so_lieu', `select suc_khoe_so_lieu(array[$1]::uuid[])`, [cnA.id]],
-                               ['suc_khoe_lech_so_kho', `select suc_khoe_lech_so_kho()`, []]]) {
+                               ['suc_khoe_lech_so_kho', `select suc_khoe_lech_so_kho()`, []],
+                               ['suc_khoe_sao_luu_so_lieu', `select suc_khoe_sao_luu_so_lieu()`, []]]) {
     const c = await duoi(UID.chu, sql, p);
     ok(`Chủ cũng KHÔNG gọi thẳng được ${ten} (nội bộ)`, c.loi !== null && /permission denied/.test(c.loi), c.loi ?? 'GỌI ĐƯỢC');
     const a = await duoiAnon(sql, p);
@@ -580,11 +720,14 @@ await nhom('12 · 0057 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
     select has_function_privilege('authenticated', 'kho_ipos_trang_thai_goc(uuid)', 'execute') as goc,
            has_function_privilege('authenticated', 'suc_khoe_so_lieu(uuid[], jsonb)', 'execute') as so_lieu,
            has_function_privilege('authenticated', 'suc_khoe_lech_so_kho()', 'execute') as lech,
+           has_function_privilege('authenticated', 'suc_khoe_sao_luu_so_lieu()', 'execute') as sl,
+           (select prosecdef from pg_proc where oid = 'suc_khoe_sao_luu_so_lieu()'::regprocedure) as sl_definer,
            (select prosecdef from pg_proc where oid = 'kho_ipos_trang_thai_goc(uuid)'::regprocedure) as goc_definer,
            (select prosecdef from pg_proc where oid = 'suc_khoe_so_lieu(uuid[], jsonb)'::regprocedure) as so_lieu_definer,
            (select prosecdef from pg_proc where oid = 'suc_khoe_lech_so_kho()'::regprocedure) as lech_definer`);
-  ok('Ba hàm nội bộ là security invoker và authenticated không có quyền execute',
-     !q.goc && !q.so_lieu && !q.lech && !q.goc_definer && !q.so_lieu_definer && !q.lech_definer, JSON.stringify(q));
+  ok('Bốn hàm nội bộ là security invoker và authenticated không có quyền execute',
+     !q.goc && !q.so_lieu && !q.lech && !q.sl && !q.goc_definer && !q.so_lieu_definer && !q.lech_definer && !q.sl_definer,
+     JSON.stringify(q));
 });
 
 process.exit(ketThuc('SỨC KHỎE HỆ THỐNG'));

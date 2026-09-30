@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN — BÁO ĐỘNG (0056 · vai may_bao_dong, 0057 · sổ sự cố và bốn RPC của máy)
+ * BEEFTOWN — BÁO ĐỘNG (0059 · vai may_bao_dong, 0060 · sổ sự cố và bốn RPC của máy)
  * ==============================================================================
  *
  *     node test/test-bao-dong.mjs
@@ -8,7 +8,7 @@
  * máy may_bao_dong và giữ TRẠNG THÁI ở database: mỗi đèn đỏ một sự cố, khóa lượt, dấu "đã
  * báo". Luật báo (giờ, đêm / sáng, câu chữ) ở web — test-bao-dong-web.mjs. Ở đây kiểm:
  *
- *   0. 0056 chỉ đúng một lệnh (chạy riêng); 0057 không thêm giá trị enum.
+ *   0. 0059 chỉ đúng một lệnh (chạy riêng); 0060 không thêm giá trị enum.
  *   1. quyen — chỉ may_bao_dong đang làm gọi được bốn RPC; mọi vai khác, máy đã tắt, tài
  *      khoản không có dòng nhan_su, anon bị từ chối. Máy không đọc được bảng nào, không gọi
  *      được hàm của máy khác hay hàm nội bộ.
@@ -78,13 +78,13 @@ const khoa = (ma, cn = null) => cn ? `${ma}:${cn.id}` : ma;
 const bo = (k, ...khoaBo) => { if (!k || typeof k !== 'object') return k; const c = { ...k }; for (const x of khoaBo) delete c[x]; return c; };
 
 // ===========================================================================
-await nhom('0 · 0056 CHỈ THÊM VAI, CHẠY MỘT MÌNH', async () => {
-  const lenh = tep('0056_').replace(/--[^\n]*/g, '').trim();
-  ok('0056 đúng một lệnh: thêm may_bao_dong vào vai_tro (Postgres không cho dùng giá trị enum mới trong cùng giao dịch)',
+await nhom('0 · 0059 CHỈ THÊM VAI, CHẠY MỘT MÌNH', async () => {
+  const lenh = tep('0059_').replace(/--[^\n]*/g, '').trim();
+  ok('0059 đúng một lệnh: thêm may_bao_dong vào vai_tro (Postgres không cho dùng giá trị enum mới trong cùng giao dịch)',
      lenh === "alter type vai_tro add value if not exists 'may_bao_dong';", lenh);
   const { rows } = await db.query(`select unnest(enum_range(null::vai_tro))::text as v`);
   ok('vai_tro có may_bao_dong', rows.some(r => r.v === 'may_bao_dong'), rows.map(r => r.v).join(', '));
-  ok('0057 không thêm giá trị enum nào', !/alter\s+type/i.test(tep('0057_').replace(/--[^\n]*/g, '')));
+  ok('0060 không thêm giá trị enum nào', !/alter\s+type/i.test(tep('0060_').replace(/--[^\n]*/g, '')));
   const { src } = await mot(`select prosrc as src from pg_proc where proname = 'duoc_truy_cap_chi_nhanh'`);
   ok('Tường ngăn CRM (duoc_truy_cap_chi_nhanh) không nhắc tới may_bao_dong', !src.includes('may_bao_dong'));
   const { n } = await mot(`select count(*)::int as n from unnest(array['xem','nhap','duyet','danh_muc','cai_dat_goc','ke_toan','dong_bo_ban']) v
@@ -157,6 +157,8 @@ await nhom('2 · MÁY KHÔNG ĐỌC ĐƯỢC GÌ NGOÀI BỐN HÀM CỦA NÓ', a
     ['kho_ipos_trang_thai (cần quyền xem kho)', `kho_ipos_trang_thai('${cnA.id}')`, /không xem được kho/],
     ['suc_khoe_so_lieu (nội bộ)', `suc_khoe_so_lieu(array['${cnA.id}']::uuid[])`, /permission denied/],
     ['suc_khoe_lech_so_kho (nội bộ)', `suc_khoe_lech_so_kho()`, /permission denied/],
+    ['suc_khoe_sao_luu (chỉ chủ / quản lý)', `suc_khoe_sao_luu()`, /Chỉ chủ sở hữu hoặc quản lý/],
+    ['suc_khoe_sao_luu_so_lieu (nội bộ)', `suc_khoe_sao_luu_so_lieu()`, /permission denied/],
     ['kho_ipos_trang_thai_goc (nội bộ)', `kho_ipos_trang_thai_goc('${cnA.id}')`, /permission denied/],
     ['bao_dong_sach_loi (nội bộ)', `bao_dong_sach_loi('x')`, /permission denied/],
     ['zalo_bat_dau_luot (máy Zalo)', `zalo_bat_dau_luot(50)`, /^Chỉ tài khoản máy Zalo mới gọi được hàm này$/],
@@ -188,7 +190,10 @@ await nhom('3 · BẮT ĐẦU LƯỢT: KHÓA 10 PHÚT, MÃ LƯỢT, SỐ LIỆU 
   const chu = (await rpc(UID.chu, `suc_khoe_he_thong()`)).kq;
   ok('Số liệu của máy = đúng số liệu chủ thấy trên bảng (cùng hàm, cùng ngưỡng)',
      b1.kq?.loi_so_lieu === null && b1.kq?.so_lieu?.chi_nhanh?.length === 2
-     && JSON.stringify(bo(b1.kq.so_lieu, 'luc', 'bao_dong')) === JSON.stringify(bo(chu, 'luc', 'bao_dong')));
+     && JSON.stringify(bo(b1.kq.so_lieu, 'luc', 'bao_dong', 'sao_luu')) === JSON.stringify(bo(chu, 'luc', 'bao_dong')));
+  const slChu = (await rpc(UID.chu, `suc_khoe_sao_luu()`)).kq;
+  ok('…kèm ô sao_luu = đúng số liệu sao lưu chủ thấy (đèn "Sao lưu dữ liệu" cũng được báo)',
+     slChu !== null && JSON.stringify(b1.kq?.so_lieu?.sao_luu) === JSON.stringify(slChu), JSON.stringify(b1.kq?.so_lieu?.sao_luu));
   ok('Trả trạng thái cho luật báo: kênh, lần đổi kênh, lần tóm tắt, lượt trước',
      JSON.stringify(Object.keys(b1.kq?.trang_thai ?? {}).sort()) === '["kenh","kenh_tu_luc","lan_chay_cuoi","tom_tat_luc"]'
      && b1.kq.trang_thai.kenh === 'khong' && b1.kq.trang_thai.kenh_tu_luc === null, JSON.stringify(b1.kq?.trang_thai));
@@ -395,7 +400,7 @@ await nhom('6 · KẾT THÚC LƯỢT: CHỈ ĐÓNG SỰ CỐ ĐANG CHỜ, CÂU L
 // ===========================================================================
 await nhom('7 · SỐ LIỆU HỎNG: LƯỢT VẪN CHẠY, KHÔNG LỘ BÍ MẬT', async () => {
   const soLieuThat = (() => {
-    const s = tep('0057_'), i = s.indexOf('create or replace function suc_khoe_so_lieu(');
+    const s = tep('0060_'), i = s.indexOf('create or replace function suc_khoe_so_lieu(');
     return s.slice(i, s.indexOf('\n$$;', i) + 4);
   })();
   await db.exec(`create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[], p_lech jsonb default null) returns jsonb language plpgsql stable
@@ -432,7 +437,7 @@ await nhom('7 · SỐ LIỆU HỎNG: LƯỢT VẪN CHẠY, KHÔNG LỘ BÍ MẬT
 // /noi-bo vẫn quét mỗi lần mở; máy báo động (288 lượt / ngày) dùng lại kết quả dưới 30 phút.
 await nhom('7b · ĐỐI SOÁT SỔ KHO: MÁY DÙNG LẠI KẾT QUẢ DƯỚI 30 PHÚT, BẢNG VẪN QUÉT MỚI', async () => {
   const lechThat = (() => {
-    const s = tep('0057_'), i = s.indexOf('create or replace function suc_khoe_lech_so_kho(');
+    const s = tep('0060_'), i = s.indexOf('create or replace function suc_khoe_lech_so_kho(');
     return s.slice(i, s.indexOf('\n$$;', i) + 4);
   })();
   const lechA = so => so?.chi_nhanh?.find(c => c.id === cnA.id)?.so_kho?.lech;

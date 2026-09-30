@@ -110,6 +110,8 @@
   /* 2.2 */
   header .nut-dau { margin-left: 12px; padding: 4px 12px; font-size: 13px; background: transparent; color: var(--kem); border-color: #6A5D45; }
   header .nut-dau:hover { background: #3A2D20; }
+  header .nut-dau.ban-moi { background: var(--mu-tat); color: var(--than); border-color: var(--mu-tat); font-weight: 600; }
+  header .nut-dau.ban-moi:hover { filter: brightness(1.06); }
   .giay { user-select: none; }
   .giay.sua-duoc { touch-action: none; }
   .giay.sua-duoc .el { cursor: move; }
@@ -137,8 +139,9 @@
 </style>
 </head>
 <body>
-<header><b>BEEFTOWN</b><span>Máy quầy · cân in tem</span><small id="phien-ban"></small><button type="button" class="nut-dau" id="nut-huong-dan">Hướng dẫn</button></header>
+<header><b>BEEFTOWN</b><span>Máy quầy · cân in tem</span><small id="phien-ban"></small><button type="button" class="nut-dau ban-moi an" id="nut-ban-moi"></button><button type="button" class="nut-dau" id="nut-huong-dan">Hướng dẫn</button></header>
 <main>
+  <div id="bao-cap-nhat"></div>
   <div id="bao-chung"></div>
 
   <div class="hang">
@@ -425,6 +428,16 @@
         cân đã đọc hết. Chương trình không ghi nhận lần gửi thử — lần gửi WiFi sau vẫn gửi lại các thay đổi đó.</p>
       <div id="ket-qua-com"></div>
       <hr style="border:0;border-top:1px solid var(--vach);margin:18px 0">
+      <p style="margin:0 0 6px"><b>Phiên bản</b> <span class="phu" id="ca-phien-ban"></span></p>
+      <div class="nut">
+        <button type="button" id="nut-kiem-ban-moi">Kiểm tra bản mới</button>
+        <button type="button" id="nut-cap-nhat" class="chinh an">Cập nhật</button>
+      </div>
+      <p class="phu">Bản mới lấy từ kho cập nhật của Beeftown Cân trên GitHub; chương trình kiểm đúng cỡ và mã SHA-256 rồi mới thay,
+        tự đóng rồi mở lại (1–2 phút). Bản cũ giữ lại thành <b>BeeftownCan.cu.exe</b> cạnh file chương trình — quay về bằng tay:
+        Hướng dẫn, mục Cập nhật chương trình.</p>
+      <div id="ket-qua-ban-moi"></div>
+      <hr style="border:0;border-top:1px solid var(--vach);margin:18px 0">
       <div class="nut">
         <button id="nut-mo-thu-muc" type="button">Mở thư mục dữ liệu</button>
         <button id="nut-dang-xuat" type="button" class="an">Đăng xuất kho</button>
@@ -456,8 +469,10 @@
   const baoChung = (loai, html) => { bao($('bao-chung'), loai, html); if (html) window.scrollTo({ top: 0, behavior: 'smooth' }); };
 
   // ---- nhịp: cho chương trình biết cửa sổ còn mở --------------------------
-  setInterval(() => { fetch('/api/nhip?t=' + MA, { method: 'POST' }).catch(() => {}); }, 20000);
-  addEventListener('pagehide', () => { navigator.sendBeacon('/api/dong?t=' + MA); });
+  // dangKhoiDongLai: chương trình vừa cập nhật, đang mở bản mới (máy chủ này đã dừng) — thôi gửi nhịp / báo đóng.
+  let dangKhoiDongLai = false;
+  setInterval(() => { if (!dangKhoiDongLai) fetch('/api/nhip?t=' + MA, { method: 'POST' }).catch(() => {}); }, 20000);
+  addEventListener('pagehide', () => { if (!dangKhoiDongLai) navigator.sendBeacon('/api/dong?t=' + MA); });
 
   // ipDangSua: người đang gõ địa chỉ cân ở Cài đặt — không đè ô đó, và chỉ ô đó mới gửi địa chỉ khi Lưu
   // (địa chỉ chương trình tự tìm ra lúc chạy ngầm không bị ô cũ đè lại).
@@ -467,6 +482,7 @@
     const s = await goi('/api/trang-thai');
     trangThai = s;
     $('phien-ban').textContent = 'phiên bản ' + s.phienBan;
+    baoSauCapNhat(s);
     const ch = s.cauHinh;
     const f = $('form-cau-hinh');
     f.congCan.value = ch.congCan; f.diaChiKho.value = ch.diaChiKho;
@@ -2194,10 +2210,109 @@
       + '<p>Nếu cân chưa đổi: vào lại <code>Prog → 4 → 3</code> trên cân, bấm Kiểm tra dây rồi gửi lại. Vẫn không đổi thì cân không nhận danh mục qua dây này — dùng WiFi.</p>');
   });
 
+  // ---- cập nhật chương trình (2.5) ------------------------------------------
+  // Mỗi lần mở tự hỏi (im lặng nếu hỏng); nút "Kiểm tra bản mới" hỏi lại và báo lỗi. Cập nhật: xác nhận → máy chủ tải,
+  // kiểm, đổi file (chờ việc gửi xuống cân đang chạy) → cửa sổ này báo rồi tự đóng, cửa sổ mới tự mở. Tiến độ và lỗi hiện
+  // ở đầu trang (#bao-cap-nhat) — nút vàng ở đầu trang bấm được cả khi khung Cài đặt đang gập.
+  // dangCapNhat: đang cập nhật — nút không bấm được lần hai.
+  // laNguoiBam: chính trang này bấm Cập nhật (lỗi hiện ở capNhat); trang tải lại giữa chừng chỉ theo dõi.
+  let banMoi = null, dangCapNhat = false, daBaoCapNhat = false, hoiTienDo = null, laNguoiBam = false;
+  function thoiTheoDoi() { if (hoiTienDo) { clearInterval(hoiTienDo); hoiTienDo = null; } dangCapNhat = false; veBanMoi(); }
+  function veBanMoi() {
+    const coMoi = !!(banMoi && banMoi.phienBanMoi);
+    // Bản đã không mở được trên máy này lần trước: không tự mời ở đầu trang; Cài đặt vẫn có nút (kèm lời báo).
+    $('nut-ban-moi').classList.toggle('an', !coMoi || banMoi.daHongTruoc || dangCapNhat);
+    $('nut-ban-moi').textContent = coMoi ? `Có bản mới ${banMoi.phienBanMoi} — Cập nhật` : '';
+    $('nut-cap-nhat').classList.toggle('an', !coMoi);
+    $('nut-cap-nhat').textContent = coMoi ? `Cập nhật lên ${banMoi.phienBanMoi}` : 'Cập nhật';
+    $('nut-ban-moi').disabled = $('nut-cap-nhat').disabled = $('nut-kiem-ban-moi').disabled = dangCapNhat;
+  }
+  /** Máy chủ cũ đã dừng để mở bản mới: thôi gửi nhịp, khoá trang, tự đóng cửa sổ này. */
+  function choKhoiDongLai(cau) {
+    if (dangKhoiDongLai) return;
+    dangKhoiDongLai = true;
+    if (hoiTienDo) { clearInterval(hoiTienDo); hoiTienDo = null; }
+    bao($('bao-cap-nhat'), 'luu-y', e(cau));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    document.querySelector('main').inert = true;
+    setTimeout(() => { window.close(); bao($('bao-cap-nhat'), 'luu-y', e(cau) + ' Có thể đóng cửa sổ này.'); }, 3000);
+  }
+  /** Hỏi tiến độ mỗi giây (cả khi trang được tải lại giữa lúc cập nhật). Máy chủ thôi trả lời = đang khởi động lại. */
+  function theoDoiCapNhat() {
+    if (hoiTienDo) return;
+    dangCapNhat = true; veBanMoi();
+    bao($('bao-cap-nhat'), 'luu-y', 'Đang cập nhật chương trình…');
+    hoiTienDo = setInterval(async () => {
+      try {
+        const t = await goi('/api/ban-moi', { chiXem: true });
+        if (dangKhoiDongLai) return;
+        if (!t.dangCapNhat) {
+          // Lần cập nhật đã dừng mà máy chủ vẫn chạy: không xong (trang bấm Cập nhật tự báo lỗi ở capNhat).
+          thoiTheoDoi();
+          if (!laNguoiBam) bao($('bao-cap-nhat'), 'luu-y', 'Lần cập nhật vừa rồi không xong — chương trình vẫn chạy bản cũ. Bấm Kiểm tra bản mới để thử lại.');
+          return;
+        }
+        if (t.cauTienDo) bao($('bao-cap-nhat'), 'luu-y', 'Đang cập nhật chương trình: ' + e(t.cauTienDo));
+      } catch {
+        choKhoiDongLai('Đang khởi động lại để cập nhật — cửa sổ mới sẽ tự mở (có thể 1–2 phút), cửa sổ này tự đóng. '
+          + 'Quá 2 phút chưa thấy: mở lại Beeftown Cân như mọi khi.');
+      }
+    }, 1000);
+  }
+  /** Mỗi lần tải trạng thái: báo một lần sau khi mở (vừa cập nhật / bản mới hỏng đã quay về); đang cập nhật thì theo dõi. */
+  function baoSauCapNhat(s) {
+    if (!s.capNhat) return;
+    const c = s.capNhat;
+    if (c.dangCapNhat && !dangCapNhat) theoDoiCapNhat();
+    if (daBaoCapNhat) return;
+    daBaoCapNhat = true;
+    $('ca-phien-ban').textContent = 'đang dùng ' + s.phienBan;
+    if (c.vuaCapNhatTu) bao($('bao-cap-nhat'), 'xong', `Đã cập nhật Beeftown Cân lên bản <b>${e(s.phienBan)}</b> (trước là ${e(c.vuaCapNhatTu)}).`);
+    else if (c.capNhatHong) {
+      bao($('bao-cap-nhat'), 'loi', `Bản ${e(c.capNhatHong)} không mở được trên máy này (có thể do phần mềm diệt virus) nên chương trình đã `
+        + `quay về bản ${e(s.phienBan)} — báo cho người lo phần mềm. File bản mới để ở <b>BeeftownCan.loi.exe</b> cạnh chương trình.`);
+    }
+  }
+  async function kiemBanMoi(hoiLai) {
+    banMoi = await goi('/api/ban-moi', { hoiLai });
+    veBanMoi();
+    return banMoi;
+  }
+  async function capNhat() {
+    if (dangCapNhat || !banMoi || !banMoi.phienBanMoi) return;
+    if (!confirm(`Cập nhật Beeftown Cân lên bản ${banMoi.phienBanMoi} (${banMoi.kichThuocChu})?\n\n`
+      + 'Chương trình tải file từ kho cập nhật, kiểm tra, rồi tự đóng và mở lại (1–2 phút). Việc đang gửi xuống cân sẽ gửi xong trước. '
+      + 'Bản cũ giữ lại thành BeeftownCan.cu.exe.')) return;
+    laNguoiBam = true;
+    theoDoiCapNhat();
+    try {
+      const k = await goi('/api/cap-nhat');
+      choKhoiDongLai(k.cau);
+    } catch (err) {
+      if (dangKhoiDongLai) return;
+      thoiTheoDoi();
+      bao($('bao-cap-nhat'), 'loi', e(err.message));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+  $('nut-ban-moi').onclick = capNhat;
+  $('nut-cap-nhat').onclick = capNhat;
+  $('nut-kiem-ban-moi').onclick = async () => {
+    const noi = $('ket-qua-ban-moi');
+    $('nut-kiem-ban-moi').disabled = true;
+    try { const k = await kiemBanMoi(true); bao(noi, k.phienBanMoi ? 'luu-y' : 'xong', e(k.cau)); }
+    catch (err) { bao(noi, 'loi', e(err.message)); }
+    finally { $('nut-kiem-ban-moi').disabled = dangCapNhat; }
+  };
+
   $('nut-mo-thu-muc').onclick = () => goi('/api/mo-thu-muc', {}).catch(err => baoChung('loi', e(err.message)));
   $('nut-dang-xuat').onclick = async () => { try { await goi('/api/dang-xuat'); await taiTrangThai(); } catch (err) { baoChung('loi', e(err.message)); } };
 
-  taiTrangThai().then(kiemTraCan).catch(err => baoChung('loi', e(err.message)));
+  taiTrangThai().then(() => {
+    // Hỏi bản mới im lặng (không vào mạng được thì thôi, nút "Kiểm tra bản mới" báo lỗi rõ).
+    if (trangThai && trangThai.capNhat && trangThai.capNhat.coTheCapNhat) kiemBanMoi(false).catch(() => {});
+    return kiemTraCan();
+  }).catch(err => baoChung('loi', e(err.message)));
 })();
 </script>
 </body>

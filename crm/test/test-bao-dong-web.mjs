@@ -79,6 +79,7 @@ function thoGia(luc) {
     messenger: { dang_bat: true, bat_luc: t(30 * 24 * 60), lan_nhan_cuoi: t(10), loi_cuoi_luc: null, loi_7_ngay: 0 },
     dich: { cho: 0, loi: 0 },
     bao_dong: { lan_chay_cuoi: t(5), kenh: 'telegram', co_loi: false, lan_gui_cuoi: t(60) },
+    sao_luu: { lan_cuoi: t(10 * 60), lan_cuoi_ok: true, lan_cuoi_thu: 'dat', dung_duoc_cuoi: t(10 * 60), kich_thuoc: 1048576 },
     chi_nhanh: [cn(CN1, 'q1', 'Beeftown Q1'), cn(CN7, 'q7', 'Beeftown Q7')],
   };
 }
@@ -404,6 +405,10 @@ await db.query(`insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro) va
 // Mỗi chi nhánh một bàn: form đặt bàn mở mà chưa có bàn là đèn KHÁCH đỏ — báo hay giữ tùy giờ chạy
 // test. Các nhóm dưới chỉ dùng đèn HỆ THỐNG (Zalo) nên chạy giờ nào cũng cùng kết quả.
 for (const cn of [cnA, cnB]) await db.query(`insert into ban_an (chi_nhanh_id, ten) values ($1, 'Bàn 1')`, [cn.id]);
+// Một lượt sao lưu tốt 2 giờ trước: đèn "Sao lưu dữ liệu" xanh (chưa có bản nào là ĐỎ — nhóm 19c thử đường đó).
+const SAO_LUU_TOT = `insert into he_thong_sao_luu (bat_dau_luc, ok, kich_thuoc, so_bang, so_dong, thu_khoi_phuc, luot_chay)
+                     values (now() - interval '2 hours', true, 829275, 118, 10325, 'dat', '1001-1')`;
+await db.query(SAO_LUU_TOT);
 
 const MAT_KHAU = 'MatKhauMay-Bi-Mat-123';
 const ENV = { BAO_DONG_MAY_EMAIL: 'may-bao-dong@beeftown.test', BAO_DONG_MAY_MAT_KHAU: MAT_KHAU };
@@ -665,7 +670,7 @@ await nhom('18 · MẤT MẠNG / DATABASE LỖI GIỮA CHỪNG → KHÔNG GỬI,
 // ===========================================================================
 await nhom('19 · KHÔNG ĐỌC ĐƯỢC SỐ LIỆU → ĐÈN GIẢ doc_so_lieu, KHÔNG "ĐÃ ỔN LẠI" GIẢ', async () => {
   const soLieuThat = (() => {
-    const m = readFileSync(join(GOC, 'crm', 'supabase', 'migrations', '0057_bao_dong.sql'), 'utf8');
+    const m = readFileSync(join(GOC, 'crm', 'supabase', 'migrations', '0060_bao_dong.sql'), 'utf8');
     const i = m.indexOf('create or replace function suc_khoe_so_lieu(');
     return m.slice(i, m.indexOf('\n$$;', i) + 4);
   })();
@@ -724,6 +729,29 @@ await nhom('19b · ĐÃ BÁO HẾT ĐỎ MÀ KHÔNG KẾT THÚC ĐƯỢC LƯỢT
   await chay({ kenh });
   await lui('zalo', 'het_do_tu', 16);
   await chay({ kenh });
+});
+
+// ===========================================================================
+// Đèn "Sao lưu dữ liệu" (0058) chỉ chủ / quản lý đọc được qua suc_khoe_sao_luu(); 0060 tách phần tính
+// để lượt báo động thấy nó như mọi đèn khác — không thì sao lưu hỏng không bao giờ được báo.
+await nhom('19c · SAO LƯU KHÔNG CÓ BẢN DÙNG ĐƯỢC → ĐƯỢC BÁO NHƯ MỌI ĐÈN HỆ THỐNG', async () => {
+  const truoc = kenh.tin.length;
+  await chay({ kenh });
+  ok('Sao lưu tốt → không có sự cố sao lưu', !(await suCoMo('sao_luu')) && kenh.tin.length === truoc);
+  await db.query(`update he_thong_sao_luu set bat_dau_luc = now() - interval '40 hours', ket_thuc_luc = now() - interval '39 hours'`);
+  await chay({ kenh });
+  ok('Bản dùng được gần nhất 40 giờ trước → đèn đỏ → sự cố "sao_luu" mở', !!(await suCoMo('sao_luu')));
+  await lui('sao_luu', 'bat_dau_luc', 6);
+  await chay({ kenh });
+  ok('Lượt sau → tin "mới đỏ" với đúng câu của bảng', kenh.tin.length === truoc + 1
+     && kenh.tin.at(-1).includes('• Sao lưu dữ liệu: Bản sao lưu dùng được gần nhất đã 40 giờ trước'), kenh.tin.at(-1));
+  await db.query(`delete from he_thong_sao_luu`);
+  await db.query(SAO_LUU_TOT);
+  await chay({ kenh });
+  await lui('sao_luu', 'het_do_tu', 16);
+  await chay({ kenh });
+  ok('Sao lưu tốt lại → "Sao lưu dữ liệu: đã ổn lại."', kenh.tin.length === truoc + 2
+     && kenh.tin.at(-1).includes('• Sao lưu dữ liệu: đã ổn lại.') && !(await suCoMo('sao_luu')), kenh.tin.at(-1));
 });
 
 // ===========================================================================

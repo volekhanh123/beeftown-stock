@@ -649,6 +649,7 @@
 </ul>
 <p>Khung đỏ <b>"HSD trên cân tính cho ngày dd/mm — mỗi ngày chưa gửi lại là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói."</b> dưới ba ô: cân in HSD mà hôm nay chưa gửi. Quản lý gửi (<a href="#the-gui-gia">mục 17</a>), hoặc bật tự gửi. "Hôm nay" là ngày giờ Việt Nam của chương trình, không theo đồng hồ trình duyệt.</p>
 <p><span class="nhan moi">Mới 2.2</span> Nút <span class="n">Hướng dẫn</span> mở trang này.</p>
+<p><span class="nhan moi">Mới 2.5</span> Có bản mới thì cạnh chữ "phiên bản" ở trên cùng hiện nút vàng <span class="n">Có bản mới … — Cập nhật</span>: bấm là chương trình tự tải và tự mở lại (<a href="#cap-nhat">mục 26</a>).</p>
 
 <h3>Ai thấy thẻ nào</h3>
 <div class="khung-bang"><table>
@@ -973,10 +974,26 @@
     <tr><td>Chi nhánh</td><td>Tài khoản có nhiều chi nhánh: chọn đúng chi nhánh của quầy.</td></tr>
     <tr><td>Cập nhật file gốc từ cân</td><td>Cân bị sửa không qua chương trình. Lưu cân ra USB (<a href="#usb-tren-can">mục 8</a>), chọn file ở đây. <span class="nhan moi">Mới 2.2</span> Hoặc thẻ Cân &amp; thông số → <span class="n">Đọc dữ liệu từ cân qua WiFi</span> (<span class="nhan chua">Chưa thử trên cân thật</span>).</td></tr>
     <tr><td>Dây RS232 (thử)</td><td>Thử gửi qua dây cáp nối thẳng máy tính với cân. <span class="nhan chua">Chưa thử trên cân thật</span>. Không dùng khi WiFi và USB vẫn tốt.</td></tr>
+    <tr><td>Phiên bản: <span class="n">Kiểm tra bản mới</span>, <span class="n">Cập nhật</span> <span class="nhan moi">Mới 2.5</span></td><td>Xem có bản mới không, cập nhật chương trình. Xem ngay dưới bảng này.</td></tr>
     <tr><td><span class="n">Mở thư mục dữ liệu</span></td><td>Xem các file của chương trình.</td></tr>
     <tr><td><span class="n">Đăng xuất kho</span></td><td>Đổi người đăng nhập.</td></tr>
   </tbody>
 </table></div>
+
+<h3 id="cap-nhat">Cập nhật chương trình <span class="nhan moi">Mới 2.5</span></h3>
+<p>Khỏi lên GitHub tải file. Mỗi lần mở, chương trình tự hỏi có bản mới không; có thì trên cùng hiện nút vàng <span class="n">Có bản mới … — Cập nhật</span>.</p>
+<ol class="buoc">
+  <li>Chọn lúc quầy vắng. Bấm nút vàng (hoặc Cài đặt → <span class="n">Cập nhật lên …</span>) → <span class="n">OK</span>.</li>
+  <li>Chương trình tải file (khoảng 85 MB, thường 1–3 phút), kiểm đúng cỡ và mã kiểm tra, chờ việc đang gửi xuống cân xong, rồi tự đóng và mở lại.</li>
+  <li>Cửa sổ mới hiện dòng xanh <b>"Đã cập nhật Beeftown Cân lên bản …"</b>. Xong. Cài đặt, đăng nhập, file gốc của cân vẫn giữ nguyên.</li>
+</ol>
+<ul>
+  <li>Mất mạng giữa chừng: chương trình báo <b>"Chưa đổi gì"</b> và vẫn chạy bản cũ. Bấm lại lúc có mạng.</li>
+  <li>Bản mới không mở được (phần mềm diệt virus chặn…): sau khoảng 1–2 phút chương trình tự quay về bản cũ và hiện dòng đỏ. Báo người lo phần mềm.</li>
+  <li>Để file BeeftownCan.exe ở Desktop hoặc một thư mục bình thường. Nằm trong <i>Program Files</i> hay USB chỉ đọc thì không tự cập nhật được — chương trình báo cách chép ra.</li>
+  <li>Bản trước được giữ lại cạnh chương trình, tên <b>BeeftownCan.cu</b> (Windows có thể ẩn đuôi .exe). <b>Quay về bản trước bằng tay</b>: đóng chương trình → đổi tên <b>BeeftownCan</b> thành <b>BeeftownCan.moi</b> → đổi tên <b>BeeftownCan.cu</b> thành <b>BeeftownCan</b> → mở lại.</li>
+  <li>Bản 2.4 trở về trước chưa có nút này: cài bản 2.5 bằng tay một lần (trang Releases), từ đó về sau bấm nút.</li>
+</ul>
 <h3>Thư mục dữ liệu (Tài liệu\Beeftown Can)</h3>
 <ul>
   <li><b>A_000.TMS</b>: file gốc — bản mới nhất đã nạp vào cân. <b>tren-can.tsv</b>: các hàng đang nằm trên cân. <b>tem-da-tat.json</b>: các ô tem đã tắt (để bật lại).</li>
@@ -1004,6 +1021,10 @@
     <tr><td>"Cân ở … có mã máy …, không phải cân chương trình vẫn dùng"</td><td>Cân ở địa chỉ đó là cân khác. Không làm gì thêm; xem <a href="#doi-dia-chi">mục 24</a>. Vừa thay cân: Cài đặt → gõ lại địa chỉ cân → <span class="n">Lưu cài đặt</span>.</td></tr>
     <tr><td>Khung đỏ "Hàng trên cân chưa rõ"</td><td>Lần xoá qua WiFi trước hỏng sau khi đã gửi lệnh xoá — cân có thể thiếu hàng. Nạp USB ngay (<a href="#usb-du-phong">mục 25</a>), hoặc bấm <span class="n">Gửi xuống cân</span> để gửi lại cả danh sách.</td></tr>
     <tr><td>Việc qua WiFi của bản 2.2 báo không được</td><td>Đọc câu báo, làm theo đường USB chương trình chỉ. Không bấm đi bấm lại.</td></tr>
+    <tr><td>Cập nhật: "… Chưa đổi gì — chương trình vẫn chạy bản cũ."</td><td>Mạng yếu hoặc file tải về hỏng. Thử lại lúc mạng ổn (<a href="#cap-nhat">mục 26</a>).</td></tr>
+    <tr><td>Cập nhật: "Không ghi được vào thư mục …"</td><td>Chép BeeftownCan.exe ra Desktop, mở từ đó rồi cập nhật.</td></tr>
+    <tr><td>Dòng đỏ "Bản … không mở được trên máy này … đã quay về bản …"</td><td>Chương trình vẫn chạy bản cũ. Báo người lo phần mềm; file bản mới để ở BeeftownCan.loi.</td></tr>
+    <tr><td>"Chương trình đang khởi động lại để cập nhật"</td><td>Chờ cửa sổ mới mở, làm lại việc vừa bấm ở cửa sổ mới.</td></tr>
   </tbody>
 </table></div>
 

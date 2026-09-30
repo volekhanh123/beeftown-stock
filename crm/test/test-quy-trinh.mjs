@@ -79,12 +79,12 @@ await nhom('1 · MỌI HÀM SQL ĐỀU CÓ KIỂM THỬ NHẮC TÊN', async () =
 // ===========================================================================
 await nhom('2 · KHÔNG FILE MÃ NGUỒN NÀO BỊ .gitignore CHẶN ÂM THẦM', async () => {
   // Chỉ những chỗ chứa mã nguồn. Chỗ khác bị chặn là CÓ Ý (tài liệu mật, ảnh, .env, file cân .TMS).
-  const CHO_MA = /^(web\/(src|kiem-tra)\/|crm\/(test|supabase)\/|can-app\/(src|test|scripts)\/|\.github\/|CLAUDE\.md$)/;
-  const DUOI_MA = /\.(ts|tsx|mjs|js|astro|sql|ya?ml|md|json|css|html|ps1)$/;
+  const CHO_MA = /^(web\/(src|kiem-tra)\/|crm\/(test|supabase|sao-luu)\/|can-app\/(src|test|scripts)\/|\.github\/|CLAUDE\.md$)/;
+  const DUOI_MA = /\.(ts|tsx|mjs|js|astro|sql|ya?ml|md|json|css|html|ps1|sh)$/;
   // --directory: thư mục bị chặn cả khối (node_modules, dist, ảnh lỗi) hiện một dòng "thư mục/" thay vì từng
   // file. Thư mục bị chặn chỉ đáng ngờ khi nằm trong chỗ CHỈ chứa mã nguồn — web/kiem-tra/anh-loi/ hay
   // crm/supabase/.temp/ là cố ý chặn.
-  const THU_MUC_MA = /^(web\/src|crm\/test|crm\/supabase\/(migrations|thu)|can-app\/(src|test|scripts)|\.github)\//;
+  const THU_MUC_MA = /^(web\/src|crm\/test|crm\/sao-luu|crm\/supabase\/(migrations|thu)|can-app\/(src|test|scripts)|\.github)\//;
   const biChan = git(['ls-files', '--others', '--ignored', '--exclude-standard', '--directory'])
     .split('\n').filter(f => (f.endsWith('/') ? THU_MUC_MA.test(f) : CHO_MA.test(f) && DUOI_MA.test(f)) && !/node_modules\//.test(f));
   ok('Mọi file mã nguồn đều được git thấy', biChan.length === 0,
@@ -98,6 +98,11 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
     '.github/workflows/kiem-thu.yml',
     '.github/workflows/gac-nhanh.yml',
     '.github/workflows/dong-goi-can.yml',
+    '.github/workflows/sao-luu.yml',
+    'crm/sao-luu/sao-luu.sh',
+    'crm/sao-luu/khoi-phuc.sh',
+    'crm/sao-luu/dem-dong.sh',
+    'crm/sao-luu/ghi-luot.sql',
     '.github/pull_request_template.md',
     '.github/ISSUE_TEMPLATE/bao-loi.yml',
   ];
@@ -154,6 +159,65 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
   const dongPhienBan = readFileSync(join(GOC, 'can-app', 'src', 'main.ts'), 'utf8').match(/^const PHIEN_BAN = '\d+\.\d+\.\d+';/gm) ?? [];
   ok('can-app/src/main.ts có đúng một dòng PHIEN_BAN mà workflow đóng gói đọc được', dongPhienBan.length === 1,
      `${dongPhienBan.length} dòng — cần đúng một dòng dạng  const PHIEN_BAN = '2.1.0';  (tên artifact, Release lấy từ đây)`);
+
+  // 2.5 — bản cài công khai cho nút "Cập nhật": token là secret DUY NHẤT của workflow đóng gói, chỉ ở env của một bước
+  // trong job phat-hanh (không bao giờ ở job dong-goi — lượt bản thử PR chạy mã chưa gộp ở đó). Thiếu secret thì chỉ cảnh
+  // báo, không làm hỏng Release riêng. Tên kho công khai ở workflow và ở can-app/src/cap-nhat.ts phải trùng nhau, và phiếu
+  // phiên bản có đủ trường docPhieuPhienBan đọc.
+  const biMat = [...goi.matchAll(/secrets\.([A-Za-z0-9_]+)/g)];
+  const viTriPhatHanh = goi.indexOf('\n  phat-hanh:\n');
+  ok('Workflow đóng gói: secret duy nhất là TOKEN_BAN_CAI_CAN, một lần, trong env của một bước ở job phat-hanh',
+     biMat.length === 1 && biMat[0][1] === 'TOKEN_BAN_CAI_CAN' && viTriPhatHanh > 0 && biMat[0].index > viTriPhatHanh
+       && /\n          TOKEN_BAN_CAI: \$\{\{ secrets\.TOKEN_BAN_CAI_CAN \}\}\n/.test(goi),
+     biMat.map(m => m[1]).join(', ') || 'không thấy secret nào');
+  ok('Workflow đóng gói: chưa có secret → cảnh báo ở Summary, thoát 0 (Release riêng vẫn đủ)',
+     /if \[ -z "\$TOKEN_BAN_CAI" \]; then\n\s+echo "::warning::[^\n]*\n\s+echo [^\n]*>> "\$GITHUB_STEP_SUMMARY"\n\s+exit 0\n/.test(goi));
+  const khoWorkflow = goi.match(/\n\s+REPO_BAN_CAI: (\S+)\n/)?.[1];
+  const capNhat = existsSync(join(GOC, 'can-app', 'src', 'cap-nhat.ts')) ? readFileSync(join(GOC, 'can-app', 'src', 'cap-nhat.ts'), 'utf8') : '';
+  const khoChuongTrinh = capNhat.match(/export const REPO_BAN_CAI = '([^']+)';/)?.[1];
+  ok('Kho bản cài công khai ở workflow trùng REPO_BAN_CAI của can-app/src/cap-nhat.ts', !!khoWorkflow && khoWorkflow === khoChuongTrinh,
+     `workflow: ${khoWorkflow} · cap-nhat.ts: ${khoChuongTrinh}`);
+  ok('Bản cài công khai: .exe lấy từ Release riêng, đưa lên cùng phien-ban.json có đủ dang, phienBan, tep, sha256, kichThuoc, ngay',
+     /gh release download "can-v\$PHIEN_BAN"/.test(goi) && /gh release create "can-v\$PHIEN_BAN" BeeftownCan\.exe phien-ban\.json --repo "\$REPO_BAN_CAI"/.test(goi)
+       && ['dang: 1', 'phienBan: $phienBan', 'tep: "BeeftownCan.exe"', 'sha256: $sha256', 'kichThuoc: $kichThuoc', 'ngay: $ngay'].every(t => goi.includes(t)));
+
+  // 0058 — sao lưu hằng đêm. Workflow này cầm chuỗi kết nối database (có mật khẩu) và mật khẩu mã hoá bản sao:
+  // mỗi bí mật chỉ ở env: của đúng bước dùng nó; bước "có bí mật chưa?" chỉ thấy true / false. Chỉ file ĐÃ MÃ HOÁ
+  // được lưu; khôi phục thử chỉ vào Supabase dựng tạm (127.0.0.1); thiếu bí mật thì cảnh báo, thoát 0.
+  const sl = existsSync(join(GOC, '.github/workflows/sao-luu.yml')) ? readFileSync(join(GOC, '.github/workflows/sao-luu.yml'), 'utf8') : '';
+  const dongBiMat = [...sl.matchAll(/^.*secrets\.[A-Za-z0-9_]+.*$/gm)].map(m => m[0]);
+  const dungCach = l => /^          (SAO_LUU_DB_URL|SAO_LUU_MAT_KHAU): \$\{\{ secrets\.\1 \}\}$/.test(l)
+    || /^          CO_(URL|MAT_KHAU): \$\{\{ secrets\.SAO_LUU_(DB_URL|MAT_KHAU) != '' \}\}$/.test(l);
+  const buocCo = ten => sl.split(/\n      - /).filter(b => b.includes(`${ten}: \${{ secrets.${ten} }}`)).map(b => b.match(/name: (.+)/)?.[1]);
+  ok('Workflow sao lưu: bí mật chỉ là SAO_LUU_DB_URL, SAO_LUU_MAT_KHAU, mỗi dòng đều là env: của một bước (không nằm trong lệnh)',
+     dongBiMat.length === 6 && dongBiMat.every(dungCach), dongBiMat.join(' | ') || 'không thấy');
+  ok('Chuỗi kết nối chỉ ở bước Sao lưu và bước Ghi lượt; mật khẩu mã hoá chỉ ở bước Sao lưu và bước Khôi phục thử',
+     JSON.stringify(buocCo('SAO_LUU_DB_URL')) === JSON.stringify(['Sao lưu (supabase db dump → nén → mã hoá)', 'Ghi lượt vào database (đèn "Sao lưu dữ liệu" ở /noi-bo)'])
+     && JSON.stringify(buocCo('SAO_LUU_MAT_KHAU')) === JSON.stringify(['Sao lưu (supabase db dump → nén → mã hoá)', 'Khôi phục thử vào Supabase dựng tạm']),
+     `${buocCo('SAO_LUU_DB_URL').join(', ')} · ${buocCo('SAO_LUU_MAT_KHAU').join(', ')}`);
+  ok('Workflow sao lưu: mỗi đêm 02:00 giờ VN + chạy tay; chỉ quyền đọc repo; hai lượt không chồng nhau',
+     /cron: '0 19 \* \* \*'/.test(sl) && /\n  workflow_dispatch:\n/.test(sl) && /\npermissions:\n  contents: read\n/.test(sl)
+     && /\nconcurrency:\n  group: sao-luu\n  cancel-in-progress: false\n/.test(sl));
+  ok('Workflow sao lưu: thiếu bí mật → cảnh báo + Summary, thoát 0',
+     /echo "::warning::[^\n]*SAO_LUU_DB_URL[^\n]*\n\s+echo [^\n]*>> "\$GITHUB_STEP_SUMMARY"\n\s+echo "co=false" >> "\$GITHUB_OUTPUT"\n\s+exit 0\n/.test(sl));
+  ok('Workflow sao lưu: chỉ lưu file ĐÃ MÃ HOÁ (đường dẫn TEP của sao-luu.sh, đuôi .gpg), giữ 30 ngày',
+     /path: \$\{\{ steps\.sao-luu\.outputs\.TEP \}\}\n\s+retention-days: 30\n/.test(sl)
+     && /TEN="beeftown-[^"]*\.tar\.gz\.gpg"/.test(readFileSync(join(GOC, 'crm', 'sao-luu', 'sao-luu.sh'), 'utf8'))
+     && (sl.match(/uses: actions\/upload-artifact@/g) ?? []).length === 1);
+  ok('Workflow sao lưu: khôi phục thử chỉ vào Supabase dựng tạm trong máy CI (127.0.0.1)',
+     /khoi-phuc\.sh" "\$TEP" "postgresql:\/\/postgres:postgres@127\.0\.0\.1:54322\/postgres"/.test(sl));
+  ok('Workflow sao lưu: bước ghi lượt chạy cả khi bước trước hỏng hay quá giờ (đèn phải biết lượt hỏng), bằng ghi-luot.sql',
+     /if: \$\{\{ always\(\) && steps\.bi-mat\.outputs\.co == 'true' \}\}/.test(sl) && /-f crm\/sao-luu\/ghi-luot\.sql/.test(sl)
+     && /-v luot_chay="\$LUOT"/.test(sl) && /LUOT: \$\{\{ github\.run_id \}\}-\$\{\{ github\.run_attempt \}\}/.test(sl));
+  ok('Workflow sao lưu: không in lệnh ra log (không set -x)', !/set -[a-z]*x/.test(sl));
+  const hanGio = t => Number(sl.match(new RegExp(`name: ${t}[^\\n]*\\n(?:        .*\\n)*?        timeout-minutes: (\\d+)`))?.[1] ?? 0);
+  const hanJob = Number(sl.match(/\n    timeout-minutes: (\d+)\n/)?.[1] ?? 0);
+  ok('Workflow sao lưu: sao lưu và khôi phục thử có giới hạn giờ riêng, cộng lại vẫn chừa thời gian cho bước ghi lượt',
+     hanGio('Sao lưu \\(') > 0 && hanGio('Khôi phục thử') > 0 && hanGio('Ghi lượt') > 0
+     && hanGio('Sao lưu \\(') + hanGio('Khôi phục thử') + hanGio('Ghi lượt') + 10 <= hanJob,
+     `${hanGio('Sao lưu \\(')} + ${hanGio('Khôi phục thử')} + ${hanGio('Ghi lượt')} / job ${hanJob}`);
+  ok('Workflow sao lưu: action bên thứ ba (supabase/setup-cli) ghim theo commit, không theo tag',
+     /uses: supabase\/setup-cli@[0-9a-f]{40} # v\d/.test(sl) && !/uses: supabase\/setup-cli@v/.test(sl));
 
   const pkg = JSON.parse(readFileSync(join(GOC, 'crm', 'package.json'), 'utf8'));
   ok('npm test chạy bằng chay-tat-ca.mjs (file test mới tự được chạy)', /chay-tat-ca\.mjs/.test(pkg.scripts?.test ?? ''),

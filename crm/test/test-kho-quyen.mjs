@@ -212,7 +212,7 @@ await nhom('4 · BẢNG TRA QUYỀN KHO', async () => {
     `select count(*)::int as n from unnest($1::text[]) v where 'may_messenger'::vai_tro = any(kho_vai_duoc(v))`,
     [Object.keys(QUYEN_KHO)]);
   ok('may_messenger không có việc kho nào trong database (kho_vai_duoc)', soViecMess === 0, `${soViecMess} việc`);
-  // 0056: may_bao_dong (việc chạy nền báo động) cũng vậy — nó chỉ gọi bốn RPC máy của 0057.
+  // 0059: may_bao_dong (việc chạy nền báo động) cũng vậy — nó chỉ gọi bốn RPC máy của 0060.
   ok('may_bao_dong không có việc kho nào', Object.keys(QUYEN_KHO).every(v => !QUYEN_KHO[v].includes('may_bao_dong')));
   const { rows: [{ n: soViecBaoDong }] } = await db.query(
     `select count(*)::int as n from unnest($1::text[]) v where 'may_bao_dong'::vai_tro = any(kho_vai_duoc(v))`,
@@ -420,7 +420,7 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ipos_lo_cua_o', 'kho_ipos_lay_lo_cua_lo', 'kho_ipos_goi_theo_kg_lo',
     // 0054: giá sau giảm, các trigger chống trùng mã cân giữa món / ô / mã giảm
     'kho_gia_giam', 'kho_ma_giam_kiem', 'kho_o_ma_khong_trung_giam', 'kho_mat_hang_ma_can_khong_trung_giam',
-    // 0057: phần tính của kho_ipos_trang_thai, không kiểm quyền — máy báo động đọc qua suc_khoe_so_lieu
+    // 0060: phần tính của kho_ipos_trang_thai, không kiểm quyền — máy báo động đọc qua suc_khoe_so_lieu
     'kho_ipos_trang_thai_goc',
   ].sort();
 

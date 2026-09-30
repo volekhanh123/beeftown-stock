@@ -2,7 +2,7 @@
  * SỨC KHỎE HỆ THỐNG — đèn xanh / vàng / đỏ trên trang Tổng quan (/noi-bo)
  * =====================================================================
  *
- * Database (suc_khoe_he_thong, migration 0055; 0057 thêm ô bao_dong) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
+ * Database (suc_khoe_he_thong, migration 0055; suc_khoe_sao_luu, 0058; 0060 thêm ô bao_dong) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
  * quyết định MÀU và CÂU hai thứ tiếng; crm/test/test-suc-khoe-web.mjs thử từng ngưỡng bằng dữ
  * liệu giả, không cần database.
  *
@@ -51,6 +51,11 @@ export const PHUT_TIN_KET = 30;
  * hỏng một cách lặng lẽ.
  */
 export const GIO_KHONG_GUI_BAO_DONG = 26;
+/**
+ * Sao lưu chạy mỗi đêm (.github/workflows/sao-luu.yml): quá chừng này giờ không có bản DÙNG ĐƯỢC nào
+ * (khôi phục thử đạt) = đã lỡ ít nhất một đêm — dữ liệu từ đó tới giờ chưa có bản sao dùng được.
+ */
+export const GIO_SAO_LUU = 36;
 
 // -----------------------------------------------------------------------------
 // SỐ LIỆU THÔ — đúng dạng suc_khoe_he_thong() trả về
@@ -75,6 +80,14 @@ export interface ChiNhanhTho {
   so_kho: { co_kho: boolean; lech: number };
 }
 
+/** suc_khoe_sao_luu() (0058). Mốc = lúc lượt bắt đầu (dữ liệu trong bản sao là của lúc đó). */
+export interface SaoLuuTho {
+  /** Lượt gần nhất, bất kể kết quả; lan_cuoi_thu: khôi phục thử của lượt đó — 'dat' | 'hong' | 'chua_thu'. */
+  lan_cuoi: string | null; lan_cuoi_ok: boolean | null; lan_cuoi_thu: string | null;
+  /** Bản DÙNG ĐƯỢC gần nhất: sao lưu xong VÀ khôi phục thử đạt. */
+  dung_duoc_cuoi: string | null; kich_thuoc: number | null;
+}
+
 export interface SucKhoeTho {
   /** now() của database — mọi phép "bao lâu trước" tính theo mốc này, không theo đồng hồ Worker. */
   luc: string;
@@ -83,10 +96,12 @@ export interface SucKhoeTho {
   messenger: { dang_bat: boolean; bat_luc: string | null; lan_nhan_cuoi: string | null; loi_cuoi_luc: string | null; loi_7_ngay: number };
   dich: { cho: number; loi: number };
   /**
-   * Việc chạy nền báo động (0057). kenh: 'khong' khi chưa chọn kênh. co_loi: lượt gần nhất lỗi.
-   * Thiếu ô (database chưa chạy 0057) = chưa chạy lần nào.
+   * Việc chạy nền báo động (0060). kenh: 'khong' khi chưa chọn kênh. co_loi: lượt gần nhất lỗi.
+   * Thiếu ô (database chưa chạy 0060) = chưa chạy lần nào.
    */
   bao_dong?: { lan_chay_cuoi: string | null; kenh: string; co_loi: boolean; lan_gui_cuoi: string | null };
+  /** Gắn thêm từ suc_khoe_sao_luu() (docSucKhoeVaSaoLuu). undefined: database chưa chạy 0058; null: không đọc được. */
+  sao_luu?: SaoLuuTho | null;
   chi_nhanh: ChiNhanhTho[];
 }
 
@@ -107,14 +122,15 @@ export function laSucKhoeTho(v: unknown): v is SucKhoeTho {
 }
 
 /**
- * Chính suc_khoe_he_thong() chưa có (database chưa chạy 0055): PGRST202 của PostgREST hoặc 42883
+ * Chính hàm `ten` chưa có (database chưa chạy migration của nó): PGRST202 của PostgREST hoặc 42883
  * của Postgres, VÀ câu lỗi nhắc đúng tên hàm. Chỉ xét mã thì một hàm CON bị đổi / xóa (42883
  * "function kho_ipos_trang_thai(uuid) does not exist") thành "chưa chạy migration" màu vàng,
  * không log — hỏng thật bị giấu đi.
  */
-export function laThieuHam(e: { code?: string | null; message?: string | null } | null | undefined): boolean {
+export function laThieuHam(e: { code?: string | null; message?: string | null } | null | undefined,
+                           ten: 'suc_khoe_he_thong' | 'suc_khoe_sao_luu' = 'suc_khoe_he_thong'): boolean {
   if (!e) return false;
-  return (e.code === 'PGRST202' || e.code === '42883') && /\bsuc_khoe_he_thong\b/.test(e.message ?? '');
+  return (e.code === 'PGRST202' || e.code === '42883') && new RegExp(`\\b${ten}\\b`).test(e.message ?? '');
 }
 
 /**
@@ -141,11 +157,43 @@ export async function docSucKhoe(client: Pick<SupabaseClient, 'rpc'>): Promise<K
   }
 }
 
+/**
+ * Gọi suc_khoe_sao_luu() (0058). Không bao giờ ném lỗi. undefined = database chưa chạy 0058 (không có
+ * hàm); null = không đọc được lúc này (mạng, lỗi, dạng lạ) — đèn nói rõ, không bao giờ xanh.
+ */
+export async function docSaoLuu(client: Pick<SupabaseClient, 'rpc'>): Promise<SaoLuuTho | null | undefined> {
+  try {
+    const { data, error } = await client.rpc('suc_khoe_sao_luu');
+    if (error) {
+      if (laThieuHam(error, 'suc_khoe_sao_luu')) return undefined;
+      console.error('[suc-khoe] rpc suc_khoe_sao_luu failed:', error.code ?? '', error.message ?? '');
+      return null;
+    }
+    if (!laDoiTuong(data)) {
+      console.error('[suc-khoe] rpc suc_khoe_sao_luu returned an unexpected shape');
+      return null;
+    }
+    return data as unknown as SaoLuuTho;
+  } catch (e) {
+    console.error('[suc-khoe] rpc suc_khoe_sao_luu threw:', e instanceof Error ? e.message : String(e));
+    return null;
+  }
+}
+
+/**
+ * Thứ trang Tổng quan gọi: hai hàm song song, số liệu sao lưu gắn vào tho.sao_luu. Hai hàm riêng (không một)
+ * để migration sao lưu không phải định nghĩa lại suc_khoe_he_thong() — xem đầu 0058.
+ */
+export async function docSucKhoeVaSaoLuu(client: Pick<SupabaseClient, 'rpc'>): Promise<KetQuaDoc> {
+  const [kq, saoLuu] = await Promise.all([docSucKhoe(client), docSaoLuu(client)]);
+  return kq.ok ? { ok: true, tho: { ...kq.tho, sao_luu: saoLuu } } : kq;
+}
+
 // -----------------------------------------------------------------------------
 // ĐÁNH GIÁ
 // -----------------------------------------------------------------------------
 export type MauDen = 'xanh' | 'vang' | 'do' | 'tat';
-export type MaDen = 'dat_ban' | 'ipos' | 'so_kho' | 'tin_zalo' | 'tuyen_dung' | 'zalo' | 'messenger' | 'dich' | 'bao_dong';
+export type MaDen = 'dat_ban' | 'ipos' | 'so_kho' | 'tin_zalo' | 'tuyen_dung' | 'zalo' | 'messenger' | 'dich' | 'sao_luu' | 'bao_dong';
 
 export interface Den {
   ma: MaDen;
@@ -184,6 +232,7 @@ const TEN: Record<MaDen, Cau> = {
   zalo:       { vi: 'Bộ gửi tin Zalo', en: 'Zalo sender' },
   messenger:  { vi: 'Bot Messenger', en: 'Messenger bot' },
   dich:       { vi: 'Máy dịch', en: 'Machine translation' },
+  sao_luu:    { vi: 'Sao lưu dữ liệu', en: 'Data backup' },
   bao_dong:   { vi: 'Báo động', en: 'Alerts' },
 };
 
@@ -430,6 +479,66 @@ function denDich(d: Partial<SucKhoeTho['dich']>, nn: NgonNguNB): Den {
     null, nn);
 }
 
+// --- Sao lưu dữ liệu (cả thương hiệu) ----------------------------------------------
+/** "85,3 MB" / "85.3 MB"; "1.234,5 MB" / "1,234.5 MB". */
+function moTaMb(byte: number): Cau {
+  const mb = byte / 1048576;
+  const kieu = { minimumFractionDigits: 1, maximumFractionDigits: 1 };
+  return { vi: `${mb.toLocaleString('vi-VN', kieu)} MB`, en: `${mb.toLocaleString('en-US', kieu)} MB` };
+}
+
+const XEM_SAO_LUU: Cau = {
+  vi: 'Báo người quản trị kỹ thuật xem GitHub → Actions → "Sao lưu database" (README gốc, mục Sao lưu và khôi phục).',
+  en: 'Ask the technical admin to check the backup workflow in GitHub Actions (root README, backup and restore section).',
+};
+
+/**
+ * "Dùng được" = sao lưu xong VÀ khôi phục thử đạt: bản sao không khôi phục được thì coi như không có.
+ * Không bao giờ xám — sao lưu không phải thứ "chưa bật": chưa có bản dùng được nào là dữ liệu đang không có
+ * bản sao, và đó là đỏ. Database chưa chạy 0058 (undefined) / không đọc được (null) → vàng, nói rõ.
+ */
+function denSaoLuu(d: Partial<SaoLuuTho> | null | undefined, bayGio: number, nn: NgonNguNB): Den {
+  const vang = (cau: Cau) => denTu('sao_luu', [{ muc: 'vang', cau }], { vi: '', en: '' }, null, nn);
+  const do_ = (cau: Cau) => denTu('sao_luu', [{ muc: 'do', cau }], { vi: '', en: '' }, null, nn);
+  if (d === undefined) {
+    return vang({ vi: 'Chưa có số liệu sao lưu — database chưa chạy migration 0058. Báo người quản trị kỹ thuật.',
+                  en: 'No backup data — the database has not run migration 0058 yet. Tell the technical admin.' });
+  }
+  if (d === null) {
+    return vang({ vi: 'Không đọc được số liệu sao lưu lúc này — tải lại trang sau ít phút. Điều này KHÔNG có nghĩa là sao lưu đang ổn.',
+                  en: 'Backup data could not be read right now — reload the page in a few minutes. This does NOT mean backups are fine.' });
+  }
+  const dung = ms(d.dung_duoc_cuoi), cuoi = ms(d.lan_cuoi);
+  if (dung === null) {
+    if (cuoi === null) {
+      return do_({ vi: 'Chưa có bản sao lưu nào — dữ liệu đang không có bản sao. Người quản trị kỹ thuật cần thêm hai bí mật SAO_LUU_DB_URL và SAO_LUU_MAT_KHAU cho GitHub (README gốc, mục Sao lưu và khôi phục).',
+                   en: 'No backup exists yet — the data has no copy. The technical admin needs to add the two GitHub secrets SAO_LUU_DB_URL and SAO_LUU_MAT_KHAU (root README, backup and restore section).' });
+    }
+    return do_(d.lan_cuoi_ok === false
+      ? { vi: `Chưa có bản sao lưu nào dùng được — lượt gần nhất (${tuTruoc(bayGio, cuoi).vi}) bị lỗi. ${XEM_SAO_LUU.vi}`,
+          en: `No usable backup yet — the latest run (${tuTruoc(bayGio, cuoi).en}) failed. ${XEM_SAO_LUU.en}` }
+      : { vi: `Chưa có bản sao lưu nào được xác nhận khôi phục được (bản gần nhất: ${tuTruoc(bayGio, cuoi).vi}). ${XEM_SAO_LUU.vi}`,
+          en: `No backup has been confirmed restorable yet (latest copy: ${tuTruoc(bayGio, cuoi).en}). ${XEM_SAO_LUU.en}` });
+  }
+  if (bayGio - dung > GIO_SAO_LUU * 3600000) {
+    return do_({
+      vi: `Bản sao lưu dùng được gần nhất đã ${tuTruoc(bayGio, dung).vi} — sao lưu hằng đêm đang không chạy hoặc bản sao không khôi phục được. ${XEM_SAO_LUU.vi}`,
+      en: `The latest usable backup is from ${tuTruoc(bayGio, dung).en} — the nightly backup is not running or its copies cannot be restored. ${XEM_SAO_LUU.en}` });
+  }
+  const v: VanDe[] = [];
+  if (cuoi !== null && cuoi > dung) {
+    v.push({ muc: 'vang', cau: d.lan_cuoi_ok === false
+      ? { vi: `Lượt sao lưu gần nhất (${tuTruoc(bayGio, cuoi).vi}) bị lỗi — bản dùng được gần nhất: ${tuTruoc(bayGio, dung).vi}`,
+          en: `The latest backup run (${tuTruoc(bayGio, cuoi).en}) failed — latest usable backup: ${tuTruoc(bayGio, dung).en}` }
+      : { vi: `Bản sao lưu gần nhất (${tuTruoc(bayGio, cuoi).vi}) không khôi phục thử được — bản dùng được gần nhất: ${tuTruoc(bayGio, dung).vi}`,
+          en: `The latest backup (${tuTruoc(bayGio, cuoi).en}) failed its test restore — latest usable backup: ${tuTruoc(bayGio, dung).en}` } });
+  }
+  const co = so(d.kich_thuoc) > 0 ? moTaMb(so(d.kich_thuoc)) : null;
+  return denTu('sao_luu', v, {
+    vi: `Sao lưu hằng đêm bình thường — bản gần nhất ${tuTruoc(bayGio, dung).vi}${co ? ` (${co.vi})` : ''}, đã khôi phục thử đủ dữ liệu.`,
+    en: `Nightly backup works — latest copy ${tuTruoc(bayGio, dung).en}${co ? ` (${co.en})` : ''}, test restore complete.` }, null, nn);
+}
+
 // --- Báo động (cả thương hiệu) --------------------------------------------------------
 /** Tên hiện của kênh báo; kênh chưa có ở đây thì hiện đúng mã kênh. */
 const TEN_KENH: Readonly<Record<string, Cau>> = {
@@ -508,8 +617,8 @@ export function bangSucKhoe(kq: KetQuaDoc, nn: NgonNguNB, laChu = false): BangSu
 }
 
 /**
- * Số liệu thô → các khối đèn. Khối đầu là "Toàn thương hiệu" (Zalo, Messenger, máy dịch, báo động
- * — cấu hình chung), sau đó mỗi chi nhánh một khối theo thứ tự database trả (theo tên).
+ * Số liệu thô → các khối đèn. Khối đầu là "Toàn thương hiệu" (sao lưu, Zalo, Messenger, máy dịch, báo
+ * động — cấu hình chung), sau đó mỗi chi nhánh một khối theo thứ tự database trả (theo tên).
  * laChu: chủ sở hữu được mở màn cài đặt Zalo; quản lý chỉ mở màn Zalo chung.
  */
 export function danhGiaSucKhoe(tho: SucKhoeTho, nn: NgonNguNB, laChu = false): SucKhoe {
@@ -519,6 +628,7 @@ export function danhGiaSucKhoe(tho: SucKhoeTho, nn: NgonNguNB, laChu = false): S
     {
       ma: 'thuong_hieu', ten: TEN_THUONG_HIEU[nn],
       den: [
+        denSaoLuu(tho.sao_luu, bayGio, nn),
         denZalo(tho.zalo ?? {}, laChu, bayGio, nn),
         denMessenger(tho.messenger ?? {}, bayGio, nn),
         denDich(tho.dich ?? {}, nn),

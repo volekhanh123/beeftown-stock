@@ -145,7 +145,7 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   // 0055 — bảng sức khỏe hệ thống
   'Chỉ chủ sở hữu hoặc quản lý mới xem được sức khỏe hệ thống':
     'Only the owner or a manager can view the system health panel',
-  // 0057 — việc chạy nền báo động (chỉ tài khoản máy gọi, câu hiện ở log và đèn Báo động)
+  // 0060 — việc chạy nền báo động (chỉ tài khoản máy gọi, câu hiện ở log và đèn Báo động)
   'Chỉ tài khoản máy báo động mới gọi được hàm này': 'Only the alert machine account can call this function',
   'Lượt báo động này đã kết thúc hoặc quá hạn': 'This alert run has already ended or expired',
   'Danh sách đèn không hợp lệ': 'The list of health lights is invalid',

@@ -3,7 +3,7 @@
  * ==========================================================================
  *
  * Việc chạy nền (bao-dong.ts) mỗi 5 phút đọc số liệu bảng sức khỏe, ghi màu mọi đèn vào sổ sự
- * cố (0057, bao_dong_ghi_luot), rồi hỏi file này: lượt này báo gì, đóng gì. Database giữ TRẠNG
+ * cố (0060, bao_dong_ghi_luot), rồi hỏi file này: lượt này báo gì, đóng gì. Database giữ TRẠNG
  * THÁI (mỗi đèn một sự cố đang mở, dấu "đã báo"); file này giữ LUẬT. Mọi mốc giờ tính theo `luc`
  * — now() của DATABASE — nên máy chạy Worker lệch giờ không đổi một quyết định nào, và
  * crm/test/test-bao-dong-web.mjs thử được từng phút giờ Việt Nam.
@@ -49,6 +49,8 @@ export const NHOM: Readonly<Record<MaDenBaoDong, NhomDen>> = {
   ipos: 'he_thong',
   so_kho: 'he_thong',
   dich: 'he_thong',
+  // Sao lưu (0058) chạy 02:00; đèn đỏ khi quá 36 giờ không có bản dùng được — thường rơi vào ban ngày.
+  sao_luu: 'he_thong',
   bao_dong: 'he_thong',
   doc_so_lieu: 'he_thong',
   dat_ban: 'khach',
@@ -81,7 +83,7 @@ const PHUT = 60_000;
 const NGAY = 24 * 60 * PHUT;
 
 // -----------------------------------------------------------------------------
-// ĐẦU VÀO — đúng dạng các RPC của 0057 trả
+// ĐẦU VÀO — đúng dạng các RPC của 0060 trả
 // -----------------------------------------------------------------------------
 export type MauSau = 'xanh' | 'vang' | 'tat' | 'mat';
 
