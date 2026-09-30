@@ -248,6 +248,51 @@ npm run thu-tai -- --nguoi 150 --phut 10
 
 ---
 
+## Sao lưu và khôi phục
+
+**Mỗi đêm 02:00 giờ Việt Nam**, workflow **"Sao lưu database"** (`.github/workflows/sao-luu.yml`) sao lưu project Supabase **Beeftown**:
+
+1. `crm/sao-luu/sao-luu.sh` — `supabase db dump` ra ba file (vai trò, cấu trúc, dữ liệu — gồm cả tài khoản đăng nhập), nén, **mã hoá AES-256** bằng mật khẩu của anh.
+2. File đã mã hoá lưu ở mục **Artifacts** của lượt chạy, **giữ 30 ngày**. File chưa mã hoá không bao giờ rời máy chạy.
+3. **Khôi phục thử** bản vừa tạo vào một Supabase dựng tạm ngay trong máy chạy (`crm/sao-luu/khoi-phuc.sh`): đủ số dòng từng bảng, sổ kho khớp tồn. Bản sao không khôi phục được thì coi như không có.
+4. Ghi kết quả vào database → đèn **"Sao lưu dữ liệu"** ở `/noi-bo` (chủ và quản lý thấy). "Bản dùng được" = sao lưu xong **và** khôi phục thử đạt. Xanh khi có bản dùng được trong 36 giờ; vàng khi lượt gần nhất hỏng hoặc không khôi phục thử được mà vẫn còn bản dùng được trong 36 giờ; **đỏ khi quá 36 giờ không có bản dùng được, hoặc chưa có bản nào**.
+
+Lượt nào hỏng thì cũng **đỏ ở tab Actions, và GitHub gửi email** cho người đặt lịch.
+
+**Không có trong bản sao:** file trong Supabase Storage (CV ứng viên, ảnh chứng từ — chỉ có dòng mô tả của chúng), khóa bí mật của Worker (Cloudflare), cấu hình trong trang quản trị Supabase (hạn mức đăng nhập, email).
+
+### Việc của Khánh (một lần, khoảng 10 phút)
+
+1. [ ] **Chuỗi kết nối:** Supabase → project **Beeftown** → nút **Connect** → **Session pooler** → chép chuỗi `postgresql://postgres.….pooler.supabase.com:5432/postgres`, thay `[YOUR-PASSWORD]` bằng mật khẩu database. Quên mật khẩu → Database → Settings → **Reset database password** (web không dùng mật khẩu này — web dùng khóa API — nên đặt lại không ảnh hưởng gì).
+2. [ ] **Mật khẩu mã hoá:** tự đặt một câu dài **từ 20 ký tự** (ví dụ 5–6 từ ngẫu nhiên). **Cất ở hai nơi ngoài GitHub** (trình quản lý mật khẩu + giấy trong két). **Mất mật khẩu này là mọi bản sao lưu thành rác** — không ai mở được, kể cả Claude.
+3. [ ] GitHub → `beeftown-stock` → Settings → Secrets and variables → Actions → **New repository secret**, hai lần:
+   - `SAO_LUU_DB_URL` = chuỗi ở bước 1
+   - `SAO_LUU_MAT_KHAU` = mật khẩu ở bước 2
+4. [ ] Tab **Actions** → **Sao lưu database** → **Run workflow**. Sau khoảng 5–10 phút lượt chạy phải **xanh**, Summary có "💾 Bản sao …" và "✅ Khôi phục thử … đủ dòng từng bảng". Đèn "Sao lưu dữ liệu" ở `/noi-bo` chuyển xanh.
+
+Chi phí: mỗi lượt chạy vài phút máy GitHub Actions (kho riêng). Gói GitHub Free có hạn mức phút mỗi tháng cho kho riêng — xem Settings → Billing and plans; bản sao lưu cũng tính vào dung lượng lưu trữ Actions.
+
+**Rủi ro còn lại — nên biết:** `SAO_LUU_DB_URL` là chìa khoá toàn quyền vào database. Secret của repo đọc được từ workflow ở **mọi nhánh** — ai (hay phiên Claude nào) đẩy được một nhánh có workflow sửa đổi là đọc được nó. Khoá chặt hơn nếu **Settings → Environments** của repo cho đặt secret và giới hạn nhánh (với kho riêng, GitHub chỉ có mục này từ gói Pro trở lên): tạo environment `sao-luu`, **Deployment branches → Selected branches → `main`**, chuyển hai secret vào environment đó (xoá bản ở mục Actions secrets), rồi nhờ Claude thêm dòng `environment: sao-luu` vào job trong `sao-luu.yml`. Sau khi dùng một thời gian, cũng nên đổi mật khẩu database định kỳ (đổi xong cập nhật `SAO_LUU_DB_URL`).
+
+### Khôi phục khi cần — từng bước
+
+Chỉ khôi phục vào một project **MỚI, TRỐNG**. Script tự từ chối database đã có bảng, để không lỡ tay ghi đè project đang chạy.
+
+1. Tab **Actions** → **Sao lưu database** → lượt **xanh** gần nhất (trước lúc sự cố) → **Artifacts** → tải `sao-luu-beeftown-<ngày>` → giải nén ra file `beeftown-<ngày>.tar.gz.gpg`.
+2. Supabase → **New project** (cùng vùng với project cũ). Project cũ có bật extension nào ngoài mặc định thì bật lại ở project mới. Lấy chuỗi **Session pooler** của project MỚI như bước 1 ở trên.
+3. Trên máy có `psql`, `gpg` (Linux hoặc WSL trên Windows — đã thử; macOS: cài `gnupg` và `libpq` bằng Homebrew — script viết để chạy được nhưng chưa thử trên Mac), trong thư mục repo:
+
+   ```bash
+   SAO_LUU_MAT_KHAU='<mật khẩu mã hoá>' bash crm/sao-luu/khoi-phuc.sh beeftown-<ngày>.tar.gz.gpg '<chuỗi Session pooler của project MỚI>'
+   ```
+
+   Dòng cuối phải là `KET_QUA=dat …`. Script dừng mà không nạp gì khi: sai mật khẩu, file tải thiếu, file bị sửa (lệch mã kiểm), database đích đã có dữ liệu. Nạp rồi mà lệch số dòng hay sổ kho lệch tồn → báo rõ bảng nào.
+4. Cloudflare → Worker của web → đổi `PUBLIC_SUPABASE_URL` và `PUBLIC_SUPABASE_ANON_KEY` sang project mới → deploy. Mọi người **đăng nhập lại** (tài khoản và mật khẩu giữ nguyên — có trong bản sao). Beeftown Cân lấy địa chỉ kho từ web nên đi theo.
+5. Làm lại những thứ không nằm trong bản sao: hạn mức đăng nhập và email ở trang quản trị Supabase (mục "Hạ tầng" ở trên), file Storage (CV cũ không còn), và đổi secret `SAO_LUU_DB_URL` sang project mới. Khóa bí mật của Worker giữ nguyên — tài khoản máy (iPOS, máy quầy) có trong bản sao.
+
+Sao lưu tay (máy **của mình** có Docker, `psql`, `gpg` — chuỗi kết nối nằm trên dòng lệnh của Supabase CLI, người dùng khác cùng máy thấy được): `SAO_LUU_DB_URL='…' SAO_LUU_MAT_KHAU='…' SUPABASE='npx supabase' bash crm/sao-luu/sao-luu.sh ra/`.
+Kiểm thử: `crm/test/test-sao-luu.mjs` (chính hai script, với `supabase` và `psql` giả), `test-suc-khoe.mjs` nhóm 12 (bảng `he_thong_sao_luu`, câu ghi lượt), `test-suc-khoe-web.mjs` nhóm 16 (màu và câu của đèn).
+
 ## Nghiệm thu — Khánh tự làm được
 
 **Hai điện thoại thật, dùng 4G không dùng wifi.** Khách đứng trước bạt là đang dùng 4G.

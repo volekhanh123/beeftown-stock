@@ -43,6 +43,9 @@
 !crm/supabase/thu/*.sql
 !crm/supabase/thu/README.md
 !crm/test/*.mjs
+# Sao lưu hằng đêm (.github/workflows/sao-luu.yml) — script, không bao giờ là bản sao: *.gpg, *.sql.gz vẫn bị chặn
+!crm/sao-luu/*.sh
+!crm/sao-luu/*.sql
 
 # --- ĐƯỢC PHÉP: tài liệu thiết kế dạng web ---
 !Beeftown_Bo_Nhan_Dien_So.html

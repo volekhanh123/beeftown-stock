@@ -14,14 +14,14 @@
  * hồ sơ và yêu cầu nằm im trong database không ai mở.
  *
  * Bảng sức khỏe hệ thống (components/SucKhoeHeThong.astro, lib/suc-khoe.ts)
- * đứng đầu trang cho chủ và quản lý: việc chạy nền có còn chạy, Zalo /
+ * đứng đầu trang cho chủ và quản lý: việc chạy nền có còn chạy, sao lưu hằng đêm có bản dùng được không, Zalo /
  * Messenger / iPOS có hỏng, yêu cầu nào đã nằm im quá lâu.
  */
 import NoiBo from '../../layouts/NoiBo.astro';
 import SucKhoeHeThong from '../../components/SucKhoeHeThong.astro';
 import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo';
 import { moTaKhoa, tenKhungAnh } from '../../lib/cau-noi-bo';
-import { docSucKhoe } from '../../lib/suc-khoe';
+import { docSucKhoeVaSaoLuu } from '../../lib/suc-khoe';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
@@ -107,7 +107,7 @@ const [
   // thứ khác, còn dữ kiện thì chỉ dịch khi có người bấm Công bố lại.
   dem('v_viec_dich', (q: any) => q.neq('bang', 'noi_dung_cong_bo')),
   dem('v_viec_dich', (q: any) => q.eq('bang', 'noi_dung_cong_bo')),
-  xemSucKhoe ? docSucKhoe(client) : Promise.resolve(null),
+  xemSucKhoe ? docSucKhoeVaSaoLuu(client) : Promise.resolve(null),
 ]);
 
 const anhBatBuocThieu = anhThieu?.filter(a => a.bat_buoc) ?? [];

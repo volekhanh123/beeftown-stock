@@ -1,0 +1,155 @@
+# =============================================================================
+# SAO LƯU DATABASE — mỗi đêm 02:00 giờ Việt Nam, và chạy tay được (Actions → Sao lưu database → Run workflow)
+# =============================================================================
+#
+# 1. crm/sao-luu/sao-luu.sh: supabase db dump (vai trò, cấu trúc, dữ liệu) → nén → mã hoá AES-256.
+# 2. Lưu file ĐÃ MÃ HOÁ thành artifact, giữ 30 ngày. File chưa mã hoá không bao giờ rời thư mục tạm.
+# 3. Khôi phục THỬ bản vừa tạo vào một Supabase dựng tạm ngay trong máy này (crm/sao-luu/khoi-phuc.sh):
+#    đủ số dòng từng bảng, sổ kho khớp tồn. Project Supabase thật chỉ bị ĐỌC (để sao lưu) và ghi một
+#    dòng ở bước 4.
+# 4. Ghi một dòng vào he_thong_sao_luu (migration 0058) → đèn "Sao lưu dữ liệu" ở /noi-bo.
+#
+# Bước 1, 2 hoặc 3 hỏng → lượt chạy đỏ, và GitHub gửi email báo lượt lịch hỏng cho người đặt lịch.
+# Bí mật (Settings → Secrets and variables → Actions), cách tạo ở README gốc, mục "Sao lưu và khôi phục":
+#   SAO_LUU_DB_URL    chuỗi kết nối Session pooler của project Beeftown (có mật khẩu database)
+#   SAO_LUU_MAT_KHAU  mật khẩu mã hoá bản sao (≥ 20 ký tự) — CẤT THÊM MỘT BẢN NGOÀI GITHUB
+# Thiếu → cảnh báo ở Summary, thoát 0; đèn "Sao lưu dữ liệu" ở /noi-bo vẫn đỏ "chưa có bản sao lưu nào".
+# Mỗi bí mật chỉ nằm trong env: của đúng bước dùng nó (test-quy-trinh.mjs kiểm). Rủi ro còn lại: secret của repo
+# đọc được từ workflow ở MỌI nhánh — cách khoá chặt hơn (Environment chỉ cho main) ở README gốc.
+name: Sao lưu database
+
+on:
+  schedule:
+    - cron: '0 19 * * *'   # 19:00 UTC = 02:00 giờ Việt Nam — quán đã đóng, không ai ghi dữ liệu
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Hai lượt không chạy chồng nhau (chạy tay đúng lúc lượt đêm đang chạy → chờ).
+concurrency:
+  group: sao-luu
+  cancel-in-progress: false
+
+jobs:
+  sao-luu:
+    name: Sao lưu · khôi phục thử · ghi lượt
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Có đủ bí mật sao lưu chưa?
+        id: bi-mat
+        env:
+          CO_URL: ${{ secrets.SAO_LUU_DB_URL != '' }}
+          CO_MAT_KHAU: ${{ secrets.SAO_LUU_MAT_KHAU != '' }}
+        run: |
+          echo "bat_dau=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          if [ "$CO_URL" != "true" ] || [ "$CO_MAT_KHAU" != "true" ]; then
+            echo "::warning::Chưa có đủ hai secret SAO_LUU_DB_URL và SAO_LUU_MAT_KHAU — CHƯA sao lưu gì. Đèn \"Sao lưu dữ liệu\" ở /noi-bo vẫn đỏ."
+            echo "⚠️ Chưa có đủ secret **SAO_LUU_DB_URL** và **SAO_LUU_MAT_KHAU** — chưa sao lưu gì. Cách thêm: README gốc, mục \"Sao lưu và khôi phục\"." >> "$GITHUB_STEP_SUMMARY"
+            echo "co=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "co=true" >> "$GITHUB_OUTPUT"
+
+      - name: Cài Supabase CLI
+        if: steps.bi-mat.outputs.co == 'true'
+        # Action bên thứ ba chạy trong job sẽ cầm chuỗi kết nối database → ghim theo commit, không theo tag.
+        uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        with:
+          # CLI bản mới nhất (của chính Supabase): bước khôi phục thử dựng Supabase tạm bằng CLI này — ghim bản cũ
+          # thì bảng auth của nó dần thiếu cột mà Supabase thật đã có, khôi phục thử hỏng oan. Phiên bản CLI
+          # của mỗi lượt ghi trong thong-tin.txt của bản sao.
+          version: latest
+
+      - name: Sao lưu (supabase db dump → nén → mã hoá)
+        id: sao-luu
+        if: steps.bi-mat.outputs.co == 'true'
+        timeout-minutes: 15
+        env:
+          SAO_LUU_DB_URL: ${{ secrets.SAO_LUU_DB_URL }}
+          SAO_LUU_MAT_KHAU: ${{ secrets.SAO_LUU_MAT_KHAU }}
+        run: |
+          bash crm/sao-luu/sao-luu.sh "$RUNNER_TEMP/sao-luu"
+          cat "$RUNNER_TEMP/sao-luu/ket-qua.env" >> "$GITHUB_OUTPUT"
+
+      - name: Lưu bản sao đã mã hoá (giữ 30 ngày)
+        id: luu
+        if: steps.sao-luu.outcome == 'success'
+        uses: actions/upload-artifact@v7
+        with:
+          name: sao-luu-${{ steps.sao-luu.outputs.TEN }}
+          path: ${{ steps.sao-luu.outputs.TEP }}
+          retention-days: 30
+          if-no-files-found: error
+          compression-level: 0
+
+      - name: Khôi phục thử vào Supabase dựng tạm
+        id: thu
+        if: steps.sao-luu.outcome == 'success'
+        timeout-minutes: 15
+        env:
+          SAO_LUU_MAT_KHAU: ${{ secrets.SAO_LUU_MAT_KHAU }}
+          TEP: ${{ steps.sao-luu.outputs.TEP }}
+          PHIEN_BAN_PG: ${{ steps.sao-luu.outputs.PHIEN_BAN_PG }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/supabase-thu"
+          cd "$RUNNER_TEMP/supabase-thu"
+          supabase init --force > /dev/null
+          # Cùng đời Postgres với database thật (CLI hỗ trợ 15 và 17); đời khác → để mặc định của CLI.
+          case "$PHIEN_BAN_PG" in
+            15|17) sed -i -E "s/^major_version = [0-9]+/major_version = $PHIEN_BAN_PG/" supabase/config.toml ;;
+          esac
+          # Chỉ cần database, đăng nhập (bảng auth) và Storage (bảng storage) — bỏ các dịch vụ còn lại cho nhanh.
+          supabase start -x realtime,imgproxy,kong,mailpit,postgrest,postgres-meta,studio,edge-runtime,logflare,vector,supavisor > /dev/null
+          bash "$GITHUB_WORKSPACE/crm/sao-luu/khoi-phuc.sh" "$TEP" "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
+
+      # always(): lượt quá giờ (job bị huỷ) cũng phải để lại một dòng "hỏng" — không thì đèn vẫn xanh theo lượt
+      # tốt hôm trước cho tới 36 giờ. Hai bước trên có giới hạn giờ riêng để còn thời gian cho bước này.
+      - name: Ghi lượt vào database (đèn "Sao lưu dữ liệu" ở /noi-bo)
+        if: ${{ always() && steps.bi-mat.outputs.co == 'true' }}
+        timeout-minutes: 3
+        env:
+          SAO_LUU_DB_URL: ${{ secrets.SAO_LUU_DB_URL }}
+          PGCONNECT_TIMEOUT: '20'
+          BAT_DAU: ${{ steps.bi-mat.outputs.bat_dau }}
+          SAO_LUU: ${{ steps.sao-luu.outcome }}
+          LUU: ${{ steps.luu.outcome }}
+          THU: ${{ steps.thu.outcome }}
+          KICH_THUOC: ${{ steps.sao-luu.outputs.KICH_THUOC }}
+          SO_BANG: ${{ steps.sao-luu.outputs.SO_BANG }}
+          SO_DONG: ${{ steps.sao-luu.outputs.SO_DONG }}
+          TEN: ${{ steps.sao-luu.outputs.TEN }}
+          LUOT: ${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          # Có bản sao dùng được = đã tạo VÀ đã lưu thành artifact. Câu lỗi chỉ nói bước nào hỏng — chi tiết
+          # xem log lượt chạy; không chép log vào database (log có thể mang chuỗi kết nối).
+          if [ "$SAO_LUU" = "success" ] && [ "$LUU" = "success" ]; then
+            OK=true
+            case "$THU" in
+              success) THU_KHOI_PHUC=dat; LOI= ;;
+              *)       THU_KHOI_PHUC=hong; LOI="Khôi phục thử không đạt hoặc quá giờ (lượt $LUOT) — xem log bước Khôi phục thử." ;;
+            esac
+          else
+            OK=false; THU_KHOI_PHUC=chua_thu; KICH_THUOC=; SO_BANG=; SO_DONG=
+            if [ "$SAO_LUU" != "success" ]; then
+              LOI="Bước sao lưu hỏng hoặc quá giờ (lượt $LUOT) — xem log bước Sao lưu."
+            else
+              LOI="Không lưu được bản sao thành artifact (lượt $LUOT)."
+            fi
+          fi
+          psql "$SAO_LUU_DB_URL" -X -q -v ON_ERROR_STOP=1 \
+            -v bat_dau_luc="$BAT_DAU" -v ok="$OK" -v kich_thuoc="$KICH_THUOC" -v so_bang="$SO_BANG" \
+            -v so_dong="$SO_DONG" -v thu_khoi_phuc="$THU_KHOI_PHUC" -v loi="$LOI" -v luot_chay="$LUOT" \
+            -f crm/sao-luu/ghi-luot.sql
+          {
+            if [ "$OK" = "true" ]; then
+              echo "💾 Bản sao **$TEN** — $SO_BANG bảng, $SO_DONG dòng, $KICH_THUOC byte (đã mã hoá), giữ 30 ngày ở mục Artifacts của lượt này."
+              [ "$THU_KHOI_PHUC" = "dat" ] && echo "✅ Khôi phục thử vào Supabase dựng tạm: đủ dòng từng bảng, sổ kho khớp tồn." \
+                                           || echo "❌ Khôi phục thử KHÔNG đạt — bản sao này chưa chắc dùng được."
+            else
+              echo "❌ $LOI"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

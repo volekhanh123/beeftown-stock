@@ -1,7 +1,7 @@
 /**
  * BEEFTOWN — SỨC KHỎE HỆ THỐNG, PHÍA WEB (web/src/lib/suc-khoe.ts)
  * =================================================================
- * Database (0055) chỉ trả số liệu; màu đèn và câu do lib/suc-khoe.ts quyết định. File này thử
+ * Database (0055, ô sao_luu từ 0058) chỉ trả số liệu; màu đèn và câu do lib/suc-khoe.ts quyết định. File này thử
  * TỪNG NGƯỠNG bằng dữ liệu giả, không cần database (phần đọc database thật và "web đọc đúng tên
  * từng ô" nằm ở test-suc-khoe.mjs).
  *
@@ -23,8 +23,8 @@ import { VIET, boChuThich } from './quet-chu-viet.mjs';
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WEB = join(GOC, 'web', 'src');
 const {
-  danhGiaSucKhoe, bangSucKhoe, cauTomTat, docSucKhoe, laSucKhoeTho, laThieuHam, khoangThoiGian, tuTruoc,
-  PHUT_NHIP_TIM, GIO_KHONG_CO_TIN, PHUT_TIN_KET,
+  danhGiaSucKhoe, bangSucKhoe, cauTomTat, docSucKhoe, docSaoLuu, docSucKhoeVaSaoLuu, laSucKhoeTho, laThieuHam, khoangThoiGian, tuTruoc,
+  PHUT_NHIP_TIM, GIO_KHONG_CO_TIN, PHUT_TIN_KET, GIO_SAO_LUU,
 } = await import(join(WEB, 'lib', 'suc-khoe.ts'));
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — SỨC KHỎE HỆ THỐNG, PHÍA WEB');
@@ -46,13 +46,21 @@ function cnGoc() {
     so_kho: { co_kho: false, lech: 0 },
   };
 }
-/** Đúng dạng database mới: chưa bật gì, không có gì chờ. */
+/** Sao lưu đêm qua chạy tốt (0058): bản lúc 02:00 giờ VN, khôi phục thử đạt. */
+const SAO_LUU_TOT = { lan_cuoi: truoc(10 * 60), lan_cuoi_ok: true, lan_cuoi_thu: 'dat', dung_duoc_cuoi: truoc(10 * 60),
+                      kich_thuoc: 89456123 };
+const SAO_LUU_RONG = { lan_cuoi: null, lan_cuoi_ok: null, lan_cuoi_thu: null, dung_duoc_cuoi: null, kich_thuoc: null };
+/**
+ * Đúng dạng database mới: chưa bật gì, không có gì chờ — và sao lưu hằng đêm đang chạy (sao lưu
+ * không có trạng thái "chưa bật": chưa có bản nào là đỏ, thử ở nhóm 16).
+ */
 function thoGoc() {
   return {
     luc: LUC,
     zalo: { dang_bat: false, che_do: 'thu', bat_luc: null, lan_chay_cuoi: null, co_loi: false },
     messenger: { dang_bat: false, bat_luc: null, lan_nhan_cuoi: null, loi_cuoi_luc: null, loi_7_ngay: 0 },
     dich: { cho: 0, loi: 0 },
+    sao_luu: { ...SAO_LUU_TOT },
     chi_nhanh: [cnGoc()],
   };
 }
@@ -350,6 +358,14 @@ await nhom('13 · TIẾNG ANH KHÔNG LẪN CHỮ VIỆT', async () => {
     voi((t, c) => { Object.assign(t.zalo, ZALO_CHAY); Object.assign(t.messenger, MESS_CHAY); Object.assign(c.ipos, IPOS_CHAY, { den: 'do', mat_ket_noi: true, loi_tu_luc: truoc(90) }); }),
     voi((t, c) => { Object.assign(c.ipos, IPOS_CHAY, { den: 'do', mat_ket_noi: true }); c.dat_ban.cho = 2; c.tuyen_dung.moi = 1; }),
     voi((t, c) => { Object.assign(c.ipos, IPOS_CHAY, { cau_hinh_du: false }); Object.assign(t.messenger, MESS_CHAY, { lan_nhan_cuoi: truoc(4 * 24 * 60) }); }),
+    voi(t => { t.sao_luu = { ...SAO_LUU_RONG }; }),
+    voi(t => { t.sao_luu = { ...SAO_LUU_RONG, lan_cuoi: truoc(60), lan_cuoi_ok: false, lan_cuoi_thu: 'chua_thu' }; }),
+    voi(t => { t.sao_luu = { ...SAO_LUU_RONG, lan_cuoi: truoc(60), lan_cuoi_ok: true, lan_cuoi_thu: 'hong' }; }),
+    voi(t => { Object.assign(t.sao_luu, { dung_duoc_cuoi: truoc(3 * 24 * 60), lan_cuoi: truoc(3 * 24 * 60) }); }),
+    voi(t => { Object.assign(t.sao_luu, { lan_cuoi: truoc(60), lan_cuoi_ok: false, lan_cuoi_thu: 'chua_thu' }); }),
+    voi(t => { Object.assign(t.sao_luu, { lan_cuoi: truoc(60), lan_cuoi_ok: true, lan_cuoi_thu: 'hong' }); }),
+    voi(t => { delete t.sao_luu; }),
+    voi(t => { t.sao_luu = null; }),
   ];
   const sot = [];
   let soCau = 0;
@@ -380,13 +396,14 @@ await nhom('14 · TRANG TỔNG QUAN', async () => {
   const lib = readFileSync(join(WEB, 'lib', 'suc-khoe.ts'), 'utf8');
   ok('Chỉ chủ và quản lý mới gọi suc_khoe_he_thong (vai khác không tốn một lượt gọi bị từ chối)',
      /const xemSucKhoe = \['chu_so_huu', 'quan_ly'\]\.includes\(nhanSu\.vai_tro\)/.test(trang)
-     && /xemSucKhoe \? docSucKhoe\(client\) : Promise\.resolve\(null\)/.test(trang));
+     && /xemSucKhoe \? docSucKhoeVaSaoLuu\(client\) : Promise\.resolve\(null\)/.test(trang));
   ok('Trang vẽ bảng khi có kết quả đọc — kể cả khi đọc hỏng (bảng tự nói là không đọc được)',
      /\{sucKhoe && <SucKhoeHeThong ketQua=\{sucKhoe\}/.test(trang));
   ok('Component lấy câu tóm tắt từ bangSucKhoe — không tự viết "đang chạy tốt"',
      /bangSucKhoe\(ketQua, nn, laChu\)/.test(comp) && !/chạy tốt|running well/.test(boChuThich(comp)));
   ok('Component không có <script> (chỉ vẽ)', !/<script/i.test(comp));
-  ok('Gọi RPC bằng tên trong nháy đơn (test-hop-dong-web đọc được)', /\.rpc\('suc_khoe_he_thong'\)/.test(lib));
+  ok('Gọi RPC bằng tên trong nháy đơn (test-hop-dong-web đọc được)', /\.rpc\('suc_khoe_he_thong'\)/.test(lib)
+     && /\.rpc\('suc_khoe_sao_luu'\)/.test(lib));
   const mig = readFileSync(join(GOC, 'crm', 'supabase', 'migrations', '0055_suc_khoe_he_thong.sql'), 'utf8');
   const choQuaHan = mig.slice(mig.indexOf("'cho_qua_han'"), mig.indexOf('from nhat_ky_tin'));
   ok(`Câu "tin kẹt quá ${PHUT_TIN_KET} phút" khớp đúng ngưỡng đếm trong SQL của 0055`,
@@ -416,6 +433,105 @@ await nhom('15 · ĐỒNG HỒ MÁY KHÔNG ẢNH HƯỞNG (23:50 và 00:10 giờ
   const luc0010 = danhGiaSucKhoe({ ...tho, luc: '2026-09-29T17:10:00Z' }, 'vi');
   ok('Giờ số liệu lấy từ database: 16:50 UTC → 23:50, 17:10 UTC → 00:10 hôm sau', luc2350.gio === '23:50' && luc0010.gio === '00:10',
      `${luc2350.gio} / ${luc0010.gio}`);
+});
+
+// ===========================================================================
+// 0058 · Sao lưu hằng đêm. "Dùng được" = sao lưu xong VÀ khôi phục thử đạt. Không có "xám": chưa có bản
+// dùng được nào là dữ liệu đang không có bản sao.
+await nhom('16 · SAO LƯU DỮ LIỆU', async () => {
+  const sl = sua => den(voi(t => sua(t.sao_luu, t)), 'sao_luu');
+  const moi = gan => den(voi(t => { t.sao_luu = { ...SAO_LUU_RONG, ...gan }; }), 'sao_luu');
+  const tot = den(thoGoc(), 'sao_luu');
+  ok('Đêm qua sao lưu và khôi phục thử đạt → xanh, nói bao lâu trước và cỡ kiểu Việt (85,3 MB)', tot?.mau === 'xanh'
+     && tot.cau === 'Sao lưu hằng đêm bình thường — bản gần nhất 10 giờ trước (85,3 MB), đã khôi phục thử đủ dữ liệu.', tom(tot));
+  const totEn = den(thoGoc(), 'sao_luu', 'en');
+  ok('Tiếng Anh: "85.3 MB", "10 hours ago"', totEn?.cau === 'Nightly backup works — latest copy 10 hours ago (85.3 MB), test restore complete.',
+     tom(totEn));
+  const lon = sl(s => { s.kich_thuoc = 1294467072; });
+  ok('Bản lớn: dấu chấm hàng nghìn kiểu Việt "1.234,5 MB", tiếng Anh "1,234.5 MB"',
+     /\(1\.234,5 MB\)/.test(lon?.cau) && /\(1,234\.5 MB\)/.test(den(voi(t => { t.sao_luu.kich_thuoc = 1294467072; }), 'sao_luu', 'en')?.cau), tom(lon));
+  ok('Nằm trong khối "Toàn thương hiệu", đứng đầu', danhGiaSucKhoe(thoGoc(), 'vi').khoi[0].den[0].ma === 'sao_luu');
+
+  const chuaCo = moi({});
+  ok('Chưa có lượt nào (chưa thêm bí mật cho GitHub) → ĐỎ, nói tên hai bí mật cần thêm', chuaCo?.mau === 'do'
+     && /^Chưa có bản sao lưu nào — dữ liệu đang không có bản sao/.test(chuaCo.cau) && /SAO_LUU_DB_URL/.test(chuaCo.cau)
+     && /SAO_LUU_MAT_KHAU/.test(chuaCo.cau), tom(chuaCo));
+  const toanHong = moi({ lan_cuoi: truoc(90), lan_cuoi_ok: false, lan_cuoi_thu: 'chua_thu' });
+  ok('Chưa có bản dùng được, lượt gần nhất hỏng → đỏ, "lượt gần nhất (2 giờ trước) bị lỗi"', toanHong?.mau === 'do'
+     && /^Chưa có bản sao lưu nào dùng được — lượt gần nhất \(2 giờ trước\) bị lỗi/.test(toanHong.cau), tom(toanHong));
+  const khongKhoiPhuc = moi({ lan_cuoi: truoc(90), lan_cuoi_ok: true, lan_cuoi_thu: 'hong' });
+  ok('Sao lưu được nhưng chưa bản nào khôi phục thử đạt → ĐỎ (bản không khôi phục được coi như không có); câu không nói "bị lỗi"',
+     khongKhoiPhuc?.mau === 'do' && /^Chưa có bản sao lưu nào được xác nhận khôi phục được \(bản gần nhất: 2 giờ trước\)/.test(khongKhoiPhuc.cau)
+     && !/bị lỗi/.test(khongKhoiPhuc.cau), tom(khongKhoiPhuc));
+
+  const vuaDu = sl(s => Object.assign(s, { dung_duoc_cuoi: truoc(GIO_SAO_LUU * 60 - 1), lan_cuoi: truoc(GIO_SAO_LUU * 60 - 1) }));
+  const qua = sl(s => Object.assign(s, { dung_duoc_cuoi: truoc(GIO_SAO_LUU * 60 + 1), lan_cuoi: truoc(GIO_SAO_LUU * 60 + 1) }));
+  ok(`Ngưỡng ${GIO_SAO_LUU} giờ: chưa quá → xanh; quá một phút → đỏ`,
+     vuaDu?.mau === 'xanh' && qua?.mau === 'do' && /^Bản sao lưu dùng được gần nhất đã 36 giờ trước/.test(qua.cau), `${tom(vuaDu)} | ${tom(qua)}`);
+  ok('Các lượt sau đều sao lưu được nhưng KHÔNG khôi phục thử được → vẫn đỏ theo bản dùng được gần nhất (không "làm mới" đèn)',
+     sl(s => Object.assign(s, { dung_duoc_cuoi: truoc(3 * 24 * 60), lan_cuoi: truoc(30), lan_cuoi_ok: true, lan_cuoi_thu: 'hong' }))?.mau === 'do');
+  ok('Các lượt sau đều hỏng → vẫn đỏ theo bản dùng được gần nhất',
+     sl(s => Object.assign(s, { dung_duoc_cuoi: truoc(3 * 24 * 60), lan_cuoi: truoc(30), lan_cuoi_ok: false, lan_cuoi_thu: 'chua_thu' }))?.mau === 'do');
+
+  const motLuotHong = sl(s => Object.assign(s, { lan_cuoi: truoc(30), lan_cuoi_ok: false, lan_cuoi_thu: 'chua_thu' }));
+  ok('Lượt gần nhất hỏng, còn bản dùng được trong 36 giờ → vàng, nói cả hai mốc', motLuotHong?.mau === 'vang'
+     && motLuotHong.cau === 'Lượt sao lưu gần nhất (30 phút trước) bị lỗi — bản dùng được gần nhất: 10 giờ trước', tom(motLuotHong));
+  const thuHong = sl(s => Object.assign(s, { lan_cuoi: truoc(30), lan_cuoi_ok: true, lan_cuoi_thu: 'hong' }));
+  ok('Lượt gần nhất sao lưu được nhưng khôi phục thử hỏng → vàng, nói đúng là khôi phục thử (không nói "bị lỗi")', thuHong?.mau === 'vang'
+     && thuHong.cau === 'Bản sao lưu gần nhất (30 phút trước) không khôi phục thử được — bản dùng được gần nhất: 10 giờ trước', tom(thuHong));
+
+  const thieu = den(voi(t => { delete t.sao_luu; }), 'sao_luu');
+  ok('Database chưa chạy 0058 (không có hàm) → vàng, nói rõ migration 0058 — không đỏ nhầm, không xanh',
+     thieu?.mau === 'vang' && /migration 0058/.test(thieu.cau), tom(thieu));
+  const khongDoc = den(voi(t => { t.sao_luu = null; }), 'sao_luu');
+  ok('Không đọc được số liệu sao lưu → vàng, nói rõ KHÔNG có nghĩa là ổn', khongDoc?.mau === 'vang'
+     && /KHÔNG có nghĩa là sao lưu đang ổn/.test(khongDoc.cau), tom(khongDoc));
+  ok('Mốc giờ hỏng (chuỗi lạ) → coi như chưa có bản dùng được: đỏ, không xanh',
+     sl(s => { s.dung_duoc_cuoi = 'không phải giờ'; })?.mau === 'do');
+  ok('Không mở màn nào trong /noi-bo (việc của người quản trị kỹ thuật)', tot?.di === null && chuaCo?.di === null);
+});
+
+// ===========================================================================
+await nhom('17 · docSaoLuu / docSucKhoeVaSaoLuu: KHÔNG BAO GIỜ NÉM LỖI, KHÔNG BAO GIỜ ĐOÁN', async () => {
+  const log = [];
+  const goc = console.error;
+  console.error = (...a) => log.push(a.join(' '));
+  try {
+    const goi = [];
+    const client = tra => ({ rpc: async (ten, ...a) => { goi.push([ten, ...a]); return tra(ten); } });
+    let sl = await docSaoLuu(client(() => ({ data: { ...SAO_LUU_TOT }, error: null })));
+    ok('Đọc được → đúng số liệu; gọi suc_khoe_sao_luu không tham số', sl?.lan_cuoi_thu === 'dat'
+       && goi.length === 1 && goi[0][0] === 'suc_khoe_sao_luu' && goi[0].length === 1, JSON.stringify(goi));
+    sl = await docSaoLuu(client(() => ({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.suc_khoe_sao_luu without parameters' } })));
+    ok('Chưa có hàm (database chưa chạy 0058) → undefined, không ghi log', sl === undefined && log.length === 0, JSON.stringify(sl));
+    sl = await docSaoLuu(client(() => ({ data: null, error: { code: '42883', message: 'function suc_khoe_he_thong() does not exist' } })));
+    ok('Lỗi nhắc hàm KHÁC → không phải "chưa chạy 0058": null, có log', sl === null && log.length === 1);
+    sl = await docSaoLuu(client(() => ({ data: null, error: { code: '42501', message: 'Chỉ chủ sở hữu hoặc quản lý mới xem được sức khỏe hệ thống' } })));
+    ok('Bị từ chối quyền → null', sl === null);
+    sl = await docSaoLuu(client(() => { throw new TypeError('fetch failed'); }));
+    ok('fetch ném lỗi (mất mạng) → null, không ném tiếp', sl === null);
+    sl = await docSaoLuu(client(() => ({ data: [1, 2], error: null })));
+    ok('Dạng lạ (mảng) → null', sl === null);
+    ok('Mỗi lần không đọc được đều ghi một dòng log [suc-khoe]', log.length === 4 && log.every(l => l.startsWith('[suc-khoe]')), log.join(' | '));
+
+    const hai = tra => ({ rpc: async ten => tra(ten) });
+    let kq = await docSucKhoeVaSaoLuu(hai(ten => ten === 'suc_khoe_he_thong'
+      ? { data: (() => { const t = thoGoc(); delete t.sao_luu; return t; })(), error: null } : { data: { ...SAO_LUU_TOT }, error: null }));
+    ok('Gộp: số liệu sao lưu gắn vào tho.sao_luu, đèn xanh', kq.ok && kq.tho.sao_luu?.lan_cuoi_thu === 'dat'
+       && danhGiaSucKhoe(kq.tho, 'vi').khoi[0].den[0].mau === 'xanh', JSON.stringify(kq.ok && kq.tho.sao_luu));
+    kq = await docSucKhoeVaSaoLuu(hai(ten => ten === 'suc_khoe_he_thong'
+      ? { data: thoGoc(), error: null } : { data: null, error: { code: '', message: 'upstream request timeout' } }));
+    ok('Sao lưu không đọc được mà bảng chính đọc được → bảng vẫn hiện, đèn sao lưu vàng "không đọc được"', kq.ok && kq.tho.sao_luu === null
+       && danhGiaSucKhoe(kq.tho, 'vi').khoi[0].den[0].mau === 'vang');
+    kq = await docSucKhoeVaSaoLuu(hai(ten => ten === 'suc_khoe_he_thong'
+      ? { data: null, error: { code: '', message: 'boom' } } : { data: { ...SAO_LUU_TOT }, error: null }));
+    ok('Bảng chính không đọc được → cả bảng "không đọc được" (sao lưu tốt không làm bảng xanh)', kq.ok === false && kq.chuaCoHam === false);
+  } finally {
+    console.error = goc;
+  }
+  ok('laThieuHam nhận tên hàm: suc_khoe_sao_luu', laThieuHam({ code: 'PGRST202', message: 'public.suc_khoe_sao_luu' }, 'suc_khoe_sao_luu')
+     && !laThieuHam({ code: 'PGRST202', message: 'public.suc_khoe_sao_luu' })
+     && !laThieuHam({ code: 'PGRST202', message: 'public.suc_khoe_he_thong' }, 'suc_khoe_sao_luu'));
 });
 
 process.exit(ketThuc('SỨC KHỎE HỆ THỐNG PHÍA WEB'));
