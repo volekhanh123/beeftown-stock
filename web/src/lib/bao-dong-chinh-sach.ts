@@ -18,7 +18,8 @@
  *   · Đèn hệ thống hết đỏ ban đêm chỉ báo ngay khi tin báo đỏ của chính sự cố đó cũng đến
  *     trong đêm nay (người nhận đã biết, có thể đang xử lý); tin đỏ đến từ trước 22:00 thì tin
  *     tốt đợi 07:00 — đèn Sao lưu đỏ từ chiều, ổn lại lúc 3 giờ sáng, không đánh thức ai
- *     (chủ chọn thêm 30/09/2026).
+ *     (chủ chọn thêm 30/09/2026). Trong lúc giữ mà đèn đỏ lại thì đó là lần hỏng MỚI: database
+ *     (bao_dong_ghi_luot) đóng sự cố cũ, mở sự cố mới — được báo như mọi lần đỏ.
  *   · Mỗi đèn tối đa TIN_TOI_DA_MOI_DEN tin "mới đỏ" từ 8 giờ sáng tới 8 giờ sáng hôm sau;
  *     tin cuối nói rõ là sẽ không nhắn riêng nữa tới bản tóm tắt.
  *   · 8 giờ sáng MỖI NGÀY gửi tóm tắt, kể cả khi mọi thứ xanh: không thấy tin sáng nghĩa là
@@ -54,7 +55,7 @@ export const NHOM: Readonly<Record<MaDenBaoDong, NhomDen>> = {
   so_kho: 'he_thong',
   dich: 'he_thong',
   // Sao lưu (0058) chạy 02:00; đèn đỏ khi quá 36 giờ không có bản dùng được, nên tin "mới đỏ" thường
-  // rơi vào ban ngày. Bản đêm sau dùng được thì đèn xanh khoảng 02:30–03:50 — tin đỏ đã đến từ chiều
+  // rơi vào ban ngày. Bản đêm sau dùng được thì đèn xanh lại khoảng 02:10–03:30 — tin đỏ đã đến từ chiều
   // nên tin "hết đỏ" đợi 07:00 (luật hết đỏ ban đêm trong lapKeHoach).
   sao_luu: 'he_thong',
   bao_dong: 'he_thong',
@@ -186,7 +187,7 @@ export function dauChuKy(t: number): number {
   return mocGanNhat(t, GIO_TOM_TAT);
 }
 
-/** 22:00 (giờ VN) mở đầu đêm chứa t — qua nửa đêm thì là 22:00 hôm trước. Chỉ có nghĩa khi laBanDem(t). */
+/** 22:00 (giờ VN) gần nhất không sau t — trong đêm là mốc mở đầu đêm chứa t (qua nửa đêm thì 22:00 hôm trước). */
 export function dauDem(t: number): number {
   return mocGanNhat(t, GIO_DEM_TU);
 }

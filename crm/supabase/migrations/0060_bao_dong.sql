@@ -617,6 +617,14 @@ begin
     v_khoa := v_ma || coalesce(':' || v_cn::text, '');
     v_co := v_co || v_khoa;
     if v_mau = 'do' then
+      -- Đỏ lại sau khi đã hết đỏ đủ 15 phút (PHUT_CHO_HET_DO, bao-dong-chinh-sach.ts) mà sự cố còn mở —
+      -- tin hết đỏ đang bị giữ tới 07:00 (ban đêm) hay lượt trước chưa đóng được: đó là lần hỏng MỚI.
+      -- Đóng sự cố cũ (không dấu đã báo hết đỏ — "đã ổn lại" không còn đúng) để lần đỏ này mở sự cố
+      -- mới và được báo như mọi lần đỏ, thay vì nối vào sự cố đã báo từ trước rồi im tới sáng.
+      update bao_dong_su_co
+         set het_luc = now()
+       where khoa = v_khoa and het_luc is null
+         and het_do_tu <= now() - interval '15 minutes';
       insert into bao_dong_su_co (khoa, ma_den, chi_nhanh_id)
       values (v_khoa, v_ma, v_cn)
       on conflict (khoa) where het_luc is null
@@ -649,7 +657,7 @@ end;
 $$;
 
 comment on function bao_dong_ghi_luot(uuid, jsonb, boolean) is
-  'Máy báo động (0060): ghi màu MỌI đèn của lượt [{ma_den, chi_nhanh_id|null, mau: xanh|vang|do|tat}]. Đỏ → mở / tiếp tục sự cố; màu khác → chờ hết đỏ. p_day_du: sự cố của đèn không còn → mau_sau mat. Cần đúng mã lượt. Trả {luc, su_co[] đang mở}.';
+  'Máy báo động (0060): ghi màu MỌI đèn của lượt [{ma_den, chi_nhanh_id|null, mau: xanh|vang|do|tat}]. Đỏ → mở / tiếp tục sự cố (đỏ lại sau khi đã hết đỏ đủ 15 phút → đóng sự cố cũ, mở sự cố mới); màu khác → chờ hết đỏ. p_day_du: sự cố của đèn không còn → mau_sau mat. Cần đúng mã lượt. Trả {luc, su_co[] đang mở}.';
 
 -- Đánh dấu đã gửi. Không cần mã lượt: là sự thật về một tin ĐÃ gửi, ghi mấy lần cũng giữ mốc
 -- đầu. p_mo: tin "mới đỏ" hoặc tóm tắt; p_het: tin hết đỏ (chỉ sự cố đã báo và đang chờ hết) —

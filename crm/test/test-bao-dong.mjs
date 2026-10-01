@@ -286,6 +286,27 @@ await nhom('4 · GHI LƯỢT: MỖI ĐÈN ĐỎ MỘT SỰ CỐ', async () => {
   const z5 = await suCoMo('zalo');
   ok('Đỏ lại trong lúc chờ → vẫn sự cố cũ (chập chờn không thành nhiều tin), hết chờ',
      z5.id === z1.id && z5.het_do_tu === null && z5.mau_sau === null, JSON.stringify(z5));
+  // Tin hết đỏ ban đêm có thể bị GIỮ tới 07:00 (luật hết đỏ ban đêm, bao-dong-chinh-sach.ts): sự cố còn mở
+  // dù đèn đã hết đỏ quá PHUT_CHO_HET_DO phút. Đỏ lại lúc đó là một lần hỏng MỚI — phải được báo như mọi
+  // lần đỏ, không được nối vào sự cố cũ (đã báo từ tối nên sẽ im tới sáng).
+  await db.query(`update bao_dong_su_co set bao_mo_luc = now() - interval '3 hours', bao_mo_kenh = 'telegram' where id = $1`, [z1.id]);
+  await GHI(luot, [den('zalo', 'xanh'), den('so_kho', 'do', cnA)]);
+  await db.query(`update bao_dong_su_co set het_do_tu = now() - interval '14 minutes' where id = $1`, [z1.id]);
+  await GHI(luot, [den('zalo', 'do'), den('so_kho', 'do', cnA)]);
+  ok('Đỏ lại sau 14 phút hết đỏ → vẫn sự cố cũ (chưa đủ 15 phút)', (await suCoMo('zalo'))?.id === z1.id);
+  await GHI(luot, [den('zalo', 'xanh'), den('so_kho', 'do', cnA)]);
+  await db.query(`update bao_dong_su_co set het_do_tu = now() - interval '16 minutes' where id = $1`, [z1.id]);
+  await GHI(luot, [den('zalo', 'do'), den('so_kho', 'do', cnA)]);
+  const zMoi = await suCoMo('zalo');
+  const zCu = await mot(`select het_luc, bao_het_luc, bao_mo_luc from bao_dong_su_co where id = $1`, [z1.id]);
+  ok('Đỏ lại sau 16 phút hết đỏ mà sự cố còn mở (tin hết đỏ đang giữ tới 07:00) → sự cố MỚI, chưa báo — được báo như mọi lần đỏ',
+     !!zMoi && zMoi.id !== z1.id && zMoi.het_do_tu === null && zMoi.bao_mo_luc === null, JSON.stringify(zMoi));
+  ok('…sự cố cũ đóng, không có dấu "đã báo hết đỏ" (đèn đỏ lại rồi, "đã ổn lại" không còn đúng)',
+     zCu.het_luc !== null && zCu.bao_het_luc === null && zCu.bao_mo_luc !== null, JSON.stringify(zCu));
+  const { PHUT_CHO_HET_DO } = await import(join(GOC, 'web', 'src', 'lib', 'bao-dong-chinh-sach.ts'));
+  const thanGhi = tep('0060').split('create or replace function bao_dong_ghi_luot(')[1]?.split('\n$$;')[0] ?? '';
+  ok(`Mốc "lần hỏng mới" của bao_dong_ghi_luot đúng bằng PHUT_CHO_HET_DO của luật (${PHUT_CHO_HET_DO} phút)`,
+     thanGhi.includes(`het_do_tu <= now() - interval '${PHUT_CHO_HET_DO} minutes'`), thanGhi.slice(0, 80));
   await GHI(luot, [den('zalo', 'tat'), den('so_kho', 'do', cnA)]);
   ok('Đèn chuyển xám (tắt) → chờ hết đỏ với màu "tat"', (await suCoMo('zalo')).mau_sau === 'tat');
   await GHI(luot, [den('zalo', 'do'), den('so_kho', 'do', cnA)]);

@@ -429,6 +429,15 @@ await nhom('12 · HỢP ĐỒNG KÊNH (CHƯA CHỌN KÊNH NÀO)', async () => {
 // ===========================================================================
 // ĐẦU–CUỐI trên database thật
 // ===========================================================================
+// Phần này chạy theo giờ THẬT (now() của database). Luật có hai mốc tính tới từng giây: 08:00 (tóm tắt
+// sáng) và 22:00 (đầu đêm — tin đỏ trước mốc, hết đỏ sau mốc thì giữ tới 07:00). Một lượt rơi đúng qua
+// mốc thì số tin đổi, nên còn dưới 3 phút nữa tới mốc thì đợi qua mốc rồi mới chạy (phần này mất vài giây).
+const MOT_NGAY_MS = 24 * 60 * 60_000;
+const conLaiToiMoc = Math.min(dauChuKy(Date.now()), dauDem(Date.now())) + MOT_NGAY_MS - Date.now();
+if (conLaiToiMoc < 3 * 60_000) {
+  console.log(`  (còn ${Math.ceil(conLaiToiMoc / 1000)} giây nữa tới mốc 08:00 / 22:00 giờ VN — đợi qua mốc rồi chạy)`);
+  await new Promise(r => setTimeout(r, conLaiToiMoc + 2000));
+}
 const { baoDongTatCa, CRON_BAO_DONG, HET_GIO, taoFetchCoHan, guiCoHan, xoaBiMatBaoDong } = await import(join(WEB, 'lib', 'bao-dong.ts'));
 const { db, cnA, cnB, duoi } = await dungDatabase();
 const UID_MAY = '00000000-0000-4000-8000-0000000000f1';
