@@ -24,7 +24,7 @@ import { VIET } from './quet-chu-viet.mjs';
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WEB = join(GOC, 'web', 'src');
 const CS = await import(join(WEB, 'lib', 'bao-dong-chinh-sach.ts'));
-const { lapKeHoach, NHOM, nhomCua, laBanDem, dauChuKy, gioVn,
+const { lapKeHoach, NHOM, nhomCua, laBanDem, dauChuKy, dauDem, gioVn,
         PHUT_XAC_NHAN, PHUT_CHO_HET_DO, TIN_TOI_DA_MOI_DEN, GIO_TOM_TAT, GIO_TOM_TAT_BU_DEN, GIO_DEM_TU, GIO_DEM_DEN } = CS;
 const { soanTin } = await import(join(WEB, 'lib', 'bao-dong-tin.ts'));
 const { KENH_KHONG, chonKenhBaoDong } = await import(join(WEB, 'lib', 'bao-dong-kenh.ts'));
@@ -163,8 +163,34 @@ await nhom('4 · HẾT ĐỎ: CHỜ 15 PHÚT, CÂU THEO MÀU MỚI, ĐÊM ĐỢI
   ok('Đèn khách hết đỏ lúc 23:00 → giữ mở, chưa báo (không đánh thức ai vì tin tốt)', k.hetDo.length === 0 && k.dongIm.length === 0);
   k = kh(vn('07:00', '2026-09-30'), [khachDem]);
   ok('…07:00 → báo hết đỏ', ids(k.hetDo) === khachDem.id);
-  const heThongDem = sc({ ma: 'ipos', cn: CN1, bat_dau_luc: vn('21:00'), het_do_tu: vn('22:30'), bao_mo_luc: vn('21:05') });
-  ok('Đèn hệ thống hết đỏ lúc 23:00 → báo ngay', ids(kh(dem, [heThongDem]).hetDo) === heThongDem.id);
+  // Hết đỏ ban đêm của đèn HỆ THỐNG (chủ chọn 30/09/2026): chỉ báo ngay khi tin báo ĐỎ của chính sự cố
+  // đó cũng đến trong đêm nay — người nhận đã biết, có thể đang xử lý. Tin đỏ đã đến từ trước 22:00
+  // thì tin tốt đợi 07:00 như đèn khách: đèn Sao lưu đỏ từ chiều, ổn lại lúc 3 giờ sáng, không đánh thức ai.
+  const giu = k => k.hetDo.length === 0 && k.dongIm.length === 0;
+  const heThongTuToi = sc({ ma: 'ipos', cn: CN1, bat_dau_luc: vn('21:00'), het_do_tu: vn('22:30'), bao_mo_luc: vn('21:05') });
+  ok('Đèn hệ thống: tin đỏ 21:05 (trước 22:00), hết đỏ 22:30 → 23:00 giữ mở, chưa báo', giu(kh(dem, [heThongTuToi])));
+  ok('…07:00 → báo hết đỏ', ids(kh(vn('07:00', '2026-09-30'), [heThongTuToi]).hetDo) === heThongTuToi.id);
+  const heThongDem = sc({ ma: 'ipos', cn: CN1, bat_dau_luc: vn('22:00'), het_do_tu: vn('22:30'), bao_mo_luc: vn('22:05') });
+  ok('Đèn hệ thống: tin đỏ 22:05 (trong đêm) → 23:00 báo hết đỏ ngay (người nhận đã biết)',
+     ids(kh(dem, [heThongDem]).hetDo) === heThongDem.id);
+  const saoLuu = sc({ ma: 'sao_luu', bat_dau_luc: vn('14:00'), het_do_tu: vn('02:45', '2026-09-30'), bao_mo_luc: vn('14:05') });
+  ok('Sao lưu: tin đỏ 14:05, bản đêm sau dùng được 02:45 → 03:00 giữ mở, không đánh thức ai',
+     giu(kh(vn('03:00', '2026-09-30'), [saoLuu])));
+  ok('…06:59 → vẫn giữ', giu(kh(vn('06:59', '2026-09-30'), [saoLuu])));
+  ok('…07:00 → báo "đã ổn lại"', ids(kh(vn('07:00', '2026-09-30'), [saoLuu]).hetDo) === saoLuu.id);
+  // Sự cố có tin đỏ lúc `bao` (giờ VN, ngày 29/09 nếu không ghi), hết đỏ 20 phút trước mốc xét `luc`.
+  const daBaoLuc = (bao, luc, ngayBao = '2026-09-29') =>
+    sc({ ma: 'zalo', bat_dau_luc: truoc(vn(bao, ngayBao), 5), het_do_tu: truoc(luc, 20), bao_mo_luc: vn(bao, ngayBao) });
+  const s2200 = daBaoLuc('22:00', vn('22:30'));
+  ok('Tin đỏ đúng 22:00 → tính là trong đêm: 22:30 báo hết đỏ ngay', ids(kh(vn('22:30'), [s2200]).hetDo) === s2200.id);
+  ok('Tin đỏ 21:59 → 22:30 giữ tới 07:00', giu(kh(vn('22:30'), [daBaoLuc('21:59', vn('22:30'))])));
+  const quaNuaDem = daBaoLuc('23:50', vn('00:30', '2026-09-30'));
+  ok('Tin đỏ 23:50, hết đỏ 00:10 → 00:30 báo ngay (cùng một đêm, qua nửa đêm)',
+     ids(kh(vn('00:30', '2026-09-30'), [quaNuaDem]).hetDo) === quaNuaDem.id);
+  ok('Tin đỏ 01:00 đêm TRƯỚC (đỏ suốt ngày), hết đỏ 23:10 đêm nay → 23:30 giữ tới 07:00',
+     giu(kh(vn('23:30'), [daBaoLuc('01:00', vn('23:30'))])));
+  const khachTinDem = sc({ ma: 'dat_ban', cn: CN1, bat_dau_luc: vn('22:10'), het_do_tu: vn('22:30'), bao_mo_luc: vn('22:15') });
+  ok('Đèn khách: tin đỏ đến trong đêm (tin nối kênh) → hết đỏ vẫn giữ tới 07:00', giu(kh(dem, [khachTinDem])));
 });
 
 // ===========================================================================
@@ -190,6 +216,11 @@ await nhom('5 · TRẦN TIN MỖI ĐÈN: TÍNH TỪ 8 GIỜ SÁNG, KHÔNG ĐẶT
      dauChuKy(Date.parse(vn('07:59'))) === Date.parse(vn('08:00', '2026-09-28'))
      && dauChuKy(Date.parse(vn('08:00'))) === Date.parse(vn('08:00'))
      && dauChuKy(Date.parse(vn('00:10', '2026-09-30'))) === Date.parse(vn('08:00')));
+  ok('Đầu đêm: 22:00 → 22:00 hôm nay; 23:50 → 22:00 hôm nay; 00:10 và 06:59 → 22:00 hôm qua',
+     dauDem(Date.parse(vn('22:00'))) === Date.parse(vn('22:00'))
+     && dauDem(Date.parse(vn('23:50'))) === Date.parse(vn('22:00'))
+     && dauDem(Date.parse(vn('00:10', '2026-09-30'))) === Date.parse(vn('22:00'))
+     && dauDem(Date.parse(vn('06:59', '2026-09-30'))) === Date.parse(vn('22:00')));
 });
 
 // ===========================================================================
