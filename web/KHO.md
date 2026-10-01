@@ -544,6 +544,7 @@ giống token (kể cả kiểu 32 ký tự in hoa + số như token mẫu trong
 cd web && npm run build
 npx wrangler dev --config dist/server/wrangler.json      # đọc bí mật từ web/.dev.vars
 curl "http://localhost:8787/cdn-cgi/handler/scheduled"   # gọi scheduled một lần, log "[iPOS] …"
+curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=2-59%2F5+*+*+*+*"   # cron báo động, log "[bao-dong] …"
 curl -X POST -H 'content-type: text/plain' --data @event11.json "http://localhost:8787/hook/ipos/<khóa>"
 ```
 

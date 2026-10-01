@@ -130,6 +130,8 @@ nhom('3 · MÀN CRM KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     'pages/noi-bo/messenger.astro', 'lib/messenger-bao.ts',
     // Bảng sức khỏe hệ thống (0055) trên trang Tổng quan.
     'lib/suc-khoe.ts', 'components/SucKhoeHeThong.astro',
+    // Báo động (0060): câu của tin báo gửi chủ nhà hàng.
+    'lib/bao-dong-tin.ts',
   ];
   // Chữ Việt CỐ Ý, không phải câu giao diện bị sót. Mỗi dòng một lý do.
   const CO_Y = [

@@ -490,8 +490,8 @@ await nhom('7 · WORKER, WRANGLER, TRANG, KHÔNG TOKEN TRONG REPO', async () => 
      /from '@astrojs\/cloudflare\/handler'/.test(w) && /async fetch\([\s\S]*startsWith\(DUONG_HOOK\)[\s\S]*xuLyHookIpos\([\s\S]*return handle\(/.test(w)
      && /async scheduled\([^)]*\)\s*\{[\s\S]*waitUntil\(dongBoTatCa\(env\)\)/.test(w));
   const t = readFileSync(join(GOC, 'web/wrangler.toml'), 'utf8');
-  ok('wrangler.toml: main = src/worker.ts, crons 5 phút, giữ workers_dev / preview_urls = false',
-     /^main = "\.\/src\/worker\.ts"$/m.test(t) && /^\[triggers\]\s*\ncrons = \["\*\/5 \* \* \* \*"\]/m.test(t)
+  ok('wrangler.toml: main = src/worker.ts, crons 5 phút (+ cron báo động lệch 2 phút, 0060), giữ workers_dev / preview_urls = false',
+     /^main = "\.\/src\/worker\.ts"$/m.test(t) && /^\[triggers\]\s*\ncrons = \["\*\/5 \* \* \* \*", "2-59\/5 \* \* \* \*"\]$/m.test(t)
      && /^workers_dev = false$/m.test(t) && /^preview_urls = false$/m.test(t));
   ok('wrangler.toml không có [vars] và không có giá trị bí mật', !/^\[vars\]/m.test(t) && !/IPOS_CALLBACK_KHOA\s*=/.test(t));
   const kho = readFileSync(join(GOC, 'web/KHO.md'), 'utf8');

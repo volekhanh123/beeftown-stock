@@ -205,6 +205,10 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/ban-dich.ts',
   // Bảng sức khỏe hệ thống (0055) — chỉ gọi từ trang Tổng quan /noi-bo, cho chủ và quản lý.
   'web/src/lib/suc-khoe.ts',
+  // Báo động (0060): cron riêng (src/worker.ts) đăng nhập tài khoản máy may_bao_dong (client anon riêng +
+  // signInWithPassword, sau đó là authenticated) rồi mới gọi bốn RPC bao_dong_* của máy. Không bao giờ
+  // chạy vai anon: thiếu tài khoản máy thì không gọi database nào.
+  'web/src/lib/bao-dong.ts',
 ];
 
 function laAnon(g) {

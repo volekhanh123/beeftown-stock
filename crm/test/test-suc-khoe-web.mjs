@@ -24,7 +24,7 @@ const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WEB = join(GOC, 'web', 'src');
 const {
   danhGiaSucKhoe, bangSucKhoe, cauTomTat, docSucKhoe, docSaoLuu, docSucKhoeVaSaoLuu, laSucKhoeTho, laThieuHam, khoangThoiGian, tuTruoc,
-  PHUT_NHIP_TIM, GIO_KHONG_CO_TIN, PHUT_TIN_KET, GIO_SAO_LUU,
+  PHUT_NHIP_TIM, GIO_KHONG_CO_TIN, PHUT_TIN_KET, GIO_SAO_LUU, GIO_KHONG_GUI_BAO_DONG,
 } = await import(join(WEB, 'lib', 'suc-khoe.ts'));
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — SỨC KHỎE HỆ THỐNG, PHÍA WEB');
@@ -76,6 +76,7 @@ const IPOS_CHAY = {
 };
 const ZALO_CHAY = { dang_bat: true, che_do: 'that', bat_luc: truoc(3 * 24 * 60), lan_chay_cuoi: truoc(3), co_loi: false };
 const MESS_CHAY = { dang_bat: true, bat_luc: truoc(30 * 24 * 60), loi_cuoi_luc: null, lan_nhan_cuoi: truoc(10), loi_7_ngay: 0 };
+const BAO_CHAY = { lan_chay_cuoi: truoc(3), kenh: 'telegram', co_loi: false, lan_gui_cuoi: truoc(10) };
 
 // ===========================================================================
 await nhom('1 · DATABASE MỚI, CHƯA BẬT GÌ → KHÔNG BÁO NHẦM', async () => {
@@ -88,6 +89,8 @@ await nhom('1 · DATABASE MỚI, CHƯA BẬT GÌ → KHÔNG BÁO NHẦM', async 
   ok('Chưa bật → xám: Zalo, Messenger, tin Zalo, iPOS, kho; form đặt bàn đóng và không có yêu cầu → xám',
      ['zalo', 'messenger', 'tin_zalo', 'ipos', 'so_kho', 'dat_ban'].every(m => mau[m] === 'tat'), JSON.stringify(mau));
   ok('Không có gì chờ → máy dịch và hồ sơ xanh', mau.dich === 'xanh' && mau.tuyen_dung === 'xanh', JSON.stringify(mau));
+  ok('Báo động chưa chạy lần nào (database trước 0060 không có ô bao_dong) → xám, không đỏ', mau.bao_dong === 'tat',
+     JSON.stringify(mau));
   ok('Câu tóm tắt: mọi thứ đang chạy tốt', cauTomTat(sk, 'vi') === 'Mọi thứ đang chạy tốt');
   ok('Giờ số liệu theo giờ Việt Nam (05:00 UTC → 12:00)', sk.gio === '12:00', sk.gio);
   const sk2 = danhGiaSucKhoe({ ...thoGoc(), luc: '2026-09-29T17:05:00Z' }, 'vi');
@@ -244,6 +247,55 @@ await nhom('9 · MÁY DỊCH', async () => {
 });
 
 // ===========================================================================
+// Việc chạy nền báo động (0060, web/src/lib/bao-dong.ts). Đèn này nói việc báo có đang chạy
+// không — không tạo sự cố cho chính nó (báo động hỏng thì không báo được về chính nó).
+await nhom('9b · BÁO ĐỘNG (NHỊP TIM, LỖI, KÊNH)', async () => {
+  const bd = (o, nn = 'vi') => den(voi(t => { t.bao_dong = o === undefined ? undefined : { ...BAO_CHAY, ...o }; }), 'bao_dong', nn);
+  const khoiCua = tho => danhGiaSucKhoe(tho, 'vi').khoi.find(k => k.den.some(d => d.ma === 'bao_dong'))?.ma;
+  ok('Đèn Báo động nằm ở khối "Toàn thương hiệu"', khoiCua(voi(t => { t.bao_dong = BAO_CHAY; })) === 'thuong_hieu');
+  let d = den(thoGoc(), 'bao_dong');
+  ok('Database chưa có ô bao_dong (chưa chạy 0060) → xám "chưa chạy lần nào", không có màn riêng',
+     d.mau === 'tat' && /chưa chạy lần nào/.test(d.cau) && d.di === null, tom(d));
+  d = bd({ lan_chay_cuoi: null, kenh: 'khong', lan_gui_cuoi: null });
+  ok('Chưa chạy lần nào → xám, chỉ cách cài tài khoản máy', d.mau === 'tat' && /tài khoản máy báo động/.test(d.cau), tom(d));
+  d = bd({ kenh: 'khong', lan_gui_cuoi: null });
+  ok('Đang chạy, chưa chọn kênh → XÁM (không vàng mãi kẻo quen bỏ qua màu vàng), nói rõ đèn đỏ chỉ hiện ở bảng',
+     d.mau === 'tat' && /chưa chọn kênh báo — đèn đỏ chỉ hiện ở bảng này \(lượt gần nhất 3 phút trước\)/.test(d.cau), tom(d));
+  d = bd({ lan_chay_cuoi: truoc(PHUT_NHIP_TIM - 1) });
+  ok(`Lượt gần nhất ${PHUT_NHIP_TIM - 1} phút trước → chưa đỏ`, d.mau === 'xanh', tom(d));
+  d = bd({ lan_chay_cuoi: truoc(PHUT_NHIP_TIM + 1) });
+  ok(`Lượt gần nhất ${PHUT_NHIP_TIM + 1} phút trước → đỏ "đã dừng", nói hậu quả`,
+     d.mau === 'do' && /^Việc báo động đã dừng \(lượt gần nhất 31 phút trước\) — đèn chuyển đỏ sẽ không được báo/.test(d.cau), tom(d));
+  d = bd({ lan_chay_cuoi: truoc(90), kenh: 'khong' });
+  ok('Chưa chọn kênh mà việc báo động đã dừng → đỏ (không phải xám)', d.mau === 'do' && /đã dừng/.test(d.cau), tom(d));
+  d = bd({ co_loi: true });
+  ok('Lượt gần nhất lỗi → đỏ, chỉ chỗ xem log', d.mau === 'do' && /^Lượt báo động gần nhất bị lỗi/.test(d.cau)
+     && /\[bao-dong\]/.test(d.cau), tom(d));
+  d = bd({ co_loi: true, lan_chay_cuoi: truoc(45) });
+  ok('Dừng và lỗi → cả hai câu, "đã dừng" trước', d.mau === 'do' && d.cau.indexOf('đã dừng') >= 0
+     && d.cau.indexOf('đã dừng') < d.cau.indexOf('bị lỗi'), tom(d));
+  d = bd({});
+  ok('Có kênh, chạy đều, vừa gửi → xanh, nói kênh, lượt gần nhất và tin gần nhất',
+     d.mau === 'xanh' && d.cau === 'Báo qua Telegram — lượt gần nhất 3 phút trước, tin gần nhất 10 phút trước.', tom(d));
+  d = bd({ lan_gui_cuoi: null });
+  ok('Có kênh, chưa gửi tin nào → xanh "chưa có tin nào" (tin nối kênh gửi ngay lượt đầu; gửi hỏng thì đã đỏ vì co_loi)',
+     d.mau === 'xanh' && /chưa có tin nào/.test(d.cau), tom(d));
+  ok(`Ngưỡng im lặng ${GIO_KHONG_GUI_BAO_DONG} giờ > một ngày (tóm tắt 8 giờ sáng gửi mỗi ngày, bù tới 22 giờ)`,
+     GIO_KHONG_GUI_BAO_DONG > 24 && GIO_KHONG_GUI_BAO_DONG <= 36);
+  d = bd({ lan_gui_cuoi: truoc((GIO_KHONG_GUI_BAO_DONG - 1) * 60) });
+  ok(`Tin gần nhất ${GIO_KHONG_GUI_BAO_DONG - 1} giờ trước → vẫn xanh`, d.mau === 'xanh', tom(d));
+  d = bd({ lan_gui_cuoi: truoc((GIO_KHONG_GUI_BAO_DONG + 1) * 60) });
+  ok(`Tin gần nhất ${GIO_KHONG_GUI_BAO_DONG + 1} giờ trước → vàng: việc báo đang hỏng lặng lẽ`,
+     d.mau === 'vang' && /^Không gửi được tin báo nào qua Telegram 27 giờ nay/.test(d.cau), tom(d));
+  d = bd({ kenh: 'kenh_moi' });
+  ok('Kênh chưa có tên hiện → hiện đúng mã kênh, không vỡ', d.mau === 'xanh' && /^Báo qua kenh_moi —/.test(d.cau), tom(d));
+  d = bd({}, 'en');
+  ok('Tiếng Anh', d.cau === 'Alerts go via Telegram — last run 3 min ago, last message 10 min ago.' && d.ten === 'Alerts', tom(d));
+  const hai = danhGiaSucKhoe(voi(t => { t.bao_dong = { ...BAO_CHAY, co_loi: true }; }), 'vi');
+  ok('Đèn Báo động đỏ được đếm vào số mục cần xử lý ngay', hai.soDo === 1, `${hai.soDo}`);
+});
+
+// ===========================================================================
 await nhom('10 · TÓM TẮT, VÀ KHÔNG ĐỌC ĐƯỢC THÌ KHÔNG BAO GIỜ BÁO TỐT', async () => {
   const xau = voi((t, c) => {
     Object.assign(t.zalo, ZALO_CHAY, { co_loi: true });
@@ -349,14 +401,18 @@ await nhom('13 · TIẾNG ANH KHÔNG LẪN CHỮ VIỆT', async () => {
       Object.assign(c.tin_zalo, { cho_qua_han: 1, that_bai_24h: 1 });
       Object.assign(c.ipos, IPOS_CHAY, { cron_cuoi: truoc(50) });
       Object.assign(c.so_kho, { co_kho: true, lech: 1 });
+      t.bao_dong = { ...BAO_CHAY, lan_chay_cuoi: truoc(45), co_loi: true, lan_gui_cuoi: truoc(30 * 60) };
     }),
     voi((t, c) => {
+      t.bao_dong = { ...BAO_CHAY, kenh: 'khong', lan_gui_cuoi: null };
       Object.assign(t.zalo, ZALO_CHAY, { lan_chay_cuoi: null, bat_luc: truoc(40) });
       Object.assign(t.messenger, MESS_CHAY, { lan_nhan_cuoi: null, bat_luc: truoc(5 * 24 * 60) });
       Object.assign(c.ipos, IPOS_CHAY, { den: 'vang', cho_xu_ly: 1 });
     }),
-    voi((t, c) => { Object.assign(t.zalo, ZALO_CHAY); Object.assign(t.messenger, MESS_CHAY); Object.assign(c.ipos, IPOS_CHAY, { den: 'do', mat_ket_noi: true, loi_tu_luc: truoc(90) }); }),
-    voi((t, c) => { Object.assign(c.ipos, IPOS_CHAY, { den: 'do', mat_ket_noi: true }); c.dat_ban.cho = 2; c.tuyen_dung.moi = 1; }),
+    voi((t, c) => { Object.assign(t.zalo, ZALO_CHAY); Object.assign(t.messenger, MESS_CHAY); Object.assign(c.ipos, IPOS_CHAY, { den: 'do', mat_ket_noi: true, loi_tu_luc: truoc(90) }); t.bao_dong = BAO_CHAY; }),
+    voi((t, c) => { Object.assign(c.ipos, IPOS_CHAY, { den: 'do', mat_ket_noi: true }); c.dat_ban.cho = 2; c.tuyen_dung.moi = 1; t.bao_dong = { ...BAO_CHAY, lan_gui_cuoi: null }; }),
+    voi(t => { t.bao_dong = { ...BAO_CHAY, kenh: 'khong', lan_chay_cuoi: truoc(90) }; }),
+    voi(t => { t.bao_dong = { ...BAO_CHAY, lan_chay_cuoi: null }; }),
     voi((t, c) => { Object.assign(c.ipos, IPOS_CHAY, { cau_hinh_du: false }); Object.assign(t.messenger, MESS_CHAY, { lan_nhan_cuoi: truoc(4 * 24 * 60) }); }),
     voi(t => { t.sao_luu = { ...SAO_LUU_RONG }; }),
     voi(t => { t.sao_luu = { ...SAO_LUU_RONG, lan_cuoi: truoc(60), lan_cuoi_ok: false, lan_cuoi_thu: 'chua_thu' }; }),
@@ -418,6 +474,7 @@ await nhom('15 · ĐỒNG HỒ MÁY KHÔNG ẢNH HƯỞNG (23:50 và 00:10 giờ
     Object.assign(t.zalo, ZALO_CHAY, { lan_chay_cuoi: truoc(45) });
     Object.assign(t.messenger, MESS_CHAY, { loi_cuoi_luc: truoc(20), lan_nhan_cuoi: truoc(30) });
     Object.assign(c.ipos, IPOS_CHAY);
+    t.bao_dong = { ...BAO_CHAY, lan_gui_cuoi: truoc(20 * 60) };
   });
   const chup = () => JSON.stringify(bangSucKhoe({ ok: true, tho }, 'vi', true));
   const that = chup();

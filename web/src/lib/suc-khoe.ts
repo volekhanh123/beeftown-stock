@@ -2,7 +2,7 @@
  * SỨC KHỎE HỆ THỐNG — đèn xanh / vàng / đỏ trên trang Tổng quan (/noi-bo)
  * =====================================================================
  *
- * Database (suc_khoe_he_thong, migration 0055; suc_khoe_sao_luu, 0058) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
+ * Database (suc_khoe_he_thong, migration 0055; suc_khoe_sao_luu, 0058; 0060 thêm ô bao_dong) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
  * quyết định MÀU và CÂU hai thứ tiếng; crm/test/test-suc-khoe-web.mjs thử từng ngưỡng bằng dữ
  * liệu giả, không cần database.
  *
@@ -22,8 +22,15 @@
  * Không đọc được số liệu thì KHÔNG BAO GIỜ hiện "mọi thứ đang chạy tốt" — bảng nói thẳng là
  * không đọc được (xem docSucKhoe). Im lặng khi hỏng chính là thứ bảng này sinh ra để chặn.
  *
- * Thêm một việc chạy nền hay một dịch vụ ngoài mới: thêm số liệu của nó vào
- * suc_khoe_he_thong() (migration mới) và một đèn ở đây, kèm kiểm thử ở cả hai file test.
+ * Thêm một việc chạy nền hay một dịch vụ ngoài mới: thêm số liệu của nó vào suc_khoe_so_lieu()
+ * (migration mới — suc_khoe_he_thong() từ 0060 chỉ còn kiểm vai rồi gọi hàm này, lượt báo động
+ * cũng gọi nó) và một đèn ở đây, kèm kiểm thử ở cả hai file test — và xếp mã đèn vào NHOM của
+ * web/src/lib/bao-dong-chinh-sach.ts (đèn đỏ ban đêm có báo ngay không). Số liệu đọc bằng hàm
+ * riêng (như docSaoLuu) thì phải gắn thêm vào bao_dong_bat_dau_luot, không thì lượt báo động không
+ * bao giờ thấy đèn đó đỏ — test-bao-dong.mjs so mọi đèn trang thấy với đèn lượt báo động thấy.
+ *
+ * Việc chạy nền báo động (web/src/lib/bao-dong.ts) đánh giá bằng CHÍNH danhGiaSucKhoe() này, nên
+ * ngưỡng của bảng và của tin báo là một.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -41,6 +48,12 @@ export const PHUT_LOI_MOI = 60;
 export const GIO_KHONG_CO_TIN = 72;
 /** Tin giao dịch kẹt: đến hạn quá chừng này phút mà chưa gửi. PHẢI bằng interval của cho_qua_han trong 0055. */
 export const PHUT_TIN_KET = 30;
+/**
+ * Báo động có kênh mà chừng này giờ không gửi được tin nào → vàng. Bản tóm tắt 8 giờ sáng gửi MỖI
+ * ngày (kể cả khi mọi thứ xanh), nên hơn một ngày im lặng mà không ghi lỗi là việc báo động đang
+ * hỏng một cách lặng lẽ.
+ */
+export const GIO_KHONG_GUI_BAO_DONG = 26;
 /**
  * Sao lưu chạy mỗi đêm (.github/workflows/sao-luu.yml): quá chừng này giờ không có bản DÙNG ĐƯỢC nào
  * (khôi phục thử đạt) = đã lỡ ít nhất một đêm — dữ liệu từ đó tới giờ chưa có bản sao dùng được.
@@ -85,6 +98,11 @@ export interface SucKhoeTho {
   zalo: { dang_bat: boolean; che_do: string | null; bat_luc: string | null; lan_chay_cuoi: string | null; co_loi: boolean };
   messenger: { dang_bat: boolean; bat_luc: string | null; lan_nhan_cuoi: string | null; loi_cuoi_luc: string | null; loi_7_ngay: number };
   dich: { cho: number; loi: number };
+  /**
+   * Việc chạy nền báo động (0060). kenh: 'khong' khi chưa chọn kênh. co_loi: lượt gần nhất lỗi.
+   * Thiếu ô (database chưa chạy 0060) = chưa chạy lần nào.
+   */
+  bao_dong?: { lan_chay_cuoi: string | null; kenh: string; co_loi: boolean; lan_gui_cuoi: string | null };
   /** Gắn thêm từ suc_khoe_sao_luu() (docSucKhoeVaSaoLuu). undefined: database chưa chạy 0058; null: không đọc được. */
   sao_luu?: SaoLuuTho | null;
   chi_nhanh: ChiNhanhTho[];
@@ -178,7 +196,7 @@ export async function docSucKhoeVaSaoLuu(client: Pick<SupabaseClient, 'rpc'>): P
 // ĐÁNH GIÁ
 // -----------------------------------------------------------------------------
 export type MauDen = 'xanh' | 'vang' | 'do' | 'tat';
-export type MaDen = 'dat_ban' | 'ipos' | 'so_kho' | 'tin_zalo' | 'tuyen_dung' | 'zalo' | 'messenger' | 'dich' | 'sao_luu';
+export type MaDen = 'dat_ban' | 'ipos' | 'so_kho' | 'tin_zalo' | 'tuyen_dung' | 'zalo' | 'messenger' | 'dich' | 'sao_luu' | 'bao_dong';
 
 export interface Den {
   ma: MaDen;
@@ -218,6 +236,7 @@ const TEN: Record<MaDen, Cau> = {
   messenger:  { vi: 'Bot Messenger', en: 'Messenger bot' },
   dich:       { vi: 'Máy dịch', en: 'Machine translation' },
   sao_luu:    { vi: 'Sao lưu dữ liệu', en: 'Data backup' },
+  bao_dong:   { vi: 'Báo động', en: 'Alerts' },
 };
 
 export const TEN_THUONG_HIEU: Cau = { vi: 'Toàn thương hiệu', en: 'Whole brand' };
@@ -523,6 +542,45 @@ function denSaoLuu(d: Partial<SaoLuuTho> | null | undefined, bayGio: number, nn:
     en: `Nightly backup works — latest copy ${tuTruoc(bayGio, dung).en}${co ? ` (${co.en})` : ''}, test restore complete.` }, null, nn);
 }
 
+// --- Báo động (cả thương hiệu) --------------------------------------------------------
+/** Tên hiện của kênh báo; kênh chưa có ở đây thì hiện đúng mã kênh. */
+const TEN_KENH: Readonly<Record<string, Cau>> = {
+  telegram: { vi: 'Telegram', en: 'Telegram' },
+  email:    { vi: 'email', en: 'email' },
+};
+
+function denBaoDong(b: Partial<NonNullable<SucKhoeTho['bao_dong']>>, bayGio: number, nn: NgonNguNB): Den {
+  const chay = ms(b.lan_chay_cuoi), gui = ms(b.lan_gui_cuoi);
+  const kenh = typeof b.kenh === 'string' && b.kenh !== '' ? b.kenh : 'khong';
+  if (chay === null) return denTat('bao_dong', {
+    vi: 'Việc tự báo khi đèn chuyển đỏ chưa chạy lần nào — báo người quản trị kỹ thuật cài tài khoản máy báo động và hai bí mật của Worker.',
+    en: 'The job that alerts when a light turns red has never run — ask the technical admin to set up the alert machine account and its two Worker secrets.' },
+    null, nn);
+  const v: VanDe[] = [];
+  if (bayGio - chay > PHUT_NHIP_TIM * 60000) v.push({ muc: 'do', cau: {
+    vi: `Việc báo động đã dừng (lượt gần nhất ${tuTruoc(bayGio, chay).vi}) — đèn chuyển đỏ sẽ không được báo. Báo người quản trị kỹ thuật xem log [bao-dong] của Worker (Cron, bí mật báo động, database)`,
+    en: `The alert job has stopped (last run ${tuTruoc(bayGio, chay).en}) — red lights will not be reported. Ask the technical admin to check the [bao-dong] lines in the Worker log (Cron trigger, alert secrets, database)` } });
+  if (b.co_loi === true) v.push({ muc: 'do', cau: {
+    vi: 'Lượt báo động gần nhất bị lỗi — tin báo có thể chưa tới. Báo người quản trị kỹ thuật xem log [bao-dong] của Worker',
+    en: 'The latest alert run failed — alerts may not have been delivered. Ask the technical admin to check the [bao-dong] lines in the Worker log' } });
+  if (kenh === 'khong') {
+    if (v.length > 0) return denTu('bao_dong', v, { vi: '', en: '' }, null, nn);
+    return denTat('bao_dong', {
+      vi: `Đang theo dõi nhưng chưa chọn kênh báo — đèn đỏ chỉ hiện ở bảng này (lượt gần nhất ${tuTruoc(bayGio, chay).vi}).`,
+      en: `Watching, but no alert channel is chosen yet — red lights only show on this panel (last run ${tuTruoc(bayGio, chay).en}).` },
+      null, nn);
+  }
+  const ten = TEN_KENH[kenh] ?? { vi: kenh, en: kenh };
+  if (gui !== null && bayGio - gui > GIO_KHONG_GUI_BAO_DONG * 3600000) v.push({ muc: 'vang', cau: {
+    vi: `Không gửi được tin báo nào qua ${ten.vi} ${khoangThoiGian((bayGio - gui) / 60000).vi} nay, dù bản tóm tắt 8 giờ sáng phải tới mỗi ngày — báo người quản trị kỹ thuật`,
+    en: `No alert has gone out via ${ten.en} for ${khoangThoiGian((bayGio - gui) / 60000).en}, although the 8 AM summary is due every day — tell the technical admin` } });
+  return denTu('bao_dong', v, gui === null
+    ? { vi: `Báo qua ${ten.vi} — lượt gần nhất ${tuTruoc(bayGio, chay).vi}, chưa có tin nào.`,
+        en: `Alerts go via ${ten.en} — last run ${tuTruoc(bayGio, chay).en}, no message yet.` }
+    : { vi: `Báo qua ${ten.vi} — lượt gần nhất ${tuTruoc(bayGio, chay).vi}, tin gần nhất ${tuTruoc(bayGio, gui).vi}.`,
+        en: `Alerts go via ${ten.en} — last run ${tuTruoc(bayGio, chay).en}, last message ${tuTruoc(bayGio, gui).en}.` }, null, nn);
+}
+
 // -----------------------------------------------------------------------------
 // CẢ BẢNG — thứ component vẽ
 // -----------------------------------------------------------------------------
@@ -562,8 +620,8 @@ export function bangSucKhoe(kq: KetQuaDoc, nn: NgonNguNB, laChu = false): BangSu
 }
 
 /**
- * Số liệu thô → các khối đèn. Khối đầu là "Toàn thương hiệu" (sao lưu, Zalo, Messenger, máy dịch — cấu
- * hình chung), sau đó mỗi chi nhánh một khối theo thứ tự database trả (theo tên).
+ * Số liệu thô → các khối đèn. Khối đầu là "Toàn thương hiệu" (sao lưu, Zalo, Messenger, máy dịch, báo
+ * động — cấu hình chung), sau đó mỗi chi nhánh một khối theo thứ tự database trả (theo tên).
  * laChu: chủ sở hữu được mở màn cài đặt Zalo; quản lý chỉ mở màn Zalo chung.
  */
 export function danhGiaSucKhoe(tho: SucKhoeTho, nn: NgonNguNB, laChu = false): SucKhoe {
@@ -577,6 +635,7 @@ export function danhGiaSucKhoe(tho: SucKhoeTho, nn: NgonNguNB, laChu = false): S
         denZalo(tho.zalo ?? {}, laChu, bayGio, nn),
         denMessenger(tho.messenger ?? {}, bayGio, nn),
         denDich(tho.dich ?? {}, nn),
+        denBaoDong(tho.bao_dong ?? {}, bayGio, nn),
       ],
     },
     ...tho.chi_nhanh.map(c => ({

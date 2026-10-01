@@ -32,7 +32,7 @@ const git = args => execFileSync('git', args, { cwd: GOC, encoding: 'utf8' });
 const CHUA_CO_TEST = [
   'chuan_ban_dich', 'don_dep_phieu_tai_len', 'ghi_so_ban_dich', 'khach_hang_chuan_hoa_sdt',
   'khung_gio_trong_ngay', 'la_chu_so_huu', 'la_van_ban_tam', 'mon_an_kiem_tra_nhom',
-  'nhan_su_hien_tai', 'nhat_ky_ho_so_chan_sua_xoa', 'noi_dung_cong_bo_kiem_tra', 'sdt_hop_le',
+  'nhat_ky_ho_so_chan_sua_xoa', 'noi_dung_cong_bo_kiem_tra', 'sdt_hop_le',
   'so_cai_diem_chan_sua_xoa', 'so_cai_diem_tinh_so_du', 'tep_anh_kiem_tra_cong_bo',
   'tu_dong_cap_nhat_updated_at', 'vi_tri_kiem_tra',
 ];

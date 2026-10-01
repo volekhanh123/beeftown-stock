@@ -145,12 +145,61 @@ Chủ và quản lý mở `/noi-bo` là thấy ngay phần nào đang hỏng, th
 | Sổ kho | lô có tồn lệch sổ kho (dữ liệu đã sai — báo người quản trị kỹ thuật) | — |
 | Tin Zalo | tin giao dịch đến hạn quá 30 phút mà chưa gửi | tin đến hạn trong 24 giờ qua mà hỏng / bị từ chối |
 | Hồ sơ ứng tuyển | chưa ai mở quá 7 ngày | chưa ai mở 2–7 ngày |
+| Sao lưu dữ liệu (`0058`) | chưa có bản sao lưu nào; bản dùng được (khôi phục thử đạt) gần nhất quá 36 giờ | lượt gần nhất hỏng hoặc khôi phục thử không đạt (vẫn còn bản dùng được trong 36 giờ); không đọc được số liệu |
+| Báo động (`0060`) | quá 30 phút không có lượt báo động nào chạy xong; lượt gần nhất lỗi (gửi hỏng, không đọc được số liệu) | có kênh mà 26 giờ không gửi được tin nào (tóm tắt 8 giờ sáng phải tới mỗi ngày) |
 
 Xám = chưa bật / chưa dùng. **Không đọc được số liệu thì bảng nói thẳng là không đọc được** — không bao giờ hiện "mọi thứ đang chạy tốt" khi không biết. Database chưa chạy `0055` thì bảng báo cần migration đó.
 
-Bảng chỉ hiện khi có người mở trang — chưa có kênh báo tự động (Telegram / email / Zalo). Khi chọn kênh, việc báo dùng lại `danhGiaSucKhoe()` để cùng ngưỡng với bảng. Hàm database hiện từ chối mọi tài khoản máy, nên việc chạy nền muốn đọc số liệu phải được mở quyền có kiểm soát trong một migration mới.
+Bảng chỉ hiện khi có người mở trang; việc tự báo khi đèn chuyển đỏ ở mục **Báo động** ngay dưới — nó đánh giá bằng chính `danhGiaSucKhoe()` nên cùng ngưỡng, cùng câu với bảng.
 
 Thêm việc chạy nền hay dịch vụ ngoài mới: xem mục 9 của `CLAUDE.md`.
+
+## Báo động (tự báo khi đèn chuyển đỏ)
+
+Việc chạy nền đọc đúng số liệu của bảng sức khỏe 5 phút một lần và báo cho chủ nhà hàng khi một đèn **mới chuyển đỏ**, gửi tóm tắt 8 giờ sáng, và báo khi hết đỏ.
+
+**Trạng thái: phần lõi xong, CHƯA chọn kênh.** Việc báo động chạy, giữ sổ sự cố, có đèn "Báo động" trên bảng — nhưng chưa gửi tin đi đâu (đèn xám "chưa chọn kênh"). Chọn kênh: cuối mục này.
+
+- **Database** — `0059` (vai máy `may_bao_dong`, **chạy riêng**) và `0060`: sổ sự cố (mỗi đèn đỏ một sự cố đang mở, không lưu câu chữ), khóa lượt, bốn RPC chỉ máy gọi được. Máy đọc số liệu qua `suc_khoe_so_lieu` và `suc_khoe_sao_luu_so_lieu` — đúng số liệu bảng thấy (kể cả đèn Sao lưu của `0058`), không mở quyền kho / CRM nào. Riêng đối soát sổ kho (quét cả sổ) máy dùng lại kết quả dưới 30 phút, như `0055` đã dặn cho sổ lớn — nên đèn Sổ kho trong tin báo có thể chậm tới 30 phút so với bảng (bảng vẫn quét mỗi lần mở).
+- **Web** — luật `src/lib/bao-dong-chinh-sach.ts` (thuần, theo giờ của database), câu chữ `src/lib/bao-dong-tin.ts`, hợp đồng kênh `src/lib/bao-dong-kenh.ts`, việc chạy nền `src/lib/bao-dong.ts`.
+- **Cron riêng** `2-59/5 * * * *` (phút 2, 7, 12…) — lệch cron iPOS / Zalo, để hai việc đó quá tải hay treo không kéo việc báo động chết theo.
+
+| Tình huống | Làm gì |
+|---|---|
+| Đèn đỏ hai lượt liền (≥ 4 phút) | Báo. Đỏ một lượt rồi tự hết → không báo |
+| Ban đêm 22:00–07:00 | Chỉ đèn **hệ thống** (Bộ gửi Zalo, Bot Messenger, iPOS, Sổ kho, Máy dịch, Sao lưu dữ liệu, không đọc được số liệu) báo ngay. Đèn **khách** (Đặt bàn, Hồ sơ, Tin Zalo) giữ lại; lượt đầu sau 07:00 gửi gộp nếu vẫn đỏ |
+| Hết đỏ | Chờ 15 phút liền mới đóng sự cố; đỏ lại trong 15 phút vẫn là sự cố cũ, không báo lại; đỏ lại sau khi đã hết đỏ đủ 15 phút là lần hỏng mới, được báo như thường (kể cả khi tin hết đỏ của lần trước đang giữ tới 07:00). Sự cố đã báo → "đã ổn lại" / "hết đỏ, còn cần xem hôm nay" / "đã tắt"; chi nhánh ngừng hoạt động → đóng im lặng. Ban đêm, đèn hệ thống chỉ báo hết đỏ ngay khi tin báo đỏ của nó cũng đến trong đêm đó (người nhận đã biết); còn lại — đèn khách, đèn đã báo đỏ từ trước 22:00 như Sao lưu ổn lại lúc 3 giờ sáng — đợi 07:00 |
+| Một đèn đỏ đi đỏ lại | Tối đa 5 tin "mới đỏ" mỗi đèn từ 8 giờ sáng tới 8 giờ sáng hôm sau; tin thứ 5 nói rõ sẽ không nhắn riêng nữa tới bản tóm tắt |
+| 8 giờ sáng mỗi ngày | Tóm tắt, **kể cả khi mọi thứ xanh** — không thấy tin sáng nghĩa là chính việc báo động đang hỏng. Lỡ 8 giờ thì gửi bù tới 22:00 |
+| Không đọc được số liệu | Không đóng sự cố nào (không có "đã ổn lại" giả); hai lượt liền → một tin "báo động đang mù" |
+| Gửi hỏng (mạng, 5xx, quá 10 giây) | Không đánh dấu "đã báo", đèn "Báo động" đỏ, lượt sau gửi lại. Gửi được mà ghi database hỏng → có thể lặp đúng một tin (thà lặp còn hơn mất) |
+| Chưa chọn kênh | Vẫn theo dõi, không gửi, không đánh dấu. Ngày có kênh: gửi ngay tin "đã nối kênh" liệt kê những gì đang đỏ — không dồn tin cũ |
+
+Mỗi lượt gộp thành **một** tin; câu của từng đèn lấy nguyên từ bảng (chỉ số đếm và mốc giờ — không tên khách, SĐT, câu lỗi thô). Thêm đèn mới vào `suc-khoe.ts` thì xếp nó vào `NHOM` của `bao-dong-chinh-sach.ts` (hệ thống hay khách) — quên thì `astro check` báo lỗi.
+
+### Cài một lần
+
+1. Chạy `0059` **một mình**, rồi `0060` — trên Beeftown-thu trước; production chỉ sau khi PR được gộp.
+2. Tạo tài khoản máy: Supabase → **Authentication → Users → Add user** (`may-bao-dong@<tên miền của quán>`, mật khẩu dài ngẫu nhiên, **Auto confirm**), chép `User UID`, rồi SQL Editor (chi nhánh nào cũng được — bảng `nhan_su` bắt vai khác chủ phải có chi nhánh; máy đọc mọi chi nhánh đang hoạt động):
+   ```sql
+   insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro)
+   values ('<User UID>', (select id from chi_nhanh order by ma limit 1), 'Máy báo động', 'may_bao_dong');
+   ```
+3. Hai bí mật Worker (cách đặt như mục Zalo): `BAO_DONG_MAY_EMAIL`, `BAO_DONG_MAY_MAT_KHAU` — đúng email / mật khẩu trên.
+4. `npm run deploy` khi CI xanh.
+5. Kiểm trong 15 phút: Cloudflare → Workers & Pages → `beeftown` → Settings → **Triggers** có **2 cron**; **Logs** có dòng `[bao-dong] lượt xong — …` ở phút :02, :07, …; đèn "Báo động" trên bảng xám "chưa chọn kênh … (lượt gần nhất X phút trước)" — không phải "chưa chạy lần nào".
+
+Vai `may_bao_dong` không đọc được bảng nào; nó chỉ gọi được bốn RPC `bao_dong_*`. Chạy thử trên máy: `npx wrangler dev --config dist/server/wrangler.json` rồi `curl "http://localhost:8787/cdn-cgi/handler/scheduled?cron=2-59%2F5+*+*+*+*"`. **Tạm dừng báo**: xóa bí mật `BAO_DONG_MAY_MAT_KHAU` (đèn Báo động đỏ sau 30 phút — cố ý, để không ai quên bật lại). **Thay mật khẩu máy**: đổi ở Supabase rồi đặt lại bí mật. Nếu Cloudflare không nhận `2-59/5 * * * *`: dùng `2,7,12,17,22,27,32,37,42,47,52,57 * * * *` ở `wrangler.toml` và đổi `CRON_BAO_DONG` trong `src/lib/bao-dong.ts` cho trùng (`test-bao-dong-web.mjs` kiểm hai chỗ khớp nhau).
+
+### Chọn kênh sau
+
+Mỗi kênh là một file `src/lib/bao-dong-kenh-<ten>.ts` cài `KenhBaoDong` (chỉ trả `ok` khi dịch vụ xác nhận đã nhận tin; hết giờ / 5xx / 429 → tạm thời), một dòng trong `chonKenhBaoDong`, bí mật Worker của kênh, một file test với fetch giả, một dòng ở đây. **Không cần migration.**
+
+- **Telegram (khuyên dùng)** — miễn phí, báo đẩy trên điện thoại, không phụ thuộc thứ nó theo dõi. Cần: tạo bot với @BotFather, bấm Start, gửi một tin để lấy mã chat.
+- **Email qua Cloudflare** — cần bật Email Routing cho beeftown.vn (đổi bản ghi MX), xác minh địa chỉ nhận, thêm `send_email` vào `wrangler.toml`. Chậm được để ý; hợp làm kênh phụ.
+- **Zalo ZBS** — cần mẫu tin được duyệt, tốn phí mỗi tin. Không nên làm kênh chính: tin "bộ gửi Zalo đã dừng" lại phải đi qua chính bộ gửi đó.
+
+Kiểm thử: `node crm/test/test-bao-dong.mjs` (database) và `node crm/test/test-bao-dong-web.mjs` (luật từng mốc giờ, câu chữ, việc chạy nền đầu–cuối với kênh giả).
 
 ## Bản dịch tự động (tiếng Anh và tiếng Hàn)
 
