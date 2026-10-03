@@ -296,9 +296,16 @@
   <!-- Cân & thông số (2.2) -->
   <section class="the an" id="the-can">
     <h2>Cân &amp; thông số</h2>
-    <div class="bao luu-y"><p><b>Chưa thử trên cân thật.</b> Đọc / ghi qua cổng hai chiều (33581) và gửi thông số qua cổng 33571 dựng lại từ
-      phần mềm của hãng, chưa lần nào thử với cân của quán. Sau mỗi việc, xem lại trên cân (bấm <b>Time</b>, in thử một tem).
-      Không được thì dùng USB. Đóng phần mềm TM-xA của hãng trên mọi máy trước khi dùng.</p></div>
+    <div class="bao luu-y"><p><b>Ghi qua WiFi chưa thử trên cân thật.</b> Từ 2.7, thông số, chữ, phím, tem gửi qua cổng hai chiều (33581) như gửi giá, rồi
+      chương trình đọc lại cân để kiểm — chỉ báo "cân đã nhận" khi đọc lại khớp. Đọc qua cổng hai chiều đã chạy trên cân của quán (03/10/2026);
+      ghi thì chưa. Không được thì dùng USB. Đóng phần mềm TM-xA của hãng trên mọi máy trước khi dùng.</p></div>
+
+    <h3>Chẩn đoán WiFi <span class="phu" style="font-weight:400">— làm đầu tiên khi gửi qua WiFi không được</span></h3>
+    <p class="phu">Chạy lần lượt các phép thử an toàn với cân rồi lưu kết quả ra file (gửi file đó cho người sửa chương trình). Mặc định chỉ đọc, không ghi gì xuống cân.</p>
+    <label class="phu" style="display:block;margin:6px 0"><input type="checkbox" id="chan-doan-ghi"> Thử cả ghi: ghi lại y hệt một hàng đang có, thêm rồi sửa
+      một hàng thử ở PLU 9999, gửi thử một file nhỏ qua cổng 33571, cuối cùng gỡ hàng thử (để lại PLU 9999 trống). Làm <b>ngoài giờ bán</b>, có người đứng ở cân.</label>
+    <div class="nut"><button type="button" id="nut-chan-doan">Chẩn đoán WiFi</button></div>
+    <div id="kq-chan-doan"></div>
 
     <h3>1. Thông tin cân <span class="phu" style="font-weight:400">— chỉ đọc, nên thử đầu tiên</span></h3>
     <p class="phu">Hỏi cân qua WiFi hai chiều: mã máy, loại máy, phiên bản, giờ trên cân. Không ghi gì xuống cân. Cân trả lời được là đường hai chiều thông.</p>
@@ -314,19 +321,22 @@
     <p class="phu">Thay bước USB "Bắt đầu" / "Cập nhật file gốc từ cân": đọc hàng, mẫu tem, phím, thông số trên cân rồi ghi nhận làm file gốc. Không ghi gì xuống cân.</p>
     <div class="nut"><button type="button" class="doc-wifi">Đọc dữ liệu từ cân qua WiFi</button><span class="dang-lam an">Đang đọc từ cân… (có thể tới 1 phút)</span></div>
 
-    <h3>4. Xoá hẳn hàng còn nằm lại (thử)</h3>
-    <p class="phu">Gửi qua cổng 33571 cân không xoá hàng. Cổng hai chiều có lệnh xoá cả danh sách rồi nạp lại — chương trình đọc lại để kiểm. Cần đăng nhập kho.
+    <h3>4. Gỡ hàng còn nằm lại</h3>
+    <p class="phu">Cân không có lệnh xoá một hàng. Hai cách qua cổng hai chiều, cần đăng nhập kho:</p>
+    <p class="phu">• <b>Gỡ khỏi cân (ghi đè)</b> — an toàn, nên dùng: mỗi số PLU còn nằm lại thành một dòng trống "KHÔNG DÙNG (PLU trống)", mã 99999, giá 0;
+      phím tắt gọi số đó được bỏ. Hàng mới sau dùng lại số PLU này. Không lúc nào cân thiếu hàng.<br>
+      • <b>Xoá hẳn (thử)</b> — xoá cả danh sách hàng trên cân rồi nạp lại; hỏng giữa chừng thì chương trình tự gửi lại cả danh sách. Làm lúc quầy vắng.<br>
       Đường chắc chắn vẫn là nạp USB (thẻ Gửi giá từ kho).</p>
-    <div class="nut"><button type="button" id="nut-xem-con-lai">Xem hàng còn nằm lại và xoá qua WiFi</button></div>
+    <div class="nut"><button type="button" id="nut-xem-con-lai">Xem hàng còn nằm lại</button></div>
     <div id="kq-con-lai"></div>
 
     <h3>5. Thông số</h3>
-    <p class="phu">Chỉ vài thông số an toàn được sửa ở đây; thông số khác chỉ xem. Gửi qua cổng 33571 như gửi giá.</p>
+    <p class="phu">Chỉ vài thông số an toàn được sửa ở đây; thông số khác chỉ xem. Gửi qua cổng hai chiều như gửi giá, rồi đọc lại cân để kiểm.</p>
     <div id="can-thong-so"></div>
 
     <h3>6. Chữ cài đặt chung</h3>
     <p class="phu">Tên quán, tên cân, đơn vị tiền và các dòng "Ghi chú cân" in trên tem, hoá đơn. Tên và mật khẩu WiFi không hiện, không sửa ở đây.
-      Gửi qua cổng 33571 như gửi giá.</p>
+      Gửi qua cổng hai chiều như gửi giá, rồi đọc lại cân để kiểm.</p>
     <div id="can-chu-chung"></div>
   </section>
 
@@ -668,10 +678,12 @@
       }
 
       if (x.conLai.length) {
-        h += `<div class="bao loi"><p><b>${x.conLai.length} hàng sẽ còn nằm trên cân</b> — gửi qua WiFi cân chỉ thêm và sửa, không xoá được:</p><p>`
+        h += `<div class="bao loi"><p><b>${x.conLai.length} hàng sẽ còn nằm trên cân</b> — gửi qua WiFi cân chỉ thêm và sửa, không xoá:</p><p>`
           + x.conLai.map(c => `PLU ${c.so} · mã ${e(c.ma || '—')} · ${e(c.ten)}`).join('<br>') + '</p>'
-          + '<p>Muốn xoá hẳn: lưu file rồi nạp bằng USB (cân thay cả danh sách). Hoặc thử xoá qua cổng hai chiều — <b>chưa thử trên cân thật</b>.</p>'
-          + '<div class="nut"><button id="nut-tao-usb">Lưu file để nạp USB</button><button id="nut-xoa-wifi">Xoá hẳn qua WiFi (thử)</button></div><div id="khung-usb"></div></div>';
+          + '<p><b>Gỡ khỏi cân (ghi đè)</b>: mỗi số PLU đó thành dòng trống "KHÔNG DÙNG", hàng mới dùng lại số đó — an toàn, không lúc nào cân thiếu hàng. '
+          + 'Hoặc nạp USB (cân thay cả danh sách), hoặc xoá hẳn qua WiFi. Gỡ và xoá qua WiFi <b>chưa thử trên cân thật</b>.</p>'
+          + '<div class="nut"><button id="nut-go-wifi" class="chinh">Gỡ khỏi cân qua WiFi (ghi đè)</button><button id="nut-tao-usb">Lưu file để nạp USB</button>'
+          + '<button id="nut-xoa-wifi">Xoá hẳn qua WiFi (thử)</button></div><div id="khung-usb"></div></div>';
       }
       h += `<div class="nut" style="margin-top:16px"><button class="chinh to" id="nut-gui">Gửi xuống cân</button>`
         + `<span class="phu">${x.canChuaRo ? 'Lần xoá qua WiFi trước hỏng — bấm Gửi để gửi lại cả danh sách ' + x.soHangSauKhiGui + ' hàng, hoặc nạp USB.'
@@ -684,6 +696,7 @@
       $('nut-gui').onclick = gui;
       if ($('nut-tao-usb')) $('nut-tao-usb').onclick = taoUsb;
       if ($('nut-xoa-wifi')) $('nut-xoa-wifi').onclick = () => xoaQuaWifi($('khung-usb'), x, giu, $('nut-xoa-wifi'));
+      if ($('nut-go-wifi')) $('nut-go-wifi').onclick = () => goQuaWifi($('khung-usb'), x, giu, $('nut-go-wifi'));
     } catch (err) {
       bao(noi, 'loi', e(err.message));
     } finally {
@@ -770,11 +783,55 @@
     try {
       const k = await goi('/api/can/xoa-wifi', { giuHangNgoaiKho: giu, dauVan: x.dauVan });
       baoChung('xong', `<p><b>Đã xoá qua WiFi:</b> cân đọc lại đúng ${k.soHang} hàng; ${k.daXoa.length} hàng còn nằm lại đã hết `
-        + `(${k.daXoa.map(c => 'PLU ' + c.so).join(', ')}).</p><p>Gọi thử trên cân số PLU của một hàng vừa xoá: cân không còn hàng đó là đúng.</p>`);
+        + `(${k.daXoa.map(c => 'PLU ' + c.so).join(', ')}).</p>` + (k.phucHoi ? `<p>${e(k.phucHoi)}</p>` : '')
+        + '<p>Gọi thử trên cân số PLU của một hàng vừa xoá: cân không còn hàng đó là đúng.</p>');
+      await taiTrangThai();
+    } catch (err) {
+      bao(noi, 'loi', `<p>${e(err.message)}</p><p>Đường chắc chắn: bấm <b>Lưu file để nạp USB</b> (thẻ Gửi giá từ kho) rồi nạp USB.</p>`);
+      // Lần xoá hỏng có thể đã ghi dấu (cân chưa rõ) hay đã tự gửi lại cả danh sách: tải lại để bảng đúng với cân.
+      try { await taiTrangThai(); } catch { /* câu lỗi đã ở trên */ }
+    } finally { if (nut) { nut.disabled = false; nut.textContent = chuNut; } }
+  }
+
+  /**
+   * 2.7 — gỡ hàng còn nằm lại bằng ghi đè (chưa thử trên cân thật): mỗi số PLU thành dòng trống "KHÔNG DÙNG (PLU trống)",
+   * phím tắt gọi số đó được bỏ. An toàn hơn xoá hẳn (không lúc nào cân thiếu hàng). Gửi kèm dấu kế hoạch x.dauVan như xoá.
+   */
+  async function goQuaWifi(noi, x, giu, nut) {
+    const ds = x.conLai.map(c => `PLU ${c.so} · mã ${c.ma || '—'} · ${c.ten}`).join('\n');
+    if (!confirm(`Gỡ ${x.conLai.length} hàng còn nằm lại khỏi cân qua WiFi?\n\n${ds}\n\n`
+      + 'Mỗi số PLU trên thành dòng trống "KHÔNG DÙNG (PLU trống)" (mã 99999, giá 0); phím tắt đang gọi số đó được bỏ. '
+      + 'Hàng mới sau dùng lại số PLU này. Hàng khác trên cân không đổi.\n\n'
+      + 'Qua cổng hai chiều (33581) — CHƯA THỬ TRÊN CÂN THẬT. Gửi xong chương trình đọc lại cân để kiểm. Đóng phần mềm TM-xA của hãng trên máy khác trước.')) return;
+    const chuNut = nut ? nut.textContent : '';
+    if (nut) { nut.disabled = true; nut.textContent = 'Đang gỡ qua WiFi…'; }
+    bao(noi, '', '');
+    try {
+      const k = await goi('/api/can/go-con-lai', { giuHangNgoaiKho: giu, dauVan: x.dauVan });
+      baoChung(k.loiPhim ? 'luu-y' : 'xong', `<p><b>Đã gỡ ${k.daGo.length} hàng khỏi cân</b> (${k.daGo.map(c => 'PLU ' + c.so).join(', ')}): `
+        + 'đọc lại thấy các số PLU đó đã là dòng trống "KHÔNG DÙNG".'
+        + (k.boPhim ? ` Đã bỏ ${k.boPhim} phím tắt đang gọi các số đó.` : '') + '</p>'
+        + (k.loiPhim ? `<p>${e(k.loiPhim)}</p>` : '')
+        + '<p>Gọi thử trên cân một số PLU vừa gỡ: ra "KHÔNG DÙNG (PLU trống)", giá 0 là đúng. Không cân hàng bằng số đó.</p>');
       await taiTrangThai();
     } catch (err) {
       bao(noi, 'loi', `<p>${e(err.message)}</p><p>Đường chắc chắn: bấm <b>Lưu file để nạp USB</b> (thẻ Gửi giá từ kho) rồi nạp USB.</p>`);
     } finally { if (nut) { nut.disabled = false; nut.textContent = chuNut; } }
+  }
+
+  /**
+   * 2.7 — báo sau khi gửi thông số / chữ cài đặt / phím / tem: "cân đã nhận" chỉ khi chương trình đọc lại cân thấy khớp
+   * (k.xacNhan). Không đọc lại được: khung vàng, nói vì sao, chỉ cách tự kiểm trên cân và đường USB. (Đọc lại thấy cân
+   * chưa nhận thì máy chủ trả lỗi — không tới đây.)
+   */
+  function baoCaiDat(tieuDe, k, cachKiem, cachUsb) {
+    const qua = k.cachGui === 'hai-chieu' ? 'qua cổng hai chiều' : 'qua cổng 33571';
+    if (k.xacNhan) {
+      baoChung('xong', `<p><b>Cân đã nhận ${tieuDe}</b> (gửi ${qua}, đọc lại thấy đúng). ${cachKiem}</p>` + daDoiDiaChi(k.doiDiaChi));
+      return;
+    }
+    baoChung('luu-y', `<p><b>Đã gửi ${tieuDe} ${qua}, nhưng chưa kiểm được cân đã nhận chưa:</b> ${e(k.cauXacNhan || '')}</p>`
+      + `<p>${cachKiem} Cân chưa đổi: ${cachUsb}</p>` + daDoiDiaChi(k.doiDiaChi));
   }
 
   /** Khung hướng dẫn nạp USB sau khi đã lưu file cho-usb. */
@@ -802,6 +859,7 @@
   const TINH_TRANG = {
     khop: ['Khớp kho', 'them'], lech: ['Khác kho', 'sua'], ngoai_kho: ['Kho không có', 'xoa'], con_lai: ['Còn nằm lại', 'xoa'],
     chua_len: ['Chưa lên cân', 'giu'], khong_len: ['Không lên được', 'khong-len'], tren_can: ['Trên cân', 'giu'],
+    trong: ['PLU trống', 'khong-len'],   // 2.7: số PLU đã gỡ hàng bằng ghi đè — hàng mới dùng lại được
   };
   let dsHang = null, locHang = 'tat_ca';
   const boDau = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').toLowerCase();
@@ -832,8 +890,10 @@
 
   function veHang() {
     if (!dsHang) return;
-    const d = dsHang, trenCan = d.hang.filter(h => h.so !== null).length;
-    $('hang-mo-ta').innerHTML = `Cân đang có <b>${trenCan}</b> hàng.`
+    // Dòng trống (PLU đã gỡ bằng ghi đè, 2.7) không phải hàng.
+    const d = dsHang, trenCan = d.hang.filter(h => h.so !== null && h.tinhTrang !== 'trong').length;
+    const soTrong = d.hang.filter(h => h.tinhTrang === 'trong').length;
+    $('hang-mo-ta').innerHTML = `Cân đang có <b>${trenCan}</b> hàng${soTrong ? ` và ${soTrong} số PLU trống` : ''}.`
       + (d.coKho ? ' Đã đối chiếu với Mặt hàng trong kho.' : ` Chưa đối chiếu với kho${d.loiKho ? ': ' + e(d.loiKho) : ''}.`)
       + ' <b>Mã FABi</b> là mã 5 số nằm trong mã vạch trên tem — trùng với ô "mã vạch" của món trên FABi.';
     const dem = { tat_ca: d.hang.length };
@@ -852,7 +912,7 @@
       if (x.tenKho && x.tenKho !== x.ten) khac.push('tên kho: ' + e(x.tenKho));
       if (x.giaKho !== undefined && x.giaKho !== x.gia && x.tinhTrang === 'lech') khac.push('giá kho: ' + tien(x.giaKho));
       if (x.hsdKho !== undefined && x.hsd !== undefined && x.hsdKho !== x.hsd) khac.push('HSD kho: ' + e(hsdChu(x.hsdKho)));
-      h += `<tr class="${x.so === null || x.tinhTrang === 'con_lai' ? 'mo' : ''}"><td class="so">${x.so ?? '—'}</td>`
+      h += `<tr class="${x.so === null || x.tinhTrang === 'con_lai' || x.tinhTrang === 'trong' ? 'mo' : ''}"><td class="so">${x.so ?? '—'}</td>`
         + `<td>${x.phim ? `<span class="phim" title="Phím tắt trên bàn phím cân">${e(x.phim)}</span>` : ''}</td>`
         + `<td class="so">${e(x.maCan || '—')}</td><td class="so"><b>${e(x.maFabi || '—')}</b></td><td>${e(x.ten)}</td>`
         + `<td class="so">${tien(x.gia)}</td>`
@@ -1276,10 +1336,9 @@
     dangGuiTem = true; nut.textContent = 'Đang gửi…'; capNutTem();
     try {
       const k = await goi('/api/tem/gui', thayDoiTem());
-      baoChung('xong', '<p><b>Đã gửi tem xuống cân.</b> Cân thử một món rồi in một tem để xem tem mới.</p>'
-        + '<p>Nếu tem chưa đổi: bấm <b>Lưu file nạp USB</b> ở thẻ Mẫu tem (không cần sửa lại — file đã có tem vừa gửi) rồi nạp USB; nạp USB thì cân nhận chắc chắn.</p>'
-        + (k.canhBao && k.canhBao.length ? `<p>${k.canhBao.map(e).join('<br>')}</p>` : '')
-        + daDoiDiaChi(k.doiDiaChi));
+      baoCaiDat('mẫu tem', k, 'Cân thử một món rồi in một tem để xem tem mới.',
+        'bấm <b>Lưu file nạp USB</b> ở thẻ Mẫu tem (không cần sửa lại — file đã có tem vừa gửi) rồi nạp USB; nạp USB thì cân nhận chắc chắn.');
+      if (k.canhBao && k.canhBao.length) document.querySelector('#bao-chung .bao')?.insertAdjacentHTML('beforeend', `<p>${k.canhBao.map(e).join('<br>')}</p>`);
       $('khung-usb-tem').innerHTML = '';
       await taiTrangThai();
     } catch (err) { baoChung('loi', e(err.message)); }
@@ -1721,9 +1780,34 @@
         bao(noi, 'luu-y', `Kho có thay đổi hạn dùng (HSD) của ${x.doiHsd} hàng chưa gửi — gửi ở thẻ Gửi giá từ kho (xem trước, in thử tem) rồi mới xoá qua WiFi.`);
         return;
       }
-      bao(noi, 'luu-y', `<p>${x.conLai.length} hàng còn nằm lại: ${x.conLai.map(c => `PLU ${c.so} · ${e(c.ten)}`).join(' · ')}</p>`);
-      await xoaQuaWifi(noi, x, giu, nut);
+      bao(noi, 'luu-y', `<p>${x.conLai.length} hàng còn nằm lại: ${x.conLai.map(c => `PLU ${c.so} · ${e(c.ten)}`).join(' · ')}</p>`
+        + '<div class="nut"><button type="button" class="chinh go">Gỡ khỏi cân (ghi đè)</button><button type="button" class="xoa">Xoá hẳn (thử)</button></div>'
+        + '<div class="kq-go"></div>');
+      const kq = noi.querySelector('.kq-go');
+      noi.querySelector('.go').onclick = (ev) => goQuaWifi(kq, x, giu, ev.currentTarget);
+      noi.querySelector('.xoa').onclick = (ev) => xoaQuaWifi(kq, x, giu, ev.currentTarget);
     } catch (err) { bao(noi, 'loi', e(err.message)); }
+  };
+
+  // ---- 2.7: chẩn đoán WiFi --------------------------------------------------------------
+  const KQ_BUOC = { dat: ['Đạt', 'xanh'], hong: ['Hỏng', 'do'], 'bo-qua': ['Bỏ qua', 'xam'] };
+  $('nut-chan-doan').onclick = () => {
+    const ghiThu = $('chan-doan-ghi').checked;
+    if (ghiThu && !confirm(`Chẩn đoán CÓ GHI THỬ xuống cân?\n\nChương trình sẽ: ghi lại y hệt một hàng đang có (không đổi gì); thêm hàng thử "THỬ WIFI" ở PLU 9999, `
+      + 'sửa nó; gửi thử một file nhỏ qua cổng 33571; cuối cùng gỡ hàng thử (PLU 9999 thành dòng trống "KHÔNG DÙNG").\n\n'
+      + 'Hàng đang bán không đổi. Làm NGOÀI GIỜ BÁN, có người đứng ở cân, cân ở màn hình bán hàng. Đóng phần mềm TM-xA của hãng trên máy khác trước.')) return;
+    lamCan($('kq-chan-doan'), ghiThu ? 'Đang chẩn đoán, có ghi thử… (có thể tới 2 phút)' : 'Đang chẩn đoán (chỉ đọc)…', async (noi) => {
+      const k = await goi('/api/can/chan-doan', { ghiThu });
+      const hong = k.buoc.some(b => b.ketQua === 'hong');
+      let h = '<table class="bang-tt"><tbody>' + k.buoc.map(b => `<tr><td>${e(b.ten)}</td><td><span class="nhan-l ${KQ_BUOC[b.ketQua][1]}">${KQ_BUOC[b.ketQua][0]}</span> `
+        + `${e(b.cau)}${b.ms ? ` <span class="phu">(${(b.ms / 1000).toLocaleString('vi-VN', { maximumFractionDigits: 1 })} giây)</span>` : ''}</td></tr>`).join('') + '</tbody></table>';
+      h += '<p><b>Kết luận:</b></p>' + k.ketLuan.map(c => `<p>• ${e(c)}</p>`).join('');
+      h += `<p class="phu">Đã lưu kết quả ở <code>${e(k.duongDan)}</code> — gửi file này cho người sửa chương trình. Không có tên hay mật khẩu WiFi trong file.</p>`
+        + '<div class="nut"><button type="button" class="mo-cd">Mở thư mục chứa file</button></div>';
+      bao(noi, hong ? 'luu-y' : 'xong', h);
+      noi.querySelector('.mo-cd').onclick = () => goi('/api/mo-thu-muc', { cho: 'chan-doan' }).catch(err => baoChung('loi', e(err.message)));
+      if (ghiThu) { try { await taiTrangThai(); } catch { /* kết quả đã hiện */ } }
+    });
   };
 
   // ---- thông số -------------------------------------------------------------
@@ -1830,16 +1914,15 @@
         const m = canDL.muc.find(x => x.id === Number(id));
         return `• ${m.ten} (${id}): ${tenGiaTri(m, m.giaTri)} → ${tenGiaTri(m, v)}`;
       }).join('\n');
-      if (!confirm(`Gửi ${Object.keys(tsSua).length} thông số xuống cân?\n\n${ds}\n\nGửi qua cổng 33571 như gửi giá — CHƯA THỬ TRÊN CÂN THẬT: `
-        + 'cân không trả lời, nên chưa biết cân đã nhận. Gửi xong in thử một tem, xem màn hình cân.')) return;
+      if (!confirm(`Gửi ${Object.keys(tsSua).length} thông số xuống cân?\n\n${ds}\n\nGửi qua cổng hai chiều như gửi giá, rồi đọc lại cân để kiểm — `
+        + 'CHƯA THỬ TRÊN CÂN THẬT. Gửi xong in thử một tem, xem màn hình cân.')) return;
       const nut = $('nut-gui-ts');
       dangGuiTs = true; $('can-thong-so').inert = true; nut.textContent = 'Đang gửi…'; capNutTs();
       try {
         const k = await goi('/api/thong-so/gui', { thay: tsSua });
         tsSua = {};   // đã gửi: không gửi lại lần nữa
-        baoChung('luu-y', `<p><b>Đã gửi ${k.doi.length} thông số xuống cân</b> (số ${k.doi.join(', ')}) qua cổng 33571. Chưa thử trên cân thật: cân không trả lời, `
-          + 'nên chưa biết cân đã nhận. In thử một tem, xem màn hình cân.</p><p>Cân chưa đổi: thẻ Cân &amp; thông số → <b>Lưu file nạp USB</b> '
-          + '(file có sẵn thay đổi vừa gửi) rồi nạp USB.</p>' + daDoiDiaChi(k.doiDiaChi));
+        baoCaiDat(`${k.doi.length} thông số (số ${k.doi.join(', ')})`, k, 'In thử một tem, xem màn hình cân.',
+          'thẻ Cân &amp; thông số → <b>Lưu file nạp USB</b> (file có sẵn thay đổi vừa gửi) rồi nạp USB.');
         await taiLaiSauKhiGui();
       } catch (err) { bao($('kq-ts'), 'loi', e(err.message)); }
       finally {
@@ -1926,17 +2009,16 @@
         const m = ccDL.muc.find(x => x.id === Number(id));
         return `• ${m.ten} (chữ số ${id}): ${chuHien(m.giaTri)} → ${chuHien(gonChu(v))}`;
       }).join('\n');
-      if (!confirm(`Gửi ${Object.keys(ccSua).length} chữ cài đặt chung xuống cân?\n\n${ds}\n\nGửi qua cổng 33571 như gửi giá — CHƯA THỬ TRÊN CÂN THẬT: `
-        + 'cân không trả lời, nên chưa biết cân đã nhận. Gửi xong in thử một tem có ô chữ đó, xem màn hình cân.')) return;
+      if (!confirm(`Gửi ${Object.keys(ccSua).length} chữ cài đặt chung xuống cân?\n\n${ds}\n\nGửi qua cổng hai chiều như gửi giá, rồi đọc lại cân để kiểm — `
+        + 'CHƯA THỬ TRÊN CÂN THẬT. Gửi xong in thử một tem có ô chữ đó, xem màn hình cân.')) return;
       const nut = $('nut-gui-cc');
       dangGuiCc = true; $('can-chu-chung').inert = true; nut.textContent = 'Đang gửi…'; capNutCc();
       try {
         const k = await goi('/api/chu-chung/gui', { thay: ccSua });
         ccSua = {};   // đã gửi: không gửi lại lần nữa
-        baoChung('luu-y', `<p><b>Đã gửi ${k.doi.length} chữ cài đặt chung xuống cân</b> (chữ số ${k.doi.join(', ')}) qua cổng 33571. Chưa thử trên cân thật: `
-          + 'cân không trả lời, nên chưa biết cân đã nhận. In thử một tem có ô chữ đó (Tên quán, Ghi chú cân…), xem màn hình cân.</p>'
-          + '<p>Cân chưa đổi: thẻ Cân &amp; thông số → mục 6 → <b>Lưu file nạp USB</b> (file có sẵn thay đổi vừa gửi) rồi nạp USB.</p>'
-          + daDoiDiaChi(k.doiDiaChi));
+        baoCaiDat(`${k.doi.length} chữ cài đặt chung (chữ số ${k.doi.join(', ')})`, k,
+          'In thử một tem có ô chữ đó (Tên quán, Ghi chú cân…), xem màn hình cân.',
+          'thẻ Cân &amp; thông số → mục 6 → <b>Lưu file nạp USB</b> (file có sẵn thay đổi vừa gửi) rồi nạp USB.');
         await taiLaiSauKhiGui();
       } catch (err) { bao($('kq-cc'), 'loi', e(err.message)); }
       finally {
@@ -2013,14 +2095,15 @@
       const k = phimDL.phim.find(x => x.trang === t.trang && x.phim === t.phim);
       return `• ${t.trang === 1 ? 'Shift + ' : ''}${k.nhan}: ${t.plu ? 'PLU ' + t.plu + ' · ' + ((theoSo.get(t.plu) || {}).ten || '') : 'bỏ trống'}`;
     }).join('\n');
-    if (!confirm(`Gửi ${thay.length} phím tắt xuống cân?\n\n${ds}\n\nGửi qua cổng 33571 — CHƯA THỬ TRÊN CÂN THẬT. Gửi xong bấm thử từng phím trên cân.`)) return;
+    if (!confirm(`Gửi ${thay.length} phím tắt xuống cân?\n\n${ds}\n\nGửi qua cổng hai chiều, rồi đọc lại cân để kiểm — CHƯA THỬ TRÊN CÂN THẬT. `
+      + 'Gửi xong bấm thử từng phím trên cân.')) return;
     const nut = $('nut-gui-phim');
     dangGuiPhim = true; nut.textContent = 'Đang gửi…'; capNutPhim();
     try {
       const k = await goi('/api/phim/gui', { thay });
       phimSua = {};   // đã gửi: không gửi lại lần nữa
-      baoChung('luu-y', `<p><b>Đã gửi ${k.doi.length} phím tắt xuống cân</b> qua cổng 33571. Chưa thử trên cân thật: bấm thử từng phím vừa đổi trên cân `
-        + '(tầng 2: bấm Shift trước). Chưa đổi: thẻ Phím tắt → <b>Lưu file nạp USB</b> rồi nạp USB.</p>' + daDoiDiaChi(k.doiDiaChi));
+      baoCaiDat(`${k.doi.length} phím tắt`, k, 'Bấm thử từng phím vừa đổi trên cân (tầng 2: bấm Shift trước).',
+        'thẻ Phím tắt → <b>Lưu file nạp USB</b> rồi nạp USB.');
       await taiTrangThai();
     } catch (err) { baoChung('loi', e(err.message)); }
     finally { dangGuiPhim = false; nut.textContent = 'Gửi phím xuống cân'; capNutPhim(); }

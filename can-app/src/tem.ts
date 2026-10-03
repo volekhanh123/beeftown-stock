@@ -371,6 +371,21 @@ export function docTem(file: FileCan): { cacMau: MauTem[]; dangDung: MauTem | nu
   return { cacMau, dangDung };
 }
 
+/**
+ * 2.7 — các dòng của mẫu tem cân đang dùng (LAB, các LAS, LAE) trong file, dạng chuỗi byte: khối gửi riêng mẫu tem qua
+ * cổng hai chiều ("DWL LAB" … "END LAB" — cân thay cả mẫu cùng số). Không có mẫu tem, hay mẫu thiếu dòng LAE (file hỏng)
+ * → LoiTem: không bao giờ gửi nửa mẫu tem.
+ */
+export function dongMauTemDangDung(file: FileCan): string[] {
+  const { dangDung: m } = docTem(file);
+  if (!m) throw new LoiTem('File của cân không có mẫu tem (phần LAB).');
+  const dong = file.dong.slice(m.dongLab, m.dongLae + 1);
+  if (dong.length < 2 || !dong[dong.length - 1].startsWith('LAE\t')) {
+    throw new LoiTem('Mẫu tem trong file thiếu dòng kết thúc (LAE) — sửa tem bằng USB hoặc phần mềm của hãng.');
+  }
+  return dong;
+}
+
 /** "Hạn dùng (HSD)" → "Hạn dùng": tên ngắn để gọi ô. */
 const tenNgan = (t: string) => t.replace(/\s*\([^)]*\)$/, '');
 

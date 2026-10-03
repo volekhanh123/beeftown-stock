@@ -204,8 +204,8 @@ export function khoiXoaVaNapPlu(dongPlu: string[]): string[] {
 export const PHAN_GHI_DUOC: readonly PhanDoc[] = ['TMS', 'TMT', 'SCP', 'DPT', 'CLS', 'PLU', 'BAR', 'LAB', 'SAL'];
 /** Phần được xoá cả phần (CLR) qua `ghi`. CLR TMS/TMT đặt lại cả cài đặt mạng của cân (§9.1). */
 export const PHAN_XOA_DUOC: readonly PhanDoc[] = ['PLU'];
-/** Thông số mạng (§9.2): gửi sai là cân rời WiFi tới khi sửa bằng tay trên cân. */
-const laThongSoMang = (id: number) => (id >= 43 && id <= 53) || (id >= 150 && id <= 173) || (id >= 430 && id <= 441);
+/** Thông số mạng (§9.2): gửi sai là cân rời WiFi tới khi sửa bằng tay trên cân. Cũng bỏ khỏi mọi lần gửi qua 33571 (2.7). */
+export const laThongSoMang = (id: number) => (id >= 43 && id <= 53) || (id >= 150 && id <= 173) || (id >= 430 && id <= 441);
 
 /**
  * Kiểm dữ liệu trước khi gửi bằng `ghi`: chỉ các khối DWL/CLR…END đúng dạng,

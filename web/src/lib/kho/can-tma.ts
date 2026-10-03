@@ -44,6 +44,13 @@
  * xoá dòng vắng mặt (nạp USB thì thay cả danh sách). Chương trình gửi:
  * web/public/kho/can-wifi/Nap-Can-WiFi.ps1.
  *
+ * MÃ CÂN DÀNH RIÊNG (Beeftown Cân 2.7): cân không có lệnh xoá một hàng, nên
+ * Beeftown Cân "gỡ" hàng còn nằm lại bằng cách ghi đè số PLU đó bằng một dòng
+ * trống mang mã MA_CAN_TRONG (99999, giá 0, tên TEN_PLU_TRONG) — hàng mới sau
+ * dùng lại số PLU đó. Nút Chẩn đoán WiFi ghi tạm một hàng thử mã MA_CAN_THU
+ * (99998). Hai mã này không phải hàng: món kho mang mã đó không được đưa lên
+ * cân (kiemHang), dòng trống trên cân không được coi là hàng kho không có.
+ *
  * NGUYÊN TẮC: dòng không đổi phải ghi lại y nguyên từng byte. File của một số
  * cân có byte không phải UTF-8, nên cả file được giữ dạng "chuỗi byte" (mỗi ký
  * tự = 1 byte); chỉ khi hiện tên lên màn hình hoặc ghi tên mới mới đổi qua lại
@@ -67,6 +74,15 @@ export const CO_FILE_TOI_DA = 5_000_000;
 
 /** Hạn dùng tối đa cân nhận: cột 32 của dòng PLU là 0…999 ngày. */
 export const HSD_TOI_DA = 999;
+
+/** Mã cân của dòng trống — số PLU đã gỡ hàng qua WiFi (ghi đè), hàng mới dùng lại được. Beeftown Cân 2.7. */
+export const MA_CAN_TRONG = '99999';
+/** Mã cân của hàng thử mà nút Chẩn đoán WiFi ghi tạm lên cân rồi gỡ. Beeftown Cân 2.7. */
+export const MA_CAN_THU = '99998';
+/** Tên của dòng trống trên cân (in trên tem nếu ai lỡ gọi số PLU đó). */
+export const TEN_PLU_TRONG = 'KHÔNG DÙNG (PLU trống)';
+/** Mã cân không phải hàng — kho không được dùng. */
+export const MA_CAN_DANH_RIENG: ReadonlySet<string> = new Set([MA_CAN_TRONG, MA_CAN_THU]);
 
 /**
  * Cột ngày của dòng PLU (chỉ số sau split('\t'), [0] = "PLU") — theo phần mềm
@@ -430,6 +446,10 @@ function kiemHsd(h: HangKho, nn: NgonNguNB): { hsd?: number | null; canhBao?: st
 function kiemHang(h: HangKho, soChuSo: number, nn: NgonNguNB): { ok: true; v: HangHopLe } | { ok: false; lyDo: string } {
   const c = (x: HaiThuTieng) => x[nn];
   const ma = chuanMa(h.ma_can);
+  if (MA_CAN_DANH_RIENG.has(ma)) {
+    return { ok: false, lyDo: c({ vi: `Mã cân ${ma} dành riêng cho Beeftown Cân (dòng trống / hàng thử trên cân) — đổi mã cân của món.`,
+                                   en: `Scale code ${ma} is reserved by Beeftown Scale (blank line / test item on the scale) — change the item's scale code.` }) };
+  }
   if (ma.length > soChuSo) {
     return { ok: false, lyDo: c({ vi: `Mã cân ${ma} dài quá ${soChuSo} số — mã vạch trên tem không chứa hết.`,
                                    en: `Scale code ${ma} is longer than ${soChuSo} digits — the barcode on the label cannot hold it.` }) };
@@ -517,7 +537,10 @@ export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo
         lyDo: c({ vi: 'Không có trong kho — giữ lại theo lựa chọn.', en: 'Not in inventory — kept, as you chose.' }), goc: p });
     } else {
       ra.push({ loai: 'xoa', so: p.so, maCan: p.ma, ten: p.ten, gia: p.gia,
-        lyDo: p.ma
+        lyDo: p.ma === MA_CAN_TRONG
+          ? c({ vi: 'PLU trống (Beeftown Cân đã gỡ hàng ở số này) — hàng mới dùng lại được số này.',
+                en: 'Blank PLU (Beeftown Scale removed the item at this number) — a new item can reuse it.' })
+          : p.ma
           ? c({ vi: 'Không có mặt hàng nào đang dùng mang mã cân này trong kho.', en: 'No active item in inventory has this scale code.' })
           : c({ vi: 'Không có mã cân.', en: 'No scale code.' }),
         goc: p });
@@ -564,6 +587,24 @@ function cotMoi(file: FileCan): string[] {
   const c = file.plu[0].cot.slice();
   for (let i = COT_NGAY.IN_NGAY_BAN; i <= COT_NGAY.SO_NGAY_HSD && i < c.length; i++) c[i] = '0';
   return c;
+}
+
+/**
+ * Một dòng PLU không lấy từ kho (Beeftown Cân 2.7): dòng trống khi gỡ hàng còn nằm lại (mã MA_CAN_TRONG, giá 0) và
+ * hàng thử của nút Chẩn đoán WiFi (mã MA_CAN_THU). Cột như hàng mới của lapKeHoach (cotMoi: khuôn 69 cột, hay dòng
+ * PLU đầu của file với các ngày in về 0 — không in HSD), cân ký, tên và mã tìm theo `ten`. Dạng chuỗi byte.
+ */
+export function dongPluRieng(file: FileCan, h: { so: number; ma: string; ten: string; gia: number }): string {
+  if (!Number.isInteger(h.so) || h.so < 1 || h.so > 9999) throw new RangeError('Số PLU của dòng riêng phải từ 1 đến 9999.');
+  const c = cotMoi(file);
+  c[COT.SO] = String(h.so);
+  c[COT.MA] = chuanMa(h.ma);
+  c[COT.CACH_BAN] = '1';
+  c[COT.GIA] = giaVaoFile(Math.max(0, Math.round(h.gia)), file.soLeGia);
+  c[COT.TEN] = ghiChu(sachTen(h.ten));
+  if (c.length > COT.TIM_KIEM) c[COT.TIM_KIEM] = maTimKiem(h.ten);
+  datHsd(c, null);
+  return c.join('\t');
 }
 
 function dongPlu(d: DongKeHoach, file: FileCan): string | null {
