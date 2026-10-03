@@ -756,9 +756,9 @@
     </ul></li>
   <li>Ô <b>"Giữ lại hàng đang có trên cân nhưng không có trong kho"</b>: đánh dấu khi muốn giữ các hàng chỉ có trên cân.</li>
   <li>Cân đang ở màn hình bán hàng (không ở trong menu <kbd class="p">Prog</kbd> hay <kbd class="p">Account</kbd>).</li>
-  <li>Bấm <span class="n">Gửi xuống cân</span>. <span class="nhan moi">Mới 2.6</span> Gửi xong, chương trình <b>đọc lại cân</b> qua WiFi (cổng hai chiều) và so từng hàng vừa gửi — số PLU, mã cân, tên, giá, HSD:
+  <li>Bấm <span class="n">Gửi xuống cân</span>. <span class="nhan moi">Mới 2.6.1</span> Chương trình gửi các hàng thêm / sửa qua <b>cổng hai chiều</b> (như phần mềm của hãng — ở quán, cân bỏ qua cách gửi cũ qua cổng 33571); cổng đó hỏng thì gửi cách cũ. <span class="nhan chua">Chưa thử trên cân thật</span>. <span class="nhan moi">Mới 2.6</span> Gửi xong, chương trình <b>đọc lại cân</b> qua WiFi (cổng hai chiều) và so từng hàng vừa gửi — số PLU, mã cân, tên, giá, HSD:
     <ul>
-      <li>Khung xanh <b>"Cân đã nhận … hàng"</b>: đọc lại thấy đủ.</li>
+      <li>Khung xanh <b>"Cân đã nhận."</b> (kèm số hàng vừa gửi, gửi qua cổng nào): đọc lại thấy cân có đủ hàng của kho, đúng giá.</li>
       <li>Khung đỏ <b>"… cân CHƯA nhận"</b>: đọc lại thấy cân vẫn là hàng cũ — câu báo nêu PLU nào. Chương trình <b>không ghi nhận</b> lần gửi đó (bảng vẫn "Thêm" / "Sửa"), và tự gửi tạm dừng. Để cân ở màn hình bán hàng rồi gửi lại một lần; vẫn vậy thì nạp USB (<a href="#usb-du-phong">mục 25</a>).</li>
       <li>Khung vàng <b>"chưa kiểm được cân đã nhận chưa"</b>: không đọc lại được cân (cổng hai chiều không trả lời). Lần gửi được ghi nhận, nhưng nhãn "Giữ nguyên" / "Khớp kho" ghi thêm "chưa xác nhận" — tới khi gửi mà đọc lại khớp, hay đọc dữ liệu từ cân (WiFi / USB).</li>
     </ul></li>
@@ -995,7 +995,7 @@
 </ol>
 <ul>
   <li>Mất mạng giữa chừng: chương trình báo <b>"Chưa đổi gì"</b> và vẫn chạy bản cũ. Bấm lại lúc có mạng.</li>
-  <li>Bản mới không mở được (phần mềm diệt virus chặn…): sau khoảng 1–2 phút chương trình tự quay về bản cũ và hiện dòng đỏ. Báo người lo phần mềm.</li>
+  <li>Bản mới không mở được (phần mềm diệt virus chặn…): <span class="nhan moi">Mới 2.6.1</span> chương trình chạy thử bản mới trước khi đổi file — bị chặn thì báo ngay, chưa đổi gì. Qua được bước đó mà vẫn không mở được thì sau khoảng 3 phút chương trình tự quay về bản cũ và hiện dòng đỏ; lý do ghi ở <code>%APPDATA%\BeeftownCan\loi.txt</code>. Báo người lo phần mềm.</li>
   <li>Để file BeeftownCan.exe ở Desktop hoặc một thư mục bình thường. Nằm trong <i>Program Files</i> hay USB chỉ đọc thì không tự cập nhật được — chương trình báo cách chép ra.</li>
   <li>Bản trước được giữ lại cạnh chương trình, tên <b>BeeftownCan.cu</b> (Windows có thể ẩn đuôi .exe). <b>Quay về bản trước bằng tay</b>: đóng chương trình → đổi tên <b>BeeftownCan</b> thành <b>BeeftownCan.moi</b> → đổi tên <b>BeeftownCan.cu</b> thành <b>BeeftownCan</b> → mở lại.</li>
   <li>Bản 2.4 trở về trước chưa có nút này: cài bản 2.5 bằng tay một lần (trang Releases), từ đó về sau bấm nút.</li>

@@ -15,10 +15,11 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import {
-  LENH_KHOI_DONG, LoiCapNhat, cacTepCapNhat, cauQuayVeBangTay, docPhieuPhienBan, docThamSoPhienBan, donSauCapNhat, duongTepBanMoi,
+  LENH_CHAY_THU, LENH_KHOI_DONG, LoiCapNhat, cacTepCapNhat, cauQuayVeBangTay, chayThuBanMoi, chayThuQuaPowerShell, docPhieuPhienBan,
+  docThamSoPhienBan, donSauCapNhat, duongTepBanMoi,
   khoaCapNhatConHan, khoiDongLaiSauCapNhat, khoiDongQuaPowerShell, kiemFileChayWindows, laBanDongGoi, moTaMb, ngayPhatHanhVn,
   soSanhPhienBan,
-  FS_THAT, type FsHam, type KhoiDong,
+  FS_THAT, type ChayThu, type FsHam, type KhoiDong,
 } from '../src/cap-nhat.ts';
 import { UngDung, cauLoi, quyenCuaVai } from '../src/nghiep-vu.ts';
 import { moMayChu } from '../src/may-chu.ts';
@@ -105,7 +106,8 @@ async function moGithubGia(): Promise<GithubGia> {
 const TAM = fs.mkdtempSync(path.join(os.tmpdir(), 'beeftown-cap-nhat-'));
 let soThuMuc = 0;
 function moUd(gh: GithubGia, tuy: { laBanDongGoi?: boolean; fsHam?: FsHam; tenTep?: string; noiDung?: Buffer; nguoi?: string;
-  chayPs?: (lenh: string, bien: Record<string, string>, choMs: number) => Promise<string> } = {}) {
+  chayPs?: (lenh: string, bien: Record<string, string>, choMs: number) => Promise<string>;
+  chayThu?: ChayThu; ghiNhatKy?: (cau: string) => void } = {}) {
   const dir = path.join(TAM, `may-${++soThuMuc}`, 'Beeftown Cân chủ quán');
   fs.mkdirSync(dir, { recursive: true });
   const tepChay = path.join(dir, tuy.tenTep ?? 'BeeftownCan.exe');
@@ -120,6 +122,8 @@ function moUd(gh: GithubGia, tuy: { laBanDongGoi?: boolean; fsHam?: FsHam; tenTe
       phienBan: '2.5.0', tepChay, laBanDongGoi: tuy.laBanDongGoi ?? true, goc: gh.goc,
       choMs: { hoi: 1500, tong: 8000, lang: 700 }, gioiHan: { nhoNhat: 1024, lonNhat: 4 * 1024 * 1024 },
       ...(tuy.fsHam ? { fsHam: tuy.fsHam } : {}),
+      ...(tuy.chayThu ? { chayThu: tuy.chayThu, choChayThuMs: 2000 } : {}),
+      ...(tuy.ghiNhatKy ? { ghiNhatKy: tuy.ghiNhatKy } : {}),
     },
   });
   return { u, t: cacTepCapNhat(tepChay), dir };
@@ -270,6 +274,74 @@ export async function thuCapNhat(ok: Ok): Promise<void> {
       ok('Sau khi đổi file: đang khởi động lại — bấm cập nhật lần nữa bị từ chối',
         tt.dangCapNhat && tt.cauTienDo === 'Đang khởi động lại…' && /đang khởi động lại/i.test(loiLan2), JSON.stringify([tt, loiLan2]));
     }
+    // 2.6.1: chạy thử bản mới trước khi đổi file
+    {
+      const t0 = cacTepCapNhat(path.join('C:', 'Beeftown', 'BeeftownCan.exe'));
+      ok('2.6.1 cacTepCapNhat: file chạy thử .chay-thu.exe (đuôi .exe để Windows chạy) và .chay-thu.json cùng thư mục',
+        path.basename(t0.tepChayThu) === 'BeeftownCan.chay-thu.exe' && path.basename(t0.fileChayThu) === 'BeeftownCan.chay-thu.json'
+        && path.dirname(t0.tepChayThu) === path.dirname(t0.tepChay));
+      // Bản mới "chạy" được: ghi đúng phiên bản vào file kết quả (như main.ts với BEEFTOWN_CAN_THU_CHAY).
+      const chayDung: ChayThu = async (tep, fileKetQua) => {
+        if (!fs.existsSync(tep) || !tep.endsWith('.chay-thu.exe')) throw new Error('không có file chạy thử');
+        fs.writeFileSync(fileKetQua, JSON.stringify({ phienBan: '2.6.0' }));
+      };
+      const nhatKy: string[] = [];
+      const { u, t, dir } = moUd(gh, { chayThu: chayDung, ghiNhatKy: c => nhatKy.push(c) });
+      const kq = await u.capNhat();
+      ok('2.6.1: chạy thử được → đổi file như cũ; câu "Đã tải và chạy thử"; không còn file chạy thử; loi.txt ghi chạy thử mất bao lâu',
+        /^Đã tải và chạy thử bản 2\.6\.0\. Đang khởi động lại/.test(kq.cau) && giong(docTep(t.tepChay), gh.exe) && giong(docTep(t.tepCu), BAN_CU)
+        && fs.readdirSync(dir).sort().join() === 'BeeftownCan.cu.exe,BeeftownCan.exe' && /chạy thử bản 2\.6\.0 được, mất \d+,\d giây/.test(nhatKy.join('|')),
+        JSON.stringify([kq.cau, fs.readdirSync(dir), nhatKy]));
+    }
+    for (const [ten, chayThu, mau] of [
+      ['quá giờ / bị chặn', (async () => { throw new LoiCapNhat('quá 180 giây chưa xong'); }) as ChayThu, /không được \(quá 180 giây chưa xong\)/],
+      ['không ghi phiên bản (bị chặn im lặng)', (async () => {}) as ChayThu, /không được \(không ghi được phiên bản\)/],
+      ['ghi phiên bản khác', (async (_tep: string, f: string) => { fs.writeFileSync(f, JSON.stringify({ phienBan: '2.5.9' })); }) as ChayThu, /ghi phiên bản 2\.5\.9/],
+    ] as const) {
+      const { u, t, dir } = moUd(gh, { chayThu });
+      const loi = await loiCua(() => u.capNhat());
+      const tt = u.trangThaiCapNhat();
+      ok(`2.6.1: chạy thử ${ten} → báo ngay, CHƯA ĐỔI GÌ (bản cũ vẫn ở chỗ, không .cu.exe), bản mới để ở .loi.exe, không còn file tạm`,
+        mau.test(loi) && /Chưa đổi gì/.test(loi) && /BeeftownCan\.loi\.exe/.test(loi) && giong(docTep(t.tepChay), BAN_CU) && giong(docTep(t.tepLoi), gh.exe)
+        && fs.readdirSync(dir).sort().join() === 'BeeftownCan.exe,BeeftownCan.loi.exe' && !tt.dangCapNhat && !/thành công/i.test(loi),
+        `${loi} · ${fs.readdirSync(dir).join()}`);
+    }
+    {
+      const dir = path.join(TAM, 'chay-thu-ham');
+      fs.mkdirSync(dir, { recursive: true });
+      const t = cacTepCapNhat(path.join(dir, 'BeeftownCan.exe'));
+      fs.writeFileSync(t.tepDangTai, 'moi'); fs.writeFileSync(t.fileChayThu, '{"phienBan":"2.6.0"}');   // file kết quả cũ còn sót
+      const loi = await loiCua(() => chayThuBanMoi({ t, phienBan: '2.6.0', chayThu: async () => {}, choMs: 1000 }));
+      ok('2.6.1: file kết quả cũ còn sót không được tính — xoá trước khi chạy thử', /không ghi được phiên bản/.test(loi), loi);
+      // File vừa chạy thử bị khoá một lúc (phần mềm diệt virus quét sau khi chạy): thử lại rồi được.
+      fs.writeFileSync(t.tepDangTai, 'moi');
+      let lanKhoa = 0;
+      const khoaHaiLan: FsHam = { ...FS_THAT, ngu: () => {}, doiTen: (tu, den) => { if (tu === t.tepChayThu && lanKhoa++ < 2) throw new Error('EBUSY'); fs.renameSync(tu, den); } };
+      const chayGhi: ChayThu = async (_tep, f) => { fs.writeFileSync(f, JSON.stringify({ phienBan: '2.6.0' })); };
+      const ms = await chayThuBanMoi({ t, phienBan: '2.6.0', chayThu: chayGhi, choMs: 1000, fsHam: khoaHaiLan });
+      ok('2.6.1: chạy thử được mà file còn bị khoá lúc đặt lại → thử lại rồi được (như doiTep)', typeof ms === 'number' && lanKhoa === 3
+        && fs.readFileSync(t.tepDangTai, 'utf8') === 'moi' && !fs.existsSync(t.tepChayThu) && !fs.existsSync(t.fileChayThu));
+      const khoaMai: FsHam = { ...FS_THAT, ngu: () => {}, doiTen: (tu, den) => { if (tu === t.tepChayThu) throw new Error('EBUSY'); fs.renameSync(tu, den); } };
+      const loiKhoa = await loiCua(() => chayThuBanMoi({ t, phienBan: '2.6.0', chayThu: chayGhi, choMs: 1000, fsHam: khoaMai }));
+      ok('2.6.1: file bị khoá mãi → lỗi có câu "Chưa đổi gì" (không phải EBUSY trần), không để file tạm', /không đặt lại được file/.test(loiKhoa)
+        && /Chưa đổi gì/.test(loiKhoa) && !/^EBUSY/.test(loiKhoa) && !fs.existsSync(t.tepChayThu) && !fs.existsSync(t.tepDangTai), loiKhoa);
+      for (const p of [t.tepChayThu, t.fileChayThu, t.tepDangTai, t.tepThuGhi]) fs.writeFileSync(p, 'x');
+      donSauCapNhat(t);
+      ok('2.6.1 donSauCapNhat: dọn cả file chạy thử (.chay-thu.exe / .json) còn sót khi mất điện giữa chừng',
+        ![t.tepChayThu, t.fileChayThu, t.tepDangTai, t.tepThuGhi].some(p => fs.existsSync(p)) && fs.existsSync(t.tepLoi));
+      let bien: Record<string, string> = {}, lenh = '';
+      const ps = (ra: string | Error) => async (l: string, b: Record<string, string>) => { lenh = l; bien = b; if (ra instanceof Error) throw ra; return ra; };
+      await chayThuQuaPowerShell(ps('OK\t0\r\n'))('C:\\B\\BeeftownCan.chay-thu.exe', 'C:\\B\\BeeftownCan.chay-thu.json', 180_000);
+      const loiHet = await loiCua(() => chayThuQuaPowerShell(ps('LOI\thet-gio\tquá 180 giây chưa xong\r\n'))('a.exe', 'a.chay-thu.json', 180_000));
+      const loiDay = await loiCua(() => chayThuQuaPowerShell(ps(new Error('Quá lâu không xong. Rút dây ra cắm lại rồi thử lại.')))('a.exe', 'a.chay-thu.json', 1000));
+      ok('2.6.1 chayThuQuaPowerShell: PowerShell quá giờ → "quá 31 giây chưa xong", không chép câu của dây RS232 ("rút dây")',
+        /quá 31 giây chưa xong/.test(loiDay) && !/dây/.test(loiDay), loiDay);
+      const loiPs = await loiCua(() => chayThuQuaPowerShell(ps(new Error('bị chặn')))('a.exe', 'a.chay-thu.json', 1000));
+      ok('2.6.1 chayThuQuaPowerShell: đường dẫn và file kết quả qua biến môi trường (BEEFTOWN_CAN_THU_CHAY), chờ tiến trình thoát; quá giờ / PowerShell hỏng → lỗi có câu',
+        bien.BEEFTOWN_CAN_THU_CHAY === 'a.chay-thu.json' && bien.BT_CHO_MS === '1000' && /UseShellExecute = \$false/.test(LENH_CHAY_THU)
+        && /WaitForExit\(\[int\]\$env:BT_CHO_MS\)/.test(LENH_CHAY_THU) && !lenh.includes('a.exe')
+        && /quá 180 giây chưa xong/.test(loiHet) && /PowerShell không chạy được: bị chặn/.test(loiPs), JSON.stringify([bien, loiHet, loiPs]));
+    }
     {
       // Lần cập nhật thứ hai: .cu.exe cũ (2.4) bị thay bằng bản vừa chạy (2.6) — chỉ giữ một bản dự phòng.
       const b26 = taoPe(300 * 1024, 11);
@@ -384,8 +456,14 @@ export async function thuCapNhat(ok: Ok): Promise<void> {
         }
         return 778;
       };
+      const lyDo: string[] = [];
       const kq = await khoiDongLaiSauCapNhat({ dungMayChu: () => {}, fileDangChay, fileKhoa, t, phienBanMoi: '2.6.0', phienBanCu: '2.5.0',
-        khoiDong, diet: (pid) => buoc.push(`diet ${pid}`), fetch, choMs: 400, nghiMs: 50 });
+        khoiDong, diet: (pid) => buoc.push(`diet ${pid}`), fetch, choMs: 400, nghiMs: 50,
+        conChay: (pid) => pid === 777 && cachHong === 'im', ghiLyDo: (c) => lyDo.push(c) });
+      ok(`2.6.1: bản mới ${ten} → ghi lý do vào loi.txt (còn chạy / đã tắt / không mở được)`, lyDo.length === 1 && (cachHong === 'nem'
+        ? /^Không mở được bản 2\.6\.0: bị chặn\. Quay về bản 2\.5\.0\.$/.test(lyDo[0])
+        : /^Bản 2\.6\.0 \(tiến trình 777\) không trả lời trong 0 giây — /.test(lyDo[0])
+          && (cachHong === 'im' ? /vẫn đang chạy/.test(lyDo[0]) : /đã tắt/.test(lyDo[0]))), lyDo.join('|'));
       ok(`Bản mới ${ten} → tự quay về: bản cũ về chỗ, bản mới thành .loi.exe, mở lại bản cũ với --cap-nhat-hong=2.6.0, bỏ khoá`,
         kq === 'quay-ve' && giong(docTep(t.tepChay), BAN_CU) && giong(docTep(t.tepLoi), gh.exe) && !fs.existsSync(t.tepCu) && !fs.existsSync(fileKhoa)
         && buoc.at(-1) === '--cap-nhat-hong=2.6.0' && (cachHong === 'nem' ? !buoc.includes('diet 777') : buoc.includes('diet 777')),
@@ -505,6 +583,30 @@ export async function thuCapNhat(ok: Ok): Promise<void> {
       ok('main.ts: đang có khoá "đang cập nhật" thì lần mở tay báo chờ và thoát (không hai bản cùng chạy); bản mở sau cập nhật được qua',
         /if \(!moSauCapNhat && khoaCapNhatConHan\(fileKhoaCapNhat\)\)/.test(main) && main.indexOf('khoaCapNhatConHan(fileKhoaCapNhat)') < main.indexOf('Đã có một bản đang chạy?')
         && /fileKhoa: fileKhoaCapNhat/.test(main) && /cauQuayVeBangTay\(t\)/.test(main));
+      ok('2.6.1 main.ts: chờ bản mới 3 phút; ghi lý do vào loi.txt; chạy thử qua PowerShell; chế độ chạy thử đứng TRƯỚC mọi bước khởi động',
+        /choMs: 180_000/.test(main) && /ghiLyDo: \(cau\) => ghiLoiTxt\(/.test(main) && /chayThu: chayThuQuaPowerShell\(chayPowerShell\)/.test(main)
+        && /process\.kill\(pid, 0\)/.test(main) && main.indexOf('BEEFTOWN_CAN_THU_CHAY') < main.indexOf('new UngDung(')
+        && main.indexOf('BEEFTOWN_CAN_THU_CHAY') < main.indexOf('khoaCapNhatConHan(fileKhoaCapNhat)'));
+      {
+        // Chạy thật src/main.ts ở chế độ chạy thử (như bản cũ chạy thử file vừa tải): ghi phiên bản rồi thoát, không mở máy chủ.
+        const thuMuc = path.join(TAM, 'chay-thu-that');
+        fs.mkdirSync(thuMuc, { recursive: true });
+        const ketQua = path.join(thuMuc, 'BeeftownCan.chay-thu.json');
+        const moiTruong = { ...process.env, APPDATA: path.join(thuMuc, 'appdata'), HOME: thuMuc, USERPROFILE: thuMuc };
+        const batDau = Date.now();
+        const r = Bun.spawnSync([process.execPath, path.join(import.meta.dir, '..', 'src', 'main.ts'), '--khong-mo'],
+          { env: { ...moiTruong, BEEFTOWN_CAN_THU_CHAY: ketQua }, timeout: 30_000 });
+        const ghi = fs.existsSync(ketQua) ? JSON.parse(fs.readFileSync(ketQua, 'utf8')) as { phienBan?: string } : null;
+        const phienBanMain = /const PHIEN_BAN = '([\d.]+)'/.exec(main)?.[1];
+        ok('2.6.1: chạy src/main.ts với BEEFTOWN_CAN_THU_CHAY → ghi đúng phiên bản rồi thoát 0, không mở máy chủ (không dang-chay.json, không in đường dẫn)',
+          r.exitCode === 0 && ghi?.phienBan === phienBanMain && !fs.existsSync(path.join(thuMuc, 'appdata', 'BeeftownCan', 'dang-chay.json'))
+          && !/Mở: http/.test(r.stdout.toString()) && Date.now() - batDau < 30_000, `${r.exitCode} ${JSON.stringify(ghi)} ${r.stderr.toString().slice(0, 200)}`);
+        const sai = path.join(thuMuc, 'khac.json');
+        const r2 = Bun.spawnSync([process.execPath, path.join(import.meta.dir, '..', 'src', 'main.ts'), '--khong-mo'],
+          { env: { ...moiTruong, BEEFTOWN_CAN_THU_CHAY: sai }, timeout: 30_000 });
+        ok('2.6.1: BEEFTOWN_CAN_THU_CHAY trỏ tới file không đúng đuôi .chay-thu.json → không ghi gì, thoát mã 2, không mở máy chủ',
+          r2.exitCode === 2 && !fs.existsSync(sai) && !/Mở: http/.test(r2.stdout.toString()), String(r2.exitCode));
+      }
       ok('main.ts: hộp báo lỗi nhận câu qua biến môi trường BT_CHU, không ghép vào lệnh PowerShell (câu có đường dẫn thư mục — tên có dấu nháy ’ không phá được lệnh)',
         /\[System\.Windows\.MessageBox\]::Show\(\$env:BT_CHU, /.test(main) && /BT_CHU: `Beeftown Cân không chạy được:/.test(main)
         && !/::Show\('\$\{/.test(main) && !/replace\(\/'\/g, "''"\)/.test(main));

@@ -22,12 +22,23 @@ import { randomBytes } from 'node:crypto';
 import { UngDung, duongDanMacDinh } from './nghiep-vu.ts';
 import { moMayChu } from './may-chu.ts';
 import {
-  cacTepCapNhat, cauQuayVeBangTay, docThamSoPhienBan, donSauCapNhat, khoaCapNhatConHan, khoiDongLaiSauCapNhat, khoiDongQuaPowerShell,
-  laBanDongGoi,
+  cacTepCapNhat, cauQuayVeBangTay, chayThuQuaPowerShell, docThamSoPhienBan, donSauCapNhat, khoaCapNhatConHan, khoiDongLaiSauCapNhat,
+  khoiDongQuaPowerShell, laBanDongGoi,
 } from './cap-nhat.ts';
 import { chayPowerShell } from './day-rs232.ts';
 
-const PHIEN_BAN = '2.6.0';
+const PHIEN_BAN = '2.6.1';
+
+// ---- 2.6.1: bản cũ đang CHẠY THỬ file này trước khi đổi sang (cap-nhat.ts chayThuBanMoi) ---------------------------
+// Chỉ ghi phiên bản vào file được chỉ rồi thoát: không mở máy chủ, không mở cửa sổ, không đụng dữ liệu — trước mọi bước
+// khác (bản cũ đang chạy, dang-chay.json trỏ tới nó). Tên file phải đúng đuôi, không ghi đè file nào khác.
+{
+  const fileChayThu = process.env.BEEFTOWN_CAN_THU_CHAY ?? '';
+  if (fileChayThu) {
+    if (fileChayThu.endsWith('.chay-thu.json')) fs.writeFileSync(fileChayThu, JSON.stringify({ phienBan: PHIEN_BAN }), 'utf8');
+    process.exit(fileChayThu.endsWith('.chay-thu.json') ? 0 : 2);
+  }
+}
 const khongMo = process.argv.includes('--khong-mo');
 const laExe = laBanDongGoi(process.execPath, process.platform);
 // Chạy thử cập nhật trên Windows với kho giả trên chính máy này (can-app/test/may-cap-nhat-gia.ts): chỉ nhận 127.0.0.1.
@@ -38,10 +49,12 @@ const ud = new UngDung(duongDanMacDinh(), {
     ...(/^http:\/\/127\.0\.0\.1:\d{1,5}\/[\w./-]*$/.test(nguonThu) ? { goc: nguonThu.replace(/\/+$/, '') } : {}),
     vuaCapNhatTu: docThamSoPhienBan(process.argv, '--vua-cap-nhat='),
     capNhatHong: docThamSoPhienBan(process.argv, '--cap-nhat-hong='),
+    chayThu: chayThuQuaPowerShell(chayPowerShell),
+    ghiNhatKy: (cau) => ghiLoiTxt(cau),
   },
 });
 const fileDangChay = path.join(ud.dd.cauHinh, 'dang-chay.json');
-// Có trong lúc bản cũ đang mở bản mới sau cập nhật (tối đa ~2 phút): người bấm mở tay lúc đó thì chờ.
+// Có trong lúc bản cũ đang mở bản mới sau cập nhật (tối đa ~3,5 phút): người bấm mở tay lúc đó thì chờ.
 const fileKhoaCapNhat = path.join(ud.dd.cauHinh, 'dang-cap-nhat.json');
 const moSauCapNhat = process.argv.some(a => a.startsWith('--vua-cap-nhat=') || a.startsWith('--cap-nhat-hong='));
 
@@ -52,16 +65,21 @@ function moCuaSo(url: string) {
   });
 }
 
+/** Thêm một dòng vào %APPDATA%\BeeftownCan\loi.txt (giờ UTC đầu dòng như các dòng cũ). Không ghi được thì thôi. */
+function ghiLoiTxt(cau: string) {
+  try {
+    fs.mkdirSync(ud.dd.cauHinh, { recursive: true });
+    fs.appendFileSync(path.join(ud.dd.cauHinh, 'loi.txt'), `${new Date().toISOString()} ${cau}\n`);
+  } catch { /* không ghi được thì thôi */ }
+}
+
 /**
  * File .exe không có cửa sổ chữ, nên lỗi lúc khởi động phải hiện bằng hộp
  * thoại của Windows, và ghi vào %APPDATA%\BeeftownCan\loi.txt.
  */
 function baoLoi(e: unknown) {
   const cau = e instanceof Error ? e.message : String(e);
-  try {
-    fs.mkdirSync(ud.dd.cauHinh, { recursive: true });
-    fs.appendFileSync(path.join(ud.dd.cauHinh, 'loi.txt'), `${new Date().toISOString()} ${e instanceof Error ? e.stack : cau}\n`);
-  } catch { /* không ghi được thì thôi */ }
+  ghiLoiTxt(e instanceof Error ? e.stack ?? cau : cau);
   if (process.platform === 'win32' && !khongMo) {
     // Câu đi qua biến môi trường, không ghép vào lệnh: câu có thể chứa đường dẫn thư mục (tên có dấu nháy ’ ‘ — PowerShell
     // cũng coi là nháy đơn — sẽ phá lệnh).
@@ -80,7 +98,7 @@ process.on('unhandledRejection', (e) => {
 
 // ---- Đang cập nhật (bản cũ đang mở bản mới)? Không chạy thêm bản thứ hai — hai bản cùng tự gửi xuống cân. --------
 if (!moSauCapNhat && khoaCapNhatConHan(fileKhoaCapNhat)) {
-  baoLoi(new Error('Beeftown Cân đang cập nhật và sẽ tự mở lại. Chờ 1–2 phút; quá 2 phút chưa thấy cửa sổ thì mở lại chương trình.'));
+  baoLoi(new Error('Beeftown Cân đang cập nhật và sẽ tự mở lại. Chờ 1–3 phút; quá 4 phút chưa thấy cửa sổ thì mở lại chương trình.'));
   process.exit(0);
 }
 
@@ -115,7 +133,10 @@ const mayChu = moMayChu(ud, {
     const t = cacTepCapNhat(process.execPath);
     void khoiDongLaiSauCapNhat({
       dungMayChu: () => mayChu.stop(true), fileDangChay, fileKhoa: fileKhoaCapNhat, t, phienBanMoi, phienBanCu: PHIEN_BAN,
-      khoiDong: khoiDongQuaPowerShell(chayPowerShell), diet: (pid) => process.kill(pid), fetch, choMs: 90_000,
+      // 2.6.1: 3 phút (2.5 → 2.6 ở quán: 90 giây không đủ); lý do không mở được ghi vào loi.txt.
+      khoiDong: khoiDongQuaPowerShell(chayPowerShell), diet: (pid) => process.kill(pid), fetch, choMs: 180_000,
+      conChay: (pid) => { try { process.kill(pid, 0); return true; } catch { return false; } },
+      ghiLyDo: (cau) => ghiLoiTxt(`Cập nhật: ${cau}`),
     }).then((kq) => {
       // Câu theo đúng những file đang có lúc này (cauQuayVeBangTay), không đoán.
       if (kq === 'hong') baoLoi(new Error(`Bản ${phienBanMoi} không mở được và chương trình không tự quay về được. ${cauQuayVeBangTay(t)}`));

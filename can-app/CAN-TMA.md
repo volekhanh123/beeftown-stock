@@ -1008,6 +1008,9 @@ FID 29: 9 cái giá 455; FID 30: 9,000 kg giá 0) → chỉ **17 dòng bán hàn
   Cân thật lưu ra USB ngày 03/10 chỉ có 7 hàng: PLU 1–6 cũ và PLU 99 (hàng thử ngày 26/09). Gọi số PLU kho trên cân thì cân
   báo lỗi (tít tít, về 0). Vì sao lần gửi đó cân không lưu: [chưa biết]. → Từ 2.6, gửi xong chương trình đọc lại PLU qua
   33581 để kiểm (`xacNhanSauGui`, README mục "Bản 2.6").
+- **[đã thấy] 03/10/2026 (2.6.0):** cân bỏ qua MỌI lần gửi qua 33571 — cả 69 hàng mới, cả lần chỉ sửa giá 4 dòng; đọc
+  lại qua 33581 thấy cân vẫn giá cũ; nạp USB thì nhận. → Từ 2.6.1 gửi hàng qua 33581 (`DWL PLU` + hàng rào, như hãng),
+  33571 chỉ còn là đường lui (README mục "Bản 2.6.1").
 - Trong WiFi của quán chỉ cân mở cổng này → `tim-can.ts` tìm cân đổi địa chỉ bằng cách thử nối 33571 cả dải
   /24 (không gửi gì).
 - **Chưa thử trên cân thật qua 33571**: phần LAB (đổi tem qua WiFi), file nhỏ chỉ có TMS / SCP (`fileNho`),
@@ -1223,13 +1226,15 @@ Cùng văn bản như file và mạng (mục 2), đi qua cổng COM. Nguồn: `S
 | Nạp USB thay cả danh sách PLU (hàng vắng mặt bị xoá) | **Đã thử** 26/09/2026 | |
 | Gửi cả file dạng USB vào **TCP 33571**: cân nạp, thêm / sửa PLU, không xoá, không trả lời | **Đã thử** 26/09/2026 | Chỉ phần PLU được xác nhận |
 | Chương trình ghi nhận đã gửi qua 33571 mà cân thật không có hàng đó | **Đã thấy** 02–03/10/2026 | Chưa rõ vì sao; 2.6 đọc lại qua 33581 để kiểm |
+| Cân bỏ qua gửi qua 33571 — cả 69 hàng mới, cả sửa giá 4 dòng; nạp USB thì nhận | **Đã thấy** 03/10/2026 (2.6.0) | Ngày 26/09 cổng này còn nhận; vì sao: chưa biết. 2.6.1 gửi qua 33581 |
+| Đọc danh sách PLU qua **33581** (`UPL PLU`, bắt tay MAC / INF) | **Đã thử** 03/10/2026 (2.6.0) | Đọc ra đúng 7 hàng như file USB; đọc lại sau gửi chạy được |
 | Nạp lại file có REP / INF / TMS 500 dòng / TMT | **Đã thử** 25/09/2026 | Không hại thấy được; chưa chứng minh cân bỏ qua |
 | Cân tự phát UDP `UDP⇥33581⇥⇥` mỗi ~15 giây tới 33584 | **Đã thấy** (nhóm trước) | |
 | Gửi thẳng cả file vào **33581** | **Đã thử — cân KHÔNG nạp** | Có lẽ vì thiếu trình tự của hãng |
 | TM-xA của hãng nối cân này qua 33581 và đọc nhật ký (FID 2–6) | **Hãng đã làm** 17/06/2024 | Không phải chương trình mình |
 | Dạng file cân tự lưu (thứ tự phần, số cột, INA / INM, LAB 1–9, SCP 73 / 63 / 63) | **File thật** 26/09/2026 | |
 | Tìm cân bằng dò TCP 33571 (`tim-can.ts`) | Chưa có ghi chép thử ở quán | Chạy với cân giả |
-| Mọi việc của chương trình mình qua **33581**: bắt tay, `UPL` các phần, `docTuCan`, ghi + hàng rào, `UPL REP`, `DWL TIM` / `datGio` | **Chưa thử trên cân thật** | Chỉ với cân giả |
+| Việc khác qua **33581**: ghi + hàng rào (`DWL PLU` của 2.6.1), `UPL REP`, `DWL TIM` / `datGio` | **Chưa thử trên cân thật** | Chỉ với cân giả |
 | `CLR PLU` + nạp lại cả danh sách qua 33581 (`khoiXoaVaNapPlu`) | **Chưa thử trên cân thật** | Nguy hiểm nhất |
 | Đổi mẫu tem (LAB) qua 33571 hoặc 33581 | **Chưa thử trên cân thật** | USB thì cân nhận chắc |
 | File nhỏ chỉ TMS / SCP qua 33571 (`fileNho`) | **Chưa thử trên cân thật** | |

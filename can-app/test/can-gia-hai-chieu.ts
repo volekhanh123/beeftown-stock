@@ -86,6 +86,11 @@ export interface CanGia {
   readonly khoi: { lenh: 'DWL' | 'CLR'; ten: string; dong: string[] }[];
   /** Date.now() lúc vừa trả dòng TIM gần nhất (0 nếu chưa). */
   lucTraTim: number;
+  /**
+   * 2.6.1: thay cách cân áp một khối DWL vừa nhận (trừ TIM) — `ap(dong)` áp đúng các dòng đó. Không đặt: áp cả khối
+   * ngay. Kiểm thử đặt `() => {}` (cân nhận, qua hàng rào, mà không lưu), áp chậm, hay áp một phần.
+   */
+  chanGhi: ((ten: string, dong: string[], ap: (dong: string[]) => void) => void) | null;
   /** Byte nhận trên kết nối i (mặc định kết nối cuối). */
   nhanTu(i?: number): Buffer;
   /** Chờ tới khi dk() đúng, tối đa ms. */
@@ -179,6 +184,7 @@ export async function moCanGia(tuy: { du?: Partial<DuLieuCanGia>; hong?: CheDoHo
     yeuCau: [],
     khoi: [],
     lucTraTim: 0,
+    chanGhi: null,
     nhanTu(i?: number) { const k = can.ketNoi[i ?? can.ketNoi.length - 1]; return k ? Buffer.concat(k.nhan) : Buffer.alloc(0); },
     async choNhan(dk, ms = 2000) {
       const het = Date.now() + ms;
@@ -230,7 +236,8 @@ export async function moCanGia(tuy: { du?: Partial<DuLieuCanGia>; hong?: CheDoHo
           if (k.ten === 'TIM') {
             const t = k.dong.find(x => x.startsWith('TIM\t'))?.split('\t').map(Number);
             if (t && can.hong?.loai !== 'bo-qua-gio') can.du.gio = { nam: 2000 + t[1], thang: t[2], ngay: t[3], gio: t[4], phut: t[5], giay: t[6] };
-          } else apKhoi(can.du, k.ten, k.dong);
+          } else if (can.chanGhi) can.chanGhi(k.ten, k.dong, (dong) => apKhoi(can.du, k.ten, dong));
+          else apKhoi(can.du, k.ten, k.dong);
           if (can.hong?.loai === 'end-thua') tra([`END\t${k.ten}\t`]);
         } else khoiDang.dong.push(d);
         return;
