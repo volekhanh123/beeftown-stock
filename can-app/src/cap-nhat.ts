@@ -224,6 +224,10 @@ export interface CacTep {
   /** Bản mới không mở được — giữ để xem. */
   tepLoi: string;
   tepThuGhi: string;
+  /** 2.6.1: bản mới đặt tạm ở đây (đuôi .exe để Windows chạy được) trong lúc chạy thử (chayThuBanMoi). */
+  tepChayThu: string;
+  /** 2.6.1: bản mới lúc chạy thử ghi phiên bản của nó vào đây rồi thoát (main.ts, BEEFTOWN_CAN_THU_CHAY). */
+  fileChayThu: string;
 }
 
 export function cacTepCapNhat(tepChay: string): CacTep {
@@ -233,6 +237,7 @@ export function cacTepCapNhat(tepChay: string): CacTep {
     thuMuc, tepChay,
     tepCu: path.join(thuMuc, `${ten}.cu.exe`), tepDangTai: path.join(thuMuc, `${ten}.dang-tai`),
     tepLoi: path.join(thuMuc, `${ten}.loi.exe`), tepThuGhi: path.join(thuMuc, `${ten}.thu-ghi`),
+    tepChayThu: path.join(thuMuc, `${ten}.chay-thu.exe`), fileChayThu: path.join(thuMuc, `${ten}.chay-thu.json`),
   };
 }
 
@@ -243,6 +248,8 @@ export interface FsHam {
   co(p: string): boolean;
   ghiThu(p: string): void;
   ngu(ms: number): void;
+  /** 2.6.1: đọc file chữ (file kết quả chạy thử) — ném nếu không có. */
+  docChu(p: string): string;
 }
 
 export const FS_THAT: FsHam = {
@@ -251,7 +258,15 @@ export const FS_THAT: FsHam = {
   co: p => fs.existsSync(p),
   ghiThu: p => fs.writeFileSync(p, 'x', { flag: 'wx' }),
   ngu: ms => Bun.sleepSync(ms),
+  docChu: p => fs.readFileSync(p, 'utf8'),
 };
+
+/** Đổi tên, thử lại 6 lần × 300 ms khi file bị khoá (phần mềm diệt virus đang quét, tiến trình vừa thoát còn giữ file). */
+function doiTenThuLai(h: FsHam, tu: string, den: string): void {
+  for (let lan = 0; ; lan++) {
+    try { h.doiTen(tu, den); return; } catch (e) { if (lan >= 5) throw e; h.ngu(300); }
+  }
+}
 
 /** Chỉ cập nhật bản BeeftownCan.exe đóng gói, chạy trên Windows — không phải `bun src/main.ts`. */
 export function laBanDongGoi(execPath: string, platform: string): boolean {
@@ -282,10 +297,7 @@ export function doiTep(t: CacTep, h: FsHam = FS_THAT): void {
   }
   try { h.doiTen(t.tepChay, t.tepCu); }
   catch { boTai(); throw new LoiCapNhat('Không đổi tên được file chương trình đang chạy.' + CHUA_DOI); }
-  for (let lan = 0; lan < 6; lan++) {
-    try { h.doiTen(t.tepDangTai, t.tepChay); return; }
-    catch { if (lan < 5) h.ngu(300); }
-  }
+  try { doiTenThuLai(h, t.tepDangTai, t.tepChay); return; } catch { /* đổi ngược lại bên dưới */ }
   try { h.doiTen(t.tepCu, t.tepChay); }
   catch {
     throw new LoiCapNhat(`Không đặt lại được file — vào thư mục ${t.thuMuc}, đổi tên ${path.basename(t.tepCu)} thành `
@@ -311,9 +323,88 @@ export function hoanTac(t: CacTep, h: FsHam = FS_THAT): void {
   throw loi;
 }
 
-/** Lúc khởi động: dọn file tải dở và file thử ghi. Giữ `.cu.exe` (quay về bằng tay) và `.loi.exe` (để xem). */
+/** Lúc khởi động: dọn file tải dở, file thử ghi, file chạy thử. Giữ `.cu.exe` (quay về bằng tay) và `.loi.exe` (để xem). */
 export function donSauCapNhat(t: CacTep, h: FsHam = FS_THAT): void {
-  for (const p of [t.tepDangTai, t.tepThuGhi]) { try { if (h.co(p)) h.xoa(p); } catch { /* lần sau */ } }
+  for (const p of [t.tepDangTai, t.tepThuGhi, t.tepChayThu, t.fileChayThu]) { try { if (h.co(p)) h.xoa(p); } catch { /* lần sau */ } }
+}
+
+// -----------------------------------------------------------------------------
+// CHẠY THỬ BẢN MỚI TRƯỚC KHI ĐỔI FILE (2.6.1)
+// -----------------------------------------------------------------------------
+/**
+ * Chạy `tep` (chờ nó tự thoát, tối đa `choMs`) với biến môi trường BEEFTOWN_CAN_THU_CHAY = `fileKetQua`. Bản 2.6.1 trở
+ * lên thấy biến đó thì chỉ ghi phiên bản của nó vào file rồi thoát (main.ts) — không mở máy chủ, không đụng dữ liệu.
+ */
+export type ChayThu = (tep: string, fileKetQua: string, choMs: number) => Promise<void>;
+
+/**
+ * Chạy và CHỜ tiến trình thoát (khác LENH_KHOI_DONG: mở rồi thôi). UseShellExecute = false để tiến trình con nhận biến
+ * môi trường BEEFTOWN_CAN_THU_CHAY của PowerShell (chayPs đặt). Quá giờ → tắt nó, báo "het-gio".
+ */
+export const LENH_CHAY_THU = khung(String.raw`  $si = New-Object System.Diagnostics.ProcessStartInfo
+  $si.FileName = $env:BT_TEP
+  $si.WorkingDirectory = $env:BT_THU_MUC
+  $si.UseShellExecute = $false
+  $p = [System.Diagnostics.Process]::Start($si)
+  if ($p.WaitForExit([int]$env:BT_CHO_MS)) { 'OK' + [char]9 + $p.ExitCode }
+  else { try { $p.Kill() } catch {}; 'LOI' + [char]9 + 'het-gio' + [char]9 + 'quá ' + [int]($env:BT_CHO_MS / 1000) + ' giây chưa xong' }`);
+
+export function chayThuQuaPowerShell(chayPs: ChayPs): ChayThu {
+  return async (tep, fileKetQua, choMs) => {
+    let ra: string;
+    try {
+      ra = await chayPs(LENH_CHAY_THU, { BT_TEP: tep, BT_THU_MUC: path.dirname(tep), BT_CHO_MS: String(choMs), BEEFTOWN_CAN_THU_CHAY: fileKetQua },
+        choMs + 30_000);
+    } catch (e) {
+      // chayPowerShell viết câu quá giờ cho dây RS232 ("Rút dây ra cắm lại") — ở đây nói đúng việc đang làm.
+      const cau = (e as Error).message;
+      throw new LoiCapNhat(/Quá lâu không xong/.test(cau) ? `quá ${Math.round((choMs + 30_000) / 1000)} giây chưa xong`
+        : `PowerShell không chạy được: ${cau}`);
+    }
+    if (/^﻿?OK\t/m.test(ra)) return;
+    throw new LoiCapNhat(/^﻿?LOI\t[^\t]*\t(.*)$/m.exec(ra)?.[1] ?? 'PowerShell không trả lời');
+  };
+}
+
+/**
+ * 2.6.1 — bản mới đã tải và kiểm (ở `tepDangTai`): chạy thử nó một lần TRƯỚC khi đổi file, lúc bản cũ còn chạy. Bản
+ * 2.5 → 2.6 ở quán (03/10/2026): bản mới mở sau khi đổi file mà 90 giây không trả lời nên tự quay về — mở tay thì được.
+ * Lần chạy đầu một file .exe lạ 80 MB, phần mềm diệt virus có thể giữ để quét lâu hay chặn hẳn; chạy thử ở đây:
+ *   - cho phần mềm diệt virus quét xong trước (lần mở thật sau đó nhanh);
+ *   - bị chặn / hỏng → báo ngay, CHƯA ĐỔI GÌ (bản cũ vẫn chạy, không phải tắt rồi quay về), file để ở `.loi.exe`.
+ * Đúng khi file kết quả ghi đúng phiên bản của phiếu. Trả số mili giây chạy thử mất (ghi vào loi.txt để biết máy chậm).
+ * Bản mới chưa có chế độ chạy thử (2.6.0 trở về trước) thì không ghi file → coi là hỏng: không bao giờ hạ phiên bản
+ * nên chuyện này không xảy ra.
+ */
+export async function chayThuBanMoi(o: { t: CacTep; phienBan: string; chayThu: ChayThu; choMs: number; fsHam?: FsHam }): Promise<number> {
+  const h = o.fsHam ?? FS_THAT;
+  const boHet = () => { for (const p of [o.t.tepChayThu, o.t.tepDangTai]) { try { if (h.co(p)) h.xoa(p); } catch { /* donSauCapNhat lần sau */ } } };
+  for (const p of [o.t.tepChayThu, o.t.fileChayThu]) {
+    try { if (h.co(p)) h.xoa(p); }
+    catch { boHet(); throw new LoiCapNhat(`Không xoá được file chạy thử cũ ${path.basename(p)} (đang mở?).${CHUA_DOI}`); }
+  }
+  try { doiTenThuLai(h, o.t.tepDangTai, o.t.tepChayThu); }
+  catch { boHet(); throw new LoiCapNhat(`Không đặt được bản mới để chạy thử (file đang bị khoá, có thể do phần mềm diệt virus).${CHUA_DOI}`); }
+  const batDau = Date.now();
+  let loi: string | null = null;
+  try { await o.chayThu(o.t.tepChayThu, o.t.fileChayThu, o.choMs); } catch (e) { loi = (e as Error).message; }
+  let phienBan: unknown = null;
+  try { phienBan = (JSON.parse(h.docChu(o.t.fileChayThu)) as { phienBan?: unknown }).phienBan; } catch { /* không có / hỏng */ }
+  try { h.xoa(o.t.fileChayThu); } catch { /* donSauCapNhat xoá lần sau */ }
+  if (phienBan === o.phienBan) {
+    // Tiến trình vừa thoát / phần mềm diệt virus quét sau khi chạy còn giữ file một lúc: thử lại như doiTep.
+    try { doiTenThuLai(h, o.t.tepChayThu, o.t.tepDangTai); }
+    catch { boHet(); throw new LoiCapNhat(`Chạy thử bản ${o.phienBan} được nhưng không đặt lại được file (đang bị khoá) — bấm Cập nhật lần nữa.${CHUA_DOI}`); }
+    return Date.now() - batDau;
+  }
+  // Giữ bản mới để xem (như khi quay về sau khi đổi file): .loi.exe — chỉ thay .loi.exe cũ khi đặt được bản mới vào.
+  let daGiu = false;
+  try { if (h.co(o.t.tepLoi)) h.xoa(o.t.tepLoi); doiTenThuLai(h, o.t.tepChayThu, o.t.tepLoi); daGiu = true; }
+  catch { boHet(); }
+  const lyDo = loi ?? (phienBan === null ? 'không ghi được phiên bản' : `ghi phiên bản ${String(phienBan).slice(0, 20)}`);
+  throw new LoiCapNhat(`Bản ${o.phienBan} tải về đúng nhưng chạy thử trên máy này không được (${lyDo.replace(/[.\s]+$/, '')}) — thường do phần mềm `
+    + `diệt virus chặn file mới. ${daGiu ? `File để ở ${path.basename(o.t.tepLoi)} cạnh chương trình` : 'Không giữ lại được file (đang bị khoá)'}; `
+    + `báo cho người lo phần mềm.${CHUA_DOI}`);
 }
 
 // -----------------------------------------------------------------------------
@@ -388,6 +479,10 @@ export function cauQuayVeBangTay(t: CacTep, h: FsHam = FS_THAT): string {
 export async function khoiDongLaiSauCapNhat(o: {
   dungMayChu: () => Promise<void> | void; fileDangChay: string; fileKhoa: string; t: CacTep; phienBanMoi: string; phienBanCu: string;
   khoiDong: KhoiDong; diet: (pid: number) => void; fetch: typeof fetch; choMs: number; fsHam?: FsHam; nghiMs?: number;
+  /** 2.6.1: tiến trình còn sống không (lúc hết giờ chờ) — để ghi lý do. */
+  conChay?: (pid: number) => boolean;
+  /** 2.6.1: bản mới không mở được → câu lý do (main.ts ghi vào loi.txt). */
+  ghiLyDo?: (cau: string) => void;
 }): Promise<'da-mo' | 'quay-ve' | 'quay-ve-chua-mo' | 'hong'> {
   try { await o.dungMayChu(); } catch { /* máy chủ đã dừng */ }
   try { fs.rmSync(o.fileDangChay, { force: true }); } catch { /* máy chủ cũ đã dừng: bản mới không trả lời được thay nó */ }
@@ -398,6 +493,7 @@ export async function khoiDongLaiSauCapNhat(o: {
 
 async function khoiDongVaCho(o: Parameters<typeof khoiDongLaiSauCapNhat>[0]): Promise<'da-mo' | 'quay-ve' | 'quay-ve-chua-mo' | 'hong'> {
   let pid: number | null = null;
+  const ghi = (cau: string) => { try { o.ghiLyDo?.(cau); } catch { /* không ghi được thì thôi */ } };
   try {
     pid = await o.khoiDong(o.t.tepChay, `--vua-cap-nhat=${o.phienBanCu}`, o.t.thuMuc);
     const han = Date.now() + o.choMs;
@@ -410,7 +506,13 @@ async function khoiDongVaCho(o: Parameters<typeof khoiDongLaiSauCapNhat>[0]): Pr
         if (r.ok) return 'da-mo';
       } catch { /* chưa có — chờ tiếp */ }
     }
-  } catch { /* không mở được bản mới */ }
+    let conChay: boolean | null = null;
+    try { conChay = o.conChay ? o.conChay(pid) : null; } catch { conChay = null; }
+    ghi(`Bản ${o.phienBanMoi} (tiến trình ${pid}) không trả lời trong ${Math.round(o.choMs / 1000)} giây — `
+      + (conChay === true ? 'tiến trình vẫn đang chạy (máy chậm, hay phần mềm diệt virus đang quét / giữ file)'
+        : conChay === false ? 'tiến trình đã tắt (bị chặn hay lỗi lúc mở — xem các dòng ngay trước trong loi.txt)' : 'không rõ tiến trình còn chạy không')
+      + `. Quay về bản ${o.phienBanCu}.`);
+  } catch (e) { ghi(`Không mở được bản ${o.phienBanMoi}: ${(e as Error).message}. Quay về bản ${o.phienBanCu}.`); }
   if (pid !== null) { try { o.diet(pid); } catch { /* đã tắt */ } }
   try { hoanTac(o.t, o.fsHam); } catch { return 'hong'; }
   try { await o.khoiDong(o.t.tepChay, `--cap-nhat-hong=${o.phienBanMoi}`, o.t.thuMuc); return 'quay-ve'; }

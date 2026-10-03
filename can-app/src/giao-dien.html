@@ -434,7 +434,7 @@
         <button type="button" id="nut-cap-nhat" class="chinh an">Cập nhật</button>
       </div>
       <p class="phu">Bản mới lấy từ kho cập nhật của Beeftown Cân trên GitHub; chương trình kiểm đúng cỡ và mã SHA-256 rồi mới thay,
-        tự đóng rồi mở lại (1–2 phút). Bản cũ giữ lại thành <b>BeeftownCan.cu.exe</b> cạnh file chương trình — quay về bằng tay:
+        tự đóng rồi mở lại (1–3 phút). Bản cũ giữ lại thành <b>BeeftownCan.cu.exe</b> cạnh file chương trình — quay về bằng tay:
         Hướng dẫn, mục Cập nhật chương trình.</p>
       <div id="ket-qua-ban-moi"></div>
       <hr style="border:0;border-top:1px solid var(--vach);margin:18px 0">
@@ -698,8 +698,9 @@
       const k = await goi('/api/gui', { giuHangNgoaiKho: giuNgoaiKho() });
       // Báo ở đầu trang: bảng bên dưới sẽ được dựng lại từ file vừa gửi. 2.6: chỉ nói "cân đã nhận" khi đọc lại khớp.
       baoChung(k.xacNhan ? 'xong' : 'luu-y', (k.xacNhan
-        ? `<p><b>Cân đã nhận ${k.soHang} hàng</b> — đọc lại cân qua WiFi thấy đủ, đúng số PLU, mã cân, tên, giá và HSD.</p>`
-        : `<p><b>Đã gửi ${k.soHang} hàng, nhưng chưa kiểm được cân đã nhận chưa:</b> ${e(k.cauXacNhan || '')}</p>`
+        ? `<p><b>Cân đã nhận.</b> Vừa gửi ${k.soHangGui} hàng ${k.cachGui === 'hai-chieu' ? 'qua cổng hai chiều' : 'qua cổng 33571'}; `
+          + `đọc lại thấy cân có đủ ${k.soHang} hàng, đúng số PLU, mã cân, tên, giá và HSD.</p>`
+        : `<p><b>Đã gửi ${k.soHangGui} hàng, nhưng chưa kiểm được cân đã nhận chưa:</b> ${e(k.cauXacNhan || '')}</p>`
           + '<p>Trên cân gõ số PLU của một hàng vừa đổi rồi bấm <b>PLU</b>: ra đúng giá mới là cân đã nhận. Ra giá cũ thì cân chưa nhận — '
           + 'để cân ở màn hình bán hàng rồi gửi lại, hoặc nạp USB.</p>')
         + (k.conLai.length ? `<p>${k.conLai.length} hàng vẫn còn nằm trên cân — xoá bằng USB khi tiện.</p>` : '')
@@ -2291,8 +2292,8 @@
         }
         if (t.cauTienDo) bao($('bao-cap-nhat'), 'luu-y', 'Đang cập nhật chương trình: ' + e(t.cauTienDo));
       } catch {
-        choKhoiDongLai('Đang khởi động lại để cập nhật — cửa sổ mới sẽ tự mở (có thể 1–2 phút), cửa sổ này tự đóng. '
-          + 'Quá 2 phút chưa thấy: mở lại Beeftown Cân như mọi khi.');
+        choKhoiDongLai('Đang khởi động lại để cập nhật — cửa sổ mới sẽ tự mở (có thể 1–3 phút), cửa sổ này tự đóng. '
+          + 'Quá 4 phút chưa thấy: mở lại Beeftown Cân như mọi khi.');
       }
     }, 1000);
   }
@@ -2318,7 +2319,7 @@
   async function capNhat() {
     if (dangCapNhat || !banMoi || !banMoi.phienBanMoi) return;
     if (!confirm(`Cập nhật Beeftown Cân lên bản ${banMoi.phienBanMoi} (${banMoi.kichThuocChu})?\n\n`
-      + 'Chương trình tải file từ kho cập nhật, kiểm tra, rồi tự đóng và mở lại (1–2 phút). Việc đang gửi xuống cân sẽ gửi xong trước. '
+      + 'Chương trình tải file từ kho cập nhật, kiểm tra, chạy thử, rồi tự đóng và mở lại (1–3 phút). Việc đang gửi xuống cân sẽ gửi xong trước. '
       + 'Bản cũ giữ lại thành BeeftownCan.cu.exe.')) return;
     laNguoiBam = true;
     theoDoiCapNhat();

@@ -196,6 +196,43 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
+## Bản 2.6.1 — gửi qua cổng hai chiều; nút Cập nhật chạy thử trước
+
+**Thấy ở quán chiều 03/10/2026, với bản 2.6.0:**
+- Đọc cân qua cổng hai chiều 33581 chạy được trên cân thật.
+- Cân **bỏ qua mọi lần gửi qua cổng 33571**: lần đầu cả 69 hàng mới, lần sau chỉ sửa giá 4 dòng (Brisket 580.000 → 590.000
+  đ). Bản 2.6.0 đọc lại thấy lệch nên báo đỏ đúng 4 dòng đó.
+- Nạp USB thì cân nhận đủ.
+
+Vì sao cân bỏ qua 33571 (ngày 26/09 cổng này còn nhận hàng thử "THU WIFI") thì chưa biết.
+
+Từ 2.6.1, `guiPlu` (nút **Gửi xuống cân** và tự gửi) ghi khối `DWL PLU` qua cổng hai chiều, như phần mềm của hãng:
+- Chờ hàng rào `UPL TIM` (`giao-thuc.ts` `ghi`) rồi đọc lại để kiểm như 2.6.
+- Chỉ gửi các dòng **thêm / sửa**. Gửi **cả danh sách** khi còn dấu "chưa rõ" / "chưa xác nhận", hay khi không có gì đổi
+  (người bấm Gửi để gửi lại và kiểm).
+- Không có lệnh xoá (`CLR`): cân chỉ thêm / sửa theo số PLU.
+- Cổng hai chiều hỏng (không nối, hết giờ, bảng mã khác…) → gửi cả file qua 33571 như trước. Câu báo lệch nói rõ đã
+  phải đi đường này.
+- Cân ở địa chỉ đó **khác mã máy** chương trình nhớ → không gửi gì (`LoiKhacMay`), vì có thể là cân thứ hai.
+- Ghi qua cổng hai chiều **chưa thử trên cân thật**: lần gửi đầu ở quán là lần thử.
+
+**Nút Cập nhật** (2.5 → 2.6 ở quán: bản mới không trả lời trong 90 giây nên tự quay về; mở tay thì được):
+- Tải và kiểm xong thì **chạy thử** bản mới một lần, lúc bản cũ còn chạy (`chayThuBanMoi`):
+  - Bản mới (từ 2.6.1) thấy biến `BEEFTOWN_CAN_THU_CHAY` thì chỉ ghi phiên bản vào `BeeftownCan.chay-thu.json` rồi thoát.
+  - Chạy thử bị chặn hay quá 3 phút → báo ngay, **chưa đổi gì**, file mới để ở `.loi.exe`.
+  - Chạy thử được thì phần mềm diệt virus đã quét xong file, nên lần mở thật sau đó nhanh.
+- Chờ bản mới trả lời **3 phút** (trước: 90 giây).
+- Lý do không mở được ghi vào `%APPDATA%\BeeftownCan\loi.txt`: tiến trình còn chạy hay đã tắt, chạy thử mất bao lâu.
+
+Chạy thử chỉ có từ lần cập nhật **sau** 2.6.1. Lần cập nhật 2.6.0 → 2.6.1 vẫn do bản 2.6.0 làm theo cách cũ (90 giây): không
+được thì cài tay.
+
+**Thử ở quán (2.6.1):**
+1. Đọc dữ liệu từ cân qua WiFi → đúng số hàng.
+2. Sửa giá một món trong kho → Gửi xuống cân → khung xanh "Cân đã nhận. Vừa gửi 1 hàng qua cổng hai chiều…". Gọi PLU trên
+   cân: đúng giá mới.
+3. Khung đỏ "cân CHƯA nhận … (cổng hai chiều)": cân cũng bỏ qua ghi qua cổng hai chiều. Chụp câu báo, nạp USB.
+
 ## Bản 2.6 — gửi xong đọc lại cân để kiểm
 
 **Lỗi thấy ở quán (02–03/10/2026):** chương trình ghi "Giữ nguyên" / "Khớp kho 69" cho 69 hàng kho, nhưng cân thật (lưu ra
@@ -210,9 +247,9 @@ sách PLU qua cổng hai chiều ở đúng địa chỉ vừa gửi (không dò
 
 | Đọc lại | Chương trình làm gì | Trang báo |
 |---|---|---|
-| Khớp | Ghi nhận như cũ, xoá dấu | Khung xanh "Cân đã nhận N hàng" |
+| Khớp | Ghi nhận như cũ, xoá dấu | Khung xanh "Cân đã nhận." |
 | Lệch: cân thiếu, hay khác mã / giá | **Không ghi nhận gì.** Ghi dấu `lech` vào `chua-xac-nhan.json`, tự gửi tạm dừng | Khung đỏ nêu tối đa 5 PLU ("PLU 1 trên cân vẫn là … 845.000 đ (gửi … 780.000 đ)") |
-| Không đọc được: cổng đóng, đứt giữa chừng, trả rỗng, cân khác mã máy | Ghi nhận như trước 2.6, kèm dấu `khong-doc` | Khung vàng "chưa kiểm được cân đã nhận chưa"; nhãn "Giữ nguyên (chưa xác nhận)", "Khớp kho, chưa xác nhận" |
+| Không đọc được: cổng đóng, đứt giữa chừng, trả rỗng, cân khác mã máy (2.6.1: khác mã máy thì không gửi gì cả) | Ghi nhận như trước 2.6, kèm dấu `khong-doc` | Khung vàng "chưa kiểm được cân đã nhận chưa"; nhãn "Giữ nguyên (chưa xác nhận)", "Khớp kho, chưa xác nhận" |
 
 Dấu hết khi một lần gửi đọc lại khớp, khi ghi nhận file từ cân (USB hay đọc qua WiFi), hoặc khi xoá qua WiFi đọc lại khớp.
 Chữ có dấu qua cổng hai chiều chưa thử trên cân thật. Nếu lần thử đầu báo lệch chỉ vì tên (khung đỏ cho thấy tên đọc
