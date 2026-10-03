@@ -20,7 +20,7 @@ import { daiCanDo } from '../src/tim-can.ts';
 import { GUI_FILE, LENH_KICH_BAN, chuoiKichBan, docDsCom, docKetQua, docKichBan, gioTrongBuoc, tocDoTuThongSo, type ChayPs } from '../src/day-rs232.ts';
 import { moMayChu } from '../src/may-chu.ts';
 import { taoKhoGia } from './kho-gia.ts';
-import { MA_CAN_TRONG, TEN_PLU_TRONG, docFileCan, dongPluRieng } from '../../web/src/lib/kho/can-tma.ts';
+import { MA_CAN_THU, MA_CAN_TRONG, TEN_PLU_TRONG, docFileCan, dongPluRieng } from '../../web/src/lib/kho/can-tma.ts';
 import type { HangKho } from '../../web/src/lib/kho/can-tma.ts';
 import { docThongSo } from '../src/thong-so.ts';
 import { chuoiByte, moCanGia } from './can-gia-hai-chieu.ts';
@@ -2013,6 +2013,20 @@ console.log('6h · 2.7: so khối vừa gửi với bản đọc lại, bỏ dò
     ok('File gốc vẫn giữ các dòng mạng (file USB làm từ file gốc phải đủ phần TMS)', docGocH(u).includes('TMS\t43\t1\t') && docGocH(u).includes('TMS\t150\t192\t'));
     await can.dong();
   }
+  {
+    // Cổng hai chiều đóng: thông số lui về 33571 rồi chỉ đọc lại MỘT lần (không chờ đủ các lượt đọc lại — trang không treo).
+    const { can, u } = await moH(DM_H);
+    u.ghiNhanFileTuCan(fileH(PLU_H, ['TMS\t104\t0\t']));
+    const uLui = new UngDung(u.dd, { danhMuc: async () => DM_H(), mang: [], mac: async () => null, tuyHaiChieu: tuyHC, choXacNhanMs: [0, 3000],
+      gui: async (ip, cong, du) => { await guiTcp(ip, cong, du); } });
+    uLui.luuCauHinh({ congHaiChieu: congDong });
+    const bd = Date.now();
+    const k = await thu(() => uLui.suaThongSo({ thay: { 104: '4' } }));
+    const ms = Date.now() - bd;
+    ok('Thông số lui về 33571 (cổng hai chiều đóng) → đọc lại một lần rồi báo chưa kiểm được (xacNhan false), không chờ lượt đọc lại 3 giây',
+      k?.cachGui === 'mot-chieu' && !k.xacNhan && /chưa đọc lại được cân/.test(k.cauXacNhan ?? '') && ms < 2000, `${ms} ms · ${JSON.stringify(k)}`);
+    await can.dong();
+  }
 
   console.log('6h3 · Gỡ hàng còn nằm lại bằng ghi đè: dòng trống, bỏ phím, hàng mới dùng lại số PLU');
   {
@@ -2071,6 +2085,11 @@ console.log('6h · 2.7: so khối vừa gửi với bản đọc lại, bỏ dò
       let dm2 = boSuon(DM_H());
       const { can: c2, u: u2 } = await moH(() => dm2);   // file gốc = PLU_H (có sườn), chưa gửi lần nào
       const x = await u2.xemTruoc();
+      const soKn2 = c2.ketNoi.length;
+      const loiMac = await loiCua(() => u2.goHangConLai(false, x.dauVan));
+      ok('Chưa biết mã máy của cân (chưa nối cổng hai chiều lần nào) → từ chối như xoá hẳn, chưa nối cân',
+        /Chưa biết mã máy của cân/.test(loiMac) && /Chưa gửi gì/.test(loiMac) && c2.ketNoi.length === soKn2, loiMac);
+      await u2.thongTinCanHaiChieu();
       const g2 = await thu(() => u2.goHangConLai(false, x.dauVan));
       const tc2 = await u2.tatCaHang();
       ok('HỒI QUY: hàng còn nằm lại có trong file gốc → gỡ xong, file gốc bỏ dòng PLU 2 (tren-can.tsv giữ dòng trống); Tất cả hàng: PLU 2 '
@@ -2081,6 +2100,35 @@ console.log('6h · 2.7: so khối vừa gửi với bản đọc lại, bỏ dò
         && tc2.hang.filter(h => h.so === 2).length === 1, JSON.stringify(tc2.hang.map(h => [h.so, h.tinhTrang])));
       dm2 = DM_H();
       await c2.dong();
+    }
+    {
+      // Đọc cân trước khi gỡ: số PLU còn nằm lại giờ là hàng khác trên cân (thêm trên bàn phím cân) → không gỡ gì.
+      const { can: c3, u: u3 } = await moH(() => boSuon(DM_H()), { pluCan: [PLU_H[0], plu(2, '10050', '500,0', 'Hang them tren ban phim'), PLU_H[2]] });
+      await u3.thongTinCanHaiChieu();
+      const x3 = await u3.xemTruoc();
+      const soKhoi3 = c3.khoi.length, tren3 = fs.readFileSync(u3.fileTrenCan), goc3 = docGocH(u3);
+      const loi3 = await loiCua(() => u3.goHangConLai(false, x3.dauVan));
+      ok('Đọc cân trước: PLU 2 trên cân giờ là hàng khác (mã 10050) → không gửi khối nào, nêu hàng đó; tren-can.tsv, file gốc y nguyên; hàng 10050 còn',
+        x3.conLai.map(h => h.so).join() === '2' && /giờ là hàng khác/.test(loi3) && /PLU 2: "Hang them tren ban phim" mã 10050/.test(loi3) && /chưa gửi gì/.test(loi3)
+        && c3.khoi.length === soKhoi3 && Buffer.compare(fs.readFileSync(u3.fileTrenCan), tren3) === 0 && docGocH(u3) === goc3 && dongCan(c3, 2)[2] === '10050', loi3);
+      await c3.dong();
+    }
+    {
+      // Kho chỉ còn lõi vai: PLU 2, 3 còn nằm lại. Cân đã có PLU 2 là dòng trống, không còn PLU 3 (đã nạp USB) → không ghi khối PLU.
+      const chiLoiVai = (): DanhMucKho => ({ ...DM_H(), matHang: DM_H().matHang.filter(h => h.ma === 'LOI-VAI') });
+      const { can: c4, u: u4 } = await moH(chiLoiVai, { pluCan: [PLU_H[0], plu(2, MA_CAN_TRONG, '0,0', 'KHONG DUNG')] });
+      await u4.thongTinCanHaiChieu();
+      const x4 = await u4.xemTruoc();
+      const soKhoi4 = c4.khoi.length;
+      const g4 = await thu(() => u4.goHangConLai(false, x4.dauVan));
+      const khoi4 = c4.khoi.slice(soKhoi4);
+      ok('Cân đã có PLU 2 là dòng trống, không còn PLU 3 → không gửi khối PLU nào, chỉ bỏ 3 phím gọi PLU 2, 3; báo PLU 3 cân không còn',
+        x4.conLai.map(h => h.so).join() === '2,3' && g4?.daGo.map(h => h.so).join() === '2,3' && g4.khongCoTrenCan.join() === '3' && g4.boPhim === 3
+        && khoi4.map(k => `${k.ten}:${k.dong.length}`).join() === 'SCP:3', JSON.stringify([g4, khoi4]));
+      ok('Ghi nhận: tren-can.tsv PLU 2 là dòng trống, không còn PLU 3; Xem trước hết hàng còn nằm lại; file gốc chỉ còn PLU 1',
+        laPluTrong(u4.docTrenCan().get(2)!) && !u4.docTrenCan().has(3) && (await u4.xemTruoc()).conLai.length === 0
+        && docFileCan(new Uint8Array(fs.readFileSync(u4.fileGoc))).plu.map(p => p.so).join() === '1');
+      await c4.dong();
     }
     // Hàng mới dùng lại số PLU 2 của dòng trống.
     dm = { ...dm, matHang: [...dm.matHang, hang('NAM', '10007', 'Nam bo', 400000)] };
@@ -2123,6 +2171,22 @@ console.log('6h · 2.7: so khối vừa gửi với bản đọc lại, bỏ dò
       (can.du.phan.PLU ?? []).map(d => d.split('\t')[1]).join() === '1,3' && (await u.tatCaHang()).canChuaRo === null
       && [...u.docTrenCan().keys()].join() === '1,3' && (await u.xemTruoc()).conLai.length === 0);
     await can.dong();
+  }
+
+  {
+    // Cân rớt hẳn ngay khi nhận khối nạp lại sau lệnh xoá (mất điện, rớt WiFi): tự gửi lại không nối được lần nào.
+    let dm = DM_H();
+    const { can, u } = await moH(() => dm);
+    dm = boSuon(dm);
+    await thu(() => u.guiXuongCan());
+    const x = await u.xemTruoc();
+    const goc0 = docGocH(u);
+    can.chanGhi = (ten, dong, ap) => { if (ten === 'PLU') void can.dong(); else ap(dong); };
+    const loi = await loiCua(() => u.xoaQuaWifi(false, x.dauVan));
+    ok('Cân rớt ngay sau lệnh xoá, tự gửi lại không nối được lần nào → câu báo nói đúng "định gửi lại … không nối lại được cân" (không nói '
+      + 'đã gửi lại), nạp USB ngay; dấu "chưa rõ"; không ghi nhận gì',
+      /định gửi lại cả danh sách nhưng không nối lại được cân/.test(loi) && !/đã tự gửi lại/.test(loi) && /nạp USB ngay/.test(loi)
+      && !!(await u.tatCaHang()).canChuaRo && docGocH(u) === goc0, loi);
   }
 
   console.log('6h5 · Chẩn đoán WiFi: chỉ đọc; ghi thử 8 bước; cân bỏ qua 33571; cân không lưu lệnh ghi; cổng đóng; PLU 9999 có hàng thật');
@@ -2193,6 +2257,33 @@ console.log('6h · 2.7: so khối vừa gửi với bản đọc lại, bỏ dò
     ok('PLU 9999 đang có hàng thật: bước 5–8 bỏ qua (nói rõ), hàng đó không bị đụng',
       !!cd6 && cd6.buoc.slice(4).every(b => b.ketQua === 'bo-qua' && /hàng thật/.test(b.cau)) && dongCan(can, PLU_THU)[2] === '10099', JSON.stringify(cd6?.buoc));
     await can.dong();
+  }
+
+  {
+    // Cân lưu chậm: nhận khối PLU, vài chục ms sau mới có trong danh sách đọc ra (như cân thật đang ghi bộ nhớ).
+    const { can, u } = await moH(DM_H);
+    const uCham = new UngDung(u.dd, { danhMuc: async () => DM_H(), mang: [], mac: async () => null, tuyHaiChieu: tuyHC, choXacNhanMs: [0, 150],
+      cho33571Ms: 20, gui: async (ip, cong, du) => { await guiTcp(ip, cong, du); apPluVaoCanGia(can, du); } });
+    can.chanGhi = (ten, dong, ap) => { if (ten === 'PLU') setTimeout(() => ap(dong), 40); else ap(dong); };
+    const soYc = can.yeuCau.length;
+    const cd7 = await thu(() => uCham.chanDoanWifi({ ghiThu: true }));
+    can.chanGhi = null;
+    ok('Cân lưu chậm (đọc ngay chưa thấy): chẩn đoán chờ rồi đọc lại như khi gửi giá — 8 bước đều đạt, không báo nhầm "CHƯA nhận"',
+      cd7?.buoc.map(b => `${b.ma}:${b.ketQua}`).join() === 'bat-tay:dat,gio:dat,doc-plu:dat,ghi-y-het:dat,them-thu:dat,sua-thu:dat,33571:dat,go-thu:dat'
+      && can.yeuCau.slice(soYc).filter(y => y === 'UPL\tPLU\t').length > 6 && dongCan(can, PLU_THU)[2] === MA_CAN_TRONG, JSON.stringify(cd7?.buoc));
+    await can.dong();
+  }
+  {
+    // Cân 0 số lẻ giá; cân rớt ngay khi nhận lệnh gỡ hàng thử → không đọc lại được: nhớ đúng bản cuối đã gửi.
+    const { can, u } = await moH(DM_H);
+    u.ghiNhanFileTuCan(new TextEncoder().encode(new TextDecoder().decode(fileH()).replace('TMS\t202\t3\t', 'TMS\t202\t0\t').replace('TMS\t203\t3\t', 'TMS\t203\t0\t')));
+    can.chanGhi = (ten, dong, ap) => { if (ten === 'PLU' && dong.some(d => d.split('\t')[2] === MA_CAN_TRONG)) void can.dong(); else ap(dong); };
+    const cd8 = await thu(() => u.chanDoanWifi({ ghiThu: true }));
+    const h = u.docTrenCan().get(PLU_THU);
+    ok('Gỡ hàng thử hỏng, không đọc lại được (cân rớt) → nhớ bản cuối đã gửi ("THỬ 33571" — cân đã nhận 33571), giá đúng cột giá theo số lẻ '
+      + 'của cân (0 số lẻ: 3.000 đ là "3000,0", không phải "3,0")',
+      cd8?.buoc.find(b => b.ma === 'go-thu')?.ketQua === 'hong' && h?.ma === MA_CAN_THU && h.ten === 'THỬ 33571' && h.gia === '3000,0',
+      JSON.stringify([h, cd8?.buoc.slice(3)]));
   }
 
   console.log('6h6 · Trang, máy chủ, hướng dẫn');

@@ -19,7 +19,7 @@ import {
   soChuSoMa, tenFileCan, sangBase64, tuBase64, LoiFileCan, GIA_TOI_DA,
 } from '../../web/src/lib/kho/can-tma.ts';
 import { COT_NGAY, HSD_TOI_DA, dongHsd, datHsd } from '../../web/src/lib/kho/can-tma.ts';
-import { MA_CAN_TRONG, MA_CAN_THU, MA_CAN_DANH_RIENG, TEN_PLU_TRONG, dongPluRieng } from '../../web/src/lib/kho/can-tma.ts';
+import { MA_CAN_TRONG, MA_CAN_THU, MA_CAN_DANH_RIENG, PLU_RIENG_TOI_DA, TEN_PLU_TRONG, dongPluRieng } from '../../web/src/lib/kho/can-tma.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — KIỂM THỬ ĐỒNG BỘ CÂN');
 
@@ -538,7 +538,9 @@ await nhom('15 · MÃ CÂN DÀNH RIÊNG CỦA BEEFTOWN CÂN 2.7: DÒNG TRỐNG (
   ok('Dòng trống: tên UTF-8 "KHÔNG DÙNG (PLU trống)", mã tìm không dấu tối đa 16 ký tự', Buffer.from(c[15], 'latin1').toString('utf8') === TEN_PLU_TRONG
      && c[64] === 'khongdungplutron', c[64]);
   ok('Dòng hàng thử: giá 1.000 đ ghi "1,0"', dongPluRieng(f, { so: 9999, ma: MA_CAN_THU, ten: 'THU WIFI', gia: 1000 }).split('\t')[5] === '1,0');
-  ok('Số PLU ngoài 1–9999 → báo lỗi', [0, 10000, 1.5].every(so => { try { dongPluRieng(f, { so, ma: MA_CAN_TRONG, ten: 'x', gia: 0 }); return false; } catch { return true; } }));
+  ok('Số PLU 1–9.999.980 được (hàng thêm trên bàn phím cân có thể ở PLU 12000); 0, 9.999.981 (PLU hệ thống), số lẻ → báo lỗi',
+     [1, 12000, PLU_RIENG_TOI_DA].every(so => dongPluRieng(f, { so, ma: MA_CAN_TRONG, ten: 'x', gia: 0 }).split('\t')[1] === String(so))
+     && [0, 9999981, 1.5].every(so => { try { dongPluRieng(f, { so, ma: MA_CAN_TRONG, ten: 'x', gia: 0 }); return false; } catch { return true; } }));
 
   // Cân đọc lại (USB / WiFi) có dòng trống ở PLU 4: kế hoạch bỏ dòng đó (không phải hàng kho), lý do nói là PLU trống, số 4 dùng lại được.
   const fTrong = docFileCan(taoFile({ dongPlu: [...HANG_BEEFTOWN.slice(0, 3), trong] }));
@@ -547,6 +549,15 @@ await nhom('15 · MÃ CÂN DÀNH RIÊNG CỦA BEEFTOWN CÂN 2.7: DÒNG TRỐNG (
   ok('Dòng trống trên cân → "xoa" với lý do PLU trống', !!xoa && /PLU trống/.test(xoa.lyDo), JSON.stringify(xoa));
   ok('Hàng mới dùng lại số PLU của dòng trống', khT.dong.some(d => d.loai === 'them' && d.maCan === '10007' && d.so === 4),
      JSON.stringify(khT.dong.filter(d => d.loai === 'them')));
+  // HỒI QUY (/code-review): "giữ hàng ngoài kho" không được giữ dòng trống / hàng thử như hàng thật.
+  const thuLai = dongPluRieng(fTrong, { so: 9999, ma: MA_CAN_THU, ten: 'THỬ WIFI 2', gia: 2000 });
+  const fGiu = docFileCan(taoFile({ dongPlu: [...HANG_BEEFTOWN.slice(0, 3), trong, thuLai] }));
+  const khG = lapKeHoach(fGiu, [...DANH_MUC.slice(0, 3), hang('NAM-BO', '10007', 'Nạm bò', 400000)], { ...TUY, giuHangNgoaiKho: true });
+  ok('HỒI QUY: chọn giữ hàng ngoài kho → dòng trống (99999) và hàng thử (99998) vẫn bỏ, có lý do; hàng mới vẫn dùng lại PLU 4',
+     khG.dong.find(d => d.so === 4 && d.maCan === MA_CAN_TRONG)?.loai === 'xoa' && /PLU trống/.test(khG.dong.find(d => d.maCan === MA_CAN_TRONG)?.lyDo ?? '')
+     && khG.dong.find(d => d.so === 9999)?.loai === 'xoa' && /Hàng thử của Chẩn đoán WiFi/.test(khG.dong.find(d => d.so === 9999)?.lyDo ?? '')
+     && !khG.dong.some(d => d.loai === 'ngoai_kho') && khG.dong.some(d => d.loai === 'them' && d.maCan === '10007' && d.so === 4),
+     JSON.stringify(khG.dong.map(d => [d.so, d.maCan, d.loai])));
 });
 
 process.exit(ketThuc('ĐỒNG BỘ CÂN'));

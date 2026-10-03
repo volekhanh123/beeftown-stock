@@ -83,6 +83,8 @@ export const MA_CAN_THU = '99998';
 export const TEN_PLU_TRONG = 'KHÔNG DÙNG (PLU trống)';
 /** Mã cân không phải hàng — kho không được dùng. */
 export const MA_CAN_DANH_RIENG: ReadonlySet<string> = new Set([MA_CAN_TRONG, MA_CAN_THU]);
+/** Số PLU lớn nhất ghi được một dòng riêng: từ 9.999.981 trở lên là PLU hệ thống của cân (CAN-TMA.md §9.3). */
+export const PLU_RIENG_TOI_DA = 9_999_980;
 
 /**
  * Cột ngày của dòng PLU (chỉ số sau split('\t'), [0] = "PLU") — theo phần mềm
@@ -531,16 +533,22 @@ export function lapKeHoach(file: FileCan, danhMuc: HangKho[], tuy: TuyChonDongBo
     } else if (p.ma && daKhop.has(p.ma)) {
       ra.push({ loai: 'xoa', so: p.so, maCan: p.ma, ten: p.ten, gia: p.gia,
         lyDo: c({ vi: 'Trùng mã cân với một dòng khác trên cân.', en: 'Same scale code as another line on the scale.' }), goc: p });
+    } else if (p.ma === MA_CAN_TRONG || p.ma === MA_CAN_THU) {
+      // Dòng trống / hàng thử của Beeftown Cân 2.7 không phải hàng — kể cả khi chọn giữ hàng ngoài kho: bỏ, số PLU dùng lại được.
+      ra.push({ loai: 'xoa', so: p.so, maCan: p.ma, ten: p.ten, gia: p.gia,
+        lyDo: p.ma === MA_CAN_TRONG
+          ? c({ vi: 'PLU trống (Beeftown Cân đã gỡ hàng ở số này) — hàng mới dùng lại được số này.',
+                en: 'Blank PLU (Beeftown Scale removed the item at this number) — a new item can reuse it.' })
+          : c({ vi: 'Hàng thử của Chẩn đoán WiFi — không phải hàng; gỡ khỏi cân.',
+                en: 'Test item left by the WiFi check — not a real item; remove it from the scale.' }),
+        goc: p });
     } else if (tuy.giuHangNgoaiKho) {
       soDaDung.add(p.so);
       ra.push({ loai: 'ngoai_kho', so: p.so, maCan: p.ma, ten: p.ten, gia: p.gia,
         lyDo: c({ vi: 'Không có trong kho — giữ lại theo lựa chọn.', en: 'Not in inventory — kept, as you chose.' }), goc: p });
     } else {
       ra.push({ loai: 'xoa', so: p.so, maCan: p.ma, ten: p.ten, gia: p.gia,
-        lyDo: p.ma === MA_CAN_TRONG
-          ? c({ vi: 'PLU trống (Beeftown Cân đã gỡ hàng ở số này) — hàng mới dùng lại được số này.',
-                en: 'Blank PLU (Beeftown Scale removed the item at this number) — a new item can reuse it.' })
-          : p.ma
+        lyDo: p.ma
           ? c({ vi: 'Không có mặt hàng nào đang dùng mang mã cân này trong kho.', en: 'No active item in inventory has this scale code.' })
           : c({ vi: 'Không có mã cân.', en: 'No scale code.' }),
         goc: p });
@@ -595,7 +603,7 @@ function cotMoi(file: FileCan): string[] {
  * PLU đầu của file với các ngày in về 0 — không in HSD), cân ký, tên và mã tìm theo `ten`. Dạng chuỗi byte.
  */
 export function dongPluRieng(file: FileCan, h: { so: number; ma: string; ten: string; gia: number }): string {
-  if (!Number.isInteger(h.so) || h.so < 1 || h.so > 9999) throw new RangeError('Số PLU của dòng riêng phải từ 1 đến 9999.');
+  if (!Number.isInteger(h.so) || h.so < 1 || h.so > PLU_RIENG_TOI_DA) throw new RangeError(`Số PLU của dòng riêng phải từ 1 đến ${PLU_RIENG_TOI_DA}.`);
   const c = cotMoi(file);
   c[COT.SO] = String(h.so);
   c[COT.MA] = chuanMa(h.ma);

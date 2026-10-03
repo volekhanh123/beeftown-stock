@@ -1120,7 +1120,9 @@ máy tính → UPL⇥END⇥
   (`khoiXoaVaNapPlu`, chặn danh sách rỗng) — **chưa thử trên cân thật**; hoặc nạp USB (đã thử), hoặc P33 trên cân.
   2.7: hỏng sau `CLR` thì chương trình tự gửi lại cả danh sách (`DWL PLU`, không `CLR`) tới 3 lần rồi đọc lại (`phucHoiSauXoa`).
 - **Gỡ không cần xoá** (2.7, `goHangConLai`): ghi đè số PLU bằng một **dòng trống** — mã `99999` (`MA_CAN_TRONG`), giá
-  `0,0`, tên "KHÔNG DÙNG (PLU trống)", cột 27 = 0 — kèm `SCP⇥p⇥k⇥0⇥` cho phím gọi số đó; đọc lại PLU / SCP để kiểm. Chỉ là
+  `0,0`, tên "KHÔNG DÙNG (PLU trống)", cột 27 = 0 — kèm `SCP⇥p⇥k⇥0⇥` cho phím gọi số đó. Trước khi ghi, đọc `UPL PLU` trên
+  cùng kết nối: số nào giờ mang mã khác (hàng thêm trên bàn phím) thì không gửi gì — ghi đè theo số là mất hàng đó; số đã
+  là dòng trống hay cân không còn thì không ghi. Gửi xong đọc lại PLU / SCP để kiểm. Chỉ là
   `DWL` như gửi giá: không có lúc cân thiếu hàng. Hàng mới dùng lại số PLU (cân ghi đè theo số). Gọi số đó trên cân in tem giá
   0, mã vạch mã 99999 — FABi không có món này nên không thu tiền được. Không dùng mã 0 (thông số 121 coi mã 0 là hàng cân
   tạm, §6.4). **Chưa thử trên cân thật.**

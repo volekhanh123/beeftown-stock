@@ -801,18 +801,23 @@
     const ds = x.conLai.map(c => `PLU ${c.so} · mã ${c.ma || '—'} · ${c.ten}`).join('\n');
     if (!confirm(`Gỡ ${x.conLai.length} hàng còn nằm lại khỏi cân qua WiFi?\n\n${ds}\n\n`
       + 'Mỗi số PLU trên thành dòng trống "KHÔNG DÙNG (PLU trống)" (mã 99999, giá 0); phím tắt đang gọi số đó được bỏ. '
-      + 'Hàng mới sau dùng lại số PLU này. Hàng khác trên cân không đổi.\n\n'
+      + 'Hàng mới sau dùng lại số PLU này. Hàng khác trên cân không đổi. Chương trình đọc cân trước: số nào trên cân giờ là hàng khác thì không gỡ gì.\n\n'
       + 'Qua cổng hai chiều (33581) — CHƯA THỬ TRÊN CÂN THẬT. Gửi xong chương trình đọc lại cân để kiểm. Đóng phần mềm TM-xA của hãng trên máy khác trước.')) return;
     const chuNut = nut ? nut.textContent : '';
     if (nut) { nut.disabled = true; nut.textContent = 'Đang gỡ qua WiFi…'; }
     bao(noi, '', '');
     try {
       const k = await goi('/api/can/go-con-lai', { giuHangNgoaiKho: giu, dauVan: x.dauVan });
-      baoChung(k.loiPhim ? 'luu-y' : 'xong', `<p><b>Đã gỡ ${k.daGo.length} hàng khỏi cân</b> (${k.daGo.map(c => 'PLU ' + c.so).join(', ')}): `
-        + 'đọc lại thấy các số PLU đó đã là dòng trống "KHÔNG DÙNG".'
+      // khongCoTrenCan: cân đã không còn số đó (đã nạp USB…) — không gửi gì, chỉ bỏ khỏi danh sách của chương trình.
+      const khong = new Set(k.khongCoTrenCan || []);
+      const go = k.daGo.filter(c => !khong.has(c.so));
+      const ke = ds => ds.map(so => 'PLU ' + so).join(', ');
+      baoChung(k.loiPhim ? 'luu-y' : 'xong', (go.length ? `<p><b>Đã gỡ ${go.length} hàng khỏi cân</b> (${ke(go.map(c => c.so))}): `
+        + 'đọc lại thấy các số PLU đó đã là dòng trống "KHÔNG DÙNG".' : '<p>')
+        + (khong.size ? ` Cân đã không còn ${khong.size} số PLU (${ke([...khong])}) — có lẽ đã nạp USB; chương trình chỉ bỏ khỏi danh sách hàng trên cân.` : '')
         + (k.boPhim ? ` Đã bỏ ${k.boPhim} phím tắt đang gọi các số đó.` : '') + '</p>'
         + (k.loiPhim ? `<p>${e(k.loiPhim)}</p>` : '')
-        + '<p>Gọi thử trên cân một số PLU vừa gỡ: ra "KHÔNG DÙNG (PLU trống)", giá 0 là đúng. Không cân hàng bằng số đó.</p>');
+        + (go.length ? '<p>Gọi thử trên cân một số PLU vừa gỡ: ra "KHÔNG DÙNG (PLU trống)", giá 0 là đúng. Không cân hàng bằng số đó.</p>' : ''));
       await taiTrangThai();
     } catch (err) {
       bao(noi, 'loi', `<p>${e(err.message)}</p><p>Đường chắc chắn: bấm <b>Lưu file để nạp USB</b> (thẻ Gửi giá từ kho) rồi nạp USB.</p>`);

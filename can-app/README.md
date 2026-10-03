@@ -215,7 +215,9 @@ theo "Thử ở quán (2.7)" bên dưới.
 - **Gỡ hàng còn nằm lại bằng ghi đè** (`goHangConLai`, nút "Gỡ khỏi cân qua WiFi (ghi đè)"): cân không có lệnh xoá một hàng,
   nhưng ghi theo số PLU — mỗi số còn nằm lại nhận một **dòng trống** mã `99999`, giá 0, "KHÔNG DÙNG (PLU trống)", không in
   HSD (`dongPluRieng`, `MA_CAN_TRONG` trong `web/src/lib/kho/can-tma.ts`); phím tắt gọi số đó được bỏ (`SCP … 0`). Chạy đúng
-  kế hoạch đã xem (`dauVan`), chỉ qua cổng hai chiều, đọc lại PLU (và SCP) để kiểm. Không lúc nào cân thiếu hàng. Dòng trống
+  kế hoạch đã xem (`dauVan`), chỉ với cân đã biết mã máy (như xoá hẳn), chỉ qua cổng hai chiều. **Đọc PLU trên cân trước**:
+  số nào giờ là hàng khác (thêm trên bàn phím, phần mềm hãng) → không gửi gì; số đã là dòng trống / cân không còn → không
+  ghi số đó. Gửi xong đọc lại PLU (và SCP) để kiểm. Không lúc nào cân thiếu hàng. Dòng trống
   không phải hàng: không "còn nằm lại", thẻ Tất cả hàng ghi "PLU trống", hàng mới dùng lại số đó (bộ lập danh sách cấp số
   trống nhỏ nhất). Kho không được dùng mã `99999` / `99998` (`MA_CAN_DANH_RIENG` — món mang mã đó "không đưa lên cân").
 - **Xoá hẳn hỏng giữa chừng thì tự phục hồi** (`phucHoiSauXoa`): sau `CLR PLU`, đọc lại lệch / đứt / hết giờ → gửi lại ngay cả
