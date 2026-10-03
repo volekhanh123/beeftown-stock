@@ -27,7 +27,7 @@ import {
 } from './cap-nhat.ts';
 import { chayPowerShell } from './day-rs232.ts';
 
-const PHIEN_BAN = '2.5.0';
+const PHIEN_BAN = '2.6.0';
 const khongMo = process.argv.includes('--khong-mo');
 const laExe = laBanDongGoi(process.execPath, process.platform);
 // Chạy thử cập nhật trên Windows với kho giả trên chính máy này (can-app/test/may-cap-nhat-gia.ts): chỉ nhận 127.0.0.1.

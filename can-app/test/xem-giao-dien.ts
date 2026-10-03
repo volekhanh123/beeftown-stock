@@ -9,6 +9,9 @@
  * `--can-doi-dia-chi`: cân giả "đổi địa chỉ" — lúc mở trang, Kiểm tra kết nối tự dò ra cân.
  * `--hai-can`: như trên nhưng WiFi có hai cân (127.0.0.1 và .5) — trang hiện nút chọn cân.
  * `--chua-co-goc`: chưa có file gốc (thấy bước Bắt đầu, có nút đọc từ cân qua WiFi).
+ * 2.6: bấm Gửi xuống cân → cân giả hai chiều nhận PLU như cân thật, chương trình đọc lại thấy khớp ("Cân đã nhận").
+ * `--can-bo-qua`: cân bỏ qua mọi lần gửi (lỗi thấy ở quán 03/10) → khung đỏ "cân CHƯA nhận".
+ * `--khong-doc-lai`: cổng hai chiều không trả lời sau khi gửi → khung vàng "chưa kiểm được".
  * Dây RS232 dùng PowerShell giả: có cổng COM3, cân ở đầu dây luôn trả lời giờ (kiểm tra dây, gửi thử đều được).
  *
  * Bản 2.2: cân giả hai chiều (test/can-gia-hai-chieu.ts) trên 127.0.0.1 cho thẻ Cân & thông số, Nhật ký
@@ -110,7 +113,20 @@ const chayPs: ChayPs = async (lenh, bien) => {
     ? [`DONG\t${i}\t${b64('TIM\t26\t9\t29\t17\t5\t40\t')}`, `DONG\t${i}\t${b64('END\tTIM\t')}`] : []));
   return [...ra, 'OK\t4096', ''].join('\r\n');
 };
+const canBoQua = process.argv.includes('--can-bo-qua');
+const khongDocLai = process.argv.includes('--khong-doc-lai');
+/** Cổng 33571 giả: cân hai chiều nhận các dòng PLU như cân thật (thêm / sửa theo số PLU, không xoá). */
+function canNhan(du: Uint8Array) {
+  const theoSo = new Map((canHaiChieu.du.phan.PLU ?? []).map(d => [Number(d.split('\t')[1]), d]));
+  for (const d of Buffer.from(du).toString('latin1').split(/\r?\n/)) if (d.startsWith('PLU\t')) theoSo.set(Number(d.split('\t')[1]), d);
+  canHaiChieu.du.phan.PLU = [...theoSo.entries()].sort((a, b) => a[0] - b[0]).map(x => x[1]);
+}
 const ud = new UngDung({ cauHinh: path.join(tam, 'a'), duLieu: path.join(tam, 'd') }, {
+  gui: async (_ip, _cong, du) => {
+    if (!canBoQua) canNhan(du);
+    if (khongDocLai) canHaiChieu.hong = { loai: 'dong-giua-chung', khi: 'PLU' };
+  },
+  choXacNhanMs: [0, 300],
   // Dò mạng giả 127.0.0.0/24 (máy "ở" .254) — cân giả nằm ở 127.0.0.1.
   mang: [{ ip: '127.0.0.254', mask: '255.255.255.0' }],
   mac: async () => null,

@@ -78,6 +78,20 @@ const mayCan = net.createServer((s) => {
 await new Promise<void>((xong) => mayCan.listen(0, '127.0.0.1', () => xong()));
 const congCan = (mayCan.address() as net.AddressInfo).port;
 
+/**
+ * Cân giả hai chiều nhận các dòng PLU của một lần gửi qua cổng 33571 như cân thật: thêm / sửa theo số PLU, không xoá
+ * (chiMot: chỉ dòng PLU đầu tiên). 2.6 đọc lại cân sau khi gửi — hai cân giả phải cùng là một cân.
+ */
+function apPluVaoCanGia(can: { du: { phan: Record<string, string[]> } }, du: Uint8Array, chiMot = false): void {
+  const theoSo = new Map((can.du.phan.PLU ?? []).map(d => [Number(d.split('\t')[1]), d]));
+  let n = 0;
+  for (const d of Buffer.from(du).toString('latin1').split(/\r?\n/)) {
+    if (!d.startsWith('PLU\t') || (chiMot && n > 0)) continue;
+    theoSo.set(Number(d.split('\t')[1]), d); n++;
+  }
+  can.du.phan.PLU = [...theoSo.entries()].sort((a, b) => a[0] - b[0]).map(x => x[1]);
+}
+
 const tam = fs.mkdtempSync(path.join(os.tmpdir(), 'beeftown-can-'));
 const dd = { cauHinh: path.join(tam, 'appdata'), duLieu: path.join(tam, 'tai-lieu') };
 
@@ -687,7 +701,9 @@ console.log('6d · Bản 2.2: cổng hai chiều, nhật ký cân, thông số, 
   const dd9 = { cauHinh: path.join(tam, 'appdata9'), duLieu: path.join(tam, 'tai-lieu9') };
   let danhMuc9: DanhMucKho = { mauMaVach: '2XCCCCCWWWWWK', matHang: [
     hang('LOI-VAI', '10001', 'Lõi vai bò Mỹ', 845000), hang('SUON', '10002', 'Sườn bò Hàn Quốc', 876000), hang('GAU-BO', '10003', 'Gầu bò', 695000)] };
-  const ud9 = new UngDung(dd9, { danhMuc: async () => danhMuc9, mang: [], mac: async () => null, tuyHaiChieu });
+  // Cổng 33571 thật (cân giả mayCan ghi lại byte) và cân hai chiều can2 nhận PLU như cân thật: 2.6 đọc lại can2 sau khi gửi.
+  const ud9 = new UngDung(dd9, { danhMuc: async () => danhMuc9, mang: [], mac: async () => null, tuyHaiChieu,
+    gui: async (ip, cong, du) => { await guiTcp(ip, cong, du); apPluVaoCanGia(can2, du); } });
   ud9.luuCauHinh({ ipCan: '127.0.0.1', congCan, congHaiChieu: can2.cong });
   const mc9 = moMayChu(ud9, { ma: 'thu', phienBan: 'thu', khiCoNhip: () => {}, khiDong: () => {} });
   const goc9 = `http://127.0.0.1:${mc9.port}`;
@@ -1171,7 +1187,9 @@ console.log('6f · Sửa sau rà soát 2.2');
       TMS: ['TMS\t0\t28\t', 'TMS\t43\t1\t', 'TMS\t104\t0\t', 'TMS\t150\t192\t', 'TMS\t202\t3\t', 'TMS\t203\t3\t'],
       TMT: ['TMT\t0\tQUAN THU\t', 'TMT\t15\tWIFI-GIA\t', 'TMT\t16\t\t', 'TMT\t19\tmay-chu.gia\t'] } } });
     let dm = dmF('10001', '10002', '10003');
-    const u = new UngDung(ddMoi(), { danhMuc: async () => dm, mang: [], mac: async () => null, tuyHaiChieu: tuyHC });
+    // Cổng 33571 thật (cân giả mayCan ghi lại byte) và cân hai chiều nhận PLU như cân thật (2.6 đọc lại để kiểm).
+    const u = new UngDung(ddMoi(), { danhMuc: async () => dm, mang: [], mac: async () => null, tuyHaiChieu: tuyHC,
+      gui: async (ip, cong, du) => { await guiTcp(ip, cong, du); apPluVaoCanGia(can, du); } });
     u.luuCauHinh({ ipCan: '127.0.0.1', congCan, congHaiChieu: can.cong });
     await thu(() => u.docTuCanQuaWifi());
     const laMang = (id: number) => (id >= 43 && id <= 53) || (id >= 150 && id <= 173) || (id >= 430 && id <= 441);
@@ -1527,6 +1545,204 @@ console.log('6f · Sửa sau rà soát 2.2');
 }
 
 // =============================================================================
+// 2.6: GỬI XONG ĐỌC LẠI CÂN ĐỂ KIỂM (xacNhanSauGui). Lỗi thấy ở quán 02–03/10/2026: chương trình ghi nhận đã gửi 69 hàng
+// kho ("Giữ nguyên", "Khớp kho 69"), cân thật (lưu ra USB) chỉ có 7 hàng cũ — gửi qua 33571 cân không trả lời, chương
+// trình coi "gửi hết byte" là xong. Cân giả hai chiều đóng vai cân thật; cổng 33571 giả (phu.gui) nhận / bỏ qua / nhận một
+// phần. Mọi thứ chỉ trên 127.0.0.1, `mang: []`.
+// =============================================================================
+console.log('6g · 2.6: gửi xong đọc lại cân để kiểm');
+{
+  const loiCua = async (f: () => unknown) => { try { await f(); return ''; } catch (e) { return cauLoi(e); } };
+  const tuyHC = { choMs: 2000, choHangRaoMs: 2000, nghiBaoCaoMs: 1 };
+  let soDd = 0;
+  const ddMoi = () => { soDd++; return { cauHinh: path.join(tam, `appdata-g${soDd}`), duLieu: path.join(tam, `tai-lieu-g${soDd}`) }; };
+  // Cân thật của quán lúc thấy lỗi: hàng cũ ở PLU 1–3 (mã 1000x), kho có hàng mới mã 110, 112.
+  const PLU_CU = [plu(1, '10001', '845,0', 'Lõi vai bò Mỹ'), plu(2, '10002', '876,0', 'Sườn bò Hàn Quốc'), plu(3, '10003', '695,0', 'Gầu bò')];
+  const TMS_G = ['TMS\t0\t28\t', 'TMS\t202\t3\t', 'TMS\t203\t3\t'];
+  let giaStriploin = 780000, tenChuck = 'Steak Chuck eye';
+  let hsdGauBo: number | null | undefined;   // undefined: kho không quản HSD món này
+  const dmG = (): DanhMucKho => ({ mauMaVach: '2XCCCCCWWWWWK', matHang: [
+    hang('STRIPLOIN', '110', 'Bò lúc lắc Striploin', giaStriploin), hang('CHUCK', '112', tenChuck, 890000),
+    { ...hang('GAU-BO', '10003', 'Gầu bò', 695000), ...(hsdGauBo !== undefined ? { han_dung_ngay: hsdGauBo } : {}) },
+  ] });
+  /** Cổng 33571 giả: 'nhan' — cân thêm / sửa PLU theo số như cân thật; 'bo-qua' — nhận hết byte rồi không làm gì (lỗi ở
+   *  quán); 'mot-phan' — chỉ dòng PLU đầu; 'cham' — lưu sau `cham` ms (lần đọc ngay sau khi gửi còn thấy hàng cũ). */
+  const congGia = (can: { du: { phan: Record<string, string[]> } }) => {
+    const c = { cheDo: 'nhan' as 'nhan' | 'bo-qua' | 'mot-phan' | 'cham', cham: 0, soLan: 0 };
+    const ap = (du: Uint8Array, chiMot: boolean) => apPluVaoCanGia(can, du, chiMot);
+    const gui = async (_ip: string, _cong: number, du: Uint8Array) => {
+      c.soLan++;
+      if (c.cheDo === 'nhan') ap(du, false);
+      else if (c.cheDo === 'mot-phan') ap(du, true);
+      else if (c.cheDo === 'cham') setTimeout(() => ap(du, false), c.cham);
+    };
+    return { c, gui };
+  };
+  const mo = async (choXacNhanMs = [0, 20, 400]) => {
+    const can = await moCanGia({ du: { phan: { PLU: PLU_CU.map(chuoiByte), TMS: TMS_G, LAB: MAU_TEM.map(chuoiByte) } } });
+    const congGiaCan = congGia(can);
+    const u = new UngDung(ddMoi(), { danhMuc: async () => dmG(), mang: [], mac: async () => null, tuyHaiChieu: tuyHC, gui: congGiaCan.gui, choXacNhanMs });
+    u.luuCauHinh({ ipCan: '127.0.0.1', congCan, congHaiChieu: can.cong });
+    u.ghiNhanFileTuCan(fileCan(PLU_CU));
+    return { can, u, c: congGiaCan.c };
+  };
+  const soLanDocPlu = (can: { yeuCau: readonly string[] }) => can.yeuCau.filter(d => d.startsWith('UPL\tPLU\t')).length;
+  const tenTrenCan = (can: { du: { phan: Record<string, string[]> } }) =>
+    (can.du.phan.PLU ?? []).map(d => d.split('\t')).map(c => `${c[1]}:${c[2]}`).join(' ');
+
+  console.log('6g1 · Cân bỏ qua lần gửi — không ghi nhận, nói rõ hàng nào, tự gửi tạm dừng');
+  {
+    const { can, u, c } = await mo();
+    c.cheDo = 'bo-qua';
+    const goc0 = fs.readFileSync(u.fileGoc), tren0 = fs.readFileSync(u.fileTrenCan);
+    const loi = await loiCua(() => u.guiXuongCan());
+    ok('HỒI QUY 03/10: cân bỏ qua lần gửi qua 33571 → báo cân CHƯA nhận, nêu PLU 1 trên cân vẫn là "Lõi vai bò Mỹ" 845.000 đ (gửi Bò lúc lắc 780.000 đ)',
+      /CHƯA nhận/.test(loi) && /PLU 1 trên cân vẫn là "Lõi vai bò Mỹ" mã 10001 845\.000 đ \(gửi "Bò lúc lắc Striploin" mã 110 780\.000 đ\)/.test(loi), loi);
+    ok('HỒI QUY 03/10: cân bỏ qua lần gửi → file gốc và tren-can.tsv y nguyên (không thành "Giữ nguyên" / "Khớp kho")',
+      Buffer.compare(fs.readFileSync(u.fileGoc), goc0) === 0 && Buffer.compare(fs.readFileSync(u.fileTrenCan), tren0) === 0);
+    ok('Đọc lại cân: chưa khớp thì chờ rồi đọc lại (đủ 3 lần đọc PLU), không gửi lại', soLanDocPlu(can) === 3 && c.soLan === 1, `đọc ${soLanDocPlu(can)}, gửi ${c.soLan}`);
+    ok('Câu báo chỉ đường: màn hình bán hàng, gửi lại một lần, Lưu file để nạp USB; không có chữ "thành công"',
+      /màn hình bán hàng/.test(loi) && /Lưu file để nạp USB/.test(loi) && /chưa ghi nhận/.test(loi) && !/thành công/i.test(loi));
+    const dau = u.chuaXacNhan();
+    ok('Ghi dấu "lech" (chua-xac-nhan.json) kèm số hàng và câu báo', dau?.loai === 'lech' && dau.soHang === 3 && dau.cau === loi && !!Date.parse(dau.luc));
+    const x = await u.xemTruoc();
+    ok('Xem trước sau lần gửi cân bỏ qua: vẫn "Thêm" hàng mới (không "Giữ nguyên"), kèm dấu chưa xác nhận',
+      x.dong.filter(d => d.loai === 'them').length === 2 && !x.dong.some(d => d.loai === 'giu' && d.maCan === '110') && x.chuaXacNhan?.loai === 'lech');
+    const th = await u.tatCaHang();
+    ok('Tất cả hàng: mã 110, 112 vẫn "Chưa lên cân"; trả dấu chưa xác nhận', th.hang.filter(h => h.tinhTrang === 'chua_len').length === 2 && th.chuaXacNhan?.loai === 'lech');
+    u.luuCauHinh({ tuGui: true });
+    const lanTuGui = await u.tuGuiMotLan();
+    ok('HỒI QUY 03/10: tự gửi tạm dừng sau lần cân chưa nhận — không gửi lại mỗi phút', !lanTuGui.daGui && /Tự gửi tạm dừng/.test(lanTuGui.cau)
+      && c.soLan === 1, lanTuGui.cau);
+    fs.writeFileSync(u.fileCanChuaRo, JSON.stringify({ luc: new Date().toISOString(), cau: 'Xoá qua WiFi hỏng (thử).' }));
+    const lanCoXoaHong = await u.tuGuiMotLan();
+    fs.rmSync(u.fileCanChuaRo);
+    ok('Tự gửi tạm dừng mà lần xoá qua WiFi trước cũng hỏng → vẫn nhắc "nạp USB ngay"', /nạp USB ngay/.test(lanCoXoaHong.cau) && /Tự gửi tạm dừng/.test(lanCoXoaHong.cau)
+      && c.soLan === 1, lanCoXoaHong.cau);
+
+    console.log('6g2 · Cân nhận đủ → "Cân đã nhận", hết dấu, tự gửi chạy lại');
+    c.cheDo = 'nhan';
+    const k = await u.guiXuongCan();
+    ok('Cân nhận đủ → xacNhan, không câu chưa kiểm, hết dấu', k.xacNhan && k.cauXacNhan === null && u.chuaXacNhan() === null
+      && tenTrenCan(can) === '1:110 2:112 3:10003', tenTrenCan(can));
+    const x2 = await u.xemTruoc();
+    ok('Sau khi cân nhận: Xem trước "Giữ nguyên" cả 3 hàng, không dấu', x2.dong.every(d => d.loai === 'giu') && x2.chuaXacNhan === null);
+    giaStriploin = 790000;
+    const lanSauKhiHetDau = await u.tuGuiMotLan();
+    ok('Tự gửi chạy lại sau khi hết dấu; câu nói "cân đã nhận (đọc lại khớp)"', lanSauKhiHetDau.daGui && /1 sửa/.test(lanSauKhiHetDau.cau)
+      && /cân đã nhận \(đọc lại khớp\)/.test(lanSauKhiHetDau.cau), lanSauKhiHetDau.cau);
+    giaStriploin = 780000;
+    u.luuCauHinh({ tuGui: false });
+
+    console.log('6g2b · Lần gửi chỉ đổi HSD hay chỉ đổi tên mà cân bỏ qua → vẫn bắt được');
+    hsdGauBo = 3;
+    await u.guiXuongCan();   // cân nhận: bật in HSD 3 ngày cho Gầu bò
+    c.cheDo = 'bo-qua'; hsdGauBo = 2;   // sang ngày mới: HSD đếm ngược 3 → 2, chỉ cột HSD đổi
+    const loiHsd = await loiCua(() => u.guiXuongCan());
+    ok('Chỉ HSD đổi (đếm ngược qua đêm) mà cân bỏ qua → "CHƯA nhận", nêu HSD trên cân và HSD đã gửi',
+      /CHƯA nhận 1 hàng/.test(loiHsd) && /PLU 3 trên cân vẫn là "Gầu bò" mã 10003 695\.000 đ, HSD 3 ngày \(gửi "Gầu bò" mã 10003 695\.000 đ, HSD 2 ngày\)/.test(loiHsd), loiHsd);
+    c.cheDo = 'nhan';
+    await u.guiXuongCan();
+    c.cheDo = 'bo-qua'; tenChuck = 'Steak Chuck eye Úc';
+    const loiTen = await loiCua(() => u.guiXuongCan());
+    ok('Chỉ tên đổi mà cân bỏ qua → "CHƯA nhận", nêu tên trên cân và tên đã gửi',
+      /PLU 2 trên cân vẫn là "Steak Chuck eye" mã 112 890\.000 đ \(gửi "Steak Chuck eye Úc" mã 112 890\.000 đ\)/.test(loiTen), loiTen);
+    c.cheDo = 'nhan'; tenChuck = 'Steak Chuck eye'; hsdGauBo = undefined;
+
+    console.log('6g3 · Cân nhận một phần, cân lưu chậm');
+    c.cheDo = 'mot-phan';
+    can.du.phan.PLU = PLU_CU.map(chuoiByte);
+    u.ghiNhanFileTuCan(fileCan(PLU_CU));
+    const loiMp = await loiCua(() => u.guiXuongCan());
+    ok('Cân chỉ nhận dòng PLU đầu → báo 1 hàng lệch: PLU 2 (Sườn bò Hàn Quốc vẫn còn), không nhắc PLU 1',
+      /CHƯA nhận 1 hàng/.test(loiMp) && /PLU 2 trên cân vẫn là "Sườn bò Hàn Quốc"/.test(loiMp) && !/PLU 1 /.test(loiMp) && u.chuaXacNhan()?.loai === 'lech', loiMp);
+    c.cheDo = 'cham'; c.cham = 10;
+    can.du.phan.PLU = PLU_CU.map(chuoiByte);
+    u.ghiNhanFileTuCan(fileCan(PLU_CU));
+    const truoc = soLanDocPlu(can);
+    const ketQuaCham = await u.guiXuongCan();
+    ok('Cân lưu chậm (lần đọc ngay sau khi gửi còn hàng cũ) → chờ, đọc lại thấy khớp → cân đã nhận', ketQuaCham.xacNhan
+      && soLanDocPlu(can) - truoc === 2 && u.chuaXacNhan() === null, `đọc ${soLanDocPlu(can) - truoc}`);
+    c.cheDo = 'nhan';
+    can.du.phan.PLU = PLU_CU.map(chuoiByte);
+    u.ghiNhanFileTuCan(fileCan(PLU_CU));
+    // Cân đang lưu nên lần đọc ngay sau khi gửi hỏng (đóng kết nối giữa chừng); lần đọc sau được.
+    can.hong = { loai: 'dong-giua-chung', khi: 'PLU' };
+    setTimeout(() => { can.hong = null; }, 200);
+    const truocHong = soLanDocPlu(can);
+    const ketQuaDocHong = await u.guiXuongCan();
+    ok('Lần đọc lại đầu hỏng (cân đang lưu) → chờ rồi đọc lại, không vội báo "chưa kiểm được"', ketQuaDocHong.xacNhan && u.chuaXacNhan() === null
+      && soLanDocPlu(can) - truocHong >= 2, ketQuaDocHong.cauXacNhan ?? '');
+    await can.dong();
+  }
+
+  console.log('6g4 · Không đọc lại được cân → ghi nhận như cũ, kèm dấu "chưa xác nhận"');
+  {
+    const { can, u, c } = await mo();
+    const congMo = can.cong;
+    const sv = net.createServer(); await new Promise<void>(r => sv.listen(0, '127.0.0.1', () => r()));
+    const congDong = (sv.address() as net.AddressInfo).port; await new Promise<void>(r => sv.close(() => r()));
+    u.luuCauHinh({ congHaiChieu: congDong });
+    const goc0 = fs.readFileSync(u.fileGoc);
+    const k = await u.guiXuongCan();
+    const dau = u.chuaXacNhan();
+    ok('Cổng hai chiều đóng → vẫn ghi nhận lần gửi (file gốc mới), nhưng xacNhan = false và câu nói chưa đọc lại được cân',
+      !k.xacNhan && /chưa đọc lại được cân để kiểm/.test(k.cauXacNhan ?? '') && Buffer.compare(fs.readFileSync(u.fileGoc), goc0) !== 0
+      && dau?.loai === 'khong-doc' && dau.cau === k.cauXacNhan && !/thành công/i.test(k.cauXacNhan ?? ''), k.cauXacNhan ?? '');
+    const x = await u.xemTruoc(), th = await u.tatCaHang();
+    ok('Dấu "khong-doc" đi kèm Xem trước và Tất cả hàng (trang đổi "Khớp kho" thành "Khớp kho, chưa xác nhận")',
+      x.chuaXacNhan?.loai === 'khong-doc' && th.chuaXacNhan?.loai === 'khong-doc' && th.hang.some(h => h.tinhTrang === 'khop'));
+    u.luuCauHinh({ tuGui: true });
+    const lanTuGui = await u.tuGuiMotLan();
+    ok('Tự gửi khi kho không đổi mà lần gửi trước chưa xác nhận → không nói "Cân đã khớp kho"', !lanTuGui.daGui && !/Cân đã khớp kho/.test(lanTuGui.cau)
+      && /chưa đọc lại được cân/.test(lanTuGui.cau), lanTuGui.cau);
+    u.luuCauHinh({ tuGui: false });
+    u.luuCauHinh({ congHaiChieu: congMo });
+    can.hong = { loai: 'dong-giua-chung', khi: 'PLU' };
+    const k2 = await u.guiXuongCan();
+    can.hong = null;
+    ok('Cân đóng kết nối giữa lúc trả danh sách → "khong-doc", không bao giờ báo cân đã nhận', !k2.xacNhan && u.chuaXacNhan()?.loai === 'khong-doc', k2.cauXacNhan ?? '');
+    const pluCan = can.du.phan.PLU;
+    can.du.phan.PLU = []; c.cheDo = 'bo-qua';
+    const k3 = await u.guiXuongCan();
+    ok('Cân trả danh sách hàng rỗng → "khong-doc" (không tin được), không coi là khớp', !k3.xacNhan && /rỗng/.test(k3.cauXacNhan ?? ''), k3.cauXacNhan ?? '');
+    can.du.phan.PLU = pluCan; c.cheDo = 'nhan';
+    const ch = JSON.parse(fs.readFileSync(u.fileCauHinh, 'utf8'));
+    fs.writeFileSync(u.fileCauHinh, JSON.stringify({ ...ch, macHaiChieu: 'AABBCCDDEEFF' }));
+    const soKetNoi = can.ketNoi.length;
+    const k4 = await u.guiXuongCan();
+    ok('Cân ở địa chỉ đó khác mã máy chương trình nhớ → không coi là xác nhận, không đọc lại thêm (một kết nối)', !k4.xacNhan
+      && /không phải cân chương trình vẫn dùng/.test(k4.cauXacNhan ?? '') && can.ketNoi.length - soKetNoi === 1, k4.cauXacNhan ?? '');
+    fs.writeFileSync(u.fileCauHinh, JSON.stringify(ch));
+    await u.docTuCanQuaWifi();
+    ok('Đọc dữ liệu từ cân qua WiFi (cân thật) → hết dấu chưa xác nhận', u.chuaXacNhan() === null);
+    fs.writeFileSync(u.fileChuaXacNhan, '{hỏng');
+    ok('File dấu hỏng (sửa tay) → vẫn coi là còn dấu, không báo khớp', u.chuaXacNhan()?.loai === 'khong-doc');
+    u.ghiNhanFileTuCan(fileCan(PLU_CU));
+    ok('Ghi nhận file lưu từ cân ra USB → hết dấu', u.chuaXacNhan() === null && !fs.existsSync(u.fileChuaXacNhan + '.tam'));
+    await can.dong();
+  }
+
+  console.log('6g5 · Trang và tài liệu');
+  {
+    const gd = fs.readFileSync(path.join(import.meta.dir, '../src/giao-dien.html'), 'utf8');
+    const hd = fs.readFileSync(path.join(import.meta.dir, '../src/huong-dan.html'), 'utf8');
+    ok('Trang: sau khi gửi chỉ nói "Cân đã nhận" khi k.xacNhan; không thì khung vàng "chưa kiểm được"',
+      /baoChung\(k\.xacNhan \? 'xong' : 'luu-y'/.test(gd) && /Cân đã nhận \$\{k\.soHang\} hàng/.test(gd) && /chưa kiểm được cân đã nhận chưa/.test(gd));
+    const thanGui = gd.slice(gd.indexOf('async function gui()'), gd.indexOf('async function taoUsb()'));
+    ok('Trang: gửi hỏng → câu lỗi ở đầu trang (baoChung), không ở #ket-qua-gui mà taiTrangThai dựng lại bảng sẽ xoá',
+      /catch \(err\) \{[\s\S]*baoChung\('loi', e\(err\.message\)\)[\s\S]*await taiTrangThai\(\)/.test(thanGui) && !/\$\('ket-qua-gui'\)/.test(thanGui));
+    ok('Trang: lần gửi trước cân chưa nhận → nút Gửi nói tự gửi đang tạm dừng (không "không cần gửi")',
+      /canChuaNhan \? 'Lần gửi trước cân chưa nhận — tự gửi đang tạm dừng/.test(gd));
+    ok('Trang: khung dấu chưa xác nhận ở Xem trước và Tất cả hàng; nhãn "Giữ nguyên (chưa xác nhận)", "Khớp kho, chưa xác nhận"',
+      /baoChuaXacNhan\(x\.chuaXacNhan\)/.test(gd) && /baoChuaXacNhan\(d\.chuaXacNhan\)/.test(gd) && /'Giữ nguyên \(chưa xác nhận\)'/.test(gd)
+      && /'Khớp kho, chưa xác nhận'/.test(gd) && /s\.chuaXacNhan/.test(gd));
+    ok('Trang: giờ của dấu hiện theo giờ Việt Nam (lucNgan có timeZone Asia/Ho_Chi_Minh)', /const lucNgan = [^\n]*timeZone: 'Asia\/Ho_Chi_Minh'/.test(gd));
+    ok('Hướng dẫn: mục Gửi giá từ kho nói chương trình đọc lại cân sau khi gửi (Mới 2.6)', /Mới 2\.6/.test(hd) && /đọc lại cân/.test(hd));
+  }
+}
+
+// =============================================================================
 console.log('6e · Kiểm thử từng module của bản 2.2');
 await thuGiaoThuc(ok);
 await thuTem(ok);
@@ -1574,7 +1790,7 @@ if (!thuMucTam) {
   process.exit(1);
 }
 ok('Trạng thái: chưa có file gốc, cân mặc định 192.168.1.22', tt.ok && tt.goc === null && tt.cauHinh.ipCan === '192.168.1.22', JSON.stringify(tt));
-ok('Phiên bản 2.5.0', (tt as unknown as { phienBan: string }).phienBan === '2.5.0');
+ok('Phiên bản 2.6.0', (tt as unknown as { phienBan: string }).phienBan === '2.6.0');
 {
   // 2.5: dang-chay.json ghi phiên bản (lúc cập nhật, bản cũ chờ bản mới ghi phiên bản của nó). Chạy bằng bun (không phải
   // BeeftownCan.exe) → không cập nhật được, và KHÔNG hỏi mạng (không bao giờ gọi github.com trong kiểm thử).
@@ -1583,7 +1799,7 @@ ok('Phiên bản 2.5.0', (tt as unknown as { phienBan: string }).phienBan === '2
   const cnApi = await (await api('/api/cap-nhat')).json() as { ok: boolean; loi?: string };
   const ttCn = (tt as unknown as { capNhat?: { coTheCapNhat: boolean; vuaCapNhatTu: string | null } }).capNhat;
   ok('2.5: dang-chay.json có phiên bản; chạy bằng bun → không cập nhật được, không hỏi mạng; /api/cap-nhat từ chối',
-    dangChay.phienBan === '2.5.0' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
+    dangChay.phienBan === '2.6.0' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
     && !cnApi.ok && /Chỉ cập nhật được/.test(cnApi.loi ?? '') && ttCn?.coTheCapNhat === false && ttCn.vuaCapNhatTu === null,
     JSON.stringify([dangChay, bm, cnApi, ttCn]));
 }

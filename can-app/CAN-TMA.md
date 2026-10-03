@@ -1004,6 +1004,10 @@ FID 29: 9 cái giá 455; FID 30: 9,000 kg giá 0) → chỉ **17 dòng bán hàn
 - Kết quả: cân nạp dòng PLU — **chỉ thêm và sửa, không xoá** hàng vắng mặt. → Hàng "còn nằm lại" phải xoá bằng
   nạp USB (file đủ danh sách) hoặc trên cân (P33, mã 9958).
 - "Gửi hết byte" ≠ "cân đã lưu": không có xác nhận → kiểm bằng cách gọi thử một hàng trên cân / in một tem.
+  **[đã thấy] 02–03/10/2026:** chương trình (2.5) ghi nhận đã gửi 69 hàng kho, file gốc và `tren-can.tsv` ghi "khớp kho".
+  Cân thật lưu ra USB ngày 03/10 chỉ có 7 hàng: PLU 1–6 cũ và PLU 99 (hàng thử ngày 26/09). Gọi số PLU kho trên cân thì cân
+  báo lỗi (tít tít, về 0). Vì sao lần gửi đó cân không lưu: [chưa biết]. → Từ 2.6, gửi xong chương trình đọc lại PLU qua
+  33581 để kiểm (`xacNhanSauGui`, README mục "Bản 2.6").
 - Trong WiFi của quán chỉ cân mở cổng này → `tim-can.ts` tìm cân đổi địa chỉ bằng cách thử nối 33571 cả dải
   /24 (không gửi gì).
 - **Chưa thử trên cân thật qua 33571**: phần LAB (đổi tem qua WiFi), file nhỏ chỉ có TMS / SCP (`fileNho`),
@@ -1218,6 +1222,7 @@ Cùng văn bản như file và mạng (mục 2), đi qua cổng COM. Nguồn: `S
 | Nạp file USB do chương trình ghi (dòng PLU 69 cột, giá `m,n`) | **Đã thử** 25–26/09/2026 | Cân lưu và trả lại đúng từng cột |
 | Nạp USB thay cả danh sách PLU (hàng vắng mặt bị xoá) | **Đã thử** 26/09/2026 | |
 | Gửi cả file dạng USB vào **TCP 33571**: cân nạp, thêm / sửa PLU, không xoá, không trả lời | **Đã thử** 26/09/2026 | Chỉ phần PLU được xác nhận |
+| Chương trình ghi nhận đã gửi qua 33571 mà cân thật không có hàng đó | **Đã thấy** 02–03/10/2026 | Chưa rõ vì sao; 2.6 đọc lại qua 33581 để kiểm |
 | Nạp lại file có REP / INF / TMS 500 dòng / TMT | **Đã thử** 25/09/2026 | Không hại thấy được; chưa chứng minh cân bỏ qua |
 | Cân tự phát UDP `UDP⇥33581⇥⇥` mỗi ~15 giây tới 33584 | **Đã thấy** (nhóm trước) | |
 | Gửi thẳng cả file vào **33581** | **Đã thử — cân KHÔNG nạp** | Có lẽ vì thiếu trình tự của hãng |

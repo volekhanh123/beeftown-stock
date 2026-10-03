@@ -509,7 +509,9 @@
       $('o-kho-phu').textContent = s.loiKho || ch.diaChiKho;
     }
     $('nut-dang-xuat').classList.toggle('an', !s.nguoi);
-    $('o-tren-can').textContent = s.goc ? s.soTrenCan + ' hàng' : 'Chưa biết';
+    // 2.6: lần gửi gần nhất cân chưa xác nhận → số hàng là theo chương trình, chưa chắc cân có.
+    $('o-tren-can').textContent = !s.goc ? 'Chưa biết'
+      : s.soTrenCan + ' hàng' + (s.chuaXacNhan ? (s.chuaXacNhan.loai === 'lech' ? ' · lần gửi trước cân chưa nhận' : ' · chưa xác nhận') : '');
     $('o-goc').textContent = s.goc ? 'File gốc lúc ' + new Date(s.goc.luc).toLocaleString('vi-VN') + ' · cân ' + s.goc.phienBan : 'Chưa có file gốc';
 
     const q = s.nguoi ? s.nguoi.quyen : null;
@@ -533,7 +535,7 @@
   }
 
   // ---- ô Cân: địa chỉ, lần tự đổi địa chỉ, tự gửi ---------------------------
-  const lucNgan = (t) => new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' });
+  const lucNgan = (t) => new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
   function veOCan() {
     const ch = trangThai.cauHinh;
     $('o-can').textContent = ch.ipCan + ' · cổng ' + ch.congCan;
@@ -633,14 +635,18 @@
       const x = await goi('/api/xem-truoc', { giuHangNgoaiKho: giu });
       // Xem trước có thể vừa ghi nhận HSD trên cân đã đúng hôm nay: cập nhật cả khung ở ô Cân.
       if (x.hsdTrenCan) { trangThai.hsd = x.hsdTrenCan; $('bao-hsd').innerHTML = baoHsdCu(trangThai.hsd); }
-      let h = baoHsdCu(x.hsdTrenCan) + baoCanChuaRo(x.canChuaRo) + '<div class="dem">' + DEM.filter(([k]) => x.dem[k] > 0)
+      const chuaKiemDuoc = x.chuaXacNhan && x.chuaXacNhan.loai === 'khong-doc';
+      const canChuaNhan = x.chuaXacNhan && x.chuaXacNhan.loai === 'lech';
+      let h = baoHsdCu(x.hsdTrenCan) + baoCanChuaRo(x.canChuaRo) + baoChuaXacNhan(x.chuaXacNhan) + '<div class="dem">' + DEM.filter(([k]) => x.dem[k] > 0)
         .map(([k, chu]) => `<span class="nhan-l ${NHAN[k][1]}">${x.dem[k]} ${chu}</span>`).join('') + '</div>';
       const coHsd = x.dong.some(d => d.hsd !== undefined);
       h += '<div class="khung-bang"><table><thead><tr><th>Thay đổi</th><th class="so">PLU</th><th class="so">Mã cân</th><th>Tên trên tem</th><th class="so">Giá/kg</th>'
         + (coHsd ? `<th title="Số ngày in trên tem = số ngày còn lại của lô, tính cho ngày ${e(ngayChu(x.ngayHsd))}">HSD</th>` : '') + '</tr></thead><tbody>';
       for (const d of x.dong) {
         const mo = d.loai === 'xoa' || d.loai === 'bo_qua';
-        h += `<tr class="${mo ? 'mo' : ''}"><td><span class="nhan-l ${NHAN[d.loai][1]}">${NHAN[d.loai][0]}</span></td>`
+        // "Giữ nguyên" là so với file gốc; lần gửi gần nhất chưa được cân xác nhận thì nói rõ.
+        const nhan = d.loai === 'giu' && chuaKiemDuoc ? 'Giữ nguyên (chưa xác nhận)' : NHAN[d.loai][0];
+        h += `<tr class="${mo ? 'mo' : ''}"><td><span class="nhan-l ${NHAN[d.loai][1]}">${nhan}</span></td>`
           + `<td class="so">${d.so ?? '—'}</td><td class="so">${e(d.maCan || '—')}</td><td>${e(d.ten)}`
           + (d.loai === 'sua' && d.tenCu !== d.ten ? `<div class="phu">Trên cân đang là: ${e(d.tenCu)}</div>` : '')
           + (d.lyDo ? `<div class="phu">${e(d.lyDo)}</div>` : '') + (d.canhBao ? `<div class="phu">${e(d.canhBao)}</div>` : '')
@@ -669,7 +675,11 @@
       }
       h += `<div class="nut" style="margin-top:16px"><button class="chinh to" id="nut-gui">Gửi xuống cân</button>`
         + `<span class="phu">${x.canChuaRo ? 'Lần xoá qua WiFi trước hỏng — bấm Gửi để gửi lại cả danh sách ' + x.soHangSauKhiGui + ' hàng, hoặc nạp USB.'
-          : x.coThayDoi ? 'Sau khi gửi, cân có ' + x.soHangSauKhiGui + ' hàng từ kho.' : 'Cân đã khớp với kho — không cần gửi.'}</span></div><div id="ket-qua-gui"></div>`;
+          // Lần gửi trước cân chưa nhận: tự gửi đang tạm dừng — kể cả khi kho đã quay về như file gốc, phải bấm Gửi.
+          : canChuaNhan ? 'Lần gửi trước cân chưa nhận — tự gửi đang tạm dừng. Để cân ở màn hình bán hàng rồi bấm Gửi; gửi xong chương trình đọc lại cân để kiểm.'
+          : x.coThayDoi ? 'Sau khi gửi, cân có ' + x.soHangSauKhiGui + ' hàng từ kho. Gửi xong chương trình đọc lại cân để kiểm.'
+          : chuaKiemDuoc ? 'Kho khớp với lần gửi trước, nhưng lần đó chưa được cân xác nhận — bấm Gửi để gửi lại và đọc lại cân để kiểm.'
+          : 'Cân đã khớp với kho — không cần gửi.'}</span></div><div id="ket-qua-gui"></div>`;
       noi.innerHTML = h;
       $('nut-gui').onclick = gui;
       if ($('nut-tao-usb')) $('nut-tao-usb').onclick = taoUsb;
@@ -682,18 +692,25 @@
   }
 
   async function gui() {
-    const nut = $('nut-gui'), noi = $('ket-qua-gui');
+    const nut = $('nut-gui');
     nut.disabled = true; nut.textContent = 'Đang gửi…';
     try {
       const k = await goi('/api/gui', { giuHangNgoaiKho: giuNgoaiKho() });
-      // Báo ở đầu trang: bảng bên dưới sẽ được dựng lại từ file vừa gửi.
-      baoChung('xong', `<p><b>Đã gửi ${k.soHang} hàng xuống cân.</b> Trên cân gõ số PLU của một hàng vừa đổi rồi bấm <b>PLU</b> để chắc cân đã nhận.</p>`
+      // Báo ở đầu trang: bảng bên dưới sẽ được dựng lại từ file vừa gửi. 2.6: chỉ nói "cân đã nhận" khi đọc lại khớp.
+      baoChung(k.xacNhan ? 'xong' : 'luu-y', (k.xacNhan
+        ? `<p><b>Cân đã nhận ${k.soHang} hàng</b> — đọc lại cân qua WiFi thấy đủ, đúng số PLU, mã cân, tên, giá và HSD.</p>`
+        : `<p><b>Đã gửi ${k.soHang} hàng, nhưng chưa kiểm được cân đã nhận chưa:</b> ${e(k.cauXacNhan || '')}</p>`
+          + '<p>Trên cân gõ số PLU của một hàng vừa đổi rồi bấm <b>PLU</b>: ra đúng giá mới là cân đã nhận. Ra giá cũ thì cân chưa nhận — '
+          + 'để cân ở màn hình bán hàng rồi gửi lại, hoặc nạp USB.</p>')
         + (k.conLai.length ? `<p>${k.conLai.length} hàng vẫn còn nằm trên cân — xoá bằng USB khi tiện.</p>` : '')
         + daDoiDiaChi(k.doiDiaChi));
       await taiTrangThai();
     } catch (err) {
-      bao(noi, 'loi', e(err.message));
+      // Câu lỗi ở đầu trang: taiTrangThai dựng lại bảng xem trước (cả #ket-qua-gui) — để ở dưới nút thì bị xoá mất.
+      baoChung('loi', e(err.message));
       nut.disabled = false; nut.textContent = 'Gửi xuống cân';
+      // Đọc lại thấy cân chưa nhận: chương trình vừa ghi dấu (ô Trên cân, khung đỏ ở bảng, tự gửi tạm dừng).
+      try { await taiTrangThai(); } catch { /* câu lỗi đã ở đầu trang */ }
     }
   }
 
@@ -704,6 +721,21 @@
 
   /** Hạn dùng để hiện: số ngày, null = không in HSD. */
   const hsdChu = (v) => (v === undefined ? '' : v === null ? 'không in' : `${Number(v).toLocaleString('vi-VN')} ngày`);
+
+  /**
+   * 2.6 — lần gửi gần nhất cân chưa xác nhận (chua-xac-nhan.json). 'khong-doc': đã ghi nhận nhưng chưa đọc lại được cân
+   * (khung vàng); 'lech': đọc lại thấy cân chưa nhận, chương trình chưa ghi nhận lần gửi đó, tự gửi tạm dừng (khung đỏ).
+   */
+  function baoChuaXacNhan(c) {
+    if (!c) return '';
+    const luc = c.luc ? ' lúc ' + e(lucNgan(c.luc)) : '';
+    if (c.loai === 'lech') {
+      return `<div class="bao loi"><p><b>Lần gửi${luc}: cân chưa nhận.</b> ${e(c.cau)}</p></div>`;
+    }
+    return `<div class="bao luu-y"><p><b>Lần gửi${luc} chưa được cân xác nhận.</b> ${e(c.cau)}</p>`
+      + '<p>Nhãn "Giữ nguyên" / "Khớp kho" là theo lần gửi đó, chưa chắc cân đã có. Kiểm: trên cân gọi thử một số PLU, '
+      + 'hoặc bấm <b>Đọc dữ liệu từ cân qua WiFi</b> (thẻ Cân &amp; thông số), hoặc lưu cân ra USB rồi Cập nhật file gốc từ cân.</p></div>';
+  }
 
   /** Khung đỏ khi lần xoá qua WiFi trước hỏng sau khi đã gửi lệnh xoá (can-chua-ro.json) — cân có thể đang thiếu hàng. */
   function baoCanChuaRo(c) {
@@ -789,8 +821,13 @@
       && (!q || boDau(h.ten).includes(q) || h.maCan.includes(q) || String(h.so ?? '') === q || boDau(h.tenKho).includes(q)));
   }
 
-  /** Nhãn tình trạng: lần xoá qua WiFi trước hỏng (canChuaRo) thì "khớp" chỉ là khớp file gốc — cân thật chưa rõ. */
-  const tinhTrangChu = (k) => (k === 'khop' && dsHang && dsHang.canChuaRo ? ['Chưa rõ trên cân', 'xoa'] : TINH_TRANG[k]);
+  /**
+   * Nhãn tình trạng: lần xoá qua WiFi trước hỏng (canChuaRo) thì "khớp" chỉ là khớp file gốc — cân thật chưa rõ. 2.6: lần
+   * gửi gần nhất chưa đọc lại được cân (chuaXacNhan 'khong-doc') thì "khớp" là theo lần gửi đó, chưa xác nhận.
+   */
+  const tinhTrangChu = (k) => (k === 'khop' && dsHang && dsHang.canChuaRo ? ['Chưa rõ trên cân', 'xoa']
+    : k === 'khop' && dsHang && dsHang.chuaXacNhan && dsHang.chuaXacNhan.loai === 'khong-doc' ? ['Khớp kho, chưa xác nhận', 'sua']
+    : TINH_TRANG[k]);
 
   function veHang() {
     if (!dsHang) return;
@@ -829,7 +866,7 @@
     if (d.hang.some(x => x.tinhTrang === 'lech' || x.tinhTrang === 'chua_len' || x.tinhTrang === 'ngoai_kho')) {
       h += '<p class="phu" style="margin-top:8px">Muốn cân khớp kho: sang thẻ <b>Gửi giá từ kho</b>.</p>';
     }
-    $('bang-hang').innerHTML = baoHsdCu(d.hsdTrenCan) + baoCanChuaRo(d.canChuaRo) + h;
+    $('bang-hang').innerHTML = baoHsdCu(d.hsdTrenCan) + baoCanChuaRo(d.canChuaRo) + baoChuaXacNhan(d.chuaXacNhan) + h;
   }
 
   function xuatHang() {
