@@ -756,14 +756,20 @@
     </ul></li>
   <li>Ô <b>"Giữ lại hàng đang có trên cân nhưng không có trong kho"</b>: đánh dấu khi muốn giữ các hàng chỉ có trên cân.</li>
   <li>Cân đang ở màn hình bán hàng (không ở trong menu <kbd class="p">Prog</kbd> hay <kbd class="p">Account</kbd>).</li>
-  <li>Bấm <span class="n">Gửi xuống cân</span>. Chờ báo "Đã gửi … hàng xuống cân".</li>
+  <li>Bấm <span class="n">Gửi xuống cân</span>. <span class="nhan moi">Mới 2.6</span> Gửi xong, chương trình <b>đọc lại cân</b> qua WiFi (cổng hai chiều) và so từng hàng vừa gửi — số PLU, mã cân, tên, giá, HSD:
+    <ul>
+      <li>Khung xanh <b>"Cân đã nhận … hàng"</b>: đọc lại thấy đủ.</li>
+      <li>Khung đỏ <b>"… cân CHƯA nhận"</b>: đọc lại thấy cân vẫn là hàng cũ — câu báo nêu PLU nào. Chương trình <b>không ghi nhận</b> lần gửi đó (bảng vẫn "Thêm" / "Sửa"), và tự gửi tạm dừng. Để cân ở màn hình bán hàng rồi gửi lại một lần; vẫn vậy thì nạp USB (<a href="#usb-du-phong">mục 25</a>).</li>
+      <li>Khung vàng <b>"chưa kiểm được cân đã nhận chưa"</b>: không đọc lại được cân (cổng hai chiều không trả lời). Lần gửi được ghi nhận, nhưng nhãn "Giữ nguyên" / "Khớp kho" ghi thêm "chưa xác nhận" — tới khi gửi mà đọc lại khớp, hay đọc dữ liệu từ cân (WiFi / USB).</li>
+    </ul></li>
   <li><b>Kiểm tra trên cân:</b> gõ số PLU của một hàng vừa đổi rồi bấm <kbd class="p">PLU</kbd> — giá mới hiện ra là cân đã nhận.</li>
 </ol>
+<div class="hop luu-y"><p><b>Vì sao có bước đọc lại (2.6):</b> gửi qua WiFi thì cân không trả lời gì. Bản cũ gửi hết dữ liệu là coi như cân đã nhận. Ở quán (02–03/10/2026), chương trình ghi "Giữ nguyên" 69 hàng kho trong khi cân thật chỉ có 7 hàng cũ — gọi PLU 12 thì cân kêu tít tít về 0 vì cân không có hàng đó.</p></div>
 <div class="hop luu-y">
   <p><b>Khung đỏ "… hàng sẽ còn nằm trên cân":</b> gửi qua WiFi cân chỉ <b>thêm và sửa</b>, không xoá được (<span class="nhan da">Đã làm ở quán</span>). Muốn xoá hẳn: bấm <span class="n">Lưu file để nạp USB</span> rồi làm theo <a href="#usb-du-phong">mục 25</a>. Nạp USB thì cân thay cả danh sách.</p>
   <p><span class="nhan moi">Mới 2.2</span> Khi có hàng còn nằm lại, chương trình cho <b>thử xoá qua WiFi</b> — <span class="nhan chua">Chưa thử trên cân thật</span>. Đọc kỹ <a href="#chua-thu">mục 28</a> trước khi dùng. Hỏng thì chương trình chỉ đường USB.</p>
 </div>
-<p><b>Tự gửi:</b> ở Cài đặt, đánh dấu "Tự gửi xuống cân khi kho đổi". Chương trình tự gửi mỗi phút khi kho có thêm / sửa — kể cả HSD đếm ngược sang ngày mới — chỉ khi cửa sổ chương trình đang mở. Máy tính tắt qua đêm: sáng mở chương trình là trong một phút tự gửi chạy. Kho bật / tắt in HSD của một hàng (lô hết hạn, món bắt đầu có hạn) thì tự gửi dừng, không gửi gì, và báo ở ô Cân: xem trước rồi bấm Gửi. Ô Cân ghi lần tự gửi gần nhất.</p>
+<p><b>Tự gửi:</b> ở Cài đặt, đánh dấu "Tự gửi xuống cân khi kho đổi". Chương trình tự gửi mỗi phút khi kho có thêm / sửa — kể cả HSD đếm ngược sang ngày mới — chỉ khi cửa sổ chương trình đang mở. Máy tính tắt qua đêm: sáng mở chương trình là trong một phút tự gửi chạy. Kho bật / tắt in HSD của một hàng (lô hết hạn, món bắt đầu có hạn) thì tự gửi dừng, không gửi gì, và báo ở ô Cân: xem trước rồi bấm Gửi. <span class="nhan moi">Mới 2.6</span> Lần gửi đọc lại thấy cân chưa nhận thì tự gửi cũng tạm dừng (không gửi lại mỗi phút) tới khi bấm Gửi được hay nạp USB. Ô Cân ghi lần tự gửi gần nhất.</p>
 <p class="phu">Gửi hỏng giữa chừng (đã nối được cân) thì chương trình không tự gửi lại — người bấm quyết. Bấm gửi lại; hỏng mãi thì dùng USB.</p>
 
 <!-- ================================================================== -->
@@ -997,7 +1003,7 @@
 <h3>Thư mục dữ liệu (Tài liệu\Beeftown Can)</h3>
 <ul>
   <li><b>A_000.TMS</b>: file gốc — bản mới nhất đã nạp vào cân. <b>tren-can.tsv</b>: các hàng đang nằm trên cân. <b>tem-da-tat.json</b>: các ô tem đã tắt (để bật lại).</li>
-  <li><b>da-gui</b>: mỗi lần gửi lưu một bản (và <b>truoc-xoa-wifi-….TMS</b>: danh sách trên cân ngay trước lần xoá qua WiFi). <b>cho-usb</b>: file chờ nạp USB. <span class="nhan moi">Mới 2.2</span> <b>nhat-ky-can.tsv</b>: nhật ký bán đọc từ cân. <b>can-chua-ro.json</b>: có khi lần xoá qua WiFi hỏng giữa chừng — hết khi nạp USB / gửi lại đủ danh sách.</li>
+  <li><b>da-gui</b>: mỗi lần gửi lưu một bản (và <b>truoc-xoa-wifi-….TMS</b>: danh sách trên cân ngay trước lần xoá qua WiFi). <b>cho-usb</b>: file chờ nạp USB. <span class="nhan moi">Mới 2.2</span> <b>nhat-ky-can.tsv</b>: nhật ký bán đọc từ cân. <b>can-chua-ro.json</b>: có khi lần xoá qua WiFi hỏng giữa chừng — hết khi nạp USB / gửi lại đủ danh sách. <span class="nhan moi">Mới 2.6</span> <b>chua-xac-nhan.json</b>: lần gửi gần nhất cân chưa xác nhận — hết khi gửi mà đọc lại khớp, hay đọc dữ liệu từ cân.</li>
 </ul>
 <div class="hop cam" style="border-width:1px;border-left-width:5px"><p style="margin:0"><b>File .TMS có tên và mật khẩu WiFi của quán.</b> Không gửi file này cho người ngoài, không đăng lên mạng, không gửi qua nhóm chat.</p></div>
 
@@ -1009,6 +1015,8 @@
     <tr><td>Chấm đỏ ở ô Cân, "Không kết nối được cân …"</td><td><a href="#doi-dia-chi">Mục 24</a>.</td></tr>
     <tr><td>"Cân nhận dữ liệu quá chậm", "Mất kết nối với cân khi đang gửi", "Cân đóng kết nối trước khi nhận hết"</td><td>Gửi lại. Cân phải ở màn hình bán hàng. Hỏng mãi: USB (<a href="#usb-du-phong">mục 25</a>).</td></tr>
     <tr><td>Đã gửi mà cân vẫn giá cũ</td><td>Gọi lại hàng trên cân (gõ số PLU rồi <kbd class="p">PLU</kbd>). Vẫn cũ: gửi lại; không được thì USB.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.6</span> "Đã gửi … hàng qua WiFi nhưng đọc lại thấy cân CHƯA nhận …"</td><td>Cân ở màn hình bán hàng (đèn Sale sáng, không ở menu Prog), không ai đang bấm cân → bấm Gửi xuống cân thêm một lần. Vẫn vậy: Lưu file để nạp USB rồi nạp (<a href="#usb-du-phong">mục 25</a>), sau đó Cài đặt → Cập nhật file gốc từ cân. Tự gửi chờ tới lúc gửi được.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.6</span> "Đã gửi … hàng, nhưng chưa kiểm được cân đã nhận chưa"</td><td>Gọi thử một PLU vừa đổi trên cân. Đúng giá mới: được. Giá cũ: gửi lại hoặc USB. Muốn chương trình biết chắc: thẻ Cân &amp; thông số → Đọc dữ liệu từ cân qua WiFi, hoặc lưu cân ra USB rồi Cập nhật file gốc từ cân.</td></tr>
     <tr><td>"… hàng sẽ còn nằm trên cân"</td><td>WiFi không xoá được. USB (<a href="#usb-du-phong">mục 25</a>).</td></tr>
     <tr><td>"Chưa đăng nhập kho, hoặc phiên đăng nhập đã hết"</td><td>Đăng nhập lại.</td></tr>
     <tr><td>"Không mở được … Máy tính có vào mạng internet không?", "Mất kết nối mạng"</td><td>Máy tính mất internet. Kiểm tra WiFi / internet rồi thử lại.</td></tr>

@@ -98,6 +98,8 @@ export function moMayChu(ud: UngDung, tuy: {
               ok: true, phienBan: tuy.phienBan, cauHinh: ud.cauHinh(), nguoi, loiKho,
               goc: ud.thongTinGoc(), soTrenCan: ud.docTrenCan().size, thuMuc: ud.dd.duLieu,
               lanTuGui: ud.lanTuGui,
+              // 2.6: lần gửi gần nhất cân chưa xác nhận (đọc lại qua cổng hai chiều không được, hay thấy cân chưa nhận).
+              chuaXacNhan: ud.chuaXacNhan(),
               // HSD trên cân tính cho ngày nào (giờ VN), cân có in HSD không, có cũ không — trang báo đỏ khi cũ.
               hsd: ud.hsdTrenCan(),
               capNhat: ud.trangThaiCapNhat(),

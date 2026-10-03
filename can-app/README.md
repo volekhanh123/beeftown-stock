@@ -196,6 +196,36 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
+## Bản 2.6 — gửi xong đọc lại cân để kiểm
+
+**Lỗi thấy ở quán (02–03/10/2026):** chương trình ghi "Giữ nguyên" / "Khớp kho 69" cho 69 hàng kho, nhưng cân thật (lưu ra
+USB) chỉ có 7 hàng cũ. Gọi PLU 12 trên cân thì cân kêu tít tít rồi về 0, vì cân không có hàng đó. Nguyên nhân: gửi qua cổng
+33571 thì cân không trả lời gì. Bản cũ (`guiTcp`) gửi hết byte là coi như xong, rồi ghi luôn file gốc và `tren-can.tsv`.
+Vì sao lần gửi trước cân không nhận thì chưa biết (cân ở menu, gửi nhầm địa chỉ…).
+
+Từ 2.6, mỗi lần gửi danh sách hàng (nút **Gửi xuống cân** và tự gửi), `guiKeHoach` gọi `xacNhanSauGui`. Hàm này đọc danh
+sách PLU qua cổng hai chiều ở đúng địa chỉ vừa gửi (không dò WiFi), rồi so số PLU, mã cân, giá, HSD và tên
+(`soPluVuaGui`). HSD phải so vì tự gửi mỗi đêm có khi chỉ đổi số ngày HSD. Lần đầu chưa khớp, hay chưa đọc được, thì chờ
+3 giây rồi 5 giây và đọc lại, vì cân có thể còn đang lưu.
+
+| Đọc lại | Chương trình làm gì | Trang báo |
+|---|---|---|
+| Khớp | Ghi nhận như cũ, xoá dấu | Khung xanh "Cân đã nhận N hàng" |
+| Lệch: cân thiếu, hay khác mã / giá | **Không ghi nhận gì.** Ghi dấu `lech` vào `chua-xac-nhan.json`, tự gửi tạm dừng | Khung đỏ nêu tối đa 5 PLU ("PLU 1 trên cân vẫn là … 845.000 đ (gửi … 780.000 đ)") |
+| Không đọc được: cổng đóng, đứt giữa chừng, trả rỗng, cân khác mã máy | Ghi nhận như trước 2.6, kèm dấu `khong-doc` | Khung vàng "chưa kiểm được cân đã nhận chưa"; nhãn "Giữ nguyên (chưa xác nhận)", "Khớp kho, chưa xác nhận" |
+
+Dấu hết khi một lần gửi đọc lại khớp, khi ghi nhận file từ cân (USB hay đọc qua WiFi), hoặc khi xoá qua WiFi đọc lại khớp.
+Chữ có dấu qua cổng hai chiều chưa thử trên cân thật. Nếu lần thử đầu báo lệch chỉ vì tên (khung đỏ cho thấy tên đọc
+về bị vỡ chữ), thì phải xem lại bảng mã.
+
+Gửi tem, thông số, chữ chung, phím qua 33571 chưa đọc lại. Trang vẫn nói "đã gửi — chưa thử trên cân thật".
+
+**Thử ở quán:**
+1. Cân ở màn hình bán hàng → Gửi xuống cân → phải ra khung xanh "Cân đã nhận".
+2. Gọi thử 2–3 PLU vừa gửi: đúng giá.
+3. Để cân trong menu `Prog` rồi gửi: xem cân có bỏ qua không. Nếu bỏ qua thì phải ra khung đỏ, và bảng vẫn "Thêm" / "Sửa".
+4. Tắt cân rồi gửi: lỗi nối cân, không ghi nhận gì.
+
 ## Bản 2.5 — tự cập nhật
 
 Mỗi lần mở, chương trình hỏi kho **công khai** `volekhanh123/beeftown-can-ban-cai` (chỉ chứa file cài — mã nguồn vẫn ở
@@ -330,6 +360,8 @@ hỏng. Cân nhận qua dây thì làm tiếp: chọn dây hay WiFi ở Cài đ�
 
 - **Chưa thử trên cân thật:** đổi mẫu tem qua WiFi. Cân nhận chắc chắn khi nạp USB (thay cả file); qua WiFi cân có nhận phần LAB hay không thì phải in thử một tem để biết.
 - **Chưa thử trên cân thật:** mọi việc của bản 2.2 (bảng ở mục "Bản 2.2").
+- **Thấy 02–03/10/2026:** chương trình ghi nhận đã gửi 69 hàng kho, cân thật chỉ có 7 hàng cũ. "Gửi hết byte qua 33571"
+  không có nghĩa là cân đã lưu. Từ 2.6 chương trình đọc lại cân để kiểm (mục "Bản 2.6").
 
 ## Menu `Prog` trên cân (chép từ cân thật 29/09/2026, TM-xA V3.14E8)
 
