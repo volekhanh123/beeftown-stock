@@ -3242,8 +3242,34 @@ export class UngDung {
     await this.udp.hoi();
     await new Promise(r => setTimeout(r, this.phu.choUdpMs ?? CHO_TRA_LOI_UDP_MS));
     const soIp = (ip: string) => ip.split('.').reduce((n, x) => n * 256 + Number(x), 0);
-    const thay = this.udp.tuMoc(moc).map(c => c.ip).sort((a, b) => soIp(a) - soIp(b));
+    const nghe = this.udp.tuMoc(moc).map(c => c.ip).sort((a, b) => soIp(a) - soIp(b));
+    const thay: string[] = [];
+    for (const ip of nghe) if (await this.xacMinhMayUdp(ip, ch)) thay.push(ip);
     return thay.length ? { thay, daThu: 0, dai: ['tín hiệu cân phát (UDP)'] } : null;
+  }
+
+  /**
+   * 2.8 — máy vừa phát gói của cân (UDP, không mang mã máy, ai trong WiFi cũng phát được) có phải cân vẫn dùng không. Gói
+   * chỉ là gợi ý địa chỉ:
+   *   - đã nhớ mã máy cổng hai chiều → bắt tay 33581 ở đó, mã phải đúng (chỉ đọc, đóng ngay);
+   *   - chỉ nhớ mã máy ARP → nối thử cổng của cân (để bảng ARP có máy đó) rồi đọc mã; không đọc được thì KHÔNG tin (dò TCP thì
+   *     vừa nối nên bảng ARP luôn có; nghe UDP thì chưa gửi gì tới máy đó — bỏ qua bước này là đổi địa chỉ mà không so mã);
+   *   - chưa nhớ mã nào → như dò TCP: dùng làm gợi ý (ketQuaTim chỉ đổi khi thấy đúng một máy).
+   */
+  private async xacMinhMayUdp(ip: string, ch: CauHinh): Promise<boolean> {
+    if (ip === ch.ipCan) return true;
+    if (ch.macHaiChieu) {
+      try {
+        const kn = await moKetNoi(ip, ch.congHaiChieu ?? CONG_HAI_CHIEU, this.phu.tuyHaiChieu ?? {});
+        try { return kn.thongTin.mac === ch.macHaiChieu; } finally { kn.dong(); }
+      } catch { return false; }
+    }
+    if (ch.macCan) {
+      await (this.phu.thu ?? thuKetNoi)(ip, ch.congCan, 2000);
+      const mac = await (this.phu.mac ?? layMac)(ip);
+      return !!mac && mac === ch.macCan;
+    }
+    return true;
   }
 
   /** Lúc dò WiFi gần nhất mà không nối được cân (ms, 0: lần dò gần nhất thấy cân) — tự gửi chờ 5 phút mới dò lại. */

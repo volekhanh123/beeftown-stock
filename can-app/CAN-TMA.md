@@ -1156,8 +1156,9 @@ giây giữ cho kết nối không im lặng lâu. Tắt được (`giuKetNoi: f
 - Nghe cổng 33584 trên Windows làm hiện hộp hỏi tường lửa với nhân viên quầy; TM-xA chạy cùng máy có thể giành
   mất gói → bản 2.1 tìm cân bằng dò TCP 33571 thay vì nghe UDP.
 - **Từ 2.8** (`udp-can.ts`, cài đặt `ngheUdp`, mặc định tắt): nghe 33584 với `reuseAddr` (gói phát rộng tới mọi socket cùng
-  cổng — TM-xA cùng máy vẫn nghe được). Gói chỉ là gợi ý địa chỉ: đổi địa chỉ cân chỉ khi đúng một máy phát và mã máy qua
-  33581 khớp `macHaiChieu`. "Tìm cân": hỏi 5 gói như hãng, chờ 1,5 giây. Cân trả lời lời hỏi bằng gói phát rộng hay gói gửi
+  cổng — TM-xA cùng máy vẫn nghe được). Gói chỉ là gợi ý địa chỉ (không mang mã máy, ai trong WiFi cũng phát được): đổi địa
+  chỉ cân chỉ khi đúng một máy phát và mã máy khớp — `macHaiChieu` qua bắt tay 33581, hay mã ARP sau khi nối thử (nghe UDP thì
+  bảng ARP chưa có máy đó; không đọc được mã thì không tin). "Tìm cân": hỏi 5 gói như hãng, chờ 1,5 giây. Cân trả lời lời hỏi bằng gói phát rộng hay gói gửi
   thẳng: [chưa biết] (Windows mặc định cho gói gửi thẳng trả lời gói phát rộng qua tường lửa trong 3 giây).
 
 ### 10.4 Phần mềm hãng (TM-xA) tự làm gì khi nối cân

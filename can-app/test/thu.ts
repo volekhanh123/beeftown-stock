@@ -2671,9 +2671,32 @@ console.log('6i · 2.8: giữ kết nối hai chiều mở, nhịp, nghe cân b�
     const kq2 = await u2.thuCan();
     ok('HỒI QUY: UDP chỉ thấy một cân khác mã máy → không dừng ở đó: dò WiFi bằng TCP như trước; không đổi địa chỉ',
       kq2.dai[0] !== 'tín hiệu cân phát (UDP)' && u2.cauHinh().ipCan === '127.0.0.3', JSON.stringify(kq2));
-    u.dongNen(); u2.dongNen();
+    // Máy phát UDP chưa có trong bảng ARP (chưa gửi gì tới nó) mà chương trình đã nhớ mã máy ARP của cân: không đọc được mã → không tin.
+    let soThuArp = 0;
+    const { can: c3, u: u3 } = await moI({ udp: { congNghe: 0, diaChiNghe: '127.0.0.1', diaChiHoi: '127.0.0.2', congHoi: moiCan.address().port },
+      choUdpMs: 200, thu: async () => { soThuArp++; return false; }, mac: async () => null }, '127.0.0.2');
+    u3.luuCauHinh({ ipCan: '127.0.0.3', ngheUdp: true });
+    fs.writeFileSync(u3.fileCauHinh, JSON.stringify({ ...u3.cauHinh(), macCan: 'bb:bb:bb:bb:bb:bb' }));
+    await u3.capNhatUdp();
+    const kq3 = await u3.thuCan();
+    ok('HỒI QUY (rà soát bảo mật): máy phát UDP mà không đọc được mã máy ARP (chưa gửi gì tới nó) trong khi đã nhớ mã máy của cân → không đổi '
+      + 'địa chỉ (trước: bỏ qua phép so mã); có nối thử cổng của cân để bảng ARP có máy đó',
+      u3.cauHinh().ipCan === '127.0.0.3' && !kq3.doi && soThuArp >= 2, JSON.stringify([kq3, soThuArp]));
+    // Đã nhớ mã máy cổng hai chiều: bắt tay ở máy phát UDP, mã phải đúng.
+    const { can: c4, u: u4 } = await moI({ udp: { congNghe: 0, diaChiNghe: '127.0.0.1', diaChiHoi: '127.0.0.2', congHoi: moiCan.address().port },
+      choUdpMs: 200, thu: async () => false }, '127.0.0.2');
+    u4.luuCauHinh({ ipCan: '127.0.0.3', ngheUdp: true });
+    fs.writeFileSync(u4.fileCauHinh, JSON.stringify({ ...u4.cauHinh(), macHaiChieu: 'AABBCCDDEEFF' }));
+    await u4.capNhatUdp();
+    const kq4 = await u4.thuCan();
+    const khacMa = u4.cauHinh().ipCan === '127.0.0.3' && !kq4.doi;
+    fs.writeFileSync(u4.fileCauHinh, JSON.stringify({ ...u4.cauHinh(), macHaiChieu: '0023F01AECB1' }));
+    const kq5 = await u4.thuCan();
+    ok('Tìm cân qua UDP khi đã nhớ mã máy cổng hai chiều: bắt tay ở máy phát — mã khác → không đổi địa chỉ; mã đúng → đổi sang 127.0.0.2',
+      khacMa && kq5.doi?.den === '127.0.0.2' && u4.cauHinh().ipCan === '127.0.0.2' && c4.khoi.length === 0, JSON.stringify([kq4, kq5]));
+    u.dongNen(); u2.dongNen(); u3.dongNen(); u4.dongNen();
     moiCan.close(); cuCan.close();
-    await can.dong(); await c2.dong();
+    await can.dong(); await c2.dong(); await c3.dong(); await c4.dong();
   }
   {
     // Kiểm tra kết nối / Chẩn đoán bước 7 khi đang giữ kết nối hai chiều: không mở thêm kết nối tới cùng cân.

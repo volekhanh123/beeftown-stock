@@ -222,7 +222,9 @@ trên cân thật** — làm theo "Thử ở quán (2.8)" bên dưới, sau khi 
 - **Nghe cân phát UDP** (`src/udp-can.ts`, cài đặt `ngheUdp`, mặc định **tắt** — lần đầu Windows hỏi tường lửa): nghe cổng
   33584 (`reuseAddr`: TM-xA cùng máy vẫn nghe được). Nhịp không nối được địa chỉ cũ mà nghe thấy ĐÚNG MỘT cân phát ở địa chỉ
   khác → nối cổng hai chiều ở đó, mã máy phải đúng `macHaiChieu` → dùng địa chỉ mới (`theoUdp`). "Tìm cân" hỏi như hãng (5 gói
-  `UDP⇥␍␊` tới cổng 33583) rồi dùng các máy trả lời, không dò cả WiFi bằng TCP; không thấy thì dò như trước.
+  `UDP⇥␍␊` tới cổng 33583) rồi dùng các máy trả lời lần hỏi này, không dò cả WiFi bằng TCP; không ra cân dùng được thì dò như
+  trước. Gói UDP không mang mã máy, ai trong WiFi cũng phát được: mỗi máy trả lời phải qua `xacMinhMayUdp` — đã nhớ mã máy cổng
+  hai chiều thì bắt tay ở đó, mã phải đúng; chỉ nhớ mã ARP thì nối thử rồi đọc bảng ARP, không đọc được thì không tin.
 - Cập nhật: đổi file xong thì đóng kết nối đang giữ (`dongNen`) trước khi bản mới mở.
 
 **Thử ở quán (2.8)** — sau khi 2.7 đạt; ngoài giờ bán, đã đóng TM-xA:
