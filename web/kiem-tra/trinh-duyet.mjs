@@ -16,7 +16,8 @@
  *
  *   1. Mọi trang công khai (sitemap + danh sách cố định) ở 360, 800, 1366 px: trả 200,
  *      không lỗi JavaScript, không tải hỏng tài nguyên của chính trang, không tràn
- *      ngang, đúng thuộc tính lang.
+ *      ngang, đúng thuộc tính lang; chân trang có pháp nhân (tên công ty, mã số thuế,
+ *      địa chỉ) bằng chữ, ngay dưới dòng ©.
  *   2. Trang đặt bàn / tuyển dụng chưa có database: KHÔNG có form nào, không có chữ
  *      "thành công" / "success" / "성공".
  *   3. Gửi thẳng form đặt bàn (không qua giao diện): trang quay về báo lỗi, không bao
@@ -100,6 +101,16 @@ async function danhSachTrang(goc) {
 }
 
 const ngonNguCua = duong => (duong.startsWith('/en') ? 'en' : duong.startsWith('/ko') ? 'ko' : 'vi');
+
+// Chân trang: ngay dưới dòng © là pháp nhân, bằng CHỮ trong HTML (không phải ảnh), tên công ty
+// và địa chỉ đúng từng ký tự ở cả ba thứ tiếng. Chép tay ở đây, KHÔNG đọc PHAP_NHAN trong
+// lib/chu.ts — sửa nhầm một ký tự ở đó thì phép thử này đỏ.
+const DONG_BAN_QUYEN = /^© \d{4} Beeftown · Beef Specialty Restaurant$/;
+const NHAN_MA_SO_THUE = { vi: 'Mã số thuế', en: 'Tax code', ko: '세금 코드' };
+const dongPhapNhan = nn => [
+  `CÔNG TY TNHH SLK GROUP · ${NHAN_MA_SO_THUE[nn]}: 0319712805`,
+  'Tầng 3, 11-13-15-17-19-21 Hàm Nghi, Phường Sài Gòn, TP. Hồ Chí Minh',
+];
 const TRANG_FORM = ['/dat-ban', '/en/book', '/ko/book', '/tuyen-dung', '/en/jobs', '/ko/jobs'];
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
 const CO_MAN_HINH = [
@@ -146,18 +157,37 @@ try {
         page.on('response', r => { if (cuaTrang(r.url()) && r.status() >= 400) taiHong.push(`${r.url()} HTTP ${r.status()}`); });
 
         const r = await page.goto(goc + duong, { waitUntil: 'load', timeout: 30000 });
-        const kq = await page.evaluate(() => ({
-          lang: document.documentElement.lang,
-          rong: document.documentElement.scrollWidth,
-          khung: window.innerWidth,
-        }));
+        const kq = await page.evaluate(() => {
+          const chan = document.querySelector('footer');
+          return {
+            lang: document.documentElement.lang,
+            rong: document.documentElement.scrollWidth,
+            khung: window.innerWidth,
+            // innerText: chỉ chữ thật sự hiện ra (ảnh, chữ bị ẩn không có ở đây), mỗi khối một dòng.
+            dongChan: (chan?.innerText ?? '').split('\n').map(s => s.trim()).filter(Boolean),
+            coChan: !!chan,
+            // Có chữ trong HTML mà không đọc được thì cũng như không: bị ẩn, khung rỗng, chữ dưới 12px.
+            chanAn: !!chan && [...chan.querySelectorAll('p')].some(p => {
+              const k = p.getBoundingClientRect();
+              return !p.checkVisibility({ opacityProperty: true, visibilityProperty: true })
+                || k.width === 0 || k.height === 0 || parseFloat(getComputedStyle(p).fontSize) < 12;
+            }),
+          };
+        });
         const nhan = `${duong} · ${co.ten} ${co.width}px`;
+        const iBanQuyen = kq.dongChan.findIndex(d => DONG_BAN_QUYEN.test(d));
+        const phapNhan = dongPhapNhan(ngonNguCua(duong));
         const tot = [
           ok(`${nhan}: HTTP 200, đúng lang="${ngonNguCua(duong)}"`, r?.status() === 200 && kq.lang === ngonNguCua(duong),
              `HTTP ${r?.status()}, lang="${kq.lang}"`),
           ok(`${nhan}: không lỗi JavaScript, không tải hỏng`, !loiJs.length && !taiHong.length,
              [...loiJs, ...taiHong].slice(0, 3).join(' | ')),
           ok(`${nhan}: không tràn ngang`, kq.rong <= kq.khung + 1, `rộng ${kq.rong}px > khung ${kq.khung}px`),
+          ok(`${nhan}: chân trang — ngay dưới dòng "© … Beeftown · Beef Specialty Restaurant" là pháp nhân SLK GROUP, chữ HTML đúng từng ký tự, hiện trên màn hình`,
+             kq.coChan && !kq.chanAn && iBanQuyen > -1
+               && kq.dongChan[iBanQuyen + 1] === phapNhan[0] && kq.dongChan[iBanQuyen + 2] === phapNhan[1],
+             !kq.coChan ? 'trang không có <footer>'
+               : kq.chanAn ? 'một dòng chân trang bị ẩn hoặc chữ dưới 12px' : JSON.stringify(kq.dongChan)),
         ];
         if (tot.includes(false)) await chupLoi(page, `${duong}-${co.width}`);
         await page.close();

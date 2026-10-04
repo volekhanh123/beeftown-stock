@@ -23,7 +23,7 @@
  * mỗi cái ghi bằng chính thứ tiếng đó.
  */
 import '../styles/chung.css';
-import { THUONG_HIEU, NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng } from '../lib/chu';
+import { THUONG_HIEU, PHAP_NHAN, NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { namVn } from '../lib/gio-vn';
 
@@ -169,10 +169,17 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
 
     <footer class="chan-trang">
       <div class="khung chan-hang">
-        <span>
-          © {namVn()} {t.banQuyen} ·
-          <span lang="en">{THUONG_HIEU.descriptor}</span>
-        </span>
+        {/* Mỗi dòng viết liền trên một dòng mã: compressHTML bỏ dấu cách có xuống
+            dòng giữa hai nút, "·⏎<span>" từng ra trang thành "·Beef". */}
+        <div>
+          <p class="chan-dong">© {namVn()} {t.banQuyen} · <span lang="en">{THUONG_HIEU.descriptor}</span></p>
+          {/* Pháp nhân — tên và địa chỉ giữ tiếng Việt ở mọi bản (PHAP_NHAN trong lib/chu.ts),
+              lang="vi" để trình đọc màn hình của trang Anh / Hàn đọc đúng giọng. */}
+          <div class="phap-nhan">
+            <p class="chan-dong"><span class="lien" lang="vi">{PHAP_NHAN.ten}</span> · <span class="lien">{t.maSoThue}: {PHAP_NHAN.maSoThue}</span></p>
+            <p class="chan-dong" lang="vi">{PHAP_NHAN.diaChi}</p>
+          </div>
+        </div>
         <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a>
       </div>
     </footer>
