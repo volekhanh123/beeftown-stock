@@ -167,6 +167,16 @@ try {
   });
 
   // =========================================================================
+  // Meta xác minh miền bằng cách đọc HTML thô của trang chủ — không chạy JavaScript,
+  // và thẻ nằm ngoài <head> thì không tính. Đọc đúng như Meta đọc: fetch thường.
+  await nhom('1b · THẺ XÁC MINH MIỀN CỦA META NẰM TRONG <head> CỦA HTML THÔ', async () => {
+    const THE = /<meta\s+name="facebook-domain-verification"\s+content="6o2mwhwbdfk4e3ysmtde8cko1iuof0"\s*\/?>/;
+    const html = await (await fetch(goc + '/')).text();
+    const dau = html.match(/<head[\s>][\s\S]*?<\/head>/i)?.[0] ?? '';
+    ok('/: thẻ facebook-domain-verification nằm trong <head>', THE.test(dau), dau ? 'không thấy thẻ trong <head>' : 'không thấy <head>');
+  });
+
+  // =========================================================================
   if (URL_NGOAI) {
     console.log('\n(Trang thật: bỏ qua mục 2–4 — chúng giả định chưa có database và gửi form thử.)');
   } else {

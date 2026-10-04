@@ -121,6 +121,13 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     )}
     {!urlAnhChiaSe && <meta name="twitter:card" content="summary" />}
 
+    {/* Xác minh miền beeftown.vn với Meta (Business Portfolio của Beeftown,
+        ID miền 1826872438431327). Meta chỉ đọc HTML thô của trang chủ, không
+        chạy JavaScript — nên thẻ phải dựng sẵn ở đây. Miền đã xác minh bằng bản
+        ghi DNS TXT trên Cloudflare thì thẻ này chỉ là lớp dự phòng; xác minh
+        bằng thẻ thì xóa thẻ là Meta có thể gỡ trạng thái "đã xác minh". */}
+    <meta name="facebook-domain-verification" content="6o2mwhwbdfk4e3ysmtde8cko1iuof0" />
+
     <link rel="icon" href="/bieu-tuong.svg" type="image/svg+xml" />
     <meta name="theme-color" content="#1E160E" />
 
