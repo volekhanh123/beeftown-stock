@@ -151,7 +151,8 @@
         <span class="dang-lam an" id="dang-tim-can">Đang dò WiFi tìm cân…</span></div>
       <div class="phu" id="o-ket-noi"></div>
       <div class="phu" id="o-doi-dia-chi"></div>
-      <div class="phu" id="o-tu-gui"></div></div>
+      <div class="phu" id="o-tu-gui"></div>
+      <div class="phu" id="o-bao-kho"></div></div>
     <div class="o"><div class="nhan">Trên cân</div><div class="gt" id="o-tren-can">…</div><div class="phu" id="o-goc"></div></div>
   </div>
   <div id="bao-hsd"></div>
@@ -404,8 +405,9 @@
           <input type="number" name="congHaiChieu" placeholder="33581"></label>
         <label class="truong"><span>Địa chỉ kho</span><input type="text" name="diaChiKho"></label>
         <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" name="tuGui">
-          <span>Tự gửi xuống cân khi kho đổi (mỗi phút, khi cửa sổ này đang mở) — đổi giá, lóc tảng mới là cân tự cập nhật tên, giá;
-            sang ngày mới là cân tự nhận HSD đếm ngược theo lô (bật / tắt in HSD vẫn phải xem trước rồi bấm Gửi).</span></label>
+          <span>Tự gửi xuống cân khi kho đổi (khi cửa sổ này đang mở) — đổi giá, lóc tảng mới là cân tự cập nhật tên, giá: hỏi kho
+            15 giây một lần, vừa "Giao ô mã" ở trang pha lóc là gửi ngay; sang ngày mới là cân tự nhận HSD đếm ngược theo lô (bật / tắt
+            in HSD vẫn phải xem trước rồi bấm Gửi). Từ 2.9 NV quầy đăng nhập cũng tự gửi được.</span></label>
         <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" name="giuKetNoi">
           <span>Giữ kết nối với cân (cổng hai chiều, như phần mềm của hãng): đèn ô Cân biết ngay cân còn nối không, cân in tem là
             chương trình tự đọc nhật ký. Tắt: mỗi việc nối cân riêng như bản 2.7. <i>Chưa thử trên cân thật.</i></span></label>
@@ -576,6 +578,9 @@
       ? 'Tự gửi: bật' + (tg ? ' · ' + new Date(tg.luc).toLocaleTimeString('vi-VN') + ' — ' + tg.cau : ' · chờ lần đầu')
       : '';
     $('bao-hsd').innerHTML = baoHsdCu(trangThai.hsd);
+    // 2.9: lần báo về kho gần nhất (trạng thái cân, dòng trên cân, nhật ký tem) — trang pha lóc và đèn ở /noi-bo dựa vào đây.
+    const bk = trangThai.nen && trangThai.nen.baoKho;
+    $('o-bao-kho').textContent = bk ? 'Báo về kho · ' + new Date(bk.luc).toLocaleTimeString('vi-VN') + ' — ' + bk.cau : '';
   }
 
   /**

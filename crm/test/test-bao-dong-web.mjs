@@ -14,7 +14,7 @@
  * mới đỏ, hết đỏ, gửi hỏng, đánh dấu hỏng, mất mạng, số liệu hỏng, khóa, cron riêng.
  */
 
-import { readFileSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { taoBoDem, dungDatabase, UID } from './kho-chung.mjs';
@@ -710,9 +710,12 @@ await nhom('18 · MẤT MẠNG / DATABASE LỖI GIỮA CHỪNG → KHÔNG GỬI,
 
 // ===========================================================================
 await nhom('19 · KHÔNG ĐỌC ĐƯỢC SỐ LIỆU → ĐÈN GIẢ doc_so_lieu, KHÔNG "ĐÃ ỔN LẠI" GIẢ', async () => {
+  // Dựng lại từ migration MỚI NHẤT định nghĩa hàm (0061 thêm ô can) — không thì phần sau của file chạy thân cũ.
   const soLieuThat = (() => {
-    const m = readFileSync(join(GOC, 'crm', 'supabase', 'migrations', '0060_bao_dong.sql'), 'utf8');
-    const i = m.indexOf('create or replace function suc_khoe_so_lieu(');
+    const DAU = 'create or replace function suc_khoe_so_lieu(', MIG = join(GOC, 'crm', 'supabase', 'migrations');
+    const m = readdirSync(MIG).filter(f => f.endsWith('.sql')).sort().map(f => readFileSync(join(MIG, f), 'utf8'))
+      .filter(t => t.includes(DAU)).at(-1);
+    const i = m.indexOf(DAU);
     return m.slice(i, m.indexOf('\n$$;', i) + 4);
   })();
   const truoc = kenh.tin.length;

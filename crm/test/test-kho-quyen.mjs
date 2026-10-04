@@ -388,6 +388,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ipos_gan_o_ma',
     // 0054: máy quầy — mã giảm giá, bảng quầy, tảng & ô, báo cáo bán theo giờ
     'kho_luu_ma_giam', 'kho_bat_ma_giam', 'kho_bang_quay', 'kho_can_o_ma', 'kho_bao_cao_ban_gio',
+    // 0061: Beeftown Cân báo về kho — ô đang giao cho danh mục cân, máy quầy báo trạng thái / nhật ký cân, trang pha lóc
+    'kho_can_giao_o_ma', 'kho_may_can_bao', 'kho_may_can_nhat_ky', 'kho_phien_pha_can',
   ].sort();
   const NOI_BO = [
     'kho_sinh_so', 'kho_chia_so_du_lon_nhat', 'kho_ghi_dong_phieu_nhap',
@@ -422,6 +424,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_gia_giam', 'kho_ma_giam_kiem', 'kho_o_ma_khong_trung_giam', 'kho_mat_hang_ma_can_khong_trung_giam',
     // 0060: phần tính của kho_ipos_trang_thai, không kiểm quyền — máy báo động đọc qua suc_khoe_so_lieu
     'kho_ipos_trang_thai_goc',
+    // 0061: giờ đồng hồ cân (giờ VN) → timestamptz
+    'kho_luc_can_vn',
   ].sort();
 
   const { rows } = await db.query(`

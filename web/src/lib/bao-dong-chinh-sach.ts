@@ -59,6 +59,9 @@ export const NHOM: Readonly<Record<MaDenBaoDong, NhomDen>> = {
   // nên tin "hết đỏ" đợi 07:00 (luật hết đỏ ban đêm trong lapKeHoach).
   sao_luu: 'he_thong',
   bao_dong: 'he_thong',
+  // Beeftown Cân (0061): chỉ đỏ trong giờ mở cửa của chi nhánh (máy quầy tắt ban đêm là bình thường) — đỏ lúc
+  // 22:00–23:00 khi quán còn mở thì báo ngay như mọi đèn hệ thống.
+  can: 'he_thong',
   doc_so_lieu: 'he_thong',
   dat_ban: 'khach',
   tuyen_dung: 'khach',

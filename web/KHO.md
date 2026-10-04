@@ -867,6 +867,39 @@ theo vai. Gửi xuống cân, sửa tem, tạo mã giảm: quản lý / chủ (`
   kho; phần bán giảm giá (kg, doanh thu, tiền đã giảm ước theo giá hiện tại) và **giảm sớm** — lô đã trừ còn hạn
   xa hơn mức cảnh báo (bắt giảm giá gói còn tươi); lệch ô. Máy thêm bảng theo tảng (`kho_bao_cao_tang`).
 
+## 3q. Beeftown Cân báo về kho · Cân sẵn sàng · đối chiếu tem in / quét (migration 0061, Beeftown Cân 2.9)
+
+- **Danh mục cân cho mọi vai xem**: `kho_can_giao_o_ma(cn)` (SECURITY DEFINER, quyền xem) trả đúng các dòng của
+  `kho_v_o_ma_giao` — NV quầy đọc view thì rỗng (không đọc được phiên lóc), tên ô mất số tảng. `hangChoCan` đọc qua
+  hàm này (`docGiaoOMaCan`). Beeftown Cân 2.9: TỰ GỬI mở cho mọi vai xem; gửi tay, xem trước, gỡ hàng vẫn `danh_muc`.
+  Máy hỏi kho các ô đang giao mỗi 15 giây — vừa "Giao ô mã" là tự gửi ngay.
+- **Máy quầy báo trạng thái** `kho_may_can_bao(cn, mã máy, báo)` (quyền xem; mỗi phút): bảng `kho_may_can`, một dòng
+  mỗi máy (`ma_may` = mã cài đặt Beeftown Cân). Lần báo (đồng hồ database), cân trả lời lần cuối, giữ kết nối, tự gửi,
+  số hàng lệch kho (`lech_tu` do database ghi lần đầu thấy lệch), tự gửi hỏng, và `tren_can` — chỉ giữ dòng **mã ô**
+  (số PLU, tên, phím tắt). Không câu lỗi (chữ tự do, một thứ tiếng — máy quầy tự hiện). Máy gửi "cân trả lời / gửi được
+  cách đây bao nhiêu giây" (`can_tra_loi_giay`, `gui_giay`), database lấy now() trừ đi — đồng hồ máy quầy sai không làm đèn
+  sai; mốc không lùi. Tự gửi tắt thì máy vẫn so kho với cân mỗi 5 phút để báo số hàng lệch. Không ai đọc / ghi thẳng bảng.
+- **Tem cân đã in** `kho_may_can_nhat_ky(cn, mã máy, dòng)` (quyền xem): bảng `kho_can_tem` — chỉ dòng bán (loại 0) mang
+  mã ô; khoá (chi nhánh, MAC cân, FID, dòng, giờ in) nên gửi lại không trùng. Giờ in là đồng hồ cân, giờ VN
+  (`kho_luc_can_vn`; ngày không có thật → bỏ). Tối đa 2000 dòng một lần; quá 90 ngày tự dọn (chỉ mục theo giờ in).
+  Đối chiếu tính tem từ lúc giao ô tới lúc chốt hay lúc ô được trả, cái nào sớm hơn. Máy quầy không gửi dòng có giờ cân ở
+  tương lai (mốc không nhảy tới đó).
+- **Trang pha lóc** `kho_phien_pha_can(phiên)` (pha_loc hoặc xem_gia): mỗi ô của phiên — đang giữ không, trên cân ở máy
+  quầy nào (PLU, tên, phím), số nhãn đã quét bằng mã ô, số tem cân in bằng mã ô từ lúc giao tới lúc chốt; nhãn **mã
+  thường** (mã món, mã giảm) của phần cắt có ô trong phiên theo tảng; các máy báo trong 14 ngày. `tomTatCanPhien`
+  (`lib/kho/danh-muc-can.ts`) soạn câu: "Cân sẵn sàng: <tên + số tảng> = PLU · phím" CHỈ khi cân có đúng tên mới
+  (`tenTheoTang`, như danh mục gửi); "còn tên cũ" / "chưa lên cân" (chưa in tem); chưa máy nào báo → "không biết". Bước
+  Kết quả và màn Xem: "Cân in N tem mã …, phiên quét M". Nhãn mã thường vẫn cộng vào phiên như trước (`test-kho-o-ma`),
+  chỉ cảnh báo — bán ra thì kho không biết thuộc tảng nào.
+- **Đèn "Beeftown Cân"** (`/noi-bo`, ô `can` của `suc_khoe_so_lieu`): xám khi chưa máy nào báo trong 14 ngày; đỏ khi
+  trong giờ mở cửa (giờ ở Kết nối iPOS, mặc định 10–23) KHÔNG máy nào của chi nhánh báo quá 30 phút — tính từ lúc mở cửa
+  hôm nay; vàng (chỉ trong giờ mở cửa) khi một máy khác im (im quá 48 giờ mà máy khác vẫn báo → coi như đã thôi dùng), cân
+  không trả lời quá 10 phút (giữ kết nối bật), kho đổi mà cân chưa nhận quá 15 phút (tính từ lúc mở cửa), lần tự gửi gần
+  nhất hỏng. Nhóm `he_thong` của báo động.
+- Kho chưa chạy 0061 mà Beeftown Cân 2.9 đã cập nhật: `docGiaoOMaCan` đọc view như 2.8 (quản lý vẫn gửi đủ tên ô).
+- So "cân đã có tên này chưa" bằng `chuanTenCan` (`can-tma.ts`: NFC, bỏ tab, cắt như lúc gửi) ở cả hai phía; `tenTheoTang`
+  chuẩn NFC trước khi cắt 24 ký tự.
+
 ## 4. Cài như app (PWA)
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng

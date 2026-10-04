@@ -25,6 +25,7 @@ const WEB = join(GOC, 'web', 'src');
 const {
   danhGiaSucKhoe, bangSucKhoe, cauTomTat, docSucKhoe, docSaoLuu, docSucKhoeVaSaoLuu, laSucKhoeTho, laThieuHam, khoangThoiGian, tuTruoc,
   PHUT_NHIP_TIM, GIO_KHONG_CO_TIN, PHUT_TIN_KET, GIO_SAO_LUU, GIO_KHONG_GUI_BAO_DONG,
+  PHUT_MAY_CAN_IM, PHUT_CAN_KHONG_TRA_LOI, PHUT_LECH_CAN, GIO_MAY_CAN_THOI_DUNG,
 } = await import(join(WEB, 'lib', 'suc-khoe.ts'));
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — SỨC KHỎE HỆ THỐNG, PHÍA WEB');
@@ -44,6 +45,7 @@ function cnGoc() {
     dat_ban: { form_mo: false, so_ban: 0, cho: 0, cho_qua_2_gio: 0, cho_qua_24_gio: 0, qua_gio_hen: 0 },
     tuyen_dung: { moi: 0, moi_qua_2_ngay: 0, moi_qua_7_ngay: 0 },
     so_kho: { co_kho: false, lech: 0 },
+    can: { gio_mo_cua: 10, gio_dong_cua: 23, may: [] },
   };
 }
 /** Sao lưu đêm qua chạy tốt (0058): bản lúc 02:00 giờ VN, khôi phục thử đạt. */
@@ -77,6 +79,8 @@ const IPOS_CHAY = {
 const ZALO_CHAY = { dang_bat: true, che_do: 'that', bat_luc: truoc(3 * 24 * 60), lan_chay_cuoi: truoc(3), co_loi: false };
 const MESS_CHAY = { dang_bat: true, bat_luc: truoc(30 * 24 * 60), loi_cuoi_luc: null, lan_nhan_cuoi: truoc(10), loi_7_ngay: 0 };
 const BAO_CHAY = { lan_chay_cuoi: truoc(3), kenh: 'telegram', co_loi: false, lan_gui_cuoi: truoc(10) };
+/** Máy quầy chạy Beeftown Cân (0061) vừa báo: cân trả lời, tự gửi bật, khớp kho. */
+const MAY_CAN = () => ({ bao_luc: truoc(1), giu_ket_noi: true, can_tra_loi_luc: truoc(0.5), tu_gui: true, lech_so: 0, lech_tu: null, gui_loi: false });
 
 // ===========================================================================
 await nhom('1 · DATABASE MỚI, CHƯA BẬT GÌ → KHÔNG BÁO NHẦM', async () => {
@@ -86,8 +90,8 @@ await nhom('1 · DATABASE MỚI, CHƯA BẬT GÌ → KHÔNG BÁO NHẦM', async 
      sk.khoi.length === 2 && sk.khoi[0].ten === 'Toàn thương hiệu' && sk.khoi[1].ten === 'Beeftown Quận 1',
      sk.khoi.map(k => k.ten).join(' | '));
   const mau = Object.fromEntries(sk.khoi.flatMap(k => k.den).map(d => [d.ma, d.mau]));
-  ok('Chưa bật → xám: Zalo, Messenger, tin Zalo, iPOS, kho; form đặt bàn đóng và không có yêu cầu → xám',
-     ['zalo', 'messenger', 'tin_zalo', 'ipos', 'so_kho', 'dat_ban'].every(m => mau[m] === 'tat'), JSON.stringify(mau));
+  ok('Chưa bật → xám: Zalo, Messenger, tin Zalo, iPOS, kho, Beeftown Cân (chưa máy quầy nào báo); form đặt bàn đóng và không có yêu cầu → xám',
+     ['zalo', 'messenger', 'tin_zalo', 'ipos', 'so_kho', 'can', 'dat_ban'].every(m => mau[m] === 'tat'), JSON.stringify(mau));
   ok('Không có gì chờ → máy dịch và hồ sơ xanh', mau.dich === 'xanh' && mau.tuyen_dung === 'xanh', JSON.stringify(mau));
   ok('Báo động chưa chạy lần nào (database trước 0060 không có ô bao_dong) → xám, không đỏ', mau.bao_dong === 'tat',
      JSON.stringify(mau));
@@ -163,6 +167,76 @@ await nhom('4 · iPOS', async () => {
 });
 
 // ===========================================================================
+await nhom('4b · BEEFTOWN CÂN (MÁY QUẦY BÁO VỀ KHO, 0061)', async () => {
+  /** Đèn Beeftown Cân với các máy `may` lúc `luc` (mặc định 12:00 trưa giờ VN), giờ mở cửa `gio`. */
+  const dc = (may, luc = LUC, gio = {}) => den(voi((t, c) => { t.luc = luc; c.can = { gio_mo_cua: 10, gio_dong_cua: 23, ...gio, may }; }), 'can');
+  const may = sua => ({ ...MAY_CAN(), ...sua });
+  ok('Chưa máy nào báo → xám', dc([]).mau === 'tat' && /Chưa máy quầy nào/.test(dc([]).cau), tom(dc([])));
+  const tot = dc([may({})]);
+  ok('Máy vừa báo, cân trả lời, khớp kho → xanh, mở màn Đồng bộ cân của chi nhánh', tot.mau === 'xanh'
+     && /^1 máy quầy đang báo về kho — lần cuối 1 phút trước/.test(tot.cau) && tot.di === '/noi-bo/kho/cai-dat/can?cn=q1', tom(tot));
+  // Máy im lặng trong giờ mở cửa.
+  ok(`Im ${PHUT_MAY_CAN_IM - 1} phút lúc 12:00 → vẫn xanh (máy báo mỗi phút, chịu được mạng chập chờn)`,
+     dc([may({ bao_luc: truoc(PHUT_MAY_CAN_IM - 1) })]).mau === 'xanh');
+  const im = dc([may({ bao_luc: truoc(PHUT_MAY_CAN_IM + 1) })]);
+  ok(`Im ${PHUT_MAY_CAN_IM + 1} phút lúc 12:00 → đỏ, nói bật máy quầy, mở Beeftown Cân`, im.mau === 'do'
+     && /^Máy quầy chạy Beeftown Cân không báo về kho từ 31 phút trước/.test(im.cau) && /Bật máy quầy/.test(im.cau), tom(im));
+  const hai = dc([may({ bao_luc: truoc(90) }), may({ bao_luc: truoc(45) })]);
+  ok('Hai máy cùng im → "2 máy quầy", tính từ máy im lâu nhất', hai.mau === 'do' && /^2 máy quầy .* từ 2 giờ trước/.test(hai.cau), tom(hai));
+  const motIm = dc([may({ bao_luc: truoc(90) }), may({})]);
+  ok('Một máy im, một máy còn báo → vàng "1 máy quầy khác không báo" (chi nhánh vẫn có máy chạy)', motIm.mau === 'vang'
+     && /^1 máy quầy khác không báo về kho từ 2 giờ trước/.test(motIm.cau), tom(motIm));
+  ok(`Máy im quá ${GIO_MAY_CAN_THOI_DUNG} giờ mà máy khác vẫn báo → đã thôi dùng (cài lại, máy thử), không tính: xanh`,
+     dc([may({ bao_luc: truoc((GIO_MAY_CAN_THOI_DUNG + 1) * 60) }), may({})]).mau === 'xanh');
+  ok(`Chỉ còn máy im quá ${GIO_MAY_CAN_THOI_DUNG} giờ (không máy nào báo) → vẫn đỏ`,
+     dc([may({ bao_luc: truoc((GIO_MAY_CAN_THOI_DUNG + 1) * 60) })]).mau === 'do');
+  // Mới mở cửa: tính từ giờ mở cửa hôm nay, không từ lần báo đêm qua.
+  const homQua = '2026-09-28T16:00:00Z';   // 23:00 giờ VN hôm trước
+  const moi = dc([may({ bao_luc: homQua })], '2026-09-29T03:20:00Z');
+  ok('10:20 giờ VN (mở cửa 10:00), máy báo lần cuối 23:00 đêm qua → xanh, "đang chờ máy quầy báo"', moi.mau === 'xanh'
+     && /^Mới mở cửa \(10:00\) — đang chờ máy quầy báo/.test(moi.cau), tom(moi));
+  ok(`10:${PHUT_MAY_CAN_IM + 1} giờ VN vẫn chưa báo → đỏ`, dc([may({ bao_luc: homQua })], `2026-09-29T03:${PHUT_MAY_CAN_IM + 1}:00Z`).mau === 'do');
+  ok('Giờ mở cửa theo chi nhánh: mở 08:00, lúc 08:40 chưa báo → đỏ',
+     dc([may({ bao_luc: homQua })], '2026-09-29T01:40:00Z', { gio_mo_cua: 8 }).mau === 'do');
+  // Ngoài giờ mở cửa: máy quầy tắt là bình thường. 23:50 và 00:10 giờ VN (CLAUDE.md mục gio-vn).
+  for (const [luc, gioVn, tat] of [['2026-09-29T16:50:00Z', '23:50', '2026-09-29T15:58:00Z'], ['2026-09-29T17:10:00Z', '00:10', '2026-09-29T15:58:00Z'],
+                                   ['2026-09-29T02:59:00Z', '09:59', '2026-09-28T15:58:00Z']]) {
+    const d = dc([may({ bao_luc: tat })], luc);
+    ok(`${gioVn} giờ VN (ngoài giờ 10:00–23:00), máy tắt từ 22:58 → xanh "ngoài giờ mở cửa", không đỏ`,
+       d.mau === 'xanh' && /^Ngoài giờ mở cửa \(10:00–23:00\)/.test(d.cau), tom(d));
+  }
+  ok('22:30 giờ VN, quán còn mở tới 23:00, máy im 40 phút → đỏ', dc([may({ bao_luc: '2026-09-29T14:50:00Z' })], '2026-09-29T15:30:00Z').mau === 'do');
+  // Cân không trả lời.
+  const tl = dc([may({ can_tra_loi_luc: truoc(PHUT_CAN_KHONG_TRA_LOI + 1) })]);
+  ok(`Máy còn báo mà cân không trả lời ${PHUT_CAN_KHONG_TRA_LOI + 1} phút → vàng, xem cân có bật, cùng WiFi`, tl.mau === 'vang'
+     && /không nói chuyện được với cân từ 11 phút trước/.test(tl.cau) && /cùng WiFi/.test(tl.cau), tom(tl));
+  ok(`Cân trả lời ${PHUT_CAN_KHONG_TRA_LOI - 1} phút trước → xanh`, dc([may({ can_tra_loi_luc: truoc(PHUT_CAN_KHONG_TRA_LOI - 1) })]).mau === 'xanh');
+  ok('Chưa lần nào cân trả lời → vàng (không có "từ …")', /không nói chuyện được với cân —/.test(dc([may({ can_tra_loi_luc: null })]).cau));
+  ok('Tắt giữ kết nối (không có nhịp 30 giây) → không xét cân trả lời', dc([may({ giu_ket_noi: false, can_tra_loi_luc: null })]).mau === 'xanh');
+  ok('Ngoài giờ mở cửa → không xét cân trả lời (cân tắt ban đêm)',
+     dc([may({ bao_luc: '2026-09-29T16:49:00Z', can_tra_loi_luc: null })], '2026-09-29T16:50:00Z').mau === 'xanh');
+  // Kho đổi mà cân chưa nhận.
+  const lech = dc([may({ lech_so: 3, lech_tu: truoc(PHUT_LECH_CAN + 1) })]);
+  ok(`3 hàng lệch ${PHUT_LECH_CAN + 1} phút, tự gửi bật → vàng "tự gửi đang dừng"`, lech.mau === 'vang'
+     && /^3 hàng kho đã đổi mà cân chưa nhận \(từ 16 phút trước\) — tự gửi đang dừng/.test(lech.cau), tom(lech));
+  const tat = dc([may({ tu_gui: false, lech_so: 1, lech_tu: truoc(60) })]);
+  ok('Tự gửi tắt → vàng, quản lý bấm Gửi xuống cân hoặc bật Tự gửi', tat.mau === 'vang' && /Tự gửi đang tắt/.test(tat.cau), tom(tat));
+  ok(`Lệch ${PHUT_LECH_CAN - 1} phút → xanh (tự gửi chưa kịp chạy)`, dc([may({ lech_so: 3, lech_tu: truoc(PHUT_LECH_CAN - 1) })]).mau === 'xanh');
+  const loi = dc([may({ gui_loi: true })]);
+  ok('Lần tự gửi gần nhất hỏng → vàng', loi.mau === 'vang' && /Lần tự gửi xuống cân gần nhất bị lỗi/.test(loi.cau), tom(loi));
+  ok('Tự gửi tắt thì "gui_loi" cũ không tính', dc([may({ tu_gui: false, gui_loi: true })]).mau === 'xanh');
+  ok('Máy im lặng: lệch / cân không trả lời của nó không tính thêm (chỉ một câu đỏ)',
+     dc([may({ bao_luc: truoc(60), lech_so: 4, lech_tu: truoc(90), can_tra_loi_luc: null })]).cau.split(' · ').length === 1);
+  const hai2 = dc([may({ bao_luc: truoc(60) }), may({ lech_so: 2, lech_tu: truoc(30) })]);
+  ok('Một máy im + máy kia lệch kho → vàng, hai câu', hai2.mau === 'vang' && /^1 máy quầy khác .* · 2 hàng kho/.test(hai2.cau), tom(hai2));
+  // Ngoài giờ mở cửa và lúc vừa mở cửa: vàng không tính.
+  const dem = dc([may({ bao_luc: '2026-09-29T16:49:00Z', lech_so: 5, lech_tu: '2026-09-29T15:00:00Z', tu_gui: true, gui_loi: true })], '2026-09-29T16:50:00Z');
+  ok('23:50 giờ VN: máy để qua đêm lệch kho, tự gửi hỏng (cân tắt) → không vàng', dem.mau === 'xanh', tom(dem));
+  const sang = dc([may({ bao_luc: truoc(1), lech_so: 5, lech_tu: '2026-09-28T17:00:00Z' })], '2026-09-29T03:10:00Z');
+  ok('10:10 giờ VN: lệch từ nửa đêm (HSD đếm ngược) → chưa vàng — tính từ lúc mở cửa (10:00), mới 10 phút', sang.mau === 'xanh', tom(sang));
+  ok('10:16 giờ VN: vẫn lệch → vàng', dc([may({ bao_luc: truoc(1), lech_so: 5, lech_tu: '2026-09-28T17:00:00Z' })], '2026-09-29T03:16:00Z').mau === 'vang');
+});
+
 await nhom('5 · SỔ KHO', async () => {
   let d = den(voi((t, c) => { c.so_kho.co_kho = true; }), 'so_kho');
   ok('Có kho, tồn khớp sổ → xanh, mở kho của đúng chi nhánh', d.mau === 'xanh' && d.di === '/noi-bo/kho?cn=q1', tom(d) + ' ' + d.di);
@@ -384,7 +458,8 @@ await nhom('12 · Ô THIẾU (DATABASE KHÁC PHIÊN BẢN) → KHÔNG VỠ TRANG
   try {
     sk = danhGiaSucKhoe({ luc: LUC, zalo: {}, messenger: {}, dich: {}, chi_nhanh: [{ id: 'x', ma: 'q9', ten: 'Q9' }] }, 'vi');
   } catch (e) { loi = e.message; }
-  ok('Thiếu mọi ô con → vẫn đánh giá được', loi === null && sk?.khoi?.[1]?.den?.length === 5, loi ?? '');
+  ok('Thiếu mọi ô con → vẫn đánh giá được (6 đèn mỗi chi nhánh)', loi === null && sk?.khoi?.[1]?.den?.length === 6, loi ?? '');
+  ok('Thiếu ô can (database trước 0061) → Beeftown Cân xám', sk?.khoi?.[1]?.den?.find(d => d.ma === 'can')?.mau === 'tat');
   ok('Thiếu ô thì coi là chưa bật / không có gì — không bịa ra đèn đỏ', sk?.soDo === 0, `${sk?.soDo}`);
 });
 
@@ -422,6 +497,13 @@ await nhom('13 · TIẾNG ANH KHÔNG LẪN CHỮ VIỆT', async () => {
     voi(t => { Object.assign(t.sao_luu, { lan_cuoi: truoc(60), lan_cuoi_ok: true, lan_cuoi_thu: 'hong' }); }),
     voi(t => { delete t.sao_luu; }),
     voi(t => { t.sao_luu = null; }),
+    voi((t, c) => { c.can.may = [{ ...MAY_CAN(), bao_luc: truoc(90) }, { ...MAY_CAN(), can_tra_loi_luc: null, lech_so: 2, lech_tu: truoc(30) }]; }),
+    voi((t, c) => { c.can.may = [{ ...MAY_CAN(), bao_luc: truoc(60) }]; }),
+    voi((t, c) => { c.can.may = [{ ...MAY_CAN(), can_tra_loi_luc: truoc(20), tu_gui: false, lech_so: 1, lech_tu: truoc(20) }]; }),
+    voi((t, c) => { c.can.may = [{ ...MAY_CAN(), gui_loi: true }]; }),
+    voi((t, c) => { c.can.may = [MAY_CAN()]; }),
+    voi((t, c) => { t.luc = '2026-09-29T03:20:00Z'; c.can.may = [{ ...MAY_CAN(), bao_luc: '2026-09-28T16:00:00Z' }]; }),
+    voi((t, c) => { t.luc = '2026-09-29T17:10:00Z'; c.can.may = [{ ...MAY_CAN(), bao_luc: '2026-09-29T15:58:00Z' }]; }),
   ];
   const sot = [];
   let soCau = 0;
@@ -475,6 +557,7 @@ await nhom('15 · ĐỒNG HỒ MÁY KHÔNG ẢNH HƯỞNG (23:50 và 00:10 giờ
     Object.assign(t.messenger, MESS_CHAY, { loi_cuoi_luc: truoc(20), lan_nhan_cuoi: truoc(30) });
     Object.assign(c.ipos, IPOS_CHAY);
     t.bao_dong = { ...BAO_CHAY, lan_gui_cuoi: truoc(20 * 60) };
+    c.can.may = [{ ...MAY_CAN(), bao_luc: truoc(45), lech_so: 1, lech_tu: truoc(20) }];
   });
   const chup = () => JSON.stringify(bangSucKhoe({ ok: true, tho }, 'vi', true));
   const that = chup();

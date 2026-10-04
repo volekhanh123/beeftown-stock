@@ -104,6 +104,8 @@ await nhom('2 · DATABASE MỚI, CHƯA DÙNG GÌ → KHÔNG BÁO NHẦM', async 
      JSON.stringify(a?.so_kho));
   ok('Zalo Q1: không có tin hỏng / kẹt', a?.tin_zalo?.that_bai_24h === 0 && a?.tin_zalo?.cho_qua_han === 0,
      JSON.stringify(a?.tin_zalo));
+  ok('Beeftown Cân Q1 (0061): chưa máy quầy nào báo; giờ mở cửa mặc định 10–23', Array.isArray(a?.can?.may) && a.can.may.length === 0
+     && a.can.gio_mo_cua === 10 && a.can.gio_dong_cua === 23, JSON.stringify(a?.can));
   ok('Báo động (0060): chưa chạy lần nào, chưa có kênh, không lỗi, chưa gửi tin nào',
      k?.bao_dong?.lan_chay_cuoi === null && k?.bao_dong?.kenh === 'khong' && k?.bao_dong?.co_loi === false
      && k?.bao_dong?.lan_gui_cuoi === null, JSON.stringify(k?.bao_dong));
@@ -391,6 +393,10 @@ await nhom('10 · KHÔNG LỘ DỮ LIỆU CÁ NHÂN HAY BÍ MẬT', async () => 
 await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-khoe.ts)', async () => {
   const { danhGiaSucKhoe, laSucKhoeTho } = await import(LIB_SUC_KHOE);
   const nguon = readFileSync(LIB_SUC_KHOE, 'utf8');
+  // 0061: một máy quầy Q1 vừa báo — cân trả lời, tự gửi bật, khớp kho.
+  const baoMay = await duoi(UID.nvQuayA, `select kho_may_can_bao($1, '33333333-3333-4333-8333-333333333333', $2::jsonb)`,
+    [cnA.id, JSON.stringify({ phien_ban: '2.9.0', giu_ket_noi: true, can_tra_loi_giay: 0, tu_gui: true, lech_so: 0 })]);
+  ok('(Máy quầy Q1 báo được trạng thái)', baoMay.loi === null, baoMay.loi ?? '');
   const { k } = await doc(UID.chu);
   ok('Số liệu đúng dạng web chờ', laSucKhoeTho(k));
 
@@ -401,18 +407,21 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
     messenger:  ['dang_bat', 'bat_luc', 'lan_nhan_cuoi', 'loi_cuoi_luc', 'loi_7_ngay'],
     dich:       ['cho', 'loi'],
     bao_dong:   ['lan_chay_cuoi', 'kenh', 'co_loi', 'lan_gui_cuoi'],
-    chi_nhanh:  ['id', 'ma', 'ten', 'ipos', 'tin_zalo', 'dat_ban', 'tuyen_dung', 'so_kho'],
+    chi_nhanh:  ['id', 'ma', 'ten', 'ipos', 'tin_zalo', 'dat_ban', 'tuyen_dung', 'so_kho', 'can'],
     ipos:       ['co_cau_hinh', 'bat', 'cau_hinh_du', 'den', 'mat_ket_noi', 'loi_tu_luc', 'nhan_hd_luc', 'gio_mat_ket_noi',
                  'dang_tru_kho', 'cho_xu_ly', 'dong_loi', 'bat_luc', 'cron_cuoi'],
     tin_zalo:   ['that_bai_24h', 'cho_qua_han'],
     dat_ban:    ['form_mo', 'so_ban', 'cho', 'cho_qua_2_gio', 'cho_qua_24_gio', 'qua_gio_hen'],
     tuyen_dung: ['moi', 'moi_qua_2_ngay', 'moi_qua_7_ngay'],
     so_kho:     ['co_kho', 'lech'],
+    can:        ['gio_mo_cua', 'gio_dong_cua', 'may'],
+    can_may:    ['bao_luc', 'giu_ket_noi', 'can_tra_loi_luc', 'tu_gui', 'lech_so', 'lech_tu', 'gui_loi'],
   };
   const a = cua(k, cnA);
   const saoLuu = (await docSl(UID.chu)).k;
   const thuc = { goc: k, zalo: k?.zalo, messenger: k?.messenger, dich: k?.dich, bao_dong: k?.bao_dong, sao_luu: saoLuu, chi_nhanh: a,
-                 ipos: a?.ipos, tin_zalo: a?.tin_zalo, dat_ban: a?.dat_ban, tuyen_dung: a?.tuyen_dung, so_kho: a?.so_kho };
+                 ipos: a?.ipos, tin_zalo: a?.tin_zalo, dat_ban: a?.dat_ban, tuyen_dung: a?.tuyen_dung, so_kho: a?.so_kho,
+                 can: a?.can, can_may: a?.can?.may?.[0] };
   for (const [phan, ds] of Object.entries(KHOA)) {
     const co = Object.keys(thuc[phan] ?? {}).sort();
     ok(`${phan}: database trả đúng ${ds.length} ô`, JSON.stringify(co) === JSON.stringify([...ds].sort()), co.join(', '));
@@ -440,6 +449,8 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
   ok('Q1 iPOS vàng như màn Kết nối iPOS: nhận hóa đơn mà chưa trừ kho (vừa bật nên lượt cron cũ chưa tính là dừng)',
      a?.ipos?.den === 'vang' && q1('ipos')?.mau === 'vang' && /CHƯA trừ kho/.test(q1('ipos')?.cau), tom(q1('ipos')));
   ok('Q7 iPOS xám: chưa cấu hình', q7('ipos')?.mau === 'tat', tom(q7('ipos')));
+  ok('Q1 Beeftown Cân xanh: máy quầy vừa báo, cân trả lời, khớp kho', q1('can')?.mau === 'xanh', tom(q1('can')));
+  ok('Q7 Beeftown Cân xám: chưa máy quầy nào báo', q7('can')?.mau === 'tat', tom(q7('can')));
   ok('Bộ gửi Zalo đỏ: bật 2 ngày mà lượt chạy xong gần nhất 45 phút trước (đã dừng), lượt đó bị lỗi',
      th('zalo')?.mau === 'do' && /Bộ gửi đã dừng \(lượt gần nhất 45 phút trước\)/.test(th('zalo')?.cau)
      && /Lượt gửi gần nhất bị lỗi/.test(th('zalo')?.cau), tom(th('zalo')));
@@ -652,6 +663,8 @@ await nhom('13 · 0060 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
                     .replace('kho_ipos_trang_thai(v_cn.id)', 'kho_ipos_trang_thai_cu(v_cn.id)'));
   await db.exec(cu58.replace('function suc_khoe_sao_luu()', 'function suc_khoe_sao_luu_cu()'));
   const bo = (k, ...khoa) => { if (!k || typeof k !== 'object') return k; const c = { ...k }; for (const x of khoa) delete c[x]; return c; };
+  // 0061 thêm ô `can` vào mỗi chi nhánh (đèn Beeftown Cân) — phần còn lại phải y hệt.
+  const boCan = k => (k && Array.isArray(k.chi_nhanh) ? { ...k, chi_nhanh: k.chi_nhanh.map(c => bo(c, 'can')) } : k);
   const NGUOI = [['Chủ', UID.chu], ['Quản lý Q1', UID.qlA], ['Quản lý Q7', UID.qlB], ['Thủ kho Q1', UID.thuKhoA],
                  ['Kế toán Q1', UID.keToanA], ['Marketing Q1', UID.mktA], ['Người đã nghỉ', UID.nghiViec],
                  ['Máy iPOS Q1', UID_MAY_IPOS.mayIposA], ['Tài khoản không có dòng nhan_su', null]];
@@ -661,7 +674,7 @@ await nhom('13 · 0060 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
     const moi = await duoi(uid, `select suc_khoe_he_thong() as k`);
     const cu = await duoi(uid, `select suc_khoe_he_thong_cu() as k`);
     if (moi.loi !== cu.loi || moi.ma !== cu.ma
-        || JSON.stringify(bo(moi.rows?.[0]?.k, 'luc', 'bao_dong')) !== JSON.stringify(bo(cu.rows?.[0]?.k, 'luc'))) {
+        || JSON.stringify(boCan(bo(moi.rows?.[0]?.k, 'luc', 'bao_dong'))) !== JSON.stringify(bo(cu.rows?.[0]?.k, 'luc'))) {
       lechSk.push(`${ten}: ${moi.loi ?? 'đọc được'} / ${cu.loi ?? 'đọc được'}`);
     }
     moi.loi ? skTuChoi++ : skDuoc++;
@@ -679,7 +692,7 @@ await nhom('13 · 0060 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
       m.loi ? iposTuChoi++ : iposDuoc++;
     }
   }
-  ok(`suc_khoe_he_thong(): ${NGUOI.length} người — số liệu và câu từ chối y hệt trước khi tách (trừ ô bao_dong mới)`,
+  ok(`suc_khoe_he_thong(): ${NGUOI.length} người — số liệu và câu từ chối y hệt trước khi tách (trừ ô bao_dong, ô can của 0061)`,
      lechSk.length === 0 && skDuoc >= 3 && skTuChoi >= 5, lechSk.join(' | ') || `${skDuoc} đọc được, ${skTuChoi} bị từ chối`);
   ok(`kho_ipos_trang_thai(): ${NGUOI.length} người × 2 chi nhánh — kết quả và câu từ chối y hệt trước khi tách`,
      lechIpos.length === 0 && iposDuoc >= 4 && iposTuChoi >= 4,

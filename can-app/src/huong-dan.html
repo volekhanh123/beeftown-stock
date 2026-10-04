@@ -775,6 +775,7 @@
   </ul>
   <p>Gọi một số PLU vừa gỡ trên cân: ra "KHÔNG DÙNG (PLU trống)", giá 0 là đã gỡ. <b>Không cân hàng bằng số đó.</b></p>
 </div>
+<p><span class="nhan moi">Mới 2.9</span> <b>NV quầy cũng tự gửi được</b> (đăng nhập tài khoản NV quầy, bật Tự gửi) — bấm Gửi xuống cân, xem trước, gỡ hàng vẫn chỉ quản lý. Chương trình hỏi kho <b>15 giây một lần</b>: trang pha lóc vừa bấm "Giao ô mã" là cân đổi tên phím (tên phần cắt kèm số tảng) ngay, không đợi lượt mỗi phút. Mỗi phút chương trình <b>báo về kho</b>: cân trả lời lúc nào, các hàng đang trên cân kèm phím tắt, nhật ký tem đã in — trang pha lóc dựa vào đó để hiện "Cân sẵn sàng" và đối chiếu số tem in với số nhãn quét; chủ thấy đèn "Beeftown Cân" ở trang Tổng quan. Ô Cân ghi lần báo gần nhất ("Báo về kho · … — Đã báo …"; mất mạng thì "Chưa báo được về kho", tự thử lại sau 1 phút).</p>
 <p><b>Tự gửi:</b> ở Cài đặt, đánh dấu "Tự gửi xuống cân khi kho đổi". Chương trình tự gửi mỗi phút khi kho có thêm / sửa — kể cả HSD đếm ngược sang ngày mới — chỉ khi cửa sổ chương trình đang mở. Máy tính tắt qua đêm: sáng mở chương trình là trong một phút tự gửi chạy. Kho bật / tắt in HSD của một hàng (lô hết hạn, món bắt đầu có hạn) thì tự gửi dừng, không gửi gì, và báo ở ô Cân: xem trước rồi bấm Gửi. <span class="nhan moi">Mới 2.6</span> Lần gửi đọc lại thấy cân chưa nhận thì tự gửi cũng tạm dừng (không gửi lại mỗi phút) tới khi bấm Gửi được hay nạp USB. Ô Cân ghi lần tự gửi gần nhất.</p>
 <p class="phu">Gửi hỏng giữa chừng (đã nối được cân) thì chương trình không tự gửi lại — người bấm quyết. Bấm gửi lại; hỏng mãi thì dùng USB.</p>
 
@@ -994,7 +995,7 @@
     <tr><td>Địa chỉ cân</td><td>Chương trình không tự tìm được cân. Xem địa chỉ trên cân (<kbd class="p">Prog</kbd> → <kbd class="p">4</kbd> → <kbd class="p">2</kbd>), gõ vào, bấm <span class="n">Lưu cài đặt</span>.</td></tr>
     <tr><td><span class="n">Tìm cân trong WiFi</span></td><td>Dò tìm cân bất cứ lúc nào.</td></tr>
     <tr><td>Cổng của cân, Cổng hai chiều của cân, Địa chỉ kho</td><td><b>Không sửa</b> (cổng thường là 33571; cổng hai chiều thường là 33581).</td></tr>
-    <tr><td>Tự gửi xuống cân khi kho đổi</td><td>Đánh dấu để cân tự cập nhật tên, giá mỗi phút khi cửa sổ đang mở.</td></tr>
+    <tr><td>Tự gửi xuống cân khi kho đổi</td><td>Đánh dấu để cân tự cập nhật tên, giá khi cửa sổ đang mở: mỗi phút, và ngay khi trang pha lóc giao ô mã (hỏi kho 15 giây một lần — <span class="nhan moi">Mới 2.9</span>). NV quầy đăng nhập cũng tự gửi được.</td></tr>
     <tr><td><span class="nhan moi">Mới 2.8</span> Giữ kết nối với cân</td><td>Bật sẵn. Đèn ô Cân tự biết cân còn nối không; cân in tem là chương trình tự đọc nhật ký. Bỏ đánh dấu (mỗi việc nối cân riêng như bản 2.7) chỉ khi người lo chương trình bảo — ví dụ giữ kết nối làm cân hay lỗi.</td></tr>
     <tr><td><span class="nhan moi">Mới 2.8</span> Tự chỉnh giờ cân</td><td>Bật sẵn. Xem <a href="#tu-dat-gio">mục 20 — Giờ cân</a>.</td></tr>
     <tr><td><span class="nhan moi">Mới 2.8</span> Nghe tín hiệu cân phát (UDP)</td><td>Tắt sẵn. Bật khi cân hay đổi địa chỉ và chưa giữ cố định được trong router. Xem <a href="#nghe-udp">mục 24</a> (hộp hỏi tường lửa).</td></tr>

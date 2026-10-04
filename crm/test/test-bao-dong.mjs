@@ -436,8 +436,11 @@ await nhom('6 · KẾT THÚC LƯỢT: CHỈ ĐÓNG SỰ CỐ ĐANG CHỜ, CÂU L
 
 // ===========================================================================
 await nhom('7 · SỐ LIỆU HỎNG: LƯỢT VẪN CHẠY, KHÔNG LỘ BÍ MẬT', async () => {
+  // Dựng lại từ migration MỚI NHẤT định nghĩa hàm (0061 thêm ô can) — không thì phần sau của file chạy thân cũ.
   const soLieuThat = (() => {
-    const s = tep('0060_'), i = s.indexOf('create or replace function suc_khoe_so_lieu(');
+    const DAU = 'create or replace function suc_khoe_so_lieu(';
+    const s = readdirSync(MIG).filter(f => f.endsWith('.sql')).sort().map(f => readFileSync(join(MIG, f), 'utf8'))
+      .filter(t => t.includes(DAU)).at(-1), i = s.indexOf(DAU);
     return s.slice(i, s.indexOf('\n$$;', i) + 4);
   })();
   await db.exec(`create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[], p_lech jsonb default null) returns jsonb language plpgsql stable
