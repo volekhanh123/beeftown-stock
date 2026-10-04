@@ -663,6 +663,13 @@ const CAU_DB: ReadonlyArray<HaiThuTieng> = [
     en: 'No free codes left to create a discount code — enter a code manually' },
   { vi: 'Báo cáo bán có doanh thu — chỉ chủ, quản lý, kế toán xem được',
     en: 'The sales report shows revenue — only the owner, managers and accountants can view it' },
+
+  // 0061_kho_can_quay — Beeftown Cân báo trạng thái và nhật ký cân về kho
+  { vi: 'Thiếu mã máy quầy', en: 'The counter computer ID is missing' },
+  { vi: 'Dữ liệu máy quầy báo không đúng dạng', en: 'The status sent by the counter computer is not in the expected format' },
+  { vi: 'Tối đa 4000 dòng hàng trên cân một lần báo', en: 'At most 4000 scale items per status report' },
+  { vi: 'Nhật ký cân phải là một danh sách', en: 'The scale log must be a list' },
+  { vi: 'Tối đa 2000 dòng nhật ký cân một lần gửi', en: 'At most 2000 scale log lines per send' },
 ];
 
 /** Câu cố định: đúng từng chữ. */

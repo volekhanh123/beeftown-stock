@@ -2,7 +2,8 @@
  * SỨC KHỎE HỆ THỐNG — đèn xanh / vàng / đỏ trên trang Tổng quan (/noi-bo)
  * =====================================================================
  *
- * Database (suc_khoe_he_thong, migration 0055; suc_khoe_sao_luu, 0058; 0060 thêm ô bao_dong) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
+ * Database (suc_khoe_he_thong, migration 0055; suc_khoe_sao_luu, 0058; 0060 thêm ô bao_dong; 0061 thêm ô can — đèn
+ * Beeftown Cân của mỗi chi nhánh) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
  * quyết định MÀU và CÂU hai thứ tiếng; crm/test/test-suc-khoe-web.mjs thử từng ngưỡng bằng dữ
  * liệu giả, không cần database.
  *
@@ -35,7 +36,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { HaiThuTieng, NgonNguNB } from './ngon-ngu-noi-bo';
-import { gioVnTuMs } from './gio-vn.ts';
+import { gioVnTuMs, homNayVn } from './gio-vn.ts';
 
 // -----------------------------------------------------------------------------
 // NGƯỠNG
@@ -59,6 +60,15 @@ export const GIO_KHONG_GUI_BAO_DONG = 26;
  * (khôi phục thử đạt) = đã lỡ ít nhất một đêm — dữ liệu từ đó tới giờ chưa có bản sao dùng được.
  */
 export const GIO_SAO_LUU = 36;
+/**
+ * Beeftown Cân (0061): máy quầy báo về kho mỗi phút. Trong giờ mở cửa mà chừng này phút không báo → đỏ: tên ô theo
+ * tảng, giá mới không xuống cân nữa. Tính từ lúc mở cửa hôm nay (bật máy lúc 10:05 không đỏ ngay từ 10:00).
+ */
+export const PHUT_MAY_CAN_IM = 30;
+/** Máy quầy vẫn báo mà cân không trả lời (nhịp 30 giây của 2.8) chừng này phút, trong giờ mở cửa → vàng. */
+export const PHUT_CAN_KHONG_TRA_LOI = 10;
+/** Kho đổi (thêm / sửa hàng, ô theo tảng) mà cân chưa nhận chừng này phút → vàng. Tự gửi chạy mỗi 15–60 giây. */
+export const PHUT_LECH_CAN = 15;
 
 // -----------------------------------------------------------------------------
 // SỐ LIỆU THÔ — đúng dạng suc_khoe_he_thong() trả về
@@ -72,6 +82,14 @@ export interface IposTho {
   bat_luc: string | null; cron_cuoi: string | null;
 }
 
+/** Một máy quầy báo trong 14 ngày (kho_may_can, 0061). Không câu lỗi, không người. */
+export interface MayCanTho {
+  bao_luc: string; giu_ket_noi: boolean; can_tra_loi_luc: string | null;
+  tu_gui: boolean; lech_so: number | null; lech_tu: string | null; gui_loi: boolean;
+}
+/** Ô `can` (0061): giờ mở cửa của chi nhánh (cài ở Kết nối iPOS, mặc định 10–23) và các máy quầy. */
+export interface CanTho { gio_mo_cua: number; gio_dong_cua: number; may: MayCanTho[] }
+
 export interface ChiNhanhTho {
   id: string; ma: string; ten: string;
   ipos: IposTho;
@@ -81,6 +99,8 @@ export interface ChiNhanhTho {
   /** Hai nhóm KHÔNG chồng nhau: quá 7 ngày; 2–7 ngày. */
   tuyen_dung: { moi: number; moi_qua_2_ngay: number; moi_qua_7_ngay: number };
   so_kho: { co_kho: boolean; lech: number };
+  /** 0061 — đèn Beeftown Cân. Thiếu ô (database chưa chạy 0061) = chưa máy nào báo. */
+  can?: CanTho;
 }
 
 /** suc_khoe_sao_luu() (0058). Mốc = lúc lượt bắt đầu (dữ liệu trong bản sao là của lúc đó). */
@@ -196,7 +216,7 @@ export async function docSucKhoeVaSaoLuu(client: Pick<SupabaseClient, 'rpc'>): P
 // ĐÁNH GIÁ
 // -----------------------------------------------------------------------------
 export type MauDen = 'xanh' | 'vang' | 'do' | 'tat';
-export type MaDen = 'dat_ban' | 'ipos' | 'so_kho' | 'tin_zalo' | 'tuyen_dung' | 'zalo' | 'messenger' | 'dich' | 'sao_luu' | 'bao_dong';
+export type MaDen = 'dat_ban' | 'ipos' | 'so_kho' | 'can' | 'tin_zalo' | 'tuyen_dung' | 'zalo' | 'messenger' | 'dich' | 'sao_luu' | 'bao_dong';
 
 export interface Den {
   ma: MaDen;
@@ -230,6 +250,7 @@ const TEN: Record<MaDen, Cau> = {
   dat_ban:    { vi: 'Đặt bàn', en: 'Bookings' },
   ipos:       { vi: 'iPOS', en: 'iPOS' },
   so_kho:     { vi: 'Sổ kho', en: 'Stock ledger' },
+  can:        { vi: 'Beeftown Cân', en: 'Beeftown Can (scale app)' },
   tin_zalo:   { vi: 'Tin Zalo', en: 'Zalo messages' },
   tuyen_dung: { vi: 'Hồ sơ ứng tuyển', en: 'Job applications' },
   zalo:       { vi: 'Bộ gửi tin Zalo', en: 'Zalo sender' },
@@ -394,6 +415,77 @@ function denSoKho(d: Partial<ChiNhanhTho['so_kho']> | undefined, maCn: string, n
     vi: `${lech} lô có tồn lệch sổ kho — dữ liệu kho đã sai. Báo ngay người quản trị kỹ thuật, đừng sửa tay.`,
     en: `${lech} lot${s(lech)} with stock that does not match the ledger — the stock data is wrong. Tell the technical admin now; do not fix it by hand.` } }] : [],
     { vi: 'Tồn kho khớp sổ kho.', en: 'Stock matches the ledger.' }, di, nn);
+}
+
+// --- Beeftown Cân (máy quầy, 0061) ---------------------------------------------------
+/**
+ * Mỗi máy quầy báo về kho mỗi phút (kho_may_can_bao). Đỏ: trong giờ mở cửa có máy im quá PHUT_MAY_CAN_IM phút (tính từ
+ * lúc mở cửa hôm nay) — tên ô theo tảng, giá mới không còn xuống cân. Vàng (máy còn báo): cân không trả lời (trong giờ mở
+ * cửa), kho đổi mà cân chưa nhận quá PHUT_LECH_CAN phút, lần tự gửi gần nhất hỏng. Ngoài giờ mở cửa máy tắt là bình thường.
+ */
+function denCan(d: Partial<CanTho> | undefined, maCn: string, bayGio: number, nn: NgonNguNB): Den {
+  const di = `/noi-bo/kho/cai-dat/can?cn=${encodeURIComponent(maCn)}`;
+  const may = Array.isArray(d?.may) ? d.may : [];
+  if (may.length === 0) {
+    return denTat('can', { vi: 'Chưa máy quầy nào chạy Beeftown Cân báo về kho (14 ngày qua).',
+                           en: 'No counter computer running Beeftown Can has reported to the stock system in the last 14 days.' }, di, nn);
+  }
+  const mo = Number.isInteger(d?.gio_mo_cua) ? Number(d?.gio_mo_cua) : 10;
+  const dong = Number.isInteger(d?.gio_dong_cua) ? Number(d?.gio_dong_cua) : 23;
+  const gio = Number(gioVnTuMs(bayGio).slice(11, 13));
+  const trongGio = gio >= mo && gio < dong;
+  const mocMoCua = Date.parse(`${homNayVn(bayGio)}T${String(mo).padStart(2, '0')}:00:00+07:00`);
+  // Còn báo: lần báo gần nhất trong PHUT_MAY_CAN_IM phút (máy báo mỗi phút).
+  const song = (m: MayCanTho) => { const b = ms(m.bao_luc); return b !== null && bayGio - b <= PHUT_MAY_CAN_IM * 60000; };
+  const conBao = may.filter(song);
+  const imLang = may.filter(m => !song(m));
+  const v: VanDe[] = [];
+
+  // Đỏ chỉ trong giờ mở cửa, và đã mở cửa quá PHUT_MAY_CAN_IM phút (bật máy lúc 10:05 không đỏ từ 10:00).
+  if (trongGio && imLang.length > 0 && bayGio - mocMoCua > PHUT_MAY_CAN_IM * 60000) {
+    const cu = Math.min(...imLang.map(m => ms(m.bao_luc) ?? bayGio));
+    const ai = imLang.length === 1 ? { vi: 'Máy quầy', en: 'The counter computer' }
+      : { vi: `${imLang.length} máy quầy`, en: `${imLang.length} counter computers` };
+    v.push({ muc: 'do', cau: {
+      vi: `${ai.vi} chạy Beeftown Cân không báo về kho từ ${tuTruoc(bayGio, cu).vi} — giá mới và tên ô theo tảng không xuống cân. Bật máy quầy, mở Beeftown Cân và đăng nhập kho`,
+      en: `${ai.en} running Beeftown Can ${imLang.length === 1 ? 'has' : 'have'} not reported since ${tuTruoc(bayGio, cu).en} — new prices and primal slot names do not reach the scale. Turn on the counter computer, open Beeftown Can and sign in` } });
+  }
+  const khongTraLoi = trongGio ? conBao.filter(m => m.giu_ket_noi === true
+    && (ms(m.can_tra_loi_luc) === null || bayGio - (ms(m.can_tra_loi_luc) as number) > PHUT_CAN_KHONG_TRA_LOI * 60000)) : [];
+  if (khongTraLoi.length > 0) {
+    const tl = khongTraLoi.map(m => ms(m.can_tra_loi_luc)).filter((x): x is number => x !== null);
+    const tu: Cau = tl.length ? { vi: ` từ ${tuTruoc(bayGio, Math.min(...tl)).vi}`, en: ` since ${tuTruoc(bayGio, Math.min(...tl)).en}` } : { vi: '', en: '' };
+    v.push({ muc: 'vang', cau: {
+      vi: `Beeftown Cân không nói chuyện được với cân${tu.vi} — xem cân có bật, cùng WiFi không (ô Cân trong Beeftown Cân)`,
+      en: `Beeftown Can cannot talk to the scale${tu.en} — check the scale is on and on the same Wi-Fi (Scale box in Beeftown Can)` } });
+  }
+  const lech = conBao.filter(m => so(m.lech_so) > 0 && ms(m.lech_tu) !== null && bayGio - (ms(m.lech_tu) as number) > PHUT_LECH_CAN * 60000);
+  if (lech.length > 0) {
+    const n = Math.max(...lech.map(m => so(m.lech_so)));
+    const tu = Math.min(...lech.map(m => ms(m.lech_tu) as number));
+    const tuGui = lech.every(m => m.tu_gui === true);
+    v.push({ muc: 'vang', cau: tuGui
+      ? { vi: `${n} hàng kho đã đổi mà cân chưa nhận (từ ${tuTruoc(bayGio, tu).vi}) — tự gửi đang dừng, mở Beeftown Cân xem câu báo ở ô Cân`,
+          en: `${n} item${s(n)} changed in stock but not on the scale yet (since ${tuTruoc(bayGio, tu).en}) — automatic sending is paused; open Beeftown Can and read the Scale box` }
+      : { vi: `${n} hàng kho đã đổi mà cân chưa nhận (từ ${tuTruoc(bayGio, tu).vi}) — Tự gửi đang tắt: quản lý bấm Gửi xuống cân, hoặc bật Tự gửi ở Cài đặt của Beeftown Cân`,
+          en: `${n} item${s(n)} changed in stock but not on the scale yet (since ${tuTruoc(bayGio, tu).en}) — automatic sending is off: a manager presses Send to scale, or turns on automatic sending in Beeftown Can settings` } });
+  }
+  if (lech.length === 0 && conBao.some(m => m.tu_gui === true && m.gui_loi === true)) {
+    v.push({ muc: 'vang', cau: {
+      vi: 'Lần tự gửi xuống cân gần nhất bị lỗi — mở Beeftown Cân xem câu báo ở ô Cân',
+      en: 'The latest automatic send to the scale failed — open Beeftown Can and read the Scale box' } });
+  }
+  const moiNhat = Math.max(...may.map(m => ms(m.bao_luc) ?? -Infinity));
+  const lanCuoi = Number.isFinite(moiNhat) ? tuTruoc(bayGio, moiNhat) : { vi: 'không rõ', en: 'unknown' };
+  const khiTot: Cau = conBao.length > 0
+    ? { vi: `${conBao.length} máy quầy đang báo về kho — lần cuối ${lanCuoi.vi}.`,
+        en: `${conBao.length} counter computer${s(conBao.length)} reporting — last ${lanCuoi.en}.` }
+    : trongGio
+      ? { vi: `Mới mở cửa (${mo}:00) — đang chờ máy quầy báo; lần cuối ${lanCuoi.vi}.`,
+          en: `Just opened (${mo}:00) — waiting for the counter computer to report; last ${lanCuoi.en}.` }
+      : { vi: `Ngoài giờ mở cửa (${mo}:00–${dong}:00) — máy quầy báo lần cuối ${lanCuoi.vi}.`,
+          en: `Outside opening hours (${mo}:00–${dong}:00) — the counter computer last reported ${lanCuoi.en}.` };
+  return denTu('can', v, khiTot, di, nn);
 }
 
 // --- Tin Zalo của chi nhánh ------------------------------------------------------
@@ -644,6 +736,7 @@ export function danhGiaSucKhoe(tho: SucKhoeTho, nn: NgonNguNB, laChu = false): S
         denDatBan(c.dat_ban, nn),
         denIpos(c.ipos, c.ma ?? '', bayGio, nn),
         denSoKho(c.so_kho, c.ma ?? '', nn),
+        denCan(c.can, c.ma ?? '', bayGio, nn),
         denTinZalo(c.tin_zalo, zaloBat, nn),
         denTuyenDung(c.tuyen_dung, nn),
       ],
