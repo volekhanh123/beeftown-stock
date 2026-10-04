@@ -196,6 +196,45 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
+## Bản 2.8 — giữ kết nối với cân; tự đọc nhật ký khi cân báo in tem; tự chỉnh giờ cân; nghe cân phát UDP
+
+Giai đoạn 2 của kế hoạch 03/10/2026: làm như phần mềm của hãng khi nối cân (`CAN-TMA.md` §10.2.7, §10.3, §10.4). **Chưa thử
+trên cân thật** — làm theo "Thử ở quán (2.8)" bên dưới, sau khi bản 2.7 đã thử đạt.
+
+- **Giữ một kết nối hai chiều mở** (`src/giu-ket-noi.ts`, cài đặt `giuKetNoi`, mặc định bật): mọi việc qua cổng 33581 đi trên
+  MỘT kết nối, không mở-làm-đóng mỗi việc như 2.7 (cân có nhận hai kết nối cùng lúc không: chưa biết — §10.2.9 — nên không
+  bao giờ mở kết nối thứ hai khi kết nối đang giữ còn dùng được). Trước mỗi lần dùng lại: hỏi giờ với hạn ngắn (`docGio(4000)`,
+  như hàng rào `UPL TIM`) — biết kết nối còn sống (không bao giờ ghi vào kết nối chết rồi chờ hết hạn hàng rào) và bỏ dòng thừa
+  của việc trước. Việc nào hỏng thì bỏ kết nối, lần sau bắt tay lại. "Đọc thông tin cân" và bước bắt tay của Chẩn đoán WiFi
+  luôn bắt tay lại trên kết nối mới. Kiểm mã máy (`kiemMayHaiChieu`) mỗi lần lấy kết nối; cân khác mã → bỏ kết nối. Tắt ở Cài
+  đặt → như 2.7.
+- **Nhịp 30 giây** (`nhipCan`, `main.ts`): hỏi giờ cân như hãng → đèn ô Cân tự xanh / đỏ, dòng "cân trả lời lúc …, giờ cân
+  đúng / nhanh / chậm" (`trangThaiNen`, `/api/can`; trang làm mới mỗi 15 giây). Nhịp không bao giờ dò WiFi.
+- **Nghe cân tự báo in tem** (`ASK REP`, thông số 58 = 1 — phần mềm hãng bật sẵn trên cân của quán): `giao-thuc.ts` đưa dòng
+  `ASK…` cho người nghe (`khiCanBao`) thay vì chỉ bỏ. Cân báo → chờ 5 giây (in liền nhiều tem thì đọc một lần) → đọc nhật ký
+  từ giao dịch cuối đã lưu (`docNhatKyNen` → `docNhatKyWifi`, cùng cách với nút "Đọc qua WiFi") → gộp vào `nhat-ky-can.tsv`.
+  Vừa nối (lại) được cân → đọc bù. Không kiểm vai (chỉ đọc cân, lưu trên máy này — xem vẫn chỉ quản lý / chủ), không dò WiFi.
+  Ô Cân báo khi file gốc có thông số 58 chưa bật tự báo.
+- **Tự chỉnh giờ cân** (`tuDatGioNeuCan`, cài đặt `tuDatGio`, mặc định bật): giờ cân lệch giờ **Việt Nam** (`gio-vn.ts`, không
+  theo múi giờ của máy) quá 30 giây → `DWL TIM` theo giờ VN, cân đọc lại trong hàng rào (`datGio`). Mỗi ngày (giờ VN) tối đa 3
+  lần, cách nhau ít nhất 10 phút. Trước khi gửi: giờ máy tính phải khớp giờ mạng (trường `Date` của máy chủ kho) trong 2 phút —
+  không khớp / mất mạng thì không chỉnh, ghi lý do. Các lần trong ngày: `%APPDATA%\BeeftownCan\tu-dat-gio.json`.
+- **Nghe cân phát UDP** (`src/udp-can.ts`, cài đặt `ngheUdp`, mặc định **tắt** — lần đầu Windows hỏi tường lửa): nghe cổng
+  33584 (`reuseAddr`: TM-xA cùng máy vẫn nghe được). Nhịp không nối được địa chỉ cũ mà nghe thấy ĐÚNG MỘT cân phát ở địa chỉ
+  khác → nối cổng hai chiều ở đó, mã máy phải đúng `macHaiChieu` → dùng địa chỉ mới (`theoUdp`). "Tìm cân" hỏi như hãng (5 gói
+  `UDP⇥␍␊` tới cổng 33583) rồi dùng các máy trả lời, không dò cả WiFi bằng TCP; không thấy thì dò như trước.
+- Cập nhật: đổi file xong thì đóng kết nối đang giữ (`dongNen`) trước khi bản mới mở.
+
+**Thử ở quán (2.8)** — sau khi 2.7 đạt; ngoài giờ bán, đã đóng TM-xA:
+1. Mở chương trình → trong 30 giây ô Cân xanh, "Đang nối cân (cổng hai chiều) · cân trả lời lúc …"; tắt cân → trong chừng 1
+   phút ô Cân đỏ; bật lại → xanh lại.
+2. Gửi giá một món (thẻ Gửi giá từ kho) → vẫn khung xanh "cân đã nhận". Nếu gửi hỏng mà 2.7 thì được: bỏ "Giữ kết nối với cân"
+   ở Cài đặt, báo lại.
+3. In một tem → trong chừng 10 giây ô Cân: "Nhật ký cân: tự đọc lúc … (cân báo vừa in tem), 1 dòng mới"; thẻ Nhật ký cân có dòng.
+4. Giờ cân: chỉnh tay giờ cân lệch vài phút (Prog, mục 6 của Hướng dẫn) → trong 30 giây ô Cân: "Đã tự chỉnh giờ cân theo giờ
+   Việt Nam …"; bấm `Time` trên cân thấy đúng.
+5. (Tuỳ chọn) Bật "Nghe tín hiệu cân phát" → Windows hỏi tường lửa → Cho phép → ô Cân "Nghe tín hiệu cân: 192.168.1.… lúc …".
+
 ## Bản 2.7 — mọi việc ghi qua cổng hai chiều rồi đọc lại; gỡ hàng bằng ghi đè; tự phục hồi; Chẩn đoán WiFi
 
 Ở quán từ 02/10/2026 cân bỏ qua mọi lần gửi qua cổng 33571, còn đọc qua cổng hai chiều 33581 thì được (mục "Bản 2.6.1").
@@ -494,7 +533,7 @@ dò WiFi hay kho chậm có thể lâu hơn.
 
 | Nơi | Có gì |
 |---|---|
-| `%APPDATA%\BeeftownCan\` | `cau-hinh.json` (IP cân, cổng, cổng hai chiều `congHaiChieu`, địa chỉ kho, các lần cân đổi địa chỉ, cổng COM lần thử trước), `phien.json` (đăng nhập), `loi.txt` (lỗi) |
+| `%APPDATA%\BeeftownCan\` | `cau-hinh.json` (IP cân, cổng, cổng hai chiều `congHaiChieu`, địa chỉ kho, các lần cân đổi địa chỉ, cổng COM lần thử trước; 2.8: `giuKetNoi`, `tuDatGio`, `ngheUdp`), `phien.json` (đăng nhập), `loi.txt` (lỗi), `tu-dat-gio.json` (2.8: các lần tự chỉnh giờ cân trong ngày) |
 | `Tài liệu\Beeftown Can\` | `A_000.TMS` (file gốc = bản gần nhất đã nạp vào cân), `tren-can.tsv` (2.7: dòng mã `99999` là PLU trống — đã gỡ bằng ghi đè), `tem-da-tat.json`, `nhat-ky-can.tsv` (nhật ký bán của cân, TSV UTF-8 có tiêu đề; có dòng không đọc được thì giữ bản sao `nhat-ky-can-ban-sao-….tsv` trước khi ghi đè), `da-gui\` (mỗi lần gửi một bản; thông số / phím / giờ: đúng file nhỏ đã gửi), `cho-usb\`, `chan-doan\` (2.7: kết quả Chẩn đoán WiFi) |
 
 Thư mục `Tài liệu\Beeftown Can` dùng chung với `web/public/kho/can-wifi/Nap-Can-WiFi.ps1`.
@@ -530,13 +569,14 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 ## Chưa làm
 
 - Thử bản 2.7 trên cân thật (mục "Thử ở quán (2.7)") và sửa `CAN-TMA.md` theo file kết quả Chẩn đoán WiFi.
-- Giai đoạn 2 (kế hoạch 03/10/2026): giữ kết nối 33581 mở, nghe cân tự báo (`ASK REP`), tìm cân bằng gói UDP cân tự phát, tự
-  đặt giờ cân mỗi sáng. Giai đoạn 3 (web + database): danh mục cân đọc được bằng quyền xem (NV quầy tự gửi), trạng thái cân /
-  số PLU / phím của ô mã hiện trên trang pha lóc, cảnh báo tem mã thường trong phiên theo tảng, đối chiếu tem in với tem quét.
+- Thử bản 2.8 trên cân thật (mục "Thử ở quán (2.8)").
+- Giai đoạn 3 (web + database, kế hoạch 03/10/2026): danh mục cân đọc được bằng quyền xem (NV quầy tự gửi), trạng thái cân /
+  số PLU / phím của ô mã hiện trên trang pha lóc, cảnh báo tem mã thường trong phiên theo tảng, đối chiếu tem in với tem quét
+  (nhật ký cân 2.8 tự đọc về máy quầy — còn phải đưa lên kho). Kèm đèn sức khỏe "Beeftown Cân" ở `/noi-bo` (máy quầy báo nhịp
+  lên database — `suc_khoe_so_lieu()`): việc chạy nền của 2.8 hiện mới chỉ có đèn ở ô Cân của chính máy quầy.
 - Tự gửi chưa tự gỡ hàng còn nằm lại (cần người xem trước rồi bấm).
 - Mã `99999` / `99998` mới chỉ được chặn ở bộ lập danh sách (món mang mã đó không lên cân); database chưa chặn.
 - Thử bản 2.2 trên cân thật (mục "Thử bản 2.2 ở quán") và sửa `CAN-TMA.md` theo kết quả.
-- Nghe cân tự báo qua UDP 33583 / 33584 (mở cổng nghe thì Windows hỏi tường lửa); giữ kết nối 33581 (hãng hỏi `UPL TIM` mỗi 30 giây).
 - Nhật ký cân: ghi lịch sử bảng PLU (lúc nào số PLU nào mang mã nào) để gắn mã cân cho dòng cũ chắc hơn; đưa nhật ký lên kho.
 - HSD đếm ngược: tự gửi đang dừng cả loạt khi có một hàng bật / tắt in HSD — có thể gửi phần đếm ngược và giữ riêng hàng
   bật / tắt. Hàng kho không lên được / ngoài kho mà cân đang in HSD: chưa báo riêng.

@@ -1113,6 +1113,9 @@ máy tính → UPL⇥END⇥
 - Phần mềm hãng ghi `DWL⇥TMS⇥ / TMS⇥58⇥1⇥ / END⇥TMS⇥` **mỗi lần nối** → cân quán đang 58 = 1 và giữ mãi (tắt
   bên phần mềm không đặt lại trên cân). Cân vì thế có thể đẩy `ASK` tới bất kỳ ai đang nối, kể cả chương
   trình mình → **bộ đọc phải bỏ qua mọi dòng bắt đầu bằng `ASK⇥`**. Muốn tắt: ghi `TMS⇥58⇥0⇥` [chưa thử].
+- **Từ 2.8** (`giao-thuc.ts` `khiCanBao`): dòng `ASK⇥…` vẫn bị bỏ khỏi luồng trả lời, nhưng đưa cho người nghe. Trên kết nối
+  giữ mở, `ASK⇥REP…` → chờ 5 giây rồi đọc nhật ký từ giao dịch cuối đã lưu (`docNhatKyNen`); `ASK⇥PLU…` (58 +2) bỏ qua.
+  Dạng đủ của dòng `ASK⇥REP…` (có số giao dịch không) [chưa biết] — chương trình không đọc gì sau `ASK⇥REP`.
 
 #### 10.2.8 Không có
 
@@ -1135,6 +1138,12 @@ máy tính → UPL⇥END⇥
 Mỗi cân chỉ chạy một việc một lúc (hãng cũng vậy). Cân có nhận hai máy tính cùng nối không: [chưa biết] →
 **đóng TM-xA trên mọi máy** trước khi chương trình mình nối.
 
+**Từ 2.8 — một kết nối giữ mở** (`giu-ket-noi.ts`, như TM-xA): mọi việc qua 33581 đi trên một kết nối; không bao giờ mở kết
+nối thứ hai khi kết nối đang giữ còn dùng được (hai kết nối cùng lúc từ một máy: [chưa biết]). Trước mỗi lần dùng lại: `UPL⇥TIM⇥`
+với hạn 4 giây — biết kết nối còn sống và bỏ dòng thừa (hàng rào chờ dòng `TIM` rồi `END`). Việc hỏng → bỏ kết nối, lần sau bắt
+tay lại. Nhịp 30 giây hỏi `UPL⇥TIM⇥` như hãng (§10.4 bước 5). Cân có tự đóng kết nối im lặng lâu không: [chưa biết] — nhịp 30
+giây giữ cho kết nối không im lặng lâu. Tắt được (`giuKetNoi: false`) → mỗi việc mở một kết nối như 2.7.
+
 ### 10.3 UDP 33583 / 33584 — tìm cân
 
 - Hãng: máy tính mở UDP ở cổng **33584**, gửi 5 lần 6 byte `UDP⇥␍␊` (`55 44 50 09 0D 0A`) tới
@@ -1146,6 +1155,10 @@ Mỗi cân chỉ chạy một việc một lúc (hãng cũng vậy). Cân có nh
   bằng IP (DHCP đổi IP).
 - Nghe cổng 33584 trên Windows làm hiện hộp hỏi tường lửa với nhân viên quầy; TM-xA chạy cùng máy có thể giành
   mất gói → bản 2.1 tìm cân bằng dò TCP 33571 thay vì nghe UDP.
+- **Từ 2.8** (`udp-can.ts`, cài đặt `ngheUdp`, mặc định tắt): nghe 33584 với `reuseAddr` (gói phát rộng tới mọi socket cùng
+  cổng — TM-xA cùng máy vẫn nghe được). Gói chỉ là gợi ý địa chỉ: đổi địa chỉ cân chỉ khi đúng một máy phát và mã máy qua
+  33581 khớp `macHaiChieu`. "Tìm cân": hỏi 5 gói như hãng, chờ 1,5 giây. Cân trả lời lời hỏi bằng gói phát rộng hay gói gửi
+  thẳng: [chưa biết] (Windows mặc định cho gói gửi thẳng trả lời gói phát rộng qua tường lửa trong 3 giây).
 
 ### 10.4 Phần mềm hãng (TM-xA) tự làm gì khi nối cân
 
@@ -1156,7 +1169,8 @@ Nếu TM-xA đang chạy trên một máy trong quán, nó tự:
 2. Mỗi kết nối mới: bắt tay (§10.2.2).
 3. Chuỗi việc "khi online" (file `AutoTask.xml` đi kèm):
    - **Đặt đồng hồ cân theo giờ máy tính** (`DWL TIM`) — máy tính sai giờ là cân sai giờ, sai ngày in và hạn
-     sử dụng.
+     sử dụng. (Chương trình mình từ 2.8 — `tuDatGioNeuCan`: chỉ khi giờ cân lệch giờ Việt Nam quá 30 giây và giờ máy tính
+     khớp giờ mạng trong 2 phút; tối đa 3 lần / ngày giờ VN.)
    - Kéo nhật ký bán (`UPL REP`) nếu cân đã gắn nhóm kho và có dưới 16 cân online.
    - Ghi **thông số 58 = 1**.
 4. Nghe nền: `ASK REP` → kéo nhật ký ngay.
@@ -1252,6 +1266,10 @@ Cùng văn bản như file và mạng (mục 2), đi qua cổng COM. Nguồn: `S
 | `CLR PLU` + nạp lại cả danh sách qua 33581 (`khoiXoaVaNapPlu`) | **Chưa thử trên cân thật** | Nguy hiểm nhất; 2.7 tự gửi lại cả danh sách khi hỏng |
 | Ghi thông số / chữ / phím / tem qua 33581 rồi đọc lại phần đó (`guiCaiDat`, 2.7) | **Chưa thử trên cân thật** | Chỉ với cân giả |
 | Gỡ hàng bằng ghi đè dòng trống mã 99999 + bỏ phím (`goHangConLai`, 2.7) | **Chưa thử trên cân thật** | Chỉ với cân giả |
+| Giữ một kết nối 33581 mở, hỏi `UPL TIM` mỗi 30 giây, mọi việc trên kết nối đó (2.8) | **Chưa thử trên cân thật** | TM-xA làm vậy; với chương trình mình chỉ cân giả |
+| Cân đẩy `ASK⇥REP…` khi in tem (58 = 1) → tự đọc nhật ký (2.8) | **Chưa thử trên cân thật** | Cân giả đẩy `ASK⇥REP⇥…` |
+| Tự đặt giờ cân theo giờ VN mỗi ngày (`DWL TIM`, 2.8) | **Chưa thử trên cân thật** | Như `datGio` (2.2), chạy tự động |
+| Nghe UDP 33584 / hỏi 33583 với chương trình mình (2.8) | **Chưa thử trên cân thật** | Hộp hỏi tường lửa của Windows chưa thử |
 | Chẩn đoán WiFi (2.7): chỉ đọc; ghi thử PLU 9999; file nhỏ qua 33571 | **Chưa thử trên cân thật** | Chạy ở quán rồi sửa bảng này theo file kết quả |
 | Đổi mẫu tem (LAB) qua 33571 hoặc 33581 | **Chưa thử trên cân thật** | USB thì cân nhận chắc |
 | File nhỏ chỉ TMS / SCP qua 33571 (`fileNho`) | **Chưa thử trên cân thật** | |

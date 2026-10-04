@@ -103,6 +103,8 @@ export function moMayChu(ud: UngDung, tuy: {
               // HSD trên cân tính cho ngày nào (giờ VN), cân có in HSD không, có cũ không — trang báo đỏ khi cũ.
               hsd: ud.hsdTrenCan(),
               capNhat: ud.trangThaiCapNhat(),
+              // 2.8: kết nối giữ mở, giờ cân, lần cân báo in tem / tự đọc nhật ký, tự chỉnh giờ, nghe UDP.
+              nen: ud.trangThaiNen(),
             });
           }
           // ---- 2.5: tự cập nhật (cap-nhat.ts) ----
@@ -126,6 +128,9 @@ export function moMayChu(ud: UngDung, tuy: {
               ipCan: b.ipCan as string | undefined, congCan: b.congCan as number | undefined,
               diaChiKho: b.diaChiKho as string | undefined, chiNhanhId: b.chiNhanhId as string | undefined,
               tuGui: typeof b.tuGui === 'boolean' ? b.tuGui : undefined,
+              giuKetNoi: typeof b.giuKetNoi === 'boolean' ? b.giuKetNoi : undefined,
+              tuDatGio: typeof b.tuDatGio === 'boolean' ? b.tuDatGio : undefined,
+              ngheUdp: typeof b.ngheUdp === 'boolean' ? b.ngheUdp : undefined,
               // Ô để trống (null / '') → về mặc định; không gửi ô đó → giữ nguyên.
               congHaiChieu: b.congHaiChieu === undefined ? undefined : b.congHaiChieu === null || b.congHaiChieu === '' ? null : b.congHaiChieu as number,
             });
@@ -165,8 +170,9 @@ export function moMayChu(ud: UngDung, tuy: {
           case '/api/tem/gui': return json({ ok: true, ...(await ud.guiTem(thayDoiTem(await docThan(req)))) });
           case '/api/tem/usb': return json({ ok: true, ...(await ud.taoFileUsbTem(thayDoiTem(await docThan(req)))) });
           case '/api/da-nap-usb': return json({ ok: true, ...ud.daNapUsb() });
-          // Ô Cân tự làm mới mỗi phút: chỉ đọc cài đặt, lần tự gửi và ngày tính HSD trên cân (qua nửa đêm thì báo HSD cũ), không gọi kho.
-          case '/api/can': return json({ ok: true, cauHinh: ud.cauHinh(), lanTuGui: ud.lanTuGui, hsd: ud.hsdTrenCan() });
+          // Ô Cân tự làm mới (2.8: mỗi 15 giây): chỉ đọc cài đặt, lần tự gửi, ngày tính HSD trên cân (qua nửa đêm thì báo HSD
+          // cũ) và trạng thái nền (kết nối giữ mở, giờ cân, nhật ký, UDP) — không gọi kho, không nối cân.
+          case '/api/can': return json({ ok: true, cauHinh: ud.cauHinh(), lanTuGui: ud.lanTuGui, hsd: ud.hsdTrenCan(), nen: ud.trangThaiNen() });
           case '/api/thu-can': return json({ ok: true, ...(await ud.thuCan()) });
           case '/api/tim-can': return json({ ok: true, ...(await ud.timCan()) });
           // ---- 2.2: cổng hai chiều 33581 (chưa thử trên cân thật) ----

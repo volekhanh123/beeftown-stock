@@ -19,7 +19,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { exec, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { UngDung, duongDanMacDinh } from './nghiep-vu.ts';
+import { NHIP_CAN_MS, UngDung, duongDanMacDinh } from './nghiep-vu.ts';
 import { moMayChu } from './may-chu.ts';
 import {
   cacTepCapNhat, cauQuayVeBangTay, chayThuQuaPowerShell, docThamSoPhienBan, donSauCapNhat, khoaCapNhatConHan, khoiDongLaiSauCapNhat,
@@ -27,7 +27,7 @@ import {
 } from './cap-nhat.ts';
 import { chayPowerShell } from './day-rs232.ts';
 
-const PHIEN_BAN = '2.7.0';
+const PHIEN_BAN = '2.8.0';
 
 // ---- 2.6.1: bản cũ đang CHẠY THỬ file này trước khi đổi sang (cap-nhat.ts chayThuBanMoi) ---------------------------
 // Chỉ ghi phiên bản vào file được chỉ rồi thoát: không mở máy chủ, không mở cửa sổ, không đụng dữ liệu — trước mọi bước
@@ -158,6 +158,12 @@ setInterval(async () => {
   dangTuGui = true;
   try { await ud.tuGuiMotLan(); } finally { dangTuGui = false; }
 }, 60_000);
+
+// 2.8: giữ kết nối hai chiều mở với cân (nghe cân tự báo in tem, đèn ô Cân, tự chỉnh giờ cân mỗi ngày) — nhịp 30 giây như
+// phần mềm của hãng; lần đầu ngay sau khi mở. Nghe UDP cân tự phát nếu bật ở Cài đặt.
+void ud.capNhatUdp();
+setTimeout(() => { if (!dangCapNhat()) void ud.nhipCan(); }, 2_000);
+setInterval(() => { if (!dangCapNhat()) void ud.nhipCan(); }, NHIP_CAN_MS);
 
 // Lâu không nghe nhịp từ trang (cửa sổ đã đóng mà không kịp báo) → tắt.
 // Cửa sổ thu nhỏ vẫn gửi nhịp chậm nhất mỗi phút, nên chờ tới 4 phút.

@@ -95,6 +95,15 @@ export interface CanGia {
   nhanTu(i?: number): Buffer;
   /** Chờ tới khi dk() đúng, tối đa ms. */
   choNhan(dk: () => boolean, ms?: number): Promise<boolean>;
+  /**
+   * 2.8 — cắt mọi kết nối đang mở, vẫn nghe kết nối mới (cân khởi động lại, router phát địa chỉ này cho máy khác: kết nối
+   * TCP cũ không còn). Kết nối giữ mở của chương trình thấy đứt và phải bắt tay lại.
+   */
+  ngatKetNoi(): void;
+  /** 2.8 — cân tự đẩy một dòng (vd "ASK\tREP\t" khi in tem, thông số 58) tới mọi kết nối đang mở. Trả số kết nối đã đẩy. */
+  day(dong: string): number;
+  /** 2.8 — số kết nối đang mở. */
+  soDangMo(): number;
   dong(): Promise<void>;
 }
 
@@ -171,7 +180,8 @@ function giaoDichMoi(du: DuLieuCanGia): string[] {
     `RES\t1\t50000,3\t1\t9\t9\t0,3\t500,3\t1\t0\t0,3\t\t\t\t\t100000,3\t0\t${chuoiByte('Hàng thử mới')}\t`, 'REE\t'];
 }
 
-export async function moCanGia(tuy: { du?: Partial<DuLieuCanGia>; hong?: CheDoHong | null } = {}): Promise<CanGia> {
+/** `diaChi`: địa chỉ nghe (mặc định 127.0.0.1; 2.8 thử cân đổi địa chỉ — 127.0.0.2). */
+export async function moCanGia(tuy: { du?: Partial<DuLieuCanGia>; hong?: CheDoHong | null; diaChi?: string } = {}): Promise<CanGia> {
   const sockets = new Set<net.Socket>();
   const can: CanGia = {
     cong: 0,
@@ -191,6 +201,13 @@ export async function moCanGia(tuy: { du?: Partial<DuLieuCanGia>; hong?: CheDoHo
       while (!dk()) { if (Date.now() > het) return false; await nghi(5); }
       return true;
     },
+    ngatKetNoi() { for (const s of sockets) s.destroy(); },
+    day(dong: string) {
+      let n = 0;
+      for (const s of sockets) if (!s.destroyed && s.writable) { s.write(Buffer.from(dong + can.xuongDong, 'latin1')); n++; }
+      return n;
+    },
+    soDangMo() { return [...sockets].filter(s => !s.destroyed).length; },
     dong: () => new Promise<void>((xong) => { for (const s of sockets) s.destroy(); may.close(() => xong()); }),
   };
 
@@ -313,7 +330,7 @@ export async function moCanGia(tuy: { du?: Partial<DuLieuCanGia>; hong?: CheDoHo
     });
   });
 
-  await new Promise<void>((xong) => may.listen(0, '127.0.0.1', () => xong()));
+  await new Promise<void>((xong) => may.listen(0, tuy.diaChi ?? '127.0.0.1', () => xong()));
   (can as { cong: number }).cong = (may.address() as net.AddressInfo).port;
   return can;
 }

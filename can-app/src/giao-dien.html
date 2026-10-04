@@ -149,6 +149,7 @@
     <div class="o"><div class="nhan">Cân</div><div class="gt"><span class="den" id="den-can"></span><span id="o-can">…</span></div>
       <div class="phu"><button id="nut-thu-can" style="padding:3px 10px;font-size:13px;margin-top:4px">Kiểm tra kết nối</button>
         <span class="dang-lam an" id="dang-tim-can">Đang dò WiFi tìm cân…</span></div>
+      <div class="phu" id="o-ket-noi"></div>
       <div class="phu" id="o-doi-dia-chi"></div>
       <div class="phu" id="o-tu-gui"></div></div>
     <div class="o"><div class="nhan">Trên cân</div><div class="gt" id="o-tren-can">…</div><div class="phu" id="o-goc"></div></div>
@@ -405,6 +406,15 @@
         <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" name="tuGui">
           <span>Tự gửi xuống cân khi kho đổi (mỗi phút, khi cửa sổ này đang mở) — đổi giá, lóc tảng mới là cân tự cập nhật tên, giá;
             sang ngày mới là cân tự nhận HSD đếm ngược theo lô (bật / tắt in HSD vẫn phải xem trước rồi bấm Gửi).</span></label>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" name="giuKetNoi">
+          <span>Giữ kết nối với cân (cổng hai chiều, như phần mềm của hãng): đèn ô Cân biết ngay cân còn nối không, cân in tem là
+            chương trình tự đọc nhật ký. Tắt: mỗi việc nối cân riêng như bản 2.7. <i>Chưa thử trên cân thật.</i></span></label>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" name="tuDatGio">
+          <span>Tự chỉnh giờ cân theo giờ Việt Nam mỗi ngày (khi lệch quá 30 giây, chỉ khi giờ máy tính khớp giờ mạng) — ngày đóng gói,
+            HSD in trên tem theo đồng hồ cân. Cần bật giữ kết nối. <i>Chưa thử trên cân thật.</i></span></label>
+        <label style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input type="checkbox" name="ngheUdp">
+          <span>Nghe tín hiệu cân tự phát (UDP 33584) để tìm lại cân nhanh khi cân đổi địa chỉ. Lần đầu bật, Windows có thể hỏi
+            tường lửa — chọn <b>Cho phép</b> (có máy cần mật khẩu quản trị). Bị chặn thì chương trình dò WiFi như trước.</span></label>
         <label class="truong an" id="o-chi-nhanh"><span>Chi nhánh</span><select name="chiNhanhId"></select></label>
         <div class="nut"><button type="submit">Lưu cài đặt</button></div>
       </form>
@@ -498,6 +508,9 @@
     f.congCan.value = ch.congCan; f.diaChiKho.value = ch.diaChiKho;
     f.congHaiChieu.value = ch.congHaiChieu ?? '';
     f.tuGui.checked = !!ch.tuGui;
+    f.giuKetNoi.checked = ch.giuKetNoi !== false;
+    f.tuDatGio.checked = ch.tuDatGio !== false;
+    f.ngheUdp.checked = ch.ngheUdp === true;
     veOCan();
     // Cổng COM, tốc độ lần thử trước: chỉ điền lúc mở trang, không đè lựa chọn đang làm dở.
     if (!daDienCom) {
@@ -557,11 +570,54 @@
       ? `Tự tìm thấy cân ở địa chỉ mới lúc ${e(lucNgan(ds[0].luc))} (trước: ${e(ds[0].tu)}).`
         + (ganDay >= 2 ? ` <b>Cân đã đổi địa chỉ ${ganDay} lần trong 30 ngày</b> — nên giữ cố định địa chỉ cho cân trong router (xem Cài đặt).` : '')
       : '';
+    veKetNoi(trangThai.nen);
     const tg = trangThai.lanTuGui;
     $('o-tu-gui').textContent = ch.tuGui
       ? 'Tự gửi: bật' + (tg ? ' · ' + new Date(tg.luc).toLocaleTimeString('vi-VN') + ' — ' + tg.cau : ' · chờ lần đầu')
       : '';
     $('bao-hsd').innerHTML = baoHsdCu(trangThai.hsd);
+  }
+
+  /**
+   * 2.8 — kết nối giữ mở và việc chạy nền (/api/can → nen): đèn ô Cân xanh khi cân trả lời trong 75 giây vừa qua (nhịp 30
+   * giây), đỏ khi lần nhịp gần nhất hỏng. Giữ kết nối tắt: đèn chỉ theo nút Kiểm tra kết nối như trước.
+   */
+  const gioNgan = (t) => new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
+  const giayChu = (g) => { const a = Math.abs(g); return a < 90 ? a + ' giây' : a < 5400 ? Math.round(a / 60) + ' phút' : Math.round(a / 3600) + ' giờ'; };
+  function veKetNoi(n) {
+    const o = $('o-ket-noi');
+    if (!n) { o.innerHTML = ''; return; }
+    const dong = [];
+    if (!n.giu.bat) {
+      dong.push('Không giữ kết nối với cân (Cài đặt) — mỗi việc nối cân riêng.');
+    } else {
+      const moi = n.giu.lucNghe && Date.now() - new Date(n.giu.lucNghe).getTime() < 75000;
+      if (moi && !n.loi) {
+        $('den-can').className = 'den xanh';
+        dong.push(`Đang nối cân (cổng hai chiều) · cân trả lời lúc ${e(gioNgan(n.giu.lucNghe))}`
+          + (n.gio ? ` · giờ cân ${Math.abs(n.gio.lechGiay) <= 30 ? 'đúng' : (n.gio.lechGiay > 0 ? 'nhanh ' : 'chậm ') + e(giayChu(n.gio.lechGiay))}` : '') + '.');
+      } else if (n.loi) {
+        $('den-can').className = 'den do';
+        dong.push(`<b>Chưa nối được cân</b> (lúc ${e(gioNgan(n.loi.luc))}): ${e(n.loi.cau)}`);
+      } else {
+        dong.push('Đang nối cân…');
+      }
+      if (n.nhatKy) {
+        dong.push(n.nhatKy.loi && !n.nhatKy.soDong
+          ? `Tự đọc nhật ký lúc ${e(gioNgan(n.nhatKy.luc))} chưa được: ${e(n.nhatKy.loi)}`
+          : `Nhật ký cân: tự đọc lúc ${e(gioNgan(n.nhatKy.luc))} (${n.nhatKy.lyDo === 'bao' ? 'cân báo vừa in tem' : 'vừa nối được cân'}), `
+            + `${n.nhatKy.soMoi} dòng mới.` + (n.nhatKy.loi ? ' ' + e(n.nhatKy.loi) : ''));
+      }
+      if (n.tuBao58 === false) dong.push('Cân chưa bật tự báo khi in tem (thông số 58) — nhật ký chỉ tự đọc lúc nối được cân.');
+      const td = n.tuDatGio, cuoi = td.lan[td.lan.length - 1];
+      if (td.bat && cuoi) dong.push(`Giờ cân (${e(td.ngay.slice(8, 10) + '/' + td.ngay.slice(5, 7))} ${e(gioNgan(cuoi.luc))}): ${e(cuoi.cau)}`);
+    }
+    if (n.udp.bat) {
+      dong.push(n.udp.loi ? e(n.udp.loi)
+        : n.udp.thay.length ? 'Nghe tín hiệu cân: ' + n.udp.thay.map(c => `${e(c.ip)} lúc ${e(gioNgan(c.luc))}`).join(', ') + '.'
+        : n.udp.dangNghe ? 'Nghe tín hiệu cân (UDP): chưa nghe thấy cân phát — tường lửa Windows có thể đang chặn.' : '');
+    }
+    o.innerHTML = dong.filter(Boolean).map(d => `<div>${d}</div>`).join('');
   }
 
   /**
@@ -2242,7 +2298,7 @@
     const f = ev.target;
     try {
       await goi('/api/cau-hinh', { ipCan: ipDangSua ? f.ipCan.value : undefined, congCan: Number(f.congCan.value), diaChiKho: f.diaChiKho.value,
-        tuGui: f.tuGui.checked, chiNhanhId: trangThai && trangThai.nguoi && trangThai.nguoi.cacChiNhanh.length > 1 ? f.chiNhanhId.value : undefined,
+        tuGui: f.tuGui.checked, giuKetNoi: f.giuKetNoi.checked, tuDatGio: f.tuDatGio.checked, ngheUdp: f.ngheUdp.checked, chiNhanhId: trangThai && trangThai.nguoi && trangThai.nguoi.cacChiNhanh.length > 1 ? f.chiNhanhId.value : undefined,
         congHaiChieu: f.congHaiChieu.value.trim() ? Number(f.congHaiChieu.value) : null });
       ipDangSua = false;
       baoChung('xong', 'Đã lưu cài đặt.'); await taiTrangThai();
@@ -2271,11 +2327,15 @@
 
   $('nut-thu-can').onclick = kiemTraCan;
   $('form-cau-hinh').ipCan.addEventListener('input', () => { ipDangSua = true; });
-  // Tự gửi chạy ngầm mỗi phút (có thể vừa gửi, vừa tìm ra cân ở địa chỉ mới): làm mới ô Cân, không đụng kho.
+  // Tự gửi chạy ngầm mỗi phút, nhịp giữ kết nối mỗi 30 giây (có thể vừa gửi, vừa tìm ra cân ở địa chỉ mới, vừa tự đọc
+  // nhật ký): làm mới ô Cân mỗi 15 giây, không đụng kho, không nối cân.
   setInterval(async () => {
     if (!trangThai || document.visibilityState !== 'visible') return;
-    try { const s = await goi('/api/can'); trangThai.cauHinh = s.cauHinh; trangThai.lanTuGui = s.lanTuGui; trangThai.hsd = s.hsd; veOCan(); } catch { /* lần sau */ }
-  }, 60000);
+    try {
+      const s = await goi('/api/can');
+      trangThai.cauHinh = s.cauHinh; trangThai.lanTuGui = s.lanTuGui; trangThai.hsd = s.hsd; trangThai.nen = s.nen; veOCan();
+    } catch { /* lần sau */ }
+  }, 15000);
   $('nut-tim-can').onclick = async () => {
     const nut = $('nut-tim-can'), noi = $('ket-qua-tim-can');
     nut.disabled = true; $('dang-tim-can-2').classList.remove('an'); bao(noi, '', '');
