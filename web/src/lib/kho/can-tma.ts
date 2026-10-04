@@ -195,6 +195,13 @@ export function tenFileCan(ten: string | null | undefined): string {
 }
 
 const sachTen = (t: string): string => t.replace(/[\t\r\n]+/g, ' ').trim().normalize('NFC');
+/**
+ * Tên đúng như lapKeHoach ghi xuống cân (NFC, bỏ tab / xuống dòng, cắt TEN_TOI_DA ký tự). So "cân đã có tên này chưa"
+ * (trang pha lóc, thẻ Tảng & ô) bằng hàm này ở CẢ HAI phía — so chuỗi thô thì tên dán từ Excel (NFD) không bao giờ khớp.
+ */
+export function chuanTenCan(t: string): string {
+  return [...sachTen(String(t ?? ''))].slice(0, TEN_TOI_DA).join('').trim();
+}
 
 // -----------------------------------------------------------------------------
 // HẠN DÙNG (chưa thử trên cân thật — xem đầu file)

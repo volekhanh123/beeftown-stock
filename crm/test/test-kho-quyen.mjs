@@ -424,8 +424,8 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_gia_giam', 'kho_ma_giam_kiem', 'kho_o_ma_khong_trung_giam', 'kho_mat_hang_ma_can_khong_trung_giam',
     // 0060: phần tính của kho_ipos_trang_thai, không kiểm quyền — máy báo động đọc qua suc_khoe_so_lieu
     'kho_ipos_trang_thai_goc',
-    // 0061: đọc mốc giờ máy quầy gửi (ISO có Z) và giờ đồng hồ cân (giờ VN)
-    'kho_luc_iso', 'kho_luc_can_vn',
+    // 0061: giờ đồng hồ cân (giờ VN) → timestamptz
+    'kho_luc_can_vn',
   ].sort();
 
   const { rows } = await db.query(`

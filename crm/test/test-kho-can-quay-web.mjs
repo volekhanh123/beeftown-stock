@@ -50,8 +50,14 @@ await nhom('1 · CÂN SẴN SÀNG CHỈ KHI ĐÚNG TÊN MỚI (TÊN + SỐ TẢN
   const chua = dong0(CP({ o: [O({ tren_can: [] })] }));
   ok('Máy quầy báo mà mã ô chưa có trên cân → vàng "Chưa lên cân"', chua.muc === 'chua_len' && /^Chưa lên cân: mã ô 10011/.test(chua.cau.vi), chua.cau.vi);
   const khong = dong0(CP({ o: [O({ tren_can: [] })], may: [] }));
-  ok('Chưa máy quầy nào báo → "không biết", xem trên cân trước khi in — không bao giờ "sẵn sàng"', khong.muc === 'khong_biet'
-     && /Không biết cân đã có/.test(khong.cau.vi) && /Xem trên cân trước khi in/.test(khong.cau.vi), khong.cau.vi);
+  ok('Chưa máy quầy nào báo → "không biết": quản lý bấm Gửi xuống cân, xem trên cân đúng tên rồi mới in — không bao giờ "sẵn sàng"',
+     khong.muc === 'khong_biet' && /Không biết cân đã có/.test(khong.cau.vi) && /bấm Gửi xuống cân/.test(khong.cau.vi)
+     && /xem trên cân đúng tên rồi mới in tem/.test(khong.cau.vi), khong.cau.vi);
+  const nfd = dong0(CP({ o: [O({ ten_hang: 'Thăn ngoại cắt lát'.normalize('NFD'),
+                                 tren_can: [{ plu: 23, ten: 'Thăn ngoại cắt lát #0142', phim: ['E'], bao_luc: truoc(1) }] })] }));
+  ok('Tên món lưu dạng NFD (dán từ Excel / macOS), cân lưu NFC → vẫn "sẵn sàng" (so như lúc gửi xuống cân)', nfd.muc === 'san_sang', nfd.cau?.vi);
+  const tab = dong0(CP({ o: [O({ ten_hang: 'Thăn ngoại\tcắt lát', tren_can: [{ plu: 23, ten: 'Thăn ngoại cắt lát #0142', phim: [], bao_luc: truoc(1) }] })] }));
+  ok('Tên món có tab → cân nhận dấu cách → vẫn khớp', tab.muc === 'san_sang', tab.cau?.vi);
   const lau = dong0(CP({ o: [O({ tren_can: [{ plu: 23, ten: 'Thăn ngoại cắt lát #0142', phim: ['F5'], bao_luc: truoc(PHUT_BAO_CAN_CU + 3) }] })] }));
   ok(`Máy quầy báo ${PHUT_BAO_CAN_CU + 3} phút trước → vẫn sẵn sàng nhưng nói rõ lần báo`, lau.muc === 'san_sang'
      && /\(máy quầy báo 8 phút trước\)$/.test(lau.cau.vi), lau.cau.vi);
@@ -68,7 +74,8 @@ await nhom('1 · CÂN SẴN SÀNG CHỈ KHI ĐÚNG TÊN MỚI (TÊN + SỐ TẢN
 
 // ===========================================================================
 await nhom('2 · MÁY QUẦY: TỰ GỬI, LẦN BÁO CUỐI', async () => {
-  ok('Tự gửi bật → "tự gửi tên mới xuống cân trong khoảng 15 giây"', /tự gửi tên mới xuống cân trong khoảng 15 giây/.test(tomTatCanPhien(CP()).may.vi));
+  ok('Tự gửi bật → "tự gửi tên mới xuống cân sau khoảng 15–60 giây — bấm Xem lại cân"',
+     /tự gửi tên mới xuống cân sau khoảng 15–60 giây .* — bấm Xem lại cân/.test(tomTatCanPhien(CP()).may.vi), tomTatCanPhien(CP()).may.vi);
   const tat = tomTatCanPhien(CP({ may: [MAY({ tu_gui: false, bao_luc: truoc(4) })] })).may;
   ok('Tự gửi tắt → quản lý bấm Gửi xuống cân; nói lần báo', /^Tự gửi đang tắt ở máy quầy \(báo 4 phút trước\)/.test(tat.vi), tat.vi);
   ok('Không máy nào → câu nói rõ trang không biết', /Chưa máy quầy nào chạy Beeftown Cân 2.9/.test(tomTatCanPhien(CP({ may: [] })).may.vi));
@@ -116,9 +123,24 @@ await nhom('5 · ĐỌC KHO: KHÔNG BAO GIỜ NÉM, KHÔNG BAO GIỜ ĐOÁN', as
   const g = await docGiaoOMaCan(rpc({ data: [{ o_ma_id: 'o1', con_kg: '1.32', con_goi: '3', con_giu: true }], error: null }), 'cn');
   ok('docGiaoOMaCan: con_kg / con_goi thành số', g[0].con_kg === 1.32 && g[0].con_goi === 3);
   const kq = await giaoOMa(rpc({ data: [{ ten: 'Thăn ngoại cắt lát', so_o: 1, ma_can: '10011' }], error: null }), 'p');
-  ok('Giao ô mã: câu không hứa "cân đã đổi" — chờ dòng Cân sẵn sàng; không còn bắt bấm Gửi xuống cân',
-     kq.ok && /chờ dòng "Cân sẵn sàng" hiện xanh rồi mới in tem/.test(kq.cau) && !/bấm Gửi xuống cân/.test(kq.cau)
-     && /wait for the "Scale ready" line/.test(kq.cauEn), kq.cau);
+  ok('Giao ô mã: câu không hứa "cân đã đổi" — tự gửi chỉ khi bật, không thì quản lý bấm Gửi; chờ dòng Cân sẵn sàng (Xem lại cân)',
+     kq.ok && /bật Tự gửi thì tự gửi tên mới xuống cân sau khoảng 15–60 giây; không thì quản lý mở Beeftown Cân bấm Gửi xuống cân/.test(kq.cau)
+     && /Chờ dòng "Cân sẵn sàng" hiện xanh \(bấm Xem lại cân\) rồi mới in tem/.test(kq.cau)
+     && /wait for the "Scale ready" line/i.test(kq.cauEn), kq.cau);
+  // Database chưa chạy 0061 (Beeftown Cân 2.9 cập nhật trước): đọc view như 2.8, không hỏng cả việc gửi xuống cân.
+  const goiView = [];
+  const clientCu = {
+    rpc: async () => ({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.kho_can_giao_o_ma(p_chi_nhanh_id)' } }),
+    from(ten) { const q = { ten, loc: [] }; goiView.push(q); const b = { select: () => b, eq: (k, v) => { q.loc.push([k, v]); return b; }, order: () => b,
+      then: (xong) => Promise.resolve({ data: [{ o_ma_id: 'o1', con_kg: '2', con_goi: 1, con_giu: true }], error: null }).then(xong) }; return b; },
+  };
+  const cu = await docGiaoOMaCan(clientCu, 'cn-1');
+  ok('Kho chưa có kho_can_giao_o_ma → đọc view kho_v_o_ma_giao của đúng chi nhánh (như 2.8)', cu.length === 1 && cu[0].con_kg === 2
+     && goiView[0]?.ten === 'kho_v_o_ma_giao' && goiView[0].loc.some(([k, v]) => k === 'chi_nhanh_id' && v === 'cn-1'), JSON.stringify(goiView));
+  let loiKhac = '';
+  try { await docGiaoOMaCan({ rpc: async () => ({ data: null, error: { code: 'PGRST202', message: 'Could not find the function public.ham_khac' } }) }, 'cn'); }
+  catch (e) { loiKhac = e.message; }
+  ok('Lỗi "thiếu hàm" của hàm KHÁC → vẫn ném (không giấu hỏng thật)', /ham_khac/.test(loiKhac), loiKhac);
 });
 
 // ===========================================================================

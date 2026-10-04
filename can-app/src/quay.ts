@@ -12,6 +12,7 @@
  *   · Báo cáo: gộp theo ngày / giờ / món, phần bán giảm giá.
  */
 import { tenTheoTang } from '../../web/src/lib/kho/danh-muc-can.ts';
+import { chuanTenCan } from '../../web/src/lib/kho/can-tma.ts';
 import { giaGiam, tenGiam } from '../../web/src/lib/kho/ma-giam.ts';
 import { soTangChu } from '../../web/src/lib/kho/tang.ts';
 
@@ -240,7 +241,8 @@ export function tomTatO(ds: OMaKho[], tenTrenCan: Map<string, string>): NhomO[] 
       kg_huy: so(x.kg_huy), kg_khac: so(x.kg_khac), so_ban_dung_o: so(x.so_ban_dung_o), so_lech_o: so(x.so_lech_o),
       soTang: soTangChu(x.so_tang), tinhTrang,
       banPt: kgRa && kgRa > 0 ? Math.round(so(x.kg_ban) / kgRa * 100) : null,
-      tenMuon, tenTrenCan: tren, canDaDoi: tren !== null && tren.trim() === tenMuon.trim(),
+      // So bằng chuanTenCan ở cả hai phía (NFC, bỏ tab, cắt như lúc gửi) — tên dán từ Excel (NFD) vẫn khớp.
+      tenMuon, tenTrenCan: tren, canDaDoi: tren !== null && chuanTenCan(tren) === chuanTenCan(tenMuon),
     };
     const n = nhom.get(x.mat_hang_id) ?? { mat_hang_id: x.mat_hang_id, ten: x.ten, o: [], dangBan: 0, trong: 0, lech: 0 };
     n.o.push(o);

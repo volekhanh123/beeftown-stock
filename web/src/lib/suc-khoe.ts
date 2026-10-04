@@ -36,7 +36,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { HaiThuTieng, NgonNguNB } from './ngon-ngu-noi-bo';
-import { gioVnTuMs, homNayVn } from './gio-vn.ts';
+import { gioVnTuMs, homNayVn, isoGioVn } from './gio-vn.ts';
 
 // -----------------------------------------------------------------------------
 // NGƯỠNG
@@ -69,6 +69,11 @@ export const PHUT_MAY_CAN_IM = 30;
 export const PHUT_CAN_KHONG_TRA_LOI = 10;
 /** Kho đổi (thêm / sửa hàng, ô theo tảng) mà cân chưa nhận chừng này phút → vàng. Tự gửi chạy mỗi 15–60 giây. */
 export const PHUT_LECH_CAN = 15;
+/**
+ * Một máy quầy im quá chừng này giờ trong khi máy khác của chi nhánh vẫn báo → coi như đã thôi dùng (cài lại Beeftown Cân,
+ * máy thử của quản lý, đổi chi nhánh) — không tính nữa. Không có máy nào báo thì vẫn đỏ: chi nhánh không còn máy quầy chạy.
+ */
+export const GIO_MAY_CAN_THOI_DUNG = 48;
 
 // -----------------------------------------------------------------------------
 // SỐ LIỆU THÔ — đúng dạng suc_khoe_he_thong() trả về
@@ -419,9 +424,10 @@ function denSoKho(d: Partial<ChiNhanhTho['so_kho']> | undefined, maCn: string, n
 
 // --- Beeftown Cân (máy quầy, 0061) ---------------------------------------------------
 /**
- * Mỗi máy quầy báo về kho mỗi phút (kho_may_can_bao). Đỏ: trong giờ mở cửa có máy im quá PHUT_MAY_CAN_IM phút (tính từ
- * lúc mở cửa hôm nay) — tên ô theo tảng, giá mới không còn xuống cân. Vàng (máy còn báo): cân không trả lời (trong giờ mở
- * cửa), kho đổi mà cân chưa nhận quá PHUT_LECH_CAN phút, lần tự gửi gần nhất hỏng. Ngoài giờ mở cửa máy tắt là bình thường.
+ * Mỗi máy quầy báo về kho mỗi phút (kho_may_can_bao). Đỏ: trong giờ mở cửa KHÔNG máy nào của chi nhánh báo quá
+ * PHUT_MAY_CAN_IM phút (tính từ lúc mở cửa hôm nay) — tên ô theo tảng, giá mới không còn xuống cân. Vàng (trong giờ mở cửa):
+ * một máy khác im (máy im quá GIO_MAY_CAN_THOI_DUNG giờ coi như đã thôi dùng), cân không trả lời, kho đổi mà cân chưa nhận
+ * quá PHUT_LECH_CAN phút, lần tự gửi gần nhất hỏng. Ngoài giờ mở cửa máy, cân tắt là bình thường.
  */
 function denCan(d: Partial<CanTho> | undefined, maCn: string, bayGio: number, nn: NgonNguNB): Den {
   const di = `/noi-bo/kho/cai-dat/can?cn=${encodeURIComponent(maCn)}`;
@@ -434,24 +440,39 @@ function denCan(d: Partial<CanTho> | undefined, maCn: string, bayGio: number, nn
   const dong = Number.isInteger(d?.gio_dong_cua) ? Number(d?.gio_dong_cua) : 23;
   const gio = Number(gioVnTuMs(bayGio).slice(11, 13));
   const trongGio = gio >= mo && gio < dong;
-  const mocMoCua = Date.parse(`${homNayVn(bayGio)}T${String(mo).padStart(2, '0')}:00:00+07:00`);
+  const [nam, thang, ngay] = homNayVn(bayGio).split('-').map(Number);
+  const mocMoCua = Date.parse(isoGioVn(nam, thang, ngay, Math.min(Math.max(mo, 0), 23), 0) ?? '');
+  // Đã mở cửa quá PHUT_MAY_CAN_IM phút: bật máy lúc 10:05 không đỏ từ 10:00. Mốc "từ lúc nào" của lệch cũng tính từ lúc mở
+  // cửa — lệch từ nửa đêm (HSD đếm ngược, cân tắt) không vàng ngay lúc 10:00.
+  const quaMoCua = trongGio && bayGio - mocMoCua > PHUT_MAY_CAN_IM * 60000;
+  const tuMoCua = (t: number) => Math.max(t, mocMoCua);
   // Còn báo: lần báo gần nhất trong PHUT_MAY_CAN_IM phút (máy báo mỗi phút).
   const song = (m: MayCanTho) => { const b = ms(m.bao_luc); return b !== null && bayGio - b <= PHUT_MAY_CAN_IM * 60000; };
   const conBao = may.filter(song);
   const imLang = may.filter(m => !song(m));
+  // Máy khác vẫn báo mà máy này im quá GIO_MAY_CAN_THOI_DUNG giờ → đã thôi dùng, bỏ qua.
+  const imCanBao = conBao.length > 0
+    ? imLang.filter(m => bayGio - (ms(m.bao_luc) ?? -Infinity) <= GIO_MAY_CAN_THOI_DUNG * 3600000) : imLang;
   const v: VanDe[] = [];
 
-  // Đỏ chỉ trong giờ mở cửa, và đã mở cửa quá PHUT_MAY_CAN_IM phút (bật máy lúc 10:05 không đỏ từ 10:00).
-  if (trongGio && imLang.length > 0 && bayGio - mocMoCua > PHUT_MAY_CAN_IM * 60000) {
-    const cu = Math.min(...imLang.map(m => ms(m.bao_luc) ?? bayGio));
-    const ai = imLang.length === 1 ? { vi: 'Máy quầy', en: 'The counter computer' }
-      : { vi: `${imLang.length} máy quầy`, en: `${imLang.length} counter computers` };
-    v.push({ muc: 'do', cau: {
-      vi: `${ai.vi} chạy Beeftown Cân không báo về kho từ ${tuTruoc(bayGio, cu).vi} — giá mới và tên ô theo tảng không xuống cân. Bật máy quầy, mở Beeftown Cân và đăng nhập kho`,
-      en: `${ai.en} running Beeftown Scale ${imLang.length === 1 ? 'has' : 'have'} not reported since ${tuTruoc(bayGio, cu).en} — new prices and primal slot names do not reach the scale. Turn on the counter computer, open Beeftown Scale and sign in` } });
+  if (quaMoCua && imCanBao.length > 0) {
+    const cu = Math.min(...imCanBao.map(m => ms(m.bao_luc) ?? bayGio));
+    if (conBao.length === 0) {
+      const ai = imCanBao.length === 1 ? { vi: 'Máy quầy', en: 'The counter computer' }
+        : { vi: `${imCanBao.length} máy quầy`, en: `${imCanBao.length} counter computers` };
+      v.push({ muc: 'do', cau: {
+        vi: `${ai.vi} chạy Beeftown Cân không báo về kho từ ${tuTruoc(bayGio, cu).vi} — giá mới và tên ô theo tảng không xuống cân. Bật máy quầy, mở Beeftown Cân và đăng nhập kho`,
+        en: `${ai.en} running Beeftown Scale ${imCanBao.length === 1 ? 'has' : 'have'} not reported since ${tuTruoc(bayGio, cu).en} — new prices and primal slot names do not reach the scale. Turn on the counter computer, open Beeftown Scale and sign in` } });
+    } else {
+      const n = imCanBao.length;
+      v.push({ muc: 'vang', cau: {
+        vi: `${n} máy quầy khác không báo về kho từ ${tuTruoc(bayGio, cu).vi} — máy đó đã thôi dùng thì bỏ qua (tự hết sau ${GIO_MAY_CAN_THOI_DUNG} giờ)`,
+        en: `${n} other counter computer${s(n)} ${n === 1 ? 'has' : 'have'} not reported since ${tuTruoc(bayGio, cu).en} — if it is no longer used, ignore this (clears after ${GIO_MAY_CAN_THOI_DUNG} hours)` } });
+    }
   }
-  const khongTraLoi = trongGio ? conBao.filter(m => m.giu_ket_noi === true
-    && (ms(m.can_tra_loi_luc) === null || bayGio - (ms(m.can_tra_loi_luc) as number) > PHUT_CAN_KHONG_TRA_LOI * 60000)) : [];
+  // Vàng chỉ trong giờ mở cửa: ngoài giờ cân tắt, máy quầy để qua đêm là bình thường.
+  const khongTraLoi = quaMoCua ? conBao.filter(m => m.giu_ket_noi === true
+    && (ms(m.can_tra_loi_luc) === null || bayGio - tuMoCua(ms(m.can_tra_loi_luc) as number) > PHUT_CAN_KHONG_TRA_LOI * 60000)) : [];
   if (khongTraLoi.length > 0) {
     const tl = khongTraLoi.map(m => ms(m.can_tra_loi_luc)).filter((x): x is number => x !== null);
     const tu: Cau = tl.length ? { vi: ` từ ${tuTruoc(bayGio, Math.min(...tl)).vi}`, en: ` since ${tuTruoc(bayGio, Math.min(...tl)).en}` } : { vi: '', en: '' };
@@ -459,7 +480,8 @@ function denCan(d: Partial<CanTho> | undefined, maCn: string, bayGio: number, nn
       vi: `Beeftown Cân không nói chuyện được với cân${tu.vi} — xem cân có bật, cùng WiFi không (ô Cân trong Beeftown Cân)`,
       en: `Beeftown Scale cannot talk to the scale${tu.en} — check the scale is on and on the same Wi-Fi (Scale box in Beeftown Scale)` } });
   }
-  const lech = conBao.filter(m => so(m.lech_so) > 0 && ms(m.lech_tu) !== null && bayGio - (ms(m.lech_tu) as number) > PHUT_LECH_CAN * 60000);
+  const lech = trongGio ? conBao.filter(m => so(m.lech_so) > 0 && ms(m.lech_tu) !== null
+    && bayGio - tuMoCua(ms(m.lech_tu) as number) > PHUT_LECH_CAN * 60000) : [];
   if (lech.length > 0) {
     const n = Math.max(...lech.map(m => so(m.lech_so)));
     const tu = Math.min(...lech.map(m => ms(m.lech_tu) as number));
@@ -470,7 +492,7 @@ function denCan(d: Partial<CanTho> | undefined, maCn: string, bayGio: number, nn
       : { vi: `${n} hàng kho đã đổi mà cân chưa nhận (từ ${tuTruoc(bayGio, tu).vi}) — Tự gửi đang tắt: quản lý bấm Gửi xuống cân, hoặc bật Tự gửi ở Cài đặt của Beeftown Cân`,
           en: `${n} item${s(n)} changed in stock but not on the scale yet (since ${tuTruoc(bayGio, tu).en}) — automatic sending is off: a manager presses Send to scale, or turns on automatic sending in Beeftown Scale settings` } });
   }
-  if (lech.length === 0 && conBao.some(m => m.tu_gui === true && m.gui_loi === true)) {
+  if (trongGio && lech.length === 0 && conBao.some(m => m.tu_gui === true && m.gui_loi === true)) {
     v.push({ muc: 'vang', cau: {
       vi: 'Lần tự gửi xuống cân gần nhất bị lỗi — mở Beeftown Cân xem câu báo ở ô Cân',
       en: 'The latest automatic send to the scale failed — open Beeftown Scale and read the Scale box' } });

@@ -155,15 +155,16 @@ await nhom('3 · MÁY QUẦY BÁO TRẠNG THÁI (kho_may_can_bao)', async () => 
     { plu: 9999999, ma_can: '10011', ten: 'PLU hệ thống' },                 // PLU hệ thống → bỏ
     'không phải đối tượng',
   ];
-  const ISO_TRA_LOI = new Date(Date.now() - 60_000).toISOString();
   const r = await bao(UID.nvQuayA, cnA.id, MAY_1, {
-    phien_ban: '2.9.0', mac_can: MAC.toLowerCase(), giu_ket_noi: true, can_tra_loi_luc: ISO_TRA_LOI,
-    tu_gui: true, lech_so: 0, gui_loi: false, gui_luc: ISO_TRA_LOI, tren_can: tren });
+    phien_ban: '2.9.0', mac_can: MAC.toLowerCase(), giu_ket_noi: true, can_tra_loi_giay: 60,
+    tu_gui: true, lech_so: 0, gui_loi: false, gui_giay: 60, tren_can: tren });
+  const gan = (luc, giay) => Math.abs(new Date(luc).getTime() - (Date.now() - giay * 1000)) < 15_000;
   ok('NV quầy báo được — trả số ô trên cân', r.loi === null && r.rows[0].kq.so_o_tren_can === 2, r.loi ?? JSON.stringify(r.rows?.[0]?.kq));
   let m = await dongMay(MAY_1);
-  ok('Một dòng: chi nhánh A, người = NV quầy, MAC viết hoa, phiên bản, cân trả lời đúng mốc', m?.chi_nhanh_id === cnA.id
-     && m.nguoi === nsId[UID.nvQuayA] && m.mac_can === MAC && m.phien_ban === '2.9.0' && m.giu_ket_noi === true
-     && m.tu_gui === true && new Date(m.can_tra_loi_luc).toISOString() === ISO_TRA_LOI, JSON.stringify(m));
+  ok('Một dòng: chi nhánh A, người = NV quầy, MAC viết hoa, phiên bản; cân trả lời / gửi được = giờ database − 60 giây',
+     m?.chi_nhanh_id === cnA.id && m.nguoi === nsId[UID.nvQuayA] && m.mac_can === MAC && m.phien_ban === '2.9.0' && m.giu_ket_noi === true
+     && m.tu_gui === true && gan(m.can_tra_loi_luc, 60) && gan(m.gui_luc, 60), JSON.stringify(m));
+  const traLoi1 = new Date(m.can_tra_loi_luc).getTime();
   ok('Trên cân chỉ giữ dòng mã Ô (bỏ mã thường, hàng ngoài kho, PLU sai / hệ thống), bỏ số 0 đầu mã',
      JSON.stringify(m.tren_can.map(x => [x.plu, x.ma_can])) === JSON.stringify([[23, '10011'], [24, '10012']]), JSON.stringify(m.tren_can));
   ok('Tên bỏ ký tự điều khiển; tối đa 8 phím', m.tren_can[1].ten === 'Thăn ngoại cắt lát' && m.tren_can[1].phim.length === 8
@@ -173,18 +174,19 @@ await nhom('3 · MÁY QUẦY BÁO TRẠNG THÁI (kho_may_can_bao)', async () => 
   await Promise.all([bao(UID.nvQuayA, cnA.id, MAY_1, { tu_gui: true }), bao(UID.nvQuayA, cnA.id, MAY_1, { tu_gui: true })]);
   ok('Báo nhiều lần → vẫn một dòng mỗi máy', (await db.query(`select count(*)::int n from kho_may_can where ma_may = $1`, [MAY_1])).rows[0].n === 1);
   m = await dongMay(MAY_1);
-  ok('Không gửi tren_can → giữ dòng trên cân cũ; không gửi mốc cân trả lời → giữ mốc cũ (không lùi, không thành "vừa xong")',
-     m.tren_can.length === 2 && new Date(m.can_tra_loi_luc).toISOString() === ISO_TRA_LOI && m.mac_can === MAC && m.phien_ban === '2.9.0',
+  ok('Không gửi tren_can → giữ dòng trên cân cũ; không gửi số giây cân trả lời → giữ mốc cũ (không lùi, không thành "vừa xong")',
+     m.tren_can.length === 2 && new Date(m.can_tra_loi_luc).getTime() === traLoi1 && m.mac_can === MAC && m.phien_ban === '2.9.0',
      JSON.stringify(m));
-  const cu = new Date(Date.now() - 3600_000).toISOString();
-  await bao(UID.nvQuayA, cnA.id, MAY_1, { can_tra_loi_luc: cu });
-  ok('Mốc cân trả lời cũ hơn đến sau → không lùi', new Date((await dongMay(MAY_1)).can_tra_loi_luc).toISOString() === ISO_TRA_LOI);
-  const tuongLai = new Date(Date.now() + 86_400_000).toISOString();
-  await bao(UID.nvQuayA, cnA.id, MAY_1, { can_tra_loi_luc: tuongLai });
-  const tl = new Date((await dongMay(MAY_1)).can_tra_loi_luc).getTime();
-  ok('Mốc ở tương lai (đồng hồ máy quầy nhanh) → kẹp về giờ database', tl <= Date.now() + 5_000, new Date(tl).toISOString());
-  await bao(UID.nvQuayA, cnA.id, MAY_1, { can_tra_loi_luc: '2026-02-31T10:00:00Z', gui_luc: '03/10/2026 10:00' });
-  ok('Ngày không có thật (31/02), sai dạng → bỏ qua, không lỗi', (await dongMay(MAY_1)).can_tra_loi_luc !== null);
+  await bao(UID.nvQuayA, cnA.id, MAY_1, { can_tra_loi_giay: 3600 });
+  ok('Lần báo cũ hơn đến sau (cân trả lời 1 giờ trước) → mốc không lùi', new Date((await dongMay(MAY_1)).can_tra_loi_luc).getTime() === traLoi1);
+  // Máy chỉ gửi số giây — đồng hồ máy quầy sai không đổi gì. Số âm, quá 30 ngày, chuỗi → bỏ qua (giữ mốc cũ), không lỗi.
+  for (const sai of [-5, 2_592_001, '60', 1.5, null]) {
+    const r2 = await bao(UID.nvQuayA, cnA.id, MAY_1, { can_tra_loi_giay: sai, gui_giay: sai });
+    if (r2.loi || new Date((await dongMay(MAY_1)).can_tra_loi_luc).getTime() !== traLoi1) { ok(`Số giây sai (${sai}) → bỏ qua`, false, r2.loi ?? ''); }
+  }
+  ok('Số giây âm / quá 30 ngày / chuỗi / số lẻ / null → bỏ qua, không lỗi, mốc giữ nguyên', new Date((await dongMay(MAY_1)).can_tra_loi_luc).getTime() === traLoi1);
+  await bao(UID.nvQuayA, cnA.id, MAY_1, { can_tra_loi_giay: 0 });
+  ok('Cân vừa trả lời (0 giây) → mốc = giờ database', gan((await dongMay(MAY_1)).can_tra_loi_luc, 0));
 
   // Lệch từ lúc nào: database ghi lần đầu thấy lệch, giữ qua các lần báo, hết lệch thì xóa.
   await bao(UID.nvQuayA, cnA.id, MAY_1, { lech_so: 3 });
@@ -225,12 +227,7 @@ await nhom('4 · GIỜ ĐỒNG HỒ CÂN LÀ GIỜ VIỆT NAM (kho_luc_can_vn) �
   ok('00:10 ngày 04/10 giờ VN = 17:10Z ngày 03/10 (vẫn là "hôm trước" theo UTC)', await doi('2026-10-04 00:10:00') === '2026-10-03T17:10:00Z');
   ok('31/02 (ngày không có thật) → null', await doi('2026-02-31 10:00:00') === null);
   ok('Sai dạng ("04/10/2026 10:00") → null', await doi('04/10/2026 10:00') === null);
-  const iso = async g => (await db.query(`select kho_luc_iso($1) is null as rong`, [g])).rows[0].rong;
-  ok('kho_luc_iso: chỉ nhận ISO có Z (không phụ thuộc múi giờ của phiên)', !(await iso('2026-10-04T03:10:00.123Z'))
-     && await iso('2026-10-04T10:10:00+07:00') && await iso('2026-10-04 10:10:00') && await iso('2026-13-01T00:00:00Z'));
-  for (const ham of ['kho_luc_can_vn', 'kho_luc_iso']) {
-    ok(`${ham} là hàm nội bộ`, /permission denied/.test((await duoi(UID.qlA, `select ${ham}('2026-10-04 00:10:00')`)).loi ?? ''));
-  }
+  ok('kho_luc_can_vn là hàm nội bộ', /permission denied/.test((await duoi(UID.qlA, `select kho_luc_can_vn('2026-10-04 00:10:00')`)).loi ?? ''));
 });
 
 // ===========================================================================
@@ -339,6 +336,22 @@ await nhom('6 · TRANG PHA LÓC: Ô ĐÃ LÊN CÂN CHƯA, TEM IN / NHÃN QUÉT, 
   P[2] = await phienMoi(tang[1].id);
   const p2 = (await doiChieu(UID.thuKhoA, P[2])).rows?.[0]?.kq;
   ok('Phiên chưa giao ô: o rỗng, nhan_thuong rỗng', p2?.o?.length === 0 && p2?.nhan_thuong?.length === 0, JSON.stringify(p2));
+
+  // Ô trả sớm (quản lý giải phóng) rồi giao phiên khác: tem in SAU lúc trả không tính vào phiên cũ.
+  const g2 = await duoi(UID.thuKhoA, `select kho_giao_o_ma($1, null) as kq`, [P[2]]);
+  const giao2 = g2.rows?.[0]?.kq?.[0];
+  await db.query(`update kho_o_ma_giao set tu_luc = now() - interval '10 minutes' where id = $1`, [giao2?.giao_id]);
+  await nhatKy(UID.nvQuayA, cnA.id, MAY_1, [{ mac: MAC, fid: 150, stt: 1, luc: await gioCan(`now() - interval '5 minutes'`), plu: 24,
+    ma_can: giao2?.ma_can, so_kg: 0.5, loai: 0 }]);
+  const tra = await duoi(UID.qlA, `select kho_giai_phong_o_ma($1) as cau`, [giao2?.giao_id]);
+  await nhatKy(UID.nvQuayA, cnA.id, MAY_1, [{ mac: MAC, fid: 151, stt: 1, luc: await gioCan(`now() + interval '2 minutes'`), plu: 24,
+    ma_can: giao2?.ma_can, so_kg: 0.6, loai: 0 }]);
+  // Phiên cũ chốt SAU lúc trả ô (giả lập mốc chốt): cửa sổ dừng ở lúc trả, không kéo tới lúc chốt.
+  await db.query(`update kho_phien_pha set chot_luc = now() + interval '5 minutes' where id = $1`, [P[2]]);
+  const o2 = (await doiChieu(UID.thuKhoA, P[2])).rows?.[0]?.kq?.o?.[0];
+  await db.query(`update kho_phien_pha set chot_luc = null where id = $1`, [P[2]]);
+  ok('Ô trả sớm rồi phiên mới chốt: chỉ tính tem trong lúc phiên còn giữ ô (1) — tem sau lúc trả (của phiên sau) không tính',
+     tra.loi === null && Number(o2?.in) === 1 && o2?.dang_giu === false && o2?.den_luc !== null, tra.loi ?? JSON.stringify(o2));
 });
 
 // ===========================================================================

@@ -395,7 +395,7 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
   const nguon = readFileSync(LIB_SUC_KHOE, 'utf8');
   // 0061: một máy quầy Q1 vừa báo — cân trả lời, tự gửi bật, khớp kho.
   const baoMay = await duoi(UID.nvQuayA, `select kho_may_can_bao($1, '33333333-3333-4333-8333-333333333333', $2::jsonb)`,
-    [cnA.id, JSON.stringify({ phien_ban: '2.9.0', giu_ket_noi: true, can_tra_loi_luc: new Date().toISOString(), tu_gui: true, lech_so: 0 })]);
+    [cnA.id, JSON.stringify({ phien_ban: '2.9.0', giu_ket_noi: true, can_tra_loi_giay: 0, tu_gui: true, lech_so: 0 })]);
   ok('(Máy quầy Q1 báo được trạng thái)', baoMay.loi === null, baoMay.loi ?? '');
   const { k } = await doc(UID.chu);
   ok('Số liệu đúng dạng web chờ', laSucKhoeTho(k));

@@ -16,7 +16,8 @@
 --       cân trả lời lần cuối, tự gửi bật không, số hàng kho đổi mà cân chưa nhận (từ lúc nào),
 --       lần tự gửi gần nhất hỏng không, các dòng Ô MÃ đang nằm trên cân (số PLU, tên, phím tắt).
 --       Không lưu câu lỗi (chữ tự do, một thứ tiếng): máy quầy tự hiện câu lỗi; kho chỉ cần biết
---       có hỏng không. kho_may_can_bao(chi nhánh, mã máy, báo) — quyền xem — ghi dòng đó.
+--       có hỏng không. kho_may_can_bao(chi nhánh, mã máy, báo) — quyền xem — ghi dòng đó. Máy gửi "cách đây bao
+--       nhiêu giây", không gửi mốc giờ của nó: đồng hồ máy quầy sai không làm đèn sai.
 --   3 · kho_can_tem: tem cân đã in bằng mã Ô (nhật ký bán của cân, loại 0 = bán / in tem), để
 --       đối chiếu với nhãn đã quét vào phiên lóc. kho_may_can_nhat_ky(chi nhánh, mã máy, dòng) —
 --       quyền xem — chỉ giữ dòng mã ô, gửi lại không trùng (khóa: chi nhánh, mã máy cân, FID, dòng,
@@ -94,26 +95,6 @@ comment on table kho_may_can is
 
 alter table kho_may_can enable row level security;
 
--- Mốc giờ máy gửi: ISO có Z (không phụ thuộc TimeZone của phiên), sai dạng / ngày không có thật → null.
-create or replace function kho_luc_iso(p text)
-returns timestamptz
-language plpgsql
-stable
-set search_path = public
-as $$
-begin
-  if p is null or p !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,6})?Z$' then
-    return null;
-  end if;
-  return p::timestamptz;
-exception when others then
-  return null;
-end;
-$$;
-
-comment on function kho_luc_iso(text) is
-  'NỘI BỘ (0061): "YYYY-MM-DDTHH:MM:SS(.sss)Z" → timestamptz; sai dạng hay ngày không có thật (31/02) → null.';
-
 -- Giờ đồng hồ cân (giờ VN, nhật ký bán: "YYYY-MM-DD HH:MM:SS") → timestamptz.
 create or replace function kho_luc_can_vn(p text)
 returns timestamptz
@@ -134,8 +115,10 @@ $$;
 comment on function kho_luc_can_vn(text) is
   'NỘI BỘ (0061): giờ đồng hồ cân "YYYY-MM-DD HH:MM:SS" (giờ Việt Nam) → timestamptz; sai dạng hay ngày không có thật → null.';
 
--- p_bao: {phien_ban, mac_can, giu_ket_noi, can_tra_loi_luc, tu_gui, lech_so, gui_loi, gui_luc,
+-- p_bao: {phien_ban, mac_can, giu_ket_noi, can_tra_loi_giay, tu_gui, lech_so, gui_loi, gui_giay,
 --         tren_can: [{plu, ma_can, ten, phim[]}] | null (null / không có = không đổi từ lần báo trước)}.
+-- can_tra_loi_giay / gui_giay: cân trả lời / gửi được cách đây bao nhiêu GIÂY — không gửi mốc giờ của máy quầy (đồng hồ
+-- máy chậm 15 phút thì đèn vàng mãi "cân không trả lời"); database lấy now() trừ đi.
 -- Khóa thiếu / sai kiểu → coi như chưa biết (null / false), không từ chối cả lần báo: máy quầy bản
 -- cũ hơn vẫn báo được nhịp.
 create or replace function kho_may_can_bao(p_chi_nhanh_id uuid, p_ma_may uuid, p_bao jsonb)
@@ -152,6 +135,7 @@ declare
   v_tren    jsonb;
   v_tra_loi timestamptz;
   v_gui     timestamptz;
+  v_giay    text;
   v_so_o    int;
 begin
   if not kho_duoc(p_chi_nhanh_id, 'xem') then
@@ -171,12 +155,13 @@ begin
                  and upper(p_bao ->> 'mac_can') ~ '^[0-9A-F]{12}$' then upper(p_bao ->> 'mac_can') end;
   v_lech := case when jsonb_typeof(p_bao -> 'lech_so') = 'number' then
               case when (p_bao ->> 'lech_so') ~ '^[0-9]{1,5}$' then (p_bao ->> 'lech_so')::int end end;
-  -- Mốc giờ máy gửi không được ở tương lai (đồng hồ máy quầy lệch): kẹp về now(). LEAST bỏ qua null
-  -- nên kẹp riêng — thiếu mốc là chưa biết, không phải "vừa xong".
-  v_tra_loi := kho_luc_iso(p_bao ->> 'can_tra_loi_luc');
-  v_tra_loi := case when v_tra_loi > now() then now() else v_tra_loi end;
-  v_gui := kho_luc_iso(p_bao ->> 'gui_luc');
-  v_gui := case when v_gui > now() then now() else v_gui end;
+  -- Số giây từ lần cân trả lời / gửi được (0 – 30 ngày); thiếu hay sai kiểu = chưa biết (null), không phải "vừa xong".
+  v_giay := case when jsonb_typeof(p_bao -> 'can_tra_loi_giay') = 'number' then p_bao ->> 'can_tra_loi_giay' end;
+  v_tra_loi := case when v_giay ~ '^[0-9]{1,7}$' then
+                 case when v_giay::int <= 2592000 then now() - make_interval(secs => v_giay::int) end end;
+  v_giay := case when jsonb_typeof(p_bao -> 'gui_giay') = 'number' then p_bao ->> 'gui_giay' end;
+  v_gui := case when v_giay ~ '^[0-9]{1,7}$' then
+             case when v_giay::int <= 2592000 then now() - make_interval(secs => v_giay::int) end end;
 
   -- Dòng trên cân: chỉ giữ dòng MÃ Ô (kho_o_ma) — trang pha lóc chỉ cần những dòng đó.
   if jsonb_typeof(p_bao -> 'tren_can') = 'array' then
@@ -238,7 +223,7 @@ end;
 $$;
 
 comment on function kho_may_can_bao(uuid, uuid, jsonb) is
-  'Beeftown Cân ở máy quầy báo trạng thái (quyền xem, 0061): phiên bản, MAC cân, cân trả lời lần cuối, tự gửi, số hàng lệch kho, tự gửi hỏng, dòng ô mã đang trên cân (tren_can null = không đổi). Gọi lại bao nhiêu lần cũng một dòng mỗi máy. Trả {luc, so_o_tren_can}.';
+  'Beeftown Cân ở máy quầy báo trạng thái (quyền xem, 0061): phiên bản, MAC cân, cân trả lời cách đây bao nhiêu giây, tự gửi, số hàng lệch kho, tự gửi hỏng, gửi được cách đây bao nhiêu giây, dòng ô mã đang trên cân (tren_can null = không đổi). Gọi lại bao nhiêu lần cũng một dòng mỗi máy. Trả {luc, so_o_tren_can}.';
 
 
 -- =============================================================================
@@ -262,6 +247,8 @@ create table kho_can_tem (
 );
 
 create index kho_can_tem_o on kho_can_tem (chi_nhanh_id, ma_can, in_luc);
+-- Dọn tem quá 90 ngày ở mỗi lần nhận nhật ký: quét theo giờ in, không quét cả bảng.
+create index kho_can_tem_luc on kho_can_tem (chi_nhanh_id, in_luc);
 
 comment on table kho_can_tem is
   'Tem cân đã in bằng mã ô (nhật ký bán của cân, loại 0) — đối chiếu với nhãn đã quét vào phiên lóc (0061). Giờ in là đồng hồ cân. Quá 90 ngày tự dọn. Chỉ đọc / ghi qua RPC.';
@@ -379,7 +366,8 @@ begin
     select m.ten, o.so_o, jsonb_build_object(
       'giao_id', g.id, 'o_ma_id', o.id, 'mat_hang_id', m.id, 'ten_hang', m.ten, 'so_o', o.so_o, 'ma_can', o.ma_can,
       'so_tang', lt.so_tang, 'dang_giu', g.den_luc is null,
-      'tu_luc', g.tu_luc, 'den_luc', coalesce(v_ph.chot_luc, g.den_luc),
+      -- Phiên giữ ô tới lúc chốt, hay tới lúc ô được trả nếu trả trước (quản lý giải phóng) — LEAST bỏ qua null.
+      'tu_luc', g.tu_luc, 'den_luc', least(v_ph.chot_luc, g.den_luc),
       'quet', (select count(*) from quet q where q.ma_can = o.ma_can),
       'quet_kg', (select coalesce(sum(q.so_kg), 0) from quet q where q.ma_can = o.ma_can),
       'in', ti.so, 'in_kg', ti.kg,
@@ -395,11 +383,12 @@ begin
     left join lateral (select min(v.lo_id::text)::uuid as lo_vao_id from kho_phien_pha_vao v
                        where v.phien_pha_id = g.phien_pha_id) lv on true
     left join kho_lo lt on lt.id = lv.lo_vao_id
-    -- Tem cân in bằng mã ô trong lúc phiên giữ ô: từ lúc giao tới lúc chốt (chưa chốt: tới giờ).
+    -- Tem cân in bằng mã ô trong lúc phiên giữ ô: từ lúc giao tới lúc chốt hay lúc ô được trả, cái nào sớm hơn
+    -- (chưa chốt, còn giữ: tới giờ) — ô trả sớm rồi giao phiên khác thì tem của phiên kia không tính vào đây.
     left join lateral (select count(*) as so, coalesce(sum(t.so_kg), 0) as kg from kho_can_tem t
                        where t.chi_nhanh_id = v_ph.chi_nhanh_id and t.ma_can = o.ma_can
                          and t.in_luc >= g.tu_luc
-                         and t.in_luc < coalesce(v_ph.chot_luc, g.den_luc, now())) ti on true
+                         and t.in_luc < coalesce(least(v_ph.chot_luc, g.den_luc), now())) ti on true
     where g.phien_pha_id = p_id
   ), thuong as (
     -- Phiên theo tảng: nhãn in bằng mã THƯỜNG (mã món, mã giảm) của phần cắt có ô — không mang số tảng.
@@ -606,7 +595,6 @@ begin
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
     execute 'revoke all on kho_may_can from anon, authenticated';
     execute 'revoke all on kho_can_tem from anon, authenticated';
-    execute 'revoke execute on function kho_luc_iso(text) from authenticated';
     execute 'revoke execute on function kho_luc_can_vn(text) from authenticated';
     execute 'revoke execute on function suc_khoe_so_lieu(uuid[], jsonb) from authenticated';
   end if;

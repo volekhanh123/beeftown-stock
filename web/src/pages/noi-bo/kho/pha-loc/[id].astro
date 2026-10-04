@@ -272,14 +272,15 @@ const t = dichNB(nn, {
   // 0049 — ô mã (món theo dõi theo tảng)
   oMaTd: { vi: 'Ô mã của tảng này', en: 'Rotating codes for this primal' },
   oMaGt: {
-    vi: 'Món theo dõi theo tảng: mỗi phiên một tảng. Giao ô mã cho phần cắt — Beeftown Cân ở quầy tự gửi xuống cân trong khoảng 15 giây, cân đổi tên phím thành tên phần cắt kèm số tảng. Chờ dòng "Cân sẵn sàng" hiện xanh, rồi cân, in tem bằng đúng phím đó.',
-    en: 'Items tracked per primal: one primal per session. Assign rotating codes to the cuts — Beeftown Scale at the counter sends them to the scale within about 15 seconds, and the scale key is renamed to the cut plus the primal number. Wait for the "Scale ready" line to turn green, then weigh and print with that key.',
+    vi: 'Món theo dõi theo tảng: mỗi phiên một tảng. Giao ô mã cho phần cắt — Beeftown Cân ở quầy bật Tự gửi thì tự gửi xuống cân sau khoảng 15–60 giây (không thì quản lý bấm Gửi xuống cân), cân đổi tên phím thành tên phần cắt kèm số tảng. Chờ dòng "Cân sẵn sàng" hiện xanh (bấm Xem lại cân), rồi cân, in tem bằng đúng phím đó.',
+    en: 'Items tracked per primal: one primal per session. Assign rotating codes to the cuts — if Beeftown Scale at the counter has automatic sending on, it sends them to the scale within about 15–60 seconds (otherwise a manager presses Send to scale), and the scale key is renamed to the cut plus the primal number. Wait for the "Scale ready" line to turn green (press Check the scale again), then weigh and print with that key.',
   },
   oMaTang: { vi: (so: string) => `Tảng ${so}`, en: (so: string) => `Primal ${so}` },
   oMaDong: { vi: (so: number, ma: string) => `ô ${so} · mã ${ma}`, en: (so: number, ma: string) => `slot ${so} · code ${ma}` },
   oMaChuaGiao: { vi: 'Chưa giao ô mã.', en: 'No rotating code assigned yet.' },
   oMaNut: { vi: 'Giao ô mã cho phần cắt', en: 'Assign rotating codes to the cuts' },
   oMaChonTang: { vi: 'Chọn đúng một tảng ở mục Tảng đem pha rồi mới giao ô mã.', en: 'Choose exactly one primal under Primal cut before assigning codes.' },
+  oMaXemLai: { vi: 'Xem lại cân', en: 'Check the scale again' },
 });
 // Thủ kho (pha_loc, không xem giá) không thấy cột / chữ tiền nào (0031).
 const xemGia = k.duoc('xem_gia');
@@ -581,7 +582,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
           kg. Bấm nút nào máy chủ cũng lưu phần gõ tay trước (VIEC_LUU_GO_TAY_TRUOC)
           — gõ kg phụ phẩm rồi quét nhãn ngay thì số vừa gõ không mất. */}
       {mhVao?.theo_tang && (
-        <section class="nb-the">
+        <section class="nb-the" id="o-ma">
           <h2 style="margin-top:0">{t.oMaTd}{soTangPhien && <> · {t.oMaTang(soTangPhien)}</>}</h2>
           <p class="kho-phu">{t.oMaGt}</p>
           {oMaPhien.length === 0 ? <p class="nb-rong">{t.oMaChuaGiao}</p> : (
@@ -590,6 +591,10 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
             </ul>
           )}
           {tomTatCan && <DoiChieuCan tomTat={tomTatCan} kieu="can" />}
+          {/* Trang không có JavaScript: Beeftown Cân báo về kho mỗi phút (ngay sau khi tự gửi) — bấm để đọc lại. */}
+          {tomTatCan?.dong.some(d => d.muc !== null && d.muc !== 'san_sang') && (
+            <p><a class="nb-nut phu" href={`${DUONG}#o-ma`}>{t.oMaXemLai}</a></p>
+          )}
           {loVaoPhien.length === 1 ? (
             <form method="POST" action={DUONG}>
               <button type="submit" name="viec" value="giao_o_ma" class="nb-nut phu">{t.oMaNut}</button>

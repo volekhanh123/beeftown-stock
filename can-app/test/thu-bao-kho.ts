@@ -122,9 +122,10 @@ export async function thuBaoKho(ok: Ok, h: { fileCan: (dong: string[]) => Uint8A
   ok('Báo kho: kho trả lời → "Đã báo trạng thái cân về kho"', b1.ok && /^Đã báo trạng thái cân về kho/.test(b1.cau), JSON.stringify(b1));
   ok('Báo kho: mã máy là uuid, lưu ở ma-may.txt; chi nhánh của người đăng nhập', /^[0-9a-f-]{36}$/.test(p1?.p_ma_may ?? '')
     && fs.readFileSync(nv.fileMaMay, 'utf8').trim() === p1?.p_ma_may && p1?.p_chi_nhanh_id === 'cn-q1', JSON.stringify(p1));
-  ok('Báo kho: phiên bản, giữ kết nối, chưa nghe cân (null), tự gửi tắt → lech_so null, gui_loi false',
-    p1?.p_bao.phien_ban === '2.9.0' && p1.p_bao.giu_ket_noi === true && p1.p_bao.can_tra_loi_luc === null && p1.p_bao.tu_gui === false
-    && p1.p_bao.lech_so === null && p1.p_bao.gui_loi === false, JSON.stringify(p1?.p_bao));
+  ok('Báo kho: phiên bản, giữ kết nối, chưa nghe cân / chưa gửi được (số giây null — không gửi mốc giờ của máy), gui_loi false',
+    p1?.p_bao.phien_ban === '2.9.0' && p1.p_bao.giu_ket_noi === true && p1.p_bao.can_tra_loi_giay === null && p1.p_bao.gui_giay === null
+    && p1.p_bao.tu_gui === false && p1.p_bao.gui_loi === false && !('can_tra_loi_luc' in p1.p_bao) && !('gui_luc' in p1.p_bao), JSON.stringify(p1?.p_bao));
+  ok('Tự gửi tắt: vẫn so kho với cân (không gửi) → lech_so 0 (cân khớp kho)', p1?.p_bao.lech_so === 0, JSON.stringify(p1?.p_bao));
   ok('Báo kho: dòng trên cân kèm phím (E gọi PLU 2)', JSON.stringify(p1?.p_bao.tren_can) === JSON.stringify([
     { plu: 1, ma_can: '107', ten: 'Steak Ribeye Angus', phim: ['A'] }, { plu: 2, ma_can: '10071', ten: 'Steak Ribeye Angus #0142', phim: ['E'] }]),
     JSON.stringify(p1?.p_bao.tren_can));
@@ -184,15 +185,35 @@ export async function thuBaoKho(ok: Ok, h: { fileCan: (dong: string[]) => Uint8A
   ok('Ô Cân (trangThaiNen) thấy lần báo hỏng', nv.trangThaiNen().baoKho?.ok === false);
   hong.kho_may_can_bao = null;
 
-  // Hai lượt cùng lúc (cửa sổ cũ và mới): không chồng.
+  // Hai lượt cùng lúc (lượt mỗi phút gặp lượt ngay sau tự gửi): không chồng — kể cả lần ĐẦU (chưa có kết quả nào).
   const truocDoi = goi.filter(x => x.ten === 'kho_may_can_bao').length;
   await Promise.all([nv.baoKhoMotLan(), nv.baoKhoMotLan()]);
-  ok('Hai lượt báo cùng lúc → một lần gọi kho', goi.filter(x => x.ten === 'kho_may_can_bao').length === truocDoi + 1);
+  const moiMo = tao('nhan_vien_quay');
+  const [r1, r2] = await Promise.all([moiMo.baoKhoMotLan(), moiMo.baoKhoMotLan()]);
+  ok('Hai lượt báo cùng lúc → một lần gọi kho, kể cả lần đầu sau khi mở (lượt sau chờ kết quả lượt trước)',
+    goi.filter(x => x.ten === 'kho_may_can_bao').length === truocDoi + 2 && r1 === r2);
+
+  // Đồng hồ máy quầy sai không đổi gì: báo "cách đây bao nhiêu giây".
+  const lech = tao('nhan_vien_quay', { bayGio: () => bayGio - 15 * 60_000 });
+  await lech.baoKhoMotLan();
+  ok('Máy quầy chậm 15 phút: chưa nghe cân → vẫn null, không gửi mốc giờ sai', baoCuoi()?.p_bao.can_tra_loi_giay === null);
+
+  // Nhật ký có dòng giờ cân ở tương lai (đồng hồ cân sai lúc in): không gửi, mốc không nhảy tới đó.
+  fs.writeFileSync(nv.fileNhatKy, ghiKhoNhatKy([...nk, dongNk({ fid: 9, luc: '2026-10-04 10:05:00' }),
+    dongNk({ fid: 10, luc: '2026-12-01 08:00:00' }), dongNk({ fid: 11, luc: '2026-10-04 11:00:00' })]), 'utf8');
+  await nv.baoKhoMotLan();
+  const g3 = nkGui().at(-1)?.thamSo.p_dong as { fid: number }[] | undefined;
+  ok('Dòng giờ cân ở tương lai (01/12) không gửi; mốc tới dòng thật cuối (11:00) — dòng thật sau khi chỉnh giờ cân vẫn gửi được',
+    g3?.map(d => d.fid).join() === '9,11' && JSON.parse(fs.readFileSync(nv.fileNhatKyDaGui, 'utf8'))['cn-q1'] === '2026-10-04 11:00:00',
+    JSON.stringify(g3));
+  const truocKhongDoi = nkGui().length;
+  await nv.baoKhoMotLan();
+  ok('File nhật ký không đổi → không đọc lại, không gọi kho', nkGui().length === truocKhongDoi);
 
   // Chưa đăng nhập.
   const chuaDn = new UngDung(dd, { kho, danhMuc: async () => danhMuc, nguoi: { ...nguoi('nhan_vien_quay'), chiNhanh: null }, mang: [] });
   const b5 = await chuaDn.baoKhoMotLan();
-  ok('Chưa chọn chi nhánh / chưa đăng nhập → không gọi kho, nói rõ', !b5.ok && /Chưa đăng nhập kho/.test(b5.cau));
+  ok('Chưa chọn chi nhánh → không gọi kho, nói rõ', !b5.ok && /^Chưa báo trạng thái cân về kho: Chưa chọn chi nhánh/.test(b5.cau), b5.cau);
 
   // main.ts, giao diện.
   const goc2 = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'src');
@@ -200,6 +221,7 @@ export async function thuBaoKho(ok: Ok, h: { fileCan: (dong: string[]) => Uint8A
   const gd = fs.readFileSync(path.join(goc2, 'giao-dien.html'), 'utf8');
   ok('main.ts: hỏi kho mỗi HOI_KHO_MS (khi bật tự gửi, không chồng lượt tự gửi), đổi ô → tự gửi ngay',
     /if \(await ud\.khoDoiO\(\)\) await tuGui\(\);[\s\S]{0,40}\}, HOI_KHO_MS\);/.test(mn) && /dangTuGui \|\| dangHoiKho \|\| !ud\.cauHinh\(\)\.tuGui/.test(mn));
+  ok('main.ts: tự gửi được thì báo kho ngay (trang pha lóc không đợi lượt mỗi phút)', /if \(\(await ud\.tuGuiMotLan\(\)\)\.daGui\) void ud\.baoKhoMotLan\(\);/.test(mn));
   ok('main.ts: báo kho mỗi BAO_KHO_MS và 5 giây sau khi mở (dừng khi đang cập nhật)',
     /setInterval\(\(\) => \{ if \(!dangCapNhat\(\)\) void ud\.baoKhoMotLan\(\); \}, BAO_KHO_MS\);/.test(mn) && /void ud\.baoKhoMotLan\(\); \}, 5_000\);/.test(mn));
   ok('Giao diện: ô Cân hiện lần báo về kho bằng textContent (không chèn HTML)', /\$\('o-bao-kho'\)\.textContent = bk/.test(gd));

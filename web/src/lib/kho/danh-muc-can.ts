@@ -49,10 +49,11 @@
  * tắt HSD (null). hangChoCan luôn kèm.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { HangKho } from './can-tma.ts';
+import { chuanTenCan, type HangKho } from './can-tma.ts';
 import { dinhDangKg, type HaiThuTieng } from './chung.ts';
 import type { MatHang } from './danh-muc.ts';
 import { congNgay, gioVnTuMs, homNayVn, laNgayCoThat } from '../gio-vn.ts';
+import { tuTruoc } from '../suc-khoe.ts';
 import { docGiaoOMaCan, docOMa, type CanPhien, type DongOMa, type GiaoOMa } from './o-ma.ts';
 import { docMaGiam, giaGiam, tenGiam, type DongMaGiam } from './ma-giam.ts';
 import { soTangChu } from './tang.ts';
@@ -66,7 +67,8 @@ export const TEN_CAN_TOI_DA = 24;
 export function tenTheoTang(ten: string, soTang: number | null | undefined): string {
   const duoi = soTangChu(soTang);
   if (!duoi) return ten;
-  const chu = [...ten.trim()];
+  // NFC trước khi đếm: tên dán từ Excel / macOS (NFD — dấu là ký tự riêng) không bị cắt ngắn hơn tên gõ tay.
+  const chu = [...ten.normalize('NFC').trim()];
   const toiDa = Math.max(TEN_CAN_TOI_DA - duoi.length - 1, 1);
   const goc = chu.length > toiDa ? chu.slice(0, toiDa).join('').trimEnd() : chu.join('');
   return `${goc} ${duoi}`;
@@ -273,9 +275,9 @@ export interface TomTatCan {
   nhatKy: HaiThuTieng;
 }
 
-const phutTruoc = (bayGio: number, iso: string | null | undefined): number | null => {
+const msCua = (iso: string | null | undefined): number | null => {
   const t = iso ? Date.parse(iso) : NaN;
-  return Number.isFinite(t) ? Math.max(0, Math.round((bayGio - t) / 60000)) : null;
+  return Number.isFinite(t) ? t : null;
 };
 const gioPhut = (iso: string | null | undefined): string => {
   const t = iso ? Date.parse(iso) : NaN;
@@ -294,7 +296,8 @@ export function tomTatCanPhien(cp: CanPhien): TomTatCan {
     let muc: MucCan | null = null;
     let cau: HaiThuTieng | null = null;
     if (o.dang_giu) {
-      const dung = o.tren_can.find(t => String(t.ten ?? '').trim() === tenMuon.trim());
+      const muon = chuanTenCan(tenMuon);
+      const dung = o.tren_can.find(t => chuanTenCan(String(t.ten ?? '')) === muon);
       const cu = o.tren_can[0];
       if (dung) {
         muc = 'san_sang';
@@ -302,9 +305,9 @@ export function tomTatCanPhien(cp: CanPhien): TomTatCan {
         const p = phim.length
           ? { vi: ` · phím ${phim.join(', ')}`, en: ` · key ${phim.join(', ')}` }
           : { vi: ' · chưa gán phím tắt (gán ở thẻ Phím tắt của Beeftown Cân)', en: ' · no shortcut key yet (set it on the Keys tab of Beeftown Scale)' };
-        const phut = phutTruoc(bayGio, dung.bao_luc);
-        const cuQua = phut !== null && phut > PHUT_BAO_CAN_CU
-          ? { vi: ` (máy quầy báo ${phut} phút trước)`, en: ` (counter computer reported ${phut} min ago)` } : { vi: '', en: '' };
+        const bao = msCua(dung.bao_luc);
+        const cuQua = bao !== null && bayGio - bao > PHUT_BAO_CAN_CU * 60000
+          ? { vi: ` (máy quầy báo ${tuTruoc(bayGio, bao).vi})`, en: ` (counter computer reported ${tuTruoc(bayGio, bao).en})` } : { vi: '', en: '' };
         cau = { vi: `Cân sẵn sàng: ${tenMuon} = PLU ${dung.plu}${p.vi}${cuQua.vi}`,
                 en: `Scale ready: ${tenMuon} = PLU ${dung.plu}${p.en}${cuQua.en}` };
       } else if (cu) {
@@ -317,8 +320,8 @@ export function tomTatCanPhien(cp: CanPhien): TomTatCan {
                 en: `Not on the scale yet: slot code ${o.ma_can} is not on the scale — do not print yet; wait for Beeftown Scale to send ${tenMuon}` };
       } else {
         muc = 'khong_biet';
-        cau = { vi: `Không biết cân đã có ${tenMuon} chưa — chưa máy quầy nào báo về kho (cần Beeftown Cân 2.9). Xem trên cân trước khi in tem`,
-                en: `Unknown whether the scale has ${tenMuon} — no counter computer has reported (needs Beeftown Scale 2.9). Check on the scale before printing` };
+        cau = { vi: `Không biết cân đã có ${tenMuon} chưa — chưa máy quầy nào báo về kho (cần Beeftown Cân 2.9). Quản lý mở Beeftown Cân bấm Gửi xuống cân, xem trên cân đúng tên rồi mới in tem`,
+                en: `Unknown whether the scale has ${tenMuon} — no counter computer has reported (needs Beeftown Scale 2.9). A manager opens Beeftown Scale and presses Send to scale; check the name on the scale before printing` };
       }
     }
     const soIn = Number(o.in) || 0, soQuet = Number(o.quet) || 0;
@@ -338,13 +341,11 @@ export function tomTatCanPhien(cp: CanPhien): TomTatCan {
       may = { vi: 'Chưa máy quầy nào chạy Beeftown Cân 2.9 báo về kho — trang không biết cân đã đổi tên chưa.',
               en: 'No counter computer running Beeftown Scale 2.9 has reported — this page cannot tell whether the scale has the new names.' };
     } else {
-      const m = cp.may[0];
-      const phut = phutTruoc(bayGio, m.bao_luc);
-      const lanCuoi = phut === null ? { vi: '', en: '' } : phut < 1 ? { vi: ' (vừa báo)', en: ' (just reported)' }
-        : { vi: ` (báo ${phut} phút trước)`, en: ` (reported ${phut} min ago)` };
+      const bao = msCua(cp.may[0].bao_luc);
+      const lanCuoi = bao === null ? { vi: '', en: '' } : { vi: ` (báo ${tuTruoc(bayGio, bao).vi})`, en: ` (reported ${tuTruoc(bayGio, bao).en})` };
       may = cp.may.some(x => x.tu_gui)
-        ? { vi: `Beeftown Cân ở quầy tự gửi tên mới xuống cân trong khoảng 15 giây${lanCuoi.vi}.`,
-            en: `Beeftown Scale at the counter sends new names to the scale within about 15 seconds${lanCuoi.en}.` }
+        ? { vi: `Beeftown Cân ở quầy tự gửi tên mới xuống cân sau khoảng 15–60 giây${lanCuoi.vi} — bấm Xem lại cân để thấy cân đã nhận chưa.`,
+            en: `Beeftown Scale at the counter sends new names to the scale within about 15–60 seconds${lanCuoi.en} — press Check the scale again to see whether it has them.` }
         : { vi: `Tự gửi đang tắt ở máy quầy${lanCuoi.vi} — quản lý mở Beeftown Cân, bấm Gửi xuống cân (hay bật Tự gửi ở Cài đặt).`,
             en: `Automatic sending is off on the counter computer${lanCuoi.en} — a manager opens Beeftown Scale and presses Send to scale (or turns on automatic sending in Settings).` };
     }

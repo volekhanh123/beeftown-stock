@@ -563,6 +563,10 @@ const GUI_LAI_TREN_CAN_MS = 10 * 60_000;
 const NHAT_KY_LAN_DAU_NGAY = 3;
 /** Mỗi lần gửi tối đa chừng này dòng nhật ký (kho nhận tối đa 2000). */
 const NHAT_KY_MOT_LAN = 1000;
+/** Tự gửi tắt: vẫn so kho với cân (đọc kho, không gửi) chừng này một lần để báo "kho đổi mà cân chưa nhận". */
+const TINH_LECH_MS = 5 * 60_000;
+/** Việc chạy nền (hỏi kho 15 giây, báo kho mỗi phút) dùng lại người đăng nhập trong chừng này — không hỏi kho mỗi lần. */
+const NGUOI_NEN_MS = 60_000;
 
 // -----------------------------------------------------------------------------
 // NGUỒN DANH MỤC
@@ -919,7 +923,14 @@ export class UngDung {
   /** 2.9 — dòng trên cân đã báo kho (khoá + lúc) — không đổi thì không gửi lại mỗi phút. */
   private trenCanDaBao: { khoa: string; luc: number } | null = null;
   private maMayNho: string | null = null;
-  private dangBaoKho = false;
+  /** Lượt báo kho đang chạy — lượt gọi trong lúc đó chờ chính lượt này (không chạy song song, kể cả lần đầu). */
+  private baoKhoDangChay: Promise<LanBaoKho> | null = null;
+  /** Lần so kho với cân gần nhất khi tự gửi tắt (ms). */
+  private lucTinhLech = 0;
+  /** Người đăng nhập cho việc chạy nền, nhớ NGUOI_NEN_MS (đăng nhập / đăng xuất thì xoá). */
+  private nguoiNen: { luc: number; nd: NguoiDung | null } | null = null;
+  /** Nhật ký đã xét lần trước: file chưa đổi và lần đó không có gì để gửi → không đọc lại cả file. */
+  private nhatKyDaXet: { khoa: string } | null = null;
   /** 2.9 — lần báo về kho gần nhất (ô Cân). */
   lanBaoKho: LanBaoKho | null = null;
   private client: SupabaseClient | null = null;
@@ -1118,6 +1129,7 @@ export class UngDung {
   }
 
   async dangNhap(email: string, matKhau: string): Promise<NguoiDung> {
+    this.nguoiNen = null;
     const c = await this.layClient();
     const { error } = await c.auth.signInWithPassword({ email: email.trim(), password: matKhau });
     if (error) throw new LoiCan('Sai email hoặc mật khẩu.');
@@ -1130,6 +1142,7 @@ export class UngDung {
   }
 
   async dangXuat() {
+    this.nguoiNen = null;
     if (this.phu.danhMuc) return;
     const c = await this.layClient();
     await c.auth.signOut().catch(() => {});
@@ -1684,7 +1697,13 @@ export class UngDung {
 
   /** `timLai: false` — nối cân không được thì báo luôn, không dò WiFi (xem guiDenCan). */
   guiXuongCan(giuHangNgoaiKho = false, timLai = true): Promise<KetQuaGui> {
-    return this.motLuc(async () => this.guiKeHoach(await this.dung(giuHangNgoaiKho), timLai));
+    return this.motLuc(async () => {
+      const k = await this.guiKeHoach(await this.dung(giuHangNgoaiKho), timLai);
+      // 2.9 — báo kho: vừa gửi được; cân đọc lại khớp thì hết lệch.
+      this.lucGuiDuoc = this.bayGio();
+      if (k.xacNhan) this.lechCuoi = 0;
+      return k;
+    });
   }
 
   /**
@@ -1812,9 +1831,20 @@ export class UngDung {
    * tảng bán hết) → main.ts tự gửi ngay. Lần hỏi đầu chỉ nhớ (lượt tự gửi mỗi phút lo phần còn lại). Không ném: chưa đăng
    * nhập, mất mạng → false, lần sau hỏi lại.
    */
+  /** Như voiKho, cho việc chạy nền: người đăng nhập nhớ NGUOI_NEN_MS (hỏi kho 15 giây không hỏi lại nhan_su mỗi lần). */
+  private async voiKhoNen(): Promise<{ kho: KhoTruyCap; nd: NguoiDung; cn: string }> {
+    const bayGio = this.bayGio();
+    if (!this.nguoiNen || bayGio - this.nguoiNen.luc > NGUOI_NEN_MS) this.nguoiNen = { luc: bayGio, nd: await this.nguoiDung() };
+    const nd = this.nguoiNen.nd;
+    if (!nd) throw new LoiCan('Chưa đăng nhập kho, hoặc phiên đăng nhập đã hết. Đăng nhập lại.');
+    if (!nd.chiNhanh) throw new LoiCan('Chưa chọn chi nhánh.');
+    const kho = this.phu.kho ?? khoTuClient(await this.layClient());
+    return { kho, nd, cn: nd.chiNhanh.id };
+  }
+
   async khoDoiO(): Promise<boolean> {
     try {
-      const { kho, cn } = await this.voiKho();
+      const { kho, cn } = await this.voiKhoNen();
       const vt = cn + '\n' + vanTayGiaoO(await kho.rpc('kho_can_giao_o_ma', { p_chi_nhanh_id: cn }));
       const cu = this.vanTayO;
       this.vanTayO = vt;
@@ -1844,8 +1874,17 @@ export class UngDung {
    * chừng thì lần sau gửi lại (kho bỏ dòng trùng). Không có dòng mới → không gọi kho.
    */
   private async guiNhatKyLenKho(kho: KhoTruyCap, cn: string): Promise<{ tong: number; moi: number }> {
-    const ds = chonNhatKyGui(this.docNhatKyDaLuu(), this.mocNhatKy(cn), NHAT_KY_MOT_LAN);
-    if (!ds.length) return { tong: 0, moi: 0 };
+    const moc = this.mocNhatKy(cn);
+    // File chưa đổi (giờ sửa, cỡ) và lần trước không có gì để gửi từ cùng mốc → không đọc lại cả file mỗi phút.
+    let khoa = '';
+    try { const st = fs.statSync(this.fileNhatKy); khoa = `${cn}|${moc}|${st.mtimeMs}|${st.size}`; } catch { return { tong: 0, moi: 0 }; }
+    if (this.nhatKyDaXet?.khoa === khoa) return { tong: 0, moi: 0 };
+    // Dòng có giờ cân ở tương lai (đồng hồ cân sai lúc in) không gửi: kho bỏ, và mốc nhảy tới đó thì dòng thật sau khi
+    // chỉnh giờ không bao giờ được gửi. Giờ VN hiện tại + 5 phút (đồng hồ cân lệch vài phút vẫn nhận).
+    const toiDa = gioVnTuMs(this.bayGio() + 5 * 60_000).replace('T', ' ');
+    const ds = chonNhatKyGui(this.docNhatKyDaLuu().filter(d => d.luc <= toiDa), moc, NHAT_KY_MOT_LAN);
+    if (!ds.length) { this.nhatKyDaXet = { khoa }; return { tong: 0, moi: 0 }; }
+    this.nhatKyDaXet = null;
     const kq = await kho.rpc('kho_may_can_nhat_ky', { p_chi_nhanh_id: cn, p_ma_may: this.maMay(), p_dong: ds }) as { tong?: unknown; moi?: unknown };
     const j = docJson<Record<string, unknown>>(this.fileNhatKyDaGui, {});
     try { ghiDau(this.fileNhatKyDaGui, { ...j, [cn]: ds[ds.length - 1].luc }); } catch { /* không ghi được: lần sau gửi lại, kho bỏ trùng */ }
@@ -1857,33 +1896,48 @@ export class UngDung {
    * ném. "Đã báo" chỉ khi kho đã trả lời; chưa đăng nhập / mất mạng / kho từ chối → ok:false kèm câu, lần sau thử lại.
    */
   async baoKhoMotLan(): Promise<LanBaoKho> {
-    if (this.dangBaoKho && this.lanBaoKho) return this.lanBaoKho;
-    this.dangBaoKho = true;
+    if (this.baoKhoDangChay) return this.baoKhoDangChay;
+    const p = this.baoKhoMotLanThat().finally(() => { if (this.baoKhoDangChay === p) this.baoKhoDangChay = null; });
+    this.baoKhoDangChay = p;
+    return p;
+  }
+
+  private async baoKhoMotLanThat(): Promise<LanBaoKho> {
     const luc = new Date(this.bayGio()).toISOString();
     try {
-      const nd = await this.nguoiDung();
-      if (!nd || !nd.chiNhanh) {
-        this.lanBaoKho = { luc, ok: false, cau: 'Chưa đăng nhập kho — chưa báo trạng thái cân về kho (trang pha lóc không biết cân đã đổi tên chưa).' };
+      let kn: { kho: KhoTruyCap; nd: NguoiDung; cn: string };
+      try { kn = await this.voiKhoNen(); } catch (e) {
+        this.lanBaoKho = { luc, ok: false, cau: `Chưa báo trạng thái cân về kho: ${cauLoi(e)} (trang pha lóc không biết cân đã đổi tên chưa).` };
         return this.lanBaoKho;
       }
-      const { kho, cn } = await this.voiKho();
+      const { kho, cn } = kn;
       const ch = this.cauHinh();
+      const bayGio = this.bayGio();
+      // Tự gửi tắt: vẫn so kho với cân (đọc kho, không gửi gì) mỗi TINH_LECH_MS — kho đổi mà cân chưa nhận thì đèn vàng
+      // "Tự gửi đang tắt: quản lý bấm Gửi". Không so được (chưa có file gốc, kho lỗi) → chưa biết (null).
+      if (ch.tuGui !== true && this.coFileGoc() && bayGio - this.lucTinhLech >= TINH_LECH_MS) {
+        this.lucTinhLech = bayGio;
+        try {
+          const kh = await this.motLuc(() => this.dung(false, true));
+          this.lechCuoi = kh.kh.dem.them + kh.kh.dem.sua;
+        } catch { this.lechCuoi = null; }
+      }
       const tren = this.trenCanBao();
       const khoa = cn + '\n' + JSON.stringify(tren);
-      const bayGio = this.bayGio();
       const guiTren = !this.trenCanDaBao || this.trenCanDaBao.khoa !== khoa || bayGio - this.trenCanDaBao.luc > GUI_LAI_TREN_CAN_MS;
-      const nghe = this.giu.lucNgheMs();
+      // Cách đây bao nhiêu GIÂY, không gửi mốc giờ của máy này — đồng hồ máy quầy sai không làm đèn ở kho sai.
+      const giay = (ms: number) => (ms > 0 ? Math.max(0, Math.round((bayGio - ms) / 1000)) : null);
       await kho.rpc('kho_may_can_bao', {
         p_chi_nhanh_id: cn, p_ma_may: this.maMay(),
         p_bao: {
           phien_ban: this.phu.capNhat?.phienBan ?? null,
           mac_can: ch.macHaiChieu ?? ch.macCan ?? null,
           giu_ket_noi: this.giuKetNoiBat(),
-          can_tra_loi_luc: nghe > 0 ? new Date(nghe).toISOString() : null,
+          can_tra_loi_giay: giay(this.giu.lucNgheMs()),
           tu_gui: ch.tuGui === true,
-          lech_so: ch.tuGui === true ? this.lechCuoi : null,
+          lech_so: this.lechCuoi,
           gui_loi: ch.tuGui === true && this.lanTuGui?.hong === true,
-          gui_luc: this.lucGuiDuoc > 0 ? new Date(this.lucGuiDuoc).toISOString() : null,
+          gui_giay: giay(this.lucGuiDuoc),
           tren_can: guiTren ? tren : null,
         },
       });
@@ -1895,8 +1949,6 @@ export class UngDung {
            : nk.tong ? `, gửi ${nk.tong} dòng nhật ký tem (${nk.moi} dòng mới với kho).` : '.') };
     } catch (e) {
       this.lanBaoKho = { luc, ok: false, cau: `Chưa báo được về kho: ${cauLoi(e)} — tự thử lại sau 1 phút.` };
-    } finally {
-      this.dangBaoKho = false;
     }
     return this.lanBaoKho;
   }

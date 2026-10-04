@@ -39,6 +39,8 @@ await nhom('1 · TÊN THEO TẢNG', async () => {
   ok('Không số tảng → giữ tên', tenTheoTang('Thăn ngoại', null) === 'Thăn ngoại');
   const dai = tenTheoTang('Thăn ngoại bò Úc Black Angus cắt lát dày', 7);
   ok(`Tên dài: cắt tên, giữ số tảng, ≤ ${TEN_CAN_TOI_DA} ký tự`, [...dai].length <= TEN_CAN_TOI_DA && dai.endsWith(' #0007'), dai);
+  ok('Tên dạng NFD (dán từ Excel / macOS) → cắt như tên gõ tay (đếm sau khi chuẩn NFC)',
+     tenTheoTang('Thăn ngoại cắt lát'.normalize('NFD'), 142) === 'Thăn ngoại cắt lát #0142', tenTheoTang('Thăn ngoại cắt lát'.normalize('NFD'), 142));
 });
 
 await nhom('2 · GHÉP DANH MỤC CÂN', async () => {

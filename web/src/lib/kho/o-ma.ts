@@ -146,10 +146,10 @@ export async function giaoOMa(client: SupabaseClient, phienPhaId: string): Promi
   const ds = (data ?? []) as { ten: string; so_o: number; ma_can: string }[];
   const mot = { vi: (x: typeof ds[number]) => `${x.ten}: ô ${x.so_o} (mã ${x.ma_can})`,
                 en: (x: typeof ds[number]) => `${x.ten}: slot ${x.so_o} (code ${x.ma_can})` };
-  // 0061: Beeftown Cân ở quầy hỏi kho 15 giây một lần và tự gửi tên mới xuống cân (khi máy bật Tự gửi) — không hứa
-  // "cân đã đổi": trang đọc lại kho_phien_pha_can và hiện dòng "Cân sẵn sàng" khi máy quầy báo cân đã nhận.
-  return kqHai(true, { vi: `Đã giao ô mã — ${ds.map(mot.vi).join(' · ')}. Beeftown Cân ở quầy tự gửi tên mới xuống cân trong khoảng 15 giây — chờ dòng "Cân sẵn sàng" hiện xanh rồi mới in tem.`,
-                       en: `Rotating codes assigned — ${ds.map(mot.en).join(' · ')}. Beeftown Scale at the counter sends the new names to the scale within about 15 seconds — wait for the "Scale ready" line to turn green before printing labels.` });
+  // 0061: Beeftown Cân 2.9 ở quầy (bật Tự gửi) hỏi kho 15 giây một lần và tự gửi tên mới — tự gửi tắt hay bản cũ thì quản
+  // lý phải bấm Gửi. Không hứa "cân đã đổi": trang đọc lại kho_phien_pha_can và hiện "Cân sẵn sàng" khi máy quầy báo.
+  return kqHai(true, { vi: `Đã giao ô mã — ${ds.map(mot.vi).join(' · ')}. Beeftown Cân ở quầy bật Tự gửi thì tự gửi tên mới xuống cân sau khoảng 15–60 giây; không thì quản lý mở Beeftown Cân bấm Gửi xuống cân. Chờ dòng "Cân sẵn sàng" hiện xanh (bấm Xem lại cân) rồi mới in tem.`,
+                       en: `Rotating codes assigned — ${ds.map(mot.en).join(' · ')}. If Beeftown Scale at the counter has automatic sending on, it sends the new names to the scale within about 15–60 seconds; otherwise a manager opens Beeftown Scale and presses Send to scale. Wait for the "Scale ready" line to turn green (press Check the scale again) before printing labels.` });
 }
 
 /** Quản lý trả một ô về trống (quyền duyet). */
@@ -169,6 +169,11 @@ export async function giaiPhongOMa(client: SupabaseClient, giaoId: string): Prom
  */
 export async function docGiaoOMaCan(client: SupabaseClient, chiNhanhId: string): Promise<GiaoOMa[]> {
   const { data, error } = await client.rpc('kho_can_giao_o_ma', { p_chi_nhanh_id: chiNhanhId });
+  // Database chưa chạy 0061 (Beeftown Cân 2.9 cập nhật trước khi kho có hàm): đọc view như 2.8 — quản lý / chủ vẫn gửi đủ
+  // tên ô; NV quầy đọc view thì rỗng (như 2.8). Chỉ khi CHÍNH hàm này chưa có, lỗi khác vẫn ném.
+  if (error && (error.code === 'PGRST202' || error.code === '42883') && /\bkho_can_giao_o_ma\b/.test(error.message ?? '')) {
+    return docGiaoOMa(client, chiNhanhId);
+  }
   if (error) throw error;
   const ds = Array.isArray(data) ? data as Record<string, unknown>[] : [];
   return ds.map(r => ({ ...r, con_kg: Number(r.con_kg), con_goi: Number(r.con_goi) })) as unknown as GiaoOMa[];

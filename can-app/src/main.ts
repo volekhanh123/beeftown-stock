@@ -156,7 +156,8 @@ let dangTuGui = false;
 const tuGui = async () => {
   if (dangCapNhat() || dangTuGui || !ud.cauHinh().tuGui || !ud.coFileGoc()) return;
   dangTuGui = true;
-  try { await ud.tuGuiMotLan(); } finally { dangTuGui = false; }
+  // 2.9: gửi được thì báo kho ngay (dòng trên cân mới) — trang pha lóc thấy "Cân sẵn sàng" không phải đợi lượt mỗi phút.
+  try { if ((await ud.tuGuiMotLan()).daGui) void ud.baoKhoMotLan(); } finally { dangTuGui = false; }
 };
 setInterval(tuGui, 60_000);
 // 2.9: hỏi kho các ô đang giao mỗi 15 giây — vừa "Giao ô mã" (hay chốt phiên, tảng bán hết) thì tự gửi ngay.

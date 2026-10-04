@@ -25,7 +25,7 @@ const WEB = join(GOC, 'web', 'src');
 const {
   danhGiaSucKhoe, bangSucKhoe, cauTomTat, docSucKhoe, docSaoLuu, docSucKhoeVaSaoLuu, laSucKhoeTho, laThieuHam, khoangThoiGian, tuTruoc,
   PHUT_NHIP_TIM, GIO_KHONG_CO_TIN, PHUT_TIN_KET, GIO_SAO_LUU, GIO_KHONG_GUI_BAO_DONG,
-  PHUT_MAY_CAN_IM, PHUT_CAN_KHONG_TRA_LOI, PHUT_LECH_CAN,
+  PHUT_MAY_CAN_IM, PHUT_CAN_KHONG_TRA_LOI, PHUT_LECH_CAN, GIO_MAY_CAN_THOI_DUNG,
 } = await import(join(WEB, 'lib', 'suc-khoe.ts'));
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — SỨC KHỎE HỆ THỐNG, PHÍA WEB');
@@ -183,8 +183,13 @@ await nhom('4b · BEEFTOWN CÂN (MÁY QUẦY BÁO VỀ KHO, 0061)', async () => 
      && /^Máy quầy chạy Beeftown Cân không báo về kho từ 31 phút trước/.test(im.cau) && /Bật máy quầy/.test(im.cau), tom(im));
   const hai = dc([may({ bao_luc: truoc(90) }), may({ bao_luc: truoc(45) })]);
   ok('Hai máy cùng im → "2 máy quầy", tính từ máy im lâu nhất', hai.mau === 'do' && /^2 máy quầy .* từ 2 giờ trước/.test(hai.cau), tom(hai));
-  ok('Một máy im, một máy còn báo → vẫn đỏ (máy im không gửi được gì)',
-     dc([may({ bao_luc: truoc(90) }), may({})]).mau === 'do');
+  const motIm = dc([may({ bao_luc: truoc(90) }), may({})]);
+  ok('Một máy im, một máy còn báo → vàng "1 máy quầy khác không báo" (chi nhánh vẫn có máy chạy)', motIm.mau === 'vang'
+     && /^1 máy quầy khác không báo về kho từ 2 giờ trước/.test(motIm.cau), tom(motIm));
+  ok(`Máy im quá ${GIO_MAY_CAN_THOI_DUNG} giờ mà máy khác vẫn báo → đã thôi dùng (cài lại, máy thử), không tính: xanh`,
+     dc([may({ bao_luc: truoc((GIO_MAY_CAN_THOI_DUNG + 1) * 60) }), may({})]).mau === 'xanh');
+  ok(`Chỉ còn máy im quá ${GIO_MAY_CAN_THOI_DUNG} giờ (không máy nào báo) → vẫn đỏ`,
+     dc([may({ bao_luc: truoc((GIO_MAY_CAN_THOI_DUNG + 1) * 60) })]).mau === 'do');
   // Mới mở cửa: tính từ giờ mở cửa hôm nay, không từ lần báo đêm qua.
   const homQua = '2026-09-28T16:00:00Z';   // 23:00 giờ VN hôm trước
   const moi = dc([may({ bao_luc: homQua })], '2026-09-29T03:20:00Z');
@@ -222,8 +227,14 @@ await nhom('4b · BEEFTOWN CÂN (MÁY QUẦY BÁO VỀ KHO, 0061)', async () => 
   ok('Tự gửi tắt thì "gui_loi" cũ không tính', dc([may({ tu_gui: false, gui_loi: true })]).mau === 'xanh');
   ok('Máy im lặng: lệch / cân không trả lời của nó không tính thêm (chỉ một câu đỏ)',
      dc([may({ bao_luc: truoc(60), lech_so: 4, lech_tu: truoc(90), can_tra_loi_luc: null })]).cau.split(' · ').length === 1);
-  const dov = dc([may({ bao_luc: truoc(60) }), may({ lech_so: 2, lech_tu: truoc(30) })]);
-  ok('Đỏ trước, vàng sau trong cùng câu', dov.mau === 'do' && /^Máy quầy .* · 2 hàng kho/.test(dov.cau), tom(dov));
+  const hai2 = dc([may({ bao_luc: truoc(60) }), may({ lech_so: 2, lech_tu: truoc(30) })]);
+  ok('Một máy im + máy kia lệch kho → vàng, hai câu', hai2.mau === 'vang' && /^1 máy quầy khác .* · 2 hàng kho/.test(hai2.cau), tom(hai2));
+  // Ngoài giờ mở cửa và lúc vừa mở cửa: vàng không tính.
+  const dem = dc([may({ bao_luc: '2026-09-29T16:49:00Z', lech_so: 5, lech_tu: '2026-09-29T15:00:00Z', tu_gui: true, gui_loi: true })], '2026-09-29T16:50:00Z');
+  ok('23:50 giờ VN: máy để qua đêm lệch kho, tự gửi hỏng (cân tắt) → không vàng', dem.mau === 'xanh', tom(dem));
+  const sang = dc([may({ bao_luc: truoc(1), lech_so: 5, lech_tu: '2026-09-28T17:00:00Z' })], '2026-09-29T03:10:00Z');
+  ok('10:10 giờ VN: lệch từ nửa đêm (HSD đếm ngược) → chưa vàng — tính từ lúc mở cửa (10:00), mới 10 phút', sang.mau === 'xanh', tom(sang));
+  ok('10:16 giờ VN: vẫn lệch → vàng', dc([may({ bao_luc: truoc(1), lech_so: 5, lech_tu: '2026-09-28T17:00:00Z' })], '2026-09-29T03:16:00Z').mau === 'vang');
 });
 
 await nhom('5 · SỔ KHO', async () => {
