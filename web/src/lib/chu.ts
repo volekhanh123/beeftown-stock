@@ -32,6 +32,22 @@ export const THUONG_HIEU = {
 } as const;
 
 /**
+ * PHÁP NHÂN — công ty đứng tên trang, ghi ở chân MỌI trang công khai, ngay dưới
+ * dòng "© … Beeftown · Beef Specialty Restaurant". Khánh cung cấp 04/10/2026.
+ *
+ * Tên công ty và địa chỉ trụ sở là chữ pháp lý: GIỮ NGUYÊN tiếng Việt, đúng từng
+ * ký tự như Khánh đưa, ở cả ba thứ tiếng — dịch ra là thành một cái tên không có
+ * trên giấy tờ nào. Đổi chữ nào thì đối chiếu giấy đăng ký doanh nghiệp trước.
+ * Chỉ nhãn "Mã số thuế" được dịch (khóa maSoThue bên dưới). web/kiem-tra/trinh-duyet.mjs đọc chân trang của từng trang
+ * công khai và so với đúng các chuỗi này.
+ */
+export const PHAP_NHAN = {
+  ten: 'CÔNG TY TNHH SLK GROUP',
+  maSoThue: '0319712805',
+  diaChi: 'Tầng 3, 11-13-15-17-19-21 Hàm Nghi, Phường Sài Gòn, TP. Hồ Chí Minh',
+} as const;
+
+/**
  * Mọi ngôn ngữ của trang công khai. Thứ tự này cũng là thứ tự cột của
  * CAP_DUONG_DAN bên dưới — tiếng Việt đứng đầu vì là ngôn ngữ chính, và
  * x-default trỏ về nó.
@@ -101,6 +117,8 @@ const VI = {
   // Nhãn cho trình đọc màn hình của cụm nút đổi ngôn ngữ.
   chonNgonNgu: 'Ngôn ngữ',
   banQuyen: 'Beeftown',
+  // Nhãn trước mã số thuế ở chân trang. Tên công ty và địa chỉ không dịch — PHAP_NHAN.
+  maSoThue: 'Mã số thuế',
   boQuaToiNoiDung: 'Bỏ qua, tới nội dung chính',
 };
 
@@ -155,6 +173,7 @@ const EN: Bo = {
   quyenRiengTu: 'Privacy',
   chonNgonNgu: 'Language',
   banQuyen: 'Beeftown',
+  maSoThue: 'Tax code',
   boQuaToiNoiDung: 'Skip to main content',
 };
 
@@ -205,6 +224,9 @@ const KO: Bo = {
   quyenRiengTu: '개인정보 처리방침',
   chonNgonNgu: '언어',
   banQuyen: 'Beeftown',
+  // Dịch đúng nghĩa "mã số thuế", không dùng 사업자등록번호 — người Hàn đọc chữ đó
+  // là số đăng ký kinh doanh của Hàn Quốc.
+  maSoThue: '세금 코드',
   boQuaToiNoiDung: '본문으로 바로가기',
 };
 

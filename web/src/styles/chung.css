@@ -212,8 +212,14 @@ p { margin: 0 0 18px; }
 .chan-trang a:hover { color: var(--cuc-vang); }
 .chan-hang {
   display: flex; flex-wrap: wrap; gap: 10px 24px;
-  align-items: center; justify-content: space-between;
+  /* baseline: link Quyền riêng tư đứng ngang dòng ©, không trôi xuống giữa khối pháp nhân. */
+  align-items: baseline; justify-content: space-between;
 }
+.chan-dong { margin: 0; }
+/* Dòng pháp nhân: nhỏ hơn một bậc, cách dòng © một khoảng. Mỗi cụm (tên công ty,
+   mã số thuế) không gãy giữa chừng — màn hẹp thì xuống dòng ở dấu "·". */
+.phap-nhan { margin-top: 8px; font-size: 13px; line-height: 1.55; }
+.phap-nhan .lien { white-space: nowrap; }
 
 /* --- Dòng trạng thái ------------------------------------------------------ */
 .trang-thai {
