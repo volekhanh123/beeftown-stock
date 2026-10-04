@@ -239,6 +239,12 @@ await nhom('7 · HSD = SỐ NGÀY CÒN LẠI CỦA LÔ (hàm thuần)', async ()
 function clientGia(bang, loi = {}) {
   const goi = [];
   const client = {
+    // 0061: ô đang giao đọc bằng RPC kho_can_giao_o_ma (mọi vai xem) — bang[tên hàm] là kết quả.
+    rpc(ten, thamSo) {
+      goi.push({ ten, thamSo, rpc: true });
+      if (loi[ten]) return Promise.resolve({ data: null, error: loi[ten] });
+      return Promise.resolve({ data: bang[ten] ?? [], error: null });
+    },
     from(ten) {
       const q = { ten, cot: '', loc: [], khoang: null };
       goi.push(q);
@@ -261,7 +267,7 @@ function clientGia(bang, loi = {}) {
 }
 const BANG8 = () => ({
   kho_o_ma: [...O.values()].flat(),
-  kho_v_o_ma_giao: [],
+  kho_can_giao_o_ma: [],
   kho_ma_giam: [],
   // 1.000 dòng lô của món khác (trang 1) rồi lô Thăn nội ở trang 2; một lô cùng món ở chi nhánh khác (sớm hơn) phải bị lọc.
   kho_v_ton: [
@@ -300,6 +306,13 @@ await nhom('8 · hangChoCan: ĐỌC LÔ CÒN TỒN, "HÔM NAY" GIỜ VIỆT NAM 
     let loi = '';
     try { await DMC.hangChoCan(hong, 'cn-1', MH7); } catch (e) { loi = e.message; }
     ok('Đọc lô hỏng → hangChoCan báo lỗi (không gửi HSD thiếu lô)', loi === 'mất mạng', loi);
+    ok('Ô đang giao đọc bằng RPC kho_can_giao_o_ma của đúng chi nhánh (NV quầy đọc được) — không đọc view kho_v_o_ma_giao',
+       goi.some(q => q.rpc && q.ten === 'kho_can_giao_o_ma' && q.thamSo?.p_chi_nhanh_id === 'cn-1') && !goi.some(q => q.ten === 'kho_v_o_ma_giao'),
+       JSON.stringify(goi.filter(q => q.rpc)));
+    const { client: hongO } = clientGia(BANG8(), { kho_can_giao_o_ma: { message: 'Tài khoản của bạn không xem được kho của chi nhánh này', code: '42501' } });
+    let loiO = '';
+    try { await DMC.hangChoCan(hongO, 'cn-1', MH7); } catch (e) { loiO = e.message; }
+    ok('Đọc ô đang giao hỏng → hangChoCan báo lỗi (không gửi tên ô thiếu số tảng)', /không xem được kho/.test(loiO), loiO);
   } finally { traGio(); }
 });
 

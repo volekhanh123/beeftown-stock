@@ -250,7 +250,7 @@ const TEN: Record<MaDen, Cau> = {
   dat_ban:    { vi: 'Đặt bàn', en: 'Bookings' },
   ipos:       { vi: 'iPOS', en: 'iPOS' },
   so_kho:     { vi: 'Sổ kho', en: 'Stock ledger' },
-  can:        { vi: 'Beeftown Cân', en: 'Beeftown Can (scale app)' },
+  can:        { vi: 'Beeftown Cân', en: 'Beeftown Scale' },
   tin_zalo:   { vi: 'Tin Zalo', en: 'Zalo messages' },
   tuyen_dung: { vi: 'Hồ sơ ứng tuyển', en: 'Job applications' },
   zalo:       { vi: 'Bộ gửi tin Zalo', en: 'Zalo sender' },
@@ -428,7 +428,7 @@ function denCan(d: Partial<CanTho> | undefined, maCn: string, bayGio: number, nn
   const may = Array.isArray(d?.may) ? d.may : [];
   if (may.length === 0) {
     return denTat('can', { vi: 'Chưa máy quầy nào chạy Beeftown Cân báo về kho (14 ngày qua).',
-                           en: 'No counter computer running Beeftown Can has reported to the stock system in the last 14 days.' }, di, nn);
+                           en: 'No counter computer running Beeftown Scale has reported to the stock system in the last 14 days.' }, di, nn);
   }
   const mo = Number.isInteger(d?.gio_mo_cua) ? Number(d?.gio_mo_cua) : 10;
   const dong = Number.isInteger(d?.gio_dong_cua) ? Number(d?.gio_dong_cua) : 23;
@@ -448,7 +448,7 @@ function denCan(d: Partial<CanTho> | undefined, maCn: string, bayGio: number, nn
       : { vi: `${imLang.length} máy quầy`, en: `${imLang.length} counter computers` };
     v.push({ muc: 'do', cau: {
       vi: `${ai.vi} chạy Beeftown Cân không báo về kho từ ${tuTruoc(bayGio, cu).vi} — giá mới và tên ô theo tảng không xuống cân. Bật máy quầy, mở Beeftown Cân và đăng nhập kho`,
-      en: `${ai.en} running Beeftown Can ${imLang.length === 1 ? 'has' : 'have'} not reported since ${tuTruoc(bayGio, cu).en} — new prices and primal slot names do not reach the scale. Turn on the counter computer, open Beeftown Can and sign in` } });
+      en: `${ai.en} running Beeftown Scale ${imLang.length === 1 ? 'has' : 'have'} not reported since ${tuTruoc(bayGio, cu).en} — new prices and primal slot names do not reach the scale. Turn on the counter computer, open Beeftown Scale and sign in` } });
   }
   const khongTraLoi = trongGio ? conBao.filter(m => m.giu_ket_noi === true
     && (ms(m.can_tra_loi_luc) === null || bayGio - (ms(m.can_tra_loi_luc) as number) > PHUT_CAN_KHONG_TRA_LOI * 60000)) : [];
@@ -457,7 +457,7 @@ function denCan(d: Partial<CanTho> | undefined, maCn: string, bayGio: number, nn
     const tu: Cau = tl.length ? { vi: ` từ ${tuTruoc(bayGio, Math.min(...tl)).vi}`, en: ` since ${tuTruoc(bayGio, Math.min(...tl)).en}` } : { vi: '', en: '' };
     v.push({ muc: 'vang', cau: {
       vi: `Beeftown Cân không nói chuyện được với cân${tu.vi} — xem cân có bật, cùng WiFi không (ô Cân trong Beeftown Cân)`,
-      en: `Beeftown Can cannot talk to the scale${tu.en} — check the scale is on and on the same Wi-Fi (Scale box in Beeftown Can)` } });
+      en: `Beeftown Scale cannot talk to the scale${tu.en} — check the scale is on and on the same Wi-Fi (Scale box in Beeftown Scale)` } });
   }
   const lech = conBao.filter(m => so(m.lech_so) > 0 && ms(m.lech_tu) !== null && bayGio - (ms(m.lech_tu) as number) > PHUT_LECH_CAN * 60000);
   if (lech.length > 0) {
@@ -466,14 +466,14 @@ function denCan(d: Partial<CanTho> | undefined, maCn: string, bayGio: number, nn
     const tuGui = lech.every(m => m.tu_gui === true);
     v.push({ muc: 'vang', cau: tuGui
       ? { vi: `${n} hàng kho đã đổi mà cân chưa nhận (từ ${tuTruoc(bayGio, tu).vi}) — tự gửi đang dừng, mở Beeftown Cân xem câu báo ở ô Cân`,
-          en: `${n} item${s(n)} changed in stock but not on the scale yet (since ${tuTruoc(bayGio, tu).en}) — automatic sending is paused; open Beeftown Can and read the Scale box` }
+          en: `${n} item${s(n)} changed in stock but not on the scale yet (since ${tuTruoc(bayGio, tu).en}) — automatic sending is paused; open Beeftown Scale and read the Scale box` }
       : { vi: `${n} hàng kho đã đổi mà cân chưa nhận (từ ${tuTruoc(bayGio, tu).vi}) — Tự gửi đang tắt: quản lý bấm Gửi xuống cân, hoặc bật Tự gửi ở Cài đặt của Beeftown Cân`,
-          en: `${n} item${s(n)} changed in stock but not on the scale yet (since ${tuTruoc(bayGio, tu).en}) — automatic sending is off: a manager presses Send to scale, or turns on automatic sending in Beeftown Can settings` } });
+          en: `${n} item${s(n)} changed in stock but not on the scale yet (since ${tuTruoc(bayGio, tu).en}) — automatic sending is off: a manager presses Send to scale, or turns on automatic sending in Beeftown Scale settings` } });
   }
   if (lech.length === 0 && conBao.some(m => m.tu_gui === true && m.gui_loi === true)) {
     v.push({ muc: 'vang', cau: {
       vi: 'Lần tự gửi xuống cân gần nhất bị lỗi — mở Beeftown Cân xem câu báo ở ô Cân',
-      en: 'The latest automatic send to the scale failed — open Beeftown Can and read the Scale box' } });
+      en: 'The latest automatic send to the scale failed — open Beeftown Scale and read the Scale box' } });
   }
   const moiNhat = Math.max(...may.map(m => ms(m.bao_luc) ?? -Infinity));
   const lanCuoi = Number.isFinite(moiNhat) ? tuTruoc(bayGio, moiNhat) : { vi: 'không rõ', en: 'unknown' };

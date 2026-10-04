@@ -17,6 +17,7 @@
  */
 
 import { dungDatabase, taoBoDem, UID, maGui } from './kho-chung.mjs';
+import { tomTatCanPhien } from '../../web/src/lib/kho/danh-muc-can.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — BEEFTOWN CÂN BÁO VỀ KHO (0061)');
 const { db, cnA, cnB, nsId, duoi, duoiAnon } = await dungDatabase();
@@ -294,6 +295,14 @@ await nhom('6 · TRANG PHA LÓC: Ô ĐÃ LÊN CÂN CHƯA, TEM IN / NHÃN QUÉT, 
      && k.o.length === 1 && o.ma_can === '10011' && o.so_tang === 1 && o.dang_giu === true, r.loi ?? JSON.stringify(k));
   ok('Trên cân: PLU 23 · tên · phím F5 (theo máy quầy đã báo)', o?.tren_can?.length === 1 && o.tren_can[0].plu === 23
      && o.tren_can[0].ten === 'Thăn ngoại cắt #0001' && o.tren_can[0].phim[0] === 'F5', JSON.stringify(o?.tren_can));
+  // Database thật → câu trang pha lóc (web/src/lib/kho/danh-muc-can.ts).
+  ok('Trang: cân còn tên "Thăn ngoại cắt #0001" ≠ tên mới "Thăn ngoại cắt lát #0001" → "còn tên cũ", không sẵn sàng',
+     tomTatCanPhien(k).dong[0]?.muc === 'ten_cu', JSON.stringify(tomTatCanPhien(k).dong[0]));
+  await bao(UID.nvQuayA, cnA.id, MAY_1, { tren_can: [{ plu: 23, ma_can: '10011', ten: 'Thăn ngoại cắt lát #0001', phim: ['F5'] }] });
+  const k2 = (await doiChieu(UID.thuKhoA, P[1])).rows?.[0]?.kq;
+  ok('Máy quầy báo đúng tên mới → trang "Cân sẵn sàng: Thăn ngoại cắt lát #0001 = PLU 23 · phím F5"',
+     tomTatCanPhien(k2).dong[0]?.cau?.vi === 'Cân sẵn sàng: Thăn ngoại cắt lát #0001 = PLU 23 · phím F5', JSON.stringify(tomTatCanPhien(k2).dong[0]));
+  ok('Trang: nhãn mã thường 301 → cảnh báo in lại bằng phím ô của phiên', /in bằng mã thường 301/.test(tomTatCanPhien(k2).nhanThuong[0]?.vi ?? ''));
   ok('Nhãn quét bằng mã ô: 2 nhãn · 1,02 kg', Number(o?.quet) === 2 && Number(o?.quet_kg) === 1.02, `${o?.quet} · ${o?.quet_kg}`);
   ok('Tem cân in bằng mã ô từ lúc giao: 4 (23:50, 00:10 và 00:20 qua nửa đêm, vừa xong) — không tính 23:30 trước lúc giao, ô khác, loại 2',
      Number(o?.in) === 4 && Number(o?.in_kg) === 2.12, `${o?.in} · ${o?.in_kg}`);

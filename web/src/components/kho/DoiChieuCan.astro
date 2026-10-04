@@ -1,0 +1,73 @@
+---
+/**
+ * Trang pha lóc (0061) — Beeftown Cân báo về kho. Không gọi database: trang đọc kho_phien_pha_can (docCanPhien) rồi
+ * tomTatCanPhien() soạn câu; component chỉ vẽ.
+ *   · kieu "can": bước Cân & quét — mỗi ô đang giữ một dòng "Cân sẵn sàng: … = PLU 23 · phím F5" (xanh) hoặc "chưa lên
+ *     cân / còn tên cũ" (vàng), câu về máy quầy (tự gửi, lần báo cuối), cảnh báo nhãn mã thường.
+ *   · kieu "doi_chieu": bước Kết quả và màn Xem — tem cân in bằng mã ô so với nhãn đã quét, cảnh báo nhãn mã thường.
+ * Không đọc được (database chưa chạy 0061, mạng): trang không truyền tomTat → không vẽ gì, KHÔNG đoán "cân sẵn sàng".
+ */
+import type { TomTatCan } from '../../lib/kho/danh-muc-can.ts';
+import { nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
+
+interface Props {
+  tomTat: TomTatCan;
+  kieu: 'can' | 'doi_chieu';
+}
+const { tomTat, kieu } = Astro.props;
+const nn = nnCua(Astro);
+const t = {
+  canTd: { vi: 'Cân ở quầy', en: 'Scale at the counter' },
+  doiChieuTd: { vi: 'Đối chiếu tem cân in với nhãn đã quét', en: 'Scale labels printed vs labels scanned' },
+  nhanThuongTd: { vi: 'Nhãn in bằng mã thường', en: 'Labels printed with the regular code' },
+};
+const dangGiu = tomTat.dong.filter(d => d.muc !== null);
+const lop = (m: string | null) => (m === 'san_sang' ? 'xong' : 'luu-y');
+---
+{kieu === 'can' ? (
+  <>
+    {dangGiu.length > 0 && (
+      <div class="dcc">
+        <p class="dcc-td"><strong>{t.canTd[nn]}</strong>{tomTat.may && <span class="kho-phu"> — {tomTat.may[nn]}</span>}</p>
+        {dangGiu.map(d => (
+          <div class={`nb-bao ${lop(d.muc)}`} role={d.muc === 'san_sang' ? 'status' : 'alert'}><p>{d.cau?.[nn]}</p></div>
+        ))}
+      </div>
+    )}
+    {tomTat.nhanThuong.length > 0 && (
+      <div class="nb-bao luu-y" role="alert">
+        <p><strong>{t.nhanThuongTd[nn]}</strong></p>
+        {tomTat.nhanThuong.map(c => <p>{c[nn]}</p>)}
+      </div>
+    )}
+  </>
+) : (
+  (tomTat.dong.length > 0 || tomTat.nhanThuong.length > 0) && (
+    <section class="nb-the">
+      <h2 style="margin-top:0">{t.doiChieuTd[nn]}</h2>
+      {tomTat.dong.length > 0 && (
+        <ul class="dcc-ds">
+          {tomTat.dong.map(d => (
+            <li class={d.soIn === d.soQuet ? '' : 'dcc-lech'}><strong>{d.tenMuon}</strong> — {d.doiChieu[nn]}</li>
+          ))}
+        </ul>
+      )}
+      <p class="kho-phu">{tomTat.nhatKy[nn]}</p>
+      {tomTat.nhanThuong.length > 0 && (
+        <div class="nb-bao luu-y" role="alert">
+          <p><strong>{t.nhanThuongTd[nn]}</strong></p>
+          {tomTat.nhanThuong.map(c => <p>{c[nn]}</p>)}
+        </div>
+      )}
+    </section>
+  )
+)}
+
+<style>
+  .dcc { margin: .75rem 0; }
+  .dcc-td { margin: 0 0 .4rem; }
+  .dcc .nb-bao { margin: .3rem 0; }
+  .dcc-ds { margin: .25rem 0 .5rem; padding-left: 1.2rem; }
+  .dcc-ds li { margin: .25rem 0; }
+  .dcc-lech { font-weight: 600; }
+</style>

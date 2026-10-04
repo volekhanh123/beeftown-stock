@@ -146,8 +146,10 @@ export async function giaoOMa(client: SupabaseClient, phienPhaId: string): Promi
   const ds = (data ?? []) as { ten: string; so_o: number; ma_can: string }[];
   const mot = { vi: (x: typeof ds[number]) => `${x.ten}: ô ${x.so_o} (mã ${x.ma_can})`,
                 en: (x: typeof ds[number]) => `${x.ten}: slot ${x.so_o} (code ${x.ma_can})` };
-  return kqHai(true, { vi: `Đã giao ô mã — ${ds.map(mot.vi).join(' · ')}. Mở Beeftown Cân, bấm Gửi xuống cân.`,
-                       en: `Rotating codes assigned — ${ds.map(mot.en).join(' · ')}. Open Beeftown Scale and press Send to scale.` });
+  // 0061: Beeftown Cân ở quầy hỏi kho 15 giây một lần và tự gửi tên mới xuống cân (khi máy bật Tự gửi) — không hứa
+  // "cân đã đổi": trang đọc lại kho_phien_pha_can và hiện dòng "Cân sẵn sàng" khi máy quầy báo cân đã nhận.
+  return kqHai(true, { vi: `Đã giao ô mã — ${ds.map(mot.vi).join(' · ')}. Beeftown Cân ở quầy tự gửi tên mới xuống cân trong khoảng 15 giây — chờ dòng "Cân sẵn sàng" hiện xanh rồi mới in tem.`,
+                       en: `Rotating codes assigned — ${ds.map(mot.en).join(' · ')}. Beeftown Scale at the counter sends the new names to the scale within about 15 seconds — wait for the "Scale ready" line to turn green before printing labels.` });
 }
 
 /** Quản lý trả một ô về trống (quyền duyet). */
@@ -156,4 +158,61 @@ export async function giaiPhongOMa(client: SupabaseClient, giaoId: string): Prom
   if (error) return { ok: false, cau: cauLoiKho(error), cauEn: dichCau('en', cauLoiKho(error)) };
   const cau = String(data ?? '');
   return { ok: true, cau, cauEn: dichCau('en', cau) };
+}
+
+// -----------------------------------------------------------------------------
+// 0061 — BEEFTOWN CÂN BÁO VỀ KHO
+// -----------------------------------------------------------------------------
+/**
+ * Ô đang giao cho danh mục cân (kho_can_giao_o_ma, quyền xem): đúng các dòng của kho_v_o_ma_giao, đọc được cả bằng NV quầy
+ * (view thì rỗng với NV quầy — không đọc được phiên lóc). hangChoCan dùng hàm này.
+ */
+export async function docGiaoOMaCan(client: SupabaseClient, chiNhanhId: string): Promise<GiaoOMa[]> {
+  const { data, error } = await client.rpc('kho_can_giao_o_ma', { p_chi_nhanh_id: chiNhanhId });
+  if (error) throw error;
+  const ds = Array.isArray(data) ? data as Record<string, unknown>[] : [];
+  return ds.map(r => ({ ...r, con_kg: Number(r.con_kg), con_goi: Number(r.con_goi) })) as unknown as GiaoOMa[];
+}
+
+/** Một dòng ô mã đang nằm trên cân, theo một máy quầy (kho_may_can.tren_can). */
+export interface TrenCanO { plu: number; ten: string; phim: string[]; bao_luc: string }
+/** Một ô của phiên lóc (kho_phien_pha_can). in / in_kg: tem cân in bằng mã ô từ lúc giao tới lúc chốt. */
+export interface OCanPhien {
+  giao_id: string; o_ma_id: string; mat_hang_id: string; ten_hang: string; so_o: number; ma_can: string;
+  so_tang: number | null; dang_giu: boolean; tu_luc: string; den_luc: string | null;
+  quet: number; quet_kg: number; in: number; in_kg: number; tren_can: TrenCanO[];
+}
+/** Một máy quầy của chi nhánh báo trong 14 ngày. */
+export interface MayCanPhien {
+  bao_luc: string; phien_ban: string | null; giu_ket_noi: boolean; can_tra_loi_luc: string | null;
+  tu_gui: boolean; lech_so: number | null; lech_tu: string | null; gui_loi: boolean; gui_luc: string | null;
+  nhat_ky_luc: string | null;
+}
+/** Nhãn mã thường (mã món / mã giảm) của phần cắt có ô, đã quét vào phiên theo tảng. */
+export interface NhanThuong { mat_hang_id: string; ten: string; ma_can: string; so_nhan: number; so_kg: number }
+export interface CanPhien {
+  /** now() của database — "bao lâu trước" tính theo mốc này. */
+  luc: string; theo_tang: boolean; co_mau_ma_vach: boolean;
+  o: OCanPhien[]; nhan_thuong: NhanThuong[]; may: MayCanPhien[];
+}
+
+/**
+ * Trang pha lóc đọc ô nào đã lên cân, tem in / nhãn quét, nhãn mã thường (kho_phien_pha_can, quyền pha_loc hoặc xem_gia).
+ * Không bao giờ ném: không đọc được (database chưa chạy 0061, mạng) → null, trang bỏ khung này — KHÔNG đoán "cân sẵn sàng".
+ */
+export async function docCanPhien(client: SupabaseClient, phienPhaId: string): Promise<CanPhien | null> {
+  try {
+    const { data, error } = await client.rpc('kho_phien_pha_can', { p_id: phienPhaId });
+    if (error || !data || typeof data !== 'object' || !Array.isArray((data as CanPhien).o)) return null;
+    const d = data as CanPhien;
+    return {
+      luc: String(d.luc), theo_tang: d.theo_tang === true, co_mau_ma_vach: d.co_mau_ma_vach === true,
+      o: d.o.map(o => ({ ...o, quet: Number(o.quet), quet_kg: Number(o.quet_kg), in: Number(o.in), in_kg: Number(o.in_kg),
+                         tren_can: Array.isArray(o.tren_can) ? o.tren_can : [] })),
+      nhan_thuong: (Array.isArray(d.nhan_thuong) ? d.nhan_thuong : []).map(n => ({ ...n, so_nhan: Number(n.so_nhan), so_kg: Number(n.so_kg) })),
+      may: Array.isArray(d.may) ? d.may : [],
+    };
+  } catch {
+    return null;
+  }
 }

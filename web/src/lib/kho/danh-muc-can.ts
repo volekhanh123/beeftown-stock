@@ -50,10 +50,10 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { HangKho } from './can-tma.ts';
-import type { HaiThuTieng } from './chung.ts';
+import { dinhDangKg, type HaiThuTieng } from './chung.ts';
 import type { MatHang } from './danh-muc.ts';
-import { congNgay, homNayVn, laNgayCoThat } from '../gio-vn.ts';
-import { docGiaoOMa, docOMa, type DongOMa, type GiaoOMa } from './o-ma.ts';
+import { congNgay, gioVnTuMs, homNayVn, laNgayCoThat } from '../gio-vn.ts';
+import { docGiaoOMaCan, docOMa, type CanPhien, type DongOMa, type GiaoOMa } from './o-ma.ts';
 import { docMaGiam, giaGiam, tenGiam, type DongMaGiam } from './ma-giam.ts';
 import { soTangChu } from './tang.ts';
 import { docLoConTon, type LoTon } from './ton.ts';
@@ -233,13 +233,143 @@ export function ghepHangChoCan(matHang: MatHang[], oMa: Map<string, DongOMa[]>, 
 }
 
 /**
- * Đọc từ kho rồi ghép — dùng ở màn Đồng bộ cân và Beeftown Cân, bằng client của người đã đăng nhập (quản lý / chủ).
+ * Đọc từ kho rồi ghép — dùng ở màn Đồng bộ cân và Beeftown Cân, bằng client của người đã đăng nhập (mọi vai xem từ 0061:
+ * ô đang giao đọc qua kho_can_giao_o_ma — NV quầy ở máy quầy đọc view kho_v_o_ma_giao thì rỗng, tên ô mất số tảng).
  * "Hôm nay" (giờ VN) lấy SAU khi đọc xong: đọc vắt qua nửa đêm thì số ngày tính cho ngày mới (ngắn hơn), không
  * tính cho hôm qua (HSD in ra muộn thêm 1 ngày).
  */
 export async function hangChoCan(client: SupabaseClient, chiNhanhId: string, matHang: MatHang[]): Promise<HangKho[]> {
   const [oMa, giao, maGiam, lo] = await Promise.all([
-    docOMa(client), docGiaoOMa(client, chiNhanhId), docMaGiam(client), docLoConTon(client, chiNhanhId),
+    docOMa(client), docGiaoOMaCan(client, chiNhanhId), docMaGiam(client), docLoConTon(client, chiNhanhId),
   ]);
   return ghepHangChoCan(matHang, oMa, giao, maGiam, { homNay: homNayVn(), lo });
+}
+
+// -----------------------------------------------------------------------------
+// TRANG PHA LÓC: Ô ĐÃ LÊN CÂN CHƯA, TEM IN / NHÃN QUÉT, NHÃN MÃ THƯỜNG (0061)
+// -----------------------------------------------------------------------------
+/** Máy quầy báo quá chừng này phút trước thì "trên cân" có thể đã cũ — nói rõ lần báo cuối. */
+export const PHUT_BAO_CAN_CU = 5;
+
+export type MucCan = 'san_sang' | 'ten_cu' | 'chua_len' | 'khong_biet';
+export interface DongCanO {
+  giao_id: string; ten_hang: string; so_o: number; ma_can: string;
+  /** Tên kho muốn in trên tem của ô (tên + số tảng) — đúng tên hangChoCan gửi xuống cân. */
+  tenMuon: string;
+  /** Chỉ ô ĐANG GIỮ mới xét trên cân; ô đã trả (tảng bán hết, phiên huỷ) thì null. */
+  muc: MucCan | null;
+  cau: HaiThuTieng | null;
+  /** Đối chiếu tem cân in bằng mã ô (từ lúc giao tới lúc chốt) với nhãn đã quét bằng mã ô. */
+  soIn: number; soQuet: number;
+  doiChieu: HaiThuTieng;
+}
+export interface TomTatCan {
+  dong: DongCanO[];
+  /** Câu chung về máy quầy (tự gửi, lần báo cuối) — null khi không có ô nào đang giữ. */
+  may: HaiThuTieng | null;
+  /** Một câu cho mỗi phần cắt có nhãn mã thường trong phiên theo tảng. */
+  nhanThuong: HaiThuTieng[];
+  /** Có nhật ký cân để đối chiếu không, và lần gửi gần nhất. */
+  nhatKy: HaiThuTieng;
+}
+
+const phutTruoc = (bayGio: number, iso: string | null | undefined): number | null => {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? Math.max(0, Math.round((bayGio - t) / 60000)) : null;
+};
+const gioPhut = (iso: string | null | undefined): string => {
+  const t = iso ? Date.parse(iso) : NaN;
+  return Number.isFinite(t) ? gioVnTuMs(t).slice(11, 16) : '—';
+};
+
+/**
+ * Số liệu kho_phien_pha_can → các dòng trang pha lóc hiện (hàm thuần — test bằng node). Không bao giờ nói "Cân sẵn
+ * sàng" khi chưa máy quầy nào báo đúng TÊN MỚI (tên + số tảng) cho mã ô: tên cũ trên cân = tem in ra sai tảng.
+ */
+export function tomTatCanPhien(cp: CanPhien): TomTatCan {
+  const bayGio = Date.parse(cp.luc);
+  const coMay = cp.may.length > 0;
+  const dong: DongCanO[] = cp.o.map(o => {
+    const tenMuon = tenTheoTang(o.ten_hang, o.dang_giu ? o.so_tang : null);
+    let muc: MucCan | null = null;
+    let cau: HaiThuTieng | null = null;
+    if (o.dang_giu) {
+      const dung = o.tren_can.find(t => String(t.ten ?? '').trim() === tenMuon.trim());
+      const cu = o.tren_can[0];
+      if (dung) {
+        muc = 'san_sang';
+        const phim = (dung.phim ?? []).filter(Boolean);
+        const p = phim.length
+          ? { vi: ` · phím ${phim.join(', ')}`, en: ` · key ${phim.join(', ')}` }
+          : { vi: ' · chưa gán phím tắt (gán ở thẻ Phím tắt của Beeftown Cân)', en: ' · no shortcut key yet (set it on the Keys tab of Beeftown Scale)' };
+        const phut = phutTruoc(bayGio, dung.bao_luc);
+        const cuQua = phut !== null && phut > PHUT_BAO_CAN_CU
+          ? { vi: ` (máy quầy báo ${phut} phút trước)`, en: ` (counter computer reported ${phut} min ago)` } : { vi: '', en: '' };
+        cau = { vi: `Cân sẵn sàng: ${tenMuon} = PLU ${dung.plu}${p.vi}${cuQua.vi}`,
+                en: `Scale ready: ${tenMuon} = PLU ${dung.plu}${p.en}${cuQua.en}` };
+      } else if (cu) {
+        muc = 'ten_cu';
+        cau = { vi: `Cân còn tên cũ "${cu.ten}" (PLU ${cu.plu}) — chưa in tem; chờ Beeftown Cân gửi tên ${tenMuon}`,
+                en: `The scale still shows the old name "${cu.ten}" (PLU ${cu.plu}) — do not print yet; wait for Beeftown Scale to send ${tenMuon}` };
+      } else if (coMay) {
+        muc = 'chua_len';
+        cau = { vi: `Chưa lên cân: mã ô ${o.ma_can} chưa có trên cân — chưa in tem; chờ Beeftown Cân gửi ${tenMuon}`,
+                en: `Not on the scale yet: slot code ${o.ma_can} is not on the scale — do not print yet; wait for Beeftown Scale to send ${tenMuon}` };
+      } else {
+        muc = 'khong_biet';
+        cau = { vi: `Không biết cân đã có ${tenMuon} chưa — chưa máy quầy nào báo về kho (cần Beeftown Cân 2.9). Xem trên cân trước khi in tem`,
+                en: `Unknown whether the scale has ${tenMuon} — no counter computer has reported (needs Beeftown Scale 2.9). Check on the scale before printing` };
+      }
+    }
+    const soIn = Number(o.in) || 0, soQuet = Number(o.quet) || 0;
+    const doiChieu: HaiThuTieng = soIn === soQuet
+      ? { vi: `Cân in ${soIn} tem mã ${o.ma_can}, phiên quét ${soQuet} — khớp`, en: `Scale printed ${soIn} labels with code ${o.ma_can}, session scanned ${soQuet} — match` }
+      : soIn > soQuet
+        ? { vi: `Cân in ${soIn} tem mã ${o.ma_can}, phiên quét ${soQuet} — ${soIn - soQuet} tem chưa quét (in lại, in hỏng, hay quên quét?)`,
+            en: `Scale printed ${soIn} labels with code ${o.ma_can}, session scanned ${soQuet} — ${soIn - soQuet} not scanned (reprinted, misprinted, or missed?)` }
+        : { vi: `Cân in ${soIn} tem mã ${o.ma_can}, phiên quét ${soQuet} — nhật ký cân chưa đủ (máy quầy chưa gửi, hay in ở cân khác)`,
+            en: `Scale printed ${soIn} labels with code ${o.ma_can}, session scanned ${soQuet} — the scale log is incomplete (not sent yet, or printed on another scale)` };
+    return { giao_id: o.giao_id, ten_hang: o.ten_hang, so_o: o.so_o, ma_can: o.ma_can, tenMuon, muc, cau, soIn, soQuet, doiChieu };
+  });
+
+  let may: HaiThuTieng | null = null;
+  if (cp.o.some(o => o.dang_giu)) {
+    if (!coMay) {
+      may = { vi: 'Chưa máy quầy nào chạy Beeftown Cân 2.9 báo về kho — trang không biết cân đã đổi tên chưa.',
+              en: 'No counter computer running Beeftown Scale 2.9 has reported — this page cannot tell whether the scale has the new names.' };
+    } else {
+      const m = cp.may[0];
+      const phut = phutTruoc(bayGio, m.bao_luc);
+      const lanCuoi = phut === null ? { vi: '', en: '' } : phut < 1 ? { vi: ' (vừa báo)', en: ' (just reported)' }
+        : { vi: ` (báo ${phut} phút trước)`, en: ` (reported ${phut} min ago)` };
+      may = cp.may.some(x => x.tu_gui)
+        ? { vi: `Beeftown Cân ở quầy tự gửi tên mới xuống cân trong khoảng 15 giây${lanCuoi.vi}.`,
+            en: `Beeftown Scale at the counter sends new names to the scale within about 15 seconds${lanCuoi.en}.` }
+        : { vi: `Tự gửi đang tắt ở máy quầy${lanCuoi.vi} — quản lý mở Beeftown Cân, bấm Gửi xuống cân (hay bật Tự gửi ở Cài đặt).`,
+            en: `Automatic sending is off on the counter computer${lanCuoi.en} — a manager opens Beeftown Scale and presses Send to scale (or turns on automatic sending in Settings).` };
+    }
+  }
+
+  const tenO = new Map(dong.filter(d => d.muc !== null).map(d => [cp.o.find(o => o.giao_id === d.giao_id)?.mat_hang_id, d.tenMuon]));
+  const nhanThuong = cp.theo_tang ? cp.nhan_thuong.map(n => {
+    const o = tenO.get(n.mat_hang_id);
+    const kg = dinhDangKg(n.so_kg, 'vi'), kgEn = dinhDangKg(n.so_kg, 'en');
+    const lam: HaiThuTieng = o
+      ? { vi: ` In lại bằng phím ô của phiên (${o}), bấm −1 để bỏ nhãn cũ.`,
+          en: ` Reprint with this session's slot key (${o}) and press −1 to drop the old ones.` }
+      : { vi: ' Giao ô mã rồi in lại bằng phím ô, bấm −1 để bỏ nhãn cũ.',
+          en: ' Assign rotating codes, reprint with the slot key and press −1 to drop the old ones.' };
+    return {
+      vi: `${n.so_nhan} nhãn ${n.ten} (${kg} kg) in bằng mã thường ${n.ma_can} — tem không có số tảng, khi bán kho không biết thuộc tảng nào.${lam.vi}`,
+      en: `${n.so_nhan} ${n.ten} label${n.so_nhan === 1 ? '' : 's'} (${kgEn} kg) printed with the regular code ${n.ma_can} — no primal number on the label, so sales cannot be traced to this primal.${lam.en}`,
+    };
+  }) : [];
+
+  const nhatKyLuc = cp.may.map(m => m.nhat_ky_luc).filter((x): x is string => !!x).sort().at(-1) ?? null;
+  const nhatKy: HaiThuTieng = nhatKyLuc
+    ? { vi: `Nhật ký cân gửi lên kho lần cuối lúc ${gioPhut(nhatKyLuc)} — tem in sau đó chưa tính.`,
+        en: `The scale log last reached the stock system at ${gioPhut(nhatKyLuc)} — labels printed after that are not counted yet.` }
+    : { vi: 'Chưa có nhật ký cân nào gửi lên kho (cần Beeftown Cân 2.9) — số tem cân in là 0 không có nghĩa cân chưa in.',
+        en: 'No scale log has reached the stock system yet (needs Beeftown Scale 2.9) — 0 printed labels does not mean nothing was printed.' };
+  return { dong, may, nhanThuong, nhatKy };
 }
