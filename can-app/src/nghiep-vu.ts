@@ -532,6 +532,11 @@ const LECH_GIO_MAY_TOI_DA_GIAY = 120;
 /** Mỗi ngày (giờ VN) tự chỉnh giờ cân tối đa chừng này lần, hai lần cách nhau ít nhất TU_DAT_GIO_CACH_MS. */
 const TU_DAT_GIO_TOI_DA = 3;
 const TU_DAT_GIO_CACH_MS = 10 * 60_000;
+/** Nhịp hỏng liên tiếp: lần sau chờ 30 giây, 1, 2, 4 phút… tối đa chừng này — cân treo (nhận TCP mà không trả lời) thì nhịp
+ * không giữ hàng đợi việc 30 giây mỗi lần liên tục. */
+const NHIP_LUI_TOI_DA_MS = 5 * 60_000;
+/** Tự đọc nhật ký hỏng: lần tự đọc sau chờ ít nhất chừng này (nối lại không kéo theo đọc lại ngay → không lặp mỗi 30 giây). */
+const LUI_SAU_NHAT_KY_HONG_MS = 5 * 60_000;
 /** UDP: máy phát gói của cân trong chừng này là "đang phát" (cân phát mỗi ~15 giây). */
 const UDP_GAN_DAY_MS = 60_000;
 /** Tìm cân bằng UDP: hỏi xong chờ trả lời chừng này (ms). */
@@ -892,6 +897,14 @@ export class UngDung {
     nhatKy: TrangThaiNen['nhatKy'];
   } = { gio: null, loi: null, lucCanBao: 0, nhatKy: null };
   private dangNhip = false;
+  /** Nhịp hỏng liên tiếp và lúc sớm nhất được thử lại (ms) — lùi dần tới NHIP_LUI_TOI_DA_MS. */
+  private nhipHong = 0;
+  private nhipSau = 0;
+  private lucNhipHong = 0;
+  /** Lần tự đọc nhật ký gần nhất hỏng lúc nào (ms, 0 = lần gần nhất đọc được). */
+  private lucNhatKyHong = 0;
+  /** Thông số 58 của file gốc, nhớ theo thời điểm sửa / cỡ file (trang hỏi trạng thái mỗi 15 giây). */
+  private tuBao58Nho: { khoa: string; v: boolean | null } | null = null;
   private henNhatKy: ReturnType<typeof setTimeout> | null = null;
   private lucDocNhatKy = 0;
   private dangDocNhatKy = false;
@@ -930,8 +943,8 @@ export class UngDung {
       gioMang?: () => Promise<number | null>;
       /** 2.8 — kiểm thử: cổng / địa chỉ UDP (udp-can.ts) thay cho 33584 / 255.255.255.255:33583. */
       udp?: TuyChonUdp;
-      /** 2.8 — kiểm thử: chờ sau khi cân báo in tem rồi mới đọc nhật ký, và khoảng tối thiểu giữa hai lần tự đọc (ms). */
-      nhatKyMs?: { cho: number; khoang: number };
+      /** 2.8 — kiểm thử: chờ sau khi cân báo in tem rồi mới đọc nhật ký, khoảng tối thiểu giữa hai lần tự đọc, lùi sau lần hỏng (ms). */
+      nhatKyMs?: { cho: number; khoang: number; luiHong?: number };
       /** 2.8 — kiểm thử: tìm cân bằng UDP, hỏi xong chờ trả lời (ms). */
       choUdpMs?: number;
       /**
@@ -1020,8 +1033,14 @@ export class UngDung {
     // chỉ người chọn cân mới quên được; địa chỉ tự đổi khi dò WiFi (ghiDoiDiaChi) thì vẫn là cân đó, giữ mã.
     if (ip !== cu.ipCan || moi.ipCan !== undefined) delete kq.macHaiChieu;
     ghiJson(this.fileCauHinh, kq);
-    // 2.8: đổi cân / cổng hay tắt giữ kết nối → đóng kết nối đang giữ ngay (nhịp sau nối lại theo cài đặt mới).
-    if (ip !== cu.ipCan || moi.ipCan !== undefined || kq.congHaiChieu !== cu.congHaiChieu || kq.giuKetNoi === false) this.giu.bo();
+    // 2.8: đổi cân / cổng hay tắt giữ kết nối → đóng kết nối đang giữ, sau việc đang chạy (hàng đợi motLuc) — đóng ngay thì
+    // việc đang gửi dở trên kết nối đó hỏng giữa chừng. Việc sau dùng cài đặt mới (địa chỉ / cổng khác → kết nối mới).
+    if (ip !== cu.ipCan || moi.ipCan !== undefined || kq.congHaiChieu !== cu.congHaiChieu || kq.giuKetNoi === false) {
+      this.motLuc(async () => { this.giu.bo(); }).catch(() => { /* đang khởi động lại: dongNen đã đóng */ });
+    }
+    // Người vừa sửa cài đặt (địa chỉ, cổng, bật lại giữ kết nối): nhịp sau thử ngay, không chờ hết lùi.
+    this.nhipHong = 0;
+    this.nhipSau = 0;
     void this.capNhatUdp();
     return kq;
   }
@@ -2015,26 +2034,29 @@ export class UngDung {
   async nhipCan(): Promise<void> {
     if (this.dangNhip || this.dangKhoiDongLai) return;
     if (!this.giuKetNoiBat()) { this.giu.bo(); return; }
+    // Có việc (của người dùng, tự gửi) nói chuyện được với cân SAU lần nhịp hỏng: hết lùi.
+    if (this.nhipHong && this.giu.lucNgheMs() > this.lucNhipHong) { this.nhipHong = 0; this.nhipSau = 0; }
+    if (this.bayGio() < this.nhipSau) return;
     this.dangNhip = true;
     try {
       const soLanTruoc = this.giu.trangThai().soLanMo;
-      let duoc = false, khongNoi = false;
+      // Giờ cân: lấy luôn giờ vừa hỏi khi dùng lại kết nối (GiuKetNoi hỏi trước) — một lần UPL TIM mỗi nhịp.
+      const docGioNhip = async () => {
+        const gio = await this.voiKetNoi(async kn => this.giu.gioVuaHoi(kn) ?? kn.docGio(), false);
+        const ms = this.bayGio();
+        this.nen.gio = { luc: ms, gio, lechGiay: lechGiayVn(gio, ms) };
+        this.nen.loi = null;
+      };
+      let duoc = false;
       try {
         await this.motLuc(async () => {
           try {
-            const gio = await this.voiKetNoi(kn => kn.docGio(), false);
-            const ms = this.bayGio();
-            this.nen.gio = { luc: ms, gio, lechGiay: lechGiayVn(gio, ms) };
-            this.nen.loi = null;
+            await docGioNhip();
             duoc = true;
           } catch (e) {
-            khongNoi = e instanceof LoiGiaoThuc && e.loai === 'khong-noi';
             this.nen.loi = { luc: this.bayGio(), cau: cauLoi(e) };
-            if (khongNoi && await this.theoUdp()) {
-              const gio = await this.voiKetNoi(kn => kn.docGio(), false);
-              const ms = this.bayGio();
-              this.nen.gio = { luc: ms, gio, lechGiay: lechGiayVn(gio, ms) };
-              this.nen.loi = null;
+            if (e instanceof LoiGiaoThuc && e.loai === 'khong-noi' && await this.theoUdp()) {
+              await docGioNhip();
               duoc = true;
             }
           }
@@ -2042,7 +2064,14 @@ export class UngDung {
       } catch (e) {
         this.nen.loi = { luc: this.bayGio(), cau: cauLoi(e) };
       }
-      if (!duoc) return;
+      if (!duoc) {
+        this.nhipHong++;
+        this.lucNhipHong = this.bayGio();
+        this.nhipSau = this.lucNhipHong + Math.min(NHIP_LUI_TOI_DA_MS, NHIP_CAN_MS * 2 ** (this.nhipHong - 1)) - 1_000;
+        return;
+      }
+      this.nhipHong = 0;
+      this.nhipSau = 0;
       if (this.giu.trangThai().soLanMo !== soLanTruoc) this.henDocNhatKy('noi', 0);
       await this.tuDatGioNeuCan();
     } catch (e) {
@@ -2067,7 +2096,10 @@ export class UngDung {
     if (this.dangDocNhatKy) { this.canDocLai ??= lyDo; return; }
     if (this.henNhatKy) return;
     const khoang = this.phu.nhatKyMs?.khoang ?? KHOANG_DOC_NHAT_KY_MS;
-    const ms = Math.max(cho, this.lucDocNhatKy + khoang - this.bayGio(), 0);
+    // Lần trước hỏng (cân không trả nhật ký, dữ liệu lạ): chờ LUI_SAU_NHAT_KY_HONG_MS — việc hỏng làm bỏ kết nối, nhịp nối lại
+    // rồi hẹn đọc bù: không lùi thì đọc → hỏng → nối lại → đọc… mỗi 30 giây mãi.
+    const lui = this.lucNhatKyHong ? this.lucNhatKyHong + (this.phu.nhatKyMs?.luiHong ?? LUI_SAU_NHAT_KY_HONG_MS) - this.bayGio() : 0;
+    const ms = Math.max(cho, this.lucDocNhatKy + khoang - this.bayGio(), lui, 0);
     this.henNhatKy = setTimeout(() => { this.henNhatKy = null; void this.docNhatKyNen(lyDo); }, ms);
     this.henNhatKy.unref?.();
   }
@@ -2085,8 +2117,10 @@ export class UngDung {
       const r = await this.motLuc(() => this.docNhatKyWifi(false, false));
       const { soMoi } = this.gopVaoNhatKy(r.kq.dong);
       this.nen.nhatKy = { luc: new Date(this.bayGio()).toISOString(), lyDo, soDong: r.kq.dong.length, soMoi, loi: r.kq.loi[0] ?? null };
+      this.lucNhatKyHong = 0;
     } catch (e) {
       this.nen.nhatKy = { luc: new Date(this.bayGio()).toISOString(), lyDo, soDong: 0, soMoi: 0, loi: cauLoi(e) };
+      this.lucNhatKyHong = this.bayGio();
     } finally {
       this.lucDocNhatKy = this.bayGio();
       this.dangDocNhatKy = false;
@@ -2109,11 +2143,14 @@ export class UngDung {
     const ngay = this.homNay();
     const cu = this.docTuDatGio();
     const lan = cu && cu.ngay === ngay ? cu.lan : [];
-    if (lan.length >= TU_DAT_GIO_TOI_DA) return;
+    // Chỉ lần đã GỬI giờ xuống cân mới tính vào giới hạn trong ngày — sáng mất mạng 30 phút (không kiểm được giờ máy tính,
+    // chưa gửi gì) không làm mất tự chỉnh cả ngày. Mọi lần (kể cả chưa gửi) cách nhau ít nhất TU_DAT_GIO_CACH_MS.
+    if (lan.filter(l => l.daGui).length >= TU_DAT_GIO_TOI_DA) return;
     const cuoi = lan[lan.length - 1];
     if (cuoi && this.bayGio() - Date.parse(cuoi.luc) < TU_DAT_GIO_CACH_MS) return;
     const luc = new Date(this.bayGio()).toISOString();
-    const ghi = (l: Omit<LanTuDatGio, 'luc' | 'lechTruoc'>) => this.ghiTuDatGio({ ngay, lan: [...lan, { luc, lechTruoc: g.lechGiay, ...l }] });
+    // Giữ 20 lần gần nhất trong ngày (mất mạng cả ngày: mỗi 10 phút một lần chưa gửi).
+    const ghi = (l: Omit<LanTuDatGio, 'luc' | 'lechTruoc'>) => this.ghiTuDatGio({ ngay, lan: [...lan, { luc, lechTruoc: g.lechGiay, ...l }].slice(-20) });
     const huong = (giay: number, nhanh: string, cham: string) => `${giay > 0 ? nhanh : cham} ${khoangThoiGianNgan(Math.abs(giay))}`;
     const mang = await this.layGioMang();
     if (mang === null) {
@@ -2187,11 +2224,17 @@ export class UngDung {
 
   /** Thông số 58 trong file gốc: bật tự báo khi có nhật ký mới (+1)? null = không biết. */
   private tuBao58(): boolean | null {
+    let khoa: string;
+    try { const st = fs.statSync(this.fileGoc); khoa = `${st.mtimeMs}:${st.size}`; } catch { return null; }
+    if (this.tuBao58Nho?.khoa === khoa) return this.tuBao58Nho.v;
+    let v: boolean | null = null;
     try {
       const d = docFileCan(this.docGoc()).dong.find(x => /^TMS\t58\t/.test(x));
-      const v = d ? Number(d.split('\t')[2]) : NaN;
-      return Number.isInteger(v) ? (v & 1) === 1 : null;
-    } catch { return null; }
+      const so = d ? Number(d.split('\t')[2]) : NaN;
+      v = Number.isInteger(so) ? (so & 1) === 1 : null;
+    } catch { v = null; }
+    this.tuBao58Nho = { khoa, v };
+    return v;
   }
 
   /** Trạng thái việc chạy nền (ô Cân). */
@@ -2672,6 +2715,9 @@ export class UngDung {
     else {
       await lam('33571', '7. Gửi file nhỏ qua cổng 33571', async () => {
         const ch = this.cauHinh();
+        // 2.8: đóng kết nối hai chiều đang giữ trước — bước này hỏi "cổng 33571 có nhận không", không phải "có nhận khi đang
+        // giữ một kết nối khác không" (chưa biết cân có nhận hai kết nối cùng lúc). Đọc lại sau đó mở kết nối mới.
+        this.giu.bo();
         const dong33571 = dongThu('THỬ 33571', 3000);
         const nho = fileNho(goc.phienBan, ['DWL\tPLU\t', dong33571, 'END\tPLU\t']);
         try { await (this.phu.gui ?? guiTcp)(ch.ipCan, ch.congCan, nho); }
@@ -3127,6 +3173,15 @@ export class UngDung {
   /** Nút "Kiểm tra kết nối" (chạy cả lúc mở chương trình): nối không được thì dò WiFi tìm cân. */
   async thuCan(): Promise<KetQuaTimCan> {
     const ch = this.cauHinh();
+    // 2.8: đang giữ kết nối hai chiều tới địa chỉ này và cân còn trả lời → thông, không mở thêm kết nối 33571 tới cùng cân
+    // (cân có nhận hai kết nối cùng lúc không: chưa biết — thử 33571 lúc đang giữ có thể hỏng oan rồi dò cả WiFi).
+    const tt = this.giu.trangThai();
+    if (this.giuKetNoiBat() && tt.dangMo && tt.ip === ch.ipCan) {
+      try {
+        await this.motLuc(() => this.voiKetNoi(kn => kn.docGio(), false));
+        return { thongCan: true, ipCan: ch.ipCan, doi: null, loi: null, thay: [ch.ipCan], daThu: 0, dai: [] };
+      } catch { /* kết nối đã chết: thử như trước */ }
+    }
     // Chờ ngắn như mỗi địa chỉ khi dò: cân tắt thì khỏi chờ lâu rồi mới dò.
     if (await (this.phu.thu ?? thuKetNoi)(ch.ipCan, ch.congCan, 2000)) {
       await this.nhoMac(ch.ipCan);
@@ -3142,7 +3197,18 @@ export class UngDung {
    */
   async timCan(): Promise<KetQuaTimCan> {
     const truoc = this.cauHinh();
-    const kq = await this.timQuaUdp(truoc) ?? await this.doMang(truoc);
+    // 2.8: nghe UDP → thử các máy vừa trả lời trước; không ra cân dùng được (không thấy, thấy cân khác mã máy, thấy nhiều cân —
+    // có thể cân của quán bị tường lửa / bộ phát chặn gói) thì dò WiFi bằng TCP như trước.
+    const quaUdp = await this.timQuaUdp(truoc);
+    if (quaUdp) {
+      const kq = await this.ketQuaTim(truoc, quaUdp);
+      if (kq.thongCan) return kq;
+    }
+    return this.ketQuaTim(truoc, await this.doMang(truoc));
+  }
+
+  /** Từ các địa chỉ vừa thấy cân (dò TCP hay UDP): đổi địa chỉ khi thấy đúng một cân ở chỗ khác và không khác mã máy. */
+  private async ketQuaTim(truoc: CauHinh, kq: KetQuaTim): Promise<KetQuaTimCan> {
     // Cài đặt đổi trong lúc dò (người gõ địa chỉ / cổng khác, hay lượt dò chung với tự gửi vừa
     // đổi địa chỉ): kết quả dò không còn đúng — kiểm lại theo cài đặt mới, không tự đổi đè lên.
     const vanNhu = () => { const c = this.cauHinh(); return c.ipCan === truoc.ipCan && c.congCan === truoc.congCan; };
@@ -3170,10 +3236,13 @@ export class UngDung {
    */
   private async timQuaUdp(ch: CauHinh): Promise<KetQuaTim | null> {
     if (ch.ngheUdp !== true || !this.udp.dangNghe) return null;
+    // Chỉ máy trả lời / phát SAU lúc hỏi: địa chỉ cũ của cân vừa đổi địa chỉ còn nằm trong danh sách 60 giây — tính nó là
+    // "cân vẫn ở địa chỉ cũ" thì không bao giờ theo cân sang địa chỉ mới.
+    const moc = this.udp.moc();
     await this.udp.hoi();
     await new Promise(r => setTimeout(r, this.phu.choUdpMs ?? CHO_TRA_LOI_UDP_MS));
     const soIp = (ip: string) => ip.split('.').reduce((n, x) => n * 256 + Number(x), 0);
-    const thay = this.udp.ganDay(UDP_GAN_DAY_MS).map(c => c.ip).sort((a, b) => soIp(a) - soIp(b));
+    const thay = this.udp.tuMoc(moc).map(c => c.ip).sort((a, b) => soIp(a) - soIp(b));
     return thay.length ? { thay, daThu: 0, dai: ['tín hiệu cân phát (UDP)'] } : null;
   }
 

@@ -2517,6 +2517,14 @@ console.log('6i · 2.8: giữ kết nối hai chiều mở, nhịp, nghe cân b�
     const l2 = u.docTuDatGio()?.lan[1];
     ok('Không lấy được giờ mạng (mất mạng) → không gửi; ghi lý do', khoiTim(can) === 0 && l2?.daGui === false && /không lấy được giờ mạng/.test(l2.cau),
       JSON.stringify(l2));
+    dat(SANG + 22 * 60_000);
+    await u.nhipCan();
+    mang = SANG + 33 * 60_000;
+    dat(SANG + 33 * 60_000);
+    await u.nhipCan();
+    const td = u.docTuDatGio();
+    ok('HỒI QUY: 3 lần chưa gửi (máy tính sai giờ, mất mạng) không tính vào giới hạn 3 lần / ngày → mạng có lại thì vẫn tự chỉnh',
+      khoiTim(can) === 1 && td?.lan.length === 4 && td.lan[3].daGui && td.lan[3].ok, JSON.stringify(td));
     u.dongNen();
     await can.dong();
   }
@@ -2546,7 +2554,7 @@ console.log('6i · 2.8: giữ kết nối hai chiều mở, nhịp, nghe cân b�
     canUdp.on('message', (m, r) => { if (m.toString('latin1') === 'UDP\t\r\n') { soHoi++; canUdp.send(Buffer.from('UDP\t33581\t\t\r\n', 'latin1'), r.port, r.address); } });
     const phat = () => new Promise<void>(r => canUdp.send(Buffer.from('UDP\t33581\t\t\r\n', 'latin1'), congUdp, '127.0.0.1', () => r()));
     const udp = { congNghe: congUdp, diaChiNghe: '127.0.0.1', diaChiHoi: '127.0.0.2', congHoi: canUdp.address().port };
-    const { can, u } = await moI({ udp, choUdpMs: 200 }, '127.0.0.2');
+    const { can, u, dat } = await moI({ udp, choUdpMs: 200 }, '127.0.0.2');
     const datCauHinh = (them: Record<string, unknown>) => fs.writeFileSync(u.fileCauHinh, JSON.stringify({ ...u.cauHinh(), ...them }));
     u.luuCauHinh({ ipCan: '127.0.0.3', ngheUdp: true });
     datCauHinh({ macHaiChieu: '0023F01AECB1' });
@@ -2571,8 +2579,10 @@ console.log('6i · 2.8: giữ kết nối hai chiều mở, nhịp, nghe cân b�
       u.cauHinh().ipCan === '127.0.0.3' && !u.trangThaiNen().giu.dangMo && u.trangThaiNen().loi !== null && can.khoi.length === 0
       && await can.choNhan(() => can.soDangMo() === 0, 4000));
     datCauHinh({ macHaiChieu: undefined });
+    dat(VN_CAN_GIA + 10 * 60_000);   // qua lúc lùi của nhịp vừa hỏng
+    await phat();
     await u.nhipCan();
-    ok('Chưa nhớ mã máy của cân → không theo UDP (không đoán)', u.cauHinh().ipCan === '127.0.0.3');
+    ok('Chưa nhớ mã máy của cân → không theo UDP (không đoán)', u.cauHinh().ipCan === '127.0.0.3' && can.ketNoi.length > 0);
     // Nút Tìm cân: hỏi như hãng, cân trả lời → thấy cân, không dò cả WiFi bằng TCP.
     const { can: c2, u: u2 } = await moI({ udp: { ...udp, congNghe: 0 }, choUdpMs: 200, thu: async () => false }, '127.0.0.2');
     u2.luuCauHinh({ ipCan: '127.0.0.3', ngheUdp: true });
@@ -2591,6 +2601,124 @@ console.log('6i · 2.8: giữ kết nối hai chiều mở, nhịp, nghe cân b�
     u.dongNen(); u2.dongNen();
     canUdp.close();
     await can.dong(); await c2.dong();
+  }
+
+  console.log('6i7 · Sửa sau rà soát 2.8');
+  {
+    // Cân trả nhật ký không bao giờ khớp: tự đọc hỏng → bỏ kết nối → nhịp nối lại → hẹn đọc bù.
+    const { can, u, dat } = await moI({ nhatKyMs: { cho: 5, khoang: 0, luiHong: 60_000 } });
+    let t = VN_CAN_GIA;
+    can.du.baoCao = [repI(1, 10), resI(1, '215,3', '181675,3', '845000,3'), 'REE\t'];
+    can.hong = { loai: 'bao-cao-khac' };
+    await u.nhipCan();
+    const daHong = await choDk(() => !!u.trangThaiNen().nhatKy?.loi, 5000);
+    const soRep = () => can.yeuCau.filter(y => y.startsWith('UPL\tREP\t')).length;
+    const rep0 = soRep(), mo0 = u.trangThaiNen().giu.soLanMo;
+    for (let i = 0; i < 3; i++) { t += 30_000; dat(t); await u.nhipCan(); await new Promise(r => setTimeout(r, 40)); }
+    ok('HỒI QUY: tự đọc nhật ký hỏng → bỏ kết nối; nhịp nối lại nhưng KHÔNG đọc lại ngay (lùi) — không lặp đọc hỏng mỗi 30 giây',
+      daHong && soRep() === rep0 && u.trangThaiNen().giu.soLanMo > mo0 && u.trangThaiNen().loi === null,
+      `${soRep() - rep0} lần đọc thêm · mở ${mo0}→${u.trangThaiNen().giu.soLanMo} · ${JSON.stringify(u.trangThaiNen().loi)} · ${JSON.stringify(u.trangThaiNen().giu)}`);
+    can.hong = null;
+    u.dongNen();
+    await can.dong();
+  }
+  {
+    // Cân nhận TCP mà không trả lời: mỗi nhịp hỏng giữ hàng đợi việc tới hết hạn chờ — lùi dần.
+    const { can, u, dat } = await moI({ tuyHaiChieu: { choMs: 300, choHangRaoMs: 300, nghiBaoCaoMs: 1 } });
+    let t = VN_CAN_GIA;
+    await u.nhipCan();
+    await choDk(() => u.trangThaiNen().nhatKy !== null);   // lượt đọc bù lúc vừa nối xong rồi mới cho cân treo
+    can.hong = { loai: 'im-lang' };
+    const lan: number[] = [];
+    for (let i = 0; i < 8; i++) { const n = can.ketNoi.length; t += 30_000; dat(t); await u.nhipCan(); lan.push(can.ketNoi.length - n); }
+    ok('HỒI QUY: cân treo (nhận TCP, không trả lời) → nhịp lùi dần 30 giây, 1 phút, 2 phút… (không thử mỗi 30 giây)',
+      lan.join() === '1,1,0,1,0,0,0,1', lan.join());
+    can.hong = null;
+    t += 1_000; dat(t);
+    await u.gioCan();
+    const n = can.ketNoi.length;
+    t += 30_000; dat(t);
+    const soYc = can.yeuCau.length;
+    await u.nhipCan();
+    ok('… cân trả lời lại (một việc của người dùng nói chuyện được) → hết lùi, nhịp sau chạy ngay', can.yeuCau.length > soYc && can.ketNoi.length === n
+      && u.trangThaiNen().loi === null);
+    u.dongNen();
+    await can.dong();
+  }
+  {
+    // Tìm cân qua UDP: gói cũ của địa chỉ cũ còn trong danh sách 60 giây.
+    const congUdp = await new Promise<number>((xong) => { const x = dgram.createSocket('udp4'); x.bind(0, '127.0.0.1', () => { const c = x.address().port; x.close(() => xong(c)); }); });
+    const moiCan = dgram.createSocket('udp4');
+    await new Promise<void>(r => moiCan.bind(0, '127.0.0.2', () => r()));
+    moiCan.on('message', (m, r) => { if (m.toString('latin1') === 'UDP\t\r\n') moiCan.send(Buffer.from('UDP\t33581\t\t\r\n', 'latin1'), r.port, r.address); });
+    const cuCan = dgram.createSocket('udp4');
+    await new Promise<void>(r => cuCan.bind(0, '127.0.0.3', () => r()));
+    const { can, u } = await moI({ udp: { congNghe: congUdp, diaChiNghe: '127.0.0.1', diaChiHoi: '127.0.0.2', congHoi: moiCan.address().port },
+      choUdpMs: 200, thu: async () => false }, '127.0.0.2');
+    u.luuCauHinh({ ipCan: '127.0.0.3', ngheUdp: true });
+    await u.capNhatUdp();
+    await new Promise<void>(r => cuCan.send(Buffer.from('UDP\t33581\t\t\r\n', 'latin1'), congUdp, '127.0.0.1', () => r()));
+    await choDk(() => u.trangThaiNen().udp.thay.some(c => c.ip === '127.0.0.3'));
+    const kq = await u.thuCan();
+    ok('HỒI QUY: cân vừa đổi 127.0.0.3 → 127.0.0.2, gói cũ của 127.0.0.3 còn trong 60 giây → Tìm cân chỉ tính máy trả lời lần hỏi này: theo cân sang 127.0.0.2',
+      kq.thongCan && kq.doi?.den === '127.0.0.2' && u.cauHinh().ipCan === '127.0.0.2', JSON.stringify(kq));
+    // UDP chỉ thấy một cân khác mã máy (cân của quầy bị chặn gói): dò WiFi bằng TCP như trước, không dừng ở "khác máy".
+    const { can: c2, u: u2 } = await moI({ udp: { congNghe: 0, diaChiNghe: '127.0.0.1', diaChiHoi: '127.0.0.2', congHoi: moiCan.address().port },
+      choUdpMs: 200, thu: async () => false, mac: async () => 'aa:aa:aa:aa:aa:aa' }, '127.0.0.2');
+    u2.luuCauHinh({ ipCan: '127.0.0.3', ngheUdp: true });
+    fs.writeFileSync(u2.fileCauHinh, JSON.stringify({ ...u2.cauHinh(), macCan: 'bb:bb:bb:bb:bb:bb' }));
+    await u2.capNhatUdp();
+    const kq2 = await u2.thuCan();
+    ok('HỒI QUY: UDP chỉ thấy một cân khác mã máy → không dừng ở đó: dò WiFi bằng TCP như trước; không đổi địa chỉ',
+      kq2.dai[0] !== 'tín hiệu cân phát (UDP)' && u2.cauHinh().ipCan === '127.0.0.3', JSON.stringify(kq2));
+    u.dongNen(); u2.dongNen();
+    moiCan.close(); cuCan.close();
+    await can.dong(); await c2.dong();
+  }
+  {
+    // Kiểm tra kết nối / Chẩn đoán bước 7 khi đang giữ kết nối hai chiều: không mở thêm kết nối tới cùng cân.
+    let soThu = 0;
+    const giu: { u: UngDung | null; moKhiGui: boolean | null } = { u: null, moKhiGui: null };
+    const { can, u } = await moI({ thu: async () => { soThu++; return true; },
+      gui: async (ip, cong, du) => { giu.moKhiGui = giu.u?.trangThaiNen().giu.dangMo ?? null; await guiTcp(ip, cong, du); } });
+    giu.u = u;
+    await u.nhipCan();
+    const k = await u.thuCan();
+    ok('HỒI QUY: Kiểm tra kết nối khi đang giữ kết nối hai chiều → hỏi trên kết nối đó, không thử cổng 33571 (không mở kết nối thứ hai)',
+      k.thongCan && soThu === 0 && can.ketNoi.length === 1, `${soThu} · ${can.ketNoi.length}`);
+    await u.chanDoanWifi({ ghiThu: true });
+    ok('HỒI QUY: Chẩn đoán bước 7 (file nhỏ qua 33571) đóng kết nối đang giữ trước khi gửi', giu.moKhiGui === false, String(giu.moKhiGui));
+    u.dongNen();
+    await can.dong();
+  }
+  {
+    // Lưu cài đặt lúc một việc đang chờ cân trả lời trên kết nối đang giữ.
+    const { can, u } = await moI();
+    await u.nhipCan();
+    can.hong = { loai: 'hang-rao-cham', ms: 300 };
+    const viec = loiCua(() => u.gioCan());
+    await new Promise(r => setTimeout(r, 60));
+    u.luuCauHinh({ giuKetNoi: false });
+    const loi = await viec;
+    can.hong = null;
+    ok('HỒI QUY: lưu cài đặt (tắt giữ kết nối) lúc "Đọc giờ cân" đang chờ cân → việc đó vẫn xong; kết nối đóng sau đó',
+      loi === '' && await can.choNhan(() => can.soDangMo() === 0, 4000), loi);
+    u.dongNen();
+    await can.dong();
+  }
+  {
+    // Mỗi nhịp một lần hỏi giờ; việc ngay sau một lần nói chuyện được không hỏi trước.
+    const { can, u, dat } = await moI();
+    await u.nhipCan();
+    dat(VN_CAN_GIA + 30_000);
+    const soYc = can.yeuCau.length;
+    await u.nhipCan();
+    ok('HỒI QUY: nhịp dùng lại kết nối → đúng MỘT lần hỏi giờ (UPL TIM) mỗi nhịp (giờ của lần hỏi trước khi dùng lại)',
+      demYc(can, soYc, 'UPL\tTIM\t') === 1, JSON.stringify(can.yeuCau.slice(soYc)));
+    ok('Thông số 58: file gốc bật → true; ghi nhận file không có dòng 58 → không biết (null), đọc lại theo file mới',
+      u.trangThaiNen().tuBao58 === true && (u.ghiNhanFileTuCan(fileI(TMS_I.filter(d => !d.startsWith('TMS\t58\t')))), u.trangThaiNen().tuBao58 === null));
+    u.dongNen();
+    await can.dong();
   }
 
   console.log('6i6 · Trang, máy chủ, main.ts, hướng dẫn');

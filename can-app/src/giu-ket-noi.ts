@@ -6,7 +6,9 @@
  * cho mỗi việc rồi đóng. Từ 2.8 mọi việc qua cổng hai chiều đi trên MỘT kết nối giữ mở: cân có nhận hai kết nối cùng
  * lúc không thì chưa biết (§10.2.9), nên không bao giờ mở kết nối thứ hai khi kết nối đang giữ còn dùng được.
  *
- * Mỗi lần dùng lại kết nối: hỏi giờ trước với hạn ngắn (CHO_HOI_NHANH_MS) — như hàng rào UPL TIM của hãng:
+ * Mỗi lần dùng lại kết nối: hỏi giờ trước với hạn ngắn (CHO_HOI_NHANH_MS) — như hàng rào UPL TIM của hãng (không bỏ qua
+ * bước này kể cả vừa nói chuyện xong: cân cắt kết nối thì phía máy tính có thể chưa biết, dùng luôn là hỏng việc thay vì
+ * bắt tay lại):
  *   - biết kết nối còn sống: cân tắt đột ngột không báo gì, ghi vào kết nối chết là chờ hết hạn hàng rào rồi báo "chưa
  *     chắc cân đã lưu" dù cân không nhận byte nào — không trả lời thì đóng, mở kết nối mới;
  *   - đồng bộ lại luồng: dòng thừa của việc trước (cân trả dòng lạ, trả chậm) bị bỏ khi chờ dòng TIM rồi END của hàng rào.
@@ -15,8 +17,10 @@
  * File này không biết cân nào là cân nào (mã máy): nghiep-vu.ts kiểm mã máy sau mỗi lần lấy kết nối (kiemMayHaiChieu)
  * và bỏ kết nối tới cân khác.
  */
-import type { KetNoiCan, TuyChonKetNoi } from './giao-thuc.ts';
+import type { GioCan, KetNoiCan, TuyChonKetNoi } from './giao-thuc.ts';
 
+/** Giờ cân vừa đọc khi hỏi trước lúc dùng lại còn dùng được trong khoảng này (nhịp lấy luôn, khỏi hỏi lần hai). */
+export const GIO_HOI_CON_DUNG_MS = 2_000;
 /** Hỏi giờ để biết kết nối im lặng lâu còn sống không: chờ tối đa (cân trả lời UPL TIM trong vài chục ms). */
 export const CHO_HOI_NHANH_MS = 4_000;
 
@@ -51,6 +55,8 @@ export class GiuKetNoi {
   private lucLoi = 0;
   private soLanMo = 0;
   private dangMoMoi: Promise<unknown> | null = null;
+  /** Giờ cân đọc được ở lần hỏi trước khi dùng lại gần nhất — nhịp dùng luôn, khỏi hỏi lần hai. */
+  private gioHoi: { kn: KetNoiCan; gio: GioCan; luc: number } | null = null;
 
   constructor(private readonly mo: MoKetNoiCan, private readonly bayGio: () => number = Date.now) {}
 
@@ -65,8 +71,9 @@ export class GiuKetNoi {
     const kn = this.kn;
     if (!moi && kn && this.ip === ip && this.cong === cong && kn.dangMo) {
       try {
-        await kn.docGio(CHO_HOI_NHANH_MS);
+        const gio = await kn.docGio(CHO_HOI_NHANH_MS);
         this.daNghe(kn);
+        this.gioHoi = { kn, gio, luc: this.bayGio() };
         return kn;
       } catch { /* im lặng / đứt: mở kết nối mới ở dưới */ }
     }
@@ -112,15 +119,20 @@ export class GiuKetNoi {
     if (kn && kn !== this.kn) { kn.dong(); return; }
     this.kn?.dong();
     this.kn = null;
+    this.gioHoi = null;
     this.ip = null;
     this.cong = null;
     this.lucMo = 0;
   }
 
-  /** Lần cuối cân trả lời cách đây bao lâu (ms) — Infinity nếu chưa lần nào. */
-  imLangMs(): number {
-    return this.lucNghe ? this.bayGio() - this.lucNghe : Infinity;
+  /** Giờ cân vừa đọc khi hỏi trước lúc lấy `kn` (trong GIO_HOI_CON_DUNG_MS) — null nếu không hỏi / đã lâu. */
+  gioVuaHoi(kn: KetNoiCan): GioCan | null {
+    const g = this.gioHoi;
+    return g && g.kn === kn && this.bayGio() - g.luc <= GIO_HOI_CON_DUNG_MS ? g.gio : null;
   }
+
+  /** Lúc cân trả lời lần cuối (ms, 0 nếu chưa lần nào). */
+  lucNgheMs(): number { return this.lucNghe; }
 
   private ghiLoi(e: unknown): void {
     this.loi = cauCua(e);

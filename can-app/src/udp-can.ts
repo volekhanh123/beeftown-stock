@@ -36,6 +36,8 @@ export function docGoiUdp(b: Uint8Array): number | null {
 /** Một máy vừa phát / trả gói của cân. */
 export interface CanNghe {
   ip: string;
+  /** Số thứ tự gói (tăng dần, mỗi gói nhận được một số) — tuMoc lấy các máy trả lời sau một mốc. */
+  stt: number;
   /** Cổng TCP hai chiều cân báo trong gói (thường 33581). */
   cong: number;
   /** Lần nghe gần nhất (ms). */
@@ -57,7 +59,10 @@ export interface TuyChonUdp {
 export class NgheUdp {
   private s: dgram.Socket | null = null;
   private thay = new Map<string, CanNghe>();
-  private dangBat: Promise<void> | null = null;
+  private dangBat: { lan: number; p: Promise<void> } | null = null;
+  /** Tăng mỗi lần bật / tắt: lần bật đang dở mà đã tắt thì bỏ cổng vừa mở, không nghe. */
+  private lanBat = 0;
+  private stt = 0;
   /** Bật không được (cổng bị giữ, không có quyền…): câu báo; null khi đang nghe. */
   loi: string | null = null;
   /** Lúc bắt đầu nghe (ms), 0 nếu không nghe. */
@@ -74,9 +79,11 @@ export class NgheUdp {
   /** Bắt đầu nghe. Đã nghe thì thôi. Không ném: hỏng thì ghi `loi`. */
   bat(): Promise<void> {
     if (this.s && this.lucBat) return Promise.resolve();
-    if (this.dangBat) return this.dangBat;
+    // Đang mở cổng (chưa bị tắt giữa chừng): dùng chung lần đó.
+    if (this.dangBat && this.dangBat.lan === this.lanBat) return this.dangBat.p;
     const congNghe = this.tuy.congNghe ?? CONG_UDP_MAY;
-    this.dangBat = new Promise<void>((xong) => {
+    const lan = ++this.lanBat;
+    const p = new Promise<void>((xong) => {
       let s: dgram.Socket;
       try { s = dgram.createSocket({ type: 'udp4', reuseAddr: true }); } catch (e) {
         this.loi = `Không mở được cổng UDP ${congNghe}: ${(e as Error)?.message ?? e}.`;
@@ -84,6 +91,7 @@ export class NgheUdp {
         return;
       }
       const hong = (e: Error) => {
+        if (lan !== this.lanBat) { try { s.close(); } catch { /* đã đóng */ } xong(); return; }   // đã tắt: không báo lỗi cũ
         this.loi = `Không nghe được cổng UDP ${congNghe} (${(e as { code?: string }).code ?? e.message}) — chương trình khác có thể đang giữ cổng. `
           + 'Tìm cân vẫn dò WiFi như trước.';
         try { s.close(); } catch { /* đã đóng */ }
@@ -95,10 +103,15 @@ export class NgheUdp {
         const cong = docGoiUdp(b);
         if (cong === null) return;
         const cu = this.thay.get(r.address);
-        this.thay.set(r.address, { ip: r.address, cong, luc: this.bayGio(), soGoi: (cu?.soGoi ?? 0) + 1 });
+        this.thay.set(r.address, { ip: r.address, stt: ++this.stt, cong, luc: this.bayGio(), soGoi: (cu?.soGoi ?? 0) + 1 });
       });
       s.bind(congNghe, this.tuy.diaChiNghe, () => {
         s.removeListener('error', hong);
+        if (lan !== this.lanBat) {   // đã tắt (hay bật lại) trong lúc mở cổng: không giữ cổng này
+          try { s.close(); } catch { /* đã đóng */ }
+          xong();
+          return;
+        }
         s.on('error', () => { /* lỗi gửi lẻ (mạng tắt): bỏ qua, lần sau gửi lại */ });
         try { s.setBroadcast(true); } catch { /* không phát rộng được: vẫn nghe */ }
         this.s = s;
@@ -106,12 +119,14 @@ export class NgheUdp {
         this.loi = null;
         xong();
       });
-    }).finally(() => { this.dangBat = null; });
-    return this.dangBat;
+    }).finally(() => { if (this.dangBat?.p === p) this.dangBat = null; });
+    this.dangBat = { lan, p };
+    return p;
   }
 
   /** Thôi nghe, quên các máy đã nghe. */
   tat(): void {
+    this.lanBat++;
     try { this.s?.close(); } catch { /* đã đóng */ }
     this.s = null;
     this.lucBat = 0;
@@ -127,6 +142,13 @@ export class NgheUdp {
       await new Promise<void>((xong) => { try { s.send(GOI_HOI, cong, ip, () => xong()); } catch { xong(); } });
       if (i < soLan - 1 && cachMs > 0) await new Promise(r => setTimeout(r, cachMs));
     }
+  }
+
+  /** Mốc hiện tại (số thứ tự gói cuối) — truyền cho tuMoc sau khi hỏi. */
+  moc(): number { return this.stt; }
+  /** Các máy phát / trả gói SAU mốc `moc` (trả lời lần hỏi này), mới nhất trước — không lẫn máy chỉ còn trong danh sách cũ. */
+  tuMoc(moc: number): CanNghe[] {
+    return [...this.thay.values()].filter(c => c.stt > moc).sort((a, b) => b.stt - a.stt);
   }
 
   /** Các máy phát gói của cân trong `trongMs` vừa qua, mới nhất trước. */

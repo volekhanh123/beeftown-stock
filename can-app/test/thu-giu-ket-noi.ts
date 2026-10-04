@@ -167,6 +167,16 @@ export async function thuGiuKetNoi(ok: Ok): Promise<void> {
       await nghe.bat();
       ok('Bật lần hai khi đang nghe → không mở thêm cổng', nghe.dangNghe);
       nghe.tat();
+      const congTam = await new Promise<number>((xong) => { const x = dgram.createSocket('udp4'); x.bind(0, IP, () => { const c = x.address().port; x.close(() => xong(c)); }); });
+      const nghe4 = new NgheUdp({ congNghe: congTam, diaChiNghe: IP });
+      const dangBat = nghe4.bat();
+      nghe4.tat();
+      await dangBat;
+      const moDuoc = await new Promise<boolean>((r) => { const x = dgram.createSocket('udp4'); x.once('error', () => r(false)); x.bind(congTam, IP, () => { x.close(() => r(true)); }); });
+      ok('HỒI QUY: tắt lúc đang mở cổng UDP → không giữ cổng (chương trình khác mở được cổng đó), không đang nghe', !nghe4.dangNghe && moDuoc);
+      await nghe4.bat();
+      ok('… bật lại sau đó → nghe được', nghe4.dangNghe);
+      nghe4.tat();
       phat.close();
     }
   } finally {
