@@ -194,11 +194,11 @@ Migration chỉ chạy lên production **sau khi PR đã gộp** vào main (`CLA
    ```powershell
    cd crm
    npm ci
-   $env:DOI_CHIEU_DB_URL="<chuỗi Session pooler của project Beeftown>"
+   $env:DOI_CHIEU_DB_URL='<chuỗi Session pooler của project Beeftown>'
    npm run doi-chieu
    ```
 
-   (Bash: `DOI_CHIEU_DB_URL='…' npm run doi-chieu`. `npm ci` chỉ cần lần đầu và khi `package-lock.json` đổi.)
+   Chuỗi đặt trong nháy **đơn** `'…'`: trong nháy kép, PowerShell biến `$…` của mật khẩu thành chữ khác. (Bash: `DOI_CHIEU_DB_URL='…' npm run doi-chieu`. `npm ci` chỉ cần lần đầu và khi `package-lock.json` đổi.)
    Chuỗi kết nối lấy như bước 1 của mục [Sao lưu](#việc-của-khánh-một-lần-khoảng-10-phút): Supabase → **Connect** → **Session pooler**, thay `[YOUR-PASSWORD]`. Chỉ đặt trong cửa sổ dòng lệnh đó — **không ghi vào file nào trong repo**, không dán vào issue hay chat. Script chỉ đọc (giao dịch `read only`), không hiện mật khẩu, mất khoảng 10–20 giây.
 
    **Đạt** khi dòng cuối là `KHỚP — … đều có và đúng trên database`. Nếu không:

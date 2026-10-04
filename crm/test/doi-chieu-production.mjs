@@ -7,7 +7,7 @@
  *   npm run doi-chieu -- --den 0061       production chưa chạy migration sau 0061: chỉ so đến 0061
  *   npm run doi-chieu -- --gioi-han 300   chờ database tối đa 300 giây (mặc định 180)
  *
- * (Windows PowerShell: $env:DOI_CHIEU_DB_URL="…" rồi npm run doi-chieu.)
+ * (Windows PowerShell: $env:DOI_CHIEU_DB_URL='…' — nháy ĐƠN, nháy kép làm hỏng mật khẩu có dấu $ — rồi npm run doi-chieu.)
  * CHẠY TAY sau MỖI lần chạy migration lên production — README gốc, mục "Chạy migration lên production".
  * KHÔNG nằm trong `npm test` và CI: nó nối vào database thật qua mạng. Kiểm thử của chính nó (trên
  * PGlite) là test-doi-chieu-production.mjs.
@@ -52,7 +52,6 @@
  * ghi sslmode=… trong chuỗi để đổi).
  */
 
-import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -60,7 +59,6 @@ import { dungDatabaseTrong } from './kho-chung.mjs';
 
 const THU_MUC = dirname(fileURLToPath(import.meta.url));
 const GOC = join(THU_MUC, '..', '..');
-const THU_MUC_MIGRATION = join(THU_MUC, '..', 'supabase', 'migrations');
 
 // ---------------------------------------------------------------------------
 // CHUẨN HOÁ THÂN HÀM
@@ -275,7 +273,7 @@ export const NHOM = [
       from pg_policy p
       join pg_class c on c.oid = p.polrelid
       join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname = 'public'`,
+      where n.nspname = 'public' and ${KHONG_PHAI_EXTENSION('pg_class', 'c.oid')}`,
   },
   {
     loai: 'view', ten: 'Định nghĩa view', chuanHoa: chuanHoaThan, soTungChu: true,
@@ -358,11 +356,10 @@ export async function docPglite(db) {
   });
 }
 
-/** Mẫu: PGlite trống + mọi migration đến số `den`. Trả { db, daNap, vanBan: Map tên file → nội dung }. */
+/** Mẫu: PGlite trống + mọi migration đến số `den`. Trả { db, daNap, chiMuc } — chiMuc: gợi ý file (lapChiMucTep). */
 export async function dungMau({ den = Infinity } = {}) {
-  const { db, daNap } = await dungDatabaseTrong({ den });
-  const vanBan = new Map(daNap.map(f => [f, readFileSync(join(THU_MUC_MIGRATION, f), 'utf8')]));
-  return { db, daNap, vanBan };
+  const { db, daNap, vanBan } = await dungDatabaseTrong({ den });
+  return { db, daNap, chiMuc: lapChiMucTep(vanBan) };
 }
 
 // ---------------------------------------------------------------------------
@@ -405,42 +402,65 @@ export function soSanh(mau, dich) {
 export const tongKhacBiet = ketQua => ketQua.reduce((t, n) => t + n.thieu.length + n.khac.length + n.thua.length, 0);
 
 // ---------------------------------------------------------------------------
-// GỢI Ý FILE MIGRATION
+// GỢI Ý FILE MIGRATION — chỉ câu create / drop thật, không phải grant, alter, comment nhắc tên
 // ---------------------------------------------------------------------------
-const thoatRegex = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-const ten = (loai, khoa) => {
+const S = '(?:public\\.)?';
+const T = '(?:"([^"]+)"|([A-Za-z_][A-Za-z0-9_]*))';     // tên trong ngoặc kép, hoặc tên thường
+const TAO_VIEW = `create\\s+(?:or\\s+replace\\s+)?(?:materialized\\s+)?view\\s+(?:if\\s+not\\s+exists\\s+)?${S}${T}[\\s(]`;
+const XOA_VIEW = `drop\\s+(?:materialized\\s+)?view\\s+(?:if\\s+exists\\s+)?${S}${T}`;
+const MAU_TAO = {
+  ham: [`create\\s+(?:or\\s+replace\\s+)?function\\s+${S}${T}\\s*\\(`],
+  bang: [`create\\s+(?:unlogged\\s+)?table\\s+(?:if\\s+not\\s+exists\\s+)?${S}${T}[\\s(]`, TAO_VIEW],
+  view: [TAO_VIEW],
+  chi_muc: [`create\\s+(?:unique\\s+)?index\\s+(?:concurrently\\s+)?(?:if\\s+not\\s+exists\\s+)?${T}\\s+on\\b`],
+  trigger: [`create\\s+(?:or\\s+replace\\s+)?(?:constraint\\s+)?trigger\\s+${T}\\s`],
+  chinh_sach: [`create\\s+policy\\s+${T}\\s+on\\b`],
+  kieu: [`create\\s+type\\s+${S}${T}\\s+as\\b`, `create\\s+domain\\s+${S}${T}\\s`],
+  // Ràng buộc đặt tên trong create table / alter table add constraint — không phải drop / validate / rename.
+  rang_buoc: [`(?<!(?:drop|validate|rename)\\s+)constraint\\s+${T}\\s`],
+};
+MAU_TAO.than_ham = MAU_TAO.ham;
+const MAU_XOA = {
+  ham: [`drop\\s+function\\s+(?:if\\s+exists\\s+)?${S}${T}`],
+  bang: [`drop\\s+table\\s+(?:if\\s+exists\\s+)?${S}${T}`, XOA_VIEW],
+  view: [XOA_VIEW],
+  chi_muc: [`drop\\s+index\\s+(?:concurrently\\s+)?(?:if\\s+exists\\s+)?${S}${T}`],
+  trigger: [`drop\\s+trigger\\s+(?:if\\s+exists\\s+)?${T}`],
+  chinh_sach: [`drop\\s+policy\\s+(?:if\\s+exists\\s+)?${T}`],
+  kieu: [`drop\\s+(?:type|domain)\\s+(?:if\\s+exists\\s+)?${S}${T}`],
+  rang_buoc: [`drop\\s+constraint\\s+(?:if\\s+exists\\s+)?${T}`],
+};
+
+/**
+ * Đọc mọi file migration MỘT lần: với mỗi loại đối tượng, tên → file CUỐI CÙNG có câu create (và câu drop)
+ * của tên đó. Hàm trùng tên khác tham số tính chung một tên.
+ */
+export function lapChiMucTep(vanBan) {
+  const chiMuc = { tao: {}, xoa: {} };
+  for (const [kieu, bo] of [['tao', MAU_TAO], ['xoa', MAU_XOA]]) {
+    for (const [loai, cacMau] of Object.entries(bo)) {
+      const theoTen = (chiMuc[kieu][loai] = new Map());
+      const re = new RegExp(cacMau.join('|'), 'gi');
+      for (const [f, sql] of vanBan) {
+        for (const m of sql.replace(/--[^\n]*/g, '').matchAll(re)) {
+          const i = m.findIndex((g, j) => j > 0 && g !== undefined);
+          // Tên không ngoặc kép thì Postgres đổi thành chữ thường; trong ngoặc kép thì giữ nguyên.
+          if (i > 0) theoTen.set(i % 2 === 1 ? m[i] : m[i].toLowerCase(), f);
+        }
+      }
+    }
+  }
+  return chiMuc;
+}
+
+const tenDoiTuong = (loai, khoa) => {
   if (loai === 'ham' || loai === 'than_ham') return khoa.slice(0, khoa.indexOf('('));
   if (['trigger', 'chinh_sach', 'rang_buoc'].includes(loai)) return khoa.slice(khoa.indexOf('.') + 1);
   return khoa;
 };
-const MAU_TAO = {
-  ham: t => `function\\s+(?:public\\.)?"?${t}"?\\s*\\(`,
-  than_ham: t => `function\\s+(?:public\\.)?"?${t}"?\\s*\\(`,
-  bang: t => `(?:table|view)\\s+(?:if\\s+not\\s+exists\\s+)?(?:public\\.)?"?${t}"?[\\s(]`,
-  view: t => `view\\s+(?:public\\.)?"?${t}"?[\\s(]`,
-  chi_muc: t => `index\\s+(?:concurrently\\s+)?(?:if\\s+not\\s+exists\\s+)?"?${t}"?\\s+on\\b`,
-  trigger: t => `trigger\\s+"?${t}"?\\s`,
-  chinh_sach: t => `policy\\s+"?${t}"?\\s+on\\b`,
-  kieu: t => `type\\s+(?:public\\.)?"?${t}"?\\s+as\\b`,
-  rang_buoc: t => `constraint\\s+"?${t}"?\\s`,
-};
-const MAU_XOA = {
-  ham: t => `drop\\s+function\\s+(?:if\\s+exists\\s+)?(?:public\\.)?"?${t}"?\\b`,
-  bang: t => `drop\\s+(?:table|view)\\s+(?:if\\s+exists\\s+)?(?:public\\.)?"?${t}"?\\b`,
-  chi_muc: t => `drop\\s+index\\s+(?:if\\s+exists\\s+)?(?:public\\.)?"?${t}"?\\b`,
-  trigger: t => `drop\\s+trigger\\s+(?:if\\s+exists\\s+)?"?${t}"?\\s`,
-  chinh_sach: t => `drop\\s+policy\\s+(?:if\\s+exists\\s+)?"?${t}"?\\s`,
-  kieu: t => `drop\\s+type\\s+(?:if\\s+exists\\s+)?(?:public\\.)?"?${t}"?\\b`,
-  rang_buoc: t => `drop\\s+constraint\\s+(?:if\\s+exists\\s+)?"?${t}"?\\b`,
-};
-/** File migration cuối cùng tạo (hoặc drop) đối tượng này — gợi ý để biết chạy lại câu nào. */
-export function timTep(vanBan, loai, khoa, { xoa = false } = {}) {
-  const mau = (xoa ? MAU_XOA : MAU_TAO)[loai];
-  if (!mau) return null;
-  const re = new RegExp(mau(thoatRegex(ten(loai, khoa))), 'i');
-  let cuoi = null;
-  for (const [f, sql] of vanBan) if (re.test(sql.replace(/--[^\n]*/g, ''))) cuoi = f;
-  return cuoi;
+/** File migration cuối cùng tạo (hoặc drop, khi `xoa`) đối tượng này — gợi ý để biết chạy lại câu nào. */
+export function timTep(chiMuc, loai, khoa, { xoa = false } = {}) {
+  return chiMuc?.[xoa ? 'xoa' : 'tao']?.[loai]?.get(tenDoiTuong(loai, khoa)) ?? null;
 }
 
 // ---------------------------------------------------------------------------
@@ -456,7 +476,7 @@ export function choKhac(a, b, rong = 60) {
 }
 
 /** Các dòng báo cáo (chữ thường, không màu) — in ra màn hình, và kiểm thử đọc lại được. */
-export function baoCao(ketQua, vanBan = new Map()) {
+export function baoCao(ketQua, chiMuc = null) {
   const d = [];
   for (const n of ketQua) {
     const so = n.thieu.length + n.khac.length + n.thua.length;
@@ -464,11 +484,11 @@ export function baoCao(ketQua, vanBan = new Map()) {
       .filter(Boolean).join(', ');
     d.push(`${so ? '✗' : '✓'} ${n.ten} — mẫu ${n.soMau}, database ${n.soDich}${so ? `: ${so} khác biệt` : ''}${an ? ` (lệch ${an})` : ''}`);
     for (const k of n.thieu) {
-      const f = timTep(vanBan, n.loai, k);
+      const f = timTep(chiMuc, n.loai, k);
       d.push(`    THIẾU  ${k}${f ? `   ← tạo ở ${f}` : ''}`);
     }
     for (const x of n.khac) {
-      const f = timTep(vanBan, n.loai, x.khoa);
+      const f = timTep(chiMuc, n.loai, x.khoa);
       d.push(`    KHÁC   ${x.khoa}${f ? `   ← định nghĩa cuối ở ${f}` : ''}`);
       if (n.soTungChu) {
         const c = choKhac(x.mau, x.dich);
@@ -481,7 +501,7 @@ export function baoCao(ketQua, vanBan = new Map()) {
       }
     }
     for (const k of n.thua) {
-      const f = timTep(vanBan, n.loai, k, { xoa: true });
+      const f = timTep(chiMuc, n.loai, k, { xoa: true });
       d.push(`    THỪA   ${k}${f ? `   ← ${f} đã drop — câu drop chưa chạy?` : '   ← migration không tạo'}`);
     }
   }
@@ -513,10 +533,20 @@ function thongTinGit(daNap) {
   return ra;
 }
 
-function docThamSo(argv) {
-  const lay = ten => { const i = argv.indexOf(ten); return i >= 0 ? argv[i + 1] : undefined; };
-  const den = lay('--den'), gioiHan = lay('--gioi-han');
+/**
+ * Tham số dòng lệnh: --den <số> / --den=<số>, --gioi-han <giây> / --gioi-han=<giây>. Thứ gì khác — kể cả
+ * --den thiếu số — là LỖI chứ không bỏ qua: bỏ qua --den là so với cả migration chưa chạy lên production.
+ */
+export function docThamSo(argv) {
+  const gt = { '--den': undefined, '--gioi-han': undefined };
   const loi = [];
+  for (let i = 0; i < argv.length; i++) {
+    const [ten, sauBang] = argv[i].split(/=(.*)/s);
+    if (!(ten in gt)) { loi.push(`không hiểu tham số ${argv[i]}`); continue; }
+    gt[ten] = sauBang ?? (argv[i + 1]?.startsWith('--') ? undefined : argv[++i]);
+    if (gt[ten] === undefined) loi.push(`${ten} thiếu giá trị`);
+  }
+  const den = gt['--den'], gioiHan = gt['--gioi-han'];
   if (den !== undefined && !/^\d{1,4}$/.test(den)) loi.push('--den cần một số migration, ví dụ --den 0061');
   if (gioiHan !== undefined && !(/^\d+$/.test(gioiHan) && Number(gioiHan) > 0)) loi.push('--gioi-han cần số giây, ví dụ --gioi-han 300');
   return { den: den === undefined ? Infinity : Number(den), gioiHanMs: (gioiHan === undefined ? 180 : Number(gioiHan)) * 1000, loi };
@@ -597,9 +627,9 @@ export async function chayDongLenh(argv, env, ghi = console.log) {
   }
 
   // 2. Mẫu từ migration.
-  let mau, daNap, vanBan, dbMau;
+  let mau, daNap, chiMuc, dbMau;
   try {
-    ({ db: dbMau, daNap, vanBan } = await dungMau({ den }));
+    ({ db: dbMau, daNap, chiMuc } = await dungMau({ den }));
     mau = await docPglite(dbMau);
   } catch (e) {
     return khongDoiChieu(`không dựng được mẫu từ migration: ${e?.message || e}`);
@@ -614,7 +644,7 @@ export async function chayDongLenh(argv, env, ghi = console.log) {
 
   // 3. So.
   const ketQua = soSanh(mau, dich);
-  for (const dong of baoCao(ketQua, vanBan)) {
+  for (const dong of baoCao(ketQua, chiMuc)) {
     ghi(dong.startsWith('✓') ? xanh(dong.slice(0, 1)) + dong.slice(1) : dong.startsWith('✗') ? do_(dong.slice(0, 1)) + dong.slice(1) : dong);
   }
   const tong = tongKhacBiet(ketQua);

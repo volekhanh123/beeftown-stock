@@ -70,7 +70,7 @@ export function taoBoDem(tieuDe) {
 /**
  * Database chỉ có cấu trúc: mô phỏng Supabase → nạp migration theo thứ tự số, chưa có dòng dữ liệu nào.
  * `den`: chỉ nạp đến migration số này (kể cả nó) — doi-chieu-production.mjs dùng khi production chưa
- * chạy migration mới nhất. Trả về db cùng danh sách file đã nạp.
+ * chạy migration mới nhất. Trả về db, danh sách file đã nạp và nội dung từng file (Map tên → SQL).
  */
 export async function dungDatabaseTrong({ den = Infinity } = {}) {
   const db = new PGlite();
@@ -96,11 +96,15 @@ export async function dungDatabaseTrong({ den = Infinity } = {}) {
     alter default privileges in schema public grant all on sequences to anon, authenticated;
   `);
 
-  const daNap = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort().filter(f => Number(f.slice(0, 4)) <= den);
+  // Không có `den` thì nạp MỌI file .sql như trước — kể cả file tên sai mẫu (kiem-migration.mjs mới là chỗ chặn tên).
+  const daNap = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort()
+    .filter(f => den === Infinity || Number(f.slice(0, 4)) <= den);
+  const vanBan = new Map();
   for (const f of daNap) {
-    await db.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
+    vanBan.set(f, readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
+    await db.exec(vanBan.get(f));
   }
-  return { db, daNap };
+  return { db, daNap, vanBan };
 }
 
 /**

@@ -21,7 +21,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
 import {
-  chuanHoaThan, dungMau, docPglite, docCauTruc, soSanh, tongKhacBiet, baoCao, timTep,
+  chuanHoaThan, dungMau, docPglite, docCauTruc, soSanh, tongKhacBiet, baoCao, timTep, docThamSo,
 } from './doi-chieu-production.mjs';
 
 const THU_MUC = dirname(fileURLToPath(import.meta.url));
@@ -31,7 +31,7 @@ const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — ĐỐI CHIẾU DATABASE TH�
 const BAO_DONG = 'bao_dong_bat_dau_luot(p_kenh text)';
 const MAY_CAN = 'kho_may_can_nhat_ky(p_chi_nhanh_id uuid, p_ma_may uuid, p_dong jsonb)';
 
-const { db: dbMau, vanBan } = await dungMau();
+const { db: dbMau, chiMuc } = await dungMau();
 const mau = await docPglite(dbMau);
 const { db: dbDich } = await dungMau();
 
@@ -46,7 +46,7 @@ async function sauKhi(sqlDoi) {
   });
   const kq = soSanh(mau, dich);
   const n = loai => kq.find(x => x.loai === loai);
-  return { kq, n, tong: tongKhacBiet(kq), bao: baoCao(kq, vanBan).join('\n') };
+  return { kq, n, tong: tongKhacBiet(kq), bao: baoCao(kq, chiMuc).join('\n') };
 }
 const ds = (n, loai, x) => JSON.stringify(n(loai)[x].map(k => (typeof k === 'string' ? k : k.khoa)));
 /** Khoá đầu tiên của một nhóm trong mẫu thoả điều kiện — tách "bảng.tên". */
@@ -84,7 +84,7 @@ await nhom('1 · CHUẨN HOÁ THÂN HÀM: bỏ chú thích và khoảng trắng,
 await nhom('2 · DATABASE DỰNG TỪ MỌI MIGRATION: 0 KHÁC BIỆT', async () => {
   const dich = await docPglite(dbDich);
   const kq = soSanh(mau, dich);
-  ok('Hai database dựng từ cùng migration: 0 khác biệt', tongKhacBiet(kq) === 0, baoCao(kq, vanBan).filter(d => !d.startsWith('✓')).join(' | '));
+  ok('Hai database dựng từ cùng migration: 0 khác biệt', tongKhacBiet(kq) === 0, baoCao(kq, chiMuc).filter(d => !d.startsWith('✓')).join(' | '));
   const so = l => mau.get(l).size;
   ok(`Đọc đủ mọi nhóm: ${so('ham')} hàm, ${so('bang')} bảng / view, ${so('cot')} cột, ${so('rang_buoc')} ràng buộc, `
     + `${so('chi_muc')} chỉ mục, ${so('trigger')} trigger, ${so('chinh_sach')} policy, ${so('quyen')} dòng quyền`,
@@ -92,7 +92,7 @@ await nhom('2 · DATABASE DỰNG TỪ MỌI MIGRATION: 0 KHÁC BIỆT', async ()
     && so('chi_muc') > 50 && so('trigger') > 50 && so('chinh_sach') > 100 && so('view') > 10 && so('kieu') > 5 && so('quyen') > 400);
   ok('Mẫu có hai hàm của sự cố 04/10: bao_dong_bat_dau_luot, kho_may_can_nhat_ky',
     mau.get('ham').has(BAO_DONG) && mau.get('ham').has(MAY_CAN), [...mau.get('ham').keys()].filter(k => /^(bao_dong_bat|kho_may_can_n)/.test(k)).join(', '));
-  ok('Báo cáo khi khớp: mọi nhóm đều ✓', baoCao(kq, vanBan).every(d => d.startsWith('✓')));
+  ok('Báo cáo khi khớp: mọi nhóm đều ✓', baoCao(kq, chiMuc).every(d => d.startsWith('✓')));
 
   let loi = null;
   try { await docCauTruc(async q => (await dbDich.query(q)).rows); } catch (e) { loi = e.message; }
@@ -216,8 +216,36 @@ await nhom('7 · THỪA: TẠO TAY, HAY CÂU DROP CHƯA CHẠY', async () => {
   ok('Bản hàm mà migration đã drop vẫn còn → THỪA, chỉ đúng file có câu drop (0036)',
     b.n('ham').thua.length === 1 && b.n('ham').thua[0].startsWith('dat_noi_dung(') && b.tong === 1
       && b.bao.includes('← 0036_tieng_han_va_ban_dich.sql đã drop — câu drop chưa chạy?'), b.bao);
-  ok('Gợi ý file: hàm có nhiều lần create or replace thì chỉ file CUỐI', timTep(vanBan, 'ham', 'hom_nay_vn()') === '0008_siet_an_toan.sql'
-    && timTep(vanBan, 'ham', 'dat_noi_dung(p_khoa text)') !== null);
+});
+
+// ===========================================================================
+await nhom('7b · GỢI Ý FILE: CHỈ CÂU CREATE / DROP THẬT, KHÔNG PHẢI GRANT / ALTER NHẮC TÊN', async () => {
+  // tao_dat_ban: tạo lại ở 0004, 0008, 0010, 0013; các file sau chỉ grant / revoke nó trong khối chốt quyền.
+  ok('Hàm tạo nhiều lần → file CUỐI có create (tao_dat_ban → 0013), không phải file chỉ grant nó',
+    timTep(chiMuc, 'ham', 'tao_dat_ban(p_chi_nhanh_ma text)') === '0013_cong_khai_va_do_luong.sql', timTep(chiMuc, 'ham', 'tao_dat_ban()'));
+  ok('Bảng → file create table (chi_nhanh → 0001, khach_hang → 0002), không phải file alter / bật RLS',
+    timTep(chiMuc, 'bang', 'chi_nhanh') === '0001_nen_mong.sql' && timTep(chiMuc, 'bang', 'khach_hang') === '0002_khach_hang.sql',
+    `${timTep(chiMuc, 'bang', 'chi_nhanh')}, ${timTep(chiMuc, 'bang', 'khach_hang')}`);
+  ok('Câu drop: bản dat_noi_dung cũ → 0036; hàm migration không drop → không có gợi ý',
+    timTep(chiMuc, 'ham', 'dat_noi_dung()', { xoa: true }) === '0036_tieng_han_va_ban_dich.sql'
+      && timTep(chiMuc, 'ham', 'ham_tao_tay()', { xoa: true }) === null);
+  for (const loai of ['ham', 'bang', 'chi_muc', 'trigger', 'chinh_sach', 'kieu']) {
+    const thieu = [...mau.get(loai).keys()].filter(k => !timTep(chiMuc, loai, k));
+    ok(`Mọi đối tượng nhóm ${loai} (${mau.get(loai).size}) đều tìm được file tạo`, thieu.length === 0, thieu.slice(0, 5).join(', '));
+  }
+});
+
+// ===========================================================================
+await nhom('7c · THAM SỐ DÒNG LỆNH: KHÔNG HIỂU THÌ BÁO LỖI, KHÔNG BỎ QUA', async () => {
+  const a = docThamSo(['--den', '0061']), b = docThamSo(['--den=0061', '--gioi-han=5']);
+  ok('--den 0061 và --den=0061 như nhau; --gioi-han=5 là 5 giây',
+    a.den === 61 && b.den === 61 && b.gioiHanMs === 5000 && !a.loi.length && !b.loi.length, JSON.stringify([a, b]));
+  ok('Không tham số: so mọi migration, chờ 180 giây', docThamSo([]).den === Infinity && docThamSo([]).gioiHanMs === 180000);
+  for (const [thamSo, vi] of [[['--den'], 'thiếu giá trị'], [['--den', '--gioi-han', '5'], 'thiếu giá trị'], [['--den='], 'cần một số'],
+    [['--den', 'abc'], 'cần một số'], [['--dem', '61'], 'không hiểu'], [['0061'], 'không hiểu'], [['--gioi-han', '0'], 'cần số giây']]) {
+    const r = docThamSo(thamSo);
+    ok(`${JSON.stringify(thamSo)} → lỗi "${vi}"`, r.loi.some(l => l.includes(vi)), JSON.stringify(r));
+  }
 });
 
 // ===========================================================================
@@ -312,11 +340,12 @@ await nhom('10 · QUY TRÌNH: CHẠY TAY, KHÔNG COMMIT CHUỖI KẾT NỐI, CÓ
   const tep = execFileSync('git', ['ls-files'], { cwd: GOC, encoding: 'utf8' }).split('\n').filter(Boolean)
     .filter(f => !/\.(png|jpe?g|svg|ico|webp|avif|woff2?|ttf|exe)$/i.test(f));
   const CHUOI_THAT = /postgres(?:ql)?:\/\/(?:postgres\.[a-z]{20}:[^\s@'"`<>[\]]+@|[^\s:@'"`<>/]+:[^\s@'"`<>[\]]+@db\.[a-z]{20}\.supabase\.co\b)/;
+  const MA = 'abcdefghij'.repeat(2);   // mã project giả 20 chữ — ghép lúc chạy để chính file này không chứa chuỗi "thật"
   ok('Mẫu chuỗi kết nối thật nhận ra cả hai dạng, bỏ qua chuỗi giả và chỗ điền',
-    CHUOI_THAT.test('postgresql://postgres.abcdefghijklmnopqrst:p4ss@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres')
-      && CHUOI_THAT.test('postgresql://postgres:p4ss@db.abcdefghijklmnopqrst.supabase.co:5432/postgres')
+    CHUOI_THAT.test(`postgresql://postgres.${MA}:p4ss@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres`)
+      && CHUOI_THAT.test(`postgresql://postgres:p4ss@db.${MA}.supabase.co:5432/postgres`)
       && !CHUOI_THAT.test('postgresql://postgres.abc:MATKHAUDB@aws-0-x.pooler.supabase.com:5432/postgres')
-      && !CHUOI_THAT.test('postgresql://postgres.abcdefghijklmnopqrst:[YOUR-PASSWORD]@aws-0-x.pooler.supabase.com:5432/postgres'));
+      && !CHUOI_THAT.test(`postgresql://postgres.${MA}:[YOUR-PASSWORD]@aws-0-x.pooler.supabase.com:5432/postgres`));
   const lo = tep.filter(f => { try { return CHUOI_THAT.test(readFileSync(join(GOC, f), 'utf8')); } catch { return false; } });
   ok('Không file nào trong repo chứa chuỗi kết nối Supabase có mật khẩu', lo.length === 0, lo.join(', '));
 });
