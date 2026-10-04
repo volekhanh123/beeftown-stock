@@ -196,6 +196,35 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
+## Bản 2.9 — báo về kho; NV quầy tự gửi; vừa "Giao ô mã" là cân đổi tên trong 15 giây
+
+Giai đoạn 3 của kế hoạch 03/10/2026 (web + database: migration `0061_kho_can_quay.sql`). Cần kho đã chạy 0061; kho chưa có
+0061 thì 2.9 vẫn chạy như 2.8 (báo kho hỏng, tự thử lại mỗi phút — ô Cân nói rõ).
+
+- **NV quầy tự gửi được** (`layDanhMuc(tuDong)`): danh mục cân đọc ô đang giao bằng `kho_can_giao_o_ma` (mọi vai xem — NV
+  quầy đọc view `kho_v_o_ma_giao` thì rỗng, tên ô mất số tảng). Chỉ TỰ GỬI (`tuGuiMotLan`) mở cho mọi vai xem; bấm Gửi xuống
+  cân, xem trước, file USB, gỡ / xoá hàng vẫn chỉ quản lý / chủ.
+- **Hỏi kho 15 giây** (`khoDoiO`, `HOI_KHO_MS`, khi bật Tự gửi): dấu vân tay các ô đang giao đổi (vừa "Giao ô mã", chốt
+  phiên, tảng bán hết) → tự gửi ngay, không đợi lượt mỗi phút. Mất mạng → thôi, lần sau hỏi lại.
+- **Báo về kho mỗi phút** (`baoKhoMotLan`, `BAO_KHO_MS`, `src/bao-kho.ts`): `kho_may_can_bao` — mã máy quầy
+  (`%APPDATA%\BeeftownCan\ma-may.txt`, sinh một lần), phiên bản, MAC cân, giữ kết nối, cân trả lời lần cuối, tự gửi, số hàng
+  lệch kho, tự gửi hỏng, lần gửi được, và các dòng đang trên cân kèm phím tắt (chỉ gửi khi đổi, hay 10 phút một lần; kho
+  chỉ giữ dòng mã ô). Rồi nhật ký tem (`kho_may_can_nhat_ky`): dòng bán có mã, theo ký, từ mốc của chi nhánh
+  (`nhat-ky-da-gui.json`; lần đầu: 3 ngày) — mốc chỉ tiến SAU khi kho trả lời, gửi lại an toàn (kho bỏ dòng trùng). "Đã báo"
+  chỉ khi kho đã trả lời; ô Cân hiện lần báo gần nhất.
+- Kho dùng các báo đó cho: dòng **"Cân sẵn sàng: Ribeye #0142 = PLU 23 · phím E"** trên trang pha lóc (chỉ khi cân có đúng
+  TÊN MỚI), đối chiếu "cân in 12 tem ô 10011, phiên quét 11", và đèn **"Beeftown Cân"** của chi nhánh ở `/noi-bo` (đỏ khi
+  máy quầy không báo quá 30 phút trong giờ mở cửa).
+
+**Thử ở quán (2.9)** — sau khi 2.8 đạt, kho đã chạy 0061:
+1. Đăng nhập bằng tài khoản NV quầy, bật "Tự gửi" ở Cài đặt → trong 1 phút ô Cân "Báo về kho · … — Đã báo trạng thái cân về
+   kho"; `/noi-bo` (chủ) đèn "Beeftown Cân" của chi nhánh xanh.
+2. Lóc một tảng theo dõi theo tảng: bấm "Giao ô mã cho phần cắt" → trong khoảng 15–30 giây cân đổi tên phím (bấm phím trên
+   cân thấy tên kèm số tảng); tải lại trang pha lóc → dòng "Cân sẵn sàng" xanh, đúng số PLU và phím.
+3. In vài tem bằng phím ô, quét vào phiên → bước Kết quả: "Cân in N tem mã …, phiên quét N — khớp" (nhật ký cân gửi lên mỗi
+   phút; ô Cân nói số dòng đã gửi).
+4. Tắt Beeftown Cân trong giờ mở cửa → sau 30 phút đèn "Beeftown Cân" đỏ (và báo động nếu đã có kênh).
+
 ## Bản 2.8 — giữ kết nối với cân; tự đọc nhật ký khi cân báo in tem; tự chỉnh giờ cân; nghe cân phát UDP
 
 Giai đoạn 2 của kế hoạch 03/10/2026: làm như phần mềm của hãng khi nối cân (`CAN-TMA.md` §10.2.7, §10.3, §10.4). **Chưa thử
@@ -535,7 +564,7 @@ dò WiFi hay kho chậm có thể lâu hơn.
 
 | Nơi | Có gì |
 |---|---|
-| `%APPDATA%\BeeftownCan\` | `cau-hinh.json` (IP cân, cổng, cổng hai chiều `congHaiChieu`, địa chỉ kho, các lần cân đổi địa chỉ, cổng COM lần thử trước; 2.8: `giuKetNoi`, `tuDatGio`, `ngheUdp`), `phien.json` (đăng nhập), `loi.txt` (lỗi), `tu-dat-gio.json` (2.8: các lần tự chỉnh giờ cân trong ngày) |
+| `%APPDATA%\BeeftownCan\` | `cau-hinh.json` (IP cân, cổng, cổng hai chiều `congHaiChieu`, địa chỉ kho, các lần cân đổi địa chỉ, cổng COM lần thử trước; 2.8: `giuKetNoi`, `tuDatGio`, `ngheUdp`), `phien.json` (đăng nhập), `loi.txt` (lỗi), `tu-dat-gio.json` (2.8: các lần tự chỉnh giờ cân trong ngày), `ma-may.txt` (2.9: mã máy quầy báo kho), `nhat-ky-da-gui.json` (2.9: mốc nhật ký tem đã gửi kho, theo chi nhánh) |
 | `Tài liệu\Beeftown Can\` | `A_000.TMS` (file gốc = bản gần nhất đã nạp vào cân), `tren-can.tsv` (2.7: dòng mã `99999` là PLU trống — đã gỡ bằng ghi đè), `tem-da-tat.json`, `nhat-ky-can.tsv` (nhật ký bán của cân, TSV UTF-8 có tiêu đề; có dòng không đọc được thì giữ bản sao `nhat-ky-can-ban-sao-….tsv` trước khi ghi đè), `da-gui\` (mỗi lần gửi một bản; thông số / phím / giờ: đúng file nhỏ đã gửi), `cho-usb\`, `chan-doan\` (2.7: kết quả Chẩn đoán WiFi) |
 
 Thư mục `Tài liệu\Beeftown Can` dùng chung với `web/public/kho/can-wifi/Nap-Can-WiFi.ps1`.
@@ -572,14 +601,13 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 
 - Thử bản 2.7 trên cân thật (mục "Thử ở quán (2.7)") và sửa `CAN-TMA.md` theo file kết quả Chẩn đoán WiFi.
 - Thử bản 2.8 trên cân thật (mục "Thử ở quán (2.8)").
-- Giai đoạn 3 (web + database, kế hoạch 03/10/2026): danh mục cân đọc được bằng quyền xem (NV quầy tự gửi), trạng thái cân /
-  số PLU / phím của ô mã hiện trên trang pha lóc, cảnh báo tem mã thường trong phiên theo tảng, đối chiếu tem in với tem quét
-  (nhật ký cân 2.8 tự đọc về máy quầy — còn phải đưa lên kho). Kèm đèn sức khỏe "Beeftown Cân" ở `/noi-bo` (máy quầy báo nhịp
-  lên database — `suc_khoe_so_lieu()`): việc chạy nền của 2.8 hiện mới chỉ có đèn ở ô Cân của chính máy quầy.
+- Thử bản 2.9 trên cân thật (mục "Thử ở quán (2.9)").
+- Phím tắt cố định cho từng ô: trang pha lóc mới HIỆN phím; gán phím vẫn bằng tay ở thẻ Phím tắt.
 - Tự gửi chưa tự gỡ hàng còn nằm lại (cần người xem trước rồi bấm).
 - Mã `99999` / `99998` mới chỉ được chặn ở bộ lập danh sách (món mang mã đó không lên cân); database chưa chặn.
 - Thử bản 2.2 trên cân thật (mục "Thử bản 2.2 ở quán") và sửa `CAN-TMA.md` theo kết quả.
-- Nhật ký cân: ghi lịch sử bảng PLU (lúc nào số PLU nào mang mã nào) để gắn mã cân cho dòng cũ chắc hơn; đưa nhật ký lên kho.
+- Nhật ký cân: ghi lịch sử bảng PLU (lúc nào số PLU nào mang mã nào) để gắn mã cân cho dòng cũ chắc hơn. (2.9 đưa dòng bán
+  mã ô lên kho để đối chiếu phiên lóc; trừ kho vẫn theo iPOS.)
 - HSD đếm ngược: tự gửi đang dừng cả loạt khi có một hàng bật / tắt in HSD — có thể gửi phần đếm ngược và giữ riêng hàng
   bật / tắt. Hàng kho không lên được / ngoài kho mà cân đang in HSD: chưa báo riêng.
 - Chữ ngoài bảng chữ của cân (ký hiệu đặc biệt) trên tem: chưa biết cân in ra sao.

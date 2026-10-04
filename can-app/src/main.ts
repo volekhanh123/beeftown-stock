@@ -19,7 +19,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { exec, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { NHIP_CAN_MS, UngDung, duongDanMacDinh } from './nghiep-vu.ts';
+import { BAO_KHO_MS, HOI_KHO_MS, NHIP_CAN_MS, UngDung, duongDanMacDinh } from './nghiep-vu.ts';
 import { moMayChu } from './may-chu.ts';
 import {
   cacTepCapNhat, cauQuayVeBangTay, chayThuQuaPowerShell, docThamSoPhienBan, donSauCapNhat, khoaCapNhatConHan, khoiDongLaiSauCapNhat,
@@ -27,7 +27,7 @@ import {
 } from './cap-nhat.ts';
 import { chayPowerShell } from './day-rs232.ts';
 
-const PHIEN_BAN = '2.8.0';
+const PHIEN_BAN = '2.9.0';
 
 // ---- 2.6.1: bản cũ đang CHẠY THỬ file này trước khi đổi sang (cap-nhat.ts chayThuBanMoi) ---------------------------
 // Chỉ ghi phiên bản vào file được chỉ rồi thoát: không mở máy chủ, không mở cửa sổ, không đụng dữ liệu — trước mọi bước
@@ -153,11 +153,22 @@ fs.writeFileSync(fileDangChay, JSON.stringify({ cong: mayChu.port, ma: MA, phien
 
 // Tự gửi xuống cân khi kho đổi (bật ở Cài đặt): mỗi phút, khi đã có file gốc.
 let dangTuGui = false;
-setInterval(async () => {
+const tuGui = async () => {
   if (dangCapNhat() || dangTuGui || !ud.cauHinh().tuGui || !ud.coFileGoc()) return;
   dangTuGui = true;
   try { await ud.tuGuiMotLan(); } finally { dangTuGui = false; }
-}, 60_000);
+};
+setInterval(tuGui, 60_000);
+// 2.9: hỏi kho các ô đang giao mỗi 15 giây — vừa "Giao ô mã" (hay chốt phiên, tảng bán hết) thì tự gửi ngay.
+let dangHoiKho = false;
+setInterval(async () => {
+  if (dangCapNhat() || dangTuGui || dangHoiKho || !ud.cauHinh().tuGui || !ud.coFileGoc()) return;
+  dangHoiKho = true;
+  try { if (await ud.khoDoiO()) await tuGui(); } finally { dangHoiKho = false; }
+}, HOI_KHO_MS);
+// 2.9: báo trạng thái cân + nhật ký tem về kho mỗi phút (đèn "Beeftown Cân" ở /noi-bo, trang pha lóc) — lần đầu sau 5 giây.
+setTimeout(() => { if (!dangCapNhat()) void ud.baoKhoMotLan(); }, 5_000);
+setInterval(() => { if (!dangCapNhat()) void ud.baoKhoMotLan(); }, BAO_KHO_MS);
 
 // 2.8: giữ kết nối hai chiều mở với cân (nghe cân tự báo in tem, đèn ô Cân, tự chỉnh giờ cân mỗi ngày) — nhịp 30 giây như
 // phần mềm của hãng; lần đầu ngay sau khi mở. Nghe UDP cân tự phát nếu bật ở Cài đặt.
