@@ -17,17 +17,17 @@ const nd = await docNoiDung('ko');
         단방향으로 암호화된 식별값과 입력 중인 정보(날짜, 시간, 인원, 이름,
         전화번호)만 보관하며, 대화가 없으면 <strong>30일 후 자동으로
         삭제돼요</strong>. 따로 하실 일은 없어요.</p>
-      <p>바로 삭제하시려면 Messenger에서 Beeftown 페이지로
-        <strong><span lang="vi">xóa dữ liệu</span></strong>(데이터 삭제)라고 보내 주세요.
+      <p>바로 삭제하시려면 Messenger에서 Beeftown 페이지로 <strong><span lang="vi">xóa
+        dữ liệu</span></strong>(데이터 삭제)라고 보내 주세요.
         도우미가 입력 중인 정보를 지우고, 나머지는 직원이 처리하도록 알려 드려요.</p>
 
       <h2 style="font-size:24px; margin-top:34px">예약 요청과 입사 지원서</h2>
-      <p>웹사이트나 Messenger로 보내신 예약 요청과 입사 지원서는
-        <a href="/ko/privacy">개인정보 처리방침</a>에 안내한 대로 보관해요.
-        삭제를 원하시면 사용하신 전화번호와 함께 요청해 주세요.
+      <p>웹사이트나 Messenger로 보내신 예약 요청과 입사 지원서는 <a href="/ko/privacy">개인정보
+        처리방침</a>에 안내한 대로 보관해요.
+        삭제를 원하시면 사용하신 전화번호와 함께 요청해 주세요.{' '}
         {nd.email_lien_he
           ? <>이메일 <a href={`mailto:${nd.email_lien_he}`}>{nd.email_lien_he}</a> 또는 Messenger의 Beeftown 페이지로 보내 주시면 돼요.</>
-          : <>Messenger의 Beeftown 페이지로 보내 주시면 돼요.</>}
+          : <>Messenger의 Beeftown 페이지로 보내 주시면 돼요.</>}{' '}
         매장에서 이름, 전화번호와 관련 정보를 삭제한 뒤 알려 드려요.</p>
 
       <h2 style="font-size:24px; margin-top:34px">Meta가 보관하는 데이터</h2>

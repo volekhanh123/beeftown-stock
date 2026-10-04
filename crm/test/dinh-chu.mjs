@@ -14,10 +14,23 @@
  *       {t.cau2}</p>                  → "Câu một.Câu hai."
  *
  * Hàm ở đây tìm những chỗ như vậy trong DÒNG CHỮ (p, li, small, dd, td…): hai
- * mẩu chữ hoặc thẻ chữ (strong, em, a, code…) cách nhau bằng xuống dòng mà chữ
- * hai bên cần một dấu cách — xét bằng giá trị { vi, en } trong từ điển của file,
- * cho từng thứ tiếng. Cặp nhãn <span>/<small> trong <label>, huy hiệu, nút cạnh
- * nút… không phải dòng chữ nên không xét.
+ * mẩu chữ hoặc thẻ chữ (strong, em, a, code, span…) cách nhau bằng xuống dòng mà
+ * chữ hai bên cần một dấu cách — cho từng thứ tiếng, xét bằng:
+ *   · từ điển { vi, en } / { vi, en, ko } khai trong file (kể cả dich(nn, {…}));
+ *   · câu của web/src/lib/chu.ts: biến gán bằng chu(ngonNgu) đọc đúng bản
+ *     vi / en / ko, hằng như THUONG_HIEU đọc giá trị thật.
+ * File có tiếng Hàn (chu(…) hoặc từ điển có ko) được xét cả ba thứ tiếng.
+ *
+ * <span> và <div> là dòng chữ khi chữ viết thẳng bên trong trộn với thẻ chữ —
+ * chân trang cũ của mọi trang công khai:
+ *
+ *     <span>
+ *       © {namVn()} {t.banQuyen} ·
+ *       <span lang="en">{THUONG_HIEU.descriptor}</span>
+ *     </span>                         → "© 2026 Beeftown ·Beef Specialty Restaurant"
+ *
+ * Cặp nhãn <span>/<small> trong <label>, huy hiệu cạnh huy hiệu, nút cạnh nút…
+ * không phải dòng chữ nên không xét: cha của chúng không có chữ viết thẳng.
  *
  * Sửa: viết hai mẩu trên cùng một dòng, cách một dấu cách (hoặc thêm {' '}).
  *
@@ -43,11 +56,24 @@ async function napBoDoc() {
   return parse;
 }
 
+let modChu = null;
+/** web/src/lib/chu.ts — câu chung của trang công khai (Node ≥ 22.18 đọc thẳng .ts). */
+async function napChu() {
+  modChu ??= await import(pathToFileURL(join(WEB, 'src', 'lib', 'chu.ts')).href);
+  return modChu;
+}
+// import { … } from '../lib/chu' (hay '../../lib/chu', '…/lib/chu.ts').
+const LA_LIB_CHU = /(^|\/)lib\/chu(\.ts)?$/;
+
 const U = '�';   // phần chữ không biết trước: dữ liệu, số, câu thư viện…
-// Thẻ nằm TRONG dòng chữ. Thẻ khác (div, span, label, nút, thành phần…) coi là khối.
+// Thẻ nằm TRONG dòng chữ. Thẻ khác (div, label, nút, thành phần…) coi là khối; <span> xem laTheChu.
 const THE_CHU = new Set(['a', 'abbr', 'b', 'cite', 'code', 'dfn', 'em', 'i', 'kbd', 'mark', 'q', 's', 'samp', 'small', 'strong', 'sub', 'sup', 'time', 'u', 'var']);
 // Cha có con là dòng chữ.
 const CHA_DONG_CHU = new Set(['p', 'li', 'dd', 'dt', 'td', 'th', 'small', 'strong', 'em', 'b', 'i', 'summary', 'legend', 'caption', 'figcaption', 'blockquote', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']);
+// Cha chỉ là dòng chữ khi chữ viết thẳng bên trong trộn với thẻ chữ (traChuVaThe).
+const CHA_KHI_TRON = new Set(['span', 'div']);
+// Lớp chỉ đổi cách xuống dòng của chữ (chung.css) — <span> mang nó vẫn là chữ, không phải nhãn.
+const LOP_CHU = new Set(['lien']);
 const BAM_TRAI = /[.,;:!?)\]}…%’”»]/;   // dấu bám vào chữ đứng trước — không cần cách trước nó
 const DAU_MO = /[(\[{“‘«]/;            // dấu mở — không cần cách sau nó
 
@@ -70,11 +96,27 @@ const tenThe = n => {
   const t = n.openingElement?.name;
   return t?.type === 'JSXIdentifier' ? t.name : '';
 };
-const laTheChu = (n, nguon) => {
+/** Dãy con có chữ viết thẳng (không chỉ khoảng trắng). */
+const coChuThang = children => (children ?? []).some(c => c.type === 'JSXText' && /\S/.test(c.value));
+
+/**
+ * Thẻ nằm trong dòng chữ? canhChu = dãy con chứa thẻ này có chữ viết thẳng.
+ * <span> chỉ là chữ khi trơn (lang, aria…, hoặc lớp trong LOP_CHU) VÀ đứng giữa
+ * chữ viết thẳng — "Beeftown ·⏎<span lang="en">…</span>". <span class / style>
+ * khác là nhãn, huy hiệu: CSS lo khoảng cách. <span> trơn không có chữ bên cạnh
+ * là ô bố cục của hàng flex: <li><span><strong/>⏎<small/></span>⏎<a class="nb-nut"/></li>.
+ */
+const laTheChu = (n, nguon, canhChu) => {
   const ten = tenThe(n);
+  const the = nguon.slice(n.openingElement.start, n.openingElement.end);
+  if (ten === 'span') {
+    if (!canhChu || /\s(class:list|style)=|\sclass=\{/.test(the)) return false;
+    const lop = the.match(/\sclass="([^"]*)"/)?.[1];
+    return lop == null || lop.split(/\s+/).filter(Boolean).every(l => LOP_CHU.has(l));
+  }
   if (!THE_CHU.has(ten)) return false;
   // <a class="nb-nut …"> là nút, không phải liên kết trong câu.
-  return !(ten === 'a' && /class="[^"]*\bnb-nut\b/.test(nguon.slice(n.openingElement.start, n.openingElement.end)));
+  return !(ten === 'a' && /class="[^"]*\bnb-nut\b/.test(the));
 };
 
 /**
@@ -97,15 +139,19 @@ function khaNang(n, bc) {
       return khaNang(n.expression, bc);
     case 'MemberExpression': {
       const k = n.computed ? (n.property.type === 'Literal' ? n.property.value : null) : n.property.name;
+      // t.khoa với t = chu(ngonNgu), hoặc THUONG_HIEU.khoa — giá trị thật của lib/chu.ts.
+      const goc = n.object.type === 'Identifier' ? n.object.name : null;
+      const bo = goc == null ? null : bc.libChu.boChu.has(goc) ? bc.libChu.chu(nn) : bc.libChu.hang.get(goc);
+      if (bo) return typeof bo[k] === 'string' ? khaNang({ type: 'Literal', value: bo[k] }, bc) : [{ kieu: 'chu', s: U }];
       const muc = k == null ? null : tu.get(k);
-      if (muc && !muc.ham) return khaNang(muc[nn], { ...bc, tu: new Map() });
+      if (muc && !muc.ham) return muc[nn] ? khaNang(muc[nn], { ...bc, tu: new Map() }) : [{ kieu: 'chu', s: U }];
       return [{ kieu: 'chu', s: U }];
     }
     case 'CallExpression': {
       const c = n.callee;
       if (c.type === 'MemberExpression' && !c.computed) {
         const muc = tu.get(c.property.name);
-        if (muc?.ham) return khaNang(muc[nn], { ...bc, tu: new Map() });
+        if (muc?.ham) return muc[nn] ? khaNang(muc[nn], { ...bc, tu: new Map() }) : [{ kieu: 'chu', s: U }];
         if (['map', 'flatMap', 'filter'].includes(c.property.name)) return [{ kieu: 'khoi' }];
       }
       return [{ kieu: 'chu', s: U }];
@@ -113,7 +159,7 @@ function khaNang(n, bc) {
     case 'ArrowFunctionExpression': case 'FunctionExpression':
       return n.body.type === 'BlockStatement' ? [{ kieu: 'chu', s: U }] : khaNang(n.body, bc);
     case 'JSXElement':
-      return laTheChu(n, nguon) ? [{ kieu: 'the', s: chuTrongThe(n.children, bc) }] : [{ kieu: 'khoi' }];
+      return laTheChu(n, nguon, bc.canhChu) ? [{ kieu: 'the', s: chuTrongThe(n.children, bc) }] : [{ kieu: 'khoi' }];
     case 'JSXFragment': {
       const day = daySach(n.children, bc);
       if (!day.length) return [{ kieu: 'rong' }];
@@ -137,7 +183,8 @@ function chuTrongThe(children, bc) {
  * Dãy con sau khi làm sạch như JSX: [{ kha, nut, dinh }] — dinh = ngay trước nút
  * này có khoảng trắng xuống dòng bị bỏ.
  */
-function daySach(children, bc) {
+function daySach(children, bcCha) {
+  const bc = { ...bcCha, canhChu: coChuThang(children) };
   const ra = [];
   let dinh = false;
   for (const c of children ?? []) {
@@ -175,7 +222,7 @@ function canCach(trai, phai) {
   return !(d !== U && BAM_TRAI.test(d)) && !(c !== U && DAU_MO.test(c));
 }
 
-/** Từ điển { khóa: { vi, en } } khai trong frontmatter (mọi object có đủ vi và en). */
+/** Từ điển { khóa: { vi, en } } hoặc { vi, en, ko } khai trong frontmatter (mọi object có đủ vi và en). */
 function docTuDien(frontmatter) {
   const tu = new Map();
   const di = n => {
@@ -184,8 +231,8 @@ function docTuDien(frontmatter) {
     if (n.type === 'Property' && n.value?.type === 'ObjectExpression') {
       const lay = ten => n.value.properties.find(p => p.key?.name === ten)?.value;
       const k = n.key?.name ?? n.key?.value;
-      const vi = lay('vi'), en = lay('en');
-      if (k != null && vi && en) tu.set(k, { vi, en, ham: /FunctionExpression$/.test(vi.type) });
+      const vi = lay('vi'), en = lay('en'), ko = lay('ko');
+      if (k != null && vi && en) tu.set(k, { vi, en, ko, ham: /FunctionExpression$/.test(vi.type) });
     }
     for (const v of Object.values(n)) if (v && typeof v === 'object') di(v);
   };
@@ -193,15 +240,49 @@ function docTuDien(frontmatter) {
   return tu;
 }
 
+/**
+ * Tên trong frontmatter đọc từ lib/chu.ts:
+ *   boChu — biến gán bằng chu(ngonNgu): t.khoa là câu của từng thứ tiếng;
+ *   hang  — object import thẳng (THUONG_HIEU…): X.khoa giống nhau ở mọi thứ tiếng.
+ * dich(ngonNgu, { … }) thì từ điển nằm ngay trong file — docTuDien đã đọc.
+ */
+function docLibChu(frontmatter, mod) {
+  const hamChu = new Set(), boChu = new Set(), hang = new Map();
+  for (const n of frontmatter?.program?.body ?? []) {
+    if (n.type !== 'ImportDeclaration' || !LA_LIB_CHU.test(n.source?.value ?? '')) continue;
+    for (const s of n.specifiers) {
+      if (s.type !== 'ImportSpecifier') continue;
+      const ten = s.imported.name ?? s.imported.value, gt = mod[ten];
+      if (ten === 'chu') hamChu.add(s.local.name);
+      else if (gt && typeof gt === 'object' && !Array.isArray(gt)) hang.set(s.local.name, gt);
+    }
+  }
+  const di = n => {
+    if (!n || typeof n !== 'object') return;
+    if (Array.isArray(n)) { n.forEach(di); return; }
+    if (n.type === 'VariableDeclarator' && n.id?.type === 'Identifier' && n.init?.type === 'CallExpression'
+        && n.init.callee.type === 'Identifier' && hamChu.has(n.init.callee.name)) boChu.add(n.id.name);
+    for (const v of Object.values(n)) if (v && typeof v === 'object') di(v);
+  };
+  if (hamChu.size) di(frontmatter);
+  return { boChu, hang, chu: mod.chu };
+}
+
+/** <span> / <div>: chữ viết thẳng trộn với thẻ chữ (kể cả thẻ trong {…}) — là một dòng chữ. */
+const traChuVaThe = (children, bc) =>
+  coChuThang(children) && daySach(children, bc).some(x => x.kha.some(k => k.kieu === 'the'));
+
 /** Các chỗ dính trong một file .astro: [{ dong, nn, mau }], mau = "…đuôi trái|đầu phải…". */
 export async function timChoDinh(nguon) {
   const doc = await napBoDoc();
   const { ast } = doc(nguon);
   const tu = docTuDien(ast.frontmatter);
+  const libChu = docLibChu(ast.frontmatter, await napChu());
+  const coTiengHan = libChu.boChu.size > 0 || [...tu.values()].some(m => m.ko);
   const ra = [];
   const dongCua = vt => nguon.slice(0, vt).split('\n').length;
-  for (const nn of ['vi', 'en']) {
-    const bc = { tu, nn, nguon };
+  for (const nn of coTiengHan ? ['vi', 'en', 'ko'] : ['vi', 'en']) {
+    const bc = { tu, nn, nguon, libChu };
     const xetDay = (children, trongDong) => {
       const day = daySach(children, bc);
       for (let i = 1; i < day.length && trongDong; i++) {
@@ -214,23 +295,32 @@ export async function timChoDinh(nguon) {
         if (mau) ra.push({ dong: dongCua(day[i].nut.start), nn, mau });
       }
     };
-    // Đi khắp cây, kể cả JSX nằm trong biểu thức; trongDong = đang ở trong dòng chữ.
-    const di = (n, trongDong) => {
+    // Đi khắp cây, kể cả JSX nằm trong biểu thức; trongDong = đang ở trong dòng chữ,
+    // canhChu = dãy con đang đi có chữ viết thẳng (cho <span>, xem laTheChu).
+    const di = (n, trongDong, canhChu) => {
       if (!n || typeof n !== 'object') return;
-      if (Array.isArray(n)) { n.forEach(x => di(x, trongDong)); return; }
+      if (Array.isArray(n)) { n.forEach(x => di(x, trongDong, canhChu)); return; }
       if (n.type === 'JSXElement') {
         const ten = tenThe(n);
         // Hộp flex / grid: các con là ô riêng, khoảng trắng giữa chúng không hiện.
         const hop = /style="[^"]*display:\s*(inline-)?(flex|grid)/.test(nguon.slice(n.openingElement.start, n.openingElement.end));
-        const trong = !hop && (CHA_DONG_CHU.has(ten) || (THE_CHU.has(ten) && trongDong));
+        const theChu = ten === 'span' ? laTheChu(n, nguon, canhChu) : THE_CHU.has(ten);
+        const trong = !hop && (CHA_DONG_CHU.has(ten) || (theChu && trongDong)
+          || (CHA_KHI_TRON.has(ten) && traChuVaThe(n.children, bc)));
         xetDay(n.children, trong);
-        n.children.forEach(x => di(x, trong));
+        const cc = coChuThang(n.children);
+        n.children.forEach(x => di(x, trong, cc));
         return;
       }
-      if (n.type === 'JSXFragment') { xetDay(n.children, trongDong); n.children.forEach(x => di(x, trongDong)); return; }
-      for (const [k, v] of Object.entries(n)) if (k !== 'frontmatter' && v && typeof v === 'object') di(v, trongDong);
+      if (n.type === 'JSXFragment') {
+        xetDay(n.children, trongDong);
+        const cc = coChuThang(n.children);
+        n.children.forEach(x => di(x, trongDong, cc));
+        return;
+      }
+      for (const [k, v] of Object.entries(n)) if (k !== 'frontmatter' && v && typeof v === 'object') di(v, trongDong, canhChu);
     };
-    di(ast.body ?? ast.children ?? [], false);
+    di(ast.body ?? ast.children ?? [], false, false);
   }
   return ra.sort((a, b) => a.dong - b.dong);
 }

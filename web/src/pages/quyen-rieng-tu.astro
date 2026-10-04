@@ -60,7 +60,7 @@ const nd = await docNoiDung('vi');
 
       <h2 style="font-size:24px; margin-top:34px">Quyền của bạn</h2>
       <p>Bạn có quyền yêu cầu xem, sửa hoặc xóa thông tin của mình, và có quyền
-        ngừng nhận tin bất cứ lúc nào.
+        ngừng nhận tin bất cứ lúc nào.{' '}
         {nd.email_lien_he
           ? <>Gửi yêu cầu tới <a href={`mailto:${nd.email_lien_he}`}>{nd.email_lien_he}</a>.</>
           : <>Cách liên hệ sẽ được công bố tại trang này khi nhà hàng mở cửa.</>}
