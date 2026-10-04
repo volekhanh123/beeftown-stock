@@ -68,10 +68,11 @@ export function taoBoDem(tieuDe) {
 }
 
 /**
- * Dựng database: mô phỏng Supabase → nạp migration → hai chi nhánh → nhân sự.
- * Trả về db cùng các hàm chạy dưới danh nghĩa một người.
+ * Database chỉ có cấu trúc: mô phỏng Supabase → nạp migration theo thứ tự số, chưa có dòng dữ liệu nào.
+ * `den`: chỉ nạp đến migration số này (kể cả nó) — doi-chieu-production.mjs dùng khi production chưa
+ * chạy migration mới nhất. Trả về db cùng danh sách file đã nạp.
  */
-export async function dungDatabase() {
+export async function dungDatabaseTrong({ den = Infinity } = {}) {
   const db = new PGlite();
 
   await db.exec(`
@@ -95,9 +96,19 @@ export async function dungDatabase() {
     alter default privileges in schema public grant all on sequences to anon, authenticated;
   `);
 
-  for (const f of readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort()) {
+  const daNap = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort().filter(f => Number(f.slice(0, 4)) <= den);
+  for (const f of daNap) {
     await db.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
   }
+  return { db, daNap };
+}
+
+/**
+ * Dựng database: mô phỏng Supabase → nạp migration → hai chi nhánh → nhân sự.
+ * Trả về db cùng các hàm chạy dưới danh nghĩa một người.
+ */
+export async function dungDatabase() {
+  const { db } = await dungDatabaseTrong();
 
   const { rows: [cnA] } = await db.query(
     `insert into chi_nhanh (ma, ten) values ('q1', 'Beeftown Quận 1') returning *`);

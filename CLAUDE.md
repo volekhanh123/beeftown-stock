@@ -33,6 +33,9 @@ cd ../web && npx astro check && npm run quet && npm run thu-trinh-duyet
 File test mới tên `crm/test/test-<khu>-<ten>.mjs` **tự được chạy** — không sửa `package.json`.
 `crm/test/thu-tai.mjs` (`npm run thu-tai`) là thử tải trên project Supabase THẬT Beeftown-thu — chỉ chạy tay,
 không nằm trong `npm test` hay CI (xem README gốc, mục "Hạ tầng cho 100 người dùng cùng lúc").
+`crm/test/doi-chieu-production.mjs` (`npm run doi-chieu`, chuỗi kết nối ở biến `DOI_CHIEU_DB_URL`) cũng chỉ chạy tay:
+đối chiếu database thật với mọi migration — hàm, bảng, cột, ràng buộc, chỉ mục, trigger, policy, quyền. Kiểm thử của nó
+(`test-doi-chieu-production.mjs`) thì chạy trong `npm test`.
 Dùng khung chung `kho-chung.mjs` (`dungDatabase`, `taoBoDem`, `duoi(uid, sql)`, `duoiAnon(sql)`).
 
 ## Định nghĩa "xong" — 9 mục
@@ -64,8 +67,11 @@ Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô 
    vi/en/ko ở trang công khai; câu `raise exception` mới có bản tiếng Anh trong
    `web/src/lib/kho/cau-kho-en.ts` hoặc `web/src/lib/cau-noi-bo.ts`; không chứa chữ cấm (`chuoi-cam.js`).
 8. `migration` — **Số migration.** Lấy từ `npm run so-migration`. Không sửa migration đã có trên main
-   (viết migration mới). Không chạy migration lên production trước khi PR được gộp.
-   *(6 lần đánh lại số trong 3 ngày; 2 lần đã chạy lên production)*
+   (viết migration mới). Không chạy migration lên production trước khi PR được gộp. Chạy xong thì
+   `npm run doi-chieu` phải báo KHỚP (README gốc, "Chạy migration lên production") — SQL Editor hay Supabase
+   MCP báo xong chưa chắc đã chạy hết: `apply_migration` / `execute_sql` của MCP chờ xác nhận với câu có
+   `delete`, phiên không có người bấm thì hết 60 giây và không chạy gì.
+   *(6 lần đánh lại số trong 3 ngày; 2 lần đã chạy lên production; 04/10/2026 thiếu hai hàm vì một mảnh không chạy)*
 9. `dich-vu-ngoai` — **Dịch vụ ngoài** (iPOS, Zalo, Meta, Gemini, Supabase Storage, Cloudflare): ghi rõ
    giả định và nguồn của nó; có kiểm thử giả cho từng kiểu hỏng; liệt kê việc Khánh phải thử thật.
    Việc chạy nền hay dịch vụ ngoài MỚI phải có đèn trong bảng sức khỏe ở `/noi-bo`: số liệu vào

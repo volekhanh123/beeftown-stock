@@ -28,11 +28,12 @@ const THU_MUC = dirname(fileURLToPath(import.meta.url));
 
 /**
  * File .mjs trong thư mục test mà KHÔNG phải bài test — thư viện dùng chung, bộ chạy, và công cụ chạy
- * tay (thu-tai.mjs: thử tải trên project Supabase THẬT Beeftown-thu qua mạng — không bao giờ tự chạy).
+ * tay nối vào database THẬT qua mạng — không bao giờ tự chạy: thu-tai.mjs (thử tải trên Beeftown-thu),
+ * doi-chieu-production.mjs (đối chiếu database với migration; kiểm thử của nó là test-doi-chieu-production.mjs).
  */
 const THU_VIEN = new Set([
   'chay-tat-ca.mjs', 'chay-kho.mjs', 'kho-chung.mjs', 'dinh-chu.mjs', 'kiem-nn.mjs',
-  'quet-chu-viet.mjs', 'dong-ho-gia.mjs', 'thu-tai.mjs',
+  'quet-chu-viet.mjs', 'dong-ho-gia.mjs', 'thu-tai.mjs', 'doi-chieu-production.mjs',
 ]);
 
 /** Chạy trước: rẻ nhất và hay hỏng nhất khi gộp nhánh; rồi thứ tự của chuỗi && cũ. */
