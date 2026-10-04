@@ -644,7 +644,8 @@
 <h3>Ba ô trên cùng</h3>
 <ul>
   <li><b>Kho</b>: ai đang đăng nhập, chi nhánh nào.</li>
-  <li><b>Cân</b>: địa chỉ và cổng của cân. Chấm <b style="color:var(--xanh)">xanh</b> = nối được cân, <b style="color:var(--do)">đỏ</b> = không. Nút <span class="n">Kiểm tra kết nối</span> thử lại. Bên dưới có dòng báo cân vừa đổi địa chỉ, và dòng "Tự gửi" khi đã bật tự gửi.</li>
+  <li><b>Cân</b>: địa chỉ và cổng của cân. Chấm <b style="color:var(--xanh)">xanh</b> = nối được cân, <b style="color:var(--do)">đỏ</b> = không. Nút <span class="n">Kiểm tra kết nối</span> thử lại. Bên dưới có dòng báo cân vừa đổi địa chỉ, và dòng "Tự gửi" khi đã bật tự gửi.
+    <span class="nhan moi">Mới 2.8</span> <b>Giữ kết nối với cân</b> (bật sẵn): chương trình giữ một đường nối với cân như phần mềm của hãng, hỏi giờ cân mỗi 30 giây — chấm xanh / đỏ tự đổi, không cần bấm. Các dòng bên dưới cho biết: cân trả lời lúc nào, giờ cân đúng hay lệch, lần tự đọc nhật ký gần nhất, lần tự chỉnh giờ cân. <span class="nhan chua">Chưa thử trên cân thật</span></li>
   <li><b>Trên cân</b>: cân đang có bao nhiêu hàng, "file gốc" lấy lúc nào. File gốc là bản dữ liệu cân mới nhất mà chương trình biết.</li>
 </ul>
 <p>Khung đỏ <b>"HSD trên cân tính cho ngày dd/mm — mỗi ngày chưa gửi lại là HSD in ra muộn thêm 1 ngày. Gửi xuống cân trước khi đóng gói."</b> dưới ba ô: cân in HSD mà hôm nay chưa gửi. Quản lý gửi (<a href="#the-gui-gia">mục 17</a>), hoặc bật tự gửi. "Hôm nay" là ngày giờ Việt Nam của chương trình, không theo đồng hồ trình duyệt.</p>
@@ -828,6 +829,7 @@
 
 <h3>Giờ cân</h3>
 <p>Hiện giờ của cân cạnh giờ máy tính. Lệch thì chỉnh giờ cân theo giờ máy tính. <b>Giờ máy tính phải đúng trước</b> (xem góc dưới bên phải màn hình Windows). Chỉnh xong bấm <kbd class="p">Time</kbd> trên cân xem lại. Chỉnh trên cân: <a href="#ngay-gio">mục 6</a>.</p>
+<p id="tu-dat-gio"><span class="nhan moi">Mới 2.8</span> <b>Tự chỉnh giờ cân</b> (bật sẵn ở Cài đặt, cần giữ kết nối): giờ cân lệch giờ Việt Nam quá 30 giây thì chương trình tự đặt lại theo giờ Việt Nam — sáng mở chương trình là cân đúng giờ, cân mất điện giữa ngày thì chỉnh lại. Mỗi ngày tối đa 3 lần, cách nhau ít nhất 10 phút. Trước khi chỉnh, chương trình so giờ máy tính với giờ mạng (máy chủ kho): <b>giờ máy tính lệch quá 2 phút, hay mất mạng, thì không chỉnh</b> và ghi lý do ở ô Cân — máy tính sai giờ mà chỉnh theo thì tem in sai ngày đóng gói, sai HSD. Kết quả từng lần nằm ở ô Cân. <span class="nhan chua">Chưa thử trên cân thật</span></p>
 
 <h3>Kiểu ngày in trên tem</h3>
 <div class="khung-bang"><table>
@@ -895,6 +897,7 @@
     <li>Đọc nhật ký <b>không xoá gì</b> trên cân. Cân giữ khoảng 6.000–8.000 dòng, đầy thì mất dòng cũ nhất. Không xoá báo cáo trên cân để "làm sạch".</li>
   </ul>
 </div>
+<p id="tu-doc-nhat-ky"><span class="nhan moi">Mới 2.8</span> <b>Tự đọc nhật ký</b> (khi giữ kết nối với cân): cân in tem là cân tự báo cho chương trình (cân đang để <b>thông số 58</b> = 1 — phần mềm của hãng bật sẵn), chương trình chờ vài giây rồi đọc phần nhật ký mới và gộp vào nhat-ky-can.tsv; in liền nhiều tem thì đọc một lần. Mỗi lần vừa nối được cân (sáng mở chương trình, cân khởi động lại) cũng đọc bù. Ô Cân ghi lần tự đọc gần nhất. Việc này chỉ đọc cân và lưu trên máy này; xem nhật ký vẫn chỉ quản lý, chủ. Ô Cân báo "cân chưa bật tự báo (thông số 58)" thì nhật ký chỉ tự đọc lúc nối được cân — bấm <span class="n">Đọc qua WiFi</span> như trước. <span class="nhan chua">Chưa thử trên cân thật</span></p>
 
 <!-- ================================================================== -->
 <h2 id="hsd-kho"><span class="so">23.</span>HSD trên tem và hạn dùng trong kho <span class="nhan moi">Mới 2.2</span> <span class="nhan ql">Quản lý</span></h2>
@@ -949,6 +952,7 @@
   </tbody>
 </table></div>
 <p class="phu">Tự gửi mỗi phút: vừa dò mà không thấy cân (tối, cân tắt) thì 5 phút sau mới dò lại. Nút <span class="n">Tìm cân trong WiFi</span> ở Cài đặt dò bất cứ lúc nào.</p>
+<p id="nghe-udp"><span class="nhan moi">Mới 2.8</span> <b>Nghe tín hiệu cân phát</b> (tắt sẵn; bật ở Cài đặt): cân tự phát một tín hiệu nhỏ khoảng mỗi 15 giây (UDP, cổng 33584). Bật mục này, chương trình nghe tín hiệu đó: cân đổi địa chỉ thì nhịp 30 giây tự theo cân sang địa chỉ mới — chỉ khi đúng một cân phát và <b>mã máy khớp</b> cân đã nhớ (bấm <span class="n">Đọc thông tin cân</span> một lần trước); nút <span class="n">Tìm cân trong WiFi</span> hỏi cân như phần mềm của hãng thay cho dò cả WiFi. Lần đầu bật, <b>Windows có thể hiện hộp hỏi tường lửa</b> (Windows Defender Firewall) cho "Beeftown Cân": chọn <b>Cho phép</b> (Allow access) — có máy cần mật khẩu quản trị. Lỡ bấm Huỷ thì tường lửa chặn: chương trình không nghe được gì và dò WiFi như trước (ô Cân ghi "chưa nghe thấy cân phát"). <span class="nhan chua">Chưa thử trên cân thật</span></p>
 
 <!-- ================================================================== -->
 <h2 id="usb-du-phong"><span class="so">25.</span>Nạp bằng USB — đường dự phòng, từng bước <span class="nhan ql">Quản lý</span></h2>
@@ -991,6 +995,9 @@
     <tr><td><span class="n">Tìm cân trong WiFi</span></td><td>Dò tìm cân bất cứ lúc nào.</td></tr>
     <tr><td>Cổng của cân, Cổng hai chiều của cân, Địa chỉ kho</td><td><b>Không sửa</b> (cổng thường là 33571; cổng hai chiều thường là 33581).</td></tr>
     <tr><td>Tự gửi xuống cân khi kho đổi</td><td>Đánh dấu để cân tự cập nhật tên, giá mỗi phút khi cửa sổ đang mở.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.8</span> Giữ kết nối với cân</td><td>Bật sẵn. Đèn ô Cân tự biết cân còn nối không; cân in tem là chương trình tự đọc nhật ký. Bỏ đánh dấu (mỗi việc nối cân riêng như bản 2.7) chỉ khi người lo chương trình bảo — ví dụ giữ kết nối làm cân hay lỗi.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.8</span> Tự chỉnh giờ cân</td><td>Bật sẵn. Xem <a href="#tu-dat-gio">mục 20 — Giờ cân</a>.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.8</span> Nghe tín hiệu cân phát (UDP)</td><td>Tắt sẵn. Bật khi cân hay đổi địa chỉ và chưa giữ cố định được trong router. Xem <a href="#nghe-udp">mục 24</a> (hộp hỏi tường lửa).</td></tr>
     <tr><td>Chi nhánh</td><td>Tài khoản có nhiều chi nhánh: chọn đúng chi nhánh của quầy.</td></tr>
     <tr><td>Cập nhật file gốc từ cân</td><td>Cân bị sửa không qua chương trình. Lưu cân ra USB (<a href="#usb-tren-can">mục 8</a>), chọn file ở đây. <span class="nhan moi">Mới 2.2</span> Hoặc thẻ Cân &amp; thông số → <span class="n">Đọc dữ liệu từ cân qua WiFi</span> (<span class="nhan chua">Chưa thử trên cân thật</span>).</td></tr>
     <tr><td>Dây RS232 (thử)</td><td>Thử gửi qua dây cáp nối thẳng máy tính với cân. <span class="nhan chua">Chưa thử trên cân thật</span>. Không dùng khi WiFi và USB vẫn tốt.</td></tr>
@@ -1075,6 +1082,10 @@
     <tr><td><b>Đọc giờ cân và chỉnh giờ cân</b> theo giờ máy tính</td><td>Bấm <kbd class="p">Time</kbd> trên cân thấy đúng giờ.</td><td>Chỉnh trên cân (<a href="#ngay-gio">mục 6</a>).</td></tr>
     <tr><td><b>Đọc nhật ký bán qua WiFi</b></td><td>Thẻ Nhật ký cân có dòng mới của hôm nay, khớp với số tem đã in.</td><td>Lưu cân ra USB, chọn file — chương trình đọc nhật ký trong file đó.</td></tr>
     <tr><td><b>Thông tin cân</b> (tên máy, mã máy, phiên bản)</td><td>Hiện ra đúng phiên bản V3.14E8.</td><td>Không ảnh hưởng việc bán.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.8</span> <b>Giữ kết nối với cân</b>: một đường nối giữ mở, hỏi giờ cân mỗi 30 giây; mọi việc đi trên đường đó</td><td>Ô Cân xanh, dòng "Đang nối cân … cân trả lời lúc …" đổi giờ mỗi lần làm mới; gửi giá vẫn báo "cân đã nhận".</td><td>Ô Cân đỏ mãi dù cân bật, hay gửi giá báo lỗi mà trước đây không: bỏ đánh dấu "Giữ kết nối với cân" ở Cài đặt (về cách của 2.7), báo người lo chương trình.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.8</span> <b>Tự đọc nhật ký khi cân báo in tem</b> (thông số 58)</td><td>In một tem; trong chừng 10 giây ô Cân ghi "tự đọc lúc … (cân báo vừa in tem), 1 dòng mới"; thẻ Nhật ký cân có dòng đó.</td><td>Không thấy: cân không tự báo — bấm <span class="n">Đọc qua WiFi</span> ở thẻ Nhật ký cân như trước.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.8</span> <b>Tự chỉnh giờ cân</b> mỗi ngày</td><td>Ô Cân ghi "Đã tự chỉnh giờ cân theo giờ Việt Nam …"; bấm <kbd class="p">Time</kbd> trên cân thấy đúng giờ.</td><td>Chỉnh tay ở thẻ Cân &amp; thông số hay trên cân (<a href="#ngay-gio">mục 6</a>); bỏ đánh dấu "Tự chỉnh giờ cân".</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.8</span> <b>Nghe tín hiệu cân phát</b> (UDP 33584)</td><td>Ô Cân ghi "Nghe tín hiệu cân: 192.168.1.… lúc …".</td><td>"Chưa nghe thấy cân phát": tường lửa đang chặn, hay cân không phát — chương trình dò WiFi như trước.</td></tr>
   </tbody>
 </table></div>
 <div class="hop luu-y">

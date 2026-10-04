@@ -131,12 +131,21 @@ export interface GioCan { nam: number; thang: number; ngay: number; gio: number;
 
 export interface KetNoiCan {
   readonly thongTin: ThongTinCan;
+  /** Phiên bản firmware dạng chuỗi byte (ghi vào file USB y nguyên). */
+  readonly phienBanTho: string;
+  /**
+   * 2.8 — kết nối còn dùng được: chưa đóng, chưa hỏng ở lệnh trước, cân chưa đóng phía bên kia. Không chắc cân còn
+   * nghe (cân tắt đột ngột không báo gì) — muốn chắc thì hỏi giờ với hạn ngắn (docGio(ms)).
+   */
+  readonly dangMo: boolean;
+  /** Như "Upload data" của hãng: các phần theo thứ tự, trên cùng một lượt. */
+  docCacPhan(ds: PhanDoc[]): Promise<string[][]>;
   /** UPL <phần>: các dòng của phần (chuỗi byte, không gồm dòng END). LAB trả cả LAS và LAE của từng mẫu tem. */
   docPhan(ten: PhanDoc): Promise<string[]>;
   /** UPL REP -N: nhật ký bán từ giao dịch (FID) số tuFid trở đi, đọc tới khi hai lần liền khớp nhau như hãng. */
   docBaoCao(tuFid: number): Promise<string[]>;
-  /** UPL TIM: giờ trên cân. */
-  docGio(): Promise<GioCan>;
+  /** UPL TIM: giờ trên cân. `choMs`: chờ tối đa (mặc định như mọi lần đọc) — 2.8 hỏi nhanh xem kết nối còn sống không. */
+  docGio(choMs?: number): Promise<GioCan>;
   /** Gửi CRLF + các khối DWL/CLR…END, rồi hàng rào UPL TIM (đọc dòng TIM rồi END), rồi UPL END. */
   ghi(dong: string[]): Promise<void>;
   /** DWL TIM (số không đệm 0), rồi hàng rào; giờ cân đọc lại phải khớp giờ vừa đặt. */
@@ -156,6 +165,11 @@ export interface TuyChonKetNoi {
   nghiBaoCaoMs?: number;
   /** Tạo kết nối — kiểm thử thay được. Mặc định net.createConnection. */
   taoSocket?: (ip: string, cong: number) => net.Socket;
+  /**
+   * 2.8 — cân tự báo (dòng "ASK\t…", thông số 58): gọi với nguyên dòng (chuỗi byte), sau khi đã bỏ dòng đó khỏi luồng
+   * trả lời. Không có → chỉ bỏ như trước. Gọi ở lượt sau của vòng sự kiện, lỗi trong hàm bị nuốt (không làm hỏng việc đọc).
+   */
+  khiCanBao?: (dong: string) => void;
 }
 
 interface ThoiGian { choMs: number; choNoiMs: number; choHangRaoMs: number; nghiBaoCaoMs: number }
@@ -328,6 +342,7 @@ class KetNoiDaDong extends Error {}
  * không bật nghe nền).
  */
 class DocDong {
+  constructor(private readonly khiCanBao?: (dong: string) => void) {}
   private du = '';
   private hang: string[] = [];
   private dau = 0;
@@ -351,7 +366,12 @@ class DocDong {
 
   private nhanDong(d: string): void {
     while (d.startsWith(BOM)) d = d.slice(3);
-    if (d === '' || d.startsWith('ASK\t')) return;
+    if (d === '') return;
+    if (d.startsWith('ASK\t')) {
+      const bao = this.khiCanBao;
+      if (bao) queueMicrotask(() => { try { bao(d); } catch { /* người nghe hỏng: không làm hỏng việc đọc */ } });
+      return;
+    }
     if (this.cho) { const c = this.cho; this.cho = null; clearTimeout(c.hen); c.xong(d); return; }
     this.hang.push(d);
   }
@@ -362,6 +382,9 @@ class DocDong {
     this.het = e;
     if (this.cho) { const c = this.cho; this.cho = null; clearTimeout(c.hen); c.hong(e); }
   }
+
+  /** Không còn dòng nào đến nữa (kết nối đã đóng / hỏng). */
+  get daHet(): boolean { return this.het !== null; }
 
   /** Bỏ các dòng đã đến mà chưa ai đọc (AsyReadClear của hãng). */
   xoaHang(): void { this.hang = []; this.dau = 0; }
@@ -407,7 +430,7 @@ class KetNoi implements KetNoiCan {
   /** Model và phiên bản dạng chuỗi byte (ghi vào file USB y nguyên). */
   modelTho = '';
   phienBanTho = '';
-  private doc = new DocDong();
+  private doc: DocDong;
   private xich: Promise<unknown> = Promise.resolve();
   private loiHong: LoiGiaoThuc | null = null;
   private daDong = false;
@@ -415,9 +438,10 @@ class KetNoi implements KetNoiCan {
   private s: net.Socket;
   private tg: ThoiGian;
 
-  constructor(s: net.Socket, tg: ThoiGian) {
+  constructor(s: net.Socket, tg: ThoiGian, khiCanBao?: (dong: string) => void) {
     this.s = s;
     this.tg = tg;
+    this.doc = new DocDong(khiCanBao);
     s.on('data', (b: Buffer) => this.doc.them(b));
     s.on('end', () => this.doc.ket(new KetNoiDaDong()));
     s.on('close', () => this.doc.ket(new KetNoiDaDong()));
@@ -501,6 +525,8 @@ class KetNoi implements KetNoiCan {
     this.doc.ket(new KetNoiDaDong());
     this.s.destroy();
   }
+
+  get dangMo(): boolean { return !this.daDong && !this.loiHong && !this.s.destroyed && !this.doc.daHet; }
 
   // ---- bắt tay (§3.1, §4) ---------------------------------------------------
   async batTay(): Promise<void> {
@@ -637,11 +663,12 @@ class KetNoi implements KetNoiCan {
     });
   }
 
-  async docGio(): Promise<GioCan> {
+  async docGio(choMs?: number): Promise<GioCan> {
     const nc: NguCanh = { viec: 'đọc giờ cân', ghi: false };
+    const ms = choMs !== undefined && choMs > 0 ? Math.min(choMs, this.tg.choMs) : this.tg.choMs;
     return this.lam(nc, async () => {
       await this.gui(XD + 'UPL\tTIM\t' + XD, nc);
-      const { gio } = await this.docHangRao(nc, this.tg.choMs);
+      const { gio } = await this.docHangRao(nc, ms);
       await this.gui('UPL\tEND\t' + XD, nc);
       if (!gio) throw loiDuLieu(nc, 'dòng giờ (TIM) không đọc được');
       return gio;
@@ -725,7 +752,7 @@ async function moKetNoiNoiBo(ip: string, cong: number, tuy: TuyChonKetNoi): Prom
     nghiBaoCaoMs: tuy.nghiBaoCaoMs ?? NGHI_BAO_CAO_MAC_DINH_MS,
   };
   const s = await noi(ip, cong, tg, tuy.taoSocket);
-  const kn = new KetNoi(s, tg);
+  const kn = new KetNoi(s, tg, tuy.khiCanBao);
   await kn.batTay();
   return kn;
 }
@@ -752,14 +779,19 @@ export function moKetNoi(ip: string, cong: number = CONG_HAI_CHIEU, tuy: TuyChon
 export async function docTuCan(ip: string, cong: number = CONG_HAI_CHIEU, tuy: TuyChonKetNoi = {}): Promise<{ thongTin: ThongTinCan; du: Uint8Array }> {
   const kn = await moKetNoiNoiBo(ip, cong, tuy);
   try {
-    const doc = await kn.docCacPhan(THU_TU_DOC);
-    const phan: Partial<Record<PhanDoc, string[]>> = {};
-    THU_TU_DOC.forEach((ten, i) => { phan[ten] = doc[i]; });
-    const soCua = (d: string) => { const c = d.split('\t'); return LA_SO_NGUYEN.test(c[1] ?? '') ? parseInt(c[1], 10) : NaN; };
-    phan.TMS = phan.TMS?.filter(d => !laThongSoMang(soCua(d)));
-    phan.TMT = phan.TMT?.filter(d => !CHU_MANG.has(soCua(d)));
-    return { thongTin: kn.thongTin, du: ghepFileUsb(kn.phienBanTho, phan) };
+    return await docFileTuKetNoi(kn);
   } finally {
     kn.dong();
   }
+}
+
+/** Như docTuCan nhưng trên một kết nối đang mở (2.8: kết nối giữ mở — không mở thêm kết nối thứ hai tới cân). */
+export async function docFileTuKetNoi(kn: KetNoiCan): Promise<{ thongTin: ThongTinCan; du: Uint8Array }> {
+  const doc = await kn.docCacPhan(THU_TU_DOC);
+  const phan: Partial<Record<PhanDoc, string[]>> = {};
+  THU_TU_DOC.forEach((ten, i) => { phan[ten] = doc[i]; });
+  const soCua = (d: string) => { const c = d.split('\t'); return LA_SO_NGUYEN.test(c[1] ?? '') ? parseInt(c[1], 10) : NaN; };
+  phan.TMS = phan.TMS?.filter(d => !laThongSoMang(soCua(d)));
+  phan.TMT = phan.TMT?.filter(d => !CHU_MANG.has(soCua(d)));
+  return { thongTin: kn.thongTin, du: ghepFileUsb(kn.phienBanTho, phan) };
 }
