@@ -21,44 +21,28 @@
  *   1. Bộ dò bắt đúng mẫu chân trang cũ, đọc được từ điển vi/en/ko của
  *      web/src/lib/chu.ts (chu(ngonNgu), THUONG_HIEU) và dich(ngonNgu, {…}),
  *      và KHÔNG báo nhầm cặp nhãn / huy hiệu / nút mà đầu dinh-chu.mjs nói bỏ qua.
- *   2. Mọi file .astro của trang công khai — tự tìm, trang mới tự được quét —
- *      không có chỗ dính nào, ở cả ba thứ tiếng.
+ *   2. Mọi file .astro ngoài khu nội bộ — tự tìm, kể cả thư mục con, nên trang
+ *      hay layout công khai mới tự được quét — không có chỗ dính nào, ở cả ba
+ *      thứ tiếng.
  */
 
-import { readFileSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, dirname, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { timChoDinh } from './dinh-chu.mjs';
+import { taoBoDem } from './kho-chung.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const WEB = join(__dirname, '..', '..', 'web', 'src');
 
 const { chu, THUONG_HIEU, PHAP_NHAN } = await import(pathToFileURL(join(WEB, 'lib', 'chu.ts')).href);
 
-let dat = 0, hong = 0;
-const loi = [];
-
-function ok(ten, dieuKien, chiTiet = '') {
-  if (dieuKien) { dat++; console.log(`  \x1b[32m✓\x1b[0m ${ten}`); }
-  else {
-    hong++; loi.push(ten + (chiTiet ? ` — ${chiTiet}` : ''));
-    console.log(`  \x1b[31m✗ ${ten}\x1b[0m${chiTiet ? ` — ${chiTiet}` : ''}`);
-  }
-}
-
-async function nhom(ten, fn) {
-  console.log(`\n\x1b[1m${ten}\x1b[0m`);
-  try { await fn(); }
-  catch (e) { ok(`${ten} chạy được đến cuối`, false, e.message); }
-}
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — CHỮ DÍNH NHAU VÌ XUỐNG DÒNG TRÊN TRANG CÔNG KHAI');
 
 const inRa = ds => ds.map(x => `${x.dong} [${x.nn}] «${x.mau.replace(/\s+/g, ' ')}»`).join(' | ') || 'không báo chỗ nào';
 const theoTieng = ds => Object.fromEntries(['vi', 'en', 'ko'].map(nn => [nn, ds.filter(x => x.nn === nn)]));
 /** Mẫu bộ dò in ra cho hai mẩu a | b (30 ký tự mỗi bên). */
 const mauCua = (a, b) => `${a.slice(-30)}|${b.slice(0, 30)}`;
-
-console.log('\x1b[1m\nBEEFTOWN — CHỮ DÍNH NHAU VÌ XUỐNG DÒNG TRÊN TRANG CÔNG KHAI\x1b[0m');
-console.log('='.repeat(60));
 
 // ===========================================================================
 await nhom('1 · BỘ DÒ BẮT ĐÚNG MẪU LỖI, KHÔNG BÁO NHẦM', async () => {
@@ -81,9 +65,9 @@ const t = chu(ngonNgu);
   </div>
 </footer>
 `);
-  const tt = theoTieng(chanTrangCu);
+  const chanTrangCuTheoTieng = theoTieng(chanTrangCu);
   ok('Chân trang cũ "© … Beeftown ·⏎<span>Beef Specialty Restaurant</span>" bị báo ở cả vi, en và ko',
-     ['vi', 'en', 'ko'].every(nn => tt[nn].length === 1 && tt[nn][0].mau.endsWith(`·|${THUONG_HIEU.descriptor}`))
+     ['vi', 'en', 'ko'].every(nn => chanTrangCuTheoTieng[nn].length === 1 && chanTrangCuTheoTieng[nn][0].mau.endsWith(`·|${THUONG_HIEU.descriptor}`))
        && chanTrangCu.length === 3,
      inRa(chanTrangCu));
   ok('Chỗ báo của chân trang cũ là dòng có <span lang="en">',
@@ -106,10 +90,10 @@ const t = chu(ngonNgu);
 <p class="chan-dong"><span class="lien" lang="vi">{PHAP_NHAN.ten}</span> ·
   <span class="lien">{t.maSoThue}: {PHAP_NHAN.maSoThue}</span></p>
 `);
-  const pn = theoTieng(phapNhan);
+  const phapNhanTheoTieng = theoTieng(phapNhan);
   ok('Dòng pháp nhân tách "·⏎<span class="lien">": bị báo ở vi, en, ko, đọc đúng nhãn mã số thuế',
-     ['vi', 'en', 'ko'].every(nn => pn[nn].length === 1
-       && pn[nn][0].mau === mauCua(' ·', `${chu(nn).maSoThue}: ${PHAP_NHAN.maSoThue}`)),
+     ['vi', 'en', 'ko'].every(nn => phapNhanTheoTieng[nn].length === 1
+       && phapNhanTheoTieng[nn][0].mau === mauCua(' ·', `${chu(nn).maSoThue}: ${PHAP_NHAN.maSoThue}`)),
      inRa(phapNhan));
 
   // <div> cũng là dòng chữ khi chữ trộn với thẻ chữ.
@@ -119,6 +103,21 @@ const t = chu(ngonNgu);
 </div>
 `);
   ok('<div> có chữ trộn với <strong> ở dòng dưới: bị báo', divTron.length === 3, inRa(divTron));
+
+  // Chữ bên cạnh là câu đã biết ({t.banQuyen} của lib/chu.ts), không phải chữ viết thẳng.
+  const CAU_DA_BIET = {
+    '<p>{t.banQuyen}⏎<span lang="en">': `<p>{t.banQuyen}
+  <span lang="en">{THUONG_HIEU.descriptor}</span></p>`,
+    '<div>{t.banQuyen}⏎<strong>': `<div>{t.banQuyen}
+  <strong>{THUONG_HIEU.descriptor}</strong></div>`,
+    '<span>{t.banQuyen}⏎<a>': `<span>{t.banQuyen}
+  <a href="/x">{t.quyenRiengTu}</a></span>`,
+  };
+  for (const [ten, mau] of Object.entries(CAU_DA_BIET)) {
+    const ra = await timChoDinh(`${DAU}${mau}\n`);
+    ok(`${ten} — câu từ điển rồi thẻ ở dòng dưới: bị báo ở vi, en, ko`,
+       ra.length === 3 && ra.every(x => x.mau.startsWith(`${chu(x.nn).banQuyen}|`)), inRa(ra));
+  }
 
   // <span> trơn ngay sau chữ trong <p> — như trang xóa dữ liệu tiếng Hàn từng viết.
   const spanSauChu = await timChoDinh(`${DAU}<p>Messenger에서 Beeftown 페이지로
@@ -132,10 +131,10 @@ const t = chu(ngonNgu);
   const haiCau = await timChoDinh(`${DAU}<p>{t.datBanChuaMo}
   {t.datBanChuaMoGiaiThich}</p>
 `);
-  const hc = theoTieng(haiCau);
+  const haiCauTheoTieng = theoTieng(haiCau);
   ok('{t.a}⏎{t.b} với t = chu(ngonNgu): đọc câu thật của lib/chu.ts ở vi, en, ko',
-     ['vi', 'en', 'ko'].every(nn => hc[nn].length === 1
-       && hc[nn][0].mau === mauCua(chu(nn).datBanChuaMo, chu(nn).datBanChuaMoGiaiThich)),
+     ['vi', 'en', 'ko'].every(nn => haiCauTheoTieng[nn].length === 1
+       && haiCauTheoTieng[nn][0].mau === mauCua(chu(nn).datBanChuaMo, chu(nn).datBanChuaMoGiaiThich)),
      inRa(haiCau));
 
   // Cùng tên khóa ở hai từ điển: t.datBan đọc từ dich() trong file, tChung.datBan từ lib/chu.ts.
@@ -147,10 +146,10 @@ const t = dich(ngonNgu, { datBan: { vi: '(một)', en: '(one)', ko: '(하나)' }
 <p>{tChung.datBan}
   {t.datBan}</p>
 `);
-  const htd = theoTieng(haiTuDien);
+  const haiTuDienTheoTieng = theoTieng(haiTuDien);
   ok('tChung = chu(…) và t = dich(…) cùng khóa datBan: mỗi biến đọc đúng từ điển của nó',
-     htd.vi.length === 1 && htd.vi[0].mau === mauCua(chu('vi').datBan, '(một)')
-       && htd.ko.length === 1 && htd.ko[0].mau === mauCua(chu('ko').datBan, '(하나)'),
+     haiTuDienTheoTieng.vi.length === 1 && haiTuDienTheoTieng.vi[0].mau === mauCua(chu('vi').datBan, '(một)')
+       && haiTuDienTheoTieng.ko.length === 1 && haiTuDienTheoTieng.ko[0].mau === mauCua(chu('ko').datBan, '(하나)'),
      inRa(haiTuDien));
 
   const dichBaTieng = await timChoDinh(`---
@@ -163,9 +162,10 @@ const t = dich(ngonNgu, {
 <p>{t.a}
   {t.b}</p>
 `);
-  const dbt = theoTieng(dichBaTieng);
+  const dichBaTiengTheoTieng = theoTieng(dichBaTieng);
   ok('Từ điển dich(ngonNgu, { vi, en, ko }) trong file: xét cả bản tiếng Hàn',
-     dbt.vi[0]?.mau === 'Câu một.|Câu hai.' && dbt.en[0]?.mau === 'One.|Two.' && dbt.ko[0]?.mau === '하나.|둘.'
+     dichBaTiengTheoTieng.vi[0]?.mau === 'Câu một.|Câu hai.' && dichBaTiengTheoTieng.en[0]?.mau === 'One.|Two.'
+       && dichBaTiengTheoTieng.ko[0]?.mau === '하나.|둘.'
        && dichBaTieng.length === 3,
      inRa(dichBaTieng));
 
@@ -213,6 +213,12 @@ const t = { a: { vi: 'Một.', en: 'One.' }, b: { vi: 'Hai.', en: 'Two.' } };
   </span>
   <a class="nb-nut phu" href="/xem">Xem</a>
 </li>`,
+    "Huy hiệu <span class='…'> (nháy đơn) sau chữ": `<p>Xin chào
+  <span class='nhan'>bạn</span></p>`,
+    'Huy hiệu <span {...thuocTinh}> sau chữ': `<p>Xin chào
+  <span {...thuocTinh}>bạn</span></p>`,
+    '<li>{du lieu}⏎<span> — dữ liệu chưa biết không làm <span> thành chữ': `<li>{x.ten}
+  <span>{t.banQuyen}</span></li>`,
     'Huy hiệu <span class style> sau chữ trong <strong>': `<strong>
   Bắt buộc nhập
   {batBuoc && <span class="nb-nhan cho" style="margin-left:.5rem">Chủ nhà hàng</span>}
@@ -230,21 +236,25 @@ const t = { a: { vi: 'Một.', en: 'One.' }, b: { vi: 'Hai.', en: 'Two.' } };
 
 // ===========================================================================
 await nhom('2 · MỌI TRANG CÔNG KHAI KHÔNG CÓ CHỮ DÍNH (vi, en, ko)', async () => {
-  // Tự tìm: thêm trang công khai mới là tự được quét. Kho và nội bộ có test riêng
-  // (test-kho-tieng-anh.mjs nhóm 4, test-noi-bo-tieng-anh.mjs).
-  const astroTrong = thu => readdirSync(join(WEB, thu))
-    .filter(f => f.endsWith('.astro')).sort().map(f => `${thu}/${f}`);
-  const TEP = [
-    'layouts/Trang.astro',
-    ...astroTrong('components'),
-    ...astroTrong('pages'),
-    ...astroTrong('pages/en'),
-    ...astroTrong('pages/ko'),
+  // Mọi file .astro của web/src TRỪ khu nội bộ — trang, layout hay component công khai
+  // mới (kể cả trong thư mục con như pages/en/thuc-don/) tự được quét.
+  const NOI_BO = [
+    'pages/noi-bo/',                        // màn nội bộ: test-noi-bo-tieng-anh.mjs, kho: test-kho-tieng-anh.mjs
+    'components/kho/', 'layouts/Kho.astro', // kho: test-kho-tieng-anh.mjs nhóm 4
+    'layouts/NoiBo.astro', 'components/SucKhoeHeThong.astro', // test-noi-bo-tieng-anh.mjs
   ];
-  for (const [thu, toiThieu] of [['components/', 4], ['pages/', 5], ['pages/en/', 5], ['pages/ko/', 5]]) {
-    const n = TEP.filter(f => f.startsWith(thu) && !f.slice(thu.length).includes('/')).length;
-    ok(`Tìm thấy file .astro công khai trong ${thu} (${n})`, n >= toiThieu, `chỉ ${n} file — thư mục đổi chỗ?`);
+  const moiAstro = thu => readdirSync(join(WEB, thu)).sort().flatMap(f => {
+    const duong = join(thu, f);
+    return statSync(join(WEB, duong)).isDirectory() ? moiAstro(duong) : f.endsWith('.astro') ? [duong.split(sep).join('/')] : [];
+  });
+  const TEP = moiAstro('').filter(f => !NOI_BO.some(n => f.startsWith(n)));
+  for (const [thu, toiThieu] of [['layouts/', 1], ['components/', 4], ['pages/en/', 5], ['pages/ko/', 5]]) {
+    const soTep = TEP.filter(f => f.startsWith(thu)).length;
+    ok(`Tìm thấy file .astro công khai trong ${thu} (${soTep})`, soTep >= toiThieu, `chỉ ${soTep} file — thư mục đổi chỗ?`);
   }
+  ok('Danh sách quét có khung trang chung layouts/Trang.astro và không có file nội bộ nào',
+     TEP.includes('layouts/Trang.astro') && !TEP.some(f => /noi-bo|\/kho\/|Kho\.astro|NoiBo\.astro/.test(f)),
+     TEP.join(', '));
 
   for (const f of TEP) {
     const ra = await timChoDinh(readFileSync(join(WEB, f), 'utf8'));
@@ -253,11 +263,4 @@ await nhom('2 · MỌI TRANG CÔNG KHAI KHÔNG CÓ CHỮ DÍNH (vi, en, ko)', as
   }
 });
 
-console.log('\n' + '='.repeat(60));
-if (hong === 0) {
-  console.log(`\x1b[32m\x1b[1mTẤT CẢ ${dat} KIỂM TRA CHỮ DÍNH TRÊN TRANG CÔNG KHAI ĐỀU ĐẠT\x1b[0m`);
-} else {
-  console.log(`\x1b[31m\x1b[1m${hong} HỎNG / ${dat + hong} KIỂM TRA\x1b[0m`);
-  loi.forEach(l => console.log(`  \x1b[31m· ${l}\x1b[0m`));
-}
-process.exit(hong === 0 ? 0 : 1);
+process.exit(ketThuc('CHỮ DÍNH TRÊN TRANG CÔNG KHAI'));

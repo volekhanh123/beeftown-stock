@@ -29,8 +29,9 @@
  *       <span lang="en">{THUONG_HIEU.descriptor}</span>
  *     </span>                         → "© 2026 Beeftown ·Beef Specialty Restaurant"
  *
- * Cặp nhãn <span>/<small> trong <label>, huy hiệu cạnh huy hiệu, nút cạnh nút…
- * không phải dòng chữ nên không xét: cha của chúng không có chữ viết thẳng.
+ * "Chữ" ở đây là chữ viết thẳng hoặc {…} ra câu đã biết ({t.banQuyen}); dữ liệu
+ * chưa biết thì không tính. Cặp nhãn <span>/<small> trong <label>, huy hiệu cạnh
+ * huy hiệu, nút cạnh nút… không phải dòng chữ nên không xét.
  *
  * Sửa: viết hai mẩu trên cùng một dòng, cách một dấu cách (hoặc thêm {' '}).
  *
@@ -96,13 +97,10 @@ const tenThe = n => {
   const t = n.openingElement?.name;
   return t?.type === 'JSXIdentifier' ? t.name : '';
 };
-/** Dãy con có chữ viết thẳng (không chỉ khoảng trắng). */
-const coChuThang = children => (children ?? []).some(c => c.type === 'JSXText' && /\S/.test(c.value));
-
 /**
- * Thẻ nằm trong dòng chữ? canhChu = dãy con chứa thẻ này có chữ viết thẳng.
- * <span> chỉ là chữ khi trơn (lang, aria…, hoặc lớp trong LOP_CHU) VÀ đứng giữa
- * chữ viết thẳng — "Beeftown ·⏎<span lang="en">…</span>". <span class / style>
+ * Thẻ nằm trong dòng chữ? canhChu = dãy con chứa thẻ này có chữ bên cạnh (coChuBenCanh).
+ * <span> chỉ là chữ khi trơn (lang, aria…, hoặc lớp trong LOP_CHU) VÀ có chữ bên
+ * cạnh — "Beeftown ·⏎<span lang="en">…</span>". <span class / style / {...thuộc tính}>
  * khác là nhãn, huy hiệu: CSS lo khoảng cách. <span> trơn không có chữ bên cạnh
  * là ô bố cục của hàng flex: <li><span><strong/>⏎<small/></span>⏎<a class="nb-nut"/></li>.
  */
@@ -110,8 +108,8 @@ const laTheChu = (n, nguon, canhChu) => {
   const ten = tenThe(n);
   const the = nguon.slice(n.openingElement.start, n.openingElement.end);
   if (ten === 'span') {
-    if (!canhChu || /\s(class:list|style)=|\sclass=\{/.test(the)) return false;
-    const lop = the.match(/\sclass="([^"]*)"/)?.[1];
+    if (!canhChu || /\s(class:list|style)=|\sclass=\{|\{\s*\.\.\./.test(the)) return false;
+    const lop = the.match(/\sclass=(["'])(.*?)\1/)?.[2];
     return lop == null || lop.split(/\s+/).filter(Boolean).every(l => LOP_CHU.has(l));
   }
   if (!THE_CHU.has(ten)) return false;
@@ -142,7 +140,7 @@ function khaNang(n, bc) {
       // t.khoa với t = chu(ngonNgu), hoặc THUONG_HIEU.khoa — giá trị thật của lib/chu.ts.
       const goc = n.object.type === 'Identifier' ? n.object.name : null;
       const bo = goc == null ? null : bc.libChu.boChu.has(goc) ? bc.libChu.chu(nn) : bc.libChu.hang.get(goc);
-      if (bo) return typeof bo[k] === 'string' ? khaNang({ type: 'Literal', value: bo[k] }, bc) : [{ kieu: 'chu', s: U }];
+      if (typeof bo?.[k] === 'string') return khaNang({ type: 'Literal', value: bo[k] }, bc);
       const muc = k == null ? null : tu.get(k);
       if (muc && !muc.ham) return muc[nn] ? khaNang(muc[nn], { ...bc, tu: new Map() }) : [{ kieu: 'chu', s: U }];
       return [{ kieu: 'chu', s: U }];
@@ -184,7 +182,7 @@ function chuTrongThe(children, bc) {
  * này có khoảng trắng xuống dòng bị bỏ.
  */
 function daySach(children, bcCha) {
-  const bc = { ...bcCha, canhChu: coChuThang(children) };
+  const bc = { ...bcCha, canhChu: coChuBenCanh(children, bcCha) };
   const ra = [];
   let dinh = false;
   for (const c of children ?? []) {
@@ -208,6 +206,18 @@ function daySach(children, bcCha) {
     dinh = false;
   }
   return ra;
+}
+
+/**
+ * Dãy con có chữ bên cạnh: chữ viết thẳng, hoặc {…} ra câu đã biết — câu từ điển,
+ * câu của lib/chu.ts ({t.banQuyen}), chuỗi viết sẵn. Dữ liệu chưa biết (U) không
+ * tính: <li>{x.ten}⏎<span>…</span></li> nhiều khả năng là hàng flex.
+ */
+function coChuBenCanh(children, bc) {
+  return (children ?? []).some(c => c.type === 'JSXText'
+    ? /\S/.test(c.value)
+    : c.type === 'JSXExpressionContainer' && c.expression.type !== 'JSXEmptyExpression'
+      && khaNang(c.expression, { ...bc, canhChu: false }).some(k => k.kieu === 'chu' && /[^\s\uFFFD]/.test(k.s)));
 }
 
 /**
@@ -252,9 +262,9 @@ function docLibChu(frontmatter, mod) {
     if (n.type !== 'ImportDeclaration' || !LA_LIB_CHU.test(n.source?.value ?? '')) continue;
     for (const s of n.specifiers) {
       if (s.type !== 'ImportSpecifier') continue;
-      const ten = s.imported.name ?? s.imported.value, gt = mod[ten];
+      const ten = s.imported.name ?? s.imported.value, giaTri = mod[ten];
       if (ten === 'chu') hamChu.add(s.local.name);
-      else if (gt && typeof gt === 'object' && !Array.isArray(gt)) hang.set(s.local.name, gt);
+      else if (giaTri && typeof giaTri === 'object' && !Array.isArray(giaTri)) hang.set(s.local.name, giaTri);
     }
   }
   const di = n => {
@@ -268,9 +278,9 @@ function docLibChu(frontmatter, mod) {
   return { boChu, hang, chu: mod.chu };
 }
 
-/** <span> / <div>: chữ viết thẳng trộn với thẻ chữ (kể cả thẻ trong {…}) — là một dòng chữ. */
+/** <span> / <div>: chữ (viết thẳng hoặc câu đã biết) trộn với thẻ chữ (kể cả thẻ trong {…}) — là một dòng chữ. */
 const traChuVaThe = (children, bc) =>
-  coChuThang(children) && daySach(children, bc).some(x => x.kha.some(k => k.kieu === 'the'));
+  coChuBenCanh(children, bc) && daySach(children, bc).some(x => x.kha.some(k => k.kieu === 'the'));
 
 /** Các chỗ dính trong một file .astro: [{ dong, nn, mau }], mau = "…đuôi trái|đầu phải…". */
 export async function timChoDinh(nguon) {
@@ -296,7 +306,7 @@ export async function timChoDinh(nguon) {
       }
     };
     // Đi khắp cây, kể cả JSX nằm trong biểu thức; trongDong = đang ở trong dòng chữ,
-    // canhChu = dãy con đang đi có chữ viết thẳng (cho <span>, xem laTheChu).
+    // canhChu = dãy con đang đi có chữ bên cạnh (cho <span>, xem laTheChu).
     const di = (n, trongDong, canhChu) => {
       if (!n || typeof n !== 'object') return;
       if (Array.isArray(n)) { n.forEach(x => di(x, trongDong, canhChu)); return; }
@@ -308,14 +318,14 @@ export async function timChoDinh(nguon) {
         const trong = !hop && (CHA_DONG_CHU.has(ten) || (theChu && trongDong)
           || (CHA_KHI_TRON.has(ten) && traChuVaThe(n.children, bc)));
         xetDay(n.children, trong);
-        const cc = coChuThang(n.children);
-        n.children.forEach(x => di(x, trong, cc));
+        const canhChuCon = coChuBenCanh(n.children, bc);
+        n.children.forEach(x => di(x, trong, canhChuCon));
         return;
       }
       if (n.type === 'JSXFragment') {
         xetDay(n.children, trongDong);
-        const cc = coChuThang(n.children);
-        n.children.forEach(x => di(x, trongDong, cc));
+        const canhChuCon = coChuBenCanh(n.children, bc);
+        n.children.forEach(x => di(x, trongDong, canhChuCon));
         return;
       }
       for (const [k, v] of Object.entries(n)) if (k !== 'frontmatter' && v && typeof v === 'object') di(v, trongDong, canhChu);
