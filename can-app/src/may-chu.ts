@@ -177,6 +177,12 @@ export function moMayChu(ud: UngDung, tuy: {
             const b = await docThan(req);
             return json({ ok: true, ...(await ud.xoaQuaWifi(b.giuHangNgoaiKho === true, typeof b.dauVan === 'string' ? b.dauVan : undefined)) });
           }
+          // ---- 2.7: gỡ hàng còn nằm lại bằng ghi đè (dòng trống), chẩn đoán WiFi ----
+          case '/api/can/go-con-lai': {
+            const b = await docThan(req);
+            return json({ ok: true, ...(await ud.goHangConLai(b.giuHangNgoaiKho === true, typeof b.dauVan === 'string' ? b.dauVan : undefined)) });
+          }
+          case '/api/can/chan-doan': return json({ ok: true, ...(await ud.chanDoanWifi(await docThan(req))) });
           case '/api/gio-can': return json({ ok: true, ...(await ud.gioCan()) });
           case '/api/gio-can/chinh': return json({ ok: true, ...(await ud.chinhGioCan(await docThan(req))) });
           // ---- 2.2: thông số, phím tắt (gửi qua 33571 — chưa thử trên cân thật) ----
@@ -215,7 +221,7 @@ export function moMayChu(ud: UngDung, tuy: {
           case '/api/bao-cao': return json({ ok: true, ...(await ud.baoCao(await docThan(req))) });
           case '/api/mo-thu-muc': {
             const b = await docThan(req);
-            const dich = b.cho === 'usb' ? path.dirname(ud.fileChoUsb) : ud.dd.duLieu;
+            const dich = b.cho === 'usb' ? path.dirname(ud.fileChoUsb) : b.cho === 'chan-doan' ? path.join(ud.dd.duLieu, 'chan-doan') : ud.dd.duLieu;
             fs.mkdirSync(dich, { recursive: true });
             if (process.platform === 'win32') exec(`explorer "${dich}"`, { windowsHide: true });
             return json({ ok: true, duongDan: dich });

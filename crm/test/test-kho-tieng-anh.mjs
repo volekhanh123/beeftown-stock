@@ -79,6 +79,8 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     "/người khác sửa|thiếu phiên bản/",                                  // sua-nhanh.ts: nhận câu tiếng Việt của kho_sua_nhanh_mat_hang
     "NHOM_CHUA_CO = '(chưa có)'",                                        // sua-nhanh.ts: mã lọc "chưa có nhóm" trên đường dẫn, không hiện
     ".replace(/[đĐ]/g, 'd')",                                            // can-tma.ts: bỏ dấu cho mã tìm kiếm trên cân
+    "TEN_PLU_TRONG = 'KHÔNG DÙNG (PLU trống)'",                          // can-tma.ts: tên dòng trống ghi xuống cân (in trên tem), không phải câu màn hình
+    "throw new RangeError(`Số PLU của dòng riêng phải từ 1 đến ${PLU_RIENG_TOI_DA}.`)", // can-tma.ts: lỗi lập trình — goHangConLai kiểm số PLU trước khi gọi
     ".replace(/đ$|d$|vnd$/i, '')",              // đọc ô tiền: "450.000đ"
     ".replace(/đ/g, 'd').replace(/Đ/g, 'D')",   // bỏ dấu khi sinh mã / tìm không dấu
     // gói máy & iPOS — câu cho máy / log, không hiện trên màn nào:

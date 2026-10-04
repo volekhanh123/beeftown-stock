@@ -1010,7 +1010,13 @@ FID 29: 9 cái giá 455; FID 30: 9,000 kg giá 0) → chỉ **17 dòng bán hàn
   33581 để kiểm (`xacNhanSauGui`, README mục "Bản 2.6").
 - **[đã thấy] 03/10/2026 (2.6.0):** cân bỏ qua MỌI lần gửi qua 33571 — cả 69 hàng mới, cả lần chỉ sửa giá 4 dòng; đọc
   lại qua 33581 thấy cân vẫn giá cũ; nạp USB thì nhận. → Từ 2.6.1 gửi hàng qua 33581 (`DWL PLU` + hàng rào, như hãng),
-  33571 chỉ còn là đường lui (README mục "Bản 2.6.1").
+  33571 chỉ còn là đường lui (README mục "Bản 2.6.1"). Từ 2.7 thông số, chữ, phím, tem cũng vậy (README mục "Bản 2.7").
+- Vì sao cân bỏ qua 33571: [chưa biết]. Giả thuyết, chưa thử: (a) cổng không thuộc giao thức của hãng; (b) file to hơn
+  (26/09: ~39 KB, 6–7 hàng; 02/10: đủ 69 hàng + 500 thông số); (c) cân kẹt cổng sau nhiều kết nối mở rồi đóng không gửi gì
+  (`thuKetNoi`, dò cả dải); (d) file mang thông số mạng, cân đặt 45 = 1 nên khởi động lại mạng giữa lúc nhận. Bước 7 của
+  Chẩn đoán WiFi (2.7) gửi một file nhỏ chỉ có hàng thử rồi đọc lại — trả lời (b); thử thêm ngay sau khi tắt bật cân cho (c).
+- **Từ 2.7 mọi lần gửi qua 33571 bỏ dòng mạng** (`boDongMang`): TMS 43–53, 150–173, 430–441 và TMT 15, 16, 19. File gốc
+  và file USB vẫn giữ.
 - Trong WiFi của quán chỉ cân mở cổng này → `tim-can.ts` tìm cân đổi địa chỉ bằng cách thử nối 33571 cả dải
   /24 (không gửi gì).
 - **Chưa thử trên cân thật qua 33571**: phần LAB (đổi tem qua WiFi), file nhỏ chỉ có TMS / SCP (`fileNho`),
@@ -1112,6 +1118,14 @@ máy tính → UPL⇥END⇥
 
 - **Không có lệnh xoá một PLU.** Xoá = `CLR⇥PLU⇥` + `CLR⇥END⇥` + `DWL⇥PLU⇥` **cả danh sách** + `END⇥PLU⇥`
   (`khoiXoaVaNapPlu`, chặn danh sách rỗng) — **chưa thử trên cân thật**; hoặc nạp USB (đã thử), hoặc P33 trên cân.
+  2.7: hỏng sau `CLR` thì chương trình tự gửi lại cả danh sách (`DWL PLU`, không `CLR`) tới 3 lần rồi đọc lại (`phucHoiSauXoa`).
+- **Gỡ không cần xoá** (2.7, `goHangConLai`): ghi đè số PLU bằng một **dòng trống** — mã `99999` (`MA_CAN_TRONG`), giá
+  `0,0`, tên "KHÔNG DÙNG (PLU trống)", cột 27 = 0 — kèm `SCP⇥p⇥k⇥0⇥` cho phím gọi số đó. Trước khi ghi, đọc `UPL PLU` trên
+  cùng kết nối: số nào giờ mang mã khác (hàng thêm trên bàn phím) thì không gửi gì — ghi đè theo số là mất hàng đó; số đã
+  là dòng trống hay cân không còn thì không ghi. Gửi xong đọc lại PLU / SCP để kiểm. Chỉ là
+  `DWL` như gửi giá: không có lúc cân thiếu hàng. Hàng mới dùng lại số PLU (cân ghi đè theo số). Gọi số đó trên cân in tem giá
+  0, mã vạch mã 99999 — FABi không có món này nên không thu tiền được. Không dùng mã 0 (thông số 121 coi mã 0 là hàng cân
+  tạm, §6.4). **Chưa thử trên cân thật.**
 - Không có lệnh xoá nhật ký, không có lệnh khởi động lại cân (đổi thông số mạng khi 45 = 1 là cách duy nhất làm
   mạng cân khởi động lại), không có mật khẩu, không có mã kiểm.
 - Không có lệnh đặt IP theo MAC qua UDP: đặt IP cần một kết nối TCP sẵn có.
@@ -1235,7 +1249,10 @@ Cùng văn bản như file và mạng (mục 2), đi qua cổng COM. Nguồn: `S
 | Dạng file cân tự lưu (thứ tự phần, số cột, INA / INM, LAB 1–9, SCP 73 / 63 / 63) | **File thật** 26/09/2026 | |
 | Tìm cân bằng dò TCP 33571 (`tim-can.ts`) | Chưa có ghi chép thử ở quán | Chạy với cân giả |
 | Việc khác qua **33581**: ghi + hàng rào (`DWL PLU` của 2.6.1), `UPL REP`, `DWL TIM` / `datGio` | **Chưa thử trên cân thật** | Chỉ với cân giả |
-| `CLR PLU` + nạp lại cả danh sách qua 33581 (`khoiXoaVaNapPlu`) | **Chưa thử trên cân thật** | Nguy hiểm nhất |
+| `CLR PLU` + nạp lại cả danh sách qua 33581 (`khoiXoaVaNapPlu`) | **Chưa thử trên cân thật** | Nguy hiểm nhất; 2.7 tự gửi lại cả danh sách khi hỏng |
+| Ghi thông số / chữ / phím / tem qua 33581 rồi đọc lại phần đó (`guiCaiDat`, 2.7) | **Chưa thử trên cân thật** | Chỉ với cân giả |
+| Gỡ hàng bằng ghi đè dòng trống mã 99999 + bỏ phím (`goHangConLai`, 2.7) | **Chưa thử trên cân thật** | Chỉ với cân giả |
+| Chẩn đoán WiFi (2.7): chỉ đọc; ghi thử PLU 9999; file nhỏ qua 33571 | **Chưa thử trên cân thật** | Chạy ở quán rồi sửa bảng này theo file kết quả |
 | Đổi mẫu tem (LAB) qua 33571 hoặc 33581 | **Chưa thử trên cân thật** | USB thì cân nhận chắc |
 | File nhỏ chỉ TMS / SCP qua 33571 (`fileNho`) | **Chưa thử trên cân thật** | |
 | In hạn sử dụng (cột 27 = 1, cột 32 = n) | **Chưa thử trên cân thật** | |
@@ -1250,6 +1267,10 @@ Cùng văn bản như file và mạng (mục 2), đi qua cổng COM. Nguồn: `S
 | Nạp USB cần bấm Accu/Confirm lần thứ ba | **Chưa thử trên cân thật** | Theo sách |
 
 ## 13. Chưa biết — và cách thử an toàn
+
+**Từ 2.7, nút Chẩn đoán WiFi** (thẻ Cân & thông số) chạy sẵn các phép thử 1–3 của bảng dưới (chỉ đọc), và khi tích "Thử cả
+ghi": ghi y hệt một dòng PLU, thêm / sửa PLU thử 9999 (mã 99998), file nhỏ qua 33571, gỡ PLU thử bằng dòng trống — lưu kết
+quả ra `Tài liệu\Beeftown Can\chan-doan\`. Vẫn theo các bước "Trước mọi lần thử" dưới đây.
 
 **Trước mọi lần thử:**
 

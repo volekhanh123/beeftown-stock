@@ -766,8 +766,13 @@
 </ol>
 <div class="hop luu-y"><p><b>Vì sao có bước đọc lại (2.6):</b> gửi qua WiFi thì cân không trả lời gì. Bản cũ gửi hết dữ liệu là coi như cân đã nhận. Ở quán (02–03/10/2026), chương trình ghi "Giữ nguyên" 69 hàng kho trong khi cân thật chỉ có 7 hàng cũ — gọi PLU 12 thì cân kêu tít tít về 0 vì cân không có hàng đó.</p></div>
 <div class="hop luu-y">
-  <p><b>Khung đỏ "… hàng sẽ còn nằm trên cân":</b> gửi qua WiFi cân chỉ <b>thêm và sửa</b>, không xoá được (<span class="nhan da">Đã làm ở quán</span>). Muốn xoá hẳn: bấm <span class="n">Lưu file để nạp USB</span> rồi làm theo <a href="#usb-du-phong">mục 25</a>. Nạp USB thì cân thay cả danh sách.</p>
-  <p><span class="nhan moi">Mới 2.2</span> Khi có hàng còn nằm lại, chương trình cho <b>thử xoá qua WiFi</b> — <span class="nhan chua">Chưa thử trên cân thật</span>. Đọc kỹ <a href="#chua-thu">mục 28</a> trước khi dùng. Hỏng thì chương trình chỉ đường USB.</p>
+  <p><b>Khung đỏ "… hàng sẽ còn nằm trên cân":</b> gửi qua WiFi cân chỉ <b>thêm và sửa</b>, không xoá (<span class="nhan da">Đã làm ở quán</span>). Cân không có lệnh xoá một hàng. Ba cách:</p>
+  <ul>
+    <li><span class="nhan moi">Mới 2.7</span> <span class="n">Gỡ khỏi cân qua WiFi (ghi đè)</span> — <b>nên dùng</b>: mỗi số PLU còn nằm lại thành một dòng trống <b>"KHÔNG DÙNG (PLU trống)"</b> (mã 99999, giá 0, không in HSD); phím tắt gọi số đó được bỏ. Hàng mới sau này dùng lại số PLU đó. Chỉ là lệnh ghi như gửi giá: <b>không lúc nào cân thiếu hàng</b>. Trước khi gửi, chương trình đọc cân: số PLU nào giờ là <b>hàng khác</b> (thêm trên bàn phím, phần mềm hãng) thì <b>không gỡ gì</b> và báo; số cân đã không còn (đã nạp USB) thì chỉ bỏ khỏi danh sách. Cần cân đã biết mã máy (bấm "Đọc thông tin cân" một lần). Gửi xong chương trình đọc lại cân để kiểm. <span class="nhan chua">Chưa thử trên cân thật</span>.</li>
+    <li><span class="n">Lưu file để nạp USB</span> rồi làm theo <a href="#usb-du-phong">mục 25</a> — cân thay cả danh sách, hàng vắng mặt mất hẳn. Chắc chắn nhất.</li>
+    <li><span class="n">Xoá hẳn qua WiFi (thử)</span> — xoá cả danh sách hàng trên cân rồi nạp lại. <span class="nhan moi">Mới 2.7</span> Hỏng giữa chừng thì chương trình <b>tự gửi lại ngay cả danh sách</b> rồi đọc lại; chỉ khi vẫn không đủ hàng mới báo "nạp USB ngay". <span class="nhan chua">Chưa thử trên cân thật</span> — đọc kỹ <a href="#chua-thu">mục 28</a>, làm lúc quầy vắng.</li>
+  </ul>
+  <p>Gọi một số PLU vừa gỡ trên cân: ra "KHÔNG DÙNG (PLU trống)", giá 0 là đã gỡ. <b>Không cân hàng bằng số đó.</b></p>
 </div>
 <p><b>Tự gửi:</b> ở Cài đặt, đánh dấu "Tự gửi xuống cân khi kho đổi". Chương trình tự gửi mỗi phút khi kho có thêm / sửa — kể cả HSD đếm ngược sang ngày mới — chỉ khi cửa sổ chương trình đang mở. Máy tính tắt qua đêm: sáng mở chương trình là trong một phút tự gửi chạy. Kho bật / tắt in HSD của một hàng (lô hết hạn, món bắt đầu có hạn) thì tự gửi dừng, không gửi gì, và báo ở ô Cân: xem trước rồi bấm Gửi. <span class="nhan moi">Mới 2.6</span> Lần gửi đọc lại thấy cân chưa nhận thì tự gửi cũng tạm dừng (không gửi lại mỗi phút) tới khi bấm Gửi được hay nạp USB. Ô Cân ghi lần tự gửi gần nhất.</p>
 <p class="phu">Gửi hỏng giữa chừng (đã nối được cân) thì chương trình không tự gửi lại — người bấm quyết. Bấm gửi lại; hỏng mãi thì dùng USB.</p>
@@ -777,7 +782,8 @@
 <p>Mọi hàng đang có trên cân: <b>PLU</b>, <b>Phím</b> (phím tắt trên bàn phím cân), <b>Mã cân</b>, <b>Mã FABi</b>, <b>Tên trên cân</b>, <b>Giá/kg</b>, <b>Bán</b> (Cân ký / Theo gói), <b>Tình trạng</b>. <span class="nhan moi">Mới 2.2</span> thêm cột HSD (trên cân, kho muốn, và HSD lấy từ lô nào); khung đỏ khi HSD trên cân tính cho ngày trước hôm nay.</p>
 <ul>
   <li>Ô tìm: theo tên, mã cân, số PLU. Nút lọc theo tình trạng:
-    <b>Khớp kho</b> · <b>Khác kho</b> (tên hoặc giá khác kho) · <b>Kho không có</b> · <b>Còn nằm lại</b> (đã bỏ khỏi kho, cân chưa xoá) · <b>Chưa lên cân</b> · <b>Không lên được</b>.</li>
+    <b>Khớp kho</b> · <b>Khác kho</b> (tên hoặc giá khác kho) · <b>Kho không có</b> · <b>Còn nằm lại</b> (đã bỏ khỏi kho, cân chưa xoá) · <b>Chưa lên cân</b> · <b>Không lên được</b>
+    · <span class="nhan moi">Mới 2.7</span> <b>PLU trống</b> (số PLU đã gỡ hàng bằng ghi đè — dòng "KHÔNG DÙNG", hàng mới sẽ dùng lại số này; không tính là hàng).</li>
   <li><span class="n">Tải danh sách (Excel)</span>: tải bảng đang lọc. <span class="n">Tải lại</span>: đọc lại.</li>
   <li>Muốn cân khớp kho: sang thẻ Gửi giá từ kho.</li>
 </ul>
@@ -807,7 +813,15 @@
 <!-- ================================================================== -->
 <h2 id="the-thong-so"><span class="so">20.</span>Thẻ Cân &amp; thông số <span class="nhan moi">Mới 2.2</span> <span class="nhan ql">Quản lý, chủ</span></h2>
 <p>Thông số là các cài đặt bên trong cân. Thẻ này chỉ cho sửa vài thông số an toàn, có tả bằng tiếng Việt. Thông số khác chỉ xem.</p>
-<div class="hop chua-thu"><p><span class="nhan chua">Chưa thử trên cân thật</span> Đọc thông tin, đọc / chỉnh giờ, gửi thông số qua WiFi đều chưa thử với cân của quán. Sau mỗi việc, kiểm tra ngay trên cân (bấm <kbd class="p">Time</kbd>, in thử một tem). Không được thì dùng USB hoặc làm trên cân.</p></div>
+<div class="hop chua-thu"><p><span class="nhan chua">Chưa thử trên cân thật</span> Đọc qua cổng hai chiều đã chạy ở quán (03/10/2026); <b>ghi</b> (giờ, thông số, chữ, phím, tem, gỡ hàng) thì chưa thử. <span class="nhan moi">Mới 2.7</span> Mọi việc ghi đi qua cổng hai chiều rồi chương trình <b>đọc lại cân để kiểm</b>: khung xanh <b>"Cân đã nhận …"</b> chỉ khi đọc lại khớp; khung đỏ <b>"… cân CHƯA nhận"</b> thì chương trình không ghi nhận gì (gửi lại được); khung vàng <b>"chưa kiểm được"</b> khi không đọc lại được. Sau mỗi việc vẫn nên xem trên cân (bấm <kbd class="p">Time</kbd>, in thử một tem). Không được thì dùng USB hoặc làm trên cân.</p></div>
+
+<h3 id="chan-doan">Chẩn đoán WiFi <span class="nhan moi">Mới 2.7</span></h3>
+<p>Nút đầu thẻ. Làm <b>đầu tiên</b> khi gửi qua WiFi không được, hay khi người sửa chương trình nhờ. Chương trình chạy lần lượt các phép thử an toàn, hiện từng bước Đạt / Hỏng / Bỏ qua kèm kết luận, và lưu kết quả ra file trong <code>Tài liệu\Beeftown Can\chan-doan</code> — gửi file đó cho người sửa chương trình. File không có tên hay mật khẩu WiFi.</p>
+<ul>
+  <li><b>Mặc định chỉ đọc</b>, không ghi gì xuống cân: bắt tay qua cổng hai chiều (mã máy, loại máy), đọc giờ cân, đọc danh sách hàng và so với chương trình.</li>
+  <li>Tích <b>"Thử cả ghi"</b> — làm <b>ngoài giờ bán</b>, có người đứng ở cân, cân ở màn hình bán hàng: ghi lại y hệt một hàng đang có (không đổi gì); thêm hàng thử <b>"THỬ WIFI"</b> ở <b>PLU 9999</b> (mã 99998), sửa nó; gửi thử một file nhỏ qua cổng 33571; cuối cùng gỡ hàng thử — PLU 9999 thành <b>PLU trống</b>. Hàng đang bán không đổi. PLU 9999 đang có hàng thật thì chương trình bỏ qua các bước ghi thử.</li>
+  <li>Kết luận "Cân NHẬN ghi qua cổng hai chiều" là gửi giá, thông số, phím, tem qua WiFi dùng được. "Cân CHƯA nhận ghi" hay "cổng hai chiều không trả lời": dùng USB và gửi file kết quả.</li>
+</ul>
 
 <h3>Thông tin cân</h3>
 <p>Chương trình hỏi cân qua WiFi: tên máy, số máy, mã máy, loại máy, phiên bản. Cân trả lời được là đường WiFi hai chiều thông.</p>
@@ -847,7 +861,7 @@
   <li><b>Chữ tuỳ ý 1–8</b>: chữ hiện trên màn hình cân lúc chờ (nếu cân chọn hiện chữ này). Không in trên tem.</li>
   <li>Tối đa 40 ký tự (chữ trước / sau số tiền: 8). Tiếng Việt có dấu được; biểu tượng cảm xúc thì không.</li>
   <li><b>Tên WiFi, mật khẩu WiFi không hiện và không sửa ở đây</b>: sửa sai là cân rời WiFi. Cần đổi thì làm trên cân (<kbd class="p">Prog</kbd> → 1 → 3).</li>
-  <li>Sửa xong: bấm <span class="n">Gửi chữ đã đổi xuống cân</span>, rồi in thử một tem có ô chữ đó — <span class="nhan chua">Chưa thử trên cân thật</span>. Cân chưa đổi: <span class="n">Lưu file nạp USB</span> rồi nạp USB (<a href="#usb-du-phong">mục 25</a>).</li>
+  <li>Sửa xong: bấm <span class="n">Gửi chữ đã đổi xuống cân</span> (<span class="nhan moi">Mới 2.7</span> qua cổng hai chiều, rồi đọc lại cân để kiểm), rồi in thử một tem có ô chữ đó — <span class="nhan chua">Chưa thử trên cân thật</span>. Cân chưa đổi: <span class="n">Lưu file nạp USB</span> rồi nạp USB (<a href="#usb-du-phong">mục 25</a>).</li>
 </ul>
 
 <!-- ================================================================== -->
@@ -1042,19 +1056,22 @@
 
 <h3>Đã làm được ở quán</h3>
 <ul>
-  <li>Gửi giá và tên qua WiFi (cổng 33571): cân <b>thêm và sửa</b> hàng. Cân không trả lời gì. Đã thử 26/09/2026.</li>
+  <li>Gửi giá và tên qua WiFi (cổng 33571): cân <b>thêm và sửa</b> hàng. Cân không trả lời gì. Đã thử 26/09/2026. <b>Từ 02/10/2026 cân bỏ qua mọi lần gửi qua cổng này</b> (chưa biết vì sao) — từ 2.6.1 chương trình gửi qua cổng hai chiều; 33571 chỉ còn là đường lui. <span class="nhan moi">Mới 2.7</span> Gửi qua 33571 không bao giờ mang cài đặt mạng của cân.</li>
+  <li>Đọc dữ liệu cân qua cổng hai chiều (33581): chạy được (03/10/2026).</li>
   <li>Qua WiFi cân <b>không xoá</b> hàng. Nạp USB thì cân thay cả danh sách.</li>
   <li>Lưu dữ liệu cân ra USB: <kbd class="p">Prog</kbd> → <kbd class="p">V3/↓</kbd> tới <span class="mh">P4</span> → <kbd class="p">Accu/Confirm</kbd> → <kbd class="p">Accu/Confirm</kbd> → <kbd class="p">Amend</kbd>.</li>
   <li>Xem địa chỉ cân: <kbd class="p">Prog</kbd> → <kbd class="p">4</kbd> → <kbd class="p">2</kbd>.</li>
 </ul>
 
-<h3>Đường WiFi hai chiều (cổng 33581) — chưa thử <span class="nhan moi">Mới 2.2</span></h3>
-<p>Bản 2.2 dùng thêm <b>cổng 33581</b>: đường nói chuyện hai chiều mà phần mềm của hãng dùng — máy tính hỏi, cân trả lời. (Cổng 33571 của bản 2.1 chỉ gửi một chiều.) Phần mềm của hãng đã từng nối chính cân này qua cổng 33581 (năm 2024) và đọc được báo cáo. Nhưng <b>chương trình Beeftown chưa lần nào nói chuyện với cân thật qua cổng này</b>; lần trước gửi thẳng cả file vào cổng 33581 thì cân không nhận. Vì vậy các việc dưới đây có thể không được ở lần đầu.</p>
+<h3>Đường WiFi hai chiều (cổng 33581) — ghi chưa thử <span class="nhan moi">Mới 2.2</span></h3>
+<p>Bản 2.2 dùng thêm <b>cổng 33581</b>: đường nói chuyện hai chiều mà phần mềm của hãng dùng — máy tính hỏi, cân trả lời. (Cổng 33571 của bản 2.1 chỉ gửi một chiều.) Phần mềm của hãng đã từng nối chính cân này qua cổng 33581 (năm 2024) và đọc được báo cáo. Ở quán, chương trình Beeftown <b>đọc</b> được cân qua cổng này (03/10/2026); <b>ghi thì chưa thử</b> — lần đầu dùng, chạy <a href="#chan-doan">Chẩn đoán WiFi</a> có "Thử cả ghi" ngoài giờ bán. Lần trước gửi thẳng cả file vào cổng 33581 (không bắt tay như hãng) thì cân không nhận.</p>
 <div class="khung-bang"><table>
   <thead><tr><th>Việc</th><th>Cách biết đã được</th><th>Không được thì</th></tr></thead>
   <tbody>
     <tr><td><b>Đọc dữ liệu từ cân qua WiFi</b> (thay bước lưu USB lúc "Bắt đầu" / cập nhật file gốc)</td><td>Số hàng ở ô "Trên cân" khớp với cân; gọi thử vài số PLU trên cân thấy đúng tên, giá.</td><td>Lưu cân ra USB, chọn file (<a href="#bat-dau">mục 12</a>).</td></tr>
-    <tr><td><b>Xoá hàng qua WiFi</b> (chỉ khi có hàng "Còn nằm lại"; bấm <span class="n">Đọc thông tin cân</span> một lần trước để chương trình nhớ mã máy của cân): chương trình đọc danh sách trên cân — cân có hàng chương trình không biết thì dừng, chưa xoá — lưu một bản sao vào <b>da-gui</b>, xoá cả danh sách, gửi lại đúng danh sách đã xem trước, rồi đọc lại để so</td><td>Chương trình báo đã đọc lại và khớp. Trên cân: số PLU của hàng đã bỏ không còn; các hàng đang bán vẫn gọi được.</td><td>Nạp USB <b>ngay</b> (<a href="#usb-du-phong">mục 25</a>).</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.7</span> <b>Gửi thông số, chữ cài đặt, phím, tem qua cổng hai chiều</b>, rồi đọc lại phần đó để kiểm</td><td>Khung xanh "Cân đã nhận …"; in thử tem / bấm thử phím thấy đổi.</td><td>Khung đỏ "cân CHƯA nhận": chương trình chưa ghi nhận — gửi lại, hay <span class="n">Lưu file nạp USB</span>.</td></tr>
+    <tr><td><span class="nhan moi">Mới 2.7</span> <b>Gỡ khỏi cân (ghi đè)</b>: số PLU còn nằm lại thành dòng trống "KHÔNG DÙNG (PLU trống)", phím gọi số đó được bỏ</td><td>Chương trình báo đã đọc lại và khớp. Trên cân: gọi số PLU đó ra "KHÔNG DÙNG", giá 0.</td><td>Bấm lại (ghi đè lần nữa không hại gì), hay nạp USB.</td></tr>
+    <tr><td><b>Xoá hẳn qua WiFi</b> (chỉ khi có hàng "Còn nằm lại"; bấm <span class="n">Đọc thông tin cân</span> một lần trước để chương trình nhớ mã máy của cân): chương trình đọc danh sách trên cân — cân có hàng chương trình không biết thì dừng, chưa xoá — lưu một bản sao vào <b>da-gui</b>, xoá cả danh sách, gửi lại đúng danh sách đã xem trước, rồi đọc lại để so. <span class="nhan moi">Mới 2.7</span> Hỏng giữa chừng: tự gửi lại cả danh sách (tới 3 lần) rồi đọc lại.</td><td>Chương trình báo đã đọc lại và khớp. Trên cân: số PLU của hàng đã bỏ không còn; các hàng đang bán vẫn gọi được.</td><td>Báo "nạp USB ngay" (tự gửi lại vẫn chưa đủ hàng): nạp USB <b>ngay</b> (<a href="#usb-du-phong">mục 25</a>).</td></tr>
     <tr><td><b>Đọc giờ cân và chỉnh giờ cân</b> theo giờ máy tính</td><td>Bấm <kbd class="p">Time</kbd> trên cân thấy đúng giờ.</td><td>Chỉnh trên cân (<a href="#ngay-gio">mục 6</a>).</td></tr>
     <tr><td><b>Đọc nhật ký bán qua WiFi</b></td><td>Thẻ Nhật ký cân có dòng mới của hôm nay, khớp với số tem đã in.</td><td>Lưu cân ra USB, chọn file — chương trình đọc nhật ký trong file đó.</td></tr>
     <tr><td><b>Thông tin cân</b> (tên máy, mã máy, phiên bản)</td><td>Hiện ra đúng phiên bản V3.14E8.</td><td>Không ảnh hưởng việc bán.</td></tr>
@@ -1064,15 +1081,16 @@
   <p class="tieu-de">Trước khi thử xoá hàng qua WiFi</p>
   <ul>
     <li>Làm lúc quầy vắng, không ai đang cân.</li>
-    <li>Chuẩn bị sẵn USB đã chép file nạp (<a href="#usb-du-phong">mục 25</a>). Nếu hỏng giữa chừng, cân có thể đang thiếu hàng — nạp USB ngay.</li>
+    <li>Chuẩn bị sẵn USB đã chép file nạp (<a href="#usb-du-phong">mục 25</a>). Nếu hỏng giữa chừng, chương trình tự gửi lại cả danh sách; vẫn báo "nạp USB ngay" thì cân có thể đang thiếu hàng — nạp USB ngay.</li>
+    <li>Muốn bỏ hàng khỏi cân mà không có rủi ro thiếu hàng: dùng <b>Gỡ khỏi cân (ghi đè)</b> thay cho xoá hẳn.</li>
     <li>Nếu máy khác đang mở phần mềm của hãng cân (TM-xA) nối với cân, tắt nó trước. Chưa biết cân có chịu hai chương trình nối cùng lúc không.</li>
   </ul>
 </div>
 
 <h3>Việc khác chưa thử trên cân thật</h3>
 <ul>
-  <li><b>Gửi tem qua WiFi</b> (thẻ Mẫu tem, cả phần sửa tem mới của 2.2): cân có nhận phần tem qua WiFi không. Biết bằng cách in thử một tem. Không được: USB.</li>
-  <li><b>Gửi thông số, chữ cài đặt chung và phím tắt qua WiFi</b> (thẻ Cân &amp; thông số, Phím tắt): biết bằng cách in thử tem (kiểu ngày, ô Ghi chú cân), bấm thử phím. Không được: USB.</li>
+  <li><b>Gửi tem qua WiFi</b> (thẻ Mẫu tem, cả phần sửa tem mới của 2.2; 2.7: qua cổng hai chiều, đọc lại để kiểm): cân có nhận phần tem không. Biết bằng khung xanh và in thử một tem. Không được: USB.</li>
+  <li><b>Gửi thông số, chữ cài đặt chung và phím tắt qua WiFi</b> (thẻ Cân &amp; thông số, Phím tắt; 2.7: qua cổng hai chiều, đọc lại để kiểm): biết bằng khung xanh, in thử tem (kiểu ngày, ô Ghi chú cân), bấm thử phím. Không được: USB.</li>
   <li><b>HSD in trên tem</b>: in đúng ngày không, ô HSD của món không có hạn trông thế nào. <b>HSD đếm ngược theo lô</b>: gửi mỗi ngày, HSD in ra có đúng hạn của lô trong kho không.</li>
   <li><b>Kiểu ngày ngày/tháng/năm</b>: in ra đúng như bảng ở <a href="#the-thong-so">mục 20</a> không.</li>
   <li><b>Nạp USB cần bấm <kbd class="p">Accu/Confirm</kbd> lần thứ ba</b> hay không (<a href="#nap-usb">mục 8</a>). Ai nạp lần tới, ghi lại đúng số lần bấm.</li>
@@ -1111,7 +1129,8 @@
     <tr><td>IP, địa chỉ cân</td><td>Dãy số để máy tính tìm cân trong WiFi</td></tr>
     <tr><td>Router, bộ phát WiFi</td><td>Hộp phát WiFi của quán; nó cấp địa chỉ cho cân</td></tr>
     <tr><td>File gốc</td><td>Bản dữ liệu cân mới nhất mà chương trình biết</td></tr>
-    <tr><td>Cổng 33571 / 33581</td><td>Hai "cửa" để máy tính nói chuyện với cân: 33571 gửi một chiều (đang dùng); 33581 hai chiều (bản 2.2, chưa thử)</td></tr>
+    <tr><td>Cổng 33571 / 33581</td><td>Hai "cửa" để máy tính nói chuyện với cân: 33581 hai chiều — đường chính từ 2.6.1 (đọc đã chạy ở quán, ghi chưa thử); 33571 gửi một chiều — chỉ còn là đường lui (từ 02/10/2026 cân bỏ qua)</td></tr>
+    <tr><td>PLU trống</td><td>Số PLU đã gỡ hàng bằng ghi đè (2.7): dòng "KHÔNG DÙNG (PLU trống)", mã 99999, giá 0. Hàng mới dùng lại số này. Không cân hàng bằng số đó.</td></tr>
     <tr><td>FAT32, NTFS</td><td>Hai kiểu định dạng USB; cân chỉ đọc FAT32</td></tr>
   </tbody>
 </table></div>

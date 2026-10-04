@@ -196,6 +196,47 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
+## Bản 2.7 — mọi việc ghi qua cổng hai chiều rồi đọc lại; gỡ hàng bằng ghi đè; tự phục hồi; Chẩn đoán WiFi
+
+Ở quán từ 02/10/2026 cân bỏ qua mọi lần gửi qua cổng 33571, còn đọc qua cổng hai chiều 33581 thì được (mục "Bản 2.6.1").
+2.6.1 mới chuyển phần **gửi giá**; 2.7 chuyển nốt mọi việc ghi và thêm cách xoá an toàn. **Chưa thử trên cân thật** — làm
+theo "Thử ở quán (2.7)" bên dưới.
+
+- **Thông số, chữ cài đặt chung, phím tắt, mẫu tem** đi như gửi giá (`ghiHoacLui`, rút từ `guiPlu`): khối đổi (`DWL TMS` /
+  `TMT` / `SCP`, hay `DWL LAB` chỉ mẫu tem đang dùng — `dongMauTemDangDung`) qua cổng hai chiều + hàng rào; không nối được thì
+  lui về 33571 (file nhỏ như trước; tem: cả file). Xong **đọc lại đúng phần đó** (`docLaiCaiDat`, so bằng `lechCaiDat`):
+  - khớp → ghi nhận, khung xanh "Cân đã nhận …";
+  - lệch → **không ghi nhận gì**, khung đỏ nêu đúng thông số / chữ / phím / ô tem chưa đổi. Trước 2.7 gửi qua 33571 là ghi
+    nhận luôn: cân bỏ qua thì file gốc lệch cân, lần sửa sau báo "chưa có gì thay đổi";
+  - không đọc lại được → ghi nhận như trước, khung vàng "chưa kiểm được" (`xacNhan: false`, `cauXacNhan`).
+- **Gửi qua 33571 không bao giờ mang cài đặt mạng** (`boDongMang`, ở `guiDenCan`): bỏ TMS 43–53, 150–173, 430–441 và
+  TMT 15, 16, 19. Giá trị y như cân đang có cũng có thể làm mạng cân khởi động lại giữa lúc nhận (thông số 45 = 1). File gốc và
+  file USB vẫn giữ các dòng đó.
+- **Gỡ hàng còn nằm lại bằng ghi đè** (`goHangConLai`, nút "Gỡ khỏi cân qua WiFi (ghi đè)"): cân không có lệnh xoá một hàng,
+  nhưng ghi theo số PLU — mỗi số còn nằm lại nhận một **dòng trống** mã `99999`, giá 0, "KHÔNG DÙNG (PLU trống)", không in
+  HSD (`dongPluRieng`, `MA_CAN_TRONG` trong `web/src/lib/kho/can-tma.ts`); phím tắt gọi số đó được bỏ (`SCP … 0`). Chạy đúng
+  kế hoạch đã xem (`dauVan`), chỉ với cân đã biết mã máy (như xoá hẳn), chỉ qua cổng hai chiều. **Đọc PLU trên cân trước**:
+  số nào giờ là hàng khác (thêm trên bàn phím, phần mềm hãng) → không gửi gì; số đã là dòng trống / cân không còn → không
+  ghi số đó. Gửi xong đọc lại PLU (và SCP) để kiểm. Không lúc nào cân thiếu hàng. Dòng trống
+  không phải hàng: không "còn nằm lại", thẻ Tất cả hàng ghi "PLU trống", hàng mới dùng lại số đó (bộ lập danh sách cấp số
+  trống nhỏ nhất). Kho không được dùng mã `99999` / `99998` (`MA_CAN_DANH_RIENG` — món mang mã đó "không đưa lên cân").
+- **Xoá hẳn hỏng giữa chừng thì tự phục hồi** (`phucHoiSauXoa`): sau `CLR PLU`, đọc lại lệch / đứt / hết giờ → gửi lại ngay cả
+  danh sách của kế hoạch (`DWL PLU`, không `CLR`), đọc lại; chưa đủ thì chờ 3 rồi 8 giây làm lại. Đủ → ghi nhận đúng thứ cân
+  đang có (đọc lại), không dấu "chưa rõ". Chỉ khi hết lượt mới ghi dấu và báo "nạp USB ngay".
+- **Chẩn đoán WiFi** (`chanDoanWifi`, đầu thẻ Cân & thông số): các phép thử an toàn của `CAN-TMA.md` §13, mỗi bước Đạt / Hỏng /
+  Bỏ qua + kết luận, lưu `Tài liệu\Beeftown Can\chan-doan\chan-doan-<ngày giờ>.txt` (không có tên / mật khẩu WiFi — không đọc
+  TMT). Mặc định **chỉ đọc**: bắt tay, giờ cân, danh sách hàng so với chương trình. **"Thử cả ghi"** (ngoài giờ bán): ghi lại y
+  hệt một hàng; thêm / sửa hàng thử PLU 9999 (mã `99998`); gửi file nhỏ chỉ có hàng thử qua 33571 rồi đọc lại qua cổng hai
+  chiều (cổng 33571 còn nhận không); gỡ hàng thử (PLU 9999 thành dòng trống). PLU 9999 có hàng thật thì bỏ qua các bước ghi thử.
+
+**Thử ở quán (2.7)** — ngoài giờ bán, có người ở cân, đã đóng TM-xA, có USB lưu sẵn dữ liệu cân:
+1. Cân & thông số → **Chẩn đoán WiFi** (chỉ đọc) → 3 bước Đạt.
+2. Tích **Thử cả ghi** → Chẩn đoán lại. Gửi file `chan-doan-….txt` cho người sửa chương trình, dù kết quả thế nào.
+3. Kết luận "Cân NHẬN ghi": sửa giá một món ít bán trong kho → Gửi xuống cân → khung xanh; gọi PLU trên cân thấy giá mới. Đổi
+   **Ghi chú cân 1** → khung xanh; in thử một tem có ô đó. Gán một phím tắt → khung xanh; bấm thử phím.
+4. Có hàng còn nằm lại: **Gỡ khỏi cân qua WiFi (ghi đè)** → khung xanh; gọi số PLU đó ra "KHÔNG DÙNG (PLU trống)", giá 0.
+5. Kết luận "Cân CHƯA nhận ghi" / "cổng hai chiều không trả lời": dùng USB như trước, gửi file kết quả.
+
 ## Bản 2.6.1 — gửi qua cổng hai chiều; nút Cập nhật chạy thử trước
 
 **Thấy ở quán chiều 03/10/2026, với bản 2.6.0:**
@@ -436,11 +477,13 @@ BeeftownCan.exe ── máy chủ nhỏ 127.0.0.1:<cổng ngẫu nhiên>/?t=<mã
       │        đăng nhập Supabase Auth; phiên lưu ở %APPDATA%\BeeftownCan\phien.json
       │        mọi vai kho (xem); gửi cân / tem / mã giảm cần danh_muc, báo cáo cần xem_gia
       │        máy quầy: kho_bang_quay, kho_can_o_ma, kho_bao_cao_ban_gio, kho_luu_ma_giam… (src/quay.ts)
-      ├─ cân: TCP <IP cân>:33571 (src/nghiep-vu.ts → guiDenCan → guiTcp)
-      │        nối không được → dò WiFi tìm cân (src/tim-can.ts), thấy một cân thì gửi lại ở đó
-      │        2.2: file nhỏ chỉ có khối TMS / SCP / TIM (src/thong-so.ts fileNho) cũng qua đường này
-      ├─ cân, 2.2: TCP <IP cân>:33581 hai chiều (src/giao-thuc.ts) — thông tin, giờ, đọc dữ liệu, nhật ký, xoá PLU
-      │        mỗi việc một kết nối; chưa thử trên cân thật
+      ├─ cân, đường chính (2.6.1 giá; 2.7 thông số, chữ, phím, tem, gỡ hàng): TCP <IP cân>:33581 hai chiều
+      │        (src/giao-thuc.ts) — ghi khối DWL + hàng rào, rồi đọc lại phần đó để kiểm (nghiep-vu.ts ghiHoacLui,
+      │        docLaiCaiDat / xacNhanSauGui); cũng: thông tin, giờ, đọc dữ liệu, nhật ký, xoá / gỡ PLU, chẩn đoán WiFi.
+      │        Mỗi việc một kết nối. Đọc đã chạy trên cân thật (03/10/2026); ghi chưa thử
+      ├─ cân, đường lui: TCP <IP cân>:33571 một chiều (guiDenCan → guiTcp) khi cổng hai chiều không nối được —
+      │        cả file (giá, tem) hay file nhỏ (thông số, chữ, phím, giờ — thong-so.ts fileNho); 2.7: bỏ dòng mạng
+      │        (boDongMang). Nối không được → dò WiFi tìm cân (src/tim-can.ts), thấy một cân thì gửi lại ở đó
       ├─ nhật ký bán: src/bao-cao-can.ts → Tài liệu\Beeftown Can\nhat-ky-can.tsv
       ├─ GET /huong-dan: src/huong-dan.html (cũng cần mã bí mật ?t=)
       └─ dây RS232 (thử): PowerShell System.IO.Ports.SerialPort (src/day-rs232.ts)
@@ -452,7 +495,7 @@ dò WiFi hay kho chậm có thể lâu hơn.
 | Nơi | Có gì |
 |---|---|
 | `%APPDATA%\BeeftownCan\` | `cau-hinh.json` (IP cân, cổng, cổng hai chiều `congHaiChieu`, địa chỉ kho, các lần cân đổi địa chỉ, cổng COM lần thử trước), `phien.json` (đăng nhập), `loi.txt` (lỗi) |
-| `Tài liệu\Beeftown Can\` | `A_000.TMS` (file gốc = bản gần nhất đã nạp vào cân), `tren-can.tsv`, `tem-da-tat.json`, `nhat-ky-can.tsv` (nhật ký bán của cân, TSV UTF-8 có tiêu đề; có dòng không đọc được thì giữ bản sao `nhat-ky-can-ban-sao-….tsv` trước khi ghi đè), `da-gui\` (mỗi lần gửi một bản; thông số / phím / giờ: đúng file nhỏ đã gửi), `cho-usb\` |
+| `Tài liệu\Beeftown Can\` | `A_000.TMS` (file gốc = bản gần nhất đã nạp vào cân), `tren-can.tsv` (2.7: dòng mã `99999` là PLU trống — đã gỡ bằng ghi đè), `tem-da-tat.json`, `nhat-ky-can.tsv` (nhật ký bán của cân, TSV UTF-8 có tiêu đề; có dòng không đọc được thì giữ bản sao `nhat-ky-can-ban-sao-….tsv` trước khi ghi đè), `da-gui\` (mỗi lần gửi một bản; thông số / phím / giờ: đúng file nhỏ đã gửi), `cho-usb\`, `chan-doan\` (2.7: kết quả Chẩn đoán WiFi) |
 
 Thư mục `Tài liệu\Beeftown Can` dùng chung với `web/public/kho/can-wifi/Nap-Can-WiFi.ps1`.
 **File .TMS có tên và mật khẩu WiFi của quán** — chỉ nằm trên máy này và gửi tới cân, không lên kho, không commit.
@@ -486,6 +529,12 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 
 ## Chưa làm
 
+- Thử bản 2.7 trên cân thật (mục "Thử ở quán (2.7)") và sửa `CAN-TMA.md` theo file kết quả Chẩn đoán WiFi.
+- Giai đoạn 2 (kế hoạch 03/10/2026): giữ kết nối 33581 mở, nghe cân tự báo (`ASK REP`), tìm cân bằng gói UDP cân tự phát, tự
+  đặt giờ cân mỗi sáng. Giai đoạn 3 (web + database): danh mục cân đọc được bằng quyền xem (NV quầy tự gửi), trạng thái cân /
+  số PLU / phím của ô mã hiện trên trang pha lóc, cảnh báo tem mã thường trong phiên theo tảng, đối chiếu tem in với tem quét.
+- Tự gửi chưa tự gỡ hàng còn nằm lại (cần người xem trước rồi bấm).
+- Mã `99999` / `99998` mới chỉ được chặn ở bộ lập danh sách (món mang mã đó không lên cân); database chưa chặn.
 - Thử bản 2.2 trên cân thật (mục "Thử bản 2.2 ở quán") và sửa `CAN-TMA.md` theo kết quả.
 - Nghe cân tự báo qua UDP 33583 / 33584 (mở cổng nghe thì Windows hỏi tường lửa); giữ kết nối 33581 (hãng hỏi `UPL TIM` mỗi 30 giây).
 - Nhật ký cân: ghi lịch sử bảng PLU (lúc nào số PLU nào mang mã nào) để gắn mã cân cho dòng cũ chắc hơn; đưa nhật ký lên kho.
