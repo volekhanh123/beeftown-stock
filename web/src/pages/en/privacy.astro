@@ -34,8 +34,8 @@ const nd = await docNoiDung('en');
         To remember which step you are on, it stores a one-way encrypted ID (it
         cannot be turned back into your Facebook account) together with what you
         are in the middle of entering — date, time, number of guests, name, phone
-        number. This is <strong>deleted automatically after 30 days</strong>
-        without a conversation. When you confirm, the table request is stored
+        number. This is <strong>deleted automatically after 30 days</strong> without
+        a conversation. When you confirm, the table request is stored
         exactly as if you had booked on the website. Beeftown only counts events
         (messages, bookings, requests for staff) to check the assistant works —
         without names, phone numbers or message text. Beeftown does not use
@@ -59,7 +59,7 @@ const nd = await docNoiDung('en');
 
       <h2 style="font-size:24px; margin-top:34px">Your rights</h2>
       <p>You can ask to see, correct or delete your information, and you can opt out
-        of messages at any time.
+        of messages at any time.{' '}
         {nd.email_lien_he
           ? <>Write to <a href={`mailto:${nd.email_lien_he}`}>{nd.email_lien_he}</a>.</>
           : <>Contact details will be published here when the restaurant opens.</>}

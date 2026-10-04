@@ -60,7 +60,7 @@ const nd = await docNoiDung('ko');
 
       <h2 style="font-size:24px; margin-top:34px">이용자의 권리</h2>
       <p>본인 정보의 열람, 수정 또는 삭제를 요청하실 권리가 있고, 언제든지 소식
-        수신을 중단하실 권리도 있어요.
+        수신을 중단하실 권리도 있어요.{' '}
         {nd.email_lien_he
           ? <>요청은 다음 이메일로 보내 주세요: <a href={`mailto:${nd.email_lien_he}`}>{nd.email_lien_he}</a></>
           : <>연락 방법은 매장이 문을 열 때 이 페이지에 안내해 드릴게요.</>}

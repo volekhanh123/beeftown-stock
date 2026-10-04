@@ -19,8 +19,8 @@ const nd = await docNoiDung('vi');
       <h2 style="font-size:24px; margin-top:40px">Thông tin từ Messenger</h2>
       <p>Trợ lý tự động của Beeftown trên Messenger không lưu nội dung tin nhắn.
         Nó chỉ giữ một mã nhận diện đã mã hóa một chiều và những thông tin bạn
-        đang điền dở (ngày, giờ, số khách, tên, số điện thoại). Phần này
-        <strong>tự xóa sau 30 ngày</strong> không trò chuyện — bạn không cần làm gì.</p>
+        đang điền dở (ngày, giờ, số khách, tên, số điện thoại). Phần này <strong>tự
+        xóa sau 30 ngày</strong> không trò chuyện — bạn không cần làm gì.</p>
       <p>Muốn xóa ngay: nhắn <strong>xóa dữ liệu</strong> cho Trang Beeftown trên
         Messenger. Trợ lý xóa thông tin đang điền dở và báo nhân viên xử lý phần
         còn lại.</p>
@@ -28,10 +28,10 @@ const nd = await docNoiDung('vi');
       <h2 style="font-size:24px; margin-top:34px">Thông tin đặt bàn và hồ sơ ứng tuyển</h2>
       <p>Yêu cầu đặt bàn (dù gửi trên website hay qua Messenger) và hồ sơ ứng
         tuyển được giữ như mô tả ở trang <a href="/quyen-rieng-tu">Quyền riêng tư</a>.
-        Để xóa, gửi yêu cầu kèm số điện thoại bạn đã dùng —
+        Để xóa, gửi yêu cầu kèm số điện thoại bạn đã dùng —{' '}
         {nd.email_lien_he
           ? <>qua email <a href={`mailto:${nd.email_lien_he}`}>{nd.email_lien_he}</a>, hoặc nhắn cho Trang Beeftown trên Messenger.</>
-          : <>nhắn cho Trang Beeftown trên Messenger.</>}
+          : <>nhắn cho Trang Beeftown trên Messenger.</>}{' '}
         Nhà hàng xóa họ tên, số điện thoại và các thông tin kèm theo, rồi báo lại
         cho bạn.</p>
 

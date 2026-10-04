@@ -25,10 +25,10 @@ const nd = await docNoiDung('en');
       <h2 style="font-size:24px; margin-top:34px">Booking requests and job applications</h2>
       <p>Table requests (sent on the website or on Messenger) and job applications
         are kept as described on the <a href="/en/privacy">Privacy</a> page. To
-        have them deleted, send a request with the phone number you used —
+        have them deleted, send a request with the phone number you used —{' '}
         {nd.email_lien_he
           ? <>by email to <a href={`mailto:${nd.email_lien_he}`}>{nd.email_lien_he}</a>, or by messaging the Beeftown Page on Messenger.</>
-          : <>by messaging the Beeftown Page on Messenger.</>}
+          : <>by messaging the Beeftown Page on Messenger.</>}{' '}
         The restaurant deletes your name, phone number and related details, then
         lets you know.</p>
 
