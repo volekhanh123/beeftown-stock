@@ -34,6 +34,7 @@ import { thuThongSo } from './thu-thong-so.ts';
 import { thuCapNhat } from './thu-cap-nhat.ts';
 import { thuGiuKetNoi } from './thu-giu-ket-noi.ts';
 import { thuBaoKho } from './thu-bao-kho.ts';
+import { thuBenVung } from './thu-ben-vung.ts';
 
 let dat = 0, hong = 0;
 const ok = (ten: string, dieuKien: boolean, chiTiet = '') => {
@@ -2389,7 +2390,11 @@ console.log('6i · 2.8: giữ kết nối hai chiều mở, nhịp, nghe cân b�
     const n3 = u.trangThaiNen();
     ok('Cổng hai chiều không mở → nhịp ghi lỗi "Không kết nối được" (đèn đỏ), không gửi gì qua 33571, không dò WiFi',
       /Không kết nối được/.test(n3.loi?.cau ?? '') && !n3.giu.dangMo && nhan.length === soN && soThu === 0, JSON.stringify(n3.loi));
+    // Lượt đọc bù hẹn lúc vừa nối lại (setTimeout 0) có thể đã chạy trước lượt gọi tay này — lượt gọi tay khi đó chỉ nhập vào
+    // lượt đang chạy (một lượt mỗi lúc) rồi trả về ngay, nên chờ lượt đang chạy ghi trạng thái (2.9.1: ghi cau-hinh.json có
+    // fsync làm hẹn tới hạn sớm hơn trước). Thứ tự nào cũng phải ra lỗi "Không kết nối được" và không dò WiFi.
     await u.docNhatKyNen('bao');
+    await can.choNhan(() => /Không kết nối được/.test(u.trangThaiNen().nhatKy?.loi ?? ''), 2000);
     ok('HỒI QUY: tự đọc nhật ký (chạy nền) lúc không nối được cân → ghi lỗi vào trạng thái, KHÔNG dò WiFi (chỉ nút bấm mới dò)',
       soThu === 0 && /Không kết nối được/.test(u.trangThaiNen().nhatKy?.loi ?? ''), `${soThu} lần dò · ${u.trangThaiNen().nhatKy?.loi}`);
     u.luuCauHinh({ congHaiChieu: can.cong });
@@ -2763,9 +2768,9 @@ console.log('6i · 2.8: giữ kết nối hai chiều mở, nhịp, nghe cân b�
     ok('Máy chủ: /api/can và /api/trang-thai trả trạng thái nền; /api/cau-hinh chỉ nhận true / false cho ba công tắc',
       mc.includes("nen: ud.trangThaiNen()") && /case '\/api\/can': return json\(\{[^\n]*nen: ud\.trangThaiNen\(\)/.test(mc)
       && mc.includes("giuKetNoi: typeof b.giuKetNoi === 'boolean' ? b.giuKetNoi : undefined") && mc.includes("ngheUdp: typeof b.ngheUdp === 'boolean' ? b.ngheUdp : undefined"));
-    ok('main.ts: nhịp mỗi NHIP_CAN_MS (dừng khi đang cập nhật), bật UDP theo cài đặt lúc mở; phiên bản 2.9.0',
+    ok('main.ts: nhịp mỗi NHIP_CAN_MS (dừng khi đang cập nhật), bật UDP theo cài đặt lúc mở; phiên bản 2.9.1',
       /setInterval\(\(\) => \{ if \(!dangCapNhat\(\)\) void ud\.nhipCan\(\); \}, NHIP_CAN_MS\)/.test(mn) && mn.includes('void ud.capNhatUdp();')
-      && mn.includes("const PHIEN_BAN = '2.9.0';"));
+      && mn.includes("const PHIEN_BAN = '2.9.1';"));
     ok('Cập nhật: đổi file xong thì đóng kết nối đang giữ trước khi bản mới mở (cân có thể chỉ nhận một kết nối)',
       /this\.dangKhoiDongLai = true;[\s\S]{0,200}this\.dongNen\(\);/.test(nv));
     ok('Hướng dẫn: giữ kết nối, tự đọc nhật ký khi cân báo, tự chỉnh giờ, nghe UDP và hộp hỏi tường lửa',
@@ -2782,6 +2787,7 @@ await thuThongSo(ok);
 await thuCapNhat(ok);
 await thuGiuKetNoi(ok);
 await thuBaoKho(ok, { fileCan, plu });
+await thuBenVung(ok, { fileCan, plu });
 
 // =============================================================================
 console.log('7 · Chạy src/main.ts thật');
@@ -2823,7 +2829,7 @@ if (!thuMucTam) {
   process.exit(1);
 }
 ok('Trạng thái: chưa có file gốc, cân mặc định 192.168.1.22', tt.ok && tt.goc === null && tt.cauHinh.ipCan === '192.168.1.22', JSON.stringify(tt));
-ok('Phiên bản 2.9.0', (tt as unknown as { phienBan: string }).phienBan === '2.9.0');
+ok('Phiên bản 2.9.1', (tt as unknown as { phienBan: string }).phienBan === '2.9.1');
 {
   // 2.8: chương trình thật có nhịp giữ kết nối; cân 192.168.1.22 không có ở đây → trạng thái nền có, chưa nối được, không lỗi chết.
   const n = (tt as unknown as { nen?: { giu?: { bat?: boolean; dangMo?: boolean }; udp?: { bat?: boolean } } }).nen;
@@ -2838,7 +2844,7 @@ ok('Phiên bản 2.9.0', (tt as unknown as { phienBan: string }).phienBan === '2
   const cnApi = await (await api('/api/cap-nhat')).json() as { ok: boolean; loi?: string };
   const ttCn = (tt as unknown as { capNhat?: { coTheCapNhat: boolean; vuaCapNhatTu: string | null } }).capNhat;
   ok('2.5: dang-chay.json có phiên bản; chạy bằng bun → không cập nhật được, không hỏi mạng; /api/cap-nhat từ chối',
-    dangChay.phienBan === '2.9.0' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
+    dangChay.phienBan === '2.9.1' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
     && !cnApi.ok && /Chỉ cập nhật được/.test(cnApi.loi ?? '') && ttCn?.coTheCapNhat === false && ttCn.vuaCapNhatTu === null,
     JSON.stringify([dangChay, bm, cnApi, ttCn]));
 }
