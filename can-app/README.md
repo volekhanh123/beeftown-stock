@@ -196,6 +196,49 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
+## Bản 2.9.1 — internet treo không làm đứng việc với cân; ghi file an toàn khi mất điện
+
+Rà lại cả đường đọc / ghi / xoá / ghi đè với cân (05/10/2026, trên cân giả): cổng hai chiều 33581, đường lui 33571, giữ kết
+nối, đọc lại sau khi gửi, gỡ bằng ghi đè, xoá hẳn và tự phục hồi. Cách nói chuyện với cân không đổi. Hai chỗ hỏng thật,
+đều nằm NGOÀI đường WiFi tới cân (`test/thu-ben-vung.ts`):
+
+- **Internet treo làm đứng mọi việc với cân.** Tự gửi (mỗi phút), bấm Gửi, gỡ / xoá hàng đọc kho bên trong hàng đợi việc với
+  cân (`motLuc`), không hạn. Mạng nhà mạng treo (WiFi trong quán vẫn tốt, ra internet thì không trả lời): `fetch` của Bun chờ
+  khoảng 6 phút mới bỏ (đo 05/10/2026: 360 giây), thư viện kho còn tự thử lại lần đọc 3 lần — nhịp 30 giây, tự đọc nhật ký khi
+  in tem, Đọc giờ cân, Gửi xuống cân… đứng chờ cả chục phút. Từ 2.9.1:
+  - **tự gửi và báo kho đọc kho NGOÀI hàng đợi** (`docKhoChoCan`) — việc với cân không chờ kho. Trong hàng đợi chỉ dùng lần đọc
+    đó khi chưa có lần gửi nào xen giữa (`soLanApKho`): người bấm Gửi giá mới trong lúc tự gửi đang đọc kho thì tự gửi không
+    đem lần đọc cũ đè giá cũ lên cân — lượt sau đọc lại;
+  - đọc danh mục kho tối đa 30 giây (`HAN_DOC_KHO_MS`) — quá hạn: "Kho không trả lời sau 30 giây … chưa gửi gì xuống cân";
+    bấm Gửi, gỡ / xoá vẫn đọc trong hàng đợi (người bấm chờ kết quả) nhưng không quá hạn này; kho trả lời muộn thì bỏ;
+  - mỗi yêu cầu tới kho có hạn (`fetchCoHan`): đọc và đăng nhập 20 giây; gọi hàm kho (báo cáo cả tháng, ghi), tải ảnh phiếu huỷ
+    120 giây (ghi xong mà báo quá hạn thì người dùng bấm lại oan). Quá hạn là huỷ hẳn; thư viện kho không tự thử lại nữa
+    (`db.retry: false` — mất mạng thì mỗi lần đọc đỡ chờ 7 giây; tự gửi, báo kho tự thử lại mỗi phút);
+  - nút việc với cân hỏi kho "ai đang đăng nhập" tối đa 8 giây (`HAN_HOI_QUYEN_MS`); không đọc được kịp (mất mạng, kho chậm) thì
+    theo người đọc được lần gần nhất — NV quầy vẫn bị từ chối việc của quản lý; chưa đọc được lần nào (vừa mở máy lúc mất mạng)
+    thì như chưa đăng nhập, đúng quy tắc sẵn có của `kiemQuyenCan`;
+  - mất mạng nói đúng là mất mạng: đăng nhập không báo "Sai email hoặc mật khẩu"; đọc nhân sự hỏng mạng ngay sau khi đăng nhập
+    không còn đăng xuất người dùng với câu "không phải nhân viên kho"; tự gửi không bảo "Đăng nhập lại" (`nguoiDung` ném lỗi mạng,
+    không trả "chưa đăng nhập"); lỗi kho dạng đối tượng (PostgREST) không còn ra "Có lỗi: [object Object]".
+- **Ghi đè giữa chừng để lại file dở.** File gốc `A_000.TMS`, `tren-can.tsv`, `cau-hinh.json`, `phien.json`, file nạp USB ghi
+  đè thẳng: mất điện / đầy ổ đúng lúc ghi → file gốc đọc không được (làm lại "Bắt đầu"); `cau-hinh.json` hỏng thì chương trình
+  âm thầm về cài đặt mặc định (địa chỉ cân 192.168.1.22, tắt tự gửi, quên mã máy cân); file nạp USB dở thì cân nạp thiếu hàng.
+  Từ 2.9.1 mọi file đó ghi qua `ghiFileAnToan`: file tạm `.tam` → đẩy xuống đĩa (fsync) → đổi tên đè; hỏng giữa chừng thì file
+  cũ còn nguyên. File dấu, `hsd-tinh-ngay.txt`, nhật ký cân vốn đã ghi kiểu này, nay thêm fsync. Đổi cả hai file thì
+  `tren-can.tsv` ghi TRƯỚC file gốc: hỏng giữa hai lần ghi thì danh sách "có thể đang trên cân" thừa (chỉ thêm cảnh báo còn nằm
+  lại), không bao giờ thiếu (hàng nằm lại mà không ai biết).
+
+Đã xem, không phải sửa: Bun mở kết nối TCP sẵn `TCP_NODELAY` — đọc nhiều phần liền (Đọc dữ liệu từ cân) không bị trễ kiểu
+Nagle (đo trên cân giả); mọi việc qua cổng hai chiều đều đi qua hàng đợi `motLuc` trên một kết nối, không chồng lệnh.
+
+**Thử ở quán (2.9.1)** — sau khi cài:
+1. Mở chương trình: địa chỉ cân, tự gửi, đăng nhập, ô Cân như trước. Gửi vài lần: trong `Tài liệu\Beeftown Can` và
+   `%APPDATA%\BeeftownCan` không còn file `.tam` nào.
+2. Rút dây internet của modem (WiFi trong quán vẫn bật): bấm **Đọc giờ cân** (thẻ Cân & thông số) → có giờ trong vài giây; ô
+   Cân vẫn xanh; tự gửi báo mất mạng / kho không trả lời, không gửi gì. Cắm lại → trong 1–2 phút tự gửi chạy lại.
+3. (Tuỳ chọn) Lúc rút dây: đăng xuất rồi đăng nhập → "Mất kết nối mạng: không nối được kho…", không phải "Sai email hoặc mật
+   khẩu".
+
 ## Bản 2.9 — báo về kho; NV quầy tự gửi; vừa "Giao ô mã" là cân đổi tên trong 15 giây
 
 Giai đoạn 3 của kế hoạch 03/10/2026 (web + database: migration `0061_kho_can_quay.sql`). Cần kho đã chạy 0061; kho chưa có
@@ -601,7 +644,9 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 
 - Thử bản 2.7 trên cân thật (mục "Thử ở quán (2.7)") và sửa `CAN-TMA.md` theo file kết quả Chẩn đoán WiFi.
 - Thử bản 2.8 trên cân thật (mục "Thử ở quán (2.8)").
-- Thử bản 2.9 trên cân thật (mục "Thử ở quán (2.9)").
+- Thử bản 2.9 trên cân thật (mục "Thử ở quán (2.9)"), rồi 2.9.1 (mục "Thử ở quán (2.9.1)").
+- Tự gửi dừng hẳn sau một lần đọc lại thấy cân CHƯA nhận (cân đang ở menu Prog lúc gửi…) tới khi người bấm Gửi — tên ô mã theo
+  tảng không lên cân trong lúc đó. Có thể tự gửi lại cả danh sách sau 10 phút (bấm Gửi cũng chỉ làm vậy): chủ quyết.
 - Phím tắt cố định cho từng ô: trang pha lóc mới HIỆN phím; gán phím vẫn bằng tay ở thẻ Phím tắt.
 - Tự gửi chưa tự gỡ hàng còn nằm lại (cần người xem trước rồi bấm).
 - Mã `99999` / `99998` mới chỉ được chặn ở bộ lập danh sách (món mang mã đó không lên cân); database chưa chặn.

@@ -72,7 +72,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createClient, isAuthRetryableFetchError, type SupabaseClient } from '@supabase/supabase-js';
 import {
   MA_CAN_THU, MA_CAN_TRONG, TEN_PLU_TRONG, PLU_RIENG_TOI_DA, chuanMa, docFileCan, dongPluRieng, ghiFileCan, giaTuFile, lapKeHoach, soChuSoMa,
   LoiFileCan, type DongKeHoach, type DongPlu, type FileCan, type HangKho, type KeHoach, type LoaiDong,
@@ -252,9 +252,74 @@ const CAU_HINH_MAC_DINH: CauHinh = { ipCan: '192.168.1.22', congCan: 33571, diaC
 function docJson<T>(file: string, macDinh: T): T {
   try { return { ...macDinh, ...JSON.parse(fs.readFileSync(file, 'utf8')) }; } catch { return macDinh; }
 }
-function ghiJson(file: string, v: unknown) {
+
+/** Ghi cả một file xuống đĩa — kiểm thử thay được (phu.vietByte: giả đầy ổ / mất điện giữa chừng). */
+export type VietByte = (duongDan: string, du: Uint8Array) => void;
+/** Ghi rồi đẩy hẳn xuống đĩa (fsync) trước khi đóng: mất điện ngay sau khi đổi tên vẫn không ra file rỗng / rác. */
+const vietXuongDia: VietByte = (duongDan, du) => {
+  const fd = fs.openSync(duongDan, 'w');
+  try {
+    for (let da = 0; da < du.length;) da += fs.writeSync(fd, du, da, du.length - da);
+    fs.fsyncSync(fd);
+  } finally { fs.closeSync(fd); }
+};
+
+/**
+ * 2.9.1 — ghi đè cả file AN TOÀN: ghi file tạm cạnh file đích (`<tên>.tam`, fsync), rồi đổi tên đè file đích. Mất điện, đầy
+ * ổ, chương trình tắt giữa chừng thì file đích vẫn là bản cũ đầy đủ, không bao giờ là file dở. Trước 2.9.1 file gốc
+ * A_000.TMS, tren-can.tsv, cau-hinh.json ghi đè thẳng: hỏng giữa chừng là file gốc đọc không được (làm lại bước "Bắt đầu"),
+ * cài đặt âm thầm về mặc định (địa chỉ cân cũ, tắt tự gửi, quên mã máy cân). Hỏng thì xoá file tạm rồi ném lỗi (file đang
+ * mở trong Excel: đổi tên hỏng ngay như ghi thẳng trước đây — không chờ thử lại làm đứng chương trình).
+ */
+export function ghiFileAnToan(file: string, du: Uint8Array | string, viet: VietByte = vietXuongDia): void {
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(v, null, 2), 'utf8');
+  const tam = file + '.tam';
+  try {
+    viet(tam, typeof du === 'string' ? Buffer.from(du, 'utf8') : du);
+    fs.renameSync(tam, file);
+  } catch (e) {
+    try { fs.rmSync(tam, { force: true }); } catch { /* thôi — file đích vẫn là bản cũ */ }
+    throw e;
+  }
+}
+
+/**
+ * 2.9.1 — fetch tới kho có hạn. fetch của Bun tự bỏ một yêu cầu treo sau chừng 5–6 phút (đo 05/10/2026: 360 giây): mạng
+ * internet treo là việc đang chờ kho đứng chừng đó. Hạn:
+ *   - `ms` cho yêu cầu đọc (GET / HEAD / OPTIONS) và đăng nhập / làm mới phiên (/auth/v1/);
+ *   - `msLau` cho mọi yêu cầu khác — gọi hàm kho (báo cáo cả tháng chạy lâu; ghi kho: quá hạn sau khi kho đã ghi thì người
+ *     dùng tưởng hỏng mà bấm lại), tải ảnh phiếu huỷ.
+ * Quá hạn thì huỷ bằng lỗi tên AbortError (thư viện kho không bao giờ thử lại yêu cầu bị huỷ; layClient tắt hẳn việc thử lại
+ * của nó). Câu lỗi có chữ "network timeout" để cauLoi / cauLoiKho ra câu mất mạng. Tín hiệu huỷ của người gọi (init.signal,
+ * hay của Request) vẫn giữ.
+ */
+export function fetchCoHan(f: typeof fetch, ms: number, msLau: number): typeof fetch {
+  return ((dau: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    const laRequest = typeof Request !== 'undefined' && dau instanceof Request;
+    const url = typeof dau === 'string' ? dau : dau instanceof URL ? dau.href : dau.url;
+    const cachGoi = String(init?.method ?? (laRequest ? (dau as Request).method : 'GET')).toUpperCase();
+    const doc = cachGoi === 'GET' || cachGoi === 'HEAD' || cachGoi === 'OPTIONS' || /\/auth\/v1\//.test(url);
+    const ac = new AbortController();
+    const hen = setTimeout(() => ac.abort(new DOMException('Kho không trả lời kịp (network timeout)', 'AbortError')), doc ? ms : msLau);
+    (hen as { unref?: () => void }).unref?.();   // đọc xong trước hạn: hẹn tự hết, không giữ chương trình chạy
+    const cuaNguoiGoi = init?.signal ?? (laRequest ? (dau as Request).signal : undefined);
+    return f(dau, { ...init, signal: cuaNguoiGoi ? AbortSignal.any([cuaNguoiGoi, ac.signal]) : ac.signal });
+  }) as typeof fetch;
+}
+
+/**
+ * `p` trong hạn `ms`: quá hạn thì ném `loi()` — người chờ (hàng đợi việc với cân) đi tiếp. `p` vẫn chạy nốt; kết quả muộn bị
+ * bỏ (lỗi muộn cũng không thành lỗi không ai bắt).
+ */
+function trongHan<T>(p: Promise<T>, ms: number, loi: () => Error): Promise<T> {
+  let hen: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([p, new Promise<never>((_xong, hong) => { hen = setTimeout(() => hong(loi()), ms); })])
+    .finally(() => clearTimeout(hen));
+}
+
+/** File JSON (cài đặt, phiên đăng nhập, file dấu…) — ghi đè an toàn (ghiFileAnToan). */
+function ghiJson(file: string, v: unknown, viet?: VietByte) {
+  ghiFileAnToan(file, JSON.stringify(v, null, 2), viet);
 }
 
 /**
@@ -269,14 +334,6 @@ function docDau<T>(file: string, kiem: (j: Record<string, unknown>) => T | null,
     const j: unknown = JSON.parse(chu);
     return (j && typeof j === 'object' ? kiem(j as Record<string, unknown>) : null) ?? macDinh;
   } catch { return macDinh; }
-}
-
-/** Ghi file dấu: file tạm rồi đổi tên — tắt máy giữa chừng không để lại file dở. */
-function ghiDau(file: string, v: unknown) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  const tam = file + '.tam';
-  fs.writeFileSync(tam, JSON.stringify(v, null, 2), 'utf8');
-  fs.renameSync(tam, file);
 }
 
 // -----------------------------------------------------------------------------
@@ -567,6 +624,23 @@ const NHAT_KY_MOT_LAN = 1000;
 const TINH_LECH_MS = 5 * 60_000;
 /** Việc chạy nền (hỏi kho 15 giây, báo kho mỗi phút) dùng lại người đăng nhập trong chừng này — không hỏi kho mỗi lần. */
 const NGUOI_NEN_MS = 60_000;
+
+// ---- 2.9.1: kho (internet) treo không giữ việc với cân -------------------------------------------
+/**
+ * Đọc danh mục kho (docKhoChoCan) tối đa chừng này; quá hạn thì thôi lượt đó, chưa gửi gì xuống cân. Trước 2.9.1 tự gửi (mỗi
+ * phút), bấm Gửi, gỡ / xoá hàng đọc kho TRONG hàng đợi việc với cân (motLuc) không hạn: mạng internet treo là mọi việc với
+ * cân qua WiFi (nhịp, tự đọc nhật ký, Đọc giờ, Gửi) đứng chờ tới khi fetch tự bỏ (5–6 phút). Từ 2.9.1 tự gửi và báo kho đọc
+ * kho NGOÀI hàng đợi; bấm Gửi, gỡ / xoá vẫn đọc trong hàng đợi (người bấm chờ kết quả) nhưng có hạn này.
+ */
+const HAN_DOC_KHO_MS = 30_000;
+/** Mỗi yêu cầu đọc tới kho (client Supabase — fetchCoHan); gọi hàm kho, ghi, tải ảnh được lâu hơn (HAN_YEU_CAU_LAU_MS). */
+const HAN_YEU_CAU_KHO_MS = 20_000;
+const HAN_YEU_CAU_LAU_MS = 120_000;
+/** Nút việc với cân hỏi kho "ai đang đăng nhập" (kiemQuyenCan) tối đa chừng này — quá hạn như mất mạng: chưa đăng nhập. */
+const HAN_HOI_QUYEN_MS = 8_000;
+const MAT_MANG_KHO = 'Mất kết nối mạng: không nối được kho (internet chậm hay mất). Kiểm tra internet rồi thử lại.';
+/** Lỗi đọc kho (PostgREST, đăng nhập) → LoiCan: mất mạng / quá hạn nói đúng là mạng; lỗi khác giữ câu của cauLoi. */
+const loiDocKho = (e: unknown) => { const c = cauLoi(e); return new LoiCan(/^Mất kết nối mạng/.test(c) ? MAT_MANG_KHO : c); };
 
 // -----------------------------------------------------------------------------
 // NGUỒN DANH MỤC
@@ -875,6 +949,9 @@ export interface ChuChungXem {
  * ngayHsd: hôm nay (giờ VN) lấy TRƯỚC khi đọc kho — kho tính số ngày HSD cho ngày đó hoặc (đọc vắt qua nửa đêm) ngày
  * sau; ghi ngày sớm hơn thì trang báo HSD cũ sớm hơn, không bao giờ muộn hơn.
  */
+/** 2.9.1 — một lần đọc danh mục kho (docKhoChoCan). */
+interface KhoChoCan { dm: DanhMucKho; ngayHsd: string; soLanAp: number }
+
 interface KeHoachGui {
   goc: FileCan; kh: KeHoach; du: Uint8Array; moi: FileCan;
   tren: Map<number, HangTrenCan>; conLai: HangTrenCan[];
@@ -929,6 +1006,19 @@ export class UngDung {
   private lucTinhLech = 0;
   /** Người đăng nhập cho việc chạy nền, nhớ NGUOI_NEN_MS (đăng nhập / đăng xuất thì xoá). */
   private nguoiNen: { luc: number; nd: NguoiDung | null } | null = null;
+  /**
+   * 2.9.1 — người đăng nhập đọc được từ kho lần gần nhất (null: chưa đọc được, hay kho nói chưa đăng nhập; đăng nhập / đăng
+   * xuất thì xoá). kiemQuyenCan dùng khi kho không trả lời kịp / mất mạng.
+   */
+  private nguoiBiet: NguoiDung | null = null;
+  /** Tăng mỗi lần đăng nhập / đăng xuất — lần đọc người đăng nhập xong muộn (của phiên trước) không ghi vào nguoiBiet. */
+  private lanDangNhap = 0;
+  /**
+   * 2.9.1 — số lần đã ghi nhận một lần gửi theo danh mục kho (gửi giá, xoá qua WiFi). Tự gửi đọc kho NGOÀI hàng đợi (mạng
+   * treo không giữ việc với cân); trong hàng đợi chỉ dùng lần đọc đó khi chưa có lần gửi nào xen giữa — lần xen giữa có thể
+   * mang kho mới hơn, gửi lần đọc cũ là đưa giá cũ đè lên.
+   */
+  private soLanApKho = 0;
   /** Nhật ký đã xét lần trước: file chưa đổi và lần đó không có gì để gửi → không đọc lại cả file. */
   private nhatKyDaXet: { khoa: string } | null = null;
   /** 2.9 — lần báo về kho gần nhất (ô Cân). */
@@ -996,6 +1086,14 @@ export class UngDung {
       nhatKyMs?: { cho: number; khoang: number; luiHong?: number };
       /** 2.8 — kiểm thử: tìm cân bằng UDP, hỏi xong chờ trả lời (ms). */
       choUdpMs?: number;
+      /** 2.9.1 — kiểm thử: đọc kho (danh mục cân) tối đa (ms) — mặc định HAN_DOC_KHO_MS. */
+      hanKhoMs?: number;
+      /** 2.9.1 — kiểm thử: mỗi yêu cầu đọc tới kho (client Supabase) tối đa (ms) — mặc định HAN_YEU_CAU_KHO_MS. */
+      hanYeuCauKhoMs?: number;
+      /** 2.9.1 — kiểm thử: nút việc với cân hỏi kho người đăng nhập tối đa (ms) — mặc định HAN_HOI_QUYEN_MS. */
+      hanHoiQuyenMs?: number;
+      /** 2.9.1 — kiểm thử: ghi byte xuống đĩa (ghiFileAnToan) — giả đầy ổ / mất điện giữa lúc ghi. */
+      vietByte?: VietByte;
       /**
        * 2.5: tự cập nhật (cap-nhat.ts). main.ts truyền phiên bản, file đang chạy (process.execPath) và có phải bản
        * .exe đóng gói không; kiểm thử thêm gốc GitHub giả, thao tác file giả, thời gian chờ ngắn. Không có → không
@@ -1083,7 +1181,7 @@ export class UngDung {
     // Mã máy cổng hai chiều: quên cả khi người gõ lại đúng địa chỉ cũ rồi Lưu (vừa thay cân, cân mới nhận lại địa chỉ đó) —
     // chỉ người chọn cân mới quên được; địa chỉ tự đổi khi dò WiFi (ghiDoiDiaChi) thì vẫn là cân đó, giữ mã.
     if (ip !== cu.ipCan || moi.ipCan !== undefined) delete kq.macHaiChieu;
-    ghiJson(this.fileCauHinh, kq);
+    ghiJson(this.fileCauHinh, kq, this.phu.vietByte);
     // 2.8: đổi cân / cổng hay tắt giữ kết nối → đóng kết nối đang giữ, sau việc đang chạy (hàng đợi motLuc) — đóng ngay thì
     // việc đang gửi dở trên kết nối đó hỏng giữa chừng. Việc sau dùng cài đặt mới (địa chỉ / cổng khác → kết nối mới).
     if (ip !== cu.ipCan || moi.ipCan !== undefined || kq.congHaiChieu !== cu.congHaiChieu || kq.giuKetNoi === false) {
@@ -1096,7 +1194,7 @@ export class UngDung {
     return kq;
   }
 
-  private ghiThem(them: Partial<CauHinh>) { ghiJson(this.fileCauHinh, { ...this.cauHinh(), ...them }); }
+  private ghiThem(them: Partial<CauHinh>) { ghiJson(this.fileCauHinh, { ...this.cauHinh(), ...them }, this.phu.vietByte); }
 
   // ---- đăng nhập kho ---------------------------------------------------------
   private async layClient(): Promise<SupabaseClient> {
@@ -1112,27 +1210,35 @@ export class UngDung {
         throw new LoiCan(`${ch.diaChiKho} chưa có cấu hình cho chương trình cân (cần bản web mới). Kiểm tra lại địa chỉ kho.`);
       }
       ch = { ...ch, supabaseUrl: j.supabaseUrl, anonKey: j.anonKey };
-      ghiJson(this.fileCauHinh, ch);
+      ghiJson(this.fileCauHinh, ch, this.phu.vietByte);
     }
     const file = this.filePhien;
     const kho: Record<string, string> = docJson(file, {});
     // Phiên đăng nhập lưu trong %APPDATA% của máy này — "nhớ đăng nhập".
     const luuTru = {
       getItem: (k: string) => kho[k] ?? null,
-      setItem: (k: string, v: string) => { kho[k] = v; ghiJson(file, kho); },
-      removeItem: (k: string) => { delete kho[k]; ghiJson(file, kho); },
+      setItem: (k: string, v: string) => { kho[k] = v; ghiJson(file, kho, this.phu.vietByte); },
+      removeItem: (k: string) => { delete kho[k]; ghiJson(file, kho, this.phu.vietByte); },
     };
     this.client = createClient(ch.supabaseUrl!, ch.anonKey!, {
       auth: { storage: luuTru, persistSession: true, autoRefreshToken: true, detectSessionInUrl: false },
+      // 2.9.1: mỗi yêu cầu tới kho có hạn — mạng treo không giữ việc nào (đăng nhập, đọc kho, báo kho) tới 5–6 phút. Thư viện
+      // không tự thử lại lần đọc hỏng mạng (1 + 2 + 4 giây): mất mạng thì nút bấm chờ 7 giây mỗi lần đọc, lượt thử lại còn chạy
+      // ngầm sau khi việc đã thôi — chương trình tự thử lại theo nhịp của nó (tự gửi, báo kho mỗi phút; người bấm lại).
+      global: { fetch: fetchCoHan(this.phu.fetch ?? fetch, this.phu.hanYeuCauKhoMs ?? HAN_YEU_CAU_KHO_MS, HAN_YEU_CAU_LAU_MS) },
+      db: { retry: false },
     });
     return this.client;
   }
 
   async dangNhap(email: string, matKhau: string): Promise<NguoiDung> {
     this.nguoiNen = null;
+    this.nguoiBiet = null;
+    this.lanDangNhap++;
     const c = await this.layClient();
     const { error } = await c.auth.signInWithPassword({ email: email.trim(), password: matKhau });
-    if (error) throw new LoiCan('Sai email hoặc mật khẩu.');
+    // 2.9.1: mất mạng / mạng treo / kho lỗi 5xx không phải sai mật khẩu — nói đúng, người dùng không đổi mật khẩu oan.
+    if (error) throw new LoiCan(isAuthRetryableFetchError(error) ? MAT_MANG_KHO : 'Sai email hoặc mật khẩu.');
     const nd = await this.nguoiDung();
     if (!nd) {
       await c.auth.signOut().catch(() => {});
@@ -1143,6 +1249,8 @@ export class UngDung {
 
   async dangXuat() {
     this.nguoiNen = null;
+    this.nguoiBiet = null;
+    this.lanDangNhap++;
     if (this.phu.danhMuc) return;
     const c = await this.layClient();
     await c.auth.signOut().catch(() => {});
@@ -1150,26 +1258,36 @@ export class UngDung {
     this.client = null;
   }
 
-  /** Người đang đăng nhập — null nếu chưa, hoặc không phải vai kho (xem). */
+  /**
+   * Người đang đăng nhập — null nếu chưa, hoặc không phải vai kho (xem). 2.9.1: không đọc được kho (mất mạng, quá hạn, kho
+   * lỗi) thì NÉM lỗi, không trả null — trước đó lỗi bị nuốt thành "chưa đăng nhập": đăng nhập xong mà mạng chập là bị đăng
+   * xuất với câu "không phải nhân viên kho", tự gửi báo "Đăng nhập lại" trong khi chỉ là mất mạng.
+   */
   async nguoiDung(): Promise<NguoiDung | null> {
     if (this.phu.nguoi) return this.phu.nguoi;
     if (this.phu.danhMuc || this.phu.kho) {
       const cn = { id: 'thu', ma: 'THU', ten: 'Chi nhánh thử' };
       return { email: 'thu@beeftown', hoTen: 'Kiểm thử', vaiTro: 'quan_ly', chiNhanh: cn, cacChiNhanh: [cn], quyen: quyenCuaVai('quan_ly') };
     }
+    const lan = this.lanDangNhap;
+    const nho = (nd: NguoiDung | null) => { if (lan === this.lanDangNhap) this.nguoiBiet = nd; return nd; };
     const c = await this.layClient();
-    const { data: s } = await c.auth.getSession();
+    const { data: s, error: loiPhien } = await c.auth.getSession();
+    // Phiên hết hạn mà làm mới hỏng vì mạng: phiên vẫn nằm trong phien.json — mất mạng, không phải chưa đăng nhập.
+    if (loiPhien && isAuthRetryableFetchError(loiPhien)) throw new LoiCan(MAT_MANG_KHO);
     const u = s.session?.user;
-    if (!u) return null;
-    const { data: ns } = await c.from('nhan_su')
+    if (!u) return nho(null);
+    const { data: ns, error: loiNs } = await c.from('nhan_su')
       .select('id, ho_ten, vai_tro, chi_nhanh_id').eq('auth_uid', u.id).eq('dang_lam', true).maybeSingle();
-    if (!ns || !(QUYEN_KHO.xem as readonly string[]).includes(ns.vai_tro)) return null;
-    const { data: cns } = await c.from('chi_nhanh').select('id, ma, ten').order('ma');
+    if (loiNs) throw loiDocKho(loiNs);
+    if (!ns || !(QUYEN_KHO.xem as readonly string[]).includes(ns.vai_tro)) return nho(null);
+    const { data: cns, error: loiCn } = await c.from('chi_nhanh').select('id, ma, ten').order('ma');
+    if (loiCn) throw loiDocKho(loiCn);
     const cacChiNhanh = (cns ?? []) as NguoiDung['cacChiNhanh'];
     const chon = ns.chi_nhanh_id ?? this.cauHinh().chiNhanhId;
     const chiNhanh = cacChiNhanh.find(x => x.id === chon) ?? (ns.chi_nhanh_id ? null : cacChiNhanh[0] ?? null);
-    return { email: u.email ?? '', hoTen: ns.ho_ten, vaiTro: ns.vai_tro, chiNhanh, cacChiNhanh: ns.chi_nhanh_id ? cacChiNhanh.filter(x => x.id === ns.chi_nhanh_id) : cacChiNhanh,
-             quyen: quyenCuaVai(ns.vai_tro) };
+    return nho({ email: u.email ?? '', hoTen: ns.ho_ten, vaiTro: ns.vai_tro, chiNhanh,
+      cacChiNhanh: ns.chi_nhanh_id ? cacChiNhanh.filter(x => x.id === ns.chi_nhanh_id) : cacChiNhanh, quyen: quyenCuaVai(ns.vai_tro) });
   }
 
   /**
@@ -1362,16 +1480,21 @@ export class UngDung {
     return m;
   }
 
+  /**
+   * Ghi tren-can.tsv — 2.9.1: luôn TRƯỚC file gốc (luuGoc) khi đổi cả hai. Hỏng giữa hai lần ghi (đầy ổ, mất điện) thì
+   * tren-can.tsv mới hơn file gốc: hàng có thể đang trên cân nhiều hơn thật — chỉ thêm cảnh báo "còn nằm lại", gửi lại
+   * vô hại. Ghi file gốc trước mà tren-can.tsv hỏng thì ngược lại: hàng thật trên cân (thêm trên bàn phím…) vắng khỏi
+   * tren-can.tsv, kho không có → không ai biết nó còn nằm lại.
+   */
   private ghiTrenCan(m: Map<number, HangTrenCan>) {
-    fs.mkdirSync(this.dd.duLieu, { recursive: true });
     const dong = [...m.values()].sort((a, b) => a.so - b.so).map(h => `${h.so}\t${h.ma}\t${h.gia}\t${h.ten}`);
-    fs.writeFileSync(this.fileTrenCan, dong.join('\r\n') + (dong.length ? '\r\n' : ''), 'utf8');
+    ghiFileAnToan(this.fileTrenCan, dong.join('\r\n') + (dong.length ? '\r\n' : ''), this.phu.vietByte);
   }
 
   /** Ghi file gốc, và một bản vào da-gui (`daGui`: đúng thứ đã gửi — file nhỏ thông số / phím; mặc định = file gốc). */
   private luuGoc(du: Uint8Array, daGui: Uint8Array = du) {
+    ghiFileAnToan(this.fileGoc, du, this.phu.vietByte);
     fs.mkdirSync(this.thuMucDaGui, { recursive: true });
-    fs.writeFileSync(this.fileGoc, du);
     const luc = new Date();
     const p = (n: number) => String(n).padStart(2, '0');
     const ten = `${luc.getFullYear()}${p(luc.getMonth() + 1)}${p(luc.getDate())}-${p(luc.getHours())}${p(luc.getMinutes())}${p(luc.getSeconds())}.TMS`;
@@ -1386,7 +1509,8 @@ export class UngDung {
       { luc: '', cau: 'Lần xoá qua WiFi trước hỏng giữa chừng — cân có thể thiếu hàng, nạp USB ngay.' });
   }
   private ghiCanChuaRo(loi: string) {
-    ghiDau(this.fileCanChuaRo, { luc: new Date().toISOString(), cau: `Xoá qua WiFi hỏng sau khi đã gửi lệnh xoá cả danh sách hàng: ${loi}` } satisfies CanChuaRo);
+    ghiJson(this.fileCanChuaRo, { luc: new Date().toISOString(), cau: `Xoá qua WiFi hỏng sau khi đã gửi lệnh xoá cả danh sách hàng: ${loi}` } satisfies CanChuaRo,
+      this.phu.vietByte);
   }
   /** Cân vừa nhận đủ danh sách (ghi nhận file từ cân / đã nạp USB, gửi đủ danh sách, xoá qua WiFi đọc lại khớp). */
   private xoaCanChuaRo() { fs.rmSync(this.fileCanChuaRo, { force: true }); }
@@ -1399,7 +1523,7 @@ export class UngDung {
         ? { luc: j.luc, loai: j.loai, soHang: Number.isInteger(j.soHang) ? j.soHang as number : 0, cau: j.cau } : null),
       { luc: '', loai: 'khong-doc', soHang: 0, cau: 'Lần gửi trước chưa được cân xác nhận.' });
   }
-  private ghiChuaXacNhan(dau: ChuaXacNhan) { ghiDau(this.fileChuaXacNhan, dau); }
+  private ghiChuaXacNhan(dau: ChuaXacNhan) { ghiJson(this.fileChuaXacNhan, dau, this.phu.vietByte); }
   /** Cân vừa được kiểm là có đúng danh sách chương trình ghi nhận (đọc lại khớp, file từ cân). */
   private xoaChuaXacNhan() { fs.rmSync(this.fileChuaXacNhan, { force: true }); }
 
@@ -1421,12 +1545,7 @@ export class UngDung {
    */
   private ghiNgayHsd(ngay: string, file = this.fileHsdNgay) {
     if (!LA_NGAY.test(ngay)) return;
-    try {
-      fs.mkdirSync(path.dirname(file), { recursive: true });
-      const tam = file + '.tam';
-      fs.writeFileSync(tam, ngay + '\r\n', 'utf8');
-      fs.renameSync(tam, file);
-    } catch { /* xem trên */ }
+    try { ghiFileAnToan(file, ngay + '\r\n', this.phu.vietByte); } catch { /* xem trên */ }
   }
 
   /** Không biết HSD trên cân tính cho ngày nào nữa (file gốc mới có HSD khác bản chương trình đã gửi). */
@@ -1460,8 +1579,8 @@ export class UngDung {
     let cu: FileCan | null = null;
     if (this.coFileGoc()) { try { cu = docFileCan(this.docGoc()); } catch { cu = null; } }
     if (!cungHsd(cu, f)) this.quenNgayHsd();
-    this.luuGoc(du);
     this.ghiTrenCan(hangTuFile(f));
+    this.luuGoc(du);
     this.xoaCanChuaRo();
     this.xoaChuaXacNhan();   // file này là cân thật: hết nghi lần gửi trước
     let nhatKy: { soDong: number; soMoi: number } | { loi: string } | null = null;
@@ -1485,10 +1604,25 @@ export class UngDung {
     return new Uint8Array(fs.readFileSync(this.fileGoc));
   }
 
-  private async dung(giuHangNgoaiKho: boolean, tuDong = false): Promise<KeHoachGui> {
+  /**
+   * 2.9.1 — đọc danh mục kho cho một kế hoạch, có hạn (HAN_DOC_KHO_MS): quá hạn thì thôi — chưa gửi gì. `ngayHsd` lấy TRƯỚC
+   * khi đọc kho (đọc vắt qua nửa đêm thì HSD trên cân ghi tính cho hôm qua — trang báo đỏ, gửi lại; không bao giờ ngược lại).
+   * `soLanAp`: số lần đã gửi theo kho lúc BẮT ĐẦU đọc (tuGuiMotLan — đọc kho ngoài hàng đợi).
+   */
+  private async docKhoChoCan(tuDong: boolean): Promise<KhoChoCan> {
+    const soLanAp = this.soLanApKho;
+    const ngayHsd = this.homNay();
+    const han = this.phu.hanKhoMs ?? HAN_DOC_KHO_MS;
+    const dm = await trongHan(this.layDanhMuc(tuDong), han, () => new LoiCan(
+      `Kho không trả lời sau ${han % 1000 ? (han / 1000).toFixed(1).replace('.', ',') : han / 1000} giây (mạng internet chậm hay mất) — `
+      + 'chưa đọc được danh mục, chưa gửi gì xuống cân. Việc với cân qua WiFi vẫn chạy; thử lại khi có mạng.'));
+    return { dm, ngayHsd, soLanAp };
+  }
+
+  /** Kế hoạch gửi: file gốc + danh mục kho (`kho` đọc sẵn — tự gửi; không có thì đọc ở đây). */
+  private async dung(giuHangNgoaiKho: boolean, tuDong = false, kho?: KhoChoCan): Promise<KeHoachGui> {
     const goc = docFileCan(this.docGoc());
-    const ngayHsd = this.homNay();   // trước khi đọc kho — xem KeHoachGui
-    const dm = await this.layDanhMuc(tuDong);
+    const { dm, ngayHsd } = kho ?? await this.docKhoChoCan(tuDong);
     // boPhanChiDoc: không bao giờ gửi lại nhật ký bán (REP) / thông tin máy (INF) cũ xuống cân (2.2).
     const tuy = { giuHangNgoaiKho, giuGioCan: true, soChuSoMa: soChuSoMa(dm.mauMaVach), boPhanChiDoc: true };
     const kh = lapKeHoach(goc, dm.matHang, tuy, 'vi');
@@ -1541,8 +1675,9 @@ export class UngDung {
     }
     // Cân chỉ thêm / sửa: dòng cũ vẫn nằm lại.
     for (const [so, h] of hangTuFile(moi)) tren.set(so, h);
-    this.luuGoc(du);
     this.ghiTrenCan(tren);
+    this.luuGoc(du);
+    this.soLanApKho++;
     this.xoaCanChuaRo();
     this.ghiNgayHsd(p.ngayHsd);
     let cauXacNhan: string | null = null;
@@ -1761,6 +1896,9 @@ export class UngDung {
   async tuGuiMotLan(): Promise<LanTuGui> {
     const luc = new Date().toISOString();
     try {
+      // 2.9.1: đọc kho NGOÀI hàng đợi việc với cân — mạng internet chậm / treo không giữ nhịp, tự đọc nhật ký, nút bấm. Lần gửi
+      // trước cân chưa nhận (tạm dừng, xem dưới) thì không đọc kho như trước.
+      const kho = this.chuaXacNhan()?.loai === 'lech' ? null : await this.docKhoChoCan(true);
       // Kiểm và gửi trong CÙNG một việc của hàng đợi, trên CÙNG một lần đọc kho: đọc kho hai lần (kiểm rồi mới gửi) thì
       // kho đổi HSD giữa hai lần vẫn lọt xuống cân mà không ai xem.
       this.lanTuGui = await this.motLuc(async (): Promise<LanTuGui> => {
@@ -1772,7 +1910,12 @@ export class UngDung {
             + 'Tự gửi tạm dừng: lần gửi trước, đọc lại thấy cân chưa nhận. Mở thẻ Gửi giá từ kho, để cân ở màn hình '
             + 'bán hàng rồi bấm Gửi xuống cân — hoặc nạp USB.' };
         }
-        const p = await this.dung(false, true);
+        // Có lần gửi theo kho xong SAU lúc bắt đầu đọc kho (người bấm Gửi trong lúc đó): lần đọc này có thể cũ hơn thứ cân vừa
+        // nhận — không gửi, lượt sau đọc kho lại.
+        if (!kho || kho.soLanAp !== this.soLanApKho) {
+          return { luc, daGui: false, cau: 'Vừa có lần gửi khác xuống cân trong lúc đọc kho — lượt tự gửi sau (trong 1 phút) đọc kho lại.' };
+        }
+        const p = await this.dung(false, true, kho);
         this.lechCuoi = p.kh.dem.them + p.kh.dem.sua;
         const chuaRo = this.canChuaRo();
         // Bật / tắt in hạn dùng (HSD) của hàng trên cân (null ↔ số), hay hàng mới bật in HSD khi cân chưa in HSD hàng nào
@@ -1819,7 +1962,7 @@ export class UngDung {
     try { ma = fs.readFileSync(this.fileMaMay, 'utf8').trim(); } catch { /* chưa có */ }
     if (!LA_UUID.test(ma)) {
       ma = randomUUID();
-      try { fs.mkdirSync(path.dirname(this.fileMaMay), { recursive: true }); fs.writeFileSync(this.fileMaMay, ma, 'utf8'); }
+      try { ghiFileAnToan(this.fileMaMay, ma, this.phu.vietByte); }
       catch { /* không ghi được: lần mở sau là máy mới với kho — đèn vẫn đúng */ }
     }
     this.maMayNho = ma;
@@ -1887,7 +2030,7 @@ export class UngDung {
     this.nhatKyDaXet = null;
     const kq = await kho.rpc('kho_may_can_nhat_ky', { p_chi_nhanh_id: cn, p_ma_may: this.maMay(), p_dong: ds }) as { tong?: unknown; moi?: unknown };
     const j = docJson<Record<string, unknown>>(this.fileNhatKyDaGui, {});
-    try { ghiDau(this.fileNhatKyDaGui, { ...j, [cn]: ds[ds.length - 1].luc }); } catch { /* không ghi được: lần sau gửi lại, kho bỏ trùng */ }
+    try { ghiJson(this.fileNhatKyDaGui, { ...j, [cn]: ds[ds.length - 1].luc }, this.phu.vietByte); } catch { /* không ghi được: lần sau gửi lại, kho bỏ trùng */ }
     return { tong: ds.length, moi: Number(kq?.moi) || 0 };
   }
 
@@ -1918,7 +2061,8 @@ export class UngDung {
       if (ch.tuGui !== true && this.coFileGoc() && bayGio - this.lucTinhLech >= TINH_LECH_MS) {
         this.lucTinhLech = bayGio;
         try {
-          const kh = await this.motLuc(() => this.dung(false, true));
+          const kho = await this.docKhoChoCan(true);   // 2.9.1: đọc kho ngoài hàng đợi việc với cân
+          const kh = await this.motLuc(() => this.dung(false, true, kho));
           this.lechCuoi = kh.kh.dem.them + kh.kh.dem.sua;
         } catch { this.lechCuoi = null; }
       }
@@ -1956,8 +2100,7 @@ export class UngDung {
   /** Dựng file để nạp bằng USB (cân sẽ thay cả danh sách → xoá được hàng). */
   async taoFileUsb(giuHangNgoaiKho = false): Promise<{ duongDan: string; soHang: number; ngayHsd: string }> {
     const { du, moi, ngayHsd } = await this.dung(giuHangNgoaiKho);
-    fs.mkdirSync(path.dirname(this.fileChoUsb), { recursive: true });
-    fs.writeFileSync(this.fileChoUsb, du);
+    ghiFileAnToan(this.fileChoUsb, du, this.phu.vietByte);
     fs.rmSync(this.fileDaTatChoUsb, { force: true });
     // HSD trong file tính cho hôm nay: nạp vào hôm sau thì "đã nạp USB" ghi đúng ngày tính, trang báo HSD cũ.
     fs.rmSync(this.fileHsdNgayChoUsb, { force: true });
@@ -1989,8 +2132,7 @@ export class UngDung {
     if (Object.keys(thayChu).length) ({ du, doi: doiChu } = suaChuChungTrongFile(du, thayChu));
     const goc = docFileCan(du);
     const ra = ghiFileCan(goc, KHONG_DOI, { giuGioCan: true, boPhanChiDoc: true });
-    fs.mkdirSync(path.dirname(this.fileChoUsb), { recursive: true });
-    fs.writeFileSync(this.fileChoUsb, ra);
+    ghiFileAnToan(this.fileChoUsb, ra, this.phu.vietByte);
     fs.rmSync(this.fileDaTatChoUsb, { force: true });
     fs.rmSync(this.fileHsdNgayChoUsb, { force: true });   // PLU như file gốc: HSD vẫn tính cho ngày cũ
     return { duongDan: this.fileChoUsb, soHang: goc.plu.length, thongSo: doiTs, phim: doiPhim, chuChung: doiChu };
@@ -2112,7 +2254,7 @@ export class UngDung {
       catch (e) { if (e instanceof LoiTem) throw new LoiCan(e.message); throw e; }
       const gui = await this.guiCaiDat('LAB', khoi, du, 'mẫu tem');
       this.luuGoc(du);
-      ghiJson(this.fileDaTat, daTat);
+      ghiJson(this.fileDaTat, daTat, this.phu.vietByte);
       return { ok: true as const, canhBao, ...gui };
     });
   }
@@ -2120,9 +2262,8 @@ export class UngDung {
   async taoFileUsbTem(thay: ThayDoiTem): Promise<{ duongDan: string; soHang: number; canhBao: string[] }> {
     await this.kiemQuyenCan('Sửa tem');
     const { du, daTat, canhBao } = this.dungTem(thay);
-    fs.mkdirSync(path.dirname(this.fileChoUsb), { recursive: true });
-    fs.writeFileSync(this.fileChoUsb, du);
-    ghiJson(this.fileDaTatChoUsb, daTat);
+    ghiFileAnToan(this.fileChoUsb, du, this.phu.vietByte);
+    ghiJson(this.fileDaTatChoUsb, daTat, this.phu.vietByte);
     fs.rmSync(this.fileHsdNgayChoUsb, { force: true });   // PLU như file gốc: HSD vẫn tính cho ngày cũ
     return { duongDan: this.fileChoUsb, soHang: docFileCan(du).plu.length, canhBao };
   }
@@ -2135,7 +2276,7 @@ export class UngDung {
     if (!fs.existsSync(this.fileChoUsb)) throw new LoiCan('Chưa có file nạp USB. Bấm "Lưu file để nạp USB" trước.');
     const kq = this.ghiNhanFileTuCan(new Uint8Array(fs.readFileSync(this.fileChoUsb)));
     // File USB làm từ thẻ Tem: giờ cân mới thật sự có tem đó.
-    if (fs.existsSync(this.fileDaTatChoUsb)) ghiJson(this.fileDaTat, docJson<DaTat>(this.fileDaTatChoUsb, {}));
+    if (fs.existsSync(this.fileDaTatChoUsb)) ghiJson(this.fileDaTat, docJson<DaTat>(this.fileDaTatChoUsb, {}), this.phu.vietByte);
     const ngayHsd = docNgayHsd(this.fileHsdNgayChoUsb);
     if (ngayHsd) this.ghiNgayHsd(ngayHsd);
     fs.rmSync(this.fileChoUsb, { force: true });
@@ -2149,11 +2290,15 @@ export class UngDung {
    * Việc với cân của bản 2.2 (cổng hai chiều, thông số, giờ, phím, sửa tem, xoá qua WiFi, nhật ký cân) theo
    * quy tắc thẻ Mẫu tem / Gửi giá: chưa đăng nhập kho thì làm được (máy của quản lý chạy không cần kho); đã
    * đăng nhập mà vai không có danh_muc (NV quầy, thủ kho, kế toán) → từ chối. Không đọc được người đăng nhập
-   * (mất mạng) coi như chưa đăng nhập — như khi đăng xuất; việc với cân vẫn chạy được không cần internet.
+   * (mất mạng; 2.9.1: kho không trả lời trong HAN_HOI_QUYEN_MS) thì theo người đọc được lần gần nhất (nguoiBiet — NV quầy
+   * vẫn bị từ chối); chưa đọc được lần nào thì coi như chưa đăng nhập — như khi đăng xuất; việc với cân vẫn chạy được không
+   * cần internet.
    */
   private async kiemQuyenCan(viec: string): Promise<void> {
-    let nd: NguoiDung | null = null;
-    try { nd = await this.nguoiDung(); } catch { nd = null; }
+    let nd: NguoiDung | null;
+    // 2.9.1: hỏi kho có hạn ngắn — mạng internet treo (WiFi tới cân vẫn tốt) thì nút việc với cân không chờ kho cả phút.
+    try { nd = await trongHan(this.nguoiDung(), this.phu.hanHoiQuyenMs ?? HAN_HOI_QUYEN_MS, () => new Error('hết hạn hỏi kho')); }
+    catch { nd = this.nguoiBiet; }
     if (nd && !nd.quyen.danhMuc) throw new LoiCan(`${viec} chỉ dành cho quản lý hoặc chủ.`);
   }
 
@@ -2401,7 +2546,7 @@ export class UngDung {
     return typeof j.ngay === 'string' && Array.isArray(j.lan) ? { ngay: j.ngay, lan: j.lan as LanTuDatGio[] } : null;
   }
   private ghiTuDatGio(v: TuDatGio) {
-    try { ghiJson(this.fileTuDatGio, v); } catch { /* không ghi được: lần sau thử lại — cân vẫn đúng giờ nếu đã chỉnh */ }
+    try { ghiJson(this.fileTuDatGio, v, this.phu.vietByte); } catch { /* không ghi được: lần sau thử lại — cân vẫn đúng giờ nếu đã chỉnh */ }
   }
 
   /** Bật / tắt nghe UDP theo cài đặt. */
@@ -2613,7 +2758,7 @@ export class UngDung {
       const duMoi = boDongPlu(phimXong && ph ? ph.du : this.docGoc(), soGo);
       const khoiDaGui = [...(canGo.length ? khoiPlu : []), ...(phimXong && ph ? ph.khoi : [])];
       if (khoiDaGui.length) this.luuGoc(duMoi, fileNho(goc.phienBan, khoiDaGui));
-      else fs.writeFileSync(this.fileGoc, duMoi);   // không gửi gì (cân đã không còn / đã là dòng trống): chỉ sửa file gốc
+      else ghiFileAnToan(this.fileGoc, duMoi, this.phu.vietByte);   // không gửi gì (cân đã không còn / đã là dòng trống): chỉ sửa file gốc
       return { daGo: conLai, khongCoTrenCan: khongCo.map(h => h.so), boPhim: phimXong ? phimBo.length : 0, loiPhim };
     });
   }
@@ -2711,8 +2856,9 @@ export class UngDung {
           : 'có lỗi giữa chừng';
         // Cân đã có đủ mọi hàng của kế hoạch (đọc lại đúng số PLU, mã, tên, giá, HSD): ghi nhận đúng thứ cân đang có.
         const thua = phucHoi.filter(p => !muon.has(khoa(p.so, p.ma)));
-        this.luuGoc(du);
         this.ghiTrenCan(new Map(phucHoi.map(p => [p.so, { so: p.so, ma: p.ma, gia: p.cot[5] ?? '', ten: p.ten }])));
+        this.luuGoc(du);
+        this.soLanApKho++;
         this.xoaCanChuaRo();
         this.xoaChuaXacNhan();
         this.ghiNgayHsd(ngayHsd);
@@ -2725,8 +2871,9 @@ export class UngDung {
         return { soHang: moi.plu.length, daXoa: conLai, phucHoi: `Lần xoá đầu chưa xong (${lyDo}); `
           + 'chương trình đã tự gửi lại cả danh sách và đọc lại thấy cân đủ hàng, không còn hàng nào nằm lại.' };
       }
-      this.luuGoc(du);
       this.ghiTrenCan(hangTuFile(moi));
+      this.luuGoc(du);
+      this.soLanApKho++;
       this.xoaCanChuaRo();
       this.xoaChuaXacNhan();      // cân đọc lại đúng cả danh sách vừa gửi
       this.ghiNgayHsd(ngayHsd);   // cân đọc lại đúng cả danh sách vừa gửi: HSD tính cho ngày của kế hoạch
@@ -2987,10 +3134,7 @@ export class UngDung {
     if (chuCu && soDongCu > cu.length) {
       fs.copyFileSync(this.fileNhatKy, this.fileNhatKy.replace(/\.tsv$/, `-ban-sao-${Date.now()}.tsv`));
     }
-    const tam = this.fileNhatKy + '.tam';
-    fs.writeFileSync(tam, ghiKhoNhatKy(ds), 'utf8');
-    try { fs.renameSync(tam, this.fileNhatKy); } catch (e) {
-      try { fs.rmSync(tam, { force: true }); } catch { /* thôi */ }
+    try { ghiFileAnToan(this.fileNhatKy, ghiKhoNhatKy(ds), this.phu.vietByte); } catch (e) {
       throw new LoiCan(`Không ghi được ${this.fileNhatKy} (${(e as { code?: string })?.code ?? 'lỗi'}) — file có đang mở trong Excel không? `
         + 'Đóng file đó rồi làm lại; các dòng đã lưu trong file vẫn còn.');
     }
@@ -3714,8 +3858,10 @@ const trongKhoang = (d: DongBanCan, tu: string, den: string) => {
 export function cauLoi(e: unknown): string {
   if (e instanceof LoiCan || e instanceof LoiFileCan || e instanceof LoiTem || e instanceof LoiDay
     || e instanceof LoiGiaoThuc || e instanceof LoiThongSo || e instanceof LoiCapNhat) return e.message;
-  const m = e instanceof Error ? e.message : String(e);
+  // Lỗi của thư viện kho (PostgREST) là đối tượng { message, … }, không phải Error — String() ra "[object Object]".
+  const m = e instanceof Error ? e.message
+    : laDoiTuong(e) ? (typeof e.message === 'string' ? e.message : '') : e === null || e === undefined ? '' : String(e);
   if (/fetch|network|ENOTFOUND|ECONNREFUSED|timed? ?out/i.test(m)) return 'Mất kết nối mạng. Kiểm tra internet rồi thử lại.';
   if (/JWT|refresh|session/i.test(m)) return 'Phiên đăng nhập đã hết. Đăng nhập lại.';
-  return `Có lỗi: ${m}`;
+  return m ? `Có lỗi: ${m}` : 'Có lỗi (không rõ chi tiết).';
 }
