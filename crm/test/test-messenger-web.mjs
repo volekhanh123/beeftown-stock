@@ -30,6 +30,7 @@ import {
   xuLyHookMessenger, trangThaiBiMatMess, caiHoSoMessenger, TEN_BI_MAT_MESS, quenDaBao, DUONG_MESSENGER, quenTrangThaiMess,
 } from '../../web/src/lib/messenger-hook.ts';
 import { timChuoiCam } from '../../web/src/lib/chuoi-cam.js';
+import { MUC_NOI_BO } from '../../web/src/lib/dieu-huong-noi-bo.ts';
 import { createHmac } from 'node:crypto';
 import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -915,9 +916,12 @@ await nhom('12 · WORKER, TRANG, MENU, TRANG CÔNG KHAI, README, GIT', async () 
      && /truongDangKy/.test(tr) && /caiHoSoMessenger\(/.test(tr) && /Các bước với Meta/.test(tr) && /pages_messaging/.test(tr));
   const bao = readFileSync(join(GOC, 'web/src/lib/messenger-bao.ts'), 'utf8');
   ok('Cookie báo riêng, chỉ sống dưới /noi-bo/messenger, httpOnly', /'\/noi-bo\/messenger'/.test(bao) && /httpOnly: true/.test(bao));
+  // Menu nội bộ ở lib/dieu-huong-noi-bo.ts — NoiBo.astro và menu bên kho cùng đọc danh sách đó.
   const nb = readFileSync(join(GOC, 'web/src/layouts/NoiBo.astro'), 'utf8');
-  ok('Menu NoiBo: một dòng Messenger cho chủ, quản lý', (nb.match(/'\/noi-bo\/messenger'/g) ?? []).length === 1
-     && /'\/noi-bo\/messenger',\s*ten: \{ vi: 'Messenger'[^}]*\},\s*vai: \['chu_so_huu', 'quan_ly'\]/.test(nb));
+  const dongMess = MUC_NOI_BO.filter(m => m.link === '/noi-bo/messenger');
+  ok('Menu nội bộ: một dòng Messenger cho chủ, quản lý (NoiBo.astro đọc từ lib/dieu-huong-noi-bo.ts)',
+     dongMess.length === 1 && JSON.stringify(dongMess[0].vai) === JSON.stringify(['chu_so_huu', 'quan_ly'])
+     && dongMess[0].ngan.vi === 'Messenger' && /thanhTrenNoiBo\(nhanSu\?\.vai_tro\)/.test(nb));
   const tn = readFileSync(join(GOC, 'crm/test/test-noi-bo-tieng-anh.mjs'), 'utf8');
   ok('test-noi-bo-tieng-anh quét trang Messenger', /'pages\/noi-bo\/messenger\.astro'/.test(tn));
 

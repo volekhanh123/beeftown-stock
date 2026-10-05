@@ -24,6 +24,13 @@
 
 .nb-khung { width: min(880px, 92%); margin-inline: auto; }
 
+/* Chữ chỉ cho trình đọc màn hình (nhãn ô tìm, tên nút chỉ có biểu tượng). Khung kho
+   cũng nạp file này — .kho-an là tên cũ của cùng lớp. */
+.nb-an, .kho-an {
+  position: absolute !important; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
 /* --- Đầu trang ------------------------------------------------------------ */
 .nb-dau {
   background: var(--than);
@@ -57,25 +64,52 @@
 .nb-nut-nho:hover { background: rgba(251, 244, 225, .1); }
 
 /* --- Điều hướng ----------------------------------------------------------- */
+/* Máy tính / tablet: thanh trên. Xuống dòng khi hẹp — bản cũ cuộn ngang, mục cuối
+   nằm ngoài mép mà không có gì báo (lib/dieu-huong-noi-bo.ts). */
 .nb-dieu-huong { background: #fff; border-bottom: 1px solid var(--vach); }
-.nb-dieu-huong-hang { display: flex; gap: .25rem; overflow-x: auto; }
+.nb-dieu-huong-hang {
+  width: min(1200px, 92%); margin-inline: auto;
+  display: flex; flex-wrap: wrap; gap: 0 .15rem;
+}
 .nb-dieu-huong a {
-  padding: .95rem .85rem; text-decoration: none; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: .4rem; min-height: 48px;
+  padding: .55rem .7rem; text-decoration: none; white-space: nowrap;
   font-weight: 600; font-size: .9rem; color: var(--muc-nhat);
   border-bottom: 3px solid transparent;
 }
+.nb-dieu-huong a svg { flex-shrink: 0; }
+.nb-dieu-huong a:hover { color: var(--than); }
 .nb-dieu-huong a[aria-current='page'] { color: var(--do); border-bottom-color: var(--do); }
 
+/* Điện thoại: thanh đáy, tối đa 5 nút (biểu tượng + chữ ngắn ≤ 10 ký tự). */
+.nb-day { display: none; }
+
 @media (max-width: 640px) {
-  .nb-dieu-huong {
+  .nb-dieu-huong { display: none; }
+  .nb-day {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
-    border-bottom: none; border-top: 1px solid var(--vach);
+    display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+    background: #fff; border-top: 1px solid var(--vach);
     box-shadow: 0 -2px 12px rgba(30, 22, 14, .1);
+    padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
-  .nb-dieu-huong-hang { justify-content: space-around; width: 100%; }
-  .nb-dieu-huong a { flex: 1; text-align: center; padding: .85rem .3rem; font-size: .8rem;
-                     border-bottom: none; border-top: 3px solid transparent; }
-  .nb-dieu-huong a[aria-current='page'] { border-top-color: var(--do); }
+  .nb-day a {
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .2rem;
+    min-width: 0; min-height: 4rem; padding: .35rem .1rem; text-decoration: none;
+    color: var(--muc-nhat); font-size: .72rem; font-weight: 600;
+    border-top: 3px solid transparent;
+  }
+  .nb-day a span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nb-day a[aria-current='page'] { color: var(--do); border-top-color: var(--do); }
+  /* Đầu trang hẹp: một hàng không đủ chỗ cho tên người dùng, nút đổi tiếng và Đăng
+     xuất. Tên + vai xuống hàng thứ hai (cả quán dùng chung điện thoại — phải luôn thấy
+     đang thao tác bằng tài khoản ai); chữ "nội bộ" xuống dưới BEEFTOWN. */
+  .nb-dau-hang { flex-wrap: wrap; gap: .4rem .5rem; }
+  .nb-dau-phai, .nb-ai { display: contents; }
+  .nb-hieu { flex-direction: column; align-items: flex-start; gap: .1rem; line-height: 1.1; margin-right: auto; }
+  .nb-nut-nho { white-space: nowrap; }
+  .nb-ten { order: 9; flex-basis: 100%; text-align: left; font-size: .75rem; }
+  .nb-ten em { display: inline; margin-left: .4rem; }
 }
 
 /* --- Thân trang ----------------------------------------------------------- */
@@ -191,3 +225,59 @@
 .nb-dich.xong { color: var(--muc-nhat); }
 .nb-dich.cho  { color: #8a6d00; }
 .nb-dich.loi  { color: var(--do); }
+
+/* --- Bản đồ chức năng (components/BanDoChucNang.astro) ---------------------
+   Trang Tất cả chức năng (khung NoiBo) và trang Khác của kho (khung Kho) — hai
+   khung đều nạp file này, nên lớp bd-* không dựa vào biến của kho. */
+.bd-tim { display: flex; gap: .5rem; align-items: stretch; margin: 0 0 1.25rem; }
+.bd-tim input {
+  flex: 1; min-width: 0; font: inherit; font-size: 16px; min-height: 48px;
+  padding: .7rem .85rem; border: 1px solid var(--vach); border-radius: 10px; background: #fff; color: var(--than);
+}
+.bd-tim input:focus { outline: 3px solid var(--cuc-vang); outline-offset: 1px; border-color: var(--than); }
+.bd-tim .nb-nut { flex: 0 0 auto; gap: .4rem; }
+
+.bd-nhom { margin-bottom: 1.4rem; }
+.bd-nhom h2 {
+  margin: 0 0 .5rem; font-size: .78rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muc-nhat);
+}
+.bd-luoi {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: .5rem; grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (min-width: 640px) { .bd-luoi { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (min-width: 1024px) { .bd-luoi { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+.bd-o {
+  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35rem;
+  min-height: 5.25rem; height: 100%; padding: .7rem .35rem; text-align: center; text-decoration: none;
+  background: #fff; border: 1px solid var(--vach); border-radius: 14px;
+  color: var(--than); font-size: .8rem; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere;
+}
+.bd-o svg { color: var(--do); flex-shrink: 0; }
+.bd-o:hover { border-color: var(--than); }
+.bd-o .bd-so { position: absolute; top: .35rem; right: .35rem; }
+
+.bd-so {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 1.3rem; height: 1.3rem; padding: 0 .35rem; border-radius: 999px;
+  background: var(--do); color: #fff; font-size: .72rem; font-weight: 800; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Hai cột trên điện thoại 360px: năm thao tác một cột thì đẩy hết các nhóm xuống dưới màn hình. */
+.bd-nhanh { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); }
+.bd-nhanh .nb-nut { justify-content: flex-start; gap: .5rem; padding: .6rem .75rem; text-align: left; line-height: 1.25; }
+.bd-nhanh .nb-nut svg { color: var(--do); flex-shrink: 0; }
+
+.bd-kq-dem { margin: 0 0 .75rem; color: var(--muc-nhat); font-size: .92rem; }
+.bd-kq-ds { list-style: none; margin: 0 0 1.5rem; padding: 0; display: grid; gap: .5rem; }
+.bd-kq-dong {
+  display: flex; align-items: center; gap: .8rem; min-height: 56px; padding: .6rem .9rem;
+  background: #fff; border: 1px solid var(--vach); border-radius: 12px; text-decoration: none; color: var(--than);
+}
+.bd-kq-dong:hover { border-color: var(--than); }
+.bd-kq-dong svg { color: var(--do); flex-shrink: 0; }
+.bd-kq-dong > span { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+.bd-kq-dong strong { font-size: .98rem; }
+.bd-kq-dong small { font-size: .8rem; color: var(--muc-nhat); }

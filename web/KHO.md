@@ -28,11 +28,20 @@ Mọi trang kho bọc trong `layouts/Kho.astro`:
 
 Khung gồm:
 
-- **Thanh trên**: logo, tên chi nhánh (chủ đổi chi nhánh bằng `?cn=`), nút "?", chuông có số
-  chưa đọc, menu người dùng (các màn CRM mà vai đó được vào, Hướng dẫn, Đăng xuất).
-- **Màn ≥ 1024px**: cột trái gồm các ô biểu tượng có số đỏ, và danh sách "Thao tác nhanh" bên dưới.
+- **Thanh trên**: logo, tên chi nhánh (chủ đổi chi nhánh bằng `?cn=`; ở điện thoại ≤ 640px nút
+  "Đổi chi nhánh" nằm trong menu người dùng — trên thanh trên nó đè lên chữ "Kho"), nút "?",
+  chuông có số chưa đọc, menu người dùng (các màn CRM mà vai đó được vào, Hướng dẫn, Đăng xuất).
+- **Màn ≥ 1024px**: cột trái — ô "Tìm chức năng" (gửi về trang Khác), rồi các mục **theo nhóm**
+  (`NHOM_KHO`: Hằng ngày · Tồn kho · Mua và nhận hàng · Pha lóc, quầy, xuất · Tiền và báo cáo ·
+  Thiết lập và trợ giúp) có số đỏ, và "Thao tác nhanh" bên dưới. Dùng chuột thì dòng cao 36px,
+  ngón tay (iPad ngang) 44px.
 - **Màn < 1024px**: thanh đáy 5 nút, nút giữa "Quét" nổi lên. Có chừa `safe-area` cho iPhone.
   Thanh nút lưu (`.kho-thanh-nut.dinh`) dính ngay trên thanh đáy.
+- **Trang Khác** (`/noi-bo/kho/khac`, nút cuối thanh đáy): ô tìm, thao tác nhanh, mọi mục theo
+  nhóm, rồi "Phần khác của nhà hàng" (quản lý, chủ). Dữ liệu ở `lib/ban-do-chuc-nang.ts`, vẽ bằng
+  `components/BanDoChucNang.astro` — dùng chung với `/noi-bo/chuc-nang` bên khung nhà hàng. Ô tìm là
+  form GET, không JavaScript: chữ gõ không dấu so không dấu ("cong no" ra Công nợ), chữ có dấu so
+  đúng dấu ("hùy" không ra Hủy). Máy tính bảng dùng chung: không phần nhà hàng, "Khóa máy" thay "Đăng xuất".
 
 Dữ liệu menu ở `lib/kho/dieu-huong.ts` (file thuần, test được bằng Node):
 
@@ -45,7 +54,9 @@ Dữ liệu menu ở `lib/kho/dieu-huong.ts` (file thuần, test được bằng
 
 Mỗi ô ghi **quyền cần có** (`quyen`, cần một trong các quyền) — phải khớp với dòng chặn ở đầu
 trang đó. `test-kho-giao-dien.mjs` so hai chỗ này: không vai nào thấy một ô rồi bấm vào lại
-bị đá ra.
+bị đá ra. Mỗi ô thuộc đúng một nhóm (`nhom`); từ khóa cho ô tìm ở `TU_KHOA_KHO`.
+`test-noi-bo-dieu-huong.mjs` kiểm nhóm không thêm / bớt ô nào so với quyền, và ô tìm chỉ ra mục vai
+được thấy. Các màn nhà hàng trong menu người dùng (`MUC_CRM`) dựng từ `lib/dieu-huong-noi-bo.ts`.
 
 Biểu tượng: `lib/kho/bieu-tuong.ts` (đường vẽ SVG 24×24) + `components/kho/BieuTuong.astro`.
 Màu và khoảng cách: `styles/kho-khung.css` (giao diện sáng, token `--kho-*` dưới `.kho-than`).

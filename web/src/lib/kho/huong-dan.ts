@@ -97,8 +97,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
   {
     id: 'menu', vai: ['chung'],
     tieuDe: { vi: 'Menu, số đỏ và nút Quét', en: 'Menu, red numbers and the Scan button' },
-    tomTat: { vi: 'Điện thoại có thanh 5 nút dưới đáy. Máy tính có các ô bên trái.',
-              en: 'On a phone there is a bar of 5 buttons at the bottom. On a computer the tiles are on the left.' },
+    tomTat: { vi: 'Điện thoại có thanh 5 nút dưới đáy. Máy tính có danh sách bên trái, chia theo nhóm, ô tìm ở trên cùng.',
+              en: 'On a phone there is a bar of 5 buttons at the bottom. On a computer the list on the left is grouped, with a search box at the top.' },
     buoc: [
       { vi: 'Nút đầu tiên là **trang chủ** của vai bạn (Trang chủ, Quầy hoặc Hôm nay).',
         en: 'The first button is the **home screen** for your role (Home, Counter or Today).' },
@@ -106,8 +106,10 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
         en: 'The round red button in the middle is **Scan** — scan a scale label to see what the item is and where it is. (Accountants: the middle button is **Payables**; Scan is under **More**.)' },
       { vi: '**Số đỏ** trên nút = số việc đang chờ bạn. Bấm vào để làm.',
         en: 'A **red number** on a button = how many tasks are waiting for you. Press it to do them.' },
-      { vi: 'Nút cuối **Khác** mở tất cả các mục còn lại và **Thao tác nhanh**.',
-        en: 'The last button, **More**, opens all the other sections and the **Quick actions**.' },
+      { vi: 'Nút cuối **Khác** mở tất cả chức năng, chia theo nhóm (Hằng ngày, Tồn kho, Mua và nhận hàng…), cùng **Thao tác nhanh**.',
+        en: 'The last button, **More**, opens every feature, grouped (Daily, Stock, Buying and receiving…), plus the **Quick actions**.' },
+      { vi: 'Không nhớ một màn nằm đâu? Gõ vài chữ vào ô **Tìm chức năng** — ở đầu màn Khác, hoặc đầu cột trái trên máy tính. Gõ không dấu cũng được, ví dụ "bao huy".',
+        en: 'Cannot remember where a screen is? Type a few letters into **Find a feature** — at the top of More, or at the top of the left column on a computer. For example "write-off".' },
       { vi: 'Chuông trên cùng = thông báo. Nút **?** mở đúng mục hướng dẫn của màn đang xem.',
         en: 'The bell at the top = notifications. The **?** button opens the help section for the screen you are on.' },
     ],

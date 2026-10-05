@@ -36,6 +36,7 @@ import {
 } from '../../web/src/lib/zalo-gui.ts';
 import { danKhoaMay, giaiMaToken } from '../../web/src/lib/kho/may-chung-ma-hoa.ts';
 import { dichCau } from '../../web/src/lib/cau-noi-bo.ts';
+import { MUC_NOI_BO } from '../../web/src/lib/dieu-huong-noi-bo.ts';
 import { readFileSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
@@ -582,9 +583,12 @@ await nhom('11 · WORKER, TRANG, MENU, KHÔNG BÍ MẬT TRONG REPO', async () =>
   ok('Không trang nào select * từ zalo_cau_hinh', ![cd, idx, moi].some(s => /from\('zalo_cau_hinh'\)/.test(s)));
   const bao = readFileSync(join(GOC, 'web/src/lib/zalo-bao.ts'), 'utf8');
   ok('Cookie báo riêng, chỉ sống dưới /noi-bo/zalo, httpOnly', /'\/noi-bo\/zalo'/.test(bao) && /httpOnly: true/.test(bao));
+  // Menu nội bộ ở lib/dieu-huong-noi-bo.ts — NoiBo.astro và menu bên kho cùng đọc danh sách đó.
   const nb = readFileSync(join(GOC, 'web/src/layouts/NoiBo.astro'), 'utf8');
-  ok('Menu NoiBo: một dòng Zalo cho chủ, quản lý, marketing',
-     (nb.match(/'\/noi-bo\/zalo'/g) ?? []).length === 1 && /'\/noi-bo\/zalo',\s*ten: \{ vi: 'Zalo'[^}]*\},\s*vai: \['chu_so_huu', 'quan_ly', 'marketing'\]/.test(nb));
+  const dongZalo = MUC_NOI_BO.filter(m => m.link === '/noi-bo/zalo');
+  ok('Menu nội bộ: một dòng Zalo cho chủ, quản lý, marketing (NoiBo.astro đọc từ lib/dieu-huong-noi-bo.ts)',
+     dongZalo.length === 1 && JSON.stringify(dongZalo[0].vai) === JSON.stringify(['chu_so_huu', 'quan_ly', 'marketing'])
+     && dongZalo[0].ngan.vi === 'Zalo' && /thanhTrenNoiBo\(nhanSu\?\.vai_tro\)/.test(nb));
   const readme = readFileSync(join(GOC, 'web/README.md'), 'utf8');
   ok('web/README.md có mục Zalo: bốn bí mật, tài khoản may_zalo, refresh token đầu tiên, chế độ thử',
      /^## Zalo/m.test(readme) && Object.values(TEN_BI_MAT_ZALO).every(n => readme.includes(n)) && /may_zalo/.test(readme)

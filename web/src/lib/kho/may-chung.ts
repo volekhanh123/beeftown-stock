@@ -113,6 +113,15 @@ export function laVaiMay(vai: string | null | undefined): boolean {
   return vai === 'may_chung' || vai === 'may_ipos';
 }
 
+/**
+ * Màn đang ở chế độ máy dùng chung: mở bằng tài khoản máy (màn khóa), hoặc một người
+ * đã mở khóa bằng PIN. Khung kho (menu người dùng) và trang Khác cùng hỏi hàm này để
+ * ẩn phần nhà hàng và đổi "Đăng xuất" (xóa phiên của cả máy) thành "Khóa máy".
+ */
+export function laCheDoMay(vai: string | null | undefined, may: Pick<CheDoMay, 'nhanSuId'> | null | undefined): boolean {
+  return laVaiMay(vai) || !!may?.nhanSuId;
+}
+
 export function laDuongMay(duong: string): boolean {
   const d = duong.replace(/\/$/, '');
   return d === DUONG_MAY || d.startsWith(DUONG_MAY + '/');

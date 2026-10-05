@@ -1,0 +1,99 @@
+---
+/**
+ * BẢN ĐỒ CHỨC NĂNG — ô tìm + mọi chức năng của vai, theo nhóm.
+ *
+ * Dùng chung cho /noi-bo/chuc-nang (khung NoiBo) và /noi-bo/kho/khac (khung Kho);
+ * dữ liệu do lib/ban-do-chuc-nang.ts dựng, file này chỉ vẽ. Không gọi database,
+ * không JavaScript: ô tìm là form GET về chính trang, máy chủ lọc rồi trả trang mới.
+ *
+ * Kiểu dáng ở styles/noi-bo.css (lớp bd-*) — hai khung đều nạp file đó.
+ */
+import BieuTuong from './kho/BieuTuong.astro';
+import OTimChucNang from './OTimChucNang.astro';
+import type { ChucNang, KetQuaTim, NhomChucNang } from '../lib/ban-do-chuc-nang.ts';
+import { soDo, nhanSo, type SoViec } from '../lib/kho/dieu-huong.ts';
+import { dichNB, type NgonNguNB } from '../lib/ngon-ngu-noi-bo.ts';
+
+interface Props {
+  nn: NgonNguNB;
+  /** Trang của form tìm (chính trang đang mở). */
+  hanhDong: string;
+  nhom: NhomChucNang[];
+  nhanh: ChucNang[];
+  /** Chữ đang tìm (đã làm sạch); '' = không tìm. */
+  tim: string;
+  ketQua: KetQuaTim[];
+  /** Số đỏ của kho (kho_dem_viec); null = không có số. */
+  viec?: SoViec | null;
+}
+const { nn, hanhDong, nhom, nhanh, tim, ketQua, viec = null } = Astro.props;
+const t = dichNB(nn, {
+  coKetQua: {
+    vi: (n: number, q: string) => `${n} chức năng khớp “${q}”`,
+    en: (n: number, q: string) => `${n} feature${n === 1 ? '' : 's'} match “${q}”`,
+  },
+  khongCo: {
+    vi: (q: string) => `Không thấy chức năng nào khớp “${q}”. Thử chữ ngắn hơn, hoặc gõ không dấu.`,
+    en: (q: string) => `No feature matches “${q}”. Try a shorter word.`,
+  },
+  xemTatCa: { vi: 'Xem tất cả chức năng', en: 'See all features' },
+  thaoTacNhanh: { vi: 'Thao tác nhanh', en: 'Quick actions' },
+  soViec: { vi: (n: number) => `${n} việc`, en: (n: number) => `${n} to do` },
+});
+const dangTim = tim !== '';
+---
+<OTimChucNang nn={nn} hanhDong={hanhDong} kieu="trang" id="bd-tim-o" tim={tim} />
+
+{dangTim ? (
+  <section class="bd-kq" aria-labelledby="bd-kq-dem">
+    <p id="bd-kq-dem" class="bd-kq-dem">
+      {ketQua.length > 0 ? t.coKetQua(ketQua.length, tim) : t.khongCo(tim)} <a href={hanhDong}>{t.xemTatCa}</a>
+    </p>
+    {ketQua.length > 0 && (
+      <ul class="bd-kq-ds">
+        {ketQua.map(k => {
+          const so = soDo(k.muc, viec);
+          return (
+            <li>
+              <a href={k.muc.link} class="bd-kq-dong">
+                <BieuTuong ten={k.muc.bieuTuong} co={22} />
+                <span><strong>{k.muc.ten[nn]}</strong><small>{k.nhom[nn]}</small></span>
+                {so > 0 && <b class="bd-so" aria-label={t.soViec(so)}>{nhanSo(so)}</b>}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    )}
+  </section>
+) : (
+  <>
+    {nhanh.length > 0 && (
+      <section class="bd-nhom" aria-labelledby="bd-nhanh">
+        <h2 id="bd-nhanh">{t.thaoTacNhanh}</h2>
+        <div class="bd-nhanh">
+          {nhanh.map(x => <a class="nb-nut phu" href={x.link}><BieuTuong ten={x.bieuTuong} co={20} /><span>{x.ten[nn]}</span></a>)}
+        </div>
+      </section>
+    )}
+    {nhom.map(n => (
+      <section class="bd-nhom" aria-labelledby={`bd-${n.ma}`}>
+        <h2 id={`bd-${n.ma}`}>{n.ten[nn]}</h2>
+        <ul class="bd-luoi">
+          {n.muc.map(m => {
+            const so = soDo(m, viec);
+            return (
+              <li>
+                <a href={m.link} class="bd-o">
+                  <BieuTuong ten={m.bieuTuong} co={26} />
+                  <span>{m.ten[nn]}</span>
+                  {so > 0 && <b class="bd-so" aria-label={t.soViec(so)}>{nhanSo(so)}</b>}
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    ))}
+  </>
+)}

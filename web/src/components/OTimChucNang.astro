@@ -1,0 +1,40 @@
+---
+/**
+ * Ô "Tìm chức năng" — form GET thường, không JavaScript; máy chủ lọc (lib/ban-do-chuc-nang.ts).
+ *
+ *   · kieu="trang": đầu trang Tất cả chức năng / Khác (components/BanDoChucNang.astro) — ô to, nút "Tìm".
+ *   · kieu="ben":   đầu cột trái của khung kho trên máy tính — ô gọn, nút kính lúp, gửi về trang Khác.
+ *
+ * Một chỗ cho tên tham số (tim), giới hạn độ dài và câu chữ của cả hai.
+ */
+import BieuTuong from './kho/BieuTuong.astro';
+import { GIOI_HAN_TIM } from '../lib/ban-do-chuc-nang.ts';
+import { dichNB, type NgonNguNB } from '../lib/ngon-ngu-noi-bo.ts';
+
+interface Props {
+  nn: NgonNguNB;
+  /** Trang nhận kết quả. */
+  hanhDong: string;
+  kieu: 'trang' | 'ben';
+  /** id của ô nhập (để nhãn trỏ tới) — khác nhau khi một trang có hai ô. */
+  id: string;
+  /** Chữ đang tìm, điền sẵn vào ô. */
+  tim?: string;
+}
+const { nn, hanhDong, kieu, id, tim = '' } = Astro.props;
+const t = dichNB(nn, {
+  timChucNang: { vi: 'Tìm chức năng', en: 'Find a feature' },
+  goiY: { vi: 'Tìm chức năng…', en: 'Find a feature…' },
+  tim: { vi: 'Tìm', en: 'Search' },
+});
+---
+<form method="get" action={hanhDong} class={kieu === 'ben' ? 'kho-ben-tim' : 'bd-tim'} role="search">
+  <label for={id} class="nb-an">{t.timChucNang}</label>
+  <input id={id} type="search" name="tim" value={tim} maxlength={GIOI_HAN_TIM}
+         placeholder={t.goiY} autocomplete="off" enterkeyhint="search" />
+  {kieu === 'ben' ? (
+    <button type="submit" title={t.timChucNang}><BieuTuong ten="tim" co={18} /><span class="nb-an">{t.timChucNang}</span></button>
+  ) : (
+    <button type="submit" class="nb-nut"><BieuTuong ten="tim" co={20} /><span>{t.tim}</span></button>
+  )}
+</form>

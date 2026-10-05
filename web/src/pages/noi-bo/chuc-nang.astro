@@ -1,0 +1,44 @@
+---
+/**
+ * TẤT CẢ CHỨC NĂNG — nút "Thêm" của thanh đáy nội bộ
+ *
+ * Mọi màn vai này mở được, theo nhóm, có ô tìm: phần nhà hàng (Đặt bàn, Zalo,
+ * Messenger, Nội dung, Tuyển dụng, Cài đặt) và từng màn kho. Thanh đáy điện thoại chỉ
+ * có 5 nút (lib/dieu-huong-noi-bo.ts) — mọi thứ không nằm trên đó đều tới được từ đây
+ * trong một lần bấm, hoặc gõ vài chữ.
+ *
+ * Không gọi database: ai thấy gì do vai quyết định, như menu. Vai chỉ-kho (thủ kho,
+ * NV quầy, kế toán) và tài khoản máy dùng trang Khác của kho — chuyển sang đó, giữ
+ * chữ đang tìm.
+ */
+import NoiBo from '../../layouts/NoiBo.astro';
+import BanDoChucNang from '../../components/BanDoChucNang.astro';
+import {
+  banDoChucNang, thaoTacNhanhChucNang, timChucNang, lamSachTimChucNang,
+} from '../../lib/ban-do-chuc-nang';
+import { VAI_CRM, DUONG_TAT_CA_NOI_BO } from '../../lib/dieu-huong-noi-bo';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo';
+
+const { nhanSu } = Astro.locals.phien!;
+const vai = nhanSu.vai_tro;
+const tim = lamSachTimChucNang(Astro.url.searchParams.get('tim'));
+
+if (!(VAI_CRM as readonly string[]).includes(vai)) {
+  return Astro.redirect('/noi-bo/kho/khac' + (tim ? `?tim=${encodeURIComponent(tim)}` : ''), 302);
+}
+
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  tieuDe: { vi: 'Tất cả chức năng', en: 'All features' },
+  dan: { vi: 'Mọi màn bạn mở được, theo nhóm. Gõ vài chữ để tìm nhanh.', en: 'Every screen you can open, grouped. Type a few letters to find one quickly.' },
+});
+
+const nhom = banDoChucNang(vai, 'nha_hang');
+const nhanh = thaoTacNhanhChucNang(vai);
+const ketQua = timChucNang(nhom, nhanh, tim);
+---
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <h1>{t.tieuDe}</h1>
+  <p class="nb-dan">{t.dan}</p>
+  <BanDoChucNang nn={nn} hanhDong={DUONG_TAT_CA_NOI_BO} nhom={nhom} nhanh={nhanh} tim={tim} ketQua={ketQua} />
+</NoiBo>

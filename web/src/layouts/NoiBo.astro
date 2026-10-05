@@ -10,11 +10,19 @@
  *
  * noindex: trang nội bộ không được vào kết quả tìm kiếm. Đây chỉ là phép
  * lịch sự với Google — thứ thật sự chặn là middleware và RLS.
+ *
+ * MENU (lib/dieu-huong-noi-bo.ts — một danh sách, dùng chung với menu bên kho):
+ *   · máy tính / tablet: thanh trên có mọi mục, xuống dòng khi hẹp — không mục nào
+ *     bị đẩy ra ngoài mép;
+ *   · điện thoại (≤ 640px): thanh đáy tối đa 5 nút có biểu tượng. Vai nhiều mục
+ *     thấy 4 mục hay dùng + "Thêm" (trang Tất cả chức năng, có ô tìm).
  */
 import '../styles/chung.css';
 import '../styles/noi-bo.css';
+import BieuTuong from '../components/kho/BieuTuong.astro';
 import type { NhanSu } from '../lib/phien';
 import { dichNB, nhanNB, nnCua, linkDoiNgonNgu, type HaiThuTieng } from '../lib/ngon-ngu-noi-bo';
+import { thanhTrenNoiBo, thanhDayNoiBo, dangONoiBo } from '../lib/dieu-huong-noi-bo';
 
 interface Props {
   tieuDe: string;
@@ -28,6 +36,7 @@ const t = dichNB(nn, {
   noiBo:     { vi: 'nội bộ',            en: 'internal' },
   dangXuat:  { vi: 'Đăng xuất',         en: 'Log out' },
   khuVuc:    { vi: 'Khu vực nội bộ',    en: 'Internal sections' },
+  menuChinh: { vi: 'Menu chính',        en: 'Main menu' },
   tenTrang:  { vi: 'Beeftown nội bộ',   en: 'Beeftown internal' },
 });
 
@@ -44,25 +53,12 @@ const TEN_VAI_TRO: Record<string, HaiThuTieng> = {
   ke_toan:        { vi: 'Kế toán',      en: 'Accountant' },
 };
 
-// Vai kho không thấy dữ liệu CRM (0018 dựng tường ngăn), nên Tổng quan và
-// Đặt bàn chỉ hiện cho bốn vai CRM.
-const VAI_CRM = ['chu_so_huu', 'quan_ly', 'thu_ngan', 'marketing'];
-
-// Ô nào hiện ra do VAI TRÒ quyết định, và danh sách vai trò ở đây khớp đúng
-// với chính sách RLS tương ứng trong database. Giấu một ô mà RLS vẫn cho
+// Ô nào hiện ra do VAI TRÒ quyết định, và danh sách vai ở lib/dieu-huong-noi-bo.ts
+// khớp với chính sách RLS tương ứng trong database. Giấu một ô mà RLS vẫn cho
 // phép thì chỉ gây khó chịu; hiện một ô mà RLS chặn thì người dùng bấm vào
 // và nhận lỗi khó hiểu. Cả hai đều tệ, nên hai danh sách phải khớp nhau.
-const MUC = [
-  { duong: '/noi-bo',             ten: { vi: 'Tổng quan',  en: 'Overview' },    vai: VAI_CRM },
-  { duong: '/noi-bo/noi-dung',    ten: { vi: 'Nội dung',   en: 'Content' },     vai: ['chu_so_huu', 'quan_ly', 'marketing'] },
-  { duong: '/noi-bo/dat-ban',     ten: { vi: 'Đặt bàn',    en: 'Bookings' },    vai: VAI_CRM },
-  { duong: '/noi-bo/tuyen-dung',  ten: { vi: 'Tuyển dụng', en: 'Hiring' },      vai: ['chu_so_huu', 'quan_ly'] },
-  { duong: '/noi-bo/zalo',        ten: { vi: 'Zalo',       en: 'Zalo' },        vai: ['chu_so_huu', 'quan_ly', 'marketing'] },
-  { duong: '/noi-bo/messenger',   ten: { vi: 'Messenger',  en: 'Messenger' },   vai: ['chu_so_huu', 'quan_ly'] },
-  { duong: '/noi-bo/kho',         ten: { vi: 'Kho',        en: 'Inventory' },   vai: ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan'] },
-  { duong: '/noi-bo/cai-dat',     ten: { vi: 'Cài đặt',    en: 'Settings' },    vai: ['chu_so_huu', 'quan_ly'] },
-];
-const muc = MUC.filter(m => !m.vai || (nhanSu && m.vai.includes(nhanSu.vai_tro)));
+const tren = thanhTrenNoiBo(nhanSu?.vai_tro);
+const day = thanhDayNoiBo(nhanSu?.vai_tro);
 ---
 <!doctype html>
 <html lang={nn}>
@@ -100,13 +96,24 @@ const muc = MUC.filter(m => !m.vai || (nhanSu && m.vai.includes(nhanSu.vai_tro))
       </div>
     </header>
 
-    {nhanSu && muc.length > 1 && (
+    {nhanSu && tren.length > 1 && (
       <nav class="nb-dieu-huong" aria-label={t.khuVuc}>
-        <div class="nb-khung nb-dieu-huong-hang">
-          {muc.map(m => (
-            <a href={m.duong} aria-current={duong === m.duong || (m.duong !== '/noi-bo' && duong.startsWith(m.duong + '/')) ? 'page' : undefined}>{m.ten[nn]}</a>
+        <div class="nb-dieu-huong-hang">
+          {tren.map(m => (
+            <a href={m.link} aria-current={dangONoiBo(m, duong) ? 'page' : undefined}><BieuTuong ten={m.bieuTuong} co={18} />{m.ngan[nn]}</a>
           ))}
         </div>
+      </nav>
+    )}
+
+    {nhanSu && day.length > 1 && (
+      <nav class="nb-day" aria-label={t.menuChinh}>
+        {day.map(m => (
+          <a href={m.link} aria-current={dangONoiBo(m, duong) ? 'page' : undefined}>
+            <BieuTuong ten={m.bieuTuong} co={22} />
+            <span>{m.ngan[nn]}</span>
+          </a>
+        ))}
       </nav>
     )}
 
