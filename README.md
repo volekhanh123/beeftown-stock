@@ -162,7 +162,7 @@ Những chỗ dễ làm hỏng nếu không biết trước:
 
 ### Việc kỹ thuật — theo đúng thứ tự này
 
-- [ ] Tạo project Supabase, chạy `crm/supabase/migrations/` **theo thứ tự số**
+- [ ] Tạo project Supabase, chạy `crm/supabase/migrations/` **theo thứ tự số** — rồi đối chiếu bằng `npm run doi-chieu` (mục [Chạy migration lên production](#chạy-migration-lên-production))
 - [ ] Tạo tài khoản đầu tiên trong Supabase Studio, rồi thêm một dòng `nhan_su` có `auth_uid` trỏ tới nó và `vai_tro = 'chu_so_huu'`.
       *Không có bước thứ hai thì đăng nhập được vào Supabase nhưng `/noi-bo` vẫn từ chối — có chủ ý: Supabase Auth trả lời "ai", bảng `nhan_su` trả lời "có phải nhân viên không".*
 - [ ] Thêm một dòng `chi_nhanh` có `ma` khớp biến `PUBLIC_CHI_NHANH`
@@ -178,6 +178,38 @@ Những chỗ dễ làm hỏng nếu không biết trước:
 
 - [ ] **Nhập bàn thật vào `ban_an` trước khi mở đặt bàn.** Công tắc `form_dat_ban_dang_mo` được seed sẵn `true` ở migration `0010` (để tám kiểm tra cũ không hỏng), nhưng bảng `ban_an` thì trống trên database vừa cài. Website có chốt chặn thứ hai — nó hỏi database xem còn khung giờ nào trống trong 14 ngày tới, không có thì hiện "chưa mở đặt bàn" thay vì dựng một cái form chỉ để báo *"hết bàn"*. Nhưng chốt chặn đó chỉ giấu triệu chứng; bàn vẫn phải nhập.
 - [ ] **Email báo về khi có hồ sơ hoặc yêu cầu mới — chưa làm, và đây là việc quan trọng nhất còn lại.** Rủi ro lớn nhất của cả hệ thống không phải nó hỏng, mà là hồ sơ và yêu cầu nằm im trong database không ai mở. Cho tới khi có email, **`/noi-bo` phải được mở ra xem hằng ngày** — đó là điều kiện để bật bất kỳ form nào.
+
+---
+
+## Chạy migration lên production
+
+**Vì sao có mục này:** ngày 04/10/2026 phát hiện project **Beeftown** thiếu hai hàm có trong migration đã gộp — `bao_dong_bat_dau_luot` (`0060`) và `kho_may_can_nhat_ky` (`0061`). Hai file đó được chạy thành nhiều mảnh và một mảnh lặng lẽ không chạy; không gì báo lỗi, báo động hằng ngày cứ chết ở hàm thiếu mà không ai biết. Nghi là do công cụ `apply_migration` / `execute_sql` của Supabase MCP: câu lệnh có `delete` phải chờ người bấm xác nhận, phiên không có chỗ bấm thì hết 60 giây và **không chạy gì**, nhưng phiên vẫn đi tiếp.
+
+Migration chỉ chạy lên production **sau khi PR đã gộp** vào main (`CLAUDE.md`, mục 8). Mỗi lần:
+
+1. `git checkout main && git pull` — máy phải có đúng migration vừa gộp.
+2. Chạy từng file mới **theo thứ tự số**, **nguyên cả file**, ở Supabase → project **Beeftown** → **SQL Editor**. File nào `crm/README.md` (mục "Thứ tự chạy có ràng buộc") ghi "chạy RIÊNG" thì chạy một mình. Đừng nhờ phiên Claude chạy migration qua Supabase MCP khi không có người ngồi bấm xác nhận.
+3. **Đối chiếu — bắt buộc, sau MỖI lần chạy migration lên production**, kể cả khi SQL Editor báo "Success". Trên máy tính (Windows PowerShell), trong thư mục repo:
+
+   ```powershell
+   cd crm
+   npm ci
+   $env:DOI_CHIEU_DB_URL='<chuỗi Session pooler của project Beeftown>'
+   npm run doi-chieu
+   ```
+
+   Chuỗi đặt trong nháy **đơn** `'…'`: trong nháy kép, PowerShell biến `$…` của mật khẩu thành chữ khác. (Bash: `DOI_CHIEU_DB_URL='…' npm run doi-chieu`. `npm ci` chỉ cần lần đầu và khi `package-lock.json` đổi.)
+   Chuỗi kết nối lấy như bước 1 của mục [Sao lưu](#việc-của-khánh-một-lần-khoảng-10-phút): Supabase → **Connect** → **Session pooler**, thay `[YOUR-PASSWORD]`. Chỉ đặt trong cửa sổ dòng lệnh đó — **không ghi vào file nào trong repo**, không dán vào issue hay chat. Script chỉ đọc (giao dịch `read only`), không hiện mật khẩu, mất khoảng 10–20 giây.
+
+   **Đạt** khi dòng cuối là `KHỚP — … đều có và đúng trên database`. Nếu không:
+   - **`THIẾU` / `KHÁC`** — một phần migration chưa chạy, hoặc database đang chạy bản cũ. Dòng báo ghi file migration chứa định nghĩa cuối cùng: chạy lại **đúng câu tạo đối tượng đó** ở SQL Editor (`create or replace function …` chạy lại an toàn; đừng chạy lại cả file có `insert` hay `alter table … add column`), rồi `npm run doi-chieu` lại đến khi khớp.
+   - **`THỪA`** — database có thứ migration không tạo: ai đó tạo tay, hoặc một câu `drop` chưa chạy (dòng báo ghi file có câu drop). Hỏi lại trước khi xoá.
+   - **`Không đối chiếu được`** — sai chuỗi kết nối, mất mạng, hết giờ. Chưa so được gì — **không** có nghĩa là khớp.
+   - Production cố ý chưa chạy migration mới nhất: `npm run doi-chieu -- --den 0061` chỉ so đến số đó.
+4. Rồi mới deploy web, nếu PR đổi cả web — theo thứ tự ghi ở mục "Migration" của PR.
+
+**So những gì:** mọi hàm trong schema `public` (có mặt; thân hàm — bỏ chú thích và khoảng trắng, vì production lưu thân hàm đã bỏ chú thích —; kiểu trả về, `security definer`, `search_path`), bảng và view (RLS bật hay tắt), cột, ràng buộc, chỉ mục, trigger, policy RLS, quyền gọi / đọc ghi của `anon` và `authenticated`, enum. "Đúng" nghĩa là giống database dựng từ mọi file trong `crm/supabase/migrations/` — y như bộ kiểm thử dựng. **Không so:** dữ liệu migration chèn sẵn, kho file Storage (kiểm tay theo danh sách cuối `0014_storage_supabase.sql`), quyền của `service_role`.
+Kiểm thử của chính công cụ: `crm/test/test-doi-chieu-production.mjs` (chạy trong `npm test`, trên PGlite).
 
 ---
 

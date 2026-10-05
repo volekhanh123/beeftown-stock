@@ -28,9 +28,11 @@
     "test:zalo-web": "node test/test-zalo-web.mjs",
     "test:messenger": "node test/test-messenger.mjs",
     "test:messenger-web": "node test/test-messenger-web.mjs",
-    "thu-tai": "node test/thu-tai.mjs"
+    "thu-tai": "node test/thu-tai.mjs",
+    "doi-chieu": "node test/doi-chieu-production.mjs"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.2.17"
+    "@electric-sql/pglite": "^0.2.17",
+    "postgres": "^3.4.9"
   }
 }
