@@ -105,6 +105,21 @@ Hệ quả cụ thể: một người vai `marketing` đăng nhập sẽ soạn 
 
 **Supabase bận không phải là hết phiên** (`src/lib/qua-tai.ts`). Đăng nhập, gia hạn phiên và mở máy tính bảng bằng PIN đi qua một cửa của Supabase Auth có hạn mức chung cho cả quán (Worker gọi từ Cloudflare nên cả quán là một IP). Bị từ chối vì bận (429), vì Supabase trục trặc (5xx) hay mất mạng thì token vẫn còn nguyên: `layPhien` trả `QUA_TAI` thay vì `null`, middleware trả trang 503 "hệ thống đang bận" (GET tự tải lại sau 5–10 giây, ngẫu nhiên để các máy không thử lại cùng lúc; POST nói rõ thao tác CHƯA được ghi), cookie giữ nguyên. Chỉ khi Supabase TỪ CHỐI token (hết hạn, bị thu hồi) mới đăng xuất. Đăng nhập bị 429 báo "nhiều người đăng nhập cùng lúc — không phải do sai mật khẩu". Mỗi lần gặp lỗi tạm thời ghi một dòng `[qua-tai]` vào nhật ký Worker (không token, không email). Nâng hạn mức và các việc hạ tầng khác: README gốc, mục "Hạ tầng cho 100 người dùng cùng lúc".
 
+### Menu và trang Tất cả chức năng
+
+Mọi màn của phần nhà hàng nằm trong **một** danh sách: `src/lib/dieu-huong-noi-bo.ts` (tên, tên ngắn,
+vai được thấy, biểu tượng, nhóm). Thanh menu của `NoiBo.astro` và menu người dùng bên kho đều đọc từ đó —
+thêm một màn mới là thêm một dòng ở đây, vai khớp với RLS / dòng chặn đầu trang.
+
+- **Máy tính / tablet**: thanh trên có mọi mục, xuống dòng khi hẹp (không cuộn ngang).
+- **Điện thoại (≤ 640px)**: thanh đáy tối đa 5 nút có biểu tượng. Vai có quá 5 mục, hoặc vào được kho,
+  thấy 4 mục hay dùng + **Thêm** → `/noi-bo/chuc-nang`: mọi màn nhà hàng và từng màn kho theo nhóm, có ô
+  tìm (`src/lib/ban-do-chuc-nang.ts`, `src/components/BanDoChucNang.astro`). Vai chỉ-kho mở trang đó thì
+  chuyển sang trang Khác của kho.
+
+`crm/test/test-noi-bo-dieu-huong.mjs` giữ: thanh đáy ≤ 5 nút, không mục nào nằm ngoài cả thanh đáy lẫn
+trang Tất cả chức năng, vai của từng mục đúng như trang đó cho vào, ô tìm đúng dấu tiếng Việt.
+
 ### Tiếng Anh ở giao diện nội bộ
 
 Mọi trang nội bộ có nút **English / Tiếng Việt** ở đầu trang. Lựa chọn là của **trình duyệt** (cookie `nb_ngon_ngu`, sống dưới `/noi-bo`), không nằm trong đường dẫn như trang công khai: một link `/noi-bo/tin-tuyen-dung/<id>` phải mở đúng tin đó dù người mở đọc tiếng gì. Chưa chọn thì là tiếng Việt.

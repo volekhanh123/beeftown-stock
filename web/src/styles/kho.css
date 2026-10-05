@@ -157,11 +157,14 @@
     position: sticky; bottom: 0; background: var(--kem); padding: .6rem 0; margin: 0;
     box-shadow: 0 -6px 12px -8px rgba(30, 22, 14, .25); z-index: 5;
   }
-  body:has(.nb-dieu-huong) .kho-thanh-nut.dinh { bottom: 4.6rem; }
   body:has(.kho-day) .kho-thanh-nut.dinh {
     bottom: calc(var(--kho-day-cao, 4.25rem) + env(safe-area-inset-bottom));
     background: var(--kho-nen, var(--kem));
   }
+}
+/* Khung NoiBo: thanh đáy (.nb-day) chỉ hiện ở điện thoại. */
+@media (max-width: 640px) {
+  body:has(.nb-day) .kho-thanh-nut.dinh { bottom: calc(4rem + env(safe-area-inset-bottom)); }
 }
 
 @media (max-width: 640px) {

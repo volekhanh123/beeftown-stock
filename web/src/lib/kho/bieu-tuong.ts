@@ -40,6 +40,10 @@ export const BIEU_TUONG = {
   // GĐ8a: đặt hàng nhà cung cấp — xe đẩy hàng.
   dat_hang:   '<path d="M3 4h2l2.4 10.2a2 2 0 0 0 2 1.6h7.7a2 2 0 0 0 1.9-1.4L21 8H6"/><circle cx="10" cy="20" r="1.3"/><circle cx="17" cy="20" r="1.3"/>',
   in:         '<path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v7H7z"/>',
+  // Bản đồ chức năng (lib/dieu-huong-noi-bo.ts): Zalo / Messenger, ô tìm, nội dung website.
+  tin_nhan:   '<path d="M4 5h16v11H9l-5 4V5z"/><path d="M8 9h8M8 12h5"/>',
+  tim:        '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+  trang_web:  '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M6.5 6.5h.01M9 6.5h.01"/><path d="M7 13h10M7 16h6"/>',
 } as const;
 
 export type TenBieuTuong = keyof typeof BIEU_TUONG;

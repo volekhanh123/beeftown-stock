@@ -5,9 +5,13 @@
  *   · Thanh trên: logo · chi nhánh · "?" hướng dẫn · chuông có số chưa đọc ·
  *     menu người dùng (chứa "Đăng xuất" — không để nút đăng xuất trần ngay dưới
  *     ngón tay ướt của thủ kho nữa).
- *   · Máy tính (≥1024px): cột trái gồm các ô biểu tượng có số đỏ, dưới là
- *     "Thao tác nhanh". Nội dung bên phải.
+ *   · Máy tính (≥1024px): cột trái — ô "Tìm chức năng", rồi các mục theo nhóm
+ *     (NHOM_KHO: Hằng ngày, Tồn kho, Mua và nhận hàng…) có số đỏ, dưới là
+ *     "Thao tác nhanh". Nội dung bên phải. Bản cũ là 23 ô liền một dải: laptop
+ *     1366×768 chỉ thấy 14 ô, Công nợ / Báo cáo / Thiết lập nằm dưới mép màn hình.
  *   · Điện thoại / tablet (<1024px): thanh 5 nút dính đáy, theo từng vai.
+ *   · Điện thoại (≤640px): "Đổi chi nhánh" của chủ nằm trong menu người dùng — đặt
+ *     trên thanh trên thì đè lên chữ "Kho" và tên chi nhánh đang xem.
  *
  * Tách riêng khỏi layouts/NoiBo.astro có chủ đích: file đó dùng chung với
  * phần website/CRM (một phiên làm việc khác đang sửa song song). Kho có khung
@@ -30,8 +34,9 @@ import '../styles/kho-khung.css';
 import BieuTuong from '../components/kho/BieuTuong.astro';
 import type { TrangKho } from '../lib/kho/trang.ts';
 import {
-  mucCuaVai, thanhDayCuaVai, thaoTacCuaVai, soDo, dangO, nhanSo, MUC_CRM,
+  nhomCuaVai, thanhDayCuaVai, thaoTacCuaVai, soDo, dangO, nhanSo, MUC_CRM,
 } from '../lib/kho/dieu-huong.ts';
+import { GIOI_HAN_TIM } from '../lib/ban-do-chuc-nang.ts';
 import { TEN_VAI_KHO_NB } from '../lib/kho/chung.ts';
 import { laVaiMay, DUONG_MAY } from '../lib/kho/may-chung.ts';
 import { dichNB, nhanNB, nnCua, linkDoiNgonNgu, type HaiThuTieng } from '../lib/ngon-ngu-noi-bo.ts';
@@ -72,6 +77,8 @@ const t = dichNB(nn, {
   goToi: { vi: 'Gỡ tôi khỏi máy này', en: 'Remove me from this tablet' },
   dangXuat: { vi: 'Đăng xuất', en: 'Log out' },
   cacMuc: { vi: 'Các mục kho', en: 'Inventory sections' },
+  timChucNang: { vi: 'Tìm chức năng', en: 'Find a feature' },
+  timGoiY: { vi: 'Tìm chức năng…', en: 'Find a feature…' },
   thaoTacNhanh: { vi: 'Thao tác nhanh', en: 'Quick actions' },
   menuChinh: { vi: 'Menu chính', en: 'Main menu' },
   soViec: { vi: (n: number) => `${n} việc`, en: (n: number) => `${n} to do` },
@@ -91,7 +98,7 @@ const laMay = laVaiMay(vai);
 const coNguoiDung = !!k.may?.nhanSuId;
 const cheDoMay = laMay || coNguoiDung;
 
-const cot = mucCuaVai(vai);
+const cot = nhomCuaVai(vai);
 const day = thanhDayCuaVai(vai);
 const nhanh = thaoTacCuaVai(vai);
 const crm = cheDoMay ? [] : MUC_CRM.filter(m => m.vai.includes(vai));
@@ -160,6 +167,12 @@ const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.
             </summary>
             <div class="kho-nguoi-menu">
               <p><strong>{k.nhanSu.ho_ten}</strong><br />{tenVai}{k.chiNhanh ? ` · ${k.chiNhanh.ten}` : ''}</p>
+              {doiChiNhanh.length > 0 && (
+                <div class="kho-chi-hep">
+                  <p class="kho-nguoi-nhom">{t.doiChiNhanh}</p>
+                  {doiChiNhanh.map(c => <a href={`${duong}?cn=${encodeURIComponent(c.ma)}`}><BieuTuong ten="chuyen" co={18} />{c.ten}</a>)}
+                </div>
+              )}
               {crm.length > 0 && (
                 <>
                   <p class="kho-nguoi-nhom">{t.phanKhac}</p>
@@ -200,21 +213,34 @@ const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.
 
     <div class="kho-khung">
       <nav class="kho-ben" aria-label={t.cacMuc}>
-        <ul class="kho-o-luoi">
-          {cot.map(m => {
-            const so = soDo(m, k.viec);
-            const dang = dangO(m, duong, timKiem);
-            return (
-              <li>
-                <a href={m.link} class="kho-o" aria-current={dang ? 'page' : undefined}>
-                  <BieuTuong ten={m.bieuTuong} co={24} />
-                  <span>{m.ten[nn]}</span>
-                  {so > 0 && <b class="kho-so-do" aria-label={t.soViec(so)}>{nhanSo(so)}</b>}
-                </a>
-              </li>
-            );
-          })}
-        </ul>
+        {cot.length > 0 && (
+          <form method="get" action="/noi-bo/kho/khac" class="kho-ben-tim" role="search">
+            <label for="kho-ben-tim" class="kho-an">{t.timChucNang}</label>
+            <input id="kho-ben-tim" type="search" name="tim" maxlength={GIOI_HAN_TIM}
+                   placeholder={t.timGoiY} autocomplete="off" enterkeyhint="search" />
+            <button type="submit" title={t.timChucNang}><BieuTuong ten="tim" co={18} /><span class="kho-an">{t.timChucNang}</span></button>
+          </form>
+        )}
+        {cot.map(n => (
+          <>
+            <p class="kho-ben-nhom" id={`kho-ben-${n.ma}`}>{n.ten[nn]}</p>
+            <ul class="kho-ben-ds" aria-labelledby={`kho-ben-${n.ma}`}>
+              {n.muc.map(m => {
+                const so = soDo(m, k.viec);
+                const dang = dangO(m, duong, timKiem);
+                return (
+                  <li>
+                    <a href={m.link} class="kho-ben-muc" aria-current={dang ? 'page' : undefined}>
+                      <BieuTuong ten={m.bieuTuong} co={20} />
+                      <span>{m.ten[nn]}</span>
+                      {so > 0 && <b class="kho-so-do" aria-label={t.soViec(so)}>{nhanSo(so)}</b>}
+                    </a>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        ))}
         {nhanh.length > 0 && (
           <div class="kho-nhanh-ben">
             <p>{t.thaoTacNhanh}</p>

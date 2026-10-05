@@ -100,6 +100,13 @@
 }
 .kho-cn-chon > div a { display: block; padding: .7rem .8rem; border-radius: 8px; text-decoration: none; font-weight: 600; }
 .kho-cn-chon > div a:hover { background: var(--kem-sau); }
+/* Điện thoại: thanh trên không đủ chỗ cho nút đổi chi nhánh — nó đè lên chữ "Kho" và
+   tên chi nhánh. Danh sách chi nhánh nằm trong menu người dùng (.kho-chi-hep). */
+.kho-chi-hep { display: none; }
+@media (max-width: 640px) {
+  .kho-cn-chon { display: none; }
+  .kho-chi-hep { display: block; }
+}
 
 /* Menu người dùng */
 .kho-nguoi { position: relative; }
@@ -150,19 +157,43 @@
   .kho-chinh.rong { width: 100%; max-width: 1240px; }
 }
 
-/* Cột trái: lưới ô biểu tượng */
-.kho-o-luoi { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
-.kho-o {
-  position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35rem;
-  min-height: 5.25rem; padding: .7rem .4rem; text-align: center; text-decoration: none;
-  background: var(--kho-the); border: 1px solid var(--kho-vach); border-radius: var(--kho-bo);
-  color: var(--than); font-size: .78rem; font-weight: 600; line-height: 1.2;
+/* Cột trái: ô tìm, rồi danh sách theo nhóm (NHOM_KHO). Một cột, chữ thẳng hàng
+   trái — dò tên nhanh hơn lưới ô hai cột chữ căn giữa. Mỗi dòng 44px: máy ≥1024px
+   có cả iPad xoay ngang, vẫn bấm bằng ngón tay. */
+.kho-ben-tim {
+  display: flex; align-items: stretch; margin: 0 0 .9rem;
+  background: var(--kho-the); border: 1px solid var(--kho-vach-dam); border-radius: 10px;
 }
-.kho-o .kho-bt { color: var(--do); }
-.kho-o:hover { border-color: var(--kho-vach-dam); background: #FFFDF9; }
-.kho-o[aria-current='page'] { background: var(--than); color: var(--kem); border-color: var(--than); }
-.kho-o[aria-current='page'] .kho-bt { color: var(--cuc-vang); }
-.kho-o .kho-so-do { position: absolute; top: .35rem; right: .35rem; }
+.kho-ben-tim:focus-within { outline: 3px solid var(--cuc-vang); outline-offset: 1px; border-color: var(--than); }
+.kho-ben-tim input {
+  flex: 1; min-width: 0; min-height: 44px; padding: 0 .75rem; border: 0; background: none;
+  font: inherit; font-size: 16px; color: var(--than); outline: none;
+}
+.kho-ben-tim button {
+  flex: 0 0 44px; display: inline-flex; align-items: center; justify-content: center;
+  border: 0; background: none; color: var(--do); cursor: pointer; border-radius: 0 10px 10px 0;
+}
+.kho-ben-tim button:hover { background: var(--kem-sau); }
+.kho-ben-nhom {
+  margin: 1rem .6rem .3rem; font-size: .7rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--muc-nhat);
+}
+.kho-ben-tim + .kho-ben-nhom { margin-top: .25rem; }
+.kho-ben-ds { list-style: none; margin: 0; padding: 0; }
+.kho-ben-muc {
+  display: flex; align-items: center; gap: .65rem; min-height: 44px; padding: 0 .6rem;
+  border-radius: 10px; text-decoration: none; color: var(--than); font-size: .9rem; font-weight: 600; line-height: 1.2;
+}
+.kho-ben-muc .kho-bt { color: var(--do); }
+.kho-ben-muc span { flex: 1; min-width: 0; }
+.kho-ben-muc:hover { background: var(--kem-sau); }
+.kho-ben-muc[aria-current='page'] { background: var(--than); color: var(--kem); }
+.kho-ben-muc[aria-current='page'] .kho-bt { color: var(--cuc-vang); }
+/* Chuột (không phải ngón tay): dòng 36px để laptop 1366×768 thấy gần hết các nhóm. */
+@media (pointer: fine) {
+  .kho-ben-muc { min-height: 36px; }
+  .kho-ben-nhom { margin-top: .8rem; }
+}
 
 .kho-nhanh-ben { margin-top: 1.25rem; }
 .kho-nhanh-ben p {
@@ -299,9 +330,7 @@
 }
 .kho-the-chon a[aria-current='page'] { background: var(--than); color: var(--kem); border-color: var(--than); }
 
-/* Trang "Khác": lưới 3 cột trên điện thoại */
-.kho-khac-luoi { grid-template-columns: repeat(3, 1fr); margin-bottom: 1.25rem; }
-@media (min-width: 640px) { .kho-khac-luoi { grid-template-columns: repeat(4, 1fr); } }
+/* Hàng nút thao tác (trang Quét…) */
 .kho-nhanh-luoi { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); margin-bottom: 1.25rem; }
 .kho-nhanh-luoi .nb-nut { justify-content: flex-start; gap: .6rem; }
 .kho-nhanh-luoi .nb-nut .kho-bt, .kho-thanh-nut .nb-nut .kho-bt { margin-right: .1rem; }

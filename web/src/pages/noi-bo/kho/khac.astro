@@ -1,70 +1,55 @@
 ---
 /**
- * KHO — KHÁC
+ * KHO — KHÁC (TẤT CẢ CHỨC NĂNG)
  *
- * Nút cuối thanh đáy trên điện thoại: mọi mục kho mà vai này được dùng, dạng
- * lưới ô lớn (như iPOS), kèm phần khác của nhà hàng (đặt bàn, website...) cho
- * quản lý / chủ, và nút đăng xuất.
+ * Nút cuối thanh đáy trên điện thoại, và đích của ô "Tìm chức năng" ở cột trái
+ * máy tính: ô tìm, thao tác nhanh, mọi mục kho vai này dùng được theo nhóm
+ * (NHOM_KHO), phần khác của nhà hàng cho quản lý / chủ, rồi nút ra khỏi phiên.
+ * Dữ liệu: lib/ban-do-chuc-nang.ts; vẽ: components/BanDoChucNang.astro.
+ *
+ * Máy tính bảng dùng chung (có người mở khóa bằng PIN): như menu người dùng của
+ * layouts/Kho.astro — không phần nhà hàng, "Khóa máy" thay cho "Đăng xuất" (đăng
+ * xuất ở đây là xóa phiên của cả máy).
  */
 import Kho from '../../../layouts/Kho.astro';
 import BieuTuong from '../../../components/kho/BieuTuong.astro';
+import BanDoChucNang from '../../../components/BanDoChucNang.astro';
 import { moTrangKho } from '../../../lib/kho/trang.ts';
-import { mucCuaVai, thaoTacCuaVai, soDo, nhanSo, MUC_CRM } from '../../../lib/kho/dieu-huong.ts';
+import {
+  banDoChucNang, thaoTacNhanhChucNang, timChucNang, lamSachTimChucNang,
+} from '../../../lib/ban-do-chuc-nang.ts';
+import { DUONG_MAY } from '../../../lib/kho/may-chung.ts';
 import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 const vai = k.nhanSu.vai_tro;
-const muc = mucCuaVai(vai).filter(m => m.ma !== 'trang_chu');
-const nhanh = thaoTacCuaVai(vai);
-const crm = MUC_CRM.filter(m => m.vai.includes(vai));
 const nn = k.nn;
+const cheDoMay = !!k.may;
+const tim = lamSachTimChucNang(Astro.url.searchParams.get('tim'));
+const nhom = banDoChucNang(vai, 'kho', { cheDoMay });
+const nhanh = thaoTacNhanhChucNang(vai);
+const ketQua = timChucNang(nhom, nhanh, tim);
 const t = dichNB(nn, {
   tieuDe: { vi: 'Khác', en: 'More' },
-  tatCa: { vi: 'Tất cả mục', en: 'All sections' },
-  soViec: { vi: (n: number) => `${n} việc`, en: (n: number) => `${n} to do` },
-  thaoTacNhanh: { vi: 'Thao tác nhanh', en: 'Quick actions' },
-  phanKhac: { vi: 'Phần khác của nhà hàng', en: 'Other restaurant areas' },
+  tatCa: { vi: 'Tất cả chức năng', en: 'All features' },
   dangXuat: { vi: 'Đăng xuất', en: 'Log out' },
+  khoaMay: { vi: 'Khóa máy', en: 'Lock tablet' },
 });
 ---
 <Kho k={k} huongDan="menu" tieuDe={t.tieuDe}>
   <h1>{t.tatCa}</h1>
 
-  <ul class="kho-o-luoi kho-khac-luoi">
-    {muc.map(m => {
-      const so = soDo(m, k.viec);
-      return (
-        <li>
-          <a href={m.link} class="kho-o">
-            <BieuTuong ten={m.bieuTuong} co={26} />
-            <span>{m.ten[nn]}</span>
-            {so > 0 && <b class="kho-so-do" aria-label={t.soViec(so)}>{nhanSo(so)}</b>}
-          </a>
-        </li>
-      );
-    })}
-  </ul>
+  <BanDoChucNang nn={nn} hanhDong="/noi-bo/kho/khac" nhom={nhom} nhanh={nhanh} tim={tim} ketQua={ketQua} viec={k.viec} />
 
-  {nhanh.length > 0 && (
-    <>
-      <h2>{t.thaoTacNhanh}</h2>
-      <div class="kho-nhanh-luoi">
-        {nhanh.map(x => <a class="nb-nut phu" href={x.link}><BieuTuong ten={x.bieuTuong} co={20} />{x.ten[nn]}</a>)}
-      </div>
-    </>
+  {cheDoMay ? (
+    <form method="POST" action={DUONG_MAY} class="kho-thanh-nut">
+      <input type="hidden" name="viec" value="khoa" />
+      <button type="submit" class="nb-nut phu"><BieuTuong ten="dang_xuat" co={20} />{t.khoaMay}</button>
+    </form>
+  ) : (
+    <form method="POST" action="/noi-bo/dang-xuat" class="kho-thanh-nut">
+      <button type="submit" class="nb-nut phu kho-nut-xoa"><BieuTuong ten="dang_xuat" co={20} />{t.dangXuat}</button>
+    </form>
   )}
-
-  {crm.length > 0 && (
-    <>
-      <h2>{t.phanKhac}</h2>
-      <div class="kho-nhanh-luoi">
-        {crm.map(m => <a class="nb-nut phu" href={m.link}><BieuTuong ten={m.bieuTuong} co={20} />{m.ten[nn]}</a>)}
-      </div>
-    </>
-  )}
-
-  <form method="POST" action="/noi-bo/dang-xuat" class="kho-thanh-nut">
-    <button type="submit" class="nb-nut phu kho-nut-xoa"><BieuTuong ten="dang_xuat" co={20} />{t.dangXuat}</button>
-  </form>
 </Kho>
