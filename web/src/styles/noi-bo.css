@@ -24,6 +24,13 @@
 
 .nb-khung { width: min(880px, 92%); margin-inline: auto; }
 
+/* Chữ chỉ cho trình đọc màn hình (nhãn ô tìm, tên nút chỉ có biểu tượng). Khung kho
+   cũng nạp file này — .kho-an là tên cũ của cùng lớp. */
+.nb-an, .kho-an {
+  position: absolute !important; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap;
+}
+
 /* --- Đầu trang ------------------------------------------------------------ */
 .nb-dau {
   background: var(--than);
@@ -94,11 +101,15 @@
   }
   .nb-day a span { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .nb-day a[aria-current='page'] { color: var(--do); border-top-color: var(--do); }
-  /* Đầu trang hẹp: tên người dùng nhường chỗ cho nút đổi tiếng và Đăng xuất;
-     chữ "nội bộ" xuống dưới BEEFTOWN thay vì vỡ thành hai dòng bên cạnh. */
-  .nb-ten { display: none; }
-  .nb-hieu { flex-direction: column; align-items: flex-start; gap: .1rem; line-height: 1.1; }
+  /* Đầu trang hẹp: một hàng không đủ chỗ cho tên người dùng, nút đổi tiếng và Đăng
+     xuất. Tên + vai xuống hàng thứ hai (cả quán dùng chung điện thoại — phải luôn thấy
+     đang thao tác bằng tài khoản ai); chữ "nội bộ" xuống dưới BEEFTOWN. */
+  .nb-dau-hang { flex-wrap: wrap; gap: .4rem .5rem; }
+  .nb-dau-phai, .nb-ai { display: contents; }
+  .nb-hieu { flex-direction: column; align-items: flex-start; gap: .1rem; line-height: 1.1; margin-right: auto; }
   .nb-nut-nho { white-space: nowrap; }
+  .nb-ten { order: 9; flex-basis: 100%; text-align: left; font-size: .75rem; }
+  .nb-ten em { display: inline; margin-left: .4rem; }
 }
 
 /* --- Thân trang ----------------------------------------------------------- */
@@ -218,10 +229,6 @@
 /* --- Bản đồ chức năng (components/BanDoChucNang.astro) ---------------------
    Trang Tất cả chức năng (khung NoiBo) và trang Khác của kho (khung Kho) — hai
    khung đều nạp file này, nên lớp bd-* không dựa vào biến của kho. */
-.bd-an {
-  position: absolute !important; width: 1px; height: 1px; overflow: hidden;
-  clip: rect(0 0 0 0); white-space: nowrap;
-}
 .bd-tim { display: flex; gap: .5rem; align-items: stretch; margin: 0 0 1.25rem; }
 .bd-tim input {
   flex: 1; min-width: 0; font: inherit; font-size: 16px; min-height: 48px;

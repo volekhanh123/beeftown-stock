@@ -118,9 +118,11 @@ export function mucNoiBoCuaVai(vai: string | null | undefined): MucNoiBo[] {
 
 /**
  * Có cần trang Tất cả chức năng không: khi menu không hiện hết được những gì vai này
- * làm được — quá 5 mục, hoặc vai vào được kho (trang đó liệt kê từng màn kho).
+ * làm được — quá 5 mục, hoặc vai vào được kho (trang đó liệt kê từng màn kho). Chỉ bốn
+ * vai CRM: vai chỉ-kho dùng trang Khác của kho, mở /noi-bo/chuc-nang cũng bị chuyển sang đó.
  */
 export function canTrangTatCa(vai: string | null | undefined): boolean {
+  if (!vai || !MUC_THEM.vai.includes(vai)) return false;
   const ds = mucNoiBoCuaVai(vai);
   return ds.length > SO_NUT_DAY || ds.some(m => m.ma === 'kho');
 }

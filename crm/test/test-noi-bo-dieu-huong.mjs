@@ -76,7 +76,12 @@ await nhom('1 · HỒI QUY — TỪ KHO SANG PHẦN NHÀ HÀNG, MÁY DÙNG CHUNG
   const khac = doc('web/src/pages/noi-bo/kho/khac.astro');
   ok('Trang Khác ở máy dùng chung: "Khóa máy" gửi về màn máy, không "Đăng xuất"',
     /cheDoMay \? \(\s*<form method="POST" action=\{DUONG_MAY\}[\s\S]{0,160}name="viec" value="khoa"[\s\S]{0,200}\{t\.khoaMay\}[\s\S]*\) : \(\s*<form method="POST" action="\/noi-bo\/dang-xuat"/.test(khac)
-    && /const cheDoMay = !!k\.may/.test(khac));
+    && /const cheDoMay = laCheDoMay\(vai, k\.may\)/.test(khac));
+  ok('Trang Khác và khung kho hỏi cùng một hàm "chế độ máy" (laCheDoMay)',
+    /const cheDoMay = laCheDoMay\(vai, k\.may\)/.test(doc('web/src/layouts/Kho.astro')));
+  // may-chung.ts nạp lib/phien (cần Astro) — đọc mã nguồn của hàm.
+  ok('laCheDoMay: tài khoản máy, hoặc một người đã mở khóa bằng PIN',
+    /export function laCheDoMay\([^)]*\): boolean \{\s*return laVaiMay\(vai\) \|\| !!may\?\.nhanSuId;\s*\}/.test(doc('web/src/lib/kho/may-chung.ts')));
   ok('Trang Khác ở máy dùng chung: không phần nhà hàng',
     /banDoChucNang\(vai, 'kho', \{ cheDoMay \}\)/.test(khac));
   const { banDoChucNang } = await import('../../web/src/lib/ban-do-chuc-nang.ts');
@@ -116,6 +121,13 @@ await nhom('2 · THANH MENU: TỐI ĐA 5 NÚT, KHÔNG MỤC NÀO MẤT', async (
   ok('Marketing: đủ 5 mục, không cần "Thêm"', ma('marketing') === 'tong_quan,dat_ban,zalo,noi_dung,tin_tuyen_dung', ma('marketing'));
   ok('Thu ngân: Tổng quan · Đặt bàn · Tin tuyển dụng', ma('thu_ngan') === 'tong_quan,dat_ban,tin_tuyen_dung', ma('thu_ngan'));
   ok('Vai lạ / chưa đăng nhập: không mục nào, không lỗi', NB.thanhDayNoiBo('may_chung').length === 0 && NB.thanhDayNoiBo(undefined).length === 0);
+  // Vai chỉ-kho mở một trang khung NoiBo: chỉ một mục (Kho) → không hiện thanh nào, như bản cũ;
+  // không có "Tất cả chức năng" (trang đó chuyển họ sang trang Khác của kho).
+  for (const vai of VAI_KHO_DS) {
+    ok(`${vai}: khung NoiBo chỉ có mục Kho, không "Thêm"`,
+      NB.thanhTrenNoiBo(vai).map(m => m.ma).join() === 'kho' && NB.thanhDayNoiBo(vai).map(m => m.ma).join() === 'kho'
+      && !NB.canTrangTatCa(vai));
+  }
   ok('Chủ: thanh trên có "Tất cả chức năng" ở cuối', NB.thanhTrenNoiBo('chu_so_huu').at(-1) === MUC_THEM);
 
   ok('Tổng quan chỉ sáng ở đúng /noi-bo', dangONoiBo({ link: '/noi-bo' }, '/noi-bo') && dangONoiBo({ link: '/noi-bo' }, '/noi-bo/')
@@ -206,6 +218,21 @@ await nhom('4 · Ô TÌM — DẤU TIẾNG VIỆT, QUYỀN', async () => {
   const thu = [{ ma: 'x', ten: { vi: 'Thử', en: 'Test' }, muc: [{ ten: { vi: 'Đúng giờ', en: 'On time' }, link: '/a', bieuTuong: 'nha' }] }];
   ok('"dừng" không khớp "Đúng"; "dung" (không dấu) thì khớp; "đúng" khớp',
     timChucNang(thu, [], 'dừng').length === 0 && timChucNang(thu, [], 'dung').length === 1 && timChucNang(thu, [], 'đúng').length === 1);
+  ok('Khớp từ ĐẦU mỗi từ: "cong no" không ra "Nội dung website" (công bố, nội)',
+    !ten(tim('chu_so_huu', 'cong no')).includes('Nội dung website'), ten(tim('chu_so_huu', 'cong no')).join(' | '));
+  ok('Khớp từ đầu mỗi từ: "tin" không ra Cài đặt (set·tin·gs), có ra Tin Zalo và Tin tuyển dụng',
+    !ten(tim('chu_so_huu', 'tin')).includes('Cài đặt nhà hàng')
+    && ['Tin Zalo', 'Tin tuyển dụng'].every(x => ten(tim('chu_so_huu', 'tin')).includes(x)), ten(tim('chu_so_huu', 'tin')).join(' | '));
+  ok('Gõ một phần đầu từ vẫn ra: "write" ra Chuyển · Xuất · Hủy (write-off)',
+    ten(tim('chu_so_huu', 'write')).includes('Chuyển · Xuất · Hủy'));
+  for (const vai of ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan']) {
+    ok(`${vai}: ví dụ trong Hướng dẫn ("bao huy") ra màn hủy hàng`,
+      tim(vai, 'bao huy', 'kho').some(k => k.muc.link.startsWith('/noi-bo/kho/xuat')), ten(tim(vai, 'bao huy', 'kho')).join(' | '));
+  }
+  ok('Chữ gõ theo cụm trong từ khóa phải liền nhau: "tien tra" (đảo thứ tự) không ra Công nợ',
+    !ten(tim('chu_so_huu', 'tien tra')).includes('Công nợ'));
+  ok('Chữ nằm hết trong tên thì thứ tự nào cũng được: "hàng đặt" ra Đặt hàng',
+    ten(tim('chu_so_huu', 'hàng đặt')).includes('Đặt hàng'));
   ok('Mọi chữ phải khớp: "tra tien" ra Công nợ (từ khóa), "tra xyz" không ra gì',
     ten(tim('chu_so_huu', 'tra tien')).includes('Công nợ') && tim('chu_so_huu', 'tra xyz').length === 0);
   ok('Tìm bằng tiếng Anh: "payables" ra Công nợ', ten(tim('chu_so_huu', 'payables'))[0] === 'Công nợ');
@@ -215,6 +242,9 @@ await nhom('4 · Ô TÌM — DẤU TIẾNG VIỆT, QUYỀN', async () => {
     tim('chu_so_huu', 'cong no')[0]?.nhom.vi === 'Kho · Tiền và báo cáo', tim('chu_so_huu', 'cong no')[0]?.nhom.vi);
   ok('Một đường dẫn chỉ ra một lần (thao tác nhanh "Duyệt" trùng mục Duyệt)',
     tim('quan_ly', 'duyệt', 'kho').filter(k => k.muc.link === '/noi-bo/kho/duyet').length === 1);
+  ok('Một tên chỉ ra một lần: quản lý gõ "đặt hàng" thấy một dòng Đặt hàng (bỏ thao tác nhanh /dat-hang/moi)',
+    tim('quan_ly', 'đặt hàng', 'kho').filter(k => k.muc.ten.vi === 'Đặt hàng').length === 1
+    && tim('quan_ly', 'đặt hàng', 'kho')[0]?.muc.link === '/noi-bo/kho/dat-hang', tim('quan_ly', 'đặt hàng', 'kho').map(k => k.muc.link).join(' | '));
   ok('Thủ kho gõ "báo hủy" ra thao tác nhanh Báo hủy',
     tim('thu_kho', 'báo hủy', 'kho').some(k => k.muc.link === '/noi-bo/kho/xuat/moi?loai=huy' && k.nhom.vi === 'Thao tác nhanh'));
   // quyen: tìm chỉ trong những gì vai được thấy.
@@ -271,18 +301,23 @@ await nhom('6 · KHUNG: MỘT DANH SÁCH, KHÔNG CUỘN NGANG, KHÔNG JAVASCRIPT
   const khoiNav = css.slice(css.indexOf('/* --- Điều hướng'), css.indexOf('/* --- Thân trang'));
   ok('Thanh trên xuống dòng, không cuộn ngang', /\.nb-dieu-huong-hang \{[^}]*flex-wrap: wrap/.test(khoiNav) && !/overflow-x/.test(khoiNav));
   ok('Điện thoại: ẩn thanh trên, hiện thanh đáy', /@media \(max-width: 640px\) \{[\s\S]*\.nb-dieu-huong \{ display: none; \}[\s\S]*\.nb-day \{\s*position: fixed/.test(khoiNav));
+  ok('Điện thoại: tên + vai người đang đăng nhập vẫn hiện (hàng thứ hai của đầu trang)',
+    /\.nb-ten \{ order: 9; flex-basis: 100%/.test(khoiNav) && !/\.nb-ten \{ display: none/.test(css));
 
   const kho = doc('web/src/layouts/Kho.astro');
-  ok('Cột trái kho in theo nhóm (nhomCuaVai) và có ô tìm gửi về trang Khác',
-    /const cot = nhomCuaVai\(vai\)/.test(kho) && /<form method="get" action="\/noi-bo\/kho\/khac" class="kho-ben-tim" role="search">/.test(kho)
-    && /name="tim"/.test(kho));
+  ok('Cột trái kho in theo nhóm (nhomCuaVai)', /const cot = nhomCuaVai\(vai\)/.test(kho));
   ok('Điện thoại: đổi chi nhánh nằm trong menu người dùng (thanh trên đè lên chữ "Kho")',
     /class="kho-chi-hep"/.test(kho) && /@media \(max-width: 640px\) \{\s*\.kho-cn-chon \{ display: none; \}\s*\.kho-chi-hep \{ display: block; \}/.test(doc('web/src/styles/kho-khung.css')));
 
   const bd = doc('web/src/components/BanDoChucNang.astro');
-  ok('Ô tìm là form GET thường, không <script>', /<form method="get" action=\{hanhDong\}/.test(bd) && !/<script/i.test(bd));
+  const oTim = doc('web/src/components/OTimChucNang.astro');
+  ok('Ô tìm là form GET thường, không <script>',
+    /<form method="get" action=\{hanhDong\}/.test(oTim) && /name="tim"/.test(oTim) && ![oTim, bd].some(x => /<script/i.test(x)));
   ok('Ô tìm có nhãn cho trình đọc màn hình và giới hạn độ dài',
-    /<label for="bd-tim-o"/.test(bd) && /id="bd-tim-o"/.test(bd) && /maxlength=\{GIOI_HAN_TIM\}/.test(bd));
+    /<label for=\{id\} class="nb-an">/.test(oTim) && /<input id=\{id\}/.test(oTim) && /maxlength=\{GIOI_HAN_TIM\}/.test(oTim));
+  ok('Một ô tìm cho cả cột trái kho và trang Tất cả chức năng / Khác (OTimChucNang)',
+    /<OTimChucNang nn=\{nn\} hanhDong="\/noi-bo\/kho\/khac" kieu="ben"/.test(kho) && /<OTimChucNang /.test(bd)
+    && !/<form method="get"/.test(kho) && !/<form method="get"/.test(bd));
   ok('Trang Tất cả chức năng và trang Khác dùng chung một component',
     /<BanDoChucNang /.test(doc('web/src/pages/noi-bo/chuc-nang.astro')) && /<BanDoChucNang /.test(doc('web/src/pages/noi-bo/kho/khac.astro')));
 });

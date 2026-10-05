@@ -12,7 +12,11 @@
  *
  * Ô TÌM chạy trên máy chủ (GET ?tim=), không JavaScript — trang kho phải chạy đủ khi
  * tắt JS (test-kho-giao-dien mục 8). Tìm trong tên hai thứ tiếng và từ khóa của mục,
- * cộng thao tác nhanh của vai. Mọi chữ phải khớp (gõ "tra tien" ra Công nợ).
+ * cộng thao tác nhanh của vai. Mỗi chữ gõ vào khớp ĐẦU một từ, và một mục chỉ ra khi:
+ *   · mọi chữ nằm trong TÊN mục (thứ tự nào cũng được), hoặc
+ *   · các chữ đứng LIỀN NHAU, đúng thứ tự, trong tên hay từ khóa — như gõ một cụm:
+ *     "tra tien" ra Công nợ (từ khóa "trả tiền").
+ * Lỏng hơn thế thì "cong no" ra cả "Nội dung website" (từ khóa "công bố", tên "nội").
  *
  * Dấu tiếng Việt, theo TỪNG CHỮ gõ vào:
  *   · chữ không dấu so không dấu — "cong no" ra "Công nợ", thủ kho gõ điện thoại
@@ -117,29 +121,46 @@ function chuanHoa(s: string): string {
   return s.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').trim();
 }
 
-/** Một chữ gõ vào có nằm trong `chu` không: không dấu so không dấu, có dấu so đúng dấu. */
-function khopChu(tu: string, chu: string, chuKhongDau: string): boolean {
-  return boDau(tu) === tu ? chuKhongDau.includes(tu) : chu.includes(tu);
+/** Tách thành từ: khoảng trắng và dấu câu ("·", ",", ngoặc) là ranh giới; "write-off" là một từ. */
+function tachTu(s: string): string[] {
+  return s.split(/[\s·,;:()\/]+/).filter(Boolean);
+}
+
+/** Chữ gõ `go` có là đầu từ `tu` không: không dấu so không dấu, có dấu so đúng dấu. */
+function dauTu(go: string, tu: string): boolean {
+  return (boDau(go) === go ? boDau(tu) : tu).startsWith(go);
+}
+
+/** Các chữ gõ đứng liền nhau, đúng thứ tự, ở đâu đó trong dãy từ. */
+function khopCum(tuGo: string[], day: string[]): boolean {
+  for (let i = 0; i + tuGo.length <= day.length; i++) {
+    if (tuGo.every((g, j) => dauTu(g, day[i + j]))) return true;
+  }
+  return false;
 }
 
 /**
  * Tìm chức năng. Mục khớp ở TÊN đứng trước mục chỉ khớp ở từ khóa; còn lại giữ thứ
- * tự in. Một đường dẫn chỉ ra một lần (thao tác nhanh trùng mục thì giữ mục).
+ * tự in. Mỗi đường dẫn, mỗi tên chỉ ra một lần: thao tác nhanh trùng đường dẫn hoặc
+ * trùng tên một mục ("Đặt hàng" → /dat-hang/moi bên cạnh mục Đặt hàng) thì giữ mục —
+ * hai dòng cùng chữ trên màn kết quả chỉ làm người ta phân vân bấm dòng nào.
  */
 export function timChucNang(nhom: NhomChucNang[], nhanh: ChucNang[], chuTim: string): KetQuaTim[] {
   const q = chuanHoa(lamSachTimChucNang(chuTim));
   if (!q) return [];
-  const tuGo = q.split(' ');
+  const tuGo = tachTu(q);
+  if (tuGo.length === 0) return [];
   const daCo = new Set<string>();
   const ra: (KetQuaTim & { diem: number })[] = [];
   const xet = (muc: ChucNang, tenNhom: HaiThuTieng) => {
-    if (daCo.has(muc.link)) return;
-    const ten = chuanHoa(`${muc.ten.vi} ${muc.ten.en}`);
-    const tatCa = chuanHoa(`${ten} ${muc.tuKhoa?.vi ?? ''} ${muc.tuKhoa?.en ?? ''}`);
-    const tenKD = boDau(ten), tatCaKD = boDau(tatCa);
-    if (!tuGo.every(t => khopChu(t, tatCa, tatCaKD))) return;
-    daCo.add(muc.link);
-    ra.push({ muc, nhom: tenNhom, diem: tuGo.every(t => khopChu(t, ten, tenKD)) ? 0 : 1 });
+    const tenVi = chuanHoa(muc.ten.vi);
+    if (daCo.has(muc.link) || daCo.has(tenVi)) return;
+    const day = [muc.ten.vi, muc.ten.en, muc.tuKhoa?.vi ?? '', muc.tuKhoa?.en ?? ''].map(x => tachTu(chuanHoa(x)));
+    const tuTen = [...day[0], ...day[1]];
+    const trongTen = tuGo.every(g => tuTen.some(t => dauTu(g, t)));
+    if (!trongTen && !day.some(d => khopCum(tuGo, d))) return;
+    daCo.add(muc.link).add(tenVi);
+    ra.push({ muc, nhom: tenNhom, diem: trongTen ? 0 : 1 });
   };
   for (const n of nhom) for (const m of n.muc) xet(m, n.ten);
   for (const m of nhanh) xet(m, NHOM_NHANH);

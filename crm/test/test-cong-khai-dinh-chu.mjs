@@ -242,7 +242,7 @@ await nhom('2 · MỌI TRANG CÔNG KHAI KHÔNG CÓ CHỮ DÍNH (vi, en, ko)', as
     'pages/noi-bo/',                        // màn nội bộ: test-noi-bo-tieng-anh.mjs, kho: test-kho-tieng-anh.mjs
     'components/kho/', 'layouts/Kho.astro', // kho: test-kho-tieng-anh.mjs nhóm 4
     'layouts/NoiBo.astro', 'components/SucKhoeHeThong.astro', // test-noi-bo-tieng-anh.mjs
-    'components/BanDoChucNang.astro',       // trang Tất cả chức năng / Khác: test-noi-bo-tieng-anh.mjs
+    'components/BanDoChucNang.astro', 'components/OTimChucNang.astro', // Tất cả chức năng / Khác: test-noi-bo-tieng-anh.mjs
   ];
   const moiAstro = thu => readdirSync(join(WEB, thu)).sort().flatMap(f => {
     const duong = join(thu, f);

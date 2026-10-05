@@ -34,10 +34,7 @@
 }
 .kho-bo-qua:focus { left: 0; }
 
-.kho-an {
-  position: absolute !important; width: 1px; height: 1px; overflow: hidden;
-  clip: rect(0 0 0 0); white-space: nowrap;
-}
+/* .kho-an (chữ chỉ cho trình đọc màn hình) nằm ở noi-bo.css, chung với .nb-an. */
 
 .kho-bt { flex-shrink: 0; display: block; }
 

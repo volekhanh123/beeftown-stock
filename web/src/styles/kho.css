@@ -162,10 +162,6 @@
     background: var(--kho-nen, var(--kem));
   }
 }
-/* Khung NoiBo: thanh đáy (.nb-day) chỉ hiện ở điện thoại. */
-@media (max-width: 640px) {
-  body:has(.nb-day) .kho-thanh-nut.dinh { bottom: calc(4rem + env(safe-area-inset-bottom)); }
-}
 
 @media (max-width: 640px) {
   /* Bảng số liệu: giữ cột đủ rộng để đọc, vuốt ngang để xem hết. */

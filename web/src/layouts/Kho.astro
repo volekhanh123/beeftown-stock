@@ -36,9 +36,9 @@ import type { TrangKho } from '../lib/kho/trang.ts';
 import {
   nhomCuaVai, thanhDayCuaVai, thaoTacCuaVai, soDo, dangO, nhanSo, MUC_CRM,
 } from '../lib/kho/dieu-huong.ts';
-import { GIOI_HAN_TIM } from '../lib/ban-do-chuc-nang.ts';
+import OTimChucNang from '../components/OTimChucNang.astro';
 import { TEN_VAI_KHO_NB } from '../lib/kho/chung.ts';
-import { laVaiMay, DUONG_MAY } from '../lib/kho/may-chung.ts';
+import { laVaiMay, laCheDoMay, DUONG_MAY } from '../lib/kho/may-chung.ts';
 import { dichNB, nhanNB, nnCua, linkDoiNgonNgu, type HaiThuTieng } from '../lib/ngon-ngu-noi-bo.ts';
 
 interface Props {
@@ -77,8 +77,6 @@ const t = dichNB(nn, {
   goToi: { vi: 'Gỡ tôi khỏi máy này', en: 'Remove me from this tablet' },
   dangXuat: { vi: 'Đăng xuất', en: 'Log out' },
   cacMuc: { vi: 'Các mục kho', en: 'Inventory sections' },
-  timChucNang: { vi: 'Tìm chức năng', en: 'Find a feature' },
-  timGoiY: { vi: 'Tìm chức năng…', en: 'Find a feature…' },
   thaoTacNhanh: { vi: 'Thao tác nhanh', en: 'Quick actions' },
   menuChinh: { vi: 'Menu chính', en: 'Main menu' },
   soViec: { vi: (n: number) => `${n} việc`, en: (n: number) => `${n} to do` },
@@ -96,7 +94,7 @@ const tenVai = nhanNB(TEN_VAI, vai, nn);
 // coNguoiDung = một người đã mở khóa bằng PIN.
 const laMay = laVaiMay(vai);
 const coNguoiDung = !!k.may?.nhanSuId;
-const cheDoMay = laMay || coNguoiDung;
+const cheDoMay = laCheDoMay(vai, k.may);
 
 const cot = nhomCuaVai(vai);
 const day = thanhDayCuaVai(vai);
@@ -104,7 +102,9 @@ const nhanh = thaoTacCuaVai(vai);
 const crm = cheDoMay ? [] : MUC_CRM.filter(m => m.vai.includes(vai));
 const chuaDoc = typeof k.viec?.chua_doc === 'number' ? (k.viec.chua_doc as number) : 0;
 const linkHuongDan = `/noi-bo/kho/huong-dan${huongDan ? `#${huongDan}` : ''}`;
-const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.chiNhanh?.id) : [];
+// Link đổi chi nhánh: in ở thanh trên (≥ 641px) và trong menu người dùng (điện thoại).
+const doiChiNhanh = (vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.chiNhanh?.id) : [])
+  .map(c => ({ ten: c.ten, link: `${duong}?cn=${encodeURIComponent(c.ma)}` }));
 ---
 <!doctype html>
 <html lang={nn}>
@@ -141,7 +141,7 @@ const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.
           <details class="kho-cn-chon">
             <summary>{t.doiChiNhanh}</summary>
             <div>
-              {doiChiNhanh.map(c => <a href={`${duong}?cn=${encodeURIComponent(c.ma)}`}>{c.ten}</a>)}
+              {doiChiNhanh.map(c => <a href={c.link}>{c.ten}</a>)}
             </div>
           </details>
         )}
@@ -170,7 +170,7 @@ const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.
               {doiChiNhanh.length > 0 && (
                 <div class="kho-chi-hep">
                   <p class="kho-nguoi-nhom">{t.doiChiNhanh}</p>
-                  {doiChiNhanh.map(c => <a href={`${duong}?cn=${encodeURIComponent(c.ma)}`}><BieuTuong ten="chuyen" co={18} />{c.ten}</a>)}
+                  {doiChiNhanh.map(c => <a href={c.link}><BieuTuong ten="chuyen" co={18} />{c.ten}</a>)}
                 </div>
               )}
               {crm.length > 0 && (
@@ -214,12 +214,7 @@ const doiChiNhanh = vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.
     <div class="kho-khung">
       <nav class="kho-ben" aria-label={t.cacMuc}>
         {cot.length > 0 && (
-          <form method="get" action="/noi-bo/kho/khac" class="kho-ben-tim" role="search">
-            <label for="kho-ben-tim" class="kho-an">{t.timChucNang}</label>
-            <input id="kho-ben-tim" type="search" name="tim" maxlength={GIOI_HAN_TIM}
-                   placeholder={t.timGoiY} autocomplete="off" enterkeyhint="search" />
-            <button type="submit" title={t.timChucNang}><BieuTuong ten="tim" co={18} /><span class="kho-an">{t.timChucNang}</span></button>
-          </form>
+          <OTimChucNang nn={nn} hanhDong="/noi-bo/kho/khac" kieu="ben" id="kho-ben-tim" />
         )}
         {cot.map(n => (
           <>

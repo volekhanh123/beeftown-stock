@@ -146,7 +146,7 @@ export const TU_KHOA_KHO: Readonly<Record<string, HaiThuTieng>> = {
   pha_loc:      { vi: 'lóc thịt cắt chia gói', en: 'cut portion pack' },
   yeu_cau_quay: { vi: 'quầy hết hàng mang ra', en: 'counter running low bring out' },
   nhan_quay:    { vi: 'quầy nhận hàng mang ra', en: 'counter receive delivered stock' },
-  xuat:         { vi: 'hủy hàng hỏng chuyển quầy xuất bếp', en: 'damaged write-off move to counter send to kitchen' },
+  xuat:         { vi: 'báo hủy hàng hỏng chuyển quầy xuất bếp', en: 'report damaged write-off move to counter send to kitchen' },
   kiem_ke:      { vi: 'đếm kho lệch', en: 'count stock variance' },
   cong_no:      { vi: 'nợ nhà cung cấp trả tiền thanh toán hóa đơn MISA', en: 'supplier debt pay invoice MISA' },
   bao_cao:      { vi: 'doanh thu giá vốn thống kê Excel', en: 'revenue cost statistics Excel' },

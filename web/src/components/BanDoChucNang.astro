@@ -9,8 +9,8 @@
  * Kiểu dáng ở styles/noi-bo.css (lớp bd-*) — hai khung đều nạp file đó.
  */
 import BieuTuong from './kho/BieuTuong.astro';
+import OTimChucNang from './OTimChucNang.astro';
 import type { ChucNang, KetQuaTim, NhomChucNang } from '../lib/ban-do-chuc-nang.ts';
-import { GIOI_HAN_TIM } from '../lib/ban-do-chuc-nang.ts';
 import { soDo, nhanSo, type SoViec } from '../lib/kho/dieu-huong.ts';
 import { dichNB, type NgonNguNB } from '../lib/ngon-ngu-noi-bo.ts';
 
@@ -28,9 +28,6 @@ interface Props {
 }
 const { nn, hanhDong, nhom, nhanh, tim, ketQua, viec = null } = Astro.props;
 const t = dichNB(nn, {
-  timChucNang: { vi: 'Tìm chức năng', en: 'Find a feature' },
-  goiY: { vi: 'Ví dụ: công nợ, báo hủy', en: 'e.g. payables, write-off' },
-  tim: { vi: 'Tìm', en: 'Search' },
   coKetQua: {
     vi: (n: number, q: string) => `${n} chức năng khớp “${q}”`,
     en: (n: number, q: string) => `${n} feature${n === 1 ? '' : 's'} match “${q}”`,
@@ -45,12 +42,7 @@ const t = dichNB(nn, {
 });
 const dangTim = tim !== '';
 ---
-<form method="get" action={hanhDong} class="bd-tim" role="search">
-  <label for="bd-tim-o" class="bd-an">{t.timChucNang}</label>
-  <input id="bd-tim-o" type="search" name="tim" value={tim} maxlength={GIOI_HAN_TIM}
-         placeholder={t.goiY} autocomplete="off" enterkeyhint="search" />
-  <button type="submit" class="nb-nut"><BieuTuong ten="tim" co={20} /><span>{t.tim}</span></button>
-</form>
+<OTimChucNang nn={nn} hanhDong={hanhDong} kieu="trang" id="bd-tim-o" tim={tim} />
 
 {dangTim ? (
   <section class="bd-kq" aria-labelledby="bd-kq-dem">

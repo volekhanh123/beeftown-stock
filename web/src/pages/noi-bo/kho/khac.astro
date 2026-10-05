@@ -18,14 +18,14 @@ import { moTrangKho } from '../../../lib/kho/trang.ts';
 import {
   banDoChucNang, thaoTacNhanhChucNang, timChucNang, lamSachTimChucNang,
 } from '../../../lib/ban-do-chuc-nang.ts';
-import { DUONG_MAY } from '../../../lib/kho/may-chung.ts';
+import { DUONG_MAY, laCheDoMay } from '../../../lib/kho/may-chung.ts';
 import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
 const vai = k.nhanSu.vai_tro;
 const nn = k.nn;
-const cheDoMay = !!k.may;
+const cheDoMay = laCheDoMay(vai, k.may);
 const tim = lamSachTimChucNang(Astro.url.searchParams.get('tim'));
 const nhom = banDoChucNang(vai, 'kho', { cheDoMay });
 const nhanh = thaoTacNhanhChucNang(vai);
