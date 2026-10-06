@@ -644,7 +644,14 @@ await nhom('9 · GIỜ MỞ CỬA, ĐỊA CHỈ, THỰC ĐƠN', async () => {
   ok('Thực đơn chưa công bố → câu "đang được hoàn thiện", không link', /đang được hoàn thiện/.test(r.chu) && !r.body[0].message.attachment);
   const e = taoCuoc({ anon: anonGia({ hienThucDon: true }) });
   r = await e.gui(suNut(PSID.h, M.PAYLOAD.thucDon), '[Thực đơn]');
-  ok('Thực đơn đã bật → nút [Xem thực đơn] tới website', r.body[0].message.attachment.payload.buttons[0].url === 'https://beeftown.vn/');
+  const nutTd = r.body[0].message.attachment?.payload?.buttons?.[0];
+  ok('Thực đơn đã bật → nút [Xem thực đơn] tới trang /thuc-don', nutTd?.type === 'web_url' && nutTd?.title === 'Xem thực đơn'
+     && nutTd?.url === 'https://beeftown.vn/thuc-don', nutTd?.url);
+  const s = taoCuoc({ env: { ...ENV, SITE_URL: 'https://thu.beeftown.vn/' }, anon: anonGia({ hienThucDon: true }) });
+  r = await s.gui(suNut(PSID.h, M.PAYLOAD.thucDon), '[Thực đơn] (SITE_URL có "/" cuối)');
+  ok('SITE_URL có "/" cuối → link thực đơn không thành "//thuc-don"',
+     r.body[0].message.attachment?.payload?.buttons?.[0]?.url === 'https://thu.beeftown.vn/thuc-don', r.body[0].message.attachment?.payload?.buttons?.[0]?.url);
+  ok('Link thực đơn của bot dẫn tới trang có thật (web/src/pages/thuc-don.astro)', existsSync(join(GOC, 'web', 'src', 'pages', 'thuc-don.astro')));
   const x = taoCuoc({ ten: 'Xóa dữ liệu' });
   r = await x.gui(suTin(PSID.h, 'xóa dữ liệu'), 'xóa dữ liệu');
   ok('"xóa dữ liệu" → xóa phần đang lưu dở + báo nhân viên (tạm dừng)', /đã xóa thông tin bot đang lưu dở/.test(r.chu)
