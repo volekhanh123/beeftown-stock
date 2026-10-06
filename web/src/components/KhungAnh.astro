@@ -19,13 +19,15 @@ interface Props {
   loai: LoaiKhung;
   /** "4 / 3", "4 / 5", "16 / 9"… — tỷ lệ của ảnh chụp sẽ thay vào. */
   tiLe?: string;
+  /** Tỷ lệ dưới 600px, khi ảnh có khung riêng cho điện thoại (Anh: khungNho). */
+  tiLeNho?: string;
   nen?: 'kem' | 'toi' | 'do';
   class?: string;
 }
-const { loai, tiLe = '4 / 3', nen = 'kem', class: lop } = Astro.props;
+const { loai, tiLe = '4 / 3', tiLeNho, nen = 'kem', class: lop } = Astro.props;
 const lopNen = nen === 'toi' ? 'tren-toi' : nen === 'do' ? 'tren-do' : '';
 ---
-<div class:list={['khung-anh', lopNen, lop]} style={`--ti-le:${tiLe}`} aria-hidden="true">
+<div class:list={['khung-anh', lopNen, lop]} style={`--ti-le:${tiLe};--ti-le-nho:${tiLeNho ?? tiLe}`} aria-hidden="true">
   <svg viewBox="0 0 240 180" fill="none" stroke="currentColor" stroke-width="2"
        stroke-linecap="round" stroke-linejoin="round" focusable="false">
     {loai === 'quay' && (

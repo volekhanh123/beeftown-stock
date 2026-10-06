@@ -22,7 +22,7 @@ const t = dich(ngonNgu, {
   b1Chu: {
     vi: 'Bò được cắt và đóng sẵn trong khay. Bạn nhìn tận mắt thớ thịt, vân mỡ rồi chọn phần mình thích.',
     en: 'Every cut is ready-packed in its own tray. See the grain and marbling for yourself, then choose.',
-    ko: '부위별로 손질해 트레이에 담아 두었어요. 결과 마블링을 직접 보고 마음에 드는 걸 고르세요.',
+    ko: '부위별로 손질해 트레이에 담아 두었어요. 마블링과 고기 결을 직접 보고 마음에 드는 부위를 고르세요.',
   },
   b2: { vi: 'Xem nhãn, nhờ tư vấn', en: 'Read the label, ask for advice', ko: '라벨 보고 추천받기' },
   b2Chu: {
@@ -32,7 +32,7 @@ const t = dich(ngonNgu, {
   },
   b3: { vi: 'Cùng nướng, cùng thưởng thức', en: 'Grill together, enjoy together', ko: '함께 굽고 함께 즐기기' },
   b3Chu: {
-    vi: 'Cả bàn nướng trên vỉ gas đặt tại bàn. Trong bữa muốn thêm, bạn cứ gọi nhân viên để chọn thêm.',
+    vi: 'Cả bàn nướng trên vỉ gas đặt tại bàn. Muốn thêm phần bò trong bữa, bạn cứ gọi nhân viên.',
     en: 'Everyone grills on the gas grill at your table. Want more during the meal? Just ask our staff.',
     ko: '테이블의 가스 그릴에서 다 함께 구워요. 식사 중에 더 고르고 싶으면 언제든 직원을 불러 주세요.',
   },
@@ -85,14 +85,18 @@ const BUOC: { ten: string; chu: string; bieuTuong: TenBieuTuong }[] = [
     border: 1.5px solid var(--do-sau); color: var(--do-sau); margin-bottom: 4px;
   }
   .bb-bieu-tuong :global(svg) { width: 28px; height: 28px; }
-  .bb-buoc h3 { margin-bottom: var(--k-2); }
+  .bb-buoc h3 { margin-bottom: var(--k-2); text-wrap: balance; }
   .bb-buoc p { margin: 0; color: var(--chu-chinh); }
 
-  /* Nhánh rosemary: dưới mỗi bước trên điện thoại, giữa hai bước trên màn rộng. */
+  /* Nhánh rosemary: chỉ trên màn rộng, nằm GIỮA khe 64px giữa hai bước (36px, cách mỗi
+     bên ~14px) — sát mép bước sau thì nó dính vào số "02" / "03" thành một ký tự "~02". */
   .bb-la { display: none; }
 
   @media (min-width: 900px) {
     .bb-buoc { grid-template-columns: repeat(3, 1fr); gap: var(--k-8); }
-    .bb-la { display: block; opacity: .85; left: auto; right: calc(-1 * var(--k-8) + 4px); bottom: auto; top: 18px; width: 52px; transform: rotate(8deg); }
+    .bb-la {
+      display: block; opacity: .85; left: auto; bottom: auto;
+      right: calc(-1 * var(--k-8) / 2 - 18px); top: 22px; width: 36px; transform: rotate(8deg);
+    }
   }
 </style>

@@ -100,6 +100,13 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
       if (menu.open && !menu.contains(e.target as Node)) dong(false);
     });
     menu.querySelectorAll('.mg-bang a').forEach(a => a.addEventListener('click', () => dong(false)));
+    // Tab ra khỏi mục cuối: bảng (position absolute) sẽ che chính phần tử vừa nhận tiêu điểm
+    // (WCAG 2.4.11) — đóng lại. relatedTarget null (chạm vào chữ không focus được trong bảng)
+    // thì giữ nguyên, kẻo menu tự đóng khi khách chỉ chạm vào dòng địa chỉ.
+    menu.addEventListener('focusout', e => {
+      const toi = e.relatedTarget as Node | null;
+      if (menu.open && toi && !menu.contains(toi)) dong(false);
+    });
     const rong = matchMedia('(min-width: 1080px)');
     rong.addEventListener('change', e => { if (e.matches) dong(false); });
   }
@@ -111,6 +118,9 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
     background: var(--kem);
     border-bottom: 1px solid var(--vach);
   }
+  /* Màn thấp (điện thoại xoay ngang, phóng to 200%): đầu trang dính ăn gần nửa màn hình —
+     cho nó cuộn đi cùng trang (scroll-padding-top đổi theo ở cong-khai.css). */
+  @media (max-height: 500px) { .dau-trang { position: relative; } }
   .dt-hang {
     display: flex; align-items: center; gap: var(--k-5);
     min-height: var(--cao-dau);
@@ -135,6 +145,12 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
     }
     .dt-nav a:hover { border-bottom-color: currentColor; }
     .dt-nav a[aria-current='page'] { color: var(--do-sau); border-bottom-color: var(--do); }
+    /* Tương phản cao (Windows): màu bị ép về màu hệ thống, gạch dưới trong suốt cũng hiện —
+       mục đang mở phải khác bằng thứ không phải màu. */
+    @media (forced-colors: active) {
+      .dt-nav a { border-bottom-color: Canvas; }
+      .dt-nav a[aria-current='page'] { border-bottom-color: Highlight; border-bottom-width: 3px; }
+    }
     .dt-ngon-ngu { display: flex; gap: var(--k-4); }
     .dt-hoi-ban { display: inline-flex; }
     .menu-gon { display: none; }
@@ -156,6 +172,11 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
     background: var(--kem);
   }
   .menu-gon summary::-webkit-details-marker { display: none; }
+  .menu-gon summary span { white-space: nowrap; }
+  @media (max-width: 359px) {
+    .menu-gon summary { padding: 0 10px; gap: 6px; }
+    .dt-hang { gap: var(--k-3); }
+  }
   .menu-gon summary :global(svg) { width: 20px; height: 20px; }
   .menu-gon :global(.mg-dong), .menu-gon[open] :global(.mg-mo) { display: none; }
   .menu-gon[open] :global(.mg-dong) { display: block; }

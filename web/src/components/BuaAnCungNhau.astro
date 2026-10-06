@@ -12,6 +12,7 @@
  */
 import { chu, dich, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import { coAnh } from '../lib/anh';
 import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
 
@@ -19,67 +20,79 @@ interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
 const { ngonNgu, noiDung: nd } = Astro.props;
 const tChung = chu(ngonNgu);
 const coCon = nd.hien_do_uong_co_con === true;
+// Chưa có ảnh sốt chấm: KHÔNG dựng khung chờ ảnh (khung kem đậm trên nền kem đậm thành một
+// vùng trống, và hình bàn nướng lặp lại ngay ở dải đỏ sau). Thay bằng hai cột chữ.
+const coAnhSot = !!coAnh('sot-cham', '4x3');
 const t = dich(ngonNgu, {
   hieu: { vi: 'Thực đơn', en: 'The menu', ko: '메뉴' },
-  tieuDe: { vi: 'Cả bữa, cho cả bàn', en: 'A whole meal, for the whole table', ko: '테이블 모두를 위한 한 끼' },
+  // \u00a0: "for the" không tách — "for" không đứng một mình cuối dòng.
+  tieuDe: { vi: 'Cả bữa, cho cả bàn', en: 'A whole meal, for\u00a0the whole table', ko: '테이블 모두를 위한 한 끼' },
   dan: {
     vi: 'Bên cạnh bò nướng, Beeftown có món ăn kiểu Hàn – Âu và đồ uống để cả bàn cùng gọi, cùng chia.',
     en: 'Alongside the grill, Beeftown has Korean and Western dishes and drinks for the whole table to order and share.',
     ko: '구이와 함께 곁들일 한식·양식 메뉴와 음료도 있어요. 테이블에서 함께 주문해 나눠 드세요.',
   },
-  monAn: { vi: 'Món ăn', en: 'Dishes', ko: '식사 메뉴' },
+  // Cùng tên cột với trang Thực đơn ("요리" ở tiếng Hàn).
+  monAn: { vi: 'Món ăn', en: 'Dishes', ko: '요리' },
   doUong: { vi: 'Đồ uống', en: 'Drinks', ko: '음료' },
   goiThem: { vi: 'Gọi thêm', en: 'Add-ons', ko: '추가 주문' },
-  salad: { vi: 'Salad & khai vị', en: 'Salads & starters', ko: '샐러드 · 전채' },
-  com: { vi: 'Cơm', en: 'Rice', ko: '밥' },
-  miY: { vi: 'Mì Ý', en: 'Pasta', ko: '파스타' },
-  mien: { vi: 'Miến & mì lạnh', en: 'Noodles', ko: '당면 · 냉면' },
-  canh: { vi: 'Canh Hàn', en: 'Korean stews', ko: '찌개' },
-  lau: { vi: 'Lẩu', en: 'Hot pot', ko: '전골' },
-  trangMieng: { vi: 'Tráng miệng', en: 'Desserts', ko: '디저트' },
-  nuocEp: { vi: 'Nước ép & ade', en: 'Juices & ades', ko: '주스 · 에이드' },
-  highball: { vi: 'Highball', en: 'Highball', ko: '하이볼' },
-  makgeolli: { vi: 'Makgeolli', en: 'Makgeolli', ko: '막걸리' },
-  cocktail: { vi: 'Cocktail', en: 'Cocktails', ko: '칵테일' },
-  setSot: {
-    vi: 'Set sốt cho phần nướng — tùy chọn',
-    en: 'Sauce set for the grill — optional',
-    ko: '구이용 소스 세트 — 선택',
-  },
 });
-const MON_AN = [t.salad, t.com, t.miY, t.mien, t.canh, t.lau, t.trangMieng];
-const DO_UONG = [t.nuocEp, ...(coCon ? [t.highball, t.makgeolli, t.cocktail] : [])];
+// Tên nhóm lấy từ lib/chu.ts — MỘT bộ tên cho trang chủ và trang Thực đơn.
+const MON_AN = [tChung.nhomSalad, tChung.nhomCom, tChung.nhomMiY, tChung.nhomMien, tChung.nhomCanh, tChung.nhomLau, tChung.nhomTrangMieng];
+const DO_UONG = [tChung.nhomNuocEp, ...(coCon ? [tChung.nhomHighball, tChung.nhomMakgeolli, tChung.nhomCocktail] : [])];
+// Tiêu đề tách ở dấu phẩy: màn rộng không ảnh thì mỗi vế một dòng ("Cả bữa," / "cho cả bàn").
+const veTieuDe = t.tieuDe.split(/(?<=,)\s+/u);
 ---
 <section class="muc be-kem-dam bacn" aria-labelledby="bacn-tieu-de">
-  <div class="khung bacn-luoi">
-    <div class="bacn-anh">
-      <Anh id="sot-cham" ngonNgu={ngonNgu} khung="4x3" thayBang="ban-nuong" sizes="(min-width: 900px) 45vw, 100vw" />
-    </div>
-    <div class="bacn-chu">
-      <p class="hieu">{t.hieu}</p>
-      <h2 id="bacn-tieu-de">{t.tieuDe}</h2>
-      <p class="dan">{t.dan}</p>
-      <div class="bacn-nhom">
-        <div>
-          <h3>{t.monAn}</h3>
-          <ul>{MON_AN.map(m => <li>{m}</li>)}</ul>
-        </div>
-        <div>
-          <h3>{t.doUong}</h3>
-          <ul>{DO_UONG.map(m => <li>{m}</li>)}</ul>
-          <h3 class="bacn-goi-them">{t.goiThem}</h3>
-          <ul><li>{t.setSot}</li></ul>
-        </div>
+  <div class:list={['khung', 'bacn-luoi', { 'khong-anh': !coAnhSot }]}>
+    {coAnhSot && (
+      <div class="bacn-anh">
+        <Anh id="sot-cham" ngonNgu={ngonNgu} khung="4x3" thayBang="ban-nuong" sizes="(min-width: 900px) 45vw, 100vw" />
       </div>
-      <a class="nut nut-chinh" href={duongDanTuongUng('/thuc-don', ngonNgu)}>{tChung.xemMenu}<BieuTuong ten="mui-ten" /></a>
+    )}
+    <div class="bacn-chu">
+      <div class="bacn-mo">
+        <p class="hieu">{t.hieu}</p>
+        <h2 id="bacn-tieu-de">{veTieuDe.map((ve, i) => <>{i > 0 && ' '}<span class="cau">{ve}</span></>)}</h2>
+        <p class="dan">{t.dan}</p>
+      </div>
+      <div class="bacn-danh-sach">
+        <div class="bacn-nhom">
+          <div>
+            <h3>{t.monAn}</h3>
+            <ul>{MON_AN.map(m => <li>{m}</li>)}</ul>
+          </div>
+          <div>
+            <h3>{t.doUong}</h3>
+            <ul>{DO_UONG.map(m => <li>{m}</li>)}</ul>
+            {coCon && <p class="nho bacn-luat">{tChung.luatRuou}</p>}
+            <h3 class="bacn-goi-them">{t.goiThem}</h3>
+            <ul><li>{tChung.setSot}</li></ul>
+          </div>
+        </div>
+        <a class="nut nut-chinh" href={duongDanTuongUng('/thuc-don', ngonNgu)}>{tChung.xemMenu}<BieuTuong ten="mui-ten" /></a>
+      </div>
     </div>
   </div>
 </section>
 
 <style>
   .bacn-luoi { display: grid; gap: var(--k-7); align-items: center; grid-template-columns: 1fr; }
-  @media (min-width: 900px) { .bacn-luoi { grid-template-columns: 6fr 5fr; gap: var(--k-8); } }
   .bacn-chu .dan { margin-bottom: var(--k-6); }
+  @media (min-width: 900px) { .bacn-luoi { grid-template-columns: 6fr 5fr; gap: var(--k-8); } }
+
+  /* Không ảnh: lời mở bên trái, danh sách nhóm món bên phải — .bacn-chu "tan" vào lưới để
+     hai phần con của nó thành hai cột. */
+  .khong-anh .bacn-chu { display: contents; }
+  .khong-anh .bacn-mo .dan { margin-bottom: 0; }
+  @media (min-width: 900px) {
+    .bacn-luoi.khong-anh { grid-template-columns: 5fr 6fr; align-items: start; }
+    .khong-anh .bacn-mo h2 .cau { display: block; }
+    .khong-anh .bacn-nhom { padding-top: var(--k-6); }
+    /* Vạch đỏ đầu cột phải nằm ngang đúng gạch đỏ của nhãn "Thực đơn" bên trái (nhãn
+       inline-flex cao ~19px, thấp hơn đỉnh cột ~8px vì khoảng dòng của khối chứa). */
+    .khong-anh .bacn-danh-sach { margin-top: 17px; }
+  }
 
   .bacn-nhom {
     display: grid; grid-template-columns: 1fr 1fr; gap: var(--k-5);
@@ -90,7 +103,9 @@ const DO_UONG = [t.nuocEp, ...(coCon ? [t.highball, t.makgeolli, t.cocktail] : [
     font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
     color: var(--do-sau); margin: 0 0 var(--k-3);
   }
+  .bacn-nhom h3:lang(ko) { letter-spacing: .04em; }   /* chữ Hangul không giãn như chữ in hoa Latin */
   .bacn-nhom ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
   .bacn-nhom li { font-weight: 600; line-height: 1.4; }
   .bacn-goi-them { margin-top: var(--k-5) !important; }
+  .bacn-luat { margin: var(--k-3) 0 0; max-width: 32ch; }
 </style>

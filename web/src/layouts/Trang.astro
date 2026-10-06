@@ -77,8 +77,10 @@ const duLieuCoCauTruc: Record<string, unknown> = {
   '@type': 'Restaurant',
   name: THUONG_HIEU.ten,
   url: goc || undefined,
-  description: moTaTrang,
-  servesCuisine: ['Bò nướng', 'Barbecue'],
+  // Mô tả NHÀ HÀNG, không phải của trang đang mở (trang quyền riêng tư không được
+  // thành "nhà hàng thu thập thông tin cá nhân như thế nào").
+  description: nd.mo_ta_og ?? t.moTaNgan,
+  servesCuisine: { vi: ['Bò nướng', 'Barbecue'], en: ['Grilled beef', 'Barbecue'], ko: ['소고기 구이', '바비큐'] }[ngonNgu],
   // Form đặt bàn chưa mở thì đây đúng là false — thuộc tính này sinh ra để
   // nói điều đó.
   acceptsReservations: nd.form_dat_ban_dang_mo === true,

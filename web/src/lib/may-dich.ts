@@ -103,7 +103,7 @@ Follow every rule:
    - sảnh (bộ phận sảnh) → floor / 홀; bếp → kitchen / 주방
    - Quận 1, TP.HCM → District 1, Ho Chi Minh City / 호치민시 1군
    - Cầu Ông Lãnh → Cau Ong Lanh / Cầu Ông Lãnh (keep Latin letters in Korean)
-   - đặt bàn, yêu cầu đặt bàn → table request / 예약 요청. It is only a request, never a confirmed booking: never write "confirmed", "booked", "확정" or "완료".
+   - đặt bàn, yêu cầu đặt bàn, hỏi bàn → table request / 테이블 문의. It is only a request, never a confirmed booking: never write "confirmed", "booked", "확정" or "완료".
    - bao cơm → meals provided / 식사 제공
    - hợp đồng lao động, bảo hiểm theo quy định → labour contract, social insurance as required by law / 근로계약, 법정 사회보험
 5. Never add superlatives or comparisons: no "best", "number one", "cheapest", "최고", "가장", "최저가".

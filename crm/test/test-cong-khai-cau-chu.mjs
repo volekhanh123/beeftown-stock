@@ -40,7 +40,9 @@ const moiFile = d => !existsSync(d) ? [] : readdirSync(d, { withFileTypes: true 
   .flatMap(x => x.isDirectory() ? moiFile(join(d, x.name)) : [join(d, x.name)]);
 
 // Chữ ghi chú cho người duyệt / lập trình — không bao giờ được thành chữ trên trang.
-const CHU_REVIEW = /chờ duyệt|đang chờ duyệt|đang cập nhật|sắp ra mắt|placeholder|\bTBD\b|\bTODO\b|\bFIXME\b|coming soon|pending approval|lorem|승인\s?대기|업데이트\s?예정|준비\s?중인\s?이미지/i;
+// Cả lời hứa "sẽ đăng / sẽ cập nhật" và câu kể tình trạng dựng quán: trang khách không nói chuyện sản xuất
+// (QA 06/10/2026: "Danh sách từng món sẽ được đăng…", "Nhà hàng đang hoàn thiện…", "Trong lúc chờ…").
+const CHU_REVIEW = /chờ duyệt|đang chờ duyệt|đang cập nhật|sắp ra mắt|placeholder|\bTBD\b|\bTODO\b|\bFIXME\b|coming soon|pending approval|lorem|승인\s?대기|업데이트\s?예정|준비\s?중인\s?이미지|sẽ được (đăng|cập nhật|công bố)|đang hoàn thiện|trong lúc chờ|will be (posted|published|updated)|being fitted out|올려 드릴게요|이곳에서 알려 드릴게요|이 페이지에 안내해 드릴게요|매장 준비를 마무리/i;
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
 const CHU_VIET = /[ăâđêôơưàáạảãầấậẩẫằắặẳẵèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/i;
 // Tên riêng giữ chữ Việt ở mọi bản: địa chỉ (khách đưa tài xế, gõ vào bản đồ), pháp nhân.

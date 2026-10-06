@@ -5,15 +5,29 @@
  * <details>/<summary>: mở / đóng không cần JavaScript, đọc được bằng bàn phím và
  * trình đọc màn hình. Không câu nào nói giờ mở cửa, chỗ gửi xe, giá cụ thể hay
  * phòng riêng — những thứ chưa chốt. "Đã gồm VAT" chỉ nói về giá trên nhãn khay.
+ *
+ * Hai câu hỏi về hỏi bàn và nhóm đông chỉ chỉ khách tới kênh CÓ THẬT
+ * (lib/trang-cong-khai): chưa có kênh nào thì không in hai câu đó; form đóng thì
+ * không nói "gửi yêu cầu ở trang Hỏi bàn"; chưa có Facebook / hotline / email thì
+ * không bảo khách "nhắn cho Beeftown".
  */
 import { chu, dich, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
-import { diaChi } from '../lib/trang-cong-khai';
+import { coKenhHoiBan, cumDiaChi, diaChi, formHoiBanMo, lienHe } from '../lib/trang-cong-khai';
 import BieuTuong from './BieuTuong.astro';
 
 interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
 const { ngonNgu, noiDung: nd } = Astro.props;
 const tChung = chu(ngonNgu);
+const lh = lienHe(nd);
+const formMo = formHoiBanMo(nd);
+const coKenhNhan = !!(lh.facebook || lh.goi || lh.thu);
+// Địa chỉ xuống dòng giữa các vế (sau dấu phẩy), không giữa "Sài / Gòn": mỗi vế ngắn là
+// một cụm không ngắt. Vế dài (địa chỉ công bố gõ không dấu phẩy) để nguyên — không tràn
+// màn hình hẹp. Chữ không đổi: không chèn \u00a0 (test đọc nguyên địa chỉ).
+const cumDc = cumDiaChi(diaChi(nd));
+// "— không có thang máy…" không mở đầu một dòng: từ đứng trước dấu gạch dính với dấu gạch.
+const gachCauThang = /^(.*\s)(\S+ —)(\s.*)$/u.exec(tChung.cauThangBo);
 const t = dich(ngonNgu, {
   hieu: { vi: 'Hỏi nhanh', en: 'Good to know', ko: '미리 알아 두세요' },
   tieuDe: { vi: 'Câu hỏi thường gặp', en: 'Questions we often hear', ko: '자주 묻는 질문' },
@@ -43,16 +57,29 @@ const t = dich(ngonNgu, {
     ko: '어르신이나 계단이 불편한 분과 함께 오신다면 미리 고려해 주세요.',
   },
   h5: { vi: 'Hỏi bàn thế nào?', en: 'How do I ask for a table?', ko: '테이블 문의는 어떻게 하나요?' },
+  // Form hỏi bàn mở, và có kênh nhắn.
   d5: {
     vi: 'Bạn gửi yêu cầu ở trang Hỏi bàn hoặc nhắn cho Beeftown. Nhà hàng kiểm tra tình trạng bàn rồi liên hệ để xác nhận — yêu cầu chỉ có hiệu lực sau cuộc gọi xác nhận đó.',
-    en: 'Send a request on our table page or message Beeftown. We check availability and get in touch to confirm — your request only takes effect after that confirmation call.',
-    ko: '테이블 문의 페이지에서 요청을 보내거나 Beeftown에 메시지를 보내 주세요. 매장에서 자리를 확인한 뒤 연락드려 확정해요. 확인 전화를 받은 뒤에야 문의가 확정돼요.',
+    en: 'Send a request on the Ask for a table page or message Beeftown. We check availability and get in touch to confirm — your table is only held after that confirmation call.',
+    ko: '테이블 문의 페이지에서 요청을 보내거나 Beeftown에 메시지를 보내 주세요. 매장에서 자리를 확인한 뒤 전화드릴게요. 자리는 그 확인 전화가 있어야 잡혀요.',
+  },
+  // Form hỏi bàn mở nhưng chưa công bố Facebook / hotline / email.
+  d5Form: {
+    vi: 'Bạn gửi yêu cầu ở trang Hỏi bàn. Nhà hàng kiểm tra tình trạng bàn rồi liên hệ để xác nhận — yêu cầu chỉ có hiệu lực sau cuộc gọi xác nhận đó.',
+    en: 'Send a request on the Ask for a table page. We check availability and get in touch to confirm — your table is only held after that confirmation call.',
+    ko: '테이블 문의 페이지에서 요청을 보내 주세요. 매장에서 자리를 확인한 뒤 전화드릴게요. 자리는 그 확인 전화가 있어야 잡혀요.',
+  },
+  // Form đóng, có kênh nhắn (trang Hỏi bàn chỉ khách sang kênh đó).
+  d5Nhan: {
+    vi: 'Bạn báo cho Beeftown ngày, giờ và số người. Nhà hàng kiểm tra rồi liên hệ để xác nhận — bàn chỉ được giữ sau khi nhà hàng xác nhận với bạn.',
+    en: 'Tell Beeftown the date, time and number of people. We will check and get back to you to confirm — a table is only held once we have confirmed it with you.',
+    ko: '날짜, 시간, 인원을 Beeftown에 알려 주세요. 매장에서 확인한 뒤 연락드릴게요. 자리는 매장에서 확인해 드린 뒤에만 잡혀요.',
   },
   h6: { vi: 'Đi nhóm đông thì sao?', en: 'What about larger groups?', ko: '단체로 가도 되나요?' },
   d6: {
-    vi: 'Nhóm từ 9 người trở lên, bạn nhắn cho Beeftown để nhà hàng sắp xếp riêng.',
-    en: 'For groups of 9 or more, message us and we will arrange it with you.',
-    ko: '9명 이상 단체는 Beeftown에 메시지를 보내 주세요. 매장에서 따로 조율해 드려요.',
+    vi: 'Nhóm từ 9 người trở lên, bạn liên hệ thẳng với Beeftown để nhà hàng sắp xếp riêng.',
+    en: 'For groups of 9 or more, contact us directly and we will arrange it with you.',
+    ko: '9명 이상 단체는 Beeftown에 직접 연락해 주세요. 매장에서 따로 조율해 드려요.',
   },
   h7: { vi: 'Trong bữa có chọn thêm bò được không?', en: 'Can I pick more beef during the meal?', ko: '식사 중에 고기를 더 고를 수 있나요?' },
   d7: {
@@ -85,22 +112,26 @@ const t = dich(ngonNgu, {
       <details>
         <summary>{t.h4}<BieuTuong ten="cong" /></summary>
         <div class="tra-loi">
-          <p>{t.d4a} <span lang="vi">{diaChi(nd)}</span>. {tChung.cauThangBo}</p>
+          <p>{t.d4a} <span lang="vi">{cumDc.map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span>. {gachCauThang ? <>{gachCauThang[1]}<span class="lien">{gachCauThang[2]}</span>{gachCauThang[3]}</> : tChung.cauThangBo}</p>
           <p>{t.d4b}</p>
           <p><a class="lien-ket" href={duongDanTuongUng('/den-beeftown', ngonNgu)}>{tChung.xemDuongLen}<BieuTuong ten="mui-ten" /></a></p>
         </div>
       </details>
-      <details>
-        <summary>{t.h5}<BieuTuong ten="cong" /></summary>
-        <div class="tra-loi">
-          <p>{t.d5}</p>
-          <p><a class="lien-ket" href={duongDanTuongUng('/dat-ban', ngonNgu)}>{tChung.datBan}<BieuTuong ten="mui-ten" /></a></p>
-        </div>
-      </details>
-      <details>
-        <summary>{t.h6}<BieuTuong ten="cong" /></summary>
-        <div class="tra-loi"><p>{t.d6}</p></div>
-      </details>
+      {coKenhHoiBan(nd) && (
+        <details>
+          <summary>{t.h5}<BieuTuong ten="cong" /></summary>
+          <div class="tra-loi">
+            <p>{formMo ? (coKenhNhan ? t.d5 : t.d5Form) : t.d5Nhan}</p>
+            <p><a class="lien-ket" href={duongDanTuongUng('/dat-ban', ngonNgu)}>{tChung.datBan}<BieuTuong ten="mui-ten" /></a></p>
+          </div>
+        </details>
+      )}
+      {coKenhNhan && (
+        <details>
+          <summary>{t.h6}<BieuTuong ten="cong" /></summary>
+          <div class="tra-loi"><p>{t.d6}</p></div>
+        </details>
+      )}
       <details>
         <summary>{t.h7}<BieuTuong ten="cong" /></summary>
         <div class="tra-loi"><p>{t.d7}</p></div>
@@ -113,6 +144,7 @@ const t = dich(ngonNgu, {
   .ch-luoi { display: grid; gap: var(--k-6); grid-template-columns: 1fr; }
   @media (min-width: 900px) { .ch-luoi { grid-template-columns: 4fr 7fr; gap: var(--k-8); align-items: start; } }
   .ch-dau { position: relative; }
+  .lien { white-space: nowrap; }
   .ch-la { width: 120px; left: 0; top: calc(100% + var(--k-6)); transform: rotate(-14deg); display: none; }
   @media (min-width: 900px) { .ch-la { display: block; } }
 </style>

@@ -33,11 +33,11 @@ const CAU = {
   },
   ungTuyenKhongChac: {
     vi: 'Không nhận được phản hồi từ hệ thống. Chúng tôi KHÔNG CHẮC hồ sơ đã được ghi nhận hay chưa. '
-      + 'Vui lòng nhắn cho Beeftown qua Facebook để kiểm tra — đừng gửi lại nhiều lần.',
+      + 'Vui lòng nhắn cho Beeftown qua Facebook để kiểm tra — đừng gửi lại.',
     en: 'We did not get a response from the system. We are NOT SURE whether your application was recorded. '
-      + 'Please message Beeftown on Facebook to check — do not send it again several times.',
+      + 'Please message Beeftown on Facebook to check — please do not send it again.',
     ko: '시스템에서 응답을 받지 못했어요. 지원서가 접수되었는지 저희도 확실히 알 수 없어요. '
-      + '여러 번 다시 보내지 마시고, Facebook으로 Beeftown에 메시지를 보내 확인해 주세요.',
+      + '다시 보내지 마시고, Facebook으로 Beeftown에 메시지를 보내 확인해 주세요.',
   },
   ungTuyenLoi: {
     vi: 'Chưa gửi được hồ sơ.',
@@ -45,17 +45,17 @@ const CAU = {
     ko: '지원서를 보내지 못했어요.',
   },
   datBanChuaSan: {
-    vi: 'Đặt bàn trực tuyến chưa sẵn sàng. Vui lòng nhắn cho Beeftown qua Facebook.',
-    en: 'Online booking is not ready yet. Please message Beeftown on Facebook.',
-    ko: '온라인 예약이 아직 준비되지 않았어요. Facebook으로 Beeftown에 메시지를 보내 주세요.',
+    vi: 'Hỏi bàn trực tuyến chưa sẵn sàng. Vui lòng nhắn cho Beeftown qua Facebook.',
+    en: 'Online table requests are not open yet. Please message Beeftown on Facebook.',
+    ko: '온라인 테이블 문의가 아직 준비되지 않았어요. Facebook으로 Beeftown에 메시지를 보내 주세요.',
   },
   datBanKhongChac: {
     vi: 'Không nhận được phản hồi. Chúng tôi KHÔNG CHẮC yêu cầu đã được ghi nhận hay chưa. '
-      + 'Vui lòng nhắn cho Beeftown qua Facebook để kiểm tra — đừng gửi lại nhiều lần.',
+      + 'Vui lòng nhắn cho Beeftown qua Facebook để kiểm tra — đừng gửi lại.',
     en: 'We did not get a response. We are NOT SURE whether your request was recorded. '
-      + 'Please message Beeftown on Facebook to check — do not send it again several times.',
-    ko: '응답을 받지 못했어요. 예약 요청이 접수되었는지 저희도 확실히 알 수 없어요. '
-      + '여러 번 다시 보내지 마시고, Facebook으로 Beeftown에 메시지를 보내 확인해 주세요.',
+      + 'Please message Beeftown on Facebook to check — please do not send it again.',
+    ko: '응답을 받지 못했어요. 테이블 문의가 접수되었는지 저희도 확실히 알 수 없어요. '
+      + '다시 보내지 마시고, Facebook으로 Beeftown에 메시지를 보내 확인해 주세요.',
   },
   datBanLoi: {
     vi: 'Chưa gửi được yêu cầu.',

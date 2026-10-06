@@ -64,29 +64,22 @@ const t = dich(ngonNgu, {
     en: 'Beeftown will call you back on this number.',
     ko: 'Beeftown에서 이 번호로 다시 전화드려요.',
   },
-  email:   { vi: 'Email (không bắt buộc)', en: 'Email (optional)', ko: '이메일 (선택)' },
-  namSinh: { vi: 'Năm sinh (không bắt buộc)', en: 'Year of birth (optional)', ko: '출생 연도 (선택)' },
+  email:   { vi: 'Email', en: 'Email', ko: '이메일' },
+  namSinh: { vi: 'Năm sinh', en: 'Year of birth', ko: '출생 연도' },
   ca:      { vi: 'Ca bạn làm được', en: 'Shifts you can work', ko: '근무 가능한 시간대' },
-  gioiThieu: {
-    vi: 'Đôi dòng về bạn (không bắt buộc)',
-    en: 'A few words about yourself (optional)',
-    ko: '간단한 자기소개 (선택)',
-  },
-  kinhNghiem: {
-    vi: 'Kinh nghiệm đã có (không bắt buộc)',
-    en: 'Previous experience (optional)',
-    ko: '경력 사항 (선택)',
-  },
+  gioiThieu:  { vi: 'Đôi dòng về bạn', en: 'A few words about yourself', ko: '간단한 자기소개' },
+  kinhNghiem: { vi: 'Kinh nghiệm đã có', en: 'Previous experience', ko: '경력 사항' },
   kinhNghiemPhu: {
     vi: 'Vị trí sảnh nhận cả người chưa có kinh nghiệm — chưa có thì để trống.',
     en: 'No experience is needed for Hall Crew — leave this empty if you have none.',
     ko: '홀 직원은 경력이 없어도 지원할 수 있어요. 경력이 없으면 비워 두세요.',
   },
-  cv:      { vi: 'Đính kèm CV (không bắt buộc)', en: 'Attach a CV (optional)', ko: '이력서 첨부 (선택)' },
+  cv:      { vi: 'Đính kèm CV', en: 'Attach a CV', ko: '이력서 첨부' },
+  // Nhãn đã ghi "(không bắt buộc)" — dòng gợi ý không nói lại lần hai.
   cvPhu: {
-    vi: 'File PDF, Word hoặc ảnh chụp, tối đa 5MB. Không bắt buộc.',
-    en: 'PDF, Word or a photo, up to 5MB. Not required.',
-    ko: 'PDF, Word 파일 또는 사진, 최대 5MB까지 올릴 수 있어요. 필수는 아니에요.',
+    vi: 'File PDF, Word hoặc ảnh chụp, tối đa 5MB.',
+    en: 'PDF, Word or a photo, up to 5MB.',
+    ko: 'PDF, Word 파일 또는 사진, 최대 5MB까지 올릴 수 있어요.',
   },
   dongY: {
     vi: 'Tôi đồng ý để Beeftown lưu và sử dụng thông tin trong hồ sơ này cho mục đích tuyển dụng, trong vòng 6 tháng kể từ ngày nộp.',
@@ -94,7 +87,10 @@ const t = dich(ngonNgu, {
     ko: 'Beeftown이 이 지원서의 정보를 채용 목적으로 제출일로부터 6개월 동안 보관하고 이용하는 데 동의해요.',
   },
   gui:     { vi: 'Gửi hồ sơ', en: 'Send application', ko: '지원서 보내기' },
+  // Cùng một kiểu cho cả hai: tên ô in đậm, phần trong ngoặc là <em> chữ thường màu
+  // phụ (giống form hỏi bàn) — "(không bắt buộc)" không đậm hơn "(bắt buộc)".
   batBuoc: { vi: 'bắt buộc', en: 'required', ko: '필수' },
+  khongBatBuoc: { vi: 'không bắt buộc', en: 'optional', ko: '선택' },
 
   // --- Màn hình sau khi gửi ---
   daNhan: {
@@ -109,37 +105,32 @@ const t = dich(ngonNgu, {
     ko: '매장에서 전화드릴 때 말씀해 주실 수 있게 이 번호를 기억해 두세요. Beeftown에서 입력하신 번호로 다시 전화드려요.',
   },
   nhanThang: {
-    vi: 'Bạn cũng có thể nhắn thẳng cho Beeftown: ',
-    en: 'You can also message us directly: ',
-    ko: 'Beeftown에 직접 메시지를 보내셔도 돼요: ',
+    // "liên hệ", không "nhắn": nút sau câu có thể là email (chỉ công bố email).
+    vi: 'Bạn cũng có thể liên hệ thẳng với Beeftown: ',
+    en: 'Or reach us directly: ',
+    ko: 'Beeftown에 직접 연락하셔도 돼요: ',
   },
 });
 ---
 
 {ketQua?.ok ? (
-  <div class="the" style="max-width:62ch;border-left:4px solid var(--do)">
-    <h3 style="margin-top:0">{t.daNhan}</h3>
+  <div class="the ut-the ut-da-nhan">
+    <h3 class="ut-tieu-de">{t.daNhan}</h3>
     {ketQua.ma && (
-      <p>
-        {t.maHoSo}
-        <strong style="letter-spacing:.06em">{ketQua.ma}</strong>
-      </p>
+      <p class="ut-ma">{t.maHoSo}<strong>{ketQua.ma}</strong></p>
     )}
-    <p>{t.giuMa}</p>
-    {ketQua.luuY && <p class="nho" style="margin-bottom:0">{ketQua.luuY}</p>}
+    <p class="ut-giu-ma">{t.giuMa}</p>
+    {ketQua.luuY && <p class="nho ut-luu-y">{ketQua.luuY}</p>}
   </div>
 ) : (
-  <div class="the" style="max-width:62ch">
-    <h3 style="margin-top:0">{t.tieuDe}</h3>
+  <div class="the ut-the">
+    <h3 class="ut-tieu-de">{t.tieuDe}</h3>
 
     {ketQua && !ketQua.ok && (
-      <div style="border-left:4px solid var(--do);padding:12px 14px;margin:0 0 18px;background:rgba(178,58,44,.08)">
-        <p style="margin:0"><strong>{ketQua.cau}</strong></p>
+      <div class="ut-loi" role="alert">
+        <p><strong>{ketQua.cau}</strong></p>
         {nhanTin && (
-          <p class="nho" style="margin:10px 0 0">
-            {t.nhanThang}
-            <a href={nhanTin.url} rel="noopener">{nhanTin.chu}</a>
-          </p>
+          <p class="nho">{t.nhanThang}<a href={nhanTin.url} rel="noopener">{nhanTin.chu}</a></p>
         )}
       </div>
     )}
@@ -184,41 +175,43 @@ const t = dich(ngonNgu, {
       </label>
 
       <label class="o o-email">
-        <span>{t.email}</span>
+        <span>{t.email} <em>({t.khongBatBuoc})</em></span>
         <input type="email" name="email" value={daNhap.email ?? ''}
                inputmode="email" autocomplete="email"
                autocapitalize="off" spellcheck="false" />
       </label>
 
       <label class="o o-nam-sinh">
-        <span>{t.namSinh}</span>
+        <span>{t.namSinh} <em>({t.khongBatBuoc})</em></span>
         <input type="text" name="nam_sinh" value={daNhap.nam_sinh ?? ''}
                inputmode="numeric" maxlength="4" pattern="[0-9]{4}" />
       </label>
 
       <fieldset class="o o-nhom o-ca-lam">
-        <legend>{t.ca}</legend>
-        {Object.entries(CA).map(([ma, ten]) => (
-          <label class="o-chon">
-            <input type="checkbox" name="ca" value={ma} />
-            <span>{ten}</span>
-          </label>
-        ))}
+        <legend>{t.ca} <em>({t.khongBatBuoc})</em></legend>
+        <div class="o-chon-luoi">
+          {Object.entries(CA).map(([ma, ten]) => (
+            <label class="o-chon">
+              <input type="checkbox" name="ca" value={ma} />
+              <span>{ten}</span>
+            </label>
+          ))}
+        </div>
       </fieldset>
 
       <label class="o o-gioi-thieu">
-        <span>{t.gioiThieu}</span>
+        <span>{t.gioiThieu} <em>({t.khongBatBuoc})</em></span>
         <textarea name="gioi_thieu" rows="3">{daNhap.gioi_thieu ?? ''}</textarea>
       </label>
 
       <label class="o o-kinh-nghiem">
-        <span>{t.kinhNghiem}</span>
+        <span>{t.kinhNghiem} <em>({t.khongBatBuoc})</em></span>
         <small>{t.kinhNghiemPhu}</small>
         <textarea name="kinh_nghiem" rows="3">{daNhap.kinh_nghiem ?? ''}</textarea>
       </label>
 
       <label class="o o-cv">
-        <span>{t.cv}</span>
+        <span>{t.cv} <em>({t.khongBatBuoc})</em></span>
         <small>{t.cvPhu}</small>
         <input type="file" name="cv"
                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" />
@@ -226,17 +219,45 @@ const t = dich(ngonNgu, {
 
       <label class="o-chon o-dong-y">
         <input type="checkbox" name="dong_y" value="co" required />
-        <span>{t.dongY}</span>
+        <span>{t.dongY} <em>({t.batBuoc})</em></span>
       </label>
 
-      <button type="submit" class="nut nut-chinh" style="width:100%;margin-top:6px">
-        {t.gui}
-      </button>
+      <button type="submit" class="nut nut-chinh ut-nut-gui">{t.gui}</button>
     </form>
   </div>
 )}
 
 <style>
+  /* ---- Thẻ: cùng dáng thẻ của trang hỏi bàn (.hb-the) ---------------------- */
+  .ut-the { padding: var(--k-5) var(--k-4); }
+  @media (min-width: 600px) { .ut-the { padding: var(--k-6); } }
+  .ut-tieu-de {
+    font-size: clamp(24px, 1.4vw + 18px, 32px); line-height: 1.2; margin: 0 0 var(--k-5);
+    text-wrap: balance;
+  }
+
+  /* Đã nộp: vạch đỏ trên đầu thẻ như "đã nhận yêu cầu" của hỏi bàn. */
+  .ut-da-nhan { border-top: 4px solid var(--do); }
+  .ut-ma { margin: 0 0 var(--k-4); font-size: 17px; }
+  .ut-ma strong {
+    display: inline-block; margin-left: 2px;
+    font-size: 1.35em; letter-spacing: .08em; color: var(--do-sau);
+    font-variant-numeric: tabular-nums;
+  }
+  .ut-giu-ma { margin: 0; }
+  .ut-luu-y { margin: var(--k-4) 0 0; }
+
+  /* Khung lỗi của máy chủ: chữ than trên nền hồng nhạt, vạch đỏ bên trái. */
+  .ut-loi {
+    border-left: 4px solid var(--do);
+    background: rgba(178, 58, 44, .08);
+    padding: var(--k-3) var(--k-4);
+    margin: 0 0 var(--k-5);
+  }
+  .ut-loi p { margin: 0; }
+  .ut-loi p + p { margin-top: var(--k-2); color: var(--chu-chinh); }
+  .ut-loi a { font-weight: 700; }
+
   /* Ô bẫy: ra khỏi màn hình chứ không display:none — một số bot bỏ qua ô
      display:none, nhưng vẫn điền ô bị đẩy ra ngoài khung nhìn. */
   .bay {
@@ -247,14 +268,14 @@ const t = dich(ngonNgu, {
     overflow: hidden;
   }
 
-  .form-nop .o { display: block; margin-bottom: 18px; }
+  .form-nop .o { display: block; margin: 0 0 var(--k-5); }
   .form-nop .o > span,
   .form-nop legend {
     display: block; font-weight: 700; font-size: 15px; margin-bottom: 6px;
   }
-  .form-nop .o > span em { font-style: normal; font-weight: 400; color: var(--muc-nhat); }
+  .form-nop :is(.o > span, legend, .o-dong-y) em { font-style: normal; font-weight: 400; color: var(--chu-phu); }
   .form-nop .o > small {
-    display: block; color: var(--muc-nhat); font-size: 14px; margin-bottom: 6px; line-height: 1.45;
+    display: block; color: var(--chu-phu); font-size: var(--co-nho); margin-bottom: 6px; line-height: 1.45;
   }
 
   /* Form nằm trên nền SÁNG (be-kem-sau). Bản đầu viết màu cho nền tối: chữ kem,
@@ -276,20 +297,40 @@ const t = dich(ngonNgu, {
   .form-nop :is(input, select, textarea):focus-visible {
     outline: 3px solid var(--do); outline-offset: 1px; border-color: var(--do);
   }
-  .form-nop :is(input, textarea)::placeholder { color: var(--muc-nhat); }
+  .form-nop :is(input, textarea)::placeholder { color: var(--chu-phu); }
   .form-nop textarea { min-height: 84px; resize: vertical; line-height: 1.55; }
+
+  /* Ô CV: nút chọn file theo hệ nút (.nut-vien cỡ nhỏ) thay cho nút xám mặc định
+     của trình duyệt; chữ "chưa chọn tệp" bên cạnh là chữ phụ. */
   .form-nop input[type='file'] {
-    font: inherit; font-size: 15px; width: 100%; color: var(--than);
-    padding: 12px 0;
+    font: inherit; font-size: 15px; width: 100%; color: var(--chu-phu);
+    padding: var(--k-1) 0;
+  }
+  .form-nop input[type='file']::file-selector-button {
+    font: inherit; font-weight: 700; font-size: 15px;
+    min-height: 44px; padding: 9px 18px; margin-right: var(--k-3);
+    border: 1.5px solid var(--chu-chinh); border-radius: var(--bo);
+    background: transparent; color: var(--chu-chinh);
+    cursor: pointer;
+    transition: background-color var(--nhanh), color var(--nhanh);
+  }
+  .form-nop input[type='file']:hover::file-selector-button {
+    background: var(--chu-chinh); color: var(--nen);
   }
 
-  .form-nop .o-nhom {
-    border: 1px solid var(--vien); border-radius: var(--bo);
-    padding: 14px; margin: 0 0 18px;
+  /* Nhóm ca: không viền, không đệm — tiêu đề nhóm đứng như nhãn của mọi ô khác
+     (viền mặc định của fieldset làm legend cắt ngang khung). */
+  .form-nop .o-nhom { border: 0; padding: 0; margin: 0 0 var(--k-5); min-width: 0; }
+  .form-nop .o-nhom > legend { padding: 0; }
+  @media (min-width: 480px) {
+    .form-nop .o-chon-luoi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--k-4); }
   }
+  /* Nhãn từng ô chọn là chữ thường: .ck .o > label (cong-khai.css) in đậm nhãn
+     của ô, mà label.o-chon lại nằm trong fieldset.o. */
   .form-nop .o-chon {
     display: flex; align-items: flex-start; gap: 10px;
-    padding: 9px 0; font-size: 15px; line-height: 1.5; cursor: pointer;
+    margin: 0; padding: 9px 0;
+    font-size: 15px; font-weight: 400; line-height: 1.5; cursor: pointer;
   }
   /* 24px + vùng chạm quanh nó: ngón tay cái, không phải con trỏ chuột. */
   .form-nop .o-chon input[type='checkbox'] {
@@ -297,8 +338,9 @@ const t = dich(ngonNgu, {
   }
   .form-nop .o-dong-y {
     border-top: 1px solid var(--vien);
-    margin-top: 6px; padding-top: 16px; align-items: flex-start;
+    margin-top: var(--k-1); padding: var(--k-4) 0; align-items: flex-start;
   }
+  .ut-nut-gui { width: 100%; margin-top: var(--k-2); }
 
   /* Ẩn ô mà tin đang chọn không hỏi — xem đầu file. Tên sau data-an là cột
      `lop` trong lib/truong-form.ts; thêm trường ở đó thì thêm một dòng ở đây. */

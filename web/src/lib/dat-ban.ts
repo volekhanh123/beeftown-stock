@@ -167,12 +167,12 @@ export const CAU_DAT_BAN = {
   chuaGhi: {
     vi: 'Chưa gửi được yêu cầu. Yêu cầu của bạn CHƯA được ghi nhận.',
     en: 'Your request could not be sent. It has NOT been recorded.',
-    ko: '요청을 보내지 못했어요. 예약 요청은 아직 접수되지 않았어요.',
+    ko: '요청을 보내지 못했어요. 테이블 문의는 아직 접수되지 않았어요.',
   },
   daNhan: {
     vi: 'Beeftown đã nhận yêu cầu đặt bàn của bạn.',
     en: 'Beeftown has received your table request.',
-    ko: 'Beeftown에 예약 요청이 접수되었어요.',
+    ko: 'Beeftown에 테이블 문의가 접수되었어요.',
   },
 } as const satisfies Record<string, BaThuTieng>;
 

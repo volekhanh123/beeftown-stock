@@ -71,5 +71,5 @@ const giua = lon ? lon.cac[Math.floor((lon.cac.length - 1) / 2)] : 0;
     {minhHoa && <figcaption class="chu-thich-anh">{t.anhMinhHoa}</figcaption>}
   </figure>
 ) : (
-  <KhungAnh loai={thayBang} tiLe={tiLe(khungNho)} nen={nenKhung} class={lop} />
+  <KhungAnh loai={thayBang} tiLe={tiLe(khung)} tiLeNho={tiLe(khungNho)} nen={nenKhung} class={lop} />
 )}

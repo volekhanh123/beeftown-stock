@@ -22,17 +22,18 @@ const t = dich(ngonNgu, {
   doan1: {
     vi: 'Mỗi phần bò được cắt và đóng trong khay skin-pack: lớp màng ôm sát miếng thịt, nên bạn thấy rõ thớ và vân mỡ trước khi chọn.',
     en: 'Every cut is packed in a skin-pack tray — a film that hugs the meat, so you can see the grain and marbling clearly before you choose.',
-    ko: '모든 부위는 스킨팩 트레이에 포장돼요. 필름이 고기에 밀착돼 있어서 고르기 전에 결과 마블링을 또렷하게 볼 수 있어요.',
+    ko: '모든 부위는 스킨팩 트레이에 포장돼요. 필름이 고기에 밀착돼 있어서 고르기 전에 마블링과 고기 결을 또렷하게 볼 수 있어요.',
   },
   doan2: {
     vi: 'Trọng lượng và giá của từng khay ghi ngay trên nhãn. Chưa biết chọn phần nào? Nhân viên quầy tư vấn theo khẩu vị và số người của bàn bạn.',
     en: 'Each tray’s weight and price are right on its label. Not sure what to pick? Our counter staff will help, based on your taste and the size of your group.',
     ko: '트레이마다 중량과 가격이 라벨에 바로 적혀 있어요. 어떤 부위를 고를지 고민되면 입맛과 인원에 맞춰 직원이 도와드려요.',
   },
+  // Chỉ nói CÓ quy trình ủ — không "mọi phần bò", không phạm vi, số ngày hay phương pháp.
   doan3: {
-    vi: 'Bò nướng tại quầy đều qua quy trình ủ của Beeftown trước khi lên khay.',
-    en: 'All the grilling beef at our counter goes through Beeftown’s ageing process before it is packed.',
-    ko: '정육 코너의 구이용 소고기는 모두 Beeftown의 숙성 과정을 거친 뒤 트레이에 담겨요.',
+    vi: 'Beeftown có quy trình ủ bò của riêng mình.',
+    en: 'Beeftown has its own process for ageing its beef.',
+    ko: 'Beeftown에는 자체 소고기 숙성 과정이 있어요.',
   },
 });
 ---
@@ -68,6 +69,14 @@ const t = dich(ngonNgu, {
   .qcb-u { color: var(--da); font-size: var(--co-nho); border-top: 1px solid var(--vach-kem); padding-top: var(--k-4); margin: var(--k-5) 0 0; }
 
   .qcb-steak { width: clamp(90px, 14vw, 170px); right: -2%; top: var(--k-7); transform: rotate(-12deg); opacity: .16; }
+  /* Hai cột (≥ 900px): ở trên thì nét steak nằm đúng mép phải cột chữ, các dòng đoạn dẫn
+     chạy đè lên. Từ 1200px nó xuống góc dưới, cạnh danh sách nhãn khay — còn ≥ 50px trống
+     ở cả ba thứ tiếng. Từ 900 đến 1199px danh sách nhãn khay lấp kín bề ngang, không còn
+     chỗ nào không chạm chữ: bỏ hẳn nét vẽ. */
+  @media (min-width: 900px) and (max-width: 1199.98px) { .qcb-steak { display: none; } }
+  /* Dưới 700px khung ảnh chiếm gần hết bề ngang: nét vẽ đè lên góc khung. */
+  @media (max-width: 699.98px) { .qcb-steak { display: none; } }
+  @media (min-width: 1200px) { .qcb-steak { top: auto; bottom: var(--k-8); right: 3%; } }
 
   .qcb :global(.qcb-nhan) { border-top: 1px solid var(--vach-kem); padding-top: var(--k-7); }
 </style>

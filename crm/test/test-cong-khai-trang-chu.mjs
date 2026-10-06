@@ -24,7 +24,7 @@ import { taoBoDem } from './kho-chung.mjs';
 
 const LIB = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'web', 'src', 'lib');
 const nap = f => import(pathToFileURL(join(LIB, f)).href);
-const { nutMoDau, lienHe, diaChi, diaChiSauTang, diaChiCoCauTruc, jsonTrongScript, coKenhHoiBan, formHoiBanMo, dieuHuong, urlAnToan } = await nap('trang-cong-khai.ts');
+const { nutMoDau, lienHe, diaChi, diaChiSauTang, diaChiCoCauTruc, cumDiaChi, jsonTrongScript, coKenhHoiBan, formHoiBanMo, dieuHuong, urlAnToan } = await nap('trang-cong-khai.ts');
 const { chu, duongDanTuongUng, DIA_CHI_NHA_HANG, NGON_NGU } = await nap('chu.ts');
 const { docNoiDung } = await nap('noi-dung.ts');
 
@@ -177,6 +177,19 @@ await nhom('4 · ĐỊA CHỈ CỐ ĐỊNH, BẢN CÔNG BỐ THAY VÀO KHI CÓ',
   ok('JSON-LD có bản công bố: streetAddress là bản công bố, không thêm phường / thành phố lần hai',
      coCauTrucCongBo.streetAddress === congBo.trim() && !('addressLocality' in coCauTrucCongBo) && !('addressRegion' in coCauTrucCongBo)
        && coCauTrucCongBo.addressCountry === 'VN', JSON.stringify(coCauTrucCongBo));
+
+  // In địa chỉ theo cụm: "phường Sài / Gòn", "Hàm / Nghi" không gãy giữa cụm; cụm dài thì để tự xuống dòng.
+  const cum = cumDiaChi(DIA_CHI_NHA_HANG);
+  ok('cumDiaChi: địa chỉ cố định → 4 cụm, dấu phẩy đi cùng cụm, cụm nào cũng giữ nguyên một dòng',
+     JSON.stringify(cum.map(c => c.chu)) === JSON.stringify(['Tầng 3,', '11-21 Hàm Nghi,', 'phường Sài Gòn,', 'TP.HCM']) && cum.every(c => c.giu),
+     JSON.stringify(cum));
+  for (const dc of [DIA_CHI_NHA_HANG, 'Tầng 3,11-21 Hàm Nghi,, TP.HCM', '  Tầng 3 ,  Hàm Nghi  ', 'Một dòng không dấu phẩy']) {
+    ok(`cumDiaChi(${JSON.stringify(dc)}): ghép lại ra ĐÚNG NGUYÊN VĂN (chữ trên trang không đổi)`,
+       cumDiaChi(dc).map(c => c.chu + c.cach).join('') === dc, JSON.stringify(cumDiaChi(dc)));
+  }
+  const dai = cumDiaChi('Tầng 3 tòa nhà số 11-13-15-17-19-21 đường Hàm Nghi phường Sài Gòn');
+  ok('cumDiaChi: một cụm dài (bản công bố không dấu phẩy) → không giữ nguyên dòng, kẻo tràn ngang màn hẹp',
+     dai.length === 1 && dai[0].giu === false, JSON.stringify(dai));
 
   // JSON-LD in vào <script>: chữ do người gõ trong /noi-bo (mô tả, địa chỉ) có "</script>" thì không được đóng thẻ sớm.
   const json = jsonTrongScript({ description: 'Ngon </script><script>alert(1)</script>', a: '<!--' });

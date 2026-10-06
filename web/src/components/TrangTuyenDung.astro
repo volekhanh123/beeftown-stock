@@ -26,6 +26,7 @@ import type { KetQuaNop } from '../lib/nop-ho-so';
 import type { TruongForm } from '../lib/truong-form';
 import { BO_PHAN, LOAI_HOP_DONG, dinhDangLuong, nhanEnum } from '../lib/tuyen-dung';
 import { lienHe } from '../lib/trang-cong-khai';
+import BieuTuong from './BieuTuong.astro';
 import FormUngTuyen from './FormUngTuyen.astro';
 
 /** Một tin đã công bố, kèm công tắc từng trường của form (0026). */
@@ -74,8 +75,11 @@ const DU_PHONG: { ten: BaThuTieng; bo_phan: keyof typeof BO_PHAN; loai: keyof ty
 ];
 
 const dungDuPhong = viTri.length === 0;
-// Cùng một cách đọc hotline với mọi trang công khai (lib/trang-cong-khai.ts).
-const soGoi = lienHe(nd).goi;
+// Cùng một cách đọc kênh liên hệ với mọi trang công khai (lib/trang-cong-khai.ts):
+// chỉ link http(s), email đúng dạng và số điện thoại đúng dạng mới thành nút.
+const lh = lienHe(nd);
+const soGoi = lh.goi;
+const daNop = ketQuaNop?.ok === true;
 
 // Nút "Ứng tuyển vị trí này" trên từng thẻ dẫn tới ?vi_tri=<mã>#nop-ho-so, và
 // form chọn sẵn vị trí đó — không cần JavaScript. Chỉ nhận mã đang tuyển; mã
@@ -94,10 +98,15 @@ const tachMoTa = (s: string | null) => {
 };
 const theViTri = viTri.map(v => ({ v, ...tachMoTa(v.mo_ta) }));
 
+// Nút nhắn tin: Facebook trước, không có thì email — và chữ trên nút nói đúng
+// kênh đó (một link mailto ghi "Nhắn Beeftown" là hứa một thứ, mở ra thứ khác).
 const nutNhanTin =
-  nd.facebook_url ? { url: nd.facebook_url, chu: t.nhanTin } :
-  nd.email_lien_he ? { url: `mailto:${nd.email_lien_he}`, chu: t.nhanTin } :
+  lh.facebook ? { url: lh.facebook, chu: t.nhanTin } :
+  lh.thu ? { url: lh.thu, chu: t.guiEmail } :
   null;
+// Câu trong thẻ liên hệ nhắc tới Facebook. Chỉ có email thì câu đó chỉ sai đường,
+// nên chỉ nói cổng trực tuyến chưa mở, còn nút email tự nói cách gửi.
+const cauKenh = nutNhanTin && !lh.facebook ? 'chiEmail' : 'facebook';
 
 // Database chỉ trả lương và đơn vị khi mức lương đã được duyệt (0012, 0028).
 const mucLuong = (v: ViTri) => dinhDangLuong(v.luong_tu, v.luong_den, v.luong_don_vi, ngonNgu);
@@ -121,6 +130,12 @@ const tRieng = dich(ngonNgu, {
     vi: 'Beeftown chỉ dùng thông tin bạn gửi cho việc tuyển dụng, và lưu trong sáu tháng.',
     en: 'Beeftown only uses the details you send for hiring, and keeps them for six months.',
     ko: 'Beeftown은 보내 주신 정보를 채용에만 사용하며, 6개월 동안 보관해요.',
+  },
+  // Câu đầu của t.tuyenDungChuaMo, cho lúc chỉ có email (xem cauKenh).
+  chuaMoNgan: {
+    vi: 'Cổng nộp hồ sơ trực tuyến chưa mở.',
+    en: 'Online applications are not open yet.',
+    ko: '온라인 지원 창구는 아직 열리지 않았어요.',
   },
 });
 ---
@@ -152,32 +167,32 @@ const tRieng = dich(ngonNgu, {
               <span class="nhan">{nhanEnum(BO_PHAN, v.bo_phan, ngonNgu)}</span>
               <h3>{v.ten[ngonNgu]}</h3>
               {/* Cùng nhãn loại hợp đồng với tin thật. */}
-              {v.loai && <p class="nho" style="margin:0">{nhanEnum(LOAI_HOP_DONG, v.loai, ngonNgu)}</p>}
+              {v.loai && <p class="nho td-dong">{nhanEnum(LOAI_HOP_DONG, v.loai, ngonNgu)}</p>}
             </div>
           ))
         : theViTri.map(({ v, tomTat, conLai }) => (
             <div class="the vi-tri">
               <span class="nhan">{nhanEnum(BO_PHAN, v.bo_phan, ngonNgu)}</span>
               <h3>{v.ten}</h3>
-              {v.cap_bac && <p class="nho" style="margin:0">{v.cap_bac}</p>}
+              {v.cap_bac && <p class="nho td-dong">{v.cap_bac}</p>}
               {/* Loại hợp đồng chưa chốt thì không hiện — không đoán thay nhà hàng. */}
               {(v.loai_hop_dong || v.ca_lam) && (
-                <p class="nho" style="margin:0">
+                <p class="nho td-dong">
                   {[v.loai_hop_dong && nhanEnum(LOAI_HOP_DONG, v.loai_hop_dong, ngonNgu), v.ca_lam]
                     .filter(Boolean).join(' · ')}
                 </p>
               )}
               {v.so_luong && (
-                <p class="nho" style="margin:0">
+                <p class="nho td-dong">
                   {tRieng.canNguoi(v.so_luong)}
                 </p>
               )}
-              {tomTat && <p style="margin:8px 0 0">{tomTat}</p>}
+              {tomTat && <p class="td-doan">{tomTat}</p>}
               {mucLuong(v) && (
-                <p style="margin:8px 0 0; font-weight:700; color:var(--do)">{mucLuong(v)}</p>
+                <p class="td-doan td-luong">{mucLuong(v)}</p>
               )}
               {v.han_nop && (
-                <p class="nho" style="margin:8px 0 0">
+                <p class="nho td-doan">
                   {tRieng.hanNop}{dinhDangNgay(v.han_nop, ngonNgu)}
                 </p>
               )}
@@ -185,22 +200,22 @@ const tRieng = dich(ngonNgu, {
                 <details class="chi-tiet">
                   <summary>{tRieng.xemChiTiet}</summary>
                   {/* pre-line: xuống dòng người soạn gõ ở màn nội bộ phải còn nguyên. */}
-                  {conLai && <p style="margin:8px 0 0;white-space:pre-line">{conLai}</p>}
+                  {conLai && <p class="td-doan td-giu-dong">{conLai}</p>}
                   {v.yeu_cau && (
-                    <p class="nho" style="margin:8px 0 0;white-space:pre-line">
+                    <p class="nho td-doan td-giu-dong">
                       <strong>{tRieng.yeuCau}</strong>
                       {v.yeu_cau}
                     </p>
                   )}
                   {v.quyen_loi && (
-                    <p class="nho" style="margin:8px 0 0;white-space:pre-line">
+                    <p class="nho td-doan td-giu-dong">
                       <strong>{tRieng.quyenLoi}</strong>
                       {v.quyen_loi}
                     </p>
                   )}
                 </details>
               )}
-              <p style="margin:16px 0 0">
+              <p class="hang-nut td-nut-the">
                 <a class="nut nut-chinh" href={`?vi_tri=${encodeURIComponent(v.ma)}#nop-ho-so`}>{tRieng.ungTuyenViTri}</a>
               </p>
             </div>
@@ -219,48 +234,59 @@ const tRieng = dich(ngonNgu, {
 
       Trang đặt bàn vốn làm đúng. Hai trang lệch nhau đúng ở chỗ nguy hiểm
       nhất, nên giờ cả hai cùng một khuôn: đã có kết quả thì kết quả thắng.
-    */}
-    <div id="nop-ho-so" style="margin-top:30px">
-      {ketQuaNop?.ok ? (
-        /* Đã nộp xong: thẻ xác nhận thắng mọi thứ khác. */
-        <FormUngTuyen ngonNgu={ngonNgu} viTri={viTri} ketQua={ketQuaNop} nhanTin={nutNhanTin} />
 
-      ) : dungDuPhong ? (
-        <div class="the" style="max-width:62ch">
-          {/* Lỗi mà lại không còn vị trí nào: vẫn phải nói cho người ta biết
-              là chưa gửi được, chứ không im lặng đổi sang màn hình khác. */}
-          {ketQuaNop && (
-            <div style="border-left:4px solid var(--do);padding:12px 14px;margin:0 0 18px;background:rgba(178,58,44,.08)">
-              <p style="margin:0"><strong>{ketQuaNop.cau}</strong></p>
-            </div>
-          )}
-          <h3 style="margin-top:0">{tRieng.cachUngTuyen}</h3>
-          <p style="margin-bottom:0">{t.tuyenDungCachNop}</p>
-          {!nutNhanTin && (
-            <p class="nho" style="margin:14px 0 0">{t.tuyenDungChuaMo}</p>
-          )}
-          {nutNhanTin && (
-            <div class="hang-nut" style="margin-top:18px">
-              <a class="nut nut-chinh" href={nutNhanTin.url} rel="noopener">{nutNhanTin.chu}</a>
-              {soGoi && (
-                <a class="nut nut-vien" href={soGoi}>
-                  {t.goiNhaHang}
-                </a>
-              )}
-            </div>
-          )}
-        </div>
+      Bố cục cũng cùng khuôn với trang hỏi bàn (.hb-luoi): từ 900px là hai cột
+      5fr / 7fr — trái "Cách ứng tuyển" và dòng lưu trữ, phải là thẻ. Đã nộp
+      xong thì thẻ xác nhận đứng TRƯỚC (cả trong mã lẫn trên màn hình, cột rộng
+      7fr bên trái): ứng viên quay về #nop-ho-so là thấy nó đầu tiên, kể cả trên
+      điện thoại.
+    */}
+    <div id="nop-ho-so" class:list={['td-nop', { 'td-nop-da-nhan': daNop }]}>
+      {daNop ? (
+        <>
+          {/* Đã nộp xong: thẻ xác nhận thắng mọi thứ khác. */}
+          <FormUngTuyen ngonNgu={ngonNgu} viTri={viTri} ketQua={ketQuaNop} nhanTin={nutNhanTin} />
+          <div class="td-ben">
+            <p class="nho td-luu-tru">{tRieng.luuTru} <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a></p>
+          </div>
+        </>
 
       ) : (
-        <FormUngTuyen ngonNgu={ngonNgu} viTri={viTri} ketQua={ketQuaNop} nhanTin={nutNhanTin} daNhap={chonSan} />
+        <>
+          <div class="td-ben">
+            <h2 class="td-ben-tieu-de">{tRieng.cachUngTuyen}</h2>
+            <p class="td-cach-nop">{t.tuyenDungCachNop}</p>
+            <p class="nho td-luu-tru">{tRieng.luuTru} <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a></p>
+          </div>
+
+          {dungDuPhong ? (
+            <div class="the td-the td-kenh">
+              {/* Lỗi mà lại không còn vị trí nào: vẫn phải nói cho người ta biết
+                  là chưa gửi được, chứ không im lặng đổi sang màn hình khác. */}
+              {ketQuaNop && (
+                <div class="td-loi" role="alert">
+                  <p><strong>{ketQuaNop.cau}</strong></p>
+                </div>
+              )}
+              <span class="td-kenh-hinh" aria-hidden="true"><BieuTuong ten="tin-nhan" /></span>
+              <p class="td-kenh-cau">{cauKenh === 'chiEmail' ? tRieng.chuaMoNgan : t.tuyenDungChuaMo}</p>
+              {(nutNhanTin || soGoi) && (
+                <div class="hang-nut">
+                  {nutNhanTin && (
+                    <a class="nut nut-chinh" href={nutNhanTin.url} rel="noopener"><BieuTuong ten="tin-nhan" />{nutNhanTin.chu}</a>
+                  )}
+                  {soGoi && (
+                    <a class="nut nut-vien" href={soGoi}><BieuTuong ten="dien-thoai" />{t.goiNhaHang}</a>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <FormUngTuyen ngonNgu={ngonNgu} viTri={viTri} ketQua={ketQuaNop} nhanTin={nutNhanTin} daNhap={chonSan} />
+          )}
+        </>
       )}
     </div>
-
-    <p class="nho" style="margin-top:22px; max-width:62ch">
-      {tRieng.luuTru}
-      {' '}
-      <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a>
-    </p>
   </div>
 </section>
 
@@ -268,12 +294,63 @@ const tRieng = dich(ngonNgu, {
   .td-nut { margin-top: var(--k-6); }
   .td-luoi { margin-top: var(--k-5); }
 
+  /* ---- Thẻ vị trí ----------------------------------------------------------- */
+  .td-dong { margin: 0; }
+  .td-doan { margin: var(--k-2) 0 0; }
+  .td-luong { font-weight: 700; color: var(--do); }
+  .td-giu-dong { white-space: pre-line; }
+  /* Nút "Ứng tuyển vị trí này" dồn xuống đáy thẻ: thẻ cùng hàng cao bằng nhau,
+     nên các nút cũng thẳng hàng dù mô tả dài ngắn khác nhau. */
+  .td-nut-the { margin: auto 0 0; padding-top: var(--k-4); }
+
   /* "Xem chi tiết công việc": màu nút chính để thấy là bấm được; cao 44px cho
      ngón tay cái. */
-  .chi-tiet { margin-top: 12px; border-top: 1px solid var(--vien); }
+  .chi-tiet { margin-top: var(--k-3); border-top: 1px solid var(--vien); }
   .chi-tiet > summary {
     cursor: pointer; font-weight: 700; color: var(--do);
-    padding: 12px 0; min-height: 44px;
+    padding: var(--k-3) 0; min-height: 44px;
   }
   .chi-tiet > summary:focus-visible { outline: 2px solid var(--do); outline-offset: 2px; }
+
+  /* ---- Khối nộp hồ sơ: cùng khuôn với .hb-luoi của trang hỏi bàn ------------ */
+  .td-nop {
+    display: grid; gap: var(--k-6);
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    margin-top: var(--k-8);
+  }
+  @media (min-width: 900px) {
+    .td-nop { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--k-8); }
+    /* Đã nộp: thẻ xác nhận đứng trước, cột rộng. */
+    .td-nop-da-nhan { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+  }
+  /* Form dài gấp mấy lần cột trái: cột trái dính theo khi cuộn (như .hb-ben), chỉ khi
+     màn đủ cao để không cắt mất dòng lưu trữ và link Quyền riêng tư. */
+  @media (min-width: 900px) and (min-height: 720px) {
+    .td-nop:not(.td-nop-da-nhan) .td-ben { position: sticky; top: calc(var(--cao-dau) + var(--k-5)); }
+  }
+  .td-ben-tieu-de { font-size: var(--co-h3); line-height: 1.3; margin: 0 0 var(--k-3); }
+  .td-cach-nop { margin: 0 0 var(--k-4); max-width: 46ch; }
+  .td-luu-tru { margin: 0; max-width: 46ch; }
+
+  /* ---- Thẻ liên hệ khi chưa có form (cùng dáng thẻ "chưa mở" của hỏi bàn) --- */
+  .td-the { padding: var(--k-5) var(--k-4); }
+  @media (min-width: 600px) { .td-the { padding: var(--k-6); } }
+  .td-kenh { border-top: 4px solid var(--do); }
+  .td-kenh-hinh {
+    display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+    background: var(--kem-dam); color: var(--do); margin-bottom: var(--k-4);
+  }
+  .td-kenh-hinh :global(svg) { width: 28px; height: 28px; }
+  .td-kenh-cau { margin: 0; max-width: 56ch; }
+  .td-kenh .hang-nut { margin-top: var(--k-5); }
+
+  /* Khung lỗi của máy chủ: chữ than trên nền hồng nhạt, vạch đỏ bên trái. */
+  .td-loi {
+    border-left: 4px solid var(--do);
+    background: rgba(178, 58, 44, .08);
+    padding: var(--k-3) var(--k-4);
+    margin: 0 0 var(--k-5);
+  }
+  .td-loi p { margin: 0; }
 </style>

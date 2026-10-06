@@ -25,6 +25,10 @@
  * có thang máy cho khách (brief 06/10/2026). Khối LenTang3 bản gọn đứng TRƯỚC
  * thẻ form (trên điện thoại: phía trên; máy tính: cột bên trái) để người đi cùng
  * ông bà biết điều đó trước khi bấm gửi.
+ *
+ * Không có form (đã nhận yêu cầu, hay chưa mở hỏi bàn trực tuyến): thẻ kết quả /
+ * thẻ "chưa mở" là điều khách cần đọc trước nhất, nên đứng TRƯỚC ba bước (cột chính,
+ * bên trái), ba bước và LenTang3 lùi sang cột phụ.
  */
 import { chu, dich, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
@@ -127,16 +131,12 @@ const t = dich(ngonNgu, {
     en: 'We will call this number to confirm.',
     ko: '확인 전화는 이 번호로 드려요.',
   },
-  dip:     { vi: 'Dịp gì (không bắt buộc)', en: 'Occasion (optional)', ko: '방문 목적 (선택)' },
-  ghiChu: {
-    vi: 'Điều nhà hàng nên biết (không bắt buộc)',
-    en: 'Anything we should know (optional)',
-    ko: '미리 알려 주실 내용 (선택)',
-  },
+  dip:     { vi: 'Dịp gì', en: 'Occasion', ko: '방문 목적' },
+  ghiChu:  { vi: 'Điều nhà hàng nên biết', en: 'Anything we should know', ko: '미리 알려 주실 내용' },
   nhanTinKM: {
     vi: 'Nhận tin mới từ Beeftown. Không bắt buộc — việc giữ bàn không phụ thuộc vào ô này.',
     en: 'Send me news from Beeftown. Optional — your table does not depend on this.',
-    ko: 'Beeftown의 새 소식 받기. 선택 사항이며, 체크하지 않아도 예약에는 영향이 없어요.',
+    ko: 'Beeftown의 새 소식 받기. 선택 사항이며, 체크하지 않아도 테이블 문의에는 영향이 없어요.',
   },
   gui:     { vi: 'Gửi yêu cầu', en: 'Send request', ko: '문의 보내기' },
   dangGui: { vi: 'Đang gửi…', en: 'Sending…', ko: '보내는 중…' },
@@ -146,28 +146,30 @@ const t = dich(ngonNgu, {
     ko: '문의를 보낸다고 바로 자리가 잡히지는 않아요. 매장에서 전화로 확인해 드려요.',
   },
   batBuoc: { vi: 'bắt buộc', en: 'required', ko: '필수' },
+  // Cùng kiểu chữ với "(bắt buộc)": nhãn ô in đậm, phần trong ngoặc chữ thường, màu phụ.
+  khongBatBuoc: { vi: 'không bắt buộc', en: 'optional', ko: '선택' },
 
   // --- Màn hình sau khi gửi ---
   daNhan: {
     vi: 'Beeftown đã nhận yêu cầu của bạn',
     en: 'Beeftown has received your request',
-    ko: 'Beeftown에 예약 요청이 접수되었어요',
+    ko: 'Beeftown에 테이블 문의가 접수되었어요',
   },
   maYeuCau: { vi: 'Mã yêu cầu: ', en: 'Your reference code: ', ko: '접수 번호: ' },
   chuaGiuBan: {
     vi: 'Yêu cầu chỉ có hiệu lực sau khi nhân viên gọi xác nhận — hiện chưa có bàn nào được giữ.',
     en: 'This request only takes effect after a staff member calls to confirm — no table is being held yet.',
-    ko: '예약 요청은 직원이 전화로 확인한 뒤에만 유효해요. 아직 잡아 둔 자리는 없어요.',
+    ko: '문의는 직원이 전화로 확인한 뒤에만 유효해요. 아직 잡아 둔 자리는 없어요.',
   },
   giuMa: {
     vi: 'Bạn giữ mã này để nhắc tới khi nhà hàng gọi.',
-    en: 'Keep the code to mention when we call.',
+    en: 'Keep this code handy — you can mention it when we call.',
     ko: '매장에서 전화드릴 때 말씀해 주실 수 있게 이 번호를 기억해 두세요.',
   },
   nhanThang: {
-    vi: 'Bạn cũng có thể nhắn thẳng cho Beeftown: ',
-    en: 'You can also message us directly: ',
-    ko: 'Beeftown에 직접 메시지를 보내셔도 돼요: ',
+    vi: 'Bạn cũng có thể liên hệ thẳng với Beeftown: ',
+    en: 'Or reach us directly: ',
+    ko: 'Beeftown에 직접 연락하셔도 돼요: ',
   },
 });
 ---
@@ -182,7 +184,7 @@ const t = dich(ngonNgu, {
 </section>
 
 <section class="be-kem hb">
-  <div class:list={['khung', 'hb-luoi', { 'hb-luoi-da-nhan': daNhanYeuCau }]}>
+  <div class:list={['khung', 'hb-luoi', { 'hb-luoi-da-nhan': daNhanYeuCau || chuaMo }]}>
 
     {daNhanYeuCau && ketQua && (
       <div class="hb-the hb-da-nhan" data-ket-qua="da-nhan" tabindex="-1">
@@ -196,25 +198,6 @@ const t = dich(ngonNgu, {
         <a class="lien-ket" href={duongDanTuongUng('/thuc-don', ngonNgu)}>{tChung.xemMenu}<BieuTuong ten="mui-ten" /></a>
       </div>
     )}
-
-    <div class="hb-ben">
-      <h2 class="hb-nho">{t.cachHoi}</h2>
-      <ol class="hb-buoc">
-        <li class:list={{ 'hb-xong': daNhanYeuCau }}>
-          <span class="hb-so" aria-hidden="true">{daNhanYeuCau ? <BieuTuong ten="da-chep" /> : '1'}</span>
-          <span>{t.buoc1}</span>
-        </li>
-        <li>
-          <span class="hb-so" aria-hidden="true">2</span>
-          <span>{t.buoc2}</span>
-        </li>
-        <li class="hb-buoc-chinh">
-          <span class="hb-so" aria-hidden="true">3</span>
-          <span>{t.buoc3}</span>
-        </li>
-      </ol>
-      <LenTang3 gon ngonNgu={ngonNgu} noiDung={nd} />
-    </div>
 
     {chuaMo && (
       <div class="hb-the hb-chua-mo">
@@ -242,6 +225,25 @@ const t = dich(ngonNgu, {
       </div>
     )}
 
+    <div class="hb-ben">
+      <h2 class="hb-nho">{t.cachHoi}</h2>
+      <ol class="hb-buoc">
+        <li class:list={{ 'hb-xong': daNhanYeuCau }}>
+          <span class="hb-so" aria-hidden="true">{daNhanYeuCau ? <BieuTuong ten="da-chep" /> : '1'}</span>
+          <span>{t.buoc1}</span>
+        </li>
+        <li class:list={{ 'hb-dang-cho': daNhanYeuCau }}>
+          <span class="hb-so" aria-hidden="true">2</span>
+          <span>{t.buoc2}</span>
+        </li>
+        <li class="hb-buoc-chinh">
+          <span class="hb-so" aria-hidden="true">3</span>
+          <span>{t.buoc3}</span>
+        </li>
+      </ol>
+      <LenTang3 gon ngonNgu={ngonNgu} noiDung={nd} />
+    </div>
+
     {!daNhanYeuCau && !chuaMo && (
       <div class="hb-the hb-form">
         <h2 class="hb-tieu-de-the">{t.yeuCau}</h2>
@@ -257,7 +259,9 @@ const t = dich(ngonNgu, {
 
         {/* Đổi ngày: form GET riêng, nên không cần JavaScript và không đụng
             gì tới dữ liệu khách đã điền ở form bên dưới. */}
-        <form method="GET" class="form-dat hb-doi-ngay" data-doi-ngay>
+        {/* action có #hb-gio: trang mới cuộn tới khung giờ và lần Tab kế tiếp vào ngay
+            giờ đầu tiên, thay vì quay về đầu trang (form GET giữ nguyên phần #). */}
+        <form method="GET" action={`${duongDan}#hb-gio`} class="form-dat hb-doi-ngay" data-doi-ngay>
           <div class="o">
             <label for="hb-ngay">{t.ngay}</label>
             <div class="hb-hang-ngay">
@@ -269,14 +273,14 @@ const t = dich(ngonNgu, {
         </form>
 
         {chonDuoc.length === 0 ? (
-          <p class="hb-het-cho"><strong>{t.hetCho}</strong></p>
+          <p class="hb-het-cho" id="hb-gio"><strong>{t.hetCho}</strong></p>
         ) : (
           <form method="POST" action={duongDan} class="form-dat hb-gui" data-hoi-ban
                 data-dang-gui-chu={t.dangGui} data-loi-gio={loi.thieuGio}
                 data-loi-ho-ten={loi.thieuHoTen} data-loi-sdt={loi.thieuSdt}>
             <input type="hidden" name="ngay" value={tinhTrang.ngay} />
 
-            <fieldset class="o hb-gio" data-o="gio" aria-describedby="loi-gio">
+            <fieldset class="o hb-gio" id="hb-gio" data-o="gio" aria-describedby="loi-gio">
               <legend>{t.gio} <em>({t.batBuoc})</em></legend>
               {trua.length > 0 && (
                 <>
@@ -284,7 +288,7 @@ const t = dich(ngonNgu, {
                   <div class="hb-chip" role="group" aria-labelledby="hb-buoi-trua">
                     {trua.map(k => (
                       <label class="hb-chip-o">
-                        <input type="radio" name="gio" value={k.gio} required />
+                        <input type="radio" name="gio" value={k.gio} required aria-describedby="loi-gio" />
                         <span>{k.gio.slice(0, 5)}</span>
                       </label>
                     ))}
@@ -297,7 +301,7 @@ const t = dich(ngonNgu, {
                   <div class="hb-chip" role="group" aria-labelledby="hb-buoi-toi">
                     {toi.map(k => (
                       <label class="hb-chip-o">
-                        <input type="radio" name="gio" value={k.gio} required />
+                        <input type="radio" name="gio" value={k.gio} required aria-describedby="loi-gio" />
                         <span>{k.gio.slice(0, 5)}</span>
                       </label>
                     ))}
@@ -333,12 +337,12 @@ const t = dich(ngonNgu, {
             </div>
 
             <div class="o">
-              <label for="hb-dip">{t.dip}</label>
+              <label for="hb-dip">{t.dip} <em>({t.khongBatBuoc})</em></label>
               <input type="text" id="hb-dip" name="dip" autocapitalize="sentences" />
             </div>
 
             <div class="o">
-              <label for="hb-ghi-chu">{t.ghiChu}</label>
+              <label for="hb-ghi-chu">{t.ghiChu} <em>({t.khongBatBuoc})</em></label>
               <textarea id="hb-ghi-chu" name="ghi_chu" rows="3"></textarea>
             </div>
 
@@ -564,8 +568,12 @@ const t = dich(ngonNgu, {
   }
   @media (min-width: 900px) {
     .hb-luoi { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--k-8); }
-    /* Sau khi gửi: thẻ "đã nhận" đứng trước (cả trong mã lẫn trên màn hình). */
+    /* Đã nhận / chưa mở: thẻ kết quả đứng trước (cả trong mã lẫn trên màn hình). */
     .hb-luoi-da-nhan { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+  }
+  /* Cột ba bước + tầng 3 cao chừng 500px: chỉ dính khi màn đủ cao, không thì link
+     "Chỉ đường" / "Xem đường lên tầng 3" bị cắt dưới mép màn hình (máy phóng to 200 %). */
+  @media (min-width: 900px) and (min-height: 720px) {
     .hb-ben { position: sticky; top: calc(var(--cao-dau) + var(--k-5)); }
   }
 
@@ -588,9 +596,12 @@ const t = dich(ngonNgu, {
     font-weight: 800; font-size: 15px; line-height: 1;
   }
   .hb-so :global(svg) { width: 18px; height: 18px; }
+  /* Chỉ bước ĐÃ XONG tô đặc. Bước 3 in đậm chữ để nhấn mạnh, nhưng vòng số vẫn rỗng —
+     tô đặc thì mắt đọc thành "bước 3 đã xong", ngược với "chưa có bàn nào được giữ". */
   .hb-xong .hb-so { background: var(--do); color: var(--kem); }
   .hb-buoc-chinh { font-weight: 700; }
-  .hb-buoc-chinh .hb-so { background: var(--do); color: var(--kem); }
+  /* Đã gửi: bước 2 là bước khách đang chờ — vòng dày hơn, vẫn rỗng. */
+  .hb-dang-cho .hb-so { border-width: 3px; }
 
   /* ---- Thẻ (form / chưa mở / đã nhận) --------------------------------------- */
   .hb-the {
@@ -603,7 +614,10 @@ const t = dich(ngonNgu, {
   /* Khung kết quả nhận con trỏ bằng script (tabindex="-1") để trình đọc màn hình
      đọc ngay; nó không phải thứ bấm được, nên không vẽ vòng focus quanh cả khung. */
   .hb-the:focus, .hb-loi:focus { outline: none; }
-  .hb-tieu-de-the { font-size: clamp(24px, 1.4vw + 18px, 32px); line-height: 1.2; margin: 0 0 var(--k-5); }
+  .hb-tieu-de-the {
+    font-size: clamp(24px, 1.4vw + 18px, 32px); line-height: 1.2; margin: 0 0 var(--k-5);
+    text-wrap: balance;
+  }
 
   /* Khung lỗi của máy chủ: chữ than trên nền hồng nhạt, vạch đỏ bên trái. */
   .hb-loi {
@@ -632,11 +646,14 @@ const t = dich(ngonNgu, {
 
   /* ---- Khung giờ: chip radio theo buổi ------------------------------------- */
   fieldset.hb-gio { border: 0; padding: 0; min-width: 0; }
+  fieldset.hb-gio > legend { padding: 0; }
   .hb-buoi {
     margin: var(--k-3) 0 var(--k-2);
     font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
     color: var(--chu-phu);
   }
+  /* Hangul không giãn chữ như chữ in hoa Latin. */
+  .hb-buoi:lang(ko) { letter-spacing: .02em; }
   .hb-buoi:first-of-type { margin-top: 0; }
   /* Khung giờ là nút bấm, không phải ô chọn nhỏ xíu. Cao 52px để bấm được bằng
      ngón cái trong lúc đi đường. */
@@ -658,7 +675,23 @@ const t = dich(ngonNgu, {
   }
   .hb-chip-o:hover span { border-color: var(--do); }
   .hb-chip-o input:checked + span { background: var(--do); border-color: var(--do); color: var(--kem); }
+  /* Dấu ✓ ở góc chip đã chọn: phân biệt được không cần nhìn ra màu (mù màu, chế độ
+     tương phản cao). Nằm tuyệt đối nên chữ giờ không xê dịch. Chữ thay '' — trình đọc
+     màn hình đã đọc "đã chọn" của radio, không đọc thêm dấu này. */
+  .hb-chip-o input:checked + span::after {
+    content: '✓'; content: '✓' / '';
+    position: absolute; top: 3px; right: 7px;
+    font-size: 13px; font-weight: 800; line-height: 1;
+  }
   .hb-chip-o input:focus-visible + span { outline: 3px solid var(--than); outline-offset: 2px; }
+  /* Chế độ tương phản cao (Windows): trình duyệt ép nền và viền về màu hệ thống, chip đã
+     chọn trông y hệt chip chưa chọn — dùng cặp màu Highlight / HighlightText của hệ thống. */
+  @media (forced-colors: active) {
+    .hb-chip-o input:checked + span {
+      forced-color-adjust: none;
+      background: Highlight; color: HighlightText; border-color: Highlight;
+    }
+  }
 
   .hb-gui textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
 
@@ -699,6 +732,10 @@ const t = dich(ngonNgu, {
     }
     .hb-chua-giu { display: flow-root; }
   }
+  /* Tiêu đề cạnh tem cũng là flow-root: cả khối nằm gọn bên trái tem, mọi dòng cùng bề
+     rộng — text-wrap: balance mới chia đều được (Chrome không cân dòng khi có float chen
+     vào giữa đoạn, nên "… của / bạn" rơi một chữ xuống dòng). */
+  @media (min-width: 600px) { .hb-da-nhan .hb-tieu-de-the { display: flow-root; } }
   .hb-ma { font-size: 17px; margin: 0 0 var(--k-4); }
   .hb-ma strong {
     display: inline-block; margin-left: 2px;
