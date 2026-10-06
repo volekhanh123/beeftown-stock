@@ -26,9 +26,9 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { taoClient, maChiNhanh, homNayVn, type NgonNgu } from './noi-dung';
-import { congNgay } from './gio-vn';
-import { cauLoiDatabase, dich, type BaThuTieng } from './chu';
+import { taoClient, maChiNhanh, homNayVn, type NgonNgu } from './noi-dung.ts';
+import { congNgay } from './gio-vn.ts';
+import { cauLoiDatabase, laLoiDatabase, dich, type BaThuTieng } from './chu.ts';
 
 export interface KhungGio {
   gio: string;      // '18:00:00'
@@ -217,6 +217,13 @@ export async function guiYeuCauDatBan(
   });
 
   if (error) {
+    // Đứt mạng / hết giờ / cổng 502–504: supabase-js không ném mà trả error
+    // không có mã. Yêu cầu có thể đã ghi xong rồi mới đứt — ném để
+    // xu-ly-form.ts nói "KHÔNG CHẮC", không bao giờ nói "CHƯA được ghi nhận"
+    // (khách sẽ gửi lại và nhà hàng nhận hai bản). Xem laLoiDatabase().
+    if (!laLoiDatabase(error)) {
+      throw new Error(`tao_dat_ban: không nghe được trả lời — ${error.message ?? ''}`);
+    }
     // Câu lỗi của database viết bằng tiếng Việt: trang tiếng Việt dùng nguyên
     // văn, trang khác nhận bản dịch — xem cauLoiDatabase() trong lib/chu.ts.
     return { ok: false, cau: cauLoiDatabase(error.message ?? '', ngonNgu, cau.chuaGhi) };
@@ -224,9 +231,13 @@ export async function guiYeuCauDatBan(
 
   // tao_dat_ban() trả về cả con_trong. Chỉ lấy mã; con số sức chứa dừng ở đây.
   const dong = Array.isArray(data) ? data[0] : data;
+  // Ghi được thì LUÔN có mã (0013). Không lỗi mà cũng không có dòng — thân trả
+  // lời rỗng; supabase-js biến 404 thân rỗng thành 204 — là database chưa xác
+  // nhận gì: không được nói "đã nhận". Như messenger-anon.ts.
+  if (!dong?.ma_dat_ban) throw new Error('tao_dat_ban: trả lời không có mã đặt bàn');
   return {
     ok: true,
-    ma: dong?.ma_dat_ban,
+    ma: dong.ma_dat_ban,
     cau: cau.daNhan,
   };
 }

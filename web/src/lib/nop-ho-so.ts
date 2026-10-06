@@ -23,7 +23,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TruongForm } from './truong-form';
 import type { NgonNgu } from './noi-dung';
-import { cauLoiDatabase, dich, type BaThuTieng } from './chu';
+import { cauLoiDatabase, laLoiDatabase, dich, type BaThuTieng } from './chu.ts';
 
 export interface KetQuaNop {
   ok: boolean;
@@ -198,15 +198,26 @@ export async function nopHoSo(
   });
 
   if (error) {
+    // Đứt mạng / hết giờ / cổng 502–504: supabase-js không ném mà trả error
+    // không có mã. Hồ sơ có thể đã ghi xong rồi mới đứt — ném để
+    // xu-ly-form.ts nói "KHÔNG CHẮC", không bao giờ nói "CHƯA được ghi nhận"
+    // (ứng viên sẽ nộp lại và có hai bản). Xem laLoiDatabase().
+    if (!laLoiDatabase(error)) {
+      throw new Error(`nop_ho_so_ung_tuyen: không nghe được trả lời — ${error.message ?? ''}`);
+    }
     // Câu lỗi từ 0012 viết bằng tiếng Việt và đã tính tới việc hiện thẳng cho
     // ứng viên. Trang tiếng Việt dùng nguyên văn, trang khác nhận bản dịch;
     // chỉ khi không nhận ra mới thay bằng câu chung — xem cauLoiDatabase().
     return { ok: false, cau: cauLoiDatabase(error.message ?? '', ngonNgu, cau.chuaGhi) };
   }
 
+  // Ghi được thì LUÔN có mã hồ sơ (0026; bẫy bot là exception, không phải
+  // null). Không lỗi mà cũng không có mã — thân trả lời rỗng; supabase-js biến
+  // 404 thân rỗng thành 204 — là database chưa xác nhận gì: không nói "đã nhận".
+  if (typeof data !== 'string' || !data) throw new Error('nop_ho_so_ung_tuyen: trả lời không có mã hồ sơ');
   return {
     ok: true,
-    ma: typeof data === 'string' ? data : undefined,
+    ma: data,
     cau: cau.daNhan,
     luuY: cvHong ? cau.cvHong : undefined,
   };

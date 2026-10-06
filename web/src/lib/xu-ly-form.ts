@@ -64,6 +64,9 @@ const CAU = {
   },
 } as const satisfies Record<string, BaThuTieng>;
 
+/** Lỗi rút gọn cho log: cổng 502 trả nguyên trang HTML vào message. */
+const loiNgan = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 300);
+
 /**
  * Xử lý một lượt nộp hồ sơ.
  *
@@ -93,6 +96,8 @@ export async function xuLyUngTuyen(
     // Mạng đứt giữa chừng, Supabase đang ngủ, hết giờ chờ — ba tình huống
     // khác nhau nhưng cùng một điều cần nói: KHÔNG CHẮC đã ghi hay chưa.
     // Nói "thất bại" ở đây là nói sai nếu database đã ghi xong rồi mới đứt.
+    // Ghi lại để Workers Logs thấy sự cố — không đợi ứng viên nhắn Facebook.
+    console.error('[ung-tuyen] không chắc đã ghi:', loiNgan(e));
     ghiKetQua(ctx.cookies, { ok: false, loi: CAU.ungTuyenKhongChac[ngonNgu] });
     return ctx.redirect(ve, 303);
   }
@@ -129,10 +134,11 @@ export async function xuLyDatBan(
   let kq: KetQuaDatBan;
   try {
     kq = await guiYeuCauDatBan(client, await ctx.request.formData(), layIp(ctx.request), ngonNgu);
-  } catch {
+  } catch (e) {
     // Hết giờ chờ CÓ THỂ là đã ghi xong rồi mới đứt. Nói "thất bại" lúc này
     // là nói sai, và khách sẽ gửi lại lần hai. Nên nói đúng cái mình biết:
     // không chắc.
+    console.error('[dat-ban] không chắc đã ghi:', loiNgan(e));
     ghiKetQua(ctx.cookies, { ok: false, loi: CAU.datBanKhongChac[ngonNgu] });
     return ctx.redirect(duongDan, 303);
   }
