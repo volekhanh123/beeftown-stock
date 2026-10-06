@@ -1,0 +1,118 @@
+---
+/**
+ * CÂU HỎI THƯỜNG GẶP — chỉ dữ kiện đã xác nhận (brief 06/10/2026)
+ *
+ * <details>/<summary>: mở / đóng không cần JavaScript, đọc được bằng bàn phím và
+ * trình đọc màn hình. Không câu nào nói giờ mở cửa, chỗ gửi xe, giá cụ thể hay
+ * phòng riêng — những thứ chưa chốt. "Đã gồm VAT" chỉ nói về giá trên nhãn khay.
+ */
+import { chu, dich, duongDanTuongUng } from '../lib/chu';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import { diaChi } from '../lib/trang-cong-khai';
+import BieuTuong from './BieuTuong.astro';
+
+interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
+const { ngonNgu, noiDung: nd } = Astro.props;
+const tChung = chu(ngonNgu);
+const t = dich(ngonNgu, {
+  hieu: { vi: 'Hỏi nhanh', en: 'Good to know', ko: '미리 알아 두세요' },
+  tieuDe: { vi: 'Câu hỏi thường gặp', en: 'Questions we often hear', ko: '자주 묻는 질문' },
+  h1: { vi: 'Ăn ở Beeftown thế nào?', en: 'How does a meal at Beeftown work?', ko: 'Beeftown에서는 어떻게 먹나요?' },
+  d1: {
+    vi: 'Bạn chọn phần bò tại quầy — bò đã cắt và đóng khay sẵn, nhãn ghi rõ từng khay; cần thì nhân viên quầy tư vấn. Sau đó cả bàn cùng nướng trên vỉ gas đặt tại bàn, và gọi thêm món ăn, đồ uống từ thực đơn.',
+    en: 'You pick your beef at the counter — every cut is ready-packed in a labelled tray, and our counter staff are there to help. Then the whole table grills together on the gas grill at your table, with dishes and drinks from the menu.',
+    ko: '정육 코너에서 소고기를 골라요. 부위별로 손질해 라벨을 붙인 트레이에 담아 두었고, 필요하면 직원이 추천해 드려요. 그다음 테이블의 가스 그릴에서 다 함께 굽고, 메뉴에서 식사와 음료를 곁들여 주문하시면 돼요.',
+  },
+  h2: { vi: 'Giá bò tính thế nào?', en: 'How is the beef priced?', ko: '소고기 가격은 어떻게 정해지나요?' },
+  d2: {
+    vi: 'Theo từng khay. Nhãn khay ghi giá mỗi 100g, trọng lượng và giá cuối của đúng khay đó — giá cuối trên nhãn đã gồm VAT. Bạn biết khay mình chọn bao nhiêu tiền ngay tại quầy.',
+    en: 'By the tray. Each label shows the price per 100g, the weight and the final price of that exact tray — the final price on the label includes VAT. You know what your tray costs right at the counter.',
+    ko: '트레이 단위로 정해져요. 라벨에 100g당 가격, 중량, 그리고 그 트레이의 최종 가격이 적혀 있어요. 라벨의 최종 가격에는 부가세가 포함돼 있어서, 고르는 자리에서 바로 가격을 알 수 있어요.',
+  },
+  h3: { vi: 'Nướng bằng gì?', en: 'What do we grill on?', ko: '무엇으로 굽나요?' },
+  d3: {
+    vi: 'Mỗi bàn nướng có vỉ gas đặt ngay tại bàn — cả bàn cùng nướng theo ý mình.',
+    en: 'Each grill table has its own gas grill, so everyone cooks the way they like.',
+    ko: '그릴 테이블마다 가스 그릴이 있어서 원하는 대로 함께 구워 드시면 돼요.',
+  },
+  h4: { vi: 'Nhà hàng ở tầng mấy, có thang máy không?', en: 'Which floor are you on? Is there a lift?', ko: '몇 층인가요? 엘리베이터가 있나요?' },
+  d4a: { vi: 'Beeftown nằm trọn ở tầng 3 — địa chỉ:', en: 'Beeftown takes up the whole of Floor 3 — the address is', ko: 'Beeftown은 3층 전체를 쓰고 있어요. 주소:' },
+  d4b: {
+    vi: 'Nếu đi cùng người lớn tuổi hoặc người khó leo cầu thang, bạn nên cân nhắc trước khi đến.',
+    en: 'If you are coming with older family members or anyone who finds stairs hard, please plan for it.',
+    ko: '어르신이나 계단이 불편한 분과 함께 오신다면 미리 고려해 주세요.',
+  },
+  h5: { vi: 'Hỏi bàn thế nào?', en: 'How do I ask for a table?', ko: '테이블 문의는 어떻게 하나요?' },
+  d5: {
+    vi: 'Bạn gửi yêu cầu ở trang Hỏi bàn hoặc nhắn cho Beeftown. Nhà hàng kiểm tra tình trạng bàn rồi liên hệ để xác nhận — yêu cầu chỉ có hiệu lực sau cuộc gọi xác nhận đó.',
+    en: 'Send a request on our table page or message Beeftown. We check availability and get in touch to confirm — your request only takes effect after that confirmation call.',
+    ko: '테이블 문의 페이지에서 요청을 보내거나 Beeftown에 메시지를 보내 주세요. 매장에서 자리를 확인한 뒤 연락드려 확정해요. 확인 전화를 받은 뒤에야 문의가 확정돼요.',
+  },
+  h6: { vi: 'Đi nhóm đông thì sao?', en: 'What about larger groups?', ko: '단체로 가도 되나요?' },
+  d6: {
+    vi: 'Nhóm từ 9 người trở lên, bạn nhắn cho Beeftown để nhà hàng sắp xếp riêng.',
+    en: 'For groups of 9 or more, message us and we will arrange it with you.',
+    ko: '9명 이상 단체는 Beeftown에 메시지를 보내 주세요. 매장에서 따로 조율해 드려요.',
+  },
+  h7: { vi: 'Trong bữa có chọn thêm bò được không?', en: 'Can I pick more beef during the meal?', ko: '식사 중에 고기를 더 고를 수 있나요?' },
+  d7: {
+    vi: 'Được. Bạn cứ gọi nhân viên để chọn thêm phần bò trong bữa.',
+    en: 'Of course. Just ask our staff whenever you would like to add more.',
+    ko: '네. 식사 중에 언제든 직원을 불러 더 고르실 수 있어요.',
+  },
+});
+---
+<section class="muc be-kem ch" aria-labelledby="ch-tieu-de">
+  <div class="khung ch-luoi">
+    <div class="ch-dau">
+      <p class="hieu">{t.hieu}</p>
+      <h2 id="ch-tieu-de">{t.tieuDe}</h2>
+      <span class="trang-tri net huong-thao-5 ch-la an-khi-hep" aria-hidden="true"></span>
+    </div>
+    <div class="cau-hoi">
+      <details>
+        <summary>{t.h1}<BieuTuong ten="cong" /></summary>
+        <div class="tra-loi"><p>{t.d1}</p></div>
+      </details>
+      <details>
+        <summary>{t.h2}<BieuTuong ten="cong" /></summary>
+        <div class="tra-loi"><p>{t.d2}</p></div>
+      </details>
+      <details>
+        <summary>{t.h3}<BieuTuong ten="cong" /></summary>
+        <div class="tra-loi"><p>{t.d3}</p></div>
+      </details>
+      <details>
+        <summary>{t.h4}<BieuTuong ten="cong" /></summary>
+        <div class="tra-loi">
+          <p>{t.d4a} <span lang="vi">{diaChi(nd)}</span>. {tChung.cauThangBo}</p>
+          <p>{t.d4b}</p>
+          <p><a class="lien-ket" href={duongDanTuongUng('/den-beeftown', ngonNgu)}>{tChung.xemDuongLen}<BieuTuong ten="mui-ten" /></a></p>
+        </div>
+      </details>
+      <details>
+        <summary>{t.h5}<BieuTuong ten="cong" /></summary>
+        <div class="tra-loi">
+          <p>{t.d5}</p>
+          <p><a class="lien-ket" href={duongDanTuongUng('/dat-ban', ngonNgu)}>{tChung.datBan}<BieuTuong ten="mui-ten" /></a></p>
+        </div>
+      </details>
+      <details>
+        <summary>{t.h6}<BieuTuong ten="cong" /></summary>
+        <div class="tra-loi"><p>{t.d6}</p></div>
+      </details>
+      <details>
+        <summary>{t.h7}<BieuTuong ten="cong" /></summary>
+        <div class="tra-loi"><p>{t.d7}</p></div>
+      </details>
+    </div>
+  </div>
+</section>
+
+<style>
+  .ch-luoi { display: grid; gap: var(--k-6); grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .ch-luoi { grid-template-columns: 4fr 7fr; gap: var(--k-8); align-items: start; } }
+  .ch-dau { position: relative; }
+  .ch-la { width: 120px; left: 0; top: calc(100% + var(--k-6)); transform: rotate(-14deg); display: none; }
+  @media (min-width: 900px) { .ch-la { display: block; } }
+</style>

@@ -1,0 +1,98 @@
+---
+/**
+ * BA BƯỚC — cách ăn ở Beeftown (neo #trai-nghiem của mục "Trải nghiệm")
+ *
+ * Chọn phần bò tại quầy → xem nhãn, nhờ nhân viên tư vấn → cùng nướng trên vỉ
+ * gas tại bàn. Đúng sự thật của brief: KHÔNG nói khách phải mang khay về bàn,
+ * KHÔNG nói có nhân viên nướng riêng suốt bữa; trong bữa gọi nhân viên để chọn thêm.
+ *
+ * Trên điện thoại ba bước xếp dọc — hiểu cả quy trình mà không phải vuốt ngang.
+ * Nhánh rosemary (nét trang 3 của PDF) nằm giữa các bước như dấu nối, tiết chế.
+ */
+import { THUONG_HIEU, dich } from '../lib/chu';
+import type { NgonNgu } from '../lib/noi-dung';
+import BieuTuong, { type TenBieuTuong } from './BieuTuong.astro';
+
+interface Props { ngonNgu: NgonNgu; }
+const { ngonNgu } = Astro.props;
+
+const t = dich(ngonNgu, {
+  tieuDe: { vi: 'Ăn ở Beeftown thế nào?', en: 'How it works at Beeftown', ko: 'Beeftown은 이렇게 즐겨요' },
+  b1: { vi: 'Chọn phần bò tại quầy', en: 'Pick your beef at the counter', ko: '정육 코너에서 고기 고르기' },
+  b1Chu: {
+    vi: 'Bò được cắt và đóng sẵn trong khay. Bạn nhìn tận mắt thớ thịt, vân mỡ rồi chọn phần mình thích.',
+    en: 'Every cut is ready-packed in its own tray. See the grain and marbling for yourself, then choose.',
+    ko: '부위별로 손질해 트레이에 담아 두었어요. 결과 마블링을 직접 보고 마음에 드는 걸 고르세요.',
+  },
+  b2: { vi: 'Xem nhãn, nhờ tư vấn', en: 'Read the label, ask for advice', ko: '라벨 보고 추천받기' },
+  b2Chu: {
+    vi: 'Nhãn khay ghi tên phần cắt, trọng lượng và giá. Nhân viên quầy gợi ý phần hợp khẩu vị và số người.',
+    en: 'The tray label shows the cut, weight and price. Our counter staff can suggest what suits your taste and group.',
+    ko: '트레이 라벨에 부위, 중량, 가격이 적혀 있어요. 입맛과 인원에 맞는 부위는 직원이 추천해 드려요.',
+  },
+  b3: { vi: 'Cùng nướng, cùng thưởng thức', en: 'Grill together, enjoy together', ko: '함께 굽고 함께 즐기기' },
+  b3Chu: {
+    vi: 'Cả bàn nướng trên vỉ gas đặt tại bàn. Trong bữa muốn thêm, bạn cứ gọi nhân viên để chọn thêm.',
+    en: 'Everyone grills on the gas grill at your table. Want more during the meal? Just ask our staff.',
+    ko: '테이블의 가스 그릴에서 다 함께 구워요. 식사 중에 더 고르고 싶으면 언제든 직원을 불러 주세요.',
+  },
+});
+const BUOC: { ten: string; chu: string; bieuTuong: TenBieuTuong }[] = [
+  { ten: t.b1, chu: t.b1Chu, bieuTuong: 'khay' },
+  { ten: t.b2, chu: t.b2Chu, bieuTuong: 'nhan' },
+  { ten: t.b3, chu: t.b3Chu, bieuTuong: 'vi-gas' },
+];
+---
+<section class="muc be-kem bb" id="trai-nghiem" aria-labelledby="bb-tieu-de">
+  <div class="khung">
+    <div class="bb-dau">
+      <p class="hieu"><span lang="en">{THUONG_HIEU.khauHieu}</span></p>
+      <h2 id="bb-tieu-de">{t.tieuDe}</h2>
+    </div>
+    <ol class="bb-buoc">
+      {BUOC.map((b, i) => (
+        <li>
+          <div class="bb-so-hang">
+            <span class="bb-so" aria-hidden="true">{String(i + 1).padStart(2, '0')}</span>
+            <span class="bb-bieu-tuong"><BieuTuong ten={b.bieuTuong} /></span>
+          </div>
+          <h3>{b.ten}</h3>
+          <p>{b.chu}</p>
+          {i < BUOC.length - 1 && <span class:list={['trang-tri', 'net', i === 0 ? 'huong-thao-4' : 'huong-thao-1', 'bb-la']} aria-hidden="true"></span>}
+        </li>
+      ))}
+    </ol>
+  </div>
+</section>
+
+<style>
+  .bb-dau { margin-bottom: var(--k-7); }
+  .bb-dau h2 { max-width: 18ch; margin: 0; }
+
+  .bb-buoc {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; gap: var(--k-7);
+    counter-reset: buoc;
+  }
+  .bb-buoc li { position: relative; max-width: 38ch; }
+  .bb-so-hang { display: flex; align-items: flex-end; gap: var(--k-4); margin-bottom: var(--k-4); }
+  .bb-so {
+    font-size: var(--co-so); font-weight: 800; line-height: .82; letter-spacing: -.05em;
+    color: var(--do);
+  }
+  .bb-bieu-tuong {
+    display: inline-grid; place-items: center; width: 52px; height: 52px; border-radius: 50%;
+    border: 1.5px solid var(--do-sau); color: var(--do-sau); margin-bottom: 4px;
+  }
+  .bb-bieu-tuong :global(svg) { width: 28px; height: 28px; }
+  .bb-buoc h3 { margin-bottom: var(--k-2); }
+  .bb-buoc p { margin: 0; color: var(--chu-chinh); }
+
+  /* Nhánh rosemary: dưới mỗi bước trên điện thoại, giữa hai bước trên màn rộng. */
+  .bb-la { display: none; }
+
+  @media (min-width: 900px) {
+    .bb-buoc { grid-template-columns: repeat(3, 1fr); gap: var(--k-8); }
+    .bb-la { display: block; opacity: .85; left: auto; right: calc(-1 * var(--k-8) + 4px); bottom: auto; top: 18px; width: 52px; transform: rotate(8deg); }
+  }
+</style>
