@@ -20,6 +20,7 @@
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
+import { inflateSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
 import {
@@ -57,6 +58,55 @@ function moiFile(thuMuc) {
     else ra.push(p);
   }
   return ra;
+}
+
+/**
+ * Đọc điểm ảnh của file PNG 8 bit RGB / RGBA, không xen kẽ — đúng dạng
+ * web/cong-cu/thuong-hieu/tao-bieu-tuong.py lưu biểu tượng. Dạng khác → null.
+ * Trả { rong, cao, kenh, diem(x, y) → [r, g, b, a] }.
+ */
+function docPng(p) {
+  const b = readFileSync(p);
+  if (b.length < 8 || b.readUInt32BE(0) !== 0x89504e47) return null;
+  let i = 8, rong = 0, cao = 0, kenh = 0;
+  const idat = [];
+  while (i + 8 <= b.length) {
+    const dai = b.readUInt32BE(i), loai = b.toString('latin1', i + 4, i + 8), than = b.subarray(i + 8, i + 8 + dai);
+    if (loai === 'IHDR') {
+      rong = than.readUInt32BE(0); cao = than.readUInt32BE(4);
+      kenh = { 2: 3, 6: 4 }[than[9]] ?? 0;
+      if (than[8] !== 8 || !kenh || than[12] !== 0) return null;
+    } else if (loai === 'IDAT') idat.push(than);
+    else if (loai === 'IEND') break;
+    i += 12 + dai;
+  }
+  if (!kenh || !idat.length) return null;
+  const tho = inflateSync(Buffer.concat(idat));
+  const dong = rong * kenh;
+  if (tho.length < (dong + 1) * cao) return null;
+  const anh = Buffer.alloc(dong * cao);
+  for (let y = 0; y < cao; y++) {
+    const loc = tho[y * (dong + 1)];
+    if (loc > 4) return null;
+    for (let x = 0; x < dong; x++) {
+      const trai = x >= kenh ? anh[y * dong + x - kenh] : 0;
+      const tren = y > 0 ? anh[(y - 1) * dong + x] : 0;
+      const cheo = y > 0 && x >= kenh ? anh[(y - 1) * dong + x - kenh] : 0;
+      let du = 0;
+      if (loc === 1) du = trai;
+      else if (loc === 2) du = tren;
+      else if (loc === 3) du = (trai + tren) >> 1;
+      else if (loc === 4) {
+        const q = trai + tren - cheo, qa = Math.abs(q - trai), qb = Math.abs(q - tren), qc = Math.abs(q - cheo);
+        du = qa <= qb && qa <= qc ? trai : qb <= qc ? tren : cheo;
+      }
+      anh[y * dong + x] = (tho[y * (dong + 1) + 1 + x] + du) & 255;
+    }
+  }
+  return {
+    rong, cao, kenh,
+    diem: (x, y) => { const o = y * dong + x * kenh; return [anh[o], anh[o + 1], anh[o + 2], kenh === 4 ? anh[o + 3] : 255]; },
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -408,6 +458,38 @@ await nhom('7 · CÀI NHƯ APP (manifest + biểu tượng)', async () => {
   ok('Có biểu tượng 192 và 512', ['192x192', '512x512'].every(s => icons.some(i => i.sizes === s)));
   ok('Có biểu tượng maskable (Android bo tròn không cắt mất đầu bò)', icons.some(i => /maskable/.test(i.purpose ?? '')));
   ok('Ảnh cho iPhone là 180×180', existsSync(join(PUB, linkApple)) && coPng(join(PUB, linkApple)) === '180x180');
+
+  // Điểm ảnh — bố cục từ web/cong-cu/thuong-hieu/tao-bieu-tuong.py (dung_bieu_tuong_app).
+  const coTrongSuot = a => {
+    for (let y = 0; y < a.cao; y++) for (let x = 0; x < a.rong; x++) if (a.diem(x, y)[3] < 255) return true;
+    return false;
+  };
+  const docNeuCo = link => (link && existsSync(join(PUB, link)) ? docPng(join(PUB, link)) : null);
+  const appleCongKhai = doc(join(WEB, 'src/layouts/Trang.astro')).match(/rel="apple-touch-icon" href="([^"]+)"/)?.[1];
+  for (const [ten, link] of [['app kho', linkApple], ['trang công khai', appleCongKhai]]) {
+    const a = docNeuCo(link);
+    ok(`Biểu tượng iPhone của ${ten} (${link}) phủ kín, không điểm trong suốt — iPhone tô đen chỗ trong suốt`,
+      !!a && !coTrongSuot(a), a ? 'có điểm trong suốt' : 'không đọc được PNG');
+  }
+  const m = docNeuCo(icons.find(i => /maskable/.test(i.purpose ?? ''))?.src);
+  ok('Biểu tượng maskable phủ kín nền', !!m && !coTrongSuot(m), m ? 'có điểm trong suốt' : 'không đọc được PNG');
+  if (m) {
+    // Vùng an toàn của maskable (chuẩn W3C): hình tròn giữa ảnh, bán kính 40% cạnh. Mọi điểm
+    // khác màu nền (màu góc ảnh; lệch quá 24 ở một kênh) phải nằm trong hình tròn đó.
+    const nen = m.diem(0, 0), banKinh = 0.4 * m.rong, tamX = (m.rong - 1) / 2, tamY = (m.cao - 1) / 2;
+    let xaNhat = 0;
+    for (let y = 0; y < m.cao; y++) {
+      for (let x = 0; x < m.rong; x++) {
+        const d = m.diem(x, y);
+        if ([0, 1, 2].some(k => Math.abs(d[k] - nen[k]) > 24)) xaNhat = Math.max(xaNhat, Math.hypot(x - tamX, y - tamY));
+      }
+    }
+    ok('Biểu tượng maskable: hình nằm trọn trong vùng an toàn 80% (Android cắt tròn không mất sừng)',
+      xaNhat > 0 && xaNhat <= banKinh, `điểm xa nhất cách tâm ${xaNhat.toFixed(1)} px, giới hạn ${banKinh} px`);
+  }
+  const b192 = docPng(join(PUB, 'kho', 'bieu-tuong-192.png'));
+  ok('Biểu tượng 192 (Beeftown Cân bọc vào .ico, khai 32 bit) là PNG RGBA',
+    b192?.kenh === 4 && /'kho', 'bieu-tuong-192\.png'/.test(doc(join(GOC, 'can-app', 'scripts', 'dong-goi.ts'))));
   for (const s of mf.shortcuts ?? []) ok(`Lối tắt "${s.name}" mở trang có thật`, !!trangCua(s.url));
   ok('Không có service worker (chưa làm chế độ ngoại tuyến)',
     !existsSync(join(PUB, 'sw.js')) && !/serviceWorker/.test(khung));
