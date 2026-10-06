@@ -74,7 +74,11 @@ async function batMayChu() {
   // Mặc định luôn build lại: thử trên dist/ cũ thì sửa mã rồi chạy vẫn xanh — lỗi vừa thêm không ai thấy.
   if (!process.argv.includes('--khong-build') || !existsSync(join(WEB, 'dist', 'server'))) {
     console.log('Build lại bản mới nhất (astro build)…');
-    const b = spawnSync(process.execPath, [join(WEB, 'node_modules', 'astro', 'bin', 'astro.mjs'), 'build'], { cwd: WEB, stdio: 'inherit' });
+    // Build KHÔNG database, kể cả khi máy đang chạy có sẵn PUBLIC_SUPABASE_* (biến môi trường của phiên,
+    // hay web/.env): Vite nướng hai biến này vào bản build, và biến môi trường thắng .env — đặt rỗng là
+    // trang chắc chắn ở trạng thái của CI. Không vậy thì mục 2–3 gửi form vào database THẬT.
+    const b = spawnSync(process.execPath, [join(WEB, 'node_modules', 'astro', 'bin', 'astro.mjs'), 'build'],
+      { cwd: WEB, stdio: 'inherit', env: { ...process.env, PUBLIC_SUPABASE_URL: '', PUBLIC_SUPABASE_ANON_KEY: '' } });
     if (b.status !== 0) throw new Error('astro build hỏng');
   }
   const goc = `http://127.0.0.1:${CONG}`;

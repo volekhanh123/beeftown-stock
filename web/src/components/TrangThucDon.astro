@@ -532,13 +532,7 @@ const coKenh = coKenhHoiBan(nd);
   .td-moi-chu h2 { max-width: 22ch; }
   .td-moi-chu .cau { display: block; }
   .td-moi-chu .dan { margin-bottom: var(--k-6); }
-  /* LenTang3 bản gọn là một thẻ kem nằm trên dải đỏ: trả biến màu của bề mặt về
-     bộ của nền kem, nếu không link và vòng focus bên trong ăn màu kem của dải đỏ. */
-  .td-the-tang3 {
-    --chu-chinh: var(--than); --chu-phu: var(--muc-nhat);
-    --nhan: var(--do-sau); --nhan-nho: var(--do-sau);
-    --vien: var(--vach); --vong-focus: var(--than);
-    color: var(--than);
-    max-width: 480px;
-  }
+  /* LenTang3 bản gọn là một thẻ kem trên dải đỏ: .be-kem-dam (cong-khai.css) tự đặt lại
+     biến màu chữ và vòng focus của nền kem, ở đây chỉ giới hạn bề rộng. */
+  .td-the-tang3 { max-width: 480px; }
 </style>

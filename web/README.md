@@ -49,8 +49,8 @@ Mở http://localhost:4321. Không cần Supabase.
 | `npm run kiem-tra` | Kiểm tra kiểu dữ liệu (`astro check`) |
 | `npm run deploy` | **Cổng kiểm thử** (`kiem-tra/truoc-deploy.mjs`: chỉ commit đã có CI xanh) → quét chữ cấm → build → đẩy lên Cloudflare |
 | `npm run deploy:khan-cap` | Như trên nhưng bỏ qua cổng kiểm thử — chỉ khi khẩn cấp |
-| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): trang công khai ở ba cỡ màn hình, form không bao giờ báo thành công khi chưa ghi được |
-| `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit) |
+| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 21 trang công khai ở 360 / 390 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, vùng chạm ≥ 44px, tương phản, câu cầu thang bộ, menu gọn chạy cả khi tắt JavaScript; form không bao giờ báo thành công khi chưa ghi được. Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
+| `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit); `-- --chi 3,6` chỉ chạy vài nhóm |
 
 **Cổng deploy.** `npm run deploy` chỉ đưa lên commit mà GitHub Actions đã chạy xanh: nó hỏi kết quả
 workflow "Kiểm thử" của commit đang deploy bằng lệnh `gh`. Cài một lần trên máy deploy:
