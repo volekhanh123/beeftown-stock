@@ -91,8 +91,12 @@ const quet = timChuoiCam;
 // riêng. Cộng thêm vài đường dẫn cố định để phòng sitemap hỏng.
 // -----------------------------------------------------------------------------
 async function danhSachTrang(goc) {
-  const luon_co = ['/', '/tuyen-dung', '/quyen-rieng-tu', '/en', '/en/jobs', '/en/privacy',
-                   '/ko', '/ko/jobs', '/ko/privacy'];
+  // Đủ 21 trang công khai (7 trang × vi/en/ko) — sitemap hỏng thì vẫn quét hết.
+  const luon_co = [
+    '/', '/thuc-don', '/den-beeftown', '/dat-ban', '/tuyen-dung', '/quyen-rieng-tu', '/xoa-du-lieu',
+    '/en', '/en/menu', '/en/visit', '/en/book', '/en/jobs', '/en/privacy', '/en/data-deletion',
+    '/ko', '/ko/menu', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion',
+  ];
   const bo = new Set(luon_co.map(d => new URL(d, goc).href));
   try {
     const xml = await (await fetch(new URL('/sitemap.xml', goc))).text();
@@ -117,8 +121,11 @@ async function song(goc) {
 }
 
 async function batServer(cong) {
+  // Quét trang ở trạng thái của CI (chưa có database), kể cả khi máy có sẵn
+  // PUBLIC_SUPABASE_* — biến môi trường thắng web/.env, đặt rỗng là chắc chắn.
   const p = spawn('npx', ['astro', 'dev', '--port', String(cong)],
-                  { shell: true, stdio: 'ignore' });
+                  { shell: true, stdio: 'ignore',
+                    env: { ...process.env, PUBLIC_SUPABASE_URL: '', PUBLIC_SUPABASE_ANON_KEY: '' } });
   const goc = `http://localhost:${cong}`;
   // Astro dev tối ưu dependency ở lần tải đầu; request tới giữa chừng sẽ lỗi.
   // Nên chờ hẳn một lần tải THÀNH CÔNG, không chỉ chờ cổng mở.

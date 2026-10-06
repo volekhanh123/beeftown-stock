@@ -58,11 +58,12 @@ const toi  = chonDuoc.filter(k => k.buoi === 'toi');
 // thích vẫn chỉ đường cho khách.
 const nutNhanTin =
   lh.facebook ? { url: lh.facebook, chu: tChung.nhanTin } :
-  lh.thu ? { url: lh.thu, chu: tChung.nhanTin } :
+  lh.thu ? { url: lh.thu, chu: tChung.guiEmail } :
   null;
 
 const daNhanYeuCau = ketQua?.ok === true;
 const chuaMo = !daNhanYeuCau && !tinhTrang.moDuoc;
+const loiLuotGui = ketQua && !ketQua.ok ? ketQua : null;
 
 // Câu báo lỗi sát ô: dùng lại đúng câu máy chủ nói (lib/dat-ban.ts), để hai nơi
 // không nói hai câu khác nhau.
@@ -185,7 +186,7 @@ const t = dich(ngonNgu, {
 
     {daNhanYeuCau && ketQua && (
       <div class="hb-the hb-da-nhan" data-ket-qua="da-nhan" tabindex="-1">
-        <img class="hb-tem" src="/thuong-hieu/tem-tron.svg" width="320" height="320" alt="" decoding="async" />
+        <img class="hb-tem" src="/thuong-hieu/tem-tron.svg" width="320" height="320" alt="" loading="lazy" decoding="async" />
         <h2 class="hb-tieu-de-the">{t.daNhan}</h2>
         {ketQua.ma && (
           <p class="hb-ma">{t.maYeuCau}<strong>{ketQua.ma}</strong></p>
@@ -217,6 +218,14 @@ const t = dich(ngonNgu, {
 
     {chuaMo && (
       <div class="hb-the hb-chua-mo">
+        {/* Form vừa đóng (hay đọc lịch hỏng) đúng lúc khách gửi: câu trả lời cho lượt gửi
+            đó — kể cả "không chắc đã ghi" — vẫn phải tới tay khách, không bị thay im lặng
+            bằng "chưa mở hỏi bàn trực tuyến". */}
+        {loiLuotGui && (
+          <div class="hb-loi" role="alert" data-ket-qua={loiLuotGui.khongChac ? 'khong-chac' : 'loi'} tabindex="-1">
+            <p><strong>{loiLuotGui.cau}</strong></p>
+          </div>
+        )}
         <span class="hb-chua-mo-hinh" aria-hidden="true"><BieuTuong ten="tin-nhan" /></span>
         <h2 class="hb-tieu-de-the">{tChung.datBanChuaMo}</h2>
         <p>{tChung.datBanChuaMoGiaiThich}</p>
@@ -237,9 +246,9 @@ const t = dich(ngonNgu, {
       <div class="hb-the hb-form">
         <h2 class="hb-tieu-de-the">{t.yeuCau}</h2>
 
-        {ketQua && !ketQua.ok && (
-          <div class="hb-loi" role="alert" data-ket-qua="loi" tabindex="-1">
-            <p><strong>{ketQua.cau}</strong></p>
+        {loiLuotGui && (
+          <div class="hb-loi" role="alert" data-ket-qua={loiLuotGui.khongChac ? 'khong-chac' : 'loi'} tabindex="-1">
+            <p><strong>{loiLuotGui.cau}</strong></p>
             {nutNhanTin && (
               <p class="nho">{t.nhanThang}<a href={nutNhanTin.url} rel="noopener">{nutNhanTin.chu}</a></p>
             )}
@@ -393,7 +402,9 @@ const t = dich(ngonNgu, {
 
   // --- Khung kết quả: đưa con trỏ tới đó (trình đọc màn hình đọc ngay) ---------
   const khungKetQua = document.querySelector<HTMLElement>('[data-ket-qua]');
-  if (khungKetQua?.dataset.ketQua === 'da-nhan') xoaDaLuu();
+  // Đã nhận: xong việc. Không chắc đã ghi: câu trên trang bảo nhắn hỏi, đừng gửi lại —
+  // điền sẵn mọi ô (cả giờ) thì gửi lại chỉ còn một cú bấm, nhà hàng nhận hai bản.
+  if (khungKetQua?.dataset.ketQua === 'da-nhan' || khungKetQua?.dataset.ketQua === 'khong-chac') xoaDaLuu();
   khungKetQua?.focus();
 
   const form = document.querySelector<HTMLFormElement>('form[data-hoi-ban]');
@@ -450,14 +461,16 @@ const t = dich(ngonNgu, {
     }
   }
 
-  // Đổi ngày: giữ các ô đang điền trước khi trang tải lại, với ngày MỚI.
+  // Đổi ngày: giữ các ô chữ đang điền trước khi trang tải lại, với ngày MỚI. Giờ thì
+  // không: giờ đã chọn thuộc về ngày cũ — mang sang thì ngày mới hiện sẵn một giờ khách
+  // chưa từng chọn cho ngày đó.
   formNgay?.addEventListener('submit', () => {
     const ngayMoi = oNgayXem?.value ?? '';
     const cu = docDaLuu();
     const o = form ? layCacO(form) : null;
-    const coChu = !!o && (O_GIU.some(ten => ten !== 'so_khach' && o[ten].trim()) || !!o.gio || o.so_khach !== '2');
+    const coChu = !!o && (O_GIU.some(ten => ten !== 'so_khach' && o[ten].trim()) || o.so_khach !== '2');
     if (!coChu && !cu) return;
-    ghiDaLuu({ ...(cu ?? {}), ...(o ?? {}), ngay: ngayMoi, luc: Date.now() } as DaLuu);
+    ghiDaLuu({ ...(cu ?? {}), ...(o ?? {}), gio: '', ngay: ngayMoi, luc: Date.now() } as DaLuu);
   });
 
   if (form) {
@@ -542,12 +555,6 @@ const t = dich(ngonNgu, {
 </script>
 
 <style>
-  /* Nét rosemary của .mo-dau-trang nằm sát mép phải, giữa khối. Từ 600px tới
-     khoảng 1100px, dòng .dan 58ch chạy đè lên nó — chừa chỗ cho nét vẽ. */
-  @media (min-width: 600px) {
-    .hb-dau h1 { max-width: min(18ch, 100% - clamp(90px, 12vw, 170px) - var(--k-6)); }
-    .hb-dau .dan { max-width: min(58ch, 100% - clamp(90px, 12vw, 170px) - var(--k-6)); }
-  }
   /* ---- Khối thân: cột thông tin | thẻ ----------------------------------- */
   .hb { padding-block: 0 var(--muc-dem); }
   .hb-luoi {

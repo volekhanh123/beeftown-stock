@@ -19,8 +19,10 @@ import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { namVn } from '../lib/gio-vn';
 import BieuTuong from './BieuTuong.astro';
 
-interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
-const { ngonNgu, noiDung: nd } = Astro.props;
+interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; duongDan?: string; }
+const { ngonNgu, noiDung: nd, duongDan = '' } = Astro.props;
+// Trên chính trang tuyển dụng thì dải "đang tìm người" chỉ lặp lại tiêu đề và trỏ về trang đang mở.
+const laTrangTuyenDung = duongDan.replace(/\/$/, '') === duongDanTuongUng('/tuyen-dung', ngonNgu);
 const t = chu(ngonNgu);
 const lh = lienHe(nd);
 const muc = dieuHuong(ngonNgu);
@@ -41,12 +43,14 @@ const c = dich(ngonNgu, {
 });
 ---
 <footer class="chan-trang">
-  <div class="ct-tuyen-dung be-kem-dam">
-    <div class="khung ct-td-hang">
-      <p class="ct-td-chu"><strong>{t.tuyenDungTieuDe}.</strong> {c.tuyenDungNgan}</p>
-      <a class="lien-ket" href={duongDanTuongUng('/tuyen-dung', ngonNgu)}>{t.tuyenDungXem}<BieuTuong ten="mui-ten" /></a>
+  {!laTrangTuyenDung && (
+    <div class="ct-tuyen-dung be-kem-dam">
+      <div class="khung ct-td-hang">
+        <p class="ct-td-chu"><strong>{t.tuyenDungTieuDe}.</strong> {c.tuyenDungNgan}</p>
+        <a class="lien-ket" href={duongDanTuongUng('/tuyen-dung', ngonNgu)}>{t.tuyenDungXem}<BieuTuong ten="mui-ten" /></a>
+      </div>
     </div>
-  </div>
+  )}
 
   <div class="ct-chinh be-do co-trang-tri">
     <div class="trang-tri hoa-van-chu ct-hoa-van" aria-hidden="true"></div>
@@ -141,7 +145,7 @@ const c = dich(ngonNgu, {
     font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
   }
   .ct-cot a {
-    display: inline-flex; align-items: center; min-height: 40px;
+    display: inline-flex; align-items: center; min-height: 44px;
     font-weight: 600; text-decoration: none;
   }
   .ct-cot a:hover { text-decoration: underline; }

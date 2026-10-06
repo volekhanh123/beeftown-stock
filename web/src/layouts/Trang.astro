@@ -26,7 +26,7 @@
 import '../styles/chung.css';
 import '../styles/cong-khai.css';
 import { THUONG_HIEU, NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng } from '../lib/chu';
-import { lienHe } from '../lib/trang-cong-khai';
+import { diaChiCoCauTruc, jsonTrongScript, lienHe } from '../lib/trang-cong-khai';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import DauTrang from '../components/DauTrang.astro';
 import ChanTrang from '../components/ChanTrang.astro';
@@ -84,14 +84,9 @@ const duLieuCoCauTruc: Record<string, unknown> = {
   acceptsReservations: nd.form_dat_ban_dang_mo === true,
 };
 // Địa chỉ đã chốt và hiện cố định; bản công bố trong /noi-bo (nếu có) thay vào.
-duLieuCoCauTruc.address = {
-  '@type': 'PostalAddress',
-  streetAddress: nd.dia_chi_hien_thi?.trim() || 'Tầng 3, 11-21 Hàm Nghi',
-  addressLocality: 'Phường Sài Gòn',
-  addressRegion: 'TP. Hồ Chí Minh',
-  addressCountry: 'VN',
-};
-if (lh.hotline) duLieuCoCauTruc.telephone = lh.hotline;
+duLieuCoCauTruc.address = diaChiCoCauTruc(nd);
+// Chỉ phần số (hotline đã công bố có thể kèm chú thích "(Zalo)").
+if (lh.goi) duLieuCoCauTruc.telephone = lh.goi.slice('tel:'.length);
 if (coAnhThat) duLieuCoCauTruc.image = anhChiaSe.url;
 if (lh.maps) duLieuCoCauTruc.hasMap = lh.maps;
 // Trang thực đơn chỉ được khai khi thực đơn đang hiện.
@@ -152,7 +147,7 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
       />
     )}
 
-    <script type="application/ld+json" set:html={JSON.stringify(duLieuCoCauTruc)} is:inline />
+    <script type="application/ld+json" set:html={jsonTrongScript(duLieuCoCauTruc)} is:inline />
   </head>
 
   <body class="ck">
@@ -160,13 +155,13 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
 
     {/* lang trên từng nút đổi ngôn ngữ: trình đọc màn hình đọc "한국어" bằng giọng
         Hàn chứ không đánh vần nó bằng giọng của trang đang mở. */}
-    <DauTrang ngonNgu={ngonNgu} duongDan={duongDan}
+    <DauTrang ngonNgu={ngonNgu} noiDung={nd} duongDan={duongDan}
               doiNgonNgu={ngonNguKhac.map(n => ({ nn: n, url: banCua(n), ten: TEN_NGON_NGU[n] }))} />
 
     <main id="noi-dung">
       <slot />
     </main>
 
-    <ChanTrang ngonNgu={ngonNgu} noiDung={nd} />
+    <ChanTrang ngonNgu={ngonNgu} noiDung={nd} duongDan={duongDan} />
   </body>
 </html>

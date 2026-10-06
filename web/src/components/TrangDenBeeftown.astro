@@ -30,6 +30,8 @@ const coLienHe = !!(lh.facebook || lh.goi || email);
 const coKenh = coKenhHoiBan(nd);
 
 const c = dich(ngonNgu, {
+  // Tiêu đề khối địa chỉ: h1 đã nói "tầng 3", nên khối bên dưới gọi đúng việc nó làm.
+  tieuDeDiaChi: { vi: 'Địa chỉ và lối lên', en: 'Address and the way up', ko: '주소와 올라오는 길' },
   tieuDe: { vi: 'Hẹn gặp bạn ở tầng 3', en: 'See you on Floor 3', ko: '3층에서 만나요' },
   dan: {
     vi: 'Beeftown nằm trọn tầng 3, lối lên là cầu thang bộ — không có thang máy cho khách. Dưới đây là đường đi, từ tòa nhà tới quầy bò.',
@@ -45,7 +47,8 @@ const c = dich(ngonNgu, {
   b1Truoc: { vi: 'Tới tòa nhà số ', en: 'Come to ', ko: '' },
   b1Sau: { vi: '', en: '', ko: ' 건물로 오세요' },
   b1Chu: { vi: 'Địa chỉ đầy đủ:', en: 'Full address:', ko: '전체 주소:' },
-  b2TieuDe: { vi: 'Đi cầu thang bộ lên tầng 3', en: 'Take the stairs up to Floor 3', ko: '계단으로 3층까지 올라오세요' },
+  // Dấu cách không ngắt (\u00a0): "tầng 3" / "Floor 3" không bị tách, số 3 không rơi một mình xuống dòng.
+  b2TieuDe: { vi: 'Đi cầu thang bộ lên tầng\u00a03', en: 'Take the stairs up to Floor\u00a03', ko: '계단으로 3층까지 올라오세요' },
   b2Chu: {
     vi: 'Không có thang máy cho khách, nên bạn cứ lên thong thả.',
     en: 'There is no guest lift, so take your time on the way up.',
@@ -66,21 +69,16 @@ const c = dich(ngonNgu, {
 
   // --- Cuối trang ------------------------------------------------------------
   moiHieu: { vi: 'Đi cùng nhau', en: 'Coming together', ko: '함께 오실 때' },
-  moiTieuDe: {
-    vi: 'Đã chọn được ngày? Hỏi bàn trước nhé.',
-    en: 'Picked a day? Ask for a table first.',
-    ko: '날짜를 정하셨나요? 테이블을 먼저 문의해 주세요.',
-  },
+  // Hai câu của tiêu đề xuống dòng ở giữa hai câu, không gãy giữa một câu.
+  moiTieuDe1: { vi: 'Đã chọn được ngày?', en: 'Picked a day?', ko: '날짜를 정하셨나요?' },
+  moiTieuDe2: { vi: 'Hỏi bàn trước nhé.', en: 'Ask for a table first.', ko: '테이블을 먼저 문의해 주세요.' },
   moiDan: {
     vi: 'Cho Beeftown biết ngày và số người. Nhà hàng kiểm tra rồi liên hệ để xác nhận với bạn.',
     en: 'Tell us the day and how many of you are coming. We will check and contact you to confirm.',
     ko: '날짜와 인원을 알려 주세요. 매장에서 확인한 뒤 연락드릴게요.',
   },
-  moiTieuDeMenu: {
-    vi: 'Trước khi tới, xem qua thực đơn',
-    en: 'Before you come, have a look at the menu',
-    ko: '오시기 전에 메뉴를 먼저 살펴보세요',
-  },
+  moiTieuDeMenu1: { vi: 'Trước khi tới,', en: 'Before you come,', ko: '오시기 전에' },
+  moiTieuDeMenu2: { vi: 'xem qua thực đơn', en: 'have a look at the menu', ko: '메뉴를 먼저 살펴보세요' },
   moiDanMenu: {
     vi: 'Bò chọn tại quầy, cùng món ăn và đồ uống cho cả bàn.',
     en: 'Beef you pick at the counter, plus dishes and drinks for the whole table.',
@@ -99,7 +97,7 @@ const c = dich(ngonNgu, {
 
 <section class="muc be-kem-dam db-tang3">
   <div class="khung">
-    <LenTang3 ngonNgu={ngonNgu} noiDung={nd} khongLinkDuongDen />
+    <LenTang3 ngonNgu={ngonNgu} noiDung={nd} khongLinkDuongDen anHieu tieuDe={c.tieuDeDiaChi} />
   </div>
 </section>
 
@@ -114,7 +112,7 @@ const c = dich(ngonNgu, {
         <div class="db-chu">
           <span class="db-so" aria-hidden="true">1</span>
           <div>
-            <h3>{c.b1Truoc}<span lang="vi">{c.duong}</span>{c.b1Sau}</h3>
+            <h3>{c.b1Truoc}<span lang="vi" class="lien">{c.duong}</span>{c.b1Sau}</h3>
             <p>{c.b1Chu} <span lang="vi">{dc}</span></p>
           </div>
         </div>
@@ -180,7 +178,7 @@ const c = dich(ngonNgu, {
   <span class="trang-tri net steak-2 db-steak an-khi-hep" aria-hidden="true"></span>
   <div class="khung db-moi-chu">
     <p class="hieu">{c.moiHieu}</p>
-    <h2 id="db-h-moi">{coKenh ? c.moiTieuDe : c.moiTieuDeMenu}</h2>
+    <h2 id="db-h-moi"><span class="cau">{coKenh ? c.moiTieuDe1 : c.moiTieuDeMenu1}</span> <span class="cau">{coKenh ? c.moiTieuDe2 : c.moiTieuDeMenu2}</span></h2>
     <p class="dan">{coKenh ? c.moiDan : c.moiDanMenu}</p>
     <div class="hang-nut">
       {coKenh && <a class="nut nut-chinh" href={duongDanTuongUng('/dat-ban', ngonNgu)}>{t.datBan}</a>}
@@ -219,8 +217,9 @@ const c = dich(ngonNgu, {
     font-size: clamp(44px, 3vw + 30px, 64px); font-weight: 800; line-height: .9; letter-spacing: -.04em;
     color: var(--nhan);
   }
-  .db-chu h3 { margin: 4px 0 var(--k-2); }
+  .db-chu h3 { margin: 4px 0 var(--k-2); text-wrap: balance; }
   .db-chu p { margin: 0; color: var(--chu-phu); max-width: 42ch; }
+  .db-chu .lien { white-space: nowrap; }   /* "11-21 Hàm Nghi" không gãy giữa số nhà và tên đường */
 
   /* --- Liên hệ --------------------------------------------------------------- */
   .db-lh-luoi { display: grid; gap: var(--k-6); grid-template-columns: 1fr; }
@@ -239,7 +238,8 @@ const c = dich(ngonNgu, {
 
   /* --- Cuối trang ------------------------------------------------------------ */
   .db-moi-chu { position: relative; }
-  .db-moi-chu h2 { max-width: 20ch; }
+  .db-moi-chu h2 { max-width: 22ch; }
+  .db-moi-chu .cau { display: block; }
   .db-moi-chu .dan { margin-bottom: var(--k-6); }
   .db-steak {
     width: clamp(110px, 16vw, 220px); right: max(var(--le), calc((100% - var(--rong-ck)) / 2));

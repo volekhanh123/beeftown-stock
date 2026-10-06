@@ -10,7 +10,7 @@ Trang công khai của Beeftown. Astro 7 chạy trên Cloudflare Workers, đọc
 
 **Trang này phải đúng và đủ ngay cả khi chưa có database nào.**
 
-Chạy thử mà không cấu hình gì cả: trang vẫn hiện tên, khẩu hiệu, descriptor, một câu giới thiệu, dòng trạng thái và khối tuyển dụng. Không số điện thoại giả, không địa chỉ `[số nhà]`, không ảnh kho, không nút dẫn đi đâu cả.
+Chạy thử mà không cấu hình gì cả: trang chủ vẫn có logo, khẩu hiệu, descriptor, câu chính, ba bước, quầy chọn bò và cách đọc nhãn khay, cả bữa, đi cùng nhóm, khối tầng 3 với địa chỉ cố định và cầu thang bộ, câu hỏi thường gặp, dòng trạng thái; trang Thực đơn có phần Bò tại quầy và lời giới thiệu theo nhóm món; trang Đến Beeftown, Hỏi bàn, Tuyển dụng đều đủ. Không số điện thoại giả, không ảnh kho, không nút dẫn đi đâu cả. Giao diện và lý do của nó: [`THIET-KE.md`](THIET-KE.md).
 
 Đó **không phải** cách xử lý lỗi. Đó là trạng thái mặc định của thiết kế, và là phép thử của cả hệ thống.
 
@@ -20,11 +20,17 @@ Hệ quả cụ thể:
 
 | Khi chưa công bố | Trang làm gì |
 |---|---|
-| Facebook | Không hiện nút "Theo dõi Beeftown". Nút dẫn tới hư không tệ hơn không có nút. |
-| Địa chỉ | Chỉ hiện "Quận 1, TP.HCM". Không bịa số nhà. |
+| Facebook | Không hiện nút "Theo dõi Beeftown". Nút dẫn tới hư không tệ hơn không có nút. Trang Hỏi bàn khi form đóng vẫn nói khách nhắn qua Facebook, nhưng không có link đoán. |
+| Địa chỉ (`dia_chi_hien_thi`) | Hiện địa chỉ cố định **Tầng 3, 11-21 Hàm Nghi, phường Sài Gòn, TP.HCM** (`DIA_CHI_NHA_HANG` trong `lib/chu.ts`, Khánh chốt 06/10/2026), luôn kèm câu cầu thang bộ, không có thang máy cho khách. JSON-LD luôn khai địa chỉ này. Bản công bố trong `/noi-bo` thay vào khi có. |
+| Google Maps | Không nút "Chỉ đường", JSON-LD không khai `hasMap`. Không nhúng bản đồ, không tự dựng link Maps từ địa chỉ. |
 | Hotline | Không hiện nút gọi, và JSON-LD không khai `telephone`. |
 | Giờ phục vụ | Không hiện giờ, và không khai `openingHoursSpecification` — Google đưa giờ này lên kết quả tìm kiếm, khai sai là dẫn khách tới cửa đóng. |
-| Ảnh chia sẻ | **Không đặt thẻ `og:image`.** Thẻ trỏ tới ảnh hỏng còn tệ hơn không có thẻ, vì Facebook nhớ kết quả hỏng đó trong bộ nhớ đệm. |
+| Thực đơn (`hien_thuc_don`, món đã công bố) | Trang Thực đơn vẫn có phần Bò tại quầy đầy đủ (khay skin-pack, cách đọc nhãn, trọng lượng và giá xem tại quầy) và lời giới thiệu theo nhóm món — không danh sách món, không giá, JSON-LD không khai `hasMenu`. Công bố món: [`THUC-DON.md`](THUC-DON.md). |
+| Đồ uống có cồn (`hien_do_uong_co_con`) | Không nhắc highball, makgeolli, cocktail ở đâu cả; không món có cồn, không dòng luật rượu. |
+| Form hỏi bàn (`form_dat_ban_dang_mo`) | Nút chính màn đầu là "Khám phá thực đơn" (`nutMoDau()` trong `lib/trang-cong-khai.ts`); trang Hỏi bàn nói chưa mở hỏi bàn trực tuyến. |
+| Ngày khai trương | Không ngày, không đếm ngược, không ưu đãi. |
+| Ảnh chia sẻ (`anh_chia_se`) | Dùng ảnh dự phòng `/thuong-hieu/chia-se-1200x630.png` — chỉ vân mỡ và logo của PDF nhận diện, không ảnh chụp, không ngày, không giá (Khánh duyệt 06/10/2026). Ảnh đó đi cùng bản build nên thẻ `og:image` không bao giờ trỏ tới ảnh hỏng — điều mà quy tắc cũ "chưa có ảnh thật thì không đặt thẻ" phòng, vì Facebook nhớ kết quả hỏng trong bộ nhớ đệm. Ảnh chụp thật công bố ở `anh_chia_se` được ưu tiên. Thẻ chỉ đặt khi có `SITE_URL`. |
+| Ảnh minh họa món chưa dựng cỡ | Component `<Anh>` hiện khung đồ họa (`KhungAnh`) đúng tỷ lệ — không thẻ `<img>` nào trỏ tới file không có. Xem mục "Trang công khai: giao diện, ảnh, thực đơn" bên dưới. |
 
 ---
 
@@ -43,7 +49,8 @@ Mở http://localhost:4321. Không cần Supabase.
 | `npm run kiem-tra` | Kiểm tra kiểu dữ liệu (`astro check`) |
 | `npm run deploy` | **Cổng kiểm thử** (`kiem-tra/truoc-deploy.mjs`: chỉ commit đã có CI xanh) → quét chữ cấm → build → đẩy lên Cloudflare |
 | `npm run deploy:khan-cap` | Như trên nhưng bỏ qua cổng kiểm thử — chỉ khi khẩn cấp |
-| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): trang công khai ở ba cỡ màn hình, form không bao giờ báo thành công khi chưa ghi được |
+| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 21 trang công khai ở 360 / 390 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, vùng chạm ≥ 44px, tương phản, câu cầu thang bộ, menu gọn chạy cả khi tắt JavaScript; form không bao giờ báo thành công khi chưa ghi được. Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
+| `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit); `-- --chi 3,6` chỉ chạy vài nhóm |
 
 **Cổng deploy.** `npm run deploy` chỉ đưa lên commit mà GitHub Actions đã chạy xanh: nó hỏi kết quả
 workflow "Kiểm thử" của commit đang deploy bằng lệnh `gh`. Cài một lần trên máy deploy:
@@ -57,12 +64,29 @@ Thư mục `web/` có thay đổi chưa commit thì cổng từ chối: bản de
 
 ```
 web/
-├─ kiem-tra/quet-chuoi-cam.mjs  ← quét chuỗi cấm trên trang ĐÃ RENDER
+├─ THIET-KE.md         ← hệ giao diện trang công khai, manifest artwork, brief chụp ảnh
+├─ THUC-DON.md         ← công bố món lên trang Thực đơn (SQL từng bước, có SQL thu hồi)
+├─ kiem-tra/
+│  ├─ quet-chuoi-cam.mjs  ← quét chuỗi cấm trên trang ĐÃ RENDER
+│  ├─ trinh-duyet.mjs     ← trình duyệt thật, trạng thái KHÔNG có database (như CI)
+│  ├─ thu-day-du.mjs      ← trình duyệt thật, trạng thái ĐÃ nối database (Supabase giả)
+│  └─ gia-supabase.mjs    ← Supabase giả: trả lời đúng các hàm trang công khai gọi, theo kịch bản
+├─ cong-cu/            ← script dựng tài sản, chạy bằng python3 -I (xem THIET-KE.md, mục 7)
+│  ├─ thuong-hieu/     ← tách logo, rosemary, vân mỡ, tem tròn từ PDF nhận diện; favicon, ảnh chia sẻ
+│  └─ anh/             ← tao-co-anh.py + danh-sach.json: cắt và xuất cỡ ảnh minh họa món
+├─ public/
+│  ├─ bieu-tuong.svg · favicon.ico   ← biểu tượng trình duyệt (kho và nội bộ dùng chung)
+│  ├─ thuong-hieu/     ← logo, đầu bò, rosemary, steak, vân mỡ, tem tròn, chữ lặp (SVG trích từ PDF), ảnh chia sẻ dự phòng
+│  └─ anh/             ← ảnh minh họa món đã dựng cỡ (avif + webp) — SINH bởi cong-cu/anh/tao-co-anh.py
 ├─ src/
 │  ├─ middleware.ts    ← chặn cửa /noi-bo. Một chỗ duy nhất.
 │  ├─ lib/
 │  │  ├─ noi-dung.ts   ← ĐỌC CỔNG NỘI DUNG. Đọc file này trước.
-│  │  ├─ chu.ts        ← câu chữ cố định + bảng đường dẫn Việt–Anh–Hàn
+│  │  ├─ chu.ts        ← câu chữ cố định + bảng đường dẫn Việt–Anh–Hàn + địa chỉ cố định
+│  │  ├─ trang-cong-khai.ts ← liên hệ đã công bố (chỉ link http/https), địa chỉ, thứ bậc nút màn đầu, điều hướng
+│  │  ├─ thuc-don.ts   ← đọc thực đơn công khai — không bao giờ ném lỗi, không bao giờ hiện giá chưa duyệt
+│  │  ├─ anh.ts        ← danh mục ảnh: minh họa hay thật, alt ba thứ tiếng
+│  │  ├─ anh-tao-san.ts ← SINH TỰ ĐỘNG: cỡ ảnh đã dựng — đừng sửa tay
 │  │  ├─ chuoi-cam.js  ← danh sách chữ cấm, dùng chung cho máy quét và máy dịch
 │  │  ├─ may-dich.ts   ← gọi Gemini, quy tắc dịch — không biết gì về database
 │  │  ├─ ban-dich.ts   ← nối máy dịch với database: đọc việc, dịch, ghi
@@ -74,20 +98,45 @@ web/
 │  │  ├─ tuyen-dung.ts
 │  │  └─ kho/          ← PHẦN MỀM KHO — xem mục "Kho" bên dưới
 │  ├─ layouts/
-│  │  ├─ Trang.astro   ← thẻ mô tả, JSON-LD, đầu và chân trang
+│  │  ├─ Trang.astro   ← thẻ mô tả, JSON-LD, ảnh chia sẻ, đầu và chân trang (chỉ file này nạp cong-khai.css)
 │  │  └─ NoiBo.astro   ← khung giao diện nội bộ
 │  ├─ components/
-│  │  ├─ TrangRaMat.astro · TrangTuyenDung.astro
-│  │  ├─ TrangDatBan.astro · FormUngTuyen.astro
+│  │  ├─ DauTrang.astro · ChanTrang.astro       ← logo gốc, bốn mục điều hướng, menu gọn; chân trang đỏ + pháp nhân
+│  │  ├─ TrangRaMat.astro  ← trang chủ, chỉ ghép các khối:
+│  │  │    KhoiMoDau · BaBuoc · QuayChonBo · BuaAnCungNhau · DiCungNhom · LenTang3 · CauHoi
+│  │  ├─ TrangThucDon.astro · ThucDonNhom.astro · TrangDenBeeftown.astro
+│  │  ├─ TrangDatBan.astro · TrangTuyenDung.astro · FormUngTuyen.astro · TrangVanBan.astro
+│  │  └─ Anh · KhungAnh · NhanKhay · LenTang3 · BieuTuong   ← thành phần dùng chung (THIET-KE.md, mục 5)
 │  ├─ pages/
 │  │  ├─ (tiếng Việt ở gốc, tiếng Anh dưới /en, tiếng Hàn dưới /ko)
 │  │  └─ noi-bo/       ← giao diện nội bộ, có middleware canh cửa
 │  │     └─ kho/       ← các màn kho
-│  └─ styles/chung.css · noi-bo.css · kho.css
-└─ public/bieu-tuong.svg
+│  └─ styles/
+│     ├─ chung.css     ← token màu, phông, nền chung — /noi-bo và kho cũng nạp; chỉ được THÊM biến
+│     ├─ cong-khai.css ← hệ giao diện trang công khai ("Quầy thịt ấm"), mọi quy tắc nằm dưới body.ck
+│     └─ noi-bo.css · kho.css
 ```
 
 Tên file và biến đặt bằng tiếng Việt, khớp với tên cột trong database. Người đọc `dat_ban.trang_thai` rồi đọc tiếp mã nguồn không phải dịch qua lại.
+
+---
+
+## Trang công khai: giao diện, ảnh, thực đơn
+
+**Giao diện** — hướng "Quầy thịt ấm": nền kem, đỏ Beeftown làm nhãn và nút, vài dải tối, artwork lấy nguyên từ PDF nhận diện. Màu theo vai kèm tỷ lệ tương phản, chữ, khoảng cách, thành phần, manifest từng tài sản, brief chụp ảnh và phần bàn giao: [`THIET-KE.md`](THIET-KE.md). `src/styles/cong-khai.css` chỉ `layouts/Trang.astro` nạp và mọi quy tắc nằm dưới `body.ck`, nên `/noi-bo` và kho không bị ảnh hưởng.
+
+**Thực đơn** — trang `/thuc-don` (`/en/menu`, `/ko/menu`) đọc món qua `thuc_don_cong_khai()`. Món chỉ hiện khi Khánh công bố; cách làm từng bước, kể cả SQL thu hồi: [`THUC-DON.md`](THUC-DON.md).
+
+**Ảnh** — hai loại, hai luật (`src/lib/anh.ts`):
+
+- **Ảnh minh họa** (tạo bằng AI, chỉ cho ảnh không khí món): trang luôn ghi "Ảnh minh họa" ngay trên ảnh — component `<Anh>` tự gắn.
+- **Ảnh thật**: chụp tại Beeftown. Quầy, khay skin-pack, không gian, lối lên và con người **chỉ** được dùng ảnh thật; cho tới khi có, chỗ đó là khung đồ họa `KhungAnh` đúng tỷ lệ, không chữ bên trong.
+
+Cỡ ảnh dựng sẵn bằng `python3 -I cong-cu/anh/tao-co-anh.py <thư-mục-ảnh-gốc>` (cấu hình `cong-cu/anh/danh-sach.json`): sRGB, bỏ siêu dữ liệu, cắt theo tỷ lệ quanh điểm lấy nét, AVIF + WebP nhiều bề rộng vào `public/anh/`, mỗi file ≤ 300 KB, tổng ≤ 8 MB, rồi ghi `src/lib/anh-tao-san.ts`. Ảnh nào chưa có trong file đó thì trang hiện `KhungAnh` thay vào. Ảnh gốc PNG ở ngoài repo — `.gitignore` chặn `*.png` và chỉ mở `public/anh/*.avif`, `*.webp`. **Hiện chưa dựng ảnh nào** (mạng của phiên làm việc chặn tải ảnh về); cách dựng: `THIET-KE.md`, mục 7.
+
+**Tài sản thương hiệu** — logo, đầu bò, rosemary, steak, vân mỡ, tem tròn trích nguyên vector từ PDF bằng `cong-cu/thuong-hieu/` (PDF không vào repo), đối chiếu từng điểm ảnh với PDF; favicon, biểu tượng 180px và ảnh chia sẻ dự phòng dựng từ chính các SVG đó.
+
+**Ảnh chia sẻ link** — `og:image` là ảnh thật đã công bố ở khóa `anh_chia_se` nếu có, không thì ảnh dự phòng `public/thuong-hieu/chia-se-1200x630.png` (vân mỡ + logo, không ảnh chụp, không ngày, không giá).
 
 ---
 
@@ -472,24 +521,26 @@ grep -rq "$(grep PUBLIC_SUPABASE_URL .env | cut -d= -f2 | sed 's|https://||;s|\.
 
 **Dựng ở phía máy chủ (`output: 'server'`).** Thẻ mô tả và JSON-LD là **hàm của trạng thái database**, mà trình quét link của Facebook và Zalo không chạy JavaScript. Trang tĩnh thì hoặc thẻ mô tả bị đóng cứng (và lạc hậu ngay khi Khánh bật một công tắc), hoặc do JS viết ra và trình quét không thấy. Không có đường thứ ba.
 
-**Không dùng phông hiển thị nào cả.** Trang 1 của PDF nhận diện ghi Hypo-me Bold, trang 6 ghi NVN Beloved Bold; cả hai **chưa có bản quyền**, và chính tài liệu cũng chưa rõ đó có phải một phông hay không. Tên thương hiệu đặt bằng Montserrat ExtraBold siết chữ — giấy phép OFL, không rủi ro. Quan trọng hơn: nó sẽ không bao giờ bị nhầm là phông thương hiệu thật, nên không ai ở khâu sau tưởng câu chuyện phông đã xong.
+**Không dùng phông hiển thị nào cả.** Trang 1 của PDF nhận diện ghi Hypo-me Bold, trang 6 ghi NVN Beloved Bold; cả hai **chưa có bản quyền**, và chính tài liệu cũng chưa rõ đó có phải một phông hay không. Logo là **vector gốc trích từ PDF** (`public/thuong-hieu/`), không gõ lại bằng phông nào; mọi chữ còn lại là Montserrat — giấy phép OFL, không rủi ro. Quan trọng hơn: Montserrat sẽ không bao giờ bị nhầm là phông thương hiệu thật, nên không ai ở khâu sau tưởng câu chuyện phông đã xong. Cần gì để dùng phông display: `THIET-KE.md`, mục 3.
 
 ---
 
 ## Đã làm và chưa làm
 
-**Trang công khai — 12 đường dẫn, ba thứ tiếng:**
-ra mắt · tuyển dụng · **đặt bàn** · quyền riêng tư, mỗi trang một bản Việt, một bản Anh (`/en`) và một bản Hàn (`/ko`), cộng `robots.txt` và `sitemap.xml`. Chữ lấy từ database được máy dịch — xem mục "Bản dịch tự động".
+**Trang công khai — 21 đường dẫn, ba thứ tiếng:**
+trang chủ · **thực đơn** · **đến Beeftown** · **hỏi bàn** · tuyển dụng · quyền riêng tư · xóa dữ liệu, mỗi trang một bản Việt, một bản Anh (`/en`) và một bản Hàn (`/ko`), cộng `robots.txt` và `sitemap.xml`. Chữ lấy từ database được máy dịch — xem mục "Bản dịch tự động". Giao diện "Quầy thịt ấm" và tài sản thương hiệu trích từ PDF nhận diện: `THIET-KE.md`.
+
+**Trang thực đơn công khai — đã có.** Phần Bò tại quầy luôn hiện; món ăn và đồ uống hiện khi Khánh công bố món (`THUC-DON.md`), đồ uống có cồn sau công tắc riêng. Không giá nào hiện khi chưa duyệt.
 
 **Giao diện nội bộ `/noi-bo`:**
 đăng nhập · tổng quan (danh sách việc còn thiếu, đọc thẳng từ bốn view trong database) · **công tắc nội dung** · hộp thư đặt bàn · hộp thư hồ sơ ứng tuyển.
 
-**Hai form công khai**, đều là form HTML thuần không JavaScript:
+**Hai form công khai**, đều là form HTML thuần, gửi được khi không có JavaScript. Form hỏi bàn có thêm script bổ trợ: báo lỗi sát ô, chặn bấm đúp ("Đang gửi…"), giữ dữ liệu đã gõ khi mất mạng hay database báo lỗi:
 
 | Form | Hiện khi nào |
 |---|---|
 | Ứng tuyển | Có ít nhất một `vi_tri_tuyen_dung` ở trạng thái `da_cong_bo`. Chưa có thì hiện khối "nhắn Facebook". |
-| Đặt bàn | Công tắc `form_dat_ban_dang_mo` bật **và** database thật sự còn chỗ trong 14 ngày tới. Xem lý do ở đầu `lib/dat-ban.ts`. |
+| Hỏi bàn (`/dat-ban`) | Công tắc `form_dat_ban_dang_mo` bật **và** database thật sự còn chỗ trong 14 ngày tới. Xem lý do ở đầu `lib/dat-ban.ts`. Gửi xong trang nói "đã nhận yêu cầu" — nhà hàng kiểm tra rồi liên hệ xác nhận. |
 
 **Chưa làm, theo đúng kế hoạch:**
 
@@ -497,8 +548,8 @@ ra mắt · tuyển dụng · **đặt bàn** · quyền riêng tư, mỗi trang
 |---|---|
 | Email báo về khi có hồ sơ / yêu cầu mới | **Việc quan trọng nhất còn lại.** Rủi ro lớn nhất không phải hệ thống hỏng mà là hồ sơ nằm im không ai mở. Cần một dịch vụ gửi mail và một hộp thư có người đọc. |
 | Màn hình chọn ảnh | Ô ảnh trong `/noi-bo` đang nhận mã dòng `tep_anh` gõ tay. Tải ảnh làm trong Supabase Studio. |
-| Duyệt giá thực đơn | Database đã có 31 món (`0011`), không một giá nào được duyệt |
-| Trang thực đơn công khai | Chờ giá và ảnh |
+| Duyệt giá thực đơn | Database đã có 31 món (`0011`), không một giá nào được duyệt. **PR duyệt giá đầu tiên phải sửa luôn quy tắc số tiền trong `src/lib/chuoi-cam.js`** — hiện nó chặn mọi số tiền dạng `125.000đ` trên trang công khai, nên giá vừa duyệt sẽ làm `npm run quet` (và lệnh deploy) đỏ |
+| Ảnh món, ảnh quầy, ảnh đường lên | Năm ảnh minh họa món đã tạo nhưng chưa dựng cỡ; ảnh thật cần chụp theo brief ở `THIET-KE.md`, mục 8 |
 | Tra cứu / hủy đặt bàn cho khách | Database đã có `tra_cuu_dat_ban()` và `huy_dat_ban()` từ `0013` |
 | Màn hình CRM: khách, phân nhóm, điểm | Cần có khách thật |
 

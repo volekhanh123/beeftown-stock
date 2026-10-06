@@ -919,11 +919,24 @@ theo vai. Gửi xuống cân, sửa tem, tạo mã giảm: quản lý / chủ (`
 - **Android (Chrome)**: menu ⋮ → "Cài đặt ứng dụng" / "Thêm vào màn hình chính".
 - **iPhone/iPad (Safari)**: nút Chia sẻ → "Thêm vào MH chính".
 
-Biểu tượng `public/kho/bieu-tuong-{180,192,512,maskable-512}.png` dựng từ đầu bò trong
-`public/bieu-tuong.svg` bằng Chromium (180 cho iPhone; maskable thu nhỏ vào vùng an toàn 80%
-để Android bo tròn không cắt mất sừng). `.gitignore` chặn mọi `*.png` và chỉ mở đúng
-`/web/public/kho/*.png`. Khi designer giao logo chính thức: dựng lại 4 file, giữ đúng cỡ
-(test đọc cỡ ảnh trong file PNG).
+Biểu tượng `public/kho/bieu-tuong-{180,192,512,maskable-512}.png` dựng từ brandmark thật
+(`public/thuong-hieu/dau-bo-kem.svg`, path gốc của PDF nhận diện) bằng Chromium:
+
+```bash
+python3 -I web/cong-cu/thuong-hieu/tao-bieu-tuong.py --chi-bieu-tuong-app web/public   # không cần PDF
+```
+
+- **192, 512**: y hệt `public/bieu-tuong.svg`, ô đỏ bo góc, góc trong suốt.
+- **180** (iPhone): ô đỏ phủ kín, không điểm trong suốt. iPhone tự bo góc và tô đen chỗ trong suốt.
+  Cùng file đó ghi luôn vào `public/thuong-hieu/bieu-tuong-180.png` cho trang công khai.
+- **maskable-512**: nền đỏ phủ kín. Cả khung bao của brandmark nằm trong hình tròn 78% cạnh, tức trong
+  vùng an toàn 80%, để Android cắt tròn không mất sừng.
+
+Test (`test-kho-giao-dien.mjs`, nhóm 7) đọc cỡ ảnh và từng điểm ảnh: phủ kín và vùng an toàn.
+`.gitignore` chặn mọi `*.png` và chỉ mở đúng `/web/public/kho/*.png` và `/web/public/thuong-hieu/*.png`.
+
+Bản 192 còn là biểu tượng `BeeftownCan.exe` (`can-app/scripts/dong-goi.ts` bọc vào `.ico`). Bun chỉ gắn
+biểu tượng khi đóng gói **trên Windows**. Bản `dong-goi-can.yml` đóng gói trên Ubuntu nên không có biểu tượng.
 
 **Chưa có service worker** — mất mạng thì app báo lỗi như trang web thường. Chế độ ngoại tuyến
 cần hàng đợi phiếu phía máy và xử lý trùng; chưa làm.

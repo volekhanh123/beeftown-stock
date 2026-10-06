@@ -16,7 +16,7 @@
      chữ phụ (--muc-nhat) / kem 5,9 : 1      chữ kem / than         16,3 : 1
      đỏ / kem                   5,4 : 1      Warm Stone / than       7,7 : 1
      đỏ đậm (--do-sau) / kem    8,1 : 1      Mustard / than          8,9 : 1
-   KHÔNG BAO GIỜ: Warm Stone, Mustard, Marigold làm chữ trên nền kem (1,8–2,1 : 1).
+   KHÔNG BAO GIỜ: Warm Stone, Mustard, Marigold làm chữ trên nền kem (1,5–2,1 : 1).
    ============================================================================= */
 
 .ck {
@@ -49,7 +49,6 @@
   --le:       clamp(20px, 5vw, 40px);              /* lề hai bên */
   --muc-dem:  clamp(64px, 5vw + 44px, 128px);      /* đệm trên/dưới một khối */
   --rong-ck:  1240px;
-  --cao-dau:  64px;
 
   --bo:     4px;          /* bo góc nút, ô — không bo tròn kiểu viên thuốc */
   --bo-anh: 6px;
@@ -60,12 +59,23 @@
   font-size: var(--co-than);
   color-scheme: light;
 }
-@media (min-width: 900px) { .ck { --cao-dau: 76px; } }
 @media (max-width: 599px) { .ck { --co-than: 16px; } }
 
-html:has(body.ck) { scroll-padding-top: calc(var(--cao-dau, 76px) + 12px); }
+/* Chiều cao đầu trang dính: khai ở <html> để scroll-padding-top (thuộc tính của
+   <html>) đọc được — khai ở body thì html không thấy. Đổi ở mốc màn rộng của
+   DauTrang.astro (1080px). */
+html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 12px); }
+@media (min-width: 1080px) { html:has(body.ck) { --cao-dau: 76px; } }
 
 /* --- Bề mặt ---------------------------------------------------------------- */
+/* Bề mặt sáng đặt lại TOÀN BỘ biến chữ: một thẻ kem nằm trong dải đỏ / tối không
+   được mang theo chữ kem của dải ngoài (chữ kem trên nền kem thì vô hình). */
+.ck :is(.be-kem, .be-kem-sau, .be-kem-dam) {
+  --chu-chinh: var(--than); --chu-phu: var(--muc-nhat);
+  --nhan: var(--do); --nhan-nho: var(--do-sau);
+  --vien: var(--vach); --vong-focus: var(--than); --net-ve: var(--do-sau);
+  --nut-nen: var(--do); --nut-chu: var(--kem); --nut-nen-di: var(--do-dam);
+}
 .ck .be-kem     { --nen: var(--kem); }
 .ck .be-kem-sau { --nen: var(--kem-sau); }
 .ck .be-kem-dam { --nen: var(--kem-dam); --nhan: var(--do-sau); }
@@ -119,7 +129,7 @@ html:has(body.ck) { scroll-padding-top: calc(var(--cao-dau, 76px) + 12px); }
 .ck .nho { font-size: var(--co-nho); color: var(--chu-phu); }
 .ck .ten-thuong-hieu { font-weight: 800; letter-spacing: -.02em; text-transform: uppercase; }
 
-.an-chu {
+.ck .an-chu {
   position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
   overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
@@ -327,3 +337,9 @@ html:has(body.ck) { scroll-padding-top: calc(var(--cao-dau, 76px) + 12px); }
   width: clamp(90px, 12vw, 170px); transform: translateY(-50%) rotate(-18deg); opacity: .9;
 }
 @media (max-width: 599px) { .ck .mo-dau-trang .net-goc { display: none; } }
+/* Từ 600px tới khoảng 1100px, tiêu đề và dòng dẫn dài chạy đè lên nét rosemary
+   ở mép phải — chừa đúng bề rộng của nét vẽ cộng một khoảng. */
+@media (min-width: 600px) {
+  .ck .mo-dau-trang h1 { max-width: min(18ch, 100% - clamp(90px, 12vw, 170px) - var(--k-6)); }
+  .ck .mo-dau-trang .dan { max-width: min(58ch, 100% - clamp(90px, 12vw, 170px) - var(--k-6)); }
+}
