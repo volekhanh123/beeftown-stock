@@ -1,0 +1,522 @@
+---
+/**
+ * TRANG THỰC ĐƠN — Bò tại quầy / Món ăn / Đồ uống
+ *
+ * Ba phần, theo brief 06/10/2026:
+ *  1. BÒ TẠI QUẦY — luôn đầy đủ, kể cả khi chưa có database: khay skin-pack, nhãn
+ *     khay (NhanKhay), nhân viên tư vấn, nướng trên vỉ gas tại bàn. KHÔNG BAO GIỜ
+ *     có giá: trọng lượng và giá của khay thật chỉ có trên nhãn, tại quầy.
+ *  2. MÓN ĂN và 3. ĐỒ UỐNG — tên món đọc từ thuc_don_cong_khai() (lib/thuc-don.ts).
+ *     Chưa công bố món nào thì không để trống: giới thiệu theo những nhóm món đã
+ *     xác nhận bán. Đồ uống có cồn chỉ được nhắc khi hien_do_uong_co_con bật.
+ *
+ * Thanh chọn phần: KHÔNG có JavaScript thì là ba link neo và cả ba phần cùng hiện.
+ * CÓ JavaScript thì thành tab ARIA (tablist / tab / tabpanel, roving tabindex, mũi
+ * tên trái / phải, Home / End), chỉ phần đang chọn hiện; mở đúng tab theo #hash
+ * và ghi lại hash bằng history.replaceState (không thêm một bước "quay lại").
+ *
+ * Không có: giá chưa duyệt, mô tả nguyên liệu tự viết, nhãn chay / cay / dị ứng tự
+ * thêm, combo, lời hứa bày nhiều món kèm.
+ */
+import { chu, dich, duongDanTuongUng, type BaThuTieng } from '../lib/chu';
+import { coKenhHoiBan } from '../lib/trang-cong-khai';
+import { NHAN_MON, type ThucDon } from '../lib/thuc-don';
+import { dinhDangNgay, type NgonNgu, type NoiDung } from '../lib/noi-dung';
+import Anh from './Anh.astro';
+import BieuTuong from './BieuTuong.astro';
+import LenTang3 from './LenTang3.astro';
+import NhanKhay from './NhanKhay.astro';
+import ThucDonNhom from './ThucDonNhom.astro';
+
+interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; thucDon: ThucDon; }
+const { ngonNgu, noiDung: nd, thucDon: td } = Astro.props;
+const t = chu(ngonNgu);
+
+const c = dich(ngonNgu, {
+  tieuDe: {
+    vi: 'Bò chọn tại quầy, món ngon cho cả bàn',
+    en: 'Beef from the counter, food for the table',
+    ko: '정육 코너에서 고르는 소고기, 함께 나누는 요리',
+  },
+  dan: {
+    vi: 'Thực đơn Beeftown có ba phần: bò bạn tự chọn tại quầy, rồi món ăn và đồ uống để cả bàn dùng chung.',
+    en: 'The Beeftown menu comes in three parts: the beef you choose yourself at the counter, then dishes and drinks for the whole table to share.',
+    ko: 'Beeftown 메뉴는 세 부분으로 나뉘어요. 정육 코너에서 직접 고르는 소고기, 그리고 테이블에서 함께 나누는 요리와 음료예요.',
+  },
+  cacPhan: { vi: 'Các phần của thực đơn', en: 'Menu sections', ko: '메뉴 구성' },
+  tabQuay: { vi: 'Bò tại quầy', en: 'Beef counter', ko: '정육 코너' },
+  tabMon: { vi: 'Món ăn', en: 'Dishes', ko: '요리' },
+  tabUong: { vi: 'Đồ uống', en: 'Drinks', ko: '음료' },
+
+  // --- 1. Bò tại quầy -------------------------------------------------------
+  quayTieuDe: {
+    vi: 'Chọn theo khay, giá xem trên nhãn',
+    en: 'Choose by the tray, check the label',
+    ko: '트레이로 고르고, 라벨로 확인하세요',
+  },
+  quayDan: {
+    vi: 'Bò được cắt và đóng sẵn trong khay skin-pack, bày trên quầy để bạn nhìn tận mắt. Nhân viên ở quầy tư vấn phần nào hợp với bàn của bạn.',
+    en: 'Our beef is cut and sealed in skin-pack trays and laid out on the counter, so you can see exactly what you are choosing. The counter staff will help you find what suits your table.',
+    ko: '소고기는 손질해서 스킨팩 트레이에 담아 정육 코너에 진열해 두었어요. 직접 눈으로 보고 고르시면 되고, 테이블에 맞는 부위는 직원이 추천해 드려요.',
+  },
+  quayGia: {
+    vi: 'Mỗi khay có nhãn riêng: trọng lượng và giá của từng khay, bạn xem ngay tại quầy.',
+    en: 'Every tray has its own label, so the weight and price of each one are right there at the counter.',
+    ko: '트레이마다 라벨이 따로 붙어 있어요. 트레이별 중량과 가격은 정육 코너에서 바로 확인하실 수 있어요.',
+  },
+  quayNuong: {
+    vi: 'Chọn xong, cả bàn cùng nướng trên vỉ gas đặt tại bàn.',
+    en: 'Then the whole table grills it together on the gas grill at your table.',
+    ko: '고른 고기는 테이블의 가스 그릴에서 다 함께 구워 드세요.',
+  },
+  quayThem: {
+    vi: 'Đang ăn muốn thêm? Cứ gọi nhân viên chọn thêm giúp bạn.',
+    en: 'Want more halfway through? Just ask a staff member to pick out some more for you.',
+    ko: '식사 중에 더 드시고 싶으면 직원을 불러 주세요. 대신 골라 드려요.',
+  },
+  ghiGoiThem: {
+    vi: 'Không bắt buộc, gọi thêm khi bạn muốn.',
+    en: 'Optional. Add them whenever you like.',
+    ko: '필수는 아니에요. 원하실 때 추가로 주문하세요.',
+  },
+  ghiTaiQuay: {
+    vi: 'Giá của từng khay in trên nhãn, xem tại quầy.',
+    en: 'Each tray is priced on its own label at the counter.',
+    ko: '트레이별 가격은 정육 코너의 라벨에서 확인하세요.',
+  },
+
+  // --- 2. Món ăn -------------------------------------------------------------
+  monTieuDe: { vi: 'Gọi thêm cho cả bàn', en: 'More for the table', ko: '테이블에 함께 곁들일 요리' },
+  monDan: {
+    vi: 'Món để cả bàn dùng chung, ăn cùng phần bò vừa nướng.',
+    en: 'Plates to share around the grill, alongside the beef you picked.',
+    ko: '구운 고기와 함께 테이블에서 나눠 드시기 좋은 요리예요.',
+  },
+  monDanNhom: {
+    vi: 'Bên cạnh phần bò, cả bàn có thể gọi thêm từ những nhóm món này.',
+    en: 'Alongside the beef, the table can order from these parts of the menu.',
+    ko: '소고기와 함께 아래 메뉴도 주문하실 수 있어요.',
+  },
+  monSeCo: {
+    vi: 'Danh sách từng món sẽ được đăng đầy đủ tại đây.',
+    en: 'The full list of dishes will be posted here.',
+    ko: '요리별 전체 메뉴는 이곳에 올려 드릴게요.',
+  },
+
+  // --- 3. Đồ uống ------------------------------------------------------------
+  uongTieuDe: { vi: 'Uống gì cùng bữa nướng?', en: 'Something to drink with the grill', ko: '구이와 어울리는 음료' },
+  uongDan: {
+    vi: 'Đồ uống đi cùng bữa nướng của cả bàn.',
+    en: 'Drinks to go with your grill.',
+    ko: '구이와 함께 즐기기 좋은 음료예요.',
+  },
+  uongSeCo: {
+    vi: 'Danh sách từng loại đồ uống sẽ được đăng đầy đủ tại đây.',
+    en: 'The full list of drinks will be posted here.',
+    ko: '음료별 전체 메뉴는 이곳에 올려 드릴게요.',
+  },
+  luatRuou: {
+    vi: 'Beeftown không phục vụ đồ uống có cồn cho người dưới 18 tuổi.',
+    en: 'Beeftown does not serve alcohol to anyone under 18.',
+    ko: 'Beeftown은 만 18세 미만에게 주류를 제공하지 않아요.',
+  },
+  phienBan: {
+    vi: (pb: string, ngay: string | null) => (ngay ? `Thực đơn ${pb} · cập nhật ${ngay}` : `Thực đơn ${pb}`),
+    en: (pb: string, ngay: string | null) => (ngay ? `Menu ${pb} · updated ${ngay}` : `Menu ${pb}`),
+    ko: (pb: string, ngay: string | null) => (ngay ? `메뉴 ${pb} · ${ngay} 업데이트` : `메뉴 ${pb}`),
+  },
+
+  // --- Cuối trang ------------------------------------------------------------
+  moiHieu: { vi: 'Đi đông người', en: 'Coming as a group', ko: '여럿이 오실 때' },
+  moiTieuDe: {
+    vi: 'Đi cả nhà, cả nhóm? Hỏi bàn trước nhé.',
+    en: 'Bringing family or friends? Ask for a table first.',
+    ko: '가족이나 친구들과 오시나요? 테이블을 먼저 문의해 주세요.',
+  },
+  moiDan: {
+    vi: 'Cho Beeftown biết ngày và số người. Nhà hàng kiểm tra rồi liên hệ để xác nhận với bạn.',
+    en: 'Tell us the day and how many of you are coming. We will check and contact you to confirm.',
+    ko: '날짜와 인원을 알려 주세요. 매장에서 확인한 뒤 연락드릴게요.',
+  },
+  moiTieuDeDen: {
+    vi: 'Đi cùng cả nhà hay nhóm bạn?',
+    en: 'Coming with family or friends?',
+    ko: '가족이나 친구들과 오시나요?',
+  },
+  moiDanDen: {
+    vi: 'Xem trước đường lên tầng 3 để cả nhóm tìm tới dễ dàng.',
+    en: 'Check the way up to Floor 3 before you go, so everyone finds it easily.',
+    ko: '모두 쉽게 찾아오실 수 있게 3층 오시는 길을 미리 확인해 보세요.',
+  },
+});
+
+// Những nhóm món ĐÃ XÁC NHẬN bán (brief 06/10/2026) — chỉ dùng khi chưa công bố món
+// nào. Tên nhóm, không tên món, không mô tả nguyên liệu.
+const NHOM_MON_AN: BaThuTieng[] = [
+  { vi: 'Salad & khai vị', en: 'Salads & starters', ko: '샐러드 & 애피타이저' },
+  { vi: 'Cơm', en: 'Rice', ko: '밥 요리' },
+  { vi: 'Mì Ý', en: 'Pasta', ko: '파스타' },
+  { vi: 'Miến & mì lạnh', en: 'Glass noodles & cold noodles', ko: '당면 & 냉면' },
+  { vi: 'Canh Hàn', en: 'Korean stews', ko: '한식 국·찌개' },
+  { vi: 'Lẩu', en: 'Hot pot', ko: '전골' },
+  { vi: 'Tráng miệng', en: 'Desserts', ko: '디저트' },
+];
+const DO_UONG_KHONG_CON: BaThuTieng[] = [
+  { vi: 'Nước ép', en: 'Juices', ko: '주스' },
+  { vi: 'Ade', en: 'Ades', ko: '에이드' },
+];
+// Đồ uống có cồn: luật quảng cáo rượu bia — chỉ nhắc khi công tắc hien_do_uong_co_con bật.
+const DO_UONG_CO_CON: BaThuTieng[] = [
+  { vi: 'Highball', en: 'Highballs', ko: '하이볼' },
+  { vi: 'Makgeolli', en: 'Makgeolli', ko: '막걸리' },
+  { vi: 'Cocktail', en: 'Cocktails', ko: '칵테일' },
+];
+
+const coMonAn = td.monAn.length > 0;
+const coDoUong = td.doUong.length > 0;
+const nhacCoCon = !coDoUong && nd.hien_do_uong_co_con === true;
+const hienLuatRuou = td.coDoUongCoCon || nhacCoCon;
+const doUongGioiThieu = [
+  ...DO_UONG_KHONG_CON.map(x => ({ ten: x[ngonNgu], coCon: false })),
+  ...(nhacCoCon ? DO_UONG_CO_CON.map(x => ({ ten: x[ngonNgu], coCon: true })) : []),
+];
+const dongPhienBan = td.phienBan
+  ? c.phienBan(td.phienBan, td.capNhatNgay ? dinhDangNgay(td.capNhatNgay, ngonNgu) : null)
+  : null;
+
+const PHAN = [
+  { id: 'bo-tai-quay', ten: c.tabQuay },
+  { id: 'mon-an', ten: c.tabMon },
+  { id: 'do-uong', ten: c.tabUong },
+];
+
+const coKenh = coKenhHoiBan(nd);
+---
+<section class="mo-dau-trang be-kem" aria-labelledby="td-tieu-de">
+  <div class="khung">
+    <p class="hieu">{t.thucDon}</p>
+    <h1 id="td-tieu-de">{c.tieuDe}</h1>
+    <p class="dan">{c.dan}</p>
+  </div>
+  <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
+</section>
+
+<div class="td" data-td>
+  <div class="td-thanh" data-td-thanh>
+    <nav class="khung td-tab" aria-label={c.cacPhan} data-td-tab>
+      {PHAN.map(p => <a id={`td-tab-${p.id}`} href={`#${p.id}`}>{p.ten}</a>)}
+    </nav>
+  </div>
+
+  {/* 1 · BÒ TẠI QUẦY — luôn đầy đủ, không bao giờ có giá ----------------------- */}
+  <section id="bo-tai-quay" class="muc be-toi td-phan" aria-labelledby="td-h-quay">
+    <div class="khung">
+      <div class="td-quay-dau">
+        <div class="td-quay-chu">
+          <p class="hieu">{c.tabQuay}</p>
+          <h2 id="td-h-quay">{c.quayTieuDe}</h2>
+          <p class="dan">{c.quayDan}</p>
+          <p>{c.quayGia}</p>
+          <p>{c.quayNuong}</p>
+        </div>
+        <div class="td-quay-anh">
+          <Anh id="bo-cat-lat" ngonNgu={ngonNgu} khung="3x2" thayBang="khay" nenKhung="toi"
+               sizes="(min-width: 900px) 56vw, 100vw" />
+        </div>
+      </div>
+
+      <div class="td-quay-nhan">
+        <NhanKhay ngonNgu={ngonNgu} />
+      </div>
+
+      <p class="td-them"><BieuTuong ten="cong" /><span>{c.quayThem}</span></p>
+
+      {td.boTaiQuay.length > 0 && (
+        <div class="td-cac-nhom td-quay-nhom">
+          {td.boTaiQuay.map(n => (
+            <ThucDonNhom nhom={n} ngonNgu={ngonNgu}
+                         ghiChu={n.loai === 'thit_bo' ? c.ghiTaiQuay : n.loai === 'goi_them' ? c.ghiGoiThem : undefined}
+                         khongGia={n.loai === 'thit_bo'} />
+          ))}
+        </div>
+      )}
+    </div>
+  </section>
+
+  {/* 2 · MÓN ĂN ------------------------------------------------------------------ */}
+  <section id="mon-an" class="muc be-kem td-phan" aria-labelledby="td-h-mon">
+    <div class="khung td-bo-cuc">
+      <div class="td-ben">
+        <p class="hieu">{c.tabMon}</p>
+        <h2 id="td-h-mon">{c.monTieuDe}</h2>
+        <p class="dan">{coMonAn ? c.monDan : c.monDanNhom}</p>
+        <div class="td-anh-mon">
+          <Anh id="sot-cham" ngonNgu={ngonNgu} khung="4x3" thayBang="ban-nuong"
+               sizes="(min-width: 1024px) 34vw, (min-width: 600px) 70vw, 100vw" />
+        </div>
+      </div>
+      <div class="td-chinh">
+        {coMonAn ? (
+          <div class="td-cac-nhom">
+            {td.monAn.map(n => <ThucDonNhom nhom={n} ngonNgu={ngonNgu} />)}
+          </div>
+        ) : (
+          <>
+            <ul class="td-danh-muc" role="list">
+              {NHOM_MON_AN.map(n => <li><span class="td-dm-ten">{n[ngonNgu]}</span></li>)}
+            </ul>
+            <p class="td-se-co">{c.monSeCo}</p>
+          </>
+        )}
+      </div>
+    </div>
+  </section>
+
+  {/* 3 · ĐỒ UỐNG ---------------------------------------------------------------- */}
+  <section id="do-uong" class="muc be-kem-dam td-phan" aria-labelledby="td-h-uong">
+    <div class="khung td-bo-cuc">
+      <div class="td-ben">
+        <p class="hieu">{c.tabUong}</p>
+        <h2 id="td-h-uong">{c.uongTieuDe}</h2>
+        <p class="dan">{c.uongDan}</p>
+      </div>
+      <div class="td-chinh">
+        {coDoUong ? (
+          <div class="td-cac-nhom">
+            {td.doUong.map(n => <ThucDonNhom nhom={n} ngonNgu={ngonNgu} />)}
+          </div>
+        ) : (
+          <>
+            <ul class="td-danh-muc" role="list">
+              {doUongGioiThieu.map(d => (
+                <li>
+                  <span class="td-dm-ten">{d.ten}</span>
+                  {d.coCon && <span class="nhan-mon"><BieuTuong ten="co-con" /><span>{NHAN_MON.coCon[ngonNgu]}</span></span>}
+                </li>
+              ))}
+            </ul>
+            <p class="td-se-co">{c.uongSeCo}</p>
+          </>
+        )}
+        {hienLuatRuou && <p class="td-luat"><BieuTuong ten="co-con" /><span>{c.luatRuou}</span></p>}
+      </div>
+    </div>
+  </section>
+</div>
+
+{dongPhienBan && (
+  <div class="td-phien-ban be-kem">
+    <p class="khung">{dongPhienBan}</p>
+  </div>
+)}
+
+{/* Cuối trang: mời hỏi bàn — chỉ khi có kênh thật để hỏi; không thì chỉ đường lên. */}
+<section class="muc be-do nen-van-mo td-moi" aria-labelledby="td-h-moi">
+  <div class="khung td-moi-luoi">
+    <div class="td-moi-chu">
+      <p class="hieu">{c.moiHieu}</p>
+      <h2 id="td-h-moi">{coKenh ? c.moiTieuDe : c.moiTieuDeDen}</h2>
+      <p class="dan">{coKenh ? c.moiDan : c.moiDanDen}</p>
+      <div class="hang-nut">
+        {coKenh && <a class="nut nut-chinh" href={duongDanTuongUng('/dat-ban', ngonNgu)}>{t.datBan}</a>}
+        <a class:list={['nut', coKenh ? 'nut-vien' : 'nut-chinh']} href={duongDanTuongUng('/den-beeftown', ngonNgu)}>{t.xemDuongLen}</a>
+      </div>
+    </div>
+    <div class="td-the-tang3">
+      <LenTang3 ngonNgu={ngonNgu} noiDung={nd} gon khongLinkDuongDen />
+    </div>
+  </div>
+</section>
+
+<script>
+  // THANH CHỌN PHẦN → TAB ARIA. Không có script này: ba link neo, ba phần cùng hiện
+  // (trang vẫn đủ). Có script: chỉ phần đang chọn hiện; mũi tên trái / phải, Home,
+  // End chuyển tab (roving tabindex — Tab đi thẳng vào nội dung của phần đang mở).
+  const vo = document.querySelector<HTMLElement>('[data-td-thanh]');
+  const thanh = document.querySelector<HTMLElement>('[data-td-tab]');
+  const tabs = thanh ? Array.from(thanh.querySelectorAll<HTMLAnchorElement>('a[href^="#"]')) : [];
+  const phan = tabs.map(a => document.getElementById(a.hash.slice(1)));
+
+  if (vo && thanh && tabs.length > 1 && phan.every(p => p instanceof HTMLElement)) {
+    const cacPhan = phan as HTMLElement[];
+    thanh.setAttribute('role', 'tablist');
+    tabs.forEach((a, i) => {
+      a.setAttribute('role', 'tab');
+      a.setAttribute('aria-controls', cacPhan[i].id);
+      cacPhan[i].setAttribute('role', 'tabpanel');
+      cacPhan[i].setAttribute('aria-labelledby', a.id);
+      cacPhan[i].tabIndex = 0;
+    });
+
+    // Đổi tab giữa chừng một phần dài: đưa đầu phần mới về ngay dưới thanh, để
+    // người đọc không rơi vào giữa (hay cuối) một phần khác. Không cuộn mượt.
+    const veDau = (p: HTMLElement) => {
+      const day = vo.getBoundingClientRect().bottom;
+      const dau = p.getBoundingClientRect().top;
+      if (dau < day) window.scrollBy(0, dau - day);
+    };
+    const chon = (i: number, { tieuDiem = false, ghiHash = false, cuon = false } = {}) => {
+      tabs.forEach((a, j) => {
+        const dang = j === i;
+        a.setAttribute('aria-selected', String(dang));
+        a.tabIndex = dang ? 0 : -1;
+        cacPhan[j].hidden = !dang;
+      });
+      if (tieuDiem) tabs[i].focus();
+      if (ghiHash && location.hash !== tabs[i].hash) history.replaceState(history.state, '', tabs[i].hash);
+      if (cuon) veDau(cacPhan[i]);
+    };
+    const theoHash = () => tabs.findIndex(a => a.hash === location.hash);
+
+    const dauTien = theoHash();
+    chon(dauTien >= 0 ? dauTien : 0, { cuon: dauTien >= 0 });
+    vo.closest('[data-td]')?.setAttribute('data-tab', '');
+
+    tabs.forEach((a, i) => a.addEventListener('click', e => {
+      // Ctrl / ⌘ / Shift + bấm: để trình duyệt mở tab mới như một link thường.
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.altKey || e.button !== 0) return;
+      e.preventDefault();
+      chon(i, { ghiHash: true, cuon: true });
+    }));
+    thanh.addEventListener('keydown', e => {
+      const i = tabs.indexOf(document.activeElement as HTMLAnchorElement);
+      if (i < 0 || e.altKey || e.ctrlKey || e.metaKey) return;
+      const n = tabs.length;
+      const j = e.key === 'ArrowRight' ? (i + 1) % n
+        : e.key === 'ArrowLeft' ? (i - 1 + n) % n
+        : e.key === 'Home' ? 0
+        : e.key === 'End' ? n - 1
+        : e.key === ' ' ? i
+        : -1;
+      if (j < 0) return;
+      e.preventDefault();
+      chon(j, { tieuDiem: true, ghiHash: true, cuon: true });
+    });
+    // Link khác trên trang (hay nút lùi) đổi #hash → mở đúng tab.
+    addEventListener('hashchange', () => {
+      const j = theoHash();
+      if (j >= 0) chon(j, { cuon: true });
+    });
+  }
+</script>
+
+<style>
+  /* --- Thanh chọn phần ------------------------------------------------------ */
+  .td { --cao-thanh: 57px; }
+  .td-thanh {
+    position: sticky; top: var(--cao-dau); z-index: 30;
+    background: var(--kem);
+    border-bottom: 1px solid var(--vach);
+  }
+  .td-tab {
+    display: flex; align-items: stretch;
+    gap: clamp(18px, 5vw, 48px);
+  }
+  .td-tab a {
+    display: inline-flex; align-items: center; min-width: 0;
+    min-height: 56px; padding: 6px 2px; margin-bottom: -1px;
+    font-weight: 700; font-size: 15px; line-height: 1.2; letter-spacing: .01em;
+    color: var(--than); text-decoration: none;
+    border-bottom: 3px solid transparent;
+    transition: border-color var(--nhanh), color var(--nhanh);
+  }
+  .td-tab a:hover { border-bottom-color: var(--vien-o); }
+  .td-tab a:focus-visible { outline-offset: -3px; }
+  .td-tab a[aria-selected='true'] { color: var(--do-sau); border-bottom-color: var(--do); }
+  @media (min-width: 600px) { .td-tab a { font-size: 16px; } }
+  @media (max-width: 380px) { .td-tab { gap: 16px; } .td-tab a { font-size: 14px; } }
+
+  /* Link neo khi không có JS: đầu phần dừng ngay dưới thanh (cao-dau + thanh),
+     trừ đi scroll-padding-top 88px của trang (cong-khai.css). */
+  .td-phan { scroll-margin-top: calc(var(--cao-dau) + var(--cao-thanh) - 88px); }
+  .td-phan[hidden] { display: none !important; }
+  .td-phan:focus-visible { outline-offset: -6px; }
+  @media print { .td-phan[hidden] { display: block !important; } .td-thanh { display: none; } }
+
+  /* --- 1. Bò tại quầy ------------------------------------------------------- */
+  .td-quay-dau {
+    display: grid; gap: var(--k-7); align-items: center;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 900px) { .td-quay-dau { grid-template-columns: 5fr 6fr; gap: var(--k-8); } }
+  .td-quay-chu h2 { max-width: 16ch; }
+  .td-quay-chu .dan { margin-bottom: var(--k-4); }
+  .td-quay-chu p:not(.hieu):not(.dan) { margin: 0 0 var(--k-3); max-width: 52ch; color: var(--chu-chinh); }
+  .td-quay-nhan {
+    margin-top: var(--k-8); padding-top: var(--k-7);
+    border-top: 1px solid var(--vien);
+  }
+  .td-them {
+    display: flex; gap: var(--k-3); align-items: flex-start;
+    margin: var(--k-7) 0 0; padding: var(--k-2) 0 var(--k-2) var(--k-4);
+    border-left: 3px solid var(--mu-tat);
+    max-width: 60ch; font-size: var(--co-dan); line-height: 1.5; font-weight: 600;
+  }
+  .td-them :global(svg) { width: 24px; height: 24px; flex: none; color: var(--mu-tat); margin-top: 3px; }
+  .td-quay-nhom { margin-top: var(--k-7); }
+
+  /* --- 2 và 3. Món ăn, đồ uống: cột tiêu đề + cột thực đơn ------------------- */
+  .td-bo-cuc { display: grid; gap: var(--k-7); grid-template-columns: 1fr; }
+  @media (min-width: 1024px) {
+    .td-bo-cuc { grid-template-columns: 4fr 7fr; gap: var(--k-9); align-items: start; }
+  }
+  /* Màn rộng và đủ cao: cột tiêu đề + ảnh đứng yên khi cuộn qua thực đơn dài. */
+  @media (min-width: 1024px) and (min-height: 760px) {
+    .td-ben { position: sticky; top: calc(var(--cao-dau) + var(--cao-thanh) + var(--k-6)); }
+  }
+  .td-ben h2 { max-width: 14ch; }
+  .td-anh-mon { margin-top: var(--k-6); max-width: 560px; }
+
+  .td-cac-nhom { columns: 2 320px; column-gap: var(--k-8); }
+
+  /* Chưa công bố món: danh mục nhóm món bằng chữ — yên, rõ, đọc như một tờ menu. */
+  .td-danh-muc {
+    list-style: none; margin: 0; padding: 0; counter-reset: dm;
+    display: grid; grid-template-columns: 1fr; column-gap: var(--k-7);
+    border-bottom: 1px solid var(--vien);
+  }
+  @media (min-width: 640px) { .td-danh-muc { grid-template-columns: 1fr 1fr; } }
+  .td-danh-muc li {
+    counter-increment: dm;
+    display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px var(--k-4);
+    padding: var(--k-4) 0; border-top: 1px solid var(--vien);
+  }
+  .td-danh-muc li::before {
+    content: counter(dm, decimal-leading-zero);
+    content: counter(dm, decimal-leading-zero) / '';
+    flex: none; width: 2.2em;
+    font-size: 13px; font-weight: 700; letter-spacing: .06em; color: var(--nhan-nho);
+  }
+  .td-dm-ten {
+    font-size: clamp(21px, 1vw + 16px, 28px); font-weight: 700; line-height: 1.25; letter-spacing: -.01em;
+  }
+  .td-danh-muc .nhan-mon { margin-left: auto; }
+  .td-se-co { margin: var(--k-5) 0 0; color: var(--chu-phu); max-width: 52ch; }
+
+  .td-luat {
+    display: flex; gap: var(--k-3); align-items: flex-start;
+    margin: var(--k-6) 0 0; padding-top: var(--k-4);
+    border-top: 1px solid var(--vien);
+    font-size: var(--co-nho); font-weight: 600;
+  }
+  .td-luat :global(svg) { width: 20px; height: 20px; flex: none; color: var(--nhan); }
+
+  /* --- Dòng phiên bản thực đơn --------------------------------------------- */
+  .td-phien-ban { border-top: 1px solid var(--vach); }
+  .td-phien-ban p { margin-block: 0; padding-block: var(--k-4); font-size: var(--co-nho); color: var(--muc-nhat); }
+
+  /* --- Cuối trang ---------------------------------------------------------- */
+  .td-moi-luoi { display: grid; gap: var(--k-7); align-items: center; grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .td-moi-luoi { grid-template-columns: 7fr 5fr; gap: var(--k-8); } }
+  .td-moi-chu h2 { max-width: 20ch; }
+  .td-moi-chu .dan { margin-bottom: var(--k-6); }
+  /* LenTang3 bản gọn là một thẻ kem nằm trên dải đỏ: trả biến màu của bề mặt về
+     bộ của nền kem, nếu không link và vòng focus bên trong ăn màu kem của dải đỏ. */
+  .td-the-tang3 {
+    --chu-chinh: var(--than); --chu-phu: var(--muc-nhat);
+    --nhan: var(--do-sau); --nhan-nho: var(--do-sau);
+    --vien: var(--vach); --vong-focus: var(--than);
+    color: var(--than);
+    max-width: 480px;
+  }
+</style>

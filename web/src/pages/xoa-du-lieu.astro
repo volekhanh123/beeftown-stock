@@ -5,18 +5,16 @@
    băm một chiều, phiên tự xóa sau 30 ngày. Sửa bản này thì sửa cả
    /en/data-deletion và /ko/data-deletion. */
 import Trang from '../layouts/Trang.astro';
+import TrangVanBan from '../components/TrangVanBan.astro';
 import { docNoiDung } from '../lib/noi-dung';
 const nd = await docNoiDung('vi');
 ---
 <Trang ngonNgu="vi" noiDung={nd} duongDan="/xoa-du-lieu"
        tieuDe="Xóa dữ liệu — Beeftown"
        moTa="Cách yêu cầu Beeftown xóa thông tin của bạn, kể cả thông tin từ Messenger.">
-  <section class="muc" style="padding-top:20px">
-    <div class="khung" style="max-width:68ch">
-      <p class="hieu">Xóa dữ liệu</p>
-      <h1 style="font-size:clamp(30px,5vw,48px)">Cách xóa thông tin của bạn</h1>
+  <TrangVanBan hieu="Xóa dữ liệu" tieuDe="Cách xóa thông tin của bạn">
 
-      <h2 style="font-size:24px; margin-top:40px">Thông tin từ Messenger</h2>
+      <h2>Thông tin từ Messenger</h2>
       <p>Trợ lý tự động của Beeftown trên Messenger không lưu nội dung tin nhắn.
         Nó chỉ giữ một mã nhận diện đã mã hóa một chiều và những thông tin bạn
         đang điền dở (ngày, giờ, số khách, tên, số điện thoại). Phần này <strong>tự
@@ -25,7 +23,7 @@ const nd = await docNoiDung('vi');
         Messenger. Trợ lý xóa thông tin đang điền dở và báo nhân viên xử lý phần
         còn lại.</p>
 
-      <h2 style="font-size:24px; margin-top:34px">Thông tin đặt bàn và hồ sơ ứng tuyển</h2>
+      <h2>Thông tin đặt bàn và hồ sơ ứng tuyển</h2>
       <p>Yêu cầu đặt bàn (dù gửi trên website hay qua Messenger) và hồ sơ ứng
         tuyển được giữ như mô tả ở trang <a href="/quyen-rieng-tu">Quyền riêng tư</a>.
         Để xóa, gửi yêu cầu kèm số điện thoại bạn đã dùng —{' '}
@@ -35,13 +33,12 @@ const nd = await docNoiDung('vi');
         Nhà hàng xóa họ tên, số điện thoại và các thông tin kèm theo, rồi báo lại
         cho bạn.</p>
 
-      <h2 style="font-size:24px; margin-top:34px">Dữ liệu Meta giữ</h2>
+      <h2>Dữ liệu Meta giữ</h2>
       <p>Bản sao cuộc trò chuyện trên Messenger do Meta giữ theo chính sách của
         Meta. Bạn xóa cuộc trò chuyện ngay trong ứng dụng Messenger; việc đó không
         ảnh hưởng tới yêu cầu đặt bàn đã gửi.</p>
 
-      <p class="nho" style="margin-top:34px">Tuân theo Nghị định 13/2023/NĐ-CP về
+      <p class="nho">Tuân theo Nghị định 13/2023/NĐ-CP về
         bảo vệ dữ liệu cá nhân.</p>
-    </div>
-  </section>
+  </TrangVanBan>
 </Trang>

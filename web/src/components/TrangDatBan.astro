@@ -1,30 +1,39 @@
 ---
 /**
- * TRANG ĐẶT BÀN
+ * TRANG HỎI BÀN
  *
  * CÂU QUAN TRỌNG NHẤT TRÊN TRANG NÀY nằm ở màn hình xác nhận:
  * "Yêu cầu chỉ có hiệu lực sau khi nhân viên gọi xác nhận — hiện chưa có bàn
  * nào được giữ."
  *
  * Nó ở đó vì ba con số trong kế hoạch IMC không được đánh đồng: yêu cầu đã
- * nhận ≠ nhà hàng đã xác nhận ≠ khách thực đến. Khách đọc "đặt bàn thành
- * công" rồi dẫn cả nhà tới vào tối thứ Bảy là một buổi tối hỏng, và lỗi nằm
- * ở câu chữ chứ không ở hệ thống.
- *
- * Chuỗi "đặt bàn thành công" KHÔNG ĐƯỢC tồn tại trong mã nguồn này.
+ * nhận ≠ nhà hàng đã xác nhận ≠ khách thực đến. Khách đọc một câu kiểu "đã giữ
+ * bàn cho bạn" rồi dẫn cả nhà tới vào tối thứ Bảy là một buổi tối hỏng, và lỗi
+ * nằm ở câu chữ chứ không ở hệ thống. Nên trang gọi là "Hỏi bàn", và sau khi
+ * gửi chỉ nói "đã nhận yêu cầu" — không bao giờ là "xong", "đã đặt".
  *
  * KHÔNG CÓ LƯỚI SỐ BÀN CÒN TRỐNG. Khung giờ chỉ có hai trạng thái: chọn được
  * hoặc không. Con số bị chặn từ tầng database (lich_trong_theo_ma trả về
  * boolean) nên nó không tới được đây kể cả khi ai đó muốn hiện.
  *
- * Đổi ngày bằng form GET, đặt bàn bằng form POST — cả hai không cần
- * JavaScript.
+ * Đổi ngày bằng form GET, gửi yêu cầu bằng form POST — cả hai không cần
+ * JavaScript. Script cuối file chỉ BỔ TRỢ (lỗi sát ô, chặn bấm đúp, giữ chữ đã
+ * gõ khi máy chủ báo lỗi); tắt JavaScript thì required của trình duyệt và máy
+ * chủ vẫn làm đủ việc.
+ *
+ * CẦU THANG TRƯỚC KHI GỬI. Nhà hàng ở tầng 3, khách lên bằng cầu thang bộ, không
+ * có thang máy cho khách (brief 06/10/2026). Khối LenTang3 bản gọn đứng TRƯỚC
+ * thẻ form (trên điện thoại: phía trên; máy tính: cột bên trái) để người đi cùng
+ * ông bà biết điều đó trước khi bấm gửi.
  */
-import { chu, dich } from '../lib/chu';
+import { chu, dich, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
-import type { TinhTrangDatBan, KetQuaDatBan } from '../lib/dat-ban';
+import { CAU_DAT_BAN, type TinhTrangDatBan, type KetQuaDatBan } from '../lib/dat-ban';
 import { homNayVn } from '../lib/noi-dung';
 import { congNgay } from '../lib/gio-vn';
+import { lienHe } from '../lib/trang-cong-khai';
+import LenTang3 from './LenTang3.astro';
+import BieuTuong from './BieuTuong.astro';
 
 interface Props {
   ngonNgu: NgonNgu;
@@ -35,6 +44,7 @@ interface Props {
 }
 const { ngonNgu, noiDung: nd, tinhTrang, ketQua, duongDan } = Astro.props;
 const tChung = chu(ngonNgu);
+const lh = lienHe(nd);
 
 const homNay = homNayVn();
 const toiDa = congNgay(homNay, 60);
@@ -43,24 +53,59 @@ const chonDuoc = tinhTrang.khung.filter(k => k.con_cho && !k.da_qua);
 const trua = chonDuoc.filter(k => k.buoi === 'trua');
 const toi  = chonDuoc.filter(k => k.buoi === 'toi');
 
+// Chỉ những kênh ĐÃ CÔNG BỐ (lienHe chỉ nhận http(s), email và số điện thoại
+// đúng dạng). Chưa có gì thì không có nút nào — chữ "Facebook" trong câu giải
+// thích vẫn chỉ đường cho khách.
 const nutNhanTin =
-  nd.facebook_url ? { url: nd.facebook_url, chu: tChung.nhanTin } :
-  nd.email_lien_he ? { url: `mailto:${nd.email_lien_he}`, chu: tChung.nhanTin } :
+  lh.facebook ? { url: lh.facebook, chu: tChung.nhanTin } :
+  lh.thu ? { url: lh.thu, chu: tChung.nhanTin } :
   null;
 
-// Tiếng Hàn giữ đúng ranh giới của bản tiếng Việt: 예약 요청 (yêu cầu đặt
-// bàn) và 접수 (đã nhận) — không bao giờ là chữ nói bàn đã được giữ.
+const daNhanYeuCau = ketQua?.ok === true;
+const chuaMo = !daNhanYeuCau && !tinhTrang.moDuoc;
+
+// Câu báo lỗi sát ô: dùng lại đúng câu máy chủ nói (lib/dat-ban.ts), để hai nơi
+// không nói hai câu khác nhau.
+const loi = dich(ngonNgu, CAU_DAT_BAN);
+
+// Tiếng Hàn giữ đúng ranh giới của bản tiếng Việt: 문의 / 요청 (hỏi, yêu cầu)
+// và 접수 (đã nhận) — không bao giờ là chữ nói bàn đã được giữ.
 const t = dich(ngonNgu, {
-  hieu:    { vi: 'Đặt bàn', en: 'Reservations', ko: '예약' },
-  tieuDe:  { vi: 'Đặt bàn tại Beeftown', en: 'Book a table', ko: 'Beeftown 테이블 예약' },
+  tieuDe:  { vi: 'Hỏi bàn', en: 'Ask for a table', ko: '테이블 문의' },
   dan: {
-    vi: 'Bạn gửi yêu cầu, nhà hàng gọi lại để xác nhận.',
-    en: 'Send us a request and we will call you back to confirm.',
-    ko: '예약 요청을 보내 주시면 매장에서 다시 전화드려 확인해 드려요.',
+    vi: 'Cho Beeftown biết ngày, giờ và số người. Nhà hàng kiểm tra rồi gọi lại để xác nhận với bạn.',
+    en: 'Tell us the date, the time and how many of you are coming. We will check and call you back to confirm.',
+    ko: '방문 날짜와 시간, 인원을 알려 주세요. 매장에서 확인한 뒤 전화로 안내해 드려요.',
   },
-  ngay:    { vi: 'Ngày', en: 'Date', ko: '날짜' },
+
+  // --- Ghi chú quy trình: ba dòng ngắn -----------------------------------
+  cachHoi: { vi: 'Hỏi bàn diễn ra thế nào', en: 'How it works', ko: '이렇게 진행돼요' },
+  buoc1: {
+    vi: 'Bạn gửi yêu cầu với ngày, giờ và số người.',
+    en: 'You send a request with the date, time and number of people.',
+    ko: '날짜, 시간, 인원을 적어 문의를 보내 주세요.',
+  },
+  buoc2: {
+    vi: 'Nhà hàng kiểm tra và gọi lại cho bạn.',
+    en: 'We check and call you back.',
+    ko: '매장에서 확인한 뒤 전화드려요.',
+  },
+  buoc3: {
+    vi: 'Bàn chỉ được giữ sau cuộc gọi đó.',
+    en: 'A table is only held for you after that call.',
+    ko: '자리는 그 통화로 확인한 뒤에만 잡아 드려요.',
+  },
+
+  // --- Thẻ form --------------------------------------------------------------
+  yeuCau:  { vi: 'Yêu cầu của bạn', en: 'Your request', ko: '문의 내용' },
+  ngay:    { vi: 'Ngày đến', en: 'Date', ko: '방문 날짜' },
   doiNgay: { vi: 'Xem ngày này', en: 'Show this date', ko: '이 날짜 보기' },
-  gio:     { vi: 'Khung giờ', en: 'Time', ko: '시간대' },
+  ngayTruoc: {
+    vi: 'Ngày bạn chọn lúc nãy đã được điền lại ở ô trên — bấm “Xem ngày này” để xem giờ của ngày đó.',
+    en: 'We have put back the date you chose earlier — tap “Show this date” to see its times.',
+    ko: '앞서 고르신 날짜를 다시 넣어 두었어요. ‘이 날짜 보기’를 눌러 그날의 시간대를 확인해 주세요.',
+  },
+  gio:     { vi: 'Giờ đến', en: 'Time', ko: '방문 시간' },
   trua:    { vi: 'Buổi trưa', en: 'Lunch', ko: '점심' },
   toi:     { vi: 'Buổi tối', en: 'Dinner', ko: '저녁' },
   hetCho: {
@@ -68,7 +113,7 @@ const t = dich(ngonNgu, {
     en: 'No times left on this date. Try another day.',
     ko: '이 날짜에는 선택할 수 있는 시간대가 없어요. 다른 날짜를 선택해 주세요.',
   },
-  soKhach: { vi: 'Mấy người', en: 'How many people', ko: '인원' },
+  soKhach: { vi: 'Số người', en: 'Number of people', ko: '인원' },
   soKhachPhu: {
     vi: 'Nhóm từ 9 người trở lên, bạn nhắn cho Beeftown để nhà hàng sắp xếp riêng.',
     en: 'For groups of 9 or more, message us and we will arrange it with you.',
@@ -92,7 +137,13 @@ const t = dich(ngonNgu, {
     en: 'Send me news from Beeftown. Optional — your table does not depend on this.',
     ko: 'Beeftown의 새 소식 받기. 선택 사항이며, 체크하지 않아도 예약에는 영향이 없어요.',
   },
-  gui:     { vi: 'Gửi yêu cầu', en: 'Send request', ko: '예약 요청 보내기' },
+  gui:     { vi: 'Gửi yêu cầu', en: 'Send request', ko: '문의 보내기' },
+  dangGui: { vi: 'Đang gửi…', en: 'Sending…', ko: '보내는 중…' },
+  guiChuaLaCoBan: {
+    vi: 'Gửi yêu cầu chưa phải là đã có bàn: nhà hàng sẽ gọi lại để xác nhận.',
+    en: 'Sending this does not reserve a table yet — we will call you to confirm.',
+    ko: '문의를 보낸다고 바로 자리가 잡히지는 않아요. 매장에서 전화로 확인해 드려요.',
+  },
   batBuoc: { vi: 'bắt buộc', en: 'required', ko: '필수' },
 
   // --- Màn hình sau khi gửi ---
@@ -120,88 +171,111 @@ const t = dich(ngonNgu, {
 });
 ---
 
-<section class="muc" style="padding-top:20px">
+<section class="mo-dau-trang be-kem">
   <div class="khung">
-    <p class="hieu">{t.hieu}</p>
-    <h1 style="font-size:clamp(32px,6vw,58px)">{t.tieuDe}</h1>
-    <p class="dan" style="max-width:56ch;margin-top:22px">{t.dan}</p>
+    <p class="hieu">Beeftown · {tChung.tang3}</p>
+    <h1>{t.tieuDe}</h1>
+    <p class="dan">{t.dan}</p>
   </div>
+  <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
 </section>
 
-<section class="muc muc-sang">
-  <div class="khung">
+<section class="be-kem hb">
+  <div class:list={['khung', 'hb-luoi', { 'hb-luoi-da-nhan': daNhanYeuCau }]}>
 
-    {ketQua?.ok ? (
-      <div class="the" style="max-width:62ch;border-left:4px solid var(--cuc-vang)">
-        <h2 style="margin-top:0">{t.daNhan}</h2>
+    {daNhanYeuCau && ketQua && (
+      <div class="hb-the hb-da-nhan" data-ket-qua="da-nhan" tabindex="-1">
+        <img class="hb-tem" src="/thuong-hieu/tem-tron.svg" width="320" height="320" alt="" decoding="async" />
+        <h2 class="hb-tieu-de-the">{t.daNhan}</h2>
         {ketQua.ma && (
-          <p>
-            {t.maYeuCau}
-            <strong style="letter-spacing:.08em;font-size:1.15em">{ketQua.ma}</strong>
-          </p>
+          <p class="hb-ma">{t.maYeuCau}<strong>{ketQua.ma}</strong></p>
         )}
-        <p style="font-weight:700">{t.chuaGiuBan}</p>
-        <p style="margin-bottom:0">{t.giuMa}</p>
+        <p class="hb-chua-giu"><strong>{t.chuaGiuBan}</strong></p>
+        <p class="hb-giu-ma">{t.giuMa}</p>
+        <a class="lien-ket" href={duongDanTuongUng('/thuc-don', ngonNgu)}>{tChung.xemMenu}<BieuTuong ten="mui-ten" /></a>
       </div>
+    )}
 
-    ) : !tinhTrang.moDuoc ? (
-      <div class="the" style="max-width:62ch">
-        <h2 style="margin-top:0">{tChung.datBanChuaMo}</h2>
-        <p style="margin-bottom:0">{tChung.datBanChuaMoGiaiThich}</p>
-        {nutNhanTin && (
-          <div class="hang-nut" style="margin-top:18px">
-            <a class="nut nut-chinh" href={nutNhanTin.url} rel="noopener">{nutNhanTin.chu}</a>
-            {nd.hotline && (
-              <a class="nut nut-vien" href={`tel:${nd.hotline.replace(/\s/g, '')}`}>
-                {tChung.goiNhaHang}
-              </a>
+    <div class="hb-ben">
+      <h2 class="hb-nho">{t.cachHoi}</h2>
+      <ol class="hb-buoc">
+        <li class:list={{ 'hb-xong': daNhanYeuCau }}>
+          <span class="hb-so" aria-hidden="true">{daNhanYeuCau ? <BieuTuong ten="da-chep" /> : '1'}</span>
+          <span>{t.buoc1}</span>
+        </li>
+        <li>
+          <span class="hb-so" aria-hidden="true">2</span>
+          <span>{t.buoc2}</span>
+        </li>
+        <li class="hb-buoc-chinh">
+          <span class="hb-so" aria-hidden="true">3</span>
+          <span>{t.buoc3}</span>
+        </li>
+      </ol>
+      <LenTang3 gon ngonNgu={ngonNgu} noiDung={nd} />
+    </div>
+
+    {chuaMo && (
+      <div class="hb-the hb-chua-mo">
+        <span class="hb-chua-mo-hinh" aria-hidden="true"><BieuTuong ten="tin-nhan" /></span>
+        <h2 class="hb-tieu-de-the">{tChung.datBanChuaMo}</h2>
+        <p>{tChung.datBanChuaMoGiaiThich}</p>
+        {(nutNhanTin || lh.goi) && (
+          <div class="hang-nut">
+            {nutNhanTin && (
+              <a class="nut nut-chinh" href={nutNhanTin.url} rel="noopener"><BieuTuong ten="tin-nhan" />{nutNhanTin.chu}</a>
+            )}
+            {lh.goi && (
+              <a class="nut nut-vien" href={lh.goi}><BieuTuong ten="dien-thoai" />{tChung.goiNhaHang}</a>
             )}
           </div>
         )}
       </div>
+    )}
 
-    ) : (
-      <div class="the" style="max-width:62ch">
+    {!daNhanYeuCau && !chuaMo && (
+      <div class="hb-the hb-form">
+        <h2 class="hb-tieu-de-the">{t.yeuCau}</h2>
+
         {ketQua && !ketQua.ok && (
-          <div style="border-left:4px solid var(--do);padding:12px 14px;margin:0 0 20px;background:rgba(178,58,44,.08)">
-            <p style="margin:0"><strong>{ketQua.cau}</strong></p>
+          <div class="hb-loi" role="alert" data-ket-qua="loi" tabindex="-1">
+            <p><strong>{ketQua.cau}</strong></p>
             {nutNhanTin && (
-              <p class="nho" style="margin:10px 0 0">
-                {t.nhanThang}
-                <a href={nutNhanTin.url} rel="noopener">{nutNhanTin.chu}</a>
-              </p>
+              <p class="nho">{t.nhanThang}<a href={nutNhanTin.url} rel="noopener">{nutNhanTin.chu}</a></p>
             )}
           </div>
         )}
 
         {/* Đổi ngày: form GET riêng, nên không cần JavaScript và không đụng
             gì tới dữ liệu khách đã điền ở form bên dưới. */}
-        <form method="GET" class="form-dat doi-ngay">
-          <label class="o" style="margin-bottom:10px">
-            <span>{t.ngay}</span>
-            <input type="date" name="ngay" value={tinhTrang.ngay}
-                   min={homNay} max={toiDa} />
-          </label>
-          <button type="submit" class="nut nut-vien" style="width:100%">{t.doiNgay}</button>
+        <form method="GET" class="form-dat hb-doi-ngay" data-doi-ngay>
+          <div class="o">
+            <label for="hb-ngay">{t.ngay}</label>
+            <div class="hb-hang-ngay">
+              <input type="date" id="hb-ngay" name="ngay" value={tinhTrang.ngay} min={homNay} max={toiDa} />
+              <button type="submit" class="nut nut-vien">{t.doiNgay}</button>
+            </div>
+            <p class="hb-ngay-truoc nho" data-ngay-truoc hidden>{t.ngayTruoc}</p>
+          </div>
         </form>
 
-        <hr style="border:none;border-top:1px solid var(--vach);margin:24px 0" />
-
         {chonDuoc.length === 0 ? (
-          <p style="margin:0"><strong>{t.hetCho}</strong></p>
+          <p class="hb-het-cho"><strong>{t.hetCho}</strong></p>
         ) : (
-          <form method="POST" action={duongDan} class="form-dat">
+          <form method="POST" action={duongDan} class="form-dat hb-gui" data-hoi-ban
+                data-dang-gui-chu={t.dangGui} data-loi-gio={loi.thieuGio}
+                data-loi-ho-ten={loi.thieuHoTen} data-loi-sdt={loi.thieuSdt}>
             <input type="hidden" name="ngay" value={tinhTrang.ngay} />
 
-            <fieldset class="o o-nhom">
+            <fieldset class="o hb-gio" data-o="gio" aria-describedby="loi-gio">
               <legend>{t.gio} <em>({t.batBuoc})</em></legend>
               {trua.length > 0 && (
                 <>
-                  <p class="nho nhom-ten">{t.trua}</p>
-                  <div class="luoi-gio">
-                    {trua.map((k, i) => (
-                      <label class="o-gio">
-                        <input type="radio" name="gio" value={k.gio} required checked={i === 0 && toi.length === 0} />
+                  <p class="hb-buoi" id="hb-buoi-trua">{t.trua}</p>
+                  <div class="hb-chip" role="group" aria-labelledby="hb-buoi-trua">
+                    {trua.map(k => (
+                      <label class="hb-chip-o">
+                        <input type="radio" name="gio" value={k.gio} required />
                         <span>{k.gio.slice(0, 5)}</span>
                       </label>
                     ))}
@@ -210,10 +284,10 @@ const t = dich(ngonNgu, {
               )}
               {toi.length > 0 && (
                 <>
-                  <p class="nho nhom-ten">{t.toi}</p>
-                  <div class="luoi-gio">
+                  <p class="hb-buoi" id="hb-buoi-toi">{t.toi}</p>
+                  <div class="hb-chip" role="group" aria-labelledby="hb-buoi-toi">
                     {toi.map(k => (
-                      <label class="o-gio">
+                      <label class="hb-chip-o">
                         <input type="radio" name="gio" value={k.gio} required />
                         <span>{k.gio.slice(0, 5)}</span>
                       </label>
@@ -221,48 +295,52 @@ const t = dich(ngonNgu, {
                   </div>
                 </>
               )}
+              <p class="loi-o" data-loi="gio" id="loi-gio" hidden></p>
             </fieldset>
 
-            <label class="o">
-              <span>{t.soKhach} <em>({t.batBuoc})</em></span>
-              <small>{t.soKhachPhu}</small>
-              <select name="so_khach" required>
+            <div class="o">
+              <label for="hb-so-khach">{t.soKhach} <em>({t.batBuoc})</em></label>
+              <small id="goi-y-so-khach">{t.soKhachPhu}</small>
+              <select id="hb-so-khach" name="so_khach" required aria-describedby="goi-y-so-khach">
                 {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
                   <option value={n} selected={n === 2}>{n}</option>
                 ))}
               </select>
-            </label>
+            </div>
 
-            <label class="o">
-              <span>{t.hoTen} <em>({t.batBuoc})</em></span>
-              <input type="text" name="ho_ten" required autocomplete="name" autocapitalize="words" />
-            </label>
+            <div class="o">
+              <label for="hb-ho-ten">{t.hoTen} <em>({t.batBuoc})</em></label>
+              <input type="text" id="hb-ho-ten" name="ho_ten" required autocomplete="name" autocapitalize="words"
+                     aria-describedby="loi-ho_ten" />
+              <p class="loi-o" data-loi="ho_ten" id="loi-ho_ten" hidden></p>
+            </div>
 
-            <label class="o">
-              <span>{t.sdt} <em>({t.batBuoc})</em></span>
-              <small>{t.sdtPhu}</small>
-              <input type="tel" name="sdt" required inputmode="tel" autocomplete="tel" />
-            </label>
+            <div class="o">
+              <label for="hb-sdt">{t.sdt} <em>({t.batBuoc})</em></label>
+              <small id="goi-y-sdt">{t.sdtPhu}</small>
+              <input type="tel" id="hb-sdt" name="sdt" required inputmode="tel" autocomplete="tel"
+                     aria-describedby="goi-y-sdt loi-sdt" />
+              <p class="loi-o" data-loi="sdt" id="loi-sdt" hidden></p>
+            </div>
 
-            <label class="o">
-              <span>{t.dip}</span>
-              <input type="text" name="dip" autocapitalize="sentences" />
-            </label>
+            <div class="o">
+              <label for="hb-dip">{t.dip}</label>
+              <input type="text" id="hb-dip" name="dip" autocapitalize="sentences" />
+            </div>
 
-            <label class="o">
-              <span>{t.ghiChu}</span>
-              <textarea name="ghi_chu" rows="2"></textarea>
-            </label>
+            <div class="o">
+              <label for="hb-ghi-chu">{t.ghiChu}</label>
+              <textarea id="hb-ghi-chu" name="ghi_chu" rows="3"></textarea>
+            </div>
 
-            {/* KHÔNG required. Xem lý do trong lib/dat-ban.ts. */}
-            <label class="o-chon">
-              <input type="checkbox" name="dong_y_nhan_tin" value="co" />
-              <span>{t.nhanTinKM}</span>
-            </label>
+            {/* KHÔNG required, KHÔNG chọn sẵn. Xem lý do trong lib/dat-ban.ts. */}
+            <div class="hb-dong-y">
+              <input type="checkbox" id="hb-dong-y" name="dong_y_nhan_tin" value="co" />
+              <label for="hb-dong-y">{t.nhanTinKM}</label>
+            </div>
 
-            <button type="submit" class="nut nut-chinh" style="width:100%;margin-top:8px">
-              {t.gui}
-            </button>
+            <button type="submit" class="nut nut-chinh hb-nut-gui">{t.gui}</button>
+            <p class="nho hb-chua-co-ban">{t.guiChuaLaCoBan}</p>
           </form>
         )}
       </div>
@@ -270,77 +348,343 @@ const t = dich(ngonNgu, {
   </div>
 </section>
 
+<script>
+  /*
+   * Bổ trợ cho form hỏi bàn — không có JavaScript thì form vẫn gửi được.
+   *
+   * · Lỗi sát ô: câu lấy từ data-loi-* trên form (cùng câu máy chủ nói).
+   * · Chặn bấm đúp: lần gửi thứ hai bị bỏ, nút khóa và ghi "Đang gửi…".
+   * · Giữ chữ đã gõ: máy chủ KHÔNG trả lại các ô đã điền khi báo lỗi (POST →
+   *   chuyển hướng → GET, kết quả qua cookie — lib/xu-ly-form.ts), nên trước khi
+   *   gửi, các ô được giữ trong sessionStorage của thẻ trình duyệt này 15 phút.
+   *   Ô "nhận tin mới" KHÔNG được giữ: sự đồng ý phải là một cú bấm mới.
+   * · Ngày so bằng chuỗi ISO 'YYYY-MM-DD' (so chuỗi đúng thứ tự ngày) — không
+   *   dựng Date, không đụng múi giờ của máy khách.
+   */
+  const KHOA = 'bt-hoi-ban';
+  const SONG_MS = 15 * 60 * 1000;
+  const O_GIU = ['so_khach', 'ho_ten', 'sdt', 'dip', 'ghi_chu'] as const;
+  type TenO = (typeof O_GIU)[number];
+  type DaLuu = { luc: number; ngay: string; gio: string } & Record<TenO, string>;
+  const LA_NGAY = /^\d{4}-\d{2}-\d{2}$/;
+
+  function docDaLuu(): DaLuu | null {
+    try {
+      const s = sessionStorage.getItem(KHOA);
+      if (!s) return null;
+      const d = JSON.parse(s) as Partial<DaLuu> | null;
+      const tuoi = d && typeof d.luc === 'number' ? Date.now() - d.luc : NaN;
+      if (!d || !(tuoi >= 0 && tuoi <= SONG_MS)) {
+        sessionStorage.removeItem(KHOA);
+        return null;
+      }
+      return d as DaLuu;
+    } catch {
+      // Chế độ riêng tư / bị chặn bộ nhớ: như không có gì được giữ.
+      return null;
+    }
+  }
+  function ghiDaLuu(d: DaLuu) {
+    try { sessionStorage.setItem(KHOA, JSON.stringify(d)); } catch { /* không giữ được thì thôi */ }
+  }
+  function xoaDaLuu() {
+    try { sessionStorage.removeItem(KHOA); } catch { /* như trên */ }
+  }
+
+  // --- Khung kết quả: đưa con trỏ tới đó (trình đọc màn hình đọc ngay) ---------
+  const khungKetQua = document.querySelector<HTMLElement>('[data-ket-qua]');
+  if (khungKetQua?.dataset.ketQua === 'da-nhan') xoaDaLuu();
+  khungKetQua?.focus();
+
+  const form = document.querySelector<HTMLFormElement>('form[data-hoi-ban]');
+  const formNgay = document.querySelector<HTMLFormElement>('form[data-doi-ngay]');
+  const oNgayXem = formNgay?.querySelector<HTMLInputElement>('input[name="ngay"]') ?? null;
+  // Ngày trang đang hiện: giá trị máy chủ dựng (thuộc tính value), không phải
+  // giá trị trình duyệt có thể tự điền lại khi bấm quay lại.
+  const ngayDangHien =
+    form?.querySelector<HTMLInputElement>('input[type="hidden"][name="ngay"]')?.value
+    ?? oNgayXem?.getAttribute('value') ?? '';
+
+  function oCua(f: HTMLFormElement, ten: string) {
+    const o = f.elements.namedItem(ten);
+    return o instanceof HTMLInputElement || o instanceof HTMLSelectElement || o instanceof HTMLTextAreaElement ? o : null;
+  }
+  function layCacO(f: HTMLFormElement): Omit<DaLuu, 'luc' | 'ngay'> {
+    const ra = { gio: f.querySelector<HTMLInputElement>('input[name="gio"]:checked')?.value ?? '' } as Omit<DaLuu, 'luc' | 'ngay'>;
+    for (const ten of O_GIU) ra[ten] = oCua(f, ten)?.value ?? '';
+    return ra;
+  }
+
+  // --- Điền lại chữ đã gõ ---------------------------------------------------------
+  const daLuu = docDaLuu();
+  if (form && daLuu) {
+    for (const ten of O_GIU) {
+      const o = oCua(form, ten);
+      const v = daLuu[ten];
+      if (!o || typeof v !== 'string' || !v) continue;
+      if (o instanceof HTMLSelectElement) {
+        if ([...o.options].some(op => op.value === v)) o.value = v;
+      } else if (!o.value) {
+        o.value = v;
+      }
+    }
+    // Giờ chỉ điền lại cho ĐÚNG ngày đã chọn: giờ của ngày khác mà hiện như đã
+    // chọn thì khách gửi nhầm ngày mà không biết.
+    if (daLuu.ngay === ngayDangHien && daLuu.gio) {
+      for (const r of form.querySelectorAll<HTMLInputElement>('input[name="gio"]')) {
+        if (r.value === daLuu.gio) r.checked = true;
+      }
+    }
+  }
+  // Ngày đã chọn khác ngày đang hiện (máy chủ báo lỗi thì quay về hôm nay): đặt
+  // lại vào ô ngày của form GET và nói cho khách biết — không tự chuyển trang.
+  if (oNgayXem && formNgay && daLuu && typeof daLuu.ngay === 'string' && LA_NGAY.test(daLuu.ngay)
+      && daLuu.ngay !== ngayDangHien
+      && (!oNgayXem.min || daLuu.ngay >= oNgayXem.min)
+      && (!oNgayXem.max || daLuu.ngay <= oNgayXem.max)) {
+    oNgayXem.value = daLuu.ngay;
+    const bao = formNgay.querySelector<HTMLElement>('[data-ngay-truoc]');
+    if (bao) bao.hidden = false;
+  }
+
+  // Đổi ngày: giữ các ô đang điền trước khi trang tải lại, với ngày MỚI.
+  formNgay?.addEventListener('submit', () => {
+    const ngayMoi = oNgayXem?.value ?? '';
+    const cu = docDaLuu();
+    const o = form ? layCacO(form) : null;
+    const coChu = !!o && (O_GIU.some(ten => ten !== 'so_khach' && o[ten].trim()) || !!o.gio || o.so_khach !== '2');
+    if (!coChu && !cu) return;
+    ghiDaLuu({ ...(cu ?? {}), ...(o ?? {}), ngay: ngayMoi, luc: Date.now() } as DaLuu);
+  });
+
+  if (form) {
+    form.noValidate = true;   // có JavaScript: lỗi hiện sát ô thay cho bong bóng của trình duyệt
+    const nut = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const chuNut = nut?.textContent ?? '';
+    const oGio = form.querySelector<HTMLFieldSetElement>('[data-o="gio"]');
+
+    const KIEM: { ten: string; o: HTMLElement | null; dau: () => HTMLElement | null; dung: () => boolean; cau?: string }[] = [
+      {
+        ten: 'gio', o: oGio,
+        dau: () => form.querySelector<HTMLInputElement>('input[name="gio"]'),
+        dung: () => !!form.querySelector('input[name="gio"]:checked'),
+        cau: form.dataset.loiGio,
+      },
+      {
+        ten: 'ho_ten', o: oCua(form, 'ho_ten'),
+        dau: () => oCua(form, 'ho_ten'),
+        dung: () => !!oCua(form, 'ho_ten')?.value.trim(),
+        cau: form.dataset.loiHoTen,
+      },
+      {
+        ten: 'sdt', o: oCua(form, 'sdt'),
+        dau: () => oCua(form, 'sdt'),
+        dung: () => !!oCua(form, 'sdt')?.value.trim(),
+        cau: form.dataset.loiSdt,
+      },
+    ];
+
+    const datLoi = (k: (typeof KIEM)[number], co: boolean) => {
+      const p = form.querySelector<HTMLElement>(`[data-loi="${k.ten}"]`);
+      if (co) {
+        k.o?.setAttribute('aria-invalid', 'true');
+        if (p) { p.textContent = k.cau ?? ''; p.hidden = false; }
+      } else {
+        k.o?.removeAttribute('aria-invalid');
+        if (p) { p.hidden = true; p.textContent = ''; }
+      }
+    };
+
+    // Sửa xong ô nào thì lỗi của ô đó tắt ngay — không bắt chờ tới lần bấm gửi sau.
+    for (const k of KIEM) {
+      const nghe = k.ten === 'gio' ? oGio : k.o;
+      const xet = () => { if (k.o?.getAttribute('aria-invalid') === 'true' && k.dung()) datLoi(k, false); };
+      nghe?.addEventListener('input', xet);
+      nghe?.addEventListener('change', xet);
+    }
+
+    form.addEventListener('submit', (e) => {
+      // Bấm đúp, hoặc Enter lần hai trong lúc trang đang đi: bỏ.
+      if (form.dataset.dangGui) { e.preventDefault(); return; }
+
+      const sai = KIEM.filter(k => !k.dung());
+      for (const k of KIEM) datLoi(k, sai.includes(k));
+      if (sai.length) {
+        e.preventDefault();
+        sai[0].dau()?.focus();
+        return;
+      }
+
+      ghiDaLuu({ luc: Date.now(), ngay: ngayDangHien, ...layCacO(form) });
+      form.dataset.dangGui = '1';
+      if (nut) {
+        nut.disabled = true;
+        nut.setAttribute('aria-busy', 'true');
+        nut.textContent = form.dataset.dangGuiChu ?? chuNut;
+      }
+    });
+
+    // Quay lại trang này bằng nút Back (bộ nhớ đệm bfcache): trang hiện lại đúng
+    // như lúc rời đi — nút đang khóa. Mở lại để khách gửi được.
+    window.addEventListener('pageshow', (e) => {
+      if (!e.persisted) return;
+      delete form.dataset.dangGui;
+      if (nut) {
+        nut.disabled = false;
+        nut.removeAttribute('aria-busy');
+        nut.textContent = chuNut;
+      }
+    });
+  }
+</script>
+
 <style>
-  .form-dat .o { display: block; margin-bottom: 18px; }
-  .form-dat .o > span,
-  .form-dat legend {
-    display: block; font-weight: 700; font-size: 15px; margin-bottom: 6px;
+  /* ---- Khối thân: cột thông tin | thẻ ----------------------------------- */
+  .hb { padding-block: 0 var(--muc-dem); }
+  .hb-luoi {
+    display: grid; gap: var(--k-6);
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
   }
-  .form-dat .o > span em,
-  .form-dat legend em { font-style: normal; font-weight: 400; color: var(--muc-nhat); }
-  .form-dat .o > small {
-    display: block; color: var(--muc-nhat); font-size: 14px; margin-bottom: 6px; line-height: 1.45;
+  @media (min-width: 900px) {
+    .hb-luoi { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: var(--k-8); }
+    /* Sau khi gửi: thẻ "đã nhận" đứng trước (cả trong mã lẫn trên màn hình). */
+    .hb-luoi-da-nhan { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+    .hb-ben { position: sticky; top: calc(var(--cao-dau) + var(--k-5)); }
   }
 
-  .form-dat input[type='text'],
-  .form-dat input[type='tel'],
-  .form-dat input[type='date'],
-  .form-dat select,
-  .form-dat textarea {
-    font: inherit; font-size: 16px; width: 100%;
-    padding: 13px 14px; min-height: 50px;
-    border: 1px solid var(--vien-o); border-radius: 8px;
-    background: #fff; color: var(--than);
+  /* ---- Ghi chú quy trình -------------------------------------------------- */
+  .hb-nho {
+    font-size: var(--co-h3); line-height: 1.3; margin: 0 0 var(--k-4);
   }
-  /* Nền SÁNG: ô trắng, viền --vien-o, chữ than. Bản đầu viết màu cho nền tối
-     (chữ kem trên nền kem) — cùng lỗi đã làm form ứng tuyển vô hình. */
-  .form-dat :is(input, select, textarea):focus-visible {
-    outline: 2px solid var(--do); outline-offset: 1px; border-color: var(--do);
+  .hb-buoc {
+    list-style: none; margin: 0 0 var(--k-6); padding: 0;
+    display: grid; gap: var(--k-3);
   }
-  .form-dat :is(input, textarea)::placeholder { color: var(--muc-nhat); }
-  .form-dat textarea { min-height: 64px; resize: vertical; line-height: 1.55; }
+  .hb-buoc li {
+    display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: var(--k-3);
+    align-items: start; line-height: 1.5;
+  }
+  .hb-so {
+    display: inline-grid; place-items: center;
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1.5px solid var(--do); color: var(--do-sau);
+    font-weight: 800; font-size: 15px; line-height: 1;
+  }
+  .hb-so :global(svg) { width: 18px; height: 18px; }
+  .hb-xong .hb-so { background: var(--do); color: var(--kem); }
+  .hb-buoc-chinh { font-weight: 700; }
+  .hb-buoc-chinh .hb-so { background: var(--do); color: var(--kem); }
 
-  .form-dat .o-nhom {
-    border: 1px solid var(--vach); border-radius: 8px;
-    padding: 14px; margin: 0 0 18px;
+  /* ---- Thẻ (form / chưa mở / đã nhận) --------------------------------------- */
+  .hb-the {
+    position: relative;
+    background: #FFFCF4;
+    border: 1px solid var(--vien); border-radius: var(--bo-anh);
+    padding: var(--k-5) var(--k-4);
   }
-  .nhom-ten {
-    margin: 10px 0 8px; font-weight: 700; letter-spacing: .08em;
-    text-transform: uppercase; font-size: 12px;
-  }
-  .nhom-ten:first-of-type { margin-top: 0; }
+  @media (min-width: 600px) { .hb-the { padding: var(--k-6); } }
+  /* Khung kết quả nhận con trỏ bằng script (tabindex="-1") để trình đọc màn hình
+     đọc ngay; nó không phải thứ bấm được, nên không vẽ vòng focus quanh cả khung. */
+  .hb-the:focus, .hb-loi:focus { outline: none; }
+  .hb-tieu-de-the { font-size: clamp(24px, 1.4vw + 18px, 32px); line-height: 1.2; margin: 0 0 var(--k-5); }
 
-  /* Khung giờ là nút bấm, không phải ô chọn nhỏ xíu. Tối thiểu 52px để bấm
-     được bằng ngón cái trong lúc đi đường. */
-  .luoi-gio {
-    display: grid; gap: 8px;
+  /* Khung lỗi của máy chủ: chữ than trên nền hồng nhạt, vạch đỏ bên trái. */
+  .hb-loi {
+    border-left: 4px solid var(--do);
+    background: rgba(178, 58, 44, .08);
+    padding: var(--k-3) var(--k-4);
+    margin: 0 0 var(--k-5);
+  }
+  .hb-loi p { margin: 0; }
+  .hb-loi p + p { margin-top: var(--k-2); color: var(--chu-chinh); }
+  .hb-loi a { font-weight: 700; }
+
+  /* ---- Đổi ngày ----------------------------------------------------------- */
+  .hb-doi-ngay { margin: 0; padding-bottom: var(--k-5); border-bottom: 1px solid var(--vien); margin-bottom: var(--k-5); }
+  .hb-doi-ngay .o { margin: 0; }
+  .hb-hang-ngay { display: grid; gap: var(--k-2); grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 480px) {
+    .hb-hang-ngay { grid-template-columns: minmax(0, 1fr) auto; }
+  }
+  .hb-hang-ngay .nut { min-height: 50px; padding-inline: var(--k-5); }
+  .hb-ngay-truoc { margin: var(--k-2) 0 0; color: var(--chu-chinh); }
+  .hb-het-cho { margin: 0; }
+
+  /* ---- Khung giờ: chip radio theo buổi ------------------------------------- */
+  fieldset.hb-gio { border: 0; padding: 0; min-width: 0; }
+  .hb-buoi {
+    margin: var(--k-3) 0 var(--k-2);
+    font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--chu-phu);
+  }
+  .hb-buoi:first-of-type { margin-top: 0; }
+  /* Khung giờ là nút bấm, không phải ô chọn nhỏ xíu. Cao 52px để bấm được bằng
+     ngón cái trong lúc đi đường. */
+  .hb-chip {
+    display: grid; gap: var(--k-2);
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
   }
-  .o-gio { position: relative; display: block; }
-  .o-gio input {
-    position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer;
+  .hb-chip-o { position: relative; display: block; }
+  .hb-chip-o input {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    margin: 0; opacity: 0; cursor: pointer;
   }
-  .o-gio span {
+  .hb-chip-o span {
     display: flex; align-items: center; justify-content: center;
-    min-height: 52px; border-radius: 8px;
-    border: 1px solid var(--vien-o); background: #fff;
-    font-weight: 700; font-size: 16px;
+    min-height: 52px; border-radius: var(--bo);
+    border: 1px solid var(--vien-o); background: #fff; color: var(--than);
+    font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums;
+    transition: background-color var(--nhanh), border-color var(--nhanh), color var(--nhanh);
   }
-  .o-gio input:checked + span {
-    background: var(--do); border-color: var(--do); color: #fff;
-  }
-  .o-gio input:focus-visible + span {
-    outline: 3px solid var(--do); outline-offset: 2px;
-  }
+  .hb-chip-o:hover span { border-color: var(--do); }
+  .hb-chip-o input:checked + span { background: var(--do); border-color: var(--do); color: var(--kem); }
+  .hb-chip-o input:focus-visible + span { outline: 3px solid var(--than); outline-offset: 2px; }
 
-  .form-dat .o-chon {
-    display: flex; align-items: flex-start; gap: 10px;
-    padding: 14px 0 4px; font-size: 15px; line-height: 1.5; cursor: pointer;
-    border-top: 1px solid var(--vach); margin-top: 6px;
-  }
-  .form-dat .o-chon input[type='checkbox'] {
-    width: 24px; height: 24px; margin: 0; flex-shrink: 0; accent-color: var(--do);
-  }
+  .hb-gui textarea { min-height: 96px; resize: vertical; line-height: 1.55; }
 
-  .doi-ngay { margin: 0; }
+  /* ---- Ô đồng ý nhận tin: KHÔNG bắt buộc ----------------------------------- */
+  .hb-dong-y {
+    display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: var(--k-3);
+    align-items: start;
+    padding: var(--k-4) 0; margin: 0 0 var(--k-4);
+    border-top: 1px solid var(--vien);
+  }
+  .hb-dong-y input { width: 24px; height: 24px; margin: 1px 0 0; accent-color: var(--do); cursor: pointer; }
+  .hb-dong-y label { font-size: 15px; line-height: 1.5; cursor: pointer; }
+
+  .hb-nut-gui { width: 100%; }
+  .hb-chua-co-ban { margin: var(--k-3) 0 0; }
+
+  /* ---- Chưa mở hỏi bàn trực tuyến ------------------------------------------ */
+  .hb-chua-mo { background: var(--kem-dam); border-color: transparent; border-top: 4px solid var(--do); }
+  .hb-chua-mo-hinh {
+    display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+    background: var(--kem); color: var(--do); margin-bottom: var(--k-4);
+  }
+  .hb-chua-mo-hinh :global(svg) { width: 28px; height: 28px; }
+  .hb-chua-mo p { max-width: 56ch; }
+  .hb-chua-mo .hang-nut { margin-top: var(--k-5); }
+
+  /* ---- Đã nhận yêu cầu --------------------------------------------------- */
+  .hb-da-nhan { overflow: clip; border-top: 4px solid var(--do); padding-top: var(--k-6); }
+  .hb-tem {
+    display: block; width: 104px; height: auto; margin: 0 0 var(--k-4);
+  }
+  @media (min-width: 600px) {
+    .hb-da-nhan { padding-right: calc(var(--k-6) + 120px); }
+    .hb-tem { position: absolute; top: var(--k-5); right: var(--k-5); width: 120px; margin: 0; transform: rotate(-8deg); }
+  }
+  .hb-ma { font-size: 17px; margin: 0 0 var(--k-4); }
+  .hb-ma strong {
+    display: inline-block; margin-left: 2px;
+    font-size: 1.35em; letter-spacing: .08em; color: var(--do-sau);
+    font-variant-numeric: tabular-nums;
+  }
+  .hb-chua-giu {
+    margin: 0 0 var(--k-3); padding: var(--k-3) var(--k-4);
+    background: var(--kem-dam); border-left: 4px solid var(--do);
+    line-height: 1.5;
+  }
+  .hb-giu-ma { margin: 0 0 var(--k-4); color: var(--chu-chinh); }
 </style>

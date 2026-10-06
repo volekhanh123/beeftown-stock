@@ -1,0 +1,51 @@
+---
+/**
+ * TRANG VĂN BẢN — Quyền riêng tư, Xóa dữ liệu (vi / en / ko)
+ *
+ * Chỉ lo BỐ CỤC: đầu trang con giống mọi trang công khai mới (.mo-dau-trang —
+ * nhãn đỏ, tiêu đề lớn, nét rosemary bên phải) và một cột chữ hẹp để đọc. Chữ
+ * pháp lý nằm nguyên ở từng trang (slot), không qua đây — sửa câu nào thì sửa ở
+ * trang đó, và sửa cả hai bản tiếng kia.
+ *
+ * Màu theo bề mặt kem (cong-khai.css): chữ than, chữ phụ --chu-phu, link gạch
+ * chân cùng màu chữ. Không dùng màu viết cho nền tối (Warm Stone, Marigold).
+ */
+interface Props {
+  hieu: string;
+  tieuDe: string;
+}
+const { hieu, tieuDe } = Astro.props;
+---
+<section class="mo-dau-trang be-kem">
+  <div class="khung">
+    <p class="hieu">{hieu}</p>
+    <h1>{tieuDe}</h1>
+  </div>
+  <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
+</section>
+
+<section class="be-kem vb">
+  <div class="khung">
+    <div class="vb-than">
+      <slot />
+    </div>
+  </div>
+</section>
+
+<style>
+  .vb { padding-block: 0 var(--muc-dem); }
+  /* ~68 ký tự một dòng: đủ hẹp để mắt không lạc dòng khi đọc đoạn dài. */
+  .vb-than { max-width: 68ch; }
+  .vb-than :global(h2) {
+    font-size: clamp(22px, 0.8vw + 17px, 27px); line-height: 1.25;
+    margin: var(--k-7) 0 var(--k-3);
+  }
+  .vb-than :global(h2:first-child) { margin-top: 0; }
+  .vb-than :global(p) { line-height: 1.7; }
+  .vb-than :global(a) { font-weight: 600; text-decoration-thickness: 1.5px; }
+  /* Dòng căn cứ pháp lý cuối trang: tách khỏi phần trên bằng một vạch mảnh. */
+  .vb-than :global(p.nho:last-child) {
+    margin: var(--k-7) 0 0; padding-top: var(--k-4);
+    border-top: 1px solid var(--vien);
+  }
+</style>

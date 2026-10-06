@@ -1,0 +1,17 @@
+---
+import Trang from '../layouts/Trang.astro';
+import TrangThucDon from '../components/TrangThucDon.astro';
+import { docNoiDung } from '../lib/noi-dung';
+import { docThucDon } from '../lib/thuc-don';
+
+const [noiDung, thucDon] = await Promise.all([docNoiDung('vi'), docThucDon('vi')]);
+---
+<Trang
+  ngonNgu="vi"
+  noiDung={noiDung}
+  duongDan="/thuc-don"
+  tieuDe="Thực đơn — Beeftown"
+  moTa="Thực đơn Beeftown: bò chọn theo khay tại quầy, cùng món ăn và đồ uống cho cả bàn. Tầng 3, 11-21 Hàm Nghi, TP.HCM."
+>
+  <TrangThucDon ngonNgu="vi" noiDung={noiDung} thucDon={thucDon} />
+</Trang>

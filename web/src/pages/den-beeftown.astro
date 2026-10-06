@@ -1,0 +1,16 @@
+---
+import Trang from '../layouts/Trang.astro';
+import TrangDenBeeftown from '../components/TrangDenBeeftown.astro';
+import { docNoiDung } from '../lib/noi-dung';
+
+const noiDung = await docNoiDung('vi');
+---
+<Trang
+  ngonNgu="vi"
+  noiDung={noiDung}
+  duongDan="/den-beeftown"
+  tieuDe="Đến Beeftown — Tầng 3, 11-21 Hàm Nghi"
+  moTa="Beeftown ở tầng 3, 11-21 Hàm Nghi, phường Sài Gòn, TP.HCM. Khách lên tầng 3 bằng cầu thang bộ, không có thang máy cho khách."
+>
+  <TrangDenBeeftown ngonNgu="vi" noiDung={noiDung} />
+</Trang>

@@ -1,0 +1,16 @@
+---
+import Trang from '../../layouts/Trang.astro';
+import TrangDenBeeftown from '../../components/TrangDenBeeftown.astro';
+import { docNoiDung } from '../../lib/noi-dung';
+
+const noiDung = await docNoiDung('en');
+---
+<Trang
+  ngonNgu="en"
+  noiDung={noiDung}
+  duongDan="/en/visit"
+  tieuDe="Visit Beeftown — Floor 3, 11-21 Hàm Nghi"
+  moTa="Beeftown is on Floor 3, 11-21 Hàm Nghi, Ho Chi Minh City. Guests reach Floor 3 by the stairs — there is no guest lift."
+>
+  <TrangDenBeeftown ngonNgu="en" noiDung={noiDung} />
+</Trang>
