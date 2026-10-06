@@ -1159,7 +1159,8 @@ function xuLyKetQua(phien: PhienBot, r: KetQuaGoi, nc: NguCanh): KetQuaBuoc {
       }
       if (r.muc === 'thuc_don') {
         if (tt.hienThucDon) {
-          return kq('menu', {}, [{ chu: CAU_BOT.thucDonCo, nut: [{ loai: 'web', tieuDe: 'Xem thực đơn', url: `${nc.web.replace(/\/$/, '')}/` }], nutNhanh: qrMenu() }], { dem: ['hoi_dap'] });
+          // Trang thực đơn riêng (web/src/pages/thuc-don.astro). Bot chỉ nói tiếng Việt nên không dẫn sang /en/menu.
+          return kq('menu', {}, [{ chu: CAU_BOT.thucDonCo, nut: [{ loai: 'web', tieuDe: 'Xem thực đơn', url: `${nc.web.replace(/\/$/, '')}/thuc-don` }], nutNhanh: qrMenu() }], { dem: ['hoi_dap'] });
         }
         return veMenu([CAU_BOT.thucDonChua], { dem: ['hoi_dap'] });
       }
