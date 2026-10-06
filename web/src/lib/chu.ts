@@ -61,7 +61,12 @@ export const PHAP_NHAN = {
  * Nhà hàng chiếm trọn tầng 3, khách lên bằng CẦU THANG BỘ, KHÔNG có thang máy
  * cho khách. Câu đó phải dễ thấy TRƯỚC khi khách gửi yêu cầu hỏi bàn.
  */
-export const DIA_CHI_NHA_HANG = 'Tầng 3, 11-21 Hàm Nghi, phường Sài Gòn, TP.HCM';
+export const DIA_CHI_PHAN = {
+  duong: 'Tầng 3, 11-21 Hàm Nghi',
+  phuong: 'phường Sài Gòn',
+  thanhPho: 'TP.HCM',
+} as const;
+export const DIA_CHI_NHA_HANG = `${DIA_CHI_PHAN.duong}, ${DIA_CHI_PHAN.phuong}, ${DIA_CHI_PHAN.thanhPho}`;
 
 /**
  * Mọi ngôn ngữ của trang công khai. Thứ tự này cũng là thứ tự cột của
@@ -104,6 +109,7 @@ const VI = {
   theoDoi: 'Theo dõi Beeftown',
   theoDoiPhu: 'Tin mới về bếp, quầy bò và lịch mở cửa',
   nhanTin: 'Nhắn Beeftown',
+  guiEmail: 'Gửi email cho Beeftown',
   chiDuong: 'Chỉ đường',
   goiNhaHang: 'Gọi nhà hàng',
   xemMenu: 'Xem thực đơn',
@@ -190,6 +196,7 @@ const EN: Bo = {
   theoDoi: 'Follow Beeftown',
   theoDoiPhu: 'Updates from the kitchen, the counter, and our opening date',
   nhanTin: 'Message Beeftown',
+  guiEmail: 'Email Beeftown',
   chiDuong: 'Directions',
   goiNhaHang: 'Call the restaurant',
   xemMenu: 'View the menu',
@@ -259,6 +266,7 @@ const KO: Bo = {
   theoDoi: 'Beeftown 팔로우하기',
   theoDoiPhu: '주방과 정육 코너, 오픈 일정 소식',
   nhanTin: 'Beeftown에 메시지 보내기',
+  guiEmail: 'Beeftown에 이메일 보내기',
   chiDuong: '길찾기',
   goiNhaHang: '매장에 전화하기',
   xemMenu: '메뉴 보기',

@@ -24,7 +24,7 @@ import { taoBoDem } from './kho-chung.mjs';
 
 const LIB = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'web', 'src', 'lib');
 const nap = f => import(pathToFileURL(join(LIB, f)).href);
-const { nutMoDau, lienHe, diaChi, coKenhHoiBan, formHoiBanMo, dieuHuong, urlAnToan } = await nap('trang-cong-khai.ts');
+const { nutMoDau, lienHe, diaChi, diaChiSauTang, diaChiCoCauTruc, jsonTrongScript, coKenhHoiBan, formHoiBanMo, dieuHuong, urlAnToan } = await nap('trang-cong-khai.ts');
 const { chu, duongDanTuongUng, DIA_CHI_NHA_HANG, NGON_NGU } = await nap('chu.ts');
 const { docNoiDung } = await nap('noi-dung.ts');
 
@@ -125,7 +125,18 @@ await nhom('3 · HOTLINE VÀ EMAIL: CHỮ LẠ BỊ BỎ', async () => {
     const lh = goi(h);
     ok(`Hotline ${JSON.stringify(h)} → hiện "${hien}", gọi ${tel}`, lh.hotline === hien && lh.goi === tel, JSON.stringify(lh));
   }
-  for (const h of ['0900 ABC', 'gọi 0912345678', '<script>alert(1)</script>', '0912;rm', '12345', 'tel:0912345678', '']) {
+  // Số kèm chú thích sau dấu cách ("(Zalo)", "– nhánh 2"): hiện nguyên câu đã công bố, tel: chỉ lấy phần số.
+  // Trước đây cả số bị bỏ im lặng — nút Gọi, dòng điện thoại và telephone của JSON-LD cùng biến mất.
+  for (const [h, hien, tel] of [
+    ['0909 123 456 (Zalo)', '0909 123 456 (Zalo)', 'tel:0909123456'],
+    ['1900 1234 – nhánh 2', '1900 1234 – nhánh 2', 'tel:19001234'],
+    ['+84 28 3822 1234 (giờ hành chính)', '+84 28 3822 1234 (giờ hành chính)', 'tel:+842838221234'],
+  ]) {
+    const lh = goi(h);
+    ok(`Hotline có chú thích ${JSON.stringify(h)} → hiện "${hien}", gọi ${tel}`, lh.hotline === hien && lh.goi === tel, JSON.stringify(lh));
+  }
+  for (const h of ['0900 ABC', 'gọi 0912345678', '<script>alert(1)</script>', '0912;rm', '12345', 'tel:0912345678', '',
+                   '0912345678abc', '0909 (Zalo)', 'javascript:alert(1) 0912345678']) {
     const lh = goi(h);
     ok(`Hotline ${JSON.stringify(h)} có chữ lạ / quá ngắn → bỏ (không hiện, không tel:)`, lh.hotline === null && lh.goi === null,
        JSON.stringify(lh));
@@ -145,6 +156,32 @@ await nhom('4 · ĐỊA CHỈ CỐ ĐỊNH, BẢN CÔNG BỐ THAY VÀO KHI CÓ',
   const congBo = '  Tầng 3, 11-21 Hàm Nghi, phường Sài Gòn, TP. Hồ Chí Minh  ';
   ok('Có bản công bố → dùng bản công bố (bỏ khoảng trắng hai đầu)', diaChi(nd({ dia_chi_hien_thi: congBo })) === congBo.trim(),
      diaChi(nd({ dia_chi_hien_thi: congBo })));
+
+  // Menu gọn và màn đầu in "Tầng 3" đậm rồi mới tới địa chỉ: bỏ "Tầng 3" ở đầu, nhưng phải là địa chỉ của
+  // diaChi() — trước đây hai chỗ đó in hằng số, nên bản công bố không bao giờ tới (hai địa chỉ trên một trang).
+  ok('diaChiSauTang: chưa công bố → "11-21 Hàm Nghi, phường Sài Gòn, TP.HCM"',
+     diaChiSauTang(NEN) === '11-21 Hàm Nghi, phường Sài Gòn, TP.HCM', diaChiSauTang(NEN));
+  ok('diaChiSauTang: có bản công bố → dùng bản công bố, bỏ "Tầng 3," ở đầu',
+     diaChiSauTang(nd({ dia_chi_hien_thi: congBo })) === '11-21 Hàm Nghi, phường Sài Gòn, TP. Hồ Chí Minh',
+     diaChiSauTang(nd({ dia_chi_hien_thi: congBo })));
+  ok('diaChiSauTang: bản công bố không bắt đầu bằng "Tầng 3" → giữ nguyên',
+     diaChiSauTang(nd({ dia_chi_hien_thi: '11-13-15-17-19-21 Hàm Nghi, Sài Gòn' })) === '11-13-15-17-19-21 Hàm Nghi, Sài Gòn');
+
+  // JSON-LD: một nguồn địa chỉ, không lặp phường / thành phố khi bản công bố đã có đủ.
+  const coCauTruc = diaChiCoCauTruc(NEN);
+  ok('JSON-LD chưa công bố: streetAddress lấy từ địa chỉ cố định, có phường và thành phố riêng',
+     coCauTruc['@type'] === 'PostalAddress' && DIA_CHI_NHA_HANG.startsWith(coCauTruc.streetAddress)
+       && coCauTruc.streetAddress === 'Tầng 3, 11-21 Hàm Nghi' && !!coCauTruc.addressLocality && coCauTruc.addressCountry === 'VN',
+     JSON.stringify(coCauTruc));
+  const coCauTrucCongBo = diaChiCoCauTruc(nd({ dia_chi_hien_thi: congBo }));
+  ok('JSON-LD có bản công bố: streetAddress là bản công bố, không thêm phường / thành phố lần hai',
+     coCauTrucCongBo.streetAddress === congBo.trim() && !('addressLocality' in coCauTrucCongBo) && !('addressRegion' in coCauTrucCongBo)
+       && coCauTrucCongBo.addressCountry === 'VN', JSON.stringify(coCauTrucCongBo));
+
+  // JSON-LD in vào <script>: chữ do người gõ trong /noi-bo (mô tả, địa chỉ) có "</script>" thì không được đóng thẻ sớm.
+  const json = jsonTrongScript({ description: 'Ngon </script><script>alert(1)</script>', a: '<!--' });
+  ok('jsonTrongScript: không còn "<" nào (</script>, <!-- bị vô hiệu)', !json.includes('<'), json);
+  ok('jsonTrongScript: đọc lại ra đúng dữ liệu', JSON.parse(json).description === 'Ngon </script><script>alert(1)</script>', json);
 });
 
 // ===========================================================================

@@ -139,7 +139,7 @@ export async function xuLyDatBan(
     // là nói sai, và khách sẽ gửi lại lần hai. Nên nói đúng cái mình biết:
     // không chắc.
     console.error('[dat-ban] không chắc đã ghi:', loiNgan(e));
-    ghiKetQua(ctx.cookies, { ok: false, loi: CAU.datBanKhongChac[ngonNgu] });
+    ghiKetQua(ctx.cookies, { ok: false, loi: CAU.datBanKhongChac[ngonNgu], khongChac: true });
     return ctx.redirect(duongDan, 303);
   }
 
@@ -152,5 +152,5 @@ export function ketQuaDatBan(ctx: APIContext, ngonNgu: NgonNgu): KetQuaDatBan | 
   if (!kq) return null;
   return kq.ok
     ? { ok: true, ma: kq.ma, cau: CAU_DAT_BAN.daNhan[ngonNgu] }
-    : { ok: false, cau: kq.loi ?? CAU.datBanLoi[ngonNgu] };
+    : { ok: false, cau: kq.loi ?? CAU.datBanLoi[ngonNgu], khongChac: kq.khongChac === true };
 }

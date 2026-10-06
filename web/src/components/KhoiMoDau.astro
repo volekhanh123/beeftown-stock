@@ -14,10 +14,10 @@
  * Thứ bậc nút theo mức sẵn sàng mở cửa: lib/trang-cong-khai.ts → nutMoDau().
  * Dòng trạng thái và ngày mở giữ đúng logic cũ: dong_trang_thai, ngay_khai_truong.
  */
-import { THUONG_HIEU, chu, duongDanTuongUng, DIA_CHI_NHA_HANG } from '../lib/chu';
+import { THUONG_HIEU, chu, duongDanTuongUng } from '../lib/chu';
 import { dinhDangNgay, homNayVn } from '../lib/noi-dung';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
-import { nutMoDau, lienHe } from '../lib/trang-cong-khai';
+import { diaChiSauTang, nutMoDau, lienHe } from '../lib/trang-cong-khai';
 import { coAnh } from '../lib/anh';
 import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
@@ -49,7 +49,7 @@ const [pick, grill, love] = THUONG_HIEU.khauHieu.split(/(?<=\.)\s+/);
 
       <ul class="kmd-thong-tin">
         <li>
-          <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="cau-thang" /><span><strong>{t.tang3}</strong> · <span lang="vi">{DIA_CHI_NHA_HANG.replace(/^Tầng 3, /, '').replace(/, phường Sài Gòn/, '')}</span></span></a>
+          <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="cau-thang" /><span><strong>{t.tang3}</strong> · <span lang="vi">{diaChiSauTang(nd).replace(/,\s*phường Sài Gòn/iu, '')}</span></span></a>
         </li>
         {ngayMo && (
           <li class="kmd-ngay">{daMo ? t.moCuaTu : t.donBanTu} <strong>{dinhDangNgay(ngayMo, ngonNgu)}</strong></li>

@@ -7,7 +7,7 @@
  * Facebook thì không có nút Facebook; chưa có Maps thì không có nút Chỉ đường —
  * một nút dẫn tới hư không tệ hơn là không có nút.
  */
-import { DIA_CHI_NHA_HANG, chu, duongDanTuongUng } from './chu.ts';
+import { DIA_CHI_NHA_HANG, DIA_CHI_PHAN, chu, duongDanTuongUng } from './chu.ts';
 import type { NgonNgu, NoiDung } from './noi-dung.ts';
 
 /**
@@ -30,16 +30,31 @@ export interface LienHe {
   instagram: string | null;
   tiktok: string | null;
   zalo: string | null;
-  /** Số để hiện, như đã công bố. */
+  /** Câu để hiện, như đã công bố (có thể kèm chú thích: "0909 123 456 (Zalo)"). */
   hotline: string | null;
-  /** "tel:…" bỏ dấu cách — chỉ khi số chỉ gồm chữ số, dấu cách, + . - ( ). */
+  /** "tel:…" chỉ gồm + và chữ số, lấy từ phần số ở đầu câu đã công bố. */
   goi: string | null;
   /** "mailto:…" — chỉ khi trông đúng là một địa chỉ email. */
   thu: string | null;
 }
 
+/**
+ * Hotline đã công bố → { câu để hiện, số để gọi }. Câu phải BẮT ĐẦU bằng một số điện
+ * thoại (chữ số, dấu cách, + . - ( ), ít nhất 8 chữ số); sau số được phép có chú thích,
+ * cách số một dấu cách: "0909 123 456 (Zalo)", "1900 1234 – nhánh 2". Câu không mở đầu
+ * bằng số ("gọi 0912…", "tel:…", "<script>…") hay số dính chữ ("0912;rm") thì bỏ hẳn.
+ */
+function docHotline(giaTri: unknown): { hien: string; so: string } | null {
+  if (typeof giaTri !== 'string') return null;
+  const cau = giaTri.trim();
+  const m = /^(\+?[\d().-]+(?:\s+[\d().-]+)*)(?:\s+\S.*)?$/u.exec(cau);
+  if (!m) return null;
+  const so = m[1].replace(/[\s().-]/g, '');
+  return so.replace(/\D/g, '').length >= 8 ? { hien: cau, so } : null;
+}
+
 export function lienHe(nd: NoiDung): LienHe {
-  const hotline = typeof nd.hotline === 'string' && /^[\d\s+().-]{6,}$/.test(nd.hotline.trim()) ? nd.hotline.trim() : null;
+  const hotline = docHotline(nd.hotline);
   const email = typeof nd.email_lien_he === 'string' && /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(nd.email_lien_he.trim())
     ? nd.email_lien_he.trim() : null;
   return {
@@ -48,8 +63,8 @@ export function lienHe(nd: NoiDung): LienHe {
     instagram: urlAnToan(nd.instagram_url),
     tiktok: urlAnToan(nd.tiktok_url),
     zalo: urlAnToan(nd.zalo_oa_url),
-    hotline,
-    goi: hotline ? `tel:${hotline.replace(/[\s().-]/g, '')}` : null,
+    hotline: hotline?.hien ?? null,
+    goi: hotline ? `tel:${hotline.so}` : null,
     thu: email ? `mailto:${email}` : null,
   };
 }
@@ -58,6 +73,41 @@ export function lienHe(nd: NoiDung): LienHe {
 export function diaChi(nd: NoiDung): string {
   const congBo = typeof nd.dia_chi_hien_thi === 'string' ? nd.dia_chi_hien_thi.trim() : '';
   return congBo || DIA_CHI_NHA_HANG;
+}
+
+/**
+ * Địa chỉ không có "Tầng 3" ở đầu — cho chỗ đã in chữ "Tầng 3" đậm ngay trước (menu gọn,
+ * màn đầu). Vẫn đi qua diaChi(): bản công bố trong /noi-bo phải tới được MỌI chỗ in địa chỉ,
+ * không thì một trang hiện hai địa chỉ khác nhau.
+ */
+export function diaChiSauTang(nd: NoiDung): string {
+  return diaChi(nd).replace(/^\s*tầng\s*3\s*[,·–-]\s*/iu, '');
+}
+
+/**
+ * Địa chỉ cho JSON-LD (schema.org PostalAddress). Chưa công bố: tách đúng từ địa chỉ cố
+ * định. Có bản công bố: đó là cả một dòng do người gõ, nên để nguyên ở streetAddress và
+ * KHÔNG thêm phường / thành phố lần nữa (Google đọc thành địa chỉ lặp).
+ */
+export function diaChiCoCauTruc(nd: NoiDung): Record<string, string> {
+  const congBo = typeof nd.dia_chi_hien_thi === 'string' ? nd.dia_chi_hien_thi.trim() : '';
+  if (congBo) return { '@type': 'PostalAddress', streetAddress: congBo, addressCountry: 'VN' };
+  return {
+    '@type': 'PostalAddress',
+    streetAddress: DIA_CHI_PHAN.duong,
+    addressLocality: DIA_CHI_PHAN.phuong,
+    addressRegion: DIA_CHI_PHAN.thanhPho,
+    addressCountry: 'VN',
+  };
+}
+
+/**
+ * JSON để in vào <script type="application/ld+json">. JSON.stringify không thoát "<",
+ * nên một mô tả gõ trong /noi-bo có "</script>" sẽ đóng thẻ sớm và phần sau thành HTML.
+ * \u003c đọc lại vẫn là "<".
+ */
+export function jsonTrongScript(duLieu: unknown): string {
+  return JSON.stringify(duLieu).replace(/</g, '\\u003c');
 }
 
 /** Form hỏi bàn trên web đang mở (công tắc). Trang /dat-ban còn hỏi lịch trống. */

@@ -123,6 +123,11 @@ export interface KetQuaDatBan {
   ok: boolean;
   ma?: string;
   cau: string;
+  /**
+   * Không nghe được trả lời của database: yêu cầu CÓ THỂ đã ghi. Trang hỏi bàn khi đó
+   * không điền lại form — gửi lại chỉ còn một cú bấm thì nhà hàng nhận hai bản.
+   */
+  khongChac?: boolean;
 }
 
 /**

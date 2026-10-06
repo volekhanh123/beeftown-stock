@@ -198,8 +198,13 @@ await nhom('4 · Tầng chuyển hướng (lib/xu-ly-form.ts): lỗi ném ra th�
   const nguon = readFileSync(join(GOC, 'web', 'src', 'lib', 'xu-ly-form.ts'), 'utf8');
   for (const [ham, khoa] of [['guiYeuCauDatBan', 'datBanKhongChac'], ['nopHoSo', 'ungTuyenKhongChac']]) {
     const m = nguon.match(new RegExp(`try \\{\\s*kq = await ${ham}\\([^]*?\\}\\s*catch\\b[^{]*\\{([^]*?)\\n  \\}`));
-    ok(`xu-ly-form.ts: lời gọi ${ham}() nằm trong try, và catch ghi CAU.${khoa}`,
-       !!m && m[1].includes(`ghiKetQua(ctx.cookies, { ok: false, loi: CAU.${khoa}[ngonNgu] })`), m ? m[1].trim() : 'không thấy khối try/catch');
+    // Hỏi bàn ghi thêm cờ khongChac: trang /dat-ban dựa vào nó để KHÔNG điền lại form (gửi lại một cú bấm
+    // = nhà hàng nhận hai bản) — xem TrangDatBan.astro và nhóm 3 của web/kiem-tra/thu-day-du.mjs.
+    const ghiDung = ham === 'guiYeuCauDatBan'
+      ? `ghiKetQua(ctx.cookies, { ok: false, loi: CAU.${khoa}[ngonNgu], khongChac: true })`
+      : `ghiKetQua(ctx.cookies, { ok: false, loi: CAU.${khoa}[ngonNgu] })`;
+    ok(`xu-ly-form.ts: lời gọi ${ham}() nằm trong try, và catch ghi CAU.${khoa}${ham === 'guiYeuCauDatBan' ? ' kèm khongChac: true' : ''}`,
+       !!m && m[1].includes(ghiDung), m ? m[1].trim() : 'không thấy khối try/catch');
     ok(`xu-ly-form.ts: catch của ${ham}() ghi log (console.error) — Workers Logs thấy sự cố, không đợi khách báo`,
        !!m && /console\.error\(/.test(m[1]), m ? m[1].trim() : '');
 

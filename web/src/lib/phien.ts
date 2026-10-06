@@ -221,6 +221,8 @@ export interface KetQua {
   ok: boolean;
   ma?: string;
   loi?: string;
+  /** Không nghe được trả lời: KHÔNG CHẮC database đã ghi hay chưa (xu-ly-form.ts). */
+  khongChac?: boolean;
 }
 
 export function ghiKetQua(cookies: AstroCookies, kq: KetQua) {

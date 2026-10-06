@@ -54,6 +54,7 @@ const CHUP = process.argv.includes('--chup');
 const { CAP_DUONG_DAN, NGON_NGU, chu, duongDanTuongUng, cauLoiDatabase } =
   await import(pathToFileURL(join(WEB, 'src', 'lib', 'chu.ts')).href);
 const { NHAN_MON } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'thuc-don.ts')).href);
+const { congNgay } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'gio-vn.ts')).href);
 
 /** Playwright của web/; máy không cài thì dùng bản cài chung của máy. */
 function napPlaywright() {
@@ -156,6 +157,7 @@ const BAT_KY_DA_NHAN = /đã nhận|\breceived\b|접수되었(?!는지)/i;
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
 const DANG_GUI = { vi: 'Đang gửi…', en: 'Sending…', ko: '보내는 중…' };
 const KHOA_LUU = 'bt-hoi-ban';
+const KHOA_NUT = 'thu-day-du-nut-gui';   // nhóm 2: trạng thái nút lúc vừa gửi, giữ qua lần chuyển trang
 const KHACH = { ho_ten: 'Khách Thử', sdt: '0912345678' };
 const thuong = s => s.toLocaleLowerCase('vi');
 const tenTep = duong => duong.replace(/^\//, '').replace(/[^a-z0-9]+/gi, '-') || 'goc';
@@ -310,16 +312,27 @@ try {
         await nutGui().scrollIntoViewIfNeeded();
         const hop = await nutGui().boundingBox();
         const [x, y] = [hop.x + hop.width / 2, hop.y + hop.height / 2];
+        // Trạng thái nút NGAY sau khi trang xử lý lượt submit đầu: một listener gắn SAU script của
+        // trang (nên chạy sau nó, cùng nhịp) chép lại vào sessionStorage — còn nguyên qua lần chuyển
+        // trang. Đọc bằng evaluate sau cú bấm thì đua với lần chuyển trang: Chromium giữ evaluate tới
+        // khi trang mới tới, ngữ cảnh cũ mất, phép thử hỏng mà nút chẳng sai gì.
+        await page.evaluate(k => {
+          sessionStorage.removeItem(k);
+          document.querySelector('form[data-hoi-ban]')?.addEventListener('submit', () => {
+            if (sessionStorage.getItem(k)) return;   // chỉ lượt đầu
+            const b = document.querySelector('form[data-hoi-ban] [type="submit"]');
+            sessionStorage.setItem(k, JSON.stringify(b && { tat: b.disabled, ban: b.getAttribute('aria-busy'), chu: b.textContent.trim() }));
+          });
+        }, KHOA_NUT);
         const sau = page.waitForNavigation({ waitUntil: 'load', timeout: 30000 });
         if (cach === 'bấm đúp') await page.mouse.dblclick(x, y);
-        else await page.mouse.click(x, y);
-        // Đọc nút NGAY: khi lượt gửi đã lên đường, Chromium giữ mọi evaluate tới lúc trang mới tới.
-        const nut = await page.evaluate(() => {
-          const b = document.querySelector('form[data-hoi-ban] [type="submit"]');
-          return b && { tat: b.disabled, ban: b.getAttribute('aria-busy'), chu: b.textContent.trim() };
-        }).catch(e => ({ loi: e.message.slice(0, 160) }));
-        if (cach !== 'bấm đúp') { await cho(300); await page.mouse.click(x, y); }
+        else { await page.mouse.click(x, y); await cho(300); await page.mouse.click(x, y); }
         await sau;
+        const nut = await page.evaluate(k => {
+          const v = sessionStorage.getItem(k);
+          sessionStorage.removeItem(k);
+          try { return JSON.parse(v ?? 'null'); } catch { return { loi: v }; }
+        }, KHOA_NUT);
         await page.waitForLoadState('networkidle').catch(() => {});
         await cho(1000);   // lượt thứ hai (nếu lọt) cần thêm chừng ấy để tới database
 
@@ -345,8 +358,12 @@ try {
   });
 
   // =========================================================================
-  await nhom('3 · DATABASE 500 / MẠNG ĐỨT: KHÔNG BAO GIỜ "ĐÃ NHẬN", Ô ĐÃ GÕ ĐƯỢC ĐIỀN LẠI', async () => {
+  await nhom('3 · DATABASE 500 / MẠNG ĐỨT: KHÔNG BAO GIỜ "ĐÃ NHẬN"; 500 ĐIỀN LẠI Ô, KHÔNG CHẮC THÌ KHÔNG', async () => {
     for (const kichBan of ['dat-ban-500', 'dat-ban-dut']) {
+      // 500 có mã lỗi của database (XX000): giao dịch đã hủy, "chưa ghi" là đúng — điền lại ô để khách gửi lại.
+      // Mạng đứt: KHÔNG CHẮC đã ghi chưa (lib/xu-ly-form.ts) — câu bảo khách nhắn hỏi, đừng gửi lại; điền sẵn
+      // mọi ô (cả giờ) thì gửi lại chỉ còn một cú bấm và nhà hàng nhận hai bản. Nên xóa bản lưu, ô để trống.
+      const khongChac = kichBan === 'dat-ban-dut';
       for (const nn of NGON_NGU) {
         const hoiBan = duongDanTuongUng('/dat-ban', nn);
         mayGia.datKichBan(kichBan);
@@ -357,6 +374,7 @@ try {
         const o = await page.evaluate(() => ({
           ho_ten: document.querySelector('form[data-hoi-ban] [name="ho_ten"]')?.value ?? null,
           sdt: document.querySelector('form[data-hoi-ban] [name="sdt"]')?.value ?? null,
+          gio: document.querySelector('form[data-hoi-ban] input[name="gio"]:checked')?.value ?? null,
         }));
         const luu = await page.evaluate(k => { try { return JSON.parse(sessionStorage.getItem(k) ?? 'null'); } catch { return 'hỏng'; } }, KHOA_LUU);
         const nhan = `${kichBan} ${hoiBan}`;
@@ -365,13 +383,20 @@ try {
              !BAT_KY_DA_NHAN.test(chu_) && await page.locator('[data-ket-qua="da-nhan"]').count() === 0,
              chu_.match(BAT_KY_DA_NHAN)?.[0]),
           ok(`${nhan}: không có chữ "thành công"/"success"/"성공"`, !CHU_THANH_CONG.test(chu_), chu_.match(CHU_THANH_CONG)?.[0]),
-          ok(`${nhan}: có khung lỗi (role="alert")`, await page.locator('[role="alert"][data-ket-qua="loi"]').count() === 1),
+          ok(`${nhan}: có khung lỗi (role="alert", data-ket-qua="${khongChac ? 'khong-chac' : 'loi'}")`,
+             await page.locator(`[role="alert"][data-ket-qua="${khongChac ? 'khong-chac' : 'loi'}"]`).count() === 1),
           ok(`${nhan}: tiêu điểm ở khung lỗi`,
-             await page.evaluate(() => document.activeElement?.getAttribute('data-ket-qua')) === 'loi'),
-          ok(`${nhan}: họ tên và số điện thoại đã gõ được điền lại`,
-             o.ho_ten === KHACH.ho_ten && o.sdt === KHACH.sdt, JSON.stringify(o)),
-          ok(`${nhan}: bản lưu tạm không giữ ô đồng ý nhận tin`,
-             !!luu && typeof luu === 'object' && !Object.keys(luu).some(k => /dong_y/.test(k)), JSON.stringify(luu)),
+             await page.evaluate(() => document.activeElement?.getAttribute('data-ket-qua')) === (khongChac ? 'khong-chac' : 'loi')),
+          ...(khongChac ? [
+            ok(`${nhan}: KHÔNG CHẮC đã ghi → không điền lại họ tên, số điện thoại, giờ (gửi lại không còn là một cú bấm)`,
+               !o.ho_ten && !o.sdt && !o.gio, JSON.stringify(o)),
+            ok(`${nhan}: KHÔNG CHẮC đã ghi → bản lưu tạm bị xóa`, luu === null, JSON.stringify(luu)),
+          ] : [
+            ok(`${nhan}: họ tên và số điện thoại đã gõ được điền lại`,
+               o.ho_ten === KHACH.ho_ten && o.sdt === KHACH.sdt, JSON.stringify(o)),
+            ok(`${nhan}: bản lưu tạm không giữ ô đồng ý nhận tin`,
+               !!luu && typeof luu === 'object' && !Object.keys(luu).some(k => /dong_y/.test(k)), JSON.stringify(luu)),
+          ]),
           ok(`${nhan}: gửi một lần → tao_dat_ban một lần (không tự gửi lại)`, (mayGia.dem().tao_dat_ban ?? 0) === 1,
              `${mayGia.dem().tao_dat_ban ?? 0} lần`),
         ];
@@ -394,6 +419,33 @@ try {
         ok(`dat-ban-loi ${hoiBan}: KHÔNG có "đã nhận"`, !BAT_KY_DA_NHAN.test(await chuTrang())),
       ];
       if (tot.includes(false)) await chupLoi(`dat-ban-loi${hoiBan}`);
+    }
+
+    // Đổi ngày: chữ đã gõ đi theo sang ngày mới, nhưng GIỜ thì không — giờ chọn cho ngày cũ mà hiện như đã
+    // chọn ở ngày mới thì khách gửi một giờ mình chưa từng chọn cho ngày đó.
+    mayGia.datKichBan('day-du');
+    for (const nn of NGON_NGU) {
+      const hoiBan = duongDanTuongUng('/dat-ban', nn);
+      await page.goto(goc + hoiBan, { waitUntil: 'load' });
+      await dienForm();
+      const homNay = await page.locator('form[data-doi-ngay] input[name="ngay"]').getAttribute('min');
+      const ngayMoi = congNgay(homNay, 1);
+      await page.fill('form[data-doi-ngay] input[name="ngay"]', ngayMoi);
+      const sau = page.waitForNavigation({ waitUntil: 'load', timeout: 30000 });
+      await page.locator('form[data-doi-ngay] [type="submit"]').click();
+      await sau;
+      await cho(300);
+      const o = await page.evaluate(() => ({
+        ngay: document.querySelector('form[data-hoi-ban] input[type="hidden"][name="ngay"]')?.value ?? null,
+        ho_ten: document.querySelector('form[data-hoi-ban] [name="ho_ten"]')?.value ?? null,
+        gio: document.querySelector('form[data-hoi-ban] input[name="gio"]:checked')?.value ?? null,
+      }));
+      const tot = [
+        ok(`đổi ngày ${hoiBan}: trang mới ở ngày ${ngayMoi}`, o.ngay === ngayMoi, JSON.stringify(o)),
+        ok(`đổi ngày ${hoiBan}: họ tên đã gõ đi theo sang ngày mới`, o.ho_ten === KHACH.ho_ten, JSON.stringify(o)),
+        ok(`đổi ngày ${hoiBan}: giờ chọn ở ngày cũ KHÔNG được chọn sẵn ở ngày mới`, o.gio === null, JSON.stringify(o)),
+      ];
+      if (tot.includes(false)) await chupLoi(`doi-ngay${hoiBan}`);
     }
   });
 
@@ -435,6 +487,23 @@ try {
           && await page.locator(`main a.nut.nut-vien[href="${duongDanTuongUng('/dat-ban', nn)}"]`).count() > 0,
         JSON.stringify(nut)));
       if (tot.includes(false)) await chupLoi(`dat-ban-dong${hoiBan}`);
+    }
+
+    // Form vừa đóng (hay đọc lịch hỏng) đúng lúc khách gửi: câu trả lời cho lượt gửi đó — kể cả "không chắc
+    // đã ghi" — vẫn phải hiện, không bị thay im lặng bằng "chưa mở hỏi bàn trực tuyến".
+    for (const nn of NGON_NGU) {
+      const hoiBan = duongDanTuongUng('/dat-ban', nn);
+      mayGia.datKichBan('day-du');
+      await page.goto(goc + hoiBan, { waitUntil: 'load' });
+      await dienForm();
+      mayGia.datKichBan('dat-ban-dong');
+      await gui();
+      const tot = [
+        ok(`dat-ban-dong (đóng giữa chừng) ${hoiBan}: khung lỗi của lượt gửi vẫn hiện`,
+           await page.locator('[role="alert"][data-ket-qua]').count() === 1),
+        ok(`dat-ban-dong (đóng giữa chừng) ${hoiBan}: KHÔNG có "đã nhận"`, !BAT_KY_DA_NHAN.test(await chuTrang())),
+      ];
+      if (tot.includes(false)) await chupLoi(`dat-ban-dong-giua-chung${hoiBan}`);
     }
   });
 

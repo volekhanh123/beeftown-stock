@@ -22,7 +22,7 @@ const nut =
   formHoiBanMo(nd) ? { url: duongDanTuongUng('/dat-ban', ngonNgu), chu: tChung.datBan, ngoai: false } :
   lh.facebook ? { url: lh.facebook, chu: tChung.nhanTin, ngoai: true } :
   lh.goi ? { url: lh.goi, chu: tChung.goiNhaHang, ngoai: false } :
-  lh.thu ? { url: lh.thu, chu: tChung.nhanTin, ngoai: false } :
+  lh.thu ? { url: lh.thu, chu: tChung.guiEmail, ngoai: false } :
   null;
 const t = dich(ngonNgu, {
   hieu: { vi: 'Đi đông người', en: 'Coming as a group', ko: '여럿이 함께' },

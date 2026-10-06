@@ -13,21 +13,25 @@
  * thêm: Esc để đóng, bấm ra ngoài hoặc bấm một mục thì đóng, phóng to cửa sổ
  * qua mốc màn rộng thì đóng.
  */
-import { chu, duongDanTuongUng, DIA_CHI_NHA_HANG } from '../lib/chu';
-import { dieuHuong } from '../lib/trang-cong-khai';
-import type { NgonNgu } from '../lib/noi-dung';
+import { chu, duongDanTuongUng } from '../lib/chu';
+import { diaChiSauTang, dieuHuong } from '../lib/trang-cong-khai';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import BieuTuong from './BieuTuong.astro';
 
 interface Props {
   ngonNgu: NgonNgu;
+  noiDung: NoiDung;
   duongDan: string;
   doiNgonNgu: { nn: NgonNgu; url: string; ten: string }[];
 }
-const { ngonNgu, duongDan, doiNgonNgu } = Astro.props;
+const { ngonNgu, noiDung: nd, duongDan, doiNgonNgu } = Astro.props;
 const t = chu(ngonNgu);
 const muc = dieuHuong(ngonNgu);
-const [traiNghiem, ...trang] = muc;
-const hoiBan = trang[trang.length - 1];
+// Chọn theo đường dẫn, không theo vị trí: thêm hay đổi thứ tự mục trong dieuHuong()
+// thì nút đỏ vẫn là Hỏi bàn.
+const duongHoiBan = duongDanTuongUng('/dat-ban', ngonNgu);
+const hoiBan = muc.find(m => m.duong === duongHoiBan)!;
+const [traiNghiem, ...trang] = muc.filter(m => m !== hoiBan);
 const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace(/\/$/, '');
 ---
 <header class="dau-trang">
@@ -39,7 +43,7 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
     <nav class="dt-nav" aria-label={t.dieuHuongChinh}>
       <ul>
         <li><a href={traiNghiem.url}>{traiNghiem.chu}</a></li>
-        {trang.slice(0, -1).map(m => (
+        {trang.map(m => (
           <li><a href={m.url} aria-current={hienTai(m.duong) ? 'page' : undefined}>{m.chu}</a></li>
         ))}
       </ul>
@@ -68,7 +72,7 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
               ))}
             </ul>
           </nav>
-          <p class="mg-dia-chi"><BieuTuong ten="ghim" /><span><strong>{t.tang3}</strong> · <span lang="vi">{DIA_CHI_NHA_HANG.replace(/^Tầng 3, /, '')}</span></span></p>
+          <p class="mg-dia-chi"><BieuTuong ten="ghim" /><span><strong>{t.tang3}</strong> · <span lang="vi">{diaChiSauTang(nd)}</span></span></p>
           <ul class="mg-ngon-ngu" aria-label={t.chonNgonNgu}>
             {doiNgonNgu.map(n => (
               <li><a class="doi-ngon-ngu" href={n.url} lang={n.nn} hreflang={n.nn}>{n.ten}</a></li>
