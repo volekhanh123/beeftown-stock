@@ -149,8 +149,10 @@ function tatAstro(may) {
 // ---------------------------------------------------------------------------
 const TRANG = CAP_DUONG_DAN.flat();
 const ngonNguCua = duong => (duong.startsWith('/en') ? 'en' : duong.startsWith('/ko') ? 'ko' : 'vi');
-const CHU_DA_NHAN = { vi: /đã nhận/i, en: /received/i, ko: /접수되었/ };
-const BAT_KY_DA_NHAN = /đã nhận|received|접수되었/i;
+// "접수되었는지 … 알 수 없어요" (KHÔNG CHẮC đã nhận chưa — lib/xu-ly-form.ts) là câu đúng khi mạng đứt,
+// không phải lời báo đã nhận: loại nó ra khỏi mẫu tiếng Hàn.
+const CHU_DA_NHAN = { vi: /đã nhận/i, en: /\breceived\b/i, ko: /접수되었(?!는지)/ };
+const BAT_KY_DA_NHAN = /đã nhận|\breceived\b|접수되었(?!는지)/i;
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
 const DANG_GUI = { vi: 'Đang gửi…', en: 'Sending…', ko: '보내는 중…' };
 const KHOA_LUU = 'bt-hoi-ban';
