@@ -17,7 +17,9 @@
  * Câu hỏi, theo thứ tự quan trọng:
  *
  * 1. Client giả trả đúng lỗi đứt mạng ở trên: hai hàm KHÔNG trả câu
- *    "CHƯA được ghi nhận" mà ném, để xu-ly-form.ts nói "KHÔNG CHẮC".
+ *    "CHƯA được ghi nhận" mà ném, để xu-ly-form.ts nói "KHÔNG CHẮC". Client giả
+ *    trả { data: [], error: null } (không lỗi, không mã) cũng vậy — không bao
+ *    giờ ok: true, "đã nhận".
  * 2. supabase-js THẬT của web/ với fetch giả, mỗi kiểu hỏng một ca: mất
  *    mạng, đứt sau khi đã gửi, hủy / hết giờ, 502 / 504 / 520 trang HTML,
  *    503 JSON không mã, 200 thân bị cắt. Đổi bản supabase-js mà hình dạng
@@ -97,6 +99,29 @@ await nhom('1 · Client giả trả { error: { code: "", message: "TypeError: fe
       const k = await ketCuc(g.chay(client, nn));
       ok(`${g.ten} đứt mạng (error.code rỗng, ${nn}) → không báo "CHƯA được ghi nhận", rơi vào nhánh KHÔNG CHẮC`,
          soLan === 1 && nemKhongChac(k, g) && k.tra?.cau !== g.cau.chuaGhi[nn], `${soLan} lần gọi; ${inRa(k)}`);
+    }
+  }
+});
+
+await nhom('1b · Client giả trả { data: [], error: null } — không lỗi, không mã: database chưa xác nhận gì', async () => {
+  // tao_dat_ban trả bảng (mảng dòng), nop_ho_so_ung_tuyen trả một chuỗi mã.
+  // Mỗi hàm nhận đủ mọi hình dạng — kể cả hình dạng không phải của nó.
+  const TRA_RONG = [
+    ['data: []', []], ['data: null', null], ['data: {}', {}], ['data: ""', ''],
+    ['dòng không có ma_dat_ban', [{ con_trong: 3 }]],
+  ];
+  for (const g of Object.values(GUI)) {
+    for (const [ten, data] of TRA_RONG) {
+      for (const nn of NGON_NGU) {
+        let soLan = 0;
+        const client = { rpc: async () => { soLan++; return { data, error: null }; } };
+        const k = await ketCuc(g.chay(client, nn));
+        // nemKhongChac đòi hàm NÉM, nên không có ok: true, "đã nhận" hay "CHƯA được
+        // ghi nhận" nào được trả về; "không có mã" ghim đúng chốt chặn đã chạy.
+        ok(`${g.ten} không lỗi mà không có mã (${ten}, ${nn}) → không ok: true, không "đã nhận", không "CHƯA được ghi nhận", rơi vào nhánh KHÔNG CHẮC`,
+           soLan === 1 && nemKhongChac(k, g) && k.nem.message.includes('trả lời không có mã'),
+           `${soLan} lần gọi; ${inRa(k)}`);
+      }
     }
   }
 });
