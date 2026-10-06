@@ -177,6 +177,10 @@ export const CAU_DAT_BAN = {
  * "Thành công" ở đây nghĩa là DATABASE ĐÃ GHI, không hơn. Câu trả lời nói
  * thẳng rằng chưa có bàn nào được giữ cho tới khi nhân viên gọi xác nhận —
  * vì đó đúng là tình trạng của một dòng dat_ban ở trạng thái cho_xac_nhan.
+ *
+ * Gửi lại Y HỆT trong 10 phút (tắt JavaScript, trình duyệt gửi lại POST, khách
+ * gửi lại vì mạng chập sau khi database đã ghi) thì tao_dat_ban() trả lại dòng
+ * cũ và mã cũ thay vì tạo dòng thứ hai (migration 0062) — câu "đã nhận" vẫn đúng.
  */
 export async function guiYeuCauDatBan(
   client: SupabaseClient, form: FormData, ip: string | null, ngonNgu: NgonNgu,
