@@ -255,7 +255,7 @@ const t = dich(ngonNgu, {
               <input type="date" id="hb-ngay" name="ngay" value={tinhTrang.ngay} min={homNay} max={toiDa} />
               <button type="submit" class="nut nut-vien">{t.doiNgay}</button>
             </div>
-            <p class="hb-ngay-truoc nho" data-ngay-truoc hidden>{t.ngayTruoc}</p>
+            <p class="hb-ngay-truoc nho" id="hb-ngay-truoc" data-ngay-truoc hidden>{t.ngayTruoc}</p>
           </div>
         </form>
 
@@ -444,7 +444,10 @@ const t = dich(ngonNgu, {
       && (!oNgayXem.max || daLuu.ngay <= oNgayXem.max)) {
     oNgayXem.value = daLuu.ngay;
     const bao = formNgay.querySelector<HTMLElement>('[data-ngay-truoc]');
-    if (bao) bao.hidden = false;
+    if (bao) {
+      bao.hidden = false;
+      oNgayXem.setAttribute('aria-describedby', bao.id);
+    }
   }
 
   // Đổi ngày: giữ các ô đang điền trước khi trang tải lại, với ngày MỚI.
@@ -614,7 +617,10 @@ const t = dich(ngonNgu, {
     .hb-hang-ngay { grid-template-columns: minmax(0, 1fr) auto; }
   }
   .hb-hang-ngay .nut { min-height: 50px; padding-inline: var(--k-5); }
-  .hb-ngay-truoc { margin: var(--k-2) 0 0; color: var(--chu-chinh); }
+  .hb-ngay-truoc {
+    margin: var(--k-3) 0 0; padding-left: var(--k-3);
+    border-left: 3px solid var(--do); color: var(--chu-chinh);
+  }
   .hb-het-cho { margin: 0; }
 
   /* ---- Khung giờ: chip radio theo buổi ------------------------------------- */
