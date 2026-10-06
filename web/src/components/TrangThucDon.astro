@@ -350,11 +350,14 @@ const coKenh = coKenhHoiBan(nd);
 
     // Đổi tab giữa chừng một phần dài: đưa đầu phần mới về ngay dưới thanh, để
     // người đọc không rơi vào giữa (hay cuối) một phần khác. Không cuộn mượt.
-    const veDau = (p: HTMLElement) => {
-      const day = vo.getBoundingClientRect().bottom;
+    // Tính theo vị trí tuyệt đối và đợi hết khung hình kế tiếp: khi phần dài bị ẩn,
+    // trình duyệt tự "neo cuộn" (scroll anchoring) ở bước dựng khung — cuộn trước
+    // bước đó thì bị neo cuộn kéo lệch đi.
+    const veDau = (p: HTMLElement) => requestAnimationFrame(() => requestAnimationFrame(() => {
+      const day = (parseFloat(getComputedStyle(vo).top) || 0) + vo.offsetHeight;
       const dau = p.getBoundingClientRect().top;
-      if (dau < day) window.scrollBy(0, dau - day);
-    };
+      if (dau < day) window.scrollTo(0, window.scrollY + dau - day);
+    }));
     const chon = (i: number, { tieuDiem = false, ghiHash = false, cuon = false } = {}) => {
       tabs.forEach((a, j) => {
         const dang = j === i;
