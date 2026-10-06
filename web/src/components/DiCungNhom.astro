@@ -6,31 +6,45 @@
  * hay sức chứa: nhà hàng kiểm tra rồi liên hệ xác nhận (brief 06/10/2026).
  *
  * Nút theo kênh có người trả lời thật: form hỏi bàn đang mở → "Hỏi bàn"; không
- * thì Facebook / hotline / email đã công bố. Không có kênh nào → không có nút
- * (chữ vẫn đúng: nó nói khách cần cho nhà hàng biết gì).
+ * thì Facebook / hotline / email đã công bố. Không có kênh nào → không mời khách
+ * "cho Beeftown biết…" (chẳng có chỗ nào để nói): đoạn dẫn chuyển sang xem trước
+ * đường lên tầng 3 — cùng câu với cuối trang Thực đơn — và nút dẫn tới đó. Khối
+ * luôn kết thúc bằng một nút, không thành ngõ cụt.
+ *
+ * Câu "nhóm từ 9 người" bảo khách NHẮN cho Beeftown, nên chỉ in khi có kênh nhắn
+ * thật (Facebook, hotline, email) — form chỉ nhận tới 8 người.
  */
 import { chu, dich, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
-import { formHoiBanMo, lienHe } from '../lib/trang-cong-khai';
+import { coKenhHoiBan, formHoiBanMo, lienHe } from '../lib/trang-cong-khai';
 import KhungAnh from './KhungAnh.astro';
 
 interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
 const { ngonNgu, noiDung: nd } = Astro.props;
 const tChung = chu(ngonNgu);
 const lh = lienHe(nd);
+const coKenh = coKenhHoiBan(nd);
+const coKenhNhan = !!(lh.facebook || lh.goi || lh.thu);
 const nut =
   formHoiBanMo(nd) ? { url: duongDanTuongUng('/dat-ban', ngonNgu), chu: tChung.datBan, ngoai: false } :
   lh.facebook ? { url: lh.facebook, chu: tChung.nhanTin, ngoai: true } :
   lh.goi ? { url: lh.goi, chu: tChung.goiNhaHang, ngoai: false } :
   lh.thu ? { url: lh.thu, chu: tChung.guiEmail, ngoai: false } :
-  null;
+  { url: duongDanTuongUng('/den-beeftown', ngonNgu), chu: tChung.xemDuongLen, ngoai: false };
 const t = dich(ngonNgu, {
   hieu: { vi: 'Đi đông người', en: 'Coming as a group', ko: '여럿이 함께' },
-  tieuDe: { vi: 'Rủ cả nhà, cả nhóm cùng đến', en: 'Bring the family, bring the team', ko: '가족, 친구, 동료와 함께 오세요' },
+  // \u00a0: "cả nhóm" không bị tách thành "cả / nhóm".
+  tieuDe: { vi: 'Rủ cả nhà, cả\u00a0nhóm cùng đến', en: 'Bring the family, bring the team', ko: '가족, 친구, 동료와 함께 오세요' },
   dan: {
     vi: 'Cho Beeftown biết ngày, giờ và số người. Nhà hàng sẽ kiểm tra rồi liên hệ lại để xác nhận — gửi yêu cầu chưa phải là đã giữ bàn.',
     en: 'Tell us the date, the time and how many of you are coming. We will check and get back to you to confirm — sending a request does not hold a table yet.',
-    ko: '날짜, 시간, 인원을 알려 주세요. 매장에서 확인한 뒤 연락드려 확정해 드려요. 문의를 보내는 것만으로 자리가 잡히지는 않아요.',
+    ko: '날짜, 시간, 인원을 알려 주세요. 매장에서 확인한 뒤 연락드릴게요. 문의를 보내는 것만으로 자리가 잡히지는 않아요.',
+  },
+  // Chưa có kênh hỏi bàn nào: cùng câu với moiDanDen của TrangThucDon.
+  danKhongKenh: {
+    vi: 'Xem trước đường lên tầng 3 để cả nhóm tìm tới dễ dàng.',
+    en: 'Check the way up to Floor 3 before you go, so everyone finds it easily.',
+    ko: '모두 쉽게 찾아오실 수 있게 3층 오시는 길을 미리 확인해 보세요.',
   },
   nhom9: {
     vi: 'Nhóm từ 9 người trở lên, bạn nhắn cho Beeftown để nhà hàng sắp xếp riêng.',
@@ -45,13 +59,11 @@ const t = dich(ngonNgu, {
     <div class="dcn-chu">
       <p class="hieu">{t.hieu}</p>
       <h2 id="dcn-tieu-de">{t.tieuDe}</h2>
-      <p class="dan">{t.dan}</p>
-      <p class="dcn-nho">{t.nhom9}</p>
-      {nut && (
-        <div class="hang-nut">
-          <a class="nut nut-chinh" href={nut.url} rel={nut.ngoai ? 'noopener' : undefined}>{nut.chu}</a>
-        </div>
-      )}
+      <p class="dan">{coKenh ? t.dan : t.danKhongKenh}</p>
+      {coKenhNhan && <p class="dcn-nho">{t.nhom9}</p>}
+      <div class="hang-nut">
+        <a class="nut nut-chinh" href={nut.url} rel={nut.ngoai ? 'noopener' : undefined}>{nut.chu}</a>
+      </div>
     </div>
     <div class="dcn-hinh">
       <KhungAnh loai="ban-nuong" tiLe="4 / 3" nen="do" />
@@ -61,9 +73,15 @@ const t = dich(ngonNgu, {
 </section>
 
 <style>
-  .dcn-van { inset: 0 0 0 58%; opacity: 1; display: none; }
+  /* Mảng vân mỡ nửa phải: mép trái mờ dần thay vì một cạnh thẳng đứng cắt ngang góc khung ảnh. */
+  .dcn-van {
+    inset: 0 0 0 58%; opacity: 1; display: none;
+    -webkit-mask: linear-gradient(90deg, transparent, #000 18%);
+    mask: linear-gradient(90deg, transparent, #000 18%);
+  }
   .dcn-luoi { position: relative; display: grid; gap: var(--k-7); align-items: center; grid-template-columns: 1fr; }
-  .dcn-chu .dan { color: var(--kem); margin-bottom: var(--k-4); }
+  .dcn-chu .dan { color: var(--kem); margin-bottom: var(--k-6); }
+  .dcn-chu .dan:has(+ .dcn-nho) { margin-bottom: var(--k-4); }
   .dcn-nho { font-size: var(--co-nho); margin-bottom: var(--k-6); }
   .dcn-hinh { position: relative; max-width: 520px; width: 100%; }
   .dcn-la { width: 64px; left: -18px; bottom: -26px; transform: rotate(-30deg); }

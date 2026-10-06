@@ -14,7 +14,7 @@
  *     compressHTML bỏ dấu cách có xuống dòng giữa hai nút ("·Beef").
  */
 import { THUONG_HIEU, PHAP_NHAN, chu, dich, duongDanTuongUng } from '../lib/chu';
-import { dieuHuong, diaChi, lienHe } from '../lib/trang-cong-khai';
+import { cumDiaChi, dieuHuong, diaChi, lienHe } from '../lib/trang-cong-khai';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { namVn } from '../lib/gio-vn';
 import BieuTuong from './BieuTuong.astro';
@@ -35,9 +35,9 @@ const mangXaHoi = [
 
 const c = dich(ngonNgu, {
   tuyenDungNgan: {
-    vi: 'Đội mở cửa đang tuyển cho quầy thịt, bếp và sảnh.',
-    en: 'Our opening team is hiring for the butcher counter, kitchen and hall.',
-    ko: '정육, 주방, 홀에서 오픈 팀을 모집하고 있어요.',
+    vi: 'Nhà hàng đang tuyển đội mở cửa cho quầy thịt, bếp và sảnh.',
+    en: 'We are building our opening team for the butcher counter, kitchen and hall.',
+    ko: '정육, 주방, 홀에서 함께할 오픈 팀원을 모집하고 있어요.',
   },
   theoDoi: { vi: 'Theo dõi', en: 'Follow', ko: '팔로우' },
 });
@@ -79,7 +79,7 @@ const c = dich(ngonNgu, {
       <div class="ct-cot ct-dia-chi">
         <h2 class="ct-tieu-de">{t.denBeeftown}</h2>
         <address>
-          <p lang="vi">{diaChi(nd)}</p>
+          <p lang="vi">{cumDiaChi(diaChi(nd)).map((cum, i) => <>{i > 0 && ', '}<span class:list={{ lien: cum.giu }}>{cum.chu}</span></>)}</p>
           <p class="ct-cau-thang"><BieuTuong ten="cau-thang" /><span>{t.cauThangBo}</span></p>
         </address>
         {mangXaHoi.length > 0 && (
@@ -121,7 +121,8 @@ const c = dich(ngonNgu, {
 
   /* --- 2. Dải đỏ ----------------------------------------------------------- */
   .ct-chinh { position: relative; padding-block: var(--k-8) var(--k-7); }
-  .ct-hoa-van { inset: 0; --mau-hoa-van: rgba(150, 15, 19, .24); }
+  /* Chìm: chỉ đọc ra chữ khi nhìn gần (THIET-KE mục 5). */
+  .ct-hoa-van { inset: 0; --mau-hoa-van: rgba(150, 15, 19, .13); }
   /* Tem tròn trang 11 — đóng như con dấu cạnh logo (màn hẹp) hoặc dưới logo (màn rộng). */
   .ct-tem { width: clamp(76px, 18vw, 120px); height: auto; transform: rotate(-9deg); flex: none; }
   .ct-luoi {
@@ -152,12 +153,14 @@ const c = dich(ngonNgu, {
   address { font-style: normal; }
   address p { margin: 0 0 var(--k-3); max-width: 36ch; }
   .ct-cau-thang { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+  .ct-cau-thang span { text-wrap: balance; }
+  address .lien { white-space: nowrap; }
   .ct-cau-thang :global(svg) { width: 22px; height: 22px; flex: none; margin-top: 1px; }
   .ct-mxh { display: flex; flex-wrap: wrap; gap: 0 var(--k-5); margin-top: var(--k-2); }
 
   /* --- 3. Pháp nhân -------------------------------------------------------- */
   .ct-day { padding-block: var(--k-6); font-size: 14px; color: var(--da); }
-  .ct-day a { color: var(--kem); }
+  .ct-day a { color: var(--kem); display: inline-flex; align-items: center; min-height: 44px; }
   .chan-hang {
     display: flex; flex-wrap: wrap; gap: 10px 24px;
     /* baseline: link Quyền riêng tư đứng ngang dòng ©, không trôi xuống giữa khối pháp nhân. */

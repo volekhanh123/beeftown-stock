@@ -25,6 +25,9 @@ const { ngonNgu, noiDung: nd } = Astro.props;
 const t = chu(ngonNgu);
 const lh = lienHe(nd);
 const dc = diaChi(nd);
+// Địa chỉ xuống dòng ở dấu phẩy, không gãy giữa "phường Sài / Gòn". Chữ giữ nguyên (không
+// dấu cách không ngắt): kiểm thử và người đọc màn hình thấy đúng chuỗi địa chỉ.
+const phanDiaChi = dc.split(', ');
 const email = lh.thu ? lh.thu.replace(/^mailto:/, '') : null;
 const coLienHe = !!(lh.facebook || lh.goi || email);
 const coKenh = coKenhHoiBan(nd);
@@ -113,7 +116,7 @@ const c = dich(ngonNgu, {
           <span class="db-so" aria-hidden="true">1</span>
           <div>
             <h3>{c.b1Truoc}<span lang="vi" class="lien">{c.duong}</span>{c.b1Sau}</h3>
-            <p>{c.b1Chu} <span lang="vi">{dc}</span></p>
+            <p>{c.b1Chu} <span lang="vi">{phanDiaChi.map((phan, i) => <>{i > 0 && ', '}<span class="lien">{phan}</span></>)}</span></p>
           </div>
         </div>
       </li>
@@ -212,14 +215,17 @@ const c = dich(ngonNgu, {
     margin-top: var(--k-4);
   }
   @media (min-width: 600px) and (max-width: 899px) { .db-chu { margin-top: 0; } }
+  /* Số bước màu kem (16,3:1 trên than), không vàng: số to vàng cạnh eyebrow vàng trên nền
+     than thành bộ đen-vàng mà THIET-KE mục 1 bảo tránh. */
   .db-so {
     flex: none; min-width: 1ch;
     font-size: clamp(44px, 3vw + 30px, 64px); font-weight: 800; line-height: .9; letter-spacing: -.04em;
-    color: var(--nhan);
+    color: var(--kem);
   }
   .db-chu h3 { margin: 4px 0 var(--k-2); text-wrap: balance; }
   .db-chu p { margin: 0; color: var(--chu-phu); max-width: 42ch; }
-  .db-chu .lien { white-space: nowrap; }   /* "11-21 Hàm Nghi" không gãy giữa số nhà và tên đường */
+  /* "11-21 Hàm Nghi", "phường Sài Gòn" không gãy giữa số nhà và tên đường, giữa hai chữ của một tên. */
+  .db-chu .lien { white-space: nowrap; }
 
   /* --- Liên hệ --------------------------------------------------------------- */
   .db-lh-luoi { display: grid; gap: var(--k-6); grid-template-columns: 1fr; }

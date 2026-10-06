@@ -76,6 +76,15 @@ export function diaChi(nd: NoiDung): string {
 }
 
 /**
+ * Địa chỉ tách theo dấu phẩy, để in từng cụm không gãy giữa chừng ("phường Sài / Gòn",
+ * "Hàm / Nghi"). Cụm dài quá (bản công bố không có dấu phẩy) thì để trình duyệt tự xuống
+ * dòng — giữ nguyên một cụm dài trên màn hẹp sẽ tràn ngang.
+ */
+export function cumDiaChi(dc: string): { chu: string; giu: boolean }[] {
+  return dc.split(/,\s*/u).filter(Boolean).map(chu => ({ chu, giu: chu.length <= 24 }));
+}
+
+/**
  * Địa chỉ không có "Tầng 3" ở đầu — cho chỗ đã in chữ "Tầng 3" đậm ngay trước (menu gọn,
  * màn đầu). Vẫn đi qua diaChi(): bản công bố trong /noi-bo phải tới được MỌI chỗ in địa chỉ,
  * không thì một trang hiện hai địa chỉ khác nhau.

@@ -18,7 +18,7 @@
  * Không có: giá chưa duyệt, mô tả nguyên liệu tự viết, nhãn chay / cay / dị ứng tự
  * thêm, combo, lời hứa bày nhiều món kèm.
  */
-import { chu, dich, duongDanTuongUng, type BaThuTieng } from '../lib/chu';
+import { chu, dich, duongDanTuongUng } from '../lib/chu';
 import { coKenhHoiBan } from '../lib/trang-cong-khai';
 import { NHAN_MON, type ThucDon } from '../lib/thuc-don';
 import { dinhDangNgay, type NgonNgu, type NoiDung } from '../lib/noi-dung';
@@ -49,11 +49,9 @@ const c = dich(ngonNgu, {
   tabUong: { vi: 'Đồ uống', en: 'Drinks', ko: '음료' },
 
   // --- 1. Bò tại quầy -------------------------------------------------------
-  quayTieuDe: {
-    vi: 'Chọn theo khay, giá xem trên nhãn',
-    en: 'Choose by the tray, check the label',
-    ko: '트레이로 고르고, 라벨로 확인하세요',
-  },
+  // Hai vế của tiêu đề xuống dòng ở dấu phẩy, không gãy giữa một vế.
+  quayTieuDe1: { vi: 'Chọn theo khay,', en: 'Choose by the tray,', ko: '트레이로 고르고,' },
+  quayTieuDe2: { vi: 'giá xem trên nhãn', en: 'check the label', ko: '라벨로 확인하세요' },
   quayDan: {
     vi: 'Bò được cắt và đóng sẵn trong khay skin-pack, bày trên quầy để bạn nhìn tận mắt. Nhân viên ở quầy tư vấn phần nào hợp với bàn của bạn.',
     en: 'Our beef is cut and sealed in skin-pack trays and laid out on the counter, so you can see exactly what you are choosing. The counter staff will help you find what suits your table.',
@@ -70,9 +68,9 @@ const c = dich(ngonNgu, {
     ko: '고른 고기는 테이블의 가스 그릴에서 다 함께 구워 드세요.',
   },
   quayThem: {
-    vi: 'Đang ăn muốn thêm? Cứ gọi nhân viên chọn thêm giúp bạn.',
-    en: 'Want more halfway through? Just ask a staff member to pick out some more for you.',
-    ko: '식사 중에 더 드시고 싶으면 직원을 불러 주세요. 대신 골라 드려요.',
+    vi: 'Đang ăn muốn thêm? Bạn cứ gọi nhân viên để chọn thêm phần bò.',
+    en: 'Want more during the meal? Just call a staff member over to choose some more.',
+    ko: '식사 중에 더 드시고 싶으면 언제든 직원을 불러 더 골라 주세요.',
   },
   ghiGoiThem: {
     vi: 'Không bắt buộc, gọi thêm khi bạn muốn.',
@@ -97,11 +95,6 @@ const c = dich(ngonNgu, {
     en: 'Alongside the beef, the table can order from these parts of the menu.',
     ko: '소고기와 함께 아래 메뉴도 주문하실 수 있어요.',
   },
-  monSeCo: {
-    vi: 'Danh sách từng món sẽ được đăng đầy đủ tại đây.',
-    en: 'The full list of dishes will be posted here.',
-    ko: '요리별 전체 메뉴는 이곳에 올려 드릴게요.',
-  },
 
   // --- 3. Đồ uống ------------------------------------------------------------
   uongTieuDe: { vi: 'Uống gì cùng bữa nướng?', en: 'Something to drink with the grill', ko: '구이와 어울리는 음료' },
@@ -110,25 +103,12 @@ const c = dich(ngonNgu, {
     en: 'Drinks to go with your grill.',
     ko: '구이와 함께 즐기기 좋은 음료예요.',
   },
-  uongSeCo: {
-    vi: 'Danh sách từng loại đồ uống sẽ được đăng đầy đủ tại đây.',
-    en: 'The full list of drinks will be posted here.',
-    ko: '음료별 전체 메뉴는 이곳에 올려 드릴게요.',
-  },
-  luatRuou: {
-    vi: 'Beeftown không phục vụ đồ uống có cồn cho người dưới 18 tuổi.',
-    en: 'Beeftown does not serve alcohol to anyone under 18.',
-    ko: 'Beeftown은 만 18세 미만에게 주류를 제공하지 않아요.',
-  },
-  phienBan: {
-    vi: (pb: string) => `Thực đơn ${pb}`,
-    en: (pb: string) => `Menu ${pb}`,
-    ko: (pb: string) => `메뉴 ${pb}`,
-  },
+  // Ngày cập nhật thực đơn, cho khách biết danh sách mới tới đâu. Số phiên bản
+  // (v1.0) là ghi chú nội bộ của /noi-bo, không in lên trang.
   capNhat: {
-    vi: (ngay: string) => `cập nhật ${ngay}`,
-    en: (ngay: string) => `updated ${ngay}`,
-    ko: (ngay: string) => `${ngay} 업데이트`,
+    vi: (ngay: string) => `Thực đơn cập nhật ${ngay}.`,
+    en: (ngay: string) => `Menu updated ${ngay}.`,
+    ko: (ngay: string) => `메뉴 업데이트: ${ngay}`,
   },
 
   // --- Cuối trang ------------------------------------------------------------
@@ -154,36 +134,26 @@ const c = dich(ngonNgu, {
 });
 
 // Những nhóm món ĐÃ XÁC NHẬN bán (brief 06/10/2026) — chỉ dùng khi chưa công bố món
-// nào. Tên nhóm, không tên món, không mô tả nguyên liệu.
-const NHOM_MON_AN: BaThuTieng[] = [
-  { vi: 'Salad & khai vị', en: 'Salads & starters', ko: '샐러드 & 애피타이저' },
-  { vi: 'Cơm', en: 'Rice', ko: '밥 요리' },
-  { vi: 'Mì Ý', en: 'Pasta', ko: '파스타' },
-  { vi: 'Miến & mì lạnh', en: 'Glass & cold noodles', ko: '당면 & 냉면' },
-  { vi: 'Canh Hàn', en: 'Korean stews', ko: '한식 국·찌개' },
-  { vi: 'Lẩu', en: 'Hot pot', ko: '전골' },
-  { vi: 'Tráng miệng', en: 'Desserts', ko: '디저트' },
-];
-const DO_UONG_KHONG_CON: BaThuTieng[] = [
-  { vi: 'Nước ép', en: 'Juices', ko: '주스' },
-  { vi: 'Ade', en: 'Ades', ko: '에이드' },
-];
+// nào. Tên nhóm lấy từ lib/chu.ts: một bộ tên cho cả trang chủ lẫn trang này.
+const NHOM_MON_AN = [t.nhomSalad, t.nhomCom, t.nhomMiY, t.nhomMien, t.nhomCanh, t.nhomLau, t.nhomTrangMieng];
+const DO_UONG_KHONG_CON = [t.nhomNuocEp];
 // Đồ uống có cồn: luật quảng cáo rượu bia — chỉ nhắc khi công tắc hien_do_uong_co_con bật.
-const DO_UONG_CO_CON: BaThuTieng[] = [
-  { vi: 'Highball', en: 'Highballs', ko: '하이볼' },
-  { vi: 'Makgeolli', en: 'Makgeolli', ko: '막걸리' },
-  { vi: 'Cocktail', en: 'Cocktails', ko: '칵테일' },
-];
+const DO_UONG_CO_CON = [t.nhomHighball, t.nhomMakgeolli, t.nhomCocktail];
 
 const coMonAn = td.monAn.length > 0;
 const coDoUong = td.doUong.length > 0;
 const nhacCoCon = !coDoUong && nd.hien_do_uong_co_con === true;
 const hienLuatRuou = td.coDoUongCoCon || nhacCoCon;
 const doUongGioiThieu = [
-  ...DO_UONG_KHONG_CON.map(x => ({ ten: x[ngonNgu], coCon: false })),
-  ...(nhacCoCon ? DO_UONG_CO_CON.map(x => ({ ten: x[ngonNgu], coCon: true })) : []),
+  ...DO_UONG_KHONG_CON.map(ten => ({ ten, coCon: false })),
+  ...(nhacCoCon ? DO_UONG_CO_CON.map(ten => ({ ten, coCon: true })) : []),
 ];
 const ngayCapNhat = td.capNhatNgay ? dinhDangNgay(td.capNhatNgay, ngonNgu) : null;
+
+// Bò tại quầy: nhóm chính (thit_bo) luôn đứng trước nhóm gọi thêm, bất kể thứ tự
+// database trả (seed 0011 đặt goi-them trước bo-tai-quay). sort ổn định: các nhóm
+// cùng loại giữ nguyên thứ tự của database.
+const nhomQuay = [...td.boTaiQuay].sort((a, b) => Number(a.loai !== 'thit_bo') - Number(b.loai !== 'thit_bo'));
 
 const PHAN = [
   { id: 'bo-tai-quay', ten: c.tabQuay },
@@ -217,7 +187,7 @@ const coKenh = coKenhHoiBan(nd);
       <div class="td-quay-dau">
         <div class="td-quay-chu">
           <p class="hieu">{c.tabQuay}</p>
-          <h2 id="td-h-quay">{c.quayTieuDe}</h2>
+          <h2 id="td-h-quay"><span class="cau">{c.quayTieuDe1}</span> <span class="cau">{c.quayTieuDe2}</span></h2>
           <p class="dan">{c.quayDan}</p>
           <p>{c.quayGia}</p>
           <p>{c.quayNuong}</p>
@@ -234,9 +204,9 @@ const coKenh = coKenhHoiBan(nd);
 
       <p class="td-them"><BieuTuong ten="cong" /><span>{c.quayThem}</span></p>
 
-      {td.boTaiQuay.length > 0 && (
-        <div class="td-cac-nhom td-quay-nhom">
-          {td.boTaiQuay.map(n => (
+      {nhomQuay.length > 0 && (
+        <div class:list={['td-cac-nhom', 'td-quay-nhom', { 'mot-nhom': nhomQuay.length === 1 }]}>
+          {nhomQuay.map(n => (
             <ThucDonNhom nhom={n} ngonNgu={ngonNgu}
                          ghiChu={n.loai === 'thit_bo' ? c.ghiTaiQuay : n.loai === 'goi_them' ? c.ghiGoiThem : undefined}
                          khongGia={n.loai === 'thit_bo'} />
@@ -260,16 +230,13 @@ const coKenh = coKenhHoiBan(nd);
       </div>
       <div class="td-chinh">
         {coMonAn ? (
-          <div class="td-cac-nhom">
+          <div class:list={['td-cac-nhom', { 'mot-nhom': td.monAn.length === 1 }]}>
             {td.monAn.map(n => <ThucDonNhom nhom={n} ngonNgu={ngonNgu} />)}
           </div>
         ) : (
-          <>
-            <ul class="td-danh-muc" role="list">
-              {NHOM_MON_AN.map(n => <li><span class="td-dm-ten">{n[ngonNgu]}</span></li>)}
-            </ul>
-            <p class="td-se-co">{c.monSeCo}</p>
-          </>
+          <ul class="td-danh-muc" role="list">
+            {NHOM_MON_AN.map(ten => <li><span class="td-dm-ten">{ten}</span></li>)}
+          </ul>
         )}
       </div>
     </div>
@@ -285,33 +252,24 @@ const coKenh = coKenhHoiBan(nd);
       </div>
       <div class="td-chinh">
         {coDoUong ? (
-          <div class="td-cac-nhom">
+          <div class:list={['td-cac-nhom', { 'mot-nhom': td.doUong.length === 1 }]}>
             {td.doUong.map(n => <ThucDonNhom nhom={n} ngonNgu={ngonNgu} />)}
           </div>
         ) : (
-          <>
-            <ul class:list={['td-danh-muc', { 'mot-cot': doUongGioiThieu.length < 4 }]} role="list">
-              {doUongGioiThieu.map(d => (
-                <li>
-                  <span class="td-dm-ten">{d.ten}</span>
-                  {d.coCon && <span class="nhan-mon"><BieuTuong ten="co-con" /><span>{NHAN_MON.coCon[ngonNgu]}</span></span>}
-                </li>
-              ))}
-            </ul>
-            <p class="td-se-co">{c.uongSeCo}</p>
-          </>
+          <ul class:list={['td-danh-muc', { 'mot-cot': doUongGioiThieu.length < 4 }]} role="list">
+            {doUongGioiThieu.map(d => (
+              <li>
+                <span class="td-dm-ten">{d.ten}</span>
+                {d.coCon && <span class="nhan-mon"><BieuTuong ten="co-con" /><span>{NHAN_MON.coCon[ngonNgu]}</span></span>}
+              </li>
+            ))}
+          </ul>
         )}
-        {hienLuatRuou && <p class="td-luat"><BieuTuong ten="co-con" /><span>{c.luatRuou}</span></p>}
+        {hienLuatRuou && <p class="td-luat"><BieuTuong ten="co-con" /><span>{t.luatRuou}</span></p>}
       </div>
     </div>
   </section>
 </div>
-
-{td.phienBan && (
-  <div class="td-phien-ban be-kem">
-    <p class="khung"><span class="lien">{c.phienBan(td.phienBan)}</span>{ngayCapNhat && <> · <span class="lien">{c.capNhat(ngayCapNhat)}</span></>}</p>
-  </div>
-)}
 
 {/* Cuối trang: mời hỏi bàn — chỉ khi có kênh thật để hỏi; không thì chỉ đường lên. */}
 <section class="muc be-do nen-van-mo td-moi" aria-labelledby="td-h-moi">
@@ -324,6 +282,7 @@ const coKenh = coKenhHoiBan(nd);
         {coKenh && <a class="nut nut-chinh" href={duongDanTuongUng('/dat-ban', ngonNgu)}>{t.datBan}</a>}
         <a class:list={['nut', coKenh ? 'nut-vien' : 'nut-chinh']} href={duongDanTuongUng('/den-beeftown', ngonNgu)}>{t.xemDuongLen}</a>
       </div>
+      {ngayCapNhat && <p class="nho td-cap-nhat">{c.capNhat(ngayCapNhat)}</p>}
     </div>
     <div class="td-the-tang3">
       <LenTang3 ngonNgu={ngonNgu} noiDung={nd} gon khongLinkDuongDen />
@@ -348,8 +307,17 @@ const coKenh = coKenhHoiBan(nd);
       a.setAttribute('aria-controls', cacPhan[i].id);
       cacPhan[i].setAttribute('role', 'tabpanel');
       cacPhan[i].setAttribute('aria-labelledby', a.id);
-      cacPhan[i].tabIndex = 0;
     });
+    // Phần (tabpanel) chỉ nhận tiêu điểm SAU KHI người dùng đã dùng bàn phím trên thanh tab
+    // (mũi tên, Home / End, hay Tab để đi tiếp vào nội dung). Gán tabIndex ngay lúc tải thì
+    // trình duyệt, khi cuộn tới #mon-an / #do-uong, đặt luôn tiêu điểm vào cả phần và vẽ
+    // vòng focus quanh toàn bộ thực đơn — chỉ vì khách mở một link có #hash.
+    let phanNhanTieuDiem = false;
+    const choPhanNhanTieuDiem = () => {
+      if (phanNhanTieuDiem) return;
+      phanNhanTieuDiem = true;
+      cacPhan.forEach(p => { p.tabIndex = 0; });
+    };
 
     // Đổi tab giữa chừng một phần dài: đưa đầu phần mới về ngay dưới thanh, để
     // người đọc không rơi vào giữa (hay cuối) một phần khác. Không cuộn mượt.
@@ -387,6 +355,7 @@ const coKenh = coKenhHoiBan(nd);
     thanh.addEventListener('keydown', e => {
       const i = tabs.indexOf(document.activeElement as HTMLAnchorElement);
       if (i < 0 || e.altKey || e.ctrlKey || e.metaKey) return;
+      choPhanNhanTieuDiem();
       const n = tabs.length;
       const j = e.key === 'ArrowRight' ? (i + 1) % n
         : e.key === 'ArrowLeft' ? (i - 1 + n) % n
@@ -414,6 +383,9 @@ const coKenh = coKenhHoiBan(nd);
     background: var(--kem);
     border-bottom: 1px solid var(--vach);
   }
+  /* Màn thấp (điện thoại xoay ngang, phóng to 200 %): đầu trang và thanh tab cùng dính
+     thì ăn gần nửa màn hình — thanh tab dính sát mép trên. */
+  @media (max-height: 500px) { .td-thanh { top: 0; } }
   /* Đệm ngang 8px cho vòng focus không dính chữ; lề âm giữ chữ của tab đầu thẳng
      hàng với lề nội dung. */
   .td-tab {
@@ -422,19 +394,35 @@ const coKenh = coKenhHoiBan(nd);
     margin-left: -8px;
   }
   .td-tab a {
+    position: relative;
     display: inline-flex; align-items: center; min-width: 0;
-    min-height: 56px; padding: 6px 8px; margin-bottom: -1px;
+    min-height: 56px; padding: 6px 8px;
     font-weight: 700; font-size: 15px; line-height: 1.2; letter-spacing: .01em;
     color: var(--than); text-decoration: none;
-    border-bottom: 3px solid transparent;
-    transition: border-color var(--nhanh), color var(--nhanh);
+    transition: color var(--nhanh);
   }
-  .td-tab a:hover { border-bottom-color: var(--vien-o); }
+  /* Gạch chân của tab: thẳng hàng với CHỮ của tab (trừ đệm 8px hai bên), nằm đè lên
+     vạch dưới của thanh — tab đầu không thò ra ngoài lề nội dung. */
+  .td-tab a::after {
+    content: ''; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 3px;
+    background: transparent;
+    transition: background-color var(--nhanh);
+  }
+  .td-tab a:hover::after { background: var(--vien-o); }
   /* Vòng focus nằm trong vùng tab, phía trên gạch chân đỏ của tab đang chọn. */
   .td-tab a:focus-visible { outline-offset: -6px; }
-  .td-tab a[aria-selected='true'] { color: var(--do-sau); border-bottom-color: var(--do); }
+  .td-tab a[aria-selected='true'] { color: var(--do-sau); }
+  .td-tab a[aria-selected='true']::after { background: var(--do); }
   @media (min-width: 600px) { .td-tab a { font-size: 16px; } }
   @media (max-width: 380px) { .td-tab { gap: 2px; } .td-tab a { font-size: 14px; } }
+  /* Chế độ tương phản cao (Windows): trình duyệt ép mọi nền về màu hệ thống, nên gạch
+     đỏ biến mất và ba tab trông như nhau. Tab đang chọn dùng màu Highlight của hệ thống
+     cho gạch chân và thêm gạch dưới chữ — phân biệt được cả khi không nhìn ra màu. */
+  @media (forced-colors: active) {
+    .td-tab a::after, .td-tab a:hover::after { background: transparent; }
+    .td-tab a[aria-selected='true']::after { forced-color-adjust: none; background: Highlight; }
+    .td-tab a[aria-selected='true'] { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .3em; }
+  }
 
   /* Link neo khi không có JS: đầu phần dừng ngay dưới thanh. scroll-padding-top
      của trang đã trừ chiều cao đầu trang + 12px (cong-khai.css), nên ở đây chỉ
@@ -450,7 +438,8 @@ const coKenh = coKenhHoiBan(nd);
     grid-template-columns: 1fr;
   }
   @media (min-width: 900px) { .td-quay-dau { grid-template-columns: 5fr 6fr; gap: var(--k-8); } }
-  .td-quay-chu h2 { max-width: 16ch; }
+  .td-quay-chu h2 { max-width: 18ch; }
+  .td-quay-chu h2 .cau { display: block; }
   .td-quay-chu .dan { margin-bottom: var(--k-4); }
   .td-quay-chu p:not(.hieu):not(.dan) { margin: 0 0 var(--k-3); max-width: 52ch; color: var(--chu-chinh); }
   .td-quay-nhan {
@@ -485,6 +474,8 @@ const coKenh = coKenhHoiBan(nd);
   }
 
   .td-cac-nhom { columns: 2 320px; column-gap: var(--k-8); }
+  /* Mới công bố một nhóm: một cột vừa đọc, không để trống nửa phải. */
+  .td-cac-nhom.mot-nhom { columns: auto; max-width: 640px; }
   /* Nhóm cuối không để khoảng trống thừa trước dòng luật rượu / cuối phần. */
   .td-chinh .td-cac-nhom { margin-bottom: calc(-1 * var(--k-7)); }
 
@@ -507,11 +498,14 @@ const coKenh = coKenhHoiBan(nd);
     content: counter(dm, decimal-leading-zero) / '';
     font-size: 13px; font-weight: 700; letter-spacing: .06em; color: var(--nhan-nho);
   }
+  /* Danh mục chỉ có một nhóm (đồ uống không cồn khi đồ uống có cồn chưa được nhắc):
+     không đánh số "01" cho một dòng duy nhất. */
+  .td-danh-muc li:only-child { grid-template-columns: minmax(0, 1fr) auto; }
+  .td-danh-muc li:only-child::before { content: none; }
   .td-dm-ten {
     font-size: clamp(21px, 1vw + 16px, 28px); font-weight: 700; line-height: 1.25; letter-spacing: -.01em;
   }
   .td-danh-muc .nhan-mon { justify-self: end; }
-  .td-se-co { margin: var(--k-5) 0 0; color: var(--chu-phu); max-width: 52ch; }
 
   .td-luat {
     display: flex; gap: var(--k-3); align-items: flex-start;
@@ -521,18 +515,17 @@ const coKenh = coKenhHoiBan(nd);
   }
   .td-luat :global(svg) { width: 20px; height: 20px; flex: none; color: var(--nhan); }
 
-  /* --- Dòng phiên bản thực đơn --------------------------------------------- */
-  .td-phien-ban { border-top: 1px solid var(--vach); }
-  .td-phien-ban p { margin-block: 0; padding-block: var(--k-4); font-size: var(--co-nho); color: var(--muc-nhat); }
-  .td-phien-ban .lien { white-space: nowrap; }
-
   /* --- Cuối trang ---------------------------------------------------------- */
   .td-moi-luoi { display: grid; gap: var(--k-7); align-items: center; grid-template-columns: 1fr; }
   @media (min-width: 900px) { .td-moi-luoi { grid-template-columns: 7fr 5fr; gap: var(--k-8); } }
   .td-moi-chu h2 { max-width: 22ch; }
   .td-moi-chu .cau { display: block; }
   .td-moi-chu .dan { margin-bottom: var(--k-6); }
+  /* Ngày cập nhật thực đơn: dòng nhỏ chữ kem cuối khối đỏ. */
+  .td-cap-nhat { margin: var(--k-6) 0 0; }
   /* LenTang3 bản gọn là một thẻ kem trên dải đỏ: .be-kem-dam (cong-khai.css) tự đặt lại
-     biến màu chữ và vòng focus của nền kem, ở đây chỉ giới hạn bề rộng. */
+     biến màu chữ và vòng focus của nền kem, ở đây giới hạn bề rộng. Viền trái đỏ của
+     thẻ trùng màu dải đỏ nên mép thẻ trông như lùi vào 4px: đổi sang đỏ sậm. */
   .td-the-tang3 { max-width: 480px; }
+  .td-the-tang3 :global(.lt3-gon) { border-left-color: var(--do-sau); }
 </style>

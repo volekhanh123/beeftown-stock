@@ -10,7 +10,7 @@ const nd = await docNoiDung('vi');
 <Trang ngonNgu="vi" noiDung={nd} duongDan="/quyen-rieng-tu"
        tieuDe="Quyền riêng tư — Beeftown"
        moTa="Beeftown thu thập, sử dụng và lưu trữ thông tin cá nhân như thế nào.">
-  <TrangVanBan hieu="Quyền riêng tư" tieuDe="Beeftown giữ thông tin của bạn thế nào">
+  <TrangVanBan hieu="Quyền riêng tư" tieuDe={'Beeftown giữ thông\u00a0tin của bạn thế nào'}>
 
       <h2>Chúng tôi thu những gì</h2>
       <p>Khi bạn gửi yêu cầu đặt bàn hoặc hồ sơ ứng tuyển, Beeftown lưu họ tên,
@@ -61,7 +61,7 @@ const nd = await docNoiDung('vi');
         ngừng nhận tin bất cứ lúc nào.{' '}
         {nd.email_lien_he
           ? <>Gửi yêu cầu tới <a href={`mailto:${nd.email_lien_he}`}>{nd.email_lien_he}</a>.</>
-          : <>Cách liên hệ sẽ được công bố tại trang này khi nhà hàng mở cửa.</>}
+          : <>Gửi yêu cầu bằng cách nhắn cho Trang Beeftown trên Messenger.</>}
       </p>
 
       <p class="nho">Tuân theo Nghị định 13/2023/NĐ-CP về

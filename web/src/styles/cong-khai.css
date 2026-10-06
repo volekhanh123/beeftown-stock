@@ -66,6 +66,8 @@
    DauTrang.astro (1080px). */
 html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 12px); }
 @media (min-width: 1080px) { html:has(body.ck) { --cao-dau: 76px; } }
+/* Màn thấp: đầu trang không dính nữa (DauTrang.astro), neo chỉ chừa 12px. */
+@media (max-height: 500px) { html:has(body.ck) { scroll-padding-top: 12px; } }
 
 /* --- Bề mặt ---------------------------------------------------------------- */
 /* Bề mặt sáng đặt lại TOÀN BỘ biến chữ: một thẻ kem nằm trong dải đỏ / tối không
@@ -206,6 +208,8 @@ html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 1
   color: var(--do-sau); background: rgba(178, 58, 44, .1);
   padding: 4px 10px; border-radius: 2px;
 }
+/* Hangul không giãn chữ (THIET-KE mục 3). */
+.ck:lang(ko) .vi-tri .nhan { letter-spacing: .02em; }
 
 /* --- Ảnh và chú thích ------------------------------------------------------ */
 .ck .anh { position: relative; margin: 0; }
@@ -229,6 +233,8 @@ html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 1
   background: var(--kem-dam);
   color: var(--do-sau);
 }
+/* Dưới 600px: tỷ lệ của khung ảnh điện thoại — đúng chỗ ảnh thật (khungNho) sẽ nằm. */
+@media (max-width: 599px) { .ck .khung-anh { aspect-ratio: var(--ti-le-nho, var(--ti-le, 4 / 3)); } }
 .ck .khung-anh.tren-toi { background: #2A2016; color: var(--kem); }
 .ck .khung-anh.tren-do  { background: var(--do-sau); color: var(--kem); }
 .ck .khung-anh > svg { width: min(78%, 420px); height: auto; position: relative; }
@@ -303,7 +309,7 @@ html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 1
 
 /* --- Ô nhập ---------------------------------------------------------------- */
 .ck .o { display: block; margin: 0 0 var(--k-5); }
-.ck .o > label, .ck .o > .nhan-o, .ck fieldset.o > legend {
+.ck .o > label:not(.o-chon), .ck .o > .nhan-o, .ck fieldset.o > legend {
   display: block; margin-bottom: 6px; font-weight: 700; font-size: 15px;
 }
 .ck .o em { font-style: normal; font-weight: 400; color: var(--chu-phu); }
@@ -320,7 +326,8 @@ html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 1
 .ck [aria-invalid='true'] { border-color: var(--do) !important; box-shadow: inset 0 0 0 1px var(--do); }
 .ck fieldset[aria-invalid='true'] { box-shadow: none; outline: 2px solid var(--do); outline-offset: 2px; }
 .ck .loi-o { margin: 6px 0 0; font-size: 15px; font-weight: 600; color: var(--do-dam); }
-.ck .loi-o::before { content: '! '; font-weight: 800; }
+/* Dòng content thứ hai: trình đọc màn hình không đọc "chấm than" trước câu lỗi. */
+.ck .loi-o::before { content: '! '; content: '! ' / ''; font-weight: 800; }
 
 /* --- In ------------------------------------------------------------------- */
 @media print {

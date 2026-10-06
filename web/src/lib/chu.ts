@@ -93,14 +93,15 @@ const VI = {
   diaChiNgan: '11-21 Hàm Nghi, TP.HCM',
   moTaNgan: 'Nhà hàng chuyên bò ở tầng 3, 11-21 Hàm Nghi, TP.HCM. Chọn bò tại quầy, cùng cả bàn nướng và thưởng thức.',
   // Câu chính của trang chủ (h1) — brief 06/10/2026.
-  cauChinh: 'Chọn phần bò bạn thích, rồi cùng cả bàn thưởng thức.',
+  // \u00a0: "bạn thích", "cả bàn" không bị tách hai dòng ở màn hẹp.
+  cauChinh: 'Chọn phần bò bạn\u00a0thích, rồi cùng cả\u00a0bàn thưởng thức.',
   gioiThieu:
     'Bò được cắt và đóng khay sẵn tại quầy. Bạn nhìn tận mắt, xem nhãn, nhờ ' +
     'nhân viên tư vấn — rồi cả bàn cùng nướng trên vỉ gas đặt tại bàn.',
 
   // Bản dự phòng khi khóa dong_trang_thai chưa được công bố.
   trangThaiMacDinh:
-    'Beeftown đang chuẩn bị đón bạn. Lịch mở cửa sẽ được cập nhật tại đây.',
+    'Beeftown đang chuẩn bị đón bạn.',
 
   // Đứng TRƯỚC ngày khai trương, khi ngày đó đã công bố.
   moCuaTu: 'Mở cửa từ',
@@ -113,6 +114,22 @@ const VI = {
   chiDuong: 'Chỉ đường',
   goiNhaHang: 'Gọi nhà hàng',
   xemMenu: 'Xem thực đơn',
+  // Tên nhóm món đã xác nhận bán (brief 06/10/2026) — MỘT bộ tên cho trang chủ và
+  // trang Thực đơn. Tên nhóm, không tên món, không mô tả nguyên liệu.
+  nhomSalad: 'Salad & khai vị',
+  nhomCom: 'Cơm',
+  nhomMiY: 'Mì Ý',
+  nhomMien: 'Miến & mì lạnh',
+  nhomCanh: 'Canh Hàn',
+  nhomLau: 'Lẩu',
+  nhomTrangMieng: 'Tráng miệng',
+  nhomNuocEp: 'Nước ép & ade',
+  nhomHighball: 'Highball',
+  nhomMakgeolli: 'Makgeolli',
+  nhomCocktail: 'Cocktail',
+  setSot: 'Set sốt cho phần nướng (tùy chọn)',
+  // Luật quảng cáo rượu bia: in kèm MỌI chỗ nhắc tới đồ uống có cồn.
+  luatRuou: 'Beeftown không phục vụ đồ uống có cồn cho người dưới 18 tuổi.',
   khamPhaThucDon: 'Khám phá thực đơn',
   // Nút và mục điều hướng tới trang /dat-ban. "Hỏi bàn" chứ không "Đặt bàn":
   // gửi yêu cầu chưa phải là có bàn — nhà hàng kiểm tra rồi gọi xác nhận.
@@ -150,16 +167,16 @@ const VI = {
     'Nhà hàng sẽ gọi lại để hẹn gặp.',
   tuyenDungXem: 'Xem vị trí đang tuyển',
   tuyenDungChuaMo:
-    'Cổng nộp hồ sơ trực tuyến chưa mở. Trong lúc chờ, bạn nhắn trực tiếp cho ' +
-    'Beeftown qua Facebook là nhanh nhất.',
+    'Cổng nộp hồ sơ trực tuyến chưa mở. Bạn nhắn trực tiếp cho Beeftown qua ' +
+    'Facebook là nhanh nhất.',
 
   // --- Đặt bàn --------------------------------------------------------------
   datBanChuaMo: 'Beeftown chưa mở hỏi bàn trực tuyến',
   // Không hứa thời gian trả lời — brief 06/10/2026 cấm. Phải còn chữ "Facebook":
   // trinh-duyet.mjs kiểm trang hỏi bàn chỉ đường sang đó khi form đóng.
   datBanChuaMoGiaiThich:
-    'Nhà hàng đang hoàn thiện và giờ phục vụ chưa được chốt. Muốn hỏi bàn, bạn ' +
-    'nhắn cho Beeftown qua Facebook — nhà hàng sẽ kiểm tra và liên hệ lại với bạn.',
+    'Muốn hỏi bàn, bạn nhắn cho Beeftown qua Facebook — nhà hàng sẽ kiểm tra và ' +
+    'liên hệ lại với bạn.',
 
   // --- Chung ----------------------------------------------------------------
   quyenRiengTu: 'Quyền riêng tư',
@@ -188,7 +205,7 @@ const EN: Bo = {
     'the label, ask our staff — then grill it together on the gas grill at your table.',
 
   trangThaiMacDinh:
-    'Beeftown is getting ready to welcome you. Opening hours will be posted here.',
+    'Beeftown is getting ready to welcome you.',
 
   moCuaTu: 'Open since',
   donBanTu: 'Opening',
@@ -200,6 +217,19 @@ const EN: Bo = {
   chiDuong: 'Directions',
   goiNhaHang: 'Call the restaurant',
   xemMenu: 'View the menu',
+  nhomSalad: 'Salads & starters',
+  nhomCom: 'Rice dishes',
+  nhomMiY: 'Pasta',
+  nhomMien: 'Glass & cold noodles',
+  nhomCanh: 'Korean soups & stews',
+  nhomLau: 'Hot pot',
+  nhomTrangMieng: 'Desserts',
+  nhomNuocEp: 'Juices & ades',
+  nhomHighball: 'Highballs',
+  nhomMakgeolli: 'Makgeolli',
+  nhomCocktail: 'Cocktails',
+  setSot: 'Sauce set for the grill (optional)',
+  luatRuou: 'Beeftown does not serve alcohol to anyone under 18.',
   khamPhaThucDon: 'Explore the menu',
   datBan: 'Ask for a table',
 
@@ -231,12 +261,11 @@ const EN: Bo = {
     'We will call you back to arrange a meeting.',
   tuyenDungXem: 'See open roles',
   tuyenDungChuaMo:
-    'Online applications are not open yet. For now, the fastest way is to message ' +
+    'Online applications are not open yet. The fastest way is to message ' +
     'Beeftown directly on Facebook.',
 
   datBanChuaMo: 'Online table requests are not open yet',
   datBanChuaMoGiaiThich:
-    'The restaurant is still being fitted out and our hours are not confirmed. ' +
     'To ask about a table, message Beeftown on Facebook — we will check and get back to you.',
 
   quyenRiengTu: 'Privacy',
@@ -252,13 +281,14 @@ const KO: Bo = {
   nganhHang: '소고기 전문점',
   diaChiNgan: '호치민시 Hàm Nghi 11-21',
   moTaNgan: '호치민시 Hàm Nghi 11-21, 3층에 있는 소고기 전문점이에요. 정육 코너에서 고기를 고르고 테이블에서 함께 구워 드세요.',
-  cauChinh: '좋아하는 부위를 고르고, 함께 온 사람들과 즐겨 보세요.',
+  // \u00a0: "함께 온 사람들과" (định ngữ + danh từ) không bị tách hai dòng.
+  cauChinh: '좋아하는 부위를 고르고, 함께\u00a0온\u00a0사람들과 즐겨 보세요.',
   gioiThieu:
     '소고기는 정육 코너에서 손질해 트레이에 담아 두었어요. 직접 보고, 라벨을 확인하고, ' +
     '직원에게 추천을 받은 뒤 테이블 가스 그릴에서 다 함께 구워 드세요.',
 
   trangThaiMacDinh:
-    'Beeftown이 손님을 맞이할 준비를 하고 있어요. 오픈 일정은 이곳에서 알려 드릴게요.',
+    'Beeftown이 손님을 맞이할 준비를 하고 있어요.',
 
   moCuaTu: '오픈일',
   donBanTu: '오픈 예정일',
@@ -270,6 +300,19 @@ const KO: Bo = {
   chiDuong: '길찾기',
   goiNhaHang: '매장에 전화하기',
   xemMenu: '메뉴 보기',
+  nhomSalad: '샐러드·전채',
+  nhomCom: '밥 요리',
+  nhomMiY: '파스타',
+  nhomMien: '당면·냉면',
+  nhomCanh: '국·찌개',
+  nhomLau: '전골',
+  nhomTrangMieng: '디저트',
+  nhomNuocEp: '주스·에이드',
+  nhomHighball: '하이볼',
+  nhomMakgeolli: '막걸리',
+  nhomCocktail: '칵테일',
+  setSot: '구이용 소스 세트 (선택)',
+  luatRuou: 'Beeftown은 만 18세 미만에게 주류를 제공하지 않아요.',
   khamPhaThucDon: '메뉴 둘러보기',
   datBan: '테이블 문의',
 
@@ -277,8 +320,8 @@ const KO: Bo = {
   traiNghiem: '이용 방법',
   thucDon: '메뉴',
   denBeeftown: '오시는 길',
-  moMenu: '전체 메뉴',
-  dongMenu: '전체 메뉴 닫기',
+  moMenu: '바로가기',
+  dongMenu: '바로가기 닫기',
   veTrangChu: 'Beeftown 홈으로',
   thongTin: '안내',
   xoaDuLieu: '데이터 삭제',
@@ -301,13 +344,12 @@ const KO: Bo = {
     '매장에서 다시 전화드려 만나 뵐 일정을 잡을게요.',
   tuyenDungXem: '채용 중인 포지션 보기',
   tuyenDungChuaMo:
-    '온라인 지원 창구는 아직 열리지 않았어요. 그동안은 Facebook으로 ' +
-    'Beeftown에 직접 메시지를 보내 주시는 게 빨라요.',
+    '온라인 지원 창구는 아직 열리지 않았어요. Facebook으로 ' +
+    'Beeftown에 직접 메시지를 보내 주시는 게 가장 빨라요.',
 
   datBanChuaMo: 'Beeftown은 아직 온라인 테이블 문의를 받지 않아요',
   datBanChuaMoGiaiThich:
-    '매장 준비를 마무리하고 있고 영업시간도 아직 정해지지 않았어요. 테이블 문의는 ' +
-    'Facebook으로 Beeftown에 메시지를 보내 주세요. 확인한 뒤 연락드릴게요.',
+    '테이블 문의는 Facebook으로 Beeftown에 메시지를 보내 주세요. 확인한 뒤 연락드릴게요.',
 
   quyenRiengTu: '개인정보 처리방침',
   chonNgonNgu: '언어',
@@ -406,12 +448,12 @@ const CO_DAU = /[àáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫ�
 const LOI_DATABASE: ReadonlyArray<readonly [RegExp, Readonly<Record<'en' | 'ko', string>>]> = [
   // tao_dat_ban() — 0013
   [/^Form đặt bàn đang tạm đóng/, {
-    en: 'Online booking is temporarily closed.',
-    ko: '온라인 예약이 잠시 중단되었어요.',
+    en: 'Online table requests are temporarily closed.',
+    ko: '온라인 테이블 문의가 잠시 중단되었어요.',
   }],
   [/^Không thể đặt bàn cho ngày trong quá khứ/, {
-    en: 'A table cannot be booked for a date in the past.',
-    ko: '지난 날짜로는 예약할 수 없어요.',
+    en: 'Requests cannot be made for a past date.',
+    ko: '지난 날짜로는 문의할 수 없어요.',
   }],
   [/^Khung giờ \S+ hôm nay đã qua/, {
     en: 'That time has already passed today.',
@@ -419,7 +461,7 @@ const LOI_DATABASE: ReadonlyArray<readonly [RegExp, Readonly<Record<'en' | 'ko',
   }],
   [/^Khung giờ \S+ ngày \S+ đã hết bàn/, {
     en: 'No tables are available at that time.',
-    ko: '선택하신 시간대에는 예약 가능한 자리가 없어요.',
+    ko: '선택하신 시간대에는 가능한 자리가 없어요.',
   }],
   // tim_hoac_tao_khach() — 0002, gọi từ tao_dat_ban(); và nop_ho_so_ung_tuyen() — 0026
   [/^Số điện thoại không hợp lệ/, {

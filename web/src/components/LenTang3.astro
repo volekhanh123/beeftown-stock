@@ -12,7 +12,7 @@
  * nút ẩn hẳn (thuộc tính hidden), địa chỉ vẫn là chữ chọn được.
  */
 import { chu, dich, duongDanTuongUng } from '../lib/chu';
-import { diaChi, lienHe } from '../lib/trang-cong-khai';
+import { cumDiaChi, diaChi, lienHe } from '../lib/trang-cong-khai';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import BieuTuong from './BieuTuong.astro';
 
@@ -42,23 +42,23 @@ const c = dich(ngonNgu, {
   tieuDe: { vi: 'Beeftown ở tầng 3', en: 'Beeftown is on Floor 3', ko: 'Beeftown은 3층에 있어요' },
   luuY: {
     vi: 'Đi cùng ông bà hay người khó leo cầu thang? Bạn nên biết trước điều này khi lên kế hoạch.',
-    en: 'Coming with grandparents, or anyone who finds stairs hard? It is worth knowing before you plan.',
+    en: 'Coming with grandparents, or anyone who finds stairs hard? Please keep this in mind when you plan your visit.',
     ko: '어르신이나 계단이 불편한 분과 함께 오신다면 미리 참고해 주세요.',
   },
 });
 ---
 {gon ? (
-  <aside class="lt3-gon be-kem-dam" aria-label={c.tieuDe}>
+  <div class="lt3-gon be-kem-dam">
     <span class="lt3-so-nho" aria-hidden="true">3</span>
     <div>
       <p class="lt3-cau"><strong>{t.cauThangBo}</strong></p>
-      <p class="lt3-dc" lang="vi">{dc}</p>
+      <p class="lt3-dc"><span lang="vi">{cumDiaChi(dc).map((cum, i) => <>{i > 0 && ', '}<span class:list={{ lien: cum.giu }}>{cum.chu}</span></>)}</span></p>
       <div class="lt3-hang">
         {lh.maps && <a class="lien-ket" href={lh.maps} rel="noopener">{t.chiDuong}<BieuTuong ten="mui-ten" /></a>}
         {!khongLinkDuongDen && <a class="lien-ket" href={duongDanTuongUng('/den-beeftown', ngonNgu)}>{t.xemDuongLen}<BieuTuong ten="mui-ten" /></a>}
       </div>
     </div>
-  </aside>
+  </div>
 ) : (
   <div class="lt3">
     <div class="lt3-hinh" aria-hidden="true">
@@ -72,7 +72,7 @@ const c = dich(ngonNgu, {
     <div class="lt3-chu">
       {!anHieu && <p class="hieu">{c.hieu}</p>}
       <TieuDe class="lt3-tieu-de">{tieuDe ?? c.tieuDe}</TieuDe>
-      <p class="lt3-dc"><BieuTuong ten="ghim" /><span lang="vi">{dc}</span></p>
+      <p class="lt3-dc"><BieuTuong ten="ghim" /><span lang="vi">{cumDiaChi(dc).map((cum, i) => <>{i > 0 && ', '}<span class:list={{ lien: cum.giu }}>{cum.chu}</span></>)}</span></p>
       <p class="lt3-cau"><BieuTuong ten="cau-thang" /><strong>{t.cauThangBo}</strong></p>
       <p class="lt3-luu-y">{c.luuY}</p>
       <div class="hang-nut">
@@ -135,6 +135,9 @@ const c = dich(ngonNgu, {
   }
   .lt3-so-nho { font-size: 64px; font-weight: 800; line-height: .85; color: var(--do); letter-spacing: -.05em; }
   .lt3-gon .lt3-cau { font-size: 16px; margin-bottom: 6px; }
+  /* Câu cầu thang và địa chỉ không gãy giữa cụm ("thang / máy", "Hàm / Nghi"). */
+  .lt3-cau strong { text-wrap: balance; }
+  .lt3-dc :global(.lien) { white-space: nowrap; }
   .lt3-gon .lt3-dc { font-size: 15px; color: var(--muc-nhat); margin-bottom: 4px; }
   .lt3-hang { display: flex; flex-wrap: wrap; gap: 0 var(--k-5); }
 </style>

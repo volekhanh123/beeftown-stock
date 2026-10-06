@@ -153,6 +153,6 @@ export function dinhDangGia(n: number): string {
 
 /** Nhãn món: chỉ hai nhãn có căn cứ trong database — không tự thêm chay, cay, dị ứng. */
 export const NHAN_MON: Readonly<Record<'monSong' | 'coCon', BaThuTieng>> = {
-  monSong: { vi: 'Món sống', en: 'Raw dish', ko: '생식 메뉴' },
+  monSong: { vi: 'Món sống', en: 'Raw dish', ko: '날음식' },
   coCon: { vi: 'Có cồn', en: 'Contains alcohol', ko: '알코올 포함' },
 };

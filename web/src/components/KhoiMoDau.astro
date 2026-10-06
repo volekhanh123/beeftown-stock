@@ -31,6 +31,12 @@ const ngayMo = nd.ngay_khai_truong;
 const daMo = !!(ngayMo && ngayMo <= homNayVn());
 const coAnhHero = !!coAnh('hero-vi-gas', '16x9');
 const [pick, grill, love] = THUONG_HIEU.khauHieu.split(/(?<=\.)\s+/);
+// Câu cầu thang tách thành từng vế (sau "—" hoặc dấu chấm), mỗi vế một khối inline-block:
+// xuống dòng giữa hai vế, không để dòng mới bắt đầu bằng "— không có…" hay cắt đôi một câu.
+// Chữ giữ nguyên (không \u00a0 trong cauThangBo — test đọc nguyên câu).
+const cauThang = t.cauThangBo.split(/(?<=[—.])\s+/u);
+// Địa chỉ: xuống dòng sau dấu phẩy, không giữa "Hàm / Nghi" (vế dài để nguyên, không tràn).
+const veDiaChi = diaChiSauTang(nd).replace(/,\s*phường Sài Gòn/iu, '').split(/(?<=,)\s+/u);
 ---
 <section class="kmd be-kem" aria-labelledby="kmd-tieu-de">
   <div class="kmd-tam nen-van-mo" aria-hidden="true"></div>
@@ -49,8 +55,11 @@ const [pick, grill, love] = THUONG_HIEU.khauHieu.split(/(?<=\.)\s+/);
 
       <ul class="kmd-thong-tin">
         <li>
-          <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="cau-thang" /><span><strong>{t.tang3}</strong> · <span lang="vi">{diaChiSauTang(nd).replace(/,\s*phường Sài Gòn/iu, '')}</span></span></a>
+          <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="cau-thang" /><span><strong>{t.tang3}</strong> · <span lang="vi">{veDiaChi.map((ve, i) => <>{i > 0 && ' '}{ve.length <= 28 ? <span class="kmd-lien">{ve}</span> : ve}</>)}</span></span></a>
         </li>
+        {/* Biểu tượng cầu thang có aria-hidden: câu này mới là thứ người đọc màn hình nghe được
+            (kế hoạch đã duyệt: địa chỉ tầng 3 luôn đi kèm "cầu thang bộ, không có thang máy"). */}
+        <li class="kmd-cau-thang">{cauThang.map((ve, i) => <>{i > 0 && ' '}<span>{ve}</span></>)}</li>
         {ngayMo && (
           <li class="kmd-ngay">{daMo ? t.moCuaTu : t.donBanTu} <strong>{dinhDangNgay(ngayMo, ngonNgu)}</strong></li>
         )}
@@ -94,9 +103,14 @@ const [pick, grill, love] = THUONG_HIEU.khauHieu.split(/(?<=\.)\s+/);
     padding-bottom: var(--k-8);
   }
   .kmd-hinh { order: -1; position: relative; height: clamp(250px, 66vw, 420px); }
-  .kmd-chu { padding-top: var(--k-6); }
+  .kmd-chu { padding-top: var(--k-6); container-type: inline-size; }
 
   .kmd h1 { max-width: 15ch; margin-bottom: var(--k-5); }
+  /* ch đo theo chữ số Latin: 15ch chỉ chứa 8–9 chữ Hangul, h1 tiếng Hàn thành bốn dòng.
+     Chữ Hangul cũng rộng hơn chữ Latin cùng cỡ: cụm đầu "좋아하는 부위를 고르고," dài ~10em,
+     nên cỡ chữ không vượt 9.4% bề rộng cột chữ (container .kmd-chu) — câu nằm gọn ba dòng
+     ở mọi bề rộng thay vì bốn. */
+  .kmd h1:lang(ko) { max-width: 12em; font-size: min(var(--co-h1), 9.4cqi); }
   .kmd-dan { margin: 0 0 var(--k-6); }
   .kmd-nut { margin-bottom: var(--k-6); }
 
@@ -111,6 +125,13 @@ const [pick, grill, love] = THUONG_HIEU.khauHieu.split(/(?<=\.)\s+/);
   .kmd-dia-chi:hover > span { text-decoration: underline; }
   .kmd-dia-chi :global(svg) { width: 24px; height: 24px; color: var(--do); flex: none; }
   .kmd-ngay { font-weight: 600; }
+  .kmd-lien { white-space: nowrap; }
+  /* Thẳng hàng với chữ địa chỉ: biểu tượng 24px + khe 10px. */
+  .kmd-cau-thang {
+    font-size: var(--co-nho); color: var(--chu-phu);
+    margin-top: calc(-1 * var(--k-3)); padding-left: 34px;
+  }
+  .kmd-cau-thang > span { display: inline-block; }
 
   /* --- Artwork khi chưa có ảnh: tagline xếp ba dòng như biển trang 7 ------- */
   .kmd-artwork { position: absolute; inset: 0; color: var(--kem); --net-ve: var(--kem); }
@@ -146,11 +167,16 @@ const [pick, grill, love] = THUONG_HIEU.khauHieu.split(/(?<=\.)\s+/);
     }
     .kmd-hinh { order: 0; height: 100%; min-height: 520px; }
     .kmd-chu { padding-top: 0; }
-    .kmd-artwork { inset: 0 calc(-1 * var(--le)) 0 var(--k-6); }
-    .kmd-khau-hieu { left: 0; bottom: var(--k-7); font-size: clamp(52px, 5vw, 84px); }
+    /* Cột artwork ở 900px chỉ rộng ~360px: tagline và tem co theo bề rộng CỘT (container
+       query), không theo cửa sổ — không thì tem tròn đè lên "GRILL IT." / "LOVE IT.".
+       Giữ tiền tố .kmd-artwork: .kmd-khau-hieu-nho của nhánh có ảnh cũng mang lớp .kmd-khau-hieu. */
+    .kmd-artwork { inset: 0 calc(-1 * var(--le)) 0 var(--k-6); container-type: inline-size; }
+    .kmd-khau-hieu { left: 0; bottom: var(--k-7); }
+    .kmd-artwork .kmd-khau-hieu { font-size: clamp(40px, 13cqi, 84px); }
     .kmd-steak { right: 6%; top: 8%; }
     .kmd-la-1 { right: 48%; top: 4%; }
     .kmd-tem { right: 6%; bottom: 7%; }
+    .kmd-artwork .kmd-tem { width: clamp(78px, 24cqi, 140px); }
     .kmd-la-2 { right: 4%; bottom: 34%; }
     /* Ảnh nằm vắt qua mép mảng đỏ: nửa trên kem, nửa trên vân mỡ. */
     .kmd-anh { inset: 12% -4% 12% -12%; }
