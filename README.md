@@ -1,6 +1,6 @@
 # Beeftown — Tài sản web
 
-Website và các tài liệu thiết kế dạng web của **Beeftown** — nhà hàng BBQ bò kiểu quầy thịt tại khu Cầu Ông Lãnh, Quận 1, TP.HCM. Dự kiến khai trương 2026.
+Website và các tài liệu thiết kế dạng web của **Beeftown** — Beef Specialty Restaurant, nhà hàng chuyên bò kiểu quầy thịt ở **Tầng 3, 11-21 Hàm Nghi, phường Sài Gòn, TP.HCM** (trọn tầng 3, khách lên bằng cầu thang bộ, không có thang máy cho khách). Dự kiến khai trương 2026.
 
 > **Repo này chỉ chứa file web.** Tài liệu kinh doanh (mô hình tài chính, nghiên cứu đối thủ, danh sách KOL, kế hoạch marketing) **cố tình không được đưa lên** — xem `.gitignore`. Khi thêm file mới, nhớ kiểm tra `git status --short` trước khi commit.
 
@@ -8,11 +8,11 @@ Website và các tài liệu thiết kế dạng web của **Beeftown** — nhà
 
 ## Concept
 
-Bò nhập khẩu tươi mát được pha lóc và **đóng gói sẵn theo từng phần cắt**, ghi rõ tên phần, trọng lượng và giá ngay trên gói. Khách ra quầy tự chọn phần mình thích như đi tiệm thịt, rồi mang về bàn nướng.
+Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần cắt**. Nhãn khay ghi tên phần cắt, giá mỗi 100g, trọng lượng, giá cuối (đã gồm VAT — chỉ nói về giá trên nhãn) và ngày đóng gói. Khách nhìn và chọn phần bò tại quầy như ở một tiệm thịt, có nhân viên tư vấn; cả bàn cùng nướng trên **vỉ gas đặt tại bàn**, và trong bữa có thể gọi nhân viên chọn thêm. Có quy trình ủ, nhưng chưa xác nhận số ngày, phương pháp, grade hay xuất xứ — không viết claim nào về những điều đó.
 
-- **Khẩu hiệu:** Thịt chuẩn, giá thật · *Pick it – Grill it – Love it*
+- **Tagline trên web:** *Pick it. Grill it. Love it.* — descriptor *Beef Specialty Restaurant*. (Câu "Thịt chuẩn - Giá thật" chỉ có trên ảnh mockup của PDF nhận diện, không dùng trên web.)
 - **Định vị:** cao cấp vừa tầm — không phải quán bình dân, cũng không phải nhà hàng sang trọng
-- **Khách mục tiêu:** gia đình và người trên 30 tuổi · dân văn phòng và tiệc công ty
+- **Khách chính:** người trưởng thành đi cùng gia đình, người thân; rồi bạn bè, nhóm văn phòng. Bữa tối và dịp tụ họp.
 
 ---
 
@@ -21,6 +21,7 @@ Bò nhập khẩu tươi mát được pha lóc và **đóng gói sẵn theo t�
 | File | Nội dung |
 |---|---|
 | `web/` | **Website đang dùng.** Astro trên Cloudflare Workers, ba thứ tiếng Việt–Anh–Hàn (bản Anh và Hàn do máy dịch khi câu tiếng Việt đổi). Xem `web/README.md`. |
+| `web/THIET-KE.md` | **Hệ giao diện trang công khai** ("Quầy thịt ấm"): màu theo vai và tương phản, chữ, thành phần, manifest artwork (nguồn, vị trí, trạng thái từng tài sản), brief chụp ảnh / video, phần bàn giao. |
 | `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động — và **toàn bộ kiểm thử** (`crm/test/`). |
 | `CLAUDE.md` | **Quy trình kiểm thử bắt buộc** cho mọi tính năng mới: 9 mục "định nghĩa xong", cách chạy test, việc trước khi mở PR. |
 | `.github/` | Kiểm thử tự động (GitHub Actions) mỗi PR, mỗi lần gộp và mỗi đêm 00:30 giờ VN; đóng gói `BeeftownCan.exe` (tải về không cần gõ lệnh: `can-app/README.md`, mục "Tải BeeftownCan.exe về"); mẫu PR; mẫu báo lỗi. |
@@ -34,7 +35,7 @@ Bò nhập khẩu tươi mát được pha lóc và **đóng gói sẵn theo t�
 | `Beeftown_Concept_Board_v1.svg` | Bảng concept tổng thể. |
 | `Beeftown_Can_TMA.html` | Phần mềm cài hàng cho cân in tem TMA: sửa tên, giá, chữ trên tem rồi xuất file nạp vào cân qua USB. Chạy không cần mạng. |
 
-Tất cả đều là **HTML tự chứa** — mở thẳng bằng trình duyệt, không cần cài đặt gì, không có bước build. Chỉ phụ thuộc Google Fonts và (riêng website) ảnh từ Unsplash.
+Tất cả đều là **HTML tự chứa** — mở thẳng bằng trình duyệt, không cần cài đặt gì, không có bước build. Chỉ phụ thuộc Google Fonts và (riêng bản nháp website cũ) ảnh từ Unsplash.
 
 ---
 
@@ -71,20 +72,24 @@ Lưu ý khi sửa code phần mềm cân:
 
 ### Bảng màu
 
-| Tên | Mã | Dùng cho |
-|---|---|---|
-| Beef Red | `#B23A2C` | Màu chủ đạo, nút chính |
-| Cream | `#FBF4E1` | Nền sáng |
-| Mustard | `#F2A900` | Điểm nhấn, giá tiền |
-| Marigold | `#F5C211` | Điểm nhấn trên nền tối |
-| Charcoal | `#1E160E` | Nền tối, chữ |
-| Warm Stone | `#B8A98C` | Chữ phụ |
+| Tên | Mã | Token web | Dùng cho |
+|---|---|---|---|
+| Beef Red | `#B23A2C` | `--do` | Màu chủ đạo: nút chính, nhãn, dải đỏ, chữ nhấn trên kem |
+| Đỏ đậm (vân mỡ PDF trang 2) | `#960F13` | `--do-sau` | Chữ nhấn rất nhỏ trên kem, chữ nút trên nền đỏ, nét artwork trên kem |
+| Cream | `#FBF4E1` | `--kem` | Nền đọc; chữ trên nền tối và nền đỏ |
+| Kem đậm (lớp lót logo PDF) | `#F1E4C2` | `--kem-dam` | Nền khối phụ trên trang sáng |
+| Charcoal | `#1E160E` | `--than` | Chữ chính, nền dải tối (tên màu — Beeftown nướng vỉ gas, không than) |
+| Mustard | `#F2A900` | `--mu-tat` | Điểm nhấn nhỏ; chữ chỉ trên nền tối |
+| Marigold | `#F5C211` | `--cuc-vang` | Điểm nhấn, vòng focus trên nền tối |
+| Warm Stone | `#B8A98C` | `--da` | Chữ phụ **chỉ trên nền tối** |
+
+Warm Stone, Mustard, Marigold **không bao giờ** làm chữ trên nền kem (tương phản 1,5–2,1 : 1). Tỷ lệ gợi ý: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 %. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
 
 ### Phông chữ
 
-- **Montserrat** — toàn bộ tiêu đề và nội dung
-- **Baloo 2** — chỉ dùng cho tên thương hiệu và khẩu hiệu
-  - ⚠️ Đây là **bản thay tạm** cho *Hypo-me Bold* — phông độc quyền của thương hiệu. Cần mua bản quyền trước khi in ấn hoặc chạy quảng cáo.
+- **Montserrat** (400 / 600 / 700 / 800) — mọi chữ trên web: tiêu đề, nội dung, nút. Trang tiếng Hàn thêm Noto Sans KR cho chữ Hangul.
+- **Logo** là vector gốc trích từ PDF nhận diện — không gõ lại chữ BEEFTOWN bằng phông nào.
+- *Hypo-me Bold* (PDF trang 1) và *NVN Beloved Bold* (trang 6) **chưa có file và bản quyền** nên chưa dùng. Cần file phông kèm giấy phép web trước khi dùng cho điểm nhấn — xem `web/THIET-KE.md`, mục 3.
 
 ### Giọng văn
 
@@ -96,6 +101,7 @@ Lưu ý khi sửa code phần mềm cân:
 - ❌ Dùng chữ **"rẻ"** — thay bằng *hợp lý*, *xứng đáng*, *giá thật*
 - ❌ Dùng tiếng lóng giới trẻ hoặc chiêu câu tương tác
 - ❌ Hứa mâm banchan đầy đủ kiểu Hàn — Beeftown tập trung vào bò
+- ❌ Claim chưa xác nhận: số ngày ủ, phương pháp ủ, grade, xuất xứ, Wagyu; nướng than; phòng riêng; số bàn còn trống — danh sách đầy đủ kèm lý do ở `web/src/lib/chuoi-cam.js`
 
 ---
 
@@ -143,7 +149,7 @@ Những chỗ dễ làm hỏng nếu không biết trước:
 
 5. **Không dùng emoji làm biểu tượng** — dùng SVG nét mảnh 1.5px cho thống nhất.
 
-6. **Ảnh trên website hiện là ảnh minh hoạ từ Unsplash**, có ghi chú trong code. Thay bằng ảnh chụp thật trước khi công bố.
+6. **Ảnh trong bản nháp cũ là ảnh kho Unsplash** — không bao giờ đưa lên web thật. Website `web/` chỉ dùng ảnh minh họa món tạo bằng AI (trang luôn ghi "Ảnh minh họa") và khung đồ họa cho quầy, không gian, lối lên cho tới khi có ảnh chụp thật — brief chụp ở `web/THIET-KE.md`, mục 8.
 
 ---
 
@@ -331,7 +337,7 @@ Kiểm thử: `crm/test/test-sao-luu.mjs` (chính hai script, với `supabase` v
 
 - [ ] Gõ tay địa chỉ web. Trang hiện dưới 3 giây.
 - [ ] **Không cần cuộn** đã đọc được khẩu hiệu, địa chỉ và dòng trạng thái.
-- [ ] Chạm địa chỉ → mở Maps đúng 40–42 Nguyễn Thái Học.
+- [ ] Chạm "Chỉ đường" → mở Maps đúng tòa nhà 11-21 Hàm Nghi (nút chỉ có khi link Maps đã công bố). Thấy ngay câu "cầu thang bộ, không có thang máy".
 - [ ] Chạm "Theo dõi Beeftown" → **mở app Facebook** đúng trang. *Đây là chỗ hay hỏng nhất.*
 - [ ] Xoay ngang không vỡ. Chỉnh cỡ chữ hệ thống lớn nhất vẫn dùng được.
 - [ ] Lặp lại toàn bộ trên điện thoại thứ hai, khác hệ điều hành.
@@ -340,7 +346,7 @@ Kiểm thử: `crm/test/test-sao-luu.mjs` (chính hai script, với `supabase` v
 
 - [ ] Dán link vào Zalo tự gửi cho mình → thấy **ảnh**, tiêu đề, một dòng mô tả. Không phải link xanh trơ.
 - [ ] Lặp lại với Messenger và ô soạn bài Facebook.
-- [ ] *Chưa tải ảnh 1200×630 lên thì chưa có ảnh — đúng như thiết kế. Chạy `select * from v_cong_bo_con_thieu` để xem còn thiếu gì.*
+- [ ] *Chưa công bố ảnh chụp thật 1200×630 thì link hiện ảnh dự phòng (vân mỡ + logo) — đúng như thiết kế. Chạy `select * from v_cong_bo_con_thieu` để xem còn thiếu gì.*
 
 **Soát nội dung — đọc thành tiếng, mở tài liệu thương hiệu bên cạnh**
 

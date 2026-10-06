@@ -25,8 +25,14 @@ interface Props {
   khongLinkDuongDen?: boolean;
   /** Cấp tiêu đề: h2 ở trang chủ, h3 khi nằm trong một khối khác. */
   capTieuDe?: 2 | 3;
+  /** Bỏ dòng nhỏ "Đến Beeftown" (khi trang đã có dòng đó ở đầu trang). */
+  anHieu?: boolean;
+  /** Tiêu đề khác thay "Beeftown ở tầng 3" (khi h1 của trang đã nói điều đó). */
+  tieuDe?: string;
 }
-const { ngonNgu, noiDung: nd, gon = false, khongLinkDuongDen = false, capTieuDe = 2 } = Astro.props;
+const {
+  ngonNgu, noiDung: nd, gon = false, khongLinkDuongDen = false, capTieuDe = 2, anHieu = false, tieuDe,
+} = Astro.props;
 const t = chu(ngonNgu);
 const lh = lienHe(nd);
 const dc = diaChi(nd);
@@ -42,7 +48,7 @@ const c = dich(ngonNgu, {
 });
 ---
 {gon ? (
-  <aside class="lt3-gon" aria-label={c.tieuDe}>
+  <aside class="lt3-gon be-kem-dam" aria-label={c.tieuDe}>
     <span class="lt3-so-nho" aria-hidden="true">3</span>
     <div>
       <p class="lt3-cau"><strong>{t.cauThangBo}</strong></p>
@@ -64,8 +70,8 @@ const c = dich(ngonNgu, {
       </svg>
     </div>
     <div class="lt3-chu">
-      <p class="hieu">{c.hieu}</p>
-      <TieuDe class="lt3-tieu-de">{c.tieuDe}</TieuDe>
+      {!anHieu && <p class="hieu">{c.hieu}</p>}
+      <TieuDe class="lt3-tieu-de">{tieuDe ?? c.tieuDe}</TieuDe>
       <p class="lt3-dc"><BieuTuong ten="ghim" /><span lang="vi">{dc}</span></p>
       <p class="lt3-cau"><BieuTuong ten="cau-thang" /><strong>{t.cauThangBo}</strong></p>
       <p class="lt3-luu-y">{c.luuY}</p>

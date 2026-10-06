@@ -75,7 +75,8 @@ jobs:
   web:
     name: Web · astro check · build · chữ cấm · trình duyệt
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # 7 cỡ màn hình × 21 trang (thu-trinh-duyet) và trạng thái có database (thu-day-du, astro dev).
+    timeout-minutes: 30
     # KHÔNG có web/.env: trang công khai phải đúng và đủ khi chưa nối database (README của web).
     steps:
       - uses: actions/checkout@v5
@@ -105,6 +106,11 @@ jobs:
       - name: Kiểm thử trình duyệt (khách thật mở trang, bấm form)
         working-directory: web
         run: npm run thu-trinh-duyet -- --khong-build   # bước Build ở trên vừa build
+      # Trạng thái CI không tự có: đã nối database (Supabase giả kiem-tra/gia-supabase.mjs) — Facebook,
+      # Maps, thực đơn đã công bố, form hỏi bàn mở, bấm gửi hai lần, database 500, mạng đứt giữa chừng.
+      - name: Kiểm thử trình duyệt khi đã nối database (Supabase giả)
+        working-directory: web
+        run: npm run thu-day-du
       - name: Ảnh chụp khi hỏng
         if: failure()
         uses: actions/upload-artifact@v4

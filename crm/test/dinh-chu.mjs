@@ -48,7 +48,7 @@ const WEB = join(__dirname, '..', '..', 'web');
 
 let parse = null;
 /** Bộ đọc cây của chính Astro (@astrojs/compiler-rs trong web/node_modules). */
-async function napBoDoc() {
+export async function napBoDoc() {
   if (parse) return parse;
   let duong;
   try { duong = createRequire(join(WEB, 'package.json')).resolve('@astrojs/compiler-rs'); }
