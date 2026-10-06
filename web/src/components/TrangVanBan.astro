@@ -16,7 +16,7 @@ interface Props {
 }
 const { hieu, tieuDe } = Astro.props;
 ---
-<section class="mo-dau-trang be-kem">
+<section class="mo-dau-trang be-kem vb-dau">
   <div class="khung">
     <p class="hieu">{hieu}</p>
     <h1>{tieuDe}</h1>
@@ -33,6 +33,11 @@ const { hieu, tieuDe } = Astro.props;
 </section>
 
 <style>
+  /* Nét rosemary của .mo-dau-trang nằm sát mép phải, giữa khối: tiêu đề dài
+     không được chạy đè lên nó (600px tới khoảng 1100px). */
+  @media (min-width: 600px) {
+    .vb-dau h1 { max-width: min(18ch, 100% - clamp(90px, 12vw, 170px) - var(--k-6)); }
+  }
   .vb { padding-block: 0 var(--muc-dem); }
   /* ~68 ký tự một dòng: đủ hẹp để mắt không lạc dòng khi đọc đoạn dài. */
   .vb-than { max-width: 68ch; }

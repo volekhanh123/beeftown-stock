@@ -171,7 +171,7 @@ const t = dich(ngonNgu, {
 });
 ---
 
-<section class="mo-dau-trang be-kem">
+<section class="mo-dau-trang be-kem hb-dau">
   <div class="khung">
     <p class="hieu">Beeftown · {tChung.tang3}</p>
     <h1>{t.tieuDe}</h1>
@@ -539,6 +539,12 @@ const t = dich(ngonNgu, {
 </script>
 
 <style>
+  /* Nét rosemary của .mo-dau-trang nằm sát mép phải, giữa khối. Từ 600px tới
+     khoảng 1100px, dòng .dan 58ch chạy đè lên nó — chừa chỗ cho nét vẽ. */
+  @media (min-width: 600px) {
+    .hb-dau h1 { max-width: min(18ch, 100% - clamp(90px, 12vw, 170px) - var(--k-6)); }
+    .hb-dau .dan { max-width: min(58ch, 100% - clamp(90px, 12vw, 170px) - var(--k-6)); }
+  }
   /* ---- Khối thân: cột thông tin | thẻ ----------------------------------- */
   .hb { padding-block: 0 var(--muc-dem); }
   .hb-luoi {
@@ -657,10 +663,10 @@ const t = dich(ngonNgu, {
   .hb-chua-co-ban { margin: var(--k-3) 0 0; }
 
   /* ---- Chưa mở hỏi bàn trực tuyến ------------------------------------------ */
-  .hb-chua-mo { background: var(--kem-dam); border-color: transparent; border-top: 4px solid var(--do); }
+  .hb-chua-mo { border-top: 4px solid var(--do); }
   .hb-chua-mo-hinh {
     display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
-    background: var(--kem); color: var(--do); margin-bottom: var(--k-4);
+    background: var(--kem-dam); color: var(--do); margin-bottom: var(--k-4);
   }
   .hb-chua-mo-hinh :global(svg) { width: 28px; height: 28px; }
   .hb-chua-mo p { max-width: 56ch; }
@@ -671,9 +677,14 @@ const t = dich(ngonNgu, {
   .hb-tem {
     display: block; width: 104px; height: auto; margin: 0 0 var(--k-4);
   }
+  /* Từ 600px tem nổi ở góc phải, chữ chạy vòng quanh; khối "chưa giữ bàn" là
+     flow-root nên nền của nó không chui xuống dưới tem. */
   @media (min-width: 600px) {
-    .hb-da-nhan { padding-right: calc(var(--k-6) + 120px); }
-    .hb-tem { position: absolute; top: var(--k-5); right: var(--k-5); width: 120px; margin: 0; transform: rotate(-8deg); }
+    .hb-tem {
+      float: right; width: 120px; margin: calc(-1 * var(--k-2)) 0 var(--k-3) var(--k-4);
+      shape-outside: circle(50%); transform: rotate(-8deg);
+    }
+    .hb-chua-giu { display: flow-root; }
   }
   .hb-ma { font-size: 17px; margin: 0 0 var(--k-4); }
   .hb-ma strong {
