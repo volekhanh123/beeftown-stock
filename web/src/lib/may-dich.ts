@@ -95,7 +95,7 @@ The input is a JSON array of objects {"khoa", "vi"}. For every object, translate
 Follow every rule:
 1. Be faithful. Translate what is written. Never add facts, promises, prices, numbers, dates, opening hours, amenities, dish details or claims that are not in the Vietnamese. Never drop a sentence.
 2. Keep exactly the same line breaks: every input line becomes one output line, in the same order. Keep list markers such as "– " at the start of lines.
-3. Keep unchanged: "Beeftown"; the English slogan "Pick it, Grill it, Love it"; the job levels "Hall Crew" and "Master Beef Specialist"; URLs, e-mail addresses, phone numbers, times, numbers and units.
+3. Keep unchanged: "Beeftown"; the English slogan "Pick it. Grill it. Love it."; the job levels "Hall Crew" and "Master Beef Specialist"; URLs, e-mail addresses, phone numbers, times, numbers and units.
 4. Glossary (Vietnamese → English / Korean):
    - vỉ gas, bếp gas → gas grill / 가스 그릴. The restaurant never uses charcoal: never write "charcoal", "숯" or "숯불".
    - quầy thịt → meat counter / 정육 코너

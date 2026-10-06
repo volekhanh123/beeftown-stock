@@ -1,0 +1,45 @@
+---
+/**
+ * BIỂU TƯỢNG NÉT MẢNH — một bộ, một nét
+ *
+ * README gốc: "Không dùng emoji làm biểu tượng — dùng SVG nét mảnh 1.5px cho
+ * thống nhất." Mọi biểu tượng vẽ trên lưới 24×24, nét 1,5 px, đầu tròn, tô bằng
+ * currentColor — nên nằm trên nền nào cũng ăn theo màu chữ của bề mặt đó.
+ *
+ * Biểu tượng đi kèm chữ nên luôn aria-hidden. Chỗ nào chỉ có biểu tượng mà không
+ * có chữ (nút đóng menu…) thì đặt chữ ẩn cạnh nó (.an-chu), không đặt ở đây.
+ */
+export type TenBieuTuong =
+  | 'mui-ten' | 'menu' | 'dong' | 'cong' | 'khay' | 'nhan' | 'vi-gas' | 'cau-thang'
+  | 'nhom' | 'ghim' | 'sao-chep' | 'dien-thoai' | 'tin-nhan' | 'mon-song' | 'co-con'
+  | 'cua' | 'da-chep';
+
+interface Props { ten: TenBieuTuong; class?: string; }
+const { ten, class: lop } = Astro.props;
+
+const NET: Record<TenBieuTuong, string> = {
+  'mui-ten':   'M5 12h14M13 6l6 6-6 6',
+  'menu':      'M4 7h16M4 12h16M4 17h16',
+  'dong':      'M6 6l12 12M18 6 6 18',
+  'cong':      'M12 5v14M5 12h14',
+  // Khay skin-pack: lòng khay, miếng thịt, mép màng.
+  'khay':      'M3 9h18l-1.4 8.4a2 2 0 0 1-2 1.6H6.4a2 2 0 0 1-2-1.6L3 9zM8 13.2c0-1.4 1.7-2.2 3.8-2.2 2.2 0 4.2.7 4.2 2.1 0 1.5-1.9 2.4-4.1 2.4S8 14.7 8 13.2zM3 9c0-1.4 1-2.5 2.4-2.5h13.2C20 6.5 21 7.6 21 9',
+  // Nhãn khay: thẻ có lỗ xỏ và ba dòng chữ.
+  'nhan':      'M4 4.5h10.5L20 10v9.5H4zM14.5 4.5V10H20M7.5 12.5h6M7.5 15.5h9M7.5 9.5h3',
+  // Vỉ gas đặt bàn: mặt vỉ có rãnh, thân bếp, ngọn lửa gas nhỏ.
+  'vi-gas':    'M3.5 9.5h17M6 7v5M10 6.5v6M14 6.5v6M18 7v5M5 12.5h14M7.5 15.5h9l-1 4h-7zM12 14.6c-.7-.6-.7-1.4 0-2 .7.6.7 1.4 0 2z',
+  'cau-thang': 'M3 20h4.5v-4h4.5v-4h4.5V8H21M3 20V16.5M7.5 8 18 3',
+  'nhom':      'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3.5 20c0-3.1 2.5-5.5 5.5-5.5s5.5 2.4 5.5 5.5M16.5 11.5a2.5 2.5 0 1 0 0-5M17 14.6c2.3.3 3.8 2.3 3.8 5',
+  'ghim':      'M12 21s-6.5-5.9-6.5-11a6.5 6.5 0 0 1 13 0c0 5.1-6.5 11-6.5 11zM12 12.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4z',
+  'sao-chep':  'M9.5 9.5h10v10h-10zM15.5 9.5v-4h-11v11h4',
+  'da-chep':   'M5 12.5l4.5 4.5L19 7.5',
+  'dien-thoai':'M7 3.5h2.7l1.4 4.2-2.1 1.4a11.5 11.5 0 0 0 5.9 5.9l1.4-2.1 4.2 1.4V17a2.5 2.5 0 0 1-2.5 2.5A15 15 0 0 1 4.5 6 2.5 2.5 0 0 1 7 3.5z',
+  'tin-nhan':  'M4 5.5h16v10.5H10l-6 4z',
+  'mon-song':  'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7.5V13M12 16.3v.2',
+  'co-con':    'M7 3.5h10l-1.2 6.8a3.9 3.9 0 0 1-7.6 0zM12 14.2v6M8.5 20.5h7',
+  'cua':       'M6 20.5V4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5v16M3.5 20.5h17M14.5 12.2v.6',
+};
+---
+<svg class={lop} viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+     stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"
+     focusable="false"><path d={NET[ten]} /></svg>

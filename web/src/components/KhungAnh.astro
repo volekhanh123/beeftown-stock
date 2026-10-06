@@ -1,0 +1,98 @@
+---
+/**
+ * KHUNG ẢNH CHỜ ẢNH CHỤP THẬT
+ *
+ * Quầy thịt, khay skin-pack, lối lên cầu thang, cửa tầng 3, bàn nướng: những thứ
+ * này chỉ được dùng ẢNH THẬT của Beeftown — không ảnh kho, không ảnh tạo bằng AI
+ * rồi để khách tưởng là quán (brief 06/10/2026). Cho tới ngày chụp, chỗ đó là
+ * một khung có artwork: đúng tỷ lệ của ảnh sau này, nét vẽ cùng màu và cùng nét
+ * với rosemary trang 3, một mảng vân mỡ ở góc (cong-khai.css → .khung-anh).
+ *
+ * Không có chữ nào bên trong ("ảnh đang cập nhật"…): khách không cần biết
+ * chuyện sản xuất. Danh sách ảnh cần chụp nằm ở web/THIET-KE.md.
+ *
+ * Thay bằng ảnh thật: đổi <KhungAnh loai="quay"/> thành <Anh id="quay-…"/>.
+ */
+export type LoaiKhung = 'quay' | 'khay' | 'cau-thang' | 'loi-vao' | 'ban-nuong';
+
+interface Props {
+  loai: LoaiKhung;
+  /** "4 / 3", "4 / 5", "16 / 9"… — tỷ lệ của ảnh chụp sẽ thay vào. */
+  tiLe?: string;
+  nen?: 'kem' | 'toi' | 'do';
+  class?: string;
+}
+const { loai, tiLe = '4 / 3', nen = 'kem', class: lop } = Astro.props;
+const lopNen = nen === 'toi' ? 'tren-toi' : nen === 'do' ? 'tren-do' : '';
+---
+<div class:list={['khung-anh', lopNen, lop]} style={`--ti-le:${tiLe}`} aria-hidden="true">
+  <svg viewBox="0 0 240 180" fill="none" stroke="currentColor" stroke-width="2"
+       stroke-linecap="round" stroke-linejoin="round" focusable="false">
+    {loai === 'quay' && (
+      <g>
+        {/* Quầy kính: mặt quầy, kính nghiêng, ba khay trên kệ, chân quầy. */}
+        <path d="M24 120h192M30 120v40h180v-40M40 120l14-46h132l14 46" />
+        <path d="M58 82h124" opacity=".55" />
+        <path d="M70 160v-26M120 160v-26M170 160v-26" opacity=".45" />
+        <g>
+          <rect x="62" y="94" width="34" height="20" rx="4" />
+          <path d="M68 104c0-3 4-5 9-5s10 1.5 10 4.5-4 5-9.5 5S68 107 68 104z" />
+          <rect x="103" y="94" width="34" height="20" rx="4" />
+          <path d="M109 104c0-3 4-5 9-5s10 1.5 10 4.5-4 5-9.5 5S109 107 109 104z" />
+          <rect x="144" y="94" width="34" height="20" rx="4" />
+          <path d="M150 104c0-3 4-5 9-5s10 1.5 10 4.5-4 5-9.5 5S150 107 150 104z" />
+        </g>
+        <path d="M84 96h8M125 96h8M166 96h8" stroke-width="3" />
+      </g>
+    )}
+    {loai === 'khay' && (
+      <g>
+        {/* Khay skin-pack nhìn từ trên: lòng khay, miếng thịt có vân, nhãn dán góc. */}
+        <rect x="40" y="38" width="160" height="108" rx="14" />
+        <rect x="50" y="48" width="140" height="88" rx="9" opacity=".5" />
+        <path d="M70 92c0-15 18-26 44-26 27 0 54 8 54 26s-22 30-50 30S70 108 70 92z" />
+        <path d="M86 86c10-4 18 4 30-2M96 102c12-5 22 5 38-2M120 78c8 4 16 1 24 6" opacity=".6" />
+        <rect x="132" y="104" width="54" height="34" rx="3" />
+        <path d="M139 113h28M139 120h40M139 127h20" opacity=".7" />
+      </g>
+    )}
+    {loai === 'cau-thang' && (
+      <g>
+        {/* Cầu thang bộ lên tầng 3: bậc, tay vịn, cửa ở chiếu nghỉ trên cùng. */}
+        <path d="M30 156h28v-20h28v-20h28v-20h28V76h28V56h40" />
+        <path d="M30 156v-6M58 136v-6M86 116v-6M114 96v-6M142 76v-6M170 56v-6" opacity=".45" />
+        <path d="M36 128 186 32" />
+        <path d="M44 132v-8M72 114v-8M100 96v-8M128 78v-8M156 60v-8" opacity=".6" />
+        <path d="M188 56V22h24v34" />
+        <path d="M206 40v3" stroke-width="3" />
+      </g>
+    )}
+    {loai === 'loi-vao' && (
+      <g>
+        {/* Mặt tiền phố: dãy cửa tầng trệt, lối cầu thang có mũi tên đi lên, tầng trên. */}
+        <path d="M16 160h208M28 160V34h184v126" />
+        <path d="M28 70h184M28 106h184" opacity=".45" />
+        <path d="M44 48h30v14H44zM94 48h30v14H94zM144 48h30v14h-30z" opacity=".55" />
+        <path d="M44 84h30v14H44zM144 84h30v14h-30z" opacity=".55" />
+        <path d="M100 160v-40h40v40" />
+        <path d="M108 152h8v-8h8v-8h8v-8" />
+        <path d="M120 84v16M113 91l7-7 7 7" stroke-width="2.5" />
+        <path d="M44 160v-34h36v34M164 160v-34h36v34" opacity=".55" />
+      </g>
+    )}
+    {loai === 'ban-nuong' && (
+      <g>
+        {/* Bàn nướng nhìn từ trên: vỉ tròn ở giữa, đĩa thịt, chén sốt, đũa. */}
+        <circle cx="120" cy="90" r="40" />
+        <circle cx="120" cy="90" r="31" opacity=".5" />
+        <path d="M94 76h52M90 90h60M94 104h52" opacity=".6" />
+        <path d="M108 84c0-3 4-5 9-5s10 1.4 10 4.2-4 4.8-9.5 4.8-9.5-1.2-9.5-4z" />
+        <circle cx="54" cy="58" r="16" /><circle cx="54" cy="58" r="10" opacity=".5" />
+        <circle cx="188" cy="62" r="11" /><circle cx="196" cy="110" r="11" />
+        <circle cx="48" cy="122" r="11" />
+        <path d="M172 136l34-10M174 142l34-10" />
+        <path d="M70 150l40-6M72 156l40-6" />
+      </g>
+    )}
+  </svg>
+</div>

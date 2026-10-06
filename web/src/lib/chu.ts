@@ -25,8 +25,10 @@ import type { NgonNgu } from './noi-dung';
 
 export const THUONG_HIEU = {
   ten: 'Beeftown',
-  // Khẩu hiệu tiếng Anh, giữ nguyên ở mọi bản ngôn ngữ.
-  khauHieu: 'Pick it, Grill it, Love it',
+  // Khẩu hiệu tiếng Anh, giữ nguyên ở mọi bản ngôn ngữ. Cách viết chuẩn trên web
+  // theo brief 06/10/2026: ba câu, dấu chấm. (Logo gốc vẫn in "PICK IT – GRILL
+  // IT – LOVE IT" — đó là nét chữ của logo, không gõ lại.)
+  khauHieu: 'Pick it. Grill it. Love it.',
   // "Tên ngành hàng đã chốt" — Brand Overview mục 2.
   descriptor: 'Beef Specialty Restaurant',
 } as const;
@@ -46,6 +48,20 @@ export const PHAP_NHAN = {
   maSoThue: '0319712805',
   diaChi: 'Tầng 3, 11-13-15-17-19-21 Hàm Nghi, Phường Sài Gòn, TP. Hồ Chí Minh',
 } as const;
+
+/**
+ * ĐỊA CHỈ NHÀ HÀNG — Khánh chốt 06/10/2026: hiện cố định trên trang công khai,
+ * kể cả khi chưa nối database. Khóa dia_chi_hien_thi của cổng nội dung (nếu được
+ * công bố) thay cho chuỗi này.
+ *
+ * Giữ tiếng Việt ở cả ba thứ tiếng (lang="vi" khi in ra): đây là chữ khách đưa
+ * cho tài xế và gõ vào bản đồ. Phần cần dịch — "Tầng 3", cầu thang bộ — nằm ở
+ * khóa tang3 / cauThangBo bên dưới.
+ *
+ * Nhà hàng chiếm trọn tầng 3, khách lên bằng CẦU THANG BỘ, KHÔNG có thang máy
+ * cho khách. Câu đó phải dễ thấy TRƯỚC khi khách gửi yêu cầu hỏi bàn.
+ */
+export const DIA_CHI_NHA_HANG = 'Tầng 3, 11-21 Hàm Nghi, phường Sài Gòn, TP.HCM';
 
 /**
  * Mọi ngôn ngữ của trang công khai. Thứ tự này cũng là thứ tự cột của
@@ -69,12 +85,13 @@ const VI = {
   // --- Phần nền, luôn hiện --------------------------------------------------
   // Dùng trong tiêu đề trang khi cổng nội dung chưa có tiêu đề đã duyệt.
   nganhHang: 'Nhà hàng chuyên bò',
-  diaChiNgan: 'Quận 1, TP.HCM',
-  moTaNgan: 'Nhà hàng chuyên bò tại Quận 1, TP.HCM.',
+  diaChiNgan: '11-21 Hàm Nghi, TP.HCM',
+  moTaNgan: 'Nhà hàng chuyên bò ở tầng 3, 11-21 Hàm Nghi, TP.HCM. Chọn bò tại quầy, cùng cả bàn nướng và thưởng thức.',
+  // Câu chính của trang chủ (h1) — brief 06/10/2026.
+  cauChinh: 'Chọn phần bò bạn thích, rồi cùng cả bàn thưởng thức.',
   gioiThieu:
-    'Beeftown đang chuẩn bị tại khu Cầu Ông Lãnh. Chọn bò tại quầy, nói khẩu vị ' +
-    'để nhân viên tư vấn, rồi cùng cả bàn thưởng thức. Tụi mình sẽ kể dần câu ' +
-    'chuyện trong bếp và cập nhật lịch mở tại đây.',
+    'Bò được cắt và đóng khay sẵn tại quầy. Bạn nhìn tận mắt, xem nhãn, nhờ ' +
+    'nhân viên tư vấn — rồi cả bàn cùng nướng trên vỉ gas đặt tại bàn.',
 
   // Bản dự phòng khi khóa dong_trang_thai chưa được công bố.
   trangThaiMacDinh:
@@ -90,7 +107,31 @@ const VI = {
   chiDuong: 'Chỉ đường',
   goiNhaHang: 'Gọi nhà hàng',
   xemMenu: 'Xem thực đơn',
-  datBan: 'Đặt bàn',
+  khamPhaThucDon: 'Khám phá thực đơn',
+  // Nút và mục điều hướng tới trang /dat-ban. "Hỏi bàn" chứ không "Đặt bàn":
+  // gửi yêu cầu chưa phải là có bàn — nhà hàng kiểm tra rồi gọi xác nhận.
+  datBan: 'Hỏi bàn',
+
+  // --- Điều hướng ------------------------------------------------------------
+  dieuHuongChinh: 'Điều hướng chính',
+  traiNghiem: 'Trải nghiệm',
+  thucDon: 'Thực đơn',
+  denBeeftown: 'Đến Beeftown',
+  moMenu: 'Danh mục',
+  dongMenu: 'Đóng danh mục',
+  veTrangChu: 'Beeftown — về trang chủ',
+  thongTin: 'Thông tin',
+  xoaDuLieu: 'Xóa dữ liệu',
+
+  // --- Đường đến ------------------------------------------------------------
+  tang3: 'Tầng 3',
+  cauThangBo: 'Khách lên tầng 3 bằng cầu thang bộ — không có thang máy cho khách.',
+  xemDuongLen: 'Xem đường lên tầng 3',
+  saoChepDiaChi: 'Sao chép địa chỉ',
+  daSaoChep: 'Đã sao chép địa chỉ',
+
+  // Dòng nhỏ đặt trên ảnh tạo bằng công cụ AI (lib/anh.ts).
+  anhMinhHoa: 'Ảnh minh họa',
 
   // --- Tuyển dụng -----------------------------------------------------------
   tuyenDung: 'Tuyển dụng',
@@ -107,10 +148,12 @@ const VI = {
     'Beeftown qua Facebook là nhanh nhất.',
 
   // --- Đặt bàn --------------------------------------------------------------
-  datBanChuaMo: 'Beeftown chưa mở đặt bàn trực tuyến',
+  datBanChuaMo: 'Beeftown chưa mở hỏi bàn trực tuyến',
+  // Không hứa thời gian trả lời — brief 06/10/2026 cấm. Phải còn chữ "Facebook":
+  // trinh-duyet.mjs kiểm trang hỏi bàn chỉ đường sang đó khi form đóng.
   datBanChuaMoGiaiThich:
-    'Nhà hàng đang hoàn thiện và giờ phục vụ chưa được chốt. Để giữ chỗ, bạn ' +
-    'nhắn cho Beeftown qua Facebook — nhà hàng trả lời trong ngày.',
+    'Nhà hàng đang hoàn thiện và giờ phục vụ chưa được chốt. Muốn hỏi bàn, bạn ' +
+    'nhắn cho Beeftown qua Facebook — nhà hàng sẽ kiểm tra và liên hệ lại với bạn.',
 
   // --- Chung ----------------------------------------------------------------
   quyenRiengTu: 'Quyền riêng tư',
@@ -131,12 +174,12 @@ type Bo = Record<keyof typeof VI, string>;
 
 const EN: Bo = {
   nganhHang: THUONG_HIEU.descriptor,
-  diaChiNgan: 'District 1, Ho Chi Minh City',
-  moTaNgan: 'A beef specialty restaurant in District 1, Ho Chi Minh City.',
+  diaChiNgan: '11-21 Hàm Nghi, Ho Chi Minh City',
+  moTaNgan: 'A beef specialty restaurant on Floor 3, 11-21 Hàm Nghi, Ho Chi Minh City. Pick your beef at the counter, then grill and share it at your table.',
+  cauChinh: 'Pick the cut you like, then enjoy it with the whole table.',
   gioiThieu:
-    'Beeftown is getting ready near Cau Ong Lanh. Pick your beef at the counter, ' +
-    'tell us how you like it, and share the table. We will share what happens in ' +
-    'the kitchen and post our opening schedule here.',
+    'Our beef is cut and packed in trays at the counter. See it for yourself, read ' +
+    'the label, ask our staff — then grill it together on the gas grill at your table.',
 
   trangThaiMacDinh:
     'Beeftown is getting ready to welcome you. Opening hours will be posted here.',
@@ -150,7 +193,26 @@ const EN: Bo = {
   chiDuong: 'Directions',
   goiNhaHang: 'Call the restaurant',
   xemMenu: 'View the menu',
-  datBan: 'Book a table',
+  khamPhaThucDon: 'Explore the menu',
+  datBan: 'Ask for a table',
+
+  dieuHuongChinh: 'Main navigation',
+  traiNghiem: 'Experience',
+  thucDon: 'Menu',
+  denBeeftown: 'Visit',
+  moMenu: 'Pages',
+  dongMenu: 'Close pages',
+  veTrangChu: 'Beeftown — home',
+  thongTin: 'Information',
+  xoaDuLieu: 'Data deletion',
+
+  tang3: 'Floor 3',
+  cauThangBo: 'Guests reach Floor 3 by the stairs — there is no guest lift.',
+  xemDuongLen: 'How to get to Floor 3',
+  saoChepDiaChi: 'Copy address',
+  daSaoChep: 'Address copied',
+
+  anhMinhHoa: 'Illustrative image',
 
   tuyenDung: 'Careers',
   tuyenDungTieuDe: 'Beeftown is hiring',
@@ -165,10 +227,10 @@ const EN: Bo = {
     'Online applications are not open yet. For now, the fastest way is to message ' +
     'Beeftown directly on Facebook.',
 
-  datBanChuaMo: 'Online booking is not open yet',
+  datBanChuaMo: 'Online table requests are not open yet',
   datBanChuaMoGiaiThich:
     'The restaurant is still being fitted out and our hours are not confirmed. ' +
-    'To hold a table, message Beeftown on Facebook — we reply the same day.',
+    'To ask about a table, message Beeftown on Facebook — we will check and get back to you.',
 
   quyenRiengTu: 'Privacy',
   chonNgonNgu: 'Language',
@@ -177,17 +239,16 @@ const EN: Bo = {
   boQuaToiNoiDung: 'Skip to main content',
 };
 
-// Tiếng Hàn: văn lịch sự 해요체 từ đầu đến cuối. "Quận 1, TP.HCM" viết theo
-// cách người Hàn ở Sài Gòn vẫn gọi (호치민시 1군); tên khu Cầu Ông Lãnh để
-// nguyên chữ Việt vì đó là chữ khách sẽ thấy trên biển đường và trên bản đồ.
+// Tiếng Hàn: văn lịch sự 해요체 từ đầu đến cuối. Tên đường Hàm Nghi để nguyên
+// chữ Việt vì đó là chữ khách sẽ thấy trên biển đường và trên bản đồ.
 const KO: Bo = {
   nganhHang: '소고기 전문점',
-  diaChiNgan: '호치민시 1군',
-  moTaNgan: '호치민시 1군에 있는 소고기 전문점이에요.',
+  diaChiNgan: '호치민시 Hàm Nghi 11-21',
+  moTaNgan: '호치민시 Hàm Nghi 11-21, 3층에 있는 소고기 전문점이에요. 정육 코너에서 고기를 고르고 테이블에서 함께 구워 드세요.',
+  cauChinh: '좋아하는 부위를 고르고, 함께 온 사람들과 즐겨 보세요.',
   gioiThieu:
-    'Beeftown은 Cầu Ông Lãnh 지역에서 오픈을 준비하고 있어요. 정육 코너에서 소고기를 ' +
-    '고르고 원하시는 입맛을 말씀해 주시면 직원이 추천해 드려요. 그리고 테이블에 ' +
-    '둘러앉아 다 함께 즐겨 보세요. 주방 이야기와 오픈 일정은 이곳에서 차근차근 전해 드릴게요.',
+    '소고기는 정육 코너에서 손질해 트레이에 담아 두었어요. 직접 보고, 라벨을 확인하고, ' +
+    '직원에게 추천을 받은 뒤 테이블 가스 그릴에서 다 함께 구워 드세요.',
 
   trangThaiMacDinh:
     'Beeftown이 손님을 맞이할 준비를 하고 있어요. 오픈 일정은 이곳에서 알려 드릴게요.',
@@ -201,7 +262,26 @@ const KO: Bo = {
   chiDuong: '길찾기',
   goiNhaHang: '매장에 전화하기',
   xemMenu: '메뉴 보기',
-  datBan: '예약하기',
+  khamPhaThucDon: '메뉴 둘러보기',
+  datBan: '테이블 문의',
+
+  dieuHuongChinh: '주요 메뉴',
+  traiNghiem: '이용 방법',
+  thucDon: '메뉴',
+  denBeeftown: '오시는 길',
+  moMenu: '전체 메뉴',
+  dongMenu: '전체 메뉴 닫기',
+  veTrangChu: 'Beeftown 홈으로',
+  thongTin: '안내',
+  xoaDuLieu: '데이터 삭제',
+
+  tang3: '3층',
+  cauThangBo: '3층까지는 계단으로 올라오셔야 해요. 손님용 엘리베이터는 없어요.',
+  xemDuongLen: '3층 오시는 길 보기',
+  saoChepDiaChi: '주소 복사',
+  daSaoChep: '주소를 복사했어요',
+
+  anhMinhHoa: '연출 이미지',
 
   tuyenDung: '채용',
   tuyenDungTieuDe: 'Beeftown에서 함께할 분을 찾고 있어요',
@@ -216,10 +296,10 @@ const KO: Bo = {
     '온라인 지원 창구는 아직 열리지 않았어요. 그동안은 Facebook으로 ' +
     'Beeftown에 직접 메시지를 보내 주시는 게 빨라요.',
 
-  datBanChuaMo: 'Beeftown은 아직 온라인 예약을 받지 않아요',
+  datBanChuaMo: 'Beeftown은 아직 온라인 테이블 문의를 받지 않아요',
   datBanChuaMoGiaiThich:
-    '매장 준비를 마무리하고 있고 영업시간도 아직 정해지지 않았어요. 예약을 원하시면 ' +
-    'Facebook으로 Beeftown에 메시지를 보내 주세요. 당일 안에 답변드려요.',
+    '매장 준비를 마무리하고 있고 영업시간도 아직 정해지지 않았어요. 테이블 문의는 ' +
+    'Facebook으로 Beeftown에 메시지를 보내 주세요. 확인한 뒤 연락드릴게요.',
 
   quyenRiengTu: '개인정보 처리방침',
   chonNgonNgu: '언어',
@@ -276,6 +356,8 @@ export function dich<B extends Record<string, BaThuTieng<unknown>>>(
  */
 export const CAP_DUONG_DAN: ReadonlyArray<readonly [vi: string, en: string, ko: string]> = [
   ['/',               '/en',         '/ko'],
+  ['/thuc-don',       '/en/menu',    '/ko/menu'],
+  ['/den-beeftown',   '/en/visit',   '/ko/visit'],
   ['/tuyen-dung',     '/en/jobs',    '/ko/jobs'],
   ['/dat-ban',        '/en/book',    '/ko/book'],
   ['/quyen-rieng-tu', '/en/privacy', '/ko/privacy'],
