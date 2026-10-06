@@ -363,3 +363,27 @@ export function cauLoiDatabase(thongDiep: string, ngonNgu: NgonNgu, cauChung: st
   if (ngonNgu === 'vi') return CO_DAU.test(thongDiep) ? thongDiep : cauChung;
   return LOI_DATABASE.find(([mau]) => mau.test(thongDiep))?.[1][ngonNgu] ?? cauChung;
 }
+
+/**
+ * Lỗi supabase-js trả về có đúng là DATABASE trả lời không.
+ *
+ * supabase-js KHÔNG ném khi lời gọi không tới nơi hay không về được: nó trả
+ * error như mọi lỗi khác. Với postgrest-js 2.116 (PostgrestBuilder, nhánh
+ * catch của fetch và processResponse):
+ *   · fetch hỏng — mất mạng, đứt sau khi đã gửi, bị hủy, hết giờ — luôn là
+ *     code '' và message 'TypeError: fetch failed' / 'AbortError: …';
+ *   · cổng 502 / 504 / 520 trả trang HTML, hay thân 200 bị cắt — chỉ có
+ *     message (chính trang HTML đó), không có code;
+ *   · cổng API trả JSON của riêng nó (503 { message }) — cũng không có code.
+ * Những lúc đó database CÓ THỂ đã ghi xong rồi câu trả lời mới mất: không
+ * được nói "chưa ghi nhận". Lỗi thật của database / PostgREST luôn có mã —
+ * SQLSTATE 5 ký tự có ít nhất một chữ số (P0001, 23505, 22P02, XX000) hoặc
+ * PGRST + 3 số — và exception nghĩa là cả giao dịch đã hủy, nên lúc đó "chưa
+ * ghi nhận" mới đúng. Mã nào khác ("EPIPE", "ERROR" của một proxy, PGRSTX00
+ * — lỗi thư viện kết nối, không biết giao dịch đi tới đâu) đều là KHÔNG CHẮC:
+ * nói "không chắc" khi thật ra chưa ghi chỉ làm khách nhắn hỏi thêm; nói
+ * "chưa ghi" khi thật ra đã ghi thì nhà hàng nhận hai bản.
+ */
+export function laLoiDatabase(error: { code?: unknown } | null | undefined): boolean {
+  return typeof error?.code === 'string' && /^(?:(?=[0-9A-Z]*\d)[0-9A-Z]{5}|PGRST\d{3})$/.test(error.code);
+}
