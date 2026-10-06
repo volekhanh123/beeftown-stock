@@ -14,7 +14,7 @@
  * khi link Google Maps đã công bố (LenTang3); liên hệ chỉ hiện mục đã công bố.
  */
 import { chu, dich, duongDanTuongUng } from '../lib/chu';
-import { coKenhHoiBan, diaChi, lienHe } from '../lib/trang-cong-khai';
+import { coKenhHoiBan, cumDiaChi, diaChi, lienHe } from '../lib/trang-cong-khai';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import BieuTuong from './BieuTuong.astro';
 import KhungAnh from './KhungAnh.astro';
@@ -25,9 +25,8 @@ const { ngonNgu, noiDung: nd } = Astro.props;
 const t = chu(ngonNgu);
 const lh = lienHe(nd);
 const dc = diaChi(nd);
-// Địa chỉ xuống dòng ở dấu phẩy, không gãy giữa "phường Sài / Gòn". Chữ giữ nguyên (không
-// dấu cách không ngắt): kiểm thử và người đọc màn hình thấy đúng chuỗi địa chỉ.
-const phanDiaChi = dc.split(', ');
+// Địa chỉ xuống dòng ở dấu phẩy, không gãy giữa "phường Sài / Gòn" (cumDiaChi: chữ giữ
+// nguyên văn, cụm dài thì để tự xuống dòng — không tràn ngang trên điện thoại).
 const email = lh.thu ? lh.thu.replace(/^mailto:/, '') : null;
 const coLienHe = !!(lh.facebook || lh.goi || email);
 const coKenh = coKenhHoiBan(nd);
@@ -116,7 +115,7 @@ const c = dich(ngonNgu, {
           <span class="db-so" aria-hidden="true">1</span>
           <div>
             <h3>{c.b1Truoc}<span lang="vi" class="lien">{c.duong}</span>{c.b1Sau}</h3>
-            <p>{c.b1Chu} <span lang="vi">{phanDiaChi.map((phan, i) => <>{i > 0 && ', '}<span class="lien">{phan}</span></>)}</span></p>
+            <p>{c.b1Chu} <span lang="vi">{cumDiaChi(dc).map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></p>
           </div>
         </div>
       </li>

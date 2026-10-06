@@ -17,7 +17,7 @@
 import { THUONG_HIEU, chu, duongDanTuongUng } from '../lib/chu';
 import { dinhDangNgay, homNayVn } from '../lib/noi-dung';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
-import { diaChiSauTang, nutMoDau, lienHe } from '../lib/trang-cong-khai';
+import { cumDiaChi, diaChiSauTang, nutMoDau, lienHe } from '../lib/trang-cong-khai';
 import { coAnh } from '../lib/anh';
 import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
@@ -36,7 +36,7 @@ const [pick, grill, love] = THUONG_HIEU.khauHieu.split(/(?<=\.)\s+/);
 // Chữ giữ nguyên (không \u00a0 trong cauThangBo — test đọc nguyên câu).
 const cauThang = t.cauThangBo.split(/(?<=[—.])\s+/u);
 // Địa chỉ: xuống dòng sau dấu phẩy, không giữa "Hàm / Nghi" (vế dài để nguyên, không tràn).
-const veDiaChi = diaChiSauTang(nd).replace(/,\s*phường Sài Gòn/iu, '').split(/(?<=,)\s+/u);
+const cumDc = cumDiaChi(diaChiSauTang(nd).replace(/,\s*phường Sài Gòn/iu, ''));
 ---
 <section class="kmd be-kem" aria-labelledby="kmd-tieu-de">
   <div class="kmd-tam nen-van-mo" aria-hidden="true"></div>
@@ -55,7 +55,7 @@ const veDiaChi = diaChiSauTang(nd).replace(/,\s*phường Sài Gòn/iu, '').spli
 
       <ul class="kmd-thong-tin">
         <li>
-          <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="cau-thang" /><span><strong>{t.tang3}</strong> · <span lang="vi">{veDiaChi.map((ve, i) => <>{i > 0 && ' '}{ve.length <= 28 ? <span class="kmd-lien">{ve}</span> : ve}</>)}</span></span></a>
+          <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="cau-thang" /><span><strong>{t.tang3}</strong> · <span lang="vi">{cumDc.map(cum => <><span class:list={{ 'kmd-lien': cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></span></a>
         </li>
         {/* Biểu tượng cầu thang có aria-hidden: câu này mới là thứ người đọc màn hình nghe được
             (kế hoạch đã duyệt: địa chỉ tầng 3 luôn đi kèm "cầu thang bộ, không có thang máy"). */}

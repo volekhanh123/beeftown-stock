@@ -180,11 +180,13 @@ await nhom('4 · ĐỊA CHỈ CỐ ĐỊNH, BẢN CÔNG BỐ THAY VÀO KHI CÓ',
 
   // In địa chỉ theo cụm: "phường Sài / Gòn", "Hàm / Nghi" không gãy giữa cụm; cụm dài thì để tự xuống dòng.
   const cum = cumDiaChi(DIA_CHI_NHA_HANG);
-  ok('cumDiaChi: địa chỉ cố định → 4 cụm, cụm nào cũng giữ nguyên một dòng',
-     JSON.stringify(cum.map(c => c.chu)) === JSON.stringify(['Tầng 3', '11-21 Hàm Nghi', 'phường Sài Gòn', 'TP.HCM']) && cum.every(c => c.giu),
+  ok('cumDiaChi: địa chỉ cố định → 4 cụm, dấu phẩy đi cùng cụm, cụm nào cũng giữ nguyên một dòng',
+     JSON.stringify(cum.map(c => c.chu)) === JSON.stringify(['Tầng 3,', '11-21 Hàm Nghi,', 'phường Sài Gòn,', 'TP.HCM']) && cum.every(c => c.giu),
      JSON.stringify(cum));
-  ok('cumDiaChi: ghép lại bằng ", " ra đúng địa chỉ (chữ trên trang không đổi)',
-     cum.map(c => c.chu).join(', ') === DIA_CHI_NHA_HANG);
+  for (const dc of [DIA_CHI_NHA_HANG, 'Tầng 3,11-21 Hàm Nghi,, TP.HCM', '  Tầng 3 ,  Hàm Nghi  ', 'Một dòng không dấu phẩy']) {
+    ok(`cumDiaChi(${JSON.stringify(dc)}): ghép lại ra ĐÚNG NGUYÊN VĂN (chữ trên trang không đổi)`,
+       cumDiaChi(dc).map(c => c.chu + c.cach).join('') === dc, JSON.stringify(cumDiaChi(dc)));
+  }
   const dai = cumDiaChi('Tầng 3 tòa nhà số 11-13-15-17-19-21 đường Hàm Nghi phường Sài Gòn');
   ok('cumDiaChi: một cụm dài (bản công bố không dấu phẩy) → không giữ nguyên dòng, kẻo tràn ngang màn hẹp',
      dai.length === 1 && dai[0].giu === false, JSON.stringify(dai));

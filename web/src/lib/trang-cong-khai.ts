@@ -77,11 +77,15 @@ export function diaChi(nd: NoiDung): string {
 
 /**
  * Địa chỉ tách theo dấu phẩy, để in từng cụm không gãy giữa chừng ("phường Sài / Gòn",
- * "Hàm / Nghi"). Cụm dài quá (bản công bố không có dấu phẩy) thì để trình duyệt tự xuống
- * dòng — giữ nguyên một cụm dài trên màn hẹp sẽ tràn ngang.
+ * "Hàm / Nghi"). Mỗi cụm mang theo dấu phẩy của nó (chu) và khoảng trắng đứng sau (cach):
+ * ghép lại là ĐÚNG NGUYÊN VĂN địa chỉ, như diaChi() và JSON-LD in. Cụm dài quá (bản công
+ * bố không có dấu phẩy) thì giu = false — để trình duyệt tự xuống dòng, không tràn ngang.
+ * Mọi chỗ in địa chỉ theo cụm dùng chung hàm này (một ngưỡng, một cách tách).
  */
-export function cumDiaChi(dc: string): { chu: string; giu: boolean }[] {
-  return dc.split(/,\s*/u).filter(Boolean).map(chu => ({ chu, giu: chu.length <= 24 }));
+export function cumDiaChi(dc: string): { chu: string; cach: string; giu: boolean }[] {
+  return [...dc.matchAll(/([^,]*,?)(\s*)/gu)]
+    .filter(m => m[0] !== '')
+    .map(m => ({ chu: m[1], cach: m[2], giu: m[1].length <= 25 }));
 }
 
 /**

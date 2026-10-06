@@ -13,7 +13,7 @@
  */
 import { chu, dich, duongDanTuongUng } from '../lib/chu';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
-import { coKenhHoiBan, diaChi, formHoiBanMo, lienHe } from '../lib/trang-cong-khai';
+import { coKenhHoiBan, cumDiaChi, diaChi, formHoiBanMo, lienHe } from '../lib/trang-cong-khai';
 import BieuTuong from './BieuTuong.astro';
 
 interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
@@ -25,7 +25,7 @@ const coKenhNhan = !!(lh.facebook || lh.goi || lh.thu);
 // Địa chỉ xuống dòng giữa các vế (sau dấu phẩy), không giữa "Sài / Gòn": mỗi vế ngắn là
 // một cụm không ngắt. Vế dài (địa chỉ công bố gõ không dấu phẩy) để nguyên — không tràn
 // màn hình hẹp. Chữ không đổi: không chèn \u00a0 (test đọc nguyên địa chỉ).
-const veDiaChi = diaChi(nd).split(/(?<=,)\s+/u);
+const cumDc = cumDiaChi(diaChi(nd));
 // "— không có thang máy…" không mở đầu một dòng: từ đứng trước dấu gạch dính với dấu gạch.
 const gachCauThang = /^(.*\s)(\S+ —)(\s.*)$/u.exec(tChung.cauThangBo);
 const t = dich(ngonNgu, {
@@ -71,15 +71,15 @@ const t = dich(ngonNgu, {
   },
   // Form đóng, có kênh nhắn (trang Hỏi bàn chỉ khách sang kênh đó).
   d5Nhan: {
-    vi: 'Bạn nhắn cho Beeftown ngày, giờ và số người. Nhà hàng kiểm tra rồi liên hệ để xác nhận — bàn chỉ được giữ sau khi nhà hàng xác nhận với bạn.',
-    en: 'Message Beeftown with the date, time and number of people. We will check and get back to you to confirm — a table is only held once we have confirmed it with you.',
-    ko: '날짜, 시간, 인원을 Beeftown에 메시지로 보내 주세요. 매장에서 확인한 뒤 연락드릴게요. 자리는 매장에서 확인해 드린 뒤에만 잡혀요.',
+    vi: 'Bạn báo cho Beeftown ngày, giờ và số người. Nhà hàng kiểm tra rồi liên hệ để xác nhận — bàn chỉ được giữ sau khi nhà hàng xác nhận với bạn.',
+    en: 'Tell Beeftown the date, time and number of people. We will check and get back to you to confirm — a table is only held once we have confirmed it with you.',
+    ko: '날짜, 시간, 인원을 Beeftown에 알려 주세요. 매장에서 확인한 뒤 연락드릴게요. 자리는 매장에서 확인해 드린 뒤에만 잡혀요.',
   },
   h6: { vi: 'Đi nhóm đông thì sao?', en: 'What about larger groups?', ko: '단체로 가도 되나요?' },
   d6: {
-    vi: 'Nhóm từ 9 người trở lên, bạn nhắn cho Beeftown để nhà hàng sắp xếp riêng.',
-    en: 'For groups of 9 or more, message us and we will arrange it with you.',
-    ko: '9명 이상 단체는 Beeftown에 메시지를 보내 주세요. 매장에서 따로 조율해 드려요.',
+    vi: 'Nhóm từ 9 người trở lên, bạn liên hệ thẳng với Beeftown để nhà hàng sắp xếp riêng.',
+    en: 'For groups of 9 or more, contact us directly and we will arrange it with you.',
+    ko: '9명 이상 단체는 Beeftown에 직접 연락해 주세요. 매장에서 따로 조율해 드려요.',
   },
   h7: { vi: 'Trong bữa có chọn thêm bò được không?', en: 'Can I pick more beef during the meal?', ko: '식사 중에 고기를 더 고를 수 있나요?' },
   d7: {
@@ -112,7 +112,7 @@ const t = dich(ngonNgu, {
       <details>
         <summary>{t.h4}<BieuTuong ten="cong" /></summary>
         <div class="tra-loi">
-          <p>{t.d4a} <span lang="vi">{veDiaChi.map((ve, i) => <>{i > 0 && ' '}{ve.length <= 28 ? <span class="lien">{ve}</span> : ve}</>)}</span>. {gachCauThang ? <>{gachCauThang[1]}<span class="lien">{gachCauThang[2]}</span>{gachCauThang[3]}</> : tChung.cauThangBo}</p>
+          <p>{t.d4a} <span lang="vi">{cumDc.map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span>. {gachCauThang ? <>{gachCauThang[1]}<span class="lien">{gachCauThang[2]}</span>{gachCauThang[3]}</> : tChung.cauThangBo}</p>
           <p>{t.d4b}</p>
           <p><a class="lien-ket" href={duongDanTuongUng('/den-beeftown', ngonNgu)}>{tChung.xemDuongLen}<BieuTuong ten="mui-ten" /></a></p>
         </div>

@@ -52,7 +52,7 @@ const c = dich(ngonNgu, {
     <span class="lt3-so-nho" aria-hidden="true">3</span>
     <div>
       <p class="lt3-cau"><strong>{t.cauThangBo}</strong></p>
-      <p class="lt3-dc"><span lang="vi">{cumDiaChi(dc).map((cum, i) => <>{i > 0 && ', '}<span class:list={{ lien: cum.giu }}>{cum.chu}</span></>)}</span></p>
+      <p class="lt3-dc"><span lang="vi">{cumDiaChi(dc).map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></p>
       <div class="lt3-hang">
         {lh.maps && <a class="lien-ket" href={lh.maps} rel="noopener">{t.chiDuong}<BieuTuong ten="mui-ten" /></a>}
         {!khongLinkDuongDen && <a class="lien-ket" href={duongDanTuongUng('/den-beeftown', ngonNgu)}>{t.xemDuongLen}<BieuTuong ten="mui-ten" /></a>}
@@ -72,7 +72,7 @@ const c = dich(ngonNgu, {
     <div class="lt3-chu">
       {!anHieu && <p class="hieu">{c.hieu}</p>}
       <TieuDe class="lt3-tieu-de">{tieuDe ?? c.tieuDe}</TieuDe>
-      <p class="lt3-dc"><BieuTuong ten="ghim" /><span lang="vi">{cumDiaChi(dc).map((cum, i) => <>{i > 0 && ', '}<span class:list={{ lien: cum.giu }}>{cum.chu}</span></>)}</span></p>
+      <p class="lt3-dc"><BieuTuong ten="ghim" /><span lang="vi">{cumDiaChi(dc).map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></p>
       <p class="lt3-cau"><BieuTuong ten="cau-thang" /><strong>{t.cauThangBo}</strong></p>
       <p class="lt3-luu-y">{c.luuY}</p>
       <div class="hang-nut">
