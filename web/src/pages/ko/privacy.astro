@@ -4,18 +4,16 @@
    là một cam kết pháp lý mà bản gốc không có. Sửa bản tiếng Việt thì sửa cả
    ở đây và ở /en/privacy. */
 import Trang from '../../layouts/Trang.astro';
+import TrangVanBan from '../../components/TrangVanBan.astro';
 import { docNoiDung } from '../../lib/noi-dung';
 const nd = await docNoiDung('ko');
 ---
 <Trang ngonNgu="ko" noiDung={nd} duongDan="/ko/privacy"
        tieuDe="개인정보 처리방침 — Beeftown"
        moTa="Beeftown이 개인정보를 어떻게 수집하고 이용하며 보관하는지 안내해요.">
-  <section class="muc" style="padding-top:20px">
-    <div class="khung" style="max-width:68ch">
-      <p class="hieu">개인정보 처리방침</p>
-      <h1 style="font-size:clamp(30px,5vw,48px)">Beeftown이 개인정보를 다루는 방법</h1>
+  <TrangVanBan hieu="개인정보 처리방침" tieuDe="Beeftown이 개인정보를 다루는 방법">
 
-      <h2 style="font-size:24px; margin-top:40px">수집하는 정보</h2>
+      <h2>수집하는 정보</h2>
       <p>예약 요청이나 입사 지원서를 보내실 때 Beeftown은 이름, 전화번호, 직접
         입력하신 정보, 그리고 <strong>해당 요청을 보낸 IP 주소</strong>를
         저장해요. IP 주소는 스팸을 막고 동의 항목에 체크하셨다는 증거로 쓰이며,
@@ -28,7 +26,7 @@ const nd = await docNoiDung('ko');
         저장돼요. Supabase 외에 다른 업체나 기관은 이 데이터를 읽을 수 없어요.
         다만 Messenger로 보내신 메시지는 Meta를 거쳐 전달돼요(아래 내용 참고).</p>
 
-      <h2 style="font-size:24px; margin-top:34px">Messenger로 Beeftown에 메시지를 보내실 때</h2>
+      <h2>Messenger로 Beeftown에 메시지를 보내실 때</h2>
       <p>Beeftown Facebook 페이지로 보내신 메시지는 Meta의 서비스인 Messenger를
         거쳐 전달되며, Meta는 해당 메시지를 Meta의 개인정보 처리방침에 따라
         처리해요. Beeftown은 Messenger에서 자동 응답 도우미를 사용해 예약 요청을
@@ -43,14 +41,14 @@ const nd = await docNoiDung('ko');
         광고를 보내지 않아요.</p>
       <p>데이터 삭제 방법은 <a href="/ko/data-deletion">데이터 삭제 안내</a>를 확인해 주세요.</p>
 
-      <h2 style="font-size:24px; margin-top:34px">이용 목적</h2>
+      <h2>이용 목적</h2>
       <p>예약 정보는 매장에서 전화로 확인해 드리는 데 쓰여요. 입사 지원서는
         연락드려 만나 뵐 일정을 잡는 데 쓰여요. 메뉴나 새로운 행사를 소개하는
         소식은 <strong>직접 동의란에 체크하신</strong> 경우에만 보내 드려요. 이
         체크란은 절대 미리 체크되어 있지 않으며, 체크하지 않으셔도 예약은 평소처럼
         하실 수 있어요.</p>
 
-      <h2 style="font-size:24px; margin-top:34px">보관 기간</h2>
+      <h2>보관 기간</h2>
       <p>입사 지원서는 제출일로부터 <strong>6개월</strong> 동안 보관하며, 그 후
         이름, 전화번호, 이메일, IP 주소, 이력서 파일은 삭제돼요. 나머지 정보인
         제출일과 지원 포지션은 누구인지 알아볼 수 없는 형태로 보관해, 매장에서 채용
@@ -58,7 +56,7 @@ const nd = await docNoiDung('ko');
       <p>예약 정보는 매장에서 예약 이력을 확인할 수 있도록 보관해요. 삭제는
         언제든지 요청하실 수 있어요.</p>
 
-      <h2 style="font-size:24px; margin-top:34px">이용자의 권리</h2>
+      <h2>이용자의 권리</h2>
       <p>본인 정보의 열람, 수정 또는 삭제를 요청하실 권리가 있고, 언제든지 소식
         수신을 중단하실 권리도 있어요.{' '}
         {nd.email_lien_he
@@ -66,8 +64,7 @@ const nd = await docNoiDung('ko');
           : <>연락 방법은 매장이 문을 열 때 이 페이지에 안내해 드릴게요.</>}
       </p>
 
-      <p class="nho" style="margin-top:34px">베트남 개인정보 보호 시행령(<span lang="vi">Nghị định
+      <p class="nho">베트남 개인정보 보호 시행령(<span lang="vi">Nghị định
         13/2023/NĐ-CP</span>)을 준수해요.</p>
-    </div>
-  </section>
+  </TrangVanBan>
 </Trang>

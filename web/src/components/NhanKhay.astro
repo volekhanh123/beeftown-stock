@@ -1,0 +1,102 @@
+---
+/**
+ * ĐỌC NHÃN KHAY — thiết bị chữ ký của trang
+ *
+ * Bò tại quầy được cắt và đóng sẵn trong khay skin-pack. Nhãn khay ghi năm thứ:
+ * tên phần cắt, giá mỗi 100g, trọng lượng, giá cuối (đã gồm VAT) và ngày đóng gói
+ * (brief 06/10/2026). Khối này giải thích cách đọc nhãn mà KHÔNG có con số nào:
+ * giá thật của từng khay chỉ có ở quầy — không bịa giá, không dựng nhãn giả.
+ *
+ * "Đã gồm VAT" chỉ nói về giá cuối trên nhãn khay — không mở rộng thành cam kết
+ * thuế / phí cho cả hóa đơn.
+ *
+ * Phần hình nhãn bên trái là trang trí (aria-hidden): mọi chữ có nghĩa nằm trong
+ * danh sách bên phải, đọc được bằng trình đọc màn hình.
+ */
+import { dich } from '../lib/chu';
+import type { NgonNgu } from '../lib/noi-dung';
+
+interface Props { ngonNgu: NgonNgu; class?: string; }
+const { ngonNgu, class: lop } = Astro.props;
+
+const truong = dich(ngonNgu, {
+  ten:     { vi: 'Tên phần cắt', en: 'Cut', ko: '부위' },
+  gia100:  { vi: 'Giá / 100g', en: 'Price / 100g', ko: '100g당 가격' },
+  can:     { vi: 'Trọng lượng', en: 'Weight', ko: '중량' },
+  giaCuoi: { vi: 'Giá cuối', en: 'Final price', ko: '최종 가격' },
+  ngay:    { vi: 'Ngày đóng gói', en: 'Packed on', ko: '포장일' },
+});
+const giai = dich(ngonNgu, {
+  ten:     { vi: 'Phần thịt nằm trong khay.', en: 'Which cut is in the tray.', ko: '트레이에 담긴 부위예요.' },
+  gia100:  { vi: 'Để so các phần với nhau cho dễ.', en: 'Makes it easy to compare cuts.', ko: '부위끼리 쉽게 비교할 수 있어요.' },
+  can:     { vi: 'Cân riêng cho từng khay.', en: 'Weighed for each tray.', ko: '트레이마다 따로 잰 무게예요.' },
+  giaCuoi: { vi: 'Số tiền của đúng khay này, đã gồm VAT.', en: 'The price of this exact tray, VAT included.', ko: '바로 이 트레이의 가격이에요. 부가세가 포함돼 있어요.' },
+  ngay:    { vi: 'Ngày khay được cắt và đóng.', en: 'The day the tray was cut and packed.', ko: '손질해서 포장한 날짜예요.' },
+  tieuDe:  { vi: 'Cách đọc nhãn khay', en: 'How to read the tray label', ko: '트레이 라벨 읽는 법' },
+});
+const KHOA = ['ten', 'gia100', 'can', 'giaCuoi', 'ngay'] as const;
+---
+<div class:list={['nhan-khay', lop]}>
+  <div class="nk-the" aria-hidden="true">
+    <div class="nk-dau">
+      <img src="/thuong-hieu/logo-ngang-do.svg" width="446" height="124" alt="" loading="lazy" decoding="async" />
+    </div>
+    <ol class="nk-dong">
+      {KHOA.map((k, i) => (
+        <li class:list={{ 'nk-noi': k === 'giaCuoi' }}><span class="nk-so">{i + 1}</span><span class="nk-ten">{truong[k]}</span><span class="nk-gach"></span></li>
+      ))}
+    </ol>
+    <div class="nk-ma-vach"></div>
+  </div>
+
+  <div class="nk-giai">
+    <h3 class="nk-tieu-de">{giai.tieuDe}</h3>
+    <ol>
+      {KHOA.map((k, i) => (
+        <li><span class="nk-so" aria-hidden="true">{i + 1}</span><span><strong>{truong[k]}</strong> — {giai[k]}</span></li>
+      ))}
+    </ol>
+  </div>
+</div>
+
+<style>
+  .nhan-khay {
+    display: grid; gap: var(--k-6); align-items: center;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 760px) { .nhan-khay { grid-template-columns: minmax(240px, 340px) 1fr; } }
+
+  /* Hình nhãn: giấy nhãn trắng ngà, viền mảnh, hơi nghiêng như dán trên màng khay. */
+  .nk-the {
+    background: #FFFDF6; color: var(--than);
+    border-radius: 6px; padding: 16px 18px 14px;
+    box-shadow: 0 1px 0 rgba(30, 22, 14, .08), 0 18px 32px -20px rgba(30, 22, 14, .55);
+    transform: rotate(-2.2deg);
+    max-width: 340px; width: 100%; justify-self: center;
+  }
+  .nk-dau { border-bottom: 2px solid var(--do); padding-bottom: 10px; margin-bottom: 8px; }
+  .nk-dau img { height: 26px; width: auto; }
+  .nk-dong { list-style: none; margin: 0; padding: 0; }
+  .nk-dong li {
+    display: grid; grid-template-columns: 22px auto 1fr; align-items: center; gap: 8px;
+    min-height: 34px; border-bottom: 1px dashed rgba(30, 22, 14, .22);
+    font-size: 14px; font-weight: 700;
+  }
+  .nk-dong li.nk-noi { font-size: 15px; }
+  .nk-gach { height: 10px; border-radius: 2px; background: rgba(30, 22, 14, .1); }
+  .nk-noi .nk-gach { background: rgba(178, 58, 44, .22); height: 14px; }
+  .nk-ma-vach {
+    height: 30px; margin-top: 12px;
+    background: repeating-linear-gradient(90deg, var(--than) 0 2px, transparent 2px 4px, var(--than) 4px 5px, transparent 5px 8px, var(--than) 8px 11px, transparent 11px 13px);
+    opacity: .75;
+  }
+  .nk-so {
+    display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--do); color: var(--kem); font-size: 12px; font-weight: 800; flex: none;
+  }
+
+  .nk-tieu-de { margin-bottom: var(--k-4); }
+  .nk-giai ol { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--k-3); }
+  .nk-giai li { display: flex; gap: var(--k-3); align-items: flex-start; line-height: 1.5; }
+  .nk-giai .nk-so { margin-top: 1px; }
+</style>

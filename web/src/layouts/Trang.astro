@@ -3,11 +3,12 @@
  * KHUNG TRANG — thẻ mô tả, dữ liệu có cấu trúc, đầu và chân trang
  *
  * THẺ CHIA SẺ LINK (og:image):
- * Chỉ đặt khi khóa `anh_chia_se` đã được công bố và ảnh là ảnh THẬT. Chưa có
- * thì KHÔNG đặt thẻ — một thẻ og:image trỏ tới ảnh hỏng còn tệ hơn không có
- * thẻ nào, vì Facebook sẽ nhớ kết quả hỏng đó trong bộ nhớ đệm.
- * Hệ thống đã có chỗ nhắc việc này: v_cong_bo_con_thieu liệt kê anh_chia_se
- * là dữ kiện bắt buộc còn thiếu cho tới khi Khánh tải ảnh 1200×630 lên.
+ * Ảnh THẬT đã công bố ở khóa `anh_chia_se` luôn được ưu tiên. Chưa có thì dùng
+ * ảnh dự phòng /thuong-hieu/chia-se-1200x630.png: chỉ có vân mỡ và logo của PDF
+ * nhận diện (trang 2), không ảnh chụp, không ngày, không giá — Khánh duyệt
+ * 06/10/2026. Ảnh đó đi cùng bản build, nên không có chuyện thẻ og:image trỏ
+ * tới ảnh hỏng (điều mà quy tắc cũ "không có ảnh thật thì không đặt thẻ" phòng).
+ * v_cong_bo_con_thieu vẫn nhắc anh_chia_se cho tới khi có ảnh chụp thật.
  *
  * DỮ LIỆU CÓ CẤU TRÚC (JSON-LD):
  * Chỉ khai những gì đã công bố. Cụ thể là KHÔNG có:
@@ -23,9 +24,12 @@
  * mỗi cái ghi bằng chính thứ tiếng đó.
  */
 import '../styles/chung.css';
-import { THUONG_HIEU, PHAP_NHAN, NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng } from '../lib/chu';
+import '../styles/cong-khai.css';
+import { THUONG_HIEU, NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng } from '../lib/chu';
+import { lienHe } from '../lib/trang-cong-khai';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
-import { namVn } from '../lib/gio-vn';
+import DauTrang from '../components/DauTrang.astro';
+import ChanTrang from '../components/ChanTrang.astro';
 
 interface Props {
   ngonNgu: NgonNgu;
@@ -46,18 +50,18 @@ const tieuDeTrang = tieuDe
   ?? nd.tieu_de_og
   ?? `${THUONG_HIEU.ten} — ${t.nganhHang} · ${t.diaChiNgan}`;
 
-// Mô tả chỉ được nhắc tới địa chỉ khi địa chỉ đã công bố. Đây là lý do cụ
-// thể vì sao trang phải dựng ở phía máy chủ: thẻ mô tả là một HÀM của trạng
-// thái database, mà trình quét link của Facebook thì không chạy JavaScript.
-const moTaTrang = moTa
-  ?? nd.mo_ta_og
-  ?? (nd.dia_chi_hien_thi
-      ? `${t.moTaNgan} ${nd.dia_chi_hien_thi}.`
-      : t.moTaNgan);
+// Mô tả ưu tiên bản đã duyệt trong cổng nội dung. Đây là lý do cụ thể vì sao
+// trang phải dựng ở phía máy chủ: thẻ mô tả là một HÀM của trạng thái database,
+// mà trình quét link của Facebook thì không chạy JavaScript. Câu nền đã có địa
+// chỉ cố định (DIA_CHI_NHA_HANG — Khánh chốt 06/10/2026).
+const moTaTrang = moTa ?? nd.mo_ta_og ?? t.moTaNgan;
 
 const anh = nd.anh_chia_se;
-const coAnhChiaSe = !!(anh && anh.nguon === 'anh_that' && anh.url);
-const urlAnhChiaSe = coAnhChiaSe ? anh!.url : null;
+const coAnhThat = !!(anh && anh.nguon === 'anh_that' && anh.url);
+const anhChiaSe = coAnhThat
+  ? { url: anh!.url, rong: anh!.rong ?? 1200, cao: anh!.cao ?? 630, alt: anh!.alt }
+  : { url: `${goc}/thuong-hieu/chia-se-1200x630.png`, rong: 1200, cao: 630, alt: `${THUONG_HIEU.ten} — ${THUONG_HIEU.khauHieu}` };
+const lh = lienHe(nd);
 
 // Bản của trang này ở một ngôn ngữ. Chính nó thì giữ nguyên đường dẫn đang
 // mở, kể cả khi trang chưa có trong bảng CAP_DUONG_DAN.
@@ -79,18 +83,20 @@ const duLieuCoCauTruc: Record<string, unknown> = {
   // nói điều đó.
   acceptsReservations: nd.form_dat_ban_dang_mo === true,
 };
-if (nd.dia_chi_hien_thi) {
-  duLieuCoCauTruc.address = {
-    '@type': 'PostalAddress',
-    streetAddress: nd.dia_chi_hien_thi,
-    addressLocality: 'Quận 1',
-    addressRegion: 'TP.HCM',
-    addressCountry: 'VN',
-  };
-}
-if (nd.hotline) duLieuCoCauTruc.telephone = nd.hotline;
-if (urlAnhChiaSe) duLieuCoCauTruc.image = urlAnhChiaSe;
-const sameAs = [nd.facebook_url, nd.instagram_url, nd.tiktok_url].filter(Boolean);
+// Địa chỉ đã chốt và hiện cố định; bản công bố trong /noi-bo (nếu có) thay vào.
+duLieuCoCauTruc.address = {
+  '@type': 'PostalAddress',
+  streetAddress: nd.dia_chi_hien_thi?.trim() || 'Tầng 3, 11-21 Hàm Nghi',
+  addressLocality: 'Phường Sài Gòn',
+  addressRegion: 'TP. Hồ Chí Minh',
+  addressCountry: 'VN',
+};
+if (lh.hotline) duLieuCoCauTruc.telephone = lh.hotline;
+if (coAnhThat) duLieuCoCauTruc.image = anhChiaSe.url;
+if (lh.maps) duLieuCoCauTruc.hasMap = lh.maps;
+// Trang thực đơn chỉ được khai khi thực đơn đang hiện.
+if (nd.hien_thuc_don === true && goc) duLieuCoCauTruc.hasMenu = goc + duongDanTuongUng('/thuc-don', ngonNgu);
+const sameAs = [lh.facebook, lh.instagram, lh.tiktok].filter(Boolean);
 if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
 ---
 <!doctype html>
@@ -110,19 +116,24 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     <meta property="og:description" content={moTaTrang} />
     <meta property="og:url" content={duongDanDayDu} />
     <meta property="og:locale" content={OG_LOCALE[ngonNgu]} />
-    {urlAnhChiaSe && (
+    {goc && (
       <>
-        <meta property="og:image" content={urlAnhChiaSe} />
-        <meta property="og:image:width" content={String(anh!.rong ?? 1200)} />
-        <meta property="og:image:height" content={String(anh!.cao ?? 630)} />
-        {anh!.alt && <meta property="og:image:alt" content={anh!.alt} />}
+        <meta property="og:image" content={anhChiaSe.url} />
+        <meta property="og:image:width" content={String(anhChiaSe.rong)} />
+        <meta property="og:image:height" content={String(anhChiaSe.cao)} />
+        {anhChiaSe.alt && <meta property="og:image:alt" content={anhChiaSe.alt} />}
         <meta name="twitter:card" content="summary_large_image" />
       </>
     )}
-    {!urlAnhChiaSe && <meta name="twitter:card" content="summary" />}
+    {!goc && <meta name="twitter:card" content="summary" />}
 
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/bieu-tuong.svg" type="image/svg+xml" />
-    <meta name="theme-color" content="#1E160E" />
+    <link rel="apple-touch-icon" href="/thuong-hieu/bieu-tuong-180.png" />
+    <meta name="theme-color" content="#FBF4E1" />
+    {/* Logo đầu trang: tải sớm cùng CSS để không nháy ô trống. Ảnh hero preload qua slot "dau". */}
+    <link rel="preload" href="/thuong-hieu/logo-ngang-do.svg" as="image" type="image/svg+xml" />
+    <slot name="dau" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -144,44 +155,18 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     <script type="application/ld+json" set:html={JSON.stringify(duLieuCoCauTruc)} is:inline />
   </head>
 
-  <body>
+  <body class="ck">
     <a class="bo-qua" href="#noi-dung">{t.boQuaToiNoiDung}</a>
 
-    <div class="khung dau-trang">
-      <a href={duongDanTuongUng('/', ngonNgu)} class="ten-thuong-hieu" style="text-decoration:none">
-        {THUONG_HIEU.ten}
-      </a>
-      {/* lang trên từng nút: trình đọc màn hình đọc "한국어" bằng giọng Hàn
-          chứ không đánh vần nó bằng giọng của trang đang mở. */}
-      <nav aria-label={t.chonNgonNgu}
-           style="display:flex; flex-wrap:wrap; justify-content:flex-end; column-gap:16px">
-        {ngonNguKhac.map(n => (
-          <a class="doi-ngon-ngu" href={banCua(n)} lang={n} hreflang={n}>
-            {TEN_NGON_NGU[n]}
-          </a>
-        ))}
-      </nav>
-    </div>
+    {/* lang trên từng nút đổi ngôn ngữ: trình đọc màn hình đọc "한국어" bằng giọng
+        Hàn chứ không đánh vần nó bằng giọng của trang đang mở. */}
+    <DauTrang ngonNgu={ngonNgu} duongDan={duongDan}
+              doiNgonNgu={ngonNguKhac.map(n => ({ nn: n, url: banCua(n), ten: TEN_NGON_NGU[n] }))} />
 
     <main id="noi-dung">
       <slot />
     </main>
 
-    <footer class="chan-trang">
-      <div class="khung chan-hang">
-        {/* Mỗi dòng viết liền trên một dòng mã: compressHTML bỏ dấu cách có xuống
-            dòng giữa hai nút, "·⏎<span>" từng ra trang thành "·Beef". */}
-        <div>
-          <p class="chan-dong">© {namVn()} {t.banQuyen} · <span lang="en">{THUONG_HIEU.descriptor}</span></p>
-          {/* Pháp nhân — tên và địa chỉ giữ tiếng Việt ở mọi bản (PHAP_NHAN trong lib/chu.ts),
-              lang="vi" để trình đọc màn hình của trang Anh / Hàn đọc đúng giọng. */}
-          <div class="phap-nhan">
-            <p class="chan-dong"><span class="lien" lang="vi">{PHAP_NHAN.ten}</span> · <span class="lien">{t.maSoThue}: {PHAP_NHAN.maSoThue}</span></p>
-            <p class="chan-dong" lang="vi">{PHAP_NHAN.diaChi}</p>
-          </div>
-        </div>
-        <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a>
-      </div>
-    </footer>
+    <ChanTrang ngonNgu={ngonNgu} noiDung={nd} />
   </body>
 </html>

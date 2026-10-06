@@ -3,18 +3,16 @@
    để ứng tuyển là đã thu thập dữ liệu cá nhân, và Nghị định 13/2023 đòi phải
    nói rõ thu để làm gì, giữ bao lâu, ai giữ. */
 import Trang from '../layouts/Trang.astro';
+import TrangVanBan from '../components/TrangVanBan.astro';
 import { docNoiDung } from '../lib/noi-dung';
 const nd = await docNoiDung('vi');
 ---
 <Trang ngonNgu="vi" noiDung={nd} duongDan="/quyen-rieng-tu"
        tieuDe="Quyền riêng tư — Beeftown"
        moTa="Beeftown thu thập, sử dụng và lưu trữ thông tin cá nhân như thế nào.">
-  <section class="muc" style="padding-top:20px">
-    <div class="khung" style="max-width:68ch">
-      <p class="hieu">Quyền riêng tư</p>
-      <h1 style="font-size:clamp(30px,5vw,48px)">Beeftown giữ thông tin của bạn thế nào</h1>
+  <TrangVanBan hieu="Quyền riêng tư" tieuDe="Beeftown giữ thông tin của bạn thế nào">
 
-      <h2 style="font-size:24px; margin-top:40px">Chúng tôi thu những gì</h2>
+      <h2>Chúng tôi thu những gì</h2>
       <p>Khi bạn gửi yêu cầu đặt bàn hoặc hồ sơ ứng tuyển, Beeftown lưu họ tên,
         số điện thoại, những thông tin bạn tự điền, và <strong>địa chỉ IP của
         lượt gửi đó</strong>. Địa chỉ IP dùng để chặn spam và để làm bằng chứng
@@ -28,7 +26,7 @@ const nd = await docNoiDung('vi');
         Ngoài Supabase, không đơn vị nào khác đọc được dữ liệu này — riêng tin
         nhắn bạn gửi qua Messenger thì đi qua Meta (xem mục bên dưới).</p>
 
-      <h2 style="font-size:24px; margin-top:34px">Khi bạn nhắn Beeftown qua Messenger</h2>
+      <h2>Khi bạn nhắn Beeftown qua Messenger</h2>
       <p>Tin nhắn gửi Trang Facebook của Beeftown đi qua Messenger, một dịch vụ
         của Meta; Meta xử lý tin nhắn đó theo chính sách quyền riêng tư của Meta.
         Beeftown dùng một trợ lý tự động trên Messenger để nhận yêu cầu đặt bàn,
@@ -44,13 +42,13 @@ const nd = await docNoiDung('vi');
         để gửi quảng cáo.</p>
       <p>Cách xóa dữ liệu: xem <a href="/xoa-du-lieu">hướng dẫn xóa dữ liệu</a>.</p>
 
-      <h2 style="font-size:24px; margin-top:34px">Dùng để làm gì</h2>
+      <h2>Dùng để làm gì</h2>
       <p>Thông tin đặt bàn dùng để nhà hàng gọi xác nhận với bạn. Hồ sơ ứng tuyển
         dùng để liên hệ hẹn gặp. Chúng tôi chỉ gửi tin giới thiệu món hoặc hoạt
         động mới nếu bạn <strong>tự tick chọn</strong> ô đồng ý — ô đó không bao
         giờ được tick sẵn, và không chọn thì bạn vẫn đặt bàn bình thường.</p>
 
-      <h2 style="font-size:24px; margin-top:34px">Giữ trong bao lâu</h2>
+      <h2>Giữ trong bao lâu</h2>
       <p>Hồ sơ ứng tuyển được giữ <strong>sáu tháng</strong> kể từ ngày nộp, sau
         đó họ tên, số điện thoại, email, địa chỉ IP và file CV bị xóa. Phần còn
         lại — ngày nộp và vị trí ứng tuyển — được giữ ở dạng không còn nhận ra
@@ -58,7 +56,7 @@ const nd = await docNoiDung('vi');
       <p>Thông tin đặt bàn được giữ để nhà hàng đối chiếu lịch sử đặt chỗ của
         bạn. Bạn yêu cầu xóa lúc nào cũng được.</p>
 
-      <h2 style="font-size:24px; margin-top:34px">Quyền của bạn</h2>
+      <h2>Quyền của bạn</h2>
       <p>Bạn có quyền yêu cầu xem, sửa hoặc xóa thông tin của mình, và có quyền
         ngừng nhận tin bất cứ lúc nào.{' '}
         {nd.email_lien_he
@@ -66,8 +64,7 @@ const nd = await docNoiDung('vi');
           : <>Cách liên hệ sẽ được công bố tại trang này khi nhà hàng mở cửa.</>}
       </p>
 
-      <p class="nho" style="margin-top:34px">Tuân theo Nghị định 13/2023/NĐ-CP về
+      <p class="nho">Tuân theo Nghị định 13/2023/NĐ-CP về
         bảo vệ dữ liệu cá nhân.</p>
-    </div>
-  </section>
+  </TrangVanBan>
 </Trang>

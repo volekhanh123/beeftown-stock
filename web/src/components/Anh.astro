@@ -1,0 +1,75 @@
+---
+/**
+ * ẢNH CÓ NHIỀU CỠ — và dòng "Ảnh minh họa" khi ảnh là ảnh minh họa
+ *
+ * <picture> với avif rồi webp; khung riêng cho điện thoại (khungNho, vd. 4:5)
+ * và cho màn rộng (khung, vd. 16:9). Luôn có width/height để trình duyệt giữ
+ * chỗ trước khi ảnh về — trang không giật khi cuộn.
+ *
+ * Ảnh hero: uuTien → tải ngay, fetchpriority="high". Mọi ảnh khác lazy.
+ *
+ * Ảnh chưa dựng cỡ (anh-tao-san.ts chưa có) → KhungAnh `thayBang`, không bao giờ
+ * là một thẻ <img> trỏ tới file không có.
+ */
+import { DANH_MUC_ANH, coAnh, srcsetAnh, duongDanAnh, altAnh, type IdAnh } from '../lib/anh';
+import { chu } from '../lib/chu';
+import type { NgonNgu } from '../lib/noi-dung';
+import KhungAnh, { type LoaiKhung } from './KhungAnh.astro';
+
+interface Props {
+  id: IdAnh;
+  ngonNgu: NgonNgu;
+  /** Khung cho màn ≥ 600px, vd. '16x9'. */
+  khung: string;
+  /** Khung cho màn < 600px; mặc định như khung. */
+  khungNho?: string;
+  /** Thuộc tính sizes của <img>, vd. '(min-width: 900px) 50vw, 100vw'. */
+  sizes?: string;
+  uuTien?: boolean;
+  /** Ảnh phủ kín khung cha (object-fit: cover). */
+  phuKin?: boolean;
+  thayBang?: LoaiKhung;
+  nenKhung?: 'kem' | 'toi' | 'do';
+  class?: string;
+}
+const {
+  id, ngonNgu, khung, khungNho = khung, sizes = '100vw', uuTien = false, phuKin = false,
+  thayBang = 'ban-nuong', nenKhung = 'kem', class: lop,
+} = Astro.props;
+
+const lon = coAnh(id, khung);
+const nho = coAnh(id, khungNho);
+const tiLe = (k: string) => k.replace('x', ' / ');
+const t = chu(ngonNgu);
+const minhHoa = DANH_MUC_ANH[id].minhHoa;
+const doiKhung = khungNho !== khung && !!nho;
+// Ảnh mặc định của <img>: bề rộng giữa danh sách, webp — trình duyệt nào cũng đọc được.
+const giua = lon ? lon.cac[Math.floor((lon.cac.length - 1) / 2)] : 0;
+---
+{lon ? (
+  <figure class:list={['anh', { 'phu-kin': phuKin }, lop]} style={`background:${lon.mau}`}>
+    <picture>
+      {doiKhung && nho && (
+        <>
+          <source media="(max-width: 599px)" type="image/avif" srcset={srcsetAnh(id, khungNho, 'avif')} sizes={sizes} width={nho.rong} height={nho.cao} />
+          <source media="(max-width: 599px)" type="image/webp" srcset={srcsetAnh(id, khungNho, 'webp')} sizes={sizes} width={nho.rong} height={nho.cao} />
+        </>
+      )}
+      <source type="image/avif" srcset={srcsetAnh(id, khung, 'avif')} sizes={sizes} />
+      <img
+        src={duongDanAnh(id, khung, giua, 'webp')}
+        srcset={srcsetAnh(id, khung, 'webp')}
+        sizes={sizes}
+        width={lon.rong}
+        height={lon.cao}
+        alt={altAnh(id, ngonNgu)}
+        loading={uuTien ? 'eager' : 'lazy'}
+        decoding={uuTien ? 'sync' : 'async'}
+        fetchpriority={uuTien ? 'high' : 'auto'}
+      />
+    </picture>
+    {minhHoa && <figcaption class="chu-thich-anh">{t.anhMinhHoa}</figcaption>}
+  </figure>
+) : (
+  <KhungAnh loai={thayBang} tiLe={tiLe(khungNho)} nen={nenKhung} class={lop} />
+)}

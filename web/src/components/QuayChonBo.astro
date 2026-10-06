@@ -1,0 +1,73 @@
+---
+/**
+ * QUẦY CHỌN BÒ — dải tối, để thịt sáng lên
+ *
+ * Khay skin-pack, nhãn khay, nhân viên tư vấn. Ảnh ở đây là ảnh minh họa không
+ * khí món (cận cảnh vân thịt) — KHÔNG phải ảnh quầy: quầy thật và khay thật chỉ
+ * được dùng ảnh chụp tại Beeftown (web/THIET-KE.md, brief chụp).
+ *
+ * "Có quy trình ủ" là sự thật đã xác nhận; số ngày, phương pháp, grade, xuất xứ
+ * thì CHƯA — nên câu chỉ dừng ở chỗ có quy trình.
+ */
+import { dich } from '../lib/chu';
+import type { NgonNgu } from '../lib/noi-dung';
+import Anh from './Anh.astro';
+import NhanKhay from './NhanKhay.astro';
+
+interface Props { ngonNgu: NgonNgu; }
+const { ngonNgu } = Astro.props;
+const t = dich(ngonNgu, {
+  hieu: { vi: 'Quầy chọn bò', en: 'The beef counter', ko: '정육 코너' },
+  tieuDe: { vi: 'Nhìn tận mắt, chọn tận tay', en: 'See it first, then choose', ko: '직접 보고, 직접 고르세요' },
+  doan1: {
+    vi: 'Mỗi phần bò được cắt và đóng trong khay skin-pack: lớp màng ôm sát miếng thịt, nên bạn thấy rõ thớ và vân mỡ trước khi chọn.',
+    en: 'Every cut is packed in a skin-pack tray — a film that hugs the meat, so you can see the grain and marbling clearly before you choose.',
+    ko: '모든 부위는 스킨팩 트레이에 포장돼요. 필름이 고기에 밀착돼 있어서 고르기 전에 결과 마블링을 또렷하게 볼 수 있어요.',
+  },
+  doan2: {
+    vi: 'Trọng lượng và giá của từng khay ghi ngay trên nhãn. Chưa biết chọn phần nào? Nhân viên quầy tư vấn theo khẩu vị và số người của bàn bạn.',
+    en: 'Each tray’s weight and price are right on its label. Not sure what to pick? Our counter staff will help, based on your taste and the size of your group.',
+    ko: '트레이마다 중량과 가격이 라벨에 바로 적혀 있어요. 어떤 부위를 고를지 고민되면 입맛과 인원에 맞춰 직원이 도와드려요.',
+  },
+  doan3: {
+    vi: 'Bò nướng tại quầy đều qua quy trình ủ của Beeftown trước khi lên khay.',
+    en: 'All the grilling beef at our counter goes through Beeftown’s ageing process before it is packed.',
+    ko: '정육 코너의 구이용 소고기는 모두 Beeftown의 숙성 과정을 거친 뒤 트레이에 담겨요.',
+  },
+});
+---
+<section class="muc be-toi qcb co-trang-tri" aria-labelledby="qcb-tieu-de">
+  <span class="trang-tri net steak-1 qcb-steak an-khi-hep" aria-hidden="true"></span>
+  <div class="khung">
+    <div class="qcb-dau">
+      <div class="qcb-anh">
+        <Anh id="bo-van-mo-can" ngonNgu={ngonNgu} khung="4x5" khungNho="4x3" thayBang="khay" nenKhung="toi"
+             sizes="(min-width: 900px) 40vw, 100vw" />
+      </div>
+      <div class="qcb-chu">
+        <p class="hieu">{t.hieu}</p>
+        <h2 id="qcb-tieu-de">{t.tieuDe}</h2>
+        <p class="dan">{t.doan1}</p>
+        <p>{t.doan2}</p>
+        <p class="qcb-u">{t.doan3}</p>
+      </div>
+    </div>
+    <NhanKhay ngonNgu={ngonNgu} class="qcb-nhan" />
+  </div>
+</section>
+
+<style>
+  .qcb-dau {
+    display: grid; gap: var(--k-7); align-items: center;
+    grid-template-columns: 1fr;
+    margin-bottom: var(--k-8);
+  }
+  @media (min-width: 900px) { .qcb-dau { grid-template-columns: 5fr 6fr; gap: var(--k-8); } }
+  .qcb-anh { max-width: 520px; width: 100%; }
+  .qcb-chu .dan { color: var(--kem); }
+  .qcb-u { color: var(--da); font-size: var(--co-nho); border-top: 1px solid var(--vach-kem); padding-top: var(--k-4); margin: var(--k-5) 0 0; }
+
+  .qcb-steak { width: clamp(90px, 14vw, 170px); right: -2%; top: var(--k-7); transform: rotate(-12deg); opacity: .16; }
+
+  .qcb :global(.qcb-nhan) { border-top: 1px solid var(--vach-kem); padding-top: var(--k-7); }
+</style>

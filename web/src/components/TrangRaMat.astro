@@ -1,144 +1,42 @@
 ---
 /**
- * TRANG RA MẮT
- * ============
+ * TRANG CHỦ
+ * =========
  * Trang này phải ĐÚNG và ĐỦ ngay cả khi mọi công tắc đều tắt. Đó là phép thử
  * của cả thiết kế, không phải một trường hợp biên.
  *
- * Với database trống, trang hiện: tên, khẩu hiệu, descriptor, một câu giới
- * thiệu, dòng trạng thái mặc định, và khối tuyển dụng. Không số điện thoại
- * giả, không địa chỉ dạng [số nhà], không ảnh kho, không nút dẫn đi đâu cả.
+ * Với database trống, trang hiện: câu chính, tagline, descriptor, cách ăn ở
+ * Beeftown, quầy chọn bò và cách đọc nhãn khay, các nhóm món, lời mời đi nhóm,
+ * đường lên tầng 3 và câu hỏi thường gặp — toàn là dữ kiện đã xác nhận (brief
+ * 06/10/2026). Không số điện thoại giả, không ảnh kho, không nút dẫn đi đâu cả.
  *
- * Mỗi dữ kiện được bật lên sẽ THÊM vào trang, không bao giờ trừ đi phần nền.
+ * Mỗi dữ kiện được bật lên sẽ THÊM vào trang (Facebook, Maps, hotline, ngày mở,
+ * form hỏi bàn), không bao giờ trừ đi phần nền. Các công tắc hien_ba_buoc,
+ * hien_quay_thit, hien_tiec_nhom vẫn chưa dùng: ba khối tương ứng là phần nền.
+ *
+ * Nhịp trang: kem (màn đầu, mảng đỏ) → kem (ba bước) → TỐI (quầy, thịt sáng lên)
+ * → kem đậm (cả bữa) → ĐỎ (đi nhóm) → kem (tầng 3) → kem (câu hỏi) → chân trang.
+ *
+ * Tuyển dụng chuyển xuống dải gọn ở chân trang — có mặt ở MỌI trang công khai.
  */
-import { THUONG_HIEU, chu, duongDanTuongUng } from '../lib/chu';
-import { dinhDangNgay, homNayVn } from '../lib/noi-dung';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import KhoiMoDau from './KhoiMoDau.astro';
+import BaBuoc from './BaBuoc.astro';
+import QuayChonBo from './QuayChonBo.astro';
+import BuaAnCungNhau from './BuaAnCungNhau.astro';
+import DiCungNhom from './DiCungNhom.astro';
+import LenTang3 from './LenTang3.astro';
+import CauHoi from './CauHoi.astro';
 
 interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
-const { ngonNgu, noiDung: nd } = Astro.props;
-const t = chu(ngonNgu);
-
-const duongDanTuyenDung = duongDanTuongUng('/tuyen-dung', ngonNgu);
-const duongDanDatBan = duongDanTuongUng('/dat-ban', ngonNgu);
-
-// Nút chính dẫn tới nơi THẬT SỰ có người trả lời. Không có nơi nào như vậy
-// thì không hiện nút — một nút dẫn tới hư không tệ hơn là không có nút.
-const nutChinh =
-  nd.facebook_url ? { url: nd.facebook_url, chu: t.theoDoi } :
-  nd.email_lien_he ? { url: `mailto:${nd.email_lien_he}`, chu: t.nhanTin } :
-  null;
-
-// Nút đặt bàn chỉ hiện khi công tắc đang bật. Trang /dat-ban vẫn tồn tại và
-// vẫn nói thật khi form đóng, nhưng dẫn khách tới đó để đọc câu "chưa mở đặt
-// bàn" là bắt họ đi một quãng để nhận một lời từ chối.
-//
-// Lưu ý: công tắc bật CHƯA đủ để form dựng lên — trang /dat-ban còn hỏi
-// database xem có khung giờ nào còn chỗ thật không. Nút này cố ý chỉ nhìn
-// công tắc, vì kiểm tra lịch trống cho mọi lượt tải trang chủ là quá đắt cho
-// thứ khách nhìn thấy trong hai giây đầu.
-const hienNutDatBan = nd.form_dat_ban_dang_mo === true;
-
-const ngayMo = nd.ngay_khai_truong;
-const daMo = !!(ngayMo && ngayMo <= homNayVn());
-
-const mangXaHoi = [
-  { url: nd.instagram_url, ten: 'Instagram' },
-  { url: nd.tiktok_url, ten: 'TikTok' },
-  { url: nd.zalo_oa_url, ten: 'Zalo' },
-].filter((m): m is { url: string; ten: string } => !!m.url);
+const { ngonNgu, noiDung } = Astro.props;
 ---
-
-<section class="man-hinh">
-  <div class="nen-chu" aria-hidden="true"></div>
-
-  <div class="khung">
-    {/* Tên thương hiệu đã có ở đầu trang — ở đây chỉ cần descriptor. */}
-    <p class="hieu"><span lang="en">{THUONG_HIEU.descriptor}</span></p>
-
-    {/* Khẩu hiệu là tiếng Anh trên cả trang tiếng Việt lẫn tiếng Hàn. Đánh
-        dấu lang="en" để trình đọc màn hình không đọc tiếng Anh bằng âm tiếng
-        Việt hay âm tiếng Hàn. */}
-    <h1><span lang="en">{THUONG_HIEU.khauHieu}</span></h1>
-
-    <p class="dan" style="max-width:56ch; margin-top:26px">{t.gioiThieu}</p>
-
-    {ngayMo && (
-      <p class="hieu" style="margin:30px 0 0">
-        {daMo ? t.moCuaTu : t.donBanTu}
-        {' '}
-        <strong style="color:var(--cuc-vang); letter-spacing:normal; font-size:15px">
-          {dinhDangNgay(ngayMo, ngonNgu)}
-        </strong>
-      </p>
-    )}
-
-    <div class="trang-thai" style="margin-top:34px">
-      <p>{nd.dong_trang_thai ?? t.trangThaiMacDinh}</p>
-    </div>
-
-    {(nutChinh || hienNutDatBan) && (
-      <div class="hang-nut">
-        {hienNutDatBan && (
-          <a class="nut nut-chinh" href={duongDanDatBan}>{t.datBan}</a>
-        )}
-        {nutChinh && (
-          <a class={`nut ${hienNutDatBan ? 'nut-vien' : 'nut-chinh'}`}
-             href={nutChinh.url} rel="noopener">{nutChinh.chu}</a>
-        )}
-        {nd.google_maps_url && (
-          <a class="nut nut-vien" href={nd.google_maps_url} rel="noopener">{t.chiDuong}</a>
-        )}
-        {nd.hotline && (
-          <a class="nut nut-vien" href={`tel:${nd.hotline.replace(/\s/g, '')}`}>
-            {t.goiNhaHang}
-          </a>
-        )}
-      </div>
-    )}
-
-    {nutChinh && <p class="nho" style="margin-top:14px">{t.theoDoiPhu}</p>}
-
-    {nd.dia_chi_hien_thi && (
-      <p style="margin-top:30px; font-size:19px; font-weight:600">
-        {nd.google_maps_url
-          ? <a href={nd.google_maps_url} rel="noopener">{nd.dia_chi_hien_thi}</a>
-          : nd.dia_chi_hien_thi}
-      </p>
-    )}
-    {!nd.dia_chi_hien_thi && (
-      <p style="margin-top:30px; font-size:19px; font-weight:600">{t.diaChiNgan}</p>
-    )}
-
-    {mangXaHoi.length > 0 && (
-      <p class="nho" style="margin-top:22px">
-        {mangXaHoi.map((m, i) => (
-          <>
-            {i > 0 && ' · '}
-            <a href={m.url} rel="noopener">{m.ten}</a>
-          </>
-        ))}
-      </p>
-    )}
-  </div>
+<KhoiMoDau ngonNgu={ngonNgu} noiDung={noiDung} />
+<BaBuoc ngonNgu={ngonNgu} />
+<QuayChonBo ngonNgu={ngonNgu} />
+<BuaAnCungNhau ngonNgu={ngonNgu} noiDung={noiDung} />
+<DiCungNhom ngonNgu={ngonNgu} noiDung={noiDung} />
+<section class="muc be-kem" id="tang-3">
+  <div class="khung"><LenTang3 ngonNgu={ngonNgu} noiDung={noiDung} /></div>
 </section>
-
-{/* ------------------------------------------------------------------------
-    TUYỂN DỤNG
-    Ở ngày treo bạt chỉ có đúng hai nhóm người ghé trang này: người đi ngang
-    qua nhìn thấy bạt, và người đang tìm việc. Khách hàng thì còn sáu tuần
-    nữa mới vào ăn được.
-    Tài liệu vận hành ghi tuyển dụng là "đường găng thứ hai bên cạnh giấy
-    ATTP" — 19 người, 11–12 ngày đào tạo, không bắt đầu được trước khi xong
-    nội thất. Đây là phần duy nhất của website ảnh hưởng tới ngày mở cửa.
-    ------------------------------------------------------------------------ */}
-<section class="muc muc-sang">
-  <div class="khung">
-    <p class="hieu">{t.tuyenDung}</p>
-    <h2>{t.tuyenDungTieuDe}</h2>
-    <p style="max-width:58ch">{t.tuyenDungDan}</p>
-    <div class="hang-nut" style="margin-top:22px">
-      <a class="nut nut-chinh" href={duongDanTuyenDung}>{t.tuyenDungXem}</a>
-    </div>
-  </div>
-</section>
+<CauHoi ngonNgu={ngonNgu} noiDung={noiDung} />

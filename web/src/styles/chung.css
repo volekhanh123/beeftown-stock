@@ -37,6 +37,14 @@
   --rong: min(1120px, 90%);
 }
 
+/* Hai sắc lấy thêm từ chính PDF nhận diện (BGBTFILE trang 1–3, 11): đỏ đậm của
+   đường vân mỡ và tagline, kem đậm của lớp lót logo. Khai riêng một khối để
+   khối :root ở trên — mà /noi-bo và kho cũng dùng — giữ nguyên từng dòng. */
+:root {
+  --do-sau:    #960F13;   /* đỏ đậm — vân mỡ trang 2, tagline logo trang 3 */
+  --kem-dam:   #F1E4C2;   /* kem đậm — nền khối phụ trên trang sáng */
+}
+
 /* Montserrat không có chữ Hangul. Trang tiếng Hàn tải thêm Noto Sans KR
    (layouts/Trang.astro) và xếp nó NGAY SAU Montserrat: chữ Latin — tên
    thương hiệu, khẩu hiệu, descriptor — vẫn là Montserrat như mọi trang khác,
@@ -85,43 +93,10 @@ a { color: inherit; }
 .khung { width: var(--rong); margin-inline: auto; }
 
 /* ---------------------------------------------------------------------------
-   NỀN CHỮ — thứ thay thế cho ảnh chưa có
-   ---------------------------------------------------------------------------
-   Tám trong mười khuôn hình bắt buộc cần phòng đã hoàn thiện và biển đã sáng.
-   Nghĩa là mọi giai đoạn trước ngày mở phải HOÀN CHỈNH với KHÔNG một tấm ảnh
-   nào — không phải vì tiết kiệm, mà vì ảnh thật chưa thể tồn tại.
-   Khối này làm cho việc không có ảnh trông như một quyết định, không phải
-   như một trang bị hỏng.
+   Phần dưới đây là nền CHUNG cho cả trang công khai, /noi-bo và kho. Lớp riêng
+   của trang công khai (nút, khối, đầu và chân trang…) nằm ở cong-khai.css — chỉ
+   layouts/Trang.astro nạp file đó.
    --------------------------------------------------------------------------- */
-.nen-chu {
-  position: absolute; inset: 0; z-index: -1;
-  background:
-    radial-gradient(120% 90% at 50% 0%, rgba(178, 58, 44, .38), transparent 62%),
-    linear-gradient(180deg, #241a11 0%, var(--than) 60%);
-  overflow: hidden;
-}
-.nen-chu::after {
-  /* Vạch mảnh chéo — gợi vân vỉ nướng mà không vẽ một cái vỉ nướng giả. */
-  content: '';
-  position: absolute; inset: -20%;
-  background: repeating-linear-gradient(
-    115deg, transparent 0 22px, rgba(251, 244, 225, .028) 22px 23px);
-}
-
-/* --- Chữ ------------------------------------------------------------------ */
-.hieu {
-  display: inline-flex; align-items: center; gap: 12px;
-  font-size: 11px; font-weight: 700; letter-spacing: .3em;
-  text-transform: uppercase; color: var(--da);
-}
-.hieu::before {
-  content: ''; width: 36px; height: 1px; background: var(--mu-tat); flex: none;
-}
-
-.ten-thuong-hieu {
-  font-weight: 800; letter-spacing: -.02em; text-transform: uppercase;
-}
-
 h1 {
   margin: 0;
   font-size: clamp(38px, 8.5vw, 92px);
@@ -144,110 +119,8 @@ h3 { margin: 0 0 10px; font-size: 19px; font-weight: 700; }
 
 p { margin: 0 0 18px; }
 
-.dan { font-size: clamp(17px, 2.1vw, 21px); color: var(--kem); opacity: .9; }
-
-.nho { font-size: 14px; color: var(--da); }
-
-/* --- Nút ------------------------------------------------------------------ */
-.nut {
-  display: inline-flex; align-items: center; justify-content: center; gap: 10px;
-  min-height: 52px; padding: 14px 28px;
-  font: inherit; font-weight: 700; font-size: 16px;
-  text-decoration: none; border: 1.5px solid transparent; border-radius: 3px;
-  cursor: pointer; transition: background .15s, color .15s, border-color .15s;
-}
-.nut-chinh { background: var(--do); color: var(--kem); }
-.nut-chinh:hover { background: var(--do-dam); }
-.nut-vien { border-color: var(--vach-kem); color: var(--kem); }
-.nut-vien:hover { border-color: var(--cuc-vang); color: var(--cuc-vang); }
-
-.hang-nut { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
-
-/* --- Bố cục --------------------------------------------------------------- */
-.man-hinh {
-  position: relative;
-  min-height: 100svh;
-  display: flex; flex-direction: column;
-  padding: 28px 0 44px;
-}
-
-.muc { padding: 72px 0; border-top: 1px solid var(--vach-kem); }
-.muc-sang { background: var(--kem); color: var(--than); border-top: 0; }
-.muc-sang .nho { color: var(--muc-nhat); }
-.muc-sang .hieu { color: var(--muc-nhat); }
-.muc-sang .nut-vien { border-color: var(--vach); color: var(--than); }
-.muc-sang .nut-vien:hover { border-color: var(--do); color: var(--do); }
-
-.the {
-  border: 1px solid var(--vach-kem); border-radius: 4px;
-  padding: 22px 24px;
-}
-.muc-sang .the { border-color: var(--vach); }
-
-.luoi {
-  display: grid; gap: 18px;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-}
-
-/* --- Đầu trang và chân trang ---------------------------------------------- */
-.dau-trang {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 16px; margin-bottom: auto; padding-bottom: 40px;
-}
-.dau-trang .ten-thuong-hieu { font-size: 21px; }
-
-.doi-ngon-ngu {
-  font-size: 13px; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; text-decoration: none;
-  color: var(--da); padding: 10px 4px;
-  border-bottom: 1px solid transparent;
-}
-.doi-ngon-ngu:hover { color: var(--cuc-vang); border-bottom-color: var(--cuc-vang); }
-
-.chan-trang {
-  padding: 40px 0; border-top: 1px solid var(--vach-kem);
-  font-size: 14px; color: var(--da);
-}
-.chan-trang a { color: var(--da); }
-.chan-trang a:hover { color: var(--cuc-vang); }
-.chan-hang {
-  display: flex; flex-wrap: wrap; gap: 10px 24px;
-  /* baseline: link Quyền riêng tư đứng ngang dòng ©, không trôi xuống giữa khối pháp nhân. */
-  align-items: baseline; justify-content: space-between;
-}
-.chan-dong { margin: 0; }
-/* Dòng pháp nhân: nhỏ hơn một bậc, cách dòng © một khoảng. Mỗi cụm (tên công ty,
-   mã số thuế) không gãy giữa chừng — màn hẹp thì xuống dòng ở dấu "·". */
-.phap-nhan { margin-top: 8px; font-size: 13px; line-height: 1.55; }
-.phap-nhan .lien { white-space: nowrap; }
-
-/* --- Dòng trạng thái ------------------------------------------------------ */
-.trang-thai {
-  display: flex; align-items: flex-start; gap: 14px;
-  border-left: 3px solid var(--mu-tat);
-  padding: 4px 0 4px 18px;
-  margin: 0 0 34px;
-  max-width: 62ch;
-}
-.trang-thai p { margin: 0; }
-
-/* --- Thẻ vị trí tuyển dụng ------------------------------------------------ */
-.vi-tri { display: flex; flex-direction: column; gap: 6px; }
-.vi-tri .nhan {
-  align-self: flex-start;
-  font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
-  color: var(--do); background: rgba(178, 58, 44, .1);
-  padding: 4px 10px; border-radius: 2px;
-}
-
-/* --- Màn hình nhỏ --------------------------------------------------------- */
 @media (max-width: 640px) {
   body { font-size: 16px; }
-  .muc { padding: 52px 0; }
-  .man-hinh { padding: 20px 0 36px; }
-  .dau-trang { padding-bottom: 28px; }
-  .nut { width: 100%; }
-  .hang-nut { flex-direction: column; align-items: stretch; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -258,6 +131,5 @@ p { margin: 0 0 18px; }
 }
 
 @media print {
-  .nen-chu, .doi-ngon-ngu { display: none; }
   body { background: #fff; color: #000; }
 }

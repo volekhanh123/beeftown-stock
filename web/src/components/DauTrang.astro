@@ -1,0 +1,183 @@
+---
+/**
+ * ĐẦU TRANG — logo gốc, bốn mục điều hướng, đổi ngôn ngữ
+ *
+ * Logo là vector tách nguyên từ PDF nhận diện (bản đỏ trên kem, trang 3) — không
+ * gõ lại chữ BEEFTOWN bằng phông nào. Đầu trang nền kem nên dùng đúng biến thể
+ * dành cho nền kem; không đặt khối kem lạc lõng lên nền tối.
+ *
+ * Điều hướng theo brief: Trải nghiệm / Thực đơn / Đến Beeftown / Hỏi bàn. Hỏi bàn
+ * là nút đỏ — hành động chính của cả trang. Tuyển dụng và giấy tờ ở chân trang.
+ *
+ * Màn hẹp: <details> — mở / đóng được KHÔNG cần JavaScript. Script bên dưới chỉ
+ * thêm: Esc để đóng, bấm ra ngoài hoặc bấm một mục thì đóng, phóng to cửa sổ
+ * qua mốc màn rộng thì đóng.
+ */
+import { chu, duongDanTuongUng, DIA_CHI_NHA_HANG } from '../lib/chu';
+import { dieuHuong } from '../lib/trang-cong-khai';
+import type { NgonNgu } from '../lib/noi-dung';
+import BieuTuong from './BieuTuong.astro';
+
+interface Props {
+  ngonNgu: NgonNgu;
+  duongDan: string;
+  doiNgonNgu: { nn: NgonNgu; url: string; ten: string }[];
+}
+const { ngonNgu, duongDan, doiNgonNgu } = Astro.props;
+const t = chu(ngonNgu);
+const muc = dieuHuong(ngonNgu);
+const [traiNghiem, ...trang] = muc;
+const hoiBan = trang[trang.length - 1];
+const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace(/\/$/, '');
+---
+<header class="dau-trang">
+  <div class="khung dt-hang">
+    <a class="dt-logo" href={duongDanTuongUng('/', ngonNgu)} aria-label={t.veTrangChu}>
+      <img src="/thuong-hieu/logo-ngang-do.svg" width="446" height="124" alt="" />
+    </a>
+
+    <nav class="dt-nav" aria-label={t.dieuHuongChinh}>
+      <ul>
+        <li><a href={traiNghiem.url}>{traiNghiem.chu}</a></li>
+        {trang.slice(0, -1).map(m => (
+          <li><a href={m.url} aria-current={hienTai(m.duong) ? 'page' : undefined}>{m.chu}</a></li>
+        ))}
+      </ul>
+    </nav>
+
+    <div class="dt-phai">
+      <ul class="dt-ngon-ngu" aria-label={t.chonNgonNgu}>
+        {doiNgonNgu.map(n => (
+          <li><a class="doi-ngon-ngu" href={n.url} lang={n.nn} hreflang={n.nn}>{n.ten}</a></li>
+        ))}
+      </ul>
+      <a class="nut nut-chinh nut-nho dt-hoi-ban" href={hoiBan.url}
+         aria-current={hienTai(hoiBan.duong) ? 'page' : undefined}>{hoiBan.chu}</a>
+
+      <details class="menu-gon">
+        <summary>
+          <BieuTuong ten="menu" class="mg-mo" />
+          <BieuTuong ten="dong" class="mg-dong" />
+          <span>{t.moMenu}</span>
+        </summary>
+        <div class="mg-bang">
+          <nav aria-label={t.dieuHuongChinh}>
+            <ul class="mg-muc">
+              {muc.map(m => (
+                <li><a href={m.url} aria-current={m !== traiNghiem && hienTai(m.duong) ? 'page' : undefined}>{m.chu}</a></li>
+              ))}
+            </ul>
+          </nav>
+          <p class="mg-dia-chi"><BieuTuong ten="ghim" /><span><strong>{t.tang3}</strong> · <span lang="vi">{DIA_CHI_NHA_HANG.replace(/^Tầng 3, /, '')}</span></span></p>
+          <ul class="mg-ngon-ngu" aria-label={t.chonNgonNgu}>
+            {doiNgonNgu.map(n => (
+              <li><a class="doi-ngon-ngu" href={n.url} lang={n.nn} hreflang={n.nn}>{n.ten}</a></li>
+            ))}
+          </ul>
+        </div>
+      </details>
+    </div>
+  </div>
+</header>
+
+<script>
+  // Thêm vào <details>: Esc đóng (trả tiêu điểm về nút), bấm ra ngoài / bấm một mục
+  // thì đóng, cửa sổ rộng qua mốc màn rộng thì đóng. Không có script: vẫn mở/đóng được.
+  const menu = document.querySelector<HTMLDetailsElement>('.menu-gon');
+  if (menu) {
+    const nut = menu.querySelector('summary');
+    const dong = (traTieuDiem: boolean) => {
+      if (!menu.open) return;
+      menu.open = false;
+      if (traTieuDiem) nut?.focus();
+    };
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') dong(true); });
+    document.addEventListener('click', e => {
+      if (menu.open && !menu.contains(e.target as Node)) dong(false);
+    });
+    menu.querySelectorAll('.mg-bang a').forEach(a => a.addEventListener('click', () => dong(false)));
+    const rong = matchMedia('(min-width: 1080px)');
+    rong.addEventListener('change', e => { if (e.matches) dong(false); });
+  }
+</script>
+
+<style>
+  .dau-trang {
+    position: sticky; top: 0; z-index: 40;
+    background: var(--kem);
+    border-bottom: 1px solid var(--vach);
+  }
+  .dt-hang {
+    display: flex; align-items: center; gap: var(--k-5);
+    min-height: var(--cao-dau);
+  }
+  .dt-logo { display: flex; align-items: center; min-height: 44px; flex: none; }
+  .dt-logo img { height: 34px; width: auto; }
+
+  .dt-nav, .dt-ngon-ngu, .dt-hoi-ban { display: none; }
+  .dt-phai { display: flex; align-items: center; gap: var(--k-4); margin-left: auto; }
+
+  ul { list-style: none; margin: 0; padding: 0; }
+
+  /* --- Màn rộng ------------------------------------------------------------ */
+  @media (min-width: 1080px) {
+    .dt-logo img { height: 42px; }
+    .dt-nav { display: block; margin-inline: auto; }
+    .dt-nav ul { display: flex; gap: clamp(20px, 2.4vw, 40px); }
+    .dt-nav a {
+      display: inline-flex; align-items: center; min-height: 44px;
+      font-weight: 600; font-size: 15px; text-decoration: none; color: var(--than);
+      border-bottom: 2px solid transparent; transition: border-color var(--nhanh), color var(--nhanh);
+    }
+    .dt-nav a:hover { border-bottom-color: currentColor; }
+    .dt-nav a[aria-current='page'] { color: var(--do-sau); border-bottom-color: var(--do); }
+    .dt-ngon-ngu { display: flex; gap: var(--k-4); }
+    .dt-hoi-ban { display: inline-flex; }
+    .menu-gon { display: none; }
+  }
+
+  .doi-ngon-ngu {
+    display: inline-flex; align-items: center; min-height: 44px;
+    font-size: 13px; font-weight: 600; letter-spacing: .04em;
+    color: var(--muc-nhat); text-decoration: none;
+  }
+  .doi-ngon-ngu:hover { color: var(--than); text-decoration: underline; }
+
+  /* --- Màn hẹp: danh mục gọn ----------------------------------------------- */
+  .menu-gon summary {
+    display: inline-flex; align-items: center; gap: 8px;
+    min-height: 44px; padding: 0 14px;
+    border: 1.5px solid var(--than); border-radius: var(--bo);
+    font-weight: 700; font-size: 15px; cursor: pointer; list-style: none;
+    background: var(--kem);
+  }
+  .menu-gon summary::-webkit-details-marker { display: none; }
+  .menu-gon summary :global(svg) { width: 20px; height: 20px; }
+  .menu-gon :global(.mg-dong), .menu-gon[open] :global(.mg-mo) { display: none; }
+  .menu-gon[open] :global(.mg-dong) { display: block; }
+  .menu-gon[open] summary { background: var(--than); color: var(--kem); }
+
+  .mg-bang {
+    position: absolute; inset-inline: 0; top: 100%;
+    max-height: calc(100svh - var(--cao-dau));
+    overflow-y: auto;
+    padding: var(--k-3) var(--le) var(--k-6);
+    background: var(--kem);
+    border-bottom: 1px solid var(--vach);
+    box-shadow: 0 18px 30px -18px rgba(30, 22, 14, .35);
+  }
+  .mg-muc a {
+    display: flex; align-items: center; min-height: 56px;
+    font-size: 22px; font-weight: 700; letter-spacing: -.01em;
+    text-decoration: none; color: var(--than);
+    border-bottom: 1px solid var(--vach);
+  }
+  .mg-muc li:last-child a { color: var(--do-sau); }
+  .mg-muc a[aria-current='page'] { text-decoration: underline; text-decoration-color: var(--do); text-underline-offset: .25em; }
+  .mg-dia-chi {
+    display: flex; gap: 10px; align-items: flex-start;
+    margin: var(--k-5) 0 var(--k-2); font-size: 15px;
+  }
+  .mg-dia-chi :global(svg) { width: 20px; height: 20px; flex: none; color: var(--do); margin-top: 2px; }
+  .mg-ngon-ngu { display: flex; gap: var(--k-5); }
+</style>

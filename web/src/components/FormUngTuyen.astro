@@ -117,7 +117,7 @@ const t = dich(ngonNgu, {
 ---
 
 {ketQua?.ok ? (
-  <div class="the" style="max-width:62ch;border-left:4px solid var(--cuc-vang)">
+  <div class="the" style="max-width:62ch;border-left:4px solid var(--do)">
     <h3 style="margin-top:0">{t.daNhan}</h3>
     {ketQua.ma && (
       <p>
@@ -257,7 +257,7 @@ const t = dich(ngonNgu, {
     display: block; color: var(--muc-nhat); font-size: 14px; margin-bottom: 6px; line-height: 1.45;
   }
 
-  /* Form nằm trên nền SÁNG (muc-sang). Bản đầu viết màu cho nền tối: chữ kem,
+  /* Form nằm trên nền SÁNG (be-kem-sau). Bản đầu viết màu cho nền tối: chữ kem,
      viền kem 22%, nền kem 6% — trên nền kem thì ô vô hình và chữ gõ vào cũng
      vô hình (26/09/2026, ứng viên không nộp được hồ sơ). Ô trắng, viền
      --vien-o, chữ than.
@@ -270,11 +270,11 @@ const t = dich(ngonNgu, {
   .form-nop textarea {
     font: inherit; font-size: 16px; width: 100%;
     padding: 13px 14px; min-height: 50px;
-    border: 1px solid var(--vien-o); border-radius: 8px;
+    border: 1px solid var(--vien-o); border-radius: var(--bo);
     background: #fff; color: var(--than);
   }
   .form-nop :is(input, select, textarea):focus-visible {
-    outline: 2px solid var(--do); outline-offset: 1px; border-color: var(--do);
+    outline: 3px solid var(--do); outline-offset: 1px; border-color: var(--do);
   }
   .form-nop :is(input, textarea)::placeholder { color: var(--muc-nhat); }
   .form-nop textarea { min-height: 84px; resize: vertical; line-height: 1.55; }
@@ -284,7 +284,7 @@ const t = dich(ngonNgu, {
   }
 
   .form-nop .o-nhom {
-    border: 1px solid var(--vach); border-radius: 8px;
+    border: 1px solid var(--vien); border-radius: var(--bo);
     padding: 14px; margin: 0 0 18px;
   }
   .form-nop .o-chon {
@@ -296,7 +296,7 @@ const t = dich(ngonNgu, {
     width: 24px; height: 24px; margin: 0; flex-shrink: 0; accent-color: var(--do);
   }
   .form-nop .o-dong-y {
-    border-top: 1px solid var(--vach);
+    border-top: 1px solid var(--vien);
     margin-top: 6px; padding-top: 16px; align-items: flex-start;
   }
 

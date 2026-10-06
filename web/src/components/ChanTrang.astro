@@ -1,0 +1,168 @@
+---
+/**
+ * CHÂN TRANG — tuyển dụng, điều hướng phụ, địa chỉ, pháp nhân
+ *
+ * Ba tầng:
+ *  1. Dải tuyển dụng gọn. Tuyển đội mở cửa là "đường găng" của ngày mở (TrangRaMat
+ *     cũ), nên nó có mặt ở MỌI trang công khai — chỉ gọn lại so với một khối riêng.
+ *  2. Dải đỏ: logo kem (biến thể trang 3), chữ BEEFTOWN lặp chìm và tem tròn (trang
+ *     11 của PDF nhận diện), các mục điều hướng, địa chỉ + cầu thang bộ.
+ *  3. Pháp nhân. web/kiem-tra/trinh-duyet.mjs đọc chữ của <footer> ĐẦU TIÊN trên
+ *     trang: ngay dưới dòng "© … Beeftown · Beef Specialty Restaurant" phải là hai
+ *     dòng pháp nhân, đúng từng ký tự; mọi <p> trong chân trang phải hiện và ≥ 12px.
+ *     Ba dòng đó chép nguyên từ layout cũ — mỗi dòng viết liền trên một dòng mã:
+ *     compressHTML bỏ dấu cách có xuống dòng giữa hai nút ("·Beef").
+ */
+import { THUONG_HIEU, PHAP_NHAN, chu, dich, duongDanTuongUng } from '../lib/chu';
+import { dieuHuong, diaChi, lienHe } from '../lib/trang-cong-khai';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import { namVn } from '../lib/gio-vn';
+import BieuTuong from './BieuTuong.astro';
+
+interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
+const { ngonNgu, noiDung: nd } = Astro.props;
+const t = chu(ngonNgu);
+const lh = lienHe(nd);
+const muc = dieuHuong(ngonNgu);
+const mangXaHoi = [
+  { url: lh.facebook, ten: 'Facebook' },
+  { url: lh.instagram, ten: 'Instagram' },
+  { url: lh.tiktok, ten: 'TikTok' },
+  { url: lh.zalo, ten: 'Zalo' },
+].filter((m): m is { url: string; ten: string } => !!m.url);
+
+const c = dich(ngonNgu, {
+  tuyenDungNgan: {
+    vi: 'Đội mở cửa đang tuyển cho quầy thịt, bếp và sảnh.',
+    en: 'Our opening team is hiring for the butcher counter, kitchen and hall.',
+    ko: '정육, 주방, 홀에서 오픈 팀을 모집하고 있어요.',
+  },
+  theoDoi: { vi: 'Theo dõi', en: 'Follow', ko: '팔로우' },
+});
+---
+<footer class="chan-trang">
+  <div class="ct-tuyen-dung be-kem-dam">
+    <div class="khung ct-td-hang">
+      <p class="ct-td-chu"><strong>{t.tuyenDungTieuDe}.</strong> {c.tuyenDungNgan}</p>
+      <a class="lien-ket" href={duongDanTuongUng('/tuyen-dung', ngonNgu)}>{t.tuyenDungXem}<BieuTuong ten="mui-ten" /></a>
+    </div>
+  </div>
+
+  <div class="ct-chinh be-do co-trang-tri">
+    <div class="trang-tri hoa-van-chu ct-hoa-van" aria-hidden="true"></div>
+    <div class="khung ct-luoi">
+      <div class="ct-logo">
+        <img src="/thuong-hieu/logo-ngang-kem.svg" width="446" height="124" alt={THUONG_HIEU.ten} loading="lazy" decoding="async" />
+        <img class="ct-tem" src="/thuong-hieu/tem-tron.svg" width="320" height="320" alt="" loading="lazy" decoding="async" />
+      </div>
+
+      <nav class="ct-cot" aria-labelledby="ct-beeftown">
+        <h2 class="ct-tieu-de" id="ct-beeftown">{THUONG_HIEU.ten}</h2>
+        <ul>
+          {muc.map(m => <li><a href={m.url}>{m.chu}</a></li>)}
+        </ul>
+      </nav>
+
+      <nav class="ct-cot" aria-labelledby="ct-thong-tin">
+        <h2 class="ct-tieu-de" id="ct-thong-tin">{t.thongTin}</h2>
+        <ul>
+          <li><a href={duongDanTuongUng('/tuyen-dung', ngonNgu)}>{t.tuyenDung}</a></li>
+          <li><a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a></li>
+          <li><a href={duongDanTuongUng('/xoa-du-lieu', ngonNgu)}>{t.xoaDuLieu}</a></li>
+        </ul>
+      </nav>
+
+      <div class="ct-cot ct-dia-chi">
+        <h2 class="ct-tieu-de">{t.denBeeftown}</h2>
+        <address>
+          <p lang="vi">{diaChi(nd)}</p>
+          <p class="ct-cau-thang"><BieuTuong ten="cau-thang" /><span>{t.cauThangBo}</span></p>
+        </address>
+        {mangXaHoi.length > 0 && (
+          <ul class="ct-mxh" aria-label={c.theoDoi}>
+            {mangXaHoi.map(m => <li><a href={m.url} rel="noopener">{m.ten}</a></li>)}
+          </ul>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <div class="ct-day be-toi">
+    <div class="khung chan-hang">
+      {/* Mỗi dòng viết liền trên một dòng mã: compressHTML bỏ dấu cách có xuống
+          dòng giữa hai nút, "·⏎<span>" từng ra trang thành "·Beef". */}
+      <div>
+        <p class="chan-dong">© {namVn()} {t.banQuyen} · <span lang="en">{THUONG_HIEU.descriptor}</span></p>
+        {/* Pháp nhân — tên và địa chỉ giữ tiếng Việt ở mọi bản (PHAP_NHAN trong lib/chu.ts),
+            lang="vi" để trình đọc màn hình của trang Anh / Hàn đọc đúng giọng. */}
+        <div class="phap-nhan">
+          <p class="chan-dong"><span class="lien" lang="vi">{PHAP_NHAN.ten}</span> · <span class="lien">{t.maSoThue}: {PHAP_NHAN.maSoThue}</span></p>
+          <p class="chan-dong" lang="vi">{PHAP_NHAN.diaChi}</p>
+        </div>
+      </div>
+      <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a>
+    </div>
+  </div>
+</footer>
+
+<style>
+  ul { list-style: none; margin: 0; padding: 0; }
+
+  /* --- 1. Tuyển dụng ------------------------------------------------------- */
+  .ct-td-hang {
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+    gap: var(--k-2) var(--k-5); padding-block: var(--k-4);
+  }
+  .ct-td-chu { margin: 0; max-width: 62ch; font-size: 15px; }
+
+  /* --- 2. Dải đỏ ----------------------------------------------------------- */
+  .ct-chinh { position: relative; padding-block: var(--k-8) var(--k-7); }
+  .ct-hoa-van { inset: 0; --mau-hoa-van: rgba(150, 15, 19, .24); }
+  /* Tem tròn trang 11 — đóng như con dấu cạnh logo (màn hẹp) hoặc dưới logo (màn rộng). */
+  .ct-tem { width: clamp(76px, 18vw, 120px); height: auto; transform: rotate(-9deg); flex: none; }
+  .ct-luoi {
+    position: relative;
+    display: grid; gap: var(--k-6) var(--k-5);
+    grid-template-columns: 1fr 1fr;
+  }
+  .ct-logo {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between; gap: var(--k-4);
+  }
+  .ct-logo img:first-child { width: clamp(180px, 26vw, 280px); height: auto; }
+  .ct-dia-chi { grid-column: 1 / -1; }
+  @media (min-width: 900px) {
+    .ct-luoi { grid-template-columns: 1.3fr 1fr 1fr 1.4fr; align-items: start; }
+    .ct-logo, .ct-dia-chi { grid-column: auto; }
+    .ct-logo { flex-direction: column; align-items: flex-start; gap: var(--k-5); }
+  }
+  .ct-tieu-de {
+    margin: 0 0 var(--k-3);
+    font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+  }
+  .ct-cot a {
+    display: inline-flex; align-items: center; min-height: 40px;
+    font-weight: 600; text-decoration: none;
+  }
+  .ct-cot a:hover { text-decoration: underline; }
+  address { font-style: normal; }
+  address p { margin: 0 0 var(--k-3); max-width: 36ch; }
+  .ct-cau-thang { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+  .ct-cau-thang :global(svg) { width: 22px; height: 22px; flex: none; margin-top: 1px; }
+  .ct-mxh { display: flex; flex-wrap: wrap; gap: 0 var(--k-5); margin-top: var(--k-2); }
+
+  /* --- 3. Pháp nhân -------------------------------------------------------- */
+  .ct-day { padding-block: var(--k-6); font-size: 14px; color: var(--da); }
+  .ct-day a { color: var(--kem); }
+  .chan-hang {
+    display: flex; flex-wrap: wrap; gap: 10px 24px;
+    /* baseline: link Quyền riêng tư đứng ngang dòng ©, không trôi xuống giữa khối pháp nhân. */
+    align-items: baseline; justify-content: space-between;
+  }
+  .chan-dong { margin: 0; color: var(--kem); }
+  /* Dòng pháp nhân: nhỏ hơn một bậc, cách dòng © một khoảng. Mỗi cụm (tên công ty,
+     mã số thuế) không gãy giữa chừng — màn hẹp thì xuống dòng ở dấu "·". */
+  .phap-nhan { margin-top: 8px; font-size: 13px; line-height: 1.55; }
+  .phap-nhan .chan-dong { color: var(--da); }
+  .phap-nhan .lien { white-space: nowrap; }
+</style>

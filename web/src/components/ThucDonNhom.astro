@@ -1,0 +1,62 @@
+---
+/**
+ * MỘT NHÓM MÓN TRÊN TRANG THỰC ĐƠN — tiêu đề nhóm và các dòng .mon
+ *
+ * Chỉ trình bày đúng những gì thuc_don_cong_khai() trả (lib/thuc-don.ts):
+ *  · giá: CHỈ khi mon.gia !== null — null nghĩa là chưa duyệt, hoặc nhóm "xem giá
+ *    tại quầy"; khi đó không có phần tử giá nào, không "Liên hệ", không gạch ngang;
+ *  · nhãn: hai nhãn có căn cứ trong database (Món sống, Có cồn) — không tự thêm
+ *    chay, cay, dị ứng;
+ *  · món sống luôn đi kèm câu cảnh báo của chính món đó (thuc-don.ts đã bỏ món
+ *    sống thiếu câu cảnh báo).
+ *
+ * khongGia: nhóm bò tại quầy — giá nằm trên nhãn từng khay, trang không bao giờ in
+ * giá cho nhóm này dù dữ liệu nói gì.
+ */
+import { NHAN_MON, dinhDangGia, type NhomMon } from '../lib/thuc-don';
+import type { NgonNgu } from '../lib/noi-dung';
+import BieuTuong from './BieuTuong.astro';
+
+interface Props {
+  nhom: NhomMon;
+  ngonNgu: NgonNgu;
+  /** Một dòng nhỏ dưới tên nhóm, vd. "Không bắt buộc, gọi thêm khi bạn muốn." */
+  ghiChu?: string;
+  khongGia?: boolean;
+}
+const { nhom, ngonNgu, ghiChu, khongGia = false } = Astro.props;
+const id = `td-nhom-${nhom.ma.replace(/[^a-z0-9-]/gi, '-')}`;
+---
+<div class="td-nhom">
+  <h3 class="td-nhom-ten" id={id}>{nhom.ten}</h3>
+  {ghiChu && <p class="td-nhom-ghi">{ghiChu}</p>}
+  <ul class="td-ds" role="list" aria-labelledby={id}>
+    {nhom.mon.map(m => (
+      <li class="mon">
+        <p class="mon-ten">{m.ten}</p>
+        {!khongGia && m.gia !== null && <p class="mon-gia">{dinhDangGia(m.gia)}</p>}
+        {m.moTa && <p class="mon-mo-ta">{m.moTa}</p>}
+        {m.khauPhan && <p class="mon-goc">{m.khauPhan}</p>}
+        {(m.laMonSong || m.coCon) && (
+          <ul class="mon-nhan" role="list">
+            {m.laMonSong && <li class="nhan-mon"><BieuTuong ten="mon-song" /><span>{NHAN_MON.monSong[ngonNgu]}</span></li>}
+            {m.coCon && <li class="nhan-mon"><BieuTuong ten="co-con" /><span>{NHAN_MON.coCon[ngonNgu]}</span></li>}
+          </ul>
+        )}
+        {m.laMonSong && m.canhBao && <p class="canh-bao-mon">{m.canhBao}</p>}
+      </li>
+    ))}
+  </ul>
+</div>
+
+<style>
+  .td-nhom { break-inside: avoid; margin: 0 0 var(--k-7); }
+  .td-nhom-ten {
+    margin: 0; padding-bottom: var(--k-3);
+    border-bottom: 2px solid var(--chu-chinh);
+    font-size: var(--co-h3); letter-spacing: -.01em;
+  }
+  .td-nhom-ghi { margin: var(--k-3) 0 0; font-size: var(--co-nho); color: var(--chu-phu); }
+  .td-ds { list-style: none; margin: 0; padding: 0; }
+  .td-ds .mon:last-child { border-bottom: 0; }
+</style>

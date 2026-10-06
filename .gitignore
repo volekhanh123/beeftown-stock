@@ -132,3 +132,16 @@ node_modules/
 # Mẫu biến môi trường — CHỈ chứa TÊN biến, không chứa khóa thật.
 # Dòng này BẮT BUỘC đứng sau .env.* ở trên, nếu không sẽ bị chặn.
 !/web/.env.example
+
+# Tài sản thương hiệu cho trang công khai — dựng từ vector của PDF nhận diện bằng
+# web/cong-cu/thuong-hieu/ (README ở web/THIET-KE.md). Chỉ mở đúng các thư mục
+# này; ảnh khác vẫn bị chặn. Các dòng PNG BẮT BUỘC đứng sau *.png ở trên.
+!/web/public/thuong-hieu/*.png
+!/web/public/favicon.ico
+# Ảnh minh họa món (luôn kèm dòng "Ảnh minh họa" trên trang) — cỡ đã dựng sẵn
+!/web/public/anh/*.webp
+!/web/public/anh/*.avif
+# Script dựng tài sản (Python + Pillow, poppler)
+!/web/cong-cu/**/*.py
+# Ảnh chụp màn hình khi kiểm thử trạng thái đầy đủ — không commit
+web/kiem-tra/anh-chup/

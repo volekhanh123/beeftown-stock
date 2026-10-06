@@ -122,24 +122,27 @@ const tRieng = dich(ngonNgu, {
 });
 ---
 
-<section class="muc" style="padding-top:20px">
+{/* Đầu trang con chung của trang công khai (.mo-dau-trang, cong-khai.css):
+    nền kem, nhãn đỏ, nét rosemary bên phải. */}
+<section class="mo-dau-trang be-kem td-dau">
   <div class="khung">
     <p class="hieu">{t.tuyenDung}</p>
-    <h1 style="font-size:clamp(32px,6vw,58px)">{t.tuyenDungTieuDe}</h1>
-    <p class="dan" style="max-width:58ch; margin-top:22px">{t.tuyenDungDan}</p>
+    <h1>{t.tuyenDungTieuDe}</h1>
+    <p class="dan">{t.tuyenDungDan}</p>
     {!dungDuPhong && (
-      <div class="hang-nut" style="margin-top:26px">
+      <div class="hang-nut td-nut">
         <a class="nut nut-chinh" href="#nop-ho-so">{tRieng.nopHoSo}</a>
       </div>
     )}
   </div>
+  <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
 </section>
 
-<section class="muc muc-sang">
+<section class="muc be-kem-sau">
   <div class="khung">
     <h2>{tRieng.viTriDangTuyen}</h2>
 
-    <div class="luoi" style="margin-top:26px">
+    <div class="luoi td-luoi">
       {dungDuPhong
         ? DU_PHONG.map((v) => (
             <div class="the vi-tri">
@@ -259,9 +262,18 @@ const tRieng = dich(ngonNgu, {
 </section>
 
 <style>
+  /* Nét rosemary của .mo-dau-trang nằm sát mép phải, giữa khối. Từ 600px tới
+     khoảng 1100px, dòng .dan 58ch chạy đè lên nó — chừa chỗ cho nét vẽ. */
+  @media (min-width: 600px) {
+    .td-dau h1 { max-width: min(18ch, 100% - clamp(90px, 12vw, 170px) - var(--k-6)); }
+    .td-dau .dan { max-width: min(58ch, 100% - clamp(90px, 12vw, 170px) - var(--k-6)); }
+  }
+  .td-nut { margin-top: var(--k-6); }
+  .td-luoi { margin-top: var(--k-5); }
+
   /* "Xem chi tiết công việc": màu nút chính để thấy là bấm được; cao 44px cho
      ngón tay cái. */
-  .chi-tiet { margin-top: 12px; border-top: 1px solid var(--vach); }
+  .chi-tiet { margin-top: 12px; border-top: 1px solid var(--vien); }
   .chi-tiet > summary {
     cursor: pointer; font-weight: 700; color: var(--do);
     padding: 12px 0; min-height: 44px;

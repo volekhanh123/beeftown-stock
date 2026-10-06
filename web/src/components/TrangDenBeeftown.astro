@@ -1,0 +1,249 @@
+---
+/**
+ * TRANG ĐẾN BEEFTOWN — tầng 3, cầu thang bộ, ba bước tới bàn
+ *
+ * Điều khách phải biết TRƯỚC khi rủ cả nhà đi: Beeftown ở trọn tầng 3, khách lên
+ * bằng cầu thang bộ, KHÔNG có thang máy cho khách (brief 06/10/2026).
+ *
+ * Ba bước chỉ nói những gì đã xác nhận: tòa nhà 11-21 Hàm Nghi → cầu thang bộ lên
+ * tầng 3 → quầy bò. KHÔNG bịa chi tiết lối đi (cửa nào, rẽ trái hay phải): chưa
+ * ai đi lại để ghi. Ảnh lối vào, cầu thang và quầy là KhungAnh cho tới khi có ảnh
+ * chụp thật (web/THIET-KE.md, brief chụp) — không ảnh AI cho những chỗ này.
+ *
+ * Không có: giờ mở cửa, chỗ gửi xe (chưa chốt), bản đồ nhúng. "Chỉ đường" chỉ hiện
+ * khi link Google Maps đã công bố (LenTang3); liên hệ chỉ hiện mục đã công bố.
+ */
+import { chu, dich, duongDanTuongUng } from '../lib/chu';
+import { coKenhHoiBan, diaChi, lienHe } from '../lib/trang-cong-khai';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import BieuTuong from './BieuTuong.astro';
+import KhungAnh from './KhungAnh.astro';
+import LenTang3 from './LenTang3.astro';
+
+interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
+const { ngonNgu, noiDung: nd } = Astro.props;
+const t = chu(ngonNgu);
+const lh = lienHe(nd);
+const dc = diaChi(nd);
+const email = lh.thu ? lh.thu.replace(/^mailto:/, '') : null;
+const coLienHe = !!(lh.facebook || lh.goi || email);
+const coKenh = coKenhHoiBan(nd);
+
+const c = dich(ngonNgu, {
+  tieuDe: { vi: 'Hẹn gặp bạn ở tầng 3', en: 'See you on Floor 3', ko: '3층에서 만나요' },
+  dan: {
+    vi: 'Beeftown nằm trọn tầng 3, lối lên là cầu thang bộ — không có thang máy cho khách. Dưới đây là đường đi, từ tòa nhà tới quầy bò.',
+    en: 'Beeftown takes up all of Floor 3, and the way up is by the stairs — there is no guest lift. Here is how to get from the street to the beef counter.',
+    ko: 'Beeftown은 3층 전체를 쓰고 있고, 계단으로 올라오셔야 해요. 손님용 엘리베이터는 없어요. 건물에서 정육 코너까지 오시는 길을 안내해 드릴게요.',
+  },
+
+  // --- Ba bước tới bàn -------------------------------------------------------
+  buocHieu: { vi: 'Đường lên', en: 'The way up', ko: '올라오는 길' },
+  buocTieuDe: { vi: 'Ba bước tới bàn', en: 'Three steps to your table', ko: '테이블까지 세 걸음' },
+  // Số nhà và tên đường giữ chữ Việt (lang="vi") — chữ khách thấy trên biển số.
+  duong: { vi: '11-21 Hàm Nghi', en: '11-21 Hàm Nghi', ko: 'Hàm Nghi 11-21' },
+  b1Truoc: { vi: 'Tới tòa nhà số ', en: 'Come to ', ko: '' },
+  b1Sau: { vi: '', en: '', ko: ' 건물로 오세요' },
+  b1Chu: { vi: 'Địa chỉ đầy đủ:', en: 'Full address:', ko: '전체 주소:' },
+  b2TieuDe: { vi: 'Đi cầu thang bộ lên tầng 3', en: 'Take the stairs up to Floor 3', ko: '계단으로 3층까지 올라오세요' },
+  b2Chu: {
+    vi: 'Không có thang máy cho khách, nên bạn cứ lên thong thả.',
+    en: 'There is no guest lift, so take your time on the way up.',
+    ko: '손님용 엘리베이터가 없으니 천천히 올라오세요.',
+  },
+  b3TieuDe: { vi: 'Ghé quầy chọn bò', en: 'Stop by the beef counter', ko: '정육 코너에서 고기를 고르세요' },
+  b3Chu: {
+    vi: 'Xem khay, đọc nhãn, rồi nhờ nhân viên tư vấn phần bò hợp với cả bàn.',
+    en: 'Look over the trays, read the labels, and ask our staff which cut suits your table.',
+    ko: '트레이와 라벨을 살펴보고, 테이블에 맞는 부위를 직원에게 추천받으세요.',
+  },
+
+  // --- Liên hệ ---------------------------------------------------------------
+  lhHieu: { vi: 'Liên hệ', en: 'Contact', ko: '연락처' },
+  lhTieuDe: { vi: 'Cần hỏi gì trước khi tới?', en: 'Questions before you come?', ko: '오시기 전에 궁금한 점이 있으신가요?' },
+  dienThoai: { vi: 'Điện thoại', en: 'Phone', ko: '전화' },
+  email: { vi: 'Email', en: 'Email', ko: '이메일' },
+
+  // --- Cuối trang ------------------------------------------------------------
+  moiHieu: { vi: 'Đi cùng nhau', en: 'Coming together', ko: '함께 오실 때' },
+  moiTieuDe: {
+    vi: 'Đã chọn được ngày? Hỏi bàn trước nhé.',
+    en: 'Picked a day? Ask for a table first.',
+    ko: '날짜를 정하셨나요? 테이블을 먼저 문의해 주세요.',
+  },
+  moiDan: {
+    vi: 'Cho Beeftown biết ngày và số người. Nhà hàng kiểm tra rồi liên hệ để xác nhận với bạn.',
+    en: 'Tell us the day and how many of you are coming. We will check and contact you to confirm.',
+    ko: '날짜와 인원을 알려 주세요. 매장에서 확인한 뒤 연락드릴게요.',
+  },
+  moiTieuDeMenu: {
+    vi: 'Trước khi tới, xem qua thực đơn',
+    en: 'Before you come, have a look at the menu',
+    ko: '오시기 전에 메뉴를 먼저 살펴보세요',
+  },
+  moiDanMenu: {
+    vi: 'Bò chọn tại quầy, cùng món ăn và đồ uống cho cả bàn.',
+    en: 'Beef you pick at the counter, plus dishes and drinks for the whole table.',
+    ko: '정육 코너에서 고르는 소고기와 테이블에서 함께 나누는 요리, 음료가 있어요.',
+  },
+});
+---
+<section class="mo-dau-trang be-kem" aria-labelledby="db-tieu-de">
+  <div class="khung">
+    <p class="hieu">{t.denBeeftown}</p>
+    <h1 id="db-tieu-de">{c.tieuDe}</h1>
+    <p class="dan">{c.dan}</p>
+  </div>
+  <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
+</section>
+
+<section class="muc be-kem-dam db-tang3">
+  <div class="khung">
+    <LenTang3 ngonNgu={ngonNgu} noiDung={nd} khongLinkDuongDen />
+  </div>
+</section>
+
+{/* Ba bước: lệch bậc trên màn rộng như đi lên cầu thang — bước 1 thấp nhất. */}
+<section class="muc be-toi db-buoc" aria-labelledby="db-h-buoc">
+  <div class="khung">
+    <p class="hieu">{c.buocHieu}</p>
+    <h2 id="db-h-buoc">{c.buocTieuDe}</h2>
+    <ol class="db-ds" role="list">
+      <li class="db-muc">
+        <KhungAnh loai="loi-vao" tiLe="4 / 3" nen="toi" />
+        <div class="db-chu">
+          <span class="db-so" aria-hidden="true">1</span>
+          <div>
+            <h3>{c.b1Truoc}<span lang="vi">{c.duong}</span>{c.b1Sau}</h3>
+            <p>{c.b1Chu} <span lang="vi">{dc}</span></p>
+          </div>
+        </div>
+      </li>
+      <li class="db-muc">
+        <KhungAnh loai="cau-thang" tiLe="4 / 3" nen="toi" />
+        <div class="db-chu">
+          <span class="db-so" aria-hidden="true">2</span>
+          <div>
+            <h3>{c.b2TieuDe}</h3>
+            <p>{c.b2Chu}</p>
+          </div>
+        </div>
+      </li>
+      <li class="db-muc">
+        <KhungAnh loai="quay" tiLe="4 / 3" nen="toi" />
+        <div class="db-chu">
+          <span class="db-so" aria-hidden="true">3</span>
+          <div>
+            <h3>{c.b3TieuDe}</h3>
+            <p>{c.b3Chu}</p>
+          </div>
+        </div>
+      </li>
+    </ol>
+  </div>
+</section>
+
+{/* Liên hệ: chỉ mục đã công bố trong /noi-bo — chưa có mục nào thì bỏ cả khối. */}
+{coLienHe && (
+  <section class="muc be-kem db-lien-he" aria-labelledby="db-h-lh">
+    <div class="khung db-lh-luoi">
+      <div>
+        <p class="hieu">{c.lhHieu}</p>
+        <h2 id="db-h-lh">{c.lhTieuDe}</h2>
+      </div>
+      <dl class="db-lh-ds">
+        {lh.facebook && (
+          <div class="db-lh-dong">
+            <dt>Facebook</dt>
+            <dd><a class="lien-ket" href={lh.facebook} rel="noopener">{t.nhanTin}<BieuTuong ten="mui-ten" /></a></dd>
+          </div>
+        )}
+        {lh.goi && (
+          <div class="db-lh-dong">
+            <dt>{c.dienThoai}</dt>
+            <dd><a class="lien-ket" href={lh.goi}><BieuTuong ten="dien-thoai" />{lh.hotline}</a></dd>
+          </div>
+        )}
+        {email && lh.thu && (
+          <div class="db-lh-dong">
+            <dt>{c.email}</dt>
+            <dd><a class="lien-ket db-thu" href={lh.thu}>{email}</a></dd>
+          </div>
+        )}
+      </dl>
+    </div>
+  </section>
+)}
+
+{/* Cuối trang: Hỏi bàn chỉ khi có kênh thật để hỏi; Xem thực đơn luôn có. */}
+<section class="muc be-do nen-van-mo db-moi co-trang-tri" aria-labelledby="db-h-moi">
+  <span class="trang-tri net steak-2 db-steak an-khi-hep" aria-hidden="true"></span>
+  <div class="khung db-moi-chu">
+    <p class="hieu">{c.moiHieu}</p>
+    <h2 id="db-h-moi">{coKenh ? c.moiTieuDe : c.moiTieuDeMenu}</h2>
+    <p class="dan">{coKenh ? c.moiDan : c.moiDanMenu}</p>
+    <div class="hang-nut">
+      {coKenh && <a class="nut nut-chinh" href={duongDanTuongUng('/dat-ban', ngonNgu)}>{t.datBan}</a>}
+      <a class:list={['nut', coKenh ? 'nut-vien' : 'nut-chinh']} href={duongDanTuongUng('/thuc-don', ngonNgu)}>{t.xemMenu}</a>
+    </div>
+  </div>
+</section>
+
+<style>
+  /* --- Tầng 3 ---------------------------------------------------------------- */
+  .db-tang3 { padding-block: var(--k-8); }
+
+  /* --- Ba bước --------------------------------------------------------------- */
+  .db-buoc h2 { max-width: 18ch; }
+  .db-ds {
+    list-style: none; margin: var(--k-7) 0 0; padding: 0;
+    display: grid; gap: var(--k-7); grid-template-columns: 1fr;
+  }
+  @media (min-width: 600px) and (max-width: 899px) {
+    /* Màn vừa: ảnh và chữ cạnh nhau, vẫn xếp dọc từng bước. */
+    .db-muc { display: grid; grid-template-columns: 5fr 6fr; gap: var(--k-5); align-items: center; }
+  }
+  @media (min-width: 900px) {
+    .db-ds { grid-template-columns: repeat(3, 1fr); gap: var(--k-6); align-items: start; }
+    /* Lệch bậc: bước 1 thấp nhất, bước 3 cao nhất — đi lên như cầu thang. */
+    .db-muc:nth-child(1) { margin-top: var(--k-9); }
+    .db-muc:nth-child(2) { margin-top: var(--k-7); }
+  }
+  .db-chu {
+    display: flex; gap: var(--k-4); align-items: flex-start;
+    margin-top: var(--k-4);
+  }
+  @media (min-width: 600px) and (max-width: 899px) { .db-chu { margin-top: 0; } }
+  .db-so {
+    flex: none; min-width: 1ch;
+    font-size: clamp(44px, 3vw + 30px, 64px); font-weight: 800; line-height: .9; letter-spacing: -.04em;
+    color: var(--nhan);
+  }
+  .db-chu h3 { margin: 4px 0 var(--k-2); }
+  .db-chu p { margin: 0; color: var(--chu-phu); max-width: 42ch; }
+
+  /* --- Liên hệ --------------------------------------------------------------- */
+  .db-lh-luoi { display: grid; gap: var(--k-6); grid-template-columns: 1fr; }
+  @media (min-width: 900px) { .db-lh-luoi { grid-template-columns: 5fr 7fr; gap: var(--k-8); align-items: start; } }
+  .db-lh-luoi h2 { margin-bottom: 0; max-width: 18ch; }
+  .db-lh-ds { margin: 0; border-top: 2px solid var(--chu-chinh); }
+  .db-lh-dong {
+    display: grid; gap: 2px var(--k-5); grid-template-columns: 1fr;
+    padding: var(--k-4) 0; border-bottom: 1px solid var(--vien);
+  }
+  @media (min-width: 600px) { .db-lh-dong { grid-template-columns: 9rem 1fr; align-items: center; } }
+  .db-lh-dong dt { font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--nhan-nho); }
+  .db-lh-dong dd { margin: 0; }
+  .db-lh-dong .lien-ket { font-size: 18px; }
+  .db-thu { overflow-wrap: anywhere; }
+
+  /* --- Cuối trang ------------------------------------------------------------ */
+  .db-moi-chu { position: relative; }
+  .db-moi-chu h2 { max-width: 20ch; }
+  .db-moi-chu .dan { margin-bottom: var(--k-6); }
+  .db-steak {
+    width: clamp(110px, 16vw, 220px); right: max(var(--le), calc((100% - var(--rong-ck)) / 2));
+    top: 50%; transform: translateY(-50%) rotate(14deg); opacity: .35;
+  }
+  @media (max-width: 899px) { .db-steak { display: none; } }
+</style>

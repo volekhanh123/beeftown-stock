@@ -1,0 +1,162 @@
+---
+/**
+ * MÀN HÌNH ĐẦU TRANG CHỦ
+ *
+ * Câu chính (h1) theo brief 06/10/2026: "Chọn phần bò bạn thích, rồi cùng cả
+ * bàn thưởng thức." Tagline Pick it. Grill it. Love it. và descriptor đi kèm.
+ *
+ * Bên phải (trên điện thoại: bên trên) là mảng vân mỡ trang 2 của PDF nhận diện.
+ * Có ảnh hero (ảnh minh họa, lib/anh.ts) thì ảnh nằm trên mảng đó; chưa có thì
+ * chính artwork của PDF làm hero: tagline xếp ba dòng như biển trang 7, nét miếng
+ * steak và rosemary trang 3, tem tròn trang 11. Hai trạng thái đều phải đẹp —
+ * không bao giờ là một khung xám chờ ảnh.
+ *
+ * Thứ bậc nút theo mức sẵn sàng mở cửa: lib/trang-cong-khai.ts → nutMoDau().
+ * Dòng trạng thái và ngày mở giữ đúng logic cũ: dong_trang_thai, ngay_khai_truong.
+ */
+import { THUONG_HIEU, chu, duongDanTuongUng, DIA_CHI_NHA_HANG } from '../lib/chu';
+import { dinhDangNgay, homNayVn } from '../lib/noi-dung';
+import type { NgonNgu, NoiDung } from '../lib/noi-dung';
+import { nutMoDau, lienHe } from '../lib/trang-cong-khai';
+import { coAnh } from '../lib/anh';
+import Anh from './Anh.astro';
+import BieuTuong from './BieuTuong.astro';
+
+interface Props { ngonNgu: NgonNgu; noiDung: NoiDung; }
+const { ngonNgu, noiDung: nd } = Astro.props;
+const t = chu(ngonNgu);
+const nut = nutMoDau(nd, ngonNgu);
+const lh = lienHe(nd);
+const ngayMo = nd.ngay_khai_truong;
+const daMo = !!(ngayMo && ngayMo <= homNayVn());
+const coAnhHero = !!coAnh('hero-vi-gas', '16x9');
+const [pick, grill, love] = THUONG_HIEU.khauHieu.split(/(?<=\.)\s+/);
+---
+<section class="kmd be-kem" aria-labelledby="kmd-tieu-de">
+  <div class="kmd-tam nen-van-mo" aria-hidden="true"></div>
+
+  <div class="khung kmd-luoi">
+    <div class="kmd-chu">
+      <p class="hieu"><span lang="en">{THUONG_HIEU.descriptor}</span></p>
+      <h1 id="kmd-tieu-de">{t.cauChinh}</h1>
+      <p class="dan kmd-dan">{t.gioiThieu}</p>
+
+      <div class="hang-nut kmd-nut">
+        {nut.map(n => (
+          <a class:list={['nut', n.kieu === 'chinh' ? 'nut-chinh' : 'nut-vien']} href={n.url}>{n.chu}</a>
+        ))}
+      </div>
+
+      <ul class="kmd-thong-tin">
+        <li>
+          <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="cau-thang" /><span><strong>{t.tang3}</strong> · <span lang="vi">{DIA_CHI_NHA_HANG.replace(/^Tầng 3, /, '').replace(/, phường Sài Gòn/, '')}</span></span></a>
+        </li>
+        {ngayMo && (
+          <li class="kmd-ngay">{daMo ? t.moCuaTu : t.donBanTu} <strong>{dinhDangNgay(ngayMo, ngonNgu)}</strong></li>
+        )}
+        <li class="trang-thai kmd-trang-thai"><p>{nd.dong_trang_thai ?? t.trangThaiMacDinh}</p></li>
+        {lh.facebook && (
+          <li><a class="lien-ket" href={lh.facebook} rel="noopener">{t.theoDoi}<BieuTuong ten="mui-ten" /></a></li>
+        )}
+      </ul>
+    </div>
+
+    <div class="kmd-hinh">
+      {coAnhHero ? (
+        <div class="kmd-anh">
+          <Anh id="hero-vi-gas" ngonNgu={ngonNgu} khung="16x9" khungNho="4x5" uuTien
+               sizes="(min-width: 900px) 56vw, 100vw" />
+          <p class="kmd-khau-hieu kmd-khau-hieu-nho" lang="en" aria-hidden="true"><span>{pick}</span> <span>{grill}</span> <span>{love}</span></p>
+        </div>
+      ) : (
+        <div class="kmd-artwork" aria-hidden="true">
+          <span class="trang-tri net steak-2 kmd-steak"></span>
+          <span class="trang-tri net huong-thao-3 kmd-la-1"></span>
+          <span class="trang-tri net huong-thao-1 kmd-la-2"></span>
+          <p class="kmd-khau-hieu" lang="en"><span>{pick}</span> <span>{grill}</span> <span>{love}</span></p>
+          <img class="kmd-tem" src="/thuong-hieu/tem-tron.svg" width="320" height="320" alt="" />
+        </div>
+      )}
+    </div>
+  </div>
+</section>
+
+<style>
+  .kmd { position: relative; overflow: clip; }
+
+  /* Mảng vân mỡ: trên điện thoại là dải trên cùng, tràn hết bề ngang; màn rộng là
+     nửa phải, tràn ra mép cửa sổ. */
+  .kmd-tam { position: absolute; inset: 0 0 auto 0; height: clamp(250px, 66vw, 420px); }
+
+  .kmd-luoi {
+    position: relative;
+    display: grid; grid-template-columns: 1fr;
+    padding-bottom: var(--k-8);
+  }
+  .kmd-hinh { order: -1; position: relative; height: clamp(250px, 66vw, 420px); }
+  .kmd-chu { padding-top: var(--k-6); }
+
+  .kmd h1 { max-width: 15ch; margin-bottom: var(--k-5); }
+  .kmd-dan { margin: 0 0 var(--k-6); }
+  .kmd-nut { margin-bottom: var(--k-6); }
+
+  .kmd-thong-tin {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; gap: var(--k-4);
+  }
+  .kmd-dia-chi {
+    display: inline-flex; align-items: center; gap: 10px; min-height: 44px;
+    font-weight: 600; text-decoration: none; color: var(--than);
+  }
+  .kmd-dia-chi:hover > span { text-decoration: underline; }
+  .kmd-dia-chi :global(svg) { width: 24px; height: 24px; color: var(--do); flex: none; }
+  .kmd-ngay { font-weight: 600; }
+
+  /* --- Artwork khi chưa có ảnh: tagline xếp ba dòng như biển trang 7 ------- */
+  .kmd-artwork { position: absolute; inset: 0; color: var(--kem); --net-ve: var(--kem); }
+  .kmd-khau-hieu {
+    position: absolute; left: 0; bottom: var(--k-6); margin: 0;
+    display: grid; gap: 2px;
+    font-weight: 800; text-transform: uppercase; letter-spacing: -.01em; line-height: .98;
+    font-size: clamp(34px, 9vw, 76px); color: var(--kem);
+  }
+  .kmd-khau-hieu span:last-child { color: var(--kem-dam); }
+  .kmd-steak { width: clamp(110px, 30vw, 230px); right: 4%; top: 12%; transform: rotate(14deg); opacity: .95; }
+  .kmd-la-1 { width: clamp(70px, 16vw, 130px); right: 42%; top: 8%; transform: rotate(-24deg); }
+  .kmd-la-2 { width: clamp(46px, 10vw, 84px); right: 30%; bottom: 6%; transform: rotate(32deg); }
+  .kmd-tem {
+    position: absolute; width: clamp(78px, 18vw, 140px); height: auto;
+    right: 4%; bottom: 7%; transform: rotate(-10deg);
+  }
+
+  /* --- Có ảnh --------------------------------------------------------------- */
+  .kmd-anh { position: absolute; inset: var(--k-5) 0 var(--k-5); display: grid; place-items: center; }
+  .kmd-anh :global(.anh) { width: 100%; max-height: 100%; box-shadow: 0 30px 60px -30px rgba(30, 22, 14, .6); }
+  .kmd-khau-hieu-nho { display: none; }
+
+  /* --- Màn rộng: hai cột, mảng đỏ nửa phải --------------------------------- */
+  @media (min-width: 900px) {
+    .kmd-tam { inset: 0 0 0 auto; width: 44%; height: auto; }
+    .kmd-luoi {
+      grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+      gap: var(--k-7);
+      min-height: min(calc(100svh - var(--cao-dau)), 860px);
+      align-items: center;
+      padding-block: var(--k-8);
+    }
+    .kmd-hinh { order: 0; height: 100%; min-height: 520px; }
+    .kmd-chu { padding-top: 0; }
+    .kmd-artwork { inset: 0 calc(-1 * var(--le)) 0 var(--k-6); }
+    .kmd-khau-hieu { left: 0; bottom: var(--k-7); font-size: clamp(52px, 5vw, 84px); }
+    .kmd-steak { right: 6%; top: 8%; }
+    .kmd-la-1 { right: 48%; top: 4%; }
+    .kmd-tem { right: 6%; bottom: 7%; }
+    .kmd-la-2 { right: 4%; bottom: 34%; }
+    /* Ảnh nằm vắt qua mép mảng đỏ: nửa trên kem, nửa trên vân mỡ. */
+    .kmd-anh { inset: 12% -4% 12% -12%; }
+    .kmd-khau-hieu-nho {
+      display: grid; position: absolute; left: auto; right: 0; bottom: -2%;
+      font-size: clamp(26px, 2.4vw, 38px); text-align: right;
+    }
+  }
+</style>
