@@ -4,6 +4,7 @@ import TrangDatBan from '../components/TrangDatBan.astro';
 import { docNoiDung } from '../lib/noi-dung';
 import { tinhTrangDatBan } from '../lib/dat-ban';
 import { xuLyDatBan, ketQuaDatBan } from '../lib/xu-ly-form';
+import { moTaTrangHoiBan } from '../lib/trang-cong-khai';
 
 const chuyenHuong = await xuLyDatBan(Astro, '/dat-ban', 'vi');
 if (chuyenHuong) return chuyenHuong;
@@ -20,7 +21,7 @@ const tinhTrang = await tinhTrangDatBan(
   noiDung={noiDung}
   duongDan="/dat-ban"
   tieuDe="Hỏi bàn — Beeftown"
-  moTa="Hỏi bàn tại Beeftown, nhà hàng chuyên bò ở tầng 3, 11-21 Hàm Nghi, TP.HCM. Bạn gửi yêu cầu, nhà hàng kiểm tra rồi gọi lại để xác nhận."
+  moTa={moTaTrangHoiBan('vi', tinhTrang.moDuoc)}
 >
   <TrangDatBan
     ngonNgu="vi"

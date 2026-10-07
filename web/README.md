@@ -49,8 +49,8 @@ Mở http://localhost:4321. Không cần Supabase.
 | `npm run kiem-tra` | Kiểm tra kiểu dữ liệu (`astro check`) |
 | `npm run deploy` | **Cổng kiểm thử** (`kiem-tra/truoc-deploy.mjs`: chỉ commit đã có CI xanh) → quét chữ cấm → build → đẩy lên Cloudflare |
 | `npm run deploy:khan-cap` | Như trên nhưng bỏ qua cổng kiểm thử — chỉ khi khẩn cấp |
-| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 21 trang công khai ở 360 / 390 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, vùng chạm ≥ 44px, tương phản, câu cầu thang bộ, menu gọn chạy cả khi tắt JavaScript; form không bao giờ báo thành công khi chưa ghi được. Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
-| `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit); `-- --chi 3,6` chỉ chạy vài nhóm |
+| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 21 trang công khai ở 360 / 390 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, vùng chạm ≥ 44px, tương phản, câu cầu thang bộ, menu gọn chạy cả khi tắt JavaScript; form không bao giờ báo thành công khi chưa ghi được; trang hỏi bàn không hứa "nhà hàng gọi lại" khi form đóng; trang 404 (mã 404, đúng thứ tiếng, link về `/`, `/en`, `/ko` — nhóm này chạy cả với `-- --url`). Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
+| `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), mô tả và đoạn mở đầu trang hỏi bàn khi form mở / đóng, bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit); `-- --chi 3,6` chỉ chạy vài nhóm |
 
 **Cổng deploy.** `npm run deploy` chỉ đưa lên commit mà GitHub Actions đã chạy xanh: nó hỏi kết quả
 workflow "Kiểm thử" của commit đang deploy bằng lệnh `gh`. Cài một lần trên máy deploy:
@@ -532,7 +532,7 @@ grep -rq "$(grep PUBLIC_SUPABASE_URL .env | cut -d= -f2 | sed 's|https://||;s|\.
 ## Đã làm và chưa làm
 
 **Trang công khai — 21 đường dẫn, ba thứ tiếng:**
-trang chủ · **thực đơn** · **đến Beeftown** · **hỏi bàn** · tuyển dụng · quyền riêng tư · xóa dữ liệu, mỗi trang một bản Việt, một bản Anh (`/en`) và một bản Hàn (`/ko`), cộng `robots.txt` và `sitemap.xml`. Chữ lấy từ database được máy dịch — xem mục "Bản dịch tự động". Giao diện "Quầy thịt ấm" và tài sản thương hiệu trích từ PDF nhận diện: `THIET-KE.md`.
+trang chủ · **thực đơn** · **đến Beeftown** · **hỏi bàn** · tuyển dụng · quyền riêng tư · xóa dữ liệu, mỗi trang một bản Việt, một bản Anh (`/en`) và một bản Hàn (`/ko`), cộng `robots.txt` và `sitemap.xml`. Đường dẫn lạ trả trang 404 của Beeftown (`src/pages/404.astro`): mã 404, thứ tiếng theo tiền tố đường dẫn (`/en/…`, `/ko/…`, còn lại tiếng Việt), link về trang chủ ba thứ tiếng, noindex, không đọc database — không vào `CAP_DUONG_DAN` hay sitemap. Chữ lấy từ database được máy dịch — xem mục "Bản dịch tự động". Giao diện "Quầy thịt ấm" và tài sản thương hiệu trích từ PDF nhận diện: `THIET-KE.md`.
 
 **Trang thực đơn công khai — đã có.** Phần Bò tại quầy luôn hiện; món ăn và đồ uống hiện khi Khánh công bố món (`THUC-DON.md`), đồ uống có cồn sau công tắc riêng. Không giá nào hiện khi chưa duyệt.
 
@@ -544,7 +544,7 @@ trang chủ · **thực đơn** · **đến Beeftown** · **hỏi bàn** · tuy�
 | Form | Hiện khi nào |
 |---|---|
 | Ứng tuyển | Có ít nhất một `vi_tri_tuyen_dung` ở trạng thái `da_cong_bo`. Chưa có thì hiện khối "nhắn Facebook". |
-| Hỏi bàn (`/dat-ban`) | Công tắc `form_dat_ban_dang_mo` bật **và** database thật sự còn chỗ trong 14 ngày tới. Xem lý do ở đầu `lib/dat-ban.ts`. Gửi xong trang nói "đã nhận yêu cầu" — nhà hàng kiểm tra rồi liên hệ xác nhận. |
+| Hỏi bàn (`/dat-ban`) | Công tắc `form_dat_ban_dang_mo` bật **và** database thật sự còn chỗ trong 14 ngày tới. Xem lý do ở đầu `lib/dat-ban.ts`. Gửi xong trang nói "đã nhận yêu cầu" — nhà hàng kiểm tra rồi liên hệ xác nhận. Form không hiện thì mô tả trang (meta description, og:description — `moTaTrangHoiBan()` trong `lib/trang-cong-khai.ts`) và đoạn mở đầu nói "chưa mở hỏi bàn trực tuyến", chỉ sang Facebook — không hứa gửi yêu cầu, gọi lại. |
 
 **Chưa làm, theo đúng kế hoạch:**
 

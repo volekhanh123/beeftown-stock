@@ -22,6 +22,13 @@
  * Mỗi trang khai hreflang cho đủ vi/en/ko và x-default về bản tiếng Việt —
  * cùng một bộ với sitemap.xml. Nút đổi ngôn ngữ hiện HAI thứ tiếng còn lại,
  * mỗi cái ghi bằng chính thứ tiếng đó.
+ *
+ * TRANG KHÔNG LẬP CHỈ MỤC (khongLapChiMuc — trang 404, pages/404.astro):
+ * noindex, không canonical, không hreflang, không og:url, không JSON-LD. Trang đó
+ * dựng cho MỌI đường dẫn lạ: không có bản chính nào để trỏ về, và /en không phải
+ * "bản tiếng Anh" của một đường dẫn không có. Nó cũng dựng với bộ nội dung rỗng
+ * (không đọc database), nên JSON-LD của nó sẽ khai sai về nhà hàng thật —
+ * acceptsReservations false khi form đang mở, thiếu điện thoại, mạng xã hội.
  */
 import '../styles/chung.css';
 import '../styles/cong-khai.css';
@@ -37,9 +44,11 @@ interface Props {
   tieuDe?: string;
   moTa?: string;
   duongDan: string;
+  /** Trang 404: noindex, bỏ canonical / hreflang / og:url / JSON-LD. */
+  khongLapChiMuc?: boolean;
 }
 
-const { ngonNgu, noiDung: nd, tieuDe, moTa, duongDan } = Astro.props;
+const { ngonNgu, noiDung: nd, tieuDe, moTa, duongDan, khongLapChiMuc = false } = Astro.props;
 const t = chu(ngonNgu);
 
 const goc = Astro.site?.origin ?? '';
@@ -103,15 +112,21 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{tieuDeTrang}</title>
     <meta name="description" content={moTaTrang} />
-    <link rel="canonical" href={duongDanDayDu} />
-    {NGON_NGU.map(n => <link rel="alternate" hreflang={n} href={goc + banCua(n)} />)}
-    <link rel="alternate" hreflang="x-default" href={goc + banCua('vi')} />
+    {khongLapChiMuc ? (
+      <meta name="robots" content="noindex" />
+    ) : (
+      <>
+        <link rel="canonical" href={duongDanDayDu} />
+        {NGON_NGU.map(n => <link rel="alternate" hreflang={n} href={goc + banCua(n)} />)}
+        <link rel="alternate" hreflang="x-default" href={goc + banCua('vi')} />
+      </>
+    )}
 
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content={THUONG_HIEU.ten} />
     <meta property="og:title" content={tieuDeTrang} />
     <meta property="og:description" content={moTaTrang} />
-    <meta property="og:url" content={duongDanDayDu} />
+    {!khongLapChiMuc && <meta property="og:url" content={duongDanDayDu} />}
     <meta property="og:locale" content={OG_LOCALE[ngonNgu]} />
     {goc && (
       <>
@@ -149,7 +164,7 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
       />
     )}
 
-    <script type="application/ld+json" set:html={jsonTrongScript(duLieuCoCauTruc)} is:inline />
+    {!khongLapChiMuc && <script type="application/ld+json" set:html={jsonTrongScript(duLieuCoCauTruc)} is:inline />}
   </head>
 
   <body class="ck">

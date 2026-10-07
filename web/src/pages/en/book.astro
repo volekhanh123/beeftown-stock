@@ -4,6 +4,7 @@ import TrangDatBan from '../../components/TrangDatBan.astro';
 import { docNoiDung } from '../../lib/noi-dung';
 import { tinhTrangDatBan } from '../../lib/dat-ban';
 import { xuLyDatBan, ketQuaDatBan } from '../../lib/xu-ly-form';
+import { moTaTrangHoiBan } from '../../lib/trang-cong-khai';
 
 const chuyenHuong = await xuLyDatBan(Astro, '/en/book', 'en');
 if (chuyenHuong) return chuyenHuong;
@@ -20,7 +21,7 @@ const tinhTrang = await tinhTrangDatBan(
   noiDung={noiDung}
   duongDan="/en/book"
   tieuDe="Ask for a table — Beeftown"
-  moTa="Ask for a table at Beeftown, a beef specialty restaurant on Floor 3, 11-21 Hàm Nghi, Ho Chi Minh City. Send a request and we will call you back to confirm."
+  moTa={moTaTrangHoiBan('en', tinhTrang.moDuoc)}
 >
   <TrangDatBan
     ngonNgu="en"

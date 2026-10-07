@@ -1,0 +1,69 @@
+---
+/**
+ * TRANG KHÔNG CÓ (404)
+ *
+ * Astro 7 dựng file này cho MỌI đường dẫn không khớp trang nào — /…, /en/…, /ko/… — đi qua
+ * middleware như trang thường, với Astro.url là đường dẫn khách mở, và trả mã 404
+ * (astro/dist/core/fetch/fetch-state.js #resolveRouteData, core/routing/helpers.js
+ * getDefaultStatusCode). Không có file này thì Astro trả mẫu 4xx của nó: lang="en", nền đen,
+ * logo Astro, không một link, không chữ Beeftown — beeftown.vn hiện đúng như vậy tới 07/10/2026.
+ *
+ * MỘT FILE CHO CẢ BA THỨ TIẾNG, chọn theo tiền tố đường dẫn (ngonNguTuDuongDan, lib/chu.ts).
+ * Bản chạy thật của Astro 7 có nhận thêm en/404.astro, ko/404.astro, nhưng `astro dev` thì không
+ * (errors/dev-handler.js chỉ tìm /404) — hai môi trường sẽ hiện hai trang khác nhau.
+ *
+ * KHÔNG ĐỌC DATABASE. Bot quét hàng loạt đường dẫn lạ (/wp-admin, /.env…): đọc nội dung công khai
+ * thì mỗi lượt quét là một lần gọi Supabase. Bộ nội dung rỗng là đúng trạng thái "chưa nối
+ * database" mà mọi trang công khai vốn phải đúng — tên, địa chỉ, pháp nhân, điều hướng vẫn đủ; chỉ
+ * thiếu link mạng xã hội đã công bố ở chân trang.
+ *
+ * Layout bỏ canonical, hreflang (khongLapChiMuc): trang này không có bản chính nào để trỏ về, và
+ * /en không phải "bản tiếng Anh" của một đường dẫn không có. Nút đổi ngôn ngữ ở đầu trang tự về
+ * trang chủ của thứ tiếng kia (duongDanTuongUng không thấy /404 trong bảng).
+ *
+ * Nhánh /hook/ipos/<khóa sai dạng> trả 404 chữ trơn ở src/worker.ts — đứng TRƯỚC Astro, không tới
+ * đây (web/kiem-tra/trinh-duyet.mjs nhóm 4 giữ điều đó).
+ */
+import Trang from '../layouts/Trang.astro';
+import { NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng, ngonNguTuDuongDan } from '../lib/chu';
+import { docNoiDung } from '../lib/noi-dung';
+
+// Astro đã đặt 404 cho trang này; ghi thẳng ra để không ai phải tìm trong mã Astro.
+Astro.response.status = 404;
+
+const ngonNgu = ngonNguTuDuongDan(Astro.url.pathname);
+const noiDung = await docNoiDung(ngonNgu, null);
+const t = chu(ngonNgu);
+const thuTiengKhac = NGON_NGU.filter(n => n !== ngonNgu);
+---
+<Trang ngonNgu={ngonNgu} noiDung={noiDung} duongDan="/404" tieuDe={t.khongCoTieuDeTrang} khongLapChiMuc>
+  <section class="mo-dau-trang be-kem">
+    <div class="khung">
+      <p class="hieu">Beeftown · 404</p>
+      <h1>{t.khongCoTieuDe}</h1>
+      <p class="dan">{t.khongCoGiaiThich}</p>
+    </div>
+    <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
+  </section>
+
+  <section class="be-kem kc">
+    <div class="khung">
+      <div class="hang-nut">
+        <a class="nut nut-chinh" href={duongDanTuongUng('/', ngonNgu)}>{t.khongCoVeTrangChu}</a>
+      </div>
+      {/* Tên mỗi thứ tiếng viết bằng chính thứ tiếng đó (TEN_NGON_NGU): người lạc vào trang
+          tiếng Việt có thể chưa đọc được tiếng Việt. */}
+      <p class="kc-nhan">{t.khongCoTrangChuKhac}</p>
+      <div class="hang-nut">
+        {thuTiengKhac.map(n => (
+          <a class="nut nut-vien" href={duongDanTuongUng('/', n)} lang={n} hreflang={n}>{TEN_NGON_NGU[n]}</a>
+        ))}
+      </div>
+    </div>
+  </section>
+</Trang>
+
+<style>
+  .kc { padding-block: 0 var(--muc-dem); }
+  .kc-nhan { margin: var(--k-6) 0 var(--k-3); font-weight: 700; }
+</style>
