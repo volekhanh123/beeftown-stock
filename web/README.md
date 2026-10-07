@@ -57,6 +57,10 @@ workflow "Kiểm thử" của commit đang deploy bằng lệnh `gh`. Cài một
 `winget install GitHub.cli`, rồi `gh auth login`. Chưa cài `gh` (hoặc mất mạng) thì cổng tự chạy
 `astro check` và toàn bộ kiểm thử database ngay trên máy — cần `npm ci` trong `crm/` — mất vài phút.
 Thư mục `web/` có thay đổi chưa commit thì cổng từ chối: bản deploy phải đúng là bản CI đã kiểm.
+Lượt CI mới nhất của commit quyết định — lượt đêm đỏ thì chặn, dù lượt push trước đó xanh. Trừ một
+trường hợp: lượt đỏ **chỉ** vì job "Quét chữ cấm trên trang đang chạy thật" (job này quét beeftown.vn
+đang chạy, tức bản cũ, nên trang mới của commit còn 404 cho tới khi deploy) mà mọi job kiểm mã xanh,
+thì cổng cho qua kèm cảnh báo. Deploy xong chạy ngay `npm run quet -- --url https://beeftown.vn`.
 
 ---
 

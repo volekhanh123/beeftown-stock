@@ -13,6 +13,8 @@
  *   2. thư mục web/ không có thay đổi chưa commit — bản deploy phải đúng là bản CI đã kiểm;
  *   3. hỏi GitHub kết quả workflow "Kiểm thử" của commit đang deploy (cần `gh`, xem dưới):
  *        xanh → đi tiếp · đỏ → từ chối, in link · đang chạy → bảo đợi.
+ *      Đỏ CHỈ vì job quét beeftown.vn đang chạy thật (bản cũ, trang mới còn 404) → đi tiếp, kèm
+ *      cảnh báo quét lại site sau deploy (ket-qua-ci.mjs).
  *      Không có `gh` / mất mạng / commit chưa có lượt CI → tự chạy kiểm thử ngay trên máy
  *      (astro check + toàn bộ test crm, vài phút) thay cho CI.
  *
@@ -24,6 +26,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { xetLuotCi, JOB_QUET_TRANG_THAT } from './ket-qua-ci.mjs';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const GOC = join(WEB, '..');
@@ -100,19 +103,24 @@ function hoiCi() {
     const khongCo = e.code === 'ENOENT';
     return { kq: 'khong-hoi-duoc', ly_do: khongCo ? 'máy chưa cài gh (winget install GitHub.cli, rồi gh auth login)' : 'gh không hỏi được GitHub (chưa gh auth login, hoặc mất mạng)' };
   }
-  // LƯỢT MỚI NHẤT quyết định (bỏ lượt bị hủy vì có lượt sau thay): lượt đêm giờ VN đỏ trên cùng commit
-  // mà push trước đó xanh thì vẫn là đỏ — lượt đêm chạy chính để bắt lỗi múi giờ mà lượt kia không thấy.
-  const luot = (JSON.parse(json).workflow_runs ?? [])
-    .filter(l => l.conclusion !== 'cancelled' && l.conclusion !== 'skipped')
-    .sort((a, b) => b.run_number - a.run_number);
-  if (!luot.length) return { kq: 'chua-co' };
-  const moiNhat = luot[0];
-  if (moiNhat.status !== 'completed') return { kq: 'dang-chay', link: moiNhat.html_url };
-  if (moiNhat.conclusion === 'success') return { kq: 'xanh', link: moiNhat.html_url };
-  return { kq: 'do', link: moiNhat.html_url, ly_do: moiNhat.conclusion };
+  // Lượt mới nhất quyết định; lượt đỏ thì xem từng job — xem ket-qua-ci.mjs.
+  const jobsCua = id => {
+    try {
+      return JSON.parse(chay('gh', ['api', `repos/${repo}/actions/runs/${id}/jobs?per_page=100`], { timeout: 30000 })).jobs ?? null;
+    } catch { return null; }
+  };
+  return xetLuotCi(JSON.parse(json).workflow_runs, jobsCua);
 }
 
 const ci = hoiCi();
+if (ci.kq === 'xanh' && ci.chiTrangThatDo) {
+  console.log(XANH(`  ✓ Mọi job kiểm mã xanh cho commit ${sha.slice(0, 7)}`) + `  ${ci.link}`);
+  console.log(VANG(`  ! Lượt đó đỏ chỉ vì job "${JOB_QUET_TRANG_THAT}" — nó quét bản ĐANG chạy`));
+  console.log(VANG('    trên beeftown.vn (bản cũ), nên trang mới của commit này trả 404 cho tới khi deploy. Cho qua.'));
+  console.log(VANG('    Deploy xong chạy ngay: npm run quet -- --url https://beeftown.vn — còn ✗ thì xem link trên:'));
+  console.log(VANG('    chữ cấm trong nội dung công bố từ /noi-bo thì sửa ở /noi-bo, không cần deploy lại.'));
+  process.exit(0);
+}
 if (ci.kq === 'xanh') {
   console.log(XANH(`  ✓ CI xanh cho commit ${sha.slice(0, 7)}`) + `  ${ci.link}`);
   process.exit(0);
