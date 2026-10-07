@@ -24,12 +24,17 @@
  *      rõ cầu thang bộ TRONG nội dung chính; chữ trên nền màu đặc đủ tương phản
  *      (≥ 4,5:1, chữ lớn ≥ 3:1).
  *   2. Trang đặt bàn / tuyển dụng chưa có database: KHÔNG có form nào, không có chữ
- *      "thành công" / "success" / "성공".
+ *      "thành công" / "success" / "성공". Trang hỏi bàn: meta description, og:description
+ *      và đoạn mở đầu không hứa "gửi yêu cầu, nhà hàng gọi lại" khi form đóng.
  *   3. Gửi thẳng form đặt bàn (không qua giao diện): trang quay về báo lỗi, không bao
  *      giờ báo thành công. Gửi từ trang web khác (Origin lạ) bị từ chối 403.
- *   4. /noi-bo chuyển sang trang đăng nhập; hook iPOS không lộ lỗi nội bộ.
+ *   4. /noi-bo chuyển sang trang đăng nhập (cả đường dẫn lạ dưới /noi-bo); hook iPOS
+ *      không lộ lỗi nội bộ; khóa sai dạng vẫn là 404 chữ trơn của src/worker.ts.
  *   5. Menu gọn của màn hẹp (<details class="menu-gon">) mở / đóng được KHI TẮT
  *      JavaScript; có JavaScript thì Esc đóng nó và trả tiêu điểm về nút.
+ *   6. Đường dẫn lạ (/…, /en/…, /ko/…) ở 360 và 1366 px: mã 404, trang 404 của Beeftown
+ *      đúng thứ tiếng theo tiền tố, có link về /, /en, /ko, chân trang công khai, không
+ *      tràn ngang, noindex và không canonical / hreflang / JSON-LD. Chạy cả với --url.
  *
  * Hỏng thì ảnh chụp màn hình nằm ở kiem-tra/anh-loi/ (CI tải lên thành artifact).
  */
@@ -123,7 +128,17 @@ const dongPhapNhan = nn => [
   'Tầng 3, 11-13-15-17-19-21 Hàm Nghi, Phường Sài Gòn, TP. Hồ Chí Minh',
 ];
 const TRANG_FORM = ['/dat-ban', '/en/book', '/ko/book', '/tuyen-dung', '/en/jobs', '/ko/jobs'];
+const TRANG_HOI_BAN = ['/dat-ban', '/en/book', '/ko/book'];
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
+// Lời hứa của form hỏi bàn: gửi yêu cầu trên trang, nhà hàng gọi lại. Form đóng thì mô tả và đoạn
+// mở đầu không được nói câu này (kiểm site thật 07/10/2026) — chép tay, như crm/test/test-cong-khai-hoi-ban-dong.mjs.
+const HUA_FORM = {
+  vi: /gọi lại|gửi yêu cầu/i,
+  en: /call you back|(?<!cannot )send (?:a|your)(?: table)? request/i,
+  ko: /전화드려요|전화로 안내|문의를 보내 주세요/,
+};
+// Trang 404: một đường dẫn lạ cho mỗi thứ tiếng.
+const TRANG_KHONG_CO = [['/khong-co-trang-nay', 'vi'], ['/en/khong-co', 'en'], ['/ko/khong-co', 'ko']];
 const CO_MAN_HINH = [
   { ten: 'điện thoại', width: 360, height: 740 },
   { ten: 'điện thoại lớn', width: 390, height: 844 },
@@ -323,6 +338,15 @@ try {
         const chu = await page.locator('body').innerText();
         ok(`${duong}: không có form nào (form chưa sẵn sàng thì ẩn hẳn)`, soForm === 0, `${soForm} form`);
         ok(`${duong}: không có chữ "thành công"/"success"/"성공"`, !CHU_THANH_CONG.test(chu), chu.match(CHU_THANH_CONG)?.[0]);
+        if (TRANG_HOI_BAN.includes(duong)) {
+          const hua = HUA_FORM[ngonNguCua(duong)];
+          const moTa = await page.locator('meta[name="description"]').getAttribute('content') ?? '';
+          const moTaOg = await page.locator('meta[property="og:description"]').getAttribute('content') ?? '';
+          const dan = await page.locator('main p.dan').first().innerText().catch(() => '');
+          ok(`${duong}: form đóng → meta description và og:description không hứa gửi yêu cầu / gọi lại`,
+             !hua.test(moTa) && !hua.test(moTaOg), `«${moTa}»`);
+          ok(`${duong}: form đóng → đoạn mở đầu không hứa gửi yêu cầu / gọi lại`, !!dan && !hua.test(dan), `«${dan}»`);
+        }
       }
     });
 
@@ -371,6 +395,19 @@ try {
         ok(`${cach} ${duong}: thân trả lời không có dấu vết lỗi (stack, đường dẫn file)`,
            !/\bat [\w.<>]+ \(|node_modules|\.ts:\d+|Error:/.test(than), than.slice(0, 160));
       }
+      // Nhánh riêng của src/worker.ts: khóa sai dạng → 404 chữ trơn, chặn TRƯỚC Astro. Trang 404 của
+      // web không được thay câu trả lời này bằng HTML.
+      const h = await page.request.get(goc + '/hook/ipos/a/b', { maxRedirects: 0 });
+      const thanHook = await h.text();
+      ok('GET /hook/ipos/a/b: vẫn là 404 chữ trơn "Không tìm thấy" của src/worker.ts, không phải trang 404 HTML',
+         h.status() === 404 && thanHook === 'Không tìm thấy' && !/text\/html/i.test(h.headers()['content-type'] ?? ''),
+         `HTTP ${h.status()}, ${h.headers()['content-type']}, «${thanHook.slice(0, 60)}»`);
+      // Đường dẫn lạ dưới /noi-bo vẫn đi qua middleware: chưa đăng nhập thì về trang đăng nhập — trang 404
+      // không mở ra cho người lạ biết đường dẫn nào có, đường dẫn nào không.
+      const nb = await page.request.get(goc + '/noi-bo/khong-co-trang-nay', { maxRedirects: 0 });
+      ok('GET /noi-bo/khong-co-trang-nay chưa đăng nhập → chuyển về /noi-bo/dang-nhap, không phải trang 404',
+         nb.status() === 302 && new URL(nb.headers().location ?? '', goc).pathname === '/noi-bo/dang-nhap',
+         `HTTP ${nb.status()} → ${nb.headers().location}`);
     });
     await ctx.close();
   }
@@ -406,6 +443,81 @@ try {
       }
       await ctx.close();
     }
+  });
+
+  // =========================================================================
+  // Kiểm site thật 07/10/2026: đường dẫn lạ trả đúng mã 404 nhưng HTML là mẫu mặc định của Astro —
+  // lang="en", nền đen, không một link, không chữ Beeftown. Chạy cả với --url (kiểm beeftown.vn sau deploy).
+  await nhom('6 · TRANG KHÔNG CÓ (404): MÃ 404, ĐÚNG THỨ TIẾNG, CÓ ĐƯỜNG VỀ TRANG CHỦ', async () => {
+    for (const co of CO_MAN_HINH.filter(c => c.width === 360 || c.width === 1366)) {
+      const ctx = await trinhDuyet.newContext({ viewport: { width: co.width, height: co.height } });
+      for (const [duong, nn] of TRANG_KHONG_CO) {
+        const page = await ctx.newPage();
+        const loiJs = [], taiHong = [];
+        // Chính tài liệu trả 404 (đó là điều cần kiểm) — chỉ tài nguyên KHÁC của trang mới tính là tải hỏng.
+        const taiNguyenCuaTrang = u => u.startsWith(goc) && new URL(u).pathname !== duong;
+        page.on('pageerror', e => loiJs.push(e.message));
+        page.on('requestfailed', r => { if (taiNguyenCuaTrang(r.url())) taiHong.push(`${r.url()} (${r.failure()?.errorText})`); });
+        page.on('response', r => { if (taiNguyenCuaTrang(r.url()) && r.status() >= 400) taiHong.push(`${r.url()} HTTP ${r.status()}`); });
+
+        const r = await page.goto(goc + duong, { waitUntil: 'load', timeout: 30000 });
+        const kq = await page.evaluate(() => {
+          const chan = document.querySelector('footer');
+          return {
+            lang: document.documentElement.lang,
+            tieuDe: document.title,
+            rong: document.documentElement.scrollWidth,
+            khung: window.innerWidth,
+            linkChinh: [...document.querySelectorAll('main a[href]')].map(a => a.getAttribute('href')),
+            robots: document.querySelector('meta[name="robots"]')?.getAttribute('content') ?? '',
+            soCanonical: document.querySelectorAll('link[rel="canonical"]').length,
+            soHreflang: document.querySelectorAll('link[rel="alternate"][hreflang]').length,
+            soJsonLd: document.querySelectorAll('script[type="application/ld+json"]').length,
+            dongChan: (chan?.innerText ?? '').split('\n').map(s => s.trim()).filter(Boolean),
+          };
+        });
+        const them = await page.evaluate(doTrang);
+        const nhan = `${duong} · ${co.ten} ${co.width}px`;
+        const iBanQuyen = kq.dongChan.findIndex(d => DONG_BAN_QUYEN.test(d));
+        const phapNhan = dongPhapNhan(nn);
+        const thieuLink = ['/', '/en', '/ko'].filter(d => !kq.linkChinh.includes(d));
+        const tot = [
+          ok(`${nhan}: HTTP 404 (không đổi thành 200)`, r?.status() === 404, `HTTP ${r?.status()}`),
+          ok(`${nhan}: lang="${nn}" theo tiền tố đường dẫn`, kq.lang === nn, `lang="${kq.lang}"`),
+          ok(`${nhan}: trang của Beeftown (tiêu đề có chữ Beeftown, đúng một <h1>)`,
+             /Beeftown/.test(kq.tieuDe) && them.soH1 === 1, `«${kq.tieuDe}», ${them.soH1} thẻ h1`),
+          ok(`${nhan}: nội dung chính có link về trang chủ của cả ba thứ tiếng (/, /en, /ko)`, thieuLink.length === 0,
+             `thiếu ${thieuLink.join(', ')} — có ${JSON.stringify(kq.linkChinh)}`),
+          ok(`${nhan}: chân trang công khai có pháp nhân SLK GROUP`,
+             iBanQuyen > -1 && kq.dongChan[iBanQuyen + 1] === phapNhan[0] && kq.dongChan[iBanQuyen + 2] === phapNhan[1],
+             JSON.stringify(kq.dongChan).slice(0, 200)),
+          ok(`${nhan}: không tràn ngang`, kq.rong <= kq.khung + 1, `rộng ${kq.rong}px > khung ${kq.khung}px`),
+          ok(`${nhan}: noindex, không canonical, không hreflang, không JSON-LD (dựng không database — sẽ khai sai)`,
+             /noindex/.test(kq.robots) && kq.soCanonical === 0 && kq.soHreflang === 0 && kq.soJsonLd === 0,
+             `robots «${kq.robots}», ${kq.soCanonical} canonical, ${kq.soHreflang} hreflang, ${kq.soJsonLd} JSON-LD`),
+          ok(`${nhan}: nút, link điều hướng cao ≥ 44px`, !them.vungCham.length, them.vungCham.slice(0, 4).join(' | ')),
+          ok(`${nhan}: tương phản chữ ≥ 4,5:1 (chữ lớn ≥ 3:1)`, !them.tuongPhan.length, them.tuongPhan.slice(0, 3).join(' | ')),
+          ok(`${nhan}: không lỗi JavaScript, không tải hỏng`, !loiJs.length && !taiHong.length,
+             [...loiJs, ...taiHong].slice(0, 3).join(' | ')),
+        ];
+        if (tot.includes(false)) await chupLoi(page, `khong-co${duong}-${co.width}`);
+        await page.close();
+      }
+      await ctx.close();
+    }
+    // Prop khongLapChiMuc chỉ dành cho trang 404: trang thường vẫn giữ canonical và hreflang.
+    const ctx = await trinhDuyet.newContext();
+    const page = await ctx.newPage();
+    await page.goto(goc + '/en/book', { waitUntil: 'load' });
+    const thuong = await page.evaluate(() => ({
+      robots: document.querySelectorAll('meta[name="robots"]').length,
+      soCanonical: document.querySelectorAll('link[rel="canonical"]').length,
+      soHreflang: document.querySelectorAll('link[rel="alternate"][hreflang]').length,
+      soJsonLd: document.querySelectorAll('script[type="application/ld+json"]').length,
+    }));
+    ok('/en/book (trang thường): vẫn có canonical, đủ 4 hreflang, JSON-LD, không noindex',
+       thuong.robots === 0 && thuong.soCanonical === 1 && thuong.soHreflang === 4 && thuong.soJsonLd === 1, JSON.stringify(thuong));
+    await ctx.close();
   });
 } catch (e) {
   ok('Chạy được đến cuối', false, e.stack || e.message);

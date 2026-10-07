@@ -90,6 +90,10 @@ const quet = timChuoiCam;
 // Nếu một trang không có trong sitemap mà vẫn công khai thì đó đã là một lỗi
 // riêng. Cộng thêm vài đường dẫn cố định để phòng sitemap hỏng.
 // -----------------------------------------------------------------------------
+// Trang 404 (pages/404.astro): một đường dẫn lạ cho mỗi thứ tiếng. Chữ trên đó cũng là chữ khách
+// đọc; mã trả về phải là 404 — không 200, không 500.
+const TRANG_KHONG_CO = ['/khong-co-trang-nay', '/en/khong-co-trang-nay', '/ko/khong-co-trang-nay'];
+
 async function danhSachTrang(goc) {
   // Đủ 21 trang công khai (7 trang × vi/en/ko) — sitemap hỏng thì vẫn quét hết.
   const luon_co = [
@@ -97,7 +101,7 @@ async function danhSachTrang(goc) {
     '/en', '/en/menu', '/en/visit', '/en/book', '/en/jobs', '/en/privacy', '/en/data-deletion',
     '/ko', '/ko/menu', '/ko/visit', '/ko/book', '/ko/jobs', '/ko/privacy', '/ko/data-deletion',
   ];
-  const bo = new Set(luon_co.map(d => new URL(d, goc).href));
+  const bo = new Set([...luon_co, ...TRANG_KHONG_CO].map(d => new URL(d, goc).href));
   try {
     const xml = await (await fetch(new URL('/sitemap.xml', goc))).text();
     for (const m of xml.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/g)) {
@@ -186,8 +190,9 @@ async function main() {
       let html;
       try {
         const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
-        if (!r.ok) {
-          console.log(`  ✗ ${duong.padEnd(18)} HTTP ${r.status}`);
+        const laTrangKhongCo = TRANG_KHONG_CO.includes(duong);
+        if (laTrangKhongCo ? r.status !== 404 : !r.ok) {
+          console.log(`  ✗ ${duong.padEnd(18)} HTTP ${r.status}${laTrangKhongCo ? ' (trang không có phải trả 404)' : ''}`);
           soLoi++;
           continue;
         }
