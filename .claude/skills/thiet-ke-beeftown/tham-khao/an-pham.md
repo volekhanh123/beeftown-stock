@@ -1,22 +1,36 @@
 # Ấn phẩm ngoài web — mạng xã hội, ảnh chia sẻ, tại quán
 
-Dùng khi làm bài đăng, story, ảnh bìa, banner, slide, landing page ngoài `web/`, hay bất kỳ hình nào
-mang tên Beeftown. Luật gốc: `web/THIET-KE.md` mục 8 (brief chụp ảnh) và mục 9 (bộ campaign).
+Dùng khi làm bài đăng, story, ảnh bìa, banner, slide, biển, ấn phẩm in, landing page ngoài `web/`, hay
+bất kỳ hình nào mang tên Beeftown. Luật gốc: **`THUONG-HIEU.md`** (brand guideline Khánh chốt
+09/10/2026 — bảng màu, logo, chữ, ảnh, địa điểm); `web/THIET-KE.md` mục 8 (brief chụp ảnh) và mục 9 (bộ
+campaign) cho phần guideline chưa nói tới.
 
 ## Nguyên tắc
 
-- **Cùng một hệ với web**: logo vector gốc, chất liệu PDF (vân mỡ, rosemary, steak, tem tròn, chữ lặp)
-  đúng vai như trên web, chữ Montserrat, màu theo bảng trong `SKILL.md`.
-- **Chữ trên ấn phẩm chỉ gồm**: tagline *Pick it. Grill it. Love it.*, descriptor *Beef Specialty
-  Restaurant*, câu chính, "Tầng 3, 11-21 Hàm Nghi". Muốn thêm câu khác: câu đó phải đúng sự thật và
-  qua được danh sách chữ cấm của web (`web/src/lib/chuoi-cam.js` áp dụng nguyên cho campaign).
-- **Không ngày, không giá, không ưu đãi, không đếm ngược** khi chưa được công bố. Không câu "Thịt chuẩn
-  - Giá thật". Không "Korean BBQ".
-- Ảnh AI trong campaign cũng ghi **"Ảnh minh họa"**, và chỉ cho ảnh không khí món — không bao giờ cho
-  quầy, khay, không gian, lối lên, con người.
-- Logo chỉ đặt trên **nền đỏ, kem hoặc than**; trên ảnh chụp thì phủ lớp tối trước. Chừa khoảng trống
-  quanh logo bằng chiều cao chữ "B". Không đổi màu ngoài bảng, không kéo giãn, xoay, đổ bóng.
-  Đúng biến thể cho nền: `logo-ngang-do.svg` trên kem, `logo-ngang-kem.svg` trên đỏ / tối.
+- **Màu: bảng màu thương hiệu đã chốt**, không phải token của website (website chưa đổi theo):
+  Beef Red `#A70C0C`, Cream `#F0E3D0`, Charcoal `#151008`, Marigold `#F5AA14`, Warm Stone `#B8A98C`.
+  Phần trên mỗi bề mặt: Cream 60 % · Beef Red 25 % · Charcoal 10 % · Marigold dưới 5 %; Warm Stone chỉ
+  cho nét kẻ và nền phụ. Không màu pha nhạt, không đỏ thứ hai. Marigold và Warm Stone không làm chữ
+  trên nền kem; không đặt chữ đỏ trên nền than (2,4 : 1); Marigold trên nền đỏ chỉ cho chữ lớn hay hình.
+- **Chữ: Montserrat 500 / 700 / 800 / 900.** Giá dạng `000.000 đ`, ngày `dd/mm/yyyy`.
+- **Chữ trên ấn phẩm chỉ gồm**: tagline *Pick it. Grill it. Love it.* (có dấu chấm), descriptor *Beef
+  Specialty Restaurant*, câu chính *Không cần rành bò. Chọn theo gu, thấy giá trước.*, địa điểm
+  "Tầng 3, 63 Hồ Tùng Mậu". Muốn thêm câu khác: câu đó phải đúng sự thật và qua được danh sách chữ cấm
+  của web (`web/src/lib/chuoi-cam.js` áp dụng nguyên cho campaign).
+- **Không viết**: rẻ, buffet, cao cấp, Korean BBQ, nướng Hàn, grade khi chưa có chứng nhận, số ngày ủ
+  khi chưa có hồ sơ, chữ về than, lửa, khói, số phần trăm khi chưa có phép thử. Không câu "Thịt chuẩn
+  - Giá thật". **Không ngày, không giá, không ưu đãi, không đếm ngược** khi chưa được công bố.
+- Ảnh AI chỉ để minh họa, luôn ghi **"Ảnh minh họa"**, chỉ cho ảnh không khí món; **quảng cáo và thực
+  đơn dùng ảnh chụp thật** — không bao giờ AI cho quầy, khay, không gian, lối lên, con người.
+- **Logo** (guideline): một logo gồm lockup (đầu bò + BEEFTOWN + tagline), brandmark (đầu bò), wordmark
+  (chữ BEEFTOWN); cả logo một màu. Lockup rộng tối thiểu 160px — hẹp hơn thì dùng brandmark (tối thiểu
+  48px). Khoảng trống quanh logo bằng chiều cao chữ "B". **Mỗi bề mặt một logo, đặt ở trên cùng**
+  (trái, giữa hoặc phải). **Không** đổi màu, kéo giãn, xoay, thêm bóng, viền, **đặt lên ảnh**, gõ lại
+  bằng phông khác. Bản cho nền sáng và bản cho nền tối là hai bản vẽ khác nhau (bản nền tối có viền
+  ngoài và mặt bò tô kín) — không lấy bản này đổi màu thành bản kia.
+- **File logo**: bản mới nằm trên máy Khánh (`Beeftown_Brand_Assets_V17_2026-10-09`, thư mục
+  `01_Logo_vector`: bản nền sáng màu red / charcoal / black, bản nền tối màu cream / white) — không vào
+  repo. SVG trong `web/public/thuong-hieu/` là **bản màu cũ**, đừng dùng cho ấn phẩm mới.
 - Kênh liên hệ (Facebook, hotline, Zalo, Google Maps) chỉ ghi khi **đã công bố** trong `/noi-bo` —
   tên tài khoản trong bản nháp cũ chưa phải dữ kiện.
 
@@ -41,7 +55,13 @@ phần nội dung của file đó đã cũ, xem dưới).
 
 ## Ảnh chụp
 
-Tóm tắt `web/THIET-KE.md` mục 8 — đọc bản đầy đủ trước khi đặt lịch chụp:
+Guideline (`THUONG-HIEU.md` mục 2):
+
+- **Nên có:** khay bò đóng sẵn có nhãn, vỉ gas với hơi nhẹ, bàn tay và đĩa ăn chung, nền kem và gỗ sáng.
+- **Không có:** than, lửa, khói dày, đá đen, gang, thớt gỗ thô, rau thơm đặt trên thịt sống, vân mỡ
+  đẹp hơn thịt quán bán.
+
+Thêm từ `web/THIET-KE.md` mục 8 — đọc bản đầy đủ trước khi đặt lịch chụp:
 
 - Ánh sáng ấm, tự nhiên, một hướng sáng chính, cùng nhiệt độ màu cho cả bộ. Không flash gắn máy.
 - **Vỉ gas thật của quán. Không than, không củi, không khói giả.**
@@ -56,14 +76,14 @@ Tóm tắt `web/THIET-KE.md` mục 8 — đọc bản đầy đủ trước khi 
 ## Tài liệu thiết kế ở gốc repo — ĐÃ CŨ
 
 Sáu file HTML / SVG ở gốc repo và bản nháp website cũ làm tháng 6 – 7/2026, **trước** brief
-06/10/2026. Chỉ dùng làm tư liệu, không chép màu, phông, câu chữ từ đó. Phần còn dùng được ghi rõ bên
-dưới. (`Beeftown_Can_TMA.html` ở gốc repo là công cụ cân cũ, không thuộc nhóm này — `can-app/` đã thay
-nó.)
+06/10/2026 và guideline 09/10/2026. Chỉ dùng làm tư liệu, không chép màu, phông, câu chữ, luật logo từ
+đó. Phần còn dùng được ghi rõ bên dưới. (`Beeftown_Can_TMA.html` ở gốc repo là công cụ cân cũ, không
+thuộc nhóm này — `can-app/` đã thay nó.)
 
 | File | Còn dùng được | Lệch luật hiện hành — KHÔNG làm theo |
 |---|---|---|
-| `Beeftown_Bo_Nhan_Dien_So.html` | Bảng kích thước F4; luật logo F5 (nền, khoảng trống, không biến dạng); nguyên tắc trả lời đánh giá; cách đặt UTM | Phông Baloo 2; logo gõ chữ và bò nháy mắt làm avatar; "Thịt chuẩn · Giá thật"; danh mục "Korean barbecue"; hashtag kbbq / buffet; giá, giảm 20 %; phòng riêng; địa chỉ, giờ cũ; "Đặt bàn ngay" thay vì "Hỏi bàn"; ảnh "có khói, có lửa"; vàng làm màu giá và nút |
-| `Beeftown_Logo_Suite_and_Directions.html` | Cỡ tối thiểu: wordmark 24px / 20mm, đầu bò 40px / 22mm | Bảng màu khác (`#E23B2E`…); phông Anton, Archivo; "BUTCHER · BEEF · BBQ"; hướng "Charcoal & ember"; hiệu ứng cuộn |
+| `Beeftown_Bo_Nhan_Dien_So.html` | Bảng kích thước F4; nguyên tắc trả lời đánh giá; cách đặt UTM; câu mẫu tin Zalo (đã có trong database) | Phông Baloo 2; logo gõ chữ và bò nháy mắt làm avatar; luật logo F5 (đặt logo lên ảnh có lớp phủ — guideline mới cấm đặt lên ảnh); "Thịt chuẩn · Giá thật"; danh mục "Korean barbecue"; hashtag kbbq / buffet; giá, giảm 20 %; phòng riêng; địa chỉ, giờ cũ; "Đặt bàn ngay" thay vì "Hỏi bàn"; ảnh "có khói, có lửa"; vàng làm màu giá và nút |
+| `Beeftown_Logo_Suite_and_Directions.html` | — | Bảng màu khác (`#E23B2E`…); phông Anton, Archivo; cỡ tối thiểu cũ (guideline mới: lockup 160px, brandmark 48px); "BUTCHER · BEEF · BBQ"; hướng "Charcoal & ember"; hiệu ứng cuộn |
 | `Beeftown_Instore_Art.html` | Tagline | Mặt tiền tầng trệt (Beeftown ở tầng 3); phòng riêng; "AGED · IMPORTED"; giờ mở cửa; "hút Gen Z" |
 | `Beeftown_CRM_Design.html` | Câu đồng ý nhận tin (ô không tick sẵn, từ khóa "NGUNG"); giọng "thẳng thắn, nói rõ điều kiện lẫn quyền lợi" | Phòng riêng cho VIP; quận cũ; "mua sẵn ~90 %" |
 | `Beeftown_Dashboard.html` | — (công cụ tài chính nội bộ) | Bảng màu than hồng riêng, Segoe UI, "Korean BBQ" |
@@ -76,5 +96,6 @@ nó.)
   ngôi thứ ba; luôn "Beeftown đã nhận yêu cầu", lỗi thì nói rõ "CHƯA được ghi nhận"; không số bàn trống,
   không giá.
 - Mẫu tin Zalo nằm trong database (migration `0006`, `0047`); mẫu đã được Zalo duyệt không sửa tại chỗ
-  được. Tin chăm sóc kết thúc bằng cách hủy nhận tin ("NGUNG").
+  được. ZBS-01 "xác nhận đặt bàn" chỉ gửi khi nhân viên bấm "Đã gọi xác nhận" — yêu cầu khách vừa gửi
+  chưa nhận tin Zalo nào (migration `0063`). Tin chăm sóc kết thúc bằng cách hủy nhận tin ("NGUNG").
 - Tin báo động cho chủ (`web/src/lib/bao-dong-tin.ts`): chỉ số đếm, không tên hay số điện thoại khách.

@@ -1,6 +1,6 @@
 ---
 name: thiet-ke-beeftown
-description: Guideline thiết kế Beeftown — hệ giao diện "Quầy thịt ấm" (màu theo bề mặt, Montserrat, artwork trích từ PDF nhận diện), giao diện nội bộ /noi-bo và kho, câu chữ ba thứ tiếng, ảnh, logo và ấn phẩm (ảnh chia sẻ, bài đăng, story). Dùng khi tạo hoặc sửa BẤT KỲ thứ gì người khác nhìn thấy của Beeftown — trang, component, CSS trong web/, màu, phông, nút, form, bảng, biểu tượng, ảnh, câu thông báo, bài đăng mạng xã hội, banner, slide, landing page — kể cả câu hỏi nhanh như "đỏ Beeftown mã gì". Use for any Beeftown UI, brand, copy or visual design work.
+description: Guideline thiết kế Beeftown — bảng màu thương hiệu Khánh chốt 09/10/2026 và token website đang chạy, hệ giao diện "Quầy thịt ấm" (màu theo bề mặt, Montserrat, artwork trích từ PDF nhận diện), giao diện nội bộ /noi-bo và kho, câu chữ ba thứ tiếng, địa điểm, ảnh, logo và ấn phẩm (ảnh chia sẻ, bài đăng, story, in ấn). Dùng khi tạo hoặc sửa BẤT KỲ thứ gì người khác nhìn thấy của Beeftown — trang, component, CSS trong web/, màu, phông, nút, form, bảng, biểu tượng, ảnh, câu thông báo, bài đăng mạng xã hội, banner, slide, landing page — kể cả câu hỏi nhanh như "đỏ Beeftown mã gì". Use for any Beeftown UI, brand, copy or visual design work.
 ---
 
 # Thiết kế Beeftown
@@ -8,8 +8,11 @@ description: Guideline thiết kế Beeftown — hệ giao diện "Quầy thịt
 Skill này là **bản đồ và luật vận hành** để làm giao diện Beeftown đúng ngay lần đầu. Nó không thay
 tài liệu gốc — khi hai bên lệch nhau, thứ tự thắng là:
 
-1. **Sự thật kinh doanh** — `README.md` gốc, mục "Concept" và "Giọng văn"; brief Khánh gửi.
-2. **`web/THIET-KE.md`** — hệ giao diện trang công khai, lý do từng quyết định, manifest tài sản.
+1. **Thương hiệu và sự thật kinh doanh** — `THUONG-HIEU.md` (brand guideline Khánh chốt 09/10/2026:
+   bảng màu, logo, chữ, địa điểm), `README.md` gốc mục "Concept" và "Giọng văn". Thắng mọi tài liệu
+   cũ hơn.
+2. **`web/THIET-KE.md`** — giao diện trang công khai **đang chạy**, lý do từng quyết định, manifest tài
+   sản. Bảng màu ở đó là màu cũ, website chưa đổi theo guideline.
 3. **Mã đang chạy** — `web/src/styles/*.css`, component trong `web/src/components/`.
 4. Skill này.
 
@@ -50,10 +53,40 @@ Trang như lúc bước tới quầy Beeftown — một tiệm thịt tử tế,
 ứng cuộn; bộ đen – vàng kiểu "sang trọng"; giọng fine dining xa cách; giao diện thiên về trẻ em;
 emoji làm biểu tượng.
 
-Định vị **cao cấp vừa tầm** — không bình dân, không sang trọng xa cách. Khách chính: người trưởng
-thành đi cùng gia đình, người thân; rồi bạn bè, nhóm văn phòng.
+Định vị vừa tầm — không bình dân, không sang trọng xa cách (để hiểu, **không viết ra**: guideline cấm
+chữ "cao cấp" trong câu cho khách). Khách chính: người trưởng thành đi cùng gia đình, người thân; rồi
+bạn bè, nhóm văn phòng.
 
 ## Màu
+
+Beeftown đang có **hai bảng màu** — biết mình đang dùng bảng nào trước khi chọn một mã.
+
+### Bảng màu thương hiệu — Khánh chốt 09/10/2026
+
+| Tên | HEX | Dùng cho | Phần trên mỗi bề mặt |
+|---|---|---|---|
+| Beef Red | `#A70C0C` | Logo, tiêu đề, mảng nhấn | 25 % |
+| Cream | `#F0E3D0` | Nền: tường, giấy, màn hình | 60 % |
+| Charcoal | `#151008` | Chữ và nét mảnh | 10 % |
+| Marigold | `#F5AA14` | Điểm nhấn nhỏ | dưới 5 % |
+| Warm Stone | `#B8A98C` | Nét kẻ và nền phụ | không tính |
+
+Một đỏ, một vàng; guideline ghi không màu pha nhạt, không đỏ thứ hai. Chưa có mã CMYK / Pantone (nhà
+in đọc từ bản in thử, Khánh duyệt rồi mới ghi). Nguồn và đề xuất đổi token: `THUONG-HIEU.md`.
+
+**Dùng bảng nào:**
+
+- **Ấn phẩm ngoài web làm từ nay** (bài đăng, story, in ấn, slide, biển): bảng thương hiệu ở trên, logo
+  vector bản mới trên máy Khánh — xem [tham-khao/an-pham.md](tham-khao/an-pham.md).
+- **Mã trong `web/`, `can-app/`**: token đang chạy ở bảng dưới, cho tới khi có PR đổi màu. Không gõ mã
+  của guideline vào component lẻ — một trang nửa màu cũ nửa màu mới tệ hơn cả hai.
+- **PR đổi màu website**: làm một lượt mọi nơi ở `THUONG-HIEU.md` mục 5 (token, `rgba()` viết số cũ,
+  SVG, ảnh dựng, Beeftown Cân, `BANG_MAU` của kiểm thử) **và** bảng token dưới đây —
+  `test-ky-nang-thiet-ke.mjs` đỏ khi bảng này lệch `chung.css`. Hai việc Khánh phải quyết trước: website
+  có giữ màu pha không (nút khi di chuột, chữ nhỏ, nền khối phụ, viền ô nhập cần chúng), và tỷ lệ màu
+  trên web theo guideline hay giữ như đang chạy.
+
+### Token của website đang chạy
 
 Chỉ dùng token, không gõ mã màu thẳng vào component. Không tự thêm sắc ngoài bảng.
 
@@ -79,7 +112,8 @@ giá trị** (có kiểm thử); thêm token mới thì khai khối `:root` riê
 Không khối vàng — vàng chỉ là vạch, chấm, chữ nhấn nhỏ trên nền tối. Tên `--than` (Charcoal) chỉ là
 tên màu: Beeftown nướng **vỉ gas**, không than.
 
-**Tỷ lệ gợi ý** (brief, chưa phải luật thương hiệu): kem 60 % / tối 25 % / đỏ 12 % / vàng 3 %.
+**Tỷ lệ trên website đang chạy** (brief cũ ghi là gợi ý): kem 60 % / tối 25 % / đỏ 12 % / vàng 3 %.
+Guideline mới ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5 — chờ Khánh quyết cho web.
 
 ### Màu theo bề mặt (trang công khai)
 
@@ -104,8 +138,11 @@ bảng: tính tỷ lệ trước khi dùng — chữ thường ≥ 4,5 : 1, ch�
 
 ## Chữ
 
-- **Một họ phông: Montserrat** (Google Fonts, OFL), bốn độ đậm: **400** chữ chạy · **600** điều
-  hướng, nhãn ô, chú thích · **700** tiêu đề, nút, tên món · **800** tên thương hiệu và số lớn.
+- **Một họ phông: Montserrat** (Google Fonts, OFL). Website đang chạy dùng bốn độ đậm: **400** chữ
+  chạy · **600** điều hướng, nhãn ô, chú thích · **700** tiêu đề, nút, tên món · **800** tên thương
+  hiệu và số lớn. Guideline mới ghi **500 / 700 / 800 / 900** — ấn phẩm ngoài web theo guideline;
+  website đổi cùng PR đổi màu.
+- Giá ghi dạng `000.000 đ`, ngày dạng `dd/mm/yyyy` (guideline).
 - Trang `/ko` thêm **Noto Sans KR** ngay sau Montserrat; `word-break: keep-all`; tiêu đề không siết
   chữ, `line-height` 1,28; chữ hoa nhỏ giãn ít hơn.
 - **Logo luôn là vector gốc** (`web/public/thuong-hieu/`) — không bao giờ gõ chữ BEEFTOWN bằng phông.
@@ -177,7 +214,12 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
   (Unsplash…). Không than, củi, khói giả trong ảnh.
 - Logo, đầu bò, rosemary, steak, vân mỡ, tem tròn, chữ lặp: **vector trích nguyên từ PDF nhận diện**
   ở `web/public/thuong-hieu/` — không vẽ lại, không vẽ bằng AI, không gõ lại chữ. Đúng biến thể cho
-  nền: `logo-ngang-do` trên kem, `logo-ngang-kem` trên đỏ / tối.
+  nền: `logo-ngang-do` trên kem, `logo-ngang-kem` trên đỏ / tối. (Đây là bản màu cũ; logo bản mới nằm
+  trên máy Khánh, thay cùng PR đổi màu.)
+- **Luật logo của guideline** (mọi nơi, kể cả web khi đổi): logo một màu; lockup rộng tối thiểu 160px,
+  hẹp hơn thì dùng brandmark (đầu bò, tối thiểu 48px); khoảng trống quanh logo bằng chiều cao chữ "B";
+  **không** đổi màu, kéo giãn, xoay, thêm bóng hay viền, đặt lên ảnh. Bản cho nền sáng và bản cho nền
+  tối là **hai bản vẽ khác nhau** — không lấy bản này đổi màu thành bản kia.
 - Mockup trong PDF (mặt tiền, biển, đồng phục, menu, giá 400.000, câu "Thịt chuẩn - Giá thật") **chỉ
   là tham chiếu** — không đưa lên trang.
 - Manifest từng tài sản (nguồn, chỗ dùng, trạng thái, điều kiện thay) và brief chụp ảnh:
@@ -205,8 +247,14 @@ với khách công ty. Chi tiết và ví dụ: [tham-khao/cau-chu.md](tham-khao
 - **Đủ thứ tiếng**: trang công khai vi / en / ko, nội bộ và kho vi / en — không câu Việt nào nằm ngoài
   cặp `{ vi, en }` / bộ `{ vi, en, ko }`.
 - **Không viết tắt** trong câu cho người đọc lẫn trong mã (tên hàm, biến, chú thích tiếng Việt).
-- Tagline *Pick it. Grill it. Love it.* — descriptor *Beef Specialty Restaurant* (không phải "Korean
-  BBQ"). Địa chỉ: Tầng 3, 11-21 Hàm Nghi — **cầu thang bộ, không có thang máy cho khách**.
+- Guideline cấm thêm: **buffet, cao cấp, Korean BBQ, nướng Hàn**, chữ về than, lửa, khói, số phần
+  trăm khi chưa có phép thử.
+- Tagline *Pick it. Grill it. Love it.* (có dấu chấm) — descriptor *Beef Specialty Restaurant*. Câu
+  chính cho khách: *Không cần rành bò. Chọn theo gu, thấy giá trước.*
+- **Địa điểm: Tầng 3, 63 Hồ Tùng Mậu** — lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3 (Khánh
+  chốt 07 và 09/10/2026). Mã trên `main` còn ghi "11-21 Hàm Nghi" và "cầu thang bộ": sửa ở một PR
+  riêng. **Không thêm chỗ mới** ghi địa chỉ cũ hay cầu thang bộ; dòng địa chỉ pháp lý ở chân trang chờ
+  Khánh quyết.
 
 ## Tiếp cận
 
@@ -239,11 +287,13 @@ Kiểm thử nào gác luật nào, và bẫy hay gặp: [tham-khao/kiem-thu.md]
 Danh sách tự rà:
 
 - [ ] Đúng khu, đúng layout, không lớp lạc khu.
+- [ ] Đúng bảng màu: ấn phẩm ngoài web theo bảng thương hiệu đã chốt; mã web theo token đang chạy.
 - [ ] Chỉ token / biến bề mặt; không chữ vàng hay Warm Stone trên kem; cặp màu mới đã tính tương phản.
 - [ ] Montserrat, đúng độ đậm; không chữ < 13px (trừ dòng hoa nhỏ 12px); ô nhập 16px.
 - [ ] Nút, link, biểu tượng, ảnh dùng component có sẵn; không emoji; không `<img>` trỏ file chưa có.
 - [ ] Không tràn ngang ở 360px; vùng chạm ≥ 44px (nội bộ, kho ≥ 48px); focus thấy rõ trên mọi bề mặt.
-- [ ] Câu chữ đúng sự thật, đủ thứ tiếng, không chữ cấm, không claim chưa xác nhận.
+- [ ] Câu chữ đúng sự thật, đủ thứ tiếng, không chữ cấm, không claim chưa xác nhận; không thêm chỗ mới
+      ghi địa chỉ cũ (Hàm Nghi) hay cầu thang bộ.
 - [ ] Không JavaScript vẫn dùng được; `prefers-reduced-motion` không còn chuyển động.
 - [ ] Trang công khai đúng khi chưa có database.
 - [ ] File mới có dòng mở trong `.gitignore` (`git status --short` thấy nó).

@@ -17,6 +17,9 @@ con số cụ thể **khi con số đã được xác nhận**.
   thì người viết tự giữ.)
 - Tiếng lóng giới trẻ, chiêu câu tương tác, giọng fine dining xa cách.
 - Hứa mâm banchan đầy đủ kiểu Hàn — Beeftown tập trung vào bò. Không gọi là "Korean BBQ".
+- Guideline 09/10/2026 (`THUONG-HIEU.md`) cấm thêm: **buffet, cao cấp, nướng Hàn**, grade khi chưa có
+  chứng nhận, số ngày ủ khi chưa có hồ sơ, chữ về **than, lửa, khói**, số phần trăm khi chưa có phép
+  thử. Máy chỉ chặn phần có trong `chuoi-cam.js` — phần còn lại người viết tự giữ.
 - Ngôi xưng: trang web nói "bạn"; bot Messenger xưng "mình", gọi "bạn", nói về Beeftown ở ngôi thứ
   ba (`CAU_BOT` trong `web/src/lib/messenger.ts`).
 
@@ -60,10 +63,16 @@ trong `/noi-bo`.
 ## Dữ kiện cố định
 
 - Tên: **Beeftown**. Descriptor: *Beef Specialty Restaurant*. Tagline: *Pick it. Grill it. Love it.*
-  (`THUONG_HIEU` trong `web/src/lib/chu.ts`).
-- Địa chỉ: **Tầng 3, 11-21 Hàm Nghi, phường Sài Gòn, TP.HCM** — trọn tầng 3, **cầu thang bộ, không có
-  thang máy cho khách**. Trang nói về đường đến hay hỏi bàn phải nói chuyện cầu thang **trước** khi
-  khách gửi yêu cầu.
+  (có dấu chấm; `THUONG_HIEU` trong `web/src/lib/chu.ts`). Câu chính cho khách: *Không cần rành bò.
+  Chọn theo gu, thấy giá trước.*
+- Địa điểm: **Tầng 3, 63 Hồ Tùng Mậu** (tiếng Anh "Floor 3, 63 Hồ Tùng Mậu", tiếng Hàn "Hồ Tùng Mậu
+  63, 3층"). Chỉ đường: "Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3." Khánh chốt 07 và
+  09/10/2026.
+  - Mã trên `main` còn ghi "11-21 Hàm Nghi" và "cầu thang bộ, không có thang máy" (`LenTang3`, `chu.ts`,
+    chân trang, kiểm thử) — sửa ở **một PR riêng** theo danh sách của Khánh. Đừng thêm chỗ mới ghi địa
+    chỉ cũ hay cầu thang bộ; dòng địa chỉ pháp lý ở chân trang chờ Khánh quyết.
+  - Luật vẫn giữ: trang nói về đường đến hay hỏi bàn phải nói cách lên tầng 3 **trước** khi khách gửi
+    yêu cầu.
 - Nút / link tới trang hỏi bàn: **"Hỏi bàn" / "Ask for a table" / "테이블 문의"** — không "Đặt bàn
   ngay", không "Book now".
 - Nhãn khay: tên phần cắt, giá mỗi 100g, trọng lượng, giá cuối (đã gồm VAT), ngày đóng gói. "Đã gồm
@@ -75,7 +84,7 @@ trong `/noi-bo`.
 ## Chữ và số kiểu Việt
 
 - "1.000" là một nghìn, "1,5" là một phẩy năm. Tiếng Anh ở nội bộ / kho viết `1.25`, `450,000 ₫` — dùng
-  hàm định dạng có sẵn, không tự ghép chuỗi.
+  hàm định dạng có sẵn, không tự ghép chuỗi. Guideline: giá dạng `000.000 đ`, ngày dạng `dd/mm/yyyy`.
 - Ngày giờ theo **giờ Việt Nam**: web dùng `web/src/lib/gio-vn.ts` (`homNayVn`, `namVn`, `congNgay`),
   không tự cộng 7 tiếng.
 - So khớp chữ có dấu phải đúng dấu ("Đúng" không phải "dừng").
@@ -84,7 +93,8 @@ trong `/noi-bo`.
 ## Đủ thứ tiếng
 
 - Trang công khai: **vi / en / ko** cho mọi câu; câu nào có `vi` và `en` thì phải có `ko`. Chữ en và ko
-  không chứa dấu tiếng Việt, trừ tên riêng (Hàm Nghi, Sài Gòn, tên pháp nhân).
+  không chứa dấu tiếng Việt, trừ tên riêng trong `TEN_RIENG` của `crm/test/test-cong-khai-cau-chu.mjs`
+  (tên đường, phường, pháp nhân) — tên riêng mới như "Hồ Tùng Mậu" thì thêm vào đó.
 - Nội bộ và kho: **vi / en**. Câu `raise exception` mới của database có bản tiếng Anh trong
   `web/src/lib/cau-noi-bo.ts` (CRM) hoặc `web/src/lib/kho/cau-kho-en.ts` (kho). **Không đổi chữ của câu
   `raise exception` cũ** — kiểm thử khớp theo chữ tiếng Việt.

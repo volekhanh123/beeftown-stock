@@ -43,7 +43,9 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
   `aria-hidden`, `.an-chu`).
 - Chân trang: dòng `© <năm> Beeftown · Beef Specialty Restaurant` rồi đúng hai dòng pháp nhân, chữ
   ≥ 12px.
-- Trang chủ, Đến Beeftown, Hỏi bàn nói tới cầu thang bộ (ba thứ tiếng).
+- Trang chủ, Đến Beeftown, Hỏi bàn nói tới cầu thang bộ (ba thứ tiếng). Kiểm này, câu cầu thang của
+  `test-cong-khai-cau-chu.mjs` và dòng địa chỉ pháp lý viết cứng trong `web/kiem-tra/trinh-duyet.mjs`
+  là **địa điểm cũ** — PR đổi sang 63 Hồ Tùng Mậu (thang máy) sửa chúng cùng lượt, không nới.
 - Không database: trang hỏi bàn, tuyển dụng **không có `<form>`**.
 - Menu gọn ở 360px: không JavaScript vẫn mở / đóng được; có JavaScript thì Esc đóng và trả focus.
 
@@ -68,7 +70,9 @@ giờ "thành công"; mọi trang × ba kịch bản ở 360 và 1440px không t
   skill riêng của một người để ở `~/.claude/skills/`.
 - `test-ky-nang-thiet-ke.mjs`: file `.md` của skill này được git thấy, cấu hình máy vẫn bị chặn; phần
   đầu `SKILL.md` đọc được bằng YAML; link giữa các file có thật; mã màu, biến CSS, đường dẫn, hai danh
-  sách biểu tượng, lớp dùng chung và lớp bề mặt khớp mã. Số đo và tên hàm không được kiểm.
+  sách biểu tượng, lớp dùng chung và lớp bề mặt khớp mã. Số đo và tên hàm không được kiểm. PR đổi bảng
+  màu website (`THUONG-HIEU.md` mục 5) làm test này đỏ cho tới khi bảng token trong `SKILL.md` đổi theo
+  — đúng ý đồ.
 - Bộ quét bí mật (`test-zalo-web`, `test-messenger-web`, `test-kho-ipos-web`, `test-doi-chieu-production`)
   đọc cả repo — trong tài liệu chỉ viết chỗ giữ chỗ, không chuỗi trông như khóa thật.
 

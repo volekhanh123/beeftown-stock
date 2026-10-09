@@ -122,7 +122,7 @@ theo ngày — `web/THIET-KE.md` mục 10.
 | `Anh` | `id`, `ngonNgu`, `khung`, `khungNho?`, `sizes?`, `uuTien?`, `phuKin?`, `thayBang?`, `nenKhung?` | Ảnh AVIF / WebP, tự gắn "Ảnh minh họa"; `uuTien` chỉ cho ảnh màn đầu |
 | `KhungAnh` | `loai` (`quay`, `khay`, `cau-thang`, `loi-vao`, `ban-nuong`), `tiLe?`, `tiLeNho?`, `nen?` | Chỗ của ảnh chụp thật chưa có — đúng tỷ lệ, không chữ |
 | `NhanKhay` | `ngonNgu` | Thiết bị chữ ký "Đọc nhãn khay" — năm trường nhãn, không con số |
-| `LenTang3` | `ngonNgu`, `noiDung`, `gon?`, `capTieuDe?`, `anHieu?`, `tieuDe?`, `khongLinkDuongDen?` | Tầng 3, cầu thang bộ, không thang máy; bản gọn cho trang Hỏi bàn |
+| `LenTang3` | `ngonNgu`, `noiDung`, `gon?`, `capTieuDe?`, `anHieu?`, `tieuDe?`, `khongLinkDuongDen?` | "Tầng 3" và đường lên; bản gọn cho trang Hỏi bàn. Hiện còn ghi địa chỉ cũ và cầu thang bộ — đổi cùng PR địa điểm 63 Hồ Tùng Mậu (thang máy) |
 | `CauHoi` | `ngonNgu`, `noiDung` | Hỏi đáp bằng `<details>` — chỉ dữ kiện đã xác nhận |
 | `TrangVanBan` | `hieu`, `tieuDe` + `<slot>` | Trang pháp lý |
 | `ThucDonNhom` | `nhom`, `ngonNgu`, `ghiChu?`, `khongGia?` | Một nhóm món |

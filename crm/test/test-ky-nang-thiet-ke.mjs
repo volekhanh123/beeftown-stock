@@ -48,6 +48,9 @@ function moiFile(thuMuc) {
 const tuGoc = p => relative(GOC, p).split(sep).join('/');
 // Bỏ \r: máy Windows lấy repo với core.autocrlf thì file có CRLF — đừng đỏ oan.
 const doc = p => readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
+// CSS bỏ chú thích: chú thích đầu cong-khai.css nhắc tên các bề mặt (.be-kem, .be-do…) — xóa hẳn quy
+// tắc mà chú thích còn thì lớp đó KHÔNG còn, đừng để kiểm thử thấy nó trong chú thích mà xanh.
+const docCss = p => doc(p).replace(/\/\*[\s\S]*?\*\//g, '');
 
 /** git check-ignore theo luật (--no-index: kể cả file đã có trong git). Mã 0 = bị chặn. */
 function biChan(duongDan) {
@@ -123,7 +126,7 @@ await nhom('3 · MÃ MÀU VÀ BIẾN CSS GHI TRONG SKILL CÓ THẬT, ĐÚNG GIÁ
   /** Giá trị hex khai cho mỗi biến, gom từ mọi file CSS (một biến có thể khai ở nhiều bề mặt). */
   const giaTri = new Map();
   for (const f of tepMa.filter(f => f.endsWith('.css'))) {
-    for (const [, ten, hex] of doc(f).matchAll(/(--[a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{6})\b/g)) {
+    for (const [, ten, hex] of docCss(f).matchAll(/(--[a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{6})\b/g)) {
       if (!giaTri.has(ten)) giaTri.set(ten, new Set());
       giaTri.get(ten).add(hex.toUpperCase());
     }
@@ -161,7 +164,9 @@ await nhom('4 · ĐƯỜNG DẪN GHI TRONG SKILL CÓ THẬT', async () => {
   const fileGoc = new Set(readdirSync(GOC).filter(f => statSync(join(GOC, f)).isFile()));
   const duongDan = new Set(Object.values(vanBan).flatMap(trongDauHuyen)
     .map(s => s.trim())
-    .filter(s => /^(web|crm|can-app|\.github)\/[^\s<>*]+$/.test(s) || fileGoc.has(s) || /^Beeftown_[^\s/*]+$/.test(s)));
+    // Beeftown_….html / .svg / .gs là tài liệu trong repo; Beeftown_Brand_Assets_… (thư mục trên máy
+    // Khánh, không đuôi) thì không.
+    .filter(s => /^(web|crm|can-app|\.github)\/[^\s<>*]+$/.test(s) || fileGoc.has(s) || /^Beeftown_[^\s*]+\.(html|svg|gs)$/.test(s)));
   const khongCo = [...duongDan].filter(d => !existsSync(join(GOC, d)));
   ok(`${duongDan.size} đường dẫn trong skill đều có thật`, duongDan.size >= 20 && khongCo.length === 0,
      khongCo.length ? khongCo.join(', ') : `${duongDan.size} đường dẫn`);
@@ -192,7 +197,7 @@ await nhom('5 · BIỂU TƯỢNG VÀ LỚP DÙNG CHUNG KHỚP MÃ', async () => 
   soSanh('noi-bo-va-kho.md: danh sách biểu tượng nội bộ, kho đúng bằng khóa BIEU_TUONG (lib/kho/bieu-tuong.ts)',
          khoSkill, Object.keys(BIEU_TUONG));
 
-  const css = doc(join(SRC, 'styles', 'cong-khai.css'));
+  const css = docCss(join(SRC, 'styles', 'cong-khai.css'));
   const coLop = lop => new RegExp(`\\.${lop}(?![a-z0-9-])`).test(css);
   const congKhai = vanBan[`.claude/skills/${TEN_KY_NANG}/tham-khao/trang-cong-khai.md`] ?? '';
   const danhMuc = (congKhai.match(/Danh mục:([\s\S]*?)\.\n/)?.[1] ?? '');
