@@ -9,8 +9,9 @@
  * sẽ lộ ra ở đây. Thêm tài khoản máy may_zalo và một chi nhánh thứ ba (Q3) có
  * marketing riêng để đếm khách của chiến dịch cho chính xác.
  *
- * Kiểm: đặt bàn → đúng một ZBS-01 + một ZBS-02 (giờ hẹn − 2 tiếng), gọi lại
- * không trùng; ZBS-02 bỏ khi đã quá; hủy / đổi giờ; mẫu chưa duyệt / tắt / Zalo
+ * Kiểm: đặt bàn được nhân viên xác nhận → đúng một ZBS-01 + một ZBS-02 (giờ
+ * hẹn − 2 tiếng), gọi lại không trùng (chưa xác nhận thì không tin nào — 0063,
+ * kiểm kỹ ở test-zalo-xac-nhan.mjs); ZBS-02 bỏ khi đã quá; hủy / đổi giờ; mẫu chưa duyệt / tắt / Zalo
  * tắt → không xếp; khách lần đầu nhận giao dịch nhưng không nhận chăm sóc; trần
  * 2 tin/tháng (tính cả tin chờ); khung giờ; xem trước chiến dịch; lượt gửi của
  * máy (khóa, kiểm lại, ghi kết quả, thử lại); ai đọc được gì, ai gọi được gì.
@@ -79,6 +80,17 @@ async function datBanWeb(sdt, ten, ngay, gio, dongY = false, cn = 'q1') {
     `select * from tao_dat_ban($1, $2, $3, $4::date, $5::time, 2::smallint, p_dong_y => $6)`,
     [cn, sdt, ten, ngay, gio, dongY]);
   return r.loi ? { loi: r.loi } : r.rows[0];
+}
+/**
+ * Nhân viên bấm "Đã gọi xác nhận" ở /noi-bo/dat-ban — đúng câu của trang. Từ 0063 tin ZBS chỉ
+ * được xếp từ lúc này, không phải lúc khách gửi yêu cầu. Không đổi được đúng một dòng thì NÉM —
+ * kiểm tra "xác nhận rồi vẫn không xếp" phía sau không được đạt nhờ việc xác nhận lặng lẽ hỏng.
+ */
+async function xacNhan(id, uid = UID.qlA) {
+  const r = await duoi(uid, `update dat_ban set trang_thai = 'da_xac_nhan', nguoi_xu_ly = $2
+                              where id = $1 and trang_thai = 'cho_xac_nhan' returning id`, [id, nsId[uid]]);
+  if (r.loi !== null || r.rows.length !== 1) throw new Error(`Xác nhận đặt bàn ${id} không đổi đúng một dòng: ${vi(r)}`);
+  return r;
 }
 const tinCuaDatBan = id => q(
   `select n.*, m.ma as mau_ma from nhat_ky_tin n join mau_tin m on m.id = n.mau_tin_id
@@ -171,20 +183,23 @@ let datBanChinh;   // đặt bàn dùng lại ở các nhóm sau
 await nhom('2 · CHƯA SẴN SÀNG → KHÔNG XẾP GÌ (mẫu chưa duyệt / không tự động / Zalo tắt)', async () => {
   const d1 = await datBanWeb('0901000001', 'Khách Một', NGAY_KIA, '18:00');
   ok('Đặt bàn web vẫn chạy', !d1.loi && d1.ma_dat_ban?.length === 6, d1.loi ?? '');
-  ok('Mẫu chưa duyệt → không xếp tin nào', (await tinCuaDatBan(d1.dat_ban_id)).length === 0);
+  await xacNhan(d1.dat_ban_id);
+  ok('Mẫu chưa duyệt → xác nhận rồi vẫn không xếp tin nào', (await tinCuaDatBan(d1.dat_ban_id)).length === 0);
 
   for (const ma of ['ZBS-01', 'ZBS-02']) {
     const r = await rpc(UID.chu, `zalo_luu_mau($1, $2, true, false)`, [ma, `tpl_${ma.slice(-2)}`]);
     ok(`Chủ duyệt ${ma} (chưa bật tự động)`, r.kq?.ok === true && r.kq.da_duyet === true, vi(r));
   }
   const d2 = await datBanWeb('0901000002', 'Khách Hai', NGAY_KIA, '18:00');
-  ok('Đã duyệt nhưng bat_tu_dong = false → không xếp', (await tinCuaDatBan(d2.dat_ban_id)).length === 0);
+  await xacNhan(d2.dat_ban_id);
+  ok('Đã duyệt nhưng bat_tu_dong = false → xác nhận rồi vẫn không xếp', (await tinCuaDatBan(d2.dat_ban_id)).length === 0);
 
   for (const ma of ['ZBS-01', 'ZBS-02']) {
     await rpc(UID.chu, `zalo_luu_mau($1, $2, true, true)`, [ma, `tpl_${ma.slice(-2)}`]);
   }
   const d3 = await datBanWeb('0901000003', 'Khách Ba', NGAY_KIA, '18:30');
-  ok('Mẫu sẵn sàng nhưng zalo_cau_hinh.dang_bat = false → không xếp', (await tinCuaDatBan(d3.dat_ban_id)).length === 0);
+  await xacNhan(d3.dat_ban_id);
+  ok('Mẫu sẵn sàng nhưng zalo_cau_hinh.dang_bat = false → xác nhận rồi vẫn không xếp', (await tinCuaDatBan(d3.dat_ban_id)).length === 0);
 
   // Bật Zalo: cần App ID, OA ID, refresh token (bản mã).
   const thieu = await rpc(UID.chu, `zalo_luu_cau_hinh(p_app_id => '123456', p_oa_id => '654321', p_dang_bat => true)`);
@@ -210,10 +225,13 @@ await nhom('2 · CHƯA SẴN SÀNG → KHÔNG XẾP GÌ (mẫu chưa duyệt / k
 });
 
 // ===========================================================================
-await nhom('3 · ĐẶT BÀN → MỘT ZBS-01 NGAY + MỘT ZBS-02 LÚC GIỜ HẸN − 2 TIẾNG', async () => {
+await nhom('3 · XÁC NHẬN ĐẶT BÀN → MỘT ZBS-01 NGAY + MỘT ZBS-02 LÚC GIỜ HẸN − 2 TIẾNG', async () => {
   const d = await datBanWeb('0901000010', 'Nguyễn Văn Đặt', NGAY_KIA, '18:00', true);
   datBanChinh = d;
   ok('Khách đặt bàn web (anon) thành công', !d.loi, d.loi ?? '');
+  ok('Yêu cầu chưa xác nhận → chưa xếp tin nào (0063)', (await tinCuaDatBan(d.dat_ban_id)).length === 0);
+  const xn = await xacNhan(d.dat_ban_id);
+  ok('Quản lý bấm "Đã gọi xác nhận"', xn.loi === null && xn.rows.length === 1, vi(xn));
   const tin = await tinCuaDatBan(d.dat_ban_id);
   ok('Đúng hai tin: ZBS-01 và ZBS-02', tin.map(t => t.mau_ma).join() === 'ZBS-01,ZBS-02', tin.map(t => t.mau_ma).join());
   const [t1, t2] = tin;
@@ -260,11 +278,13 @@ await nhom('4 · ZBS-02 BỎ KHI ĐÃ QUÁ; HỦY / ĐỔI GIỜ / ĐÃ ĐẾN',
   const kh = await mot(`select * from tim_hoac_tao_khach('0901000020', 'Khách Sát Giờ', $1)`, [cnA.id]);
   const { id: dSat } = await mot(`insert into dat_ban (chi_nhanh_id, khach_hang_id, ngay, gio, so_khach, ma_dat_ban)
                                   values ($1, $2, $3::date, $4::time, 2, sinh_ma_dat_ban()) returning id`, [cnA.id, kh.id, ngay, gio]);
+  await xacNhan(dSat);
   const t = await tinCuaDatBan(dSat);
-  ok('Đặt bàn sát giờ: có ZBS-01, KHÔNG có ZBS-02', t.map(x => x.mau_ma).join() === 'ZBS-01', t.map(x => x.mau_ma).join());
+  ok('Đặt bàn sát giờ được xác nhận: có ZBS-01, KHÔNG có ZBS-02', t.map(x => x.mau_ma).join() === 'ZBS-01', t.map(x => x.mau_ma).join());
 
   // Đổi giờ: quản lý dời sang ngày kia 20:00 → ZBS-02 dời theo, tham số cập nhật.
   const d = await datBanWeb('0901000021', 'Khách Đổi Giờ', NGAY_KIA, '19:00');
+  await xacNhan(d.dat_ban_id);
   const ngay3 = ngayCong(3);
   const doi = await duoi(UID.qlA, `update dat_ban set ngay = $2::date, gio = '20:00' where id = $1`, [d.dat_ban_id, ngay3]);
   ok('Quản lý đổi giờ đặt bàn', doi.loi === null, vi(doi));
@@ -295,6 +315,7 @@ await nhom('4 · ZBS-02 BỎ KHI ĐÃ QUÁ; HỦY / ĐỔI GIỜ / ĐÃ ĐẾN',
 
   // Đã đến: chỉ ZBS-02 bị hủy.
   const d2 = await datBanWeb('0901000022', 'Khách Đến Sớm', NGAY_KIA, '19:30');
+  await xacNhan(d2.dat_ban_id);
   await duoi(UID.qlA, `update dat_ban set trang_thai = 'da_den' where id = $1`, [d2.dat_ban_id]);
   const den = await tinCuaDatBan(d2.dat_ban_id);
   ok('Khách đã đến → ZBS-02 da_huy, ZBS-01 giữ nguyên', den[0].ket_qua === 'cho_gui' && den[1].ket_qua === 'da_huy',
@@ -306,7 +327,9 @@ await nhom('5 · TRIGGER KHÔNG BAO GIỜ LÀM HỎNG ĐẶT BÀN', async () => 
   await db.exec(`alter table nhat_ky_tin add constraint thu_hong check (khoa_gui is null or khoa_gui not like 'ZBS-%') not valid`);
   try {
     const d = await datBanWeb('0901000030', 'Khách Lúc Lỗi', NGAY_KIA, '12:00');
-    ok('Xếp tin lỗi mà đặt bàn web VẪN thành công', !d.loi && d.ma_dat_ban?.length === 6, d.loi ?? '');
+    ok('Đặt bàn web vẫn ghi được khi bộ xếp tin đang hỏng', !d.loi && d.ma_dat_ban?.length === 6, d.loi ?? '');
+    const xn = await xacNhan(d.dat_ban_id);
+    ok('Xếp tin lỗi mà bấm "Đã gọi xác nhận" VẪN ghi được', xn.loi === null && xn.rows.length === 1, vi(xn));
     ok('…không tin nào được xếp', (await tinCuaDatBan(d.dat_ban_id)).length === 0);
     const { loi_cuoi } = await mot(`select loi_cuoi from zalo_cau_hinh`);
     ok('…lỗi được ghi vào zalo_cau_hinh.loi_cuoi, có mã đặt bàn',
@@ -333,6 +356,7 @@ await nhom('6 · CHIẾN DỊCH — xem trước, loại người không đủ �
   K.khacCn  = await taoKhach('0903000005', true, cnB); // khách chi nhánh khác
   const lanDau = await datBanWeb('0903000004', 'Khách Mới Đặt', NGAY_KIA, '18:00', true, 'q3');  // chưa ghé
   K.lanDau = (await mot(`select khach_hang_id from dat_ban where id = $1`, [lanDau.dat_ban_id])).khach_hang_id;
+  await xacNhan(lanDau.dat_ban_id, UID.chu);
 
   await rpc(UID.chu, `zalo_luu_mau('ZBS-03', 'tpl_03', true, false)`);
   const { id: mau03 } = await mot(`select id from mau_tin where ma = 'ZBS-03'`);
@@ -558,7 +582,8 @@ await nhom('9 · LƯỢT GỬI DỌN TIN CŨ; MẪU BỊ TẮT; CHIẾN DỊCH X
   const { id: dQua } = await mot(`insert into dat_ban (chi_nhanh_id, khach_hang_id, ngay, gio, so_khach, ma_dat_ban)
                                   values ($1, $2, (bay_gio_vn() + interval '1 hour')::date, (bay_gio_vn() + interval '1 hour')::time,
                                           2, sinh_ma_dat_ban()) returning id`, [cnA.id, kh.id]);
-  ok('(đặt bàn 1 tiếng nữa có ZBS-01 chờ gửi)', (await tinCuaDatBan(dQua)).map(x => x.ket_qua).join() === 'cho_gui');
+  await xacNhan(dQua);
+  ok('(đặt bàn 1 tiếng nữa, đã xác nhận, có ZBS-01 chờ gửi)', (await tinCuaDatBan(dQua)).map(x => x.ket_qua).join() === 'cho_gui');
   await db.query(`update dat_ban set ngay = (bay_gio_vn() - interval '1 hour')::date,
                                      gio = (bay_gio_vn() - interval '1 hour')::time where id = $1`, [dQua]);
   // Tắt ZBS-01 (bỏ duyệt) — tin ZBS-01 đang chờ không được gửi nữa.
@@ -577,10 +602,11 @@ await nhom('9 · LƯỢT GỬI DỌN TIN CŨ; MẪU BỊ TẮT; CHIẾN DỊCH X
   const kt = await rpc(UID_MAY_ZALO, `zalo_ket_thuc_luot()`);
   ok('Hết tin chờ → chiến dịch đang chạy chuyển hoan_tat', kt.kq?.so_chien_dich_xong >= 1, vi(kt));
 
-  // Đặt bàn mới khi ZBS-01 không duyệt: chỉ còn ZBS-02.
+  // Đặt bàn mới khi ZBS-01 không duyệt: xác nhận xong chỉ còn ZBS-02.
   const d = await datBanWeb('0901000040', 'Khách Sau Tắt', NGAY_KIA, '20:00');
+  await xacNhan(d.dat_ban_id);
   const t = await tinCuaDatBan(d.dat_ban_id);
-  ok('ZBS-01 bị bỏ duyệt → đặt bàn mới chỉ còn ZBS-02', t.map(x => x.mau_ma).join() === 'ZBS-02', t.map(x => x.mau_ma).join());
+  ok('ZBS-01 bị bỏ duyệt → đặt bàn mới xác nhận xong chỉ còn ZBS-02', t.map(x => x.mau_ma).join() === 'ZBS-02', t.map(x => x.mau_ma).join());
 
   // Tắt Zalo: máy nhận lô rỗng, không token; đặt bàn không xếp gì.
   await rpc(UID.chu, `zalo_luu_cau_hinh(p_dang_bat => false)`);
@@ -588,7 +614,8 @@ await nhom('9 · LƯỢT GỬI DỌN TIN CŨ; MẪU BỊ TẮT; CHIẾN DỊCH X
   ok('Zalo tắt → máy nhận dang_bat = false, lô rỗng, không cấu hình', tat.kq?.dang_bat === false && tat.kq.lo.length === 0
      && tat.kq.cau_hinh === null, vi(tat));
   const d2 = await datBanWeb('0901000041', 'Khách Khi Tắt', NGAY_KIA, '20:00');
-  ok('Zalo tắt → đặt bàn không xếp tin', (await tinCuaDatBan(d2.dat_ban_id)).length === 0);
+  await xacNhan(d2.dat_ban_id);
+  ok('Zalo tắt → đặt bàn xác nhận xong vẫn không xếp tin', (await tinCuaDatBan(d2.dat_ban_id)).length === 0);
   await rpc(UID.chu, `zalo_luu_cau_hinh(p_dang_bat => true)`);
 });
 

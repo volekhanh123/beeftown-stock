@@ -56,6 +56,8 @@ export const CAU_ZALO_EN: Readonly<Record<string, string>> = {
   'Mẫu tin chưa được Zalo duyệt hoặc đã tắt': 'The template is not approved by Zalo or has been turned off',
   'Chiến dịch đã dừng': 'The campaign was stopped',
   'Tin chưa được lấy ra trong lượt gửi nào': 'The message has not been picked up by any sending run',
+  // 0063
+  'Xác nhận khi đã sát giờ hẹn — không còn nhắc trước 2 tiếng': 'Confirmed too close to the booking time — no 2-hour reminder',
 };
 
 /** Câu có phần thay đổi. */

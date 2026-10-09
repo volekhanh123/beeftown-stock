@@ -92,7 +92,8 @@ await nhom('0 · TIỀN ĐỀ — một bản hàm, chữ ký không đổi, ano
 });
 
 // ===========================================================================
-// Bật Zalo như test-zalo.mjs nhóm 2 — để đếm được tin ZBS-01 của mỗi đặt bàn.
+// Bật Zalo như test-zalo.mjs nhóm 2 — để đếm được tin ZBS-01 của mỗi đặt bàn (từ 0063: xếp khi
+// nhân viên bấm "Đã gọi xác nhận", không phải lúc khách gửi).
 for (const ma of ['ZBS-01', 'ZBS-02']) {
   await duoi(UID.chu, `select zalo_luu_mau($1, $2, true, true)`, [ma, `tpl_${ma.slice(-2)}`]);
 }
@@ -118,14 +119,19 @@ await nhom('1 · BẤM HAI LẦN Y HỆT → MỘT DÒNG, CÙNG MÃ', async () =
   const { n: dongY } = await mot(
     `select count(*)::int as n from nhat_ky_dong_y n join khach_hang k on k.id = n.khach_hang_id where k.sdt = '0912000001'`);
   ok('…một dòng nhật ký đồng ý nhận tin, không ghi lần hai', dongY === 1, `${dongY} dòng`);
+  const lan3 = await gui(yc);
+  ok('Gửi lần ba vẫn cùng mã, vẫn một dòng', lan3.ma_dat_ban === lan1.ma_dat_ban && (await soDong('0912000001', ngay)) === 1, moTa(lan3));
+
+  const { n: chuaXn } = await mot(`select count(*)::int as n from nhat_ky_tin where dat_ban_id = $1`, [lan1.dat_ban_id]);
+  ok('…yêu cầu chưa xác nhận: Zalo chưa xếp tin nào (0063)', chuaXn === 0, `${chuaXn} tin`);
+  const xn = await duoi(UID.qlA, `update dat_ban set trang_thai = 'da_xac_nhan' where id = $1 and trang_thai = 'cho_xac_nhan' returning id`,
+                        [lan1.dat_ban_id]);
+  ok('…nhân viên chi nhánh bấm "Đã gọi xác nhận" một lần cho cả ba lần gửi', xn.loi === null && xn.rows.length === 1, xn.loi ?? '');
   const { n: tin } = await mot(`select count(*)::int as n from nhat_ky_tin where dat_ban_id = $1 and khoa_gui like 'ZBS-01:%'`, [lan1.dat_ban_id]);
   const { n: tinKhach } = await mot(
     `select count(*)::int as n from nhat_ky_tin n join khach_hang k on k.id = n.khach_hang_id
       where k.sdt = '0912000001' and n.khoa_gui like 'ZBS-01:%'`);
   ok('…Zalo xếp đúng MỘT tin ZBS-01 cho khách, không gửi tin hai lần', tin === 1 && tinKhach === 1, `${tin} / ${tinKhach}`);
-
-  const lan3 = await gui(yc);
-  ok('Gửi lần ba vẫn cùng mã, vẫn một dòng', lan3.ma_dat_ban === lan1.ma_dat_ban && (await soDong('0912000001', ngay)) === 1, moTa(lan3));
 });
 
 // ===========================================================================
