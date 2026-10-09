@@ -63,10 +63,12 @@ giờ "thành công"; mọi trang × ba kịch bản ở 360 và 1440px không t
 
 ## Quy trình
 
-- `test-quy-trinh.mjs`: file mã nguồn (`web/src`, `crm/test`…) bị `.gitignore` chặn là đỏ. **Không**
-  quét `.claude/` — skill bị chặn sẽ không ai báo; `test-ky-nang-thiet-ke.mjs` lo việc đó cho skill này.
-- `test-ky-nang-thiet-ke.mjs`: skill này được git thấy, mã màu và đường dẫn trong skill khớp mã, danh
-  sách biểu tượng khớp `BieuTuong.astro`.
+- `test-quy-trinh.mjs`: file mã nguồn (`web/src`, `crm/test`, `.claude/skills/`…) bị `.gitignore` chặn
+  là đỏ. `.gitignore` mở **từng** skill — skill dùng chung mới cần một dòng mở cạnh dòng của skill này;
+  skill riêng của một người để ở `~/.claude/skills/`.
+- `test-ky-nang-thiet-ke.mjs`: file `.md` của skill này được git thấy, cấu hình máy vẫn bị chặn; phần
+  đầu `SKILL.md` đọc được bằng YAML; link giữa các file có thật; mã màu, biến CSS, đường dẫn, hai danh
+  sách biểu tượng, lớp dùng chung và lớp bề mặt khớp mã. Số đo và tên hàm không được kiểm.
 - Bộ quét bí mật (`test-zalo-web`, `test-messenger-web`, `test-kho-ipos-web`, `test-doi-chieu-production`)
   đọc cả repo — trong tài liệu chỉ viết chỗ giữ chỗ, không chuỗi trông như khóa thật.
 

@@ -13,8 +13,9 @@ tài liệu gốc — khi hai bên lệch nhau, thứ tự thắng là:
 3. **Mã đang chạy** — `web/src/styles/*.css`, component trong `web/src/components/`.
 4. Skill này.
 
-Thấy skill lệch mã: sửa skill trong cùng PR. `crm/test/test-ky-nang-thiet-ke.mjs` bắt mã màu, đường
-dẫn và tên biểu tượng ghi trong skill mà không còn khớp với mã.
+Thấy skill lệch mã: sửa skill trong cùng PR. `crm/test/test-ky-nang-thiet-ke.mjs` bắt mã màu, biến
+CSS, đường dẫn, tên biểu tượng và lớp dùng chung ghi trong skill mà không còn khớp với mã. Số đo (cỡ
+chữ, khoảng cách, bo góc) và tên hàm thì **không** có kiểm thử — đổi mã những thứ đó thì tự sửa skill.
 
 ## Bước 0 — đang làm cho khu nào?
 
@@ -28,7 +29,8 @@ Mỗi khu có CSS, layout và số thứ tiếng riêng. Xác định trước k
 | Beeftown Cân (`can-app/`) | Máy tính ở quầy | `can-app/src/*.html` | vi | [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md) |
 | Ấn phẩm ngoài web | Khách trên mạng xã hội, tại quán | — | vi (en / ko khi cần) | [tham-khao/an-pham.md](tham-khao/an-pham.md) |
 
-Mọi khu dùng chung bảng màu và Montserrat. **Đừng mang lớp của khu này sang khu kia**: lớp `.nut`,
+Mọi khu dùng chung bảng màu; mọi khu web dùng Montserrat (Beeftown Cân chạy không mạng nên dùng phông
+hệ thống). **Đừng mang lớp của khu này sang khu kia**: lớp `.nut`,
 `.be-kem`… của trang công khai chỉ sống dưới `.ck`; `cong-khai.css` chỉ `Trang.astro` được nạp
 (có kiểm thử).
 
@@ -97,8 +99,8 @@ Muốn màu chữ khác trong một khối: dùng biến bề mặt (`color: var
 Thẻ sáng lồng trong dải tối phải tự khai `.be-kem` — bề mặt sáng đặt lại toàn bộ biến chữ.
 
 Bảng tương phản đầy đủ (WCAG 2.2, đã tính): `web/THIET-KE.md`, mục 2. Cặp màu mới chưa có trong
-bảng: tính tỷ lệ trước khi dùng — chữ thường ≥ 4,5 : 1, chữ ≥ 24px hoặc ≥ 19px đậm ≥ 3 : 1, viền ô
-nhập ≥ 3 : 1.
+bảng: tính tỷ lệ trước khi dùng — chữ thường ≥ 4,5 : 1, chữ ≥ 24px hoặc ≥ 18,66px đậm ≥ 3 : 1, viền
+ô nhập ≥ 3 : 1 (kiểm thử trình duyệt đo đúng các ngưỡng này).
 
 ## Chữ
 
@@ -180,9 +182,12 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
   là tham chiếu** — không đưa lên trang.
 - Manifest từng tài sản (nguồn, chỗ dùng, trạng thái, điều kiện thay) và brief chụp ảnh:
   `web/THIET-KE.md`, mục 7 – 8.
-- Bảy tài liệu thiết kế ở gốc repo (`Beeftown_*.html`, `Beeftown_Concept_Board_v1.svg`) làm **trước**
-  brief 06/10/2026: phông Baloo / Anton, bảng màu khác, "Thịt chuẩn · Giá thật", phòng riêng, giá —
-  **đã cũ, không chép**. Phần còn dùng được (kích thước mạng xã hội, luật đặt logo) và cỡ ấn phẩm:
+- Sáu tài liệu thiết kế ở gốc repo (`Beeftown_Bo_Nhan_Dien_So.html`,
+  `Beeftown_Logo_Suite_and_Directions.html`, `Beeftown_Instore_Art.html`, `Beeftown_CRM_Design.html`,
+  `Beeftown_Dashboard.html`, `Beeftown_Concept_Board_v1.svg`) và bản nháp `Beeftown_Website/index.html`
+  làm **trước** brief 06/10/2026: phông Baloo / Anton, bảng màu khác, "Thịt chuẩn · Giá thật", phòng
+  riêng, giá — **đã cũ, không chép**. (`Beeftown_Can_TMA.html` là công cụ cân, không phải tài liệu
+  thiết kế.) Phần còn dùng được (kích thước mạng xã hội, luật đặt logo) và cỡ ấn phẩm:
   [tham-khao/an-pham.md](tham-khao/an-pham.md).
 
 ## Câu chữ
@@ -205,7 +210,7 @@ với khách công ty. Chi tiết và ví dụ: [tham-khao/cau-chu.md](tham-khao
 
 ## Tiếp cận
 
-Focus 3px cách 3px, màu theo bề mặt · vùng chạm ≥ 44px · mỗi trang đúng một `h1` · câu tiếng Anh
+Focus 3px cách 3px, màu theo bề mặt · vùng chạm ≥ 44px (nội bộ, kho ≥ 48px) · mỗi trang đúng một `h1` · câu tiếng Anh
 trong trang Việt có `lang="en"` · alt ba thứ tiếng tả món (`DANH_MUC_ANH` trong `web/src/lib/anh.ts`),
 trang trí và logo cạnh chữ "Beeftown" để `alt=""` · **không giấu nội dung sau JavaScript** (menu gọn
 và hỏi đáp dùng `<details>`; không JavaScript vẫn đọc được đủ).

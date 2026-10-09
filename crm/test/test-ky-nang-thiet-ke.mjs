@@ -7,20 +7,22 @@
  * Skill thiết kế là bản đồ mọi phiên Claude đọc trước khi làm giao diện. Một bản đồ sai còn tệ hơn
  * không có: phiên sau sẽ tin mã màu, tên lớp, tên biểu tượng ghi trong đó. Bất biến:
  *
- *   1. Mọi file của skill được git thấy — .gitignore chặn .claude/ ở mọi cấp và chỉ mở .md của
- *      .claude/skills/ ở gốc; test-quy-trinh.mjs không quét .claude/, nên file bị chặn sẽ lặng lẽ chỉ
- *      nằm trên máy người viết. Cấu hình máy (settings.local.json) vẫn bị chặn.
- *   2. Phần đầu SKILL.md đúng luật skill: name trùng tên thư mục, chữ thường và gạch nối, ≤ 64 ký tự;
- *      description có chữ, ≤ 1024 ký tự. Mọi link tới tham-khao/ có file, mọi file tham-khao/ được
- *      SKILL.md link tới.
+ *   1. Mọi file .md của skill được git thấy — .gitignore chặn .claude/ ở mọi cấp và mở TỪNG skill
+ *      (chỉ .md). Cấu hình máy (settings.local.json), skill khác chưa mở, .claude/ ở thư mục con vẫn
+ *      bị chặn. (File không phải .md trong skill thì test-quy-trinh.mjs nhắc.)
+ *   2. Phần đầu SKILL.md đúng luật skill và đọc được bằng YAML: name trùng tên thư mục, chữ thường và
+ *      gạch nối, ≤ 64 ký tự; description có chữ, ≤ 1024 ký tự; cả hai là chuỗi YAML trơn một dòng
+ *      (không ": ", không " #", không mở bằng ký tự đặc biệt). Mọi link tương đối trong mọi file .md
+ *      của skill có file; mọi file tham-khao/ được SKILL.md link tới.
  *   3. Mã màu ghi cạnh tên token (`--kem` … `#FBF4E1`) đúng giá trị khai trong web/src/styles; mọi
  *      biến `--…` nhắc tới có khai ở đâu đó trong web/src.
  *   4. Mọi đường dẫn trong dấu `…` bắt đầu bằng web/, crm/, can-app/, .github/ hoặc là file ở gốc repo
  *      đều có thật.
  *   5. Hai danh sách biểu tượng trong skill khớp đúng bộ trong mã (công khai: TenBieuTuong của
- *      BieuTuong.astro; nội bộ, kho: khóa của BIEU_TUONG). Danh mục lớp dùng chung và lớp bề mặt có
- *      trong cong-khai.css.
+ *      BieuTuong.astro; nội bộ, kho: khóa của BIEU_TUONG). Lớp trong "Danh mục" có trong
+ *      cong-khai.css; lớp bề mặt .be-… khớp hai chiều.
  *
+ * KHÔNG kiểm: số đo (cỡ chữ, khoảng cách, bo góc), tên hàm, câu chữ — người sửa mã tự sửa skill.
  * Đỏ ở đây nghĩa là mã đã đổi mà skill chưa theo: sửa skill trong cùng PR, đừng nới kiểm thử.
  */
 
@@ -44,7 +46,8 @@ function moiFile(thuMuc) {
     d.isDirectory() ? moiFile(join(thuMuc, d.name)) : [join(thuMuc, d.name)]);
 }
 const tuGoc = p => relative(GOC, p).split(sep).join('/');
-const doc = p => readFileSync(p, 'utf8');
+// Bỏ \r: máy Windows lấy repo với core.autocrlf thì file có CRLF — đừng đỏ oan.
+const doc = p => readFileSync(p, 'utf8').replace(/\r\n/g, '\n');
 
 /** git check-ignore theo luật (--no-index: kể cả file đã có trong git). Mã 0 = bị chặn. */
 function biChan(duongDan) {
@@ -52,8 +55,8 @@ function biChan(duongDan) {
   catch { return false; }
 }
 
-const tepKyNang = moiFile(KY_NANG);
-const tepMd = tepKyNang.filter(f => f.endsWith('.md'));
+// Chỉ file .md: rác của máy (.DS_Store, file tạm của trình soạn) đã bị chặn, không vào git, không đáng đỏ.
+const tepMd = moiFile(KY_NANG).filter(f => f.endsWith('.md'));
 const vanBan = Object.fromEntries(tepMd.map(f => [tuGoc(f), doc(f)]));
 const skillMd = vanBan[`.claude/skills/${TEN_KY_NANG}/SKILL.md`] ?? '';
 
@@ -66,14 +69,12 @@ function trongDauHuyen(md) {
 // ===========================================================================
 await nhom('1 · GIT THẤY MỌI FILE CỦA SKILL; CẤU HÌNH MÁY VẪN BỊ CHẶN', async () => {
   ok(`.claude/skills/${TEN_KY_NANG}/SKILL.md có mặt`, existsSync(join(KY_NANG, 'SKILL.md')));
-  ok('skill chỉ gồm file .md (.gitignore chỉ mở .md của .claude/skills/)',
-     tepKyNang.length > 0 && tepKyNang.length === tepMd.length,
-     tepKyNang.filter(f => !f.endsWith('.md')).map(tuGoc).join(', '));
-  const bi = tepKyNang.map(tuGoc).filter(biChan);
-  ok(`${tepKyNang.length} file của skill không bị .gitignore chặn`, tepKyNang.length > 0 && bi.length === 0,
-     bi.length ? `${bi.join(', ')} — mở bằng dòng !/.claude/skills/… đứng sau **/.claude/**` : '');
+  const bi = tepMd.map(tuGoc).filter(biChan);
+  ok(`${tepMd.length} file .md của skill không bị .gitignore chặn`, tepMd.length > 0 && bi.length === 0,
+     bi.length ? `${bi.join(', ')} — mở bằng dòng !/.claude/skills/${TEN_KY_NANG}/… đứng sau **/.claude/**` : '');
   for (const f of ['.claude/settings.local.json', '.claude/settings.json', 'web/.claude/settings.local.json',
-                   'crm/.claude/skills/x/SKILL.md', `.claude/skills/${TEN_KY_NANG}/anh.png`]) {
+                   '.claude/skills/rieng-cua-may/SKILL.md', 'crm/.claude/skills/x/SKILL.md',
+                   `.claude/skills/${TEN_KY_NANG}/anh.png`]) {
     ok(`${f} vẫn bị .gitignore chặn`, biChan(f));
   }
 });
@@ -88,13 +89,31 @@ await nhom('2 · PHẦN ĐẦU SKILL.md, LINK TỚI tham-khao/', async () => {
   ok('name chỉ chữ thường, số, gạch nối, ≤ 64 ký tự', /^[a-z0-9-]{1,64}$/.test(truong.name ?? ''));
   ok('description có chữ, ≤ 1024 ký tự', !!truong.description && truong.description.length <= 1024,
      `${truong.description?.length ?? 0} ký tự`);
+  // Chuỗi YAML trơn: ": " biến nửa sau thành khóa khác (YAML hỏng, skill không nạp), " #" cắt phần
+  // sau thành chú thích, ký tự mở đầu đặc biệt đổi nghĩa cả dòng. Có những chữ đó thì đổi cách viết.
+  const loiYaml = s => [
+    s.includes(': ') && 'có ": "', / #/.test(s) && 'có " #"', /:$/.test(s) && 'kết thúc bằng ":"',
+    /^[-?:,[\]{}#&*!|>'"%@`]/.test(s) && 'mở bằng ký tự đặc biệt của YAML',
+  ].filter(Boolean).join(', ');
+  for (const khoa of ['name', 'description']) {
+    const loi = loiYaml(truong[khoa] ?? '');
+    ok(`${khoa} là chuỗi YAML trơn một dòng — trình nạp skill đọc được`, !loi, loi);
+  }
 
-  const thamKhao = tepMd.map(tuGoc).filter(f => f.includes('/tham-khao/'));
-  const link = new Set([...skillMd.matchAll(/\]\((tham-khao\/[^)\s#]+)\)/g)].map(m => m[1]));
-  const thieu = [...link].filter(l => !existsSync(join(KY_NANG, l)));
-  ok(`${link.size} link trong SKILL.md tới tham-khao/ đều có file`, link.size > 0 && thieu.length === 0, thieu.join(', '));
-  const moCoi = thamKhao.filter(f => !link.has(f.split(`${TEN_KY_NANG}/`)[1]));
-  ok(`${thamKhao.length} file tham-khao/ đều được SKILL.md link tới (không file mồ côi)`, moCoi.length === 0, moCoi.join(', '));
+  // Link tương đối trong mọi file .md của skill (bỏ phần #neo) phải có file.
+  const thieu = [], tuSkill = new Set();
+  for (const f of tepMd) {
+    for (const [, dich] of doc(f).matchAll(/\]\(([^)\s]+)\)/g)) {
+      if (/^(https?:|mailto:|#)/.test(dich)) continue;
+      const tep = join(dirname(f), dich.split('#')[0]);
+      if (!existsSync(tep)) thieu.push(`${tuGoc(f)} → ${dich}`);
+      if (f === join(KY_NANG, 'SKILL.md')) tuSkill.add(tuGoc(tep));
+    }
+  }
+  ok(`mọi link tương đối trong ${tepMd.length} file .md của skill đều có file`, tuSkill.size > 0 && thieu.length === 0,
+     thieu.join(', '));
+  const moCoi = tepMd.map(tuGoc).filter(f => f.includes('/tham-khao/') && !tuSkill.has(f));
+  ok('mọi file tham-khao/ đều được SKILL.md link tới (không file mồ côi)', moCoi.length === 0, moCoi.join(', '));
 });
 
 // ===========================================================================
@@ -112,7 +131,8 @@ await nhom('3 · MÃ MÀU VÀ BIẾN CSS GHI TRONG SKILL CÓ THẬT, ĐÚNG GIÁ
   // Hai cách ghi một cặp: dòng bảng mở bằng token (| `--kem` | `#FBF4E1` |), hoặc liền nhau trong câu
   // (`--kho-nen` `#FFFCF6`). Bảng màu trạng thái có token chữ và mã nền ở hai ô cạnh nhau — không
   // phải một cặp, nên ô token phải là ô ĐẦU của dòng.
-  const CAP = /^\|\s*`(--[a-z0-9-]+)`\s*\|\s*`(#[0-9a-fA-F]{6})`|`(--[a-z0-9-]+)` `(#[0-9a-fA-F]{6})`/gm;
+  // \s+ ở cách thứ hai: cặp bị ngắt dòng trong đoạn văn (`--kho-vach` ⏎ `#EFE4D2`) vẫn được kiểm.
+  const CAP = /^\|\s*`(--[a-z0-9-]+)`\s*\|\s*`(#[0-9a-fA-F]{6})`|`(--[a-z0-9-]+)`\s+`(#[0-9a-fA-F]{6})`/gm;
   let soCap = 0;
   for (const [tep, md] of Object.entries(vanBan)) {
     for (const m of md.matchAll(CAP)) {
@@ -180,9 +200,10 @@ await nhom('5 · BIỂU TƯỢNG VÀ LỚP DÙNG CHUNG KHỚP MÃ', async () => 
   const thieuLop = lopChung.filter(l => !coLop(l));
   ok(`trang-cong-khai.md: ${lopChung.length} lớp trong "Danh mục" đều có trong cong-khai.css`,
      lopChung.length >= 20 && thieuLop.length === 0, thieuLop.join(', '));
-  const beMat = [...new Set([...skillMd.matchAll(/`\.(be-[a-z-]+)`/g)].map(m => m[1]))];
-  ok(`SKILL.md: ${beMat.length} lớp bề mặt (.be-…) đều có trong cong-khai.css`,
-     beMat.length === 5 && beMat.every(coLop), beMat.filter(l => !coLop(l)).join(', '));
+  // Lớp bề mặt khớp hai chiều: thêm một bề mặt vào CSS mà bảng "Màu theo bề mặt" chưa có cũng đỏ.
+  const beMatSkill = [...new Set([...skillMd.matchAll(/`\.(be-[a-z-]+)`/g)].map(m => m[1]))];
+  const beMatCss = [...new Set([...css.matchAll(/\.(be-[a-z-]+)(?![a-z0-9-])/g)].map(m => m[1]))];
+  soSanh('SKILL.md: bảng "Màu theo bề mặt" có đúng các lớp .be-… của cong-khai.css', beMatSkill, beMatCss);
 });
 
 process.exit(ketThuc('SKILL THIẾT KẾ'));

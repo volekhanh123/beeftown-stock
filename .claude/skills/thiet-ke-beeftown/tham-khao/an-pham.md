@@ -55,8 +55,10 @@ Tóm tắt `web/THIET-KE.md` mục 8 — đọc bản đầy đủ trước khi 
 
 ## Tài liệu thiết kế ở gốc repo — ĐÃ CŨ
 
-Bảy file HTML / SVG ở gốc repo làm tháng 6 – 7/2026, **trước** brief 06/10/2026. Chỉ dùng làm tư liệu,
-không chép màu, phông, câu chữ từ đó. Phần còn dùng được ghi rõ bên dưới.
+Sáu file HTML / SVG ở gốc repo và bản nháp website cũ làm tháng 6 – 7/2026, **trước** brief
+06/10/2026. Chỉ dùng làm tư liệu, không chép màu, phông, câu chữ từ đó. Phần còn dùng được ghi rõ bên
+dưới. (`Beeftown_Can_TMA.html` ở gốc repo là công cụ cân cũ, không thuộc nhóm này — `can-app/` đã thay
+nó.)
 
 | File | Còn dùng được | Lệch luật hiện hành — KHÔNG làm theo |
 |---|---|---|

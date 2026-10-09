@@ -18,7 +18,8 @@ Quy ước chung:
   kiểm bằng `git status --short`. `test-quy-trinh.mjs` báo file mã nguồn bị chặn.
 - Trang công khai phải đúng và đủ **khi chưa có database** (CI build không có `.env`).
 - Việc giao diện, màu, câu chữ, ảnh, ấn phẩm: làm theo skill `.claude/skills/thiet-ke-beeftown/`
-  (tự nạp khi việc khớp mô tả). Mã đổi thì sửa skill cùng PR — `test-ky-nang-thiet-ke.mjs` bắt chỗ lệch.
+  (tự nạp khi việc khớp mô tả). Mã đổi thì sửa skill cùng PR — `test-ky-nang-thiet-ke.mjs` bắt mã màu,
+  đường dẫn, tên biểu tượng, lớp CSS lệch; số đo và tên hàm thì tự giữ.
 
 ## Cài và chạy kiểm thử
 
