@@ -15,7 +15,7 @@
  */
 
 import { spawn, execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import net from 'node:net';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -252,9 +252,16 @@ await nhom('7c · THAM SỐ DÒNG LỆNH: KHÔNG HIỂU THÌ BÁO LỖI, KHÔNG 
 await nhom('8 · --den: SO VỚI MỘT MỐC MIGRATION', async () => {
   const { db, daNap } = await dungMau({ den: 60 });
   const mau60 = await docPglite(db);
-  await db.close();
   ok('--den 60 chỉ nạp đến 0060_bao_dong.sql', daNap.at(-1) === '0060_bao_dong.sql' && !daNap.some(f => f.startsWith('0061')), daNap.at(-1));
-  const kq = soSanh(mau60, await docPglite(dbDich));
+  // Database ĐÚNG mốc 0061: chạy thêm đúng file 0061 lên database vừa đọc. Không dùng dbDich (đã chạy
+  // mọi migration): migration sau 0061 được phép bỏ hay đổi chữ ký một hàm cũ (0063 đổi tên tham số
+  // zalo_xep_tin_dat_ban), và hàm cũ đó sẽ hiện thành THIẾU dù 0061 không đụng tới nó.
+  const tep61 = readdirSync(join(THU_MUC, '..', 'supabase', 'migrations')).find(f => f.startsWith('0061_'));
+  await db.exec(readFileSync(join(THU_MUC, '..', 'supabase', 'migrations', tep61), 'utf8'));
+  const dich61 = await docPglite(db);
+  await db.close();
+  ok('Chạy thêm đúng 0061_kho_can_quay.sql', tep61 === '0061_kho_can_quay.sql', tep61);
+  const kq = soSanh(mau60, dich61);
   const ham = kq.find(x => x.loai === 'ham');
   ok('Database đã chạy 0061 so với mẫu đến 0060 → kho_may_can_nhat_ky là THỪA, không phải THIẾU',
     ham.thua.includes(MAY_CAN) && !ham.thieu.length, JSON.stringify(ham.thua));
