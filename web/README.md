@@ -371,7 +371,7 @@ Vai kho **không** thấy dữ liệu CRM (khách hàng, đặt bàn, điểm) �
 
 ## Zalo (`/noi-bo/zalo`)
 
-Gửi tin Zalo ZBS cho khách: **ZBS-01** xác nhận đặt bàn (ngay khi khách đặt trên web), **ZBS-02** nhắc lịch (trước giờ hẹn 2 tiếng), và tin chăm sóc gửi theo **chiến dịch** bấm tay. Database ở `crm/supabase/migrations/0046_*`, `0047_*` (đầu file 0047 liệt kê mọi RPC).
+Gửi tin Zalo ZBS cho khách: **ZBS-01** xác nhận đặt bàn (khi nhân viên bấm "Đã gọi xác nhận" ở `/noi-bo/dat-ban` — yêu cầu khách vừa gửi chưa nhận tin Zalo nào, `0063`), **ZBS-02** nhắc lịch (trước giờ hẹn 2 tiếng, chỉ đặt bàn đã xác nhận), và tin chăm sóc gửi theo **chiến dịch** bấm tay. Database ở `crm/supabase/migrations/0046_*`, `0047_*` (đầu file 0047 liệt kê mọi RPC).
 
 | Màn | Ai | Việc |
 |---|---|---|
@@ -424,7 +424,7 @@ Refresh token của Zalo **dùng một lần**: mỗi lần làm mới, Zalo tr�
 
 ### Chế độ thử → thật
 
-Mặc định `zalo_cau_hinh.che_do = 'thu'`: mọi tin gửi kèm `mode: "development"` — Zalo chỉ giao cho **tài khoản quản trị của OA / App**, khách thật không nhận gì và (theo chuẩn ZNS) không tính phí. Thử: bật gửi ở chế độ thử, duyệt + bật tự động ZBS-01, đặt một bàn trên web bằng SĐT của một quản trị viên OA → trong 5 phút phải nhận tin, và `/noi-bo/zalo` ghi "Đã gửi". Ổn rồi mới chuyển **Chế độ → Thật**. Tin lỗi mã `-126` ở chế độ thử thường nghĩa là số nhận không phải quản trị viên.
+Mặc định `zalo_cau_hinh.che_do = 'thu'`: mọi tin gửi kèm `mode: "development"` — Zalo chỉ giao cho **tài khoản quản trị của OA / App**, khách thật không nhận gì và (theo chuẩn ZNS) không tính phí. Thử: bật gửi ở chế độ thử, duyệt + bật tự động ZBS-01, đặt một bàn trên web bằng SĐT của một quản trị viên OA, vào `/noi-bo/dat-ban` bấm "Đã gọi xác nhận" → trong 5 phút phải nhận tin (trước khi bấm thì không được nhận gì), và `/noi-bo/zalo` ghi "Đã gửi". Ổn rồi mới chuyển **Chế độ → Thật**. Tin lỗi mã `-126` ở chế độ thử thường nghĩa là số nhận không phải quản trị viên.
 
 Kiểm thử: `node crm/test/test-zalo.mjs` (database) và `node crm/test/test-zalo-web.mjs` (phần web, fetch giả — không gọi Zalo thật).
 
@@ -474,7 +474,7 @@ Vai `may_messenger` **không** đọc / ghi được bảng CRM hay kho nào; n�
 2. developers.facebook.com → tạo App loại **Business** → thêm sản phẩm **Messenger** → nối App với Trang, tạo Page Access Token → cài `META_APP_SECRET`, `META_PAGE_TOKEN`, `META_VERIFY_TOKEN` (và đủ các bí mật còn lại — thiếu cái nào thì bước xác minh nhận 503).
 3. App → Messenger → **Webhooks**: *Callback URL* `https://beeftown.vn/hook/messenger` (màn `/noi-bo/messenger` in sẵn), *Verify token* = `META_VERIFY_TOKEN` → **Verify and save**. Đăng ký cho Trang ba trường: **`messages`**, **`messaging_postbacks`**, **`message_echoes`**.
 4. Chủ vào `/noi-bo/messenger`: bật bot, sửa lời chào, bấm **Cài nút Bắt đầu + menu Messenger** (gọi Messenger Profile API: `get_started`, `greeting` ≤ 160 ký tự, `persistent_menu` = 5 mục của menu chính). Bấm lại mỗi lần đổi lời chào.
-5. Nhắn thử Trang bằng tài khoản có vai trò trong App (trước khi được duyệt, chỉ những người này nhắn được với bot): đặt một bàn, tra rồi hủy nó, bấm Gặp nhân viên. Đặt bàn qua bot hiện ở `/noi-bo/dat-ban` như đặt trên web; tin Zalo ZBS-01 tự gửi như thường.
+5. Nhắn thử Trang bằng tài khoản có vai trò trong App (trước khi được duyệt, chỉ những người này nhắn được với bot): đặt một bàn, tra rồi hủy nó, bấm Gặp nhân viên. Đặt bàn qua bot hiện ở `/noi-bo/dat-ban` như đặt trên web; tin Zalo ZBS-01 tự gửi khi nhân viên bấm "Đã gọi xác nhận", như đặt trên web.
 
 ### Xin quyền `pages_messaging` (App Review)
 

@@ -496,8 +496,8 @@ await nhom('9 · NGƯỜI GỬI KHÔNG BAO GIỜ NÉM LỖI', async () => {
 });
 
 // ===========================================================================
-await nhom('10 · CHẠY THẬT TRÊN PGLITE: ĐẶT BÀN → ZBS-01 → NGƯỜI GỬI → da_gui', async () => {
-  const { db, cnA, duoi, duoiAnon } = await dungDatabase();
+await nhom('10 · CHẠY THẬT TRÊN PGLITE: ĐẶT BÀN → XÁC NHẬN → ZBS-01 → NGƯỜI GỬI → da_gui', async () => {
+  const { db, cnA, nsId, duoi, duoiAnon } = await dungDatabase();
   const UID_MAY_ZALO = '00000000-0000-4000-8000-0000000000e1';
   await db.query(`insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro) values ($1, $2, 'Máy Zalo', 'may_zalo')`, [UID_MAY_ZALO, cnA.id]);
   await db.query(`update chi_nhanh set dia_chi = '1 Đường Thử', dien_thoai = '0281234567' where id = $1`, [cnA.id]);
@@ -529,6 +529,10 @@ await nhom('10 · CHẠY THẬT TRÊN PGLITE: ĐẶT BÀN → ZBS-01 → NGƯỜ
   const ngay = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
   const d = await duoiAnon(`select * from tao_dat_ban('q1', $1, 'Khách Web', $2::date, '19:00'::time, 2::smallint, p_dong_y => false)`, [SDT, ngay]);
   ok('Khách đặt bàn trên web', !d.loi, d.loi ?? '');
+  // Từ 0063 tin ZBS chỉ xếp khi nhân viên bấm "Đã gọi xác nhận" — đúng câu của /noi-bo/dat-ban.
+  const xn = await duoi(UID.qlA, `update dat_ban set trang_thai = 'da_xac_nhan', nguoi_xu_ly = $2
+                                   where id = $1 and trang_thai = 'cho_xac_nhan' returning id`, [d.rows?.[0]?.dat_ban_id, nsId[UID.qlA]]);
+  ok('Quản lý bấm "Đã gọi xác nhận"', xn.loi === null && xn.rows.length === 1, xn.loi ?? '');
 
   const g = dungGia({ batDau: null });
   const log = await guiZaloTatCa(ENV, { taoClient: () => clientDb(UID_MAY_ZALO), fetchFn: g.fetchFn, ghiLog: () => {} });

@@ -24,6 +24,8 @@ Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần c�
 | `web/THIET-KE.md` | **Hệ giao diện trang công khai** ("Quầy thịt ấm"): màu theo vai và tương phản, chữ, thành phần, manifest artwork (nguồn, vị trí, trạng thái từng tài sản), brief chụp ảnh / video, phần bàn giao. |
 | `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động — và **toàn bộ kiểm thử** (`crm/test/`). |
 | `CLAUDE.md` | **Quy trình kiểm thử bắt buộc** cho mọi tính năng mới: 9 mục "định nghĩa xong", cách chạy test, việc trước khi mở PR. |
+| `AGENTS.md` | Cùng quy trình đó cho Codex và các agent không phải Claude, kèm quy tắc rà soát PR (mục "Code Review Rules"). |
+| `THUONG-HIEU.md` | **Bảng màu thương hiệu Khánh chốt 09/10/2026**, chỗ website còn khác guideline, đề xuất đổi token và danh sách nơi phải sửa. |
 | `.github/` | Kiểm thử tự động (GitHub Actions) mỗi PR, mỗi lần gộp và mỗi đêm 00:30 giờ VN; đóng gói `BeeftownCan.exe` (tải về không cần gõ lệnh: `can-app/README.md`, mục "Tải BeeftownCan.exe về"); mẫu PR; mẫu báo lỗi. |
 | ~~`Beeftown_Website/index.html`~~ | ⚠️ **BẢN NHÁP CŨ — KHÔNG PHÁT HÀNH.** Xem cảnh báo bên dưới. |
 | ~~`Beeftown_Website/google-apps-script.gs`~~ | ⚠️ Đã thay bằng `tao_dat_ban()` trong database. |
@@ -71,6 +73,8 @@ Lưu ý khi sửa code phần mềm cân:
 ## Quy tắc thiết kế
 
 ### Bảng màu
+
+> Bảng dưới là màu **website đang chạy**. Bảng màu thương hiệu Khánh chốt ngày 09/10/2026 khác bảng này và website chưa đổi theo: xem `THUONG-HIEU.md`.
 
 | Tên | Mã | Token web | Dùng cho |
 |---|---|---|---|
