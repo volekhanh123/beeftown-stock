@@ -27,6 +27,10 @@
 # Quy trình kiểm thử: hướng dẫn cho mọi phiên Claude, CI, mẫu PR, mẫu báo lỗi.
 # Thiếu dòng mở thì file chỉ nằm trên máy người viết — test-quy-trinh.mjs bắt chuyện này.
 !/CLAUDE.md
+# AGENTS.md: cùng quy trình, cho Codex và các agent không phải Claude (kèm quy tắc rà soát PR).
+# THUONG-HIEU.md: bảng màu thương hiệu đã chốt và phần website chưa đổi theo.
+!/AGENTS.md
+!/THUONG-HIEU.md
 !/.github/workflows/*.yml
 !/.github/pull_request_template.md
 !/.github/ISSUE_TEMPLATE/*.yml

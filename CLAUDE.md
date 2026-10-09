@@ -12,6 +12,8 @@ rà soát" *sau khi* tính năng đã gộp. Mục tiêu: chặn chúng *trướ
 | `crm/` | Database Supabase (`supabase/migrations/`) và **toàn bộ kiểm thử** (`test/`, chạy trên PGlite) | `crm/README.md` |
 | `can-app/` | Beeftown Cân (Windows `.exe`, Bun): gửi giá xuống cân TMA, máy quầy | `can-app/README.md` |
 
+Bảng màu thương hiệu đã chốt và phần website chưa đổi theo: `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
+
 Quy ước chung:
 - Tên hàm, biến, chú thích, tài liệu viết **tiếng Việt không tắt**, giống mã đang có.
 - `.gitignore` **chặn hết rồi mở từng cái** — file mới phải có dòng `!đường-dẫn` trong mục ĐƯỢC PHÉP,
