@@ -103,7 +103,15 @@
 # File dữ liệu lưu từ cân: có mật khẩu WiFi và lịch sử bán hàng
 *.TMS
 *.tms
-.claude/
+# Cấu hình Claude trên máy (settings.local.json, bộ nhớ…): chặn mọi thứ BÊN TRONG .claude/ ở mọi
+# cấp. Viết "**/.claude/**" chứ không "/.claude/": chặn cả thư mục thì không mở lại được file nào
+# bên trong — mà skill dùng chung của dự án phải mở (mục ngay dưới).
+**/.claude/**
+# Skill dùng chung của dự án — hướng dẫn cho mọi phiên Claude, như CLAUDE.md. Chỉ mở .md của
+# .claude/skills/ ở gốc. Các dòng này BẮT BUỘC đứng sau **/.claude/** ở trên.
+!/.claude/skills/
+!/.claude/skills/**/
+!/.claude/skills/**/*.md
 Du lieu nghien cuu/
 
 # Kết quả build và bộ nhớ đệm — sinh lại được bằng npm run build,

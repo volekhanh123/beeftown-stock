@@ -17,6 +17,8 @@ Quy ước chung:
 - `.gitignore` **chặn hết rồi mở từng cái** — file mới phải có dòng `!đường-dẫn` trong mục ĐƯỢC PHÉP,
   kiểm bằng `git status --short`. `test-quy-trinh.mjs` báo file mã nguồn bị chặn.
 - Trang công khai phải đúng và đủ **khi chưa có database** (CI build không có `.env`).
+- Việc giao diện, màu, câu chữ, ảnh, ấn phẩm: làm theo skill `.claude/skills/thiet-ke-beeftown/`
+  (tự nạp khi việc khớp mô tả). Mã đổi thì sửa skill cùng PR — `test-ky-nang-thiet-ke.mjs` bắt chỗ lệch.
 
 ## Cài và chạy kiểm thử
 
