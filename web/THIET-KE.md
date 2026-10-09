@@ -44,6 +44,8 @@ Tên màu `--than` (Charcoal) chỉ là tên màu. Beeftown nướng bằng **v�
 
 ## 2. Màu theo vai
 
+> Mục này tả màu website đang chạy. Bảng màu thương hiệu Khánh chốt ngày 09/10/2026 khác bảng dưới và website chưa đổi theo: xem `THUONG-HIEU.md` ở thư mục gốc (mã mới, đề xuất đổi token, danh sách nơi phải sửa).
+
 Màu chữ theo **bề mặt**, không theo từng chỗ: mỗi khối khai một lớp bề mặt, mọi thứ bên trong đọc biến của bề mặt đó. Thêm khối mới chỉ cần chọn bề mặt, không phải tự chọn màu chữ — và không ai lỡ tay đặt chữ vàng lên nền kem.
 
 ### Token
