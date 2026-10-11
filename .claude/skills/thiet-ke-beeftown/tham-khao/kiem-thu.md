@@ -117,12 +117,17 @@ là điện thoại rộng nhất, nơi lề `--le` đã lớn hơn 20px):
 - **Thanh cuộn kiểu cổ điển** (nhóm 8; mở riêng một Chromium không giấu thanh cuộn) ở 800, 1024,
   1440px: mở danh mục thì logo, cụm nút bên phải và khung nội dung đứng nguyên chỗ, không cuộn ngang,
   phần bù bằng đúng bề rộng thanh cuộn; đóng lại thì hết phần bù; khung nội dung cân giữa.
-- **Ảnh về chậm** (nhóm 9) ở 390, 768, 1440px trên `/`, `/ko`, `/thuc-don`: giữ mọi file `/anh/` lại,
+- **Trang không có (404)** (nhóm 9) ở 360 và 1366px, đường dẫn lạ dưới `/`, `/en/`, `/ko/`: mã 404,
+  `lang` theo tiền tố, link về ba trang chủ, chân trang công khai, `noindex`, không canonical / hreflang /
+  JSON-LD — và **đủ mười bốn phép đo** của `do-giao-dien.mjs` như mọi trang công khai (`pages/404.astro`
+  dùng `Trang.astro`, `.mo-dau-trang`, `.hang-nut`, `.nut`; không có ảnh). Sửa thành phần chung thì trang
+  404 đổi theo.
+- **Ảnh về chậm** (nhóm 10) ở 390, 768, 1440px trên `/`, `/ko`, `/thuc-don`: giữ mọi file `/anh/` lại,
   đo từng khung ảnh; thả ra, cuộn hết trang, đo lại — khung nào cũng đứng nguyên chỗ, nguyên cỡ (trang
   không xô lệch khi ảnh về); mọi ảnh đang hiện tải về được; mỗi ảnh dùng đúng khung của cỡ màn hình
   (bảng `KHUNG_MONG` chép tay). Đừng dùng `document.fonts.ready` ở đây: Chromium giữ lời hứa đó tới
   khi trang tải xong, mà ảnh màn đầu đang bị giữ lại.
-- **Tab của trang Thực đơn** (nhóm 10) ở 390 và 1440px, ba thứ tiếng: lúc tải trang chỉ tab đầu hiện và
+- **Tab của trang Thực đơn** (nhóm 11) ở 390 và 1440px, ba thứ tiếng: lúc tải trang chỉ tab đầu hiện và
   `do-giao-dien.mjs` bỏ qua ảnh đang ẩn, nên nhóm 1 không bao giờ đo ảnh `sot-cham` của tab "Món ăn".
   Nhóm này bấm từng tab (Món ăn → Đồ uống → Bò tại quầy), chờ ảnh lazy của phần vừa mở tải xong rồi gọi
   lại `doGiaoDien`: đúng phần đó hiện, đúng ảnh của nó (bảng `ANH_CUA_PHAN` chép tay), phép đo `anh` và

@@ -73,14 +73,17 @@ await nhom('1 · MỌI ĐƯỜNG DẪN CÓ FILE TRANG, MỌI TRANG CÔNG KHAI C�
        (en === '/en' && ko === '/ko' && vi === '/') || (en.startsWith('/en/') && ko === en.replace(/^\/en/, '/ko')), `${en} · ${ko}`);
   }
   // Ngược lại: trang công khai mà không có trong bảng thì nút đổi ngôn ngữ của nó về trang chủ.
+  // Trừ trang 404 (pages/404.astro): nó không có đường dẫn riêng — Astro dựng nó cho mọi đường dẫn
+  // lạ — nên không vào bảng, không vào sitemap (test-cong-khai-khong-co.mjs).
+  const TRANG_LOI = ['/404'];
   const trangCongKhai = ['', 'en', 'ko'].flatMap(d => existsSync(join(PAGES, d))
     ? readdirSync(join(PAGES, d)).filter(f => f.endsWith('.astro')).map(f => {
         const ten = f.replace(/\.astro$/, '');
         return ten === 'index' ? (d ? `/${d}` : '/') : `${d ? `/${d}` : ''}/${ten}`;
       })
-    : []);
+    : []).filter(d => !TRANG_LOI.includes(d));
   const thieu = trangCongKhai.filter(d => !tatCa.includes(d));
-  ok(`Mọi trang .astro công khai (${trangCongKhai.length} trang) đều có trong CAP_DUONG_DAN`, thieu.length === 0, thieu.join(', '));
+  ok(`Mọi trang .astro công khai (${trangCongKhai.length} trang, trừ trang 404) đều có trong CAP_DUONG_DAN`, thieu.length === 0, thieu.join(', '));
 });
 
 // ===========================================================================

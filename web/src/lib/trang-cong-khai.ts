@@ -156,6 +156,20 @@ export function coKenhHoiBan(nd: NoiDung): boolean {
   return formHoiBanMo(nd) || !!(lh.facebook || lh.goi || lh.thu);
 }
 
+/**
+ * Mô tả (meta description, og:description) của trang hỏi bàn. `moDuoc` là của tinhTrangDatBan()
+ * (lib/dat-ban.ts) — form dựng được không: công tắc tắt, chưa nối database, không còn chỗ, đọc lịch
+ * hỏng đều là KHÔNG, và khi đó TrangDatBan hiện thẻ "chưa mở". Không dựng được form thì mô tả không
+ * hứa "gửi yêu cầu, nhà hàng gọi lại" — kết quả Google và ô xem trước link trên Facebook nói đúng
+ * điều trang nói (kiểm site thật 07/10/2026: form đóng mà mô tả vẫn hứa). Lượt vừa gửi xong thì
+ * thẻ "đã nhận" thay thẻ "chưa mở", nhưng kết quả đó đến từ cookie của riêng một khách — trình quét
+ * link không bao giờ thấy; mô tả theo moDuoc nói đúng tình trạng lúc trang được đọc.
+ */
+export function moTaTrangHoiBan(ngonNgu: NgonNgu, moDuoc: boolean): string {
+  const t = chu(ngonNgu);
+  return moDuoc ? t.moTaHoiBan : t.moTaHoiBanChuaMo;
+}
+
 export interface Nut {
   url: string;
   chu: string;

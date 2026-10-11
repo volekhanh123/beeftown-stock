@@ -4,6 +4,7 @@ import TrangDatBan from '../../components/TrangDatBan.astro';
 import { docNoiDung } from '../../lib/noi-dung';
 import { tinhTrangDatBan } from '../../lib/dat-ban';
 import { xuLyDatBan, ketQuaDatBan } from '../../lib/xu-ly-form';
+import { moTaTrangHoiBan } from '../../lib/trang-cong-khai';
 
 const chuyenHuong = await xuLyDatBan(Astro, '/ko/book', 'ko');
 if (chuyenHuong) return chuyenHuong;
@@ -20,7 +21,7 @@ const tinhTrang = await tinhTrangDatBan(
   noiDung={noiDung}
   duongDan="/ko/book"
   tieuDe="테이블 문의 — Beeftown"
-  moTa="호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown에 테이블 문의를 보내 주세요. 매장에서 확인한 뒤 전화드려요."
+  moTa={moTaTrangHoiBan('ko', tinhTrang.moDuoc)}
 >
   <TrangDatBan
     ngonNgu="ko"
