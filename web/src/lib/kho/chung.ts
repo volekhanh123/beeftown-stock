@@ -539,7 +539,46 @@ export const LOI_KHO_CHUNG = {
     vi: 'Không kết nối được database. Chưa chắc đã ghi hay chưa — tải lại trang để kiểm tra.',
     en: 'Could not reach the database. It may or may not have been saved — reload the page to check.',
   },
+  quaNhieuDong: {
+    vi: 'Danh sách có hơn 100.000 dòng — không đọc hết được. Thu hẹp khoảng ngày hoặc bộ lọc rồi thử lại.',
+    en: 'The list has more than 100,000 rows — it cannot all be read. Narrow the date range or filters and try again.',
+  },
 } as const satisfies Record<string, HaiThuTieng>;
+
+// -----------------------------------------------------------------------------
+// ĐỌC HẾT DANH SÁCH — vượt giới hạn 1.000 dòng mỗi lần của Supabase
+// -----------------------------------------------------------------------------
+// PostgREST trả tối đa 1.000 dòng mỗi lần đọc (Max rows của project), cả bảng /
+// view lẫn hàm rpc trả nhiều dòng; .limit(2000) KHÔNG vượt được. Đọc thiếu thì
+// lặng lẽ: tồn kho mất lô hạn xa nhất, thẻ kho mất số dư cuối, file MISA thiếu
+// chứng từ. docTungTrang đọc .range() từng trang tới trang chưa đầy.
+//
+// Truy vấn PHẢI xếp thứ tự xác định thì các trang mới nối khít: .order() đủ cột
+// để không hai dòng nào ngang nhau; hàm rpc plpgsql thì thứ tự trong thân hàm.
+// Kiểm thử: crm/test/test-kho-doc-het-trang-web.mjs (client giả trần 1.000 dòng).
+// -----------------------------------------------------------------------------
+export const CO_TRANG_DOC = 1000;
+const TOI_DA_DONG_DOC = 100_000;   // quá số này là có gì đó sai: báo lỗi, không cắt cụt
+export const CAU_QUA_NHIEU_DONG: HaiThuTieng = LOI_KHO_CHUNG.quaNhieuDong;
+
+/** Đọc mọi trang; lỗi ở bất kỳ trang nào → ném (không trả phần đã đọc như thể đủ). */
+export async function docTungTrang<T>(
+  trang: (tu: number, den: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+): Promise<T[]> {
+  const ra: T[] = [];
+  for (let dau = 0; dau < TOI_DA_DONG_DOC; dau += CO_TRANG_DOC) {
+    const { data, error } = await trang(dau, dau + CO_TRANG_DOC - 1);
+    if (error) {
+      // Dòng bị xoá giữa hai lần đọc nên trang sau nằm ngoài khoảng (PGRST103): đã đủ.
+      if (dau > 0 && (error as { code?: string }).code === 'PGRST103') return ra;
+      throw error;
+    }
+    const ds = data ?? [];
+    ra.push(...ds);
+    if (ds.length < CO_TRANG_DOC) return ra;
+  }
+  throw new Error(CAU_QUA_NHIEU_DONG.vi);
+}
 
 /**
  * Câu lỗi cho nhân viên đọc.

@@ -131,6 +131,11 @@ Link dùng chung giữa các trang (trang nhận phải đọc được các tha
   Mỗi trang 30 phiếu; đọc dư 1 dòng để biết còn trang sau, không đếm tổng. Chữ tìm được làm sạch
   (`lamSachTim`) trước khi ghép vào `.or()` của PostgREST.
 - Tìm theo chữ có dấu phân biệt dấu: "thit" không ra "Thịt". Gõ số phiếu là chắc nhất.
+- **Danh sách đọc trọn** (tồn kho, giá trị tồn, thẻ kho, công nợ theo kỳ, MISA, sổ thanh toán, mã iPOS chưa ghép,
+  nhãn đã quét): Supabase trả tối đa **1.000 dòng mỗi lần đọc**, cả bảng lẫn hàm rpc — `.limit(2000)` không vượt
+  được, phần thừa mất lặng lẽ. Đọc bằng `docTungTrang` (`lib/kho/chung.ts`): `.range()` từng trang tới trang chưa đầy;
+  truy vấn phải `.order()` đủ cột để không hai dòng ngang nhau. Quá 100.000 dòng thì báo lỗi, không cắt.
+  Kiểm thử: `crm/test/test-kho-doc-het-trang-web.mjs` (client giả trần 1.000 dòng — PGlite không đi qua PostgREST).
 - **Trang in**: phiếu nhập, biên bản hủy / phiếu chuyển / xuất bếp / trả NCC, biên bản kiểm kê. Đầu
   trang in (`InDau.astro`), hàng chữ ký (`KyTen.astro`) chỉ hiện khi in; `@media print` trong
   `kho-khung.css` bỏ thanh trên, menu, nút, mục gập, ô duyệt. Nút "In phiếu" (`NutIn.astro` +

@@ -316,14 +316,24 @@ const traVeBang = new Map((await db.query(
    where n.nspname = 'public' and proname like 'kho_%'`)).rows.map(r => [r.proname, r.proretset]));
 function clientCua(uid) {
   return {
-    async rpc(ten, thamSo) {
-      const ds = Object.entries(thamSo);
-      const doi = ds.map(([k, v], i) => `${k} => $${i + 1}${v !== null && typeof v === 'object' ? '::jsonb' : ''}`).join(', ');
-      const gt = ds.map(([, v]) => (v !== null && typeof v === 'object' ? JSON.stringify(v) : v));
-      const sql = traVeBang.get(ten) ? `select * from ${ten}(${doi})` : `select ${ten}(${doi}) as r`;
-      const kq = await duoi(uid, sql, gt);
-      if (kq.loi) return { data: null, error: { message: kq.loi } };
-      return { data: traVeBang.get(ten) ? kq.rows : kq.rows[0]?.r ?? null, error: null };
+    // Như supabase-js: rpc() trả builder chờ được (await), có .range() cho hàm trả nhiều dòng (docTungTrang).
+    rpc(ten, thamSo) {
+      let khoang = null;
+      const chay = async () => {
+        const ds = Object.entries(thamSo);
+        const doi = ds.map(([k, v], i) => `${k} => $${i + 1}${v !== null && typeof v === 'object' ? '::jsonb' : ''}`).join(', ');
+        const gt = ds.map(([, v]) => (v !== null && typeof v === 'object' ? JSON.stringify(v) : v));
+        const sql = traVeBang.get(ten) ? `select * from ${ten}(${doi})` : `select ${ten}(${doi}) as r`;
+        const kq = await duoi(uid, sql, gt);
+        if (kq.loi) return { data: null, error: { message: kq.loi } };
+        if (!traVeBang.get(ten)) return { data: kq.rows[0]?.r ?? null, error: null };
+        return { data: khoang ? kq.rows.slice(khoang[0], khoang[1] + 1) : kq.rows, error: null };
+      };
+      const b = {
+        range(a, z) { khoang = [a, z]; return b; },
+        then(xong, hong) { return chay().then(xong, hong); },
+      };
+      return b;
     },
   };
 }

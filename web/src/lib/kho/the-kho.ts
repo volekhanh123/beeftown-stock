@@ -18,7 +18,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, docNgay, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, docNgay, docTungTrang, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 
 // -----------------------------------------------------------------------------
@@ -197,15 +197,15 @@ const so = (v: unknown) => (v === null || v === undefined ? 0 : Number(v));
 export async function docTheKho(
   client: SupabaseClient, chiNhanhId: string, matHangId: string, b: BoLocTheKho,
 ): Promise<DongTheKho[]> {
-  const { data, error } = await client.rpc('kho_the_kho', {
+  // Đọc từng trang: thẻ kho dài hơn 1.000 dòng thì dòng cuối — số dư cuối — nằm ở trang sau.
+  const data = await docTungTrang((tu, den) => client.rpc('kho_the_kho', {
     p_chi_nhanh_id: chiNhanhId,
     p_mat_hang_id: matHangId,
     p_vi_tri_id: b.viTri || null,
     p_tu: b.tu,
     p_den: b.den,
-  });
-  if (error) throw error;
-  return ((data ?? []) as Record<string, unknown>[]).map(r => ({
+  }).range(tu, den));
+  return (data as Record<string, unknown>[]).map(r => ({
     ngay: (r.ngay as string | null) ?? null,
     loai: String(r.loai ?? ''),
     ten_loai: String(r.ten_loai ?? ''),

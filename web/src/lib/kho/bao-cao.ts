@@ -28,7 +28,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, congNgay, dinhDangNgay, duoc, type ViecKho, type HaiThuTieng, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, congNgay, dinhDangNgay, docTungTrang, duoc, type ViecKho, type HaiThuTieng, type NgonNguNB } from './chung.ts';
 
 export type KieuCot = 'chu' | 'kg' | 'tien' | 'so' | 'pt';
 export interface CotBaoCao { khoa: string; ten: string; kieu: KieuCot; tienMat?: boolean }
@@ -686,9 +686,14 @@ const HINH_THUC_EN: Record<string, string> = { chuyen_khoan: 'Bank transfer', ti
 export async function docSoThanhToan(
   client: SupabaseClient, chiNhanhId: string, tu: string, den: string, nn: NgonNguNB = 'vi',
 ): Promise<{ dong: Record<string, unknown>[]; loi: string | null }> {
-  const { data, error } = await client.rpc('kho_so_thanh_toan', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
-  if (error) return { dong: [], loi: cauLoiKho(error) };
-  const dong = ((data ?? []) as Record<string, unknown>[]).map(r => ({
+  let data: Record<string, unknown>[];
+  try {
+    data = await docTungTrang((a, z) => client.rpc('kho_so_thanh_toan', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den })
+      .range(a, z));
+  } catch (e) {
+    return { dong: [], loi: cauLoiKho(e) };
+  }
+  const dong = data.map(r => ({
     ...r,
     ...(nn === 'en' ? {
       ten_loai: LOAI_KHOAN_EN[String(r.loai)] ?? r.ten_loai,

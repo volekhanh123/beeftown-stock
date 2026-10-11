@@ -21,7 +21,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, docTungTrang, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { tachDanhSachMa } from './ma-vach.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 
@@ -161,14 +161,14 @@ export async function docMonDaQuet(client: SupabaseClient, kiemKeId: string): Pr
     client.from('kho_kiem_ke_dong')
       .select('mat_hang_id, lo_id, thu_tu, so_goi_dem, so_kg_dem, so_goi_them, tu_quet')
       .eq('kiem_ke_id', kiemKeId).order('thu_tu'),
-    client.from('kho_kiem_ke_quet')
+    // Quầy đông có thể quá 1.000 nhãn một phiếu: đọc từng trang (docTungTrang).
+    docTungTrang((tu, den) => client.from('kho_kiem_ke_quet')
       .select('mat_hang_id, created_at')
-      .eq('kiem_ke_id', kiemKeId).limit(5000),
+      .eq('kiem_ke_id', kiemKeId).order('thu_tu').range(tu, den)),
   ]);
   if (dong.error) throw dong.error;
-  if (quet.error) throw quet.error;
   const nhan = new Map<string, { n: number; cuoi: string }>();
-  for (const q of quet.data ?? []) {
+  for (const q of quet) {
     const cu = nhan.get(q.mat_hang_id) ?? { n: 0, cuoi: '' };
     cu.n += 1;
     if (q.created_at > cu.cuoi) cu.cuoi = q.created_at;

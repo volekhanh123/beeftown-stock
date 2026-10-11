@@ -7,7 +7,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { boDau, type HaiThuTieng, type NgonNguNB } from './chung.ts';
+import { boDau, docTungTrang, type HaiThuTieng, type NgonNguNB } from './chung.ts';
 
 export interface DongTon {
   lo_id: string;
@@ -32,16 +32,18 @@ export interface DongTon {
   tinh_trang_han: 'het_han' | 'sap_het' | 'con_han';
 }
 
+/** Mọi dòng tồn của chi nhánh, đọc từng trang 1.000 dòng (docTungTrang) — hạn dùng sớm trước. */
 export async function docTon(client: SupabaseClient, chiNhanhId: string): Promise<DongTon[]> {
-  const { data, error } = await client
+  const data = await docTungTrang((tu, den) => client
     .from('kho_v_ton')
     .select('lo_id, ma_lo, mat_hang_id, ma_hang, ten_hang, nhom, loai_hang, dem_goi, don_vi_goi, vi_tri_id, ten_vi_tri, loai_vi_tri, so_kg, so_goi, nguon, ngay_dong_goi, han_dung, so_ngay_con, tinh_trang_han')
     .eq('chi_nhanh_id', chiNhanhId)
     .order('han_dung')
     .order('ma_lo')
-    .limit(2000);
-  if (error) throw error;
-  return (data ?? []).map(r => ({ ...r, so_kg: Number(r.so_kg), so_ngay_con: Number(r.so_ngay_con) })) as DongTon[];
+    .order('lo_id')
+    .order('vi_tri_id')
+    .range(tu, den));
+  return data.map(r => ({ ...r, so_kg: Number(r.so_kg), so_ngay_con: Number(r.so_ngay_con) })) as DongTon[];
 }
 
 /** Một dòng lô × vị trí còn tồn (kho_v_ton) — chỉ phần để tính hạn dùng in trên tem cân (danh-muc-can.ts). */
@@ -79,15 +81,20 @@ export async function docLoConTon(client: SupabaseClient, chiNhanhId: string): P
   throw new Error(CAU_QUA_NHIEU_LO.vi);
 }
 
-/** Giá trị tồn theo "lo_id|vi_tri_id". Vai không xem giá: Map rỗng. */
+/**
+ * Giá trị tồn theo "lo_id|vi_tri_id". Vai không xem giá: Map rỗng (RLS trả rỗng, không lỗi). Đọc lỗi → ném,
+ * để trang báo "không đọc được" thay vì hiện tổng giá trị tồn thiếu như thể đủ.
+ */
 export async function docGiaTon(client: SupabaseClient, chiNhanhId: string): Promise<Map<string, { gia_von_kg: number; gia_tri: number }>> {
   const ra = new Map<string, { gia_von_kg: number; gia_tri: number }>();
-  const { data } = await client
+  const data = await docTungTrang((tu, den) => client
     .from('kho_v_ton_gia')
     .select('lo_id, vi_tri_id, gia_von_kg, gia_tri')
     .eq('chi_nhanh_id', chiNhanhId)
-    .limit(2000);
-  for (const r of data ?? []) {
+    .order('lo_id')
+    .order('vi_tri_id')
+    .range(tu, den));
+  for (const r of data) {
     ra.set(`${r.lo_id}|${r.vi_tri_id}`, { gia_von_kg: Number(r.gia_von_kg), gia_tri: Number(r.gia_tri) });
   }
   return ra;
