@@ -513,7 +513,7 @@ const coKenh = coKenhHoiBan(nd);
     border-top: 1px solid var(--vien);
     font-size: var(--co-nho); font-weight: 600;
   }
-  .td-luat :global(svg) { width: 20px; height: 20px; flex: none; color: var(--nhan); }
+  .td-luat :global(svg) { width: 24px; height: 24px; flex: none; color: var(--nhan); }
 
   /* --- Cuối trang ---------------------------------------------------------- */
   .td-moi-luoi { display: grid; gap: var(--k-7); align-items: center; grid-template-columns: 1fr; }
@@ -523,9 +523,9 @@ const coKenh = coKenhHoiBan(nd);
   .td-moi-chu .dan { margin-bottom: var(--k-6); }
   /* Ngày cập nhật thực đơn: dòng nhỏ chữ kem cuối khối đỏ. */
   .td-cap-nhat { margin: var(--k-6) 0 0; }
-  /* LenTang3 bản gọn là một thẻ kem trên dải đỏ: .be-kem-dam (cong-khai.css) tự đặt lại
+  /* LenTang3 bản gọn là một thẻ Cream trên dải đỏ: .the (cong-khai.css) tự đặt lại
      biến màu chữ và vòng focus của nền kem, ở đây giới hạn bề rộng. Viền trái đỏ của
      thẻ trùng màu dải đỏ nên mép thẻ trông như lùi vào 4px: đổi sang đỏ sậm. */
   .td-the-tang3 { max-width: 480px; }
-  .td-the-tang3 :global(.lt3-gon) { border-left-color: var(--do-sau); }
+  .td-the-tang3 :global(.lt3-gon.the) { border-left-color: var(--do-sau); }
 </style>

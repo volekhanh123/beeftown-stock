@@ -303,12 +303,12 @@ const tRieng = dich(ngonNgu, {
      nên các nút cũng thẳng hàng dù mô tả dài ngắn khác nhau. */
   .td-nut-the { margin: auto 0 0; padding-top: var(--k-4); }
 
-  /* "Xem chi tiết công việc": màu nút chính để thấy là bấm được; cao 44px cho
+  /* "Xem chi tiết công việc": màu nút chính để thấy là bấm được; cao 48px cho
      ngón tay cái. */
   .chi-tiet { margin-top: var(--k-3); border-top: 1px solid var(--vien); }
   .chi-tiet > summary {
     cursor: pointer; font-weight: 700; color: var(--do);
-    padding: var(--k-3) 0; min-height: 44px;
+    padding: var(--k-3) 0; min-height: 48px;
   }
   .chi-tiet > summary:focus-visible { outline: 2px solid var(--do); outline-offset: 2px; }
 
@@ -333,22 +333,20 @@ const tRieng = dich(ngonNgu, {
   .td-cach-nop { margin: 0 0 var(--k-4); max-width: 46ch; }
   .td-luu-tru { margin: 0; max-width: 46ch; }
 
-  /* ---- Thẻ liên hệ khi chưa có form (cùng dáng thẻ "chưa mở" của hỏi bàn) --- */
-  .td-the { padding: var(--k-5) var(--k-4); }
-  @media (min-width: 600px) { .td-the { padding: var(--k-6); } }
+  /* ---- Thẻ liên hệ khi chưa có form (cùng dáng thẻ "chưa mở" của hỏi bàn; đệm theo .the) --- */
   .td-kenh { border-top: 4px solid var(--do); }
   .td-kenh-hinh {
-    display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+    display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 50%;
     background: var(--kem-dam); color: var(--do); margin-bottom: var(--k-4);
   }
-  .td-kenh-hinh :global(svg) { width: 28px; height: 28px; }
+  .td-kenh-hinh :global(svg) { width: 24px; height: 24px; }
   .td-kenh-cau { margin: 0; max-width: 56ch; }
   .td-kenh .hang-nut { margin-top: var(--k-5); }
 
-  /* Khung lỗi của máy chủ: chữ than trên nền hồng nhạt, vạch đỏ bên trái. */
+  /* Khung lỗi của máy chủ: chữ than trên nền nhuộm đỏ nhạt, vạch đỏ đậm bên trái. */
   .td-loi {
-    border-left: 4px solid var(--do);
-    background: rgba(167, 12, 12, .08);
+    border-left: 4px solid var(--do-dam);
+    background: rgba(137, 6, 7, .08);
     padding: var(--k-3) var(--k-4);
     margin: 0 0 var(--k-5);
   }

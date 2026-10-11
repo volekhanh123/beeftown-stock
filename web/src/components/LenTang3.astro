@@ -48,7 +48,7 @@ const c = dich(ngonNgu, {
 });
 ---
 {gon ? (
-  <div class="lt3-gon be-kem-dam">
+  <div class="lt3-gon the">
     <span class="lt3-so-nho" aria-hidden="true">3</span>
     <div>
       <p class="lt3-cau"><strong>{t.loiLen}</strong></p>
@@ -128,14 +128,14 @@ const c = dich(ngonNgu, {
     display: flex; gap: var(--k-3); align-items: flex-start; margin: 0 0 var(--k-3);
     font-size: var(--co-dan); line-height: 1.45;
   }
-  .lt3-dc :global(svg), .lt3-cau :global(svg) { width: 26px; height: 26px; flex: none; color: var(--do); margin-top: 1px; }
+  .lt3-dc :global(svg), .lt3-cau :global(svg) { width: 24px; height: 24px; flex: none; color: var(--do); margin-top: 2px; }
   /* Khoảng thở giữa câu chỉ đường và hàng nút. */
   .lt3-nut { margin-top: var(--k-5); }
 
-  .lt3-gon {
+  /* Bản gọn là một thẻ (.the của cong-khai.css: nền kem sau trên trang kem, Cream trên dải đỏ;
+     viền mảnh, đệm 20 / 24px, không bóng đổ) — thêm vạch đỏ bên trái để thấy đây là lời dặn. */
+  .lt3-gon.the {
     display: flex; gap: var(--k-4); align-items: flex-start;
-    padding: var(--k-5); border-radius: var(--bo-anh);
-    background: var(--kem-dam); color: var(--than);
     border-left: 4px solid var(--do);
   }
   .lt3-so-nho { font-size: 64px; font-weight: 800; line-height: .85; color: var(--do); letter-spacing: -.05em; }

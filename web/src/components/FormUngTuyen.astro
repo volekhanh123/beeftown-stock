@@ -228,9 +228,8 @@ const t = dich(ngonNgu, {
 )}
 
 <style>
-  /* ---- Thẻ: cùng dáng thẻ của trang hỏi bàn (.hb-the) ---------------------- */
-  .ut-the { padding: var(--k-5) var(--k-4); }
-  @media (min-width: 600px) { .ut-the { padding: var(--k-6); } }
+  /* ---- Thẻ: .the của cong-khai.css (đệm 20 / 24px, viền mảnh, không bóng đổ) — cùng dáng
+     thẻ của trang hỏi bàn (.hb-the) ------------------------------------------- */
   .ut-tieu-de {
     font-size: clamp(24px, 1.4vw + 18px, 32px); line-height: 1.2; margin: 0 0 var(--k-5);
     text-wrap: balance;
@@ -247,10 +246,10 @@ const t = dich(ngonNgu, {
   .ut-giu-ma { margin: 0; }
   .ut-luu-y { margin: var(--k-4) 0 0; }
 
-  /* Khung lỗi của máy chủ: chữ than trên nền hồng nhạt, vạch đỏ bên trái. */
+  /* Khung lỗi của máy chủ: chữ than trên nền nhuộm đỏ nhạt, vạch đỏ đậm bên trái. */
   .ut-loi {
-    border-left: 4px solid var(--do);
-    background: rgba(167, 12, 12, .08);
+    border-left: 4px solid var(--do-dam);
+    background: rgba(137, 6, 7, .08);
     padding: var(--k-3) var(--k-4);
     margin: 0 0 var(--k-5);
   }
@@ -280,8 +279,8 @@ const t = dich(ngonNgu, {
 
   /* Form nằm trên nền SÁNG (be-kem-sau). Bản đầu viết màu cho nền tối: chữ kem,
      viền kem 22%, nền kem 6% — trên nền kem thì ô vô hình và chữ gõ vào cũng
-     vô hình (26/09/2026, ứng viên không nộp được hồ sơ). Ô trắng, viền
-     --vien-o, chữ than.
+     vô hình (26/09/2026, ứng viên không nộp được hồ sơ). Ô nền Cream (bảng màu
+     không có trắng), viền --vien-o 3,71 : 1 với nền ô, chữ than; cao 48px.
      font-size 16px là mức tối thiểu: dưới đó Safari trên iPhone tự phóng to
      trang khi chạm vào ô, và người đang điền mất chỗ. */
   .form-nop input[type='text'],
@@ -289,10 +288,10 @@ const t = dich(ngonNgu, {
   .form-nop input[type='email'],
   .form-nop select,
   .form-nop textarea {
-    font: inherit; font-size: 16px; width: 100%;
-    padding: 13px 14px; min-height: 50px;
+    font: inherit; font-size: 16px; line-height: 1.5; width: 100%;
+    padding: 11px 14px; min-height: 48px;
     border: 1px solid var(--vien-o); border-radius: var(--bo);
-    background: #fff; color: var(--than);
+    background: var(--kem); color: var(--than);
   }
   .form-nop :is(input, select, textarea):focus-visible {
     outline: 3px solid var(--do); outline-offset: 1px; border-color: var(--do);
@@ -300,22 +299,22 @@ const t = dich(ngonNgu, {
   .form-nop :is(input, textarea)::placeholder { color: var(--chu-phu); }
   .form-nop textarea { min-height: 84px; resize: vertical; line-height: 1.55; }
 
-  /* Ô CV: nút chọn file theo hệ nút (.nut-vien cỡ nhỏ) thay cho nút xám mặc định
-     của trình duyệt; chữ "chưa chọn tệp" bên cạnh là chữ phụ. */
+  /* Ô CV: nút chọn file theo hệ nút phụ (.nut-vien: nền Cream, chữ và viền Beef Red, cao 48px)
+     thay cho nút xám mặc định của trình duyệt; chữ "chưa chọn tệp" bên cạnh là chữ phụ. */
   .form-nop input[type='file'] {
     font: inherit; font-size: 15px; width: 100%; color: var(--chu-phu);
-    padding: var(--k-1) 0;
+    padding: 0;
   }
   .form-nop input[type='file']::file-selector-button {
     font: inherit; font-weight: 700; font-size: 15px;
-    min-height: 44px; padding: 9px 18px; margin-right: var(--k-3);
-    border: 1.5px solid var(--chu-chinh); border-radius: var(--bo);
-    background: transparent; color: var(--chu-chinh);
+    min-height: 48px; padding: 10px var(--k-4); margin-right: var(--k-3);
+    border: 1.5px solid var(--do); border-radius: var(--bo);
+    background: var(--kem); color: var(--do);
     cursor: pointer;
-    transition: background-color var(--nhanh), color var(--nhanh);
+    transition: background-color var(--nhanh), color var(--nhanh), border-color var(--nhanh);
   }
   .form-nop input[type='file']:hover::file-selector-button {
-    background: var(--chu-chinh); color: var(--nen);
+    background: var(--kem-dam); color: var(--do-dam); border-color: var(--do-dam);
   }
 
   /* Nhóm ca: không viền, không đệm — tiêu đề nhóm đứng như nhãn của mọi ô khác
@@ -329,13 +328,10 @@ const t = dich(ngonNgu, {
      của ô, mà label.o-chon lại nằm trong fieldset.o. */
   .form-nop .o-chon {
     display: flex; align-items: flex-start; gap: 10px;
-    margin: 0; padding: 9px 0;
+    margin: 0; padding: var(--k-3) 0;   /* 12 + ô 24 + 12 = hàng cao 48px */
     font-size: 15px; font-weight: 400; line-height: 1.5; cursor: pointer;
   }
-  /* 24px + vùng chạm quanh nó: ngón tay cái, không phải con trỏ chuột. */
-  .form-nop .o-chon input[type='checkbox'] {
-    width: 24px; height: 24px; margin: 0; flex-shrink: 0; accent-color: var(--do);
-  }
+  /* Ô đánh dấu 24px tự vẽ (cong-khai.css) + vùng chạm quanh nó: ngón tay cái, không phải con trỏ chuột. */
   .form-nop .o-dong-y {
     border-top: 1px solid var(--vien);
     margin-top: var(--k-1); padding: var(--k-4) 0; align-items: flex-start;
