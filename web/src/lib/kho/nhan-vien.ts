@@ -119,7 +119,6 @@ export interface KetQuaTaoNhanVien extends KetQua {
  */
 export async function docBiMatMay(): Promise<string | undefined> {
   try {
-    // @ts-ignore — dự án không cài kiểu của workerd; module này chỉ có trên Worker.
     const m = await import('cloudflare:workers');
     const v = (m as { env?: Record<string, unknown> })?.env?.KHO_MAY_KHOA;
     if (typeof v === 'string' && v) return v;

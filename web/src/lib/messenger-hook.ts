@@ -41,6 +41,7 @@
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { docChuoi, envNode, envWorker, layBienCong, type Env } from './bien-moi-truong.ts';
 import { taoClient, maChiNhanh } from './noi-dung.ts';
 import {
   META_API, kiemChuKy, xacMinhWebhook, tachSuKien, bamPsid, xoaBiMat, buocTiep, thanTin, thanDangGo, thanHoSo,
@@ -55,7 +56,7 @@ export const DUONG_MESSENGER = '/hook/messenger';
 // -----------------------------------------------------------------------------
 // BÍ MẬT
 // -----------------------------------------------------------------------------
-export type Env = Record<string, unknown> | undefined;
+export type { Env } from './bien-moi-truong.ts';
 
 export const TEN_BI_MAT_MESS = {
   appSecret: 'META_APP_SECRET',
@@ -80,30 +81,6 @@ export interface BiMatMess {
   appId?: string;
   /** Gốc website cho link trong tin (SITE_URL). */
   web: string;
-}
-
-async function envWorker(): Promise<Env> {
-  try {
-    // @ts-ignore — dự án không cài kiểu của workerd; module này chỉ có trên Worker.
-    const m = await import('cloudflare:workers');
-    return (m as { env?: Record<string, unknown> })?.env;
-  } catch { return undefined; }
-}
-
-function docChuoi(ten: string, ...nguon: Env[]): string | undefined {
-  for (const n of nguon) {
-    const v = n?.[ten];
-    if (typeof v === 'string' && v.trim()) return v.trim();
-  }
-  return undefined;
-}
-
-const envNode = (): Env => (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
-
-function layBienCong(ten: string, env: Env): string | undefined {
-  const v = (import.meta as { env?: Record<string, unknown> }).env?.[ten];
-  if (typeof v === 'string' && v) return v;
-  return docChuoi(ten, env, envNode());
 }
 
 /** Đọc bí mật Messenger. Không có → undefined; không bao giờ ném lỗi. */
