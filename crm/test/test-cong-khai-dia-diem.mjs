@@ -107,17 +107,20 @@ function giaiDuongNap(tu, duong) {
 const PAGES = join(SRC, 'pages');
 const TRANG_GOC = ['', 'en', 'ko'].flatMap(d => readdirSync(join(PAGES, d), { withFileTypes: true })
   .filter(x => x.isFile() && /\.astro$|^(?:robots\.txt|sitemap\.xml)\.ts$/.test(x.name)).map(x => join(PAGES, d, x.name)));
-// Ranh giới kho / /noi-bo: đồ thị không đi vào đây. pages/404.astro là trang công khai nhưng có nhánh
-// nội bộ cho nhân viên đã đăng nhập (PR #62: layouts/NoiBo.astro, lib/cau-noi-bo.ts) — hai file đó nạp
-// tiếp biểu tượng và câu của kho, nơi "Bia Sài Gòn" là chữ đúng.
-const KHU_NOI_BO = /^web\/src\/(?:pages\/noi-bo|components\/kho|lib\/kho)\//;
+// pages/404.astro là trang công khai nhưng có nhánh nội bộ cho nhân viên đã đăng nhập (PR #62): nó nạp
+// layouts/NoiBo.astro, lib/cau-noi-bo.ts và lib/dieu-huong-noi-bo.ts (chọn nhánh), ba file đó nạp tiếp
+// biểu tượng và câu của kho — nơi "Bia Sài Gòn" là chữ đúng. Quét chính ba file đó, KHÔNG đi tiếp từ
+// chúng. Chỉ ba file này: một trang hay component công khai khác nạp thẳng file của kho thì vẫn bị kéo
+// vào và nhóm 1 đỏ ("Không quét kho…").
+const KHONG_DI_TIEP = new Set(['layouts/NoiBo.astro', 'lib/cau-noi-bo.ts', 'lib/dieu-huong-noi-bo.ts'].map(f => join(SRC, f)));
 const daThay = new Set();
 function diTu(f) {
   if (daThay.has(f)) return;
   daThay.add(f);
+  if (KHONG_DI_TIEP.has(f)) return;
   for (const m of doc(f).matchAll(NAP)) {
     const toi = giaiDuongNap(f, m[1] ?? m[2]);
-    if (toi && toi.startsWith(SRC + sep) && !KHU_NOI_BO.test(tuGoc(toi))) diTu(toi);
+    if (toi && toi.startsWith(SRC + sep)) diTu(toi);
   }
 }
 TRANG_GOC.forEach(diTu);
