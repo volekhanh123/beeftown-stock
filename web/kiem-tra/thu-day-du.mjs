@@ -17,14 +17,18 @@
  *   1. day-du: nút chính màn đầu là "Hỏi bàn" và dẫn tới /dat-ban đúng thứ tiếng; có
  *      link Facebook đã công bố, có nút Chỉ đường; thực đơn hiện món mẫu, nhãn Món
  *      sống kèm câu cảnh báo, nhãn Có cồn, KHÔNG một số tiền nào; /dat-ban có form và
- *      khung giờ.
+ *      khung giờ, meta description / og:description là câu "gửi yêu cầu, nhà hàng gọi
+ *      lại" (chu.ts moTaHoiBan) và đoạn mở đầu nói nhà hàng gọi lại.
  *   2. Bấm đúp "Gửi yêu cầu" → tao_dat_ban được gọi ĐÚNG MỘT lần; trang sau nói "đã
  *      nhận", không bao giờ "thành công".
  *   3. Database trả 500 hoặc mạng đứt giữa chừng → KHÔNG BAO GIỜ "đã nhận"; có khung
  *      lỗi; họ tên và số điện thoại khách đã gõ được điền lại. Database từ chối (hết
  *      bàn) → câu của database hiện ra, đúng thứ tiếng.
  *   4. rong (nối database, chưa công bố gì): không nút Facebook, không Chỉ đường; nút
- *      chính màn đầu là "Khám phá thực đơn".
+ *      chính màn đầu là "Khám phá thực đơn". dat-ban-dong (form tắt): /dat-ban không có
+ *      form; meta description / og:description là câu "chưa mở" (chu.ts moTaHoiBanChuaMo),
+ *      cả mô tả lẫn đoạn mở đầu không hứa "gửi yêu cầu, nhà hàng gọi lại" (kiểm site thật
+ *      07/10/2026).
  *   5. Mọi trang công khai × (rong, day-du, dat-ban-dong) ở 360 và 1440 px: HTTP 200,
  *      không tràn ngang, không lỗi JavaScript; thành phần và khung trang đúng quy tắc
  *      của đợt redesign (phép đo ở do-giao-dien.mjs — cùng bộ với trinh-duyet.mjs, nhưng
@@ -168,6 +172,10 @@ const ngonNguCua = duong => (duong.startsWith('/en') ? 'en' : duong.startsWith('
 const CHU_DA_NHAN = { vi: /đã nhận/i, en: /\breceived\b/i, ko: /접수되었(?!는지)/ };
 const BAT_KY_DA_NHAN = /đã nhận|\breceived\b|접수되었(?!는지)/i;
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
+// Lời hứa của form hỏi bàn: gửi yêu cầu trên trang, nhà hàng gọi lại — chép tay, như
+// crm/test/test-cong-khai-hoi-ban-dong.mjs. Form đóng thì mô tả và đoạn mở đầu không được nói câu này.
+const HUA_FORM = { vi: /gọi lại|gửi yêu cầu/i, en: /call you back|(?<!cannot )send (?:a|your)(?: table)? request/i, ko: /전화드려요|전화로 안내|문의를 보내 주세요/ };
+const HUA_GOI_LAI = { vi: /gọi lại/i, en: /call you back/i, ko: /전화드려요|전화로 안내/ };
 const DANG_GUI = { vi: 'Đang gửi…', en: 'Sending…', ko: '보내는 중…' };
 const KHOA_LUU = 'bt-hoi-ban';
 const KHOA_NUT = 'thu-day-du-nut-gui';   // nhóm 2: trạng thái nút lúc vừa gửi, giữ qua lần chuyển trang
@@ -222,6 +230,11 @@ try {
     await page.screenshot({ path: join(ANH_LOI, `${ten.replace(/[^a-z0-9-]+/gi, '_')}.png`), fullPage: true }).catch(() => {});
   };
   const chuTrang = async (chon = 'body') => (await page.locator(chon).first().innerText().catch(() => '')) ?? '';
+  const moTaTrang = () => page.evaluate(() => ({
+    moTa: document.querySelector('meta[name="description"]')?.getAttribute('content') ?? '',
+    og: document.querySelector('meta[property="og:description"]')?.getAttribute('content') ?? '',
+    dan: document.querySelector('main p.dan')?.textContent?.trim() ?? '',
+  }));
   const nutChinhMoDau = () => page.evaluate(() => {
     const a = document.querySelector('main a.nut.nut-chinh');
     return a ? { chu: a.textContent.trim().replace(/\s+/g, ' '), duong: new URL(a.href).pathname } : null;
@@ -307,6 +320,10 @@ try {
               await page.locator('form[data-hoi-ban]').count() === 1 && soGio > 0, `${soGio} khung giờ`)) {
         await chupLoi(`day-du${hoiBan}`);
       }
+      const mt = await moTaTrang();
+      ok(`${hoiBan}: form mở → meta description và og:description là câu "gửi yêu cầu, nhà hàng gọi lại" (moTaHoiBan)`,
+         !!chu(nn).moTaHoiBan && mt.moTa === chu(nn).moTaHoiBan && mt.og === chu(nn).moTaHoiBan, `«${mt.moTa}»`);
+      ok(`${hoiBan}: form mở → đoạn mở đầu nói nhà hàng gọi lại`, HUA_GOI_LAI[nn].test(mt.dan), `«${mt.dan}»`);
     }
   });
 
@@ -492,6 +509,15 @@ try {
         ok(`dat-ban-dong ${hoiBan}: chỉ sang Facebook đã công bố`,
            /facebook/i.test(chu_) && await page.locator(`main a[href="${LIEN_HE_THU.facebook_url}"]`).count() > 0),
       ];
+      const mt = await moTaTrang();
+      tot.push(
+        ok(`dat-ban-dong ${hoiBan}: meta description và og:description là câu "chưa mở" (moTaHoiBanChuaMo)`,
+           !!t.moTaHoiBanChuaMo && mt.moTa === t.moTaHoiBanChuaMo && mt.og === t.moTaHoiBanChuaMo, `«${mt.moTa}»`),
+        ok(`dat-ban-dong ${hoiBan}: mô tả không hứa gửi yêu cầu / gọi lại`,
+           !HUA_FORM[nn].test(mt.moTa) && !HUA_FORM[nn].test(mt.og), mt.moTa.match(HUA_FORM[nn])?.[0]),
+        ok(`dat-ban-dong ${hoiBan}: đoạn mở đầu không hứa gửi yêu cầu / gọi lại`,
+           !!mt.dan && !HUA_FORM[nn].test(mt.dan), `«${mt.dan}»`),
+      );
       const trangChu = duongDanTuongUng('/', nn);
       await page.goto(goc + trangChu, { waitUntil: 'load' });
       const nut = await nutChinhMoDau();

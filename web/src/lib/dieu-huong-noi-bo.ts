@@ -144,6 +144,24 @@ export function thanhDayNoiBo(vai: string | null | undefined): MucNoiBo[] {
   return [...chon, MUC_THEM];
 }
 
+/**
+ * Trang không có (pages/404.astro) hiện bản nào: bản NỘI BỘ (khung NoiBo.astro, tiếng của
+ * nhân viên, link về /noi-bo) hay bản công khai.
+ *
+ * Bản nội bộ chỉ khi đã đăng nhập VÀ đường dẫn là /noi-bo hoặc /noi-bo/… Người chưa đăng
+ * nhập bị middleware.ts chuyển sang /noi-bo/dang-nhap TRƯỚC khi trang 404 chạy, nên không
+ * bao giờ thấy bản nội bộ — và không đoán được trang nội bộ nào có.
+ *
+ * Hẹp hơn vùng middleware canh (mọi đường dẫn bắt đầu bằng '/noi-bo', kể cả /noi-bo-abc):
+ * cookie ngôn ngữ nb_ngon_ngu có path /noi-bo, trình duyệt không gửi nó tới /noi-bo-abc —
+ * bản nội bộ ở đó sẽ kẹt ở tiếng Việt và nút English không có tác dụng. Ở đó hiện bản công
+ * khai (crm/test/test-noi-bo-khong-co.mjs).
+ */
+export function loaiTrangKhongCo(duongDan: string, daDangNhap: boolean): 'noi-bo' | 'cong-khai' {
+  const trongKhuNoiBo = duongDan === '/noi-bo' || duongDan.startsWith('/noi-bo/');
+  return daDangNhap && trongKhuNoiBo ? 'noi-bo' : 'cong-khai';
+}
+
 /** Đường dẫn hiện tại có thuộc mục này không (Tổng quan chỉ sáng ở đúng /noi-bo). */
 export function dangONoiBo(muc: { link: string }, duong: string): boolean {
   const d = duong.replace(/\/$/, '') || '/noi-bo';
