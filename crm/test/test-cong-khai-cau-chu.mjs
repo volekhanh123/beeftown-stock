@@ -247,7 +247,7 @@ await nhom('6 · CÂU CHUNG CỦA web/src/lib/chu.ts (VI / EN / KO)', async () =
 });
 
 // ===========================================================================
-// Điều đã biết về địa điểm (Khánh quyết 07/10 và 09/10/2026; thang máy theo layout 08/10): Tầng 3,
+// Điều đã biết về địa điểm (Khánh quyết 07/10 và 09/10/2026; có thang máy: Khánh xác nhận 11/10/2026): Tầng 3,
 // 63 Hồ Tùng Mậu; lối vào riêng ngay cạnh GS25; khách đi thang máy. Trang chỉ nói địa điểm hiện tại,
 // và chỉ nói những điều đó. Bộ luật và bảng câu thử nằm ở web/kiem-tra/mau-dia-diem.mjs — dùng chung
 // với test-cong-khai-dia-diem.mjs (quét mã nguồn, kể cả chú thích) và trinh-duyet.mjs (trang đã dựng).

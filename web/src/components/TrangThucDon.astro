@@ -408,7 +408,7 @@ const coKenh = coKenhHoiBan(nd);
     background: transparent;
     transition: background-color var(--nhanh);
   }
-  .td-tab a:hover::after { background: var(--vien-o); }
+  @media (hover: hover) { .td-tab a:hover::after { background: var(--vien-o); } }
   /* Vòng focus nằm trong vùng tab, phía trên gạch chân đỏ của tab đang chọn. */
   .td-tab a:focus-visible { outline-offset: -6px; }
   .td-tab a[aria-selected='true'] { color: var(--do-sau); }
@@ -419,7 +419,8 @@ const coKenh = coKenhHoiBan(nd);
      đỏ biến mất và ba tab trông như nhau. Tab đang chọn dùng màu Highlight của hệ thống
      cho gạch chân và thêm gạch dưới chữ — phân biệt được cả khi không nhìn ra màu. */
   @media (forced-colors: active) {
-    .td-tab a::after, .td-tab a:hover::after { background: transparent; }
+    .td-tab a::after { background: transparent; }
+    @media (hover: hover) { .td-tab a:hover::after { background: transparent; } }
     .td-tab a[aria-selected='true']::after { forced-color-adjust: none; background: Highlight; }
     .td-tab a[aria-selected='true'] { text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .3em; }
   }
@@ -513,7 +514,7 @@ const coKenh = coKenhHoiBan(nd);
     border-top: 1px solid var(--vien);
     font-size: var(--co-nho); font-weight: 600;
   }
-  .td-luat :global(svg) { width: 20px; height: 20px; flex: none; color: var(--nhan); }
+  .td-luat :global(svg) { width: 24px; height: 24px; flex: none; color: var(--nhan); }
 
   /* --- Cuối trang ---------------------------------------------------------- */
   .td-moi-luoi { display: grid; gap: var(--k-7); align-items: center; grid-template-columns: 1fr; }
@@ -523,9 +524,9 @@ const coKenh = coKenhHoiBan(nd);
   .td-moi-chu .dan { margin-bottom: var(--k-6); }
   /* Ngày cập nhật thực đơn: dòng nhỏ chữ kem cuối khối đỏ. */
   .td-cap-nhat { margin: var(--k-6) 0 0; }
-  /* LenTang3 bản gọn là một thẻ kem trên dải đỏ: .be-kem-dam (cong-khai.css) tự đặt lại
+  /* LenTang3 bản gọn là một thẻ Cream trên dải đỏ: .the (cong-khai.css) tự đặt lại
      biến màu chữ và vòng focus của nền kem, ở đây giới hạn bề rộng. Viền trái đỏ của
      thẻ trùng màu dải đỏ nên mép thẻ trông như lùi vào 4px: đổi sang đỏ sậm. */
   .td-the-tang3 { max-width: 480px; }
-  .td-the-tang3 :global(.lt3-gon) { border-left-color: var(--do-sau); }
+  .td-the-tang3 :global(.lt3-gon.the) { border-left-color: var(--do-sau); }
 </style>

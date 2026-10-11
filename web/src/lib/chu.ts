@@ -73,8 +73,10 @@ export const PHAP_NHAN = {
  *   · tài liệu: THUONG-HIEU.md mục 6, AGENTS.md mục "Địa điểm", web/THIET-KE.md mục 10.
  *
  * Điều đã biết về đường đến chỉ có: lối vào riêng ngay cạnh GS25 (Khánh quyết
- * 09/10/2026), khách đi thang máy lên tầng 3 (layout ngày 08/10/2026). Không viết thêm
- * chỗ gửi xe, mốc đường, số bước, khoảng cách, lối cho xe lăn khi chưa có người xác nhận.
+ * 09/10/2026), khách đi thang máy lên tầng 3 (Khánh xác nhận 11/10/2026: địa điểm có
+ * thang máy). Nút thang máy ghi số mấy cho tầng của quán thì CHƯA BIẾT — không viết số
+ * nút. Không viết thêm chỗ gửi xe, mốc đường, số bước, khoảng cách, lối cho xe lăn khi
+ * chưa có người xác nhận.
  */
 export const DIA_CHI_PHAN = {
   duong: 'Tầng 3, 63 Hồ Tùng Mậu',
@@ -156,6 +158,8 @@ const VI = {
   denBeeftown: 'Đến Beeftown',
   moMenu: 'Danh mục',
   dongMenu: 'Đóng danh mục',
+  // Nhãn của nút danh mục khi bảng đang mở (màn hẹp): ngắn, để nút không dài hơn lúc đóng.
+  dong: 'Đóng',
   veTrangChu: 'Beeftown — về trang chủ',
   thongTin: 'Thông tin',
   xoaDuLieu: 'Xóa dữ liệu',
@@ -163,8 +167,8 @@ const VI = {
   // --- Đường đến ------------------------------------------------------------
   tang3: 'Tầng 3',
   // Câu chỉ đường — đi kèm địa chỉ ở mọi chỗ in địa chỉ. Hai điều trong câu là đã biết (lối vào
-  // riêng ngay cạnh GS25: Khánh quyết 09/10/2026; thang máy: layout 08/10/2026). CHỮ của câu ở cả
-  // ba thứ tiếng là Claude đề xuất, CHỜ KHÁNH DUYỆT. Đổi chữ thì sửa cùng lúc các bản chép tay
+  // riêng ngay cạnh GS25: Khánh quyết 09/10/2026; có thang máy: Khánh xác nhận 11/10/2026). CHỮ của
+  // câu ở cả ba thứ tiếng là Claude đề xuất, CHỜ KHÁNH DUYỆT. Đổi chữ thì sửa cùng lúc các bản chép tay
   // trong crm/test/test-cong-khai-dia-diem.mjs, test-cong-khai-cau-chu.mjs, web/kiem-tra/trinh-duyet.mjs.
   loiLen: 'Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3.',
   xemDuongLen: 'Xem đường lên tầng 3',
@@ -257,6 +261,7 @@ const EN: Bo = {
   denBeeftown: 'Visit',
   moMenu: 'Pages',
   dongMenu: 'Close pages',
+  dong: 'Close',
   veTrangChu: 'Beeftown — home',
   thongTin: 'Information',
   xoaDuLieu: 'Data deletion',
@@ -340,6 +345,7 @@ const KO: Bo = {
   denBeeftown: '오시는 길',
   moMenu: '바로가기',
   dongMenu: '바로가기 닫기',
+  dong: '닫기',
   veTrangChu: 'Beeftown 홈으로',
   thongTin: '안내',
   xoaDuLieu: '데이터 삭제',

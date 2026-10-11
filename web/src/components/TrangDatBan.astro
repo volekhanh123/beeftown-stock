@@ -22,8 +22,8 @@
  * chủ vẫn làm đủ việc.
  *
  * ĐƯỜNG LÊN TRƯỚC KHI GỬI. Nhà hàng ở tầng 3, 63 Hồ Tùng Mậu; khách vào bằng lối
- * vào riêng ngay cạnh GS25 (Khánh quyết 09/10/2026) rồi đi thang máy lên (layout
- * ngày 08/10/2026). Khối LenTang3 bản gọn đứng TRƯỚC thẻ form (trên điện thoại:
+ * vào riêng ngay cạnh GS25 (Khánh quyết 09/10/2026) rồi đi thang máy lên (Khánh xác
+ * nhận 11/10/2026: có thang máy). Khối LenTang3 bản gọn đứng TRƯỚC thẻ form (trên điện thoại:
  * phía trên; máy tính: cột bên trái) để khách biết địa chỉ và lối vào trước khi
  * bấm gửi.
  *
@@ -596,7 +596,7 @@ const t = dich(ngonNgu, {
     border: 1.5px solid var(--do); color: var(--do-sau);
     font-weight: 800; font-size: 15px; line-height: 1;
   }
-  .hb-so :global(svg) { width: 18px; height: 18px; }
+  .hb-so :global(svg) { width: 24px; height: 24px; }
   /* Chỉ bước ĐÃ XONG tô đặc. Bước 3 in đậm chữ để nhấn mạnh, nhưng vòng số vẫn rỗng —
      tô đặc thì mắt đọc thành "bước 3 đã xong", ngược với "chưa có bàn nào được giữ". */
   .hb-xong .hb-so { background: var(--do); color: var(--kem); }
@@ -605,13 +605,14 @@ const t = dich(ngonNgu, {
   .hb-dang-cho .hb-so { border-width: 3px; }
 
   /* ---- Thẻ (form / chưa mở / đã nhận) --------------------------------------- */
+  /* Cùng quy tắc với .the (cong-khai.css): nền kem sau trên trang kem, viền mảnh, đệm 20px
+     (điện thoại) / 24px, không bóng đổ. Ô nhập bên trong nền Cream. */
   .hb-the {
     position: relative;
-    background: #FFFCF4;
+    background: var(--kem-sau);
     border: 1px solid var(--vien); border-radius: var(--bo-anh);
-    padding: var(--k-5) var(--k-4);
+    padding: var(--dem-the);
   }
-  @media (min-width: 600px) { .hb-the { padding: var(--k-6); } }
   /* Khung kết quả nhận con trỏ bằng script (tabindex="-1") để trình đọc màn hình
      đọc ngay; nó không phải thứ bấm được, nên không vẽ vòng focus quanh cả khung. */
   .hb-the:focus, .hb-loi:focus { outline: none; }
@@ -620,10 +621,10 @@ const t = dich(ngonNgu, {
     text-wrap: balance;
   }
 
-  /* Khung lỗi của máy chủ: chữ than trên nền hồng nhạt, vạch đỏ bên trái. */
+  /* Khung lỗi của máy chủ: chữ than trên nền nhuộm đỏ nhạt, vạch đỏ đậm bên trái. */
   .hb-loi {
-    border-left: 4px solid var(--do);
-    background: rgba(167, 12, 12, .08);
+    border-left: 4px solid var(--do-dam);
+    background: rgba(137, 6, 7, .08);
     padding: var(--k-3) var(--k-4);
     margin: 0 0 var(--k-5);
   }
@@ -638,7 +639,6 @@ const t = dich(ngonNgu, {
   @media (min-width: 480px) {
     .hb-hang-ngay { grid-template-columns: minmax(0, 1fr) auto; }
   }
-  .hb-hang-ngay .nut { min-height: 50px; padding-inline: var(--k-5); }
   .hb-ngay-truoc {
     margin: var(--k-3) 0 0; padding-left: var(--k-3);
     border-left: 3px solid var(--do); color: var(--chu-chinh);
@@ -650,14 +650,15 @@ const t = dich(ngonNgu, {
   fieldset.hb-gio > legend { padding: 0; }
   .hb-buoi {
     margin: var(--k-3) 0 var(--k-2);
-    font-size: 13px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+    font-size: 14px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
     color: var(--chu-phu);
   }
   /* Hangul không giãn chữ như chữ in hoa Latin. */
   .hb-buoi:lang(ko) { letter-spacing: .02em; }
   .hb-buoi:first-of-type { margin-top: 0; }
-  /* Khung giờ là nút bấm, không phải ô chọn nhỏ xíu. Cao 52px để bấm được bằng
-     ngón cái trong lúc đi đường. */
+  /* Khung giờ là nút bấm, không phải ô chọn nhỏ xíu. Cao 48px — cùng chiều cao với ô nhập
+     và nút — để bấm được bằng ngón cái trong lúc đi đường. Chưa chọn: nền Cream như ô nhập;
+     đang chọn: nền Beef Red, chữ Cream, thêm dấu ✓. */
   .hb-chip {
     display: grid; gap: var(--k-2);
     grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
@@ -669,12 +670,12 @@ const t = dich(ngonNgu, {
   }
   .hb-chip-o span {
     display: flex; align-items: center; justify-content: center;
-    min-height: 52px; border-radius: var(--bo);
-    border: 1px solid var(--vien-o); background: #fff; color: var(--than);
+    min-height: 48px; border-radius: var(--bo);
+    border: 1px solid var(--vien-o); background: var(--kem); color: var(--than);
     font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums;
     transition: background-color var(--nhanh), border-color var(--nhanh), color var(--nhanh);
   }
-  .hb-chip-o:hover span { border-color: var(--do); }
+  @media (hover: hover) { .hb-chip-o:hover span { border-color: var(--do); } }
   .hb-chip-o input:checked + span { background: var(--do); border-color: var(--do); color: var(--kem); }
   /* Dấu ✓ ở góc chip đã chọn: phân biệt được không cần nhìn ra màu (mù màu, chế độ
      tương phản cao). Nằm tuyệt đối nên chữ giờ không xê dịch. Chữ thay '' — trình đọc
@@ -703,7 +704,7 @@ const t = dich(ngonNgu, {
     padding: var(--k-4) 0; margin: 0 0 var(--k-4);
     border-top: 1px solid var(--vien);
   }
-  .hb-dong-y input { width: 24px; height: 24px; margin: 1px 0 0; accent-color: var(--do); cursor: pointer; }
+  /* Ô đánh dấu 24px tự vẽ: cong-khai.css (.ck input[type='checkbox']). */
   .hb-dong-y label { font-size: 15px; line-height: 1.5; cursor: pointer; }
 
   .hb-nut-gui { width: 100%; }
@@ -712,15 +713,15 @@ const t = dich(ngonNgu, {
   /* ---- Chưa mở hỏi bàn trực tuyến ------------------------------------------ */
   .hb-chua-mo { border-top: 4px solid var(--do); }
   .hb-chua-mo-hinh {
-    display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 50%;
+    display: inline-grid; place-items: center; width: 48px; height: 48px; border-radius: 50%;
     background: var(--kem-dam); color: var(--do); margin-bottom: var(--k-4);
   }
-  .hb-chua-mo-hinh :global(svg) { width: 28px; height: 28px; }
+  .hb-chua-mo-hinh :global(svg) { width: 24px; height: 24px; }
   .hb-chua-mo p { max-width: 56ch; }
   .hb-chua-mo .hang-nut { margin-top: var(--k-5); }
 
   /* ---- Đã nhận yêu cầu --------------------------------------------------- */
-  .hb-da-nhan { overflow: clip; border-top: 4px solid var(--do); padding-top: var(--k-6); }
+  .hb-da-nhan { overflow: clip; border-top: 4px solid var(--do); }
   .hb-tem {
     display: block; width: 104px; height: auto; margin: 0 0 var(--k-4);
   }

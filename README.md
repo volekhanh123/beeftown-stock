@@ -84,12 +84,12 @@ Lưu ý khi sửa code phần mềm cân:
 | Marigold | `#F5AA14` | `--cuc-vang`, `--mu-tat` | Điểm nhấn nhỏ, vòng focus; chữ chỉ trên nền tối |
 | Warm Stone | `#B8A98C` | `--da` | Chữ phụ **chỉ trên nền tối** |
 | Đỏ đậm (màu pha) | `#890607` | `--do-dam`, `--do-sau` | Nút khi di chuột, chữ nhấn rất nhỏ trên kem, chữ nút trên nền đỏ, nét artwork trên kem |
-| Kem sau · kem đậm (màu pha) | `#EBDCC6` · `#E7D5BC` | `--kem-sau` · `--kem-dam` | Nền khối phụ trên trang sáng |
-| Viền ô nhập (màu pha) | `#7A7366` | `--vien-o` | Viền ô nhập của form |
+| Kem sau · kem đậm (màu pha) | `#EBDCC6` · `#E7D5BC` | `--kem-sau` · `--kem-dam` | Nền khối phụ trên trang sáng; kem sau là nền của thẻ |
+| Viền ô nhập (màu pha) | `#7A7366` | `--vien-o` | Viền ô nhập của form (ô nền Cream) |
 
 Năm dòng đầu là năm màu của guideline. Ba dòng sau là màu pha cho màn hình, Khánh cho phép ngày 10/10/2026. Token khai trong khối `.ck` đầu tiên của `web/src/styles/cong-khai.css`; `crm/test/test-cong-khai-giao-dien.mjs` nhóm 6 gác từng mã.
 
-Warm Stone và Marigold **không bao giờ** làm chữ trên nền kem (tương phản 1,83 và 1,56 : 1); không đặt chữ đỏ trên dải tối (2,43 : 1). Tỷ lệ trang đang chạy: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 % — guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5, Khánh chưa quyết theo bên nào. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
+**Bảng màu không có trắng**: trang công khai không có nền trắng — thẻ nền kem sau, ô nhập nền Cream (kiểm thử nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`). Warm Stone và Marigold **không bao giờ** làm chữ trên nền kem (tương phản 1,83 và 1,56 : 1); không đặt chữ đỏ trên dải tối (2,43 : 1). Tỷ lệ trang đang chạy: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 % — guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5, Khánh chưa quyết theo bên nào. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
 
 ### Phông chữ
 

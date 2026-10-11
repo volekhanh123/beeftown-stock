@@ -5,13 +5,18 @@
  * Ba tầng:
  *  1. Dải tuyển dụng gọn. Tuyển đội mở cửa là "đường găng" của ngày mở (TrangRaMat
  *     cũ), nên nó có mặt ở MỌI trang công khai — chỉ gọn lại so với một khối riêng.
- *  2. Dải đỏ: logo kem (biến thể trang 3), chữ BEEFTOWN lặp chìm và tem tròn (trang
- *     11 của PDF nhận diện), các mục điều hướng, địa chỉ + câu chỉ đường.
- *  3. Pháp nhân. web/kiem-tra/trinh-duyet.mjs đọc chữ của <footer> ĐẦU TIÊN trên
- *     trang: ngay dưới dòng "© … Beeftown · Beef Specialty Restaurant" phải là hai
- *     dòng pháp nhân, đúng từng ký tự; mọi <p> trong chân trang phải hiện và ≥ 12px.
+ *  2. Dải đỏ Beef Red, nền phẳng: logo Cream (biến thể trang 3) và tem tròn (trang 11
+ *     của PDF nhận diện), các mục điều hướng, địa chỉ + câu chỉ đường. Không còn hoa
+ *     văn chữ BEEFTOWN chìm sau chữ (bỏ ở đợt redesign: trên đỏ mới nó nhạt và lem,
+ *     làm chữ khó đọc). Điện thoại: hai nhóm link đứng cạnh nhau thành 2 cột.
+ *  3. Pháp nhân, nền Charcoal. web/kiem-tra/trinh-duyet.mjs đọc chữ của <footer> ĐẦU
+ *     TIÊN trên trang: ngay dưới dòng "© … Beeftown · Beef Specialty Restaurant" phải
+ *     là hai dòng pháp nhân, đúng từng ký tự; mọi <p> trong chân trang phải hiện.
  *     Ba dòng đó chép nguyên từ layout cũ — mỗi dòng viết liền trên một dòng mã:
  *     compressHTML bỏ dấu cách có xuống dòng giữa hai nút ("·Beef").
+ *
+ * Chữ trong chân trang không nhỏ hơn 14px (kể cả dải pháp nhân — dải đó cao theo nội
+ * dung, không ép chữ nhỏ cho vừa); mọi link cao 48px. do-giao-dien.mjs đo cả hai.
  */
 import { THUONG_HIEU, PHAP_NHAN, chu, dich, duongDanTuongUng } from '../lib/chu';
 import { cumDiaChi, dieuHuong, diaChi, lienHe } from '../lib/trang-cong-khai';
@@ -52,8 +57,7 @@ const c = dich(ngonNgu, {
     </div>
   )}
 
-  <div class="ct-chinh be-do co-trang-tri">
-    <div class="trang-tri hoa-van-chu ct-hoa-van" aria-hidden="true"></div>
+  <div class="ct-chinh be-do">
     <div class="khung ct-luoi">
       <div class="ct-logo">
         <img src="/thuong-hieu/logo-ngang-kem.svg" width="446" height="124" alt={THUONG_HIEU.ten} loading="lazy" decoding="async" />
@@ -120,13 +124,12 @@ const c = dich(ngonNgu, {
   .ct-td-chu { margin: 0; max-width: 62ch; font-size: 15px; }
 
   /* --- 2. Dải đỏ ----------------------------------------------------------- */
-  .ct-chinh { position: relative; padding-block: var(--k-8) var(--k-7); }
-  /* Chìm: chỉ đọc ra chữ khi nhìn gần (THIET-KE mục 5). */
-  .ct-hoa-van { inset: 0; --mau-hoa-van: rgba(137, 6, 7, .13); }
+  .ct-chinh { padding-block: var(--k-7) var(--k-6); }
+  @media (min-width: 900px) { .ct-chinh { padding-block: var(--k-8) var(--k-7); } }
   /* Tem tròn trang 11 — đóng như con dấu cạnh logo (màn hẹp) hoặc dưới logo (màn rộng). */
-  .ct-tem { width: clamp(76px, 18vw, 120px); height: auto; transform: rotate(-9deg); flex: none; }
+  .ct-tem { width: clamp(72px, 18vw, 112px); height: auto; transform: rotate(-9deg); flex: none; }
+  /* Điện thoại: hai nhóm link thành 2 cột; logo và địa chỉ rộng hết hàng. */
   .ct-luoi {
-    position: relative;
     display: grid; gap: var(--k-6) var(--k-5);
     grid-template-columns: 1fr 1fr;
   }
@@ -141,35 +144,39 @@ const c = dich(ngonNgu, {
     .ct-logo, .ct-dia-chi { grid-column: auto; }
     .ct-logo { flex-direction: column; align-items: flex-start; gap: var(--k-5); }
   }
+  /* Tên cột: chữ hoa nhỏ 14px (sàn của chân trang), không còn 12px. */
   .ct-tieu-de {
-    margin: 0 0 var(--k-3);
-    font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase;
+    margin: 0 0 var(--k-2);
+    font-size: 14px; line-height: 1.4; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
   }
+  .ct-tieu-de:lang(ko) { letter-spacing: .04em; }   /* chữ Hangul không giãn như chữ in hoa Latin */
   .ct-cot a {
-    display: inline-flex; align-items: center; min-height: 44px;
+    display: inline-flex; align-items: center; min-height: var(--cham);
     font-weight: 600; text-decoration: none;
   }
-  .ct-cot a:hover { text-decoration: underline; }
+  @media (hover: hover) { .ct-cot a:hover { text-decoration: underline; text-underline-offset: .3em; } }
   address { font-style: normal; }
   address p { margin: 0 0 var(--k-3); max-width: 36ch; }
-  .ct-loi-len { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+  .ct-loi-len { display: flex; gap: var(--k-2); align-items: flex-start; font-size: 15px; }
   .ct-loi-len span { text-wrap: balance; }
   address .lien { white-space: nowrap; }
-  .ct-loi-len :global(svg) { width: 22px; height: 22px; flex: none; margin-top: 1px; }
-  .ct-mxh { display: flex; flex-wrap: wrap; gap: 0 var(--k-5); margin-top: var(--k-2); }
+  .ct-loi-len :global(svg) { width: 24px; height: 24px; flex: none; margin-top: -1px; }
+  .ct-mxh { display: flex; flex-wrap: wrap; gap: 0 var(--k-5); }
 
   /* --- 3. Pháp nhân -------------------------------------------------------- */
-  .ct-day { padding-block: var(--k-6); font-size: 14px; color: var(--da); }
-  .ct-day a { color: var(--kem); display: inline-flex; align-items: center; min-height: 44px; }
+  /* Nền Charcoal, chữ 14px ở mọi dòng; dải cao theo nội dung. */
+  .ct-day { padding-block: var(--k-5); font-size: 14px; line-height: 1.6; color: var(--da); }
+  .ct-day a { color: var(--kem); display: inline-flex; align-items: center; min-height: var(--cham); }
   .chan-hang {
     display: flex; flex-wrap: wrap; gap: 10px 24px;
     /* baseline: link Quyền riêng tư đứng ngang dòng ©, không trôi xuống giữa khối pháp nhân. */
     align-items: baseline; justify-content: space-between;
   }
   .chan-dong { margin: 0; color: var(--kem); }
-  /* Dòng pháp nhân: nhỏ hơn một bậc, cách dòng © một khoảng. Mỗi cụm (tên công ty,
-     mã số thuế) không gãy giữa chừng — màn hẹp thì xuống dòng ở dấu "·". */
-  .phap-nhan { margin-top: 8px; font-size: 13px; line-height: 1.55; }
+  /* Dòng pháp nhân: cùng cỡ 14px với dòng ©, màu Warm Stone (8,19 : 1 trên Charcoal), cách
+     dòng © một khoảng. Mỗi cụm (tên công ty, mã số thuế) không gãy giữa chừng — màn hẹp thì
+     xuống dòng ở dấu "·". */
+  .phap-nhan { margin-top: var(--k-2); }
   .phap-nhan .chan-dong { color: var(--da); }
   .phap-nhan .lien { white-space: nowrap; }
 </style>
