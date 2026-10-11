@@ -236,9 +236,21 @@ export function kqLoi(e: unknown, macDinh: HaiThuTieng = LOI_KHO_CHUNG.macDinh):
 // hay phẩy trong ô KG luôn là dấu thập phân — không có chuyện "1.250" nghĩa là
 // một nghìn hai trăm năm mươi ký.
 //
-// Ô TIỀN thì ngược lại: đồng không có số lẻ, nên chấm, phẩy, khoảng trắng và
-// chữ "đ" đều là dấu phân cách hàng nghìn và bị bỏ đi: "450.000đ" = 450000.
+// Ô TIỀN thì ngược lại: đồng không có số lẻ, nên chấm, phẩy hay khoảng trắng chỉ
+// được là dấu phân cách hàng nghìn — đúng nhóm ba chữ số, một loại dấu: "450.000đ"
+// = 450000. "450,5" hay "45.00" là gõ nhầm số lẻ: báo sai, không đọc thành 4505.
+//
+// Ô SỐ NGUYÊN (số gói, số ngày) cũng vậy: "1.000" là một nghìn, còn "1.5" gói là
+// gõ nhầm — trước đây bỏ hết dấu chấm nên "1.5" thành 15 gói và được lưu luôn.
 // -----------------------------------------------------------------------------
+
+/** Chữ số có thể nhóm hàng nghìn bằng MỘT loại dấu (chấm, phẩy hoặc cách), đủ ba chữ số mỗi nhóm. */
+function boDauNghin(s: string, dau: RegExp): string | null {
+  if (/^\d+$/.test(s)) return s;
+  const m = s.match(/^\d{1,3}([^\d])\d{3}(?:\1\d{3})*$/);
+  if (!m || !dau.test(m[1])) return null;
+  return s.split(m[1]).join('');
+}
 
 /** "1,5" | "1.5" | "12" → số kg, tối đa 3 số lẻ. Trống → null. Sai → NaN. */
 export function docKg(v: unknown): number | null {
@@ -250,18 +262,21 @@ export function docKg(v: unknown): number | null {
 
 /** "450.000đ" | "450,000" | "450000" → 450000. Trống → null. Sai → NaN. */
 export function docTien(v: unknown): number | null {
-  const s = String(v ?? '').trim().replace(/[\s.,]/g, '').replace(/đ$|d$|vnd$/i, '');
+  const s = String(v ?? '').trim().replace(/\s*(đ|d|vnd)$/i, '');
   if (s === '') return null;
-  if (!/^\d{1,13}$/.test(s)) return NaN;
-  return Number(s);
+  const so = boDauNghin(s, /^[.,\s]$/);
+  if (so === null || !/^\d{1,13}$/.test(so)) return NaN;
+  return Number(so);
 }
 
-/** Số nguyên trong khoảng. Trống → null. Sai → NaN. */
+/** Số nguyên trong khoảng; "1.000" / "1 000" = 1000, "1.5" → sai. Trống → null. Sai → NaN. */
 export function docSoNguyen(v: unknown, min: number, max: number): number | null {
-  const s = String(v ?? '').trim().replace(/[\s.]/g, '');
+  const s = String(v ?? '').trim();
   if (s === '') return null;
-  if (!/^-?\d{1,9}$/.test(s)) return NaN;
-  const n = Number(s);
+  const am = s.startsWith('-');
+  const so = boDauNghin(am ? s.slice(1) : s, /^[.\s]$/);
+  if (so === null || !/^\d{1,9}$/.test(so)) return NaN;
+  const n = Number(so) * (am ? -1 : 1);
   return n >= min && n <= max ? n : NaN;
 }
 

@@ -114,7 +114,26 @@ await nhom('5 · ĐỌC SỐ KIỂU VIỆT', async () => {
   ok('"450,000" = 450000', docTien('450,000') === 450000);
   ok('"1 250 000" = 1250000', docTien('1 250 000') === 1250000);
   ok('"12a" → sai', Number.isNaN(docTien('12a')));
+  ok('"1.250.000 đ" (có cách trước đ) = 1250000', docTien('1.250.000 đ') === 1250000);
+  ok('"480000" = 480000', docTien('480000') === 480000);
+  ok('"480.000 VND" = 480000', docTien('480.000 VND') === 480000);
+  // Đồng không có số lẻ: "450,5" là bốn trăm năm mươi phẩy năm — gõ nhầm, không phải 4505 đồng.
+  ok('"450,5" đ → sai (không đọc thành 4505)', Number.isNaN(docTien('450,5')));
+  ok('"45.00" đ → sai (không đọc thành 4500)', Number.isNaN(docTien('45.00')));
+  ok('"1.25.000" (nhóm lệch) → sai', Number.isNaN(docTien('1.25.000')));
+  ok('"1.250,000" (trộn dấu) → sai', Number.isNaN(docTien('1.250,000')));
   ok('Số nguyên trong khoảng', docSoNguyen('7', 0, 10) === 7 && Number.isNaN(docSoNguyen('11', 0, 10)));
+  // Số gói / số ngày: dấu chấm chỉ là dấu nghìn ("1.000" = một nghìn). "1.5" gói là gõ nhầm số lẻ —
+  // trước đây bị đọc thành 15 gói và lưu luôn, câu "số gói là số nguyên" không bao giờ hiện.
+  ok('"1.000" gói = 1000', docSoNguyen('1.000', 0, 100000) === 1000);
+  ok('"12 000" gói = 12000', docSoNguyen('12 000', 0, 100000) === 12000);
+  ok('"1.5" gói → sai (không đọc thành 15)', Number.isNaN(docSoNguyen('1.5', 0, 100000)));
+  ok('"12.0" gói → sai (không đọc thành 120)', Number.isNaN(docSoNguyen('12.0', 0, 100000)));
+  ok('"2.50" gói → sai (không đọc thành 250)', Number.isNaN(docSoNguyen('2.50', 0, 100000)));
+  ok('"1,5" gói → sai', Number.isNaN(docSoNguyen('1,5', 0, 100000)));
+  ok('" 7 " có cách hai đầu = 7', docSoNguyen(' 7 ', 0, 10) === 7);
+  ok('"-3" trong khoảng âm = -3', docSoNguyen('-3', -10, 10) === -3);
+  ok('Ô trống → null', docSoNguyen('', 0, 10) === null);
 
   ok('Ngày 2026-02-28 hợp lệ', docNgay('2026-02-28') === '2026-02-28');
   ok('Ngày 2026-02-30 không có thật', docNgay('2026-02-30') === undefined);
