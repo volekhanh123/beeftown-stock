@@ -80,16 +80,19 @@ await nhom('1 · MỌI HÀM SQL ĐỀU CÓ KIỂM THỬ NHẮC TÊN', async () =
 await nhom('2 · KHÔNG FILE MÃ NGUỒN NÀO BỊ .gitignore CHẶN ÂM THẦM', async () => {
   // Chỉ những chỗ chứa mã nguồn. Chỗ khác bị chặn là CÓ Ý (tài liệu mật, ảnh, .env, file cân .TMS).
   // web/cong-cu/: script dựng tài sản thương hiệu và ảnh (Python) — .gitignore mở riêng đuôi .py ở đó.
-  const CHO_MA = /^(web\/(src|kiem-tra|cong-cu)\/|crm\/(test|supabase|sao-luu)\/|can-app\/(src|test|scripts)\/|\.github\/|CLAUDE\.md$)/;
+  // .claude/skills/: skill dùng chung — .gitignore mở từng skill, nên skill mới bị chặn tới khi có dòng mở.
+  const CHO_MA = /^(web\/(src|kiem-tra|cong-cu)\/|crm\/(test|supabase|sao-luu)\/|can-app\/(src|test|scripts)\/|\.github\/|\.claude\/skills\/|CLAUDE\.md$)/;
   const DUOI_MA = /\.(ts|tsx|mjs|js|astro|sql|ya?ml|md|json|css|html|ps1|sh|py)$/;
   // --directory: thư mục bị chặn cả khối (node_modules, dist, ảnh lỗi) hiện một dòng "thư mục/" thay vì từng
   // file. Thư mục bị chặn chỉ đáng ngờ khi nằm trong chỗ CHỈ chứa mã nguồn — web/kiem-tra/anh-loi/ hay
   // crm/supabase/.temp/ là cố ý chặn.
-  const THU_MUC_MA = /^(web\/src|crm\/test|crm\/sao-luu|crm\/supabase\/(migrations|thu)|can-app\/(src|test|scripts)|\.github)\//;
+  const THU_MUC_MA = /^(web\/src|crm\/test|crm\/sao-luu|crm\/supabase\/(migrations|thu)|can-app\/(src|test|scripts)|\.github|\.claude\/skills)\//;
   const biChan = git(['ls-files', '--others', '--ignored', '--exclude-standard', '--directory'])
     .split('\n').filter(f => (f.endsWith('/') ? THU_MUC_MA.test(f) : CHO_MA.test(f) && DUOI_MA.test(f)) && !/node_modules\//.test(f));
+  const coSkill = biChan.some(f => f.startsWith('.claude/'));
   ok('Mọi file mã nguồn đều được git thấy', biChan.length === 0,
-     biChan.length ? `${biChan.slice(0, 8).join(', ')} — thêm một dòng !đường-dẫn vào mục ĐƯỢC PHÉP của .gitignore` : '');
+     biChan.length ? `${biChan.slice(0, 8).join(', ')} — thêm một dòng !đường-dẫn vào mục ĐƯỢC PHÉP của .gitignore`
+       + (coSkill ? ' (skill dùng chung: mở cạnh dòng thiet-ke-beeftown; skill riêng của máy: chuyển sang ~/.claude/skills/)' : '') : '');
 });
 
 // ===========================================================================
