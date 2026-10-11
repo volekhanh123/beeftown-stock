@@ -5,8 +5,9 @@ DỰNG BIỂU TƯỢNG, HỌA TIẾT VÀ ẢNH CHIA SẺ TỪ CÁC SVG ĐÃ TÁC
     python3 -I tao-bieu-tuong.py <thu-muc-svg-da-tach> <web/public>
     python3 -I tao-bieu-tuong.py --chi-bieu-tuong-app <web/public>
 
-Đầu vào là thư mục tach-tu-pdf.py vừa xuất. Đầu ra:
-  · <public>/thuong-hieu/*.svg      — chép các tài sản web dùng
+Đầu vào là thư mục tach-tu-pdf.py vừa xuất (SVG mang mã màu của PDF nhận diện). Đầu ra:
+  · <public>/thuong-hieu/*.svg      — chép các tài sản web dùng, đổi mã màu của PDF sang bảng
+                                       màu thương hiệu đã chốt (DOI_MAU). Hình không đổi.
   · <public>/thuong-hieu/hoa-van-chu.svg — ô lặp chữ BEEFTOWN (trang 11), một màu,
                                        dùng làm mặt nạ CSS
   · <public>/bieu-tuong.svg         — biểu tượng trình duyệt: brandmark kem trên ô đỏ
@@ -22,7 +23,10 @@ DỰNG BIỂU TƯỢNG, HỌA TIẾT VÀ ẢNH CHIA SẺ TỪ CÁC SVG ĐÃ TÁC
 --chi-bieu-tuong-app chỉ dựng lại các biểu tượng cài như app, từ
 <public>/thuong-hieu/dau-bo-kem.svg đã có trong repo — không cần PDF.
 
-Không vẽ lại gì: mọi hình là path gốc, chỉ được đặt vị trí và co giãn.
+Không vẽ lại gì: mọi hình là path gốc, chỉ được đặt vị trí, co giãn và đổi mã màu.
+
+Chạy lại trên chính các SVG đã đổi màu (chép web/public/thuong-hieu ra một thư mục tạm rồi
+đưa thư mục đó làm đầu vào) cho cùng kết quả: bảng DOI_MAU không còn gì để đổi.
 """
 import re
 import shutil
@@ -33,7 +37,19 @@ from pathlib import Path
 from PIL import Image
 
 VE = Path(__file__).with_name('ve-svg.mjs')
-DO = '#B23A2C'
+# Bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (THUONG-HIEU.md ở thư mục gốc).
+DO = '#A70C0C'
+# Mã màu trong PDF nhận diện → mã của bảng đã chốt. tach-tu-pdf.py giữ đúng mã của PDF để
+# so-sanh.py đối chiếu được từng điểm ảnh; việc đổi màu chỉ làm ở bước chép này.
+DOI_MAU = {
+    '#B23A2C': '#A70C0C',   # Beef Red
+    '#960F13': '#890607',   # đỏ đậm: đường vân mỡ, vòng trong của tem
+    '#FBF4E1': '#F0E3D0',   # Cream
+    '#F1E4C2': '#E7D5BC',   # kem đậm (lớp lót logo)
+}
+# Guideline: cả logo một màu đỏ. Trong logo ngang của PDF, dòng "Pick it – Grill it – Love it"
+# là đỏ đậm; trên web nó cùng màu với chữ BEEFTOWN.
+DOI_MAU_RIENG = {'logo-ngang-do': {'#960F13': '#A70C0C'}}
 # Ô đỏ của biểu tượng trình duyệt: brandmark dài 52 trong ô 64, bo góc 14.
 CO_BRANDMARK, BO_GOC = 52, 14
 # Biểu tượng maskable: Android cắt theo hình tròn / bo tròn tùy máy, chỉ chắc giữ được
@@ -58,6 +74,12 @@ def doc(svg):
 
 def so(v):
     return f'{round(v, 3):.3f}'.rstrip('0').rstrip('.')
+
+
+def doi_mau(svg, ten):
+    """Đổi mọi mã màu của PDF trong một SVG sang bảng đã chốt. Mã không có trong bảng giữ nguyên."""
+    bang = {**DOI_MAU, **DOI_MAU_RIENG.get(ten, {})}
+    return re.sub(r'#[0-9A-Fa-f]{6}\b', lambda m: bang.get(m[0].upper(), m[0]), svg)
 
 
 def o_do(dau, bw, bh, co=CO_BRANDMARK, bo_goc=BO_GOC):
@@ -127,14 +149,15 @@ def dung_bieu_tuong_app(public):
 
 def main():
     if len(sys.argv) == 3 and sys.argv[1] == '--chi-bieu-tuong-app':
-        dung_bieu_tuong_app(Path(sys.argv[2]))
+        dung_bieu_tuong_app(Path(sys.argv[2]).resolve())
         return
-    vao, public = Path(sys.argv[1]), Path(sys.argv[2])
+    # resolve(): ảnh chia sẻ dựng từ đường dẫn file:// — đường dẫn tương đối (../../public) không đổi được.
+    vao, public = Path(sys.argv[1]).resolve(), Path(sys.argv[2]).resolve()
     ra = public / 'thuong-hieu'
     ra.mkdir(parents=True, exist_ok=True)
 
     for ten in DUNG_TREN_WEB:
-        shutil.copyfile(vao / f'{ten}.svg', ra / f'{ten}.svg')
+        (ra / f'{ten}.svg').write_text(doi_mau((vao / f'{ten}.svg').read_text(encoding='utf-8'), ten), encoding='utf-8')
 
     # --- Ô lặp chữ: hai hàng so le, như mẫu giấy gói trang 11 -----------------
     (w, h), than = doc(vao / 'chu-beeftown-nho.svg')[0][2:], doc(vao / 'chu-beeftown-nho.svg')[1]
@@ -151,7 +174,7 @@ def main():
     (ra / 'hoa-van-chu.svg').write_text(hoa_van, encoding='utf-8')
 
     # --- Biểu tượng trình duyệt ------------------------------------------------
-    (_, _, bw, bh), dau = doc(vao / 'dau-bo-kem.svg')
+    (_, _, bw, bh), dau = doc(ra / 'dau-bo-kem.svg')   # bản đã đổi màu
     (public / 'bieu-tuong.svg').write_text(o_do(dau, bw, bh), encoding='utf-8')
 
     tam = ra / '.tam'
@@ -169,7 +192,7 @@ def main():
         html = tam / 'chia-se.html'
         html.write_text(
             '<!doctype html><html><body style="margin:0;width:1200px;height:630px;overflow:hidden;'
-            'position:relative;background:#B23A2C">'
+            f'position:relative;background:{DO}">'
             f'<img src="{(ra / "van-mo.svg").as_uri()}" style="position:absolute;inset:0;width:1200px;height:630px;object-fit:cover">'
             f'<img src="{(ra / "logo-ngang-kem.svg").as_uri()}" style="position:absolute;left:50%;top:50%;'
             'width:620px;transform:translate(-50%,-50%)">'

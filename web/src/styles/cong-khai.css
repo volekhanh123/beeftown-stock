@@ -12,20 +12,41 @@
    Màu chữ theo BỀ MẶT, không theo từng chỗ: mỗi khối khai một bề mặt (.be-kem,
    .be-kem-dam, .be-toi, .be-do) và mọi thứ bên trong đọc biến của bề mặt đó.
    Độ tương phản đã tính (WCAG 2.2) — xem web/THIET-KE.md, mục "Màu theo vai":
-     chữ than / kem            16,3 : 1      chữ kem / đỏ           5,4 : 1
-     chữ phụ (--muc-nhat) / kem 5,9 : 1      chữ kem / than         16,3 : 1
-     đỏ / kem                   5,4 : 1      Warm Stone / than       7,7 : 1
-     đỏ đậm (--do-sau) / kem    8,1 : 1      Mustard / than          8,9 : 1
-   KHÔNG BAO GIỜ: Warm Stone, Mustard, Marigold làm chữ trên nền kem (1,5–2,1 : 1).
+     chữ than / kem            14,96 : 1     chữ kem / đỏ           6,15 : 1
+     chữ phụ (--muc-nhat) / kem 5,92 : 1     chữ kem / than        14,96 : 1
+     đỏ / kem                   6,15 : 1     Warm Stone / than      8,19 : 1
+     đỏ đậm (--do-sau) / kem    7,93 : 1     Marigold / than        9,59 : 1
+   KHÔNG BAO GIỜ: Warm Stone, Marigold làm chữ trên nền kem (1,6–1,8 : 1).
    ============================================================================= */
 
 .ck {
+  /* Bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (THUONG-HIEU.md ở thư mục gốc).
+     Khai ở <body class="ck"> nên chỉ trang công khai đọc; /noi-bo và kho không có lớp
+     này và vẫn đọc :root của chung.css. Năm màu thương hiệu: */
+  --do:        #A70C0C;   /* Beef Red */
+  --kem:       #F0E3D0;   /* Cream */
+  --than:      #151008;   /* Charcoal — tên màu; Beeftown nướng vỉ gas */
+  --cuc-vang:  #F5AA14;   /* Marigold */
+  --da:        #B8A98C;   /* Warm Stone */
+  /* Guideline chỉ có một vàng: --mu-tat giữ tên cho các chỗ đang dùng, cùng mã với Marigold. */
+  --mu-tat:    #F5AA14;
+  /* Màu pha cho màn hình (Khánh cho phép ngày 10/10/2026): một đỏ đậm cho nút khi di chuột
+     và chữ nhỏ, hai nền kem đậm hơn để tách khối, một màu viền ô nhập. */
+  --do-dam:    #890607;
+  --do-sau:    #890607;
+  --kem-sau:   #EBDCC6;
+  --kem-dam:   #E7D5BC;
+  --vien-o:    #7A7366;   /* 3,71 : 1 với kem, 4,70 : 1 với nền trắng của ô (WCAG 1.4.11 cần 3 : 1) */
+  --muc-nhat:  rgba(21, 16, 8, .68);
+  --vach:      rgba(21, 16, 8, .16);
+  --vach-kem:  rgba(240, 227, 208, .22);
+
   /* Bề mặt mặc định: kem */
   --nen:        var(--kem);
   --chu-chinh:  var(--than);
   --chu-phu:    var(--muc-nhat);
-  --nhan:       var(--do);        /* chữ nhấn cỡ thường: đỏ trên kem 5,4 : 1 */
-  --nhan-nho:   var(--do-sau);    /* chữ nhấn rất nhỏ (≤ 13px): 8,1 : 1 */
+  --nhan:       var(--do);        /* chữ nhấn cỡ thường: đỏ trên kem 6,15 : 1 */
+  --nhan-nho:   var(--do-sau);    /* chữ nhấn rất nhỏ (≤ 13px): 7,93 : 1 */
   --vien:       var(--vach);
   --vong-focus: var(--than);
   --nut-nen:    var(--do);
@@ -90,7 +111,7 @@ html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 1
 .ck .be-do {
   --nen: var(--do); --chu-chinh: var(--kem); --chu-phu: var(--kem);
   --nhan: var(--kem); --nhan-nho: var(--kem);
-  --vien: rgba(251, 244, 225, .35); --vong-focus: var(--kem);
+  --vien: rgba(240, 227, 208, .35); --vong-focus: var(--kem);
   --nut-nen: var(--kem); --nut-chu: var(--do-sau); --nut-nen-di: var(--kem-dam);
   --net-ve: var(--kem);
 }
@@ -205,7 +226,7 @@ html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 1
 .ck .vi-tri .nhan {
   align-self: flex-start;
   font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase;
-  color: var(--do-sau); background: rgba(178, 58, 44, .1);
+  color: var(--do-sau); background: rgba(167, 12, 12, .1);
   padding: 4px 10px; border-radius: 2px;
 }
 /* Hangul không giãn chữ (THIET-KE mục 3). */
@@ -220,7 +241,7 @@ html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 1
   position: absolute; left: 10px; bottom: 10px; margin: 0;
   padding: 3px 8px; border-radius: 3px;
   font-size: 12px; font-weight: 600; line-height: 1.4; letter-spacing: .02em;
-  color: var(--kem); background: rgba(30, 22, 14, .78);
+  color: var(--kem); background: rgba(21, 16, 8, .78);
 }
 
 /* Khung ảnh chờ ảnh chụp thật: đúng tỷ lệ của ảnh sau này, có artwork — không
@@ -235,7 +256,7 @@ html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 1
 }
 /* Dưới 600px: tỷ lệ của khung ảnh điện thoại — đúng chỗ ảnh thật (khungNho) sẽ nằm. */
 @media (max-width: 599px) { .ck .khung-anh { aspect-ratio: var(--ti-le-nho, var(--ti-le, 4 / 3)); } }
-.ck .khung-anh.tren-toi { background: #2A2016; color: var(--kem); }
+.ck .khung-anh.tren-toi { background: #211A10; color: var(--kem); }
 .ck .khung-anh.tren-do  { background: var(--do-sau); color: var(--kem); }
 .ck .khung-anh > svg { width: min(78%, 420px); height: auto; position: relative; }
 .ck .khung-anh::before {
@@ -268,7 +289,7 @@ html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 1
 }
 /* Chữ BEEFTOWN lặp (trang 11) — chìm vào nền, chỉ đọc ra khi nhìn gần. */
 .ck .hoa-van-chu {
-  background: var(--mau-hoa-van, rgba(150, 15, 19, .55));
+  background: var(--mau-hoa-van, rgba(137, 6, 7, .55));
   -webkit-mask: url('/thuong-hieu/hoa-van-chu.svg') 0 0 / 186px auto repeat;
           mask: url('/thuong-hieu/hoa-van-chu.svg') 0 0 / 186px auto repeat;
 }

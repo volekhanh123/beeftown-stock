@@ -15,11 +15,14 @@
  *      html:has(body.ck) — không lọt ra /noi-bo, kho.
  *   3. SVG thương hiệu (web/public/thuong-hieu, bieu-tuong.svg) sạch: có viewBox; không
  *      <script>, không thuộc tính on…=, không <text> (chữ là nét vẽ gốc của PDF), không
- *      <image>, không href ra ngoài; màu chỉ trong bảng màu của PDF.
+ *      <image>, không href ra ngoài; màu chỉ trong bảng màu thương hiệu (bất biến 6).
  *   4. Tên file tài sản là ASCII. Mỗi cỡ ảnh khai trong anh-tao-san.ts có đủ .avif + .webp,
  *      mỗi file ≤ 300 KB, tổng ≤ 8 MB, không file ảnh thừa.
  *   5. Mọi file trong web/public/thuong-hieu, web/public/anh, web/cong-cu được git thấy
  *      (.gitignore "chặn hết rồi mở từng cái"). Ảnh chia sẻ đúng 1200×630.
+ *   6. Trang công khai dùng đúng bảng màu Khánh chốt ngày 09/10/2026 (THUONG-HIEU.md): mã khai
+ *      một lần trong khối .ck đầu tiên của cong-khai.css; không file công khai nào còn mã của
+ *      bảng cũ; các cặp chữ / nền của hệ bề mặt đủ tương phản (WCAG 2.2).
  */
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
@@ -158,13 +161,14 @@ await nhom('2 · chung.css GIỮ NGUYÊN BIẾN CŨ; cong-khai.css CHỈ Ở TRA
 });
 
 // ===========================================================================
-// Bảng màu PDF nhận diện (Brand Overview mục 7 + BGBTFILE trang 1–3, 11). Thêm màu mới vào
-// đây chỉ khi nó có trong PDF — và ghi lại ở web/THIET-KE.md.
-const BANG_MAU = new Set(['#B23A2C', '#8F2C21', '#960F13', '#FBF4E1', '#F5ECD7', '#F1E4C2', '#1E160E',
+// Bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (THUONG-HIEU.md mục 1) cùng các màu pha của trang
+// công khai (BANG_MAU_CHOT ở nhóm 6). Hình vẫn là nét gốc của PDF nhận diện; tao-bieu-tuong.py đổi mã
+// màu của PDF sang bảng này khi chép SVG. Thêm màu vào đây chỉ khi THUONG-HIEU.md đã có nó.
+const BANG_MAU = new Set(['#A70C0C', '#890607', '#F0E3D0', '#EBDCC6', '#E7D5BC', '#151008',
   '#000', '#000000', '#FFF', '#FFFFFF', 'NONE', 'CURRENTCOLOR', 'TRANSPARENT']);
 const SVG = [...moiFile(join(WEB, 'public', 'thuong-hieu')).filter(f => f.endsWith('.svg')), join(WEB, 'public', 'bieu-tuong.svg')];
 
-await nhom(`3 · ${SVG.length} SVG THƯƠNG HIỆU SẠCH, MÀU TRONG BẢNG MÀU PDF`, async () => {
+await nhom(`3 · ${SVG.length} SVG THƯƠNG HIỆU SẠCH, MÀU TRONG BẢNG MÀU THƯƠNG HIỆU`, async () => {
   ok('Có tài sản SVG thương hiệu (logo, đầu bò, rosemary, tem…)', SVG.length >= 10, `${SVG.length} file`);
   for (const f of SVG) {
     const s = readFileSync(f, 'utf8');
@@ -184,7 +188,7 @@ await nhom(`3 · ${SVG.length} SVG THƯƠNG HIỆU SẠCH, MÀU TRONG BẢNG MÀ
       ...[...s.matchAll(/\b(?:fill|stroke|stop-color|flood-color|color)\s*:\s*([^;"'}]+)/gi)].map(m => m[1]),
     ].map(m => m.trim().toUpperCase()).filter(m => !/^URL\(#/.test(m));
     const la = [...new Set(mau.filter(m => !BANG_MAU.has(m)))];
-    ok(`${ten}: màu chỉ trong bảng màu PDF (${[...new Set(mau)].join(' ') || 'không khai màu'})`, la.length === 0, la.join(', '));
+    ok(`${ten}: màu chỉ trong bảng màu thương hiệu (${[...new Set(mau)].join(' ') || 'không khai màu'})`, la.length === 0, la.join(', '));
   }
 });
 
@@ -260,6 +264,105 @@ await nhom('5 · GIT THẤY MỌI FILE TÀI SẢN; ẢNH CHIA SẺ ĐÚNG CỠ',
   const layout = readFileSync(join(SRC, 'layouts', 'Trang.astro'), 'utf8');
   ok('Trang.astro khai og:image dự phòng 1200 × 630 đúng file này',
      layout.includes('/thuong-hieu/chia-se-1200x630.png') && /rong: 1200, cao: 630/.test(layout));
+});
+
+// ===========================================================================
+// Bảng màu Khánh chốt ngày 09/10/2026 và các màu pha cho màn hình Khánh cho phép ngày 10/10/2026
+// (THUONG-HIEU.md mục 1 và 4). Chép tay ở đây, KHÔNG đọc từ file: sửa nhầm một mã ở cong-khai.css
+// thì phép thử này đỏ. /noi-bo và kho chưa đổi: chúng đọc :root của chung.css (nhóm 2 giữ nguyên).
+const BANG_MAU_CHOT = {
+  '--do': '#A70C0C', '--kem': '#F0E3D0', '--than': '#151008', '--cuc-vang': '#F5AA14', '--da': '#B8A98C',
+  '--mu-tat': '#F5AA14',                                  // guideline chỉ có một vàng: hai tên, một mã
+  '--do-dam': '#890607', '--do-sau': '#890607',           // một đỏ đậm cho nút khi di chuột và chữ nhỏ
+  '--kem-sau': '#EBDCC6', '--kem-dam': '#E7D5BC', '--vien-o': '#7A7366',
+  '--muc-nhat': 'rgba(21, 16, 8, .68)', '--vach': 'rgba(21, 16, 8, .16)', '--vach-kem': 'rgba(240, 227, 208, .22)',
+};
+// Mã của các bảng trước (PDF nhận diện, guideline tới bản 15), viết kiểu hex hoặc bộ ba số RGB.
+const MA_CU = /#(?:B23A2C|8F2C21|960F13|FBF4E1|F5ECD7|F1E4C2|1E160E|F2A900|F5C211|8C8577|A21E22|2A2016)\b|\b(?:30, ?22, ?14|251, ?244, ?225|178, ?58, ?44|150, ?15, ?19|143, ?44, ?33)\b/gi;
+// Khu nội bộ — cùng danh sách với test-cong-khai-dinh-chu.mjs. Khu này chưa đổi bảng màu.
+const NOI_BO = ['pages/noi-bo/', 'components/kho/', 'layouts/Kho.astro', 'layouts/NoiBo.astro',
+  'components/SucKhoeHeThong.astro', 'components/BanDoChucNang.astro', 'components/OTimChucNang.astro'];
+
+/** Độ sáng tương đối và tỷ lệ tương phản theo WCAG 2.2. Màu là '#RRGGBB'. */
+function doSang(hex) {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map(c => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function tuongPhan(a, b) {
+  const [sang, toi] = [doSang(a), doSang(b)].sort((x, y) => y - x);
+  return (sang + 0.05) / (toi + 0.05);
+}
+/** Màu chữ có độ trong (rgba … alpha) đặt trên một nền đặc → màu đặc mắt thấy. */
+function phaTren(chu, nen, alpha) {
+  const kenh = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const [c, n] = [kenh(chu), kenh(nen)];
+  return '#' + c.map((v, i) => Math.round(v * alpha + n[i] * (1 - alpha)).toString(16).padStart(2, '0')).join('');
+}
+
+await nhom('6 · BẢNG MÀU THƯƠNG HIỆU CHỐT 09/10/2026 — CHỈ Ở TRANG CÔNG KHAI', async () => {
+  const ck = boChuThich(readFileSync(join(SRC, 'styles', 'cong-khai.css'), 'utf8'));
+  const khoi = docQuyTac(ck).find(q => q.boChon === '.ck')?.trong ?? '';
+  for (const [bien, giaTri] of Object.entries(BANG_MAU_CHOT)) {
+    const m = khoi.match(new RegExp(`(?:^|[;\\s])${bien}\\s*:\\s*([^;]+);`));
+    const soLanKhai = (ck.match(new RegExp(`(?:^|[;{\\s])${bien}\\s*:`, 'g')) ?? []).length;
+    ok(`cong-khai.css: ${bien} là ${giaTri}, khai đúng một lần trong khối .ck đầu tiên`,
+       !!m && chuanHoa(m[1]) === chuanHoa(giaTri) && soLanKhai === 1,
+       m ? `${m[1].trim()} · khai ${soLanKhai} lần` : 'không thấy trong khối .ck đầu tiên');
+  }
+
+  // Không file công khai nào còn mã của bảng cũ — kể cả trong chú thích: chú thích ghi mã cũ là
+  // chỗ người sau chép lại.
+  const moiAstro = thu => readdirSync(join(SRC, thu), { withFileTypes: true }).flatMap(d => {
+    const duong = thu ? `${thu}/${d.name}` : d.name;
+    return d.isDirectory() ? moiAstro(duong) : d.name.endsWith('.astro') ? [duong] : [];
+  });
+  const congKhai = [
+    ...moiAstro('').filter(f => !NOI_BO.some(n => f.startsWith(n))).map(f => join(SRC, f)),
+    join(SRC, 'styles', 'cong-khai.css'), ...SVG,
+  ];
+  ok(`Danh sách file công khai có khung trang, component và SVG (${congKhai.length} file), không có file nội bộ`,
+     congKhai.length > 40 && congKhai.some(f => f.endsWith('Trang.astro')) && !congKhai.some(f => /NoiBo\.astro|[\\/]kho[\\/]/.test(f)));
+  const conCu = congKhai.flatMap(f => {
+    const thay = [...new Set(readFileSync(f, 'utf8').match(MA_CU) ?? [])];
+    return thay.length ? [`${tuGoc(f)}: ${thay.join(' ')}`] : [];
+  });
+  ok('Không file công khai nào còn mã màu của bảng cũ (hex hoặc bộ ba RGB)', conCu.length === 0, conCu.slice(0, 8).join(' | '));
+
+  const layout = readFileSync(join(SRC, 'layouts', 'Trang.astro'), 'utf8');
+  const mauThanh = layout.match(/<meta name="theme-color" content="([^"]+)"/)?.[1];
+  ok('Trang.astro: theme-color là màu kem của bảng màu chốt', mauThanh?.toUpperCase() === BANG_MAU_CHOT['--kem'], mauThanh ?? 'không thấy thẻ');
+
+  // Tương phản của hệ bề mặt (THIET-KE.md mục 2). Chữ thường cần 4,5 : 1; viền ô nhập cần 3 : 1.
+  const M = BANG_MAU_CHOT;
+  const mucNhat = nen => phaTren(M['--than'], nen, 0.68);
+  const CAP = [
+    ['chữ than trên kem', M['--than'], M['--kem'], 7],
+    ['chữ than trên kem đậm', M['--than'], M['--kem-dam'], 7],
+    ['chữ phụ (than 68 %) trên kem', mucNhat(M['--kem']), M['--kem'], 4.5],
+    ['chữ phụ (than 68 %) trên kem đậm', mucNhat(M['--kem-dam']), M['--kem-dam'], 4.5],
+    ['chữ đỏ trên kem', M['--do'], M['--kem'], 4.5],
+    ['chữ đỏ trên kem sau', M['--do'], M['--kem-sau'], 4.5],
+    ['chữ đỏ trên kem đậm', M['--do'], M['--kem-dam'], 4.5],
+    ['chữ đỏ đậm trên kem đậm', M['--do-sau'], M['--kem-dam'], 4.5],
+    ['chữ kem trên đỏ (nút chính, dải đỏ)', M['--kem'], M['--do'], 4.5],
+    ['chữ kem trên đỏ đậm (nút khi di chuột)', M['--kem'], M['--do-dam'], 4.5],
+    ['chữ đỏ đậm trên kem (nút trên dải đỏ)', M['--do-sau'], M['--kem'], 4.5],
+    ['chữ kem trên than', M['--kem'], M['--than'], 7],
+    ['chữ Warm Stone trên than', M['--da'], M['--than'], 4.5],
+    ['chữ vàng trên than', M['--mu-tat'], M['--than'], 4.5],
+    ['viền ô nhập trên kem', M['--vien-o'], M['--kem'], 3],
+    ['viền ô nhập trên nền trắng của ô', M['--vien-o'], '#FFFFFF', 3],
+  ];
+  for (const [ten, chu, nen, can] of CAP) {
+    const r = tuongPhan(chu, nen);
+    ok(`Tương phản ${ten}: ${r.toFixed(2).replace('.', ',')} : 1 (cần ≥ ${String(can).replace('.', ',')} : 1)`, r >= can);
+  }
+  // Vàng và Warm Stone không bao giờ làm chữ trên nền sáng: bề mặt sáng không được trỏ biến chữ vào chúng.
+  const beSang = docQuyTac(ck).filter(q => /\.be-kem/.test(q.boChon) && !/\.be-(toi|do)/.test(q.boChon)).map(q => q.trong).join(';');
+  ok('Bề mặt sáng (.be-kem…) không dùng vàng hay Warm Stone làm màu chữ', !/--(chu-chinh|chu-phu|nhan|nhan-nho)\s*:\s*var\(--(mu-tat|cuc-vang|da)\)/.test(beSang));
+  ok(`Vàng trên kem chỉ ${tuongPhan(M['--cuc-vang'], M['--kem']).toFixed(2).replace('.', ',')} : 1, Warm Stone trên kem chỉ ${tuongPhan(M['--da'], M['--kem']).toFixed(2).replace('.', ',')} : 1 — đúng lý do của luật trên`,
+     tuongPhan(M['--cuc-vang'], M['--kem']) < 3 && tuongPhan(M['--da'], M['--kem']) < 3);
 });
 
 process.exit(ketThuc('GIAO DIỆN TRANG CÔNG KHAI'));
