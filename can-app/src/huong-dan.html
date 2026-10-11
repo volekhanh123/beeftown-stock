@@ -23,10 +23,12 @@
   từ kho và mục 4 của thẻ Cân & thông số; ô "Cổng hai chiều" ở Cài đặt. Nút của 2.1 trích nguyên văn.
 -->
 <style>
+  /* Bảng màu thương hiệu Khánh chốt ngày 09/10/2026 — cùng bộ biến và cùng giá trị với giao-dien.html (xem chú thích ở đó). */
   :root {
-    --do: #B23A2C; --do-dam: #8E2B20; --kem: #FBF4E1; --kem-sau: #F3E8CC; --mu-tat: #F2A900;
-    --than: #1E160E; --da: #B8A98C; --vach: #E4D8BC; --trang: #FFFFFF;
-    --xanh: #1F7A4C; --xanh-nen: #E9F5EE; --do-nen: #FDECEA; --vang-nen: #FFF5DC; --chu-phu: #6A5D45;
+    --do: #A70C0C; --do-dam: #890607; --kem: #F0E3D0; --kem-sau: #EBDCC6; --mu-tat: #F5AA14;
+    --than: #151008; --da: #B8A98C; --vach: #E7D5BC; --trang: #FFFFFF;
+    --vien-o: #7A7366; --chu-phu: rgba(21, 16, 8, .68);
+    --xanh: #1A683F; --xanh-nen: #E4F0E5; --do-nen: #FAE9E6; --vang-nen: #FDE9B5; --vang-chu: #7A5200;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -71,7 +73,7 @@
   .hop .tieu-de { font-weight: 700; margin: 0 0 6px; font-size: 16px; }
   .hop.cam .tieu-de { font-size: 20px; color: var(--do-dam); letter-spacing: .01em; }
   .hop.cam ul { padding-left: 0; list-style: none; }
-  .hop.cam li { padding: 7px 0 7px 34px; position: relative; border-top: 1px solid #f3c8c2; margin: 0; }
+  .hop.cam li { padding: 7px 0 7px 34px; position: relative; border-top: 1px solid rgba(167,12,12,.22); margin: 0; }
   .hop.cam li:first-child { border-top: 0; }
   .hop.cam li::before { content: "✕"; position: absolute; left: 4px; top: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--do); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; }
 
@@ -82,7 +84,7 @@
   .nhan.nv { background: var(--xanh-nen); color: var(--xanh); border: 1px solid var(--xanh); }
   .nhan.da { background: var(--xanh-nen); color: var(--xanh); border: 1px solid var(--xanh); }
   .nhan.sach { background: var(--kem-sau); color: var(--chu-phu); border: 1px solid var(--da); }
-  .nhan.chua { background: var(--vang-nen); color: #6b4a00; border: 1px solid var(--mu-tat); }
+  .nhan.chua { background: var(--vang-nen); color: var(--vang-chu); border: 1px solid var(--mu-tat); }
   h2 .nhan, h3 .nhan { margin-left: 6px; }
 
   /* Bảng */

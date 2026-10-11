@@ -196,6 +196,33 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
+## Bản 2.9.2 — bảng màu thương hiệu chốt 09/10/2026 (chỉ đổi màu giao diện)
+
+Giao diện (`src/giao-dien.html`) và trang hướng dẫn (`src/huong-dan.html`) đổi sang bảng màu thương hiệu Khánh chốt ngày
+09/10/2026 (`THUONG-HIEU.md` ở gốc repo), cùng lúc với `/noi-bo` và kho trên web. **Mã nói chuyện với cân, với kho và mã ghi
+file không đổi dòng nào** — chỉ đổi khối `<style>` cùng vài thuộc tính màu trong hai file HTML, và số phiên bản trong
+`src/main.ts`.
+
+- **Năm màu:** đỏ `#A70C0C` (Beef Red), nền kem `#F0E3D0` (Cream), chữ và đầu trang `#151008` (Charcoal), điểm nhấn
+  `#F5AA14` (Marigold), nét kẻ `#B8A98C` (Warm Stone). Thêm vài màu pha chỉ dùng trên màn hình (đỏ đậm khi di chuột, hai nền
+  kem đậm hơn, màu viền ô nhập) và màu trạng thái (xanh = xong, vàng = lưu ý, đỏ nhạt = lỗi) — cùng mã với web.
+- **Hai file khai cùng 16 biến** trong khối `:root` của mỗi file (chương trình chạy không mạng nên không nạp CSS của web).
+  Ngoài khối đó không còn mã màu viết cứng, trừ hình của vật thật: tờ tem vẽ thử, màn hình cân vẽ trong hướng dẫn. Đổi một
+  mã thì đổi cả hai file và `web/src/styles/chung.css`, `noi-bo.css`.
+- **Dễ đọc hơn ở quầy** (tương phản tính theo WCAG 2.2): viền ô nhập đậm hơn — trước là màu Warm Stone, 2,31 : 1 với nền
+  trắng của ô, nay 4,70 : 1; chữ phụ một màu (6,63 : 1 trên nền trắng) thay cho ba sắc nâu gần nhau; đèn "chưa rõ" của ô
+  Cân đậm hơn; ô tem đang chờ đổi có thêm nền vàng nhạt.
+- Ý nghĩa của màu không đổi: đỏ = cần làm hoặc lỗi, vàng = lưu ý, xanh = xong.
+- Kiểm thử: `test/thu-bang-mau.ts` (bộ `test/thu.ts` gọi; chạy riêng được) — hai file đúng bảng, giống nhau, không còn mã cũ,
+  ô nhập kẻ viền đủ đậm, các cặp chữ / nền đủ tương phản. Từ phía web: `crm/test/test-noi-bo-bang-mau.mjs` nhóm 5.
+
+**Thử ở quán (2.9.2)** — sau khi cập nhật:
+1. Mở chương trình: nút chính đỏ sẫm hơn bản trước, nền kem đậm hơn một chút, viền ô nhập rõ hơn. Mở lần lượt từng thẻ:
+   mọi thứ ở đúng chỗ cũ, chỉ màu khác.
+2. Nhìn màn hình ở quầy dưới đèn thật: chữ phụ, chữ cảnh báo vàng nâu và viền các ô nhập phải đọc rõ. Chỗ nào khó đọc thì
+   chụp màn hình gửi về.
+3. Gửi giá một lần như thường ngày: kết quả như bản 2.9.1 (bản này không đụng tới việc với cân).
+
 ## Bản 2.9.1 — internet treo không làm đứng việc với cân; ghi file an toàn khi mất điện
 
 Rà lại cả đường đọc / ghi / xoá / ghi đè với cân (05/10/2026, trên cân giả): cổng hai chiều 33581, đường lui 33571, giữ kết
@@ -623,7 +650,7 @@ npx bun test/thu.ts              # cân giả, kho giả (test/kho-gia.ts), tem,
                                  # cân đổi địa chỉ (cân giả ở 127.0.0.37, .38…), dây RS232 (PowerShell giả),
                                  # 2.2: cân giả hai chiều (test/can-gia-hai-chieu.ts) + cân giả 33571 — nhật ký, xoá qua WiFi,
                                  # thông số, giờ, phím, sửa tem, quyền, /huong-dan; rồi kiểm thử từng module
-                                 # (thu-giao-thuc, thu-tem, thu-bao-cao-can, thu-thong-so — mỗi file cũng chạy riêng được);
+                                 # (thu-giao-thuc, thu-tem, thu-bao-cao-can, thu-thong-so, thu-bang-mau — mỗi file cũng chạy riêng được);
                                  # cuối cùng chạy src/main.ts thật với BEEFTOWN_CAN_DU_LIEU trỏ vào thư mục tạm
 npx bun test/xem-giao-dien.ts    # mở giao diện với dữ liệu giả để xem / chụp màn hình (--vai nhan_vien_quay để xem như NV quầy;
                                  # --can-doi-dia-chi: lúc mở tự dò ra cân; --hai-can: WiFi có hai cân, hiện nút chọn;
@@ -645,6 +672,7 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 - Thử bản 2.7 trên cân thật (mục "Thử ở quán (2.7)") và sửa `CAN-TMA.md` theo file kết quả Chẩn đoán WiFi.
 - Thử bản 2.8 trên cân thật (mục "Thử ở quán (2.8)").
 - Thử bản 2.9 trên cân thật (mục "Thử ở quán (2.9)"), rồi 2.9.1 (mục "Thử ở quán (2.9.1)").
+- Xem bản 2.9.2 trên màn hình ở quầy (mục "Thử ở quán (2.9.2)"): bản này chỉ đổi màu.
 - Tự gửi dừng hẳn sau một lần đọc lại thấy cân CHƯA nhận (cân đang ở menu Prog lúc gửi…) tới khi người bấm Gửi — tên ô mã theo
   tảng không lên cân trong lúc đó. Có thể tự gửi lại cả danh sách sau 10 phút (bấm Gửi cũng chỉ làm vậy): chủ quyết.
 - Phím tắt cố định cho từng ô: trang pha lóc mới HIỆN phím; gán phím vẫn bằng tay ở thẻ Phím tắt.
