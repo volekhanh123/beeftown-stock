@@ -71,10 +71,11 @@ Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
 - Trong CSS riêng: màu chỉ từ biến bề mặt và token; khoảng cách `--k-*`; cỡ chữ `--co-*`; mốc
   600 / 900 / 1024 / 1080px; tiếng Hàn chỉnh bằng `:lang(ko)`; thêm `@media (forced-colors: active)`
   khi dùng nền hay viền để truyền nghĩa.
-- Token ở đây mang giá trị của **khối `.ck`** (bảng màu chốt 09/10/2026 — bảng "Token của trang công
-  khai" trong `SKILL.md`), không phải giá trị `:root` của `chung.css` mà `/noi-bo`, kho đang đọc. Cần
-  màu trong suốt thì viết `rgba()` bằng số RGB của bảng đó; mã hex hay bộ ba số của bảng cũ trong một
-  file công khai (kể cả trong chú thích) là kiểm thử đỏ (`test-cong-khai-giao-dien.mjs` nhóm 6).
+- Token ở đây khai trong **khối `.ck`** của `cong-khai.css` (bảng màu chốt 09/10/2026 — bảng "Token
+  màu của website" trong `SKILL.md`). `:root` của `chung.css`, nơi `/noi-bo` và kho đọc, khai cùng giá
+  trị: đổi một mã thì đổi cả hai nơi. Cần màu trong suốt thì viết `rgba()` bằng số RGB của bảng đó; mã
+  hex hay bộ ba số của bảng cũ trong một file công khai (kể cả trong chú thích) là kiểm thử đỏ
+  (`test-cong-khai-giao-dien.mjs` nhóm 6).
 - Nút trên dải đỏ tự đổi (kem, chữ đỏ đậm) nhờ biến bề mặt — đừng viết lại màu nút trong component.
 
 ## Ba thứ tiếng

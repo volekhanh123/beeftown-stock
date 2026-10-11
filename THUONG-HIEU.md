@@ -1,12 +1,15 @@
 # Beeftown — bảng màu thương hiệu đã chốt và việc đưa sang website
 
 Lập ngày 10/10/2026 từ Brand Guideline (bản lưu số 17 trên Claude). Khánh chốt bảng màu ngày 09/10/2026.
-File này là bản tóm tắt cho người viết mã. Cập nhật ngày 11/10/2026, cùng PR "màu và thông tin chung".
+File này là bản tóm tắt cho người viết mã. Cập nhật ngày 11/10/2026, hai lần: cùng PR "màu và thông tin
+chung" (trang công khai), rồi cùng lần đổi màu `/noi-bo`, kho và Beeftown Cân.
 
-> **Trang công khai ĐÃ đổi theo bảng màu này** (token trong khối `.ck` của `web/src/styles/cong-khai.css`,
-> logo và hoa văn SVG, ảnh chia sẻ, biểu tượng trình duyệt). **`/noi-bo`, kho và Beeftown Cân CHƯA đổi**:
-> ba nơi đó vẫn dùng bảng cũ trong khối `:root` của `web/src/styles/chung.css` và token riêng của
-> `can-app/`. Nơi nào đã đổi, nơi nào chưa: mục 5.
+> **Cả website và Beeftown Cân ĐÃ đổi theo bảng màu này.** Trang công khai đổi trước (token trong khối
+> `.ck` của `web/src/styles/cong-khai.css`, logo và hoa văn SVG, ảnh chia sẻ, biểu tượng trình duyệt).
+> `/noi-bo` và kho đổi ngày 11/10/2026 (token trong hai khối `:root` của `web/src/styles/chung.css`),
+> cùng lúc với Beeftown Cân bản 2.9.2. Khối `.ck` và `:root` **cùng giá trị nhưng chưa gộp**: đổi một mã
+> thì đổi cả hai nơi. Thứ còn mang màu cũ (ảnh chụp trong trang hướng dẫn của kho, tài liệu thiết kế
+> cũ): mục 5.
 
 - Guideline đầy đủ (5 trang, tiếng Anh): https://claude.ai/artifact/EKyJZyhi7sDznKXHRtc3iq
 - Logo vector, file in đúng cỡ, bản PDF của guideline: máy Khánh, thư mục `Documents\Beeftown_Brand_Assets_V17_2026-10-09`. Không đưa vào repo (`.gitignore` chặn ảnh và PDF).
@@ -41,55 +44,92 @@ File này là bản tóm tắt cho người viết mã. Cập nhật ngày 11/10
 
 ## 3. Chỗ guideline và website đang khác nhau
 
-| Việc | Guideline | Trang công khai | `/noi-bo`, kho, Beeftown Cân |
-|---|---|---|---|
-| Beef Red | `#A70C0C` | `--do` `#A70C0C` | `--do` `#B23A2C` |
-| Cream | `#F0E3D0` | `--kem` `#F0E3D0` | `--kem` `#FBF4E1` |
-| Charcoal | `#151008` | `--than` `#151008` | `--than` `#1E160E` |
-| Màu vàng | 1 màu: Marigold `#F5AA14` | 1 mã `#F5AA14`, 2 tên biến (`--cuc-vang`, `--mu-tat`) | 2 màu: `--mu-tat` `#F2A900`, `--cuc-vang` `#F5C211` |
-| Màu pha | Không có | Có, Khánh cho phép ngày 10/10/2026: `--do-dam` và `--do-sau` `#890607`, `--kem-sau` `#EBDCC6`, `--kem-dam` `#E7D5BC`, `--vien-o` `#7A7366`, `--muc-nhat` (Charcoal 68 %) | Màu pha của bảng cũ |
-| Phần của từng màu | Cream 60 · Beef Red 25 · Charcoal 10 · Marigold dưới 5 | kem 60 · tối 25 · đỏ 12 · vàng 3 (`web/THIET-KE.md` ghi là gợi ý), chưa đổi | không tính |
-| Warm Stone | Chỉ nét kẻ và nền phụ | Chữ phụ trên nền tối | Chữ phụ trên nền tối |
-| Độ đậm Montserrat | 500 / 700 / 800 / 900 | 400 / 600 / 700 / 800 | 400 / 600 / 700 / 800 |
-| Địa điểm | Tầng 3, 63 Hồ Tùng Mậu | Đã đổi, trừ dòng địa chỉ pháp nhân ở chân trang (mục 6) | Không ghi địa chỉ nhà hàng trong mã |
+Trang công khai, `/noi-bo`, kho và Beeftown Cân dùng cùng một bảng, nên bảng dưới chỉ còn một cột cho mã.
 
-Hai việc cần Khánh quyết:
+| Việc | Guideline | Website (trang công khai, `/noi-bo`, kho) và Beeftown Cân |
+|---|---|---|
+| Beef Red | `#A70C0C` | `--do` `#A70C0C` |
+| Cream | `#F0E3D0` | `--kem` `#F0E3D0` |
+| Charcoal | `#151008` | `--than` `#151008` |
+| Màu vàng | 1 màu: Marigold `#F5AA14` | 1 mã `#F5AA14`, 2 tên biến (`--cuc-vang`, `--mu-tat`) |
+| Màu pha | Không có | Có, Khánh cho phép ngày 10/10/2026: `--do-dam` và `--do-sau` `#890607`, `--kem-sau` `#EBDCC6`, `--kem-dam` `#E7D5BC`, `--vien-o` `#7A7366`, `--muc-nhat` (Charcoal 68 %) |
+| Màu trạng thái | Không nói tới | Chỉ ở `/noi-bo`, kho, Beeftown Cân: xanh = xong, vàng = lưu ý, đỏ nhạt = làm ngay (mục 4). Màu chức năng của công cụ, không thuộc năm màu thương hiệu |
+| Phần của từng màu | Cream 60 · Beef Red 25 · Charcoal 10 · Marigold dưới 5 | Trang công khai: kem 60 · tối 25 · đỏ 12 · vàng 3 (`web/THIET-KE.md` ghi là gợi ý), chưa đổi. `/noi-bo`, kho: không tính |
+| Warm Stone | Chỉ nét kẻ và nền phụ | Chữ phụ trên nền tối; ở `/noi-bo` và kho còn là viền nút phụ và vạch đậm của kho |
+| Độ đậm Montserrat | 500 / 700 / 800 / 900 | 400 / 600 / 700 / 800, chưa đổi (Beeftown Cân dùng phông hệ thống) |
+| Địa điểm | Tầng 3, 63 Hồ Tùng Mậu | Trang công khai đã đổi, trừ dòng địa chỉ pháp nhân ở chân trang (mục 6). `/noi-bo`, kho không ghi địa chỉ nhà hàng trong mã |
 
-1. **Đã quyết ngày 10/10/2026:** website được giữ màu pha. Màn hình cần 1 đỏ đậm hơn cho nút khi di chuột và chữ nhỏ, 2 nền kem đậm hơn để tách khối, 1 màu viền ô nhập. Guideline vẫn ghi không màu pha; phép này chỉ áp dụng cho website.
+Ba việc cần Khánh quyết:
+
+1. **Đã quyết ngày 10/10/2026:** website được giữ màu pha. Màn hình cần 1 đỏ đậm hơn cho nút khi di chuột và chữ nhỏ, 2 nền kem đậm hơn để tách khối, 1 màu viền ô nhập. Guideline vẫn ghi không màu pha; phép này chỉ áp dụng cho website và Beeftown Cân.
 2. **Vẫn chờ:** phần của từng màu trên trang web theo guideline (đỏ 25, tối 10) hay giữ như đang chạy (tối 25, đỏ 12). Trang công khai hiện giữ như đang chạy; đổi là đổi bề mặt của vài khối, thuộc các PR bố cục sau.
+3. **Vẫn chờ:** độ đậm Montserrat trên web theo guideline (500 / 700 / 800 / 900) hay giữ 400 / 600 / 700 / 800. Hai lần đổi màu không đụng tới chữ.
 
-## 4. Token đã áp dụng trên trang công khai
+## 4. Token đã áp dụng
 
-Áp dụng trong khối `.ck` đầu tiên của `web/src/styles/cong-khai.css`. `crm/test/test-cong-khai-giao-dien.mjs` nhóm 6 chép tay từng mã và kiểm 16 cặp tương phản. Tương phản tính theo WCAG 2.2.
+Một bảng, khai ở **hai nơi cùng giá trị, chưa gộp**: khối `.ck` đầu tiên của `web/src/styles/cong-khai.css` (trang công khai) và hai khối `:root` của `web/src/styles/chung.css` (`/noi-bo` và kho). Beeftown Cân chạy không mạng nên khai lại cùng các mã trong khối `:root` của `can-app/src/giao-dien.html` và `can-app/src/huong-dan.html`. Tương phản tính theo WCAG 2.2.
 
-| Token | Bảng cũ (`:root`, còn ở `/noi-bo` và kho) | Đã áp dụng ở trang công khai | Tương phản |
+Kiểm thử chép tay từng mã, không đọc từ file CSS:
+
+- `crm/test/test-cong-khai-giao-dien.mjs`: nhóm 6 (khối `.ck`, 16 cặp tương phản của trang công khai), nhóm 2 (13 biến gốc của `:root`).
+- `crm/test/test-noi-bo-bang-mau.mjs`: `/noi-bo`, kho, Beeftown Cân. Nhóm 1 so khối `:root` với khối `.ck`; nhóm 4 tính các cặp tương phản trên thẻ trắng, nền kem và ba nền nhạt.
+- `can-app/test/thu-bang-mau.ts`: hai file HTML của Beeftown Cân.
+- `crm/test/test-ky-nang-thiet-ke.mjs`: bảng token trong skill thiết kế khớp cả hai nơi khai.
+
+| Token | Bảng cũ (đã bỏ) | Đã áp dụng | Tương phản |
 |---|---|---|---|
-| `--do` | `#B23A2C` | `#A70C0C` | 6,15 : 1 với kem · 5,77 với `#EBDCC6` · 5,42 với `#E7D5BC` |
-| `--do-dam` | `#8F2C21` | `#890607` | 7,93 : 1 với kem |
+| `--do` | `#B23A2C` | `#A70C0C` | 6,15 : 1 với kem · 5,77 với `#EBDCC6` · 5,42 với `#E7D5BC` · 7,77 với thẻ trắng; chữ trắng đặt lên: 7,77 |
+| `--do-dam` | `#8F2C21` | `#890607` | 7,93 : 1 với kem; chữ trắng đặt lên: 10,03 |
 | `--do-sau` | `#960F13` | `#890607` (cùng mã với `--do-dam`) | 7,45 và 7,00 : 1 với 2 nền kem đậm hơn |
 | `--kem` | `#FBF4E1` | `#F0E3D0` | chữ than 14,96 : 1 |
 | `--kem-sau` | `#F5ECD7` | `#EBDCC6` | chữ than 14,05 · chữ đỏ 5,77 : 1 |
 | `--kem-dam` | `#F1E4C2` | `#E7D5BC` | chữ than 13,20 · chữ đỏ 5,42 · chữ đỏ đậm 7,00 : 1 |
-| `--than` | `#1E160E` | `#151008` | chữ kem 14,96 : 1 |
-| `--mu-tat`, `--cuc-vang` | `#F2A900`, `#F5C211` | cả hai `#F5AA14` | 9,59 : 1 với than |
+| `--than` | `#1E160E` | `#151008` | chữ kem 14,96 : 1; chữ than trên thẻ trắng 18,93 |
+| `--mu-tat`, `--cuc-vang` | `#F2A900`, `#F5C211` | cả hai `#F5AA14` | 9,59 : 1 với than (chữ Marigold trên than, hay chữ than trên nhãn Marigold) |
 | `--da` | `#B8A98C` | giữ | 8,19 : 1 với than |
 | `--vien-o` | `#8C8577` | `#7A7366` | 3,71 : 1 với kem · 3,49 với `#EBDCC6` · 3,27 với `#E7D5BC` · 4,70 với nền trắng của ô |
-| `--muc-nhat` | than cũ 68 % | than mới 68 % | 5,92 : 1 với kem · 5,61 với `#E7D5BC` |
+| `--muc-nhat` | than cũ 68 % | than mới 68 % | 5,92 : 1 với kem · 5,61 với `#E7D5BC` · 6,63 với thẻ trắng |
 
 **Hai giá trị khác đề xuất ngày 10/10/2026 của file này.** Đề xuất cũ là `--kem-sau` `#E7D5BC` và `--kem-dam` `#DAC5AA`. Khi làm thử, `#DAC5AA` làm dải "Cả bữa" ở trang chủ sẫm hơn hẳn thiết kế đang chạy. Giá trị đã áp dụng là `--kem-sau` `#EBDCC6` và `--kem-dam` `#E7D5BC`: hai bậc kem lùi lại một nấc, giữ độ chênh sáng giữa các khối gần với trước. `#DAC5AA` không còn dùng ở đâu.
 
+**Token của kho** (khai trên `.kho-than` trong `web/src/styles/kho-khung.css`). Kho không có sắc riêng: mỗi token cùng mã với một màu ở bảng trên.
+
+| Token | Cũ (đã bỏ) | Đã áp dụng | Là màu nào của bảng |
+|---|---|---|---|
+| `--kho-nen` (nền trang) | `#FFFCF6` | `#F0E3D0` | Cream |
+| `--kho-the` (thẻ, ô nhập) | `#FFFFFF` | giữ | trắng |
+| `--kho-vach` (viền thẻ, vạch trong thẻ) | `#EFE4D2` | `#E7D5BC` | kem đậm, cùng mã với `--kem-dam` |
+| `--kho-vach-dam` (vạch đậm hơn) | `#E0D2BB` | `#B8A98C` | Warm Stone |
+
+**Màu trạng thái của `/noi-bo`, kho và Beeftown Cân** — xanh = xong, vàng = lưu ý, đỏ nhạt = lỗi, làm ngay. Đây là màu chức năng của công cụ, không thuộc năm màu thương hiệu; ý nghĩa giữ như trước, sắc chỉnh lại cho hợp nền kem mới và đủ tương phản (xanh cũ chỉ được 4,21 : 1 trên kem mới). Khai một lần trên `.nb-than` của `web/src/styles/noi-bo.css`; kho đọc chung. Trước ngày 11/10/2026 các mã này nằm rải trong từng trang và có năm, sáu sắc "vàng đậm" khác nhau. **Sắc cụ thể do Claude chọn theo tương phản, Khánh chưa xem:** muốn đổi thì đổi một chỗ ở `.nb-than`, hai file HTML của Beeftown Cân và các bảng chép tay trong ba kiểm thử.
+
+| Token | Cũ (đã bỏ) | Đã áp dụng | Tương phản |
+|---|---|---|---|
+| `--xanh` (chữ, vạch, đèn, nền nhãn đặc) | `#1F7A4C` | `#1A683F` | 6,78 : 1 với thẻ trắng · 5,36 với kem · 5,03 với `#EBDCC6` · 5,78 với nền xanh nhạt; chữ trắng đặt lên: 6,78 |
+| `--xanh-nen` (nền nhạt) | `#E9F5EE` | `#E4F0E5` | chữ than 16,13 : 1 |
+| `--xanh-vien` (viền khối xanh nhạt) | `#CDE7D8` | `#B9D8C0` | viền trang trí, không mang nghĩa một mình |
+| `--vang-chu` (chữ, biểu tượng "lưu ý" trên nền sáng) | từ `#8A5A00` tới `#B07A00` | `#7A5200` | 6,92 : 1 với thẻ trắng · 5,47 với kem · 5,14 với `#EBDCC6` · 5,77 với nền vàng nhạt |
+| `--vang-nen` (nền nhạt) | `#FFF5DC` | `#FDE9B5` | chữ than 15,77 : 1 |
+| `--vang-vien` (viền khối vàng nhạt) | `#F3DDA5` | `#E8C36A` | viền trang trí |
+| `--do-nen` (nền nhạt) | `#FDECEA` | `#FAE9E6` | chữ than 16,10 · chữ đỏ 6,61 : 1 |
+| `--do-vien` (viền khối đỏ nhạt) | `#F2C9C3` | `#E8BDB7` | viền trang trí |
+
+Đỏ của trạng thái là chính `--do`. Vàng đặc (nhãn "nháp", "sắp hết hạn", đèn vàng) là `--mu-tat` với chữ than đặt lên trên.
+
 Các điểm phải giữ:
 
-- Marigold và Warm Stone không làm chữ trên nền kem: 1,56 và 1,83 : 1.
+- Marigold và Warm Stone không làm chữ hay biểu tượng trên nền sáng: 1,56 và 1,83 : 1 với kem, 1,97 và 2,31 : 1 với thẻ trắng. Ở `/noi-bo` và kho, chữ "lưu ý" trên nền sáng dùng `--vang-chu`; đèn và chấm vàng tô Marigold và kẻ viền `--vang-chu`.
 - Marigold trên nền đỏ được 3,94 : 1: chỉ dùng cho chữ lớn hoặc hình, không cho chữ thường.
-- Đỏ trên nền than chỉ 2,43 : 1: không đặt chữ đỏ trên dải tối.
-- Viền `#7A7366` trên `#E7D5BC` là 3,27 : 1, trên `#EBDCC6` là 3,49 : 1: vừa qua mức 3 : 1 của viền ô nhập. Ô nhập hiện có nền trắng (4,70 : 1); đổi nền ô thì đo lại.
-- Màu viết bằng `rgba()` phải dùng số RGB của bảng mới (21, 16, 8 · 240, 227, 208 · 167, 12, 12 · 137, 6, 7). Kiểm thử nhóm 6 đỏ khi một file công khai còn mã hex hay bộ ba số RGB của bảng cũ.
-- Khối `:root` đầu file `chung.css` dùng chung cho `/noi-bo` và kho: **không sửa khối đó trong một PR của trang công khai** (kiểm thử nhóm 2 gác).
+- Đỏ trên nền than chỉ 2,43 : 1: không đặt chữ đỏ trên dải tối, trên đầu trang tối.
+- Viền `#7A7366` trên `#E7D5BC` là 3,27 : 1, trên `#EBDCC6` là 3,49 : 1: vừa qua mức 3 : 1 của viền ô nhập. Ô nhập hiện có nền trắng (4,70 : 1); đổi nền ô thì đo lại. Không kẻ viền ô nhập bằng `--vach`, `--kho-vach` hay Warm Stone.
+- Vòng focus: Charcoal trên nền sáng, Marigold trên nền tối. Marigold trên nền sáng không đủ để thấy.
+- Bản in của `/noi-bo` và kho (`@media print`): chỉ đen, trắng, xám; nền kem không lên giấy.
+- Màu viết bằng `rgba()` phải dùng số RGB của bảng mới (21, 16, 8 · 240, 227, 208 · 167, 12, 12 · 137, 6, 7). Kiểm thử đỏ khi một file của trang công khai, `/noi-bo`, kho hay Beeftown Cân còn mã hex hay bộ ba số RGB của bảng cũ, kể cả trong chú thích.
+- **Đổi một mã là đổi cả hai nơi khai** (khối `.ck` và `:root`), hai file HTML của Beeftown Cân, file này, skill thiết kế và các bảng chép tay trong kiểm thử — trong cùng một PR. Chưa gộp hai khối thành một: gộp là một việc riêng, đụng thứ tự nạp CSS của trang công khai.
 
-## 5. Nơi đã đổi và nơi còn mã màu cũ
+## 5. Nơi đã đổi và thứ còn mang màu cũ
 
-Đã đổi (PR "màu và thông tin chung"):
+Đã đổi lần đầu (PR "màu và thông tin chung", trang công khai):
 
 | Nơi | Đổi gì |
 |---|---|
@@ -99,28 +139,38 @@ Các điểm phải giữ:
 | `web/public/thuong-hieu/*.svg` (15 file), `web/public/bieu-tuong.svg` | Màu tô của logo, đầu bò, hoa văn; hình không đổi |
 | `web/public/favicon.ico`, `web/public/thuong-hieu/bieu-tuong-180.png`, `chia-se-1200x630.png`, 4 biểu tượng trong `web/public/kho/` | Dựng lại bằng `web/cong-cu/thuong-hieu/tao-bieu-tuong.py` (bảng `DOI_MAU` đổi mã của PDF sang mã đã chốt) |
 | `crm/test/test-cong-khai-giao-dien.mjs` | Hằng `BANG_MAU` và nhóm 6 |
-| `web/THIET-KE.md` mục 2, `README.md` mục "Bảng màu", `AGENTS.md` | Tài liệu theo tình trạng mới |
-| Skill `.claude/skills/thiet-ke-beeftown/` (PR #63, đã gộp) | Hai bảng token: trang công khai (khối `.ck`) và `/noi-bo`, kho (`:root`, bảng cũ); địa điểm theo mục 6. `crm/test/test-ky-nang-thiet-ke.mjs` so từng bảng với đúng nguồn của nó |
+| `web/THIET-KE.md` mục 2, `README.md` mục "Bảng màu", `AGENTS.md` | Tài liệu theo tình trạng lúc đó |
+| Skill `.claude/skills/thiet-ke-beeftown/` (PR #63, đã gộp) | Lúc đó: hai bảng token, một cho trang công khai và một cho `/noi-bo`, kho |
 
-Ba thứ dùng chung đã đổi màu theo, dù giao diện của `/noi-bo`, kho và Beeftown Cân chưa đổi:
+Đã đổi lần hai (11/10/2026: `/noi-bo`, kho, Beeftown Cân):
 
-- **`web/public/bieu-tuong.svg`** (và `favicon.ico`, biểu tượng màn hình chính trong `web/public/kho/`) là một bộ file cho cả ba nơi. Ngoài tab trình duyệt, `bieu-tuong.svg` còn hiện ở đầu trang kho (`web/src/layouts/Kho.astro`) và trên phiếu đặt hàng in (`web/src/pages/noi-bo/kho/dat-hang/[id]/in.astro`): hai chỗ đó đã là đỏ `#A70C0C` trên giao diện còn bảng cũ.
-- **Biểu tượng của `BeeftownCan.exe`**: `can-app/scripts/dong-goi.ts` bọc `web/public/kho/bieu-tuong-192.png` vào file chạy. PR này đổi chính file ảnh đó và cả `web/src/lib/`, nên `dong-goi-can.yml` đóng gói lại khi gộp: bản đóng gói đó có biểu tượng đỏ mới với **cùng số phiên bản** (`PHIEN_BAN` trong `can-app/src/main.ts` không đổi). Cùng một số phiên bản vì vậy có thể có hai bản khác biểu tượng.
+| Nơi | Đổi gì |
+|---|---|
+| `web/src/styles/chung.css` | 14 token trong hai khối `:root` mang giá trị của bảng chốt — cùng giá trị với khối `.ck` |
+| `web/src/styles/noi-bo.css` | 8 token màu trạng thái khai trên `.nb-than`; viền ô nhập là `--vien-o`; vòng focus Charcoal trên nền sáng, Marigold trên đầu trang tối; viền nút phụ là Warm Stone; `rgba()` theo số RGB mới |
+| `web/src/styles/kho.css`, `web/src/styles/kho-khung.css` | Token `--kho-…` theo bảng ở mục 4; bỏ 4 token màu trạng thái riêng của kho (dùng chung của `.nb-than`); dòng thông báo chưa đọc mang một chấm Marigold thay cho nền vàng nhạt cả dòng |
+| 25 trang dưới `web/src/pages/noi-bo/`, `web/src/components/SucKhoeHeThong.astro`, `web/src/components/kho/NhanHangChon.astro` | Mã hex viết cứng trong `<style>` và thuộc tính `style` đổi thành biến; bỏ mã dự phòng trong `var()` |
+| `web/src/lib/qua-tai.ts` | Trang báo quá tải: nền Cream, chữ Charcoal, nút Beef Red chữ Cream |
+| `web/src/layouts/NoiBo.astro`, `web/src/layouts/Kho.astro`, `web/public/kho/manifest.json` | `theme-color` và `theme_color` là `#151008`; `background_color` là `#F0E3D0` |
+| `can-app/src/giao-dien.html`, `can-app/src/huong-dan.html` | 16 biến trong khối `:root` của mỗi file; mọi mã viết cứng đổi thành biến. Bản 2.9.2 (`can-app/README.md`) |
+| Kiểm thử | Mới: `crm/test/test-noi-bo-bang-mau.mjs`, `can-app/test/thu-bang-mau.ts`. Đổi giá trị mong đợi: `test-cong-khai-giao-dien.mjs` nhóm 2, `test-ky-nang-thiet-ke.mjs` nhóm 3 |
+| Tài liệu | File này, `README.md`, `AGENTS.md`, `web/THIET-KE.md`, `web/KHO.md`, `can-app/README.md`, skill thiết kế (một bảng token) |
+
+Ghi chú từ lần đổi đầu, vẫn đúng:
+
+- **`web/public/bieu-tuong.svg`** (và `favicon.ico`, biểu tượng màn hình chính trong `web/public/kho/`) là một bộ file cho cả ba nơi. Ngoài tab trình duyệt, `bieu-tuong.svg` còn hiện ở đầu trang kho (`web/src/layouts/Kho.astro`) và trên phiếu đặt hàng in (`web/src/pages/noi-bo/kho/dat-hang/[id]/in.astro`).
+- **Biểu tượng của `BeeftownCan.exe`**: `can-app/scripts/dong-goi.ts` bọc `web/public/kho/bieu-tuong-192.png` vào file chạy (chỉ khi đóng gói trên Windows — `web/KHO.md` mục 4). PR "màu và thông tin chung" đổi file ảnh đó mà không tăng `PHIEN_BAN`, nên hai bản 2.9.1 đóng gói trước và sau PR đó có thể khác biểu tượng. Bản 2.9.2 là bản đầu có giao diện theo bảng màu mới.
 - **Logo ngang trên web**: `DOI_MAU_RIENG` trong `tao-bieu-tuong.py` đổi dòng "Pick it – Grill it – Love it" của `logo-ngang-do.svg` từ đỏ đậm sang Beef Red, để cả logo một màu như guideline. Logo trên web vẫn là nét tách từ PDF nhận diện cũ rồi đổi mã màu, **chưa phải** file vector của bộ tài sản bản 17 (dòng cuối mục này).
 
-Còn mã cũ, chờ một PR riêng:
+Còn mang màu cũ:
 
 | Nơi | Ghi gì |
 |---|---|
-| `web/src/styles/chung.css` | Token trong 2 khối `:root` — `/noi-bo` và kho đọc |
-| `web/src/styles/noi-bo.css`, `kho.css`, `kho-khung.css` | Mã hex và màu `rgba()` của bảng cũ |
-| `web/src/lib/qua-tai.ts` (dòng 141, 145) | Màu nền, màu chữ, màu nút của trang báo quá tải |
-| `web/src/layouts/NoiBo.astro`, `Kho.astro` | Thẻ `theme-color` `#1E160E` |
-| `web/public/kho/manifest.json` | `theme_color` `#1E160E` |
-| `can-app/src/giao-dien.html`, `can-app/src/huong-dan.html` | Token riêng của Beeftown Cân (`--do`, `--do-dam`, `--kem`, `--kem-sau`, `--mu-tat`, `--than`, `--vach`) |
+| 15 ảnh `web/public/kho/hd-*.png` | Ảnh chụp màn hình trong trang hướng dẫn của kho (`/noi-bo/kho/huong-dan`), chụp trước ngày 11/10/2026: còn giao diện bảng cũ. **Chờ chụp lại** (`web/KHO.md`, mục 3i) |
 | `web/cong-cu/thuong-hieu/` (`cau_hinh_tai_san.py`, `tach-tu-pdf.py`, `ve-svg.mjs`) | Mã màu của PDF nhận diện, dùng để tách tài sản từ PDF — đây là mã nguồn, không phải mã trên trang |
+| Tài liệu thiết kế cũ ở gốc repo (`Beeftown_*.html`, `Beeftown_Concept_Board_v1.svg`, `Beeftown_Website/`) | Làm trước guideline; không phát hành, không sửa, không chép |
 
-Lệnh tìm chỗ còn sót: `grep -rnE "30, ?22, ?14|251, ?244, ?225|178, ?58, ?44|150, ?15, ?19" web/src can-app/src`.
+Lệnh tìm chỗ còn sót (không in ra dòng nào là sạch): `grep -rnE "30, ?22, ?14|251, ?244, ?225|178, ?58, ?44|150, ?15, ?19" web/src can-app/src`.
 
 Logo vector bảng màu mới đã có sẵn trong thư mục tài sản trên máy Khánh (`01_Logo_vector`: lockup, brandmark, wordmark; bản nền sáng màu red, charcoal, black; bản nền tối màu cream, white).
 

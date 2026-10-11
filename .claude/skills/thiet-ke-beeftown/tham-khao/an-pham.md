@@ -8,8 +8,8 @@ campaign) cho phần guideline chưa nói tới.
 ## Nguyên tắc
 
 - **Màu: năm màu của bảng thương hiệu đã chốt**, không dùng màu pha của website (đỏ đậm, hai nền kem
-  đậm hơn, màu viền ô nhập — Khánh chỉ cho phép chúng trên màn hình của trang công khai) và không dùng
-  bảng cũ mà `/noi-bo`, kho còn chạy:
+  đậm hơn, màu viền ô nhập — Khánh chỉ cho phép chúng trên màn hình của website và Beeftown Cân) và
+  không dùng màu trạng thái xanh, vàng, đỏ nhạt của `/noi-bo`, kho (màu chức năng của công cụ):
   Beef Red `#A70C0C`, Cream `#F0E3D0`, Charcoal `#151008`, Marigold `#F5AA14`, Warm Stone `#B8A98C`.
   Phần trên mỗi bề mặt: Cream 60 % · Beef Red 25 % · Charcoal 10 % · Marigold dưới 5 %; Warm Stone chỉ
   cho nét kẻ và nền phụ. Không màu pha nhạt, không đỏ thứ hai. Marigold và Warm Stone không làm chữ
