@@ -18,7 +18,7 @@
 
 export const PHEP_DO = {
   vungCham: 'nút, link điều hướng, link chân trang, summary, ô nhập, ô chọn giờ cao ≥ 48px',
-  dauTrang: 'đầu trang cao 64px (dưới 1080px) / 80px (từ 1080px); điều hướng 15–16px; logo ≥ 160px, đúng tỷ lệ',
+  dauTrang: 'đầu trang cao 64px (dưới 1080px) / 80px (từ 1080px); điều hướng 15–16px; logo ≥ 160px (dưới 360px: brandmark ≥ 48px), đúng tỷ lệ',
   ngonNgu: 'bộ chọn ngôn ngữ đủ 3 thứ tiếng, thứ tiếng đang xem đánh dấu bằng chữ đậm và nét gạch (không chỉ bằng màu)',
   khongTrang: 'không nền trắng: mọi màu nền thuộc bảng màu của trang công khai',
   nut: 'nút: bo 4px, đệm ngang 20px, đúng màu theo bề mặt; mỗi nhóm nút một nút chính',
@@ -94,12 +94,20 @@ export function doGiaoDien() {
     const mong = RONG >= 1080 ? 80 : 64;
     if (Math.abs(cao - mong) > 0.6) kq.dauTrang.push(`cao ${cao.toFixed(1)}px, cần ${mong}px`);
     if (bo(mau(getComputedStyle(dau).backgroundColor)) !== KEM) kq.dauTrang.push(`nền ${getComputedStyle(dau).backgroundColor}, cần Cream`);
-    const logo = dau.querySelector('.dt-logo img');
-    if (!logo || !hien(logo)) kq.dauTrang.push('không thấy logo');
+    // Guideline: lockup rộng tối thiểu 160px; hẹp hơn thì dùng brandmark (đầu bò), tối thiểu 48px. Thanh chỉ
+    // được đổi sang brandmark khi màn dưới 360px — không đủ chỗ cho lockup cạnh nút danh mục.
+    const logo = [...dau.querySelectorAll('.dt-logo img')].filter(hien);
+    if (logo.length !== 1) kq.dauTrang.push(`cần đúng một logo hiện trên thanh, thấy ${logo.length}`);
     else {
-      const k = logo.getBoundingClientRect();
-      if (k.width < 159.5) kq.dauTrang.push(`logo rộng ${k.width.toFixed(1)}px — guideline: lockup tối thiểu 160px`);
-      if (Math.abs(k.width / k.height - 446 / 124) > 0.03) kq.dauTrang.push(`logo bị kéo giãn: ${k.width.toFixed(1)} × ${k.height.toFixed(1)}`);
+      const k = logo[0].getBoundingClientRect();
+      const tiLe = logo[0].naturalWidth && logo[0].naturalHeight ? logo[0].naturalWidth / logo[0].naturalHeight
+        : Number(logo[0].getAttribute('width')) / Number(logo[0].getAttribute('height'));
+      const laLockup = /logo-ngang-do\.svg$/.test(logo[0].getAttribute('src') ?? '');
+      if (laLockup && k.width < 159.5) kq.dauTrang.push(`logo rộng ${k.width.toFixed(1)}px — guideline: lockup tối thiểu 160px`);
+      if (!laLockup && (RONG >= 360 || k.width < 47.5 || !/dau-bo-do\.svg$/.test(logo[0].getAttribute('src') ?? ''))) {
+        kq.dauTrang.push(`từ 360px thanh phải dùng lockup; dưới 360px là brandmark đầu bò ≥ 48px — thấy ${logo[0].getAttribute('src')} rộng ${k.width.toFixed(1)}px`);
+      }
+      if (Math.abs(k.width / k.height - tiLe) > 0.03) kq.dauTrang.push(`logo bị kéo giãn: ${k.width.toFixed(1)} × ${k.height.toFixed(1)}`);
     }
     const dieuHuong = [...dau.querySelectorAll('.dt-nav a')].filter(hien);
     const menu = dau.querySelector('.menu-gon summary');
@@ -272,8 +280,9 @@ export function doGiaoDien() {
     const [co, dong] = [so(cs.fontSize), so(cs.lineHeight)];
     const ghi = `h1 ${co.toFixed(1)}/${dong.toFixed(1)}px`;
     if (NGON_NGU === 'ko') {
-      // Hangul rộng hơn chữ Latin: câu chính trang chủ co theo bề rộng cột (KhoiMoDau.astro), dòng thoáng 1,28.
-      if (co < 28 || co > 48.5) kq.chu.push(`${ghi} — tiếng Hàn cần 28–48px`);
+      // Hangul rộng hơn chữ Latin: câu chính trang chủ co theo bề rộng cột (KhoiMoDau.astro: không quá 9,4 %
+      // bề rộng cột — 26px ở màn 320px), dòng thoáng 1,28.
+      if (co < 26 || co > 48.5) kq.chu.push(`${ghi} — tiếng Hàn cần 26–48px`);
     } else if (RONG <= 390) {
       if (Math.abs(co - 32) > 0.6 || Math.abs(dong - 38) > 1) kq.chu.push(`${ghi} — điện thoại cần 32/38px`);
     } else if (RONG >= 1366) {

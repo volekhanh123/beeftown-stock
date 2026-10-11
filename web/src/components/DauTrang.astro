@@ -5,7 +5,9 @@
  * Logo là vector tách nguyên từ PDF nhận diện (bản đỏ trên kem, trang 3) — không
  * gõ lại chữ BEEFTOWN bằng phông nào. Đầu trang nền kem nên dùng đúng biến thể
  * dành cho nền kem; không đặt khối kem lạc lõng lên nền tối. Logo rộng 160px
- * (màn rộng: 172px): guideline ghi lockup tối thiểu 160px.
+ * (màn rộng: 172px): guideline ghi lockup tối thiểu 160px, hẹp hơn thì dùng brandmark.
+ * Màn dưới 360px (điện thoại rất nhỏ, hoặc máy tính phóng to 400 %) không đủ chỗ cho
+ * lockup 160px cạnh nút danh mục — thanh đổi sang brandmark đầu bò 48px.
  *
  * Điều hướng theo brief: Trải nghiệm / Thực đơn / Đến Beeftown / Hỏi bàn. Hỏi bàn
  * là nút đỏ — hành động chính của cả trang. Tuyển dụng và giấy tờ ở chân trang.
@@ -49,7 +51,8 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
 <header class="dau-trang">
   <div class="khung dt-hang">
     <a class="dt-logo" href={duongDanTuongUng('/', ngonNgu)} aria-label={t.veTrangChu}>
-      <img src="/thuong-hieu/logo-ngang-do.svg" width="446" height="124" alt="" />
+      <img class="dt-logo-day-du" src="/thuong-hieu/logo-ngang-do.svg" width="446" height="124" alt="" />
+      <img class="dt-logo-gon" src="/thuong-hieu/dau-bo-do.svg" width="116" height="117" alt="" />
     </a>
 
     <nav class="dt-nav" aria-label={t.dieuHuongChinh}>
@@ -155,7 +158,13 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   }
   /* Vùng chạm 48px; logo rộng 160px — mức tối thiểu của lockup trong guideline. */
   .dt-logo { display: flex; align-items: center; min-height: var(--cham); flex: none; }
-  .dt-logo img { width: 160px; height: auto; }
+  .dt-logo-day-du { width: 160px; height: auto; }
+  .dt-logo-gon { display: none; width: 48px; height: auto; }
+  /* Dưới 360px: brandmark thay lockup (guideline: hẹp hơn 160px thì dùng brandmark, tối thiểu 48px). */
+  @media (max-width: 359.98px) {
+    .dt-logo-day-du { display: none; }
+    .dt-logo-gon { display: block; }
+  }
 
   .dt-nav, .dt-ngon-ngu, .dt-hoi-ban { display: none; }
   .dt-phai { display: flex; align-items: center; gap: var(--k-3); margin-left: auto; }
@@ -194,7 +203,7 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   /* --- Màn rộng ------------------------------------------------------------ */
   @media (min-width: 1080px) {
     .dt-hang { gap: var(--k-5); }
-    .dt-logo img { width: 172px; }
+    .dt-logo-day-du { width: 172px; }
     .dt-nav { display: block; margin-inline: auto; }
     .dt-nav ul { display: flex; gap: clamp(20px, 2.2vw, 36px); }
     .dt-nav a {

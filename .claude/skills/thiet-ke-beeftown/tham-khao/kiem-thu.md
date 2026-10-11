@@ -34,8 +34,8 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
 
 ## Trình duyệt (`web/kiem-tra/`)
 
-`trinh-duyet.mjs` dựng trang **không database** và mở mọi trang công khai ở bảy bề rộng (360, 390, 768,
-800, 1024, 1366, 1440):
+`trinh-duyet.mjs` dựng trang **không database** và mở mọi trang công khai ở tám bề rộng (320, 360, 390,
+768, 800, 1024, 1366, 1440 — 320px là điện thoại nhỏ nhất và cũng là máy tính phóng to 400 %):
 
 - HTTP 200, đúng `lang`, không lỗi JavaScript, **không tràn ngang**.
 - Đúng **một `h1`**; mọi `<img>` có `width`, `height`, `alt`; ảnh dưới màn đầu `loading="lazy"`.
@@ -43,8 +43,8 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
   (dùng chung với `thu-day-du.mjs`), bảng màu chép tay trong file đó:
   - `vungCham`: `.nut`, `nav a`, link chân trang, `.doi-ngon-ngu`, `summary`, `.lien-ket`, logo đầu trang,
     tab, ô nhập, ô chọn, ô chọn giờ, hàng ô đánh dấu cao **≥ 48px**.
-  - `dauTrang`: cao 64px (dưới 1080px) / 80px; nền Cream; điều hướng 15–16px; logo ≥ 160px, không kéo
-    giãn; từ 768px nút Hỏi bàn ở ngay trên thanh.
+  - `dauTrang`: cao 64px (dưới 1080px) / 80px; nền Cream; điều hướng 15–16px; logo là lockup ≥ 160px
+    (dưới 360px: brandmark đầu bò ≥ 48px), không kéo giãn; từ 768px nút Hỏi bàn ở ngay trên thanh.
   - `ngonNgu`: đủ vi, en, ko theo thứ tự; đúng một mục `aria-current="true"` trùng `lang` của trang, mục
     đó đậm hơn và có nét gạch, các mục khác là link có `hreflang`; chữ ≥ 14px.
   - `khongTrang`: màu nền của mọi phần tử thuộc bảng màu; ô đánh dấu còn hiện phải là ô tự vẽ. Ngoại lệ:
@@ -56,7 +56,7 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
   - `bieuTuong`: cỡ 24px (`.nhan-mon`: 16px), nét 1,5–2px không co theo cỡ, Beef Red trên kem / Cream
     trên đỏ, nằm trong thứ bấm được thì có nhãn chữ.
   - `chu`: chỉ Montserrat; chữ chạy 16/24px; h1 32/38px (tới 390px) và 48/56px (từ 1366px), tiếng Hàn
-    28–48px; h2 nhỏ hơn h1; `.khung` ≤ 1200px, lề điện thoại 20px; đệm `.muc` 48–64px / 72–96px.
+    26–48px; h2 nhỏ hơn h1; `.khung` ≤ 1200px, lề điện thoại 20px; đệm `.muc` 48–64px / 72–96px.
   - `chanTrang`: dải đỏ, dải pháp nhân Charcoal, logo Cream đúng tỷ lệ, không `.hoa-van-chu`, chữ ≥ 14px,
     điện thoại hai nhóm link thành 2 cột.
 - **Tương phản** WCAG 2.2: ≥ 4,5 : 1, chữ ≥ 24px hoặc ≥ 18,66px đậm ≥ 3 : 1 (bỏ qua nền ảnh,
@@ -73,8 +73,8 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
   `web/kiem-tra/mau-dia-diem.mjs`, kèm bảng câu thử. Mẫu bắt nhầm một câu đúng thì sửa mẫu và thêm câu
   đó vào bảng câu thử — không gỡ luật.
 - Không database: trang hỏi bàn, tuyển dụng **không có `<form>`**.
-- Menu gọn ở 360 và 768px: không JavaScript vẫn mở / đóng được; đang mở thì nút ghi "Đóng" / "Close" /
-  "닫기", ở 360px trong bảng có Hỏi bàn là nút chính và bộ chọn ba thứ tiếng (từ 768px hai thứ đó ở trên
+- Menu gọn ở 320, 360 và 768px: không JavaScript vẫn mở / đóng được; đang mở thì nút ghi "Đóng" / "Close" /
+  "닫기", dưới 768px trong bảng có Hỏi bàn là nút chính và bộ chọn ba thứ tiếng (từ 768px hai thứ đó ở trên
   thanh, bảng không lặp lại); có JavaScript thì Esc đóng và trả focus, Enter mở / đóng, Tab đi qua từng
   mục với vòng focus ≥ 2px, Tab ra khỏi mục cuối thì đóng.
 - Câu hỏi thường gặp ở 390 và 1440px: Enter mở, phím cách đóng, Tab sang câu kế có vòng focus, bấm ở

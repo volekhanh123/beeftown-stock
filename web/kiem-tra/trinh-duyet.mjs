@@ -14,7 +14,7 @@
  * nhất: README gốc — "form chưa sẵn sàng thì ẩn hẳn", "không bao giờ báo đã nhận khi
  * chưa ghi được". Bất biến:
  *
- *   1. Mọi trang công khai (sitemap + danh sách cố định) ở 360, 390, 768, 800, 1024,
+ *   1. Mọi trang công khai (sitemap + danh sách cố định) ở 320, 360, 390, 768, 800, 1024,
  *      1366, 1440 px: trả 200, không lỗi JavaScript, không tải hỏng tài nguyên của chính
  *      trang, không tràn ngang, đúng thuộc tính lang; chân trang có pháp nhân (tên công
  *      ty, mã số thuế, địa chỉ) bằng chữ, ngay dưới dòng ©. Thêm (brief 06/10/2026):
@@ -142,6 +142,8 @@ const dongPhapNhan = nn => [
 const TRANG_FORM = ['/dat-ban', '/en/book', '/ko/book', '/tuyen-dung', '/en/jobs', '/ko/jobs'];
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
 const CO_MAN_HINH = [
+  // 320px: điện thoại nhỏ nhất, và cũng là máy tính 1280px phóng to 400 % (WCAG 1.4.10 — không cuộn ngang).
+  { ten: 'điện thoại nhỏ', width: 320, height: 568 },
   { ten: 'điện thoại', width: 360, height: 740 },
   { ten: 'điện thoại lớn', width: 390, height: 844 },
   { ten: 'máy tính bảng dọc', width: 768, height: 1024 },
@@ -461,8 +463,8 @@ try {
     };
   });
 
-  await nhom('5 · MENU GỌN Ở 360 VÀ 768 PX: MỞ / ĐÓNG KHI TẮT JAVASCRIPT; CÓ JAVASCRIPT: Esc, Enter, Tab', async () => {
-    for (const rong of [360, 768]) {
+  await nhom('5 · MENU GỌN Ở 320, 360 VÀ 768 PX: MỞ / ĐÓNG KHI TẮT JAVASCRIPT; CÓ JAVASCRIPT: Esc, Enter, Tab', async () => {
+    for (const rong of [320, 360, 768]) {
       for (const coJs of [false, true]) {
         const ctx = await trinhDuyet.newContext({ viewport: { width: rong, height: rong < 600 ? 740 : 1024 }, javaScriptEnabled: coJs });
         const page = await ctx.newPage();
