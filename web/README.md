@@ -30,7 +30,7 @@ Hệ quả cụ thể:
 | Form hỏi bàn (`form_dat_ban_dang_mo`) | Nút chính màn đầu là "Khám phá thực đơn" (`nutMoDau()` trong `lib/trang-cong-khai.ts`); trang Hỏi bàn nói chưa mở hỏi bàn trực tuyến. |
 | Ngày khai trương | Không ngày, không đếm ngược, không ưu đãi. |
 | Ảnh chia sẻ (`anh_chia_se`) | Dùng ảnh dự phòng `/thuong-hieu/chia-se-1200x630.png` — chỉ vân mỡ và logo của PDF nhận diện, không ảnh chụp, không ngày, không giá (Khánh duyệt 06/10/2026). Ảnh đó đi cùng bản build nên thẻ `og:image` không bao giờ trỏ tới ảnh hỏng — điều mà quy tắc cũ "chưa có ảnh thật thì không đặt thẻ" phòng, vì Facebook nhớ kết quả hỏng trong bộ nhớ đệm. Ảnh chụp thật công bố ở `anh_chia_se` được ưu tiên. Thẻ chỉ đặt khi có `SITE_URL`. |
-| Ảnh minh họa món chưa dựng cỡ | Component `<Anh>` hiện khung đồ họa (`KhungAnh`) đúng tỷ lệ — không thẻ `<img>` nào trỏ tới file không có. Xem mục "Trang công khai: giao diện, ảnh, thực đơn" bên dưới. |
+| Ảnh | Sáu ảnh minh họa (AI, có nhãn "Ảnh minh họa") đi cùng bản build, nên trang chủ và trang Thực đơn có ảnh cả khi chưa có database. Ảnh nào chưa dựng cỡ thì component `<Anh>` hiện khung đồ họa (`KhungAnh`) đúng tỷ lệ — không thẻ `<img>` nào trỏ tới file không có. Xem mục "Trang công khai: giao diện, ảnh, thực đơn" bên dưới. |
 
 ---
 
@@ -49,7 +49,7 @@ Mở http://localhost:4321. Không cần Supabase.
 | `npm run kiem-tra` | Kiểm tra kiểu dữ liệu (`astro check`) |
 | `npm run deploy` | **Cổng kiểm thử** (`kiem-tra/truoc-deploy.mjs`: chỉ commit đã có CI xanh) → quét chữ cấm → build → đẩy lên Cloudflare |
 | `npm run deploy:khan-cap` | Như trên nhưng bỏ qua cổng kiểm thử — chỉ khi khẩn cấp |
-| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 21 trang công khai ở 320 / 360 / 390 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, tương phản, thành phần và khung trang (`kiem-tra/do-giao-dien.mjs`: vùng chạm ≥ 48px, đầu trang 64 / 80px, bộ chọn ngôn ngữ, không nền trắng, nút, thẻ, hàng câu hỏi ≥ 56px, biểu tượng 24px, chữ 16/24px và h1 32 → 48px, chân trang chữ ≥ 14px), địa điểm (câu chỉ đường đúng từng chữ, JSON-LD, không còn địa chỉ nào khác ngoài dòng pháp nhân, không ghi phường hay quận, không chữ về cầu thang bộ — mẫu tìm chữ sai ở `kiem-tra/mau-dia-diem.mjs`), menu gọn chạy cả khi tắt JavaScript và đi lại được bằng bàn phím (Enter, Tab, Esc) — có JavaScript thì có lớp phủ tối và trang phía sau đứng yên, tắt JavaScript thì trang vẫn cuộn được; câu hỏi thường gặp mở / đóng bằng bàn phím; màn cảm ứng không giữ màu di chuột sau khi chạm; máy có thanh cuộn kiểu cổ điển mở danh mục không xô lệch trang; form không bao giờ báo thành công khi chưa ghi được. Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
+| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 21 trang công khai ở 320 / 360 / 390 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, tương phản, thành phần và khung trang (`kiem-tra/do-giao-dien.mjs`: vùng chạm ≥ 48px, đầu trang 64 / 80px, bộ chọn ngôn ngữ, không nền trắng, nút, thẻ, hàng câu hỏi ≥ 56px, biểu tượng 24px, chữ 16/24px và h1 32 → 48px, chân trang chữ ≥ 14px; ảnh AI có nhãn "Ảnh minh họa" và không bị gì đè lên, thẻ đọc nhãn khay thẳng và đủ 5 trường, màn đầu và các khối của trang chủ, trang Thực đơn), ảnh về chậm thì khung vẫn giữ chỗ và trang không xô lệch, địa điểm (câu chỉ đường đúng từng chữ, JSON-LD, không còn địa chỉ nào khác ngoài dòng pháp nhân, không ghi phường hay quận, không chữ về cầu thang bộ — mẫu tìm chữ sai ở `kiem-tra/mau-dia-diem.mjs`), menu gọn chạy cả khi tắt JavaScript và đi lại được bằng bàn phím (Enter, Tab, Esc) — có JavaScript thì có lớp phủ tối và trang phía sau đứng yên, tắt JavaScript thì trang vẫn cuộn được; câu hỏi thường gặp mở / đóng bằng bàn phím; màn cảm ứng không giữ màu di chuột sau khi chạm; máy có thanh cuộn kiểu cổ điển mở danh mục không xô lệch trang; form không bao giờ báo thành công khi chưa ghi được. Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
 | `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên), địa chỉ đã công bố trong `/noi-bo` (bản công bố tới được mọi chỗ in địa chỉ, màn đầu bỏ vế phường), thành phần của form hỏi bàn và form nộp hồ sơ (ô một dòng, kể cả ô ngày, cao đúng 48px nền Cream; ô giờ đang chọn; câu lỗi màu `#890607`). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit); `-- --chi 3,6` chỉ chạy vài nhóm |
 
 **Cổng deploy.** `npm run deploy` chỉ đưa lên commit mà GitHub Actions đã chạy xanh: nó hỏi kết quả
@@ -77,11 +77,11 @@ web/
 │  └─ gia-supabase.mjs    ← Supabase giả: trả lời đúng các hàm trang công khai gọi, theo kịch bản
 ├─ cong-cu/            ← script dựng tài sản, chạy bằng python3 -I (xem THIET-KE.md, mục 7)
 │  ├─ thuong-hieu/     ← tách logo, rosemary, vân mỡ, tem tròn từ PDF nhận diện; favicon, ảnh chia sẻ
-│  └─ anh/             ← tao-co-anh.py + danh-sach.json: cắt và xuất cỡ ảnh minh họa món
+│  └─ anh/             ← tao-co-anh.py + danh-sach.json: cắt và xuất cỡ ảnh minh họa
 ├─ public/
 │  ├─ bieu-tuong.svg · favicon.ico   ← biểu tượng trình duyệt (kho và nội bộ dùng chung)
 │  ├─ thuong-hieu/     ← logo, đầu bò, rosemary, steak, vân mỡ, tem tròn, chữ lặp (SVG trích từ PDF), ảnh chia sẻ dự phòng
-│  └─ anh/             ← ảnh minh họa món đã dựng cỡ (avif + webp) — SINH bởi cong-cu/anh/tao-co-anh.py
+│  └─ anh/             ← ảnh minh họa đã dựng cỡ (avif + webp) — SINH bởi cong-cu/anh/tao-co-anh.py
 ├─ src/
 │  ├─ middleware.ts    ← chặn cửa /noi-bo. Một chỗ duy nhất.
 │  ├─ lib/
@@ -133,10 +133,10 @@ Tên file và biến đặt bằng tiếng Việt, khớp với tên cột trong
 
 **Ảnh** — hai loại, hai luật (`src/lib/anh.ts`):
 
-- **Ảnh minh họa** (tạo bằng AI, chỉ cho ảnh không khí món): trang luôn ghi "Ảnh minh họa" ngay trên ảnh — component `<Anh>` tự gắn.
-- **Ảnh thật**: chụp tại Beeftown. Quầy, khay skin-pack, không gian, lối lên và con người **chỉ** được dùng ảnh thật; cho tới khi có, chỗ đó là khung đồ họa `KhungAnh` đúng tỷ lệ, không chữ bên trong.
+- **Ảnh minh họa** (tạo bằng AI, chỉ cho ảnh không khí món và bữa ăn): trang luôn ghi "Ảnh minh họa" ngay trên ảnh — component `<Anh>` tự gắn. Tám ảnh hiện có do ChatGPT tạo ngày 11/10/2026; Khánh cho đưa lên trang cùng ngày: **bàn tay người thì được, mặt người thì không**. Hai ảnh bữa ăn (`mon-an-chia-se`, `bua-an-cung-ban`) có kim chi và mấy chén món phụ — đó là hình minh họa Khánh cho dùng; câu chữ và alt của trang vẫn không kể tên, không hứa món phụ nào.
+- **Ảnh thật**: chụp tại Beeftown. Quầy, khay skin-pack, không gian quán, lối vào, thang máy và mặt người **chỉ** được dùng ảnh thật; cho tới khi có, chỗ đó là khung đồ họa `KhungAnh` đúng tỷ lệ, không chữ bên trong.
 
-Cỡ ảnh dựng sẵn bằng `python3 -I cong-cu/anh/tao-co-anh.py <thư-mục-ảnh-gốc>` (cấu hình `cong-cu/anh/danh-sach.json`): sRGB, bỏ siêu dữ liệu, cắt theo tỷ lệ quanh điểm lấy nét, AVIF + WebP nhiều bề rộng vào `public/anh/`, mỗi file ≤ 300 KB, tổng ≤ 8 MB, rồi ghi `src/lib/anh-tao-san.ts`. Ảnh nào chưa có trong file đó thì trang hiện `KhungAnh` thay vào. Ảnh gốc PNG ở ngoài repo — `.gitignore` chặn `*.png` và chỉ mở `public/anh/*.avif`, `*.webp`. **Hiện chưa dựng ảnh nào** (mạng của phiên làm việc chặn tải ảnh về); cách dựng: `THIET-KE.md`, mục 7.
+Cỡ ảnh dựng sẵn bằng `python3 -I cong-cu/anh/tao-co-anh.py <thư-mục-ảnh-gốc>` (cấu hình `cong-cu/anh/danh-sach.json`): sRGB, bỏ siêu dữ liệu, cắt theo tỷ lệ quanh điểm lấy nét, AVIF + WebP nhiều bề rộng vào `public/anh/`, mỗi file ≤ 300 KB, tổng ≤ 8 MB, rồi ghi `src/lib/anh-tao-san.ts`. Ảnh nào chưa có trong file đó thì trang hiện `KhungAnh` thay vào. Ảnh gốc PNG ở ngoài repo — `.gitignore` chặn `*.png` và chỉ mở `public/anh/*.avif`, `*.webp`. **Đã dựng sáu ảnh** đang đặt ở trang chủ và trang Thực đơn (60 file, khoảng 3,6 MB); ảnh thứ bảy (`bo-xeo-vi`) là ảnh dự phòng, chưa đặt ở trang nào nên không dựng — không để file ảnh chết trong repo. Bảng từng ảnh, chỗ dùng, khung và cách dựng: `THIET-KE.md`, mục 7. Kiểm thử gác: `crm/test/test-cong-khai-anh.mjs` (danh mục, alt, nguồn, ảnh đã dựng khớp chỗ dùng, nhãn) và các phép đo `anh`, `nhanKhay`, `trangChu`, `thucDon` của `kiem-tra/do-giao-dien.mjs`.
 
 **Tài sản thương hiệu** — logo, đầu bò, rosemary, steak, vân mỡ, tem tròn trích nguyên vector từ PDF bằng `cong-cu/thuong-hieu/` (PDF không vào repo), đối chiếu từng điểm ảnh với PDF; favicon, biểu tượng 180px và ảnh chia sẻ dự phòng dựng từ chính các SVG đó.
 
@@ -553,7 +553,7 @@ trang chủ · **thực đơn** · **đến Beeftown** · **hỏi bàn** · tuy�
 | Email báo về khi có hồ sơ / yêu cầu mới | **Việc quan trọng nhất còn lại.** Rủi ro lớn nhất không phải hệ thống hỏng mà là hồ sơ nằm im không ai mở. Cần một dịch vụ gửi mail và một hộp thư có người đọc. |
 | Màn hình chọn ảnh | Ô ảnh trong `/noi-bo` đang nhận mã dòng `tep_anh` gõ tay. Tải ảnh làm trong Supabase Studio. |
 | Duyệt giá thực đơn | Database đã có 31 món (`0011`), không một giá nào được duyệt. **PR duyệt giá đầu tiên phải sửa luôn quy tắc số tiền trong `src/lib/chuoi-cam.js`** — hiện nó chặn mọi số tiền dạng `125.000đ` trên trang công khai, nên giá vừa duyệt sẽ làm `npm run quet` (và lệnh deploy) đỏ |
-| Ảnh món, ảnh quầy, ảnh đường lên | Năm ảnh minh họa món đã tạo nhưng chưa dựng cỡ; ảnh thật cần chụp theo brief ở `THIET-KE.md`, mục 8 |
+| Ảnh món, ảnh quầy, ảnh đường lên | Trang chủ và trang Thực đơn đang dùng sáu ảnh minh họa (AI, có nhãn); quầy, khay, lối vào, thang máy vẫn là khung đồ họa. Ảnh thật cần chụp theo brief ở `THIET-KE.md`, mục 8 |
 | Tra cứu / hủy đặt bàn cho khách | Database đã có `tra_cuu_dat_ban()` và `huy_dat_ban()` từ `0013` |
 | Màn hình CRM: khách, phân nhóm, điểm | Cần có khách thật |
 

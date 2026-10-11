@@ -43,7 +43,8 @@ Chữ và thương hiệu trên trang công khai:
 - Beeftown là "Beef Specialty Restaurant". Báo "Korean BBQ", "nướng Hàn", "buffet", chữ "rẻ".
 - "Charcoal" chỉ là tên màu. Beeftown nướng bằng vỉ gas: báo chữ hay hình nói về than, lửa, khói.
 - Báo số ngày ủ, grade, xuất xứ, phần trăm khi PR không kèm nguồn xác nhận.
-- Ảnh do AI tạo trên trang công khai phải có chú thích "Ảnh minh họa". Thiếu chú thích thì báo.
+- Ảnh do AI tạo trên trang công khai phải có chú thích "Ảnh minh họa". Thiếu chú thích thì báo. Ảnh AI chỉ cho món và bữa ăn: báo khi nó cho thấy quầy, khay skin-pack, không gian quán, lối vào, thang máy hay mặt người (bàn tay người thì được: Khánh quyết ngày 11/10/2026). Báo alt kể tên món phụ, alt nói đây là ảnh của quán, và file ảnh trong `web/public/anh/` mà không trang nào dùng.
+- Các dải nền tối ("Quầy chọn bò" ở trang chủ, "Bò tại quầy" ở trang Thực đơn) và câu chính của trang chủ giữ nguyên: Khánh quyết ngày 11/10/2026. Báo khi PR đổi bề mặt của một khối hay sửa câu chính.
 - Logo là file vector trong `web/public/thuong-hieu/`. Báo khi PR gõ lại chữ BEEFTOWN bằng phông, đổi màu, kéo giãn, xoay, thêm bóng hay viền, hoặc đặt logo lên ảnh. Bản logo cho nền sáng và bản cho nền tối là hai bản vẽ khác nhau: không lấy bản này đổi màu thành bản kia.
 
 Màu. Trang công khai (`<body class="ck">`) đã theo bảng màu Khánh chốt 09/10/2026; `/noi-bo`, kho và Beeftown Cân chưa đổi và vẫn đọc khối `:root` của `web/src/styles/chung.css`:
@@ -51,7 +52,7 @@ Màu. Trang công khai (`<body class="ck">`) đã theo bảng màu Khánh chốt
 - Trang công khai: báo mọi mã hex hay bộ ba số RGB của bảng cũ (`#B23A2C`, `#FBF4E1`, `#1E160E`, `#F2A900`, `#F5C211`, `#8F2C21`, `#960F13`, `#F5ECD7`, `#F1E4C2`, `#8C8577`) trong `web/src/styles/cong-khai.css`, component và trang công khai, SVG trong `web/public/thuong-hieu/`. Báo khi PR thêm một mã màu không có trong `web/THIET-KE.md` mục 2.
 - `/noi-bo`, kho, Beeftown Cân: không báo các mã màu cũ đang có trên `main`. Báo khi một PR của trang công khai sửa khối `:root` của `chung.css` — đổi khối đó là đổi màu cả `/noi-bo` và kho.
 - Báo chữ màu Warm Stone hay Marigold đặt trên nền kem (tương phản dưới 2 : 1), và chữ đỏ đặt trên dải tối (2,43 : 1).
-- Trang công khai không có nền trắng (bảng màu không có trắng): báo `#fff`, `white`, mã trắng ngà hay `color-mix` với trắng trong file công khai. Hai ngoại lệ đang có: `@media print` trong `cong-khai.css` và thẻ nhãn khay `web/src/components/NhanKhay.astro` (chờ PR bố cục trang chủ).
+- Trang công khai không có nền trắng (bảng màu không có trắng): báo `#fff`, `white`, mã trắng ngà hay `color-mix` với trắng trong file công khai. Ngoại lệ duy nhất: `@media print` trong `cong-khai.css`. Thẻ nhãn khay (`web/src/components/NhanKhay.astro`) đã hết trắng: nó phải đặt thẳng, không bóng đổ, chỉ ghi tên 5 trường, không có giá trị mẫu.
 - Thành phần của trang công khai (`web/THIET-KE.md` mục 3–5, đo ở `web/kiem-tra/do-giao-dien.mjs`): mọi thứ bấm được cao ít nhất 48px; nút phụ trên nền kem là nền Cream, chữ và viền Beef Red; mỗi nhóm nút một nút chính; thẻ không bóng đổ; ô nhập nền Cream, viền `--vien-o`, nhãn ở trên ô; mọi `:hover` nằm trong `@media (hover: hover)`; lớp phủ và khoá cuộn của menu gọn chỉ có khi script đã chạy. Báo khi PR thêm thành phần lệch các số đó, hoặc gỡ một ngoại lệ trong `do-giao-dien.mjs` mà không sửa thành phần tương ứng.
 - PR đổi bảng màu của `/noi-bo`, kho hay Beeftown Cân phải đổi cùng lúc các nơi liệt kê ở `THUONG-HIEU.md` mục 5, bảng "Còn mã cũ". Thiếu nơi nào thì báo nơi đó.
 

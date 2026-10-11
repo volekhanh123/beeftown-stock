@@ -23,8 +23,9 @@ campaign) cho phần guideline chưa nói tới.
 - **Không viết**: rẻ, buffet, cao cấp, Korean BBQ, nướng Hàn, grade khi chưa có chứng nhận, số ngày ủ
   khi chưa có hồ sơ, chữ về than, lửa, khói, số phần trăm khi chưa có phép thử. Không câu "Thịt chuẩn
   - Giá thật". **Không ngày, không giá, không ưu đãi, không đếm ngược** khi chưa được công bố.
-- Ảnh AI chỉ để minh họa, luôn ghi **"Ảnh minh họa"**, chỉ cho ảnh không khí món; **quảng cáo và thực
-  đơn dùng ảnh chụp thật** — không bao giờ AI cho quầy, khay, không gian, lối lên, con người.
+- Ảnh AI chỉ để minh họa, luôn ghi **"Ảnh minh họa"**, chỉ cho ảnh không khí món và bữa ăn; **quảng
+  cáo và thực đơn dùng ảnh chụp thật** — không bao giờ AI cho quầy, khay, không gian, lối vào, thang
+  máy, mặt người (bàn tay người thì được: Khánh quyết ngày 11/10/2026 cho website).
 - **Logo** (guideline): một logo gồm lockup (đầu bò + BEEFTOWN + tagline), brandmark (đầu bò), wordmark
   (chữ BEEFTOWN); cả logo một màu. Lockup rộng tối thiểu 160px — hẹp hơn thì dùng brandmark (tối thiểu
   48px). Khoảng trống quanh logo bằng chiều cao chữ "B". **Mỗi bề mặt một logo, đặt ở trên cùng**

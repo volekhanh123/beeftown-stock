@@ -1,7 +1,7 @@
 # Beeftown — bảng màu thương hiệu đã chốt và việc đưa sang website
 
 Lập ngày 10/10/2026 từ Brand Guideline (bản lưu số 17 trên Claude). Khánh chốt bảng màu ngày 09/10/2026.
-File này là bản tóm tắt cho người viết mã. Cập nhật ngày 11/10/2026, cùng PR "màu và thông tin chung"; bổ sung cùng ngày ở PR "thành phần và khung trang" (trang công khai bỏ nền trắng, địa điểm có thang máy).
+File này là bản tóm tắt cho người viết mã. Cập nhật ngày 11/10/2026, cùng PR "màu và thông tin chung"; bổ sung cùng ngày ở PR "thành phần và khung trang" (trang công khai bỏ nền trắng, địa điểm có thang máy) và PR "trang chủ và thực đơn" (Khánh quyết giữ tỷ lệ màu như đang chạy; ảnh minh họa lên trang; thẻ nhãn khay hết trắng).
 
 > **Trang công khai ĐÃ đổi theo bảng màu này** (token trong khối `.ck` của `web/src/styles/cong-khai.css`,
 > logo và hoa văn SVG, ảnh chia sẻ, biểu tượng trình duyệt). **`/noi-bo`, kho và Beeftown Cân CHƯA đổi**:
@@ -37,7 +37,7 @@ File này là bản tóm tắt cho người viết mã. Cập nhật ngày 11/10
 - **Tên gọi:** descriptor "Beef Specialty Restaurant"; tagline "Pick it. Grill it. Love it." có dấu chấm; câu chính cho khách "Không cần rành bò. Chọn theo gu, thấy giá trước."
 - **Không viết:** rẻ, buffet, cao cấp, Korean BBQ, nướng Hàn, grade khi chưa có chứng nhận, số ngày ủ khi chưa có hồ sơ, chữ về than, lửa, khói, số phần trăm khi chưa có phép thử. Danh sách máy quét dùng vẫn là `web/src/lib/chuoi-cam.js`.
 - **Ảnh nên có:** khay bò đóng sẵn có nhãn, vỉ gas với hơi nhẹ, bàn tay và đĩa ăn chung, nền kem và gỗ sáng. **Không có:** than, lửa, khói dày, đá đen, gang, thớt gỗ thô, rau thơm đặt trên thịt sống, vân mỡ đẹp hơn thịt quán bán.
-- **Ảnh do AI tạo** chỉ để minh họa; quảng cáo và thực đơn dùng ảnh chụp thật.
+- **Ảnh do AI tạo** chỉ để minh họa; quảng cáo và thực đơn dùng ảnh chụp thật. Trên website (Khánh quyết ngày 11/10/2026): ảnh AI được lên trang, mỗi ảnh có nhãn "Ảnh minh họa"; bàn tay người thì được, mặt người thì không; hai ảnh bữa ăn có kim chi và món phụ được dùng như hình minh họa (câu chữ không hứa món phụ nào); quầy, khay skin-pack, không gian quán, lối vào, thang máy vẫn chờ ảnh chụp thật. Bảng từng ảnh: `web/THIET-KE.md` mục 7.
 
 ## 3. Chỗ guideline và website đang khác nhau
 
@@ -48,16 +48,16 @@ File này là bản tóm tắt cho người viết mã. Cập nhật ngày 11/10
 | Charcoal | `#151008` | `--than` `#151008` | `--than` `#1E160E` |
 | Màu vàng | 1 màu: Marigold `#F5AA14` | 1 mã `#F5AA14`, 2 tên biến (`--cuc-vang`, `--mu-tat`) | 2 màu: `--mu-tat` `#F2A900`, `--cuc-vang` `#F5C211` |
 | Màu pha | Không có | Có, Khánh cho phép ngày 10/10/2026: `--do-dam` và `--do-sau` `#890607`, `--kem-sau` `#EBDCC6`, `--kem-dam` `#E7D5BC`, `--vien-o` `#7A7366`, `--muc-nhat` (Charcoal 68 %) | Màu pha của bảng cũ |
-| Màu trắng | Không có | Không dùng (từ PR "thành phần và khung trang"): thẻ nền kem sau, ô nhập nền Cream. Còn 2 chỗ có chủ đích: bản in ra giấy và thẻ "Đọc nhãn khay" (chờ PR bố cục trang chủ) | Thẻ và ô nhập nền trắng |
-| Phần của từng màu | Cream 60 · Beef Red 25 · Charcoal 10 · Marigold dưới 5 | kem 60 · tối 25 · đỏ 12 · vàng 3 (`web/THIET-KE.md` ghi là gợi ý), chưa đổi | không tính |
+| Màu trắng | Không có | Không dùng (từ PR "thành phần và khung trang"): thẻ nền kem sau, ô nhập nền Cream. Còn 1 chỗ có chủ đích: bản in ra giấy. Thẻ "Đọc nhãn khay" hết trắng từ PR "trang chủ và thực đơn" (nền Cream, đặt thẳng, không bóng) | Thẻ và ô nhập nền trắng |
+| Phần của từng màu | Cream 60 · Beef Red 25 · Charcoal 10 · Marigold dưới 5 | kem 60 · tối 25 · đỏ 12 · vàng 3 (ước lượng, chưa đo). **Khánh quyết ngày 11/10/2026: giữ như đang chạy** | không tính |
 | Warm Stone | Chỉ nét kẻ và nền phụ | Chữ phụ trên nền tối | Chữ phụ trên nền tối |
 | Độ đậm Montserrat | 500 / 700 / 800 / 900 | 400 / 600 / 700 / 800 | 400 / 600 / 700 / 800 |
 | Địa điểm | Tầng 3, 63 Hồ Tùng Mậu | Đã đổi, trừ dòng địa chỉ pháp nhân ở chân trang (mục 6) | Không ghi địa chỉ nhà hàng trong mã |
 
-Hai việc cần Khánh quyết:
+Hai việc Khánh đã quyết:
 
-1. **Đã quyết ngày 10/10/2026:** website được giữ màu pha. Màn hình cần 1 đỏ đậm hơn cho nút khi di chuột và chữ nhỏ, 2 nền kem đậm hơn để tách khối, 1 màu viền ô nhập. Guideline vẫn ghi không màu pha; phép này chỉ áp dụng cho website.
-2. **Vẫn chờ:** phần của từng màu trên trang web theo guideline (đỏ 25, tối 10) hay giữ như đang chạy (tối 25, đỏ 12). Trang công khai hiện giữ như đang chạy; đổi là đổi bề mặt của vài khối, thuộc các PR bố cục sau.
+1. **Ngày 10/10/2026:** website được giữ màu pha. Màn hình cần 1 đỏ đậm hơn cho nút khi di chuột và chữ nhỏ, 2 nền kem đậm hơn để tách khối, 1 màu viền ô nhập. Guideline vẫn ghi không màu pha; phép này chỉ áp dụng cho website.
+2. **Ngày 11/10/2026:** phần của từng màu trên trang web **giữ như đang chạy** (tối khoảng 25, đỏ khoảng 12), không theo con số của guideline (đỏ 25, tối 10). Các dải nền tối ở lại: "Quầy chọn bò" của trang chủ, "Bò tại quầy" của trang Thực đơn và các dải tối khác không đổi sang kem. Kiểm thử giữ bề mặt của từng khối: `crm/test/test-cong-khai-anh.mjs` nhóm 5 và hai phép đo `trangChu`, `thucDon` của `web/kiem-tra/do-giao-dien.mjs`. Con số 60 / 25 / 12 / 3 là ước lượng; đo trên ảnh chụp toàn trang là việc của PR kiểm cuối.
 
 ## 4. Token đã áp dụng trên trang công khai
 

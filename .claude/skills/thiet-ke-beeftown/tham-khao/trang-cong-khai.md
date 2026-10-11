@@ -22,8 +22,15 @@
 
 ## Nhịp trang
 
-Trang chủ (`TrangRaMat.astro`): kem (màn đầu + mảng đỏ) → kem (ba bước) → **tối** (quầy, thịt sáng
-lên) → kem đậm (cả bữa) → **đỏ** (đi nhóm) → kem (tầng 3) → kem (câu hỏi) → chân trang.
+Trang chủ (`TrangRaMat.astro`): kem (màn đầu: chữ + ảnh, dải tagline đỏ dưới ảnh) → kem (ba bước) →
+**tối** (quầy, thịt sáng lên) → kem đậm (cả bữa) → **đỏ** (đi nhóm) → kem (tầng 3) → kem (câu hỏi) →
+chân trang. Thứ tự tám khối và bề mặt của từng khối là điều Khánh đã quyết (11/10/2026: giữ như đang
+chạy) — có kiểm thử, đừng đổi. Bảng từng khối, ảnh và bố cục điện thoại / máy tính: `web/THIET-KE.md`,
+mục 1, "Tám khối của trang chủ".
+
+Khối có ảnh xếp so le trên máy tính (ảnh trái – chữ phải, rồi chữ trái – ảnh phải); trên điện thoại
+chữ và nút đứng trước ảnh, trừ dải tối "Quầy chọn bò" mở bằng ảnh. Nút của một khối nằm ngay sau đoạn
+giải thích của nó, không đẩy xuống cuối khối.
 
 Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
 
@@ -64,7 +71,8 @@ Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
   `khung-anh`, `trang-tri`, `net`, `nen-van-mo`, `an-khi-hep`, `cau-hoi`, `tra-loi`,
   `mon`, `nhan-mon`, `o`, `loi-o`, `mo-dau-trang`, `net-goc`, `co-trang-tri`.
 - **CSS riêng của component**: `<style>` có phạm vi (không `is:global`), mọi lớp mang **tiền tố của
-  component**: `kmd-` (KhoiMoDau), `bb-` (BaBuoc), `qcb-` (QuayChonBo), `lt3-` (LenTang3), `ch-`
+  component**: `kmd-` (KhoiMoDau), `bb-` (BaBuoc), `qcb-` (QuayChonBo), `bacn-` (BuaAnCungNhau), `dcn-`
+  (DiCungNhom), `lt3-` (LenTang3), `ch-`
   (CauHoi), `nk-` (NhanKhay), `td-` (TrangThucDon), `db-` (TrangDenBeeftown), `hb-` (TrangDatBan),
   `ut-` (FormUngTuyen), `vb-` (TrangVanBan), `dt-` / `mg-` (DauTrang), `ct-` (ChanTrang).
 - `:global()` chỉ để chạm tới phần tử do component con hay `<slot>` dựng (`.lt3-dc :global(svg)`).
@@ -136,9 +144,9 @@ theo ngày — `web/THIET-KE.md` mục 10.
 | Component | Props chính | Dùng cho |
 |---|---|---|
 | `BieuTuong` | `ten`, `class?` | Biểu tượng nét 1,5px, lưới 24, `currentColor`, luôn `aria-hidden`. Nơi dùng đặt cỡ 24px; nét không co theo cỡ. Nằm trong thứ bấm được thì phải có nhãn chữ cạnh nó (nhìn thấy, hoặc `.an-chu` khi thật sự không còn chỗ) |
-| `Anh` | `id`, `ngonNgu`, `khung`, `khungNho?`, `sizes?`, `uuTien?`, `phuKin?`, `thayBang?`, `nenKhung?` | Ảnh AVIF / WebP, tự gắn "Ảnh minh họa"; `uuTien` chỉ cho ảnh màn đầu |
+| `Anh` | `id`, `ngonNgu`, `khung`, `khungNho?`, `sizes?`, `uuTien?`, `thayBang?`, `nenKhung?` | Ảnh AVIF / WebP trong khung tự giữ tỷ lệ (`khung` từ 600px, `khungNho` dưới 600px), tự gắn nhãn "Ảnh minh họa"; `uuTien` chỉ cho ảnh màn đầu (mỗi trang nhiều nhất một, và nó phải nằm trong màn hình đầu); `nenKhung` (`kem` / `toi` / `do`) theo dải đặt ảnh. `id` và `khung` viết bằng chữ thẳng — kiểm thử đọc chúng từ mã |
 | `KhungAnh` | `loai` (`quay`, `khay`, `thang-may`, `loi-vao`, `ban-nuong`), `tiLe?`, `tiLeNho?`, `nen?` | Chỗ của ảnh chụp thật chưa có — đúng tỷ lệ, không chữ |
-| `NhanKhay` | `ngonNgu` | Thiết bị chữ ký "Đọc nhãn khay" — năm trường nhãn, không con số |
+| `NhanKhay` | `ngonNgu` | Thiết bị chữ ký "Đọc nhãn khay": một thẻ `.the` đặt thẳng, không bóng đổ — logo, tiêu đề, năm trường theo thứ tự (số, tên trường, lời giải thích); không con số, không giá trị mẫu |
 | `LenTang3` | `ngonNgu`, `noiDung`, `gon?`, `capTieuDe?`, `anHieu?`, `tieuDe?`, `khongLinkDuongDen?` | "Tầng 3" và đường lên; bản gọn cho trang Hỏi bàn. In địa chỉ và câu chỉ đường `t.loiLen` (lối vào riêng ngay cạnh GS25, thang máy lên tầng 3) — không viết lại câu đó trong component khác |
 | `CauHoi` | `ngonNgu`, `noiDung` | Hỏi đáp bằng `<details>` — chỉ dữ kiện đã xác nhận. Mỗi `<summary>` có hai biểu tượng `cong` (`.bt-mo`) và `tru` (`.bt-dong`); hàng cao 56px, bấm được trên toàn chiều rộng |
 | `TrangVanBan` | `hieu`, `tieuDe` + `<slot>` | Trang pháp lý |
@@ -149,6 +157,19 @@ Thêm biểu tượng: vẽ thêm một dòng vào `NET` và kiểu `TenBieuTuon
 nét 1,5, đầu tròn — rồi cập nhật danh sách tên trong `SKILL.md` và `web/THIET-KE.md` mục 5.
 
 Thêm ảnh thật: `web/THIET-KE.md` mục 7, "Đưa một ảnh chụp thật lên trang".
+
+## Đặt một ảnh lên trang
+
+- Chỉ qua `<Anh id="…" khung="…" khungNho="…" />`; không tự viết `<img src="/anh/…">` (có kiểm thử).
+- Chọn khung theo chỗ đặt: cột nửa trang trên máy tính thì `4x3` hoặc `3x2`; điện thoại cần ảnh cao hơn
+  thì khai `khungNho` (`4x5`, `4x3`, `1x1`). Khung phải có trong `web/cong-cu/anh/danh-sach.json` và đã
+  dựng cỡ (`tao-co-anh.py`) — khung chưa dựng thì trang hiện `KhungAnh`, và kiểm thử đỏ.
+- `sizes` ghi đúng bề rộng ảnh hiện ra: cột 6/11 của khung 1200px là `620px` từ 1280px, khoảng `50vw`
+  từ 900px, còn lại `calc(100vw - 40px)`.
+- Không đặt gì lên ảnh ngoài nhãn "Ảnh minh họa" của component: logo, chữ, tem, nét trang trí đứng
+  cạnh hoặc dưới ảnh. Không `box-shadow`, không xoay, không viền.
+- Sau khi dựng cỡ, mở từng file đã cắt mà xem: không cắt mất món chính, không cắt ngang bàn tay; alt
+  viết theo đúng thứ nhìn thấy (một alt cho cả hai khung thì chỉ tả thứ có ở cả hai).
 
 ## JavaScript
 

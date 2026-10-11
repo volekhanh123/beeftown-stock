@@ -91,8 +91,8 @@ in đọc từ bản in thử, Khánh duyệt rồi mới ghi). Nguồn, giá tr
   màu mới tệ hơn cả hai.
 - **PR đổi màu `/noi-bo`, kho hay Beeftown Cân** (chưa làm): đổi một lượt mọi nơi ở `THUONG-HIEU.md`
   mục 5, bảng "Còn mã cũ" **và** bảng token thứ hai dưới đây — `test-ky-nang-thiet-ke.mjs` đỏ khi
-  bảng lệch `chung.css`. Còn một việc chờ Khánh quyết: tỷ lệ màu trên web theo guideline hay giữ như
-  đang chạy.
+  bảng lệch `chung.css`. Tỷ lệ màu trên web: Khánh quyết ngày 11/10/2026 **giữ như đang chạy** — không
+  đổi dải tối sang kem.
 
 Chỉ dùng token, không gõ mã màu thẳng vào component. Không tự thêm sắc ngoài hai bảng.
 
@@ -126,9 +126,10 @@ thử đỏ khi một file công khai còn mã hex hay bộ ba số RGB của b�
 
 **Không trắng.** Bảng màu không có trắng: trong file công khai không viết mã trắng, trắng ngà, từ khóa
 `white`, hay pha màu với trắng. Thẻ nền `--kem-sau` (trên nền kem sau / kem đậm / đỏ thì Cream), ô nhập
-và ô chọn giờ nền `--kem`, ô đánh dấu tự vẽ. Hai ngoại lệ có chủ đích: `@media print` và thẻ "Đọc nhãn
-khay" (`NhanKhay.astro`, chờ PR bố cục trang chủ). `test-cong-khai-giao-dien.mjs` nhóm 7 quét mã nguồn,
-`do-giao-dien.mjs` đo màu nền của mọi phần tử trên trang đã dựng.
+và ô chọn giờ nền `--kem`, ô đánh dấu tự vẽ. Ngoại lệ duy nhất: `@media print`. Thẻ "Đọc nhãn khay"
+(`NhanKhay.astro`) là một thẻ `.the` — đặt thẳng, không bóng đổ, nền Cream trên dải tối. Nền chờ của
+khung ảnh cũng là màu của bảng. `test-cong-khai-giao-dien.mjs` nhóm 7 quét mã nguồn, `do-giao-dien.mjs`
+đo màu nền của mọi phần tử trên trang đã dựng.
 
 ### Token của `/noi-bo` và kho
 
@@ -162,8 +163,10 @@ khai chỉ được 1,83 và 1,56 : 1. Không đặt chữ đỏ trên dải t�
 1) chỉ cho chữ lớn hoặc hình. Không khối vàng — vàng chỉ là vạch, chấm, chữ nhấn nhỏ trên nền tối. Tên
 `--than` (Charcoal) chỉ là tên màu: Beeftown nướng **vỉ gas**, không than.
 
-**Tỷ lệ trên trang công khai đang chạy** (brief cũ ghi là gợi ý): kem 60 % / tối 25 % / đỏ 12 % / vàng
-3 %. Guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5 — chờ Khánh quyết cho web.
+**Tỷ lệ trên trang công khai đang chạy** (ước lượng): kem 60 % / tối 25 % / đỏ 12 % / vàng 3 %.
+Guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5. **Khánh quyết ngày 11/10/2026:
+website giữ như đang chạy** — các dải nền tối ("Quầy chọn bò" ở trang chủ, "Bò tại quầy" ở Thực đơn…)
+ở lại, không đổi sang kem. Đừng đổi bề mặt của một khối để "cho đúng guideline".
 
 ### Màu theo bề mặt (trang công khai)
 
@@ -221,7 +224,7 @@ Thang chữ trang công khai (khai trên `.ck`; theo plan redesign 11/10/2026):
 | `--co-than` | 16px, dòng 24px | Chữ chạy, ở mọi bề rộng |
 | `--co-nho` | 14px | Chữ phụ `.nho`, gợi ý dưới ô |
 | `--co-ti` | 13px | Sàn — nhãn |
-| `--co-so` | 52 → 104px | Số lớn của ba bước |
+| `--co-so` | 44 → 68px | Số thứ tự của ba bước — không quá 3,6 lần tiêu đề của bước |
 
 ## Khoảng cách, khung, hình khối
 
@@ -237,7 +240,8 @@ Thang chữ trang công khai (khai trên `.ck`; theo plan redesign 11/10/2026):
 - Mốc màn hình: **400** (ẩn bớt trang trí, `.an-khi-hep`) · **600** (điện thoại → máy tính bảng) ·
   **768** (đầu trang: ngôn ngữ và Hỏi bàn lên thanh) · **900** (hai cột) · **1024** · **1080** (đầu
   trang đủ điều hướng). Kiểm ở 360 / 390 / 768 / 1024 / 1440px; không tràn ngang từ 320px (dưới 360px
-  đầu trang dùng brandmark đầu bò thay lockup).
+  đầu trang dùng brandmark đầu bò thay lockup, và màn đầu trang chủ đưa ảnh lên ngay sau câu chính —
+  ảnh tải ngay phải nằm trong màn hình đầu).
 - Không dùng `100vw` (tính cả thanh cuộn → tràn ngang). Khối có trang trí lấn mép: `.co-trang-tri`.
 - **Vùng chạm ≥ 48px ở mọi khu** (`--cham` trên trang công khai): nút, link điều hướng, link chân
   trang, liên kết có mũi tên, ô nhập, ô chọn giờ; hàng câu hỏi 56px.
@@ -276,9 +280,15 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
 
 ## Ảnh, logo, artwork
 
-- **Ảnh minh họa** (AI) chỉ cho ảnh không khí món, luôn có chú thích **"Ảnh minh họa"** (`<Anh>` tự
-  gắn). **Quầy, khay skin-pack, không gian, lối lên, con người: chỉ ảnh chụp thật.** Không ảnh kho
-  (Unsplash…). Không than, củi, khói giả trong ảnh.
+- **Ảnh minh họa** (AI) chỉ cho ảnh không khí món và bữa ăn, luôn có nhãn **"Ảnh minh họa"** ngay
+  trong khung ảnh (`<Anh>` tự gắn). Khánh quyết ngày 11/10/2026: ảnh AI được lên trang; **bàn tay người
+  thì được, mặt người thì không**; hai ảnh bữa ăn có món phụ (`mon-an-chia-se`, `bua-an-cung-ban`) là
+  hình minh họa — câu chữ và alt không kể tên, không hứa món phụ nào. **Quầy, khay skin-pack, không
+  gian quán, lối vào, thang máy, mặt người: chỉ ảnh chụp thật** (cho tới khi có: `<KhungAnh>`). Không
+  ảnh kho (Unsplash…). Không than, củi, khói giả trong ảnh.
+- **Trên ảnh không đặt gì khác**: không logo, không chữ, không tem, không nét trang trí chồng lên; khung
+  ảnh bo 6px, không bóng đổ, không viền. Ảnh nào đã dựng cỡ thì phải có chỗ dùng — không để file ảnh
+  chết trong `web/public/anh/`. Bảng từng ảnh và cách dựng: `web/THIET-KE.md`, mục 7.
 - Logo, đầu bò, rosemary, steak, vân mỡ, tem tròn, chữ lặp: **vector trích nguyên từ PDF nhận diện**
   ở `web/public/thuong-hieu/` — không vẽ lại, không vẽ bằng AI, không gõ lại chữ. Đúng biến thể cho
   nền: `logo-ngang-do` trên kem, `logo-ngang-kem` trên đỏ / tối. Các SVG này đã mang mã màu của bảng
@@ -367,6 +377,8 @@ Danh sách tự rà:
 - [ ] Trang công khai không nền trắng, thẻ không bóng đổ; mỗi nhóm nút một nút chính.
 - [ ] Montserrat, đúng độ đậm; không chữ < 13px (trừ dòng hoa nhỏ 12px); ô nhập 16px.
 - [ ] Nút, link, biểu tượng, ảnh dùng component có sẵn; không emoji; không `<img>` trỏ file chưa có.
+- [ ] Ảnh AI có nhãn "Ảnh minh họa", không cho thấy quầy, khay, không gian, lối vào, thang máy, mặt
+      người; không logo hay chữ đặt lên ảnh; alt tả đúng thứ nhìn thấy, đủ vi / en / ko.
 - [ ] Không tràn ngang ở 360px; vùng chạm ≥ 48px; focus thấy rõ trên mọi bề mặt.
 - [ ] Câu chữ đúng sự thật, đủ thứ tiếng, không chữ cấm, không claim chưa xác nhận; địa điểm chỉ là
       Tầng 3, 63 Hồ Tùng Mậu, lối vào riêng ngay cạnh GS25, thang máy — không phường, quận, không gì thêm.
