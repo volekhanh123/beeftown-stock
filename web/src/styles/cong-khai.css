@@ -328,15 +328,20 @@ html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 1
 /* --- Câu hỏi thường gặp ---------------------------------------------------- */
 .ck .cau-hoi { border-top: 1px solid var(--vien); }
 .ck .cau-hoi details { border-bottom: 1px solid var(--vien); }
+/* Cả hàng là vùng bấm (summary rộng hết khối), cao tối thiểu 56px. Dấu cộng khi đóng, dấu trừ khi
+   mở: hai biểu tượng trong mã, CSS chọn một — không JavaScript vẫn đúng. */
 .ck .cau-hoi summary {
   display: flex; align-items: center; justify-content: space-between; gap: var(--k-4);
-  min-height: 60px; padding: var(--k-3) 0;
-  font-weight: 700; font-size: clamp(17px, 0.4vw + 15px, 19px); line-height: 1.4;
+  min-height: 56px; padding: var(--k-4) 0;
+  font-weight: 700; font-size: clamp(17px, 0.1vw + 16.6px, 18px); line-height: 1.4;
   cursor: pointer; list-style: none;
+  transition: color var(--nhanh);
 }
 .ck .cau-hoi summary::-webkit-details-marker { display: none; }
-.ck .cau-hoi summary svg { width: 22px; height: 22px; flex: none; color: var(--nhan); transition: transform var(--nhanh); }
-.ck .cau-hoi details[open] summary svg { transform: rotate(45deg); }
+.ck .cau-hoi summary:hover { color: var(--nhan); }
+.ck .cau-hoi summary svg { width: 24px; height: 24px; flex: none; color: var(--nhan); }
+.ck .cau-hoi summary .bt-dong, .ck .cau-hoi details[open] > summary .bt-mo { display: none; }
+.ck .cau-hoi details[open] > summary .bt-dong { display: block; }
 .ck .cau-hoi .tra-loi { padding: 0 0 var(--k-5); max-width: 66ch; color: var(--chu-chinh); }
 .ck .cau-hoi .tra-loi p:last-child { margin-bottom: 0; }
 

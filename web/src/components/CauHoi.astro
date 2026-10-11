@@ -3,7 +3,8 @@
  * CÂU HỎI THƯỜNG GẶP — chỉ dữ kiện đã xác nhận (brief 06/10/2026)
  *
  * <details>/<summary>: mở / đóng không cần JavaScript, đọc được bằng bàn phím và
- * trình đọc màn hình. Không câu nào nói giờ mở cửa, chỗ gửi xe, giá cụ thể hay
+ * trình đọc màn hình. Cả hàng là vùng bấm, cao tối thiểu 56px; dấu cộng khi đóng, dấu
+ * trừ khi mở (hai biểu tượng trong mỗi summary, cong-khai.css chọn một theo [open]). Không câu nào nói giờ mở cửa, chỗ gửi xe, giá cụ thể hay
  * phòng riêng — những thứ chưa chốt. "Đã gồm VAT" chỉ nói về giá trên nhãn khay.
  *
  * Hai câu hỏi về hỏi bàn và nhóm đông chỉ chỉ khách tới kênh CÓ THẬT
@@ -92,19 +93,19 @@ const t = dich(ngonNgu, {
     </div>
     <div class="cau-hoi">
       <details>
-        <summary>{t.h1}<BieuTuong ten="cong" /></summary>
+        <summary>{t.h1}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
         <div class="tra-loi"><p>{t.d1}</p></div>
       </details>
       <details>
-        <summary>{t.h2}<BieuTuong ten="cong" /></summary>
+        <summary>{t.h2}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
         <div class="tra-loi"><p>{t.d2}</p></div>
       </details>
       <details>
-        <summary>{t.h3}<BieuTuong ten="cong" /></summary>
+        <summary>{t.h3}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
         <div class="tra-loi"><p>{t.d3}</p></div>
       </details>
       <details>
-        <summary>{t.h4}<BieuTuong ten="cong" /></summary>
+        <summary>{t.h4}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
         <div class="tra-loi">
           <p>{t.d4a} <span lang="vi">{cumDc.map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span>. {tChung.loiLen}</p>
           <p><a class="lien-ket" href={duongDanTuongUng('/den-beeftown', ngonNgu)}>{tChung.xemDuongLen}<BieuTuong ten="mui-ten" /></a></p>
@@ -112,7 +113,7 @@ const t = dich(ngonNgu, {
       </details>
       {coKenhHoiBan(nd) && (
         <details>
-          <summary>{t.h5}<BieuTuong ten="cong" /></summary>
+          <summary>{t.h5}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
           <div class="tra-loi">
             <p>{formMo ? (coKenhNhan ? t.d5 : t.d5Form) : t.d5Nhan}</p>
             <p><a class="lien-ket" href={duongDanTuongUng('/dat-ban', ngonNgu)}>{tChung.datBan}<BieuTuong ten="mui-ten" /></a></p>
@@ -121,12 +122,12 @@ const t = dich(ngonNgu, {
       )}
       {coKenhNhan && (
         <details>
-          <summary>{t.h6}<BieuTuong ten="cong" /></summary>
+          <summary>{t.h6}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
           <div class="tra-loi"><p>{t.d6}</p></div>
         </details>
       )}
       <details>
-        <summary>{t.h7}<BieuTuong ten="cong" /></summary>
+        <summary>{t.h7}<BieuTuong ten="cong" class="bt-mo" /><BieuTuong ten="tru" class="bt-dong" /></summary>
         <div class="tra-loi"><p>{t.d7}</p></div>
       </details>
     </div>
