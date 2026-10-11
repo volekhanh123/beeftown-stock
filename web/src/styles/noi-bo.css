@@ -1,26 +1,58 @@
 /* =============================================================================
    GIAO DIỆN NỘI BỘ
    =============================================================================
-   Khác hẳn trang công khai, và cố ý khác: trang công khai nền tối, chữ to,
-   ít chi tiết — để đọc lướt ngoài đường. Trang nội bộ nền sáng, mật độ cao
-   hơn — để đứng ở quầy dò một danh sách.
+   Cùng bảng màu thương hiệu với trang công khai (chung.css), nhưng dựng khác,
+   và cố ý khác: trang công khai chữ to, ít chi tiết — để đọc lướt ngoài
+   đường. Trang nội bộ mật độ cao hơn, thẻ trắng trên nền kem — để đứng ở quầy
+   dò một danh sách.
 
-   Nền sáng ở đây còn là một tín hiệu: nhìn vào là biết ngay mình đang ở
-   trang quản trị, không phải trang khách. Người dùng cùng một điện thoại cho
-   cả hai.
+   Đầu trang tối và thanh điều hướng là tín hiệu: nhìn vào là biết ngay mình
+   đang ở trang quản trị, không phải trang khách. Người dùng cùng một điện
+   thoại cho cả hai.
 
    KÍCH THƯỚC CHẠM: mọi nút và ô nhập tối thiểu 48px chiều cao, và mọi ô nhập
    có font-size >= 16px. Dưới 16px thì Safari trên iPhone tự phóng to trang
    khi chạm vào ô — trang nhảy, người dùng mất chỗ.
+
+   MÀU: chỉ dùng biến. Năm màu thương hiệu và màu pha ở :root của chung.css;
+   màu trạng thái của công cụ ở .nb-than ngay dưới. Tương phản đã tính (WCAG
+   2.2) — crm/test/test-noi-bo-bang-mau.mjs gác từng cặp:
+     chữ than / trắng · kem        18,93 · 14,96 : 1
+     chữ phụ (--muc-nhat) / trắng · kem   6,63 · 5,92 : 1
+     chữ đỏ / trắng · kem           7,77 · 6,15 : 1     chữ trắng / đỏ    7,77 : 1
+     viền ô (--vien-o) / trắng      4,70 : 1            chữ kem / than   14,96 : 1
+   KHÔNG BAO GIỜ: Marigold, Warm Stone làm chữ hay biểu tượng trên nền sáng
+   (1,97 và 2,31 : 1 với trắng). Chữ "lưu ý" trên nền sáng dùng --vang-chu.
    ============================================================================= */
 
 .nb-than {
+  /* Màu trạng thái của công cụ. Đây là màu CHỨC NĂNG (xanh = xong, vàng = lưu ý,
+     đỏ = làm ngay), không thuộc năm màu thương hiệu; sắc đã chỉnh cho hợp nền kem
+     và thẻ trắng. Kho (Kho.astro: <body class="nb-than kho-than">) đọc cùng bộ này.
+     Đỏ của trạng thái là chính --do; vàng đặc là --mu-tat (chữ than đặt lên trên). */
+  --xanh:      #1A683F;   /* chữ, vạch, nền đặc "xong": 6,78 : 1 với trắng · 5,36 với kem · chữ trắng đặt lên 6,78 */
+  --xanh-nen:  #E4F0E5;   /* nền nhạt "xong" */
+  --xanh-vien: #B9D8C0;   /* viền của khối nền xanh nhạt */
+  --vang-chu:  #7A5200;   /* chữ và biểu tượng "lưu ý" trên nền sáng: 6,92 : 1 với trắng · 5,47 với kem */
+  --vang-nen:  #FDE9B5;   /* nền nhạt "lưu ý" */
+  --vang-vien: #E8C36A;   /* viền của khối nền vàng nhạt */
+  --do-nen:    #FAE9E6;   /* nền nhạt "lỗi, làm ngay" */
+  --do-vien:   #E8BDB7;   /* viền của khối nền đỏ nhạt */
+
   background: var(--kem);
   color: var(--than);
   font-size: 16px;
   /* Chừa chỗ cho thanh điều hướng dính đáy trên điện thoại. */
   padding-bottom: 5rem;
 }
+
+/* Vòng focus theo nền, như hệ bề mặt của trang công khai: Charcoal trên nền sáng
+   (18,93 : 1 với trắng, 14,96 với kem), Marigold trên đầu trang tối (9,59 : 1).
+   Marigold trên nền sáng chỉ 1,56 – 1,97 : 1 — bấm Tab không thấy mình đang ở đâu.
+   Menu thả từ đầu trang kho là thẻ trắng: lại dùng Charcoal. */
+.nb-than :focus-visible { outline-color: var(--than); }
+.nb-dau :focus-visible, .kho-dau :focus-visible { outline-color: var(--cuc-vang); }
+.kho-dau :is(.kho-nguoi-menu, .kho-cn-chon > div) :focus-visible { outline-color: var(--than); }
 
 .nb-khung { width: min(880px, 92%); margin-inline: auto; }
 
@@ -61,7 +93,7 @@
   border: 1px solid var(--vach-kem); border-radius: 6px;
   padding: .5rem .7rem; cursor: pointer; min-height: 40px;
 }
-.nb-nut-nho:hover { background: rgba(251, 244, 225, .1); }
+.nb-nut-nho:hover { background: rgba(240, 227, 208, .1); }
 
 /* --- Điều hướng ----------------------------------------------------------- */
 /* Máy tính / tablet: thanh trên. Xuống dòng khi hẹp — bản cũ cuộn ngang, mục cuối
@@ -90,7 +122,7 @@
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
     display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
     background: #fff; border-top: 1px solid var(--vach);
-    box-shadow: 0 -2px 12px rgba(30, 22, 14, .1);
+    box-shadow: 0 -2px 12px rgba(21, 16, 8, .1);
     padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   .nb-day a {
@@ -144,7 +176,7 @@
   display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .06em;
   text-transform: uppercase; padding: .2rem .5rem; border-radius: 4px; white-space: nowrap;
 }
-.nb-nhan.song   { background: #1F7A4C; color: #fff; }
+.nb-nhan.song   { background: var(--xanh); color: #fff; }
 .nb-nhan.tat    { background: var(--vach); color: var(--muc-nhat); }
 .nb-nhan.nhap   { background: var(--mu-tat); color: var(--than); }
 .nb-nhan.cho    { background: var(--do); color: #fff; }
@@ -158,7 +190,9 @@
   text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
 }
 .nb-nut:hover { background: var(--do-dam); }
-.nb-nut.phu { background: #fff; color: var(--than); border: 1px solid var(--vach); }
+/* Nút phụ: nền trắng, viền Warm Stone (nét kẻ của bảng màu, 2,31 : 1 với trắng). Viền --vach cũ chỉ 1,41 : 1:
+   nút trắng nằm trên thẻ trắng gần như chìm. Chữ đậm của nút vẫn là dấu hiệu chính. */
+.nb-nut.phu { background: #fff; color: var(--than); border: 1px solid var(--da); }
 .nb-nut.phu:hover { background: var(--kem-sau); }
 .nb-nut[disabled] { opacity: .45; cursor: not-allowed; }
 
@@ -166,14 +200,19 @@
 .nb-o { display: block; margin-bottom: 1rem; }
 .nb-o > span { display: block; font-weight: 600; font-size: .88rem; margin-bottom: .35rem; }
 .nb-o > small { display: block; color: var(--muc-nhat); font-size: .8rem; margin-bottom: .35rem; }
+/* Viền ô là --vien-o (4,70 : 1 với nền trắng của ô): --vach chỉ 1,41 : 1, đứng ở quầy
+   không thấy chỗ để chạm vào. */
 .nb-o input, .nb-o select, .nb-o textarea {
   font: inherit; font-size: 16px; width: 100%;
   padding: .75rem .8rem; min-height: 48px;
-  border: 1px solid var(--vach); border-radius: 8px; background: #fff; color: var(--than);
+  border: 1px solid var(--vien-o); border-radius: 8px; background: #fff; color: var(--than);
 }
 .nb-o textarea { min-height: 7rem; resize: vertical; line-height: 1.5; }
+/* Ô đang gõ: viền Charcoal dày gấp đôi (bóng lồng trong, không xô lệch bố cục) là dấu
+   hiệu chính; quầng Marigold là điểm nhấn thêm, tự nó không đủ tương phản trên nền sáng. */
 .nb-o input:focus, .nb-o select:focus, .nb-o textarea:focus {
-  outline: 3px solid var(--cuc-vang); outline-offset: 1px; border-color: var(--than);
+  outline: 3px solid var(--cuc-vang); outline-offset: 1px;
+  border-color: var(--than); box-shadow: inset 0 0 0 1px var(--than);
 }
 
 /* --- Thông báo ------------------------------------------------------------ */
@@ -181,9 +220,9 @@
   border-radius: 8px; padding: .9rem 1rem; margin-bottom: 1.25rem;
   font-size: .92rem; border-left: 4px solid;
 }
-.nb-bao.loi    { background: #FDECEA; border-color: var(--do); }
-.nb-bao.xong   { background: #E9F5EE; border-color: #1F7A4C; }
-.nb-bao.luu-y  { background: #FFF5DC; border-color: var(--mu-tat); }
+.nb-bao.loi    { background: var(--do-nen); border-color: var(--do); }
+.nb-bao.xong   { background: var(--xanh-nen); border-color: var(--xanh); }
+.nb-bao.luu-y  { background: var(--vang-nen); border-color: var(--mu-tat); }
 .nb-bao p:first-child { margin-top: 0; }
 .nb-bao p:last-child  { margin-bottom: 0; }
 
@@ -217,13 +256,14 @@
 }
 .nb-viec li:last-child { border-bottom: none; }
 .nb-viec .dau { flex-shrink: 0; font-weight: 700; width: 1.4rem; }
-.nb-viec .dau.xong { color: #1F7A4C; }
-.nb-viec .dau.chua { color: var(--da); }
+.nb-viec .dau.xong { color: var(--xanh); }
+/* Dấu "chưa xong" nằm trên nền kem: Warm Stone ở đó chỉ 1,83 : 1. */
+.nb-viec .dau.chua { color: var(--muc-nhat); }
 
 /* Trạng thái một ô dịch (0036), dưới ô tiếng Anh/Hàn ở màn soạn tin và màn công tắc. */
 .nb-dich { display: block; margin-top: .3rem; font-size: .78rem; }
 .nb-dich.xong { color: var(--muc-nhat); }
-.nb-dich.cho  { color: #8a6d00; }
+.nb-dich.cho  { color: var(--vang-chu); }
 .nb-dich.loi  { color: var(--do); }
 
 /* --- Bản đồ chức năng (components/BanDoChucNang.astro) ---------------------
@@ -232,9 +272,12 @@
 .bd-tim { display: flex; gap: .5rem; align-items: stretch; margin: 0 0 1.25rem; }
 .bd-tim input {
   flex: 1; min-width: 0; font: inherit; font-size: 16px; min-height: 48px;
-  padding: .7rem .85rem; border: 1px solid var(--vach); border-radius: 10px; background: #fff; color: var(--than);
+  padding: .7rem .85rem; border: 1px solid var(--vien-o); border-radius: 10px; background: #fff; color: var(--than);
 }
-.bd-tim input:focus { outline: 3px solid var(--cuc-vang); outline-offset: 1px; border-color: var(--than); }
+.bd-tim input:focus {
+  outline: 3px solid var(--cuc-vang); outline-offset: 1px;
+  border-color: var(--than); box-shadow: inset 0 0 0 1px var(--than);
+}
 .bd-tim .nb-nut { flex: 0 0 auto; gap: .4rem; }
 
 .bd-nhom { margin-bottom: 1.4rem; }

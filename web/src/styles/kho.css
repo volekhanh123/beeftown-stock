@@ -60,8 +60,8 @@
 }
 .kho-o-so b { display: block; font-size: 1.6rem; line-height: 1.1; }
 .kho-o-so span { font-size: .8rem; color: var(--muc-nhat); }
-.kho-o-so.gap { border-color: var(--do); background: #FDECEA; }
-.kho-o-so.luu-y { border-color: var(--mu-tat); background: #FFF5DC; }
+.kho-o-so.gap { border-color: var(--do); background: var(--do-nen); }
+.kho-o-so.luu-y { border-color: var(--mu-tat); background: var(--vang-nen); }
 
 /* --- Nút nhanh ------------------------------------------------------------- */
 .kho-nut-nhanh { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); margin-bottom: 1.5rem; }
@@ -71,7 +71,7 @@
 .kho-han { display: inline-block; font-size: .72rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; white-space: nowrap; }
 .kho-han.het_han { background: var(--do); color: #fff; }
 .kho-han.sap_het { background: var(--mu-tat); color: var(--than); }
-.kho-han.con_han { background: #E9F5EE; color: #1F7A4C; }
+.kho-han.con_han { background: var(--xanh-nen); color: var(--xanh); }
 
 /* --- Thẻ mặt hàng trong tồn kho ------------------------------------------ */
 .kho-mh { background: #fff; border: 1px solid var(--vach); border-radius: 10px; margin-bottom: .6rem; }
@@ -135,7 +135,7 @@
    không thì iPhone thấy một nút camera bấm không ra gì. */
 .kho-quet [hidden] { display: none !important; }
 .kho-quet-hop { border: 0; border-radius: 12px; padding: 1rem; width: min(30rem, 94vw); }
-.kho-quet-hop::backdrop { background: rgba(20, 14, 8, .6); }
+.kho-quet-hop::backdrop { background: rgba(21, 16, 8, .6); }
 .kho-quet-hop video { width: 100%; max-height: 55vh; object-fit: cover; border-radius: 8px; background: #000; display: block; }
 .kho-quet-hop p { margin: .75rem 0; font-size: .9rem; }
 .kho-quet-hop .nb-nut { width: 100%; }
@@ -155,7 +155,7 @@
 @media (max-width: 1023px) {
   .kho-thanh-nut.dinh {
     position: sticky; bottom: 0; background: var(--kem); padding: .6rem 0; margin: 0;
-    box-shadow: 0 -6px 12px -8px rgba(30, 22, 14, .25); z-index: 5;
+    box-shadow: 0 -6px 12px -8px rgba(21, 16, 8, .25); z-index: 5;
   }
   body:has(.kho-day) .kho-thanh-nut.dinh {
     bottom: calc(var(--kho-day-cao, 4.25rem) + env(safe-area-inset-bottom));

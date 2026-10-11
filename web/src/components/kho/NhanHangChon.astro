@@ -34,16 +34,16 @@ const { name, ds, chon = '', nhan } = Astro.props;
   .nh-chon { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); margin: .25rem 0 .75rem; }
   .nh-chon-o {
     position: relative; display: flex; align-items: center; min-height: 56px; cursor: pointer;
-    border: 2px solid var(--kho-vach, #ddd); border-radius: 12px; background: #fff;
+    border: 2px solid var(--kho-vach); border-radius: 12px; background: #fff;
     padding: .55rem .75rem .55rem 2.3rem;
   }
   .nh-chon-o input {
     position: absolute; left: .7rem; top: 50%; transform: translateY(-50%);
-    width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; accent-color: var(--do, #b3261e);
+    width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; accent-color: var(--do);
   }
   .nh-chon-chu { display: flex; flex-direction: column; line-height: 1.25; }
   .nh-chon-chu strong { font-size: 1rem; }
-  .nh-chon-chu small { font-size: .78rem; color: var(--muc-nhat, #666); }
-  .nh-chon-o:has(input:checked) { border-color: var(--than, #2b1d14); background: var(--kem, #fbf6ee); }
-  .nh-chon-o:focus-within { outline: 3px solid var(--do, #b3261e); outline-offset: 1px; }
+  .nh-chon-chu small { font-size: .78rem; color: var(--muc-nhat); }
+  .nh-chon-o:has(input:checked) { border-color: var(--than); background: var(--kem); }
+  .nh-chon-o:focus-within { outline: 3px solid var(--do); outline-offset: 1px; }
 </style>

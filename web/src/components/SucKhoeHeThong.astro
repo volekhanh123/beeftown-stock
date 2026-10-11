@@ -99,9 +99,11 @@ const khoi = (sk?.khoi ?? []).map(k => ({
   }
   .sk-tom .sk-den { margin-top: .2rem; width: 1rem; height: 1rem; }
   .sk-den.do   { background: var(--do); }
-  .sk-den.vang { background: var(--mu-tat); }
-  .sk-den.xanh { background: #1F7A4C; }
-  .sk-den.tat  { background: transparent; border: 2px solid var(--vach); }
+  /* Đèn vàng: Marigold trên trắng chỉ 1,97 : 1 — thêm viền --vang-chu (6,92 : 1) để chấm vàng có hình rõ. */
+  .sk-den.vang { background: var(--mu-tat); box-shadow: inset 0 0 0 2px var(--vang-chu); }
+  .sk-den.xanh { background: var(--xanh); }
+  /* Đèn "chưa bật": vòng rỗng, viền --vien-o (4,70 : 1 với trắng; --vach chỉ 1,41 : 1). */
+  .sk-den.tat  { background: transparent; border: 2px solid var(--vien-o); }
   .sk-nhan {
     display: inline-block; font-size: .68rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase;
     padding: .15rem .45rem; border-radius: 4px; margin-left: .35rem; white-space: nowrap; vertical-align: .1em;
