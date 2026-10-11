@@ -199,7 +199,8 @@ bảng: tính tỷ lệ trước khi dùng — chữ thường ≥ 4,5 : 1, ch�
   800 cho tới khi có PR riêng.
 - Giá ghi dạng `000.000 đ`, ngày dạng `dd/mm/yyyy` (guideline).
 - Trang `/ko` thêm **Noto Sans KR** ngay sau Montserrat; `word-break: keep-all`; tiêu đề không siết
-  chữ, `line-height` 1,28; chữ hoa nhỏ giãn ít hơn.
+  chữ, `line-height` 1,28; chữ hoa nhỏ giãn ít hơn. **Cỡ chữ như vi / en** — không quy tắc nào co cỡ
+  h1 riêng cho một thứ tiếng (h1 tiếng Hàn 32/41 → 48/61px).
 - **Logo luôn là vector gốc** (`web/public/thuong-hieu/`) — không bao giờ gõ chữ BEEFTOWN bằng phông.
 - Hypo-me Bold, NVN Beloved Bold (ghi trong PDF) **chưa có file và giấy phép** — không dùng, không tự
   thay bằng một phông "vui" khác.
@@ -213,7 +214,7 @@ Thang chữ trang công khai (khai trên `.ck`; theo plan redesign 11/10/2026):
 
 | Biến | Cỡ | Dùng cho |
 |---|---|---|
-| `--co-h1` | 32 → 48px, dòng 1,17 (32/38 → 48/56px) | Câu chính màn đầu và tiêu đề đầu trang con |
+| `--co-h1` | 32 → 48px, dòng 1,17 (32/38 → 48/56px); tiếng Hàn cùng cỡ, dòng 1,28 | Câu chính màn đầu và tiêu đề đầu trang con |
 | `--co-h2` | 26 → 36px | Tiêu đề khối — luôn nhỏ hơn h1 |
 | `--co-h3` | 18 → 20px | Tiêu đề nhỏ |
 | `--co-dan` | 18 → 20px | Đoạn dẫn `.dan`, tối đa 58 ký tự một dòng |
@@ -252,7 +253,9 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
 
 - **Nút** `.nut` + `.nut-chinh` | `.nut-vien` (bản gọn trên thanh đầu trang: `.nut-nho`). Cao 48px,
   đệm ngang 20px, bo 4px. **Mỗi nhóm nút (`.hang-nut`) chỉ một nút chính.** Đang gửi:
-  `aria-busy="true"` → **tối đi chứ không mờ đi**. Nút / link tới `/dat-ban` luôn ghi **"Hỏi bàn" /
+  `aria-busy="true"` → **tối đi chứ không mờ đi**. **Mọi `:hover` của trang công khai nằm trong
+  `@media (hover: hover)`** (màn cảm ứng giữ `:hover` sau khi chạm); phản hồi lúc chạm là `:active`,
+  đặt ngoài khối đó. Nút / link tới `/dat-ban` luôn ghi **"Hỏi bàn" /
   "Ask for a table" / "테이블 문의"** (`t.datBan`).
 - **Liên kết có mũi tên** `.lien-ket` + `<BieuTuong ten="mui-ten" />` — chữ gạch chân, không đóng hộp.
 - **Biểu tượng**: hai bộ SVG nét tự vẽ, không trộn. Trang công khai: `web/src/components/BieuTuong.astro`
@@ -263,7 +266,8 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
   Thiếu thì vẽ thêm vào đúng bộ, cùng lưới 24 và cùng nét — **không emoji, không thư viện biểu tượng**.
 - **Ảnh** chỉ qua `<Anh id="…">`; chỗ chưa có ảnh thật là `<KhungAnh loai="…">` — không bao giờ
   `<img>` trỏ tới file không có, không hộp xám, không chữ "ảnh đang cập nhật".
-- **Form**: nhãn trên ô (không placeholder thay nhãn), ô cao 48px nền Cream viền `--vien-o`, lỗi sát ô
+- **Form**: nhãn trên ô (không placeholder thay nhãn), ô một dòng cao đúng 48px (kể cả ô ngày) nền
+  Cream viền `--vien-o`, ô tự điền (`:autofill`) vẫn nền Cream, lỗi sát ô
   bằng câu chữ màu đỏ đậm (`.loi-o` + `aria-invalid` + `aria-describedby`), không tick sẵn ô đồng ý
   nhận tin, chặn bấm đúp, giữ dữ liệu đã gõ khi lỗi mạng. Form chưa sẵn sàng thì **ẩn hẳn** — không
   hiện nút mờ.
@@ -330,7 +334,8 @@ với khách công ty. Chi tiết và ví dụ: [tham-khao/cau-chu.md](tham-khao
 Focus 3px cách 3px, màu theo bề mặt · vùng chạm ≥ 48px · trạng thái đang chọn không chỉ khác bằng màu (thứ tiếng đang xem: chữ đậm và nét gạch) · mỗi trang đúng một `h1` · câu tiếng Anh
 trong trang Việt có `lang="en"` · alt ba thứ tiếng tả món (`DANH_MUC_ANH` trong `web/src/lib/anh.ts`),
 trang trí và logo cạnh chữ "Beeftown" để `alt=""` · **không giấu nội dung sau JavaScript** (menu gọn
-và hỏi đáp dùng `<details>`; không JavaScript vẫn đọc được đủ).
+và hỏi đáp dùng `<details>`; không JavaScript vẫn đọc được đủ; lớp phủ và khoá cuộn của menu gọn chỉ
+có khi script đã chạy).
 
 ## Quy trình một thay đổi giao diện
 

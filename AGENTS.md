@@ -52,7 +52,7 @@ Màu. Trang công khai (`<body class="ck">`) đã theo bảng màu Khánh chốt
 - `/noi-bo`, kho, Beeftown Cân: không báo các mã màu cũ đang có trên `main`. Báo khi một PR của trang công khai sửa khối `:root` của `chung.css` — đổi khối đó là đổi màu cả `/noi-bo` và kho.
 - Báo chữ màu Warm Stone hay Marigold đặt trên nền kem (tương phản dưới 2 : 1), và chữ đỏ đặt trên dải tối (2,43 : 1).
 - Trang công khai không có nền trắng (bảng màu không có trắng): báo `#fff`, `white`, mã trắng ngà hay `color-mix` với trắng trong file công khai. Hai ngoại lệ đang có: `@media print` trong `cong-khai.css` và thẻ nhãn khay `web/src/components/NhanKhay.astro` (chờ PR bố cục trang chủ).
-- Thành phần của trang công khai (`web/THIET-KE.md` mục 3–5, đo ở `web/kiem-tra/do-giao-dien.mjs`): mọi thứ bấm được cao ít nhất 48px; nút phụ trên nền kem là nền Cream, chữ và viền Beef Red; mỗi nhóm nút một nút chính; thẻ không bóng đổ; ô nhập nền Cream, viền `--vien-o`, nhãn ở trên ô. Báo khi PR thêm thành phần lệch các số đó, hoặc gỡ một ngoại lệ trong `do-giao-dien.mjs` mà không sửa thành phần tương ứng.
+- Thành phần của trang công khai (`web/THIET-KE.md` mục 3–5, đo ở `web/kiem-tra/do-giao-dien.mjs`): mọi thứ bấm được cao ít nhất 48px; nút phụ trên nền kem là nền Cream, chữ và viền Beef Red; mỗi nhóm nút một nút chính; thẻ không bóng đổ; ô nhập nền Cream, viền `--vien-o`, nhãn ở trên ô; mọi `:hover` nằm trong `@media (hover: hover)`; lớp phủ và khoá cuộn của menu gọn chỉ có khi script đã chạy. Báo khi PR thêm thành phần lệch các số đó, hoặc gỡ một ngoại lệ trong `do-giao-dien.mjs` mà không sửa thành phần tương ứng.
 - PR đổi bảng màu của `/noi-bo`, kho hay Beeftown Cân phải đổi cùng lúc các nơi liệt kê ở `THUONG-HIEU.md` mục 5, bảng "Còn mã cũ". Thiếu nơi nào thì báo nơi đó.
 
 Địa điểm:

@@ -72,6 +72,9 @@ Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
   600 / 900 / 1024 / 1080px (768px chỉ của `DauTrang.astro`); tiếng Hàn chỉnh bằng `:lang(ko)`; thêm
   `@media (forced-colors: active)` khi dùng nền hay viền để truyền nghĩa. Thứ bấm được cao ít nhất
   `--cham` (48px); thẻ đệm `--dem-the`; không `box-shadow` trang trí, không nền trắng.
+- **`:hover` luôn nằm trong `@media (hover: hover)`**; thứ bấm được có thêm `:active` đặt ngoài khối
+  đó. Màu viết thẳng: chỉ mã hex của bảng hoặc `rgba()` với bộ ba của bảng — không `hsl()`, `oklch()`,
+  tên màu (`white`…), màu hệ thống ngoài `forced-colors` (`test-cong-khai-giao-dien.mjs` nhóm 7).
 - Token ở đây mang giá trị của **khối `.ck`** (bảng màu chốt 09/10/2026 — bảng "Token của trang công
   khai" trong `SKILL.md`), không phải giá trị `:root` của `chung.css` mà `/noi-bo`, kho đang đọc. Cần
   màu trong suốt thì viết `rgba()` bằng số RGB của bảng đó; mã hex hay bộ ba số của bảng cũ trong một
@@ -140,7 +143,7 @@ theo ngày — `web/THIET-KE.md` mục 10.
 | `CauHoi` | `ngonNgu`, `noiDung` | Hỏi đáp bằng `<details>` — chỉ dữ kiện đã xác nhận. Mỗi `<summary>` có hai biểu tượng `cong` (`.bt-mo`) và `tru` (`.bt-dong`); hàng cao 56px, bấm được trên toàn chiều rộng |
 | `TrangVanBan` | `hieu`, `tieuDe` + `<slot>` | Trang pháp lý |
 | `ThucDonNhom` | `nhom`, `ngonNgu`, `ghiChu?`, `khongGia?` | Một nhóm món |
-| `DauTrang`, `ChanTrang` | — | Layout đã gắn sẵn. Đầu trang cao 64 / 80px, bộ chọn ngôn ngữ in đủ ba thứ tiếng (thứ tiếng đang xem: `aria-current="true"`, chữ đậm và nét gạch), menu gọn có nút đóng và nút chính Hỏi bàn. Chân trang: dải đỏ phẳng không hoa văn, chữ ≥ 14px, `<footer>` pháp nhân duy nhất, giữ nguyên từng ký tự |
+| `DauTrang`, `ChanTrang` | — | Layout đã gắn sẵn. Đầu trang cao 64 / 80px, bộ chọn ngôn ngữ in đủ ba thứ tiếng (thứ tiếng đang xem: `aria-current="true"`, chữ đậm và nét gạch), menu gọn có nút đóng và nút chính Hỏi bàn (lớp phủ tối và khoá cuộn chỉ có khi script đã chạy — `data-co-script`). Chân trang: dải đỏ phẳng không hoa văn, chữ ≥ 14px, `<footer>` pháp nhân duy nhất, giữ nguyên từng ký tự |
 
 Thêm biểu tượng: vẽ thêm một dòng vào `NET` và kiểu `TenBieuTuong` trong `BieuTuong.astro`, lưới 24,
 nét 1,5, đầu tròn — rồi cập nhật danh sách tên trong `SKILL.md` và `web/THIET-KE.md` mục 5.
