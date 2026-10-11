@@ -23,6 +23,11 @@
  *   6. Trang công khai dùng đúng bảng màu Khánh chốt ngày 09/10/2026 (THUONG-HIEU.md): mã khai
  *      một lần trong khối .ck đầu tiên của cong-khai.css; không file công khai nào còn mã của
  *      bảng cũ; các cặp chữ / nền của hệ bề mặt đủ tương phản (WCAG 2.2).
+ *   7. Thành phần và khung trang của đợt redesign (PR 2): bảng màu không có trắng — không file
+ *      công khai nào còn mã màu ngoài bảng; ô nhập nền Cream trong thẻ kem sau vẫn đủ tương phản
+ *      viền; cỡ chữ, lưới, chiều cao đầu trang khai đúng; chân trang bỏ hoa văn chữ; biểu tượng
+ *      một nét không co theo cỡ; bộ chọn ngôn ngữ in đủ ba thứ tiếng. (Số đo trên trang đã dựng:
+ *      web/kiem-tra/do-giao-dien.mjs, chạy trong thu-trinh-duyet và thu-day-du.)
  */
 
 import { readFileSync, readdirSync, existsSync, statSync } from 'node:fs';
@@ -352,7 +357,8 @@ await nhom('6 · BẢNG MÀU THƯƠNG HIỆU CHỐT 09/10/2026 — CHỈ Ở TRA
     ['chữ Warm Stone trên than', M['--da'], M['--than'], 4.5],
     ['chữ vàng trên than', M['--mu-tat'], M['--than'], 4.5],
     ['viền ô nhập trên kem', M['--vien-o'], M['--kem'], 3],
-    ['viền ô nhập trên nền trắng của ô', M['--vien-o'], '#FFFFFF', 3],
+    // Trang công khai không còn nền trắng (nhóm 7): ô nhập nền kem, đứng trong thẻ form nền kem sau.
+    ['viền ô nhập trên kem sau (thẻ form)', M['--vien-o'], M['--kem-sau'], 3],
   ];
   for (const [ten, chu, nen, can] of CAP) {
     const r = tuongPhan(chu, nen);
@@ -363,6 +369,119 @@ await nhom('6 · BẢNG MÀU THƯƠNG HIỆU CHỐT 09/10/2026 — CHỈ Ở TRA
   ok('Bề mặt sáng (.be-kem…) không dùng vàng hay Warm Stone làm màu chữ', !/--(chu-chinh|chu-phu|nhan|nhan-nho)\s*:\s*var\(--(mu-tat|cuc-vang|da)\)/.test(beSang));
   ok(`Vàng trên kem chỉ ${tuongPhan(M['--cuc-vang'], M['--kem']).toFixed(2).replace('.', ',')} : 1, Warm Stone trên kem chỉ ${tuongPhan(M['--da'], M['--kem']).toFixed(2).replace('.', ',')} : 1 — đúng lý do của luật trên`,
      tuongPhan(M['--cuc-vang'], M['--kem']) < 3 && tuongPhan(M['--da'], M['--kem']) < 3);
+});
+
+// ===========================================================================
+// Quy tắc thành phần của đợt redesign (plan 11/10/2026, mục 4). Số đo trên trang đã dựng nằm ở
+// web/kiem-tra/do-giao-dien.mjs; ở đây là phần đọc được từ mã — chạy trong npm test, không cần trình duyệt.
+await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PHẢN Ô NHẬP, CỠ CHỮ VÀ LƯỚI', async () => {
+  const M = BANG_MAU_CHOT;
+  const moiAstro = thu => readdirSync(join(SRC, thu), { withFileTypes: true }).flatMap(d => {
+    const duong = thu ? `${thu}/${d.name}` : d.name;
+    return d.isDirectory() ? moiAstro(duong) : d.name.endsWith('.astro') ? [duong] : [];
+  });
+  const congKhai = [
+    ...moiAstro('').filter(f => !NOI_BO.some(n => f.startsWith(n))).map(f => join(SRC, f)),
+    join(SRC, 'styles', 'cong-khai.css'),
+  ];
+
+  // --- Không nền trắng: mã màu viết thẳng trong file công khai chỉ được là mã của bảng ---------
+  // Bảng màu thương hiệu không có trắng. Mã được phép: 14 token của khối .ck và #211A10 (nền khung
+  // ảnh trên dải tối, THIET-KE.md mục 2). Ngoại lệ ghi từng cái, kèm lý do:
+  const MA_DUOC_PHEP = new Set([...Object.values(M).filter(v => v.startsWith('#')), '#211A10'].map(v => v.toUpperCase()));
+  const NGOAI_LE = {
+    // Bản in: giấy trắng, chữ đen — không phải màu trên màn hình.
+    'web/src/styles/cong-khai.css': ['#FFF', '#000'],
+    // Mặt nạ CSS (mask): #000 là "đục hoàn toàn" của mặt nạ, không phải màu vẽ ra.
+    'web/src/components/DiCungNhom.astro': ['#000'],
+    // Thẻ "Đọc nhãn khay": giấy nhãn trắng ngà, nghiêng, có bóng — PR 3 dựng lại thẻ này thì gỡ dòng này.
+    'web/src/components/NhanKhay.astro': ['#FFFDF6'],
+  };
+  const maLa = congKhai.flatMap(f => {
+    const ten = tuGoc(f);
+    const la = [...new Set((readFileSync(f, 'utf8').match(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g) ?? []).map(m => m.toUpperCase()))]
+      .filter(m => !MA_DUOC_PHEP.has(m) && !(NGOAI_LE[ten] ?? []).includes(m));
+    return la.length ? [`${ten}: ${la.join(' ')}`] : [];
+  });
+  ok(`${congKhai.length} file công khai: mã màu viết thẳng chỉ là mã của bảng màu (không trắng, không trắng ngà)`,
+     congKhai.length > 30 && maLa.length === 0, maLa.join(' | '));
+  const css = congKhai.map(f => [tuGoc(f), boChuThich(f.endsWith('.css') ? readFileSync(f, 'utf8')
+    : (readFileSync(f, 'utf8').match(/<style[^>]*>([\s\S]*?)<\/style>/g) ?? []).join('\n'))]);
+  const tuKhoaTrang = css.filter(([, c]) => /(?:background|color|border|fill|stroke)[a-z-]*\s*:[^;{}]*\b(?:white|ivory|snow)\b/i.test(c)
+    || /color-mix\([^)]*(?:#fff|white)/i.test(c)).map(([ten]) => ten);
+  ok('CSS của trang công khai không dùng từ khóa white / ivory / snow, không pha với trắng (color-mix)', tuKhoaTrang.length === 0, tuKhoaTrang.join(', '));
+  const inRa = boChuThich(readFileSync(join(SRC, 'styles', 'cong-khai.css'), 'utf8'));
+  const ngoaiIn = inRa.replace(/@media print\s*\{(?:[^{}]|\{[^{}]*\})*\}/g, '');
+  ok('cong-khai.css: #fff và #000 chỉ nằm trong khối @media print', !/#(?:fff|000)\b/i.test(ngoaiIn) && /@media print/.test(inRa));
+  const nenO = inRa.match(/input\[type='text'\][^{]*\{([^}]*)\}/)?.[1] ?? '';
+  ok('cong-khai.css: ô nhập nền var(--kem), viền var(--vien-o), chữ 16px, cao tối thiểu 48px',
+     /background:\s*var\(--kem\)/.test(nenO) && /border:\s*1px solid var\(--vien-o\)/.test(nenO)
+       && /font-size:\s*16px/.test(nenO) && /min-height:\s*48px/.test(nenO), nenO.trim().replace(/\s+/g, ' '));
+
+  // --- Tương phản của các cặp mới (tính lại theo công thức WCAG 2.2, không chép số) ---------------
+  const mucNhat = nen => phaTren(M['--than'], nen, 0.68);
+  const CAP = [
+    // [tên, màu chữ / viền, màu nền, ngưỡng, con số tài liệu ghi (THIET-KE.md mục 2)]
+    ['viền ô nhập trên Cream (nền của ô)', M['--vien-o'], M['--kem'], 3, '3,71'],
+    ['viền ô nhập trên kem sau (thẻ form quanh ô)', M['--vien-o'], M['--kem-sau'], 3, '3,49'],
+    ['chữ gõ trong ô (than) trên Cream', M['--than'], M['--kem'], 7, '14,96'],
+    ['câu lỗi (đỏ đậm) trên kem sau', M['--do-dam'], M['--kem-sau'], 4.5, '7,45'],
+    ['gợi ý dưới nhãn (than 68 %) trên kem sau', mucNhat(M['--kem-sau']), M['--kem-sau'], 4.5, '5,80'],
+    ['nút phụ: chữ đỏ trên Cream', M['--do'], M['--kem'], 4.5, '6,15'],
+    ['nút phụ khi di chuột: chữ đỏ đậm trên kem đậm', M['--do-dam'], M['--kem-dam'], 4.5, '7,00'],
+    ['nút phụ trên dải đỏ khi di chuột: chữ Cream trên đỏ pha 12 % Cream', M['--kem'], phaTren(M['--kem'], M['--do'], 0.12), 4.5, '5,27'],
+    ['ô giờ đang chọn: chữ Cream trên Beef Red', M['--kem'], M['--do'], 4.5, '6,15'],
+    ['dòng pháp nhân: Warm Stone trên Charcoal', M['--da'], M['--than'], 4.5, '8,19'],
+  ];
+  for (const [ten, chu, nen, can, ghi] of CAP) {
+    const r = tuongPhan(chu, nen);
+    const so = r.toFixed(2).replace('.', ',');
+    ok(`Tương phản ${ten}: ${so} : 1 (cần ≥ ${String(can).replace('.', ',')} : 1; tài liệu ghi ${ghi})`, r >= can && so === ghi, `tính ra ${so}`);
+  }
+
+  // --- Cỡ chữ, lưới, đầu trang: giá trị khai trong cong-khai.css ----------------------------------
+  const ck = boChuThich(readFileSync(join(SRC, 'styles', 'cong-khai.css'), 'utf8'));
+  const khoi = docQuyTac(ck).find(q => q.boChon === '.ck')?.trong ?? '';
+  const bien = ten => khoi.match(new RegExp(`(?:^|[;\\s])${ten}\\s*:\\s*([^;]+);`))?.[1].trim() ?? null;
+  const soLanKhai = ten => (ck.match(new RegExp(`(?:^|[;{\\s])${ten}\\s*:`, 'g')) ?? []).length;
+  ok('cong-khai.css: chữ chạy --co-than 16px ở mọi bề rộng (khai đúng một lần)', bien('--co-than') === '16px' && soLanKhai('--co-than') === 1,
+     `${bien('--co-than')} · khai ${soLanKhai('--co-than')} lần`);
+  ok('cong-khai.css: .ck đặt line-height 1.5 (16/24px)', /(?:^|[;\s])line-height\s*:\s*1\.5\s*;/.test(khoi));
+  ok('cong-khai.css: khung nội dung --rong-ck 1200px', bien('--rong-ck') === '1200px', bien('--rong-ck') ?? 'không thấy');
+  ok('cong-khai.css: lề --le nhỏ nhất 20px', /^clamp\(20px,/.test(bien('--le') ?? ''), bien('--le') ?? 'không thấy');
+  const kep = ten => (bien(ten) ?? '').match(/^clamp\((\d+)px,.*,\s*(\d+)px\)$/)?.slice(1).map(Number) ?? [];
+  ok('cong-khai.css: --co-h1 chạy từ 32px tới 48px', kep('--co-h1').join('→') === '32→48', bien('--co-h1') ?? 'không thấy');
+  ok('cong-khai.css: --co-h2 nhỏ hơn --co-h1 ở cả hai đầu', kep('--co-h2').length === 2 && kep('--co-h2')[0] < 32 && kep('--co-h2')[1] < 48, bien('--co-h2') ?? 'không thấy');
+  ok('cong-khai.css: khoảng cách khối --muc-dem trong 48–64px (điện thoại) tới 72–96px (máy tính)',
+     kep('--muc-dem').length === 2 && kep('--muc-dem')[0] >= 48 && kep('--muc-dem')[0] <= 64 && kep('--muc-dem')[1] >= 72 && kep('--muc-dem')[1] <= 96,
+     bien('--muc-dem') ?? 'không thấy');
+  const caoDau = [...ck.matchAll(/--cao-dau\s*:\s*(\d+)px/g)].map(m => Number(m[1]));
+  ok('cong-khai.css: đầu trang --cao-dau 64px, từ 1080px là 80px',
+     JSON.stringify(caoDau) === '[64,80]' && /@media \(min-width: 1080px\)\s*\{\s*html:has\(body\.ck\)\s*\{\s*--cao-dau:\s*80px/.test(ck), JSON.stringify(caoDau));
+  const nut = docQuyTac(ck).find(q => q.boChon === '.ck .nut')?.trong ?? '';
+  ok('cong-khai.css: .nut cao tối thiểu 48px, đệm ngang 20px, bo góc var(--bo) = 4px',
+     /min-height:\s*48px/.test(nut) && /padding:\s*\d+px 20px/.test(nut) && /border-radius:\s*var\(--bo\)/.test(nut) && bien('--bo') === '4px',
+     nut.trim().replace(/\s+/g, ' ').slice(0, 160));
+
+  // --- Chân trang, biểu tượng, ngôn ngữ ---------------------------------------------------------
+  const chan = readFileSync(join(SRC, 'components', 'ChanTrang.astro'), 'utf8');
+  ok('ChanTrang.astro: không còn hoa văn chữ BEEFTOWN (hoa-van-chu) sau chữ', !/hoa-van/.test(chan));
+  ok('cong-khai.css: không còn lớp .hoa-van-chu (không trang nào dùng)', !/\.hoa-van-chu/.test(ck));
+  ok('ChanTrang.astro: logo Cream là file vector gốc, khai đúng cỡ 446 × 124',
+     chan.includes('<img src="/thuong-hieu/logo-ngang-kem.svg" width="446" height="124"'));
+  const bieuTuong = readFileSync(join(SRC, 'components', 'BieuTuong.astro'), 'utf8');
+  ok('BieuTuong.astro: lưới 24, nét 1,5, nét không co theo cỡ hiển thị (vector-effect="non-scaling-stroke")',
+     /viewBox="0 0 24 24"/.test(bieuTuong) && /stroke-width="1\.5"/.test(bieuTuong) && /vector-effect="non-scaling-stroke"/.test(bieuTuong));
+  const layout = readFileSync(join(SRC, 'layouts', 'Trang.astro'), 'utf8');
+  const dauTrang = readFileSync(join(SRC, 'components', 'DauTrang.astro'), 'utf8');
+  ok('Trang.astro đưa đủ ba thứ tiếng cho bộ chọn ngôn ngữ (không lọc bỏ thứ tiếng đang xem)',
+     /doiNgonNgu=\{NGON_NGU\.map\(/.test(layout) && !/ngonNguKhac/.test(layout));
+  ok('DauTrang.astro: thứ tiếng đang xem mang aria-current="true"; thứ tiếng khác là link có hreflang',
+     /aria-current="true"/.test(dauTrang) && /hreflang=\{n\.nn\}/.test(dauTrang));
+  const { chu } = await nap('chu.ts');
+  ok('Nút đóng danh mục có nhãn chữ ở ba thứ tiếng (chu.ts: dong)',
+     chu('vi').dong === 'Đóng' && chu('en').dong === 'Close' && chu('ko').dong === '닫기',
+     [chu('vi').dong, chu('en').dong, chu('ko').dong].join(' · '));
 });
 
 process.exit(ketThuc('GIAO DIỆN TRANG CÔNG KHAI'));
