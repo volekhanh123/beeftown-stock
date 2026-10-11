@@ -7,14 +7,22 @@
  *
  * Hình chính là ảnh hero-vi-gas (ảnh minh họa, lib/anh.ts) — thay cho mảng vân mỡ đỏ của bản
  * trước. Tagline Pick it. Grill it. Love it. là một dải Beef Red gọn ngay dưới ảnh: không
- * đè lên ảnh, không logo hay chữ nào đặt lên ảnh, khung ảnh không bóng đổ.
+ * đè lên ảnh, không logo hay chữ nào đặt lên ảnh, khung ảnh không bóng đổ. Dải có aria-hidden
+ * (như bản trước): khối ba bước ngay sau đã đọc tagline ở dòng hiệu.
  *
  * Thứ tự (một nguồn HTML, CSS xếp lại):
- *  · điện thoại, máy tính bảng (dưới 900px): câu chính → mô tả → 2 nút → ảnh → dòng địa điểm;
+ *  · điện thoại, máy tính bảng (dưới 900px): câu chính → mô tả → 2 nút → ảnh → dòng địa điểm.
+ *    Ở 360–430px đỉnh ảnh cách đầu trang 551–606px: điện thoại thật (vùng nhìn cao khoảng
+ *    550–700px) chỉ thấy mép trên của ảnh ở màn hình đầu;
  *  · điện thoại rất nhỏ (dưới 360px, cũng là máy tính phóng to 400 %): phần chữ đã dài hơn một
- *    màn hình, nên ảnh lên ngay sau câu chính — ảnh tải ngay thì phải nằm trong màn hình đầu;
+ *    màn hình, nên ảnh lên ngay sau câu chính — ảnh tải ngay không được nằm hẳn dưới màn hình đầu;
  *  · máy tính (từ 900px): chữ bên trái, ảnh bên phải, hai cột cân nhau theo chiều dọc; dòng địa
  *    điểm thành một hàng ngang dưới cả hai cột.
+ *
+ * Hàng thông tin có ba trạng thái theo khóa ngay_khai_truong — chưa có ngày, sắp mở ("Đón bạn từ
+ * …"), đã mở ("Mở cửa từ …") — và dòng trạng thái dài ngắn tuỳ /noi-bo công bố. Ở trạng thái nào
+ * câu chỉ đường cũng dính ngay dưới dòng địa chỉ, ngày không gãy giữa chừng: thu-day-du.mjs nhóm 9
+ * dựng cả ba trạng thái (kịch bản sap-mo, da-mo của gia-supabase.mjs).
  *
  * Thứ bậc nút theo mức sẵn sàng mở cửa: lib/trang-cong-khai.ts → nutMoDau().
  * Dòng trạng thái và ngày mở giữ đúng logic cũ: dong_trang_thai, ngay_khai_truong.
@@ -59,7 +67,9 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
     <div class="kmd-hinh">
       <Anh id="hero-vi-gas" ngonNgu={ngonNgu} khung="4x3" khungNho="4x5" uuTien thayBang="ban-nuong"
            sizes="(min-width: 1280px) 620px, (min-width: 900px) 50vw, calc(100vw - 40px)" />
-      <p class="kmd-khau-hieu" lang="en">{veKhauHieu.map((ve, i) => <>{i > 0 && ' '}<span>{ve}</span></>)}</p>
+      {/* aria-hidden: dải này để NHÌN. Trình đọc màn hình đọc tagline một lần, ở dòng hiệu của khối ba bước
+          ngay sau (BaBuoc.astro) — không đọc hai lần liền nhau. */}
+      <p class="kmd-khau-hieu" lang="en" aria-hidden="true">{veKhauHieu.map((ve, i) => <>{i > 0 && ' '}<span>{ve}</span></>)}</p>
     </div>
 
     <ul class="kmd-thong-tin">
@@ -111,13 +121,17 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
     list-style: none; margin: 0; padding: 0;
     display: grid; gap: var(--k-4);
   }
+  /* Vùng chạm 48px = dòng chữ 24px + đệm 12px trên dưới. Dùng đệm chứ không chỉ min-height: địa chỉ xuống
+     hai dòng thì dưới chữ vẫn còn đúng 12px, câu chỉ đường bên dưới không dính vào dòng thứ hai. */
   .kmd-dia-chi {
-    display: inline-flex; align-items: center; gap: 10px; min-height: 48px;
-    font-weight: 600; text-decoration: none; color: var(--than);
+    display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding-block: 12px;
+    font-weight: 600; line-height: 24px; text-decoration: none; color: var(--than);
   }
   @media (hover: hover) { .kmd-dia-chi:hover > span { text-decoration: underline; } }
   .kmd-dia-chi :global(svg) { width: 24px; height: 24px; color: var(--do); flex: none; }
   .kmd-ngay { font-weight: 600; }
+  /* Ngày không gãy giữa chừng ("ngày 13 tháng 11," / "2026"): chật thì xuống dòng TRƯỚC ngày. */
+  .kmd-ngay strong { white-space: nowrap; }
   .kmd-lien { white-space: nowrap; }
   /* Thẳng hàng với chữ địa chỉ: biểu tượng 24px + khe 10px. */
   .kmd-loi-len {
@@ -152,15 +166,22 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
     .kmd-thong-tin {
       grid-area: 6 / 1 / 7 / 3;
       margin-top: var(--k-7); padding-top: var(--k-5); border-top: 1px solid var(--vien);
-      /* Cột địa chỉ co lại được (câu chỉ đường xuống dòng theo vế), cột trạng thái giữ ít nhất 14em — không bị ép thành cột chữ hẹp. */
-      grid-template-columns: minmax(0, max-content) minmax(14em, 1fr) max-content; gap: 0 var(--k-6); align-items: center;
+      /* Cột địa chỉ co lại được (câu chỉ đường xuống dòng theo vế). Cột giữa rộng ít nhất bằng dòng ngày
+         (không xuống dòng) và 14em của dòng trạng thái — không bị ép thành cột chữ hẹp. */
+      grid-template-columns: minmax(0, max-content) 1fr max-content; gap: 0 var(--k-6);
+      /* Hàng 1 cao theo dòng địa chỉ, hàng 2 (1fr) nhận hết phần cao thêm: dòng trạng thái dài mấy câu thì
+         câu chỉ đường vẫn dính ngay dưới địa chỉ — ô bên cạnh không kéo nó tụt xuống. */
+      grid-template-rows: auto 1fr; align-items: start;
     }
     .kmd-thong-tin > li:first-child { grid-area: 1 / 1; }
     .kmd-loi-len { grid-area: 2 / 1; margin-top: -6px; }
-    .kmd-ngay { grid-area: 1 / 2; }
-    .kmd-trang-thai { grid-area: 1 / 2 / 3 / 3; }
-    .kmd-ngay ~ .kmd-trang-thai { grid-area: 2 / 2; }
-    .kmd-theo-doi { grid-area: 1 / 3 / 3 / 4; }
+    /* Chưa có ngày mở: dòng trạng thái đứng giữa cặp địa chỉ + câu chỉ đường. Có ngày mở: ngày ngang dòng
+       cuối của địa chỉ (đệm dưới 12px như địa chỉ), dòng trạng thái ngay dưới ngày, dòng chữ đầu ngang
+       câu chỉ đường. */
+    .kmd-ngay { grid-area: 1 / 2; align-self: end; margin-bottom: 12px; line-height: 24px; white-space: nowrap; }
+    .kmd-trang-thai { grid-area: 1 / 2 / 3 / 3; align-self: center; min-width: 14em; }
+    .kmd-ngay ~ .kmd-trang-thai { grid-area: 2 / 2; align-self: start; margin-top: -10px; }
+    .kmd-theo-doi { grid-area: 1 / 3 / 3 / 4; align-self: center; }
   }
   @media (min-width: 1200px) {
     .kmd-luoi { column-gap: var(--k-8); }
