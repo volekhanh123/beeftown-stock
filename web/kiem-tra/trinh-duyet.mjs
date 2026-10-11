@@ -51,6 +51,12 @@
  *      cả hai loại máy đổi màu nền khi đang nhấn nút (:active).
  *   8. Thanh cuộn kiểu cổ điển (chiếm 15px): mở danh mục không xô lệch đầu trang và
  *      khung nội dung, không sinh cuộn ngang; ở 1440px khung nội dung vẫn cân giữa.
+ *   9. Ảnh (PR 3 của đợt redesign đưa ảnh lên trang chủ và trang Thực đơn): ảnh về chậm
+ *      thì khung vẫn giữ sẵn đúng chỗ, đúng cỡ — ảnh về trang không xô lệch; mọi ảnh
+ *      tải về được và dùng đúng khung của cỡ màn hình (điện thoại / màn rộng). Nhãn
+ *      "Ảnh minh họa", thẻ đọc nhãn khay, bố cục màn đầu và các khối của trang chủ,
+ *      trang Thực đơn: bốn phép đo anh, nhanKhay, trangChu, thucDon của do-giao-dien.mjs,
+ *      chạy ở mục 1 trên mọi trang × tám cỡ màn hình.
  *
  * Hỏng thì ảnh chụp màn hình nằm ở kiem-tra/anh-loi/ (CI tải lên thành artifact).
  */
@@ -807,6 +813,85 @@ try {
       }
     } finally {
       await coThanhCuon.close().catch(() => {});
+    }
+  });
+
+  // =========================================================================
+  // Ảnh về chậm (3G, máy yếu): khung ảnh phải giữ sẵn đúng chỗ của ảnh — không thì cả trang xô xuống khi ảnh
+  // về, khách đang đọc bị trượt mất dòng. Giữ mọi file /anh/ lại ở máy chủ giả (chưa trả), đo từng khung; thả
+  // ra, cuộn hết trang cho ảnh lazy về, đo lại: khung nào cũng phải đứng nguyên chỗ, nguyên cỡ.
+  await nhom('9 · ẢNH VỀ CHẬM: KHUNG GIỮ SẴN CHỖ, TRANG KHÔNG XÔ LỆCH; ẢNH VỀ ĐỦ, ĐÚNG KHUNG TỪNG CỠ MÀN HÌNH', async () => {
+    // Chờ phông chữ xong (tối đa 5 giây) rồi mới đo: phông về sau thì chữ xuống dòng khác đi, vị trí các khung
+    // đổi mà không phải do ảnh. Không dùng document.fonts.ready: Chromium giữ lời hứa đó tới khi trang tải
+    // xong, mà ở lần đo đầu ảnh màn đầu đang bị giữ lại — trang chưa bao giờ "tải xong".
+    const doKhung = page => page.evaluate(async () => {
+      for (let i = 0; i < 50 && document.fonts.status !== 'loaded'; i++) await new Promise(r => setTimeout(r, 100));
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      return {
+        caoTrang: document.documentElement.scrollHeight,
+        soPhong: [...document.fonts].filter(f => f.status === 'loaded').length,
+        khung: [...document.querySelectorAll('figure.anh')].map(f => {
+          const k = f.getBoundingClientRect();
+          const a = f.querySelector('img');
+          return {
+            id: (a?.getAttribute('src') ?? '').replace(/^.*\/anh\//, '').replace(/-\d+x\d+-\d+\.\w+$/, ''),
+            trai: Math.round(k.left * 2) / 2, tren: Math.round((k.top + scrollY) * 2) / 2, rong: Math.round(k.width * 2) / 2, cao: Math.round(k.height * 2) / 2,
+            hien: f.checkVisibility(), daVe: !!a && a.complete && a.naturalWidth > 0,
+            file: (a?.currentSrc ?? '').replace(/^.*\/anh\//, ''),
+            tiLeFile: a && a.naturalHeight ? a.naturalWidth / a.naturalHeight : null,
+          };
+        }),
+      };
+    });
+    // Khung của từng ảnh theo bề rộng màn hình: dưới 600px dùng khung điện thoại (khungNho), từ 600px khung chính.
+    const KHUNG_MONG = {
+      'hero-vi-gas': ['4x5', '4x3'], 'bo-van-mo-can': ['1x1', '4x5'], 'bo-cat-lat': ['3x2', '3x2'], 'sot-cham': ['4x3', '4x3'],
+      'mon-an-chia-se': ['4x3', '3x2'], 'bua-an-cung-ban': ['4x3', '3x2'],
+    };
+    for (const [rong, cao] of [[390, 844], [768, 1024], [1440, 900]]) {
+      for (const duong of ['/', '/ko', '/thuc-don']) {
+        const ctx = await trinhDuyet.newContext({ viewport: { width: rong, height: cao } });
+        const page = await ctx.newPage();
+        const nhan = `${duong} · ${rong}px`;
+        let tha;
+        const giu = new Promise(xong => { tha = xong; });
+        const hong = [];
+        page.on('response', r => { if (/\/anh\//.test(r.url()) && r.status() >= 400) hong.push(`${r.url()} HTTP ${r.status()}`); });
+        await page.route('**/anh/**', async r => { await giu; await r.continue().catch(() => {}); });
+        try {
+          await page.goto(goc + duong, { waitUntil: 'domcontentloaded', timeout: 30000 });
+          const truoc = await doKhung(page);
+          tha();
+          await page.waitForLoadState('load');
+          await page.evaluate(async () => {
+            for (let y = 0; y < document.documentElement.scrollHeight; y += 500) { scrollTo({ top: y, behavior: 'instant' }); await new Promise(r => setTimeout(r, 60)); }
+            scrollTo({ top: 0, behavior: 'instant' });
+          });
+          await page.waitForFunction(() => [...document.querySelectorAll('figure.anh img')].filter(a => a.checkVisibility()).every(a => a.complete && a.naturalWidth > 0), null, { timeout: 15000 }).catch(() => {});
+          const sau = await doKhung(page);
+          const hienRa = sau.khung.filter(k => k.hien);
+          const tot = [
+            ok(`${nhan}: trang có ảnh (${hienRa.length} ảnh đang hiện), lúc ảnh chưa về chưa ảnh nào tải xong`,
+               hienRa.length >= 1 && truoc.khung.length === sau.khung.length && truoc.khung.every(k => !k.daVe), JSON.stringify(truoc.khung.map(k => [k.id, k.daVe]))),
+            // Vị trí theo chiều dọc và chiều cao trang chỉ so khi phông chữ không đổi giữa hai lần đo (phông về
+            // muộn làm chữ xuống dòng khác — không phải lỗi của ảnh); bề rộng, chiều cao của khung thì luôn so.
+            ok(`${nhan}: ảnh chưa về mà khung đã giữ sẵn đúng chỗ, đúng cỡ — ảnh về trang không xô lệch (cao trang ${truoc.caoTrang}px → ${sau.caoTrang}px)`,
+               truoc.khung.every((k, i) => ['trai', 'rong', 'cao'].every(c => k[c] === sau.khung[i][c]))
+                 && (truoc.soPhong !== sau.soPhong || (truoc.caoTrang === sau.caoTrang && truoc.khung.every((k, i) => k.tren === sau.khung[i].tren)))
+                 && hienRa.every(k => k.rong > 100 && k.cao > 60),
+               truoc.khung.map((k, i) => `${k.id} ${k.rong}×${k.cao}@${k.tren} → ${sau.khung[i]?.rong}×${sau.khung[i]?.cao}@${sau.khung[i]?.tren}`).join(' | ')),
+            ok(`${nhan}: mọi ảnh đang hiện đều tải về được, không file nào hỏng`, hienRa.every(k => k.daVe) && hong.length === 0,
+               [...hienRa.filter(k => !k.daVe).map(k => `${k.id} chưa về`), ...hong].join(' | ')),
+            ok(`${nhan}: mỗi ảnh dùng đúng khung của cỡ màn hình này, khung hiện đúng tỷ lệ của file`,
+               hienRa.every(k => k.file.startsWith(`${k.id}-${KHUNG_MONG[k.id]?.[rong < 600 ? 0 : 1]}-`) && Math.abs(k.rong / k.cao - k.tiLeFile) < 0.02),
+               hienRa.map(k => `${k.file} trong khung ${k.rong}×${k.cao}`).join(' | ')),
+          ];
+          if (tot.includes(false)) await chupLoi(page, `anh-cham${duong}-${rong}`);
+        } finally {
+          tha();
+          await ctx.close();
+        }
+      }
     }
   });
 } catch (e) {
