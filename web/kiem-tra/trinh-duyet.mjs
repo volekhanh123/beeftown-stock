@@ -41,8 +41,16 @@
  *      JavaScript; có JavaScript thì Esc đóng nó và trả tiêu điểm về nút. Mở ra thì nút
  *      đổi thành nút đóng có nhãn chữ, có link "Hỏi bàn" là nút chính, có bộ chọn ngôn
  *      ngữ; Enter mở / đóng, Tab đi qua từng mục với vòng focus nhìn thấy, Tab ra khỏi
- *      mục cuối thì menu đóng.
+ *      mục cuối thì menu đóng. Có JavaScript: đang mở thì có lớp phủ tối và trang phía
+ *      sau không cuộn; đóng bằng Esc, bằng nút đóng hay bằng cách bấm vào lớp phủ thì
+ *      trang cuộn lại được. TẮT JavaScript: không lớp phủ, không khoá cuộn — bấm link
+ *      neo trong bảng xong trang vẫn cuộn được.
  *   6. Câu hỏi thường gặp: Enter và phím cách mở / đóng từng câu, vòng focus nhìn thấy.
+ *   7. Màn cảm ứng ((hover: none)): con trỏ ở trên nút, link, hàng câu hỏi mà kiểu không
+ *      đổi — chạm xong không còn màu di chuột; máy có chuột vẫn đổi kiểu khi di chuột;
+ *      cả hai loại máy đổi màu nền khi đang nhấn nút (:active).
+ *   8. Thanh cuộn kiểu cổ điển (chiếm 15px): mở danh mục không xô lệch đầu trang và
+ *      khung nội dung, không sinh cuộn ngang; ở 1440px khung nội dung vẫn cân giữa.
  *
  * Hỏng thì ảnh chụp màn hình nằm ở kiem-tra/anh-loi/ (CI tải lên thành artifact).
  */
@@ -463,7 +471,33 @@ try {
     };
   });
 
-  await nhom('5 · MENU GỌN Ở 320, 360 VÀ 768 PX: MỞ / ĐÓNG KHI TẮT JAVASCRIPT; CÓ JAVASCRIPT: Esc, Enter, Tab', async () => {
+  /** Lớp phủ tối dưới bảng danh mục (phần tử giả ::before của <details>) và việc khoá cuộn trang. */
+  const lopPhu = page => page.evaluate(() => {
+    const phu = getComputedStyle(document.querySelector('details.menu-gon'), '::before');
+    const co = phu.content !== 'none' && phu.content !== 'normal' && phu.display !== 'none';
+    return {
+      mau: co && phu.position === 'fixed' ? phu.backgroundColor : null,
+      conTro: co ? phu.cursor : null,
+      khoaCuon: getComputedStyle(document.documentElement).overflowY === 'hidden',
+    };
+  });
+  /** Chờ tới khi trang cuộn khỏi vị trí `truoc` (tối đa 0,7 giây). Hỏi từ ngoài trang: tắt JavaScript vẫn chạy. */
+  const choCuon = async (page, truoc, toiDa = 700) => {
+    for (let t = 0; t < toiDa && await page.evaluate(() => scrollY) === truoc; t += 50) await cho(50);
+  };
+  /** Lăn chuột xuống ở gần đáy màn hình (chỗ của lớp phủ, ngoài bảng danh mục); trả số px trang đã cuộn. */
+  const lanChuot = async page => {
+    const { width, height } = page.viewportSize();
+    const truoc = await page.evaluate(() => scrollY);
+    await page.mouse.move(width / 2, height - 30);
+    await page.mouse.wheel(0, 240);
+    await choCuon(page, truoc);
+    await cho(200);
+    return (await page.evaluate(() => scrollY)) - truoc;
+  };
+  const veDau = page => page.evaluate(() => scrollTo(0, 0));
+
+  await nhom('5 · MENU GỌN Ở 320, 360 VÀ 768 PX: MỞ / ĐÓNG KHI TẮT JAVASCRIPT; CÓ JAVASCRIPT: Esc, Enter, Tab, LỚP PHỦ, KHOÁ CUỘN', async () => {
     for (const rong of [320, 360, 768]) {
       for (const coJs of [false, true]) {
         const ctx = await trinhDuyet.newContext({ viewport: { width: rong, height: rong < 600 ? 740 : 1024 }, javaScriptEnabled: coJs });
@@ -510,10 +544,21 @@ try {
             tot.push(ok(`${nhan}: Hỏi bàn và ngôn ngữ đã ở trên thanh, bảng danh mục không lặp lại`,
               !(await hoiBan.first().isVisible().catch(() => false)) && !(await ngonNguTrongBang.first().isVisible().catch(() => false))));
           }
+          const phu = await lopPhu(page);
           if (coJs) {
+            // Có script: lớp phủ tối che phần trang dưới bảng, bấm vào là đóng; trang phía sau đứng yên.
+            tot.push(ok(`${nhan}: đang mở — có lớp phủ tối (Charcoal 50 %) dưới bảng, con trỏ bàn tay`,
+              phu.mau === 'rgba(21, 16, 8, 0.5)' && phu.conTro === 'pointer', JSON.stringify(phu)));
+            const daCuon = await lanChuot(page);
+            tot.push(ok(`${nhan}: đang mở — trang phía sau không cuộn`, phu.khoaCuon && daCuon === 0, `khoá ${phu.khoaCuon}, lăn chuột cuộn ${daCuon}px`));
             await page.keyboard.press('Escape');
             tot.push(ok(`${nhan}: Esc → đóng, tiêu điểm về nút danh mục`,
                await mo() === false && await nut.evaluate(s => document.activeElement === s)));
+            const sauEsc = [await lopPhu(page), await lanChuot(page)];
+            tot.push(ok(`${nhan}: đóng bằng Esc → hết lớp phủ, trang cuộn lại được`,
+              sauEsc[0].mau === null && !sauEsc[0].khoaCuon && sauEsc[1] > 0, `${JSON.stringify(sauEsc[0])}, lăn chuột cuộn ${sauEsc[1]}px`));
+            await veDau(page);
+            await nut.focus();
             // Bàn phím từ đầu tới cuối: Enter mở, Tab đi qua từng mục, Tab ra khỏi mục cuối thì đóng.
             await page.keyboard.press('Enter');
             tot.push(ok(`${nhan}: Enter trên nút → mở`, await mo() === true && await thayMuc()));
@@ -535,7 +580,40 @@ try {
             await page.keyboard.press('Enter');
             await page.keyboard.press('Enter');
             tot.push(ok(`${nhan}: Enter hai lần trên nút → mở rồi đóng`, await mo() === false && !(await thayMuc())));
+            // Đóng bằng nút đóng.
+            await nut.click();
+            const moLai = await mo();
+            await nut.click();
+            const sauNut = [await lopPhu(page), await lanChuot(page)];
+            tot.push(ok(`${nhan}: mở rồi bấm nút đóng → đóng, hết lớp phủ, trang cuộn lại được`,
+              moLai === true && await mo() === false && sauNut[0].mau === null && !sauNut[0].khoaCuon && sauNut[1] > 0,
+              `${JSON.stringify(sauNut[0])}, lăn chuột cuộn ${sauNut[1]}px`));
+            await veDau(page);
+            // Đóng bằng cách bấm vào lớp phủ (gần đáy màn hình, ngoài bảng).
+            await nut.click();
+            const moLan3 = await mo();
+            const { width, height } = page.viewportSize();
+            const dich = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.className ?? '', [width / 2, height - 30]);
+            await page.mouse.click(width / 2, height - 30);
+            const sauPhu = [await lopPhu(page), await lanChuot(page)];
+            tot.push(ok(`${nhan}: mở rồi bấm vào lớp phủ → đóng, trang cuộn lại được`,
+              moLan3 === true && /\bmenu-gon\b/.test(dich) && await mo() === false && !sauPhu[0].khoaCuon && sauPhu[1] > 0,
+              `chỗ bấm là «${dich}», ${JSON.stringify(sauPhu[0])}, lăn chuột cuộn ${sauPhu[1]}px`));
           } else {
+            // Không có script: không gì đóng được menu khi khách bấm một link neo trong bảng. Vì vậy không
+            // lớp phủ, không khoá cuộn — menu là một <details> thường, trang vẫn cuộn như trước đợt redesign.
+            const daCuon = await lanChuot(page);
+            tot.push(ok(`${nhan}: đang mở — không lớp phủ, không khoá cuộn, trang vẫn cuộn được`,
+              phu.mau === null && !phu.khoaCuon && daCuon > 0, `${JSON.stringify(phu)}, lăn chuột cuộn ${daCuon}px`));
+            await veDau(page);
+            // Link neo "Trải nghiệm" dẫn tới #trai-nghiem của chính trang này: trang nhảy tới đó, menu còn mở
+            // (không có script để đóng) — khách vẫn phải cuộn tiếp và tự đóng được.
+            await muc.first().click();
+            await choCuon(page, 0, 2000);
+            const taiNeo = await page.evaluate(() => ({ neo: location.hash, y: scrollY }));
+            const cuonTiep = await lanChuot(page);
+            tot.push(ok(`${nhan}: bấm link neo trong danh mục → trang tới #trai-nghiem và cuộn tiếp được`,
+              taiNeo.neo === '#trai-nghiem' && taiNeo.y > 0 && cuonTiep > 0, `${JSON.stringify(taiNeo)}, lăn chuột cuộn ${cuonTiep}px`));
             await nut.click();
             tot.push(ok(`${nhan}: bấm lần nữa → đóng`, await mo() === false && !(await thayMuc())));
           }
@@ -583,6 +661,144 @@ try {
         if (tot.includes(false)) await chupLoi(page, `cau-hoi${duong}-${rong}`);
       }
       await ctx.close();
+    }
+  });
+
+  // =========================================================================
+  // Màu "di chuột" (:hover) chỉ dành cho máy có chuột. Trên màn cảm ứng, chạm xong thì trình duyệt vẫn coi
+  // ngón tay "đang ở trên" phần tử: nút giữ màu di chuột cho tới khi khách chạm chỗ khác — nút danh mục vừa
+  // đóng mà trông như đang mở. Playwright giả màn cảm ứng bằng hasTouch: (hover: none), và locator.hover()
+  // vẫn đặt được :hover — đúng tình huống đó.
+  await nhom('7 · MÀN CẢM ỨNG: CHẠM XONG KHÔNG CÒN MÀU DI CHUỘT; MÁY CÓ CHUỘT VẪN ĐỔI MÀU KHI DI CHUỘT VÀ KHI NHẤN', async () => {
+    const kieu = el => {
+      const cs = getComputedStyle(el);
+      const [svg, con] = [el.querySelector('svg'), el.querySelector(':scope > span')];
+      return [cs.backgroundColor, cs.color, cs.borderTopColor, cs.borderBottomColor, cs.textDecorationLine, cs.textDecorationThickness,
+        svg ? getComputedStyle(svg).transform : '', con ? getComputedStyle(con).textDecorationLine : ''].join(' | ');
+    };
+    // [tên, bộ chọn, bề rộng cần để phần tử hiện ra]
+    const PHAN_TU = [
+      ['nút danh mục', 'details.menu-gon summary', 390],
+      ['nút chính', 'main .nut-chinh', 390],
+      ['nút phụ', 'main .nut-vien', 390],
+      ['liên kết có mũi tên', 'main .lien-ket', 390],
+      ['hàng câu hỏi thường gặp', '.cau-hoi summary', 390],
+      ['link chân trang', 'footer .ct-cot a', 390],
+      ['dòng địa chỉ ở khối mở đầu', '.kmd-dia-chi', 390],
+      ['link điều hướng trên thanh', '.dt-nav a:not([aria-current])', 1440],
+      ['thứ tiếng khác trên thanh', '.dt-ngon-ngu a.doi-ngon-ngu', 1440],
+    ];
+    for (const camUng of [true, false]) {
+      for (const rong of [390, 1440]) {
+        const ctx = await trinhDuyet.newContext({ viewport: { width: rong, height: 800 }, hasTouch: camUng });
+        const page = await ctx.newPage();
+        await page.goto(goc + '/');
+        const loai = camUng ? 'màn cảm ứng' : 'máy có chuột';
+        const nhan = `/ · ${rong}px · ${loai}`;
+        const khongDiChuot = await page.evaluate(() => matchMedia('(hover: none)').matches);
+        if (!ok(`${nhan}: trình duyệt báo ${camUng ? 'không' : 'có'} di chuột được ((hover: ${camUng ? 'none' : 'hover'}))`, khongDiChuot === camUng)) { await ctx.close(); continue; }
+        for (const [ten, chon] of PHAN_TU.filter(p => p[2] === rong)) {
+          const el = page.locator(chon).first();
+          if (!ok(`${nhan}: thấy ${ten} (${chon})`, await el.count() > 0 && await el.isVisible())) continue;
+          await page.mouse.move(0, 0);
+          await el.scrollIntoViewIfNeeded();
+          await cho(250);
+          const truoc = await el.evaluate(kieu);
+          await el.hover();
+          await cho(300);   // chuyển màu 180ms
+          const [dangTren, sau] = [await el.evaluate(e => e.matches(':hover')), await el.evaluate(kieu)];
+          if (camUng) {
+            ok(`${nhan}: ${ten} — con trỏ đang ở trên (:hover) mà kiểu không đổi`, dangTren && sau === truoc, `:hover ${dangTren} · trước «${truoc}» · sau «${sau}»`);
+          } else {
+            ok(`${nhan}: ${ten} — di chuột lên thì đổi kiểu`, dangTren && sau !== truoc, `:hover ${dangTren} · «${sau}»`);
+          }
+        }
+        if (camUng && rong === 390) {
+          // Đúng lỗi được báo: chạm mở rồi chạm đóng nút danh mục, nút phải về màu lúc đóng.
+          const nut = page.locator('details.menu-gon summary');
+          await page.mouse.move(0, 0);
+          await veDau(page);
+          await cho(250);
+          const truoc = await nut.evaluate(kieu);
+          await nut.tap();
+          await cho(300);
+          const daMo = await nut.evaluate(s => s.parentElement.open);
+          await nut.tap();
+          await cho(400);
+          const sau = await nut.evaluate(kieu);
+          ok(`${nhan}: chạm mở rồi chạm đóng nút danh mục → nút về đúng kiểu lúc đóng`,
+             daMo && await nut.evaluate(s => !s.parentElement.open) && sau === truoc, `trước «${truoc}» · sau «${sau}»`);
+        }
+        // Nhấn giữ (:active) phải có phản hồi ở cả hai loại máy — trên màn cảm ứng đó là phản hồi duy nhất.
+        // Chặn mọi cú bấm từ đây: thả chuột trên nút không được chuyển trang hay mở danh mục.
+        await page.evaluate(() => document.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); }, true));
+        for (const [ten, chon] of [['nút chính', 'main .nut-chinh'], ['nút phụ', 'main .nut-vien'], ['nút danh mục', 'details.menu-gon summary']]) {
+          const el = page.locator(chon).first();
+          if (!(await el.isVisible().catch(() => false))) continue;
+          await page.mouse.move(0, 0);
+          await el.scrollIntoViewIfNeeded();
+          await cho(250);
+          const truoc = await el.evaluate(e => getComputedStyle(e).backgroundColor);
+          const hop = await el.boundingBox();
+          await page.mouse.move(hop.x + hop.width / 2, hop.y + hop.height / 2);
+          await page.mouse.down();
+          await cho(300);
+          const [dangNhan, luc] = [await el.evaluate(e => e.matches(':active')), await el.evaluate(e => getComputedStyle(e).backgroundColor)];
+          await page.mouse.up();
+          ok(`${nhan}: ${ten} — đang nhấn (:active) thì nền đổi màu`, dangNhan && luc !== truoc, `:active ${dangNhan} · trước ${truoc} · lúc nhấn ${luc}`);
+        }
+        await ctx.close();
+      }
+    }
+  });
+
+  // =========================================================================
+  // Máy có thanh cuộn kiểu cổ điển (Windows, chuột cắm vào Mac): thanh cuộn chiếm 15px bề ngang. Khoá cuộn
+  // khi mở danh mục làm thanh cuộn biến mất — không chừa sẵn chỗ thì cả trang xô sang phải 15px rồi xô lại.
+  // Playwright mặc định giấu thanh cuộn, nên nhóm này mở một Chromium riêng có thanh cuộn thật.
+  await nhom('8 · THANH CUỘN KIỂU CỔ ĐIỂN: MỞ DANH MỤC KHÔNG XÔ LỆCH TRANG, KHÔNG CUỘN NGANG', async () => {
+    const coThanhCuon = await chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
+    try {
+      const do_ = page => page.evaluate(() => {
+        const trai = chon => document.querySelector(chon)?.getBoundingClientRect().left ?? null;
+        const phai = chon => document.querySelector(chon)?.getBoundingClientRect().right ?? null;
+        const khung = document.querySelector('main .khung')?.getBoundingClientRect();
+        return {
+          thanhCuon: innerWidth - document.documentElement.clientWidth,
+          tranNgang: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          logo: trai('.dt-logo'), cumPhai: phai('.dt-phai'), khungTrai: khung?.left ?? null,
+          leTrai: khung ? khung.left : null, lePhai: khung ? document.documentElement.clientWidth - khung.right : null,
+        };
+      });
+      for (const [rong, cao] of [[800, 1280], [1024, 768], [1440, 900]]) {
+        const ctx = await coThanhCuon.newContext({ viewport: { width: rong, height: cao } });
+        const page = await ctx.newPage();
+        for (const duong of ['/', '/ko/book']) {
+          await page.goto(goc + duong);
+          const nhan = `${duong} · ${rong}px · thanh cuộn cổ điển`;
+          const truoc = await do_(page);
+          const tot = [
+            ok(`${nhan}: trình duyệt có thanh cuộn chiếm chỗ thật (≥ 10px)`, truoc.thanhCuon >= 10, `${truoc.thanhCuon}px`),
+            ok(`${nhan}: không cuộn ngang; khung nội dung cân giữa (lề trái bằng lề phải)`,
+               truoc.tranNgang <= 0 && truoc.leTrai !== null && Math.abs(truoc.leTrai - truoc.lePhai) <= 1, JSON.stringify(truoc)),
+          ];
+          if (rong < 1080) {
+            await page.locator('details.menu-gon summary').click();
+            await cho(300);
+            const sau = await do_(page);
+            const khoa = await page.evaluate(() => getComputedStyle(document.documentElement).overflowY === 'hidden');
+            tot.push(ok(`${nhan}: mở danh mục (trang đã khoá cuộn) — logo, cụm nút bên phải và khung nội dung đứng nguyên chỗ`,
+              khoa && sau.logo === truoc.logo && sau.cumPhai === truoc.cumPhai && sau.khungTrai === truoc.khungTrai,
+              `khoá ${khoa} · trước ${JSON.stringify(truoc)} · sau ${JSON.stringify(sau)}`));
+            tot.push(ok(`${nhan}: mở danh mục không sinh cuộn ngang`, sau.tranNgang <= 0, `${sau.tranNgang}px`));
+            await page.keyboard.press('Escape');
+          }
+          if (tot.includes(false)) await chupLoi(page, `thanh-cuon${duong}-${rong}`);
+        }
+        await ctx.close();
+      }
+    } finally {
+      await coThanhCuon.close().catch(() => {});
     }
   });
 } catch (e) {

@@ -644,7 +644,11 @@ try {
     const oSai = [], nhanSai = [];
     for (const e of o) {
       const cs = getComputedStyle(e), k = e.getBoundingClientRect(), ten = e.name || e.id;
-      if (k.height < 47.5) oSai.push(`${ten} cao ${k.height.toFixed(1)}px`);
+      // Ô một dòng (chữ, số điện thoại, ngày, ô chọn) cao ĐÚNG 48px — ô ngày của Chromium tự cao thêm 2px nếu
+      // không ghim chiều cao, đứng cạnh nút 48px thì lệch nhau. Ô nhiều dòng (textarea) thì từ 48px trở lên.
+      if (e.tagName === 'TEXTAREA' ? k.height < 47.5 : Math.abs(k.height - 48) > 0.5) {
+        oSai.push(`${ten} (${e.tagName.toLowerCase()}${e.type ? ` ${e.type}` : ''}) cao ${k.height.toFixed(1)}px`);
+      }
       if (cs.fontSize !== '16px') oSai.push(`${ten} chữ ${cs.fontSize}`);
       if (cs.backgroundColor !== KEM) oSai.push(`${ten} nền ${cs.backgroundColor}`);
       if (cs.borderTopColor !== VIEN || cs.borderTopWidth !== '1px') oSai.push(`${ten} viền ${cs.borderTopWidth} ${cs.borderTopColor}`);
@@ -656,7 +660,7 @@ try {
       if (co < 14 || co > 16) nhanSai.push(`nhãn của ${ten} cỡ ${co}px`);
       if (nhan.getBoundingClientRect().bottom > k.top + 0.5) nhanSai.push(`nhãn của ${ten} không nằm trên ô`);
     }
-    return { soO: o.length, oSai, nhanSai };
+    return { soO: o.length, coNgay: o.some(e => e.type === 'date'), oSai, nhanSai };
   };
 
   await nhom('8 · THÀNH PHẦN CỦA FORM Ở 390 VÀ 1440 PX: Ô NHẬP, Ô CHỌN GIỜ, THẺ, CÂU LỖI', async () => {
@@ -683,8 +687,8 @@ try {
         const nhan = `${hoiBan} · ${rong}px`;
         const tot = await doTheoQuyTac(nhan);
         const o = await page.evaluate(doO, 'form[data-hoi-ban], form[data-doi-ngay]');
-        tot.push(ok(`${nhan}: ${o.soO} ô nhập, ô chọn — cao ≥ 48px, chữ 16px, nền Cream, viền 1px #7A7366`,
-          o.soO >= 5 && o.oSai.length === 0, o.oSai.slice(0, 4).join(' | ')));
+        tot.push(ok(`${nhan}: ${o.soO} ô nhập, ô chọn — ô một dòng (kể cả ô ngày) cao đúng 48px, chữ 16px, nền Cream, viền 1px #7A7366`,
+          o.soO >= 5 && o.coNgay && o.oSai.length === 0, `${o.coNgay ? '' : 'không thấy ô ngày · '}${o.oSai.slice(0, 4).join(' | ')}`));
         tot.push(ok(`${nhan}: mỗi ô có nhãn 14–16px đặt trên ô, không ô nào dùng placeholder thay nhãn`,
           o.nhanSai.length === 0, o.nhanSai.slice(0, 4).join(' | ')));
         const nenThe = await page.locator('.hb-the').first().evaluate(el => getComputedStyle(el).backgroundColor);
@@ -739,7 +743,7 @@ try {
         }
         const tot = await doTheoQuyTac(nhan);
         const o = await page.evaluate(doO, 'form.form-nop');
-        tot.push(ok(`${nhan}: ${o.soO} ô nhập, ô chọn — cao ≥ 48px, chữ 16px, nền Cream, viền 1px #7A7366`,
+        tot.push(ok(`${nhan}: ${o.soO} ô nhập, ô chọn — ô một dòng cao đúng 48px, chữ 16px, nền Cream, viền 1px #7A7366`,
           o.soO >= 6 && o.oSai.length === 0, o.oSai.slice(0, 4).join(' | ')));
         tot.push(ok(`${nhan}: mỗi ô có nhãn 14–16px đặt trên ô, không ô nào dùng placeholder thay nhãn`,
           o.nhanSai.length === 0, o.nhanSai.slice(0, 4).join(' | ')));

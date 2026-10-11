@@ -129,6 +129,47 @@ function tachBoChon(s) {
   ra.push(s.slice(dau));
   return ra.map(x => x.trim()).filter(Boolean);
 }
+/**
+ * Mọi quy tắc thường của một đoạn CSS, đi vào trong @media / @supports / @container / @layer / @keyframes;
+ * `boc` là chuỗi @-rule bọc ngoài (ngoài cùng trước). @font-face và các @-rule khác bỏ qua.
+ */
+function moiQuyTac(css, boc = []) {
+  return docQuyTac(css).flatMap(({ boChon, trong }) => {
+    const gon = boChon.replace(/\s+/g, ' ');
+    if (/^@(?:media|supports|container|layer|keyframes|-webkit-keyframes)\b/.test(gon)) return moiQuyTac(trong, [...boc, gon]);
+    return gon.startsWith('@') ? [] : [{ boc, boChon: gon, trong }];
+  });
+}
+/** Thân một quy tắc → [[thuộc tính, giá trị], …]. */
+function khaiBao(trong) {
+  return trong.split(';').map(d => d.trim()).filter(Boolean).flatMap(d => {
+    const k = d.indexOf(':');
+    return k < 0 ? [] : [[d.slice(0, k).trim().toLowerCase(), d.slice(k + 1).trim()]];
+  });
+}
+/** Phần CSS của một file công khai: cả file .css, hoặc mọi khối <style> của file .astro; đã bỏ chú thích. */
+function kieuCua(f) {
+  const nguon = readFileSync(f, 'utf8');
+  return boChuThich(f.endsWith('.css') ? nguon : (nguon.match(/<style[^>]*>([\s\S]*?)<\/style>/g) ?? []).join('\n').replace(/<\/?style[^>]*>/g, ''));
+}
+// 148 tên màu của CSS Color 4 (transparent và currentColor không phải tên màu). Đứng riêng thành một từ:
+// không dính chữ, số, gạch nối, #, . hay $ phía trước (var(--do-red), .white, #red), không dính chữ, gạch
+// nối hay ngoặc mở phía sau (white-space, red()).
+const TEN_MAU_CSS = new RegExp(`(?<![\\w#.$-])(?:${`aliceblue antiquewhite aqua aquamarine azure beige bisque black
+  blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan
+  darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid
+  darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue
+  dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green
+  greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue
+  lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue
+  lightslategray lightslategrey lightsteelblue lightyellow lime limegreen linen magenta maroon mediumaquamarine mediumblue
+  mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue
+  mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid palegoldenrod palegreen
+  paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue
+  saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen
+  steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen`.trim().split(/\s+/).join('|')})(?![\\w(-])`, 'gi');
+// Màu hệ thống (CSS Color 4, mục 6.2) — ngoài chế độ tương phản cao, Canvas và Field là trắng.
+const MAU_HE_THONG = /(?<![\w#.$-])(?:AccentColor|AccentColorText|ActiveText|ButtonBorder|ButtonFace|ButtonText|Canvas|CanvasText|Field|FieldText|GrayText|Highlight|HighlightText|LinkText|Mark|MarkText|SelectedItem|SelectedItemText|VisitedText)(?![\w(-])/gi;
 
 await nhom('2 · chung.css GIỮ NGUYÊN BIẾN CŨ; cong-khai.css CHỈ Ở TRANG CÔNG KHAI', async () => {
   const chung = boChuThich(readFileSync(join(SRC, 'styles', 'chung.css'), 'utf8'));
@@ -399,17 +440,69 @@ await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PH
   };
   const maLa = congKhai.flatMap(f => {
     const ten = tuGoc(f);
-    const la = [...new Set((readFileSync(f, 'utf8').match(/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/g) ?? []).map(m => m.toUpperCase()))]
+    // Mã hex có 3, 4, 6 hoặc 8 chữ số (4 và 8: kèm độ trong — #FFFF, #FFFFFFFF cũng là trắng). Bảng màu chỉ
+    // khai mã 6 chữ số; màu có độ trong viết bằng rgba(…) với bộ ba của bảng (kiểm ở dưới).
+    const la = [...new Set((readFileSync(f, 'utf8').match(/#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})\b/g) ?? []).map(m => m.toUpperCase()))]
       .filter(m => !MA_DUOC_PHEP.has(m) && !(NGOAI_LE[ten] ?? []).includes(m));
     return la.length ? [`${ten}: ${la.join(' ')}`] : [];
   });
-  ok(`${congKhai.length} file công khai: mã màu viết thẳng chỉ là mã của bảng màu (không trắng, không trắng ngà)`,
+  ok(`${congKhai.length} file công khai: mã màu viết thẳng (hex 3, 4, 6, 8 chữ số) chỉ là mã của bảng màu (không trắng, không trắng ngà)`,
      congKhai.length > 30 && maLa.length === 0, maLa.join(' | '));
   const css = congKhai.map(f => [tuGoc(f), boChuThich(f.endsWith('.css') ? readFileSync(f, 'utf8')
     : (readFileSync(f, 'utf8').match(/<style[^>]*>([\s\S]*?)<\/style>/g) ?? []).join('\n'))]);
   const tuKhoaTrang = css.filter(([, c]) => /(?:background|color|border|fill|stroke)[a-z-]*\s*:[^;{}]*\b(?:white|ivory|snow)\b/i.test(c)
     || /color-mix\([^)]*(?:#fff|white)/i.test(c)).map(([ten]) => ten);
   ok('CSS của trang công khai không dùng từ khóa white / ivory / snow, không pha với trắng (color-mix)', tuKhoaTrang.length === 0, tuKhoaTrang.join(', '));
+  // Trắng còn viết được bằng nhiều cách khác ngoài mã hex và chữ white: rgb(255, 255, 255), hsl(0 0% 100%),
+  // oklch(1 0 0), color(srgb 1 1 1), màu hệ thống Canvas… Quét từng khai báo CSS và từng thuộc tính màu trong
+  // thẻ của mọi file công khai:
+  //   · rgb() / rgba(): ba số đầu phải là bộ ba của một mã trong bảng (độ trong tùy ý);
+  //   · không hàm màu nào khác — bảng màu khai bằng hex, không cần hsl(), oklch(), lab(), color()…;
+  //   · không tên màu CSS (white, ivory, red…): chỉ transparent, currentColor và biến của bảng;
+  //   · màu hệ thống (Canvas, Highlight…) chỉ trong @media (forced-colors: active) — ngoài chế độ đó
+  //     Canvas chính là trắng.
+  const BA_SO = new Set([...MA_DUOC_PHEP].map(h => [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16)).join(',')));
+  const mauLaTrong = (giaTri, tuongPhanCao) => {
+    const v = giaTri.replace(/url\((?:"[^"]*"|'[^']*'|[^)]*)\)/gi, ' ').replace(/"[^"]*"|'[^']*'/g, ' ');
+    const la = [];
+    for (const m of v.matchAll(/(?<![\w-])rgba?\(/gi)) {
+      const dong = v.indexOf(')', m.index);
+      const trong = v.slice(m.index + m[0].length, dong < 0 ? undefined : dong);
+      const so = trong.split(/[\s,/]+/).filter(Boolean);
+      const baSo = so.slice(0, 3);
+      if (so.length < 3 || !baSo.every(x => /^\d{1,3}$/.test(x)) || !BA_SO.has(baSo.map(Number).join(','))) la.push(`${m[0]}${trong})`);
+    }
+    for (const m of v.matchAll(/(?<![\w-])(?:hsla?|hwb|lab|lch|oklab|oklch|color|light-dark|device-cmyk)\(/gi)) la.push(`${m[0]}…)`);
+    for (const m of v.matchAll(TEN_MAU_CSS)) la.push(m[0]);
+    if (!tuongPhanCao) for (const m of v.matchAll(MAU_HE_THONG)) la.push(`${m[0]} (màu hệ thống ngoài forced-colors)`);
+    return la;
+  };
+  const mauLaKhac = congKhai.flatMap(f => {
+    const ten = tuGoc(f);
+    const nguon = readFileSync(f, 'utf8');
+    const la = moiQuyTac(kieuCua(f)).flatMap(q => khaiBao(q.trong).flatMap(([, giaTri]) => mauLaTrong(giaTri, q.boc.some(b => /forced-colors:\s*active/.test(b)))));
+    // Thuộc tính màu viết thẳng trong thẻ (SVG trong trang, style="…").
+    if (!f.endsWith('.css')) {
+      const the = nguon.replace(/<style[^>]*>[\s\S]*?<\/style>/g, '').replace(/<script[^>]*>[\s\S]*?<\/script>/g, '');
+      for (const m of the.matchAll(/\s(?:fill|stroke|stop-color|flood-color|lighting-color|color|bgcolor|style)="([^"{}]*)"/g)) la.push(...mauLaTrong(m[1], false));
+    }
+    return la.length ? [`${ten}: ${[...new Set(la)].join(' ')}`] : [];
+  });
+  ok('File công khai: rgb() / rgba() chỉ dùng bộ ba của bảng màu; không hsl(), oklch(), color()…; không tên màu CSS; màu hệ thống chỉ trong forced-colors',
+     mauLaKhac.length === 0, mauLaKhac.join(' | '));
+  // Phép quét trên phải bắt được từng cách viết trắng — thử ngay trên chính nó, kẻo một lần sửa biểu thức
+  // làm nó thôi bắt mà không ai hay.
+  const CACH_VIET_TRANG = ['rgb(255, 255, 255)', 'rgb(255 255 255 / .9)', 'rgba(255,255,255,.5)', 'rgb(100% 100% 100%)', 'hsl(0 0% 100%)',
+    'hsla(0, 0%, 100%, 1)', 'hwb(0 100% 0%)', 'lab(100 0 0)', 'oklch(1 0 0)', 'color(srgb 1 1 1)', 'white', 'WHITE', 'ivory', 'snow', 'ghostwhite',
+    'Canvas', 'Field', 'linear-gradient(white, var(--kem))', 'color-mix(in srgb, white 20%, var(--do))', 'light-dark(white, black)', 'rgb(from var(--kem) 255 255 255)'];
+  const khongBat = CACH_VIET_TRANG.filter(c => mauLaTrong(c, false).length === 0);
+  ok(`Phép quét bắt đủ ${CACH_VIET_TRANG.length} cách viết trắng khác nhau`, khongBat.length === 0, khongBat.join(' | '));
+  const CACH_VIET_DUNG = ['var(--kem)', 'rgba(21, 16, 8, .16)', 'rgb(240 227 208 / .22)', 'transparent', 'currentColor', '1px solid var(--vien-o)',
+    'color-mix(in srgb, var(--kem) 12%, var(--do))', 'background-color var(--nhanh), color var(--nhanh)', 'url("/thuong-hieu/white.svg") no-repeat', 'nowrap'];
+  const batNham = CACH_VIET_DUNG.filter(c => mauLaTrong(c, false).length > 0);
+  ok(`…và không bắt nhầm ${CACH_VIET_DUNG.length} cách viết hợp lệ`, batNham.length === 0, batNham.join(' | '));
+  ok('…màu hệ thống trong @media (forced-colors: active) thì được', mauLaTrong('Canvas', true).length === 0 && mauLaTrong('2px solid Highlight', true).length === 0);
+
   const inRa = boChuThich(readFileSync(join(SRC, 'styles', 'cong-khai.css'), 'utf8'));
   const ngoaiIn = inRa.replace(/@media print\s*\{(?:[^{}]|\{[^{}]*\})*\}/g, '');
   ok('cong-khai.css: #fff và #000 chỉ nằm trong khối @media print', !/#(?:fff|000)\b/i.test(ngoaiIn) && /@media print/.test(inRa));
@@ -482,6 +575,100 @@ await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PH
   ok('Nút đóng danh mục có nhãn chữ ở ba thứ tiếng (chu.ts: dong)',
      chu('vi').dong === 'Đóng' && chu('en').dong === 'Close' && chu('ko').dong === '닫기',
      [chu('vi').dong, chu('en').dong, chu('ko').dong].join(' · '));
+
+  // --- Sau rà soát độc lập ngày 11/10/2026 ----------------------------------------------------------
+  const quyTacCongKhai = congKhai.flatMap(f => moiQuyTac(kieuCua(f)).map(q => ({ ...q, file: tuGoc(f) })));
+  const thuong = quyTacCongKhai.filter(q => !q.boc.some(b => /^@(?:-webkit-)?keyframes\b/.test(b)));
+
+  // Thứ bấm được không bao giờ khai chiều cao dưới 48px. Trình duyệt (do-giao-dien.mjs: vungCham) đo được
+  // việc này trên trang đã dựng; phép này bắt ngay trong npm test, không cần trình duyệt: hạ .nut-nho hay
+  // nút gửi form xuống 40px là đỏ.
+  const CHAM = 48;
+  /** Phần tử mà bộ chọn nhắm tới (cụm cuối), đã bỏ :not(…) và :global( ) của Astro. */
+  const dich = boChon => {
+    const sach = boChon.replace(/:global\(([^()]*(?:\([^()]*\)[^()]*)*)\)/g, '$1').replace(/:not\((?:[^()]|\([^()]*\))*\)/g, '');
+    let sau = 0, dau = 0;
+    for (let k = 0; k < sach.length; k++) {
+      if (sach[k] === '(' || sach[k] === '[') sau++;
+      else if (sach[k] === ')' || sach[k] === ']') sau--;
+      else if (sau === 0 && /[\s>+~]/.test(sach[k])) dau = k + 1;
+    }
+    return sach.slice(dau);
+  };
+  const laThuBamDuoc = cum => {
+    if (/::(?!file-selector-button)[\w-]+$/.test(cum)) return false;                 // ::before, ::after…: không phải vùng bấm
+    if (/type=['"]?(?:checkbox|radio|hidden)/.test(cum)) return false;               // ô đánh dấu 24px nằm trong nhãn cao 48px
+    return /(?:^|[^\w-])\.nut(?:-[\w-]+)?(?![\w-])/.test(cum) || /(?:^|[(,\s])(?:button|summary|select|textarea|input)(?![\w-])/.test(cum)
+      || /::file-selector-button$/.test(cum) || /type=['"]?submit/.test(cum);
+  };
+  const thap = thuong.flatMap(q => tachBoChon(q.boChon).map(dich).filter(laThuBamDuoc).flatMap(cum =>
+    khaiBao(q.trong).filter(([thuocTinh, giaTri]) => {
+      if (!/^(?:min-|max-)?(?:height|block-size)$/.test(thuocTinh)) return false;
+      const v = giaTri.replace(/\s*!important$/, '');
+      // Được: var(--cham); height auto hoặc 100 % (phủ kín phần tử cha — ô chọn giờ phủ kín nhãn 48px của nó);
+      // max-height none.
+      if (v === 'var(--cham)' || ((thuocTinh === 'height' || thuocTinh === 'block-size') && (v === 'auto' || v === '100%'))
+        || (thuocTinh.startsWith('max-') && v === 'none')) return false;
+      const px = /^(\d+(?:\.\d+)?)px$/.exec(v);
+      return !px || Number(px[1]) < CHAM;
+    }).map(([thuocTinh, giaTri]) => `${q.file}: ${q.boChon} { ${thuocTinh}: ${giaTri} }`)));
+  const soQuyTacBam = thuong.filter(q => tachBoChon(q.boChon).map(dich).some(laThuBamDuoc)).length;
+  ok(`Nút, summary, ô nhập (${soQuyTacBam} quy tắc): không quy tắc nào khai chiều cao dưới ${CHAM}px — chỉ var(--cham) hoặc số px từ ${CHAM} trở lên`,
+     soQuyTacBam >= 10 && thap.length === 0, [...new Set(thap)].slice(0, 6).join(' | '));
+  ok('cong-khai.css: --cham là 48px, khai đúng một lần', bien('--cham') === '48px' && soLanKhai('--cham') === 1, `${bien('--cham')} · khai ${soLanKhai('--cham')} lần`);
+  ok('…phép trên bắt được nút bị hạ xuống 40px và không bắt nhầm phần tử giả, ô đánh dấu',
+     ['.ck .nut-nho', '.hb-gui .nut', '.form-nop button[type=\'submit\']', '.menu-gon summary', '.x :global(.nut)', '.ck :is(.o, .form-dat) :is(input[type=\'text\'], select)',
+       '.form-nop input[type=\'file\']::file-selector-button'].every(b => laThuBamDuoc(dich(b)))
+       && !['.ck input[type=\'checkbox\']', '.ck .nut svg', '.mg-muc a:not(.nut)', '.ck input[type=\'checkbox\']::before', '.menu-gon summary :global(svg)', '.ck .nut-chinh::after']
+         .some(b => laThuBamDuoc(dich(b))));
+
+  // Màu "di chuột" chỉ dành cho máy có chuột: trên màn cảm ứng, chạm xong nút vẫn giữ :hover cho tới khi khách
+  // chạm chỗ khác. Mọi quy tắc :hover của trang công khai nằm trong @media (hover: hover).
+  const diChuot = thuong.filter(q => /:hover\b/.test(q.boChon));
+  const diChuotTran = diChuot.filter(q => !q.boc.some(b => /^@media\b.*\(hover:\s*hover\)/.test(b))).map(q => `${q.file}: ${q.boChon}`);
+  ok(`${diChuot.length} quy tắc :hover của trang công khai đều nằm trong @media (hover: hover)`, diChuot.length >= 8 && diChuotTran.length === 0, diChuotTran.join(' | '));
+  // …và phản hồi khi nhấn (:active) không nằm trong khối đó: màn cảm ứng vẫn thấy nút đổi màu lúc chạm.
+  const nhanGiu = ten => thuong.some(q => tachBoChon(q.boChon).some(b => b.replace(/\s+/g, ' ').endsWith(ten))
+    && !q.boc.some(b => /\(hover:/.test(b)) && /background/.test(q.trong));
+  ok('Nút chính, nút phụ và nút danh mục đổi màu nền khi đang nhấn (:active), ở mọi loại máy',
+     nhanGiu('.nut-chinh:active') && nhanGiu('.nut-vien:active') && nhanGiu('.menu-gon summary:active'));
+
+  // Khoá cuộn khi mở danh mục làm thanh cuộn kiểu cổ điển (Windows) biến mất: chừa sẵn chỗ cho nó thì
+  // trang không xô lệch 15px.
+  ok('cong-khai.css: html:has(body.ck) chừa sẵn chỗ cho thanh cuộn (scrollbar-gutter: stable)',
+     docQuyTac(ck).some(q => q.boChon === 'html:has(body.ck)' && /(?:^|[;\s])scrollbar-gutter\s*:\s*stable\s*(?:;|$)/.test(q.trong)));
+
+  // Danh mục gọn: lớp phủ tối và khoá cuộn chỉ có khi script đã chạy (script gắn data-co-script lên
+  // <details>) — không script thì không gì đóng được danh mục sau khi khách bấm link neo, trang phải cuộn
+  // được. Lớp phủ là phần tử giả của <details>: iPhone chỉ phát sự kiện click cho phần tử có trình nghe
+  // riêng hoặc con trỏ bàn tay, nên script nghe click ngay trên <details> và lớp phủ có cursor: pointer.
+  const quyTacDau = thuong.filter(q => q.file.endsWith('components/DauTrang.astro'));
+  const phu = quyTacDau.filter(q => /\.menu-gon[^,]*::before/.test(q.boChon) && /position:\s*fixed/.test(q.trong));
+  ok('DauTrang.astro: lớp phủ dưới bảng danh mục chỉ hiện khi script đã chạy ([data-co-script]), con trỏ bàn tay',
+     phu.length === 1 && /\.menu-gon\[data-co-script\]\[open\]::before/.test(phu[0].boChon) && /cursor:\s*pointer/.test(phu[0].trong),
+     phu.map(q => q.boChon).join(' | ') || 'không thấy quy tắc lớp phủ');
+  const khoa = quyTacDau.filter(q => /html:has\(/.test(q.boChon) && /overflow:\s*hidden/.test(q.trong));
+  ok('DauTrang.astro: khoá cuộn trang chỉ khi script đã chạy và danh mục đang mở',
+     khoa.length === 1 && khoa[0].boChon.includes('.menu-gon[data-co-script][open]'), khoa.map(q => q.boChon).join(' | ') || 'không thấy quy tắc khoá cuộn');
+  const kichBan = (dauTrang.match(/<script>([\s\S]*?)<\/script>/) ?? [])[1] ?? '';
+  ok('DauTrang.astro: script gắn data-co-script lên <details> (menu.dataset.coScript)', /menu\.dataset\.coScript\s*=/.test(kichBan));
+  ok('DauTrang.astro: script nghe click ngay trên <details> — bấm lớp phủ (đích là chính <details>) thì đóng',
+     /menu\.addEventListener\('click',\s*(?:\(e\)|e)\s*=>\s*\{\s*if\s*\(e\.target === menu\)\s*dong\(/.test(kichBan));
+
+  // Chrome tô nền ô tự điền bằng màu gần trắng của riêng nó (không ghi đè bằng background được): phủ lại
+  // bằng bóng trong màu Cream, chữ vẫn Charcoal.
+  const tuDien = docQuyTac(ck).filter(q => /:autofill/.test(q.boChon));
+  const tuDienChinh = tuDien.find(q => /^\.ck :is\(input, select, textarea\):is\(:autofill, :-webkit-autofill\)$/.test(q.boChon.replace(/\s+/g, ' ')));
+  ok('cong-khai.css: ô tự điền (:autofill / :-webkit-autofill) phủ nền Cream bằng bóng trong, chữ var(--than)',
+     !!tuDienChinh && /box-shadow:\s*inset 0 0 0 \d{3,}px var\(--kem\)/.test(tuDienChinh.trong) && /-webkit-text-fill-color:\s*var\(--than\)/.test(tuDienChinh.trong),
+     tuDien.map(q => q.boChon).join(' | ') || 'không có quy tắc :autofill nào');
+  ok('cong-khai.css: ô tự điền đang báo lỗi vẫn giữ vòng đỏ đậm (bóng trong 1px var(--do-dam) nằm trên lớp Cream)',
+     tuDien.some(q => /aria-invalid/.test(q.boChon) && /box-shadow:\s*inset 0 0 0 1px var\(--do-dam\),\s*inset 0 0 0 \d{3,}px var\(--kem\)/.test(q.trong)));
+
+  // h1 cùng một cỡ ở cả ba thứ tiếng (32 → 48px): không quy tắc nào co cỡ chữ h1 riêng cho một thứ tiếng.
+  const coRieng = thuong.filter(q => tachBoChon(q.boChon).some(b => /h1/.test(b) && /:lang\(/.test(b)) && khaiBao(q.trong).some(([t]) => t === 'font-size' || t === 'font'))
+    .map(q => `${q.file}: ${q.boChon}`);
+  ok('Không quy tắc nào đặt cỡ chữ h1 riêng theo thứ tiếng (h1…:lang(…) { font-size })', coRieng.length === 0, coRieng.join(' | '));
 });
 
 process.exit(ketThuc('GIAO DIỆN TRANG CÔNG KHAI'));

@@ -20,12 +20,12 @@ export const PHEP_DO = {
   vungCham: 'nút, link điều hướng, link chân trang, summary, ô nhập, ô chọn giờ cao ≥ 48px',
   dauTrang: 'đầu trang cao 64px (dưới 1080px) / 80px (từ 1080px); điều hướng 15–16px; logo ≥ 160px (dưới 360px: brandmark ≥ 48px), đúng tỷ lệ',
   ngonNgu: 'bộ chọn ngôn ngữ đủ 3 thứ tiếng, thứ tiếng đang xem đánh dấu bằng chữ đậm và nét gạch (không chỉ bằng màu)',
-  khongTrang: 'không nền trắng: mọi màu nền thuộc bảng màu của trang công khai',
+  khongTrang: 'không nền trắng: mọi màu nền (kể cả dải màu background-image và phần tử giả ::before / ::after) thuộc bảng màu của trang công khai',
   nut: 'nút: bo 4px, đệm ngang 20px, đúng màu theo bề mặt; mỗi nhóm nút một nút chính',
-  the: 'thẻ: nền Cream hoặc kem sau, đệm 20px (điện thoại) / 24px, viền mảnh, không bóng đổ',
+  the: 'thẻ: nền Cream hoặc kem sau, đệm 20px (điện thoại) / 24px, viền mảnh, không bóng đổ; thẻ khác màu nền phía sau hoặc viền tương phản ≥ 1,35 : 1',
   cauHoi: 'câu hỏi thường gặp: mỗi hàng cao ≥ 56px, bấm được trên toàn chiều rộng, có biểu tượng mở/đóng',
   bieuTuong: 'biểu tượng: 24px, nét 1,5px, Beef Red trên kem và Cream trên đỏ, đi kèm nhãn chữ',
-  chu: 'chữ và lưới: chỉ Montserrat, chữ chạy 16/24px, h1 32/38 → 48/56px, lề điện thoại 20px, khung ≤ 1200px, khoảng cách khối 48–64 / 72–96px',
+  chu: 'chữ và lưới: chỉ Montserrat, chữ chạy 16/24px, h1 32/38 → 48/56px (tiếng Hàn cùng cỡ, dòng 1,28: 32/41 → 48/61px), lề điện thoại 20px, khung ≤ 1200px, khoảng cách khối 48–64 / 72–96px',
   chanTrang: 'chân trang: dải đỏ, logo Cream, không hoa văn chữ, chữ ≥ 14px, điện thoại chia link 2 cột, dải pháp nhân nền Charcoal',
 };
 
@@ -67,6 +67,20 @@ export function doGiaoDien() {
     }
     return '';
   };
+  /** Độ sáng tương đối và tỷ lệ tương phản theo WCAG 2.2; màu là [r, g, b] 0–255. */
+  const doSang = ([r, g, b]) => {
+    const k = [r, g, b].map(v => v / 255).map(v => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * k[0] + 0.7152 * k[1] + 0.0722 * k[2];
+  };
+  const tuongPhan = (a, b) => {
+    const [sang, toi] = [doSang(a), doSang(b)].sort((x, y) => y - x);
+    return (sang + 0.05) / (toi + 0.05);
+  };
+  // Viền thẻ nhạt nhất còn coi là "nhìn thấy": nét kẻ mảnh của chính hệ này (--vach: Charcoal 16 %) trên
+  // thẻ Cream đặt giữa nền Cream cho 1,40 : 1; ngưỡng 1,35 chừa phần làm tròn. Không lấy 3 : 1 của WCAG
+  // 1.4.11: mức đó dành cho ranh giới của thứ bấm được (ô nhập — viền --vien-o 3,71 : 1); thẻ chỉ gom
+  // nội dung, chữ trong thẻ vẫn đọc được khi không thấy viền. Charcoal 12 % (1,28 : 1) trở xuống là hỏng.
+  const VIEN_THE_TOI_THIEU = 1.35;
   const beMat = el => {
     const b = el.closest('.be-do, .be-toi, .be-kem, .be-kem-sau, .be-kem-dam');
     return !b ? 'sang' : b.classList.contains('be-do') ? 'do' : b.classList.contains('be-toi') ? 'toi' : 'sang';
@@ -159,14 +173,36 @@ export function doGiaoDien() {
   }
 
   // --- 4. Không nền trắng -----------------------------------------------------------------------
+  // Nền khách nhìn thấy đến từ ba chỗ: background-color, background-image (dải màu — gradient) và phần tử
+  // giả ::before / ::after. Đo cả ba: tô trắng bằng linear-gradient(#fff, #fff) hay bằng một ::before phủ
+  // kín thì background-color của phần tử vẫn đúng bảng màu mà khách vẫn thấy nền trắng.
   const nenLa = new Map();
+  const ghiNenLa = (chuoi, noi) => { if (!nenLa.has(chuoi)) nenLa.set(chuoi, noi); };
+  const xetNen = (cs, noi) => {
+    const chuoi = cs.backgroundColor;
+    const c = mau(chuoi);
+    if (c ? (c.a > 0 && !BANG.has(bo(c))) : chuoi !== 'transparent') ghiNenLa(chuoi, noi);
+    const anh = cs.backgroundImage;
+    if (!anh || anh === 'none') return;
+    // File ảnh và SVG (url(…)) không đo ở đây: màu của SVG thương hiệu kiểm ở test-cong-khai-giao-dien nhóm 3.
+    const dai = anh.replace(/url\((?:"[^"]*"|'[^']*'|[^)]*)\)/g, '');
+    // Trình duyệt ghi màu đã tính thành rgb(…) / rgba(…); màu ở hệ khác (oklch, lab, color(…)) không so
+    // được với bảng màu chép tay nên coi là màu lạ.
+    for (const m of dai.match(/(?:rgba?|hsla?|hwb|lab|lch|oklab|oklch|color|color-mix)\([^()]*\)/g) ?? []) {
+      const d = mau(m);
+      if (d ? (d.a > 0 && !BANG.has(bo(d))) : true) ghiNenLa(`${m} (trong background-image)`, noi);
+    }
+  };
   for (const el of [document.documentElement, document.body, ...document.body.querySelectorAll('*')]) {
     if (el.closest('.nk-the') || (el !== document.documentElement && !hien(el))) continue;   // .nk-the: PR 3
-    const chuoi = getComputedStyle(el).backgroundColor;
-    const c = mau(chuoi);
-    if (c ? (c.a > 0 && !BANG.has(bo(c))) : chuoi !== 'transparent') {
-      if (!nenLa.has(chuoi)) nenLa.set(chuoi, moTa(el));
+    xetNen(getComputedStyle(el), moTa(el));
+    for (const gia of ['::before', '::after']) {
+      const csGia = getComputedStyle(el, gia);
+      // content none / normal: phần tử giả không được sinh ra.
+      if (csGia.content === 'none' || csGia.content === 'normal' || csGia.display === 'none') continue;
+      xetNen(csGia, `${moTa(el)}${gia}`);
     }
+    if (el.matches('input[type="file"]')) xetNen(getComputedStyle(el, '::file-selector-button'), `${moTa(el)}::file-selector-button`);
   }
   kq.khongTrang = [...nenLa].map(([m, el]) => `${m} ở ${el}`);
   // Ô đánh dấu, ô chọn một vẽ kiểu hệ thống thì nền trắng mà getComputedStyle không thấy (trình duyệt tự
@@ -218,8 +254,23 @@ export function doGiaoDien() {
     if (Math.abs(so(cs.paddingRight) - mong) > 0.5 || Math.abs(so(cs.paddingBottom) - mong) > 0.5) {
       kq.the.push(`${ten} đệm phải ${cs.paddingRight}, dưới ${cs.paddingBottom} — cần ${mong}px`);
     }
-    const coNet = ['Top', 'Right', 'Bottom', 'Left'].some(c => so(cs[`border${c}Width`]) >= 1 && (mau(cs[`border${c}Color`])?.a ?? 0) > 0);
-    if (!coNet) kq.the.push(`${ten} không có viền hay nét nào tách khỏi nền`);
+    const canh = ['Top', 'Right', 'Bottom', 'Left'].filter(c => so(cs[`border${c}Width`]) >= 1 && (mau(cs[`border${c}Color`])?.a ?? 0) > 0);
+    if (!canh.length) kq.the.push(`${ten} không có viền hay nét nào tách khỏi nền`);
+    // Thẻ phải nhìn ra là thẻ: nền của nó khác nền phía sau, HOẶC có một nét viền đủ rõ trên nền phía sau.
+    // Thẻ Cream nằm trên Cream với viền gần trong suốt thì mọi số đo khác vẫn đạt mà khách không thấy thẻ.
+    const nenThe = mau(cs.backgroundColor);
+    const nenNgoai = nenSau(t.parentElement);
+    if (nenThe && nenNgoai && bo(nenThe) === nenNgoai) {
+      const ngoai = nenNgoai.split(',').map(Number);
+      const ro = Math.max(0, ...canh.map(c => {
+        const v = mau(cs[`border${c}Color`]);
+        // Viền có độ trong vẽ đè lên nền của chính thẻ (background-clip: border-box) — pha ra màu mắt thấy.
+        return tuongPhan(['r', 'g', 'b'].map(k => v[k] * v.a + nenThe[k] * (1 - v.a)), ngoai);
+      }));
+      if (ro < VIEN_THE_TOI_THIEU) {
+        kq.the.push(`${ten} cùng màu với nền phía sau (rgb(${nenNgoai})) mà viền chỉ tương phản ${ro.toFixed(2)} : 1 — cần ≥ ${VIEN_THE_TOI_THIEU} : 1 hoặc nền khác nền phía sau`);
+      }
+    }
   }
   const bang = document.querySelector('.mg-bang');
   if (bang && getComputedStyle(bang).boxShadow !== 'none') kq.the.push('bảng danh mục gọn (.mg-bang) còn bóng đổ');
@@ -279,15 +330,19 @@ export function doGiaoDien() {
     const cs = getComputedStyle(h1);
     const [co, dong] = [so(cs.fontSize), so(cs.lineHeight)];
     const ghi = `h1 ${co.toFixed(1)}/${dong.toFixed(1)}px`;
-    if (NGON_NGU === 'ko') {
-      // Hangul rộng hơn chữ Latin: câu chính trang chủ co theo bề rộng cột (KhoiMoDau.astro: không quá 9,4 %
-      // bề rộng cột — 26px ở màn 320px), dòng thoáng 1,28.
-      if (co < 26 || co > 48.5) kq.chu.push(`${ghi} — tiếng Hàn cần 26–48px`);
-    } else if (RONG <= 390) {
-      if (Math.abs(co - 32) > 0.6 || Math.abs(dong - 38) > 1) kq.chu.push(`${ghi} — điện thoại cần 32/38px`);
+    // Cỡ chữ h1 như nhau ở cả ba thứ tiếng: 32px tới 390px, 48px từ 1366px, ở giữa chạy đều. Chỉ chiều cao
+    // dòng khác: vi / en 1,17 (32/38 → 48/56px); tiếng Hàn 1,28 (32/41 → 48/61px) vì Hangul cao kín ô chữ,
+    // dòng 1,17 thì hai dòng chạm nhau (cong-khai.css: .ck:lang(ko) :is(h1, h2, h3)). Không còn ngoại lệ
+    // nào cho tiếng Hàn về cỡ chữ.
+    const tiLeDong = NGON_NGU === 'ko' ? 1.28 : 1.17;
+    const mongDong = c => `${c}/${Math.round(c * tiLeDong)}px`;
+    if (RONG <= 390) {
+      if (Math.abs(co - 32) > 0.6 || Math.abs(dong - 32 * tiLeDong) > 1) kq.chu.push(`${ghi} — điện thoại cần ${mongDong(32)}`);
     } else if (RONG >= 1366) {
-      if (Math.abs(co - 48) > 0.6 || Math.abs(dong - 56) > 1) kq.chu.push(`${ghi} — máy tính cần 48/56px`);
-    } else if (co < 32 || co > 48) kq.chu.push(`${ghi} — cần trong khoảng 32–48px`);
+      if (Math.abs(co - 48) > 0.6 || Math.abs(dong - 48 * tiLeDong) > 1) kq.chu.push(`${ghi} — máy tính cần ${mongDong(48)}`);
+    } else if (co < 32 || co > 48 || Math.abs(dong / co - tiLeDong) > 0.02) {
+      kq.chu.push(`${ghi} — cần cỡ trong khoảng 32–48px, dòng cao ${String(tiLeDong).replace('.', ',')} lần cỡ chữ`);
+    }
     for (const h2 of moi('main h2').filter(hien)) {
       if (so(getComputedStyle(h2).fontSize) >= co) kq.chu.push(`${moTa(h2)} cỡ ${getComputedStyle(h2).fontSize} không nhỏ hơn h1 (${co}px)`);
     }
