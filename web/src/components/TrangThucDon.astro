@@ -5,7 +5,9 @@
  * Ba phần, theo brief 06/10/2026:
  *  1. BÒ TẠI QUẦY — luôn đầy đủ, kể cả khi chưa có database: khay skin-pack, nhãn
  *     khay (NhanKhay), nhân viên tư vấn, nướng trên vỉ gas tại bàn. KHÔNG BAO GIỜ
- *     có giá: trọng lượng và giá của khay thật chỉ có trên nhãn, tại quầy.
+ *     có giá: trọng lượng và giá của khay thật chỉ có trên nhãn, tại quầy. Vẫn là
+ *     DẢI TỐI (Khánh giữ ngày 11/10/2026). Ảnh bo-cat-lat là ảnh minh họa lát bò trên
+ *     đĩa — không phải ảnh khay hay quầy (hai thứ đó chờ ảnh chụp thật).
  *  2. MÓN ĂN và 3. ĐỒ UỐNG — tên món đọc từ thuc_don_cong_khai() (lib/thuc-don.ts).
  *     Chưa công bố món nào thì không để trống: giới thiệu theo những nhóm món đã
  *     xác nhận bán. Đồ uống có cồn chỉ được nhắc khi hien_do_uong_co_con bật.
@@ -194,7 +196,7 @@ const coKenh = coKenhHoiBan(nd);
         </div>
         <div class="td-quay-anh">
           <Anh id="bo-cat-lat" ngonNgu={ngonNgu} khung="3x2" thayBang="khay" nenKhung="toi"
-               sizes="(min-width: 900px) 56vw, 100vw" />
+               sizes="(min-width: 1280px) 620px, (min-width: 900px) 50vw, calc(100vw - 40px)" />
         </div>
       </div>
 
@@ -225,7 +227,7 @@ const coKenh = coKenhHoiBan(nd);
         <p class="dan">{coMonAn ? c.monDan : c.monDanNhom}</p>
         <div class="td-anh-mon">
           <Anh id="sot-cham" ngonNgu={ngonNgu} khung="4x3" thayBang="ban-nuong"
-               sizes="(min-width: 1024px) 34vw, (min-width: 600px) 70vw, 100vw" />
+               sizes="(min-width: 1280px) 400px, (min-width: 1024px) 32vw, (min-width: 600px) 46vw, calc(100vw - 40px)" />
         </div>
       </div>
       <div class="td-chinh">

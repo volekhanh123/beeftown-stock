@@ -381,12 +381,14 @@ html:has(body.ck) {
 .ck .mon-mo-ta { margin: 4px 0 0; font-size: 15px; color: var(--chu-phu); grid-column: 1; max-width: 60ch; }
 .ck .mon-gia { grid-column: 2; grid-row: 1; margin: 0; font-weight: 700; white-space: nowrap; }
 .ck .mon-nhan { grid-column: 1; display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 6px 0 0; padding: 0; list-style: none; }
+/* Nhãn món (Món sống, Có cồn): biểu tượng 24px như mọi biểu tượng của trang — vẽ trên lưới 24 với nét
+   1,5px không co, thu về 16px thì nét dính nhau. */
 .ck .nhan-mon {
-  display: inline-flex; align-items: center; gap: 6px;
+  display: inline-flex; align-items: center; gap: var(--k-2);
   font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
   color: var(--nhan-nho);
 }
-.ck .nhan-mon svg { width: 16px; height: 16px; flex: none; }
+.ck .nhan-mon svg { width: 24px; height: 24px; flex: none; }
 .ck .canh-bao-mon { grid-column: 1; margin: 6px 0 0; font-size: 14px; color: var(--chu-chinh); }
 
 /* --- Ô nhập ---------------------------------------------------------------- */
