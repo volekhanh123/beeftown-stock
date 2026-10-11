@@ -20,8 +20,9 @@
  *
  * BA THỨ TIẾNG:
  * Mỗi trang khai hreflang cho đủ vi/en/ko và x-default về bản tiếng Việt —
- * cùng một bộ với sitemap.xml. Nút đổi ngôn ngữ hiện HAI thứ tiếng còn lại,
- * mỗi cái ghi bằng chính thứ tiếng đó.
+ * cùng một bộ với sitemap.xml. Bộ chọn ngôn ngữ in ĐỦ ba thứ tiếng theo một thứ
+ * tự cố định, mỗi cái ghi bằng chính thứ tiếng đó; thứ tiếng đang xem được đánh
+ * dấu bằng chữ đậm và nét gạch (components/DauTrang.astro), không phải link.
  */
 import '../styles/chung.css';
 import '../styles/cong-khai.css';
@@ -66,7 +67,6 @@ const lh = lienHe(nd);
 // Bản của trang này ở một ngôn ngữ. Chính nó thì giữ nguyên đường dẫn đang
 // mở, kể cả khi trang chưa có trong bảng CAP_DUONG_DAN.
 const banCua = (n: NgonNgu) => (n === ngonNgu ? duongDan : duongDanTuongUng(duongDan, n));
-const ngonNguKhac = NGON_NGU.filter(n => n !== ngonNgu);
 
 // Facebook cần mã vùng; mã ngôn ngữ trần thì nó bỏ qua.
 const OG_LOCALE: Record<NgonNgu, string> = { vi: 'vi_VN', en: 'en_US', ko: 'ko_KR' };
@@ -155,10 +155,10 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
   <body class="ck">
     <a class="bo-qua" href="#noi-dung">{t.boQuaToiNoiDung}</a>
 
-    {/* lang trên từng nút đổi ngôn ngữ: trình đọc màn hình đọc "한국어" bằng giọng
+    {/* lang trên từng mục của bộ chọn ngôn ngữ: trình đọc màn hình đọc "한국어" bằng giọng
         Hàn chứ không đánh vần nó bằng giọng của trang đang mở. */}
     <DauTrang ngonNgu={ngonNgu} noiDung={nd} duongDan={duongDan}
-              doiNgonNgu={ngonNguKhac.map(n => ({ nn: n, url: banCua(n), ten: TEN_NGON_NGU[n] }))} />
+              doiNgonNgu={NGON_NGU.map(n => ({ nn: n, url: banCua(n), ten: TEN_NGON_NGU[n] }))} />
 
     <main id="noi-dung">
       <slot />
