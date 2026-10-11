@@ -22,11 +22,14 @@
 
 ## Nhịp trang
 
-Trang chủ (`TrangRaMat.astro`): kem (màn đầu: chữ + ảnh, dải tagline đỏ dưới ảnh) → kem (ba bước) →
+Trang chủ (`TrangRaMat.astro`): kem (màn đầu: chữ + ảnh, dải tagline đỏ dưới ảnh — dải có
+`aria-hidden`, tagline được đọc một lần ở dòng hiệu của ba bước) → kem (ba bước) →
 **tối** (quầy, thịt sáng lên) → kem đậm (cả bữa) → **đỏ** (đi nhóm) → kem (tầng 3) → kem (câu hỏi) →
 chân trang. Thứ tự tám khối và bề mặt của từng khối là điều Khánh đã quyết (11/10/2026: giữ như đang
 chạy) — có kiểm thử, đừng đổi. Bảng từng khối, ảnh và bố cục điện thoại / máy tính: `web/THIET-KE.md`,
-mục 1, "Tám khối của trang chủ".
+mục 1, "Tám khối của trang chủ". Hàng thông tin của màn đầu đổi theo `/noi-bo`: khóa `ngay_khai_truong`
+(chưa có ngày · "Đón bạn từ …" · "Mở cửa từ …") và `dong_trang_thai` (một câu hay vài câu) — sửa hàng
+này thì thử cả ba trạng thái (`npm run thu-day-du -- --chi 9`), đừng chỉ nhìn trang lúc chưa có database.
 
 Khối có ảnh xếp so le trên máy tính (ảnh trái – chữ phải, rồi chữ trái – ảnh phải); trên điện thoại
 chữ và nút đứng trước ảnh, trừ dải tối "Quầy chọn bò" mở bằng ảnh. Nút của một khối nằm ngay sau đoạn

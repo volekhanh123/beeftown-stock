@@ -230,7 +230,7 @@ Thang chữ trang công khai (khai trên `.ck`; theo plan redesign 11/10/2026):
 
 - Khoảng cách theo thang `--k-1` … `--k-10`: 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96 · 128px. Không
   số lẻ ngoài thang.
-- Lề `--le` = `clamp(20px, 5vw, 40px)` (điện thoại 20px); khung `.khung` 1200px, `.khung-hep` 760px.
+- Lề `--le` = `clamp(20px, 5vw, 40px)` (20px tới màn 400px, 21,5px ở 430px, 40px từ 800px); khung `.khung` 1200px, `.khung-hep` 760px.
   Đệm trên dưới một khối `--muc-dem`: 56px (điện thoại) → 96px (máy tính).
 - Đầu trang `--cao-dau`: 64px; từ 1080px là 80px.
 - Bo góc `--bo` 4px (nút, ô) và `--bo-anh` 6px (ảnh, thẻ). **Không bo tròn kiểu viên thuốc.**
@@ -239,9 +239,11 @@ Thang chữ trang công khai (khai trên `.ck`; theo plan redesign 11/10/2026):
   khi cuộn. `prefers-reduced-motion` tắt mọi chuyển động (đã có trong `chung.css`).
 - Mốc màn hình: **400** (ẩn bớt trang trí, `.an-khi-hep`) · **600** (điện thoại → máy tính bảng) ·
   **768** (đầu trang: ngôn ngữ và Hỏi bàn lên thanh) · **900** (hai cột) · **1024** · **1080** (đầu
-  trang đủ điều hướng). Kiểm ở 360 / 390 / 768 / 1024 / 1440px; không tràn ngang từ 320px (dưới 360px
-  đầu trang dùng brandmark đầu bò thay lockup, và màn đầu trang chủ đưa ảnh lên ngay sau câu chính —
-  ảnh tải ngay phải nằm trong màn hình đầu).
+  trang đủ điều hướng). Kiểm ở 360 / 390 / 430 / 768 / 1024 / 1440px; không tràn ngang từ 320px (dưới
+  360px đầu trang dùng brandmark đầu bò thay lockup, và màn đầu trang chủ đưa ảnh lên ngay sau câu
+  chính: phần chữ ở cỡ đó dài hơn một màn hình, ảnh tải ngay không được nằm hẳn dưới màn hình đầu. Từ
+  360px ảnh đứng sau hai nút, đỉnh ảnh ở 551–606px — điện thoại thật chỉ thấy mép trên của ảnh ở màn
+  hình đầu).
 - Không dùng `100vw` (tính cả thanh cuộn → tràn ngang). Khối có trang trí lấn mép: `.co-trang-tri`.
 - **Vùng chạm ≥ 48px ở mọi khu** (`--cham` trên trang công khai): nút, link điều hướng, link chân
   trang, liên kết có mũi tên, ô nhập, ô chọn giờ; hàng câu hỏi 56px.

@@ -27,7 +27,7 @@ Trang web như lúc bước tới quầy Beeftown:
 
 | # | Khối | Bề mặt | Hình | Bố cục |
 |---|---|---|---|---|
-| 1 | Màn đầu (`KhoiMoDau`) | kem | Ảnh `hero-vi-gas` (minh họa); tagline là một dải Beef Red gọn ngay dưới ảnh | Điện thoại: câu chính → mô tả → 2 nút → ảnh → dòng địa điểm. Dưới 360px phần chữ dài hơn một màn hình nên ảnh lên ngay sau câu chính (ảnh tải ngay phải nằm trong màn hình đầu). Từ 900px: chữ trái, ảnh phải, cân giữa theo chiều dọc; dòng địa điểm thành một hàng ngang dưới cả hai cột. Không logo, không chữ đặt lên ảnh; khung ảnh không bóng đổ |
+| 1 | Màn đầu (`KhoiMoDau`) | kem | Ảnh `hero-vi-gas` (minh họa); tagline là một dải Beef Red gọn ngay dưới ảnh | Điện thoại: câu chính → mô tả → 2 nút → ảnh → dòng địa điểm. **Từ 360px ảnh đứng sau hai nút:** đỉnh ảnh cách đầu trang 551–606px (đo ở 360–430px, ba thứ tiếng), nên điện thoại thật — vùng nhìn cao khoảng 550–700px — ở màn hình đầu chỉ thấy mép trên của ảnh, cuộn một chút mới thấy cả ảnh. Kiểm thử chỉ chứng minh "đỉnh ảnh nằm trong màn hình đầu" ở cỡ thử (cao 740, 844, 932px), không chứng minh khách thấy cả ảnh. **Dưới 360px** phần chữ dài hơn cả một màn hình (cỡ thử 320 × 568px) nên ảnh lên ngay sau câu chính (đỉnh ảnh ở 303–317px) — không thì ảnh tải ngay (`loading="eager"`, `fetchpriority="high"`) nằm hẳn dưới màn hình đầu: trình duyệt ưu tiên tải một ảnh khách chưa thấy, và phép thử "ảnh dưới màn hình đầu phải lazy" đỏ. Từ 900px: chữ trái, ảnh phải, cân giữa theo chiều dọc; dòng địa điểm thành một hàng ngang dưới cả hai cột — địa chỉ và câu chỉ đường là một cặp dính nhau ở mọi trạng thái; có ngày mở (`ngay_khai_truong`) thì dòng ngày không xuống dòng, đứng ngang dòng địa chỉ, dòng trạng thái ngay dưới ngày. Không logo, không chữ đặt lên ảnh; khung ảnh không bóng đổ. Dải tagline có `aria-hidden` — trình đọc màn hình đọc tagline một lần, ở dòng hiệu của khối 2 |
 | 2 | Ăn ở Beeftown thế nào? (`BaBuoc`) | kem | 3 biểu tượng: khay, nhãn, vỉ gas | Điện thoại xếp dọc, các bước cách nhau 24px; 600–899px mỗi bước một hàng (số bên trái, chữ bên phải); từ 900px ba cột, nét kẻ mảnh nối bước này sang bước sau. Số thứ tự 44 → 68px, không lấn tiêu đề của bước |
 | 3 | Quầy chọn bò (`QuayChonBo`) | **tối** | Ảnh `bo-van-mo-can` (minh họa vân thịt — không phải ảnh khay hay quầy); thẻ "Cách đọc nhãn khay" | Ảnh trái, chữ phải; thẻ nhãn ở dưới, rộng tối đa 880px |
 | 4 | Cả bữa, cho cả bàn (`BuaAnCungNhau`) | kem đậm | Ảnh `mon-an-chia-se` (minh họa) | Lời mở và nút "Xem thực đơn" (nút nằm sát đoạn giới thiệu) bên trái, ảnh bên phải; danh sách nhóm món thành một dải ngang phía dưới. Điện thoại: lời mở → nút → ảnh → danh sách |
@@ -123,7 +123,7 @@ Nút phụ (`.nut-vien`) cũng theo bề mặt, qua `--nut-phu-nen` / `--nut-phu
 
 Nhãn "Ảnh minh họa" nằm trên ảnh nhưng có nền riêng (chữ Cream trên Charcoal 78 %), nên đọc được trên vùng ảnh nào cũng vậy: nền nhãn đặt lên vùng ảnh **trắng tinh** (trường hợp tệ nhất) cho 7,58 : 1, lên vùng màu kem cho 8,29 : 1. `crm/test/test-cong-khai-anh.mjs` nhóm 4 tính lại hai con số này từ CSS; `do-giao-dien.mjs` (phép đo `anh`) tính trên nhãn của từng ảnh ở trang đã dựng.
 
-`npm run thu-trinh-duyet` đo tương phản của chữ trên nền đặc ngay trên trang đã dựng, ở 8 cỡ màn hình (320 → 1440px).
+`npm run thu-trinh-duyet` đo tương phản của chữ trên nền đặc ngay trên trang đã dựng, ở 9 cỡ màn hình (320 → 1440px).
 
 ### Tỷ lệ
 
@@ -179,7 +179,7 @@ Tiêu đề lớn: `line-height` không dưới 1,08 — dấu chồng tiếng V
 | Biến | Giá trị |
 |---|---|
 | `--k-1` … `--k-10` | 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96 · 128px |
-| `--le` (lề hai bên) | `clamp(20px, 5vw, 40px)` — 20px trên điện thoại |
+| `--le` (lề hai bên) | `clamp(20px, 5vw, 40px)` — 20px tới màn 400px; từ đó lớn dần theo 5 % bề rộng (430px: 21,5px · 599px: 30px), 40px từ 800px. Phép đo `chu` và `nhanKhay` của `do-giao-dien.mjs` tính lề theo đúng công thức này |
 | `--muc-dem` (đệm trên dưới một khối `.muc`) | `clamp(56px, …, 96px)` — 56px ở 390px, 96px ở 1440px (plan: 48–64px trên điện thoại, 72–96px trên máy tính) |
 | `.khung` / `.khung-hep` | rộng tối đa 1200px / 760px, cộng lề |
 | `--cao-dau` (đầu trang dính, tính cả nét kẻ dưới) | 64px; 80px từ 1080px |
@@ -279,7 +279,7 @@ Tám ảnh do **ChatGPT tạo ngày 11/10/2026**, gọi qua Codex CLI bằng gó
 | `hero-vi-gas` | Bàn tay cầm kẹp đặt lát bò lên vỉ gas tròn viền thép; đĩa bò sống, chén sốt, rau. Bản ngang và bản dọc là hai ảnh của **cùng một cảnh** (vỉ lưới thép, bàn tay từ bên trái; bản dọc tạo lại từ bản ngang làm ảnh mẫu) | Màn đầu trang chủ (`KhoiMoDau`), tải ngay | 4:3 cắt từ bản ngang 16:9 (640 / 960 / 1254) – 4:5 (480 / 720 / 1121) | minh họa | Ảnh chụp hero thật (brief mục 8, cảnh 1) |
 | `bo-van-mo-can` | Một miếng bò sống dày có vân mỡ, trên giấy lót màu kem | Quầy chọn bò (`QuayChonBo`), dải tối | 4:5 (480 / 800 / 1121) – 1:1 (480 / 800 / 1122) | minh họa | Ảnh cận cảnh phần cắt thật tại quầy |
 | `bo-cat-lat` | Lát bò sống xếp trên đĩa sứ kem, cạnh chiếc kẹp | Thực đơn, phần Bò tại quầy | 3:2 – 3:2 (480 / 800 / 1200) | minh họa | Ảnh phần cắt thật |
-| `sot-cham` | Ba chén sốt trước đĩa bò nướng cắt lát và xà lách | Thực đơn, phần Món ăn | 4:3 – 4:3 (480 / 800 / 1200) | minh họa | Ảnh set sốt S01 thật |
+| `sot-cham` | Ba chén sốt trước đĩa bò nướng cắt lát và xà lách (alt trên trang **không** ghi số chén — set sốt thật chưa chốt số loại) | Thực đơn, phần Món ăn | 4:3 – 4:3 (480 / 800 / 1200) | minh họa | Ảnh set sốt S01 thật |
 | `mon-an-chia-se` | Đĩa bò nướng cắt lát giữa bàn, quanh là salad, cơm, canh, kim chi, các chén món phụ; không có người | Cả bữa (`BuaAnCungNhau`) | 3:2 – 4:3 (480 / 800 / 1200) | minh họa | Ảnh bàn ăn thật với món đã chốt (mục 8, cảnh 3 – 4) |
 | `bua-an-cung-ban` | Nhiều bàn tay cùng gắp bò trên vỉ gas tròn giữa bàn; cơm, rau, món phụ, ba ly nước; không thấy mặt ai | Đi cùng nhóm (`DiCungNhom`), dải đỏ | 3:2 – 4:3 (480 / 800 / 1200) | minh họa | Ảnh người cùng ăn thật, có giấy đồng ý (mục 8, cảnh 4) |
 | `bo-xeo-vi` | Lát bò đang chín trên vỉ gas tròn, có làn hơi | **Dự phòng — chưa đặt ở trang nào, chưa dựng cỡ** (mục `du_phong` của `danh-sach.json`; alt đã viết sẵn trong `anh.ts`) | — | minh họa, chưa dùng | — |
@@ -288,7 +288,7 @@ Mọi file AVIF + WebP ≤ 300 KB, cả thư mục ≤ 8 MB (hiện khoảng 3,6
 
 Ảnh AI **không bao giờ** dùng cho quầy, khay skin-pack, không gian quán, lối vào, thang máy hay mặt người — những chỗ đó là khung đồ họa cho tới khi có ảnh chụp thật. Không dùng ảnh AI cho quảng cáo và thực đơn in (`../THUONG-HIEU.md` mục 2).
 
-**Điểm cần người xem lại bằng mắt** (ghi lúc đưa ảnh lên, 11/10/2026): miếng bò của `bo-van-mo-can` có vân mỡ khá dày — cần Sang xem có đúng với thịt quán bán không (guideline: ảnh không được có vân mỡ đẹp hơn thịt quán bán); `bua-an-cung-ban` có ba ly nước màu vàng nhạt, người xem có thể hiểu là bia; `hero-vi-gas` vẽ vỉ lưới thép ở cả hai bản — nếu vỉ thật của quán là loại khác thì tạo lại cả hai; `mon-an-chia-se` và `bua-an-cung-ban` bày nhiều món phụ hơn điều trang hứa.
+**Điểm cần người xem lại bằng mắt** (ghi lúc đưa ảnh lên, 11/10/2026): miếng bò của `bo-van-mo-can` có vân mỡ khá dày — cần Sang xem có đúng với thịt quán bán không (guideline: ảnh không được có vân mỡ đẹp hơn thịt quán bán); `bua-an-cung-ban` có ba ly nước màu vàng nhạt, người xem có thể hiểu là bia; `hero-vi-gas` vẽ vỉ lưới thép ở cả hai bản — nếu vỉ thật của quán là loại khác thì tạo lại cả hai; `mon-an-chia-se` và `bua-an-cung-ban` bày nhiều món phụ hơn điều trang hứa; `bo-van-mo-can` và `bo-cat-lat` đứng ở chỗ của khung vẽ khay trong hai khối nói về khay ("Nhìn tận mắt, chọn tận tay" ở trang chủ, "Chọn theo khay, giá xem trên nhãn" ở trang Thực đơn) — ảnh không vẽ khay hay quầy và có nhãn "Ảnh minh họa", nhưng khách có thể hiểu thịt ở quán bày trên giấy lót hoặc đĩa chứ không đóng khay: Khánh xem và quyết giữ ảnh hay trả lại khung vẽ khay.
 
 ### Khung ảnh đồ họa — chờ ảnh chụp thật (`KhungAnh.astro`)
 

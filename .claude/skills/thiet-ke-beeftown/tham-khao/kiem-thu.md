@@ -35,8 +35,9 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
 
 ## Trình duyệt (`web/kiem-tra/`)
 
-`trinh-duyet.mjs` dựng trang **không database** và mở mọi trang công khai ở tám bề rộng (320, 360, 390,
-768, 800, 1024, 1366, 1440 — 320px là điện thoại nhỏ nhất và cũng là máy tính phóng to 400 %):
+`trinh-duyet.mjs` dựng trang **không database** và mở mọi trang công khai ở chín bề rộng (320, 360, 390,
+430, 768, 800, 1024, 1366, 1440 — 320px là điện thoại nhỏ nhất và cũng là máy tính phóng to 400 %; 430px
+là điện thoại rộng nhất, nơi lề `--le` đã lớn hơn 20px):
 
 - HTTP 200, đúng `lang`, không lỗi JavaScript, **không tràn ngang**.
 - Đúng **một `h1`**; mọi `<img>` có `width`, `height`, `alt`; ảnh dưới màn đầu `loading="lazy"`.
@@ -61,7 +62,8 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
     kem / Cream trên đỏ, nằm trong thứ bấm được thì có nhãn chữ.
   - `chu`: chỉ Montserrat; chữ chạy 16/24px; h1 32/38px (tới 390px) và 48/56px (từ 1366px), ở giữa
     32–48px với dòng cao 1,17 lần; tiếng Hàn cùng cỡ, dòng 1,28 (32/41 và 48/61px) — không ngoại lệ nào
-    về cỡ; h2 nhỏ hơn h1; `.khung` ≤ 1200px, lề điện thoại 20px; đệm `.muc` 48–64px / 72–96px.
+    về cỡ; h2 nhỏ hơn h1; `.khung` ≤ 1200px, lề điện thoại đúng `clamp(20px, 5vw, 40px)` (20px tới màn
+    400px, 21,5px ở 430px — hằng `LE` chép tay trong file); đệm `.muc` 48–64px / 72–96px.
   - `chanTrang`: dải đỏ, dải pháp nhân Charcoal, logo Cream đúng tỷ lệ, không `.hoa-van-chu`, chữ ≥ 14px,
     điện thoại hai nhóm link thành 2 cột.
   - `anh`: mọi `<img>` trỏ vào `/anh/` nằm trong `figure.anh`; ảnh AI (danh sách id chép tay) có nhãn
@@ -77,7 +79,11 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
     chính đúng từng chữ; ảnh màn đầu tải ngay và nằm trong màn hình đầu; dưới 900px câu chính → mô tả →
     hai nút → ảnh → dòng địa điểm (dưới 360px ảnh ngay sau câu chính); từ 900px ảnh ở cột phải rộng
     ≥ 45 % khung, khối hình cao 60–140 % cột chữ, hai tâm lệch ≤ 8px, dòng địa điểm trải dưới cả hai
-    cột; tagline là dải Beef Red ≤ 72px, chữ Cream, không đè lên ảnh; ba bước xếp dọc cách 16–32px trên
+    cột; hàng thông tin: câu chỉ đường dính ngay dưới dòng địa chỉ (cách đáy địa chỉ −10 đến 8px) và thẳng
+    mép trái với chữ địa chỉ ở mọi trạng thái, ngày mở nằm trên một dòng (từ 900px cả dòng "… từ <ngày>"
+    một dòng, đứng trên dòng trạng thái), các ô không đè nhau, không ra ngoài khung; tagline là dải Beef
+    Red ≤ 72px, chữ Cream, không đè lên ảnh, có `aria-hidden="true"` — chữ trình đọc màn hình đọc được
+    ở màn đầu và khối ba bước chứa tagline đúng **một** lần; ba bước xếp dọc cách 16–32px trên
     điện thoại, ba cột trên máy tính, số không quá 3,6 lần tiêu đề; "Cả bữa": nút sát đoạn giới thiệu,
     trước danh sách; "Đi nhóm": ảnh thay hình vẽ, nút ngay sau đoạn giải thích, không hoa văn chồng ảnh.
   - `thucDon`: "Bò tại quầy" nền Charcoal, có ảnh `bo-cat-lat` và thẻ nhãn khay, không khung vẽ khay;
@@ -116,6 +122,12 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
   không xô lệch khi ảnh về); mọi ảnh đang hiện tải về được; mỗi ảnh dùng đúng khung của cỡ màn hình
   (bảng `KHUNG_MONG` chép tay). Đừng dùng `document.fonts.ready` ở đây: Chromium giữ lời hứa đó tới
   khi trang tải xong, mà ảnh màn đầu đang bị giữ lại.
+- **Tab của trang Thực đơn** (nhóm 10) ở 390 và 1440px, ba thứ tiếng: lúc tải trang chỉ tab đầu hiện và
+  `do-giao-dien.mjs` bỏ qua ảnh đang ẩn, nên nhóm 1 không bao giờ đo ảnh `sot-cham` của tab "Món ăn".
+  Nhóm này bấm từng tab (Món ăn → Đồ uống → Bò tại quầy), chờ ảnh lazy của phần vừa mở tải xong rồi gọi
+  lại `doGiaoDien`: đúng phần đó hiện, đúng ảnh của nó (bảng `ANH_CUA_PHAN` chép tay), phép đo `anh` và
+  mười ba phép đo còn lại đều đạt; rồi **giấu nhãn "Ảnh minh họa" của ảnh trong phần vừa mở — phép đo
+  `anh` phải đỏ** (chứng minh phép đo có nhìn thấy ảnh của tab đó). Thêm ảnh vào một tab: sửa `ANH_CUA_PHAN`.
 
 `thu-day-du.mjs` chạy với Supabase giả: bấm đúp chỉ gửi **một** yêu cầu; nút đang gửi có
 `aria-busy="true"` và "Đang gửi…"; khung kết quả nhận focus; lỗi 500 giữ lại dữ liệu đã gõ; không bao
@@ -128,6 +140,13 @@ sau; ô giờ chưa chọn nền Cream, đang chọn nền Beef Red chữ Cream;
 `#890607`, tiêu điểm vào ô sai đầu tiên. Kịch bản
 `dia-chi-cong-bo`: địa chỉ đã công bố trong `/noi-bo` tới được màn đầu, khối địa chỉ, chân trang, menu
 gọn và JSON-LD của cả ba thứ tiếng — không chỗ nào còn in bản trong mã; màn đầu bỏ vế phường.
+**Nhóm 9 — màn đầu trang chủ theo ngày khai trương** (390, 900, 1024, 1440px × vi / en / ko): ba trạng
+thái của khóa `ngay_khai_truong` — chưa có ngày (`day-du`), sắp mở (`sap-mo`: ngày 13/11 kế tiếp, "Đón
+bạn từ …"), đã mở (`da-mo`: 01/10/2026, "Mở cửa từ …"); hai kịch bản sau kèm `dong_trang_thai` dài hai
+câu. Mỗi trạng thái: dòng ngày đúng chữ, câu chỉ đường nguyên văn và dính ngay dưới dòng địa chỉ, ngày
+trên một dòng, không ô nào của hàng thông tin tràn khung, không cuộn ngang, đủ mười bốn phép đo. CI
+không có database nên `trinh-duyet.mjs` chỉ thấy trạng thái chưa có ngày — sửa hàng thông tin của màn
+đầu thì chạy `npm run thu-day-du -- --chi 9`.
 
 ## Nội bộ và kho
 
