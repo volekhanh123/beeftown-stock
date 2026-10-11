@@ -20,8 +20,8 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo';
-import { dichCau } from './cau-noi-bo';
+import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo.ts';
+import { dichCau } from './cau-noi-bo.ts';
 
 /** Câu của file này ở hai thứ tiếng giao diện nội bộ (lib/ngon-ngu-noi-bo.ts). */
 const CAU = {
@@ -163,12 +163,14 @@ export async function luuChiNhanh(
 // -----------------------------------------------------------------------------
 // BÀN ĂN
 // -----------------------------------------------------------------------------
+/** Đọc lỗi → ném (cai-dat.astro hiện "không đọc được"), không trả "chưa có bàn" để chủ nhà hàng thêm bàn lần nữa. */
 export async function docBanAn(client: SupabaseClient, chiNhanhId: string): Promise<BanAn[]> {
-  const { data } = await client
+  const { data, error } = await client
     .from('ban_an')
     .select('id, ten, so_cho, la_phong_rieng, dang_dung')
     .eq('chi_nhanh_id', chiNhanhId)
     .order('ten');
+  if (error) throw error;
   return (data ?? []) as BanAn[];
 }
 

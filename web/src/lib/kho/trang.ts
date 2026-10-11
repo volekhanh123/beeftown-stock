@@ -48,6 +48,10 @@ export interface TrangKho {
 
 const CAU_TRANG = {
   docChiNhanh: { vi: 'Không đọc được danh sách chi nhánh.', en: 'Could not read the list of branches.' },
+  docCaiDat: {
+    vi: 'Không đọc được cài đặt kho — mạng có thể đang chập. Tải lại trang sau ít giây.',
+    en: 'Could not read the stock settings — the connection may be unstable. Reload the page in a few seconds.',
+  },
   khoiTaoXong: {
     vi: 'Đã bắt đầu dùng kho: tạo Kho lạnh, Quầy thịt, chỗ Hàng chờ hủy và các lý do mặc định. Đổi tên được trong Thiết lập kho.',
     en: 'Stock is ready: created the Cold store, the Meat counter, an Awaiting write-off area and the default reasons. You can rename them in Stock setup.',
@@ -129,10 +133,16 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
     // kho_dem_viec không trả lời (database chưa chạy 0030, mạng chập chờn):
     // hỏi thẳng bảng cài đặt như trước, để trang không đòi "Bắt đầu dùng kho" lần nữa.
     try {
-      const { data } = await client
+      const { data, error } = await client
         .from('kho_cai_dat').select('chi_nhanh_id').eq('chi_nhanh_id', chiNhanh.id).maybeSingle();
+      if (error) throw error;
       daKhoiTao = !!data;
-    } catch { /* coi như chưa khởi tạo — trang sẽ hiện nút khởi tạo */ }
+    } catch {
+      // Cả hai lần hỏi đều lỗi: KHÔNG kết luận "chưa khởi tạo" — trang sẽ mời "Bắt đầu dùng kho" và
+      // nhap/[id] chuyển hướng bỏ mất form đang gõ. Báo lỗi đọc; trang đọc tiếp và tự báo lỗi của nó.
+      daKhoiTao = true;
+      loiDoc ??= CAU_TRANG.docCaiDat[nn];
+    }
   }
 
   return {
