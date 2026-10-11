@@ -107,10 +107,17 @@ function giaiDuongNap(tu, duong) {
 const PAGES = join(SRC, 'pages');
 const TRANG_GOC = ['', 'en', 'ko'].flatMap(d => readdirSync(join(PAGES, d), { withFileTypes: true })
   .filter(x => x.isFile() && /\.astro$|^(?:robots\.txt|sitemap\.xml)\.ts$/.test(x.name)).map(x => join(PAGES, d, x.name)));
+// pages/404.astro là trang công khai nhưng có nhánh nội bộ cho nhân viên đã đăng nhập (PR #62): nó nạp
+// layouts/NoiBo.astro, lib/cau-noi-bo.ts và lib/dieu-huong-noi-bo.ts (chọn nhánh), ba file đó nạp tiếp
+// biểu tượng và câu của kho — nơi "Bia Sài Gòn" là chữ đúng. Quét chính ba file đó, KHÔNG đi tiếp từ
+// chúng. Chỉ ba file này: một trang hay component công khai khác nạp thẳng file của kho thì vẫn bị kéo
+// vào và nhóm 1 đỏ ("Không quét kho…").
+const KHONG_DI_TIEP = new Set(['layouts/NoiBo.astro', 'lib/cau-noi-bo.ts', 'lib/dieu-huong-noi-bo.ts'].map(f => join(SRC, f)));
 const daThay = new Set();
 function diTu(f) {
   if (daThay.has(f)) return;
   daThay.add(f);
+  if (KHONG_DI_TIEP.has(f)) return;
   for (const m of doc(f).matchAll(NAP)) {
     const toi = giaiDuongNap(f, m[1] ?? m[2]);
     if (toi && toi.startsWith(SRC + sep)) diTu(toi);
@@ -278,7 +285,19 @@ await nhom('6 · CÁCH GHI ĐỊA ĐIỂM TỪNG THỨ TIẾNG; KHÔNG GỌI LÀ
     [['tuyen-dung.astro'], `tại ${DIA_CHI_NGAN.vi}`], [['en', 'jobs.astro'], `at ${DIA_CHI_NGAN.en}`], [['ko', 'jobs.astro'], DIA_CHI_NGAN.ko],
   ];
   for (const [f, mong] of MO_TA) {
-    const moTa = docSrc('pages', ...f).match(/\bmoTa="([^"]*)"/)?.[1] ?? '';
+    const nguon = docSrc('pages', ...f);
+    const nn = f[0] === 'en' ? 'en' : f[0] === 'ko' ? 'ko' : 'vi';
+    // Trang hỏi bàn (PR #61): mô tả chọn theo tình trạng form — moTaTrangHoiBan(nn, moDuoc) trả
+    // chu(nn).moTaHoiBan (form mở) hoặc moTaHoiBanChuaMo (form đóng). Cả hai câu phải ghi đúng địa điểm.
+    if (new RegExp(`\\bmoTa=\\{moTaTrangHoiBan\\('${nn}',`).test(nguon)) {
+      const hai = [chu(nn).moTaHoiBan, chu(nn).moTaHoiBanChuaMo];
+      ok(`pages/${f.join('/')}: thẻ mô tả ghi "${mong}" (cả hai câu của moTaTrangHoiBan: form mở và form đóng)`,
+         hai.every(m => typeof m === 'string' && m.includes(mong)), hai.join(' | '));
+      ok(`pages/${f.join('/')}: hai câu mô tả của moTaTrangHoiBan không ghi tên phường hay quận`,
+         hai.every(m => !PHUONG_QUAN.tim(m ?? '')), hai.map(m => PHUONG_QUAN.tim(m ?? '')).filter(Boolean).join(' | '));
+      continue;
+    }
+    const moTa = nguon.match(/\bmoTa="([^"]*)"/)?.[1] ?? '';
     ok(`pages/${f.join('/')}: thẻ mô tả ghi "${mong}"`, moTa.includes(mong), moTa);
   }
 

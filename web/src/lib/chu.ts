@@ -199,6 +199,25 @@ const VI = {
   datBanChuaMoGiaiThich:
     'Muốn hỏi bàn, bạn nhắn cho Beeftown qua Facebook — nhà hàng sẽ kiểm tra và ' +
     'liên hệ lại với bạn.',
+  // Mô tả (meta description, og:description) của trang hỏi bàn — trang-cong-khai.ts moTaTrangHoiBan()
+  // chọn theo form có dựng được không. Form không dựng được thì KHÔNG hứa "gửi yêu cầu, nhà hàng gọi
+  // lại" (kiểm site thật 07/10/2026): nói đúng điều thẻ "chưa mở" nói — nhắn qua Facebook.
+  moTaHoiBan:
+    'Hỏi bàn tại Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. ' +
+    'Bạn gửi yêu cầu, nhà hàng kiểm tra rồi gọi lại để xác nhận.',
+  moTaHoiBanChuaMo:
+    'Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM, chưa mở hỏi bàn trực tuyến. ' +
+    'Muốn hỏi bàn, bạn nhắn cho Beeftown qua Facebook.',
+
+  // --- Trang không có (404, pages/404.astro) --------------------------------
+  // Không đoán đường dẫn hỏng vì đâu, chỉ nói điều chắc chắn đúng.
+  khongCoTieuDeTrang: 'Không có trang này — Beeftown',
+  khongCoTieuDe: 'Không có trang này',
+  khongCoGiaiThich:
+    'Đường dẫn bạn mở không dẫn tới trang nào của Beeftown. Có thể địa chỉ bị gõ sai, hoặc link đã cũ.',
+  khongCoVeTrangChu: 'Về trang chủ',
+  // Nhãn trên hai nút trang chủ của hai thứ tiếng còn lại.
+  khongCoTrangChuKhac: 'Trang chủ bằng thứ tiếng khác',
 
   // --- Chung ----------------------------------------------------------------
   quyenRiengTu: 'Quyền riêng tư',
@@ -290,6 +309,19 @@ const EN: Bo = {
   datBanChuaMo: 'Online table requests are not open yet',
   datBanChuaMoGiaiThich:
     'To ask about a table, message Beeftown on Facebook — we will check and get back to you.',
+  moTaHoiBan:
+    'Ask for a table at Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. ' +
+    'Send a request and we will call you back to confirm.',
+  moTaHoiBanChuaMo:
+    'Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City, is not taking ' +
+    'table requests online yet. To ask about a table, message Beeftown on Facebook.',
+
+  khongCoTieuDeTrang: 'Page not found — Beeftown',
+  khongCoTieuDe: 'This page does not exist',
+  khongCoGiaiThich:
+    'The link you opened does not lead to any Beeftown page. The address may be mistyped, or the link may be out of date.',
+  khongCoVeTrangChu: 'Go to the home page',
+  khongCoTrangChuKhac: 'Home page in another language',
 
   quyenRiengTu: 'Privacy',
   chonNgonNgu: 'Language',
@@ -374,6 +406,19 @@ const KO: Bo = {
   datBanChuaMo: 'Beeftown은 아직 온라인 테이블 문의를 받지 않아요',
   datBanChuaMoGiaiThich:
     '테이블 문의는 Facebook으로 Beeftown에 메시지를 보내 주세요. 확인한 뒤 연락드릴게요.',
+  moTaHoiBan:
+    '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown에 테이블 문의를 보내 주세요. ' +
+    '매장에서 확인한 뒤 전화드려요.',
+  moTaHoiBanChuaMo:
+    '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown은 아직 온라인 테이블 문의를 받지 않아요. ' +
+    '테이블 문의는 Facebook으로 Beeftown에 메시지를 보내 주세요.',
+
+  khongCoTieuDeTrang: '페이지를 찾을 수 없어요 — Beeftown',
+  khongCoTieuDe: '찾으시는 페이지가 없어요',
+  khongCoGiaiThich:
+    '열어 보신 주소에는 Beeftown 페이지가 없어요. 주소가 잘못 입력되었거나 오래된 링크일 수 있어요.',
+  khongCoVeTrangChu: '홈으로 가기',
+  khongCoTrangChuKhac: '다른 언어로 된 홈',
 
   quyenRiengTu: '개인정보 처리방침',
   chonNgonNgu: '언어',
@@ -451,6 +496,18 @@ export function duongDanTuongUng(duongDan: string, sang: NgonNgu): string {
   const sach = duongDan.length > 1 ? duongDan.replace(/\/$/, '') : duongDan;
   const cap = CAP_DUONG_DAN.find(c => c.includes(sach)) ?? CAP_DUONG_DAN[0];
   return cap[NGON_NGU.indexOf(sang)];
+}
+
+/**
+ * Thứ tiếng của một đường dẫn, theo tiền tố: /en, /en/… → en; /ko, /ko/… → ko; còn lại → vi
+ * (tiếng Việt không có tiền tố). Cho trang không ứng với dòng nào của CAP_DUONG_DAN — trang 404
+ * (pages/404.astro) dựng cho MỌI đường dẫn lạ, chỉ biết thứ tiếng qua đường dẫn khách mở.
+ * So trọn đoạn đầu: /english, /kor không phải tiền tố. Không phân biệt hoa thường — /EN/menu
+ * gõ tay (hay bị bàn phím tự viết hoa) vẫn là người đọc tiếng Anh.
+ */
+export function ngonNguTuDuongDan(duongDan: string): NgonNgu {
+  const m = /^\/(en|ko)(?:\/|$)/i.exec(duongDan);
+  return m ? (m[1].toLowerCase() as NgonNgu) : 'vi';
 }
 
 // -----------------------------------------------------------------------------
