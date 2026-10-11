@@ -18,7 +18,10 @@
  *      như thẻ "chưa mở" đang làm. Ở cả vi, en, ko.
  *   3. Ba trang /dat-ban, /en/book, /ko/book lấy mô tả qua moTaTrangHoiBan(), không viết thẳng câu.
  *   4. Đoạn mở đầu của TrangDatBan chọn theo cùng biến với thẻ "chưa mở" (chuaMo); câu khi đóng
- *      không hứa form.
+ *      không hứa form. Lượt gửi vừa rồi KHÔNG CHẮC đã ghi (loiLuotGui.khongChac — database sập giữa
+ *      chừng) thì đoạn mở đầu là danKhongChac: không nói "bạn chưa gửi được", không mời hỏi bàn lần
+ *      nữa, vì khung lỗi bên dưới bảo "đừng gửi lại". Trang dựng thật ở trạng thái đó (cả tiêu đề thẻ):
+ *      thu-day-du.mjs nhóm 4, kịch bản dat-ban-sap.
  *
  * Trang dựng thật ở hai trạng thái kiểm ở web/kiem-tra/thu-day-du.mjs (Supabase giả: day-du và
  * dat-ban-dong) và web/kiem-tra/trinh-duyet.mjs nhóm 2 (chưa có database).
@@ -50,6 +53,15 @@ const HUA_FORM = {
   ko: /전화드려요|전화로 안내|문의를 보내 주세요/,
 };
 const HUA_GOI_LAI = { vi: /gọi lại/i, en: /call you back/i, ko: /전화드려요|전화로 안내/ };
+// "Bạn chưa gửi được yêu cầu", "chưa mở hỏi bàn": đúng khi database đã từ chối, sai khi KHÔNG CHẮC đã
+// ghi — chép tay, như web/kiem-tra/thu-day-du.mjs.
+const CHUA_GUI_DUOC = {
+  vi: /chưa gửi được|không gửi được|chưa mở hỏi bàn/i,
+  en: /cannot send|could not (?:be )?sen[dt]|not open yet/i,
+  ko: /보낼 수 없어요|보내지 못했어요|받지 않아요/,
+};
+// Mời hỏi bàn thêm một lần (qua bất kỳ kênh nào) — sau lượt gửi KHÔNG CHẮC thì không được.
+const MOI_HOI_BAN = { vi: /hỏi bàn/i, en: /ask (?:for|about) a table/i, ko: /테이블 문의|문의하는/ };
 
 const TRANG = [['dat-ban.astro', 'vi'], ['en/book.astro', 'en'], ['ko/book.astro', 'ko']];
 const docTrang = f => readFileSync(join(SRC, 'pages', f), 'utf8');
@@ -101,16 +113,32 @@ await nhom('3 · BA TRANG HỎI BÀN LẤY MÔ TẢ QUA moTaTrangHoiBan(), KHÔN
 
 // ===========================================================================
 await nhom('4 · ĐOẠN MỞ ĐẦU CỦA TrangDatBan THEO THẺ "CHƯA MỞ"', async () => {
-  ok('TrangDatBan.astro: <p class="dan"> chọn theo chuaMo (cùng biến với thẻ "chưa mở")',
-     /<p class="dan">\{\s*chuaMo\s*\?\s*t\.danChuaMo\s*:\s*t\.dan\s*\}<\/p>/.test(nguonTrangDatBan));
+  // Chọn câu nào hiện ra thì thu-day-du.mjs nhóm 4 kiểm trên trang dựng thật; ở đây chỉ giữ để đoạn mở
+  // đầu đọc đúng biến của thẻ "chưa mở" (chuaMo) và của lượt gửi KHÔNG CHẮC (khongChacKhiChuaMo).
+  const bieuThucDan = /<p class="dan">\{([^}]*)\}<\/p>/.exec(nguonTrangDatBan)?.[1] ?? '';
+  const dinhNghia = /const khongChacKhiChuaMo\s*=([^;]*);/.exec(nguonTrangDatBan)?.[1] ?? '';
+  ok('TrangDatBan.astro: <p class="dan"> chọn giữa dan, danChuaMo, danKhongChac theo chuaMo và khongChacKhiChuaMo',
+     ['t.danKhongChac', 't.danChuaMo', 'khongChacKhiChuaMo'].every(x => bieuThucDan.includes(x))
+       && /\bchuaMo\b/.test(bieuThucDan) && /\bt\.dan\b(?!\w)/.test(bieuThucDan.replace(/t\.dan(?:ChuaMo|KhongChac)/g, '')),
+     bieuThucDan);
+  ok('TrangDatBan.astro: khongChacKhiChuaMo = chuaMo và lượt gửi khongChac',
+     /\bchuaMo\b/.test(dinhNghia) && /khongChac/.test(dinhNghia), dinhNghia);
   const dan = cauTrangDatBan('dan');
   const danChuaMo = cauTrangDatBan('danChuaMo');
-  ok('Bảng câu có dan và danChuaMo, đủ vi / en / ko', !!dan && !!danChuaMo, JSON.stringify({ dan, danChuaMo }).slice(0, 160));
-  if (!dan || !danChuaMo) return;
+  const danKhongChac = cauTrangDatBan('danKhongChac');
+  ok('Bảng câu có dan, danChuaMo và danKhongChac, đủ vi / en / ko', !!dan && !!danChuaMo && !!danKhongChac,
+     JSON.stringify({ dan, danChuaMo, danKhongChac }).slice(0, 200));
+  if (!dan || !danChuaMo || !danKhongChac) return;
   for (const nn of NGON_NGU) {
     ok(`[${nn}] Đoạn mở đầu khi form mở vẫn nói nhà hàng gọi lại`, HUA_GOI_LAI[nn].test(dan[nn]), dan[nn]);
     ok(`[${nn}] Đoạn mở đầu khi form đóng không hứa gửi yêu cầu / gọi lại`, !HUA_FORM[nn].test(danChuaMo[nn]),
        danChuaMo[nn].match(HUA_FORM[nn])?.[0]);
+    ok(`[${nn}] Đoạn mở đầu sau lượt gửi KHÔNG CHẮC không nói "chưa gửi được" (khung lỗi bảo đừng gửi lại)`,
+       !CHUA_GUI_DUOC[nn].test(danKhongChac[nn]), danKhongChac[nn]);
+    ok(`[${nn}] Đoạn mở đầu sau lượt gửi KHÔNG CHẮC không hứa gửi yêu cầu / gọi lại`, !HUA_FORM[nn].test(danKhongChac[nn]),
+       danKhongChac[nn].match(HUA_FORM[nn])?.[0]);
+    ok(`[${nn}] Đoạn mở đầu sau lượt gửi KHÔNG CHẮC không mời hỏi bàn lần nữa`, !MOI_HOI_BAN[nn].test(danKhongChac[nn]),
+       danKhongChac[nn].match(MOI_HOI_BAN[nn])?.[0]);
   }
 });
 
