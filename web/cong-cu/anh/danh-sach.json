@@ -14,12 +14,12 @@
   ],
   "anh": {
     "hero-vi-gas": {
-      "mo_ta": "Bàn tay cầm kẹp đặt lát bò sống lên vỉ gas tròn viền thép giữa bàn gỗ sáng; đĩa bò sống, chén sốt, rau xà lách — màn đầu trang chủ (KhoiMoDau). Bản ngang: vỉ lưới thép, nhìn chéo. Bản dọc: vỉ rãnh, có thêm hai chén món phụ.",
+      "mo_ta": "Bàn tay cầm kẹp đặt lát bò sống lên vỉ gas tròn viền thép giữa bàn gỗ sáng; đĩa bò sống, chén sốt, rau xà lách — màn đầu trang chủ (KhoiMoDau). Bản ngang và bản dọc cùng một cảnh: vỉ lưới thép, bàn tay từ bên trái; bản dọc tạo lại từ bản ngang làm ảnh mẫu.",
       "nguon": {
         "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
         "da_chon": {
           "4x3": "bản ngang tạo lần hai (bản đầu có một đốm sáng cam dưới vỉ, đã bỏ)",
-          "4x5": "bản dọc, lần tạo duy nhất"
+          "4x5": "bản dọc tạo lần hai, dùng bản ngang làm ảnh mẫu để cùng loại vỉ lưới thép (bản đầu là vỉ rãnh, có thêm hai chén món phụ, đã bỏ)"
         }
       },
       "khung": {

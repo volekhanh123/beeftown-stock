@@ -276,7 +276,7 @@ Tám ảnh do **ChatGPT tạo ngày 11/10/2026**, gọi qua Codex CLI bằng gó
 
 | Id | Ảnh | Vị trí dùng | Khung màn rộng – điện thoại (bề rộng đã dựng) | Trạng thái | Điều kiện thay |
 |---|---|---|---|---|---|
-| `hero-vi-gas` | Bàn tay cầm kẹp đặt lát bò lên vỉ gas tròn viền thép; đĩa bò sống, chén sốt, rau. Bản ngang và bản dọc là **hai ảnh khác nhau** (bản ngang: vỉ lưới thép; bản dọc: vỉ rãnh, có thêm hai chén món phụ) | Màn đầu trang chủ (`KhoiMoDau`), tải ngay | 4:3 cắt từ bản ngang 16:9 (640 / 960 / 1254) – 4:5 (480 / 720 / 1121) | minh họa | Ảnh chụp hero thật (brief mục 8, cảnh 1) |
+| `hero-vi-gas` | Bàn tay cầm kẹp đặt lát bò lên vỉ gas tròn viền thép; đĩa bò sống, chén sốt, rau. Bản ngang và bản dọc là hai ảnh của **cùng một cảnh** (vỉ lưới thép, bàn tay từ bên trái; bản dọc tạo lại từ bản ngang làm ảnh mẫu) | Màn đầu trang chủ (`KhoiMoDau`), tải ngay | 4:3 cắt từ bản ngang 16:9 (640 / 960 / 1254) – 4:5 (480 / 720 / 1121) | minh họa | Ảnh chụp hero thật (brief mục 8, cảnh 1) |
 | `bo-van-mo-can` | Một miếng bò sống dày có vân mỡ, trên giấy lót màu kem | Quầy chọn bò (`QuayChonBo`), dải tối | 4:5 (480 / 800 / 1121) – 1:1 (480 / 800 / 1122) | minh họa | Ảnh cận cảnh phần cắt thật tại quầy |
 | `bo-cat-lat` | Lát bò sống xếp trên đĩa sứ kem, cạnh chiếc kẹp | Thực đơn, phần Bò tại quầy | 3:2 – 3:2 (480 / 800 / 1200) | minh họa | Ảnh phần cắt thật |
 | `sot-cham` | Ba chén sốt trước đĩa bò nướng cắt lát và xà lách | Thực đơn, phần Món ăn | 4:3 – 4:3 (480 / 800 / 1200) | minh họa | Ảnh set sốt S01 thật |
@@ -288,7 +288,7 @@ Mọi file AVIF + WebP ≤ 300 KB, cả thư mục ≤ 8 MB (hiện khoảng 3,6
 
 Ảnh AI **không bao giờ** dùng cho quầy, khay skin-pack, không gian quán, lối vào, thang máy hay mặt người — những chỗ đó là khung đồ họa cho tới khi có ảnh chụp thật. Không dùng ảnh AI cho quảng cáo và thực đơn in (`../THUONG-HIEU.md` mục 2).
 
-**Điểm cần người xem lại bằng mắt** (ghi lúc đưa ảnh lên, 11/10/2026): miếng bò của `bo-van-mo-can` có vân mỡ khá dày — cần Sang xem có đúng với thịt quán bán không (guideline: ảnh không được có vân mỡ đẹp hơn thịt quán bán); `bua-an-cung-ban` có ba ly nước màu vàng nhạt, người xem có thể hiểu là bia; `hero-vi-gas` bản ngang là vỉ lưới thép còn bản dọc là vỉ rãnh — vỉ thật của quán là loại nào thì ảnh kia nên tạo lại; `mon-an-chia-se` và `bua-an-cung-ban` bày nhiều món phụ hơn điều trang hứa.
+**Điểm cần người xem lại bằng mắt** (ghi lúc đưa ảnh lên, 11/10/2026): miếng bò của `bo-van-mo-can` có vân mỡ khá dày — cần Sang xem có đúng với thịt quán bán không (guideline: ảnh không được có vân mỡ đẹp hơn thịt quán bán); `bua-an-cung-ban` có ba ly nước màu vàng nhạt, người xem có thể hiểu là bia; `hero-vi-gas` vẽ vỉ lưới thép ở cả hai bản — nếu vỉ thật của quán là loại khác thì tạo lại cả hai; `mon-an-chia-se` và `bua-an-cung-ban` bày nhiều món phụ hơn điều trang hứa.
 
 ### Khung ảnh đồ họa — chờ ảnh chụp thật (`KhungAnh.astro`)
 

@@ -12,7 +12,7 @@ export interface CoAnh {
 export const ANH_TAO_SAN: Readonly<Record<string, Readonly<Record<string, CoAnh>>>> = {
   'hero-vi-gas': {
     '4x3': { rong: 1254, cao: 940, cac: [640, 960, 1254], mau: '#A37D61' },
-    '4x5': { rong: 1121, cao: 1401, cac: [480, 720, 1121], mau: '#A87D56' },
+    '4x5': { rong: 1121, cao: 1401, cac: [480, 720, 1121], mau: '#997055' },
   },
   'bo-van-mo-can': {
     '4x5': { rong: 1121, cao: 1401, cac: [480, 800, 1121], mau: '#CB9886' },
