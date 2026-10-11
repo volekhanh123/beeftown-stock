@@ -22,6 +22,7 @@
  */
 
 import type { HaiThuTieng, NgonNguNB } from '../ngon-ngu-noi-bo.ts';
+import { CAU_MAT_MANG_GHI, laLoiMang } from '../qua-tai.ts';
 
 export type { HaiThuTieng, NgonNguNB };
 
@@ -535,10 +536,7 @@ export const LOI_KHO_CHUNG = {
   quyen: { vi: 'Tài khoản của bạn không có quyền làm việc này.', en: 'Your account is not allowed to do this.' },
   trung: { vi: 'Đã có một mục trùng tên hoặc trùng mã.', en: 'Something with the same name or code already exists.' },
   khongHopLe: { vi: 'Dữ liệu chưa hợp lệ — kiểm tra lại các ô vừa nhập.', en: 'Some data is not valid — check the fields you just filled in.' },
-  mang: {
-    vi: 'Không kết nối được database. Chưa chắc đã ghi hay chưa — tải lại trang để kiểm tra.',
-    en: 'Could not reach the database. It may or may not have been saved — reload the page to check.',
-  },
+  mang: CAU_MAT_MANG_GHI,
   quaNhieuDong: {
     vi: 'Danh sách có hơn 100.000 dòng — không đọc hết được. Thu hẹp khoảng ngày hoặc bộ lọc rồi thử lại.',
     en: 'The list has more than 100,000 rows — it cannot all be read. Narrow the date range or filters and try again.',
@@ -599,7 +597,7 @@ export function cauLoiKho(e: unknown, macDinh: string = LOI_KHO_CHUNG.macDinh.vi
   if (/violates check constraint/i.test(m)) {
     return LOI_KHO_CHUNG.khongHopLe.vi;
   }
-  if (/fetch failed|network|timeout|ECONN/i.test(m)) {
+  if (laLoiMang(m)) {
     return LOI_KHO_CHUNG.mang.vi;
   }
   return m || macDinh;

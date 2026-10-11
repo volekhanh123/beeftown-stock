@@ -87,6 +87,23 @@ export const CAU_DANG_NHAP_TAM: Readonly<Record<Exclude<LoaiLoiAuth, 'tu_choi'>,
   },
 };
 
+/**
+ * Câu lỗi của một lần gọi database có phải MẤT MẠNG / HẾT GIỜ không. supabase-js không ném mà trả error.message
+ * của fetch, mỗi nơi chạy một kiểu: Node / Workers "TypeError: fetch failed", Bun (Beeftown Cân) "Unable to connect.
+ * Is the computer able to access the url?", trình duyệt "Failed to fetch" / "NetworkError…" / Safari "Load failed",
+ * DNS "getaddrinfo ENOTFOUND", hết giờ. Trước đây mỗi file chép một regex, sót Bun và DNS — người dùng thấy nguyên
+ * câu tiếng Anh kỹ thuật thay vì "chưa chắc đã ghi".
+ */
+export function laLoiMang(m: string): boolean {
+  return /fetch failed|failed to fetch|network|load failed|unable to connect|ENOTFOUND|EAI_AGAIN|ECONN|ETIMEDOUT|timeout|timed out/i.test(m);
+}
+
+/** Lần GHI mà mạng đứt giữa chừng: không biết database đã nhận hay chưa — nói đúng như thế. */
+export const CAU_MAT_MANG_GHI: HaiThuTieng = {
+  vi: 'Không kết nối được database. Chưa chắc đã ghi hay chưa — tải lại trang để kiểm tra.',
+  en: 'Could not reach the database. It may or may not have been saved — reload the page to check.',
+};
+
 const CAU_TRANG = {
   tieuDe: { vi: 'Hệ thống đang bận', en: 'The system is busy' },
   lyDo: {

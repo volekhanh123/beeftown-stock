@@ -22,6 +22,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo.ts';
 import { dichCau } from './cau-noi-bo.ts';
+import { CAU_MAT_MANG_GHI, laLoiMang } from './qua-tai.ts';
 
 /** Câu của file này ở hai thứ tiếng giao diện nội bộ (lib/ngon-ngu-noi-bo.ts). */
 const CAU = {
@@ -90,6 +91,7 @@ export interface KetQua { ok: boolean; cau: string }
 /** Câu lỗi của database viết bằng tiếng Việt và tính cho người đọc. Dùng nguyên văn. */
 function cauLoi(e: { message?: string } | null, mac_dinh: string, nn: NgonNguNB): string {
   const m = e?.message ?? '';
+  if (laLoiMang(m)) return CAU_MAT_MANG_GHI[nn];
   if (/permission denied|violates row-level security/i.test(m)) return CAU.khongQuyen[nn];
   if (/duplicate key|unique/i.test(m)) return CAU.trungTen[nn];
   return m ? dichCau(nn, m) : mac_dinh;

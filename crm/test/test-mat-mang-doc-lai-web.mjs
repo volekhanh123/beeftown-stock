@@ -13,6 +13,11 @@
  *   2. moTrangKho: kho_dem_viec không trả lời, đọc dự phòng kho_cai_dat cũng lỗi → kết luận "chưa
  *      khởi tạo": trang mời "Bắt đầu dùng kho", nhap/[id] chuyển hướng bỏ mất form đang gõ.
  *   3. docBanAn (/noi-bo/cai-dat): đọc lỗi → "chưa có bàn nào" — chủ nhà hàng thêm bàn lần nữa.
+ *   5. Câu lỗi mạng: mỗi nơi chạy fetch báo một kiểu (Node "fetch failed", Bun của Beeftown Cân "Unable to
+ *      connect…", trình duyệt "Failed to fetch", DNS "ENOTFOUND"). Bản chép regex sót Bun và DNS, và ba
+ *      thư viện CRM không nhận lỗi mạng nào — người dùng thấy nguyên "TypeError: fetch failed".
+ *   4. docBaoCao('ban'): MỌI lỗi có chữ "does not exist" (kể cả bảng / cột bên trong hàm hỏng) bị coi là
+ *      "database chưa chạy 0037" → lùi về hàm cũ, báo cáo hiện số ƯỚC TÍNH thay vì báo lỗi.
  *
  * Client Supabase giả: bang[tên] = dòng trả về; loi[tên] = { message } trả về như supabase-js.
  */
@@ -22,6 +27,10 @@ import { taoPhieuXuat } from '../../web/src/lib/kho/xuat.ts';
 import { moTrangKho } from '../../web/src/lib/kho/trang.ts';
 import { docBanAn } from '../../web/src/lib/cai-dat.ts';
 import { dichCau } from '../../web/src/lib/cau-noi-bo.ts';
+import { docBaoCao } from '../../web/src/lib/kho/bao-cao.ts';
+import { cauLoiKho, LOI_KHO_CHUNG } from '../../web/src/lib/kho/chung.ts';
+import { themMotBan } from '../../web/src/lib/cai-dat.ts';
+import { readFileSync } from 'node:fs';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — LỖI DATABASE KHÔNG THÀNH CÂU SAI');
 
@@ -37,6 +46,7 @@ function clientGia(bang, loi = {}) {
   const tra = ten => (loi[ten] ? { data: null, error: loi[ten] } : { data: bang[ten] ?? null, error: null });
   const builder = ten => {
     const b = {
+      insert() { return b; }, update() { return b; }, delete() { return b; }, upsert() { return b; },
       select() { return b; }, eq() { return b; }, order() { return b; }, range() { return b; }, limit() { return b; },
       maybeSingle() { return Promise.resolve(tra(ten)); },
       then(xong, hong) { return Promise.resolve(tra(ten)).then(xong, hong); },
@@ -111,6 +121,52 @@ await nhom('3 · docBanAn: đọc lỗi → ném (trang báo "không đọc đư
   let loi = null;
   try { await docBanAn(clientGia({}, { ban_an: MANG_DUT }), CN); } catch (e) { loi = e; }
   ok('Mạng đứt → ném lỗi (cai-dat.astro bắt và hiện loiDoc)', loi !== null, 'trả về danh sách rỗng');
+});
+
+// ===========================================================================
+await nhom('4 · Báo cáo bán: chỉ lùi về hàm cũ khi CHÍNH kho_bao_cao_ban_thuc chưa có', async () => {
+  const dongCu = [{ ma_hang: 'A', doanh_thu_uoc_tinh: 100, lai_gop_uoc_tinh: 40 }];
+  const thieuHam = clientGia({ kho_bao_cao_ban: dongCu }, {
+    kho_bao_cao_ban_thuc: { code: 'PGRST202', message: 'Could not find the function public.kho_bao_cao_ban_thuc(p_chi_nhanh_id, p_den, p_tu) in the schema cache' },
+  });
+  const a = await docBaoCao(thieuHam, 'ban', CN, '2026-10-01', '2026-10-11');
+  ok('Tiền đề: hàm mới chưa có (PGRST202, đúng tên) → lùi về hàm cũ, dòng ước tính', a.loi === null && a.dong.length === 1
+     && thieuHam.goi.includes('kho_bao_cao_ban'), JSON.stringify(a));
+
+  const hong = clientGia({ kho_bao_cao_ban: dongCu }, {
+    kho_bao_cao_ban_thuc: { code: '42P01', message: 'relation "kho_ipos_dong_x" does not exist' },
+  });
+  const b = await docBaoCao(hong, 'ban', CN, '2026-10-01', '2026-10-11');
+  ok('Hàm mới hỏng bên trong ("relation … does not exist") → BÁO LỖI, không lặng lẽ hiện số ước tính',
+     b.loi !== null && b.dong.length === 0 && !hong.goi.includes('kho_bao_cao_ban'), JSON.stringify(b));
+});
+
+// ===========================================================================
+await nhom('5 · Lỗi mạng mọi kiểu → "chưa chắc đã ghi", không lộ câu kỹ thuật tiếng Anh', async () => {
+  for (const m of [
+    'TypeError: fetch failed',
+    'TypeError: Unable to connect. Is the computer able to access the url?',   // Bun — Beeftown Cân
+    'TypeError: Failed to fetch',                                              // Chrome
+    'NetworkError when attempting to fetch resource.',                         // Firefox
+    'Load failed',                                                              // Safari
+    'getaddrinfo ENOTFOUND abc.supabase.co',
+    'connect ECONNREFUSED 127.0.0.1:443',
+  ]) {
+    ok(`cauLoiKho: "${m.slice(0, 40)}" → câu mất mạng`, cauLoiKho({ message: m }) === LOI_KHO_CHUNG.mang.vi, cauLoiKho({ message: m }));
+  }
+  ok('Câu database tiếng Việt vẫn dùng nguyên văn', cauLoiKho({ message: 'Phiếu đã được duyệt rồi' }) === 'Phiếu đã được duyệt rồi');
+
+  const f = new FormData(); f.set('ten', 'B05'); f.set('so_cho', '4');
+  const vi = await themMotBan(clientGia({}, { ban_an: MANG_DUT }), f, CN, 'vi');
+  ok('/noi-bo/cai-dat thêm bàn, mạng đứt → "Chưa chắc đã ghi", không phải "TypeError: fetch failed"',
+     !vi.ok && vi.cau === LOI_KHO_CHUNG.mang.vi, vi.cau);
+  const en = await themMotBan(clientGia({}, { ban_an: MANG_DUT }), f, CN, 'en');
+  ok('…màn tiếng Anh: câu tiếng Anh', !en.ok && en.cau === LOI_KHO_CHUNG.mang.en, en.cau);
+
+  for (const tep of ['tin-tuyen-dung.ts', 'cong-tac.ts']) {
+    const nguon = readFileSync(new URL(`../../web/src/lib/${tep}`, import.meta.url), 'utf8');
+    ok(`${tep}: cauLoi nhận lỗi mạng (laLoiMang → CAU_MAT_MANG_GHI)`, /if \(laLoiMang\(m\)\) return CAU_MAT_MANG_GHI\[nn\]/.test(nguon));
+  }
 });
 
 process.exit(ketThuc('LỖI DATABASE KHÔNG THÀNH CÂU SAI'));

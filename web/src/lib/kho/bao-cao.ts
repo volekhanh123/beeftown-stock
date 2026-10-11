@@ -306,14 +306,17 @@ const CONG_NHOM: HaiThuTieng<(nhom: string) => string> = {
 export async function docBaoCao(
   client: SupabaseClient, ten: string, chiNhanhId: string, tu: string, den: string, nn: NgonNguNB = 'vi',
 ): Promise<{ dong: Record<string, unknown>[]; loi: string | null }> {
-  let kq: { data: unknown; error: { message: string } | null };
+  let kq: { data: unknown; error: { message: string; code?: string } | null };
   if (ten === 'xuat-nhap-ton') kq = await client.rpc('kho_bao_cao_xnt_v2', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
   else if (ten === 'thu-hoi') kq = await client.rpc('kho_bao_cao_thu_hoi', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
   else if (ten === 'hao-hut') kq = await client.rpc('kho_bao_cao_hao_hut', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
   else if (ten === 'ban') {
     kq = await client.rpc('kho_bao_cao_ban_thuc', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
-    // Database chưa chạy 0037: hàm cũ, mọi dòng là ước tính (đổi tên cột cho khớp bảng).
-    if (kq.error && /kho_bao_cao_ban_thuc|could not find|does not exist/i.test(kq.error.message)) {
+    // Database chưa chạy 0037: hàm cũ, mọi dòng là ước tính (đổi tên cột cho khớp bảng). Chỉ khi CHÍNH
+    // hàm mới chưa có (PGRST202 / 42883 nhắc đúng tên, như laThieuHam của suc-khoe.ts) — "relation … does
+    // not exist" bên trong hàm là hỏng thật: báo lỗi, không lặng lẽ hiện số ước tính.
+    if (kq.error && (kq.error.code === 'PGRST202' || kq.error.code === '42883')
+        && /\bkho_bao_cao_ban_thuc\b/.test(kq.error.message)) {
       const cu = await client.rpc('kho_bao_cao_ban', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den });
       kq = cu.error ? cu : {
         data: ((cu.data ?? []) as Record<string, unknown>[]).map(d => ({
