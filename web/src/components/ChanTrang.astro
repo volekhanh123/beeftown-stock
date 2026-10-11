@@ -80,7 +80,7 @@ const c = dich(ngonNgu, {
         <h2 class="ct-tieu-de">{t.denBeeftown}</h2>
         <address>
           <p lang="vi">{cumDiaChi(diaChi(nd)).map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</p>
-          <p class="ct-cau-thang"><BieuTuong ten="cau-thang" /><span>{t.cauThangBo}</span></p>
+          <p class="ct-cau-thang"><BieuTuong ten="thang-may" /><span>{t.cauThangBo}</span></p>
         </address>
         {mangXaHoi.length > 0 && (
           <ul class="ct-mxh" aria-label={c.theoDoi}>

@@ -55,7 +55,7 @@ const cumDc = cumDiaChi(diaChiSauTang(nd).replace(/,\s*phường Sài Gòn/iu, '
 
       <ul class="kmd-thong-tin">
         <li>
-          <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="cau-thang" /><span><strong>{t.tang3}</strong> · <span lang="vi">{cumDc.map(cum => <><span class:list={{ 'kmd-lien': cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></span></a>
+          <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="thang-may" /><span><strong>{t.tang3}</strong> · <span lang="vi">{cumDc.map(cum => <><span class:list={{ 'kmd-lien': cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></span></a>
         </li>
         {/* Biểu tượng cầu thang có aria-hidden: câu này mới là thứ người đọc màn hình nghe được
             (kế hoạch đã duyệt: địa chỉ tầng 3 luôn đi kèm "cầu thang bộ, không có thang máy"). */}

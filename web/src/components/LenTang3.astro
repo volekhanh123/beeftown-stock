@@ -63,17 +63,22 @@ const c = dich(ngonNgu, {
   <div class="lt3">
     <div class="lt3-hinh" aria-hidden="true">
       <span class="lt3-so">3</span>
+      {/* Thang máy: sàn, khung cửa, hai cánh, ô báo tầng có mũi tên đi lên, bảng nút gọi. */}
       <svg class="lt3-thang" viewBox="0 0 200 160" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M8 152h36v-28h36V96h36V68h36V40h40" />
-        <path d="M14 124 174 18" />
-        <path d="M22 124v-8M58 100v-8M94 76v-8M130 52v-8M166 28v-8" opacity=".6" />
+        <path d="M8 152h184" />
+        <path d="M40 152V46h100v106M90 46v106" />
+        <path d="M54 62v74M126 62v74" opacity=".6" />
+        <path d="M70 12h40v20H70z" />
+        <path d="M82 26l8-8 8 8" />
+        <path d="M160 86h18v36h-18z" />
+        <path d="M169 97v1M169 110v1" stroke-width="4" />
       </svg>
     </div>
     <div class="lt3-chu">
       {!anHieu && <p class="hieu">{c.hieu}</p>}
       <TieuDe class="lt3-tieu-de">{tieuDe ?? c.tieuDe}</TieuDe>
       <p class="lt3-dc"><BieuTuong ten="ghim" /><span lang="vi">{cumDiaChi(dc).map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></p>
-      <p class="lt3-cau"><BieuTuong ten="cau-thang" /><strong>{t.cauThangBo}</strong></p>
+      <p class="lt3-cau"><BieuTuong ten="thang-may" /><strong>{t.cauThangBo}</strong></p>
       <p class="lt3-luu-y">{c.luuY}</p>
       <div class="hang-nut">
         {lh.maps && <a class="nut nut-chinh" href={lh.maps} rel="noopener"><BieuTuong ten="ghim" />{t.chiDuong}</a>}
