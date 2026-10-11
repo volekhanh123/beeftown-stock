@@ -35,8 +35,8 @@ export interface MoTaAnh {
 }
 
 export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
-  // Một alt cho cả hai khung (bản ngang cho màn rộng, bản dọc cho điện thoại là hai ảnh khác
-  // nhau): chỉ tả thứ có ở CẢ HAI.
+  // Một alt cho cả hai khung. Bản ngang (màn rộng) và bản dọc (điện thoại) là hai file tạo riêng nhưng
+  // cùng một cảnh: vỉ lưới thép, bàn tay cầm kẹp từ bên trái, đĩa bò sống, chén sốt, rau xà lách.
   'hero-vi-gas': {
     minhHoa: true,
     alt: {
@@ -61,12 +61,13 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
       ko: '크림색 도자기 접시에 가지런히 놓인 마블링 생 소고기 슬라이스, 옆에는 집게가 있어요.',
     },
   },
+  // Alt không đếm số chén sốt: set sốt thật chưa chốt số loại (test-cong-khai-anh.mjs chặn số lượng món ở mọi alt).
   'sot-cham': {
     minhHoa: true,
     alt: {
-      vi: 'Ba chén sốt chấm đặt trước đĩa bò nướng cắt lát và lá xà lách.',
-      en: 'Three small bowls of dipping sauce in front of a plate of sliced grilled beef and lettuce leaves.',
-      ko: '얇게 썬 구운 소고기와 상추가 담긴 접시 앞에 소스 세 가지가 놓여 있어요.',
+      vi: 'Mấy chén sốt chấm đặt trước đĩa bò nướng cắt lát và lá xà lách.',
+      en: 'Small bowls of dipping sauce in front of a plate of sliced grilled beef and lettuce leaves.',
+      ko: '얇게 썬 구운 소고기와 상추가 담긴 접시 앞에 소스 그릇들이 놓여 있어요.',
     },
   },
   // Hai ảnh bữa ăn: alt tả chung "các chén món phụ", không kể tên từng món — trang không hứa món phụ nào.

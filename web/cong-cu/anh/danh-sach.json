@@ -2,7 +2,7 @@
   "_doc": [
     "DANH SÁCH ẢNH MINH HỌA — đầu vào của tao-co-anh.py (đọc đầu file script).",
     "Mỗi id phải có trong IdAnh (web/src/lib/anh.ts). 'goc' là tên file trong thư mục ảnh gốc (đuôi theo tỷ lệ lúc tạo ảnh);",
-    "một khung có 'goc' riêng thì dùng file đó (ảnh màn đầu tạo riêng bản ngang và bản dọc — hai ảnh khác nhau).",
+    "một khung có 'goc' riêng thì dùng file đó (ảnh màn đầu tạo riêng bản ngang và bản dọc — hai file, cùng một cảnh).",
     "fx, fy (0..1): điểm lấy nét — tâm của vùng cắt, tính trên ảnh gốc (0,0 là góc trên trái). Đã chỉnh sau khi xem ảnh đã cắt.",
     "rong: các bề rộng cần xuất, không lớn hơn vùng cắt của ảnh gốc (script không phóng to; crm/test/test-cong-khai-anh.mjs kiểm).",
     "Mục 'anh': ảnh đang đặt trên trang — script dựng cỡ. Mục 'du_phong': ảnh đã có file gốc nhưng CHƯA đặt ở trang nào —",
@@ -51,7 +51,7 @@
       }
     },
     "sot-cham": {
-      "mo_ta": "Ba chén sốt chấm đặt trước đĩa bò nướng cắt lát và lá xà lách, có đôi đũa gỗ — nhóm Món ăn của trang Thực đơn",
+      "mo_ta": "Ba chén sốt chấm đặt trước đĩa bò nướng cắt lát và lá xà lách, có đôi đũa gỗ — nhóm Món ăn của trang Thực đơn (alt trên trang KHÔNG ghi số chén: set sốt thật chưa chốt số loại)",
       "nguon": {
         "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
         "da_chon": "lần tạo duy nhất"
