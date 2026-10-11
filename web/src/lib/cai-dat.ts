@@ -276,7 +276,8 @@ export const VIEC_DON = [
     ten: { vi: 'Xóa dữ liệu đo lường quá 90 ngày', en: 'Delete analytics data older than 90 days' },
     giai_thich: { vi: 'Trang quyền riêng tư nói chỉ giữ 90 ngày. Nút này là chỗ giữ lời.',
                   en: 'The privacy page says data is kept only 90 days. This button keeps that promise.' },
-    chi_chu_so_huu: false,
+    // don_dep_su_kien_web() (0013) chỉ cho chủ sở hữu — quản lý bấm sẽ chỉ nhận câu từ chối.
+    chi_chu_so_huu: true,
   },
 ] as const;
 
