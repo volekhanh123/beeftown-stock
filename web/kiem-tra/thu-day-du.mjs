@@ -34,10 +34,11 @@
  *      câu hỏi thường gặp, bước 1 của trang Đến Beeftown, menu gọn, JSON-LD; màn đầu trang
  *      chủ in bản đó và bỏ vế phường; dòng pháp nhân không đổi. Về lại kịch bản chưa công
  *      bố địa chỉ thì trang in lại địa chỉ cố định.
- *   8. Form hỏi bàn (day-du) và form nộp hồ sơ (tuyen-dung-mo) ở 390 và 1440 px: ô nhập,
- *      ô chọn cao ≥ 48px, chữ 16px, nền Cream, viền #7A7366; nhãn 14–16px đặt trên ô,
- *      không placeholder; thẻ form nền kem sau, không nền trắng; ô giờ đang chọn nền Beef
- *      Red chữ Cream; gửi thiếu thì có câu lỗi bằng chữ màu #890607 và tiêu điểm vào ô sai.
+ *   8. Form hỏi bàn (day-du) và form nộp hồ sơ (tuyen-dung-mo) ở 390 và 1440 px: ô một
+ *      dòng (kể cả ô ngày) cao đúng 48px, ô nhiều dòng ≥ 48px, chữ 16px, nền Cream, viền
+ *      #7A7366; nhãn 14–16px đặt trên ô, không placeholder; thẻ form nền kem sau, không
+ *      nền trắng; ô giờ đang chọn nền Beef Red chữ Cream; gửi thiếu thì có câu lỗi bằng
+ *      chữ màu #890607 và tiêu điểm vào ô sai.
  *
  * Hỏng thì ảnh chụp nằm ở kiem-tra/anh-loi/day-du/ (CI tải lên cùng artifact của
  * trinh-duyet.mjs).

@@ -393,8 +393,18 @@ html:has(body.ck) {
   color: var(--than); background: var(--kem);
   border: 1px solid var(--vien-o); border-radius: var(--bo);
 }
+/* Ô ngày: Chromium cộng thêm 2px cho phần chữ ngày bên trong ô — ghim chiều cao để ô ngày cao đúng bằng
+   ô chữ và nút đứng cạnh nó. */
+.ck :is(.o, .form-dat) input[type='date'] { height: 48px; }
 .ck :is(.o, .form-dat) :is(input, select, textarea):focus-visible {
   outline: 3px solid var(--do); outline-offset: 1px; border-color: var(--do);
+}
+/* Ô trình duyệt tự điền (tên, số điện thoại đã lưu): Chrome và Safari tô nền ô bằng màu gần trắng của
+   riêng chúng và không cho ghi đè bằng background — phủ lại bằng một lớp bóng trong màu Cream, chữ và
+   con nháy vẫn Charcoal. :is() nhận cả hai cách viết; trình duyệt không hiểu cách nào thì bỏ qua cách đó. */
+.ck :is(input, select, textarea):is(:autofill, :-webkit-autofill) {
+  box-shadow: inset 0 0 0 1000px var(--kem);
+  -webkit-text-fill-color: var(--than); caret-color: var(--than);
 }
 /* Ô đánh dấu: tự vẽ — ô của hệ thống nền trắng, mà bảng màu không có trắng. Chưa chọn: nền Cream,
    viền --vien-o; đã chọn: nền Beef Red, dấu ✓ Cream (hai nét viền xoay 45°). Vẫn là <input> thật:
@@ -422,6 +432,8 @@ html:has(body.ck) {
 }
 /* Lỗi: đỏ đậm #890607, luôn kèm câu chữ (.loi-o) — viền dày thêm 1px bằng vòng trong, ô không xê dịch. */
 .ck [aria-invalid='true'] { border-color: var(--do-dam) !important; box-shadow: inset 0 0 0 1px var(--do-dam); }
+/* Ô tự điền đang báo lỗi: vòng đỏ đậm nằm trên lớp Cream (bóng khai trước vẽ đè lên bóng khai sau). */
+.ck [aria-invalid='true']:is(:autofill, :-webkit-autofill) { box-shadow: inset 0 0 0 1px var(--do-dam), inset 0 0 0 1000px var(--kem); }
 .ck fieldset[aria-invalid='true'] { box-shadow: none; outline: 2px solid var(--do-dam); outline-offset: 2px; }
 .ck .loi-o { margin: 6px 0 0; font-size: 15px; font-weight: 600; color: var(--do-dam); }
 /* Dòng content thứ hai: trình đọc màn hình không đọc "chấm than" trước câu lỗi. */
