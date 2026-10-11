@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-DỰNG CỠ ẢNH MINH HỌA MÓN CHO TRANG CÔNG KHAI
-============================================
-    python3 -I tao-co-anh.py <thu-muc-anh-goc>              dựng mọi ảnh trong danh-sach.json
+DỰNG CỠ ẢNH CHO TRANG CÔNG KHAI
+===============================
+    python3 -I tao-co-anh.py <thu-muc-anh-goc>              dựng mọi ảnh trong mục "anh" của danh-sach.json
     python3 -I tao-co-anh.py <thu-muc-anh-goc> --chi <id>   chỉ dựng lại một ảnh (lặp --chi cho nhiều ảnh)
 
 Đầu vào:
   · danh-sach.json (cùng thư mục) — mỗi id của IdAnh (web/src/lib/anh.ts): file gốc, các khung cần
-    cắt ('16x9', '4x5', '3x2', '4x3', '1x1'), điểm lấy nét fx, fy và các bề rộng cần xuất.
-  · <thu-muc-anh-goc> — ảnh tải về từ Higgsfield, đặt tên đúng trường "goc". Thư mục này ở NGOÀI repo:
-    .gitignore chặn *.png, và ảnh gốc 2k không bao giờ lên trang.
+    cắt ('16x9', '4x5', '3x2', '4x3', '1x1'), điểm lấy nét fx, fy và các bề rộng cần xuất. Mục "anh" là
+    ảnh đang đặt trên trang (được dựng); mục "du_phong" là ảnh có file gốc nhưng chưa đặt ở trang nào
+    (KHÔNG dựng — không để file ảnh chết trong repo).
+  · <thu-muc-anh-goc> — file ảnh gốc (PNG của công cụ tạo ảnh, hoặc ảnh chụp), đặt tên đúng trường "goc".
+    Thư mục này ở NGOÀI repo: .gitignore chặn *.png, và ảnh gốc không bao giờ lên trang.
 
 Đầu ra:
   · web/public/anh/<id>-<khung>-<rộng>.avif và .webp — mỗi file ≤ 300 KB, cả thư mục ≤ 8 MB;
@@ -30,8 +32,8 @@ Cách làm, với từng khung của từng ảnh:
 
 anh-tao-san.ts luôn được ghi lại từ CHÍNH các file đang có trong public/anh (đọc lại từng file: đúng cỡ,
 không còn siêu dữ liệu, màu trung bình) — chạy hai lần cho cùng một kết quả, và --chi một ảnh không làm
-mất dòng của ảnh khác. Chạy đủ (không --chi) thì xóa luôn file của khung / ảnh không còn trong
-danh-sach.json.
+mất dòng của ảnh khác. Chạy đủ (không --chi) thì xóa luôn file của khung / ảnh không còn trong mục "anh"
+của danh-sach.json (ảnh chuyển sang "du_phong" cũng vậy).
 
 Thoát mã 1 khi: thiếu file gốc, file vượt 300 KB ở chất lượng sàn, tổng vượt 8 MB, file đã xuất sai cỡ
 hoặc còn siêu dữ liệu, danh-sach.json khai id không có trong IdAnh.
@@ -65,8 +67,8 @@ TOI_DA_MOT_FILE = 300 * 1024
 TOI_DA_TONG = 8 * 1024 * 1024
 # Vùng cắt nhỏ hơn bề rộng lớn nhất cần xuất: thêm đúng bề rộng vùng cắt khi nó lớn hơn cỡ đã giữ ≥ 15 %.
 THEM_CO_GOC_KHI = 1.15
-# Ảnh có nền trong suốt (hiếm với ảnh AI) đặt lên màu kem của trang trước khi bỏ kênh alpha.
-NEN_KEM = (0xFB, 0xF4, 0xE1, 255)
+# Ảnh có nền trong suốt (hiếm với ảnh AI) đặt lên màu Cream của trang công khai trước khi bỏ kênh alpha.
+NEN_KEM = (0xF0, 0xE3, 0xD0, 255)
 
 MAU_TEN_FILE = re.compile(r'^(?P<id>[a-z0-9]+(?:-[a-z0-9]+)*)-(?P<khung>\d+x\d+)-(?P<rong>\d+)\.(?P<duoi>avif|webp)$')
 MAU_ID = re.compile(r'^[a-z0-9]+(?:-[a-z0-9]+)*$')
@@ -75,8 +77,9 @@ SIEU_DU_LIEU = ('exif', 'xmp', 'icc_profile', 'XML:com.adobe.xmp', 'comment')
 # Đầu file anh-tao-san.ts — giữ nguyên từng ký tự: khi chưa có ảnh nào, file sinh ra phải giống hệt
 # bản rỗng đang có trong repo.
 DAU_FILE_TS = """// FILE SINH TỰ ĐỘNG bởi web/cong-cu/anh/tao-co-anh.py — đừng sửa tay.
-// Mỗi ảnh: các khung đã cắt (vd. '16x9', '4x5'), bề rộng gốc của khung, các bề
-// rộng đã xuất (avif + webp) và màu trung bình (nền chờ khi ảnh đang tải).
+// Mỗi ảnh: các khung đã cắt (vd. '4x3', '4x5'), cỡ lớn nhất của khung, các bề
+// rộng đã xuất (avif + webp) và màu trung bình của ảnh (trang chưa dùng: nền chờ
+// của khung ảnh lấy màu trong bảng màu — xem components/Anh.astro).
 export interface CoAnh {
   rong: number;
   cao: number;
@@ -114,7 +117,13 @@ def doc_danh_sach():
     anh = du_lieu.get('anh')
     if not isinstance(anh, dict) or not anh:
         raise LoiDanhSach('danh-sach.json thiếu mục "anh"')
-    for id_anh, mo_ta in anh.items():
+    du_phong = du_lieu.get('du_phong', {})
+    if not isinstance(du_phong, dict):
+        raise LoiDanhSach('danh-sach.json: mục "du_phong" phải là một bảng { id: mô tả }')
+    trung = [i for i in du_phong if i in anh]
+    if trung:
+        raise LoiDanhSach(f'{", ".join(trung)} nằm ở cả "anh" lẫn "du_phong" — mỗi ảnh chỉ ở một mục')
+    for id_anh, mo_ta in [*anh.items(), *du_phong.items()]:
         if not MAU_ID.match(id_anh) or re.search(r'\d+x\d+', id_anh):
             raise LoiDanhSach(f'id "{id_anh}": chỉ chữ thường không dấu, số và gạch nối, không chứa dạng "16x9"')
         khung = mo_ta.get('khung')
@@ -135,7 +144,7 @@ def doc_danh_sach():
             if (not isinstance(rong, list) or not rong or any(not isinstance(r, int) or r < 16 for r in rong)
                     or rong != sorted(set(rong))):
                 raise LoiDanhSach(f'{noi}: "rong" là danh sách bề rộng (số nguyên ≥ 16) tăng dần, không trùng')
-    return anh
+    return anh, list(du_phong)
 
 
 # ---------------------------------------------------------------------------
@@ -327,7 +336,7 @@ def viet_tao_san(da_dung):
 
 
 def chua_ghi_nguon(mo_ta):
-    """nguon.da_chon còn trống (null, hoặc một khung nào đó còn null)."""
+    """nguon.da_chon còn trống (null, hoặc một khung nào đó còn null): chưa ghi bản ảnh nào được chọn."""
     da_chon = mo_ta.get('nguon', {}).get('da_chon')
     if isinstance(da_chon, dict):
         return not da_chon or any(v is None for v in da_chon.values())
@@ -336,7 +345,7 @@ def chua_ghi_nguon(mo_ta):
 
 # ---------------------------------------------------------------------------
 def main():
-    p = argparse.ArgumentParser(description='Dựng cỡ ảnh minh họa món (avif + webp) và ghi anh-tao-san.ts.')
+    p = argparse.ArgumentParser(description='Dựng cỡ ảnh của trang công khai (avif + webp) và ghi anh-tao-san.ts.')
     p.add_argument('thu_muc_goc', type=Path, help='thư mục chứa ảnh gốc, tên file đúng trường "goc" của danh-sach.json')
     p.add_argument('--chi', action='append', metavar='ID', help='chỉ dựng lại id này (lặp lại được)')
     tham_so = p.parse_args()
@@ -344,20 +353,20 @@ def main():
     if not (features.check('avif') and features.check('webp') and features.check('littlecms2')):
         sys.exit('Pillow thiếu AVIF, WebP hoặc littlecms — cài lại: python3 -m pip install -U Pillow')
     try:
-        danh_sach = doc_danh_sach()
+        danh_sach, du_phong = doc_danh_sach()
         id_hop_le = doc_id_anh()
     except LoiDanhSach as e:
         sys.exit(f'LỖI danh-sach.json: {e}')
-    la = [i for i in danh_sach if i not in id_hop_le]
+    la = [i for i in [*danh_sach, *du_phong] if i not in id_hop_le]
     if la:
         sys.exit(f'LỖI: {", ".join(la)} không có trong IdAnh ({FILE_ID_ANH.relative_to(THU_MUC_WEB.parent)}) — '
                  'thêm vào IdAnh và DANH_MUC_ANH (kèm alt vi/en/ko) trước')
-    chua_khai = [i for i in id_hop_le if i not in danh_sach]
+    chua_khai = [i for i in id_hop_le if i not in danh_sach and i not in du_phong]
 
     chon = tham_so.chi or list(danh_sach)
     sai = [i for i in chon if i not in danh_sach]
     if sai:
-        sys.exit(f'LỖI: --chi {", ".join(sai)} không có trong danh-sach.json')
+        sys.exit(f'LỖI: --chi {", ".join(sai)} không có trong mục "anh" của danh-sach.json')
     if not tham_so.thu_muc_goc.is_dir():
         sys.exit(f'LỖI: không thấy thư mục ảnh gốc {tham_so.thu_muc_goc}')
 
@@ -392,7 +401,7 @@ def main():
             m = MAU_TEN_FILE.match(f.name)
             if f.suffix in ('.avif', '.webp') and (not m or m['id'] not in danh_sach):
                 f.unlink()
-                canh_bao.append(f'xóa {f.name} — không thuộc ảnh nào trong danh-sach.json')
+                canh_bao.append(f'xóa {f.name} — không thuộc ảnh nào trong mục "anh" của danh-sach.json')
 
     loi_doc_lai = []
     da_dung = doc_lai_da_dung(danh_sach, loi_doc_lai)
@@ -434,11 +443,13 @@ def main():
         loi.append(f'public/anh tổng {tong / 1024 / 1024:.2f} MB — quá 8 MB: bớt bề rộng hoặc bớt khung trong danh-sach.json')
     for c in canh_bao:
         print(f'  cảnh báo: {c}')
+    if du_phong:
+        print(f'  dự phòng, không dựng cỡ (chưa đặt ở trang nào): {", ".join(du_phong)}')
     if chua_khai:
         print(f'  cảnh báo: IdAnh có {", ".join(chua_khai)} nhưng danh-sach.json chưa khai — trang hiện KhungAnh ở đó')
     chua_chon = [i for i in chon if chua_ghi_nguon(danh_sach[i])]
     if chua_chon:
-        print(f'  nhắc: ghi job id của ảnh đã chọn vào nguon.da_chon cho {", ".join(chua_chon)} (manifest đọc từ đó)')
+        print(f'  nhắc: ghi bản ảnh đã chọn vào nguon.da_chon cho {", ".join(chua_chon)} (manifest đọc từ đó)')
     if loi:
         print('\nLỖI:')
         for e in loi:

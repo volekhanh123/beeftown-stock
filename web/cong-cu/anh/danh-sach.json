@@ -1,49 +1,49 @@
 {
   "_doc": [
-    "DANH SÁCH ẢNH MINH HỌA MÓN — đầu vào của tao-co-anh.py (đọc đầu file script).",
+    "DANH SÁCH ẢNH MINH HỌA — đầu vào của tao-co-anh.py (đọc đầu file script).",
     "Mỗi id phải có trong IdAnh (web/src/lib/anh.ts). 'goc' là tên file trong thư mục ảnh gốc (đuôi theo tỷ lệ lúc tạo ảnh);",
-    "một khung có 'goc' riêng thì dùng file đó (ảnh hero tạo riêng bản ngang và bản dọc).",
-    "fx, fy (0..1): điểm lấy nét — tâm của vùng cắt, tính trên ảnh gốc (0,0 là góc trên trái). Chỉnh sau khi xem ảnh thật.",
-    "rong: các bề rộng cần xuất; bề rộng lớn hơn vùng cắt của ảnh gốc thì bỏ (không phóng to).",
-    "nguon: lượt tạo trên Higgsfield (06/10/2026, mô hình nano_banana_2) — 'ung_vien' là các job id cho id này,",
-    "'da_chon' ghi job id của ảnh được dùng sau khi Khánh chọn. Ảnh tải về từ trang Higgsfield, đổi tên đúng 'goc'.",
-    "Toàn bộ là ẢNH MINH HỌA: trang luôn ghi 'Ảnh minh họa' (DANH_MUC_ANH.minhHoa = true). Danh sách tài sản: web/THIET-KE.md."
+    "một khung có 'goc' riêng thì dùng file đó (ảnh màn đầu tạo riêng bản ngang và bản dọc — hai ảnh khác nhau).",
+    "fx, fy (0..1): điểm lấy nét — tâm của vùng cắt, tính trên ảnh gốc (0,0 là góc trên trái). Đã chỉnh sau khi xem ảnh đã cắt.",
+    "rong: các bề rộng cần xuất, không lớn hơn vùng cắt của ảnh gốc (script không phóng to; crm/test/test-cong-khai-anh.mjs kiểm).",
+    "Mục 'anh': ảnh đang đặt trên trang — script dựng cỡ. Mục 'du_phong': ảnh đã có file gốc nhưng CHƯA đặt ở trang nào —",
+    "script KHÔNG dựng cỡ (không để file ảnh chết trong repo). Đặt ảnh dự phòng lên trang: chuyển nó sang mục 'anh', khai khung, chạy lại script.",
+    "nguon: tám ảnh do ChatGPT tạo ngày 11/10/2026, gọi qua Codex CLI bằng gói Plus của Khánh; ảnh mẫu đưa cho ChatGPT là ảnh minh họa",
+    "trong Brand Guideline (bàn gỗ sáng, bát đĩa màu kem, ghế đỏ, vỉ gas viền thép). File PNG gốc nằm NGOÀI repo, trên máy Khánh:",
+    "thư mục Beeftown_Web_Redesign_2026-10-11/03_Anh-ChatGPT. Khánh cho đưa lên trang ngày 11/10/2026: bàn tay người thì được, mặt người thì không.",
+    "Toàn bộ là ẢNH MINH HỌA: trang luôn ghi 'Ảnh minh họa' (DANH_MUC_ANH.minhHoa = true). Danh sách tài sản: web/THIET-KE.md, mục 7."
   ],
   "anh": {
     "hero-vi-gas": {
-      "mo_ta": "Bò có vân mỡ được gắp lên vỉ gas giữa bàn, chén sốt, rau — khối mở đầu trang chủ (KhoiMoDau)",
+      "mo_ta": "Bàn tay cầm kẹp đặt lát bò sống lên vỉ gas tròn viền thép giữa bàn gỗ sáng; đĩa bò sống, chén sốt, rau xà lách — màn đầu trang chủ (KhoiMoDau). Bản ngang: vỉ lưới thép, nhìn chéo. Bản dọc: vỉ rãnh, có thêm hai chén món phụ.",
       "nguon": {
-        "cong_cu": "Higgsfield · nano_banana_2 · 06/10/2026",
-        "ung_vien": {
-          "16x9": ["80ec71d1-5907-4d5e-9681-471685eaa9cd", "27cbdc61-42d5-433e-a759-0272713c2875"],
-          "4x5": ["96e3e32d-2127-4c3f-b72a-4ccb5587d596", "3646a952-108f-4ba3-9545-77149be16044"]
-        },
-        "da_chon": { "16x9": null, "4x5": null }
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": {
+          "4x3": "bản ngang tạo lần hai (bản đầu có một đốm sáng cam dưới vỉ, đã bỏ)",
+          "4x5": "bản dọc, lần tạo duy nhất"
+        }
       },
       "khung": {
-        "16x9": { "goc": "hero-vi-gas-16x9.png", "fx": 0.5, "fy": 0.55, "rong": [960, 1440, 1920] },
-        "4x5": { "goc": "hero-vi-gas-4x5.png", "fx": 0.5, "fy": 0.55, "rong": [480, 720, 960] }
+        "4x3": { "goc": "hero-vi-gas-16x9.png", "fx": 0.4, "fy": 0.5, "rong": [640, 960, 1254] },
+        "4x5": { "goc": "hero-vi-gas-4x5.png", "fx": 0.5, "fy": 0.5, "rong": [480, 720, 1121] }
       }
     },
     "bo-van-mo-can": {
-      "mo_ta": "Cận cảnh miếng bò sống có vân mỡ, hương thảo, muối hạt — dải tối Quầy chọn bò (QuayChonBo)",
+      "mo_ta": "Cận cảnh một miếng bò sống dày có vân mỡ, đặt trên giấy lót màu kem, mặt bàn gỗ sáng — dải tối Quầy chọn bò của trang chủ (QuayChonBo)",
       "nguon": {
-        "cong_cu": "Higgsfield · nano_banana_2 · 06/10/2026",
-        "ung_vien": ["1779e330-bd26-4e2d-8303-95a161f8275c", "1dae534d-6659-4ecf-927e-a9afb8035aff"],
-        "da_chon": null
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": "lần tạo duy nhất"
       },
       "goc": "bo-van-mo-can-4x5.png",
       "khung": {
-        "4x5": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] },
-        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] }
+        "4x5": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1121] },
+        "1x1": { "fx": 0.5, "fy": 0.535, "rong": [480, 800, 1122] }
       }
     },
     "bo-cat-lat": {
-      "mo_ta": "Lát bò sống có vân mỡ xếp trên đĩa đá tối — phần Bò tại quầy của trang Thực đơn",
+      "mo_ta": "Những lát bò sống có vân mỡ xếp trên đĩa sứ màu kem, cạnh chiếc kẹp gắp, mặt bàn gỗ sáng — phần Bò tại quầy của trang Thực đơn",
       "nguon": {
-        "cong_cu": "Higgsfield · nano_banana_2 · 06/10/2026",
-        "ung_vien": ["7a3dfd66-251c-44f9-a241-2f03c05e748f", "a9d76b07-297c-4990-b977-e8f10381ca81"],
-        "da_chon": null
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": "lần tạo duy nhất"
       },
       "goc": "bo-cat-lat-3x2.png",
       "khung": {
@@ -51,28 +51,51 @@
       }
     },
     "sot-cham": {
-      "mo_ta": "Bốn chén sốt chấm, rau xanh, kimchi cạnh vỉ nướng — khối Cả bữa (BuaAnCungNhau) và nhóm Món ăn của trang Thực đơn",
+      "mo_ta": "Ba chén sốt chấm đặt trước đĩa bò nướng cắt lát và lá xà lách, có đôi đũa gỗ — nhóm Món ăn của trang Thực đơn",
       "nguon": {
-        "cong_cu": "Higgsfield · nano_banana_2 · 06/10/2026",
-        "ung_vien": ["51f661ad-e440-414c-8d5e-e31c2e206789", "e713554d-ad32-4469-a8c1-a3bd8bb36c15"],
-        "da_chon": null
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": "lần tạo duy nhất"
       },
       "goc": "sot-cham-4x3.png",
       "khung": {
         "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] }
       }
     },
-    "bo-xeo-vi": {
-      "mo_ta": "Lát bò đang xèo trên vỉ gang, hơi nóng — ảnh dự phòng (chưa đặt chỗ nào), dùng cho bài đăng 1:1",
+    "mon-an-chia-se": {
+      "mo_ta": "Đĩa bò nướng cắt lát giữa bàn gỗ sáng, nhìn từ trên xuống; quanh là salad, cơm, canh, kim chi, hai chén rau trộn, hai chén sốt — khối Cả bữa của trang chủ (BuaAnCungNhau). Các món phụ là hình minh họa, trang không hứa món nào.",
       "nguon": {
-        "cong_cu": "Higgsfield · nano_banana_2 · 06/10/2026",
-        "ung_vien": ["73911c6a-9de9-4d33-96dc-b9425e0b6ab2", "d7cbd338-ae47-4357-92cd-0b3f37fe95b1"],
-        "da_chon": null
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": "lần tạo duy nhất"
+      },
+      "goc": "mon-an-chia-se-3x2.png",
+      "khung": {
+        "3x2": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] },
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] }
+      }
+    },
+    "bua-an-cung-ban": {
+      "mo_ta": "Nhiều bàn tay cùng gắp bò nướng trên vỉ gas tròn giữa bàn gỗ sáng, không thấy mặt ai; quanh là cơm, rau cuốn, kim chi, các chén món phụ và ba ly nước màu vàng nhạt — dải đỏ Rủ cả nhà, cả nhóm của trang chủ (DiCungNhom). Các món phụ là hình minh họa, trang không hứa món nào.",
+      "nguon": {
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": "lần tạo duy nhất"
+      },
+      "goc": "bua-an-cung-ban-3x2.png",
+      "khung": {
+        "3x2": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] },
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] }
+      }
+    }
+  },
+  "du_phong": {
+    "bo-xeo-vi": {
+      "mo_ta": "Những lát bò đang chín trên vỉ gas tròn viền thép, có một làn hơi nóng — ảnh dự phòng, chưa đặt ở trang nào",
+      "nguon": {
+        "cong_cu": "ChatGPT · gọi qua Codex CLI · 11/10/2026",
+        "da_chon": "lần tạo duy nhất"
       },
       "goc": "bo-xeo-vi-4x3.png",
       "khung": {
-        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] },
-        "1x1": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] }
+        "4x3": { "fx": 0.5, "fy": 0.5, "rong": [480, 800, 1200] }
       }
     }
   }
