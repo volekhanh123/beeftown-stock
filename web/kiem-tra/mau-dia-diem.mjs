@@ -2,9 +2,9 @@
  * MẪU CHỮ VỀ ĐỊA ĐIỂM — một bộ luật dùng chung cho mọi phép thử gác địa điểm
  * ==========================================================================
  *
- * Điều đã biết về địa điểm của quán (Khánh quyết ngày 07/10 và 09/10/2026; thang máy theo
- * layout ngày 08/10): Tầng 3, 63 Hồ Tùng Mậu · lối vào riêng ngay cạnh GS25 · khách đi thang
- * máy lên tầng 3. Ngoài mấy điều đó trang không được nói gì thêm về đường đến.
+ * Điều đã biết về địa điểm của quán (Khánh quyết ngày 07/10 và 09/10/2026; có thang máy: Khánh
+ * xác nhận ngày 11/10/2026): Tầng 3, 63 Hồ Tùng Mậu · lối vào riêng ngay cạnh GS25 · khách đi
+ * thang máy lên tầng 3. Ngoài mấy điều đó trang không được nói gì thêm về đường đến.
  *
  * File này chỉ chứa MẪU TÌM CHỮ SAI. Ba nơi dùng:
  *   · crm/test/test-cong-khai-cau-chu.mjs nhóm 7 — chữ khách đọc, đọc từ mã nguồn;

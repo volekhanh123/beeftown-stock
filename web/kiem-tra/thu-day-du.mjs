@@ -26,12 +26,19 @@
  *   4. rong (nối database, chưa công bố gì): không nút Facebook, không Chỉ đường; nút
  *      chính màn đầu là "Khám phá thực đơn".
  *   5. Mọi trang công khai × (rong, day-du, dat-ban-dong) ở 360 và 1440 px: HTTP 200,
- *      không tràn ngang, không lỗi JavaScript.
+ *      không tràn ngang, không lỗi JavaScript; thành phần và khung trang đúng quy tắc
+ *      của đợt redesign (phép đo ở do-giao-dien.mjs — cùng bộ với trinh-duyet.mjs, nhưng
+ *      ở đây trang có form, nút Chỉ đường, kênh liên hệ).
  *   7. dia-chi-cong-bo (khóa dia_chi_hien_thi đã công bố trong /noi-bo): bản công bố thay
  *      địa chỉ cố định trong mã ở MỌI chỗ in địa chỉ nhà hàng — khối địa chỉ, chân trang,
  *      câu hỏi thường gặp, bước 1 của trang Đến Beeftown, menu gọn, JSON-LD; màn đầu trang
  *      chủ in bản đó và bỏ vế phường; dòng pháp nhân không đổi. Về lại kịch bản chưa công
  *      bố địa chỉ thì trang in lại địa chỉ cố định.
+ *   8. Form hỏi bàn (day-du) và form nộp hồ sơ (tuyen-dung-mo) ở 390 và 1440 px: ô một
+ *      dòng (kể cả ô ngày) cao đúng 48px, ô nhiều dòng ≥ 48px, chữ 16px, nền Cream, viền
+ *      #7A7366; nhãn 14–16px đặt trên ô, không placeholder; thẻ form nền kem sau, không
+ *      nền trắng; ô giờ đang chọn nền Beef Red chữ Cream; gửi thiếu thì có câu lỗi bằng
+ *      chữ màu #890607 và tiêu điểm vào ô sai.
  *
  * Hỏng thì ảnh chụp nằm ở kiem-tra/anh-loi/day-du/ (CI tải lên cùng artifact của
  * trinh-duyet.mjs).
@@ -46,6 +53,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as cho } from 'node:timers/promises';
 import { batMayGia, LIEN_HE_THU, MON_MAU, DIA_CHI_CONG_BO_THU } from './gia-supabase.mjs';
 import { timChuoiCam } from '../src/lib/chuoi-cam.js';
+import { doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ANH_LOI = join(WEB, 'kiem-tra', 'anh-loi', 'day-du');
@@ -525,11 +533,15 @@ try {
           p.on('console', m => { if (m.type() === 'error' && (m.location().url || goc).startsWith(goc)) loiJs.push(m.text()); });
           const r = await p.goto(goc + duong, { waitUntil: 'load', timeout: 60000 });
           const kq = await p.evaluate(() => ({ rong: document.documentElement.scrollWidth, khung: innerWidth }));
+          const gd = await p.evaluate(doGiaoDien);
+          const saiGd = Object.keys(PHEP_DO).flatMap(khoa => (gd[khoa] ?? ['không đo được']).map(c => `[${khoa}] ${c}`));
           const nhan = `${kichBan} ${duong} · ${rong}px`;
           const tot = [
             ok(`${nhan}: HTTP 200`, r?.status() === 200, `HTTP ${r?.status()}`),
             ok(`${nhan}: không tràn ngang`, kq.rong <= kq.khung + 1, `rộng ${kq.rong}px > khung ${kq.khung}px`),
             ok(`${nhan}: không lỗi JavaScript`, loiJs.length === 0, loiJs.slice(0, 3).join(' | ')),
+            ok(`${nhan}: thành phần và khung trang đúng quy tắc (${Object.keys(PHEP_DO).length} phép đo của do-giao-dien.mjs)`,
+               saiGd.length === 0, saiGd.slice(0, 5).join(' | ')),
           ];
           if (tot.includes(false)) {
             mkdirSync(ANH_LOI, { recursive: true });
@@ -618,6 +630,129 @@ try {
          && await chuCua('main .lt3 .lt3-dc') === DIA_CHI_NHA_HANG && await chuCua('footer address p[lang="vi"]') === DIA_CHI_NHA_HANG
          && DIA_CHI_NHA_HANG.startsWith((await jsonLd())?.streetAddress ?? '?') && !motDong(await chuTrang()).includes('phường Thử'),
        [await chuCua('main .kmd-dia-chi'), await chuCua('main .lt3 .lt3-dc'), await chuCua('footer address p[lang="vi"]'), JSON.stringify(await jsonLd())].join(' | '));
+  });
+
+  // =========================================================================
+  // Bảng màu chép tay (THUONG-HIEU.md mục 1 và 4) — phép thử không đọc CSS của trang.
+  const MAU = { kem: 'rgb(240, 227, 208)', kemSau: 'rgb(235, 220, 198)', do: 'rgb(167, 12, 12)', doDam: 'rgb(137, 6, 7)' };
+  /** Đo ô nhập và nhãn của các form khớp `chon` (chạy TRONG trang). */
+  const doO = chon => {
+    const KEM = 'rgb(240, 227, 208)', VIEN = 'rgb(122, 115, 102)';
+    const hien = el => { const k = el.getBoundingClientRect(); return el.checkVisibility() && k.width > 0 && k.height > 0; };
+    const o = [...document.querySelectorAll(chon)]
+      .flatMap(f => [...f.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea')])
+      .filter(e => hien(e) && !e.closest('[aria-hidden="true"]'));
+    const oSai = [], nhanSai = [];
+    for (const e of o) {
+      const cs = getComputedStyle(e), k = e.getBoundingClientRect(), ten = e.name || e.id;
+      // Ô một dòng (chữ, số điện thoại, ngày, ô chọn) cao ĐÚNG 48px — ô ngày của Chromium tự cao thêm 2px nếu
+      // không ghim chiều cao, đứng cạnh nút 48px thì lệch nhau. Ô nhiều dòng (textarea) thì từ 48px trở lên.
+      if (e.tagName === 'TEXTAREA' ? k.height < 47.5 : Math.abs(k.height - 48) > 0.5) {
+        oSai.push(`${ten} (${e.tagName.toLowerCase()}${e.type ? ` ${e.type}` : ''}) cao ${k.height.toFixed(1)}px`);
+      }
+      if (cs.fontSize !== '16px') oSai.push(`${ten} chữ ${cs.fontSize}`);
+      if (cs.backgroundColor !== KEM) oSai.push(`${ten} nền ${cs.backgroundColor}`);
+      if (cs.borderTopColor !== VIEN || cs.borderTopWidth !== '1px') oSai.push(`${ten} viền ${cs.borderTopWidth} ${cs.borderTopColor}`);
+      if (e.hasAttribute('placeholder')) nhanSai.push(`${ten} dùng placeholder`);
+      // Nhãn: <label for>, hoặc <span> đầu của <label> bọc ngoài ô (form nộp hồ sơ).
+      const nhan = (e.id && document.querySelector(`label[for="${CSS.escape(e.id)}"]`)) || e.closest('label')?.querySelector(':scope > span');
+      if (!nhan || !hien(nhan)) { nhanSai.push(`${ten} không có nhãn nhìn thấy`); continue; }
+      const co = parseFloat(getComputedStyle(nhan).fontSize);
+      if (co < 14 || co > 16) nhanSai.push(`nhãn của ${ten} cỡ ${co}px`);
+      if (nhan.getBoundingClientRect().bottom > k.top + 0.5) nhanSai.push(`nhãn của ${ten} không nằm trên ô`);
+    }
+    return { soO: o.length, coNgay: o.some(e => e.type === 'date'), oSai, nhanSai };
+  };
+
+  await nhom('8 · THÀNH PHẦN CỦA FORM Ở 390 VÀ 1440 PX: Ô NHẬP, Ô CHỌN GIỜ, THẺ, CÂU LỖI', async () => {
+    for (const rong of [390, 1440]) {
+      await page.setViewportSize({ width: rong, height: 900 });
+      const doTheoQuyTac = async nhan => {
+        // Con trỏ còn nằm ở chỗ vừa bấm trên trang trước: đưa nó ra góc và chờ hết chuyển màu (180ms),
+        // không thì nút nằm dưới con trỏ đang ở màu "di chuột" và bị đo nhầm.
+        await page.mouse.move(0, 0);
+        await cho(300);
+        const gd = await page.evaluate(doGiaoDien);
+        return Object.entries(PHEP_DO).map(([khoa, ten]) =>
+          ok(`${nhan}: ${ten}`, gd[khoa]?.length === 0, (gd[khoa] ?? ['không đo được']).slice(0, 4).join(' | ')));
+      };
+
+      mayGia.datKichBan('day-du');
+      for (const nn of NGON_NGU) {
+        const hoiBan = duongDanTuongUng('/dat-ban', nn);
+        // Bản nháp các nhóm trước để lại (họ tên, giờ đã chọn — giữ 15 phút) sẽ điền sẵn form: xóa rồi mới mở
+        // trang, để form ở đúng trạng thái của một khách vừa tới.
+        await page.goto(goc + hoiBan, { waitUntil: 'load' });
+        await page.evaluate(k => sessionStorage.removeItem(k), KHOA_LUU);
+        await page.goto(goc + hoiBan, { waitUntil: 'load' });
+        const nhan = `${hoiBan} · ${rong}px`;
+        const tot = await doTheoQuyTac(nhan);
+        const o = await page.evaluate(doO, 'form[data-hoi-ban], form[data-doi-ngay]');
+        tot.push(ok(`${nhan}: ${o.soO} ô nhập, ô chọn — ô một dòng (kể cả ô ngày) cao đúng 48px, chữ 16px, nền Cream, viền 1px #7A7366`,
+          o.soO >= 5 && o.coNgay && o.oSai.length === 0, `${o.coNgay ? '' : 'không thấy ô ngày · '}${o.oSai.slice(0, 4).join(' | ')}`));
+        tot.push(ok(`${nhan}: mỗi ô có nhãn 14–16px đặt trên ô, không ô nào dùng placeholder thay nhãn`,
+          o.nhanSai.length === 0, o.nhanSai.slice(0, 4).join(' | ')));
+        const nenThe = await page.locator('.hb-the').first().evaluate(el => getComputedStyle(el).backgroundColor);
+        tot.push(ok(`${nhan}: thẻ form nền kem sau #EBDCC6`, nenThe === MAU.kemSau, nenThe));
+
+        const chip = page.locator('form[data-hoi-ban] .hb-chip-o:has(input:not([disabled]))').first();
+        const doChip = () => chip.locator('span').evaluate(sp => {
+          const cs = getComputedStyle(sp);
+          return { nen: cs.backgroundColor, chu: cs.color, cao: sp.getBoundingClientRect().height, co: cs.fontSize };
+        });
+        const truoc = await doChip();
+        await chip.click();
+        await cho(300);   // chuyển màu 180ms
+        const sau = await doChip();
+        tot.push(ok(`${nhan}: ô giờ cao ≥ 48px, chữ 16px; chưa chọn nền Cream, đang chọn nền Beef Red chữ Cream`,
+          truoc.cao >= 47.5 && truoc.co === '16px' && truoc.nen === MAU.kem && sau.nen === MAU.do && sau.chu === MAU.kem,
+          JSON.stringify({ truoc, sau })));
+
+        // Gửi khi họ tên và số điện thoại còn trống: lỗi bằng chữ, sát ô, màu #890607.
+        await nutGui().click();
+        await cho(300);
+        const loi = await page.evaluate(() => ({
+          cau: [...document.querySelectorAll('form[data-hoi-ban] .loi-o')].filter(p => !p.hidden)
+            .map(p => ({ chu: p.textContent.trim(), mau: getComputedStyle(p).color })),
+          vien: [...document.querySelectorAll('form[data-hoi-ban] :is(input, select, textarea)[aria-invalid="true"]')]
+            .map(e => getComputedStyle(e).borderTopColor),
+          tieuDiem: (() => {
+            const a = document.activeElement, cs = getComputedStyle(a);
+            return { ten: a.getAttribute('name'), vong: cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2 };
+          })(),
+        }));
+        tot.push(ok(`${nhan}: gửi thiếu họ tên và số điện thoại → 2 câu lỗi bằng chữ màu #890607, 2 ô sai viền #890607`,
+          loi.cau.length === 2 && loi.cau.every(c => c.chu.length > 5 && c.mau === MAU.doDam)
+            && loi.vien.length === 2 && loi.vien.every(v => v === MAU.doDam), JSON.stringify(loi)));
+        tot.push(ok(`${nhan}: tiêu điểm vào ô sai đầu tiên (họ tên), vòng focus nhìn thấy (≥ 2px)`,
+          loi.tieuDiem.ten === 'ho_ten' && loi.tieuDiem.vong, JSON.stringify(loi.tieuDiem)));
+        tot.push(ok(`${nhan}: form báo lỗi vẫn không có nền trắng, không tràn ngang`,
+          (await page.evaluate(doGiaoDien)).khongTrang.length === 0
+            && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)));
+        if (tot.includes(false)) await chupLoi(`thanh-phan${hoiBan}-${rong}`);
+      }
+
+      mayGia.datKichBan('tuyen-dung-mo');
+      for (const nn of NGON_NGU) {
+        const tuyenDung = duongDanTuongUng('/tuyen-dung', nn);
+        await page.goto(goc + tuyenDung, { waitUntil: 'load' });
+        const nhan = `tuyen-dung-mo ${tuyenDung} · ${rong}px`;
+        if (!ok(`${nhan}: có thẻ vị trí thật và form nộp hồ sơ`,
+                await page.locator('form.form-nop').count() === 1 && await page.locator('.the.vi-tri').count() === 2)) {
+          await chupLoi(`thanh-phan${tuyenDung}-${rong}`);
+          continue;
+        }
+        const tot = await doTheoQuyTac(nhan);
+        const o = await page.evaluate(doO, 'form.form-nop');
+        tot.push(ok(`${nhan}: ${o.soO} ô nhập, ô chọn — ô một dòng cao đúng 48px, chữ 16px, nền Cream, viền 1px #7A7366`,
+          o.soO >= 6 && o.oSai.length === 0, o.oSai.slice(0, 4).join(' | ')));
+        tot.push(ok(`${nhan}: mỗi ô có nhãn 14–16px đặt trên ô, không ô nào dùng placeholder thay nhãn`,
+          o.nhanSai.length === 0, o.nhanSai.slice(0, 4).join(' | ')));
+        if (tot.includes(false)) await chupLoi(`thanh-phan${tuyenDung}-${rong}`);
+      }
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    mayGia.datKichBan('day-du');
   });
 
   // =========================================================================

@@ -84,12 +84,14 @@ Lưu ý khi sửa code phần mềm cân:
 | Marigold | `#F5AA14` | `--cuc-vang`, `--mu-tat` | Điểm nhấn nhỏ, vòng focus trên nền tối; chữ chỉ trên nền tối |
 | Warm Stone | `#B8A98C` | `--da` | Chữ phụ **chỉ trên nền tối**; nét kẻ |
 | Đỏ đậm (màu pha) | `#890607` | `--do-dam`, `--do-sau` | Nút khi di chuột, chữ nhấn rất nhỏ trên kem, chữ nút trên nền đỏ, nét artwork trên kem |
-| Kem sau · kem đậm (màu pha) | `#EBDCC6` · `#E7D5BC` | `--kem-sau` · `--kem-dam` | Nền khối phụ trên trang sáng; đầu bảng và vạch trong thẻ ở kho |
-| Viền ô nhập (màu pha) | `#7A7366` | `--vien-o` | Viền ô nhập của form |
+| Kem sau · kem đậm (màu pha) | `#EBDCC6` · `#E7D5BC` | `--kem-sau` · `--kem-dam` | Nền khối phụ trên trang sáng; kem sau là nền của thẻ ở trang công khai, của đầu bảng ở kho; kem đậm là vạch trong thẻ của kho |
+| Viền ô nhập (màu pha) | `#7A7366` | `--vien-o` | Viền ô nhập của form (trang công khai: ô nền Cream; `/noi-bo` và kho: ô nền trắng) |
 
 Năm dòng đầu là năm màu của guideline. Ba dòng sau là màu pha cho màn hình, Khánh cho phép ngày 10/10/2026. Token khai ở **hai nơi cùng giá trị, chưa gộp** — khối `.ck` đầu tiên của `web/src/styles/cong-khai.css` (trang công khai) và hai khối `:root` của `web/src/styles/chung.css` (`/noi-bo`, kho); Beeftown Cân khai lại trong hai file HTML của nó. Đổi một mã là đổi mọi nơi đó trong cùng PR: `crm/test/test-cong-khai-giao-dien.mjs` (nhóm 2, 6) và `crm/test/test-noi-bo-bang-mau.mjs` gác từng mã.
 
 `/noi-bo`, kho và Beeftown Cân có thêm **màu trạng thái** (xanh = xong, vàng = lưu ý, đỏ nhạt = làm ngay) — màu chức năng của công cụ, không thuộc năm màu thương hiệu, không dùng ở trang công khai. Mã và tương phản: `THUONG-HIEU.md`, mục 4.
+
+**Bảng màu không có trắng**: trang công khai không có nền trắng — thẻ nền kem sau, ô nhập nền Cream (kiểm thử nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`). `/noi-bo`, kho và Beeftown Cân thì vẫn dựng thẻ và ô nhập nền trắng trên nền kem: lần đổi màu ngày 11/10/2026 giữ cách dựng đó.
 
 Warm Stone và Marigold **không bao giờ** làm chữ trên nền sáng (tương phản 1,83 và 1,56 : 1 với kem; 2,31 và 1,97 : 1 với thẻ trắng); không đặt chữ đỏ trên nền tối (2,43 : 1). Tỷ lệ trang công khai đang chạy: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 % — guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5, Khánh chưa quyết theo bên nào. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
 

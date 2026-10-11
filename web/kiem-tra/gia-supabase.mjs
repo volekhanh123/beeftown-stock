@@ -17,7 +17,8 @@
  *   thuc_don_cong_khai(p_ngon_ngu)         → bảng 15 cột (0036)
  *   lich_trong_theo_ma(p_chi_nhanh_ma, p_ngay) → [{ gio 'HH:MM:SS', buoi, con_cho, da_qua }] (0013)
  *   tao_dat_ban(14 tham số, 0013)          → [{ dat_ban_id, ma_dat_ban, con_trong }]
- *   tin_tuyen_dung_cong_khai(p_ngon_ngu)   → [] (trang dùng danh sách dự phòng)
+ *   tin_tuyen_dung_cong_khai(p_ngon_ngu)   → [] (trang dùng danh sách dự phòng); kịch bản
+ *                                            tuyen-dung-mo trả hai tin mẫu, đủ cột của 0026 / 0043
  *
  * supabase-js gọi POST {URL}/rest/v1/rpc/<tên hàm> với thân JSON. PostgREST chọn hàm
  * theo TÊN tham số: gửi một tham số lạ (đổi tên p_ho_ten ở web mà quên database) là
@@ -36,6 +37,8 @@
  *   dat-ban-dut   như day-du; tao_dat_ban cắt kết nối không trả lời (mất mạng giữa chừng)
  *   dia-chi-cong-bo  như day-du, thêm khóa dia_chi_hien_thi đã công bố (DIA_CHI_CONG_BO_THU): bản
  *                 công bố phải thay địa chỉ cố định trong mã ở mọi chỗ in địa chỉ
+ *   tuyen-dung-mo như day-du, thêm hai tin tuyển dụng đã công bố (TIN_TUYEN_DUNG_THU): trang Tuyển
+ *                 dụng hiện thẻ vị trí thật và form nộp hồ sơ — để đo ô nhập, ô chọn, nút chọn file
  *
  * GET /__dem → { tên hàm: số lần gọi } — để kiểm "bấm đúp → tao_dat_ban đúng một lần".
  * GET /__nhat-ky → 200 lần gọi gần nhất { ham, thamSo }.
@@ -48,7 +51,7 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 
 export const CONG_MAC_DINH = 54331;
-export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dia-chi-cong-bo'];
+export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dia-chi-cong-bo', 'tuyen-dung-mo'];
 
 // Liên hệ "đã công bố" của kịch bản day-du. Đường dẫn thử, không phải trang thật của nhà hàng.
 export const LIEN_HE_THU = {
@@ -159,6 +162,30 @@ function lichTrong(kichBan) {
   ];
 }
 
+// Hai tin tuyển dụng "đã công bố" của kịch bản tuyen-dung-mo — hình dạng của tin_tuyen_dung_cong_khai()
+// (interface ViTri trong components/TrangTuyenDung.astro): tên vị trí theo danh sách dự phòng của trang,
+// không mức lương, không hạn nộp (chưa con số nào được duyệt). Tin đầu hỏi đủ mọi trường tùy chọn của
+// form (0026) để phép đo thấy hết các loại ô; tin sau tắt bớt.
+const TIN_TUYEN_DUNG_THU = [
+  { ma: 'SANH-THU', ten: ba('Nhân viên sảnh', 'Hall Crew', '홀 직원'), bo_phan: 'sanh', loai_hop_dong: 'ban_thoi_gian',
+    mo_ta: ba('Đón khách, hướng dẫn chọn bò tại quầy và phục vụ tại bàn.',
+              'Welcome guests, guide them at the beef counter and serve at the table.',
+              '손님을 맞이하고 정육 코너 안내와 테이블 서비스를 맡아요.'),
+    hoi: true },
+  { ma: 'BEP-THU', ten: ba('Nhân viên bếp có kinh nghiệm', 'Experienced Kitchen Crew', '경력 주방 직원'), bo_phan: 'bep', loai_hop_dong: null,
+    mo_ta: null, hoi: false },
+];
+function tinTuyenDung(kichBan, nn) {
+  if (kichBan !== 'tuyen-dung-mo') return [];
+  const n = NN.includes(nn) ? nn : 'vi';
+  return TIN_TUYEN_DUNG_THU.map(t => ({
+    ma: t.ma, ten: t.ten[n], bo_phan: t.bo_phan, cap_bac: null, loai_hop_dong: t.loai_hop_dong, so_luong: null,
+    mo_ta: t.mo_ta?.[n] ?? null, yeu_cau: null, quyen_loi: null, ca_lam: null,
+    luong_tu: null, luong_den: null, luong_don_vi: null, han_nop: null,
+    hoi_email: t.hoi, hoi_nam_sinh: t.hoi, hoi_ca_lam: t.hoi, hoi_gioi_thieu: t.hoi, hoi_kinh_nghiem: t.hoi, hoi_cv: t.hoi,
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Hàm và tham số — đúng chữ ký trong migration. batBuoc = tham số không có default.
 // ---------------------------------------------------------------------------
@@ -251,7 +278,7 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
       switch (ten) {
         case 'noi_dung_cong_khai': return tra(200, noiDung(hienTai));
         case 'thuc_don_cong_khai': return tra(200, thucDon(hienTai, nn));
-        case 'tin_tuyen_dung_cong_khai': return tra(200, []);
+        case 'tin_tuyen_dung_cong_khai': return tra(200, tinTuyenDung(hienTai, nn));
         case 'lich_trong_theo_ma': return tra(200, lichTrong(hienTai));
         case 'tao_dat_ban': {
           if (cham > 0) return void setTimeout(() => taoDatBan(thamSo), cham);

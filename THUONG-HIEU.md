@@ -1,8 +1,9 @@
 # Beeftown — bảng màu thương hiệu đã chốt và việc đưa sang website
 
 Lập ngày 10/10/2026 từ Brand Guideline (bản lưu số 17 trên Claude). Khánh chốt bảng màu ngày 09/10/2026.
-File này là bản tóm tắt cho người viết mã. Cập nhật ngày 11/10/2026, hai lần: cùng PR "màu và thông tin
-chung" (trang công khai), rồi cùng lần đổi màu `/noi-bo`, kho và Beeftown Cân.
+File này là bản tóm tắt cho người viết mã. Cập nhật ngày 11/10/2026, ba lần: cùng PR "màu và thông tin
+chung" (trang công khai); ở PR "thành phần và khung trang" (trang công khai bỏ nền trắng, địa điểm có
+thang máy); rồi cùng lần đổi màu `/noi-bo`, kho và Beeftown Cân.
 
 > **Cả website và Beeftown Cân ĐÃ đổi theo bảng màu này.** Trang công khai đổi trước (token trong khối
 > `.ck` của `web/src/styles/cong-khai.css`, logo và hoa văn SVG, ảnh chia sẻ, biểu tượng trình duyệt).
@@ -54,16 +55,18 @@ Trang công khai, `/noi-bo`, kho và Beeftown Cân dùng cùng một bảng, nê
 | Màu vàng | 1 màu: Marigold `#F5AA14` | 1 mã `#F5AA14`, 2 tên biến (`--cuc-vang`, `--mu-tat`) |
 | Màu pha | Không có | Có, Khánh cho phép ngày 10/10/2026: `--do-dam` và `--do-sau` `#890607`, `--kem-sau` `#EBDCC6`, `--kem-dam` `#E7D5BC`, `--vien-o` `#7A7366`, `--muc-nhat` (Charcoal 68 %) |
 | Màu trạng thái | Không nói tới | Chỉ ở `/noi-bo`, kho, Beeftown Cân: xanh = xong, vàng = lưu ý, đỏ nhạt = làm ngay (mục 4). Màu chức năng của công cụ, không thuộc năm màu thương hiệu |
+| Màu trắng | Không có | Trang công khai không dùng (từ PR "thành phần và khung trang"): thẻ nền kem sau, ô nhập nền Cream; còn 2 chỗ có chủ đích: bản in ra giấy và thẻ "Đọc nhãn khay" (chờ PR bố cục trang chủ). `/noi-bo`, kho, Beeftown Cân: thẻ và ô nhập nền trắng, giữ nguyên qua lần đổi màu ngày 11/10/2026 |
 | Phần của từng màu | Cream 60 · Beef Red 25 · Charcoal 10 · Marigold dưới 5 | Trang công khai: kem 60 · tối 25 · đỏ 12 · vàng 3 (`web/THIET-KE.md` ghi là gợi ý), chưa đổi. `/noi-bo`, kho: không tính |
 | Warm Stone | Chỉ nét kẻ và nền phụ | Chữ phụ trên nền tối; ở `/noi-bo` và kho còn là viền nút phụ và vạch đậm của kho |
 | Độ đậm Montserrat | 500 / 700 / 800 / 900 | 400 / 600 / 700 / 800, chưa đổi (Beeftown Cân dùng phông hệ thống) |
 | Địa điểm | Tầng 3, 63 Hồ Tùng Mậu | Trang công khai đã đổi, trừ dòng địa chỉ pháp nhân ở chân trang (mục 6). `/noi-bo`, kho không ghi địa chỉ nhà hàng trong mã |
 
-Ba việc cần Khánh quyết:
+Bốn việc cần Khánh quyết:
 
 1. **Đã quyết ngày 10/10/2026:** website được giữ màu pha. Màn hình cần 1 đỏ đậm hơn cho nút khi di chuột và chữ nhỏ, 2 nền kem đậm hơn để tách khối, 1 màu viền ô nhập. Guideline vẫn ghi không màu pha; phép này chỉ áp dụng cho website và Beeftown Cân.
 2. **Vẫn chờ:** phần của từng màu trên trang web theo guideline (đỏ 25, tối 10) hay giữ như đang chạy (tối 25, đỏ 12). Trang công khai hiện giữ như đang chạy; đổi là đổi bề mặt của vài khối, thuộc các PR bố cục sau.
 3. **Vẫn chờ:** độ đậm Montserrat trên web theo guideline (500 / 700 / 800 / 900) hay giữ 400 / 600 / 700 / 800. Hai lần đổi màu không đụng tới chữ.
+4. **Chưa hỏi:** `/noi-bo`, kho và Beeftown Cân vẫn dựng thẻ và ô nhập nền trắng, trong khi trang công khai đã bỏ trắng (guideline không có màu trắng). Lần đổi màu ngày 11/10/2026 giữ nguyên cách dựng đó; có bỏ trắng ở ba nơi này hay không là việc Khánh quyết.
 
 ## 4. Token đã áp dụng
 
@@ -87,7 +90,7 @@ Kiểm thử chép tay từng mã, không đọc từ file CSS:
 | `--than` | `#1E160E` | `#151008` | chữ kem 14,96 : 1; chữ than trên thẻ trắng 18,93 |
 | `--mu-tat`, `--cuc-vang` | `#F2A900`, `#F5C211` | cả hai `#F5AA14` | 9,59 : 1 với than (chữ Marigold trên than, hay chữ than trên nhãn Marigold) |
 | `--da` | `#B8A98C` | giữ | 8,19 : 1 với than |
-| `--vien-o` | `#8C8577` | `#7A7366` | 3,71 : 1 với kem · 3,49 với `#EBDCC6` · 3,27 với `#E7D5BC` · 4,70 với nền trắng của ô |
+| `--vien-o` | `#8C8577` | `#7A7366` | 3,71 : 1 với kem (nền ô nhập của trang công khai) · 3,49 với `#EBDCC6` (thẻ form quanh ô) · 3,27 với `#E7D5BC` · 4,70 với nền trắng (ô nhập của `/noi-bo`, kho, Beeftown Cân) |
 | `--muc-nhat` | than cũ 68 % | than mới 68 % | 5,92 : 1 với kem · 5,61 với `#E7D5BC` · 6,63 với thẻ trắng |
 
 **Hai giá trị khác đề xuất ngày 10/10/2026 của file này.** Đề xuất cũ là `--kem-sau` `#E7D5BC` và `--kem-dam` `#DAC5AA`. Khi làm thử, `#DAC5AA` làm dải "Cả bữa" ở trang chủ sẫm hơn hẳn thiết kế đang chạy. Giá trị đã áp dụng là `--kem-sau` `#EBDCC6` và `--kem-dam` `#E7D5BC`: hai bậc kem lùi lại một nấc, giữ độ chênh sáng giữa các khối gần với trước. `#DAC5AA` không còn dùng ở đâu.
@@ -121,7 +124,8 @@ Các điểm phải giữ:
 - Marigold và Warm Stone không làm chữ hay biểu tượng trên nền sáng: 1,56 và 1,83 : 1 với kem, 1,97 và 2,31 : 1 với thẻ trắng. Ở `/noi-bo` và kho, chữ "lưu ý" trên nền sáng dùng `--vang-chu`; đèn và chấm vàng tô Marigold và kẻ viền `--vang-chu`.
 - Marigold trên nền đỏ được 3,94 : 1: chỉ dùng cho chữ lớn hoặc hình, không cho chữ thường.
 - Đỏ trên nền than chỉ 2,43 : 1: không đặt chữ đỏ trên dải tối, trên đầu trang tối.
-- Viền `#7A7366` trên `#E7D5BC` là 3,27 : 1, trên `#EBDCC6` là 3,49 : 1: vừa qua mức 3 : 1 của viền ô nhập. Ô nhập hiện có nền trắng (4,70 : 1); đổi nền ô thì đo lại. Không kẻ viền ô nhập bằng `--vach`, `--kho-vach` hay Warm Stone.
+- Viền `#7A7366` trên `#E7D5BC` là 3,27 : 1, trên `#EBDCC6` là 3,49 : 1: vừa qua mức 3 : 1 của viền ô nhập. Trang công khai: ô nhập nền Cream (viền 3,71 : 1), đứng trong thẻ form nền `#EBDCC6` (viền 3,49 : 1) — cả hai đã đo lại bằng công thức WCAG trong `crm/test/test-cong-khai-giao-dien.mjs` nhóm 7; đừng đặt ô nhập lên nền sẫm hơn `#E7D5BC`. `/noi-bo`, kho, Beeftown Cân: ô nhập nền trắng (viền 4,70 : 1); không kẻ viền ô nhập bằng `--vach`, `--kho-vach` hay Warm Stone.
+- Trang công khai không có nền trắng: mã màu viết thẳng trong file công khai chỉ được là mã của bảng trên (kiểm thử nhóm 7); màu nền trên trang đã dựng được đo ở `web/kiem-tra/do-giao-dien.mjs`. `/noi-bo`, kho và Beeftown Cân vẫn dựng thẻ và ô nhập nền trắng (mục 3, dòng "Màu trắng").
 - Vòng focus: Charcoal trên nền sáng, Marigold trên nền tối. Marigold trên nền sáng không đủ để thấy.
 - Bản in của `/noi-bo` và kho (`@media print`): chỉ đen, trắng, xám; nền kem không lên giấy.
 - Màu viết bằng `rgba()` phải dùng số RGB của bảng mới (21, 16, 8 · 240, 227, 208 · 167, 12, 12 · 137, 6, 7). Kiểm thử đỏ khi một file của trang công khai, `/noi-bo`, kho hay Beeftown Cân còn mã hex hay bộ ba số RGB của bảng cũ, kể cả trong chú thích.
@@ -176,7 +180,8 @@ Logo vector bảng màu mới đã có sẵn trong thư mục tài sản trên m
 
 ## 6. Địa điểm
 
-- **Khánh đã quyết:** địa điểm là 63 Hồ Tùng Mậu (07/10/2026); quán ở **tầng 3**, khách vào bằng **lối vào riêng ngay cạnh GS25** (09/10/2026). Khách đi **thang máy** lên tầng 3: theo layout ngày 08/10/2026.
+- **Khánh đã quyết:** địa điểm là 63 Hồ Tùng Mậu (07/10/2026); quán ở **tầng 3**, khách vào bằng **lối vào riêng ngay cạnh GS25** (09/10/2026). Địa điểm **có thang máy**: Khánh xác nhận ngày 11/10/2026.
+- **Chưa biết:** nút thang máy ghi số mấy cho tầng của quán. Trang chỉ ghi "tầng 3" / "Floor 3" / "3층", không ghi số nút.
 - Cách ghi: "Tầng 3, 63 Hồ Tùng Mậu" (tiếng Anh: "Floor 3, 63 Hồ Tùng Mậu"; tiếng Hàn: "Hồ Tùng Mậu 63, 3층"). Bản ngắn: "63 Hồ Tùng Mậu, TP.HCM" · "63 Hồ Tùng Mậu, Ho Chi Minh City" · "호치민시 Hồ Tùng Mậu 63".
 - **Câu chỉ đường là Claude đề xuất, CHỜ KHÁNH DUYỆT CHỮ:** "Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3." · "Use our own entrance, right next to GS25, and take the lift to Floor 3." · "GS25 바로 옆 전용 입구로 들어와 엘리베이터로 3층까지 올라오세요." Trang đang dùng đúng ba câu này (`loiLen` trong `web/src/lib/chu.ts`), và kiểm thử giữ chúng đúng từng chữ để ba bản không lệch nhau. Khánh duyệt chữ khác thì sửa `loiLen` cùng các bản chép tay trong `crm/test/test-cong-khai-dia-diem.mjs`, `test-cong-khai-cau-chu.mjs`, `web/kiem-tra/trinh-duyet.mjs`.
 - **Mã nguồn đã đổi** (PR "màu và thông tin chung"): địa chỉ cố định `DIA_CHI_NHA_HANG`, câu chung `loiLen`, thẻ tiêu đề và mô tả của từng trang, JSON-LD, hình thang máy thay hình cầu thang, bảng từ của máy dịch (`web/src/lib/may-dich.ts`). Gác: `crm/test/test-cong-khai-dia-diem.mjs` (mã nguồn của trang công khai), `test-cong-khai-cau-chu.mjs` nhóm 7 (chữ khách đọc), `web/kiem-tra/trinh-duyet.mjs` (trang đã dựng), `web/kiem-tra/thu-day-du.mjs` nhóm 7 (trang có bản công bố). Mẫu tìm chữ sai dùng chung: `web/kiem-tra/mau-dia-diem.mjs`.
