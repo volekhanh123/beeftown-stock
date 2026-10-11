@@ -52,8 +52,8 @@ const tieuDeTrang = tieuDe
 
 // Mô tả ưu tiên bản đã duyệt trong cổng nội dung. Đây là lý do cụ thể vì sao
 // trang phải dựng ở phía máy chủ: thẻ mô tả là một HÀM của trạng thái database,
-// mà trình quét link của Facebook thì không chạy JavaScript. Câu nền đã có địa
-// chỉ cố định (DIA_CHI_NHA_HANG — Khánh chốt 06/10/2026).
+// mà trình quét link của Facebook thì không chạy JavaScript. Câu nền (moTaNgan
+// trong lib/chu.ts) đã ghi địa điểm: tầng 3, 63 Hồ Tùng Mậu.
 const moTaTrang = moTa ?? nd.mo_ta_og ?? t.moTaNgan;
 
 const anh = nd.anh_chia_se;
@@ -85,7 +85,7 @@ const duLieuCoCauTruc: Record<string, unknown> = {
   // nói điều đó.
   acceptsReservations: nd.form_dat_ban_dang_mo === true,
 };
-// Địa chỉ đã chốt và hiện cố định; bản công bố trong /noi-bo (nếu có) thay vào.
+// Địa chỉ cố định trong mã (lib/chu.ts); bản công bố trong /noi-bo (nếu có) thay vào.
 duLieuCoCauTruc.address = diaChiCoCauTruc(nd);
 // Chỉ phần số (hotline đã công bố có thể kèm chú thích "(Zalo)").
 if (lh.goi) duLieuCoCauTruc.telephone = lh.goi.slice('tel:'.length);

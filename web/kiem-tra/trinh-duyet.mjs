@@ -21,11 +21,13 @@
  *      đúng một <h1>; mọi <img> có width, height, alt (alt="" cho ảnh trang trí); ảnh
  *      minh họa nằm dưới màn hình đầu thì loading="lazy"; nút, link điều hướng, summary
  *      cao ≥ 44px; chữ trên nền màu đặc đủ tương phản (≥ 4,5:1, chữ lớn ≥ 3:1).
- *      Địa điểm (Khánh chốt 07/10 và 09/10/2026): chân trang có "63 Hồ Tùng Mậu";
- *      trang chủ, Đến Beeftown, Hỏi bàn in nguyên văn câu chỉ đường TRONG nội dung
- *      chính; JSON-LD ghi streetAddress "Tầng 3, 63 Hồ Tùng Mậu", không có tên phường;
- *      ngoài dòng pháp nhân, cả trang không còn địa chỉ nào khác; không còn chữ về
- *      cầu thang bộ.
+ *      Địa điểm (Khánh quyết 07/10 và 09/10/2026: tầng 3, 63 Hồ Tùng Mậu, lối vào
+ *      riêng ngay cạnh GS25; thang máy theo layout 08/10): chân trang có "63 Hồ Tùng
+ *      Mậu"; trang chủ, Đến Beeftown, Hỏi bàn in đúng từng chữ câu chỉ đường đang
+ *      dùng TRONG nội dung chính (chữ của câu là Claude đề xuất, chờ Khánh duyệt);
+ *      JSON-LD ghi streetAddress "Tầng 3, 63 Hồ Tùng Mậu", không có tên phường; ngoài
+ *      dòng pháp nhân, cả trang không còn địa chỉ nào khác và không ghi tên phường,
+ *      quận nào; không còn chữ về cầu thang bộ. Mẫu tìm chữ sai: mau-dia-diem.mjs.
  *   2. Trang đặt bàn / tuyển dụng chưa có database: KHÔNG có form nào, không có chữ
  *      "thành công" / "success" / "성공".
  *   3. Gửi thẳng form đặt bàn (không qua giao diện): trang quay về báo lỗi, không bao
@@ -43,6 +45,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { setTimeout as cho } from 'node:timers/promises';
 import { chromium } from 'playwright';
+import { TEN_DIA_CHI_KHAC, SO_NHA_KHAC, PHUONG_QUAN, CAU_THANG, boPhapNhan } from './mau-dia-diem.mjs';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ANH_LOI = join(WEB, 'kiem-tra', 'anh-loi');
@@ -117,8 +120,6 @@ async function danhSachTrang(goc) {
 const ngonNguCua = duong => (duong.startsWith('/en') ? 'en' : duong.startsWith('/ko') ? 'ko' : 'vi');
 /** Chữ của một khối viết liền một dòng: innerText xuống dòng ở mỗi khối, câu dài thì ở đâu cũng một dấu cách. */
 const motDong = chu => chu.replace(/\s+/g, ' ').trim();
-/** Chữ của trang sau khi bỏ dòng địa chỉ pháp nhân — chỗ duy nhất được ghi địa chỉ trên giấy đăng ký. */
-const boPhapNhan = (chu, dongDiaChi) => chu.split(dongDiaChi).join('');
 
 // Chân trang: ngay dưới dòng © là pháp nhân, bằng CHỮ trong HTML (không phải ảnh), tên công ty
 // và địa chỉ đúng từng ký tự ở cả ba thứ tiếng. Chép tay ở đây, KHÔNG đọc PHAP_NHAN trong
@@ -141,9 +142,10 @@ const CO_MAN_HINH = [
   { ten: 'màn rộng', width: 1440, height: 900 },
 ];
 
-// Trang nói về đường lên tầng 3 phải in nguyên văn câu chỉ đường ngay trong nội dung chính — chân
+// Trang nói về đường lên tầng 3 phải in đúng từng chữ câu chỉ đường ngay trong nội dung chính — chân
 // trang cũng có câu đó trên mọi trang, nên đọc <main>, không đọc cả trang. Chép tay ở đây, KHÔNG
-// đọc lib/chu.ts — sửa nhầm một chữ ở đó thì phép thử này đỏ.
+// đọc lib/chu.ts — sửa nhầm một chữ ở đó thì phép thử này đỏ. Chữ của câu là Claude đề xuất, chờ
+// Khánh duyệt: Khánh duyệt chữ khác thì sửa ở lib/chu.ts, ở đây và ở hai file test của crm cùng lúc.
 const TRANG_LOI_LEN = ['/', '/en', '/ko', '/den-beeftown', '/en/visit', '/ko/visit', '/dat-ban', '/en/book', '/ko/book'];
 const CAU_CHI_DUONG = {
   vi: 'Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3.',
@@ -152,14 +154,12 @@ const CAU_CHI_DUONG = {
 };
 const DUONG_NHA_HANG = '63 Hồ Tùng Mậu';
 const DIA_CHI_JSON_LD = 'Tầng 3, 63 Hồ Tùng Mậu';
-// Địa chỉ khác 63 Hồ Tùng Mậu: sau khi bỏ dòng pháp nhân ở trên thì cả trang không được còn chữ nào
-// trong này — kể cả trong thẻ mô tả, JSON-LD, alt ảnh. Chạy với --url trên trang thật thì đây cũng là
-// chỗ lộ ra một bản công bố (dia_chi_hien_thi, mo_ta_og… trong /noi-bo) còn ghi địa chỉ khác.
-const TEN_DUONG_KHAC = /Hàm\s*Nghi|Sài\s*Gòn|Nguyễn\s*Thái\s*Học/iu;
-// Số nhà "11-21" chỉ tìm trong chữ khách đọc: trong HTML thô, nét vẽ SVG cũng có dãy số kiểu đó.
-const DIA_CHI_KHAC = new RegExp(`${TEN_DUONG_KHAC.source}|(?<![\\d-])11[-–]21(?![\\d-])`, 'iu');
-// Khách đi thang máy: chữ về cầu thang bộ, hay câu nói không có thang máy, đều sai.
-const CHU_CAU_THANG = /cầu\s*thang|thang\s*bộ|\bstairs?\b|계단|không\s+có\s+thang\s*máy|no\s+(?:guest\s+)?(?:lift|elevator)|엘리베이터(?:는|가)?\s*없/iu;
+// Mẫu tìm chữ sai về địa điểm nằm ở mau-dia-diem.mjs (dùng chung với hai file test của crm, có bảng
+// câu thử). Sau khi bỏ dòng pháp nhân ở trên, cả trang không được còn tên đường, tên phường của địa
+// chỉ khác — kể cả trong thẻ mô tả, JSON-LD, alt ảnh — và chữ khách đọc không được có vế phường / quận
+// nào. Chạy với --url trên trang thật thì đây cũng là chỗ lộ ra một bản công bố (dia_chi_hien_thi,
+// mo_ta_og… trong /noi-bo) còn ghi địa chỉ khác. Số nhà "11-21" chỉ tìm trong chữ khách đọc: trong
+// HTML thô, nét vẽ SVG cũng có dãy số kiểu đó.
 
 /**
  * Các phép đo thêm của một trang (chạy TRONG trang). Trả về danh sách chỗ sai của từng phép.
@@ -316,6 +316,12 @@ try {
         const them = await page.evaluate(doTrang);
         const iBanQuyen = kq.dongChan.findIndex(d => DONG_BAN_QUYEN.test(d));
         const phapNhan = dongPhapNhan(ngonNguCua(duong));
+        // Chữ của trang sau khi bỏ dòng pháp nhân: tên đường / tên phường của địa chỉ khác tìm cả trong HTML thô,
+        // số nhà và vế phường / quận chỉ tìm trong chữ khách đọc.
+        const chuKhongPhapNhan = boPhapNhan(them.chuCaTrang, phapNhan[1]);
+        const diaChiKhac = TEN_DIA_CHI_KHAC.tim(boPhapNhan(them.htmlTrang, phapNhan[1]))
+          ?? TEN_DIA_CHI_KHAC.tim(chuKhongPhapNhan) ?? SO_NHA_KHAC.tim(chuKhongPhapNhan);
+        const phuongQuan = PHUONG_QUAN.tim(chuKhongPhapNhan);
         const tot = [
           ok(`${nhan}: HTTP 200, đúng lang="${ngonNguCua(duong)}"`, r?.status() === 200 && kq.lang === ngonNguCua(duong),
              `HTTP ${r?.status()}, lang="${kq.lang}"`),
@@ -335,7 +341,7 @@ try {
              them.chuChan.includes(DUONG_NHA_HANG) && motDong(them.chuChan).includes(CAU_CHI_DUONG[ngonNguCua(duong)]),
              motDong(them.chuChan).slice(0, 200)),
           ...(TRANG_LOI_LEN.includes(duong)
-            ? [ok(`${nhan}: nội dung chính in nguyên văn câu chỉ đường (lối vào riêng ngay cạnh GS25, thang máy lên tầng 3)`,
+            ? [ok(`${nhan}: nội dung chính in đúng từng chữ câu chỉ đường (lối vào riêng ngay cạnh GS25, thang máy lên tầng 3)`,
                   motDong(them.chuChinh).includes(CAU_CHI_DUONG[ngonNguCua(duong)]))]
             : []),
           // Trang thật (--url) có thể đang in bản công bố của /noi-bo: cả dòng đó nằm ở streetAddress, nên chỉ
@@ -346,16 +352,14 @@ try {
                  ? them.diaChiJsonLd.streetAddress.includes(DUONG_NHA_HANG)
                  : them.diaChiJsonLd.streetAddress === DIA_CHI_JSON_LD && !('addressLocality' in them.diaChiJsonLd)
                    && !/phường/iu.test(JSON.stringify(them.diaChiJsonLd)))
-               && !DIA_CHI_KHAC.test(JSON.stringify(them.diaChiJsonLd)),
+               && !TEN_DIA_CHI_KHAC.tim(JSON.stringify(them.diaChiJsonLd)) && !SO_NHA_KHAC.tim(JSON.stringify(them.diaChiJsonLd)),
              JSON.stringify(them.diaChiJsonLd)),
           ok(`${nhan}: ngoài dòng pháp nhân (có đúng một lần), cả trang không còn địa chỉ nào khác ${DUONG_NHA_HANG}`,
-             them.htmlTrang.split(phapNhan[1]).length === 2
-               && !TEN_DUONG_KHAC.test(boPhapNhan(them.htmlTrang, phapNhan[1]))
-               && !DIA_CHI_KHAC.test(boPhapNhan(them.chuCaTrang, phapNhan[1])),
-             `dòng pháp nhân có ${them.htmlTrang.split(phapNhan[1]).length - 1} lần; thấy «${
-               (boPhapNhan(them.htmlTrang, phapNhan[1]).match(TEN_DUONG_KHAC) ?? boPhapNhan(them.chuCaTrang, phapNhan[1]).match(DIA_CHI_KHAC) ?? [''])[0]}»`),
-          ok(`${nhan}: không còn chữ về cầu thang bộ, không câu nào nói không có thang máy`, !CHU_CAU_THANG.test(them.chuCaTrang),
-             them.chuCaTrang.match(CHU_CAU_THANG)?.[0]),
+             them.htmlTrang.split(phapNhan[1]).length === 2 && !diaChiKhac,
+             `dòng pháp nhân có ${them.htmlTrang.split(phapNhan[1]).length - 1} lần; thấy «${diaChiKhac ?? ''}»`),
+          ok(`${nhan}: ngoài dòng pháp nhân, chữ khách đọc không ghi tên phường hay quận nào`, !phuongQuan, `thấy «${phuongQuan ?? ''}»`),
+          ok(`${nhan}: không còn chữ về cầu thang bộ, không câu nào nói không có thang máy`, !CAU_THANG.tim(them.chuCaTrang),
+             CAU_THANG.tim(them.chuCaTrang) ?? ''),
           ok(`${nhan}: tương phản chữ ≥ 4,5:1 (chữ lớn ≥ 3:1) trên nền màu đặc`, !them.tuongPhan.length,
              them.tuongPhan.slice(0, 3).join(' | ')),
         ];

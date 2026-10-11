@@ -177,6 +177,23 @@ await nhom('4 · ĐỊA CHỈ CỐ ĐỊNH, BẢN CÔNG BỐ THAY VÀO KHI CÓ',
      diaChiManDau(nd({ dia_chi_hien_thi: 'Tầng 3, 63 Hồ Tùng Mậu, Phường Thử Hai, TP.HCM' })) === '63 Hồ Tùng Mậu, TP.HCM'
        && diaChiManDau(nd({ dia_chi_hien_thi: 'Tầng 3, 63 Hồ Tùng Mậu, P. Thử, TP.HCM' })) === '63 Hồ Tùng Mậu, TP.HCM'
        && diaChiManDau(nd({ dia_chi_hien_thi: '12 Đường Phường Thử, TP.HCM' })) === '12 Đường Phường Thử, TP.HCM');
+  // "P." đứng trước một con số là số phòng ("P.301"), không phải phường: bỏ đi là mất chỗ khách cần tìm.
+  for (const dc of ['Tầng 3, 63 Hồ Tùng Mậu, P.301, TP.HCM', 'Tầng 3, 63 Hồ Tùng Mậu, P. 301, TP.HCM', 'Tầng 3, 63 Hồ Tùng Mậu, p.12, TP.HCM']) {
+    ok(`diaChiManDau(${JSON.stringify(dc)}): vế "P." + số (số phòng) được giữ nguyên`,
+       diaChiManDau(nd({ dia_chi_hien_thi: dc })) === dc.replace(/^Tầng 3, /, ''), diaChiManDau(nd({ dia_chi_hien_thi: dc })));
+  }
+  ok('diaChiManDau: "phường 12" viết đủ chữ thì vẫn là phường — bỏ',
+     diaChiManDau(nd({ dia_chi_hien_thi: 'Tầng 3, 63 Hồ Tùng Mậu, phường 12, TP.HCM' })) === '63 Hồ Tùng Mậu, TP.HCM');
+  // Bản công bố gõ dở ("Tầng 3," rồi bấm công bố): bỏ "Tầng 3" đi thì hết chữ. Dòng địa chỉ không được rỗng —
+  // màn đầu và menu gọn in chữ "Tầng 3" đậm rồi một dấu chấm lơ lửng — nên dùng lại cả bản công bố.
+  for (const dc of ['Tầng 3,', 'Tầng 3', '  tầng 3 -  ']) {
+    ok(`diaChiSauTang / diaChiManDau(${JSON.stringify(dc)}): không trả dòng rỗng, dùng lại cả bản công bố`,
+       diaChiSauTang(nd({ dia_chi_hien_thi: dc })) === dc.trim() && diaChiManDau(nd({ dia_chi_hien_thi: dc })) === dc.trim(),
+       JSON.stringify([diaChiSauTang(nd({ dia_chi_hien_thi: dc })), diaChiManDau(nd({ dia_chi_hien_thi: dc }))]));
+  }
+  ok('diaChiManDau: bỏ vế phường xong mà hết chữ (bản công bố "Tầng 3, , phường Thử") → không trả dòng rỗng, in phần sau "Tầng 3"',
+     diaChiManDau(nd({ dia_chi_hien_thi: 'Tầng 3, , phường Thử' })) === ', phường Thử',
+     JSON.stringify(diaChiManDau(nd({ dia_chi_hien_thi: 'Tầng 3, , phường Thử' }))));
 
   // JSON-LD: một nguồn địa chỉ, không lặp thành phố khi bản công bố đã có đủ.
   const coCauTruc = diaChiCoCauTruc(NEN);

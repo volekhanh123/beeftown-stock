@@ -51,9 +51,10 @@ export const PHAP_NHAN = {
 } as const;
 
 /**
- * ĐỊA CHỈ NHÀ HÀNG — Tầng 3, 63 Hồ Tùng Mậu (Khánh chốt 07/10 và 09/10/2026): hiện
- * cố định trên trang công khai, kể cả khi chưa nối database. Khóa dia_chi_hien_thi
- * của cổng nội dung (nếu được công bố) thay cho chuỗi này.
+ * ĐỊA CHỈ NHÀ HÀNG — Tầng 3, 63 Hồ Tùng Mậu. Khánh quyết: địa điểm 63 Hồ Tùng Mậu
+ * (07/10/2026); quán ở tầng 3, khách vào bằng lối vào riêng ngay cạnh GS25 (09/10/2026).
+ * Địa chỉ hiện cố định trên trang công khai, kể cả khi chưa nối database. Khóa
+ * dia_chi_hien_thi của cổng nội dung (nếu được công bố) thay cho chuỗi này.
  *
  * Giữ tiếng Việt ở cả ba thứ tiếng (lang="vi" khi in ra): đây là chữ khách đưa
  * cho tài xế và gõ vào bản đồ. Phần cần dịch — "Tầng 3", câu chỉ đường — nằm ở
@@ -61,13 +62,19 @@ export const PHAP_NHAN = {
  * Mậu", tiếng Hàn ghi "Hồ Tùng Mậu 63, 3층".
  *
  * KHÔNG CÓ TÊN PHƯỜNG: phường của 63 Hồ Tùng Mậu chưa có giấy xác nhận, nên không
- * ghi ở đâu cả — trang, thẻ mô tả, JSON-LD. Khi có giấy: thêm khóa phuong vào đây,
- * ghép vào DIA_CHI_NHA_HANG và khai addressLocality trong diaChiCoCauTruc()
- * (lib/trang-cong-khai.ts). Địa chỉ này KHÔNG liên quan tới PHAP_NHAN.diaChi ở trên.
+ * ghi ở đâu cả — trang, thẻ mô tả, JSON-LD. Địa chỉ này KHÔNG liên quan tới
+ * PHAP_NHAN.diaChi ở trên. Khi có giấy, sửa CÙNG LÚC:
+ *   · mã: thêm khóa phuong vào đây, ghép vào DIA_CHI_NHA_HANG, khai addressLocality
+ *     trong diaChiCoCauTruc() (lib/trang-cong-khai.ts);
+ *   · kiểm thử: crm/test/test-cong-khai-dia-diem.mjs nhóm 4, test-cong-khai-trang-chu.mjs
+ *     nhóm 4, luật PHUONG_QUAN và bảng câu thử trong web/kiem-tra/mau-dia-diem.mjs (cả
+ *     test-cong-khai-cau-chu.mjs nhóm 7 chạy luật đó), kiểm tra JSON-LD trong
+ *     web/kiem-tra/trinh-duyet.mjs, địa chỉ thử trong web/kiem-tra/thu-day-du.mjs nhóm 7;
+ *   · tài liệu: THUONG-HIEU.md mục 6, AGENTS.md mục "Địa điểm", web/THIET-KE.md mục 10.
  *
- * Điều đã biết về đường đến chỉ có: lối vào riêng ngay cạnh GS25, khách đi thang
- * máy lên tầng 3 (khóa loiLen). Không viết thêm chỗ gửi xe, mốc đường, số bước,
- * khoảng cách, lối cho xe lăn khi chưa có người xác nhận.
+ * Điều đã biết về đường đến chỉ có: lối vào riêng ngay cạnh GS25 (Khánh quyết
+ * 09/10/2026), khách đi thang máy lên tầng 3 (layout ngày 08/10/2026). Không viết thêm
+ * chỗ gửi xe, mốc đường, số bước, khoảng cách, lối cho xe lăn khi chưa có người xác nhận.
  */
 export const DIA_CHI_PHAN = {
   duong: 'Tầng 3, 63 Hồ Tùng Mậu',
@@ -155,7 +162,10 @@ const VI = {
 
   // --- Đường đến ------------------------------------------------------------
   tang3: 'Tầng 3',
-  // Câu chỉ đường, nguyên văn Khánh chốt 09/10/2026 — đi kèm địa chỉ ở mọi chỗ in địa chỉ.
+  // Câu chỉ đường — đi kèm địa chỉ ở mọi chỗ in địa chỉ. Hai điều trong câu là đã biết (lối vào
+  // riêng ngay cạnh GS25: Khánh quyết 09/10/2026; thang máy: layout 08/10/2026). CHỮ của câu ở cả
+  // ba thứ tiếng là Claude đề xuất, CHỜ KHÁNH DUYỆT. Đổi chữ thì sửa cùng lúc các bản chép tay
+  // trong crm/test/test-cong-khai-dia-diem.mjs, test-cong-khai-cau-chu.mjs, web/kiem-tra/trinh-duyet.mjs.
   loiLen: 'Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3.',
   xemDuongLen: 'Xem đường lên tầng 3',
   saoChepDiaChi: 'Sao chép địa chỉ',

@@ -27,6 +27,11 @@
  *      chính màn đầu là "Khám phá thực đơn".
  *   5. Mọi trang công khai × (rong, day-du, dat-ban-dong) ở 360 và 1440 px: HTTP 200,
  *      không tràn ngang, không lỗi JavaScript.
+ *   7. dia-chi-cong-bo (khóa dia_chi_hien_thi đã công bố trong /noi-bo): bản công bố thay
+ *      địa chỉ cố định trong mã ở MỌI chỗ in địa chỉ nhà hàng — khối địa chỉ, chân trang,
+ *      câu hỏi thường gặp, bước 1 của trang Đến Beeftown, menu gọn, JSON-LD; màn đầu trang
+ *      chủ in bản đó và bỏ vế phường; dòng pháp nhân không đổi. Về lại kịch bản chưa công
+ *      bố địa chỉ thì trang in lại địa chỉ cố định.
  *
  * Hỏng thì ảnh chụp nằm ở kiem-tra/anh-loi/day-du/ (CI tải lên cùng artifact của
  * trinh-duyet.mjs).
@@ -39,7 +44,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as cho } from 'node:timers/promises';
-import { batMayGia, LIEN_HE_THU, MON_MAU } from './gia-supabase.mjs';
+import { batMayGia, LIEN_HE_THU, MON_MAU, DIA_CHI_CONG_BO_THU } from './gia-supabase.mjs';
 import { timChuoiCam } from '../src/lib/chuoi-cam.js';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -51,7 +56,7 @@ const CHUP = process.argv.includes('--chup');
 
 // Câu chữ đọc từ chính thư viện của trang (Node ≥ 22.18 đọc thẳng .ts) — đổi chữ ở lib
 // thì phép thử đổi theo, không phải chép tay hai nơi.
-const { CAP_DUONG_DAN, NGON_NGU, chu, duongDanTuongUng, cauLoiDatabase } =
+const { CAP_DUONG_DAN, NGON_NGU, chu, duongDanTuongUng, cauLoiDatabase, DIA_CHI_NHA_HANG, PHAP_NHAN } =
   await import(pathToFileURL(join(WEB, 'src', 'lib', 'chu.ts')).href);
 const { NHAN_MON } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'thuc-don.ts')).href);
 const { congNgay } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'gio-vn.ts')).href);
@@ -535,6 +540,84 @@ try {
         await c.close();
       }
     }
+  });
+
+  // =========================================================================
+  // Địa chỉ trên trang có hai nguồn: bản công bố trong /noi-bo và, khi chưa công bố, địa chỉ cố định
+  // trong mã. Đổi địa chỉ trong /noi-bo mà một chỗ vẫn in bản trong mã thì một trang hiện hai địa chỉ.
+  await nhom('7 · ĐỊA CHỈ ĐÃ CÔNG BỐ (dia-chi-cong-bo) TỚI ĐƯỢC MỌI CHỖ IN ĐỊA CHỈ; MÀN ĐẦU BỎ VẾ PHƯỜNG', async () => {
+    const motDong = s => (s ?? '').replace(/\s+/g, ' ').trim();
+    const chuCua = async chon => motDong(await page.locator(chon).first().innerText().catch(() => ''));
+    const CONG_BO = DIA_CHI_CONG_BO_THU;
+    const SAU_TANG = CONG_BO.replace(/^Tầng 3, /, '');                // menu gọn in sau chữ "Tầng 3" đậm
+    const MAN_DAU = SAU_TANG.replace(', phường Thử', '');             // màn đầu: bản ngắn, bỏ vế phường
+    ok(`Địa chỉ thử "${CONG_BO}" khác địa chỉ cố định trong mã "${DIA_CHI_NHA_HANG}", và có một vế phường để thử`,
+       CONG_BO !== DIA_CHI_NHA_HANG && !CONG_BO.includes(DIA_CHI_NHA_HANG) && SAU_TANG !== CONG_BO && MAN_DAU !== SAU_TANG
+         && MAN_DAU === '63 Hồ Tùng Mậu, TP. Hồ Chí Minh');
+    const jsonLd = () => page.evaluate(() => {
+      try { return JSON.parse(document.querySelector('script[type="application/ld+json"]')?.textContent ?? 'null')?.address ?? null; }
+      catch { return null; }
+    });
+
+    mayGia.datKichBan('dia-chi-cong-bo');
+    for (const nn of NGON_NGU) {
+      const t = chu(nn);
+      const trangChu = duongDanTuongUng('/', nn);
+      await page.goto(goc + trangChu, { waitUntil: 'load' });
+      const manDau = await chuCua('main .kmd-dia-chi');
+      const khoi = await chuCua('main .lt3 .lt3-dc');
+      const chan = await chuCua('footer address p[lang="vi"]');
+      const ld = await jsonLd();
+      const chuChan = motDong(await chuTrang('footer'));
+      const tot = [
+        ok(`dia-chi-cong-bo ${trangChu}: màn đầu in "${t.tang3} · ${MAN_DAU}" — bản công bố, đã bỏ vế phường`,
+           manDau === `${t.tang3} · ${MAN_DAU}`, manDau),
+        ok(`dia-chi-cong-bo ${trangChu}: khối địa chỉ in nguyên bản công bố`, khoi === CONG_BO, khoi),
+        ok(`dia-chi-cong-bo ${trangChu}: chân trang in nguyên bản công bố`, chan === CONG_BO, chan),
+        ok(`dia-chi-cong-bo ${trangChu}: JSON-LD để cả bản công bố ở streetAddress, không thêm trường phường / thành phố`,
+           JSON.stringify(ld) === JSON.stringify({ '@type': 'PostalAddress', streetAddress: CONG_BO, addressCountry: 'VN' }), JSON.stringify(ld)),
+        ok(`dia-chi-cong-bo ${trangChu}: nút sao chép địa chỉ chép bản công bố`,
+           await page.locator('main [data-sao-chep]').first().getAttribute('data-sao-chep') === CONG_BO),
+        ok(`dia-chi-cong-bo ${trangChu}: cả trang không còn in địa chỉ cố định trong mã ("${DIA_CHI_NHA_HANG}")`,
+           !motDong(await chuTrang()).includes(DIA_CHI_NHA_HANG)),
+        ok(`dia-chi-cong-bo ${trangChu}: dòng địa chỉ pháp nhân không đổi theo bản công bố`, chuChan.includes(PHAP_NHAN.diaChi)),
+        ok(`dia-chi-cong-bo ${trangChu}: câu chỉ đường vẫn đi kèm địa chỉ ở màn đầu và chân trang`,
+           motDong(await chuTrang('main .kmd-loi-len')) === t.loiLen && chuChan.includes(t.loiLen)),
+      ];
+      // Câu hỏi thường gặp: mở câu "ở tầng mấy" rồi đọc.
+      const cauHoi = page.locator('main details').filter({ hasText: CONG_BO }).first();
+      tot.push(ok(`dia-chi-cong-bo ${trangChu}: câu hỏi thường gặp in bản công bố kèm câu chỉ đường`,
+        await cauHoi.count() === 1 && motDong(await cauHoi.evaluate(el => { el.open = true; return el.innerText; })).includes(`${CONG_BO}. ${t.loiLen}`)));
+      // Menu gọn (màn hẹp): sau chữ "Tầng 3" đậm là bản công bố, còn nguyên vế phường.
+      const menu = page.locator('details.menu-gon').first();
+      tot.push(ok(`dia-chi-cong-bo ${trangChu}: menu gọn in "${t.tang3} · ${SAU_TANG}"`,
+        await menu.count() === 1
+          && motDong(await menu.evaluate(el => { el.open = true; return el.querySelector('.mg-dia-chi')?.innerText ?? ''; })) === `${t.tang3} · ${SAU_TANG}`,
+        await menu.count() ? motDong(await menu.evaluate(el => el.querySelector('.mg-dia-chi')?.innerText ?? '')) : 'không thấy menu gọn'));
+      if (tot.includes(false)) await chupLoi(`dia-chi-cong-bo${trangChu}`);
+
+      const denBeeftown = duongDanTuongUng('/den-beeftown', nn);
+      await page.goto(goc + denBeeftown, { waitUntil: 'load' });
+      const tot2 = [
+        ok(`dia-chi-cong-bo ${denBeeftown}: khối "Địa chỉ và lối lên" in nguyên bản công bố`, await chuCua('main .lt3 .lt3-dc') === CONG_BO, await chuCua('main .lt3 .lt3-dc')),
+        ok(`dia-chi-cong-bo ${denBeeftown}: bước 1 in nguyên bản công bố sau "Địa chỉ đầy đủ"`,
+           (await chuCua('main .db-muc:nth-child(1) .db-chu p')).endsWith(CONG_BO), await chuCua('main .db-muc:nth-child(1) .db-chu p')),
+        ok(`dia-chi-cong-bo ${denBeeftown}: JSON-LD để cả bản công bố ở streetAddress`, (await jsonLd())?.streetAddress === CONG_BO, JSON.stringify(await jsonLd())),
+      ];
+      const hoiBan = duongDanTuongUng('/dat-ban', nn);
+      await page.goto(goc + hoiBan, { waitUntil: 'load' });
+      tot2.push(ok(`dia-chi-cong-bo ${hoiBan}: khối địa chỉ bản gọn in nguyên bản công bố`, await chuCua('main .lt3-gon .lt3-dc') === CONG_BO, await chuCua('main .lt3-gon .lt3-dc')));
+      if (tot2.includes(false)) await chupLoi(`dia-chi-cong-bo${denBeeftown}`);
+    }
+
+    // Gỡ bản công bố (về day-du: dia_chi_hien_thi là null) → trang in lại địa chỉ cố định trong mã, ở cùng các chỗ đó.
+    mayGia.datKichBan('day-du');
+    await page.goto(goc + '/', { waitUntil: 'load' });
+    ok(`day-du /: chưa công bố địa chỉ → màn đầu, khối địa chỉ, chân trang, JSON-LD in địa chỉ cố định "${DIA_CHI_NHA_HANG}"`,
+       await chuCua('main .kmd-dia-chi') === `${chu('vi').tang3} · ${DIA_CHI_NHA_HANG.replace(/^Tầng 3, /, '')}`
+         && await chuCua('main .lt3 .lt3-dc') === DIA_CHI_NHA_HANG && await chuCua('footer address p[lang="vi"]') === DIA_CHI_NHA_HANG
+         && DIA_CHI_NHA_HANG.startsWith((await jsonLd())?.streetAddress ?? '?') && !motDong(await chuTrang()).includes('phường Thử'),
+       [await chuCua('main .kmd-dia-chi'), await chuCua('main .lt3 .lt3-dc'), await chuCua('footer address p[lang="vi"]'), JSON.stringify(await jsonLd())].join(' | '));
   });
 
   // =========================================================================
