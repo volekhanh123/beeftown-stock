@@ -63,7 +63,7 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
 
   // Không quét — kèm lý do. Chữ Việt ở đây KHÔNG hiện trên màn nội bộ.
   const KHONG_QUET = {
-    'pages/noi-bo/kho/cong-no/misa.csv.ts': 'file cho phần mềm MISA — tên cột phải đúng mẫu tiếng Việt của MISA',
+    // misa.csv.ts KHÔNG còn ở đây: tên cột MISA nằm ở lib/kho/misa.ts; câu lỗi của route có đủ hai thứ tiếng.
     'lib/kho/misa.ts': 'tên cột, mã chứng từ theo mẫu nhập của MISA',
     'lib/kho/may-chung-ma-hoa.ts': 'mã hóa, không có chữ cho người dùng',
   };

@@ -16,6 +16,7 @@
  *   5. Câu lỗi mạng: mỗi nơi chạy fetch báo một kiểu (Node "fetch failed", Bun của Beeftown Cân "Unable to
  *      connect…", trình duyệt "Failed to fetch", DNS "ENOTFOUND"). Bản chép regex sót Bun và DNS, và ba
  *      thư viện CRM không nhận lỗi mạng nào — người dùng thấy nguyên "TypeError: fetch failed".
+ *   6. Đường tải CSV của kho (moKhoTai): đọc chi nhánh lỗi → trước đây 404 "Chưa có chi nhánh".
  *   4. docBaoCao('ban'): MỌI lỗi có chữ "does not exist" (kể cả bảng / cột bên trong hàm hỏng) bị coi là
  *      "database chưa chạy 0037" → lùi về hàm cũ, báo cáo hiện số ƯỚC TÍNH thay vì báo lỗi.
  *
@@ -24,7 +25,7 @@
 
 import { taoBoDem } from './kho-chung.mjs';
 import { taoPhieuXuat } from '../../web/src/lib/kho/xuat.ts';
-import { moTrangKho } from '../../web/src/lib/kho/trang.ts';
+import { moTrangKho, moKhoTai } from '../../web/src/lib/kho/trang.ts';
 import { docBanAn } from '../../web/src/lib/cai-dat.ts';
 import { dichCau } from '../../web/src/lib/cau-noi-bo.ts';
 import { docBaoCao } from '../../web/src/lib/kho/bao-cao.ts';
@@ -167,6 +168,35 @@ await nhom('5 · Lỗi mạng mọi kiểu → "chưa chắc đã ghi", không l
     const nguon = readFileSync(new URL(`../../web/src/lib/${tep}`, import.meta.url), 'utf8');
     ok(`${tep}: cauLoi nhận lỗi mạng (laLoiMang → CAU_MAT_MANG_GHI)`, /if \(laLoiMang\(m\)\) return CAU_MAT_MANG_GHI\[nn\]/.test(nguon));
   }
+});
+
+// ===========================================================================
+await nhom('6 · Đường tải CSV của kho (moKhoTai): phiên, vai, chi nhánh lỗi → 503', async () => {
+  const ctx = (client, nhanSu, nn = 'vi') => ({
+    locals: { phien: client ? { client, nhanSu } : undefined, nn },
+    cookies: { get: () => undefined, set() {}, delete() {}, has: () => false },
+    url: new URL('https://beeftown.vn/noi-bo/kho/bao-cao/ban.csv'),
+    request: new Request('https://beeftown.vn/noi-bo/kho/bao-cao/ban.csv'),
+    redirect: (u, st) => new Response(null, { status: st, headers: { location: u } }),
+  });
+  const ql = { id: 'ns-1', vai_tro: 'quan_ly', chi_nhanh_id: CN };
+  const cn = [{ id: CN, ma: 'q1', ten: 'Beeftown Quận 1' }];
+
+  const tot = await moKhoTai(ctx(clientGia({ chi_nhanh: cn }), ql));
+  ok('Tiền đề: quản lý → chi nhánh của mình', !(tot instanceof Response) && tot.chiNhanh.id === CN);
+  const chua = await moKhoTai(ctx(null, null));
+  ok('Chưa đăng nhập → 401', chua instanceof Response && chua.status === 401);
+  const tn = await moKhoTai(ctx(clientGia({ chi_nhanh: cn }), { id: 'ns-2', vai_tro: 'thu_ngan', chi_nhanh_id: CN }));
+  ok('Thu ngân (không dùng kho) → 403', tn instanceof Response && tn.status === 403);
+  const may = await moKhoTai(ctx(clientGia({ chi_nhanh: cn }), { id: 'ns-3', vai_tro: 'may_chung', chi_nhanh_id: CN }));
+  ok('Tài khoản máy dùng chung → về màn máy, không tải gì', may instanceof Response && may.status === 302
+     && may.headers.get('location') === '/noi-bo/kho/may', String(may?.status));
+
+  const loi = await moKhoTai(ctx(clientGia({}, { chi_nhanh: MANG_DUT }), ql));
+  ok('Đọc chi nhánh lỗi → 503 "không đọc được", KHÔNG phải 404 "Chưa có chi nhánh"', loi instanceof Response && loi.status === 503
+     && /Không đọc được danh sách chi nhánh/.test(await loi.text()), String(loi?.status));
+  const loiEn = await moKhoTai(ctx(clientGia({}, { chi_nhanh: MANG_DUT }), ql, 'en'));
+  ok('…người tải dùng tiếng Anh: câu tiếng Anh', loiEn instanceof Response && /Could not read the list of branches/.test(await loiEn.text()));
 });
 
 process.exit(ketThuc('LỖI DATABASE KHÔNG THÀNH CÂU SAI'));

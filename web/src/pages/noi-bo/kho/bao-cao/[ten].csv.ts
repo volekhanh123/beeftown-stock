@@ -36,17 +36,20 @@ import { docCongNoPhieu, laNoDau } from '../../../../lib/kho/cong-no.ts';
 import { docBaoCaoDinhMuc, dinhNghiaDinhMuc, NGAY_TOI_DA_DINH_MUC } from '../../../../lib/kho/dinh-luong.ts';
 import { docDanhGiaNcc, dinhNghiaDanhGiaNcc } from '../../../../lib/kho/dat-hang.ts';
 import { docBaoCaoTang, dinhNghiaTheoTang, dongBangTheoTang } from '../../../../lib/kho/tang.ts';
-import { dichNB, nnCua } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { moKhoTai } from '../../../../lib/kho/trang.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
-export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
-  const nn = nnCua({ locals });
+export const GET: APIRoute = async (ctx) => {
+  // Phiên, tự khóa máy dùng chung, chi nhánh (cùng cách chọn với moTrangKho) — lib/kho/trang.ts.
+  const k = await moKhoTai(ctx);
+  if (k instanceof Response) return k;
+  const { client, nhanSu, chiNhanh: cn, nn } = k;
+  const { params, url } = ctx;
   const t = dichNB(nn, {
-    chuaDangNhap: { vi: 'Chưa đăng nhập', en: 'Not logged in' },
     khongXemKho: { vi: 'Tài khoản không xem được kho', en: 'This account cannot view inventory' },
     khongXemSoTt: { vi: 'Tài khoản không xem được sổ thanh toán', en: 'This account cannot view the payments ledger' },
     khongXemTien: { vi: 'Tài khoản không xem được báo cáo tiền', en: 'This account cannot view money reports' },
-    chuaCoCn: { vi: 'Chưa có chi nhánh', en: 'No branch yet' },
     khongXemCongNo: { vi: 'Tài khoản không xem được công nợ nhà cung cấp', en: 'This account cannot view supplier payables' },
     khongDocCongNo: { vi: 'Không đọc được công nợ', en: 'Could not read payables' },
     kyToiDa: { vi: 'Khoảng ngày tối đa 1 năm', en: 'The date range can be at most 1 year' },
@@ -56,9 +59,6 @@ export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
   /** Câu lỗi từ thư viện / database (tiếng Việt) → ngôn ngữ người tải. */
   const loi = (cau: string, status: number) => new Response(dichCau(nn, cau), { status });
 
-  const phien = locals.phien;
-  if (!phien) return new Response(t.chuaDangNhap, { status: 401 });
-  const { client, nhanSu } = phien;
   const ten = params.ten ?? '';
   // Đối chiếu định mức (0038) mở cho mọi vai xem kho (thủ kho, NV quầy: chỉ kg).
   // Mọi file khác có tiền — chỉ vai xem giá.
@@ -78,15 +78,6 @@ export const GET: APIRoute = async ({ locals, params, url, cookies }) => {
   } else if (ten === 'dinh-muc' ? !duoc(nhanSu.vai_tro, 'xem') : !duoc(nhanSu.vai_tro, 'xem_gia')) {
     return new Response(ten === 'dinh-muc' ? t.khongXemKho : t.khongXemTien, { status: 403 });
   }
-
-  // Chi nhánh: cùng cách chọn với moTrangKho() — nhân sự theo chi nhánh của
-  // mình, chủ nhà hàng theo chi nhánh đang chọn (cookie) hoặc chi nhánh đầu.
-  const { data: ds } = await client.from('chi_nhanh').select('id, ma, ten').order('ma');
-  const cacCn = (ds ?? []) as { id: string; ma: string; ten: string }[];
-  const cn = nhanSu.chi_nhanh_id
-    ? cacCn.find(c => c.id === nhanSu.chi_nhanh_id)
-    : cacCn.find(c => c.ma === cookies.get('bt_kho_cn')?.value) ?? cacCn[0];
-  if (!cn) return new Response(t.chuaCoCn, { status: 404 });
 
   const homNay = homNayVn();
   const { tu, den } = kyBaoCao(url.searchParams, homNay);
