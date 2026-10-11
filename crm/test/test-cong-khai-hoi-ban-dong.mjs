@@ -18,7 +18,9 @@
  *      như thẻ "chưa mở" đang làm. Ở cả vi, en, ko.
  *   3. Ba trang /dat-ban, /en/book, /ko/book lấy mô tả qua moTaTrangHoiBan(), không viết thẳng câu.
  *   4. Đoạn mở đầu của TrangDatBan chọn theo cùng biến với thẻ "chưa mở" (chuaMo); câu khi đóng
- *      không hứa form.
+ *      không hứa form. Lượt gửi vừa rồi KHÔNG CHẮC đã ghi (loiLuotGui.khongChac — database sập giữa
+ *      chừng) thì đoạn mở đầu là danKhongChac: không nói "bạn chưa gửi được", vì khung lỗi bên dưới
+ *      bảo "đừng gửi lại" (thu-day-du.mjs nhóm 4, kịch bản dat-ban-sap).
  *
  * Trang dựng thật ở hai trạng thái kiểm ở web/kiem-tra/thu-day-du.mjs (Supabase giả: day-du và
  * dat-ban-dong) và web/kiem-tra/trinh-duyet.mjs nhóm 2 (chưa có database).
@@ -50,6 +52,8 @@ const HUA_FORM = {
   ko: /전화드려요|전화로 안내|문의를 보내 주세요/,
 };
 const HUA_GOI_LAI = { vi: /gọi lại/i, en: /call you back/i, ko: /전화드려요|전화로 안내/ };
+// "Bạn chưa gửi được yêu cầu": đúng khi database đã từ chối, sai khi KHÔNG CHẮC đã ghi.
+const CHUA_GUI_DUOC = { vi: /chưa gửi được/i, en: /cannot send/i, ko: /보낼 수 없어요/ };
 
 const TRANG = [['dat-ban.astro', 'vi'], ['en/book.astro', 'en'], ['ko/book.astro', 'ko']];
 const docTrang = f => readFileSync(join(SRC, 'pages', f), 'utf8');
@@ -101,16 +105,23 @@ await nhom('3 · BA TRANG HỎI BÀN LẤY MÔ TẢ QUA moTaTrangHoiBan(), KHÔN
 
 // ===========================================================================
 await nhom('4 · ĐOẠN MỞ ĐẦU CỦA TrangDatBan THEO THẺ "CHƯA MỞ"', async () => {
-  ok('TrangDatBan.astro: <p class="dan"> chọn theo chuaMo (cùng biến với thẻ "chưa mở")',
-     /<p class="dan">\{\s*chuaMo\s*\?\s*t\.danChuaMo\s*:\s*t\.dan\s*\}<\/p>/.test(nguonTrangDatBan));
+  ok('TrangDatBan.astro: <p class="dan"> chọn theo chuaMo (cùng biến với thẻ "chưa mở"), rồi theo loiLuotGui.khongChac',
+     /<p class="dan">\{\s*chuaMo\s*\?\s*\(\s*loiLuotGui\?\.khongChac\s*\?\s*t\.danKhongChac\s*:\s*t\.danChuaMo\s*\)\s*:\s*t\.dan\s*\}<\/p>/
+       .test(nguonTrangDatBan));
   const dan = cauTrangDatBan('dan');
   const danChuaMo = cauTrangDatBan('danChuaMo');
-  ok('Bảng câu có dan và danChuaMo, đủ vi / en / ko', !!dan && !!danChuaMo, JSON.stringify({ dan, danChuaMo }).slice(0, 160));
-  if (!dan || !danChuaMo) return;
+  const danKhongChac = cauTrangDatBan('danKhongChac');
+  ok('Bảng câu có dan, danChuaMo và danKhongChac, đủ vi / en / ko', !!dan && !!danChuaMo && !!danKhongChac,
+     JSON.stringify({ dan, danChuaMo, danKhongChac }).slice(0, 200));
+  if (!dan || !danChuaMo || !danKhongChac) return;
   for (const nn of NGON_NGU) {
     ok(`[${nn}] Đoạn mở đầu khi form mở vẫn nói nhà hàng gọi lại`, HUA_GOI_LAI[nn].test(dan[nn]), dan[nn]);
     ok(`[${nn}] Đoạn mở đầu khi form đóng không hứa gửi yêu cầu / gọi lại`, !HUA_FORM[nn].test(danChuaMo[nn]),
        danChuaMo[nn].match(HUA_FORM[nn])?.[0]);
+    ok(`[${nn}] Đoạn mở đầu sau lượt gửi KHÔNG CHẮC không nói "chưa gửi được" (khung lỗi bảo đừng gửi lại)`,
+       !CHUA_GUI_DUOC[nn].test(danKhongChac[nn]), danKhongChac[nn]);
+    ok(`[${nn}] Đoạn mở đầu sau lượt gửi KHÔNG CHẮC không hứa gửi yêu cầu / gọi lại`, !HUA_FORM[nn].test(danKhongChac[nn]),
+       danKhongChac[nn].match(HUA_FORM[nn])?.[0]);
   }
 });
 

@@ -32,7 +32,8 @@
  * bên trái), ba bước và LenTang3 lùi sang cột phụ.
  *
  * ĐOẠN MỞ ĐẦU THEO THẺ. Thẻ "chưa mở" đang hiện thì đoạn mở đầu không hứa "nhà hàng gọi
- * lại" — chọn theo đúng biến chuaMo của thẻ. Mô tả của trang (meta description,
+ * lại" — chọn theo đúng biến chuaMo của thẻ; lượt gửi vừa rồi KHÔNG CHẮC đã ghi thì cũng
+ * không nói "bạn chưa gửi được" (danKhongChac). Mô tả của trang (meta description,
  * og:description) do pages/dat-ban.astro, en/book, ko/book lấy qua moTaTrangHoiBan()
  * (lib/trang-cong-khai.ts) với cùng tinhTrang.moDuoc. Kiểm site thật 07/10/2026: form
  * đóng mà cả hai chỗ vẫn hứa một form không có.
@@ -94,6 +95,15 @@ const t = dich(ngonNgu, {
     vi: 'Hiện bạn chưa gửi được yêu cầu hỏi bàn trên trang này. Cách hỏi bàn lúc này ở ngay bên dưới.',
     en: 'You cannot send a table request on this page yet. Here is how to ask for a table for now.',
     ko: '아직 이 페이지에서는 테이블 문의를 보낼 수 없어요. 지금 문의하는 방법은 바로 아래에서 확인해 주세요.',
+  },
+  // Thẻ "chưa mở" hiện ngay sau một lượt gửi KHÔNG CHẮC đã ghi (database sập giữa chừng, trang
+  // sau không đọc được lịch): khung lỗi bên dưới bảo "đừng gửi lại", nên đoạn mở đầu bỏ vế "bạn
+  // chưa gửi được" — vế đó cãi khung lỗi, khách tin là chưa gửi và hỏi lại thành hai bản. Chỉ
+  // giữ vế sau của danChuaMo, nguyên chữ.
+  danKhongChac: {
+    vi: 'Cách hỏi bàn lúc này ở ngay bên dưới.',
+    en: 'Here is how to ask for a table for now.',
+    ko: '지금 문의하는 방법은 바로 아래에서 확인해 주세요.',
   },
 
   // --- Ghi chú quy trình: ba dòng ngắn -----------------------------------
@@ -191,7 +201,7 @@ const t = dich(ngonNgu, {
   <div class="khung">
     <p class="hieu">Beeftown · {tChung.tang3}</p>
     <h1>{t.tieuDe}</h1>
-    <p class="dan">{chuaMo ? t.danChuaMo : t.dan}</p>
+    <p class="dan">{chuaMo ? (loiLuotGui?.khongChac ? t.danKhongChac : t.danChuaMo) : t.dan}</p>
   </div>
   <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
 </section>
