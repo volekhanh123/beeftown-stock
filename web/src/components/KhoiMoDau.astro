@@ -2,14 +2,19 @@
 /**
  * MÀN HÌNH ĐẦU TRANG CHỦ
  *
- * Câu chính (h1) theo brief 06/10/2026: "Chọn phần bò bạn thích, rồi cùng cả
- * bàn thưởng thức." Tagline Pick it. Grill it. Love it. và descriptor đi kèm.
+ * Câu chính (h1) theo brief 06/10/2026, Khánh giữ nguyên ngày 11/10/2026: "Chọn phần bò
+ * bạn thích, rồi cùng cả bàn thưởng thức." Descriptor đứng trên câu chính.
  *
- * Bên phải (trên điện thoại: bên trên) là mảng vân mỡ trang 2 của PDF nhận diện.
- * Có ảnh hero (ảnh minh họa, lib/anh.ts) thì ảnh nằm trên mảng đó; chưa có thì
- * chính artwork của PDF làm hero: tagline xếp ba dòng như biển trang 7, nét miếng
- * steak và rosemary trang 3, tem tròn trang 11. Hai trạng thái đều phải đẹp —
- * không bao giờ là một khung xám chờ ảnh.
+ * Hình chính là ảnh hero-vi-gas (ảnh minh họa, lib/anh.ts) — thay cho mảng vân mỡ đỏ của bản
+ * trước. Tagline Pick it. Grill it. Love it. là một dải Beef Red gọn ngay dưới ảnh: không
+ * đè lên ảnh, không logo hay chữ nào đặt lên ảnh, khung ảnh không bóng đổ.
+ *
+ * Thứ tự (một nguồn HTML, CSS xếp lại):
+ *  · điện thoại, máy tính bảng (dưới 900px): câu chính → mô tả → 2 nút → ảnh → dòng địa điểm;
+ *  · điện thoại rất nhỏ (dưới 360px, cũng là máy tính phóng to 400 %): phần chữ đã dài hơn một
+ *    màn hình, nên ảnh lên ngay sau câu chính — ảnh tải ngay thì phải nằm trong màn hình đầu;
+ *  · máy tính (từ 900px): chữ bên trái, ảnh bên phải, hai cột cân nhau theo chiều dọc; dòng địa
+ *    điểm thành một hàng ngang dưới cả hai cột.
  *
  * Thứ bậc nút theo mức sẵn sàng mở cửa: lib/trang-cong-khai.ts → nutMoDau().
  * Dòng trạng thái và ngày mở giữ đúng logic cũ: dong_trang_thai, ngay_khai_truong.
@@ -18,7 +23,6 @@ import { THUONG_HIEU, chu, duongDanTuongUng } from '../lib/chu';
 import { dinhDangNgay, homNayVn } from '../lib/noi-dung';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
 import { cumDiaChi, diaChiManDau, nutMoDau, lienHe } from '../lib/trang-cong-khai';
-import { coAnh } from '../lib/anh';
 import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
 
@@ -29,8 +33,8 @@ const nut = nutMoDau(nd, ngonNgu);
 const lh = lienHe(nd);
 const ngayMo = nd.ngay_khai_truong;
 const daMo = !!(ngayMo && ngayMo <= homNayVn());
-const coAnhHero = !!coAnh('hero-vi-gas', '16x9');
-const [pick, grill, love] = THUONG_HIEU.khauHieu.split(/(?<=\.)\s+/);
+// Ba vế của tagline, mỗi vế một khối: dải hẹp thì xuống dòng giữa hai vế, không cắt đôi "Grill / it.".
+const veKhauHieu = THUONG_HIEU.khauHieu.split(/(?<=\.)\s+/);
 // Câu chỉ đường tách thành từng vế (sau dấu phẩy), mỗi vế một khối inline-block: xuống dòng
 // giữa hai vế, không cắt đôi "ngay cạnh / GS25" hay "thang / máy".
 // Chữ giữ nguyên (không \u00a0 trong loiLen — test đọc nguyên câu).
@@ -39,79 +43,69 @@ const veLoiLen = t.loiLen.split(/(?<=,)\s+/u);
 const cumDc = cumDiaChi(diaChiManDau(nd));
 ---
 <section class="kmd be-kem" aria-labelledby="kmd-tieu-de">
-  <div class="kmd-tam nen-van-mo" aria-hidden="true"></div>
-
   <div class="khung kmd-luoi">
-    <div class="kmd-chu">
+    <div class="kmd-dau">
       <p class="hieu"><span lang="en">{THUONG_HIEU.descriptor}</span></p>
       <h1 id="kmd-tieu-de">{t.cauChinh}</h1>
-      <p class="dan kmd-dan">{t.gioiThieu}</p>
+    </div>
+    <p class="dan kmd-dan">{t.gioiThieu}</p>
 
-      <div class="hang-nut kmd-nut">
-        {nut.map(n => (
-          <a class:list={['nut', n.kieu === 'chinh' ? 'nut-chinh' : 'nut-vien']} href={n.url}>{n.chu}</a>
-        ))}
-      </div>
-
-      <ul class="kmd-thong-tin">
-        <li>
-          <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="thang-may" /><span><strong>{t.tang3}</strong> · <span lang="vi">{cumDc.map(cum => <><span class:list={{ 'kmd-lien': cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></span></a>
-        </li>
-        {/* Biểu tượng thang máy có aria-hidden: câu này mới là thứ người đọc màn hình nghe được
-            (địa chỉ tầng 3 luôn đi kèm câu chỉ đường: lối vào riêng ngay cạnh GS25, đi thang máy). */}
-        <li class="kmd-loi-len">{veLoiLen.map((ve, i) => <>{i > 0 && ' '}<span>{ve}</span></>)}</li>
-        {ngayMo && (
-          <li class="kmd-ngay">{daMo ? t.moCuaTu : t.donBanTu} <strong>{dinhDangNgay(ngayMo, ngonNgu)}</strong></li>
-        )}
-        <li class="trang-thai kmd-trang-thai"><p>{nd.dong_trang_thai ?? t.trangThaiMacDinh}</p></li>
-        {lh.facebook && (
-          <li><a class="lien-ket" href={lh.facebook} rel="noopener">{t.theoDoi}<BieuTuong ten="mui-ten" /></a></li>
-        )}
-      </ul>
+    <div class="hang-nut kmd-nut">
+      {nut.map(n => (
+        <a class:list={['nut', n.kieu === 'chinh' ? 'nut-chinh' : 'nut-vien']} href={n.url}>{n.chu}</a>
+      ))}
     </div>
 
     <div class="kmd-hinh">
-      {coAnhHero ? (
-        <div class="kmd-anh">
-          <Anh id="hero-vi-gas" ngonNgu={ngonNgu} khung="16x9" khungNho="4x5" uuTien
-               sizes="(min-width: 900px) 56vw, 100vw" />
-          <p class="kmd-khau-hieu kmd-khau-hieu-nho" lang="en" aria-hidden="true"><span>{pick}</span> <span>{grill}</span> <span>{love}</span></p>
-        </div>
-      ) : (
-        <div class="kmd-artwork" aria-hidden="true">
-          <span class="trang-tri net steak-2 kmd-steak"></span>
-          <span class="trang-tri net huong-thao-3 kmd-la-1"></span>
-          <span class="trang-tri net huong-thao-1 kmd-la-2"></span>
-          <p class="kmd-khau-hieu" lang="en"><span>{pick}</span> <span>{grill}</span> <span>{love}</span></p>
-          <img class="kmd-tem" src="/thuong-hieu/tem-tron.svg" width="320" height="320" alt="" />
-        </div>
-      )}
+      <Anh id="hero-vi-gas" ngonNgu={ngonNgu} khung="4x3" khungNho="4x5" uuTien thayBang="ban-nuong"
+           sizes="(min-width: 1280px) 620px, (min-width: 900px) 50vw, calc(100vw - 40px)" />
+      <p class="kmd-khau-hieu" lang="en">{veKhauHieu.map((ve, i) => <>{i > 0 && ' '}<span>{ve}</span></>)}</p>
     </div>
+
+    <ul class="kmd-thong-tin">
+      <li>
+        <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="thang-may" /><span><strong>{t.tang3}</strong> · <span lang="vi">{cumDc.map(cum => <><span class:list={{ 'kmd-lien': cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></span></a>
+      </li>
+      {/* Biểu tượng thang máy có aria-hidden: câu này mới là thứ người đọc màn hình nghe được
+          (địa chỉ tầng 3 luôn đi kèm câu chỉ đường: lối vào riêng ngay cạnh GS25, đi thang máy). */}
+      <li class="kmd-loi-len">{veLoiLen.map((ve, i) => <>{i > 0 && ' '}<span>{ve}</span></>)}</li>
+      {ngayMo && (
+        <li class="kmd-ngay">{daMo ? t.moCuaTu : t.donBanTu} <strong>{dinhDangNgay(ngayMo, ngonNgu)}</strong></li>
+      )}
+      <li class="trang-thai kmd-trang-thai"><p>{nd.dong_trang_thai ?? t.trangThaiMacDinh}</p></li>
+      {lh.facebook && (
+        <li class="kmd-theo-doi"><a class="lien-ket" href={lh.facebook} rel="noopener">{t.theoDoi}<BieuTuong ten="mui-ten" /></a></li>
+      )}
+    </ul>
   </div>
 </section>
 
 <style>
-  .kmd { position: relative; overflow: clip; }
-
-  /* Mảng vân mỡ: trên điện thoại là dải trên cùng, tràn hết bề ngang; màn rộng là
-     nửa phải, tràn ra mép cửa sổ. */
-  .kmd-tam { position: absolute; inset: 0 0 auto 0; height: clamp(250px, 66vw, 420px); }
-
+  /* --- Một cột (dưới 900px): thứ tự của HTML ---------------------------------- */
   .kmd-luoi {
-    position: relative;
-    display: grid; grid-template-columns: 1fr;
-    padding-bottom: var(--k-8);
+    display: flex; flex-direction: column;
+    padding-block: var(--k-5) var(--k-7);
   }
-  .kmd-hinh { order: -1; position: relative; height: clamp(250px, 66vw, 420px); }
-  .kmd-chu { padding-top: var(--k-6); }
-
-  .kmd h1 { max-width: 15ch; margin-bottom: var(--k-5); }
+  .kmd h1 { max-width: 15ch; margin: 0 0 var(--k-5); }
   /* ch đo theo chữ số Latin: 15ch chỉ chứa 8–9 chữ Hangul — tiếng Hàn đo bằng em. Cỡ chữ thì
      như vi / en (32 → 48px, không co riêng): cụm đầu "좋아하는 부위를 고르고," dài ~10,6em nên
      màn dưới 375px câu xuống bốn dòng như bản tiếng Việt, từ 375px là ba dòng. */
   .kmd h1:lang(ko) { max-width: 12em; }
-  .kmd-dan { margin: 0 0 var(--k-6); }
+  .kmd-dan { margin: 0 0 var(--k-5); }
   .kmd-nut { margin-bottom: var(--k-6); }
+  .kmd-hinh { margin-bottom: var(--k-6); }
+
+  /* Ảnh và dải tagline là một khối: ảnh bo hai góc trên, dải đỏ bo hai góc dưới. */
+  .kmd-hinh :global(.anh) { border-radius: var(--bo-anh) var(--bo-anh) 0 0; }
+  .kmd-khau-hieu {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 2px .9em;
+    margin: 0; padding: var(--k-3) var(--k-4);
+    border-radius: 0 0 var(--bo-anh) var(--bo-anh);
+    background: var(--do); color: var(--kem);
+    font-size: clamp(14px, 0.57vw + 11.8px, 20px); font-weight: 800; line-height: 1.3;
+    letter-spacing: .08em; text-transform: uppercase;
+  }
+  .kmd-khau-hieu span { white-space: nowrap; }
 
   .kmd-thong-tin {
     list-style: none; margin: 0; padding: 0;
@@ -132,56 +126,44 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
   }
   .kmd-loi-len > span { display: inline-block; }
 
-  /* --- Artwork khi chưa có ảnh: tagline xếp ba dòng như biển trang 7 ------- */
-  .kmd-artwork { position: absolute; inset: 0; color: var(--kem); --net-ve: var(--kem); }
-  .kmd-khau-hieu {
-    position: absolute; left: 0; bottom: var(--k-6); margin: 0;
-    display: grid; gap: 2px;
-    font-weight: 800; text-transform: uppercase; letter-spacing: -.01em; line-height: .98;
-    font-size: clamp(34px, 9vw, 76px); color: var(--kem);
-  }
-  .kmd-khau-hieu span:last-child { color: var(--kem-dam); }
-  .kmd-steak { width: clamp(110px, 30vw, 230px); right: 4%; top: 12%; transform: rotate(14deg); opacity: .95; }
-  .kmd-la-1 { width: clamp(70px, 16vw, 130px); right: 42%; top: 8%; transform: rotate(-24deg); }
-  .kmd-la-2 { width: clamp(46px, 10vw, 84px); right: 30%; bottom: 6%; transform: rotate(32deg); }
-  .kmd-tem {
-    position: absolute; width: clamp(78px, 18vw, 140px); height: auto;
-    right: 4%; bottom: 7%; transform: rotate(-10deg);
+  /* --- Điện thoại rất nhỏ: ảnh ngay sau câu chính ------------------------------ */
+  @media (max-width: 359.98px) {
+    .kmd-dau { order: -2; }
+    .kmd-hinh { order: -1; }
   }
 
-  /* --- Có ảnh --------------------------------------------------------------- */
-  .kmd-anh { position: absolute; inset: var(--k-5) 0 var(--k-5); display: grid; place-items: center; }
-  .kmd-anh :global(.anh) { width: 100%; max-height: 100%; box-shadow: 0 30px 60px -30px rgba(21, 16, 8, .6); }
-  .kmd-khau-hieu-nho { display: none; }
+  /* --- Từ 600px: ảnh ngang 4:3, không rộng quá cột chữ đọc được ------------------ */
+  @media (min-width: 600px) {
+    .kmd-luoi { padding-block: var(--k-6) var(--k-7); }
+  }
 
-  /* --- Màn rộng: hai cột, mảng đỏ nửa phải --------------------------------- */
+  /* --- Máy tính: chữ trái, ảnh phải; dòng địa điểm thành hàng ngang phía dưới --- */
   @media (min-width: 900px) {
-    .kmd-tam { inset: 0 0 0 auto; width: 44%; height: auto; }
     .kmd-luoi {
-      grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
-      gap: var(--k-7);
-      min-height: min(calc(100svh - var(--cao-dau)), 860px);
-      align-items: center;
-      padding-block: var(--k-8);
+      display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); column-gap: var(--k-7);
+      /* Hai hàng 1fr trên và dưới cột chữ: khối hình cao hơn thì cột chữ tự nằm giữa. */
+      grid-template-rows: 1fr auto auto auto 1fr auto;
+      padding-block: var(--k-7) var(--k-6);
     }
-    .kmd-hinh { order: 0; height: 100%; min-height: 520px; }
-    .kmd-chu { padding-top: 0; }
-    /* Cột artwork ở 900px chỉ rộng ~360px: tagline và tem co theo bề rộng CỘT (container
-       query), không theo cửa sổ — không thì tem tròn đè lên "GRILL IT." / "LOVE IT.".
-       Giữ tiền tố .kmd-artwork: .kmd-khau-hieu-nho của nhánh có ảnh cũng mang lớp .kmd-khau-hieu. */
-    .kmd-artwork { inset: 0 calc(-1 * var(--le)) 0 var(--k-6); container-type: inline-size; }
-    .kmd-khau-hieu { left: 0; bottom: var(--k-7); }
-    .kmd-artwork .kmd-khau-hieu { font-size: clamp(40px, 13cqi, 84px); }
-    .kmd-steak { right: 6%; top: 8%; }
-    .kmd-la-1 { right: 48%; top: 4%; }
-    .kmd-tem { right: 6%; bottom: 7%; }
-    .kmd-artwork .kmd-tem { width: clamp(78px, 24cqi, 140px); }
-    .kmd-la-2 { right: 4%; bottom: 34%; }
-    /* Ảnh nằm vắt qua mép mảng đỏ: nửa trên kem, nửa trên vân mỡ. */
-    .kmd-anh { inset: 12% -4% 12% -12%; }
-    .kmd-khau-hieu-nho {
-      display: grid; position: absolute; left: auto; right: 0; bottom: -2%;
-      font-size: clamp(26px, 2.4vw, 38px); text-align: right;
+    .kmd-dau { grid-area: 2 / 1; }
+    .kmd-dan { grid-area: 3 / 1; margin-bottom: var(--k-6); }
+    .kmd-nut { grid-area: 4 / 1; margin-bottom: 0; }
+    .kmd-hinh { grid-area: 1 / 2 / 6 / 3; align-self: center; margin-bottom: 0; }
+    .kmd-thong-tin {
+      grid-area: 6 / 1 / 7 / 3;
+      margin-top: var(--k-7); padding-top: var(--k-5); border-top: 1px solid var(--vien);
+      /* Cột địa chỉ co lại được (câu chỉ đường xuống dòng theo vế), cột trạng thái giữ ít nhất 14em — không bị ép thành cột chữ hẹp. */
+      grid-template-columns: minmax(0, max-content) minmax(14em, 1fr) max-content; gap: 0 var(--k-6); align-items: center;
     }
+    .kmd-thong-tin > li:first-child { grid-area: 1 / 1; }
+    .kmd-loi-len { grid-area: 2 / 1; margin-top: -6px; }
+    .kmd-ngay { grid-area: 1 / 2; }
+    .kmd-trang-thai { grid-area: 1 / 2 / 3 / 3; }
+    .kmd-ngay ~ .kmd-trang-thai { grid-area: 2 / 2; }
+    .kmd-theo-doi { grid-area: 1 / 3 / 3 / 4; }
+  }
+  @media (min-width: 1200px) {
+    .kmd-luoi { column-gap: var(--k-8); }
+    .kmd-thong-tin { column-gap: var(--k-7); }
   }
 </style>
