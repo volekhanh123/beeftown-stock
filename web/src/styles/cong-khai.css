@@ -78,7 +78,7 @@
   --co-h3:    clamp(18px, 0.19vw + 17.26px, 20px);
   --co-h2:    clamp(26px, 0.95vw + 22.3px, 36px);
   --co-h1:    clamp(32px, 1.8vw + 25px, 48px);
-  --co-so:    clamp(52px, 5vw + 28px, 104px);
+  --co-so:    clamp(44px, 2.29vw + 35.1px, 68px);   /* số thứ tự của ba bước: 44px (390px) → 68px (1440px) */
 
   /* Khoảng cách: 4 · 8 · 12 · 16 · 24 · 32 · 48 · 64 · 96 · 128 */
   --k-1: 4px;  --k-2: 8px;  --k-3: 12px; --k-4: 16px; --k-5: 24px;
