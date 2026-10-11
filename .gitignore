@@ -27,6 +27,10 @@
 # Quy trình kiểm thử: hướng dẫn cho mọi phiên Claude, CI, mẫu PR, mẫu báo lỗi.
 # Thiếu dòng mở thì file chỉ nằm trên máy người viết — test-quy-trinh.mjs bắt chuyện này.
 !/CLAUDE.md
+# AGENTS.md: cùng quy trình, cho Codex và các agent không phải Claude (kèm quy tắc rà soát PR).
+# THUONG-HIEU.md: bảng màu thương hiệu đã chốt và phần website chưa đổi theo.
+!/AGENTS.md
+!/THUONG-HIEU.md
 !/.github/workflows/*.yml
 !/.github/pull_request_template.md
 !/.github/ISSUE_TEMPLATE/*.yml
@@ -103,7 +107,17 @@
 # File dữ liệu lưu từ cân: có mật khẩu WiFi và lịch sử bán hàng
 *.TMS
 *.tms
-.claude/
+# Cấu hình Claude trên máy (settings.local.json, bộ nhớ…): chặn mọi thứ BÊN TRONG .claude/ ở mọi
+# cấp. Viết "**/.claude/**" chứ không "/.claude/": chặn cả thư mục thì không mở lại được file nào
+# bên trong — mà skill dùng chung của dự án phải mở (mục ngay dưới).
+**/.claude/**
+# Skill dùng chung của dự án — hướng dẫn cho mọi phiên Claude, như CLAUDE.md. Mở TỪNG skill, chỉ
+# file .md: skill mới vẫn bị chặn cho tới khi có dòng mở ở đây (test-quy-trinh.mjs nhắc). Skill riêng
+# của một người để ở ~/.claude/skills/, không ở đây. Các dòng này BẮT BUỘC đứng sau **/.claude/**.
+!/.claude/skills/
+!/.claude/skills/thiet-ke-beeftown/
+!/.claude/skills/thiet-ke-beeftown/**/
+!/.claude/skills/thiet-ke-beeftown/**/*.md
 Du lieu nghien cuu/
 
 # Kết quả build và bộ nhớ đệm — sinh lại được bằng npm run build,

@@ -10,7 +10,7 @@ Trang công khai của Beeftown. Astro 7 chạy trên Cloudflare Workers, đọc
 
 **Trang này phải đúng và đủ ngay cả khi chưa có database nào.**
 
-Chạy thử mà không cấu hình gì cả: trang chủ vẫn có logo, khẩu hiệu, descriptor, câu chính, ba bước, quầy chọn bò và cách đọc nhãn khay, cả bữa, đi cùng nhóm, khối tầng 3 với địa chỉ cố định và cầu thang bộ, câu hỏi thường gặp, dòng trạng thái; trang Thực đơn có phần Bò tại quầy và lời giới thiệu theo nhóm món; trang Đến Beeftown, Hỏi bàn, Tuyển dụng đều đủ. Không số điện thoại giả, không ảnh kho, không nút dẫn đi đâu cả. Giao diện và lý do của nó: [`THIET-KE.md`](THIET-KE.md).
+Chạy thử mà không cấu hình gì cả: trang chủ vẫn có logo, khẩu hiệu, descriptor, câu chính, ba bước, quầy chọn bò và cách đọc nhãn khay, cả bữa, đi cùng nhóm, khối tầng 3 với địa chỉ cố định và câu chỉ đường (lối vào riêng cạnh GS25, thang máy), câu hỏi thường gặp, dòng trạng thái; trang Thực đơn có phần Bò tại quầy và lời giới thiệu theo nhóm món; trang Đến Beeftown, Hỏi bàn, Tuyển dụng đều đủ. Không số điện thoại giả, không ảnh kho, không nút dẫn đi đâu cả. Giao diện và lý do của nó: [`THIET-KE.md`](THIET-KE.md).
 
 Đó **không phải** cách xử lý lỗi. Đó là trạng thái mặc định của thiết kế, và là phép thử của cả hệ thống.
 
@@ -21,7 +21,7 @@ Hệ quả cụ thể:
 | Khi chưa công bố | Trang làm gì |
 |---|---|
 | Facebook | Không hiện nút "Theo dõi Beeftown". Nút dẫn tới hư không tệ hơn không có nút. Trang Hỏi bàn khi form đóng vẫn nói khách nhắn qua Facebook, nhưng không có link đoán. |
-| Địa chỉ (`dia_chi_hien_thi`) | Hiện địa chỉ cố định **Tầng 3, 11-21 Hàm Nghi, phường Sài Gòn, TP.HCM** (`DIA_CHI_NHA_HANG` trong `lib/chu.ts`, Khánh chốt 06/10/2026), luôn kèm câu cầu thang bộ, không có thang máy cho khách. JSON-LD luôn khai địa chỉ này. Bản công bố trong `/noi-bo` thay vào khi có. |
+| Địa chỉ (`dia_chi_hien_thi`) | Hiện địa chỉ cố định **Tầng 3, 63 Hồ Tùng Mậu, TP.HCM** (`DIA_CHI_NHA_HANG` trong `lib/chu.ts`, Khánh quyết 07/10 và 09/10/2026), luôn kèm câu chỉ đường "Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3." (`loiLen`; chữ của câu là Claude đề xuất, chờ Khánh duyệt). Không ghi tên phường: chưa có giấy xác nhận. JSON-LD luôn khai địa chỉ này. **Bản công bố trong `/noi-bo` thay vào khi có** — ở mọi chỗ in địa chỉ nhà hàng, kể cả JSON-LD; bản công bố còn ghi địa chỉ khác thì trang hiện địa chỉ khác đó, nên đổi địa điểm là phải xem lại ô này (màn Nội dung, nhóm Liên hệ). Dòng địa chỉ pháp nhân ở chân trang là chữ trên giấy đăng ký (`PHAP_NHAN`), không đi theo ô này. |
 | Google Maps | Không nút "Chỉ đường", JSON-LD không khai `hasMap`. Không nhúng bản đồ, không tự dựng link Maps từ địa chỉ. |
 | Hotline | Không hiện nút gọi, và JSON-LD không khai `telephone`. |
 | Giờ phục vụ | Không hiện giờ, và không khai `openingHoursSpecification` — Google đưa giờ này lên kết quả tìm kiếm, khai sai là dẫn khách tới cửa đóng. |
@@ -49,8 +49,8 @@ Mở http://localhost:4321. Không cần Supabase.
 | `npm run kiem-tra` | Kiểm tra kiểu dữ liệu (`astro check`) |
 | `npm run deploy` | **Cổng kiểm thử** (`kiem-tra/truoc-deploy.mjs`: chỉ commit đã có CI xanh) → quét chữ cấm → build → đẩy lên Cloudflare |
 | `npm run deploy:khan-cap` | Như trên nhưng bỏ qua cổng kiểm thử — chỉ khi khẩn cấp |
-| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 21 trang công khai ở 360 / 390 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, vùng chạm ≥ 44px, tương phản, câu cầu thang bộ, menu gọn chạy cả khi tắt JavaScript; form không bao giờ báo thành công khi chưa ghi được; trang hỏi bàn không hứa "nhà hàng gọi lại" khi form đóng; trang 404 (mã 404, đúng thứ tiếng, link về `/`, `/en`, `/ko` — nhóm này chạy cả với `-- --url`). Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
-| `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), mô tả và đoạn mở đầu trang hỏi bàn khi form mở / đóng, bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit); `-- --chi 3,6` chỉ chạy vài nhóm |
+| `npm run thu-trinh-duyet` | Kiểm thử bằng trình duyệt thật (Chromium): 21 trang công khai ở 320 / 360 / 390 / 768 / 800 / 1024 / 1366 / 1440px — một `h1`, ảnh đủ kích thước và alt, tương phản, thành phần và khung trang (`kiem-tra/do-giao-dien.mjs`: vùng chạm ≥ 48px, đầu trang 64 / 80px, bộ chọn ngôn ngữ, không nền trắng, nút, thẻ, hàng câu hỏi ≥ 56px, biểu tượng 24px, chữ 16/24px và h1 32 → 48px, chân trang chữ ≥ 14px), địa điểm (câu chỉ đường đúng từng chữ, JSON-LD, không còn địa chỉ nào khác ngoài dòng pháp nhân, không ghi phường hay quận, không chữ về cầu thang bộ — mẫu tìm chữ sai ở `kiem-tra/mau-dia-diem.mjs`), menu gọn chạy cả khi tắt JavaScript và đi lại được bằng bàn phím (Enter, Tab, Esc) — có JavaScript thì có lớp phủ tối và trang phía sau đứng yên, tắt JavaScript thì trang vẫn cuộn được; câu hỏi thường gặp mở / đóng bằng bàn phím; màn cảm ứng không giữ màu di chuột sau khi chạm; máy có thanh cuộn kiểu cổ điển mở danh mục không xô lệch trang; form không bao giờ báo thành công khi chưa ghi được; trang hỏi bàn không hứa "nhà hàng gọi lại" khi form đóng; trang 404 (mã 404, đúng thứ tiếng, link về `/`, `/en`, `/ko` — nhóm này chạy cả với `-- --url`); đường dẫn lạ dưới `/noi-bo` khi chưa đăng nhập về trang đăng nhập (đã đăng nhập thì hiện trang 404 nội bộ — kiểm ở `crm/test/test-noi-bo-khong-co.mjs`). Luôn build **không database** (đặt rỗng `PUBLIC_SUPABASE_*`, kể cả khi máy có sẵn hai biến này) — `npm run quet` cũng vậy |
+| `npm run thu-day-du` | Kiểm thử trang công khai ở trạng thái **đã nối database** (`kiem-tra/thu-day-du.mjs`): bật Supabase giả `kiem-tra/gia-supabase.mjs` cùng `astro dev`, rồi thử trạng thái đầy đủ (Facebook, Maps, thực đơn đã công bố, form mở), mô tả và đoạn mở đầu trang hỏi bàn khi form mở / đóng, bấm gửi hai lần (chỉ một yêu cầu), database báo lỗi 500, mạng đứt giữa chừng (không bao giờ "đã nhận", dữ liệu đã gõ còn nguyên), địa chỉ đã công bố trong `/noi-bo` (bản công bố tới được mọi chỗ in địa chỉ, màn đầu bỏ vế phường), thành phần của form hỏi bàn và form nộp hồ sơ (ô một dòng, kể cả ô ngày, cao đúng 48px nền Cream; ô giờ đang chọn; câu lỗi màu `#890607`). Thêm `-- --chup` để chụp mọi trang ở 360 / 390 / 768 / 1024 / 1440px vào `kiem-tra/anh-chup/` (không commit); `-- --chi 3,6` chỉ chạy vài nhóm |
 
 **Cổng deploy.** `npm run deploy` chỉ đưa lên commit mà GitHub Actions đã chạy xanh: nó hỏi kết quả
 workflow "Kiểm thử" của commit đang deploy bằng lệnh `gh`. Cài một lần trên máy deploy:
@@ -371,7 +371,7 @@ Vai kho **không** thấy dữ liệu CRM (khách hàng, đặt bàn, điểm) �
 
 ## Zalo (`/noi-bo/zalo`)
 
-Gửi tin Zalo ZBS cho khách: **ZBS-01** xác nhận đặt bàn (ngay khi khách đặt trên web), **ZBS-02** nhắc lịch (trước giờ hẹn 2 tiếng), và tin chăm sóc gửi theo **chiến dịch** bấm tay. Database ở `crm/supabase/migrations/0046_*`, `0047_*` (đầu file 0047 liệt kê mọi RPC).
+Gửi tin Zalo ZBS cho khách: **ZBS-01** xác nhận đặt bàn (khi nhân viên bấm "Đã gọi xác nhận" ở `/noi-bo/dat-ban` — yêu cầu khách vừa gửi chưa nhận tin Zalo nào, `0063`), **ZBS-02** nhắc lịch (trước giờ hẹn 2 tiếng, chỉ đặt bàn đã xác nhận), và tin chăm sóc gửi theo **chiến dịch** bấm tay. Database ở `crm/supabase/migrations/0046_*`, `0047_*` (đầu file 0047 liệt kê mọi RPC).
 
 | Màn | Ai | Việc |
 |---|---|---|
@@ -424,7 +424,7 @@ Refresh token của Zalo **dùng một lần**: mỗi lần làm mới, Zalo tr�
 
 ### Chế độ thử → thật
 
-Mặc định `zalo_cau_hinh.che_do = 'thu'`: mọi tin gửi kèm `mode: "development"` — Zalo chỉ giao cho **tài khoản quản trị của OA / App**, khách thật không nhận gì và (theo chuẩn ZNS) không tính phí. Thử: bật gửi ở chế độ thử, duyệt + bật tự động ZBS-01, đặt một bàn trên web bằng SĐT của một quản trị viên OA → trong 5 phút phải nhận tin, và `/noi-bo/zalo` ghi "Đã gửi". Ổn rồi mới chuyển **Chế độ → Thật**. Tin lỗi mã `-126` ở chế độ thử thường nghĩa là số nhận không phải quản trị viên.
+Mặc định `zalo_cau_hinh.che_do = 'thu'`: mọi tin gửi kèm `mode: "development"` — Zalo chỉ giao cho **tài khoản quản trị của OA / App**, khách thật không nhận gì và (theo chuẩn ZNS) không tính phí. Thử: bật gửi ở chế độ thử, duyệt + bật tự động ZBS-01, đặt một bàn trên web bằng SĐT của một quản trị viên OA, vào `/noi-bo/dat-ban` bấm "Đã gọi xác nhận" → trong 5 phút phải nhận tin (trước khi bấm thì không được nhận gì), và `/noi-bo/zalo` ghi "Đã gửi". Ổn rồi mới chuyển **Chế độ → Thật**. Tin lỗi mã `-126` ở chế độ thử thường nghĩa là số nhận không phải quản trị viên.
 
 Kiểm thử: `node crm/test/test-zalo.mjs` (database) và `node crm/test/test-zalo-web.mjs` (phần web, fetch giả — không gọi Zalo thật).
 
@@ -474,7 +474,7 @@ Vai `may_messenger` **không** đọc / ghi được bảng CRM hay kho nào; n�
 2. developers.facebook.com → tạo App loại **Business** → thêm sản phẩm **Messenger** → nối App với Trang, tạo Page Access Token → cài `META_APP_SECRET`, `META_PAGE_TOKEN`, `META_VERIFY_TOKEN` (và đủ các bí mật còn lại — thiếu cái nào thì bước xác minh nhận 503).
 3. App → Messenger → **Webhooks**: *Callback URL* `https://beeftown.vn/hook/messenger` (màn `/noi-bo/messenger` in sẵn), *Verify token* = `META_VERIFY_TOKEN` → **Verify and save**. Đăng ký cho Trang ba trường: **`messages`**, **`messaging_postbacks`**, **`message_echoes`**.
 4. Chủ vào `/noi-bo/messenger`: bật bot, sửa lời chào, bấm **Cài nút Bắt đầu + menu Messenger** (gọi Messenger Profile API: `get_started`, `greeting` ≤ 160 ký tự, `persistent_menu` = 5 mục của menu chính). Bấm lại mỗi lần đổi lời chào.
-5. Nhắn thử Trang bằng tài khoản có vai trò trong App (trước khi được duyệt, chỉ những người này nhắn được với bot): đặt một bàn, tra rồi hủy nó, bấm Gặp nhân viên. Đặt bàn qua bot hiện ở `/noi-bo/dat-ban` như đặt trên web; tin Zalo ZBS-01 tự gửi như thường.
+5. Nhắn thử Trang bằng tài khoản có vai trò trong App (trước khi được duyệt, chỉ những người này nhắn được với bot): đặt một bàn, tra rồi hủy nó, bấm Gặp nhân viên. Đặt bàn qua bot hiện ở `/noi-bo/dat-ban` như đặt trên web; tin Zalo ZBS-01 tự gửi khi nhân viên bấm "Đã gọi xác nhận", như đặt trên web.
 
 ### Xin quyền `pages_messaging` (App Review)
 

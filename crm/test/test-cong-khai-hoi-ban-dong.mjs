@@ -36,11 +36,12 @@ const { chu, NGON_NGU } = await nap('chu.ts');
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — TRANG HỎI BÀN KHI FORM ĐÓNG');
 
-// Câu mô tả cũ của ba trang (trước 07/10/2026) — chép tay: lúc form mở, câu này phải còn nguyên.
+// Câu mô tả của ba trang trên main khi form mở — chép tay: lúc form mở, câu này phải còn nguyên.
+// (Địa chỉ theo main từ 11/10/2026: Tầng 3, 63 Hồ Tùng Mậu — PR #63–#67.)
 const MO_TA_KHI_MO = {
-  vi: 'Hỏi bàn tại Beeftown, nhà hàng chuyên bò ở tầng 3, 11-21 Hàm Nghi, TP.HCM. Bạn gửi yêu cầu, nhà hàng kiểm tra rồi gọi lại để xác nhận.',
-  en: 'Ask for a table at Beeftown, a beef specialty restaurant on Floor 3, 11-21 Hàm Nghi, Ho Chi Minh City. Send a request and we will call you back to confirm.',
-  ko: '호치민시 Hàm Nghi 11-21, 3층에 있는 소고기 전문점 Beeftown에 테이블 문의를 보내 주세요. 매장에서 확인한 뒤 전화드려요.',
+  vi: 'Hỏi bàn tại Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. Bạn gửi yêu cầu, nhà hàng kiểm tra rồi gọi lại để xác nhận.',
+  en: 'Ask for a table at Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. Send a request and we will call you back to confirm.',
+  ko: '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown에 테이블 문의를 보내 주세요. 매장에서 확인한 뒤 전화드려요.',
 };
 // Lời hứa của form: gửi yêu cầu trên trang, nhà hàng gọi lại.
 const HUA_FORM = {
@@ -82,7 +83,7 @@ await nhom('2 · FORM ĐÓNG: MÔ TẢ KHÔNG HỨA FORM, CHỈ SANG FACEBOOK NH
        dong?.match(HUA_FORM[nn])?.[0]);
     ok(`[${nn}] Form đóng → mô tả chỉ sang Facebook, như thẻ "chưa mở" (${t.datBanChuaMoGiaiThich.slice(0, 40)}…)`,
        /Facebook/.test(dong ?? '') && /Facebook/.test(t.datBanChuaMoGiaiThich), dong);
-    ok(`[${nn}] Form đóng → mô tả vẫn có địa chỉ 11-21 Hàm Nghi`, /11-21 Hàm Nghi|Hàm Nghi 11-21/.test(dong ?? ''), dong);
+    ok(`[${nn}] Form đóng → mô tả vẫn có địa chỉ 63 Hồ Tùng Mậu`, /63 Hồ Tùng Mậu|Hồ Tùng Mậu 63/.test(dong ?? ''), dong);
     ok(`[${nn}] Câu nằm trong chu.ts: moTaHoiBan / moTaHoiBanChuaMo`,
        t.moTaHoiBan === moTaTrangHoiBan(nn, true) && t.moTaHoiBanChuaMo === dong);
   }

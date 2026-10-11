@@ -16,7 +16,8 @@
  *   · giá, ngày mở, giờ phục vụ, số điện thoại — chưa chốt, thuộc cổng nội dung
  *   · "rẻ", lợi thế giá, "best beef in town", "số một", "duy nhất"
  *   · Wagyu, MB9, số ngày ủ, nguồn gốc hay grade thịt
- *   · phòng riêng, chỗ gửi xe — chưa xác nhận
+ *   · phòng riêng, chỗ gửi xe, lối cho xe lăn — chưa xác nhận
+ *   · tên phường của nhà hàng — chưa có giấy xác nhận (xem DIA_CHI_PHAN)
  *   · kinh nghiệm 25 năm của John và Sang gán cho Khánh
  *   · than hoa, than củi — nhà hàng nướng bằng vỉ gas đặt trên bàn
  */
@@ -50,23 +51,38 @@ export const PHAP_NHAN = {
 } as const;
 
 /**
- * ĐỊA CHỈ NHÀ HÀNG — Khánh chốt 06/10/2026: hiện cố định trên trang công khai,
- * kể cả khi chưa nối database. Khóa dia_chi_hien_thi của cổng nội dung (nếu được
- * công bố) thay cho chuỗi này.
+ * ĐỊA CHỈ NHÀ HÀNG — Tầng 3, 63 Hồ Tùng Mậu. Khánh quyết: địa điểm 63 Hồ Tùng Mậu
+ * (07/10/2026); quán ở tầng 3, khách vào bằng lối vào riêng ngay cạnh GS25 (09/10/2026).
+ * Địa chỉ hiện cố định trên trang công khai, kể cả khi chưa nối database. Khóa
+ * dia_chi_hien_thi của cổng nội dung (nếu được công bố) thay cho chuỗi này.
  *
  * Giữ tiếng Việt ở cả ba thứ tiếng (lang="vi" khi in ra): đây là chữ khách đưa
- * cho tài xế và gõ vào bản đồ. Phần cần dịch — "Tầng 3", cầu thang bộ — nằm ở
- * khóa tang3 / cauThangBo bên dưới.
+ * cho tài xế và gõ vào bản đồ. Phần cần dịch — "Tầng 3", câu chỉ đường — nằm ở
+ * khóa tang3 / loiLen bên dưới. Trong câu văn tiếng Anh ghi "Floor 3, 63 Hồ Tùng
+ * Mậu", tiếng Hàn ghi "Hồ Tùng Mậu 63, 3층".
  *
- * Nhà hàng chiếm trọn tầng 3, khách lên bằng CẦU THANG BỘ, KHÔNG có thang máy
- * cho khách. Câu đó phải dễ thấy TRƯỚC khi khách gửi yêu cầu hỏi bàn.
+ * KHÔNG CÓ TÊN PHƯỜNG: phường của 63 Hồ Tùng Mậu chưa có giấy xác nhận, nên không
+ * ghi ở đâu cả — trang, thẻ mô tả, JSON-LD. Địa chỉ này KHÔNG liên quan tới
+ * PHAP_NHAN.diaChi ở trên. Khi có giấy, sửa CÙNG LÚC:
+ *   · mã: thêm khóa phuong vào đây, ghép vào DIA_CHI_NHA_HANG, khai addressLocality
+ *     trong diaChiCoCauTruc() (lib/trang-cong-khai.ts);
+ *   · kiểm thử: crm/test/test-cong-khai-dia-diem.mjs nhóm 4, test-cong-khai-trang-chu.mjs
+ *     nhóm 4, luật PHUONG_QUAN và bảng câu thử trong web/kiem-tra/mau-dia-diem.mjs (cả
+ *     test-cong-khai-cau-chu.mjs nhóm 7 chạy luật đó), kiểm tra JSON-LD trong
+ *     web/kiem-tra/trinh-duyet.mjs, địa chỉ thử trong web/kiem-tra/thu-day-du.mjs nhóm 7;
+ *   · tài liệu: THUONG-HIEU.md mục 6, AGENTS.md mục "Địa điểm", web/THIET-KE.md mục 10.
+ *
+ * Điều đã biết về đường đến chỉ có: lối vào riêng ngay cạnh GS25 (Khánh quyết
+ * 09/10/2026), khách đi thang máy lên tầng 3 (Khánh xác nhận 11/10/2026: địa điểm có
+ * thang máy). Nút thang máy ghi số mấy cho tầng của quán thì CHƯA BIẾT — không viết số
+ * nút. Không viết thêm chỗ gửi xe, mốc đường, số bước, khoảng cách, lối cho xe lăn khi
+ * chưa có người xác nhận.
  */
 export const DIA_CHI_PHAN = {
-  duong: 'Tầng 3, 11-21 Hàm Nghi',
-  phuong: 'phường Sài Gòn',
+  duong: 'Tầng 3, 63 Hồ Tùng Mậu',
   thanhPho: 'TP.HCM',
 } as const;
-export const DIA_CHI_NHA_HANG = `${DIA_CHI_PHAN.duong}, ${DIA_CHI_PHAN.phuong}, ${DIA_CHI_PHAN.thanhPho}`;
+export const DIA_CHI_NHA_HANG = `${DIA_CHI_PHAN.duong}, ${DIA_CHI_PHAN.thanhPho}`;
 
 /**
  * Mọi ngôn ngữ của trang công khai. Thứ tự này cũng là thứ tự cột của
@@ -90,8 +106,8 @@ const VI = {
   // --- Phần nền, luôn hiện --------------------------------------------------
   // Dùng trong tiêu đề trang khi cổng nội dung chưa có tiêu đề đã duyệt.
   nganhHang: 'Nhà hàng chuyên bò',
-  diaChiNgan: '11-21 Hàm Nghi, TP.HCM',
-  moTaNgan: 'Nhà hàng chuyên bò ở tầng 3, 11-21 Hàm Nghi, TP.HCM. Chọn bò tại quầy, cùng cả bàn nướng và thưởng thức.',
+  diaChiNgan: '63 Hồ Tùng Mậu, TP.HCM',
+  moTaNgan: 'Nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. Chọn bò tại quầy, cùng cả bàn nướng và thưởng thức.',
   // Câu chính của trang chủ (h1) — brief 06/10/2026.
   // \u00a0: "bạn thích", "cả bàn" không bị tách hai dòng ở màn hẹp.
   cauChinh: 'Chọn phần bò bạn\u00a0thích, rồi cùng cả\u00a0bàn thưởng thức.',
@@ -142,13 +158,19 @@ const VI = {
   denBeeftown: 'Đến Beeftown',
   moMenu: 'Danh mục',
   dongMenu: 'Đóng danh mục',
+  // Nhãn của nút danh mục khi bảng đang mở (màn hẹp): ngắn, để nút không dài hơn lúc đóng.
+  dong: 'Đóng',
   veTrangChu: 'Beeftown — về trang chủ',
   thongTin: 'Thông tin',
   xoaDuLieu: 'Xóa dữ liệu',
 
   // --- Đường đến ------------------------------------------------------------
   tang3: 'Tầng 3',
-  cauThangBo: 'Khách lên tầng 3 bằng cầu thang bộ — không có thang máy cho khách.',
+  // Câu chỉ đường — đi kèm địa chỉ ở mọi chỗ in địa chỉ. Hai điều trong câu là đã biết (lối vào
+  // riêng ngay cạnh GS25: Khánh quyết 09/10/2026; có thang máy: Khánh xác nhận 11/10/2026). CHỮ của
+  // câu ở cả ba thứ tiếng là Claude đề xuất, CHỜ KHÁNH DUYỆT. Đổi chữ thì sửa cùng lúc các bản chép tay
+  // trong crm/test/test-cong-khai-dia-diem.mjs, test-cong-khai-cau-chu.mjs, web/kiem-tra/trinh-duyet.mjs.
+  loiLen: 'Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3.',
   xemDuongLen: 'Xem đường lên tầng 3',
   saoChepDiaChi: 'Sao chép địa chỉ',
   daSaoChep: 'Đã sao chép địa chỉ',
@@ -181,10 +203,10 @@ const VI = {
   // chọn theo form có dựng được không. Form không dựng được thì KHÔNG hứa "gửi yêu cầu, nhà hàng gọi
   // lại" (kiểm site thật 07/10/2026): nói đúng điều thẻ "chưa mở" nói — nhắn qua Facebook.
   moTaHoiBan:
-    'Hỏi bàn tại Beeftown, nhà hàng chuyên bò ở tầng 3, 11-21 Hàm Nghi, TP.HCM. ' +
+    'Hỏi bàn tại Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM. ' +
     'Bạn gửi yêu cầu, nhà hàng kiểm tra rồi gọi lại để xác nhận.',
   moTaHoiBanChuaMo:
-    'Beeftown, nhà hàng chuyên bò ở tầng 3, 11-21 Hàm Nghi, TP.HCM, chưa mở hỏi bàn trực tuyến. ' +
+    'Beeftown, nhà hàng chuyên bò ở tầng 3, 63 Hồ Tùng Mậu, TP.HCM, chưa mở hỏi bàn trực tuyến. ' +
     'Muốn hỏi bàn, bạn nhắn cho Beeftown qua Facebook.',
 
   // --- Trang không có (404, pages/404.astro) --------------------------------
@@ -216,8 +238,8 @@ type Bo = Record<keyof typeof VI, string>;
 
 const EN: Bo = {
   nganhHang: THUONG_HIEU.descriptor,
-  diaChiNgan: '11-21 Hàm Nghi, Ho Chi Minh City',
-  moTaNgan: 'A beef specialty restaurant on Floor 3, 11-21 Hàm Nghi, Ho Chi Minh City. Pick your beef at the counter, then grill and share it at your table.',
+  diaChiNgan: '63 Hồ Tùng Mậu, Ho Chi Minh City',
+  moTaNgan: 'A beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. Pick your beef at the counter, then grill and share it at your table.',
   cauChinh: 'Pick the cut you like, then enjoy it with the whole table.',
   gioiThieu:
     'Our beef is cut and packed in trays at the counter. See it for yourself, read ' +
@@ -258,12 +280,13 @@ const EN: Bo = {
   denBeeftown: 'Visit',
   moMenu: 'Pages',
   dongMenu: 'Close pages',
+  dong: 'Close',
   veTrangChu: 'Beeftown — home',
   thongTin: 'Information',
   xoaDuLieu: 'Data deletion',
 
   tang3: 'Floor 3',
-  cauThangBo: 'Guests reach Floor 3 by the stairs — there is no guest lift.',
+  loiLen: 'Use our own entrance, right next to GS25, and take the lift to Floor 3.',
   xemDuongLen: 'How to get to Floor 3',
   saoChepDiaChi: 'Copy address',
   daSaoChep: 'Address copied',
@@ -287,10 +310,10 @@ const EN: Bo = {
   datBanChuaMoGiaiThich:
     'To ask about a table, message Beeftown on Facebook — we will check and get back to you.',
   moTaHoiBan:
-    'Ask for a table at Beeftown, a beef specialty restaurant on Floor 3, 11-21 Hàm Nghi, Ho Chi Minh City. ' +
+    'Ask for a table at Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City. ' +
     'Send a request and we will call you back to confirm.',
   moTaHoiBanChuaMo:
-    'Beeftown, a beef specialty restaurant on Floor 3, 11-21 Hàm Nghi, Ho Chi Minh City, is not taking ' +
+    'Beeftown, a beef specialty restaurant on Floor 3, 63 Hồ Tùng Mậu, Ho Chi Minh City, is not taking ' +
     'table requests online yet. To ask about a table, message Beeftown on Facebook.',
 
   khongCoTieuDeTrang: 'Page not found — Beeftown',
@@ -307,12 +330,12 @@ const EN: Bo = {
   boQuaToiNoiDung: 'Skip to main content',
 };
 
-// Tiếng Hàn: văn lịch sự 해요체 từ đầu đến cuối. Tên đường Hàm Nghi để nguyên
+// Tiếng Hàn: văn lịch sự 해요체 từ đầu đến cuối. Tên đường Hồ Tùng Mậu để nguyên
 // chữ Việt vì đó là chữ khách sẽ thấy trên biển đường và trên bản đồ.
 const KO: Bo = {
   nganhHang: '소고기 전문점',
-  diaChiNgan: '호치민시 Hàm Nghi 11-21',
-  moTaNgan: '호치민시 Hàm Nghi 11-21, 3층에 있는 소고기 전문점이에요. 정육 코너에서 고기를 고르고 테이블에서 함께 구워 드세요.',
+  diaChiNgan: '호치민시 Hồ Tùng Mậu 63',
+  moTaNgan: '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점이에요. 정육 코너에서 고기를 고르고 테이블에서 함께 구워 드세요.',
   // \u00a0: "함께 온 사람들과" (định ngữ + danh từ) không bị tách hai dòng.
   cauChinh: '좋아하는 부위를 고르고, 함께\u00a0온\u00a0사람들과 즐겨 보세요.',
   gioiThieu:
@@ -354,12 +377,13 @@ const KO: Bo = {
   denBeeftown: '오시는 길',
   moMenu: '바로가기',
   dongMenu: '바로가기 닫기',
+  dong: '닫기',
   veTrangChu: 'Beeftown 홈으로',
   thongTin: '안내',
   xoaDuLieu: '데이터 삭제',
 
   tang3: '3층',
-  cauThangBo: '3층까지는 계단으로 올라오셔야 해요. 손님용 엘리베이터는 없어요.',
+  loiLen: 'GS25 바로 옆 전용 입구로 들어와 엘리베이터로 3층까지 올라오세요.',
   xemDuongLen: '3층 오시는 길 보기',
   saoChepDiaChi: '주소 복사',
   daSaoChep: '주소를 복사했어요',
@@ -383,10 +407,10 @@ const KO: Bo = {
   datBanChuaMoGiaiThich:
     '테이블 문의는 Facebook으로 Beeftown에 메시지를 보내 주세요. 확인한 뒤 연락드릴게요.',
   moTaHoiBan:
-    '호치민시 Hàm Nghi 11-21, 3층에 있는 소고기 전문점 Beeftown에 테이블 문의를 보내 주세요. ' +
+    '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown에 테이블 문의를 보내 주세요. ' +
     '매장에서 확인한 뒤 전화드려요.',
   moTaHoiBanChuaMo:
-    '호치민시 Hàm Nghi 11-21, 3층에 있는 소고기 전문점 Beeftown은 아직 온라인 테이블 문의를 받지 않아요. ' +
+    '호치민시 Hồ Tùng Mậu 63, 3층에 있는 소고기 전문점 Beeftown은 아직 온라인 테이블 문의를 받지 않아요. ' +
     '테이블 문의는 Facebook으로 Beeftown에 메시지를 보내 주세요.',
 
   khongCoTieuDeTrang: '페이지를 찾을 수 없어요 — Beeftown',

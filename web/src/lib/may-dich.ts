@@ -102,7 +102,9 @@ Follow every rule:
    - bộ phận thịt → meat department / 정육 파트
    - sảnh (bộ phận sảnh) → floor / 홀; bếp → kitchen / 주방
    - Quận 1, TP.HCM → District 1, Ho Chi Minh City / 호치민시 1군
-   - Cầu Ông Lãnh → Cau Ong Lanh / Cầu Ông Lãnh (keep Latin letters in Korean)
+   - Hồ Tùng Mậu → Hồ Tùng Mậu / Hồ Tùng Mậu (a street name: keep the Vietnamese spelling, also in Korean)
+   - Tầng 3 → Floor 3 / 3층
+   - thang máy → lift / 엘리베이터
    - đặt bàn, yêu cầu đặt bàn, hỏi bàn → table request / 테이블 문의. It is only a request, never a confirmed booking: never write "confirmed", "booked", "확정" or "완료".
    - bao cơm → meals provided / 식사 제공
    - hợp đồng lao động, bảo hiểm theo quy định → labour contract, social insurance as required by law / 근로계약, 법정 사회보험

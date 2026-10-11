@@ -1,17 +1,33 @@
 ---
 /**
- * ĐẦU TRANG — logo gốc, bốn mục điều hướng, đổi ngôn ngữ
+ * ĐẦU TRANG — logo gốc, bốn mục điều hướng, bộ chọn ngôn ngữ
  *
  * Logo là vector tách nguyên từ PDF nhận diện (bản đỏ trên kem, trang 3) — không
  * gõ lại chữ BEEFTOWN bằng phông nào. Đầu trang nền kem nên dùng đúng biến thể
- * dành cho nền kem; không đặt khối kem lạc lõng lên nền tối.
+ * dành cho nền kem; không đặt khối kem lạc lõng lên nền tối. Logo rộng 160px
+ * (màn rộng: 172px): guideline ghi lockup tối thiểu 160px, hẹp hơn thì dùng brandmark.
+ * Màn dưới 360px (điện thoại rất nhỏ, hoặc máy tính phóng to 400 %) không đủ chỗ cho
+ * lockup 160px cạnh nút danh mục — thanh đổi sang brandmark đầu bò 48px.
  *
  * Điều hướng theo brief: Trải nghiệm / Thực đơn / Đến Beeftown / Hỏi bàn. Hỏi bàn
  * là nút đỏ — hành động chính của cả trang. Tuyển dụng và giấy tờ ở chân trang.
  *
- * Màn hẹp: <details> — mở / đóng được KHÔNG cần JavaScript. Script bên dưới chỉ
- * thêm: Esc để đóng, bấm ra ngoài hoặc bấm một mục thì đóng, phóng to cửa sổ
- * qua mốc màn rộng thì đóng.
+ * Ba bề rộng (thanh cao 64px; từ 1080px cao 80px — --cao-dau trong cong-khai.css):
+ *   · dưới 768px   logo | nút "Danh mục". Hỏi bàn (nút chính) và ngôn ngữ nằm trong bảng.
+ *   · từ 768px     logo | ngôn ngữ | Hỏi bàn | nút "Danh mục" (bảng chỉ còn ba trang).
+ *   · từ 1080px    logo | ba trang | ngôn ngữ | Hỏi bàn. Không còn nút "Danh mục".
+ *
+ * Bộ chọn ngôn ngữ in ĐỦ ba thứ tiếng theo một thứ tự cố định, mỗi cái ghi bằng chính
+ * thứ tiếng đó. Thứ tiếng đang xem không phải link: in đậm và có nét gạch dưới
+ * (aria-current="true") — nhận ra được mà không cần nhìn màu.
+ *
+ * Màn hẹp: <details> — mở / đóng được KHÔNG cần JavaScript (bấm, Enter, phím cách);
+ * đang mở thì nút đổi thành nút đóng có chữ. Script bên dưới chỉ thêm: Esc để đóng,
+ * bấm ra ngoài hoặc bấm một mục thì đóng, Tab ra khỏi mục cuối thì đóng, phóng to
+ * cửa sổ qua mốc màn rộng thì đóng. Lớp phủ tối dưới bảng và việc khoá cuộn trang CHỈ
+ * có khi script đã chạy (script gắn data-co-script lên <details>): không script thì
+ * không gì đóng được danh mục sau khi khách bấm một link neo, nên trang phải cuộn được
+ * và không có lớp phủ nào che nó.
  */
 import { chu, duongDanTuongUng } from '../lib/chu';
 import { diaChiSauTang, dieuHuong } from '../lib/trang-cong-khai';
@@ -22,6 +38,7 @@ interface Props {
   ngonNgu: NgonNgu;
   noiDung: NoiDung;
   duongDan: string;
+  /** Đủ ba thứ tiếng, kể cả thứ tiếng đang xem, theo thứ tự cố định (layouts/Trang.astro). */
   doiNgonNgu: { nn: NgonNgu; url: string; ten: string }[];
 }
 const { ngonNgu, noiDung: nd, duongDan, doiNgonNgu } = Astro.props;
@@ -37,7 +54,8 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
 <header class="dau-trang">
   <div class="khung dt-hang">
     <a class="dt-logo" href={duongDanTuongUng('/', ngonNgu)} aria-label={t.veTrangChu}>
-      <img src="/thuong-hieu/logo-ngang-do.svg" width="446" height="124" alt="" />
+      <img class="dt-logo-day-du" src="/thuong-hieu/logo-ngang-do.svg" width="446" height="124" alt="" />
+      <img class="dt-logo-gon" src="/thuong-hieu/dau-bo-do.svg" width="116" height="117" alt="" />
     </a>
 
     <nav class="dt-nav" aria-label={t.dieuHuongChinh}>
@@ -52,7 +70,9 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
     <div class="dt-phai">
       <ul class="dt-ngon-ngu" aria-label={t.chonNgonNgu}>
         {doiNgonNgu.map(n => (
-          <li><a class="doi-ngon-ngu" href={n.url} lang={n.nn} hreflang={n.nn}>{n.ten}</a></li>
+          <li>{n.nn === ngonNgu
+            ? <span class="doi-ngon-ngu" aria-current="true" lang={n.nn}>{n.ten}</span>
+            : <a class="doi-ngon-ngu" href={n.url} lang={n.nn} hreflang={n.nn}>{n.ten}</a>}</li>
         ))}
       </ul>
       <a class="nut nut-chinh nut-nho dt-hoi-ban" href={hoiBan.url}
@@ -62,22 +82,31 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
         <summary>
           <BieuTuong ten="menu" class="mg-mo" />
           <BieuTuong ten="dong" class="mg-dong" />
-          <span>{t.moMenu}</span>
+          <span class="mg-mo">{t.moMenu}</span>
+          <span class="mg-dong">{t.dong}</span>
         </summary>
         <div class="mg-bang">
           <nav aria-label={t.dieuHuongChinh}>
             <ul class="mg-muc">
-              {muc.map(m => (
-                <li><a href={m.url} aria-current={m !== traiNghiem && hienTai(m.duong) ? 'page' : undefined}>{m.chu}</a></li>
+              <li><a href={traiNghiem.url}>{traiNghiem.chu}</a></li>
+              {trang.map(m => (
+                <li><a href={m.url} aria-current={hienTai(m.duong) ? 'page' : undefined}>{m.chu}</a></li>
               ))}
+              <li class="mg-hoi-ban"><a class="nut nut-chinh" href={hoiBan.url}
+                    aria-current={hienTai(hoiBan.duong) ? 'page' : undefined}>{hoiBan.chu}</a></li>
             </ul>
           </nav>
+          <div class="mg-ngon-ngu-khoi">
+            <p class="mg-nhan" id="mg-nhan-ngon-ngu">{t.chonNgonNgu}</p>
+            <ul class="mg-ngon-ngu" aria-labelledby="mg-nhan-ngon-ngu">
+              {doiNgonNgu.map(n => (
+                <li>{n.nn === ngonNgu
+                  ? <span class="doi-ngon-ngu" aria-current="true" lang={n.nn}>{n.ten}</span>
+                  : <a class="doi-ngon-ngu" href={n.url} lang={n.nn} hreflang={n.nn}>{n.ten}</a>}</li>
+              ))}
+            </ul>
+          </div>
           <p class="mg-dia-chi"><BieuTuong ten="ghim" /><span><strong>{t.tang3}</strong> · <span lang="vi">{diaChiSauTang(nd)}</span></span></p>
-          <ul class="mg-ngon-ngu" aria-label={t.chonNgonNgu}>
-            {doiNgonNgu.map(n => (
-              <li><a class="doi-ngon-ngu" href={n.url} lang={n.nn} hreflang={n.nn}>{n.ten}</a></li>
-            ))}
-          </ul>
         </div>
       </details>
     </div>
@@ -85,10 +114,13 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
 </header>
 
 <script>
-  // Thêm vào <details>: Esc đóng (trả tiêu điểm về nút), bấm ra ngoài / bấm một mục
-  // thì đóng, cửa sổ rộng qua mốc màn rộng thì đóng. Không có script: vẫn mở/đóng được.
+  // Thêm vào <details>: Esc đóng (trả tiêu điểm về nút), bấm ra ngoài / bấm lớp phủ / bấm một
+  // mục thì đóng, cửa sổ rộng qua mốc màn rộng thì đóng. Không có script: vẫn mở/đóng được,
+  // không lớp phủ, trang không khoá cuộn.
   const menu = document.querySelector<HTMLDetailsElement>('.menu-gon');
   if (menu) {
+    // Từ đây mới có thứ đóng được danh mục: CSS chỉ hiện lớp phủ và khoá cuộn khi thấy thuộc tính này.
+    menu.dataset.coScript = '';
     const nut = menu.querySelector('summary');
     const dong = (traTieuDiem: boolean) => {
       if (!menu.open) return;
@@ -96,6 +128,19 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
       if (traTieuDiem) nut?.focus();
     };
     document.addEventListener('keydown', e => { if (e.key === 'Escape') dong(true); });
+    // Khoá cuộn làm thanh cuộn kiểu cổ điển (Windows, chuột cắm vào Mac: 15px) biến mất — cả trang xô sang
+    // phải rồi xô lại lúc đóng. Đo bề rộng thanh cuộn NGAY TRƯỚC khi mở (click chạy trước khi <details> đổi
+    // trạng thái; Enter và phím cách trên nút cũng phát click) rồi ghi vào biến CSS: quy tắc khoá cuộn bù
+    // lại đúng chừng đó. Máy có thanh cuộn nổi (điện thoại, macOS mặc định) đo ra 0px.
+    nut?.addEventListener('click', () => {
+      if (!menu.open) document.documentElement.style.setProperty('--rong-thanh-cuon', `${innerWidth - document.documentElement.clientWidth}px`);
+    });
+    // Bấm lên lớp phủ mờ dưới bảng: lớp phủ là phần tử giả của chính <details>, nên cú bấm có đích là
+    // <details>. Nghe NGAY trên <details>, không chờ sự kiện nổi lên document: Safari trên iPhone không
+    // phát click cho phần tử không bấm được nếu chính nó (hay cha nó) không có trình nghe click hoặc
+    // cursor: pointer — lớp phủ có cả hai.
+    menu.addEventListener('click', e => { if (e.target === menu) dong(false); });
+    // Bấm ra ngoài <details> (logo, khoảng trống của thanh đầu trang).
     document.addEventListener('click', e => {
       if (menu.open && !menu.contains(e.target as Node)) dong(false);
     });
@@ -113,8 +158,11 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
 </script>
 
 <style>
+  /* Thanh cao đúng --cao-dau (64px; từ 1080px là 80px), tính cả nét kẻ dưới: phần dính
+     của trang (thanh tab thực đơn, cột dính) và scroll-padding-top đọc cùng biến đó. */
   .dau-trang {
     position: sticky; top: 0; z-index: 40;
+    height: var(--cao-dau);
     background: var(--kem);
     border-bottom: 1px solid var(--vach);
   }
@@ -122,87 +170,156 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
      cho nó cuộn đi cùng trang (scroll-padding-top đổi theo ở cong-khai.css). */
   @media (max-height: 500px) { .dau-trang { position: relative; } }
   .dt-hang {
-    display: flex; align-items: center; gap: var(--k-5);
-    min-height: var(--cao-dau);
+    display: flex; align-items: center; gap: var(--k-3);
+    height: 100%;
   }
-  .dt-logo { display: flex; align-items: center; min-height: 44px; flex: none; }
-  .dt-logo img { height: 34px; width: auto; }
+  /* Vùng chạm 48px; logo rộng 160px — mức tối thiểu của lockup trong guideline. */
+  .dt-logo { display: flex; align-items: center; min-height: var(--cham); flex: none; }
+  .dt-logo-day-du { width: 160px; height: auto; }
+  .dt-logo-gon { display: none; width: 48px; height: auto; }
+  /* Dưới 360px: brandmark thay lockup (guideline: hẹp hơn 160px thì dùng brandmark, tối thiểu 48px). */
+  @media (max-width: 359.98px) {
+    .dt-logo-day-du { display: none; }
+    .dt-logo-gon { display: block; }
+  }
 
   .dt-nav, .dt-ngon-ngu, .dt-hoi-ban { display: none; }
-  .dt-phai { display: flex; align-items: center; gap: var(--k-4); margin-left: auto; }
+  .dt-phai { display: flex; align-items: center; gap: var(--k-3); margin-left: auto; }
 
   ul { list-style: none; margin: 0; padding: 0; }
 
+  /* --- Bộ chọn ngôn ngữ ------------------------------------------------------ */
+  /* Ba thứ tiếng cùng cỡ, cùng màu chữ chính (không xám, không nhỏ). Thứ tiếng đang xem:
+     chữ đậm + nét gạch đỏ 2px — hai dấu hiệu không phụ thuộc màu; thứ tiếng khác là link,
+     di chuột mới hiện gạch mảnh. */
+  .doi-ngon-ngu {
+    display: inline-flex; align-items: center; min-height: var(--cham);
+    padding-inline: var(--k-2);
+    font-size: 15px; font-weight: 400; line-height: 1.2;
+    color: var(--than); text-decoration: none; white-space: nowrap;
+  }
+  @media (hover: hover) {
+    a.doi-ngon-ngu:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .35em; }
+  }
+  .doi-ngon-ngu[aria-current='true'] {
+    font-weight: 700; color: var(--do-sau);
+    text-decoration: underline; text-decoration-color: var(--do);
+    text-decoration-thickness: 2px; text-underline-offset: .35em;
+  }
+  @media (forced-colors: active) {
+    .doi-ngon-ngu[aria-current='true'] { text-decoration-color: Highlight; text-decoration-thickness: 3px; }
+  }
+  .dt-ngon-ngu { gap: 0; }
+
+  /* --- Từ 768px: ngôn ngữ và Hỏi bàn lên thanh --------------------------------- */
+  @media (min-width: 768px) {
+    .dt-ngon-ngu { display: flex; }
+    .dt-hoi-ban { display: inline-flex; }
+  }
+  /* 768–899px bản tiếng Anh ("Ask for a table" + "Pages") vừa khít thanh: giữ khe 12px, từ 900px mới nới. */
+  @media (min-width: 900px) { .dt-phai { gap: var(--k-4); } }
+
   /* --- Màn rộng ------------------------------------------------------------ */
   @media (min-width: 1080px) {
-    .dt-logo img { height: 42px; }
+    .dt-hang { gap: var(--k-5); }
+    .dt-logo-day-du { width: 172px; }
     .dt-nav { display: block; margin-inline: auto; }
-    .dt-nav ul { display: flex; gap: clamp(20px, 2.4vw, 40px); }
+    .dt-nav ul { display: flex; gap: clamp(20px, 2.2vw, 36px); }
     .dt-nav a {
-      display: inline-flex; align-items: center; min-height: 44px;
-      font-weight: 600; font-size: 15px; text-decoration: none; color: var(--than);
-      border-bottom: 2px solid transparent; transition: border-color var(--nhanh), color var(--nhanh);
+      display: inline-flex; align-items: center; min-height: var(--cham);
+      font-weight: 600; font-size: 16px; text-decoration: none; color: var(--than);
+      border-block: 2px solid transparent; transition: border-color var(--nhanh), color var(--nhanh);
     }
-    .dt-nav a:hover { border-bottom-color: currentColor; }
+    @media (hover: hover) { .dt-nav a:hover { border-bottom-color: currentColor; } }
     .dt-nav a[aria-current='page'] { color: var(--do-sau); border-bottom-color: var(--do); }
     /* Tương phản cao (Windows): màu bị ép về màu hệ thống, gạch dưới trong suốt cũng hiện —
        mục đang mở phải khác bằng thứ không phải màu. */
     @media (forced-colors: active) {
-      .dt-nav a { border-bottom-color: Canvas; }
+      .dt-nav a { border-block-color: Canvas; }
       .dt-nav a[aria-current='page'] { border-bottom-color: Highlight; border-bottom-width: 3px; }
     }
-    .dt-ngon-ngu { display: flex; gap: var(--k-4); }
-    .dt-hoi-ban { display: inline-flex; }
     .menu-gon { display: none; }
   }
 
-  .doi-ngon-ngu {
-    display: inline-flex; align-items: center; min-height: 44px;
-    font-size: 13px; font-weight: 600; letter-spacing: .04em;
-    color: var(--muc-nhat); text-decoration: none;
-  }
-  .doi-ngon-ngu:hover { color: var(--than); text-decoration: underline; }
-
   /* --- Màn hẹp: danh mục gọn ----------------------------------------------- */
+  /* Nút danh mục theo hệ nút phụ: nền Cream, chữ và viền Beef Red, cao 48px. Đang mở thì
+     thành nút đóng: dấu × và chữ "Đóng", nền kem đậm, chữ và viền đỏ đậm — vẫn là nút phụ,
+     để nút chính duy nhất trong tầm mắt là "Hỏi bàn". */
   .menu-gon summary {
-    display: inline-flex; align-items: center; gap: 8px;
-    min-height: 44px; padding: 0 14px;
-    border: 1.5px solid var(--than); border-radius: var(--bo);
-    font-weight: 700; font-size: 15px; cursor: pointer; list-style: none;
-    background: var(--kem);
+    display: inline-flex; align-items: center; gap: var(--k-2);
+    min-height: var(--cham); padding: 0 var(--k-4) 0 var(--k-3);
+    border: 1.5px solid var(--do); border-radius: var(--bo);
+    font-weight: 700; font-size: 15px; line-height: 1.2; cursor: pointer; list-style: none;
+    background: var(--kem); color: var(--do);
+    transition: background-color var(--nhanh), color var(--nhanh);
   }
   .menu-gon summary::-webkit-details-marker { display: none; }
   .menu-gon summary span { white-space: nowrap; }
-  @media (max-width: 359px) {
-    .menu-gon summary { padding: 0 10px; gap: 6px; }
-    .dt-hang { gap: var(--k-3); }
+  .menu-gon summary :global(svg) { width: 24px; height: 24px; flex: none; }
+  .menu-gon summary :global(.mg-dong), .menu-gon[open] summary :global(.mg-mo) { display: none; }
+  .menu-gon[open] summary :global(svg.mg-dong) { display: block; }
+  .menu-gon[open] summary :global(span.mg-dong) { display: inline; }
+  .menu-gon summary:active, .menu-gon[open] summary { background: var(--kem-dam); color: var(--do-dam); border-color: var(--do-dam); }
+  /* Di chuột: chỉ máy có chuột — trên màn cảm ứng, chạm đóng xong nút phải về lại màu lúc đóng. */
+  @media (hover: hover) {
+    .menu-gon summary:hover { background: var(--kem-dam); color: var(--do-dam); border-color: var(--do-dam); }
   }
-  .menu-gon summary :global(svg) { width: 20px; height: 20px; }
-  .menu-gon :global(.mg-dong), .menu-gon[open] :global(.mg-mo) { display: none; }
-  .menu-gon[open] :global(.mg-dong) { display: block; }
-  .menu-gon[open] summary { background: var(--than); color: var(--kem); }
 
+  /* Bảng danh mục: nền Cream, kết thúc bằng một nét Beef Red; phía dưới là lớp phủ tối để
+     thấy rõ bảng đang nằm trên trang — không dùng bóng đổ. Lớp phủ bấm được (đóng danh mục)
+     nên có con trỏ bàn tay, và chỉ hiện khi script đã chạy ([data-co-script]). */
   .mg-bang {
-    position: absolute; inset-inline: 0; top: 100%;
+    position: absolute; inset-inline: 0; top: calc(100% + 1px); z-index: 1;
     max-height: calc(100svh - var(--cao-dau));
-    overflow-y: auto;
-    padding: var(--k-3) var(--le) var(--k-6);
+    overflow-y: auto; overscroll-behavior: contain;
+    padding: var(--k-2) var(--le) var(--k-5);
     background: var(--kem);
-    border-bottom: 1px solid var(--vach);
-    box-shadow: 0 18px 30px -18px rgba(30, 22, 14, .35);
+    border-bottom: 2px solid var(--do);
   }
-  .mg-muc a {
+  .menu-gon[data-co-script][open]::before {
+    content: ''; position: fixed; inset: var(--cao-dau) 0 0;
+    background: rgba(21, 16, 8, .5);
+    cursor: pointer;
+  }
+  /* Đang mở thì trang phía sau đứng yên: vuốt trong bảng không kéo trang chạy theo. Thanh cuộn kiểu
+     cổ điển biến mất khi khoá cuộn — bù lại đúng bề rộng của nó (script đo trước khi mở) để trang không
+     xô lệch. Không dùng scrollbar-gutter: stable: nó chừa 15px cả trên trình duyệt không có thanh cuộn
+     nào chiếm chỗ (trình duyệt của kiểm thử và của máy chụp ảnh). */
+  @media (max-width: 1079.98px) and (min-height: 501px) {
+    :global(html:has(body.ck .menu-gon[data-co-script][open])) { overflow: hidden; padding-right: var(--rong-thanh-cuon, 0px); }
+  }
+  /* Màn thấp: đầu trang không dính, lớp phủ cố định sẽ lệch khỏi bảng — bỏ lớp phủ. */
+  @media (max-height: 500px) { .menu-gon[data-co-script][open]::before { content: none; } }
+
+  .mg-muc a:not(.nut) {
     display: flex; align-items: center; min-height: 56px;
-    font-size: 22px; font-weight: 700; letter-spacing: -.01em;
+    font-size: 20px; font-weight: 700; letter-spacing: -.01em;
     text-decoration: none; color: var(--than);
     border-bottom: 1px solid var(--vach);
   }
-  .mg-muc li:last-child a { color: var(--do-sau); }
-  .mg-muc a[aria-current='page'] { text-decoration: underline; text-decoration-color: var(--do); text-underline-offset: .25em; }
-  .mg-dia-chi {
-    display: flex; gap: 10px; align-items: flex-start;
-    margin: var(--k-5) 0 var(--k-2); font-size: 15px;
+  .mg-muc a[aria-current='page']:not(.nut) {
+    color: var(--do-sau);
+    text-decoration: underline; text-decoration-color: var(--do); text-decoration-thickness: 2px; text-underline-offset: .3em;
   }
-  .mg-dia-chi :global(svg) { width: 20px; height: 20px; flex: none; color: var(--do); margin-top: 2px; }
-  .mg-ngon-ngu { display: flex; gap: var(--k-5); }
+  /* Hỏi bàn: nút chính, rộng hết bảng — hành động chính của trang, không lẫn với ba link trên. */
+  .mg-hoi-ban { margin-top: var(--k-4); }
+  .mg-hoi-ban .nut { width: 100%; }
+
+  .mg-ngon-ngu-khoi {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 0 var(--k-3);
+    margin-top: var(--k-4); padding-top: var(--k-2);
+    border-top: 1px solid var(--vach);
+  }
+  .mg-nhan { margin: 0; font-size: 14px; font-weight: 600; color: var(--muc-nhat); }
+  .mg-ngon-ngu { display: flex; flex-wrap: wrap; margin-left: calc(-1 * var(--k-2)); }
+  .mg-dia-chi {
+    display: flex; gap: var(--k-2); align-items: flex-start;
+    margin: var(--k-3) 0 0; font-size: 15px;
+  }
+  .mg-dia-chi :global(svg) { width: 24px; height: 24px; flex: none; color: var(--do); }
+  /* Từ 768px Hỏi bàn và ngôn ngữ đã ở trên thanh — bảng không lặp lại (đặt SAU các quy tắc
+     display ở trên, không thì bị chúng đè). */
+  @media (min-width: 768px) {
+    .mg-hoi-ban, .mg-ngon-ngu-khoi { display: none; }
+  }
 </style>

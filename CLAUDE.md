@@ -12,11 +12,16 @@ rà soát" *sau khi* tính năng đã gộp. Mục tiêu: chặn chúng *trướ
 | `crm/` | Database Supabase (`supabase/migrations/`) và **toàn bộ kiểm thử** (`test/`, chạy trên PGlite) | `crm/README.md` |
 | `can-app/` | Beeftown Cân (Windows `.exe`, Bun): gửi giá xuống cân TMA, máy quầy | `can-app/README.md` |
 
+Bảng màu thương hiệu đã chốt và phần website chưa đổi theo: `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
+
 Quy ước chung:
 - Tên hàm, biến, chú thích, tài liệu viết **tiếng Việt không tắt**, giống mã đang có.
 - `.gitignore` **chặn hết rồi mở từng cái** — file mới phải có dòng `!đường-dẫn` trong mục ĐƯỢC PHÉP,
   kiểm bằng `git status --short`. `test-quy-trinh.mjs` báo file mã nguồn bị chặn.
 - Trang công khai phải đúng và đủ **khi chưa có database** (CI build không có `.env`).
+- Việc giao diện, màu, câu chữ, ảnh, ấn phẩm: làm theo skill `.claude/skills/thiet-ke-beeftown/`
+  (tự nạp khi việc khớp mô tả). Mã đổi thì sửa skill cùng PR — `test-ky-nang-thiet-ke.mjs` bắt mã màu,
+  đường dẫn, tên biểu tượng, lớp CSS lệch; số đo và tên hàm thì tự giữ.
 
 ## Cài và chạy kiểm thử
 

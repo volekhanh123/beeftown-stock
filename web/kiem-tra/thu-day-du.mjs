@@ -30,7 +30,19 @@
  *      cả mô tả lẫn đoạn mở đầu không hứa "gửi yêu cầu, nhà hàng gọi lại" (kiểm site thật
  *      07/10/2026).
  *   5. Mọi trang công khai × (rong, day-du, dat-ban-dong) ở 360 và 1440 px: HTTP 200,
- *      không tràn ngang, không lỗi JavaScript.
+ *      không tràn ngang, không lỗi JavaScript; thành phần và khung trang đúng quy tắc
+ *      của đợt redesign (phép đo ở do-giao-dien.mjs — cùng bộ với trinh-duyet.mjs, nhưng
+ *      ở đây trang có form, nút Chỉ đường, kênh liên hệ).
+ *   7. dia-chi-cong-bo (khóa dia_chi_hien_thi đã công bố trong /noi-bo): bản công bố thay
+ *      địa chỉ cố định trong mã ở MỌI chỗ in địa chỉ nhà hàng — khối địa chỉ, chân trang,
+ *      câu hỏi thường gặp, bước 1 của trang Đến Beeftown, menu gọn, JSON-LD; màn đầu trang
+ *      chủ in bản đó và bỏ vế phường; dòng pháp nhân không đổi. Về lại kịch bản chưa công
+ *      bố địa chỉ thì trang in lại địa chỉ cố định.
+ *   8. Form hỏi bàn (day-du) và form nộp hồ sơ (tuyen-dung-mo) ở 390 và 1440 px: ô một
+ *      dòng (kể cả ô ngày) cao đúng 48px, ô nhiều dòng ≥ 48px, chữ 16px, nền Cream, viền
+ *      #7A7366; nhãn 14–16px đặt trên ô, không placeholder; thẻ form nền kem sau, không
+ *      nền trắng; ô giờ đang chọn nền Beef Red chữ Cream; gửi thiếu thì có câu lỗi bằng
+ *      chữ màu #890607 và tiêu điểm vào ô sai.
  *
  * Hỏng thì ảnh chụp nằm ở kiem-tra/anh-loi/day-du/ (CI tải lên cùng artifact của
  * trinh-duyet.mjs).
@@ -43,8 +55,9 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as cho } from 'node:timers/promises';
-import { batMayGia, LIEN_HE_THU, MON_MAU } from './gia-supabase.mjs';
+import { batMayGia, LIEN_HE_THU, MON_MAU, DIA_CHI_CONG_BO_THU } from './gia-supabase.mjs';
 import { timChuoiCam } from '../src/lib/chuoi-cam.js';
+import { doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
 
 const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ANH_LOI = join(WEB, 'kiem-tra', 'anh-loi', 'day-du');
@@ -55,7 +68,7 @@ const CHUP = process.argv.includes('--chup');
 
 // Câu chữ đọc từ chính thư viện của trang (Node ≥ 22.18 đọc thẳng .ts) — đổi chữ ở lib
 // thì phép thử đổi theo, không phải chép tay hai nơi.
-const { CAP_DUONG_DAN, NGON_NGU, chu, duongDanTuongUng, cauLoiDatabase } =
+const { CAP_DUONG_DAN, NGON_NGU, chu, duongDanTuongUng, cauLoiDatabase, DIA_CHI_NHA_HANG, PHAP_NHAN } =
   await import(pathToFileURL(join(WEB, 'src', 'lib', 'chu.ts')).href);
 const { NHAN_MON } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'thuc-don.ts')).href);
 const { congNgay } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'gio-vn.ts')).href);
@@ -546,11 +559,15 @@ try {
           p.on('console', m => { if (m.type() === 'error' && (m.location().url || goc).startsWith(goc)) loiJs.push(m.text()); });
           const r = await p.goto(goc + duong, { waitUntil: 'load', timeout: 60000 });
           const kq = await p.evaluate(() => ({ rong: document.documentElement.scrollWidth, khung: innerWidth }));
+          const gd = await p.evaluate(doGiaoDien);
+          const saiGd = Object.keys(PHEP_DO).flatMap(khoa => (gd[khoa] ?? ['không đo được']).map(c => `[${khoa}] ${c}`));
           const nhan = `${kichBan} ${duong} · ${rong}px`;
           const tot = [
             ok(`${nhan}: HTTP 200`, r?.status() === 200, `HTTP ${r?.status()}`),
             ok(`${nhan}: không tràn ngang`, kq.rong <= kq.khung + 1, `rộng ${kq.rong}px > khung ${kq.khung}px`),
             ok(`${nhan}: không lỗi JavaScript`, loiJs.length === 0, loiJs.slice(0, 3).join(' | ')),
+            ok(`${nhan}: thành phần và khung trang đúng quy tắc (${Object.keys(PHEP_DO).length} phép đo của do-giao-dien.mjs)`,
+               saiGd.length === 0, saiGd.slice(0, 5).join(' | ')),
           ];
           if (tot.includes(false)) {
             mkdirSync(ANH_LOI, { recursive: true });
@@ -561,6 +578,207 @@ try {
         await c.close();
       }
     }
+  });
+
+  // =========================================================================
+  // Địa chỉ trên trang có hai nguồn: bản công bố trong /noi-bo và, khi chưa công bố, địa chỉ cố định
+  // trong mã. Đổi địa chỉ trong /noi-bo mà một chỗ vẫn in bản trong mã thì một trang hiện hai địa chỉ.
+  await nhom('7 · ĐỊA CHỈ ĐÃ CÔNG BỐ (dia-chi-cong-bo) TỚI ĐƯỢC MỌI CHỖ IN ĐỊA CHỈ; MÀN ĐẦU BỎ VẾ PHƯỜNG', async () => {
+    const motDong = s => (s ?? '').replace(/\s+/g, ' ').trim();
+    const chuCua = async chon => motDong(await page.locator(chon).first().innerText().catch(() => ''));
+    const CONG_BO = DIA_CHI_CONG_BO_THU;
+    const SAU_TANG = CONG_BO.replace(/^Tầng 3, /, '');                // menu gọn in sau chữ "Tầng 3" đậm
+    const MAN_DAU = SAU_TANG.replace(', phường Thử', '');             // màn đầu: bản ngắn, bỏ vế phường
+    ok(`Địa chỉ thử "${CONG_BO}" khác địa chỉ cố định trong mã "${DIA_CHI_NHA_HANG}", và có một vế phường để thử`,
+       CONG_BO !== DIA_CHI_NHA_HANG && !CONG_BO.includes(DIA_CHI_NHA_HANG) && SAU_TANG !== CONG_BO && MAN_DAU !== SAU_TANG
+         && MAN_DAU === '63 Hồ Tùng Mậu, TP. Hồ Chí Minh');
+    const jsonLd = () => page.evaluate(() => {
+      try { return JSON.parse(document.querySelector('script[type="application/ld+json"]')?.textContent ?? 'null')?.address ?? null; }
+      catch { return null; }
+    });
+
+    mayGia.datKichBan('dia-chi-cong-bo');
+    for (const nn of NGON_NGU) {
+      const t = chu(nn);
+      const trangChu = duongDanTuongUng('/', nn);
+      await page.goto(goc + trangChu, { waitUntil: 'load' });
+      const manDau = await chuCua('main .kmd-dia-chi');
+      const khoi = await chuCua('main .lt3 .lt3-dc');
+      const chan = await chuCua('footer address p[lang="vi"]');
+      const ld = await jsonLd();
+      const chuChan = motDong(await chuTrang('footer'));
+      const tot = [
+        ok(`dia-chi-cong-bo ${trangChu}: màn đầu in "${t.tang3} · ${MAN_DAU}" — bản công bố, đã bỏ vế phường`,
+           manDau === `${t.tang3} · ${MAN_DAU}`, manDau),
+        ok(`dia-chi-cong-bo ${trangChu}: khối địa chỉ in nguyên bản công bố`, khoi === CONG_BO, khoi),
+        ok(`dia-chi-cong-bo ${trangChu}: chân trang in nguyên bản công bố`, chan === CONG_BO, chan),
+        ok(`dia-chi-cong-bo ${trangChu}: JSON-LD để cả bản công bố ở streetAddress, không thêm trường phường / thành phố`,
+           JSON.stringify(ld) === JSON.stringify({ '@type': 'PostalAddress', streetAddress: CONG_BO, addressCountry: 'VN' }), JSON.stringify(ld)),
+        ok(`dia-chi-cong-bo ${trangChu}: nút sao chép địa chỉ chép bản công bố`,
+           await page.locator('main [data-sao-chep]').first().getAttribute('data-sao-chep') === CONG_BO),
+        ok(`dia-chi-cong-bo ${trangChu}: cả trang không còn in địa chỉ cố định trong mã ("${DIA_CHI_NHA_HANG}")`,
+           !motDong(await chuTrang()).includes(DIA_CHI_NHA_HANG)),
+        ok(`dia-chi-cong-bo ${trangChu}: dòng địa chỉ pháp nhân không đổi theo bản công bố`, chuChan.includes(PHAP_NHAN.diaChi)),
+        ok(`dia-chi-cong-bo ${trangChu}: câu chỉ đường vẫn đi kèm địa chỉ ở màn đầu và chân trang`,
+           motDong(await chuTrang('main .kmd-loi-len')) === t.loiLen && chuChan.includes(t.loiLen)),
+      ];
+      // Câu hỏi thường gặp: mở câu "ở tầng mấy" rồi đọc.
+      const cauHoi = page.locator('main details').filter({ hasText: CONG_BO }).first();
+      tot.push(ok(`dia-chi-cong-bo ${trangChu}: câu hỏi thường gặp in bản công bố kèm câu chỉ đường`,
+        await cauHoi.count() === 1 && motDong(await cauHoi.evaluate(el => { el.open = true; return el.innerText; })).includes(`${CONG_BO}. ${t.loiLen}`)));
+      // Menu gọn (màn hẹp): sau chữ "Tầng 3" đậm là bản công bố, còn nguyên vế phường.
+      const menu = page.locator('details.menu-gon').first();
+      tot.push(ok(`dia-chi-cong-bo ${trangChu}: menu gọn in "${t.tang3} · ${SAU_TANG}"`,
+        await menu.count() === 1
+          && motDong(await menu.evaluate(el => { el.open = true; return el.querySelector('.mg-dia-chi')?.innerText ?? ''; })) === `${t.tang3} · ${SAU_TANG}`,
+        await menu.count() ? motDong(await menu.evaluate(el => el.querySelector('.mg-dia-chi')?.innerText ?? '')) : 'không thấy menu gọn'));
+      if (tot.includes(false)) await chupLoi(`dia-chi-cong-bo${trangChu}`);
+
+      const denBeeftown = duongDanTuongUng('/den-beeftown', nn);
+      await page.goto(goc + denBeeftown, { waitUntil: 'load' });
+      const tot2 = [
+        ok(`dia-chi-cong-bo ${denBeeftown}: khối "Địa chỉ và lối lên" in nguyên bản công bố`, await chuCua('main .lt3 .lt3-dc') === CONG_BO, await chuCua('main .lt3 .lt3-dc')),
+        ok(`dia-chi-cong-bo ${denBeeftown}: bước 1 in nguyên bản công bố sau "Địa chỉ đầy đủ"`,
+           (await chuCua('main .db-muc:nth-child(1) .db-chu p')).endsWith(CONG_BO), await chuCua('main .db-muc:nth-child(1) .db-chu p')),
+        ok(`dia-chi-cong-bo ${denBeeftown}: JSON-LD để cả bản công bố ở streetAddress`, (await jsonLd())?.streetAddress === CONG_BO, JSON.stringify(await jsonLd())),
+      ];
+      const hoiBan = duongDanTuongUng('/dat-ban', nn);
+      await page.goto(goc + hoiBan, { waitUntil: 'load' });
+      tot2.push(ok(`dia-chi-cong-bo ${hoiBan}: khối địa chỉ bản gọn in nguyên bản công bố`, await chuCua('main .lt3-gon .lt3-dc') === CONG_BO, await chuCua('main .lt3-gon .lt3-dc')));
+      if (tot2.includes(false)) await chupLoi(`dia-chi-cong-bo${denBeeftown}`);
+    }
+
+    // Gỡ bản công bố (về day-du: dia_chi_hien_thi là null) → trang in lại địa chỉ cố định trong mã, ở cùng các chỗ đó.
+    mayGia.datKichBan('day-du');
+    await page.goto(goc + '/', { waitUntil: 'load' });
+    ok(`day-du /: chưa công bố địa chỉ → màn đầu, khối địa chỉ, chân trang, JSON-LD in địa chỉ cố định "${DIA_CHI_NHA_HANG}"`,
+       await chuCua('main .kmd-dia-chi') === `${chu('vi').tang3} · ${DIA_CHI_NHA_HANG.replace(/^Tầng 3, /, '')}`
+         && await chuCua('main .lt3 .lt3-dc') === DIA_CHI_NHA_HANG && await chuCua('footer address p[lang="vi"]') === DIA_CHI_NHA_HANG
+         && DIA_CHI_NHA_HANG.startsWith((await jsonLd())?.streetAddress ?? '?') && !motDong(await chuTrang()).includes('phường Thử'),
+       [await chuCua('main .kmd-dia-chi'), await chuCua('main .lt3 .lt3-dc'), await chuCua('footer address p[lang="vi"]'), JSON.stringify(await jsonLd())].join(' | '));
+  });
+
+  // =========================================================================
+  // Bảng màu chép tay (THUONG-HIEU.md mục 1 và 4) — phép thử không đọc CSS của trang.
+  const MAU = { kem: 'rgb(240, 227, 208)', kemSau: 'rgb(235, 220, 198)', do: 'rgb(167, 12, 12)', doDam: 'rgb(137, 6, 7)' };
+  /** Đo ô nhập và nhãn của các form khớp `chon` (chạy TRONG trang). */
+  const doO = chon => {
+    const KEM = 'rgb(240, 227, 208)', VIEN = 'rgb(122, 115, 102)';
+    const hien = el => { const k = el.getBoundingClientRect(); return el.checkVisibility() && k.width > 0 && k.height > 0; };
+    const o = [...document.querySelectorAll(chon)]
+      .flatMap(f => [...f.querySelectorAll('input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]):not([type="file"]), select, textarea')])
+      .filter(e => hien(e) && !e.closest('[aria-hidden="true"]'));
+    const oSai = [], nhanSai = [];
+    for (const e of o) {
+      const cs = getComputedStyle(e), k = e.getBoundingClientRect(), ten = e.name || e.id;
+      // Ô một dòng (chữ, số điện thoại, ngày, ô chọn) cao ĐÚNG 48px — ô ngày của Chromium tự cao thêm 2px nếu
+      // không ghim chiều cao, đứng cạnh nút 48px thì lệch nhau. Ô nhiều dòng (textarea) thì từ 48px trở lên.
+      if (e.tagName === 'TEXTAREA' ? k.height < 47.5 : Math.abs(k.height - 48) > 0.5) {
+        oSai.push(`${ten} (${e.tagName.toLowerCase()}${e.type ? ` ${e.type}` : ''}) cao ${k.height.toFixed(1)}px`);
+      }
+      if (cs.fontSize !== '16px') oSai.push(`${ten} chữ ${cs.fontSize}`);
+      if (cs.backgroundColor !== KEM) oSai.push(`${ten} nền ${cs.backgroundColor}`);
+      if (cs.borderTopColor !== VIEN || cs.borderTopWidth !== '1px') oSai.push(`${ten} viền ${cs.borderTopWidth} ${cs.borderTopColor}`);
+      if (e.hasAttribute('placeholder')) nhanSai.push(`${ten} dùng placeholder`);
+      // Nhãn: <label for>, hoặc <span> đầu của <label> bọc ngoài ô (form nộp hồ sơ).
+      const nhan = (e.id && document.querySelector(`label[for="${CSS.escape(e.id)}"]`)) || e.closest('label')?.querySelector(':scope > span');
+      if (!nhan || !hien(nhan)) { nhanSai.push(`${ten} không có nhãn nhìn thấy`); continue; }
+      const co = parseFloat(getComputedStyle(nhan).fontSize);
+      if (co < 14 || co > 16) nhanSai.push(`nhãn của ${ten} cỡ ${co}px`);
+      if (nhan.getBoundingClientRect().bottom > k.top + 0.5) nhanSai.push(`nhãn của ${ten} không nằm trên ô`);
+    }
+    return { soO: o.length, coNgay: o.some(e => e.type === 'date'), oSai, nhanSai };
+  };
+
+  await nhom('8 · THÀNH PHẦN CỦA FORM Ở 390 VÀ 1440 PX: Ô NHẬP, Ô CHỌN GIỜ, THẺ, CÂU LỖI', async () => {
+    for (const rong of [390, 1440]) {
+      await page.setViewportSize({ width: rong, height: 900 });
+      const doTheoQuyTac = async nhan => {
+        // Con trỏ còn nằm ở chỗ vừa bấm trên trang trước: đưa nó ra góc và chờ hết chuyển màu (180ms),
+        // không thì nút nằm dưới con trỏ đang ở màu "di chuột" và bị đo nhầm.
+        await page.mouse.move(0, 0);
+        await cho(300);
+        const gd = await page.evaluate(doGiaoDien);
+        return Object.entries(PHEP_DO).map(([khoa, ten]) =>
+          ok(`${nhan}: ${ten}`, gd[khoa]?.length === 0, (gd[khoa] ?? ['không đo được']).slice(0, 4).join(' | ')));
+      };
+
+      mayGia.datKichBan('day-du');
+      for (const nn of NGON_NGU) {
+        const hoiBan = duongDanTuongUng('/dat-ban', nn);
+        // Bản nháp các nhóm trước để lại (họ tên, giờ đã chọn — giữ 15 phút) sẽ điền sẵn form: xóa rồi mới mở
+        // trang, để form ở đúng trạng thái của một khách vừa tới.
+        await page.goto(goc + hoiBan, { waitUntil: 'load' });
+        await page.evaluate(k => sessionStorage.removeItem(k), KHOA_LUU);
+        await page.goto(goc + hoiBan, { waitUntil: 'load' });
+        const nhan = `${hoiBan} · ${rong}px`;
+        const tot = await doTheoQuyTac(nhan);
+        const o = await page.evaluate(doO, 'form[data-hoi-ban], form[data-doi-ngay]');
+        tot.push(ok(`${nhan}: ${o.soO} ô nhập, ô chọn — ô một dòng (kể cả ô ngày) cao đúng 48px, chữ 16px, nền Cream, viền 1px #7A7366`,
+          o.soO >= 5 && o.coNgay && o.oSai.length === 0, `${o.coNgay ? '' : 'không thấy ô ngày · '}${o.oSai.slice(0, 4).join(' | ')}`));
+        tot.push(ok(`${nhan}: mỗi ô có nhãn 14–16px đặt trên ô, không ô nào dùng placeholder thay nhãn`,
+          o.nhanSai.length === 0, o.nhanSai.slice(0, 4).join(' | ')));
+        const nenThe = await page.locator('.hb-the').first().evaluate(el => getComputedStyle(el).backgroundColor);
+        tot.push(ok(`${nhan}: thẻ form nền kem sau #EBDCC6`, nenThe === MAU.kemSau, nenThe));
+
+        const chip = page.locator('form[data-hoi-ban] .hb-chip-o:has(input:not([disabled]))').first();
+        const doChip = () => chip.locator('span').evaluate(sp => {
+          const cs = getComputedStyle(sp);
+          return { nen: cs.backgroundColor, chu: cs.color, cao: sp.getBoundingClientRect().height, co: cs.fontSize };
+        });
+        const truoc = await doChip();
+        await chip.click();
+        await cho(300);   // chuyển màu 180ms
+        const sau = await doChip();
+        tot.push(ok(`${nhan}: ô giờ cao ≥ 48px, chữ 16px; chưa chọn nền Cream, đang chọn nền Beef Red chữ Cream`,
+          truoc.cao >= 47.5 && truoc.co === '16px' && truoc.nen === MAU.kem && sau.nen === MAU.do && sau.chu === MAU.kem,
+          JSON.stringify({ truoc, sau })));
+
+        // Gửi khi họ tên và số điện thoại còn trống: lỗi bằng chữ, sát ô, màu #890607.
+        await nutGui().click();
+        await cho(300);
+        const loi = await page.evaluate(() => ({
+          cau: [...document.querySelectorAll('form[data-hoi-ban] .loi-o')].filter(p => !p.hidden)
+            .map(p => ({ chu: p.textContent.trim(), mau: getComputedStyle(p).color })),
+          vien: [...document.querySelectorAll('form[data-hoi-ban] :is(input, select, textarea)[aria-invalid="true"]')]
+            .map(e => getComputedStyle(e).borderTopColor),
+          tieuDiem: (() => {
+            const a = document.activeElement, cs = getComputedStyle(a);
+            return { ten: a.getAttribute('name'), vong: cs.outlineStyle !== 'none' && parseFloat(cs.outlineWidth) >= 2 };
+          })(),
+        }));
+        tot.push(ok(`${nhan}: gửi thiếu họ tên và số điện thoại → 2 câu lỗi bằng chữ màu #890607, 2 ô sai viền #890607`,
+          loi.cau.length === 2 && loi.cau.every(c => c.chu.length > 5 && c.mau === MAU.doDam)
+            && loi.vien.length === 2 && loi.vien.every(v => v === MAU.doDam), JSON.stringify(loi)));
+        tot.push(ok(`${nhan}: tiêu điểm vào ô sai đầu tiên (họ tên), vòng focus nhìn thấy (≥ 2px)`,
+          loi.tieuDiem.ten === 'ho_ten' && loi.tieuDiem.vong, JSON.stringify(loi.tieuDiem)));
+        tot.push(ok(`${nhan}: form báo lỗi vẫn không có nền trắng, không tràn ngang`,
+          (await page.evaluate(doGiaoDien)).khongTrang.length === 0
+            && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)));
+        if (tot.includes(false)) await chupLoi(`thanh-phan${hoiBan}-${rong}`);
+      }
+
+      mayGia.datKichBan('tuyen-dung-mo');
+      for (const nn of NGON_NGU) {
+        const tuyenDung = duongDanTuongUng('/tuyen-dung', nn);
+        await page.goto(goc + tuyenDung, { waitUntil: 'load' });
+        const nhan = `tuyen-dung-mo ${tuyenDung} · ${rong}px`;
+        if (!ok(`${nhan}: có thẻ vị trí thật và form nộp hồ sơ`,
+                await page.locator('form.form-nop').count() === 1 && await page.locator('.the.vi-tri').count() === 2)) {
+          await chupLoi(`thanh-phan${tuyenDung}-${rong}`);
+          continue;
+        }
+        const tot = await doTheoQuyTac(nhan);
+        const o = await page.evaluate(doO, 'form.form-nop');
+        tot.push(ok(`${nhan}: ${o.soO} ô nhập, ô chọn — ô một dòng cao đúng 48px, chữ 16px, nền Cream, viền 1px #7A7366`,
+          o.soO >= 6 && o.oSai.length === 0, o.oSai.slice(0, 4).join(' | ')));
+        tot.push(ok(`${nhan}: mỗi ô có nhãn 14–16px đặt trên ô, không ô nào dùng placeholder thay nhãn`,
+          o.nhanSai.length === 0, o.nhanSai.slice(0, 4).join(' | ')));
+        if (tot.includes(false)) await chupLoi(`thanh-phan${tuyenDung}-${rong}`);
+      }
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    mayGia.datKichBan('day-du');
   });
 
   // =========================================================================

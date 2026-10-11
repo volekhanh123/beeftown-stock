@@ -18,7 +18,7 @@
  *      layout bỏ canonical / hreflang (noindex), và có link về trang chủ của cả ba thứ tiếng.
  *   4. /404 không nằm trong CAP_DUONG_DAN — không vào sitemap, không thành đích của nút đổi ngôn ngữ.
  *
- * Trang dựng thật (mã 404, lang, link, tràn ngang 360px) kiểm ở web/kiem-tra/trinh-duyet.mjs nhóm 6,
+ * Trang dựng thật (mã 404, lang, link, tràn ngang 360px) kiểm ở web/kiem-tra/trinh-duyet.mjs nhóm 9,
  * trên bản build chạy trong wrangler dev — cùng đường đi với Cloudflare.
  */
 
