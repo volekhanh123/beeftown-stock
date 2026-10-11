@@ -323,12 +323,6 @@ html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 1
 .ck .nen-van-mo {
   background: var(--do) url('/thuong-hieu/van-mo.svg') center / cover no-repeat;
 }
-/* Chữ BEEFTOWN lặp (trang 11) — chìm vào nền, chỉ đọc ra khi nhìn gần. */
-.ck .hoa-van-chu {
-  background: var(--mau-hoa-van, rgba(137, 6, 7, .55));
-  -webkit-mask: url('/thuong-hieu/hoa-van-chu.svg') 0 0 / 186px auto repeat;
-          mask: url('/thuong-hieu/hoa-van-chu.svg') 0 0 / 186px auto repeat;
-}
 @media (max-width: 399px) { .ck .an-khi-hep { display: none; } }
 
 /* --- Câu hỏi thường gặp ---------------------------------------------------- */
