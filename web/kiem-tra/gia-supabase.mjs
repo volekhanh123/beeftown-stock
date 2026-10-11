@@ -51,7 +51,7 @@ export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-b
 // Liên hệ "đã công bố" của kịch bản day-du. Đường dẫn thử, không phải trang thật của nhà hàng.
 export const LIEN_HE_THU = {
   facebook_url: 'https://www.facebook.com/beeftown.thu',
-  google_maps_url: 'https://maps.google.com/?q=11-21+H%C3%A0m+Nghi',
+  google_maps_url: 'https://maps.google.com/?q=63+H%E1%BB%93+T%C3%B9ng+M%E1%BA%ADu',
   hotline: '028 3822 1234',
   email_lien_he: 'thu@beeftown.example',
 };

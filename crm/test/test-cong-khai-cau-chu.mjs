@@ -19,7 +19,10 @@
  *      TBD, coming soon, lorem, 승인 대기…
  *   4. Trang hỏi bàn, form ứng tuyển, trang tuyển dụng không có "thành công" / "success" / "성공"
  *      — gửi yêu cầu là "đã nhận", không phải "xong".
- *   5. Bản tiếng Anh và tiếng Hàn không lẫn chữ Việt, trừ tên riêng (Hàm Nghi, Sài Gòn…).
+ *   5. Bản tiếng Anh và tiếng Hàn không lẫn chữ Việt, trừ tên riêng (Hồ Tùng Mậu…).
+ *   7. Địa điểm: không câu nào kể chuyện đổi địa điểm, nhắc cầu thang bộ hay địa chỉ khác; không bịa
+ *      thứ chưa xác nhận (chỗ gửi xe, lối cho xe lăn, số phút, số mét). Điều đã biết chỉ có: Tầng 3,
+ *      63 Hồ Tùng Mậu; lối vào riêng ngay cạnh GS25; đi thang máy (test-cong-khai-dia-diem.mjs).
  */
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -46,7 +49,7 @@ const CHU_REVIEW = /chờ duyệt|đang chờ duyệt|đang cập nhật|sắp r
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
 const CHU_VIET = /[ăâđêôơưàáạảãầấậẩẫằắặẳẵèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/i;
 // Tên riêng giữ chữ Việt ở mọi bản: địa chỉ (khách đưa tài xế, gõ vào bản đồ), pháp nhân.
-const TEN_RIENG = [/Hàm Nghi/g, /(phường|Phường) Sài Gòn/g, /Sài Gòn/g, /TP\. Hồ Chí Minh/g, /Hồ Chí Minh/g, /Tầng 3, 11-21/g,
+const TEN_RIENG = [/Hồ Tùng Mậu/g, /TP\. Hồ Chí Minh/g, /Hồ Chí Minh/g,
   /CÔNG TY TNHH SLK GROUP/g, /Tiếng Việt/g];
 const boTenRieng = s => TEN_RIENG.reduce((x, re) => x.replace(re, ''), s);
 const FILE_FORM = ['TrangDatBan.astro', 'FormUngTuyen.astro', 'TrangTuyenDung.astro'];
@@ -166,7 +169,7 @@ await nhom('2 · CÂU CÓ vi VÀ en THÌ CÓ CẢ ko', async () => {
   for (const [f, { cap }] of DOC) {
     if (!cap.length) continue;
     // ko: '' vẫn là có — mẩu câu ghép quanh tên riêng đổi chỗ theo ngữ pháp tiếng Hàn
-    // (b1Truoc: { vi: 'Tới tòa nhà số ', en: 'Come to ', ko: '' } + b1Sau: { …, ko: ' 건물로 오세요' }).
+    // (b1Truoc: { vi: 'Tới ', en: 'Come to ', ko: '' } + b1Sau: { …, ko: '으로 오세요' }).
     const thieu = cap.filter(c => c.ko === null);
     ok(`${ten(f)}: ${cap.length} câu đủ ba thứ tiếng`, thieu.length === 0,
        thieu.slice(0, 4).map(c => `dòng ${c.dong} «${(c.vi[0] ?? '').slice(0, 40)}»`).join(' | '));
@@ -230,11 +233,83 @@ await nhom('6 · CÂU CHUNG CỦA web/src/lib/chu.ts (VI / EN / KO)', async () =
     }
     ok(`chu.ts [${nn}]: nút tới /dat-ban là "${{ vi: 'Hỏi bàn', en: 'Ask for a table', ko: '테이블 문의' }[nn]}"`,
        bo.datBan === { vi: 'Hỏi bàn', en: 'Ask for a table', ko: '테이블 문의' }[nn], bo.datBan);
-    ok(`chu.ts [${nn}]: câu cầu thang nói rõ cầu thang bộ, không có thang máy cho khách`,
-       { vi: /cầu thang bộ.*không có thang máy/i, en: /stairs.*no guest lift/i, ko: /계단.*엘리베이터는 없어요/ }[nn].test(bo.cauThangBo), bo.cauThangBo);
+    ok(`chu.ts [${nn}]: câu chỉ đường nói rõ lối vào riêng ngay cạnh GS25 và thang máy lên tầng 3, đúng nguyên văn đã chốt`,
+       bo.loiLen === {
+         vi: 'Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3.',
+         en: 'Use our own entrance, right next to GS25, and take the lift to Floor 3.',
+         ko: 'GS25 바로 옆 전용 입구로 들어와 엘리베이터로 3층까지 올라오세요.',
+       }[nn], String(bo.loiLen));
   }
   const hang = [...Object.values(THUONG_HIEU), DIA_CHI_NHA_HANG].join(' | ');
   ok('THUONG_HIEU và DIA_CHI_NHA_HANG không dính chữ cấm', timChuoiCam(hang).length === 0, hang);
+});
+
+// ===========================================================================
+// Khánh chốt 07/10 và 09/10/2026: Tầng 3, 63 Hồ Tùng Mậu; lối vào riêng ngay cạnh GS25; khách đi thang máy.
+// Trang chỉ nói địa điểm hiện tại, và chỉ nói những điều đã biết. Mẫu dưới đây bắt chữ KHÁCH ĐỌC
+// (câu { vi, en, ko }, chữ trong template, câu chung của chu.ts) — chú thích trong mã do
+// test-cong-khai-dia-diem.mjs quét.
+const DIA_CHI_KHAC = /Hàm\s*Nghi|Sài\s*Gòn|Saigon|사이공|(?<![\d-])11[-–]21(?![\d-])|Nguyễn\s*Thái\s*Học/iu;
+const CAU_THANG = /cầu\s*thang|thang\s*bộ|stair|계단|không\s+có\s+thang\s*máy|no\s+(?:guest\s+)?(?:lift|elevator)|엘리베이터(?:는|가)?\s*없/iu;
+const TOA_NHA = /t[oò][aà]\s*nhà|건물|빌딩|\b(?:the|this|our|a)\s+building\b/iu;
+// "Địa chỉ mới", "đã chuyển", "trước đây"… — trang không kể chuyện mặt bằng.
+const CHUYEN_DIA_DIEM = /địa\s*(?:chỉ|điểm)\s*mới|đã\s*chuyển|chuyển\s*(?:về|sang|đến|tới)\s|dời\s*(?:về|sang|đến|tới)|trước\s*đây|địa\s*(?:chỉ|điểm)\s*cũ|new\s+(?:address|location|home)|\bmoved\b|\bmoving\s+to\b|relocat|formerly|previously|old\s+(?:address|location)|새\s*(?:주소|매장|위치)|이전\s*(?:했|하였|합니다|해요|한\s)|옮겼|예전\s*(?:주소|매장)/iu;
+// Chưa xác nhận ở 63 Hồ Tùng Mậu: chỗ gửi xe, lối cho xe lăn.
+const TIEN_ICH_CHUA_XAC_NHAN = /gửi\s*xe|giữ\s*xe|bãi\s*(?:đỗ\s*|đậu\s*)?xe|đỗ\s*xe|đậu\s*xe|\bparking\b|\bvalet\b|car\s*park|주차|발레|xe\s*lăn|wheelchair|step-free|barrier-free|휠체어|무장애/iu;
+// Số đo đường đi (phút, mét, bước): chưa ai đo, nên các file nói về đường đến không được có.
+const SO_DO_DUONG_DI = /\d+\s*(?:phút|mét|m\b|km\b|bước\b|giây)|\d+\s*(?:minutes?|mins?\b|met(?:er|re)s?|steps?\b|seconds?)|\d+\s*(?:분|미터|걸음|초)/iu;
+const FILE_DUONG_DEN = ['LenTang3.astro', 'TrangDenBeeftown.astro'];
+
+await nhom('7 · ĐỊA ĐIỂM: CHỈ NÓI ĐỊA ĐIỂM HIỆN TẠI, CHỈ NÓI ĐIỀU ĐÃ BIẾT', async () => {
+  const cauCua = ({ cap, chuTemplate }) => [
+    ...cap.flatMap(c => ['vi', 'en', 'ko'].flatMap(nn => (c[nn] ?? []).map(s => ({ dong: c.dong, nn, s })))),
+    ...chuTemplate.map(c => ({ ...c, nn: 'template' })),
+  ];
+  const tatCa = [...DOC].flatMap(([f, d]) => cauCua(d).map(c => ({ ...c, file: ten(f) })));
+  const { chu, NGON_NGU } = modChu;
+  for (const nn of NGON_NGU) for (const [k, s] of Object.entries(chu(nn))) tatCa.push({ file: 'lib/chu.ts', dong: k, nn, s });
+  ok(`Đọc được ${tatCa.length} câu khách đọc (component, trang, chu.ts), có câu của trang Đến Beeftown`,
+     tatCa.length >= 600 && tatCa.some(c => c.file.endsWith('TrangDenBeeftown.astro')) && tatCa.some(c => c.file === 'lib/chu.ts'), `${tatCa.length} câu`);
+
+  const tim = mau => tatCa.filter(c => mau.test(c.s));
+  const inRa = ds => ds.slice(0, 4).map(c => `${c.file} dòng ${c.dong} [${c.nn}] «${c.s.slice(0, 60)}»`).join(' | ');
+  for (const [tenLuat, mau] of [
+    ['không câu nào ghi địa chỉ khác 63 Hồ Tùng Mậu', DIA_CHI_KHAC],
+    ['không câu nào nhắc cầu thang bộ hay nói không có thang máy (khách đi thang máy)', CAU_THANG],
+    ['không câu nào gọi 63 Hồ Tùng Mậu là "tòa nhà" / "the building" / "건물"', TOA_NHA],
+    ['không câu nào kể chuyện đổi địa điểm ("địa chỉ mới", "đã chuyển", "trước đây", "new address", "moved", "새 주소"…)', CHUYEN_DIA_DIEM],
+    ['không câu nào nói chỗ gửi xe hay lối cho xe lăn (chưa xác nhận)', TIEN_ICH_CHUA_XAC_NHAN],
+  ]) {
+    const sai = tim(mau);
+    ok(`Chữ khách đọc: ${tenLuat}`, sai.length === 0, inRa(sai));
+  }
+  for (const f of FILE_DUONG_DEN) {
+    const d = DOC.get(join(SRC, 'components', f));
+    const cau = d ? cauCua(d) : [];
+    const sai = cau.filter(c => SO_DO_DUONG_DI.test(c.s));
+    ok(`${f}: ${cau.length} câu về đường đến không có số đo nào (phút, mét, bước) — chưa ai đo`, !!d && cau.length > 0 && sai.length === 0,
+       d ? sai.map(c => `dòng ${c.dong} [${c.nn}] «${c.s.slice(0, 60)}»`).join(' | ') : 'không thấy file');
+  }
+
+  // Mẫu phải bắt được đúng những câu nó sinh ra để bắt — không thì một mẫu gõ sai sẽ xanh mãi.
+  const BAT = [
+    [DIA_CHI_KHAC, ['Tầng 3, 11-21 Hàm Nghi', 'phường Sài Gòn', '11–21', 'Hàm Nghi 11-21']],
+    [CAU_THANG, ['Khách lên tầng 3 bằng cầu thang bộ', 'by the stairs', '계단으로 올라오셔야 해요', 'không có thang máy cho khách', 'there is no guest lift', '손님용 엘리베이터는 없어요']],
+    [TOA_NHA, ['Tới tòa nhà số', 'toà nhà', 'Come to the building', '건물로 오세요']],
+    [CHUYEN_DIA_DIEM, ['Beeftown có địa chỉ mới', 'Quán đã chuyển về', 'Trước đây quán ở', 'Our new address', 'We have moved', '새 주소로 오세요', '매장을 이전했어요']],
+    [TIEN_ICH_CHUA_XAC_NHAN, ['Có chỗ gửi xe máy', 'bãi đỗ xe', 'Free parking', '주차 가능', 'lối cho xe lăn', 'wheelchair access', '휠체어']],
+    [SO_DO_DUONG_DI, ['đi bộ 2 phút', 'cách 50 m', '3 minutes on foot', '도보 2분']],
+  ];
+  const sot = BAT.flatMap(([mau, ds]) => ds.filter(s => !mau.test(s)).map(s => `${mau.source.slice(0, 20)}… không bắt «${s}»`));
+  ok('Các mẫu trên bắt đúng câu mẫu của từng luật (cầu thang bộ, địa chỉ khác, tòa nhà, đổi địa điểm, gửi xe, số đo)', sot.length === 0, sot.join(' | '));
+  const KHONG_BAT = [
+    [CAU_THANG, ['Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3.', 'take the lift to Floor 3', '엘리베이터로 3층까지 올라오세요', 'Is there a lift?', '엘리베이터가 있나요?']],
+    [TOA_NHA, ['We are building our opening team', 'Beeftown is building its opening team']],
+    [DIA_CHI_KHAC, ['Tầng 3, 63 Hồ Tùng Mậu, TP.HCM', 'đến ngày 2026-11-21']],
+    [SO_DO_DUONG_DI, ['giá mỗi 100g', 'Tầng 3, 63 Hồ Tùng Mậu', 'Ba bước tới bàn', 'Three steps to your table']],
+  ];
+  const batNham = KHONG_BAT.flatMap(([mau, ds]) => ds.filter(s => mau.test(s)).map(s => `${mau.source.slice(0, 20)}… bắt nhầm «${s}»`));
+  ok('Các mẫu trên không bắt nhầm câu đúng (câu chỉ đường đã chốt, "building our opening team", ngày 2026-11-21, "100g")', batNham.length === 0, batNham.join(' | '));
 });
 
 process.exit(ketThuc('CÂU CHỮ CỦA TRANG CÔNG KHAI'));

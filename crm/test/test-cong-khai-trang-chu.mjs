@@ -13,8 +13,8 @@
  *      — không bắt khách đi một quãng để đọc lời từ chối. Ở cả vi, en, ko.
  *   2. Chỉ nhận đường dẫn http(s) đã công bố: javascript:, data:, ftp:… gõ vào cổng nội dung
  *      KHÔNG thành href. Hotline có chữ lạ, email sai dạng cũng bị bỏ.
- *   3. Địa chỉ cố định "Tầng 3, 11-21 Hàm Nghi…" hiện cả khi chưa có database; bản công bố
- *      (dia_chi_hien_thi) thay vào khi có.
+ *   3. Địa chỉ cố định "Tầng 3, 63 Hồ Tùng Mậu, TP.HCM" hiện cả khi chưa có database; bản công bố
+ *      (dia_chi_hien_thi) thay vào khi có. Tên phường chưa có giấy xác nhận nên không ghi.
  *   4. Bốn mục điều hướng đúng thứ tự, đúng đường dẫn từng thứ tiếng, mục cuối là "Hỏi bàn".
  */
 
@@ -24,7 +24,7 @@ import { taoBoDem } from './kho-chung.mjs';
 
 const LIB = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'web', 'src', 'lib');
 const nap = f => import(pathToFileURL(join(LIB, f)).href);
-const { nutMoDau, lienHe, diaChi, diaChiSauTang, diaChiCoCauTruc, cumDiaChi, jsonTrongScript, coKenhHoiBan, formHoiBanMo, dieuHuong, urlAnToan } = await nap('trang-cong-khai.ts');
+const { nutMoDau, lienHe, diaChi, diaChiSauTang, diaChiManDau, diaChiCoCauTruc, cumDiaChi, jsonTrongScript, coKenhHoiBan, formHoiBanMo, dieuHuong, urlAnToan } = await nap('trang-cong-khai.ts');
 const { chu, duongDanTuongUng, DIA_CHI_NHA_HANG, NGON_NGU } = await nap('chu.ts');
 const { docNoiDung } = await nap('noi-dung.ts');
 
@@ -150,44 +150,59 @@ await nhom('3 · HOTLINE VÀ EMAIL: CHỮ LẠ BỊ BỎ', async () => {
 
 // ===========================================================================
 await nhom('4 · ĐỊA CHỈ CỐ ĐỊNH, BẢN CÔNG BỐ THAY VÀO KHI CÓ', async () => {
-  ok('Địa chỉ cố định chứa "Tầng 3, 11-21 Hàm Nghi"', DIA_CHI_NHA_HANG.includes('Tầng 3, 11-21 Hàm Nghi'), DIA_CHI_NHA_HANG);
+  ok('Địa chỉ cố định là "Tầng 3, 63 Hồ Tùng Mậu, TP.HCM"', DIA_CHI_NHA_HANG === 'Tầng 3, 63 Hồ Tùng Mậu, TP.HCM', DIA_CHI_NHA_HANG);
   ok('Chưa nối database → in địa chỉ cố định', diaChi(NEN) === DIA_CHI_NHA_HANG, diaChi(NEN));
   ok('dia_chi_hien_thi chỉ có khoảng trắng → vẫn địa chỉ cố định', diaChi(nd({ dia_chi_hien_thi: '   ' })) === DIA_CHI_NHA_HANG);
-  const congBo = '  Tầng 3, 11-21 Hàm Nghi, phường Sài Gòn, TP. Hồ Chí Minh  ';
+  // Bản công bố là chữ người gõ trong /noi-bo: có thể dài hơn địa chỉ cố định (thêm phường khi đã có giấy, viết đủ tên thành phố).
+  const congBo = '  Tầng 3, 63 Hồ Tùng Mậu, phường Thử, TP. Hồ Chí Minh  ';
   ok('Có bản công bố → dùng bản công bố (bỏ khoảng trắng hai đầu)', diaChi(nd({ dia_chi_hien_thi: congBo })) === congBo.trim(),
      diaChi(nd({ dia_chi_hien_thi: congBo })));
 
   // Menu gọn và màn đầu in "Tầng 3" đậm rồi mới tới địa chỉ: bỏ "Tầng 3" ở đầu, nhưng phải là địa chỉ của
   // diaChi() — trước đây hai chỗ đó in hằng số, nên bản công bố không bao giờ tới (hai địa chỉ trên một trang).
-  ok('diaChiSauTang: chưa công bố → "11-21 Hàm Nghi, phường Sài Gòn, TP.HCM"',
-     diaChiSauTang(NEN) === '11-21 Hàm Nghi, phường Sài Gòn, TP.HCM', diaChiSauTang(NEN));
+  ok('diaChiSauTang: chưa công bố → "63 Hồ Tùng Mậu, TP.HCM"',
+     diaChiSauTang(NEN) === '63 Hồ Tùng Mậu, TP.HCM', diaChiSauTang(NEN));
   ok('diaChiSauTang: có bản công bố → dùng bản công bố, bỏ "Tầng 3," ở đầu',
-     diaChiSauTang(nd({ dia_chi_hien_thi: congBo })) === '11-21 Hàm Nghi, phường Sài Gòn, TP. Hồ Chí Minh',
+     diaChiSauTang(nd({ dia_chi_hien_thi: congBo })) === '63 Hồ Tùng Mậu, phường Thử, TP. Hồ Chí Minh',
      diaChiSauTang(nd({ dia_chi_hien_thi: congBo })));
   ok('diaChiSauTang: bản công bố không bắt đầu bằng "Tầng 3" → giữ nguyên',
-     diaChiSauTang(nd({ dia_chi_hien_thi: '11-13-15-17-19-21 Hàm Nghi, Sài Gòn' })) === '11-13-15-17-19-21 Hàm Nghi, Sài Gòn');
+     diaChiSauTang(nd({ dia_chi_hien_thi: '63 Hồ Tùng Mậu, TP. Hồ Chí Minh' })) === '63 Hồ Tùng Mậu, TP. Hồ Chí Minh');
 
-  // JSON-LD: một nguồn địa chỉ, không lặp phường / thành phố khi bản công bố đã có đủ.
+  // Màn đầu trang chủ in bản ngắn nhất: sau "Tầng 3" chỉ còn số nhà, tên đường, thành phố. Bản công bố có ghi
+  // phường (tên nào cũng vậy) thì màn đầu bỏ phường đi; các chỗ khác vẫn in đủ.
+  ok('diaChiManDau: chưa công bố → "63 Hồ Tùng Mậu, TP.HCM"', diaChiManDau(NEN) === '63 Hồ Tùng Mậu, TP.HCM', diaChiManDau(NEN));
+  ok('diaChiManDau: bản công bố có phường → bỏ "Tầng 3," ở đầu và bỏ phường',
+     diaChiManDau(nd({ dia_chi_hien_thi: congBo })) === '63 Hồ Tùng Mậu, TP. Hồ Chí Minh', diaChiManDau(nd({ dia_chi_hien_thi: congBo })));
+  ok('diaChiManDau: "Phường" viết hoa, "P." viết tắt cũng bỏ; chữ "phường" nằm trong tên đường thì giữ',
+     diaChiManDau(nd({ dia_chi_hien_thi: 'Tầng 3, 63 Hồ Tùng Mậu, Phường Thử Hai, TP.HCM' })) === '63 Hồ Tùng Mậu, TP.HCM'
+       && diaChiManDau(nd({ dia_chi_hien_thi: 'Tầng 3, 63 Hồ Tùng Mậu, P. Thử, TP.HCM' })) === '63 Hồ Tùng Mậu, TP.HCM'
+       && diaChiManDau(nd({ dia_chi_hien_thi: '12 Đường Phường Thử, TP.HCM' })) === '12 Đường Phường Thử, TP.HCM');
+
+  // JSON-LD: một nguồn địa chỉ, không lặp thành phố khi bản công bố đã có đủ.
   const coCauTruc = diaChiCoCauTruc(NEN);
-  ok('JSON-LD chưa công bố: streetAddress lấy từ địa chỉ cố định, có phường và thành phố riêng',
-     coCauTruc['@type'] === 'PostalAddress' && DIA_CHI_NHA_HANG.startsWith(coCauTruc.streetAddress)
-       && coCauTruc.streetAddress === 'Tầng 3, 11-21 Hàm Nghi' && !!coCauTruc.addressLocality && coCauTruc.addressCountry === 'VN',
+  ok('JSON-LD chưa công bố: streetAddress lấy từ địa chỉ cố định, thành phố ở trường riêng, không có tên phường',
+     JSON.stringify(coCauTruc) === JSON.stringify({ '@type': 'PostalAddress', streetAddress: 'Tầng 3, 63 Hồ Tùng Mậu', addressRegion: 'TP.HCM', addressCountry: 'VN' })
+       && DIA_CHI_NHA_HANG.startsWith(coCauTruc.streetAddress) && DIA_CHI_NHA_HANG.endsWith(coCauTruc.addressRegion),
      JSON.stringify(coCauTruc));
   const coCauTrucCongBo = diaChiCoCauTruc(nd({ dia_chi_hien_thi: congBo }));
   ok('JSON-LD có bản công bố: streetAddress là bản công bố, không thêm phường / thành phố lần hai',
      coCauTrucCongBo.streetAddress === congBo.trim() && !('addressLocality' in coCauTrucCongBo) && !('addressRegion' in coCauTrucCongBo)
        && coCauTrucCongBo.addressCountry === 'VN', JSON.stringify(coCauTrucCongBo));
 
-  // In địa chỉ theo cụm: "phường Sài / Gòn", "Hàm / Nghi" không gãy giữa cụm; cụm dài thì để tự xuống dòng.
+  // In địa chỉ theo cụm: "Hồ Tùng / Mậu", "phường / Thử" không gãy giữa cụm; cụm dài thì để tự xuống dòng.
   const cum = cumDiaChi(DIA_CHI_NHA_HANG);
-  ok('cumDiaChi: địa chỉ cố định → 4 cụm, dấu phẩy đi cùng cụm, cụm nào cũng giữ nguyên một dòng',
-     JSON.stringify(cum.map(c => c.chu)) === JSON.stringify(['Tầng 3,', '11-21 Hàm Nghi,', 'phường Sài Gòn,', 'TP.HCM']) && cum.every(c => c.giu),
+  ok('cumDiaChi: địa chỉ cố định → 3 cụm, dấu phẩy đi cùng cụm, cụm nào cũng giữ nguyên một dòng',
+     JSON.stringify(cum.map(c => c.chu)) === JSON.stringify(['Tầng 3,', '63 Hồ Tùng Mậu,', 'TP.HCM']) && cum.every(c => c.giu),
      JSON.stringify(cum));
-  for (const dc of [DIA_CHI_NHA_HANG, 'Tầng 3,11-21 Hàm Nghi,, TP.HCM', '  Tầng 3 ,  Hàm Nghi  ', 'Một dòng không dấu phẩy']) {
+  const cumCongBo = cumDiaChi(congBo.trim());
+  ok('cumDiaChi: bản công bố có phường → 4 cụm, cụm nào cũng giữ nguyên một dòng',
+     JSON.stringify(cumCongBo.map(c => c.chu)) === JSON.stringify(['Tầng 3,', '63 Hồ Tùng Mậu,', 'phường Thử,', 'TP. Hồ Chí Minh']) && cumCongBo.every(c => c.giu),
+     JSON.stringify(cumCongBo));
+  for (const dc of [DIA_CHI_NHA_HANG, congBo.trim(), 'Tầng 3,63 Hồ Tùng Mậu,, TP.HCM', '  Tầng 3 ,  Hồ Tùng Mậu  ', 'Một dòng không dấu phẩy']) {
     ok(`cumDiaChi(${JSON.stringify(dc)}): ghép lại ra ĐÚNG NGUYÊN VĂN (chữ trên trang không đổi)`,
        cumDiaChi(dc).map(c => c.chu + c.cach).join('') === dc, JSON.stringify(cumDiaChi(dc)));
   }
-  const dai = cumDiaChi('Tầng 3 tòa nhà số 11-13-15-17-19-21 đường Hàm Nghi phường Sài Gòn');
+  const dai = cumDiaChi('Tầng 3 số 63 đường Hồ Tùng Mậu Thành phố Hồ Chí Minh Việt Nam');
   ok('cumDiaChi: một cụm dài (bản công bố không dấu phẩy) → không giữ nguyên dòng, kẻo tràn ngang màn hẹp',
      dai.length === 1 && dai[0].giu === false, JSON.stringify(dai));
 

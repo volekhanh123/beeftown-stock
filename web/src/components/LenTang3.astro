@@ -1,11 +1,14 @@
 ---
 /**
- * LÊN TẦNG 3 — địa chỉ, cầu thang bộ, không có thang máy cho khách
+ * LÊN TẦNG 3 — địa chỉ, lối vào riêng, thang máy
  *
- * Beeftown nằm trọn ở tầng 3, khách lên bằng cầu thang bộ, KHÔNG có thang máy
- * cho khách (brief 06/10/2026). Đó là điều khách phải biết TRƯỚC khi rủ cả nhà
- * đi — nhất là khi đi cùng ông bà. Nên khối này nổi bật, không chôn ở chân trang,
- * và có mặt ở trang chủ, trang Đến Beeftown và trang Hỏi bàn (bản gọn).
+ * Beeftown ở tầng 3, 63 Hồ Tùng Mậu. Khách vào lối riêng ngay cạnh GS25 rồi đi
+ * thang máy lên (Khánh chốt 09/10/2026). Quán ở trên tầng, nên khách phải biết
+ * lối vào TRƯỚC khi tới: khối này nổi bật, không chôn ở chân trang, và có mặt ở
+ * trang chủ, trang Đến Beeftown và trang Hỏi bàn (bản gọn).
+ *
+ * Chỉ in điều đã biết: địa chỉ và câu chỉ đường t.loiLen (lib/chu.ts). Chỗ gửi xe,
+ * mốc đường, số bước, lối cho xe lăn chưa ai xác nhận — không viết thêm ở đây.
  *
  * Nút "Chỉ đường" chỉ hiện khi link Google Maps đã được công bố trong /noi-bo
  * (không tự chế link). "Sao chép địa chỉ" là nút bổ trợ: không có JavaScript thì
@@ -40,18 +43,13 @@ const TieuDe = capTieuDe === 2 ? 'h2' : 'h3';
 const c = dich(ngonNgu, {
   hieu: { vi: 'Đến Beeftown', en: 'Getting here', ko: '오시는 길' },
   tieuDe: { vi: 'Beeftown ở tầng 3', en: 'Beeftown is on Floor 3', ko: 'Beeftown은 3층에 있어요' },
-  luuY: {
-    vi: 'Đi cùng ông bà hay người khó leo cầu thang? Bạn nên biết trước điều này khi lên kế hoạch.',
-    en: 'Coming with grandparents, or anyone who finds stairs hard? Please keep this in mind when you plan your visit.',
-    ko: '어르신이나 계단이 불편한 분과 함께 오신다면 미리 참고해 주세요.',
-  },
 });
 ---
 {gon ? (
   <div class="lt3-gon be-kem-dam">
     <span class="lt3-so-nho" aria-hidden="true">3</span>
     <div>
-      <p class="lt3-cau"><strong>{t.cauThangBo}</strong></p>
+      <p class="lt3-cau"><strong>{t.loiLen}</strong></p>
       <p class="lt3-dc"><span lang="vi">{cumDiaChi(dc).map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></p>
       <div class="lt3-hang">
         {lh.maps && <a class="lien-ket" href={lh.maps} rel="noopener">{t.chiDuong}<BieuTuong ten="mui-ten" /></a>}
@@ -78,9 +76,8 @@ const c = dich(ngonNgu, {
       {!anHieu && <p class="hieu">{c.hieu}</p>}
       <TieuDe class="lt3-tieu-de">{tieuDe ?? c.tieuDe}</TieuDe>
       <p class="lt3-dc"><BieuTuong ten="ghim" /><span lang="vi">{cumDiaChi(dc).map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></p>
-      <p class="lt3-cau"><BieuTuong ten="thang-may" /><strong>{t.cauThangBo}</strong></p>
-      <p class="lt3-luu-y">{c.luuY}</p>
-      <div class="hang-nut">
+      <p class="lt3-cau"><BieuTuong ten="thang-may" /><strong>{t.loiLen}</strong></p>
+      <div class="hang-nut lt3-nut">
         {lh.maps && <a class="nut nut-chinh" href={lh.maps} rel="noopener"><BieuTuong ten="ghim" />{t.chiDuong}</a>}
         <button type="button" class="nut nut-vien" data-sao-chep={dc} data-da-chep={t.daSaoChep} hidden><BieuTuong ten="sao-chep" /><span>{t.saoChepDiaChi}</span></button>
         {!khongLinkDuongDen && <a class="lien-ket" href={duongDanTuongUng('/den-beeftown', ngonNgu)}>{t.xemDuongLen}<BieuTuong ten="mui-ten" /></a>}
@@ -130,7 +127,8 @@ const c = dich(ngonNgu, {
     font-size: var(--co-dan); line-height: 1.45;
   }
   .lt3-dc :global(svg), .lt3-cau :global(svg) { width: 26px; height: 26px; flex: none; color: var(--do); margin-top: 1px; }
-  .lt3-luu-y { color: var(--chu-phu); max-width: 52ch; margin: var(--k-4) 0 var(--k-5); }
+  /* Khoảng thở giữa câu chỉ đường và hàng nút. */
+  .lt3-nut { margin-top: var(--k-5); }
 
   .lt3-gon {
     display: flex; gap: var(--k-4); align-items: flex-start;
@@ -140,7 +138,7 @@ const c = dich(ngonNgu, {
   }
   .lt3-so-nho { font-size: 64px; font-weight: 800; line-height: .85; color: var(--do); letter-spacing: -.05em; }
   .lt3-gon .lt3-cau { font-size: 16px; margin-bottom: 6px; }
-  /* Câu cầu thang và địa chỉ không gãy giữa cụm ("thang / máy", "Hàm / Nghi"). */
+  /* Câu chỉ đường và địa chỉ không gãy giữa cụm ("thang / máy", "Hồ Tùng / Mậu"). */
   .lt3-cau strong { text-wrap: balance; }
   .lt3-dc :global(.lien) { white-space: nowrap; }
   .lt3-gon .lt3-dc { font-size: 15px; color: var(--muc-nhat); margin-bottom: 4px; }

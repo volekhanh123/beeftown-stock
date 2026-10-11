@@ -22,12 +22,10 @@ const tChung = chu(ngonNgu);
 const lh = lienHe(nd);
 const formMo = formHoiBanMo(nd);
 const coKenhNhan = !!(lh.facebook || lh.goi || lh.thu);
-// Địa chỉ xuống dòng giữa các vế (sau dấu phẩy), không giữa "Sài / Gòn": mỗi vế ngắn là
+// Địa chỉ xuống dòng giữa các vế (sau dấu phẩy), không giữa "Hồ Tùng / Mậu": mỗi vế ngắn là
 // một cụm không ngắt. Vế dài (địa chỉ công bố gõ không dấu phẩy) để nguyên — không tràn
 // màn hình hẹp. Chữ không đổi: không chèn \u00a0 (test đọc nguyên địa chỉ).
 const cumDc = cumDiaChi(diaChi(nd));
-// "— không có thang máy…" không mở đầu một dòng: từ đứng trước dấu gạch dính với dấu gạch.
-const gachCauThang = /^(.*\s)(\S+ —)(\s.*)$/u.exec(tChung.cauThangBo);
 const t = dich(ngonNgu, {
   hieu: { vi: 'Hỏi nhanh', en: 'Good to know', ko: '미리 알아 두세요' },
   tieuDe: { vi: 'Câu hỏi thường gặp', en: 'Questions we often hear', ko: '자주 묻는 질문' },
@@ -50,12 +48,8 @@ const t = dich(ngonNgu, {
     ko: '그릴 테이블마다 가스 그릴이 있어서 원하는 대로 함께 구워 드시면 돼요.',
   },
   h4: { vi: 'Nhà hàng ở tầng mấy, có thang máy không?', en: 'Which floor are you on? Is there a lift?', ko: '몇 층인가요? 엘리베이터가 있나요?' },
-  d4a: { vi: 'Beeftown nằm trọn ở tầng 3 — địa chỉ:', en: 'Beeftown takes up the whole of Floor 3 — the address is', ko: 'Beeftown은 3층 전체를 쓰고 있어요. 주소:' },
-  d4b: {
-    vi: 'Nếu đi cùng người lớn tuổi hoặc người khó leo cầu thang, bạn nên cân nhắc trước khi đến.',
-    en: 'If you are coming with older family members or anyone who finds stairs hard, please plan for it.',
-    ko: '어르신이나 계단이 불편한 분과 함께 오신다면 미리 고려해 주세요.',
-  },
+  // Trả lời đúng câu hỏi ở trên bằng hai điều đã biết: tầng 3, có thang máy. Lối vào nằm ở câu chỉ đường in ngay sau địa chỉ.
+  d4a: { vi: 'Beeftown ở tầng 3 và có thang máy. Địa chỉ:', en: 'Beeftown is on Floor 3, and there is a lift. The address is', ko: 'Beeftown은 3층에 있고, 엘리베이터가 있어요. 주소:' },
   h5: { vi: 'Hỏi bàn thế nào?', en: 'How do I ask for a table?', ko: '테이블 문의는 어떻게 하나요?' },
   // Form hỏi bàn mở, và có kênh nhắn.
   d5: {
@@ -112,8 +106,7 @@ const t = dich(ngonNgu, {
       <details>
         <summary>{t.h4}<BieuTuong ten="cong" /></summary>
         <div class="tra-loi">
-          <p>{t.d4a} <span lang="vi">{cumDc.map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span>. {gachCauThang ? <>{gachCauThang[1]}<span class="lien">{gachCauThang[2]}</span>{gachCauThang[3]}</> : tChung.cauThangBo}</p>
-          <p>{t.d4b}</p>
+          <p>{t.d4a} <span lang="vi">{cumDc.map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span>. {tChung.loiLen}</p>
           <p><a class="lien-ket" href={duongDanTuongUng('/den-beeftown', ngonNgu)}>{tChung.xemDuongLen}<BieuTuong ten="mui-ten" /></a></p>
         </div>
       </details>
