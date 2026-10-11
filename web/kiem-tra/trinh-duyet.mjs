@@ -754,7 +754,8 @@ try {
 
   // =========================================================================
   // Máy có thanh cuộn kiểu cổ điển (Windows, chuột cắm vào Mac): thanh cuộn chiếm 15px bề ngang. Khoá cuộn
-  // khi mở danh mục làm thanh cuộn biến mất — không chừa sẵn chỗ thì cả trang xô sang phải 15px rồi xô lại.
+  // khi mở danh mục làm thanh cuộn biến mất — không bù lại thì cả trang xô sang phải 15px rồi xô lại lúc đóng.
+  // DauTrang.astro đo bề rộng thanh cuộn trước khi mở và bù bằng padding-right của <html>.
   // Playwright mặc định giấu thanh cuộn, nên nhóm này mở một Chromium riêng có thanh cuộn thật.
   await nhom('8 · THANH CUỘN KIỂU CỔ ĐIỂN: MỞ DANH MỤC KHÔNG XÔ LỆCH TRANG, KHÔNG CUỘN NGANG', async () => {
     const coThanhCuon = await chromium.launch({ ignoreDefaultArgs: ['--hide-scrollbars'] });
@@ -765,6 +766,7 @@ try {
         const khung = document.querySelector('main .khung')?.getBoundingClientRect();
         return {
           thanhCuon: innerWidth - document.documentElement.clientWidth,
+          bu: parseFloat(getComputedStyle(document.documentElement).paddingRight),
           tranNgang: document.documentElement.scrollWidth - document.documentElement.clientWidth,
           logo: trai('.dt-logo'), cumPhai: phai('.dt-phai'), khungTrai: khung?.left ?? null,
           leTrai: khung ? khung.left : null, lePhai: khung ? document.documentElement.clientWidth - khung.right : null,
@@ -790,8 +792,14 @@ try {
             tot.push(ok(`${nhan}: mở danh mục (trang đã khoá cuộn) — logo, cụm nút bên phải và khung nội dung đứng nguyên chỗ`,
               khoa && sau.logo === truoc.logo && sau.cumPhai === truoc.cumPhai && sau.khungTrai === truoc.khungTrai,
               `khoá ${khoa} · trước ${JSON.stringify(truoc)} · sau ${JSON.stringify(sau)}`));
-            tot.push(ok(`${nhan}: mở danh mục không sinh cuộn ngang`, sau.tranNgang <= 0, `${sau.tranNgang}px`));
+            tot.push(ok(`${nhan}: mở danh mục không sinh cuộn ngang; phần bù bằng đúng bề rộng thanh cuộn vừa mất (${truoc.thanhCuon}px)`,
+              sau.tranNgang <= 0 && sau.bu === truoc.thanhCuon, `tràn ${sau.tranNgang}px, bù ${sau.bu}px`));
             await page.keyboard.press('Escape');
+            await cho(200);
+            const dongLai = await do_(page);
+            tot.push(ok(`${nhan}: đóng danh mục — thanh cuộn trở lại, hết phần bù, mọi thứ vẫn đứng nguyên chỗ`,
+              dongLai.thanhCuon === truoc.thanhCuon && dongLai.bu === 0 && dongLai.logo === truoc.logo && dongLai.cumPhai === truoc.cumPhai
+                && dongLai.khungTrai === truoc.khungTrai, JSON.stringify(dongLai)));
           }
           if (tot.includes(false)) await chupLoi(page, `thanh-cuon${duong}-${rong}`);
         }

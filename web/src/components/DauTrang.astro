@@ -128,6 +128,13 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
       if (traTieuDiem) nut?.focus();
     };
     document.addEventListener('keydown', e => { if (e.key === 'Escape') dong(true); });
+    // Khoá cuộn làm thanh cuộn kiểu cổ điển (Windows, chuột cắm vào Mac: 15px) biến mất — cả trang xô sang
+    // phải rồi xô lại lúc đóng. Đo bề rộng thanh cuộn NGAY TRƯỚC khi mở (click chạy trước khi <details> đổi
+    // trạng thái; Enter và phím cách trên nút cũng phát click) rồi ghi vào biến CSS: quy tắc khoá cuộn bù
+    // lại đúng chừng đó. Máy có thanh cuộn nổi (điện thoại, macOS mặc định) đo ra 0px.
+    nut?.addEventListener('click', () => {
+      if (!menu.open) document.documentElement.style.setProperty('--rong-thanh-cuon', `${innerWidth - document.documentElement.clientWidth}px`);
+    });
     // Bấm lên lớp phủ mờ dưới bảng: lớp phủ là phần tử giả của chính <details>, nên cú bấm có đích là
     // <details>. Nghe NGAY trên <details>, không chờ sự kiện nổi lên document: Safari trên iPhone không
     // phát click cho phần tử không bấm được nếu chính nó (hay cha nó) không có trình nghe click hoặc
@@ -274,10 +281,12 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
     background: rgba(21, 16, 8, .5);
     cursor: pointer;
   }
-  /* Đang mở thì trang phía sau đứng yên: vuốt trong bảng không kéo trang chạy theo. Chỗ của thanh
-     cuộn đã chừa sẵn (scrollbar-gutter ở cong-khai.css) nên khoá cuộn không làm trang xô lệch. */
+  /* Đang mở thì trang phía sau đứng yên: vuốt trong bảng không kéo trang chạy theo. Thanh cuộn kiểu
+     cổ điển biến mất khi khoá cuộn — bù lại đúng bề rộng của nó (script đo trước khi mở) để trang không
+     xô lệch. Không dùng scrollbar-gutter: stable: nó chừa 15px cả trên trình duyệt không có thanh cuộn
+     nào chiếm chỗ (trình duyệt của kiểm thử và của máy chụp ảnh). */
   @media (max-width: 1079.98px) and (min-height: 501px) {
-    :global(html:has(body.ck .menu-gon[data-co-script][open])) { overflow: hidden; }
+    :global(html:has(body.ck .menu-gon[data-co-script][open])) { overflow: hidden; padding-right: var(--rong-thanh-cuon, 0px); }
   }
   /* Màn thấp: đầu trang không dính, lớp phủ cố định sẽ lệch khỏi bảng — bỏ lớp phủ. */
   @media (max-height: 500px) { .menu-gon[data-co-script][open]::before { content: none; } }

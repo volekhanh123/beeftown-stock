@@ -633,10 +633,13 @@ await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PH
   ok('Nút chính, nút phụ và nút danh mục đổi màu nền khi đang nhấn (:active), ở mọi loại máy',
      nhanGiu('.nut-chinh:active') && nhanGiu('.nut-vien:active') && nhanGiu('.menu-gon summary:active'));
 
-  // Khoá cuộn khi mở danh mục làm thanh cuộn kiểu cổ điển (Windows) biến mất: chừa sẵn chỗ cho nó thì
-  // trang không xô lệch 15px.
-  ok('cong-khai.css: html:has(body.ck) chừa sẵn chỗ cho thanh cuộn (scrollbar-gutter: stable)',
-     docQuyTac(ck).some(q => q.boChon === 'html:has(body.ck)' && /(?:^|[;\s])scrollbar-gutter\s*:\s*stable\s*(?:;|$)/.test(q.trong)));
+  // Khoá cuộn khi mở danh mục làm thanh cuộn kiểu cổ điển (Windows: 15px) biến mất, cả trang xô sang phải.
+  // Script đo bề rộng thanh cuộn ngay trước khi mở, quy tắc khoá cuộn bù lại đúng chừng đó bằng padding-right.
+  // KHÔNG dùng scrollbar-gutter: stable — Chromium chừa 15px cả khi không có thanh cuộn nào chiếm chỗ
+  // (trình duyệt của kiểm thử, của máy chụp ảnh): mọi ảnh chụp thừa một dải kem bên phải, bố cục 1440px lệch
+  // 7,5px. (do-giao-dien.mjs: dauTrang đo việc này trên trang đã dựng.)
+  ok('Trang công khai không dùng scrollbar-gutter (làm lệch bố cục 15px trên trình duyệt không có thanh cuộn chiếm chỗ)',
+     !quyTacCongKhai.some(q => /scrollbar-gutter/.test(q.trong)), quyTacCongKhai.filter(q => /scrollbar-gutter/.test(q.trong)).map(q => `${q.file}: ${q.boChon}`).join(' | '));
 
   // Danh mục gọn: lớp phủ tối và khoá cuộn chỉ có khi script đã chạy (script gắn data-co-script lên
   // <details>) — không script thì không gì đóng được danh mục sau khi khách bấm link neo, trang phải cuộn
@@ -650,8 +653,12 @@ await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PH
   const khoa = quyTacDau.filter(q => /html:has\(/.test(q.boChon) && /overflow:\s*hidden/.test(q.trong));
   ok('DauTrang.astro: khoá cuộn trang chỉ khi script đã chạy và danh mục đang mở',
      khoa.length === 1 && khoa[0].boChon.includes('.menu-gon[data-co-script][open]'), khoa.map(q => q.boChon).join(' | ') || 'không thấy quy tắc khoá cuộn');
+  ok('DauTrang.astro: quy tắc khoá cuộn bù bề rộng thanh cuộn (padding-right: var(--rong-thanh-cuon, 0px))',
+     khoa.length === 1 && /padding-right:\s*var\(--rong-thanh-cuon,\s*0px\)/.test(khoa[0].trong), khoa.map(q => q.trong.trim()).join(' | '));
   const kichBan = (dauTrang.match(/<script>([\s\S]*?)<\/script>/) ?? [])[1] ?? '';
   ok('DauTrang.astro: script gắn data-co-script lên <details> (menu.dataset.coScript)', /menu\.dataset\.coScript\s*=/.test(kichBan));
+  ok('DauTrang.astro: script đo bề rộng thanh cuộn (innerWidth − clientWidth) vào --rong-thanh-cuon khi bấm nút danh mục lúc còn đóng',
+     /nut\?*\.addEventListener\('click',[^;]*?if \(!menu\.open\)[^;]*setProperty\('--rong-thanh-cuon',\s*`\$\{innerWidth - document\.documentElement\.clientWidth\}px`\)/s.test(kichBan));
   ok('DauTrang.astro: script nghe click ngay trên <details> — bấm lớp phủ (đích là chính <details>) thì đóng',
      /menu\.addEventListener\('click',\s*(?:\(e\)|e)\s*=>\s*\{\s*if\s*\(e\.target === menu\)\s*dong\(/.test(kichBan));
 

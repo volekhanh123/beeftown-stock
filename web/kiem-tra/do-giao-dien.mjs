@@ -18,7 +18,7 @@
 
 export const PHEP_DO = {
   vungCham: 'nút, link điều hướng, link chân trang, summary, ô nhập, ô chọn giờ cao ≥ 48px',
-  dauTrang: 'đầu trang cao 64px (dưới 1080px) / 80px (từ 1080px); điều hướng 15–16px; logo ≥ 160px (dưới 360px: brandmark ≥ 48px), đúng tỷ lệ',
+  dauTrang: 'đầu trang cao 64px (dưới 1080px) / 80px (từ 1080px), rộng hết cửa sổ; điều hướng 15–16px; logo ≥ 160px (dưới 360px: brandmark ≥ 48px), đúng tỷ lệ',
   ngonNgu: 'bộ chọn ngôn ngữ đủ 3 thứ tiếng, thứ tiếng đang xem đánh dấu bằng chữ đậm và nét gạch (không chỉ bằng màu)',
   khongTrang: 'không nền trắng: mọi màu nền (kể cả dải màu background-image và phần tử giả ::before / ::after) thuộc bảng màu của trang công khai',
   nut: 'nút: bo 4px, đệm ngang 20px, đúng màu theo bề mặt; mỗi nhóm nút một nút chính',
@@ -108,6 +108,13 @@ export function doGiaoDien() {
     const mong = RONG >= 1080 ? 80 : 64;
     if (Math.abs(cao - mong) > 0.6) kq.dauTrang.push(`cao ${cao.toFixed(1)}px, cần ${mong}px`);
     if (bo(mau(getComputedStyle(dau).backgroundColor)) !== KEM) kq.dauTrang.push(`nền ${getComputedStyle(dau).backgroundColor}, cần Cream`);
+    // Thanh rộng hết bề ngang cửa sổ (trừ thanh cuộn thật nếu có). Hẹp hơn nghĩa là trang đang chừa một dải
+    // trống bên phải: scrollbar-gutter: stable làm Chromium chừa 15px cả khi không có thanh cuộn nào chiếm
+    // chỗ (trình duyệt của kiểm thử và của máy chụp ảnh) — mọi ảnh chụp có một dải kem thừa, mọi phép đo lệch 15px.
+    const rongDau = dau.getBoundingClientRect().width;
+    if (Math.abs(rongDau - document.documentElement.clientWidth) > 0.5) {
+      kq.dauTrang.push(`thanh rộng ${rongDau.toFixed(1)}px trong cửa sổ ${document.documentElement.clientWidth}px — trang đang chừa một dải trống bên phải`);
+    }
     // Guideline: lockup rộng tối thiểu 160px; hẹp hơn thì dùng brandmark (đầu bò), tối thiểu 48px. Thanh chỉ
     // được đổi sang brandmark khi màn dưới 360px — không đủ chỗ cho lockup cạnh nút danh mục.
     const logo = [...dau.querySelectorAll('.dt-logo img')].filter(hien);
