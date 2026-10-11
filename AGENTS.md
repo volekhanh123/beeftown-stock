@@ -56,5 +56,7 @@ Màu. Trang công khai (`<body class="ck">`) đã theo bảng màu Khánh chốt
 Địa điểm:
 
 - Địa điểm quán là "Tầng 3, 63 Hồ Tùng Mậu" (tiếng Anh "Floor 3, 63 Hồ Tùng Mậu", tiếng Hàn "Hồ Tùng Mậu 63, 3층"). Khách vào lối riêng ngay cạnh GS25 và đi thang máy lên tầng 3. Báo khi PR ghi địa chỉ khác, hoặc viết "cầu thang bộ", "không có thang máy", "stairs", "계단" trên trang công khai.
+- Khánh đã quyết địa chỉ, tầng 3 và lối vào riêng ngay cạnh GS25; thang máy theo layout ngày 08/10/2026. CÂU chỉ đường ba thứ tiếng (`loiLen` trong `web/src/lib/chu.ts`) là Claude đề xuất, chờ Khánh duyệt chữ: báo khi PR ghi câu đó là "Khánh đã chốt", và báo khi PR đổi chữ của câu ở một nơi mà không đổi các bản chép tay trong kiểm thử.
 - Ngoại lệ duy nhất: dòng địa chỉ pháp nhân ở chân trang (`PHAP_NHAN.diaChi` trong `web/src/lib/chu.ts`) còn ghi theo giấy đăng ký và chờ Khánh quyết. Không báo dòng đó; báo khi PR sửa nó mà mô tả PR không ghi Khánh đã quyết.
-- Báo khi PR ghi tên phường của 63 Hồ Tùng Mậu (chưa có giấy xác nhận), gọi địa điểm là "toà nhà", viết "địa chỉ mới", "đã chuyển", "trước đây", hoặc thêm thông tin chưa xác nhận: chỗ gửi xe, mốc đường, số bước, khoảng cách, giờ, lối cho xe lăn.
+- Báo khi PR ghi tên phường hay quận của 63 Hồ Tùng Mậu (chưa có giấy xác nhận), gọi địa điểm là "toà nhà", viết "địa chỉ mới", "quán đã chuyển về…", "trước đây quán ở…", hoặc thêm thông tin chưa xác nhận: chỗ gửi xe, mốc đường, số bước, khoảng cách, giờ, lối cho xe lăn.
+- Mẫu tìm chữ sai về địa điểm nằm ở `web/kiem-tra/mau-dia-diem.mjs`, kèm bảng câu thử. Báo khi PR nới một mẫu mà không thêm câu vào bảng câu thử.

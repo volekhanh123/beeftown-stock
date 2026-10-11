@@ -101,7 +101,11 @@ Các điểm phải giữ:
 | `crm/test/test-cong-khai-giao-dien.mjs` | Hằng `BANG_MAU` và nhóm 6 |
 | `web/THIET-KE.md` mục 2, `README.md` mục "Bảng màu", `AGENTS.md` | Tài liệu theo tình trạng mới |
 
-Biểu tượng trình duyệt (`bieu-tuong.svg`, `favicon.ico`) và biểu tượng màn hình chính của kho dùng chung một bộ file, nên `/noi-bo` và kho đã có biểu tượng màu mới dù giao diện bên trong chưa đổi.
+Ba thứ dùng chung đã đổi màu theo, dù giao diện của `/noi-bo`, kho và Beeftown Cân chưa đổi:
+
+- **`web/public/bieu-tuong.svg`** (và `favicon.ico`, biểu tượng màn hình chính trong `web/public/kho/`) là một bộ file cho cả ba nơi. Ngoài tab trình duyệt, `bieu-tuong.svg` còn hiện ở đầu trang kho (`web/src/layouts/Kho.astro`) và trên phiếu đặt hàng in (`web/src/pages/noi-bo/kho/dat-hang/[id]/in.astro`): hai chỗ đó đã là đỏ `#A70C0C` trên giao diện còn bảng cũ.
+- **Biểu tượng của `BeeftownCan.exe`**: `can-app/scripts/dong-goi.ts` bọc `web/public/kho/bieu-tuong-192.png` vào file chạy. PR này đổi chính file ảnh đó và cả `web/src/lib/`, nên `dong-goi-can.yml` đóng gói lại khi gộp: bản đóng gói đó có biểu tượng đỏ mới với **cùng số phiên bản** (`PHIEN_BAN` trong `can-app/src/main.ts` không đổi). Cùng một số phiên bản vì vậy có thể có hai bản khác biểu tượng.
+- **Logo ngang trên web**: `DOI_MAU_RIENG` trong `tao-bieu-tuong.py` đổi dòng "Pick it – Grill it – Love it" của `logo-ngang-do.svg` từ đỏ đậm sang Beef Red, để cả logo một màu như guideline. Logo trên web vẫn là nét tách từ PDF nhận diện cũ rồi đổi mã màu, **chưa phải** file vector của bộ tài sản bản 17 (dòng cuối mục này).
 
 Còn mã cũ, chờ một PR riêng:
 
@@ -122,11 +126,12 @@ Logo vector bảng màu mới đã có sẵn trong thư mục tài sản trên m
 
 ## 6. Địa điểm
 
-- Khánh chốt ngày 07/10 và 09/10/2026: quán ở **Tầng 3, 63 Hồ Tùng Mậu** (tiếng Anh: "Floor 3, 63 Hồ Tùng Mậu"; tiếng Hàn: "Hồ Tùng Mậu 63, 3층"). Bản ngắn: "63 Hồ Tùng Mậu, TP.HCM" · "63 Hồ Tùng Mậu, Ho Chi Minh City" · "호치민시 Hồ Tùng Mậu 63".
-- Câu chỉ đường, dùng nguyên văn: "Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3." · "Use our own entrance, right next to GS25, and take the lift to Floor 3." · "GS25 바로 옆 전용 입구로 들어와 엘리베이터로 3층까지 올라오세요."
-- **Mã nguồn đã đổi** (PR "màu và thông tin chung"): địa chỉ cố định `DIA_CHI_NHA_HANG`, câu chung `loiLen`, thẻ tiêu đề và mô tả của từng trang, JSON-LD, hình thang máy thay hình cầu thang. `crm/test/test-cong-khai-dia-diem.mjs` gác: không file nào của website còn địa chỉ khác, không còn chữ về cầu thang bộ.
+- **Khánh đã quyết:** địa điểm là 63 Hồ Tùng Mậu (07/10/2026); quán ở **tầng 3**, khách vào bằng **lối vào riêng ngay cạnh GS25** (09/10/2026). Khách đi **thang máy** lên tầng 3: theo layout ngày 08/10/2026.
+- Cách ghi: "Tầng 3, 63 Hồ Tùng Mậu" (tiếng Anh: "Floor 3, 63 Hồ Tùng Mậu"; tiếng Hàn: "Hồ Tùng Mậu 63, 3층"). Bản ngắn: "63 Hồ Tùng Mậu, TP.HCM" · "63 Hồ Tùng Mậu, Ho Chi Minh City" · "호치민시 Hồ Tùng Mậu 63".
+- **Câu chỉ đường là Claude đề xuất, CHỜ KHÁNH DUYỆT CHỮ:** "Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3." · "Use our own entrance, right next to GS25, and take the lift to Floor 3." · "GS25 바로 옆 전용 입구로 들어와 엘리베이터로 3층까지 올라오세요." Trang đang dùng đúng ba câu này (`loiLen` trong `web/src/lib/chu.ts`), và kiểm thử giữ chúng đúng từng chữ để ba bản không lệch nhau. Khánh duyệt chữ khác thì sửa `loiLen` cùng các bản chép tay trong `crm/test/test-cong-khai-dia-diem.mjs`, `test-cong-khai-cau-chu.mjs`, `web/kiem-tra/trinh-duyet.mjs`.
+- **Mã nguồn đã đổi** (PR "màu và thông tin chung"): địa chỉ cố định `DIA_CHI_NHA_HANG`, câu chung `loiLen`, thẻ tiêu đề và mô tả của từng trang, JSON-LD, hình thang máy thay hình cầu thang, bảng từ của máy dịch (`web/src/lib/may-dich.ts`). Gác: `crm/test/test-cong-khai-dia-diem.mjs` (mã nguồn của trang công khai), `test-cong-khai-cau-chu.mjs` nhóm 7 (chữ khách đọc), `web/kiem-tra/trinh-duyet.mjs` (trang đã dựng), `web/kiem-tra/thu-day-du.mjs` nhóm 7 (trang có bản công bố). Mẫu tìm chữ sai dùng chung: `web/kiem-tra/mau-dia-diem.mjs`.
 - **Chưa đổi, chờ Khánh quyết:** dòng địa chỉ pháp nhân ở chân trang (`PHAP_NHAN.diaChi` trong `web/src/lib/chu.ts`). Dòng này chép theo giấy đăng ký đang dùng cho hồ sơ xác minh trên Meta. Kiểm thử giữ nó nguyên từng ký tự.
-- **Tên phường của 63 Hồ Tùng Mậu chưa có giấy xác nhận:** trang, thẻ mô tả và JSON-LD không ghi phường. Không tự thêm.
+- **Tên phường của 63 Hồ Tùng Mậu chưa có giấy xác nhận:** trang, thẻ mô tả và JSON-LD không ghi phường, cũng không ghi quận. Không tự thêm. Kiểm thử bắt mọi vế phường / quận trong chữ khách đọc, tên gì cũng vậy. Khi có giấy, danh sách mã và kiểm thử phải sửa cùng lúc nằm ở chú thích của `DIA_CHI_PHAN` trong `web/src/lib/chu.ts`.
 - Điều đã biết về đường đến chỉ có địa chỉ, tầng 3, lối vào riêng ngay cạnh GS25, thang máy. Chỗ gửi xe, mốc đường, số bước, khoảng cách, lối cho xe lăn: chưa xác nhận, không viết lên trang.
 - Không gọi 63 Hồ Tùng Mậu là "toà nhà". Trang chỉ nói địa điểm hiện tại, không kể chuyện đổi địa điểm.
 - **Địa chỉ đã công bố trong database thắng địa chỉ trong mã.** Khóa `dia_chi_hien_thi` (màn Nội dung của `/noi-bo`, nhóm Liên hệ) nếu đang công bố thì trang in bản đó. Đổi địa điểm phải xem lại cả các khóa `dia_chi_hien_thi`, `google_maps_url`, `tieu_de_og`, `mo_ta_og`, `dong_trang_thai`, và ở màn Cài đặt (`/noi-bo/cai-dat`): tên chi nhánh và ô địa chỉ của chi nhánh. Bot Messenger trả lời khách bằng "Beeftown — <tên chi nhánh>" và, khi chưa có bản công bố, bằng ô địa chỉ đó.

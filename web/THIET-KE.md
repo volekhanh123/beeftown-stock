@@ -67,6 +67,7 @@ Khai trong khối `.ck` đầu tiên của `src/styles/cong-khai.css`, mỗi bi�
 | `--mu-tat` | `#F5AA14` | Marigold (tên biến cũ, cùng mã) | Điểm nhấn nhỏ: vạch dòng trạng thái, chữ nhấn trên nền tối |
 | `--vien-o` | `#7A7366` | màu pha | Viền ô nhập (mức tối thiểu cho viền ô là 3 : 1, WCAG 1.4.11) |
 | `--vach` · `--vach-kem` | than 16 % · kem 22 % | màu pha | Nét kẻ phân cách trên nền sáng · trên nền tối |
+| (không có token) | `#211A10` | màu pha | Nền của khung ảnh đặt trên dải tối (`.khung-anh.tren-toi` trong `cong-khai.css`): sáng hơn Charcoal một nấc để khung tách khỏi nền. Mã viết thẳng, chỉ dùng ở một chỗ đó |
 
 Guideline có 5 màu, một đỏ và một vàng. Màn hình cần thêm: 1 đỏ đậm hơn cho nút khi di chuột và chữ nhỏ, 2 nền kem đậm hơn để tách khối, 1 màu viền ô nhập. Hai tên `--do-dam` / `--do-sau` và hai tên `--mu-tat` / `--cuc-vang` giữ lại vì component đang gọi cả hai; mỗi cặp một mã.
 
@@ -182,11 +183,11 @@ Không dùng `100vw` (tính cả thanh cuộn → tràn ngang). Khối có trang
 
 **Dòng trạng thái** (`.trang-thai`): vạch Marigold bên trái, chữ từ khóa `dong_trang_thai`; chưa công bố thì câu nền "đang chuẩn bị đón bạn".
 
-**Dòng món** (`.mon`): tên Việt (`.mon-ten`, 18px đậm) → tên gốc (`.mon-goc`) → mô tả (`.mon-mo-ta`, chỉ khi đã duyệt) → nhãn **Món sống** / **Có cồn** (`.nhan-mon`, chữ hoa nhỏ đỏ sâu kèm biểu tượng). Món sống luôn kèm câu cảnh báo (`.canh-bao-mon`); món sống thiếu câu cảnh báo thì không hiện món. Vùng giá (`.mon-gia`) chỉ có khi `gia !== null` và nhóm không phải "xem giá tại quầy" — `gia` null thì **không render phần tử giá**, không ô trống. Không tự thêm nhãn chay, dị ứng, độ cay, khẩu phần, combo.
+**Dòng món** (`.mon`): tên Việt (`.mon-ten`, 18px đậm) → tên gốc (`.mon-goc`) → mô tả (`.mon-mo-ta`, chỉ khi đã duyệt) → nhãn **Món sống** / **Có cồn** (`.nhan-mon`, chữ hoa nhỏ đỏ đậm kèm biểu tượng). Món sống luôn kèm câu cảnh báo (`.canh-bao-mon`); món sống thiếu câu cảnh báo thì không hiện món. Vùng giá (`.mon-gia`) chỉ có khi `gia !== null` và nhóm không phải "xem giá tại quầy" — `gia` null thì **không render phần tử giá**, không ô trống. Không tự thêm nhãn chay, dị ứng, độ cay, khẩu phần, combo.
 
 **Đọc nhãn khay** (`NhanKhay.astro`): xem mục 1. Dùng ở khối Quầy chọn bò và phần Bò tại quầy của trang Thực đơn.
 
-**Tầng 3** (`LenTang3.astro`): số "3" lớn cạnh hình thang máy vẽ nét, địa chỉ **Tầng 3, 63 Hồ Tùng Mậu, TP.HCM**, và câu chỉ đường nguyên văn (`t.loiLen` trong `lib/chu.ts`): **"Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3."** Khối chỉ in hai điều đã biết đó — không chỗ gửi xe, mốc đường, số bước, lối cho xe lăn khi chưa có người xác nhận. "Chỉ đường" chỉ khi link Google Maps đã công bố; "Sao chép địa chỉ" là nút bổ trợ, không có JavaScript thì ẩn hẳn. Có bản gọn (`gon`) cho trang Hỏi bàn — khách phải biết lối vào **trước** khi gửi yêu cầu.
+**Tầng 3** (`LenTang3.astro`): số "3" lớn cạnh hình thang máy vẽ nét, địa chỉ **Tầng 3, 63 Hồ Tùng Mậu, TP.HCM**, và câu chỉ đường (`t.loiLen` trong `lib/chu.ts`): **"Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3."** Lối vào riêng cạnh GS25 là điều Khánh đã quyết (09/10/2026), thang máy theo layout ngày 08/10/2026; chữ của câu ở ba thứ tiếng là Claude đề xuất, chờ Khánh duyệt. Khối chỉ in hai điều đã biết đó — không chỗ gửi xe, mốc đường, số bước, lối cho xe lăn khi chưa có người xác nhận. "Chỉ đường" chỉ khi link Google Maps đã công bố; "Sao chép địa chỉ" là nút bổ trợ, không có JavaScript thì ẩn hẳn. Có bản gọn (`gon`) cho trang Hỏi bàn — khách phải biết lối vào **trước** khi gửi yêu cầu.
 
 **Câu hỏi thường gặp** (`.cau-hoi` + `<details>` / `<summary>`): mỗi câu cao tối thiểu 60px, dấu cộng xoay 45° khi mở, câu trả lời rộng tối đa 66 ký tự. Chỉ trả lời bằng dữ kiện đã xác nhận.
 
@@ -340,7 +341,8 @@ Nguyên tắc: logo vector gốc; chất liệu PDF (vân mỡ, rosemary, tem tr
 | Giờ mở cửa | Không hiện giờ; JSON-LD không khai giờ | Nhập giờ ở màn chi nhánh trong `/noi-bo`, bật công tắc `gio_phuc_vu_da_chot` (khung giờ của form hỏi bàn và bot Messenger đọc từ đó); trang công khai chưa có chỗ in giờ — thêm khi giờ đã chốt |
 | Chỗ gửi xe | Không nói | Ghi thông tin thật — thêm vào trang Đến Beeftown |
 | Link Google Maps | Không nút "Chỉ đường" | Công bố `google_maps_url` trong `/noi-bo` — mở thử trên điện thoại, ghim đúng lối vào riêng cạnh GS25 ở 63 Hồ Tùng Mậu |
-| Tên phường của 63 Hồ Tùng Mậu | Trang, thẻ mô tả và JSON-LD không ghi phường | Có giấy xác nhận thì thêm khóa `phuong` vào `DIA_CHI_PHAN` (`src/lib/chu.ts`) và `addressLocality` vào `diaChiCoCauTruc()` |
+| Tên phường của 63 Hồ Tùng Mậu | Trang, thẻ mô tả và JSON-LD không ghi phường, quận | Có giấy xác nhận thì thêm khóa `phuong` vào `DIA_CHI_PHAN` (`src/lib/chu.ts`) và `addressLocality` vào `diaChiCoCauTruc()`, **cùng lúc** sửa kiểm thử đang gác việc không ghi phường: `crm/test/test-cong-khai-dia-diem.mjs` nhóm 4, `test-cong-khai-trang-chu.mjs` nhóm 4, luật `PHUONG_QUAN` và bảng câu thử trong `kiem-tra/mau-dia-diem.mjs`, kiểm tra JSON-LD trong `kiem-tra/trinh-duyet.mjs`, địa chỉ thử của `kiem-tra/thu-day-du.mjs` nhóm 7 |
+| Chữ của câu chỉ đường | Trang dùng câu Claude đề xuất, ở ba thứ tiếng | Khánh duyệt chữ; đổi thì sửa `loiLen` (`src/lib/chu.ts`) cùng các bản chép tay trong `crm/test/test-cong-khai-dia-diem.mjs`, `test-cong-khai-cau-chu.mjs`, `kiem-tra/trinh-duyet.mjs` |
 | Dòng địa chỉ pháp nhân ở chân trang | Ghi theo giấy đăng ký đang dùng cho hồ sơ xác minh trên Meta | Khánh quyết có đổi không; đổi thì sửa `PHAP_NHAN.diaChi`, dòng chép tay trong `kiem-tra/trinh-duyet.mjs` và `test-cong-khai-dia-diem.mjs` cùng lúc |
 | Hotline | Không nút gọi | Công bố `hotline` |
 | Trang Facebook | Không nút "Theo dõi"; trang Hỏi bàn khi form đóng vẫn nhắc nhắn qua Facebook | Công bố `facebook_url` |
