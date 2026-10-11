@@ -104,7 +104,13 @@
 /* Chiều cao đầu trang dính: khai ở <html> để scroll-padding-top (thuộc tính của
    <html>) đọc được — khai ở body thì html không thấy. Đổi ở mốc màn rộng của
    DauTrang.astro (1080px). */
-html:has(body.ck) { --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 12px); }
+html:has(body.ck) {
+  --cao-dau: 64px; scroll-padding-top: calc(var(--cao-dau) + 12px);
+  /* Chừa sẵn chỗ cho thanh cuộn kiểu cổ điển (Windows, chuột cắm vào Mac — chiếm 15px): danh mục gọn
+     mở ra thì trang khoá cuộn, thanh cuộn biến mất; không chừa thì cả trang xô sang phải rồi xô lại.
+     Máy có thanh cuộn nổi (điện thoại, macOS mặc định) không đổi gì. */
+  scrollbar-gutter: stable;
+}
 @media (min-width: 1080px) { html:has(body.ck) { --cao-dau: 80px; } }
 /* Màn thấp: đầu trang không dính nữa (DauTrang.astro), neo chỉ chừa 12px. */
 @media (max-height: 500px) { html:has(body.ck) { scroll-padding-top: 12px; } }

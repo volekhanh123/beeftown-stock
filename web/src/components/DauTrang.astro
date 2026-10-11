@@ -24,7 +24,10 @@
  * Màn hẹp: <details> — mở / đóng được KHÔNG cần JavaScript (bấm, Enter, phím cách);
  * đang mở thì nút đổi thành nút đóng có chữ. Script bên dưới chỉ thêm: Esc để đóng,
  * bấm ra ngoài hoặc bấm một mục thì đóng, Tab ra khỏi mục cuối thì đóng, phóng to
- * cửa sổ qua mốc màn rộng thì đóng.
+ * cửa sổ qua mốc màn rộng thì đóng. Lớp phủ tối dưới bảng và việc khoá cuộn trang CHỈ
+ * có khi script đã chạy (script gắn data-co-script lên <details>): không script thì
+ * không gì đóng được danh mục sau khi khách bấm một link neo, nên trang phải cuộn được
+ * và không có lớp phủ nào che nó.
  */
 import { chu, duongDanTuongUng } from '../lib/chu';
 import { diaChiSauTang, dieuHuong } from '../lib/trang-cong-khai';
@@ -111,10 +114,13 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
 </header>
 
 <script>
-  // Thêm vào <details>: Esc đóng (trả tiêu điểm về nút), bấm ra ngoài / bấm một mục
-  // thì đóng, cửa sổ rộng qua mốc màn rộng thì đóng. Không có script: vẫn mở/đóng được.
+  // Thêm vào <details>: Esc đóng (trả tiêu điểm về nút), bấm ra ngoài / bấm lớp phủ / bấm một
+  // mục thì đóng, cửa sổ rộng qua mốc màn rộng thì đóng. Không có script: vẫn mở/đóng được,
+  // không lớp phủ, trang không khoá cuộn.
   const menu = document.querySelector<HTMLDetailsElement>('.menu-gon');
   if (menu) {
+    // Từ đây mới có thứ đóng được danh mục: CSS chỉ hiện lớp phủ và khoá cuộn khi thấy thuộc tính này.
+    menu.dataset.coScript = '';
     const nut = menu.querySelector('summary');
     const dong = (traTieuDiem: boolean) => {
       if (!menu.open) return;
@@ -122,10 +128,14 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
       if (traTieuDiem) nut?.focus();
     };
     document.addEventListener('keydown', e => { if (e.key === 'Escape') dong(true); });
-    // Bấm ra ngoài: ngoài <details>, hoặc lên lớp phủ mờ dưới bảng — lớp phủ là phần tử giả
-    // của chính <details>, nên cú bấm lên nó có đích là <details>.
+    // Bấm lên lớp phủ mờ dưới bảng: lớp phủ là phần tử giả của chính <details>, nên cú bấm có đích là
+    // <details>. Nghe NGAY trên <details>, không chờ sự kiện nổi lên document: Safari trên iPhone không
+    // phát click cho phần tử không bấm được nếu chính nó (hay cha nó) không có trình nghe click hoặc
+    // cursor: pointer — lớp phủ có cả hai.
+    menu.addEventListener('click', e => { if (e.target === menu) dong(false); });
+    // Bấm ra ngoài <details> (logo, khoảng trống của thanh đầu trang).
     document.addEventListener('click', e => {
-      if (menu.open && (e.target === menu || !menu.contains(e.target as Node))) dong(false);
+      if (menu.open && !menu.contains(e.target as Node)) dong(false);
     });
     menu.querySelectorAll('.mg-bang a').forEach(a => a.addEventListener('click', () => dong(false)));
     // Tab ra khỏi mục cuối: bảng (position absolute) sẽ che chính phần tử vừa nhận tiêu điểm
@@ -243,7 +253,8 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   .menu-gon summary:hover, .menu-gon[open] summary { background: var(--kem-dam); color: var(--do-dam); border-color: var(--do-dam); }
 
   /* Bảng danh mục: nền Cream, kết thúc bằng một nét Beef Red; phía dưới là lớp phủ tối để
-     thấy rõ bảng đang nằm trên trang — không dùng bóng đổ. */
+     thấy rõ bảng đang nằm trên trang — không dùng bóng đổ. Lớp phủ bấm được (đóng danh mục)
+     nên có con trỏ bàn tay, và chỉ hiện khi script đã chạy ([data-co-script]). */
   .mg-bang {
     position: absolute; inset-inline: 0; top: calc(100% + 1px); z-index: 1;
     max-height: calc(100svh - var(--cao-dau));
@@ -252,16 +263,18 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
     background: var(--kem);
     border-bottom: 2px solid var(--do);
   }
-  .menu-gon[open]::before {
+  .menu-gon[data-co-script][open]::before {
     content: ''; position: fixed; inset: var(--cao-dau) 0 0;
     background: rgba(21, 16, 8, .5);
+    cursor: pointer;
   }
-  /* Đang mở thì trang phía sau đứng yên: vuốt trong bảng không kéo trang chạy theo. */
+  /* Đang mở thì trang phía sau đứng yên: vuốt trong bảng không kéo trang chạy theo. Chỗ của thanh
+     cuộn đã chừa sẵn (scrollbar-gutter ở cong-khai.css) nên khoá cuộn không làm trang xô lệch. */
   @media (max-width: 1079.98px) and (min-height: 501px) {
-    :global(html:has(body.ck .menu-gon[open])) { overflow: hidden; }
+    :global(html:has(body.ck .menu-gon[data-co-script][open])) { overflow: hidden; }
   }
   /* Màn thấp: đầu trang không dính, lớp phủ cố định sẽ lệch khỏi bảng — bỏ lớp phủ. */
-  @media (max-height: 500px) { .menu-gon[open]::before { content: none; } }
+  @media (max-height: 500px) { .menu-gon[data-co-script][open]::before { content: none; } }
 
   .mg-muc a:not(.nut) {
     display: flex; align-items: center; min-height: 56px;
