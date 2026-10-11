@@ -34,6 +34,8 @@
  *   dat-ban-loi   như day-du; tao_dat_ban trả 400 "Khung giờ … ngày … đã hết bàn"
  *   dat-ban-500   như day-du; tao_dat_ban trả 500
  *   dat-ban-dut   như day-du; tao_dat_ban cắt kết nối không trả lời (mất mạng giữa chừng)
+ *   dia-chi-cong-bo  như day-du, thêm khóa dia_chi_hien_thi đã công bố (DIA_CHI_CONG_BO_THU): bản
+ *                 công bố phải thay địa chỉ cố định trong mã ở mọi chỗ in địa chỉ
  *
  * GET /__dem → { tên hàm: số lần gọi } — để kiểm "bấm đúp → tao_dat_ban đúng một lần".
  * GET /__nhat-ky → 200 lần gọi gần nhất { ham, thamSo }.
@@ -46,15 +48,20 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 
 export const CONG_MAC_DINH = 54331;
-export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut'];
+export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dia-chi-cong-bo'];
 
 // Liên hệ "đã công bố" của kịch bản day-du. Đường dẫn thử, không phải trang thật của nhà hàng.
 export const LIEN_HE_THU = {
   facebook_url: 'https://www.facebook.com/beeftown.thu',
-  google_maps_url: 'https://maps.google.com/?q=11-21+H%C3%A0m+Nghi',
+  google_maps_url: 'https://maps.google.com/?q=63+H%E1%BB%93+T%C3%B9ng+M%E1%BA%ADu',
   hotline: '028 3822 1234',
   email_lien_he: 'thu@beeftown.example',
 };
+
+// Địa chỉ "đã công bố" của kịch bản dia-chi-cong-bo. Cố ý KHÁC địa chỉ cố định trong mã (viết đủ tên
+// thành phố, thêm một vế phường — "phường Thử" là tên giả, chỉ để thử) để nhìn chữ là biết trang đang in
+// bản công bố hay bản trong mã, và để thấy màn đầu trang chủ bỏ vế phường.
+export const DIA_CHI_CONG_BO_THU = 'Tầng 3, 63 Hồ Tùng Mậu, phường Thử, TP. Hồ Chí Minh';
 
 // Mọi khóa của sổ đăng ký khoa_cong_bo — database luôn trả ĐỦ, khóa chưa công bố là null
 // (web/src/lib/noi-dung.ts, mục "BA ĐIỀU QUAN TRỌNG").
@@ -75,6 +82,7 @@ function noiDung(kichBan) {
     form_dat_ban_dang_mo: kichBan !== 'dat-ban-dong',
     hien_thuc_don: true,
     hien_do_uong_co_con: true,
+    ...(kichBan === 'dia-chi-cong-bo' ? { dia_chi_hien_thi: DIA_CHI_CONG_BO_THU } : {}),
   };
 }
 

@@ -52,8 +52,8 @@ const tieuDeTrang = tieuDe
 
 // Mô tả ưu tiên bản đã duyệt trong cổng nội dung. Đây là lý do cụ thể vì sao
 // trang phải dựng ở phía máy chủ: thẻ mô tả là một HÀM của trạng thái database,
-// mà trình quét link của Facebook thì không chạy JavaScript. Câu nền đã có địa
-// chỉ cố định (DIA_CHI_NHA_HANG — Khánh chốt 06/10/2026).
+// mà trình quét link của Facebook thì không chạy JavaScript. Câu nền (moTaNgan
+// trong lib/chu.ts) đã ghi địa điểm: tầng 3, 63 Hồ Tùng Mậu.
 const moTaTrang = moTa ?? nd.mo_ta_og ?? t.moTaNgan;
 
 const anh = nd.anh_chia_se;
@@ -85,7 +85,7 @@ const duLieuCoCauTruc: Record<string, unknown> = {
   // nói điều đó.
   acceptsReservations: nd.form_dat_ban_dang_mo === true,
 };
-// Địa chỉ đã chốt và hiện cố định; bản công bố trong /noi-bo (nếu có) thay vào.
+// Địa chỉ cố định trong mã (lib/chu.ts); bản công bố trong /noi-bo (nếu có) thay vào.
 duLieuCoCauTruc.address = diaChiCoCauTruc(nd);
 // Chỉ phần số (hotline đã công bố có thể kèm chú thích "(Zalo)").
 if (lh.goi) duLieuCoCauTruc.telephone = lh.goi.slice('tel:'.length);
@@ -127,7 +127,7 @@ if (sameAs.length) duLieuCoCauTruc.sameAs = sameAs;
     <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/bieu-tuong.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/thuong-hieu/bieu-tuong-180.png" />
-    <meta name="theme-color" content="#FBF4E1" />
+    <meta name="theme-color" content="#F0E3D0" />
     {/* Logo đầu trang: tải sớm cùng CSS để không nháy ô trống. Ảnh hero preload qua slot "dau". */}
     <link rel="preload" href="/thuong-hieu/logo-ngang-do.svg" as="image" type="image/svg+xml" />
     <slot name="dau" />

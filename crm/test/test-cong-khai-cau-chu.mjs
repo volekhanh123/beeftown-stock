@@ -19,7 +19,11 @@
  *      TBD, coming soon, lorem, 승인 대기…
  *   4. Trang hỏi bàn, form ứng tuyển, trang tuyển dụng không có "thành công" / "success" / "성공"
  *      — gửi yêu cầu là "đã nhận", không phải "xong".
- *   5. Bản tiếng Anh và tiếng Hàn không lẫn chữ Việt, trừ tên riêng (Hàm Nghi, Sài Gòn…).
+ *   5. Bản tiếng Anh và tiếng Hàn không lẫn chữ Việt, trừ tên riêng (Hồ Tùng Mậu…).
+ *   7. Địa điểm: không câu nào kể chuyện đổi địa điểm, nhắc cầu thang bộ hay địa chỉ khác; không ghi
+ *      tên phường, quận nào (phường của 63 Hồ Tùng Mậu chưa có giấy xác nhận); không bịa thứ chưa xác
+ *      nhận (chỗ gửi xe, lối cho xe lăn, số phút, số mét). Điều đã biết chỉ có: Tầng 3, 63 Hồ Tùng
+ *      Mậu; lối vào riêng ngay cạnh GS25; đi thang máy. Bộ luật: web/kiem-tra/mau-dia-diem.mjs.
  */
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -46,7 +50,7 @@ const CHU_REVIEW = /chờ duyệt|đang chờ duyệt|đang cập nhật|sắp r
 const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
 const CHU_VIET = /[ăâđêôơưàáạảãầấậẩẫằắặẳẵèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/i;
 // Tên riêng giữ chữ Việt ở mọi bản: địa chỉ (khách đưa tài xế, gõ vào bản đồ), pháp nhân.
-const TEN_RIENG = [/Hàm Nghi/g, /(phường|Phường) Sài Gòn/g, /Sài Gòn/g, /TP\. Hồ Chí Minh/g, /Hồ Chí Minh/g, /Tầng 3, 11-21/g,
+const TEN_RIENG = [/Hồ Tùng Mậu/g, /TP\. Hồ Chí Minh/g, /Hồ Chí Minh/g,
   /CÔNG TY TNHH SLK GROUP/g, /Tiếng Việt/g];
 const boTenRieng = s => TEN_RIENG.reduce((x, re) => x.replace(re, ''), s);
 const FILE_FORM = ['TrangDatBan.astro', 'FormUngTuyen.astro', 'TrangTuyenDung.astro'];
@@ -166,7 +170,7 @@ await nhom('2 · CÂU CÓ vi VÀ en THÌ CÓ CẢ ko', async () => {
   for (const [f, { cap }] of DOC) {
     if (!cap.length) continue;
     // ko: '' vẫn là có — mẩu câu ghép quanh tên riêng đổi chỗ theo ngữ pháp tiếng Hàn
-    // (b1Truoc: { vi: 'Tới tòa nhà số ', en: 'Come to ', ko: '' } + b1Sau: { …, ko: ' 건물로 오세요' }).
+    // (b1Truoc: { vi: 'Tới ', en: 'Come to ', ko: '' } + b1Sau: { …, ko: '으로 오세요' }).
     const thieu = cap.filter(c => c.ko === null);
     ok(`${ten(f)}: ${cap.length} câu đủ ba thứ tiếng`, thieu.length === 0,
        thieu.slice(0, 4).map(c => `dòng ${c.dong} «${(c.vi[0] ?? '').slice(0, 40)}»`).join(' | '));
@@ -230,11 +234,66 @@ await nhom('6 · CÂU CHUNG CỦA web/src/lib/chu.ts (VI / EN / KO)', async () =
     }
     ok(`chu.ts [${nn}]: nút tới /dat-ban là "${{ vi: 'Hỏi bàn', en: 'Ask for a table', ko: '테이블 문의' }[nn]}"`,
        bo.datBan === { vi: 'Hỏi bàn', en: 'Ask for a table', ko: '테이블 문의' }[nn], bo.datBan);
-    ok(`chu.ts [${nn}]: câu cầu thang nói rõ cầu thang bộ, không có thang máy cho khách`,
-       { vi: /cầu thang bộ.*không có thang máy/i, en: /stairs.*no guest lift/i, ko: /계단.*엘리베이터는 없어요/ }[nn].test(bo.cauThangBo), bo.cauThangBo);
+    // Chữ của câu là Claude đề xuất, chờ Khánh duyệt; giữ đúng từng chữ để ba bản không lệch nhau.
+    ok(`chu.ts [${nn}]: câu chỉ đường nói rõ lối vào riêng ngay cạnh GS25 và thang máy lên tầng 3, đúng từng chữ câu đang dùng`,
+       bo.loiLen === {
+         vi: 'Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3.',
+         en: 'Use our own entrance, right next to GS25, and take the lift to Floor 3.',
+         ko: 'GS25 바로 옆 전용 입구로 들어와 엘리베이터로 3층까지 올라오세요.',
+       }[nn], String(bo.loiLen));
   }
   const hang = [...Object.values(THUONG_HIEU), DIA_CHI_NHA_HANG].join(' | ');
   ok('THUONG_HIEU và DIA_CHI_NHA_HANG không dính chữ cấm', timChuoiCam(hang).length === 0, hang);
+});
+
+// ===========================================================================
+// Điều đã biết về địa điểm (Khánh quyết 07/10 và 09/10/2026; thang máy theo layout 08/10): Tầng 3,
+// 63 Hồ Tùng Mậu; lối vào riêng ngay cạnh GS25; khách đi thang máy. Trang chỉ nói địa điểm hiện tại,
+// và chỉ nói những điều đó. Bộ luật và bảng câu thử nằm ở web/kiem-tra/mau-dia-diem.mjs — dùng chung
+// với test-cong-khai-dia-diem.mjs (quét mã nguồn, kể cả chú thích) và trinh-duyet.mjs (trang đã dựng).
+// Ở đây luật chạy trên chữ KHÁCH ĐỌC: câu { vi, en, ko }, chữ và thuộc tính trong template (tiêu đề,
+// mô tả, alt…), câu chung của chu.ts. Dòng địa chỉ pháp nhân không nằm trong các câu đó.
+const { LUAT_CHU_KHACH_DOC, CAU_THU, PHUONG_QUAN, SO_DO_DUONG_DI } = await import(pathToFileURL(join(GOC, 'web', 'kiem-tra', 'mau-dia-diem.mjs')).href);
+
+await nhom('7 · ĐỊA ĐIỂM: CHỈ NÓI ĐỊA ĐIỂM HIỆN TẠI, CHỈ NÓI ĐIỀU ĐÃ BIẾT', async () => {
+  const cauCua = ({ cap, chuTemplate }) => [
+    ...cap.flatMap(c => ['vi', 'en', 'ko'].flatMap(nn => (c[nn] ?? []).map(s => ({ dong: c.dong, nn, s })))),
+    ...chuTemplate.map(c => ({ ...c, nn: 'template' })),
+  ];
+  const tatCa = [...DOC].flatMap(([f, d]) => cauCua(d).map(c => ({ ...c, file: ten(f) })));
+  const { chu, NGON_NGU, PHAP_NHAN } = modChu;
+  for (const nn of NGON_NGU) for (const [k, s] of Object.entries(chu(nn))) tatCa.push({ file: 'lib/chu.ts', dong: k, nn, s });
+  ok(`Đọc được ${tatCa.length} câu khách đọc (component, trang, chu.ts): có câu của trang Đến Beeftown, của khối Đi cùng nhóm, và thẻ mô tả của trang`,
+     tatCa.length >= 600 && tatCa.some(c => c.file.endsWith('TrangDenBeeftown.astro')) && tatCa.some(c => c.file.endsWith('DiCungNhom.astro'))
+       && tatCa.some(c => c.file === 'lib/chu.ts') && tatCa.some(c => c.file === 'pages/den-beeftown.astro' && c.s.includes('63 Hồ Tùng Mậu')),
+     `${tatCa.length} câu`);
+  ok('Dòng địa chỉ pháp nhân không nằm trong chữ được quét (nó là hằng PHAP_NHAN, in riêng ở chân trang)',
+     !tatCa.some(c => c.s.includes(PHAP_NHAN.diaChi)));
+
+  const inRa = ds => ds.slice(0, 4).map(c => `${c.file} dòng ${c.dong} [${c.nn}] «${c.s.slice(0, 60)}» (thấy "${c.thay}")`).join(' | ');
+  for (const luat of LUAT_CHU_KHACH_DOC) {
+    const sai = tatCa.flatMap(c => { const thay = luat.tim(c.s); return thay ? [{ ...c, thay }] : []; });
+    ok(`Chữ khách đọc (${tatCa.length} câu): không câu nào ${luat.ten}`, sai.length === 0, inRa(sai));
+  }
+
+  // Bảng câu thử của bộ luật: mẫu phải bắt đúng câu sai nó sinh ra để bắt, và không bắt nhầm câu đúng —
+  // không thì một mẫu gõ sai sẽ xanh mãi, hoặc đỏ oan với một câu đang đúng.
+  for (const { luat, bat, khong } of CAU_THU) {
+    const sot = bat.filter(c => !luat.tim(c));
+    ok(`Luật "${luat.ten}" bắt đủ ${bat.length} câu sai mẫu`, bat.length >= 3 && sot.length === 0, sot.map(c => `không bắt «${c}»`).join(' | '));
+    const nham = khong.flatMap(c => { const thay = luat.tim(c); return thay ? [`bắt nhầm «${c}» (thấy "${thay}")`] : []; });
+    ok(`Luật "${luat.ten}" không bắt nhầm ${khong.length} câu đúng mẫu`, khong.length >= 2 && nham.length === 0, nham.join(' | '));
+  }
+  ok('Mọi luật của chữ khách đọc đều có bảng câu thử', LUAT_CHU_KHACH_DOC.every(l => CAU_THU.some(c => c.luat === l)));
+
+  // Ba kiểu lọt mà lượt rà soát 11/10/2026 tìm ra, giữ lại đúng câu đã thử: thêm phường / quận vào thẻ mô tả
+  // của trang Đến Beeftown, vào câu tiếng Anh của khối đường đến; số đo đặt ở một khối khác hai file đường đến.
+  ok('Rà soát 11/10/2026: "phường Bến Nghé, Quận 1" trong thẻ mô tả bị bắt',
+     PHUONG_QUAN.tim('Beeftown ở tầng 3, 63 Hồ Tùng Mậu, phường Bến Nghé, Quận 1, TP.HCM. Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3.') !== null);
+  ok('Rà soát 11/10/2026: "Ben Nghe Ward, District 1" trong câu tiếng Anh bị bắt',
+     PHUONG_QUAN.tim('Here is the way from our own entrance, right next to GS25, Ben Nghe Ward, District 1, to the beef counter on Floor 3.') !== null);
+  ok('Rà soát 11/10/2026: "đi bộ 2 phút" bị bắt ở mọi file công khai (luật số đo chạy trên toàn bộ chữ khách đọc, không riêng hai file đường đến)',
+     SO_DO_DUONG_DI.tim('Xem trước đường lên tầng 3, đi bộ 2 phút từ GS25.') !== null && LUAT_CHU_KHACH_DOC.includes(SO_DO_DUONG_DI));
 });
 
 process.exit(ketThuc('CÂU CHỮ CỦA TRANG CÔNG KHAI'));

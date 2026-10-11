@@ -71,7 +71,11 @@ Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
 - Trong CSS riêng: màu chỉ từ biến bề mặt và token; khoảng cách `--k-*`; cỡ chữ `--co-*`; mốc
   600 / 900 / 1024 / 1080px; tiếng Hàn chỉnh bằng `:lang(ko)`; thêm `@media (forced-colors: active)`
   khi dùng nền hay viền để truyền nghĩa.
-- Nút trên dải đỏ tự đổi (kem, chữ đỏ sâu) nhờ biến bề mặt — đừng viết lại màu nút trong component.
+- Token ở đây mang giá trị của **khối `.ck`** (bảng màu chốt 09/10/2026 — bảng "Token của trang công
+  khai" trong `SKILL.md`), không phải giá trị `:root` của `chung.css` mà `/noi-bo`, kho đang đọc. Cần
+  màu trong suốt thì viết `rgba()` bằng số RGB của bảng đó; mã hex hay bộ ba số của bảng cũ trong một
+  file công khai (kể cả trong chú thích) là kiểm thử đỏ (`test-cong-khai-giao-dien.mjs` nhóm 6).
+- Nút trên dải đỏ tự đổi (kem, chữ đỏ đậm) nhờ biến bề mặt — đừng viết lại màu nút trong component.
 
 ## Ba thứ tiếng
 
@@ -110,6 +114,13 @@ tệ hơn không có nút".
 - Ngày: chỉ khi khóa ngày đã công bố; định dạng theo `dinhDangNgay(ngay, ngonNgu)`; hôm nay theo giờ
   Việt Nam `homNayVn()`.
 - Ảnh: `coAnh(id, khung)`; chưa dựng cỡ thì `<Anh>` tự hiện `KhungAnh`.
+- **Địa chỉ không bao giờ gõ thẳng vào component hay layout.** Lấy qua các hàm của
+  `web/src/lib/trang-cong-khai.ts`: `diaChi(nd)` (bản công bố `dia_chi_hien_thi` trong `/noi-bo`, chưa
+  có thì `DIA_CHI_NHA_HANG`), `diaChiSauTang(nd)` (bỏ vế "Tầng 3" khi câu đã nói tầng),
+  `diaChiManDau(nd)` (màn đầu: bỏ thêm vế phường), `diaChiCoCauTruc(nd)` (JSON-LD), `cumDiaChi(…)`
+  (tách cụm để xuống dòng đẹp). Câu chỉ đường là `t.loiLen` của `chu(ngonNgu)`. Bản công bố trong
+  database thay cho bản trong mã ở **mọi** chỗ in địa chỉ — đổi địa chỉ trong mã thì nhắc Khánh xem lại
+  bản công bố.
 
 Ba trạng thái mở cửa (đang chuẩn bị / bán thử / đã mở) là quyết định công bố của Khánh, không tự đổi
 theo ngày — `web/THIET-KE.md` mục 10.
@@ -120,9 +131,9 @@ theo ngày — `web/THIET-KE.md` mục 10.
 |---|---|---|
 | `BieuTuong` | `ten`, `class?` | Biểu tượng nét 1,5px, lưới 24, `currentColor`, luôn `aria-hidden`. Nút chỉ có biểu tượng thì thêm chữ `.an-chu` cạnh nó |
 | `Anh` | `id`, `ngonNgu`, `khung`, `khungNho?`, `sizes?`, `uuTien?`, `phuKin?`, `thayBang?`, `nenKhung?` | Ảnh AVIF / WebP, tự gắn "Ảnh minh họa"; `uuTien` chỉ cho ảnh màn đầu |
-| `KhungAnh` | `loai` (`quay`, `khay`, `cau-thang`, `loi-vao`, `ban-nuong`), `tiLe?`, `tiLeNho?`, `nen?` | Chỗ của ảnh chụp thật chưa có — đúng tỷ lệ, không chữ |
+| `KhungAnh` | `loai` (`quay`, `khay`, `thang-may`, `loi-vao`, `ban-nuong`), `tiLe?`, `tiLeNho?`, `nen?` | Chỗ của ảnh chụp thật chưa có — đúng tỷ lệ, không chữ |
 | `NhanKhay` | `ngonNgu` | Thiết bị chữ ký "Đọc nhãn khay" — năm trường nhãn, không con số |
-| `LenTang3` | `ngonNgu`, `noiDung`, `gon?`, `capTieuDe?`, `anHieu?`, `tieuDe?`, `khongLinkDuongDen?` | "Tầng 3" và đường lên; bản gọn cho trang Hỏi bàn. Hiện còn ghi địa chỉ cũ và cầu thang bộ — đổi cùng PR địa điểm 63 Hồ Tùng Mậu (thang máy) |
+| `LenTang3` | `ngonNgu`, `noiDung`, `gon?`, `capTieuDe?`, `anHieu?`, `tieuDe?`, `khongLinkDuongDen?` | "Tầng 3" và đường lên; bản gọn cho trang Hỏi bàn. In địa chỉ và câu chỉ đường `t.loiLen` (lối vào riêng ngay cạnh GS25, thang máy lên tầng 3) — không viết lại câu đó trong component khác |
 | `CauHoi` | `ngonNgu`, `noiDung` | Hỏi đáp bằng `<details>` — chỉ dữ kiện đã xác nhận |
 | `TrangVanBan` | `hieu`, `tieuDe` + `<slot>` | Trang pháp lý |
 | `ThucDonNhom` | `nhom`, `ngonNgu`, `ghiChu?`, `khongGia?` | Một nhóm món |

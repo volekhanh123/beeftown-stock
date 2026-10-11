@@ -15,6 +15,10 @@ README khi hai bên lệch).
 - **Kho** sáng và thoáng hơn CRM (học cách iPOS Inventory Pro sắp xếp: nền gần trắng, thẻ trắng bo góc,
   biểu tượng rõ, số to). **Đỏ dành cho số báo việc và nút chính — chỗ nào đỏ là chỗ đó cần làm.**
 - **Không cần JavaScript**: mọi thao tác là form POST rồi chuyển hướng 303 (F5 không gửi lại).
+- **Màu: còn bảng cũ.** Hai khu này đọc token ở `:root` của `chung.css` (bảng "Token của `/noi-bo` và
+  kho" trong `SKILL.md`: đỏ `#B23A2C`, kem `#FBF4E1`…). Bảng màu thương hiệu chốt 09/10/2026 mới áp dụng
+  cho trang công khai, qua khối `.ck` — lớp đó không có ở đây. Chưa có PR đổi màu cho `/noi-bo` và kho:
+  màn mới dùng token như các màn đang có, không gõ mã của bảng mới vào một màn lẻ.
 
 ## CSS và layout
 
@@ -57,7 +61,8 @@ Trạng thái chứng từ → nhãn: `trangThaiKho(ma, nn)` (`TRANG_THAI_CHUNG_
   4,25rem, chừa `env(safe-area-inset-bottom)`. (Vài chỗ cũ 36 – 44px là nợ, đừng bắt chước.)
 - Bo góc: nhãn 4px · nút nhỏ 6px · nút, ô 8px (kho 10px) · thẻ 10px (kho `--kho-bo` 14px) · chip
   999px.
-- Viền ô nhập nên dùng `--vien-o` (3,3 : 1); ô nội bộ cũ dùng `--vach` mờ hơn — màn mới đừng chép.
+- Viền ô nhập nên dùng `--vien-o` (ở hai khu này 3,3 : 1 với kem); ô nội bộ cũ dùng `--vach` mờ hơn —
+  màn mới đừng chép.
 
 ## Biểu tượng
 
@@ -157,7 +162,8 @@ Thao tác xóa / hủy: đặt trong `<details class="nb-the">` đóng sẵn, c�
 
 Chương trình Windows mở giao diện trong cửa sổ ứng dụng của Edge (1180 × 860), máy chủ Bun ở `127.0.0.1`. Giao diện
 `can-app/src/giao-dien.html`, hướng dẫn in được `can-app/src/huong-dan.html` (tự chứa, không tải gì từ
-mạng). Dùng cùng màu đỏ, kem, than, mù tạt, nhưng **phông hệ thống (Segoe UI)** vì chạy không mạng.
-Khi sửa: giữ bảng màu Beeftown, đừng thêm phông tải từ mạng, việc chính dùng nút to sẵn có
+mạng). Dùng cùng màu đỏ, kem, than, mù tạt của **bảng cũ** như `/noi-bo` và kho (token khai ngay trong
+file HTML; chưa đổi sang bảng màu chốt 09/10/2026), nhưng **phông hệ thống (Segoe UI)** vì chạy không
+mạng. Khi sửa: giữ bảng màu app đang dùng, đừng thêm phông tải từ mạng, việc chính dùng nút to sẵn có
 (`button.to`). Hai chỗ app khác web — đừng chép sang web: nút lọc bo tròn kiểu viên thuốc, nút khóa mờ
 đi (`opacity: .5`) thay vì tối đi.

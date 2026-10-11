@@ -1,17 +1,20 @@
 ---
 /**
- * TRANG ĐẾN BEEFTOWN — tầng 3, cầu thang bộ, ba bước tới bàn
+ * TRANG ĐẾN BEEFTOWN — tầng 3, lối vào riêng, thang máy, ba bước tới bàn
  *
- * Điều khách phải biết TRƯỚC khi rủ cả nhà đi: Beeftown ở trọn tầng 3, khách lên
- * bằng cầu thang bộ, KHÔNG có thang máy cho khách (brief 06/10/2026).
+ * Điều khách phải biết TRƯỚC khi rủ cả nhà đi: Beeftown ở tầng 3, 63 Hồ Tùng Mậu;
+ * khách vào bằng lối vào riêng ngay cạnh GS25 (Khánh quyết 09/10/2026) rồi đi thang
+ * máy lên (layout ngày 08/10/2026).
  *
- * Ba bước chỉ nói những gì đã xác nhận: tòa nhà 11-21 Hàm Nghi → cầu thang bộ lên
- * tầng 3 → quầy bò. KHÔNG bịa chi tiết lối đi (cửa nào, rẽ trái hay phải): chưa
- * ai đi lại để ghi. Ảnh lối vào, cầu thang và quầy là KhungAnh cho tới khi có ảnh
- * chụp thật (web/THIET-KE.md, brief chụp) — không ảnh AI cho những chỗ này.
+ * Ba bước chỉ nói những gì đã xác nhận: tới 63 Hồ Tùng Mậu → lối vào riêng cạnh
+ * GS25, thang máy lên tầng 3 → quầy bò. KHÔNG bịa chi tiết lối đi (cửa nào, rẽ trái
+ * hay phải, mấy bước, mấy phút): chưa ai đi lại để ghi. Ảnh lối vào, thang máy và
+ * quầy là KhungAnh cho tới khi có ảnh chụp thật (web/THIET-KE.md, brief chụp) —
+ * không ảnh AI cho những chỗ này.
  *
- * Không có: giờ mở cửa, chỗ gửi xe (chưa chốt), bản đồ nhúng. "Chỉ đường" chỉ hiện
- * khi link Google Maps đã công bố (LenTang3); liên hệ chỉ hiện mục đã công bố.
+ * Không có: giờ mở cửa, chỗ gửi xe, lối cho xe lăn (chưa xác nhận), bản đồ nhúng.
+ * "Chỉ đường" chỉ hiện khi link Google Maps đã công bố (LenTang3); liên hệ chỉ hiện
+ * mục đã công bố.
  */
 import { chu, dich, duongDanTuongUng } from '../lib/chu';
 import { coKenhHoiBan, cumDiaChi, diaChi, lienHe } from '../lib/trang-cong-khai';
@@ -25,7 +28,7 @@ const { ngonNgu, noiDung: nd } = Astro.props;
 const t = chu(ngonNgu);
 const lh = lienHe(nd);
 const dc = diaChi(nd);
-// Địa chỉ xuống dòng ở dấu phẩy, không gãy giữa "phường Sài / Gòn" (cumDiaChi: chữ giữ
+// Địa chỉ xuống dòng ở dấu phẩy, không gãy giữa "Hồ Tùng / Mậu" (cumDiaChi: chữ giữ
 // nguyên văn, cụm dài thì để tự xuống dòng — không tràn ngang trên điện thoại).
 const email = lh.thu ? lh.thu.replace(/^mailto:/, '') : null;
 const coLienHe = !!(lh.facebook || lh.goi || email);
@@ -36,25 +39,25 @@ const c = dich(ngonNgu, {
   tieuDeDiaChi: { vi: 'Địa chỉ và lối lên', en: 'Address and the way up', ko: '주소와 올라오는 길' },
   tieuDe: { vi: 'Hẹn gặp bạn ở tầng 3', en: 'See you on Floor 3', ko: '3층에서 만나요' },
   dan: {
-    vi: 'Beeftown nằm trọn tầng 3, lối lên là cầu thang bộ — không có thang máy cho khách. Dưới đây là đường đi, từ tòa nhà tới quầy bò.',
-    en: 'Beeftown takes up all of Floor 3, and the way up is by the stairs — there is no guest lift. Here is how to get from the street to the beef counter.',
-    ko: 'Beeftown은 3층 전체를 쓰고 있고, 계단으로 올라오셔야 해요. 손님용 엘리베이터는 없어요. 건물에서 정육 코너까지 오시는 길을 안내해 드릴게요.',
+    vi: 'Dưới đây là đường đi, từ lối vào riêng ngay cạnh GS25 tới quầy bò ở tầng 3.',
+    en: 'Here is the way from our own entrance, right next to GS25, to the beef counter on Floor 3.',
+    ko: 'GS25 바로 옆 전용 입구에서 3층 정육 코너까지 오시는 길을 안내해 드릴게요.',
   },
 
   // --- Ba bước tới bàn -------------------------------------------------------
   buocHieu: { vi: 'Đường lên', en: 'The way up', ko: '올라오는 길' },
   buocTieuDe: { vi: 'Ba bước tới bàn', en: 'Three steps to your table', ko: '테이블까지 세 걸음' },
   // Số nhà và tên đường giữ chữ Việt (lang="vi") — chữ khách thấy trên biển số.
-  duong: { vi: '11-21 Hàm Nghi', en: '11-21 Hàm Nghi', ko: 'Hàm Nghi 11-21' },
-  b1Truoc: { vi: 'Tới tòa nhà số ', en: 'Come to ', ko: '' },
-  b1Sau: { vi: '', en: '', ko: ' 건물로 오세요' },
+  duong: { vi: '63 Hồ Tùng Mậu', en: '63 Hồ Tùng Mậu', ko: 'Hồ Tùng Mậu 63' },
+  b1Truoc: { vi: 'Tới ', en: 'Come to ', ko: '' },
+  b1Sau: { vi: '', en: '', ko: '으로 오세요' },
   b1Chu: { vi: 'Địa chỉ đầy đủ:', en: 'Full address:', ko: '전체 주소:' },
   // Dấu cách không ngắt (\u00a0): "tầng 3" / "Floor 3" không bị tách, số 3 không rơi một mình xuống dòng.
-  b2TieuDe: { vi: 'Đi cầu thang bộ lên tầng\u00a03', en: 'Take the stairs up to Floor\u00a03', ko: '계단으로 3층까지 올라오세요' },
+  b2TieuDe: { vi: 'Đi thang máy lên tầng\u00a03', en: 'Take the lift to Floor\u00a03', ko: '엘리베이터로 3층까지 올라오세요' },
   b2Chu: {
-    vi: 'Không có thang máy cho khách, nên bạn cứ lên thong thả.',
-    en: 'There is no guest lift, so take your time on the way up.',
-    ko: '손님용 엘리베이터가 없으니 천천히 올라오세요.',
+    vi: 'Lối vào riêng của Beeftown ở ngay cạnh GS25.',
+    en: 'Our own entrance is right next to GS25.',
+    ko: 'Beeftown 전용 입구는 GS25 바로 옆에 있어요.',
   },
   b3TieuDe: { vi: 'Ghé quầy chọn bò', en: 'Stop by the beef counter', ko: '정육 코너에서 고기를 고르세요' },
   b3Chu: {
@@ -103,7 +106,7 @@ const c = dich(ngonNgu, {
   </div>
 </section>
 
-{/* Ba bước: lệch bậc trên màn rộng như đi lên cầu thang — bước 1 thấp nhất. */}
+{/* Ba bước: lệch bậc trên màn rộng, đi lên dần — bước 1 thấp nhất. */}
 <section class="muc be-toi db-buoc" aria-labelledby="db-h-buoc">
   <div class="khung">
     <p class="hieu">{c.buocHieu}</p>
@@ -120,7 +123,7 @@ const c = dich(ngonNgu, {
         </div>
       </li>
       <li class="db-muc">
-        <KhungAnh loai="cau-thang" tiLe="4 / 3" nen="toi" />
+        <KhungAnh loai="thang-may" tiLe="4 / 3" nen="toi" />
         <div class="db-chu">
           <span class="db-so" aria-hidden="true">2</span>
           <div>
@@ -205,7 +208,7 @@ const c = dich(ngonNgu, {
   }
   @media (min-width: 900px) {
     .db-ds { grid-template-columns: repeat(3, 1fr); gap: var(--k-6); align-items: start; }
-    /* Lệch bậc: bước 1 thấp nhất, bước 3 cao nhất — đi lên như cầu thang. */
+    /* Lệch bậc: bước 1 thấp nhất, bước 3 cao nhất — đi lên dần. */
     .db-muc:nth-child(1) { margin-top: var(--k-9); }
     .db-muc:nth-child(2) { margin-top: var(--k-7); }
   }
@@ -214,7 +217,7 @@ const c = dich(ngonNgu, {
     margin-top: var(--k-4);
   }
   @media (min-width: 600px) and (max-width: 899px) { .db-chu { margin-top: 0; } }
-  /* Số bước màu kem (16,3:1 trên than), không vàng: số to vàng cạnh eyebrow vàng trên nền
+  /* Số bước màu kem (14,96:1 trên than), không vàng: số to vàng cạnh eyebrow vàng trên nền
      than thành bộ đen-vàng mà THIET-KE mục 1 bảo tránh. */
   .db-so {
     flex: none; min-width: 1ch;
@@ -223,7 +226,7 @@ const c = dich(ngonNgu, {
   }
   .db-chu h3 { margin: 4px 0 var(--k-2); text-wrap: balance; }
   .db-chu p { margin: 0; color: var(--chu-phu); max-width: 42ch; }
-  /* "11-21 Hàm Nghi", "phường Sài Gòn" không gãy giữa số nhà và tên đường, giữa hai chữ của một tên. */
+  /* "63 Hồ Tùng Mậu" không gãy giữa số nhà và tên đường, giữa các chữ của một tên. */
   .db-chu .lien { white-space: nowrap; }
 
   /* --- Liên hệ --------------------------------------------------------------- */

@@ -2,7 +2,7 @@
 /**
  * KHUNG ẢNH CHỜ ẢNH CHỤP THẬT
  *
- * Quầy thịt, khay skin-pack, lối lên cầu thang, cửa tầng 3, bàn nướng: những thứ
+ * Quầy thịt, khay skin-pack, lối vào riêng, thang máy lên tầng 3, bàn nướng: những thứ
  * này chỉ được dùng ẢNH THẬT của Beeftown — không ảnh kho, không ảnh tạo bằng AI
  * rồi để khách tưởng là quán (brief 06/10/2026). Cho tới ngày chụp, chỗ đó là
  * một khung có artwork: đúng tỷ lệ của ảnh sau này, nét vẽ cùng màu và cùng nét
@@ -13,7 +13,7 @@
  *
  * Thay bằng ảnh thật: đổi <KhungAnh loai="quay"/> thành <Anh id="quay-…"/>.
  */
-export type LoaiKhung = 'quay' | 'khay' | 'cau-thang' | 'loi-vao' | 'ban-nuong';
+export type LoaiKhung = 'quay' | 'khay' | 'thang-may' | 'loi-vao' | 'ban-nuong';
 
 interface Props {
   loai: LoaiKhung;
@@ -58,26 +58,28 @@ const lopNen = nen === 'toi' ? 'tren-toi' : nen === 'do' ? 'tren-do' : '';
         <path d="M139 113h28M139 120h40M139 127h20" opacity=".7" />
       </g>
     )}
-    {loai === 'cau-thang' && (
+    {loai === 'thang-may' && (
       <g>
-        {/* Cầu thang bộ lên tầng 3: bậc, tay vịn, cửa ở chiếu nghỉ trên cùng. */}
-        <path d="M30 156h28v-20h28v-20h28v-20h28V76h28V56h40" />
-        <path d="M30 156v-6M58 136v-6M86 116v-6M114 96v-6M142 76v-6M170 56v-6" opacity=".45" />
-        <path d="M36 128 186 32" />
-        <path d="M44 132v-8M72 114v-8M100 96v-8M128 78v-8M156 60v-8" opacity=".6" />
-        <path d="M188 56V22h24v34" />
-        <path d="M206 40v3" stroke-width="3" />
+        {/* Thang máy lên tầng 3: sàn, khung cửa, hai cánh cửa, ô báo tầng có mũi tên đi lên, bảng nút gọi. */}
+        <path d="M24 160h192" />
+        <path d="M68 160V48h104v112M120 48v112" />
+        <path d="M82 62h24v84H82zM134 62h24v84h-24z" opacity=".45" />
+        <path d="M100 18h40v18h-40z" />
+        <path d="M113 31l7-7 7 7" stroke-width="2.5" />
+        <path d="M188 92h16v34h-16z" opacity=".6" />
+        <path d="M196 102v1M196 115v1" stroke-width="3" />
       </g>
     )}
     {loai === 'loi-vao' && (
       <g>
-        {/* Mặt tiền phố: dãy cửa tầng trệt, lối cầu thang có mũi tên đi lên, tầng trên. */}
+        {/* Mặt tiền phố: dãy cửa tầng trệt, lối vào riêng có mũi tên đi lên, tầng trên. */}
         <path d="M16 160h208M28 160V34h184v126" />
         <path d="M28 70h184M28 106h184" opacity=".45" />
         <path d="M44 48h30v14H44zM94 48h30v14H94zM144 48h30v14h-30z" opacity=".55" />
         <path d="M44 84h30v14H44zM144 84h30v14h-30z" opacity=".55" />
         <path d="M100 160v-40h40v40" />
-        <path d="M108 152h8v-8h8v-8h8v-8" />
+        <path d="M120 120v40" />
+        <path d="M114 139v3M126 139v3" stroke-width="3" />
         <path d="M120 84v16M113 91l7-7 7 7" stroke-width="2.5" />
         <path d="M44 160v-34h36v34M164 160v-34h36v34" opacity=".55" />
       </g>

@@ -10,7 +10,7 @@
  * có chữ (nút đóng menu…) thì đặt chữ ẩn cạnh nó (.an-chu), không đặt ở đây.
  */
 export type TenBieuTuong =
-  | 'mui-ten' | 'menu' | 'dong' | 'cong' | 'khay' | 'nhan' | 'vi-gas' | 'cau-thang'
+  | 'mui-ten' | 'menu' | 'dong' | 'cong' | 'khay' | 'nhan' | 'vi-gas' | 'thang-may'
   | 'nhom' | 'ghim' | 'sao-chep' | 'dien-thoai' | 'tin-nhan' | 'mon-song' | 'co-con'
   | 'cua' | 'da-chep';
 
@@ -28,7 +28,8 @@ const NET: Record<TenBieuTuong, string> = {
   'nhan':      'M4 4.5h10.5L20 10v9.5H4zM14.5 4.5V10H20M7.5 12.5h6M7.5 15.5h9M7.5 9.5h3',
   // Vỉ gas đặt bàn: mặt vỉ có rãnh, thân bếp, ngọn lửa gas nhỏ.
   'vi-gas':    'M3.5 9a8.5 3.5 0 1 0 17 0 8.5 3.5 0 1 0-17 0zM7.5 7.4v3.2M10.5 6.2v5.6M13.5 6.2v5.6M16.5 7.4v3.2M7.5 12.8 8.5 19h7l1-6.2M12 17.6c-.9-.6-.9-1.6 0-2.4.9.8.9 1.8 0 2.4z',
-  'cau-thang': 'M3 20h4.5v-4h4.5v-4h4.5V8H21M3 20V16.5M7.5 8 18 3',
+  // Thang máy: buồng thang, hai mũi tên lên và xuống — ký hiệu thang máy quen mắt ở cỡ 22–26px.
+  'thang-may': 'M5.5 3.5h13v17h-13zM9.5 10 12 7.5l2.5 2.5M9.5 14l2.5 2.5 2.5-2.5',
   'nhom':      'M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM3.5 20c0-3.1 2.5-5.5 5.5-5.5s5.5 2.4 5.5 5.5M16.5 11.5a2.5 2.5 0 1 0 0-5M17 14.6c2.3.3 3.8 2.3 3.8 5',
   'ghim':      'M12 21s-6.5-5.9-6.5-11a6.5 6.5 0 0 1 13 0c0 5.1-6.5 11-6.5 11zM12 12.2a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4z',
   'sao-chep':  'M9.5 9.5h10v10h-10zM15.5 9.5v-4h-11v11h4',

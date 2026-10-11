@@ -6,7 +6,7 @@
  *  1. Dải tuyển dụng gọn. Tuyển đội mở cửa là "đường găng" của ngày mở (TrangRaMat
  *     cũ), nên nó có mặt ở MỌI trang công khai — chỉ gọn lại so với một khối riêng.
  *  2. Dải đỏ: logo kem (biến thể trang 3), chữ BEEFTOWN lặp chìm và tem tròn (trang
- *     11 của PDF nhận diện), các mục điều hướng, địa chỉ + cầu thang bộ.
+ *     11 của PDF nhận diện), các mục điều hướng, địa chỉ + câu chỉ đường.
  *  3. Pháp nhân. web/kiem-tra/trinh-duyet.mjs đọc chữ của <footer> ĐẦU TIÊN trên
  *     trang: ngay dưới dòng "© … Beeftown · Beef Specialty Restaurant" phải là hai
  *     dòng pháp nhân, đúng từng ký tự; mọi <p> trong chân trang phải hiện và ≥ 12px.
@@ -80,7 +80,7 @@ const c = dich(ngonNgu, {
         <h2 class="ct-tieu-de">{t.denBeeftown}</h2>
         <address>
           <p lang="vi">{cumDiaChi(diaChi(nd)).map(cum => <><span class:list={{ lien: cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</p>
-          <p class="ct-cau-thang"><BieuTuong ten="cau-thang" /><span>{t.cauThangBo}</span></p>
+          <p class="ct-loi-len"><BieuTuong ten="thang-may" /><span>{t.loiLen}</span></p>
         </address>
         {mangXaHoi.length > 0 && (
           <ul class="ct-mxh" aria-label={c.theoDoi}>
@@ -122,7 +122,7 @@ const c = dich(ngonNgu, {
   /* --- 2. Dải đỏ ----------------------------------------------------------- */
   .ct-chinh { position: relative; padding-block: var(--k-8) var(--k-7); }
   /* Chìm: chỉ đọc ra chữ khi nhìn gần (THIET-KE mục 5). */
-  .ct-hoa-van { inset: 0; --mau-hoa-van: rgba(150, 15, 19, .13); }
+  .ct-hoa-van { inset: 0; --mau-hoa-van: rgba(137, 6, 7, .13); }
   /* Tem tròn trang 11 — đóng như con dấu cạnh logo (màn hẹp) hoặc dưới logo (màn rộng). */
   .ct-tem { width: clamp(76px, 18vw, 120px); height: auto; transform: rotate(-9deg); flex: none; }
   .ct-luoi {
@@ -152,10 +152,10 @@ const c = dich(ngonNgu, {
   .ct-cot a:hover { text-decoration: underline; }
   address { font-style: normal; }
   address p { margin: 0 0 var(--k-3); max-width: 36ch; }
-  .ct-cau-thang { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
-  .ct-cau-thang span { text-wrap: balance; }
+  .ct-loi-len { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; }
+  .ct-loi-len span { text-wrap: balance; }
   address .lien { white-space: nowrap; }
-  .ct-cau-thang :global(svg) { width: 22px; height: 22px; flex: none; margin-top: 1px; }
+  .ct-loi-len :global(svg) { width: 22px; height: 22px; flex: none; margin-top: 1px; }
   .ct-mxh { display: flex; flex-wrap: wrap; gap: 0 var(--k-5); margin-top: var(--k-2); }
 
   /* --- 3. Pháp nhân -------------------------------------------------------- */

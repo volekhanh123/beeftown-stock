@@ -76,8 +76,8 @@ export function diaChi(nd: NoiDung): string {
 }
 
 /**
- * Địa chỉ tách theo dấu phẩy, để in từng cụm không gãy giữa chừng ("phường Sài / Gòn",
- * "Hàm / Nghi"). Mỗi cụm mang theo dấu phẩy của nó (chu) và khoảng trắng đứng sau (cach):
+ * Địa chỉ tách theo dấu phẩy, để in từng cụm không gãy giữa chừng ("Hồ Tùng / Mậu",
+ * "Tầng / 3"). Mỗi cụm mang theo dấu phẩy của nó (chu) và khoảng trắng đứng sau (cach):
  * ghép lại là ĐÚNG NGUYÊN VĂN địa chỉ, như diaChi() và JSON-LD in. Cụm dài quá (bản công
  * bố không có dấu phẩy) thì giu = false — để trình duyệt tự xuống dòng, không tràn ngang.
  * Mọi chỗ in địa chỉ theo cụm dùng chung hàm này (một ngưỡng, một cách tách).
@@ -92,15 +92,38 @@ export function cumDiaChi(dc: string): { chu: string; cach: string; giu: boolean
  * Địa chỉ không có "Tầng 3" ở đầu — cho chỗ đã in chữ "Tầng 3" đậm ngay trước (menu gọn,
  * màn đầu). Vẫn đi qua diaChi(): bản công bố trong /noi-bo phải tới được MỌI chỗ in địa chỉ,
  * không thì một trang hiện hai địa chỉ khác nhau.
+ *
+ * Bỏ "Tầng 3" xong mà hết chữ (bản công bố gõ dở: "Tầng 3,") thì trả lại cả bản công bố —
+ * dòng địa chỉ không bao giờ rỗng.
  */
 export function diaChiSauTang(nd: NoiDung): string {
-  return diaChi(nd).replace(/^\s*tầng\s*3\s*[,·–-]\s*/iu, '');
+  const dayDu = diaChi(nd);
+  return dayDu.replace(/^\s*tầng\s*3\s*[,·–-]\s*/iu, '') || dayDu;
+}
+
+/**
+ * Địa chỉ ngắn nhất, cho dòng địa chỉ ở màn đầu trang chủ: sau chữ "Tầng 3" đậm chỉ còn số
+ * nhà, tên đường, thành phố. Bản công bố trong /noi-bo có ghi phường ("…, phường X, …" hay
+ * "…, P. X, …") thì bỏ vế phường đi — dòng đó phải nằm gọn trên điện thoại; khối địa chỉ, chân
+ * trang và JSON-LD vẫn in đủ bản công bố.
+ *   · Chỉ bỏ khi "phường" mở đầu một vế (đứng sau dấu phẩy): tên đường có chữ "Phường" thì giữ.
+ *   · "P." đứng trước một con số là số phòng ("P.301"), không phải phường: giữ. Phường đánh số
+ *     thì bản công bố viết đủ chữ "phường 12".
+ *   · Bỏ xong mà hết chữ thì trả lại diaChiSauTang() — không bao giờ rỗng.
+ */
+export function diaChiManDau(nd: NoiDung): string {
+  const sauTang = diaChiSauTang(nd);
+  return sauTang.replace(/,\s*(?:phường\s+|p\.(?!\s*\d)\s*)[^,]+/iu, '') || sauTang;
 }
 
 /**
  * Địa chỉ cho JSON-LD (schema.org PostalAddress). Chưa công bố: tách đúng từ địa chỉ cố
  * định. Có bản công bố: đó là cả một dòng do người gõ, nên để nguyên ở streetAddress và
  * KHÔNG thêm phường / thành phố lần nữa (Google đọc thành địa chỉ lặp).
+ *
+ * Không có addressLocality: trường đó là chỗ của tên phường, mà phường của 63 Hồ Tùng Mậu
+ * chưa có giấy xác nhận (DIA_CHI_PHAN trong lib/chu.ts). Thiếu một trường tùy chọn thì Google
+ * vẫn đọc được địa chỉ; ghi một tên phường chưa chắc là khai sai.
  */
 export function diaChiCoCauTruc(nd: NoiDung): Record<string, string> {
   const congBo = typeof nd.dia_chi_hien_thi === 'string' ? nd.dia_chi_hien_thi.trim() : '';
@@ -108,7 +131,6 @@ export function diaChiCoCauTruc(nd: NoiDung): Record<string, string> {
   return {
     '@type': 'PostalAddress',
     streetAddress: DIA_CHI_PHAN.duong,
-    addressLocality: DIA_CHI_PHAN.phuong,
     addressRegion: DIA_CHI_PHAN.thanhPho,
     addressCountry: 'VN',
   };

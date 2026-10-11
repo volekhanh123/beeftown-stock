@@ -17,7 +17,7 @@
 import { THUONG_HIEU, chu, duongDanTuongUng } from '../lib/chu';
 import { dinhDangNgay, homNayVn } from '../lib/noi-dung';
 import type { NgonNgu, NoiDung } from '../lib/noi-dung';
-import { cumDiaChi, diaChiSauTang, nutMoDau, lienHe } from '../lib/trang-cong-khai';
+import { cumDiaChi, diaChiManDau, nutMoDau, lienHe } from '../lib/trang-cong-khai';
 import { coAnh } from '../lib/anh';
 import Anh from './Anh.astro';
 import BieuTuong from './BieuTuong.astro';
@@ -31,12 +31,12 @@ const ngayMo = nd.ngay_khai_truong;
 const daMo = !!(ngayMo && ngayMo <= homNayVn());
 const coAnhHero = !!coAnh('hero-vi-gas', '16x9');
 const [pick, grill, love] = THUONG_HIEU.khauHieu.split(/(?<=\.)\s+/);
-// Câu cầu thang tách thành từng vế (sau "—" hoặc dấu chấm), mỗi vế một khối inline-block:
-// xuống dòng giữa hai vế, không để dòng mới bắt đầu bằng "— không có…" hay cắt đôi một câu.
-// Chữ giữ nguyên (không \u00a0 trong cauThangBo — test đọc nguyên câu).
-const cauThang = t.cauThangBo.split(/(?<=[—.])\s+/u);
-// Địa chỉ: xuống dòng sau dấu phẩy, không giữa "Hàm / Nghi" (vế dài để nguyên, không tràn).
-const cumDc = cumDiaChi(diaChiSauTang(nd).replace(/,\s*phường Sài Gòn/iu, ''));
+// Câu chỉ đường tách thành từng vế (sau dấu phẩy), mỗi vế một khối inline-block: xuống dòng
+// giữa hai vế, không cắt đôi "ngay cạnh / GS25" hay "thang / máy".
+// Chữ giữ nguyên (không \u00a0 trong loiLen — test đọc nguyên câu).
+const veLoiLen = t.loiLen.split(/(?<=,)\s+/u);
+// Địa chỉ bản ngắn (diaChiManDau): xuống dòng sau dấu phẩy, không giữa "Hồ Tùng / Mậu" (vế dài để nguyên, không tràn).
+const cumDc = cumDiaChi(diaChiManDau(nd));
 ---
 <section class="kmd be-kem" aria-labelledby="kmd-tieu-de">
   <div class="kmd-tam nen-van-mo" aria-hidden="true"></div>
@@ -55,11 +55,11 @@ const cumDc = cumDiaChi(diaChiSauTang(nd).replace(/,\s*phường Sài Gòn/iu, '
 
       <ul class="kmd-thong-tin">
         <li>
-          <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="cau-thang" /><span><strong>{t.tang3}</strong> · <span lang="vi">{cumDc.map(cum => <><span class:list={{ 'kmd-lien': cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></span></a>
+          <a class="kmd-dia-chi" href={duongDanTuongUng('/den-beeftown', ngonNgu)}><BieuTuong ten="thang-may" /><span><strong>{t.tang3}</strong> · <span lang="vi">{cumDc.map(cum => <><span class:list={{ 'kmd-lien': cum.giu }}>{cum.chu}</span>{cum.cach}</>)}</span></span></a>
         </li>
-        {/* Biểu tượng cầu thang có aria-hidden: câu này mới là thứ người đọc màn hình nghe được
-            (kế hoạch đã duyệt: địa chỉ tầng 3 luôn đi kèm "cầu thang bộ, không có thang máy"). */}
-        <li class="kmd-cau-thang">{cauThang.map((ve, i) => <>{i > 0 && ' '}<span>{ve}</span></>)}</li>
+        {/* Biểu tượng thang máy có aria-hidden: câu này mới là thứ người đọc màn hình nghe được
+            (địa chỉ tầng 3 luôn đi kèm câu chỉ đường: lối vào riêng ngay cạnh GS25, đi thang máy). */}
+        <li class="kmd-loi-len">{veLoiLen.map((ve, i) => <>{i > 0 && ' '}<span>{ve}</span></>)}</li>
         {ngayMo && (
           <li class="kmd-ngay">{daMo ? t.moCuaTu : t.donBanTu} <strong>{dinhDangNgay(ngayMo, ngonNgu)}</strong></li>
         )}
@@ -127,11 +127,11 @@ const cumDc = cumDiaChi(diaChiSauTang(nd).replace(/,\s*phường Sài Gòn/iu, '
   .kmd-ngay { font-weight: 600; }
   .kmd-lien { white-space: nowrap; }
   /* Thẳng hàng với chữ địa chỉ: biểu tượng 24px + khe 10px. */
-  .kmd-cau-thang {
+  .kmd-loi-len {
     font-size: var(--co-nho); color: var(--chu-phu);
     margin-top: calc(-1 * var(--k-3)); padding-left: 34px;
   }
-  .kmd-cau-thang > span { display: inline-block; }
+  .kmd-loi-len > span { display: inline-block; }
 
   /* --- Artwork khi chưa có ảnh: tagline xếp ba dòng như biển trang 7 ------- */
   .kmd-artwork { position: absolute; inset: 0; color: var(--kem); --net-ve: var(--kem); }
@@ -152,7 +152,7 @@ const cumDc = cumDiaChi(diaChiSauTang(nd).replace(/,\s*phường Sài Gòn/iu, '
 
   /* --- Có ảnh --------------------------------------------------------------- */
   .kmd-anh { position: absolute; inset: var(--k-5) 0 var(--k-5); display: grid; place-items: center; }
-  .kmd-anh :global(.anh) { width: 100%; max-height: 100%; box-shadow: 0 30px 60px -30px rgba(30, 22, 14, .6); }
+  .kmd-anh :global(.anh) { width: 100%; max-height: 100%; box-shadow: 0 30px 60px -30px rgba(21, 16, 8, .6); }
   .kmd-khau-hieu-nho { display: none; }
 
   /* --- Màn rộng: hai cột, mảng đỏ nửa phải --------------------------------- */

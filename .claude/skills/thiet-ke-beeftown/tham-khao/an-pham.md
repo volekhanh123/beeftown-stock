@@ -7,7 +7,9 @@ campaign) cho phần guideline chưa nói tới.
 
 ## Nguyên tắc
 
-- **Màu: bảng màu thương hiệu đã chốt**, không phải token của website (website chưa đổi theo):
+- **Màu: năm màu của bảng thương hiệu đã chốt**, không dùng màu pha của website (đỏ đậm, hai nền kem
+  đậm hơn, màu viền ô nhập — Khánh chỉ cho phép chúng trên màn hình của trang công khai) và không dùng
+  bảng cũ mà `/noi-bo`, kho còn chạy:
   Beef Red `#A70C0C`, Cream `#F0E3D0`, Charcoal `#151008`, Marigold `#F5AA14`, Warm Stone `#B8A98C`.
   Phần trên mỗi bề mặt: Cream 60 % · Beef Red 25 % · Charcoal 10 % · Marigold dưới 5 %; Warm Stone chỉ
   cho nét kẻ và nền phụ. Không màu pha nhạt, không đỏ thứ hai. Marigold và Warm Stone không làm chữ
@@ -15,8 +17,9 @@ campaign) cho phần guideline chưa nói tới.
 - **Chữ: Montserrat 500 / 700 / 800 / 900.** Giá dạng `000.000 đ`, ngày `dd/mm/yyyy`.
 - **Chữ trên ấn phẩm chỉ gồm**: tagline *Pick it. Grill it. Love it.* (có dấu chấm), descriptor *Beef
   Specialty Restaurant*, câu chính *Không cần rành bò. Chọn theo gu, thấy giá trước.*, địa điểm
-  "Tầng 3, 63 Hồ Tùng Mậu". Muốn thêm câu khác: câu đó phải đúng sự thật và qua được danh sách chữ cấm
-  của web (`web/src/lib/chuoi-cam.js` áp dụng nguyên cho campaign).
+  "Tầng 3, 63 Hồ Tùng Mậu" (không kèm tên phường, quận; chỉ đường thì dùng đúng câu trong
+  [cau-chu.md](cau-chu.md), mục "Dữ kiện cố định"). Muốn thêm câu khác: câu đó phải đúng sự thật và qua
+  được danh sách chữ cấm của web (`web/src/lib/chuoi-cam.js` áp dụng nguyên cho campaign).
 - **Không viết**: rẻ, buffet, cao cấp, Korean BBQ, nướng Hàn, grade khi chưa có chứng nhận, số ngày ủ
   khi chưa có hồ sơ, chữ về than, lửa, khói, số phần trăm khi chưa có phép thử. Không câu "Thịt chuẩn
   - Giá thật". **Không ngày, không giá, không ưu đãi, không đếm ngược** khi chưa được công bố.
@@ -30,7 +33,8 @@ campaign) cho phần guideline chưa nói tới.
   ngoài và mặt bò tô kín) — không lấy bản này đổi màu thành bản kia.
 - **File logo**: bản mới nằm trên máy Khánh (`Beeftown_Brand_Assets_V17_2026-10-09`, thư mục
   `01_Logo_vector`: bản nền sáng màu red / charcoal / black, bản nền tối màu cream / white) — không vào
-  repo. SVG trong `web/public/thuong-hieu/` là **bản màu cũ**, đừng dùng cho ấn phẩm mới.
+  repo. SVG trong `web/public/thuong-hieu/` đã đổi sang mã màu của bảng chốt nhưng vẫn là **nét tách từ
+  PDF nhận diện cũ**, không phải bản vẽ của bộ tài sản bản 17 — đừng dùng cho ấn phẩm mới.
 - Kênh liên hệ (Facebook, hotline, Zalo, Google Maps) chỉ ghi khi **đã công bố** trong `/noi-bo` —
   tên tài khoản trong bản nháp cũ chưa phải dữ kiện.
 
