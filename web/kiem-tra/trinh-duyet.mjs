@@ -14,7 +14,7 @@
  * nhất: README gốc — "form chưa sẵn sàng thì ẩn hẳn", "không bao giờ báo đã nhận khi
  * chưa ghi được". Bất biến:
  *
- *   1. Mọi trang công khai (sitemap + danh sách cố định) ở 320, 360, 390, 768, 800, 1024,
+ *   1. Mọi trang công khai (sitemap + danh sách cố định) ở 320, 360, 390, 430, 768, 800, 1024,
  *      1366, 1440 px: trả 200, không lỗi JavaScript, không tải hỏng tài nguyên của chính
  *      trang, không tràn ngang, đúng thuộc tính lang; chân trang có pháp nhân (tên công
  *      ty, mã số thuế, địa chỉ) bằng chữ, ngay dưới dòng ©. Thêm (brief 06/10/2026):
@@ -56,7 +56,12 @@
  *      tải về được và dùng đúng khung của cỡ màn hình (điện thoại / màn rộng). Nhãn
  *      "Ảnh minh họa", thẻ đọc nhãn khay, bố cục màn đầu và các khối của trang chủ,
  *      trang Thực đơn: bốn phép đo anh, nhanKhay, trangChu, thucDon của do-giao-dien.mjs,
- *      chạy ở mục 1 trên mọi trang × tám cỡ màn hình.
+ *      chạy ở mục 1 trên mọi trang × chín cỡ màn hình.
+ *  10. Trang Thực đơn chia ba phần thành tab: lúc tải trang chỉ phần đầu hiện, nên mục 1
+ *      không bao giờ thấy ảnh và thành phần của hai phần còn lại. Bấm từng tab như khách
+ *      (390 và 1440 px, ba thứ tiếng) rồi đo lại: phần vừa mở có đúng các ảnh của nó, ảnh
+ *      tải về được, đủ nhãn "Ảnh minh họa", không gì đè lên ảnh, đúng khung — và giấu nhãn
+ *      của ảnh trong phần vừa mở đi thì phép đo phải đỏ (phép đo thật sự nhìn thấy ảnh đó).
  *
  * Hỏng thì ảnh chụp màn hình nằm ở kiem-tra/anh-loi/ (CI tải lên thành artifact).
  */
@@ -160,6 +165,9 @@ const CO_MAN_HINH = [
   { ten: 'điện thoại nhỏ', width: 320, height: 568 },
   { ten: 'điện thoại', width: 360, height: 740 },
   { ten: 'điện thoại lớn', width: 390, height: 844 },
+  // 430px: điện thoại rộng nhất đang bán. Từ 400px lề hai bên không còn là 20px mà lớn dần theo 5 % bề rộng
+  // (--le: clamp(20px, 5vw, 40px)) — cỡ này giữ cho phép đo và trang không lệch nhau ở khoảng 400–599px.
+  { ten: 'điện thoại rộng', width: 430, height: 932 },
   { ten: 'máy tính bảng dọc', width: 768, height: 1024 },
   { ten: 'máy tính bảng', width: 800, height: 1280 },
   { ten: 'máy tính bảng ngang', width: 1024, height: 768 },
@@ -303,7 +311,7 @@ try {
   };
 
   // =========================================================================
-  await nhom(`1 · ${trang.length} TRANG CÔNG KHAI Ở 3 CỠ MÀN HÌNH`, async () => {
+  await nhom(`1 · ${trang.length} TRANG CÔNG KHAI Ở ${CO_MAN_HINH.length} CỠ MÀN HÌNH`, async () => {
     for (const co of CO_MAN_HINH) {
       const ctx = await trinhDuyet.newContext({ viewport: { width: co.width, height: co.height } });
       for (const duong of trang) {
@@ -892,6 +900,72 @@ try {
           await ctx.close();
         }
       }
+    }
+  });
+
+  // =========================================================================
+  // Trang Thực đơn: ba phần (Bò tại quầy / Món ăn / Đồ uống) là ba tab. Lúc tải trang chỉ tab đầu hiện, và
+  // do-giao-dien.mjs bỏ qua ảnh đang ẩn — nên ở mục 1 ảnh sot-cham của tab "Món ăn" chưa bao giờ được đo: giấu
+  // nhãn "Ảnh minh họa" của nó, chèn chữ đè lên, bóp méo khung… phép đo vẫn đạt. Ở đây bấm từng tab như khách
+  // rồi đo lại trên phần vừa mở.
+  await nhom('10 · TRANG THỰC ĐƠN: BẤM TỪNG TAB RỒI ĐO LẠI ẢNH VÀ THÀNH PHẦN CỦA PHẦN VỪA MỞ Ở 390 VÀ 1440 PX', async () => {
+    // Ảnh của từng phần — chép tay theo TrangThucDon.astro; phần không có ảnh thì để [].
+    const ANH_CUA_PHAN = { 'bo-tai-quay': ['bo-cat-lat'], 'mon-an': ['sot-cham'], 'do-uong': [] };
+    for (const [rong, cao] of [[390, 844], [1440, 900]]) {
+      const ctx = await trinhDuyet.newContext({ viewport: { width: rong, height: cao } });
+      const page = await ctx.newPage();
+      for (const duong of ['/thuc-don', '/en/menu', '/ko/menu']) {
+        await page.goto(goc + duong, { waitUntil: 'load', timeout: 30000 });
+        // Bấm theo thứ tự khách hay bấm: sang "Món ăn", sang "Đồ uống", rồi quay về "Bò tại quầy".
+        for (const phan of ['mon-an', 'do-uong', 'bo-tai-quay']) {
+          const anhMong = ANH_CUA_PHAN[phan];
+          const nhan = `${duong} · ${rong}px · tab #${phan}`;
+          await page.locator(`#td-tab-${phan}`).click();
+          // Ảnh của phần vừa mở là ảnh lazy: cuộn tới từng ảnh cho nó tải, chờ tải xong, rồi về đầu trang.
+          const thay = await page.evaluate(async phan => {
+            await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+            const khoi = document.getElementById(phan);
+            const anh = [...khoi.querySelectorAll('figure.anh')].filter(f => f.checkVisibility());
+            for (const f of anh) {
+              f.scrollIntoView({ block: 'center', behavior: 'instant' });
+              const a = f.querySelector('img');
+              for (let i = 0; i < 100 && !(a.complete && a.naturalWidth > 0); i++) await new Promise(r => setTimeout(r, 100));
+            }
+            scrollTo({ top: 0, behavior: 'instant' });
+            return {
+              tabDangChon: [...document.querySelectorAll('.td-tab a[aria-selected="true"]')].map(a => a.id),
+              phanHien: [...document.querySelectorAll('.td-phan')].filter(p => p.checkVisibility()).map(p => p.id),
+              anhHien: anh.map(f => (f.querySelector('img')?.getAttribute('src') ?? '').replace(/^.*\/anh\//, '').replace(/-\d+x\d+-\d+\.\w+$/, '')),
+              anhVe: anh.every(f => { const a = f.querySelector('img'); return a.complete && a.naturalWidth > 0; }),
+              nhanAnh: anh.map(f => f.querySelector('figcaption')?.checkVisibility() ? f.querySelector('figcaption').textContent.trim() : ''),
+              hash: location.hash,
+            };
+          }, phan);
+          const gd = await page.evaluate(doGiaoDien);
+          const saiKhac = Object.keys(PHEP_DO).filter(k => k !== 'anh').flatMap(k => (gd[k] ?? ['không đo được']).map(c => `[${k}] ${c}`));
+          const tot = [
+            ok(`${nhan}: bấm tab → đúng phần này hiện (hai phần kia ẩn), tab được đánh dấu đang chọn, địa chỉ trang thành #${phan}`,
+               thay.phanHien.join() === phan && thay.tabDangChon.join() === `td-tab-${phan}` && thay.hash === `#${phan}`,
+               `hiện: ${thay.phanHien.join(', ') || 'không phần nào'} · tab: ${thay.tabDangChon.join(', ')} · ${thay.hash}`),
+            ok(`${nhan}: phần vừa mở ${anhMong.length ? `có đúng ảnh ${anhMong.join(', ')}, ảnh tải về được, nhãn "Ảnh minh họa" đang hiện` : 'không có ảnh nào'}`,
+               thay.anhHien.join() === anhMong.join() && thay.anhVe && thay.nhanAnh.every(n => n.length > 0),
+               `ảnh: ${thay.anhHien.join(', ') || 'không'} · tải xong: ${thay.anhVe} · nhãn: ${JSON.stringify(thay.nhanAnh)}`),
+            ok(`${nhan}: ${PHEP_DO.anh}`, gd.anh?.length === 0, (gd.anh ?? ['không đo được']).slice(0, 4).join(' | ')),
+            ok(`${nhan}: ${Object.keys(PHEP_DO).length - 1} phép đo còn lại của do-giao-dien.mjs vẫn đạt trên phần vừa mở`, saiKhac.length === 0, saiKhac.slice(0, 5).join(' | ')),
+          ];
+          // Phép đo phải thật sự NHÌN THẤY ảnh của phần vừa mở: giấu nhãn của ảnh đó đi thì phải đỏ. Không có bước
+          // này thì một lần sửa làm phép đo lại bỏ qua tab (hay bỏ qua cả ảnh) vẫn xanh.
+          if (anhMong.length) {
+            const kieuGiau = await page.addStyleTag({ content: `#${phan} figure.anh figcaption { display: none !important; }` });
+            const gdGiau = await page.evaluate(doGiaoDien);
+            await kieuGiau.evaluate(e => e.remove());
+            tot.push(ok(`${nhan}: giấu nhãn "Ảnh minh họa" của ${anhMong.join(', ')} thì phép đo ảnh đỏ — phép đo có nhìn thấy ảnh của tab này`,
+              (gdGiau.anh?.length ?? 0) > 0 && gdGiau.anh.some(c => anhMong.some(id => c.includes(id))), (gdGiau.anh ?? []).slice(0, 3).join(' | ') || 'phép đo vẫn đạt'));
+          }
+          if (tot.includes(false)) await chupLoi(page, `tab${duong}-${phan}-${rong}`);
+        }
+      }
+      await ctx.close();
     }
   });
 } catch (e) {

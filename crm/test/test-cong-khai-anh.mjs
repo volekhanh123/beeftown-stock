@@ -96,6 +96,14 @@ await nhom('1 · DANH MỤC ẢNH: ĐÚNG BẢY ID, CỜ MINH HỌA, ALT BA TH�
   // Than, lửa, khói: Beeftown nướng vỉ gas (THUONG-HIEU.md mục 2). "Hơi" (steam, 김) thì được.
   const THAN_LUA_KHOI = { vi: /(?<![\p{L}])(?:than|lửa|khói|củi)(?![\p{L}])/iu, en: /\b(?:flames?|fire|smok\w*|charcoal|embers?|coals?)\b/i, ko: /불꽃|연기|숯|화로|장작/u };
   const CHU_VIET = /[ăâđêôơưàáạảãầấậẩẫằắặẳẵèéẹẻẽềếệểễìíịỉĩòóọỏõồốộổỗờớợởỡùúụủũừứựửữỳýỵỷỹ]/i;
+  // Số lượng món: alt không đếm "ba chén sốt", "bốn lát bò"… — set sốt và món thật chưa chốt số loại, ảnh là
+  // ảnh minh họa. "Một" / "a" / "한" làm mạo từ ("một bàn tay", "a plate") thì được; "a pair of tongs" là một chiếc kẹp.
+  const SO_LUONG = {
+    // Tiếng Việt: số đi liền một danh từ đếm món — "chín" (đã chín), "năm" (năm trước), "ba" đứng riêng thì không bắt.
+    vi: /\d|(?<![\p{L}])(?:hai|ba|bốn|năm|sáu|bảy|tám|chín|mười)\s+(?:chén|đĩa|dĩa|bát|tô|lát|miếng|món|loại|phần|khay|ly|cốc|vị|thứ|chiếc|cái)(?![\p{L}])/iu,
+    en: /\d|\b(?:two|three|four|five|six|seven|eight|nine|ten|dozen|trio)\b/i,
+    ko: /\d|(?<![가-힣])(?:두|세|네|다섯|여섯|일곱|여덟|아홉|열)\s?(?:가지|개|접시|그릇|종지|종류|장|점|조각|잔|병)/u,
+  };
 
   for (const id of mong) {
     const mt = DANH_MUC_ANH[id];
@@ -111,6 +119,7 @@ await nhom('1 · DANH MỤC ẢNH: ĐÚNG BẢY ID, CỜ MINH HỌA, ALT BA TH�
       ok(`${ten}: tả món — không nói đây là ảnh của quán`, !NOI_LA_CUA_QUAN.test(a), a.match(NOI_LA_CUA_QUAN)?.[0]);
       ok(`${ten}: không kể tên món phụ nào (trang không hứa món phụ)`, !TEN_MON_PHU.test(a), a.match(TEN_MON_PHU)?.[0]);
       ok(`${ten}: không chữ về than, lửa, khói`, !THAN_LUA_KHOI[nn].test(a), a.match(THAN_LUA_KHOI[nn])?.[0]);
+      ok(`${ten}: không ghi số lượng món (ba chén, bốn lát…) — món và set sốt thật chưa chốt số loại`, !SO_LUONG[nn].test(a), a.match(SO_LUONG[nn])?.[0]);
     }
     ok(`${id}: alt tiếng Anh không lẫn chữ Việt; alt tiếng Hàn là chữ Hàn, văn 해요체 (kết thúc "요.")`,
        !CHU_VIET.test(mt.alt?.en ?? 'ă') && /[가-힣]/.test(mt.alt?.ko ?? '') && /요\.$/.test(mt.alt?.ko ?? '') && !CHU_VIET.test(mt.alt?.ko ?? 'ă'),
@@ -121,6 +130,9 @@ await nhom('1 · DANH MỤC ẢNH: ĐÚNG BẢY ID, CỜ MINH HỌA, ALT BA TH�
     'Close-up of a raw beef cut with fine white marbling, beside rosemary and coarse salt.', '어두운 돌 접시 위에 가지런히 놓인 얇은 마블링 소고기.',
     'Bốn chén sốt chấm nhỏ, rau xanh và kimchi đặt cạnh vỉ nướng.', '무쇠 그릴 위에서 노릇하게 익어 가는 소고기와 피어오르는 김.'];
   ok(`Phép dò chữ của bộ ảnh cũ bắt được cả ${ALT_CU.length} alt cũ`, ALT_CU.every(a => CHU_ANH_CU.test(a)), ALT_CU.filter(a => !CHU_ANH_CU.test(a)).join(' | '));
+  ok('Phép dò số lượng món bắt được "Ba chén sốt", "năm lát bò", "Three small bowls", "소스 세 가지"; không bắt nhầm "Một bàn tay", "đang chín", "năm trước", "a pair of tongs", "한 덩이"',
+     SO_LUONG.vi.test('Ba chén sốt chấm đặt trước đĩa bò.') && SO_LUONG.vi.test('năm lát bò') && SO_LUONG.en.test('Three small bowls of dipping sauce.') && SO_LUONG.ko.test('접시 앞에 소스 세 가지가 놓여 있어요.')
+       && SO_LUONG.ko.test('소스 3종') && !SO_LUONG.vi.test('Một bàn tay cầm kẹp, lát bò đang chín trên vỉ, như năm trước.') && !SO_LUONG.en.test('A plate, with a pair of tongs beside it.') && !SO_LUONG.ko.test('두툼한 생 소고기 한 덩이, 자세히 보여요.'));
   ok('Phép dò than, lửa, khói không bắt nhầm "then", "than" tiếng Anh, "thang", "hơi nóng"',
      !THAN_LUA_KHOI.en.test('then enjoy it, rather than wait') && !THAN_LUA_KHOI.vi.test('đi thang máy, một làn hơi nóng') && THAN_LUA_KHOI.vi.test('nướng than') && THAN_LUA_KHOI.en.test('over an open flame'));
 });
@@ -269,6 +281,14 @@ await nhom('5 · BỐN QUYẾT ĐỊNH CỦA KHÁNH (11/10/2026): DẢI TỐI, C
   };
   for (const nn of NGON_NGU) ok(`[${nn}] Câu chính của trang chủ giữ nguyên từng chữ: "${CAU_CHINH[nn].replaceAll(' ', ' ')}"`, chu(nn).cauChinh === CAU_CHINH[nn], chu(nn).cauChinh);
   ok('KhoiMoDau.astro: câu chính là <h1> của trang chủ', /<h1 id="kmd-tieu-de">\{t\.cauChinh\}<\/h1>/.test(doc(SRC, 'components', 'KhoiMoDau.astro')));
+  // Tagline có ở hai khối liền nhau: dải đỏ dưới ảnh màn đầu (để nhìn) và dòng hiệu của khối ba bước (để đọc).
+  // Trình đọc màn hình chỉ đọc MỘT lần: dải dưới ảnh là aria-hidden, dòng hiệu của ba bước thì không.
+  const theKhauHieu = mauCua(doc(SRC, 'components', 'KhoiMoDau.astro')).match(/<p\b[^>]*class="kmd-khau-hieu"[^>]*>/)?.[0] ?? '';
+  const baBuoc = mauCua(doc(SRC, 'components', 'BaBuoc.astro'));
+  ok('KhoiMoDau.astro: dải tagline dưới ảnh có aria-hidden="true" và lang="en" — mắt thấy, trình đọc màn hình không đọc lần thứ hai',
+     /\baria-hidden="true"/.test(theKhauHieu) && /\blang="en"/.test(theKhauHieu), theKhauHieu || 'không thấy <p class="kmd-khau-hieu">');
+  ok('BaBuoc.astro: dòng hiệu đọc tagline (THUONG_HIEU.khauHieu, lang="en"), không aria-hidden — đây là lần đọc duy nhất',
+     /<p class="hieu"><span lang="en">\{THUONG_HIEU\.khauHieu\}<\/span><\/p>/.test(baBuoc));
 
   const trangChu = mauCua(doc(SRC, 'components', 'TrangRaMat.astro'));
   const thuTu = [...trangChu.matchAll(/<(KhoiMoDau|BaBuoc|QuayChonBo|BuaAnCungNhau|DiCungNhom|LenTang3|CauHoi)\b/g)].map(m => m[1]);

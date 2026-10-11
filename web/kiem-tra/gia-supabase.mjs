@@ -39,6 +39,10 @@
  *                 công bố phải thay địa chỉ cố định trong mã ở mọi chỗ in địa chỉ
  *   tuyen-dung-mo như day-du, thêm hai tin tuyển dụng đã công bố (TIN_TUYEN_DUNG_THU): trang Tuyển
  *                 dụng hiện thẻ vị trí thật và form nộp hồ sơ — để đo ô nhập, ô chọn, nút chọn file
+ *   sap-mo        như day-du, thêm ngay_khai_truong là một ngày CHƯA tới (ngaySapMoThu(): ngày 13/11
+ *                 kế tiếp) và dong_trang_thai dài hai câu: màn đầu trang chủ hiện dòng "Đón bạn từ …"
+ *   da-mo         như day-du, thêm ngay_khai_truong là một ngày ĐÃ qua (NGAY_DA_MO_THU) và
+ *                 dong_trang_thai dài hai câu: màn đầu trang chủ hiện dòng "Mở cửa từ …"
  *
  * GET /__dem → { tên hàm: số lần gọi } — để kiểm "bấm đúp → tao_dat_ban đúng một lần".
  * GET /__nhat-ky → 200 lần gọi gần nhất { ham, thamSo }.
@@ -49,9 +53,11 @@
 
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
+// Giờ Việt Nam lấy từ chính thư viện của trang (Node ≥ 22.18 đọc thẳng file .ts) — không tự cộng 7 tiếng.
+import { homNayVn } from '../src/lib/gio-vn.ts';
 
 export const CONG_MAC_DINH = 54331;
-export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dia-chi-cong-bo', 'tuyen-dung-mo'];
+export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dia-chi-cong-bo', 'tuyen-dung-mo', 'sap-mo', 'da-mo'];
 
 // Liên hệ "đã công bố" của kịch bản day-du. Đường dẫn thử, không phải trang thật của nhà hàng.
 export const LIEN_HE_THU = {
@@ -65,6 +71,22 @@ export const LIEN_HE_THU = {
 // thành phố, thêm một vế phường — "phường Thử" là tên giả, chỉ để thử) để nhìn chữ là biết trang đang in
 // bản công bố hay bản trong mã, và để thấy màn đầu trang chủ bỏ vế phường.
 export const DIA_CHI_CONG_BO_THU = 'Tầng 3, 63 Hồ Tùng Mậu, phường Thử, TP. Hồ Chí Minh';
+
+// Ngày khai trương của hai kịch bản sap-mo / da-mo. Trang chủ so ngay_khai_truong với hôm nay (giờ Việt
+// Nam) để chọn chữ "Đón bạn từ" hay "Mở cửa từ", nên ngày "sắp mở" không được là một ngày cố định (tới
+// ngày đó kiểm thử tự đổi kết quả): lấy ngày 13/11 KẾ TIẾP tính từ hôm nay — trước 13/11/2026 thì đúng
+// là ngày mở dự kiến của quán, và chữ ngày luôn dài như nhau ("ngày 13 tháng 11, 2026").
+export function ngaySapMoThu(homNay = homNayVn()) {
+  const nam = Number(homNay.slice(0, 4));
+  return `${nam}-11-13` > homNay ? `${nam}-11-13` : `${nam + 1}-11-13`;
+}
+export const NGAY_DA_MO_THU = '2026-10-01';
+// Dòng trạng thái dài HAI câu — dài hơn hẳn câu dự phòng trong mã, để thấy hàng thông tin ở màn đầu
+// còn thẳng hàng khi cột trạng thái cao hơn cột địa chỉ. Câu thử, không phải lời của nhà hàng.
+export const TRANG_THAI_THU = {
+  'sap-mo': 'Beeftown đang hoàn thiện những phần cuối trước ngày đón khách. Theo dõi trang Facebook của quán để xem hình ảnh mới của tầng 3.',
+  'da-mo': 'Beeftown đã mở cửa đón khách ở tầng 3. Bạn hỏi bàn trước để quán giữ chỗ cho cả nhóm nhé.',
+};
 
 // Mọi khóa của sổ đăng ký khoa_cong_bo — database luôn trả ĐỦ, khóa chưa công bố là null
 // (web/src/lib/noi-dung.ts, mục "BA ĐIỀU QUAN TRỌNG").
@@ -86,6 +108,8 @@ function noiDung(kichBan) {
     hien_thuc_don: true,
     hien_do_uong_co_con: true,
     ...(kichBan === 'dia-chi-cong-bo' ? { dia_chi_hien_thi: DIA_CHI_CONG_BO_THU } : {}),
+    ...(kichBan === 'sap-mo' ? { ngay_khai_truong: ngaySapMoThu(), dong_trang_thai: TRANG_THAI_THU['sap-mo'] } : {}),
+    ...(kichBan === 'da-mo' ? { ngay_khai_truong: NGAY_DA_MO_THU, dong_trang_thai: TRANG_THAI_THU['da-mo'] } : {}),
   };
 }
 

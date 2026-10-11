@@ -39,6 +39,10 @@
  *      #7A7366; nhãn 14–16px đặt trên ô, không placeholder; thẻ form nền kem sau, không
  *      nền trắng; ô giờ đang chọn nền Beef Red chữ Cream; gửi thiếu thì có câu lỗi bằng
  *      chữ màu #890607 và tiêu điểm vào ô sai.
+ *   9. Màn đầu trang chủ ở ba trạng thái của khóa ngay_khai_truong — chưa có ngày (day-du), sắp
+ *      mở (sap-mo: "Đón bạn từ …"), đã mở (da-mo: "Mở cửa từ …"), hai trạng thái sau kèm dòng
+ *      trạng thái dài hai câu — × vi/en/ko × 390, 900, 1024, 1440 px: câu chỉ đường dính ngay
+ *      dưới dòng địa chỉ, ngày nằm trên một dòng, không ô nào tràn khung, không cuộn ngang.
  *
  * Hỏng thì ảnh chụp nằm ở kiem-tra/anh-loi/day-du/ (CI tải lên cùng artifact của
  * trinh-duyet.mjs).
@@ -51,7 +55,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as cho } from 'node:timers/promises';
-import { batMayGia, LIEN_HE_THU, MON_MAU, DIA_CHI_CONG_BO_THU } from './gia-supabase.mjs';
+import { batMayGia, LIEN_HE_THU, MON_MAU, DIA_CHI_CONG_BO_THU, NGAY_DA_MO_THU, TRANG_THAI_THU, ngaySapMoThu } from './gia-supabase.mjs';
 import { timChuoiCam } from '../src/lib/chuoi-cam.js';
 import { doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
 
@@ -67,7 +71,8 @@ const CHUP = process.argv.includes('--chup');
 const { CAP_DUONG_DAN, NGON_NGU, chu, duongDanTuongUng, cauLoiDatabase, DIA_CHI_NHA_HANG, PHAP_NHAN } =
   await import(pathToFileURL(join(WEB, 'src', 'lib', 'chu.ts')).href);
 const { NHAN_MON } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'thuc-don.ts')).href);
-const { congNgay } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'gio-vn.ts')).href);
+const { congNgay, homNayVn } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'gio-vn.ts')).href);
+const { dinhDangNgay } = await import(pathToFileURL(join(WEB, 'src', 'lib', 'noi-dung.ts')).href);
 
 /** Playwright của web/; máy không cài thì dùng bản cài chung của máy. */
 function napPlaywright() {
@@ -749,6 +754,75 @@ try {
         tot.push(ok(`${nhan}: mỗi ô có nhãn 14–16px đặt trên ô, không ô nào dùng placeholder thay nhãn`,
           o.nhanSai.length === 0, o.nhanSai.slice(0, 4).join(' | ')));
         if (tot.includes(false)) await chupLoi(`thanh-phan${tuyenDung}-${rong}`);
+      }
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    mayGia.datKichBan('day-du');
+  });
+
+  // =========================================================================
+  // Màn đầu trang chủ có ba trạng thái theo khóa ngay_khai_truong: chưa có ngày, sắp mở ("Đón bạn từ …"),
+  // đã mở ("Mở cửa từ …"). CI không có database nên trinh-duyet.mjs chỉ thấy trạng thái đầu; hai trạng thái
+  // sau là thứ khách thấy thật quanh ngày mở. Dòng trạng thái thử dài hai câu: ô trạng thái cao hơn cặp
+  // địa chỉ + câu chỉ đường — đúng lúc hàng thông tin dễ lệch nhất.
+  await nhom('9 · MÀN ĐẦU TRANG CHỦ THEO NGÀY KHAI TRƯƠNG: CHƯA CÓ NGÀY, SẮP MỞ (sap-mo), ĐÃ MỞ (da-mo) Ở 390, 900, 1024, 1440 PX', async () => {
+    const motDong = s => (s ?? '').replace(/\s+/g, ' ').trim();
+    const homNay = homNayVn();
+    const TRANG_THAI = [['day-du', null], ['sap-mo', ngaySapMoThu()], ['da-mo', NGAY_DA_MO_THU]];
+    ok(`Ngày thử: sap-mo ${ngaySapMoThu()} sau hôm nay ${homNay} (giờ Việt Nam), da-mo ${NGAY_DA_MO_THU} đã qua; dòng trạng thái thử dài hai câu`,
+       ngaySapMoThu() > homNay && NGAY_DA_MO_THU <= homNay
+         && Object.values(TRANG_THAI_THU).every(c => (c.match(/[.!?](\s|$)/g) ?? []).length === 2 && timChuoiCam(c).length === 0));
+    for (const rong of [390, 900, 1024, 1440]) {
+      await page.setViewportSize({ width: rong, height: rong < 600 ? 844 : 900 });
+      for (const [kichBan, ngay] of TRANG_THAI) {
+        mayGia.datKichBan(kichBan);
+        for (const nn of NGON_NGU) {
+          const t = chu(nn);
+          const duong = duongDanTuongUng('/', nn);
+          const nhan = `${kichBan} ${duong} · ${rong}px`;
+          const r = await page.goto(goc + duong, { waitUntil: 'load' });
+          await page.evaluate(() => document.fonts.ready);
+          const kq = await page.evaluate(() => {
+            const chon = c => document.querySelector(`main .kmd ${c}`);
+            const [tin, dc, loiLen, ngayMo, trangThai] = ['.kmd-thong-tin', '.kmd-dia-chi', '.kmd-loi-len', '.kmd-ngay', '.kmd-trang-thai'].map(chon);
+            const chu = e => (e?.textContent ?? '').replace(/\s+/g, ' ').trim();
+            const soDong = el => {
+              if (!el) return 0;
+              const vung = document.createRange(); vung.selectNodeContents(el);
+              const dinh = [];
+              for (const o of vung.getClientRects()) if (o.width >= 1 && !dinh.some(d => Math.abs(d - o.top) < 6)) dinh.push(o.top);
+              return dinh.length;
+            };
+            const khop = tin?.getBoundingClientRect();
+            return {
+              khe: dc && loiLen ? loiLen.getBoundingClientRect().top - dc.getBoundingClientRect().bottom : null,
+              loiLen: chu(loiLen), ngay: ngayMo ? chu(ngayMo) : null, trangThai: chu(trangThai),
+              dongNgay: soDong(ngayMo?.querySelector('strong')), dongCaNgay: soDong(ngayMo),
+              tran: tin ? [...tin.children].filter(e => { const k = e.getBoundingClientRect(); return k.left < khop.left - 1 || k.right > khop.right + 1 || k.right > innerWidth; }).map(e => e.className) : ['không thấy hàng thông tin'],
+              rongTrang: document.documentElement.scrollWidth, khung: innerWidth,
+            };
+          });
+          const gd = await page.evaluate(doGiaoDien);
+          const saiGd = Object.keys(PHEP_DO).flatMap(khoa => (gd[khoa] ?? ['không đo được']).map(c => `[${khoa}] ${c}`));
+          const ngayMong = ngay ? `${ngay <= homNay ? t.moCuaTu : t.donBanTu} ${dinhDangNgay(ngay, nn)}` : null;
+          const tot = [
+            ok(`${nhan}: HTTP 200, không cuộn ngang, không ô nào của hàng thông tin tràn khung`,
+               r?.status() === 200 && kq.rongTrang <= kq.khung + 1 && kq.tran.length === 0,
+               `HTTP ${r?.status()}, rộng ${kq.rongTrang}px / khung ${kq.khung}px, tràn: ${kq.tran.join(', ') || 'không'}`),
+            ok(ngayMong ? `${nhan}: dòng ngày ghi "${ngayMong}"` : `${nhan}: chưa công bố ngày → không có dòng ngày`, kq.ngay === ngayMong, String(kq.ngay)),
+            ok(`${nhan}: dòng trạng thái ${kichBan === 'day-du' ? 'là câu dự phòng trong mã' : 'là câu hai câu đã công bố'}`,
+               kq.trangThai === (TRANG_THAI_THU[kichBan] ?? t.trangThaiMacDinh), kq.trangThai),
+            ok(`${nhan}: câu chỉ đường nguyên văn, dính ngay dưới dòng địa chỉ (cách đáy địa chỉ −10 đến 8px)`,
+               kq.loiLen === t.loiLen && kq.khe !== null && kq.khe >= -10 && kq.khe <= 8, `cách ${kq.khe?.toFixed(1)}px · «${kq.loiLen}»`),
+            ok(`${nhan}: thành phần và khung trang đúng quy tắc (${Object.keys(PHEP_DO).length} phép đo của do-giao-dien.mjs)`,
+               saiGd.length === 0, saiGd.slice(0, 5).join(' | ')),
+          ];
+          if (ngay) {
+            tot.push(ok(`${nhan}: ngày nằm trên một dòng${rong >= 900 ? ', cả dòng "… từ <ngày>" cũng một dòng' : ''}`,
+              kq.dongNgay === 1 && (rong < 900 || kq.dongCaNgay === 1), `ngày ${kq.dongNgay} dòng, cả dòng ${kq.dongCaNgay} dòng`));
+          }
+          if (tot.includes(false)) await chupLoi(`man-dau-${kichBan}-${tenTep(duong)}-${rong}`);
+        }
       }
     }
     await page.setViewportSize({ width: 390, height: 844 });

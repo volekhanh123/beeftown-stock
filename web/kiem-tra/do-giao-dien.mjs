@@ -24,7 +24,7 @@ export const PHEP_DO = {
   the: 'thẻ: nền Cream hoặc kem sau, đệm 20px (điện thoại) / 24px, viền mảnh, không bóng đổ; thẻ khác màu nền phía sau hoặc viền tương phản ≥ 1,35 : 1',
   cauHoi: 'câu hỏi thường gặp: mỗi hàng cao ≥ 56px, bấm được trên toàn chiều rộng, có biểu tượng mở/đóng',
   bieuTuong: 'biểu tượng: 24px, nét 1,5px, Beef Red trên kem và Cream trên đỏ, đi kèm nhãn chữ',
-  chu: 'chữ và lưới: chỉ Montserrat, chữ chạy 16/24px, h1 32/38 → 48/56px (tiếng Hàn cùng cỡ, dòng 1,28: 32/41 → 48/61px), lề điện thoại 20px, khung ≤ 1200px, khoảng cách khối 48–64 / 72–96px',
+  chu: 'chữ và lưới: chỉ Montserrat, chữ chạy 16/24px, h1 32/38 → 48/56px (tiếng Hàn cùng cỡ, dòng 1,28: 32/41 → 48/61px), lề điện thoại clamp(20px, 5vw, 40px) — 20px tới màn 400px, khung ≤ 1200px, khoảng cách khối 48–64 / 72–96px',
   chanTrang: 'chân trang: dải đỏ, logo Cream, không hoa văn chữ, chữ ≥ 14px, điện thoại chia link 2 cột, dải pháp nhân nền Charcoal',
   anh: 'ảnh: ảnh AI nào cũng có nhãn "Ảnh minh họa" nhìn thấy, đọc được; không bóng đổ; đúng tỷ lệ khung; không chữ, logo hay phần tử nào đè lên ảnh; chỉ ảnh màn đầu tải ngay',
   nhanKhay: 'thẻ "Cách đọc nhãn khay": đặt thẳng, không bóng đổ, nền Cream hoặc kem sau, đủ 5 trường theo thứ tự, chỉ tên trường (không giá trị mẫu), đủ lớn để đọc',
@@ -35,6 +35,9 @@ export const PHEP_DO = {
 export function doGiaoDien() {
   const RONG = innerWidth;
   const DIEN_THOAI = RONG < 600, MAY_TINH = RONG >= 1024;
+  // Lề hai bên của khung trang — chép tay từ THIET-KE.md mục 4 (`--le`): clamp(20px, 5vw, 40px). Tới màn 400px
+  // là 20px (điện thoại thường); từ đó lề lớn dần theo 5 % bề rộng (430px: 21,5px; 599px: 30px), tới 40px ở 800px.
+  const LE = Math.min(40, Math.max(20, RONG * 0.05));
   const NGON_NGU = document.documentElement.lang;
   const hien = el => {
     const k = el.getBoundingClientRect();
@@ -359,7 +362,7 @@ export function doGiaoDien() {
   for (const k of moi('.khung, .khung-hep').filter(hien)) {
     const r = k.getBoundingClientRect();
     if (r.width > 1200.5) kq.chu.push(`${moTa(k).slice(0, 30)} rộng ${r.width.toFixed(0)}px > 1200px`);
-    if (DIEN_THOAI && Math.abs(r.left - 20) > 0.6) kq.chu.push(`${moTa(k).slice(0, 30)} lề trái ${r.left.toFixed(1)}px, điện thoại cần 20px`);
+    if (DIEN_THOAI && Math.abs(r.left - LE) > 0.6) kq.chu.push(`${moTa(k).slice(0, 30)} lề trái ${r.left.toFixed(1)}px, màn ${RONG}px cần ${LE.toFixed(1)}px (clamp(20px, 5vw, 40px): 20px tới màn 400px)`);
   }
   for (const m of moi('.muc').filter(hien)) {
     const cs = getComputedStyle(m);
@@ -500,8 +503,8 @@ export function doGiaoDien() {
     if (![KEM, KEM_SAU].includes(bo(mau(cs.backgroundColor)))) kq.nhanKhay.push(`thẻ nền ${cs.backgroundColor}, cần Cream hoặc kem sau`);
     if (!['Top', 'Right', 'Bottom', 'Left'].every(c => so(cs[`border${c}Width`]) >= 1 && so(cs[`border${c}Width`]) <= 2)) kq.nhanKhay.push('thẻ cần viền mảnh 1–2px ở cả bốn cạnh');
     const k = t.getBoundingClientRect();
-    const rongToiThieu = MAY_TINH ? 640 : Math.min(RONG - 40, 520);
-    if (k.width < rongToiThieu - 0.5) kq.nhanKhay.push(`thẻ rộng ${k.width.toFixed(0)}px, màn ${RONG}px cần ≥ ${rongToiThieu}px để đọc được`);
+    const rongToiThieu = MAY_TINH ? 640 : Math.min(RONG - 2 * LE, 520);
+    if (k.width < rongToiThieu - 0.5) kq.nhanKhay.push(`thẻ rộng ${k.width.toFixed(0)}px, màn ${RONG}px cần ≥ ${rongToiThieu.toFixed(0)}px để đọc được`);
     let duoiTruoc = -Infinity;
     for (const d of dong) {
       const ten = d.querySelector('.nk-ten');
@@ -593,6 +596,17 @@ export function doGiaoDien() {
           const [kdai, csD] = [dai.getBoundingClientRect(), getComputedStyle(dai)];
           if (dai.textContent.replace(/\s+/g, ' ').trim() !== 'Pick it. Grill it. Love it.') sai(`tagline ghi «${dai.textContent.trim()}»`);
           if (dai.getAttribute('lang') !== 'en' && !dai.closest('[lang="en"]') && NGON_NGU !== 'en') sai('tagline tiếng Anh thiếu lang="en"');
+          // Mắt thấy dải này; trình đọc màn hình thì đọc tagline ĐÚNG MỘT lần — ở dòng hiệu của khối ba bước ngay sau.
+          // Chữ đọc được = mọi nút chữ không nằm trong aria-hidden="true" của màn đầu và khối ba bước.
+          if (dai.getAttribute('aria-hidden') !== 'true') sai('dải tagline dưới ảnh thiếu aria-hidden="true" — trình đọc màn hình đọc tagline hai lần liền nhau (dải này, rồi dòng hiệu của khối ba bước)');
+          const docDuoc = goc => {
+            let chu = '';
+            const di = document.createTreeWalker(goc, NodeFilter.SHOW_TEXT);
+            for (let n = di.nextNode(); n; n = di.nextNode()) if (!n.parentElement.closest('[aria-hidden="true"]')) chu += ` ${n.nodeValue}`;
+            return chu.replace(/\s+/g, ' ');
+          };
+          const soLanDoc = [kmd, document.querySelector('#trai-nghiem')].filter(Boolean).map(docDuoc).join(' ').split('Pick it. Grill it. Love it.').length - 1;
+          if (soLanDoc !== 1) sai(`trình đọc màn hình đọc tagline ${soLanDoc} lần ở màn đầu và khối ba bước — cần đúng 1 lần`);
           if (giao(kdai, kanh)) sai('dải tagline đè lên ảnh');
           if (bo(mau(csD.backgroundColor)) !== DO) sai(`dải tagline nền ${csD.backgroundColor}, cần Beef Red`);
           if (bo(mau(csD.color)) !== KEM) sai(`chữ tagline màu ${csD.color}, cần Cream`);
@@ -600,6 +614,44 @@ export function doGiaoDien() {
           if (so(csD.fontSize) < 14) sai(`chữ tagline ${csD.fontSize}, cần ≥ 14px`);
           const sat = Math.min(Math.abs(kdai.top - kanh.bottom), Math.abs(kdai.left - kanh.right));
           if (sat > 24) sai(`dải tagline cách ảnh ${sat.toFixed(0)}px — phải nằm ngay cạnh hoặc dưới ảnh`);
+        }
+      }
+    }
+
+    // Hàng thông tin ở màn đầu. Địa chỉ và câu chỉ đường là MỘT cặp dính nhau ở mọi trạng thái (chưa có ngày
+    // mở, sắp mở, đã mở; dòng trạng thái ngắn hay dài hai câu): ô bên cạnh cao lên không được kéo câu chỉ
+    // đường tụt khỏi dòng địa chỉ. Ngày mở không gãy giữa chừng. Các ô không đè nhau, không ra ngoài khung.
+    if (tin) {
+      const [dc, loiLen, ngayMo, trangThai, theoDoi] = ['.kmd-dia-chi', '.kmd-loi-len', '.kmd-ngay', '.kmd-trang-thai', '.kmd-theo-doi'].map(c => tin.querySelector(c));
+      if (![dc, loiLen, trangThai].every(e => e && hien(e))) sai('hàng thông tin màn đầu thiếu địa chỉ, câu chỉ đường hoặc dòng trạng thái');
+      else {
+        const [kdc, kloi, khop] = [dc, loiLen, tin].map(e => e.getBoundingClientRect());
+        const khe = kloi.top - kdc.bottom;
+        if (khe < -10 || khe > 8) sai(`câu chỉ đường cách đáy dòng địa chỉ ${khe.toFixed(0)}px — phải dính ngay dưới địa chỉ (−10 đến 8px) ở mọi trạng thái`);
+        const [chuDc, veDau] = [dc.querySelector(':scope > span'), loiLen.querySelector('span')];
+        if (chuDc && veDau && Math.abs(veDau.getBoundingClientRect().left - chuDc.getBoundingClientRect().left) > 1) sai('câu chỉ đường không thẳng mép trái với chữ địa chỉ');
+        // Số dòng chữ của một phần tử: gom các hộp dòng theo mép trên (lệch dưới 6px là cùng một dòng).
+        const soDong = el => {
+          const vung = document.createRange(); vung.selectNodeContents(el);
+          const dinh = [];
+          for (const o of vung.getClientRects()) if (o.width >= 1 && !dinh.some(d => Math.abs(d - o.top) < 6)) dinh.push(o.top);
+          return dinh.length;
+        };
+        if (ngayMo && hien(ngayMo)) {
+          const dam = ngayMo.querySelector('strong');
+          if (!dam || soDong(dam) !== 1) sai(`ngày mở «${dam?.textContent.trim() ?? ''}» gãy thành ${dam ? soDong(dam) : 0} dòng — ngày phải nằm trên một dòng`);
+          if (HAI_COT && soDong(ngayMo) !== 1) sai(`máy tính: dòng «${ngayMo.textContent.replace(/\s+/g, ' ').trim()}» gãy thành ${soDong(ngayMo)} dòng`);
+          if (HAI_COT && ngayMo.getBoundingClientRect().bottom > trangThai.getBoundingClientRect().top + 0.5) sai('máy tính: ngày mở phải nằm trên dòng trạng thái');
+        }
+        const o = [['địa chỉ', dc], ['câu chỉ đường', loiLen], ['ngày mở', ngayMo], ['dòng trạng thái', trangThai], ['liên kết theo dõi', theoDoi]]
+          .filter(([, e]) => e && hien(e)).map(([ten, e]) => [ten, e.getBoundingClientRect()]);
+        for (const [ten, k] of o) {
+          if (k.left < khop.left - 1 || k.right > khop.right + 1) sai(`${ten} ở hàng thông tin tràn ra ngoài khung (${k.left.toFixed(0)}–${k.right.toFixed(0)}px, khung ${khop.left.toFixed(0)}–${khop.right.toFixed(0)}px)`);
+        }
+        // Địa chỉ và câu chỉ đường cố ý sát nhau (vùng chạm 48px của địa chỉ trùm xuống vài px) — không tính cặp đó.
+        for (let i = 0; i < o.length; i++) for (let j = i + 1; j < o.length; j++) {
+          if (o[i][0] === 'địa chỉ' && o[j][0] === 'câu chỉ đường') continue;
+          if (giao(o[i][1], o[j][1])) sai(`${o[i][0]} và ${o[j][0]} ở hàng thông tin đè lên nhau`);
         }
       }
     }
