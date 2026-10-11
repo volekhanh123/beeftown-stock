@@ -23,7 +23,7 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
 
 | Kiểm thử | Gác điều gì |
 |---|---|
-| `test-cong-khai-giao-dien.mjs` | Mọi dòng `CAP_DUONG_DAN` có đủ ba file trang, mọi trang công khai nằm trong bảng · khối `:root` đầu tiên của `chung.css` giữ nguyên **13 biến cũ** (`--do`, `--do-dam`, `--kem`, `--kem-sau`, `--mu-tat`, `--cuc-vang`, `--than`, `--da`, `--muc-nhat`, `--vach`, `--vach-kem`, `--vien-o`, `--rong`), mỗi biến khai một lần — đó là bảng màu `/noi-bo` và kho đang đọc · `cong-khai.css` **chỉ** `Trang.astro` nạp; mọi bộ chọn bắt đầu bằng `.ck` hoặc `html:has(body.ck)`; chỉ `@media`, `@keyframes` (không `@import`, `@supports`, `@font-face`, `@layer`, `@container`) · SVG thương hiệu: có `viewBox`, không `<script>`, `on…=`, `<text>`, `<image>`, href ra ngoài; màu chỉ trong `BANG_MAU` (bảng màu chốt 09/10/2026 và màu pha của trang công khai) · tên file tài sản ASCII; ảnh đủ `.avif` + `.webp`, ≤ 300 KB mỗi file, ≤ 8 MB cả thư mục · tài sản được git thấy; ảnh chia sẻ đúng 1200 × 630 · **nhóm 6 — bảng màu chốt 09/10/2026 chỉ ở trang công khai**: 14 biến của khối `.ck` đầu tiên trong `cong-khai.css` đúng từng mã (`BANG_MAU_CHOT`, chép tay), mỗi biến khai một lần; không file công khai nào (trang, component, `cong-khai.css`, SVG) còn mã hex hay bộ ba số RGB của bảng cũ, kể cả trong chú thích; `theme-color` là màu kem; tương phản của hệ bề mặt đạt ngưỡng |
+| `test-cong-khai-giao-dien.mjs` | Mọi dòng `CAP_DUONG_DAN` có đủ ba file trang, mọi trang công khai nằm trong bảng · khối `:root` đầu tiên của `chung.css` giữ nguyên **13 biến cũ** (`--do`, `--do-dam`, `--kem`, `--kem-sau`, `--mu-tat`, `--cuc-vang`, `--than`, `--da`, `--muc-nhat`, `--vach`, `--vach-kem`, `--vien-o`, `--rong`), mỗi biến khai một lần — đó là bảng màu `/noi-bo` và kho đang đọc · `cong-khai.css` **chỉ** `Trang.astro` nạp; mọi bộ chọn bắt đầu bằng `.ck` hoặc `html:has(body.ck)`; chỉ `@media`, `@keyframes` (không `@import`, `@supports`, `@font-face`, `@layer`, `@container`) · SVG thương hiệu: có `viewBox`, không `<script>`, `on…=`, `<text>`, `<image>`, href ra ngoài; màu chỉ trong `BANG_MAU` (bảng màu chốt 09/10/2026 và màu pha của trang công khai) · tên file tài sản ASCII; ảnh đủ `.avif` + `.webp`, ≤ 300 KB mỗi file, ≤ 8 MB cả thư mục · tài sản được git thấy; ảnh chia sẻ đúng 1200 × 630 · **nhóm 6 — bảng màu chốt 09/10/2026 chỉ ở trang công khai**: 14 biến của khối `.ck` đầu tiên trong `cong-khai.css` đúng từng mã (`BANG_MAU_CHOT`, chép tay), mỗi biến khai một lần; không file công khai nào (trang, component, `cong-khai.css`, SVG) còn mã hex hay bộ ba số RGB của bảng cũ, kể cả trong chú thích; `theme-color` là màu kem; tương phản của hệ bề mặt đạt ngưỡng · **nhóm 7 — thành phần và khung trang**: mã màu viết thẳng trong file công khai chỉ là mã của bảng (không trắng, không `white`, không pha với trắng; ngoại lệ ghi tên: `@media print`, mặt nạ CSS, thẻ nhãn khay); ô nhập nền `var(--kem)` cao 48px; tương phản viền ô với nền ô và với thẻ form tính lại bằng công thức WCAG, khớp con số tài liệu ghi; `--co-than` 16px, h1 32 → 48px, `--rong-ck` 1200px, `--muc-dem`, `--cao-dau` 64 / 80px, `.nut` 48px đệm 20px; chân trang không `hoa-van-chu`; `BieuTuong` nét không co theo cỡ; bộ chọn ngôn ngữ nhận đủ ba thứ tiếng; nhãn nút đóng đủ ba thứ tiếng |
 | `test-cong-khai-cau-chu.mjs` | Đọc mọi `{ vi, en, ko }`, chữ trong template, `alt`, `title`, `aria-label`, `placeholder`… của trang công khai: câu có vi + en thì phải có ko · không chữ cấm, không chữ "chờ duyệt / đang cập nhật / TBD / coming soon" · trang hỏi bàn, ứng tuyển, tuyển dụng không "thành công / success / 성공" · en, ko không dấu tiếng Việt (trừ tên riêng) · `t.datBan` đúng "Hỏi bàn / Ask for a table / 테이블 문의"; câu chỉ đường `t.loiLen` đúng từng chữ ở ba thứ tiếng · **nhóm 7 — địa điểm**: chữ khách đọc không ghi địa chỉ nào khác, không phường hay quận, không lối lên nào khác thang máy, không gọi là "tòa nhà", không kể chuyện đổi địa điểm, không chỗ gửi xe, lối cho xe lăn, số đo đường đi; bảng câu thử `CAU_THU` giữ cho mẫu không bắt nhầm câu đúng |
 | `test-cong-khai-dia-diem.mjs` | Quét **mã nguồn** của trang công khai theo đồ thị import (kể cả chú thích, tên lớp, tên biểu tượng): không tên đường hay phường của địa chỉ khác — trừ đúng một dòng địa chỉ pháp nhân (`PHAP_NHAN.diaChi`), dòng này phải còn nguyên từng ký tự · không chữ về lối lên nào khác thang máy · ba câu chỉ đường có mặt ở trang Đến Beeftown · JSON-LD ghi `streetAddress` "Tầng 3, 63 Hồ Tùng Mậu", không tên phường · cách ghi địa điểm từng thứ tiếng; hình và biểu tượng lối lên là thang máy · không component hay layout nào gõ sẵn địa chỉ hoặc đọc thẳng `DIA_CHI_NHA_HANG` (bản công bố trong `/noi-bo` phải tới được mọi chỗ in địa chỉ) · bảng từ của máy dịch (`web/src/lib/may-dich.ts`) theo địa điểm hiện tại |
 | `test-cong-khai-dinh-chu.mjs` | Quét **mọi** `.astro` dưới `web/src` ngoài khu nội bộ: không hai mẩu chữ dính nhau vì xuống dòng |
@@ -39,11 +39,30 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
 
 - HTTP 200, đúng `lang`, không lỗi JavaScript, **không tràn ngang**.
 - Đúng **một `h1`**; mọi `<img>` có `width`, `height`, `alt`; ảnh dưới màn đầu `loading="lazy"`.
-- `.nut`, `nav a`, `.doi-ngon-ngu`, `summary` cao ≥ 44px.
+- **Thành phần và khung trang** — mười phép đo của `web/kiem-tra/do-giao-dien.mjs`, chạy trong trang
+  (dùng chung với `thu-day-du.mjs`), bảng màu chép tay trong file đó:
+  - `vungCham`: `.nut`, `nav a`, link chân trang, `.doi-ngon-ngu`, `summary`, `.lien-ket`, logo đầu trang,
+    tab, ô nhập, ô chọn, ô chọn giờ, hàng ô đánh dấu cao **≥ 48px**.
+  - `dauTrang`: cao 64px (dưới 1080px) / 80px; nền Cream; điều hướng 15–16px; logo ≥ 160px, không kéo
+    giãn; từ 768px nút Hỏi bàn ở ngay trên thanh.
+  - `ngonNgu`: đủ vi, en, ko theo thứ tự; đúng một mục `aria-current="true"` trùng `lang` của trang, mục
+    đó đậm hơn và có nét gạch, các mục khác là link có `hreflang`; chữ ≥ 14px.
+  - `khongTrang`: màu nền của mọi phần tử thuộc bảng màu; ô đánh dấu còn hiện phải là ô tự vẽ. Ngoại lệ:
+    `.nk-the` (thẻ nhãn khay, chờ PR bố cục trang chủ).
+  - `nut`: bo 4px, đệm ngang 20px (`.nut-nho` ≥ 16px), chữ ≥ 15px; màu nút chính và nút phụ đúng theo bề
+    mặt; mỗi `.hang-nut` ≤ 1 nút chính.
+  - `the`: `.the`, `.hb-the`, `.lt3-gon` nền Cream hoặc kem sau, đệm 20 / 24px, có viền, không bóng đổ.
+  - `cauHoi`: mỗi `summary` cao ≥ 56px, rộng bằng khối, có biểu tượng.
+  - `bieuTuong`: cỡ 24px (`.nhan-mon`: 16px), nét 1,5–2px không co theo cỡ, Beef Red trên kem / Cream
+    trên đỏ, nằm trong thứ bấm được thì có nhãn chữ.
+  - `chu`: chỉ Montserrat; chữ chạy 16/24px; h1 32/38px (tới 390px) và 48/56px (từ 1366px), tiếng Hàn
+    28–48px; h2 nhỏ hơn h1; `.khung` ≤ 1200px, lề điện thoại 20px; đệm `.muc` 48–64px / 72–96px.
+  - `chanTrang`: dải đỏ, dải pháp nhân Charcoal, logo Cream đúng tỷ lệ, không `.hoa-van-chu`, chữ ≥ 14px,
+    điện thoại hai nhóm link thành 2 cột.
 - **Tương phản** WCAG 2.2: ≥ 4,5 : 1, chữ ≥ 24px hoặc ≥ 18,66px đậm ≥ 3 : 1 (bỏ qua nền ảnh,
   `aria-hidden`, `.an-chu`).
 - Chân trang: dòng `© <năm> Beeftown · Beef Specialty Restaurant` rồi đúng hai dòng pháp nhân, chữ
-  ≥ 12px.
+  ≥ 14px.
 - **Địa điểm** (mọi trang): chân trang có "63 Hồ Tùng Mậu" kèm câu chỉ đường; trang chủ, Đến Beeftown,
   Hỏi bàn (ba thứ tiếng) in đúng từng chữ câu chỉ đường trong nội dung chính; JSON-LD ghi
   `streetAddress` "Tầng 3, 63 Hồ Tùng Mậu", không tên phường; ngoài dòng địa chỉ pháp nhân (có đúng một
@@ -54,11 +73,21 @@ Cần `npm ci` ở `web/` trước — bộ quét chữ dính đọc template b�
   `web/kiem-tra/mau-dia-diem.mjs`, kèm bảng câu thử. Mẫu bắt nhầm một câu đúng thì sửa mẫu và thêm câu
   đó vào bảng câu thử — không gỡ luật.
 - Không database: trang hỏi bàn, tuyển dụng **không có `<form>`**.
-- Menu gọn ở 360px: không JavaScript vẫn mở / đóng được; có JavaScript thì Esc đóng và trả focus.
+- Menu gọn ở 360 và 768px: không JavaScript vẫn mở / đóng được; đang mở thì nút ghi "Đóng" / "Close" /
+  "닫기", ở 360px trong bảng có Hỏi bàn là nút chính và bộ chọn ba thứ tiếng (từ 768px hai thứ đó ở trên
+  thanh, bảng không lặp lại); có JavaScript thì Esc đóng và trả focus, Enter mở / đóng, Tab đi qua từng
+  mục với vòng focus ≥ 2px, Tab ra khỏi mục cuối thì đóng.
+- Câu hỏi thường gặp ở 390 và 1440px: Enter mở, phím cách đóng, Tab sang câu kế có vòng focus, bấm ở
+  mép phải của hàng cũng mở.
 
 `thu-day-du.mjs` chạy với Supabase giả: bấm đúp chỉ gửi **một** yêu cầu; nút đang gửi có
 `aria-busy="true"` và "Đang gửi…"; khung kết quả nhận focus; lỗi 500 giữ lại dữ liệu đã gõ; không bao
-giờ "thành công"; mọi trang × ba kịch bản ở 360 và 1440px không tràn ngang. Kịch bản
+giờ "thành công"; mọi trang × ba kịch bản ở 360 và 1440px không tràn ngang và qua đủ mười phép đo của
+`do-giao-dien.mjs`. **Nhóm 8 — thành phần của form** (390 và 1440px): form hỏi bàn và form nộp hồ sơ
+(kịch bản `tuyen-dung-mo` của `gia-supabase.mjs` trả hai tin mẫu) — ô nhập, ô chọn cao ≥ 48px, chữ
+16px, nền Cream, viền 1px `#7A7366`; nhãn 14–16px nằm trên ô, không `placeholder`; thẻ form nền kem
+sau; ô giờ chưa chọn nền Cream, đang chọn nền Beef Red chữ Cream; gửi thiếu thì hai câu lỗi màu
+`#890607`, tiêu điểm vào ô sai đầu tiên. Kịch bản
 `dia-chi-cong-bo`: địa chỉ đã công bố trong `/noi-bo` tới được màn đầu, khối địa chỉ, chân trang, menu
 gọn và JSON-LD của cả ba thứ tiếng — không chỗ nào còn in bản trong mã; màn đầu bỏ vế phường.
 
@@ -96,3 +125,6 @@ gọn và JSON-LD của cả ba thứ tiếng — không chỗ nào còn in bả
 - `KhungAnh` không chữ bên trong.
 - Chữ trơn "rẻ" (máy chỉ chặn "rẻ hơn").
 - Tỷ lệ màu, nhịp xen kẽ bề mặt, số điểm trang trí mỗi trang — xem ảnh chụp.
+- Màu của nút, link khi di chuột (kiểm thử đo trạng thái nghỉ; tương phản của trạng thái di chuột tính
+  bằng công thức ở `test-cong-khai-giao-dien.mjs` nhóm 7).
+- Chữ có gãy dòng xấu không ở tiếng Anh và tiếng Hàn — xem ảnh chụp ở 360 và 768px.

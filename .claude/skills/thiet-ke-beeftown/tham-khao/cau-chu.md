@@ -70,8 +70,10 @@ trong `/noi-bo`.
   "호치민시 Hồ Tùng Mậu 63" (`diaChiNgan`). Mã đã ghi đúng như vậy: `DIA_CHI_PHAN`, `DIA_CHI_NHA_HANG`
   trong `web/src/lib/chu.ts`.
   - **Khánh đã quyết** (điều đã biết): địa điểm là 63 Hồ Tùng Mậu (07/10/2026); quán ở tầng 3, khách vào
-    bằng **lối vào riêng ngay cạnh GS25** (09/10/2026). Khách đi **thang máy** lên tầng 3: theo layout
-    ngày 08/10/2026.
+    bằng **lối vào riêng ngay cạnh GS25** (09/10/2026). Địa điểm **có thang máy**: Khánh xác nhận ngày
+    11/10/2026.
+  - **Chưa biết:** nút thang máy ghi số mấy cho tầng của quán — không viết số nút, chỉ "tầng 3" /
+    "Floor 3" / "3층".
   - **Câu chỉ đường ba thứ tiếng là Claude đề xuất, đang chờ Khánh duyệt chữ** (`loiLen` trong
     `chu.ts`). Dùng đúng câu đang có, không tự viết bản khác:
     - vi: "Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3."

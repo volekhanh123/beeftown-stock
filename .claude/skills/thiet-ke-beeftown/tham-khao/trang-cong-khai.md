@@ -61,7 +61,7 @@ Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
 - **Lớp dùng chung** chỉ ở `web/src/styles/cong-khai.css`, mọi quy tắc dưới `.ck` (có kiểm thử).
   Danh mục: `muc`, `khung`, `khung-hep`, `be-*`, `hieu`, `dan`, `nho`, `an-chu`, `nut`, `nut-chinh`,
   `nut-vien`, `nut-nho`, `hang-nut`, `lien-ket`, `the`, `luoi`, `trang-thai`, `anh`, `chu-thich-anh`,
-  `khung-anh`, `trang-tri`, `net`, `nen-van-mo`, `hoa-van-chu`, `an-khi-hep`, `cau-hoi`, `tra-loi`,
+  `khung-anh`, `trang-tri`, `net`, `nen-van-mo`, `an-khi-hep`, `cau-hoi`, `tra-loi`,
   `mon`, `nhan-mon`, `o`, `loi-o`, `mo-dau-trang`, `net-goc`, `co-trang-tri`.
 - **CSS riêng của component**: `<style>` có phạm vi (không `is:global`), mọi lớp mang **tiền tố của
   component**: `kmd-` (KhoiMoDau), `bb-` (BaBuoc), `qcb-` (QuayChonBo), `lt3-` (LenTang3), `ch-`
@@ -69,13 +69,16 @@ Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
   `ut-` (FormUngTuyen), `vb-` (TrangVanBan), `dt-` / `mg-` (DauTrang), `ct-` (ChanTrang).
 - `:global()` chỉ để chạm tới phần tử do component con hay `<slot>` dựng (`.lt3-dc :global(svg)`).
 - Trong CSS riêng: màu chỉ từ biến bề mặt và token; khoảng cách `--k-*`; cỡ chữ `--co-*`; mốc
-  600 / 900 / 1024 / 1080px; tiếng Hàn chỉnh bằng `:lang(ko)`; thêm `@media (forced-colors: active)`
-  khi dùng nền hay viền để truyền nghĩa.
+  600 / 900 / 1024 / 1080px (768px chỉ của `DauTrang.astro`); tiếng Hàn chỉnh bằng `:lang(ko)`; thêm
+  `@media (forced-colors: active)` khi dùng nền hay viền để truyền nghĩa. Thứ bấm được cao ít nhất
+  `--cham` (48px); thẻ đệm `--dem-the`; không `box-shadow` trang trí, không nền trắng.
 - Token ở đây mang giá trị của **khối `.ck`** (bảng màu chốt 09/10/2026 — bảng "Token của trang công
   khai" trong `SKILL.md`), không phải giá trị `:root` của `chung.css` mà `/noi-bo`, kho đang đọc. Cần
   màu trong suốt thì viết `rgba()` bằng số RGB của bảng đó; mã hex hay bộ ba số của bảng cũ trong một
   file công khai (kể cả trong chú thích) là kiểm thử đỏ (`test-cong-khai-giao-dien.mjs` nhóm 6).
-- Nút trên dải đỏ tự đổi (kem, chữ đỏ đậm) nhờ biến bề mặt — đừng viết lại màu nút trong component.
+- Nút trên dải đỏ tự đổi (nút chính: nền Cream, chữ đỏ đậm; nút phụ: viền và chữ Cream) nhờ biến bề
+  mặt — đừng viết lại màu nút trong component. Biểu tượng cạnh chữ lấy màu `--nhan` (Beef Red trên kem,
+  Cream trên đỏ).
 
 ## Ba thứ tiếng
 
@@ -129,18 +132,18 @@ theo ngày — `web/THIET-KE.md` mục 10.
 
 | Component | Props chính | Dùng cho |
 |---|---|---|
-| `BieuTuong` | `ten`, `class?` | Biểu tượng nét 1,5px, lưới 24, `currentColor`, luôn `aria-hidden`. Nút chỉ có biểu tượng thì thêm chữ `.an-chu` cạnh nó |
+| `BieuTuong` | `ten`, `class?` | Biểu tượng nét 1,5px, lưới 24, `currentColor`, luôn `aria-hidden`. Nơi dùng đặt cỡ 24px; nét không co theo cỡ. Nằm trong thứ bấm được thì phải có nhãn chữ cạnh nó (nhìn thấy, hoặc `.an-chu` khi thật sự không còn chỗ) |
 | `Anh` | `id`, `ngonNgu`, `khung`, `khungNho?`, `sizes?`, `uuTien?`, `phuKin?`, `thayBang?`, `nenKhung?` | Ảnh AVIF / WebP, tự gắn "Ảnh minh họa"; `uuTien` chỉ cho ảnh màn đầu |
 | `KhungAnh` | `loai` (`quay`, `khay`, `thang-may`, `loi-vao`, `ban-nuong`), `tiLe?`, `tiLeNho?`, `nen?` | Chỗ của ảnh chụp thật chưa có — đúng tỷ lệ, không chữ |
 | `NhanKhay` | `ngonNgu` | Thiết bị chữ ký "Đọc nhãn khay" — năm trường nhãn, không con số |
 | `LenTang3` | `ngonNgu`, `noiDung`, `gon?`, `capTieuDe?`, `anHieu?`, `tieuDe?`, `khongLinkDuongDen?` | "Tầng 3" và đường lên; bản gọn cho trang Hỏi bàn. In địa chỉ và câu chỉ đường `t.loiLen` (lối vào riêng ngay cạnh GS25, thang máy lên tầng 3) — không viết lại câu đó trong component khác |
-| `CauHoi` | `ngonNgu`, `noiDung` | Hỏi đáp bằng `<details>` — chỉ dữ kiện đã xác nhận |
+| `CauHoi` | `ngonNgu`, `noiDung` | Hỏi đáp bằng `<details>` — chỉ dữ kiện đã xác nhận. Mỗi `<summary>` có hai biểu tượng `cong` (`.bt-mo`) và `tru` (`.bt-dong`); hàng cao 56px, bấm được trên toàn chiều rộng |
 | `TrangVanBan` | `hieu`, `tieuDe` + `<slot>` | Trang pháp lý |
 | `ThucDonNhom` | `nhom`, `ngonNgu`, `ghiChu?`, `khongGia?` | Một nhóm món |
-| `DauTrang`, `ChanTrang` | — | Layout đã gắn sẵn; chân trang có `<footer>` pháp nhân duy nhất, giữ nguyên từng ký tự |
+| `DauTrang`, `ChanTrang` | — | Layout đã gắn sẵn. Đầu trang cao 64 / 80px, bộ chọn ngôn ngữ in đủ ba thứ tiếng (thứ tiếng đang xem: `aria-current="true"`, chữ đậm và nét gạch), menu gọn có nút đóng và nút chính Hỏi bàn. Chân trang: dải đỏ phẳng không hoa văn, chữ ≥ 14px, `<footer>` pháp nhân duy nhất, giữ nguyên từng ký tự |
 
 Thêm biểu tượng: vẽ thêm một dòng vào `NET` và kiểu `TenBieuTuong` trong `BieuTuong.astro`, lưới 24,
-nét 1,5, đầu tròn — rồi cập nhật danh sách tên trong `SKILL.md`.
+nét 1,5, đầu tròn — rồi cập nhật danh sách tên trong `SKILL.md` và `web/THIET-KE.md` mục 5.
 
 Thêm ảnh thật: `web/THIET-KE.md` mục 7, "Đưa một ảnh chụp thật lên trang".
 
@@ -152,7 +155,7 @@ Thêm ảnh thật: `web/THIET-KE.md` mục 7, "Đưa một ảnh chụp thật 
   `data-loi-*`.
 - **Không giấu nội dung sau JavaScript**: menu gọn và hỏi đáp là `<details>`; tab thực đơn không có
   JavaScript là ba link neo và đủ ba nhóm; form là HTML GET / POST thật với PRG. Script chỉ **thêm**:
-  phím Esc, khóa bấm đúp (`aria-busy`, "Đang gửi…"), lỗi sát ô, giữ bản nháp 15 phút trong
+  phím Esc, đóng menu khi bấm ra ngoài hay Tab ra khỏi mục cuối, khóa bấm đúp (`aria-busy`, "Đang gửi…"), lỗi sát ô, giữ bản nháp 15 phút trong
   `sessionStorage` (trừ ô đồng ý), focus vào khung kết quả.
 - Nút chỉ chạy được nhờ JavaScript (sao chép địa chỉ) ra trang với `hidden`, script dò tính năng rồi
   mới hiện; thông báo qua `role="status"`.

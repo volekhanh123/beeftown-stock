@@ -5,7 +5,7 @@
  *     node test/test-cong-khai-dia-diem.mjs
  *
  * Điều đã biết. Khánh quyết: địa điểm là 63 Hồ Tùng Mậu (07/10/2026); quán ở tầng 3, khách vào bằng
- * lối vào riêng ngay cạnh GS25 (09/10/2026). Khách đi thang máy: theo layout ngày 08/10/2026.
+ * lối vào riêng ngay cạnh GS25 (09/10/2026). Địa điểm có thang máy: Khánh xác nhận ngày 11/10/2026.
  * CÂU chỉ đường ba thứ tiếng thì là Claude đề xuất, CHỜ KHÁNH DUYỆT CHỮ. File này giữ câu đang dùng
  * đúng từng chữ để không ai sửa lén một bản; Khánh duyệt chữ khác thì sửa loiLen ở web/src/lib/chu.ts
  * cùng lúc với các bản chép tay ở đây, ở test-cong-khai-cau-chu.mjs và web/kiem-tra/trinh-duyet.mjs.
