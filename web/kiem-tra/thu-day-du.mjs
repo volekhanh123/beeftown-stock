@@ -28,7 +28,9 @@
  *      chính màn đầu là "Khám phá thực đơn". dat-ban-dong (form tắt): /dat-ban không có
  *      form; meta description / og:description là câu "chưa mở" (chu.ts moTaHoiBanChuaMo),
  *      cả mô tả lẫn đoạn mở đầu không hứa "gửi yêu cầu, nhà hàng gọi lại" (kiểm site thật
- *      07/10/2026).
+ *      07/10/2026). dat-ban-sap (database sập giữa lượt gửi, trang sau không dựng được form):
+ *      khung "KHÔNG CHẮC đã ghi" hiện, và đoạn mở đầu không nói "bạn chưa gửi được" — câu đó cãi
+ *      khung lỗi ngay bên dưới, khách tin là chưa gửi và gửi lại thành hai bản.
  *   5. Mọi trang công khai × (rong, day-du, dat-ban-dong) ở 360 và 1440 px: HTTP 200,
  *      không tràn ngang, không lỗi JavaScript; thành phần và khung trang đúng quy tắc
  *      của đợt redesign (phép đo ở do-giao-dien.mjs — cùng bộ với trinh-duyet.mjs, nhưng
@@ -176,6 +178,8 @@ const CHU_THANH_CONG = /thành công|\bsuccess|성공/i;
 // crm/test/test-cong-khai-hoi-ban-dong.mjs. Form đóng thì mô tả và đoạn mở đầu không được nói câu này.
 const HUA_FORM = { vi: /gọi lại|gửi yêu cầu/i, en: /call you back|(?<!cannot )send (?:a|your)(?: table)? request/i, ko: /전화드려요|전화로 안내|문의를 보내 주세요/ };
 const HUA_GOI_LAI = { vi: /gọi lại/i, en: /call you back/i, ko: /전화드려요|전화로 안내/ };
+// "Bạn chưa gửi được yêu cầu" — đúng khi database đã từ chối, sai khi KHÔNG CHẮC đã ghi (nhóm 4).
+const CHUA_GUI_DUOC = { vi: /chưa gửi được/i, en: /cannot send/i, ko: /보낼 수 없어요/ };
 const DANG_GUI = { vi: 'Đang gửi…', en: 'Sending…', ko: '보내는 중…' };
 const KHOA_LUU = 'bt-hoi-ban';
 const KHOA_NUT = 'thu-day-du-nut-gui';   // nhóm 2: trạng thái nút lúc vừa gửi, giữ qua lần chuyển trang
@@ -480,7 +484,7 @@ try {
   });
 
   // =========================================================================
-  await nhom('4 · NỐI DATABASE NHƯNG CHƯA CÔNG BỐ GÌ (rong) · FORM ĐANG TẮT (dat-ban-dong)', async () => {
+  await nhom('4 · NỐI DATABASE NHƯNG CHƯA CÔNG BỐ GÌ (rong) · FORM ĐANG TẮT (dat-ban-dong) · SẬP GIỮA LƯỢT GỬI (dat-ban-sap)', async () => {
     mayGia.datKichBan('rong');
     for (const nn of NGON_NGU) {
       const t = chu(nn);
@@ -537,12 +541,49 @@ try {
       await dienForm();
       mayGia.datKichBan('dat-ban-dong');
       await gui();
+      const { dan } = await moTaTrang();
       const tot = [
         ok(`dat-ban-dong (đóng giữa chừng) ${hoiBan}: khung lỗi của lượt gửi vẫn hiện`,
            await page.locator('[role="alert"][data-ket-qua]').count() === 1),
         ok(`dat-ban-dong (đóng giữa chừng) ${hoiBan}: KHÔNG có "đã nhận"`, !BAT_KY_DA_NHAN.test(await chuTrang())),
+        // Database đã từ chối (form đóng) — chưa ghi gì, nên "bạn chưa gửi được" ở đoạn mở đầu là đúng.
+        ok(`dat-ban-dong (đóng giữa chừng) ${hoiBan}: database đã từ chối → đoạn mở đầu vẫn nói chưa gửi được`,
+           CHUA_GUI_DUOC[nn].test(dan), `«${dan}»`),
       ];
       if (tot.includes(false)) await chupLoi(`dat-ban-dong-giua-chung${hoiBan}`);
+    }
+
+    // Database sập đúng lúc khách gửi: tao_dat_ban không trả lời (KHÔNG CHẮC đã ghi — lib/xu-ly-form.ts),
+    // và trang sau khi gửi cũng không đọc được lịch nên hiện thẻ "chưa mở" thay cho form. Khung lỗi bảo
+    // "đừng gửi lại"; đoạn mở đầu mà nói "bạn chưa gửi được yêu cầu" thì cãi khung lỗi, khách tin là chưa
+    // gửi và hỏi lại — nhà hàng nhận hai bản. Câu trung tính chép tay (chép từ code thì sửa code là kiểm
+    // thử đổi theo).
+    const DAN_KHONG_CHAC = {
+      vi: 'Cách hỏi bàn lúc này ở ngay bên dưới.',
+      en: 'Here is how to ask for a table for now.',
+      ko: '지금 문의하는 방법은 바로 아래에서 확인해 주세요.',
+    };
+    for (const nn of NGON_NGU) {
+      const hoiBan = duongDanTuongUng('/dat-ban', nn);
+      mayGia.datKichBan('day-du');
+      await page.goto(goc + hoiBan, { waitUntil: 'load' });
+      await dienForm();
+      mayGia.datKichBan('dat-ban-sap');
+      await gui();
+      const { dan } = await moTaTrang();
+      const tot = [
+        ok(`dat-ban-sap ${hoiBan}: trang sau khi gửi không có form (đúng trạng thái thẻ "chưa mở")`,
+           await page.locator('form[data-hoi-ban]').count() === 0),
+        ok(`dat-ban-sap ${hoiBan}: khung "KHÔNG CHẮC đã ghi" hiện (role="alert", data-ket-qua="khong-chac")`,
+           await page.locator('[role="alert"][data-ket-qua="khong-chac"]').count() === 1),
+        ok(`dat-ban-sap ${hoiBan}: đoạn mở đầu KHÔNG nói "chưa gửi được" (cãi khung "không chắc, đừng gửi lại")`,
+           !!dan && !CHUA_GUI_DUOC[nn].test(dan), `«${dan}»`),
+        ok(`dat-ban-sap ${hoiBan}: đoạn mở đầu là câu trung tính «${DAN_KHONG_CHAC[nn]}»`, dan === DAN_KHONG_CHAC[nn], `«${dan}»`),
+        ok(`dat-ban-sap ${hoiBan}: KHÔNG có "đã nhận"`, !BAT_KY_DA_NHAN.test(await chuTrang())),
+        ok(`dat-ban-sap ${hoiBan}: gửi một lần → tao_dat_ban một lần (không tự gửi lại)`, (mayGia.dem().tao_dat_ban ?? 0) === 1,
+           `${mayGia.dem().tao_dat_ban ?? 0} lần`),
+      ];
+      if (tot.includes(false)) await chupLoi(`dat-ban-sap${hoiBan}`);
     }
   });
 
