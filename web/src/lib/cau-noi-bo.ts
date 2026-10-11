@@ -19,7 +19,7 @@
  * lỗi và vẫn chụp gửi được cho quản lý, thay vì một thông báo trống.
  */
 
-import type { NgonNguNB } from './ngon-ngu-noi-bo';
+import type { NgonNguNB, HaiThuTieng } from './ngon-ngu-noi-bo';
 // Câu của phần kho (database kho, lỗi chung của kho) — bảng riêng, cùng cách tra.
 import { CAU_KHO_EN, MAU_KHO_EN } from './kho/cau-kho-en.ts';
 // Câu của phần gửi tin Zalo (0047) — bảng riêng, cùng cách tra.
@@ -199,6 +199,24 @@ export const TEN_KHUNG_ANH_EN: Readonly<Record<string, string>> = {
   'so-nha':        'Street number 40–42',
   'vi-nuong':      'Grill in use',
 };
+
+/**
+ * Trang không có ở khu nội bộ (pages/404.astro, nhánh đã đăng nhập), đọc qua dichNB().
+ *
+ * Câu của trang thường nằm ngay trong trang. Trang này là ngoại lệ: 404.astro nằm ở gốc
+ * pages/ và cũng là trang 404 công khai, nên test-cong-khai-cau-chu.mjs quét nó như trang
+ * công khai và đòi mọi { vi, en } trong file có thêm ko — mà phần mềm nội bộ không có
+ * tiếng Hàn.
+ */
+export const CAU_TRANG_KHONG_CO = {
+  // Cùng giọng với bản công khai (khongCo… trong lib/chu.ts): chỉ nói điều chắc chắn đúng.
+  tieuDe: { vi: 'Không có trang này', en: 'This page does not exist' },
+  giaiThich: {
+    vi: 'Đường dẫn bạn mở không dẫn tới màn nào của phần mềm nội bộ. Có thể địa chỉ bị gõ sai, hoặc link đã cũ.',
+    en: 'The link you opened does not lead to any screen of the internal software. The address may be mistyped, or the link may be out of date.',
+  },
+  veTrangChinh: { vi: 'Về trang chính nội bộ', en: 'Back to the internal home page' },
+} as const satisfies Record<string, HaiThuTieng>;
 
 export function moTaKhoa(nn: NgonNguNB, khoa: string, moTaVi: string): string {
   return nn === 'en' ? (MO_TA_KHOA_EN[khoa] ?? moTaVi) : moTaVi;

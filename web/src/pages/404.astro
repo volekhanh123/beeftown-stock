@@ -23,45 +23,70 @@
  *
  * Nhánh /hook/ipos/<khóa sai dạng> trả 404 chữ trơn ở src/worker.ts — đứng TRƯỚC Astro, không tới
  * đây (web/kiem-tra/trinh-duyet.mjs nhóm 4 giữ điều đó).
+ *
+ * KHU NỘI BỘ: middleware.ts chạy TRƯỚC trang này, nên dưới /noi-bo người chưa đăng nhập đã bị
+ * chuyển sang /noi-bo/dang-nhap (trinh-duyet.mjs nhóm 4) — không thấy trang nào, không đoán được
+ * đường dẫn nào có. Đã đăng nhập thì là nhân viên: hiện bản NỘI BỘ — khung NoiBo.astro (menu theo
+ * vai, nút đăng xuất), tiếng nhân viên chọn (locals.nn, cookie nb_ngon_ngu — vi/en, không theo
+ * tiền tố đường dẫn), link về /noi-bo. Chọn nhánh: loaiTrangKhongCo (lib/dieu-huong-noi-bo.ts,
+ * crm/test/test-noi-bo-khong-co.mjs). Câu ở lib/cau-noi-bo.ts (CAU_TRANG_KHONG_CO).
  */
 import Trang from '../layouts/Trang.astro';
+import NoiBo from '../layouts/NoiBo.astro';
 import { NGON_NGU, TEN_NGON_NGU, chu, duongDanTuongUng, ngonNguTuDuongDan } from '../lib/chu';
 import { docNoiDung } from '../lib/noi-dung';
+import { loaiTrangKhongCo } from '../lib/dieu-huong-noi-bo';
+import { dichNB, nnCua } from '../lib/ngon-ngu-noi-bo';
+import { CAU_TRANG_KHONG_CO } from '../lib/cau-noi-bo';
 
 // Astro đã đặt 404 cho trang này; ghi thẳng ra để không ai phải tìm trong mã Astro.
 Astro.response.status = 404;
 
+// Bản nội bộ: chỉ khi ở khu /noi-bo VÀ đã đăng nhập (locals.phien do middleware đặt).
+const loai = loaiTrangKhongCo(Astro.url.pathname, !!Astro.locals.phien);
+const nn = nnCua(Astro);
+const nb = dichNB(nn, CAU_TRANG_KHONG_CO);
+
+// Bản công khai.
 const ngonNgu = ngonNguTuDuongDan(Astro.url.pathname);
 const noiDung = await docNoiDung(ngonNgu, null);
 const t = chu(ngonNgu);
 const thuTiengKhac = NGON_NGU.filter(n => n !== ngonNgu);
 ---
-<Trang ngonNgu={ngonNgu} noiDung={noiDung} duongDan="/404" tieuDe={t.khongCoTieuDeTrang} khongLapChiMuc>
-  <section class="mo-dau-trang be-kem">
-    <div class="khung">
-      <p class="hieu">Beeftown · 404</p>
-      <h1>{t.khongCoTieuDe}</h1>
-      <p class="dan">{t.khongCoGiaiThich}</p>
-    </div>
-    <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
-  </section>
+{loai === 'noi-bo' ? (
+  <NoiBo tieuDe={nb.tieuDe} nhanSu={Astro.locals.phien?.nhanSu}>
+    <h1>{nb.tieuDe}</h1>
+    <p class="nb-dan">{nb.giaiThich}</p>
+    <p><a class="nb-nut" href="/noi-bo">{nb.veTrangChinh}</a></p>
+  </NoiBo>
+) : (
+  <Trang ngonNgu={ngonNgu} noiDung={noiDung} duongDan="/404" tieuDe={t.khongCoTieuDeTrang} khongLapChiMuc>
+    <section class="mo-dau-trang be-kem">
+      <div class="khung">
+        <p class="hieu">Beeftown · 404</p>
+        <h1>{t.khongCoTieuDe}</h1>
+        <p class="dan">{t.khongCoGiaiThich}</p>
+      </div>
+      <span class="trang-tri net huong-thao-5 net-goc" aria-hidden="true"></span>
+    </section>
 
-  <section class="be-kem kc">
-    <div class="khung">
-      <div class="hang-nut">
-        <a class="nut nut-chinh" href={duongDanTuongUng('/', ngonNgu)}>{t.khongCoVeTrangChu}</a>
+    <section class="be-kem kc">
+      <div class="khung">
+        <div class="hang-nut">
+          <a class="nut nut-chinh" href={duongDanTuongUng('/', ngonNgu)}>{t.khongCoVeTrangChu}</a>
+        </div>
+        {/* Tên mỗi thứ tiếng viết bằng chính thứ tiếng đó (TEN_NGON_NGU): người lạc vào trang
+            tiếng Việt có thể chưa đọc được tiếng Việt. */}
+        <p class="kc-nhan">{t.khongCoTrangChuKhac}</p>
+        <div class="hang-nut">
+          {thuTiengKhac.map(n => (
+            <a class="nut nut-vien" href={duongDanTuongUng('/', n)} lang={n} hreflang={n}>{TEN_NGON_NGU[n]}</a>
+          ))}
+        </div>
       </div>
-      {/* Tên mỗi thứ tiếng viết bằng chính thứ tiếng đó (TEN_NGON_NGU): người lạc vào trang
-          tiếng Việt có thể chưa đọc được tiếng Việt. */}
-      <p class="kc-nhan">{t.khongCoTrangChuKhac}</p>
-      <div class="hang-nut">
-        {thuTiengKhac.map(n => (
-          <a class="nut nut-vien" href={duongDanTuongUng('/', n)} lang={n} hreflang={n}>{TEN_NGON_NGU[n]}</a>
-        ))}
-      </div>
-    </div>
-  </section>
-</Trang>
+    </section>
+  </Trang>
+)}
 
 <style>
   .kc { padding-block: 0 var(--muc-dem); }

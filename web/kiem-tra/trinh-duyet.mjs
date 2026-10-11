@@ -28,8 +28,9 @@
  *      và đoạn mở đầu không hứa "gửi yêu cầu, nhà hàng gọi lại" khi form đóng.
  *   3. Gửi thẳng form đặt bàn (không qua giao diện): trang quay về báo lỗi, không bao
  *      giờ báo thành công. Gửi từ trang web khác (Origin lạ) bị từ chối 403.
- *   4. /noi-bo chuyển sang trang đăng nhập (cả đường dẫn lạ dưới /noi-bo); hook iPOS
- *      không lộ lỗi nội bộ; khóa sai dạng vẫn là 404 chữ trơn của src/worker.ts.
+ *   4. /noi-bo chuyển sang trang đăng nhập (cả đường dẫn lạ dưới /noi-bo — đã đăng nhập thì
+ *      chúng hiện trang 404 NỘI BỘ, kiểm ở crm/test/test-noi-bo-khong-co.mjs vì cần database);
+ *      hook iPOS không lộ lỗi nội bộ; khóa sai dạng vẫn là 404 chữ trơn của src/worker.ts.
  *   5. Menu gọn của màn hẹp (<details class="menu-gon">) mở / đóng được KHI TẮT
  *      JavaScript; có JavaScript thì Esc đóng nó và trả tiêu điểm về nút.
  *   6. Đường dẫn lạ (/…, /en/…, /ko/…) ở 360 và 1366 px: mã 404, trang 404 của Beeftown
@@ -403,11 +404,15 @@ try {
          h.status() === 404 && thanHook === 'Không tìm thấy' && !/text\/html/i.test(h.headers()['content-type'] ?? ''),
          `HTTP ${h.status()}, ${h.headers()['content-type']}, «${thanHook.slice(0, 60)}»`);
       // Đường dẫn lạ dưới /noi-bo vẫn đi qua middleware: chưa đăng nhập thì về trang đăng nhập — trang 404
-      // không mở ra cho người lạ biết đường dẫn nào có, đường dẫn nào không.
-      const nb = await page.request.get(goc + '/noi-bo/khong-co-trang-nay', { maxRedirects: 0 });
-      ok('GET /noi-bo/khong-co-trang-nay chưa đăng nhập → chuyển về /noi-bo/dang-nhap, không phải trang 404',
-         nb.status() === 302 && new URL(nb.headers().location ?? '', goc).pathname === '/noi-bo/dang-nhap',
-         `HTTP ${nb.status()} → ${nb.headers().location}`);
+      // không mở ra cho người lạ biết đường dẫn nào có, đường dẫn nào không. Đủ các dạng middleware canh:
+      // trong khu nội bộ, sâu trong kho, có / cuối, và tiền tố không có / (/noi-bo-…). Đã đăng nhập thì
+      // /noi-bo/… hiện bản 404 NỘI BỘ — phần đó cần database, kiểm ở crm/test/test-noi-bo-khong-co.mjs.
+      for (const duong of ['/noi-bo/khong-co-trang-nay', '/noi-bo/kho/khong-co-trang-nay/', '/noi-bo-khong-co-trang-nay']) {
+        const nb = await page.request.get(goc + duong, { maxRedirects: 0 });
+        ok(`GET ${duong} chưa đăng nhập → chuyển về /noi-bo/dang-nhap, không phải trang 404`,
+           nb.status() === 302 && new URL(nb.headers().location ?? '', goc).pathname === '/noi-bo/dang-nhap',
+           `HTTP ${nb.status()} → ${nb.headers().location}`);
+      }
     });
     await ctx.close();
   }
