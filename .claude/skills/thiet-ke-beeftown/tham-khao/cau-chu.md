@@ -66,13 +66,38 @@ trong `/noi-bo`.
   (có dấu chấm; `THUONG_HIEU` trong `web/src/lib/chu.ts`). Câu chính cho khách: *Không cần rành bò.
   Chọn theo gu, thấy giá trước.*
 - Địa điểm: **Tầng 3, 63 Hồ Tùng Mậu** (tiếng Anh "Floor 3, 63 Hồ Tùng Mậu", tiếng Hàn "Hồ Tùng Mậu
-  63, 3층"). Chỉ đường: "Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3." Khánh chốt 07 và
-  09/10/2026.
-  - Mã trên `main` còn ghi "11-21 Hàm Nghi" và "cầu thang bộ, không có thang máy" (`LenTang3`, `chu.ts`,
-    chân trang, kiểm thử) — sửa ở **một PR riêng** theo danh sách của Khánh. Đừng thêm chỗ mới ghi địa
-    chỉ cũ hay cầu thang bộ; dòng địa chỉ pháp lý ở chân trang chờ Khánh quyết.
+  63, 3층"). Bản ngắn không có tầng: "63 Hồ Tùng Mậu, TP.HCM" / "63 Hồ Tùng Mậu, Ho Chi Minh City" /
+  "호치민시 Hồ Tùng Mậu 63" (`diaChiNgan`). Mã đã ghi đúng như vậy: `DIA_CHI_PHAN`, `DIA_CHI_NHA_HANG`
+  trong `web/src/lib/chu.ts`.
+  - **Khánh đã quyết** (điều đã biết): địa điểm là 63 Hồ Tùng Mậu (07/10/2026); quán ở tầng 3, khách vào
+    bằng **lối vào riêng ngay cạnh GS25** (09/10/2026). Khách đi **thang máy** lên tầng 3: theo layout
+    ngày 08/10/2026.
+  - **Câu chỉ đường ba thứ tiếng là Claude đề xuất, đang chờ Khánh duyệt chữ** (`loiLen` trong
+    `chu.ts`). Dùng đúng câu đang có, không tự viết bản khác:
+    - vi: "Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3."
+    - en: "Use our own entrance, right next to GS25, and take the lift to Floor 3."
+    - ko: "GS25 바로 옆 전용 입구로 들어와 엘리베이터로 3층까지 올라오세요."
+
+    Khánh duyệt chữ khác thì sửa `loiLen` cùng lúc với ba bản chép tay trong
+    `crm/test/test-cong-khai-cau-chu.mjs`, `crm/test/test-cong-khai-dia-diem.mjs`,
+    `web/kiem-tra/trinh-duyet.mjs` và ba dòng trên.
+  - **Chỉ nói những điều đó.** Không ghi tên phường hay quận — chưa có giấy xác nhận (JSON-LD vì thế
+    không có `addressLocality`). Không gọi 63 Hồ Tùng Mậu là "tòa nhà" / "the building" / "건물". Không
+    kể chuyện đổi địa điểm, không chữ "địa chỉ mới". Lối lên chỉ là thang máy — không nhắc cách lên nào
+    khác. Không chỗ gửi xe, lối cho xe lăn, mốc gần đó, số phút, số mét, số bước — chưa ai xác nhận, chưa
+    ai đo.
+  - **Dòng địa chỉ pháp nhân ở chân trang** (`PHAP_NHAN.diaChi` trong `chu.ts`) là địa chỉ trên giấy
+    đăng ký của công ty, **khác** địa chỉ nhà hàng. Giữ nguyên từng ký tự — nó khớp giấy đăng ký đang
+    dùng cho hồ sơ xác minh trên Meta; đổi hay không là việc Khánh quyết. Đừng "sửa cho khớp" với địa chỉ quán, và đừng chép dòng đó
+    ra chỗ khác.
+  - Địa chỉ trên trang có hai nguồn: bản công bố trong `/noi-bo` (khóa `dia_chi_hien_thi`, nhóm "Liên
+    hệ") thắng bản trong mã. Tên chi nhánh và địa chỉ trong `/noi-bo/cai-dat` là thứ bot Messenger đọc.
+    Đổi địa điểm trong mã mà không xem lại hai nơi đó thì khách vẫn thấy chữ cũ.
   - Luật vẫn giữ: trang nói về đường đến hay hỏi bàn phải nói cách lên tầng 3 **trước** khi khách gửi
     yêu cầu.
+  - Kiểm thử gác: `crm/test/test-cong-khai-dia-diem.mjs` (mã nguồn), `test-cong-khai-cau-chu.mjs` nhóm 7
+    (chữ khách đọc), `web/kiem-tra/trinh-duyet.mjs` (trang đã dựng); mẫu dùng chung ở
+    `web/kiem-tra/mau-dia-diem.mjs`.
 - Nút / link tới trang hỏi bàn: **"Hỏi bàn" / "Ask for a table" / "테이블 문의"** — không "Đặt bàn
   ngay", không "Book now".
 - Nhãn khay: tên phần cắt, giá mỗi 100g, trọng lượng, giá cuối (đã gồm VAT), ngày đóng gói. "Đã gồm
@@ -94,7 +119,7 @@ trong `/noi-bo`.
 
 - Trang công khai: **vi / en / ko** cho mọi câu; câu nào có `vi` và `en` thì phải có `ko`. Chữ en và ko
   không chứa dấu tiếng Việt, trừ tên riêng trong `TEN_RIENG` của `crm/test/test-cong-khai-cau-chu.mjs`
-  (tên đường, phường, pháp nhân) — tên riêng mới như "Hồ Tùng Mậu" thì thêm vào đó.
+  (tên đường "Hồ Tùng Mậu", tên thành phố, pháp nhân) — tên riêng mới thì thêm vào đó.
 - Nội bộ và kho: **vi / en**. Câu `raise exception` mới của database có bản tiếng Anh trong
   `web/src/lib/cau-noi-bo.ts` (CRM) hoặc `web/src/lib/kho/cau-kho-en.ts` (kho). **Không đổi chữ của câu
   `raise exception` cũ** — kiểm thử khớp theo chữ tiếng Việt.

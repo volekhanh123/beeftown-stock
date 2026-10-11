@@ -100,6 +100,7 @@ Các điểm phải giữ:
 | `web/public/favicon.ico`, `web/public/thuong-hieu/bieu-tuong-180.png`, `chia-se-1200x630.png`, 4 biểu tượng trong `web/public/kho/` | Dựng lại bằng `web/cong-cu/thuong-hieu/tao-bieu-tuong.py` (bảng `DOI_MAU` đổi mã của PDF sang mã đã chốt) |
 | `crm/test/test-cong-khai-giao-dien.mjs` | Hằng `BANG_MAU` và nhóm 6 |
 | `web/THIET-KE.md` mục 2, `README.md` mục "Bảng màu", `AGENTS.md` | Tài liệu theo tình trạng mới |
+| Skill `.claude/skills/thiet-ke-beeftown/` (PR #63, đã gộp) | Hai bảng token: trang công khai (khối `.ck`) và `/noi-bo`, kho (`:root`, bảng cũ); địa điểm theo mục 6. `crm/test/test-ky-nang-thiet-ke.mjs` so từng bảng với đúng nguồn của nó |
 
 Ba thứ dùng chung đã đổi màu theo, dù giao diện của `/noi-bo`, kho và Beeftown Cân chưa đổi:
 
@@ -118,7 +119,6 @@ Còn mã cũ, chờ một PR riêng:
 | `web/public/kho/manifest.json` | `theme_color` `#1E160E` |
 | `can-app/src/giao-dien.html`, `can-app/src/huong-dan.html` | Token riêng của Beeftown Cân (`--do`, `--do-dam`, `--kem`, `--kem-sau`, `--mu-tat`, `--than`, `--vach`) |
 | `web/cong-cu/thuong-hieu/` (`cau_hinh_tai_san.py`, `tach-tu-pdf.py`, `ve-svg.mjs`) | Mã màu của PDF nhận diện, dùng để tách tài sản từ PDF — đây là mã nguồn, không phải mã trên trang |
-| PR #63 (skill `thiet-ke-beeftown`, chưa gộp) | Ghi bảng màu cũ; `crm/test/test-ky-nang-thiet-ke.mjs` so mã màu của skill với mã nguồn |
 
 Lệnh tìm chỗ còn sót: `grep -rnE "30, ?22, ?14|251, ?244, ?225|178, ?58, ?44|150, ?15, ?19" web/src can-app/src`.
 

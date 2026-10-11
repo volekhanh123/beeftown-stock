@@ -16,13 +16,22 @@
  *      của skill có file; mọi file tham-khao/ được SKILL.md link tới.
  *   3. Mã màu ghi cạnh tên token (`--kem` … `#FBF4E1`) đúng giá trị khai trong web/src/styles; mọi
  *      biến `--…` nhắc tới có khai ở đâu đó trong web/src.
+ *      Một tên biến có HAI giá trị: trang công khai khai lại trong khối `.ck` đầu tiên của
+ *      cong-khai.css (bảng màu chốt 09/10/2026), /noi-bo và kho đọc `:root` của chung.css (bảng cũ).
+ *      Nên SKILL.md có hai bảng token, và mỗi bảng được so với ĐÚNG nguồn của nó, hai chiều; cặp
+ *      token–mã ghi ngoài hai bảng cũng phải đúng khu. Tên màu thương hiệu (Beef Red, Cream…) đứng
+ *      trước một mã thì mã đó là của bảng chốt.
  *   4. Mọi đường dẫn trong dấu `…` bắt đầu bằng web/, crm/, can-app/, .github/ hoặc là file ở gốc repo
  *      đều có thật.
  *   5. Hai danh sách biểu tượng trong skill khớp đúng bộ trong mã (công khai: TenBieuTuong của
  *      BieuTuong.astro; nội bộ, kho: khóa của BIEU_TUONG). Lớp trong "Danh mục" có trong
- *      cong-khai.css; lớp bề mặt .be-… khớp hai chiều.
+ *      cong-khai.css; lớp bề mặt .be-… khớp hai chiều. Danh sách loại của KhungAnh khớp LoaiKhung.
+ *   6. Địa điểm: skill chép đúng từng chữ địa chỉ và ba câu chỉ đường đang dùng trong chu.ts; không
+ *      file nào của skill nhắc tên một địa chỉ khác hay cầu thang bộ (cùng bộ mẫu với các phép thử
+ *      gác địa điểm, web/kiem-tra/mau-dia-diem.mjs) — dòng pháp nhân thì gọi bằng tên trong mã.
  *
- * KHÔNG kiểm: số đo (cỡ chữ, khoảng cách, bo góc), tên hàm, câu chữ — người sửa mã tự sửa skill.
+ * KHÔNG kiểm: số đo (cỡ chữ, khoảng cách, bo góc), tên hàm, câu chữ ngoài mục 6 — người sửa mã tự
+ * sửa skill.
  * Đỏ ở đây nghĩa là mã đã đổi mà skill chưa theo: sửa skill trong cùng PR, đừng nới kiểm thử.
  */
 
@@ -157,6 +166,117 @@ await nhom('3 · MÃ MÀU VÀ BIẾN CSS GHI TRONG SKILL CÓ THẬT, ĐÚNG GIÁ
   const khongKhai = [...bien].filter(b => !new RegExp(`${b}\\s*:`).test(maNguon));
   ok(`${bien.size} biến CSS nhắc trong skill đều có khai trong web/src`, bien.size > 0 && khongKhai.length === 0,
      khongKhai.join(', '));
+
+  // ---- Hai bảng token, mỗi bảng so với ĐÚNG nguồn của nó ----------------------------------------
+  // Phép so ở trên gom giá trị từ mọi file CSS: `--do` `#B23A2C` (:root, bảng cũ) và `--do` `#A70C0C`
+  // (.ck, trang công khai) đều qua, dù skill ghi ở bảng nào. Skill dạy "khu này dùng mã này" — ghi mã
+  // của khu kia là sai mà phép so trên không thấy. Các kiểm tra dưới đây buộc từng cặp vào nguồn của
+  // khu mà skill đang nói tới.
+  /** Khai báo màu trong một khối CSS (hex 6 số hoặc rgb()/rgba()): tên biến → giá trị, bỏ khoảng trắng. */
+  const mauTrongKhoi = khoi => new Map([...khoi.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)]
+    .map(([, ten, giaTri]) => [ten, giaTri.trim()])
+    .filter(([, v]) => /^#[0-9a-fA-F]{6}$/.test(v) || /^rgba?\(/i.test(v))
+    .map(([ten, v]) => [ten, v.startsWith('#') ? v.toUpperCase() : v.replace(/\s+/g, '').toLowerCase()]));
+  const khoiCk = docCss(join(SRC, 'styles', 'cong-khai.css')).match(/(?<=^|\})\s*\.ck\s*\{([^{}]*)\}/)?.[1] ?? '';
+  // Chỉ khối `:root { … }` trơn — `:root:lang(ko)` không khai màu và không phải của mọi trang.
+  const khoiRoot = [...docCss(join(SRC, 'styles', 'chung.css')).matchAll(/(?<=^|\})\s*:root\s*\{([^{}]*)\}/g)].map(m => m[1]).join('\n');
+  const NGUON = {
+    'cong-khai': { mau: mauTrongKhoi(khoiCk), ten: 'khối .ck đầu tiên của cong-khai.css' },
+    'noi-bo': { mau: mauTrongKhoi(khoiRoot), ten: 'các khối :root của chung.css' },
+  };
+  ok('Đọc được màu của khối .ck đầu tiên (cong-khai.css) và của :root (chung.css)',
+     NGUON['cong-khai'].mau.size >= 10 && NGUON['noi-bo'].mau.size >= 10,
+     `.ck ${NGUON['cong-khai'].mau.size} biến màu · :root ${NGUON['noi-bo'].mau.size} biến màu`);
+
+  /** Phần của một file .md dưới tiêu đề ### mở đầu bằng `tieuDe`, tới tiêu đề ## / ### kế tiếp. */
+  const mucCua = (md, tieuDe) => {
+    const m = md.match(new RegExp(`^### ${tieuDe.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}[^\\n]*\\n`, 'm'));
+    if (!m) return null;
+    const dau = m.index + m[0].length;
+    const cuoi = md.slice(dau).search(/^#{2,3} /m);
+    return { dau, cuoi: cuoi < 0 ? md.length : dau + cuoi, chu: md.slice(dau, cuoi < 0 ? md.length : dau + cuoi) };
+  };
+  const rgbCua = hex => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  /**
+   * Ô "Mã" của một dòng bảng → giá trị CSS mong đợi. Hai cách ghi: `#RRGGBB`, hoặc "than 68 %" /
+   * "kem 22 %" — màu gốc của CHÍNH khu đó với độ trong ấy (--muc-nhat, --vach, --vach-kem).
+   */
+  const giaTriMongDoi = (o, mau) => {
+    const hex = o.match(/^`(#[0-9a-fA-F]{6})`$/)?.[1];
+    if (hex) return hex.toUpperCase();
+    const pha = o.match(/^(than|kem) (\d{1,2}) %$/);
+    const goc = pha && mau.get(`--${pha[1]}`);
+    return goc?.startsWith('#') ? `rgba(${rgbCua(goc).join(',')},.${pha[2].padStart(2, '0')})` : null;
+  };
+  const BANG_TOKEN = [
+    ['Token của trang công khai', 'cong-khai'],
+    ['Token của `/noi-bo` và kho', 'noi-bo'],
+  ];
+  const vungBang = {};
+  for (const [tieuDe, khu] of BANG_TOKEN) {
+    const { mau, ten } = NGUON[khu];
+    const muc = mucCua(skillMd, tieuDe);
+    vungBang[khu] = muc;
+    const dong = [...(muc?.chu ?? '').matchAll(/^\|\s*`(--[a-z0-9-]+)`\s*\|\s*([^|]+?)\s*\|/gm)];
+    ok(`SKILL.md có mục "### ${tieuDe}" với bảng token`, dong.length >= 10, muc ? `${dong.length} dòng` : 'không thấy tiêu đề');
+    for (const [, bien, o] of dong) {
+      const mong = giaTriMongDoi(o, mau);
+      ok(`SKILL.md, bảng "${tieuDe}": ${bien} = ${o.replace(/`/g, '')} đúng như ${ten}`,
+         !!mong && mau.get(bien) === mong,
+         mau.has(bien) ? `${ten} khai ${mau.get(bien)}${mong ? '' : ' · ô "Mã" phải là `#RRGGBB` hoặc "than N %" / "kem N %"'}` : `${ten} không khai biến màu này`);
+    }
+    const coTrongBang = new Set(dong.map(m => m[1]));
+    const thieu = [...mau.keys()].filter(b => !coTrongBang.has(b));
+    ok(`SKILL.md, bảng "${tieuDe}": có đủ ${mau.size} biến màu của ${ten}`, dong.length > 0 && thieu.length === 0,
+       thieu.length ? `chưa ghi: ${thieu.join(', ')}` : '');
+  }
+
+  // Cặp token–mã ghi NGOÀI hai bảng: file của trang công khai thì theo .ck, file nội bộ / kho thì theo
+  // :root. Chỗ khác (phần còn lại của SKILL.md, các file tham khảo chung) không nói rõ khu nào — biến
+  // có hai giá trị thì không được ghi kèm mã ở đó.
+  const KHU_CUA_TEP = { 'tham-khao/trang-cong-khai.md': 'cong-khai', 'tham-khao/noi-bo-va-kho.md': 'noi-bo' };
+  const haiGiaTri = new Set([...NGUON['cong-khai'].mau.keys()]
+    .filter(b => NGUON['noi-bo'].mau.has(b) && NGUON['noi-bo'].mau.get(b) !== NGUON['cong-khai'].mau.get(b)));
+  ok('Có biến mang hai giá trị (trang công khai khác /noi-bo, kho) — lý do skill cần hai bảng',
+     haiGiaTri.size >= 5, [...haiGiaTri].join(', '));
+  const saiKhu = [];
+  for (const [tep, md] of Object.entries(vanBan)) {
+    const laSkill = tep.endsWith('/SKILL.md');
+    const khuTep = Object.entries(KHU_CUA_TEP).find(([duoi]) => tep.endsWith(duoi))?.[1] ?? null;
+    for (const m of md.matchAll(CAP)) {
+      const ten = m[1] ?? m[3], hex = (m[2] ?? m[4]).toUpperCase();
+      const khu = laSkill
+        ? Object.keys(vungBang).find(k => vungBang[k] && m.index >= vungBang[k].dau && m.index < vungBang[k].cuoi) ?? null
+        : khuTep;
+      if (laSkill && khu) continue;                       // trong hai bảng: đã so từng dòng ở trên
+      if (!khu) { if (haiGiaTri.has(ten)) saiKhu.push(`${tep}: ${ten} ${hex} ghi ngoài hai bảng token — không rõ của khu nào`); continue; }
+      const dung = NGUON[khu].mau.get(ten);
+      if (dung && dung !== hex) saiKhu.push(`${tep}: ${ten} ${hex}, nhưng ${NGUON[khu].ten} khai ${dung}`);
+    }
+  }
+  ok('Cặp token–mã ghi ngoài hai bảng đúng khu của file (trang-cong-khai.md theo .ck, noi-bo-va-kho.md theo :root); chỗ không rõ khu thì không ghi mã cho biến hai giá trị',
+     saiKhu.length === 0, saiKhu.join(' | '));
+
+  // Skill ghi trang công khai đã theo bảng màu thương hiệu: năm tên màu của guideline, đứng trước
+  // một mã ở bất kỳ file nào của skill, phải đúng mã của token tương ứng trong khối .ck.
+  const TEN_MAU = { 'Beef Red': '--do', 'Cream': '--kem', 'Charcoal': '--than', 'Marigold': '--cuc-vang', 'Warm Stone': '--da' };
+  const saiTen = [], thayTen = new Set();
+  for (const [tep, md] of Object.entries(vanBan)) {
+    for (const [, ten, hex] of md.matchAll(/(Beef Red|Cream|Charcoal|Marigold|Warm Stone)\s*\|?\s*`(#[0-9a-fA-F]{6})`/g)) {
+      thayTen.add(ten);
+      const dung = NGUON['cong-khai'].mau.get(TEN_MAU[ten]);
+      if (dung !== hex.toUpperCase()) saiTen.push(`${tep}: ${ten} ${hex}, nhưng ${TEN_MAU[ten]} trong khối .ck là ${dung}`);
+    }
+  }
+  ok('Năm màu thương hiệu (Beef Red, Cream, Charcoal, Marigold, Warm Stone) ghi kèm mã đều đúng mã của khối .ck',
+     thayTen.size === 5 && saiTen.length === 0, saiTen.length ? saiTen.join(' | ') : `thấy ${[...thayTen].join(', ') || 'không tên nào'}`);
+
+  // Bộ ba số RGB skill ghi cho rgba() của trang công khai phải là số của một mã trong khối .ck.
+  const boBaDung = new Set([...NGUON['cong-khai'].mau.values()].filter(v => v.startsWith('#')).map(h => rgbCua(h).join(', ')));
+  const boBa = [...(vungBang['cong-khai']?.chu ?? '').matchAll(/(?<![\d,.] ?)\b(\d{1,3}), (\d{1,3}), (\d{1,3})\b(?! ?[,\d])/g)].map(m => m.slice(1).join(', '));
+  const boBaSai = boBa.filter(b => !boBaDung.has(b));
+  ok(`SKILL.md, mục "Token của trang công khai": ${boBa.length} bộ ba số RGB đều là số của một mã trong khối .ck`,
+     boBa.length > 0 && boBaSai.length === 0, boBaSai.join(' · '));
 });
 
 // ===========================================================================
@@ -209,6 +329,37 @@ await nhom('5 · BIỂU TƯỢNG VÀ LỚP DÙNG CHUNG KHỚP MÃ', async () => 
   const beMatSkill = [...new Set([...skillMd.matchAll(/`\.(be-[a-z-]+)`/g)].map(m => m[1]))];
   const beMatCss = [...new Set([...css.matchAll(/\.(be-[a-z-]+)(?![a-z0-9-])/g)].map(m => m[1]))];
   soSanh('SKILL.md: bảng "Màu theo bề mặt" có đúng các lớp .be-… của cong-khai.css', beMatSkill, beMatCss);
+
+  // Loại của <KhungAnh loai="…">: tên trong dòng `KhungAnh` của bảng "Component có sẵn" đúng bằng kiểu LoaiKhung.
+  const loaiMa = [...(doc(join(SRC, 'components', 'KhungAnh.astro')).match(/export type LoaiKhung =([^;]+);/)?.[1] ?? '')
+    .matchAll(/'([a-z0-9-]+)'/g)].map(m => m[1]);
+  const loaiSkill = [...(congKhai.match(/^\| `KhungAnh` \| `loai` \(([^)]*)\)/m)?.[1] ?? '').matchAll(/`([a-z0-9-]+)`/g)].map(m => m[1]);
+  soSanh('trang-cong-khai.md: các loại của KhungAnh đúng bằng kiểu LoaiKhung (KhungAnh.astro)', loaiSkill, loaiMa);
+});
+
+// ===========================================================================
+// Skill là thứ phiên sau đọc để viết chữ cho khách: một câu trong skill ghi địa chỉ khác, hay nói khách
+// đi cầu thang bộ, sẽ quay lại trang web qua tay người đọc nó. Chữ mong đợi đọc từ chu.ts (chữ đó đã
+// có test-cong-khai-cau-chu.mjs và test-cong-khai-dia-diem.mjs chép tay giữ từng ký tự).
+await nhom('6 · ĐỊA ĐIỂM TRONG SKILL ĐÚNG NHƯ MÃ; KHÔNG ĐỊA CHỈ KHÁC, KHÔNG CẦU THANG BỘ', async () => {
+  const { chu, NGON_NGU, DIA_CHI_PHAN } = await import(pathToFileURL(join(SRC, 'lib', 'chu.ts')).href);
+  const { TEN_DIA_CHI_KHAC, CAU_THANG } = await import(pathToFileURL(join(GOC, 'web', 'kiem-tra', 'mau-dia-diem.mjs')).href);
+  const cauChu = vanBan[`.claude/skills/${TEN_KY_NANG}/tham-khao/cau-chu.md`] ?? '';
+
+  ok(`SKILL.md và cau-chu.md ghi địa điểm đúng như DIA_CHI_PHAN.duong của chu.ts ("${DIA_CHI_PHAN.duong}")`,
+     DIA_CHI_PHAN.duong.length > 0 && skillMd.includes(DIA_CHI_PHAN.duong) && cauChu.includes(DIA_CHI_PHAN.duong));
+  for (const nn of NGON_NGU) {
+    const cau = chu(nn).loiLen;
+    ok(`cau-chu.md chép đúng từng chữ câu chỉ đường [${nn}] đang dùng trong chu.ts`, !!cau && cauChu.includes(cau), cau);
+  }
+
+  // Bộ mẫu dùng chung với test-cong-khai-dia-diem.mjs. Dòng địa chỉ pháp nhân ở chân trang vẫn là chữ
+  // trên giấy đăng ký: skill nói tới nó bằng tên trong mã (PHAP_NHAN), không chép lại chữ của nó.
+  for (const [luat, ten] of [[TEN_DIA_CHI_KHAC, 'tên đường hay tên phường của một địa chỉ khác'], [CAU_THANG, 'cầu thang bộ hay câu "không có thang máy"']]) {
+    const thay = Object.entries(vanBan).flatMap(([tep, md]) => md.split('\n')
+      .map((dong, i) => (luat.tim(dong) ? `${tep}:${i + 1} «${luat.tim(dong)}»` : null)).filter(Boolean));
+    ok(`Không file nào của skill nhắc ${ten}`, tepMd.length > 0 && thay.length === 0, thay.join(' | '));
+  }
 });
 
 process.exit(ketThuc('SKILL THIẾT KẾ'));
