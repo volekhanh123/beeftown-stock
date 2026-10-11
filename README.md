@@ -1,6 +1,6 @@
 # Beeftown — Tài sản web
 
-Website và các tài liệu thiết kế dạng web của **Beeftown** — Beef Specialty Restaurant, nhà hàng chuyên bò kiểu quầy thịt ở **Tầng 3, 11-21 Hàm Nghi, phường Sài Gòn, TP.HCM** (trọn tầng 3, khách lên bằng cầu thang bộ, không có thang máy cho khách). Dự kiến khai trương 2026.
+Website và các tài liệu thiết kế dạng web của **Beeftown** — Beef Specialty Restaurant, nhà hàng chuyên bò kiểu quầy thịt ở **Tầng 3, 63 Hồ Tùng Mậu, TP.HCM** (lối vào riêng ngay cạnh GS25, khách đi thang máy lên tầng 3). Dự kiến khai trương 2026.
 
 > **Repo này chỉ chứa file web.** Tài liệu kinh doanh (mô hình tài chính, nghiên cứu đối thủ, danh sách KOL, kế hoạch marketing) **cố tình không được đưa lên** — xem `.gitignore`. Khi thêm file mới, nhớ kiểm tra `git status --short` trước khi commit.
 
@@ -25,7 +25,7 @@ Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần c�
 | `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động — và **toàn bộ kiểm thử** (`crm/test/`). |
 | `CLAUDE.md` | **Quy trình kiểm thử bắt buộc** cho mọi tính năng mới: 9 mục "định nghĩa xong", cách chạy test, việc trước khi mở PR. |
 | `AGENTS.md` | Cùng quy trình đó cho Codex và các agent không phải Claude, kèm quy tắc rà soát PR (mục "Code Review Rules"). |
-| `THUONG-HIEU.md` | **Bảng màu thương hiệu Khánh chốt 09/10/2026**, chỗ website còn khác guideline, đề xuất đổi token và danh sách nơi phải sửa. |
+| `THUONG-HIEU.md` | **Bảng màu thương hiệu Khánh chốt 09/10/2026**: giá trị đã áp dụng trên trang công khai, chỗ website còn khác guideline, và danh sách nơi chưa đổi (`/noi-bo`, kho, Beeftown Cân). |
 | `.github/` | Kiểm thử tự động (GitHub Actions) mỗi PR, mỗi lần gộp và mỗi đêm 00:30 giờ VN; đóng gói `BeeftownCan.exe` (tải về không cần gõ lệnh: `can-app/README.md`, mục "Tải BeeftownCan.exe về"); mẫu PR; mẫu báo lỗi. |
 | ~~`Beeftown_Website/index.html`~~ | ⚠️ **BẢN NHÁP CŨ — KHÔNG PHÁT HÀNH.** Xem cảnh báo bên dưới. |
 | ~~`Beeftown_Website/google-apps-script.gs`~~ | ⚠️ Đã thay bằng `tao_dat_ban()` trong database. |
@@ -74,20 +74,22 @@ Lưu ý khi sửa code phần mềm cân:
 
 ### Bảng màu
 
-> Bảng dưới là màu **website đang chạy**. Bảng màu thương hiệu Khánh chốt ngày 09/10/2026 khác bảng này và website chưa đổi theo: xem `THUONG-HIEU.md`.
+> **Trang công khai** dùng bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (`THUONG-HIEU.md`). **`/noi-bo`, kho và Beeftown Cân chưa đổi** — chúng còn dùng bảng cũ trong khối `:root` của `web/src/styles/chung.css` (ghi ở cuối `web/THIET-KE.md` mục 2).
 
 | Tên | Mã | Token web | Dùng cho |
 |---|---|---|---|
-| Beef Red | `#B23A2C` | `--do` | Màu chủ đạo: nút chính, nhãn, dải đỏ, chữ nhấn trên kem |
-| Đỏ đậm (vân mỡ PDF trang 2) | `#960F13` | `--do-sau` | Chữ nhấn rất nhỏ trên kem, chữ nút trên nền đỏ, nét artwork trên kem |
-| Cream | `#FBF4E1` | `--kem` | Nền đọc; chữ trên nền tối và nền đỏ |
-| Kem đậm (lớp lót logo PDF) | `#F1E4C2` | `--kem-dam` | Nền khối phụ trên trang sáng |
-| Charcoal | `#1E160E` | `--than` | Chữ chính, nền dải tối (tên màu — Beeftown nướng vỉ gas, không than) |
-| Mustard | `#F2A900` | `--mu-tat` | Điểm nhấn nhỏ; chữ chỉ trên nền tối |
-| Marigold | `#F5C211` | `--cuc-vang` | Điểm nhấn, vòng focus trên nền tối |
+| Beef Red | `#A70C0C` | `--do` | Màu chủ đạo: nút chính, nhãn, dải đỏ, chữ nhấn trên kem |
+| Cream | `#F0E3D0` | `--kem` | Nền đọc; chữ trên nền tối và nền đỏ |
+| Charcoal | `#151008` | `--than` | Chữ chính, nền dải tối (tên màu — Beeftown nướng vỉ gas, không than) |
+| Marigold | `#F5AA14` | `--cuc-vang`, `--mu-tat` | Điểm nhấn nhỏ, vòng focus; chữ chỉ trên nền tối |
 | Warm Stone | `#B8A98C` | `--da` | Chữ phụ **chỉ trên nền tối** |
+| Đỏ đậm (màu pha) | `#890607` | `--do-dam`, `--do-sau` | Nút khi di chuột, chữ nhấn rất nhỏ trên kem, chữ nút trên nền đỏ, nét artwork trên kem |
+| Kem sau · kem đậm (màu pha) | `#EBDCC6` · `#E7D5BC` | `--kem-sau` · `--kem-dam` | Nền khối phụ trên trang sáng |
+| Viền ô nhập (màu pha) | `#7A7366` | `--vien-o` | Viền ô nhập của form |
 
-Warm Stone, Mustard, Marigold **không bao giờ** làm chữ trên nền kem (tương phản 1,5–2,1 : 1). Tỷ lệ gợi ý: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 %. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
+Năm dòng đầu là năm màu của guideline. Ba dòng sau là màu pha cho màn hình, Khánh cho phép ngày 10/10/2026. Token khai trong khối `.ck` đầu tiên của `web/src/styles/cong-khai.css`; `crm/test/test-cong-khai-giao-dien.mjs` nhóm 6 gác từng mã.
+
+Warm Stone và Marigold **không bao giờ** làm chữ trên nền kem (tương phản 1,83 và 1,56 : 1); không đặt chữ đỏ trên dải tối (2,43 : 1). Tỷ lệ trang đang chạy: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 % — guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5, Khánh chưa quyết theo bên nào. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
 
 ### Phông chữ
 
@@ -341,7 +343,7 @@ Kiểm thử: `crm/test/test-sao-luu.mjs` (chính hai script, với `supabase` v
 
 - [ ] Gõ tay địa chỉ web. Trang hiện dưới 3 giây.
 - [ ] **Không cần cuộn** đã đọc được khẩu hiệu, địa chỉ và dòng trạng thái.
-- [ ] Chạm "Chỉ đường" → mở Maps đúng tòa nhà 11-21 Hàm Nghi (nút chỉ có khi link Maps đã công bố). Thấy ngay câu "cầu thang bộ, không có thang máy".
+- [ ] Chạm "Chỉ đường" → mở Maps đúng 63 Hồ Tùng Mậu, ghim ở lối vào riêng cạnh GS25 (nút chỉ có khi link Maps đã công bố). Thấy ngay câu "Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3."
 - [ ] Chạm "Theo dõi Beeftown" → **mở app Facebook** đúng trang. *Đây là chỗ hay hỏng nhất.*
 - [ ] Xoay ngang không vỡ. Chỉnh cỡ chữ hệ thống lớn nhất vẫn dùng được.
 - [ ] Lặp lại toàn bộ trên điện thoại thứ hai, khác hệ điều hành.

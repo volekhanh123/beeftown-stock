@@ -32,7 +32,7 @@ Trang web như lúc bước tới quầy Beeftown:
 | 1–4 | Đầu bò + miếng steak (brandmark), wordmark ngang, biến thể logo, khoảng trống quanh logo | `logo-ngang-do` ở đầu trang và thẻ "Đọc nhãn khay"; `logo-ngang-kem` ở chân trang; `dau-bo-kem` thành biểu tượng trình duyệt | Vector trích nguyên, không gõ lại chữ BEEFTOWN, không vẽ lại bằng AI. Đầu trang nền kem nên dùng đúng biến thể cho nền kem — không đặt khối kem lạc lõng lên nền tối |
 | 2 | Mảng vân mỡ organic: đỏ Beeftown trên đỏ đậm | `.nen-van-mo`: màn đầu trang chủ, dải đỏ "Đi cùng nhóm", khối cuối trang Thực đơn và Đến Beeftown; góc mỗi khung ảnh (`van-mo-gan`, độ đậm 7 %); ảnh chia sẻ dự phòng | Tạo nhịp và chiều sâu, không phủ lên chữ |
 | 3 | Nét rosemary (5 nhánh), nét miếng steak (2) | `.net` tô bằng `--net-ve`: nối ba bước, góc đầu trang con, FAQ, khối Quầy chọn bò, màn đầu khi chưa có ảnh | Tiết chế: cùng nét, cùng màu, vài điểm mỗi trang |
-| 1, 5 | Hệ màu thực phẩm ấm | Token theo vai — mục 2 | Hai sắc thêm lấy từ chính PDF: `#960F13` (vân mỡ, tagline logo), `#F1E4C2` (lớp lót logo) |
+| 1, 5 | Hệ màu thực phẩm ấm | Token theo vai — mục 2 | Mã màu trên trang công khai theo bảng Khánh chốt 09/10/2026, không còn theo mã của PDF; `tao-bieu-tuong.py` đổi mã của PDF sang bảng đó khi chép SVG (bảng `DOI_MAU`) |
 | 1, 6 | Hypo-me Bold, NVN Beloved Bold, Montserrat | Chỉ Montserrat — mục 3 | Hai phông display chưa có file và giấy phép |
 | 7–8 | Mockup biển hiệu, đồng phục | **Chỉ tham chiếu** cách thương hiệu hiện diện trong ánh sáng ấm; tagline xếp ba dòng như biển trang 7 dùng ở màn đầu khi chưa có ảnh | Không coi là ảnh nhà hàng hay nhân sự thật. Mặt tiền tầng trệt trong mockup **không phải** lối vào thật — Beeftown ở tầng 3 |
 | 9–10 | Ảnh thịt, thớt, muối, tiêu; menu mockup; phối ảnh với nền đỏ / kem | **Chỉ tham chiếu** góc chụp, chất liệu thớ thịt, cách đặt ảnh trên nền đỏ — dùng cho brief chụp (mục 8) | **Không dùng:** giá 400.000 lặp ở trang 10, câu "Thịt chuẩn - Giá thật" (trang 9), mặt tiền mockup (trang 7), hình than (ô màu Charcoal trang 5, ảnh nướng trang 1). Tên phần cắt trong mockup không phải thực đơn đã chốt. Ảnh stock trong PDF chưa có quyền dùng |
@@ -44,59 +44,83 @@ Tên màu `--than` (Charcoal) chỉ là tên màu. Beeftown nướng bằng **v�
 
 ## 2. Màu theo vai
 
-> Mục này tả màu website đang chạy. Bảng màu thương hiệu Khánh chốt ngày 09/10/2026 khác bảng dưới và website chưa đổi theo: xem `THUONG-HIEU.md` ở thư mục gốc (mã mới, đề xuất đổi token, danh sách nơi phải sửa).
+> **Trang công khai** (`<body class="ck">`) dùng bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (`THUONG-HIEU.md` ở thư mục gốc), cùng các màu pha cho màn hình Khánh cho phép ngày 10/10/2026. **`/noi-bo`, kho và Beeftown Cân chưa đổi**: chúng vẫn đọc khối `:root` của `src/styles/chung.css` — bảng cũ, ghi ở cuối mục này.
 
 Màu chữ theo **bề mặt**, không theo từng chỗ: mỗi khối khai một lớp bề mặt, mọi thứ bên trong đọc biến của bề mặt đó. Thêm khối mới chỉ cần chọn bề mặt, không phải tự chọn màu chữ — và không ai lỡ tay đặt chữ vàng lên nền kem.
 
-### Token
+### Token của trang công khai
 
-| Token | Mã | Tên trong PDF | Vai |
+Khai trong khối `.ck` đầu tiên của `src/styles/cong-khai.css`, mỗi biến đúng một lần. `crm/test/test-cong-khai-giao-dien.mjs` nhóm 6 chép tay từng mã và đỏ khi có mã nào lệch.
+
+| Token | Mã | Tên trong guideline | Vai |
 |---|---|---|---|
-| `--kem` | `#FBF4E1` | Cream | Nền đọc mặc định; chữ trên nền tối và nền đỏ |
-| `--kem-sau` | `#F5ECD7` | — | Nền khối phụ nhẹ (`.be-kem-sau`, `.muc-sang` của trang cũ) |
-| `--kem-dam` | `#F1E4C2` | lớp lót logo | Nền khối phụ đậm hơn (`.be-kem-dam`): Cả bữa ở trang chủ, khối Tầng 3 của trang Đến Beeftown, một nhóm của trang Thực đơn |
-| `--do` | `#B23A2C` | Beef Red | Nút chính, nhãn, dải đỏ, chữ nhấn cỡ thường trên kem |
-| `--do-dam` | `#8F2C21` | — | Nút khi di chuột / đang gửi; chữ báo lỗi dưới ô nhập |
-| `--do-sau` | `#960F13` | đỏ vân mỡ trang 2 | Chữ nhấn rất nhỏ (≤ 13px) trên kem; chữ nút trên nền đỏ; nét artwork trên kem; khung ảnh trên nền đỏ |
-| `--than` | `#1E160E` | Charcoal | Chữ chính trên kem; nền dải tối |
-| `--muc-nhat` | than 68 % | — | Chữ phụ trên kem |
+| `--kem` | `#F0E3D0` | Cream | Nền đọc mặc định; chữ trên nền tối và nền đỏ |
+| `--kem-sau` | `#EBDCC6` | màu pha | Nền khối phụ nhẹ (`.be-kem-sau`, `.muc-sang` của trang cũ) |
+| `--kem-dam` | `#E7D5BC` | màu pha | Nền khối phụ đậm hơn (`.be-kem-dam`): Cả bữa ở trang chủ, khối Tầng 3 của trang Đến Beeftown, một nhóm của trang Thực đơn |
+| `--do` | `#A70C0C` | Beef Red | Nút chính, nhãn, dải đỏ, chữ nhấn cỡ thường trên kem |
+| `--do-dam` | `#890607` | màu pha | Nút khi di chuột / đang gửi; chữ báo lỗi dưới ô nhập |
+| `--do-sau` | `#890607` | màu pha, cùng mã với `--do-dam` | Chữ nhấn rất nhỏ (≤ 13px) trên kem; chữ nút trên nền đỏ; nét artwork trên kem; khung ảnh trên nền đỏ |
+| `--than` | `#151008` | Charcoal | Chữ chính trên kem; nền dải tối |
+| `--muc-nhat` | than 68 % | màu pha | Chữ phụ trên kem |
 | `--da` | `#B8A98C` | Warm Stone | **Chỉ** chữ phụ trên nền tối |
-| `--mu-tat` | `#F2A900` | Mustard | Điểm nhấn nhỏ: vạch dòng trạng thái, chữ nhấn trên nền tối |
-| `--cuc-vang` | `#F5C211` | Marigold | Vòng focus trên nền tối |
-| `--vien-o` | `#8C8577` | — | Viền ô nhập (3,3 : 1 với kem — mức tối thiểu cho viền ô, WCAG 1.4.11) |
+| `--cuc-vang` | `#F5AA14` | Marigold | Vòng focus trên nền tối |
+| `--mu-tat` | `#F5AA14` | Marigold (tên biến cũ, cùng mã) | Điểm nhấn nhỏ: vạch dòng trạng thái, chữ nhấn trên nền tối |
+| `--vien-o` | `#7A7366` | màu pha | Viền ô nhập (mức tối thiểu cho viền ô là 3 : 1, WCAG 1.4.11) |
+| `--vach` · `--vach-kem` | than 16 % · kem 22 % | màu pha | Nét kẻ phân cách trên nền sáng · trên nền tối |
 
-Hai token mới `--do-sau`, `--kem-dam` khai ở một khối `:root` riêng trong `chung.css`, để khối `:root` cũ — mà `/noi-bo` và kho cũng dùng — giữ nguyên từng dòng.
+Guideline có 5 màu, một đỏ và một vàng. Màn hình cần thêm: 1 đỏ đậm hơn cho nút khi di chuột và chữ nhỏ, 2 nền kem đậm hơn để tách khối, 1 màu viền ô nhập. Hai tên `--do-dam` / `--do-sau` và hai tên `--mu-tat` / `--cuc-vang` giữ lại vì component đang gọi cả hai; mỗi cặp một mã.
+
+`--kem-sau` và `--kem-dam` khác đề xuất ban đầu trong `THUONG-HIEU.md` (`#E7D5BC` và `#DAC5AA`): `#DAC5AA` làm dải "Cả bữa" sẫm hơn hẳn thiết kế đang chạy, nên hai bậc kem lùi lại một nấc để giữ độ chênh sáng giữa các khối gần với trước.
 
 ### Bề mặt (đặt lên `<section>`)
 
 | Lớp | Nền | Chữ chính | Chữ phụ | Chữ nhấn | Nút chính | Vòng focus | Nét artwork |
 |---|---|---|---|---|---|---|---|
-| `.be-kem` (mặc định) | kem | than | `--muc-nhat` | đỏ (nhỏ: đỏ sâu) | đỏ, chữ kem | than | đỏ sâu |
-| `.be-kem-sau` | kem sau | than | `--muc-nhat` | đỏ | đỏ, chữ kem | than | đỏ sâu |
-| `.be-kem-dam` | kem đậm | than | `--muc-nhat` | **đỏ sâu** (đỏ thường chỉ 4,7 : 1 trên nền này) | đỏ, chữ kem | than | đỏ sâu |
-| `.be-toi` | than | kem | Warm Stone | Mustard | đỏ, chữ kem | Marigold | kem |
-| `.be-do` | đỏ | kem | kem | kem | **kem, chữ đỏ sâu** | kem | kem |
+| `.be-kem` (mặc định) | kem | than | `--muc-nhat` | đỏ (nhỏ: đỏ đậm) | đỏ, chữ kem | than | đỏ đậm |
+| `.be-kem-sau` | kem sau | than | `--muc-nhat` | đỏ (nhỏ: đỏ đậm) | đỏ, chữ kem | than | đỏ đậm |
+| `.be-kem-dam` | kem đậm | than | `--muc-nhat` | **đỏ đậm** (7,00 : 1; đỏ thường trên nền này 5,42 : 1) | đỏ, chữ kem | than | đỏ đậm |
+| `.be-toi` | than | kem | Warm Stone | Marigold | đỏ, chữ kem | Marigold | kem |
+| `.be-do` | đỏ | kem | kem | kem | **kem, chữ đỏ đậm** | kem | kem |
 
 ### Tương phản (WCAG 2.2, đã tính)
 
 | Cặp | Tỷ lệ | Dùng được cho |
 |---|---|---|
-| than / kem | 16,3 : 1 | mọi chữ |
-| `--muc-nhat` / kem · kem đậm | 5,9 · 5,5 : 1 | chữ phụ |
-| đỏ / kem | 5,4 : 1 | chữ thường, nút |
-| đỏ / kem đậm | 4,7 : 1 | chữ ≥ 16px — trên `.be-kem-dam` chữ nhấn dùng đỏ sâu cho chắc |
-| đỏ sâu / kem · kem đậm | 8,1 · 7,0 : 1 | chữ rất nhỏ, nhãn món |
-| đỏ đậm / kem | 7,5 : 1 | câu lỗi dưới ô nhập |
-| kem / đỏ | 5,4 : 1 | chữ trên dải đỏ |
-| kem / than | 16,3 : 1 | chữ trên dải tối |
-| Warm Stone / than | 7,7 : 1 | chữ phụ trên tối |
-| Mustard / than · Marigold / than | 8,9 · 10,7 : 1 | chữ nhấn, focus trên tối |
-| "Ảnh minh họa" (kem trên than 78 %) | ≥ 8 : 1 | chú thích nằm trên ảnh |
-| **Warm Stone / kem · Mustard / kem · Marigold / kem** | **2,1 · 1,8 · 1,5 : 1** | **KHÔNG BAO GIỜ làm chữ trên nền kem** |
+| than / kem · kem sau · kem đậm | 14,96 · 14,05 · 13,20 : 1 | mọi chữ |
+| `--muc-nhat` / kem · kem đậm | 5,92 · 5,61 : 1 | chữ phụ |
+| đỏ / kem · kem sau · kem đậm | 6,15 · 5,77 · 5,42 : 1 | chữ thường, nút |
+| đỏ đậm / kem · kem sau · kem đậm | 7,93 · 7,45 · 7,00 : 1 | chữ rất nhỏ, nhãn món, câu lỗi dưới ô nhập |
+| kem / đỏ · đỏ đậm | 6,15 · 7,93 : 1 | chữ trên dải đỏ; chữ nút khi di chuột |
+| kem / than | 14,96 : 1 | chữ trên dải tối |
+| Warm Stone / than | 8,19 : 1 | chữ phụ trên tối |
+| Marigold / than | 9,59 : 1 | chữ nhấn, focus trên tối |
+| Marigold / đỏ | 3,94 : 1 | chỉ chữ lớn hoặc hình, không chữ thường |
+| viền ô / kem · kem sau · kem đậm · trắng | 3,71 · 3,49 · 3,27 · 4,70 : 1 | viền ô nhập (cần ≥ 3 : 1); ô nhập hiện có nền trắng |
+| **đỏ / than** | **2,43 : 1** | **KHÔNG đặt chữ đỏ trên dải tối** |
+| **Warm Stone / kem · Marigold / kem** | **1,83 · 1,56 : 1** | **KHÔNG BAO GIỜ làm chữ trên nền kem** |
+
+Chú thích "Ảnh minh họa" (chữ kem trên nền than 78 %, nằm trên ảnh) chưa tính lại với bảng màu này: hiện chưa có ảnh nào được dựng cỡ nên chú thích chưa hiện ở đâu. Tính khi đưa ảnh lên trang.
+
+`npm run thu-trinh-duyet` đo tương phản của chữ trên nền đặc ngay trên trang đã dựng, ở 7 cỡ màn hình.
 
 ### Tỷ lệ
 
-Khoảng **kem 60 % / tối 25 % / đỏ 12 % / vàng 3 %** — tỷ lệ gợi ý của brief, không phải luật thương hiệu đã duyệt. Vàng chỉ là vạch, chấm, chữ nhấn nhỏ trên nền tối; không có khối vàng. Không cần rải đủ sáu màu lên mỗi trang.
+Trang đang chạy vào khoảng **kem 60 % / tối 25 % / đỏ 12 % / vàng 3 %** — tỷ lệ gợi ý của brief 06/10/2026. Guideline ghi Cream 60 % / Beef Red 25 % / Charcoal 10 % / Marigold dưới 5 %. Khánh chưa quyết trang web theo bên nào (`THUONG-HIEU.md` mục 3); đổi tỷ lệ là đổi bề mặt của vài khối, thuộc các PR bố cục sau. Vàng chỉ là vạch, chấm, chữ nhấn nhỏ trên nền tối; không có khối vàng.
+
+### Bảng cũ — `/noi-bo`, kho, Beeftown Cân còn dùng
+
+Khối `:root` của `chung.css` giữ nguyên từng dòng; `test-cong-khai-giao-dien.mjs` nhóm 2 chép tay các giá trị này và đỏ khi có giá trị nào đổi, vì đổi `:root` là đổi màu cả `/noi-bo` và kho.
+
+| Token | Mã cũ | | Token | Mã cũ |
+|---|---|---|---|---|
+| `--do` | `#B23A2C` | | `--than` | `#1E160E` |
+| `--do-dam` | `#8F2C21` | | `--da` | `#B8A98C` |
+| `--do-sau` | `#960F13` | | `--mu-tat` | `#F2A900` |
+| `--kem` | `#FBF4E1` | | `--cuc-vang` | `#F5C211` |
+| `--kem-sau` | `#F5ECD7` | | `--vien-o` | `#8C8577` |
+| `--kem-dam` | `#F1E4C2` | | `--muc-nhat` | than cũ 68 % |
+
+Đổi ba nơi đó theo bảng màu chốt là một việc riêng, chưa làm: danh sách file ở `THUONG-HIEU.md` mục 5.
 
 ---
 
@@ -154,15 +178,15 @@ Không dùng `100vw` (tính cả thanh cuộn → tràn ngang). Khối có trang
 
 **Đầu trang** (`DauTrang.astro`): logo đỏ trên kem (cao 34px, 42px trên màn rộng), bốn mục **Trải nghiệm / Thực đơn / Đến Beeftown / Hỏi bàn** — Hỏi bàn là nút đỏ, mục đang mở có `aria-current="page"`. Đổi ngôn ngữ hiện **hai thứ tiếng còn lại**, mỗi cái ghi bằng chính thứ tiếng đó. Dưới 1080px: menu gọn bằng `<details>` — mở, đóng được khi không có JavaScript; script chỉ thêm Esc để đóng, bấm ra ngoài hoặc bấm một mục thì đóng.
 
-**Chân trang** (`ChanTrang.astro`): dải tuyển dụng gọn → dải đỏ (logo kem, chữ BEEFTOWN lặp chìm, tem tròn, điều hướng phụ gồm Tuyển dụng, Quyền riêng tư, Xóa dữ liệu; địa chỉ kèm cầu thang bộ; mạng xã hội khi đã công bố) → phần pháp nhân trên nền tối. Pháp nhân là `<footer>` đầu tiên của trang và giữ nguyên từng ký tự (`kiem-tra/trinh-duyet.mjs` đọc nó). Trang không đặt `<footer>` nào khác.
+**Chân trang** (`ChanTrang.astro`): dải tuyển dụng gọn → dải đỏ (logo kem, chữ BEEFTOWN lặp chìm, tem tròn, điều hướng phụ gồm Tuyển dụng, Quyền riêng tư, Xóa dữ liệu; địa chỉ kèm câu chỉ đường; mạng xã hội khi đã công bố) → phần pháp nhân trên nền tối. Pháp nhân là `<footer>` đầu tiên của trang và giữ nguyên từng ký tự (`kiem-tra/trinh-duyet.mjs` đọc nó). Dòng địa chỉ pháp nhân chép theo giấy đăng ký, **không phải** địa chỉ nhà hàng: sửa địa điểm không đụng dòng này (`crm/test/test-cong-khai-dia-diem.mjs` nhóm 5). Trang không đặt `<footer>` nào khác.
 
-**Dòng trạng thái** (`.trang-thai`): vạch Mustard bên trái, chữ từ khóa `dong_trang_thai`; chưa công bố thì câu nền "đang chuẩn bị đón bạn".
+**Dòng trạng thái** (`.trang-thai`): vạch Marigold bên trái, chữ từ khóa `dong_trang_thai`; chưa công bố thì câu nền "đang chuẩn bị đón bạn".
 
 **Dòng món** (`.mon`): tên Việt (`.mon-ten`, 18px đậm) → tên gốc (`.mon-goc`) → mô tả (`.mon-mo-ta`, chỉ khi đã duyệt) → nhãn **Món sống** / **Có cồn** (`.nhan-mon`, chữ hoa nhỏ đỏ sâu kèm biểu tượng). Món sống luôn kèm câu cảnh báo (`.canh-bao-mon`); món sống thiếu câu cảnh báo thì không hiện món. Vùng giá (`.mon-gia`) chỉ có khi `gia !== null` và nhóm không phải "xem giá tại quầy" — `gia` null thì **không render phần tử giá**, không ô trống. Không tự thêm nhãn chay, dị ứng, độ cay, khẩu phần, combo.
 
 **Đọc nhãn khay** (`NhanKhay.astro`): xem mục 1. Dùng ở khối Quầy chọn bò và phần Bò tại quầy của trang Thực đơn.
 
-**Tầng 3** (`LenTang3.astro`): "Tầng 3" lớn, địa chỉ, **cầu thang bộ, không có thang máy cho khách**, lưu ý cho nhóm có người khó đi cầu thang. "Chỉ đường" chỉ khi link Google Maps đã công bố; "Sao chép địa chỉ" là nút bổ trợ, không có JavaScript thì ẩn hẳn. Có bản gọn (`gon`) cho trang Hỏi bàn — khách phải biết chuyện cầu thang **trước** khi gửi yêu cầu.
+**Tầng 3** (`LenTang3.astro`): số "3" lớn cạnh hình thang máy vẽ nét, địa chỉ **Tầng 3, 63 Hồ Tùng Mậu, TP.HCM**, và câu chỉ đường nguyên văn (`t.loiLen` trong `lib/chu.ts`): **"Lối vào riêng ngay cạnh GS25, đi thang máy lên tầng 3."** Khối chỉ in hai điều đã biết đó — không chỗ gửi xe, mốc đường, số bước, lối cho xe lăn khi chưa có người xác nhận. "Chỉ đường" chỉ khi link Google Maps đã công bố; "Sao chép địa chỉ" là nút bổ trợ, không có JavaScript thì ẩn hẳn. Có bản gọn (`gon`) cho trang Hỏi bàn — khách phải biết lối vào **trước** khi gửi yêu cầu.
 
 **Câu hỏi thường gặp** (`.cau-hoi` + `<details>` / `<summary>`): mỗi câu cao tối thiểu 60px, dấu cộng xoay 45° khi mở, câu trả lời rộng tối đa 66 ký tự. Chỉ trả lời bằng dữ kiện đã xác nhận.
 
@@ -170,11 +194,11 @@ Không dùng `100vw` (tính cả thanh cuộn → tràn ngang). Khối có trang
 
 **Ảnh** (`Anh.astro`, `.anh`): `<picture>` AVIF rồi WebP, khung riêng cho điện thoại (`khungNho`, dưới 600px) và màn rộng (`khung`), luôn có `width` / `height`, nền chờ là màu trung bình của ảnh. Ảnh màn đầu `uuTien` (tải ngay, `fetchpriority="high"`), mọi ảnh khác lazy. Ảnh minh họa luôn có chú thích **"Ảnh minh họa"** (`.chu-thich-anh`, góc dưới trái, chữ kem trên nền than 78 %) — component tự gắn, không ai quên được. Ảnh chưa dựng cỡ → hiện `KhungAnh` thay vào, không bao giờ là thẻ `<img>` trỏ tới file không có.
 
-**Khung ảnh** (`KhungAnh.astro`, `.khung-anh`): chỗ của ảnh chụp thật chưa có. Đúng tỷ lệ của ảnh sau này, nét vẽ cùng nét và cùng màu với rosemary, một mảng vân mỡ chìm ở góc; năm loại `quay`, `khay`, `cau-thang`, `loi-vao`, `ban-nuong`; nền `kem` | `toi` | `do`. **Không có chữ nào bên trong** ("ảnh đang cập nhật"…) — khách không cần biết chuyện sản xuất. Thay bằng ảnh thật là đổi một thẻ, không đổi bố cục.
+**Khung ảnh** (`KhungAnh.astro`, `.khung-anh`): chỗ của ảnh chụp thật chưa có. Đúng tỷ lệ của ảnh sau này, nét vẽ cùng nét và cùng màu với rosemary, một mảng vân mỡ chìm ở góc; năm loại `quay`, `khay`, `thang-may`, `loi-vao`, `ban-nuong`; nền `kem` | `toi` | `do`. **Không có chữ nào bên trong** ("ảnh đang cập nhật"…) — khách không cần biết chuyện sản xuất. Thay bằng ảnh thật là đổi một thẻ, không đổi bố cục.
 
 **Trang trí** (`.trang-tri`): đặt tuyệt đối, không bắt chuột, `aria-hidden="true"`. Nét một màu dùng mặt nạ CSS (`.net.huong-thao-1..5`, `.steak-1`, `.steak-2`) nên một file SVG tô được mọi màu qua `--net-ve`. Mảng vân mỡ `.nen-van-mo`, chữ lặp `.hoa-van-chu`. Chỉ vài điểm mỗi trang; danh sách món và form không có.
 
-**Biểu tượng** (`BieuTuong.astro`): mui-ten, menu, dong, cong, khay, nhan, vi-gas, cau-thang, nhom, ghim, sao-chep, da-chep, dien-thoai, tin-nhan, mon-song, co-con, cua — SVG nét 1,5–2px cùng họ với nét của `KhungAnh`. Không dùng emoji làm biểu tượng.
+**Biểu tượng** (`BieuTuong.astro`): mui-ten, menu, dong, cong, khay, nhan, vi-gas, thang-may, nhom, ghim, sao-chep, da-chep, dien-thoai, tin-nhan, mon-song, co-con, cua — SVG nét 1,5–2px cùng họ với nét của `KhungAnh`. Không dùng emoji làm biểu tượng.
 
 ---
 
@@ -186,7 +210,7 @@ Không dùng `100vw` (tính cả thanh cuộn → tràn ngang). Khối có trang
 - **Ảnh:** alt ba thứ tiếng trong `DANH_MUC_ANH` (`src/lib/anh.ts`) tả món, không nói đây là ảnh chụp tại quán. Trang trí, logo bên cạnh chữ "Beeftown" và khung ảnh: `alt=""` / `aria-hidden`.
 - **Cấu trúc:** mỗi trang đúng một `h1`; tagline tiếng Anh trên trang tiếng Việt có `lang="en"`.
 - **Không giấu nội dung sau JavaScript:** menu gọn chạy bằng `<details>`; tab thực đơn không có JavaScript thì hiện cả ba nhóm.
-- **Tương phản:** bảng ở mục 2. Warm Stone, Mustard, Marigold không bao giờ làm chữ trên kem.
+- **Tương phản:** bảng ở mục 2. Warm Stone và Marigold không bao giờ làm chữ trên kem.
 
 ---
 
@@ -231,8 +255,8 @@ Mỗi ảnh minh họa giữ được trên trang khi: Khánh đã xác nhận �
 
 | Loại | Vị trí dùng | Tỷ lệ | Trạng thái | Điều kiện thay |
 |---|---|---|---|---|
-| `loi-vao` | Đến Beeftown, bước 1 (tới tòa nhà) | 4:3 | cần chụp | Ảnh cửa tòa nhà 11-21 Hàm Nghi (mục 8, cảnh 6) |
-| `cau-thang` | Đến Beeftown, bước 2 (cầu thang bộ) | 4:3 | cần chụp | Ảnh lối cầu thang |
+| `loi-vao` | Đến Beeftown, bước 1 (tới 63 Hồ Tùng Mậu) | 4:3 | cần chụp | Ảnh lối vào riêng ngay cạnh GS25 (mục 8, cảnh 6) |
+| `thang-may` | Đến Beeftown, bước 2 (thang máy lên tầng 3) | 4:3 | cần chụp | Ảnh thang máy ở lối vào riêng (mục 8, cảnh 6) |
 | `quay` | Đến Beeftown, bước 3 (ghé quầy) | 4:3 | cần chụp | Ảnh quầy thật (mục 8, cảnh 2) |
 | `khay` | Thay cho `bo-van-mo-can`, `bo-cat-lat` khi ảnh chưa dựng | theo khung của ảnh | cần chụp | Ảnh khay skin-pack có nhãn thật |
 | `ban-nuong` | Đi cùng nhóm; thay cho `hero-vi-gas`, `sot-cham` khi ảnh chưa dựng | 4:3 / theo khung của ảnh | cần chụp | Ảnh bàn nướng có người (mục 8, cảnh 4) |
@@ -285,8 +309,8 @@ python3 -I web/cong-cu/anh/tao-co-anh.py <thư-mục-ảnh-gốc> --chi sot-cham
 | 3 | **Món đi cùng và đồ uống** | 1:1 hoặc 4:3, chọn một cho cả bộ | Trang Thực đơn | Dụng cụ, khẩu phần thật của quán; một nền thống nhất (mặt bàn của quán). Tên file theo mã món: `F05-1x1.jpg`, `D09-1x1.jpg`, `S01-4x3.jpg` (F01–F18 món ăn, D01–D12 đồ uống, S01 set sốt). Chỉ chụp món đã chốt công thức |
 | 4 | **Người cùng ăn**: người trưởng thành đi cùng gia đình, người thân; bạn bè; nhóm đồng nghiệp — đang chia món, nướng, trò chuyện tự nhiên | 4:3, 16:9 | Đi cùng nhóm, Cả bữa | Không dàn dựng cụng ly quá đà; trẻ em không làm trung tâm |
 | 5 | **Không gian** | 4:3, 16:9 | Trang chủ, Đến Beeftown | Ống kính gần góc nhìn người đứng — **không** dùng ống siêu rộng làm phòng rộng hơn thực tế |
-| 6 | **Đường đến**: cửa tòa nhà 11-21 Hàm Nghi nhìn từ vỉa hè (thấy số nhà); lối vào cầu thang; cầu thang (chiếu nghỉ, tay vịn); cửa tầng 3 | 4:3 (ba khung của trang Đến Beeftown) + 4:5 cho mạng xã hội | Đến Beeftown, bước 1–3 | Chụp **cả ban ngày và ban đêm** (đèn thật lúc mở cửa) |
-| 7 | **Video đường lên**: một cảnh liền từ vỉa hè, qua cửa tòa nhà, lên cầu thang tới cửa tầng 3 | dọc 9:16, 15–20 giây | Đến Beeftown, mạng xã hội | Có ảnh poster (khung đầu) và phụ đề vi / en / ko; không tự phát tiếng; không tải trước khi khách bấm |
+| 6 | **Đường đến**: số 63 Hồ Tùng Mậu nhìn từ vỉa hè (thấy số nhà); lối vào riêng ngay cạnh GS25; thang máy; cửa tầng 3 | 4:3 (ba khung của trang Đến Beeftown) + 4:5 cho mạng xã hội | Đến Beeftown, bước 1–3 | Chụp **cả ban ngày và ban đêm** (đèn thật lúc mở cửa) |
+| 7 | **Video đường lên**: một cảnh liền từ vỉa hè, qua lối vào riêng cạnh GS25, vào thang máy, tới cửa tầng 3 | dọc 9:16, 15–20 giây | Đến Beeftown, mạng xã hội | Có ảnh poster (khung đầu) và phụ đề vi / en / ko; không tự phát tiếng; không tải trước khi khách bấm |
 | 8 | **Phim thương hiệu** | 16:9 và 9:16 | Trang chủ (sau này), mạng xã hội | Cận cảnh món, âm thanh xèo trên vỉ, nhạc nhẹ, ít chữ. Âm thanh do khách bật; có poster; không bắt xem trước khi vào thực đơn |
 
 ### Beefy
@@ -303,7 +327,7 @@ File Beefy hiện có là **collage tham chiếu** — không dùng trên site, 
 | Bài đăng | 1080 × 1350 (4:5) | Facebook, Instagram |
 | Story | 1080 × 1920 (9:16) | Story, Reels — chừa khoảng 250px trên và dưới cho giao diện ứng dụng |
 
-Nguyên tắc: logo vector gốc; chất liệu PDF (vân mỡ, rosemary, tem tròn, chữ lặp) theo đúng vai ở mục 1; chữ Montserrat; màu theo bảng mục 2. Chữ chỉ gồm tagline "Pick it. Grill it. Love it.", descriptor, câu chính, "Tầng 3, 11-21 Hàm Nghi". Ảnh AI trong campaign cũng ghi "Ảnh minh họa". **Không ngày, không giá, không ưu đãi, không đếm ngược** khi chưa được công bố; không câu "Thịt chuẩn - Giá thật"; danh sách chữ cấm của web áp dụng nguyên cho campaign.
+Nguyên tắc: logo vector gốc; chất liệu PDF (vân mỡ, rosemary, tem tròn, chữ lặp) theo đúng vai ở mục 1; chữ Montserrat; màu theo bảng mục 2. Chữ chỉ gồm tagline "Pick it. Grill it. Love it.", descriptor, câu chính, "Tầng 3, 63 Hồ Tùng Mậu". Ảnh AI trong campaign cũng ghi "Ảnh minh họa". **Không ngày, không giá, không ưu đãi, không đếm ngược** khi chưa được công bố; không câu "Thịt chuẩn - Giá thật"; danh sách chữ cấm của web áp dụng nguyên cho campaign.
 
 ---
 
@@ -315,14 +339,16 @@ Nguyên tắc: logo vector gốc; chất liệu PDF (vân mỡ, rosemary, tem tr
 |---|---|---|
 | Giờ mở cửa | Không hiện giờ; JSON-LD không khai giờ | Nhập giờ ở màn chi nhánh trong `/noi-bo`, bật công tắc `gio_phuc_vu_da_chot` (khung giờ của form hỏi bàn và bot Messenger đọc từ đó); trang công khai chưa có chỗ in giờ — thêm khi giờ đã chốt |
 | Chỗ gửi xe | Không nói | Ghi thông tin thật — thêm vào trang Đến Beeftown |
-| Link Google Maps | Không nút "Chỉ đường" | Công bố `google_maps_url` trong `/noi-bo` — mở thử trên điện thoại, đúng tòa nhà |
+| Link Google Maps | Không nút "Chỉ đường" | Công bố `google_maps_url` trong `/noi-bo` — mở thử trên điện thoại, ghim đúng lối vào riêng cạnh GS25 ở 63 Hồ Tùng Mậu |
+| Tên phường của 63 Hồ Tùng Mậu | Trang, thẻ mô tả và JSON-LD không ghi phường | Có giấy xác nhận thì thêm khóa `phuong` vào `DIA_CHI_PHAN` (`src/lib/chu.ts`) và `addressLocality` vào `diaChiCoCauTruc()` |
+| Dòng địa chỉ pháp nhân ở chân trang | Ghi theo giấy đăng ký đang dùng cho hồ sơ xác minh trên Meta | Khánh quyết có đổi không; đổi thì sửa `PHAP_NHAN.diaChi`, dòng chép tay trong `kiem-tra/trinh-duyet.mjs` và `test-cong-khai-dia-diem.mjs` cùng lúc |
 | Hotline | Không nút gọi | Công bố `hotline` |
 | Trang Facebook | Không nút "Theo dõi"; trang Hỏi bàn khi form đóng vẫn nhắc nhắn qua Facebook | Công bố `facebook_url` |
 | Tên món tiếng Việt cuối, mô tả | Thực đơn chỉ hiện lời giới thiệu theo nhóm | Duyệt và công bố món theo `THUC-DON.md` |
 | Giá | Không giá nào trên trang | Duyệt giá (việc "Duyệt giá" trong `README.md`) |
 | Ảnh thật | Khung đồ họa và ảnh minh họa | Brief chụp mục 8 |
 | Phông display | Montserrat | File phông + giấy phép web (mục 3) |
-| "Floor 3" trong tiếng Anh | Trang tiếng Anh ghi "Floor 3", tiếng Hàn "3층" | Xác nhận cách gọi thống nhất với biển chỉ dẫn tại tòa nhà |
+| "Floor 3" trong tiếng Anh | Trang tiếng Anh ghi "Floor 3", tiếng Hàn "3층" | Xác nhận cách gọi thống nhất với biển chỉ dẫn và nút bấm trong thang máy |
 | Câu luật rượu | "Beeftown không phục vụ đồ uống có cồn cho người dưới 18 tuổi." — chỉ hiện khi đồ uống có cồn được bật | Xác nhận câu chữ |
 | Quyền dùng ảnh Higgsfield | 5 ảnh minh họa chưa dựng cỡ | Xác nhận điều khoản gói Higgsfield cho mục đích thương mại trước khi đưa lên |
 

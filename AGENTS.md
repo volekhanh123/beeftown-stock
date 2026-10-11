@@ -10,8 +10,8 @@ Khi hai file nói khác nhau thì làm theo `CLAUDE.md` và báo chỗ lệch tr
 |---|---|
 | `CLAUDE.md` | Quy trình bắt buộc: cách chạy kiểm thử, 9 mục "định nghĩa xong", việc trước khi mở PR, các điều không bao giờ làm |
 | `README.md` | Concept, giọng văn, các cảnh báo về bản nháp cũ, việc còn phải làm |
-| `THUONG-HIEU.md` | Bảng màu thương hiệu Khánh chốt 09/10/2026 và phần website chưa đổi theo |
-| `web/THIET-KE.md` | Giao diện trang công khai đang chạy: màu theo vai, chữ, thành phần |
+| `THUONG-HIEU.md` | Bảng màu thương hiệu Khánh chốt 09/10/2026: giá trị đã áp dụng ở trang công khai, phần website chưa đổi theo (`/noi-bo`, kho, Beeftown Cân), địa điểm |
+| `web/THIET-KE.md` | Giao diện trang công khai đang chạy: màu theo vai (mục 2 có cả bảng cũ của `/noi-bo` và kho), chữ, thành phần |
 | `web/src/lib/chuoi-cam.js` | Danh sách chữ cấm trên trang công khai, kèm lý do |
 
 ## Khi viết mã
@@ -46,14 +46,15 @@ Chữ và thương hiệu trên trang công khai:
 - Ảnh do AI tạo trên trang công khai phải có chú thích "Ảnh minh họa". Thiếu chú thích thì báo.
 - Logo là file vector trong `web/public/thuong-hieu/`. Báo khi PR gõ lại chữ BEEFTOWN bằng phông, đổi màu, kéo giãn, xoay, thêm bóng hay viền, hoặc đặt logo lên ảnh. Bản logo cho nền sáng và bản cho nền tối là hai bản vẽ khác nhau: không lấy bản này đổi màu thành bản kia.
 
-Màu, trong lúc website chưa đổi theo `THUONG-HIEU.md`:
+Màu. Trang công khai (`<body class="ck">`) đã theo bảng màu Khánh chốt 09/10/2026; `/noi-bo`, kho và Beeftown Cân chưa đổi và vẫn đọc khối `:root` của `web/src/styles/chung.css`:
 
-- Không báo các mã màu cũ đang có trên `main`.
-- Báo khi PR thêm một mã màu không có trong `web/THIET-KE.md` mục 2 và cũng không có trong `THUONG-HIEU.md`.
-- Báo chữ màu Warm Stone hay Marigold đặt trên nền kem (tương phản dưới 2 : 1).
-- PR đổi bảng màu của website phải đổi cùng lúc các nơi liệt kê ở `THUONG-HIEU.md` mục 5. Thiếu nơi nào thì báo nơi đó.
+- Trang công khai: báo mọi mã hex hay bộ ba số RGB của bảng cũ (`#B23A2C`, `#FBF4E1`, `#1E160E`, `#F2A900`, `#F5C211`, `#8F2C21`, `#960F13`, `#F5ECD7`, `#F1E4C2`, `#8C8577`) trong `web/src/styles/cong-khai.css`, component và trang công khai, SVG trong `web/public/thuong-hieu/`. Báo khi PR thêm một mã màu không có trong `web/THIET-KE.md` mục 2.
+- `/noi-bo`, kho, Beeftown Cân: không báo các mã màu cũ đang có trên `main`. Báo khi một PR của trang công khai sửa khối `:root` của `chung.css` — đổi khối đó là đổi màu cả `/noi-bo` và kho.
+- Báo chữ màu Warm Stone hay Marigold đặt trên nền kem (tương phản dưới 2 : 1), và chữ đỏ đặt trên dải tối (2,43 : 1).
+- PR đổi bảng màu của `/noi-bo`, kho hay Beeftown Cân phải đổi cùng lúc các nơi liệt kê ở `THUONG-HIEU.md` mục 5, bảng "Còn mã cũ". Thiếu nơi nào thì báo nơi đó.
 
 Địa điểm:
 
-- Địa điểm quán là "Tầng 3, 63 Hồ Tùng Mậu". Báo khi PR thêm một chỗ mới ghi địa chỉ khác.
-- Không báo các chỗ ghi "Hàm Nghi" và "cầu thang bộ" đang có trên `main`: việc sửa nằm ở một PR riêng, và dòng địa chỉ pháp lý ở chân trang chờ Khánh quyết.
+- Địa điểm quán là "Tầng 3, 63 Hồ Tùng Mậu" (tiếng Anh "Floor 3, 63 Hồ Tùng Mậu", tiếng Hàn "Hồ Tùng Mậu 63, 3층"). Khách vào lối riêng ngay cạnh GS25 và đi thang máy lên tầng 3. Báo khi PR ghi địa chỉ khác, hoặc viết "cầu thang bộ", "không có thang máy", "stairs", "계단" trên trang công khai.
+- Ngoại lệ duy nhất: dòng địa chỉ pháp nhân ở chân trang (`PHAP_NHAN.diaChi` trong `web/src/lib/chu.ts`) còn ghi theo giấy đăng ký và chờ Khánh quyết. Không báo dòng đó; báo khi PR sửa nó mà mô tả PR không ghi Khánh đã quyết.
+- Báo khi PR ghi tên phường của 63 Hồ Tùng Mậu (chưa có giấy xác nhận), gọi địa điểm là "toà nhà", viết "địa chỉ mới", "đã chuyển", "trước đây", hoặc thêm thông tin chưa xác nhận: chỗ gửi xe, mốc đường, số bước, khoảng cách, giờ, lối cho xe lăn.
