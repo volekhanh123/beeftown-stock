@@ -313,8 +313,13 @@ const t = dich(ngonNgu, {
     cursor: pointer;
     transition: background-color var(--nhanh), color var(--nhanh), border-color var(--nhanh);
   }
-  .form-nop input[type='file']:hover::file-selector-button {
+  .form-nop input[type='file']:active::file-selector-button {
     background: var(--kem-dam); color: var(--do-dam); border-color: var(--do-dam);
+  }
+  @media (hover: hover) {
+    .form-nop input[type='file']:hover::file-selector-button {
+      background: var(--kem-dam); color: var(--do-dam); border-color: var(--do-dam);
+    }
   }
 
   /* Nhóm ca: không viền, không đệm — tiêu đề nhóm đứng như nhãn của mọi ô khác

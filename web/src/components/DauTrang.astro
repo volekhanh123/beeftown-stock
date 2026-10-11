@@ -191,7 +191,9 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
     font-size: 15px; font-weight: 400; line-height: 1.2;
     color: var(--than); text-decoration: none; white-space: nowrap;
   }
-  a.doi-ngon-ngu:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .35em; }
+  @media (hover: hover) {
+    a.doi-ngon-ngu:hover { text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: .35em; }
+  }
   .doi-ngon-ngu[aria-current='true'] {
     font-weight: 700; color: var(--do-sau);
     text-decoration: underline; text-decoration-color: var(--do);
@@ -221,7 +223,7 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
       font-weight: 600; font-size: 16px; text-decoration: none; color: var(--than);
       border-block: 2px solid transparent; transition: border-color var(--nhanh), color var(--nhanh);
     }
-    .dt-nav a:hover { border-bottom-color: currentColor; }
+    @media (hover: hover) { .dt-nav a:hover { border-bottom-color: currentColor; } }
     .dt-nav a[aria-current='page'] { color: var(--do-sau); border-bottom-color: var(--do); }
     /* Tương phản cao (Windows): màu bị ép về màu hệ thống, gạch dưới trong suốt cũng hiện —
        mục đang mở phải khác bằng thứ không phải màu. */
@@ -250,7 +252,11 @@ const hienTai = (duong: string) => duongDan.replace(/\/$/, '') === duong.replace
   .menu-gon summary :global(.mg-dong), .menu-gon[open] summary :global(.mg-mo) { display: none; }
   .menu-gon[open] summary :global(svg.mg-dong) { display: block; }
   .menu-gon[open] summary :global(span.mg-dong) { display: inline; }
-  .menu-gon summary:hover, .menu-gon[open] summary { background: var(--kem-dam); color: var(--do-dam); border-color: var(--do-dam); }
+  .menu-gon summary:active, .menu-gon[open] summary { background: var(--kem-dam); color: var(--do-dam); border-color: var(--do-dam); }
+  /* Di chuột: chỉ máy có chuột — trên màn cảm ứng, chạm đóng xong nút phải về lại màu lúc đóng. */
+  @media (hover: hover) {
+    .menu-gon summary:hover { background: var(--kem-dam); color: var(--do-dam); border-color: var(--do-dam); }
+  }
 
   /* Bảng danh mục: nền Cream, kết thúc bằng một nét Beef Red; phía dưới là lớp phủ tối để
      thấy rõ bảng đang nằm trên trang — không dùng bóng đổ. Lớp phủ bấm được (đóng danh mục)

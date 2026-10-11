@@ -158,7 +158,10 @@ html:has(body.ck) {
 .ck .bo-qua { background: var(--than); color: var(--kem); }
 
 .ck a { color: inherit; text-underline-offset: .2em; text-decoration-thickness: 1px; }
-.ck a:hover { text-decoration-thickness: 2px; }
+/* Kiểu "di chuột" (:hover) của trang công khai LUÔN nằm trong @media (hover: hover): trên màn cảm ứng,
+   chạm xong thì phần tử vẫn bị coi là đang di chuột tới khi khách chạm chỗ khác — nút vừa đóng mà
+   trông như đang mở. Phản hồi lúc chạm là :active, đặt ngoài khối đó. */
+@media (hover: hover) { .ck a:hover { text-decoration-thickness: 2px; } }
 
 .ck h1 {
   font-size: var(--co-h1);
@@ -228,10 +231,15 @@ html:has(body.ck) {
 .ck .nut svg { width: 24px; height: 24px; flex: none; }
 /* Nút chính: nền Beef Red, chữ Cream (trên dải đỏ: nền Cream, chữ đỏ đậm). */
 .ck .nut-chinh { background: var(--nut-nen); color: var(--nut-chu); }
-.ck .nut-chinh:hover { background: var(--nut-nen-di); }
 /* Nút phụ: nền Cream, chữ và viền Beef Red (trên dải đỏ / tối: viền và chữ Cream). */
 .ck .nut-vien { background: var(--nut-phu-nen); color: var(--nut-phu-chu); border-color: var(--nut-phu-chu); }
-.ck .nut-vien:hover { background: var(--nut-phu-nen-di); color: var(--nut-phu-chu-di); border-color: var(--nut-phu-chu-di); }
+/* Đang nhấn (mọi loại máy) và đang di chuột (chỉ máy có chuột): cùng một màu đậm hơn. */
+.ck .nut-chinh:active { background: var(--nut-nen-di); }
+.ck .nut-vien:active { background: var(--nut-phu-nen-di); color: var(--nut-phu-chu-di); border-color: var(--nut-phu-chu-di); }
+@media (hover: hover) {
+  .ck .nut-chinh:hover { background: var(--nut-nen-di); }
+  .ck .nut-vien:hover { background: var(--nut-phu-nen-di); color: var(--nut-phu-chu-di); border-color: var(--nut-phu-chu-di); }
+}
 /* Nút gọn trên thanh đầu trang: vẫn cao 48px, đệm ngang và chữ nhỏ hơn một bậc. */
 .ck .nut-nho { padding-inline: var(--k-4); font-size: 15px; }
 /* Đang gửi / khóa: tối màu đi chứ không mờ đi — mờ thì tụt tương phản. */
@@ -252,7 +260,7 @@ html:has(body.ck) {
 }
 /* Biểu tượng theo màu nhấn của bề mặt: Beef Red trên kem, Cream trên đỏ. */
 .ck .lien-ket svg { width: 24px; height: 24px; flex: none; color: var(--nhan); transition: transform var(--nhanh); }
-.ck .lien-ket:hover svg { transform: translateX(3px); }
+@media (hover: hover) { .ck .lien-ket:hover svg { transform: translateX(3px); } }
 
 /* --- Dòng trạng thái (cổng nội dung: dong_trang_thai) ---------------------- */
 .ck .trang-thai {
@@ -344,7 +352,8 @@ html:has(body.ck) {
   transition: color var(--nhanh);
 }
 .ck .cau-hoi summary::-webkit-details-marker { display: none; }
-.ck .cau-hoi summary:hover { color: var(--nhan); }
+.ck .cau-hoi summary:active { color: var(--nhan); }
+@media (hover: hover) { .ck .cau-hoi summary:hover { color: var(--nhan); } }
 .ck .cau-hoi summary svg { width: 24px; height: 24px; flex: none; color: var(--nhan); }
 .ck .cau-hoi summary .bt-dong, .ck .cau-hoi details[open] > summary .bt-mo { display: none; }
 .ck .cau-hoi details[open] > summary .bt-dong { display: block; }

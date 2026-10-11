@@ -121,7 +121,7 @@ const cumDc = cumDiaChi(diaChiManDau(nd));
     display: inline-flex; align-items: center; gap: 10px; min-height: 48px;
     font-weight: 600; text-decoration: none; color: var(--than);
   }
-  .kmd-dia-chi:hover > span { text-decoration: underline; }
+  @media (hover: hover) { .kmd-dia-chi:hover > span { text-decoration: underline; } }
   .kmd-dia-chi :global(svg) { width: 24px; height: 24px; color: var(--do); flex: none; }
   .kmd-ngay { font-weight: 600; }
   .kmd-lien { white-space: nowrap; }

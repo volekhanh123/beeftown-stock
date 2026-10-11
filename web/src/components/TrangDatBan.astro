@@ -675,7 +675,7 @@ const t = dich(ngonNgu, {
     font-weight: 700; font-size: 16px; font-variant-numeric: tabular-nums;
     transition: background-color var(--nhanh), border-color var(--nhanh), color var(--nhanh);
   }
-  .hb-chip-o:hover span { border-color: var(--do); }
+  @media (hover: hover) { .hb-chip-o:hover span { border-color: var(--do); } }
   .hb-chip-o input:checked + span { background: var(--do); border-color: var(--do); color: var(--kem); }
   /* Dấu ✓ ở góc chip đã chọn: phân biệt được không cần nhìn ra màu (mù màu, chế độ
      tương phản cao). Nằm tuyệt đối nên chữ giờ không xê dịch. Chữ thay '' — trình đọc
