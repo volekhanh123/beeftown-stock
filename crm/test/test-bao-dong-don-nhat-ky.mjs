@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN — Kiểm thử: lượt báo động 5 phút dọn bốn bảng nhật ký phình mãi (migration 0072)
+ * BEEFTOWN — Kiểm thử: lượt báo động 5 phút dọn bốn bảng nhật ký phình mãi (migration 0073)
  * ==========================================================================================
  *
  *     node test/test-bao-dong-don-nhat-ky.mjs
@@ -7,7 +7,7 @@
  * Rà soát nợ kỹ thuật 11/10/2026: kho_ipos_lan_chay (mỗi chi nhánh 288 lượt cron mỗi ngày),
  * kho_may_nhat_ky (mỗi lần gõ PIN), nhat_ky_tra_cuu (IP người tra đặt bàn — dữ liệu cá nhân),
  * nhat_ky_tin (mọi tin Zalo, có SĐT và nội dung) không bao giờ được dọn. 0060 đã gắn việc dọn
- * bao_dong_su_co vào bao_dong_bat_dau_luot (mỗi 5 phút); 0072 gắn thêm don_nhat_ky_qua_han():
+ * bao_dong_su_co vào bao_dong_bat_dau_luot (mỗi 5 phút); 0073 gắn thêm don_nhat_ky_qua_han():
  *
  *   nhat_ky_tra_cuu    30 ngày   (giới hạn tra cứu theo IP chỉ nhìn 15 phút)
  *   kho_may_nhat_ky   180 ngày   (khóa PIN chỉ đếm 30 phút / 24 giờ)
@@ -22,7 +22,7 @@
 
 import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
 
-const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — LƯỢT BÁO ĐỘNG DỌN NHẬT KÝ QUÁ HẠN (0072)');
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — LƯỢT BÁO ĐỘNG DỌN NHẬT KÝ QUÁ HẠN (0073)');
 const { db, cnA, cnB, duoi, duoiAnon } = await dungDatabase();
 
 const UID_MAY = '00000000-0000-4000-8000-0000000000f1';

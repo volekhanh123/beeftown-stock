@@ -1,12 +1,12 @@
 /**
- * BEEFTOWN CRM — Kiểm thử: chỉ số CRM đếm ngày theo giờ Việt Nam (migration 0070)
+ * BEEFTOWN CRM — Kiểm thử: chỉ số CRM đếm ngày theo giờ Việt Nam (migration 0071)
  * ================================================================================
  *
  *     node test/test-chi-so-gio-vn.mjs
  *
  * chi_so_crm() (0008) lọc kỳ bằng `thoi_diem::date`, `lan_dau::date`, `created_at::date`. Trên
  * Supabase TimeZone của phiên là UTC, nên lượt ghé 00:30 giờ Việt Nam ngày 11 (17:30 UTC ngày 10)
- * bị đếm sang ngày 10 — và khung 0h–7h sáng của mọi ngày lệch theo. 0070 thêm ngay_vn(timestamptz)
+ * bị đếm sang ngày 10 — và khung 0h–7h sáng của mọi ngày lệch theo. 0071 thêm ngay_vn(timestamptz)
  * và đổi ba chỗ đó.
  *
  * Kèm bộ dò ở gio-utc.mjs (kiem-migration.mjs dùng): regex cũ chỉ bắt current_date / now()::date,
@@ -20,7 +20,7 @@ import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
 import { tenTimestamptz, timNgayUtc } from './gio-utc.mjs';
 
 const THU_MUC = join(dirname(fileURLToPath(import.meta.url)), '..', 'supabase', 'migrations');
-const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — CHỈ SỐ ĐẾM NGÀY THEO GIỜ VIỆT NAM (0070)');
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — CHỈ SỐ ĐẾM NGÀY THEO GIỜ VIỆT NAM (0071)');
 const { db, cnA, duoi } = await dungDatabase();
 
 // Supabase: phiên chạy UTC. Đặt tường minh — máy chạy test có thể đặt TZ khác (CI đêm: Asia/Ho_Chi_Minh).
@@ -144,7 +144,7 @@ await nhom('3 · BỘ DÒ (gio-utc.mjs, kiem-migration.mjs dùng) bắt <cột t
   ok('Đọc chi_so_crm của 0008: bắt đủ ba chỗ (lan_dau, thoi_diem, created_at)',
      ['lan_dau', 'thoi_diem', 'created_at'].every(t => cu.some(c => c.startsWith(t))), cu.join(', '));
   const sau = cacFile.filter(f => Number(f.slice(0, 4)) > 8 && timNgayUtc(vanBan[f], ten).length > 0);
-  ok('Mọi migration sau 0008 (kể cả 0070) sạch — kiem-migration không đỏ oan', sau.length === 0,
+  ok('Mọi migration sau 0008 (kể cả 0071) sạch — kiem-migration không đỏ oan', sau.length === 0,
      sau.map(f => `${f}: ${timNgayUtc(vanBan[f], ten).join(', ')}`).join(' | '));
 });
 

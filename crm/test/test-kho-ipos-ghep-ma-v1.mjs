@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN KHO — Kiểm thử: ghép món iPOS bằng hàm v1 bỏ ô mã như v2 (migration 0071)
+ * BEEFTOWN KHO — Kiểm thử: ghép món iPOS bằng hàm v1 bỏ ô mã như v2 (migration 0072)
  * ==================================================================================
  *
  *     node test/test-kho-ipos-ghep-ma-v1.mjs
@@ -10,12 +10,12 @@
  *   · v1 ghép lại sang goi_can / bo_qua → vỡ ràng buộc kho_ipos_ma_hang_o_ma_hop_le (23514);
  *   · v1 ghép lại sang MÓN KHÁC → chạy được, nhưng o_ma_id vẫn trỏ ô của món cũ: bán món này trừ
  *     lô của ô cũ (kho_ipos_ghi_dong ưu tiên o_ma_id) chứ không phải món vừa chọn — lệch kho lặng lẽ.
- * 0071 vá v1 đúng như v2: ghép lại bằng hàm này = bỏ ô.
+ * 0072 vá v1 đúng như v2: ghép lại bằng hàm này = bỏ ô.
  */
 
 import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
 
-const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — GHÉP MÓN iPOS v1 BỎ Ô MÃ (0071)');
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — GHÉP MÓN iPOS v1 BỎ Ô MÃ (0072)');
 const { db, cnA, duoi } = await dungDatabase();
 
 const vi = r => (r.loi ? `${r.ma}: ${r.loi}` : 'CHẠY ĐƯỢC');

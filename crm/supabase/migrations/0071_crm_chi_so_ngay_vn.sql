@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0070 · CHỈ SỐ CRM ĐẾM NGÀY THEO GIỜ VIỆT NAM · ngay_vn()
+-- BEEFTOWN CRM — 0071 · CHỈ SỐ CRM ĐẾM NGÀY THEO GIỜ VIỆT NAM · ngay_vn()
 -- =============================================================================
 -- chi_so_crm() (0008) lọc kỳ bằng `lan_dau::date`, `thoi_diem::date`,
 -- `created_at::date`. TimeZone của phiên trên Supabase là UTC, nên ::date của
@@ -33,7 +33,7 @@ parallel safe
 as $$ select ((p_luc at time zone 'utc') + interval '7 hours')::date $$;
 
 comment on function ngay_vn(timestamptz) is
-  'Ngày theo giờ Việt Nam của một thời điểm (0070). Dùng thay <timestamptz>::date — trên Supabase phiên chạy UTC nên ::date cắt ngày theo UTC.';
+  'Ngày theo giờ Việt Nam của một thời điểm (0071). Dùng thay <timestamptz>::date — trên Supabase phiên chạy UTC nên ::date cắt ngày theo UTC.';
 
 
 -- =============================================================================
@@ -124,7 +124,7 @@ end;
 $$;
 
 comment on function chi_so_crm is
-  'Sáu chỉ số theo mục G1. Ngày theo giờ Việt Nam (ngay_vn, 0070). Gọi hằng tháng, ghi lại để xem xu hướng. Khi truyền chi nhánh, "khách mới" = lần đầu ghé chi nhánh đó.';
+  'Sáu chỉ số theo mục G1. Ngày theo giờ Việt Nam (ngay_vn, 0071). Gọi hằng tháng, ghi lại để xem xu hướng. Khi truyền chi nhánh, "khách mới" = lần đầu ghé chi nhánh đó.';
 
 
 -- =============================================================================

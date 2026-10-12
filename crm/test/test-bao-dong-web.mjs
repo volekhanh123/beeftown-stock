@@ -873,7 +873,7 @@ await nhom('BIẾN BẢN BUILD: tên biến layBienCong đọc phải viết ra 
 });
 
 // ===========================================================================
-await nhom('DỌN NHẬT KÝ HỎNG (0072): lượt vẫn trọn, câu lỗi vào lỗi của lượt → đèn Báo động', async () => {
+await nhom('DỌN NHẬT KÝ HỎNG (0073): lượt vẫn trọn, câu lỗi vào lỗi của lượt → đèn Báo động', async () => {
   // Hàm dọn chạy TRONG bao_dong_bat_dau_luot; hỏng thì database trả loi_don, lượt vẫn chạy. Worker phải gộp câu đó
   // vào lỗi của lượt — không thì việc dọn hỏng mãi mà không đèn nào báo.
   const { rows: [{ d: goc }] } = await db.query(`select pg_get_functiondef('don_nhat_ky_qua_han()'::regprocedure) d`);

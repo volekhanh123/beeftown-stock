@@ -191,7 +191,7 @@ interface BatDauLuot {
   loi_so_lieu?: string | null;
   trang_thai?: { kenh: string; kenh_tu_luc: string | null; tom_tat_luc: string | null; lan_chay_cuoi: string | null };
   da_bao_48_gio?: DaBao[];
-  /** Dọn nhật ký quá hạn (0072) hỏng: câu lỗi (đã xoá bí mật). Lượt vẫn chạy; câu này vào lỗi của lượt. */
+  /** Dọn nhật ký quá hạn (0073) hỏng: câu lỗi (đã xoá bí mật). Lượt vẫn chạy; câu này vào lỗi của lượt. */
   loi_don?: string | null;
 }
 

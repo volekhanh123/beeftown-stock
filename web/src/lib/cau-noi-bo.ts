@@ -153,7 +153,7 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Danh sách đèn không hợp lệ': 'The list of health lights is invalid',
   'Tên kênh báo động không hợp lệ': 'The alert channel name is invalid',
 
-  // 0068 — hàm CRM giới hạn đúng chi nhánh; đặt bàn chỉ đổi theo đúng bước (trigger dat_ban_kiem_sua)
+  // 0069 — hàm CRM giới hạn đúng chi nhánh; đặt bàn chỉ đổi theo đúng bước (trigger dat_ban_kiem_sua)
   'Chỉ tạo được hồ sơ khách mới cho chi nhánh của bạn': 'You can only create new guest records for your own branch',
   'Chỉ xem được phiếu đo của chi nhánh của bạn': 'You can only view the launch scorecard of your own branch',
   'Chỉ khởi tạo được tin mẫu cho chi nhánh của bạn': 'You can only create sample job postings for your own branch',

@@ -185,7 +185,7 @@ Mục 1, 2 và 4 nói về **bản nháp cũ** `Beeftown_Website/index.html` (kh
       *Build chạy trên máy, không chạy trên Cloudflare — dashboard của Cloudflare không có chỗ đặt mấy biến này. Đặt sai chỗ thì trang vẫn deploy, vẫn trả 200, chỉ là không nối được database và không ai biết.*
 - [ ] Đăng nhập `/noi-bo`, công bố địa chỉ và link Facebook. Trang chủ đổi ngay, không cần deploy lại.
 - [ ] Gọi `tao_tin_tuyen_dung_mau(<id chi nhánh>)` → 8 tin nháp. Sửa lại rồi chuyển sang `da_cong_bo`; **form ứng tuyển tự hiện ra** khi có tin đầu tiên được công bố.
-- [ ] Kiểm tra kho file bằng tay theo danh sách cuối `0014_storage_supabase.sql`, và bước thử ở đầu `0069_crm_policy_doc_tinh_mot_lan.sql` (thủ kho không còn xem được file của `beeftown-noi-bo`)
+- [ ] Kiểm tra kho file bằng tay theo danh sách cuối `0014_storage_supabase.sql`, và bước thử ở đầu `0070_crm_policy_doc_tinh_mot_lan.sql` (thủ kho không còn xem được file của `beeftown-noi-bo`)
 - [ ] Mua bản quyền phông cho tên thương hiệu — hiện dùng Montserrat, **có chủ ý**, để không ai tưởng việc này đã xong
 
 ### Hai việc kỹ thuật dễ bị bỏ quên

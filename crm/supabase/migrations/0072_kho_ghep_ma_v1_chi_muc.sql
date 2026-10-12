@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN KHO — 0071 · GHÉP MÓN iPOS BẰNG HÀM v1 BỎ Ô MÃ · CHỈ MỤC TRA NGƯỢC
+-- BEEFTOWN KHO — 0072 · GHÉP MÓN iPOS BẰNG HÀM v1 BỎ Ô MÃ · CHỈ MỤC TRA NGƯỢC
 -- =============================================================================
 -- Rà soát nợ kỹ thuật 11/10/2026.
 --
@@ -80,7 +80,7 @@ begin
       ten_ipos = coalesce(excluded.ten_ipos, kho_ipos_ma_hang.ten_ipos),
       don_vi_ban = case when excluded.kieu = kho_ipos_ma_hang.kieu then kho_ipos_ma_hang.don_vi_ban end,
       kg_moi_don_vi = case when excluded.kieu = kho_ipos_ma_hang.kieu then kho_ipos_ma_hang.kg_moi_don_vi end,
-      o_ma_id = null;   -- 0071: ghép lại bằng hàm này = bỏ ô mã, như kho_ipos_gan_ma_v2 (0051)
+      o_ma_id = null;   -- 0072: ghép lại bằng hàm này = bỏ ô mã, như kho_ipos_gan_ma_v2 (0051)
   end if;
 
   for v_r in
@@ -98,7 +98,7 @@ end;
 $$;
 
 comment on function kho_ipos_gan_ma is
-  'Ghép mã món iPOS với món kho (danh_muc): kieu mon | goi_can | bo_qua; p_kieu null = bỏ ghép. Xử lý lại ngay mọi dòng chua_khop cùng mã. Đổi kiểu → "bán theo" về mặc định; ghép lại = bỏ ô mã như v2 (0071) (0042; muốn chọn kg / gói / suất dùng kho_ipos_gan_ma_v2). Trả {ma_ipos, kieu, so_dong, dong{trạng thái: số}}.';
+  'Ghép mã món iPOS với món kho (danh_muc): kieu mon | goi_can | bo_qua; p_kieu null = bỏ ghép. Xử lý lại ngay mọi dòng chua_khop cùng mã. Đổi kiểu → "bán theo" về mặc định; ghép lại = bỏ ô mã như v2 (0072) (0042; muốn chọn kg / gói / suất dùng kho_ipos_gan_ma_v2). Trả {ma_ipos, kieu, so_dong, dong{trạng thái: số}}.';
 
 -- =============================================================================
 -- 2 · Chỉ mục tra ngược

@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN — 0072 · LƯỢT BÁO ĐỘNG 5 PHÚT DỌN BỐN BẢNG NHẬT KÝ PHÌNH MÃI ·
+-- BEEFTOWN — 0073 · LƯỢT BÁO ĐỘNG 5 PHÚT DỌN BỐN BẢNG NHẬT KÝ PHÌNH MÃI ·
 --                   CHỈ MỤC MỐC CỦA nhat_ky_tin
 -- =============================================================================
 -- Rà soát nợ kỹ thuật 11/10/2026.
@@ -39,7 +39,7 @@
 --     (nhat_ky_tin_moc_idx) cho planner ghép (BitmapOr) với nhat_ky_tin_cho_gui_idx;
 --     việc dọn ở mục 1 cũng đi qua nó.
 --
--- bao_dong_bat_dau_luot: thân 0060 NGUYÊN VĂN, thêm khối dọn "0072" và ô loi_don
+-- bao_dong_bat_dau_luot: thân 0060 NGUYÊN VĂN, thêm khối dọn "0073" và ô loi_don
 -- ở JSON trả về (thêm ô, không đổi ô cũ).
 -- Kiểm thử: test-bao-dong-don-nhat-ky.mjs, test-kho-chi-muc-tra-nguoc.mjs mục 2.
 -- =============================================================================
@@ -132,7 +132,7 @@ end;
 $$;
 
 comment on function don_nhat_ky_qua_han() is
-  'NỘI BỘ (0072): dọn nhat_ky_tra_cuu > 30 ngày, kho_may_nhat_ky > 180 ngày, kho_ipos_lan_chay > 90 ngày (giữ 10 lượt mới nhất và lượt cron xong gần nhất mỗi chi nhánh), nhat_ky_tin > 400 ngày (trừ cho_gui); tối đa 5.000 dòng mỗi bảng. Chỉ bao_dong_bat_dau_luot() gọi. Trả số dòng đã xóa từng bảng.';
+  'NỘI BỘ (0073): dọn nhat_ky_tra_cuu > 30 ngày, kho_may_nhat_ky > 180 ngày, kho_ipos_lan_chay > 90 ngày (giữ 10 lượt mới nhất và lượt cron xong gần nhất mỗi chi nhánh), nhat_ky_tin > 400 ngày (trừ cho_gui); tối đa 5.000 dòng mỗi bảng. Chỉ bao_dong_bat_dau_luot() gọi. Trả số dòng đã xóa từng bảng.';
 
 
 -- =============================================================================
@@ -153,7 +153,7 @@ declare
   v_loi  text;
   v_bao  jsonb;
   v_lech jsonb;
-  v_loi_don text;   -- 0072
+  v_loi_don text;   -- 0073
 begin
   if not co_vai_tro(array['may_bao_dong']::vai_tro[]) then
     raise exception 'Chỉ tài khoản máy báo động mới gọi được hàm này'
@@ -178,7 +178,7 @@ begin
   returning * into v_tt;
 
   delete from bao_dong_su_co where het_luc < now() - interval '90 days';
-  -- 0072: bốn bảng nhật ký phình mãi — tối đa 5.000 dòng mỗi bảng mỗi lượt. Hỏng (kể cả hết giờ:
+  -- 0073: bốn bảng nhật ký phình mãi — tối đa 5.000 dòng mỗi bảng mỗi lượt. Hỏng (kể cả hết giờ:
   -- query_canceled không thuộc "others") KHÔNG làm hỏng lượt báo động: câu lỗi về Worker ở loi_don,
   -- Worker gộp vào lỗi của lượt → loi_cuoi → đèn "Báo động" đỏ "lượt gần nhất bị lỗi".
   begin
@@ -233,7 +233,7 @@ end;
 $$;
 
 comment on function bao_dong_bat_dau_luot(text) is
-  'Máy báo động (0060): bắt đầu lượt. {bi_khoa:true, dang_chay_tu} nếu lượt khác đang chạy (dưới 10 phút); không thì {bi_khoa:false, luot, so_lieu|null (số liệu bảng sức khỏe + ô sao_luu), loi_so_lieu, trang_thai{kenh, kenh_tu_luc, tom_tat_luc, lan_chay_cuoi}, da_bao_48_gio[{khoa, bao_mo_luc}]}. Ghi kênh Worker đang dùng; dọn sự cố đóng quá 90 ngày và bốn bảng nhật ký quá hạn (don_nhat_ky_qua_han, 0072) — dọn hỏng thì lượt vẫn chạy, câu lỗi ở loi_don.';
+  'Máy báo động (0060): bắt đầu lượt. {bi_khoa:true, dang_chay_tu} nếu lượt khác đang chạy (dưới 10 phút); không thì {bi_khoa:false, luot, so_lieu|null (số liệu bảng sức khỏe + ô sao_luu), loi_so_lieu, trang_thai{kenh, kenh_tu_luc, tom_tat_luc, lan_chay_cuoi}, da_bao_48_gio[{khoa, bao_mo_luc}]}. Ghi kênh Worker đang dùng; dọn sự cố đóng quá 90 ngày và bốn bảng nhật ký quá hạn (don_nhat_ky_qua_han, 0073) — dọn hỏng thì lượt vẫn chạy, câu lỗi ở loi_don.';
 
 
 -- =============================================================================

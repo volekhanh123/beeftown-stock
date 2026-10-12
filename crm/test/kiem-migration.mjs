@@ -23,7 +23,7 @@
  *   · file mới / đã đổi: mọi hàm security definer có set search_path (cả 313 hàm hiện có
  *     đều có); từ sau 0008 (vá múi giờ) không dùng current_date / current_time / localtime /
  *     now()::date — dùng hom_nay_vn() / bay_gio_vn() / gio_vn() — và không cắt ngày một cột /
- *     biến timestamptz theo UTC (`thoi_diem::date`, `date(created_at)`… — dùng ngay_vn(), 0070;
+ *     biến timestamptz theo UTC (`thoi_diem::date`, `date(created_at)`… — dùng ngay_vn(), 0071;
  *     bộ dò ở gio-utc.mjs).
  *
  * So với ref (mặc định origin/main; ref không có thì bỏ qua, có báo):
