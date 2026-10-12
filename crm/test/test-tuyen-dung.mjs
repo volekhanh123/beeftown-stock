@@ -107,7 +107,16 @@ await db.query(
        trang_thai = 'da_cong_bo'
    where ma = 'nhan-vien-sanh'`);
 
-/** Nộp hồ sơ dưới danh nghĩa anon, như website thật sẽ làm. */
+/**
+ * Nộp hồ sơ dưới danh nghĩa anon, như website thật sẽ làm.
+ *
+ * Website luôn truyền IP thật của khách (CF-Connecting-IP — layIp() ở web/src/lib/phien.ts). Bản
+ * trước để trống IP cho mọi lượt, và IP null từng nghĩa là "không giới hạn" (lỗi rà soát 11/10).
+ * Từ 0084 IP null đếm như MỘT IP (5 hồ sơ / giờ) — file này nộp hơn thế, nên lượt không ghi IP
+ * nhận một IP riêng như mỗi ứng viên thật. Giới hạn theo IP vẫn thử ở nhóm 3 (một IP, sáu lần);
+ * IP null ở test-cong-khai-gioi-han.mjs.
+ */
+let soIp = 0;
 async function nopHoSo(viTri, hoTen, sdt, thang = {}) {
   return duoiDanhNghiaAnon(
     `select nop_ho_so_ung_tuyen(
@@ -117,7 +126,7 @@ async function nopHoSo(viTri, hoTen, sdt, thang = {}) {
      thang.gioiThieu ?? null, thang.kinhNghiem ?? null, thang.caLam ?? null,
      thang.maVe ?? null, thang.tenTep ?? null, thang.dongY ?? true,
      thang.bay ?? null, thang.giay ?? 30,
-     thang.utmSource ?? null, thang.utmCampaign ?? null, thang.ip ?? null]);
+     thang.utmSource ?? null, thang.utmCampaign ?? null, thang.ip ?? `192.0.2.${++soIp}`]);
 }
 
 // ===========================================================================
