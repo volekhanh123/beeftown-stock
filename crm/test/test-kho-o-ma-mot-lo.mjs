@@ -192,9 +192,9 @@ await nhom('3 · HAI DÒNG NHẬP KHO CỦA CÙNG PHẦN CẮT ĐANG GIỮ Ô �
   const soTruoc = (await db.query(`select count(*)::int as n from kho_so_cai`)).rows[0].n;
   const loi = await chot(ph);
   ok('HỒI QUY: chốt bị từ chối — câu nói tên món, số ô và phải làm gì',
-     /"Thăn ngoại cắt lát" đang giữ ô mã 3/.test(loi ?? '') && /một dòng nhập kho/.test(loi ?? '') && /gộp/.test(loi ?? ''), String(loi));
+     /"Thăn ngoại cắt lát" đang giữ ô 3 \(mã 10013\)/.test(loi ?? '') && /một dòng nhập kho/.test(loi ?? '') && /gộp/.test(loi ?? ''), String(loi));
   const en = dichCau('en', loi ?? '');
-  ok('Câu đó có bản tiếng Anh, không lẫn chữ Việt', en !== loi && /rotating code 3/.test(en) && !VIET.test(en.replace(/Thăn ngoại cắt lát/g, '')), en);
+  ok('Câu đó có bản tiếng Anh, không lẫn chữ Việt', en !== loi && /slot 3 \(code 10013\)/.test(en) && !VIET.test(en.replace(/Thăn ngoại cắt lát/g, '')), en);
   const sau = (await db.query(`select trang_thai from kho_phien_pha where id = $1`, [ph])).rows[0];
   ok('Không ghi gì: phiên vẫn nháp, sổ kho không thêm dòng nào, tảng #4 còn nguyên, ô 3 chưa gắn lô',
      sau.trang_thai === 'nhap' && (await db.query(`select count(*)::int as n from kho_so_cai`)).rows[0].n === soTruoc

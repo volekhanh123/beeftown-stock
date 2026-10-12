@@ -333,13 +333,18 @@ export interface MaTrenNhan { oMa: readonly OMaDeTra[]; maGiam: readonly MaGiamD
 
 /** Thứ cần để đặt nhãn mã ô vào ĐÚNG LÔ của tảng. Chỉ phiếu mới, lúc bấm "Đọc mã". */
 export interface DatLoQuet {
-  /** Ô đang giao ở chi nhánh (o-ma.ts docGiaoOMaCan). */
-  giao: readonly { ma_can: string; lo_id: string | null; so_tang: number | null; so_phieu?: string | null }[];
+  /** Ô đang giao ở chi nhánh (o-ma.ts docGiaoOMaCan). `han_dung`: hạn dùng của lô mà ô đang gắn (YYYY-MM-DD). */
+  giao: readonly { ma_can: string; lo_id: string | null; so_tang: number | null; so_phieu?: string | null; han_dung?: string | null }[];
   /** Tồn theo lô ở NƠI LẤY HÀNG của phiếu (các dòng kho_v_ton của vị trí đó). */
   lo: readonly { lo_id: string; mat_hang_id: string; so_goi: number; so_kg: number; tinh_trang_han?: string | null; han_dung?: string | null }[];
   tenNoiLay: string;
   /** Phiếu chỉ nhận hàng còn hạn (chuyển, xuất bếp, xuất khác): lô hết hạn không ghi được. */
   chiConHan: boolean;
+  /**
+   * Hôm nay theo giờ Việt Nam (gio-vn.ts homNayVn, YYYY-MM-DD). Có thì khay của một lô đã hết hạn bị chặn cả khi sổ
+   * không còn lô đó ở nơi lấy (so `giao.han_dung` với ngày này). Không truyền → chỉ biết hết hạn qua dòng tồn `lo`.
+   */
+  homNay?: string | null;
   /** Dòng theo món và dòng theo lô đang có trên form, TRƯỚC lượt quét này. */
   dong: readonly DongXuatForm[];
   theoLo: readonly DongLoForm[];
@@ -367,7 +372,8 @@ interface MonQuet {
  * database lấy hàng hạn gần trước như nhãn thường, kèm câu nói rõ vì sao (trừ khi chỉ vì trộn với nhãn mã món:
  * lúc đó không có gì sai để báo). Vì form không cho một món nằm ở cả hai phần nên không bao giờ tách một món
  * ra hai phần trong cùng một lượt quét. Riêng nhãn của lô ĐÃ HẾT HẠN trên phiếu chỉ nhận hàng còn hạn thì không
- * ghi vào đâu: ghi theo món là trừ nhầm một lô còn hạn trong khi khay cầm trên tay đã hết hạn.
+ * ghi vào đâu: ghi theo món là trừ nhầm một lô còn hạn trong khi khay cầm trên tay đã hết hạn. Lô đó không còn
+ * trên sổ ở nơi lấy thì vẫn chặn được nhờ hạn dùng của lô mà ô đang gắn (`datLo.giao[].han_dung` so `datLo.homNay`).
  */
 export function dongTuQuet(
   noiDung: string,
@@ -448,23 +454,30 @@ export function dongTuQuet(
           });
           continue;
         }
-        const lo = datLo.lo.find(x => x.lo_id === g.lo_id && x.mat_hang_id === mon.id);
-        if (!lo || (!(Number(lo.so_goi) > 0) && !(Number(lo.so_kg) > 0))) {
-          const gi = demGoi ? dv : { vi: 'kg', en: 'kg' };
-          lyDo.push({
-            vi: `Sổ không còn ${gi.vi} nào của ${t.vi} ở ${datLo.tenNoiLay} — ${l.vi} ${mon.ten} vừa quét ghi theo món, ${theoHan.vi}. Kiểm lại nơi lấy hàng của phiếu.`,
-            en: `The books show no ${gi.en} of ${t.en} left at ${datLo.tenNoiLay} — the ${l.en} of ${mon.ten} just scanned go in by item, ${theoHan.en}. Check where this slip takes goods from.`,
-          });
-          continue;
-        }
-        if (datLo.chiConHan && lo.tinh_trang_han === 'het_han') {
-          const han = lo.han_dung ? dinhDangNgay(lo.han_dung) : '';
+        const loTim = datLo.lo.find(x => x.lo_id === g.lo_id && x.mat_hang_id === mon.id);
+        const lo = loTim && (Number(loTim.so_goi) > 0 || Number(loTim.so_kg) > 0) ? loTim : null;
+        // Lô của tảng trên nhãn ĐÃ HẾT HẠN — xét trước mọi thứ khác. Sổ còn lô đó ở nơi lấy: theo dòng tồn. Sổ không
+        // còn (sổ lệch với kệ, hoặc lô đã sang chờ hủy): theo hạn dùng của lô mà ô đang gắn so với hôm nay giờ Việt
+        // Nam. Khay cầm trên tay đã hết hạn thì không được thành dòng theo món — database sẽ trừ một lô còn hạn.
+        const hanHet = lo
+          ? (lo.tinh_trang_han === 'het_han' ? lo.han_dung ?? '' : null)
+          : (g.han_dung && datLo.homNay && g.han_dung < datLo.homNay ? g.han_dung : null);
+        if (datLo.chiConHan && hanHet !== null) {
+          const han = hanHet ? dinhDangNgay(hanHet) : '';
           bao({
             vi: `${l.vi} ${mon.ten} của ${t.vi} đã hết hạn${han ? ` (hạn dùng ${han})` : ''} — chưa ghi vào phiếu này. Để riêng và báo hủy.`,
             en: `${l.en} of ${mon.ten} from ${t.en} ${p.soGoi === 1 ? 'has' : 'have'} expired${han ? ` (use-by ${han})` : ''} — not added to this slip. Set ${p.soGoi === 1 ? 'it' : 'them'} aside and write ${p.soGoi === 1 ? 'it' : 'them'} off.`,
           });
           hetHan.push(p);
           soHetHan += p.soGoi;
+          continue;
+        }
+        if (!lo) {
+          const gi = demGoi ? dv : { vi: 'kg', en: 'kg' };
+          lyDo.push({
+            vi: `Sổ không còn ${gi.vi} nào của ${t.vi} ở ${datLo.tenNoiLay} — ${l.vi} ${mon.ten} vừa quét ghi theo món, ${theoHan.vi}. Kiểm lại nơi lấy hàng của phiếu.`,
+            en: `The books show no ${gi.en} of ${t.en} left at ${datLo.tenNoiLay} — the ${l.en} of ${mon.ten} just scanned go in by item, ${theoHan.en}. Check where this slip takes goods from.`,
+          });
           continue;
         }
         const u = ungVien.get(lo.lo_id) ?? { soTang: g.so_tang, lo, soGoi: 0, don: 0 };
@@ -611,6 +624,21 @@ export function gopDongLo(cu: readonly DongLoForm[], moi: readonly DongLoForm[])
     co.so_kg = bietKg(goiCu, kgCu) && bietKg(goiMoi, kgMoi) && tong > 0 ? String(Math.round(tong * 1000) / 1000).replace('.', ',') : '';
   }
   return ra;
+}
+
+/**
+ * Gộp kết quả một lượt "Đọc mã" vào các dòng đang có trên form: dòng theo món cộng vào dòng theo món (gopDong), dòng
+ * theo lô cộng vào dòng lô (gopDongLo). Món vừa được đặt vào LÔ của tảng mà form còn một dòng theo món CHƯA CÓ SỐ của
+ * chính món đó (phiếu mở từ "Lấy thêm" / "Lấy ra quầy" / món nhanh, hoặc chọn món trước rồi mới quét) thì bỏ dòng
+ * trống đó: để lại thì "Ghi phiếu" bị chặn "chưa nhập số", gõ số vào thì lại bị chặn "ghi ở cả hai phần". Dòng đã
+ * có số không bao giờ bị bỏ (lúc đó dongTuQuet cũng không đặt món ấy vào lô).
+ */
+export function gopKetQuaQuet(
+  dong: readonly DongXuatForm[], theoLo: readonly DongLoForm[], quet: Pick<KetQuaQuet, 'dong' | 'theoLo'>,
+): { dong: DongXuatForm[]; theoLo: DongLoForm[] } {
+  const vuaVaoLo = new Set(quet.theoLo.map(l => l.mat_hang_id));
+  const giu = dong.filter(d => d.so_goi || d.so_kg || !vuaVaoLo.has(d.mat_hang_id));
+  return { dong: gopDong(giu, [...quet.dong]), theoLo: gopDongLo(theoLo, quet.theoLo) };
 }
 
 // -----------------------------------------------------------------------------

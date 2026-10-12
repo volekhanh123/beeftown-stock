@@ -831,6 +831,14 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   phải thuộc ô của chính phiên. Chốt → ô gắn lô ra (`kho_o_ma_giao.lo_id`); mở lại → bỏ; huỷ phiên → trả
   ô. Lô ra hết tồn thì lần giao sau tự đóng ô cũ; quản lý giải phóng tay được (`kho_giai_phong_o_ma`).
   Quét kiểm kê cũng nhận nhãn mã ô (`kho_mat_hang_theo_ma_can`). View `kho_v_o_ma_giao`.
+- **Một ô, một lô — lô có khay mang nhãn (0066)**: ô chỉ nhớ được một lô, còn chốt phiên sinh một lô cho mỗi
+  dòng ra giữ lại. Trigger `kho_phien_pha_ra_o_ma` vì vậy chỉ cho ô theo lô của dòng **nhập kho**; dòng
+  **chuyển thẳng bếp** của cùng phần cắt (lô sinh ra rồi xuất hết ngay) không đụng tới ô. Trước 0066 dòng
+  chốt sau cùng thắng: ô rơi vào lô chuyển bếp, sổ coi ô trống, tảng sau lấy lại đúng ô đó và mọi khay của
+  tảng trước bị trừ vào tảng sau (phiếu quét nhãn lẫn hóa đơn iPOS). **Hai dòng nhập kho** của cùng phần cắt
+  đang giữ ô (4 khay → Quầy + 6 khay → Kho lạnh) thì **chốt bị từ chối**, câu bảo gộp thành một dòng, chốt
+  xong rồi chuyển ra quầy. Chỉ gặp khi gõ tay: món đã quét nhãn thì database không cho dòng thứ hai (0033).
+  Phiên không giao ô mã không đổi gì. Test: `test-kho-o-ma-mot-lo.mjs`.
 - **Tra mã trên nhãn ở web — một bộ tra chung** (`lib/kho/tra-ma-can.ts`, file thuần): `taoBangTraMaCan` +
   `traMaCan` soi đúng `kho_mat_hang_theo_ma_can` (món đang dùng có mã đó → ô mã của món đang dùng → mã giảm
   giá, mà không ô nào mang mã đó; bỏ số 0 đầu), trả món kèm lý do khớp: mã món / ô mã + số ô / mã giảm + %.
@@ -846,8 +854,19 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   chưa chốt, ô không còn gắn với tảng. Trộn nhãn mã ô với nhãn mã món / mã giảm của cùng món thì ghi theo
   món, không câu báo. Form vẫn giữ luật "một món chỉ ghi một phần" nên một lượt quét không bao giờ tách một
   món ra hai phần — không khay nào bị tính hai lần. Nhãn của lô **đã hết hạn** trên phiếu chỉ nhận hàng
-  còn hạn thì **không ghi vào đâu**, câu vàng bảo để riêng và báo hủy. Kiểm kê dán nhãn: mọi mã của cùng
+  còn hạn thì **không ghi vào đâu**, câu vàng bảo để riêng và báo hủy — kể cả khi sổ không còn lô đó ở nơi
+  lấy (sổ lệch với kệ, lô đã sang chờ hủy): lúc đó so hạn dùng của lô mà ô đang gắn
+  (`kho_can_giao_o_ma.han_dung`) với hôm nay giờ Việt Nam (`datLo.homNay` = `homNayVn()`); hạn đúng hôm nay
+  thì chưa hết hạn. Trang gộp kết quả quét vào form bằng `gopKetQuaQuet`: món vừa vào lô mà form còn một
+  dòng theo món **chưa có số** của chính món đó (phiếu mở từ "Lấy thêm", "Lấy ra quầy", món nhanh) thì bỏ
+  dòng trống ấy — để lại là "Ghi phiếu" bị chặn "chưa nhập số khay". Kiểm kê dán nhãn: mọi mã của cùng
   một món cộng vào một số đếm (theo món là đủ).
+- **Màn Quét nhãn — nút cho khay cầm trên tay** (`lib/kho/quet-nhan.ts` `viecChoNhan`, hàm thuần): nhãn mã ô
+  thì Ra quầy / Đưa bếp / Báo hủy mở đúng lô của tảng trên nhãn (NV quầy ưu tiên dòng ở quầy, người khác
+  dòng trong kho); không có lô hợp thì lô hạn gần trước. Lô của nhãn **đã hết hạn** — theo dòng tồn, hoặc
+  theo hạn dùng của lô mà ô đang gắn khi sổ không còn dòng nào ở kho / quầy — thì chỉ còn Báo hủy, không
+  mời Ra quầy / Đưa bếp bằng một lô khác còn hạn. Câu lưu ý: phiên lóc chưa chốt · lô đã hết hạn · sổ
+  không còn khay nào của tảng. Test chạy thật: `test-kho-tra-ma-can.mjs` nhóm 7.
 - **Số tảng cạnh mã lô**: số tảng là thứ ghi trên túi và in trên tem; mã lô không có ở đâu ngoài đời. Lô là
   một tảng hoặc cắt ra từ một tảng thì hiện "tảng #0001" (`chuTang`) ở: phần chọn lô, "Lô chỉ định", "Lô
   đã lấy" của phiếu chuyển / xuất / hủy; kiểm kê theo lô và bảng chênh lệch; Tồn kho; Thẻ kho; màn Quét; trả

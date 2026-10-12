@@ -38,8 +38,9 @@ import { docMaVach, tachDanhSachMa, MAU_MAC_DINH } from '../../../lib/kho/ma-vac
 import { oDangGiao, taoBangTraMaCan, traMaCan, type KhopMaCan } from '../../../lib/kho/tra-ma-can.ts';
 import { docGiaoOMaCan, docMaTrenNhan, type GiaoOMa } from '../../../lib/kho/o-ma.ts';
 import { chuTang, docLoTang, soTangChu } from '../../../lib/kho/tang.ts';
+import { viecChoNhan } from '../../../lib/kho/quet-nhan.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, kqHai, laUuid, nhanKho, TEN_LOAI_VI_TRI_NB, type HaiThuTieng, type KetQua,
+  cauLoiKho, dinhDangKg, dinhDangNgay, homNayVn, kqHai, laUuid, nhanKho, TEN_LOAI_VI_TRI_NB, type HaiThuTieng, type KetQua,
 } from '../../../lib/kho/chung.ts';
 import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
 
@@ -164,9 +165,12 @@ if (maNhap && k.chiNhanh && k.daKhoiTao) {
   }
 }
 
-// Lô của tảng in trên nhãn (nhãn mã ô đang giao cho một tảng đã chốt phiên lóc).
-const laLoNhan = (l: DongTon) => !!giaoNhan?.lo_id && l.lo_id === giaoNhan.lo_id;
-const loCuaNhan = ton.filter(laLoNhan);
+// Lô của tảng in trên nhãn (nhãn mã ô đang giao cho một tảng đã chốt phiên lóc), khay đó đã hết hạn chưa, và ba nút
+// lớn mở lô nào — luật ở lib/kho/quet-nhan.ts (hàm thuần, có kiểm thử chạy thật).
+const viecNhan = viecChoNhan(ton, giaoNhan, { laQuay, homNay: homNayVn() });
+const { loCuaNhan, nhanHetHan, loRaQuay, loDuaBep, loBaoHuy } = viecNhan;
+/** Dòng tồn này thuộc lô của tảng trên nhãn (loCuaNhan giữ chính các dòng của `ton`). */
+const laLoNhan = (l: DongTon) => loCuaNhan.includes(l);
 /** Số tảng của một lô đang hiện; lô của nhãn thì lấy luôn số tảng của ô khi lượt đọc số tảng hỏng. */
 const soTangCua = (l: DongTon) => soTangLo.get(l.lo_id)?.so_tang ?? (laLoNhan(l) ? giaoNhan?.so_tang ?? null : null);
 
@@ -185,24 +189,12 @@ const tongKg = ton.reduce((s, t) => s + t.so_kg, 0);
 const loGanNhat = [...ton].filter(t => t.tinh_trang_han !== 'het_han').sort((a, b) => a.han_dung.localeCompare(b.han_dung))[0];
 const TEN_HAN: Record<string, string> = { het_han: t.hetHan, sap_het: t.sapHet, con_han: t.conHan };
 
-// Nút lớn mở sẵn đúng lô: Ra quầy lấy lô trong kho lạnh hạn gần nhất; Báo hủy
-// lấy lô đã hết hạn (nếu có). Không có lô hợp thì mở phiếu theo món.
+// Nút lớn mở sẵn đúng lô (viecChoNhan ở trên): nhãn mã ô → lô của tảng trên nhãn khi lô đó còn hàng ở kho / quầy;
+// không thì Ra quầy lấy lô trong kho lạnh hạn gần nhất, Báo hủy lấy lô đã hết hạn (nếu có). Lô của nhãn đã hết hạn
+// thì khay cầm trên tay cũng hết hạn: chỉ còn Báo hủy. Không có lô hợp thì mở phiếu theo món.
 const linkLo = (loai: string, t: DongTon | undefined) => t
   ? `/noi-bo/kho/xuat/moi?loai=${loai}&tu=${encodeURIComponent(t.vi_tri_id)}&lo=${encodeURIComponent(t.lo_id)}`
   : `/noi-bo/kho/xuat/moi?loai=${loai}&mh=${encodeURIComponent(mh?.id ?? '')}`;
-const loKhoGan = ton.find(t => t.loai_vi_tri === 'kho' && t.tinh_trang_han !== 'het_han');
-const loBepGan = ton.find(t => (t.loai_vi_tri === 'kho' || t.loai_vi_tri === 'quay') && t.tinh_trang_han !== 'het_han');
-const loHetHan = ton.find(t => (t.loai_vi_tri === 'kho' || t.loai_vi_tri === 'quay') && t.tinh_trang_han === 'het_han');
-
-// Nhãn mã ô: các nút mở ĐÚNG lô của tảng trên nhãn khi lô đó còn hàng ở nơi làm được việc (kho, quầy —
-// viecVoiLo). NV quầy ưu tiên dòng ở quầy, người khác ưu tiên dòng trong kho. Lô đó đã hết hạn thì khay cầm
-// trên tay cũng hết hạn: chỉ còn Báo hủy, không mời Ra quầy / Đưa bếp bằng một lô khác.
-const loNhanLam = loCuaNhan.filter(l => viecVoiLo(l, nn).length > 0)
-  .sort((a, b) => Number(b.loai_vi_tri === (laQuay ? 'quay' : 'kho')) - Number(a.loai_vi_tri === (laQuay ? 'quay' : 'kho')));
-const nhanHetHan = loCuaNhan.some(l => l.tinh_trang_han === 'het_han');
-const loRaQuay = nhanHetHan ? undefined : (loNhanLam.find(l => l.loai_vi_tri === 'kho') ?? loKhoGan);
-const loDuaBep = loNhanLam[0] ?? loBepGan;
-const loBaoHuy = loNhanLam[0] ?? loHetHan;
 
 // Dòng nói nhãn này in bằng mã gì, và các câu lưu ý về khay cầm trên tay.
 const dvNhan = mh?.don_vi_goi || t.goiChung;
@@ -211,10 +203,10 @@ const nguonNhan = !khop ? ''
   : khop.nguon === 'ma_giam' ? t.temGiam(khop.phanTram ?? 0)
   : khop.nguon === 'o_ma' ? (giaoNhan ? t.oTang(khop.soO ?? 0, tangNhan) : t.oTrong(khop.soO ?? 0))
   : '';
-const luuYNhan: string[] = [];
-if (giaoNhan && !giaoNhan.lo_id) luuYNhan.push(t.chuaChot(giaoNhan.so_phieu, dvNhan));
-else if (giaoNhan && loCuaNhan.length === 0) luuYNhan.push(t.hetTang(dvNhan, tangNhan));
-else if (nhanHetHan) luuYNhan.push(t.nhanHetHan(dvNhan, dinhDangNgay(loCuaNhan[0].han_dung)));
+const luuYNhan: string[] = viecNhan.luuY.map(y => (
+  y === 'chua_chot' ? t.chuaChot(giaoNhan?.so_phieu ?? '', dvNhan)
+  : y === 'het_han' ? t.nhanHetHan(dvNhan, viecNhan.hanHet ? dinhDangNgay(viecNhan.hanHet) : '')
+  : t.hetTang(dvNhan, tangNhan)));
 const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as const;
 const maGui = crypto.randomUUID();
 ---

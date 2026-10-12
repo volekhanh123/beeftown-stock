@@ -65,7 +65,7 @@ import { docThongTinLo } from '../../../../lib/kho/pha-loc.ts';
 import { docGiaoOMaCan, docMaTrenNhan, type GiaoOMa } from '../../../../lib/kho/o-ma.ts';
 import { chuTang, docLoTang } from '../../../../lib/kho/tang.ts';
 import {
-  docPhieuXuat, taoPhieuXuat, duyetHuy, tuChoiHuy, dongTuQuet, gopDong, gopDongLo, docFormPhieuXuat, giuAnhHuy,
+  docPhieuXuat, taoPhieuXuat, duyetHuy, tuChoiHuy, dongTuQuet, gopKetQuaQuet, docFormPhieuXuat, giuAnhHuy,
   tomTatHang, docNhaCungCapCuaPhieuNhap, TEN_LOAI_XUAT_NB, LOAI_LAP_DUOC, laNoiDeHang, buocHuySau,
   docMonHayDungBep, nutPhieuChuyen, xuLyChuyenThieu, huyChuyenDiDuong, doiDonViCau,
   type BuocHuy, type DongLoForm, type DongSoCai, type DongXuat, type DongXuatForm, type LoaiXuat, type MaTrenNhan, type PhieuXuat,
@@ -73,7 +73,7 @@ import {
 import { linkAnh } from '../../../../lib/kho/anh.ts';
 import { huyTraHangChoTien } from '../../../../lib/kho/cong-no.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, donViChung, kqHai, laUuid, nhanKho, trangThaiKho,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, donViChung, homNayVn, kqHai, laUuid, nhanKho, trangThaiKho,
   TEN_LOAI_SO_CAI_NB, type HaiThuTieng, type KetQua, type NgonNguNB,
 } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
@@ -521,10 +521,12 @@ if (form) {
         // Nhãn mã ô của một tảng: ghi vào đúng lô của tảng đó khi lô còn đủ ở nơi lấy; không thì ghi theo món.
         const quet = dongTuQuet(String(form.get('ma_quet') ?? ''), matHang, caiDat?.mau_ma_vach, caiDat?.so_le_kg ?? 3, {
           maNhan,
-          datLo: { giao: giaoO, lo: loTaiTu, tenNoiLay: tu.ten, chiConHan, dong: doc.dong, theoLo: doc.theoLo },
+          datLo: { giao: giaoO, lo: loTaiTu, tenNoiLay: tu.ten, chiConHan, homNay: homNayVn(), dong: doc.dong, theoLo: doc.theoLo },
         });
-        dongA = gopDong(doc.dong, quet.dong);
-        dongB = gopDongLo(doc.theoLo, quet.theoLo);
+        // Món vừa vào lô của tảng: bỏ dòng theo món còn trống số của chính món đó (phiếu mở sẵn món rồi mới quét).
+        const gop = gopKetQuaQuet(doc.dong, doc.theoLo, quet);
+        dongA = gop.dong;
+        dongB = gop.theoLo;
         // Câu báo đi qua cookie khi chuyển trang: dựng cả hai thứ tiếng (tham số nn = thứ tiếng của câu).
         const cauDaDoc = (nn: NgonNguNB) => CAU_DA_DOC[nn](
           quet.soDoc, tomTatHang([...quet.dong, ...quet.theoLo], matHang, 3, nn), quet.cauDatLo?.[nn] ?? '', NUT_GHI[nn]);
