@@ -12,6 +12,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cauLoiKho, kqHai, type HaiThuTieng, type KetQua } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
+import { docMaGiam, type DongMaGiam } from './ma-giam.ts';
 
 export interface DongOMa { id: string; mat_hang_id: string; so_o: number; ma_can: string }
 
@@ -66,6 +67,16 @@ export async function docOMa(client: SupabaseClient): Promise<Map<string, DongOM
   const ra = new Map<string, DongOMa[]>();
   for (const r of (data ?? []) as DongOMa[]) ra.set(r.mat_hang_id, [...(ra.get(r.mat_hang_id) ?? []), r]);
   return ra;
+}
+
+/**
+ * Mọi mã có thể nằm trên nhãn ngoài mã của chính món: ô mã và mã giảm giá của mọi món (RLS: vai xem kho).
+ * Hai bảng đọc song song, MỘT lần mỗi yêu cầu — trang đưa kết quả cho bộ tra chung tra-ma-can.ts
+ * (traMaCan, dongTuQuet, apDungQuet). Gọi trong cùng Promise.all với danh mục để không thêm lượt chờ.
+ */
+export async function docMaTrenNhan(client: SupabaseClient): Promise<{ oMa: DongOMa[]; maGiam: DongMaGiam[] }> {
+  const [o, g] = await Promise.all([docOMa(client), docMaGiam(client)]);
+  return { oMa: [...o.values()].flat(), maGiam: g };
 }
 
 /**
@@ -131,14 +142,6 @@ export async function docGiaoOMa(client: SupabaseClient, chiNhanhId: string, phi
   return (data ?? []).map(r => ({ ...r, con_kg: Number(r.con_kg), con_goi: Number(r.con_goi) })) as GiaoOMa[];
 }
 
-/** Số tảng của các lô (lô vào của phiên lóc). */
-export async function docSoTang(client: SupabaseClient, loIds: string[]): Promise<Map<string, number | null>> {
-  if (!loIds.length) return new Map();
-  const { data, error } = await client.from('kho_lo').select('id, so_tang').in('id', loIds);
-  if (error) throw error;
-  return new Map((data ?? []).map(r => [r.id as string, r.so_tang === null ? null : Number(r.so_tang)]));
-}
-
 /** Giao ô trống cho mọi phần cắt có ô mã trong công thức của tảng (quyền pha_loc). */
 export async function giaoOMa(client: SupabaseClient, phienPhaId: string): Promise<KetQua> {
   const { data, error } = await client.rpc('kho_giao_o_ma', { p_id: phienPhaId, p_mat_hang_id: null });
@@ -179,8 +182,12 @@ export async function docGiaoOMaCan(client: SupabaseClient, chiNhanhId: string):
   return ds.map(r => ({ ...r, con_kg: Number(r.con_kg), con_goi: Number(r.con_goi) })) as unknown as GiaoOMa[];
 }
 
-/** Một dòng ô mã đang nằm trên cân, theo một máy quầy (kho_may_can.tren_can). */
-export interface TrenCanO { plu: number; ten: string; phim: string[]; bao_luc: string }
+/**
+ * Một dòng ô mã đang nằm trên cân, theo một máy quầy (kho_may_can.tren_can). chua_xac_nhan (0090, Beeftown Cân 2.9.3): máy đó
+ * báo cân có thể đang khác dòng này (lần gửi chưa xác nhận đổi dòng này, đọc lại lệch, xoá hỏng); không có (database / máy quầy
+ * cũ) = như false.
+ */
+export interface TrenCanO { plu: number; ten: string; phim: string[]; bao_luc: string; chua_xac_nhan?: boolean }
 /** Một ô của phiên lóc (kho_phien_pha_can). in / in_kg: tem cân in bằng mã ô từ lúc giao tới lúc chốt. */
 export interface OCanPhien {
   giao_id: string; o_ma_id: string; mat_hang_id: string; ten_hang: string; so_o: number; ma_can: string;
@@ -192,6 +199,8 @@ export interface MayCanPhien {
   bao_luc: string; phien_ban: string | null; giu_ket_noi: boolean; can_tra_loi_luc: string | null;
   tu_gui: boolean; lech_so: number | null; lech_tu: string | null; gui_loi: boolean; gui_luc: string | null;
   nhat_ky_luc: string | null;
+  /** 0090: lần gửi gần nhất cân chưa xác nhận, từ lúc nào (database ghi). Không có = database chưa chạy 0090. */
+  chua_xac_nhan?: boolean; chua_xac_nhan_tu?: string | null;
 }
 /** Nhãn mã thường (mã món / mã giảm) của phần cắt có ô, đã quét vào phiên theo tảng. */
 export interface NhanThuong { mat_hang_id: string; ten: string; ma_can: string; so_nhan: number; so_kg: number }

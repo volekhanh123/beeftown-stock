@@ -21,11 +21,12 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { TRUONG_FORM, type CotTruong } from './truong-form';
-import { BO_PHAN, LOAI_HOP_DONG, DON_VI_LUONG, MA_CHUA_CHOT } from './tuyen-dung';
+import { TRUONG_FORM, type CotTruong } from './truong-form.ts';
+import { BO_PHAN, LOAI_HOP_DONG, DON_VI_LUONG, MA_CHUA_CHOT } from './tuyen-dung.ts';
 import type { SoBanDich } from './ban-dich';
-import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo';
-import { dichCau } from './cau-noi-bo';
+import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo.ts';
+import { dichCau } from './cau-noi-bo.ts';
+import { CAU_MAT_MANG_GHI, laLoiMang } from './qua-tai.ts';
 
 /**
  * Câu của file này ở hai thứ tiếng giao diện nội bộ. Mọi hàm trả câu cho người
@@ -73,6 +74,8 @@ const CAU = {
   khongGo:       { vi: 'Không gỡ được tin.', en: 'Could not take the posting down.' },
   khongConDang:  { vi: 'Tin không còn đang đăng — có thể người khác vừa gỡ. Tải lại trang để xem.', en: 'The posting is no longer live — someone may have just taken it down. Reload to check.' },
   daGo:          { vi: 'Đã gỡ tin khỏi trang tuyển dụng. Hồ sơ đã nộp vào tin này vẫn còn nguyên.', en: 'Took the posting off the careers page. Applications already sent to it are kept.' },
+  // Lần hai của cú bấm đúp / F5: tin ĐÃ gỡ — có thể chính lần một, có thể người khác. Nói đúng trạng thái.
+  daGoRoi:       { vi: 'Tin đã được gỡ khỏi trang tuyển dụng. Hồ sơ đã nộp vào tin này vẫn còn nguyên.', en: 'The posting is already off the careers page. Applications already sent to it are kept.' },
 } satisfies Record<string, HaiThuTieng<unknown>>;
 
 export type TrangThaiTin = 'nhap' | 'da_duyet' | 'da_cong_bo' | 'da_thu_hoi';
@@ -193,6 +196,7 @@ export function canhBaoDonVi(
 /** Câu lỗi cho người đọc. Câu của trigger 0027 viết sẵn bằng tiếng Việt, dùng nguyên văn. */
 function cauLoi(e: { message?: string } | null, macDinh: string, nn: NgonNguNB): string {
   const m = e?.message ?? '';
+  if (laLoiMang(m)) return CAU_MAT_MANG_GHI[nn];
   if (/vi_tri_cong_bo_phai_sach/.test(m)) return CAU.chuaSach[nn];
   if (/vi_tri_de_xuat_hop_le|vi_tri_luong_chi_khi_duyet/.test(m)) return CAU.denNhoHonTu[nn];
   if (/violates row-level security|permission denied for table/i.test(m)) return CAU.khongQuyen[nn];
@@ -337,6 +341,17 @@ function giongNhau(a: string | null, b: string | null): boolean {
   return c(a) === c(b);
 }
 
+/**
+ * Một ô của dòng đang lưu trong database có đúng giá trị form vừa gửi không. Số so như số
+ * (PostgREST có thể trả numeric dạng chuỗi), chữ bỏ \r của textarea và khoảng trắng hai đầu.
+ */
+function cungGiaTri(a: unknown, b: unknown): boolean {
+  if (a == null || b == null) return a == null && b == null;
+  if (typeof a === 'number' || typeof b === 'number') return Number(a) === Number(b);
+  if (typeof a === 'string' && typeof b === 'string') return giongNhau(a, b);
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function docForm(form: FormData, nn: NgonNguNB): { dong: Partial<TinTuyenDung>; loi: string | null } {
   const t = dichNB(nn, CAU);
   const boPhan = String(form.get('bo_phan') ?? '');
@@ -426,15 +441,22 @@ export async function luuTin(
 
   if (error) return { ok: false, cau: cauLoi(error, t.khongLuu, nn), daGo: dong };
   if (!data || data.length === 0) {
+    // Đọc lại đúng các ô vừa gửi. Database đang giữ ĐÚNG bản này (lần hai của cú bấm đúp, F5
+    // sau khi lưu — lần một đã ghi và đổi phiên bản) thì nó ĐÃ được lưu: nói "Đã lưu", không
+    // nói "người khác sửa … CHƯA được lưu".
     const { data: hienTai } = await client
       .from('vi_tri_tuyen_dung')
-      .select('updated_at')
+      .select(['updated_at', ...Object.keys(dong)].join(', '))
       .eq('id', id)
       .maybeSingle();
+    const dangGiu = hienTai as Record<string, unknown> | null;
+    if (dangGiu && Object.entries(dong).every(([k, v]) => cungGiaTri(dangGiu[k], v))) {
+      return { ok: true, cau: String(t[CAU_XONG[viec]]) };
+    }
     return {
       ok: false,
       daGo: dong,
-      cau: hienTai && hienTai.updated_at !== phienBan ? t.nguoiKhacSua : t.khongSuaDuoc,
+      cau: dangGiu && dangGiu.updated_at !== phienBan ? t.nguoiKhacSua : t.khongSuaDuoc,
     };
   }
   return { ok: true, cau: String(t[CAU_XONG[viec]]) };
@@ -450,15 +472,29 @@ export async function luuTin(
  */
 export async function duyetLuong(
   client: SupabaseClient, id: string, phienBan: string, duyet: boolean, nn: NgonNguNB = 'vi',
+  daThay?: { tu: string; den: string; donVi: string },
 ): Promise<KetQua> {
   const t = dichNB(nn, CAU);
   const { data: tin } = await client
     .from('vi_tri_tuyen_dung')
-    .select('luong_de_xuat_tu, luong_de_xuat_den, luong_de_xuat_don_vi, updated_at')
+    .select('luong_de_xuat_tu, luong_de_xuat_den, luong_de_xuat_don_vi, luong_da_duyet, luong_tu, luong_den, luong_don_vi, updated_at')
     .eq('id', id)
     .maybeSingle();
   if (!tin) return { ok: false, cau: t.khongDocTin };
-  if (tin.updated_at !== phienBan) return { ok: false, cau: t.suaSauKhiMo };
+  if (tin.updated_at !== phienBan) {
+    // Phiên bản đã đổi — có thể chính lần một của cú bấm đúp vừa duyệt. Trang tuyển dụng đang
+    // hiện ĐÚNG mức người duyệt đã thấy (daThay: ô ẩn của form) thì việc duyệt đã xong; đang
+    // không hiện lương thì việc bỏ duyệt đã xong. Khác đi thì người khác vừa sửa: đừng duyệt mò.
+    const so = (x: string | undefined) => (x ? Number(x) : null);
+    const daXong = duyet
+      ? !!daThay && tin.luong_da_duyet === true
+        && cungGiaTri(tin.luong_tu, so(daThay.tu)) && cungGiaTri(tin.luong_den, so(daThay.den))
+        && cungGiaTri(tin.luong_don_vi, daThay.donVi || null)
+        && cungGiaTri(tin.luong_de_xuat_tu, so(daThay.tu)) && cungGiaTri(tin.luong_de_xuat_den, so(daThay.den))
+      : tin.luong_da_duyet === false;
+    if (daXong) return { ok: true, cau: duyet ? t.daDuyet : t.daBoDuyet };
+    return { ok: false, cau: t.suaSauKhiMo };
+  }
   if (duyet && tin.luong_de_xuat_tu == null && tin.luong_de_xuat_den == null) {
     return { ok: false, cau: t.chuaDeXuat };
   }
@@ -487,6 +523,12 @@ export async function goTin(client: SupabaseClient, id: string, nn: NgonNguNB = 
     .eq('trang_thai', 'da_cong_bo')
     .select('id');
   if (error) return { ok: false, cau: cauLoi(error, t.khongGo, nn) };
-  if (!data || data.length === 0) return { ok: false, cau: t.khongConDang };
+  if (!data || data.length === 0) {
+    // Lần hai của cú bấm đúp / F5: tin đã gỡ thì việc đã xong — nói trạng thái, không nói lỗi.
+    const { data: hienTai } = await client
+      .from('vi_tri_tuyen_dung').select('trang_thai').eq('id', id).maybeSingle();
+    if (hienTai?.trang_thai === 'da_thu_hoi') return { ok: true, cau: t.daGoRoi };
+    return { ok: false, cau: t.khongConDang };
+  }
   return { ok: true, cau: t.daGo };
 }

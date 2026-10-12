@@ -80,6 +80,7 @@ function thoGia(luc) {
     dich: { cho: 0, loi: 0 },
     bao_dong: { lan_chay_cuoi: t(5), kenh: 'telegram', co_loi: false, lan_gui_cuoi: t(60) },
     sao_luu: { lan_cuoi: t(10 * 60), lan_cuoi_ok: true, lan_cuoi_thu: 'dat', dung_duoc_cuoi: t(10 * 60), kich_thuoc: 1048576 },
+    don_dep: { ho_so_qua_han: 0, ho_so_qua_han_7_ngay: 0, ve_qua_han: 0, su_kien_qua_han: false },
     chi_nhanh: [cn(CN1, 'q1', 'Beeftown Q1'), cn(CN7, 'q7', 'Beeftown Q7')],
   };
 }
@@ -91,8 +92,11 @@ await nhom('1 · MỖI ĐÈN CÓ NHÓM: HỆ THỐNG BÁO CẢ ĐÊM, KHÁCH Đ�
   const coNhom = Object.keys(NHOM).filter(m => m !== 'doc_so_lieu').sort();
   ok('NHOM có đúng mọi đèn của bảng sức khỏe (+ đèn giả doc_so_lieu) — đèn mới phải xếp nhóm',
      JSON.stringify(maDen) === JSON.stringify(coNhom) && NHOM.doc_so_lieu === 'he_thong', `${maDen.join()} | ${coNhom.join()}`);
-  ok('Nhóm khách đúng ba đèn: đặt bàn, hồ sơ, tin Zalo kẹt',
-     Object.keys(NHOM).filter(m => NHOM[m] === 'khach').sort().join() === 'dat_ban,tin_zalo,tuyen_dung');
+  ok('Nhóm khách đúng bốn đèn: đặt bàn, hồ sơ, tin Zalo kẹt, dọn dữ liệu cá nhân (0074)',
+     Object.keys(NHOM).filter(m => NHOM[m] === 'khach').sort().join() === 'dat_ban,don_dep,tin_zalo,tuyen_dung');
+  // Đèn Dọn dữ liệu cá nhân đỏ khi hồ sơ quá hạn lưu hơn 7 ngày — mốc tính theo NGÀY Việt Nam, nên đèn đổi màu đúng lúc
+  // 00:00. Nhóm hệ thống thì tin báo đến lúc nửa đêm cho một việc chờ tới sáng được.
+  ok('Dọn dữ liệu cá nhân thuộc nhóm khách: đổi màu lúc 00:00 không đánh thức ai', NHOM.don_dep === 'khach');
   ok('Messenger thuộc nhóm hệ thống (tin khách lỗi lúc 02:00 vẫn báo ngay)', NHOM.messenger === 'he_thong');
   ok('Mã đèn lạ (database mới hơn web) coi là hệ thống — thà báo đêm còn hơn im', nhomCua('den_moi') === 'he_thong');
   const kieu = readFileSync(join(WEB, 'lib', 'bao-dong-chinh-sach.ts'), 'utf8');
@@ -853,6 +857,46 @@ await nhom('21 · CRON RIÊNG, HẾT GIỜ, WORKER', async () => {
   ok('guiCoHan: kênh treo → { ok:false, tamThoi:true } sau hạn giờ', kq.ok === false && kq.tamThoi === true, JSON.stringify(kq));
   const { rows } = await db.query(`select * from kho_doi_soat_ton()`);
   ok('Sổ kho không bị đụng: kho_doi_soat_ton() rỗng', rows.length === 0);
+});
+
+await nhom('BIẾN BẢN BUILD: tên biến layBienCong đọc phải viết ra TRONG MÃ của bien-moi-truong.ts', async () => {
+  // Astro nướng biến không có tiền tố PUBLIC_ (SITE_URL — link trong tin báo động, Messenger) vào bản build chỉ khi
+  // tên của nó xuất hiện trong chính file dùng import.meta.env. Gộp bốn bản chép về bien-moi-truong.ts thì tên chỉ
+  // còn ở nơi gọi (file khác) — chỉ nằm trong một dòng chú thích là sửa chú thích sẽ mất biến mà không ai biết.
+  const lib = join(GOC, 'web', 'src', 'lib');
+  const tep = [];
+  const duyet = d => { for (const t of readdirSync(d, { withFileTypes: true })) {
+    const p = join(d, t.name); if (t.isDirectory()) duyet(p); else if (p.endsWith('.ts')) tep.push(p); } };
+  duyet(lib);
+  const ten = new Set(tep.flatMap(f => [...readFileSync(f, 'utf8').matchAll(/layBienCong\('([A-Z_]+)'/g)].map(m => m[1])));
+  const ma = readFileSync(join(lib, 'bien-moi-truong.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/[^\n]*/g, '$1');
+  const thieu = [...ten].filter(t => !ma.includes(`'${t}'`));
+  ok(`Mọi tên layBienCong được gọi (${[...ten].join(', ')}) có trong MÃ (không phải chú thích) của bien-moi-truong.ts`,
+     ten.has('SITE_URL') && thieu.length === 0, `thiếu: ${thieu.join(', ')}`);
+});
+
+// ===========================================================================
+await nhom('DỌN NHẬT KÝ HỎNG (0073): lượt vẫn trọn, câu lỗi vào lỗi của lượt → đèn Báo động', async () => {
+  // Hàm dọn chạy TRONG bao_dong_bat_dau_luot; hỏng thì database trả loi_don, lượt vẫn chạy. Worker phải gộp câu đó
+  // vào lỗi của lượt — không thì việc dọn hỏng mãi mà không đèn nào báo.
+  const { rows: [{ d: goc }] } = await db.query(`select pg_get_functiondef('don_nhat_ky_qua_han()'::regprocedure) d`);
+  await db.exec(`create or replace function don_nhat_ky_qua_han() returns jsonb language plpgsql
+                 security definer set search_path = public as $$ begin raise exception 'hỏng thử dọn nhật ký'; end $$`);
+  try {
+    const r = await chay();
+    ok('Lượt trọn dù dọn hỏng: bắt đầu → ghi → kết thúc',
+       r.c.goi.join() === 'signIn,bao_dong_bat_dau_luot,bao_dong_ghi_luot,bao_dong_ket_thuc_luot,signOut', r.c.goi.join());
+    const tt = await trangThai();
+    ok('loi_cuoi của lượt có câu "dọn nhật ký quá hạn hỏng"', /dọn nhật ký quá hạn hỏng: hỏng thử dọn nhật ký/.test(tt.loi_cuoi ?? ''),
+       String(tt.loi_cuoi));
+    const { o, d } = await denBaoDong();
+    ok('Đèn Báo động trên bảng: đỏ "lượt gần nhất bị lỗi"', o?.co_loi === true && d?.mau === 'do', `${d?.mau} — ${d?.cau}`);
+  } finally {
+    await db.exec(goc);
+  }
+  await chay();
+  ok('Dọn chạy lại được → lượt sau xoá lỗi', (await trangThai()).loi_cuoi === null);
 });
 
 process.exit(ketThuc('BÁO ĐỘNG PHÍA WEB'));

@@ -25,7 +25,7 @@ const WEB = join(GOC, 'web', 'src');
 const {
   danhGiaSucKhoe, bangSucKhoe, cauTomTat, docSucKhoe, docSaoLuu, docSucKhoeVaSaoLuu, laSucKhoeTho, laThieuHam, khoangThoiGian, tuTruoc,
   PHUT_NHIP_TIM, GIO_KHONG_CO_TIN, PHUT_TIN_KET, GIO_SAO_LUU, GIO_KHONG_GUI_BAO_DONG,
-  PHUT_MAY_CAN_IM, PHUT_CAN_KHONG_TRA_LOI, PHUT_LECH_CAN, GIO_MAY_CAN_THOI_DUNG,
+  PHUT_MAY_CAN_IM, PHUT_CAN_KHONG_TRA_LOI, PHUT_LECH_CAN, GIO_MAY_CAN_THOI_DUNG, NGAY_CHO_BAM_DON,
 } = await import(join(WEB, 'lib', 'suc-khoe.ts'));
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — SỨC KHỎE HỆ THỐNG, PHÍA WEB');
@@ -52,6 +52,8 @@ function cnGoc() {
 const SAO_LUU_TOT = { lan_cuoi: truoc(10 * 60), lan_cuoi_ok: true, lan_cuoi_thu: 'dat', dung_duoc_cuoi: truoc(10 * 60),
                       kich_thuoc: 89456123 };
 const SAO_LUU_RONG = { lan_cuoi: null, lan_cuoi_ok: null, lan_cuoi_thu: null, dung_duoc_cuoi: null, kich_thuoc: null };
+/** Ô don_dep (0074) khi không có gì quá hạn lưu. */
+const DON_DEP_SACH = { ho_so_qua_han: 0, ho_so_qua_han_7_ngay: 0, ve_qua_han: 0, su_kien_qua_han: false };
 /**
  * Đúng dạng database mới: chưa bật gì, không có gì chờ — và sao lưu hằng đêm đang chạy (sao lưu
  * không có trạng thái "chưa bật": chưa có bản nào là đỏ, thử ở nhóm 16).
@@ -63,6 +65,7 @@ function thoGoc() {
     messenger: { dang_bat: false, bat_luc: null, lan_nhan_cuoi: null, loi_cuoi_luc: null, loi_7_ngay: 0 },
     dich: { cho: 0, loi: 0 },
     sao_luu: { ...SAO_LUU_TOT },
+    don_dep: { ...DON_DEP_SACH },
     chi_nhanh: [cnGoc()],
   };
 }
@@ -235,6 +238,20 @@ await nhom('4b · BEEFTOWN CÂN (MÁY QUẦY BÁO VỀ KHO, 0061)', async () => 
   const sang = dc([may({ bao_luc: truoc(1), lech_so: 5, lech_tu: '2026-09-28T17:00:00Z' })], '2026-09-29T03:10:00Z');
   ok('10:10 giờ VN: lệch từ nửa đêm (HSD đếm ngược) → chưa vàng — tính từ lúc mở cửa (10:00), mới 10 phút', sang.mau === 'xanh', tom(sang));
   ok('10:16 giờ VN: vẫn lệch → vàng', dc([may({ bao_luc: truoc(1), lech_so: 5, lech_tu: '2026-09-28T17:00:00Z' })], '2026-09-29T03:16:00Z').mau === 'vang');
+  // 0090 (Beeftown Cân 2.9.3): lần gửi gần nhất cân chưa xác nhận — kể cả khi lech_so = 0 (rà soát code-review: máy lên từ 2.9.2).
+  const xn = dc([may({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(PHUT_LECH_CAN + 1) })]);
+  ok(`0090: chưa xác nhận ${PHUT_LECH_CAN + 1} phút, lech_so 0 → vàng "Lần gửi gần nhất của Beeftown Cân chưa được cân xác nhận (từ 16 phút trước)"`,
+     xn.mau === 'vang' && /^Lần gửi gần nhất của Beeftown Cân chưa được cân xác nhận \(từ 16 phút trước\) — cân có thể còn giá \/ tên cũ/.test(xn.cau), tom(xn));
+  ok(`0090: chưa xác nhận ${PHUT_LECH_CAN - 1} phút → xanh (tự gửi đang thử lại)`, dc([may({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(PHUT_LECH_CAN - 1) })]).mau === 'xanh');
+  const xnLech = dc([may({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(30), lech_so: 2, lech_tu: truoc(30) })]);
+  ok('0090: chưa xác nhận + lệch kho → một câu lệch kho (không lặp)', xnLech.mau === 'vang' && xnLech.cau.split(' · ').length === 1 && /^2 hàng kho/.test(xnLech.cau), tom(xnLech));
+  ok('0090: 23:50 giờ VN (ngoài giờ) → không vàng', dc([may({ bao_luc: '2026-09-29T16:49:00Z', chua_xac_nhan: true, chua_xac_nhan_tu: '2026-09-29T14:00:00Z' })],
+     '2026-09-29T16:50:00Z').mau === 'xanh');
+  ok('0090: 10:10 giờ VN, chưa xác nhận từ đêm qua → chưa vàng (tính từ lúc mở cửa)', dc([may({ bao_luc: truoc(1), chua_xac_nhan: true,
+     chua_xac_nhan_tu: '2026-09-28T17:00:00Z' })], '2026-09-29T03:10:00Z').mau === 'xanh');
+  ok('0090: database trước 0090 (không có ô) → như trước', dc([may({ chua_xac_nhan: undefined, chua_xac_nhan_tu: undefined })]).mau === 'xanh');
+  const xnEn = den(voi((t, c) => { t.luc = LUC; c.can = { gio_mo_cua: 10, gio_dong_cua: 23, may: [may({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(20) })] }; }), 'can', 'en');
+  ok('0090: tiếng Anh', /^Beeftown Scale's latest send has not been confirmed by the scale \(since 20 min ago\)/.test(xnEn?.cau ?? ''), xnEn?.cau);
 });
 
 await nhom('5 · SỔ KHO', async () => {
@@ -504,6 +521,9 @@ await nhom('13 · TIẾNG ANH KHÔNG LẪN CHỮ VIỆT', async () => {
     voi((t, c) => { c.can.may = [MAY_CAN()]; }),
     voi((t, c) => { t.luc = '2026-09-29T03:20:00Z'; c.can.may = [{ ...MAY_CAN(), bao_luc: '2026-09-28T16:00:00Z' }]; }),
     voi((t, c) => { t.luc = '2026-09-29T17:10:00Z'; c.can.may = [{ ...MAY_CAN(), bao_luc: '2026-09-29T15:58:00Z' }]; }),
+    voi(t => { t.don_dep = { ho_so_qua_han: 2, ho_so_qua_han_7_ngay: 1, ve_qua_han: 3, su_kien_qua_han: true }; }),
+    voi(t => { t.don_dep = { ...DON_DEP_SACH, ho_so_qua_han: 1, ve_qua_han: 1 }; }),
+    voi(t => { delete t.don_dep; }),
   ];
   const sot = [];
   let soCau = 0;
@@ -672,6 +692,41 @@ await nhom('17 · docSaoLuu / docSucKhoeVaSaoLuu: KHÔNG BAO GIỜ NÉM LỖI, K
   ok('laThieuHam nhận tên hàm: suc_khoe_sao_luu', laThieuHam({ code: 'PGRST202', message: 'public.suc_khoe_sao_luu' }, 'suc_khoe_sao_luu')
      && !laThieuHam({ code: 'PGRST202', message: 'public.suc_khoe_sao_luu' })
      && !laThieuHam({ code: 'PGRST202', message: 'public.suc_khoe_he_thong' }, 'suc_khoe_sao_luu'));
+});
+
+// ===========================================================================
+await nhom('18 · DỌN DỮ LIỆU CÁ NHÂN (0074) — đèn nói khi nào phải bấm nút dọn', async () => {
+  const dd = (o, laChu = true, nn = 'vi') => den(voi(t => { t.don_dep = { ...DON_DEP_SACH, ...o }; }), 'don_dep', nn, laChu);
+  let d = dd({});
+  ok('Không gì quá hạn → xanh, nằm ở khối "Toàn thương hiệu", mở màn Cài đặt',
+     d.mau === 'xanh' && d.cau === 'Không có dữ liệu cá nhân nào quá hạn lưu.' && d.di === '/noi-bo/cai-dat'
+     && danhGiaSucKhoe(thoGoc(), 'vi', true).khoi[0].den.some(x => x.ma === 'don_dep'), tom(d));
+  d = dd({ ho_so_qua_han: 2 });
+  ok('2 hồ sơ vừa quá hạn (1–7 ngày) → vàng, nói số, chỉ chỗ bấm',
+     d.mau === 'vang' && /^2 hồ sơ ứng tuyển vừa quá hạn lưu 6 tháng/.test(d.cau) && /Bấm "Chạy ngay" ở mục Dọn dữ liệu/.test(d.cau), tom(d));
+  d = dd({ ho_so_qua_han_7_ngay: 1, ho_so_qua_han: 3 });
+  ok(`Hồ sơ quá hạn hơn ${NGAY_CHO_BAM_DON} ngày → ĐỎ (lời hứa trên trang quyền riêng tư đang sai), đỏ nói trước`,
+     d.mau === 'do' && new RegExp(`^1 hồ sơ ứng tuyển đã quá hạn lưu 6 tháng hơn ${NGAY_CHO_BAM_DON} ngày`).test(d.cau)
+     && /trang quyền riêng tư/.test(d.cau) && / · 3 hồ sơ ứng tuyển vừa quá hạn/.test(d.cau), tom(d));
+  d = dd({ ve_qua_han: 4 });
+  ok('4 vé tải CV cũ chưa dọn → vàng, nói có thể còn CV mồ côi', d.mau === 'vang' && /^4 vé tải CV hết hạn quá 7 ngày/.test(d.cau)
+     && /CV/.test(d.cau), tom(d));
+  d = dd({ su_kien_qua_han: true });
+  ok('Dữ liệu đo lường quá 90 ngày → vàng', d.mau === 'vang' && /dữ liệu đo lường quá 90 ngày/.test(d.cau), tom(d));
+  d = dd({ ho_so_qua_han: 1 }, false);
+  ok('Quản lý xem → nhờ chủ nhà hàng bấm (hai nút đầu chỉ chủ chạy được)', /^1 hồ sơ/.test(d.cau) && /Nhờ chủ nhà hàng bấm/.test(d.cau), tom(d));
+  d = dd({ ve_qua_han: 2 }, false);
+  ok('Quản lý xem, chỉ có vé cũ → tự bấm được việc dọn vé (0065), nhắc cần chủ nếu kho còn CV mồ côi',
+     /Bấm "Chạy ngay" ở việc "Xóa CV mồ côi và dọn vé tải CV"/.test(d.cau) && !/^Nhờ/.test(d.cau.split('. ').pop()), tom(d));
+  d = dd({ ve_qua_han: 2, su_kien_qua_han: true }, false);
+  ok('Quản lý xem, vé cũ + dữ liệu đo lường (chỉ chủ xóa được) → nhờ chủ', /Nhờ chủ nhà hàng bấm/.test(d.cau), tom(d));
+  d = dd({ ho_so_qua_han: 1, ve_qua_han: 1 }, true, 'en');
+  ok('Tiếng Anh: số ít đúng, không lẫn chữ Việt', d.ten === 'Personal data clean-up' && /^1 job application just past/.test(d.cau)
+     && /1 CV upload ticket expired/.test(d.cau) && !VIET.test(d.cau), tom(d));
+  d = den(voi(t => { delete t.don_dep; }), 'don_dep');
+  ok('Database chưa chạy 0074 (thiếu ô) → vàng, nói rõ — không bao giờ xanh', d.mau === 'vang' && /migration 0074/.test(d.cau), tom(d));
+  d = dd({ ho_so_qua_han: 'x', ve_qua_han: null });
+  ok('Số lạ → coi là 0, không vỡ trang', d.mau === 'xanh', tom(d));
 });
 
 process.exit(ketThuc('SỨC KHỎE HỆ THỐNG PHÍA WEB'));

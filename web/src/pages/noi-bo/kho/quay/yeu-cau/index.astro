@@ -18,7 +18,7 @@ import ChonMatHang from '../../../../../components/kho/ChonMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../../lib/kho/trang.ts';
 import { docViTri, type ViTri } from '../../../../../lib/kho/danh-muc.ts';
 import {
-  docMatHangQuay, docGoiYRaQuay, docDanhSachYeuCau, docFormYeuCau, taoYeuCau, soDeNghi, cauSoLuong,
+  docMatHangQuay, docGoiYRaQuay, docDanhSachYeuCau, docDonViYeuCau, docFormYeuCau, taoYeuCau, soDeNghi, cauSoLuong,
   type GoiYRaQuay, type MatHangQuay, type YeuCauQuay,
 } from '../../../../../lib/kho/quay.ts';
 import {
@@ -44,7 +44,8 @@ const t = dichNB(nn, {
   yeuCauRaQuay: { vi: 'Yêu cầu hàng ra quầy', en: 'Request stock for the counter' },
   dangChoMang: { vi: 'Đang chờ mang ra', en: 'Waiting to be brought out' },
   soMon: { vi: (n: number) => `${n} món`, en: (n: number) => `${n} ${s(n, 'item', 'items')}` },
-  soGoi: { vi: (n: number) => `${n} gói`, en: (n: number) => `${n} ${s(n, 'pack', 'packs')}` },
+  // dv: đơn vị đếm chung của các món trong yêu cầu ("khay"); không có thì chữ chung.
+  soGoi: { vi: (n: number, dv?: string) => `${n} ${dv ?? 'gói'}`, en: (n: number, dv?: string) => `${n} ${dv ?? s(n, 'pack', 'packs')}` },
   xem: { vi: 'Xem', en: 'View' },
   mangRa: { vi: 'Mang ra', en: 'Bring out' },
   chuaYeuCau: {
@@ -134,13 +135,17 @@ if (form && choGui) {
 let goiY: GoiYRaQuay[] = [];
 let yeuCau: YeuCauQuay[] = [];
 let ten = new Map<string, string>();
+/** Đơn vị đếm chung của từng yêu cầu ("khay") — cho dòng "1 món · 10 khay". */
+let donVi = new Map<string, string>();
 try {
   const [g, y] = await Promise.all([
     choGui && quay ? docGoiYRaQuay(k.client, cn.id, quay.id) : Promise.resolve([] as GoiYRaQuay[]),
     docDanhSachYeuCau(k.client, cn.id, { gioiHan: 30 }),
   ]);
   goiY = g; yeuCau = y;
-  ten = await tenNhanSu(k.client, yeuCau.map(y => y.nguoi_tao));
+  [ten, donVi] = await Promise.all([
+    tenNhanSu(k.client, yeuCau.map(y => y.nguoi_tao)), docDonViYeuCau(k.client, yeuCau.map(y => y.id), matHang),
+  ]);
 } catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, t.khongDocYc); }
 
 const dangCho = yeuCau.filter(y => y.trang_thai === 'cho').sort((a, b) => a.created_at.localeCompare(b.created_at));
@@ -174,7 +179,7 @@ const nhan = (tt: string) => ((x: [string, string]) => [x[0], x[1] || 'nhap'])(t
           <li>
             <span>
               <strong>{y.so_phieu} · {y.ten_vi_tri}</strong>
-              <small>{t.soMon(y.so_mon)}{y.tong_goi > 0 ? ` · ${t.soGoi(y.tong_goi)}` : ''} · {dinhDangThoiDiem(y.created_at)}{y.nguoi_tao && ten.get(y.nguoi_tao) ? ` · ${ten.get(y.nguoi_tao)}` : ''}</small>
+              <small>{t.soMon(y.so_mon)}{y.tong_goi > 0 ? ` · ${t.soGoi(y.tong_goi, donVi.get(y.id))}` : ''} · {dinhDangThoiDiem(y.created_at)}{y.nguoi_tao && ten.get(y.nguoi_tao) ? ` · ${ten.get(y.nguoi_tao)}` : ''}</small>
             </span>
             <a class="nb-nut yc-nut" href={`/noi-bo/kho/quay/yeu-cau/${y.id}`}>{laQuay ? t.xem : t.mangRa}</a>
           </li>

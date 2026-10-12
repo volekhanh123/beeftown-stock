@@ -10,7 +10,7 @@
  * định 13/2023 áp dụng đầy đủ, nên mục 5 kiểm cả phần lưu trữ và ẩn danh.
  */
 
-import { PGlite } from '@electric-sql/pglite';
+import { dungDatabaseTrong } from './kho-chung.mjs';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,31 +40,13 @@ async function phaiLoi(db, sql, params = []) {
   catch (e) { return e.message; }
 }
 
-const db = new PGlite();
-
 console.log('\x1b[1m\nBEEFTOWN CRM — KIỂM THỬ TUYỂN DỤNG\x1b[0m');
 console.log('='.repeat(60));
 
-// Dựng lại những gì Supabase có sẵn trước migration. Mục 12 dùng lại cho một
-// database thứ hai.
-const KHUNG_SUPABASE = `
-  create schema if not exists auth;
-  create table if not exists auth._phien (uid uuid);
-  create or replace function auth.uid() returns uuid
-    language sql stable as $$ select uid from auth._phien limit 1 $$;
-
-  create role anon nologin;
-  create role authenticated nologin;
-  grant usage on schema public to anon, authenticated;
-  alter default privileges in schema public grant all on tables    to anon, authenticated;
-  alter default privileges in schema public grant all on functions to anon, authenticated;
-`;
+// Mô phỏng Supabase (schema auth, ba vai, quyền mặc định đặt TRƯỚC khi nạp migration — thiếu nó thì mọi
+// khẳng định "anon không làm được X" đều đúng một cách rỗng) rồi nạp migration: dungDatabaseTrong() của kho-chung.mjs.
+const { db } = await dungDatabaseTrong();
 const MIGRATIONS = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort();
-
-await db.exec(KHUNG_SUPABASE);
-for (const f of MIGRATIONS) {
-  await db.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
-}
 
 const { rows: [cnA] } = await db.query(
   `insert into chi_nhanh (ma, ten) values ('q1','Beeftown Quận 1') returning *`);
@@ -88,10 +70,8 @@ await db.query(`insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro)
 await db.query(`insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro)
                 values ($1,$2,'Marketing Q1','marketing')`, [uidMkt, cnA.id]);
 
-await db.exec(`
-  grant select, insert, update, delete on all tables in schema public to authenticated;
-  grant execute on all functions in schema public to authenticated;
-`);
+// Quyền của authenticated đúng như Supabase: quyền mặc định đặt trước khi nạp migration, trừ những gì
+// migration đã thu hồi. Không cấp hàng loạt ở đây — nó xoá trắng các revoke (test-quy-trinh.mjs, mục 6).
 
 async function duoiDanhNghia(uid, sql, params = []) {
   await db.query(`delete from auth._phien`);
@@ -127,7 +107,16 @@ await db.query(
        trang_thai = 'da_cong_bo'
    where ma = 'nhan-vien-sanh'`);
 
-/** Nộp hồ sơ dưới danh nghĩa anon, như website thật sẽ làm. */
+/**
+ * Nộp hồ sơ dưới danh nghĩa anon, như website thật sẽ làm.
+ *
+ * Website luôn truyền IP thật của khách (CF-Connecting-IP — layIp() ở web/src/lib/phien.ts). Bản
+ * trước để trống IP cho mọi lượt, và IP null từng nghĩa là "không giới hạn" (lỗi rà soát 11/10).
+ * Từ 0084 IP null đếm như MỘT IP (5 hồ sơ / giờ) — file này nộp hơn thế, nên lượt không ghi IP
+ * nhận một IP riêng như mỗi ứng viên thật. Giới hạn theo IP vẫn thử ở nhóm 3 (một IP, sáu lần);
+ * IP null ở test-cong-khai-gioi-han.mjs.
+ */
+let soIp = 0;
 async function nopHoSo(viTri, hoTen, sdt, thang = {}) {
   return duoiDanhNghiaAnon(
     `select nop_ho_so_ung_tuyen(
@@ -137,7 +126,7 @@ async function nopHoSo(viTri, hoTen, sdt, thang = {}) {
      thang.gioiThieu ?? null, thang.kinhNghiem ?? null, thang.caLam ?? null,
      thang.maVe ?? null, thang.tenTep ?? null, thang.dongY ?? true,
      thang.bay ?? null, thang.giay ?? 30,
-     thang.utmSource ?? null, thang.utmCampaign ?? null, thang.ip ?? null]);
+     thang.utmSource ?? null, thang.utmCampaign ?? null, thang.ip ?? `192.0.2.${++soIp}`]);
 }
 
 // ===========================================================================
@@ -660,11 +649,7 @@ await nhom('12 · LƯƠNG THEO GIỜ HAY THEO THÁNG (0028)', async () => {
 
   // Tin đã có lương TRƯỚC 0028: một database thứ hai chạy tới 0027, ghi một
   // mức giờ và một mức tháng đã duyệt, rồi mới chạy 0028.
-  const cu = new PGlite();
-  await cu.exec(KHUNG_SUPABASE);
-  for (const f of MIGRATIONS.filter(f => f < '0028')) {
-    await cu.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
-  }
+  const { db: cu } = await dungDatabaseTrong({ den: 27 });
   const { rows: [cn] } = await cu.query(
     `insert into chi_nhanh (ma, ten) values ('q1','Beeftown Quận 1') returning id`);
   const { rows: [ql] } = await cu.query(

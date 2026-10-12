@@ -74,6 +74,10 @@ const t = dichNB(nn, {
   fileTuCan: { vi: 'File lưu từ cân', en: 'File saved from the scale' },
   fileGoiY: { vi: 'File trong USB › JHSCALE, hoặc Tài liệu › Beeftown Can › A_000.TMS nếu nạp qua WiFi. File chỉ được đọc trong lần xem này, không lưu lên máy chủ.',
               en: 'The file in USB › JHSCALE, or Documents › Beeftown Can › A_000.TMS if you load over WiFi. The file is only read for this preview; it is not stored on the server.' },
+  wfNgung: {
+    vi: 'Từ 02/10/2026 cân ở quán không nhận file gửi bằng chương trình này, dù chương trình vẫn báo "ĐÃ GỬI" — giá trên cân có thể vẫn là giá cũ. Gửi giá bằng Beeftown Cân (gửi xong đọc lại cân để kiểm) hoặc nạp bằng USB.',
+    en: 'Since 2 October 2026 the shop scale ignores files sent by this program, even though the program still says "SENT" — the scale may still have the old prices. Send prices with the Beeftown Can program (it reads the scale back to check) or load them by USB.',
+  },
   wf1: { vi: 'Nạp qua WiFi, không cần USB.', en: 'Load over WiFi, no USB stick needed.' },
   wf2: { vi: ' Trên máy tính Windows cùng WiFi với cân, tải ', en: ' On a Windows computer on the same WiFi as the scale, download the ' },
   wfLink: { vi: 'chương trình Nạp cân qua WiFi', en: 'Load scale over WiFi program' },
@@ -249,7 +253,8 @@ const DEM: [LoaiDong, HaiThuTieng][] = [
   </div>
 
   <div class="nb-the">
-    <p style="margin-top:0"><strong>{t.wf1}</strong>{t.wf2}<a href="/kho/can-wifi/Nap-Can-WiFi.ps1" download>{t.wfLink}</a>{t.wf3}</p>
+    <div class="nb-bao luu-y" role="note"><p>{t.wfNgung}</p></div>
+    <p><strong>{t.wf1}</strong>{t.wf2}<a href="/kho/can-wifi/Nap-Can-WiFi.ps1" download>{t.wfLink}</a>{t.wf3}</p>
     <ol class="dong-bo-buoc">
       <li><strong>{t.wfLanDau}</strong>{t.wfLanDau2}<em>Run with PowerShell</em>{t.wfLanDau3}</li>
       <li><strong>{t.wfMoiLan}</strong>{t.wfMoiLan2}<code>{t.wfDuong}</code>{t.wfMoiLan3}</li>
@@ -354,9 +359,9 @@ const DEM: [LoaiDong, HaiThuTieng][] = [
   .dong-bo-buoc { margin: .5rem 0 0; padding-left: 1.25rem; display: grid; gap: .45rem; }
   .dong-bo-dem { display: flex; flex-wrap: wrap; gap: .4rem; }
   .dong-bo-nhan { display: inline-block; font-size: .72rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; white-space: nowrap; }
-  .dong-bo-nhan.them { background: #E9F5EE; color: #1F7A4C; }
+  .dong-bo-nhan.them { background: var(--xanh-nen); color: var(--xanh); }
   .dong-bo-nhan.sua { background: var(--mu-tat); color: var(--than); }
-  .dong-bo-nhan.xoa { background: var(--do); color: #fff; }
+  .dong-bo-nhan.xoa { background: var(--do); color: var(--kem); }
   .dong-bo-nhan.giu { background: var(--kem-sau); color: var(--muc-nhat); }
   .dong-bo-nhan.khong-len { border: 1px dashed var(--muc-nhat); color: var(--muc-nhat); }
   /* Hàng không có trên cân sau khi nạp: làm mờ số và tên, giữ rõ nhãn và lý do. */

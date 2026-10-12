@@ -18,7 +18,15 @@
  *     nhãn cân là nhanh nhất, nên ô quét nằm đầu phần hàng và có sẵn con trỏ;
  *   · theo lô: ghi số gói ở đúng lô cần lấy — hợp với báo hủy lô hết hạn.
  *     Nhân viên quầy chuyển hàng không thấy phần này (trừ khi link đã chọn
- *     sẵn lô) — máy tự lấy đúng lô.
+ *     sẵn lô, hoặc vừa quét nhãn của một tảng) — máy tự lấy đúng lô.
+ *
+ * QUÉT NHÃN: mã trên nhãn tra bằng bộ tra chung (mã của món, ô mã của một tảng, mã giảm giá). Nhãn in bằng ô mã
+ * mang theo tảng nó cắt ra: lô của tảng đó còn đủ ở nơi lấy thì số vừa quét ghi thẳng vào dòng của ĐÚNG lô đó,
+ * không thì ghi theo món như nhãn thường và có câu nói rõ vì sao (lib/kho/xuat.ts dongTuQuet). Ô mã, mã giảm
+ * và ô đang giao chỉ đọc khi bấm "Đọc mã", cùng lượt với danh mục.
+ *
+ * SỐ TẢNG: lô nào thuộc một tảng (chính tảng, hoặc cắt ra từ tảng) thì hiện "tảng #0001" cạnh mã lô — ở phần
+ * chọn lô, cột "Lô chỉ định", bảng "Lô đã lấy" và trên bản in. Một lượt đọc cho các lô đang hiện (docLoTang).
  *
  * Ảnh báo hủy tải lên một lần rồi giữ trong ô ẩn (lib/kho/xuat.ts): bấm
  * "Đọc mã", "Thêm một dòng", lui / tới giữa các bước hay gửi bị lỗi đều không
@@ -54,16 +62,18 @@ import {
 } from '../../../../lib/kho/danh-muc.ts';
 import { docTon, type DongTon } from '../../../../lib/kho/ton.ts';
 import { docThongTinLo } from '../../../../lib/kho/pha-loc.ts';
+import { docGiaoOMaCan, docMaTrenNhan, type GiaoOMa } from '../../../../lib/kho/o-ma.ts';
+import { chuTang, docLoTang } from '../../../../lib/kho/tang.ts';
 import {
-  docPhieuXuat, taoPhieuXuat, duyetHuy, tuChoiHuy, dongTuQuet, gopDong, docFormPhieuXuat, giuAnhHuy,
+  docPhieuXuat, taoPhieuXuat, duyetHuy, tuChoiHuy, dongTuQuet, gopKetQuaQuet, docFormPhieuXuat, giuAnhHuy,
   tomTatHang, docNhaCungCapCuaPhieuNhap, TEN_LOAI_XUAT_NB, LOAI_LAP_DUOC, laNoiDeHang, buocHuySau,
-  docMonHayDungBep, nutPhieuChuyen, xuLyChuyenThieu, huyChuyenDiDuong,
-  type BuocHuy, type DongLoForm, type DongSoCai, type DongXuat, type DongXuatForm, type LoaiXuat, type PhieuXuat,
+  docMonHayDungBep, nutPhieuChuyen, xuLyChuyenThieu, huyChuyenDiDuong, doiDonViCau,
+  type BuocHuy, type DongLoForm, type DongSoCai, type DongXuat, type DongXuatForm, type LoaiXuat, type MaTrenNhan, type PhieuXuat,
 } from '../../../../lib/kho/xuat.ts';
 import { linkAnh } from '../../../../lib/kho/anh.ts';
 import { huyTraHangChoTien } from '../../../../lib/kho/cong-no.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, kqHai, laUuid, nhanKho, trangThaiKho,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, donViChung, homNayVn, kqHai, laUuid, nhanKho, trangThaiKho,
   TEN_LOAI_SO_CAI_NB, type HaiThuTieng, type KetQua, type NgonNguNB,
 } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
@@ -83,10 +93,6 @@ const CAU = {
   khongThay: { vi: 'Không tìm thấy phiếu này.', en: 'This slip was not found.' },
   guiBaoHuy: { vi: 'Gửi báo hủy', en: 'Send write-off' },
   ghiPhieu: { vi: 'Ghi phiếu', en: 'Save slip' },
-  mangDut: {
-    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
-    en: 'Could not read the submitted data — the connection may have dropped. Try sending again.',
-  },
   chuaCoNoi: { vi: 'Chưa có kho hay quầy nào để lấy hàng.', en: 'There is no store or counter to take goods from yet.' },
   chuaCoHang: {
     vi: 'Chưa có hàng nào — quét nhãn, chọn món hoặc ghi số ở lô cần hủy.',
@@ -98,13 +104,14 @@ const CAU = {
     en: 'The scan box is empty — scan labels into the box, then press "Read scanned codes".',
   },
   chuaDocNhan: { vi: 'Chưa đọc được nhãn nào.', en: 'No labels could be read.' },
+  chuaGhiNhan: { vi: 'Chưa ghi nhãn nào vào phiếu — đọc lý do ngay bên dưới.', en: 'No labels were added to the slip — see the reason just below.' },
   viecSai: { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
 } satisfies Record<string, HaiThuTieng>;
 
-/** Câu sau khi đọc mã (hai thứ tiếng, có số). */
+/** Câu sau khi đọc mã (hai thứ tiếng, có số). `datLo`: câu nói nhãn nào đã ghi vào lô của tảng nào (có thể rỗng). */
 const CAU_DA_DOC = {
-  vi: (n: number, hang: string, nut: string) => `Đã đọc ${n} nhãn: ${hang}. Kiểm lại rồi bấm "${nut}".`,
-  en: (n: number, hang: string, nut: string) => `Read ${n} ${s(n, 'label', 'labels')}: ${hang}. Check, then press "${nut}".`,
+  vi: (n: number, hang: string, datLo: string, nut: string) => `Đã đọc ${n} nhãn: ${hang}. ${datLo ? `${datLo} ` : ''}Kiểm lại rồi bấm "${nut}".`,
+  en: (n: number, hang: string, datLo: string, nut: string) => `Read ${n} ${s(n, 'label', 'labels')}: ${hang}. ${datLo ? `${datLo} ` : ''}Check, then press "${nut}".`,
 };
 
 /** Tên chứng từ in ở đầu trang (theo loại phiếu). */
@@ -244,7 +251,7 @@ const ch = dichNB(nn, {
     vi: (noi: string) => `. Phần thiếu vẫn nằm ở "Đang mang ra quầy" — quản lý chọn trả về ${noi} (hàng còn đó) hoặc ghi mất (rơi vỡ, thất lạc).`,
     en: (noi: string) => `. The missing part is still "On the way to the counter" — a manager chooses to return it to ${noi} (if the goods are still there) or record it as lost (dropped, missing).`,
   },
-  soGoiDem: { vi: (n: number) => `${n} gói`, en: (n: number) => `${n} ${s(n, 'pack', 'packs')}` },
+  soGoiDem: { vi: (n: number, dv: string | null) => `${n} ${dv ?? 'gói'}`, en: (n: number, dv: string | null) => `${n} ${dv ?? s(n, 'pack', 'packs')}` },
   daTraVe: {
     vi: (phan: string, noi: string) => `Quầy nhận thiếu; phần thiếu (${phan}) đã trả về ${noi}.`,
     en: (phan: string, noi: string) => `The counter received short; the missing part (${phan}) was returned to ${noi}.`,
@@ -261,7 +268,7 @@ const ch = dichNB(nn, {
   theoYeuCau: { vi: 'Theo yêu cầu', en: 'For request' },
   cuaQuay: { vi: 'của quầy', en: 'from the counter' },
   quayNhan: { vi: 'Quầy nhận', en: 'Counter received' },
-  nhanTrenGoi: { vi: (a: number, b: number) => `${a}/${b} gói`, en: (a: number, b: number) => `${a}/${b} packs` },
+  nhanTrenGoi: { vi: (a: number, b: number, dv: string | null) => `${a}/${b} ${dv ?? 'gói'}`, en: (a: number, b: number, dv: string | null) => `${a}/${b} ${dv ?? 'packs'}` },
   huyChuyenDt: { vi: 'Hủy chuyến', en: 'Delivery cancelled' },
   traVeKhoDt: { vi: 'Trả về kho', en: 'Returned to store' },
   ghiMatDt: { vi: 'Ghi mất', en: 'Recorded as lost' },
@@ -344,12 +351,20 @@ let phieu: PhieuXuat | null = null;
 let dongDb: DongXuat[] = [];
 let soCai: DongSoCai[] = [];
 let loiDoc = k.loiDoc;
+// Đọc form TRƯỚC khi đọc database: bấm "Đọc mã" ở phiếu mới thì cần thêm ô mã, mã giảm giá và ô đang giao —
+// đọc chúng cùng lượt với danh mục, không thêm lượt chờ, và không đọc ở những lần mở trang khác.
+const form = await docFormGui(Astro);
+const canMaNhan = moi && String(form?.get('viec') ?? '') === 'quet';
+let maNhan: MaTrenNhan | null = null;
+let giaoO: GiaoOMa[] = [];
 try {
-  [matHang, viTri, lyDo, caiDat] = await Promise.all([
+  [matHang, viTri, lyDo, caiDat, ton, maNhan, giaoO] = await Promise.all([
     docMatHang(k.client), docViTri(k.client, cn.id), docLyDo(k.client), docCaiDat(k.client, cn.id),
+    moi ? docTon(k.client, cn.id) : Promise.resolve([] as DongTon[]),
+    canMaNhan ? docMaTrenNhan(k.client) : Promise.resolve(null),
+    canMaNhan ? docGiaoOMaCan(k.client, cn.id) : Promise.resolve([] as GiaoOMa[]),
   ]);
-  if (moi) ton = await docTon(k.client, cn.id);
-  else {
+  if (!moi) {
     const doc = await docPhieuXuat(k.client, idThamSo);
     if (doc) { phieu = doc.phieu; dongDb = doc.dong; soCai = doc.soCai; }
   }
@@ -425,6 +440,9 @@ const lyDoLoai = lyDo.filter(l => l.loai === loai);
 const NUT_GHI = moHuy ? CAU.guiBaoHuy : CAU.ghiPhieu;
 const nutGhi = NUT_GHI[nn];
 const tenMh = new Map(matHang.map(m => [m.id, m]));
+// Đơn vị đếm chung của các món trên phiếu đã ghi ("khay") — cho câu "quầy nhận 8/10 khay", "đã trả 2 khay thiếu".
+// Món khác đơn vị thì null: câu dùng chữ chung "gói".
+const donViPhieu = donViChung(dongDb.map(d => tenMh.get(d.mat_hang_id)));
 // Xuất bếp nhanh: món hay đưa bếp mà nơi lấy đang có (còn hạn).
 const monNhanh = moi && loai === 'xuat_bep'
   ? (await docMonHayDungBep(k.client, cn.id)).filter(id => hangTaiTu.has(id)).map(id => tenMh.get(id)!).filter(Boolean)
@@ -444,14 +462,10 @@ let ghiChuForm = '';
 let lyDoForm = '';
 /** Báo hủy: bước đang hiện. */
 let buocHuy: BuocHuy = 'hang';
-const form = await docFormGui(Astro);
 // Gửi lại form (Đọc mã, sửa lỗi) thì GIỮ ma_gui: ảnh đã tải nằm dưới ma_gui này,
 // và lỡ lần trước đã ghi được mà mạng rớt thì bấm lại vẫn chỉ ra một phiếu.
 const maGuiCu = String(form?.get('ma_gui') ?? '');
 const maGuiForm = moi && laUuid(maGuiCu) ? maGuiCu : crypto.randomUUID();
-if (Astro.request.method === 'POST' && !form) {
-  bao = kqHai(false, CAU.mangDut);
-}
 if (form) {
   // Nút không mang "viec": nút món nhanh (them_mh) và nút lý do ở bước 2 báo hủy.
   const themMh = String(form.get('them_mh') ?? '');
@@ -497,15 +511,24 @@ if (form) {
       } else if (viec !== 'quet') {
         dongA = doc.dong;
       } else {
-        const quet = dongTuQuet(String(form.get('ma_quet') ?? ''), matHang, caiDat?.mau_ma_vach, caiDat?.so_le_kg ?? 3);
-        dongA = gopDong(doc.dong, quet.dong);
+        // Nhãn mã ô của một tảng: ghi vào đúng lô của tảng đó khi lô còn đủ ở nơi lấy; không thì ghi theo món.
+        const quet = dongTuQuet(String(form.get('ma_quet') ?? ''), matHang, caiDat?.mau_ma_vach, caiDat?.so_le_kg ?? 3, {
+          maNhan,
+          datLo: { giao: giaoO, lo: loTaiTu, tonKhac: ton, tenNoiLay: tu.ten, chiConHan, homNay: homNayVn(), dong: doc.dong, theoLo: doc.theoLo },
+        });
+        // Món vừa vào lô của tảng: bỏ dòng theo món còn trống số của chính món đó (phiếu mở sẵn món rồi mới quét).
+        const gop = gopKetQuaQuet(doc.dong, doc.theoLo, quet);
+        dongA = gop.dong;
+        dongB = gop.theoLo;
         // Câu báo đi qua cookie khi chuyển trang: dựng cả hai thứ tiếng (tham số nn = thứ tiếng của câu).
-        const cauDaDoc = (nn: NgonNguNB) => CAU_DA_DOC[nn](quet.soDoc, tomTatHang(quet.dong, matHang, 3, nn), NUT_GHI[nn]);
+        const cauDaDoc = (nn: NgonNguNB) => CAU_DA_DOC[nn](
+          quet.soDoc, tomTatHang([...quet.dong, ...quet.theoLo], matHang, 3, nn), quet.cauDatLo?.[nn] ?? '', NUT_GHI[nn]);
         bao = quet.soMa === 0
           ? kqHai(false, CAU.oQuetTrong)
           : quet.soDoc > 0
             ? kqHai(true, { vi: cauDaDoc('vi'), en: cauDaDoc('en') })
-            : kqHai(false, CAU.chuaDocNhan);
+            // Đọc được nhãn nhưng không nhãn nào được ghi (lô đã hết hạn): không nói "chưa đọc được".
+            : kqHai(false, quet.soHetHan > 0 ? CAU.chuaGhiNhan : CAU.chuaDocNhan);
         luuY.unshift(...(nn === 'en' ? quet.loiEn : quet.loi));
         // Món vừa quét mà cũng đang có số ở phần lô: báo ngay, đừng đợi bấm ghi mới bị chặn.
         const coOLo = new Set(doc.theoLo.filter(l => l.so_goi || l.so_kg).map(l => l.mat_hang_id));
@@ -524,11 +547,12 @@ if (form) {
     if (viec === 'duyet') kq = await duyetHuy(k.client, phieu.id);
     else if (viec === 'tu_choi') kq = await tuChoiHuy(k.client, phieu.id, lyDoGo);
     else if (viec === 'tra_ve' || viec === 'ghi_mat') {
-      // Hàng đi đường nhận thiếu: xong thì ở lại phiếu để thấy kết quả.
-      kq = await xuLyChuyenThieu(k.client, phieu.id, viec === 'tra_ve' ? 'tra_ve' : 'mat', lyDoGo);
+      // Hàng đi đường nhận thiếu: xong thì ở lại phiếu để thấy kết quả. Câu database viết "N gói" — đổi sang
+      // đơn vị của món trên phiếu ("2 khay thiếu") ở web, cả hai thứ tiếng.
+      kq = doiDonViCau(await xuLyChuyenThieu(k.client, phieu.id, viec === 'tra_ve' ? 'tra_ve' : 'mat', lyDoGo), donViPhieu);
       return chuyenHuong(Astro, `/noi-bo/kho/xuat/${phieu.id}`, kq);
     } else if (viec === 'huy_chuyen') {
-      kq = await huyChuyenDiDuong(k.client, phieu.id, lyDoGo);
+      kq = doiDonViCau(await huyChuyenDiDuong(k.client, phieu.id, lyDoGo), donViPhieu);
       return chuyenHuong(Astro, `/noi-bo/kho/xuat/${phieu.id}`, kq);
     } else if (viec === 'huy_tra') {
       // Trả hàng NCC còn chờ kế toán xác nhận tiền (0040): hàng về lại chỗ cũ.
@@ -568,9 +592,11 @@ const dongHienA: DongXuatForm[] = [
 ];
 const theoLoCu = new Map((dongB ?? []).map(l => [l.lo_id, l]));
 const loCoSo = new Set((dongB ?? []).filter(l => l.so_goi || l.so_kg).map(l => l.lo_id));
-// Lô link chọn sẵn lên đầu. Nhân viên quầy chuyển hàng chỉ thấy lô đã chọn / đang có số.
+// Lô link chọn sẵn lên đầu, rồi tới lô đang có số (vừa quét nhãn của tảng đó, hay gõ tay) — khỏi phải dò trong
+// danh sách dài. Nhân viên quầy chuyển hàng chỉ thấy lô đã chọn / đang có số.
 const loHien = (anTheoLo ? loTaiTu.filter(t => t.lo_id === loChon?.lo_id || loCoSo.has(t.lo_id)) : loTaiTu)
-  .slice().sort((a, b) => Number(b.lo_id === loChon?.lo_id) - Number(a.lo_id === loChon?.lo_id));
+  .slice().sort((a, b) => Number(b.lo_id === loChon?.lo_id) - Number(a.lo_id === loChon?.lo_id)
+    || Number(loCoSo.has(b.lo_id)) - Number(loCoSo.has(a.lo_id)));
 const hienTheoLo = !anTheoLo || loHien.length > 0;
 
 // Ảnh báo hủy: lý do nào cần ảnh, nói bằng chữ ngay dưới ô ảnh.
@@ -588,7 +614,17 @@ const loGiu = (dongB ?? []).filter(l => l.so_goi || l.so_kg);
 const tomTatGiu = tomTatHang([...dongGiu, ...loGiu], matHang, 6, nn) || ch.chuaCoHangNgan;
 const BUOC_HUY: [BuocHuy, string][] = [['hang', ch.buocHang], ['ly_do', ch.buocLyDo], ['anh', ch.buocAnh]];
 
-const loTheoMa = phieu ? await docThongTinLo(k.client, [...soCai.map(s => s.lo_id), ...dongDb.map(d => d.lo_id ?? '')]) : new Map();
+// Mã lô của phiếu đã ghi và số tảng của mọi lô đang hiện (phiếu mới: các lô ở nơi lấy) — hai lượt đọc song song.
+// Số tảng đọc hỏng thì trang vẫn hiện mã lô như cũ.
+const loDangHien = phieu ? [...soCai.map(s => s.lo_id), ...dongDb.map(d => d.lo_id ?? '')] : loTaiTu.map(t => t.lo_id);
+const [loTheoMa, soTangLo] = await Promise.all([
+  phieu ? docThongTinLo(k.client, loDangHien) : Promise.resolve(new Map() as Awaited<ReturnType<typeof docThongTinLo>>),
+  docLoTang(k.client, loDangHien).catch(() => new Map<string, { tang_id: string; so_tang: number | null }>()),
+]);
+/** "tảng #0001" của một lô; lô không thuộc tảng nào thì rỗng. */
+const tangChu = (loId: string | null | undefined) => chuTang(soTangLo.get(loId ?? '')?.so_tang, nn);
+/** " · tảng #0001" để nối ngay sau mã lô. */
+const tangCua = (loId: string | null | undefined) => (tangChu(loId) ? ` · ${tangChu(loId)}` : '');
 const ten = phieu ? await tenNhanSu(k.client, [phieu.nguoi_tao, phieu.nguoi_duyet, phieu.nguoi_nhan, phieu.nguoi_xu_ly]) : new Map<string, string>();
 const anhLink = phieu ? await linkAnh(k.client, phieu.anh) : new Map<string, string>();
 // Phiếu trả hàng: quay lại công nợ của đúng nhà cung cấp (trang Công nợ chỉ
@@ -680,7 +716,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
       {loChonKhoa && loChon && (
         <div class="nb-bao luu-y" role="status">
           <p>
-            {ch.loHetHan(loChon.ma_lo, loChon.ten_hang, loai)}{' '}
+            {ch.loHetHan(`${loChon.ma_lo}${tangCua(loChon.lo_id)}`, loChon.ten_hang, loai)}{' '}
             <a href={`/noi-bo/kho/xuat/moi?loai=huy&tu=${loChon.vi_tri_id}&lo=${loChon.lo_id}`}>{ch.baoHuyLoNay}</a>
           </p>
         </div>
@@ -755,7 +791,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                             <input type="hidden" name={`l${i}_mat_hang`} value={t.mat_hang_id} />
                             <div class="dau">
                               <b>{t.ten_hang}</b>
-                              <span class="kho-phu">{ch.lo} {t.ma_lo} · {ch.conTruoc}{t.dem_goi ? `${t.so_goi} ${t.don_vi_goi} · ` : ''}{dinhDangKg(t.so_kg, nn)} kg{ch.conSau} ·{' '}
+                              <span class="kho-phu">{ch.lo} {t.ma_lo}{tangChu(t.lo_id) && <>{' · '}<strong>{tangChu(t.lo_id)}</strong></>} · {ch.conTruoc}{t.dem_goi ? `${t.so_goi} ${t.don_vi_goi} · ` : ''}{dinhDangKg(t.so_kg, nn)} kg{ch.conSau} ·{' '}
                                 <span class={`kho-han ${t.tinh_trang_han}`}>{ch.hsd} {dinhDangNgay(t.han_dung)}</span></span>
                             </div>
                             {khoa ? (
@@ -896,10 +932,10 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
             <p>{ch.thieu1}<strong>{ch.thieu2}</strong>{ch.thieu3(phieu.ten_vi_tri)}</p>
           )}
           {phieu.trang_thai === 'da_tra_ve' && (
-            <p>{ch.daTraVe(`${congGoi(traVe) ? `${ch.soGoiDem(congGoi(traVe))} · ` : ''}${dinhDangKg(congKg(traVe), nn)} kg`, phieu.ten_vi_tri)}</p>
+            <p>{ch.daTraVe(`${congGoi(traVe) ? `${ch.soGoiDem(congGoi(traVe), donViPhieu)} · ` : ''}${dinhDangKg(congKg(traVe), nn)} kg`, phieu.ten_vi_tri)}</p>
           )}
           {phieu.trang_thai === 'da_nhan' && phieu.xu_ly_thieu === 'mat' && (
-            <p>{ch.daGhiMat(`${congGoi(ghiMat) ? `${ch.soGoiDem(congGoi(ghiMat))} · ` : ''}${dinhDangKg(congKg(ghiMat), nn)} kg`)}</p>
+            <p>{ch.daGhiMat(`${congGoi(ghiMat) ? `${ch.soGoiDem(congGoi(ghiMat), donViPhieu)} · ` : ''}${dinhDangKg(congKg(ghiMat), nn)} kg`)}</p>
           )}
           {phieu.trang_thai === 'da_nhan' && !phieu.xu_ly_thieu && <p>{ch.nhanDu}</p>}
           {phieu.trang_thai === 'da_huy' && <p>{ch.chuyenDaHuy(phieu.ten_vi_tri)}</p>}
@@ -913,7 +949,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
           {phieu.yeu_cau_id && <><dt>{ch.theoYeuCau}</dt><dd><a href={`/noi-bo/kho/quay/yeu-cau/${phieu.yeu_cau_id}`}>{phieu.so_yeu_cau ?? ch.cuaQuay}</a></dd></>}
           {phieu.nhan_luc && (
             <><dt>{ch.quayNhan}</dt><dd>{ten.get(phieu.nguoi_nhan ?? '') ?? '—'} · {dinhDangThoiDiem(phieu.nhan_luc)}
-              {phieu.tong_goi_nhan !== null && <>{' · '}{ch.nhanTrenGoi(phieu.tong_goi_nhan, phieu.tong_goi)}</>}</dd></>
+              {phieu.tong_goi_nhan !== null && <>{' · '}{ch.nhanTrenGoi(phieu.tong_goi_nhan, phieu.tong_goi, donViPhieu)}</>}</dd></>
           )}
           {phieu.xu_ly_luc && (
             <><dt>{phieu.trang_thai === 'da_huy' ? ch.huyChuyenDt : phieu.xu_ly_thieu === 'tra_ve' ? ch.traVeKhoDt : ch.ghiMatDt}</dt>
@@ -952,7 +988,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                 {coCotNhan && (
                   <td class="so">{m?.dem_goi ? (d.so_goi_nhan ?? '—') : d.so_kg_nhan !== null ? dinhDangKg(d.so_kg_nhan, nn) : '—'}{thieu && <strong>{ch.thieuNgoac}</strong>}</td>
                 )}
-                <td>{d.lo_id ? loTheoMa.get(d.lo_id)?.ma_lo ?? '—' : ch.tuLayHang}</td>
+                <td>{d.lo_id ? `${loTheoMa.get(d.lo_id)?.ma_lo ?? '—'}${tangCua(d.lo_id)}` : ch.tuLayHang}</td>
               </tr>
               );
             })}
@@ -967,7 +1003,7 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
           <tbody>
             {soCaiLay.map(s => (
               <tr>
-                <td>{loTheoMa.get(s.lo_id)?.ma_lo ?? '—'}</td>
+                <td>{loTheoMa.get(s.lo_id)?.ma_lo ?? '—'}{tangCua(s.lo_id)}</td>
                 <td>{dinhDangNgay(loTheoMa.get(s.lo_id)?.han_dung)}</td>
                 <td>{nhanKho(TEN_LOAI_SO_CAI_NB, s.loai, nn)}</td>
                 <td class="so">{Math.abs(s.so_goi) || '—'}</td>
@@ -1062,8 +1098,8 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
   .xk-chon { display: flex; flex-wrap: wrap; gap: .5rem; border: 0; padding: 0; margin: 0 0 1rem; }
   .xk-chon legend { font-weight: 600; margin-bottom: .4rem; padding: 0; }
   .xk-chon label { display: inline-flex; align-items: center; gap: .5rem; min-height: 48px; padding: 0 1rem;
-    border: 1px solid var(--vach); border-radius: 10px; background: #fff; cursor: pointer; font-size: 16px; }
-  .xk-chon input { width: 22px; height: 22px; margin: 0; accent-color: var(--do); }
+    border: 1px solid var(--vach); border-radius: 10px; background: var(--nb-the); cursor: pointer; font-size: 16px; }
+  .xk-chon input { width: 22px; height: 22px; margin: 0; }
   .xk-chon label:has(input:checked) { border-color: var(--do); font-weight: 700; }
   /* Xuất bếp nhanh */
   .xb-nhanh-luoi { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr)); margin-bottom: .5rem; }

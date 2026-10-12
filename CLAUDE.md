@@ -12,7 +12,7 @@ rà soát" *sau khi* tính năng đã gộp. Mục tiêu: chặn chúng *trướ
 | `crm/` | Database Supabase (`supabase/migrations/`) và **toàn bộ kiểm thử** (`test/`, chạy trên PGlite) | `crm/README.md` |
 | `can-app/` | Beeftown Cân (Windows `.exe`, Bun): gửi giá xuống cân TMA, máy quầy | `can-app/README.md` |
 
-Bảng màu thương hiệu đã chốt và phần website chưa đổi theo: `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
+Bảng màu thương hiệu đã chốt, giá trị đã áp dụng và thứ còn mang màu cũ (Beeftown Cân, ảnh hướng dẫn kho): `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
 
 Quy ước chung:
 - Tên hàm, biến, chú thích, tài liệu viết **tiếng Việt không tắt**, giống mã đang có.
@@ -32,7 +32,7 @@ node test/test-zalo.mjs             # một file
 npm run kiem-migration              # gác số migration (so với origin/main)
 npm run so-migration                # số migration kế tiếp — tính trên MỌI nhánh origin/*
 cd ../can-app && npx bun test/thu.ts                     # Beeftown Cân
-cd ../web && npx astro check && npm run quet && npm run thu-trinh-duyet
+cd ../web && npx astro check && npm run quet && npm run thu-trinh-duyet -- --khong-build   # quet vừa build (không database)
 ```
 
 File test mới tên `crm/test/test-<khu>-<ten>.mjs` **tự được chạy** — không sửa `package.json`.
@@ -41,7 +41,8 @@ không nằm trong `npm test` hay CI (xem README gốc, mục "Hạ tầng cho 1
 `crm/test/doi-chieu-production.mjs` (`npm run doi-chieu`, chuỗi kết nối ở biến `DOI_CHIEU_DB_URL`) cũng chỉ chạy tay:
 đối chiếu database thật với mọi migration — hàm, bảng, cột, ràng buộc, chỉ mục, trigger, policy, quyền. Kiểm thử của nó
 (`test-doi-chieu-production.mjs`) thì chạy trong `npm test`.
-Dùng khung chung `kho-chung.mjs` (`dungDatabase`, `taoBoDem`, `duoi(uid, sql)`, `duoiAnon(sql)`).
+Dùng khung chung `kho-chung.mjs` (`dungDatabase`, `taoBoDem`, `duoi(uid, sql)`, `duoiAnon(sql)`) — `npm test` nạp database
+trống từ một ảnh chụp chung thay vì chạy lại từng migration, nên file dựng qua khung này chạy nhanh hơn.
 
 ## Định nghĩa "xong" — 9 mục
 
@@ -59,8 +60,8 @@ Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô 
 3. `gio-vn` — **Giờ Việt Nam.** Database dùng `hom_nay_vn()` / `bay_gio_vn()` / `gio_vn()`, không
    `current_date` (`kiem-migration.mjs` chặn). Web dùng `web/src/lib/gio-vn.ts` (`homNayVn`, `namVn`,
    `congNgay`, `docGioVnDiaPhuong` cho ô giờ người nhập / máy ngoài gửi) — `test-gio-vn.mjs` chặn tự
-   cộng 7 tiếng. Thử mốc 23:50 và 00:10 giờ VN (đồng hồ giả `dong-ho-gia.mjs`) và ngày không có
-   thật (31/02). *(4868551)*
+   cộng 7 tiếng. Thử mốc 23:50 và 00:10 giờ VN (đồng hồ giả `dong-ho-gia.mjs`; phía database
+   `datGioDatabase` / `traGioDatabase` của `kho-chung.mjs`) và ngày không có thật (31/02). *(4868551)*
 4. `chu-va-so` — **Chữ có dấu và số kiểu Việt.** "1.000" là một nghìn, "1,5" là một phẩy năm; tên
    file có dấu thành khóa ASCII; chữ không dính nhau khi xuống dòng (`compressHTML`); so khớp câu có
    dấu đúng ("Đúng" không phải "dừng"). *(6b1fddc, 52d0937, 1bb55ac, b98c845)*
@@ -120,6 +121,7 @@ Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô 
 | 00:30 giờ VN mỗi đêm | toàn bộ với `TZ=Asia/Ho_Chi_Minh` + quét chữ cấm trên beeftown.vn thật | ~10 phút |
 | 02:00 giờ VN mỗi đêm; chạy tay | `sao-luu.yml`: sao lưu database (`crm/sao-luu/`) → mã hoá → artifact 30 ngày → khôi phục thử vào Supabase dựng tạm → ghi `he_thong_sao_luu` (đèn "Sao lưu dữ liệu"). Secret `SAO_LUU_DB_URL`, `SAO_LUU_MAT_KHAU` (README gốc, "Sao lưu và khôi phục") | ~5–10 phút |
 | Main hoặc PR đổi `can-app/`, `web/src/lib/`; chạy tay (gõ số PR) | `dong-goi-can.yml`: kiểm thử Beeftown Cân rồi đóng gói `BeeftownCan.exe` → artifact, Release khi `PHIEN_BAN` mới, bản cài lên kho công khai `beeftown-can-ban-cai` cho nút Cập nhật (secret `TOKEN_BAN_CAI_CAN`) (PR: chỉ đóng gói thử, không tải lên) | ~1 phút |
+| Đầu mỗi tháng | `dependabot.yml`: PR nâng thư viện `web/`, `crm/`, `can-app/` và action — bản nhỏ gom một PR mỗi thư mục, bản lớn PR riêng. CI xanh mới gộp | — |
 
 Kết quả: tab Actions → lượt chạy → **Summary** (bảng từng file, số migration kế tiếp).
 CI chạy Node 24 (`web/.node-version`); máy cần Node ≥ 22.18 để đọc thẳng file `.ts`.

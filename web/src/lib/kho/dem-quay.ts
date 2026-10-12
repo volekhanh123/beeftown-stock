@@ -21,7 +21,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, docTungTrang, donViChung, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { tachDanhSachMa } from './ma-vach.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 
@@ -161,14 +161,14 @@ export async function docMonDaQuet(client: SupabaseClient, kiemKeId: string): Pr
     client.from('kho_kiem_ke_dong')
       .select('mat_hang_id, lo_id, thu_tu, so_goi_dem, so_kg_dem, so_goi_them, tu_quet')
       .eq('kiem_ke_id', kiemKeId).order('thu_tu'),
-    client.from('kho_kiem_ke_quet')
-      .select('mat_hang_id, created_at')
-      .eq('kiem_ke_id', kiemKeId).limit(5000),
+    // Quầy đông có thể quá 1.000 nhãn một phiếu: đọc từng trang (docTungTrang).
+    docTungTrang((tu, den) => client.from('kho_kiem_ke_quet')
+      .select('mat_hang_id, created_at', { count: 'exact' })
+      .eq('kiem_ke_id', kiemKeId).order('thu_tu').range(tu, den)),
   ]);
   if (dong.error) throw dong.error;
-  if (quet.error) throw quet.error;
   const nhan = new Map<string, { n: number; cuoi: string }>();
-  for (const q of quet.data ?? []) {
+  for (const q of quet) {
     const cu = nhan.get(q.mat_hang_id) ?? { n: 0, cuoi: '' };
     cu.n += 1;
     if (q.created_at > cu.cuoi) cu.cuoi = q.created_at;
@@ -268,6 +268,18 @@ export function cauQuaNhieuNhan(soMa: number): HaiThuTieng {
     vi: `Một lần gửi tối đa ${TOI_DA_MOT_LUOT} nhãn — đang có ${soMa}. Xóa bớt, gửi, rồi quét tiếp.`,
     en: `You can send at most ${TOI_DA_MOT_LUOT} labels at a time — there are ${soMa}. Remove some, send, then keep scanning.`,
   };
+}
+
+/**
+ * Đơn vị đếm của MỘT món ("khay") cho câu "Đã bớt 1 khay." sau khi bấm −1. Món cân ký, món không có, đọc hỏng
+ * → null: câu giữ chữ chung "gói". Trang gọi song song với lệnh −1 nên không thêm lượt chờ.
+ */
+export async function docDonViMon(client: SupabaseClient, matHangId: string | null): Promise<string | null> {
+  if (!laUuid(matHangId)) return null;
+  try {
+    const { data, error } = await client.from('kho_mat_hang').select('dem_goi, don_vi_goi').eq('id', matHangId).maybeSingle();
+    return error || !data ? null : donViChung([data]);
+  } catch { return null; }
 }
 
 /** "Bỏ lượt vừa quét" (cach = lan_cuoi) hoặc "−1" một gói của một món (bot_mot). */

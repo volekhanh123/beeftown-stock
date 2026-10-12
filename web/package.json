@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Website Beeftown — trang công khai, cổng tuyển dụng, giao diện nội bộ",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.18"
   },
   "scripts": {
     "dev": "astro dev",
@@ -19,13 +19,13 @@
     "thu-day-du": "node kiem-tra/thu-day-du.mjs"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^14.3.2",
-    "@supabase/supabase-js": "^2.58.0",
-    "astro": "^7.3.3"
+    "@astrojs/cloudflare": "^14.3.4",
+    "@supabase/supabase-js": "^2.117.3",
+    "astro": "^7.3.8"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.10",
-    "playwright": "1.56.1",
+    "playwright": "1.64.0",
     "typescript": "^6.0.3",
     "wrangler": "^4.42.2"
   }

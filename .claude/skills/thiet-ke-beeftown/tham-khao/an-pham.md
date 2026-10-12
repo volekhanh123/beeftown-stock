@@ -8,8 +8,8 @@ campaign) cho phần guideline chưa nói tới.
 ## Nguyên tắc
 
 - **Màu: năm màu của bảng thương hiệu đã chốt**, không dùng màu pha của website (đỏ đậm, hai nền kem
-  đậm hơn, màu viền ô nhập — Khánh chỉ cho phép chúng trên màn hình của trang công khai) và không dùng
-  bảng cũ mà `/noi-bo`, kho còn chạy:
+  đậm hơn, màu viền ô nhập — Khánh chỉ cho phép chúng trên màn hình của website) và
+  không dùng màu trạng thái xanh, vàng, đỏ nhạt của `/noi-bo`, kho (màu chức năng của công cụ):
   Beef Red `#A70C0C`, Cream `#F0E3D0`, Charcoal `#151008`, Marigold `#F5AA14`, Warm Stone `#B8A98C`.
   Phần trên mỗi bề mặt: Cream 60 % · Beef Red 25 % · Charcoal 10 % · Marigold dưới 5 %; Warm Stone chỉ
   cho nét kẻ và nền phụ. Không màu pha nhạt, không đỏ thứ hai. Marigold và Warm Stone không làm chữ
@@ -80,20 +80,20 @@ Thêm từ `web/THIET-KE.md` mục 8 — đọc bản đầy đủ trước khi 
 
 ## Tài liệu thiết kế ở gốc repo — ĐÃ CŨ
 
-Sáu file HTML / SVG ở gốc repo và bản nháp website cũ làm tháng 6 – 7/2026, **trước** brief
-06/10/2026 và guideline 09/10/2026. Chỉ dùng làm tư liệu, không chép màu, phông, câu chữ, luật logo từ
-đó. Phần còn dùng được ghi rõ bên dưới. (`Beeftown_Can_TMA.html` ở gốc repo là công cụ cân cũ, không
-thuộc nhóm này — `can-app/` đã thay nó.)
+Các file HTML / SVG và bản nháp website cũ làm tháng 6 – 7/2026, **trước** brief 06/10/2026 và
+guideline 09/10/2026. Chỉ dùng làm tư liệu, không chép màu, phông, câu chữ, luật logo từ đó. Phần còn
+dùng được ghi rõ bên dưới. Hai file còn ở gốc repo; năm thứ còn lại đã lưu trữ 12/10/2026, nguyên văn ở
+[commit 9443cc2](https://github.com/volekhanh123/beeftown-stock/tree/9443cc2cabb71b792772b1a52d7c134edab456cc).
 
 | File | Còn dùng được | Lệch luật hiện hành — KHÔNG làm theo |
 |---|---|---|
 | `Beeftown_Bo_Nhan_Dien_So.html` | Bảng kích thước F4; nguyên tắc trả lời đánh giá; cách đặt UTM; câu mẫu tin Zalo (đã có trong database) | Phông Baloo 2; logo gõ chữ và bò nháy mắt làm avatar; luật logo F5 (đặt logo lên ảnh có lớp phủ — guideline mới cấm đặt lên ảnh); "Thịt chuẩn · Giá thật"; danh mục "Korean barbecue"; hashtag kbbq / buffet; giá, giảm 20 %; phòng riêng; địa chỉ, giờ cũ; "Đặt bàn ngay" thay vì "Hỏi bàn"; ảnh "có khói, có lửa"; vàng làm màu giá và nút |
-| `Beeftown_Logo_Suite_and_Directions.html` | — | Bảng màu khác (`#E23B2E`…); phông Anton, Archivo; cỡ tối thiểu cũ (guideline mới: lockup 160px, brandmark 48px); "BUTCHER · BEEF · BBQ"; hướng "Charcoal & ember"; hiệu ứng cuộn |
-| `Beeftown_Instore_Art.html` | Tagline | Mặt tiền tầng trệt (Beeftown ở tầng 3); phòng riêng; "AGED · IMPORTED"; giờ mở cửa; "hút Gen Z" |
+| Logo Suite and Directions (đã lưu trữ) | — | Bảng màu khác (`#E23B2E`…); phông Anton, Archivo; cỡ tối thiểu cũ (guideline mới: lockup 160px, brandmark 48px); "BUTCHER · BEEF · BBQ"; hướng "Charcoal & ember"; hiệu ứng cuộn |
+| Instore Art (đã lưu trữ) | Tagline | Mặt tiền tầng trệt (Beeftown ở tầng 3); phòng riêng; "AGED · IMPORTED"; giờ mở cửa; "hút Gen Z" |
 | `Beeftown_CRM_Design.html` | Câu đồng ý nhận tin (ô không tick sẵn, từ khóa "NGUNG"); giọng "thẳng thắn, nói rõ điều kiện lẫn quyền lợi" | Phòng riêng cho VIP; quận cũ; "mua sẵn ~90 %" |
-| `Beeftown_Dashboard.html` | — (công cụ tài chính nội bộ) | Bảng màu than hồng riêng, Segoe UI, "Korean BBQ" |
-| `Beeftown_Concept_Board_v1.svg` | Tagline | Bảng màu cũ; "good beef, good price" (lấy giá làm mồi câu) |
-| `Beeftown_Website/index.html` | — | Bản nháp **không được phát hành** (README gốc, mục cảnh báo) |
+| Dashboard (đã lưu trữ) | — (công cụ tài chính nội bộ) | Bảng màu than hồng riêng, Segoe UI, "Korean BBQ" |
+| Concept Board v1 (đã lưu trữ) | Tagline | Bảng màu cũ; "good beef, good price" (lấy giá làm mồi câu) |
+| Bản nháp website (đã lưu trữ) | — | Bản nháp **không được phát hành** (README gốc, mục cảnh báo) |
 
 ## Tin nhắn Zalo / Messenger
 

@@ -53,6 +53,7 @@ import {
 } from '../../../../lib/kho/chung.ts';
 import { CO_KHONG, type DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
 import { haoRepack } from '../../../../lib/kho/nhan-hang.ts';
+import { chuTang } from '../../../../lib/kho/tang.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
@@ -70,6 +71,7 @@ const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
 const enCua = (kq: KetQua) => kq.cauEn ?? dichCau('en', kq.cau);
 const t = dichNB(nn, {
   khongDoc: { vi: 'Không đọc được phiếu nhập.', en: 'Could not read the goods receipt.' },
+  khongDocCongNo: { vi: 'Không đọc được công nợ của phiếu này.', en: 'Could not read the payables for this receipt.' },
   moi: { vi: 'Mới', en: 'New' },
   tdTonDau: { vi: 'Nhập tồn đầu kỳ', en: 'Enter opening stock' },
   tdLap: { vi: 'Lập phiếu nhập', en: 'New goods receipt' },
@@ -268,6 +270,7 @@ let dnLo: DinhNghiaTruong[] = [];
 let phieu: PhieuNhap | null = null;
 let dongDb: DongPhieuNhap[] = [];
 let maLo = new Map<string, string>();
+let soTang = new Map<string, number>();
 let loiDoc = k.loiDoc;
 
 try {
@@ -277,7 +280,7 @@ try {
   ]);
   if (!moi) {
     const doc = await docPhieuNhap(k.client, idThamSo);
-    if (doc) { phieu = doc.phieu; dongDb = doc.dong; maLo = doc.maLo; }
+    if (doc) { phieu = doc.phieu; dongDb = doc.dong; maLo = doc.maLo; soTang = doc.soTang; }
   }
 } catch (e) {
   loiDoc = cauLoiKho(e, t.khongDoc);
@@ -318,12 +321,6 @@ let anhGiuForm: string[] | null = null;
 let giaForm: DienGiaForm | null = null;
 
 const form = await docFormGui(Astro);
-if (Astro.request.method === 'POST' && !form) {
-  bao = kqHai(false, {
-    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
-    en: 'Could not read what was sent — the connection may have dropped. Please send again.',
-  });
-}
 if (form) {
   const viec = String(form.get('viec') ?? '');
   const ve = (id: string, kq: KetQua, them = '') =>
@@ -455,7 +452,11 @@ const nhanTrangThai = (tt: string): [string, string] => {
 };
 const [nhanTT, lopTT] = phieu ? nhanTrangThai(phieu.trang_thai) : [t.moi, 'nhap'];
 
-const congNo = phieu && phieu.loai === 'mua' && phieu.trang_thai === 'da_duyet' ? await docCongNoMotPhieu(k.client, phieu.id) : null;
+// Công nợ của phiếu (vai không xem được: RLS lọc → null, ẩn khối). Đọc lỗi thì báo, không ẩn im.
+let congNo: Awaited<ReturnType<typeof docCongNoMotPhieu>> = null;
+if (phieu && phieu.loai === 'mua' && phieu.trang_thai === 'da_duyet') {
+  try { congNo = await docCongNoMotPhieu(k.client, phieu.id); } catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, t.khongDocCongNo); }
+}
 const tienHang = dongDb.reduce((s, d) => s + d.thanh_tien, 0);
 const tongTien = phieu ? tienHang + phieu.tien_thue + phieu.chi_phi_khac : 0;
 const giaVon = phieu && (dienGiaDuoc || phieu.trang_thai === 'cho_duyet') ? xemTruocGiaVon(dongDb, phieu.chi_phi_khac, phieu.tien_thue, caiDat) : [];
@@ -545,7 +546,7 @@ const huongDan = 'duyet-nhap';
                     : <span>{a.split('/').pop()}</span>}
                   <span style="display:flex;align-items:center;gap:.4rem;min-height:48px;font-size:.9rem">
                     <input type="checkbox" name="anh_giu" value={a} checked={giuAnh(a)}
-                      style="width:22px;height:22px;min-height:0;padding:0;margin:0;accent-color:var(--do)" /> {t.giu}
+                      style="width:22px;height:22px;min-height:0;padding:0;margin:0" /> {t.giu}
                   </span>
                   {anhDaTai.includes(a) && <input type="hidden" name="anh_da_tai" value={a} />}
                 </label>
@@ -836,7 +837,7 @@ const huongDan = 'duyet-nhap';
                 <td class="so">{tien(d.don_gia_kg)}</td>
                 <td class="so">{tien(d.thanh_tien)}</td>
                 <td>{dinhDangNgay(d.han_dung)}</td>
-                <td>{d.lo_id ? maLo.get(d.lo_id) ?? '—' : '—'}</td>
+                <td>{d.lo_id ? maLo.get(d.lo_id) ?? '—' : '—'}{d.lo_id && chuTang(soTang.get(d.lo_id), nn) && <>{' · '}<strong>{chuTang(soTang.get(d.lo_id), nn)}</strong></>}</td>
                 {giaVon.length > 0 && <td class="so">{tien(giaVon[i]?.gia_von_kg)}</td>}
               </tr>
             ))}
@@ -908,7 +909,7 @@ const huongDan = 'duyet-nhap';
   .dg-anh { display: grid; gap: .6rem; margin: 0 0 1rem; }
   .dg-anh img {
     display: block; width: 100%; max-height: 85vh; object-fit: contain;
-    border: 1px solid var(--kho-vach); border-radius: 10px; background: #fff;
+    border: 1px solid var(--kho-vach); border-radius: 10px; background: var(--nb-the);
   }
   .dg-ten { margin: .4rem 0 .2rem; }
   .dg-chip-hang { margin: .1rem 0 0; }
@@ -917,5 +918,5 @@ const huongDan = 'duyet-nhap';
     display: inline-block; padding: .3rem .7rem; border-radius: 999px;
     font-size: .9rem; font-weight: 600; background: var(--kem-sau); color: var(--than);
   }
-  .dg-chip.vuot { background: var(--kho-do-nen); color: var(--do); }
+  .dg-chip.vuot { background: var(--do-nen); color: var(--do); }
 </style>

@@ -86,10 +86,11 @@ Trang con (Thực đơn, Đến Beeftown, Hỏi bàn, Tuyển dụng):
 - **`:hover` luôn nằm trong `@media (hover: hover)`**; thứ bấm được có thêm `:active` đặt ngoài khối
   đó. Màu viết thẳng: chỉ mã hex của bảng hoặc `rgba()` với bộ ba của bảng — không `hsl()`, `oklch()`,
   tên màu (`white`…), màu hệ thống ngoài `forced-colors` (`test-cong-khai-giao-dien.mjs` nhóm 7).
-- Token ở đây mang giá trị của **khối `.ck`** (bảng màu chốt 09/10/2026 — bảng "Token của trang công
-  khai" trong `SKILL.md`), không phải giá trị `:root` của `chung.css` mà `/noi-bo`, kho đang đọc. Cần
-  màu trong suốt thì viết `rgba()` bằng số RGB của bảng đó; mã hex hay bộ ba số của bảng cũ trong một
-  file công khai (kể cả trong chú thích) là kiểm thử đỏ (`test-cong-khai-giao-dien.mjs` nhóm 6).
+- Token ở đây khai trong **khối `.ck`** của `cong-khai.css` (bảng màu chốt 09/10/2026 — bảng "Token
+  màu của website" trong `SKILL.md`). `:root` của `chung.css`, nơi `/noi-bo` và kho đọc, khai cùng giá
+  trị: đổi một mã thì đổi cả hai nơi. Cần màu trong suốt thì viết `rgba()` bằng số RGB của bảng đó; mã
+  hex hay bộ ba số của bảng cũ trong một file công khai (kể cả trong chú thích) là kiểm thử đỏ
+  (`test-cong-khai-giao-dien.mjs` nhóm 6).
 - Nút trên dải đỏ tự đổi (nút chính: nền Cream, chữ đỏ đậm; nút phụ: viền và chữ Cream) nhờ biến bề
   mặt — đừng viết lại màu nút trong component. Biểu tượng cạnh chữ lấy màu `--nhan` (Beef Red trên kem,
   Cream trên đỏ).

@@ -12,11 +12,16 @@
  *
  * Danh sách sắp theo NGÀY KHÁCH ĐẶT, không theo ngày gửi. Yêu cầu cho tối
  * nay quan trọng hơn yêu cầu gửi trước nhưng cho tuần sau.
+ *
+ * Bấm nút xong thì chuyển hướng 303 về chính trang này (lib/gui-noi-bo.ts) — F5
+ * không gửi lại lệnh cũ. Lần hai của cú bấm đúp thấy yêu cầu đã ở trạng thái
+ * đích: báo "đã ở …", không báo "người khác đã xử lý".
  */
 import NoiBo from '../../layouts/NoiBo.astro';
 import { homNayVn, dinhDangNgay } from '../../lib/noi-dung';
 import { dichNB, nhanNB, nnCua, type HaiThuTieng } from '../../lib/ngon-ngu-noi-bo';
 import { dichCau } from '../../lib/cau-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, chuyenTrangThai, docBaoNoiBo, docFormNoiBo, type BaoNoiBo } from '../../lib/gui-noi-bo';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
@@ -53,6 +58,7 @@ const t = dichNB(nn, {
   daXuLy:      { vi: 'Yêu cầu đã được người khác xử lý. Tải lại trang để xem trạng thái mới.',
                  en: 'Someone else already handled this request. Reload the page to see its new status.' },
   daChuyen:    { vi: (ten: string) => `Đã chuyển sang "${ten}".`, en: (ten: string) => `Moved to "${ten}".` },
+  daO:         { vi: (ten: string) => `Yêu cầu đã ở "${ten}".`, en: (ten: string) => `This request is already at "${ten}".` },
   khongDoc:    { vi: 'Không đọc được danh sách.', en: 'Could not read the list.' },
   locCho:      { vi: 'Chờ gọi', en: 'To call' },
   locHomNay:   { vi: 'Hôm nay', en: 'Today' },
@@ -71,40 +77,33 @@ const t = dichNB(nn, {
   ma:          { vi: 'Mã', en: 'Code' },
 });
 
-let bao: { ok: boolean; cau: string } | null = null;
+let bao: BaoNoiBo | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
 
 if (Astro.request.method === 'POST') {
-  const form = await Astro.request.formData();
-  const id = String(form.get('id') ?? '');
-  const tu = String(form.get('tu') ?? '');
-  const toi = String(form.get('toi') ?? '');
+  const form = await docFormNoiBo(Astro.request);
+  const id = String(form?.get('id') ?? '');
+  const tu = String(form?.get('tu') ?? '');
+  const toi = String(form?.get('toi') ?? '');
 
   // Chỉ nhận đúng những bước đã khai ở trên. Một tham số toi= tự chế sẽ bị
-  // chặn ở đây trước khi tới database — và nếu lọt thì RLS vẫn chặn.
+  // chặn ở đây trước khi tới database. RLS (dat_ban_sua) KHÔNG nhìn bước
+  // chuyển; chốt chặn ở database là trigger dat_ban_kiem_sua (0069) — cùng
+  // 5 bước này (test-quyen-chi-nhanh-crm.mjs đọc CHUYEN_DUOC để so).
   const hopLe = CHUYEN_DUOC[tu]?.some(b => b.toi === toi);
-  if (!id || !hopLe) {
+  if (!form) {
+    bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
+  } else if (!id || !hopLe) {
     bao = { ok: false, cau: t.sai };
   } else {
-    const { data, error } = await client
-      .from('dat_ban')
-      .update({ trang_thai: toi, nguoi_xu_ly: nhanSu.id })
-      .eq('id', id)
-      // Chỉ đổi nếu trạng thái vẫn đúng như lúc trang được tải. Hai người
-      // cùng mở hộp thư trên hai điện thoại là chuyện thường, và không có
-      // dòng này thì người bấm sau ghi đè lặng lẽ lên việc người bấm trước.
-      .eq('trang_thai', tu)
-      .select('id');
-
-    if (error) {
-      bao = { ok: false, cau: dichCau(nn, error.message) };
-    } else if (!data || data.length === 0) {
-      // Câu .eq() ở trên KHÔNG khớp dòng nào: người khác đã xử lý trước.
-      // Thiếu nhánh này thì màn hình báo "Đã chuyển sang..." trong khi không
-      // có gì đổi cả — tức là chống được chuyện ghi đè, rồi nói dối về nó.
-      bao = { ok: false, cau: t.daXuLy };
-    } else {
-      bao = { ok: true, cau: t.daChuyen(nhanNB(TEN_TRANG_THAI, toi, nn)) };
-    }
+    // Chỉ đổi nếu trạng thái vẫn đúng như lúc trang được tải — xem chuyenTrangThai.
+    const kq = await chuyenTrangThai(client, 'dat_ban', id, tu, toi, { nguoi_xu_ly: nhanSu.id });
+    const ten = nhanNB(TEN_TRANG_THAI, toi, nn);
+    if (kq === 'da_chuyen') return chuyenHuongNoiBo(Astro, { ok: true, cau: t.daChuyen(ten) });
+    if (kq === 'da_o_san') return chuyenHuongNoiBo(Astro, { ok: true, cau: t.daO(ten) });
+    // Không khớp dòng nào và dòng đang ở trạng thái khác: người khác đã xử lý trước.
+    // Thiếu nhánh này thì màn hình báo "Đã chuyển sang..." trong khi không có gì đổi
+    // cả — tức là chống được chuyện ghi đè, rồi nói dối về nó.
+    bao = kq === 'nguoi_khac' ? { ok: false, cau: t.daXuLy } : { ok: false, cau: dichCau(nn, kq.loi) };
   }
 }
 

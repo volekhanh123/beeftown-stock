@@ -5,14 +5,17 @@
  * nạp toàn bộ migration, hai chi nhánh, đủ các vai. Gom về đây để mỗi file
  * test chỉ còn phần kiểm tra.
  *
- * Khác các file test CRM cũ ở một điểm CÓ Ý THỨC: KHÔNG cấp EXECUTE hàng loạt
- * cho authenticated sau khi nạp migration. Quyền của authenticated ở đây đúng
- * là quyền Supabase cấp mặc định trừ đi những gì migration đã thu hồi — nên
- * một hàm nội bộ lỡ để lọt ra ngoài sẽ lộ ra trong test thay vì bị che.
+ * CÓ Ý THỨC không cấp EXECUTE hàng loạt cho authenticated sau khi nạp migration
+ * (bảy file test CRM cũ từng tự dựng Supabase giả và cấp như vậy — 12/10/2026 bỏ
+ * cấp, chuyển về dungDatabaseTrong() ở đây; test-quy-trinh.mjs mục 6 chặn). Quyền
+ * của authenticated ở đây đúng là quyền Supabase cấp mặc định trừ đi những gì
+ * migration đã thu hồi — nên một hàm nội bộ lỡ để lọt ra ngoài sẽ lộ ra trong test
+ * thay vì bị che.
  */
 
 import { PGlite } from '@electric-sql/pglite';
-import { readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, openAsBlob, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -73,6 +76,14 @@ export function taoBoDem(tieuDe) {
  * chạy migration mới nhất. Trả về db, danh sách file đã nạp và nội dung từng file (Map tên → SQL).
  */
 export async function dungDatabaseTrong({ den = Infinity } = {}) {
+  // Không có `den` thì nạp MỌI file .sql như trước — kể cả file tên sai mẫu (kiem-migration.mjs mới là chỗ chặn tên).
+  const daNap = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort()
+    .filter(f => den === Infinity || Number(f.slice(0, 4)) <= den);
+  const vanBan = new Map(daNap.map(f => [f, readFileSync(join(MIGRATIONS_DIR, f), 'utf8')]));
+
+  const anh = den === Infinity ? await docAnhDatabase(vanBan) : null;
+  if (anh) return { db: new PGlite({ loadDataDir: anh }), daNap, vanBan };
+
   const db = new PGlite();
 
   await db.exec(`
@@ -96,15 +107,47 @@ export async function dungDatabaseTrong({ den = Infinity } = {}) {
     alter default privileges in schema public grant all on sequences to anon, authenticated;
   `);
 
-  // Không có `den` thì nạp MỌI file .sql như trước — kể cả file tên sai mẫu (kiem-migration.mjs mới là chỗ chặn tên).
-  const daNap = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort()
-    .filter(f => den === Infinity || Number(f.slice(0, 4)) <= den);
-  const vanBan = new Map();
-  for (const f of daNap) {
-    vanBan.set(f, readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
-    await db.exec(vanBan.get(f));
-  }
+  for (const f of daNap) await db.exec(vanBan.get(f));
   return { db, daNap, vanBan };
+}
+
+// ---------------------------------------------------------------------------
+// Ảnh chụp database trống — nạp 62 migration mất ~2,5 giây mỗi file test, nạp lại từ ảnh ~0,7 giây
+// ---------------------------------------------------------------------------
+// Bộ chạy (chay-tat-ca.mjs) dựng database trống MỘT lần, chụp lại (dumpDataDir) và đưa đường dẫn qua biến
+// BEEFTOWN_ANH_DATABASE; dungDatabaseTrong() của từng file nạp lại từ ảnh (loadDataDir). Ảnh kèm dấu vân của
+// thư mục migration: lệch (sửa migration giữa lượt) hay thiếu file thì tự nạp migration như cũ. File chạy riêng
+// (node test/x.mjs) không có biến này nên luôn nạp migration. `den` (doi-chieu) cũng không dùng ảnh.
+export const BIEN_ANH_DATABASE = 'BEEFTOWN_ANH_DATABASE';
+
+/** Dấu vân của bộ migration: tên và nội dung từng file, theo thứ tự nạp. */
+function dauVanMigration(vanBan) {
+  const h = createHash('sha256');
+  for (const [ten, sql] of vanBan) h.update(ten).update('\0').update(sql).update('\0');
+  return h.digest('hex');
+}
+
+async function docAnhDatabase(vanBan) {
+  const duongDan = process.env[BIEN_ANH_DATABASE];
+  if (!duongDan || !existsSync(duongDan) || !existsSync(`${duongDan}.dau-van`)) return null;
+  if (readFileSync(`${duongDan}.dau-van`, 'utf8') !== dauVanMigration(vanBan)) return null;
+  // Blob đọc thẳng từ file: không chép ~80 MB vào bộ nhớ của Node trước khi PGlite tự chép một lần nữa.
+  return openAsBlob(duongDan);
+}
+
+/** Dựng database trống (luôn nạp migration, không đọc ảnh cũ) rồi chụp vào `duongDan` kèm dấu vân. */
+export async function chupDatabaseTrong(duongDan) {
+  const truoc = process.env[BIEN_ANH_DATABASE];
+  delete process.env[BIEN_ANH_DATABASE];
+  try {
+    const { db, vanBan } = await dungDatabaseTrong();
+    const anh = await db.dumpDataDir('none');   // không nén: nạp nhanh hơn ~0,4 giây mỗi file, đổi lấy ~80 MB tạm
+    writeFileSync(duongDan, Buffer.from(await anh.arrayBuffer()));
+    writeFileSync(`${duongDan}.dau-van`, dauVanMigration(vanBan));
+    await db.close();
+  } finally {
+    if (truoc !== undefined) process.env[BIEN_ANH_DATABASE] = truoc;
+  }
 }
 
 /**
@@ -190,7 +233,139 @@ export async function themMayIpos(db, cnA, cnB) {
   return id;
 }
 
+// ---------------------------------------------------------------------------
+// Đồng hồ giả phía database — bản SQL của dong-ho-gia.mjs
+// ---------------------------------------------------------------------------
+// hom_nay_vn(), bay_gio_vn(), gio_vn() đọc now() — giờ thật của máy chạy test, không giả được bằng cách thay
+// Date của Node. datGioDatabase() thay thân ba hàm (chỉ trong database PGlite của file test, không migration nào
+// đổi) để trả đúng thời điểm muốn thử; traGioDatabase() đặt lại đúng định nghĩa đang có trong database
+// (pg_get_functiondef — không chép tay, nên migration sau này có định nghĩa lại cũng không lệch).
+// Chỉ ba hàm này: now() trong cột created_at hay mốc "10 phút gần đây" vẫn là giờ thật. Nghiệp vụ theo ngày phải
+// đi qua ba hàm này (kiem-migration.mjs chặn current_date), nên giả ba hàm là đủ thử mốc 23:50 / 00:10 giờ VN.
+const HAM_GIO_VN = ['bay_gio_vn', 'hom_nay_vn', 'gio_vn'];
+const dinhNghiaGioThat = new WeakMap();
+
+const ISO_CO_MUI_GIO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/i;
+/** Số mili-giây, hoặc báo lỗi: thiếu múi giờ, sai dạng, hay ngày giờ không có thật (Date.parse đọc 31/02 thành 03/03). */
+function docThoiDiem(thoiDiem) {
+  if (typeof thoiDiem === 'number') {
+    if (!Number.isFinite(thoiDiem)) throw new Error(`datGioDatabase: ${thoiDiem} không phải số mili-giây`);
+    return thoiDiem;
+  }
+  const m = ISO_CO_MUI_GIO.exec(String(thoiDiem).trim());
+  if (!m) throw new Error(`datGioDatabase: "${thoiDiem}" không phải thời điểm ISO có múi giờ (ghi rõ Z hoặc +07:00)`);
+  const ms = Date.parse(m[0]);
+  const lechPhut = m[6].toUpperCase() === 'Z' ? 0
+    : (m[6][0] === '-' ? -1 : 1) * (Number(m[6].slice(1, 3)) * 60 + Number(m[6].slice(-2)));
+  const tai = new Date(ms + lechPhut * 60000);   // giờ đồng hồ tại múi giờ đã ghi
+  const khop = tai.getUTCFullYear() === Number(m[1]) && tai.getUTCMonth() + 1 === Number(m[2])
+    && tai.getUTCDate() === Number(m[3]) && tai.getUTCHours() === Number(m[4]) && tai.getUTCMinutes() === Number(m[5]);
+  if (!Number.isFinite(ms) || !khop) throw new Error(`datGioDatabase: "${thoiDiem}" là ngày giờ không có thật`);
+  return ms;
+}
+
+/**
+ * `thoiDiem`: chuỗi ISO CÓ múi giờ ('2026-10-12T16:50:00Z' hay '2026-10-12T23:50:00+07:00' = 23:50 giờ VN)
+ * hoặc số mili-giây. Chuỗi thiếu múi giờ bị từ chối: Node đọc nó theo giờ của máy, nên cùng một kiểm thử ra
+ * 23:50 ở lượt đêm (TZ giờ VN) mà 06:50 hôm sau ở lượt PR (UTC).
+ */
+export async function datGioDatabase(db, thoiDiem) {
+  const ms = docThoiDiem(thoiDiem);
+  if (!dinhNghiaGioThat.has(db)) {
+    const { rows } = await db.query(
+      `select pg_get_functiondef(p.oid) as dinh_nghia from pg_proc p
+         join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = any($1)`, [HAM_GIO_VN]);
+    if (rows.length !== HAM_GIO_VN.length) throw new Error(`datGioDatabase: thiếu hàm, chỉ thấy ${rows.length}/${HAM_GIO_VN.length}`);
+    dinhNghiaGioThat.set(db, rows.map(r => r.dinh_nghia));
+  }
+  const vn = `((timestamptz '${new Date(ms).toISOString()}' at time zone 'utc') + interval '7 hours')`;
+  await db.exec(`
+    create or replace function public.bay_gio_vn() returns timestamp language sql stable as $$ select ${vn} $$;
+    create or replace function public.hom_nay_vn() returns date      language sql stable as $$ select ${vn}::date $$;
+    create or replace function public.gio_vn()     returns time      language sql stable as $$ select ${vn}::time $$;
+  `);
+}
+
+export async function traGioDatabase(db) {
+  const dinhNghia = dinhNghiaGioThat.get(db);
+  if (!dinhNghia) return;
+  for (const d of dinhNghia) await db.exec(d);
+  dinhNghiaGioThat.delete(db);
+}
+
 /** uuid ngẫu nhiên cho ma_gui. */
 export function maGui() {
   return crypto.randomUUID();
+}
+
+/**
+ * Client Supabase giả chạy trên chính database PGlite, dưới danh nghĩa một vai — để gọi THẲNG các hàm
+ * đọc / ghi của web/src/lib/kho (from().select().eq().in().order().limit().range(), maybeSingle(), rpc())
+ * và thấy đúng RLS, đúng quyền hàm như trên Supabase thật. select(cột, { count: 'exact' }) trả thêm
+ * `count` (tổng số dòng khớp điều kiện, như PostgREST) — docTungTrang (chung.ts) dựa vào nó để biết đã
+ * đọc đủ trang.
+ *
+ *     const clientCua = await taoClientPg({ db, duoi, duoiAnon });
+ *     const nv = clientCua(UID.nvQuayA);      // 'anon' = chưa đăng nhập · null = đăng nhập nhưng không phải nhân sự
+ *
+ * Kết quả đi qua to_jsonb của chính Postgres, như PostgREST: ngày là chuỗi "YYYY-MM-DD", numeric là số
+ * (PGlite đọc thẳng thì ngày thành Date, numeric thành chuỗi — khác với thứ web nhận trên Supabase).
+ * rpc(): tham số ép kiểu theo chữ ký hàm trong pg_proc (jsonb, uuid, text[]…); hàm trả bảng → data là các
+ * dòng, hàm trả một giá trị → data là giá trị đó. Lỗi → { data: null, error: { message, code } }.
+ * Chỉ hiểu danh sách cột thường trong select() — không hiểu đổi tên cột hay join lồng của PostgREST.
+ */
+export async function taoClientPg({ db, duoi, duoiAnon }) {
+  const ham = new Map((await db.query(`
+    select p.proname, p.proretset, p.proargnames, p.prorettype::regtype::text as tra,
+           (select array_agg(t::regtype::text order by thu) from unnest(p.proargtypes::oid[]) with ordinality as x(t, thu)) as kieu
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'`)).rows.map(r => [r.proname, r]));
+  return function clientCua(uid) {
+    const chay = async (sql, gt) => {
+      const kq = await (uid === 'anon' ? duoiAnon(sql, gt) : duoi(uid, sql, gt));
+      return kq.loi ? { data: null, error: { message: kq.loi, code: kq.ma } } : { data: kq.rows[0]?.r ?? null, error: null };
+    };
+    return {
+      rpc(ten, thamSo = {}) {
+        const h = ham.get(ten);
+        if (!h) return Promise.resolve({ data: null, error: { message: `Could not find the function public.${ten}`, code: 'PGRST202' } });
+        const ds = Object.entries(thamSo);
+        const kieuCua = k => h.kieu?.[(h.proargnames ?? []).indexOf(k)] ?? 'text';
+        const gt = ds.map(([k, v]) => {
+          if (v === null || v === undefined) return null;
+          const kieu = kieuCua(k);
+          if (kieu.endsWith('[]')) return `{${v.map(x => JSON.stringify(String(x))).join(',')}}`;
+          return /^jsonb?$/.test(kieu) ? JSON.stringify(v) : v;
+        });
+        const goi = `${ten}(${ds.map(([k], i) => `${k} => $${i + 1}::${kieuCua(k)}`).join(', ')})`;
+        if (h.proretset) return chay(`select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) as r from ${goi} x`, gt);
+        return chay(h.tra === 'void' ? `select null::jsonb as r from (select ${goi}) x` : `select to_jsonb(${goi}) as r`, gt);
+      },
+      from(bang) {
+        const q = { cot: '*', dk: [], gt: [], sap: [], gioiHan: null, boQua: 0, demTong: false };
+        const dieuKien = () => (q.dk.length ? ` where ${q.dk.join(' and ')}` : '');
+        const chayBang = async () => {
+          const kq = await chay(
+            `select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) as r from (select ${q.cot} from ${bang}`
+            + `${dieuKien()}${q.sap.length ? ` order by ${q.sap.join(', ')}` : ''}`
+            + `${q.gioiHan !== null ? ` limit ${q.gioiHan}` : ''}${q.boQua ? ` offset ${q.boQua}` : ''}) x`, q.gt);
+          if (kq.error || !q.demTong) return kq;
+          const dem = await chay(`select to_jsonb(count(*)) as r from ${bang}${dieuKien()}`, q.gt);
+          return dem.error ? dem : { ...kq, count: Number(dem.data) };
+        };
+        const b = {
+          select(cot, tuy) { q.cot = cot; q.demTong = tuy?.count === 'exact'; return b; },
+          eq(k, v) { q.gt.push(v); q.dk.push(`${k} = $${q.gt.length}`); return b; },
+          in(k, ds) { q.gt.push(`{${ds.join(',')}}`); q.dk.push(`${k}::text = any($${q.gt.length}::text[])`); return b; },
+          order(k, tuy) { q.sap.push(`${k}${tuy?.ascending === false ? ' desc' : ''}`); return b; },
+          limit(n) { q.gioiHan = n; return b; },
+          range(tu, den) { q.boQua = tu; q.gioiHan = den - tu + 1; return b; },
+          async maybeSingle() { const kq = await chayBang(); return kq.error ? kq : { data: kq.data[0] ?? null, error: null }; },
+          then(xong, hong) { return chayBang().then(xong, hong); },
+        };
+        return b;
+      },
+    };
+  };
 }

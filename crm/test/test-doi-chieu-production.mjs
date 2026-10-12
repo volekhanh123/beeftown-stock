@@ -106,13 +106,14 @@ await nhom('3 · HÀM BỊ THIẾU — ĐÚNG KIỂU SỰ CỐ 04/10/2026', asyn
     ds(a.n, 'ham', 'thieu') === JSON.stringify([BAO_DONG]) && a.tong === 1, `${a.tong} khác biệt: ${a.bao}`);
   ok('Thân hàm và quyền của hàm thiếu không kể thêm lần nữa (chỉ ghi kèm)',
     a.n('than_ham').anThieu === 1 && a.n('quyen').anThieu === 1 && a.n('than_ham').thieu.length === 0);
-  ok('Báo cáo chỉ đúng file migration tạo hàm: 0060_bao_dong.sql',
-    a.bao.includes(`THIẾU  ${BAO_DONG}   ← tạo ở 0060_bao_dong.sql`), a.bao);
+  // File CUỐI CÙNG tạo hàm — chạy lại file đó là có hàm. 0060 tạo, 0073 định nghĩa lại (thêm lời gọi dọn nhật ký).
+  ok('Báo cáo chỉ đúng file migration cuối cùng tạo hàm: 0073_bao_dong_don_nhat_ky.sql',
+    a.bao.includes(`THIẾU  ${BAO_DONG}   ← tạo ở 0073_bao_dong_don_nhat_ky.sql`), a.bao);
 
   const b = await sauKhi('drop function bao_dong_bat_dau_luot(text); drop function kho_may_can_nhat_ky(uuid, uuid, jsonb);');
   ok('Xoá cả hai hàm của sự cố → báo đúng hai hàm, mỗi hàm một file',
     ds(b.n, 'ham', 'thieu') === JSON.stringify([BAO_DONG, MAY_CAN]) && b.tong === 2
-      && b.bao.includes('0060_bao_dong.sql') && b.bao.includes('0061_kho_can_quay.sql'), b.bao);
+      && b.bao.includes('0073_bao_dong_don_nhat_ky.sql') && b.bao.includes('0061_kho_can_quay.sql'), b.bao);
 });
 
 // ===========================================================================
@@ -220,9 +221,10 @@ await nhom('7 · THỪA: TẠO TAY, HAY CÂU DROP CHƯA CHẠY', async () => {
 
 // ===========================================================================
 await nhom('7b · GỢI Ý FILE: CHỈ CÂU CREATE / DROP THẬT, KHÔNG PHẢI GRANT / ALTER NHẮC TÊN', async () => {
-  // tao_dat_ban: tạo lại ở 0004, 0008, 0010, 0013, 0062; các file khác chỉ grant / revoke nó trong khối chốt quyền.
-  ok('Hàm tạo nhiều lần → file CUỐI có create (tao_dat_ban → 0062), không phải file chỉ grant nó',
-    timTep(chiMuc, 'ham', 'tao_dat_ban(p_chi_nhanh_ma text)') === '0062_dat_ban_goi_lai.sql', timTep(chiMuc, 'ham', 'tao_dat_ban()'));
+  // tao_dat_ban: tạo lại ở 0004, 0008, 0010, 0013, 0062, 0084 (giới hạn tần suất); các file khác chỉ grant / revoke nó
+  // trong khối chốt quyền.
+  ok('Hàm tạo nhiều lần → file CUỐI có create (tao_dat_ban → 0084), không phải file chỉ grant nó',
+    timTep(chiMuc, 'ham', 'tao_dat_ban(p_chi_nhanh_ma text)') === '0084_gioi_han_cong_khai.sql', timTep(chiMuc, 'ham', 'tao_dat_ban()'));
   ok('Bảng → file create table (chi_nhanh → 0001, khach_hang → 0002), không phải file alter / bật RLS',
     timTep(chiMuc, 'bang', 'chi_nhanh') === '0001_nen_mong.sql' && timTep(chiMuc, 'bang', 'khach_hang') === '0002_khach_hang.sql',
     `${timTep(chiMuc, 'bang', 'chi_nhanh')}, ${timTep(chiMuc, 'bang', 'khach_hang')}`);

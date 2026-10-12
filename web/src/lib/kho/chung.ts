@@ -22,6 +22,7 @@
  */
 
 import type { HaiThuTieng, NgonNguNB } from '../ngon-ngu-noi-bo.ts';
+import { CAU_MAT_MANG_GHI, laLoiMang } from '../qua-tai.ts';
 
 export type { HaiThuTieng, NgonNguNB };
 
@@ -236,9 +237,21 @@ export function kqLoi(e: unknown, macDinh: HaiThuTieng = LOI_KHO_CHUNG.macDinh):
 // hay phẩy trong ô KG luôn là dấu thập phân — không có chuyện "1.250" nghĩa là
 // một nghìn hai trăm năm mươi ký.
 //
-// Ô TIỀN thì ngược lại: đồng không có số lẻ, nên chấm, phẩy, khoảng trắng và
-// chữ "đ" đều là dấu phân cách hàng nghìn và bị bỏ đi: "450.000đ" = 450000.
+// Ô TIỀN thì ngược lại: đồng không có số lẻ, nên chấm, phẩy hay khoảng trắng chỉ
+// được là dấu phân cách hàng nghìn — đúng nhóm ba chữ số, một loại dấu: "450.000đ"
+// = 450000. "450,5" hay "45.00" là gõ nhầm số lẻ: báo sai, không đọc thành 4505.
+//
+// Ô SỐ NGUYÊN (số gói, số ngày) cũng vậy: "1.000" là một nghìn, còn "1.5" gói là
+// gõ nhầm — trước đây bỏ hết dấu chấm nên "1.5" thành 15 gói và được lưu luôn.
 // -----------------------------------------------------------------------------
+
+/** Chữ số có thể nhóm hàng nghìn bằng MỘT loại dấu (chấm, phẩy hoặc cách), đủ ba chữ số mỗi nhóm. */
+function boDauNghin(s: string, dau: RegExp): string | null {
+  if (/^\d+$/.test(s)) return s;
+  const m = s.match(/^\d{1,3}([^\d])\d{3}(?:\1\d{3})*$/);
+  if (!m || !dau.test(m[1])) return null;
+  return s.split(m[1]).join('');
+}
 
 /** "1,5" | "1.5" | "12" → số kg, tối đa 3 số lẻ. Trống → null. Sai → NaN. */
 export function docKg(v: unknown): number | null {
@@ -250,18 +263,22 @@ export function docKg(v: unknown): number | null {
 
 /** "450.000đ" | "450,000" | "450000" → 450000. Trống → null. Sai → NaN. */
 export function docTien(v: unknown): number | null {
-  const s = String(v ?? '').trim().replace(/[\s.,]/g, '').replace(/đ$|d$|vnd$/i, '');
+  // Bỏ hậu tố rồi mới bỏ khoảng trắng — regex "\s*(đ|d|vnd)$" chạy theo cấp hai với chuỗi nhiều dấu cách.
+  const s = String(v ?? '').trim().replace(/(đ|d|vnd)$/i, '').trimEnd();
   if (s === '') return null;
-  if (!/^\d{1,13}$/.test(s)) return NaN;
-  return Number(s);
+  const so = boDauNghin(s, /^[.,\s]$/);
+  if (so === null || !/^\d{1,13}$/.test(so)) return NaN;
+  return Number(so);
 }
 
-/** Số nguyên trong khoảng. Trống → null. Sai → NaN. */
+/** Số nguyên trong khoảng; "1.000" / "1 000" = 1000, "1.5" → sai. Trống → null. Sai → NaN. */
 export function docSoNguyen(v: unknown, min: number, max: number): number | null {
-  const s = String(v ?? '').trim().replace(/[\s.]/g, '');
+  const s = String(v ?? '').trim();
   if (s === '') return null;
-  if (!/^-?\d{1,9}$/.test(s)) return NaN;
-  const n = Number(s);
+  const am = s.startsWith('-');
+  const so = boDauNghin(am ? s.slice(1) : s, /^[.\s]$/);
+  if (so === null || !/^\d{1,9}$/.test(so)) return NaN;
+  const n = Number(so) * (am ? -1 : 1);
   return n >= min && n <= max ? n : NaN;
 }
 
@@ -322,6 +339,21 @@ export function dinhDangNgay(iso: string | null | undefined): string {
   if (!iso) return '—';
   const [nam, thang, ngay] = iso.slice(0, 10).split('-');
   return nam && thang && ngay ? `${ngay}/${thang}/${nam}` : iso;
+}
+
+/** Chữ chung khi không biết đơn vị đếm của món — cũng là giá trị mặc định của cột kho_mat_hang.don_vi_goi (0019). */
+export const DON_VI_GOI_CHUNG: HaiThuTieng = { vi: 'gói', en: 'packs' };
+
+/**
+ * Đơn vị đếm CHUNG của một nhóm món ("khay", "tảng"…): mọi món ĐẾM trong nhóm cùng một đơn vị thì trả đơn vị đó,
+ * khác nhau hoặc không món nào đếm → null (câu dùng chữ chung). Món cân ký không tính; món đếm mà thiếu
+ * đơn vị coi như đơn vị mặc định của cột. Dùng cho câu nói về số gói của cả một phiếu / một yêu cầu.
+ */
+export function donViChung(
+  ds: readonly ({ dem_goi?: boolean | null; don_vi_goi?: string | null } | null | undefined)[],
+): string | null {
+  const dv = new Set(ds.filter(m => m?.dem_goi === true).map(m => m!.don_vi_goi || DON_VI_GOI_CHUNG.vi));
+  return dv.size === 1 ? [...dv][0] : null;
 }
 
 /** "2026-09-25" → "25/09" */
@@ -520,11 +552,51 @@ export const LOI_KHO_CHUNG = {
   quyen: { vi: 'Tài khoản của bạn không có quyền làm việc này.', en: 'Your account is not allowed to do this.' },
   trung: { vi: 'Đã có một mục trùng tên hoặc trùng mã.', en: 'Something with the same name or code already exists.' },
   khongHopLe: { vi: 'Dữ liệu chưa hợp lệ — kiểm tra lại các ô vừa nhập.', en: 'Some data is not valid — check the fields you just filled in.' },
-  mang: {
-    vi: 'Không kết nối được database. Chưa chắc đã ghi hay chưa — tải lại trang để kiểm tra.',
-    en: 'Could not reach the database. It may or may not have been saved — reload the page to check.',
+  mang: CAU_MAT_MANG_GHI,
+  quaNhieuDong: {
+    vi: 'Danh sách có hơn 100.000 dòng — không đọc hết được. Thu hẹp khoảng ngày hoặc bộ lọc rồi thử lại.',
+    en: 'The list has more than 100,000 rows — it cannot all be read. Narrow the date range or filters and try again.',
   },
 } as const satisfies Record<string, HaiThuTieng>;
+
+// -----------------------------------------------------------------------------
+// ĐỌC HẾT DANH SÁCH — vượt giới hạn 1.000 dòng mỗi lần của Supabase
+// -----------------------------------------------------------------------------
+// PostgREST trả tối đa 1.000 dòng mỗi lần đọc (Max rows của project), cả bảng /
+// view lẫn hàm rpc trả nhiều dòng; .limit(2000) KHÔNG vượt được. Đọc thiếu thì
+// lặng lẽ: tồn kho mất lô hạn xa nhất, thẻ kho mất số dư cuối, file MISA thiếu
+// chứng từ. docTungTrang đọc .range() từng trang cho tới khi đủ TỔNG SỐ DÒNG
+// database báo (select / rpc với { count: 'exact' }) — Max rows bị hạ dưới 1.000
+// thì trang ngắn chưa phải trang cuối. Không có tổng thì trang ngắn là trang cuối.
+//
+// Truy vấn PHẢI xếp thứ tự xác định thì các trang mới nối khít: .order() đủ cột
+// để không hai dòng nào ngang nhau; hàm rpc plpgsql thì thứ tự trong thân hàm.
+// Kiểm thử: crm/test/test-kho-doc-het-trang-web.mjs (client giả trần 1.000 dòng).
+// -----------------------------------------------------------------------------
+export const CO_TRANG_DOC = 1000;
+const TOI_DA_DONG_DOC = 100_000;   // quá số này là có gì đó sai: báo lỗi, không cắt cụt
+export const CAU_QUA_NHIEU_DONG: HaiThuTieng = LOI_KHO_CHUNG.quaNhieuDong;
+
+/** Đọc mọi trang; lỗi ở bất kỳ trang nào → ném (không trả phần đã đọc như thể đủ). */
+export async function docTungTrang<T>(
+  trang: (tu: number, den: number) => PromiseLike<{ data: T[] | null; error: unknown; count?: number | null }>,
+): Promise<T[]> {
+  const ra: T[] = [];
+  for (let dau = 0; dau < TOI_DA_DONG_DOC;) {
+    const { data, error, count } = await trang(dau, dau + CO_TRANG_DOC - 1);
+    if (error) {
+      // Dòng bị xoá giữa hai lần đọc nên trang sau nằm ngoài khoảng (PGRST103): đã đủ.
+      if (dau > 0 && (error as { code?: string }).code === 'PGRST103') return ra;
+      throw error;
+    }
+    const ds = data ?? [];
+    ra.push(...ds);
+    const daDu = typeof count === 'number' ? ra.length >= count : ds.length < CO_TRANG_DOC;
+    if (ds.length === 0 || daDu) return ra;
+    dau += ds.length;
+  }
+  throw new Error(CAU_QUA_NHIEU_DONG.vi);
+}
 
 /**
  * Câu lỗi cho nhân viên đọc.
@@ -545,7 +617,7 @@ export function cauLoiKho(e: unknown, macDinh: string = LOI_KHO_CHUNG.macDinh.vi
   if (/violates check constraint/i.test(m)) {
     return LOI_KHO_CHUNG.khongHopLe.vi;
   }
-  if (/fetch failed|network|timeout|ECONN/i.test(m)) {
+  if (laLoiMang(m)) {
     return LOI_KHO_CHUNG.mang.vi;
   }
   return m || macDinh;

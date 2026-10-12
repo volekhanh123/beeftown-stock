@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Hệ thống CRM & thẻ thành viên Beeftown",
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
     "test": "node test/chay-tat-ca.mjs",
     "test:ci": "node test/chay-tat-ca.mjs --tat-ca",
@@ -32,7 +35,7 @@
     "doi-chieu": "node test/doi-chieu-production.mjs"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.2.17",
+    "@electric-sql/pglite": "^0.4.6",
     "postgres": "^3.4.9"
   }
 }

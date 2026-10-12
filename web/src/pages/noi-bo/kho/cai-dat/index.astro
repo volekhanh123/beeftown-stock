@@ -452,14 +452,14 @@ const mayChung: { bat: boolean; cau: string; cauEn?: string } | null =
 <style>
   /* Thanh tiến độ: phần đã xong tô xanh. */
   .tl-thanh { height: 12px; border-radius: 999px; background: var(--kem-sau); overflow: hidden; }
-  .tl-thanh > span { display: block; height: 100%; background: #1F7A4C; border-radius: 999px; }
+  .tl-thanh > span { display: block; height: 100%; background: var(--xanh); border-radius: 999px; }
   .tl-ds { list-style: none; margin: 1rem 0 0; padding: 0; display: grid; gap: .6rem; }
-  .tl-buoc { display: flex; gap: .75rem; padding: .75rem; border: 1px solid var(--vach); border-radius: 10px; background: #fff; }
+  .tl-buoc { display: flex; gap: .75rem; padding: .75rem; border: 1px solid var(--vach); border-radius: 10px; background: var(--nb-the); }
   .tl-buoc.chua { border-color: var(--mu-tat); }
   .tl-buoc.xong, .tl-buoc.bo-qua { opacity: .85; }
   .tl-so { flex: 0 0 2rem; height: 2rem; border-radius: 50%; display: grid; place-items: center; font-weight: 700;
     background: var(--kem-sau); color: var(--muc-nhat); }
-  .tl-buoc.xong .tl-so { background: #1F7A4C; color: #fff; }
+  .tl-buoc.xong .tl-so { background: var(--xanh); color: var(--kem); }
   .tl-noi-dung { flex: 1; min-width: 0; }
   .tl-ten { margin: 0; }
   .tl-mo-ta { margin: .25rem 0 0; }

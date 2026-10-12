@@ -119,12 +119,6 @@ const maGui = laUuid(maGuiCu) ? maGuiCu : crypto.randomUUID();
 let soDong = soDongThem(form);
 let bao: KetQua | null = k.bao;
 let chu: FormDonDat | null = null;
-if (Astro.request.method === 'POST' && !form) {
-  bao = kqHai(false, {
-    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
-    en: 'Could not read what was sent — the connection may have dropped. Please send again.',
-  });
-}
 if (form && nccChon) {
   const viec = String(form.get('viec') ?? '');
   if (viec === 'them_dong') {

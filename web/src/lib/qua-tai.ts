@@ -87,6 +87,26 @@ export const CAU_DANG_NHAP_TAM: Readonly<Record<Exclude<LoaiLoiAuth, 'tu_choi'>,
   },
 };
 
+/**
+ * Câu lỗi của một lần gọi database có phải MẤT MẠNG / HẾT GIỜ không. supabase-js không ném mà trả error.message
+ * của fetch, mỗi nơi chạy một kiểu: Node / Workers "TypeError: fetch failed", Bun (Beeftown Cân) "Unable to connect.
+ * Is the computer able to access the url?", trình duyệt "Failed to fetch" / "NetworkError…" / Safari "Load failed",
+ * DNS "getaddrinfo ENOTFOUND", hết giờ. Trước đây mỗi file chép một regex, sót Bun và DNS — người dùng thấy nguyên
+ * câu tiếng Anh kỹ thuật thay vì "chưa chắc đã ghi".
+ */
+export function laLoiMang(m: string): boolean {
+  return /fetch failed|failed to fetch|network|load failed|unable to connect|ENOTFOUND|EAI_AGAIN|ECONN|ETIMEDOUT|timeout|timed out/i.test(m);
+}
+
+/**
+ * Mạng đứt khi gọi database. Câu này hiện cho CẢ lần đọc (mở trang, tải file) lẫn lần ghi, nên phải đúng cho cả
+ * hai: lần ghi thì không biết database đã nhận hay chưa — nói đúng như thế, nhưng chỉ khi người dùng vừa bấm lưu.
+ */
+export const CAU_MAT_MANG_GHI: HaiThuTieng = {
+  vi: 'Không kết nối được database — tải lại trang sau ít giây. Nếu vừa bấm lưu: chưa chắc đã ghi hay chưa, tải lại để kiểm tra.',
+  en: 'Could not reach the database — reload the page in a few seconds. If you had just saved something, it may or may not have been saved: reload to check.',
+};
+
 const CAU_TRANG = {
   tieuDe: { vi: 'Hệ thống đang bận', en: 'The system is busy' },
   lyDo: {
@@ -138,12 +158,12 @@ export function trangQuaTai(nn: NgonNguNB, laPost: boolean, url: URL): Response 
 ${laPost ? '' : `<meta http-equiv="refresh" content="${giay}">`}
 <title>${c(CAU_TRANG.tieuDe)} · Beeftown</title>
 <style>
-  body { margin: 0; background: #FBF4E1; color: #1E160E; font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', sans-serif; }
+  body { margin: 0; background: #F0E3D0; color: #151008; font: 16px/1.55 system-ui, -apple-system, 'Segoe UI', sans-serif; }
   main { width: min(560px, 100% - 32px); margin: 12vh auto; }
   h1 { font-size: 1.5rem; margin: 0 0 1rem; }
   a { display: inline-block; margin-top: .5rem; padding: .75rem 1.25rem; min-height: 48px; box-sizing: border-box;
-      background: #B23A2C; color: #FBF4E1; border-radius: 8px; text-decoration: none; font-weight: 600; }
-  .phu { color: rgba(30, 22, 14, .68); font-size: .9rem; margin-top: 1.5rem; }
+      background: #A70C0C; color: #F0E3D0; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .phu { color: rgba(21, 16, 8, .68); font-size: .9rem; margin-top: 1.5rem; }
 </style>
 </head>
 <body>

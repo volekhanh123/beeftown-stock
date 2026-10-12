@@ -36,7 +36,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, docKg, docNgay, docSoNguyen, homNayVn, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, docKg, docNgay, docSoNguyen, docTungTrang, donViChung, homNayVn, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 import { maTuO, cauLoiNhan, cauQuaNhieuNhan, cauBoLuot, TOI_DA_MOT_LUOT } from './dem-quay.ts';
 import type { DongTon } from './ton.ts';
@@ -596,13 +596,13 @@ export interface NhanQuet { mat_hang_id: string; thu_tu: number }
 
 export async function docNhanQuet(client: SupabaseClient, id: string): Promise<NhanQuet[]> {
   if (!laUuid(id)) return [];
-  const { data, error } = await client
+  const data = await docTungTrang((tu, den) => client
     .from('kho_phien_pha_quet')
-    .select('mat_hang_id, thu_tu')
+    .select('mat_hang_id, thu_tu', { count: 'exact' })
     .eq('phien_pha_id', id)
-    .limit(5000);
-  if (error) throw error;
-  return (data ?? []).map(q => ({ mat_hang_id: q.mat_hang_id, thu_tu: Number(q.thu_tu) }));
+    .order('thu_tu')
+    .range(tu, den));
+  return data.map(q => ({ mat_hang_id: q.mat_hang_id, thu_tu: Number(q.thu_tu) }));
 }
 
 /** Nơi để sau pha của từng mặt hàng (kho_mat_hang.noi_de_sau_pha, 0033). */
@@ -812,16 +812,19 @@ export interface GoiRaQuay {
  * Màn xong: các lô phiên này sinh ra, còn tồn ở KHO (không tính quầy, chờ
  * hủy, đang mang ra quầy), kèm link mở sẵn phiếu chuyển ra quầy đúng lô đó.
  * daOQuay = số gói đã vào thẳng quầy (món để quầy sau pha).
+ * donVi / donViQuay = đơn vị đếm chung của các lô đó ("khay") cho câu "Chuyển 18 khay ra quầy ngay" /
+ * "5 khay đã để thẳng ở quầy"; các món khác đơn vị → null, câu dùng chữ chung "gói".
  */
 export function goiRaQuay(
   ra: Pick<DauRa, 'lo_id'>[], ton: DongTon[],
-): { lo: GoiRaQuay[]; tongGoi: number; daOQuay: number } {
+): { lo: GoiRaQuay[]; tongGoi: number; daOQuay: number; donVi: string | null; donViQuay: string | null } {
   const cuaPhien = new Set(ra.map(r => r.lo_id).filter((x): x is string => !!x));
   const lo: GoiRaQuay[] = [];
+  const oQuay: DongTon[] = [];
   let daOQuay = 0;
   for (const t of ton) {
     if (!cuaPhien.has(t.lo_id) || t.so_kg <= 0) continue;
-    if (t.loai_vi_tri === 'quay') { daOQuay += Number(t.so_goi) || 0; continue; }
+    if (t.loai_vi_tri === 'quay') { daOQuay += Number(t.so_goi) || 0; oQuay.push(t); continue; }
     if (t.loai_vi_tri !== 'kho') continue;
     lo.push({
       lo_id: t.lo_id, vi_tri_id: t.vi_tri_id, ten: t.ten_hang, so_goi: Number(t.so_goi) || 0, so_kg: t.so_kg,
@@ -829,7 +832,7 @@ export function goiRaQuay(
       link: `/noi-bo/kho/xuat/moi?loai=chuyen&tu=${encodeURIComponent(t.vi_tri_id)}&lo=${encodeURIComponent(t.lo_id)}`,
     });
   }
-  return { lo, tongGoi: lo.reduce((s, l) => s + l.so_goi, 0), daOQuay };
+  return { lo, tongGoi: lo.reduce((s, l) => s + l.so_goi, 0), daOQuay, donVi: donViChung(lo), donViQuay: donViChung(oQuay) };
 }
 
 // -----------------------------------------------------------------------------

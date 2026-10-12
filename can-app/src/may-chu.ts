@@ -9,11 +9,16 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { exec } from 'node:child_process';
-import GIAO_DIEN from './giao-dien.html' with { type: 'text' };
-import HUONG_DAN from './huong-dan.html' with { type: 'text' };
+import GIAO_DIEN_FILE from './giao-dien.html' with { type: 'text' };
+import HUONG_DAN_FILE from './huong-dan.html' with { type: 'text' };
 import { UngDung, cauLoi } from './nghiep-vu.ts';
 import { LoiCapNhat } from './cap-nhat.ts';
 import type { SuaO, ThayDoiTem, ThemO } from './tem.ts';
+
+// `with { type: 'text' }`: Bun nhập file .html thành chuỗi. Kiểu của bun-types cho "*.html" là HTMLBundle (cách nhập không
+// thuộc tính, cho máy chủ HTML của Bun) — tsc không phân biệt theo thuộc tính nhập, nên ghi rõ kiểu ở đây.
+const GIAO_DIEN = GIAO_DIEN_FILE as unknown as string;
+const HUONG_DAN = HUONG_DAN_FILE as unknown as string;
 
 const json = (v: unknown, status = 200) =>
   new Response(JSON.stringify(v), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
@@ -167,7 +172,7 @@ export function moMayChu(ud: UngDung, tuy: {
           }
           case '/api/hang': return json({ ok: true, ...(await ud.tatCaHang()) });
           case '/api/tem': return json({ ok: true, ...ud.tem() });
-          case '/api/tem/gui': return json({ ok: true, ...(await ud.guiTem(thayDoiTem(await docThan(req)))) });
+          case '/api/tem/gui': return json(await ud.guiTem(thayDoiTem(await docThan(req))));   // đã có ok: true
           case '/api/tem/usb': return json({ ok: true, ...(await ud.taoFileUsbTem(thayDoiTem(await docThan(req)))) });
           case '/api/da-nap-usb': return json({ ok: true, ...ud.daNapUsb() });
           // Ô Cân tự làm mới (2.8: mỗi 15 giây): chỉ đọc cài đặt, lần tự gửi, ngày tính HSD trên cân (qua nửa đêm thì báo HSD

@@ -25,7 +25,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { boDau, cauLoiKho, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { boDau, cauLoiKho, dinhDangThoiDiem, docSoNguyen, docTungTrang, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 import { docGioVnDiaPhuong, gioVnTuMs } from '../gio-vn.ts';
@@ -449,16 +449,16 @@ export async function docDongIpos(
   }));
 }
 
-/** Mọi dòng chưa ghép (để gom theo mã). Tối đa 2000 dòng — đủ cho vài ngày chưa ai xử lý. */
+/** Mọi dòng chưa ghép (để gom theo mã), đọc từng trang — mã cũ nhất sau một đợt iPOS dồn vẫn lên màn ghép. */
 export async function docMaChuaGhep(client: SupabaseClient, chiNhanhId: string): Promise<MaChuaGhep[]> {
-  const { data, error } = await client.from('kho_v_ipos_dong')
-    .select('ma_ipos, ten_ipos, ma_can, thoi_diem_ban')
+  const data = await docTungTrang((tu, den) => client.from('kho_v_ipos_dong')
+    .select('ma_ipos, ten_ipos, ma_can, thoi_diem_ban', { count: 'exact' })
     .eq('chi_nhanh_id', chiNhanhId)
     .eq('trang_thai', 'chua_khop')
     .order('thoi_diem_ban', { ascending: false })
-    .limit(2000);
-  if (error) throw error;
-  return gomMaChuaGhep((data ?? []) as { ma_ipos: string | null; ten_ipos: string | null; ma_can: string | null; thoi_diem_ban: string }[]);
+    .order('id')
+    .range(tu, den));
+  return gomMaChuaGhep(data as { ma_ipos: string | null; ten_ipos: string | null; ma_can: string | null; thoi_diem_ban: string }[]);
 }
 
 export async function docMaDaGhep(client: SupabaseClient, chiNhanhId: string): Promise<MaIposDaGhep[]> {
@@ -529,7 +529,8 @@ export async function chuyenSangIpos(client: SupabaseClient, chiNhanhId: string,
   const { data, error } = await client.rpc('kho_ipos_chuyen_sang', { p_chi_nhanh_id: chiNhanhId, p_tu_luc: moc });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const tu = (data as { ipos_tu_luc?: string } | null)?.ipos_tu_luc;
-  const luc = tu ? gioVnTuMs(new Date(tu).getTime()).slice(0, 16).replace('T', ' ') : '';
+  // Mốc ghi kiểu Việt, giờ Việt Nam ("11/10 21:48") — cùng dạng với dòng "Đang trừ kho theo iPOS từ …" ngay dưới câu báo.
+  const luc = tu ? dinhDangThoiDiem(tu) : '';
   return kqHai(true, {
     vi: `Đã chuyển sang trừ kho theo iPOS${tu ? ` từ ${luc}` : ''}. Bán trước mốc này được bỏ qua (đã tính trong lần đếm quầy).`,
     en: `Switched to deducting stock from iPOS${tu ? ` from ${luc}` : ''}. Sales before this time are skipped (already covered by the counter count).`,

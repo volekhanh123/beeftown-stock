@@ -23,10 +23,11 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # cần main và mọi nhánh khác để so số
-      - uses: actions/setup-node@v5
+          filter: blob:none   # so số chỉ cần danh sách file (git ls-tree), không cần nội dung mọi nhánh
+      - uses: actions/setup-node@v7
         with:
           node-version-file: web/.node-version
       - run: node crm/test/kiem-migration.mjs --so-voi origin/main --canh-bao-nhanh-khac

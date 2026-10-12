@@ -13,13 +13,7 @@
  * sách lệch, và npm test đỏ ngay.
  */
 
-import { PGlite } from '@electric-sql/pglite';
-import { readFileSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = join(__dirname, '..', 'supabase', 'migrations');
+import { dungDatabaseTrong } from './kho-chung.mjs';
 
 let dat = 0, hong = 0;
 const loi = [];
@@ -44,35 +38,12 @@ async function phaiLoi(db, sql, params = []) {
   catch (e) { return e.message; }
 }
 
-const db = new PGlite();
-
 console.log('\x1b[1m\nBEEFTOWN CRM — KIỂM THỬ AN TOÀN\x1b[0m');
 console.log('='.repeat(60));
 
-// ---------------------------------------------------------------------------
-// Mô phỏng Supabase: schema auth, ba vai trò, VÀ quyền mặc định.
-// Khối default privileges là thứ làm cho bài test này có nghĩa — thiếu nó thì
-// PGlite vốn đã không cấp gì cho anon, và mọi khẳng định đều đúng một cách rỗng.
-// ---------------------------------------------------------------------------
-await db.exec(`
-  create schema if not exists auth;
-  create table if not exists auth._phien (uid uuid);
-  create or replace function auth.uid() returns uuid
-    language sql stable as $$ select uid from auth._phien limit 1 $$;
-
-  create role anon nologin;
-  create role authenticated nologin;
-  create role service_role nologin;
-  grant usage on schema public to anon, authenticated, service_role;
-
-  alter default privileges in schema public grant all on tables    to anon, authenticated;
-  alter default privileges in schema public grant all on functions to anon, authenticated;
-  alter default privileges in schema public grant all on sequences to anon, authenticated;
-`);
-
-for (const f of readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort()) {
-  await db.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
-}
+// Mô phỏng Supabase (schema auth, ba vai, quyền mặc định đặt TRƯỚC khi nạp migration — thiếu nó thì mọi
+// khẳng định "anon không làm được X" đều đúng một cách rỗng) rồi nạp migration: dungDatabaseTrong() của kho-chung.mjs.
+const { db } = await dungDatabaseTrong();
 
 // ---------------------------------------------------------------------------
 // Dữ liệu mẫu: hai chi nhánh với tỷ lệ quay lại KHÁC NHAU, để mục 4 có thể
@@ -106,10 +77,8 @@ await db.query(`select * from ghi_luot_ghe($1,$2,290000::bigint)`, [cnA.id, '091
 await db.query(`select * from ghi_luot_ghe($1,$2,310000::bigint)`, [cnA.id, '0911111111']);
 await db.query(`select * from ghi_luot_ghe($1,$2,290000::bigint)`, [cnB.id, '0922222222']);
 
-await db.exec(`
-  grant select, insert, update on all tables in schema public to authenticated;
-  grant execute on all functions in schema public to authenticated;
-`);
+// Quyền của authenticated đúng như Supabase: quyền mặc định đặt trước khi nạp migration, trừ những gì
+// migration đã thu hồi. Không cấp hàng loạt ở đây — nó xoá trắng các revoke (test-quy-trinh.mjs, mục 6).
 
 async function duoiDanhNghia(uid, sql, params = []) {
   await db.query(`delete from auth._phien`);
@@ -134,7 +103,9 @@ await nhom('1 · QUYỀN THỰC THI HÀM (lỗ hổng 1 và 4)', async () => {
   // Sửa danh sách ở đây là một hành vi CÓ Ý THỨC, phải giải thích được.
   const DUOC_PHEP = [
     'chi_nhanh_cong_khai',
-    'ghi_nhat_ky_tra_cuu',
+    // ghi_nhat_ky_tra_cuu RA KHỎI danh sách từ 0084: nó chèn một dòng mỗi lần gọi, không giới
+    // hạn, và ghi được lần "sai" giả để khoá tra cứu của người khác. tra_cuu_dat_ban và
+    // huy_dat_ban tự ghi nhật ký. Danh sách ngắn đi = chặt hơn.
     'ghi_su_kien_web',
     'huy_dat_ban',
     'lich_trong_theo_ma',
@@ -143,7 +114,10 @@ await nhom('1 · QUYỀN THỰC THI HÀM (lỗ hổng 1 và 4)', async () => {
     'tao_dat_ban',
     'thuc_don_cong_khai',
     'tin_tuyen_dung_cong_khai',
-    'tra_cuu_dat_ban',
+    // tra_cuu_mot_dat_ban THAY tra_cuu_dat_ban từ 0084: hàm trả bảng cho người gọi PostgREST hủy
+    // giao dịch của lần tra sai (406 vnd.pgrst.object+json) — khoá dò mã không bao giờ đếm. Hàm
+    // mới trả jsonb, cùng khoá, cùng nhật ký.
+    'tra_cuu_mot_dat_ban',
     // Không phải để website gọi: policy tải CV trên storage.objects gọi nó
     // dưới vai anon. Thiếu thì mọi lượt tải CV lỗi quyền — xem 0025.
     've_con_hieu_luc',

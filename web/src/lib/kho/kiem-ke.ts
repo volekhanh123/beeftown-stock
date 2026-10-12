@@ -28,8 +28,9 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, docTungTrang, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { gomTheoMaCan, tachDanhSachMa } from './ma-vach.ts';
+import { taoBangTraMaCan, traMaCan, type MaGiamDeTra, type OMaDeTra } from './tra-ma-can.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 
 export interface KiemKeTom {
@@ -162,12 +163,18 @@ export async function docKiemKe(
 export async function docSoNhanQuet(client: SupabaseClient, kiemKeId: string): Promise<Map<string, number>> {
   const ra = new Map<string, number>();
   if (!laUuid(kiemKeId)) return ra;
-  const { data, error } = await client
-    .from('kho_kiem_ke_quet')
-    .select('mat_hang_id')
-    .eq('kiem_ke_id', kiemKeId).limit(5000);
-  if (error) return ra;
-  for (const q of data ?? []) ra.set(q.mat_hang_id, (ra.get(q.mat_hang_id) ?? 0) + 1);
+  let data: { mat_hang_id: string }[];
+  try {
+    data = await docTungTrang((tu, den) => client
+      .from('kho_kiem_ke_quet')
+      .select('mat_hang_id', { count: 'exact' })
+      .eq('kiem_ke_id', kiemKeId)
+      .order('thu_tu')
+      .range(tu, den));
+  } catch {
+    return ra;
+  }
+  for (const q of data) ra.set(q.mat_hang_id, (ra.get(q.mat_hang_id) ?? 0) + 1);
   return ra;
 }
 
@@ -338,6 +345,10 @@ export function cauQuetLoi(soNhanHong: number, soGoiLa: number, nn: NgonNguNB = 
 /**
  * Quét hết các gói ở vị trí → số gói và tổng kg theo mặt hàng, ĐÈ lên số
  * đang ghi của mặt hàng đó (quét là đếm lại từ đầu, không cộng dồn).
+ *
+ * Mã trên nhãn tra bằng bộ tra chung (tra-ma-can.ts): mã của món, ô mã, mã giảm giá. Nhãn của CÙNG một món in
+ * bằng các mã khác nhau (khay của hai tảng mang hai ô, khay cận date mang mã giảm) cộng vào MỘT số đếm của món
+ * đó — cộng theo gram, không mã nào đè mã nào. Trang không truyền `maNhan` → chỉ nhận mã của chính món.
  */
 export function apDungQuet(
   dong: DongDemForm[],
@@ -345,30 +356,39 @@ export function apDungQuet(
   matHang: { id: string; ten: string; ma_can: string | null; dang_dung: boolean; dem_goi?: boolean; don_vi_goi?: string | null }[],
   mau?: string | null,
   soLeKg = 3,
+  maNhan?: { oMa: readonly OMaDeTra[]; maGiam: readonly MaGiamDeTra[] } | null,
 ): KetQuaQuetKiemKe {
   const ds = tachDanhSachMa(noiDung);
   const gom = gomTheoMaCan(ds, mau || undefined, soLeKg);
-  const theoCan = new Map(matHang.filter(m => m.dang_dung && m.ma_can).map(m => [m.ma_can!, m]));
+  const bang = taoBangTraMaCan(matHang, maNhan?.oMa ?? [], maNhan?.maGiam ?? []);
+  const heSo = 10 ** soLeKg;
   const ra = dong.map(d => ({ ...d }));
   const tom: string[] = [];
   const tomEn: string[] = [];
-  let soHang = 0;
   let soDoc = 0;
   let soGoiLa = 0;
+  const theoMon = new Map<string, { mon: typeof matHang[number]; soGoi: number; don: number }>();
   for (const [maCan, g] of gom.theoMa) {
-    const m = theoCan.get(maCan);
+    const m = traMaCan(bang, maCan)?.matHang;
     if (!m) { soGoiLa += g.soGoi; continue; }
-    soHang += 1;
-    soDoc += g.soGoi;
-    const kg = g.soKg > 0 ? String(g.soKg).replace('.', ',') : '';
+    const c = theoMon.get(m.id) ?? { mon: m, soGoi: 0, don: 0 };
+    c.soGoi += g.soGoi;
+    c.don += Math.round(g.soKg * heSo);
+    theoMon.set(m.id, c);
+  }
+  const soHang = theoMon.size;
+  for (const { mon: m, soGoi, don } of theoMon.values()) {
+    soDoc += soGoi;
+    const soKg = don / heSo;
+    const kg = soKg > 0 ? String(soKg).replace('.', ',') : '';
     const co = ra.find(d => d.mat_hang_id === m.id && !d.lo_id);
     // Quét thấy gói thì món này còn hàng — bỏ tích "Đã hết thật" lỡ tích từ trước.
-    if (co) { co.goi = String(g.soGoi); co.kg = kg; co.het = false; }
-    else ra.push({ mat_hang_id: m.id, lo_id: '', goi: String(g.soGoi), kg, het: false, goc: null });
+    if (co) { co.goi = String(soGoi); co.kg = kg; co.het = false; }
+    else ra.push({ mat_hang_id: m.id, lo_id: '', goi: String(soGoi), kg, het: false, goc: null });
     for (const nn of ['vi', 'en'] as const) {
       (nn === 'vi' ? tom : tomEn).push(m.dem_goi === false
-        ? `${dinhDangKg(g.soKg, nn)} kg ${m.ten}`
-        : `${g.soGoi} ${m.don_vi_goi || GOI_MAC_DINH[nn]} ${m.ten}${g.soKg > 0 ? ` (${dinhDangKg(g.soKg, nn)} kg)` : ''}`);
+        ? `${dinhDangKg(soKg, nn)} kg ${m.ten}`
+        : `${soGoi} ${m.don_vi_goi || GOI_MAC_DINH[nn]} ${m.ten}${soKg > 0 ? ` (${dinhDangKg(soKg, nn)} kg)` : ''}`);
     }
   }
   const conLai = tom.length - 3;

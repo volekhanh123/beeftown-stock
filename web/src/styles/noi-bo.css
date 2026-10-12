@@ -1,26 +1,71 @@
 /* =============================================================================
    GIAO DIỆN NỘI BỘ
    =============================================================================
-   Khác hẳn trang công khai, và cố ý khác: trang công khai nền tối, chữ to,
-   ít chi tiết — để đọc lướt ngoài đường. Trang nội bộ nền sáng, mật độ cao
-   hơn — để đứng ở quầy dò một danh sách.
+   Cùng bảng màu thương hiệu với trang công khai (chung.css), nhưng dựng khác,
+   và cố ý khác: trang công khai chữ to, ít chi tiết — để đọc lướt ngoài
+   đường. Trang nội bộ mật độ cao hơn, thẻ Cream trên nền kem sau — để đứng ở
+   quầy dò một danh sách.
 
-   Nền sáng ở đây còn là một tín hiệu: nhìn vào là biết ngay mình đang ở
-   trang quản trị, không phải trang khách. Người dùng cùng một điện thoại cho
-   cả hai.
+   KHÔNG CÓ MÀU TRẮNG, như trang công khai: bảng màu thương hiệu không có trắng.
+   Hai bề mặt, khai một lần ở .nb-than: nền trang --nb-nen (kem sau) và mọi thứ
+   nổi lên trên nó — thẻ, thanh điều hướng, menu, ô nhập — --nb-the (Cream).
+   Thẻ tách khỏi nền bằng viền mảnh --vach, không bằng một mảng trắng. Ô đánh
+   dấu, ô chọn một và nút chọn file tự vẽ (ô của hệ thống nền trắng). Chỗ duy
+   nhất có trắng và đen là bản in ra giấy.
+
+   Đầu trang tối và thanh điều hướng là tín hiệu: nhìn vào là biết ngay mình
+   đang ở trang quản trị, không phải trang khách. Người dùng cùng một điện
+   thoại cho cả hai.
 
    KÍCH THƯỚC CHẠM: mọi nút và ô nhập tối thiểu 48px chiều cao, và mọi ô nhập
    có font-size >= 16px. Dưới 16px thì Safari trên iPhone tự phóng to trang
    khi chạm vào ô — trang nhảy, người dùng mất chỗ.
+
+   MÀU: chỉ dùng biến. Năm màu thương hiệu và màu pha ở :root của chung.css;
+   bề mặt và màu trạng thái của công cụ ở .nb-than ngay dưới. Tương phản đã tính
+   (WCAG 2.2) — crm/test/test-noi-bo-bang-mau.mjs gác từng cặp:
+     chữ than / kem · kem sau       14,96 · 14,05 : 1
+     chữ phụ (--muc-nhat) / kem · kem sau   5,92 · 5,80 : 1
+     chữ đỏ / kem · kem sau         6,15 · 5,77 : 1     chữ kem / đỏ      6,15 : 1
+     viền ô (--vien-o) / kem · kem sau   3,71 · 3,49 : 1   chữ kem / than   14,96 : 1
+   KHÔNG BAO GIỜ: Marigold, Warm Stone làm chữ hay biểu tượng trên nền sáng
+   (1,56 và 1,83 : 1 với kem). Chữ "lưu ý" trên nền sáng dùng --vang-chu.
    ============================================================================= */
 
 .nb-than {
-  background: var(--kem);
+  /* Hai bề mặt của công cụ — không có trắng. Kho (Kho.astro: <body class="nb-than kho-than">)
+     đọc cùng hai biến này. Cream và kem sau chỉ chênh 1,07 : 1: thẻ tách khỏi nền bằng viền --vach. */
+  --nb-nen:    var(--kem-sau);   /* nền trang */
+  --nb-the:    var(--kem);       /* thẻ, thanh điều hướng, thanh đáy, menu thả, ô nhập */
+
+  /* Màu trạng thái của công cụ. Đây là màu CHỨC NĂNG (xanh = xong, vàng = lưu ý,
+     đỏ = làm ngay), không thuộc năm màu thương hiệu; sắc đã chỉnh cho hợp hai nền kem.
+     Ba nền nhạt sẫm ngang kem sau, không sáng hơn thẻ Cream — sáng hơn thì thành một
+     mảng gần trắng giữa thẻ kem. Đỏ của trạng thái là chính --do; vàng đặc là --mu-tat
+     (chữ than đặt lên trên). */
+  --xanh:      #1A683F;   /* chữ, vạch, nền đặc "xong": 5,36 : 1 với kem · 5,03 với kem sau · chữ kem đặt lên 5,36 */
+  --xanh-nen:  #D3E3C6;   /* nền nhạt "xong": chữ xanh đặt lên 5,03 : 1 */
+  --xanh-vien: #A3C597;   /* viền của khối nền xanh nhạt */
+  --vang-chu:  #7A5200;   /* chữ và biểu tượng "lưu ý" trên nền sáng: 5,47 : 1 với kem · 5,14 với kem sau */
+  --vang-nen:  #F6DC9E;   /* nền nhạt "lưu ý": chữ vàng đậm đặt lên 5,16 : 1 */
+  --vang-vien: #DDB65C;   /* viền của khối nền vàng nhạt */
+  --do-nen:    #F2D6CE;   /* nền nhạt "lỗi, làm ngay": chữ đỏ đặt lên 5,66 : 1 */
+  --do-vien:   #DDA79C;   /* viền của khối nền đỏ nhạt */
+
+  background: var(--nb-nen);
   color: var(--than);
   font-size: 16px;
   /* Chừa chỗ cho thanh điều hướng dính đáy trên điện thoại. */
   padding-bottom: 5rem;
 }
+
+/* Vòng focus theo nền, như hệ bề mặt của trang công khai: Charcoal trên nền sáng
+   (14,96 : 1 với kem, 14,05 với kem sau), Marigold trên đầu trang tối (9,59 : 1).
+   Marigold trên nền sáng chỉ 1,46 – 1,56 : 1 — bấm Tab không thấy mình đang ở đâu.
+   Menu thả từ đầu trang kho là thẻ Cream: lại dùng Charcoal. */
+.nb-than :focus-visible { outline-color: var(--than); }
+.nb-dau :focus-visible, .kho-dau :focus-visible { outline-color: var(--cuc-vang); }
+.kho-dau :is(.kho-nguoi-menu, .kho-cn-chon > div) :focus-visible { outline-color: var(--than); }
 
 .nb-khung { width: min(880px, 92%); margin-inline: auto; }
 
@@ -61,12 +106,12 @@
   border: 1px solid var(--vach-kem); border-radius: 6px;
   padding: .5rem .7rem; cursor: pointer; min-height: 40px;
 }
-.nb-nut-nho:hover { background: rgba(251, 244, 225, .1); }
+.nb-nut-nho:hover { background: rgba(240, 227, 208, .1); }
 
 /* --- Điều hướng ----------------------------------------------------------- */
 /* Máy tính / tablet: thanh trên. Xuống dòng khi hẹp — bản cũ cuộn ngang, mục cuối
    nằm ngoài mép mà không có gì báo (lib/dieu-huong-noi-bo.ts). */
-.nb-dieu-huong { background: #fff; border-bottom: 1px solid var(--vach); }
+.nb-dieu-huong { background: var(--nb-the); border-bottom: 1px solid var(--vach); }
 .nb-dieu-huong-hang {
   width: min(1200px, 92%); margin-inline: auto;
   display: flex; flex-wrap: wrap; gap: 0 .15rem;
@@ -89,8 +134,8 @@
   .nb-day {
     position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
     display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
-    background: #fff; border-top: 1px solid var(--vach);
-    box-shadow: 0 -2px 12px rgba(30, 22, 14, .1);
+    background: var(--nb-the); border-top: 1px solid var(--vach);
+    box-shadow: 0 -2px 12px rgba(21, 16, 8, .1);
     padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   }
   .nb-day a {
@@ -119,7 +164,7 @@
 .nb-dan { color: var(--muc-nhat); margin: 0 0 1.5rem; max-width: 60ch; }
 
 .nb-the {
-  background: #fff; border: 1px solid var(--vach); border-radius: 10px;
+  background: var(--nb-the); border: 1px solid var(--vach); border-radius: 10px;
   padding: 1rem; margin-bottom: .75rem;
 }
 
@@ -144,36 +189,131 @@
   display: inline-block; font-size: .7rem; font-weight: 700; letter-spacing: .06em;
   text-transform: uppercase; padding: .2rem .5rem; border-radius: 4px; white-space: nowrap;
 }
-.nb-nhan.song   { background: #1F7A4C; color: #fff; }
+.nb-nhan.song   { background: var(--xanh); color: var(--kem); }
 .nb-nhan.tat    { background: var(--vach); color: var(--muc-nhat); }
 .nb-nhan.nhap   { background: var(--mu-tat); color: var(--than); }
-.nb-nhan.cho    { background: var(--do); color: #fff; }
+.nb-nhan.cho    { background: var(--do); color: var(--kem); }
 
 /* --- Nút ------------------------------------------------------------------ */
 .nb-nut {
   font: inherit; font-size: .92rem; font-weight: 700;
   border: none; border-radius: 8px; cursor: pointer;
   padding: .8rem 1.1rem; min-height: 48px;
-  background: var(--do); color: #fff;
+  background: var(--do); color: var(--kem);
   text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
 }
 .nb-nut:hover { background: var(--do-dam); }
-.nb-nut.phu { background: #fff; color: var(--than); border: 1px solid var(--vach); }
-.nb-nut.phu:hover { background: var(--kem-sau); }
+/* Nút phụ: nền Cream, chữ than, viền --vien-o (3,71 : 1 với thẻ Cream, 3,49 với nền kem sau). Viền Warm Stone
+   chỉ 1,83 : 1 với Cream: nút kem nằm trên thẻ kem gần như chìm. */
+.nb-nut.phu { background: var(--nb-the); color: var(--than); border: 1px solid var(--vien-o); }
+.nb-nut.phu:hover { background: var(--kem-dam); }
 .nb-nut[disabled] { opacity: .45; cursor: not-allowed; }
 
 /* --- Ô nhập --------------------------------------------------------------- */
 .nb-o { display: block; margin-bottom: 1rem; }
 .nb-o > span { display: block; font-weight: 600; font-size: .88rem; margin-bottom: .35rem; }
 .nb-o > small { display: block; color: var(--muc-nhat); font-size: .8rem; margin-bottom: .35rem; }
+/* Ô nền Cream, viền --vien-o (3,71 : 1 với nền Cream của ô, 3,49 với nền kem sau quanh ô): --vach chỉ
+   1,40 : 1, đứng ở quầy không thấy chỗ để chạm vào. */
 .nb-o input, .nb-o select, .nb-o textarea {
   font: inherit; font-size: 16px; width: 100%;
   padding: .75rem .8rem; min-height: 48px;
-  border: 1px solid var(--vach); border-radius: 8px; background: #fff; color: var(--than);
+  border: 1px solid var(--vien-o); border-radius: 8px; background: var(--kem); color: var(--than);
 }
 .nb-o textarea { min-height: 7rem; resize: vertical; line-height: 1.5; }
+/* Ô đang gõ: viền Charcoal dày gấp đôi (bóng lồng trong, không xô lệch bố cục) là dấu
+   hiệu chính; quầng Marigold là điểm nhấn thêm, tự nó không đủ tương phản trên nền sáng. */
 .nb-o input:focus, .nb-o select:focus, .nb-o textarea:focus {
-  outline: 3px solid var(--cuc-vang); outline-offset: 1px; border-color: var(--than);
+  outline: 3px solid var(--cuc-vang); outline-offset: 1px;
+  border-color: var(--than); box-shadow: inset 0 0 0 1px var(--than);
+}
+
+/* --- Ô của trình duyệt: không nền trắng ------------------------------------ */
+/* Ô nhập nào không có lớp riêng (bảng vị trí và lý do, ô trong dòng, form gọn…) thì trình duyệt tô trắng.
+   Đặt nền thì Chrome bỏ ô vẽ sẵn của nó và rơi về viền 2px lõm sẫm — nên đặt luôn viền --vien-o như ô của
+   .nb-o. :where() giữ độ ưu tiên bằng 0 — mọi quy tắc riêng của trang vẫn thắng. */
+:where(.nb-than) :where(input:not([type]), input[type='text'], input[type='search'], input[type='tel'], input[type='email'],
+  input[type='number'], input[type='password'], input[type='url'], input[type='date'], input[type='time'],
+  input[type='datetime-local'], input[type='month'], select, textarea) {
+  background-color: var(--kem); color: var(--than);
+  border: 1px solid var(--vien-o); border-radius: 6px;
+}
+/* Ô trình duyệt tự điền (email, mật khẩu đã lưu): Chrome và Safari tô nền ô bằng màu gần trắng của riêng chúng
+   và không cho ghi đè bằng background — phủ lại bằng một lớp bóng trong màu Cream, như trang công khai. Ô đang
+   gõ giữ vòng than bên trong. :is() nhận cả hai cách viết; trình duyệt không hiểu cách nào thì bỏ qua cách đó. */
+.nb-than :is(input, select, textarea):is(:autofill, :-webkit-autofill) {
+  box-shadow: inset 0 0 0 1000px var(--kem);
+  -webkit-text-fill-color: var(--than); caret-color: var(--than);
+}
+.nb-than :is(input, select, textarea):is(:autofill, :-webkit-autofill):focus {
+  box-shadow: inset 0 0 0 1px var(--than), inset 0 0 0 1000px var(--kem);
+}
+/* Chữ gợi ý trong ô: xám mặc định của Chrome (#757575) chỉ 3,64 : 1 trên ô Cream (Safari còn kém hơn) — dùng
+   chữ phụ --muc-nhat (5,92 : 1). opacity 1: Firefox tự làm mờ chữ gợi ý thêm một lớp. */
+.nb-than ::placeholder { color: var(--muc-nhat); opacity: 1; }
+/* Khung nhóm ô (fieldset) không lớp riêng: viền lõm mặc định có một nét gần trắng — thay bằng vạch mảnh. */
+:where(.nb-than) fieldset { border: 1px solid var(--vach); border-radius: 8px; }
+/* Thanh tiến độ (<progress>, màn kiểm kê đang đếm): của trình duyệt là rãnh xám trắng, phần đã xong xanh dương.
+   Tự tô như thanh của màn Thiết lập kho: rãnh kem sau, phần xong --xanh (5,03 : 1 với rãnh). Số đếm luôn ghi
+   bằng chữ ngay trên thanh — thanh chỉ là hình. */
+.nb-than progress {
+  -webkit-appearance: none; appearance: none;
+  border: 0; border-radius: 999px; overflow: hidden;
+  background: var(--kem-sau); color: var(--xanh);
+}
+.nb-than progress::-webkit-progress-bar { background: var(--kem-sau); }
+.nb-than progress::-webkit-progress-value { background: var(--xanh); }
+.nb-than progress::-moz-progress-bar { background: var(--xanh); }
+/* Ô đánh dấu và ô chọn một: tự vẽ — ô của hệ thống nền trắng. Chưa chọn: nền Cream, viền --vien-o (3,71 : 1);
+   đã chọn: ô đánh dấu nền Beef Red, dấu ✓ Cream; ô chọn một viền đỏ, chấm đỏ. Cỡ ô do từng trang đặt (20–24px);
+   trang không đặt thì 20px (ô của hệ thống là 13px). Vẫn là <input> thật: phím cách, nhãn bấm được, trình đọc màn
+   hình không đổi. */
+:where(.nb-than) input:where([type='checkbox'], [type='radio']) { width: 20px; height: 20px; }
+.nb-than input:is([type='checkbox'], [type='radio']) {
+  -webkit-appearance: none; appearance: none;
+  display: inline-grid; place-content: center; flex-shrink: 0;
+  /* Ô nằm trong .nb-o nhận cả cao 48px và đệm của ô chữ — ô tự vẽ thì thành hình bầu dục. */
+  min-height: 0; padding: 0; box-shadow: none;
+  background: var(--kem); border: 1px solid var(--vien-o); border-radius: 5px;
+  cursor: pointer; vertical-align: middle;
+}
+.nb-than input[type='radio'] { border-radius: 50%; }
+.nb-than input[type='checkbox']::before {
+  content: ''; width: 6px; height: 11px; margin-top: -2px;
+  border: solid var(--kem); border-width: 0 2.5px 2.5px 0;
+  transform: rotate(45deg) scale(0);
+}
+.nb-than input[type='radio']::before {
+  content: ''; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--do); transform: scale(0);
+}
+.nb-than input[type='checkbox']:checked { background: var(--do); border-color: var(--do); }
+.nb-than input[type='checkbox']:checked::before { transform: rotate(45deg) scale(1); }
+.nb-than input[type='radio']:checked { border: 2px solid var(--do); }
+.nb-than input[type='radio']:checked::before { transform: scale(1); }
+.nb-than input:is([type='checkbox'], [type='radio']):focus-visible { outline: 3px solid var(--than); outline-offset: 2px; }
+.nb-than input:is([type='checkbox'], [type='radio']):disabled { opacity: .45; cursor: not-allowed; }
+/* Nút "Chọn tệp" của ô tải ảnh: nút của hệ thống nền xám trắng. */
+.nb-than input[type='file']::file-selector-button {
+  font: inherit; font-size: .88rem; font-weight: 700; color: var(--than);
+  background: var(--kem); border: 1px solid var(--vien-o); border-radius: 8px;
+  padding: .55rem .9rem; margin-right: .7rem; cursor: pointer;
+}
+.nb-than input[type='file']::file-selector-button:hover { background: var(--kem-dam); }
+/* Hộp thoại (quét nhãn bằng camera): mặc định của trình duyệt là nền trắng. */
+.nb-than dialog { background: var(--kem); color: var(--than); }
+/* Giấy in là trắng: cả họ kem về trắng (nền trang, thẻ, bảng, ô nhập, đầu bảng), để máy in bật "in nền" không in
+   thành mảng kem. Ô đánh dấu, ô chọn một trả về ô của hệ thống, màu đen: in tắt nền (mặc định) thì nền đỏ và dấu ✓
+   Cream của ô tự vẽ không lên giấy — không còn biết ô nào đã chọn. */
+@media print {
+  .nb-than { --nb-nen: #fff; --nb-the: #fff; --kem: #fff; --kem-sau: #fff; --kem-dam: #fff; background: #fff; }
+  .nb-than input:is([type='checkbox'], [type='radio']) { -webkit-appearance: auto; appearance: auto; accent-color: #000; }
+  .nb-than input:is([type='checkbox'], [type='radio'])::before { content: none; }
+}
+/* Tương phản cao (Windows): trả về ô của hệ thống — màu tự vẽ bị ép mất thì không còn thấy dấu ✓. */
+@media (forced-colors: active) {
+  .nb-than input:is([type='checkbox'], [type='radio']), .nb-than progress { -webkit-appearance: auto; appearance: auto; }
+  .nb-than input:is([type='checkbox'], [type='radio'])::before { content: none; }
 }
 
 /* --- Thông báo ------------------------------------------------------------ */
@@ -181,15 +321,15 @@
   border-radius: 8px; padding: .9rem 1rem; margin-bottom: 1.25rem;
   font-size: .92rem; border-left: 4px solid;
 }
-.nb-bao.loi    { background: #FDECEA; border-color: var(--do); }
-.nb-bao.xong   { background: #E9F5EE; border-color: #1F7A4C; }
-.nb-bao.luu-y  { background: #FFF5DC; border-color: var(--mu-tat); }
+.nb-bao.loi    { background: var(--do-nen); border-color: var(--do); }
+.nb-bao.xong   { background: var(--xanh-nen); border-color: var(--xanh); }
+.nb-bao.luu-y  { background: var(--vang-nen); border-color: var(--mu-tat); }
 .nb-bao p:first-child { margin-top: 0; }
 .nb-bao p:last-child  { margin-bottom: 0; }
 
 /* --- Danh sách ------------------------------------------------------------ */
 .nb-dong {
-  background: #fff; border: 1px solid var(--vach); border-radius: 10px;
+  background: var(--nb-the); border: 1px solid var(--vach); border-radius: 10px;
   padding: .9rem 1rem; margin-bottom: .6rem;
 }
 .nb-dong-dau {
@@ -217,13 +357,14 @@
 }
 .nb-viec li:last-child { border-bottom: none; }
 .nb-viec .dau { flex-shrink: 0; font-weight: 700; width: 1.4rem; }
-.nb-viec .dau.xong { color: #1F7A4C; }
-.nb-viec .dau.chua { color: var(--da); }
+.nb-viec .dau.xong { color: var(--xanh); }
+/* Dấu "chưa xong" nằm trên nền kem: Warm Stone ở đó chỉ 1,83 : 1. */
+.nb-viec .dau.chua { color: var(--muc-nhat); }
 
 /* Trạng thái một ô dịch (0036), dưới ô tiếng Anh/Hàn ở màn soạn tin và màn công tắc. */
 .nb-dich { display: block; margin-top: .3rem; font-size: .78rem; }
 .nb-dich.xong { color: var(--muc-nhat); }
-.nb-dich.cho  { color: #8a6d00; }
+.nb-dich.cho  { color: var(--vang-chu); }
 .nb-dich.loi  { color: var(--do); }
 
 /* --- Bản đồ chức năng (components/BanDoChucNang.astro) ---------------------
@@ -232,9 +373,12 @@
 .bd-tim { display: flex; gap: .5rem; align-items: stretch; margin: 0 0 1.25rem; }
 .bd-tim input {
   flex: 1; min-width: 0; font: inherit; font-size: 16px; min-height: 48px;
-  padding: .7rem .85rem; border: 1px solid var(--vach); border-radius: 10px; background: #fff; color: var(--than);
+  padding: .7rem .85rem; border: 1px solid var(--vien-o); border-radius: 10px; background: var(--kem); color: var(--than);
 }
-.bd-tim input:focus { outline: 3px solid var(--cuc-vang); outline-offset: 1px; border-color: var(--than); }
+.bd-tim input:focus {
+  outline: 3px solid var(--cuc-vang); outline-offset: 1px;
+  border-color: var(--than); box-shadow: inset 0 0 0 1px var(--than);
+}
 .bd-tim .nb-nut { flex: 0 0 auto; gap: .4rem; }
 
 .bd-nhom { margin-bottom: 1.4rem; }
@@ -251,7 +395,7 @@
 .bd-o {
   position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .35rem;
   min-height: 5.25rem; height: 100%; padding: .7rem .35rem; text-align: center; text-decoration: none;
-  background: #fff; border: 1px solid var(--vach); border-radius: 14px;
+  background: var(--nb-the); border: 1px solid var(--vach); border-radius: 14px;
   color: var(--than); font-size: .8rem; font-weight: 600; line-height: 1.2; overflow-wrap: anywhere;
 }
 .bd-o svg { color: var(--do); flex-shrink: 0; }
@@ -261,7 +405,7 @@
 .bd-so {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 1.3rem; height: 1.3rem; padding: 0 .35rem; border-radius: 999px;
-  background: var(--do); color: #fff; font-size: .72rem; font-weight: 800; line-height: 1;
+  background: var(--do); color: var(--kem); font-size: .72rem; font-weight: 800; line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
@@ -274,7 +418,7 @@
 .bd-kq-ds { list-style: none; margin: 0 0 1.5rem; padding: 0; display: grid; gap: .5rem; }
 .bd-kq-dong {
   display: flex; align-items: center; gap: .8rem; min-height: 56px; padding: .6rem .9rem;
-  background: #fff; border: 1px solid var(--vach); border-radius: 12px; text-decoration: none; color: var(--than);
+  background: var(--nb-the); border: 1px solid var(--vach); border-radius: 12px; text-decoration: none; color: var(--than);
 }
 .bd-kq-dong:hover { border-color: var(--than); }
 .bd-kq-dong svg { color: var(--do); flex-shrink: 0; }

@@ -20,8 +20,10 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo';
-import { dichCau } from './cau-noi-bo';
+import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo.ts';
+import { dichCau } from './cau-noi-bo.ts';
+import { CAU_MAT_MANG_GHI, laLoiMang } from './qua-tai.ts';
+import { anDanhHoSoHetHan, donCvMoCoiVaVe } from './xoa-cv.ts';
 
 /** Câu của file này ở hai thứ tiếng giao diện nội bộ (lib/ngon-ngu-noi-bo.ts). */
 const CAU = {
@@ -48,6 +50,9 @@ const CAU = {
   daThemNhieu:  { vi: (n: number, a: string, b: string) => `Đã thêm ${n} bàn: ${a}–${b}.`, en: (n: number, a: string, b: string) => `Added ${n} tables: ${a}–${b}.` },
   chuaTenBan:   { vi: 'Chưa điền tên bàn.', en: 'The table has no name.' },
   daThemMot:    { vi: (ten: string) => `Đã thêm bàn ${ten}.`, en: (ten: string) => `Added table ${ten}.` },
+  // Lần hai của cú bấm đúp / F5 sau khi thêm: bàn đã có đúng như vừa gửi. Nói trạng thái, không báo lỗi.
+  daCoMot:      { vi: (ten: string) => `Bàn ${ten} đã có trong danh sách.`, en: (ten: string) => `Table ${ten} is already in the list.` },
+  daCoNhieu:    { vi: (a: string, b: string) => `Các bàn ${a}–${b} đã có trong danh sách.`, en: (a: string, b: string) => `Tables ${a}–${b} are already in the list.` },
   khongDoiBan:  { vi: 'Không đổi được trạng thái bàn.', en: 'Could not change the table status.' },
   banDungLai:   { vi: 'Đã cho bàn hoạt động lại.', en: 'The table is in use again.' },
   banNgung:     { vi: 'Đã ngừng dùng bàn. Nó không còn được tính vào sức chứa, nhưng lịch sử đặt bàn cũ giữ nguyên.',
@@ -90,10 +95,34 @@ export interface KetQua { ok: boolean; cau: string }
 /** Câu lỗi của database viết bằng tiếng Việt và tính cho người đọc. Dùng nguyên văn. */
 function cauLoi(e: { message?: string } | null, mac_dinh: string, nn: NgonNguNB): string {
   const m = e?.message ?? '';
+  if (laLoiMang(m)) return CAU_MAT_MANG_GHI[nn];
   if (/permission denied|violates row-level security/i.test(m)) return CAU.khongQuyen[nn];
   if (/duplicate key|unique/i.test(m)) return CAU.trungTen[nn];
   return m ? dichCau(nn, m) : mac_dinh;
 }
+
+/**
+ * Thêm bàn bị chặn vì trùng tên: các bàn đó có ĐÚNG như vừa gửi không (lần hai của cú bấm đúp,
+ * F5 sau khi thêm — lần một đã thêm). Đúng hết → true. Một bàn khác số chỗ / loại, hay chưa có,
+ * hay đọc không được → false, và câu "Tên này đã có rồi" giữ nguyên.
+ */
+async function daCoDungNhuGui(
+  client: SupabaseClient, chiNhanhId: string, dong: { ten: string; so_cho: number; la_phong_rieng: boolean }[],
+): Promise<boolean> {
+  const { data, error } = await client
+    .from('ban_an')
+    .select('ten, so_cho, la_phong_rieng, dang_dung')
+    .eq('chi_nhanh_id', chiNhanhId)
+    .in('ten', dong.map(d => d.ten));
+  if (error || !Array.isArray(data)) return false;
+  const co = new Map((data as BanAn[]).map(b => [b.ten, b]));
+  return dong.every(d => {
+    const b = co.get(d.ten);
+    return !!b && b.dang_dung && b.so_cho === d.so_cho && b.la_phong_rieng === d.la_phong_rieng;
+  });
+}
+
+const laTrungTen = (e: { code?: string; message?: string }) => e.code === '23505' || /duplicate key/i.test(e.message ?? '');
 
 function gio(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? '').trim();
@@ -108,13 +137,15 @@ function so(v: FormDataEntryValue | null, min: number, max: number): number | nu
 // -----------------------------------------------------------------------------
 // CHI NHÁNH
 // -----------------------------------------------------------------------------
+/** Đọc lỗi → ném: trả null là trang nói "Chưa có chi nhánh nào" và POST lưu chi nhánh thành INSERT thay vì UPDATE. */
 export async function docChiNhanh(client: SupabaseClient): Promise<ChiNhanh | null> {
-  const { data } = await client
+  const { data, error } = await client
     .from('chi_nhanh')
     .select('id, ma, ten, khu_vuc, dia_chi, dien_thoai, trua_bat_dau, trua_ket_thuc, toi_bat_dau, toi_ket_thuc, buoc_khung_gio_phut, thoi_luong_bua_phut, giu_ban_phut, dang_hoat_dong')
     .order('ma')
     .limit(1)
     .maybeSingle();
+  if (error) throw error;
   return (data as ChiNhanh) ?? null;
 }
 
@@ -163,12 +194,14 @@ export async function luuChiNhanh(
 // -----------------------------------------------------------------------------
 // BÀN ĂN
 // -----------------------------------------------------------------------------
+/** Đọc lỗi → ném (cai-dat.astro hiện "không đọc được"), không trả "chưa có bàn" để chủ nhà hàng thêm bàn lần nữa. */
 export async function docBanAn(client: SupabaseClient, chiNhanhId: string): Promise<BanAn[]> {
-  const { data } = await client
+  const { data, error } = await client
     .from('ban_an')
     .select('id, ten, so_cho, la_phong_rieng, dang_dung')
     .eq('chi_nhanh_id', chiNhanhId)
     .order('ten');
+  if (error) throw error;
   return (data ?? []) as BanAn[];
 }
 
@@ -207,6 +240,9 @@ export async function themNhieuBan(
   }
 
   const { error } = await client.from('ban_an').insert(dong);
+  if (error && laTrungTen(error) && await daCoDungNhuGui(client, chiNhanhId, dong)) {
+    return { ok: true, cau: t.daCoNhieu(dong[0].ten, dong[dong.length - 1].ten) };
+  }
   if (error) return { ok: false, cau: cauLoi(error, t.khongThemBan, nn) };
   return { ok: true, cau: t.daThemNhieu(dong.length, dong[0].ten, dong[dong.length - 1].ten) };
 }
@@ -220,10 +256,11 @@ export async function themMotBan(
   if (!ten) return { ok: false, cau: t.chuaTenBan };
   if (soCho === null) return { ok: false, cau: t.soChoSai };
 
-  const { error } = await client.from('ban_an').insert({
-    chi_nhanh_id: chiNhanhId, ten, so_cho: soCho,
-    la_phong_rieng: form.get('la_phong_rieng') === 'co',
-  });
+  const dong = { chi_nhanh_id: chiNhanhId, ten, so_cho: soCho, la_phong_rieng: form.get('la_phong_rieng') === 'co' };
+  const { error } = await client.from('ban_an').insert(dong);
+  if (error && laTrungTen(error) && await daCoDungNhuGui(client, chiNhanhId, [dong])) {
+    return { ok: true, cau: t.daCoMot(ten) };
+  }
   if (error) return { ok: false, cau: cauLoi(error, t.khongThemBan, nn) };
   return { ok: true, cau: t.daThemMot(ten) };
 }
@@ -255,34 +292,50 @@ export async function xoaBan(client: SupabaseClient, id: string, nn: NgonNguNB =
 // đúng — nhưng rồi không có nút nào để bấm, nên trên thực tế chúng chưa bao
 // giờ chạy. Trong đó don_dep_ho_so_het_han() là nghĩa vụ theo Nghị định
 // 13/2023 và là lời hứa đang nằm trên trang quyền riêng tư.
+//
+// Từ 0074 hai việc đầu có `chay` riêng (lib/xoa-cv.ts): database không xóa
+// được file trong kho CV, nên web xóa file trước rồi mới gọi database. `ham`
+// vẫn là tên hàm database quyết quyền của nút (test-quyen-ghi-thang-crm.mjs so
+// chi_chu_so_huu với quyền thật); `chay: null` = gọi thẳng hàm đó. Đèn "Dọn dữ
+// liệu cá nhân" ở /noi-bo nói khi nào phải bấm.
 // -----------------------------------------------------------------------------
+type ChayViecDon = (client: SupabaseClient, nn: NgonNguNB, laChu: boolean) => Promise<KetQua>;
+
 export const VIEC_DON = [
   {
     ham: 'don_dep_ho_so_het_han',
     ten: { vi: 'Ẩn danh hồ sơ đã quá hạn lưu', en: 'Anonymise applications past their retention period' },
-    giai_thich: { vi: 'Xóa họ tên, số điện thoại, email, địa chỉ IP và file CV của các hồ sơ đã quá 6 tháng. Giữ lại dòng để số liệu tuyển dụng không bị hụt. Đây là điều Beeftown đã hứa trên trang quyền riêng tư.',
-                  en: 'Deletes the name, phone, email, IP address and CV file of applications older than 6 months. The rows stay so hiring numbers do not drop. This is what Beeftown promised on the privacy page.' },
+    giai_thich: { vi: 'Hồ sơ đã quá 6 tháng: xóa file CV khỏi kho trước, rồi mới xóa họ tên, số điện thoại, email, địa chỉ IP. Hồ sơ nào chưa xóa được file thì giữ nguyên cho lần bấm sau. Giữ lại dòng để số liệu tuyển dụng không bị hụt. Đây là điều Beeftown đã hứa trên trang quyền riêng tư.',
+                  en: 'Applications older than 6 months: the CV file is deleted from the store first, then the name, phone, email and IP address. An application whose file could not be deleted stays as it is until the next run. The rows stay so hiring numbers do not drop. This is what Beeftown promised on the privacy page.' },
     chi_chu_so_huu: true,
+    chay: ((client, nn) => anDanhHoSoHetHan(client, nn)) as ChayViecDon,
   },
   {
     ham: 'don_dep_phieu_tai_len',
-    ten: { vi: 'Dọn vé tải CV đã hết hạn', en: 'Clean up expired CV upload tickets' },
-    giai_thich: { vi: 'Vé chỉ sống 15 phút. Dọn định kỳ cho bảng khỏi phình.',
-                  en: 'Tickets live only 15 minutes. Clean up regularly so the table does not grow.' },
+    ten: { vi: 'Xóa CV mồ côi và dọn vé tải CV', en: 'Delete orphaned CVs and clean up CV upload tickets' },
+    giai_thich: { vi: 'CV mồ côi là file trong kho CV mà không hồ sơ nào trỏ tới — thường là lượt nộp bị từ chối sau khi file đã tải lên. Nút này xóa chúng trước, kho sạch rồi mới dọn vé (vé chỉ sống 15 phút). Chỉ chủ nhà hàng xóa được file trong kho CV: quản lý bấm thì chỉ dọn vé khi kho không còn CV mồ côi.',
+                  en: 'An orphaned CV is a file in the CV store that no application points to — usually an application that was rejected after its file was uploaded. This button deletes them first, and only cleans up tickets (which live 15 minutes) once the store is clean. Only the owner can delete files in the CV store: when a manager presses it, tickets are only cleaned up if no orphaned CV is left.' },
     chi_chu_so_huu: false,
+    chay: ((client, nn, laChu) => donCvMoCoiVaVe(client, laChu, nn)) as ChayViecDon,
   },
   {
     ham: 'don_dep_su_kien_web',
     ten: { vi: 'Xóa dữ liệu đo lường quá 90 ngày', en: 'Delete analytics data older than 90 days' },
     giai_thich: { vi: 'Trang quyền riêng tư nói chỉ giữ 90 ngày. Nút này là chỗ giữ lời.',
                   en: 'The privacy page says data is kept only 90 days. This button keeps that promise.' },
-    chi_chu_so_huu: false,
+    // don_dep_su_kien_web() (0013) chỉ cho chủ sở hữu — quản lý bấm sẽ chỉ nhận câu từ chối.
+    chi_chu_so_huu: true,
+    chay: null,
   },
 ] as const;
 
-export async function chayViecDon(client: SupabaseClient, ham: string, nn: NgonNguNB = 'vi'): Promise<KetQua> {
+export async function chayViecDon(
+  client: SupabaseClient, ham: string, nn: NgonNguNB = 'vi', laChu = false,
+): Promise<KetQua> {
   const t = dichNB(nn, CAU);
-  if (!VIEC_DON.some(v => v.ham === ham)) return { ok: false, cau: t.viecDonSai };
+  const viec = VIEC_DON.find(v => v.ham === ham);
+  if (!viec) return { ok: false, cau: t.viecDonSai };
+  if (viec.chay) return viec.chay(client, nn, laChu);
   const { data, error } = await client.rpc(ham);
   if (error) return { ok: false, cau: cauLoi(error, t.khongChay, nn) };
   const n = typeof data === 'number' ? data : 0;
