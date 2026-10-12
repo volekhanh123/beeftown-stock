@@ -7,6 +7,9 @@
     "rong: các bề rộng cần xuất, không lớn hơn vùng cắt của ảnh gốc (script không phóng to; crm/test/test-cong-khai-anh.mjs kiểm).",
     "tach_nen { le, duoi }: ảnh đã tách nền (kênh trong suốt) — KHÔNG cắt: script cắt sát phần có hình rồi đặt vào khung trong suốt đúng tỷ lệ,",
     "chừa lề 'le' ở trên, trái, phải và dải trống 'duoi' ở đáy (phần của chiều cao khung) cho nhãn 'Ảnh minh họa' nằm ngay dưới món.",
+    "Một khung có thể khai 'tach_nen' riêng (le, duoi) đè lên mục chung: khung 1x1 bề rộng 200/320 của ảnh món là ảnh nhỏ 128px của hàng món gọn",
+    "trên điện thoại (dưới 600px) — dải đáy 20 % (≈ 26px) vừa nhãn một dòng (≈ 22px). Hai ảnh tartare (ảnh có nền) có khung 4x5 nhỏ cắt sát đáy ảnh:",
+    "nhãn nằm trên phần mặt bàn dưới đĩa.",
     "Mục 'anh': ảnh đang đặt trên trang — script dựng cỡ. Mục 'du_phong': ảnh đã có file gốc nhưng CHƯA đặt ở trang nào —",
     "script KHÔNG dựng cỡ (không để file ảnh chết trong repo). Đặt ảnh dự phòng lên trang: chuyển nó sang mục 'anh', khai khung, chạy lại script.",
     "nguon, đợt 1 (bảy ảnh hero-vi-gas … bo-xeo-vi): ChatGPT tạo ngày 11/10/2026, gọi qua Codex CLI bằng gói Plus của Khánh; ảnh mẫu đưa cho",
@@ -91,7 +94,7 @@
       }
     },
     "mon-tartare-bo-hoa-tuyet": {
-      "mo_ta": "Tartare bò hoa tuyết (F03): lát bò sống xếp như cánh hoa trên đĩa gốm kem, phủ phô mai bào, lòng đỏ ở giữa; ảnh chữ nhật đứng có nền bàn gỗ — cắt vuông quanh đĩa (bỏ phần nền phía trên). Trang Thực đơn, nhóm Món đặc trưng",
+      "mo_ta": "Tartare bò hoa tuyết (F03): lát bò sống xếp như cánh hoa trên đĩa gốm kem, phủ phô mai bào, lòng đỏ ở giữa; ảnh chữ nhật đứng có nền bàn gỗ — cắt vuông quanh đĩa (bỏ phần nền phía trên); khung 4:5 nhỏ cho hàng món gọn trên điện thoại: cắt sát đáy ảnh để nhãn nằm trên mặt bàn, không đè lên món. Trang Thực đơn, nhóm Món đặc trưng",
       "nguon": {
         "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-tartare-bo-hoa-tuyet.jpg",
         "cong_cu": "lấy từ menu chuẩn 29/09/2026 của quán — ghi chú dự án gọi là \"ảnh đã duyệt\", CHƯA rõ là ảnh chụp thật hay ảnh dựng (vì vậy vẫn gắn nhãn \"Ảnh minh họa\")",
@@ -99,11 +102,12 @@
       },
       "goc": "mon-tartare-bo-hoa-tuyet.jpg",
       "khung": {
-        "1x1": { "fx": 0.5, "fy": 0.5, "rong": [480, 800] }
+        "1x1": { "fx": 0.5, "fy": 0.5, "rong": [480, 800] },
+        "4x5": { "fx": 0.5, "fy": 1, "rong": [200, 320] }
       }
     },
     "mon-com-tron-tartare-bo-cay": {
-      "mo_ta": "Cơm trộn tartare bò cay (F19): bát gốm kem với cơm, bò sống băm phủ lòng đỏ, rau củ, sốt ớt; ảnh chữ nhật đứng có nền bàn gỗ — cắt vuông quanh bát. Trang Thực đơn, nhóm Món đặc trưng",
+      "mo_ta": "Cơm trộn tartare bò cay (F19): bát gốm kem với cơm, bò sống băm phủ lòng đỏ, rau củ, sốt ớt; ảnh chữ nhật đứng có nền bàn gỗ — cắt vuông quanh bát; khung 4:5 nhỏ cho hàng món gọn trên điện thoại: cắt sát đáy ảnh để nhãn nằm trên mặt bàn, không đè lên món. Trang Thực đơn, nhóm Món đặc trưng",
       "nguon": {
         "tu": "artifact \"Beeftown — Menu\" (cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026), file mon-com-tron-tartare-bo-cay.jpg",
         "cong_cu": "lấy từ menu chuẩn 29/09/2026 của quán — ghi chú dự án gọi là \"ảnh đã duyệt\", CHƯA rõ là ảnh chụp thật hay ảnh dựng (vì vậy vẫn gắn nhãn \"Ảnh minh họa\")",
@@ -111,7 +115,8 @@
       },
       "goc": "mon-com-tron-tartare-bo-cay.jpg",
       "khung": {
-        "1x1": { "fx": 0.5, "fy": 0.47, "rong": [480, 800] }
+        "1x1": { "fx": 0.5, "fy": 0.47, "rong": [480, 800] },
+        "4x5": { "fx": 0.5, "fy": 1, "rong": [200, 320] }
       }
     },
     "mon-lau-kim-chi": {
@@ -124,7 +129,8 @@
       "goc": "mon-lau-kim-chi.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-lau-bo-bulgogi": {
@@ -137,7 +143,8 @@
       "goc": "mon-lau-bo-bulgogi.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-lau-nam": {
@@ -150,7 +157,8 @@
       "goc": "mon-lau-nam.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-set-4-sot": {
@@ -163,7 +171,8 @@
       "goc": "mon-set-4-sot.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-salad-nam": {
@@ -176,7 +185,8 @@
       "goc": "mon-salad-nam.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-caesar-salad": {
@@ -189,7 +199,8 @@
       "goc": "mon-caesar-salad.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-mien-tron-han": {
@@ -202,7 +213,8 @@
       "goc": "mon-mien-tron-han.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-trung-hap-nui-lua": {
@@ -215,7 +227,8 @@
       "goc": "mon-trung-hap-nui-lua.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-khoai-tay-chien-sot-bo": {
@@ -228,7 +241,8 @@
       "goc": "mon-khoai-tay-chien-sot-bo.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-banh-gao-chien-pho-mai": {
@@ -241,7 +255,8 @@
       "goc": "mon-banh-gao-chien-pho-mai.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-canh-kim-chi": {
@@ -254,7 +269,8 @@
       "goc": "mon-canh-kim-chi.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-dau-phu-ham": {
@@ -267,7 +283,8 @@
       "goc": "mon-dau-phu-ham.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-canh-tuong-dau": {
@@ -280,7 +297,8 @@
       "goc": "mon-canh-tuong-dau.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-com-kim-chi-bo": {
@@ -293,7 +311,8 @@
       "goc": "mon-com-kim-chi-bo.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-com-tron-han": {
@@ -306,7 +325,8 @@
       "goc": "mon-com-tron-han.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-com-tron-trung-ca": {
@@ -319,7 +339,8 @@
       "goc": "mon-com-tron-trung-ca.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-mi-lanh-cay": {
@@ -332,7 +353,8 @@
       "goc": "mon-mi-lanh-cay.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-mi-toowoomba": {
@@ -345,7 +367,8 @@
       "goc": "mon-mi-toowoomba.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-mi-carbonara": {
@@ -358,7 +381,8 @@
       "goc": "mon-mi-carbonara.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "mon-mi-bo-sot-ca": {
@@ -371,7 +395,8 @@
       "goc": "mon-mi-bo-sot-ca.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] }
+        "4x3": { "rong": [480, 800] },
+        "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
     "uong-milky-cloud-makgeolli": {

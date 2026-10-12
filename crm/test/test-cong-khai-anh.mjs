@@ -35,7 +35,9 @@
  *      họa (kể cả ba ly signature và hai món tartare lấy từ menu chuẩn 29/09 — chưa rõ ảnh chụp thật hay
  *      ảnh dựng); nguồn ghi đúng sự thật; ảnh tách nền khai "tach_nen" (không cắt, chừa dải trống ở đáy
  *      cho nhãn); ANH_CUA_MON ghép đúng mã món của bảng danh mục với ảnh và khung đã dựng; chỉ
- *      ThucDonNhomAnh.astro gọi <Anh> bằng id lấy từ bảng đó.
+ *      ThucDonNhomAnh.astro gọi <Anh> bằng id lấy từ bảng đó. Mỗi ảnh món ăn có thêm khung "gon" của
+ *      ảnh nhỏ 128px trong hàng món gọn trên điện thoại (13/10/2026): món tách nền 1:1 với dải đáy đủ
+ *      cho nhãn một dòng (≥ 18 %), tartare 4:5 cắt sát đáy ảnh; ly signature không có khung gọn.
  */
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -92,9 +94,10 @@ const ANH_DA_DAT = {
   'sot-cham': ['4x3'],
   'mon-an-chia-se': ['3x2', '4x3'],
   'bua-an-cung-ban': ['3x2', '4x3'],
-  // Ảnh món: món ăn tách nền 4:3, hai ảnh tartare vuông, ba ly 4:5, ảnh ba ly không cồn của phần Đồ uống 3:2.
-  ...Object.fromEntries(ANH_MON.map(id => [id, [id.startsWith('mon-tartare') || id === 'mon-com-tron-tartare-bo-cay' ? '1x1'
-    : id === 'uong-khong-con-ba-ly' ? '3x2' : id.startsWith('uong-') ? '4x5' : '4x3']])),
+  // Ảnh món: món ăn tách nền 4:3 (thêm 1:1 cho ảnh nhỏ của hàng món gọn trên điện thoại), hai ảnh tartare vuông
+  // (thêm 4:5 cắt sát đáy cho hàng gọn), ba ly 4:5, ảnh ba ly không cồn của phần Đồ uống 3:2.
+  ...Object.fromEntries(ANH_MON.map(id => [id, id.startsWith('mon-tartare') || id === 'mon-com-tron-tartare-bo-cay' ? ['1x1', '4x5']
+    : id === 'uong-khong-con-ba-ly' ? ['3x2'] : id.startsWith('uong-') ? ['4x5'] : ['4x3', '1x1']])),
 };
 // Cỡ thật của các file gốc (để ngoài repo) — chép tay từ file. Tám PNG của ChatGPT; 26 file của cuốn menu bản sáng.
 const CO_GOC = {
@@ -218,18 +221,23 @@ await nhom('2 · danh-sach.json: NGUỒN ĐÚNG SỰ THẬT, KHÔNG PHÓNG TO �
       if (!ok(`${noi}: file gốc ${goc} là một trong các ảnh đã biết cỡ, tên đúng quy ước (<id>-<khung>.png; ảnh của cuốn: <id>.webp/.png/.jpg)`,
               !!co && tenDung && !!KHUNG[tenKhung], goc)) continue;
       if (tachNen) {
+        // Khung có thể khai "tach_nen" riêng (le, duoi) đè lên mục chung — như tao-co-anh.py (tach_nen_cua_khung).
+        const tachNenKhung = { ...tachNen, ...(k.tach_nen ?? {}) };
+        ok(`${noi}: "tach_nen" riêng của khung (nếu có) chỉ khai le, duoi`,
+           k.tach_nen === undefined || (typeof k.tach_nen === 'object' && Object.keys(k.tach_nen).length > 0
+             && Object.keys(k.tach_nen).every(x => x === 'le' || x === 'duoi')), JSON.stringify(k.tach_nen));
         // Ảnh tách nền không cắt: khung dựng quanh phần có hình, đúng cỡ điểm ảnh của ảnh gốc. Phần có hình không
         // lớn hơn ảnh gốc, nên khung không bao giờ rộng hơn khung dựng quanh CẢ ảnh gốc — bề rộng xuất vượt mức
         // đó là phóng to. (tao-co-anh.py còn kiểm sát hơn, theo đúng phần có hình.)
         const [rx, ry] = KHUNG[tenKhung];
-        const rongToiDa = Math.ceil(Math.max(co[0] / (1 - 2 * tachNen.le), co[1] / (1 - tachNen.le - tachNen.duoi) * rx / ry));
+        const rongToiDa = Math.ceil(Math.max(co[0] / (1 - 2 * tachNenKhung.le), co[1] / (1 - tachNenKhung.le - tachNenKhung.duoi) * rx / ry));
         ok(`${noi}: bề rộng lớn nhất ${Math.max(...k.rong)}px không vượt khung dựng quanh ảnh gốc (${rongToiDa}px) — không phóng to`,
            Array.isArray(k.rong) && k.rong.length >= 2 && Math.max(...k.rong) <= rongToiDa, JSON.stringify(k.rong));
         ok(`${noi}: ảnh tách nền không có điểm lấy nét (không cắt)`, k.fx === undefined && k.fy === undefined);
         // Dải trống ở đáy đủ chỗ cho nhãn: nhãn cao ~24px (chữ 13px, dòng 1,4, đệm 3px) và khung nhỏ nhất trên trang
         // rộng ~250px (thẻ hai cột ở màn 600px; ly signature ~170px khung 4:5) → dải ≥ 12 % chiều cao khung.
-        ok(`${noi}: dải trống ở đáy (duoi ${tachNen.duoi}) ≥ 12 % chiều cao khung — nhãn "Ảnh minh họa" nằm dưới món, không đè lên món`,
-           tachNen.duoi >= 0.12 && tachNen.le >= 0 && tachNen.le <= 0.1, JSON.stringify(tachNen));
+        ok(`${noi}: dải trống ở đáy (duoi ${tachNenKhung.duoi}) ≥ 12 % chiều cao khung — nhãn "Ảnh minh họa" nằm dưới món, không đè lên món`,
+           tachNenKhung.duoi >= 0.12 && tachNenKhung.le >= 0 && tachNenKhung.le <= 0.1, JSON.stringify(tachNenKhung));
       } else {
         const rongCat = Math.floor(rongVungCat(co, KHUNG[tenKhung]));
         ok(`${noi}: bề rộng lớn nhất ${Math.max(...k.rong)}px không vượt vùng cắt ${rongCat}px của ảnh gốc (không phóng to)`,
@@ -260,7 +268,7 @@ function choGoiAnh(nguon) {
     const tt = ten => m[1].match(new RegExp(`\\b${ten}="([^"]*)"`))?.[1] ?? null;
     const dong = ten => m[1].match(new RegExp(`\\b${ten}=\\{([^}]*)\\}`))?.[1] ?? null;
     return { id: tt('id'), khung: tt('khung'), khungNho: tt('khungNho'), uuTien: /\buuTien\b/.test(m[1]), thayBang: tt('thayBang'),
-             idDong: dong('id'), khungDong: dong('khung') };
+             idDong: dong('id'), khungDong: dong('khung'), khungNhoDong: dong('khungNho') };
   });
 }
 const goiAnh = congKhai.flatMap(f => choGoiAnh(doc(SRC, f)).map(g => ({ ...g, file: f })));
@@ -273,15 +281,20 @@ await nhom('3 · ẢNH ĐÃ DỰNG KHỚP VỚI CHỖ DÙNG; KHÔNG ẢNH CHẾT
   ok(`Trang công khai gọi <Anh> ở ${goiAnhChuThang.length} chỗ ghi id và khung bằng chữ thẳng (kiểm được)`,
      goiAnhChuThang.length >= 7 && goiAnhChuThang.every(g => g.id && g.khung), goiAnhChuThang.filter(g => !g.id || !g.khung).map(g => g.file).join(', '));
   // Chỗ gọi bằng biểu thức chỉ được là ảnh món: trong ThucDonNhomAnh.astro, id và khung lấy cùng một mục của
-  // ANH_CUA_MON (anh.id / anh.khung) — nhờ vậy khung của ảnh món đọc được từ ANH_CUA_MON.
-  ok(`Chỉ ThucDonNhomAnh.astro gọi <Anh> bằng biểu thức, và chỉ dạng id={x.id} khung={x.khung} (${goiAnhMon.length} chỗ)`,
+  // ANH_CUA_MON (anh.id / anh.khung), khungNho (nếu có) là khung gọn của chính mục đó ({… ? anh.gon : undefined})
+  // — nhờ vậy khung của ảnh món đọc được từ ANH_CUA_MON.
+  const khungGonDung = g => g.khungNhoDong === null
+    || new RegExp(`^[\\w!.?&| ]+ \\? ${g.idDong.replace(/\.id$/, '')}\\.gon : undefined$`).test(g.khungNhoDong);
+  ok(`Chỉ ThucDonNhomAnh.astro gọi <Anh> bằng biểu thức, và chỉ dạng id={x.id} khung={x.khung} [khungNho={… ? x.gon : undefined}] (${goiAnhMon.length} chỗ)`,
      goiAnhMon.length >= 1 && goiAnhMon.every(g => g.file === 'components/ThucDonNhomAnh.astro' && /^\w+\.id$/.test(g.idDong ?? '')
-       && g.khungDong === g.idDong.replace(/\.id$/, '.khung') && !g.khungNho)
+       && g.khungDong === g.idDong.replace(/\.id$/, '.khung') && !g.khungNho && khungGonDung(g))
        && /import \{ ANH_CUA_MON \} from '\.\.\/lib\/anh'/.test(doc(SRC, 'components', 'ThucDonNhomAnh.astro')),
-     goiAnhMon.map(g => `${g.file}: id={${g.idDong}} khung={${g.khungDong}}`).join(' | '));
+     goiAnhMon.map(g => `${g.file}: id={${g.idDong}} khung={${g.khungDong}} khungNho={${g.khungNhoDong}}`).join(' | '));
+  const coGon = goiAnhMon.some(g => g.khungNhoDong !== null);
   const dung = new Set([
     ...goiAnhChuThang.flatMap(g => [`${g.id} ${g.khung}`, ...(g.khungNho ? [`${g.id} ${g.khungNho}`] : [])]),
     ...(goiAnhMon.length ? Object.values(ANH_CUA_MON).map(a => `${a.id} ${a.khung}`) : []),
+    ...(coGon ? Object.values(ANH_CUA_MON).filter(a => a.gon).map(a => `${a.id} ${a.gon}`) : []),
   ]);
   const daDung = new Set(Object.entries(ANH_TAO_SAN).flatMap(([id, k]) => Object.keys(k).map(ten => `${id} ${ten}`)));
   const chuaDung = [...dung].filter(d => !daDung.has(d));
@@ -448,6 +461,23 @@ await nhom('7 · ẢNH MÓN CỦA TRANG THỰC ĐƠN (CUỐN MENU BẢN SÁNG 11
   for (const [ma, a] of Object.entries(ANH_CUA_MON)) {
     ok(`${ma}: khung ${a.khung} của ảnh ${a.id} có trong danh-sach.json và đã dựng`,
        !!danhSach.anh?.[a.id]?.khung?.[a.khung] && !!ANH_TAO_SAN[a.id]?.[a.khung], JSON.stringify(a));
+    // Khung gọn (ảnh nhỏ 128px của hàng món gọn dưới 600px): mọi món ăn có, ly signature không (nhóm ly luôn là thẻ).
+    const laLy = a.id.startsWith('uong-');
+    const mt = danhSach.anh?.[a.id] ?? {};
+    if (laLy) { ok(`${ma}: ly signature không có khung gọn (thẻ ảnh trên chữ dưới ở mọi bề rộng)`, a.gon === undefined, String(a.gon)); continue; }
+    if (!ok(`${ma}: có khung gọn ${a.gon} khác khung chính, khai trong danh-sach.json và đã dựng`,
+            !!a.gon && a.gon !== a.khung && !!mt.khung?.[a.gon] && !!ANH_TAO_SAN[a.id]?.[a.gon], JSON.stringify(a))) continue;
+    const kg = mt.khung[a.gon];
+    if (mt.tach_nen) {
+      // Ảnh nhỏ 128px: nhãn một dòng cao ≈ 22px (chữ 13px, dòng 1,4, đệm 2px) → dải đáy ≥ 18 % chiều cao khung vuông.
+      const duoi = { ...mt.tach_nen, ...(kg.tach_nen ?? {}) }.duoi;
+      ok(`${ma}: khung gọn của ảnh tách nền là 1x1, dải đáy ${duoi} ≥ 18 % — nhãn một dòng nằm dưới món ở ảnh nhỏ 128px`,
+         a.gon === '1x1' && duoi >= 0.18, JSON.stringify(kg));
+    } else {
+      // Ảnh có nền (tartare): khung gọn 4:5 cắt sát đáy ảnh gốc — phần mặt bàn dưới đĩa là chỗ của nhãn.
+      ok(`${ma}: khung gọn của ảnh có nền là 4x5 cắt sát đáy ảnh (fy 1) — nhãn nằm trên mặt bàn, không đè lên món`,
+         a.gon === '4x5' && kg.fy === 1, JSON.stringify(kg));
+    }
   }
   ok('Ảnh ba ly không cồn (uong-khong-con-ba-ly) là ảnh của cả phần Đồ uống — không gắn với một món nào',
      !Object.values(ANH_CUA_MON).some(a => a.id === 'uong-khong-con-ba-ly'));

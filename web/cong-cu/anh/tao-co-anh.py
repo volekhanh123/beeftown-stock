@@ -41,6 +41,8 @@ Hai loại ảnh, hai đường:
      bề rộng / chiều cao khung) ở trên, trái, phải và một dải trống "duoi" (phần của chiều cao) ở đáy —
      dải đó là chỗ của nhãn "Ảnh minh họa", để nhãn nằm ngay dưới món chứ không đè lên món. Món nằm giữa
      theo chiều ngang, giữa vùng trên dải đáy theo chiều dọc. Khung đó là "vùng cắt" của bước 3 dưới đây.
+     Một khung có thể khai "tach_nen" riêng (chỉ "le", "duoi") đè lên mục chung của ảnh — vd. khung ảnh
+     nhỏ 1x1 của hàng món gọn trên điện thoại (128px) cần dải đáy cao hơn để nhãn vẫn nằm dưới món.
   4. Thu nhỏ trên ảnh nhân sẵn độ đục (RGBa) — viền không ám màu của phần trong suốt; điểm trong suốt hẳn
      mang màu 0 (nén nhỏ hơn).
 
@@ -140,6 +142,20 @@ def la_ten_file_tron(ten):
     return isinstance(ten, str) and ten == Path(ten).name and not ten.startswith('.') and ten.strip() == ten and ten
 
 
+def kiem_le_duoi(noi, tach_nen):
+    le, duoi = tach_nen.get('le'), tach_nen.get('duoi')
+    if not isinstance(le, (int, float)) or not 0 <= le <= 0.2:
+        raise LoiDanhSach(f'{noi}: tach_nen.le (lề trên, trái, phải) phải nằm trong 0..0,2')
+    if not isinstance(duoi, (int, float)) or not 0 <= duoi <= 0.4:
+        raise LoiDanhSach(f'{noi}: tach_nen.duoi (dải trống ở đáy cho nhãn) phải nằm trong 0..0,4')
+
+
+def tach_nen_cua_khung(mo_ta, k):
+    """Thông số tách nền của một khung: mục chung của ảnh, đè bằng "tach_nen" riêng của khung (nếu có)."""
+    chung = mo_ta.get('tach_nen')
+    return None if chung is None else {**chung, **k.get('tach_nen', {})}
+
+
 def doc_danh_sach():
     try:
         du_lieu = json.loads(FILE_DANH_SACH.read_text(encoding='utf-8'))
@@ -164,16 +180,21 @@ def doc_danh_sach():
         if tach_nen is not None:
             if not isinstance(tach_nen, dict):
                 raise LoiDanhSach(f'{id_anh}: "tach_nen" phải là {{ "le": …, "duoi": … }}')
-            le, duoi = tach_nen.get('le'), tach_nen.get('duoi')
-            if not isinstance(le, (int, float)) or not 0 <= le <= 0.2:
-                raise LoiDanhSach(f'{id_anh}: tach_nen.le (lề trên, trái, phải) phải nằm trong 0..0,2')
-            if not isinstance(duoi, (int, float)) or not 0 <= duoi <= 0.4:
-                raise LoiDanhSach(f'{id_anh}: tach_nen.duoi (dải trống ở đáy cho nhãn) phải nằm trong 0..0,4')
+            kiem_le_duoi(id_anh, tach_nen)
             nguong = tach_nen.get('nguong_alpha', NGUONG_ALPHA)
             if not isinstance(nguong, int) or not 0 <= nguong <= 254:
                 raise LoiDanhSach(f'{id_anh}: tach_nen.nguong_alpha phải là số nguyên 0..254')
             if any('fx' in k or 'fy' in k for k in khung.values()):
                 raise LoiDanhSach(f'{id_anh}: ảnh tách nền không cắt nên không có điểm lấy nét fx, fy')
+        for ten_khung, k in khung.items():
+            rieng = k.get('tach_nen')
+            if rieng is None:
+                continue
+            if tach_nen is None:
+                raise LoiDanhSach(f'{id_anh} / {ten_khung}: khai "tach_nen" riêng cho khung mà ảnh không khai "tach_nen"')
+            if not isinstance(rieng, dict) or not rieng or set(rieng) - {'le', 'duoi'}:
+                raise LoiDanhSach(f'{id_anh} / {ten_khung}: "tach_nen" của khung chỉ có khóa le, duoi')
+            kiem_le_duoi(f'{id_anh} / {ten_khung}', {**tach_nen, **rieng})
         chat_luong = mo_ta.get('chat_luong')
         if chat_luong is not None:
             if not isinstance(chat_luong, dict) or set(chat_luong) - set(DUOI):
@@ -523,7 +544,7 @@ def main():
                     da_mo[ten_goc] = mo_anh_tach_nen(duong, canh_bao) if tach_nen else mo_anh_srgb(duong, canh_bao)
                 anh = da_mo[ten_goc]
                 dong['co_goc'] = f'{anh.width}×{anh.height}'
-                dung_mot_khung(anh, id_anh, ten_khung, k, dong, tach_nen, mo_ta.get('chat_luong'))
+                dung_mot_khung(anh, id_anh, ten_khung, k, dong, tach_nen_cua_khung(mo_ta, k), mo_ta.get('chat_luong'))
             except (OSError, ValueError, Image.DecompressionBombError) as e:
                 dong['loi'].append(f'không đọc / xuất được {ten_goc}: {e}')
         # Khung không còn khai trong danh-sach.json: dọn file của nó.

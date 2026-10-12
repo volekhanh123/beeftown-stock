@@ -337,7 +337,12 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
   },
 };
 
-/** Khung đã dựng cho ảnh món (web/cong-cu/anh/danh-sach.json): món ăn tách nền 4:3, ly 4:5, ảnh tartare vuông. */
+/**
+ * Khung đã dựng cho ảnh món (web/cong-cu/anh/danh-sach.json): món ăn tách nền 4:3, ly 4:5, ảnh tartare vuông.
+ * gon: khung của ảnh nhỏ (128px) trong hàng món gọn trên điện thoại (dưới 600px, ThucDonNhomAnh) — món ăn
+ * tách nền 1:1 có dải đáy 20 % cho nhãn, ảnh tartare 4:5 cắt sát đáy ảnh (nhãn trên mặt bàn). Ly signature
+ * không có: nhóm ly luôn là thẻ ảnh trên chữ dưới.
+ */
 export type KhungAnhMon = '4x3' | '4x5' | '1x1';
 
 /**
@@ -347,29 +352,29 @@ export type KhungAnhMon = '4x3' | '4x5' | '1x1';
  * danh-sach.json, chạy lại tao-co-anh.py. Ảnh chỉ hiện khi món đã công bố — bảng này không đưa
  * món nào lên trang.
  */
-export const ANH_CUA_MON: Readonly<Record<string, Readonly<{ id: IdAnh; khung: KhungAnhMon }>>> = {
-  F03: { id: 'mon-tartare-bo-hoa-tuyet', khung: '1x1' },
-  F19: { id: 'mon-com-tron-tartare-bo-cay', khung: '1x1' },
-  F15: { id: 'mon-lau-kim-chi', khung: '4x3' },
-  F16: { id: 'mon-lau-bo-bulgogi', khung: '4x3' },
-  F20: { id: 'mon-lau-nam', khung: '4x3' },
-  S01: { id: 'mon-set-4-sot', khung: '4x3' },
-  F21: { id: 'mon-salad-nam', khung: '4x3' },
-  F01: { id: 'mon-caesar-salad', khung: '4x3' },
-  F10: { id: 'mon-mien-tron-han', khung: '4x3' },
-  F22: { id: 'mon-trung-hap-nui-lua', khung: '4x3' },
-  F23: { id: 'mon-khoai-tay-chien-sot-bo', khung: '4x3' },
-  F18: { id: 'mon-banh-gao-chien-pho-mai', khung: '4x3' },
-  F12: { id: 'mon-canh-kim-chi', khung: '4x3' },
-  F14: { id: 'mon-dau-phu-ham', khung: '4x3' },
-  F13: { id: 'mon-canh-tuong-dau', khung: '4x3' },
-  F06: { id: 'mon-com-kim-chi-bo', khung: '4x3' },
-  F05: { id: 'mon-com-tron-han', khung: '4x3' },
-  F04: { id: 'mon-com-tron-trung-ca', khung: '4x3' },
-  F11: { id: 'mon-mi-lanh-cay', khung: '4x3' },
-  F08: { id: 'mon-mi-toowoomba', khung: '4x3' },
-  F07: { id: 'mon-mi-carbonara', khung: '4x3' },
-  F09: { id: 'mon-mi-bo-sot-ca', khung: '4x3' },
+export const ANH_CUA_MON: Readonly<Record<string, Readonly<{ id: IdAnh; khung: KhungAnhMon; gon?: KhungAnhMon }>>> = {
+  F03: { id: 'mon-tartare-bo-hoa-tuyet', khung: '1x1', gon: '4x5' },
+  F19: { id: 'mon-com-tron-tartare-bo-cay', khung: '1x1', gon: '4x5' },
+  F15: { id: 'mon-lau-kim-chi', khung: '4x3', gon: '1x1' },
+  F16: { id: 'mon-lau-bo-bulgogi', khung: '4x3', gon: '1x1' },
+  F20: { id: 'mon-lau-nam', khung: '4x3', gon: '1x1' },
+  S01: { id: 'mon-set-4-sot', khung: '4x3', gon: '1x1' },
+  F21: { id: 'mon-salad-nam', khung: '4x3', gon: '1x1' },
+  F01: { id: 'mon-caesar-salad', khung: '4x3', gon: '1x1' },
+  F10: { id: 'mon-mien-tron-han', khung: '4x3', gon: '1x1' },
+  F22: { id: 'mon-trung-hap-nui-lua', khung: '4x3', gon: '1x1' },
+  F23: { id: 'mon-khoai-tay-chien-sot-bo', khung: '4x3', gon: '1x1' },
+  F18: { id: 'mon-banh-gao-chien-pho-mai', khung: '4x3', gon: '1x1' },
+  F12: { id: 'mon-canh-kim-chi', khung: '4x3', gon: '1x1' },
+  F14: { id: 'mon-dau-phu-ham', khung: '4x3', gon: '1x1' },
+  F13: { id: 'mon-canh-tuong-dau', khung: '4x3', gon: '1x1' },
+  F06: { id: 'mon-com-kim-chi-bo', khung: '4x3', gon: '1x1' },
+  F05: { id: 'mon-com-tron-han', khung: '4x3', gon: '1x1' },
+  F04: { id: 'mon-com-tron-trung-ca', khung: '4x3', gon: '1x1' },
+  F11: { id: 'mon-mi-lanh-cay', khung: '4x3', gon: '1x1' },
+  F08: { id: 'mon-mi-toowoomba', khung: '4x3', gon: '1x1' },
+  F07: { id: 'mon-mi-carbonara', khung: '4x3', gon: '1x1' },
+  F09: { id: 'mon-mi-bo-sot-ca', khung: '4x3', gon: '1x1' },
   D13: { id: 'uong-milky-cloud-makgeolli', khung: '4x5' },
   D01: { id: 'uong-strawberry-crush', khung: '4x5' },
   D14: { id: 'uong-berry-rouge-highball', khung: '4x5' },

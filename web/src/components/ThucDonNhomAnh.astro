@@ -12,10 +12,16 @@
  *    (Món đặc trưng, nhóm đồ uống, nhóm mới) thì không in gì;
  *  · kieu 'dan-dau' (món ăn): món đầu tiên database trả là món dẫn đầu. Như trang của cuốn: tên nhóm,
  *    câu và chữ của món dẫn đầu ở cột trái, ảnh lớn của món ở cột phải (từ 768px; điện thoại xếp dọc,
- *    ảnh trên chữ dưới). Các món còn lại thành lưới thẻ nhỏ hơn, ảnh trên chữ dưới, thẳng lề trái: 1 cột
- *    dưới 600px, 2 cột từ 600px, 3 cột từ 1024px khi còn từ ba món (còn hai món thì hai cột, như trang
- *    Salad của cuốn; ảnh của thẻ hai cột tối đa 460px để thẻ nhỏ vẫn nhỏ hơn thẻ dẫn đầu). Nhóm đúng hai
- *    món: hai thẻ ngang nhau (như tờ kẹp Món đặc trưng). Nhóm một món: chỉ phần dẫn đầu.
+ *    ảnh trên chữ dưới). Các món còn lại thành lưới thẻ nhỏ hơn, ảnh trên chữ dưới, thẳng lề trái: 2 cột
+ *    từ 600px, 3 cột từ 1024px khi còn từ ba món (còn hai món thì hai cột, như trang Salad của cuốn; ảnh
+ *    của thẻ hai cột tối đa 460px để thẻ nhỏ vẫn nhỏ hơn thẻ dẫn đầu). Nhóm đúng hai món: hai thẻ ngang
+ *    nhau (như tờ kẹp Món đặc trưng). Nhóm một món: chỉ phần dẫn đầu.
+ *    Dưới 600px các món còn lại là HÀNG GỌN: ảnh nhỏ 128px (--k-10) bên trái, chữ bên phải — thẻ ảnh to
+ *    xếp một cột làm tab Món ăn dài hơn 12.000px ở 390px (đo 13/10/2026). Ảnh nhỏ dùng khung riêng
+ *    ANH_CUA_MON[mã].gon (món tách nền 1:1, dải đáy 20 % cho nhãn; tartare 4:5 cắt sát đáy ảnh, nhãn trên
+ *    mặt bàn) qua khungNho của <Anh>, nên từ 600px trở lên vẫn đúng khung cũ. Nhãn "Ảnh minh họa" của ảnh
+ *    nhỏ: giữa, sát đáy khung, đệm hẹp — tiếng Anh (≈ 124px) vừa một dòng trong 128px; phông dự phòng rộng
+ *    hơn thì xuống dòng nhưng vẫn trong khung. Nhóm hai món cũng vậy: không có món dẫn đầu.
  *  · kieu 'deu' (ba ly signature): mọi món cùng cỡ, ảnh trên chữ dưới — như trang Có cồn của cuốn.
  *
  * Món dẫn đầu nằm ngoài danh sách <ul> của các món còn lại (cột trái của nó còn có tên nhóm — một <li>
@@ -61,7 +67,8 @@ const baCot = conLai.length >= 3;
 // sizes của <img> — bề rộng ảnh thật sự hiện ra (khung 1200px, lề 20–40px):
 //  · ảnh dẫn đầu từ 768px: cột phải, tối đa 560px; dải tối: cột nhóm ≤ 640px chia đôi;
 //  · lưới ba cột: một phần ba khung; lưới hai cột: một nửa, tối đa 460px; dưới 600px: hết bề ngang;
-//  · ly signature: một phần ba cột thực đơn (7/11 khung từ 1024px), điện thoại tối đa 220px.
+//  · ly signature: một phần ba cột thực đơn (7/11 khung từ 1024px), điện thoại tối đa 220px;
+//  · hàng gọn: dưới 600px ảnh nhỏ 128px — cùng chuỗi lưới cho từ 600px trở lên.
 const SIZES = {
   lon: tieuDeNho ? '(min-width: 768px) 300px, calc(100vw - 40px)' : '(min-width: 1280px) 560px, (min-width: 768px) 46vw, calc(100vw - 40px)',
   baCot: '(min-width: 1280px) 380px, (min-width: 1024px) 30vw, (min-width: 600px) 46vw, calc(100vw - 40px)',
@@ -69,6 +76,7 @@ const SIZES = {
   ly: '(min-width: 1280px) 220px, (min-width: 1024px) 18vw, (min-width: 600px) 30vw, 220px',
 };
 const sizesNho = kieu === 'deu' ? SIZES.ly : baCot ? SIZES.baCot : SIZES.haiCot;
+const sizesGon = sizesNho.replace(/calc\(100vw - 40px\)$/, '128px');
 ---
 <div class:list={['tdn', `tdn-${kieu}`, { 'tdn-tieu-de-nho': tieuDeNho }]}>
   <div class:list={['tdn-mo', { 'tdn-mo-co-anh': !!anhDau }]}>
@@ -92,12 +100,14 @@ const sizesNho = kieu === 'deu' ? SIZES.ly : baCot ? SIZES.baCot : SIZES.haiCot;
     <ul class:list={['tdn-luoi', { 'tdn-ba-cot': baCot }]} role="list" aria-labelledby={id}>
       {conLai.map(m => {
         const anh = ANH_CUA_MON[m.ma];
+        // Hàng gọn dưới 600px: chỉ nhóm món ăn (ly signature giữ thẻ ảnh trên chữ dưới) và ảnh có khung gọn.
+        const gon = kieu === 'dan-dau' && !!anh?.gon;
         return (
-          <li class="tdn-mon">
+          <li class:list={['tdn-mon', { 'tdn-gon': gon }]}>
             <ThucDonMon mon={m} ngonNgu={ngonNgu} khongGia={khongGia} />
             {anh && (
               <div class="tdn-anh">
-                <Anh id={anh.id} ngonNgu={ngonNgu} khung={anh.khung} sizes={sizesNho} nenKhung={nenKhung} />
+                <Anh id={anh.id} ngonNgu={ngonNgu} khung={anh.khung} khungNho={gon ? anh.gon : undefined} sizes={gon ? sizesGon : sizesNho} nenKhung={nenKhung} />
               </div>
             )}
           </li>
@@ -164,4 +174,25 @@ const sizesNho = kieu === 'deu' ? SIZES.ly : baCot ? SIZES.baCot : SIZES.haiCot;
   /* Ly signature trên điện thoại: ly cao — ảnh không chiếm hết bề ngang (khung vẫn ≥ 150px để nhãn
      "Ảnh minh họa" tiếng Anh nằm gọn trong khung). */
   @media (max-width: 599px) { .tdn-deu .tdn-luoi .tdn-anh { width: min(100%, 220px); } }
+
+  /* --- Hàng gọn dưới 600px ------------------------------------------------------------------------- */
+  /* Ảnh nhỏ 128px (--k-10) bên trái, tên, mô tả, nhãn món sống và câu cảnh báo bên phải. Món không có ảnh
+     thì vẫn là chữ hết bề ngang (không lớp tdn-gon). Đặt cuối khối để thắng quy tắc bề rộng ảnh của thẻ. */
+  @media (max-width: 599px) {
+    .tdn-dan-dau .tdn-luoi { row-gap: var(--k-6); }
+    .tdn-luoi .tdn-gon {
+      display: grid; grid-template-columns: var(--k-10) minmax(0, 1fr); column-gap: var(--k-4); align-items: start;
+    }
+    .tdn-luoi .tdn-gon .tdn-anh { grid-column: 1; grid-row: 1; width: var(--k-10); }
+    .tdn-luoi .tdn-gon > :global(.tdm) { grid-column: 2; grid-row: 1; }
+    /* Nhãn của ảnh nhỏ: giữa, sát đáy khung (ảnh tách nền: trong dải trống dưới món; tartare: trên mặt bàn,
+       cách đáy 6px cho khỏi góc bo), đệm hẹp, xuống dòng được nhưng không bao giờ ra ngoài khung. Thêm .tdn
+       ở đầu: thắng .ck .anh.tach-nen .chu-thich-anh của cong-khai.css (nowrap) dù thứ tự nạp CSS thế nào. */
+    .tdn .tdn-luoi .tdn-gon .tdn-anh :global(.chu-thich-anh) {
+      left: 50%; right: auto; bottom: 0; transform: translateX(-50%);
+      width: max-content; max-width: 100%; padding: 2px 4px; letter-spacing: 0;
+      white-space: normal; text-align: center;
+    }
+    .tdn .tdn-luoi .tdn-gon .tdn-anh :global(.anh:not(.tach-nen) .chu-thich-anh) { bottom: 6px; }
+  }
 </style>

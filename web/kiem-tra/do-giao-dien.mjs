@@ -29,7 +29,7 @@ export const PHEP_DO = {
   anh: 'ảnh: ảnh AI nào cũng có nhãn "Ảnh minh họa" nhìn thấy, đọc được; không bóng đổ; đúng tỷ lệ khung; không chữ, logo hay phần tử nào đè lên ảnh; chỉ ảnh màn đầu tải ngay',
   nhanKhay: 'thẻ "Cách đọc nhãn khay": đặt thẳng, không bóng đổ, nền Cream hoặc kem sau, đủ 5 trường theo thứ tự, chỉ tên trường (không giá trị mẫu), đủ lớn để đọc',
   trangChu: 'trang chủ: đủ 8 khối theo thứ tự, dải tối và dải đỏ giữ nguyên; màn đầu có ảnh, câu chính đứng trước ảnh trên điện thoại, hai cột cân nhau trên máy tính, tagline là một dải đỏ gọn không đè lên ảnh; ba bước, cả bữa, đi nhóm đúng bố cục',
-  thucDon: 'thực đơn: "Bò tại quầy" vẫn dải tối, có ảnh lát bò và thẻ đọc nhãn khay; "Món ăn" chưa có món thì có ảnh sốt chấm, đã có món thì từng nhóm kiểu cuốn menu (tên nhóm 28px tới cỡ h1, chữ hoa); thẻ món không tràn chữ, thẻ dẫn đầu từ 768px có ảnh bên phải chữ; "Đồ uống" có ảnh ba ly không cồn; không phần tử giá',
+  thucDon: 'thực đơn: "Bò tại quầy" vẫn dải tối, có ảnh lát bò và thẻ đọc nhãn khay; "Món ăn" chưa có món thì có ảnh sốt chấm, đã có món thì từng nhóm kiểu cuốn menu (tên nhóm 28px tới cỡ h1, chữ hoa); thẻ món không tràn chữ, thẻ dẫn đầu từ 768px có ảnh bên phải chữ, dưới 600px món không dẫn đầu là hàng gọn (ảnh 112–128px bên trái chữ, nhãn ảnh một dòng ở 20 % đáy khung); "Đồ uống" có ảnh ba ly không cồn; không phần tử giá',
 };
 
 export function doGiaoDien() {
@@ -753,13 +753,25 @@ export function doGiaoDien() {
         if (e.scrollWidth > e.clientWidth + 1 || k.right > km.right + 1 || k.left < km.left - 1) { kq.thucDon.push(`thẻ «${ten}»: chữ tràn khỏi thẻ (${moTa(e).slice(0, 40)})`); break; }
       }
       // Thẻ của lưới: ảnh (nếu có) ở trên chữ. Món dẫn đầu: từ 768px ảnh ở cột phải, bên phải chữ;
-      // dưới 768px ảnh ở trên chữ.
+      // dưới 768px ảnh ở trên chữ. Dưới 600px, món KHÔNG dẫn đầu của nhóm món ăn (lưới .tdn-dan-dau) là hàng
+      // gọn: ảnh nhỏ 112–128px bên trái, chữ bên phải, cùng mép trên — tab Món ăn ở 390px từng dài hơn
+      // 12.000px vì mỗi món là một thẻ ảnh to. Nhãn "Ảnh minh họa" của ảnh nhỏ một dòng, nằm trong 20 % đáy
+      // khung (dải trống dưới món của ảnh tách nền; mặt bàn của ảnh tartare) — không đè lên món.
       const chu = m.querySelector('.tdm');
       const f = m.classList.contains('tdn-lon') ? m.closest('.tdn-mo')?.querySelector('.tdn-lon-anh figure.anh') : m.querySelector('figure.anh');
       if (!f || !chu || !hien(f)) continue;
       const [ka, kc] = [f.getBoundingClientRect(), chu.getBoundingClientRect()];
+      const hangGon = RONG < 600 && !m.classList.contains('tdn-lon') && !!m.closest('.tdn-dan-dau .tdn-luoi');
       if (m.classList.contains('tdn-lon') && RONG >= 768) {
         if (ka.left < kc.right - 0.5) kq.thucDon.push(`món dẫn đầu «${ten}»: từ 768px ảnh phải ở bên phải chữ`);
+      } else if (hangGon) {
+        if (ka.right > kc.left + 0.5 || Math.abs(ka.top - kc.top) > 1) kq.thucDon.push(`món «${ten}»: dưới 600px phải là hàng gọn — ảnh nhỏ bên trái chữ, cùng mép trên`);
+        if (ka.width < 111.5 || ka.width > 128.5) kq.thucDon.push(`món «${ten}»: ảnh nhỏ của hàng gọn rộng ${ka.width.toFixed(1)}px, cần 112–128px`);
+        const nhan = f.querySelector('figcaption.chu-thich-anh');
+        const kn = nhan?.getBoundingClientRect();
+        if (kn && kn.top < ka.top + ka.height * 0.8 - 0.5) {
+          kq.thucDon.push(`món «${ten}»: nhãn ảnh nhỏ cao ${kn.height.toFixed(1)}px, lên tới ${((kn.top - ka.top) / ka.height * 100).toFixed(0)} % khung — phải một dòng trong 20 % đáy khung`);
+        }
       } else if (ka.bottom > kc.top + 0.5) {
         kq.thucDon.push(`thẻ «${ten}»: ảnh phải ở trên chữ`);
       }
