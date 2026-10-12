@@ -119,9 +119,9 @@ web/
 │  │  └─ noi-bo/       ← giao diện nội bộ, có middleware canh cửa
 │  │     └─ kho/       ← các màn kho
 │  └─ styles/
-│     ├─ chung.css     ← token màu, phông, nền chung — /noi-bo và kho cũng nạp; chỉ được THÊM biến
+│     ├─ chung.css     ← token màu (:root — /noi-bo và kho đọc; cùng giá trị với khối .ck của cong-khai.css), phông, nền chung
 │     ├─ cong-khai.css ← hệ giao diện trang công khai ("Quầy thịt ấm"), mọi quy tắc nằm dưới body.ck
-│     └─ noi-bo.css · kho.css
+│     └─ noi-bo.css · kho.css · kho-khung.css   ← nội bộ và kho; màu trạng thái khai trên .nb-than (noi-bo.css)
 ```
 
 Tên file và biến đặt bằng tiếng Việt, khớp với tên cột trong database. Người đọc `dat_ban.trang_thai` rồi đọc tiếp mã nguồn không phải dịch qua lại.

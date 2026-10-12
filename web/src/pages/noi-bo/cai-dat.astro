@@ -426,7 +426,7 @@ const hhmm = (t: string | undefined) => (t ?? '').slice(0, 5);
     display: flex; align-items: center; gap: .6rem;
     padding: .5rem 0 1rem; font-size: .9rem; cursor: pointer;
   }
-  .nb-o-chon-cd input { width: 22px; height: 22px; margin: 0; accent-color: var(--do); }
+  .nb-o-chon-cd input { width: 22px; height: 22px; margin: 0; }
 
   .nb-luoi-ban {
     display: grid; gap: .6rem;
@@ -442,10 +442,10 @@ const hhmm = (t: string | undefined) => (t ?? '').slice(0, 5);
   .nb-ban-nut { display: flex; gap: .35rem; margin-top: .5rem; }
   .nb-nut-nho-sang {
     font: inherit; font-size: .75rem; font-weight: 600;
-    background: #fff; color: var(--than);
-    border: 1px solid var(--vach); border-radius: 6px;
+    background: var(--nb-the); color: var(--than);
+    border: 1px solid var(--vien-o); border-radius: 6px;
     padding: .4rem .5rem; cursor: pointer; min-height: 36px; flex: 1;
   }
-  .nb-nut-nho-sang:hover { background: var(--kem-sau); }
+  .nb-nut-nho-sang:hover { background: var(--kem-dam); }
   .nb-nut-nho-sang.xoa { color: var(--do); }
 </style>

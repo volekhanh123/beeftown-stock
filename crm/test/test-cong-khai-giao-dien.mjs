@@ -10,9 +10,10 @@
  *   1. Mọi đường dẫn trong CAP_DUONG_DAN (web/src/lib/chu.ts) có file trang thật — nút đổi
  *      ngôn ngữ và sitemap không trỏ vào trang 404; và mọi trang .astro công khai đều nằm
  *      trong bảng đó.
- *   2. chung.css (cả /noi-bo và kho dùng) giữ NGUYÊN giá trị mọi biến cũ, mỗi biến khai một
- *      lần. cong-khai.css chỉ layouts/Trang.astro nạp, và mọi quy tắc của nó nằm dưới .ck /
- *      html:has(body.ck) — không lọt ra /noi-bo, kho.
+ *   2. Khối :root đầu tiên của chung.css (cả /noi-bo và kho dùng) khai đúng 13 biến gốc với
+ *      giá trị của bảng màu chốt 09/10/2026, mỗi biến một lần. cong-khai.css chỉ
+ *      layouts/Trang.astro nạp, và mọi quy tắc của nó nằm dưới .ck / html:has(body.ck) —
+ *      không lọt ra /noi-bo, kho.
  *   3. SVG thương hiệu (web/public/thuong-hieu, bieu-tuong.svg) sạch: có viewBox; không
  *      <script>, không thuộc tính on…=, không <text> (chữ là nét vẽ gốc của PDF), không
  *      <image>, không href ra ngoài; màu chỉ trong bảng màu thương hiệu (bất biến 6).
@@ -22,7 +23,8 @@
  *      (.gitignore "chặn hết rồi mở từng cái"). Ảnh chia sẻ đúng 1200×630.
  *   6. Trang công khai dùng đúng bảng màu Khánh chốt ngày 09/10/2026 (THUONG-HIEU.md): mã khai
  *      một lần trong khối .ck đầu tiên của cong-khai.css; không file công khai nào còn mã của
- *      bảng cũ; các cặp chữ / nền của hệ bề mặt đủ tương phản (WCAG 2.2).
+ *      bảng cũ; các cặp chữ / nền của hệ bề mặt đủ tương phản (WCAG 2.2). /noi-bo và kho dùng
+ *      cùng bảng đó từ 12/10/2026 — phần của hai nơi ấy: test-noi-bo-bang-mau.mjs.
  *   7. Thành phần và khung trang của đợt redesign (PR 2): bảng màu không có trắng — không file
  *      công khai nào còn mã màu ngoài bảng; ô nhập nền Cream trong thẻ kem sau vẫn đủ tương phản
  *      viền; cỡ chữ, lưới, chiều cao đầu trang khai đúng; chân trang bỏ hoa văn chữ; biểu tượng
@@ -35,6 +37,7 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
+import { taoMauLaTrong } from './mau-css.mjs';
 
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WEB = join(GOC, 'web');
@@ -87,13 +90,16 @@ await nhom('1 · MỌI ĐƯỜNG DẪN CÓ FILE TRANG, MỌI TRANG CÔNG KHAI C�
 });
 
 // ===========================================================================
-// Giá trị gốc của chung.css trước bộ giao diện mới — chép tay ở đây, KHÔNG đọc từ file:
+// 13 biến gốc của khối :root đầu tiên trong chung.css — chép tay ở đây, KHÔNG đọc từ file:
 // sửa nhầm một giá trị ở chung.css thì /noi-bo và kho đổi màu theo, và phép thử này đỏ.
-const BIEN_CU = {
-  '--do': '#B23A2C', '--do-dam': '#8F2C21', '--kem': '#FBF4E1', '--kem-sau': '#F5ECD7',
-  '--mu-tat': '#F2A900', '--cuc-vang': '#F5C211', '--than': '#1E160E', '--da': '#B8A98C',
-  '--muc-nhat': 'rgba(30, 22, 14, .68)', '--vach': 'rgba(30, 22, 14, .16)', '--vach-kem': 'rgba(251, 244, 225, .22)',
-  '--vien-o': '#8C8577', '--rong': 'min(1120px, 90%)',
+// Tới 10/10/2026 bảng này chép bảng màu cũ, để một PR của trang công khai không lỡ tay đổi màu
+// nội bộ. Ngày 12/10/2026 /noi-bo và kho đổi sang bảng màu Khánh chốt 09/10/2026, nên giá trị
+// mong đợi là bảng đó — cùng giá trị với khối .ck (BANG_MAU_CHOT, nhóm 6).
+const BIEN_GOC = {
+  '--do': '#A70C0C', '--do-dam': '#890607', '--kem': '#F0E3D0', '--kem-sau': '#EBDCC6',
+  '--mu-tat': '#F5AA14', '--cuc-vang': '#F5AA14', '--than': '#151008', '--da': '#B8A98C',
+  '--muc-nhat': 'rgba(21, 16, 8, .68)', '--vach': 'rgba(21, 16, 8, .16)', '--vach-kem': 'rgba(240, 227, 208, .22)',
+  '--vien-o': '#7A7366', '--rong': 'min(1120px, 90%)',
 };
 const boChuThich = css => css.replace(/\/\*[\s\S]*?\*\//g, '');
 const chuanHoa = v => v.trim().replace(/\s+/g, ' ').toLowerCase();
@@ -155,32 +161,15 @@ function kieuCua(f) {
   const nguon = readFileSync(f, 'utf8');
   return boChuThich(f.endsWith('.css') ? nguon : (nguon.match(/<style[^>]*>([\s\S]*?)<\/style>/g) ?? []).join('\n').replace(/<\/?style[^>]*>/g, ''));
 }
-// 148 tên màu của CSS Color 4 (transparent và currentColor không phải tên màu). Đứng riêng thành một từ:
-// không dính chữ, số, gạch nối, #, . hay $ phía trước (var(--do-red), .white, #red), không dính chữ, gạch
-// nối hay ngoặc mở phía sau (white-space, red()).
-const TEN_MAU_CSS = new RegExp(`(?<![\\w#.$-])(?:${`aliceblue antiquewhite aqua aquamarine azure beige bisque black
-  blanchedalmond blue blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk crimson cyan
-  darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki darkmagenta darkolivegreen darkorange darkorchid
-  darkred darksalmon darkseagreen darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue
-  dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite gold goldenrod gray green
-  greenyellow grey honeydew hotpink indianred indigo ivory khaki lavender lavenderblush lawngreen lemonchiffon lightblue
-  lightcoral lightcyan lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen lightskyblue
-  lightslategray lightslategrey lightsteelblue lightyellow lime limegreen linen magenta maroon mediumaquamarine mediumblue
-  mediumorchid mediumpurple mediumseagreen mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue
-  mintcream mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid palegoldenrod palegreen
-  paleturquoise palevioletred papayawhip peachpuff peru pink plum powderblue purple rebeccapurple red rosybrown royalblue
-  saddlebrown salmon sandybrown seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen
-  steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow yellowgreen`.trim().split(/\s+/).join('|')})(?![\\w(-])`, 'gi');
-// Màu hệ thống (CSS Color 4, mục 6.2) — ngoài chế độ tương phản cao, Canvas và Field là trắng.
-const MAU_HE_THONG = /(?<![\w#.$-])(?:AccentColor|AccentColorText|ActiveText|ButtonBorder|ButtonFace|ButtonText|Canvas|CanvasText|Field|FieldText|GrayText|Highlight|HighlightText|LinkText|Mark|MarkText|SelectedItem|SelectedItemText|VisitedText)(?![\w(-])/gi;
+// Tên màu CSS, màu hệ thống và bộ quét cách viết màu: mau-css.mjs (dùng chung với test-noi-bo-bang-mau.mjs).
 
-await nhom('2 · chung.css GIỮ NGUYÊN BIẾN CŨ; cong-khai.css CHỈ Ở TRANG CÔNG KHAI', async () => {
+await nhom('2 · chung.css ĐÚNG 13 BIẾN GỐC CỦA BẢNG MÀU CHỐT; cong-khai.css CHỈ Ở TRANG CÔNG KHAI', async () => {
   const chung = boChuThich(readFileSync(join(SRC, 'styles', 'chung.css'), 'utf8'));
   const root = chung.match(/:root\s*\{([^}]*)\}/)?.[1] ?? '';
-  for (const [bien, giaTri] of Object.entries(BIEN_CU)) {
+  for (const [bien, giaTri] of Object.entries(BIEN_GOC)) {
     const m = root.match(new RegExp(`(?:^|[;\\s])${bien.replace(/-/g, '\\-')}\\s*:\\s*([^;]+);`));
     const soLanKhai = (chung.match(new RegExp(`(?:^|[;{\\s])${bien.replace(/-/g, '\\-')}\\s*:`, 'g')) ?? []).length;
-    ok(`chung.css: ${bien} vẫn là ${giaTri}, khai đúng một lần`, !!m && chuanHoa(m[1]) === chuanHoa(giaTri) && soLanKhai === 1,
+    ok(`chung.css: ${bien} là ${giaTri}, khai đúng một lần`, !!m && chuanHoa(m[1]) === chuanHoa(giaTri) && soLanKhai === 1,
        m ? `${m[1].trim()} · khai ${soLanKhai} lần` : 'không thấy trong khối :root đầu tiên');
   }
 
@@ -318,7 +307,8 @@ await nhom('5 · GIT THẤY MỌI FILE TÀI SẢN; ẢNH CHIA SẺ ĐÚNG CỠ',
 // ===========================================================================
 // Bảng màu Khánh chốt ngày 09/10/2026 và các màu pha cho màn hình Khánh cho phép ngày 10/10/2026
 // (THUONG-HIEU.md mục 1 và 4). Chép tay ở đây, KHÔNG đọc từ file: sửa nhầm một mã ở cong-khai.css
-// thì phép thử này đỏ. /noi-bo và kho chưa đổi: chúng đọc :root của chung.css (nhóm 2 giữ nguyên).
+// thì phép thử này đỏ. /noi-bo và kho đọc :root của chung.css — cùng giá trị (nhóm 2 gác 13 biến gốc;
+// test-noi-bo-bang-mau.mjs gác đủ 14 biến màu và so hai khối với nhau).
 const BANG_MAU_CHOT = {
   '--do': '#A70C0C', '--kem': '#F0E3D0', '--than': '#151008', '--cuc-vang': '#F5AA14', '--da': '#B8A98C',
   '--mu-tat': '#F5AA14',                                  // guideline chỉ có một vàng: hai tên, một mã
@@ -328,7 +318,7 @@ const BANG_MAU_CHOT = {
 };
 // Mã của các bảng trước (PDF nhận diện, guideline tới bản 15), viết kiểu hex hoặc bộ ba số RGB.
 const MA_CU = /#(?:B23A2C|8F2C21|960F13|FBF4E1|F5ECD7|F1E4C2|1E160E|F2A900|F5C211|8C8577|A21E22|2A2016)\b|\b(?:30, ?22, ?14|251, ?244, ?225|178, ?58, ?44|150, ?15, ?19|143, ?44, ?33)\b/gi;
-// Khu nội bộ — cùng danh sách với test-cong-khai-dinh-chu.mjs. Khu này chưa đổi bảng màu.
+// Khu nội bộ — cùng danh sách với test-cong-khai-dinh-chu.mjs. Mã cũ ở khu này do test-noi-bo-bang-mau.mjs quét.
 const NOI_BO = ['pages/noi-bo/', 'components/kho/', 'layouts/Kho.astro', 'layouts/NoiBo.astro',
   'components/SucKhoeHeThong.astro', 'components/BanDoChucNang.astro', 'components/OTimChucNang.astro'];
 
@@ -349,7 +339,7 @@ function phaTren(chu, nen, alpha) {
   return '#' + c.map((v, i) => Math.round(v * alpha + n[i] * (1 - alpha)).toString(16).padStart(2, '0')).join('');
 }
 
-await nhom('6 · BẢNG MÀU THƯƠNG HIỆU CHỐT 09/10/2026 — CHỈ Ở TRANG CÔNG KHAI', async () => {
+await nhom('6 · BẢNG MÀU THƯƠNG HIỆU CHỐT 09/10/2026 Ở TRANG CÔNG KHAI', async () => {
   const ck = boChuThich(readFileSync(join(SRC, 'styles', 'cong-khai.css'), 'utf8'));
   const khoi = docQuyTac(ck).find(q => q.boChon === '.ck')?.trong ?? '';
   for (const [bien, giaTri] of Object.entries(BANG_MAU_CHOT)) {
@@ -465,21 +455,7 @@ await nhom('7 · THÀNH PHẦN VÀ KHUNG TRANG: KHÔNG NỀN TRẮNG, TƯƠNG PH
   //   · màu hệ thống (Canvas, Highlight…) chỉ trong @media (forced-colors: active) — ngoài chế độ đó
   //     Canvas chính là trắng.
   const BA_SO = new Set([...MA_DUOC_PHEP].map(h => [1, 3, 5].map(k => parseInt(h.slice(k, k + 2), 16)).join(',')));
-  const mauLaTrong = (giaTri, tuongPhanCao) => {
-    const v = giaTri.replace(/url\((?:"[^"]*"|'[^']*'|[^)]*)\)/gi, ' ').replace(/"[^"]*"|'[^']*'/g, ' ');
-    const la = [];
-    for (const m of v.matchAll(/(?<![\w-])rgba?\(/gi)) {
-      const dong = v.indexOf(')', m.index);
-      const trong = v.slice(m.index + m[0].length, dong < 0 ? undefined : dong);
-      const so = trong.split(/[\s,/]+/).filter(Boolean);
-      const baSo = so.slice(0, 3);
-      if (so.length < 3 || !baSo.every(x => /^\d{1,3}$/.test(x)) || !BA_SO.has(baSo.map(Number).join(','))) la.push(`${m[0]}${trong})`);
-    }
-    for (const m of v.matchAll(/(?<![\w-])(?:hsla?|hwb|lab|lch|oklab|oklch|color|light-dark|device-cmyk)\(/gi)) la.push(`${m[0]}…)`);
-    for (const m of v.matchAll(TEN_MAU_CSS)) la.push(m[0]);
-    if (!tuongPhanCao) for (const m of v.matchAll(MAU_HE_THONG)) la.push(`${m[0]} (màu hệ thống ngoài forced-colors)`);
-    return la;
-  };
+  const mauLaTrong = taoMauLaTrong(BA_SO);
   const mauLaKhac = congKhai.flatMap(f => {
     const ten = tuGoc(f);
     const nguon = readFileSync(f, 'utf8');
