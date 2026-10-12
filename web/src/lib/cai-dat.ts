@@ -50,6 +50,9 @@ const CAU = {
   daThemNhieu:  { vi: (n: number, a: string, b: string) => `Đã thêm ${n} bàn: ${a}–${b}.`, en: (n: number, a: string, b: string) => `Added ${n} tables: ${a}–${b}.` },
   chuaTenBan:   { vi: 'Chưa điền tên bàn.', en: 'The table has no name.' },
   daThemMot:    { vi: (ten: string) => `Đã thêm bàn ${ten}.`, en: (ten: string) => `Added table ${ten}.` },
+  // Lần hai của cú bấm đúp / F5 sau khi thêm: bàn đã có đúng như vừa gửi. Nói trạng thái, không báo lỗi.
+  daCoMot:      { vi: (ten: string) => `Bàn ${ten} đã có trong danh sách.`, en: (ten: string) => `Table ${ten} is already in the list.` },
+  daCoNhieu:    { vi: (a: string, b: string) => `Các bàn ${a}–${b} đã có trong danh sách.`, en: (a: string, b: string) => `Tables ${a}–${b} are already in the list.` },
   khongDoiBan:  { vi: 'Không đổi được trạng thái bàn.', en: 'Could not change the table status.' },
   banDungLai:   { vi: 'Đã cho bàn hoạt động lại.', en: 'The table is in use again.' },
   banNgung:     { vi: 'Đã ngừng dùng bàn. Nó không còn được tính vào sức chứa, nhưng lịch sử đặt bàn cũ giữ nguyên.',
@@ -97,6 +100,29 @@ function cauLoi(e: { message?: string } | null, mac_dinh: string, nn: NgonNguNB)
   if (/duplicate key|unique/i.test(m)) return CAU.trungTen[nn];
   return m ? dichCau(nn, m) : mac_dinh;
 }
+
+/**
+ * Thêm bàn bị chặn vì trùng tên: các bàn đó có ĐÚNG như vừa gửi không (lần hai của cú bấm đúp,
+ * F5 sau khi thêm — lần một đã thêm). Đúng hết → true. Một bàn khác số chỗ / loại, hay chưa có,
+ * hay đọc không được → false, và câu "Tên này đã có rồi" giữ nguyên.
+ */
+async function daCoDungNhuGui(
+  client: SupabaseClient, chiNhanhId: string, dong: { ten: string; so_cho: number; la_phong_rieng: boolean }[],
+): Promise<boolean> {
+  const { data, error } = await client
+    .from('ban_an')
+    .select('ten, so_cho, la_phong_rieng, dang_dung')
+    .eq('chi_nhanh_id', chiNhanhId)
+    .in('ten', dong.map(d => d.ten));
+  if (error || !Array.isArray(data)) return false;
+  const co = new Map((data as BanAn[]).map(b => [b.ten, b]));
+  return dong.every(d => {
+    const b = co.get(d.ten);
+    return !!b && b.dang_dung && b.so_cho === d.so_cho && b.la_phong_rieng === d.la_phong_rieng;
+  });
+}
+
+const laTrungTen = (e: { code?: string; message?: string }) => e.code === '23505' || /duplicate key/i.test(e.message ?? '');
 
 function gio(v: FormDataEntryValue | null): string | null {
   const s = String(v ?? '').trim();
@@ -214,6 +240,9 @@ export async function themNhieuBan(
   }
 
   const { error } = await client.from('ban_an').insert(dong);
+  if (error && laTrungTen(error) && await daCoDungNhuGui(client, chiNhanhId, dong)) {
+    return { ok: true, cau: t.daCoNhieu(dong[0].ten, dong[dong.length - 1].ten) };
+  }
   if (error) return { ok: false, cau: cauLoi(error, t.khongThemBan, nn) };
   return { ok: true, cau: t.daThemNhieu(dong.length, dong[0].ten, dong[dong.length - 1].ten) };
 }
@@ -227,10 +256,11 @@ export async function themMotBan(
   if (!ten) return { ok: false, cau: t.chuaTenBan };
   if (soCho === null) return { ok: false, cau: t.soChoSai };
 
-  const { error } = await client.from('ban_an').insert({
-    chi_nhanh_id: chiNhanhId, ten, so_cho: soCho,
-    la_phong_rieng: form.get('la_phong_rieng') === 'co',
-  });
+  const dong = { chi_nhanh_id: chiNhanhId, ten, so_cho: soCho, la_phong_rieng: form.get('la_phong_rieng') === 'co' };
+  const { error } = await client.from('ban_an').insert(dong);
+  if (error && laTrungTen(error) && await daCoDungNhuGui(client, chiNhanhId, [dong])) {
+    return { ok: true, cau: t.daCoMot(ten) };
+  }
   if (error) return { ok: false, cau: cauLoi(error, t.khongThemBan, nn) };
   return { ok: true, cau: t.daThemMot(ten) };
 }

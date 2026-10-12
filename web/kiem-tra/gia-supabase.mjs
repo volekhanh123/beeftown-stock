@@ -18,7 +18,8 @@
  *   lich_trong_theo_ma(p_chi_nhanh_ma, p_ngay) → [{ gio 'HH:MM:SS', buoi, con_cho, da_qua }] (0013)
  *   tao_dat_ban(14 tham số, 0013)          → [{ dat_ban_id, ma_dat_ban, con_trong }]
  *   tin_tuyen_dung_cong_khai(p_ngon_ngu)   → [] (trang dùng danh sách dự phòng); kịch bản
- *                                            tuyen-dung-mo trả hai tin mẫu, đủ cột của 0026 / 0043
+ *                                            tuyen-dung-* trả hai tin mẫu, đủ cột của 0026 / 0043
+ *   nop_ho_so_ung_tuyen(16 tham số, 0026)  → chuỗi mã hồ sơ 'BT-UV-YYMM-XXXXX'
  *
  * supabase-js gọi POST {URL}/rest/v1/rpc/<tên hàm> với thân JSON. PostgREST chọn hàm
  * theo TÊN tham số: gửi một tham số lạ (đổi tên p_ho_ten ở web mà quên database) là
@@ -26,8 +27,8 @@
  * Lỗi trả dạng PostgREST: HTTP 4xx/5xx, thân { code, message, details, hint }.
  *
  * KỊCH BẢN (đổi lúc đang chạy: POST /__kich-ban {"ten": "…", "cham": ms} — đồng thời xóa bộ đếm;
- * "cham": tao_dat_ban chờ chừng ấy mili giây rồi mới trả lời, như database ở xa / mạng 4G chậm —
- * để kịp bấm lần hai trong lúc lần một còn đang chạy):
+ * "cham": tao_dat_ban và nop_ho_so_ung_tuyen chờ chừng ấy mili giây rồi mới trả lời, như database
+ * ở xa / mạng 4G chậm — để kịp bấm lần hai trong lúc lần một còn đang chạy):
  *   rong          database nối rồi nhưng CHƯA công bố gì: mọi khóa null, thực đơn rỗng
  *   day-du        Facebook, Maps, hotline, email đã công bố; form hỏi bàn mở; thực đơn
  *                 và đồ uống có cồn bật; thực đơn mẫu (không món nào có giá)
@@ -40,7 +41,11 @@
  *   dia-chi-cong-bo  như day-du, thêm khóa dia_chi_hien_thi đã công bố (DIA_CHI_CONG_BO_THU): bản
  *                 công bố phải thay địa chỉ cố định trong mã ở mọi chỗ in địa chỉ
  *   tuyen-dung-mo như day-du, thêm hai tin tuyển dụng đã công bố (TIN_TUYEN_DUNG_THU): trang Tuyển
- *                 dụng hiện thẻ vị trí thật và form nộp hồ sơ — để đo ô nhập, ô chọn, nút chọn file
+ *                 dụng hiện thẻ vị trí thật và form nộp hồ sơ — để đo ô nhập, ô chọn, nút chọn file;
+ *                 nop_ho_so_ung_tuyen trả mã hồ sơ
+ *   tuyen-dung-dut   như tuyen-dung-mo; nop_ho_so_ung_tuyen cắt kết nối không trả lời (KHÔNG CHẮC)
+ *   tuyen-dung-loi   như tuyen-dung-mo; nop_ho_so_ung_tuyen trả 400 P0001 "Vị trí này đã hết hạn
+ *                 nhận hồ sơ" (database từ chối — CHƯA ghi)
  *
  * GET /__dem → { tên hàm: số lần gọi } — để kiểm "bấm đúp → tao_dat_ban đúng một lần".
  * GET /__nhat-ky → 200 lần gọi gần nhất { ham, thamSo }.
@@ -53,7 +58,8 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 
 export const CONG_MAC_DINH = 54331;
-export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dat-ban-sap', 'dia-chi-cong-bo', 'tuyen-dung-mo'];
+export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dat-ban-sap', 'dia-chi-cong-bo',
+  'tuyen-dung-mo', 'tuyen-dung-dut', 'tuyen-dung-loi'];
 
 // Liên hệ "đã công bố" của kịch bản day-du. Đường dẫn thử, không phải trang thật của nhà hàng.
 export const LIEN_HE_THU = {
@@ -178,7 +184,7 @@ const TIN_TUYEN_DUNG_THU = [
     mo_ta: null, hoi: false },
 ];
 function tinTuyenDung(kichBan, nn) {
-  if (kichBan !== 'tuyen-dung-mo') return [];
+  if (!kichBan.startsWith('tuyen-dung-')) return [];
   const n = NN.includes(nn) ? nn : 'vi';
   return TIN_TUYEN_DUNG_THU.map(t => ({
     ma: t.ma, ten: t.ten[n], bo_phan: t.bo_phan, cap_bac: null, loai_hop_dong: t.loai_hop_dong, so_luong: null,
@@ -195,12 +201,17 @@ const THAM_SO_DAT_BAN = [
   'p_chi_nhanh_ma', 'p_sdt', 'p_ho_ten', 'p_ngay', 'p_gio', 'p_so_khach', 'p_dip', 'p_ghi_chu',
   'p_dong_y', 'p_utm_source', 'p_utm_medium', 'p_utm_campaign', 'p_trang_gioi_thieu', 'p_ip',
 ];
+const THAM_SO_NOP_HO_SO = [
+  'p_vi_tri_ma', 'p_ho_ten', 'p_sdt', 'p_email', 'p_nam_sinh', 'p_gioi_thieu', 'p_kinh_nghiem', 'p_ca_lam_duoc',
+  'p_ma_tai_len', 'p_ten_tep', 'p_dong_y', 'p_bay', 'p_giay_tren_form', 'p_utm_source', 'p_utm_campaign', 'p_ip',
+];
 const HAM = {
   noi_dung_cong_khai: { thamSo: ['p_ngon_ngu'], batBuoc: [] },
   thuc_don_cong_khai: { thamSo: ['p_ngon_ngu'], batBuoc: [] },
   tin_tuyen_dung_cong_khai: { thamSo: ['p_ngon_ngu'], batBuoc: [] },
   lich_trong_theo_ma: { thamSo: ['p_chi_nhanh_ma', 'p_ngay'], batBuoc: ['p_chi_nhanh_ma', 'p_ngay'] },
   tao_dat_ban: { thamSo: THAM_SO_DAT_BAN, batBuoc: THAM_SO_DAT_BAN.slice(0, 6) },
+  nop_ho_so_ung_tuyen: { thamSo: THAM_SO_NOP_HO_SO, batBuoc: THAM_SO_NOP_HO_SO.slice(0, 3) },
 };
 
 const loiPostgrest = (code, message, details = null, hint = null) => ({ code, message, details, hint });
@@ -225,6 +236,7 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
   let dem = {};
   let nhatKy = [];
   let soDatBan = 0;
+  let soHoSo = 0;
 
   const datKichBan = (ten, { cham: ms = 0 } = {}) => {
     if (!KICH_BAN.includes(ten)) throw new Error(`Kịch bản lạ: ${ten}`);
@@ -288,8 +300,24 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
           if (cham > 0) return void setTimeout(() => taoDatBan(thamSo), cham);
           return taoDatBan(thamSo);
         }
+        case 'nop_ho_so_ung_tuyen': {
+          if (cham > 0) return void setTimeout(() => nopHoSo(), cham);
+          return nopHoSo();
+        }
       }
       return tra(500, loiPostgrest('XX000', 'unreachable'));
+
+      // Trả lời nop_ho_so_ung_tuyen theo kịch bản: chuỗi mã hồ sơ, như hàm thật (returns text).
+      function nopHoSo() {
+        if (hienTai === 'tuyen-dung-dut') { req.socket.destroy(); return; }
+        if (hienTai === 'tuyen-dung-loi') {
+          return tra(400, loiPostgrest('P0001', 'Vị trí này đã hết hạn nhận hồ sơ'));
+        }
+        if (!hienTai.startsWith('tuyen-dung-')) return tra(400, loiPostgrest('P0001', 'Cổng tuyển dụng đang tạm đóng'));
+        soHoSo++;
+        // PostgREST trả một chuỗi JSON (có ngoặc kép) — tra() gửi chuỗi trần nguyên văn, nên tự stringify.
+        return tra(200, JSON.stringify(`BT-UV-2610-${maDatBan(soHoSo).slice(0, 5)}`));
+      }
 
       // Trả lời tao_dat_ban theo kịch bản. Tách thành hàm để chờ được ("cham").
       function taoDatBan(ts) {

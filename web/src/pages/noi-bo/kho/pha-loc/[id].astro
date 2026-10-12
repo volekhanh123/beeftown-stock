@@ -75,10 +75,6 @@ const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
 /** Câu báo dựng ở trang (KetQua cần cả hai thứ tiếng — đi qua cookie khi chuyển trang). */
 const CAU = {
   khongThay: { vi: 'Không tìm thấy phiên pha lóc này.', en: 'This butchery session was not found.' },
-  mangDut: {
-    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
-    en: 'Could not read the submitted data — the connection may have dropped. Try sending again.',
-  },
   khongSua: { vi: 'Phiên không còn sửa được (đã chốt hoặc đã hủy).', en: 'This session can no longer be edited (closed or cancelled).' },
   luuXemKetQua: { vi: 'Đã lưu. Xem kết quả rồi chốt.', en: 'Saved. Check the result, then close the session.' },
   luuThemDong: { vi: 'Đã lưu. Gõ thêm ở các dòng trống cuối mục.', en: 'Saved. Type more in the empty lines at the end of the section.' },
@@ -332,9 +328,6 @@ let docLoi: KetQuaDocPhien | null = null;
 // Hiện lại sau lỗi quét: mã trong ô và ma_gui của lượt đó.
 let maConLai = '';
 let maGuiLai: string | null = null;
-if (Astro.request.method === 'POST' && !form) {
-  bao = kqHai(false, CAU.mangDut);
-}
 if (form && phien) {
   const viec = String(form.get('viec') ?? '');
   const ve = (kq: KetQua, them = '') => chuyenHuong(Astro, `${DUONG}${them}`, kq);

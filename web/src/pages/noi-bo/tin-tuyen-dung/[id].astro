@@ -13,6 +13,12 @@
  * BẢN DỊCH (0036): lưu xong là máy dịch nền những ô có câu tiếng Việt vừa
  * đổi — xem lib/ban-dich.ts. Ô tiếng Anh/Hàn vẫn sửa tay được; sửa tay thắng
  * máy cho tới khi câu tiếng Việt của ô đó đổi.
+ *
+ * GHI ĐƯỢC THÌ CHUYỂN HƯỚNG 303 về chính tin (lib/gui-noi-bo.ts): F5 không lưu
+ * lại bản cũ — lần hai trước đây ra "Tin vừa được người khác sửa … CHƯA được
+ * lưu" dù lần một đã lưu. Không ghi được thì dựng lại trang ngay, với đúng chữ
+ * người soạn vừa gõ. Lần hai của cú bấm đúp: luuTin / goTin / duyetLuong tự
+ * nhận ra tin đã đúng như vừa gửi.
  */
 import NoiBo from '../../../layouts/NoiBo.astro';
 import { TRUONG_FORM } from '../../../lib/truong-form';
@@ -24,6 +30,7 @@ import {
 import { dichBu, chayNen, oDangCho, moTaO, cauTomTat } from '../../../lib/ban-dich';
 import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
 import { dichCau } from '../../../lib/cau-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo } from '../../../lib/gui-noi-bo';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
@@ -32,8 +39,6 @@ const t = dichNB(nn, {
   tinTD:        { vi: 'Tin tuyển dụng', en: 'Job posting' },
   daTao:        { vi: 'Đã tạo tin ở dạng nháp. Viết mô tả và yêu cầu, rồi bấm "Lưu và đăng lên trang".',
                   en: 'Created the posting as a draft. Write the description and requirements, then press "Save and publish".' },
-  khongDocForm: { vi: 'Không đọc được dữ liệu gửi lên. Mạng có thể đã đứt giữa chừng — bạn thử gửi lại.',
-                  en: 'Could not read what was sent. The connection may have dropped — please try again.' },
   khongDocTin:  { vi: 'Không đọc được tin.', en: 'Could not read the posting.' },
   dangDich:     { vi: (cau: string) => `${cau} Bản tiếng Anh và tiếng Hàn đang được dịch — tải lại trang sau ít giây để xem.`,
                   en: (cau: string) => `${cau} The English and Korean versions are being translated — reload in a few seconds to see them.` },
@@ -111,32 +116,39 @@ const duocSoan = ['chu_so_huu', 'quan_ly', 'marketing'].includes(nhanSu.vai_tro)
 const duocDuyetLuong = ['chu_so_huu', 'quan_ly'].includes(nhanSu.vai_tro);
 const id = Astro.params.id ?? '';
 
-let bao: KetQuaLuu | null = Astro.url.searchParams.has('moi')
-  ? { ok: true, cau: t.daTao }
-  : null;
+// Gửi về đúng đường dẫn tin, bỏ ?moi=1 — không thì F5 lại hiện câu "Đã tạo tin".
+const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
+
+let bao: KetQuaLuu | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname)
+  ?? (Astro.url.searchParams.has('moi') ? { ok: true, cau: t.daTao } : null);
 
 if (Astro.request.method === 'POST') {
-  let form: FormData | null = null;
-  try {
-    form = await Astro.request.formData();
-  } catch {
-    bao = { ok: false, cau: t.khongDocForm };
-  }
+  const form = await docFormNoiBo(Astro.request);
+  if (!form) bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
 
   if (form) {
     const viec = String(form.get('viec') ?? '');
     const phienBan = String(form.get('phien_ban') ?? '');
+    // Mức đề xuất người duyệt đang thấy trên màn hình (ô ẩn) — để lần hai của cú bấm đúp biết
+    // trang đã hiện đúng mức đó chưa.
+    const daThay = { tu: String(form.get('de_xuat_tu') ?? ''), den: String(form.get('de_xuat_den') ?? ''),
+                     donVi: String(form.get('de_xuat_don_vi') ?? '') };
     bao = viec === 'go'       ? await goTin(client, id, nn)
-        : viec === 'duyet'    ? await duyetLuong(client, id, phienBan, true, nn)
-        : viec === 'bo_duyet' ? await duyetLuong(client, id, phienBan, false, nn)
+        : viec === 'duyet'    ? await duyetLuong(client, id, phienBan, true, nn, daThay)
+        : viec === 'bo_duyet' ? await duyetLuong(client, id, phienBan, false, nn, daThay)
         // Dịch ngay thì CHỜ kết quả: người bấm nút muốn biết nó xong hay hỏng vì sao.
         : viec === 'dich'     ? cauTomTat(await dichBu(client, { bang: 'vi_tri_tuyen_dung', dongId: id }), nn)
         :                       await luuTin(client, id, form, nn);
 
-    // Lưu xong thì dịch nền đúng tin này: trang trả về ngay, bản dịch vào sau
-    // vài giây. Máy hỏng cũng không làm hỏng lần lưu — xem chayNen().
-    if (bao.ok && (viec === 'luu' || viec === 'luu_dang')) {
-      chayNen(Astro.locals, dichBu(client, { bang: 'vi_tri_tuyen_dung', dongId: id }));
+    if (bao.ok) {
+      // Lưu xong thì dịch nền đúng tin này: trang trả về ngay, bản dịch vào sau
+      // vài giây. Máy hỏng cũng không làm hỏng lần lưu — xem chayNen().
+      if (viec === 'luu' || viec === 'luu_dang') {
+        chayNen(Astro.locals, dichBu(client, { bang: 'vi_tri_tuyen_dung', dongId: id }));
+        // Ô nào đang chờ máy dịch — ngay sau khi lưu thì gần như mọi ô vừa đổi.
+        if ((await oDangCho(client, 'vi_tri_tuyen_dung', id)).size > 0) bao = { ...bao, cau: t.dangDich(bao.cau) };
+      }
+      return chuyenHuongNoiBo(Astro, bao, duongDan);
     }
   }
 }
@@ -149,11 +161,8 @@ try {
   loiDoc = e instanceof Error ? dichCau(nn, e.message) : t.khongDocTin;
 }
 
-// Ô nào đang chờ máy dịch — ngay sau khi lưu thì gần như mọi ô vừa đổi.
+// Ô nào đang chờ máy dịch.
 const dangCho = tin ? await oDangCho(client, 'vi_tri_tuyen_dung', id) : new Set<string>();
-if (bao?.ok && dangCho.size > 0 && Astro.request.method === 'POST') {
-  bao = { ...bao, cau: t.dangDich(bao.cau) };
-}
 
 // Lưu hỏng thì hiện lại đúng những gì người dùng vừa gõ, không bắt gõ lại.
 const v: TinTuyenDung | null = tin && { ...tin, ...(bao && !bao.ok ? bao.daGo : undefined) };
@@ -169,8 +178,6 @@ const gioVn = (iso: string) => new Date(iso).toLocaleString(nn === 'en' ? 'en-GB
   timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit',
   day: 'numeric', month: 'numeric', year: 'numeric',
 });
-// Gửi về đúng đường dẫn tin, bỏ ?moi=1 — không thì F5 lại hiện câu "Đã tạo tin".
-const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
 ---
 <NoiBo tieuDe={(nn === 'en' && tin?.ten_en) || tin?.ten_vi || t.tinTD} nhanSu={nhanSu}>
   <p style="margin:0 0 .75rem;font-size:.9rem">
@@ -387,6 +394,10 @@ const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
       {duocDuyetLuong && (
         <form method="POST" action={duongDan} class="nb-the">
           <input type="hidden" name="phien_ban" value={tin.updated_at} />
+          {/* Mức đề xuất đang thấy — lần hai của cú bấm đúp so với mức trang đang hiện (duyetLuong). */}
+          <input type="hidden" name="de_xuat_tu" value={tin.luong_de_xuat_tu ?? ''} />
+          <input type="hidden" name="de_xuat_den" value={tin.luong_de_xuat_den ?? ''} />
+          <input type="hidden" name="de_xuat_don_vi" value={tin.luong_de_xuat_don_vi ?? ''} />
           <h2>{t.duyetLuong}</h2>
           <p style="margin:0 0 .4rem">{t.deXuatDaLuu}<strong>{luongDeXuat ?? t.chuaCo}</strong></p>
           <p style="margin:0 0 .85rem">

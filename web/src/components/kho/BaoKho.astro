@@ -2,11 +2,15 @@
 /**
  * Câu báo kết quả (xanh = xong, đỏ = lỗi) và lỗi đọc dữ liệu. Không gọi database.
  *
+ * Lượt POST không đọc được thân (mạng đứt giữa chừng — docFormGui đánh dấu Astro.locals):
+ * hiện câu báo lỗi dùng chung (baoDocFormHong) ở MỌI trang kho, kể cả trang chưa tự báo.
+ *
  * Màn tiếng Anh: câu thư viện viết sẵn bản tiếng Anh (KetQua.cauEn) thì dùng;
  * còn lại — câu database, câu lỗi đọc — tra dichCau(). Chưa có bản dịch thì hiện
  * nguyên tiếng Việt, vẫn hơn một thông báo trống.
  */
 import type { KetQua } from '../../lib/kho/chung.ts';
+import { baoDocFormHong } from '../../lib/kho/bao.ts';
 import { nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../lib/cau-noi-bo.ts';
 
@@ -17,7 +21,12 @@ interface Props {
 const { bao, loiDoc } = Astro.props;
 const nn = nnCua(Astro);
 const cauBao = bao ? (nn === 'en' && bao.cauEn ? bao.cauEn : dichCau(nn, bao.cau)) : '';
+// Trang đã tự báo đúng câu ấy thì không hiện hai lần.
+const formHong = baoDocFormHong(Astro.locals);
+const baoFormHong = formHong && formHong.cau !== bao?.cau ? formHong : null;
+const cauFormHong = baoFormHong ? (nn === 'en' ? baoFormHong.cauEn ?? baoFormHong.cau : baoFormHong.cau) : '';
 ---
+{baoFormHong && <div class="nb-bao loi" role="alert"><p>{cauFormHong}</p></div>}
 {bao && (
   <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`} role={bao.ok ? 'status' : 'alert'}><p>{cauBao}</p></div>
 )}
