@@ -30,8 +30,8 @@
  *   3  ràng buộc mới: không ghi thẳng / sửa được hồ sơ chưa ẩn danh mà sdt rỗng; ẩn danh vẫn chạy
  *   4  quyền: hàm vẫn security definer + search_path, anon vẫn gọi được, anon vẫn không đọc được hồ sơ
  *   5  câu báo trên trang vi / en / ko khớp đúng câu database trả
- *   6  rà mã: 0080 chép nguyên văn 0026 trừ đúng một dòng; không hàm nào trong database còn mẫu
- *      "not sdt_hop_le(x)" thiếu "x is null or"
+ *   6  rà mã: 0080 chép nguyên văn bản trước (0026) trừ đúng một dòng; không hàm nào trong database còn
+ *      phủ định sdt_hop_le(x) ("not …", "… is false") mà thiếu "x is null or"
  */
 
 import { join, dirname } from 'node:path';
@@ -97,8 +97,9 @@ await nhom('2 · SỐ HỢP LỆ VẪN ĐƯỢC NHẬN, NỘP HAI LẦN VẪN M�
   const lan1 = await nop('0987654321', 'Bấm Hai Lần');
   const lan2 = await nop('0987 654 321', 'Bấm Hai Lần');
   const { rows } = await db.query(`select count(*)::int as n from ho_so_ung_tuyen where sdt = '0987654321'`);
-  ok('Bấm gửi hai lần cùng số, cùng tin, cùng ngày → lần hai bị từ chối, đúng một dòng',
-     !!lan1.ma && lan2.ma === null && lan2.loi !== null && rows[0].n === 1, `${lan1.ma} · ${lan2.ma ?? lan2.loi} · ${rows[0].n} dòng`);
+  // Chỉ gác bất biến "một dòng": lần hai bị từ chối hay nhận lại đúng mã cũ là việc của hàm nộp, không phải của lỗi này.
+  ok('Bấm gửi hai lần cùng số, cùng tin, cùng ngày → đúng một dòng, lần hai không ra mã mới',
+     !!lan1.ma && (lan2.ma === null || lan2.ma === lan1.ma) && rows[0].n === 1, `${lan1.ma} · ${lan2.ma ?? lan2.loi} · ${rows[0].n} dòng`);
 });
 
 // ===========================================================================
@@ -176,39 +177,52 @@ await nhom('5 · CÂU BÁO TRÊN TRANG vi / en / ko', async () => {
 });
 
 // ===========================================================================
-await nhom('6 · RÀ MÃ — 0080 chép nguyên văn 0026; không hàm nào còn mẫu thiếu "is null"', async () => {
-  const tep = dau => { const f = readdirSync(MIG).find(x => x.startsWith(dau)); return f ? readFileSync(join(MIG, f), 'utf8') : ''; };
+await nhom('6 · RÀ MÃ — 0080 chép nguyên văn bản trước; không hàm nào còn mẫu thiếu "is null"', async () => {
   /** Nguyên văn một hàm: từ "create or replace function <ten>(" tới dòng "$$;" đầu tiên sau đó. */
   const ham = (s, ten) => {
     const i = s.indexOf(`create or replace function ${ten}(`);
     const j = i < 0 ? -1 : s.indexOf('\n$$;', i);
     return j < 0 ? '' : s.slice(i, j + 4);
   };
+  // Migration này tìm theo tên (đánh lại số vẫn đúng); bản trước = migration gần nhất TRƯỚC nó có viết hàm này
+  // (hôm nay là 0026). Nhánh khác viết lại hàm và gộp trước thì đặt 0080 lên thân của nhánh đó — phép thử theo.
+  const tepMig = readdirSync(MIG).filter(f => /^\d{4}_.+\.sql$/.test(f)).sort();
+  const day = tepMig.findIndex(f => f.endsWith('_ho_so_sdt_bat_buoc.sql'));
+  const docMig = f => readFileSync(join(MIG, f), 'utf8');
+  const truocDo = tepMig.slice(0, Math.max(day, 0)).filter(f => ham(docMig(f), 'nop_ho_so_ung_tuyen') !== '').at(-1);
   const CU = '  if not sdt_hop_le(v_sdt) then';
   const MOI = '  if v_sdt is null or not sdt_hop_le(v_sdt) then';
-  const cu = ham(tep('0026_'), 'nop_ho_so_ung_tuyen'), moi = ham(tep('0080_'), 'nop_ho_so_ung_tuyen');
-  ok('0080 viết lại nop_ho_so_ung_tuyen = thân 0026 NGUYÊN VĂN, chỉ đổi đúng một điều kiện',
-     cu.includes(CU) && moi !== '' && moi === cu.replace(CU, MOI), moi === '' ? 'không thấy hàm trong 0080' : 'thân lệch 0026');
+  const cu = truocDo ? ham(docMig(truocDo), 'nop_ho_so_ung_tuyen') : '';
+  const moi = day >= 0 ? ham(docMig(tepMig[day]), 'nop_ho_so_ung_tuyen') : '';
+  ok(`${tepMig[day]?.slice(0, 4) ?? '????'} viết lại nop_ho_so_ung_tuyen = thân ${truocDo?.slice(0, 4) ?? '????'} NGUYÊN VĂN, chỉ đổi đúng một điều kiện`,
+     cu.includes(CU) && moi !== '' && moi === cu.replace(CU, MOI),
+     moi === '' ? 'không thấy hàm trong migration _ho_so_sdt_bat_buoc' : `thân lệch ${truocDo}`);
 
   // Định nghĩa đang chạy trong database (sau MỌI migration) — một nhánh khác viết lại hàm từ thân cũ thì đỏ ở đây.
+  // Mẫu hở: "not sdt_hop_le(x)", "not (sdt_hop_le(x))", "sdt_hop_le(x) is false / = false / <> true" mà không có
+  // "x is null or" ngay trước. (CHECK của bảng không nằm trong pg_proc — xem mô tả PR.)
   const { rows } = await db.query(
     `select p.proname, p.prosrc from pg_proc p
      where p.pronamespace = 'public'::regnamespace and p.prosrc ~ 'sdt_hop_le\\s*\\('`);
-  /** Đối số của sdt_hop_le( bắt đầu ở vị trí `tu`: tới dấu ) khớp — kể cả "chuan_hoa_sdt(p_sdt)". */
+  /** Đối số của sdt_hop_le( bắt đầu ở vị trí `tu`, tới dấu ) khớp — kể cả "chuan_hoa_sdt(p_sdt)". */
   const doiSo = (s, tu) => {
     let muc = 1, i = tu;
     for (; i < s.length && muc > 0; i++) muc += s[i] === '(' ? 1 : s[i] === ')' ? -1 : 0;
-    return s.slice(tu, i - 1);
+    return { x: s.slice(tu, i - 1), het: i };
   };
   const gon = s => s.replace(/\s+/g, ' ').trim().toLowerCase();
   const thieu = [];
   for (const { proname, prosrc } of rows) {
-    for (const m of prosrc.matchAll(/not\s+sdt_hop_le\s*\(/gi)) {
-      const x = gon(doiSo(prosrc, m.index + m[0].length));
-      if (!(gon(prosrc.slice(0, m.index)) + ' ').endsWith(` ${x} is null or `)) thieu.push(`${proname}: not sdt_hop_le(${x})`);
+    for (const m of prosrc.matchAll(/sdt_hop_le\s*\(/gi)) {
+      const { x, het } = doiSo(prosrc, m.index + m[0].length);
+      const truoc = prosrc.slice(0, m.index);
+      const phuDinh = /\bnot\s*(?:\(\s*)?$/i.test(truoc);
+      const soSanhSai = /^\s*\)?\s*(?:is\s+false|=\s*false|<>\s*true|!=\s*true)\b/i.test(prosrc.slice(het));
+      const coIsNull = (gon(truoc.replace(/\bnot\s*(?:\(\s*)?$/i, '').replace(/\(\s*$/, '')) + ' ').endsWith(` ${gon(x)} is null or `);
+      if ((phuDinh || soSanhSai) && !coIsNull) thieu.push(`${proname}: …${gon(prosrc.slice(Math.max(0, m.index - 12), het + 10))}…`);
     }
   }
-  ok(`Không hàm nào trong database dùng "not sdt_hop_le(x)" mà thiếu "x is null or" (rà ${rows.length} hàm có sdt_hop_le)`,
+  ok(`Không hàm nào trong database phủ định sdt_hop_le(x) mà thiếu "x is null or" (rà ${rows.length} hàm có sdt_hop_le)`,
      rows.length > 0 && thieu.length === 0, thieu.join(' | '));
 });
 
