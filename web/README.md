@@ -2,7 +2,7 @@
 
 Trang công khai của Beeftown. Astro 7 chạy trên Cloudflare Workers, đọc dữ liệu từ Supabase.
 
-> **Khác với phần còn lại của repo, thư mục này CÓ bước build.** `Beeftown_Website/index.html` cũ mở thẳng bằng trình duyệt là chạy; thư mục này thì không. Đổi lại, trang biết đọc database nên nội dung đổi được mà không cần deploy lại.
+> **Khác với phần còn lại của repo, thư mục này CÓ bước build.** Bản nháp website cũ (`Beeftown_Website/`, đã lưu trữ 12/10/2026) mở thẳng bằng trình duyệt là chạy; thư mục này thì không. Đổi lại, trang biết đọc database nên nội dung đổi được mà không cần deploy lại.
 
 ---
 
@@ -71,7 +71,8 @@ web/
 ├─ THIET-KE.md         ← hệ giao diện trang công khai, manifest artwork, brief chụp ảnh
 ├─ THUC-DON.md         ← công bố món lên trang Thực đơn (SQL từng bước, có SQL thu hồi)
 ├─ kiem-tra/
-│  ├─ quet-chuoi-cam.mjs  ← quét chuỗi cấm trên trang ĐÃ RENDER
+│  ├─ quet-chuoi-cam.mjs  ← quét chuỗi cấm trên trang ĐÃ RENDER (bản build, không database)
+│  ├─ may-chu-ban-build.mjs ← build không database rồi chạy dist/ trong wrangler dev — quet và trinh-duyet dùng chung
 │  ├─ trinh-duyet.mjs     ← trình duyệt thật, trạng thái KHÔNG có database (như CI)
 │  ├─ thu-day-du.mjs      ← trình duyệt thật, trạng thái ĐÃ nối database (Supabase giả)
 │  └─ gia-supabase.mjs    ← Supabase giả: trả lời đúng các hàm trang công khai gọi, theo kịch bản
@@ -568,7 +569,7 @@ npm run quet
 
 Lệnh này tải từng trang qua HTTP và đọc **phần chữ khách nhìn thấy** — thân trang, tiêu đề, thẻ mô tả, JSON-LD — rồi đối chiếu với danh sách cấm. Mỗi lần đỏ nó in kèm **lý do** câu đó bị cấm, để không ai chỉ xóa từ rồi viết lại cùng ý bằng chữ khác.
 
-Nó tự bật `astro dev` nếu chưa có server nào chạy, và `npm run deploy` gọi nó trước khi build — nên không có đường deploy vòng qua nó.
+Nó quét **bản build** (build không database, chạy `dist/` trong `wrangler dev` — cùng workerd với Cloudflare), không quét `astro dev`: HTML nén (`compressHTML`) và trang dựng sẵn chỉ có ở bản build. `-- --khong-build` dùng `dist/` có sẵn (CI: bước trước vừa build); quét `astro dev` đang bật thì gõ rõ `-- --url http://localhost:4321`. `npm run deploy` gọi nó trước khi build bản thật — nên không có đường deploy vòng qua nó.
 
 **Vì sao không grep mã nguồn.** Bản đầu tiên của phép thử này là một lệnh `grep` vào `src/`. Nó sai theo hai hướng:
 

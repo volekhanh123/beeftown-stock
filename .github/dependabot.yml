@@ -1,0 +1,67 @@
+# Dependabot — mở PR nâng thư viện, mỗi tháng một lần, mỗi thư mục gom thành một PR.
+#
+# Vì sao thưa và gom: mỗi PR nâng thư viện vẫn phải qua đủ CI (~10 phút) rồi có người đọc; một PR cho
+# mỗi gói mỗi tuần thì không ai đọc nổi. Bản vá và bản nhỏ (patch, minor) đi chung một PR cho mỗi thư
+# mục; bản lớn (major) đi PR riêng từng gói — bản lớn hay đổi cách dùng, cần đọc ghi chú phát hành.
+#
+# Lỗ hổng bảo mật không đợi lịch này: bật Dependabot security updates (Settings → Code security) thì
+# GitHub mở PR riêng ngay khi có cảnh báo.
+#
+# PR của Dependabot cũng như mọi PR: CI xanh mới gộp, và CLAUDE.md vẫn áp dụng (CI đỏ là việc phải sửa,
+# không nới kiểm thử). Nâng Playwright thì lượt CI đầu tải lại Chromium (khóa bộ nhớ đệm theo phiên bản).
+
+version: 2
+
+updates:
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: monthly
+      timezone: Asia/Ho_Chi_Minh
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'web: nâng thư viện'
+    groups:
+      web-ban-nho:
+        update-types: [minor, patch]
+
+  - package-ecosystem: npm
+    directory: /crm
+    schedule:
+      interval: monthly
+      timezone: Asia/Ho_Chi_Minh
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'crm: nâng thư viện'
+    groups:
+      crm-ban-nho:
+        update-types: [minor, patch]
+    ignore:
+      # PGlite 0.5 trở đi là Postgres 18; Supabase production là 17 — test-quy-trinh.mjs mục 1 đỏ nếu lệch.
+      - dependency-name: '@electric-sql/pglite'
+        versions: ['>=0.5.0']
+
+  - package-ecosystem: npm
+    directory: /can-app
+    schedule:
+      interval: monthly
+      timezone: Asia/Ho_Chi_Minh
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'Beeftown Cân: nâng thư viện'
+    groups:
+      can-app-ban-nho:
+        update-types: [minor, patch]
+
+  # actions/checkout, setup-node, cache, upload-artifact… trong .github/workflows/
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+      timezone: Asia/Ho_Chi_Minh
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'CI: nâng action'
+    groups:
+      actions:
+        patterns: ['*']

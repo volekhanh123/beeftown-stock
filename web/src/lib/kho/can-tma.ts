@@ -57,8 +57,8 @@
  * UTF-8.
  *
  * File thuần, không import gì lúc chạy (chỉ `import type`) — test Node nạp thẳng
- * được (xem test-kho-can.mjs), và bản HTML độc lập Beeftown_Can_TMA.html ở gốc
- * repo dùng đúng cách đọc này.
+ * được (xem test-kho-can.mjs), và Beeftown Cân (can-app/) nạp thẳng file này. (Bản HTML độc lập
+ * Beeftown_Can_TMA.html từng chép cách đọc này — đã lưu trữ 12/10/2026, README gốc mục "Phần mềm cân TMA".)
  *
  * Hai thứ tiếng: lỗi đọc file (LoiFileCan) mang thêm bản tiếng Anh (`en`); lý do
  * / cảnh báo trong kế hoạch theo tham số cuối `nn` của lapKeHoach (mặc định
