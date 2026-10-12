@@ -267,6 +267,7 @@ await nhom('8 · CỔNG — mọi hàm definer authenticated gọi được ph�
     // Dùng trong policy RLS — chỉ trả lời về CHÍNH người gọi, không đọc dữ liệu ai khác.
     co_phien_dang_nhap: 'policy', co_vai_tro: 'policy', duoc_truy_cap_chi_nhanh: 'policy',
     la_chu_so_huu: 'policy', la_nhan_su_ngoai_crm: 'policy', nhan_su_hien_tai: 'policy',
+    crm_cn_duoc: 'policy',   // 0067 — mảng chi nhánh CRM của người gọi; test-quyen-doc-crm.mjs mục 3
     // Hàm trigger — Postgres không cho gọi thẳng. dat_ban_kiem_sua: 0066, test-quyen-chi-nhanh-crm.mjs mục 5.
     chan_vai_ngoai_crm: 'trigger', ho_so_kiem_tra_vong_doi: 'trigger', dat_ban_kiem_sua: 'trigger',
     // Tự kiểm vai ở đầu thân hàm (kiểm thử: test-quyen-ham-crm.mjs, test-tuyen-dung.mjs, test-cong-khai.mjs,
