@@ -27,31 +27,23 @@ Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần c�
 | `AGENTS.md` | Cùng quy trình đó cho Codex và các agent không phải Claude, kèm quy tắc rà soát PR (mục "Code Review Rules"). |
 | `THUONG-HIEU.md` | **Bảng màu thương hiệu Khánh chốt 09/10/2026**: giá trị đã áp dụng trên trang công khai, chỗ website còn khác guideline, và danh sách nơi chưa đổi (`/noi-bo`, kho, Beeftown Cân). |
 | `.github/` | Kiểm thử tự động (GitHub Actions) mỗi PR, mỗi lần gộp và mỗi đêm 00:30 giờ VN; đóng gói `BeeftownCan.exe` (tải về không cần gõ lệnh: `can-app/README.md`, mục "Tải BeeftownCan.exe về"); mẫu PR; mẫu báo lỗi. |
-| ~~`Beeftown_Website/index.html`~~ | ⚠️ **BẢN NHÁP CŨ — KHÔNG PHÁT HÀNH.** Xem cảnh báo bên dưới. |
-| ~~`Beeftown_Website/google-apps-script.gs`~~ | ⚠️ Đã thay bằng `tao_dat_ban()` trong database. |
-| `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên. |
-| `Beeftown_Bo_Nhan_Dien_So.html` | Bộ nhận diện trên Google Maps, Zalo OA, Facebook, Instagram, TikTok. |
-| `Beeftown_Instore_Art.html` | Trang trí trong cửa hàng. |
-| `Beeftown_Logo_Suite_and_Directions.html` | Bộ logo và các hướng nhận diện. |
-| `Beeftown_Dashboard.html` | Bảng theo dõi chỉ số. |
-| `Beeftown_Concept_Board_v1.svg` | Bảng concept tổng thể. |
-| `Beeftown_Can_TMA.html` | Phần mềm cài hàng cho cân in tem TMA: sửa tên, giá, chữ trên tem rồi xuất file nạp vào cân qua USB. Chạy không cần mạng. |
+| `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên — đặc tả nghiệp vụ của `crm/` (tỷ lệ tích điểm, ngưỡng, nhóm khách). |
+| `Beeftown_Bo_Nhan_Dien_So.html` | Bộ nhận diện trên Google Maps, Zalo OA, Facebook, Instagram, TikTok (bảng kích thước F4 còn dùng; phần nội dung đã cũ). |
+| Đã lưu trữ 12/10/2026 | Bản nháp website cũ (`Beeftown_Website/`), bốn tài liệu thiết kế cũ (Instore Art, Logo Suite and Directions, Dashboard, Concept Board v1) và công cụ cân HTML cũ (`Beeftown_Can_TMA.html`) — không còn trong repo, xem nguyên văn ở [commit 9443cc2](https://github.com/volekhanh123/beeftown-stock/tree/9443cc2cabb71b792772b1a52d7c134edab456cc). |
 
-Các file `Beeftown_*.html` / `.svg` ở gốc repo và bản nháp `Beeftown_Website/` là **HTML tự chứa** — mở thẳng bằng trình duyệt, không cần cài đặt gì, không có bước build. Chỉ phụ thuộc Google Fonts và (riêng bản nháp website cũ) ảnh từ Unsplash. `web/`, `crm/`, `can-app/` thì có bước cài và kiểm thử — xem `CLAUDE.md`.
+Hai file `Beeftown_*.html` ở gốc repo là **HTML tự chứa** — mở thẳng bằng trình duyệt, không cần cài đặt gì, không có bước build, chỉ phụ thuộc Google Fonts. `web/`, `crm/`, `can-app/` thì có bước cài và kiểm thử — xem `CLAUDE.md`.
 
 ---
 
 ## Phần mềm cân TMA
 
-Cân in tem TM-A 30kg (dòng TM-xA, firmware V3.14E8) không có phần mềm đi kèm, nên `Beeftown_Can_TMA.html` thay phần việc hay dùng nhất: sửa danh sách hàng và chữ trên tem. Cách dùng có ghi ngay trên trang (3 bước: lưu từ cân ra USB → sửa → nạp lại).
-
-Đã nạp thử vào cân thật và in tem thành công (25/09/2026).
+Cân in tem TM-A 30kg (dòng TM-xA, firmware V3.14E8) không có phần mềm đi kèm. Công cụ đầu tiên là một trang HTML độc lập (`Beeftown_Can_TMA.html`: lưu từ cân ra USB → sửa danh sách hàng, chữ trên tem → nạp lại), đã nạp thử vào cân thật và in tem thành công 25/09/2026. Beeftown Cân (bên dưới) làm được mọi việc của nó, nên trang đó **đã lưu trữ 12/10/2026** — vẫn mở được ở [commit 9443cc2](https://github.com/volekhanh123/beeftown-stock/tree/9443cc2cabb71b792772b1a52d7c134edab456cc/Beeftown_Can_TMA.html) nếu cần sửa tay một file USB.
 
 **Nạp qua WiFi bằng cổng 33571** chạy được khi thử trên cân thật 26/09/2026 (cân ở `192.168.1.22`, nội dung đúng file USB; qua WiFi cân chỉ thêm và sửa hàng, không xoá; nạp USB thì thay cả danh sách) — nhưng **từ 02/10/2026 cân ở quán bỏ qua mọi lần gửi qua cổng này**. Chương trình `web/public/kho/can-wifi/Nap-Can-WiFi.ps1` gửi qua đúng cổng đó và vẫn in "ĐÃ GỬI" (màn Đồng bộ cân có cảnh báo). Gửi qua WiFi thì dùng **Beeftown Cân** (cổng hai chiều 33581, gửi xong đọc lại cân để kiểm) — chi tiết ở `web/README.md` mục "Đồng bộ cân" và `can-app/README.md`.
 
 **Beeftown Cân (`can-app/`, file `BeeftownCan.exe`)**: chương trình Windows quản lý cân — gửi giá từ kho xuống cân (đăng nhập kho, xem thay đổi, bấm Gửi; không cần USB), xem tất cả hàng (SKU) trên cân đối chiếu với kho, và chỉnh mẫu tem (chọn ô được in, sửa chữ cố định). Cân đổi địa chỉ (router phát lại) thì chương trình tự dò WiFi tìm lại cân. Xem `can-app/README.md`.
 
-**Hằng ngày dùng màn Kho › Cài đặt › Đồng bộ cân** (`/noi-bo/kho/cai-dat/can`): kho là gốc, mã cân, tên, giá lấy thẳng từ danh mục mặt hàng — xem `web/README.md`, mục "Đồng bộ cân". File HTML độc lập giữ lại cho hai việc màn đồng bộ chưa làm: sửa chữ in trên tem, và sửa nhanh khi không mở được phần mềm kho. Hai bên dùng chung cách đọc file (`web/src/lib/kho/can-tma.ts`).
+**Hằng ngày dùng màn Kho › Cài đặt › Đồng bộ cân** (`/noi-bo/kho/cai-dat/can`): kho là gốc, mã cân, tên, giá lấy thẳng từ danh mục mặt hàng — xem `web/README.md`, mục "Đồng bộ cân". Sửa chữ in trên tem thì dùng Beeftown Cân. Màn đồng bộ và Beeftown Cân dùng chung cách đọc file (`web/src/lib/kho/can-tma.ts`).
 
 Những điều đã biết về file `JHSCALE/A_000.TMS` mà cân lưu ra:
 
@@ -113,7 +105,7 @@ Năm dòng đầu là năm màu của guideline. Ba dòng sau là màu pha cho m
 
 ## ⚠️ Bản nháp cũ không được phát hành
 
-`Beeftown_Website/index.html` là bản nháp thiết kế. Nó **không được deploy**, vì đang chứa:
+`Beeftown_Website/index.html` là bản nháp thiết kế, **đã lưu trữ 12/10/2026** (không còn trong repo; nguyên văn ở [commit 9443cc2](https://github.com/volekhanh123/beeftown-stock/tree/9443cc2cabb71b792772b1a52d7c134edab456cc/Beeftown_Website)). Nó không bao giờ được deploy, vì chứa:
 
 - số bàn còn trống **mô phỏng** bằng hàm `remainingFor()`, kèm chữ đỏ *"Còn 1 bàn"* tạo cảm giác khan hiếm;
 - bốn **đánh giá khách bịa**, có tên tuổi và nghề nghiệp;
@@ -143,7 +135,7 @@ Chuỗi `"đặt bàn thành công"` **không được tồn tại** trong mã n
 
 Những chỗ dễ làm hỏng nếu không biết trước:
 
-Mục 1, 2 và 4 nói về **bản nháp cũ** `Beeftown_Website/index.html` (không phát hành); website thật ở `web/` đặt bàn qua `tao_dat_ban()` trong database.
+Mục 1, 2 và 4 nói về **bản nháp cũ** `Beeftown_Website/index.html` (không phát hành, đã lưu trữ); website thật ở `web/` đặt bàn qua `tao_dat_ban()` trong database.
 
 1. **(Bản nháp cũ) Phần đặt bàn tự nhận diện số chi nhánh.** Mảng `BRANCHES` có 1 phần tử thì hiện thẻ thông tin và chọn sẵn; từ 2 phần tử trở lên tự chuyển thành nút cho khách chọn. Thêm chi nhánh chỉ cần thêm vào mảng, không phải sửa gì khác.
 
@@ -335,7 +327,7 @@ Chỉ khôi phục vào một project **MỚI, TRỐNG**. Script tự từ chố
 
    Dòng cuối phải là `KET_QUA=dat …`. Script dừng mà không nạp gì khi: sai mật khẩu, file tải thiếu, file bị sửa (lệch mã kiểm), database đích đã có dữ liệu. Nạp rồi mà lệch số dòng hay sổ kho lệch tồn → báo rõ bảng nào.
 4. **Trên máy dùng để build** (không phải dashboard Cloudflare — `PUBLIC_*` nằm sẵn trong bản build, dashboard không có chỗ đặt chúng, xem mục "Việc kỹ thuật"): sửa `web/.env` — `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` sang project mới → `cd web && npm run deploy` (chặn khi CI chưa xanh; đang có sự cố thì `npm run deploy:khan-cap`). Mở `https://beeftown.vn/kho-can.json` thấy địa chỉ project mới là đúng. Mọi người **đăng nhập lại** (tài khoản và mật khẩu giữ nguyên — có trong bản sao).
-   **Beeftown Cân KHÔNG tự đi theo:** lần đầu chạy nó đọc `kho-can.json` rồi nhớ địa chỉ project trong `%APPDATA%\BeeftownCan\cau-hinh.json` (hai khóa `supabaseUrl`, `anonKey`), chỉ quên khi **đổi ô Địa chỉ kho**. Ở mỗi máy quầy, trong Beeftown Cân → Cài đặt: gõ `http://beeftown.vn` vào ô Địa chỉ kho → Lưu → gõ lại `https://beeftown.vn` → Lưu → đăng nhập. **Đừng sửa file bằng Notepad:** xoá dòng cuối mà sót dấu phẩy là file hỏng, chương trình lặng lẽ về cài đặt mặc định (mất địa chỉ cân, tắt Tự gửi).
+   **Beeftown Cân từ 2.9.2 tự đi theo:** nó nhớ địa chỉ project trong `%APPDATA%\BeeftownCan\cau-hinh.json` (hai khóa `supabaseUrl`, `anonKey`) nhưng đọc lại `kho-can.json` mỗi lần mở chương trình, khi đăng nhập hỏng và khi kho từ chối khoá (401). Ở mỗi máy quầy: **tắt rồi mở lại Beeftown Cân** → trong vài giây ô Kho "Chưa đăng nhập" → đăng nhập. **Máy quầy còn bản trước 2.9.2** thì KHÔNG tự đi theo (báo "Sai email hoặc mật khẩu", hoặc vẫn đọc / ghi project cũ nếu project cũ còn chạy): bấm **Cập nhật** lên 2.9.2; không cập nhật được thì trong Beeftown Cân → Cài đặt: gõ `http://beeftown.vn` vào ô Địa chỉ kho → Lưu → gõ lại `https://beeftown.vn` → Lưu → đăng nhập (đổi ô Địa chỉ kho là quên hai khóa đó; gõ lại đúng địa chỉ cũ thì không). **Đừng sửa file bằng Notepad:** xoá dòng cuối mà sót dấu phẩy là file hỏng, chương trình lặng lẽ về cài đặt mặc định (mất địa chỉ cân, tắt Tự gửi).
 5. Làm lại những thứ không nằm trong bản sao: hạn mức đăng nhập và email ở trang quản trị Supabase (mục "Hạ tầng" ở trên), file Storage (CV cũ không còn), và đổi secret `SAO_LUU_DB_URL` sang project mới. Khóa bí mật của Worker giữ nguyên — tài khoản máy (iPOS, máy quầy) có trong bản sao.
 
 Sao lưu tay (máy **của mình** có Docker, `psql`, `gpg` — chuỗi kết nối nằm trên dòng lệnh của Supabase CLI, người dùng khác cùng máy thấy được): `SAO_LUU_DB_URL='…' SAO_LUU_MAT_KHAU='…' SUPABASE='npx supabase' bash crm/sao-luu/sao-luu.sh ra/`.

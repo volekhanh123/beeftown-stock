@@ -35,6 +35,7 @@ import { thuCapNhat } from './thu-cap-nhat.ts';
 import { thuGiuKetNoi } from './thu-giu-ket-noi.ts';
 import { thuBaoKho } from './thu-bao-kho.ts';
 import { thuBenVung } from './thu-ben-vung.ts';
+import { thuNoKyThuat } from './thu-no-ky-thuat.ts';
 
 let dat = 0, hong = 0;
 const ok = (ten: string, dieuKien: boolean, chiTiet = '') => {
@@ -72,7 +73,7 @@ const nhan: Buffer[] = [];
 const trenCanGia = new Map<number, string>();   // số PLU → dòng
 const mayCan = net.createServer((s) => {
   const phan: Buffer[] = [];
-  s.on('data', (d) => phan.push(d));
+  s.on('data', (d: Buffer) => phan.push(d));
   s.on('end', () => {
     const du = Buffer.concat(phan);
     if (du.length) {
@@ -740,7 +741,8 @@ console.log('6d · Bản 2.2: cổng hai chiều, nhật ký cân, thông số, 
 
   console.log('6d2 · Nhật ký cân: gộp từ file và WiFi, không trùng; CSV');
   const g9 = ud9.ghiNhanFileTuCan(fileCoRep);
-  ok('Ghi nhận file USB có nhật ký: gộp ngay 3 dòng vào nhat-ky-can.tsv', g9.soHang === 3 && g9.nhatKy?.soDong === 3 && g9.nhatKy.soMoi === 3
+  ok('Ghi nhận file USB có nhật ký: gộp ngay 3 dòng vào nhat-ky-can.tsv', g9.soHang === 3 && !!g9.nhatKy && 'soDong' in g9.nhatKy
+    && g9.nhatKy.soDong === 3 && g9.nhatKy.soMoi === 3
     && fs.existsSync(ud9.fileNhatKy), JSON.stringify(g9));
   const nk1 = await ud9.nhatKyCan({ nguon: 'luu' });
   ok('Tóm tắt: 2 gói bán (0,715 kg, 529.175 đ), 1 lần cân chưa in tem', nk1.tongDaLuu === 3 && nk1.tomTat.tong.soGoi === 2
@@ -936,7 +938,7 @@ console.log('6d · Bản 2.2: cổng hai chiều, nhật ký cân, thông số, 
   ok('Chỉnh giờ qua 33581: cân báo lại đúng giờ mới, không gửi gì qua 33571', cg1.cach === '33581' && cg1.daXacNhan && cg1.loiHaiChieu === null
     && JSON.stringify(can2.du.gio) === JSON.stringify({ nam: 2026, thang: 10, ngay: 1, gio: 8, phut: 30, giay: 0 }) && nhan.length === soGio, JSON.stringify(cg1));
   const gc = await ud9.gioCan();
-  ok('Đọc giờ cân', gc.gio.thang === 10 && gc.gio.gio === 8 && gc.gio.phut === 30 && /^\d{4}-\d{2}-\d{2} /.test(gc.gioMay), JSON.stringify(gc));
+  ok('Đọc giờ cân', gc.gio.thang === 10 && gc.gio.gio === 8 && gc.gio.phut === 30 && /^\d{4}-\d{2}-\d{2} /.test(gc.gioVn), JSON.stringify(gc));
   ud9.luuCauHinh({ congHaiChieu: congDong });
   const cg2 = await ud9.chinhGioCan({ luc: '2026-10-01T09:00' });
   ok('Cổng 33581 đóng → gửi khối giờ qua 33571 (chưa xác nhận), nói rõ vì sao', cg2.cach === '33571' && !cg2.daXacNhan
@@ -1840,8 +1842,10 @@ console.log('6g · 2.6: gửi xong đọc lại cân để kiểm');
       tuyHaiChieu: tuyHC, gui: cg.gui, choXacNhanMs: [0, 20] });
     u.luuCauHinh({ ipCan: '127.0.0.2', congCan: cong33571, congHaiChieu: can.cong });   // cân "đã chuyển" sang 127.0.0.1
     u.ghiNhanFileTuCan(fileCan(PLU_CU));
-    let k: Awaited<ReturnType<typeof u.guiXuongCan>> | null = null;
-    const loiDoi = await loiCua(async () => { k = await u.guiXuongCan(); });
+    // Gán trong hàm gọi lại: tsc không thấy, tưởng k luôn null (never) — ghi rõ kiểu khi đọc.
+    let kGan: Awaited<ReturnType<typeof u.guiXuongCan>> | null = null;
+    const loiDoi = await loiCua(async () => { kGan = await u.guiXuongCan(); });
+    const k = kGan as Awaited<ReturnType<typeof u.guiXuongCan>> | null;
     if (loiDoi) console.log(`    (lỗi: ${loiDoi})`);
     ok('2.6.1: cân đổi địa chỉ → tìm thấy ở 127.0.0.1, ghi qua cổng hai chiều ở đó, cân đã nhận; không gửi gì qua 33571; báo đổi địa chỉ',
       !!k && k.xacNhan && k.cachGui === 'hai-chieu' && k.doiDiaChi?.den === '127.0.0.1' && cg.c.soLan === 0 && u.cauHinh().ipCan === '127.0.0.1'
@@ -2768,9 +2772,9 @@ console.log('6i · 2.8: giữ kết nối hai chiều mở, nhịp, nghe cân b�
     ok('Máy chủ: /api/can và /api/trang-thai trả trạng thái nền; /api/cau-hinh chỉ nhận true / false cho ba công tắc',
       mc.includes("nen: ud.trangThaiNen()") && /case '\/api\/can': return json\(\{[^\n]*nen: ud\.trangThaiNen\(\)/.test(mc)
       && mc.includes("giuKetNoi: typeof b.giuKetNoi === 'boolean' ? b.giuKetNoi : undefined") && mc.includes("ngheUdp: typeof b.ngheUdp === 'boolean' ? b.ngheUdp : undefined"));
-    ok('main.ts: nhịp mỗi NHIP_CAN_MS (dừng khi đang cập nhật), bật UDP theo cài đặt lúc mở; phiên bản 2.9.1',
+    ok('main.ts: nhịp mỗi NHIP_CAN_MS (dừng khi đang cập nhật), bật UDP theo cài đặt lúc mở; phiên bản 2.9.2',
       /setInterval\(\(\) => \{ if \(!dangCapNhat\(\)\) void ud\.nhipCan\(\); \}, NHIP_CAN_MS\)/.test(mn) && mn.includes('void ud.capNhatUdp();')
-      && mn.includes("const PHIEN_BAN = '2.9.1';"));
+      && mn.includes("const PHIEN_BAN = '2.9.2';"));
     ok('Cập nhật: đổi file xong thì đóng kết nối đang giữ trước khi bản mới mở (cân có thể chỉ nhận một kết nối)',
       /this\.dangKhoiDongLai = true;[\s\S]{0,200}this\.dongNen\(\);/.test(nv));
     ok('Hướng dẫn: giữ kết nối, tự đọc nhật ký khi cân báo, tự chỉnh giờ, nghe UDP và hộp hỏi tường lửa',
@@ -2788,6 +2792,7 @@ await thuCapNhat(ok);
 await thuGiuKetNoi(ok);
 await thuBaoKho(ok, { fileCan, plu });
 await thuBenVung(ok, { fileCan, plu });
+await thuNoKyThuat(ok, { fileCan, plu });
 
 // =============================================================================
 console.log('7 · Chạy src/main.ts thật');
@@ -2829,7 +2834,7 @@ if (!thuMucTam) {
   process.exit(1);
 }
 ok('Trạng thái: chưa có file gốc, cân mặc định 192.168.1.22', tt.ok && tt.goc === null && tt.cauHinh.ipCan === '192.168.1.22', JSON.stringify(tt));
-ok('Phiên bản 2.9.1', (tt as unknown as { phienBan: string }).phienBan === '2.9.1');
+ok('Phiên bản 2.9.2', (tt as unknown as { phienBan: string }).phienBan === '2.9.2');
 {
   // 2.8: chương trình thật có nhịp giữ kết nối; cân 192.168.1.22 không có ở đây → trạng thái nền có, chưa nối được, không lỗi chết.
   const n = (tt as unknown as { nen?: { giu?: { bat?: boolean; dangMo?: boolean }; udp?: { bat?: boolean } } }).nen;
@@ -2844,7 +2849,7 @@ ok('Phiên bản 2.9.1', (tt as unknown as { phienBan: string }).phienBan === '2
   const cnApi = await (await api('/api/cap-nhat')).json() as { ok: boolean; loi?: string };
   const ttCn = (tt as unknown as { capNhat?: { coTheCapNhat: boolean; vuaCapNhatTu: string | null } }).capNhat;
   ok('2.5: dang-chay.json có phiên bản; chạy bằng bun → không cập nhật được, không hỏi mạng; /api/cap-nhat từ chối',
-    dangChay.phienBan === '2.9.1' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
+    dangChay.phienBan === '2.9.2' && bm.ok && !bm.coTheCapNhat && /Chỉ cập nhật được bản BeeftownCan\.exe/.test(bm.cau)
     && !cnApi.ok && /Chỉ cập nhật được/.test(cnApi.loi ?? '') && ttCn?.coTheCapNhat === false && ttCn.vuaCapNhatTu === null,
     JSON.stringify([dangChay, bm, cnApi, ttCn]));
 }

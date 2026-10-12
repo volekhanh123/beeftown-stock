@@ -26,7 +26,7 @@ import { docFormPhieuXuat, dongTuQuet, gopDong, tomTatHang } from '../../web/src
 import { docAnhDaTai, soThuTuCuoi } from '../../web/src/lib/kho/anh.ts';
 import { docFormKiemKe, apDungQuet, gopKhiTrung, chuKyDong } from '../../web/src/lib/kho/kiem-ke.ts';
 import { taoCsv, kyBaoCao, kyNhanh, tinhTong, tieuDeCsv, BAO_CAO } from '../../web/src/lib/kho/bao-cao.ts';
-import { docFormThanhToan } from '../../web/src/lib/kho/cong-no.ts';
+import { docFormTraTien } from '../../web/src/lib/kho/cong-no.ts';
 import { xemTruocDanMatHang, chuKyDan, dongGhiDan } from '../../web/src/lib/kho/danh-muc.ts';
 import {
   docFormDauNhan, docFormDongNhan, ghepDongNhan, gopMonGanDay, kiemTruocKhiGui, dongNhanVaoForm,
@@ -430,17 +430,23 @@ await nhom('10 · CSV CHO EXCEL TIẾNG VIỆT, KỲ BÁO CÁO, FORM THANH TOÁN
   ok('Dòng cuối là tổng: kg dấu phẩy, cột không cộng để trống', dongT[4] === 'Tổng;1,75;;550000' && dongT[5] === '', dongT[4]);
   ok('Không truyền tiêu đề / tổng → file như cũ (dòng 1 là tên cột)', csv.slice(1).split('\r\n')[0] === 'Mặt hàng;Kg;Tiền');
 
+  // Form Trả tiền v2 (docFormTraTien, GĐ8b): hàm v1 docFormThanhToan đã xóa 12/10/2026 — cùng các
+  // kiểm tra, trên form đang dùng. Ô ẩn pb<i>_goi_y là số database gợi ý; chỉ khi sửa khác gợi ý mới gửi phần chia.
   const f = new Map([
-    ['so_tien', '5.450.000'], ['hinh_thuc', 'chuyen_khoan'], ['ngay', '2026-09-25'], ['so_pb', '2'],
-    ['pb0_phieu', U(40)], ['pb0_tien', '5.000.000'], ['pb1_phieu', U(41)], ['pb1_tien', '450.000'],
+    ['kieu', 'chuyen_khoan'], ['so_tien', '5.450.000'], ['ngay', '2026-09-25'], ['so_pb', '2'],
+    ['pb0_phieu', U(40)], ['pb0_goi_y', '5450000'], ['pb0_tien', '5.000.000'],
+    ['pb1_phieu', U(41)], ['pb1_goi_y', '0'], ['pb1_tien', '450.000'],
   ]);
-  const t = docFormThanhToan(f);
-  ok('Đọc số tiền "5.450.000" và hai dòng chia', t.loi.length === 0 && t.soTien === 5450000 && t.phanBo.length === 2, t.loi.join(' · '));
-  const lech = docFormThanhToan(new Map([['so_tien', '1.000.000'], ['so_pb', '1'], ['pb0_phieu', U(40)], ['pb0_tien', '900.000']]));
-  ok('Tổng chia khác số tiền → báo ngay, không gửi', lech.loi.some(x => /phải bằng số tiền trả/.test(x)), lech.loi.join(' · '));
-  const trong = docFormThanhToan(new Map([['so_tien', '1.000.000'], ['so_pb', '2'], ['pb0_phieu', U(40)], ['pb1_phieu', U(41)]]));
+  const t = docFormTraTien(f, true);
+  ok('Đọc số tiền "5.450.000" và hai dòng chia', t.loi.length === 0 && t.soTien === 5450000 && t.phanBo.length === 2
+     && t.phanBo[0].so_tien === 5000000 && t.phanBo[1].so_tien === 450000, t.loi.join(' · '));
+  const lech = docFormTraTien(new Map([['kieu', 'chuyen_khoan'], ['so_tien', '1.000.000'], ['so_pb', '1'],
+    ['pb0_phieu', U(40)], ['pb0_goi_y', '1000000'], ['pb0_tien', '900.000']]), true);
+  ok('Tổng chia khác số tiền → báo ngay, không gửi', lech.loi.some(x => /phải bằng số tiền/.test(x)), lech.loi.join(' · '));
+  const trong = docFormTraTien(new Map([['kieu', 'chuyen_khoan'], ['so_tien', '1.000.000'], ['so_pb', '2'],
+    ['pb0_phieu', U(40)], ['pb1_phieu', U(41)]]), true);
   ok('Để trống phần chia → không gửi phân bổ (database tự chia theo hạn)', trong.loi.length === 0 && trong.phanBo.length === 0);
-  const am = docFormThanhToan(new Map([['so_tien', '-5']]));
+  const am = docFormTraTien(new Map([['kieu', 'chuyen_khoan'], ['so_tien', '-5']]), true);
   ok('Số tiền không hợp lệ → báo', am.loi.length > 0);
 });
 

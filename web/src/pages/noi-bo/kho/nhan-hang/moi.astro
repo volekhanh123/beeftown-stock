@@ -50,6 +50,10 @@ const t = dichNB(nn, {
   td4: { vi: 'Nhiều món, nhiều nơi?', en: 'Many items, many places?' },
   td5: { vi: 'Nhập dạng bảng / dán Excel →', en: 'Enter as a table / paste from Excel →' },
   theoDon: { vi: 'Nhận theo đơn đặt', en: 'Receive against a purchase order' },
+  loiDonCho: {
+    vi: 'Chưa đọc được các đơn đặt hàng đang chờ — mạng hoặc database đang trục trặc. Nếu hàng về theo một đơn đã đặt, tải lại trang rồi nhận theo đơn đó.',
+    en: 'Could not read the purchase orders waiting for delivery — the connection or the database is having trouble. If these goods are for an order you placed, reload the page and receive against that order.',
+  },
   theoDonDan: {
     vi: 'Hàng về theo đơn đã đặt: bấm đơn đó — phiếu có sẵn món và số kg còn thiếu, chỉ việc cân lại và sửa số.',
     en: 'Goods arriving for an order you placed: press that order — the note comes filled in with the items and kg still missing, so you only weigh again and correct the numbers.',
@@ -143,8 +147,13 @@ const dau: DauNhan = dauForm ?? {
   vi_tri_id: noiNhan.find(v => v.id === caiDat?.vi_tri_nhan_hang_id)?.id ?? noiNhan.find(v => v.loai === 'kho')?.id ?? noiNhan[0]?.id ?? '',
   ngay_nhap: homNayVn(), so_hoa_don: '', truong_them: {},
 };
-// Đơn đặt hàng đang chờ hàng về (lỗi đọc → không hiện phần này).
-const donCho: DonDatTom[] = loai === 'mua' ? await docDonChoNhan(k.client, cn.id) : [];
+// Đơn đặt hàng đang chờ hàng về. Đọc lỗi (mạng, hết giờ) → báo ngay chỗ đó, không im như thể
+// không có đơn chờ (thủ kho sẽ nhận hàng không gắn đơn). Vai không xem được đơn → rỗng, không báo.
+let donCho: DonDatTom[] = [];
+let loiDonCho = false;
+if (loai === 'mua') {
+  try { donCho = await docDonChoNhan(k.client, cn.id); } catch { loiDonCho = true; }
+}
 // 6 người giao gần đây là nút lớn; còn lại trong ô chọn.
 const nccNut = ncc.slice(0, 6);
 const nccKhac = ncc.slice(6);
@@ -161,6 +170,8 @@ const tieuDe = loai === 'ton_dau' ? t.tdTonDau : t.tdNhan;
     <p class="nb-dan">{t.td1} <strong>{t.td2}</strong> {t.td3}{' '}
       {t.td4} <a href="/noi-bo/kho/cai-dat/ton-dau">{t.td5}</a></p>
   )}
+
+  {loiDonCho && <div class="nb-bao luu-y" role="alert"><p>{t.loiDonCho}</p></div>}
 
   {donCho.length > 0 && (
     <section class="nb-the">

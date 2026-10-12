@@ -48,6 +48,9 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # cần lịch sử và mọi nhánh: so migration với main, test quét git ls-files
+          # Chỉ tải commit và cây thư mục; nội dung file chỉ tải cho commit đang thử (và file nào lệnh git
+          # đọc tới, khi cần). Nhánh phan-mem-can-cu (~39 MB nén) không còn bị tải về mỗi lượt.
+          filter: blob:none
       - uses: actions/setup-node@v5
         with:
           node-version-file: web/.node-version
@@ -71,6 +74,11 @@ jobs:
       - name: Kiểm thử Beeftown Cân (cân giả, kho giả)
         working-directory: can-app
         run: npx bun test/thu.ts
+      # Sau kiểm thử, chạy cả khi kiểm thử hỏng: lỗi kiểu không che kết quả kiểm thử, kiểm thử hỏng không che lỗi kiểu.
+      - name: Kiểm kiểu Beeftown Cân (tsc strict — can-app/tsconfig.json)
+        if: ${{ !cancelled() }}
+        working-directory: can-app
+        run: npm run kiem-kieu
 
   web:
     name: Web · astro check · build · chữ cấm · trình duyệt
@@ -78,6 +86,10 @@ jobs:
     # 7 cỡ màn hình × 21 trang (thu-trinh-duyet) và trạng thái có database (thu-day-du, astro dev).
     timeout-minutes: 30
     # KHÔNG có web/.env: trang công khai phải đúng và đủ khi chưa nối database (README của web).
+    env:
+      # Như job database: lượt đêm chạy giờ Việt Nam — build, Supabase giả và Chromium (đọc TZ cho Date,
+      # Intl) đều theo giờ quán, đúng khung 0h–7h khi ngày UTC còn là hôm qua.
+      TZ: ${{ inputs.mui_gio || (github.event_name == 'schedule' && 'Asia/Ho_Chi_Minh') || 'UTC' }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -97,12 +109,30 @@ jobs:
       - name: Thử đóng gói Cloudflare (không deploy)
         working-directory: web
         run: npx wrangler deploy --dry-run --outdir "$RUNNER_TEMP/wrangler"
-      - name: Quét chữ cấm trên trang công khai
+      - name: Quét chữ cấm trên trang công khai (bản build, wrangler dev)
         working-directory: web
-        run: npm run quet
+        run: npm run quet -- --khong-build   # bước Build ở trên vừa build
+      # Chromium (~300 MB) tải lại mỗi lượt thì chậm và hỏng theo mạng của CDN. Giữ trong bộ nhớ đệm của
+      # Actions theo đúng phiên bản Playwright: nâng Playwright thì khóa đổi, lượt đầu tải bản mới.
+      - name: Phiên bản Playwright
+        id: playwright
+        working-directory: web
+        run: echo "phien-ban=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Lấy Chromium từ bộ nhớ đệm
+        id: chromium
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: chromium-${{ runner.os }}-playwright-${{ steps.playwright.outputs.phien-ban }}
       - name: Cài Chromium
+        if: steps.chromium.outputs.cache-hit != 'true'
         working-directory: web
         run: npx playwright install --with-deps chromium
+      # Bộ nhớ đệm chỉ giữ Chromium; thư viện hệ thống (apt) của máy chạy CI thì cài lại mỗi lượt.
+      - name: Cài thư viện hệ thống cho Chromium
+        if: steps.chromium.outputs.cache-hit == 'true'
+        working-directory: web
+        run: npx playwright install-deps chromium
       - name: Kiểm thử trình duyệt (khách thật mở trang, bấm form)
         working-directory: web
         run: npm run thu-trinh-duyet -- --khong-build   # bước Build ở trên vừa build
@@ -157,6 +187,8 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          # Đọc migration của từng nhánh bằng git show: file nào cần mới tải (xem job đầu).
+          filter: blob:none
       - uses: actions/setup-node@v5
         with:
           node-version-file: web/.node-version
