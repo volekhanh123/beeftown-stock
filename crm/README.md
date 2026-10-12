@@ -214,7 +214,7 @@ Hai điều lộ ra, cần biết khi đọc bước 6 ở cuối `0014`:
 
 **Chưa làm:** bước 1, 3, 4, 7, 8, và **toàn bộ danh sách trên project Supabase thật** — vẫn bắt buộc trước khi mở cổng tuyển dụng.
 
-**`0066` (xóa file CV khi ẩn danh, quét CV mồ côi) · chưa kiểm tay.** Năm bước ở cuối `0066_xoa_file_cv.sql` — quản lý không xóa được file, chủ xóa được CV mồ côi và CV của hồ sơ hết hạn, file của hồ sơ còn hạn không bị đụng — làm trên project Beeftown-thu rồi ghi kết quả vào đây. `npm test` chỉ thử được phần database và một kho file giả (`test-tuyen-dung-xoa-cv.mjs`).
+**`0066` (xóa file CV khi ẩn danh, quét CV mồ côi) · chưa kiểm tay.** Sáu bước ở cuối `0066_xoa_file_cv.sql` — quản lý không xóa được file, chủ xóa được CV mồ côi và CV của hồ sơ hết hạn, file của hồ sơ còn hạn không bị đụng, quản lý không sửa thẳng được hạn lưu — làm trên project Beeftown-thu rồi ghi kết quả vào đây. `npm test` chỉ thử được phần database và một kho file giả (`test-tuyen-dung-xoa-cv.mjs`).
 
 ## Bốn quyết định thiết kế quan trọng
 
