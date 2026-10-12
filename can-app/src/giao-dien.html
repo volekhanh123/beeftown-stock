@@ -315,8 +315,8 @@
     <div id="kq-thong-tin"></div>
 
     <h3>2. Giờ trên cân</h3>
-    <p class="phu">Ngày đóng gói và HSD in trên tem theo đồng hồ của cân. Chỉnh giờ cân theo giờ máy tính — xem giờ máy tính (góc dưới bên phải màn hình) đúng chưa trước.</p>
-    <div class="nut"><button type="button" id="nut-doc-gio">Đọc giờ cân</button><button type="button" id="nut-chinh-gio">Chỉnh giờ cân theo máy tính</button></div>
+    <p class="phu">Ngày đóng gói và HSD in trên tem theo đồng hồ của cân. Chương trình chỉnh giờ cân theo giờ Việt Nam (lấy từ đồng hồ máy tính, máy để múi giờ nào cũng vậy) — xem đồng hồ máy tính (góc dưới bên phải màn hình) đúng chưa trước.</p>
+    <div class="nut"><button type="button" id="nut-doc-gio">Đọc giờ cân</button><button type="button" id="nut-chinh-gio">Chỉnh giờ cân theo giờ Việt Nam</button></div>
     <div id="kq-gio"></div>
 
     <h3>3. Đọc dữ liệu từ cân qua WiFi</h3>
@@ -476,6 +476,27 @@
   const e = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const tien = (n) => n === null || n === undefined ? '—' : Number(n).toLocaleString('vi-VN') + ' đ';
 
+  // ---- GIỜ VIỆT NAM (2.9.2): mọi ngày giờ trên trang theo giờ VN, máy tính để múi giờ nào cũng vậy ---------------------
+  // Trước 2.9.2 trang lấy ngày giờ theo múi giờ của Windows: máy để UTC thì "hôm nay" của báo cáo / nhật ký, ngày in thử
+  // trên mẫu tem, giờ "Cập nhật" lệch 7 tiếng. test/thu-no-ky-thuat.ts chạy khối này ở múi UTC.
+  const MUI_VN = 'Asia/Ho_Chi_Minh';
+  const DANG_GIO_VN = new Intl.DateTimeFormat('en-GB', { timeZone: MUI_VN, hourCycle: 'h23', year: 'numeric', month: 'numeric',
+    day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' });
+  /** Mốc (ms hay chuỗi ISO) → các phần ngày giờ VN: { nam, thang, ngay, gio, phut, giay }. */
+  function phanGioVn(t) {
+    const p = {};
+    for (const x of DANG_GIO_VN.formatToParts(new Date(t))) if (x.type !== 'literal') p[x.type] = Number(x.value);
+    return { nam: p.year, thang: p.month, ngay: p.day, gio: p.hour, phut: p.minute, giay: p.second };
+  }
+  const haiSo = (n) => String(n).padStart(2, '0');
+  /** Ngày VN của mốc, 'YYYY-MM-DD' (ô ngày của báo cáo, nhật ký; tên file). */
+  function ngayVnIso(t) { const g = phanGioVn(t); return `${g.nam}-${haiSo(g.thang)}-${haiSo(g.ngay)}`; }
+  /** Cộng số ngày vào 'YYYY-MM-DD' — theo lịch, không theo múi giờ. */
+  function congNgayIso(iso, n) { const d = new Date(iso + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+  /** 'HH:mm:ss DD/MM/YYYY' giờ VN. */
+  function gioVnChu(t) { const g = phanGioVn(t); return `${haiSo(g.gio)}:${haiSo(g.phut)}:${haiSo(g.giay)} ${haiSo(g.ngay)}/${haiSo(g.thang)}/${g.nam}`; }
+  // ---- HẾT GIỜ VIỆT NAM
+
   async function goi(duong, than, kieu) {
     const r = await fetch(duong + '?t=' + MA, {
       method: 'POST',
@@ -537,7 +558,7 @@
     // 2.6: lần gửi gần nhất cân chưa xác nhận → số hàng là theo chương trình, chưa chắc cân có.
     $('o-tren-can').textContent = !s.goc ? 'Chưa biết'
       : s.soTrenCan + ' hàng' + (s.chuaXacNhan ? (s.chuaXacNhan.loai === 'lech' ? ' · lần gửi trước cân chưa nhận' : ' · chưa xác nhận') : '');
-    $('o-goc').textContent = s.goc ? 'File gốc lúc ' + new Date(s.goc.luc).toLocaleString('vi-VN') + ' · cân ' + s.goc.phienBan : 'Chưa có file gốc';
+    $('o-goc').textContent = s.goc ? 'File gốc lúc ' + gioVnChu(s.goc.luc) + ' · cân ' + s.goc.phienBan : 'Chưa có file gốc';
 
     const q = s.nguoi ? s.nguoi.quyen : null;
     $('the-dang-nhap').classList.toggle('an', !!s.nguoi);
@@ -579,12 +600,12 @@
     veKetNoi(trangThai.nen);
     const tg = trangThai.lanTuGui;
     $('o-tu-gui').textContent = ch.tuGui
-      ? 'Tự gửi: bật' + (tg ? ' · ' + new Date(tg.luc).toLocaleTimeString('vi-VN') + ' — ' + tg.cau : ' · chờ lần đầu')
+      ? 'Tự gửi: bật' + (tg ? ' · ' + new Date(tg.luc).toLocaleTimeString('vi-VN', { timeZone: MUI_VN }) + ' — ' + tg.cau : ' · chờ lần đầu')
       : '';
     $('bao-hsd').innerHTML = baoHsdCu(trangThai.hsd);
     // 2.9: lần báo về kho gần nhất (trạng thái cân, dòng trên cân, nhật ký tem) — trang pha lóc và đèn ở /noi-bo dựa vào đây.
     const bk = trangThai.nen && trangThai.nen.baoKho;
-    $('o-bao-kho').textContent = bk ? 'Báo về kho · ' + new Date(bk.luc).toLocaleTimeString('vi-VN') + ' — ' + bk.cau : '';
+    $('o-bao-kho').textContent = bk ? 'Báo về kho · ' + new Date(bk.luc).toLocaleTimeString('vi-VN', { timeZone: MUI_VN }) + ' — ' + bk.cau : '';
   }
 
   /**
@@ -1031,8 +1052,7 @@
     const chu = '\ufeff' + dong.map(r => r.map((v, i) => i === 3 ? v : o(v)).join(',')).join('\r\n');
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([chu], { type: 'text/csv;charset=utf-8' }));
-    const n = new Date(), p2 = (x) => String(x).padStart(2, '0');
-    a.download = `hang-tren-can-${n.getFullYear()}${p2(n.getMonth() + 1)}${p2(n.getDate())}.csv`;
+    a.download = `hang-tren-can-${ngayVnIso(Date.now()).replace(/-/g, '')}.csv`;
     document.body.append(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
@@ -1210,9 +1230,9 @@
     if (k === 9) return hm.hsd !== null;
     return true;
   }
-  /** Ngày theo kiểu ngày in của cân (Spec104; từ 100 là giờ 12 tiếng, cùng kiểu ngày). */
-  function ngayTheoKieu(d, kieu) {
-    const Y = String(d.getFullYear()), y = Y.slice(2), m = p2(d.getMonth() + 1), n = p2(d.getDate());
+  /** Ngày ({ nam, thang, ngay } — giờ VN, phanGioVn) theo kiểu ngày in của cân (Spec104; từ 100 là giờ 12 tiếng, cùng kiểu ngày). */
+  function ngayTheoKieu(g, kieu) {
+    const Y = String(g.nam), y = Y.slice(2), m = p2(g.thang), n = p2(g.ngay);
     return { 0: `${Y}.${m}.${n}`, 1: `${y}.${m}.${n}`, 2: `${m}/${n}/${y}`, 3: `${m}-${n}-${y}`, 4: `${n}/${m}/${y}`, 5: `${n}-${m}-${y}` }[kieu % 100] ?? `${Y}.${m}.${n}`;
   }
   /** Khung thật trên giấy (tem.ts khungThat): xoay quanh góc (x, y) theo chiều kim đồng hồ. */
@@ -1234,8 +1254,10 @@
     giay.style.aspectRatio = `${t.rong} / ${t.cao}`;
     giay.classList.toggle('sua-duoc', !t.chanSua);
     const hm = hangXem(), kieu = temDL.kieuNgay || 0;
-    const kg = 0.215, bay = new Date(), ngay = ngayTheoKieu(bay, kieu);
-    const hsd = hm.hsd === null ? null : ngayTheoKieu(new Date(bay.getFullYear(), bay.getMonth(), bay.getDate() + hm.hsd), kieu);
+    // Ngày in thử trên sơ đồ: hôm nay giờ VN như cân (đã chỉnh theo giờ VN); HSD = hôm nay + số ngày.
+    const kg = 0.215, bay = phanGioVn(Date.now()), ngay = ngayTheoKieu(bay, kieu);
+    const [hn, ht, hd] = hm.hsd === null ? [] : congNgayIso(ngayVnIso(Date.now()), hm.hsd).split('-').map(Number);
+    const hsd = hm.hsd === null ? null : ngayTheoKieu({ nam: hn, thang: ht, ngay: hd }, kieu);
     const so = (n) => n == null ? '' : Math.round(n).toLocaleString('vi-VN');
     const thanhTien = hm.theoGoi ? hm.gia : Math.round((hm.gia || 0) * kg);
     const coChu = temDL.danhMuc.coChu;
@@ -1256,7 +1278,7 @@
         chu = { 0: hm.ten, 1: hm.theoGoi ? '1' : kg.toFixed(3), 4: so(hm.gia), 6: String(hm.so), 10: hm.maCan || '', 15: hsd, 24: hm.theoGoi ? 'cái' : 'kg' }[o.duLieu] ?? null;
         if (o.duLieu === 0) el.classList.add('dam');
       } else if (o.loai === '2') {
-        chu = { 0: 'Tên quán', 3: ngay, 4: `${p2(bay.getHours())}:${p2(bay.getMinutes())}`, 16: 'đ', 27: so(thanhTien) }[o.chu] ?? null;
+        chu = { 0: 'Tên quán', 3: ngay, 4: `${p2(bay.gio)}:${p2(bay.phut)}`, 16: 'đ', 27: so(thanhTien) }[o.chu] ?? null;
         if (o.chu === 27) el.classList.add('dam');
       }
       if (o.loai !== '0') {
@@ -1452,7 +1474,7 @@
   const kgChu = (n) => n === null || n === undefined ? '—' : Number(n).toLocaleString('vi-VN', { maximumFractionDigits: 3 }) + ' kg';
   const soChu = (n) => Number(n || 0).toLocaleString('vi-VN');
   const ngayVn = (d) => { if (!d) return '—'; const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}/${m}`; };
-  const lucVn = (t) => t ? new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' }) : '—';
+  const lucVn = (t) => t ? lucNgan(t) : '—';
   const maGuiMoi = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
   const conNgay = (n) => n === null || n === undefined ? '' : n < 0 ? `quá ${-n} ngày` : n === 0 ? 'hết hạn hôm nay' : `còn ${n} ngày`;
   function taiCsv(ten, dong) {
@@ -1473,10 +1495,12 @@
   }
 
   // ---- thẻ Quầy ----------------------------------------------------------
+  // 2.9.2: lần gửi phiếu huỷ hỏng có thể kho ĐÃ ghi — mở lại form cùng các lô (cả sau khi chương trình khởi động lại) thì máy chủ
+  // gửi bằng ma_gui của lần đó (nghiep-vu.ts HuyChuaChac): kho trả phiếu đã có, không thành hai phiếu.
   let quay = null, dangSuaQuay = false, maGuiHuy = null, maGuiYc = null;
   async function taiQuay(imLang) {
     if (!imLang) $('quay-noi-dung').innerHTML = quay ? $('quay-noi-dung').innerHTML : '<p class="dang-lam">Đang đọc quầy…</p>';
-    try { quay = await goi('/api/quay'); veQuay(); $('quay-luc').textContent = 'Cập nhật ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }); }
+    try { quay = await goi('/api/quay'); veQuay(); $('quay-luc').textContent = 'Cập nhật ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: MUI_VN }); }
     catch (err) { bao($('quay-noi-dung'), 'loi', e(err.message)); }
   }
   // Tự tải lại mỗi phút khi đang mở thẻ Quầy và không đang điền form.
@@ -1606,6 +1630,8 @@
         const k = await goi('/api/quay/huy', { maGui: maGuiHuy, lyDoId: $('ly-do-huy').value, ghiChu: $('ghi-chu-huy').value, dong, anh });
         dangSuaQuay = false;
         baoChung('xong', `<p><b>${k.daCo ? 'Phiếu này đã gửi trước đó' : 'Đã gửi phiếu huỷ'} ${e(k.soPhieu)}</b> — chờ quản lý duyệt.</p>`
+          + (k.daCo ? '<p>Phiếu giữ đúng nội dung của lần gửi trước — số lượng, lý do, ảnh đổi sau lần đó không được ghi. Cần sửa thì nhờ '
+            + 'quản lý từ chối phiếu này rồi tạo phiếu mới.</p>' : '')
           + (k.loiAnh.length ? `<p>Lưu ý ảnh: ${e(k.loiAnh.join(' · '))}</p>` : ''));
         await taiQuay();
       } catch (err) { bao($('kq-huy'), 'loi', e(err.message)); nut.disabled = false; nut.textContent = 'Gửi phiếu huỷ'; }
@@ -1725,8 +1751,8 @@
 
   // ---- thẻ Báo cáo ---------------------------------------------------------
   let bcDL = null;
-  const ngayIso = (d) => `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
-  function datKhoang(n) { const den = new Date(), tu = new Date(); tu.setDate(tu.getDate() - n); $('bc-tu').value = ngayIso(tu); $('bc-den').value = ngayIso(den); }
+  // "7 ngày qua", "Hôm nay"…: hôm nay theo giờ VN (2.9.2 — máy để UTC thì trước 7 giờ sáng "hôm nay" là hôm qua).
+  function datKhoang(n) { const den = ngayVnIso(Date.now()); $('bc-tu').value = congNgayIso(den, -n); $('bc-den').value = den; }
   datKhoang(6);
   for (const b of document.querySelectorAll('#the-bao-cao button[data-ngay]')) b.onclick = () => { datKhoang(Number(b.dataset.ngay)); taiBaoCao(); };
   $('nut-bao-cao').onclick = taiBaoCao;
@@ -1781,7 +1807,7 @@
   // BẢN 2.2: Cân & thông số, Phím tắt, Nhật ký cân (chưa thử trên cân thật)
   // =====================================================================
   const gioChu = (g) => `${p2(g.gio)}:${p2(g.phut)}:${p2(g.giay)} ngày ${p2(g.ngay)}/${p2(g.thang)}/${g.nam}`;
-  /** Giờ cân − giờ máy tính (giây) → câu dễ đọc: "lệch 12 giây", "cân chậm hơn 3 ngày 21 giờ". */
+  /** Giờ cân − giờ Việt Nam (giây) → câu dễ đọc: "lệch 12 giây", "cân chậm hơn 3 ngày 21 giờ". */
   const lechChu = (s) => {
     const a = Math.abs(s), ngay = Math.floor(a / 86400), gio = Math.floor(a % 86400 / 3600), phut = Math.round(a % 3600 / 60);
     if (a < 60) return `lệch ${a} giây`;
@@ -1813,21 +1839,21 @@
       + `<tr><td>Tên cân · số máy</td><td>${e(t.tenMay || '—')} · ${t.soMay}</td></tr>`
       + `<tr><td>Tên quán trên cân</td><td>${e(t.cuaHang || '—')}</td></tr>`
       + `<tr><td>Bảng mã chữ</td><td>${e(t.maHoa || 'cân không báo')}</td></tr>`
-      + `<tr><td>Giờ trên cân</td><td><b>${gioChu(k.gio)}</b> · máy tính ${e(k.gioMay)} (${lechChu(k.lechGiay)})</td></tr>`
+      + `<tr><td>Giờ trên cân</td><td><b>${gioChu(k.gio)}</b> · giờ Việt Nam ${e(k.gioVn)} (${lechChu(k.lechGiay)})</td></tr>`
       + '</tbody></table>'
-      + (lech ? '<p>Giờ cân lệch nhiều: ngày đóng gói, HSD in trên tem theo giờ cân. Xem giờ máy tính đúng chưa rồi bấm <b>Chỉnh giờ cân theo máy tính</b>.</p>' : ''));
+      + (lech ? '<p>Giờ cân lệch nhiều: ngày đóng gói, HSD in trên tem theo giờ cân. Xem đồng hồ máy tính đúng chưa rồi bấm <b>Chỉnh giờ cân theo giờ Việt Nam</b>.</p>' : ''));
   });
 
   $('nut-doc-gio').onclick = () => lamCan($('kq-gio'), 'Đang đọc giờ cân…', async (noi) => {
     const k = await goi('/api/gio-can');
     const lech = Math.abs(k.lechGiay) > 120;
-    bao(noi, lech ? 'luu-y' : 'xong', `<p>Giờ trên cân: <b>${gioChu(k.gio)}</b> · máy tính ${e(k.gioMay)} (${lechChu(k.lechGiay)}).</p>`
-      + (lech ? '<p>Lệch nhiều: xem giờ máy tính đúng chưa rồi bấm <b>Chỉnh giờ cân theo máy tính</b>.</p>' : ''));
+    bao(noi, lech ? 'luu-y' : 'xong', `<p>Giờ trên cân: <b>${gioChu(k.gio)}</b> · giờ Việt Nam ${e(k.gioVn)} (${lechChu(k.lechGiay)}).</p>`
+      + (lech ? '<p>Lệch nhiều: xem đồng hồ máy tính đúng chưa rồi bấm <b>Chỉnh giờ cân theo giờ Việt Nam</b>.</p>' : ''));
   });
 
   $('nut-chinh-gio').onclick = () => {
-    if (!confirm(`Đặt giờ cân theo giờ máy tính (bây giờ: ${new Date().toLocaleString('vi-VN')})?\n\n`
-      + 'Xem giờ máy tính đúng chưa trước khi bấm. Chưa thử trên cân thật: chỉnh xong bấm Time trên cân xem lại.')) return;
+    if (!confirm(`Đặt giờ cân theo giờ Việt Nam (bây giờ: ${gioVnChu(Date.now())})?\n\n`
+      + 'Giờ lấy từ đồng hồ máy tính — xem đồng hồ máy tính đúng chưa trước khi bấm. Chưa thử trên cân thật: chỉnh xong bấm Time trên cân xem lại.')) return;
     lamCan($('kq-gio'), 'Đang chỉnh giờ cân…', async (noi) => {
       const k = await goi('/api/gio-can/chinh', {});
       if (k.cach === '33581') {
@@ -2204,8 +2230,8 @@
     chua_in: ['Cân chưa in tem', (x) => x.loai === 2], khac: ['Loại khác', (x) => x.loai > 2 || x.loai < 0] };
   function datKhoangNk(n) {
     if (n < 0) { $('nk-tu').value = ''; $('nk-den').value = ''; return; }
-    const den = new Date(), tu = new Date(); tu.setDate(tu.getDate() - n);
-    $('nk-tu').value = ngayIso(tu); $('nk-den').value = ngayIso(den);
+    const den = ngayVnIso(Date.now());
+    $('nk-tu').value = congNgayIso(den, -n); $('nk-den').value = den;
   }
   datKhoangNk(6);
   const nutNk = () => [$('nut-nk-xem'), $('nut-nk-file'), $('nut-nk-wifi'), $('nut-nk-csv')];

@@ -17,7 +17,7 @@ import type { DongBanCan } from './bao-cao-can.ts';
 import type { PhimXem } from './thong-so.ts';
 
 /**
- * Một dòng đang nằm trên cân gửi lên kho (kho_may_can_bao → tren_can). chua_xac_nhan (2.9.3, migration 0068): cân có thể đang
+ * Một dòng đang nằm trên cân gửi lên kho (kho_may_can_bao → tren_can). chua_xac_nhan (2.9.3, migration 0077): cân có thể đang
  * khác dòng này — chỉ có khóa khi true.
  */
 export interface DongTrenCanBao { plu: number; ma_can: string; ten: string; phim: string[]; chua_xac_nhan?: true }

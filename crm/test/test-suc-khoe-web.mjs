@@ -235,20 +235,20 @@ await nhom('4b · BEEFTOWN CÂN (MÁY QUẦY BÁO VỀ KHO, 0061)', async () => 
   const sang = dc([may({ bao_luc: truoc(1), lech_so: 5, lech_tu: '2026-09-28T17:00:00Z' })], '2026-09-29T03:10:00Z');
   ok('10:10 giờ VN: lệch từ nửa đêm (HSD đếm ngược) → chưa vàng — tính từ lúc mở cửa (10:00), mới 10 phút', sang.mau === 'xanh', tom(sang));
   ok('10:16 giờ VN: vẫn lệch → vàng', dc([may({ bao_luc: truoc(1), lech_so: 5, lech_tu: '2026-09-28T17:00:00Z' })], '2026-09-29T03:16:00Z').mau === 'vang');
-  // 0068 (Beeftown Cân 2.9.3): lần gửi gần nhất cân chưa xác nhận — kể cả khi lech_so = 0 (rà soát code-review: máy lên từ 2.9.2).
+  // 0077 (Beeftown Cân 2.9.3): lần gửi gần nhất cân chưa xác nhận — kể cả khi lech_so = 0 (rà soát code-review: máy lên từ 2.9.2).
   const xn = dc([may({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(PHUT_LECH_CAN + 1) })]);
-  ok(`0068: chưa xác nhận ${PHUT_LECH_CAN + 1} phút, lech_so 0 → vàng "Lần gửi gần nhất của Beeftown Cân chưa được cân xác nhận (từ 16 phút trước)"`,
+  ok(`0077: chưa xác nhận ${PHUT_LECH_CAN + 1} phút, lech_so 0 → vàng "Lần gửi gần nhất của Beeftown Cân chưa được cân xác nhận (từ 16 phút trước)"`,
      xn.mau === 'vang' && /^Lần gửi gần nhất của Beeftown Cân chưa được cân xác nhận \(từ 16 phút trước\) — cân có thể còn giá \/ tên cũ/.test(xn.cau), tom(xn));
-  ok(`0068: chưa xác nhận ${PHUT_LECH_CAN - 1} phút → xanh (tự gửi đang thử lại)`, dc([may({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(PHUT_LECH_CAN - 1) })]).mau === 'xanh');
+  ok(`0077: chưa xác nhận ${PHUT_LECH_CAN - 1} phút → xanh (tự gửi đang thử lại)`, dc([may({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(PHUT_LECH_CAN - 1) })]).mau === 'xanh');
   const xnLech = dc([may({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(30), lech_so: 2, lech_tu: truoc(30) })]);
-  ok('0068: chưa xác nhận + lệch kho → một câu lệch kho (không lặp)', xnLech.mau === 'vang' && xnLech.cau.split(' · ').length === 1 && /^2 hàng kho/.test(xnLech.cau), tom(xnLech));
-  ok('0068: 23:50 giờ VN (ngoài giờ) → không vàng', dc([may({ bao_luc: '2026-09-29T16:49:00Z', chua_xac_nhan: true, chua_xac_nhan_tu: '2026-09-29T14:00:00Z' })],
+  ok('0077: chưa xác nhận + lệch kho → một câu lệch kho (không lặp)', xnLech.mau === 'vang' && xnLech.cau.split(' · ').length === 1 && /^2 hàng kho/.test(xnLech.cau), tom(xnLech));
+  ok('0077: 23:50 giờ VN (ngoài giờ) → không vàng', dc([may({ bao_luc: '2026-09-29T16:49:00Z', chua_xac_nhan: true, chua_xac_nhan_tu: '2026-09-29T14:00:00Z' })],
      '2026-09-29T16:50:00Z').mau === 'xanh');
-  ok('0068: 10:10 giờ VN, chưa xác nhận từ đêm qua → chưa vàng (tính từ lúc mở cửa)', dc([may({ bao_luc: truoc(1), chua_xac_nhan: true,
+  ok('0077: 10:10 giờ VN, chưa xác nhận từ đêm qua → chưa vàng (tính từ lúc mở cửa)', dc([may({ bao_luc: truoc(1), chua_xac_nhan: true,
      chua_xac_nhan_tu: '2026-09-28T17:00:00Z' })], '2026-09-29T03:10:00Z').mau === 'xanh');
-  ok('0068: database trước 0068 (không có ô) → như trước', dc([may({ chua_xac_nhan: undefined, chua_xac_nhan_tu: undefined })]).mau === 'xanh');
+  ok('0077: database trước 0077 (không có ô) → như trước', dc([may({ chua_xac_nhan: undefined, chua_xac_nhan_tu: undefined })]).mau === 'xanh');
   const xnEn = den(voi((t, c) => { t.luc = LUC; c.can = { gio_mo_cua: 10, gio_dong_cua: 23, may: [may({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(20) })] }; }), 'can', 'en');
-  ok('0068: tiếng Anh', /^Beeftown Scale's latest send has not been confirmed by the scale \(since 20 min ago\)/.test(xnEn?.cau ?? ''), xnEn?.cau);
+  ok('0077: tiếng Anh', /^Beeftown Scale's latest send has not been confirmed by the scale \(since 20 min ago\)/.test(xnEn?.cau ?? ''), xnEn?.cau);
 });
 
 await nhom('5 · SỔ KHO', async () => {

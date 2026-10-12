@@ -22,7 +22,9 @@
  *     khác đang giữ số nhỏ hơn thì hở là đúng, Supabase CLI chỉ cần thứ tự;
  *   · file mới / đã đổi: mọi hàm security definer có set search_path (cả 313 hàm hiện có
  *     đều có); từ sau 0008 (vá múi giờ) không dùng current_date / current_time / localtime /
- *     now()::date — dùng hom_nay_vn() / bay_gio_vn() / gio_vn().
+ *     now()::date — dùng hom_nay_vn() / bay_gio_vn() / gio_vn() — và không cắt ngày một cột /
+ *     biến timestamptz theo UTC (`thoi_diem::date`, `date(created_at)`… — dùng ngay_vn(), 0071;
+ *     bộ dò ở gio-utc.mjs).
  *
  * So với ref (mặc định origin/main; ref không có thì bỏ qua, có báo):
  *   · migration đã có trên ref phải GIỐNG HỆT — nó đã (hoặc sắp) chạy trên production, sửa
@@ -36,6 +38,7 @@
  */
 
 import { readdirSync, readFileSync, appendFileSync } from 'node:fs';
+import { tenTimestamptz, timNgayUtc } from './gio-utc.mjs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -196,6 +199,8 @@ const canDoc = H.filter(f => TEN_HOP_LE.test(f) && blobM.get(f) !== blobH.get(f)
 console.log(`\n\x1b[1m2 · QUY ƯỚC TRONG FILE (${canDoc.length} file mới hoặc đã đổi so với ${CO_SO_VOI ? SO_VOI : 'không có gì'})\x1b[0m`);
 {
   const thieuPath = [], gioUtc = [];
+  // Tên cột / biến timestamptz khai ở MỌI migration của nguồn đang kiểm (file mới dùng cột của file cũ).
+  const tenTs = tenTimestamptz(H.filter(f => TEN_HOP_LE.test(f)).map(f => docTep(NHANH, f)));
   for (const f of canDoc) {
     const sql = docTep(NHANH, f).replace(/--[^\n]*/g, '');
     // Tách theo từng câu create function; phần thuộc tính nằm trước thân $…$ hoặc sau nó.
@@ -212,13 +217,12 @@ console.log(`\n\x1b[1m2 · QUY ƯỚC TRONG FILE (${canDoc.length} file mới ho
         thieuPath.push(`${f}: ${khoi.slice(0, 70).replace(/\s+/g, ' ')}…`);
       }
     }
-    if (so(f) > MOC_GIO_VN && /\b(current_date|current_time|localtime|localtimestamp)\b|now\(\)\s*::\s*date/i.test(sql)) {
-      gioUtc.push(f);
-    }
+    const thay = so(f) > MOC_GIO_VN ? timNgayUtc(sql, tenTs) : [];
+    if (thay.length) gioUtc.push(`${f}: ${[...new Set(thay)].slice(0, 3).join(', ')}`);
   }
   ok('Mọi hàm security definer có set search_path', thieuPath.length === 0, thieuPath.slice(0, 5).join(' | '));
-  ok(`Sau ${bonSo(MOC_GIO_VN)} không dùng current_date / current_time / now()::date (UTC trên Supabase) — dùng hom_nay_vn()`,
-     gioUtc.length === 0, gioUtc.join(', '));
+  ok(`Sau ${bonSo(MOC_GIO_VN)} không cắt ngày theo UTC (current_date, now()::date, <cột timestamptz>::date — Supabase chạy UTC) — dùng hom_nay_vn() / ngay_vn()`,
+     gioUtc.length === 0, gioUtc.join(' | '));
 }
 
 // ===========================================================================

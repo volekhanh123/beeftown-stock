@@ -91,7 +91,7 @@ export interface IposTho {
 export interface MayCanTho {
   bao_luc: string; giu_ket_noi: boolean; can_tra_loi_luc: string | null;
   tu_gui: boolean; lech_so: number | null; lech_tu: string | null; gui_loi: boolean;
-  /** 0068 (Beeftown Cân 2.9.3): lần gửi gần nhất cân chưa xác nhận, từ lúc nào. Không có = database trước 0068. */
+  /** 0077 (Beeftown Cân 2.9.3): lần gửi gần nhất cân chưa xác nhận, từ lúc nào. Không có = database trước 0077. */
   chua_xac_nhan?: boolean; chua_xac_nhan_tu?: string | null;
 }
 /** Ô `can` (0061): giờ mở cửa của chi nhánh (cài ở Kết nối iPOS, mặc định 10–23) và các máy quầy. */
@@ -494,7 +494,7 @@ function denCan(d: Partial<CanTho> | undefined, maCn: string, bayGio: number, nn
       : { vi: `${n} hàng kho đã đổi mà cân chưa nhận (từ ${tuTruoc(bayGio, tu).vi}) — Tự gửi đang tắt: quản lý bấm Gửi xuống cân, hoặc bật Tự gửi ở Cài đặt của Beeftown Cân`,
           en: `${n} item${s(n)} changed in stock but not on the scale yet (since ${tuTruoc(bayGio, tu).en}) — automatic sending is off: a manager presses Send to scale, or turns on automatic sending in Beeftown Scale settings` } });
   }
-  // 0068: lần gửi gần nhất cân chưa xác nhận quá PHUT_LECH_CAN phút (tính từ lúc mở cửa) — cân có thể còn giá / tên cũ kể cả
+  // 0077: lần gửi gần nhất cân chưa xác nhận quá PHUT_LECH_CAN phút (tính từ lúc mở cửa) — cân có thể còn giá / tên cũ kể cả
   // khi lech_so = 0 (máy vừa lên từ Beeftown Cân 2.9.2, kho quay về như lần đã xác nhận). Đã có câu lệch kho thì đủ.
   const chuaXn = trongGio && lech.length === 0 ? conBao.filter(m => m.chua_xac_nhan === true && ms(m.chua_xac_nhan_tu) !== null
     && bayGio - tuMoCua(ms(m.chua_xac_nhan_tu) as number) > PHUT_LECH_CAN * 60000) : [];
