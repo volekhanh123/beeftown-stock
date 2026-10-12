@@ -15,8 +15,8 @@
  *     (DIEU_KIEN_IN) · 6 góc xoay ×90° theo chiều kim đồng hồ · 7 canh chữ (4 bit
  *     thấp 0–9, bit cao chưa rõ nghĩa — giữ nguyên) · 8 cỡ chữ (CO_CHU) ·
  *     9–12 x, y, rộng, cao tính bằng chấm (8 chấm/mm, gốc ở góc trên trái) ·
- *     rồi ô rỗng sau tab cuối. (Công cụ HTML cũ Beeftown_Can_TMA.html đọc nhầm
- *     cột 7 là cỡ chữ.)
+ *     rồi ô rỗng sau tab cuối. (Công cụ HTML cũ Beeftown_Can_TMA.html từng đọc
+ *     nhầm cột 7 là cỡ chữ — sửa 12/10/2026; trường đó không dùng để vẽ hay ghi.)
  *   - Phần TMS dòng số 0 cho biết cân đang in bằng mẫu số mấy.
  *   - Phần SCP: phím tắt tầng 1 — phím số k gọi PLU nào.
  *

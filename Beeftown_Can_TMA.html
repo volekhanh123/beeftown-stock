@@ -444,7 +444,7 @@ function parseTms(text, hasBom) {
 
 function parseLas(f) {
   return { type: f[2], text: toInt(f[3], -1), data: toInt(f[4], -1), cond: f[5],
-           x: toInt(f[9], 0), y: toInt(f[10], 0), w: toInt(f[11], 0), h: toInt(f[12], 0), size: toInt(f[7], 0) };
+           x: toInt(f[9], 0), y: toInt(f[10], 0), w: toInt(f[11], 0), h: toInt(f[12], 0), size: toInt(f[8], 0) };   // cột 7 là canh chữ, cột 8 là cỡ chữ (can-app/CAN-TMA.md)
 }
 
 // Ô chữ số t trên tem nằm ở cột nào của dòng LAB (cột 22 là cờ, không phải chữ)

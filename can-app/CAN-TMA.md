@@ -505,7 +505,7 @@ in 54 × 37 mm; tem 28 của quán là 58 × 40 mm (464 × 320 chấm).
 | 9–12 | Left, Top, Width, Height | x, y, rộng, cao — **chấm**, gốc ở góc trên trái, y hướng xuống |
 | 13 | — | rỗng |
 
-Công cụ HTML cũ `Beeftown_Can_TMA.html` đọc nhầm cột 7 là cỡ chữ; đúng là cột 8.
+Công cụ HTML cũ `Beeftown_Can_TMA.html` từng đọc nhầm cột 7 là cỡ chữ; đúng là cột 8 (sửa 12/10/2026 — trường đó chỉ được đọc, không dùng để vẽ tem hay ghi file, nên chưa từng làm sai file nạp cân).
 
 Khung thật trên giấy khi xoay (x, y, rộng w, cao h): 0° → (x, y, w, h); 90° → (x − h, y, h, w);
 180° → (x − w, y − h, w, h); 270° → (x, y − w, h, w) (`khungThat`).
