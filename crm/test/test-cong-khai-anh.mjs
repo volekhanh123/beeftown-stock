@@ -479,6 +479,21 @@ await nhom('7 · ẢNH MÓN CỦA TRANG THỰC ĐƠN (CUỐN MENU BẢN SÁNG 11
          a.gon === '4x5' && kg.fy === 1, JSON.stringify(kg));
     }
   }
+  // Alt không khẳng định nguyên liệu mà mô tả món chưa nói, bếp chưa xác nhận (rà soát 13/10/2026): đậu phụ hầm
+  // không ghi nghêu, lòng đỏ; carbonara không ghi thịt muối; ba thứ tiếng tả cùng một thứ; tiếng Hàn "말린 딸기".
+  const alt = id => DANH_MUC_ANH[id]?.alt ?? {};
+  const KHONG_KHANG_DINH = {
+    'mon-dau-phu-ham': /nghêu|lòng đỏ|clam|yolk|조개|노른자/iu,
+    'mon-mi-carbonara': /thịt muối|bacon|pancetta|guanciale|베이컨|판체타/iu,
+  };
+  for (const [id, mau] of Object.entries(KHONG_KHANG_DINH)) {
+    const thay = Object.entries(alt(id)).filter(([, c]) => mau.test(c)).map(([nn]) => nn);
+    ok(`${id}: alt ba thứ tiếng không khẳng định nguyên liệu mô tả món không nói (${mau.source})`, thay.length === 0, thay.join(', '));
+  }
+  ok('mon-com-kim-chi-bo: alt ba thứ tiếng khớp nhau — không thứ tiếng nào thêm màu đĩa',
+     !/màu kem|cream|크림색/iu.test(Object.values(alt('mon-com-kim-chi-bo')).join(' ')), JSON.stringify(alt('mon-com-kim-chi-bo')));
+  ok('uong-strawberry-crush: alt tiếng Hàn viết "말린 딸기" (không "건조 딸기"), như mô tả món D01',
+     /말린 딸기/.test(alt('uong-strawberry-crush').ko ?? '') && !/건조/.test(alt('uong-strawberry-crush').ko ?? ''), alt('uong-strawberry-crush').ko);
   ok('Ảnh ba ly không cồn (uong-khong-con-ba-ly) là ảnh của cả phần Đồ uống — không gắn với một món nào',
      !Object.values(ANH_CUA_MON).some(a => a.id === 'uong-khong-con-ba-ly'));
   for (const id of ANH_MON) {

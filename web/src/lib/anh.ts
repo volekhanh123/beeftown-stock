@@ -233,9 +233,9 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
   'mon-dau-phu-ham': {
     minhHoa: true, tachNen: true,
     alt: {
-      vi: 'Đậu hũ non trong nước dùng đỏ cay ở thố đá đen, có nghêu, lòng đỏ trứng, ớt và hành lá.',
-      en: 'Soft tofu in a red, spicy broth in a black stone pot, with clams, an egg yolk, chili and spring onion.',
-      ko: '검은 뚝배기에 빨갛고 매콤한 국물과 순두부, 조개, 계란 노른자, 고추, 파가 담겨 있어요.',
+      vi: 'Đậu hũ non trong nước dùng đỏ cay ở thố đá đen, phía trên rắc hành lá.',
+      en: 'Soft tofu in a red, spicy broth in a black stone pot, topped with spring onion.',
+      ko: '검은 뚝배기에 빨갛고 매콤한 국물과 순두부가 담겨 있고, 위에 파를 올렸어요.',
     },
   },
   'mon-canh-tuong-dau': {
@@ -251,7 +251,7 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
     alt: {
       vi: 'Đĩa cơm rang màu đỏ cam với bò và hành lá, trên cùng là quả trứng ốp la.',
       en: 'A plate of red-orange fried rice with beef and spring onion, topped with a sunny-side-up egg.',
-      ko: '크림색 접시에 소고기와 파를 넣고 볶은 붉은 볶음밥, 그 위에 계란 프라이가 올라가 있어요.',
+      ko: '소고기와 파를 넣고 볶은 주황빛 도는 붉은 볶음밥 한 접시, 그 위에 계란 프라이가 올라가 있어요.',
     },
   },
   'mon-com-tron-han': {
@@ -289,9 +289,9 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
   'mon-mi-carbonara': {
     minhHoa: true, tachNen: true,
     alt: {
-      vi: 'Đĩa đen với mì spaghetti sốt trứng phô mai, thịt muối thái hạt lựu, tiêu đen và lòng đỏ trứng ở giữa.',
-      en: 'Spaghetti in an egg and cheese sauce on a black plate, with diced bacon, black pepper and an egg yolk on top.',
-      ko: '검은 접시에 계란과 치즈 소스 스파게티를 담고 베이컨, 후추, 노른자를 올렸어요.',
+      vi: 'Đĩa đen với mì spaghetti sốt trứng phô mai, rắc tiêu đen, lòng đỏ trứng ở giữa.',
+      en: 'Spaghetti in an egg and cheese sauce on a black plate, with black pepper and an egg yolk in the middle.',
+      ko: '검은 접시에 계란과 치즈 소스 스파게티를 담고 가운데에 노른자를 올린 뒤 후추를 뿌렸어요.',
     },
   },
   'mon-mi-bo-sot-ca': {
@@ -315,7 +315,7 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
     alt: {
       vi: 'Ly cao đựng nước màu hồng đỏ có ga, đá viên, dâu sấy phía trên và nhánh bạc hà.',
       en: 'A tall glass of pink-red sparkling drink with ice, dried strawberry on top and a sprig of mint.',
-      ko: '키 큰 잔에 얼음을 넣은 분홍빛 탄산 음료, 위에 건조 딸기와 민트를 올렸어요.',
+      ko: '키 큰 잔에 얼음을 넣은 분홍빛 탄산 음료, 위에 말린 딸기와 민트를 올렸어요.',
     },
   },
   'uong-berry-rouge-highball': {
