@@ -5,7 +5,7 @@ Hai file SQL để có sẵn một kho "đang chạy" mà bấm thử, và xoá 
 | File | Làm gì |
 |---|---|
 | `xoa-du-lieu-kho.sql` | Xoá sạch kho: mặt hàng, NCC, phiếu, lô, sổ kho, tồn, bán iPOS, công nợ, số phiếu, cấu hình iPOS. Giữ vị trí, lý do, cài đặt kho, máy cân. |
-| `don-du-lieu-thu-truoc-khai-truong.sql` | **Chạy trên project THẬT**, một lần, trước phiếu nhận hàng thật đầu tiên: xoá dữ liệu mô phỏng của kho, cùng phạm vi với file xoá. Người chạy sửa 3 dòng đầu file (tên chi nhánh, ngày hôm nay, `'xem'` / `'xoa'`); tự từ chối khi sai một trong ba, có hơn một chi nhánh, chi nhánh "BẢN THỬ", đã tới ngày bán đầu tiên 08/11/2026, hoặc kho đang trừ theo iPOS. Việc trước và sau: `KHAI-TRUONG.md`. |
+| `don-du-lieu-thu-truoc-khai-truong.sql` | **Chạy trên project THẬT**, một lần, trước phiếu nhận hàng thật đầu tiên: xoá dữ liệu mô phỏng của kho, cùng phạm vi với file xoá. Người chạy sửa 3 dòng đầu file (tên chi nhánh, ngày hôm nay, `'xem'` / `'xoa'`); tự từ chối khi sai một trong ba, có hơn một chi nhánh, chi nhánh "BẢN THỬ", đã tới ngày chót 20/10/2026, kho có mặt hàng mà sổ kho trống (danh mục thật nhập sau lần dọn trước), hoặc kho đang trừ theo iPOS. Bảng kết quả có cột "mới nhất" để người chạy thấy dòng nào vừa được ghi. Việc trước và sau: `KHAI-TRUONG.md`. |
 | `tao-du-lieu-kho.sql` | 73 mặt hàng (14 tảng theo từng tảng có bảng ủ và ô mã, tảng thùng, phần cắt, phụ phẩm, hàng đóng gói), 6 NCC "Thử A–F", rồi mô phỏng ~5 tuần: nhập + repack → ủ → lóc 1 tảng, giao ô → bán qua iPOS → huỷ hàng quá hạn → trả nợ. |
 
 **Chạy:** Supabase → project **Beeftown-thu** → SQL Editor → dán cả file **xoá** → Run → dán cả file **tạo** → Run (khoảng nửa phút). Hoặc nhắn Claude "xoá dữ liệu thử" / "tạo lại dữ liệu thử".

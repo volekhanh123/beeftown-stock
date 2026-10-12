@@ -15,13 +15,15 @@ Các bước kỹ thuật đã có hướng dẫn trong `README.md` thì ở đ�
 
 ## B. Trước phiếu nhận hàng thật đầu tiên (khoảng 20/10)
 
+**Thứ tự bắt buộc: bước 7 (dọn) xong rồi mới tới bước 9 (danh mục thật) và phiếu nhận hàng thật đầu tiên.** Lệnh dọn chạy một lần; sau ngày 20/10/2026, hoặc khi kho đã có danh mục mà chưa có dòng sổ kho nào, nó tự từ chối.
+
 | # | Việc | Ai | Hạn |
 |---|---|---|---|
-| 5 | Mở Kho → Mặt hàng và Nhà cung cấp, ghi lại những mục anh đã gõ tay giữa dữ liệu mô phỏng (đã thấy: mặt hàng "RIBEYE", nhà cung cấp "SLK Grou…"). Bước 7 xoá cả chúng. | Khánh | trước bước 7 |
-| 6 | Kiểm tra đèn "Sao lưu dữ liệu" xanh (mục 4) — có bản sao trước khi xoá. | Khánh | trước bước 7 |
-| 7 | Dọn dữ liệu thử của kho: `crm/supabase/thu/don-du-lieu-thu-truoc-khai-truong.sql`. Sửa 3 dòng đầu file, chạy `'xem'` để đọc số dòng, rồi `'xoa'`. File tự từ chối nếu sai tên chi nhánh, sai ngày, đã tới 08/11, hoặc iPOS đang bật. Giữ vị trí, lý do, cài đặt kho, máy; số phiếu và số tảng bắt đầu lại từ 0001. | Khánh | 20/10 |
+| 5 | Mở Kho → Mặt hàng và Nhà cung cấp, ghi lại những mục anh đã gõ tay giữa dữ liệu mô phỏng (đã thấy: mặt hàng "RIBEYE", nhà cung cấp "SLK Grou…"). Bước 7 xoá cả chúng. | Khánh | 17/10 |
+| 6 | Kiểm tra đèn "Sao lưu dữ liệu" xanh (mục 4) — có bản sao trước khi xoá. | Khánh | 17/10 |
+| 7 | Dọn dữ liệu thử của kho: `crm/supabase/thu/don-du-lieu-thu-truoc-khai-truong.sql`. Sửa 3 dòng đầu file, chạy `'xem'`: đọc số dòng và cột "mới nhất" — mọi ngày ở đó phải là ngày nạp dữ liệu mô phỏng hoặc ngày anh bấm thử. Rồi chạy `'xoa'`. File tự từ chối nếu sai tên chi nhánh, sai ngày, đã tới 20/10, kho đã có danh mục thật, hoặc iPOS đang bật. Giữ vị trí, lý do, cài đặt kho, máy; số phiếu và số tảng bắt đầu lại từ 0001. | Khánh | 17/10 |
 | 8 | `/noi-bo/cai-dat` → Chi nhánh: tên, địa chỉ "Tầng 3, 63 Hồ Tùng Mậu", giờ mở (còn câu hỏi trưa 10:00 hay 11:00 — `README.md`). Nhập bàn thật, hoặc đóng form đặt bàn. | Khánh | 20/10 |
-| 9 | Danh mục thật theo màn **Kho → Thiết lập** (10 bước): mặt hàng, nhà cung cấp, công thức pha lóc, bảng ủ, ô mã cho phần cắt ủ, mã cân trùng mã món trên FABi, vị trí, lý do. Nguồn: bảng dữ liệu gốc dựng từ file của Sang. | Sang nhập, Khánh duyệt | 20/10 |
+| 9 | **Sau bước 7.** Danh mục thật theo màn **Kho → Thiết lập** (10 bước): mặt hàng, nhà cung cấp, công thức pha lóc, bảng ủ, ô mã cho phần cắt ủ, mã cân trùng mã món trên FABi, vị trí, lý do. Nguồn: bảng dữ liệu gốc dựng từ file của Sang. | Sang nhập, Khánh duyệt | 20/10 |
 | 10 | Tài khoản. Chủ tạo ở **Kho → Thiết lập → Nhân viên & máy dùng chung**: thủ kho, NV quầy, kế toán, máy tính bảng dùng chung, máy iPOS. Quản lý, thu ngân, marketing: Supabase Studio + một dòng `nhan_su` (`README.md`, mục "Việc kỹ thuật"). | Khánh | 28/10 |
 | 11 | Máy tính bảng dùng chung cần secret Worker `KHO_MAY_KHOA`: `npx wrangler secret put KHO_MAY_KHOA` (một chuỗi dài ngẫu nhiên). Thiếu thì màn máy dùng chung báo "Máy dùng chung chưa được bật". | Khánh | 28/10 |
 | 12 | Chọn kênh báo động (Zalo, Telegram hoặc email) — không chọn thì đèn đỏ ban đêm không ai biết. `web/README.md`, mục "Báo động". | Khánh | 28/10 |

@@ -8,9 +8,13 @@
  * kho đầy dữ liệu mô phỏng (chạy tao-du-lieu-kho.sql), kho chưa trừ theo iPOS, iPOS chưa bật.
  *
  * Bất biến:
- *   1. Từ chối và KHÔNG XOÁ GÌ khi: ba dòng chưa sửa; sai tên chi nhánh; sai ngày hôm nay (kể cả
- *      ngày không có thật); chế độ lạ; hơn một chi nhánh; chi nhánh "BẢN THỬ"; đã tới ngày bán đầu
- *      tiên; kho trừ theo iPOS; cấu hình iPOS đang bật.
+ *   1. Từ chối và KHÔNG XOÁ GÌ khi: ba dòng chưa sửa; sai tên chi nhánh; ngày không đúng dạng
+ *      YYYY-MM-DD, không có thật, hay không phải hôm nay; chế độ lạ; hơn một chi nhánh; chi nhánh
+ *      "BẢN THỬ"; đã tới ngày chót dọn kho; kho có mặt hàng mà sổ kho trống (danh mục thật nhập sau
+ *      lần dọn trước); kho trừ theo iPOS; cấu hình iPOS đang bật.
+ *
+ * Bài này không phụ thuộc ngày chạy: ngày chót trong file được thay bằng hôm nay + 30 ngày (trừ ca
+ * thử chính ngày chót), để bộ kiểm thử không đỏ khi lịch đi qua ngày chót thật.
  *   2. 'xem': không xoá gì, bảng kết quả liệt kê mọi bảng kho với số dòng đang có.
  *   3. 'xoa': mọi bảng dữ liệu kho về 0; bảng cài đặt giữ nguyên từng dòng; khách hàng, đặt bàn,
  *      nhân sự, chi nhánh không đụng; số phiếu và số tảng bắt đầu lại; sổ kho khớp tồn.
@@ -18,10 +22,10 @@
  *   5. Danh sách bảng giữ lại y hệt xoa-du-lieu-kho.sql — hai file không được lệch nhau.
  */
 
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { dungDatabase, taoBoDem } from './kho-chung.mjs';
+import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const THU = join(__dirname, '..', 'supabase', 'thu');
@@ -30,7 +34,7 @@ const XOA = readFileSync(join(THU, 'xoa-du-lieu-kho.sql'), 'utf8');
 const DON = readFileSync(join(THU, 'don-du-lieu-thu-truoc-khai-truong.sql'), 'utf8');
 
 const { ok, nhom, ketThuc } = taoBoDem('KHO · DỌN DỮ LIỆU THỬ TRƯỚC KHAI TRƯƠNG');
-const { db, cnA, cnB } = await dungDatabase();
+const { db, cnA, cnB, duoi } = await dungDatabase();
 
 // auth.uid() đọc claim sub như Supabase thật (tao-du-lieu-kho.sql đóng vai bằng claims) — như test-kho-du-lieu-thu.mjs.
 await db.exec(`
@@ -52,16 +56,17 @@ const DONG = {
   ten: `c_ten_chi_nhanh text := 'GÕ ĐÚNG TÊN CHI NHÁNH';`,
   ngay: `c_hom_nay       text := 'YYYY-MM-DD';`,
   cheDo: `c_che_do        text := 'xem';`,
-  banDau: `date '2026-11-08'`,
+  chot: `date '2026-10-20'`,
 };
-/** File với ba dòng đã sửa như người chạy sửa (và tuỳ chọn ngày bán đầu tiên khác). */
-const banSua = ({ ten = TEN, ngay, cheDo = 'xem', ngayBanDau = null }) => {
-  let s = DON.replace(DONG.ten, `c_ten_chi_nhanh text := ${lit(ten)};`)
-    .replace(DONG.ngay, `c_hom_nay       text := ${lit(ngay)};`)
-    .replace(DONG.cheDo, `c_che_do        text := ${lit(cheDo)};`);
-  if (ngayBanDau) s = s.replace(DONG.banDau, `date '${ngayBanDau}'`);
-  return s;
-};
+/**
+ * File với ba dòng đã sửa như người chạy sửa. `ngayChot`: ngày chót thay cho 20/10/2026 — mặc định hôm nay
+ * + 30 ngày, để bài thử chạy được mọi ngày. `ngay: null` → dòng ngày thành null (không có dấu nháy).
+ */
+const banSua = ({ ten = TEN, ngay, cheDo = 'xem', ngayChot = null }) =>
+  DON.replace(DONG.ten, `c_ten_chi_nhanh text := ${ten === null ? 'null' : lit(ten)};`)
+    .replace(DONG.ngay, `c_hom_nay       text := ${ngay === null ? 'null' : lit(ngay)};`)
+    .replace(DONG.cheDo, `c_che_do        text := ${lit(cheDo)};`)
+    .replace(DONG.chot, `date '${ngayChot ?? sau30}'`);
 
 /** Số dòng mọi bảng kho + vài bảng ngoài kho — chụp để so "không xoá gì". */
 const chup = async () => {
@@ -76,11 +81,12 @@ const giongNhau = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const GIU = ['kho_cai_dat', 'kho_vi_tri', 'kho_ly_do', 'kho_may', 'kho_may_nguoi', 'kho_may_nhat_ky',
   'kho_may_can', 'kho_nguoi_xem', 'kho_truong_them', 'kho_thiet_lap_bo_qua'];
 let homNay = '';
+let sau30 = '';
 let truoc = {};
 
 // ===========================================================================
 await nhom('0 · DỰNG DATABASE GIỐNG PRODUCTION: MỘT CHI NHÁNH, KHO ĐẦY DỮ LIỆU MÔ PHỎNG', async () => {
-  ok('File có đủ ba dòng để sửa và hằng số ngày bán đầu tiên 08/11/2026',
+  ok('File có đủ ba dòng để sửa và ngày chót dọn kho 20/10/2026',
      Object.values(DONG).every(d => DON.includes(d)), Object.entries(DONG).filter(([, d]) => !DON.includes(d)).map(([k]) => k).join(', '));
   await db.query(`delete from nhan_su where chi_nhanh_id = $1`, [cnB.id]);
   await db.query(`delete from chi_nhanh where id = $1`, [cnB.id]);
@@ -92,6 +98,7 @@ await nhom('0 · DỰNG DATABASE GIỐNG PRODUCTION: MỘT CHI NHÁNH, KHO ĐẦ
   await db.query(`update kho_cai_dat set nguon_so_ban = 'kiem_ke'`);
   await db.query(`update kho_ipos_cau_hinh set bat = false`);
   homNay = (await mot(`select hom_nay_vn()::text as d`)).d;
+  sau30 = (await mot(`select (hom_nay_vn() + 30)::text as d`)).d;
   truoc = await chup();
   ok('Kho có dữ liệu: mặt hàng, lô, sổ kho, hóa đơn iPOS; một chi nhánh tên thật',
      truoc.kho_mat_hang > 50 && truoc.kho_lo > 50 && truoc.kho_so_cai > 100 && truoc.kho_ipos_hoa_don > 0 && truoc.chi_nhanh === 1,
@@ -111,10 +118,13 @@ await nhom('1 · TỪ CHỐI — KHÔNG XOÁ GÌ', async () => {
   await tuChoi('Tên chi nhánh để trống', banSua({ ten: '', ngay: homNay }), /không khớp/);
   const homQua = (await mot(`select (hom_nay_vn() - 1)::text as d`)).d;
   await tuChoi('Ngày gõ vào là hôm qua', banSua({ ngay: homQua }), /không phải hôm nay theo giờ Việt Nam/);
-  await tuChoi('Ngày không có thật (31/02)', banSua({ ngay: '2026-02-31' }), /phải là ngày dạng/);
-  await tuChoi('Ngày viết kiểu khác (12/10/2026)', banSua({ ngay: '12/10/2026' }), /phải là ngày dạng|không phải hôm nay/);
+  await tuChoi('Ngày không có thật (2026-02-31)', banSua({ ngay: '2026-02-31' }), /không phải ngày có thật/);
+  await tuChoi('Ngày viết kiểu 12/10/2026 (Postgres có thể đọc nhầm tháng) — luôn từ chối vì sai dạng', banSua({ ngay: '12/10/2026' }), /phải là ngày dạng 'YYYY-MM-DD'/);
+  await tuChoi('Ngày để null', banSua({ ngay: null }), /phải là ngày dạng/);
+  await tuChoi('Tên chi nhánh để null', banSua({ ten: null, ngay: homNay }), /không khớp/);
   await tuChoi('Chế độ lạ ("xoá" có dấu)', banSua({ ngay: homNay, cheDo: 'xoá' }), /c_che_do phải là/);
-  await tuChoi('Đã tới ngày bán đầu tiên', banSua({ ngay: homNay, cheDo: 'xoa', ngayBanDau: homNay }), /đã tới ngày bán đầu tiên/);
+  await tuChoi('Chế độ viết hoa ("XOA")', banSua({ ngay: homNay, cheDo: 'XOA' }), /c_che_do phải là/);
+  await tuChoi('Hôm nay chính là ngày chót dọn kho', banSua({ ngay: homNay, cheDo: 'xoa', ngayChot: homNay }), /đã tới ngày chót dọn kho/);
 
   await db.query(`insert into chi_nhanh (ma, ten) values ('q9', 'Beeftown chi nhánh hai')`);
   await tuChoi('Database có hai chi nhánh', banSua({ ngay: homNay, cheDo: 'xoa' }), /database có 2 chi nhánh/);
@@ -147,7 +157,14 @@ await nhom('2 · CHẾ ĐỘ XEM — CHỈ ĐẾM', async () => {
   ok('Ví dụ: kho_mat_hang và kho_so_cai hiện đúng số dòng', Number(tim('kho_mat_hang')?.so_dong) === truoc.kho_mat_hang
      && Number(tim('kho_so_cai')?.so_dong) === truoc.kho_so_cai);
   ok('Không xoá gì', giongNhau(await chup(), truoc));
-  ok('Tên chi nhánh gõ thừa khoảng trắng đầu / cuối vẫn khớp', (await chay(banSua({ ten: `  ${TEN} `, ngay: homNay }))).loi === null);
+  ok('Tên chi nhánh và ngày gõ thừa khoảng trắng đầu / cuối vẫn nhận', (await chay(banSua({ ten: `  ${TEN} `, ngay: ` ${homNay} ` }))).loi === null);
+  const ngayMai = (await mot(`select (hom_nay_vn() + 1)::text as d`)).d;
+  ok('Ngày chót là ngày mai: hôm nay vẫn chạy được', (await chay(banSua({ ngay: homNay, ngayChot: ngayMai }))).loi === null);
+  ok('Cột "mới nhất": bảng có created_at hiện ngày giờ kiểu Việt (dd/mm/yyyy hh:mm), bảng không có thì để trống',
+     /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/.test(tim('kho_mat_hang')?.moi_nhat ?? '') && /^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/.test(tim('kho_phieu_nhap')?.moi_nhat ?? '')
+     && tim('kho_ton')?.moi_nhat === null, JSON.stringify([tim('kho_mat_hang'), tim('kho_ton')]));
+  const tre = (await mot(`select to_char((max(created_at) at time zone 'utc') + interval '7 hours', 'DD/MM/YYYY HH24:MI') as t from kho_mat_hang`)).t;
+  ok('… và đúng giờ Việt Nam (UTC + 7) của dòng mới nhất', tim('kho_mat_hang')?.moi_nhat === tre, `${tim('kho_mat_hang')?.moi_nhat} | ${tre}`);
 });
 
 // ===========================================================================
@@ -172,17 +189,31 @@ await nhom('3 · CHẾ ĐỘ XOÁ', async () => {
   await db.query(`truncate kho_so_thu_tu`);
   const sauMot = await chup();
   const lai = await chay(banSua({ ngay: homNay, cheDo: 'xoa' }));
-  ok('Chạy "xoa" lần hai: không lỗi, không đổi gì thêm', lai.loi === null && giongNhau(await chup(), sauMot), lai.loi ?? '');
+  ok('Chạy "xoa" lần hai ngay sau đó (kho trống, không còn dòng cấu hình iPOS nào): không lỗi, không đổi gì thêm',
+     lai.loi === null && giongNhau(await chup(), sauMot), lai.loi ?? '');
 });
 
 // ===========================================================================
-await nhom('4 · HAI FILE KHÔNG LỆCH NHAU', async () => {
+await nhom('4 · DỌN XONG, ĐÃ NHẬP DANH MỤC THẬT → KHÔNG XOÁ ĐƯỢC NỮA', async () => {
+  // Sau lần dọn, quản lý nhập danh mục (ở đây: danh mục mẫu) — chưa nhận hàng nên sổ kho còn trống.
+  const r = await duoi(UID.qlA, `select kho_tao_danh_muc_mau()`);
+  ok('Quản lý nhập danh mục sau lần dọn: được', !r.loi, r.loi ?? '');
+  const goc = await chup();
+  const kq = await chay(banSua({ ngay: homNay, cheDo: 'xoa' }));
+  ok('HỒI QUY (rà soát): chạy lại "xoa" lúc kho có mặt hàng mà sổ kho trống → từ chối, danh mục còn nguyên',
+     /danh mục thật vừa nhập sau lần dọn trước/.test(kq.loi ?? '') && giongNhau(await chup(), goc) && goc.kho_mat_hang > 0, kq.loi ?? 'CHẠY ĐƯỢC');
+  const xem = await chay(banSua({ ngay: homNay, cheDo: 'xem' }));
+  ok('… "xem" cũng dừng với cùng câu (người chạy biết trước khi đổi sang "xoa")', /danh mục thật vừa nhập/.test(xem.loi ?? ''), xem.loi ?? '');
+});
+
+// ===========================================================================
+await nhom('5 · HAI FILE KHÔNG LỆCH NHAU', async () => {
   const dsGiu = s => [...(s.match(/v_giu text\[\] := array\[([\s\S]*?)\];/)?.[1] ?? '').matchAll(/'([a-z_]+)'/g)].map(m => m[1]).sort();
   ok('Danh sách bảng giữ lại y hệt xoa-du-lieu-kho.sql',
      dsGiu(DON).length === GIU.length && JSON.stringify(dsGiu(DON)) === JSON.stringify(dsGiu(XOA)) && JSON.stringify(dsGiu(DON)) === JSON.stringify([...GIU].sort()),
      `${dsGiu(DON).join(',')} | ${dsGiu(XOA).join(',')}`);
-  ok('Không phải migration: nằm ở crm/supabase/thu, không có file cùng tên trong migrations',
-     !readFileSync(join(__dirname, '..', 'README.md'), 'utf8').includes('migrations/don-du-lieu-thu-truoc-khai-truong'));
+  ok('Không phải migration: nằm ở crm/supabase/thu, thư mục migrations không có file nào của nó',
+     !readdirSync(join(__dirname, '..', 'supabase', 'migrations')).some(f => /don[-_]du[-_]lieu|khai[-_]truong/.test(f)));
   ok('Không CASCADE (bảng giữ lại trỏ vào bảng bị xoá thì báo lỗi, không xoá lan)', !/cascade/i.test(DON.replace(/--.*$/gm, '')));
 });
 
