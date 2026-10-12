@@ -1024,6 +1024,11 @@ try {
     ok(`Ngày thử: sap-mo ${ngaySapMoThu()} sau hôm nay ${homNay} (giờ Việt Nam), da-mo ${NGAY_DA_MO_THU} đã qua; dòng trạng thái thử dài hai câu`,
        ngaySapMoThu() > homNay && NGAY_DA_MO_THU <= homNay
          && Object.values(TRANG_THAI_THU).every(c => (c.match(/[.!?](\s|$)/g) ?? []).length === 2 && timChuoiCam(c).length === 0));
+    // Con trỏ còn nằm ở chỗ nhóm 9 vừa bấm: ở /ko · 900 và 1440px chỗ đó trùng nút của màn đầu, trang vừa tải
+    // thì nút chuyển sang màu "di chuột" (180ms) và phép đo màu nút bắt đúng lúc đang chuyển — đỏ lúc có lúc
+    // không, cả trên commit gốc 0109a8d. Đưa con trỏ ra góc như nhóm 8; page.goto không dời con trỏ nên một
+    // lần là đủ cho cả nhóm.
+    await page.mouse.move(0, 0);
     for (const rong of [390, 900, 1024, 1440]) {
       await page.setViewportSize({ width: rong, height: rong < 600 ? 844 : 900 });
       for (const [kichBan, ngay] of TRANG_THAI) {
