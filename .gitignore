@@ -37,10 +37,6 @@
 !/.github/pull_request_template.md
 !/.github/ISSUE_TEMPLATE/*.yml
 
-# --- ĐƯỢC PHÉP: website ---
-!Beeftown_Website/index.html
-!Beeftown_Website/google-apps-script.gs
-
 # --- ĐƯỢC PHÉP: hệ thống CRM ---
 !crm/README.md
 !crm/package.json
@@ -56,13 +52,8 @@
 # --- ĐƯỢC PHÉP: tài liệu thiết kế dạng web ---
 !Beeftown_Bo_Nhan_Dien_So.html
 !Beeftown_CRM_Design.html
-!Beeftown_Instore_Art.html
-!Beeftown_Logo_Suite_and_Directions.html
-!Beeftown_Dashboard.html
-!Beeftown_Concept_Board_v1.svg
 
 # --- ĐƯỢC PHÉP: công cụ nội bộ ---
-!Beeftown_Can_TMA.html
 # Chương trình nạp cân qua WiFi (chạy trên máy tính ở quán, tải ở màn Đồng bộ cân)
 !/web/public/kho/can-wifi/Nap-Can-WiFi.ps1
 # Chương trình Beeftown Cân (.exe) — mã nguồn; dist/ và node_modules/ vẫn bị chặn

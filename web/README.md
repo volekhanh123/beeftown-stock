@@ -2,7 +2,7 @@
 
 Trang công khai của Beeftown. Astro 7 chạy trên Cloudflare Workers, đọc dữ liệu từ Supabase.
 
-> **Khác với phần còn lại của repo, thư mục này CÓ bước build.** `Beeftown_Website/index.html` cũ mở thẳng bằng trình duyệt là chạy; thư mục này thì không. Đổi lại, trang biết đọc database nên nội dung đổi được mà không cần deploy lại.
+> **Khác với phần còn lại của repo, thư mục này CÓ bước build.** Bản nháp website cũ (`Beeftown_Website/`, đã lưu trữ 12/10/2026) mở thẳng bằng trình duyệt là chạy; thư mục này thì không. Đổi lại, trang biết đọc database nên nội dung đổi được mà không cần deploy lại.
 
 ---
 

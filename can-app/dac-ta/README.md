@@ -22,6 +22,9 @@ phần mềm của hãng đi kèm cân TM-A. Chú thích trong `can-app/src/` (`
 (`nghien-cuu/ma-dich-nguoc/…` mà đặc tả trích số dòng). Cả hai từng nằm ở nhánh `phan-mem-can-cu`; Khánh giữ bản
 ở máy / Drive. Đường dẫn `phan-mem-can-cu/…`, `nghien-cuu/…` trong các file này là đường dẫn trong bản đó.
 
+"Our tool" / "the current tool" trong các file này là công cụ HTML cũ `Beeftown_Can_TMA.html` (số dòng trích theo
+bản lúc đó; đã lưu trữ 12/10/2026, nguyên văn ở [commit 9443cc2](https://github.com/volekhanh123/beeftown-stock/tree/9443cc2cabb71b792772b1a52d7c134edab456cc/Beeftown_Can_TMA.html)). Beeftown Cân thay nó.
+
 Mật khẩu quản trị mặc định của hãng được thay bằng `<factory default>` (xem sách hướng dẫn của hãng) — như
 quy ước của `CAN-TMA.md`: không ghi giá trị đó vào repo. Mật khẩu CSDL Access viết cứng trong phần mềm hãng thì từ
 đầu đã không chép.
