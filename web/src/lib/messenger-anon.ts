@@ -39,7 +39,7 @@ export interface ThamSoDatBanMess {
  * tao_dat_ban đúng như form website, đánh dấu nguồn bằng utm (không cần cột
  * mới): p_utm_source='messenger', p_utm_medium='chatbot'. Đồng ý nhận tin là
  * TÙY CHỌN và bot không hỏi → p_dong_y=false. Messenger không có IP → null:
- * database đếm mọi lời gọi IP null chung một xô (0066) — giới hạn theo khách
+ * database đếm mọi lời gọi IP null chung một xô (0074) — giới hạn theo khách
  * của bot nằm ở mess_xin_dat_ban (0053).
  */
 export async function taoDatBanMess(
@@ -79,7 +79,7 @@ export async function taoDatBanMess(
 }
 
 /**
- * tra_cuu_mot_dat_ban (0066) — trả một giá trị jsonb (null = không thấy), không phải bảng: với
+ * tra_cuu_mot_dat_ban (0074) — trả một giá trị jsonb (null = không thấy), không phải bảng: với
  * hàm trả bảng, người gọi PostgREST tự hủy được giao dịch của lần sai (406 vnd.pgrst.object+json)
  * và khoá dò mã không bao giờ đếm. Hàm tự ghi nhật ký và tự khoá, kể cả với p_ip null. Đang khoá
  * thì database trả câu tiếng Việt "Tra cứu bị tạm khoá…" → { ok: false, loi }.
@@ -96,7 +96,7 @@ export async function traCuuMess(
 }
 
 /**
- * huy_dat_ban tự ghi nhật ký tra cứu và dùng chung khoá với tra_cuu_mot_dat_ban (0066). true = đã hủy;
+ * huy_dat_ban tự ghi nhật ký tra cứu và dùng chung khoá với tra_cuu_mot_dat_ban (0074). true = đã hủy;
  * false = không tìm thấy; lỗi = tìm thấy nhưng không hủy được nữa, hoặc đang khoá.
  */
 export async function huyDatBanMess(

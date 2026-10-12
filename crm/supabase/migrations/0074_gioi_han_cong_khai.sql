@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0066 · GIỚI HẠN TẦN SUẤT CỦA CÁC HÀM CÔNG KHAI
+-- BEEFTOWN CRM — 0074 · GIỚI HẠN TẦN SUẤT CỦA CÁC HÀM CÔNG KHAI
 -- =============================================================================
 -- Khoá anon là CÔNG KHAI theo thiết kế: trang nào cũng mang nó, ai cũng gọi
 -- thẳng PostgREST được với tham số tự chọn — kể cả p_ip. Nên mọi giới hạn phải
@@ -149,7 +149,7 @@ end
 $$;
 
 comment on table gioi_han_luot is
-  'Lượt đã nhận của các hàm công khai không có bảng riêng để đếm (0066). Chỉ gioi_han_lay_luot() ghi. Không ai đọc / ghi thẳng.';
+  'Lượt đã nhận của các hàm công khai không có bảng riêng để đếm (0074). Chỉ gioi_han_lay_luot() ghi. Không ai đọc / ghi thẳng.';
 
 
 -- -----------------------------------------------------------------------------
@@ -200,13 +200,13 @@ end;
 $$;
 
 comment on function gioi_han_lay_luot(text, text, integer, interval) is
-  'NỘI BỘ (0066): lấy một lượt trong xô (việc, khoá) nếu còn dưới p_toi_da lượt trong p_cua_so — true và ghi một dòng; hết lượt thì false. Khoá advisory theo xô trước khi đếm.';
+  'NỘI BỘ (0074): lấy một lượt trong xô (việc, khoá) nếu còn dưới p_toi_da lượt trong p_cua_so — true và ghi một dòng; hết lượt thì false. Khoá advisory theo xô trước khi đếm.';
 
 
 -- =============================================================================
 -- 2 · TẠO ĐẶT BÀN — giới hạn lời gọi không phiên
 -- =============================================================================
--- Chép nguyên văn 0062, chỉ thêm khối 0066 ngay trước bước tạo khách.
+-- Chép nguyên văn 0062, chỉ thêm khối 0074 ngay trước bước tạo khách.
 -- =============================================================================
 create or replace function tao_dat_ban(
   p_chi_nhanh_ma text,
@@ -300,7 +300,7 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  -- ---- 0066 · Giới hạn tần suất cho lời gọi không phiên ---------------------
+  -- ---- 0074 · Giới hạn tần suất cho lời gọi không phiên ---------------------
   -- Đứng sau mọi bước kiểm: yêu cầu sai (ngày qua, hết bàn) nhận đúng câu của
   -- nó và không tốn lượt. Lượt lấy ở đây hủy theo nếu bước sau ném lỗi.
   if not co_phien_dang_nhap() then
@@ -336,7 +336,7 @@ begin
         using errcode = 'check_violation';
     end if;
   end if;
-  -- ---- Hết phần 0066 -----------------------------------------------------------
+  -- ---- Hết phần 0074 -----------------------------------------------------------
 
   v_khach := tim_hoac_tao_khach(p_sdt, p_ho_ten, v_cn.id,
                                 p_utm_source, p_utm_medium, p_utm_campaign);
@@ -363,7 +363,7 @@ end;
 $$;
 
 comment on function tao_dat_ban is
-  'API công khai cho website và Messenger. SECURITY DEFINER. Kiểm tra chỗ trống nguyên tử và chặn khung giờ đã qua theo giờ Việt Nam. Từ 0062: lời gọi không phiên gửi lại Y HỆT trong 10 phút nhận lại đúng dòng cũ. Từ 0066: lời gọi không phiên bị giới hạn — 3 yêu cầu còn chờ mỗi số điện thoại, 5 / giờ mỗi IP (p_ip khác null), 30 / giờ mỗi chi nhánh.';
+  'API công khai cho website và Messenger. SECURITY DEFINER. Kiểm tra chỗ trống nguyên tử và chặn khung giờ đã qua theo giờ Việt Nam. Từ 0062: lời gọi không phiên gửi lại Y HỆT trong 10 phút nhận lại đúng dòng cũ. Từ 0074: lời gọi không phiên bị giới hạn — 3 yêu cầu còn chờ mỗi số điện thoại, 5 / giờ mỗi IP (p_ip khác null), 30 / giờ mỗi chi nhánh.';
 
 
 -- =============================================================================
@@ -372,14 +372,13 @@ comment on function tao_dat_ban is
 -- nhat_ky_tra_cuu thêm sdt_bam: md5 của số điện thoại đã chuẩn hóa, để đếm lần
 -- sai theo số mà bảng không hiện số thô cho người đọc lướt. KHÔNG phải ẩn danh —
 -- 10 chữ số dò ngược được; bảng chỉ chủ sở hữu đọc (0013). Từ bản này mọi lần
--- tra đều ghi, nên dòng quá 90 ngày tự dọn dần (như su_kien_web, 0013) — đủ dài
--- để làm bằng chứng nếu có ai dò mã, không giữ IP và số điện thoại mãi.
+-- tra đều ghi; dòng quá 30 ngày do lượt báo động dọn (don_nhat_ky_qua_han, 0073)
+-- — không giữ IP và số điện thoại mãi. Câu đếm theo created_at dùng chỉ mục
+-- nhat_ky_tra_cuu_created_idx của 0073.
 alter table nhat_ky_tra_cuu add column sdt_bam text;
 
-create index nhat_ky_tra_cuu_tao_idx on nhat_ky_tra_cuu (created_at);
-
 comment on column nhat_ky_tra_cuu.sdt_bam is
-  'md5 của số điện thoại đã chuẩn hóa người tra gõ (0066) — để khoá dò mã theo số. Không phải ẩn danh. Dòng quá 90 ngày tự dọn.';
+  'md5 của số điện thoại đã chuẩn hóa người tra gõ (0074) — để khoá dò mã theo số. Không phải ẩn danh. Dòng quá 30 ngày do don_nhat_ky_qua_han (0073) dọn.';
 
 
 -- -----------------------------------------------------------------------------
@@ -420,33 +419,24 @@ end;
 $$;
 
 comment on function kiem_khoa_tra_cuu(inet, text) is
-  'NỘI BỘ (0066): khoá tra cứu / hủy đặt bàn — 15 phút: 6 lần sai mỗi IP (p_ip khác null), 5 lần sai mỗi số điện thoại, 100 lần mọi người. Ném câu khoá của 0013.';
+  'NỘI BỘ (0074): khoá tra cứu / hủy đặt bàn — 15 phút: 6 lần sai mỗi IP (p_ip khác null), 5 lần sai mỗi số điện thoại, 100 lần mọi người. Ném câu khoá của 0013.';
 
 
--- Ghi một lần tra / hủy và dọn dần dòng quá 90 ngày (tối đa 50 dòng mỗi lần,
--- skip locked như gioi_han_lay_luot). KHÔNG security definer: chỉ tra_cuu_dat_ban
--- và huy_dat_ban gọi.
+-- Ghi một lần tra / hủy — một chỗ ghi cho cả tra_cuu_dat_ban và huy_dat_ban.
+-- Dọn dòng cũ là việc của don_nhat_ky_qua_han (0073). KHÔNG security definer:
+-- chỉ hai hàm definer trên gọi.
 create or replace function ghi_lan_tra_cuu(p_ip inet, p_ma text, p_thanh_cong boolean, p_sdt_bam text)
 returns void
-language plpgsql
+language sql
 volatile
 set search_path = public
 as $$
-begin
   insert into nhat_ky_tra_cuu (ip, ma_thu, thanh_cong, sdt_bam)
   values (p_ip, left(coalesce(p_ma, ''), 12), coalesce(p_thanh_cong, false), p_sdt_bam);
-
-  delete from nhat_ky_tra_cuu
-  where id in (select n.id from nhat_ky_tra_cuu n
-               where n.created_at < now() - interval '90 days'
-               order by n.created_at
-               limit 50
-               for update skip locked);
-end;
 $$;
 
 comment on function ghi_lan_tra_cuu(inet, text, boolean, text) is
-  'NỘI BỘ (0066): ghi một dòng nhat_ky_tra_cuu (kèm sdt_bam) và dọn dần dòng quá 90 ngày. Chỉ tra_cuu_dat_ban / huy_dat_ban gọi.';
+  'NỘI BỘ (0074): ghi một dòng nhat_ky_tra_cuu (kèm sdt_bam). Chỉ tra_cuu_dat_ban / huy_dat_ban gọi. Dọn dòng cũ: don_nhat_ky_qua_han (0073).';
 
 
 -- Chép 0013; VOLATILE (tự ghi nhật ký), kiểm khoá cho cả IP null, ghi một dòng
@@ -502,7 +492,7 @@ begin
     and d.ngay >= hom_nay_vn() - 1;
   v_thay := found;
 
-  -- 0066: tự ghi — không còn trông vào người gọi gọi thêm ghi_nhat_ky_tra_cuu.
+  -- 0074: tự ghi — không còn trông vào người gọi gọi thêm ghi_nhat_ky_tra_cuu.
   perform ghi_lan_tra_cuu(p_ip, p_ma, v_thay, v_bam);
 end;
 $$;
@@ -550,7 +540,7 @@ end;
 $$;
 
 comment on function tra_cuu_mot_dat_ban(text, text, inet) is
-  'API công khai (0066): tra cứu đặt bàn theo mã + số điện thoại, trả jsonb (null khi không thấy). Trả một giá trị để PostgREST không hủy được giao dịch của lần sai (406 vnd.pgrst.object+json) — khoá dò mã luôn đếm. Thay tra_cuu_dat_ban cho anon.';
+  'API công khai (0074): tra cứu đặt bàn theo mã + số điện thoại, trả jsonb (null khi không thấy). Trả một giá trị để PostgREST không hủy được giao dịch của lần sai (406 vnd.pgrst.object+json) — khoá dò mã luôn đếm. Thay tra_cuu_dat_ban cho anon.';
 
 
 -- Chép 0013; kiểm khoá trước khi tìm, ghi nhật ký kèm sdt_bam.
@@ -573,7 +563,7 @@ begin
   v_sdt := chuan_hoa_sdt(p_sdt);
   v_bam := case when v_sdt is null then null else md5(v_sdt) end;
 
-  -- 0066: hủy là một đường tra mã — cùng khoá, cùng sổ với tra_cuu_dat_ban.
+  -- 0074: hủy là một đường tra mã — cùng khoá, cùng sổ với tra_cuu_dat_ban.
   perform kiem_khoa_tra_cuu(p_ip, v_bam);
 
   select d.* into v_dat
@@ -606,7 +596,7 @@ end;
 $$;
 
 comment on function ghi_nhat_ky_tra_cuu(inet, text, boolean) is
-  'Từ 0066 không ai bên ngoài gọi được (thu quyền anon, authenticated): tra_cuu_dat_ban và huy_dat_ban tự ghi nhật ký. Giữ lại để bản web cũ gọi nhận lỗi quyền — đã bọc try/catch — thay vì lỗi không có hàm.';
+  'Từ 0074 không ai bên ngoài gọi được (thu quyền anon, authenticated): tra_cuu_dat_ban và huy_dat_ban tự ghi nhật ký. Giữ lại để bản web cũ gọi nhận lỗi quyền — đã bọc try/catch — thay vì lỗi không có hàm.';
 
 
 -- =============================================================================
@@ -633,7 +623,7 @@ begin
   end if;
 
   -- Vé là quyền ghi vào kho file. Không phát vô tội vạ.
-  -- 0066: khoá trước khi đếm; IP null đếm như MỘT IP; trần toàn cục giờ và
+  -- 0074: khoá trước khi đếm; IP null đếm như MỘT IP; trần toàn cục giờ và
   -- ngày (đổi p_ip mỗi lần không lách được). Mỗi vé tối đa 5 MB (file_size_limit
   -- 0014), một file (mục dưới): 100 vé / ngày là ≤ 500 MB / ngày trong kho.
   perform pg_advisory_xact_lock(hashtext('phieu_tai_len'));
@@ -729,7 +719,7 @@ end;
 $$;
 
 comment on function ve_con_hieu_luc is
-  'Đoạn đầu đường dẫn kho CV có phải một vé còn hiệu lực VÀ chưa có file nào không (0066: một vé = một file). Chỉ trả boolean — không mở đường đọc nào vào phieu_tai_len.';
+  'Đoạn đầu đường dẫn kho CV có phải một vé còn hiệu lực VÀ chưa có file nào không (0074: một vé = một file). Chỉ trả boolean — không mở đường đọc nào vào phieu_tai_len.';
 
 
 -- Trigger BEFORE INSERT trên storage.objects — chốt 2 ở trên. KHÔNG security
@@ -772,26 +762,26 @@ end;
 $$;
 
 comment on function ho_so_mot_ve_mot_file() is
-  'Trigger BEFORE INSERT trên storage.objects (0066): thư mục vé tải CV đã có một file thì từ chối file thứ hai — giữ khoá theo vé tới hết giao dịch nên hai lượt tải song song không cùng lọt.';
+  'Trigger BEFORE INSERT trên storage.objects (0074): thư mục vé tải CV đã có một file thì từ chối file thứ hai — giữ khoá theo vé tới hết giao dịch nên hai lượt tải song song không cùng lọt.';
 
--- KHỐI STORAGE 0066 — PGlite không có schema storage: bỏ qua, như 0014 / 0016.
+-- KHỐI STORAGE 0074 — PGlite không có schema storage: bỏ qua, như 0014 / 0016.
 -- test-cong-khai-gioi-han.mjs chạy lại nguyên khối này trên bảng storage.objects
 -- dựng giả. Changelog Supabase 21/04/2025: trigger trên storage.objects vẫn được
 -- phép (chỉ cấm tạo bảng / hàm / chỉ mục trong schema storage).
 do $$
 begin
   if not exists (select 1 from pg_namespace where nspname = 'storage') then
-    raise notice 'Không có schema storage (đang chạy PGlite) — bỏ qua trigger một vé một file của 0066.';
+    raise notice 'Không có schema storage (đang chạy PGlite) — bỏ qua trigger một vé một file của 0074.';
     return;
   end if;
 
   execute 'drop trigger if exists ho_so_mot_ve_mot_file on storage.objects';
   execute 'create trigger ho_so_mot_ve_mot_file before insert on storage.objects for each row execute function public.ho_so_mot_ve_mot_file()';
 
-  raise notice '0066: đã gắn trigger một vé một file vào storage.objects.';
+  raise notice '0074: đã gắn trigger một vé một file vào storage.objects.';
 end
 $$;
--- HẾT KHỐI STORAGE 0066
+-- HẾT KHỐI STORAGE 0074
 
 
 -- =============================================================================
@@ -845,7 +835,7 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  -- ---- 0066 · Khoá trước khi đếm; IP null đếm như một IP; trần toàn cục ---
+  -- ---- 0074 · Khoá trước khi đếm; IP null đếm như một IP; trần toàn cục ---
   perform pg_advisory_xact_lock(hashtext('ho_so_ung_tuyen'));
 
   select count(*) filter (where ip is not distinct from p_ip), count(*)
@@ -861,7 +851,7 @@ begin
     raise exception 'Hệ thống đang nhận quá nhiều yêu cầu, vui lòng thử lại sau hoặc liên hệ trực tiếp với nhà hàng'
       using errcode = 'check_violation';
   end if;
-  -- ---- Hết phần 0066 — từ đây là nguyên văn 0026 --------------------------
+  -- ---- Hết phần 0074 — từ đây là nguyên văn 0026 --------------------------
 
   select * into v_vi_tri from vi_tri_tuyen_dung
   where ma = p_vi_tri_ma and trang_thai = 'da_cong_bo';
@@ -983,7 +973,7 @@ declare
   v_cn    uuid;
 begin
   -- Trần thô để một trang bị lỗi vòng lặp không làm ngập bảng.
-  -- 0066: phiên null đếm như MỘT phiên; p_phien do người gọi chọn — đổi mỗi
+  -- 0074: phiên null đếm như MỘT phiên; p_phien do người gọi chọn — đổi mỗi
   -- lần là lách được, nên thêm trần toàn cục phút và giờ. Một lần quét theo
   -- created_at (≤ 3000 dòng). Không khoá: đây là đếm thô, vượt vài dòng khi
   -- nhiều lượt cùng lúc không hại.
@@ -1039,7 +1029,7 @@ $$;
 -- =============================================================================
 -- CHỐT QUYỀN — xem giải thích ở 0008 mục 6. Giữ dòng ve_con_hieu_luc: xem 0025.
 -- =============================================================================
--- Từ 0066 KHÔNG còn dòng ghi_nhat_ky_tra_cuu, và tra_cuu_dat_ban nhường chỗ cho
+-- Từ 0074 KHÔNG còn dòng ghi_nhat_ky_tra_cuu, và tra_cuu_dat_ban nhường chỗ cho
 -- tra_cuu_mot_dat_ban (mục 3). Migration sau chép khối này, đừng chép khối của
 -- 0062 trở về trước.
 do $$

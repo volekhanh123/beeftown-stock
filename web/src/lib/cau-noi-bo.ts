@@ -125,7 +125,7 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Chỉ chủ sở hữu hoặc quản lý mới khởi tạo được tin tuyển dụng mẫu': 'Only the owner or a manager can create the sample job postings',
   'Không sinh được mã đặt bàn, vui lòng thử lại': 'Could not generate a booking code, please try again',
   'Tra cứu bị tạm khoá, vui lòng gọi nhà hàng': 'Lookup is temporarily locked, please call the restaurant',
-  // 0066 — giới hạn tần suất của các hàm công khai
+  // 0074 — giới hạn tần suất của các hàm công khai
   'Số điện thoại này đã có nhiều yêu cầu đặt bàn đang chờ nhà hàng xác nhận, vui lòng gọi nhà hàng':
     'This phone number already has several table requests waiting for confirmation, please call the restaurant',
   'Mạng bạn đang dùng đã gửi quá nhiều yêu cầu đặt bàn, vui lòng thử lại sau hoặc gọi nhà hàng':
@@ -160,6 +160,24 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Lượt báo động này đã kết thúc hoặc quá hạn': 'This alert run has already ended or expired',
   'Danh sách đèn không hợp lệ': 'The list of health lights is invalid',
   'Tên kênh báo động không hợp lệ': 'The alert channel name is invalid',
+
+  // 0069 — hàm CRM giới hạn đúng chi nhánh; đặt bàn chỉ đổi theo đúng bước (trigger dat_ban_kiem_sua)
+  'Chỉ tạo được hồ sơ khách mới cho chi nhánh của bạn': 'You can only create new guest records for your own branch',
+  'Chỉ xem được phiếu đo của chi nhánh của bạn': 'You can only view the launch scorecard of your own branch',
+  'Chỉ khởi tạo được tin mẫu cho chi nhánh của bạn': 'You can only create sample job postings for your own branch',
+  'Khách này chưa từng ghé hay đặt bàn ở chi nhánh này': 'This guest has never visited or booked at this branch',
+  'Chiến dịch không thuộc chi nhánh này': 'This campaign does not belong to this branch',
+  'Bước chuyển trạng thái đặt bàn không hợp lệ': 'That booking status change is not allowed',
+  'Không sửa được khách, chi nhánh, mã đặt bàn, đồng ý nhận tin hay nguồn của một đặt bàn':
+    'The guest, branch, booking code, marketing consent and source of a booking cannot be changed',
+  'Đặt bàn đã kết thúc — không đổi được ngày, giờ, số khách hay bàn':
+    'This booking has ended — its date, time, party size and table cannot be changed',
+  'Bàn này không thuộc chi nhánh của đặt bàn': 'This table does not belong to the branch of the booking',
+  'Lượt ghé phải của đúng khách và đúng chi nhánh của đặt bàn':
+    'The visit must belong to the same guest and branch as the booking',
+  'Người xử lý phải là chính người đang đăng nhập': 'The handler must be the person who is signed in',
+  'Đặt bàn mới chỉ ở trạng thái chờ gọi hoặc đã xác nhận': 'A new booking can only be waiting for a call or already confirmed',
+  'Mẫu tin khác mẫu của chiến dịch': 'The message template differs from the campaign template',
 };
 
 /**

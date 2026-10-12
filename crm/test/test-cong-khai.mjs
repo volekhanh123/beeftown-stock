@@ -189,7 +189,7 @@ await nhom('3 · LỊCH TRỐNG KHÔNG TIẾT LỘ SỐ BÀN', async () => {
 });
 
 /**
- * Tra cứu như website / Messenger. Từ 0066 anon gọi tra_cuu_mot_dat_ban (trả jsonb, null khi không
+ * Tra cứu như website / Messenger. Từ 0074 anon gọi tra_cuu_mot_dat_ban (trả jsonb, null khi không
  * thấy) thay tra_cuu_dat_ban (trả bảng — người gọi PostgREST hủy được giao dịch của lần sai, khoá dò
  * mã không đếm). Đổi về dạng { rows } như trước để các kiểm tra dưới giữ nguyên.
  */
@@ -227,7 +227,7 @@ await nhom('4 · TRA CỨU ĐẶT BÀN — MÃ KHÔNG BAO GIỜ ĐỦ', async ()
   const thuongHoaThuong = await traCuu(ma.toLowerCase(), '0912345678');
   ok('Mã không phân biệt hoa thường', thuongHoaThuong.rows.length === 1);
 
-  // Giới hạn dò mã. Từ 0066 hàm tra tự ghi mỗi lần tra (anon không còn gọi được
+  // Giới hạn dò mã. Từ 0074 hàm tra tự ghi mỗi lần tra (anon không còn gọi được
   // ghi_nhat_ky_tra_cuu — bản cũ của kiểm tra này chèn sáu dòng "sai" bằng hàm đó). Sáu lần tra
   // sai thật từ một IP; mỗi lần một số điện thoại khác để chỉ khoá theo IP được thử ở đây
   // (khoá theo số và toàn cục: test-cong-khai-gioi-han.mjs).
