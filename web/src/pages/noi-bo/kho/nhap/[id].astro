@@ -318,12 +318,6 @@ let anhGiuForm: string[] | null = null;
 let giaForm: DienGiaForm | null = null;
 
 const form = await docFormGui(Astro);
-if (Astro.request.method === 'POST' && !form) {
-  bao = kqHai(false, {
-    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
-    en: 'Could not read what was sent — the connection may have dropped. Please send again.',
-  });
-}
 if (form) {
   const viec = String(form.get('viec') ?? '');
   const ve = (id: string, kq: KetQua, them = '') =>

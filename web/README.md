@@ -99,6 +99,8 @@ web/
 │  │  ├─ nop-ho-so.ts  ← nhận hồ sơ ứng tuyển + tải CV
 │  │  ├─ dat-ban.ts    ← lịch trống và gửi yêu cầu đặt bàn
 │  │  ├─ xu-ly-form.ts ← POST → chuyển hướng → GET, dùng chung hai ngôn ngữ
+│  │  ├─ than-gioi-han.ts ← đọc thân POST có giới hạn: form công khai, webhook iPOS, Messenger
+│  │  ├─ gui-noi-bo.ts ← form ở /noi-bo (CRM): đọc thân, chuyển hướng 303, câu báo qua cookie
 │  │  ├─ tuyen-dung.ts
 │  │  └─ kho/          ← PHẦN MỀM KHO — xem mục "Kho" bên dưới
 │  ├─ layouts/
@@ -539,7 +541,12 @@ trang chủ · **thực đơn** · **đến Beeftown** · **hỏi bàn** · tuy�
 **Giao diện nội bộ `/noi-bo`:**
 đăng nhập · tổng quan (danh sách việc còn thiếu, đọc thẳng từ bốn view trong database) · **công tắc nội dung** · hộp thư đặt bàn · hộp thư hồ sơ ứng tuyển.
 
-**Hai form công khai**, đều là form HTML thuần, gửi được khi không có JavaScript. Form hỏi bàn có thêm script bổ trợ: báo lỗi sát ô, chặn bấm đúp ("Đang gửi…"), giữ dữ liệu đã gõ khi mất mạng hay database báo lỗi:
+**Hai form công khai**, đều là form HTML thuần, gửi được khi không có JavaScript. Cả hai có thêm script bổ trợ: chặn bấm đúp ("Đang gửi…"), giữ dữ liệu đã gõ khi database báo lỗi; form hỏi bàn báo lỗi sát ô, form nộp hồ sơ báo file CV quá 5MB sát ô trước khi gửi. Cùng một khuôn ở máy chủ (`lib/xu-ly-form.ts`):
+
+- Thân POST đọc có giới hạn (`lib/than-gioi-han.ts`): hỏi bàn 256 KB, nộp hồ sơ 6 MB (CV 5 MB cộng các ô chữ). Quá ngưỡng hay đứt giữa chừng thì database chưa được gọi — trang nói "CHƯA được ghi nhận", không phải trang 500.
+- Database không trả lời thì trang nói "KHÔNG CHẮC đã ghi nhận — đừng gửi lại, nhắn Facebook để kiểm tra", và không mời gửi lại: không điền sẵn form; trang tuyển dụng không dựng form, chỉ còn khung lỗi và nút liên hệ.
+- Gửi lại y hệt (bấm đúp khi tắt JavaScript, gửi lại sau câu "không chắc") nhận lại đúng mã cũ — đặt bàn trong 10 phút (`0062`), hồ sơ trong ngày nộp (`0066`).
+- Database từ chối hồ sơ thì trang quay về đúng vị trí đã chọn (`?vi_tri=`).
 
 | Form | Hiện khi nào |
 |---|---|

@@ -32,10 +32,6 @@ const nn = k.nn;
 /** Câu báo của trang — cả hai thứ tiếng đi theo câu báo (KetQua.cauEn). */
 const CAU = {
   khongThayNcc: { vi: 'Không tìm thấy nhà cung cấp này.', en: 'This supplier was not found.' },
-  mangDut: {
-    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
-    en: 'Could not read what was sent — the connection may have dropped. Please send it again.',
-  },
   nhapSoTien: { vi: 'Ghi số tiền, hoặc bấm "Trả đủ".', en: 'Enter an amount, or press "Pay in full".' },
   khongNoLai: {
     vi: 'Nhà cung cấp không nợ lại quán đồng nào — không có gì để hoàn.',
@@ -105,9 +101,6 @@ let maGui: string = crypto.randomUUID();
 let loiDoc = k.loiDoc;
 
 const form = await docFormGui(Astro);
-if (Astro.request.method === 'POST' && !form) {
-  bao = kqHai(false, CAU.mangDut);
-}
 if (form) {
   const viec = String(form.get('viec') ?? '');
   if (viec === 'ghi') {

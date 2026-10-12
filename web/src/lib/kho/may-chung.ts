@@ -51,7 +51,7 @@
 
 import type { AstroCookies, AstroGlobal } from 'astro';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
-import { coDatabase, xoaToken, type NhanSu } from '../phien';
+import { coDatabase, xoaToken, type NhanSu } from '../phien.ts';
 import { kqHai, kqLoi, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 import { docBao, ghiBao } from './bao.ts';

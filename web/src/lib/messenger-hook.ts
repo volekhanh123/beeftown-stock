@@ -42,6 +42,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { taoClient, maChiNhanh } from './noi-dung.ts';
+import { docThanGioiHan } from './than-gioi-han.ts';
 import {
   META_API, kiemChuKy, xacMinhWebhook, tachSuKien, bamPsid, xoaBiMat, buocTiep, thanTin, thanDangGo, thanHoSo,
   dungYeuCauMeta, CAU_BOT, type SuKien, type DauVao, type PhienBot, type NguCanh, type YeuCauGoi, type KetQuaGoi, type LoaiDem, type Tin,
@@ -277,27 +278,6 @@ function traChu(status: number, chu: string, them: Record<string, string> = {}):
   return new Response(chu, { status, headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store', ...them } });
 }
 
-/** Đọc body tối đa `toiDa` byte, giữ nguyên từng byte (chữ ký tính trên body thô); quá → null. */
-async function docBodyByte(req: Request, toiDa: number): Promise<Uint8Array | null> {
-  const dai = Number(req.headers.get('content-length') ?? '');
-  if (Number.isFinite(dai) && dai > toiDa) return null;
-  if (!req.body) return new Uint8Array(0);
-  const r = req.body.getReader();
-  const phan: Uint8Array[] = [];
-  let tong = 0;
-  for (;;) {
-    const { done, value } = await r.read();
-    if (done) break;
-    tong += value.byteLength;
-    if (tong > toiDa) { try { await r.cancel(); } catch { /* bỏ qua */ } return null; }
-    phan.push(value);
-  }
-  const gop = new Uint8Array(tong);
-  let i = 0;
-  for (const p of phan) { gop.set(p, i); i += p.byteLength; }
-  return gop;
-}
-
 /** Gọi Graph API. Không ném; câu lỗi đã sạch token. */
 async function goiMeta(url: string, token: string, body: unknown, fetchFn: typeof fetch): Promise<{ ok: true; data: unknown } | { ok: false; cau: string }> {
   const yc = dungYeuCauMeta(url, token, body);
@@ -340,7 +320,8 @@ export async function xuLyHookMessenger(req: Request, pt: PhuThuocMess = {}): Pr
     }
 
     let body: Uint8Array | null;
-    try { body = await docBodyByte(req, META_API.bodyToiDa); } catch { return traChu(400, 'Không đọc được nội dung'); }
+    // Giữ nguyên từng byte: chữ ký tính trên body thô. Bộ đọc giới hạn dùng chung với form công khai.
+    try { body = await docThanGioiHan(req, META_API.bodyToiDa); } catch { return traChu(400, 'Không đọc được nội dung'); }
     if (body === null) return traChu(413, 'Nội dung quá lớn');
     if (!(await kiemChuKy(body, req.headers.get(META_API.headerChuKy), bm.appSecret!))) {
       ghi('bỏ webhook: chữ ký X-Hub-Signature-256 thiếu hoặc sai');

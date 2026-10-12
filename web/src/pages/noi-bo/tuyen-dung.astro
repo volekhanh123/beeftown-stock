@@ -15,11 +15,16 @@
  *
  * Số điện thoại hiện đầy đủ và bấm gọi được — đó chính là việc cần làm với
  * một hồ sơ, và che nó đi chỉ tạo thêm một bước sao chép thủ công.
+ *
+ * Bấm nút xong thì chuyển hướng 303 về chính trang này (lib/gui-noi-bo.ts) — F5
+ * không gửi lại lệnh cũ. Lần hai của cú bấm đúp thấy hồ sơ đã ở trạng thái đích:
+ * báo "đã ở …", không báo "người khác đã xử lý".
  */
 import NoiBo from '../../layouts/NoiBo.astro';
 import { dinhDangNgay } from '../../lib/noi-dung';
 import { dichNB, nhanNB, nnCua, type HaiThuTieng } from '../../lib/ngon-ngu-noi-bo';
 import { dichCau } from '../../lib/cau-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, chuyenTrangThai, docBaoNoiBo, docFormNoiBo, type BaoNoiBo } from '../../lib/gui-noi-bo';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
@@ -58,6 +63,7 @@ const t = dichNB(nn, {
   daXuLy:     { vi: 'Hồ sơ đã được người khác xử lý. Tải lại trang để xem trạng thái mới.',
                 en: 'Someone else already handled this application. Reload the page to see its new status.' },
   daChuyen:   { vi: (ten: string) => `Đã chuyển sang "${ten}".`, en: (ten: string) => `Moved to "${ten}".` },
+  daO:        { vi: (ten: string) => `Hồ sơ đã ở "${ten}".`, en: (ten: string) => `This application is already at "${ten}".` },
   khongDoc:   { vi: 'Không đọc được danh sách.', en: 'Could not read the list.' },
   locMoi:     { vi: 'Chưa ai mở', en: 'Not opened' },
   locDang:    { vi: 'Đang xử lý', en: 'In progress' },
@@ -103,16 +109,18 @@ const CHUYEN_DUOC: Record<string, { toi: string; phu?: boolean }[]> = {
   ],
 };
 
-let bao: { ok: boolean; cau: string } | null = null;
+let bao: BaoNoiBo | null = docBaoNoiBo(Astro.cookies);
 
 if (Astro.request.method === 'POST') {
-  const form = await Astro.request.formData();
-  const id = String(form.get('id') ?? '');
-  const tu = String(form.get('tu') ?? '');
-  const toi = String(form.get('toi') ?? '');
-  const ghiChu = String(form.get('ghi_chu') ?? '').trim() || null;
+  const form = await docFormNoiBo(Astro.request);
+  const id = String(form?.get('id') ?? '');
+  const tu = String(form?.get('tu') ?? '');
+  const toi = String(form?.get('toi') ?? '');
+  const ghiChu = String(form?.get('ghi_chu') ?? '').trim() || null;
 
-  if (!id || !CHUYEN_DUOC[tu]?.some(b => b.toi === toi)) {
+  if (!form) {
+    bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
+  } else if (!id || !CHUYEN_DUOC[tu]?.some(b => b.toi === toi)) {
     bao = { ok: false, cau: t.sai };
   } else {
     // MỘT câu UPDATE, MỘT dòng nhật ký.
@@ -125,20 +133,15 @@ if (Astro.request.method === 'POST') {
     // Từ 0016, ghi chú đi kèm trong chính câu UPDATE qua cột ghi_chu_buoc,
     // trigger đọc nó. Bảng nhat_ky_ho_so giờ có policy INSERT là false —
     // chèn tay từ đây sẽ lỗi, đúng như thiết kế.
-    const { data, error } = await client
-      .from('ho_so_ung_tuyen')
-      .update({ trang_thai: toi, nguoi_phu_trach: nhanSu.id, ghi_chu_buoc: ghiChu })
-      .eq('id', id)
-      .eq('trang_thai', tu)   // chống hai người cùng bấm, như hộp thư đặt bàn
-      .select('id');
-
-    if (error) {
-      bao = { ok: false, cau: dichCau(nn, error.message) };
-    } else if (!data || data.length === 0) {
-      bao = { ok: false, cau: t.daXuLy };
-    } else {
-      bao = { ok: true, cau: t.daChuyen(nhanNB(TEN_TRANG_THAI, toi, nn)) };
-    }
+    //
+    // Chỉ đổi khi trạng thái vẫn như lúc tải trang — chống hai người cùng bấm,
+    // như hộp thư đặt bàn (chuyenTrangThai).
+    const kq = await chuyenTrangThai(client, 'ho_so_ung_tuyen', id, tu, toi,
+      { nguoi_phu_trach: nhanSu.id, ghi_chu_buoc: ghiChu });
+    const ten = nhanNB(TEN_TRANG_THAI, toi, nn);
+    if (kq === 'da_chuyen') return chuyenHuongNoiBo(Astro, { ok: true, cau: t.daChuyen(ten) });
+    if (kq === 'da_o_san') return chuyenHuongNoiBo(Astro, { ok: true, cau: t.daO(ten) });
+    bao = kq === 'nguoi_khac' ? { ok: false, cau: t.daXuLy } : { ok: false, cau: dichCau(nn, kq.loi) };
   }
 }
 

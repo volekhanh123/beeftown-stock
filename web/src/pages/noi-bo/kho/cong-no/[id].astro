@@ -45,10 +45,6 @@ const nn = k.nn;
 const CAU = {
   quyen: { vi: 'Công nợ nhà cung cấp do kế toán hoặc quản lý xem.', en: 'Supplier payables are for the accountant or a manager.' },
   khongThayNcc: { vi: 'Không tìm thấy nhà cung cấp này.', en: 'This supplier was not found.' },
-  mangDut: {
-    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
-    en: 'Could not read what was sent — the connection may have dropped. Please send it again.',
-  },
   phieuSai: { vi: 'Phiếu không hợp lệ.', en: 'Invalid document.' },
   viecSai: { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
 } satisfies Record<string, HaiThuTieng>;
@@ -218,9 +214,6 @@ let bao: KetQua | null = k.bao;
 /** Phiếu vừa đối chiếu lỗi: mở lại ô đó với đúng những gì đã gõ. */
 let doiChieuLoi: { phieuId: string; giaTri: Record<string, string> } | null = null;
 const form = await docFormGui(Astro);
-if (Astro.request.method === 'POST' && !form) {
-  bao = kqHai(false, CAU.mangDut);
-}
 if (form) {
   const viec = String(form.get('viec') ?? '');
   // Xong thì về đầu trang (không nhảy xuống neo) để thấy ngay câu báo xanh/đỏ.

@@ -13,7 +13,8 @@
  */
 
 import type { AstroCookies } from 'astro';
-import type { KetQua } from './chung.ts';
+import { kqHai, type KetQua } from './chung.ts';
+import { CAU_DOC_FORM_HONG } from '../gui-noi-bo.ts';
 
 const COOKIE_BAO = 'bt_kho_bao';
 
@@ -25,6 +26,14 @@ export function ghiBao(cookies: AstroCookies, bao: KetQua) {
     path: '/noi-bo/kho',
     maxAge: 120,
   });
+}
+
+/**
+ * Lượt xem này không đọc được thân POST (docFormGui đã đánh dấu): câu báo lỗi hai thứ tiếng,
+ * cùng câu với CRM. BaoKho hiện nó trên MỌI trang kho — không trang nào tự đặt câu này.
+ */
+export function baoDocFormHong(locals: { formGuiHong?: boolean } | undefined): KetQua | null {
+  return locals?.formGuiHong ? kqHai(false, CAU_DOC_FORM_HONG) : null;
 }
 
 export function docBao(cookies: AstroCookies): KetQua | null {

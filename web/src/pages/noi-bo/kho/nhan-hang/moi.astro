@@ -111,12 +111,6 @@ let maGuiGiu: string | null = null;
 let anhDaTai: string[] = [];
 
 const form = await docFormGui(Astro);
-if (Astro.request.method === 'POST' && !form) {
-  bao = kqHai(false, {
-    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
-    en: 'Could not read what was sent — the connection may have dropped. Please send again.',
-  });
-}
 if (form) {
   if (String(form.get('viec') ?? '') === 'theo_don' && loai === 'mua') {
     const kq = await taoPhieuTuDon(k.client, String(form.get('don_id') ?? ''), String(form.get('ma_gui') ?? ''));

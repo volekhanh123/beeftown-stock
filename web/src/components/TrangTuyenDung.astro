@@ -14,6 +14,13 @@
  * gàng: nop_ho_so_ung_tuyen() cần một mã vị trí thật, nên một cái form hiện
  * lúc chưa có vị trí nào là cái ô mời người ta điền rồi báo lỗi.
  *
+ * LƯỢT GỬI KHÔNG CHẮC ĐÃ GHI (ketQuaNop.khongChac — database không trả lời, xem
+ * lib/xu-ly-form.ts): khung lỗi bảo "đừng gửi lại, nhắn Facebook để kiểm tra". Mọi
+ * thứ quanh nó mời nộp — form trống ngay bên dưới, "Cách ứng tuyển", nút "Nộp hồ sơ",
+ * "Ứng tuyển vị trí này" — đều cãi câu đó, và ứng viên nộp hai bản. Nên thẻ chỉ còn
+ * khung lỗi và nút liên hệ, như thẻ "không chắc" của trang hỏi bàn. Muốn nộp lại thì
+ * tải lại trang; database trả đúng mã cũ nếu hồ sơ y hệt đã vào (0066).
+ *
  * MỨC LƯƠNG CHỈ HIỆN KHI ĐÃ DUYỆT. Bảng lương nằm trong tài liệu vận hành
  * mật, và ràng buộc vi_tri_luong_chi_khi_duyet trong database đòi phải có
  * người duyệt trước khi con số đó ra tới trang công khai; đơn vị giờ/tháng
@@ -80,6 +87,7 @@ const dungDuPhong = viTri.length === 0;
 const lh = lienHe(nd);
 const soGoi = lh.goi;
 const daNop = ketQuaNop?.ok === true;
+const khongChac = ketQuaNop?.khongChac === true;
 
 // Nút "Ứng tuyển vị trí này" trên từng thẻ dẫn tới ?vi_tri=<mã>#nop-ho-so, và
 // form chọn sẵn vị trí đó — không cần JavaScript. Chỉ nhận mã đang tuyển; mã
@@ -147,7 +155,7 @@ const tRieng = dich(ngonNgu, {
     <p class="hieu">{t.tuyenDung}</p>
     <h1>{t.tuyenDungTieuDe}</h1>
     <p class="dan">{t.tuyenDungDan}</p>
-    {!dungDuPhong && (
+    {!dungDuPhong && !khongChac && (
       <div class="hang-nut td-nut">
         <a class="nut nut-chinh" href="#nop-ho-so">{tRieng.nopHoSo}</a>
       </div>
@@ -215,9 +223,11 @@ const tRieng = dich(ngonNgu, {
                   )}
                 </details>
               )}
-              <p class="hang-nut td-nut-the">
-                <a class="nut nut-chinh" href={`?vi_tri=${encodeURIComponent(v.ma)}#nop-ho-so`}>{tRieng.ungTuyenViTri}</a>
-              </p>
+              {!khongChac && (
+                <p class="hang-nut td-nut-the">
+                  <a class="nut nut-chinh" href={`?vi_tri=${encodeURIComponent(v.ma)}#nop-ho-so`}>{tRieng.ungTuyenViTri}</a>
+                </p>
+              )}
             </div>
           ))}
     </div>
@@ -241,11 +251,35 @@ const tRieng = dich(ngonNgu, {
       7fr bên trái): ứng viên quay về #nop-ho-so là thấy nó đầu tiên, kể cả trên
       điện thoại.
     */}
-    <div id="nop-ho-so" class:list={['td-nop', { 'td-nop-da-nhan': daNop }]}>
+    <div id="nop-ho-so" class:list={['td-nop', { 'td-nop-da-nhan': daNop || khongChac }]}>
       {daNop ? (
         <>
           {/* Đã nộp xong: thẻ xác nhận thắng mọi thứ khác. */}
           <FormUngTuyen ngonNgu={ngonNgu} viTri={viTri} ketQua={ketQuaNop} nhanTin={nutNhanTin} />
+          <div class="td-ben">
+            <p class="nho td-luu-tru">{tRieng.luuTru} <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a></p>
+          </div>
+        </>
+
+      ) : khongChac ? (
+        <>
+          {/* Không chắc đã ghi: thẻ chỉ còn khung lỗi và nút liên hệ — không form, không
+              "Cách ứng tuyển" (xem đầu file). Đứng trước, cột rộng, như thẻ đã nhận. */}
+          <div class="the td-the td-kenh">
+            <div class="td-loi" role="alert" data-ket-qua="khong-chac" tabindex="-1">
+              <p><strong>{ketQuaNop?.cau}</strong></p>
+            </div>
+            {(nutNhanTin || soGoi) && (
+              <div class="hang-nut">
+                {nutNhanTin && (
+                  <a class="nut nut-chinh" href={nutNhanTin.url} rel="noopener"><BieuTuong ten="tin-nhan" />{nutNhanTin.chu}</a>
+                )}
+                {soGoi && (
+                  <a class="nut nut-vien" href={soGoi}><BieuTuong ten="dien-thoai" />{t.goiNhaHang}</a>
+                )}
+              </div>
+            )}
+          </div>
           <div class="td-ben">
             <p class="nho td-luu-tru">{tRieng.luuTru} <a href={duongDanTuongUng('/quyen-rieng-tu', ngonNgu)}>{t.quyenRiengTu}</a></p>
           </div>
@@ -264,7 +298,7 @@ const tRieng = dich(ngonNgu, {
               {/* Lỗi mà lại không còn vị trí nào: vẫn phải nói cho người ta biết
                   là chưa gửi được, chứ không im lặng đổi sang màn hình khác. */}
               {ketQuaNop && (
-                <div class="td-loi" role="alert">
+                <div class="td-loi" role="alert" data-ket-qua="loi" tabindex="-1">
                   <p><strong>{ketQuaNop.cau}</strong></p>
                 </div>
               )}
@@ -289,6 +323,150 @@ const tRieng = dich(ngonNgu, {
     </div>
   </div>
 </section>
+
+<script>
+  /*
+   * Bổ trợ cho form nộp hồ sơ (FormUngTuyen.astro) — không có JavaScript thì form vẫn gửi được.
+   * Cùng khuôn với script của TrangDatBan.astro.
+   *
+   * · Chặn bấm đúp: lần gửi thứ hai bị bỏ, nút khóa và ghi "Đang gửi…". Database cũng trả lại
+   *   đúng mã cũ cho hồ sơ y hệt (0066) — script này để lượt thứ hai không phải đi tới đó.
+   * · File CV lớn hơn 5MB: báo sát ô, không gửi — máy chủ từ chối cả hồ sơ khi thân quá lớn
+   *   (lib/xu-ly-form.ts). Tin không hỏi CV (ô bị ẩn) mà vẫn còn file đã chọn: bỏ file trước khi
+   *   gửi, máy chủ cũng bỏ nó (nop-ho-so.ts) — không đẩy vài MB đi cho không.
+   * · Giữ chữ đã gõ: máy chủ KHÔNG trả lại các ô đã điền khi báo lỗi (POST → chuyển hướng → GET,
+   *   kết quả qua cookie), nên trước khi gửi, các ô chữ được giữ trong sessionStorage của thẻ trình
+   *   duyệt này 15 phút. Ô đồng ý KHÔNG được giữ: sự đồng ý phải là một cú bấm mới. File CV thì
+   *   trình duyệt không cho điền lại.
+   * · Đã nhận, hoặc KHÔNG CHẮC đã ghi: xóa bản giữ — câu trên trang bảo đừng gửi lại; điền sẵn mọi
+   *   ô thì gửi lại chỉ còn một cú bấm.
+   */
+  const KHOA = 'bt-ung-tuyen';
+  const SONG_MS = 15 * 60 * 1000;
+  const CV_TOI_DA = 5 * 1024 * 1024;   // khớp CV_TOI_DA của lib/nop-ho-so.ts
+  const O_CHU = ['vi_tri', 'ho_ten', 'sdt', 'email', 'nam_sinh', 'gioi_thieu', 'kinh_nghiem'] as const;
+  type TenO = (typeof O_CHU)[number];
+  type DaLuu = { luc: number; ca: string[] } & Record<TenO, string>;
+
+  function docDaLuu(): DaLuu | null {
+    try {
+      const s = sessionStorage.getItem(KHOA);
+      if (!s) return null;
+      const d = JSON.parse(s) as Partial<DaLuu> | null;
+      const tuoi = d && typeof d.luc === 'number' ? Date.now() - d.luc : NaN;
+      if (!d || !(tuoi >= 0 && tuoi <= SONG_MS)) {
+        sessionStorage.removeItem(KHOA);
+        return null;
+      }
+      return d as DaLuu;
+    } catch {
+      // Chế độ riêng tư / bị chặn bộ nhớ: như không có gì được giữ.
+      return null;
+    }
+  }
+  function ghiDaLuu(d: DaLuu) {
+    try { sessionStorage.setItem(KHOA, JSON.stringify(d)); } catch { /* không giữ được thì thôi */ }
+  }
+  function xoaDaLuu() {
+    try { sessionStorage.removeItem(KHOA); } catch { /* như trên */ }
+  }
+
+  // --- Khung kết quả: đưa con trỏ tới đó (trình đọc màn hình đọc ngay) ---------
+  // Sau sự kiện load: trang về kèm #nop-ho-so, và lúc cuộn tới mảnh đó trình duyệt bỏ tiêu điểm
+  // đang có (về body) — focus() gọi sớm hơn thì mất.
+  const khungKetQua = document.querySelector<HTMLElement>('#nop-ho-so [data-ket-qua]');
+  if (khungKetQua?.dataset.ketQua === 'da-nhan' || khungKetQua?.dataset.ketQua === 'khong-chac') xoaDaLuu();
+  if (khungKetQua) {
+    const dua = () => setTimeout(() => khungKetQua.focus({ preventScroll: true }), 0);
+    if (document.readyState === 'complete') dua(); else window.addEventListener('load', dua, { once: true });
+  }
+
+  const form = document.querySelector<HTMLFormElement>('form.form-nop');
+
+  function oCua(f: HTMLFormElement, ten: string) {
+    const o = f.elements.namedItem(ten);
+    return o instanceof HTMLInputElement || o instanceof HTMLSelectElement || o instanceof HTMLTextAreaElement ? o : null;
+  }
+
+  // --- Điền lại chữ đã gõ (chỉ ô đang trống: vị trí chọn sẵn từ ?vi_tri= của máy chủ thắng) ---
+  const daLuu = form ? docDaLuu() : null;
+  if (form && daLuu) {
+    for (const ten of O_CHU) {
+      const o = oCua(form, ten);
+      const v = daLuu[ten];
+      if (!o || typeof v !== 'string' || !v || o.value) continue;
+      if (o instanceof HTMLSelectElement) {
+        if ([...o.options].some(op => op.value === v)) o.value = v;
+      } else {
+        o.value = v;
+      }
+    }
+    if (Array.isArray(daLuu.ca)) {
+      for (const c of form.querySelectorAll<HTMLInputElement>('input[name="ca"]')) {
+        if (daLuu.ca.includes(c.value)) c.checked = true;
+      }
+    }
+  }
+
+  if (form) {
+    const nut = form.querySelector<HTMLButtonElement>('button[type="submit"]');
+    const chuNut = nut?.textContent ?? '';
+    const oCv = form.querySelector<HTMLInputElement>('input[type="file"][name="cv"]');
+    const loiCv = form.querySelector<HTMLElement>('[data-loi="cv"]');
+    // Ô CV đang hiện không: tin không hỏi CV thì CSS ẩn cả nhãn (display: none → không có hộp nào).
+    const cvDangHien = () => !!oCv && oCv.getClientRects().length > 0;
+    const cvQuaLon = () => cvDangHien() && [...(oCv?.files ?? [])].some(f => f.size > CV_TOI_DA);
+    const datLoiCv = (co: boolean) => {
+      if (!oCv || !loiCv) return;
+      if (co) {
+        oCv.setAttribute('aria-invalid', 'true');
+        loiCv.textContent = form.dataset.loiCv ?? '';
+        loiCv.hidden = false;
+      } else {
+        oCv.removeAttribute('aria-invalid');
+        loiCv.hidden = true;
+        loiCv.textContent = '';
+      }
+    };
+    oCv?.addEventListener('change', () => datLoiCv(cvQuaLon()));
+
+    form.addEventListener('submit', (e) => {
+      // Bấm đúp, hoặc Enter lần hai trong lúc trang đang đi: bỏ.
+      if (form.dataset.dangGui) { e.preventDefault(); return; }
+
+      if (oCv && oCv.files?.length && !cvDangHien()) oCv.value = '';
+      if (cvQuaLon()) {
+        e.preventDefault();
+        datLoiCv(true);
+        oCv?.focus();
+        return;
+      }
+
+      const ra = { luc: Date.now(), ca: [...form.querySelectorAll<HTMLInputElement>('input[name="ca"]:checked')].map(c => c.value) } as DaLuu;
+      for (const ten of O_CHU) ra[ten] = oCua(form, ten)?.value ?? '';
+      ghiDaLuu(ra);
+
+      form.dataset.dangGui = '1';
+      if (nut) {
+        nut.disabled = true;
+        nut.setAttribute('aria-busy', 'true');
+        nut.textContent = form.dataset.dangGuiChu ?? chuNut;
+      }
+    });
+
+    // Quay lại trang này bằng nút Back (bộ nhớ đệm bfcache): trang hiện lại đúng như lúc rời
+    // đi — nút đang khóa. Mở lại để ứng viên gửi được.
+    window.addEventListener('pageshow', (e) => {
+      if (!e.persisted) return;
+      delete form.dataset.dangGui;
+      if (nut) {
+        nut.disabled = false;
+        nut.removeAttribute('aria-busy');
+        nut.textContent = chuNut;
+      }
+    });
+  }
+</script>
 
 <style>
   .td-nut { margin-top: var(--k-6); }
@@ -351,4 +529,7 @@ const tRieng = dich(ngonNgu, {
     margin: 0 0 var(--k-5);
   }
   .td-loi p { margin: 0; }
+  /* Nhận con trỏ bằng script để trình đọc màn hình đọc ngay; không phải thứ bấm được. */
+  .td-loi:focus { outline: none; }
+  .td-kenh .td-loi + .hang-nut { margin-top: 0; }
 </style>

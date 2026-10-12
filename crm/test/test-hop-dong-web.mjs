@@ -115,6 +115,9 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/cong-tac.ts',
   // Chi nhánh, bàn ăn, dọn dữ liệu — cũng chỉ gọi từ /noi-bo.
   'web/src/lib/cai-dat.ts',
+  // Đổi trạng thái đặt bàn / hồ sơ ứng tuyển (chuyenTrangThai) — chỉ gọi từ /noi-bo/dat-ban và
+  // /noi-bo/tuyen-dung, sau middleware, bằng client của nhân sự (rà soát 11/10/2026).
+  'web/src/lib/gui-noi-bo.ts',
   // Kho — mọi file chỉ được gọi từ /noi-bo/kho, sau middleware, bằng client
   // mang access token của nhân sự. Liệt kê từng file: file kho mới đọc bảng
   // sẽ làm phép thử đỏ cho tới khi có người phân loại nó.

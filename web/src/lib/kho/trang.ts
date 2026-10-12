@@ -144,10 +144,15 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
   };
 }
 
-/** Đọc form gửi lên. Mạng đứt giữa chừng thì trả null thay vì ném lỗi. */
-export async function docFormGui(Astro: AstroGlobal): Promise<FormData | null> {
+/**
+ * Đọc form gửi lên. Mạng đứt giữa chừng thì trả null thay vì ném lỗi — VÀ đánh dấu lượt xem
+ * (locals.formGuiHong), để BaoKho của trang nói ra: "Không đọc được dữ liệu gửi lên…" (câu dùng
+ * chung, lib/kho/bao.ts → lib/gui-noi-bo.ts). Trước đây 25 / 41 trang im lặng ở chỗ này: trang
+ * dựng lại y như chưa bấm, thủ kho tưởng đã lưu (rà soát 11/10/2026).
+ */
+export async function docFormGui(Astro: Pick<AstroGlobal, 'request' | 'locals'>): Promise<FormData | null> {
   if (Astro.request.method !== 'POST') return null;
-  try { return await Astro.request.formData(); } catch { return null; }
+  try { return await Astro.request.formData(); } catch { Astro.locals.formGuiHong = true; return null; }
 }
 
 /** Ghi câu báo rồi chuyển hướng 303 sang GET — F5 không gửi lại lệnh cũ. */
