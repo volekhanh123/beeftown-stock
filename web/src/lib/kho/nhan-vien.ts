@@ -35,6 +35,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { cauLoiKho, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
+import { laLoiMang } from '../qua-tai.ts';
 import { biMatHopLe, BI_MAT_TOI_THIEU } from './may-chung-ma-hoa.ts';
 
 // -----------------------------------------------------------------------------
@@ -119,7 +120,6 @@ export interface KetQuaTaoNhanVien extends KetQua {
  */
 export async function docBiMatMay(): Promise<string | undefined> {
   try {
-    // @ts-ignore — dự án không cài kiểu của workerd; module này chỉ có trên Worker.
     const m = await import('cloudflare:workers');
     const v = (m as { env?: Record<string, unknown> })?.env?.KHO_MAY_KHOA;
     if (typeof v === 'string' && v) return v;
@@ -254,7 +254,7 @@ export function cauLoiDangKy(e: unknown, nn: NgonNguNB = 'vi'): string {
     });
   }
   // Mất mạng: câu chung của kho (cauLoiKho) — bản tiếng Anh có sẵn trong dichCau.
-  if (/fetch failed|network|timeout|ECONN/i.test(m)) return nn === 'vi' ? cauLoiKho(e) : dichCau(nn, cauLoiKho(e));
+  if (laLoiMang(m)) return nn === 'vi' ? cauLoiKho(e) : dichCau(nn, cauLoiKho(e));
   return c({ vi: `Supabase chưa tạo được tài khoản${m ? `: ${m}` : '.'}`, en: `Supabase could not create the account${m ? `: ${m}` : '.'}` });
 }
 

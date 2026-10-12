@@ -256,6 +256,11 @@ export async function thuBenVung(ok: Ok, h: TroGiup): Promise<void> {
       && cauLoi({ message: 'TimeoutError: The operation timed out.' }) === 'Mất kết nối mạng. Kiểm tra internet rồi thử lại.'
       && cauLoi({ message: 'loi la' }) === 'Có lỗi: loi la' && cauLoi({}) === 'Có lỗi (không rõ chi tiết).',
       cauLoi({ message: 'TypeError: fetch failed' }));
+    // Bun (chính BeeftownCan.exe) báo nối không được bằng câu khác Node: kiểm thử giả lỗi bằng câu của Node nên trước
+    // đây đạt, còn máy quầy thật hiện "Có lỗi: TypeError: Unable to connect…".
+    const cauBun = cauLoi({ message: 'TypeError: Unable to connect. Is the computer able to access the url?' });
+    ok('HỒI QUY: câu mất mạng của Bun ("Unable to connect…") → câu mất mạng tiếng Việt',
+      cauBun === 'Mất kết nối mạng. Kiểm tra internet rồi thử lại.', cauBun);
 
     console.log('6k3 · 2.9.1 — ghi đè file an toàn: mất điện / đầy ổ giữa lúc ghi không để file dở');
     {

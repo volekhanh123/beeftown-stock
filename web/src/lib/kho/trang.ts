@@ -17,7 +17,7 @@
  * /noi-bo/kho/may/*: trang kho khác chuyển về đó, không đọc gì thêm.
  */
 
-import type { AstroGlobal } from 'astro';
+import type { APIContext, AstroGlobal } from 'astro';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NhanSu } from '../phien';
 import { duoc as vaiDuoc, cauLoiKho, kqHai, kqLoi, type KetQua, type ViecKho, type HaiThuTieng, type NgonNguNB } from './chung.ts';
@@ -48,6 +48,10 @@ export interface TrangKho {
 
 const CAU_TRANG = {
   docChiNhanh: { vi: 'Không đọc được danh sách chi nhánh.', en: 'Could not read the list of branches.' },
+  docCaiDat: {
+    vi: 'Không đọc được cài đặt kho — mạng có thể đang chập. Tải lại trang sau ít giây.',
+    en: 'Could not read the stock settings — the connection may be unstable. Reload the page in a few seconds.',
+  },
   khoiTaoXong: {
     vi: 'Đã bắt đầu dùng kho: tạo Kho lạnh, Quầy thịt, chỗ Hàng chờ hủy và các lý do mặc định. Đổi tên được trong Thiết lập kho.',
     en: 'Stock is ready: created the Cold store, the Meat counter, an Awaiting write-off area and the default reasons. You can rename them in Stock setup.',
@@ -129,10 +133,16 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
     // kho_dem_viec không trả lời (database chưa chạy 0030, mạng chập chờn):
     // hỏi thẳng bảng cài đặt như trước, để trang không đòi "Bắt đầu dùng kho" lần nữa.
     try {
-      const { data } = await client
+      const { data, error } = await client
         .from('kho_cai_dat').select('chi_nhanh_id').eq('chi_nhanh_id', chiNhanh.id).maybeSingle();
+      if (error) throw error;
       daKhoiTao = !!data;
-    } catch { /* coi như chưa khởi tạo — trang sẽ hiện nút khởi tạo */ }
+    } catch {
+      // Cả hai lần hỏi đều lỗi: KHÔNG kết luận "chưa khởi tạo" — trang sẽ mời "Bắt đầu dùng kho" và
+      // nhap/[id] chuyển hướng bỏ mất form đang gõ. Báo lỗi đọc; trang đọc tiếp và tự báo lỗi của nó.
+      daKhoiTao = true;
+      loiDoc ??= CAU_TRANG.docCaiDat[nn];
+    }
   }
 
   return {
@@ -142,6 +152,53 @@ export async function moTrangKho(Astro: AstroGlobal): Promise<TrangKho | Respons
     may,
     nn,
   };
+}
+
+const CAU_TAI = {
+  chuaDangNhap: { vi: 'Chưa đăng nhập', en: 'Not logged in' },
+  khongXemKho: { vi: 'Tài khoản không xem được kho', en: 'This account cannot view inventory' },
+  docChiNhanh: {
+    vi: 'Không đọc được danh sách chi nhánh — mạng có thể đang chập. Thử tải lại sau ít giây.',
+    en: 'Could not read the list of branches — the connection may be unstable. Try downloading again in a few seconds.',
+  },
+  chuaCoCn: { vi: 'Chưa có chi nhánh', en: 'No branch yet' },
+} satisfies Record<string, HaiThuTieng>;
+
+export interface KhoTai { client: SupabaseClient; nhanSu: NhanSu; chiNhanh: ChiNhanhKho; nn: NgonNguNB }
+
+/**
+ * Mở một đường TẢI FILE của kho (pages/noi-bo/kho/**\/*.csv.ts) — phần moTrangKho làm cho trang: phiên, tự khóa
+ * máy tính bảng dùng chung (quá giờ thì khóa và chuyển về màn khóa — không tải số liệu dưới tên người trước), vai
+ * máy về màn máy, chi nhánh (cùng cách chọn, kể cả ?cn=). Đọc chi nhánh lỗi → 503, không phải "chưa có chi nhánh".
+ * Quyền xem từng file (xem_gia, ke_toan…) route tự kiểm sau đó; database (RLS) vẫn là nơi chặn.
+ */
+export async function moKhoTai(ctx: APIContext): Promise<KhoTai | Response> {
+  const nn: NgonNguNB = ctx.locals.nn ?? 'vi';
+  const phien = ctx.locals.phien;
+  if (!phien) return new Response(CAU_TAI.chuaDangNhap[nn], { status: 401 });
+  const { client, nhanSu } = phien;
+
+  // kiemMayChung viết cho trang (Astro.response.headers); đường tải đã tự đặt cache-control: no-store. Chỉ đưa đúng
+  // những thứ nó dùng — KHÔNG trải {...ctx}: trải là đọc hết getter của APIContext (csp, session, clientAddress),
+  // ghi cảnh báo sai vào log mỗi lần tải và ném lỗi khi request không có IP.
+  const astro = {
+    cookies: ctx.cookies, locals: ctx.locals, request: ctx.request, url: ctx.url, redirect: ctx.redirect,
+    response: { headers: new Headers() },
+  } as unknown as AstroGlobal;
+  const may = await kiemMayChung(astro, nhanSu);
+  if (may instanceof Response) return may;
+  if (laVaiMay(nhanSu.vai_tro)) return ctx.redirect(DUONG_MAY, 302);
+  if (!vaiDuoc(nhanSu.vai_tro, 'xem')) return new Response(CAU_TAI.khongXemKho[nn], { status: 403 });
+
+  const { data, error } = await client.from('chi_nhanh').select('id, ma, ten').order('ma');
+  if (error) return new Response(CAU_TAI.docChiNhanh[nn], { status: 503 });
+  const cacCn = (data ?? []) as ChiNhanhKho[];
+  const chon = ctx.url.searchParams.get('cn') ?? ctx.cookies.get(COOKIE_CN)?.value;
+  const chiNhanh = nhanSu.chi_nhanh_id
+    ? cacCn.find(c => c.id === nhanSu.chi_nhanh_id)
+    : cacCn.find(c => c.ma === chon) ?? cacCn[0];
+  if (!chiNhanh) return new Response(CAU_TAI.chuaCoCn[nn], { status: 404 });
+  return { client, nhanSu, chiNhanh, nn };
 }
 
 /**

@@ -26,6 +26,7 @@ import { BO_PHAN, LOAI_HOP_DONG, DON_VI_LUONG, MA_CHUA_CHOT } from './tuyen-dung
 import type { SoBanDich } from './ban-dich';
 import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo.ts';
 import { dichCau } from './cau-noi-bo.ts';
+import { CAU_MAT_MANG_GHI, laLoiMang } from './qua-tai.ts';
 
 /**
  * Câu của file này ở hai thứ tiếng giao diện nội bộ. Mọi hàm trả câu cho người
@@ -195,6 +196,7 @@ export function canhBaoDonVi(
 /** Câu lỗi cho người đọc. Câu của trigger 0027 viết sẵn bằng tiếng Việt, dùng nguyên văn. */
 function cauLoi(e: { message?: string } | null, macDinh: string, nn: NgonNguNB): string {
   const m = e?.message ?? '';
+  if (laLoiMang(m)) return CAU_MAT_MANG_GHI[nn];
   if (/vi_tri_cong_bo_phai_sach/.test(m)) return CAU.chuaSach[nn];
   if (/vi_tri_de_xuat_hop_le|vi_tri_luong_chi_khi_duyet/.test(m)) return CAU.denNhoHonTu[nn];
   if (/violates row-level security|permission denied for table/i.test(m)) return CAU.khongQuyen[nn];

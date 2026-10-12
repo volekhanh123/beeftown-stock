@@ -135,6 +135,8 @@ crm/
 │   ├── 0026_form_theo_tung_tin.sql   mỗi tin tự chọn form hỏi gì — chỉ tin cần CV mới có ô CV
 │   ├── 0027_duyet_luong_tin_tuyen_dung.sql   chỉ chủ nhà hàng và quản lý đổi được lương chính thức
 │   ├── 0028_don_vi_luong.sql   lương theo giờ hay theo tháng — đơn vị duyệt cùng con số
+│   ├── 0029_kho_vai_may.sql             KHO · hai vai máy may_chung (tablet dùng chung), may_ipos (đồng bộ iPOS) — ⚠ CHẠY RIÊNG, trước 0030
+│   ├── 0030_kho_viec_thong_bao.sql      KHO · kho_dem_viec (số đỏ trên menu, đã khởi tạo kho chưa) · chuông thông báo · ngưỡng cảnh báo · chỉ số quản trị
 │   ├── 0031_kho_thu_kho_khong_tien.sql  KHO · thủ kho không thấy tiền · nhận hàng chỉ kg · kế toán điền giá, duyệt · cảnh báo giá nhập
 │   ├── 0032_kho_quay.sql                KHO · quầy yêu cầu → mang ra (hàng đi đường) → bấm nhận · đếm quầy cộng dồn bằng máy quét · xuất khác
 │   ├── 0033_kho_pha_quet_the_kho.sql    KHO · pha lóc bằng quét nhãn · nơi để sau pha theo món · báo thu hồi thấp (quản lý "Đã xem") · thẻ kho
@@ -163,8 +165,10 @@ crm/
 │   ├── 0058_sao_luu_hang_dem.sql       SAO LƯU · he_thong_sao_luu (mỗi lượt sao lưu hằng đêm một dòng — workflow ghi) · suc_khoe_sao_luu(): đèn "Sao lưu dữ liệu" (chủ / quản lý)
 │   ├── 0059_bao_dong_vai_may.sql       BÁO ĐỘNG · vai máy may_bao_dong — ⚠ CHẠY RIÊNG, trước 0060
 │   ├── 0060_bao_dong.sql               BÁO ĐỘNG · tách kiểm quyền khỏi phần tính (kho_ipos_trang_thai_goc, suc_khoe_so_lieu — nội bộ) · bao_dong_trang_thai (khóa lượt, nhịp tim, kênh) · bao_dong_su_co (mỗi đèn đỏ một sự cố, không lưu câu chữ) · bốn RPC máy bao_dong_* — danh sách ở đầu file
+│   ├── 0061_kho_can_quay.sql           KHO · Beeftown Cân báo về kho (máy cân kho_may_can, tem đã in kho_can_tem, ô mã đang giao cho mọi vai xem) — chạy sau 0060, 0049, 0054
 │   ├── 0062_dat_ban_goi_lai.sql        ĐẶT BÀN · tao_dat_ban() gọi lại Y HỆT (số điện thoại, chi nhánh, ngày, giờ, số khách, dịp, ghi chú, đồng ý nhận tin) trong 10 phút, dòng cũ còn cho_xac_nhan → trả lại dòng cũ và mã cũ, không ghi gì thêm · chỉ lời gọi không phiên (website, Messenger)
-│   └── 0063_zalo_chi_gui_khi_xac_nhan.sql ZALO · ZBS-01/ZBS-02 chỉ xếp khi nhân viên bấm "Đã gọi xác nhận" (cho_xac_nhan → da_xac_nhan), không phải lúc khách gửi yêu cầu · zalo_xep_tin_dat_ban(p_dat_ban_id, p_vua_xac_nhan, p_doi_gio) · máy gửi không lấy tin của đặt bàn chưa xác nhận (tin xếp trước 0063 nằm chờ)
+│   ├── 0063_zalo_chi_gui_khi_xac_nhan.sql ZALO · ZBS-01/ZBS-02 chỉ xếp khi nhân viên bấm "Đã gọi xác nhận" (cho_xac_nhan → da_xac_nhan), không phải lúc khách gửi yêu cầu · zalo_xep_tin_dat_ban(p_dat_ban_id, p_vua_xac_nhan, p_doi_gio) · máy gửi không lấy tin của đặt bàn chưa xác nhận (tin xếp trước 0063 nằm chờ)
+│   └── 0065_crm_bo_policy_ghi_thang.sql ⚠ VÁ — bỏ policy ghi thẳng nhat_ky_dong_y, nhat_ky_tin, so_cai_diem, luot_ghe, khach_hang (mọi đường ghi là hàm definer tự kiểm vai) · don_dep_phieu_tai_len kiểm vai
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```
@@ -175,10 +179,11 @@ crm/
 - **`0009` và `0011` phụ thuộc vòng.** `tep_anh.mon_an_id` trỏ tới `mon_an` chưa tồn tại; cột ra đời ở `0009` không kèm khóa ngoại, khóa ngoại được thêm ở cuối `0011`.
 - **File nào tạo hàm thì PHẢI kết thúc bằng khối chốt quyền.** Xem `0008` mục 6.
 - **View mới PHẢI khai `security_invoker = true` tường minh.** Mặc định của Postgres là view chạy dưới quyền người tạo, tức đi xuyên qua RLS của bảng bên dưới — đúng lỗ hổng số 2 mà `0008` đã vá. `0008` chỉ sửa được 7 view có mặt lúc đó. `test-an-toan.mjs` mục 2 liệt kê `pg_class` và bắt đúng chuyện quên này; nó đã bắt được `v_bang_cong_tac` ngay lần chạy đầu tiên của `0015`.
+- **`0029` phải chạy RIÊNG, một mình, trước `0030`** — cùng lý do với `0017` (thêm `may_chung`, `may_ipos` vào `vai_tro`).
 - **`0046` phải chạy RIÊNG, một mình, trước `0047`** — cùng lý do với `0017` (thêm `may_zalo` vào `vai_tro`, `da_huy` vào `ket_qua_gui`).
 - **`0052` phải chạy RIÊNG, một mình, trước `0053`** — cùng lý do (thêm `may_messenger` vào `vai_tro`).
 - **`0059` phải chạy RIÊNG, một mình, trước `0060`** — cùng lý do (thêm `may_bao_dong` vào `vai_tro`). `0060` cần `0055` (bảng sức khỏe) và `0058` (sao lưu).
-- **`0017` phải chạy RIÊNG, một mình, trước `0018`.** Nó thêm giá trị vào enum `vai_tro`; Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa thêm nó.
+- **`0017` phải chạy RIÊNG, một mình, trước `0018`.** Nó thêm giá trị vào enum `vai_tro`; Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa thêm nó. Migration mới nào có `alter type … add value` cũng phải có một dòng như thế ở đây — `test-quy-trinh.mjs` mục 5 đỏ khi thiếu, và khi cây thư mục ở trên thiếu file.
 - **Đừng tạo tài khoản vai kho trước khi chạy `0018`.** `0018` là tường ngăn: trước nó, một thủ kho đọc được số điện thoại khách.
 - **`0014` là file duy nhất PGlite không chạy.** Toàn bộ DDL kho file bọc trong khối kiểm tra schema `storage`. Danh sách kiểm tra bằng tay nằm ở cuối file đó — **bắt buộc làm trên Supabase thật.**
 - **Khối chốt quyền từ `0025` trở đi PHẢI giữ dòng `ve_con_hieu_luc(text)`.** Policy tải CV trên `storage.objects` gọi hàm đó dưới vai `anon`. Chép danh sách từ một file cũ hơn là CV lại rơi im lặng, và PGlite không có storage để thấy; `DUOC_PHEP` trong `test-an-toan.mjs` và mục 7 của `test-dat-noi-dung.mjs` mới bắt được.

@@ -128,6 +128,8 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Đặt bàn này không huỷ được nữa, vui lòng gọi nhà hàng': 'This booking can no longer be cancelled, please call the restaurant',
   'Không có quyền xem phiếu đo': 'You are not allowed to view analytics records',
   'Chỉ chủ sở hữu mới dọn được dữ liệu đo lường': 'Only the owner can clean up analytics data',
+  // 0065
+  'Chỉ chủ sở hữu hoặc quản lý mới dọn được vé tải CV': 'Only the owner or a manager can clean up CV upload tickets',
   'Không có quyền gỡ nội dung khỏi trang': 'You are not allowed to remove content from the site',
   'Chỉ chủ nhà hàng hoặc quản lý mới duyệt được mức lương': 'Only the owner or a manager can approve salaries',
   'p_muc phải là một mảng': 'p_muc must be an array',

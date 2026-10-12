@@ -28,6 +28,7 @@
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { docChuoi, envNode, envWorker, layBienCong, type Env } from './bien-moi-truong.ts';
 import {
   ZALO_API, XU_LY_LOI, CAU_GUI, sdtZalo, dungYeuCauGui, dungYeuCauToken, docPhanHoi, docPhanHoiToken,
   xoaBiMatZalo, type PhanHoiGui, type PhanHoiToken, type YeuCau,
@@ -37,7 +38,7 @@ import { danKhoaZalo, giaiMaTokenZalo, khoaZaloHopLe, maHoaTokenZalo } from './z
 // -----------------------------------------------------------------------------
 // BÍ MẬT
 // -----------------------------------------------------------------------------
-export type Env = Record<string, unknown> | undefined;
+export type { Env } from './bien-moi-truong.ts';
 
 export const TEN_BI_MAT_ZALO = {
   secretKey: 'ZALO_SECRET_KEY', khoa: 'ZALO_KHOA', email: 'ZALO_MAY_EMAIL', matKhau: 'ZALO_MAY_MAT_KHAU',
@@ -49,24 +50,6 @@ export interface BiMatZalo {
   email?: string;
   matKhau?: string;
 }
-
-async function envWorker(): Promise<Env> {
-  try {
-    // @ts-ignore — dự án không cài kiểu của workerd; module này chỉ có trên Worker.
-    const m = await import('cloudflare:workers');
-    return (m as { env?: Record<string, unknown> })?.env;
-  } catch { return undefined; }
-}
-
-function docChuoi(ten: string, ...nguon: Env[]): string | undefined {
-  for (const n of nguon) {
-    const v = n?.[ten];
-    if (typeof v === 'string' && v.trim()) return v.trim();
-  }
-  return undefined;
-}
-
-const envNode = (): Env => (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
 
 /** Đọc bí mật Zalo. Không có → undefined; không bao giờ ném lỗi. */
 export async function layBiMatZalo(env?: Env): Promise<BiMatZalo> {
@@ -106,11 +89,6 @@ export async function maHoaRefreshToken(token: string, env?: Env): Promise<strin
 // -----------------------------------------------------------------------------
 // TÀI KHOẢN MÁY may_zalo
 // -----------------------------------------------------------------------------
-function layBienCong(ten: string, env: Env): string | undefined {
-  const v = (import.meta as { env?: Record<string, unknown> }).env?.[ten];
-  if (typeof v === 'string' && v) return v;
-  return docChuoi(ten, env, envNode());
-}
 
 export interface PhuThuocZalo {
   /** Tạo client Supabase (test thay bằng client giả). */

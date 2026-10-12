@@ -145,8 +145,8 @@ if (Astro.request.method === 'POST') {
 
   if (form) {
     const viec = String(form.get('viec') ?? '');
-    const cn = await docChiNhanh(client);
     try {
+      const cn = await docChiNhanh(client);
       if (viec === 'chi_nhanh')        bao = await luuChiNhanh(client, form, cn, nn);
       else if (!cn)                    bao = { ok: false, cau: t.chuaCN };
       else if (viec === 'them_nhieu')  bao = await themNhieuBan(client, form, cn.id, nn);

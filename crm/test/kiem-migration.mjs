@@ -46,6 +46,15 @@ const THU_MUC = 'crm/supabase/migrations';
 /** Migration đã có trên main nhưng được phép sửa — { tep, ly_do }. Để trống là đúng. */
 const DUOC_SUA = [];
 
+/**
+ * Số hở ĐÃ BIẾT, không còn nhánh nào giữ — không cảnh báo nữa. Một cảnh báo hiện ở MỌI lượt CI thì người ta
+ * quen bỏ qua, đúng lúc nó cần nói "nhánh khác đang giữ số này". Mỗi số kèm lý do; số nào có file thì bỏ khỏi đây.
+ */
+const HO_DA_BIET = [
+  { so: 56, lyDo: 'báo động viết với 0056–0057, đánh lại thành 0059–0060 khi gộp (30/09/2026, crm/README.md)' },
+  { so: 57, lyDo: 'như 0056' },
+];
+
 /** Từ sau số này mới cấm current_date… (0004, 0005 dùng; 0008 vá và giải thích bằng chữ). */
 const MOC_GIO_VN = 8;
 
@@ -165,8 +174,11 @@ console.log('\n\x1b[1m1 · TÊN VÀ SỐ\x1b[0m');
      trung.map(ds => ds.join(' = ')).join(' · ') + (trung.length ? ` — đổi số file mới thành ${bonSo(soTiep())}` : ''));
 
   // Số hở: chỉ cảnh báo. Lấy số bằng --so-tiep khi nhánh khác đang giữ số nhỏ hơn thì hở là ĐÚNG.
+  const daBiet = new Set(HO_DA_BIET.map(x => x.so));
+  const coFile = HO_DA_BIET.filter(x => theoSo.has(x.so)).map(x => bonSo(x.so));
+  ok('HO_DA_BIET chỉ giữ số thật sự hở', coFile.length === 0, `${coFile.join(', ')} đã có file — bỏ khỏi HO_DA_BIET`);
   const hoi = [];
-  for (let i = 1; i <= soLonNhat(H); i++) if (!theoSo.has(i)) hoi.push(i);
+  for (let i = 1; i <= soLonNhat(H); i++) if (!theoSo.has(i) && !daBiet.has(i)) hoi.push(i);
   if (hoi.length) {
     const giu = i => (blobM.size && [...blobM.keys()].some(f => so(f) === i) ? SO_VOI
       : [...nhanhKhac()].find(([, ds]) => ds.some(f => so(f) === i))?.[0]);
@@ -174,7 +186,7 @@ console.log('\n\x1b[1m1 · TÊN VÀ SỐ\x1b[0m');
     const trenGoc = hoi.every(i => giu(i) === SO_VOI);
     bao(`Số bị hở: ${gon(coChu)}` + (trenGoc ? ` — các số này có trên ${SO_VOI}: gộp ${SO_VOI} vào nhánh` : ''));
   } else {
-    console.log(`  \x1b[32m✓\x1b[0m Số liền mạch 0001–${bonSo(soLonNhat(H))}`);
+    console.log(`  \x1b[32m✓\x1b[0m Số liền mạch 0001–${bonSo(soLonNhat(H))}${daBiet.size ? ` (trừ số hở đã biết: ${[...daBiet].map(bonSo).join(', ')})` : ''}`);
   }
 }
 

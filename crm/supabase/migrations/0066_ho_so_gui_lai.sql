@@ -51,7 +51,10 @@
 -- Mọi câu raise exception giữ nguyên từng chữ (test khớp theo chữ tiếng Việt).
 -- Chữ ký, tham số mặc định, kiểu trả về giữ nguyên — web không đổi gì.
 -- Không bảng, cột, chỉ mục mới: ho_so_khong_trung_idx (vi_tri_id, sdt, ngay_nop)
--- phủ câu tìm.
+-- phủ câu tìm. Không hàm mới: CREATE OR REPLACE giữ nguyên quyền gọi của hàm
+-- cũ (anon gọi được), nên không cần khối CHỐT QUYỀN — như 0065. Khối đó thu hết
+-- quyền anon rồi cấp lại theo danh sách: chạy sau một migration khác cấp thêm
+-- hàm cho anon thì thu nhầm hàm ấy.
 --
 -- Kiểm thử: crm/test/test-tuyen-dung-gui-lai.mjs.
 -- =============================================================================
@@ -240,39 +243,3 @@ $$;
 
 comment on function nop_ho_so_ung_tuyen is
   'API công khai cho form nộp hồ sơ. SECURITY DEFINER. Bẫy bot, công tắc cổng tuyển dụng, 5 hồ sơ / IP / giờ, trường tin không hỏi thì không lưu (0026). Từ 0066: lời gọi không phiên gửi lại Y HỆT (vị trí, số điện thoại, họ tên, email, năm sinh, giới thiệu, kinh nghiệm, ca, đồng ý) cùng ngày nộp hoặc trong 10 phút nhận lại đúng mã hồ sơ cũ — không ghi gì thêm, trừ gắn CV vào hồ sơ cũ chưa có CV.';
-
-
--- =============================================================================
--- CHỐT QUYỀN — xem giải thích ở 0008 mục 6. Giữ dòng ve_con_hieu_luc: xem 0025.
--- =============================================================================
-do $$
-begin
-  if exists (select 1 from pg_roles where rolname = 'anon') then
-    execute 'revoke execute on all functions in schema public from public';
-    execute 'revoke execute on all functions in schema public from anon';
-
-    -- Đặt bàn
-    execute 'grant execute on function tao_dat_ban(text,text,text,date,time,smallint,text,text,boolean,text,text,text,text,inet) to anon';
-    execute 'grant execute on function lich_trong_theo_ma(text,date) to anon';
-    execute 'grant execute on function chi_nhanh_cong_khai() to anon';
-    execute 'grant execute on function tra_cuu_dat_ban(text,text,inet) to anon';
-    execute 'grant execute on function ghi_nhat_ky_tra_cuu(inet,text,boolean) to anon';
-    execute 'grant execute on function huy_dat_ban(text,text,text,inet) to anon';
-
-    -- Nội dung
-    execute 'grant execute on function noi_dung_cong_khai(text) to anon';
-    execute 'grant execute on function thuc_don_cong_khai(text) to anon';
-
-    -- Tuyển dụng
-    execute 'grant execute on function tin_tuyen_dung_cong_khai(text) to anon';
-    execute 'grant execute on function xin_phieu_tai_cv(inet) to anon';
-    execute 'grant execute on function nop_ho_so_ung_tuyen(text,text,text,text,smallint,text,text,text[],uuid,text,boolean,text,int,text,text,inet) to anon';
-    -- Không phải để website gọi: policy tải CV trên storage.objects gọi nó
-    -- dưới vai anon. Xem 0025.
-    execute 'grant execute on function ve_con_hieu_luc(text) to anon';
-
-    -- Đo lường
-    execute 'grant execute on function ghi_su_kien_web(text,text,uuid,text,text,text,text,text,text,text) to anon';
-  end if;
-end
-$$;

@@ -22,6 +22,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo.ts';
 import { dichCau } from './cau-noi-bo.ts';
+import { CAU_MAT_MANG_GHI, laLoiMang } from './qua-tai.ts';
 
 /** Câu của file này ở hai thứ tiếng giao diện nội bộ (lib/ngon-ngu-noi-bo.ts). */
 const CAU = {
@@ -93,6 +94,7 @@ export interface KetQua { ok: boolean; cau: string }
 /** Câu lỗi của database viết bằng tiếng Việt và tính cho người đọc. Dùng nguyên văn. */
 function cauLoi(e: { message?: string } | null, mac_dinh: string, nn: NgonNguNB): string {
   const m = e?.message ?? '';
+  if (laLoiMang(m)) return CAU_MAT_MANG_GHI[nn];
   if (/permission denied|violates row-level security/i.test(m)) return CAU.khongQuyen[nn];
   if (/duplicate key|unique/i.test(m)) return CAU.trungTen[nn];
   return m ? dichCau(nn, m) : mac_dinh;
@@ -134,13 +136,15 @@ function so(v: FormDataEntryValue | null, min: number, max: number): number | nu
 // -----------------------------------------------------------------------------
 // CHI NHÁNH
 // -----------------------------------------------------------------------------
+/** Đọc lỗi → ném: trả null là trang nói "Chưa có chi nhánh nào" và POST lưu chi nhánh thành INSERT thay vì UPDATE. */
 export async function docChiNhanh(client: SupabaseClient): Promise<ChiNhanh | null> {
-  const { data } = await client
+  const { data, error } = await client
     .from('chi_nhanh')
     .select('id, ma, ten, khu_vuc, dia_chi, dien_thoai, trua_bat_dau, trua_ket_thuc, toi_bat_dau, toi_ket_thuc, buoc_khung_gio_phut, thoi_luong_bua_phut, giu_ban_phut, dang_hoat_dong')
     .order('ma')
     .limit(1)
     .maybeSingle();
+  if (error) throw error;
   return (data as ChiNhanh) ?? null;
 }
 
@@ -189,12 +193,14 @@ export async function luuChiNhanh(
 // -----------------------------------------------------------------------------
 // BÀN ĂN
 // -----------------------------------------------------------------------------
+/** Đọc lỗi → ném (cai-dat.astro hiện "không đọc được"), không trả "chưa có bàn" để chủ nhà hàng thêm bàn lần nữa. */
 export async function docBanAn(client: SupabaseClient, chiNhanhId: string): Promise<BanAn[]> {
-  const { data } = await client
+  const { data, error } = await client
     .from('ban_an')
     .select('id, ten, so_cho, la_phong_rieng, dang_dung')
     .eq('chi_nhanh_id', chiNhanhId)
     .order('ten');
+  if (error) throw error;
   return (data ?? []) as BanAn[];
 }
 
@@ -306,7 +312,8 @@ export const VIEC_DON = [
     ten: { vi: 'Xóa dữ liệu đo lường quá 90 ngày', en: 'Delete analytics data older than 90 days' },
     giai_thich: { vi: 'Trang quyền riêng tư nói chỉ giữ 90 ngày. Nút này là chỗ giữ lời.',
                   en: 'The privacy page says data is kept only 90 days. This button keeps that promise.' },
-    chi_chu_so_huu: false,
+    // don_dep_su_kien_web() (0013) chỉ cho chủ sở hữu — quản lý bấm sẽ chỉ nhận câu từ chối.
+    chi_chu_so_huu: true,
   },
 ] as const;
 
