@@ -412,36 +412,9 @@ comment on function kho_bao_cao_ban_gio is
 
 
 -- =============================================================================
--- CHỐT QUYỀN — xem giải thích ở 0008 mục 6. Giữ dòng ve_con_hieu_luc: xem 0025.
+-- KHÔNG CÓ KHỐI CHỐT QUYỀN
 -- =============================================================================
-do $$
-begin
-  if exists (select 1 from pg_roles where rolname = 'anon') then
-    execute 'revoke execute on all functions in schema public from public';
-    execute 'revoke execute on all functions in schema public from anon';
-
-    -- Đặt bàn
-    execute 'grant execute on function tao_dat_ban(text,text,text,date,time,smallint,text,text,boolean,text,text,text,text,inet) to anon';
-    execute 'grant execute on function lich_trong_theo_ma(text,date) to anon';
-    execute 'grant execute on function chi_nhanh_cong_khai() to anon';
-    execute 'grant execute on function tra_cuu_dat_ban(text,text,inet) to anon';
-    execute 'grant execute on function ghi_nhat_ky_tra_cuu(inet,text,boolean) to anon';
-    execute 'grant execute on function huy_dat_ban(text,text,text,inet) to anon';
-
-    -- Nội dung
-    execute 'grant execute on function noi_dung_cong_khai(text) to anon';
-    execute 'grant execute on function thuc_don_cong_khai(text) to anon';
-
-    -- Tuyển dụng
-    execute 'grant execute on function tin_tuyen_dung_cong_khai(text) to anon';
-    execute 'grant execute on function xin_phieu_tai_cv(inet) to anon';
-    execute 'grant execute on function nop_ho_so_ung_tuyen(text,text,text,text,smallint,text,text,text[],uuid,text,boolean,text,int,text,text,inet) to anon';
-    -- Không phải để website gọi: policy tải CV trên storage.objects gọi nó
-    -- dưới vai anon. Xem 0025.
-    execute 'grant execute on function ve_con_hieu_luc(text) to anon';
-
-    -- Đo lường
-    execute 'grant execute on function ghi_su_kien_web(text,text,uuid,text,text,text,text,text,text,text) to anon';
-  end if;
-end
-$$;
+-- Bốn hàm trên chỉ thay thân, cùng chữ ký: CREATE OR REPLACE giữ nguyên quyền (như 0081).
+-- Khối "thu hết rồi cấp lại danh sách anon" của 0008 không được chép vào đây: danh sách
+-- đó đã đổi ở 0084, bản chép cũ chạy sau 0084 mở lại hai hàm đã đóng và đóng hàm tra cứu
+-- mới (test-an-toan.mjs bắt).

@@ -134,48 +134,23 @@ create trigger kho_phien_pha_chot_tra_o_ma_trigger
 
 
 -- =============================================================================
--- HÀM NỘI BỘ — rút khỏi authenticated (như các trigger ô mã của 0049)
+-- CHỐT QUYỀN — đúng hàm vừa tạo (0008 mục 6)
 -- =============================================================================
+-- kho_phien_pha_chot_tra_o_ma là hàm trigger mới: CREATE cho PUBLIC quyền EXECUTE (mặc
+-- định của Postgres) — thu khỏi PUBLIC, anon và authenticated (hàm nội bộ, như các
+-- trigger ô mã của 0049). kho_phien_pha_ra_o_ma chỉ thay thân, cùng chữ ký: quyền giữ
+-- nguyên. File này KHÔNG chạy lại khối "thu hết rồi cấp lại danh sách anon": danh sách
+-- đó đã đổi ở 0084 (tra_cuu_mot_dat_ban thay tra_cuu_dat_ban, bỏ ghi_nhat_ky_tra_cuu).
+-- Bản chép cũ chạy sau 0084 mở lại hai hàm đã đóng và đóng hàm tra cứu mới
+-- (test-an-toan.mjs bắt). Cùng cách với 0078.
 do $$
 begin
+  execute 'revoke execute on function kho_phien_pha_chot_tra_o_ma() from public';
+  if exists (select 1 from pg_roles where rolname = 'anon') then
+    execute 'revoke execute on function kho_phien_pha_chot_tra_o_ma() from anon';
+  end if;
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
     execute 'revoke execute on function kho_phien_pha_chot_tra_o_ma() from authenticated';
-  end if;
-end
-$$;
-
-
--- =============================================================================
--- CHỐT QUYỀN — xem giải thích ở 0008 mục 6. Giữ dòng ve_con_hieu_luc: xem 0025.
--- =============================================================================
-do $$
-begin
-  if exists (select 1 from pg_roles where rolname = 'anon') then
-    execute 'revoke execute on all functions in schema public from public';
-    execute 'revoke execute on all functions in schema public from anon';
-
-    -- Đặt bàn
-    execute 'grant execute on function tao_dat_ban(text,text,text,date,time,smallint,text,text,boolean,text,text,text,text,inet) to anon';
-    execute 'grant execute on function lich_trong_theo_ma(text,date) to anon';
-    execute 'grant execute on function chi_nhanh_cong_khai() to anon';
-    execute 'grant execute on function tra_cuu_dat_ban(text,text,inet) to anon';
-    execute 'grant execute on function ghi_nhat_ky_tra_cuu(inet,text,boolean) to anon';
-    execute 'grant execute on function huy_dat_ban(text,text,text,inet) to anon';
-
-    -- Nội dung
-    execute 'grant execute on function noi_dung_cong_khai(text) to anon';
-    execute 'grant execute on function thuc_don_cong_khai(text) to anon';
-
-    -- Tuyển dụng
-    execute 'grant execute on function tin_tuyen_dung_cong_khai(text) to anon';
-    execute 'grant execute on function xin_phieu_tai_cv(inet) to anon';
-    execute 'grant execute on function nop_ho_so_ung_tuyen(text,text,text,text,smallint,text,text,text[],uuid,text,boolean,text,int,text,text,inet) to anon';
-    -- Không phải để website gọi: policy tải CV trên storage.objects gọi nó
-    -- dưới vai anon. Xem 0025.
-    execute 'grant execute on function ve_con_hieu_luc(text) to anon';
-
-    -- Đo lường
-    execute 'grant execute on function ghi_su_kien_web(text,text,uuid,text,text,text,text,text,text,text) to anon';
   end if;
 end
 $$;
