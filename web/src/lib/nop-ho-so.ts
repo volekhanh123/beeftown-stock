@@ -33,6 +33,11 @@ export interface KetQuaNop {
   cau: string;
   /** Hồ sơ đã nộp nhưng CV không lên được. Vẫn là ok: true. */
   luuY?: string;
+  /**
+   * Không nghe được trả lời: KHÔNG CHẮC database đã ghi hay chưa (xu-ly-form.ts).
+   * Trang tuyển dụng không dựng lại form dưới câu "đừng gửi lại".
+   */
+  khongChac?: boolean;
 }
 
 /**

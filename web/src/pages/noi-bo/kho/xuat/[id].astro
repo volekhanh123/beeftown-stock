@@ -93,10 +93,6 @@ const CAU = {
   khongThay: { vi: 'Không tìm thấy phiếu này.', en: 'This slip was not found.' },
   guiBaoHuy: { vi: 'Gửi báo hủy', en: 'Send write-off' },
   ghiPhieu: { vi: 'Ghi phiếu', en: 'Save slip' },
-  mangDut: {
-    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
-    en: 'Could not read the submitted data — the connection may have dropped. Try sending again.',
-  },
   chuaCoNoi: { vi: 'Chưa có kho hay quầy nào để lấy hàng.', en: 'There is no store or counter to take goods from yet.' },
   chuaCoHang: {
     vi: 'Chưa có hàng nào — quét nhãn, chọn món hoặc ghi số ở lô cần hủy.',
@@ -470,9 +466,6 @@ let buocHuy: BuocHuy = 'hang';
 // và lỡ lần trước đã ghi được mà mạng rớt thì bấm lại vẫn chỉ ra một phiếu.
 const maGuiCu = String(form?.get('ma_gui') ?? '');
 const maGuiForm = moi && laUuid(maGuiCu) ? maGuiCu : crypto.randomUUID();
-if (Astro.request.method === 'POST' && !form) {
-  bao = kqHai(false, CAU.mangDut);
-}
 if (form) {
   // Nút không mang "viec": nút món nhanh (them_mh) và nút lý do ở bước 2 báo hủy.
   const themMh = String(form.get('them_mh') ?? '');

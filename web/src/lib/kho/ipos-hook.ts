@@ -28,6 +28,7 @@ import {
   layBiMatIpos, dangNhapMayIpos, dangNhapMayIposNho, quenPhienMay, KHOA_TOI_THIEU, TEN_BI_MAT, type Env, type PhuThuocMay,
 } from './ipos-dong-bo.ts';
 import { TRUONG_IPOS, phanTichCallback, bangNhauHang, xoaToken } from './ipos.ts';
+import { docThanGioiHan } from '../than-gioi-han.ts';
 
 export const DUONG_HOOK = '/hook/ipos/';
 
@@ -48,25 +49,10 @@ function traJson(status: number, body: Record<string, unknown>, them: Record<str
   });
 }
 
-/** Đọc body tối đa `toiDa` byte; quá → null. */
+/** Đọc body tối đa `toiDa` byte; quá → null (bộ đọc dùng chung với form công khai). */
 async function docBody(req: Request, toiDa: number): Promise<string | null> {
-  const dai = Number(req.headers.get('content-length') ?? '');
-  if (Number.isFinite(dai) && dai > toiDa) return null;
-  if (!req.body) return '';
-  const r = req.body.getReader();
-  const phan: Uint8Array[] = [];
-  let tong = 0;
-  for (;;) {
-    const { done, value } = await r.read();
-    if (done) break;
-    tong += value.byteLength;
-    if (tong > toiDa) { try { await r.cancel(); } catch { /* bỏ qua */ } return null; }
-    phan.push(value);
-  }
-  const gop = new Uint8Array(tong);
-  let i = 0;
-  for (const p of phan) { gop.set(p, i); i += p.byteLength; }
-  return new TextDecoder().decode(gop);
+  const than = await docThanGioiHan(req, toiDa);
+  return than === null ? null : new TextDecoder().decode(than);
 }
 
 /** Khóa trong đường dẫn /hook/ipos/<khóa>[/]. Sai dạng → null. */

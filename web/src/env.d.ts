@@ -11,6 +11,8 @@ declare global {
       coDatabase?: boolean;
       /** Ngôn ngữ giao diện nội bộ (cookie nb_ngon_ngu). Middleware đặt cho mọi đường dẫn /noi-bo. */
       nn?: NgonNguNB;
+      /** Lượt POST này không đọc được thân (lib/kho/trang.ts docFormGui) — BaoKho báo lỗi. */
+      formGuiHong?: boolean;
     }
   }
 }
