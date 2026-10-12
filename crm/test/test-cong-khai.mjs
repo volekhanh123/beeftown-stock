@@ -220,10 +220,15 @@ await nhom('4 · TRA CỨU ĐẶT BÀN — MÃ KHÔNG BAO GIỜ ĐỦ', async ()
     `select * from tra_cuu_dat_ban($1,$2,null::inet)`, [ma.toLowerCase(), '0912345678']);
   ok('Mã không phân biệt hoa thường', thuongHoaThuong.rows.length === 1);
 
-  // Giới hạn dò mã.
+  // Giới hạn dò mã. Từ 0066 tra_cuu_dat_ban tự ghi mỗi lần tra (anon không còn gọi được
+  // ghi_nhat_ky_tra_cuu — bản cũ của kiểm tra này chèn sáu dòng "sai" bằng hàm đó). Sáu lần tra
+  // sai thật từ một IP; mỗi lần một số điện thoại khác để chỉ khoá theo IP được thử ở đây
+  // (khoá theo số và toàn cục: test-cong-khai-gioi-han.mjs).
   const ip = '203.0.113.99';
   for (let i = 0; i < 6; i++) {
-    await duoiDanhNghiaAnon(`select ghi_nhat_ky_tra_cuu($1::inet,$2,false)`, [ip, 'XXXXXX']);
+    const sai = await duoiDanhNghiaAnon(
+      `select * from tra_cuu_dat_ban($1,$2,$3::inet)`, [ma, `099999999${i}`, ip]);
+    ok(`Lần tra sai ${i + 1} từ một IP → không thấy gì, chưa khoá`, sai.loi === null && sai.rows.length === 0, sai.loi ?? '');
   }
   const bikhoa = await duoiDanhNghiaAnon(
     `select * from tra_cuu_dat_ban($1,$2,$3::inet)`, [ma, '0912345678', ip]);

@@ -125,6 +125,13 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Chỉ chủ sở hữu hoặc quản lý mới khởi tạo được tin tuyển dụng mẫu': 'Only the owner or a manager can create the sample job postings',
   'Không sinh được mã đặt bàn, vui lòng thử lại': 'Could not generate a booking code, please try again',
   'Tra cứu bị tạm khoá, vui lòng gọi nhà hàng': 'Lookup is temporarily locked, please call the restaurant',
+  // 0066 — giới hạn tần suất của các hàm công khai
+  'Số điện thoại này đã có nhiều yêu cầu đặt bàn đang chờ nhà hàng xác nhận, vui lòng gọi nhà hàng':
+    'This phone number already has several table requests waiting for confirmation, please call the restaurant',
+  'Mạng bạn đang dùng đã gửi quá nhiều yêu cầu đặt bàn, vui lòng thử lại sau hoặc gọi nhà hàng':
+    'Too many table requests from your network, please try again later or call the restaurant',
+  'Hệ thống đang nhận quá nhiều yêu cầu, vui lòng thử lại sau hoặc liên hệ trực tiếp với nhà hàng':
+    'The system is receiving too many requests, please try again later or contact the restaurant directly',
   'Đặt bàn này không huỷ được nữa, vui lòng gọi nhà hàng': 'This booking can no longer be cancelled, please call the restaurant',
   'Không có quyền xem phiếu đo': 'You are not allowed to view analytics records',
   'Chỉ chủ sở hữu mới dọn được dữ liệu đo lường': 'Only the owner can clean up analytics data',

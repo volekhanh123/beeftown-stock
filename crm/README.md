@@ -164,7 +164,8 @@ crm/
 │   ├── 0061_kho_can_quay.sql           KHO · Beeftown Cân báo về kho (máy cân kho_may_can, tem đã in kho_can_tem, ô mã đang giao cho mọi vai xem) — chạy sau 0060, 0049, 0054
 │   ├── 0062_dat_ban_goi_lai.sql        ĐẶT BÀN · tao_dat_ban() gọi lại Y HỆT (số điện thoại, chi nhánh, ngày, giờ, số khách, dịp, ghi chú, đồng ý nhận tin) trong 10 phút, dòng cũ còn cho_xac_nhan → trả lại dòng cũ và mã cũ, không ghi gì thêm · chỉ lời gọi không phiên (website, Messenger)
 │   ├── 0063_zalo_chi_gui_khi_xac_nhan.sql ZALO · ZBS-01/ZBS-02 chỉ xếp khi nhân viên bấm "Đã gọi xác nhận" (cho_xac_nhan → da_xac_nhan), không phải lúc khách gửi yêu cầu · zalo_xep_tin_dat_ban(p_dat_ban_id, p_vua_xac_nhan, p_doi_gio) · máy gửi không lấy tin của đặt bàn chưa xác nhận (tin xếp trước 0063 nằm chờ)
-│   └── 0065_crm_bo_policy_ghi_thang.sql ⚠ VÁ — bỏ policy ghi thẳng nhat_ky_dong_y, nhat_ky_tin, so_cai_diem, luot_ghe, khach_hang (mọi đường ghi là hàm definer tự kiểm vai) · don_dep_phieu_tai_len kiểm vai
+│   ├── 0065_crm_bo_policy_ghi_thang.sql ⚠ VÁ — bỏ policy ghi thẳng nhat_ky_dong_y, nhat_ky_tin, so_cai_diem, luot_ghe, khach_hang (mọi đường ghi là hàm definer tự kiểm vai) · don_dep_phieu_tai_len kiểm vai
+│   └── 0066_gioi_han_cong_khai.sql    ⚠ VÁ — giới hạn tần suất các hàm công khai: tao_dat_ban (3 yêu cầu chờ / số điện thoại, 5 / giờ / IP, IP null là một xô chung, 30 / giờ / chi nhánh) · tra_cuu_dat_ban / huy_dat_ban tự ghi nhật ký và khoá cả IP null, theo số điện thoại, toàn cục · ghi_nhat_ky_tra_cuu thu quyền anon · xin_phieu_tai_cv, nop_ho_so_ung_tuyen, ghi_su_kien_web: xô chung cho IP / phiên null + trần toàn cục · một vé tải CV = một file
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```

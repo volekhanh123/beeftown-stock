@@ -585,7 +585,8 @@ export type KetQuaGoi =
   | { goi: 'huy'; ok: true; daHuy: boolean; biKhoa: boolean }
   | { goi: 'huy'; ok: false; loi?: string }
   | { goi: 'thong_tin'; ok: true; muc: 'gio_mo' | 'thuc_don' | 'dat_ban' | 'khoa'; tt: ThongTinCongKhai }
-  | { goi: 'lich_trong' | 'tra_cuu' | 'thong_tin'; ok: false; muc?: string };
+  /** loi = câu database (tiếng Việt) khi tra cứu bị từ chối — đang khoá (0066). */
+  | { goi: 'lich_trong' | 'tra_cuu' | 'thong_tin'; ok: false; muc?: string; loi?: string };
 
 export type DauVao = SuKienKhach | { loai: 'ket_qua'; kq: KetQuaGoi };
 
@@ -697,6 +698,9 @@ const TRANG_THAI: Record<string, string> = {
 
 /** Câu database tiếng Việt (có dấu) thì hiện nguyên văn cho khách — như cauLoiDatabase() của lib/chu.ts. */
 const CO_DAU = /[àáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i;
+
+/** Câu tao_dat_ban từ chối vì giới hạn tần suất (0066) — phần đầu câu, đuôi có thể đổi. */
+const GIOI_HAN_DAT_BAN = /^(Số điện thoại này đã có nhiều yêu cầu đặt bàn|Mạng bạn đang dùng đã gửi quá nhiều|Hệ thống đang nhận quá nhiều yêu cầu)/;
 
 const LENH_MENU = new Set(['menu', 'bat dau', 'bat dau lai', 'start', 'restart', 've menu', 'quay lai', 'lam lai', 'get started']);
 const LENH_HUY = new Set(['huy', 'huy bo', 'thoi', 'dung', 'dung lai', 'thoat', 'cancel', 'stop', 'khong dat nua']);
@@ -1109,10 +1113,18 @@ function xuLyKetQua(phien: PhienBot, r: KetQuaGoi, nc: NguCanh): KetQuaBuoc {
       if (/^Form đặt bàn đang tạm đóng/.test(loi)) return veMenu([CAU_BOT.formDong], that);
       if (/quá khứ/.test(loi)) return diTiep({ ...d, ngay: undefined, gio: undefined, khung: undefined }, nc, [CAU_BOT.ngayQua(d.ngay ? ngayDep(d.ngay) : '')], that);
       if (/^Số điện thoại không hợp lệ/.test(loi)) return diTiep({ ...d, sdt: undefined }, nc, [CAU_BOT.sdtSai], that);
+      // Giới hạn tần suất (0066): câu database viết để hiện thẳng cho khách, đã nói rõ "gọi nhà hàng".
+      if (GIOI_HAN_DAT_BAN.test(loi)) return veMenu([loi], that);
       return veMenu([CAU_BOT.chuaGhi], that);
     }
     case 'tra_cuu': {
-      if (!r.ok) return veMenu([CAU_BOT.khongTraDuoc], { dem: ['loi'] });
+      if (!r.ok) {
+        // Database đang khoá tra cứu (0066 — kể cả xô chung của mọi khách Messenger): hiện nguyên
+        // câu của nó như nhánh 'huy'. Không dùng CAU_BOT.khoaTra — câu đó nói "bạn đã nhập sai",
+        // sai khi khoá do người khác. Không đếm 'loi': hệ thống không hỏng.
+        const loi = String(r.loi ?? '');
+        return veMenu([CO_DAU.test(loi) ? loi : CAU_BOT.khongTraDuoc], { dem: CO_DAU.test(loi) ? [] : ['loi'] });
+      }
       if (!r.dong) {
         if (r.biKhoa) return kq('menu', {}, [{ chu: CAU_BOT.khongThay }], { goi: { goi: 'thong_tin', muc: 'khoa' } });
         return kq('menu', {}, [{ chu: CAU_BOT.khongThay, nutNhanh: [{ tieuDe: 'Thử lại', payload: PAYLOAD.traLai }, ...qrMenu()] }]);

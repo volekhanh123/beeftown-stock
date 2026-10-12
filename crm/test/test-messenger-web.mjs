@@ -142,8 +142,10 @@ function mayGia({ dangBat = true, phut = 60, loiChao = 'Chào bạn! Beeftown c�
 const TRUA = ['11:00', '11:30', '12:00', '12:30', '13:00', '13:30'];
 const TOI = ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30'];
 
-function anonGia({ kin = [], loiDatBan = null, formMo = true, gioChot = true, hienThucDon = false, nemLoi = false } = {}) {
-  const st = { goi: [], datBan: new Map(), soMa: 0, loiDatBan, formMo, gioChot, hienThucDon, kin: new Set(kin), bayGio: BAY_GIO };
+function anonGia({ kin = [], loiDatBan = null, formMo = true, gioChot = true, hienThucDon = false, nemLoi = false, khoaTra = false } = {}) {
+  const st = { goi: [], datBan: new Map(), soMa: 0, loiDatBan, formMo, gioChot, hienThucDon, kin: new Set(kin), bayGio: BAY_GIO, khoaTra };
+  // 0066: database tự khoá tra / hủy (kể cả IP null — xô chung của mọi khách Messenger).
+  const KHOA_TRA = { data: null, error: { message: 'Tra cứu bị tạm khoá, vui lòng gọi nhà hàng', code: '23514' } };
   const MA = ['K7M2QX', 'P3R8TW', 'H4N6VZ'];
   const client = {
     rpc: async (ten, ts = {}) => {
@@ -164,13 +166,15 @@ function anonGia({ kin = [], loiDatBan = null, formMo = true, gioChot = true, hi
           return { data: [{ dat_ban_id: 'id-' + ma, ma_dat_ban: ma, con_trong: 3 }], error: null };
         }
         case 'tra_cuu_dat_ban': {
+          if (st.khoaTra) return KHOA_TRA;
           const d = st.datBan.get(String(ts.p_ma).trim().toUpperCase());
           if (!d || d.sdt !== M.chuanHoaSdt(ts.p_sdt)) return { data: [], error: null };
           return { data: [{ ma_dat_ban: d.ma, chi_nhanh_ten: 'Beeftown Quận 1', ngay: d.ngay, gio: d.gio + ':00', so_khach: d.so_khach,
             trang_thai: d.trang_thai, ho_ten_che: 'Nguyễn V. A', sdt_che: M.cheSdt(d.sdt) }], error: null };
         }
-        case 'ghi_nhat_ky_tra_cuu': return { data: null, error: null };
+        // ghi_nhat_ky_tra_cuu: từ 0066 anon không còn quyền gọi — rơi xuống "permission denied" cuối hàm.
         case 'huy_dat_ban': {
+          if (st.khoaTra) return KHOA_TRA;
           const d = st.datBan.get(String(ts.p_ma).trim().toUpperCase());
           if (!d || d.sdt !== M.chuanHoaSdt(ts.p_sdt)) return { data: false, error: null };
           if (d.trang_thai === 'da_huy') return { data: null, error: { message: 'Đặt bàn này không huỷ được nữa, vui lòng gọi nhà hàng' } };
@@ -500,6 +504,23 @@ await nhom('5 · HẾT BÀN, NGÀY QUÁ KHỨ / QUÁ XA, NGÀY GÕ TAY, SĐT SAI
   r = await d.gui(suNut(PSID.b, M.PAYLOAD.datBan), '[Đặt bàn]');
   ok('Form đặt bàn đang tắt → "chưa mở đặt bàn qua tin nhắn", không hỏi ngày', /chưa mở đặt bàn/.test(r.chu) && d.goi('lich_trong_theo_ma').length === 0);
 
+  // 0066: tao_dat_ban từ chối vì giới hạn tần suất → câu database viết để hiện thẳng cho khách.
+  for (const cau of ['Hệ thống đang nhận quá nhiều yêu cầu, vui lòng thử lại sau hoặc liên hệ trực tiếp với nhà hàng',
+                     'Số điện thoại này đã có nhiều yêu cầu đặt bàn đang chờ nhà hàng xác nhận, vui lòng gọi nhà hàng']) {
+    const g = taoCuoc({ anon: anonGia({ loiDatBan: cau }) });
+    await g.gui(suNut(PSID.d, M.PAYLOAD.datBan), '[Đặt bàn]');
+    await g.gui(suTin(PSID.d, 'thứ bảy'), 'thứ bảy');
+    await g.gui(suNut(PSID.d, 'BT_BUOI:toi'), '[Buổi tối]');
+    await g.gui(suNut(PSID.d, 'BT_GIO:19:00'), '[19:00]');
+    await g.gui(suNut(PSID.d, 'BT_KHACH:2'), '[2 người]');
+    await g.gui(suTin(PSID.d, 'Trần Bình'), 'Trần Bình');
+    await g.gui(suTin(PSID.d, '0987654321'), '0987654321');
+    const rg = await g.gui(suNut(PSID.d, M.PAYLOAD.xacNhan), '[Xác nhận]');
+    ok(`tao_dat_ban bị giới hạn (0066) → hiện nguyên «${cau.slice(0, 36)}…», không "đã nhận", đếm dat_ban_that_bai, không đếm lỗi`,
+       g.goi('tao_dat_ban').length === 1 && rg.chu.includes(cau) && !/đã nhận yêu cầu/.test(rg.chu)
+       && g.may.st.suKien.includes('dat_ban_that_bai') && !g.may.st.suKien.includes('loi'), rg.chu);
+  }
+
   // Máy trạng thái thuần: các cách gõ ngày đều dẫn tới đọc lịch trống đúng ngày.
   const nc = { bayGio: BAY_GIO, loiChao: '', phutTamDung: 60, biKhoa: false, web: 'https://beeftown.vn' };
   const cach = { 'mốt': '2026-09-29', 'thứ bảy': '2026-10-03', 't7': '2026-10-03', 'chủ nhật': '2026-09-27', '28/9': '2026-09-28', '28/09/2026': '2026-09-28' };
@@ -565,9 +586,9 @@ await nhom('7 · TRA CỨU + HỦY; KHÓA SAU 5 LẦN SAI', async () => {
   ok('Mã gõ thường, có dấu cách → nhận, hỏi SĐT (có nút số trong Facebook)', /Số điện thoại đã dùng/.test(r.chu) && r.body[0].message.quick_replies[0].content_type === 'user_phone_number');
   r = await c.gui(suTin(PSID.a, '0912 345 678'), '0912 345 678');
   const tc = cuoiCung(c.goi('tra_cuu_dat_ban'));
-  ok('tra_cuu_dat_ban(p_ma K7M2QX, p_sdt chuẩn hóa, p_ip null) → ghi_nhat_ky_tra_cuu(null, mã, true) → mess_ghi_tra_cuu(true)',
+  ok('tra_cuu_dat_ban(p_ma K7M2QX, p_sdt chuẩn hóa, p_ip null) → mess_ghi_tra_cuu(true); KHÔNG gọi ghi_nhat_ky_tra_cuu (0066: hàm tra tự ghi)',
      JSON.stringify(tc.ts) === JSON.stringify({ p_ma: 'K7M2QX', p_sdt: SDT, p_ip: null })
-     && JSON.stringify(cuoiCung(c.goi('ghi_nhat_ky_tra_cuu')).ts) === JSON.stringify({ p_ip: null, p_ma: 'K7M2QX', p_thanh_cong: true })
+     && c.goi('ghi_nhat_ky_tra_cuu').length === 0
      && cuoiCung(c.goi('mess_ghi_tra_cuu')).ts.p_thanh_cong === true);
   const tpl = r.body[0].message.attachment?.payload;
   ok('Kết quả: ngày, giờ, số khách, tên và SĐT đã che, trạng thái + nút [Hủy đặt bàn] [Về menu]',
@@ -598,6 +619,16 @@ await nhom('7 · TRA CỨU + HỦY; KHÓA SAU 5 LẦN SAI', async () => {
   const soTra = k.goi('tra_cuu_dat_ban').length;
   r = await k.gui(suNut(PSID.f, M.PAYLOAD.traCuu), '[Tra/hủy đặt bàn] (đang khóa)');
   ok('Đang khóa → báo ngay, KHÔNG gọi tra_cuu_dat_ban nữa', /tạm khóa/.test(r.chu) && k.goi('tra_cuu_dat_ban').length === soTra && lan === 5);
+
+  // 0066: database tự khoá tra cứu — xô chung của IP null, có thể do khách KHÁC dò mã. Bot hiện nguyên
+  // câu database (như nhánh hủy), không mượn câu "bạn đã nhập sai" của khoá theo khách.
+  const kd = taoCuoc({ anon: anonGia({ khoaTra: true }), ten: 'Database khoá tra cứu' });
+  await kd.gui(suNut(PSID.f, M.PAYLOAD.traCuu), '[Tra/hủy đặt bàn]');
+  await kd.gui(suTin(PSID.f, 'K7M2QX'), 'K7M2QX');
+  r = await kd.gui(suTin(PSID.f, '0909000111'), '0909000111');
+  ok('Database khoá tra cứu (0066) → hiện nguyên "Tra cứu bị tạm khoá, vui lòng gọi nhà hàng"; không "nhập sai", không đếm lỗi, không ghi lượt sai',
+     /Tra cứu bị tạm khoá, vui lòng gọi nhà hàng/.test(r.chu) && !/nhập sai/.test(r.chu) && !kd.may.st.suKien.includes('loi')
+     && kd.goi('mess_ghi_tra_cuu').length === 0, r.chu);
 });
 
 // ===========================================================================

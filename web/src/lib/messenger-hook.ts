@@ -48,7 +48,7 @@ import {
   dungYeuCauMeta, CAU_BOT, type SuKien, type DauVao, type PhienBot, type NguCanh, type YeuCauGoi, type KetQuaGoi, type LoaiDem, type Tin,
 } from './messenger.ts';
 import {
-  docLichTrong, taoDatBanMess, traCuuMess, ghiNhatKyTraCuuMess, huyDatBanMess, docThongTinCongKhai,
+  docLichTrong, taoDatBanMess, traCuuMess, huyDatBanMess, docThongTinCongKhai,
 } from './messenger-anon.ts';
 
 export const DUONG_MESSENGER = '/hook/messenger';
@@ -448,9 +448,10 @@ async function motSuKien(sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: Phu
       }
       case 'tra_cuu': {
         const r = await traCuuMess(anon, g.ma, g.sdt);
-        if (!r.ok) { ghi(`không tra cứu được: ${r.loi}`); return { goi: 'tra_cuu', ok: false }; }
+        // Lỗi database (đang khoá — 0066) mang câu tiếng Việt cho khách; không phải một lần đoán sai.
+        if (!r.ok) { ghi(`không tra cứu được: ${r.loi}`); return { goi: 'tra_cuu', ok: false, loi: r.loi }; }
+        // tra_cuu_dat_ban tự ghi nhật ký tra cứu (0066) — không gọi ghi_nhat_ky_tra_cuu nữa.
         const thay = !!r.dong;
-        await ghiNhatKyTraCuuMess(anon, g.ma, thay);
         const biKhoa = await ghiTraCuu(may, psidBam, thay, ghi);
         return { goi: 'tra_cuu', ok: true, dong: r.dong, biKhoa };
       }

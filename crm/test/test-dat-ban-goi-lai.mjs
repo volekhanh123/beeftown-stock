@@ -60,6 +60,18 @@ const soDong = async (sdt, ngay) => (await mot(
 
 const moTa = r => (r?.loi ? `LỖI: ${r.loi}` : `mã ${r?.ma_dat_ban}`);
 
+/**
+ * 0066 giới hạn lời gọi không phiên: IP null là MỘT xô chung 20 lượt / giờ, mỗi chi nhánh 30 lượt / giờ.
+ * File này thử 0062 (gửi lại y hệt) với hơn 30 lượt anon IP null — mỗi nhóm bắt đầu với sổ giới hạn
+ * trống để lượt của nhóm trước không chặn nhầm kịch bản nhóm sau. Giới hạn KHÔNG bị tắt: nó vẫn chạy
+ * trong từng nhóm (và giới hạn theo số điện thoại không dùng sổ này), được thử riêng ở
+ * test-cong-khai-gioi-han.mjs.
+ */
+async function nhomMoi(ten, fn) {
+  await db.query(`delete from gioi_han_luot`);
+  return nhom(ten, fn);
+}
+
 // ===========================================================================
 await nhom('0 · TIỀN ĐỀ — một bản hàm, chữ ký không đổi, anon vẫn gọi được', async () => {
   const { n } = await mot(`select count(*)::int as n from pg_proc p join pg_namespace s on s.oid = p.pronamespace
@@ -100,7 +112,7 @@ for (const ma of ['ZBS-01', 'ZBS-02']) {
 await duoi(UID.chu, `select zalo_luu_refresh_token($1)`, ['v1.' + 'A'.repeat(40) + 'refresh1']);
 const batZalo = await duoi(UID.chu, `select zalo_luu_cau_hinh(p_app_id => '123456', p_oa_id => '654321', p_dang_bat => true) as kq`);
 
-await nhom('1 · BẤM HAI LẦN Y HỆT → MỘT DÒNG, CÙNG MÃ', async () => {
+await nhomMoi('1 · BẤM HAI LẦN Y HỆT → MỘT DÒNG, CÙNG MÃ', async () => {
   ok('Bật được Zalo cho nhóm này', batZalo.loi === null && batZalo.rows[0].kq?.dang_bat === true, batZalo.loi ?? '');
 
   const ngay = await ngayThu(2);
@@ -135,7 +147,7 @@ await nhom('1 · BẤM HAI LẦN Y HỆT → MỘT DÒNG, CÙNG MÃ', async () =
 });
 
 // ===========================================================================
-await nhom('2 · LƯỢT ĐẦU LẤY BÀN CUỐI → GỬI LẠI VẪN NHẬN MÃ, KHÔNG "HẾT BÀN"', async () => {
+await nhomMoi('2 · LƯỢT ĐẦU LẤY BÀN CUỐI → GỬI LẠI VẪN NHẬN MÃ, KHÔNG "HẾT BÀN"', async () => {
   const ngay = await ngayThu(2);
   const yc = { cn: 'q7', sdt: '0912000002', ngay, gio: '19:00' };
   const lan1 = await gui(yc);
@@ -148,7 +160,7 @@ await nhom('2 · LƯỢT ĐẦU LẤY BÀN CUỐI → GỬI LẠI VẪN NHẬN M
 });
 
 // ===========================================================================
-await nhom('3 · KHÁC BẤT KỲ TRƯỜNG NÀO → DÒNG MỚI (khách sửa rồi gửi lại không bị nuốt)', async () => {
+await nhomMoi('3 · KHÁC BẤT KỲ TRƯỜNG NÀO → DÒNG MỚI (khách sửa rồi gửi lại không bị nuốt)', async () => {
   const ngay = await ngayThu(3);
   const goc = { sdt: '0912000010', ngay, gio: '18:00', soKhach: 2, dip: 'Sinh nhật', ghiChu: 'Gần cửa sổ', dongY: false };
   const dau = await gui(goc);
@@ -158,18 +170,21 @@ await nhom('3 · KHÁC BẤT KỲ TRƯỜNG NÀO → DÒNG MỚI (khách sửa r
   ok('Khác GIỜ → hai dòng, hai mã', !gioKhac.loi && gioKhac.ma_dat_ban !== dau.ma_dat_ban && (await soDong(goc.sdt, ngay)) === 2,
      `${moTa(dau)} · ${moTa(gioKhac)}`);
 
+  // 0066: một số điện thoại giữ tối đa 3 yêu cầu còn chờ. Bản cũ gửi cả sáu biến thể dưới CÙNG một
+  // số (tới 7 dòng chờ) — giờ lượt thứ tư bị chặn đúng luật. Mỗi biến thể dưới đây đi cùng yêu cầu gốc
+  // của RIÊNG nó (một số mới): vẫn là "gốc rồi sửa một trường → dòng mới", hai dòng chờ mỗi số.
   const bienThe = [
     ['số khách', { soKhach: 4 }],
     ['ghi chú', { ghiChu: 'Gần cửa sổ, có xe lăn' }],
     ['dịp', { dip: 'Kỷ niệm' }],
     ['đồng ý nhận tin', { dongY: true }],
   ];
-  let dem = 2;
-  for (const [ten, thay] of bienThe) {
-    const r = await gui({ ...goc, ...thay });
-    dem++;
-    ok(`Khác ${ten.toUpperCase()} → dòng mới, mã mới`, !r.loi && r.ma_dat_ban !== dau.ma_dat_ban && (await soDong(goc.sdt, ngay)) === dem,
-       `${moTa(r)} · ${await soDong(goc.sdt, ngay)} dòng`);
+  for (const [i, [ten, thay]] of bienThe.entries()) {
+    const gocRieng = { ...goc, sdt: `09120001${String(i).padStart(2, '0')}` };
+    const g = await gui(gocRieng);
+    const r = await gui({ ...gocRieng, ...thay });
+    ok(`Khác ${ten.toUpperCase()} → dòng mới, mã mới`, !g.loi && !r.loi && r.ma_dat_ban !== g.ma_dat_ban && (await soDong(gocRieng.sdt, ngay)) === 2,
+       `${moTa(g)} · ${moTa(r)} · ${await soDong(gocRieng.sdt, ngay)} dòng`);
   }
 
   const ngayKhac = await ngayThu(4);
@@ -179,17 +194,23 @@ await nhom('3 · KHÁC BẤT KỲ TRƯỜNG NÀO → DÒNG MỚI (khách sửa r
   const rSdt = await gui({ ...goc, sdt: '0912000011' });
   ok('Khác SỐ ĐIỆN THOẠI → dòng mới', !rSdt.loi && rSdt.ma_dat_ban !== dau.ma_dat_ban, moTa(rSdt));
 
-  const rCn = await gui({ ...goc, cn: 'q7', ngay: await ngayThu(5) });
-  const rCn2 = await gui({ ...goc, ngay: await ngayThu(5) });
+  // Số gốc đã có 3 yêu cầu chờ (gốc, khác giờ, khác ngày) — cặp chi nhánh dùng số riêng.
+  const gocCn = { ...goc, sdt: '0912000012', ngay: await ngayThu(5) };
+  const rCn = await gui({ ...gocCn, cn: 'q7' });
+  const rCn2 = await gui(gocCn);
   ok('Khác CHI NHÁNH (cùng ngày giờ) → hai dòng riêng', !rCn.loi && !rCn2.loi && rCn.ma_dat_ban !== rCn2.ma_dat_ban,
      `${moTa(rCn)} · ${moTa(rCn2)}`);
+
+  const thuTu = await gui({ ...goc, gio: '21:00' });
+  ok('0066: số gốc đã có 3 yêu cầu chờ → yêu cầu thứ tư (sửa giờ lần nữa) bị chặn bằng câu giới hạn',
+     /^Số điện thoại này đã có nhiều yêu cầu đặt bàn/.test(thuTu.loi ?? ''), moTa(thuTu));
 
   const giongHet = await gui(goc);
   ok('Gửi lại đúng yêu cầu gốc → vẫn nhận mã gốc', giongHet.ma_dat_ban === dau.ma_dat_ban, moTa(giongHet));
 });
 
 // ===========================================================================
-await nhom('4 · DÒNG CŨ ĐÃ HỦY / ĐÃ XÁC NHẬN / QUÁ 10 PHÚT → DÒNG MỚI', async () => {
+await nhomMoi('4 · DÒNG CŨ ĐÃ HỦY / ĐÃ XÁC NHẬN / QUÁ 10 PHÚT → DÒNG MỚI', async () => {
   const ngay = await ngayThu(6);
 
   const huy = { sdt: '0912000020', ngay, gio: '12:00' };
@@ -220,7 +241,7 @@ await nhom('4 · DÒNG CŨ ĐÃ HỦY / ĐÃ XÁC NHẬN / QUÁ 10 PHÚT → DÒ
 });
 
 // ===========================================================================
-await nhom('5 · CHỮ CÓ DẤU VÀ SỐ ĐIỆN THOẠI VIẾT KIỂU KHÁC', async () => {
+await nhomMoi('5 · CHỮ CÓ DẤU VÀ SỐ ĐIỆN THOẠI VIẾT KIỂU KHÁC', async () => {
   const ngay = await ngayThu(7);
   const goc = { sdt: '0912 345 678', ngay, gio: '18:00', ghiChu: 'Sinh nhật bé Ngọc — cần bánh' };
   const r1 = await gui(goc);
@@ -241,7 +262,7 @@ await nhom('5 · CHỮ CÓ DẤU VÀ SỐ ĐIỆN THOẠI VIẾT KIỂU KHÁC', 
 });
 
 // ===========================================================================
-await nhom('6 · GIỜ VIỆT NAM — múi giờ phiên không đổi gì, khung giờ vừa qua vẫn nhận mã cũ', async () => {
+await nhomMoi('6 · GIỜ VIỆT NAM — múi giờ phiên không đổi gì, khung giờ vừa qua vẫn nhận mã cũ', async () => {
   const ngay = await ngayThu(8);
   const yc = { sdt: '0912000030', ngay, gio: '18:00' };
   const r1 = await gui(yc);
@@ -274,7 +295,7 @@ await nhom('6 · GIỜ VIỆT NAM — múi giờ phiên không đổi gì, khung
 });
 
 // ===========================================================================
-await nhom('7 · QUYỀN — phiên đăng nhập không thuộc CRM không lấy được mã của khách', async () => {
+await nhomMoi('7 · QUYỀN — phiên đăng nhập không thuộc CRM không lấy được mã của khách', async () => {
   const ngay = await ngayThu(10);
   const yc = { sdt: '0912000040', ngay, gio: '18:00', ten: 'Khách Bí Mật' };
   const khach = await gui(yc);
@@ -299,7 +320,7 @@ await nhom('7 · QUYỀN — phiên đăng nhập không thuộc CRM không lấ
 });
 
 // ===========================================================================
-await nhom('8 · MẤT MẠNG GIỮA CHỪNG — không dòng nửa vời, gửi lại ra đúng một dòng', async () => {
+await nhomMoi('8 · MẤT MẠNG GIỮA CHỪNG — không dòng nửa vời, gửi lại ra đúng một dòng', async () => {
   const ngay = await ngayThu(11);
   // Messenger gọi y như website, không có IP; "không chắc" → khách gửi lại.
   const yc = { sdt: '0912000050', ngay, gio: '19:30', utm: 'messenger' };

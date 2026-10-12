@@ -134,7 +134,9 @@ await nhom('1 · QUYỀN THỰC THI HÀM (lỗ hổng 1 và 4)', async () => {
   // Sửa danh sách ở đây là một hành vi CÓ Ý THỨC, phải giải thích được.
   const DUOC_PHEP = [
     'chi_nhanh_cong_khai',
-    'ghi_nhat_ky_tra_cuu',
+    // ghi_nhat_ky_tra_cuu RA KHỎI danh sách từ 0066: nó chèn một dòng mỗi lần gọi, không giới
+    // hạn, và ghi được lần "sai" giả để khoá tra cứu của người khác. tra_cuu_dat_ban và
+    // huy_dat_ban tự ghi nhật ký. Danh sách ngắn đi = chặt hơn.
     'ghi_su_kien_web',
     'huy_dat_ban',
     'lich_trong_theo_ma',
