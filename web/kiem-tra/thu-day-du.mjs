@@ -1046,6 +1046,10 @@ try {
               rongTrang: document.documentElement.scrollWidth, khung: innerWidth,
             };
           });
+          // Như nhóm 8: con trỏ còn nằm ở chỗ nhóm trước vừa bấm — đưa ra góc, chờ hết chuyển màu (180ms),
+          // không thì nút nằm dưới con trỏ bị đo ở màu "di chuột" (đo được màu giữa chừng, ngoài bảng).
+          await page.mouse.move(0, 0);
+          await cho(300);
           const gd = await page.evaluate(doGiaoDien);
           const saiGd = Object.keys(PHEP_DO).flatMap(khoa => (gd[khoa] ?? ['không đo được']).map(c => `[${khoa}] ${c}`));
           const ngayMong = ngay ? `${ngay <= homNay ? t.moCuaTu : t.donBanTu} ${dinhDangNgay(ngay, nn)}` : null;
