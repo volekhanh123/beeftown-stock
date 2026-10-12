@@ -294,6 +294,9 @@ html:has(body.ck) {
 @media (max-width: 599px) { .ck .anh { aspect-ratio: var(--ti-le-nho, var(--ti-le, 4 / 3)); } }
 .ck .anh.tren-toi { background: #211A10; }
 .ck .anh.tren-do  { background: var(--do-sau); }
+/* Ảnh tách nền (ảnh món của trang Thực đơn — DANH_MUC_ANH.tachNen): món đặt thẳng lên nền của dải như
+   trong cuốn menu — khung trong suốt, không bo góc. Khung vẫn giữ đúng tỷ lệ từ trước khi ảnh về. */
+.ck .anh.tach-nen { background: transparent; border-radius: 0; }
 .ck .anh picture { display: block; width: 100%; height: 100%; }
 .ck .anh img { display: block; width: 100%; height: 100%; object-fit: cover; }
 /* "Ảnh minh họa": nhãn có nền riêng (Charcoal 78 %) nên đọc được trên vùng ảnh nào cũng vậy — chữ Cream
@@ -304,6 +307,9 @@ html:has(body.ck) {
   font-size: var(--co-ti); font-weight: 600; line-height: 1.4; letter-spacing: .02em;
   color: var(--kem); background: rgba(21, 16, 8, .78);
 }
+/* Ảnh tách nền: nhãn sát góc dưới trái, trong dải trống tao-co-anh.py chừa sẵn ở đáy khung (12–16 % chiều
+   cao) — nhãn nằm ngay dưới món, thẳng lề trái với chữ của thẻ món, không đè lên món. */
+.ck .anh.tach-nen .chu-thich-anh { left: 0; bottom: 0; }
 
 /* Khung ảnh chờ ảnh chụp thật: đúng tỷ lệ của ảnh sau này, có artwork — không
    phải hộp xám. Thay bằng ảnh thật là thay một thẻ, không đổi bố cục. */

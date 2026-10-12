@@ -17,6 +17,11 @@
  * dưới trái — component tự gắn, nơi dùng không quên được. Không đặt logo hay chữ
  * nào khác lên ảnh.
  *
+ * Ảnh tách nền (DANH_MUC_ANH[id].tachNen — ảnh món của trang Thực đơn): khung thêm lớp
+ * .tach-nen — không nền chờ, không bo góc (món đặt thẳng lên nền của dải như trong cuốn
+ * menu); nhãn sát góc dưới trái, nằm trong dải trống tao-co-anh.py chừa sẵn ở đáy khung,
+ * tức là ngay dưới món chứ không đè lên món.
+ *
  * Ảnh chưa dựng cỡ (anh-tao-san.ts chưa có) → KhungAnh `thayBang`, không bao giờ
  * là một thẻ <img> trỏ tới file không có.
  */
@@ -50,8 +55,9 @@ const nho = coAnh(id, khungNho);
 const tiLe = (k: string) => k.replace('x', ' / ');
 const t = chu(ngonNgu);
 const minhHoa = DANH_MUC_ANH[id].minhHoa;
+const tachNen = DANH_MUC_ANH[id].tachNen === true;
 const doiKhung = khungNho !== khung && !!nho;
-const lopNen = nenKhung === 'toi' ? 'tren-toi' : nenKhung === 'do' ? 'tren-do' : '';
+const lopNen = tachNen ? 'tach-nen' : nenKhung === 'toi' ? 'tren-toi' : nenKhung === 'do' ? 'tren-do' : '';
 // Ảnh mặc định của <img>: bề rộng giữa danh sách, webp — trình duyệt nào cũng đọc được.
 const giua = lon ? lon.cac[Math.floor((lon.cac.length - 1) / 2)] : 0;
 ---
