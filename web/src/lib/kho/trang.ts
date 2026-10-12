@@ -22,6 +22,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NhanSu } from '../phien';
 import { duoc as vaiDuoc, cauLoiKho, kqHai, kqLoi, type KetQua, type ViecKho, type HaiThuTieng, type NgonNguNB } from './chung.ts';
 import { docBao, ghiBao } from './bao.ts';
+import { docFormNoiBo } from '../gui-noi-bo.ts';
 import type { SoViec } from './dieu-huong.ts';
 import { kiemMayChung, laVaiMay, laDuongMay, DUONG_MAY, type CheDoMay } from './may-chung.ts';
 
@@ -201,10 +202,17 @@ export async function moKhoTai(ctx: APIContext): Promise<KhoTai | Response> {
   return { client, nhanSu, chiNhanh, nn };
 }
 
-/** Đọc form gửi lên. Mạng đứt giữa chừng thì trả null thay vì ném lỗi. */
-export async function docFormGui(Astro: AstroGlobal): Promise<FormData | null> {
+/**
+ * Đọc form gửi lên. Mạng đứt giữa chừng thì trả null thay vì ném lỗi — VÀ đánh dấu lượt xem
+ * (locals.formGuiHong), để BaoKho của trang nói ra: "Không đọc được dữ liệu gửi lên…" (câu dùng
+ * chung, lib/kho/bao.ts → lib/gui-noi-bo.ts). Trước đây 25 / 41 trang im lặng ở chỗ này: trang
+ * dựng lại y như chưa bấm, thủ kho tưởng đã lưu (rà soát 11/10/2026).
+ */
+export async function docFormGui(Astro: Pick<AstroGlobal, 'request' | 'locals'>): Promise<FormData | null> {
   if (Astro.request.method !== 'POST') return null;
-  try { return await Astro.request.formData(); } catch { return null; }
+  const form = await docFormNoiBo(Astro.request);
+  if (!form) Astro.locals.formGuiHong = true;
+  return form;
 }
 
 /** Ghi câu báo rồi chuyển hướng 303 sang GET — F5 không gửi lại lệnh cũ. */

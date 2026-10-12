@@ -63,10 +63,6 @@ const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
 /** Câu báo dựng ở trang (KetQua cần cả hai thứ tiếng — đi qua cookie khi chuyển trang). */
 const CAU = {
   khongThay: { vi: 'Không tìm thấy phiếu kiểm kê này.', en: 'This stocktake sheet was not found.' },
-  mangDut: {
-    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
-    en: 'Could not read the submitted data — the connection may have dropped. Try sending again.',
-  },
   hetBuocDem: { vi: 'Phiếu không còn ở bước đếm.', en: 'This sheet is no longer at the counting step.' },
   mayKhacGui: {
     vi: 'Phiếu vừa được gửi ở máy khác — không còn ở bước đếm.',
@@ -245,9 +241,6 @@ let ghiChuForm: string | null = null;
 let ghiChuGocForm: string | null = null;
 
 const form = await docFormGui(Astro);
-if (Astro.request.method === 'POST' && !form) {
-  bao = kqHai(false, CAU.mangDut);
-}
 if (form && kk) {
   const viec = String(form.get('viec') ?? '');
   const ve = (kq: KetQua, thamSo = '') => chuyenHuong(Astro, `/noi-bo/kho/kiem-ke/${kk!.id}${thamSo}`, kq);
