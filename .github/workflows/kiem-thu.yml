@@ -113,7 +113,7 @@ jobs:
         run: npm run thu-day-du
       - name: Ảnh chụp khi hỏng
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7   # cùng bản với dong-goi-can.yml, sao-luu.yml (v4 còn chạy trên Node 20)
         with:
           name: anh-loi-trinh-duyet
           path: web/kiem-tra/anh-loi/

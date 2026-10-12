@@ -4008,7 +4008,10 @@ export function cauLoi(e: unknown): string {
   // Lỗi của thư viện kho (PostgREST) là đối tượng { message, … }, không phải Error — String() ra "[object Object]".
   const m = e instanceof Error ? e.message
     : laDoiTuong(e) ? (typeof e.message === 'string' ? e.message : '') : e === null || e === undefined ? '' : String(e);
-  if (/fetch|network|ENOTFOUND|ECONNREFUSED|timed? ?out/i.test(m)) return 'Mất kết nối mạng. Kiểm tra internet rồi thử lại.';
+  // "Unable to connect" là câu của Bun (chính chương trình này) khi không nối được kho — khác "fetch failed" của Node.
+  if (/fetch|network|unable to connect|load failed|ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|timed? ?out/i.test(m)) {
+    return 'Mất kết nối mạng. Kiểm tra internet rồi thử lại.';
+  }
   if (/JWT|refresh|session/i.test(m)) return 'Phiên đăng nhập đã hết. Đăng nhập lại.';
   return m ? `Có lỗi: ${m}` : 'Có lỗi (không rõ chi tiết).';
 }

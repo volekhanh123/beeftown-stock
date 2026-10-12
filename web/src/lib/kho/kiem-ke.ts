@@ -28,7 +28,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, docTungTrang, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { gomTheoMaCan, tachDanhSachMa } from './ma-vach.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 
@@ -162,12 +162,18 @@ export async function docKiemKe(
 export async function docSoNhanQuet(client: SupabaseClient, kiemKeId: string): Promise<Map<string, number>> {
   const ra = new Map<string, number>();
   if (!laUuid(kiemKeId)) return ra;
-  const { data, error } = await client
-    .from('kho_kiem_ke_quet')
-    .select('mat_hang_id')
-    .eq('kiem_ke_id', kiemKeId).limit(5000);
-  if (error) return ra;
-  for (const q of data ?? []) ra.set(q.mat_hang_id, (ra.get(q.mat_hang_id) ?? 0) + 1);
+  let data: { mat_hang_id: string }[];
+  try {
+    data = await docTungTrang((tu, den) => client
+      .from('kho_kiem_ke_quet')
+      .select('mat_hang_id', { count: 'exact' })
+      .eq('kiem_ke_id', kiemKeId)
+      .order('thu_tu')
+      .range(tu, den));
+  } catch {
+    return ra;
+  }
+  for (const q of data) ra.set(q.mat_hang_id, (ra.get(q.mat_hang_id) ?? 0) + 1);
   return ra;
 }
 

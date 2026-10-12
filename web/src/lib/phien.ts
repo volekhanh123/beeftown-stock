@@ -29,7 +29,7 @@
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AstroCookies } from 'astro';
-import { phanLoaiLoiAuth, laTraLoiTamThoi, ghiQuaTai, QUA_TAI } from './qua-tai';
+import { phanLoaiLoiAuth, laTraLoiTamThoi, ghiQuaTai, QUA_TAI } from './qua-tai.ts';
 
 const COOKIE_PHIEN = 'bt_phien';
 const COOKIE_KET_QUA = 'bt_kq';
