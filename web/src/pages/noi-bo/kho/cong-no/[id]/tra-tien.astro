@@ -11,13 +11,19 @@
  *      (kho_ghi_thanh_toan_v2). Ngày, ghi chú, ảnh ủy nhiệm chi → "Ghi".
  * ?kieu=<cách trả>&so_tien= điền sẵn bước 1 (link "Ghi nhanh" ở trang NCC).
  * Ghi xong về trang công nợ của NCC. Chỉ vai kế toán.
+ *
+ * Ngay dưới số tài khoản: CanhBaoTaiKhoan (chung với trang NCC) — tài khoản vừa đổi trong 30
+ * ngày thì khối đỏ; đọc nhật ký đổi tài khoản lỗi thì nói "chưa kiểm được". Cả hai dặn gọi hỏi
+ * lại nhà cung cấp trước khi chuyển tiền (rà soát 11/10/2026: màn này từng hiện số tài khoản
+ * mà không xét đổi).
  */
 import Kho from '../../../../../layouts/Kho.astro';
 import BaoKho from '../../../../../components/kho/BaoKho.astro';
+import CanhBaoTaiKhoan from '../../../../../components/kho/CanhBaoTaiKhoan.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../../lib/kho/trang.ts';
 import {
-  docTenNcc, docCongNoNcc, xemTruocThanhToan, docFormTraTien, ghiThanhToanV2, KIEU_TRA_NB, TEN_HINH_THUC_NB,
-  type ChiaThanhToan, type CongNoNcc,
+  docTenNccTrang, docCongNoNcc, docCanhBaoTaiKhoan, xemTruocThanhToan, docFormTraTien, ghiThanhToanV2, KIEU_TRA_NB,
+  TEN_HINH_THUC_NB, type ChiaThanhToan, type CongNoNcc,
 } from '../../../../../lib/kho/cong-no.ts';
 import {
   cauLoiKho, dinhDangNgay, dinhDangTien, homNayVn, laUuid, kqHai, kqLoi, type HaiThuTieng, type KetQua,
@@ -31,7 +37,6 @@ if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const nn = k.nn;
 /** Câu báo của trang — cả hai thứ tiếng đi theo câu báo (KetQua.cauEn). */
 const CAU = {
-  khongThayNcc: { vi: 'Không tìm thấy nhà cung cấp này.', en: 'This supplier was not found.' },
   nhapSoTien: { vi: 'Ghi số tiền, hoặc bấm "Trả đủ".', en: 'Enter an amount, or press "Pay in full".' },
   khongNoLai: {
     vi: 'Nhà cung cấp không nợ lại quán đồng nào — không có gì để hoàn.',
@@ -41,8 +46,10 @@ const CAU = {
   xemTruocLoi: { vi: 'Không xem trước được cách chia.', en: 'Could not preview the split.' },
 } satisfies Record<string, HaiThuTieng>;
 const cn = k.chiNhanh;
-const ncc = await docTenNcc(k.client, Astro.params.id ?? '');
-if (!ncc) return chuyenHuong(Astro, '/noi-bo/kho/cong-no', kqHai(false, CAU.khongThayNcc));
+// Đọc NCC lỗi (mạng) → về danh sách với câu "Không đọc được… Chưa ghi gì" — form gửi lên chưa ghi.
+const docNcc = await docTenNccTrang(k.client, Astro.params.id ?? '', { dangGui: Astro.request.method === 'POST' });
+if (!docNcc.ncc) return chuyenHuong(Astro, '/noi-bo/kho/cong-no', docNcc.bao);
+const ncc = docNcc.ncc;
 const VE = `/noi-bo/kho/cong-no/${ncc.id}`;
 const homNay = homNayVn();
 /** Số tiền điền sẵn vào ô nhập, theo cách ghi số của ngôn ngữ đang xem (docTien đọc được cả hai). */
@@ -153,12 +160,15 @@ if (form) {
   giaTri = { kieu: q.get('kieu') ?? '', so_tien: q.get('so_tien') ?? '' };
 }
 
+// Không ném: nhật ký lỗi → chuaKiem ("chưa kiểm được"). Đọc song song với tổng công nợ.
+const docCanhBao = docCanhBaoTaiKhoan(k.client, ncc.id);
 let tong: CongNoNcc | undefined;
 try {
   tong = (await docCongNoNcc(k.client, cn.id, ncc.id))[0];
 } catch (e) {
   loiDoc = loiDoc ?? cauLoiKho(e, t.khongDoc);
 }
+const canhBaoTk = await docCanhBao;
 const kieu = KIEU_TRA_NB.some(x => x.ma === giaTri.kieu) ? giaTri.kieu : 'chuyen_khoan';
 const laHoan = kieu === 'hoan_tien';
 const conNo = tong?.con_no ?? 0;
@@ -175,6 +185,7 @@ const tenKieu = KIEU_TRA_NB.find(x => x.ma === kieu)?.ten[nn] ?? '';
     <div class={`kho-o-so ${(tong?.no_qua_han ?? 0) > 0 ? 'gap' : ''}`}><b style="font-size:1.25rem">{dinhDangTien(tong?.no_qua_han ?? 0, nn)}</b><span>{t.quaHan}</span></div>
   </div>
   {ncc.so_tai_khoan && <p class="nb-dan">{t.chuyenKhoan} <strong>{ncc.so_tai_khoan}</strong>{ncc.ngan_hang && ` · ${ncc.ngan_hang}`}</p>}
+  <CanhBaoTaiKhoan canhBao={canhBaoTk} />
 
   {!buoc2 ? (
     <form method="POST" class="nb-the">

@@ -31,6 +31,9 @@ con số cụ thể **khi con số đã được xác nhận**.
 - Yêu cầu hỏi bàn **khác** bàn đã giữ: câu kết quả là "**đã nhận yêu cầu**" — nhà hàng kiểm tra rồi
   liên hệ xác nhận. Trang hỏi bàn, form ứng tuyển, tuyển dụng không chứa "thành công" / "success" /
   "성공" (có kiểm thử).
+- **Đọc lỗi khác không có.** Mạng đứt, hết giờ chờ database: nói "chưa đọc được …" / "chưa kiểm được …"
+  ngay chỗ đó (khối `.nb-bao.luu-y`), không hiện như danh sách rỗng hay "không tìm thấy". Ví dụ: đơn đặt
+  đang chờ ở màn nhận hàng, nhật ký đổi tài khoản ở `CanhBaoTaiKhoan` trước khi chuyển tiền.
 - Form, nút, ô đăng nhập chưa dùng được thì **ẩn hẳn** — một form bị vô hiệu hóa là lời nói dối có thêm
   bước.
 - Không nhắc chuyện sản xuất với khách: không "đang cập nhật", "sắp ra mắt", "chờ duyệt", "coming

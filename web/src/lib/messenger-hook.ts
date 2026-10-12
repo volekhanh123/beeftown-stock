@@ -26,9 +26,10 @@
  *   bỏ qua, KHÔNG gọi mess_lay_phien. Của người trực Trang → tạm dừng bot cho
  *   khách đó (mess_luu_phien(psid, null, null, phút)) + đếm 'nhan_vien_tra_loi'.
  *
- * TÀI KHOẢN MÁY may_messenger (MESS_MAY_EMAIL / MESS_MAY_MAT_KHAU): client anon
- * RIÊNG + signInWithPassword, phiên nhớ trong bộ nhớ isolate tới gần hết hạn
- * (như dangNhapMayIposNho) — chỉ gọi các RPC mess_* của máy.
+ * TÀI KHOẢN MÁY may_messenger (MESS_MAY_EMAIL / MESS_MAY_MAT_KHAU): dangNhapMay
+ * (lib/tai-khoan-may.ts) — client anon RIÊNG, mỗi lời gọi Supabase tối đa
+ * HET_GIO_SUPABASE_MESS_MS, phiên nhớ trong bộ nhớ isolate tới gần hết hạn
+ * (taoPhienMayNho, như hook iPOS) — chỉ gọi các RPC mess_* của máy.
  *
  * BÍ MẬT (bí mật Worker — KHÔNG trong wrangler.toml / .env / repo / log):
  *   META_APP_SECRET, META_PAGE_TOKEN, META_VERIFY_TOKEN (≥ 32 ký tự),
@@ -40,8 +41,9 @@
  * câu log đi qua xoaBiMat. Log giữ tiếng Việt cho người vận hành.
  */
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { docChuoi, envNode, envWorker, layBienCong, type Env } from './bien-moi-truong.ts';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { envNode, envWorker, docChuoi, layBienCong, type Env } from './bien-moi-truong.ts';
+import { dangNhapMay, taoPhienMayNho, type KetQuaDangNhapMay, type ThamSoDangNhapMay } from './tai-khoan-may.ts';
 import { taoClient, maChiNhanh } from './noi-dung.ts';
 import { docThanGioiHan } from './than-gioi-han.ts';
 import {
@@ -164,58 +166,31 @@ export interface PhuThuocMess {
   nhoPhien?: boolean;
   /** Mã chi nhánh nhận đặt bàn (mặc định PUBLIC_CHI_NHANH / 'q1'). */
   chiNhanhMa?: string;
+  /** fetch đi Supabase của client máy (test: fetch giả treo / lỗi). Mặc định fetch toàn cục. */
+  fetchSupabase?: typeof fetch;
+  /** Hạn giờ mỗi lời gọi Supabase của máy (ms). Mặc định HET_GIO_SUPABASE_MESS_MS. */
+  hetGioSupabaseMs?: number;
 }
 
-type KetQuaDangNhap =
-  | { ok: true; client: SupabaseClient; dangXuat: () => Promise<void>; hetLuc?: number }
-  | { ok: false; cau: string };
+/**
+ * Hạn giờ mỗi lời gọi Supabase của máy Messenger (ms). Worker trả 200 cho Meta NGAY rồi xử lý trong
+ * ctx.waitUntil — chỉ còn khoảng 30 giây; một tin cần vài lời gọi nối nhau (đăng nhập,
+ * mess_lay_phien, mess_luu_phien, mess_ghi_su_kien) mà vẫn phải còn giờ báo khách "đang trục trặc".
+ */
+export const HET_GIO_SUPABASE_MESS_MS = 8_000;
 
-async function dangNhapMayMess(bm: BiMatMess, pt: PhuThuocMess): Promise<KetQuaDangNhap> {
-  if (!bm.email || !bm.matKhau) return { ok: false, cau: `chưa cài ${TEN_BI_MAT_MESS.email} / ${TEN_BI_MAT_MESS.matKhau}` };
-  let client: SupabaseClient;
-  if (pt.taoClientMay) client = pt.taoClientMay();
-  else {
-    const url = layBienCong('PUBLIC_SUPABASE_URL', pt.env);
-    const anon = layBienCong('PUBLIC_SUPABASE_ANON_KEY', pt.env);
-    if (!url || !anon) return { ok: false, cau: 'chưa nối database' };
-    client = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
-  }
-  let hetLuc: number | undefined;
-  try {
-    const { data, error } = await client.auth.signInWithPassword({ email: bm.email, password: bm.matKhau });
-    if (error || !data?.session) return { ok: false, cau: `tài khoản máy không đăng nhập được: ${error?.message ?? 'không có phiên'}` };
-    const het = Number((data.session as { expires_at?: number }).expires_at);
-    if (Number.isFinite(het) && het > 0) hetLuc = het * 1000;
-  } catch (e) {
-    return { ok: false, cau: `tài khoản máy không đăng nhập được: ${e instanceof Error ? e.message : String(e)}` };
-  }
+function thamSoMay(bm: BiMatMess, pt: PhuThuocMess): ThamSoDangNhapMay {
   return {
-    ok: true, client, hetLuc,
-    dangXuat: async () => { try { await client.auth.signOut({ scope: 'local' }); } catch { /* bỏ qua */ } },
+    email: bm.email, matKhau: bm.matKhau, tenBiMat: TEN_BI_MAT_MESS, nhan: 'tài khoản máy', env: pt.env,
+    taoClient: pt.taoClientMay, fetchGoc: pt.fetchSupabase, goiMs: pt.hetGioSupabaseMs ?? HET_GIO_SUPABASE_MESS_MS,
   };
 }
 
-/** Phiên máy giữ trong bộ nhớ isolate (không ghi đâu cả) tới 2 phút trước khi hết hạn. */
-let phienNho: { email: string; client: SupabaseClient; hetLuc: number } | null = null;
-const NHO_TRUOC_HET_MS = 120_000;
+/** Phiên máy giữ trong bộ nhớ isolate (taoPhienMayNho) tới 2 phút trước khi hết hạn — riêng của Messenger. */
+const phienMess = taoPhienMayNho();
 
 /** Bỏ phiên đang nhớ (lỗi database lạ — lần sau đăng nhập lại). */
-export function quenPhienMayMess(): void { phienNho = null; }
-
-async function dangNhapMayMessNho(bm: BiMatMess, pt: PhuThuocMess, bayGio = Date.now()): Promise<KetQuaDangNhap> {
-  const khongLam = async () => { /* phiên còn dùng lại — không đăng xuất */ };
-  if (phienNho && phienNho.email === bm.email && phienNho.hetLuc - NHO_TRUOC_HET_MS > bayGio) {
-    return { ok: true, client: phienNho.client, dangXuat: khongLam, hetLuc: phienNho.hetLuc };
-  }
-  const cu = phienNho;
-  phienNho = null;
-  if (cu) { try { await cu.client.auth.signOut({ scope: 'local' }); } catch { /* bỏ qua */ } }
-  const dn = await dangNhapMayMess(bm, pt);
-  if (!dn.ok) return dn;
-  if (!dn.hetLuc || !bm.email) return dn;
-  phienNho = { email: bm.email, client: dn.client, hetLuc: dn.hetLuc };
-  return { ...dn, dangXuat: khongLam };
-}
+export function quenPhienMayMess(): void { phienMess.quen(); }
 
 /**
  * Số phút tạm dừng lần gần nhất đọc được từ mess_lay_phien. Echo của nhân viên
@@ -321,15 +296,20 @@ export async function xuLyHookMessenger(req: Request, pt: PhuThuocMess = {}): Pr
 
 async function xuLyCacSuKien(ds: SuKien[], bm: BiMatMess, pt: PhuThuocMess, ghi: (c: string) => void): Promise<void> {
   const nho = pt.nhoPhien ?? !pt.taoClientMay;
-  const dn = nho ? await dangNhapMayMessNho(bm, pt) : await dangNhapMayMess(bm, pt);
+  const dn: KetQuaDangNhapMay = nho ? await phienMess.dangNhap(thamSoMay(bm, pt)) : await dangNhapMay(thamSoMay(bm, pt));
   if (!dn.ok) {
     ghi(dn.cau);
     for (const sk of ds) await baoTrucTrac(sk, bm, pt, ghi);
     return;
   }
   try {
+    // Database đã hỏng ở một tin trong lô → các tin sau chỉ báo khách "đang trục trặc", không gọi
+    // database nữa: mỗi lời gọi chờ tới HET_GIO_SUPABASE_MESS_MS, cộng dồn qua cả lô sẽ quá thời gian
+    // waitUntil còn lại và khách cuối lô không được trả lời gì.
+    let dbHong = false;
     for (const sk of ds) {
-      try { await motSuKien(sk, dn.client, bm, pt, ghi); }
+      if (dbHong) { await baoTrucTrac(sk, bm, pt, ghi); continue; }
+      try { dbHong = (await motSuKien(sk, dn.client, bm, pt, ghi)) === 'db_hong'; }
       catch (e) {
         if (nho) quenPhienMayMess();
         ghi(`lỗi xử lý sự kiện: ${e instanceof Error ? e.message : String(e)}`);
@@ -348,7 +328,10 @@ interface KetQuaLayPhien {
   } | null;
 }
 
-async function motSuKien(sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: PhuThuocMess, ghi: (c: string) => void): Promise<void> {
+/** Một sự kiện. Trả 'db_hong' khi database không đọc được phiên (lô bỏ gọi database cho tin sau). */
+async function motSuKien(
+  sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: PhuThuocMess, ghi: (c: string) => void,
+): Promise<'db_hong' | void> {
   const fetchFn = pt.fetchFn ?? fetch;
   const psidBam = await bamPsid(sk.psid, bm.khoaBam!);
   const demSuKien = async (loai: LoaiDem, loi: string | null = null) => {
@@ -375,9 +358,10 @@ async function motSuKien(sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: Phu
   const { data, error } = await may.rpc('mess_lay_phien', { p_psid_bam: psidBam });
   if (error) {
     ghi(`không đọc được phiên: ${error.message}`);
-    await demSuKien('loi', `mess_lay_phien: ${error.message}`);
+    // Báo khách TRƯỚC: đếm sự kiện cũng là một lời gọi database đang hỏng (có thể chờ hết hạn giờ).
     await baoTrucTrac(sk, bm, pt, ghi);
-    return;
+    await demSuKien('loi', `mess_lay_phien: ${error.message}`);
+    return 'db_hong';
   }
   const lp = (data ?? {}) as KetQuaLayPhien;
   const phut = Number.isInteger(lp.phut_tam_dung) && Number(lp.phut_tam_dung) > 0 ? Number(lp.phut_tam_dung) : 60;

@@ -70,6 +70,7 @@ const s = (n: number, mot: string, nhieu: string) => (n === 1 ? mot : nhieu);
 const enCua = (kq: KetQua) => kq.cauEn ?? dichCau('en', kq.cau);
 const t = dichNB(nn, {
   khongDoc: { vi: 'Không đọc được phiếu nhập.', en: 'Could not read the goods receipt.' },
+  khongDocCongNo: { vi: 'Không đọc được công nợ của phiếu này.', en: 'Could not read the payables for this receipt.' },
   moi: { vi: 'Mới', en: 'New' },
   tdTonDau: { vi: 'Nhập tồn đầu kỳ', en: 'Enter opening stock' },
   tdLap: { vi: 'Lập phiếu nhập', en: 'New goods receipt' },
@@ -449,7 +450,11 @@ const nhanTrangThai = (tt: string): [string, string] => {
 };
 const [nhanTT, lopTT] = phieu ? nhanTrangThai(phieu.trang_thai) : [t.moi, 'nhap'];
 
-const congNo = phieu && phieu.loai === 'mua' && phieu.trang_thai === 'da_duyet' ? await docCongNoMotPhieu(k.client, phieu.id) : null;
+// Công nợ của phiếu (vai không xem được: RLS lọc → null, ẩn khối). Đọc lỗi thì báo, không ẩn im.
+let congNo: Awaited<ReturnType<typeof docCongNoMotPhieu>> = null;
+if (phieu && phieu.loai === 'mua' && phieu.trang_thai === 'da_duyet') {
+  try { congNo = await docCongNoMotPhieu(k.client, phieu.id); } catch (e) { loiDoc = loiDoc ?? cauLoiKho(e, t.khongDocCongNo); }
+}
 const tienHang = dongDb.reduce((s, d) => s + d.thanh_tien, 0);
 const tongTien = phieu ? tienHang + phieu.tien_thue + phieu.chi_phi_khac : 0;
 const giaVon = phieu && (dienGiaDuoc || phieu.trang_thai === 'cho_duyet') ? xemTruocGiaVon(dongDb, phieu.chi_phi_khac, phieu.tien_thue, caiDat) : [];

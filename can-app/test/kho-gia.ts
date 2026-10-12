@@ -1,15 +1,22 @@
 /**
  * Kho giả cho máy quầy (0054) — dùng chung cho test/thu.ts và
  * test/xem-giao-dien.ts. Ghi lại mọi lần gọi hàm kho (goiKho) và ảnh đã tải.
+ *
+ * 2.9.2 — nói như kho thật ở hai chỗ phiếu huỷ dựa vào:
+ *   - ảnh: đường dẫn như taiAnh của web (`<chi nhánh>/huy/<ma_gui>/<số>.jpg`, số từ `batDau`); kho file không cho ghi đè
+ *     (upsert: false) — đường dẫn đã có thì báo "The resource already exists" như Supabase Storage;
+ *   - kho_tao_phieu_xuat: một ma_gui một phiếu (gửi lại trả phiếu cũ, da_co = true).
+ * Chế độ hỏng: `hong.anh` (số thứ tự ảnh → 'luu-roi-loi': kho đã lưu nhưng trả lời không tới — hết giờ),
+ * `hong.phieuXuat` (lần gọi tới: 'truoc' — mất mạng trước khi kho ghi; 'sau' — kho đã ghi, câu trả lời mất).
  */
 import type { KhoTruyCap } from '../src/nghiep-vu.ts';
-import type { BangQuay } from '../src/quay.ts';
+import type { BangQuay, TinhTrangHan } from '../src/quay.ts';
 
 export function taoKhoGia() {
   const MH = { rib: '11111111-1111-4111-8111-111111111111', bap: '22222222-2222-4222-8222-222222222222', xx: '33333333-3333-4333-8333-333333333333' };
   const Q1 = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', Q2 = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
   const LD = { han: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc', khac: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd' };
-  const lo = (id: string, mh: string, goi: number, kg: number, han: string, con: number, tt: string, vt = Q1, tang: number | null = null) =>
+  const lo = (id: string, mh: string, goi: number, kg: number, han: string, con: number, tt: TinhTrangHan, vt = Q1, tang: number | null = null) =>
     ({ lo_id: id, ma_lo: 'L' + id.slice(0, 4), mat_hang_id: mh, vi_tri_id: vt, so_goi: goi, so_kg: kg, han_dung: han, so_ngay_con: con,
        tinh_trang: tt, ngay_dong_goi: null, so_tang: tang });
   const L = { het: '44444444-4444-4444-8444-444444444444', can: '55555555-5555-4555-8555-555555555555',
@@ -31,13 +38,28 @@ export function taoKhoGia() {
     ly_do_huy: [{ id: LD.han, ten: 'Hết hạn dùng', can_anh: true }, { id: LD.khac, ten: 'Khác', can_anh: false }],
   };
   const goiKho: { ten: string; thamSo: Record<string, unknown> }[] = [];
+  /** Ảnh tải lên được (kho trả lời được), theo thứ tự. */
   const anhDaTai: string[] = [];
+  /** Mọi đường dẫn đang nằm trong kho file (kể cả ảnh đã lưu mà câu trả lời không tới). */
+  const anhTrongKho = new Set<string>();
+  /** Phiếu xuất đã ghi theo ma_gui → số phiếu. */
+  const phieuXuat = new Map<string, string>();
+  const hong: { anh: Map<number, 'luu-roi-loi'>; phieuXuat: 'truoc' | 'sau' | null } = { anh: new Map(), phieuXuat: null };
   const kho: KhoTruyCap = {
     async rpc(ten, thamSo) {
       goiKho.push({ ten, thamSo });
       if (ten === 'kho_bang_quay') return bang;
       if (ten === 'kho_tao_yeu_cau') return [{ yeu_cau_id: 'y1', so_phieu: 'YC-0001', da_co: false }];
-      if (ten === 'kho_tao_phieu_xuat') return [{ phieu_id: 'p1', so_phieu: 'PX-0009', da_co: false }];
+      if (ten === 'kho_tao_phieu_xuat') {
+        const maGui = String(thamSo.p_ma_gui);
+        const cheDo = hong.phieuXuat;
+        hong.phieuXuat = null;
+        if (cheDo === 'truoc') throw new Error('TypeError: fetch failed');
+        const daCo = phieuXuat.has(maGui);
+        if (!daCo) phieuXuat.set(maGui, `PX-${String(9 + phieuXuat.size).padStart(4, '0')}`);
+        if (cheDo === 'sau') throw new Error('TimeoutError: The operation timed out.');
+        return [{ phieu_id: 'p-' + maGui, so_phieu: phieuXuat.get(maGui), da_co: daCo }];
+      }
       if (ten === 'kho_luu_ma_giam') return { id: 'g2', ma_can: '90002', gia_giam_kg: 675000, ten: 'Steak Ribeye Angus', phan_tram: 50 };
       if (ten === 'kho_bat_ma_giam') return 'Đã tắt mã 90001.';
       if (ten === 'kho_can_o_ma') return [
@@ -67,11 +89,21 @@ export function taoKhoGia() {
                                           { id: 'x-tang', ma: 'T-RIB', ten: 'Ribeye tảng', ma_can: null, gia_ban_kg: null, dang_dung: true }];
       return [];
     },
-    async taiAnhHuy(_cn, maGui, tep) {
-      const d = tep.map((f, i) => `thu/huy/${maGui}/${i + 1}.jpg`);
-      anhDaTai.push(...d);
-      return { duongDan: d, loi: [] };
+    async taiAnhHuy(cn, maGui, tep, batDau = 1) {
+      const duongDan: string[] = [], loi: string[] = [];
+      let so = batDau;
+      for (const f of tep) {
+        const duong = `${cn}/huy/${maGui}/${so}.jpg`;
+        const h = hong.anh.get(so);
+        so += 1;
+        if (anhTrongKho.has(duong)) { loi.push(`"${f.name}" chưa tải lên được (The resource already exists)`); continue; }
+        anhTrongKho.add(duong);
+        if (h === 'luu-roi-loi') { loi.push(`"${f.name}" chưa tải lên được (The operation timed out.)`); continue; }
+        anhDaTai.push(duong);
+        duongDan.push(duong);
+      }
+      return { duongDan, loi };
     },
   };
-  return { kho, goiKho, anhDaTai, bang, MH, Q1, Q2, LD, L };
+  return { kho, goiKho, anhDaTai, anhTrongKho, phieuXuat, hong, bang, MH, Q1, Q2, LD, L };
 }
