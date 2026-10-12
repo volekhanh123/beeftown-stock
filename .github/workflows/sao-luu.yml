@@ -37,7 +37,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
 
       - name: Có đủ bí mật sao lưu chưa?
         id: bi-mat
@@ -57,7 +57,7 @@ jobs:
       - name: Cài Supabase CLI
         if: steps.bi-mat.outputs.co == 'true'
         # Action bên thứ ba chạy trong job sẽ cầm chuỗi kết nối database → ghim theo commit, không theo tag.
-        uses: supabase/setup-cli@1dedf2c611547ede7232d26866dd3c56ab903bbb # v1.7.3
+        uses: supabase/setup-cli@45a513f8c64c0bc8e0e3dfe572b5c95be85f6359 # v3.0.1
         with:
           # CLI bản mới nhất (của chính Supabase): bước khôi phục thử dựng Supabase tạm bằng CLI này — ghim bản cũ
           # thì bảng auth của nó dần thiếu cột mà Supabase thật đã có, khôi phục thử hỏng oan. Phiên bản CLI
