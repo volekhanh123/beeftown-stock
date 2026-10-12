@@ -40,6 +40,10 @@ export async function thuBaoKho(ok: Ok, h: { fileCan: (dong: string[]) => Uint8A
   ok('Dòng trên cân: theo số PLU, kèm phím (bỏ phím trống / chức năng), bỏ hàng thử và dòng không mã',
     JSON.stringify(tren) === JSON.stringify([{ plu: 6, ma_can: '10071', ten: 'A #0142', phim: ['E', 'Shift A'] }, { plu: 7, ma_can: '10072', ten: 'B', phim: [] }]),
     JSON.stringify(tren));
+  const coCo = dongTrenCanBao([{ so: 6, ma: '10071', ten: 'A #0142' }, { so: 7, ma: '10072', ten: 'B' }], [], () => false, h => h.so === 6);
+  ok('2.9.2 — dòng cân có thể đang khác (chuaChac) kèm chua_xac_nhan: true; dòng khác không có khóa đó',
+    JSON.stringify(coCo) === JSON.stringify([{ plu: 6, ma_can: '10071', ten: 'A #0142', phim: [], chua_xac_nhan: true }, { plu: 7, ma_can: '10072', ten: 'B', phim: [] }]),
+    JSON.stringify(coCo));
   const nk = [
     dongNk({ fid: 1, luc: '2026-10-04 09:00:00' }),
     dongNk({ fid: 2, luc: '2026-10-04 09:00:00', stt: 1, plu: 7, maCan: '10072' }),

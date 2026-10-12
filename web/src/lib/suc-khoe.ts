@@ -91,6 +91,8 @@ export interface IposTho {
 export interface MayCanTho {
   bao_luc: string; giu_ket_noi: boolean; can_tra_loi_luc: string | null;
   tu_gui: boolean; lech_so: number | null; lech_tu: string | null; gui_loi: boolean;
+  /** 0068 (Beeftown Cân 2.9.2): lần gửi gần nhất cân chưa xác nhận, từ lúc nào. Không có = database trước 0068. */
+  chua_xac_nhan?: boolean; chua_xac_nhan_tu?: string | null;
 }
 /** Ô `can` (0061): giờ mở cửa của chi nhánh (cài ở Kết nối iPOS, mặc định 10–23) và các máy quầy. */
 export interface CanTho { gio_mo_cua: number; gio_dong_cua: number; may: MayCanTho[] }
@@ -492,7 +494,17 @@ function denCan(d: Partial<CanTho> | undefined, maCn: string, bayGio: number, nn
       : { vi: `${n} hàng kho đã đổi mà cân chưa nhận (từ ${tuTruoc(bayGio, tu).vi}) — Tự gửi đang tắt: quản lý bấm Gửi xuống cân, hoặc bật Tự gửi ở Cài đặt của Beeftown Cân`,
           en: `${n} item${s(n)} changed in stock but not on the scale yet (since ${tuTruoc(bayGio, tu).en}) — automatic sending is off: a manager presses Send to scale, or turns on automatic sending in Beeftown Scale settings` } });
   }
-  if (trongGio && lech.length === 0 && conBao.some(m => m.tu_gui === true && m.gui_loi === true)) {
+  // 0068: lần gửi gần nhất cân chưa xác nhận quá PHUT_LECH_CAN phút (tính từ lúc mở cửa) — cân có thể còn giá / tên cũ kể cả
+  // khi lech_so = 0 (máy vừa lên từ Beeftown Cân 2.9.1, kho quay về như lần đã xác nhận). Đã có câu lệch kho thì đủ.
+  const chuaXn = trongGio && lech.length === 0 ? conBao.filter(m => m.chua_xac_nhan === true && ms(m.chua_xac_nhan_tu) !== null
+    && bayGio - tuMoCua(ms(m.chua_xac_nhan_tu) as number) > PHUT_LECH_CAN * 60000) : [];
+  if (chuaXn.length > 0) {
+    const tu = Math.min(...chuaXn.map(m => ms(m.chua_xac_nhan_tu) as number));
+    v.push({ muc: 'vang', cau: {
+      vi: `Lần gửi gần nhất của Beeftown Cân chưa được cân xác nhận (từ ${tuTruoc(bayGio, tu).vi}) — cân có thể còn giá / tên cũ; mở Beeftown Cân xem câu báo ở ô Cân (phần mềm của hãng đang mở thì đóng lại)`,
+      en: `Beeftown Scale's latest send has not been confirmed by the scale (since ${tuTruoc(bayGio, tu).en}) — the scale may still have old prices / names; open Beeftown Scale and read the Scale box (close the manufacturer's software if it is open)` } });
+  }
+  if (trongGio && lech.length === 0 && chuaXn.length === 0 && conBao.some(m => m.tu_gui === true && m.gui_loi === true)) {
     v.push({ muc: 'vang', cau: {
       vi: 'Lần tự gửi xuống cân gần nhất bị lỗi — mở Beeftown Cân xem câu báo ở ô Cân',
       en: 'The latest automatic send to the scale failed — open Beeftown Scale and read the Scale box' } });

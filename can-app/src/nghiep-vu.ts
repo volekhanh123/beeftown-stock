@@ -1743,7 +1743,7 @@ export class UngDung {
    * Lần gửi chưa xác nhận: hàng vừa gửi vào cho-xac-nhan.tsv (có thể đã trên cân); lần đọc lại khớp sau đưa dòng nào cân
    * thật sự có vào tren-can.tsv.
    */
-  private async guiKeHoach(p: KeHoachGui, timLai: boolean): Promise<KetQuaGui> {
+  private async guiKeHoach(p: KeHoachGui, timLai: boolean, tuDong = false): Promise<KetQuaGui> {
     const { du, moi, tren } = p;
     const { doiDiaChi, cachGui, soDaGui, loiHaiChieu } = await this.guiPlu(p, timLai);
     const soHangGui = soDaGui.size;
@@ -1765,8 +1765,9 @@ export class UngDung {
     if (ketQua.loai === 'khong-doc') {
       // Cân có thể đã nhận (lần gửi này có thể đã đè giá / tên lên cân): lần đọc kho cũ hơn của tự gửi không được gửi nữa.
       this.soLanApKho++;
+      // Lùi dần chỉ theo các lần TỰ gửi liên tiếp; người bấm Gửi là một lần thử mới (không đẩy lần tự gửi sau ra 10 phút).
       const truoc = this.chuaXacNhan();
-      const soLanThu = (truoc?.loai === 'khong-doc' ? truoc.soLanThu ?? 1 : 0) + 1;
+      const soLanThu = tuDong && truoc?.loai === 'khong-doc' ? (truoc.soLanThu ?? 1) + 1 : 1;
       const thuLai = this.bayGio() + THU_LAI_KHONG_DOC_MS[Math.min(soLanThu, THU_LAI_KHONG_DOC_MS.length) - 1];
       const cauXacNhan = `Đã gửi ${soHangGui} hàng nhưng chưa đọc lại được cân để kiểm (${ketQua.cau.replace(/[.\s]+$/, '')}).${veHaiChieu} `
         + 'Chương trình CHƯA ghi nhận lần gửi này (bảng vẫn theo lần cân xác nhận gần nhất). '
@@ -1939,9 +1940,8 @@ export class UngDung {
   guiXuongCan(giuHangNgoaiKho = false, timLai = true): Promise<KetQuaGui> {
     return this.motLuc(async () => {
       const k = await this.guiKeHoach(await this.dung(giuHangNgoaiKho), timLai);
-      // 2.9 — báo kho: vừa gửi được; cân đọc lại khớp thì hết lệch.
-      this.lucGuiDuoc = this.bayGio();
-      if (k.xacNhan) this.lechCuoi = 0;
+      // 2.9 — báo kho: cân đọc lại khớp thì vừa gửi được, hết lệch (2.9.2: chưa đọc lại được thì chưa "gửi được").
+      if (k.xacNhan) { this.lucGuiDuoc = this.bayGio(); this.lechCuoi = 0; }
       return k;
     });
   }
@@ -2006,9 +2006,18 @@ export class UngDung {
   async tuGuiMotLan(): Promise<LanTuGui> {
     const luc = new Date().toISOString();
     try {
+      // 2.9.2: lần gửi trước chưa đọc lại được cân và chưa tới giờ thử lại → không đọc kho, không dựng kế hoạch (mỗi phút).
+      const cho = this.chuaXacNhan();
+      const hen = cho?.loai === 'khong-doc' ? Date.parse(cho.thuLaiLuc ?? '') : NaN;
+      if (Number.isFinite(hen) && this.bayGio() < hen) {
+        this.lanTuGui = { luc, daGui: false, cau: (this.canChuaRo() ? 'Lần xoá qua WiFi trước hỏng giữa chừng — cân có thể thiếu hàng, nạp USB ngay. ' : '')
+          + 'Lần gửi trước chưa đọc lại được cân để kiểm (cân bận, phần mềm của hãng đang mở…) — '
+          + `chương trình chưa ghi nhận; tự gửi thử lại lúc ${gioPhutVn(hen)}.` };
+        return this.lanTuGui;
+      }
       // 2.9.1: đọc kho NGOÀI hàng đợi việc với cân — mạng internet chậm / treo không giữ nhịp, tự đọc nhật ký, nút bấm. Lần gửi
       // trước cân chưa nhận (tạm dừng, xem dưới) thì không đọc kho như trước.
-      const kho = this.chuaXacNhan()?.loai === 'lech' ? null : await this.docKhoChoCan(true);
+      const kho = cho?.loai === 'lech' ? null : await this.docKhoChoCan(true);
       // Kiểm và gửi trong CÙNG một việc của hàng đợi, trên CÙNG một lần đọc kho: đọc kho hai lần (kiểm rồi mới gửi) thì
       // kho đổi HSD giữa hai lần vẫn lọt xuống cân mà không ai xem.
       this.lanTuGui = await this.motLuc(async (): Promise<LanTuGui> => {
@@ -2053,10 +2062,10 @@ export class UngDung {
           return { luc, daGui: false, cau: 'Cân đã khớp kho.' };
         }
         const demNguoc = demDemNguocHsd(p.kh.dong);
-        const k = await this.guiKeHoach(p, Date.now() - this.lanDoHong >= DO_LAI_SAU_MS);
-        this.lucGuiDuoc = this.bayGio();
-        // Cân đọc lại khớp → hết lệch; chưa đọc lại được thì chưa biết cân đã nhận chưa (vẫn tính lệch — file gốc chưa đổi).
-        if (k.xacNhan) this.lechCuoi = 0;
+        const k = await this.guiKeHoach(p, Date.now() - this.lanDoHong >= DO_LAI_SAU_MS, true);
+        // Cân đọc lại khớp → gửi được, hết lệch; chưa đọc lại được thì chưa biết cân đã nhận chưa (vẫn tính lệch — file gốc
+        // chưa đổi), và (2.9.2) chưa phải "gửi được" — kho không thấy lần gửi mới mỗi lượt thử lại hỏng.
+        if (k.xacNhan) { this.lucGuiDuoc = this.bayGio(); this.lechCuoi = 0; }
         const diaChi = k.doiDiaChi ? ` — cân đổi địa chỉ, đã tìm thấy ở ${k.doiDiaChi.den}.` : '.';
         const qua = k.cachGui === 'hai-chieu' ? 'cổng hai chiều' : 'cổng 33571';
         const henSau = Date.parse(this.chuaXacNhan()?.thuLaiLuc ?? '');
@@ -2131,7 +2140,17 @@ export class UngDung {
   private trenCanBao() {
     let phim: PhimXem[] = [];
     try { phim = docPhim(docFileCan(this.docGoc())); } catch { /* chưa có file gốc: không phím */ }
-    return dongTrenCanBao(this.docTrenCan().values(), phim, h => h.so === PLU_THU || laPluTrong(h));
+    const tren = this.docTrenCan(), cho = this.docChoXacNhan();
+    // 2.9.2: dòng nào cân có thể đang khác — lần xoá qua WiFi hỏng (cân có thể thiếu hàng) hay đọc lại lệch: mọi dòng; chưa
+    // đọc lại được: dòng có lần gửi chờ xác nhận khác dòng đã xác nhận (mã / tên). Lần gửi lại cả danh sách y hệt không đánh dấu
+    // dòng nào — trang pha lóc không chặn in tem mọi ô chỉ vì một lần đếm ngược HSD chưa đọc lại được.
+    const caMay = this.canChuaRo() !== null || this.chuaXacNhan()?.loai === 'lech';
+    const chuaChac = (h: { so: number; ma: string; ten: string }) => {
+      if (caMay) return true;
+      const c = cho.get(h.so);
+      return !!c && (chuanMa(c.ma) !== chuanMa(h.ma) || c.ten.trim() !== h.ten.trim());
+    };
+    return dongTrenCanBao(tren.values(), phim, h => h.so === PLU_THU || laPluTrong(h), chuaChac);
   }
 
   /** Mốc nhật ký đã gửi kho của chi nhánh (giờ cân "YYYY-MM-DD HH:MM:SS"); chưa có → đầu ngày NHAT_KY_LAN_DAU_NGAY ngày trước. */
@@ -2210,7 +2229,7 @@ export class UngDung {
           can_tra_loi_giay: giay(this.giu.lucNgheMs()),
           tu_gui: ch.tuGui === true,
           lech_so: this.lechCuoi,
-          // 2.9.2 (migration 0066): lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được / đọc lại lệch), hay lần xoá qua WiFi
+          // 2.9.2 (migration 0068): lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được / đọc lại lệch), hay lần xoá qua WiFi
           // hỏng giữa chừng — cân có thể khác tren_can. Trang pha lóc không nói "Cân sẵn sàng" khi cờ này bật.
           chua_xac_nhan: this.chuaXacNhan() !== null || this.canChuaRo() !== null,
           gui_loi: ch.tuGui === true && this.lanTuGui?.hong === true,

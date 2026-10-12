@@ -58,7 +58,7 @@ nhom('1 · CÂU LỖI DATABASE PHẦN CRM CÓ BẢN TIẾNG ANH');
 {
   // Migration phần kho kiểm ở test-kho-tieng-anh.mjs (chặt hơn: cả câu hàm kho trả về). Danh
   // sách giữ giống hệt bên đó — migration kho mới (tên 00NN_kho_…) thêm vào cả hai.
-  const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042|0044_kho|0048_kho|0049_kho|0050_kho|0051_kho|0054_kho|0061_kho|0066_kho)/;
+  const KHO = /^(0017|0018|0019|0020|0021|0022|0023|0024|0029_kho|0030|0031|0032|0033|0034|0035|0037|0038|0039|0040|0041|0042|0044_kho|0048_kho|0049_kho|0050_kho|0051_kho|0054_kho|0061_kho|0068_kho)/;
   const tep = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql') && !KHO.test(f)).sort();
   const cau = new Map();
   for (const f of tep) {

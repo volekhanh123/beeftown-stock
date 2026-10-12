@@ -253,7 +253,7 @@ export async function hangChoCan(client: SupabaseClient, chiNhanhId: string, mat
 /** Máy quầy báo quá chừng này phút trước thì "trên cân" có thể đã cũ — nói rõ lần báo cuối. */
 export const PHUT_BAO_CAN_CU = 5;
 
-/** chua_xac_nhan (0066): đúng tên mới, nhưng máy quầy báo dòng đó chưa xác nhận lần gửi gần nhất với cân — không xanh. */
+/** chua_xac_nhan (0068): đúng tên mới, nhưng máy quầy báo cân có thể đang khác dòng đó (lần gửi chưa xác nhận) — không xanh. */
 export type MucCan = 'san_sang' | 'chua_xac_nhan' | 'ten_cu' | 'chua_len' | 'khong_biet';
 export interface DongCanO {
   giao_id: string; ten_hang: string; so_o: number; ma_can: string;
@@ -287,9 +287,9 @@ const gioPhut = (iso: string | null | undefined): string => {
 
 /**
  * Số liệu kho_phien_pha_can → các dòng trang pha lóc hiện (hàm thuần — test bằng node). Không bao giờ nói "Cân sẵn
- * sàng" khi chưa máy quầy nào báo đúng TÊN MỚI (tên + số tảng) cho mã ô: tên cũ trên cân = tem in ra sai tảng. 0066: máy
- * quầy báo lần gửi gần nhất cân chưa xác nhận (Beeftown Cân 2.9.2 — chưa đọc lại được cân, đọc lại lệch) thì dòng của máy
- * đó chưa đủ để nói "sẵn sàng" (rà soát 11/10/2026: 2.9.1 báo tên mới sau một lần gửi cân bỏ qua).
+ * sàng" khi chưa máy quầy nào báo đúng TÊN MỚI (tên + số tảng) cho mã ô: tên cũ trên cân = tem in ra sai tảng. 0068: dòng
+ * máy quầy đánh dấu chua_xac_nhan (Beeftown Cân 2.9.2 — cân có thể đang khác dòng đó: lần gửi chưa đọc lại được, đọc lại lệch)
+ * chưa đủ để nói "sẵn sàng" (rà soát 11/10/2026: 2.9.1 báo tên mới sau một lần gửi cân bỏ qua).
  */
 export function tomTatCanPhien(cp: CanPhien): TomTatCan {
   const bayGio = Date.parse(cp.luc);
@@ -301,7 +301,7 @@ export function tomTatCanPhien(cp: CanPhien): TomTatCan {
     if (o.dang_giu) {
       const muon = chuanTenCan(tenMuon);
       const dungTen = (t: TrenCanO) => chuanTenCan(String(t.ten ?? '')) === muon;
-      // Máy đã xác nhận với cân trước; chỉ máy chưa xác nhận có đúng tên thì "chưa chắc".
+      // Dòng cân đã xác nhận trước; chỉ dòng mang cờ chưa xác nhận có đúng tên thì "chưa chắc".
       const dung = o.tren_can.find(t => dungTen(t) && t.chua_xac_nhan !== true);
       const chuaChac = dung ? undefined : o.tren_can.find(dungTen);
       const cu = o.tren_can[0];
@@ -361,7 +361,7 @@ export function tomTatCanPhien(cp: CanPhien): TomTatCan {
             en: `Beeftown Scale at the counter sends new names to the scale within about 15–60 seconds${lanCuoi.en} — press Check the scale again to see whether it has them.` }
         : { vi: `Tự gửi đang tắt ở máy quầy${lanCuoi.vi} — quản lý mở Beeftown Cân, bấm Gửi xuống cân (hay bật Tự gửi ở Cài đặt).`,
             en: `Automatic sending is off on the counter computer${lanCuoi.en} — a manager opens Beeftown Scale and presses Send to scale (or turns on automatic sending in Settings).` };
-      // 0066: máy quầy báo lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được cân, đọc lại lệch, xoá qua WiFi hỏng).
+      // 0068: máy quầy báo lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được cân, đọc lại lệch, xoá qua WiFi hỏng).
       const chuaXn = cp.may.filter(x => x.chua_xac_nhan === true);
       if (chuaXn.length) {
         const tuMs = chuaXn.map(x => msCua(x.chua_xac_nhan_tu)).filter((t): t is number => t !== null);

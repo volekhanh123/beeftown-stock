@@ -1910,6 +1910,8 @@ console.log('6g · 2.6: gửi xong đọc lại cân để kiểm');
     const k2 = await u.guiXuongCan();
     can.hong = null;
     ok('Cân đóng kết nối giữa lúc trả danh sách → "khong-doc", không bao giờ báo cân đã nhận', !k2.xacNhan && u.chuaXacNhan()?.loai === 'khong-doc', k2.cauXacNhan ?? '');
+    ok('2.9.2: bấm Gửi lần nữa vẫn không đọc lại được → lần thử mới (soLanThu 1, thử lại sau 1 phút) — bấm tay không đẩy tự gửi ra 10 phút',
+      u.chuaXacNhan()?.soLanThu === 1 && Math.abs(Date.parse(u.chuaXacNhan()?.thuLaiLuc ?? '') - Date.now() - 60_000) < 15_000, JSON.stringify(u.chuaXacNhan()));
     const pluCan = can.du.phan.PLU;
     can.du.phan.PLU = []; c.cheDo = 'bo-qua'; can.chanGhi = () => {};
     const k3 = await u.guiXuongCan();
@@ -1956,8 +1958,8 @@ console.log('6g · 2.6: gửi xong đọc lại cân để kiểm');
       async bang() { return []; },
       async taiAnhHuy() { return { duongDan: [], loi: [] }; },
     };
-    let bayGio = Date.parse('2026-10-11T03:00:00Z'), ngay = '2026-10-11';
-    const u = new UngDung(ddMoi(), { danhMuc: async () => dmG(), mang: [], mac: async () => null, tuyHaiChieu: tuyHC, gui: cg.gui,
+    let bayGio = Date.parse('2026-10-11T03:00:00Z'), ngay = '2026-10-11', soDocKho = 0;
+    const u = new UngDung(ddMoi(), { danhMuc: async () => { soDocKho++; return dmG(); }, mang: [], mac: async () => null, tuyHaiChieu: tuyHC, gui: cg.gui,
       choXacNhanMs: [0, 20], kho: khoB, bayGio: () => bayGio, homNay: () => ngay, gioMang: async () => null,
       nguoi: { email: 'ql@b', hoTen: 'QL', vaiTro: 'quan_ly', chiNhanh: cnB, cacChiNhanh: [cnB], quyen: quyenCuaVai('quan_ly') } });
     u.luuCauHinh({ ipCan: '127.0.0.1', congCan, congHaiChieu: can.cong });
@@ -1988,10 +1990,16 @@ console.log('6g · 2.6: gửi xong đọc lại cân để kiểm');
     const b1 = bao.at(-1);
     ok('HỒI QUY 11/10: báo kho → chua_xac_nhan true, lech_so 2, tren_can PLU 2 vẫn tên cũ (trang pha lóc không "Cân sẵn sàng")',
       b1?.chua_xac_nhan === true && b1.lech_so === 2 && tenBao(b1) === 'Steak Chuck eye', JSON.stringify(b1));
+    const coDanh = (b1?.tren_can as { plu: number; chua_xac_nhan?: boolean }[] | undefined)?.filter(x => x.chua_xac_nhan === true).map(x => x.plu).join();
+    ok('Báo kho: chỉ dòng có lần gửi chờ xác nhận KHÁC dòng đã xác nhận mang cờ (PLU 2 đổi tên) — PLU 1, 3 (tên y nguyên) không, để trang không chặn mọi ô',
+      coDanh === '2', JSON.stringify(b1?.tren_can));
+    ok('Báo kho: lần gửi chưa đọc lại được không phải "gửi được" — gui_giay vẫn là lần cân xác nhận hôm qua (86400 giây)', b1?.gui_giay === 86400,
+      String(b1?.gui_giay));
     bayGio += 30_000;
+    const docKhoTruoc = soDocKho;
     const t2 = await u.tuGuiMotLan();
-    ok('30 giây sau: chưa tới giờ thử lại (1 phút sau lần hỏng) → không gửi; câu nói giờ thử lại (giờ VN) và vẫn chưa đọc lại được cân',
-      !t2.daGui && !t2.hong && cg.c.soLan === 1 && /thử lại lúc 10:01/.test(t2.cau) && /chưa đọc lại được cân/.test(t2.cau), t2.cau);
+    ok('30 giây sau: chưa tới giờ thử lại (1 phút sau lần hỏng) → không gửi, không đọc kho; câu nói giờ thử lại (giờ VN) và vẫn chưa đọc lại được cân',
+      !t2.daGui && !t2.hong && cg.c.soLan === 1 && soDocKho === docKhoTruoc && /thử lại lúc 10:01/.test(t2.cau) && /chưa đọc lại được cân/.test(t2.cau), t2.cau);
     bayGio += 30_000;
     const t3 = await u.tuGuiMotLan();
     ok('HỒI QUY 11/10: phút sau tự gửi THỬ LẠI (không "không có thay đổi"); cân vẫn bận → vẫn chưa ghi nhận, lần sau lùi 2 phút (10:03)',
@@ -2128,6 +2136,10 @@ console.log('6g · 2.6: gửi xong đọc lại cân để kiểm');
       /baoChuaXacNhan\(x\.chuaXacNhan\)/.test(gd) && /baoChuaXacNhan\(d\.chuaXacNhan\)/.test(gd) && /'Giữ nguyên \(chưa xác nhận\)'/.test(gd)
       && /'Khớp kho, chưa xác nhận'/.test(gd) && /s\.chuaXacNhan/.test(gd));
     ok('Trang: giờ của dấu hiện theo giờ Việt Nam (lucNgan có timeZone Asia/Ho_Chi_Minh)', /const lucNgan = [^\n]*timeZone: 'Asia\/Ho_Chi_Minh'/.test(gd));
+    ok('2.9.2 — trang: nhãn "(chưa xác nhận)" chỉ cho dấu kiểu 2.9.1 (không giờ thử lại); giờ thử lại theo giờ VN, chỉ nói khi Tự gửi bật',
+      /theoLanChuaKiem = chuaKiemDuoc && !x\.chuaXacNhan\.thuLaiLuc/.test(gd) && /d\.loai === 'giu' && theoLanChuaKiem/.test(gd)
+      && /dsHang\.chuaXacNhan\.loai === 'khong-doc' && !dsHang\.chuaXacNhan\.thuLaiLuc/.test(gd)
+      && /const gioPhut = [^\n]*timeZone: 'Asia\/Ho_Chi_Minh'/.test(gd) && /c\.thuLaiLuc && tuGuiBat\(\)/.test(gd));
     ok('Hướng dẫn: mục Gửi giá từ kho nói chương trình đọc lại cân sau khi gửi (Mới 2.6)', /Mới 2\.6/.test(hd) && /đọc lại cân/.test(hd));
   }
 }
