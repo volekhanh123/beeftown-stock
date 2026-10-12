@@ -426,7 +426,7 @@ await nhom('8 · HÀM NỘI BỘ KHÔNG LỌT RA NGOÀI', async () => {
     'kho_ipos_trang_thai_goc',
     // 0061: giờ đồng hồ cân (giờ VN) → timestamptz
     'kho_luc_can_vn',
-    // 0066: trigger trả ô mã không có lô nhập kho khi chốt phiên lóc
+    // 0075: trigger trả ô mã không có lô nhập kho khi chốt phiên lóc
     'kho_phien_pha_chot_tra_o_ma',
   ].sort();
 

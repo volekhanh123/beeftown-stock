@@ -1301,7 +1301,7 @@ const MAU_THO: ReadonlyArray<HaiThuTieng> = [
   { vi: 'Đã tắt mã %. Lần gửi xuống cân sau sẽ bỏ hàng này (qua WiFi thì còn nằm trên cân, nạp USB để xoá hẳn).',
     en: 'Turned off discount code {1}. The next send to the scale will drop this item (over WiFi it stays on the scale — load by USB to delete it completely).' },
 
-  // 0066_kho_o_ma_mot_lo — một ô mã chỉ về một lô: chốt phiên lóc có hai dòng nhập kho của cùng phần cắt đang giữ ô
+  // 0075_kho_o_ma_mot_lo — một ô mã chỉ về một lô: chốt phiên lóc có hai dòng nhập kho của cùng phần cắt đang giữ ô
   { vi: '"%" đang giữ ô % (mã %): mỗi phiên pha lóc chỉ ghi một dòng nhập kho cho món này — gộp các dòng thành một, chốt phiên xong rồi chuyển phần cần ra quầy',
     en: '"{1}" holds slot {2} (code {3}): enter only one stock-in line for this item per butchery session — merge the lines into one, close the session, then transfer what the counter needs' },
 ];
