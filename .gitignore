@@ -68,6 +68,7 @@
 !/can-app/CAN-TMA.md
 !/can-app/package.json
 !/can-app/package-lock.json
+!/can-app/tsconfig.json
 !/can-app/src/*.ts
 !/can-app/src/*.html
 !/can-app/test/*.ts

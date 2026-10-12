@@ -84,13 +84,10 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     ".replace(/(đ|d|vnd)$/i, '')",              // đọc ô tiền: "450.000đ", "450.000 đ"
     ".replace(/đ/g, 'd').replace(/Đ/g, 'D')",   // bỏ dấu khi sinh mã / tìm không dấu
     // gói máy & iPOS — câu cho máy / log, không hiện trên màn nào:
-    // lib/kho/ipos-dong-bo.ts — câu đăng nhập tài khoản máy (chỉ vào log) và log của cron
-    // cho người vận hành; test-kho-ipos-web đọc log nguyên văn ("chưa cài", "không đăng
-    // nhập được"…). /chưa bật/ nhận câu từ chối của database (kho_ipos_bat_dau).
-    "cau: `chưa cài ${TEN_BI_MAT.email} / ${TEN_BI_MAT.matKhau}`",
-    "cau: 'chưa nối database'",
-    "`tài khoản máy không đăng nhập được: ${error?.message ?? 'không có phiên'}`",
-    "`tài khoản máy không đăng nhập được: ${e instanceof Error ? e.message : String(e)}`",
+    // lib/kho/ipos-dong-bo.ts — nhãn câu đăng nhập tài khoản máy (câu ghép ở lib/tai-khoan-may.ts,
+    // chỉ vào log) và log của cron cho người vận hành; test-kho-ipos-web đọc log nguyên văn ("chưa
+    // cài", "không đăng nhập được"…). /chưa bật/ nhận câu từ chối của database (kho_ipos_bat_dau).
+    "nhan: 'tài khoản máy'",
     "ghi(`${dn.cau} — bỏ qua`)",
     "ghi(`không đọc được chi nhánh: ${e1.message}`)",
     "ghi('tài khoản máy không có chi nhánh nào được đồng bộ (vai phải là may_ipos)')",

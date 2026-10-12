@@ -940,8 +940,12 @@ await nhom('12 · WORKER, TRANG, MENU, TRANG CÔNG KHAI, README, GIT', async () 
   const route = readFileSync(join(GOC, 'web/src/pages/hook/messenger.ts'), 'utf8');
   ok('Route dự phòng pages/hook/messenger.ts cho astro dev', /xuLyHookMessenger\(request\)/.test(route) && /prerender = false/.test(route));
   const hook = readFileSync(join(GOC, 'web/src/lib/messenger-hook.ts'), 'utf8');
-  ok('messenger-hook.ts: client máy anon riêng không lưu phiên; không có lời gọi hàm công khai (nằm ở messenger-anon.ts)',
-     /persistSession: false, autoRefreshToken: false/.test(hook) && !/\.rpc\('(tao_dat_ban|tra_cuu_dat_ban|tra_cuu_mot_dat_ban|huy_dat_ban|lich_trong_theo_ma)'/.test(hook));
+  // Đăng nhập máy dùng chung (lib/tai-khoan-may.ts, rà soát 11/10/2026): messenger-hook.ts phải đi qua đó.
+  const mayChung = readFileSync(join(GOC, 'web/src/lib/tai-khoan-may.ts'), 'utf8');
+  ok('messenger-hook.ts: client máy anon riêng không lưu phiên (qua dangNhapMay / taoPhienMayNho); không có lời gọi hàm công khai (nằm ở messenger-anon.ts)',
+     /dangNhapMay\(thamSoMay\(/.test(hook) && /phienMess\.dangNhap\(thamSoMay\(/.test(hook)
+     && /persistSession: false, autoRefreshToken: false/.test(mayChung) && /global: \{ fetch: taoFetchCoHan\(/.test(mayChung)
+     && !/\.rpc\('(tao_dat_ban|tra_cuu_dat_ban|tra_cuu_mot_dat_ban|huy_dat_ban|lich_trong_theo_ma)'/.test(hook));
   const anon = readFileSync(join(GOC, 'web/src/lib/messenger-anon.ts'), 'utf8');
   ok('messenger-anon.ts: không gọi mess_*', !/rpc\('mess_/.test(anon) && /p_utm_source: 'messenger'/.test(anon) && /p_utm_medium: 'chatbot'/.test(anon));
   const hd = readFileSync(join(GOC, 'crm/test/test-hop-dong-web.mjs'), 'utf8');
