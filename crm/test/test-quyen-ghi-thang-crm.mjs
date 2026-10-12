@@ -154,6 +154,17 @@ await nhom('4 · so_cai_diem, luot_ghe — điểm là tiền: chỉ ghi qua ghi
       `insert into luot_ghe (chi_nhanh_id, khach_hang_id, tong_hoa_don) values ($1, $2, 99000000)`, [cnA.id, khQ1.id]);
     ok(`${ai} → không tự thêm lượt ghé`, biChan(ghe), vi(ghe));
   }
+  // luot_ghe_sua (0007) cho quản lý / chủ sửa thẳng mọi cột: ghi lại người ghi lượt ghé (created_by — vòng qua
+  // kiểm "không ghi dưới tên nhân sự khác" của 0045) và số tiền hoá đơn (nuôi nhóm khách VIP, đối tượng chiến dịch Zalo).
+  const { rows: [ns] } = await db.query(`select id from nhan_su where auth_uid = $1`, [UID.keToanA]);
+  const { rows: [luot] } = await db.query(`select id, tong_hoa_don, created_by from luot_ghe where khach_hang_id = $1 limit 1`, [khQ1.id]);
+  for (const [ai, uid] of MOI_NGUOI) {
+    const r = await duoi(uid, `update luot_ghe set created_by = $1, tong_hoa_don = 1 where id = $2 returning id`, [ns.id, luot.id]);
+    ok(`${ai} → không sửa thẳng được lượt ghé (người ghi, số tiền)`, r.loi !== null || r.rows.length === 0, vi(r));
+  }
+  const { rows: [sau] } = await db.query(`select tong_hoa_don, created_by from luot_ghe where id = $1`, [luot.id]);
+  ok('Lượt ghé giữ nguyên số tiền và người ghi', Number(sau.tong_hoa_don) === Number(luot.tong_hoa_don)
+     && sau.created_by === luot.created_by, JSON.stringify(sau));
   ok('Sổ điểm và lượt ghé không thêm dòng nào',
      (await dem(`select count(*) n from so_cai_diem`)) === diemTruoc
      && (await dem(`select count(*) n from luot_ghe`)) === gheTruoc);
@@ -161,8 +172,10 @@ await nhom('4 · so_cai_diem, luot_ghe — điểm là tiền: chỉ ghi qua ghi
 
 // ===========================================================================
 await nhom('5 · khach_hang — không ai sửa / thêm thẳng hồ sơ khách', async () => {
-  const r = await duoi(UID.thuNganA, `update khach_hang set dang_hoat_dong = false returning id`);
-  ok('Thu ngân Q1: update khach_hang KHÔNG điều kiện → không dòng nào đổi', r.loi !== null || r.rows.length === 0, vi(r));
+  // KHÔNG có "returning": returning bắt Postgres áp thêm policy ĐỌC (khach_hang_doc) và bỏ qua khách Q7 — đúng câu
+  // tấn công thật là update trơn, không điều kiện. Kiểm bằng trạng thái sau đó, không bằng số dòng trả về.
+  const r = await duoi(UID.thuNganA, `update khach_hang set dang_hoat_dong = false`);
+  ok('Thu ngân Q1: update khach_hang KHÔNG điều kiện chạy (không đổi được gì)', r.loi === null || r.ma === '42501', vi(r));
   const { rows: [q7] } = await db.query(`select dang_hoat_dong from khach_hang where id = $1`, [khQ7.id]);
   ok('…khách chỉ có ở Q7 vẫn đang hoạt động (không bị coi là "đã yêu cầu xoá")', q7.dang_hoat_dong === true);
   const { rows: [q1] } = await db.query(`select dang_hoat_dong from khach_hang where id = $1`, [khQ1.id]);

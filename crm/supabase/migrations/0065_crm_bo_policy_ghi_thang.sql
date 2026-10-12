@@ -17,6 +17,9 @@
 --     khoá chống gửi hai lần (khoa_gui) của zalo_tao_chien_dich.
 --   · so_cai_diem / luot_ghe: thu ngân tự cộng 5.000.000 điểm, ghi created_by
 --     là người khác — vòng qua kiểm "không ghi dưới tên nhân sự khác" của 0045.
+--     luot_ghe_sua (UPDATE mọi cột) còn cho quản lý / chủ sửa người ghi và số
+--     tiền hoá đơn của lượt cũ, không vết — số tiền nuôi nhóm khách VIP và đối
+--     tượng chiến dịch Zalo.
 --   · khach_hang (update chỉ kiểm vai, không kiểm chi nhánh): thu ngân Q1 chạy
 --     `update khach_hang set dang_hoat_dong = false` không điều kiện là tắt cả
 --     khách chỉ có ở Q7 — khách bị coi là "đã yêu cầu xoá", mọi tin Zalo dừng.
@@ -39,11 +42,12 @@
 -- Kiểm thử: crm/test/test-quyen-ghi-thang-crm.mjs.
 -- =============================================================================
 
--- 1 · Năm bảng CRM: bỏ policy GHI (đọc giữ nguyên)
+-- 1 · Năm bảng CRM: bỏ policy GHI (thêm và sửa; đọc giữ nguyên)
 drop policy if exists dong_y_them      on nhat_ky_dong_y;
 drop policy if exists nhat_ky_tin_them on nhat_ky_tin;
 drop policy if exists so_cai_them      on so_cai_diem;
 drop policy if exists luot_ghe_them    on luot_ghe;
+drop policy if exists luot_ghe_sua     on luot_ghe;
 drop policy if exists khach_hang_them  on khach_hang;
 drop policy if exists khach_hang_sua   on khach_hang;
 

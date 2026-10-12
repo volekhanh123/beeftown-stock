@@ -115,8 +115,13 @@
 .dev.vars*
 *service-account*.json
 *service_account*.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
+client_secret*.json
 *credentials*.json
 *-key.json
+key.json
+token.json
 *.pem
 *.key
 # Cấu hình Claude trên máy (settings.local.json, bộ nhớ…): chặn mọi thứ BÊN TRONG .claude/ ở mọi
