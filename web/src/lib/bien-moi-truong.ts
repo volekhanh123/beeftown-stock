@@ -35,8 +35,15 @@ export function docChuoi(ten: string, ...nguon: Env[]): string | undefined {
 
 export const envNode = (): Env => (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
 
+/**
+ * Tên biến layBienCong đọc. Astro nướng biến KHÔNG có tiền tố PUBLIC_ (SITE_URL) vào bản build chỉ khi tên của nó
+ * xuất hiện trong chính file dùng import.meta.env — tức file này, không phải nơi gọi. Giữ tên trong MÃ ở đây (không
+ * chỉ trong chú thích); gọi tên khác là lỗi kiểu. Kiểm thử: test-bao-dong-web.mjs, nhóm "BIẾN BẢN BUILD".
+ */
+export const BIEN_CONG = ['PUBLIC_SUPABASE_URL', 'PUBLIC_SUPABASE_ANON_KEY', 'SITE_URL'] as const;
+
 /** Biến PUBLIC_* / SITE_URL: bản build (import.meta.env) trước, rồi env truyền vào, rồi process.env. */
-export function layBienCong(ten: string, env: Env): string | undefined {
+export function layBienCong(ten: (typeof BIEN_CONG)[number], env: Env): string | undefined {
   const v = (import.meta as { env?: Record<string, unknown> }).env?.[ten];
   if (typeof v === 'string' && v) return v;
   return docChuoi(ten, env, envNode());
