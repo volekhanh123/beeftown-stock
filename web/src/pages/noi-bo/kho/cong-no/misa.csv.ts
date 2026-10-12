@@ -7,34 +7,35 @@
  * định dạng file: lib/kho/misa.ts (COT_MISA — "CHỈNH KHI CÓ FILE MẪU"). CSV
  * UTF-8 có BOM, ngăn cột bằng ";" (mặc định, Excel tiếng Việt) hoặc ",".
  * Cùng quyền với trang Công nợ (ke_toan). Đi qua middleware như mọi đường
- * /noi-bo; dữ liệu đọc bằng client mang token của người tải (RLS quyết định).
+ * /noi-bo; mở bằng moKhoTai (phiên, tự khóa máy dùng chung, chi nhánh); dữ
+ * liệu đọc bằng client mang token của người tải (RLS quyết định). Câu lỗi
+ * theo ngôn ngữ người tải.
  */
 import type { APIRoute } from 'astro';
-import { duoc, homNayVn } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, duoc, homNayVn } from '../../../../lib/kho/chung.ts';
 import { docDuLieuMisa } from '../../../../lib/kho/cong-no.ts';
 import { docBoLocMisa, taoCsvMisa, tenTepMisa } from '../../../../lib/kho/misa.ts';
+import { moKhoTai } from '../../../../lib/kho/trang.ts';
+import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
+import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
-export const GET: APIRoute = async ({ locals, url, cookies }) => {
-  const phien = locals.phien;
-  if (!phien) return new Response('Chưa đăng nhập', { status: 401 });
-  const { client, nhanSu } = phien;
-  if (!duoc(nhanSu.vai_tro, 'ke_toan')) return new Response('Tài khoản không xuất được dữ liệu kế toán', { status: 403 });
+export const GET: APIRoute = async (ctx) => {
+  const k = await moKhoTai(ctx);
+  if (k instanceof Response) return k;
+  const { client, nhanSu, chiNhanh: cn, nn } = k;
+  const t = dichNB(nn, {
+    khongKeToan: { vi: 'Tài khoản không xuất được dữ liệu kế toán', en: 'This account cannot export accounting data' },
+    khongDoc: { vi: 'Không đọc được dữ liệu', en: 'Could not read the data' },
+  });
+  if (!duoc(nhanSu.vai_tro, 'ke_toan')) return new Response(t.khongKeToan, { status: 403 });
 
-  // Chi nhánh: cùng cách chọn với moTrangKho() (như bao-cao/[ten].csv.ts).
-  const { data: ds } = await client.from('chi_nhanh').select('id, ma, ten').order('ma');
-  const cacCn = (ds ?? []) as { id: string; ma: string; ten: string }[];
-  const cn = nhanSu.chi_nhanh_id
-    ? cacCn.find(c => c.id === nhanSu.chi_nhanh_id)
-    : cacCn.find(c => c.ma === cookies.get('bt_kho_cn')?.value) ?? cacCn[0];
-  if (!cn) return new Response('Chưa có chi nhánh', { status: 404 });
-
-  const loc = docBoLocMisa(url.searchParams, homNayVn());
+  const loc = docBoLocMisa(ctx.url.searchParams, homNayVn());
   let csv: string;
   try {
     csv = taoCsvMisa(loc.loai, await docDuLieuMisa(client, cn.id, loc.tu, loc.den, loc.loai), { ngan: loc.ngan });
   } catch (e) {
-    const cau = (e as { message?: string })?.message ?? 'Không đọc được dữ liệu';
-    return new Response(cau, { status: 400 });
+    // Câu database / mất mạng → câu dễ hiểu (cauLoiKho), rồi theo ngôn ngữ người tải. Lỗi đọc là 500, không phải 400.
+    return new Response(dichCau(nn, cauLoiKho(e, t.khongDoc)), { status: 500 });
   }
   return new Response(csv, {
     headers: {

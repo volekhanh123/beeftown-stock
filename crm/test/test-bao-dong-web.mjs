@@ -855,4 +855,44 @@ await nhom('21 · CRON RIÊNG, HẾT GIỜ, WORKER', async () => {
   ok('Sổ kho không bị đụng: kho_doi_soat_ton() rỗng', rows.length === 0);
 });
 
+await nhom('BIẾN BẢN BUILD: tên biến layBienCong đọc phải viết ra TRONG MÃ của bien-moi-truong.ts', async () => {
+  // Astro nướng biến không có tiền tố PUBLIC_ (SITE_URL — link trong tin báo động, Messenger) vào bản build chỉ khi
+  // tên của nó xuất hiện trong chính file dùng import.meta.env. Gộp bốn bản chép về bien-moi-truong.ts thì tên chỉ
+  // còn ở nơi gọi (file khác) — chỉ nằm trong một dòng chú thích là sửa chú thích sẽ mất biến mà không ai biết.
+  const lib = join(GOC, 'web', 'src', 'lib');
+  const tep = [];
+  const duyet = d => { for (const t of readdirSync(d, { withFileTypes: true })) {
+    const p = join(d, t.name); if (t.isDirectory()) duyet(p); else if (p.endsWith('.ts')) tep.push(p); } };
+  duyet(lib);
+  const ten = new Set(tep.flatMap(f => [...readFileSync(f, 'utf8').matchAll(/layBienCong\('([A-Z_]+)'/g)].map(m => m[1])));
+  const ma = readFileSync(join(lib, 'bien-moi-truong.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/[^\n]*/g, '$1');
+  const thieu = [...ten].filter(t => !ma.includes(`'${t}'`));
+  ok(`Mọi tên layBienCong được gọi (${[...ten].join(', ')}) có trong MÃ (không phải chú thích) của bien-moi-truong.ts`,
+     ten.has('SITE_URL') && thieu.length === 0, `thiếu: ${thieu.join(', ')}`);
+});
+
+// ===========================================================================
+await nhom('DỌN NHẬT KÝ HỎNG (0073): lượt vẫn trọn, câu lỗi vào lỗi của lượt → đèn Báo động', async () => {
+  // Hàm dọn chạy TRONG bao_dong_bat_dau_luot; hỏng thì database trả loi_don, lượt vẫn chạy. Worker phải gộp câu đó
+  // vào lỗi của lượt — không thì việc dọn hỏng mãi mà không đèn nào báo.
+  const { rows: [{ d: goc }] } = await db.query(`select pg_get_functiondef('don_nhat_ky_qua_han()'::regprocedure) d`);
+  await db.exec(`create or replace function don_nhat_ky_qua_han() returns jsonb language plpgsql
+                 security definer set search_path = public as $$ begin raise exception 'hỏng thử dọn nhật ký'; end $$`);
+  try {
+    const r = await chay();
+    ok('Lượt trọn dù dọn hỏng: bắt đầu → ghi → kết thúc',
+       r.c.goi.join() === 'signIn,bao_dong_bat_dau_luot,bao_dong_ghi_luot,bao_dong_ket_thuc_luot,signOut', r.c.goi.join());
+    const tt = await trangThai();
+    ok('loi_cuoi của lượt có câu "dọn nhật ký quá hạn hỏng"', /dọn nhật ký quá hạn hỏng: hỏng thử dọn nhật ký/.test(tt.loi_cuoi ?? ''),
+       String(tt.loi_cuoi));
+    const { o, d } = await denBaoDong();
+    ok('Đèn Báo động trên bảng: đỏ "lượt gần nhất bị lỗi"', o?.co_loi === true && d?.mau === 'do', `${d?.mau} — ${d?.cau}`);
+  } finally {
+    await db.exec(goc);
+  }
+  await chay();
+  ok('Dọn chạy lại được → lượt sau xoá lỗi', (await trangThai()).loi_cuoi === null);
+});
+
 process.exit(ketThuc('BÁO ĐỘNG PHÍA WEB'));

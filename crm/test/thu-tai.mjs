@@ -8,7 +8,7 @@
  *   node test/thu-tai.mjs --nguoi 150 --phut 10
  *
  * (Windows PowerShell: đặt từng biến bằng $env:SUPABASE_URL="…" rồi chạy dòng node.)
- * Không cần cài thêm gì — Node ≥ 20. KHÔNG nằm trong `npm test`: nó gọi một
+ * Không cần cài thêm gì — Node ≥ 22.18 (như mọi kiểm thử của crm). KHÔNG nằm trong `npm test`: nó gọi một
  * project Supabase thật qua mạng.
  *
  * CHỈ CHẠY TRÊN PROJECT THỬ. Script dừng ngay nếu database có chi nhánh nào tên

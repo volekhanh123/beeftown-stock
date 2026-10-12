@@ -501,7 +501,7 @@ Chép `.env.example` thành `.env`:
 | `SITE_URL` | Tên miền thật |
 | `PUBLIC_CHI_NHANH` | Mã chi nhánh, khớp `chi_nhanh.ma` |
 
-**Khóa anon là khóa công khai theo thiết kế** — nó nằm sẵn trong mã trang web mà ai cũng xem được. An toàn nằm ở RLS và ở danh sách 12 hàm mà `anon` được phép gọi (migration `0013`), **không** nằm ở việc giấu khóa này.
+**Khóa anon là khóa công khai theo thiết kế** — nó nằm sẵn trong mã trang web mà ai cũng xem được. An toàn nằm ở RLS và ở danh sách hàm mà `anon` được phép gọi (`DUOC_PHEP` trong `crm/test/test-an-toan.mjs` — kiểm thử đỏ khi database cho anon gọi hàm ngoài danh sách), **không** nằm ở việc giấu khóa này.
 
 Khóa `service_role` thì ngược lại: **không bao giờ** đặt vào thư mục này.
 

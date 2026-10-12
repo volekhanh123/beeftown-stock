@@ -35,7 +35,7 @@ import { thuCapNhat } from './thu-cap-nhat.ts';
 import { thuGiuKetNoi } from './thu-giu-ket-noi.ts';
 import { thuBaoKho } from './thu-bao-kho.ts';
 import { thuBenVung } from './thu-ben-vung.ts';
-import { thuBangMau } from './thu-bang-mau.ts';
+import { thuNoKyThuat } from './thu-no-ky-thuat.ts';
 
 let dat = 0, hong = 0;
 const ok = (ten: string, dieuKien: boolean, chiTiet = '') => {
@@ -73,7 +73,7 @@ const nhan: Buffer[] = [];
 const trenCanGia = new Map<number, string>();   // số PLU → dòng
 const mayCan = net.createServer((s) => {
   const phan: Buffer[] = [];
-  s.on('data', (d) => phan.push(d));
+  s.on('data', (d: Buffer) => phan.push(d));
   s.on('end', () => {
     const du = Buffer.concat(phan);
     if (du.length) {
@@ -741,7 +741,8 @@ console.log('6d · Bản 2.2: cổng hai chiều, nhật ký cân, thông số, 
 
   console.log('6d2 · Nhật ký cân: gộp từ file và WiFi, không trùng; CSV');
   const g9 = ud9.ghiNhanFileTuCan(fileCoRep);
-  ok('Ghi nhận file USB có nhật ký: gộp ngay 3 dòng vào nhat-ky-can.tsv', g9.soHang === 3 && g9.nhatKy?.soDong === 3 && g9.nhatKy.soMoi === 3
+  ok('Ghi nhận file USB có nhật ký: gộp ngay 3 dòng vào nhat-ky-can.tsv', g9.soHang === 3 && !!g9.nhatKy && 'soDong' in g9.nhatKy
+    && g9.nhatKy.soDong === 3 && g9.nhatKy.soMoi === 3
     && fs.existsSync(ud9.fileNhatKy), JSON.stringify(g9));
   const nk1 = await ud9.nhatKyCan({ nguon: 'luu' });
   ok('Tóm tắt: 2 gói bán (0,715 kg, 529.175 đ), 1 lần cân chưa in tem', nk1.tongDaLuu === 3 && nk1.tomTat.tong.soGoi === 2
@@ -937,7 +938,7 @@ console.log('6d · Bản 2.2: cổng hai chiều, nhật ký cân, thông số, 
   ok('Chỉnh giờ qua 33581: cân báo lại đúng giờ mới, không gửi gì qua 33571', cg1.cach === '33581' && cg1.daXacNhan && cg1.loiHaiChieu === null
     && JSON.stringify(can2.du.gio) === JSON.stringify({ nam: 2026, thang: 10, ngay: 1, gio: 8, phut: 30, giay: 0 }) && nhan.length === soGio, JSON.stringify(cg1));
   const gc = await ud9.gioCan();
-  ok('Đọc giờ cân', gc.gio.thang === 10 && gc.gio.gio === 8 && gc.gio.phut === 30 && /^\d{4}-\d{2}-\d{2} /.test(gc.gioMay), JSON.stringify(gc));
+  ok('Đọc giờ cân', gc.gio.thang === 10 && gc.gio.gio === 8 && gc.gio.phut === 30 && /^\d{4}-\d{2}-\d{2} /.test(gc.gioVn), JSON.stringify(gc));
   ud9.luuCauHinh({ congHaiChieu: congDong });
   const cg2 = await ud9.chinhGioCan({ luc: '2026-10-01T09:00' });
   ok('Cổng 33581 đóng → gửi khối giờ qua 33571 (chưa xác nhận), nói rõ vì sao', cg2.cach === '33571' && !cg2.daXacNhan
@@ -1841,8 +1842,10 @@ console.log('6g · 2.6: gửi xong đọc lại cân để kiểm');
       tuyHaiChieu: tuyHC, gui: cg.gui, choXacNhanMs: [0, 20] });
     u.luuCauHinh({ ipCan: '127.0.0.2', congCan: cong33571, congHaiChieu: can.cong });   // cân "đã chuyển" sang 127.0.0.1
     u.ghiNhanFileTuCan(fileCan(PLU_CU));
-    let k: Awaited<ReturnType<typeof u.guiXuongCan>> | null = null;
-    const loiDoi = await loiCua(async () => { k = await u.guiXuongCan(); });
+    // Gán trong hàm gọi lại: tsc không thấy, tưởng k luôn null (never) — ghi rõ kiểu khi đọc.
+    let kGan: Awaited<ReturnType<typeof u.guiXuongCan>> | null = null;
+    const loiDoi = await loiCua(async () => { kGan = await u.guiXuongCan(); });
+    const k = kGan as Awaited<ReturnType<typeof u.guiXuongCan>> | null;
     if (loiDoi) console.log(`    (lỗi: ${loiDoi})`);
     ok('2.6.1: cân đổi địa chỉ → tìm thấy ở 127.0.0.1, ghi qua cổng hai chiều ở đó, cân đã nhận; không gửi gì qua 33571; báo đổi địa chỉ',
       !!k && k.xacNhan && k.cachGui === 'hai-chieu' && k.doiDiaChi?.den === '127.0.0.1' && cg.c.soLan === 0 && u.cauHinh().ipCan === '127.0.0.1'
@@ -2789,7 +2792,7 @@ await thuCapNhat(ok);
 await thuGiuKetNoi(ok);
 await thuBaoKho(ok, { fileCan, plu });
 await thuBenVung(ok, { fileCan, plu });
-await thuBangMau(ok);
+await thuNoKyThuat(ok, { fileCan, plu });
 
 // =============================================================================
 console.log('7 · Chạy src/main.ts thật');

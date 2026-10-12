@@ -31,7 +31,9 @@
  * process.env (test bằng Node). Thiếu → không làm gì, một dòng log.
  */
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { docChuoi, envNode, envWorker, layBienCong, type Env } from './bien-moi-truong.ts';
+import { dangNhapMay, taoFetchCoHan, type KetQuaDangNhapMay } from './tai-khoan-may.ts';
 import type { NgonNguNB } from './ngon-ngu-noi-bo';
 import { danhGiaSucKhoe, laSucKhoeTho } from './suc-khoe.ts';
 import { lapKeHoach, type DaBao, type KeHoach, type SuCo } from './bao-dong-chinh-sach.ts';
@@ -42,7 +44,7 @@ import { xoaBiMat } from './messenger.ts';
 // -----------------------------------------------------------------------------
 // HẰNG SỐ, BÍ MẬT
 // -----------------------------------------------------------------------------
-export type Env = Record<string, unknown> | undefined;
+export type { Env } from './bien-moi-truong.ts';
 
 /** Chuỗi cron của việc báo động — PHẢI trùng một phần tử `crons` trong web/wrangler.toml. */
 export const CRON_BAO_DONG = '2-59/5 * * * *';
@@ -54,30 +56,6 @@ export const HET_GIO = { goiMs: 20_000, kenhMs: 10_000, luotMs: 60_000, ketThucM
 export interface BiMatBaoDong {
   email?: string;
   matKhau?: string;
-}
-
-async function envWorker(): Promise<Env> {
-  try {
-    // @ts-ignore — dự án không cài kiểu của workerd; module này chỉ có trên Worker.
-    const m = await import('cloudflare:workers');
-    return (m as { env?: Record<string, unknown> })?.env;
-  } catch { return undefined; }
-}
-
-function docChuoi(ten: string, ...nguon: Env[]): string | undefined {
-  for (const n of nguon) {
-    const v = n?.[ten];
-    if (typeof v === 'string' && v.trim()) return v.trim();
-  }
-  return undefined;
-}
-
-const envNode = (): Env => (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
-
-function layBienCong(ten: string, env: Env): string | undefined {
-  const v = (import.meta as { env?: Record<string, unknown> }).env?.[ten];
-  if (typeof v === 'string' && v) return v;
-  return docChuoi(ten, env, envNode());
 }
 
 /** Đọc tài khoản máy báo động. Không có → undefined; không bao giờ ném lỗi. */
@@ -118,64 +96,20 @@ export interface PhuThuocBaoDong {
   nn?: NgonNguNB;
 }
 
+/** fetch có hạn giờ — chung cho mọi tài khoản máy (tai-khoan-may.ts); xuất lại cho code và test cũ. */
+export { taoFetchCoHan };
+
 /**
- * fetch có hạn giờ: mỗi lời gọi tối đa goiMs, và không quá hạn chót của lượt (tối thiểu 1 giây,
- * để lời gọi sau hạn chót hỏng nhanh thay vì treo). Giữ tín hiệu hủy của người gọi nếu có.
+ * Đăng nhập may_bao_dong (dangNhapMay: client anon RIÊNG, mỗi lời gọi tối đa goiMs và không quá
+ * hạn chót của lượt). Dùng xong PHẢI gọi dangXuat().
  */
-export function taoFetchCoHan(fetchGoc: typeof fetch, hanChot: () => number, goiMs: number, bayGio: () => number = Date.now): typeof fetch {
-  return async (input, init) => {
-    const ms = Math.max(1000, Math.min(goiMs, hanChot() - bayGio()));
-    const huy = new AbortController();
-    const hen = setTimeout(() => huy.abort(new Error(`quá ${Math.max(1, Math.round(ms / 1000))} giây không trả lời`)), ms);
-    const ngoai = init?.signal;
-    const theoNgoai = () => huy.abort(ngoai?.reason);
-    if (ngoai) {
-      if (ngoai.aborted) huy.abort(ngoai.reason);
-      else ngoai.addEventListener('abort', theoNgoai, { once: true });
-    }
-    try {
-      return await fetchGoc(input, { ...init, signal: huy.signal });
-    } finally {
-      clearTimeout(hen);
-      ngoai?.removeEventListener('abort', theoNgoai);
-    }
-  };
-}
-
-type KetQuaDangNhap =
-  | { ok: true; client: SupabaseClient; dangXuat: () => Promise<void> }
-  | { ok: false; cau: string };
-
-/** Đăng nhập may_bao_dong bằng client anon RIÊNG. Dùng xong PHẢI gọi dangXuat(). */
-export async function dangNhapMayBaoDong(
-  bm: BiMatBaoDong, env: Env, fetchCoHan: typeof fetch, phuThuoc: PhuThuocBaoDong = {},
-): Promise<KetQuaDangNhap> {
-  if (!bm.email || !bm.matKhau) {
-    return { ok: false, cau: `chưa cài ${TEN_BI_MAT_BAO_DONG.email} / ${TEN_BI_MAT_BAO_DONG.matKhau}` };
-  }
-  let client: SupabaseClient;
-  if (phuThuoc.taoClient) client = phuThuoc.taoClient();
-  else {
-    const url = layBienCong('PUBLIC_SUPABASE_URL', env);
-    const anon = layBienCong('PUBLIC_SUPABASE_ANON_KEY', env);
-    if (!url || !anon) return { ok: false, cau: 'chưa nối database' };
-    client = createClient(url, anon, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-      global: { fetch: fetchCoHan },
-    });
-  }
-  try {
-    const { data, error } = await client.auth.signInWithPassword({ email: bm.email, password: bm.matKhau });
-    if (error || !data?.session) {
-      return { ok: false, cau: `tài khoản máy báo động không đăng nhập được: ${error?.message ?? 'không có phiên'}` };
-    }
-  } catch (e) {
-    return { ok: false, cau: `tài khoản máy báo động không đăng nhập được: ${e instanceof Error ? e.message : String(e)}` };
-  }
-  return {
-    ok: true, client,
-    dangXuat: async () => { try { await client.auth.signOut({ scope: 'local' }); } catch { /* bỏ qua */ } },
-  };
+export function dangNhapMayBaoDong(
+  bm: BiMatBaoDong, env: Env, han: { goiMs: number; hanChot: () => number; bayGio: () => number }, phuThuoc: PhuThuocBaoDong = {},
+): Promise<KetQuaDangNhapMay> {
+  return dangNhapMay({
+    email: bm.email, matKhau: bm.matKhau, tenBiMat: TEN_BI_MAT_BAO_DONG, nhan: 'tài khoản máy báo động', env,
+    taoClient: phuThuoc.taoClient, fetchGoc: phuThuoc.fetchFn, goiMs: han.goiMs, hanChot: han.hanChot, bayGio: han.bayGio,
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -214,6 +148,8 @@ interface BatDauLuot {
   loi_so_lieu?: string | null;
   trang_thai?: { kenh: string; kenh_tu_luc: string | null; tom_tat_luc: string | null; lan_chay_cuoi: string | null };
   da_bao_48_gio?: DaBao[];
+  /** Dọn nhật ký quá hạn (0073) hỏng: câu lỗi (đã xoá bí mật). Lượt vẫn chạy; câu này vào lỗi của lượt. */
+  loi_don?: string | null;
 }
 
 interface GhiLuot {
@@ -266,9 +202,7 @@ export async function baoDongTatCa(env?: Env, phuThuoc: PhuThuocBaoDong = {}): P
     const hetGio = { ...HET_GIO, ...phuThuoc.hetGio };
     const bayGio = phuThuoc.bayGio ?? Date.now;
     let hanChot = bayGio() + hetGio.luotMs;
-    const fetchCoHan = taoFetchCoHan(phuThuoc.fetchFn ?? fetch, () => hanChot, hetGio.goiMs, bayGio);
-
-    const dn = await dangNhapMayBaoDong(bm, env, fetchCoHan, phuThuoc);
+    const dn = await dangNhapMayBaoDong(bm, env, { goiMs: hetGio.goiMs, hanChot: () => hanChot, bayGio }, phuThuoc);
     if (!dn.ok) { ghi(`${dn.cau} — bỏ qua`); return log; }
     try {
       const w = await envWorker();
@@ -308,6 +242,9 @@ async function motLuot(client: SupabaseClient, kenh: KenhBaoDong, o: NguCanhLuot
   if (typeof b.luot !== 'string') { ghi('không bắt đầu được lượt: không có mã lượt'); return; }
 
   let loi: string | null = null;
+  /** Lỗi của lượt gộp lại — một chỗ hỏng không che chỗ hỏng khác (dọn nhật ký hỏng + gửi hỏng…). */
+  const themLoi = (c: string) => { loi = loi ? `${loi} · ${c}` : c; };
+  if (typeof b.loi_don === 'string' && b.loi_don !== '') themLoi(`dọn nhật ký quá hạn hỏng: ${b.loi_don}`);
   const dong: string[] = [];
   let tomTatLog = '';
   try {
@@ -321,14 +258,14 @@ async function motLuot(client: SupabaseClient, kenh: KenhBaoDong, o: NguCanhLuot
       den.push({ ma_den: 'doc_so_lieu', chi_nhanh_id: null, mau: 'xanh' });
     } else {
       den = [{ ma_den: 'doc_so_lieu', chi_nhanh_id: null, mau: 'do' }];
-      loi = `không đọc được số liệu sức khỏe: ${b.loi_so_lieu ?? 'dữ liệu trả về lạ'}`;
+      themLoi(`không đọc được số liệu sức khỏe: ${b.loi_so_lieu ?? 'dữ liệu trả về lạ'}`);
     }
 
     // 2 · Ghi lượt. Danh sách không đầy đủ (mù) → database không coi sự cố nào là đã hết.
     const { data: gl, error: e2 } = await client.rpc('bao_dong_ghi_luot', { p_luot: b.luot, p_den: den, p_day_du: sk !== null });
-    if (e2) { loi = `không ghi được lượt: ${e2.message}`; return; }
+    if (e2) { themLoi(`không ghi được lượt: ${e2.message}`); return; }
     const g = gl as GhiLuot | null;
-    if (!g || typeof g.luc !== 'string' || !Array.isArray(g.su_co)) { loi = 'không ghi được lượt: dữ liệu trả về lạ'; return; }
+    if (!g || typeof g.luc !== 'string' || !Array.isArray(g.su_co)) { themLoi('không ghi được lượt: dữ liệu trả về lạ'); return; }
 
     // 3 · Luật.
     const kh = lapKeHoach({
@@ -344,8 +281,7 @@ async function motLuot(client: SupabaseClient, kenh: KenhBaoDong, o: NguCanhLuot
     const tin = soanTin({ keHoach: kh, sk, nn: o.nn, tenKenh: kenh.ten, gioiHanKyTu: kenh.gioiHanKyTu, web: o.web, luc: g.luc });
     const kq = await guiCoHan(kenh, tin, o.kenhMs());
     if (!kq.ok) {
-      const them = `gửi qua ${kenh.ten} hỏng${kq.tamThoi ? ' (lượt sau gửi lại)' : ' (cần sửa cấu hình kênh; lượt sau vẫn thử lại)'}: ${kq.cau}`;
-      loi = loi ? `${loi} · ${them}` : them;
+      themLoi(`gửi qua ${kenh.ten} hỏng${kq.tamThoi ? ' (lượt sau gửi lại)' : ' (cần sửa cấu hình kênh; lượt sau vẫn thử lại)'}: ${kq.cau}`);
       return;
     }
     ghi(`đã gửi qua ${kenh.ten}: ${moTaKeHoach(kh)}${tin.soMucBoBot ? ` (bỏ bớt ${tin.soMucBoBot} mục vì tin quá dài)` : ''}`);
@@ -356,12 +292,10 @@ async function motLuot(client: SupabaseClient, kenh: KenhBaoDong, o: NguCanhLuot
     let { error: e3 } = await client.rpc('bao_dong_da_gui', thamSo);
     if (e3) ({ error: e3 } = await client.rpc('bao_dong_da_gui', thamSo));
     if (e3) {
-      const them = `đã gửi nhưng không đánh dấu được — lượt sau có thể gửi lặp một tin: ${e3.message}`;
-      loi = loi ? `${loi} · ${them}` : them;
+      themLoi(`đã gửi nhưng không đánh dấu được — lượt sau có thể gửi lặp một tin: ${e3.message}`);
     }
   } catch (e) {
-    const them = `lỗi: ${e instanceof Error ? e.message : String(e)}`;
-    loi = loi ? `${loi} · ${them}` : them;
+    themLoi(`lỗi: ${e instanceof Error ? e.message : String(e)}`);
   } finally {
     o.choKetThuc();
     try {

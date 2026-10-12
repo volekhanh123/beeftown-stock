@@ -15,7 +15,7 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 | 3 | Thẻ tích điểm | 🔜 Schema xong, chờ giao diện |
 | 4 | Chiến dịch ZBS | ✅ Database xong (`0046`–`0047`): ZBS-01/02 tự động khi nhân viên xác nhận đặt bàn (`0063`), chiến dịch gửi tay, máy gửi `may_zalo`, trần 2 tin chăm sóc/tháng, khung giờ — chờ tick vàng, ZBS, App và mẫu được Zalo duyệt |
 | 4b | Bot Messenger đặt bàn | ✅ Database xong (`0052`–`0053`): máy `may_messenger` nhớ bước hội thoại theo PSID đã băm (không lưu PSID thô, không lưu tin nhắn), khóa tra cứu sai 5 lần/15 phút, tự xóa phiên sau 30 ngày, thống kê theo ngày; đặt bàn đi qua anon như website — chờ App Meta được duyệt `pages_messaging` |
-| 4c | Báo động khi đèn sức khỏe đỏ | ✅ Lõi xong (`0059`–`0060`): máy `may_bao_dong` đọc số liệu bảng sức khỏe qua `suc_khoe_so_lieu` (không mở quyền kho / CRM), sổ sự cố mỗi đèn đỏ một sự cố, khóa lượt, đánh dấu không lặp, dọn sau 90 ngày; luật báo và câu chữ ở `web/src/lib/bao-dong-*.ts` — chờ chọn kênh (Telegram / email / Zalo) |
+| 4c | Báo động khi đèn sức khỏe đỏ | ✅ Lõi xong (`0059`–`0060`): máy `may_bao_dong` đọc số liệu bảng sức khỏe qua `suc_khoe_so_lieu` (không mở quyền kho / CRM), sổ sự cố mỗi đèn đỏ một sự cố, khóa lượt, đánh dấu không lặp, dọn sau 90 ngày; mỗi lượt dọn luôn bốn bảng nhật ký quá hạn (`0073`); luật báo và câu chữ ở `web/src/lib/bao-dong-*.ts` — chờ chọn kênh (Telegram / email / Zalo) |
 | 5 | Báo cáo BI | ✅ Hàm chỉ số xong (`chi_so_crm`, `phieu_do_launch`) |
 | 6 | **Cổng nội dung** — công tắc cho từng dữ kiện | ✅ Xong (`0010`) |
 | 7 | **Thực đơn** — 31 món, duyệt giá từng món | ✅ Xong (`0011`) |
@@ -65,6 +65,11 @@ cd ../crm && npm ci && npm test
 | `npm run test:kho` | **kho**: tường ngăn CRM, bảng quyền, phiếu nhập, sổ kho, giá vốn, mã vạch nhãn cân, form và CSV; pha lóc; chuyển, xuất bếp, hủy, kiểm kê; công nợ và báo cáo; đồng bộ cân |
 | `npm run test:can` | đồng bộ danh mục sang cân in tem: đọc/ghi file `A_000.TMS`, dòng không đổi giữ nguyên từng byte |
 | `npm run test:quyen-ham` | **ba hàm definer CRM ở `0045`**: ai bị từ chối (kể cả tài khoản không có dòng `nhan_su`), ai vẫn ghi được, website vẫn đặt bàn |
+| `node test/test-quyen-chi-nhanh-crm.mjs` | **hàm CRM đúng chi nhánh, đặt bàn đúng bước `0069`**: thu ngân / quản lý tra SĐT khách chỉ ăn ở chi nhánh khác chỉ nhận id (không ghi chú, ngày sinh, tên), không điền được tên; khách mới chỉ cho chi nhánh mình; ghi lượt ghé cho khách chi nhánh khác vẫn được; phiếu đo, tin tuyển dụng mẫu đúng chi nhánh, mã gõ sai báo lỗi; xếp tin bấm đúp = một tin, khoá theo chi nhánh và ngày giờ VN, tin đã hỏng thì bấm lại gửi mới, khách / chiến dịch chi nhánh khác và mẫu khác mẫu chiến dịch bị từ chối; đặt bàn: thử cả 20 cặp trạng thái so với `CHUYEN_DUOC` của `/noi-bo/dat-ban`, không đổi khách / chi nhánh / mã / đồng ý / nguồn / người tạo, nguoi_xu_ly là người đang đăng nhập; chèn thẳng chỉ ở chờ gọi / đã xác nhận, ghi người tạo; xoá bàn / nhân sự (ON DELETE SET NULL) vẫn được; website hủy và SQL Editor như cũ |
+| `node test/test-quyen-doc-crm.mjs` | **policy đọc `0070`**: tám bảng nội dung chỉ bốn vai CRM đang làm đọc được (đã nghỉ, không `nhan_su`, vai kho, máy thấy 0; ba view của trang Tổng quan thu ngân thấy như chủ); biểu thức mới giống biểu thức cũ (chép nguyên văn pg_policies) từng dòng với 13 kiểu người; cổng: không policy nào gọi hàm phân quyền mỗi dòng; đo 5.000 khách |
+| `node test/test-chi-so-gio-vn.mjs` | **ngày giờ VN của `chi_so_crm` `0071`**: `ngay_vn()` ở 23:50 / 00:00 / 00:10 / 00:30 giờ VN với phiên UTC / VN / New York, qua năm, 29/02; lượt ghé, khách mới, điểm 0h–7h sáng tính đúng ngày; 31/02 báo lỗi; bộ dò `gio-utc.mjs` của `kiem-migration` bắt `<cột timestamptz>::date` mà không báo nhầm |
+| `node test/test-kho-ipos-ghep-ma-v1.mjs`, `test-kho-chi-muc-tra-nguoc.mjs` | **`0072`**: ghép lại bằng `kho_ipos_gan_ma` (v1) món đang gắn ô sang gói cân / bỏ qua / món khác → bỏ ô như v2; năm chỉ mục tra ngược của kho và chỉ mục mốc `nhat_ky_tin` được planner dùng (EXPLAIN) |
+| `node test/test-bao-dong-don-nhat-ky.mjs` | **dọn nhật ký `0073`**: một lượt báo động xóa đúng dòng quá hạn của bốn bảng, giữ dòng trong hạn, tin chờ gửi, 10 lượt iPOS mới nhất và nhịp tim cron; đèn iPOS / tin Zalo không đổi; tối đa 5.000 dòng mỗi lượt; lượt bị khóa không dọn; dọn hỏng (cả hết giờ) thì lượt vẫn chạy, câu lỗi ở `loi_don` — `test-bao-dong-web.mjs` kiểm Worker ghi nó vào lỗi của lượt và đèn Báo động đỏ; câu dọn đi qua chỉ mục; hàm dọn là nội bộ |
 | `node test/test-dat-ban-goi-lai.mjs` | **gửi đặt bàn hai lần `0062`**: gửi lại y hệt → một dòng, cùng mã, một tin Zalo, một dòng đồng ý, không trừ chỗ hai lần; lượt đầu lấy bàn cuối hay khung giờ vừa qua thì gửi lại vẫn nhận mã cũ; khác bất kỳ trường nào, dòng cũ đã hủy / đã xác nhận / quá 10 phút → dòng mới; số điện thoại viết khác kiểu là một; phiên đăng nhập không thuộc CRM không lấy được mã của khách; giao dịch đầu hủy giữa chừng thì gửi lại ra đúng một dòng |
 | `node test/test-zalo-xac-nhan.mjs` | **tin Zalo đặt bàn chỉ đi khi đã xác nhận `0063`**: yêu cầu web / Messenger / nhân viên ghi hộ chưa xác nhận → không tin nào, kể cả khi đổi giờ; bấm "Đã gọi xác nhận" → đúng một ZBS-01 + một ZBS-02, bấm đúp không thêm; hẹn sau nửa đêm (giờ VN), xác nhận sát giờ; tin xếp trước `0063` cho yêu cầu chưa xác nhận bị máy gửi giữ lại, xác nhận rồi mới đi (đúng một lần), hủy / quá giờ thì bỏ; ai không được xác nhận thì không làm nảy tin; trigger hỏng không làm hỏng việc xác nhận |
 | `npm run test:zalo` | **gửi tin Zalo `0046`–`0047`**: đặt bàn được xác nhận → đúng một ZBS-01 + một ZBS-02 (giờ hẹn − 2 tiếng), không trùng khi gọi lại; hủy / đổi giờ; mẫu chưa duyệt / Zalo tắt → không xếp; khách lần đầu nhận giao dịch nhưng không nhận chăm sóc; trần 2 tin/tháng tính cả tin chờ; khung giờ; xem trước chiến dịch; lượt gửi của máy (khóa 10 phút, kiểm lại, thử lại); máy không đọc được bảng CRM, không ai ngoài máy lấy được token |
@@ -131,6 +136,8 @@ crm/
 │   ├── 0026_form_theo_tung_tin.sql   mỗi tin tự chọn form hỏi gì — chỉ tin cần CV mới có ô CV
 │   ├── 0027_duyet_luong_tin_tuyen_dung.sql   chỉ chủ nhà hàng và quản lý đổi được lương chính thức
 │   ├── 0028_don_vi_luong.sql   lương theo giờ hay theo tháng — đơn vị duyệt cùng con số
+│   ├── 0029_kho_vai_may.sql             KHO · hai vai máy may_chung (tablet dùng chung), may_ipos (đồng bộ iPOS) — ⚠ CHẠY RIÊNG, trước 0030
+│   ├── 0030_kho_viec_thong_bao.sql      KHO · kho_dem_viec (số đỏ trên menu, đã khởi tạo kho chưa) · chuông thông báo · ngưỡng cảnh báo · chỉ số quản trị
 │   ├── 0031_kho_thu_kho_khong_tien.sql  KHO · thủ kho không thấy tiền · nhận hàng chỉ kg · kế toán điền giá, duyệt · cảnh báo giá nhập
 │   ├── 0032_kho_quay.sql                KHO · quầy yêu cầu → mang ra (hàng đi đường) → bấm nhận · đếm quầy cộng dồn bằng máy quét · xuất khác
 │   ├── 0033_kho_pha_quet_the_kho.sql    KHO · pha lóc bằng quét nhãn · nơi để sau pha theo món · báo thu hồi thấp (quản lý "Đã xem") · thẻ kho
@@ -159,8 +166,15 @@ crm/
 │   ├── 0058_sao_luu_hang_dem.sql       SAO LƯU · he_thong_sao_luu (mỗi lượt sao lưu hằng đêm một dòng — workflow ghi) · suc_khoe_sao_luu(): đèn "Sao lưu dữ liệu" (chủ / quản lý)
 │   ├── 0059_bao_dong_vai_may.sql       BÁO ĐỘNG · vai máy may_bao_dong — ⚠ CHẠY RIÊNG, trước 0060
 │   ├── 0060_bao_dong.sql               BÁO ĐỘNG · tách kiểm quyền khỏi phần tính (kho_ipos_trang_thai_goc, suc_khoe_so_lieu — nội bộ) · bao_dong_trang_thai (khóa lượt, nhịp tim, kênh) · bao_dong_su_co (mỗi đèn đỏ một sự cố, không lưu câu chữ) · bốn RPC máy bao_dong_* — danh sách ở đầu file
+│   ├── 0061_kho_can_quay.sql           KHO · Beeftown Cân báo về kho (máy cân kho_may_can, tem đã in kho_can_tem, ô mã đang giao cho mọi vai xem) — chạy sau 0060, 0049, 0054
 │   ├── 0062_dat_ban_goi_lai.sql        ĐẶT BÀN · tao_dat_ban() gọi lại Y HỆT (số điện thoại, chi nhánh, ngày, giờ, số khách, dịp, ghi chú, đồng ý nhận tin) trong 10 phút, dòng cũ còn cho_xac_nhan → trả lại dòng cũ và mã cũ, không ghi gì thêm · chỉ lời gọi không phiên (website, Messenger)
-│   └── 0063_zalo_chi_gui_khi_xac_nhan.sql ZALO · ZBS-01/ZBS-02 chỉ xếp khi nhân viên bấm "Đã gọi xác nhận" (cho_xac_nhan → da_xac_nhan), không phải lúc khách gửi yêu cầu · zalo_xep_tin_dat_ban(p_dat_ban_id, p_vua_xac_nhan, p_doi_gio) · máy gửi không lấy tin của đặt bàn chưa xác nhận (tin xếp trước 0063 nằm chờ)
+│   ├── 0063_zalo_chi_gui_khi_xac_nhan.sql ZALO · ZBS-01/ZBS-02 chỉ xếp khi nhân viên bấm "Đã gọi xác nhận" (cho_xac_nhan → da_xac_nhan), không phải lúc khách gửi yêu cầu · zalo_xep_tin_dat_ban(p_dat_ban_id, p_vua_xac_nhan, p_doi_gio) · máy gửi không lấy tin của đặt bàn chưa xác nhận (tin xếp trước 0063 nằm chờ)
+│   ├── 0065_crm_bo_policy_ghi_thang.sql ⚠ VÁ — bỏ policy ghi thẳng nhat_ky_dong_y, nhat_ky_tin, so_cai_diem, luot_ghe, khach_hang (mọi đường ghi là hàm definer tự kiểm vai) · don_dep_phieu_tai_len kiểm vai
+│   ├── 0069_crm_quyen_chi_nhanh.sql   ⚠ VÁ — tim_hoac_tao_khach không trả hồ sơ khách chi nhánh khác, khách mới chỉ cho chi nhánh mình · phieu_do_launch, tao_tin_tuyen_dung_mau đúng chi nhánh · xep_hang_gui_tin có khoa_gui (bấm đúp = một tin, tin hỏng thì gửi lại được), khách / chiến dịch / mẫu đúng · trigger dat_ban_kiem_sua (thêm + sửa): đặt bàn chỉ đổi theo đúng 5 bước của hộp thư, không đổi khách / chi nhánh / mã / đồng ý / nguồn; cột mới dat_ban.nguoi_tao ghi nhân viên ghi hộ
+│   ├── 0070_crm_policy_doc_tinh_mot_lan.sql ⚠ VÁ — tám policy đọc chỉ kiểm "có đăng nhập" (nội dung, ảnh, thực đơn, mẫu tin) và kho file beeftown-noi-bo: chỉ bốn vai CRM đang làm · mọi policy CRM tính hàm phân quyền MỘT LẦN (crm_cn_duoc(), (select …)) — 5.000 khách: 339 → 10 ms
+│   ├── 0071_crm_chi_so_ngay_vn.sql    ngay_vn(timestamptz) · chi_so_crm đếm ngày theo giờ Việt Nam (lượt ghé 0h–7h sáng không lệch sang hôm trước)
+│   ├── 0072_kho_ghep_ma_v1_chi_muc.sql  KHO · kho_ipos_gan_ma (v1) ghép lại = bỏ ô mã như v2 · năm chỉ mục tra ngược (lô ↔ phiên pha / phiếu nhập / dòng xuất)
+│   └── 0073_bao_dong_don_nhat_ky.sql  lượt báo động 5 phút dọn nhat_ky_tra_cuu (30 ngày), kho_may_nhat_ky (180), kho_ipos_lan_chay (90, giữ 10 lượt mới nhất + nhịp tim), nhat_ky_tin (400, không xóa tin chờ gửi); dọn hỏng không làm hỏng lượt — câu lỗi về Worker (loi_don) → đèn Báo động · chỉ mục mốc nhat_ky_tin cho bảng sức khỏe, chỉ mục thời gian cho câu dọn
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```
@@ -171,10 +185,11 @@ crm/
 - **`0009` và `0011` phụ thuộc vòng.** `tep_anh.mon_an_id` trỏ tới `mon_an` chưa tồn tại; cột ra đời ở `0009` không kèm khóa ngoại, khóa ngoại được thêm ở cuối `0011`.
 - **File nào tạo hàm thì PHẢI kết thúc bằng khối chốt quyền.** Xem `0008` mục 6.
 - **View mới PHẢI khai `security_invoker = true` tường minh.** Mặc định của Postgres là view chạy dưới quyền người tạo, tức đi xuyên qua RLS của bảng bên dưới — đúng lỗ hổng số 2 mà `0008` đã vá. `0008` chỉ sửa được 7 view có mặt lúc đó. `test-an-toan.mjs` mục 2 liệt kê `pg_class` và bắt đúng chuyện quên này; nó đã bắt được `v_bang_cong_tac` ngay lần chạy đầu tiên của `0015`.
+- **`0029` phải chạy RIÊNG, một mình, trước `0030`** — cùng lý do với `0017` (thêm `may_chung`, `may_ipos` vào `vai_tro`).
 - **`0046` phải chạy RIÊNG, một mình, trước `0047`** — cùng lý do với `0017` (thêm `may_zalo` vào `vai_tro`, `da_huy` vào `ket_qua_gui`).
 - **`0052` phải chạy RIÊNG, một mình, trước `0053`** — cùng lý do (thêm `may_messenger` vào `vai_tro`).
 - **`0059` phải chạy RIÊNG, một mình, trước `0060`** — cùng lý do (thêm `may_bao_dong` vào `vai_tro`). `0060` cần `0055` (bảng sức khỏe) và `0058` (sao lưu).
-- **`0017` phải chạy RIÊNG, một mình, trước `0018`.** Nó thêm giá trị vào enum `vai_tro`; Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa thêm nó.
+- **`0017` phải chạy RIÊNG, một mình, trước `0018`.** Nó thêm giá trị vào enum `vai_tro`; Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa thêm nó. Migration mới nào có `alter type … add value` cũng phải có một dòng như thế ở đây — `test-quy-trinh.mjs` mục 5 đỏ khi thiếu, và khi cây thư mục ở trên thiếu file.
 - **Đừng tạo tài khoản vai kho trước khi chạy `0018`.** `0018` là tường ngăn: trước nó, một thủ kho đọc được số điện thoại khách.
 - **`0014` là file duy nhất PGlite không chạy.** Toàn bộ DDL kho file bọc trong khối kiểm tra schema `storage`. Danh sách kiểm tra bằng tay nằm ở cuối file đó — **bắt buộc làm trên Supabase thật.**
 - **Khối chốt quyền từ `0025` trở đi PHẢI giữ dòng `ve_con_hieu_luc(text)`.** Policy tải CV trên `storage.objects` gọi hàm đó dưới vai `anon`. Chép danh sách từ một file cũ hơn là CV lại rơi im lặng, và PGlite không có storage để thấy; `DUOC_PHEP` trong `test-an-toan.mjs` và mục 7 của `test-dat-noi-dung.mjs` mới bắt được.
@@ -271,9 +286,9 @@ Ngoài ra `cau_hinh_tich_diem.ty_le_tich` có **trần cứng 20%** — biên đ
 
 | Hàm | Dùng cho | Ai gọi được |
 |---|---|---|
-| `tim_hoac_tao_khach()` | Điểm vào duy nhất để tạo khách | Chủ sở hữu, quản lý, thu ngân (`0045`); website qua `tao_dat_ban()` |
+| `tim_hoac_tao_khach()` | Điểm vào duy nhất để tạo khách | Chủ sở hữu, quản lý, thu ngân (`0045`); khách chưa từng ghé / đặt bàn ở chi nhánh người gọi chỉ trả id, khách mới chỉ cho chi nhánh người gọi (`0069`); website qua `tao_dat_ban()` |
 | `ghi_luot_ghe()` | Thu ngân ghi hóa đơn + tích/trừ điểm | Chủ sở hữu, quản lý, thu ngân — đúng chi nhánh, người ghi lấy từ phiên (`0045`) |
-| `xep_hang_gui_tin()` | Xếp một tin vào hàng gửi, sau `duoc_phep_gui()` | Chủ sở hữu, quản lý, marketing — đúng chi nhánh (`0045`) |
+| `xep_hang_gui_tin()` | Xếp một tin vào hàng gửi, sau `duoc_phep_gui()`; gọi lại cùng tin trả đúng tin đã xếp (`khoa_gui`, `0069`) | Chủ sở hữu, quản lý, marketing — đúng chi nhánh, khách của chi nhánh đó (`0045`, `0069`) |
 | `so_du_diem()` | Tra số dư điểm | Nhân sự |
 | `tao_dat_ban()` | Website tạo đặt bàn | **Công khai (anon)** |
 | `lich_trong_theo_ngay()` | Website xem khung giờ trống | **Công khai (anon)** |
@@ -281,7 +296,8 @@ Ngoài ra `cau_hinh_tich_diem.ty_le_tich` có **trần cứng 20%** — biên đ
 | `duoc_phep_gui()` | Chốt chặn trước khi gửi tin — đặt bàn chưa hủy tính là giao dịch, tin chăm sóc có trần tháng (`0047`) | Nội bộ |
 | `zalo_*()` | Gửi tin Zalo: 4 RPC máy (`may_zalo`), RPC cài đặt (chủ), RPC chiến dịch (chủ / quản lý / marketing đúng chi nhánh) — chữ ký và JSON trả về ở đầu `0047` | Xem `0047` |
 | `mess_*()` | Bot Messenger: 5 RPC máy (`may_messenger`), cài đặt (chủ), tổng quan 7 ngày (chủ / quản lý) — chữ ký và JSON trả về ở đầu `0053`. Đặt bàn / tra / hủy của bot đi qua các hàm anon của website | Xem `0053` |
-| `chi_so_crm()` | 6 chỉ số theo dõi | Quản lý, chủ sở hữu |
+| `chi_so_crm()` | 6 chỉ số theo dõi, ngày theo giờ Việt Nam (`ngay_vn()`, `0071`) | Quản lý, chủ sở hữu |
+| `phieu_do_launch()` | Phiếu đo ra mắt: lượt xem, bấm, ba con số đặt bàn khác nhau | Chủ sở hữu (mọi chi nhánh); quản lý, marketing (chi nhánh của mình, `0069`) |
 | `suc_khoe_he_thong()` | Số liệu cho bảng đèn sức khỏe ở `/noi-bo`: việc chạy nền iPOS / Zalo / báo động, lỗi Messenger, máy dịch, yêu cầu và hồ sơ nằm im, sổ kho lệch — chỉ số đếm và mốc giờ. Từ `0060` là lớp kiểm vai bọc `suc_khoe_so_lieu` (nội bộ, kết quả không đổi) | Chủ sở hữu (mọi chi nhánh), quản lý (chi nhánh của mình) (`0055`, `0060`) |
 | `suc_khoe_sao_luu()` | Số liệu cho đèn "Sao lưu dữ liệu": lượt sao lưu gần nhất và bản dùng được (khôi phục thử đạt) gần nhất — mốc giờ, cờ, cỡ file. Từ `0060` là lớp kiểm vai bọc `suc_khoe_sao_luu_so_lieu` (nội bộ, kết quả không đổi) | Chủ sở hữu, quản lý (`0058`, `0060`) |
 | `bao_dong_*()` | Báo động: 4 RPC máy (`may_bao_dong`) — bắt đầu lượt / ghi lượt / đã gửi / kết thúc lượt; chữ ký và JSON trả về ở `0060` | Chỉ `may_bao_dong` (`0060`) |

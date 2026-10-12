@@ -26,7 +26,7 @@ import { docFormPhieuXuat, dongTuQuet, gopDong, tomTatHang } from '../../web/src
 import { docAnhDaTai, soThuTuCuoi } from '../../web/src/lib/kho/anh.ts';
 import { docFormKiemKe, apDungQuet, gopKhiTrung, chuKyDong } from '../../web/src/lib/kho/kiem-ke.ts';
 import { taoCsv, kyBaoCao, kyNhanh, tinhTong, tieuDeCsv, BAO_CAO } from '../../web/src/lib/kho/bao-cao.ts';
-import { docFormThanhToan } from '../../web/src/lib/kho/cong-no.ts';
+import { docFormTraTien } from '../../web/src/lib/kho/cong-no.ts';
 import { xemTruocDanMatHang, chuKyDan, dongGhiDan } from '../../web/src/lib/kho/danh-muc.ts';
 import {
   docFormDauNhan, docFormDongNhan, ghepDongNhan, gopMonGanDay, kiemTruocKhiGui, dongNhanVaoForm,
@@ -114,7 +114,35 @@ await nhom('5 · ĐỌC SỐ KIỂU VIỆT', async () => {
   ok('"450,000" = 450000', docTien('450,000') === 450000);
   ok('"1 250 000" = 1250000', docTien('1 250 000') === 1250000);
   ok('"12a" → sai', Number.isNaN(docTien('12a')));
+  ok('"1.250.000 đ" (có cách trước đ) = 1250000', docTien('1.250.000 đ') === 1250000);
+  ok('"480000" = 480000', docTien('480000') === 480000);
+  ok('"480.000 VND" = 480000', docTien('480.000 VND') === 480000);
+  // Đồng không có số lẻ: "450,5" là bốn trăm năm mươi phẩy năm — gõ nhầm, không phải 4505 đồng.
+  ok('"450,5" đ → sai (không đọc thành 4505)', Number.isNaN(docTien('450,5')));
+  ok('"45.00" đ → sai (không đọc thành 4500)', Number.isNaN(docTien('45.00')));
+  ok('"1.25.000" (nhóm lệch) → sai', Number.isNaN(docTien('1.25.000')));
+  ok('"1.250,000" (trộn dấu) → sai', Number.isNaN(docTien('1.250,000')));
   ok('Số nguyên trong khoảng', docSoNguyen('7', 0, 10) === 7 && Number.isNaN(docSoNguyen('11', 0, 10)));
+  ok('"650.000 đ" có dấu cách không ngắt trước đ = 650000', docTien('650.000\u00a0đ') === 650000);
+  {
+    // Bỏ hậu tố "đ" bằng regex có \s* phía trước thì chuỗi nhiều dấu cách không kết thúc bằng đ chạy theo cấp hai
+    // (80.000 dấu cách mất vài giây) — một ô dán / gõ dài chặn Worker. Phải chạy tuyến tính.
+    const t0 = performance.now();
+    const kq = docTien('1' + ' '.repeat(80000) + 'x');
+    ok('docTien chuỗi 80.000 dấu cách trả lời ngay (< 200 ms)', Number.isNaN(kq) && performance.now() - t0 < 200,
+       `${Math.round(performance.now() - t0)} ms`);
+  }
+  // Số gói / số ngày: dấu chấm chỉ là dấu nghìn ("1.000" = một nghìn). "1.5" gói là gõ nhầm số lẻ —
+  // trước đây bị đọc thành 15 gói và lưu luôn, câu "số gói là số nguyên" không bao giờ hiện.
+  ok('"1.000" gói = 1000', docSoNguyen('1.000', 0, 100000) === 1000);
+  ok('"12 000" gói = 12000', docSoNguyen('12 000', 0, 100000) === 12000);
+  ok('"1.5" gói → sai (không đọc thành 15)', Number.isNaN(docSoNguyen('1.5', 0, 100000)));
+  ok('"12.0" gói → sai (không đọc thành 120)', Number.isNaN(docSoNguyen('12.0', 0, 100000)));
+  ok('"2.50" gói → sai (không đọc thành 250)', Number.isNaN(docSoNguyen('2.50', 0, 100000)));
+  ok('"1,5" gói → sai', Number.isNaN(docSoNguyen('1,5', 0, 100000)));
+  ok('" 7 " có cách hai đầu = 7', docSoNguyen(' 7 ', 0, 10) === 7);
+  ok('"-3" trong khoảng âm = -3', docSoNguyen('-3', -10, 10) === -3);
+  ok('Ô trống → null', docSoNguyen('', 0, 10) === null);
 
   ok('Ngày 2026-02-28 hợp lệ', docNgay('2026-02-28') === '2026-02-28');
   ok('Ngày 2026-02-30 không có thật', docNgay('2026-02-30') === undefined);
@@ -260,6 +288,10 @@ await nhom('8 · FORM CHUYỂN / XUẤT / HỦY VÀ QUÉT NHÃN', async () => {
   const g1 = gop.find(x => x.mat_hang_id === U(1));
   ok('Quét thêm vào dòng đang có: cộng dồn gói và kg', g1?.so_goi === '3' && g1?.so_kg === '1,51', JSON.stringify(g1));
   ok('Dòng trống bị bỏ khi gộp', gop.every(x => x.mat_hang_id));
+  // Số gói đã gõ sai ("1.5") rồi quét thêm: không được lặng lẽ thay bằng số gói quét — giữ chữ đã gõ để form báo
+  // "số gói là số nguyên" như khi không quét.
+  const gopSai = gopDong([{ mat_hang_id: U(1), so_goi: '1.5', so_kg: '' }], [{ mat_hang_id: U(1), so_goi: '1', so_kg: '' }]);
+  ok('Quét thêm vào dòng gõ sai số gói → giữ "1.5" để form báo lỗi', gopSai[0]?.so_goi === '1.5', JSON.stringify(gopSai));
 });
 
 // ===========================================================================
@@ -398,17 +430,23 @@ await nhom('10 · CSV CHO EXCEL TIẾNG VIỆT, KỲ BÁO CÁO, FORM THANH TOÁN
   ok('Dòng cuối là tổng: kg dấu phẩy, cột không cộng để trống', dongT[4] === 'Tổng;1,75;;550000' && dongT[5] === '', dongT[4]);
   ok('Không truyền tiêu đề / tổng → file như cũ (dòng 1 là tên cột)', csv.slice(1).split('\r\n')[0] === 'Mặt hàng;Kg;Tiền');
 
+  // Form Trả tiền v2 (docFormTraTien, GĐ8b): hàm v1 docFormThanhToan đã xóa 12/10/2026 — cùng các
+  // kiểm tra, trên form đang dùng. Ô ẩn pb<i>_goi_y là số database gợi ý; chỉ khi sửa khác gợi ý mới gửi phần chia.
   const f = new Map([
-    ['so_tien', '5.450.000'], ['hinh_thuc', 'chuyen_khoan'], ['ngay', '2026-09-25'], ['so_pb', '2'],
-    ['pb0_phieu', U(40)], ['pb0_tien', '5.000.000'], ['pb1_phieu', U(41)], ['pb1_tien', '450.000'],
+    ['kieu', 'chuyen_khoan'], ['so_tien', '5.450.000'], ['ngay', '2026-09-25'], ['so_pb', '2'],
+    ['pb0_phieu', U(40)], ['pb0_goi_y', '5450000'], ['pb0_tien', '5.000.000'],
+    ['pb1_phieu', U(41)], ['pb1_goi_y', '0'], ['pb1_tien', '450.000'],
   ]);
-  const t = docFormThanhToan(f);
-  ok('Đọc số tiền "5.450.000" và hai dòng chia', t.loi.length === 0 && t.soTien === 5450000 && t.phanBo.length === 2, t.loi.join(' · '));
-  const lech = docFormThanhToan(new Map([['so_tien', '1.000.000'], ['so_pb', '1'], ['pb0_phieu', U(40)], ['pb0_tien', '900.000']]));
-  ok('Tổng chia khác số tiền → báo ngay, không gửi', lech.loi.some(x => /phải bằng số tiền trả/.test(x)), lech.loi.join(' · '));
-  const trong = docFormThanhToan(new Map([['so_tien', '1.000.000'], ['so_pb', '2'], ['pb0_phieu', U(40)], ['pb1_phieu', U(41)]]));
+  const t = docFormTraTien(f, true);
+  ok('Đọc số tiền "5.450.000" và hai dòng chia', t.loi.length === 0 && t.soTien === 5450000 && t.phanBo.length === 2
+     && t.phanBo[0].so_tien === 5000000 && t.phanBo[1].so_tien === 450000, t.loi.join(' · '));
+  const lech = docFormTraTien(new Map([['kieu', 'chuyen_khoan'], ['so_tien', '1.000.000'], ['so_pb', '1'],
+    ['pb0_phieu', U(40)], ['pb0_goi_y', '1000000'], ['pb0_tien', '900.000']]), true);
+  ok('Tổng chia khác số tiền → báo ngay, không gửi', lech.loi.some(x => /phải bằng số tiền/.test(x)), lech.loi.join(' · '));
+  const trong = docFormTraTien(new Map([['kieu', 'chuyen_khoan'], ['so_tien', '1.000.000'], ['so_pb', '2'],
+    ['pb0_phieu', U(40)], ['pb1_phieu', U(41)]]), true);
   ok('Để trống phần chia → không gửi phân bổ (database tự chia theo hạn)', trong.loi.length === 0 && trong.phanBo.length === 0);
-  const am = docFormThanhToan(new Map([['so_tien', '-5']]));
+  const am = docFormTraTien(new Map([['kieu', 'chuyen_khoan'], ['so_tien', '-5']]), true);
   ok('Số tiền không hợp lệ → báo', am.loi.length > 0);
 });
 

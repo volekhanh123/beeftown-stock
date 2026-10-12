@@ -23,12 +23,10 @@
   từ kho và mục 4 của thẻ Cân & thông số; ô "Cổng hai chiều" ở Cài đặt. Nút của 2.1 trích nguyên văn.
 -->
 <style>
-  /* Bảng màu thương hiệu Khánh chốt ngày 09/10/2026 — cùng bộ biến và cùng giá trị với giao-dien.html (xem chú thích ở đó). */
   :root {
-    --do: #A70C0C; --do-dam: #890607; --kem: #F0E3D0; --kem-sau: #EBDCC6; --mu-tat: #F5AA14;
-    --than: #151008; --da: #B8A98C; --vach: #E7D5BC; --trang: #FFFFFF;
-    --vien-o: #7A7366; --chu-phu: rgba(21, 16, 8, .68);
-    --xanh: #1A683F; --xanh-nen: #E4F0E5; --do-nen: #FAE9E6; --vang-nen: #FDE9B5; --vang-chu: #7A5200;
+    --do: #B23A2C; --do-dam: #8E2B20; --kem: #FBF4E1; --kem-sau: #F3E8CC; --mu-tat: #F2A900;
+    --than: #1E160E; --da: #B8A98C; --vach: #E4D8BC; --trang: #FFFFFF;
+    --xanh: #1F7A4C; --xanh-nen: #E9F5EE; --do-nen: #FDECEA; --vang-nen: #FFF5DC; --chu-phu: #6A5D45;
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
@@ -73,7 +71,7 @@
   .hop .tieu-de { font-weight: 700; margin: 0 0 6px; font-size: 16px; }
   .hop.cam .tieu-de { font-size: 20px; color: var(--do-dam); letter-spacing: .01em; }
   .hop.cam ul { padding-left: 0; list-style: none; }
-  .hop.cam li { padding: 7px 0 7px 34px; position: relative; border-top: 1px solid rgba(167,12,12,.22); margin: 0; }
+  .hop.cam li { padding: 7px 0 7px 34px; position: relative; border-top: 1px solid #f3c8c2; margin: 0; }
   .hop.cam li:first-child { border-top: 0; }
   .hop.cam li::before { content: "✕"; position: absolute; left: 4px; top: 6px; width: 22px; height: 22px; border-radius: 50%; background: var(--do); color: #fff; font-size: 13px; font-weight: 700; display: grid; place-items: center; }
 
@@ -84,7 +82,7 @@
   .nhan.nv { background: var(--xanh-nen); color: var(--xanh); border: 1px solid var(--xanh); }
   .nhan.da { background: var(--xanh-nen); color: var(--xanh); border: 1px solid var(--xanh); }
   .nhan.sach { background: var(--kem-sau); color: var(--chu-phu); border: 1px solid var(--da); }
-  .nhan.chua { background: var(--vang-nen); color: var(--vang-chu); border: 1px solid var(--mu-tat); }
+  .nhan.chua { background: var(--vang-nen); color: #6b4a00; border: 1px solid var(--mu-tat); }
   h2 .nhan, h3 .nhan { margin-left: 6px; }
 
   /* Bảng */
@@ -831,7 +829,7 @@
 <p>Chương trình hỏi cân qua WiFi: tên máy, số máy, mã máy, loại máy, phiên bản. Cân trả lời được là đường WiFi hai chiều thông.</p>
 
 <h3>Giờ cân</h3>
-<p>Hiện giờ của cân cạnh giờ máy tính. Lệch thì chỉnh giờ cân theo giờ máy tính. <b>Giờ máy tính phải đúng trước</b> (xem góc dưới bên phải màn hình Windows). Chỉnh xong bấm <kbd class="p">Time</kbd> trên cân xem lại. Chỉnh trên cân: <a href="#ngay-gio">mục 6</a>.</p>
+<p>Hiện giờ của cân cạnh giờ Việt Nam. Lệch thì bấm <b>Chỉnh giờ cân theo giờ Việt Nam</b>. <span class="nhan moi">Mới 2.9.2</span> Giờ Việt Nam lấy từ đồng hồ máy tính nhưng không theo múi giờ của Windows — máy để múi giờ khác (UTC…) cân vẫn đúng giờ Việt Nam. <b>Đồng hồ máy tính phải đúng trước</b> (xem góc dưới bên phải màn hình Windows). Chỉnh xong bấm <kbd class="p">Time</kbd> trên cân xem lại. Chỉnh trên cân: <a href="#ngay-gio">mục 6</a>.</p>
 <p id="tu-dat-gio"><span class="nhan moi">Mới 2.8</span> <b>Tự chỉnh giờ cân</b> (bật sẵn ở Cài đặt, cần giữ kết nối): giờ cân lệch giờ Việt Nam quá 30 giây thì chương trình tự đặt lại theo giờ Việt Nam — sáng mở chương trình là cân đúng giờ, cân mất điện giữa ngày thì chỉnh lại. Mỗi ngày tối đa 3 lần, cách nhau ít nhất 10 phút. Trước khi chỉnh, chương trình so giờ máy tính với giờ mạng (máy chủ kho): <b>giờ máy tính lệch quá 2 phút, hay mất mạng, thì không chỉnh</b> và ghi lý do ở ô Cân — máy tính sai giờ mà chỉnh theo thì tem in sai ngày đóng gói, sai HSD. Kết quả từng lần nằm ở ô Cân. <span class="nhan chua">Chưa thử trên cân thật</span></p>
 
 <h3>Kiểu ngày in trên tem</h3>
@@ -1027,7 +1025,7 @@
 <h3>Thư mục dữ liệu (Tài liệu\Beeftown Can)</h3>
 <ul>
   <li><b>A_000.TMS</b>: file gốc — bản mới nhất đã nạp vào cân. <b>tren-can.tsv</b>: các hàng đang nằm trên cân. <b>tem-da-tat.json</b>: các ô tem đã tắt (để bật lại).</li>
-  <li><b>da-gui</b>: mỗi lần gửi lưu một bản (và <b>truoc-xoa-wifi-….TMS</b>: danh sách trên cân ngay trước lần xoá qua WiFi). <b>cho-usb</b>: file chờ nạp USB. <span class="nhan moi">Mới 2.2</span> <b>nhat-ky-can.tsv</b>: nhật ký bán đọc từ cân. <b>can-chua-ro.json</b>: có khi lần xoá qua WiFi hỏng giữa chừng — hết khi nạp USB / gửi lại đủ danh sách. <span class="nhan moi">Mới 2.6</span> <b>chua-xac-nhan.json</b>: lần gửi gần nhất cân chưa xác nhận — hết khi gửi mà đọc lại khớp, hay đọc dữ liệu từ cân.</li>
+  <li><b>da-gui</b>: mỗi lần gửi lưu một bản (và <b>truoc-xoa-wifi-….TMS</b>: danh sách trên cân ngay trước lần xoá qua WiFi). <span class="nhan moi">Mới 2.9.2</span> Giữ 100 bản mới nhất, bỏ bản cũ hơn 30 ngày; bản lưu không có tên / mật khẩu WiFi (file gốc A_000.TMS vẫn có). <b>cho-usb</b>: file chờ nạp USB. <span class="nhan moi">Mới 2.2</span> <b>nhat-ky-can.tsv</b>: nhật ký bán đọc từ cân. <b>can-chua-ro.json</b>: có khi lần xoá qua WiFi hỏng giữa chừng — hết khi nạp USB / gửi lại đủ danh sách. <span class="nhan moi">Mới 2.6</span> <b>chua-xac-nhan.json</b>: lần gửi gần nhất cân chưa xác nhận — hết khi gửi mà đọc lại khớp, hay đọc dữ liệu từ cân.</li>
 </ul>
 <div class="hop cam" style="border-width:1px;border-left-width:5px"><p style="margin:0"><b>File .TMS có tên và mật khẩu WiFi của quán.</b> Không gửi file này cho người ngoài, không đăng lên mạng, không gửi qua nhóm chat.</p></div>
 
@@ -1082,7 +1080,7 @@
     <tr><td><span class="nhan moi">Mới 2.7</span> <b>Gửi thông số, chữ cài đặt, phím, tem qua cổng hai chiều</b>, rồi đọc lại phần đó để kiểm</td><td>Khung xanh "Cân đã nhận …"; in thử tem / bấm thử phím thấy đổi.</td><td>Khung đỏ "cân CHƯA nhận": chương trình chưa ghi nhận — gửi lại, hay <span class="n">Lưu file nạp USB</span>.</td></tr>
     <tr><td><span class="nhan moi">Mới 2.7</span> <b>Gỡ khỏi cân (ghi đè)</b>: số PLU còn nằm lại thành dòng trống "KHÔNG DÙNG (PLU trống)", phím gọi số đó được bỏ</td><td>Chương trình báo đã đọc lại và khớp. Trên cân: gọi số PLU đó ra "KHÔNG DÙNG", giá 0.</td><td>Bấm lại (ghi đè lần nữa không hại gì), hay nạp USB.</td></tr>
     <tr><td><b>Xoá hẳn qua WiFi</b> (chỉ khi có hàng "Còn nằm lại"; bấm <span class="n">Đọc thông tin cân</span> một lần trước để chương trình nhớ mã máy của cân): chương trình đọc danh sách trên cân — cân có hàng chương trình không biết thì dừng, chưa xoá — lưu một bản sao vào <b>da-gui</b>, xoá cả danh sách, gửi lại đúng danh sách đã xem trước, rồi đọc lại để so. <span class="nhan moi">Mới 2.7</span> Hỏng giữa chừng: tự gửi lại cả danh sách (tới 3 lần) rồi đọc lại.</td><td>Chương trình báo đã đọc lại và khớp. Trên cân: số PLU của hàng đã bỏ không còn; các hàng đang bán vẫn gọi được.</td><td>Báo "nạp USB ngay" (tự gửi lại vẫn chưa đủ hàng): nạp USB <b>ngay</b> (<a href="#usb-du-phong">mục 25</a>).</td></tr>
-    <tr><td><b>Đọc giờ cân và chỉnh giờ cân</b> theo giờ máy tính</td><td>Bấm <kbd class="p">Time</kbd> trên cân thấy đúng giờ.</td><td>Chỉnh trên cân (<a href="#ngay-gio">mục 6</a>).</td></tr>
+    <tr><td><b>Đọc giờ cân và chỉnh giờ cân</b> theo giờ Việt Nam</td><td>Bấm <kbd class="p">Time</kbd> trên cân thấy đúng giờ.</td><td>Chỉnh trên cân (<a href="#ngay-gio">mục 6</a>).</td></tr>
     <tr><td><b>Đọc nhật ký bán qua WiFi</b></td><td>Thẻ Nhật ký cân có dòng mới của hôm nay, khớp với số tem đã in.</td><td>Lưu cân ra USB, chọn file — chương trình đọc nhật ký trong file đó.</td></tr>
     <tr><td><b>Thông tin cân</b> (tên máy, mã máy, phiên bản)</td><td>Hiện ra đúng phiên bản V3.14E8.</td><td>Không ảnh hưởng việc bán.</td></tr>
     <tr><td><span class="nhan moi">Mới 2.8</span> <b>Giữ kết nối với cân</b>: một đường nối giữ mở, hỏi giờ cân mỗi 30 giây; mọi việc đi trên đường đó</td><td>Ô Cân xanh, dòng "Đang nối cân … cân trả lời lúc …" đổi giờ mỗi lần làm mới; gửi giá vẫn báo "cân đã nhận".</td><td>Ô Cân đỏ mãi dù cân bật, hay gửi giá báo lỗi mà trước đây không: bỏ đánh dấu "Giữ kết nối với cân" ở Cài đặt (về cách của 2.7), báo người lo chương trình.</td></tr>

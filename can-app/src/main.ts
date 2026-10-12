@@ -19,7 +19,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { exec, execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
-import { BAO_KHO_MS, HOI_KHO_MS, NHIP_CAN_MS, UngDung, duongDanMacDinh } from './nghiep-vu.ts';
+import { BAO_KHO_MS, HOI_KHO_MS, NHIP_CAN_MS, UngDung, duongDanMacDinh, ghiLoiTxt as ghiLoiCoHan } from './nghiep-vu.ts';
 import { moMayChu } from './may-chu.ts';
 import {
   cacTepCapNhat, cauQuayVeBangTay, chayThuQuaPowerShell, docThamSoPhienBan, donSauCapNhat, khoaCapNhatConHan, khoiDongLaiSauCapNhat,
@@ -65,13 +65,11 @@ function moCuaSo(url: string) {
   });
 }
 
-/** Thêm một dòng vào %APPDATA%\BeeftownCan\loi.txt (giờ UTC đầu dòng như các dòng cũ). Không ghi được thì thôi. */
-function ghiLoiTxt(cau: string) {
-  try {
-    fs.mkdirSync(ud.dd.cauHinh, { recursive: true });
-    fs.appendFileSync(path.join(ud.dd.cauHinh, 'loi.txt'), `${new Date().toISOString()} ${cau}\n`);
-  } catch { /* không ghi được thì thôi */ }
-}
+/**
+ * Thêm một dòng vào %APPDATA%\BeeftownCan\loi.txt (giờ UTC đầu dòng như các dòng cũ). 2.9.2: có hạn — đầy 1 MB thì thành
+ * loi-cu.txt (nghiep-vu.ts ghiLoiTxt). Không ghi được thì thôi.
+ */
+function ghiLoiTxt(cau: string) { ghiLoiCoHan(ud.dd.cauHinh, cau); }
 
 /**
  * File .exe không có cửa sổ chữ, nên lỗi lúc khởi động phải hiện bằng hộp
@@ -92,9 +90,7 @@ function baoLoi(e: unknown) {
 }
 process.on('uncaughtException', (e) => { baoLoi(e); process.exit(1); });
 // Lời hứa hỏng chạy ngầm (ví dụ tự làm mới đăng nhập khi mất mạng): chỉ ghi lại, không tắt chương trình.
-process.on('unhandledRejection', (e) => {
-  try { fs.appendFileSync(path.join(ud.dd.cauHinh, 'loi.txt'), `${new Date().toISOString()} (ngầm) ${e instanceof Error ? e.stack : String(e)}\n`); } catch { /* thôi */ }
-});
+process.on('unhandledRejection', (e) => { ghiLoiTxt(`(ngầm) ${e instanceof Error ? e.stack : String(e)}`); });
 
 // ---- Đang cập nhật (bản cũ đang mở bản mới)? Không chạy thêm bản thứ hai — hai bản cùng tự gửi xuống cân. --------
 if (!moSauCapNhat && khoaCapNhatConHan(fileKhoaCapNhat)) {
@@ -169,6 +165,8 @@ setInterval(async () => {
 }, HOI_KHO_MS);
 // 2.9: báo trạng thái cân + nhật ký tem về kho mỗi phút (đèn "Beeftown Cân" ở /noi-bo, trang pha lóc) — lần đầu sau 5 giây.
 setTimeout(() => { if (!dangCapNhat()) void ud.baoKhoMotLan(); }, 5_000);
+// 2.9.2: dọn Tài liệu\Beeftown Can\da-gui một lần sau khi mở — giữ 100 bản / 30 ngày, bỏ mật khẩu WiFi khỏi bản lưu cũ (không chờ).
+setTimeout(() => { void ud.lamSachDaGuiLucMo(); }, 10_000);
 setInterval(() => { if (!dangCapNhat()) void ud.baoKhoMotLan(); }, BAO_KHO_MS);
 
 // 2.8: giữ kết nối hai chiều mở với cân (nghe cân tự báo in tem, đèn ô Cân, tự chỉnh giờ cân mỗi ngày) — nhịp 30 giây như

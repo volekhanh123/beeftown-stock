@@ -35,6 +35,8 @@
  *   dat-ban-loi   như day-du; tao_dat_ban trả 400 "Khung giờ … ngày … đã hết bàn"
  *   dat-ban-500   như day-du; tao_dat_ban trả 500
  *   dat-ban-dut   như day-du; tao_dat_ban cắt kết nối không trả lời (mất mạng giữa chừng)
+ *   dat-ban-sap   database sập giữa lượt gửi: tao_dat_ban cắt kết nối như dat-ban-dut, và
+ *                 lich_trong_theo_ma trả 500 — trang sau khi gửi không dựng được form (thẻ "chưa mở")
  *   dia-chi-cong-bo  như day-du, thêm khóa dia_chi_hien_thi đã công bố (DIA_CHI_CONG_BO_THU): bản
  *                 công bố phải thay địa chỉ cố định trong mã ở mọi chỗ in địa chỉ
  *   tuyen-dung-mo như day-du, thêm hai tin tuyển dụng đã công bố (TIN_TUYEN_DUNG_THU): trang Tuyển
@@ -51,7 +53,7 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 
 export const CONG_MAC_DINH = 54331;
-export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dia-chi-cong-bo', 'tuyen-dung-mo'];
+export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dat-ban-sap', 'dia-chi-cong-bo', 'tuyen-dung-mo'];
 
 // Liên hệ "đã công bố" của kịch bản day-du. Đường dẫn thử, không phải trang thật của nhà hàng.
 export const LIEN_HE_THU = {
@@ -279,7 +281,9 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
         case 'noi_dung_cong_khai': return tra(200, noiDung(hienTai));
         case 'thuc_don_cong_khai': return tra(200, thucDon(hienTai, nn));
         case 'tin_tuyen_dung_cong_khai': return tra(200, tinTuyenDung(hienTai, nn));
-        case 'lich_trong_theo_ma': return tra(200, lichTrong(hienTai));
+        case 'lich_trong_theo_ma':
+          if (hienTai === 'dat-ban-sap') return tra(500, loiPostgrest('XX000', 'upstream request timeout'));
+          return tra(200, lichTrong(hienTai));
         case 'tao_dat_ban': {
           if (cham > 0) return void setTimeout(() => taoDatBan(thamSo), cham);
           return taoDatBan(thamSo);
@@ -289,7 +293,7 @@ export async function batMayGia({ cong = CONG_MAC_DINH, kichBan = 'day-du', im =
 
       // Trả lời tao_dat_ban theo kịch bản. Tách thành hàm để chờ được ("cham").
       function taoDatBan(ts) {
-        if (hienTai === 'dat-ban-dut') {
+        if (hienTai === 'dat-ban-dut' || hienTai === 'dat-ban-sap') {
           // Mất mạng giữa chừng: không một byte trả lời.
           req.socket.destroy();
           return;

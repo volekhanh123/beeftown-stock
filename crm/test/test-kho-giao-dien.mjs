@@ -810,6 +810,26 @@ await nhom('15 · MÁY TÍNH BẢNG DÙNG CHUNG (GĐ5d, 0034) — TRANG', async 
   const iMay = trang.indexOf('kiemMayChung(Astro, nhanSu)');
   ok('moTrangKho kiểm tự khóa trước khi đọc gì khác',
     iMay > 0 && iMay < trang.indexOf("vaiDuoc(nhanSu.vai_tro, 'xem')") && iMay < trang.indexOf("from('chi_nhanh')"));
+  // Đường TẢI FILE (*.csv.ts) không đi qua moTrangKho — trước đây cũng không qua tự khóa: quá giờ mà
+  // may-chung.js chưa kịp chạy, gõ thẳng URL CSV vẫn tải số liệu tiền dưới tên người trước.
+  const moTai = trang.slice(trang.indexOf('export async function moKhoTai'));
+  const iMayTai = moTai.indexOf('kiemMayChung(');
+  ok('moKhoTai (đường tải file) kiểm tự khóa trước khi đọc chi nhánh',
+    iMayTai > 0 && iMayTai < moTai.indexOf("from('chi_nhanh')"));
+  const duongTai = moiFile(join(TRANG, 'noi-bo/kho')).filter(f => f.endsWith('.ts'));
+  ok(`Có đường tải file của kho để kiểm (${duongTai.length})`, duongTai.length >= 2);
+  for (const f of duongTai) {
+    const nguon = doc(f);
+    ok(`${f.slice(TRANG.length + 1)} mở bằng moKhoTai (phiên, tự khóa máy dùng chung, chi nhánh)`,
+      /await moKhoTai\(/.test(nguon) && !/from\('chi_nhanh'\)/.test(nguon));
+  }
+  // Từ 02/10/2026 cân ở quán bỏ qua cổng 33571 (web/README.md, mục "Đồng bộ cân"). Nap-Can-WiFi.ps1 gửi qua đúng
+  // cổng đó, không chờ cân xác nhận, rồi in "ĐÃ GỬI" và ghi đè A_000.TMS — file Beeftown Cân coi là "đã nạp lên cân".
+  const manCan = doc(join(TRANG, 'noi-bo/kho/cai-dat/can.astro'));
+  const iLinkPs1 = manCan.indexOf('href="/kho/can-wifi/Nap-Can-WiFi.ps1"');
+  ok('Đồng bộ cân: khối tải Nap-Can-WiFi.ps1 mở đầu bằng cảnh báo "cân không còn nhận" (vi / en), trước link tải',
+    iLinkPs1 > 0 && manCan.indexOf('{t.wfNgung}') > 0 && manCan.indexOf('{t.wfNgung}') < iLinkPs1
+    && /wfNgung: \{\s*vi: '[^']*02\/10\/2026[^']*Beeftown Cân[^']*',\s*en: '[^']*2 October 2026[^']*Beeftown Can[^']*'/.test(manCan));
   ok('moTrangKho: vai máy chỉ vào /noi-bo/kho/may/*',
     /if \(laVaiMay\(nhanSu\.vai_tro\)\) \{\s*if \(!laDuongMay\(Astro\.url\.pathname\)\) return Astro\.redirect\(DUONG_MAY/.test(trang));
 

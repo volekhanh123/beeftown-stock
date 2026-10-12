@@ -51,7 +51,7 @@
 
 import type { AstroCookies, AstroGlobal } from 'astro';
 import { createClient, type Session, type SupabaseClient } from '@supabase/supabase-js';
-import { coDatabase, xoaToken, type NhanSu } from '../phien';
+import { coDatabase, xoaToken, type NhanSu } from '../phien.ts';
 import { kqHai, kqLoi, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 import { docBao, ghiBao } from './bao.ts';
@@ -136,7 +136,6 @@ export function laDuongMay(duong: string): boolean {
  */
 export async function docBiMat(): Promise<string | undefined> {
   try {
-    // @ts-ignore — dự án không cài kiểu của workerd; module này chỉ có trên Worker.
     const m = await import('cloudflare:workers');
     const v = (m as { env?: Record<string, unknown> })?.env?.KHO_MAY_KHOA;
     if (typeof v === 'string' && v) return v;

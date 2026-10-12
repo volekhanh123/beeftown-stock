@@ -37,7 +37,7 @@ Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần c�
 | `Beeftown_Concept_Board_v1.svg` | Bảng concept tổng thể. |
 | `Beeftown_Can_TMA.html` | Phần mềm cài hàng cho cân in tem TMA: sửa tên, giá, chữ trên tem rồi xuất file nạp vào cân qua USB. Chạy không cần mạng. |
 
-Tất cả đều là **HTML tự chứa** — mở thẳng bằng trình duyệt, không cần cài đặt gì, không có bước build. Chỉ phụ thuộc Google Fonts và (riêng bản nháp website cũ) ảnh từ Unsplash.
+Các file `Beeftown_*.html` / `.svg` ở gốc repo và bản nháp `Beeftown_Website/` là **HTML tự chứa** — mở thẳng bằng trình duyệt, không cần cài đặt gì, không có bước build. Chỉ phụ thuộc Google Fonts và (riêng bản nháp website cũ) ảnh từ Unsplash. `web/`, `crm/`, `can-app/` thì có bước cài và kiểm thử — xem `CLAUDE.md`.
 
 ---
 
@@ -47,7 +47,7 @@ Cân in tem TM-A 30kg (dòng TM-xA, firmware V3.14E8) không có phần mềm đ
 
 Đã nạp thử vào cân thật và in tem thành công (25/09/2026).
 
-**Nạp qua WiFi đã chạy được** (thử trên cân thật 26/09/2026): cân ở `192.168.1.22`, nhận ở cổng TCP **33571** đúng nội dung file USB. Qua WiFi cân chỉ thêm và sửa hàng, không xoá; nạp USB thì thay cả danh sách. Chương trình cho máy tính ở quán: `web/public/kho/can-wifi/Nap-Can-WiFi.ps1` (tải ở màn Đồng bộ cân) — chi tiết ở `web/README.md`, mục "Đồng bộ cân".
+**Nạp qua WiFi bằng cổng 33571** chạy được khi thử trên cân thật 26/09/2026 (cân ở `192.168.1.22`, nội dung đúng file USB; qua WiFi cân chỉ thêm và sửa hàng, không xoá; nạp USB thì thay cả danh sách) — nhưng **từ 02/10/2026 cân ở quán bỏ qua mọi lần gửi qua cổng này**. Chương trình `web/public/kho/can-wifi/Nap-Can-WiFi.ps1` gửi qua đúng cổng đó và vẫn in "ĐÃ GỬI" (màn Đồng bộ cân có cảnh báo). Gửi qua WiFi thì dùng **Beeftown Cân** (cổng hai chiều 33581, gửi xong đọc lại cân để kiểm) — chi tiết ở `web/README.md` mục "Đồng bộ cân" và `can-app/README.md`.
 
 **Beeftown Cân (`can-app/`, file `BeeftownCan.exe`)**: chương trình Windows quản lý cân — gửi giá từ kho xuống cân (đăng nhập kho, xem thay đổi, bấm Gửi; không cần USB), xem tất cả hàng (SKU) trên cân đối chiếu với kho, và chỉnh mẫu tem (chọn ô được in, sửa chữ cố định). Cân đổi địa chỉ (router phát lại) thì chương trình tự dò WiFi tìm lại cân. Xem `can-app/README.md`.
 
@@ -147,15 +147,17 @@ Chuỗi `"đặt bàn thành công"` **không được tồn tại** trong mã n
 
 Những chỗ dễ làm hỏng nếu không biết trước:
 
-1. **Phần đặt bàn tự nhận diện số chi nhánh.** Mảng `BRANCHES` có 1 phần tử thì hiện thẻ thông tin và chọn sẵn; từ 2 phần tử trở lên tự chuyển thành nút cho khách chọn. Thêm chi nhánh chỉ cần thêm vào mảng, không phải sửa gì khác.
+Mục 1, 2 và 4 nói về **bản nháp cũ** `Beeftown_Website/index.html` (không phát hành); website thật ở `web/` đặt bàn qua `tao_dat_ban()` trong database.
 
-2. **Hàm `remainingFor()` là số bàn trống mô phỏng** — sinh ngẫu nhiên nhưng ổn định theo chi nhánh + ngày + giờ để demo. **Phải thay bằng API thật khi vận hành.**
+1. **(Bản nháp cũ) Phần đặt bàn tự nhận diện số chi nhánh.** Mảng `BRANCHES` có 1 phần tử thì hiện thẻ thông tin và chọn sẵn; từ 2 phần tử trở lên tự chuyển thành nút cho khách chọn. Thêm chi nhánh chỉ cần thêm vào mảng, không phải sửa gì khác.
+
+2. **(Bản nháp cũ) Hàm `remainingFor()` là số bàn trống mô phỏng** — sinh ngẫu nhiên nhưng ổn định theo chi nhánh + ngày + giờ để demo. Website thật thay bằng `so_ban_con_trong()` (`0004`) và `lich_trong_theo_ma()` (`0013`) của database.
 
 3. **Ô đồng ý nhận tin KHÔNG được tick sẵn, và KHÔNG được bắt buộc.** Bản nháp cũ đặt `required` lên ô này, nghĩa là khách phải đồng ý nhận quảng cáo mới đặt được bàn — như vậy không còn là đồng ý tự nguyện, dù ô không tick sẵn.
 
    Xác nhận đặt bàn và nhận tin quảng cáo là hai mục đích khác nhau, phải hỏi riêng. `tao_dat_ban()` nhận `p_dong_y` mặc định `false` và vẫn tạo đặt bàn bình thường; chỉ khi khách tự tick thì mới ghi một dòng vào `nhat_ky_dong_y` kèm nguyên văn câu khách đã đọc.
 
-4. ~~Form không bao giờ được "chết" trước mặt khách.~~ **QUY TẮC NÀY ĐÃ BỊ RÚT LẠI** — xem phần giải thích ở trên. Nó biến một lỗi kỹ thuật thành một lời nói dối với khách, và chính nó là nguyên nhân khiến mọi lượt đặt bàn hiện nay báo thành công rồi biến mất.
+4. ~~Form không bao giờ được "chết" trước mặt khách.~~ **QUY TẮC NÀY ĐÃ BỊ RÚT LẠI** — xem phần giải thích ở trên. Nó biến một lỗi kỹ thuật thành một lời nói dối với khách, và chính nó là nguyên nhân khiến mọi lượt đặt bàn của bản nháp cũ báo thành công rồi biến mất.
 
 5. **Không dùng emoji làm biểu tượng** — dùng SVG nét mảnh 1.5px cho thống nhất.
 
@@ -172,13 +174,13 @@ Những chỗ dễ làm hỏng nếu không biết trước:
 - [ ] **Mọi tài khoản đứng tên công ty**, không đứng tên người làm: GitHub, Cloudflare, Supabase (thẻ công ty trả tiền), nhà đăng ký tên miền, Facebook, Google Business, Zalo OA.
       *Phép thử thành thật: người làm đăng xuất một ngày, Khánh vẫn vào được từng cái.*
 - [ ] **Một hộp thư có người đọc.**
-- [ ] Đăng ký tên miền `.vn` — cần giấy tờ, **1–5 ngày làm việc**. Trong lúc chờ, chạy trên tên miền tạm của Cloudflare. **Bạt chỉ in tên Facebook**, không in địa chỉ web, để hai đường không kẹt nhau.
+- [x] Đăng ký tên miền `.vn` — web đã chạy ở `beeftown.vn` (`web/wrangler.toml`; tên miền tạm `workers.dev` cố ý tắt). **Bạt chỉ in tên Facebook**, không in địa chỉ web, để hai đường không kẹt nhau.
 - [ ] **Supabase gói trả phí trước khi mở bất kỳ form công khai nào** — gói miễn phí tự ngủ sau 7 ngày không dùng, và nó sẽ ngủ đúng hôm form lên sóng.
 - [ ] **Hạ tầng cho nhiều nhân viên dùng cùng lúc** — hạn mức đăng nhập, gói Cloudflare, mạng tại quán: xem mục riêng [bên dưới](#hạ-tầng-cho-100-người-dùng-cùng-lúc).
 
 ### Việc kỹ thuật — theo đúng thứ tự này
 
-- [ ] Tạo project Supabase, chạy `crm/supabase/migrations/` **theo thứ tự số** — rồi đối chiếu bằng `npm run doi-chieu` (mục [Chạy migration lên production](#chạy-migration-lên-production))
+- [x] Tạo project Supabase (project **Beeftown** đã có), chạy `crm/supabase/migrations/` **theo thứ tự số**. Mỗi migration gộp sau đó: chạy và đối chiếu bằng `npm run doi-chieu` theo mục [Chạy migration lên production](#chạy-migration-lên-production)
 - [ ] Tạo tài khoản đầu tiên trong Supabase Studio, rồi thêm một dòng `nhan_su` có `auth_uid` trỏ tới nó và `vai_tro = 'chu_so_huu'`.
       *Không có bước thứ hai thì đăng nhập được vào Supabase nhưng `/noi-bo` vẫn từ chối — có chủ ý: Supabase Auth trả lời "ai", bảng `nhan_su` trả lời "có phải nhân viên không".*
 - [ ] Thêm một dòng `chi_nhanh` có `ma` khớp biến `PUBLIC_CHI_NHANH`
@@ -187,12 +189,13 @@ Những chỗ dễ làm hỏng nếu không biết trước:
       *Build chạy trên máy, không chạy trên Cloudflare — dashboard của Cloudflare không có chỗ đặt mấy biến này. Đặt sai chỗ thì trang vẫn deploy, vẫn trả 200, chỉ là không nối được database và không ai biết.*
 - [ ] Đăng nhập `/noi-bo`, công bố địa chỉ và link Facebook. Trang chủ đổi ngay, không cần deploy lại.
 - [ ] Gọi `tao_tin_tuyen_dung_mau(<id chi nhánh>)` → 8 tin nháp. Sửa lại rồi chuyển sang `da_cong_bo`; **form ứng tuyển tự hiện ra** khi có tin đầu tiên được công bố.
-- [ ] Kiểm tra kho file bằng tay theo danh sách cuối `0014_storage_supabase.sql`
+- [ ] Kiểm tra kho file bằng tay theo danh sách cuối `0014_storage_supabase.sql`, và bước thử ở đầu `0070_crm_policy_doc_tinh_mot_lan.sql` (thủ kho không còn xem được file của `beeftown-noi-bo`)
 - [ ] Mua bản quyền phông cho tên thương hiệu — hiện dùng Montserrat, **có chủ ý**, để không ai tưởng việc này đã xong
 
 ### Hai việc kỹ thuật dễ bị bỏ quên
 
 - [ ] **Nhập bàn thật vào `ban_an` trước khi mở đặt bàn.** Công tắc `form_dat_ban_dang_mo` được seed sẵn `true` ở migration `0010` (để tám kiểm tra cũ không hỏng), nhưng bảng `ban_an` thì trống trên database vừa cài. Website có chốt chặn thứ hai — nó hỏi database xem còn khung giờ nào trống trong 14 ngày tới, không có thì hiện "chưa mở đặt bàn" thay vì dựng một cái form chỉ để báo *"hết bàn"*. Nhưng chốt chặn đó chỉ giấu triệu chứng; bàn vẫn phải nhập.
+- [ ] **Chọn kênh cho báo động.** Việc báo động khi đèn sức khỏe chuyển đỏ đã chạy và giữ sổ sự cố, nhưng **chưa gửi tin đi đâu** (`chonKenhBaoDong()` luôn trả "chưa chọn kênh") — `web/README.md`, mục "Báo động", phần cuối nói cách chọn. Khánh quyết kênh (Zalo, email, Telegram…).
 - [ ] **Email báo về khi có hồ sơ hoặc yêu cầu mới — chưa làm, và đây là việc quan trọng nhất còn lại.** Rủi ro lớn nhất của cả hệ thống không phải nó hỏng, mà là hồ sơ và yêu cầu nằm im trong database không ai mở. Cho tới khi có email, **`/noi-bo` phải được mở ra xem hằng ngày** — đó là điều kiện để bật bất kỳ form nào.
 
 ---
@@ -335,7 +338,8 @@ Chỉ khôi phục vào một project **MỚI, TRỐNG**. Script tự từ chố
    ```
 
    Dòng cuối phải là `KET_QUA=dat …`. Script dừng mà không nạp gì khi: sai mật khẩu, file tải thiếu, file bị sửa (lệch mã kiểm), database đích đã có dữ liệu. Nạp rồi mà lệch số dòng hay sổ kho lệch tồn → báo rõ bảng nào.
-4. Cloudflare → Worker của web → đổi `PUBLIC_SUPABASE_URL` và `PUBLIC_SUPABASE_ANON_KEY` sang project mới → deploy. Mọi người **đăng nhập lại** (tài khoản và mật khẩu giữ nguyên — có trong bản sao). Beeftown Cân lấy địa chỉ kho từ web nên đi theo.
+4. **Trên máy dùng để build** (không phải dashboard Cloudflare — `PUBLIC_*` nằm sẵn trong bản build, dashboard không có chỗ đặt chúng, xem mục "Việc kỹ thuật"): sửa `web/.env` — `PUBLIC_SUPABASE_URL`, `PUBLIC_SUPABASE_ANON_KEY` sang project mới → `cd web && npm run deploy` (chặn khi CI chưa xanh; đang có sự cố thì `npm run deploy:khan-cap`). Mở `https://beeftown.vn/kho-can.json` thấy địa chỉ project mới là đúng. Mọi người **đăng nhập lại** (tài khoản và mật khẩu giữ nguyên — có trong bản sao).
+   **Beeftown Cân từ 2.9.2 tự đi theo:** nó nhớ địa chỉ project trong `%APPDATA%\BeeftownCan\cau-hinh.json` (hai khóa `supabaseUrl`, `anonKey`) nhưng đọc lại `kho-can.json` mỗi lần mở chương trình, khi đăng nhập hỏng và khi kho từ chối khoá (401). Ở mỗi máy quầy: **tắt rồi mở lại Beeftown Cân** → trong vài giây ô Kho "Chưa đăng nhập" → đăng nhập. **Máy quầy còn bản trước 2.9.2** thì KHÔNG tự đi theo (báo "Sai email hoặc mật khẩu", hoặc vẫn đọc / ghi project cũ nếu project cũ còn chạy): bấm **Cập nhật** lên 2.9.2; không cập nhật được thì trong Beeftown Cân → Cài đặt: gõ `http://beeftown.vn` vào ô Địa chỉ kho → Lưu → gõ lại `https://beeftown.vn` → Lưu → đăng nhập (đổi ô Địa chỉ kho là quên hai khóa đó; gõ lại đúng địa chỉ cũ thì không). **Đừng sửa file bằng Notepad:** xoá dòng cuối mà sót dấu phẩy là file hỏng, chương trình lặng lẽ về cài đặt mặc định (mất địa chỉ cân, tắt Tự gửi).
 5. Làm lại những thứ không nằm trong bản sao: hạn mức đăng nhập và email ở trang quản trị Supabase (mục "Hạ tầng" ở trên), file Storage (CV cũ không còn), và đổi secret `SAO_LUU_DB_URL` sang project mới. Khóa bí mật của Worker giữ nguyên — tài khoản máy (iPOS, máy quầy) có trong bản sao.
 
 Sao lưu tay (máy **của mình** có Docker, `psql`, `gpg` — chuỗi kết nối nằm trên dòng lệnh của Supabase CLI, người dùng khác cùng máy thấy được): `SAO_LUU_DB_URL='…' SAO_LUU_MAT_KHAU='…' SUPABASE='npx supabase' bash crm/sao-luu/sao-luu.sh ra/`.
