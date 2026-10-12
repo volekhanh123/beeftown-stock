@@ -49,9 +49,18 @@ const MAC_DINH = {
   ca: null, ve: null, tep: null, dongY: true, bay: null, giay: 40, utm: null, ip: null,
 };
 
+/**
+ * 0084 giới hạn nộp hồ sơ: 5 / giờ / IP — IP null đếm như MỘT IP — và 30 / giờ toàn cục. Website
+ * luôn gửi IP lấy từ header (lib/nop-ho-so.ts), nên lượt nào không ghi IP ở đây nhận một IP riêng
+ * như một người nộp thật; nhóm cần cùng IP (nhóm 6) ghi IP tường minh. Giới hạn tự nó kiểm ở
+ * test-cong-khai-gioi-han.mjs.
+ */
+let soIp = 0;
+const ipRieng = () => `198.51.100.${(soIp++ % 250) + 1}`;
+
 /** Nộp như website (anon), hoặc dưới phiên của một người khi có uid. */
 async function nop(thay, uid) {
-  const t = { ...MAC_DINH, ...thay };
+  const t = { ...MAC_DINH, ip: ipRieng(), ...thay };
   const sql = `select nop_ho_so_ung_tuyen($1, $2, $3, $4, $5::smallint, $6, $7, $8::text[],
                  $9::uuid, $10, $11, $12, $13::int, $14, null, $15::inet) as ma`;
   const thamSo = [t.viTri, t.ten, t.sdt, t.email, t.namSinh, t.gioiThieu, t.kinhNghiem, t.ca,
@@ -93,7 +102,9 @@ await nhom('0 · TIỀN ĐỀ — một bản hàm, chữ ký không đổi, ano
   const viTri = mau => nguon.search(mau);
   const khoa = viTri(/pg_advisory_xact_lock\(\s*hashtextextended\(\s*v_vi_tri\.id::text\s*\|\|\s*'\|'\s*\|\|\s*coalesce\(v_sdt/i);
   const tim = viTri(/interval\s+'10 minutes'/i);
-  const ip = viTri(/where\s+ip\s*=\s*p_ip/i);
+  // 0084 thay khối đếm "where ip = p_ip" của 0026 / 0081 bằng một lần quét (IP null đếm như một IP):
+  // vẫn là câu đếm IP, vẫn phải đứng sau bước tìm hồ sơ gửi lại.
+  const ip = viTri(/ip\s+is\s+not\s+distinct\s+from\s+p_ip/i);
   const chen = viTri(/insert\s+into\s+ho_so_ung_tuyen/i);
   ok('Thứ tự trong thân hàm: khóa tư vấn (vị trí, số điện thoại) → tìm hồ sơ gửi lại → đếm IP → insert',
      khoa >= 0 && tim > khoa && ip > tim && chen > ip, `khóa ${khoa} · tìm ${tim} · IP ${ip} · insert ${chen}`);

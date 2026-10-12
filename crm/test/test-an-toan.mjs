@@ -103,7 +103,9 @@ await nhom('1 · QUYỀN THỰC THI HÀM (lỗ hổng 1 và 4)', async () => {
   // Sửa danh sách ở đây là một hành vi CÓ Ý THỨC, phải giải thích được.
   const DUOC_PHEP = [
     'chi_nhanh_cong_khai',
-    'ghi_nhat_ky_tra_cuu',
+    // ghi_nhat_ky_tra_cuu RA KHỎI danh sách từ 0084: nó chèn một dòng mỗi lần gọi, không giới
+    // hạn, và ghi được lần "sai" giả để khoá tra cứu của người khác. tra_cuu_dat_ban và
+    // huy_dat_ban tự ghi nhật ký. Danh sách ngắn đi = chặt hơn.
     'ghi_su_kien_web',
     'huy_dat_ban',
     'lich_trong_theo_ma',
@@ -112,7 +114,10 @@ await nhom('1 · QUYỀN THỰC THI HÀM (lỗ hổng 1 và 4)', async () => {
     'tao_dat_ban',
     'thuc_don_cong_khai',
     'tin_tuyen_dung_cong_khai',
-    'tra_cuu_dat_ban',
+    // tra_cuu_mot_dat_ban THAY tra_cuu_dat_ban từ 0084: hàm trả bảng cho người gọi PostgREST hủy
+    // giao dịch của lần tra sai (406 vnd.pgrst.object+json) — khoá dò mã không bao giờ đếm. Hàm
+    // mới trả jsonb, cùng khoá, cùng nhật ký.
+    'tra_cuu_mot_dat_ban',
     // Không phải để website gọi: policy tải CV trên storage.objects gọi nó
     // dưới vai anon. Thiếu thì mọi lượt tải CV lỗi quyền — xem 0025.
     've_con_hieu_luc',
