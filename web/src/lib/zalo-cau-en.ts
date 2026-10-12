@@ -58,6 +58,9 @@ export const CAU_ZALO_EN: Readonly<Record<string, string>> = {
   'Tin chưa được lấy ra trong lượt gửi nào': 'The message has not been picked up by any sending run',
   // 0063
   'Xác nhận khi đã sát giờ hẹn — không còn nhắc trước 2 tiếng': 'Confirmed too close to the booking time — no 2-hour reminder',
+  // raise exception — 0078
+  'Danh sách tin đã tới Zalo không đúng dạng (cần mảng tối đa 200 phần tử {id, ma_zalo})':
+    'The list of messages already delivered to Zalo is malformed (expected an array of at most 200 {id, ma_zalo} items)',
 };
 
 /** Câu có phần thay đổi. */
