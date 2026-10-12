@@ -354,9 +354,15 @@ await nhom('3 · PHIẾU CHUYỂN / XUẤT BẾP / BÁO HỦY: QUÉT NHÃN MÃ �
      vConHan.loi.some(c => /1 khay Ribeye/.test(c) && /#0001/.test(c) && /09\/10\/2026/.test(c) && /báo hủy/.test(c))
      && vConHan.loiEn.some(c => /#0001/.test(c) && /09\/10\/2026/.test(c) && /write/.test(c) && !VIET.test(c.replace(/Ribeye/g, ''))),
      `${vConHan.loi.join(' · ')} || ${vConHan.loiEn.join(' · ')}`);
+  ok('… câu nói sổ không còn lô đó ở nơi lấy và chỉ chỗ xem (Tồn kho) — không bảo báo hủy từ chính nơi lấy này',
+     vConHan.loi.some(c => /sổ không còn lô đó ở Quầy thịt/.test(c) && /Tồn kho/.test(c)) && vConHan.loiEn.some(c => /Stock/.test(c)), vConHan.loi.join(' · '));
   const vHuy = vang({ chiConHan: false });
-  ok('Báo hủy (nhận cả hàng hết hạn): khay đó vẫn ghi theo món, kèm câu "sổ không còn khay nào của tảng #0001 ở Quầy thịt"',
-     vHuy.dong.length === 1 && vHuy.dong[0].so_goi === '1' && vHuy.soHetHan === 0 && vHuy.loi.some(c => /không còn khay nào/.test(c) && /#0001/.test(c)), JSON.stringify(vHuy));
+  ok('HỒI QUY (rà soát lần hai): phiếu BÁO HỦY cũng không ghi theo món khay của lô hết hạn mà sổ không còn ở nơi lấy — ghi theo món là hủy nhầm một lô còn hạn (hoặc hủy hai lần khay đã báo)',
+     vHuy.dong.length === 0 && vHuy.theoLo.length === 0 && vHuy.soHetHan === 1 && vHuy.loi.some(c => /#0001/.test(c) && /Tồn kho/.test(c)), JSON.stringify(vHuy));
+  const vHuyCoLo = quet([nhan(10011, 300)], { maNhan: MA_NHAN, datLo: datLo({ giao: giaoHan, homNay: '2026-10-12', chiConHan: false,
+    lo: LO_NOI_LAY().map(l => (l.lo_id === L(1) ? { ...l, tinh_trang_han: 'het_han', han_dung: '2026-10-09' } : l)) }) });
+  ok('Báo hủy khi sổ CÒN lô hết hạn đó ở nơi lấy: vào đúng dòng lô của tảng như trước',
+     vHuyCoLo.theoLo.length === 1 && vHuyCoLo.theoLo[0].lo_id === L(1) && vHuyCoLo.soHetHan === 0 && vHuyCoLo.loi.length === 0, JSON.stringify(vHuyCoLo));
   const vHomNay = vang({ chiConHan: true, homNay: '2026-10-09' });
   ok('Hạn dùng ĐÚNG hôm nay thì chưa hết hạn: ghi theo món như cũ (hết hạn là qua ngày, như kho_v_ton)',
      vHomNay.dong.length === 1 && vHomNay.soHetHan === 0, JSON.stringify(vHomNay));

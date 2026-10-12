@@ -21,6 +21,9 @@
  *   5. Phiên không giao ô mã: hai dòng nhập kho vẫn chốt được như trước.
  *   6. Mở lại phiên → ô bỏ lô; chốt lại → ô về lô mới. Chốt hai lần không đổi gì.
  *   7. kho_doi_soat_ton() rỗng.
+ *   8. (Rà soát lần hai) Chốt phiên mà phần cắt giữ ô KHÔNG có dòng nhập kho nào (chỉ chuyển thẳng
+ *      bếp, hoặc không cắt ra) → trả ô ngay lúc chốt. Trước đây ô nằm lại không lô, phiên đã chốt:
+ *      Beeftown Cân hiện "Đang lóc", phiếu và màn Quét nói "phiên lóc chưa chốt" — đều sai.
  */
 
 import { dungDatabase, taoBoDem, taoClientPg, UID, maGui } from './kho-chung.mjs';
@@ -29,6 +32,7 @@ import * as XUAT from '../../web/src/lib/kho/xuat.ts';
 import * as O_MA from '../../web/src/lib/kho/o-ma.ts';
 import { docCaiDat, docMatHang } from '../../web/src/lib/kho/danh-muc.ts';
 import { docTon } from '../../web/src/lib/kho/ton.ts';
+import { tomTatO } from '../../can-app/src/quay.ts';
 import { dichCau } from '../../web/src/lib/cau-noi-bo.ts';
 import { VIET } from './quet-chu-viet.mjs';
 
@@ -91,6 +95,8 @@ await nhom('0 · DỰNG: 5 tảng thăn ngoại theo tảng, phần cắt có 3 
   MH['T-THANNGOAI'].theo_tang = true;
   await chay(UID.qlA, `update kho_mat_hang set ma_can = '301', gia_ban_kg = 900000, don_vi_goi = 'khay' where ma = 'C-THANNGOAI'`);
   await chay(UID.qlA, `insert into kho_o_ma (mat_hang_id, so_o, ma_can) values ($1, 1, '10011'), ($1, 2, '10012'), ($1, 3, '10013')`, [MH['C-THANNGOAI'].id]);
+  // Phần cắt thứ hai có ô mã (không nằm trong công thức) — giao tay cho một phiên rồi không cắt ra.
+  await chay(UID.qlA, `insert into kho_o_ma (mat_hang_id, so_o, ma_can) values ($1, 1, '10021')`, [MH['C-THANLUNG'].id]);
   const ct = (await chay(UID.qlA, `insert into kho_cong_thuc_pha (mat_hang_vao_id, ten) values ($1, 'Thăn ngoại') returning id`, [MH['T-THANNGOAI'].id]))[0].id;
   await chay(UID.qlA, `insert into kho_cong_thuc_pha_dong (cong_thuc_id, mat_hang_ra_id, ty_le_du_kien) values ($1, $2, 70)`, [ct, MH['C-THANNGOAI'].id]);
   const ncc = (await chay(UID.qlA, `insert into kho_nha_cung_cap (ten) values ('NCC Úc') returning id`))[0].id;
@@ -149,13 +155,34 @@ await nhom('1 · Ô THEO LÔ NHẬP KHO, KHÔNG THEO LÔ CHUYỂN THẲNG BẾP'
   ok('Ô 2 về lô ở quầy của tảng #2, còn 8 khay — dòng chuyển bếp đứng trước hay sau cũng vậy',
      g2?.lo_id === lo2Quay && Number(g2?.con_goi) === 8 && g2?.con_giu === true && g2?.so_tang === 2, JSON.stringify(g2));
 
-  // Phần cắt CHỈ chuyển thẳng bếp (không khay nào ra quầy): ô không gắn lô nào, tảng sau dùng lại được ô đó.
+  // Phần cắt CHỈ chuyển thẳng bếp (không khay nào ra quầy), và một phần cắt giữ ô mà phiên không cắt ra:
+  // không khay nào mang nhãn hai ô đó nằm trên sổ → chốt xong trả ô ngay, tảng sau dùng lại được.
   const ph3 = await moPhien(tang[2]);
   const o3 = await giaoO(ph3);
   ok('Tảng #3 nhận ô 3 (10013)', o3[0]?.ma_can === '10013', JSON.stringify(o3));
+  const oLung = (await chay(UID.thuKhoA, `select kho_giao_o_ma($1, $2) as kq`, [ph3, MH['C-THANLUNG'].id]))[0].kq;
+  ok('… và giao tay thêm ô 1 của Thăn lưng (10021)', oLung.some(x => x.ma_can === '10021'), JSON.stringify(oLung));
   ok('Lưu và chốt phiên tảng #3 chỉ có dòng chuyển thẳng bếp: được', await luuRa(ph3, tang[2], [raBep(1.1)]) === null && await chot(ph3) === null);
-  const g3 = await oDangGiao('10013');
-  ok('Ô 3 không gắn lô nào và không còn giữ (không khay nào mang nhãn ô 3 ra quầy)', g3?.lo_id == null && g3?.con_giu === false, JSON.stringify(g3));
+  const lichSu = (await db.query(`select o.ma_can, g.lo_id, g.den_luc from kho_o_ma_giao g join kho_o_ma o on o.id = g.o_ma_id
+    where g.phien_pha_id = $1 order by o.ma_can`, [ph3])).rows;
+  ok('HỒI QUY: chốt xong trả ngay ô 3 (chỉ chuyển thẳng bếp) và ô Thăn lưng (không cắt ra): không còn là ô đang giao, không gắn lô',
+     await oDangGiao('10013') === null && await oDangGiao('10021') === null
+     && lichSu.length === 2 && lichSu.every(r => r.lo_id === null && r.den_luc !== null), JSON.stringify({ lichSu }));
+  ok('Ô 1 và ô 2 (có lô nhập kho) vẫn giữ nguyên tảng #1, #2', (await oDangGiao('10011'))?.so_tang === 1 && (await oDangGiao('10012'))?.so_tang === 2);
+
+  // Ba chỗ đọc ô: Beeftown Cân (kho_can_o_ma → tomTatO), phiếu quét nhãn (dongTuQuet), màn Quét nhãn — không ai nói "đang lóc".
+  const canO = (await chay(UID.thuKhoA, `select kho_can_o_ma($1) as ds`, [cnA.id]))[0].ds;
+  const nhomO = tomTatO(canO, new Map());
+  const tt = ma => nhomO.flatMap(n => n.o).find(x => x.ma_can === ma)?.tinhTrang;
+  ok('HỒI QUY: Beeftown Cân thấy ô 3 và ô Thăn lưng là ô TRỐNG (không phải "Đang lóc"); ô 1, ô 2 đang bán',
+     tt('10013') === 'trong' && tt('10021') === 'trong' && tt('10011') === 'dang_ban' && tt('10012') === 'dang_ban',
+     JSON.stringify({ o3: tt('10013'), lung: tt('10021'), o1: tt('10011'), o2: tt('10012') }));
+  const nv = clientCua(UID.nvQuayA);
+  const [matHang, caiDat, maNhan, giao] = await Promise.all([docMatHang(nv), docCaiDat(nv, cnA.id), O_MA.docMaTrenNhan(nv), O_MA.docGiaoOMaCan(nv, cnA.id)]);
+  const q3 = XUAT.dongTuQuet(nhan(10013, 300), matHang, caiDat.mau_ma_vach, caiDat.so_le_kg,
+    { maNhan, datLo: { giao, lo: [], tenNoiLay: 'Quầy thịt', chiConHan: true, dong: [], theoLo: [] } });
+  ok('HỒI QUY: quét một khay mang mã ô 3 sau khi chốt → câu nói ô không còn gắn với tảng nào (không phải "phiên lóc chưa chốt")',
+     q3.loi.some(c => /không còn gắn với tảng nào/.test(c)) && !q3.loi.some(c => /chưa chốt/.test(c)), q3.loi.join(' · '));
 });
 
 // ===========================================================================
@@ -238,11 +265,14 @@ await nhom('5 · MỞ LẠI PHIÊN → Ô BỎ LÔ · CHỐT LẠI → Ô VỀ L
 
 // ===========================================================================
 await nhom('6 · QUYỀN VÀ SỔ', async () => {
-  const quyen = (await db.query(`select has_function_privilege('authenticated', 'kho_phien_pha_ra_o_ma()', 'execute') as a,
-                                        has_function_privilege('anon', 'kho_phien_pha_ra_o_ma()', 'execute') as b`)).rows[0];
-  ok('Hàm trigger kho_phien_pha_ra_o_ma vẫn là hàm nội bộ: authenticated và anon không gọi thẳng được', quyen.a === false && quyen.b === false, JSON.stringify(quyen));
-  const dn = (await db.query(`select prosecdef, proconfig from pg_proc where proname = 'kho_phien_pha_ra_o_ma'`)).rows[0];
-  ok('… vẫn security definer, có set search_path', dn.prosecdef === true && (dn.proconfig ?? []).some(c => /^search_path=/.test(c)), JSON.stringify(dn));
+  for (const ham of ['kho_phien_pha_ra_o_ma', 'kho_phien_pha_chot_tra_o_ma']) {
+    const co = (await db.query(`select count(*)::int as n from pg_proc where proname = $1`, [ham])).rows[0].n === 1;
+    const quyen = co ? (await db.query(`select has_function_privilege('authenticated', '${ham}()', 'execute') as a,
+                                              has_function_privilege('anon', '${ham}()', 'execute') as b`)).rows[0] : null;
+    ok(`Hàm trigger ${ham} là hàm nội bộ: authenticated và anon không gọi thẳng được`, co && quyen.a === false && quyen.b === false, JSON.stringify(quyen));
+    const dn = co ? (await db.query(`select prosecdef, proconfig from pg_proc where proname = $1`, [ham])).rows[0] : null;
+    ok(`… ${ham} là security definer, có set search_path`, !!dn && dn.prosecdef === true && (dn.proconfig ?? []).some(c => /^search_path=/.test(c)), JSON.stringify(dn));
+  }
   const nvChot = await thu(UID.nvQuayA, `select kho_chot_phien_pha($1, 1)`, [ph2]);
   ok('NV quầy không chốt được phiên lóc (quyền không đổi)', /không được chốt/.test(nvChot ?? ''), String(nvChot));
   const ds = (await db.query(`select * from kho_doi_soat_ton()`)).rows;
