@@ -217,12 +217,12 @@ Từ 2.9.3 (`nghiep-vu.ts` `guiKeHoach`, `tuGuiMotLan`, `baoKhoMotLan`):
   danh sách sau 1, 2, 5, 10 phút (`chua-xac-nhan.json` ghi `soLanThu`, `thuLaiLuc`) — kể cả khi kế hoạch thấy kho không đổi (cân
   có thể đang giữ bản chưa xác nhận). Chưa tới giờ: ô Cân "… chưa ghi nhận; tự gửi thử lại lúc 10:03". Bấm Gửi xuống cân không
   phải chờ. Dấu kiểu 2.9.2 (chưa có giờ) → thử lại ngay lượt đầu sau khi cập nhật.
-- **Báo kho cờ chưa xác nhận** (migration `0077_kho_can_chua_xac_nhan.sql`): `kho_may_can_bao` nhận `chua_xac_nhan` của máy (lần
+- **Báo kho cờ chưa xác nhận** (migration `0080_kho_can_chua_xac_nhan.sql`): `kho_may_can_bao` nhận `chua_xac_nhan` của máy (lần
   gửi gần nhất chưa đọc lại được / đọc lại lệch, hay xoá qua WiFi hỏng) và của từng dòng `tren_can` (cân có thể đang khác dòng đó:
   dòng chờ xác nhận khác dòng đã xác nhận; đọc lại lệch / xoá hỏng thì mọi dòng — gửi lại cả danh sách y hệt không đánh dấu dòng
   nào); `tren_can` chỉ còn dòng đã xác nhận. Trang pha lóc (`web/src/lib/kho/danh-muc-can.ts`) không nói "Cân sẵn sàng" theo dòng
   mang cờ — vàng "Chưa chắc cân đã có … — chưa in tem". Đèn "Beeftown Cân" vàng khi máy chưa xác nhận quá 15 phút trong giờ mở cửa.
-  Kho chưa chạy 0077 thì cờ bị bỏ qua, phần còn lại vẫn đúng (tren_can đã là thứ cân xác nhận).
+  Kho chưa chạy 0080 thì cờ bị bỏ qua, phần còn lại vẫn đúng (tren_can đã là thứ cân xác nhận).
 - Lùi giờ chỉ tính các lần TỰ gửi liên tiếp; bấm Gửi xuống cân mà không đọc lại được là lần thử mới (tự gửi thử lại sau 1 phút).
   Chưa tới giờ thử lại thì tự gửi không đọc kho. Lần gửi chưa đọc lại được không phải "gửi được" (`gui_giay` báo kho).
 - Kiểm thử: các cân giả kiểu 2.1 (chỉ cổng 33571) đọc lại thẳng dữ liệu của chúng (`phu.docLaiPlu`) — từ bản này không đọc lại
@@ -236,7 +236,7 @@ Từ 2.9.3 (`nghiep-vu.ts` `guiKeHoach`, `tuGuiMotLan`, `baoKhoMotLan`):
    sau ~15 phút (kho đổi mà cân chưa nhận). Gọi PLU món đó trên cân: giá cũ (cân bỏ qua cổng 33571).
 3. Xoá ô **Cổng hai chiều** (về 33581) → Lưu. Tới giờ thử lại (1–2 phút) ô Cân "Thử lại lần 2: đã gửi lại cả danh sách … cân đã
    nhận (đọc lại khớp)"; bảng "Giữ nguyên"; gọi PLU trên cân: giá mới.
-4. (Khi có phiên lóc thật, kho đã chạy 0077) Lặp bước 2 ngay sau khi bấm "Giao ô mã": trang pha lóc → Xem lại cân → **không**
+4. (Khi có phiên lóc thật, kho đã chạy 0080) Lặp bước 2 ngay sau khi bấm "Giao ô mã": trang pha lóc → Xem lại cân → **không**
    có dòng xanh "Cân sẵn sàng" (vàng "Cân còn tên cũ" hay "Chưa chắc cân đã có …"); làm bước 3 → Xem lại cân → xanh.
 5. (Tuỳ chọn) Mở TM-xA, cho nó nối cân, rồi sửa giá: ra khung vàng như bước 2 là đúng kịch bản rà soát; ra khung xanh thì cân
    nhận hai kết nối cùng lúc — ghi lại để sửa `CAN-TMA.md` §10.2.9.

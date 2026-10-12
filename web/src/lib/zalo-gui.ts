@@ -17,8 +17,10 @@
  * Đăng nhập máy: dangNhapMay (lib/tai-khoan-may.ts) — mỗi lời gọi Supabase tối đa
  * HET_GIO_SUPABASE_ZALO_MS. Tin ĐÃ TỚI Zalo mà ghi "da_gui" hỏng hai lần liền:
  * dừng gửi tin kế tiếp, thử ghi lại cuối lượt TRƯỚC zalo_ket_thuc_luot (hàm đó
- * trả tin chưa báo kết quả về hàng chờ → khách nhận lần hai). Vẫn hỏng thì
- * loi_cuoi nói thật "có thể bị gửi lần hai".
+ * trả tin chưa báo kết quả về hàng chờ → khách nhận lần hai). Vẫn hỏng thì tin
+ * đi kèm chính lời zalo_ket_thuc_luot (p_da_gui, 0078): database ghi da_gui trước
+ * khi trả tin về hàng chờ, cùng giao dịch với việc nhả khóa. Lời đó cũng không
+ * tới database thì log nói thật "có thể bị gửi lần hai".
  *
  * BÍ MẬT (bí mật Worker, KHÔNG đặt trong wrangler.toml / .env / repo / log):
  *   ZALO_SECRET_KEY — secret key của App Zalo (làm mới token)
@@ -258,11 +260,10 @@ async function motLuot(
    * Tin ĐÃ TỚI Zalo mà chưa ghi được "da_gui" (database lỗi hai lần liền). zalo_ket_thuc_luot trả
    * mọi tin chưa báo kết quả về hàng chờ → lượt sau gửi khách lần hai. Thử ghi lại cuối lượt, mỗi
    * lần sau một lúc chờ, TRƯỚC khi kết thúc lượt; gọi lại an toàn (tin đã ở trạng thái cuối → bo_qua).
+   * Vẫn hỏng thì tin đi kèm lời zalo_ket_thuc_luot (p_da_gui) — xem ketThuc.
    * Nhiều nhất MỘT tin: vòng gửi dừng ngay ở tin đầu tiên không ghi được.
    */
   let chuaGhi: { tin: TinLuot; thamSo: Record<string, unknown> } | null = null;
-  /** Câu "dừng gửi" của chính vòng gửi — câu lỗi khác có trước (token chưa lưu…) thì giữ câu đó. */
-  let cauDung: string | null = null;
   const cho = phuThuoc.cho ?? ((ms: number) => new Promise<void>(xong => setTimeout(xong, ms)));
   const ghiLaiCuoiLuot = async () => {
     const x = chuaGhi;
@@ -274,18 +275,32 @@ async function motLuot(
       catch (e) { loi = e instanceof Error ? e.message : String(e); }
       if (!loi) { chuaGhi = null; ghi(`đã ghi lại được kết quả tin ${x.tin.id.slice(0, 8)}`); return; }
     }
-    const cau = CAU_GUI.daToiChuaGhi.vi(x.tin.id.slice(0, 8));
-    ghi(cau);
-    // Nặng hơn câu "dừng gửi" (khách có thể nhận hai lần), nhưng không đè lỗi khác có từ trước.
-    if (loiLuot === null || loiLuot === cauDung) loiLuot = cau;
   };
 
   const ketThuc = async () => {
     try { await ghiLaiCuoiLuot(); } catch (e) { ghi(`không ghi lại được kết quả: ${e instanceof Error ? e.message : String(e)}`); }
-    const { error } = await client.rpc('zalo_ket_thuc_luot', {
-      p_loi: loiLuot ? sach(loiLuot).slice(0, 500) : null, p_quota: tom.quota,
-    });
-    if (error) ghi(`không kết thúc được lượt: ${error.message}`);
+    // Tin vẫn chưa ghi được đi kèm CHÍNH lời kết thúc lượt (0078): database ghi da_gui trước khi trả tin chưa
+    // báo về hàng chờ, cùng giao dịch với việc nhả khóa — lời gọi tới được thì tin đã ghi, loi_cuoi không cần
+    // câu "gửi lần hai". Lượt bình thường không gửi p_da_gui: đúng chữ ký cũ, chạy cả trên database chưa có 0078.
+    const x = chuaGhi;
+    const thamSo: Record<string, unknown> = { p_loi: loiLuot ? sach(loiLuot).slice(0, 500) : null, p_quota: tom.quota };
+    if (x) thamSo.p_da_gui = [{ id: x.tin.id, ma_zalo: x.thamSo.p_ma_zalo ?? null }];
+    let data: unknown = null;
+    let loiKetThuc: string | null;
+    try { const kq = await client.rpc('zalo_ket_thuc_luot', thamSo); data = kq.data; loiKetThuc = kq.error?.message ?? null; }
+    catch (e) { loiKetThuc = e instanceof Error ? e.message : String(e); }
+    if (loiKetThuc) ghi(`không kết thúc được lượt: ${loiKetThuc}`);
+    if (x) {
+      // Chỉ câu trả lời của database cho CHÍNH tin này mới là xác nhận. bo_qua: tin đã có kết quả cuối từ
+      // trước (có thể không phải da_gui) — không ghi gì mới, nhưng lượt sau cũng không lấy lại.
+      const id8 = x.tin.id.slice(0, 8);
+      const kq = loiKetThuc ? undefined
+        : (data as { da_gui?: { id?: string; ok?: boolean; bo_qua?: boolean; ket_qua?: string; loi?: string }[] } | null)
+          ?.da_gui?.find(k => k?.id === x.tin.id);
+      if (kq?.ok === true && kq.bo_qua) ghi(`tin ${id8} đã có kết quả "${kq.ket_qua}" trong database — lượt sau không gửi lại`);
+      else if (kq?.ok === true) ghi(`đã ghi kết quả tin ${id8} kèm lời kết thúc lượt`);
+      else ghi(kq?.loi ? `${CAU_GUI.daToiChuaGhi.vi(id8)} (${kq.loi})` : CAU_GUI.daToiChuaGhi.vi(id8));
+    }
     const phan = [`đã gửi ${tom.da_gui}`, `thất bại ${tom.that_bai}`, `bị từ chối ${tom.bi_tu_choi}`];
     if (tom.chua_gui) phan.push(`chưa gửi ${tom.chua_gui}`);
     if (tom.lam_moi_token) phan.push('đã làm mới token');
@@ -441,8 +456,8 @@ async function motLuot(
         if (!daGhi) {
           // Database đang không ghi được: mỗi tin gửi thêm là thêm một tin có thể tới khách
           // hai lần. Dừng lượt; tin còn lại không báo kết quả → về hàng chờ, lượt sau gửi.
-          cauDung = CAU_GUI.dungChuaGhi.vi(tin.id.slice(0, 8));
-          loiLuot = loiLuot ?? cauDung;
+          // Câu lỗi khác có từ trước (token chưa lưu…) thì giữ câu đó.
+          loiLuot = loiLuot ?? CAU_GUI.dungChuaGhi.vi(tin.id.slice(0, 8));
           tom.chua_gui += lo.length - i - 1;
           break;
         }
