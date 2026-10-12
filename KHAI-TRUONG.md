@@ -6,12 +6,10 @@ Các bước kỹ thuật đã có hướng dẫn trong `README.md` thì ở đ�
 
 ## A. Trước 15/10 — deploy địa chỉ mới
 
-**Trước hết, GitHub Actions phải chạy được**: mục 3 (CI xanh rồi mới deploy) và mục 4 (sao lưu) đều chạy trên đó. Từ 13:09 ngày 12/10/2026 GitHub chặn mọi lượt chạy vì thanh toán hoặc hạn mức ("recent account payments have failed or your spending limit needs to be increased"). Sửa ở GitHub → Settings → Billing & plans (thêm thẻ hoặc tăng hạn mức Actions), rồi xem tab Actions có lượt chạy mới màu xanh.
-
 | # | Việc | Ai | Hạn |
 |---|---|---|---|
 | 1 | Gộp các PR đang mở: #73 (soát luồng 6 bước của kho), #88 (đổi màu `/noi-bo` và kho). | Khánh | 14/10 |
-| 2 | Chạy migration theo số ở SQL Editor, mỗi file một lần: trước hết các file đã ở main mà production còn thiếu (`npm run doi-chieu` chỉ ra; khi viết: `0063`, `0065` chưa chạy; `0069`–`0074`, `0078`, `0081` vừa gộp ở PR #74, #75, #78, #81), rồi hai file của PR #73 (hiện là `0082`, `0083`; số đổi nếu PR khác gộp trước — lấy số trong PR lúc gộp). Sau đó `npm run doi-chieu` phải báo KHỚP. Cách làm: `README.md`, mục "Chạy migration lên production". | Khánh | 15/10 |
+| 2 | Chạy migration theo số ở SQL Editor, mỗi file một lần: trước hết các file đã ở main mà production còn thiếu (`npm run doi-chieu` chỉ ra; khi viết: `0063`, `0065` chưa chạy; `0069`–`0074`, `0078`, `0081`, `0084` vừa gộp ở PR #74, #75, #77, #78, #81), rồi hai file của PR #73 (hiện là `0086`, `0087`; số đổi nếu PR khác gộp trước — lấy số trong PR lúc gộp). Sau đó `npm run doi-chieu` phải báo KHỚP. Cách làm: `README.md`, mục "Chạy migration lên production". | Khánh | 15/10 |
 | 3 | `npm run deploy` khi CI xanh — beeftown.vn hiện địa chỉ mới. | Khánh | 15/10 |
 | 4 | Bật sao lưu hằng đêm: thêm 2 secret `SAO_LUU_DB_URL`, `SAO_LUU_MAT_KHAU`, chạy tay một lượt, đèn "Sao lưu dữ liệu" ở `/noi-bo` phải xanh. Đèn đang đỏ từ 05/10 — **chưa có bản sao nào**. Cách làm: `README.md`, mục "Sao lưu và khôi phục". | Khánh | 15/10 |
 
