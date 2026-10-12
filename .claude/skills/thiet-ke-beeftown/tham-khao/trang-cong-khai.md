@@ -156,7 +156,7 @@ theo ngày — `web/THIET-KE.md` mục 10.
 | `CauHoi` | `ngonNgu`, `noiDung` | Hỏi đáp bằng `<details>` — chỉ dữ kiện đã xác nhận. Mỗi `<summary>` có hai biểu tượng `cong` (`.bt-mo`) và `tru` (`.bt-dong`); hàng cao 56px, bấm được trên toàn chiều rộng |
 | `TrangVanBan` | `hieu`, `tieuDe` + `<slot>` | Trang pháp lý |
 | `ThucDonNhom` | `nhom`, `ngonNgu`, `ghiChu?`, `khongGia?` | Một nhóm món dạng danh sách (bò tại quầy, đồ uống chưa có ảnh) |
-| `ThucDonNhomAnh` | `nhom`, `ngonNgu`, `kieu?` (`dan-dau` / `deu`), `ghiChu?`, `tieuDeNho?`, `nenKhung?`, `khongGia?` | Một nhóm món kiểu cuốn menu bản sáng: tên nhóm chữ hoa `--co-nhom`, câu của nhóm (`CAU_NHOM`), món dẫn đầu chữ trái – ảnh phải từ 768px, lưới thẻ ảnh trên chữ dưới (1 / 2 / 3 cột); `deu` cho ba ly signature; `tieuDeNho` trong dải tối Bò tại quầy |
+| `ThucDonNhomAnh` | `nhom`, `ngonNgu`, `kieu?` (`dan-dau` / `deu`), `ghiChu?`, `tieuDeNho?`, `nenKhung?`, `khongGia?` | Một nhóm món kiểu cuốn menu bản sáng: tên nhóm chữ hoa `--co-nhom`, câu của nhóm (`CAU_NHOM`), món dẫn đầu chữ trái – ảnh phải từ 768px, lưới thẻ ảnh trên chữ dưới (2 / 3 cột) từ 600px; dưới 600px món không dẫn đầu là hàng gọn `tdn-gon` (ảnh 128px trái, chữ phải); `deu` cho ba ly signature (luôn là thẻ); `tieuDeNho` trong dải tối Bò tại quầy |
 | `ThucDonMon` | `mon`, `ngonNgu`, `lon?`, `khongGia?` | Chữ của một món: tên (chữ thường đậm 700), giá chỉ khi `gia !== null`, mô tả, nhãn Món sống / Có cồn, câu cảnh báo món sống |
 | `DauTrang`, `ChanTrang` | — | Layout đã gắn sẵn. Đầu trang cao 64 / 80px, bộ chọn ngôn ngữ in đủ ba thứ tiếng (thứ tiếng đang xem: `aria-current="true"`, chữ đậm và nét gạch), menu gọn có nút đóng và nút chính Hỏi bàn (lớp phủ tối và khoá cuộn chỉ có khi script đã chạy — `data-co-script`). Chân trang: dải đỏ phẳng không hoa văn, chữ ≥ 14px, `<footer>` pháp nhân duy nhất, giữ nguyên từng ký tự |
 
@@ -168,9 +168,11 @@ Thêm ảnh thật: `web/THIET-KE.md` mục 7, "Đưa một ảnh chụp thật 
 ## Đặt một ảnh lên trang
 
 - Chỉ qua `<Anh id="…" khung="…" khungNho="…" />`; không tự viết `<img src="/anh/…">` (có kiểm thử). Ảnh
-  của một món không gõ vào component: thêm vào `ANH_CUA_MON` (mã món → id, khung) — thẻ món tự lấy.
+  của một món không gõ vào component: thêm vào `ANH_CUA_MON` (mã món → id, khung, `gon` — khung ảnh nhỏ
+  128px của hàng món gọn dưới 600px: 1x1 cho ảnh tách nền, 4x5 cắt sát đáy cho ảnh có nền) — thẻ món tự lấy.
 - Ảnh món đã tách nền: khai `tach_nen: { le, duoi }` trong `danh-sach.json` (không `fx`, `fy`) và
-  `tachNen: true` trong `DANH_MUC_ANH`; dải `duoi` ≥ 12 % để nhãn nằm dưới món ở khung nhỏ nhất (~250px).
+  `tachNen: true` trong `DANH_MUC_ANH`; dải `duoi` ≥ 12 % để nhãn nằm dưới món ở thẻ nhỏ nhất (~250px).
+  Khung gọn 1x1 (ảnh 128px) khai `tach_nen` riêng trong khung: `duoi` ≥ 18 % (nhãn một dòng ≈ 22px).
 - Chọn khung theo chỗ đặt: cột nửa trang trên máy tính thì `4x3` hoặc `3x2`; điện thoại cần ảnh cao hơn
   thì khai `khungNho` (`4x5`, `4x3`, `1x1`). Khung phải có trong `web/cong-cu/anh/danh-sach.json` và đã
   dựng cỡ (`tao-co-anh.py`) — khung chưa dựng thì trang hiện `KhungAnh`, và kiểm thử đỏ.

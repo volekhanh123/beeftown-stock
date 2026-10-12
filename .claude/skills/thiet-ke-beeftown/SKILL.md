@@ -264,8 +264,9 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
   `ANH_CUA_MON` (`web/src/lib/anh.ts`, khóa theo mã món) trong `ThucDonNhomAnh.astro`.
 - **Thực đơn kiểu cuốn menu bản sáng** (`ThucDonNhomAnh.astro` + `ThucDonMon.astro`): tên nhóm chữ hoa
   800 (`--co-nhom`) màu `--nhan`, câu của nhóm (`CAU_NHOM`, khóa theo mã nhóm), món dẫn đầu chữ trái –
-  ảnh phải từ 768px, các món còn lại lưới thẻ ảnh trên chữ dưới; không giá khi `gia` null, không độ cay,
-  không sao "Nên thử". Bố cục và lý do: `web/THIET-KE.md` mục 1, "Trang Thực đơn".
+  ảnh phải từ 768px, các món còn lại lưới thẻ ảnh trên chữ dưới từ 600px; **dưới 600px món không dẫn đầu
+  là hàng gọn** — ảnh nhỏ 128px (`--k-10`, khung `gon` của `ANH_CUA_MON`) bên trái, chữ bên phải; không giá
+  khi `gia` null, không độ cay, không sao "Nên thử". Bố cục và lý do: `web/THIET-KE.md` mục 1, "Trang Thực đơn".
 - **Form**: nhãn trên ô (không placeholder thay nhãn), ô một dòng cao đúng 48px (kể cả ô ngày) nền
   Cream viền `--vien-o`, ô tự điền (`:autofill`) vẫn nền Cream, lỗi sát ô
   bằng câu chữ màu đỏ đậm (`.loi-o` + `aria-invalid` + `aria-describedby`), không tick sẵn ô đồng ý
@@ -281,7 +282,8 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
   kể cả ảnh "đã duyệt" của menu chuẩn 29/09 chưa rõ chụp thật hay dựng: vẫn gắn nhãn. **Ảnh tách nền**
   (`tachNen` trong `DANH_MUC_ANH`): khung `.tach-nen` trong suốt, không bo góc, món đặt thẳng lên nền;
   `web/cong-cu/anh/tao-co-anh.py` (mục `tach_nen` của `danh-sach.json`) chừa dải trống 12–14 % ở đáy khung
-  và nhãn nằm giữa đáy — ngay dưới món, không đè lên món. Khánh quyết ngày 11/10/2026: ảnh AI được lên trang; **bàn tay người
+  và nhãn nằm giữa đáy — ngay dưới món, không đè lên món; ảnh nhỏ 128px của hàng món gọn có khung riêng
+  (dải đáy 20 %, nhãn đệm hẹp, một dòng). Khánh quyết ngày 11/10/2026: ảnh AI được lên trang; **bàn tay người
   thì được, mặt người thì không**; hai ảnh bữa ăn có món phụ (`mon-an-chia-se`, `bua-an-cung-ban`) là
   hình minh họa — câu chữ và alt không kể tên, không hứa món phụ nào. **Quầy, khay skin-pack, không
   gian quán, lối vào, thang máy, mặt người: chỉ ảnh chụp thật** (cho tới khi có: `<KhungAnh>`). Không

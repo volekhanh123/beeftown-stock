@@ -89,7 +89,9 @@ là điện thoại rộng nhất, nơi lề `--le` đã lớn hơn 20px):
   - `thucDon`: "Bò tại quầy" nền Charcoal, có ảnh `bo-cat-lat` và thẻ nhãn khay, không khung vẽ khay;
     "Món ăn" chưa có món thì có ảnh `sot-cham`, đã có món thì không; "Đồ uống" có ảnh `uong-khong-con-ba-ly`;
     không phần tử giá; tên nhóm kiểu cuốn ≥ 28px, không to hơn h1, chữ hoa đậm 800; thẻ món không tràn chữ,
-    ảnh trên chữ (món dẫn đầu từ 768px: ảnh bên phải chữ); mục của thanh chọn phần cao ≥ 48px.
+    ảnh trên chữ (món dẫn đầu từ 768px: ảnh bên phải chữ); dưới 600px món không dẫn đầu của nhóm món ăn
+    là hàng gọn — ảnh 112–128px bên trái chữ, cùng mép trên, nhãn ảnh một dòng trong 20 % đáy khung;
+    mục của thanh chọn phần cao ≥ 48px.
 - **Tương phản** WCAG 2.2: ≥ 4,5 : 1, chữ ≥ 24px hoặc ≥ 18,66px đậm ≥ 3 : 1 (bỏ qua nền ảnh,
   `aria-hidden`, `.an-chu`).
 - Chân trang: dòng `© <năm> Beeftown · Beef Specialty Restaurant` rồi đúng hai dòng pháp nhân, chữ
