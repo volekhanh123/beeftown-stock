@@ -44,15 +44,20 @@
 --         có chiến dịch  CD:<chiến dịch>:<khách> (CÙNG khoá với
 --                        zalo_tao_chien_dich — không thêm được tin thứ hai cho
 --                        khách chiến dịch đã xếp)
---         gửi tay        TAY:<mã mẫu>:<khách>:<ngày giờ VN>
---       Khoá đã có thì trả lại ĐÚNG tin đó (như zalo_tao_chien_dich trả lại
---       chiến dịch đã tạo), kiểm trước duoc_phep_gui: bấm lại không bị báo nhầm
---       "đã đủ 2 tin/tháng" bởi chính tin vừa xếp. Hai lời gọi cùng lúc: unique
+--         gửi tay        TAY:<chi nhánh>:<mã mẫu>:<khách>:<ngày giờ VN>
+--       Khoá đã có, tin đang chờ / đã gửi thì trả lại ĐÚNG tin đó (như
+--       zalo_tao_chien_dich trả lại chiến dịch đã tạo), kiểm trước duoc_phep_gui:
+--       bấm lại không bị báo nhầm "đã đủ 2 tin/tháng" bởi chính tin vừa xếp. Tin
+--       đã hỏng / bị từ chối / bị hủy thì bấm lại là gửi MỚI (tin cũ đổi khoá,
+--       ở nguyên trong nhật ký). Có chiến dịch thì mẫu phải là mẫu của chiến dịch. Hai lời gọi cùng lúc: unique
 --       khoa_gui + on conflict do nothing — lời sau đọc lại tin của lời trước.
 --       Có phiên thì khách phải đã ghé hoặc đặt bàn ở p_chi_nhanh_id (như
 --       zalo_khach_theo_nhom của chiến dịch); chiến dịch phải của chi nhánh đó.
---   5 · Trigger dat_ban_kiem_sua (BEFORE UPDATE), chỉ khi có phiên đăng nhập
---       (huy_dat_ban của website chạy dưới anon; SQL Editor sửa tay như cũ):
+--   5 · Trigger dat_ban_kiem_sua (BEFORE INSERT OR UPDATE), chỉ khi có phiên
+--       đăng nhập (tao_dat_ban / huy_dat_ban của website chạy dưới anon; SQL
+--       Editor sửa tay như cũ). Chèn thẳng (dat_ban_them — nhân viên ghi hộ):
+--       chỉ ở chờ gọi / đã xác nhận, bàn / lượt ghé / người xử lý như dưới,
+--       nguoi_tao (cột mới) = người ghi. Sửa:
 --         · bước chuyển trạng thái đúng 5 bước của hộp thư /noi-bo/dat-ban
 --           (CHUYEN_DUOC — test-quyen-chi-nhanh-crm.mjs đọc thẳng từ trang và
 --           thử cả 20 cặp): chờ gọi → đã xác nhận | đã hủy; đã xác nhận → đã tới
@@ -64,7 +69,10 @@
 --         · bàn phải của chi nhánh đặt bàn; lượt ghé nối vào phải của đúng
 --           khách, đúng chi nhánh;
 --         · nguoi_xu_ly chỉ được là chính người đang đăng nhập; đổi trạng thái
---           thì tự ghi người đang đăng nhập vào đó.
+--           thì tự ghi người đang đăng nhập vào đó;
+--         · bàn, lượt ghé, người xử lý, người tạo về null luôn được — ON DELETE
+--           SET NULL khi xoá bàn / nhân sự chạy như một câu UPDATE dưới phiên
+--           của người xoá.
 --       Đổi ngày / giờ / số khách khi chưa kết thúc vẫn được: khách gọi đổi giờ
 --       là việc thường (test-zalo*.mjs dựa vào). dat_ban_them GIỮ nguyên.
 --
@@ -348,6 +356,8 @@ declare
   v_check record;
   v_id    uuid;
   v_khoa  text;
+  v_kq    ket_qua_gui;
+  v_ma_cd text;
 begin
   -- ---- 0045 · Ai được xếp tin gửi khách -----------------------------------
   if co_phien_dang_nhap()
@@ -366,21 +376,37 @@ begin
     raise exception 'Khách này chưa từng ghé hay đặt bàn ở chi nhánh này'
       using errcode = 'insufficient_privilege';
   end if;
-  if p_chien_dich_id is not null
-     and not exists (select 1 from chien_dich c
-                     where c.id = p_chien_dich_id and c.chi_nhanh_id = p_chi_nhanh_id) then
-    raise exception 'Chiến dịch không thuộc chi nhánh này'
-      using errcode = 'check_violation';
+  if p_chien_dich_id is not null then
+    select m.ma into v_ma_cd
+    from chien_dich c join mau_tin m on m.id = c.mau_tin_id
+    where c.id = p_chien_dich_id and c.chi_nhanh_id = p_chi_nhanh_id;
+    if not found then
+      raise exception 'Chiến dịch không thuộc chi nhánh này'
+        using errcode = 'check_violation';
+    end if;
+    -- Khoá CD:<chiến dịch>:<khách> không có mẫu: tin mẫu khác sẽ chiếm chỗ tin của chiến dịch.
+    if v_ma_cd is distinct from p_mau_tin_ma then
+      raise exception 'Mẫu tin khác mẫu của chiến dịch'
+        using errcode = 'check_violation';
+    end if;
   end if;
 
   -- ---- 0068 · Bấm hai lần = một tin ----------------------------------------
+  -- Gửi tay: khoá theo chi nhánh (khách của hai chi nhánh nhận được tin của mỗi bên), mẫu, khách, ngày
+  -- giờ VN. Tin đang chờ / đã gửi: trả lại đúng tin đó. Tin đã hỏng / bị từ chối / bị hủy: bấm gửi lại
+  -- là một lần gửi MỚI — tin cũ giữ nguyên trong nhật ký, đổi khoá để nhả chỗ cho tin mới.
   v_khoa := case
               when p_chien_dich_id is not null then 'CD:' || p_chien_dich_id || ':' || p_khach_hang_id
-              else 'TAY:' || p_mau_tin_ma || ':' || p_khach_hang_id || ':' || to_char(hom_nay_vn(), 'YYYY-MM-DD')
+              else 'TAY:' || p_chi_nhanh_id || ':' || p_mau_tin_ma || ':' || p_khach_hang_id
+                   || ':' || to_char(hom_nay_vn(), 'YYYY-MM-DD')
             end;
-  select id into v_id from nhat_ky_tin where khoa_gui = v_khoa;
+  select id, ket_qua into v_id, v_kq from nhat_ky_tin where khoa_gui = v_khoa for update;
   if found then
-    return v_id;
+    if v_kq in ('cho_gui', 'da_gui') then
+      return v_id;
+    end if;
+    update nhat_ky_tin set khoa_gui = v_khoa || ':cu:' || v_id where id = v_id;
+    v_id := null;
   end if;
   -- ---- Hết phần 0068 — từ đây là nguyên văn 0006 (insert thêm khoa_gui) ----
 
@@ -423,12 +449,19 @@ end;
 $$;
 
 comment on function xep_hang_gui_tin is
-  'Xếp một tin vào hàng gửi sau khi qua duoc_phep_gui(). Có phiên đăng nhập thì chỉ chủ sở hữu, quản lý, marketing của đúng chi nhánh (0045), khách phải đã ghé / đặt bàn ở chi nhánh đó, chiến dịch phải của chi nhánh đó (0068). khoa_gui CD:<chiến dịch>:<khách> hoặc TAY:<mẫu>:<khách>:<ngày VN>: gọi lại trả ĐÚNG tin đã xếp (0068).';
+  'Xếp một tin vào hàng gửi sau khi qua duoc_phep_gui(). Có phiên đăng nhập thì chỉ chủ sở hữu, quản lý, marketing của đúng chi nhánh (0045), khách phải đã ghé / đặt bàn ở chi nhánh đó, chiến dịch phải của chi nhánh đó (0068). khoa_gui CD:<chiến dịch>:<khách> hoặc TAY:<chi nhánh>:<mẫu>:<khách>:<ngày VN>: gọi lại trả ĐÚNG tin đang chờ / đã gửi; tin hỏng / bị từ chối / bị hủy thì xếp tin mới (0068).';
 
 
 -- =============================================================================
--- 5 · dat_ban_kiem_sua — nhân viên chỉ đổi đặt bàn theo đúng bước của hộp thư
+-- 5 · dat_ban_kiem_sua — nhân viên chỉ ghi / đổi đặt bàn theo đúng bước của hộp thư
 -- =============================================================================
+-- nguoi_tao: nhân viên ghi hộ yêu cầu (chèn thẳng, hoặc gọi tao_dat_ban bằng phiên
+-- đăng nhập). Tạo một đặt bàn ở chi nhánh mình là cho chi nhánh đó thấy hồ sơ khách
+-- (khach_hang_doc) — việc đó giờ luôn để lại tên người làm, như luot_ghe.created_by.
+alter table dat_ban add column if not exists nguoi_tao uuid references nhan_su(id) on delete set null;
+comment on column dat_ban.nguoi_tao is
+  'Nhân viên ghi hộ yêu cầu này (0068, trigger dat_ban_kiem_sua). Null = khách tự đặt (website, Messenger) hoặc ghi không phiên (SQL Editor).';
+
 create or replace function dat_ban_kiem_sua()
 returns trigger
 language plpgsql
@@ -438,11 +471,52 @@ as $$
 declare
   v_toi uuid;
 begin
-  -- Không phiên: huy_dat_ban của website (anon), SQL Editor, service_role — như cũ.
+  -- Không phiên: tao_dat_ban / huy_dat_ban của website và Messenger (anon), SQL Editor,
+  -- service_role — như cũ.
   if not co_phien_dang_nhap() then
     return new;
   end if;
+  v_toi := (nhan_su_hien_tai()).id;
 
+  -- Bàn, lượt ghé nối vào: đúng chi nhánh, đúng khách. Về null luôn được (ON DELETE SET NULL
+  -- của ban_an / luot_ghe chạy như một câu UPDATE dưới phiên của người xoá).
+  if new.ban_an_id is not null
+     and (tg_op = 'INSERT' or new.ban_an_id is distinct from old.ban_an_id)
+     and not exists (select 1 from ban_an b where b.id = new.ban_an_id and b.chi_nhanh_id = new.chi_nhanh_id) then
+    raise exception 'Bàn này không thuộc chi nhánh của đặt bàn'
+      using errcode = 'check_violation';
+  end if;
+  if new.luot_ghe_id is not null
+     and (tg_op = 'INSERT' or new.luot_ghe_id is distinct from old.luot_ghe_id)
+     and not exists (select 1 from luot_ghe lg
+                     where lg.id = new.luot_ghe_id
+                       and lg.khach_hang_id = new.khach_hang_id
+                       and lg.chi_nhanh_id = new.chi_nhanh_id) then
+    raise exception 'Lượt ghé phải của đúng khách và đúng chi nhánh của đặt bàn'
+      using errcode = 'check_violation';
+  end if;
+  if new.nguoi_xu_ly is not null
+     and (tg_op = 'INSERT' or new.nguoi_xu_ly is distinct from old.nguoi_xu_ly)
+     and new.nguoi_xu_ly is distinct from v_toi then
+    raise exception 'Người xử lý phải là chính người đang đăng nhập'
+      using errcode = 'insufficient_privilege';
+  end if;
+
+  -- ---- Chèn thẳng (dat_ban_them) / tao_dat_ban bằng phiên: nhân viên ghi hộ -----
+  if tg_op = 'INSERT' then
+    -- Ghi hộ là yêu cầu chờ gọi, hoặc đã gọi xác nhận luôn — không "tạo" một đặt bàn đã kết thúc.
+    if new.trang_thai not in ('cho_xac_nhan', 'da_xac_nhan') then
+      raise exception 'Đặt bàn mới chỉ ở trạng thái chờ gọi hoặc đã xác nhận'
+        using errcode = 'check_violation';
+    end if;
+    new.nguoi_tao := v_toi;
+    if new.trang_thai = 'da_xac_nhan' then
+      new.nguoi_xu_ly := v_toi;
+    end if;
+    return new;
+  end if;
+
+  -- ---- Sửa (dat_ban_sua) -------------------------------------------------------
   if new.id <> old.id
      or new.chi_nhanh_id <> old.chi_nhanh_id
      or new.khach_hang_id <> old.khach_hang_id
@@ -452,7 +526,8 @@ begin
      or new.utm_source is distinct from old.utm_source
      or new.utm_medium is distinct from old.utm_medium
      or new.utm_campaign is distinct from old.utm_campaign
-     or new.trang_gioi_thieu is distinct from old.trang_gioi_thieu then
+     or new.trang_gioi_thieu is distinct from old.trang_gioi_thieu
+     or (new.nguoi_tao is distinct from old.nguoi_tao and new.nguoi_tao is not null) then
     raise exception 'Không sửa được khách, chi nhánh, mã đặt bàn, đồng ý nhận tin hay nguồn của một đặt bàn'
       using errcode = 'insufficient_privilege';
   end if;
@@ -467,31 +542,11 @@ begin
 
   if old.trang_thai in ('da_den', 'khong_den', 'da_huy')
      and (new.ngay <> old.ngay or new.gio <> old.gio or new.so_khach <> old.so_khach
-          or new.ban_an_id is distinct from old.ban_an_id) then
+          or (new.ban_an_id is distinct from old.ban_an_id and new.ban_an_id is not null)) then
     raise exception 'Đặt bàn đã kết thúc — không đổi được ngày, giờ, số khách hay bàn'
       using errcode = 'check_violation';
   end if;
 
-  if new.ban_an_id is distinct from old.ban_an_id and new.ban_an_id is not null
-     and not exists (select 1 from ban_an b where b.id = new.ban_an_id and b.chi_nhanh_id = new.chi_nhanh_id) then
-    raise exception 'Bàn này không thuộc chi nhánh của đặt bàn'
-      using errcode = 'check_violation';
-  end if;
-
-  if new.luot_ghe_id is distinct from old.luot_ghe_id and new.luot_ghe_id is not null
-     and not exists (select 1 from luot_ghe lg
-                     where lg.id = new.luot_ghe_id
-                       and lg.khach_hang_id = new.khach_hang_id
-                       and lg.chi_nhanh_id = new.chi_nhanh_id) then
-    raise exception 'Lượt ghé phải của đúng khách và đúng chi nhánh của đặt bàn'
-      using errcode = 'check_violation';
-  end if;
-
-  v_toi := (nhan_su_hien_tai()).id;
-  if new.nguoi_xu_ly is distinct from old.nguoi_xu_ly and new.nguoi_xu_ly is distinct from v_toi then
-    raise exception 'Người xử lý phải là chính người đang đăng nhập'
-      using errcode = 'insufficient_privilege';
-  end if;
   if new.trang_thai <> old.trang_thai then
     new.nguoi_xu_ly := v_toi;
   end if;
@@ -501,11 +556,11 @@ end;
 $$;
 
 comment on function dat_ban_kiem_sua is
-  'Trigger (0068): có phiên đăng nhập thì đặt bàn chỉ đổi theo đúng 5 bước của hộp thư /noi-bo/dat-ban; không đổi khách, chi nhánh, mã, đồng ý nhận tin, nguồn, giờ tạo; đã kết thúc thì không đổi ngày / giờ / số khách / bàn; bàn và lượt ghé phải đúng chi nhánh, đúng khách; nguoi_xu_ly = người đang đăng nhập.';
+  'Trigger (0068): có phiên đăng nhập thì đặt bàn ghi hộ chỉ ở chờ gọi / đã xác nhận (nguoi_tao = người ghi), chỉ đổi theo đúng 5 bước của hộp thư /noi-bo/dat-ban; không đổi khách, chi nhánh, mã, đồng ý nhận tin, nguồn, giờ tạo, người tạo; đã kết thúc thì không đổi ngày / giờ / số khách / bàn; bàn và lượt ghé phải đúng chi nhánh, đúng khách; nguoi_xu_ly = người đang đăng nhập. Cột khoá ngoại về null (ON DELETE SET NULL) luôn được.';
 
 drop trigger if exists dat_ban_kiem_sua on dat_ban;
 create trigger dat_ban_kiem_sua
-  before update on dat_ban
+  before insert or update on dat_ban
   for each row execute function dat_ban_kiem_sua();
 
 

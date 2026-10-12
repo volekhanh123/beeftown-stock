@@ -41,13 +41,19 @@ export function tenTimestamptz(cacVanBan) {
 
 /**
  * Những chỗ cắt ngày theo giờ UTC trong một file migration: current_date / current_time / localtime /
- * localtimestamp, now()::date, và <tên timestamptz>::date / date(<tên>) / cast(<tên> as date) /
- * date_trunc('day', <tên>). Trả mảng chuỗi khớp (rỗng = sạch).
+ * localtimestamp; now() / current_timestamp / clock_timestamp() / statement_timestamp() /
+ * transaction_timestamp() ép ::date; và với <tên timestamptz>: <tên>::date, date(<tên>),
+ * cast(<tên> as date), date_trunc('day' | 'week' | 'month' | 'quarter' | 'year', <tên>),
+ * to_char(<tên>, '…') — to_char của timestamptz cũng định dạng theo TimeZone của phiên.
+ * Trả mảng chuỗi khớp (rỗng = sạch).
  */
 export function timNgayUtc(goc, ten) {
   const sql = boChuThich(goc);
   const thay = [];
-  for (const m of sql.matchAll(/\b(current_date|current_time|localtime|localtimestamp)\b|now\(\)\s*::\s*date/gi)) thay.push(m[0]);
+  for (const m of sql.matchAll(
+    /\b(current_date|current_time|localtime|localtimestamp)\b|(?:\bnow|\b(?:clock|statement|transaction)_timestamp)\(\)\s*::\s*date\b|\bcurrent_timestamp\s*::\s*date\b/gi)) {
+    thay.push(m[0]);
+  }
   if (ten.size) {
     const ds = [...ten].join('|');
     const cot = `(?:[a-z_][a-z0-9_]*\\.)?(?:${ds})`;
@@ -55,7 +61,8 @@ export function timNgayUtc(goc, ten) {
       `\\b${cot}\\s*::\\s*date\\b`
       + `|\\bdate\\s*\\(\\s*${cot}\\s*\\)`
       + `|\\bcast\\s*\\(\\s*${cot}\\s+as\\s+date\\s*\\)`
-      + `|\\bdate_trunc\\s*\\(\\s*'day'\\s*,\\s*${cot}\\s*\\)`, 'gi');
+      + `|\\bdate_trunc\\s*\\(\\s*'(?:day|week|month|quarter|year)'\\s*,\\s*${cot}\\s*\\)`
+      + `|\\bto_char\\s*\\(\\s*${cot}\\s*,`, 'gi');
     for (const m of sql.matchAll(mau)) thay.push(m[0]);
   }
   return thay;

@@ -24,9 +24,13 @@
 --     vượt statement_timeout (8 giây); phần còn lại các lượt sau dọn tiếp.
 --     Không có khóa ngoại nào trỏ vào bốn bảng này.
 --
---     Không thêm đèn sức khỏe mới: việc dọn chạy TRONG lượt báo động — hỏng thì
---     cả lượt hỏng, đèn "Báo động" (lan_chay_cuoi) đã có báo. Worker báo động
---     chưa cài (chưa có tài khoản may_bao_dong) thì không dọn — đèn đó cũng báo.
+--     Dọn HỎNG không được làm hỏng lượt báo động (báo động quan trọng hơn dọn):
+--     lời gọi bọc begin / exception (cả query_canceled — statement_timeout 8
+--     giây), câu lỗi trả về ở ô mới loi_don. Worker (web/src/lib/bao-dong.ts) gộp
+--     nó vào lỗi của lượt → bao_dong_ket_thuc_luot ghi loi_cuoi → đèn "Báo động"
+--     đỏ "lượt gần nhất bị lỗi". Không thêm đèn riêng: việc dọn đi theo lượt báo
+--     động, đèn đó đã báo cả khi lượt không chạy. Worker báo động chưa cài (chưa
+--     có tài khoản may_bao_dong) thì không dọn — đèn đó cũng báo.
 --
 -- 2 · suc_khoe_so_lieu (0063), chạy mỗi lượt báo động và mỗi lần mở /noi-bo,
 --     lọc nhat_ky_tin bằng `chi_nhanh_id = … and (ket_qua = 'cho_gui' or
@@ -35,16 +39,23 @@
 --     (nhat_ky_tin_moc_idx) cho planner ghép (BitmapOr) với nhat_ky_tin_cho_gui_idx;
 --     việc dọn ở mục 1 cũng đi qua nó.
 --
--- bao_dong_bat_dau_luot: thân 0060 NGUYÊN VĂN, thêm đúng một dòng "0072".
+-- bao_dong_bat_dau_luot: thân 0060 NGUYÊN VĂN, thêm khối dọn "0072" và ô loi_don
+-- ở JSON trả về (thêm ô, không đổi ô cũ).
 -- Kiểm thử: test-bao-dong-don-nhat-ky.mjs, test-kho-chi-muc-tra-nguoc.mjs mục 2.
 -- =============================================================================
 
 
 -- =============================================================================
--- 1 · Chỉ mục mốc của nhat_ky_tin
+-- 1 · Chỉ mục mốc của nhat_ky_tin, và mốc thời gian cho câu dọn
 -- =============================================================================
 create index if not exists nhat_ky_tin_moc_idx
   on nhat_ky_tin ((coalesce(gui_luc, gui_sau, created_at)));
+
+-- Ba bảng còn lại: chỉ mục theo mốc thời gian cho câu dọn (chỉ mục sẵn có mở đầu bằng ip / may_id /
+-- chi_nhanh_id — câu "cũ hơn N ngày" phải quét cả bảng mỗi 5 phút).
+create index if not exists nhat_ky_tra_cuu_created_idx on nhat_ky_tra_cuu (created_at);
+create index if not exists kho_may_nhat_ky_luc_idx     on kho_may_nhat_ky (luc);
+create index if not exists kho_ipos_lan_chay_bat_dau_idx on kho_ipos_lan_chay (bat_dau_luc);
 
 
 -- =============================================================================
@@ -142,6 +153,7 @@ declare
   v_loi  text;
   v_bao  jsonb;
   v_lech jsonb;
+  v_loi_don text;   -- 0072
 begin
   if not co_vai_tro(array['may_bao_dong']::vai_tro[]) then
     raise exception 'Chỉ tài khoản máy báo động mới gọi được hàm này'
@@ -166,8 +178,17 @@ begin
   returning * into v_tt;
 
   delete from bao_dong_su_co where het_luc < now() - interval '90 days';
-  -- 0072: bốn bảng nhật ký phình mãi — tối đa 5.000 dòng mỗi bảng mỗi lượt.
-  perform don_nhat_ky_qua_han();
+  -- 0072: bốn bảng nhật ký phình mãi — tối đa 5.000 dòng mỗi bảng mỗi lượt. Hỏng (kể cả hết giờ:
+  -- query_canceled không thuộc "others") KHÔNG làm hỏng lượt báo động: câu lỗi về Worker ở loi_don,
+  -- Worker gộp vào lỗi của lượt → loi_cuoi → đèn "Báo động" đỏ "lượt gần nhất bị lỗi".
+  begin
+    perform don_nhat_ky_qua_han();
+  exception
+    when query_canceled then
+      v_loi_don := bao_dong_sach_loi(sqlerrm);
+    when others then
+      v_loi_don := bao_dong_sach_loi(sqlerrm);
+  end;
 
   -- Đọc hỏng → so_lieu null + câu lỗi, KHÔNG ném: lượt vẫn chạy để Worker ghi đèn giả doc_so_lieu.
   -- "when others" không bắt query_canceled — mà statement_timeout của Supabase (8 giây cho vai
@@ -206,12 +227,13 @@ begin
       'kenh_tu_luc',   v_tt.kenh_tu_luc,
       'tom_tat_luc',   v_tt.tom_tat_luc,
       'lan_chay_cuoi', v_tt.lan_chay_cuoi),
-    'da_bao_48_gio', v_bao);
+    'da_bao_48_gio', v_bao,
+    'loi_don', v_loi_don);
 end;
 $$;
 
 comment on function bao_dong_bat_dau_luot(text) is
-  'Máy báo động (0060): bắt đầu lượt. {bi_khoa:true, dang_chay_tu} nếu lượt khác đang chạy (dưới 10 phút); không thì {bi_khoa:false, luot, so_lieu|null (số liệu bảng sức khỏe + ô sao_luu), loi_so_lieu, trang_thai{kenh, kenh_tu_luc, tom_tat_luc, lan_chay_cuoi}, da_bao_48_gio[{khoa, bao_mo_luc}]}. Ghi kênh Worker đang dùng; dọn sự cố đóng quá 90 ngày và bốn bảng nhật ký quá hạn (don_nhat_ky_qua_han, 0072).';
+  'Máy báo động (0060): bắt đầu lượt. {bi_khoa:true, dang_chay_tu} nếu lượt khác đang chạy (dưới 10 phút); không thì {bi_khoa:false, luot, so_lieu|null (số liệu bảng sức khỏe + ô sao_luu), loi_so_lieu, trang_thai{kenh, kenh_tu_luc, tom_tat_luc, lan_chay_cuoi}, da_bao_48_gio[{khoa, bao_mo_luc}]}. Ghi kênh Worker đang dùng; dọn sự cố đóng quá 90 ngày và bốn bảng nhật ký quá hạn (don_nhat_ky_qua_han, 0072) — dọn hỏng thì lượt vẫn chạy, câu lỗi ở loi_don.';
 
 
 -- =============================================================================

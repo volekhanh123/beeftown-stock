@@ -191,6 +191,8 @@ interface BatDauLuot {
   loi_so_lieu?: string | null;
   trang_thai?: { kenh: string; kenh_tu_luc: string | null; tom_tat_luc: string | null; lan_chay_cuoi: string | null };
   da_bao_48_gio?: DaBao[];
+  /** Dọn nhật ký quá hạn (0072) hỏng: câu lỗi (đã xoá bí mật). Lượt vẫn chạy; câu này vào lỗi của lượt. */
+  loi_don?: string | null;
 }
 
 interface GhiLuot {
@@ -285,6 +287,9 @@ async function motLuot(client: SupabaseClient, kenh: KenhBaoDong, o: NguCanhLuot
   if (typeof b.luot !== 'string') { ghi('không bắt đầu được lượt: không có mã lượt'); return; }
 
   let loi: string | null = null;
+  /** Lỗi của lượt gộp lại — một chỗ hỏng không che chỗ hỏng khác (dọn nhật ký hỏng + gửi hỏng…). */
+  const themLoi = (c: string) => { loi = loi ? `${loi} · ${c}` : c; };
+  if (typeof b.loi_don === 'string' && b.loi_don !== '') themLoi(`dọn nhật ký quá hạn hỏng: ${b.loi_don}`);
   const dong: string[] = [];
   let tomTatLog = '';
   try {
@@ -298,14 +303,14 @@ async function motLuot(client: SupabaseClient, kenh: KenhBaoDong, o: NguCanhLuot
       den.push({ ma_den: 'doc_so_lieu', chi_nhanh_id: null, mau: 'xanh' });
     } else {
       den = [{ ma_den: 'doc_so_lieu', chi_nhanh_id: null, mau: 'do' }];
-      loi = `không đọc được số liệu sức khỏe: ${b.loi_so_lieu ?? 'dữ liệu trả về lạ'}`;
+      themLoi(`không đọc được số liệu sức khỏe: ${b.loi_so_lieu ?? 'dữ liệu trả về lạ'}`);
     }
 
     // 2 · Ghi lượt. Danh sách không đầy đủ (mù) → database không coi sự cố nào là đã hết.
     const { data: gl, error: e2 } = await client.rpc('bao_dong_ghi_luot', { p_luot: b.luot, p_den: den, p_day_du: sk !== null });
-    if (e2) { loi = `không ghi được lượt: ${e2.message}`; return; }
+    if (e2) { themLoi(`không ghi được lượt: ${e2.message}`); return; }
     const g = gl as GhiLuot | null;
-    if (!g || typeof g.luc !== 'string' || !Array.isArray(g.su_co)) { loi = 'không ghi được lượt: dữ liệu trả về lạ'; return; }
+    if (!g || typeof g.luc !== 'string' || !Array.isArray(g.su_co)) { themLoi('không ghi được lượt: dữ liệu trả về lạ'); return; }
 
     // 3 · Luật.
     const kh = lapKeHoach({
@@ -321,8 +326,7 @@ async function motLuot(client: SupabaseClient, kenh: KenhBaoDong, o: NguCanhLuot
     const tin = soanTin({ keHoach: kh, sk, nn: o.nn, tenKenh: kenh.ten, gioiHanKyTu: kenh.gioiHanKyTu, web: o.web, luc: g.luc });
     const kq = await guiCoHan(kenh, tin, o.kenhMs());
     if (!kq.ok) {
-      const them = `gửi qua ${kenh.ten} hỏng${kq.tamThoi ? ' (lượt sau gửi lại)' : ' (cần sửa cấu hình kênh; lượt sau vẫn thử lại)'}: ${kq.cau}`;
-      loi = loi ? `${loi} · ${them}` : them;
+      themLoi(`gửi qua ${kenh.ten} hỏng${kq.tamThoi ? ' (lượt sau gửi lại)' : ' (cần sửa cấu hình kênh; lượt sau vẫn thử lại)'}: ${kq.cau}`);
       return;
     }
     ghi(`đã gửi qua ${kenh.ten}: ${moTaKeHoach(kh)}${tin.soMucBoBot ? ` (bỏ bớt ${tin.soMucBoBot} mục vì tin quá dài)` : ''}`);
@@ -333,12 +337,10 @@ async function motLuot(client: SupabaseClient, kenh: KenhBaoDong, o: NguCanhLuot
     let { error: e3 } = await client.rpc('bao_dong_da_gui', thamSo);
     if (e3) ({ error: e3 } = await client.rpc('bao_dong_da_gui', thamSo));
     if (e3) {
-      const them = `đã gửi nhưng không đánh dấu được — lượt sau có thể gửi lặp một tin: ${e3.message}`;
-      loi = loi ? `${loi} · ${them}` : them;
+      themLoi(`đã gửi nhưng không đánh dấu được — lượt sau có thể gửi lặp một tin: ${e3.message}`);
     }
   } catch (e) {
-    const them = `lỗi: ${e instanceof Error ? e.message : String(e)}`;
-    loi = loi ? `${loi} · ${them}` : them;
+    themLoi(`lỗi: ${e instanceof Error ? e.message : String(e)}`);
   } finally {
     o.choKetThuc();
     try {

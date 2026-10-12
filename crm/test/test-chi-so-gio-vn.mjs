@@ -115,6 +115,12 @@ await nhom('3 · BỘ DÒ (gio-utc.mjs, kiem-migration.mjs dùng) bắt <cột t
     "date_trunc('day', bat_dau_luc)",
     'select current_date',
     'v := now()::date;',
+    'select current_timestamp::date',
+    'v := clock_timestamp()::date;',
+    "group by date_trunc('month', created_at)",
+    "where date_trunc('week', lg.thoi_diem) = v_tuan",
+    "select to_char(created_at, 'YYYY-MM-DD')",
+    "to_char(gui_luc, 'DD/MM/YYYY HH24:MI')",
   ];
   const sot = BAT.filter(c => timNgayUtc(c, ten).length === 0);
   ok(`Bắt đủ ${BAT.length} kiểu cắt ngày theo UTC`, sot.length === 0, sot.join(' | '));
@@ -126,6 +132,10 @@ await nhom('3 · BỘ DÒ (gio-utc.mjs, kiem-migration.mjs dùng) bắt <cột t
     "(v_dong ->> 'han_dung')::date",
     '-- chú thích: thoi_diem::date là sai',
     'select update_at_date(x), to_date(created_at)',
+    "to_char(d.ngay_giao_du_kien, 'YYYY-MM-DD')",
+    "replace(to_char(v_tong, 'FM999G999G999G999'), ',', '.')",
+    "date_trunc('month', (coalesce(p_luc, now()) at time zone 'utc') + interval '7 hours')",
+    "to_char(ngay_vn(created_at), 'YYYY-MM-DD')",
   ];
   const nham = BO_QUA.filter(c => timNgayUtc(c, ten).length > 0);
   ok(`Không báo nhầm ${BO_QUA.length} kiểu đúng (ngay_vn, at time zone, cột date, hằng, chú thích)`, nham.length === 0, nham.join(' | '));

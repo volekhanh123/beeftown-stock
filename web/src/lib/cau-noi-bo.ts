@@ -168,6 +168,8 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Lượt ghé phải của đúng khách và đúng chi nhánh của đặt bàn':
     'The visit must belong to the same guest and branch as the booking',
   'Người xử lý phải là chính người đang đăng nhập': 'The handler must be the person who is signed in',
+  'Đặt bàn mới chỉ ở trạng thái chờ gọi hoặc đã xác nhận': 'A new booking can only be waiting for a call or already confirmed',
+  'Mẫu tin khác mẫu của chiến dịch': 'The message template differs from the campaign template',
 };
 
 /**

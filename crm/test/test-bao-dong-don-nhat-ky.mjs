@@ -137,7 +137,45 @@ await nhom('2 · TỐI ĐA 5.000 DÒNG MỘT BẢNG MỖI LƯỢT — lượt sa
 });
 
 // ===========================================================================
-await nhom('3 · QUYỀN — hàm dọn là nội bộ', async () => {
+await nhom('3 · DỌN HỎNG KHÔNG LÀM HỎNG LƯỢT BÁO ĐỘNG — câu lỗi đi về Worker (loi_don)', async () => {
+  const { rows: [{ d: goc }] } = await db.query(`select pg_get_functiondef('don_nhat_ky_qua_han()'::regprocedure) d`);
+  for (const [ten, nem] of [
+    ['lỗi bất kỳ', `raise exception 'hỏng thử dọn nhật ký'`],
+    ['hết giờ (statement_timeout báo query_canceled)', `raise exception 'hết giờ thử' using errcode = 'query_canceled'`],
+  ]) {
+    await db.exec(`create or replace function don_nhat_ky_qua_han() returns jsonb language plpgsql
+                   security definer set search_path = public as $$ begin ${nem}; end $$`);
+    const r = await luot();
+    const kq = r.rows?.[0]?.kq;
+    ok(`Hàm dọn hỏng (${ten}) → lượt báo động vẫn chạy: có mã lượt, có số liệu sức khỏe`,
+       r.loi === null && kq?.bi_khoa === false && typeof kq.luot === 'string' && kq.so_lieu !== null, vi(r));
+    ok('…câu lỗi của việc dọn trả về ở loi_don (Worker ghi vào lỗi của lượt → đèn "Báo động")',
+       /hỏng thử dọn nhật ký|hết giờ thử/.test(kq?.loi_don ?? ''), JSON.stringify(kq?.loi_don));
+  }
+  await db.exec(goc);
+  const r = await luot();
+  ok('Hàm dọn chạy lại được → loi_don null', r.loi === null && r.rows?.[0]?.kq?.loi_don === null, vi(r));
+});
+
+// ===========================================================================
+await nhom('4 · CÂU DỌN ĐI QUA CHỈ MỤC — không quét cả bảng mỗi 5 phút', async () => {
+  await db.exec(`set enable_seqscan = off`);
+  // Đòi đúng chỉ mục MỞ ĐẦU bằng cột mốc: btree cho dùng cột thứ hai (nhat_ky_tra_cuu_idx (ip, created_at))
+  // làm Index Cond bằng cách quét cả chỉ mục — vẫn là quét hết.
+  for (const [bang, dk, chiMuc] of [
+    ['nhat_ky_tra_cuu', `created_at < now() - interval '30 days'`, 'nhat_ky_tra_cuu_created_idx'],
+    ['kho_may_nhat_ky', `luc < now() - interval '180 days'`, 'kho_may_nhat_ky_luc_idx'],
+    ['kho_ipos_lan_chay', `bat_dau_luc < now() - interval '90 days'`, 'kho_ipos_lan_chay_bat_dau_idx'],
+    ['nhat_ky_tin', `coalesce(gui_luc, gui_sau, created_at) < now() - interval '400 days' and ket_qua <> 'cho_gui'`, 'nhat_ky_tin_moc_idx'],
+  ]) {
+    const kh = (await db.query(`explain select id from ${bang} where ${dk} limit 5000`)).rows.map(r => r['QUERY PLAN']).join(' | ');
+    ok(`${bang}: câu dọn đi qua ${chiMuc}`, new RegExp(`(using|on) ${chiMuc}\\b`).test(kh) && !/Seq Scan/.test(kh), kh);
+  }
+  await db.exec(`set enable_seqscan = on`);   // PGlite: `reset` không trả về on
+});
+
+// ===========================================================================
+await nhom('5 · QUYỀN — hàm dọn là nội bộ', async () => {
   for (const [ai, uid] of [['Chủ sở hữu', UID.chu], ['Quản lý Q1', UID.qlA], ['Máy báo động', UID_MAY]]) {
     const r = await duoi(uid, `select don_nhat_ky_qua_han()`);
     ok(`${ai} → không gọi thẳng được don_nhat_ky_qua_han()`, r.loi !== null && r.ma === '42501', vi(r));

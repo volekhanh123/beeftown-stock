@@ -97,9 +97,11 @@ await db.query(`insert into nhat_ky_tra_cuu (ip, ma_thu, thanh_cong) values ('1.
 await db.query(`insert into tep_anh (bucket, duong_dan, loai, nguon_that)
                 values ('beeftown-noi-bo', 'thu/anh.jpg', enum_first(null::loai_tep), enum_first(null::anh_thuc_te))`);
 await db.query(`insert into phien_ban_thuc_don (ma, ngay_hieu_luc) values ('v-thu', hom_nay_vn())`);
-await db.query(`insert into noi_dung_cong_bo (khoa, gia_tri_chu) select khoa, 'nháp' from khoa_cong_bo
-                where not exists (select 1 from noi_dung_cong_bo n where n.khoa = khoa_cong_bo.khoa) limit 3`)
-  .catch(() => {}); // cột có thể khác — bảng đã có sẵn dòng của migration
+// Hai dữ kiện nháp (chưa công bố) — đúng thứ không được lộ cho người đã nghỉ / vai kho. Hỏng thì ném: bảng
+// thiếu dòng làm phép thử của mục 1–2 thành rỗng.
+await db.query(`insert into noi_dung_cong_bo (khoa, kieu, gia_tri_text)
+                select khoa, kieu, 'nháp chưa công bố' from khoa_cong_bo
+                where kieu = 'van_ban' and khoa in ('dia_chi_hien_thi', 'dong_trang_thai')`);
 
 /** Đặt phiên của một người để chạy biểu thức policy bằng superuser (không RLS). */
 async function datPhien(uid) {
@@ -186,6 +188,7 @@ await nhom('1 · TÁM BẢNG NỘI DUNG — chỉ bốn vai CRM đang làm đọ
     }
     ok(`${bang} (${tong} dòng): chủ, quản lý, thu ngân, marketing thấy đủ; đã nghỉ, không nhan_su, vai kho, máy thấy 0`,
        tong > 0 && sai.length === 0, sai.join(' · ') || `${tong} dòng`);
+    if (bang === 'noi_dung_cong_bo') ok('…kể cả dữ kiện NHÁP chưa công bố (2 dòng thêm ở đầu bài)', tong >= 3, `${tong} dòng`);
   }
 
   // Trang Tổng quan (VAI_CRM, có thu ngân) đọc ba view này: thu ngân phải thấy như chủ — không thì

@@ -195,13 +195,31 @@ await nhom('4 · xep_hang_gui_tin() — bấm đúp không thành hai tin, khôn
      mauKhac.loi === null && mauKhac.rows?.[0]?.id && mauKhac.rows[0].id !== lan1.rows?.[0]?.id, vi(mauKhac));
   const { rows: [{ khoa_gui }] } = await db.query(`select khoa_gui from nhat_ky_tin where id = $1`, [lan1.rows?.[0]?.id]);
   const { rows: [{ d: homNayVn }] } = await db.query(`select to_char(hom_nay_vn(), 'YYYY-MM-DD') d`);
-  ok('khoa_gui ghi theo ngày giờ Việt Nam', khoa_gui === `TAY:ZBS-04:${khQ1}:${homNayVn}`, khoa_gui);
+  ok('khoa_gui ghi theo chi nhánh và ngày giờ Việt Nam', khoa_gui === `TAY:${cnA.id}:ZBS-04:${khQ1}:${homNayVn}`, khoa_gui);
 
   // Hôm qua đã gửi tay: hôm nay gửi lại là một lần gửi mới, có chủ đích.
   const hqua = await db.query(`select to_char(hom_nay_vn() - 1, 'YYYY-MM-DD') d`);
-  await db.query(`update nhat_ky_tin set khoa_gui = $2 where id = $1`, [lan1.rows?.[0]?.id, `TAY:ZBS-04:${khQ1}:${hqua.rows[0].d}`]);
+  await db.query(`update nhat_ky_tin set khoa_gui = $2 where id = $1`, [lan1.rows?.[0]?.id, `TAY:${cnA.id}:ZBS-04:${khQ1}:${hqua.rows[0].d}`]);
   const homNay = await duoi(UID.mktA, XEP, [cnA.id, khQ1, 'ZBS-04']);
   ok('Đã gửi tay hôm qua → hôm nay xếp được tin mới', homNay.loi === null && homNay.rows?.[0]?.id !== lan1.rows?.[0]?.id, vi(homNay));
+
+  // Tin hôm nay gửi HỎNG (Zalo từ chối): bấm gửi lại là một lần gửi mới, không trả lại tin hỏng như thể đã xếp.
+  for (const kq of ['that_bai', 'bi_tu_choi', 'da_huy']) {
+    const { rows: [cu] } = await db.query(`select id from nhat_ky_tin where khoa_gui = $1`, [`TAY:${cnA.id}:ZBS-04:${khQ1}:${homNayVn}`]);
+    await db.query(`update nhat_ky_tin set ket_qua = $2 where id = $1`, [cu.id, kq]);
+    const lai = await duoi(UID.mktA, XEP, [cnA.id, khQ1, 'ZBS-04']);
+    const { rows: [moi] } = await db.query(`select ket_qua from nhat_ky_tin where id = $1`, [lai.rows?.[0]?.id ?? null]);
+    const { rows: [conCu] } = await db.query(`select ket_qua from nhat_ky_tin where id = $1`, [cu.id]);
+    ok(`Tin hôm nay "${kq}" → bấm gửi lại xếp TIN MỚI chờ gửi; tin cũ còn nguyên trong nhật ký`,
+       lai.loi === null && lai.rows?.[0]?.id !== cu.id && moi?.ket_qua === 'cho_gui' && conCu?.ket_qua === kq, vi(lai));
+  }
+
+  // Khách của cả hai chi nhánh: hai chi nhánh gửi cùng mẫu cùng ngày là hai tin, mỗi tin một sổ.
+  const q1 = await duoi(UID.mktA, XEP, [cnA.id, khQ7, 'ZBS-04']);
+  const q7 = await duoi(UID.qlB, XEP, [cnB.id, khQ7, 'ZBS-04']);
+  const { rows: [tq7] } = await db.query(`select chi_nhanh_id from nhat_ky_tin where id = $1`, [q7.rows?.[0]?.id ?? null]);
+  ok('Khách ăn ở cả Q1 và Q7: Q1 gửi ZBS-04 rồi Q7 gửi ZBS-04 cùng ngày → hai tin, tin của Q7 nằm ở sổ Q7',
+     q1.loi === null && q7.loi === null && q7.rows[0].id !== q1.rows[0].id && tq7?.chi_nhanh_id === cnB.id, `${vi(q1)} · ${vi(q7)}`);
 
   const truoc = await dem(`select count(*) n from nhat_ky_tin`);
   for (const [ai, uid] of [['Marketing Q1', UID.mktA], ['Quản lý Q1', UID.qlA], ['Chủ sở hữu', UID.chu]]) {
@@ -228,6 +246,10 @@ await nhom('4 · xep_hang_gui_tin() — bấm đúp không thành hai tin, khôn
                                            values ($1, $2, 'Của Q7', 'dang_chay') returning id`, [cnB.id, m4.id]);
   const cdSai = await duoi(UID.mktA, `select xep_hang_gui_tin($1, $2, 'ZBS-04', null, $3) as id`, [cnA.id, khQ1, cd7.id]);
   ok('Gắn tin Q1 vào chiến dịch của Q7 → bị từ chối', cdSai.loi !== null && /Chiến dịch không thuộc chi nhánh này/.test(cdSai.loi), vi(cdSai));
+  const { rows: [kh2] } = await db.query(`select * from ghi_luot_ghe($1, '0901000077', 300000::bigint)`, [cnA.id]);
+  const mauKhacCd = await duoi(UID.mktA, `select xep_hang_gui_tin($1, $2, 'ZBS-01', null, $3) as id`, [cnA.id, kh2.khach_hang_id, cd.id]);
+  ok('Xếp mẫu ZBS-01 vào chiến dịch dùng ZBS-04 → bị từ chối (không chiếm chỗ tin của chiến dịch)',
+     mauKhacCd.loi !== null && /Mẫu tin khác mẫu của chiến dịch/.test(mauKhacCd.loi), vi(mauKhacCd));
 
   const tn = await duoi(UID.thuNganA, XEP, [cnA.id, khQ1, 'ZBS-04']);
   ok('Thu ngân vẫn bị từ chối như 0045', biChan(tn), vi(tn));
@@ -318,10 +340,62 @@ await nhom('5 · dat_ban — nhân viên chỉ đổi theo đúng bước của 
   const ghiChu = await duoi(UID.qlA, `update dat_ban set ghi_chu = 'khách quên áo' where id = $1 returning id`, [d4.id]);
   ok('…nhưng vẫn ghi chú được', ghiChu.loi === null && ghiChu.rows?.length === 1, vi(ghiChu));
 
+  // CHÈN THẲNG (policy dat_ban_them giữ cho nhân viên ghi hộ): cùng chốt chặn như sửa — không thì một câu insert
+  // 'da_den' cho khách chi nhánh khác là lách được cả trigger lẫn chỗ giấu hồ sơ của tim_hoac_tao_khach.
+  const CHEN = `insert into dat_ban (chi_nhanh_id, khach_hang_id, ngay, gio, so_khach, trang_thai, nguoi_xu_ly, ban_an_id, luot_ghe_id)
+                values ($1, $2, $3::date, '19:00', 2, $4, $5, $6, $7) returning id, nguoi_tao, nguoi_xu_ly`;
+  const chen = (uid, tt, o = {}) => duoi(uid, CHEN, [cnA.id, o.kh ?? khQ1, ngayKia, tt, o.xuLy ?? null, o.ban ?? null, o.luot ?? null]);
+  for (const tt of ['da_den', 'khong_den', 'da_huy']) {
+    const r = await chen(UID.thuNganA, tt, { kh: khChiQ7 });
+    ok(`Thu ngân Q1 chèn thẳng đặt bàn "${tt}" (cho khách chỉ có ở Q7) → bị chặn`,
+       r.loi !== null && /Đặt bàn mới chỉ ở trạng thái chờ gọi hoặc đã xác nhận/.test(r.loi), vi(r));
+  }
+  const tnSo = await duoi(UID.thuNganA, `select ghi_chu from khach_hang where id = $1`, [khChiQ7]);
+  ok('…hồ sơ khách Q7 vẫn không hiện ra với thu ngân Q1', tnSo.loi === null && tnSo.rows.length === 0, vi(tnSo));
+  for (const [ai, o, cau] of [
+    ['ghi tên người khác vào người xử lý', { xuLy: nsId[UID.qlA] }, /Người xử lý phải là chính người đang đăng nhập/],
+    ['xếp bàn của Q7', { ban: banQ7.id }, /Bàn này không thuộc chi nhánh của đặt bàn/],
+    ['nối lượt ghé của khách khác', { luot: luotKhac.id }, /Lượt ghé phải của đúng khách và đúng chi nhánh/],
+  ]) {
+    const r = await chen(UID.thuNganA, 'cho_xac_nhan', o);
+    ok(`Thu ngân Q1 chèn thẳng đặt bàn ${ai} → bị chặn`, r.loi !== null && cau.test(r.loi), vi(r));
+  }
+  const cho = await chen(UID.thuNganA, 'cho_xac_nhan');
+  ok('Thu ngân Q1 ghi hộ một yêu cầu chờ gọi → được; ghi lại người tạo, chưa có người xử lý',
+     cho.loi === null && cho.rows?.[0]?.nguoi_tao === nsId[UID.thuNganA] && cho.rows[0].nguoi_xu_ly === null, vi(cho));
+  const daGoi = await chen(UID.qlA, 'da_xac_nhan');
+  ok('Quản lý ghi hộ đặt bàn đã gọi xác nhận luôn → được; người tạo = người xử lý = quản lý',
+     daGoi.loi === null && daGoi.rows?.[0]?.nguoi_tao === nsId[UID.qlA] && daGoi.rows[0].nguoi_xu_ly === nsId[UID.qlA], vi(daGoi));
+  const doiTao = await duoi(UID.chu, `update dat_ban set nguoi_tao = $2 where id = $1`, [cho.rows?.[0]?.id, nsId[UID.qlA]]);
+  ok('Không ai sửa được người tạo', doiTao.loi !== null && /Không sửa được khách, chi nhánh, mã đặt bàn/.test(doiTao.loi), vi(doiTao));
+
+  // ON DELETE SET NULL chạy như một câu UPDATE dưới phiên của người xoá — không được bị chặn.
+  const { rows: [banBo] } = await db.query(`insert into ban_an (chi_nhanh_id, ten, so_cho) values ($1, 'B99', 4) returning id`, [cnA.id]);
+  const dXong = await taoDat('da_xac_nhan');
+  await duoi(UID.qlA, `update dat_ban set ban_an_id = $2 where id = $1`, [dXong.id, banBo.id]);
+  await duoi(UID.qlA, `update dat_ban set trang_thai = 'da_den' where id = $1`, [dXong.id]);
+  const xoaBan = await duoi(UID.qlA, `delete from ban_an where id = $1 returning id`, [banBo.id]);
+  ok('Quản lý xoá một bàn từng xếp cho đặt bàn đã kết thúc (/noi-bo/cai-dat) → xoá được, đặt bàn bỏ bàn',
+     xoaBan.loi === null && xoaBan.rows?.length === 1
+     && (await db.query(`select ban_an_id from dat_ban where id = $1`, [dXong.id])).rows[0].ban_an_id === null, vi(xoaBan));
+  const UID_TN2 = '00000000-0000-4000-8000-0000000000ad';
+  const { rows: [tn2] } = await db.query(`insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro) values ($1, $2, 'Thu ngân thời vụ', 'thu_ngan') returning id`,
+                                         [UID_TN2, cnA.id]);
+  const d9 = await taoDat('cho_xac_nhan');
+  await duoi(UID_TN2, `update dat_ban set trang_thai = 'da_xac_nhan' where id = $1`, [d9.id]);
+  const tnChen = await duoi(UID_TN2, CHEN, [cnA.id, khQ1, ngayKia, 'cho_xac_nhan', null, null, null]);
+  const xoaNs = await duoi(UID.chu, `delete from nhan_su where id = $1 returning id`, [tn2.id]);
+  ok('Chủ xoá dòng nhân sự từng xử lý / tạo đặt bàn → xoá được, hai cột về null',
+     xoaNs.loi === null && xoaNs.rows?.length === 1
+     && (await db.query(`select nguoi_xu_ly from dat_ban where id = $1`, [d9.id])).rows[0].nguoi_xu_ly === null
+     && (await db.query(`select nguoi_tao from dat_ban where id = $1`, [tnChen.rows?.[0]?.id])).rows[0].nguoi_tao === null, vi(xoaNs));
+
   // Đường không phiên: website hủy, SQL Editor sửa tay.
   const dat = await duoiAnon(`select * from tao_dat_ban('q1', '0912300000', 'Khách web', $1::date, '18:00'::time, 2::smallint)`, [ngayXa]);
   const huy = await duoiAnon(`select huy_dat_ban($1, '0912300000', 'bận') as ok`, [dat.rows?.[0]?.ma_dat_ban]);
   ok('Khách tự hủy trên website (anon, huy_dat_ban) → vẫn được', huy.loi === null && huy.rows?.[0]?.ok === true, vi(huy));
+  ok('Khách tự đặt trên website → không có người tạo (không phải nhân viên ghi hộ)',
+     (await db.query(`select nguoi_tao from dat_ban where ma_dat_ban = $1`, [dat.rows?.[0]?.ma_dat_ban])).rows[0]?.nguoi_tao === null);
   const tay = await db.query(`update dat_ban set trang_thai = 'da_xac_nhan' where id = $1 returning id`, [d0.id]).then(r => r.rows.length, e => e.message);
   ok('Không phiên đăng nhập (SQL Editor, sửa nhầm) → sửa được như cũ', tay === 1, String(tay));
 
