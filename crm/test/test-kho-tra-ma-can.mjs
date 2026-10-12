@@ -23,6 +23,10 @@
  *   4. Kiểm kê dán nhãn: mọi mã của cùng một món cộng vào một số đếm.
  *   5. Luồng thật trên PGlite: quét nhãn mã ô → phiếu xuất trừ đúng lô của tảng, bấm hai
  *      lần vẫn một phiếu, kho_doi_soat_ton() rỗng.
+ *   6. (Rà soát độc lập 12/10/2026) Quét xong thì form GHI ĐƯỢC NGAY: dòng theo món còn trống số
+ *      của chính món vừa vào lô không chặn "Ghi phiếu". Khay của lô ĐÃ HẾT HẠN không bao giờ
+ *      thành một dòng theo món trên phiếu chỉ nhận hàng còn hạn — kể cả khi sổ không còn lô đó
+ *      ở nơi lấy. Màn Quét nhãn chọn nút theo cùng luật (lib/kho/quet-nhan.ts, chạy thật).
  */
 
 import { readFileSync } from 'node:fs';
@@ -338,6 +342,65 @@ await nhom('3 · PHIẾU CHUYỂN / XUẤT BẾP / BÁO HỦY: QUÉT NHÃN MÃ �
   ok('Món cân ký quét quá số kg của lô (2,1 > 2) → về dòng theo món, câu báo ghi kg kiểu Việt',
      kgQua.theoLo.length === 0 && kgQua.dong[0]?.so_kg === '2,1' && kgQua.loi.some(c => /chỉ còn 2 kg/.test(c)), kgQua.loi.join(' · '));
 
+  // --- Lô của tảng trên nhãn ĐÃ HẾT HẠN mà sổ không còn lô đó ở nơi lấy (sổ lệch với kệ) ---
+  // Ô đang giao mang hạn dùng của lô (kho_can_giao_o_ma.han_dung); trang truyền ngày hôm nay giờ Việt Nam.
+  const giaoHan = GIAO.map(g => ({ ...g, han_dung: g.ma_can === '10011' ? '2026-10-09' : '2026-10-20' }));
+  const vang = them => quet([nhan(10011, 300)], { maNhan: MA_NHAN, datLo: datLo({
+    giao: giaoHan, homNay: '2026-10-12', lo: LO_NOI_LAY().filter(l => l.lo_id !== L(1)), tenNoiLay: 'Quầy thịt', ...them }) });
+  const vConHan = vang({ chiConHan: true });
+  ok('HỒI QUY: lô của tảng trên nhãn đã hết hạn, sổ không còn lô đó ở nơi lấy, phiếu chỉ nhận hàng còn hạn → khay KHÔNG thành dòng theo món (không trừ nhầm lô còn hạn)',
+     vConHan.dong.length === 0 && vConHan.theoLo.length === 0 && vConHan.soHetHan === 1 && vConHan.soDoc === 0, JSON.stringify(vConHan));
+  ok('HỒI QUY: … câu báo: 1 khay Ribeye của tảng #0001 đã hết hạn (hạn dùng 09/10/2026) — để riêng, báo hủy (vi + en)',
+     vConHan.loi.some(c => /1 khay Ribeye/.test(c) && /#0001/.test(c) && /09\/10\/2026/.test(c) && /báo hủy/.test(c))
+     && vConHan.loiEn.some(c => /#0001/.test(c) && /09\/10\/2026/.test(c) && /write/.test(c) && !VIET.test(c.replace(/Ribeye/g, ''))),
+     `${vConHan.loi.join(' · ')} || ${vConHan.loiEn.join(' · ')}`);
+  const vHuy = vang({ chiConHan: false });
+  ok('Báo hủy (nhận cả hàng hết hạn): khay đó vẫn ghi theo món, kèm câu "sổ không còn khay nào của tảng #0001 ở Quầy thịt"',
+     vHuy.dong.length === 1 && vHuy.dong[0].so_goi === '1' && vHuy.soHetHan === 0 && vHuy.loi.some(c => /không còn khay nào/.test(c) && /#0001/.test(c)), JSON.stringify(vHuy));
+  const vHomNay = vang({ chiConHan: true, homNay: '2026-10-09' });
+  ok('Hạn dùng ĐÚNG hôm nay thì chưa hết hạn: ghi theo món như cũ (hết hạn là qua ngày, như kho_v_ton)',
+     vHomNay.dong.length === 1 && vHomNay.soHetHan === 0, JSON.stringify(vHomNay));
+  const vKhongNgay = quet([nhan(10011, 300)], { maNhan: MA_NHAN, datLo: datLo({ giao: giaoHan, chiConHan: true, lo: LO_NOI_LAY().filter(l => l.lo_id !== L(1)) }) });
+  ok('Trang không truyền ngày hôm nay → không đoán hết hạn (ghi theo món như cũ)', vKhongNgay.dong.length === 1 && vKhongNgay.soHetHan === 0);
+
+  // --- Dòng theo món còn TRỐNG SỐ của chính món vừa quét (mở phiếu từ "Lấy thêm", "Lấy ra quầy", món nhanh) ---
+  const doiForm = (dong, theoLo) => {
+    const fm = new FormData();
+    fm.set('so_dong', String(dong.length));
+    dong.forEach((d, i) => { fm.set(`d${i}_mat_hang`, d.mat_hang_id); fm.set(`d${i}_so_goi`, d.so_goi); fm.set(`d${i}_so_kg`, d.so_kg); });
+    fm.set('so_lo', String(theoLo.length));
+    theoLo.forEach((l, i) => { fm.set(`l${i}_lo`, l.lo_id); fm.set(`l${i}_mat_hang`, l.mat_hang_id); fm.set(`l${i}_so_goi`, l.so_goi); fm.set(`l${i}_so_kg`, l.so_kg); });
+    return fm;
+  };
+  /** Một lượt "Đọc mã" như trang làm: đọc form → quét → gộp → form mới → đọc lại như lúc bấm "Ghi phiếu". */
+  const docMaRoiGhi = (dongTruoc, ma) => {
+    const truoc = XUAT.docFormPhieuXuat(doiForm(dongTruoc, []), MON);
+    const q1 = quet(ma, { maNhan: MA_NHAN, datLo: datLo({ dong: truoc.dong, theoLo: truoc.theoLo }) });
+    const gop = typeof XUAT.gopKetQuaQuet === 'function'
+      ? XUAT.gopKetQuaQuet(truoc.dong, truoc.theoLo, q1)
+      : { dong: XUAT.gopDong(truoc.dong, q1.dong), theoLo: XUAT.gopDongLo(truoc.theoLo, q1.theoLo) };   // cách trang gộp trước bản sửa
+    return { q: q1, gop, sau: XUAT.docFormPhieuXuat(doiForm(gop.dong, gop.theoLo), MON) };
+  };
+  ok('HỒI QUY: có gopKetQuaQuet (xuat.ts) — trang phiếu xuất gộp kết quả quét bằng một hàm chạy thử được', typeof XUAT.gopKetQuaQuet === 'function');
+  const san = docMaRoiGhi([{ mat_hang_id: U(1), so_goi: '', so_kg: '' }], [nhan(10011, 312), nhan(10011, 298)]);
+  ok('HỒI QUY: phiếu mở sẵn món Ribeye (dòng chưa có số) rồi quét 2 khay mã ô → bấm "Ghi phiếu" KHÔNG bị chặn "chưa nhập số khay"',
+     san.sau.loi.length === 0, san.sau.loi.join(' · '));
+  ok('HỒI QUY: … gửi đúng một dòng: lô của tảng #0001, 2 khay 0,61 kg; không còn dòng theo món trống',
+     san.sau.payload.length === 1 && san.sau.payload[0].lo_id === L(1) && san.sau.payload[0].so_goi === 2 && san.sau.payload[0].so_kg === 0.61
+     && san.gop.dong.every(d => d.mat_hang_id !== U(1)), JSON.stringify({ payload: san.sau.payload, dong: san.gop.dong }));
+  const khac = docMaRoiGhi([{ mat_hang_id: U(1), so_goi: '', so_kg: '' }, { mat_hang_id: U(3), so_goi: '', so_kg: '' }, { mat_hang_id: U(2), so_goi: '', so_kg: '0,8' }],
+    [nhan(10011, 312)]);
+  ok('Chỉ bỏ dòng trống của ĐÚNG món vừa vào lô: dòng trống của món khác (Skirt) và dòng đã có số (Thịt vụn 0,8 kg) giữ nguyên',
+     khac.gop.dong.length === 2 && khac.gop.dong[0].mat_hang_id === U(3) && khac.gop.dong[1].mat_hang_id === U(2) && khac.gop.dong[1].so_kg === '0,8'
+     && khac.gop.theoLo.some(l => l.lo_id === L(1) && l.so_goi === '1'), JSON.stringify(khac.gop));
+  const theoMon = docMaRoiGhi([{ mat_hang_id: U(1), so_goi: '', so_kg: '' }], [nhan(10010, 300), nhan(10010, 310)]);
+  ok('Nhãn mã món (ghi theo món) vẫn cộng vào chính dòng mở sẵn như trước: 2 khay 0,61 kg, ghi được',
+     theoMon.gop.dong.length === 1 && theoMon.gop.dong[0].so_goi === '2' && theoMon.gop.dong[0].so_kg === '0,61' && theoMon.gop.theoLo.length === 0
+     && theoMon.sau.loi.length === 0 && theoMon.sau.payload.length === 1 && !theoMon.sau.payload[0].lo_id, JSON.stringify(theoMon.gop));
+  const coSoSan = docMaRoiGhi([{ mat_hang_id: U(1), so_goi: '2', so_kg: '' }], [nhan(10011, 312)]);
+  ok('Dòng theo món ĐÃ có số: không bỏ, nhãn mã ô cộng vào dòng đó (2 + 1 = 3 khay), không sinh dòng lô',
+     coSoSan.gop.dong.length === 1 && coSoSan.gop.dong[0].so_goi === '3' && coSoSan.gop.theoLo.length === 0 && coSoSan.sau.loi.length === 0, JSON.stringify(coSoSan.gop));
+
   // Form đọc lại đúng những dòng đó, một lần.
   const f = new FormData();
   f.set('so_dong', '0'); f.set('so_lo', '2');
@@ -515,6 +578,65 @@ await nhom('6 · BỐN CHỖ TRA MÃ Ở WEB ĐỀU DÙNG BỘ TRA CHUNG', async
   ok('Quét nhãn: nút Đưa bếp / Báo hủy mở đúng lô của tảng trên nhãn (loCuaNhan)', /loCuaNhan/.test(quetTrang) && /linkLo\('xuat_bep'/.test(quetTrang) && /linkLo\('huy'/.test(quetTrang));
   ok('Quét nhãn, Mã vạch: không còn chữ "gói" viết cứng khi đã biết món (dùng don_vi_goi)',
      !/Gói này:/.test(quetTrang) && !/không còn gói nào của món này/.test(quetTrang) && /don_vi_goi/.test(quetTrang));
+});
+
+// ===========================================================================
+await nhom('7 · MÀN QUÉT NHÃN: NÚT VÀ CÂU CHO KHAY CẦM TRÊN TAY (quet-nhan.ts, chạy thật)', async () => {
+  const QN = await import('../../web/src/lib/kho/quet-nhan.ts').catch(() => null);
+  ok('HỒI QUY: luật chọn nút của màn Quét nhãn nằm ở hàm thuần web/src/lib/kho/quet-nhan.ts (viecChoNhan) — chạy thử được, không chỉ dò chữ trong trang',
+     typeof QN?.viecChoNhan === 'function');
+  if (typeof QN?.viecChoNhan !== 'function') return;
+  const quetTrang = doc('web/src/pages/noi-bo/kho/quet.astro');
+  ok('Trang Quét nhãn gọi viecChoNhan, truyền ngày hôm nay giờ Việt Nam (homNayVn)', /viecChoNhan\(/.test(quetTrang) && /homNayVn\(\)/.test(quetTrang));
+
+  const HOM_NAY = '2026-10-12';
+  const dongTon = (lo, loaiViTri, han, tinhTrang, soGoi = 3) => ({
+    lo_id: L(lo), ma_lo: `L-${lo}`, mat_hang_id: U(1), ma_hang: 'C-RIB', ten_hang: 'Ribeye', nhom: null, loai_hang: 'phan_cat', dem_goi: true, don_vi_goi: 'khay',
+    vi_tri_id: loaiViTri === 'kho' ? U(91) : U(92), ten_vi_tri: loaiViTri === 'kho' ? 'Kho lạnh' : 'Quầy thịt', loai_vi_tri: loaiViTri,
+    so_kg: soGoi * 0.3, so_goi: soGoi, nguon: 'pha_loc', ngay_dong_goi: '2026-10-08', han_dung: han, so_ngay_con: 0, tinh_trang_han: tinhTrang,
+  });
+  const viec = (ton, giao, laQuay = false) => QN.viecChoNhan(ton, giao, { laQuay, homNay: HOM_NAY });
+  const cho = (v, ten) => (v[ten] ? `${v[ten].lo_id === L(1) ? 'lô nhãn' : v[ten].lo_id === L(2) ? 'lô khác' : 'lô hết hạn'}@${v[ten].loai_vi_tri}` : '—');
+
+  // Tồn xếp theo hạn gần trước như docTon: lô 2 (hạn 14/10) đứng trước lô 1 của tảng trên nhãn (hạn 16/10).
+  const tonThuong = [dongTon(2, 'kho', '2026-10-14', 'con_han'), dongTon(1, 'kho', '2026-10-16', 'con_han'), dongTon(1, 'quay', '2026-10-16', 'con_han')];
+  const giaoThuong = { lo_id: L(1), han_dung: '2026-10-16' };
+  const a = viec(tonThuong, giaoThuong);
+  ok('Lô của tảng trên nhãn còn hạn, có ở kho và quầy · thủ kho: Ra quầy / Đưa bếp / Báo hủy đều mở đúng lô của nhãn ở KHO (không phải lô hạn gần hơn)',
+     cho(a, 'loRaQuay') === 'lô nhãn@kho' && cho(a, 'loDuaBep') === 'lô nhãn@kho' && cho(a, 'loBaoHuy') === 'lô nhãn@kho' && a.nhanHetHan === false && a.luuY.length === 0,
+     `${cho(a, 'loRaQuay')} · ${cho(a, 'loDuaBep')} · ${cho(a, 'loBaoHuy')} · ${a.luuY}`);
+  const b = viec(tonThuong, giaoThuong, true);
+  ok('… NV quầy: Đưa bếp / Báo hủy mở lô của nhãn ở QUẦY; Ra quầy vẫn lấy lô của nhãn trong kho',
+     cho(b, 'loDuaBep') === 'lô nhãn@quay' && cho(b, 'loBaoHuy') === 'lô nhãn@quay' && cho(b, 'loRaQuay') === 'lô nhãn@kho', `${cho(b, 'loRaQuay')} · ${cho(b, 'loDuaBep')}`);
+  ok('Hai dòng tồn của lô trên nhãn được đánh dấu (loCuaNhan) để trang đưa lên đầu', a.loCuaNhan.length === 2 && a.loCuaNhan.every(l => l.lo_id === L(1)));
+
+  const c = viec([dongTon(1, 'quay', '2026-10-09', 'het_han'), dongTon(2, 'kho', '2026-10-14', 'con_han')], { lo_id: L(1), han_dung: '2026-10-09' });
+  ok('Lô của nhãn ĐÃ HẾT HẠN, còn trên sổ ở quầy: không mời Ra quầy / Đưa bếp bằng lô khác; Báo hủy mở đúng lô đó; câu "lô đã hết hạn" kèm hạn 09/10',
+     c.nhanHetHan === true && c.loRaQuay === undefined && cho(c, 'loBaoHuy') === 'lô nhãn@quay' && c.luuY.join() === 'het_han' && c.hanHet === '2026-10-09',
+     JSON.stringify({ het: c.nhanHetHan, ra: cho(c, 'loRaQuay'), huy: cho(c, 'loBaoHuy'), luuY: c.luuY, han: c.hanHet }));
+
+  // Sổ lệch với kệ: lô của nhãn đã hết hạn nhưng sổ không còn dòng nào ở kho / quầy (đã chuyển sang chờ hủy, hoặc sổ ghi hết).
+  const d = viec([dongTon(2, 'kho', '2026-10-14', 'con_han')], { lo_id: L(1), han_dung: '2026-10-09' });
+  ok('HỒI QUY: lô của nhãn đã hết hạn mà sổ không còn ở kho / quầy → vẫn coi khay là HẾT HẠN: không nút Ra quầy, không Đưa bếp bằng lô khác còn hạn',
+     d.nhanHetHan === true && d.loRaQuay === undefined, JSON.stringify({ het: d.nhanHetHan, ra: cho(d, 'loRaQuay') }));
+  ok('HỒI QUY: … hai câu lưu ý: lô đã hết hạn (hạn 09/10) rồi sổ không còn khay nào của tảng; Báo hủy mở phiếu theo món (không ép vào lô còn hạn)',
+     d.luuY.join() === 'het_han,het_tang' && d.hanHet === '2026-10-09' && d.loBaoHuy === undefined, JSON.stringify({ luuY: d.luuY, han: d.hanHet, huy: cho(d, 'loBaoHuy') }));
+  const e = viec([dongTon(2, 'kho', '2026-10-14', 'con_han')], { lo_id: L(1), han_dung: HOM_NAY });
+  ok('Hạn dùng đúng hôm nay: chưa hết hạn — chỉ câu "sổ không còn khay nào của tảng", các nút lấy lô hạn gần như cũ',
+     e.nhanHetHan === false && e.luuY.join() === 'het_tang' && cho(e, 'loRaQuay') === 'lô khác@kho' && cho(e, 'loDuaBep') === 'lô khác@kho', JSON.stringify(e.luuY));
+
+  const g = viec(tonThuong, { lo_id: null, han_dung: null });
+  ok('Ô đang giao cho phiên lóc CHƯA CHỐT (chưa có lô): một câu "phiên chưa chốt", nút lấy lô hạn gần trước',
+     g.luuY.join() === 'chua_chot' && g.nhanHetHan === false && g.loCuaNhan.length === 0 && cho(g, 'loRaQuay') === 'lô khác@kho', JSON.stringify(g.luuY));
+  const h = viec(tonThuong, null);
+  ok('Nhãn mã món / mã giảm / ô đang trống (không gắn tảng nào): không câu lưu ý, nút lấy lô hạn gần trước',
+     h.luuY.length === 0 && h.nhanHetHan === false && cho(h, 'loRaQuay') === 'lô khác@kho' && cho(h, 'loDuaBep') === 'lô khác@kho' && h.loBaoHuy === undefined);
+  const i2 = viec([dongTon(3, 'quay', '2026-10-08', 'het_han'), ...tonThuong], null);
+  ok('Nhãn mã món, món có một lô khác đã hết hạn ở quầy: Báo hủy mở lô hết hạn đó; Ra quầy / Đưa bếp vẫn lô còn hạn gần nhất',
+     cho(i2, 'loBaoHuy') === 'lô hết hạn@quay' && cho(i2, 'loRaQuay') === 'lô khác@kho' && i2.nhanHetHan === false, `${cho(i2, 'loBaoHuy')} · ${cho(i2, 'loRaQuay')}`);
+  const dangChuyen = viec([{ ...dongTon(1, 'quay', '2026-10-16', 'con_han'), loai_vi_tri: 'dang_chuyen' }, dongTon(2, 'kho', '2026-10-14', 'con_han')], giaoThuong);
+  ok('Lô của nhãn chỉ còn ở "đang mang ra quầy" (chưa nhận): không nút nào mở lô đó — rơi về lô hạn gần, không có câu "sổ không còn"',
+     cho(dangChuyen, 'loDuaBep') === 'lô khác@kho' && dangChuyen.luuY.length === 0 && dangChuyen.loCuaNhan.length === 1, JSON.stringify(dangChuyen.luuY));
 });
 
 process.exit(ketThuc('TRA MÃ CÂN TRÊN NHÃN (WEB)'));
