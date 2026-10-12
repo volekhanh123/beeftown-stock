@@ -16,6 +16,7 @@ import {
 } from '../../lib/cai-dat';
 import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo';
 import { dichCau } from '../../lib/cau-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo } from '../../lib/gui-noi-bo';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
@@ -27,8 +28,6 @@ const t = dichNB(nn, {
   dan1:         { vi: 'Chi nhánh, giờ phục vụ và bàn ăn. Đây là chỗ ', en: 'Branch, opening hours and tables. This is where you ' },
   dan2:         { vi: 'mở khóa form đặt bàn', en: 'unlock the booking form' },
   dan3:         { vi: ' — form chỉ dựng lên khi có đủ giờ và có bàn thật.', en: ' — it only appears once the hours are set and real tables exist.' },
-  khongDocForm: { vi: 'Không đọc được dữ liệu gửi lên. Mạng có thể đã đứt giữa chừng — bạn thử gửi lại.',
-                  en: 'Could not read what was sent. The connection may have dropped — please try again.' },
   chuaCN:       { vi: 'Chưa có chi nhánh nào. Tạo chi nhánh trước.', en: 'There is no branch yet. Create one first.' },
   viecSai:      { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
   khongLam:     { vi: 'Không thực hiện được.', en: 'Could not do that.' },
@@ -136,15 +135,13 @@ const t = dichNB(nn, {
   taiAnh1:      { vi: ' — làm trong Storage. Màn chọn ảnh chưa dựng.', en: ' — done in Storage. The photo picker is not built yet.' },
 });
 
-let bao: KetQua | null = null;
+// Lưu được thì chuyển hướng 303 về chính trang này (lib/gui-noi-bo.ts): F5 không thêm
+// bàn lần nữa, không chạy lại việc dọn dữ liệu. Không lưu được thì dựng lại trang ngay.
+let bao: KetQua | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
 
 if (Astro.request.method === 'POST') {
-  let form: FormData | null = null;
-  try {
-    form = await Astro.request.formData();
-  } catch {
-    bao = { ok: false, cau: t.khongDocForm };
-  }
+  const form = await docFormNoiBo(Astro.request);
+  if (!form) bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
 
   if (form) {
     const viec = String(form.get('viec') ?? '');
@@ -162,6 +159,7 @@ if (Astro.request.method === 'POST') {
     } catch (e) {
       bao = { ok: false, cau: e instanceof Error ? dichCau(nn, e.message) : t.khongLam };
     }
+    if (bao.ok) return chuyenHuongNoiBo(Astro, bao);
   }
 }
 

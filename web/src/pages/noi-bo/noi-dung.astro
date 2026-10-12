@@ -18,6 +18,10 @@
  *
  * Không có JavaScript. Mọi thứ chạy bằng form POST — nên nó hoạt động trên
  * điện thoại cũ, mạng yếu, và cả khi trình duyệt chặn script.
+ *
+ * Lưu được thì chuyển hướng 303 về chính trang này (lib/gui-noi-bo.ts): F5 không
+ * công bố lại lần nữa — mỗi lần công bố là một phiên bản mới trong lịch sử và một
+ * lượt máy dịch.
  */
 import NoiBo from '../../layouts/NoiBo.astro';
 import {
@@ -27,6 +31,7 @@ import {
 import { moTaO } from '../../lib/ban-dich';
 import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo';
 import { dichCau, moTaKhoa } from '../../lib/cau-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo, type BaoNoiBo } from '../../lib/gui-noi-bo';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
@@ -79,19 +84,24 @@ const t = dichNB(nn, {
   luuNhap:     { vi: 'Lưu nháp', en: 'Save draft' },
 });
 
-let bao: { ok: boolean; cau: string } | null = null;
+let bao: BaoNoiBo | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
 
 if (Astro.request.method === 'POST') {
-  const form = await Astro.request.formData();
-  const khoa = String(form.get('khoa') ?? '');
-  try {
-    const bang = await docBangCongTac(client);
-    const hang = bang.find(h => h.khoa === khoa);
-    bao = hang
-      ? await ghiCongTac(client, hang, form, nn)
-      : { ok: false, cau: t.khongKhoa(khoa) };
-  } catch (e) {
-    bao = { ok: false, cau: e instanceof Error ? dichCau(nn, e.message) : t.khongDoc };
+  const form = await docFormNoiBo(Astro.request);
+  if (!form) {
+    bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
+  } else {
+    const khoa = String(form.get('khoa') ?? '');
+    try {
+      const bang = await docBangCongTac(client);
+      const hang = bang.find(h => h.khoa === khoa);
+      bao = hang
+        ? await ghiCongTac(client, hang, form, nn)
+        : { ok: false, cau: t.khongKhoa(khoa) };
+    } catch (e) {
+      bao = { ok: false, cau: e instanceof Error ? dichCau(nn, e.message) : t.khongDoc };
+    }
+    if (bao.ok) return chuyenHuongNoiBo(Astro, bao);
   }
 }
 
