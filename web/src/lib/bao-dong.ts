@@ -31,8 +31,9 @@
  * process.env (test bằng Node). Thiếu → không làm gì, một dòng log.
  */
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { docChuoi, envNode, envWorker, layBienCong, type Env } from './bien-moi-truong.ts';
+import { dangNhapMay, taoFetchCoHan, type KetQuaDangNhapMay } from './tai-khoan-may.ts';
 import type { NgonNguNB } from './ngon-ngu-noi-bo';
 import { danhGiaSucKhoe, laSucKhoeTho } from './suc-khoe.ts';
 import { lapKeHoach, type DaBao, type KeHoach, type SuCo } from './bao-dong-chinh-sach.ts';
@@ -95,64 +96,20 @@ export interface PhuThuocBaoDong {
   nn?: NgonNguNB;
 }
 
+/** fetch có hạn giờ — chung cho mọi tài khoản máy (tai-khoan-may.ts); xuất lại cho code và test cũ. */
+export { taoFetchCoHan };
+
 /**
- * fetch có hạn giờ: mỗi lời gọi tối đa goiMs, và không quá hạn chót của lượt (tối thiểu 1 giây,
- * để lời gọi sau hạn chót hỏng nhanh thay vì treo). Giữ tín hiệu hủy của người gọi nếu có.
+ * Đăng nhập may_bao_dong (dangNhapMay: client anon RIÊNG, mỗi lời gọi tối đa goiMs và không quá
+ * hạn chót của lượt). Dùng xong PHẢI gọi dangXuat().
  */
-export function taoFetchCoHan(fetchGoc: typeof fetch, hanChot: () => number, goiMs: number, bayGio: () => number = Date.now): typeof fetch {
-  return async (input, init) => {
-    const ms = Math.max(1000, Math.min(goiMs, hanChot() - bayGio()));
-    const huy = new AbortController();
-    const hen = setTimeout(() => huy.abort(new Error(`quá ${Math.max(1, Math.round(ms / 1000))} giây không trả lời`)), ms);
-    const ngoai = init?.signal;
-    const theoNgoai = () => huy.abort(ngoai?.reason);
-    if (ngoai) {
-      if (ngoai.aborted) huy.abort(ngoai.reason);
-      else ngoai.addEventListener('abort', theoNgoai, { once: true });
-    }
-    try {
-      return await fetchGoc(input, { ...init, signal: huy.signal });
-    } finally {
-      clearTimeout(hen);
-      ngoai?.removeEventListener('abort', theoNgoai);
-    }
-  };
-}
-
-type KetQuaDangNhap =
-  | { ok: true; client: SupabaseClient; dangXuat: () => Promise<void> }
-  | { ok: false; cau: string };
-
-/** Đăng nhập may_bao_dong bằng client anon RIÊNG. Dùng xong PHẢI gọi dangXuat(). */
-export async function dangNhapMayBaoDong(
-  bm: BiMatBaoDong, env: Env, fetchCoHan: typeof fetch, phuThuoc: PhuThuocBaoDong = {},
-): Promise<KetQuaDangNhap> {
-  if (!bm.email || !bm.matKhau) {
-    return { ok: false, cau: `chưa cài ${TEN_BI_MAT_BAO_DONG.email} / ${TEN_BI_MAT_BAO_DONG.matKhau}` };
-  }
-  let client: SupabaseClient;
-  if (phuThuoc.taoClient) client = phuThuoc.taoClient();
-  else {
-    const url = layBienCong('PUBLIC_SUPABASE_URL', env);
-    const anon = layBienCong('PUBLIC_SUPABASE_ANON_KEY', env);
-    if (!url || !anon) return { ok: false, cau: 'chưa nối database' };
-    client = createClient(url, anon, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-      global: { fetch: fetchCoHan },
-    });
-  }
-  try {
-    const { data, error } = await client.auth.signInWithPassword({ email: bm.email, password: bm.matKhau });
-    if (error || !data?.session) {
-      return { ok: false, cau: `tài khoản máy báo động không đăng nhập được: ${error?.message ?? 'không có phiên'}` };
-    }
-  } catch (e) {
-    return { ok: false, cau: `tài khoản máy báo động không đăng nhập được: ${e instanceof Error ? e.message : String(e)}` };
-  }
-  return {
-    ok: true, client,
-    dangXuat: async () => { try { await client.auth.signOut({ scope: 'local' }); } catch { /* bỏ qua */ } },
-  };
+export function dangNhapMayBaoDong(
+  bm: BiMatBaoDong, env: Env, han: { goiMs: number; hanChot: () => number; bayGio: () => number }, phuThuoc: PhuThuocBaoDong = {},
+): Promise<KetQuaDangNhapMay> {
+  return dangNhapMay({
+    email: bm.email, matKhau: bm.matKhau, tenBiMat: TEN_BI_MAT_BAO_DONG, nhan: 'tài khoản máy báo động', env,
+    taoClient: phuThuoc.taoClient, fetchGoc: phuThuoc.fetchFn, goiMs: han.goiMs, hanChot: han.hanChot, bayGio: han.bayGio,
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -245,9 +202,7 @@ export async function baoDongTatCa(env?: Env, phuThuoc: PhuThuocBaoDong = {}): P
     const hetGio = { ...HET_GIO, ...phuThuoc.hetGio };
     const bayGio = phuThuoc.bayGio ?? Date.now;
     let hanChot = bayGio() + hetGio.luotMs;
-    const fetchCoHan = taoFetchCoHan(phuThuoc.fetchFn ?? fetch, () => hanChot, hetGio.goiMs, bayGio);
-
-    const dn = await dangNhapMayBaoDong(bm, env, fetchCoHan, phuThuoc);
+    const dn = await dangNhapMayBaoDong(bm, env, { goiMs: hetGio.goiMs, hanChot: () => hanChot, bayGio }, phuThuoc);
     if (!dn.ok) { ghi(`${dn.cau} — bỏ qua`); return log; }
     try {
       const w = await envWorker();

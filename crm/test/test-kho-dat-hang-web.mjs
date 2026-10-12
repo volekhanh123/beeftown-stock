@@ -176,7 +176,7 @@ function clientCua(uid) {
       const gt = ds.map(([, v]) => (v !== null && typeof v === 'object' ? JSON.stringify(v) : v));
       const sql = traVeBang.get(ten) ? `select * from ${ten}(${doi})` : `select ${ten}(${doi}) as r`;
       const kq = await duoi(uid, sql, gt);
-      if (kq.loi) return { data: null, error: { message: kq.loi } };
+      if (kq.loi) return { data: null, error: { message: kq.loi, code: kq.ma ?? '' } };   // như PostgREST: mã lỗi Postgres (42501…)
       return { data: traVeBang.get(ten) ? kq.rows : kq.rows[0]?.r ?? null, error: null };
     },
   };

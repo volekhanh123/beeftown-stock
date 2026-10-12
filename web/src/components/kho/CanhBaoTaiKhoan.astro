@@ -1,0 +1,44 @@
+---
+/**
+ * Cảnh báo trước khi chuyển tiền cho nhà cung cấp — trang công nợ NCC và màn Trả tiền dùng chung.
+ *
+ *   · tài khoản ngân hàng vừa đổi trong 30 ngày → khối đỏ: số cũ → số mới, dặn gọi hỏi lại NCC;
+ *   · đọc nhật ký đổi tài khoản lỗi (mạng, hết giờ) → khối vàng nói rõ CHƯA KIỂM ĐƯỢC, cũng dặn
+ *     gọi hỏi lại — không im như thể tài khoản không đổi.
+ *
+ * Không gọi database: trang đọc trước bằng docCanhBaoTaiKhoan (lib/kho/cong-no.ts).
+ */
+import type { CanhBaoDoiTk } from '../../lib/kho/cong-no.ts';
+import { dinhDangThoiDiem } from '../../lib/kho/chung.ts';
+import { dichNB, nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
+
+interface Props {
+  canhBao: CanhBaoDoiTk;
+}
+const { canhBao } = Astro.props;
+const t = dichNB(nnCua(Astro), {
+  doiTk: {
+    vi: (luc: string) => `Tài khoản ngân hàng vừa đổi lúc ${luc}: `,
+    en: (luc: string) => `The bank account was just changed (${luc}): `,
+  },
+  trong: { vi: '(trống)', en: '(empty)' },
+  chuaKiem: {
+    vi: 'Chưa kiểm được tài khoản ngân hàng có vừa đổi không (không đọc được nhật ký đổi tài khoản — tải lại trang để kiểm lại).',
+    en: 'Could not check whether the bank account was changed recently (the change log could not be read — reload the page to check again).',
+  },
+  goiHoiLai: {
+    vi: 'Gọi điện hỏi lại nhà cung cấp (số điện thoại cũ đã biết) trước khi chuyển tiền.',
+    en: 'Call the supplier to check (on the phone number you already know) before transferring any money.',
+  },
+});
+const d = canhBao.doi;
+---
+{d && (
+  <div class="nb-bao loi" role="alert"><p>
+    {t.doiTk(dinhDangThoiDiem(d.luc))}{d.so_tai_khoan_cu}{d.ngan_hang_cu ? ` (${d.ngan_hang_cu})` : ''} → <strong>{d.so_tai_khoan_moi ?? t.trong}{d.ngan_hang_moi ? ` (${d.ngan_hang_moi})` : ''}</strong>.{' '}
+    {t.goiHoiLai}
+  </p></div>
+)}
+{canhBao.chuaKiem && (
+  <div class="nb-bao luu-y" role="alert"><p>{t.chuaKiem}{' '}{t.goiHoiLai}</p></div>
+)}

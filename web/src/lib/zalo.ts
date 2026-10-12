@@ -165,6 +165,14 @@ export const CAU_GUI = {
     vi: 'Hết thời gian của lượt — phần còn lại gửi ở lượt sau',
     en: 'The run ran out of time — the rest is sent in the next run',
   },
+  dungChuaGhi: {
+    vi: (x: string) => `Database không ghi được kết quả tin ${x} — dừng gửi lượt này, phần còn lại gửi ở lượt sau`,
+    en: (x: string) => `The database could not record the result of message ${x} — sending stopped for this run, the rest is sent in the next run`,
+  },
+  daToiChuaGhi: {
+    vi: (x: string) => `Tin ${x} đã tới Zalo nhưng chưa ghi được vào database — có thể bị gửi lần hai cho khách`,
+    en: (x: string) => `Message ${x} reached Zalo but could not be recorded in the database — the customer may get it twice`,
+  },
 } satisfies Record<string, CauMau | Hai>;
 
 const CHO = '\u0000';
