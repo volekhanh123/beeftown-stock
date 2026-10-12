@@ -16,8 +16,11 @@
 import type { DongBanCan } from './bao-cao-can.ts';
 import type { PhimXem } from './thong-so.ts';
 
-/** Một dòng đang nằm trên cân gửi lên kho (kho_may_can_bao → tren_can). */
-export interface DongTrenCanBao { plu: number; ma_can: string; ten: string; phim: string[] }
+/**
+ * Một dòng đang nằm trên cân gửi lên kho (kho_may_can_bao → tren_can). chua_xac_nhan (2.9.3, migration 0090): cân có thể đang
+ * khác dòng này — chỉ có khóa khi true.
+ */
+export interface DongTrenCanBao { plu: number; ma_can: string; ten: string; phim: string[]; chua_xac_nhan?: true }
 /** Một dòng nhật ký gửi lên kho (kho_may_can_nhat_ky). luc: giờ đồng hồ cân "YYYY-MM-DD HH:MM:SS" (giờ VN). */
 export interface DongNhatKyBao { mac: string; fid: number; stt: number; luc: string; plu: number; ma_can: string; so_kg: number; loai: number }
 
@@ -39,10 +42,11 @@ export function nhanPhim(k: Pick<PhimXem, 'trang' | 'nhan'>): string {
 
 /**
  * Dòng trên cân (tren-can.tsv) + phím tắt trong file gốc → dòng gửi kho. Bỏ dòng không có mã (dòng trống, hàng thử);
- * mỗi PLU tối đa 8 phím (kho cũng cắt 8).
+ * mỗi PLU tối đa 8 phím (kho cũng cắt 8). `chuaChac` (2.9.3): dòng cân có thể đang khác → kèm chua_xac_nhan: true.
  */
 export function dongTrenCanBao(tren: Iterable<{ so: number; ma: string; ten: string }>, phim: PhimXem[],
-                               bo: (h: { so: number; ma: string }) => boolean = () => false): DongTrenCanBao[] {
+                               bo: (h: { so: number; ma: string }) => boolean = () => false,
+                               chuaChac: (h: { so: number; ma: string; ten: string }) => boolean = () => false): DongTrenCanBao[] {
   const theoPlu = new Map<number, string[]>();
   for (const k of phim) {
     if (k.plu <= 0) continue;
@@ -51,7 +55,7 @@ export function dongTrenCanBao(tren: Iterable<{ so: number; ma: string; ten: str
     theoPlu.set(k.plu, ds);
   }
   return [...tren].filter(h => /^\d{1,6}$/.test(h.ma) && !bo(h)).sort((a, b) => a.so - b.so)
-    .map(h => ({ plu: h.so, ma_can: h.ma, ten: h.ten, phim: theoPlu.get(h.so) ?? [] }));
+    .map(h => ({ plu: h.so, ma_can: h.ma, ten: h.ten, phim: theoPlu.get(h.so) ?? [], ...(chuaChac(h) ? { chua_xac_nhan: true as const } : {}) }));
 }
 
 /**

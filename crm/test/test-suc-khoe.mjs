@@ -416,7 +416,7 @@ await nhom('11 · WEB ĐỌC ĐÚNG TÊN TỪNG Ô (database thật → lib/suc-
     tuyen_dung: ['moi', 'moi_qua_2_ngay', 'moi_qua_7_ngay'],
     so_kho:     ['co_kho', 'lech'],
     can:        ['gio_mo_cua', 'gio_dong_cua', 'may'],
-    can_may:    ['bao_luc', 'giu_ket_noi', 'can_tra_loi_luc', 'tu_gui', 'lech_so', 'lech_tu', 'gui_loi'],
+    can_may:    ['bao_luc', 'giu_ket_noi', 'can_tra_loi_luc', 'tu_gui', 'lech_so', 'lech_tu', 'gui_loi', 'chua_xac_nhan', 'chua_xac_nhan_tu'],
   };
   const a = cua(k, cnA);
   const saoLuu = (await docSl(UID.chu)).k;

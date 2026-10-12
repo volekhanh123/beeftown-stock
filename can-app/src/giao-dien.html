@@ -582,6 +582,10 @@
 
   // ---- ô Cân: địa chỉ, lần tự đổi địa chỉ, tự gửi ---------------------------
   const lucNgan = (t) => new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
+  /** 2.9.3 — "HH:MM" giờ Việt Nam (giờ tự gửi thử lại). */
+  const gioPhut = (t) => new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
+  /** Tự gửi đang bật (Cài đặt) — câu "tự gửi thử lại lúc …" chỉ đúng khi bật. */
+  const tuGuiBat = () => !!(trangThai && trangThai.cauHinh && trangThai.cauHinh.tuGui);
   function veOCan() {
     const ch = trangThai.cauHinh;
     $('o-can').textContent = ch.ipCan + ' · cổng ' + ch.congCan;
@@ -728,6 +732,9 @@
       // Xem trước có thể vừa ghi nhận HSD trên cân đã đúng hôm nay: cập nhật cả khung ở ô Cân.
       if (x.hsdTrenCan) { trangThai.hsd = x.hsdTrenCan; $('bao-hsd').innerHTML = baoHsdCu(trangThai.hsd); }
       const chuaKiemDuoc = x.chuaXacNhan && x.chuaXacNhan.loai === 'khong-doc';
+      // Dấu kiểu 2.9.2 (không có giờ thử lại): file gốc đã ghi lần gửi chưa kiểm → "Giữ nguyên" là theo lần đó, chưa chắc.
+      // 2.9.3: file gốc là lần cân xác nhận — "Giữ nguyên" đúng nghĩa, hàng vừa gửi vẫn hiện Thêm / Sửa.
+      const theoLanChuaKiem = chuaKiemDuoc && !x.chuaXacNhan.thuLaiLuc;
       const canChuaNhan = x.chuaXacNhan && x.chuaXacNhan.loai === 'lech';
       let h = baoHsdCu(x.hsdTrenCan) + baoCanChuaRo(x.canChuaRo) + baoChuaXacNhan(x.chuaXacNhan) + '<div class="dem">' + DEM.filter(([k]) => x.dem[k] > 0)
         .map(([k, chu]) => `<span class="nhan-l ${NHAN[k][1]}">${x.dem[k]} ${chu}</span>`).join('') + '</div>';
@@ -737,7 +744,7 @@
       for (const d of x.dong) {
         const mo = d.loai === 'xoa' || d.loai === 'bo_qua';
         // "Giữ nguyên" là so với file gốc; lần gửi gần nhất chưa được cân xác nhận thì nói rõ.
-        const nhan = d.loai === 'giu' && chuaKiemDuoc ? 'Giữ nguyên (chưa xác nhận)' : NHAN[d.loai][0];
+        const nhan = d.loai === 'giu' && theoLanChuaKiem ? 'Giữ nguyên (chưa xác nhận)' : NHAN[d.loai][0];
         h += `<tr class="${mo ? 'mo' : ''}"><td><span class="nhan-l ${NHAN[d.loai][1]}">${nhan}</span></td>`
           + `<td class="so">${d.so ?? '—'}</td><td class="so">${e(d.maCan || '—')}</td><td>${e(d.ten)}`
           + (d.loai === 'sua' && d.tenCu !== d.ten ? `<div class="phu">Trên cân đang là: ${e(d.tenCu)}</div>` : '')
@@ -771,8 +778,13 @@
         + `<span class="phu">${x.canChuaRo ? 'Lần xoá qua WiFi trước hỏng — bấm Gửi để gửi lại cả danh sách ' + x.soHangSauKhiGui + ' hàng, hoặc nạp USB.'
           // Lần gửi trước cân chưa nhận: tự gửi đang tạm dừng — kể cả khi kho đã quay về như file gốc, phải bấm Gửi.
           : canChuaNhan ? 'Lần gửi trước cân chưa nhận — tự gửi đang tạm dừng. Để cân ở màn hình bán hàng rồi bấm Gửi; gửi xong chương trình đọc lại cân để kiểm.'
+          // 2.9.3: lần gửi trước chưa đọc lại được cân — chưa ghi nhận, bảng theo lần cân xác nhận gần nhất; cân có thể đang
+          // giữ bản đó dù kho đã quay về như file gốc → vẫn phải gửi lại.
+          : chuaKiemDuoc ? 'Lần gửi trước chưa đọc lại được cân nên chưa ghi nhận'
+            + (x.chuaXacNhan.thuLaiLuc && tuGuiBat() ? ' — tự gửi thử lại lúc ' + e(gioPhut(x.chuaXacNhan.thuLaiLuc)) : '')
+            + '. Đóng phần mềm của hãng (TM-xA) nếu đang mở, để cân ở màn hình bán hàng rồi bấm Gửi để gửi lại cả danh sách '
+            + x.soHangSauKhiGui + ' hàng và đọc lại cân để kiểm.'
           : x.coThayDoi ? 'Sau khi gửi, cân có ' + x.soHangSauKhiGui + ' hàng từ kho. Gửi xong chương trình đọc lại cân để kiểm.'
-          : chuaKiemDuoc ? 'Kho khớp với lần gửi trước, nhưng lần đó chưa được cân xác nhận — bấm Gửi để gửi lại và đọc lại cân để kiểm.'
           : 'Cân đã khớp với kho — không cần gửi.'}</span></div><div id="ket-qua-gui"></div>`;
       noi.innerHTML = h;
       $('nut-gui').onclick = gui;
@@ -819,8 +831,9 @@
   const hsdChu = (v) => (v === undefined ? '' : v === null ? 'không in' : `${Number(v).toLocaleString('vi-VN')} ngày`);
 
   /**
-   * 2.6 — lần gửi gần nhất cân chưa xác nhận (chua-xac-nhan.json). 'khong-doc': đã ghi nhận nhưng chưa đọc lại được cân
-   * (khung vàng); 'lech': đọc lại thấy cân chưa nhận, chương trình chưa ghi nhận lần gửi đó, tự gửi tạm dừng (khung đỏ).
+   * 2.6 — lần gửi gần nhất cân chưa xác nhận (chua-xac-nhan.json). 'khong-doc': chưa đọc lại được cân (khung vàng) — 2.9.3:
+   * chương trình CHƯA ghi nhận (trước 2.9.3 ghi nhận như cân đã nhận), tự gửi thử lại lúc thuLaiLuc; 'lech': đọc lại thấy cân
+   * chưa nhận, chương trình chưa ghi nhận lần gửi đó, tự gửi tạm dừng (khung đỏ).
    */
   function baoChuaXacNhan(c) {
     if (!c) return '';
@@ -828,9 +841,17 @@
     if (c.loai === 'lech') {
       return `<div class="bao loi"><p><b>Lần gửi${luc}: cân chưa nhận.</b> ${e(c.cau)}</p></div>`;
     }
+    if (!c.thuLaiLuc) {   // dấu kiểu 2.9.2: lần gửi đó đã được ghi nhận dù chưa kiểm
+      return `<div class="bao luu-y"><p><b>Lần gửi${luc} chưa được cân xác nhận.</b> ${e(c.cau)}</p>`
+        + '<p>Nhãn "Giữ nguyên" / "Khớp kho" là theo lần gửi đó, chưa chắc cân đã có. Tự gửi gửi lại cả danh sách ở lượt tới. Kiểm: trên cân gọi thử một số PLU, '
+        + 'hoặc bấm <b>Đọc dữ liệu từ cân qua WiFi</b> (thẻ Cân &amp; thông số), hoặc lưu cân ra USB rồi Cập nhật file gốc từ cân.</p></div>';
+    }
     return `<div class="bao luu-y"><p><b>Lần gửi${luc} chưa được cân xác nhận.</b> ${e(c.cau)}</p>`
-      + '<p>Nhãn "Giữ nguyên" / "Khớp kho" là theo lần gửi đó, chưa chắc cân đã có. Kiểm: trên cân gọi thử một số PLU, '
-      + 'hoặc bấm <b>Đọc dữ liệu từ cân qua WiFi</b> (thẻ Cân &amp; thông số), hoặc lưu cân ra USB rồi Cập nhật file gốc từ cân.</p></div>';
+      + '<p>Chương trình chưa ghi nhận lần gửi đó: bảng theo lần cân xác nhận gần nhất, hàng vừa gửi vẫn hiện Thêm / Sửa; kho chưa '
+      + 'thấy tên mới (trang pha lóc chưa báo "Cân sẵn sàng"). '
+      + (c.thuLaiLuc && tuGuiBat() ? 'Tự gửi thử lại lúc ' + e(gioPhut(c.thuLaiLuc)) + ' (lần ' + e(String((c.soLanThu || 1) + 1)) + '). ' : '')
+      + 'Kiểm ngay: trên cân gọi thử một số PLU, hoặc bấm <b>Đọc dữ liệu từ cân qua WiFi</b> (thẻ Cân &amp; thông số), hoặc lưu cân '
+      + 'ra USB rồi Cập nhật file gốc từ cân.</p></div>';
   }
 
   /** Khung đỏ khi lần xoá qua WiFi trước hỏng sau khi đã gửi lệnh xoá (can-chua-ro.json) — cân có thể đang thiếu hàng. */
@@ -969,10 +990,12 @@
 
   /**
    * Nhãn tình trạng: lần xoá qua WiFi trước hỏng (canChuaRo) thì "khớp" chỉ là khớp file gốc — cân thật chưa rõ. 2.6: lần
-   * gửi gần nhất chưa đọc lại được cân (chuaXacNhan 'khong-doc') thì "khớp" là theo lần gửi đó, chưa xác nhận.
+   * gửi gần nhất chưa đọc lại được cân (chuaXacNhan 'khong-doc') thì "khớp" là theo lần gửi đó, chưa xác nhận — 2.9.3: chỉ
+   * với dấu kiểu 2.9.2 (không có giờ thử lại); từ 2.9.3 file gốc là lần cân xác nhận, "khớp" đúng nghĩa.
    */
   const tinhTrangChu = (k) => (k === 'khop' && dsHang && dsHang.canChuaRo ? ['Chưa rõ trên cân', 'xoa']
-    : k === 'khop' && dsHang && dsHang.chuaXacNhan && dsHang.chuaXacNhan.loai === 'khong-doc' ? ['Khớp kho, chưa xác nhận', 'sua']
+    : k === 'khop' && dsHang && dsHang.chuaXacNhan && dsHang.chuaXacNhan.loai === 'khong-doc' && !dsHang.chuaXacNhan.thuLaiLuc
+      ? ['Khớp kho, chưa xác nhận', 'sua']
     : TINH_TRANG[k]);
 
   function veHang() {
