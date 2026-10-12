@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN CRM — Kiểm thử: nộp hồ sơ ứng tuyển hai lần (0066)
+ * BEEFTOWN CRM — Kiểm thử: nộp hồ sơ ứng tuyển hai lần (0074)
  * ===========================================================
  *
  *     node test/test-tuyen-dung-gui-lai.mjs
@@ -10,7 +10,7 @@
  * web báo "Chưa gửi được hồ sơ. Thông tin của bạn CHƯA được ghi nhận. Vui lòng thử lại." trong
  * khi hồ sơ ĐÃ vào. Ứng viên thử lại, lại nghe "chưa ghi nhận", rồi bỏ.
  *
- * Từ 0066, lời gọi không phiên gửi lại Y HỆT (vị trí, số điện thoại đã chuẩn hóa, họ tên,
+ * Từ 0074, lời gọi không phiên gửi lại Y HỆT (vị trí, số điện thoại đã chuẩn hóa, họ tên,
  * email, năm sinh, giới thiệu, kinh nghiệm, ca — sau khi bỏ các trường tin không hỏi) trong
  * cùng ngày nộp (hoặc trong 10 phút, cho lượt gửi vắt qua nửa đêm) nhận lại đúng mã cũ.
  *
@@ -25,7 +25,7 @@
 
 import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
 
-const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — NỘP HỒ SƠ HAI LẦN (0066)');
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — NỘP HỒ SƠ HAI LẦN (0074)');
 const { db, cnA, duoi, duoiAnon } = await dungDatabase();
 
 const UID_LA = '00000000-0000-4000-8000-0000000000e3';   // đăng nhập được, không có dòng nhan_su
@@ -184,14 +184,14 @@ await nhom('4 · GIỜ VIỆT NAM — vắt qua nửa đêm, múi giờ phiên',
   ok('Nộp 23:59 hôm qua, gửi lại 00:01 hôm nay → nhận mã cũ, không thêm dòng', r2.ma === r1.ma && (await soDong(hs.sdt)) === 1, moTa(r2));
   await db.query(`update ho_so_ung_tuyen set created_at = now() - interval '11 minutes' where ma_ho_so = $1`, [r1.ma]);
   const r3 = await nop(hs);
-  ok('Hồ sơ hôm qua, 11 phút trước → hồ sơ MỚI hôm nay (như trước 0066: mỗi ngày một hồ sơ)',
+  ok('Hồ sơ hôm qua, 11 phút trước → hồ sơ MỚI hôm nay (như trước 0074: mỗi ngày một hồ sơ)',
      !r3.loi && r3.ma !== r1.ma && (await soDong(hs.sdt)) === 2, moTa(r3));
 
   const cung = { sdt: '0912000402' };
   const c1 = await nop(cung);
   await db.query(`update ho_so_ung_tuyen set created_at = now() - interval '5 hours' where ma_ho_so = $1`, [c1.ma]);
   const c2 = await nop(cung);
-  ok('Cùng ngày nộp, 5 giờ sau gửi lại y hệt → nhận mã cũ (trước 0066: 23505 "chưa ghi nhận")', c2.ma === c1.ma, moTa(c2));
+  ok('Cùng ngày nộp, 5 giờ sau gửi lại y hệt → nhận mã cũ (trước 0074: 23505 "chưa ghi nhận")', c2.ma === c1.ma, moTa(c2));
 
   await db.exec(`set timezone to 'Pacific/Kiritimati'`);   // UTC+14
   let c3;

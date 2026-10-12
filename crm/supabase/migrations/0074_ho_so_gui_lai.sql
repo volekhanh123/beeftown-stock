@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0066 · NỘP HỒ SƠ HAI LẦN NHẬN LẠI ĐÚNG MÃ CŨ
+-- BEEFTOWN CRM — 0074 · NỘP HỒ SƠ HAI LẦN NHẬN LẠI ĐÚNG MÃ CŨ
 -- =============================================================================
 -- Chỉ mục ho_so_khong_trung_idx (0012) cho mỗi số điện thoại một hồ sơ / vị trí /
 -- ngày nộp. Nên lần gọi thứ hai của CÙNG hồ sơ không tạo dòng thứ hai — nhưng ném
@@ -115,7 +115,7 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  -- 0066: dời lên từ sau bước đếm IP.
+  -- 0074: dời lên từ sau bước đếm IP.
   select * into v_vi_tri from vi_tri_tuyen_dung
   where ma = p_vi_tri_ma and trang_thai = 'da_cong_bo';
   if not found then
@@ -124,7 +124,7 @@ begin
   end if;
 
   -- 0026: trường tin này không hỏi thì không lưu, dù có gửi lên. Form chỉ ẩn
-  -- bằng CSS, nên trình duyệt cũ vẫn thấy và vẫn gửi. (0066: dời lên theo.)
+  -- bằng CSS, nên trình duyệt cũ vẫn thấy và vẫn gửi. (0074: dời lên theo.)
   if not v_vi_tri.hoi_email       then p_email       := null; end if;
   if not v_vi_tri.hoi_nam_sinh    then p_nam_sinh    := null; end if;
   if not v_vi_tri.hoi_ca_lam      then p_ca_lam_duoc := null; end if;
@@ -138,7 +138,7 @@ begin
 
   v_sdt := chuan_hoa_sdt(p_sdt);
 
-  -- ---- 0066 · Gửi lại y hệt → trả lại hồ sơ cũ ------------------------------
+  -- ---- 0074 · Gửi lại y hệt → trả lại hồ sơ cũ ------------------------------
   if not co_phien_dang_nhap() and p_dong_y then
     -- Hai lượt gửi chồng nhau của cùng một người xếp hàng ở đây; lượt sau thấy
     -- hồ sơ lượt trước vừa ghi. Khóa nhả khi giao dịch xong.
@@ -165,7 +165,7 @@ begin
       return v_cu.ma_ho_so;
     end if;
   end if;
-  -- ---- Hết phần 0066 — từ đây là nguyên văn 0026 (trừ hai bước đã dời lên) ----
+  -- ---- Hết phần 0074 — từ đây là nguyên văn 0026 (trừ hai bước đã dời lên) ----
 
   if p_ip is not null then
     select count(*) into v_dem from ho_so_ung_tuyen
@@ -243,4 +243,4 @@ end;
 $$;
 
 comment on function nop_ho_so_ung_tuyen is
-  'API công khai cho form nộp hồ sơ. SECURITY DEFINER. Bẫy bot, công tắc cổng tuyển dụng, 5 hồ sơ / IP / giờ, trường tin không hỏi thì không lưu (0026). Từ 0066: lời gọi không phiên gửi lại Y HỆT (vị trí, số điện thoại, họ tên, email, năm sinh, giới thiệu, kinh nghiệm, ca, đồng ý) cùng ngày nộp hoặc trong 10 phút nhận lại đúng mã hồ sơ cũ — không ghi gì thêm (kèm CV thì chỉ khớp hồ sơ đã có CV).';
+  'API công khai cho form nộp hồ sơ. SECURITY DEFINER. Bẫy bot, công tắc cổng tuyển dụng, 5 hồ sơ / IP / giờ, trường tin không hỏi thì không lưu (0026). Từ 0074: lời gọi không phiên gửi lại Y HỆT (vị trí, số điện thoại, họ tên, email, năm sinh, giới thiệu, kinh nghiệm, ca, đồng ý) cùng ngày nộp hoặc trong 10 phút nhận lại đúng mã hồ sơ cũ — không ghi gì thêm (kèm CV thì chỉ khớp hồ sơ đã có CV).';
