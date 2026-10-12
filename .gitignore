@@ -68,6 +68,10 @@
 # Chương trình Beeftown Cân (.exe) — mã nguồn; dist/ và node_modules/ vẫn bị chặn
 !/can-app/README.md
 !/can-app/CAN-TMA.md
+# Đặc tả dịch ngược phần mềm TM-xA (Beeftown tự viết, chuyển từ nhánh phan-mem-can-cu 12/10/2026) — chỉ chữ;
+# phần mềm của hãng và mã C# dịch ngược KHÔNG vào repo.
+!/can-app/dac-ta/*.md
+!/can-app/dac-ta/_tom-tat.txt
 !/can-app/package.json
 !/can-app/package-lock.json
 !/can-app/src/*.ts
