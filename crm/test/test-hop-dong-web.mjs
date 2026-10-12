@@ -115,6 +115,9 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/cong-tac.ts',
   // Chi nhánh, bàn ăn, dọn dữ liệu — cũng chỉ gọi từ /noi-bo.
   'web/src/lib/cai-dat.ts',
+  // Xóa file CV rồi ẩn danh, quét CV mồ côi (0066) — chỉ cai-dat.ts gọi, bằng
+  // client của chủ / quản lý đang đăng nhập.
+  'web/src/lib/xoa-cv.ts',
   // Kho — mọi file chỉ được gọi từ /noi-bo/kho, sau middleware, bằng client
   // mang access token của nhân sự. Liệt kê từng file: file kho mới đọc bảng
   // sẽ làm phép thử đỏ cho tới khi có người phân loại nó.

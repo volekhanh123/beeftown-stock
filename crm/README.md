@@ -164,7 +164,8 @@ crm/
 │   ├── 0061_kho_can_quay.sql           KHO · Beeftown Cân báo về kho (máy cân kho_may_can, tem đã in kho_can_tem, ô mã đang giao cho mọi vai xem) — chạy sau 0060, 0049, 0054
 │   ├── 0062_dat_ban_goi_lai.sql        ĐẶT BÀN · tao_dat_ban() gọi lại Y HỆT (số điện thoại, chi nhánh, ngày, giờ, số khách, dịp, ghi chú, đồng ý nhận tin) trong 10 phút, dòng cũ còn cho_xac_nhan → trả lại dòng cũ và mã cũ, không ghi gì thêm · chỉ lời gọi không phiên (website, Messenger)
 │   ├── 0063_zalo_chi_gui_khi_xac_nhan.sql ZALO · ZBS-01/ZBS-02 chỉ xếp khi nhân viên bấm "Đã gọi xác nhận" (cho_xac_nhan → da_xac_nhan), không phải lúc khách gửi yêu cầu · zalo_xep_tin_dat_ban(p_dat_ban_id, p_vua_xac_nhan, p_doi_gio) · máy gửi không lấy tin của đặt bàn chưa xác nhận (tin xếp trước 0063 nằm chờ)
-│   └── 0065_crm_bo_policy_ghi_thang.sql ⚠ VÁ — bỏ policy ghi thẳng nhat_ky_dong_y, nhat_ky_tin, so_cai_diem, luot_ghe, khach_hang (mọi đường ghi là hàm definer tự kiểm vai) · don_dep_phieu_tai_len kiểm vai
+│   ├── 0065_crm_bo_policy_ghi_thang.sql ⚠ VÁ — bỏ policy ghi thẳng nhat_ky_dong_y, nhat_ky_tin, so_cai_diem, luot_ghe, khach_hang (mọi đường ghi là hàm definer tự kiểm vai) · don_dep_phieu_tai_len kiểm vai
+│   └── 0066_xoa_file_cv.sql            ⚠ VÁ TUYỂN DỤNG · ẩn danh hồ sơ hết hạn KHÔNG còn xóa đường dẫn của CV chưa xóa: web xóa file trong kho trước (ho_so_cv_het_han → Storage → an_danh_ho_so_het_han) · ho_so_thu_muc_cv_mo_coi: thư mục kho CV không hồ sơ nào trỏ tới → xóa trước khi dọn vé · ô don_dep cho đèn "Dọn dữ liệu cá nhân"
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```
@@ -212,6 +213,8 @@ Hai điều lộ ra, cần biết khi đọc bước 6 ở cuối `0014`:
 - Tắt năm sinh, bật CV cho *Nhân viên sảnh* ở `/noi-bo/tin-tuyen-dung` (đăng nhập bằng Auth giả của bộ thử): form công khai đổi ngay.
 
 **Chưa làm:** bước 1, 3, 4, 7, 8, và **toàn bộ danh sách trên project Supabase thật** — vẫn bắt buộc trước khi mở cổng tuyển dụng.
+
+**`0066` (xóa file CV khi ẩn danh, quét CV mồ côi) · chưa kiểm tay.** Năm bước ở cuối `0066_xoa_file_cv.sql` — quản lý không xóa được file, chủ xóa được CV mồ côi và CV của hồ sơ hết hạn, file của hồ sơ còn hạn không bị đụng — làm trên project Beeftown-thu rồi ghi kết quả vào đây. `npm test` chỉ thử được phần database và một kho file giả (`test-tuyen-dung-xoa-cv.mjs`).
 
 ## Bốn quyết định thiết kế quan trọng
 
@@ -289,6 +292,8 @@ Ngoài ra `cau_hinh_tich_diem.ty_le_tich` có **trần cứng 20%** — biên đ
 | `chi_so_crm()` | 6 chỉ số theo dõi | Quản lý, chủ sở hữu |
 | `suc_khoe_he_thong()` | Số liệu cho bảng đèn sức khỏe ở `/noi-bo`: việc chạy nền iPOS / Zalo / báo động, lỗi Messenger, máy dịch, yêu cầu và hồ sơ nằm im, sổ kho lệch — chỉ số đếm và mốc giờ. Từ `0060` là lớp kiểm vai bọc `suc_khoe_so_lieu` (nội bộ, kết quả không đổi) | Chủ sở hữu (mọi chi nhánh), quản lý (chi nhánh của mình) (`0055`, `0060`) |
 | `suc_khoe_sao_luu()` | Số liệu cho đèn "Sao lưu dữ liệu": lượt sao lưu gần nhất và bản dùng được (khôi phục thử đạt) gần nhất — mốc giờ, cờ, cỡ file. Từ `0060` là lớp kiểm vai bọc `suc_khoe_sao_luu_so_lieu` (nội bộ, kết quả không đổi) | Chủ sở hữu, quản lý (`0058`, `0060`) |
+| `ho_so_cv_het_han()` · `an_danh_ho_so_het_han()` | Ẩn danh hồ sơ hết hạn KÈM file CV: đọc đường dẫn CV → web xóa trong kho → ẩn danh hồ sơ không CV hoặc có CV đã chắc chắn xóa (`web/src/lib/xoa-cv.ts`). `don_dep_ho_so_het_han()` từ `0066` chỉ ẩn danh hồ sơ không CV | Chủ sở hữu (`0066`) |
+| `ho_so_thu_muc_cv_mo_coi()` | Trong các thư mục web liệt kê từ kho CV: thư mục nào không hồ sơ nào trỏ tới và vé không còn hiệu lực — web xóa file trong đó trước khi dọn vé | Chủ sở hữu, quản lý (`0066`; chỉ chủ xóa được file) |
 | `bao_dong_*()` | Báo động: 4 RPC máy (`may_bao_dong`) — bắt đầu lượt / ghi lượt / đã gửi / kết thúc lượt; chữ ký và JSON trả về ở `0060` | Chỉ `may_bao_dong` (`0060`) |
 
 Website công khai **không có quyền vào bảng nào cả** — chỉ gọi được danh sách hàm `SECURITY DEFINER` trong khối chốt quyền ở cuối migration MỚI NHẤT có khối đó. Đừng chép số lượng vào đây: bảng trên đã từng nói "ba hàm" trong khi thực tế là 12, và nó lạc hậu suốt tám migration mà không ai để ý. `test-an-toan.mjs` canh danh sách đó.

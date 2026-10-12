@@ -80,6 +80,7 @@ function thoGia(luc) {
     dich: { cho: 0, loi: 0 },
     bao_dong: { lan_chay_cuoi: t(5), kenh: 'telegram', co_loi: false, lan_gui_cuoi: t(60) },
     sao_luu: { lan_cuoi: t(10 * 60), lan_cuoi_ok: true, lan_cuoi_thu: 'dat', dung_duoc_cuoi: t(10 * 60), kich_thuoc: 1048576 },
+    don_dep: { ho_so_qua_han: 0, ho_so_qua_han_7_ngay: 0, ve_qua_han: 0, su_kien_qua_han: false },
     chi_nhanh: [cn(CN1, 'q1', 'Beeftown Q1'), cn(CN7, 'q7', 'Beeftown Q7')],
   };
 }
@@ -91,8 +92,11 @@ await nhom('1 · MỖI ĐÈN CÓ NHÓM: HỆ THỐNG BÁO CẢ ĐÊM, KHÁCH Đ�
   const coNhom = Object.keys(NHOM).filter(m => m !== 'doc_so_lieu').sort();
   ok('NHOM có đúng mọi đèn của bảng sức khỏe (+ đèn giả doc_so_lieu) — đèn mới phải xếp nhóm',
      JSON.stringify(maDen) === JSON.stringify(coNhom) && NHOM.doc_so_lieu === 'he_thong', `${maDen.join()} | ${coNhom.join()}`);
-  ok('Nhóm khách đúng ba đèn: đặt bàn, hồ sơ, tin Zalo kẹt',
-     Object.keys(NHOM).filter(m => NHOM[m] === 'khach').sort().join() === 'dat_ban,tin_zalo,tuyen_dung');
+  ok('Nhóm khách đúng bốn đèn: đặt bàn, hồ sơ, tin Zalo kẹt, dọn dữ liệu cá nhân (0066)',
+     Object.keys(NHOM).filter(m => NHOM[m] === 'khach').sort().join() === 'dat_ban,don_dep,tin_zalo,tuyen_dung');
+  // Đèn Dọn dữ liệu cá nhân đỏ khi hồ sơ quá hạn lưu hơn 7 ngày — mốc tính theo NGÀY Việt Nam, nên đèn đổi màu đúng lúc
+  // 00:00. Nhóm hệ thống thì tin báo đến lúc nửa đêm cho một việc chờ tới sáng được.
+  ok('Dọn dữ liệu cá nhân thuộc nhóm khách: đổi màu lúc 00:00 không đánh thức ai', NHOM.don_dep === 'khach');
   ok('Messenger thuộc nhóm hệ thống (tin khách lỗi lúc 02:00 vẫn báo ngay)', NHOM.messenger === 'he_thong');
   ok('Mã đèn lạ (database mới hơn web) coi là hệ thống — thà báo đêm còn hơn im', nhomCua('den_moi') === 'he_thong');
   const kieu = readFileSync(join(WEB, 'lib', 'bao-dong-chinh-sach.ts'), 'utf8');

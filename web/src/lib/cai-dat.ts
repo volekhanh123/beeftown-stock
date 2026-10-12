@@ -23,6 +23,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo.ts';
 import { dichCau } from './cau-noi-bo.ts';
 import { CAU_MAT_MANG_GHI, laLoiMang } from './qua-tai.ts';
+import { anDanhHoSoHetHan, donCvMoCoiVaVe } from './xoa-cv.ts';
 
 /** Câu của file này ở hai thứ tiếng giao diện nội bộ (lib/ngon-ngu-noi-bo.ts). */
 const CAU = {
@@ -261,21 +262,31 @@ export async function xoaBan(client: SupabaseClient, id: string, nn: NgonNguNB =
 // đúng — nhưng rồi không có nút nào để bấm, nên trên thực tế chúng chưa bao
 // giờ chạy. Trong đó don_dep_ho_so_het_han() là nghĩa vụ theo Nghị định
 // 13/2023 và là lời hứa đang nằm trên trang quyền riêng tư.
+//
+// Từ 0066 hai việc đầu có `chay` riêng (lib/xoa-cv.ts): database không xóa
+// được file trong kho CV, nên web xóa file trước rồi mới gọi database. `ham`
+// vẫn là tên hàm database quyết quyền của nút (test-quyen-ghi-thang-crm.mjs so
+// chi_chu_so_huu với quyền thật); `chay: null` = gọi thẳng hàm đó. Đèn "Dọn dữ
+// liệu cá nhân" ở /noi-bo nói khi nào phải bấm.
 // -----------------------------------------------------------------------------
+type ChayViecDon = (client: SupabaseClient, nn: NgonNguNB, laChu: boolean) => Promise<KetQua>;
+
 export const VIEC_DON = [
   {
     ham: 'don_dep_ho_so_het_han',
     ten: { vi: 'Ẩn danh hồ sơ đã quá hạn lưu', en: 'Anonymise applications past their retention period' },
-    giai_thich: { vi: 'Xóa họ tên, số điện thoại, email, địa chỉ IP và file CV của các hồ sơ đã quá 6 tháng. Giữ lại dòng để số liệu tuyển dụng không bị hụt. Đây là điều Beeftown đã hứa trên trang quyền riêng tư.',
-                  en: 'Deletes the name, phone, email, IP address and CV file of applications older than 6 months. The rows stay so hiring numbers do not drop. This is what Beeftown promised on the privacy page.' },
+    giai_thich: { vi: 'Hồ sơ đã quá 6 tháng: xóa file CV khỏi kho trước, rồi mới xóa họ tên, số điện thoại, email, địa chỉ IP. Hồ sơ nào chưa xóa được file thì giữ nguyên cho lần bấm sau. Giữ lại dòng để số liệu tuyển dụng không bị hụt. Đây là điều Beeftown đã hứa trên trang quyền riêng tư.',
+                  en: 'Applications older than 6 months: the CV file is deleted from the store first, then the name, phone, email and IP address. An application whose file could not be deleted stays as it is until the next run. The rows stay so hiring numbers do not drop. This is what Beeftown promised on the privacy page.' },
     chi_chu_so_huu: true,
+    chay: ((client, nn) => anDanhHoSoHetHan(client, nn)) as ChayViecDon,
   },
   {
     ham: 'don_dep_phieu_tai_len',
-    ten: { vi: 'Dọn vé tải CV đã hết hạn', en: 'Clean up expired CV upload tickets' },
-    giai_thich: { vi: 'Vé chỉ sống 15 phút. Dọn định kỳ cho bảng khỏi phình.',
-                  en: 'Tickets live only 15 minutes. Clean up regularly so the table does not grow.' },
+    ten: { vi: 'Xóa CV mồ côi và dọn vé tải CV', en: 'Delete orphaned CVs and clean up CV upload tickets' },
+    giai_thich: { vi: 'CV mồ côi là file trong kho CV mà không hồ sơ nào trỏ tới — thường là lượt nộp bị từ chối sau khi file đã tải lên. Nút này xóa chúng trước, kho sạch rồi mới dọn vé (vé chỉ sống 15 phút). Chỉ chủ nhà hàng xóa được file trong kho CV: quản lý bấm thì chỉ dọn vé khi kho không còn CV mồ côi.',
+                  en: 'An orphaned CV is a file in the CV store that no application points to — usually an application that was rejected after its file was uploaded. This button deletes them first, and only cleans up tickets (which live 15 minutes) once the store is clean. Only the owner can delete files in the CV store: when a manager presses it, tickets are only cleaned up if no orphaned CV is left.' },
     chi_chu_so_huu: false,
+    chay: ((client, nn, laChu) => donCvMoCoiVaVe(client, laChu, nn)) as ChayViecDon,
   },
   {
     ham: 'don_dep_su_kien_web',
@@ -284,12 +295,17 @@ export const VIEC_DON = [
                   en: 'The privacy page says data is kept only 90 days. This button keeps that promise.' },
     // don_dep_su_kien_web() (0013) chỉ cho chủ sở hữu — quản lý bấm sẽ chỉ nhận câu từ chối.
     chi_chu_so_huu: true,
+    chay: null,
   },
 ] as const;
 
-export async function chayViecDon(client: SupabaseClient, ham: string, nn: NgonNguNB = 'vi'): Promise<KetQua> {
+export async function chayViecDon(
+  client: SupabaseClient, ham: string, nn: NgonNguNB = 'vi', laChu = false,
+): Promise<KetQua> {
   const t = dichNB(nn, CAU);
-  if (!VIEC_DON.some(v => v.ham === ham)) return { ok: false, cau: t.viecDonSai };
+  const viec = VIEC_DON.find(v => v.ham === ham);
+  if (!viec) return { ok: false, cau: t.viecDonSai };
+  if (viec.chay) return viec.chay(client, nn, laChu);
   const { data, error } = await client.rpc(ham);
   if (error) return { ok: false, cau: cauLoi(error, t.khongChay, nn) };
   const n = typeof data === 'number' ? data : 0;
