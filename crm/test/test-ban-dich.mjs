@@ -106,10 +106,8 @@ await db.query(`insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro)
 await db.query(`insert into nhan_su (auth_uid, chi_nhanh_id, ho_ten, vai_tro)
                 values ($1,$2,'Thu ngân','thu_ngan')`, [uidTn, cn.id]);
 
-await db.exec(`
-  grant select, insert, update, delete on all tables in schema public to authenticated;
-  grant execute on all functions in schema public to authenticated;
-`);
+// Quyền của authenticated đúng như Supabase: quyền mặc định đặt trước khi nạp migration, trừ những gì
+// migration đã thu hồi. Không cấp hàng loạt ở đây — nó xoá trắng các revoke (test-quy-trinh.mjs, mục 6).
 
 await db.query(`
   insert into noi_dung_cong_bo (khoa, kieu, gia_tri_bool, trang_thai)

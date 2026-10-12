@@ -103,12 +103,8 @@ await db.query(`select * from ghi_luot_ghe($1,$2,290000::bigint)`, [cnB.id, '092
 
 ok('Dựng 2 chi nhánh, 3 nhân sự, 2 khách', true);
 
-// Cấp quyền bảng cho `authenticated` — RLS mới là lớp lọc, không phải GRANT
-await db.exec(`
-  grant usage on schema public to authenticated;
-  grant select, insert, update on all tables in schema public to authenticated;
-  grant execute on all functions in schema public to authenticated;
-`);
+// Quyền của authenticated đúng như Supabase: quyền mặc định đặt trước khi nạp migration, trừ những gì
+// migration đã thu hồi. Không cấp hàng loạt ở đây — nó xoá trắng các revoke (test-quy-trinh.mjs, mục 6).
 
 /** Chạy truy vấn dưới danh nghĩa một nhân sự cụ thể (không phải superuser) */
 async function duoiDanhNghia(uid, sql, params = []) {

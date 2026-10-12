@@ -5,14 +5,16 @@
  * nạp toàn bộ migration, hai chi nhánh, đủ các vai. Gom về đây để mỗi file
  * test chỉ còn phần kiểm tra.
  *
- * Khác các file test CRM cũ ở một điểm CÓ Ý THỨC: KHÔNG cấp EXECUTE hàng loạt
- * cho authenticated sau khi nạp migration. Quyền của authenticated ở đây đúng
- * là quyền Supabase cấp mặc định trừ đi những gì migration đã thu hồi — nên
- * một hàm nội bộ lỡ để lọt ra ngoài sẽ lộ ra trong test thay vì bị che.
+ * CÓ Ý THỨC không cấp EXECUTE hàng loạt cho authenticated sau khi nạp migration
+ * (bảy file test CRM cũ từng làm vậy — đã bỏ 12/10/2026, test-quy-trinh.mjs mục 6
+ * chặn). Quyền của authenticated ở đây đúng là quyền Supabase cấp mặc định trừ
+ * đi những gì migration đã thu hồi — nên một hàm nội bộ lỡ để lọt ra ngoài sẽ lộ
+ * ra trong test thay vì bị che.
  */
 
 import { PGlite } from '@electric-sql/pglite';
-import { readFileSync, readdirSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -73,6 +75,14 @@ export function taoBoDem(tieuDe) {
  * chạy migration mới nhất. Trả về db, danh sách file đã nạp và nội dung từng file (Map tên → SQL).
  */
 export async function dungDatabaseTrong({ den = Infinity } = {}) {
+  // Không có `den` thì nạp MỌI file .sql như trước — kể cả file tên sai mẫu (kiem-migration.mjs mới là chỗ chặn tên).
+  const daNap = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort()
+    .filter(f => den === Infinity || Number(f.slice(0, 4)) <= den);
+  const vanBan = new Map(daNap.map(f => [f, readFileSync(join(MIGRATIONS_DIR, f), 'utf8')]));
+
+  const anh = den === Infinity ? docAnhDatabase(vanBan) : null;
+  if (anh) return { db: new PGlite({ loadDataDir: anh }), daNap, vanBan };
+
   const db = new PGlite();
 
   await db.exec(`
@@ -96,15 +106,46 @@ export async function dungDatabaseTrong({ den = Infinity } = {}) {
     alter default privileges in schema public grant all on sequences to anon, authenticated;
   `);
 
-  // Không có `den` thì nạp MỌI file .sql như trước — kể cả file tên sai mẫu (kiem-migration.mjs mới là chỗ chặn tên).
-  const daNap = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort()
-    .filter(f => den === Infinity || Number(f.slice(0, 4)) <= den);
-  const vanBan = new Map();
-  for (const f of daNap) {
-    vanBan.set(f, readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
-    await db.exec(vanBan.get(f));
-  }
+  for (const f of daNap) await db.exec(vanBan.get(f));
   return { db, daNap, vanBan };
+}
+
+// ---------------------------------------------------------------------------
+// Ảnh chụp database trống — nạp 62 migration mất ~2,5 giây mỗi file test, nạp lại từ ảnh ~0,7 giây
+// ---------------------------------------------------------------------------
+// Bộ chạy (chay-tat-ca.mjs) dựng database trống MỘT lần, chụp lại (dumpDataDir) và đưa đường dẫn qua biến
+// BEEFTOWN_ANH_DATABASE; dungDatabaseTrong() của từng file nạp lại từ ảnh (loadDataDir). Ảnh kèm dấu vân của
+// thư mục migration: lệch (sửa migration giữa lượt) hay thiếu file thì tự nạp migration như cũ. File chạy riêng
+// (node test/x.mjs) không có biến này nên luôn nạp migration. `den` (doi-chieu) cũng không dùng ảnh.
+export const BIEN_ANH_DATABASE = 'BEEFTOWN_ANH_DATABASE';
+
+/** Dấu vân của bộ migration: tên và nội dung từng file, theo thứ tự nạp. */
+function dauVanMigration(vanBan) {
+  const h = createHash('sha256');
+  for (const [ten, sql] of vanBan) h.update(ten).update('\0').update(sql).update('\0');
+  return h.digest('hex');
+}
+
+function docAnhDatabase(vanBan) {
+  const duongDan = process.env[BIEN_ANH_DATABASE];
+  if (!duongDan || !existsSync(duongDan) || !existsSync(`${duongDan}.dau-van`)) return null;
+  if (readFileSync(`${duongDan}.dau-van`, 'utf8') !== dauVanMigration(vanBan)) return null;
+  return new Blob([readFileSync(duongDan)]);
+}
+
+/** Dựng database trống (luôn nạp migration, không đọc ảnh cũ) rồi chụp vào `duongDan` kèm dấu vân. */
+export async function chupDatabaseTrong(duongDan) {
+  const truoc = process.env[BIEN_ANH_DATABASE];
+  delete process.env[BIEN_ANH_DATABASE];
+  try {
+    const { db, vanBan } = await dungDatabaseTrong();
+    const anh = await db.dumpDataDir('none');   // không nén: nạp nhanh hơn ~0,4 giây mỗi file, đổi lấy ~80 MB tạm
+    writeFileSync(duongDan, Buffer.from(await anh.arrayBuffer()));
+    writeFileSync(`${duongDan}.dau-van`, dauVanMigration(vanBan));
+    await db.close();
+  } finally {
+    if (truoc !== undefined) process.env[BIEN_ANH_DATABASE] = truoc;
+  }
 }
 
 /**
@@ -188,6 +229,45 @@ export async function themMayIpos(db, cnA, cnB) {
     id[k] = r.id;
   }
   return id;
+}
+
+// ---------------------------------------------------------------------------
+// Đồng hồ giả phía database — bản SQL của dong-ho-gia.mjs
+// ---------------------------------------------------------------------------
+// hom_nay_vn(), bay_gio_vn(), gio_vn() đọc now() — giờ thật của máy chạy test, không giả được bằng cách thay
+// Date của Node. datGioDatabase() thay thân ba hàm (chỉ trong database PGlite của file test, không migration nào
+// đổi) để trả đúng thời điểm muốn thử; traGioDatabase() đặt lại đúng định nghĩa đang có trong database
+// (pg_get_functiondef — không chép tay, nên migration sau này có định nghĩa lại cũng không lệch).
+// Chỉ ba hàm này: now() trong cột created_at hay mốc "10 phút gần đây" vẫn là giờ thật. Nghiệp vụ theo ngày phải
+// đi qua ba hàm này (kiem-migration.mjs chặn current_date), nên giả ba hàm là đủ thử mốc 23:50 / 00:10 giờ VN.
+const HAM_GIO_VN = ['bay_gio_vn', 'hom_nay_vn', 'gio_vn'];
+const dinhNghiaGioThat = new WeakMap();
+
+/** `thoiDiem`: chuỗi ISO có múi giờ ('2026-10-12T16:50:00Z' = 23:50 giờ VN) hoặc số mili-giây. */
+export async function datGioDatabase(db, thoiDiem) {
+  const ms = typeof thoiDiem === 'number' ? thoiDiem : Date.parse(thoiDiem);
+  if (!Number.isFinite(ms)) throw new Error(`datGioDatabase: thời điểm không hợp lệ ${thoiDiem}`);
+  if (!dinhNghiaGioThat.has(db)) {
+    const { rows } = await db.query(
+      `select pg_get_functiondef(p.oid) as dinh_nghia from pg_proc p
+         join pg_namespace n on n.oid = p.pronamespace
+        where n.nspname = 'public' and p.proname = any($1)`, [HAM_GIO_VN]);
+    if (rows.length !== HAM_GIO_VN.length) throw new Error(`datGioDatabase: thiếu hàm, chỉ thấy ${rows.length}/${HAM_GIO_VN.length}`);
+    dinhNghiaGioThat.set(db, rows.map(r => r.dinh_nghia));
+  }
+  const vn = `((timestamptz '${new Date(ms).toISOString()}' at time zone 'utc') + interval '7 hours')`;
+  await db.exec(`
+    create or replace function public.bay_gio_vn() returns timestamp language sql stable as $$ select ${vn} $$;
+    create or replace function public.hom_nay_vn() returns date      language sql stable as $$ select ${vn}::date $$;
+    create or replace function public.gio_vn()     returns time      language sql stable as $$ select ${vn}::time $$;
+  `);
+}
+
+export async function traGioDatabase(db) {
+  const dinhNghia = dinhNghiaGioThat.get(db);
+  if (!dinhNghia) return;
+  for (const d of dinhNghia) await db.exec(d);
+  dinhNghiaGioThat.delete(db);
 }
 
 /** uuid ngẫu nhiên cho ma_gui. */

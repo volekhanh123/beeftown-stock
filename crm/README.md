@@ -38,7 +38,7 @@ Mọi kiểm thử đều đạt — số kiểm tra xem ở dòng cuối của 
 
 ## Chạy kiểm thử
 
-Không cần Docker, không cần cài Postgres — dùng PGlite (Postgres chạy WASM trong Node).
+Không cần Docker, không cần cài Postgres — dùng PGlite (Postgres chạy WASM trong Node), bản Postgres 17 như Supabase production (`test-quy-trinh.mjs` mục 1 giữ điều này).
 
 ```bash
 cd web && npm ci        # một lần — test ở đây đọc cả mã web (@astrojs/compiler-rs, supabase-js)
@@ -85,6 +85,8 @@ cd ../crm && npm ci && npm test
 - **`coalesce(..., false)` ở hai vế lọc của `v_viec_dich`** (`0036`). Gỡ đi thì ô CHƯA TỪNG DỊCH biến mất khỏi danh sách việc — `not (null = x)` là null, và WHERE coi null là sai. `test-ban-dich.mjs` đỏ năm chỗ khi thử gỡ.
 
 `test-phan-quyen.mjs` **mô phỏng quyền mặc định của Supabase** trước khi chạy migration. Thiếu khối đó thì mọi khẳng định "anon không làm được X" đều đúng một cách RỖNG — đúng vì PGlite vốn không cấp gì cho `anon`, chứ không phải vì schema an toàn.
+Chiều ngược lại cũng sai được: **cấp hàng loạt SAU khi nạp migration** (`grant execute on all functions … to authenticated`)
+xoá trắng mọi `revoke` của migration — bảy file test cũ từng làm vậy cho tới 12/10/2026; `test-quy-trinh.mjs` mục 6 chặn.
 
 ### Kiểm thử tự động (CI)
 

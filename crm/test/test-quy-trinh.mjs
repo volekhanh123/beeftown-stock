@@ -16,6 +16,8 @@
  *   3. Các file của quy trình (CLAUDE.md, workflow CI, mẫu PR, mẫu báo lỗi) có
  *      mặt và không bị .gitignore chặn; workflow vẫn chạy đủ các bước.
  *   4. CLAUDE.md và mẫu PR cùng liệt kê đủ 9 mục "định nghĩa xong".
+ *   5. crm/README.md nhắc đủ migration, migration thêm giá trị enum có dòng "chạy RIÊNG".
+ *   6. Không file kiểm thử nào cấp quyền hàng loạt (mọi hàm, mọi bảng) sau khi nạp migration.
  */
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -52,6 +54,12 @@ await nhom('1 · MỌI HÀM SQL ĐỀU CÓ KIỂM THỬ NHẮC TÊN', async () =
      where n.nspname = 'public' order by 1`);
   const ten = rows.map(r => r.proname);
   ok('Đọc được danh sách hàm', ten.length > 300, `${ten.length} hàm`);
+
+  // Supabase của Beeftown chạy Postgres 17. PGlite 0.2 là Postgres 16 (kiểm thử đến 12/10/2026), 0.5 trở đi là 18 —
+  // khác major thì cú pháp, hàm có sẵn, định nghĩa tự sinh (doi-chieu) lệch production mà test vẫn xanh.
+  // Nâng PGlite (Dependabot chặn sẵn ≥ 0.5) thì giữ dòng này xanh; production lên 18 thì đổi cả hai cùng lúc.
+  const { rows: [pg] } = await db.query(`select current_setting('server_version_num')::int / 10000 as major`);
+  ok('Database thử là Postgres 17, cùng major với Supabase production', pg.major === 17, `Postgres ${pg.major}`);
 
   // Nguồn: mọi file test trừ chính file này (danh sách miễn ở trên không được tính là "đã nhắc").
   const nguon = [
@@ -103,6 +111,7 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
     '.github/workflows/gac-nhanh.yml',
     '.github/workflows/dong-goi-can.yml',
     '.github/workflows/sao-luu.yml',
+    '.github/dependabot.yml',
     'crm/sao-luu/sao-luu.sh',
     'crm/sao-luu/khoi-phuc.sh',
     'crm/sao-luu/dem-dong.sh',
@@ -253,6 +262,21 @@ await nhom('5 · crm/README.md: CÂY MIGRATION ĐỦ FILE, MIGRATION THÊM GIÁ 
   const thieuRieng = themEnum.map(f => f.slice(0, 4)).filter(so => !new RegExp(`\\*\\*\`${so}\` phải chạy RIÊNG`).test(readme));
   ok(`Mọi migration thêm giá trị enum (${themEnum.map(f => f.slice(0, 4)).join(', ')}) có dòng "\`00NN\` phải chạy RIÊNG"`,
      themEnum.length > 0 && thieuRieng.length === 0, `thiếu: ${thieuRieng.join(', ')}`);
+});
+
+// ===========================================================================
+await nhom('6 · KHÔNG FILE KIỂM THỬ NÀO CẤP QUYỀN HÀNG LOẠT SAU KHI NẠP MIGRATION', async () => {
+  // Bảy file test cũ (test-an-toan, -ban-dich, -cong-bo, -cong-khai, -dat-noi-dung, -phan-quyen, -tuyen-dung) từng
+  // chạy "grant execute on all functions … to authenticated" sau khi nạp migration: mọi revoke trong migration bị
+  // xoá trắng, nên một hàm lẽ ra nhân viên không gọi được vẫn gọi được trong test — và một hàm web gọi được trong
+  // test có thể bị từ chối trên production. Bỏ đi thì cả bảy vẫn xanh (12/10/2026): chúng không cần. Quyền mặc định
+  // của Supabase đặt bằng "alter default privileges" TRƯỚC khi nạp migration (kho-chung.mjs) thì vẫn đúng.
+  const HANG_LOAT = /\bgrant\b[^;`]*\bon\s+all\s+(functions|tables|sequences|routines|procedures)\s+in\s+schema\b/i;
+  const tep = readdirSync(THU_MUC).filter(f => f.endsWith('.mjs')).sort();
+  const vi = tep.filter(f => readFileSync(join(THU_MUC, f), 'utf8').split('\n')
+    .some(dong => HANG_LOAT.test(dong) && !/default\s+privileges/i.test(dong)));
+  ok(`Không file nào trong crm/test/ (${tep.length} file) có "grant … on all functions/tables in schema"`,
+     vi.length === 0, `có trong: ${vi.join(', ')} — dùng quyền Supabase mặc định (kho-chung.mjs), cấp riêng từng hàm nếu thật sự cần`);
 });
 
 process.exit(ketThuc('QUY TRÌNH'));

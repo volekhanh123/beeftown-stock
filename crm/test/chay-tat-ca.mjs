@@ -14,6 +14,10 @@
  * song song được. Mặc định: ở máy dừng nhận file mới ngay khi có file hỏng (như
  * chuỗi && cũ); --tat-ca chạy hết để một lượt CI báo được mọi chỗ hỏng.
  *
+ * Database trống (mô phỏng Supabase + mọi migration) dựng một lần ở đầu lượt rồi
+ * chụp lại; file nào dựng qua kho-chung.mjs thì nạp từ ảnh thay vì chạy lại từng
+ * migration (kho-chung.mjs, mục "Ảnh chụp database trống").
+ *
  * Cuối cùng in tổng số kiểm tra của cả bộ — README không ghi số đếm tay nữa, vì
  * số đếm tay luôn cũ (README từng ghi 1374 khi bộ thật đã lớn gấp mấy lần).
  */
@@ -23,6 +27,7 @@ import { spawn } from 'node:child_process';
 import { availableParallelism, tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { BIEN_ANH_DATABASE, chupDatabaseTrong } from './kho-chung.mjs';
 
 const THU_MUC = dirname(fileURLToPath(import.meta.url));
 
@@ -101,7 +106,7 @@ function chayMot(f) {
     const duongRa = join(THU_MUC_TAM, `${f}.log`);
     const fd = openSync(duongRa, 'w');
     const con = spawn(process.execPath, [join(THU_MUC, f)], {
-      cwd: join(THU_MUC, '..'), env: { ...process.env, FORCE_COLOR: '1' }, stdio: ['ignore', fd, fd],
+      cwd: join(THU_MUC, '..'), env: { ...process.env, ...bienAnh, FORCE_COLOR: '1' }, stdio: ['ignore', fd, fd],
     });
     let quaGio = false;
     const hen = setTimeout(() => { quaGio = true; con.kill('SIGKILL'); }, GIOI_HAN_MS);
@@ -139,6 +144,17 @@ function inKetQua(kq) {
 }
 
 const batDau = Date.now();
+
+// Migration hỏng thì không chụp được: không dừng ở đây — mỗi file tự nạp migration và chay-test.mjs báo đúng file hỏng.
+const ANH_DATABASE = join(THU_MUC_TAM, 'database-trong.tar');
+let bienAnh = {};
+try {
+  await chupDatabaseTrong(ANH_DATABASE);
+  bienAnh = { [BIEN_ANH_DATABASE]: ANH_DATABASE };
+} catch (e) {
+  console.log(`\x1b[33m(Không chụp được database trống — mỗi file tự nạp migration: ${e.message.split('\n')[0]})\x1b[0m\n`);
+}
+
 const ketQua = [];
 const hang = [...thuTu];
 let dungNhan = false;

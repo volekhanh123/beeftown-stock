@@ -32,6 +32,8 @@
 !/AGENTS.md
 !/THUONG-HIEU.md
 !/.github/workflows/*.yml
+# Dependabot: PR nâng thư viện và action mỗi tháng (lịch và cách gom ghi ở đầu file).
+!/.github/dependabot.yml
 !/.github/pull_request_template.md
 !/.github/ISSUE_TEMPLATE/*.yml
 

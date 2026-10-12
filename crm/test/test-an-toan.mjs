@@ -106,10 +106,8 @@ await db.query(`select * from ghi_luot_ghe($1,$2,290000::bigint)`, [cnA.id, '091
 await db.query(`select * from ghi_luot_ghe($1,$2,310000::bigint)`, [cnA.id, '0911111111']);
 await db.query(`select * from ghi_luot_ghe($1,$2,290000::bigint)`, [cnB.id, '0922222222']);
 
-await db.exec(`
-  grant select, insert, update on all tables in schema public to authenticated;
-  grant execute on all functions in schema public to authenticated;
-`);
+// Quyền của authenticated đúng như Supabase: quyền mặc định đặt trước khi nạp migration, trừ những gì
+// migration đã thu hồi. Không cấp hàng loạt ở đây — nó xoá trắng các revoke (test-quy-trinh.mjs, mục 6).
 
 async function duoiDanhNghia(uid, sql, params = []) {
   await db.query(`delete from auth._phien`);
