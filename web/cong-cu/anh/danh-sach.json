@@ -129,7 +129,7 @@
       "goc": "mon-lau-kim-chi.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -143,7 +143,7 @@
       "goc": "mon-lau-bo-bulgogi.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -157,7 +157,7 @@
       "goc": "mon-lau-nam.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -171,7 +171,7 @@
       "goc": "mon-set-4-sot.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -185,7 +185,7 @@
       "goc": "mon-salad-nam.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -199,7 +199,7 @@
       "goc": "mon-caesar-salad.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -213,7 +213,7 @@
       "goc": "mon-mien-tron-han.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -227,7 +227,7 @@
       "goc": "mon-trung-hap-nui-lua.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -241,7 +241,7 @@
       "goc": "mon-khoai-tay-chien-sot-bo.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -255,7 +255,7 @@
       "goc": "mon-banh-gao-chien-pho-mai.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -269,7 +269,7 @@
       "goc": "mon-canh-kim-chi.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -283,7 +283,7 @@
       "goc": "mon-dau-phu-ham.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -297,7 +297,7 @@
       "goc": "mon-canh-tuong-dau.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -311,7 +311,7 @@
       "goc": "mon-com-kim-chi-bo.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -325,7 +325,7 @@
       "goc": "mon-com-tron-han.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -339,7 +339,7 @@
       "goc": "mon-com-tron-trung-ca.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -353,7 +353,7 @@
       "goc": "mon-mi-lanh-cay.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -367,7 +367,7 @@
       "goc": "mon-mi-toowoomba.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -381,7 +381,7 @@
       "goc": "mon-mi-carbonara.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },
@@ -395,7 +395,7 @@
       "goc": "mon-mi-bo-sot-ca.webp",
       "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
-        "4x3": { "rong": [480, 800] },
+        "4x3": { "rong": [400, 800] },
         "1x1": { "rong": [200, 320], "tach_nen": {"le": 0.05, "duoi": 0.2} }
       }
     },

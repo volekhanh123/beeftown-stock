@@ -49,10 +49,12 @@ Hai loại ảnh, hai đường:
   Chung cho cả hai:
   3. Thu nhỏ bằng LANCZOS về từng bề rộng. Bề rộng lớn hơn vùng cắt thì bỏ — không phóng to; khi đó
      xuất thêm đúng bề rộng của vùng cắt nếu nó lớn hơn cỡ đã giữ từ 15 % trở lên.
-  4. Xuất AVIF (chất lượng 55) và WebP (chất lượng 75, method 6; ảnh tách nền: kênh trong suốt chất lượng
-     80). File nào quá 300 KB thì hạ chất lượng từng nấc 5 tới sàn (AVIF 30, WebP 45); tới sàn vẫn quá thì
-     KHÔNG thay file cũ của khung đó và báo lỗi. Một ảnh có thể khai "chat_luong" riêng (avif, webp) để
-     giữ tổng thư mục dưới 8 MB.
+  4. Xuất AVIF (chất lượng 55) và WebP (chất lượng 75, method 6). Ảnh tách nền: AVIF 40, WebP 60, kênh
+     trong suốt của WebP 50 — món đặt trên nền trơn, không có nền ảnh để che vết nén, vậy mà so bằng mắt ở
+     màn 2x (13/10/2026, bản 800px hiện 400px) không thấy khác bản 55 / 75 / 80 ngoài vài hạt tiêu mờ hơn;
+     26 ảnh tách nền từ 3,9 MB còn 2,4 MB, nhường chỗ cho ảnh chụp thật sau này. File nào quá 300 KB thì
+     hạ chất lượng từng nấc 5 tới sàn (AVIF 30, WebP 45); tới sàn vẫn quá thì KHÔNG thay file cũ của khung
+     đó và báo lỗi. Một ảnh có thể khai "chat_luong" riêng (avif, webp) để giữ tổng thư mục dưới 8 MB.
   5. Dựng xong cả khung trong thư mục tạm rồi mới xóa file cũ của khung đó và chép file mới vào: chạy hỏng
      giữa chừng không để lại nửa bộ ảnh.
 
@@ -98,8 +100,10 @@ THEM_CO_GOC_KHI = 1.15
 # Ảnh cắt (không khai "tach_nen") mà có nền trong suốt: đặt lên màu Cream của trang công khai trước khi
 # bỏ kênh alpha. Màu này cũng là nền để tính màu trung bình của ảnh tách nền.
 NEN_KEM = (0xF0, 0xE3, 0xD0, 255)
-# Ảnh tách nền: chất lượng kênh trong suốt của WebP (100 = không mất mát — bóng đổ mềm không cần tới mức đó).
-CHAT_LUONG_ALPHA_WEBP = 80
+# Ảnh tách nền: chất lượng bắt đầu (thay cho CHAT_LUONG) và chất lượng kênh trong suốt của WebP (100 = không
+# mất mát — bóng đổ mềm không cần tới mức đó). Lý do chọn: đầu file, bước 4.
+CHAT_LUONG_TACH_NEN = {'avif': 40, 'webp': 60}
+CHAT_LUONG_ALPHA_WEBP = 50
 # Ảnh tách nền: điểm có độ đục từ mức này trở xuống (trên 255) coi như trong suốt khi tìm hộp bao phần có hình.
 NGUONG_ALPHA = 8
 
@@ -380,7 +384,10 @@ def dung_mot_khung(anh, id_anh, ten_khung, k, dong, tach_nen=None, chat_luong_ri
             if nho.mode == 'RGBa':
                 nho = nho.convert('RGBA')
             for duoi in DUOI:
-                du_lieu, chat_luong = ma_hoa(nho, duoi, (chat_luong_rieng or {}).get(duoi))
+                bat_dau = (chat_luong_rieng or {}).get(duoi)
+                if bat_dau is None and tach_nen is not None:
+                    bat_dau = CHAT_LUONG_TACH_NEN[duoi]
+                du_lieu, chat_luong = ma_hoa(nho, duoi, bat_dau)
                 (tam / f'{id_anh}-{ten_khung}-{rong}.{duoi}').write_bytes(du_lieu)
                 dong['chat_luong'][duoi] = min(dong['chat_luong'].get(duoi, 100), chat_luong)
                 if len(du_lieu) > TOI_DA_MOT_FILE:
