@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN CRM — Kiểm thử: giới hạn tần suất của các hàm công khai (0074)
+ * BEEFTOWN CRM — Kiểm thử: giới hạn tần suất của các hàm công khai (0079)
  * =======================================================================
  *
  *     node test/test-cong-khai-gioi-han.mjs
@@ -10,7 +10,7 @@
  * được. Lớp chặn thật là theo số điện thoại, theo chi nhánh và toàn cục.
  *
  * Rà soát nợ kỹ thuật 11/10/2026 tái hiện được trên PGlite (mỗi dòng dưới đây
- * là một kiểm tra "RÀ SOÁT 11/10" — đỏ trước 0074, xanh từ 0074):
+ * là một kiểm tra "RÀ SOÁT 11/10" — đỏ trước 0079, xanh từ 0079):
  *   · tao_dat_ban không giới hạn: lời gọi anon với số điện thoại mới mỗi lần
  *     chiếm hết bàn một khung giờ và đổ dòng rác vào khach_hang;
  *   · xin_phieu_tai_cv, nop_ho_so_ung_tuyen bỏ qua giới hạn khi p_ip null; một
@@ -33,7 +33,7 @@ import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const WEB = join(__dirname, '..', '..', 'web', 'src', 'lib');
 
-const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — GIỚI HẠN TẦN SUẤT CỦA CÁC HÀM CÔNG KHAI (0074)');
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — GIỚI HẠN TẦN SUẤT CỦA CÁC HÀM CÔNG KHAI (0079)');
 const { db, cnA, cnB, duoi, duoiAnon, phaiLoi } = await dungDatabase();
 
 // Chi nhánh A rộng (60 bàn) để thứ chặn là giới hạn, không phải hết chỗ. Chi
@@ -90,7 +90,7 @@ async function guiLienTuc(n, taoLuot) {
 
 /**
  * Sổ giới hạn về trống — mỗi nhóm thử đúng một giới hạn, không mang lượt của nhóm trước. Bảng chưa
- * có (chạy trước 0074, trước bản sửa) thì bỏ qua để các kiểm tra RÀ SOÁT đỏ đúng chỗ; nhóm 0 mới là
+ * có (chạy trước 0079, trước bản sửa) thì bỏ qua để các kiểm tra RÀ SOÁT đỏ đúng chỗ; nhóm 0 mới là
  * chỗ đòi bảng phải có.
  */
 const xoaSoGioiHan = async () => {
@@ -145,7 +145,7 @@ await nhom('0 · TIỀN ĐỀ — chữ ký không đổi, quyền gọi, bảng
      kieu?.tap === false && kieu.kieu === 'jsonb' && kieu.dinh === true && /search_path=public/.test(kieu.cfg ?? ''), JSON.stringify(kieu));
 
   // RÀ SOÁT 11/10: ghi_nhat_ky_tra_cuu chèn thẳng một dòng mỗi lần gọi, không giới hạn — kể cả
-  // dòng thanh_cong = false giả để khoá tra cứu của người khác. Từ 0074 tra_cuu_dat_ban và
+  // dòng thanh_cong = false giả để khoá tra cứu của người khác. Từ 0079 tra_cuu_dat_ban và
   // huy_dat_ban tự ghi; không ai bên ngoài cần gọi nó nữa.
   const ghiAnon = await duoiAnon(`select ghi_nhat_ky_tra_cuu('203.0.113.1'::inet, 'XXXXXX', false)`);
   ok('RÀ SOÁT 11/10: anon KHÔNG còn gọi được ghi_nhat_ky_tra_cuu()', /permission denied/i.test(ghiAnon.loi ?? ''), ghiAnon.loi ?? 'GỌI ĐƯỢC');
@@ -178,7 +178,7 @@ await nhom('1 · tao_dat_ban — RÀ SOÁT 11/10: chiếm hết bàn, đổ rác
   // Kịch bản báo cáo: lời gọi anon thẳng (p_ip null, hay p_ip tự bịa) với số điện thoại mới mỗi
   // lần. Giới hạn không làm khung giờ rộng ra — kẻ đổi cả IP lẫn số vẫn lấy được tới trần chi nhánh
   // (30 / giờ), và khi trần đã chạm thì khách thật cũng nhận câu bận tới hết giờ (đánh đổi ghi ở
-  // đầu 0074). Điều 0074 đổi: không còn vô hạn, khach_hang không đầy rác, câu từ chối nói đúng.
+  // đầu 0079). Điều 0079 đổi: không còn vô hạn, khach_hang không đầy rác, câu từ chối nói đúng.
   await xoaSoGioiHan();
   const khachTruoc = await dem(`select count(*) from khach_hang`);
   const nullIp = await guiLienTuc(50, i => datBan({ sdt: sdtThu(1000 + i), gio: '19:00' }));
@@ -186,7 +186,7 @@ await nhom('1 · tao_dat_ban — RÀ SOÁT 11/10: chiếm hết bàn, đổ rác
      nullIp.bi === 31, `bị chặn ở lượt ${nullIp.bi}: ${nullIp.loi}`);
   ok('…bằng câu nói đúng sự thật (hệ thống bận), không phải "đã hết bàn"', nullIp.loi?.includes(CAU.heThongBan), nullIp.loi);
   ok('RÀ SOÁT 11/10: khach_hang thêm đúng 30 dòng, không phải 50', (await dem(`select count(*) from khach_hang`)) - khachTruoc === 30);
-  // IP null không có xô riêng nhỏ hơn trần chi nhánh (đầu 0074): xô đó chỉ là công tắc tắt bot
+  // IP null không có xô riêng nhỏ hơn trần chi nhánh (đầu 0079): xô đó chỉ là công tắc tắt bot
   // Messenger cho kẻ phá, trong khi kẻ phá thoát xô bằng cách bịa IP.
   await huyHetChoXacNhan();
 
@@ -280,7 +280,7 @@ await nhom('3 · tra_cuu_mot_dat_ban / huy_dat_ban — khoá dò mã thật sự
      nk.length === 2 && nk[0].thanh_cong === true && nk[1].thanh_cong === false, JSON.stringify(nk));
   ok('…nhật ký không chứa số điện thoại thô', nk.every(r => r.sdt_bam && !String(r.sdt_bam).includes(sdtKhach.slice(2))), JSON.stringify(nk));
 
-  // RÀ SOÁT 11/10: Messenger luôn truyền p_ip null → khoá cũ (chỉ theo IP) là mã chết. Từ 0074
+  // RÀ SOÁT 11/10: Messenger luôn truyền p_ip null → khoá cũ (chỉ theo IP) là mã chết. Từ 0079
   // khoá theo số điện thoại và toàn cục không đọc p_ip.
   await db.query(`delete from nhat_ky_tra_cuu`);
   let biKhoa = null;
@@ -347,7 +347,7 @@ await nhom('3 · tra_cuu_mot_dat_ban / huy_dat_ban — khoá dò mã thật sự
   ok('…nhật ký tra cứu giữ đúng 100 dòng', (await dem(`select count(*) from nhat_ky_tra_cuu`)) === 100);
 
   // Hạn giữ: mọi lần tra giờ đều ghi IP và md5 số điện thoại. Dòng quá 30 ngày do lượt báo động dọn
-  // (don_nhat_ky_qua_han, 0073 — kiểm ở test-bao-dong-don-nhat-ky.mjs); 0074 không thêm lượt dọn thứ hai.
+  // (don_nhat_ky_qua_han, 0073 — kiểm ở test-bao-dong-don-nhat-ky.mjs); 0079 không thêm lượt dọn thứ hai.
   const { nguonDon } = await mot(`select prosrc as "nguonDon" from pg_proc where proname = 'don_nhat_ky_qua_han'`);
   ok('Nhật ký tra cứu (có thêm sdt_bam) vẫn được dọn bởi don_nhat_ky_qua_han (0073)', /delete\s+from\s+nhat_ky_tra_cuu/i.test(nguonDon ?? ''));
   await db.query(`delete from nhat_ky_tra_cuu`);
@@ -422,10 +422,10 @@ await nhom('4 · xin_phieu_tai_cv và vé tải CV', async () => {
 
   // Chốt 2 (trigger): storage-api kiểm policy lần cuối trong một savepoint rồi hủy, sau đó mới ghi
   // dòng — hai lượt tải SONG SONG cùng vé đều qua chốt 1. Trigger chặn ở bước ghi dòng. Chạy lại
-  // NGUYÊN VĂN khối storage của 0074 trên bảng giả (PGlite một kết nối: thử thứ tự, không thử song song).
-  const mig = readFileSync(join(__dirname, '..', 'supabase', 'migrations', '0074_gioi_han_cong_khai.sql'), 'utf8');
-  const khoi = mig.slice(mig.indexOf('-- KHỐI STORAGE 0074'), mig.indexOf('-- HẾT KHỐI STORAGE 0074'));
-  ok('Đọc được khối storage của 0074', khoi.includes('create trigger ho_so_mot_ve_mot_file'), khoi.slice(0, 80));
+  // NGUYÊN VĂN khối storage của 0079 trên bảng giả (PGlite một kết nối: thử thứ tự, không thử song song).
+  const mig = readFileSync(join(__dirname, '..', 'supabase', 'migrations', '0079_gioi_han_cong_khai.sql'), 'utf8');
+  const khoi = mig.slice(mig.indexOf('-- KHỐI STORAGE 0079'), mig.indexOf('-- HẾT KHỐI STORAGE 0079'));
+  ok('Đọc được khối storage của 0079', khoi.includes('create trigger ho_so_mot_ve_mot_file'), khoi.slice(0, 80));
   await db.exec(khoi);
   const { n: soTrigger } = await mot(`select count(*)::int as n from pg_trigger t join pg_class c on c.oid = t.tgrelid
                                        join pg_namespace s on s.oid = c.relnamespace
@@ -484,7 +484,7 @@ await nhom('5 · nop_ho_so_ung_tuyen', async () => {
   ok('Một IP thật: 5 hồ sơ / giờ như 0012, hồ sơ 6 bị từ chối bằng câu cũ', motIp?.i === 6 && motIp.loi.includes(CAU.nopNhieu), JSON.stringify(motIp));
 
   // Theo số điện thoại: chỉ mục duy nhất ho_so_khong_trung_idx (0012) đã chặn — một số, một vị
-  // trí, một ngày; 0074 không thêm luật thứ hai.
+  // trí, một ngày; 0079 không thêm luật thứ hai.
   const trung = await nop(sdtThu(7101), '198.51.100.81');
   ok('Một số điện thoại nộp lại cùng vị trí trong ngày → bị chặn (chỉ mục 0012, dù đổi IP)', trung.loi !== null, trung.loi ?? 'NỘP ĐƯỢC');
 

@@ -432,9 +432,9 @@ async function motSuKien(
       }
       case 'tra_cuu': {
         const r = await traCuuMess(anon, g.ma, g.sdt);
-        // Lỗi database (đang khoá — 0074) mang câu tiếng Việt cho khách; không phải một lần đoán sai.
+        // Lỗi database (đang khoá — 0079) mang câu tiếng Việt cho khách; không phải một lần đoán sai.
         if (!r.ok) { ghi(`không tra cứu được: ${r.loi}`); return { goi: 'tra_cuu', ok: false, loi: r.loi }; }
-        // tra_cuu_mot_dat_ban tự ghi nhật ký tra cứu (0074) — không gọi ghi_nhat_ky_tra_cuu nữa.
+        // tra_cuu_mot_dat_ban tự ghi nhật ký tra cứu (0079) — không gọi ghi_nhat_ky_tra_cuu nữa.
         const thay = !!r.dong;
         const biKhoa = await ghiTraCuu(may, psidBam, thay, ghi);
         return { goi: 'tra_cuu', ok: true, dong: r.dong, biKhoa };
