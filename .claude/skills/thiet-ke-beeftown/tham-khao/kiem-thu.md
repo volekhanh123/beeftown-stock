@@ -68,7 +68,8 @@ là điện thoại rộng nhất, nơi lề `--le` đã lớn hơn 20px):
     điện thoại hai nhóm link thành 2 cột.
   - `anh`: mọi `<img>` trỏ vào `/anh/` nằm trong `figure.anh`; ảnh AI (danh sách id chép tay) có nhãn
     đúng chữ của thứ tiếng, hiện ra, nằm trong khung, chữ ≥ 13px, ≥ 4,5 : 1 trên vùng ảnh sáng nhất;
-    không bóng đổ, không xoay; khung đúng tỷ lệ của file; **không phần tử nào đè lên ảnh** (hỏi trình
+    ảnh tách nền: vẽ ảnh lên canvas đúng cỡ khung, **0 điểm ảnh đặc (độ đục ≥ 50 %) dưới nhãn** — nhãn
+    không che món; không bóng đổ, không xoay; khung đúng tỷ lệ của file; **không phần tử nào đè lên ảnh** (hỏi trình
     duyệt phần tử trên cùng ở năm điểm); mỗi trang nhiều nhất một ảnh tải ngay, có `fetchpriority="high"`,
     thuộc màn đầu trang chủ.
   - `nhanKhay` (trang chủ, Thực đơn): đúng một thẻ `.nk-the`, không `aria-hidden`, năm
@@ -89,9 +90,10 @@ là điện thoại rộng nhất, nơi lề `--le` đã lớn hơn 20px):
   - `thucDon`: "Bò tại quầy" nền Charcoal, có ảnh `bo-cat-lat` và thẻ nhãn khay, không khung vẽ khay;
     "Món ăn" chưa có món thì có ảnh `sot-cham`, đã có món thì không; "Đồ uống" có ảnh `uong-khong-con-ba-ly`;
     không phần tử giá; tên nhóm kiểu cuốn ≥ 28px, không to hơn h1, chữ hoa đậm 800; thẻ món không tràn chữ,
-    ảnh trên chữ (món dẫn đầu từ 768px: ảnh bên phải chữ); dưới 600px món không dẫn đầu của nhóm món ăn
-    là hàng gọn — ảnh 112–128px bên trái chữ, cùng mép trên, nhãn ảnh một dòng trong 20 % đáy khung;
-    mục của thanh chọn phần cao ≥ 48px.
+    ảnh trên chữ (món dẫn đầu từ 768px: ảnh bên phải chữ); dưới 600px món đứng sau món dẫn đầu của nhóm
+    món ăn là hàng gọn — ảnh 112–128px bên trái chữ, cùng mép trên, nhãn ảnh một dòng trong 20 % đáy
+    khung; nhóm không có món dẫn đầu giữ thẻ ảnh trên chữ; "Đồ uống" đã công bố mà toàn món có cồn thì có
+    tên nhóm không cồn (`.td-danh-muc`); mục của thanh chọn phần cao ≥ 48px.
 - **Tương phản** WCAG 2.2: ≥ 4,5 : 1, chữ ≥ 24px hoặc ≥ 18,66px đậm ≥ 3 : 1 (bỏ qua nền ảnh,
   `aria-hidden`, `.an-chu`).
 - Chân trang: dòng `© <năm> Beeftown · Beef Specialty Restaurant` rồi đúng hai dòng pháp nhân, chữ
@@ -166,7 +168,9 @@ mọi món hiện đúng tên ở đúng phần, món có ảnh (`ANH_CUA_MON`) 
 hiện; món sống có nhãn và câu cảnh báo; câu dưới tên nhóm đúng `CAU_NHOM`; không phần tử giá, không số tiền;
 không cuộn ngang; đủ mười bốn phép đo trên từng tab. `khong-con-tat`: ba ly signature, nhãn Có cồn, dòng luật
 rượu không hiện. `thuc-don-thu-suc` (`MON_THU_SUC`): món không ảnh, tên và mô tả rất dài, nhóm mã lạ chưa có
-câu, nhóm đồ uống dạng danh sách. Sửa thẻ món thì chạy `npm run thu-day-du -- --chi 11`.
+câu, nhóm đồ uống dạng danh sách. `day-du` chỉ có ba ly signature (có cồn) ở Đồ uống: tên ba nhóm không cồn
+phải đứng đầu cột thực đơn, cạnh ảnh ba ly không cồn; có món không cồn thì không. Sửa thẻ món thì chạy
+`npm run thu-day-du -- --chi 11`.
 
 ## Nội bộ và kho
 

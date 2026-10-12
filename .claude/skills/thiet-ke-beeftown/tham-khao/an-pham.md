@@ -64,7 +64,9 @@ Guideline (`THUONG-HIEU.md` mục 2):
 
 - **Nên có:** khay bò đóng sẵn có nhãn, vỉ gas với hơi nhẹ, bàn tay và đĩa ăn chung, nền kem và gỗ sáng.
 - **Không có:** than, lửa, khói dày, đá đen, gang, thớt gỗ thô, rau thơm đặt trên thịt sống, vân mỡ
-  đẹp hơn thịt quán bán.
+  đẹp hơn thịt quán bán. Đá đen, gang, thớt gỗ thô là luật cho nền và mặt đặt thịt bò, vỉ và bàn nướng
+  (bỏ kiểu ảnh steakhouse nền tối của PDF cũ, trang 11); thố, bát đá đen, chảo gang đựng món ăn kèm kiểu
+  Hàn là dụng cụ dọn món, không thuộc luật này.
 
 Thêm từ `web/THIET-KE.md` mục 8 — đọc bản đầy đủ trước khi đặt lịch chụp:
 
