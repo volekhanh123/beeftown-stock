@@ -11,6 +11,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { dichMotCau, type NgonNguDich, type SoBanDich } from './ban-dich';
 import { dichNB, type HaiThuTieng, type NgonNguNB } from './ngon-ngu-noi-bo';
 import { dichCau, moTaKhoa } from './cau-noi-bo';
+import { CAU_MAT_MANG_GHI, laLoiMang } from './qua-tai';
 
 /** Câu của file này ở hai thứ tiếng giao diện nội bộ (lib/ngon-ngu-noi-bo.ts). */
 const CAU = {
@@ -281,6 +282,7 @@ export async function ghiCongTac(
 function cauLoi(e: { message?: string; hint?: string | null }, nn: NgonNguNB): string {
   const t = dichNB(nn, CAU);
   const m = e.message ?? '';
+  if (laLoiMang(m)) return CAU_MAT_MANG_GHI[nn];
   if (/permission denied|insufficient_privilege|không có quyền|chỉ chủ sở hữu/i.test(m)) {
     return m.includes('quyền') || m.includes('chủ sở hữu')
       ? dichCau(nn, m)

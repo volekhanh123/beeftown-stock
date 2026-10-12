@@ -855,4 +855,21 @@ await nhom('21 · CRON RIÊNG, HẾT GIỜ, WORKER', async () => {
   ok('Sổ kho không bị đụng: kho_doi_soat_ton() rỗng', rows.length === 0);
 });
 
+await nhom('BIẾN BẢN BUILD: tên biến layBienCong đọc phải viết ra TRONG MÃ của bien-moi-truong.ts', async () => {
+  // Astro nướng biến không có tiền tố PUBLIC_ (SITE_URL — link trong tin báo động, Messenger) vào bản build chỉ khi
+  // tên của nó xuất hiện trong chính file dùng import.meta.env. Gộp bốn bản chép về bien-moi-truong.ts thì tên chỉ
+  // còn ở nơi gọi (file khác) — chỉ nằm trong một dòng chú thích là sửa chú thích sẽ mất biến mà không ai biết.
+  const lib = join(GOC, 'web', 'src', 'lib');
+  const tep = [];
+  const duyet = d => { for (const t of readdirSync(d, { withFileTypes: true })) {
+    const p = join(d, t.name); if (t.isDirectory()) duyet(p); else if (p.endsWith('.ts')) tep.push(p); } };
+  duyet(lib);
+  const ten = new Set(tep.flatMap(f => [...readFileSync(f, 'utf8').matchAll(/layBienCong\('([A-Z_]+)'/g)].map(m => m[1])));
+  const ma = readFileSync(join(lib, 'bien-moi-truong.ts'), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:'"`])\/\/[^\n]*/g, '$1');
+  const thieu = [...ten].filter(t => !ma.includes(`'${t}'`));
+  ok(`Mọi tên layBienCong được gọi (${[...ten].join(', ')}) có trong MÃ (không phải chú thích) của bien-moi-truong.ts`,
+     ten.has('SITE_URL') && thieu.length === 0, `thiếu: ${thieu.join(', ')}`);
+});
+
 process.exit(ketThuc('BÁO ĐỘNG PHÍA WEB'));

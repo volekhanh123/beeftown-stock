@@ -51,7 +51,7 @@ export interface BiMatIpos {
   khoaCallback?: string;
 }
 
-export type { Env };
+export type { Env } from '../bien-moi-truong.ts';
 
 export const TEN_BI_MAT = {
   token: 'IPOS_ACCESS_TOKEN', email: 'KHO_IPOS_EMAIL', matKhau: 'KHO_IPOS_MAT_KHAU', khoaCallback: 'IPOS_CALLBACK_KHOA',

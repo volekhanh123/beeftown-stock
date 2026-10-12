@@ -45,7 +45,7 @@ import { danKhoaZalo, giaiMaTokenZalo, khoaZaloHopLe, maHoaTokenZalo } from './z
 // -----------------------------------------------------------------------------
 // BÍ MẬT
 // -----------------------------------------------------------------------------
-export type { Env };
+export type { Env } from './bien-moi-truong.ts';
 
 export const TEN_BI_MAT_ZALO = {
   secretKey: 'ZALO_SECRET_KEY', khoa: 'ZALO_KHOA', email: 'ZALO_MAY_EMAIL', matKhau: 'ZALO_MAY_MAT_KHAU',

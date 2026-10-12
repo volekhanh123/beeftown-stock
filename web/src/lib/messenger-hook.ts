@@ -58,7 +58,7 @@ export const DUONG_MESSENGER = '/hook/messenger';
 // -----------------------------------------------------------------------------
 // BÍ MẬT
 // -----------------------------------------------------------------------------
-export type { Env };
+export type { Env } from './bien-moi-truong.ts';
 
 export const TEN_BI_MAT_MESS = {
   appSecret: 'META_APP_SECRET',

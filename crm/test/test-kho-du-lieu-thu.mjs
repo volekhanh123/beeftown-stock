@@ -129,6 +129,10 @@ await nhom('3 · BÁN THEO Ô, LỆCH Ô, CHỜ GHÉP, VIỆC ĐANG CHỜ', asyn
 await nhom('4 · XOÁ SẠCH, GIỮ CÀI ĐẶT, TẠO LẠI', async () => {
   const viTri = await so(`select count(*) from kho_vi_tri`);
   const lyDo = await so(`select count(*) from kho_ly_do`);
+  // Máy Beeftown Cân đã đăng ký (0061) là cài đặt gốc như máy dùng chung — đầu file hứa giữ "máy cân".
+  await db.query(`insert into kho_may_can (chi_nhanh_id, ma_may, phien_ban)
+                  select id, gen_random_uuid(), '2.9.1' from chi_nhanh limit 1`);
+  const mayCan = await so(`select count(*) from kho_may_can`);
   const loi = await chay(XOA);
   ok('Script xoá chạy không lỗi', loi === null, loi ?? '');
   const con = await so(`select (select count(*) from kho_mat_hang) + (select count(*) from kho_nha_cung_cap)
@@ -138,6 +142,8 @@ await nhom('4 · XOÁ SẠCH, GIỮ CÀI ĐẶT, TẠO LẠI', async () => {
   ok('Kho trống (mặt hàng, NCC, lô, sổ, tồn, iPOS, số phiếu, món, công nợ)', con === 0, String(con));
   ok('Vị trí, lý do, cài đặt kho còn nguyên', await so(`select count(*) from kho_vi_tri`) === viTri
      && await so(`select count(*) from kho_ly_do`) === lyDo && await so(`select count(*) from kho_cai_dat`) >= 1);
+  ok('Máy Beeftown Cân đã đăng ký còn nguyên (kho_may_can)', mayCan >= 1 && await so(`select count(*) from kho_may_can`) === mayCan,
+     `trước ${mayCan}, sau ${await so(`select count(*) from kho_may_can`)}`);
   ok('Nguồn số bán trở về đếm quầy', await so(`select count(*) from kho_cai_dat where nguon_so_ban <> 'kiem_ke'`) === 0);
 
   const lai = await chay(TAO);

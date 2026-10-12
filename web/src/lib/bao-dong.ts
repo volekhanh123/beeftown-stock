@@ -32,7 +32,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { envNode, envWorker, docChuoi, layBienCong, type Env } from './bien-moi-truong.ts';
+import { docChuoi, envNode, envWorker, layBienCong, type Env } from './bien-moi-truong.ts';
 import { dangNhapMay, taoFetchCoHan, type KetQuaDangNhapMay } from './tai-khoan-may.ts';
 import type { NgonNguNB } from './ngon-ngu-noi-bo';
 import { danhGiaSucKhoe, laSucKhoeTho } from './suc-khoe.ts';
@@ -44,7 +44,7 @@ import { xoaBiMat } from './messenger.ts';
 // -----------------------------------------------------------------------------
 // HẰNG SỐ, BÍ MẬT
 // -----------------------------------------------------------------------------
-export type { Env };
+export type { Env } from './bien-moi-truong.ts';
 
 /** Chuỗi cron của việc báo động — PHẢI trùng một phần tử `crons` trong web/wrangler.toml. */
 export const CRON_BAO_DONG = '2-59/5 * * * *';
