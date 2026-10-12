@@ -77,6 +77,9 @@
 # Mở theo ĐUÔI FILE chứ không mở cả thư mục. Nhờ vậy file mật thêm vào web/
 # sau này (xlsx, pdf, ảnh chụp) vẫn tự động bị chặn ở mục bên dưới — đúng
 # tinh thần "chặn hết rồi mở từng cái" của file này.
+# LƯU Ý: .json / .js / .md ở MỌI cấp trong web/ đều được mở — một file khóa
+# dạng JSON đặt vào web/ sẽ commit được. Tên hay gặp của file khóa bị chặn
+# lại ở mục "CỐ TÌNH CHẶN" bên dưới; file khóa thì để NGOÀI repo.
 !/web/**/*.ts
 !/web/**/*.tsx
 !/web/**/*.js
@@ -90,7 +93,6 @@
 !/web/**/*.svg
 !/web/**/*.toml
 !/web/.node-version
-!/web/.npmrc
 
 # =============================================================
 # CỐ TÌNH CHẶN — nhắc lại cho rõ, kể cả khi có ai đó sửa nhầm
@@ -107,6 +109,16 @@
 # File dữ liệu lưu từ cân: có mật khẩu WiFi và lịch sử bán hàng
 *.TMS
 *.tms
+# Khóa và bí mật: .npmrc (token npm), bí mật wrangler dev, file khóa JSON hay gặp (Google service
+# account, khóa riêng). Mục ĐƯỢC PHÉP mở *.json trong web/ — mấy dòng này đứng sau nên thắng.
+.npmrc
+.dev.vars*
+*service-account*.json
+*service_account*.json
+*credentials*.json
+*-key.json
+*.pem
+*.key
 # Cấu hình Claude trên máy (settings.local.json, bộ nhớ…): chặn mọi thứ BÊN TRONG .claude/ ở mọi
 # cấp. Viết "**/.claude/**" chứ không "/.claude/": chặn cả thư mục thì không mở lại được file nào
 # bên trong — mà skill dùng chung của dự án phải mở (mục ngay dưới).
