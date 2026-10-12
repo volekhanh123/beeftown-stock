@@ -88,6 +88,14 @@ await nhom('1 · FORM SỬA NHANH — HÀM THUẦN', async () => {
   ok('Giữ chữ đã gõ của mọi dòng để hiện lại khi lỗi', d.chuGo.get(m.id)?.quay_toi_da_goi === 'mười' && d.chuGo.has(id(2)));
   const gia = docFormSuaNhanh(taoForm({ id: [m.id], [`pb_${m.id}`]: 'p', [`gia_ban_kg_${m.id}`]: '700.000đ', [`cu_gia_ban_kg_${m.id}`]: '650.000' }));
   ok('Giá "700.000đ" gửi số 700000', gia.dong[0]?.gia_ban_kg === 700000, JSON.stringify(gia.dong));
+  // Gõ thiếu một số 0 ("650.00") hay thừa ".0": docTien báo sai — phải gửi NGUYÊN CHỮ để database báo đúng ô, không
+  // được để regex số thập phân của giaTriGui biến thành 650 đ / 45 đ rồi lưu lặng lẽ (giá này xuống cân).
+  for (const [go, cu] of [['650.00', '650.000'], ['45.00', '45.000'], ['650000.0', '650.000']]) {
+    const g = docFormSuaNhanh(taoForm({ id: [m.id], [`pb_${m.id}`]: 'p', [`gia_ban_kg_${m.id}`]: go, [`cu_gia_ban_kg_${m.id}`]: cu }));
+    ok(`Giá "${go}" (gõ nhầm) gửi nguyên chữ, không thành số`, g.dong[0]?.gia_ban_kg === go, JSON.stringify(g.dong));
+  }
+  const goiSai = docFormSuaNhanh(taoForm({ id: [m.id], [`pb_${m.id}`]: 'p', [`quay_toi_da_goi_${m.id}`]: '1.5', [`cu_quay_toi_da_goi_${m.id}`]: '10' }));
+  ok('Số gói "1.5" gửi nguyên chữ, không thành 1,5', goiSai.dong[0]?.quay_toi_da_goi === '1.5', JSON.stringify(goiSai.dong));
   const maCan = docFormSuaNhanh(taoForm({ id: [m.id], [`pb_${m.id}`]: 'p', [`ma_can_${m.id}`]: '0101', [`cu_ma_can_${m.id}`]: '101' }));
   ok('Mã cân "0101" = "101" (bỏ số 0 đầu) → không đổi', maCan.dong.length === 0);
 
@@ -316,14 +324,24 @@ const traVeBang = new Map((await db.query(
    where n.nspname = 'public' and proname like 'kho_%'`)).rows.map(r => [r.proname, r.proretset]));
 function clientCua(uid) {
   return {
-    async rpc(ten, thamSo) {
-      const ds = Object.entries(thamSo);
-      const doi = ds.map(([k, v], i) => `${k} => $${i + 1}${v !== null && typeof v === 'object' ? '::jsonb' : ''}`).join(', ');
-      const gt = ds.map(([, v]) => (v !== null && typeof v === 'object' ? JSON.stringify(v) : v));
-      const sql = traVeBang.get(ten) ? `select * from ${ten}(${doi})` : `select ${ten}(${doi}) as r`;
-      const kq = await duoi(uid, sql, gt);
-      if (kq.loi) return { data: null, error: { message: kq.loi } };
-      return { data: traVeBang.get(ten) ? kq.rows : kq.rows[0]?.r ?? null, error: null };
+    // Như supabase-js: rpc() trả builder chờ được (await), có .range() cho hàm trả nhiều dòng (docTungTrang).
+    rpc(ten, thamSo) {
+      let khoang = null;
+      const chay = async () => {
+        const ds = Object.entries(thamSo);
+        const doi = ds.map(([k, v], i) => `${k} => $${i + 1}${v !== null && typeof v === 'object' ? '::jsonb' : ''}`).join(', ');
+        const gt = ds.map(([, v]) => (v !== null && typeof v === 'object' ? JSON.stringify(v) : v));
+        const sql = traVeBang.get(ten) ? `select * from ${ten}(${doi})` : `select ${ten}(${doi}) as r`;
+        const kq = await duoi(uid, sql, gt);
+        if (kq.loi) return { data: null, error: { message: kq.loi } };
+        if (!traVeBang.get(ten)) return { data: kq.rows[0]?.r ?? null, error: null };
+        return { data: khoang ? kq.rows.slice(khoang[0], khoang[1] + 1) : kq.rows, error: null };
+      };
+      const b = {
+        range(a, z) { khoang = [a, z]; return b; },
+        then(xong, hong) { return chay().then(xong, hong); },
+      };
+      return b;
     },
   };
 }

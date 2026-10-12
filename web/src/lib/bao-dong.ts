@@ -32,6 +32,7 @@
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { docChuoi, envNode, envWorker, layBienCong, type Env } from './bien-moi-truong.ts';
 import type { NgonNguNB } from './ngon-ngu-noi-bo';
 import { danhGiaSucKhoe, laSucKhoeTho } from './suc-khoe.ts';
 import { lapKeHoach, type DaBao, type KeHoach, type SuCo } from './bao-dong-chinh-sach.ts';
@@ -42,7 +43,7 @@ import { xoaBiMat } from './messenger.ts';
 // -----------------------------------------------------------------------------
 // HẰNG SỐ, BÍ MẬT
 // -----------------------------------------------------------------------------
-export type Env = Record<string, unknown> | undefined;
+export type { Env } from './bien-moi-truong.ts';
 
 /** Chuỗi cron của việc báo động — PHẢI trùng một phần tử `crons` trong web/wrangler.toml. */
 export const CRON_BAO_DONG = '2-59/5 * * * *';
@@ -54,30 +55,6 @@ export const HET_GIO = { goiMs: 20_000, kenhMs: 10_000, luotMs: 60_000, ketThucM
 export interface BiMatBaoDong {
   email?: string;
   matKhau?: string;
-}
-
-async function envWorker(): Promise<Env> {
-  try {
-    // @ts-ignore — dự án không cài kiểu của workerd; module này chỉ có trên Worker.
-    const m = await import('cloudflare:workers');
-    return (m as { env?: Record<string, unknown> })?.env;
-  } catch { return undefined; }
-}
-
-function docChuoi(ten: string, ...nguon: Env[]): string | undefined {
-  for (const n of nguon) {
-    const v = n?.[ten];
-    if (typeof v === 'string' && v.trim()) return v.trim();
-  }
-  return undefined;
-}
-
-const envNode = (): Env => (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
-
-function layBienCong(ten: string, env: Env): string | undefined {
-  const v = (import.meta as { env?: Record<string, unknown> }).env?.[ten];
-  if (typeof v === 'string' && v) return v;
-  return docChuoi(ten, env, envNode());
 }
 
 /** Đọc tài khoản máy báo động. Không có → undefined; không bao giờ ném lỗi. */
