@@ -17,12 +17,14 @@ Danh mục là cuốn menu in **bản sáng** Khánh chốt ngày 11/10/2026, n�
 (`da_thu_hoi`) và 3 nhóm cũ đã tắt (Miến & mì lạnh, Tráng miệng, Cocktails) — chúng không bao giờ lên trang.
 Tên món và tên nhóm (ba thứ tiếng) đã nằm trong migration; hướng dẫn này chỉ ghi mô tả, cảnh báo và công bố.
 
-**Giá không đi qua hướng dẫn này.** Chưa món nào có giá duyệt, và web chặn mọi số tiền trên trang công khai
-(`web/src/lib/chuoi-cam.js`). Bò tại quầy không bao giờ có giá trên web — giá nằm trên nhãn khay tại quầy.
-Bốn món có `gia_de_xuat` 69.000đ đang chờ duyệt (S01 Set 4 sốt, ba ly signature D13, D01, D14); 35 giá còn lại
-trong cuốn là giá dummy nên không nhập ở đâu cả.
+**Giá không đi qua hướng dẫn này.** Trang Thực đơn chỉ in giá ĐÃ DUYỆT (cột `gia` khác null, tức
+`gia_da_duyet = true`); hiện chưa món nào có. Hướng dẫn này không duyệt giá — duyệt giá là một việc riêng, có PR
+riêng (`web/README.md`, dòng "Duyệt giá thực đơn"). Bò tại quầy không bao giờ có giá trên web — giá nằm trên nhãn
+khay tại quầy. Bốn món có `gia_de_xuat` 69.000đ đang chờ duyệt (S01 Set 4 sốt, ba ly signature D13, D01, D14);
+35 giá còn lại trong cuốn là giá dummy nên không nhập ở đâu cả.
 
-**Tiếng Hàn do Claude dịch ngày 11/10/2026, chưa có người đọc tiếng Hàn xem** — tên món, tên nhóm (trong
+**Tiếng Hàn do Claude dịch ngày 11/10/2026, sửa ngày 13/10/2026 theo rà soát, chưa có người đọc tiếng Hàn
+xem** — tên món, tên nhóm (trong
 migration 0091), mô tả và câu cảnh báo (các khối dưới). Nhờ người đọc tiếng Hàn xem lại trước khi chạy trên
 production. Sửa một tên: `update mon_an set ten_ko = '…' where ma = '…';` (database tự ghi đó là bản sửa tay,
 máy dịch không đè).
@@ -42,6 +44,9 @@ tác dụng, chạy lại không đổi gì, thu hồi thì món biến mất. S
 - Đây là thao tác dữ liệu, không phải migration — nhưng chỉ làm trên production **sau khi** PR đã gộp, migration
   `0091` đã chạy (và `npm run doi-chieu` báo KHỚP), web đã deploy.
 - **Chưa xác nhận xong thì chưa công bố món đó.** Ghi mô tả trước thì được (trang chưa hiện gì), công bố thì chờ.
+- **Migration 0091 chỉ chạy một lần.** Đã ghi mô tả, cảnh báo, công bố hay duyệt giá / độ cay mà chạy lại thì
+  database từ chối cả file (khối chặn đầu file) — chạy lại sẽ xóa hết phần đã làm. Sửa món thì dùng câu `update`
+  riêng; đổi danh mục thì viết migration mới.
 
 ## Bước 0 — Kiểm danh mục sau migration 0091
 
@@ -84,6 +89,7 @@ ghi chú ở đầu file. Quy tắc câu chữ (brief 06/10/2026):
 
 - Trang chỉ được nói điều bếp đã xác nhận. Không "ngon nhất", không "100%", không tự gắn chay / cay / dị ứng.
   Bếp hay Sang xác nhận khác chữ của cuốn thì sửa câu ngay trong SQL Editor, đủ ba thứ tiếng, trước khi chạy.
+- Câu có dấu nháy đơn thì gõ nháy hai lần: `'Beeftown''s'` — gõ một lần là SQL Editor báo lỗi cú pháp.
 - `mo_ta_vi` là bản gốc và **bắt buộc**. `mo_ta_en`, `mo_ta_ko` nên có — thiếu thì trang tiếng Anh / tiếng
   Hàn lùi về bản kế tiếp (ko → en → vi).
 - Dòng **Chờ** trên mỗi khối là điều còn chờ xác nhận. Chạy khối mô tả lúc nào cũng được; **chưa xác nhận xong
@@ -99,7 +105,7 @@ ghi chú ở đầu file. Quy tắc câu chữ (brief 06/10/2026):
 update mon_an set
   mo_ta_vi = 'Nạm có thớ rõ, vị bò đậm, dai vừa. Thịt tươi xếp như cánh hoa, phủ phô mai Grana Padano hoặc Parmigiano bào mịn như tuyết. Trộn lòng đỏ trứng với gia vị Hàn mặn ngọt. Vị mặn của phô mai, độ béo của lòng đỏ làm tròn vị bò.',
   mo_ta_en = 'Flank, for its clear grain and deep beef flavour, arranged like petals under grated Grana Padano or Parmigiano. Mix in the yolk and our sweet-savoury Korean seasoning.',
-  mo_ta_ko = '결이 선명하고 풍미가 진한 플랭크 부위를 꽃잎처럼 담고, 그라나 파다노 또는 파르미지아노 치즈를 눈처럼 갈아 올렸어요. 노른자와 달콤 짭짤한 한국식 양념을 넣어 비벼 드세요.'
+  mo_ta_ko = '결이 선명하고 풍미가 진한 플랭크 부위를 꽃잎처럼 담고, 그라나 파다노 또는 파르미지아노 치즈를 눈처럼 갈아 올렸어요. 노른자와 달콤짭짤한 한국식 양념을 넣어 비벼 드세요.'
 where ma = 'F03';
 
 -- F19 · Cơm trộn tartare bò cay
@@ -260,7 +266,7 @@ where ma = 'F05';
 update mon_an set
   mo_ta_vi = 'Cơm bát đá nóng, phô mai, trứng cá, rau củ giòn.',
   mo_ta_en = 'Hot stone-bowl rice with cheese, fish roe and crunchy vegetables.',
-  mo_ta_ko = '뜨거운 돌솥밥에 치즈, 생선알, 아삭한 채소를 올렸어요.'
+  mo_ta_ko = '뜨거운 돌솥밥에 치즈, 날치알, 아삭한 채소를 올렸어요.'
 where ma = 'F04';
 ```
 
@@ -316,7 +322,7 @@ where ma = 'D13';
 update mon_an set
   mo_ta_vi = 'Highball dâu. Siro dâu, soda, whisky, dâu sấy.',
   mo_ta_en = 'Strawberry syrup, soda, whisky, dried strawberry.',
-  mo_ta_ko = '딸기 시럽, 탄산수, 위스키에 건조 딸기를 올렸어요.'
+  mo_ta_ko = '딸기 시럽, 탄산수, 위스키에 말린 딸기를 올렸어요.'
 where ma = 'D01';
 
 -- D14 · Berry Rouge Highball
@@ -430,7 +436,7 @@ commit;
 ```
 
 Phiên bản thực đơn — trang Thực đơn in ngày cập nhật lấy từ đây. Ngày là ngày Khánh chốt cuốn; muốn ghi ngày
-công bố thì đổi `'2026-10-11'` trước khi chạy:
+công bố thì đổi `'2026-10-11'` trước khi chạy (chạy lại với ngày khác thì trang đổi theo ngày mới):
 
 <!-- sql:phien-ban -->
 ```sql
@@ -440,7 +446,7 @@ update phien_ban_thuc_don set dang_dung = false
 where dang_dung and ma <> 'v2.0';
 insert into phien_ban_thuc_don (ma, ngay_hieu_luc, ghi_chu, dang_dung)
 values ('v2.0', '2026-10-11', 'Cuốn menu bản sáng, Khánh chốt 11/10/2026 (migration 0091)', true)
-on conflict (ma) do update set dang_dung = true;
+on conflict (ma) do update set dang_dung = true, ngay_hieu_luc = excluded.ngay_hieu_luc;
 commit;
 ```
 
@@ -491,7 +497,8 @@ hiện chúng; hướng dẫn này không tự viết mô tả thay cuốn. Hai 
 2. **Đổi luật ở một PR riêng:** cho đồ uống dạng danh sách lên trang chỉ với tên — migration mới đổi CHECK
    `mon_an_cong_bo_phai_sach` cho riêng các nhóm này, trang Thực đơn in chúng thành danh sách, kèm kiểm thử.
 
-Lối nào cũng chờ chốt danh mục, nhãn hiệu, dung tích trước (`can_xac_nhan` của cả 20 đồ uống).
+Lối nào cũng chờ chốt danh mục, nhãn hiệu, dung tích trước (`can_xac_nhan` của cả 20 đồ uống). Trong lúc chờ,
+dòng "Thực đơn" ở trang Tổng quan `/noi-bo` báo 17 món "Chưa có mô tả" — đúng sự thật, không phải lỗi.
 
 ## Thu hồi — khi cần gỡ ngay
 

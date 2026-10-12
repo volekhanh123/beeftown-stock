@@ -16,11 +16,12 @@
 -- Như 0011, file CSV / file thiết kế gốc nằm ngoài repo nên MIGRATION NÀY LÀ
 -- NGUỒN SỰ THẬT của danh mục. Chữ tiếng Việt và tiếng Anh chép NGUYÊN VĂN cuốn
 -- (kể cả chỗ cuốn viết "kimchi" ở mô tả và "kim chi" ở tên món). Tên tiếng Hàn
--- do Claude dịch ngày 11/10/2026, CHƯA có người đọc tiếng Hàn xem — xem
--- web/THUC-DON.md trước khi công bố.
+-- do Claude dịch ngày 11/10/2026, sửa ngày 13/10/2026 theo rà soát, CHƯA có
+-- người đọc tiếng Hàn xem — xem web/THUC-DON.md trước khi công bố.
 --
 -- FILE NÀY LÀM GÌ
 --
+--   0. Chặn chạy lại khi thực đơn đã được làm tiếp (xem "CHỈ CHẠY MỘT LẦN").
 --   1. nhom_mon: 17 nhóm của cuốn (tên vi / en / ko, thứ tự trang). Bảy nhóm
 --      mới; ba nhóm không còn món (mien-mi, trang-mieng, cocktail) tắt
 --      dang_dung — KHÔNG xóa.
@@ -88,19 +89,67 @@
 -- đã duyệt (nếu có) bỏ. Không làm vậy thì "Tartare bò hoa tuyết" sẽ hiện trên
 -- trang với câu mô tả của "Bò sống trộn kiểu Hàn".
 --
--- CHẠY CẢ FILE MỘT LẦN, TRƯỚC MỌI KHỐI CỦA web/THUC-DON.md (SQL Editor: dán cả
--- file — một giao dịch). Chạy xong: `npm run doi-chieu` phải báo KHỚP (nó thấy
--- view đổi), và khối "kiem-danh-muc" của web/THUC-DON.md phải ra đúng 17 nhóm ·
--- 42 món · 10 món thu hồi (đối chiếu không đọc dữ liệu).
+-- CHỈ CHẠY MỘT LẦN, CẢ FILE, TRƯỚC MỌI KHỐI CỦA web/THUC-DON.md (SQL Editor:
+-- dán cả file — một giao dịch). Chạy xong: `npm run doi-chieu` phải báo KHỚP
+-- (nó thấy view đổi), và khối "kiem-danh-muc" của web/THUC-DON.md phải ra đúng
+-- 17 nhóm · 42 món · 10 món thu hồi (đối chiếu không đọc dữ liệu). Số lệch thì
+-- hỏi lại, đừng chạy lại file này để "chữa".
 --
--- Chạy lại NGAY sau lần đầu (ví dụ nghi một mảnh chưa chạy) không hỏng gì: mọi
--- câu là "thêm nếu chưa có, có rồi thì đặt lại đúng giá trị", dữ liệu ra y như
--- lần đầu (chỉ updated_at của 42 món nhích lên).
---
--- ⚠ ĐỪNG chạy lại SAU KHI ĐÃ CÔNG BỐ MÓN. Mục 2 đưa 42 món về 'nhap' và bỏ mô
--- tả, cảnh báo: trang Thực đơn sẽ trống cho tới khi chạy lại các khối mô tả,
--- cảnh báo và công bố của web/THUC-DON.md.
+-- Mục 2 đặt lại MỌI cột của 42 món về đúng cuốn: 'nhap', mô tả và cảnh báo null,
+-- giá và độ cay đã duyệt bỏ, tên ba thứ tiếng về chữ của cuốn. Chạy lại sau khi
+-- đã làm tiếp theo web/THUC-DON.md là xóa sạch phần đã làm. Nên mục 0 CHẶN:
+-- database đã có món mã mới của file này (F19–F23, D13–D28 — tức file đã chạy)
+-- MÀ một trong 42 món đã công bố, đã duyệt giá, đã duyệt độ cay, đã có mô tả hay
+-- câu cảnh báo → raise exception, cả file không chạy, không dòng nào đổi.
+-- Khối chặn KHÔNG thấy tên sửa tay (vd. người đọc tiếng Hàn sửa ten_ko): sửa tên
+-- rồi thì cũng không chạy lại file này. Muốn đổi danh mục: viết migration mới.
+-- Lần đầu (kể cả trên Beeftown-thu đã công bố theo bản cũ — chưa có món mã mới)
+-- và lần chạy lại ngay sau lần đầu (chưa làm gì thêm) vẫn chạy được, dữ liệu ra
+-- y như lần đầu.
 -- =============================================================================
+
+
+-- =============================================================================
+-- 0 · CHẶN CHẠY LẠI KHI THỰC ĐƠN ĐÃ ĐƯỢC LÀM TIẾP
+-- =============================================================================
+-- Câu raise có bản tiếng Anh ở web/src/lib/cau-noi-bo.ts (test-noi-bo-tieng-anh).
+-- detail liệt kê từng món và lý do, để người chạy biết vì sao bị chặn.
+-- -----------------------------------------------------------------------------
+do $$
+declare
+  v_mon text;
+begin
+  -- Chưa có món mã mới của file này → lần chạy đầu: không chặn gì.
+  if not exists (
+    select 1 from mon_an
+    where ma in ('F19', 'F20', 'F21', 'F22', 'F23', 'D13', 'D14', 'D15', 'D16', 'D17', 'D18',
+                 'D19', 'D20', 'D21', 'D22', 'D23', 'D24', 'D25', 'D26', 'D27', 'D28')) then
+    return;
+  end if;
+
+  select string_agg(m.ma || ': ' || concat_ws(', ',
+           case when m.trang_thai = 'da_cong_bo' then 'đã công bố' end,
+           case when m.gia_da_duyet then 'giá đã duyệt' end,
+           case when m.muc_cay_da_duyet then 'độ cay đã duyệt' end,
+           case when m.mo_ta_vi is not null then 'đã có mô tả' end,
+           case when m.canh_bao is not null then 'đã có câu cảnh báo' end), ' · ' order by m.ma)
+    into v_mon
+  from mon_an m
+  where m.ma in ('S01', 'F03', 'F19', 'F15', 'F16', 'F20', 'F21', 'F01', 'F10', 'F22', 'F23',
+                 'F18', 'F12', 'F14', 'F13', 'F06', 'F05', 'F04', 'F11', 'F08', 'F07', 'F09',
+                 'D13', 'D01', 'D14', 'D02', 'D15', 'D16', 'D17', 'D18', 'D19', 'D20', 'D21',
+                 'D09', 'D22', 'D10', 'D23', 'D24', 'D25', 'D26', 'D27', 'D28')
+    and (m.trang_thai = 'da_cong_bo' or m.gia_da_duyet or m.muc_cay_da_duyet
+         or m.mo_ta_vi is not null or m.canh_bao is not null);
+
+  if v_mon is not null then
+    raise exception 'Thực đơn đã có món công bố, giá hoặc độ cay đã duyệt, hoặc mô tả đã ghi: chạy lại 0091 sẽ xóa hết. Không chạy lại file này.'
+      using errcode = 'restrict_violation',
+            detail  = v_mon,
+            hint    = 'Sửa từng món bằng câu update riêng (web/THUC-DON.md), đổi danh mục thì viết migration mới.';
+  end if;
+end
+$$;
 
 
 -- =============================================================================
@@ -171,12 +220,12 @@ from (values
    'Four sauces, served warm on the grill: cheese, tare, ssamjang and Sichuan chili. With house kimchi and wrap greens. One refill.',
    '69.000đ tính theo người hay theo bàn; "Thêm 1 lần" (Sang xác nhận). Bếp xác nhận kimchi nhà làm.',
    false, false, 0, 69000, 8),
-  ('F03', 'dac-trung', 10, 'Tartare bò hoa tuyết', 'Snow flower flank tartare', '눈꽃 소고기 타르타르',
+  ('F03', 'dac-trung', 10, 'Tartare bò hoa tuyết', 'Snow flower flank tartare', '눈꽃치즈 소고기 타르타르',
    'Nạm có thớ rõ, vị bò đậm, dai vừa. Thịt tươi xếp như cánh hoa, phủ phô mai Grana Padano hoặc Parmigiano bào mịn như tuyết. Trộn lòng đỏ trứng với gia vị Hàn mặn ngọt. Vị mặn của phô mai, độ béo của lòng đỏ làm tròn vị bò.',
    'Flank, for its clear grain and deep beef flavour, arranged like petals under grated Grana Padano or Parmigiano. Mix in the yolk and our sweet-savoury Korean seasoning.',
    'Sang xác nhận phần thịt (nạm) và nguồn trứng dùng sống; phô mai là Grana Padano hay Parmigiano.',
    false, true, 0, null, null),
-  ('F19', 'dac-trung', 20, 'Cơm trộn tartare bò cay', 'Spicy flank tartare rice bowl', '매콤 소고기 타르타르 비빔밥',
+  ('F19', 'dac-trung', 20, 'Cơm trộn tartare bò cay', 'Spicy flank tartare rice bowl', '매콤 육회비빔밥',
    'Nạm, phần cắt có ít trên mỗi con bò, cùng rau củ giòn theo mùa và sốt cay riêng của Beeftown. Trộn đều bò, sốt và cơm: một bát bibimbap tươi, cay dịu, làm vị bò rõ hơn.',
    'Flank, a cut each animal yields little of, with crisp seasonal vegetables and our own spicy sauce. Mix it through the rice, a fresh take on bibimbap.',
    'Sang xác nhận phần thịt (nạm) và nguồn trứng dùng sống.',
@@ -341,12 +390,12 @@ from (values
    null,
    'Danh mục, nhãn hiệu, dung tích: chờ chốt (cuốn menu 11/10/2026).',
    false, false, null, null, 15),
-  ('D10', 'khong-con', 30, 'Ade chanh', 'Lemon ade', '레몬 에이드',
+  ('D10', 'khong-con', 30, 'Ade chanh', 'Lemon ade', '레몬에이드',
    null,
    null,
    'Danh mục, nhãn hiệu, dung tích: chờ chốt (cuốn menu 11/10/2026).',
    false, false, null, null, 15),
-  ('D23', 'khong-con', 40, 'Ade chanh dây', 'Passion fruit ade', '패션프루트 에이드',
+  ('D23', 'khong-con', 40, 'Ade chanh dây', 'Passion fruit ade', '패션프루트에이드',
    null,
    null,
    'Danh mục, nhãn hiệu, dung tích: chờ chốt (cuốn menu 11/10/2026).',
@@ -361,7 +410,7 @@ from (values
    null,
    'Danh mục, nhãn hiệu, dung tích: chờ chốt (cuốn menu 11/10/2026).',
    false, false, null, null, 15),
-  ('D26', 'nuoc-ngot', 30, 'Soda chanh', 'Lemon-lime soda', '레몬라임 소다',
+  ('D26', 'nuoc-ngot', 30, 'Soda chanh', 'Lemon-lime soda', '사이다',
    null,
    null,
    'Danh mục, nhãn hiệu, dung tích: chờ chốt (cuốn menu 11/10/2026).',

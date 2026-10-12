@@ -35,8 +35,9 @@
  *                 ăn, ba ly signature; không món nào có giá)
  *   khong-con-tat như day-du nhưng công tắc hien_do_uong_co_con TẮT: thuc_don_cong_khai() không trả
  *                 ba ly signature (như hàm thật), trang không nhắc đồ uống có cồn ở đâu
- *   thuc-don-thu-suc  như day-du, thêm MON_THU_SUC: nhóm mã lạ chưa có câu, món không ảnh, tên và mô
- *                 tả rất dài, hai nhóm đồ uống dạng danh sách — thẻ món phải chịu được
+ *   thuc-don-thu-suc  như day-du, thêm MON_THU_SUC: một món Bò tại quầy (B01 — nhóm thịt bò có món,
+ *                 không in giá), nhóm mã lạ chưa có câu, món không ảnh, tên và mô tả rất dài, hai nhóm
+ *                 đồ uống dạng danh sách — thẻ món phải chịu được
  *   dat-ban-dong  như day-du nhưng form hỏi bàn đang tắt
  *   dat-ban-loi   như day-du; tao_dat_ban trả 400 "Khung giờ … ngày … đã hết bàn"
  *   dat-ban-500   như day-du; tao_dat_ban trả 500
@@ -169,12 +170,12 @@ export const MON_MAU = [
     moTa: ba('4 sốt hâm nóng ngay trên vỉ: phô mai, tare, ssamjang, sốt cay Tứ Xuyên. Kèm kimchi nhà làm và rau cuốn. Thêm 1 lần.',
              'Four sauces, served warm on the grill: cheese, tare, ssamjang and Sichuan chili. With house kimchi and wrap greens. One refill.',
              '치즈, 타레, 쌈장, 쓰촨식 매운 소스 네 가지를 그릴 위에서 따뜻하게 데워 드려요. 직접 담근 김치와 쌈 채소가 함께 나오고, 한 번 리필해 드려요.') },
-  { nhom: 'dac-trung', ma: 'F03', ten: ba('Tartare bò hoa tuyết', 'Snow flower flank tartare', '눈꽃 소고기 타르타르'),
+  { nhom: 'dac-trung', ma: 'F03', ten: ba('Tartare bò hoa tuyết', 'Snow flower flank tartare', '눈꽃치즈 소고기 타르타르'),
     moTa: ba('Nạm có thớ rõ, vị bò đậm, dai vừa. Thịt tươi xếp như cánh hoa, phủ phô mai Grana Padano hoặc Parmigiano bào mịn như tuyết. Trộn lòng đỏ trứng với gia vị Hàn mặn ngọt. Vị mặn của phô mai, độ béo của lòng đỏ làm tròn vị bò.',
              'Flank, for its clear grain and deep beef flavour, arranged like petals under grated Grana Padano or Parmigiano. Mix in the yolk and our sweet-savoury Korean seasoning.',
-             '결이 선명하고 풍미가 진한 플랭크 부위를 꽃잎처럼 담고, 그라나 파다노 또는 파르미지아노 치즈를 눈처럼 갈아 올렸어요. 노른자와 달콤 짭짤한 한국식 양념을 넣어 비벼 드세요.'),
+             '결이 선명하고 풍미가 진한 플랭크 부위를 꽃잎처럼 담고, 그라나 파다노 또는 파르미지아노 치즈를 눈처럼 갈아 올렸어요. 노른자와 달콤짭짤한 한국식 양념을 넣어 비벼 드세요.'),
     laMonSong: true, canhBao: CANH_BAO_SONG },
-  { nhom: 'dac-trung', ma: 'F19', ten: ba('Cơm trộn tartare bò cay', 'Spicy flank tartare rice bowl', '매콤 소고기 타르타르 비빔밥'),
+  { nhom: 'dac-trung', ma: 'F19', ten: ba('Cơm trộn tartare bò cay', 'Spicy flank tartare rice bowl', '매콤 육회비빔밥'),
     moTa: ba('Nạm, phần cắt có ít trên mỗi con bò, cùng rau củ giòn theo mùa và sốt cay riêng của Beeftown. Trộn đều bò, sốt và cơm: một bát bibimbap tươi, cay dịu, làm vị bò rõ hơn.',
              'Flank, a cut each animal yields little of, with crisp seasonal vegetables and our own spicy sauce. Mix it through the rice, a fresh take on bibimbap.',
              '소 한 마리에서 조금밖에 나오지 않는 플랭크 부위에 아삭한 제철 채소와 Beeftown만의 매콤한 소스를 곁들였어요. 밥과 함께 고루 비벼 드세요.'),
@@ -238,7 +239,7 @@ export const MON_MAU = [
   { nhom: 'com', ma: 'F04', ten: ba('Cơm trộn trứng cá', 'Cheese al-bap', '치즈 알밥'),
     moTa: ba('Cơm bát đá nóng, phô mai, trứng cá, rau củ giòn.',
              'Hot stone-bowl rice with cheese, fish roe and crunchy vegetables.',
-             '뜨거운 돌솥밥에 치즈, 생선알, 아삭한 채소를 올렸어요.') },
+             '뜨거운 돌솥밥에 치즈, 날치알, 아삭한 채소를 올렸어요.') },
   { nhom: 'mi-y', ma: 'F11', ten: ba('Mì lạnh cay', 'Signature spicy cold noodles', '시그니처 매운 냉면'),
     moTa: ba('Mì lạnh sốt cay, nước dùng đá. Kèm cơm, khoảng 70% chén thường.',
              'Spicy cold noodles with icy broth. With rice, about 70% of a regular bowl.',
@@ -263,7 +264,7 @@ export const MON_MAU = [
   { nhom: 'do-uong-signature', ma: 'D01', ten: ba('Strawberry Crush', 'Strawberry Crush', '스트로베리 크러시'),
     moTa: ba('Highball dâu. Siro dâu, soda, whisky, dâu sấy.',
              'Strawberry syrup, soda, whisky, dried strawberry.',
-             '딸기 시럽, 탄산수, 위스키에 건조 딸기를 올렸어요.'),
+             '딸기 시럽, 탄산수, 위스키에 말린 딸기를 올렸어요.'),
     coCon: true },
   { nhom: 'do-uong-signature', ma: 'D14', ten: ba('Berry Rouge Highball', 'Berry Rouge Highball', '베리 루즈 하이볼'),
     moTa: ba('Highball quả mọng. Hương quả mọng, chua nhẹ, ngọt dịu.',
@@ -274,10 +275,12 @@ export const MON_MAU = [
 
 /**
  * Kịch bản thuc-don-thu-suc: dữ liệu mà database có thể trả SAU NÀY, để thử thẻ món chịu được — thêm vào
- * MON_MAU: một nhóm mã lạ (chưa có câu dưới tên nhóm) với một món không có ảnh, tên rất dài và mô tả dài;
+ * MON_MAU: một món của nhóm Bò tại quầy (thit_bo — trang vẽ nhóm này với khongGia: không bao giờ in giá);
+ * một nhóm mã lạ (chưa có câu dưới tên nhóm) với một món không có ảnh, tên rất dài và mô tả dài;
  * hai nhóm đồ uống dạng danh sách (tên theo danh mục; mô tả là câu của seed 0011 — bản cuốn chưa có mô tả).
  */
 export const MON_THU_SUC = [
+  { nhom: 'bo-tai-quay', ma: 'B01', ten: ba('Thăn lưng bò', 'Striploin', '채끝') },
   { nhom: 'nhom-thu', ma: 'X01',
     ten: ba('Cơm trộn tartare bò cay kèm rau củ giòn theo mùa và sốt cay riêng', 'Spicy flank tartare rice bowl with crisp seasonal vegetables and our own spicy sauce',
             '아삭한 제철 채소와 Beeftown만의 매콤한 소스를 곁들인 매콤 소고기 타르타르 비빔밥'),
@@ -291,7 +294,12 @@ export const MON_THU_SUC = [
 ];
 
 const THU_TU_NHOM = Object.keys(NHOM);
-function thucDon(kichBan, nn) {
+/**
+ * Đúng các dòng thuc_don_cong_khai(p_ngon_ngu) trả trong một kịch bản — 15 cột, thứ tự như database.
+ * crm/test/test-cong-khai-thuc-don.mjs so từng dòng, từng chữ, với database thật sau khi chạy hết các
+ * khối của web/THUC-DON.md: dữ liệu giả và hướng dẫn công bố không lệch nhau được.
+ */
+export function thucDon(kichBan, nn) {
   if (kichBan === 'rong') return [];
   const n = NN.includes(nn) ? nn : 'vi';
   // Như thuc_don_cong_khai() (0036): công tắc hien_do_uong_co_con tắt thì món có cồn không ra khỏi database.
@@ -313,8 +321,9 @@ function thucDon(kichBan, nn) {
     la_mon_song: m.laMonSong === true,
     canh_bao: m.canhBao?.[n] ?? null,
     khau_phan: null,
-    phien_ban: 'v1.0',
-    cap_nhat_ngay: '2026-10-01',
+    // Đúng khối phien-ban của web/THUC-DON.md (v2.0, ngày Khánh chốt cuốn).
+    phien_ban: 'v2.0',
+    cap_nhat_ngay: '2026-10-11',
   }));
 }
 

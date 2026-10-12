@@ -18,6 +18,8 @@
  *   6. Quyền: anon không đọc bảng; marketing sửa được món, không sửa được nhóm; vai khác bị từ chối.
  *   7. Database KHÔNG còn đúng seed (Beeftown-thu sau web/THUC-DON.md bản cũ, có bản dịch máy):
  *      0091 đưa về đúng như database mới cài — không món nào còn công bố với mô tả của tên cũ.
+ *   8. Chạy lại 0091 SAU khi đã làm tiếp (công bố, duyệt giá, duyệt độ cay, ghi mô tả, ghi cảnh báo)
+ *      → khối chặn đầu file từ chối, không cột nào của bất kỳ dòng nào đổi.
  */
 
 import { readdirSync, readFileSync } from 'node:fs';
@@ -72,13 +74,15 @@ const TRANG_NHOM = { 'goi-them': 8, 'dac-trung': null, lau: 7, salad: 9, 'mon-th
 const CAU_DO_UONG = 'Danh mục, nhãn hiệu, dung tích: chờ chốt (cuốn menu 11/10/2026).';
 /** Tên vài món chép tay (tên đổi so với seed 0011, chữ "kim chi" của tên giữ đúng cuốn). */
 const TEN_MAU = {
-  F03: ['Tartare bò hoa tuyết', 'Snow flower flank tartare', '눈꽃 소고기 타르타르'],
+  F03: ['Tartare bò hoa tuyết', 'Snow flower flank tartare', '눈꽃치즈 소고기 타르타르'],
+  F19: ['Cơm trộn tartare bò cay', 'Spicy flank tartare rice bowl', '매콤 육회비빔밥'],
   F14: ['Đậu phụ hầm', 'Sundubu jjigae', '순두부찌개'],
   F15: ['Lẩu kim chi', 'Kimchi hot pot', '김치전골'],
   F18: ['Bánh gạo chiên phô mai', 'Fried injeolmi rice cake', '치즈 인절미 튀김'],
   S01: ['Set 4 sốt', 'Signature set', '시그니처 소스 4종 세트'],
   D01: ['Strawberry Crush', 'Strawberry Crush', '스트로베리 크러시'],
-  D10: ['Ade chanh', 'Lemon ade', '레몬 에이드'],
+  D10: ['Ade chanh', 'Lemon ade', '레몬에이드'],
+  D26: ['Soda chanh', 'Lemon-lime soda', '사이다'],
   D28: ['Nước có ga', 'Sparkling water', '탄산수'],
 };
 
@@ -326,7 +330,7 @@ await nhom('7 · DATABASE KHÔNG CÒN ĐÚNG SEED (Beeftown-thu sau THUC-DON.md 
   const { rows: [f03] } = await cu.query(`select * from mon_an where ma = 'F03'`);
   ok('F03 về nhap: mô tả, cảnh báo, ngày công bố bỏ; tên ba thứ tiếng là tên mới',
      f03.trang_thai === 'nhap' && f03.mo_ta_vi === null && f03.mo_ta_en === null && f03.canh_bao === null && f03.canh_bao_en === null
-       && f03.cong_bo_luc === null && f03.ten_vi === 'Tartare bò hoa tuyết' && f03.ten_ko === '눈꽃 소고기 타르타르');
+       && f03.cong_bo_luc === null && f03.ten_vi === 'Tartare bò hoa tuyết' && f03.ten_ko === '눈꽃치즈 소고기 타르타르');
   const { rows: [f05] } = await cu.query(`select gia, gia_da_duyet, gia_de_xuat, muc_cay, muc_cay_da_duyet, muc_cay_de_xuat from mon_an where ma = 'F05'`);
   ok('Giá và độ cay đã duyệt của danh mục cũ bị bỏ; độ cay đề xuất theo cuốn',
      f05.gia === null && f05.gia_da_duyet === false && f05.gia_de_xuat === null && f05.muc_cay === null && f05.muc_cay_da_duyet === false
@@ -344,6 +348,65 @@ await nhom('7 · DATABASE KHÔNG CÒN ĐÚNG SEED (Beeftown-thu sau THUC-DON.md 
   const { rows: [{ ten_ko: tenKoSalad }] } = await cu.query(`select ten_ko from nhom_mon where ma = 'salad'`);
   ok('…kể cả tên tiếng Hàn của nhóm salad: "샐러드 & 애피타이저" (khối cũ) thành "샐러드" của cuốn', tenKoSalad === '샐러드', tenKoSalad);
   await cu.close();
+});
+
+// ===========================================================================
+await nhom('8 · CHẠY LẠI 0091 SAU KHI ĐÃ LÀM TIẾP → BỊ CHẶN, KHÔNG CỘT NÀO ĐỔI', async () => {
+  const CAU_CHAN = 'Thực đơn đã có món công bố, giá hoặc độ cay đã duyệt, hoặc mô tả đã ghi: chạy lại 0091 sẽ xóa hết. Không chạy lại file này.';
+  /** Mọi cột của mọi dòng món, nhóm, công tắc, phiên bản — kể cả updated_at và sổ bản dịch. */
+  const chupHet = async () => JSON.stringify(await Promise.all([
+    `select to_jsonb(m) as d from mon_an m order by ma`, `select to_jsonb(g) as d from nhom_mon g order by ma`,
+    `select to_jsonb(n) as d from noi_dung_cong_bo n order by id`, `select to_jsonb(p) as d from phien_ban_thuc_don p order by ma`,
+  ].map(async q => (await db.query(q)).rows)));
+  const chayLai = () => db.exec(SQL_0091).then(() => null, e => ({ message: e.message, detail: e.detail ?? '' }));
+
+  // Về đúng trạng thái ngay sau 0091 (mục 6 cho marketing ghi mô tả F21): chạy lại được.
+  await db.query(`update mon_an set mo_ta_vi = null where ma = 'F21'`);
+  ok('Chưa làm gì thêm (không công bố, không duyệt, không mô tả) → chạy lại được', (await chayLai()) === null);
+
+  const TRUONG_HOP = [
+    ['đã có mô tả (F21)', `update mon_an set mo_ta_vi = 'Nấm nướng trên rau xanh, sốt mè. Ăn xen với bò cho đỡ ngán.' where ma = 'F21'`,
+     `update mon_an set mo_ta_vi = null where ma = 'F21'`, /F21: đã có mô tả/],
+    ['đã công bố (F01)', `update mon_an set mo_ta_vi = 'Xà lách romaine, bánh mì nướng giòn, phô mai bào, sốt Caesar.', trang_thai = 'da_cong_bo' where ma = 'F01'`,
+     `update mon_an set mo_ta_vi = null, trang_thai = 'nhap', cong_bo_luc = null where ma = 'F01'`, /F01: đã công bố, đã có mô tả/],
+    ['giá đã duyệt (S01)', `update mon_an set gia = gia_de_xuat, gia_da_duyet = true, gia_duyet_luc = now() where ma = 'S01'`,
+     `update mon_an set gia = null, gia_da_duyet = false, gia_duyet_luc = null where ma = 'S01'`, /S01: giá đã duyệt/],
+    ['độ cay đã duyệt (F11)', `update mon_an set muc_cay = muc_cay_de_xuat, muc_cay_da_duyet = true where ma = 'F11'`,
+     `update mon_an set muc_cay = null, muc_cay_da_duyet = false where ma = 'F11'`, /F11: độ cay đã duyệt/],
+    ['đã có câu cảnh báo (F19)', `update mon_an set canh_bao = 'Món có bò sống và lòng đỏ trứng sống.' where ma = 'F19'`,
+     `update mon_an set canh_bao = null where ma = 'F19'`, /F19: đã có câu cảnh báo/],
+    ['công bố rồi gỡ khẩn cấp (F03, da_thu_hoi, còn mô tả)',
+     `update mon_an set mo_ta_vi = 'Nạm có thớ rõ.', canh_bao = 'Món có bò sống.' where ma = 'F03';
+      update mon_an set trang_thai = 'da_cong_bo' where ma = 'F03'; update mon_an set trang_thai = 'da_thu_hoi' where ma = 'F03'`,
+     `update mon_an set mo_ta_vi = null, canh_bao = null, trang_thai = 'nhap', cong_bo_luc = null where ma = 'F03'`, /F03: đã có mô tả, đã có câu cảnh báo/],
+  ];
+  for (const [ten, lam, tra, chiTiet] of TRUONG_HOP) {
+    await db.exec(lam);
+    const truoc = await chupHet();
+    const loi = await chayLai();
+    ok(`${ten} → chạy lại 0091 bị từ chối, câu báo rõ, detail chỉ đúng món`,
+       loi?.message === CAU_CHAN && chiTiet.test(loi.detail), loi ? `${loi.message} | ${loi.detail}` : 'CHẠY ĐƯỢC');
+    ok(`${ten} → không cột nào của bất kỳ dòng nào đổi (kể cả updated_at, sổ bản dịch)`, (await chupHet()) === truoc);
+    await db.exec(tra);
+  }
+
+  // Đủ cả: hướng dẫn chạy xong (mô tả, cảnh báo, công bố, công tắc) và duyệt giá, độ cay.
+  await db.exec(`
+    update mon_an set mo_ta_vi = copy_nhap, mo_ta_en = nguyen_van_nguon where copy_nhap is not null and trang_thai <> 'da_thu_hoi';
+    update mon_an set canh_bao = 'Món có bò sống và lòng đỏ trứng sống.' where la_mon_song;
+    update mon_an set trang_thai = 'da_cong_bo' where mo_ta_vi is not null and trang_thai = 'nhap';
+    update mon_an set gia = gia_de_xuat, gia_da_duyet = true where gia_de_xuat is not null;
+    update mon_an set muc_cay = muc_cay_de_xuat, muc_cay_da_duyet = true where muc_cay_de_xuat is not null;
+    update mon_an set ten_ko = '눈꽃치즈 육회 타르타르' where ma = 'F03';
+    insert into noi_dung_cong_bo (khoa, kieu, gia_tri_bool, trang_thai) values ('hien_thuc_don', 'bool', true, 'da_cong_bo');`);
+  const truoc = await chupHet();
+  const { rows: trangTruoc } = await db.query(`select mon_ma, ten, mo_ta, gia from thuc_don_cong_khai('vi')`);
+  const loi = await chayLai();
+  ok('Đã công bố 25 món, duyệt giá và độ cay → chạy lại 0091 bị từ chối', loi?.message === CAU_CHAN, loi?.message ?? 'CHẠY ĐƯỢC');
+  ok('…mọi cột giữ nguyên: giá, độ cay đã duyệt, tên Hàn sửa tay, 25 món đã công bố, công tắc', (await chupHet()) === truoc);
+  const { rows: trangSau } = await db.query(`select mon_ma, ten, mo_ta, gia from thuc_don_cong_khai('vi')`);
+  ok('…và trang Thực đơn y như trước (22 món ăn, giá đã duyệt vẫn còn)',
+     trangTruoc.length === 22 && JSON.stringify(trangSau) === JSON.stringify(trangTruoc), `${trangSau.length} món`);
 });
 
 process.exit(ketThuc('THỰC ĐƠN THEO CUỐN MENU BẢN SÁNG'));

@@ -153,13 +153,15 @@ export function dinhDangGia(n: number): string {
 
 /**
  * Câu dưới tên nhóm — chép NGUYÊN VĂN câu dưới tiêu đề trang của cuốn menu bản sáng (Khánh chốt
- * 11/10/2026; tiếng Hàn do Claude dịch, chưa có người đọc tiếng Hàn xem). Database không có cột này
+ * 11/10/2026; tiếng Hàn do Claude dịch, sửa 13/10/2026 theo rà soát, chưa có người đọc tiếng Hàn xem).
+ * crm/test/test-cong-khai-thuc-don.mjs chép tay lại từng chữ và kiểm mọi khóa là mã nhóm đang dùng của
+ * migration 0091 — sửa ở đây thì sửa cả ở đó. Database không có cột này
  * nên câu nằm ở đây, khóa là MÃ NHÓM (nhom_mon.ma). Nhóm không có ở đây (Món đặc trưng, Gọi thêm, các
  * nhóm đồ uống, nhóm mới sau này) thì trang không in câu nào. Không câu nào được có giá: câu "Ba ly
  * signature, mỗi ly 69.000đ." của cuốn không dùng.
  */
 export const CAU_NHOM: Readonly<Record<string, BaThuTieng>> = {
-  lau: { vi: 'Chỉ buổi trưa, gọi theo combo.', en: 'Lunch only, as part of a combo.', ko: '점심에만, 콤보로 주문하실 수 있어요.' },
+  lau: { vi: 'Chỉ buổi trưa, gọi theo combo.', en: 'Lunch only, as part of a combo.', ko: '점심에만 세트로 주문하실 수 있어요.' },
   salad: { vi: 'Ăn xen giữa các lượt bò.', en: 'Between rounds of beef.', ko: '고기 사이사이에 곁들여 드세요.' },
   'mon-them': { vi: 'Gọi cùng bò cho đủ bữa.', en: 'Order with your beef.', ko: '고기와 함께 주문해 보세요.' },
   canh: { vi: 'Ăn kèm bò nướng.', en: 'To go with your grilled beef.', ko: '구운 고기와 함께 드세요.' },

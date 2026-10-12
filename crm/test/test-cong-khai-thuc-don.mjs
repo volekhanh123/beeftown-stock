@@ -19,6 +19,11 @@
  *      công tắc rượu; 17 đồ uống dạng danh sách và 10 món thu hồi không bao giờ hiện; chạy lại
  *      mọi khối lần hai không đổi gì; SQL thu hồi làm món biến mất; hướng dẫn không đặt giá nào.
  *   5. anon gọi được hàm nhưng KHÔNG đọc thẳng được bảng mon_an, nhom_mon.
+ *   6. KHÓA CHỮ: sau khi chạy hết các khối, CẢ 25 dòng thuc_don_cong_khai() ở ba thứ tiếng trùng TỪNG CHỮ,
+ *      từng cờ, đúng thứ tự với dữ liệu giả MON_MAU của web/kiem-tra/gia-supabase.mjs (thu-day-du vẽ
+ *      trang từ đó) — sửa một chữ ở migration, ở THUC-DON.md hay ở MON_MAU mà không sửa hai chỗ kia là đỏ.
+ *      17 đồ uống dạng danh sách so tên ba thứ tiếng với danh sách chép tay; CAU_NHOM (câu dưới tên nhóm,
+ *      web/src/lib/thuc-don.ts) so với bản chép tay, mọi khóa phải là mã nhóm đang dùng của 0091.
  */
 
 import { readFileSync } from 'node:fs';
@@ -28,9 +33,11 @@ import { dungDatabase, taoBoDem } from './kho-chung.mjs';
 
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const LIB = join(GOC, 'web', 'src', 'lib');
-const { docThucDon, nhomThucDon, dinhDangGia, NHAN_MON, THUC_DON_RONG } =
+const { docThucDon, nhomThucDon, dinhDangGia, NHAN_MON, THUC_DON_RONG, CAU_NHOM } =
   await import(pathToFileURL(join(LIB, 'thuc-don.ts')).href);
 const { timChuoiCam } = await import(pathToFileURL(join(LIB, 'chuoi-cam.js')).href);
+// Dữ liệu giả của thu-day-du (MON_MAU): các dòng thuc_don_cong_khai() mà trình duyệt được cho xem.
+const { thucDon: thucDonGia, MON_MAU } = await import(pathToFileURL(join(GOC, 'web', 'kiem-tra', 'gia-supabase.mjs')).href);
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — THỰC ĐƠN TRÊN TRANG CÔNG KHAI');
 
@@ -180,6 +187,28 @@ const CANH_BAO = {
   vi: 'Món có bò sống và lòng đỏ trứng sống. Người đang mang thai, trẻ nhỏ, người lớn tuổi nên hỏi nhân viên trước khi gọi.',
   en: 'Contains raw beef and raw egg yolk. If you are pregnant, or ordering for a child or an older guest, please ask our staff first.',
   ko: '생소고기와 날계란 노른자가 들어간 메뉴예요. 임산부, 어린이, 어르신은 주문 전에 직원에게 문의해 주세요.',
+};
+/** 17 đồ uống dạng danh sách — tên ba thứ tiếng chép tay từ cuốn (danh mục 11/10/2026, tiếng Hàn sửa 13/10). */
+const TEN_DANH_SACH_UONG = {
+  D02: ['Highball cổ điển', 'Classic highball', '클래식 하이볼'], D15: ['Highball chanh', 'Lemon highball', '레몬 하이볼'],
+  D16: ['Bia tươi', 'Draft beer', '생맥주'], D17: ['Bia chai', 'Bottled beer', '병맥주'],
+  D18: ['Soju truyền thống', 'Original soju', '오리지널 소주'], D19: ['Soju nho xanh', 'Green grape soju', '청포도 소주'],
+  D20: ['Soju mận', 'Plum soju', '자두 소주'], D21: ['Makgeolli truyền thống', 'Original makgeolli', '오리지널 막걸리'],
+  D09: ['Nước cam', 'Orange juice', '오렌지 주스'], D22: ['Nước xoài', 'Mango juice', '망고 주스'],
+  D10: ['Ade chanh', 'Lemon ade', '레몬에이드'], D23: ['Ade chanh dây', 'Passion fruit ade', '패션프루트에이드'],
+  D24: ['Cola', 'Cola', '콜라'], D25: ['Cola không đường', 'Zero cola', '제로 콜라'],
+  D26: ['Soda chanh', 'Lemon-lime soda', '사이다'], D27: ['Nước suối', 'Still water', '생수'],
+  D28: ['Nước có ga', 'Sparkling water', '탄산수'],
+};
+/** Câu dưới tên nhóm — chép tay từ cuốn (6 nhóm × 3 thứ tiếng), như CANH_BAO. */
+const CAU_NHOM_CHEP_TAY = {
+  lau: { vi: 'Chỉ buổi trưa, gọi theo combo.', en: 'Lunch only, as part of a combo.', ko: '점심에만 세트로 주문하실 수 있어요.' },
+  salad: { vi: 'Ăn xen giữa các lượt bò.', en: 'Between rounds of beef.', ko: '고기 사이사이에 곁들여 드세요.' },
+  'mon-them': { vi: 'Gọi cùng bò cho đủ bữa.', en: 'Order with your beef.', ko: '고기와 함께 주문해 보세요.' },
+  canh: { vi: 'Ăn kèm bò nướng.', en: 'To go with your grilled beef.', ko: '구운 고기와 함께 드세요.' },
+  com: { vi: 'Kết bữa bằng một món cơm.', en: 'Finish with a rice dish.', ko: '식사는 밥 요리로 마무리해 보세요.' },
+  'mi-y': { vi: 'Mì Ý cho cả bàn, mì lạnh để kết bữa.', en: 'Pasta to share, cold noodles to finish.',
+            ko: '파스타는 함께 나눠 드시고, 냉면으로 식사를 마무리해 보세요.' },
 };
 /** Chữ mẫu chép tay từ cuốn (danh mục 11/10/2026) — sai một chữ trong THUC-DON.md hay migration là đỏ. */
 const MAU = [
@@ -333,6 +362,15 @@ await nhom('4 · CHẠY ĐÚNG CÁC KHỐI SQL CỦA web/THUC-DON.md (PGlite, va
   const pb = (await xem())[0];
   ok('Khối "phien-ban" → trang có phiên bản v2.0, ngày cập nhật 11/10/2026', pb?.phien_ban === 'v2.0' && pb?.cap_nhat_ngay === '2026-10-11',
      JSON.stringify([pb?.phien_ban, pb?.cap_nhat_ngay]));
+  // Khánh đổi ngày (ghi ngày công bố) rồi chạy lại khối: ngày trên trang đổi theo, vẫn một phiên bản.
+  ok('Khối "phien-ban" có đúng một chỗ ghi ngày 2026-10-11 để đổi', KHOI['phien-ban'].split("'2026-10-11'").length === 2);
+  await db.exec(KHOI['phien-ban'].replace("'2026-10-11'", "'2026-11-13'"));
+  const pbMoi = (await xem())[0];
+  const { rows: [{ n: soPb }] } = await db.query(`select count(*)::int as n from phien_ban_thuc_don`);
+  ok('Chạy lại khối "phien-ban" với ngày khác → trang có ngày mới (13/11/2026), vẫn đúng một dòng v2.0',
+     pbMoi?.phien_ban === 'v2.0' && pbMoi?.cap_nhat_ngay === '2026-11-13' && soPb === 1, JSON.stringify([pbMoi?.cap_nhat_ngay, soPb]));
+  await chay('phien-ban');
+  ok('…chạy lại bản gốc → về 11/10/2026', (await xem())[0]?.cap_nhat_ngay === '2026-10-11');
 
   await chay('bat-do-uong-co-con');
   let rows = await xem();
@@ -341,6 +379,40 @@ await nhom('4 · CHẠY ĐÚNG CÁC KHỐI SQL CỦA web/THUC-DON.md (PGlite, va
   ok('Thư viện của trang thấy có đồ uống có cồn', nhomThucDon(rows).coDoUongCoCon === true);
   ok('Mọi công tắc bật: 17 đồ uống dạng danh sách và 10 món thu hồi vẫn không hiện',
      !rows.some(r => DANH_SACH_UONG.includes(r.mon_ma) || THU_HOI.includes(r.mon_ma)));
+
+  // ---- Khóa chữ: database sau hướng dẫn ≡ dữ liệu giả của trang (MON_MAU), từng dòng, từng cột ----------
+  ok('MON_MAU của gia-supabase.mjs đúng 25 món: 22 món ăn và 3 ly signature, cùng thứ tự với cuốn',
+     MON_MAU.map(m => m.ma).join() === [...THU_TU_MON_AN, ...SIGNATURE].join(), MON_MAU.map(m => m.ma).join());
+  /** Các ô khác nhau giữa dòng database và dòng giả (đủ 15 cột, theo thứ tự). */
+  const lechVoiGia = (that, gia) => {
+    const sai = [];
+    if (that.length !== gia.length) sai.push(`${that.length} dòng ≠ ${gia.length} dòng`);
+    for (let i = 0; i < Math.max(that.length, gia.length); i++) {
+      for (const k of COT_DONG_THUC_DON) {
+        if (JSON.stringify(that[i]?.[k] ?? null) !== JSON.stringify(gia[i]?.[k] ?? null)) {
+          sai.push(`dòng ${i + 1} (${that[i]?.mon_ma ?? '—'} / ${gia[i]?.mon_ma ?? '—'}) ${k}: «${that[i]?.[k]}» ≠ «${gia[i]?.[k]}»`);
+        }
+      }
+    }
+    return sai;
+  };
+  for (const nn of ['vi', 'en', 'ko']) {
+    const sai = lechVoiGia(await xem(nn), thucDonGia('day-du', nn));
+    ok(`[${nn}] Cả 25 dòng thuc_don_cong_khai() trùng từng chữ dữ liệu giả MON_MAU (mã và tên nhóm, mã, tên, mô tả, cảnh báo, cờ, thứ tự, phiên bản)`,
+       sai.length === 0, sai.slice(0, 4).join(' | '));
+  }
+  const { rows: uong } = await db.query(`select ma, ten_vi, ten_en, ten_ko from mon_an where ma = any($1) order by ma`, [DANH_SACH_UONG]);
+  const lechUong = Object.entries(TEN_DANH_SACH_UONG).filter(([m, [v, e, k]]) => {
+    const r = uong.find(x => x.ma === m);
+    return !r || r.ten_vi !== v || r.ten_en !== e || r.ten_ko !== k;
+  }).map(([m]) => { const r = uong.find(x => x.ma === m); return `${m}: ${r?.ten_vi} / ${r?.ten_en} / ${r?.ten_ko}`; });
+  ok('17 đồ uống dạng danh sách: tên vi / en / ko trong database đúng từng chữ bản chép tay',
+     Object.keys(TEN_DANH_SACH_UONG).length === 17 && uong.length === 17 && lechUong.length === 0, lechUong.join(' · '));
+  ok('CAU_NHOM (web/src/lib/thuc-don.ts) đúng từng chữ bản chép tay: 6 nhóm × 3 thứ tiếng',
+     JSON.stringify(CAU_NHOM) === JSON.stringify(CAU_NHOM_CHEP_TAY), JSON.stringify(CAU_NHOM));
+  const { rows: nhomDung } = await db.query(`select ma from nhom_mon where dang_dung`);
+  const khoaLa = Object.keys(CAU_NHOM).filter(k => !nhomDung.some(g => g.ma === k));
+  ok('Mọi khóa của CAU_NHOM là mã nhóm đang dùng của 0091', Object.keys(CAU_NHOM).length > 0 && khoaLa.length === 0, khoaLa.join(','));
 
   // ---- Chạy lại từng khối lần hai: không lỗi, không đổi gì --------------------
   const chup = async () => JSON.stringify(await Promise.all(['vi', 'en', 'ko'].map(xem)));
@@ -360,6 +432,10 @@ await nhom('4 · CHẠY ĐÚNG CÁC KHỐI SQL CỦA web/THUC-DON.md (PGlite, va
   await chay('tat-do-uong-co-con');
   ok('Tắt công tắc rượu → ba ly signature ẩn lại, dữ liệu còn nguyên', ma(await xem()) === THU_TU_MON_AN.join()
      && (await trangThai('D01')) === 'da_cong_bo');
+  for (const nn of ['vi', 'en', 'ko']) {
+    const sai = lechVoiGia(await xem(nn), thucDonGia('khong-con-tat', nn));
+    ok(`[${nn}] Công tắc rượu tắt: 22 dòng trùng từng chữ kịch bản khong-con-tat của dữ liệu giả`, sai.length === 0, sai.slice(0, 4).join(' | '));
+  }
 
   const rKiem = await db.query(KHOI.kiem);
   ok('Khối "kiem" chạy được: 22 dòng, cột gia rỗng ở mọi dòng', rKiem.rows.length === 22 && rKiem.rows.every(r => r.gia === null), `${rKiem.rows.length} dòng`);
