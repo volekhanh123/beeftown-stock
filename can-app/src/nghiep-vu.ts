@@ -2488,7 +2488,7 @@ export class UngDung {
           can_tra_loi_giay: giay(this.giu.lucNgheMs()),
           tu_gui: ch.tuGui === true,
           lech_so: this.lechCuoi,
-          // 2.9.3 (migration 0085): lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được / đọc lại lệch), hay lần xoá qua WiFi
+          // 2.9.3 (migration 0088): lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được / đọc lại lệch), hay lần xoá qua WiFi
           // hỏng giữa chừng — cân có thể khác tren_can. Trang pha lóc không nói "Cân sẵn sàng" khi cờ này bật.
           chua_xac_nhan: this.chuaXacNhan() !== null || this.canChuaRo() !== null,
           gui_loi: ch.tuGui === true && this.lanTuGui?.hong === true,
