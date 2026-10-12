@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0067 · POLICY ĐỌC CHỈ CHO NHÂN SỰ CRM ĐANG LÀM ·
+-- BEEFTOWN CRM — 0069 · POLICY ĐỌC CHỈ CHO NHÂN SỰ CRM ĐANG LÀM ·
 --                       HÀM PHÂN QUYỀN TÍNH MỘT LẦN CHO CẢ CÂU TRUY VẤN
 -- =============================================================================
 -- Rà soát nợ kỹ thuật 11/10/2026, hai việc trên cùng một bộ policy:
@@ -25,7 +25,7 @@
 --       · điều kiện chi nhánh thành `chi_nhanh_id = any((select crm_cn_duoc())::uuid[])`
 --         — crm_cn_duoc() trả MẢNG chi nhánh người gọi được vào (như kho_cn_duoc),
 --         tính một lần. Phép ép ::uuid[] không thừa: xem chú thích kho_cn_duoc (0018).
---     Sau 0067 (cùng máy, cùng dữ liệu): quản lý đếm khach_hang 339 → 10 ms, chủ
+--     Sau 0069 (cùng máy, cùng dữ liệu): quản lý đếm khach_hang 339 → 10 ms, chủ
 --     134 → 6 ms; v_phan_nhom_khach 756 → 32 ms; luot_ghe 134 → 4 ms. Cùng số dòng.
 --
 -- NGHĨA KHÔNG ĐỔI (trừ tám policy của mục 1). crm_cn_duoc() chép điều kiện của
@@ -34,7 +34,7 @@
 -- Cột chi_nhanh_id của mọi bảng dùng nó đều NOT NULL (khóa ngoại tới
 -- chi_nhanh), trừ nhan_su — policy đó vẫn có la_chu_so_huu() đứng trước.
 -- test-quyen-doc-crm.mjs mục 2 so biểu thức cũ (chép nguyên văn pg_policies
--- trước 0067) với biểu thức mới trên từng dòng của từng bảng, với 13 kiểu
+-- trước 0069) với biểu thức mới trên từng dòng của từng bảng, với 13 kiểu
 -- người. alter policy giữ tên, lệnh (select / all / …), vai áp dụng.
 --
 -- Mục 3 của test là cổng: không policy nào ở public gọi hàm phân quyền không
@@ -74,7 +74,7 @@ as $$
 $$;
 
 comment on function crm_cn_duoc is
-  'Các chi nhánh mà nhân sự CRM đang đăng nhập được vào (0067) — đúng tập duoc_truy_cap_chi_nhanh() trả lời "có": chủ sở hữu mọi chi nhánh, quản lý / thu ngân / marketing chi nhánh của mình, còn lại rỗng. Dùng trong policy dạng chi_nhanh_id = any((select crm_cn_duoc())::uuid[]) — tính một lần cho cả câu truy vấn.';
+  'Các chi nhánh mà nhân sự CRM đang đăng nhập được vào (0069) — đúng tập duoc_truy_cap_chi_nhanh() trả lời "có": chủ sở hữu mọi chi nhánh, quản lý / thu ngân / marketing chi nhánh của mình, còn lại rỗng. Dùng trong policy dạng chi_nhanh_id = any((select crm_cn_duoc())::uuid[]) — tính một lần cho cả câu truy vấn.';
 
 
 -- =============================================================================
@@ -230,7 +230,7 @@ alter policy phien_ban_sua on phien_ban_thuc_don
 do $$
 begin
   if not exists (select 1 from pg_namespace where nspname = 'storage') then
-    raise notice 'Không có schema storage (đang chạy PGlite) — bỏ qua phần storage của 0067.';
+    raise notice 'Không có schema storage (đang chạy PGlite) — bỏ qua phần storage của 0069.';
     return;
   end if;
 

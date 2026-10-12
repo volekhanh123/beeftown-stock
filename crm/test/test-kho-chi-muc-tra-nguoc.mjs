@@ -1,6 +1,6 @@
 /**
  * BEEFTOWN KHO — Kiểm thử: chỉ mục tra ngược của kho, và số liệu sức khỏe không quét cả nhat_ky_tin
- * (migration 0069, 0070)
+ * (migration 0071, 0072)
  * =================================================================================================
  *
  *     node test/test-kho-chi-muc-tra-nguoc.mjs
@@ -22,7 +22,7 @@ import { fileURLToPath } from 'node:url';
 import { dungDatabase, taoBoDem } from './kho-chung.mjs';
 
 const MIG = join(dirname(fileURLToPath(import.meta.url)), '..', 'supabase', 'migrations');
-const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — CHỈ MỤC TRA NGƯỢC (0069, 0070)');
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — CHỈ MỤC TRA NGƯỢC (0071, 0072)');
 const { db, cnA } = await dungDatabase();
 
 const keHoach = async (sql, p = []) => (await db.query(`explain ${sql}`, p)).rows.map(r => r['QUERY PLAN']).join('\n');
@@ -74,8 +74,8 @@ await nhom('2 · SỐ LIỆU SỨC KHỎE (mỗi 5 phút) KHÔNG QUÉT CẢ BẢ
   const { rows: [{ n }] } = await db.query(`select count(*)::int n from nhat_ky_tin t where ${VE}`, [cnA.id]);
   ok('…và vẫn đếm đúng 2 tin (tin chờ + tin trong 24 giờ)', n === 2, `${n}`);
 
-  const tep = readFileSync(join(MIG, '0070_bao_dong_don_nhat_ky.sql'), 'utf8');
-  ok('Chỉ mục mới nằm ở migration 0070 (không sửa migration cũ)', /nhat_ky_tin_moc_idx/.test(tep));
+  const tep = readFileSync(join(MIG, '0072_bao_dong_don_nhat_ky.sql'), 'utf8');
+  ok('Chỉ mục mới nằm ở migration 0072 (không sửa migration cũ)', /nhat_ky_tin_moc_idx/.test(tep));
 });
 
 process.exit(ketThuc('CHỈ MỤC TRA NGƯỢC'));

@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0066 · HÀM CRM GIỚI HẠN ĐÚNG CHI NHÁNH · XẾP TIN MỘT LẦN ·
+-- BEEFTOWN CRM — 0068 · HÀM CRM GIỚI HẠN ĐÚNG CHI NHÁNH · XẾP TIN MỘT LẦN ·
 --                       ĐẶT BÀN CHỈ ĐỔI THEO ĐÚNG BƯỚC
 -- =============================================================================
 -- Rà soát nợ kỹ thuật 11/10/2026, phần quyền còn lại sau 0065. Bốn hàm definer
@@ -71,7 +71,7 @@
 -- CHỮ KÝ GIỮ NGUYÊN (README, lưu ý 6) — create or replace, không sinh overload.
 -- Thân hàm chép NGUYÊN VĂN bản mới nhất (tim_hoac_tao_khach, xep_hang_gui_tin:
 -- 0045; phieu_do_launch: 0013; tao_tin_tuyen_dung_mau: 0026), phần thêm đánh
--- dấu "0066".
+-- dấu "0068".
 --
 -- Kiểm thử: crm/test/test-quyen-chi-nhanh-crm.mjs.
 -- =============================================================================
@@ -96,7 +96,7 @@ as $$
 declare
   v_sdt   text := chuan_hoa_sdt(p_sdt);
   v_khach khach_hang;
-  v_an    khach_hang;   -- 0066: mọi cột null, chỉ điền id / sdt / dang_hoat_dong
+  v_an    khach_hang;   -- 0068: mọi cột null, chỉ điền id / sdt / dang_hoat_dong
 begin
   -- ---- 0045 · Ai được tra cứu / tạo hồ sơ khách ---------------------------
   if co_phien_dang_nhap()
@@ -114,7 +114,7 @@ begin
   select * into v_khach from khach_hang where sdt = v_sdt;
 
   if found then
-    -- ---- 0066 · Khách của chi nhánh khác: chỉ id, không dữ liệu riêng tư --
+    -- ---- 0068 · Khách của chi nhánh khác: chỉ id, không dữ liệu riêng tư --
     -- Đúng điều kiện policy khach_hang_doc (0007): chủ sở hữu, hoặc khách đã ghé
     -- / đặt bàn ở chi nhánh người gọi. Không phiên (website, máy POS) như cũ.
     if co_phien_dang_nhap()
@@ -128,7 +128,7 @@ begin
       v_an.dang_hoat_dong := v_khach.dang_hoat_dong;
       return v_an;
     end if;
-    -- ---- Hết phần 0066 -----------------------------------------------------
+    -- ---- Hết phần 0068 -----------------------------------------------------
 
     -- Khách cũ: chỉ bổ sung thông tin còn thiếu, KHÔNG ghi đè dữ liệu đã có
     update khach_hang
@@ -138,14 +138,14 @@ begin
     return v_khach;
   end if;
 
-  -- ---- 0066 · Khách mới: chỉ cho chi nhánh của người gọi ------------------
+  -- ---- 0068 · Khách mới: chỉ cho chi nhánh của người gọi ------------------
   if co_phien_dang_nhap()
      and not la_chu_so_huu()
      and (p_chi_nhanh is null or not duoc_truy_cap_chi_nhanh(p_chi_nhanh)) then
     raise exception 'Chỉ tạo được hồ sơ khách mới cho chi nhánh của bạn'
       using errcode = 'insufficient_privilege';
   end if;
-  -- ---- Hết phần 0066 -------------------------------------------------------
+  -- ---- Hết phần 0068 -------------------------------------------------------
 
   insert into khach_hang (sdt, ho_ten, chi_nhanh_dau_tien,
                           nguon_utm_source, nguon_utm_medium, nguon_utm_campaign)
@@ -157,7 +157,7 @@ end;
 $$;
 
 comment on function tim_hoac_tao_khach is
-  'Điểm vào duy nhất để tạo khách. Chống trùng hồ sơ do SĐT khác định dạng. Có phiên đăng nhập thì chỉ chủ sở hữu, quản lý, thu ngân (0045); khách chưa từng ghé / đặt bàn ở chi nhánh người gọi chỉ trả id, sdt, dang_hoat_dong và không bổ sung tên; khách mới chỉ tạo cho chi nhánh người gọi (0066). Website đi qua tao_dat_ban() dưới anon.';
+  'Điểm vào duy nhất để tạo khách. Chống trùng hồ sơ do SĐT khác định dạng. Có phiên đăng nhập thì chỉ chủ sở hữu, quản lý, thu ngân (0045); khách chưa từng ghé / đặt bàn ở chi nhánh người gọi chỉ trả id, sdt, dang_hoat_dong và không bổ sung tên; khách mới chỉ tạo cho chi nhánh người gọi (0068). Website đi qua tao_dat_ban() dưới anon.';
 
 
 -- =============================================================================
@@ -189,14 +189,14 @@ begin
 
   if p_chi_nhanh_ma is not null then
     select id into v_cn from chi_nhanh where lower(ma) = lower(p_chi_nhanh_ma);
-    -- ---- 0066 · Mã gõ sai không thành "mọi chi nhánh" ----------------------
+    -- ---- 0068 · Mã gõ sai không thành "mọi chi nhánh" ----------------------
     if not found then
       raise exception 'Không tìm thấy chi nhánh %', p_chi_nhanh_ma
         using errcode = 'foreign_key_violation';
     end if;
   end if;
 
-  -- ---- 0066 · Quản lý, marketing: chỉ chi nhánh của mình -------------------
+  -- ---- 0068 · Quản lý, marketing: chỉ chi nhánh của mình -------------------
   if not la_chu_so_huu() then
     if v_cn is null then
       v_cn := (nhan_su_hien_tai()).chi_nhanh_id;
@@ -205,7 +205,7 @@ begin
         using errcode = 'insufficient_privilege';
     end if;
   end if;
-  -- ---- Hết phần 0066 — từ đây là nguyên văn 0013 ---------------------------
+  -- ---- Hết phần 0068 — từ đây là nguyên văn 0013 ---------------------------
 
   return query
   with sk as (
@@ -263,7 +263,7 @@ end;
 $$;
 
 comment on function phieu_do_launch is
-  'Phiếu đo ra mắt: lượt xem, bấm, hồ sơ, và ba con số đặt bàn KHÁC NHAU (nhận / xác nhận / thực đến). Chủ sở hữu, quản lý, marketing. Ngoài chủ sở hữu: để trống chi nhánh = chi nhánh của mình, mã chi nhánh khác bị từ chối; mã không tìm thấy báo lỗi (0066).';
+  'Phiếu đo ra mắt: lượt xem, bấm, hồ sơ, và ba con số đặt bàn KHÁC NHAU (nhận / xác nhận / thực đến). Chủ sở hữu, quản lý, marketing. Ngoài chủ sở hữu: để trống chi nhánh = chi nhánh của mình, mã chi nhánh khác bị từ chối; mã không tìm thấy báo lỗi (0068).';
 
 
 -- =============================================================================
@@ -283,12 +283,12 @@ begin
       using errcode = 'insufficient_privilege';
   end if;
 
-  -- ---- 0066 · Đúng chi nhánh, như policy vi_tri_them -----------------------
+  -- ---- 0068 · Đúng chi nhánh, như policy vi_tri_them -----------------------
   if co_phien_dang_nhap() and not duoc_truy_cap_chi_nhanh(p_chi_nhanh_id) then
     raise exception 'Chỉ khởi tạo được tin mẫu cho chi nhánh của bạn'
       using errcode = 'insufficient_privilege';
   end if;
-  -- ---- Hết phần 0066 — từ đây là nguyên văn 0026 ---------------------------
+  -- ---- Hết phần 0068 — từ đây là nguyên văn 0026 ---------------------------
 
   if not exists (select 1 from chi_nhanh where id = p_chi_nhanh_id) then
     raise exception 'Không tìm thấy chi nhánh %', p_chi_nhanh_id
@@ -357,7 +357,7 @@ begin
       using errcode = 'insufficient_privilege';
   end if;
 
-  -- ---- 0066 · Khách của chi nhánh này, chiến dịch của chi nhánh này --------
+  -- ---- 0068 · Khách của chi nhánh này, chiến dịch của chi nhánh này --------
   if co_phien_dang_nhap()
      and not exists (select 1 from luot_ghe lg
                      where lg.khach_hang_id = p_khach_hang_id and lg.chi_nhanh_id = p_chi_nhanh_id)
@@ -373,7 +373,7 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  -- ---- 0066 · Bấm hai lần = một tin ----------------------------------------
+  -- ---- 0068 · Bấm hai lần = một tin ----------------------------------------
   v_khoa := case
               when p_chien_dich_id is not null then 'CD:' || p_chien_dich_id || ':' || p_khach_hang_id
               else 'TAY:' || p_mau_tin_ma || ':' || p_khach_hang_id || ':' || to_char(hom_nay_vn(), 'YYYY-MM-DD')
@@ -382,7 +382,7 @@ begin
   if found then
     return v_id;
   end if;
-  -- ---- Hết phần 0066 — từ đây là nguyên văn 0006 (insert thêm khoa_gui) ----
+  -- ---- Hết phần 0068 — từ đây là nguyên văn 0006 (insert thêm khoa_gui) ----
 
   select * into v_mau from mau_tin where ma = p_mau_tin_ma and dang_dung;
   if not found then
@@ -413,7 +413,7 @@ begin
   on conflict (khoa_gui) do nothing
   returning id into v_id;
 
-  -- 0066: lời gọi song song đã ghi trước (cùng khoá) — trả lại tin của nó.
+  -- 0068: lời gọi song song đã ghi trước (cùng khoá) — trả lại tin của nó.
   if v_id is null then
     select id into v_id from nhat_ky_tin where khoa_gui = v_khoa;
   end if;
@@ -423,7 +423,7 @@ end;
 $$;
 
 comment on function xep_hang_gui_tin is
-  'Xếp một tin vào hàng gửi sau khi qua duoc_phep_gui(). Có phiên đăng nhập thì chỉ chủ sở hữu, quản lý, marketing của đúng chi nhánh (0045), khách phải đã ghé / đặt bàn ở chi nhánh đó, chiến dịch phải của chi nhánh đó (0066). khoa_gui CD:<chiến dịch>:<khách> hoặc TAY:<mẫu>:<khách>:<ngày VN>: gọi lại trả ĐÚNG tin đã xếp (0066).';
+  'Xếp một tin vào hàng gửi sau khi qua duoc_phep_gui(). Có phiên đăng nhập thì chỉ chủ sở hữu, quản lý, marketing của đúng chi nhánh (0045), khách phải đã ghé / đặt bàn ở chi nhánh đó, chiến dịch phải của chi nhánh đó (0068). khoa_gui CD:<chiến dịch>:<khách> hoặc TAY:<mẫu>:<khách>:<ngày VN>: gọi lại trả ĐÚNG tin đã xếp (0068).';
 
 
 -- =============================================================================
@@ -501,7 +501,7 @@ end;
 $$;
 
 comment on function dat_ban_kiem_sua is
-  'Trigger (0066): có phiên đăng nhập thì đặt bàn chỉ đổi theo đúng 5 bước của hộp thư /noi-bo/dat-ban; không đổi khách, chi nhánh, mã, đồng ý nhận tin, nguồn, giờ tạo; đã kết thúc thì không đổi ngày / giờ / số khách / bàn; bàn và lượt ghé phải đúng chi nhánh, đúng khách; nguoi_xu_ly = người đang đăng nhập.';
+  'Trigger (0068): có phiên đăng nhập thì đặt bàn chỉ đổi theo đúng 5 bước của hộp thư /noi-bo/dat-ban; không đổi khách, chi nhánh, mã, đồng ý nhận tin, nguồn, giờ tạo; đã kết thúc thì không đổi ngày / giờ / số khách / bàn; bàn và lượt ghé phải đúng chi nhánh, đúng khách; nguoi_xu_ly = người đang đăng nhập.';
 
 drop trigger if exists dat_ban_kiem_sua on dat_ban;
 create trigger dat_ban_kiem_sua

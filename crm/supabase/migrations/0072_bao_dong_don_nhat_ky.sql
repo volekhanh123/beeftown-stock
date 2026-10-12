@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN — 0070 · LƯỢT BÁO ĐỘNG 5 PHÚT DỌN BỐN BẢNG NHẬT KÝ PHÌNH MÃI ·
+-- BEEFTOWN — 0072 · LƯỢT BÁO ĐỘNG 5 PHÚT DỌN BỐN BẢNG NHẬT KÝ PHÌNH MÃI ·
 --                   CHỈ MỤC MỐC CỦA nhat_ky_tin
 -- =============================================================================
 -- Rà soát nợ kỹ thuật 11/10/2026.
@@ -35,7 +35,7 @@
 --     (nhat_ky_tin_moc_idx) cho planner ghép (BitmapOr) với nhat_ky_tin_cho_gui_idx;
 --     việc dọn ở mục 1 cũng đi qua nó.
 --
--- bao_dong_bat_dau_luot: thân 0060 NGUYÊN VĂN, thêm đúng một dòng "0070".
+-- bao_dong_bat_dau_luot: thân 0060 NGUYÊN VĂN, thêm đúng một dòng "0072".
 -- Kiểm thử: test-bao-dong-don-nhat-ky.mjs, test-kho-chi-muc-tra-nguoc.mjs mục 2.
 -- =============================================================================
 
@@ -121,7 +121,7 @@ end;
 $$;
 
 comment on function don_nhat_ky_qua_han() is
-  'NỘI BỘ (0070): dọn nhat_ky_tra_cuu > 30 ngày, kho_may_nhat_ky > 180 ngày, kho_ipos_lan_chay > 90 ngày (giữ 10 lượt mới nhất và lượt cron xong gần nhất mỗi chi nhánh), nhat_ky_tin > 400 ngày (trừ cho_gui); tối đa 5.000 dòng mỗi bảng. Chỉ bao_dong_bat_dau_luot() gọi. Trả số dòng đã xóa từng bảng.';
+  'NỘI BỘ (0072): dọn nhat_ky_tra_cuu > 30 ngày, kho_may_nhat_ky > 180 ngày, kho_ipos_lan_chay > 90 ngày (giữ 10 lượt mới nhất và lượt cron xong gần nhất mỗi chi nhánh), nhat_ky_tin > 400 ngày (trừ cho_gui); tối đa 5.000 dòng mỗi bảng. Chỉ bao_dong_bat_dau_luot() gọi. Trả số dòng đã xóa từng bảng.';
 
 
 -- =============================================================================
@@ -166,7 +166,7 @@ begin
   returning * into v_tt;
 
   delete from bao_dong_su_co where het_luc < now() - interval '90 days';
-  -- 0070: bốn bảng nhật ký phình mãi — tối đa 5.000 dòng mỗi bảng mỗi lượt.
+  -- 0072: bốn bảng nhật ký phình mãi — tối đa 5.000 dòng mỗi bảng mỗi lượt.
   perform don_nhat_ky_qua_han();
 
   -- Đọc hỏng → so_lieu null + câu lỗi, KHÔNG ném: lượt vẫn chạy để Worker ghi đèn giả doc_so_lieu.
@@ -211,7 +211,7 @@ end;
 $$;
 
 comment on function bao_dong_bat_dau_luot(text) is
-  'Máy báo động (0060): bắt đầu lượt. {bi_khoa:true, dang_chay_tu} nếu lượt khác đang chạy (dưới 10 phút); không thì {bi_khoa:false, luot, so_lieu|null (số liệu bảng sức khỏe + ô sao_luu), loi_so_lieu, trang_thai{kenh, kenh_tu_luc, tom_tat_luc, lan_chay_cuoi}, da_bao_48_gio[{khoa, bao_mo_luc}]}. Ghi kênh Worker đang dùng; dọn sự cố đóng quá 90 ngày và bốn bảng nhật ký quá hạn (don_nhat_ky_qua_han, 0070).';
+  'Máy báo động (0060): bắt đầu lượt. {bi_khoa:true, dang_chay_tu} nếu lượt khác đang chạy (dưới 10 phút); không thì {bi_khoa:false, luot, so_lieu|null (số liệu bảng sức khỏe + ô sao_luu), loi_so_lieu, trang_thai{kenh, kenh_tu_luc, tom_tat_luc, lan_chay_cuoi}, da_bao_48_gio[{khoa, bao_mo_luc}]}. Ghi kênh Worker đang dùng; dọn sự cố đóng quá 90 ngày và bốn bảng nhật ký quá hạn (don_nhat_ky_qua_han, 0072).';
 
 
 -- =============================================================================

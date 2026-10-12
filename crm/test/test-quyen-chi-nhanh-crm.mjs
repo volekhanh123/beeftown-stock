@@ -1,6 +1,6 @@
 /**
  * BEEFTOWN CRM — Kiểm thử: hàm CRM giới hạn ĐÚNG CHI NHÁNH, xếp tin không gửi hai lần,
- * đặt bàn chỉ đổi theo đúng bước (migration 0066)
+ * đặt bàn chỉ đổi theo đúng bước (migration 0068)
  * ===================================================================================
  *
  *     node test/test-quyen-chi-nhanh-crm.mjs
@@ -31,7 +31,7 @@ import { fileURLToPath } from 'node:url';
 import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
 
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
-const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — HÀM CRM ĐÚNG CHI NHÁNH, XẾP TIN MỘT LẦN, ĐẶT BÀN ĐÚNG BƯỚC (0066)');
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — HÀM CRM ĐÚNG CHI NHÁNH, XẾP TIN MỘT LẦN, ĐẶT BÀN ĐÚNG BƯỚC (0068)');
 const { db, cnA, cnB, nsId, duoi, duoiAnon } = await dungDatabase();
 
 const UID_LA = '00000000-0000-4000-8000-0000000000aa';

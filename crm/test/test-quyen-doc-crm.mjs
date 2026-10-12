@@ -1,6 +1,6 @@
 /**
  * BEEFTOWN CRM — Kiểm thử: policy ĐỌC chỉ cho nhân sự CRM đang làm, và mọi policy tính hàm
- * phân quyền MỘT LẦN cho cả câu truy vấn (migration 0067)
+ * phân quyền MỘT LẦN cho cả câu truy vấn (migration 0069)
  * ========================================================================================
  *
  *     node test/test-quyen-doc-crm.mjs
@@ -18,8 +18,8 @@
  *     thuộc dòng bọc trong (select …) — Postgres tính một lần (InitPlan); điều kiện chi nhánh thành
  *     chi_nhanh_id = any((select crm_cn_duoc())::uuid[]).
  *
- * Mục 2 là phép thử TƯƠNG ĐƯƠNG: biểu thức policy cũ (chép nguyên văn từ pg_policies trước 0067,
- * trong CU) và biểu thức mới (đọc từ pg_policies sau 0067) phải cho CÙNG kết quả trên từng dòng của
+ * Mục 2 là phép thử TƯƠNG ĐƯƠNG: biểu thức policy cũ (chép nguyên văn từ pg_policies trước 0069,
+ * trong CU) và biểu thức mới (đọc từ pg_policies sau 0069) phải cho CÙNG kết quả trên từng dòng của
  * từng bảng, với từng kiểu người — chủ, quản lý hai chi nhánh, thu ngân, marketing, vai kho, đã
  * nghỉ, không có nhan_su, tài khoản máy, không phiên. Chỉ tám policy của mục 1 được đổi nghĩa, và
  * đổi đúng theo SPEC_CRM.
@@ -29,12 +29,12 @@
  * dòng — bọc cũng vẫn chạy mỗi dòng).
  *
  * Storage (policy noi_bo_nhan_su_xem của kho file beeftown-noi-bo): PGlite không có schema storage —
- * thử tay trên project Beeftown-thu (các bước ở đầu 0067 và trong mô tả PR).
+ * thử tay trên project Beeftown-thu (các bước ở đầu 0069 và trong mô tả PR).
  */
 
 import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
 
-const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — POLICY ĐỌC ĐÚNG NGƯỜI, TÍNH MỘT LẦN (0067)');
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — POLICY ĐỌC ĐÚNG NGƯỜI, TÍNH MỘT LẦN (0069)');
 const { db, cnA, cnB, nsId, duoi } = await dungDatabase();
 
 const UID_LA = '00000000-0000-4000-8000-0000000000aa';
@@ -108,7 +108,7 @@ async function datPhien(uid) {
 }
 
 // ===========================================================================
-// Biểu thức policy TRƯỚC 0067 — chép nguyên văn pg_policies (bỏ xuống dòng). [USING, WITH CHECK]
+// Biểu thức policy TRƯỚC 0069 — chép nguyên văn pg_policies (bỏ xuống dòng). [USING, WITH CHECK]
 // ===========================================================================
 const CU = {
   'ban_an.ban_an_doc': ["duoc_truy_cap_chi_nhanh(chi_nhanh_id)", null],
@@ -309,10 +309,10 @@ await nhom('4 · ĐO — 5.000 khách, quản lý đếm khách và nhóm khách
   const kh = await doThoiGian(UID.qlA, `select count(*)::int n from khach_hang`);
   const nhomKh = await doThoiGian(UID.qlA, `select count(*)::int n from v_phan_nhom_khach`);
   const luot = await doThoiGian(UID.qlA, `select count(*)::int n from luot_ghe`);
-  console.log(`    (quản lý Q1: khach_hang ${kh.ms} ms · v_phan_nhom_khach ${nhomKh.ms} ms · luot_ghe ${luot.ms} ms — trước 0067 trên máy viết test: 339 / 756 / 134 ms)`);
+  console.log(`    (quản lý Q1: khach_hang ${kh.ms} ms · v_phan_nhom_khach ${nhomKh.ms} ms · luot_ghe ${luot.ms} ms — trước 0069 trên máy viết test: 339 / 756 / 134 ms)`);
   ok(`Quản lý Q1 đếm khach_hang: đúng ${phaiQ1} khách của Q1`, kh.loi === null && kh.n === phaiQ1, `${kh.loi ?? kh.n}`);
   ok('…v_phan_nhom_khach cùng số khách', nhomKh.loi === null && nhomKh.n === phaiQ1, `${nhomKh.loi ?? nhomKh.n}`);
-  // Ngưỡng rộng (gấp vài lần số đo sau 0067) để máy CI chậm không đỏ oan; bản cũ vượt xa cả ngưỡng này.
+  // Ngưỡng rộng (gấp vài lần số đo sau 0069) để máy CI chậm không đỏ oan; bản cũ vượt xa cả ngưỡng này.
   ok(`Đếm khach_hang dưới 150 ms (${kh.ms} ms)`, kh.ms < 150);
   ok(`Đếm v_phan_nhom_khach dưới 400 ms (${nhomKh.ms} ms)`, nhomKh.ms < 400);
 });

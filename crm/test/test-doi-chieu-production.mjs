@@ -106,14 +106,14 @@ await nhom('3 · HÀM BỊ THIẾU — ĐÚNG KIỂU SỰ CỐ 04/10/2026', asyn
     ds(a.n, 'ham', 'thieu') === JSON.stringify([BAO_DONG]) && a.tong === 1, `${a.tong} khác biệt: ${a.bao}`);
   ok('Thân hàm và quyền của hàm thiếu không kể thêm lần nữa (chỉ ghi kèm)',
     a.n('than_ham').anThieu === 1 && a.n('quyen').anThieu === 1 && a.n('than_ham').thieu.length === 0);
-  // File CUỐI CÙNG tạo hàm — chạy lại file đó là có hàm. 0060 tạo, 0070 định nghĩa lại (thêm lời gọi dọn nhật ký).
-  ok('Báo cáo chỉ đúng file migration cuối cùng tạo hàm: 0070_bao_dong_don_nhat_ky.sql',
-    a.bao.includes(`THIẾU  ${BAO_DONG}   ← tạo ở 0070_bao_dong_don_nhat_ky.sql`), a.bao);
+  // File CUỐI CÙNG tạo hàm — chạy lại file đó là có hàm. 0060 tạo, 0072 định nghĩa lại (thêm lời gọi dọn nhật ký).
+  ok('Báo cáo chỉ đúng file migration cuối cùng tạo hàm: 0072_bao_dong_don_nhat_ky.sql',
+    a.bao.includes(`THIẾU  ${BAO_DONG}   ← tạo ở 0072_bao_dong_don_nhat_ky.sql`), a.bao);
 
   const b = await sauKhi('drop function bao_dong_bat_dau_luot(text); drop function kho_may_can_nhat_ky(uuid, uuid, jsonb);');
   ok('Xoá cả hai hàm của sự cố → báo đúng hai hàm, mỗi hàm một file',
     ds(b.n, 'ham', 'thieu') === JSON.stringify([BAO_DONG, MAY_CAN]) && b.tong === 2
-      && b.bao.includes('0070_bao_dong_don_nhat_ky.sql') && b.bao.includes('0061_kho_can_quay.sql'), b.bao);
+      && b.bao.includes('0072_bao_dong_don_nhat_ky.sql') && b.bao.includes('0061_kho_can_quay.sql'), b.bao);
 });
 
 // ===========================================================================
