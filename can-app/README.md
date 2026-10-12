@@ -100,7 +100,8 @@ lên file cũ. Cài đặt, đăng nhập, file gốc của cân không mất �
 ## Bản 2.2 — cổng hai chiều, thông số, phím, nhật ký, HSD, sửa tem
 
 Dựng lại từ phần mềm TM-xA của hãng (đọc mã dịch ngược, không chạy). Tài liệu kỹ thuật đầy đủ (định dạng file,
-giao thức, bảng mã tem, bảng "đã thử / chưa thử"): **`CAN-TMA.md`**.
+giao thức, bảng mã tem, bảng "đã thử / chưa thử"): **`CAN-TMA.md`**; đặc tả dịch ngược gốc mà chú thích trong mã
+trỏ tới (`net-protocol.md`, `spec-wizard.md`…): **`dac-ta/`**.
 
 **2.2.1** (sửa sau rà soát, PR #34): không gửi lại khối giờ cũ (đồng hồ cân không bị lùi); hàng mới không thừa hưởng
 HSD của món khác; nhật ký qua WiFi đọc tiếp từ giao dịch mới nhất sau khi cân đếm lại số; một giao dịch đọc qua USB

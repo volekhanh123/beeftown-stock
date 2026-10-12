@@ -1,7 +1,7 @@
 -- =============================================================================
 -- BEEFTOWN — 0077 · BEEFTOWN CÂN: CỜ "CHƯA XÁC NHẬN" (Beeftown Cân 2.9.3)
 -- =============================================================================
--- PHẢI CHẠY SAU 0061 (kho_may_can, kho_may_can_bao, kho_phien_pha_can) VÀ 0063 (thân suc_khoe_so_lieu mới nhất).
+-- PHẢI CHẠY SAU 0061 (kho_may_can, kho_may_can_bao, kho_phien_pha_can) VÀ 0074 (thân suc_khoe_so_lieu mới nhất).
 --
 -- Lỗi (rà soát nợ kỹ thuật 11/10/2026, tái hiện trên cân giả — can-app/test/thu.ts 6g6): cổng hai chiều
 -- 33581 của cân bận chốc lát (phần mềm của hãng TM-xA đang mở, cân đang lưu) → Beeftown Cân gửi rơi về
@@ -24,7 +24,7 @@
 --   3 · kho_phien_pha_can: thân 0061 NGUYÊN VĂN, chỉ thêm chua_xac_nhan vào mỗi dòng tren_can (cờ của dòng
 --       đó) và chua_xac_nhan / chua_xac_nhan_tu vào danh sách máy. Trang pha lóc
 --       (web/src/lib/kho/danh-muc-can.ts, tomTatCanPhien) không nói "Cân sẵn sàng" theo dòng chưa xác nhận.
---   4 · suc_khoe_so_lieu: thân 0063 NGUYÊN VĂN, chỉ thêm chua_xac_nhan / chua_xac_nhan_tu vào mỗi máy của
+--   4 · suc_khoe_so_lieu: thân 0074 NGUYÊN VĂN, chỉ thêm chua_xac_nhan / chua_xac_nhan_tu vào mỗi máy của
 --       ô `can` — đèn "Beeftown Cân" vàng khi máy chưa xác nhận quá PHUT_LECH_CAN phút (web/src/lib/suc-khoe.ts),
 --       kể cả khi lech_so = 0 (máy vừa lên từ 2.9.2, kho quay về như lần đã xác nhận).
 -- Triển khai: chạy được trước hay sau khi máy quầy lên 2.9.3 / web mới — khóa thiếu là false.
@@ -269,7 +269,7 @@ comment on function kho_phien_pha_can(uuid) is
 -- =============================================================================
 -- 4 · SỐ LIỆU BẢNG SỨC KHỎE — máy của ô `can` kèm chua_xac_nhan
 -- =============================================================================
--- Thân 0063 NGUYÊN VĂN, chỉ thêm chua_xac_nhan / chua_xac_nhan_tu vào mỗi máy của ô `can`.
+-- Thân 0074 (bản mới nhất — 0074 thêm ô don_dep) NGUYÊN VĂN, chỉ thêm chua_xac_nhan / chua_xac_nhan_tu vào mỗi máy của ô `can`.
 create or replace function suc_khoe_so_lieu(p_chi_nhanh_ids uuid[], p_lech jsonb default null)
 returns jsonb
 language plpgsql
@@ -420,12 +420,22 @@ begin
       'kenh',          coalesce(v_bd.kenh, 'khong'),
       'co_loi',        v_bd.loi_cuoi is not null,
       'lan_gui_cuoi',  v_bd.lan_gui_cuoi),
+    -- 0074: đèn "Dọn dữ liệu cá nhân" — việc dọn chỉ chạy khi chủ bấm (0012), đèn nói khi nào phải bấm.
+    -- Hai nhóm hồ sơ không chồng nhau: quá hạn hơn 7 ngày > quá hạn 1–7 ngày.
+    'don_dep', jsonb_build_object(
+      'ho_so_qua_han',        (select count(*) from ho_so_ung_tuyen h
+                               where not h.da_an_danh and h.luu_den < hom_nay_vn() and h.luu_den >= hom_nay_vn() - 7),
+      'ho_so_qua_han_7_ngay', (select count(*) from ho_so_ung_tuyen h
+                               where not h.da_an_danh and h.luu_den < hom_nay_vn() - 7),
+      've_qua_han',           (select count(*) from phieu_tai_len p
+                               where not p.da_dung and p.het_han < now() - interval '7 days'),
+      'su_kien_qua_han',      exists (select 1 from su_kien_web s where s.ngay < hom_nay_vn() - 97)),
     'chi_nhanh', v_ds);
 end;
 $$;
 
 comment on function suc_khoe_so_lieu(uuid[], jsonb) is
-  'NỘI BỘ (0060, 0061 thêm ô can, 0063 cho_qua_han bỏ tin đặt bàn chưa xác nhận — máy gửi không lấy, 0077 thêm chua_xac_nhan vào máy của ô can): số liệu bảng sức khỏe cho các chi nhánh ĐANG HOẠT ĐỘNG trong danh sách, không kiểm vai. p_lech: đối soát sổ kho đã có (null = quét). Chỉ gọi từ suc_khoe_he_thong() (chủ / quản lý) và bao_dong_bat_dau_luot() (máy báo động). Không ai đăng nhập gọi thẳng được.';
+  'NỘI BỘ (0060, 0061 thêm ô can, 0063 cho_qua_han bỏ tin đặt bàn chưa xác nhận — máy gửi không lấy, 0074 thêm ô don_dep — đèn Dọn dữ liệu cá nhân, 0077 thêm chua_xac_nhan vào máy của ô can): số liệu bảng sức khỏe cho các chi nhánh ĐANG HOẠT ĐỘNG trong danh sách, không kiểm vai. p_lech: đối soát sổ kho đã có (null = quét). Chỉ gọi từ suc_khoe_he_thong() (chủ / quản lý) và bao_dong_bat_dau_luot() (máy báo động). Không ai đăng nhập gọi thẳng được.';
 
 -- Hàm nội bộ: chỉ suc_khoe_he_thong() (chủ / quản lý) và bao_dong_bat_dau_luot() gọi — rút khỏi authenticated như 0061 mục 6.
 do $$

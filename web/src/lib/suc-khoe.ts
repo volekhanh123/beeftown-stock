@@ -3,7 +3,7 @@
  * =====================================================================
  *
  * Database (suc_khoe_he_thong, migration 0055; suc_khoe_sao_luu, 0058; 0060 thêm ô bao_dong; 0061 thêm ô can — đèn
- * Beeftown Cân của mỗi chi nhánh) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
+ * Beeftown Cân của mỗi chi nhánh; 0074 thêm ô don_dep — đèn Dọn dữ liệu cá nhân) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
  * quyết định MÀU và CÂU hai thứ tiếng; crm/test/test-suc-khoe-web.mjs thử từng ngưỡng bằng dữ
  * liệu giả, không cần database.
  *
@@ -74,6 +74,12 @@ export const PHUT_LECH_CAN = 15;
  * máy thử của quản lý, đổi chi nhánh) — không tính nữa. Không có máy nào báo thì vẫn đỏ: chi nhánh không còn máy quầy chạy.
  */
 export const GIO_MAY_CAN_THOI_DUNG = 48;
+/**
+ * Dọn dữ liệu cá nhân (0074): số ngày cho phép chậm bấm nút dọn trước khi đèn đổi màu — hồ sơ quá hạn lưu hơn chừng
+ * này ngày → đỏ; vé tải CV chưa dùng hết hạn quá chừng này ngày → vàng; dữ liệu đo lường quá 90 ngày cộng chừng này
+ * ngày → vàng. PHẢI bằng các số trong ô don_dep của 0074 (test-tuyen-dung-xoa-cv.mjs đối chiếu với file migration).
+ */
+export const NGAY_CHO_BAM_DON = 7;
 
 // -----------------------------------------------------------------------------
 // SỐ LIỆU THÔ — đúng dạng suc_khoe_he_thong() trả về
@@ -110,6 +116,15 @@ export interface ChiNhanhTho {
   can?: CanTho;
 }
 
+/**
+ * Ô don_dep (0074) — đèn "Dọn dữ liệu cá nhân", cả thương hiệu. Hai nhóm hồ sơ KHÔNG chồng nhau: quá hạn lưu 1–7
+ * ngày; quá hạn hơn 7 ngày. ve_qua_han: vé tải CV chưa dùng hết hạn quá 7 ngày (mỗi vé có thể còn một CV mồ côi).
+ * su_kien_qua_han: còn dữ liệu đo lường cũ hơn 97 ngày.
+ */
+export interface DonDepTho {
+  ho_so_qua_han: number; ho_so_qua_han_7_ngay: number; ve_qua_han: number; su_kien_qua_han: boolean;
+}
+
 /** suc_khoe_sao_luu() (0058). Mốc = lúc lượt bắt đầu (dữ liệu trong bản sao là của lúc đó). */
 export interface SaoLuuTho {
   /** Lượt gần nhất, bất kể kết quả; lan_cuoi_thu: khôi phục thử của lượt đó — 'dat' | 'hong' | 'chua_thu'. */
@@ -130,6 +145,8 @@ export interface SucKhoeTho {
    * Thiếu ô (database chưa chạy 0060) = chưa chạy lần nào.
    */
   bao_dong?: { lan_chay_cuoi: string | null; kenh: string; co_loi: boolean; lan_gui_cuoi: string | null };
+  /** 0074. Thiếu ô (database chưa chạy 0074) → đèn vàng nói rõ, không bao giờ xanh. */
+  don_dep?: DonDepTho;
   /** Gắn thêm từ suc_khoe_sao_luu() (docSucKhoeVaSaoLuu). undefined: database chưa chạy 0058; null: không đọc được. */
   sao_luu?: SaoLuuTho | null;
   chi_nhanh: ChiNhanhTho[];
@@ -223,7 +240,8 @@ export async function docSucKhoeVaSaoLuu(client: Pick<SupabaseClient, 'rpc'>): P
 // ĐÁNH GIÁ
 // -----------------------------------------------------------------------------
 export type MauDen = 'xanh' | 'vang' | 'do' | 'tat';
-export type MaDen = 'dat_ban' | 'ipos' | 'so_kho' | 'can' | 'tin_zalo' | 'tuyen_dung' | 'zalo' | 'messenger' | 'dich' | 'sao_luu' | 'bao_dong';
+export type MaDen = 'dat_ban' | 'ipos' | 'so_kho' | 'can' | 'tin_zalo' | 'tuyen_dung' | 'zalo' | 'messenger' | 'dich' | 'sao_luu' | 'bao_dong'
+  | 'don_dep';
 
 export interface Den {
   ma: MaDen;
@@ -265,6 +283,7 @@ const TEN: Record<MaDen, Cau> = {
   dich:       { vi: 'Máy dịch', en: 'Machine translation' },
   sao_luu:    { vi: 'Sao lưu dữ liệu', en: 'Data backup' },
   bao_dong:   { vi: 'Báo động', en: 'Alerts' },
+  don_dep:    { vi: 'Dọn dữ liệu cá nhân', en: 'Personal data clean-up' },
 };
 
 export const TEN_THUONG_HIEU: Cau = { vi: 'Toàn thương hiệu', en: 'Whole brand' };
@@ -707,6 +726,51 @@ function denBaoDong(b: Partial<NonNullable<SucKhoeTho['bao_dong']>>, bayGio: num
         en: `Alerts go via ${ten.en} — last run ${tuTruoc(bayGio, chay).en}, last message ${tuTruoc(bayGio, gui).en}.` }, null, nn);
 }
 
+// --- Dọn dữ liệu cá nhân (cả thương hiệu, 0074) ------------------------------------
+/**
+ * Ba việc dọn ở /noi-bo/cai-dat chỉ chạy khi có người bấm (0012: việc hủy dữ liệu cá nhân do người bấm). Đèn nói khi
+ * nào phải bấm. Đỏ: hồ sơ quá hạn lưu hơn NGAY_CHO_BAM_DON ngày mà chưa ẩn danh — lời hứa trên trang quyền riêng tư
+ * đang sai. Vàng: hồ sơ vừa quá hạn; vé tải CV chưa dùng đã cũ (có thể còn CV mồ côi); dữ liệu đo lường quá 90 ngày.
+ * Hai nút đầu cần tài khoản chủ (xóa file trong kho CV) — quản lý thấy câu nhờ chủ.
+ */
+function denDonDep(d: Partial<DonDepTho> | undefined, laChu: boolean, nn: NgonNguNB): Den {
+  const di = '/noi-bo/cai-dat';
+  if (d === undefined || d === null) {
+    return denTu('don_dep', [{ muc: 'vang', cau: {
+      vi: 'Chưa có số liệu dọn dữ liệu cá nhân — database chưa chạy migration 0074. Báo người quản trị kỹ thuật.',
+      en: 'No personal data clean-up figures — the database has not run migration 0074 yet. Tell the technical admin.' } }],
+      { vi: '', en: '' }, di, nn);
+  }
+  const qua7 = so(d.ho_so_qua_han_7_ngay), qua = so(d.ho_so_qua_han), ve = so(d.ve_qua_han);
+  const N = NGAY_CHO_BAM_DON;
+  const v: VanDe[] = [];
+  if (qua7 > 0) v.push({ muc: 'do', cau: {
+    vi: `${qua7} hồ sơ ứng tuyển đã quá hạn lưu 6 tháng hơn ${N} ngày mà chưa ẩn danh — trang quyền riêng tư hứa xóa sau 6 tháng`,
+    en: `${qua7} job application${s(qua7)} past the 6-month retention period for over ${N} days and still not anonymised — the privacy page promises deletion after 6 months` } });
+  if (qua > 0) v.push({ muc: 'vang', cau: {
+    vi: `${qua} hồ sơ ứng tuyển vừa quá hạn lưu 6 tháng, chưa ẩn danh`,
+    en: `${qua} job application${s(qua)} just past the 6-month retention period, not anonymised yet` } });
+  if (ve > 0) v.push({ muc: 'vang', cau: {
+    vi: `${ve} vé tải CV hết hạn quá ${N} ngày chưa dọn — kho CV có thể còn file của lượt nộp không thành`,
+    en: `${ve} CV upload ticket${s(ve)} expired over ${N} days ago and not cleaned up — the CV store may still hold files from failed applications` } });
+  if (d.su_kien_qua_han === true) v.push({ muc: 'vang', cau: {
+    vi: 'Còn dữ liệu đo lường quá 90 ngày chưa xóa — trang quyền riêng tư nói chỉ giữ 90 ngày',
+    en: 'Analytics data older than 90 days is still stored — the privacy page says it is kept for 90 days only' } });
+  const den = denTu('don_dep', v, { vi: 'Không có dữ liệu cá nhân nào quá hạn lưu.', en: 'No personal data is past its retention period.' }, di, nn);
+  if (den.mau === 'xanh') return den;
+  // Quản lý chạy được việc dọn vé (0065) — chỉ khi kho đã sạch CV mồ côi; ẩn danh hồ sơ và xóa dữ liệu đo lường
+  // thì chỉ chủ (lib/cai-dat.ts, VIEC_DON).
+  const chiConVe = qua7 === 0 && qua === 0 && d.su_kien_qua_han !== true;
+  const lam: Cau = laChu
+    ? { vi: 'Bấm "Chạy ngay" ở mục Dọn dữ liệu của màn Cài đặt.', en: 'Press "Run now" in the Data clean-up section of the Settings screen.' }
+    : chiConVe
+      ? { vi: 'Bấm "Chạy ngay" ở việc "Xóa CV mồ côi và dọn vé tải CV", màn Cài đặt — kho còn CV mồ côi thì cần chủ nhà hàng bấm.',
+          en: 'Press "Run now" on "Delete orphaned CVs and clean up CV upload tickets" on the Settings screen — if orphaned CVs remain, the owner has to press it.' }
+      : { vi: 'Nhờ chủ nhà hàng bấm "Chạy ngay" ở mục Dọn dữ liệu của màn Cài đặt.',
+          en: 'Ask the owner to press "Run now" in the Data clean-up section of the Settings screen.' };
+  return { ...den, cau: `${den.cau}. ${lam[nn]}` };
+}
+
 // -----------------------------------------------------------------------------
 // CẢ BẢNG — thứ component vẽ
 // -----------------------------------------------------------------------------
@@ -747,7 +811,7 @@ export function bangSucKhoe(kq: KetQuaDoc, nn: NgonNguNB, laChu = false): BangSu
 
 /**
  * Số liệu thô → các khối đèn. Khối đầu là "Toàn thương hiệu" (sao lưu, Zalo, Messenger, máy dịch, báo
- * động — cấu hình chung), sau đó mỗi chi nhánh một khối theo thứ tự database trả (theo tên).
+ * động, dọn dữ liệu cá nhân — cấu hình chung), sau đó mỗi chi nhánh một khối theo thứ tự database trả (theo tên).
  * laChu: chủ sở hữu được mở màn cài đặt Zalo; quản lý chỉ mở màn Zalo chung.
  */
 export function danhGiaSucKhoe(tho: SucKhoeTho, nn: NgonNguNB, laChu = false): SucKhoe {
@@ -762,6 +826,7 @@ export function danhGiaSucKhoe(tho: SucKhoeTho, nn: NgonNguNB, laChu = false): S
         denMessenger(tho.messenger ?? {}, bayGio, nn),
         denDich(tho.dich ?? {}, nn),
         denBaoDong(tho.bao_dong ?? {}, bayGio, nn),
+        denDonDep(tho.don_dep, laChu, nn),
       ],
     },
     ...tho.chi_nhanh.map(c => ({

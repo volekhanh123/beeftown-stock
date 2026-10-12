@@ -27,14 +27,20 @@
  * phải chạy lại. Vì vậy lệnh này thuộc về hai thời điểm: trước khi deploy, và
  * sau mỗi lần bật công tắc nội dung.
  *
+ * QUÉT BẢN BUILD, KHÔNG QUÉT astro dev: trang dựng sẵn lúc build, HTML đã nén
+ * (compressHTML) và Worker trong workerd chỉ có ở bản build — chữ dính nhau khi
+ * xuống dòng, hay một trang build hỏng, astro dev không bao giờ thấy. Bản build
+ * ở đây là bản KHÔNG database (như CI); `npm run deploy` build lại bản thật sau
+ * bước quét này.
+ *
  * CÁCH DÙNG
- *   npm run quet                     ← tự bật server, quét, tắt server
- *   npm run quet -- --url https://…  ← quét một trang đang chạy thật
+ *   npm run quet                      ← build, bật wrangler dev trên dist/, quét, tắt
+ *   npm run quet -- --khong-build     ← dùng dist/ có sẵn (CI: bước trước vừa build)
+ *   npm run quet -- --url https://…   ← quét một trang đang chạy thật (hay astro dev đang bật)
  */
 
-import { spawn, spawnSync } from 'node:child_process';
-import { setTimeout as cho } from 'node:timers/promises';
 import { timChuoiCam } from '../src/lib/chuoi-cam.js';
+import { batMayChuBanBuild, tatMayChu } from './may-chu-ban-build.mjs';
 
 // -----------------------------------------------------------------------------
 // DANH SÁCH CẤM — nằm ở src/lib/chuoi-cam.js
@@ -115,52 +121,6 @@ async function danhSachTrang(goc) {
 }
 
 // -----------------------------------------------------------------------------
-// SERVER
-// -----------------------------------------------------------------------------
-async function song(goc) {
-  try {
-    const r = await fetch(goc, { signal: AbortSignal.timeout(2000) });
-    return r.ok;
-  } catch { return false; }
-}
-
-async function batServer(cong) {
-  // Quét trang ở trạng thái của CI (chưa có database), kể cả khi máy có sẵn
-  // PUBLIC_SUPABASE_* — biến môi trường thắng web/.env, đặt rỗng là chắc chắn.
-  const p = spawn('npx', ['astro', 'dev', '--port', String(cong)],
-                  { shell: true, stdio: 'ignore',
-                    env: { ...process.env, PUBLIC_SUPABASE_URL: '', PUBLIC_SUPABASE_ANON_KEY: '' } });
-  const goc = `http://localhost:${cong}`;
-  // Astro dev tối ưu dependency ở lần tải đầu; request tới giữa chừng sẽ lỗi.
-  // Nên chờ hẳn một lần tải THÀNH CÔNG, không chỉ chờ cổng mở.
-  for (let i = 0; i < 60; i++) {
-    if (await song(goc)) return { p, goc };
-    await cho(1000);
-  }
-  tatServer(p);
-  throw new Error(`astro dev không lên sau 60 giây ở cổng ${cong}. Nếu một lần quét trước bị ngắt ` +
-                  'giữa chừng, có thể còn server chạy ngầm giữ cổng: chạy "npx astro dev stop" rồi thử lại.');
-}
-
-function tatServer(p) {
-  if (!p?.pid) return;
-  // process.kill trên Windows không giết tiến trình con, mà astro dev chạy
-  // dưới npx nên nó CHÍNH LÀ tiến trình con.
-  if (process.platform === 'win32') {
-    spawn('taskkill', ['/pid', String(p.pid), '/T', '/F'], { stdio: 'ignore' });
-  } else {
-    try { process.kill(-p.pid, 'SIGTERM'); } catch { p.kill('SIGTERM'); }
-  }
-  // Astro 7: không có terminal tương tác thì `astro dev` tự chuyển sang chạy
-  // ngầm. Tiến trình spawn ở trên chỉ là cái vỏ đã thoát; server thật là một
-  // tiến trình khác, có session riêng, mà hai lệnh giết trên không chạm tới.
-  // Không dừng nó thì nó sống mồ côi giữ cổng 4329 và khóa "dev server đang
-  // chạy" — lần quét sau hoặc không bật được server, hoặc đọc nhầm server cũ
-  // đã hỏng bộ nhớ đệm, trả 500 cho mọi trang.
-  spawnSync('npx', ['astro', 'dev', 'stop'], { shell: true, stdio: 'ignore' });
-}
-
-// -----------------------------------------------------------------------------
 async function main() {
   const i = process.argv.indexOf('--url');
   const gocTuyChon = i > -1 ? process.argv[i + 1] : null;
@@ -169,15 +129,10 @@ async function main() {
   let goc = gocTuyChon;
 
   if (!goc) {
-    const macDinh = 'http://localhost:4321';
-    if (await song(macDinh)) {
-      goc = macDinh;
-      console.log(`Dùng server đang chạy sẵn: ${goc}\n`);
-    } else {
-      console.log('Đang bật astro dev…');
-      ({ p: tienTrinh, goc } = await batServer(4329));
-      console.log(`Server lên ở ${goc}\n`);
-    }
+    // Không còn tự dùng astro dev đang bật ở cổng 4321: đó không phải bản sẽ deploy, và có thể
+    // đang nối database thật. Muốn quét nó thì gõ rõ --url http://localhost:4321.
+    ({ p: tienTrinh, goc } = await batMayChuBanBuild({ cong: 4329, khongBuild: process.argv.includes('--khong-build') }));
+    console.log(`Bản build chạy trong wrangler dev ở ${goc}\n`);
   }
 
   let soLoi = 0;
@@ -216,7 +171,7 @@ async function main() {
       }
     }
   } finally {
-    if (tienTrinh) tatServer(tienTrinh);
+    if (tienTrinh) tatMayChu(tienTrinh);
   }
 
   console.log();

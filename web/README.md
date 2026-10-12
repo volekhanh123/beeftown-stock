@@ -2,7 +2,7 @@
 
 Trang công khai của Beeftown. Astro 7 chạy trên Cloudflare Workers, đọc dữ liệu từ Supabase.
 
-> **Khác với phần còn lại của repo, thư mục này CÓ bước build.** `Beeftown_Website/index.html` cũ mở thẳng bằng trình duyệt là chạy; thư mục này thì không. Đổi lại, trang biết đọc database nên nội dung đổi được mà không cần deploy lại.
+> **Khác với phần còn lại của repo, thư mục này CÓ bước build.** Bản nháp website cũ (`Beeftown_Website/`, đã lưu trữ 12/10/2026) mở thẳng bằng trình duyệt là chạy; thư mục này thì không. Đổi lại, trang biết đọc database nên nội dung đổi được mà không cần deploy lại.
 
 ---
 
@@ -71,7 +71,8 @@ web/
 ├─ THIET-KE.md         ← hệ giao diện trang công khai, manifest artwork, brief chụp ảnh
 ├─ THUC-DON.md         ← công bố món lên trang Thực đơn (SQL từng bước, có SQL thu hồi)
 ├─ kiem-tra/
-│  ├─ quet-chuoi-cam.mjs  ← quét chuỗi cấm trên trang ĐÃ RENDER
+│  ├─ quet-chuoi-cam.mjs  ← quét chuỗi cấm trên trang ĐÃ RENDER (bản build, không database)
+│  ├─ may-chu-ban-build.mjs ← build không database rồi chạy dist/ trong wrangler dev — quet và trinh-duyet dùng chung
 │  ├─ trinh-duyet.mjs     ← trình duyệt thật, trạng thái KHÔNG có database (như CI)
 │  ├─ thu-day-du.mjs      ← trình duyệt thật, trạng thái ĐÃ nối database (Supabase giả)
 │  └─ gia-supabase.mjs    ← Supabase giả: trả lời đúng các hàm trang công khai gọi, theo kịch bản
@@ -215,6 +216,7 @@ Chủ và quản lý mở `/noi-bo` là thấy ngay phần nào đang hỏng, th
 | Hồ sơ ứng tuyển | chưa ai mở quá 7 ngày | chưa ai mở 2–7 ngày |
 | Sao lưu dữ liệu (`0058`) | chưa có bản sao lưu nào; bản dùng được (khôi phục thử đạt) gần nhất quá 36 giờ | lượt gần nhất hỏng hoặc khôi phục thử không đạt (vẫn còn bản dùng được trong 36 giờ); không đọc được số liệu |
 | Báo động (`0060`) | quá 30 phút không có lượt báo động nào chạy xong; lượt gần nhất lỗi (gửi hỏng, không đọc được số liệu) | có kênh mà 26 giờ không gửi được tin nào (tóm tắt 8 giờ sáng phải tới mỗi ngày) |
+| Dọn dữ liệu cá nhân (`0074`) | hồ sơ ứng tuyển quá hạn lưu 6 tháng **hơn 7 ngày** mà chưa ẩn danh (lời hứa trên trang quyền riêng tư) | hồ sơ vừa quá hạn (1–7 ngày); vé tải CV chưa dùng hết hạn quá 7 ngày (có thể còn CV mồ côi); dữ liệu đo lường quá 90 ngày + 7; database chưa chạy `0074` |
 
 Xám = chưa bật / chưa dùng. **Không đọc được số liệu thì bảng nói thẳng là không đọc được** — không bao giờ hiện "mọi thứ đang chạy tốt" khi không biết. Database chưa chạy `0055` thì bảng báo cần migration đó.
 
@@ -235,7 +237,7 @@ Việc chạy nền đọc đúng số liệu của bảng sức khỏe 5 phút 
 | Tình huống | Làm gì |
 |---|---|
 | Đèn đỏ hai lượt liền (≥ 4 phút) | Báo. Đỏ một lượt rồi tự hết → không báo |
-| Ban đêm 22:00–07:00 | Chỉ đèn **hệ thống** (Bộ gửi Zalo, Bot Messenger, iPOS, Sổ kho, Máy dịch, Sao lưu dữ liệu, không đọc được số liệu) báo ngay. Đèn **khách** (Đặt bàn, Hồ sơ, Tin Zalo) giữ lại; lượt đầu sau 07:00 gửi gộp nếu vẫn đỏ |
+| Ban đêm 22:00–07:00 | Chỉ đèn **hệ thống** (Bộ gửi Zalo, Bot Messenger, iPOS, Sổ kho, Máy dịch, Sao lưu dữ liệu, không đọc được số liệu) báo ngay. Đèn **khách** (Đặt bàn, Hồ sơ, Tin Zalo, Dọn dữ liệu cá nhân) giữ lại; lượt đầu sau 07:00 gửi gộp nếu vẫn đỏ |
 | Hết đỏ | Chờ 15 phút liền mới đóng sự cố; đỏ lại trong 15 phút vẫn là sự cố cũ, không báo lại; đỏ lại sau khi đã hết đỏ đủ 15 phút là lần hỏng mới, được báo như thường (kể cả khi tin hết đỏ của lần trước đang giữ tới 07:00). Sự cố đã báo → "đã ổn lại" / "hết đỏ, còn cần xem hôm nay" / "đã tắt"; chi nhánh ngừng hoạt động → đóng im lặng. Ban đêm, đèn hệ thống chỉ báo hết đỏ ngay khi tin báo đỏ của nó cũng đến trong đêm đó (người nhận đã biết); còn lại — đèn khách, đèn đã báo đỏ từ trước 22:00 như Sao lưu ổn lại lúc 3 giờ sáng — đợi 07:00 |
 | Một đèn đỏ đi đỏ lại | Tối đa 5 tin "mới đỏ" mỗi đèn từ 8 giờ sáng tới 8 giờ sáng hôm sau; tin thứ 5 nói rõ sẽ không nhắn riêng nữa tới bản tóm tắt |
 | 8 giờ sáng mỗi ngày | Tóm tắt, **kể cả khi mọi thứ xanh** — không thấy tin sáng nghĩa là chính việc báo động đang hỏng. Lỡ 8 giờ thì gửi bù tới 22:00 |
@@ -567,7 +569,7 @@ npm run quet
 
 Lệnh này tải từng trang qua HTTP và đọc **phần chữ khách nhìn thấy** — thân trang, tiêu đề, thẻ mô tả, JSON-LD — rồi đối chiếu với danh sách cấm. Mỗi lần đỏ nó in kèm **lý do** câu đó bị cấm, để không ai chỉ xóa từ rồi viết lại cùng ý bằng chữ khác.
 
-Nó tự bật `astro dev` nếu chưa có server nào chạy, và `npm run deploy` gọi nó trước khi build — nên không có đường deploy vòng qua nó.
+Nó quét **bản build** (build không database, chạy `dist/` trong `wrangler dev` — cùng workerd với Cloudflare), không quét `astro dev`: HTML nén (`compressHTML`) và trang dựng sẵn chỉ có ở bản build. `-- --khong-build` dùng `dist/` có sẵn (CI: bước trước vừa build); quét `astro dev` đang bật thì gõ rõ `-- --url http://localhost:4321`. `npm run deploy` gọi nó trước khi build bản thật — nên không có đường deploy vòng qua nó.
 
 **Vì sao không grep mã nguồn.** Bản đầu tiên của phép thử này là một lệnh `grep` vào `src/`. Nó sai theo hai hướng:
 
