@@ -185,7 +185,8 @@ crm/
 │   ├── 0073_bao_dong_don_nhat_ky.sql  lượt báo động 5 phút dọn nhat_ky_tra_cuu (30 ngày), kho_may_nhat_ky (180), kho_ipos_lan_chay (90, giữ 10 lượt mới nhất + nhịp tim), nhat_ky_tin (400, không xóa tin chờ gửi); dọn hỏng không làm hỏng lượt — câu lỗi về Worker (loi_don) → đèn Báo động · chỉ mục mốc nhat_ky_tin cho bảng sức khỏe, chỉ mục thời gian cho câu dọn
 │   ├── 0074_xoa_file_cv.sql            ⚠ VÁ TUYỂN DỤNG · ẩn danh hồ sơ hết hạn KHÔNG còn xóa đường dẫn của CV chưa xóa: web xóa file trong kho trước (ho_so_cv_het_han → Storage → an_danh_ho_so_het_han) · ho_so_thu_muc_cv_mo_coi: thư mục kho CV không hồ sơ nào trỏ tới → xóa trước khi dọn vé · trigger ho_so_khoa_cot_don_dep: người đăng nhập không sửa thẳng duong_dan_cv, luu_den, da_an_danh · ô don_dep cho đèn "Dọn dữ liệu cá nhân"
 │   ├── 0078_zalo_ket_thuc_ghi_da_gui.sql ZALO · zalo_ket_thuc_luot(p_loi, p_quota, p_da_gui jsonb): tin đã tới Zalo mà máy chưa ghi được → ghi da_gui (qua zalo_ghi_ket_qua) TRƯỚC khi trả tin chưa báo về hàng chờ, cùng giao dịch với nhả khóa — khách không nhận lần hai · DROP bản (text, integer) rồi tạo lại, chữ ký cũ vẫn gọi được · chạy TRƯỚC Worker
-│   └── 0081_ho_so_gui_lai.sql       TUYỂN DỤNG · nop_ho_so_ung_tuyen() gọi lại Y HỆT (vị trí, số điện thoại, họ tên, email, năm sinh, giới thiệu, kinh nghiệm, ca, đồng ý) cùng ngày nộp hoặc trong 10 phút → trả lại mã hồ sơ cũ thay vì 23505 "chưa ghi nhận" · khóa tư vấn theo (vị trí, số điện thoại) trước khi tìm · kèm CV thì chỉ khớp hồ sơ đã có CV, không gắn file vào hồ sơ cũ · chỉ lời gọi không phiên
+│   ├── 0081_ho_so_gui_lai.sql       TUYỂN DỤNG · nop_ho_so_ung_tuyen() gọi lại Y HỆT (vị trí, số điện thoại, họ tên, email, năm sinh, giới thiệu, kinh nghiệm, ca, đồng ý) cùng ngày nộp hoặc trong 10 phút → trả lại mã hồ sơ cũ thay vì 23505 "chưa ghi nhận" · khóa tư vấn theo (vị trí, số điện thoại) trước khi tìm · kèm CV thì chỉ khớp hồ sơ đã có CV, không gắn file vào hồ sơ cũ · chỉ lời gọi không phiên
+│   └── 0084_gioi_han_cong_khai.sql    ⚠ VÁ — giới hạn tần suất các hàm công khai: tao_dat_ban (3 yêu cầu chờ / số điện thoại, 5 / giờ / IP, 30 / giờ / chi nhánh) · anon tra cứu qua tra_cuu_mot_dat_ban (trả jsonb — hàm trả bảng tra_cuu_dat_ban cho người gọi hủy giao dịch của lần sai, thu quyền anon) · tra / hủy tự ghi nhật ký (0073 dọn sau 30 ngày), khoá theo IP, số điện thoại, toàn cục — cả lời gọi IP null · ghi_nhat_ky_tra_cuu thu quyền anon · xin_phieu_tai_cv, nop_ho_so_ung_tuyen, ghi_su_kien_web: IP / phiên null đếm như một, trần toàn cục · một vé tải CV = một file (policy + trigger trên storage.objects)
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```
@@ -235,6 +236,13 @@ Hai điều lộ ra, cần biết khi đọc bước 6 ở cuối `0014`:
 **Chưa làm:** bước 1, 3, 4, 7, 8, và **toàn bộ danh sách trên project Supabase thật** — vẫn bắt buộc trước khi mở cổng tuyển dụng.
 
 **`0074` (xóa file CV khi ẩn danh, quét CV mồ côi) · chưa kiểm tay.** Sáu bước ở cuối `0074_xoa_file_cv.sql` — quản lý không xóa được file, chủ xóa được CV mồ côi và CV của hồ sơ hết hạn, file của hồ sơ còn hạn không bị đụng, quản lý không sửa thẳng được hạn lưu — làm trên project Beeftown-thu rồi ghi kết quả vào đây. `npm test` chỉ thử được phần database và một kho file giả (`test-tuyen-dung-xoa-cv.mjs`).
+
+**`0084` — một vé = một file. Chưa thử tay.** Điều thấy ở lần một ("cùng một vé vẫn tải thêm được file tên khác") là lỗ `0084` vá, bằng hai chốt: `ve_con_hieu_luc()` trong policy (tải lần lượt) và trigger `ho_so_mot_ve_mot_file` trên `storage.objects` (tải song song — storage-api kiểm policy lần cuối trong một savepoint bị hủy, nên khoá trong policy nhả trước khi dòng commit). Trên Beeftown-thu, sau khi chạy `0084`, bằng khóa anon:
+
+1. `select tgname from pg_trigger where tgrelid = 'storage.objects'::regclass` có `ho_so_mot_ve_mot_file`.
+2. Xin vé, tải `<mã vé>/cv.pdf` → được; tải thêm `<mã vé>/cv-2.pdf` → bị từ chối (RLS).
+3. Xin vé mới, tải **cùng lúc** 5 file tên khác nhau vào thư mục vé đó (`Promise.all`) → đúng một file lên kho; bốn lượt kia lỗi, và trong kho không còn file thừa nào của vé đó.
+4. Nộp hồ sơ qua website kèm CV (tin có hỏi CV) → hồ sơ vẫn kèm CV như trước.
 
 ## Bốn quyết định thiết kế quan trọng
 
