@@ -239,4 +239,20 @@ await nhom('4 · CLAUDE.md VÀ MẪU PR CÙNG 9 MỤC "ĐỊNH NGHĨA XONG"', as
   }
 });
 
+// ===========================================================================
+await nhom('5 · crm/README.md: CÂY MIGRATION ĐỦ FILE, MIGRATION THÊM GIÁ TRỊ ENUM CÓ TRONG DANH SÁCH "CHẠY RIÊNG"', async () => {
+  // README gốc (mục "Chạy migration lên production") trỏ sang danh sách này làm nguồn thật. Sót 0029 (thêm
+  // may_chung, may_ipos vào vai_tro): dựng lại một project theo README là hỏng ở 0030 — Postgres không cho dùng
+  // giá trị enum mới trong cùng giao dịch vừa thêm nó.
+  const readme = readFileSync(join(GOC, 'crm', 'README.md'), 'utf8');
+  const thuMucMig = join(GOC, 'crm', 'supabase', 'migrations');
+  const tep = readdirSync(thuMucMig).filter(f => /^\d{4}_.+\.sql$/.test(f)).sort();
+  const thieuCay = tep.filter(f => !readme.includes(f));
+  ok(`Cây thư mục trong crm/README.md nhắc đủ ${tep.length} migration`, thieuCay.length === 0, `thiếu: ${thieuCay.join(', ')}`);
+  const themEnum = tep.filter(f => /alter\s+type\s+\w+\s+add\s+value/i.test(readFileSync(join(thuMucMig, f), 'utf8')));
+  const thieuRieng = themEnum.map(f => f.slice(0, 4)).filter(so => !new RegExp(`\\*\\*\`${so}\` phải chạy RIÊNG`).test(readme));
+  ok(`Mọi migration thêm giá trị enum (${themEnum.map(f => f.slice(0, 4)).join(', ')}) có dòng "\`00NN\` phải chạy RIÊNG"`,
+     themEnum.length > 0 && thieuRieng.length === 0, `thiếu: ${thieuRieng.join(', ')}`);
+});
+
 process.exit(ketThuc('QUY TRÌNH'));
