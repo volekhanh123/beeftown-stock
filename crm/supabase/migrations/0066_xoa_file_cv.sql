@@ -465,9 +465,11 @@ $$;
 --     (policy ho_so_quan_ly_xem). Ở /noi-bo/cai-dat bấm "Xóa CV mồ côi và dọn
 --     vé" khi kho có thư mục mồ côi → câu nhờ chủ nhà hàng, số vé KHÔNG đổi,
 --     file vẫn còn (quản lý không có policy xóa).
---  2. Nộp một hồ sơ kèm CV ở /tuyen-dung bằng số điện thoại SAI dạng (database
---     từ chối) → Storage có thêm một thư mục <mã vé>/ mà không hồ sơ nào trỏ
---     tới. Đợi vé quá hạn hơn một ngày, hoặc trong SQL Editor:
+--  2. Nộp ở /tuyen-dung (tin có hỏi CV) hai lần cùng số điện thoại, cùng tin,
+--     trong cùng ngày, lần hai kèm CV → database từ chối lần hai (trùng) sau khi
+--     file đã lên → Storage có thêm một thư mục <mã vé>/ mà không hồ sơ nào trỏ
+--     tới. (Số điện thoại sai dạng thì từ 0066 web không tải CV lên nữa.)
+--     Đợi vé quá hạn hơn một ngày, hoặc trong SQL Editor:
 --       update phieu_tai_len set het_han = now() - interval '2 days' where id = '<mã vé>';
 --     Tài khoản CHỦ bấm "Xóa CV mồ côi và dọn vé" → câu "Đã xóa 1 file CV mồ
 --     côi"; Storage không còn thư mục đó; vé đã bị xóa.
