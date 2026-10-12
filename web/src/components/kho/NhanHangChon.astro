@@ -34,12 +34,12 @@ const { name, ds, chon = '', nhan } = Astro.props;
   .nh-chon { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); margin: .25rem 0 .75rem; }
   .nh-chon-o {
     position: relative; display: flex; align-items: center; min-height: 56px; cursor: pointer;
-    border: 2px solid var(--kho-vach); border-radius: 12px; background: #fff;
+    border: 2px solid var(--kho-vach); border-radius: 12px; background: var(--nb-the);
     padding: .55rem .75rem .55rem 2.3rem;
   }
   .nh-chon-o input {
     position: absolute; left: .7rem; top: 50%; transform: translateY(-50%);
-    width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0; accent-color: var(--do);
+    width: 20px; height: 20px; min-height: 0; margin: 0; padding: 0;
   }
   .nh-chon-chu { display: flex; flex-direction: column; line-height: 1.25; }
   .nh-chon-chu strong { font-size: 1rem; }

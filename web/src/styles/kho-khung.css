@@ -2,9 +2,9 @@
    KHO — KHUNG GIAO DIỆN (layouts/Kho.astro)
    =============================================================================
    Màu là bảng màu thương hiệu chốt 09/10/2026 (Charcoal, Beef Red, Cream), dựng
-   thoáng hơn nội bộ CRM — học cách iPOS Inventory Pro sắp xếp: nền kem, thẻ
-   trắng bo góc, biểu tượng rõ, số to. Màu đỏ dành cho SỐ BÁO VIỆC và nút chính,
-   để chỗ nào đỏ là chỗ đó cần làm.
+   thoáng hơn nội bộ CRM — học cách iPOS Inventory Pro sắp xếp: nền kem sau, thẻ
+   Cream bo góc, biểu tượng rõ, số to. Không có màu trắng (noi-bo.css, đầu file).
+   Màu đỏ dành cho SỐ BÁO VIỆC và nút chính, để chỗ nào đỏ là chỗ đó cần làm.
 
    Giữ luật của noi-bo.css: chạm được bằng ngón cái (48px trở lên), chữ ô nhập
    16px để iPhone không tự phóng to.
@@ -13,14 +13,13 @@
    ============================================================================= */
 
 .kho-than {
-  /* Nền, vạch, viền của kho thuộc họ Cream của bảng màu chốt 09/10/2026. Không thêm sắc
-     mới: mỗi biến cùng mã với một màu đã có ở :root của chung.css (ghi bên cạnh). Thẻ và
-     ô nhập giữ nền trắng. Màu trạng thái (--xanh, --vang-chu, --do-nen…) và viền ô nhập
-     (--vien-o) khai ở noi-bo.css và chung.css — kho đọc chung, không khai lại. */
-  --kho-nen:      #F0E3D0;   /* nền trang — Cream, cùng mã với --kem */
-  --kho-the:      #FFFFFF;   /* thẻ */
-  --kho-vach:     #E7D5BC;   /* viền thẻ, vạch ngăn trong thẻ — cùng mã với --kem-dam (1,43 : 1 với trắng) */
-  --kho-vach-dam: #B8A98C;   /* vạch đậm hơn: viền thẻ khi di chuột, vạch "xem cho biết" — Warm Stone, cùng mã với --da */
+  /* Nền, thẻ, vạch của kho là biến của bảng màu, không thêm sắc mới. Hai bề mặt đọc từ .nb-than
+     (noi-bo.css) — kho và nội bộ CRM một nền, một thẻ. Màu trạng thái (--xanh, --vang-chu,
+     --do-nen…) và viền ô nhập (--vien-o) khai ở noi-bo.css và chung.css — kho đọc chung. */
+  --kho-nen:      var(--nb-nen);   /* nền trang — kem sau */
+  --kho-the:      var(--nb-the);   /* thẻ — Cream */
+  --kho-vach:     var(--vach);     /* viền thẻ, vạch ngăn trong thẻ — Charcoal 16 % (1,40 : 1 với thẻ Cream) */
+  --kho-vach-dam: var(--da);       /* vạch đậm hơn: viền thẻ khi di chuột, vạch "xem cho biết" — Warm Stone */
   --kho-bo:       14px;
   --kho-day-cao:  4.25rem;
 
@@ -42,7 +41,7 @@
 .kho-so-do {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 1.3rem; height: 1.3rem; padding: 0 .35rem; border-radius: 999px;
-  background: var(--do); color: #fff; font-size: .72rem; font-weight: 800; line-height: 1;
+  background: var(--do); color: var(--kem); font-size: .72rem; font-weight: 800; line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
@@ -92,11 +91,11 @@
 }
 .kho-cn-chon > summary::-webkit-details-marker { display: none; }
 .kho-cn-chon > div {
-  position: absolute; right: 0; top: calc(100% + .35rem); background: #fff; color: var(--than);
+  position: absolute; right: 0; top: calc(100% + .35rem); background: var(--nb-the); color: var(--than);
   border-radius: 10px; box-shadow: 0 10px 30px rgba(21, 16, 8, .25); min-width: 12rem; padding: .35rem; z-index: 40;
 }
 .kho-cn-chon > div a { display: block; padding: .7rem .8rem; border-radius: 8px; text-decoration: none; font-weight: 600; }
-.kho-cn-chon > div a:hover { background: var(--kem-sau); }
+.kho-cn-chon > div a:hover { background: var(--kem-dam); }
 /* Điện thoại: thanh trên không đủ chỗ cho nút đổi chi nhánh — nó đè lên chữ "Kho" và
    tên chi nhánh. Danh sách chi nhánh nằm trong menu người dùng (.kho-chi-hep). */
 .kho-chi-hep { display: none; }
@@ -117,7 +116,7 @@
 .kho-nguoi-ten em { display: block; font-style: normal; font-weight: 400; color: var(--da); font-size: .72rem; }
 .kho-nguoi-menu {
   position: absolute; right: 0; top: calc(100% + .4rem); z-index: 40;
-  width: min(18rem, calc(100vw - 32px)); background: #fff; color: var(--than);
+  width: min(18rem, calc(100vw - 32px)); background: var(--nb-the); color: var(--than);
   border-radius: 12px; box-shadow: 0 12px 36px rgba(21, 16, 8, .28); padding: .5rem;
 }
 .kho-nguoi-menu p { margin: .35rem .6rem .6rem; font-size: .85rem; color: var(--muc-nhat); }
@@ -130,7 +129,7 @@
   padding: 0 .7rem; border-radius: 8px; border: none; background: none; cursor: pointer;
   font: inherit; font-size: .92rem; font-weight: 600; color: var(--than); text-decoration: none; text-align: left;
 }
-.kho-nguoi-menu a:hover, .kho-nguoi-menu button:hover { background: var(--kem-sau); }
+.kho-nguoi-menu a:hover, .kho-nguoi-menu button:hover { background: var(--kem-dam); }
 .kho-nguoi-menu form { margin: .35rem 0 0; border-top: 1px solid var(--kho-vach); padding-top: .35rem; }
 .kho-nguoi-menu button { color: var(--do); }
 
@@ -159,7 +158,7 @@
    có cả iPad xoay ngang, vẫn bấm bằng ngón tay. */
 .kho-ben-tim {
   display: flex; align-items: stretch; margin: 0 0 .9rem;
-  background: var(--kho-the); border: 1px solid var(--vien-o); border-radius: 10px;
+  background: var(--kem); border: 1px solid var(--vien-o); border-radius: 10px;
 }
 .kho-ben-tim:focus-within {
   outline: 3px solid var(--cuc-vang); outline-offset: 1px;
@@ -173,7 +172,7 @@
   flex: 0 0 44px; display: inline-flex; align-items: center; justify-content: center;
   border: 0; background: none; color: var(--do); cursor: pointer; border-radius: 0 10px 10px 0;
 }
-.kho-ben-tim button:hover { background: var(--kem-sau); }
+.kho-ben-tim button:hover { background: var(--kem-dam); }
 .kho-ben-nhom {
   margin: 1rem .6rem .3rem; font-size: .7rem; font-weight: 700; letter-spacing: .08em;
   text-transform: uppercase; color: var(--muc-nhat);
@@ -186,8 +185,9 @@
 }
 .kho-ben-muc .kho-bt { color: var(--do); }
 .kho-ben-muc span { flex: 1; min-width: 0; }
-/* Cột bên nằm trên nền kem của trang: --kem-sau gần trùng nền (1,07 : 1), nên di chuột dùng --kem-dam. */
-.kho-ben-muc:hover { background: var(--kem-dam); }
+/* Cột bên nằm trên nền kem sau của trang: di chuột nổi lên thành một dải Cream, như thẻ. --kem-dam gần
+   trùng nền (1,03 : 1). */
+.kho-ben-muc:hover { background: var(--nb-the); }
 .kho-ben-muc[aria-current='page'] { background: var(--than); color: var(--kem); }
 .kho-ben-muc[aria-current='page'] .kho-bt { color: var(--cuc-vang); }
 /* Vòng focus của dòng menu vẽ VÀO TRONG dòng: cột bên cuộn dọc (overflow) cắt mất hai mép của vòng vẽ ra ngoài,
@@ -210,13 +210,13 @@
   border-radius: 10px; text-decoration: none; font-size: .88rem; font-weight: 600; color: var(--than);
 }
 .kho-nhanh-ben a .kho-bt { color: var(--do); }
-.kho-nhanh-ben a:hover { background: var(--kem-dam); }
+.kho-nhanh-ben a:hover { background: var(--nb-the); }
 
 /* --- Thanh đáy (điện thoại, tablet) ----------------------------------------- */
 .kho-day {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
   display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
-  background: #fff; border-top: 1px solid var(--kho-vach);
+  background: var(--nb-the); border-top: 1px solid var(--kho-vach);
   box-shadow: 0 -4px 18px rgba(21, 16, 8, .08);
   padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
@@ -226,13 +226,13 @@
   color: var(--muc-nhat); font-size: .72rem; font-weight: 600;
 }
 .kho-day-bt { position: relative; display: inline-flex; }
-.kho-day-bt .kho-so-do { position: absolute; top: -.45rem; right: -.8rem; box-shadow: 0 0 0 2px #fff; }
+.kho-day-bt .kho-so-do { position: absolute; top: -.45rem; right: -.8rem; box-shadow: 0 0 0 2px var(--nb-the); }
 .kho-day-chu { white-space: nowrap; }
 .kho-day-nut[aria-current='page'] { color: var(--do); }
 .kho-day-nut.giua .kho-day-bt {
   width: 3.1rem; height: 3.1rem; margin-top: -1.35rem; border-radius: 999px;
   align-items: center; justify-content: center;
-  background: var(--do); color: #fff; box-shadow: 0 6px 16px rgba(167, 12, 12, .35);
+  background: var(--do); color: var(--kem); box-shadow: 0 6px 16px rgba(167, 12, 12, .35);
 }
 .kho-day-nut.giua { color: var(--than); }
 
@@ -258,7 +258,8 @@
 .kho-than .kho-bang { border-radius: 10px; }
 .kho-than .nb-bao { border-radius: 12px; }
 .kho-than .nb-nut { border-radius: 10px; }
-.kho-than .nb-o input, .kho-than .nb-o select, .kho-than .nb-o textarea { border-radius: 10px; }
+/* Ô đánh dấu, ô chọn một trong .nb-o giữ góc của chúng (noi-bo.css) — bo 10px thì ô 22px thành hình tròn. */
+.kho-than .nb-o input:not([type='checkbox'], [type='radio']), .kho-than .nb-o select, .kho-than .nb-o textarea { border-radius: 10px; }
 
 /* Ô chọn nhanh hàng ngang (chip) — cao 48px như mọi thứ chạm được */
 .kho-than .kho-dh a { min-height: 44px; }
@@ -312,7 +313,7 @@
 /* Dòng chưa đọc (trang Thông báo): một chấm Marigold ở góc biểu tượng, như chấm "chưa đọc" của hộp thư; chữ "· mới"
    vẫn nằm cạnh giờ. Bản trước tô cả dòng một nền kem vàng rất nhạt (gần trùng nền trang, hầu như không thấy). Trên
    nền kem mới, tô nền đủ đậm để thấy thì cả trăm dòng chưa đọc thành một mảng vàng — vàng chỉ là điểm nhấn nhỏ.
-   Viền --vang-chu quanh chấm: Marigold trên trắng chỉ 1,97 : 1. */
+   Viền --vang-chu quanh chấm: Marigold trên thẻ Cream chỉ 1,56 : 1. */
 .kho-sk.chua-doc .kho-sk-dau { position: relative; }
 .kho-sk.chua-doc .kho-sk-dau::after {
   content: ''; position: absolute; top: -.15rem; right: -.3rem; width: .65rem; height: .65rem; border-radius: 50%;
@@ -416,7 +417,7 @@
   width: 3.2rem; height: 3.2rem; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
   background: var(--do-nen); color: var(--do);
 }
-.kho-tron:hover .kho-tron-bt { background: var(--do); color: #fff; }
+.kho-tron:hover .kho-tron-bt { background: var(--do); color: var(--kem); }
 
 /* Dải trạng thái (đếm quầy) */
 .kho-dai {

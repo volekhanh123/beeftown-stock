@@ -18,7 +18,7 @@
   flex: 0 0 auto; text-decoration: none; font-weight: 600; font-size: .85rem;
   padding: .55rem .85rem; border-radius: 999px; min-height: 40px;
   display: inline-flex; align-items: center;
-  background: #fff; color: var(--than); border: 1px solid var(--vach);
+  background: var(--nb-the); color: var(--than); border: 1px solid var(--vach);
 }
 .kho-dh a[aria-current='page'] { background: var(--than); color: var(--kem); border-color: var(--than); }
 
@@ -45,17 +45,17 @@
 .kho-luoi-2 { display: grid; gap: .75rem; grid-template-columns: 1fr 1fr; }
 @media (max-width: 420px) { .kho-luoi-2 { grid-template-columns: 1fr; } }
 
-/* Ô tích / ô chọn nằm ngang */
+/* Ô tích / ô chọn nằm ngang. Ô đánh dấu tự vẽ (noi-bo.css) — ở đây chỉ đặt cỡ. */
 .kho-tich {
   display: flex; align-items: center; gap: .6rem;
   padding: .35rem 0 .9rem; font-size: .92rem; cursor: pointer;
 }
-.kho-tich input { width: 22px; height: 22px; margin: 0; accent-color: var(--do); flex-shrink: 0; }
+.kho-tich input { width: 22px; height: 22px; margin: 0; flex-shrink: 0; }
 
 /* --- Ô số tổng quan ------------------------------------------------------- */
 .kho-o-so-luoi { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr)); margin-bottom: 1rem; }
 .kho-o-so {
-  background: #fff; border: 1px solid var(--vach); border-radius: 10px;
+  background: var(--nb-the); border: 1px solid var(--vach); border-radius: 10px;
   padding: .85rem 1rem; text-decoration: none; color: inherit; display: block;
 }
 .kho-o-so b { display: block; font-size: 1.6rem; line-height: 1.1; }
@@ -69,12 +69,12 @@
 
 /* --- Nhãn hạn dùng ------------------------------------------------------- */
 .kho-han { display: inline-block; font-size: .72rem; font-weight: 700; padding: .15rem .45rem; border-radius: 4px; white-space: nowrap; }
-.kho-han.het_han { background: var(--do); color: #fff; }
+.kho-han.het_han { background: var(--do); color: var(--kem); }
 .kho-han.sap_het { background: var(--mu-tat); color: var(--than); }
 .kho-han.con_han { background: var(--xanh-nen); color: var(--xanh); }
 
 /* --- Thẻ mặt hàng trong tồn kho ------------------------------------------ */
-.kho-mh { background: #fff; border: 1px solid var(--vach); border-radius: 10px; margin-bottom: .6rem; }
+.kho-mh { background: var(--nb-the); border: 1px solid var(--vach); border-radius: 10px; margin-bottom: .6rem; }
 .kho-mh > summary {
   list-style: none; cursor: pointer; padding: .85rem 1rem;
   display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap;
@@ -88,7 +88,7 @@
 
 /* --- Bảng số liệu (máy tính) — trên điện thoại cuộn ngang ------------------ */
 .kho-bang-khung { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 1rem; }
-.kho-bang { width: 100%; border-collapse: collapse; font-size: .87rem; background: #fff; }
+.kho-bang { width: 100%; border-collapse: collapse; font-size: .87rem; background: var(--nb-the); }
 .kho-bang th, .kho-bang td { padding: .55rem .6rem; border-bottom: 1px solid var(--vach); text-align: left; vertical-align: top; }
 .kho-bang th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muc-nhat); background: var(--kem-sau); white-space: nowrap; }
 .kho-bang td.so, .kho-bang th.so { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -96,14 +96,14 @@
 
 /* Báo cáo nhiều cột: cột tên mặt hàng đứng yên khi cuộn ngang. */
 .kho-bang.kho-bao-cao th:first-child,
-.kho-bang.kho-bao-cao td:first-child { position: sticky; left: 0; z-index: 1; min-width: 9.5rem; background: #fff; }
+.kho-bang.kho-bao-cao td:first-child { position: sticky; left: 0; z-index: 1; min-width: 9.5rem; background: var(--nb-the); }
 .kho-bang.kho-bao-cao th:first-child { background: var(--kem-sau); }
 .kho-bang.kho-bao-cao tr.tong td:first-child { background: var(--kem-sau); }
 
 /* --- Dòng hàng trong phiếu ------------------------------------------------ */
 .kho-dong-hang {
   border: 1px solid var(--vach); border-radius: 10px; padding: .85rem .85rem .25rem;
-  margin-bottom: .75rem; background: #fff; position: relative;
+  margin-bottom: .75rem; background: var(--nb-the); position: relative;
 }
 .kho-dong-hang > .so-thu-tu {
   position: absolute; top: -.6rem; left: .75rem; background: var(--than); color: var(--kem);
@@ -128,22 +128,22 @@
 .kho-phu { color: var(--muc-nhat); font-size: .82rem; }
 .kho-thanh-nut { display: flex; gap: .6rem; flex-wrap: wrap; margin: 1rem 0; }
 .kho-thanh-nut .nb-nut { flex: 1 1 10rem; }
-.kho-nut-xoa { background: #fff !important; color: var(--do) !important; border: 1px solid var(--do) !important; }
+.kho-nut-xoa { background: var(--nb-the) !important; color: var(--do) !important; border: 1px solid var(--do) !important; }
 
 /* --- Quét nhãn bằng camera ------------------------------------------------ */
 /* .nb-nut đặt display nên thuộc tính hidden của trình duyệt bị đè — ép lại,
    không thì iPhone thấy một nút camera bấm không ra gì. */
 .kho-quet [hidden] { display: none !important; }
-.kho-quet-hop { border: 0; border-radius: 12px; padding: 1rem; width: min(30rem, 94vw); }
+.kho-quet-hop { border: 0; border-radius: 12px; padding: 1rem; width: min(30rem, 94vw); background: var(--nb-the); color: var(--than); }
 .kho-quet-hop::backdrop { background: rgba(21, 16, 8, .6); }
-.kho-quet-hop video { width: 100%; max-height: 55vh; object-fit: cover; border-radius: 8px; background: #000; display: block; }
+.kho-quet-hop video { width: 100%; max-height: 55vh; object-fit: cover; border-radius: 8px; background: var(--than); display: block; }
 .kho-quet-hop p { margin: .75rem 0; font-size: .9rem; }
 .kho-quet-hop .nb-nut { width: 100%; }
 
 /* --- Dòng lô để chọn (pha lóc, xuất theo lô) ------------------------------ */
 .kho-lo-chon { display: grid; gap: .5rem; grid-template-columns: 1fr; margin-bottom: .75rem; }
 .kho-lo-chon > div {
-  border: 1px solid var(--vach); border-radius: 10px; background: #fff;
+  border: 1px solid var(--vach); border-radius: 10px; background: var(--nb-the);
   padding: .7rem .85rem .2rem;
 }
 .kho-lo-chon .dau { display: flex; justify-content: space-between; gap: .5rem; flex-wrap: wrap; align-items: baseline; margin-bottom: .4rem; }
@@ -154,12 +154,11 @@
    đáy của khung kho thì đứng ngay trên nó. */
 @media (max-width: 1023px) {
   .kho-thanh-nut.dinh {
-    position: sticky; bottom: 0; background: var(--kem); padding: .6rem 0; margin: 0;
+    position: sticky; bottom: 0; background: var(--nb-nen); padding: .6rem 0; margin: 0;
     box-shadow: 0 -6px 12px -8px rgba(21, 16, 8, .25); z-index: 5;
   }
   body:has(.kho-day) .kho-thanh-nut.dinh {
     bottom: calc(var(--kho-day-cao, 4.25rem) + env(safe-area-inset-bottom));
-    background: var(--kho-nen, var(--kem));
   }
 }
 
