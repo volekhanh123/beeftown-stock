@@ -142,7 +142,7 @@ create trigger kho_phien_pha_chot_tra_o_ma_trigger
 -- nguyên. File này KHÔNG chạy lại khối "thu hết rồi cấp lại danh sách anon": danh sách
 -- đó đã đổi ở 0084 (tra_cuu_mot_dat_ban thay tra_cuu_dat_ban, bỏ ghi_nhat_ky_tra_cuu).
 -- Bản chép cũ chạy sau 0084 mở lại hai hàm đã đóng và đóng hàm tra cứu mới
--- (test-an-toan.mjs bắt). Cùng cách với 0078.
+-- (test-an-toan.mjs bắt). Thu đúng hàm như 0078; thu cả authenticated như 0049.
 do $$
 begin
   execute 'revoke execute on function kho_phien_pha_chot_tra_o_ma() from public';
