@@ -45,14 +45,14 @@ const UUID = i => `00000000-0000-4000-8000-${String(i).padStart(12, '0')}`;
  * Client giả: bang[tên bảng / view / hàm rpc] = mảng dòng. Mỗi lần đọc trả tối đa TRAN dòng (sau .range()).
  * `loi[tên]` = lỗi trả về; `loiTrang[tên]` = lỗi trả về từ lần đọc thứ mấy (0 = lần đầu). Ghi lại mọi lần gọi.
  */
-function clientGia(bang, { loi = {}, loiTu = {} } = {}) {
+function clientGia(bang, { loi = {}, loiTu = {}, tran = TRAN } = {}) {
   const goi = [];
   const dem = {};
-  const tao = (ten, rpc, thamSo) => {
-    const q = { ten, rpc, thamSo, loc: [], thuTu: [], khoang: null, gioiHan: null };
+  const tao = (ten, rpc, thamSo, tuyChon) => {
+    const q = { ten, rpc, thamSo, loc: [], thuTu: [], khoang: null, gioiHan: null, demTong: !!tuyChon?.count };
     goi.push(q);
     const b = {
-      select() { return b; },
+      select(_cot, tc) { if (tc?.count) q.demTong = true; return b; },
       eq(k, v) { q.loc.push([k, v]); return b; },
       in() { return b; },
       order(cot, tuyChon) { q.thuTu.push(cot + (tuyChon?.ascending === false ? ' desc' : '')); return b; },
@@ -62,14 +62,16 @@ function clientGia(bang, { loi = {}, loiTu = {} } = {}) {
         const lan = dem[ten] = (dem[ten] ?? -1) + 1;
         if (loi[ten] && lan >= (loiTu[ten] ?? 0)) return Promise.resolve({ data: null, error: loi[ten] }).then(xong, hong);
         let ds = (bang[ten] ?? []).filter(r => q.loc.every(([k, v]) => !(k in r) || r[k] === v));
+        const tong = ds.length;
         const [a, z] = q.khoang ?? [0, Infinity];
-        ds = ds.slice(a, Math.min(z + 1, a + (q.gioiHan ?? Infinity), a + TRAN));
-        return Promise.resolve({ data: ds, error: null }).then(xong, hong);
+        ds = ds.slice(a, Math.min(z + 1, a + (q.gioiHan ?? Infinity), a + tran));
+        // Như PostgREST: chỉ trả tổng số dòng khi được xin (count: 'exact').
+        return Promise.resolve({ data: ds, error: null, count: q.demTong ? tong : null }).then(xong, hong);
       },
     };
     return b;
   };
-  return { client: { from: ten => tao(ten, false), rpc: (ten, thamSo) => tao(ten, true, thamSo) }, goi };
+  return { client: { from: ten => tao(ten, false), rpc: (ten, thamSo, tc) => tao(ten, true, thamSo, tc) }, goi };
 }
 
 const lan = (goi, ten) => goi.filter(q => q.ten === ten);
@@ -96,6 +98,13 @@ await nhom('1 · docTungTrang — đọc tới trang chưa đầy, lỗi giữa 
     ? { data: ds.slice(0, 1000), error: null } : { data: null, error: { code: 'PGRST103', message: 'Requested range not satisfiable' } }));
   ok('Trang sau báo PGRST103 (dòng vừa bị xoá giữa hai lần đọc) → trả phần đã đọc', hetDong.length === 1000);
 
+  // Max rows của project bị hạ xuống dưới 1.000 (Supabase cho chỉnh): trang đầu ngắn hơn 1.000 mà CHƯA hết. Có tổng
+  // số dòng (count) thì đọc tiếp tới đủ; không có tổng thì như trước (trang ngắn = trang cuối).
+  const ngan = Array.from({ length: 1300 }, (_, i) => ({ i }));
+  const theoTong = await docTungTrang((a, z) => Promise.resolve({ data: ngan.slice(a, Math.min(z + 1, a + 500)), error: null, count: ngan.length }));
+  ok('Max rows 500, có tổng 1.300 → vẫn đọc đủ 1.300, đúng thứ tự', theoTong.length === 1300 && theoTong.every((r, i) => r.i === i),
+     `đọc ${theoTong.length}`);
+
   let qua = null;
   try { await docTungTrang(() => Promise.resolve({ data: Array.from({ length: TRAN }, () => ({})), error: null })); }
   catch (e) { qua = e; }
@@ -116,6 +125,10 @@ await nhom('2 · docTon / docGiaTon — tồn kho đủ mọi lô, giá trị t�
   ok('Lô hạn xa nhất (cuối danh sách) có mặt', ds.some(d => d.ma_lo === 'L02299'));
   const q = lan(goi, 'kho_v_ton');
   ok('Đọc theo trang .range(), không .limit()', q.length === 3 && q.every(x => x.khoang && x.gioiHan === null), JSON.stringify(q.map(x => x.khoang)));
+  ok('…xin tổng số dòng (count: exact) để không dừng sớm khi Max rows < 1.000', q.every(x => x.demTong));
+  const t500 = clientGia({ kho_v_ton: ton }, { tran: 500 });
+  const ds500 = await docTon(t500.client, CN);
+  ok('Project hạ Max rows xuống 500 → docTon vẫn đọc đủ 2.300 dòng', ds500.length === 2300, `đọc ${ds500.length}`);
   ok('Thứ tự xác định (đủ cột để hai dòng không ngang nhau): han_dung, ma_lo, lo_id, vi_tri_id',
      q[0].thuTu.join(',') === 'han_dung,ma_lo,lo_id,vi_tri_id', q[0].thuTu.join(','));
 
@@ -157,6 +170,13 @@ await nhom('4 · Hàm rpc nhiều dòng — thẻ kho, công nợ theo kỳ, MIS
   ok('Thẻ kho 1.800 dòng → đủ, SỐ DƯ CUỐI là của dòng cuối thật (1.800 kg, không phải 1.000)',
      tk.length === 1800 && tk.at(-1).ton_kg === 1800, `${tk.length} dòng, dư cuối ${tk.at(-1)?.ton_kg}`);
   ok('…đọc rpc theo trang', lan(a.goi, 'kho_the_kho').length === 2 && lan(a.goi, 'kho_the_kho').every(x => x.rpc && x.khoang));
+  // Mọi hàm đọc dùng docTungTrang đều xin tổng số dòng — kiểm trên mã nguồn từng file.
+  for (const f of ['ton.ts', 'ban-ipos.ts', 'the-kho.ts', 'cong-no.ts', 'bao-cao.ts', 'kiem-ke.ts', 'dem-quay.ts', 'pha-loc.ts']) {
+    const nguon = doc(f);
+    const lanGoi = [...nguon.matchAll(/docTungTrang\(\([^)]*\) =>[\s\S]*?\.range\(/g)].map(m => m[0]);
+    ok(`${f}: mọi lần docTungTrang xin count: 'exact'`, lanGoi.length > 0 && lanGoi.every(x => /count: 'exact'/.test(x)),
+       lanGoi.filter(x => !/count: 'exact'/.test(x)).map(x => x.slice(0, 80)).join(' | '));
+  }
 
   const so = Array.from({ length: 1200 }, (_, i) => ({ thu_tu: i + 1, loai: 'nhap', so_du: String(i), tang: '1', giam: null }));
   const b = clientGia({ kho_cong_no_theo_ky: so });

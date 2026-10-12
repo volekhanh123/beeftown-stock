@@ -30,7 +30,7 @@ import { docBanAn } from '../../web/src/lib/cai-dat.ts';
 import { dichCau } from '../../web/src/lib/cau-noi-bo.ts';
 import { docBaoCao } from '../../web/src/lib/kho/bao-cao.ts';
 import { cauLoiKho, LOI_KHO_CHUNG } from '../../web/src/lib/kho/chung.ts';
-import { themMotBan } from '../../web/src/lib/cai-dat.ts';
+import { themMotBan, docChiNhanh } from '../../web/src/lib/cai-dat.ts';
 import { readFileSync } from 'node:fs';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — LỖI DATABASE KHÔNG THÀNH CÂU SAI');
@@ -122,6 +122,15 @@ await nhom('3 · docBanAn: đọc lỗi → ném (trang báo "không đọc đư
   let loi = null;
   try { await docBanAn(clientGia({}, { ban_an: MANG_DUT }), CN); } catch (e) { loi = e; }
   ok('Mạng đứt → ném lỗi (cai-dat.astro bắt và hiện loiDoc)', loi !== null, 'trả về danh sách rỗng');
+  // cai-dat.astro gọi docChiNhanh TRƯỚC docBanAn: nó nuốt lỗi thì trang nói "Chưa có chi nhánh nào" và mời tạo
+  // chi nhánh (POST còn INSERT thay vì UPDATE) — docBanAn ném lỗi cũng không cứu được.
+  let loiCn = null;
+  try { await docChiNhanh(clientGia({}, { chi_nhanh: MANG_DUT })); } catch (e) { loiCn = e; }
+  ok('docChiNhanh: mạng đứt → ném lỗi, không trả "chưa có chi nhánh"', loiCn !== null, 'trả về null');
+  const nguonCaiDat = readFileSync(new URL('../../web/src/pages/noi-bo/cai-dat.astro', import.meta.url), 'utf8');
+  const iTry = nguonCaiDat.indexOf("const viec = String(form.get('viec')");
+  ok('cai-dat.astro: POST đọc chi nhánh BÊN TRONG try (lỗi đọc → câu báo, không trang 500)',
+     /try \{\s*const cn = await docChiNhanh\(client\);/.test(nguonCaiDat.slice(iTry)));
 });
 
 // ===========================================================================
@@ -144,6 +153,10 @@ await nhom('4 · Báo cáo bán: chỉ lùi về hàm cũ khi CHÍNH kho_bao_cao
 
 // ===========================================================================
 await nhom('5 · Lỗi mạng mọi kiểu → "chưa chắc đã ghi", không lộ câu kỹ thuật tiếng Anh', async () => {
+  // Câu mất mạng của kho dùng cho CẢ lần đọc (trang, file CSV) lẫn lần ghi: phải đúng cho cả hai — không khẳng
+  // định đã có thao tác ghi khi người dùng chỉ mở trang hay tải file.
+  ok('Câu mất mạng đúng cho cả đọc lẫn ghi: "chưa chắc đã ghi" chỉ nói khi vừa bấm lưu', /^Không kết nối được database/.test(LOI_KHO_CHUNG.mang.vi)
+     && /Nếu vừa bấm lưu/.test(LOI_KHO_CHUNG.mang.vi) && /If you had just saved/.test(LOI_KHO_CHUNG.mang.en), LOI_KHO_CHUNG.mang.vi);
   for (const m of [
     'TypeError: fetch failed',
     'TypeError: Unable to connect. Is the computer able to access the url?',   // Bun — Beeftown Cân
@@ -181,6 +194,16 @@ await nhom('6 · Đường tải CSV của kho (moKhoTai): phiên, vai, chi nhá
   });
   const ql = { id: 'ns-1', vai_tro: 'quan_ly', chi_nhanh_id: CN };
   const cn = [{ id: CN, ma: 'q1', ten: 'Beeftown Quận 1' }];
+
+  // APIContext thật của Astro 7 có getter csp, session, clientAddress: đọc tới là ghi cảnh báo vào log (CSP / session
+  // chưa cấu hình) hoặc ném lỗi (không có IP). moKhoTai không được trải {...ctx} (đọc hết mọi getter).
+  const coGetter = ctx(clientGia({ chi_nhanh: cn }), ql);
+  for (const ten of ['csp', 'session', 'clientAddress']) {
+    Object.defineProperty(coGetter, ten, { enumerable: true, get() { throw new Error(`đã đọc ctx.${ten}`); } });
+  }
+  let loiGetter = null;
+  try { await moKhoTai(coGetter); } catch (e) { loiGetter = e; }
+  ok('moKhoTai không đọc ctx.csp / ctx.session / ctx.clientAddress', loiGetter === null, String(loiGetter?.message));
 
   const tot = await moKhoTai(ctx(clientGia({ chi_nhanh: cn }), ql));
   ok('Tiền đề: quản lý → chi nhánh của mình', !(tot instanceof Response) && tot.chiNhanh.id === CN);

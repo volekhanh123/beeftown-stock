@@ -204,7 +204,7 @@ export async function docTheKho(
     p_vi_tri_id: b.viTri || null,
     p_tu: b.tu,
     p_den: b.den,
-  }).range(tu, den));
+  }, { count: 'exact' }).range(tu, den));
   return (data as Record<string, unknown>[]).map(r => ({
     ngay: (r.ngay as string | null) ?? null,
     loai: String(r.loai ?? ''),

@@ -98,10 +98,13 @@ export function laLoiMang(m: string): boolean {
   return /fetch failed|failed to fetch|network|load failed|unable to connect|ENOTFOUND|EAI_AGAIN|ECONN|ETIMEDOUT|timeout|timed out/i.test(m);
 }
 
-/** Lần GHI mà mạng đứt giữa chừng: không biết database đã nhận hay chưa — nói đúng như thế. */
+/**
+ * Mạng đứt khi gọi database. Câu này hiện cho CẢ lần đọc (mở trang, tải file) lẫn lần ghi, nên phải đúng cho cả
+ * hai: lần ghi thì không biết database đã nhận hay chưa — nói đúng như thế, nhưng chỉ khi người dùng vừa bấm lưu.
+ */
 export const CAU_MAT_MANG_GHI: HaiThuTieng = {
-  vi: 'Không kết nối được database. Chưa chắc đã ghi hay chưa — tải lại trang để kiểm tra.',
-  en: 'Could not reach the database. It may or may not have been saved — reload the page to check.',
+  vi: 'Không kết nối được database — tải lại trang sau ít giây. Nếu vừa bấm lưu: chưa chắc đã ghi hay chưa, tải lại để kiểm tra.',
+  en: 'Could not reach the database — reload the page in a few seconds. If you had just saved something, it may or may not have been saved: reload to check.',
 };
 
 const CAU_TRANG = {

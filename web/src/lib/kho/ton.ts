@@ -36,7 +36,7 @@ export interface DongTon {
 export async function docTon(client: SupabaseClient, chiNhanhId: string): Promise<DongTon[]> {
   const data = await docTungTrang((tu, den) => client
     .from('kho_v_ton')
-    .select('lo_id, ma_lo, mat_hang_id, ma_hang, ten_hang, nhom, loai_hang, dem_goi, don_vi_goi, vi_tri_id, ten_vi_tri, loai_vi_tri, so_kg, so_goi, nguon, ngay_dong_goi, han_dung, so_ngay_con, tinh_trang_han')
+    .select('lo_id, ma_lo, mat_hang_id, ma_hang, ten_hang, nhom, loai_hang, dem_goi, don_vi_goi, vi_tri_id, ten_vi_tri, loai_vi_tri, so_kg, so_goi, nguon, ngay_dong_goi, han_dung, so_ngay_con, tinh_trang_han', { count: 'exact' })
     .eq('chi_nhanh_id', chiNhanhId)
     .order('han_dung')
     .order('ma_lo')
@@ -89,7 +89,7 @@ export async function docGiaTon(client: SupabaseClient, chiNhanhId: string): Pro
   const ra = new Map<string, { gia_von_kg: number; gia_tri: number }>();
   const data = await docTungTrang((tu, den) => client
     .from('kho_v_ton_gia')
-    .select('lo_id, vi_tri_id, gia_von_kg, gia_tri')
+    .select('lo_id, vi_tri_id, gia_von_kg, gia_tri', { count: 'exact' })
     .eq('chi_nhanh_id', chiNhanhId)
     .order('lo_id')
     .order('vi_tri_id')

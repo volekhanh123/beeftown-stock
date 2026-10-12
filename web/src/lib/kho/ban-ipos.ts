@@ -452,7 +452,7 @@ export async function docDongIpos(
 /** Mọi dòng chưa ghép (để gom theo mã), đọc từng trang — mã cũ nhất sau một đợt iPOS dồn vẫn lên màn ghép. */
 export async function docMaChuaGhep(client: SupabaseClient, chiNhanhId: string): Promise<MaChuaGhep[]> {
   const data = await docTungTrang((tu, den) => client.from('kho_v_ipos_dong')
-    .select('ma_ipos, ten_ipos, ma_can, thoi_diem_ban')
+    .select('ma_ipos, ten_ipos, ma_can, thoi_diem_ban', { count: 'exact' })
     .eq('chi_nhanh_id', chiNhanhId)
     .eq('trang_thai', 'chua_khop')
     .order('thoi_diem_ban', { ascending: false })

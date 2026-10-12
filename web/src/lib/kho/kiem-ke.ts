@@ -166,7 +166,7 @@ export async function docSoNhanQuet(client: SupabaseClient, kiemKeId: string): P
   try {
     data = await docTungTrang((tu, den) => client
       .from('kho_kiem_ke_quet')
-      .select('mat_hang_id')
+      .select('mat_hang_id', { count: 'exact' })
       .eq('kiem_ke_id', kiemKeId)
       .order('thu_tu')
       .range(tu, den));

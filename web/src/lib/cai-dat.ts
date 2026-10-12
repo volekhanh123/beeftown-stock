@@ -110,13 +110,15 @@ function so(v: FormDataEntryValue | null, min: number, max: number): number | nu
 // -----------------------------------------------------------------------------
 // CHI NHÁNH
 // -----------------------------------------------------------------------------
+/** Đọc lỗi → ném: trả null là trang nói "Chưa có chi nhánh nào" và POST lưu chi nhánh thành INSERT thay vì UPDATE. */
 export async function docChiNhanh(client: SupabaseClient): Promise<ChiNhanh | null> {
-  const { data } = await client
+  const { data, error } = await client
     .from('chi_nhanh')
     .select('id, ma, ten, khu_vuc, dia_chi, dien_thoai, trua_bat_dau, trua_ket_thuc, toi_bat_dau, toi_ket_thuc, buoc_khung_gio_phut, thoi_luong_bua_phut, giu_ban_phut, dang_hoat_dong')
     .order('ma')
     .limit(1)
     .maybeSingle();
+  if (error) throw error;
   return (data as ChiNhanh) ?? null;
 }
 

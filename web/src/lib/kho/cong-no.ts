@@ -1213,7 +1213,7 @@ export async function docCongNoTheoKy(
     p_ncc: nccId,
     p_tu: tu,
     p_den: den,
-  }).range(a, z));
+  }, { count: 'exact' }).range(a, z));
   return (data as Dong[]).map(r => ({
     ...r,
     tang: r.tang === null || r.tang === undefined ? null : so(r.tang),
@@ -1593,7 +1593,7 @@ export async function docDuLieuMisa(
     p_tu: tu,
     p_den: den,
     p_loai: loai,
-  }).range(a, z));
+  }, { count: 'exact' }).range(a, z));
   const soHoacNull = (v: unknown) => (v === null || v === undefined ? null : Number(v));
   return (data as Dong[]).map(r => ({
     ...r, thu_tu: so(r.thu_tu), so_luong: soHoacNull(r.so_luong), don_gia: soHoacNull(r.don_gia),

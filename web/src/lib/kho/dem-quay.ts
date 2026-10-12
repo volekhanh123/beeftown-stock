@@ -163,7 +163,7 @@ export async function docMonDaQuet(client: SupabaseClient, kiemKeId: string): Pr
       .eq('kiem_ke_id', kiemKeId).order('thu_tu'),
     // Quầy đông có thể quá 1.000 nhãn một phiếu: đọc từng trang (docTungTrang).
     docTungTrang((tu, den) => client.from('kho_kiem_ke_quet')
-      .select('mat_hang_id, created_at')
+      .select('mat_hang_id, created_at', { count: 'exact' })
       .eq('kiem_ke_id', kiemKeId).order('thu_tu').range(tu, den)),
   ]);
   if (dong.error) throw dong.error;

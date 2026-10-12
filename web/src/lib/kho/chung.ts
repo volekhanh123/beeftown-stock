@@ -263,7 +263,8 @@ export function docKg(v: unknown): number | null {
 
 /** "450.000đ" | "450,000" | "450000" → 450000. Trống → null. Sai → NaN. */
 export function docTien(v: unknown): number | null {
-  const s = String(v ?? '').trim().replace(/\s*(đ|d|vnd)$/i, '');
+  // Bỏ hậu tố rồi mới bỏ khoảng trắng — regex "\s*(đ|d|vnd)$" chạy theo cấp hai với chuỗi nhiều dấu cách.
+  const s = String(v ?? '').trim().replace(/(đ|d|vnd)$/i, '').trimEnd();
   if (s === '') return null;
   const so = boDauNghin(s, /^[.,\s]$/);
   if (so === null || !/^\d{1,13}$/.test(so)) return NaN;
@@ -549,7 +550,9 @@ export const LOI_KHO_CHUNG = {
 // PostgREST trả tối đa 1.000 dòng mỗi lần đọc (Max rows của project), cả bảng /
 // view lẫn hàm rpc trả nhiều dòng; .limit(2000) KHÔNG vượt được. Đọc thiếu thì
 // lặng lẽ: tồn kho mất lô hạn xa nhất, thẻ kho mất số dư cuối, file MISA thiếu
-// chứng từ. docTungTrang đọc .range() từng trang tới trang chưa đầy.
+// chứng từ. docTungTrang đọc .range() từng trang cho tới khi đủ TỔNG SỐ DÒNG
+// database báo (select / rpc với { count: 'exact' }) — Max rows bị hạ dưới 1.000
+// thì trang ngắn chưa phải trang cuối. Không có tổng thì trang ngắn là trang cuối.
 //
 // Truy vấn PHẢI xếp thứ tự xác định thì các trang mới nối khít: .order() đủ cột
 // để không hai dòng nào ngang nhau; hàm rpc plpgsql thì thứ tự trong thân hàm.
@@ -561,11 +564,11 @@ export const CAU_QUA_NHIEU_DONG: HaiThuTieng = LOI_KHO_CHUNG.quaNhieuDong;
 
 /** Đọc mọi trang; lỗi ở bất kỳ trang nào → ném (không trả phần đã đọc như thể đủ). */
 export async function docTungTrang<T>(
-  trang: (tu: number, den: number) => PromiseLike<{ data: T[] | null; error: unknown }>,
+  trang: (tu: number, den: number) => PromiseLike<{ data: T[] | null; error: unknown; count?: number | null }>,
 ): Promise<T[]> {
   const ra: T[] = [];
-  for (let dau = 0; dau < TOI_DA_DONG_DOC; dau += CO_TRANG_DOC) {
-    const { data, error } = await trang(dau, dau + CO_TRANG_DOC - 1);
+  for (let dau = 0; dau < TOI_DA_DONG_DOC;) {
+    const { data, error, count } = await trang(dau, dau + CO_TRANG_DOC - 1);
     if (error) {
       // Dòng bị xoá giữa hai lần đọc nên trang sau nằm ngoài khoảng (PGRST103): đã đủ.
       if (dau > 0 && (error as { code?: string }).code === 'PGRST103') return ra;
@@ -573,7 +576,9 @@ export async function docTungTrang<T>(
     }
     const ds = data ?? [];
     ra.push(...ds);
-    if (ds.length < CO_TRANG_DOC) return ra;
+    const daDu = typeof count === 'number' ? ra.length >= count : ds.length < CO_TRANG_DOC;
+    if (ds.length === 0 || daDu) return ra;
+    dau += ds.length;
   }
   throw new Error(CAU_QUA_NHIEU_DONG.vi);
 }

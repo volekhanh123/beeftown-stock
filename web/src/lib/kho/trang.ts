@@ -178,8 +178,14 @@ export async function moKhoTai(ctx: APIContext): Promise<KhoTai | Response> {
   if (!phien) return new Response(CAU_TAI.chuaDangNhap[nn], { status: 401 });
   const { client, nhanSu } = phien;
 
-  // kiemMayChung viết cho trang (Astro.response.headers); đường tải đã tự đặt cache-control: no-store.
-  const may = await kiemMayChung({ ...ctx, response: { headers: new Headers() } } as unknown as AstroGlobal, nhanSu);
+  // kiemMayChung viết cho trang (Astro.response.headers); đường tải đã tự đặt cache-control: no-store. Chỉ đưa đúng
+  // những thứ nó dùng — KHÔNG trải {...ctx}: trải là đọc hết getter của APIContext (csp, session, clientAddress),
+  // ghi cảnh báo sai vào log mỗi lần tải và ném lỗi khi request không có IP.
+  const astro = {
+    cookies: ctx.cookies, locals: ctx.locals, request: ctx.request, url: ctx.url, redirect: ctx.redirect,
+    response: { headers: new Headers() },
+  } as unknown as AstroGlobal;
+  const may = await kiemMayChung(astro, nhanSu);
   if (may instanceof Response) return may;
   if (laVaiMay(nhanSu.vai_tro)) return ctx.redirect(DUONG_MAY, 302);
   if (!vaiDuoc(nhanSu.vai_tro, 'xem')) return new Response(CAU_TAI.khongXemKho[nn], { status: 403 });

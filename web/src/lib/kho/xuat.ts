@@ -399,6 +399,8 @@ export function gopDong(cu: DongXuatForm[], moi: DongXuatForm[]): DongXuatForm[]
   for (const d of moi) {
     const co = ra.find(x => x.mat_hang_id === d.mat_hang_id);
     if (!co) { ra.push({ ...d }); continue; }
+    // Số gói đã gõ sai ("1.5"): giữ nguyên để form báo "số gói là số nguyên", không lặng lẽ thay bằng số quét.
+    if (Number.isNaN(docSoNguyen(co.so_goi, 0, 100000))) continue;
     const goi = (docSoNguyen(co.so_goi, 0, 100000) || 0) + (docSoNguyen(d.so_goi, 0, 100000) || 0);
     const kgCu = docKg(co.so_kg), kgMoi = docKg(d.so_kg);
     co.so_goi = goi ? String(goi) : '';

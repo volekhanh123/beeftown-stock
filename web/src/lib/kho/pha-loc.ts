@@ -598,7 +598,7 @@ export async function docNhanQuet(client: SupabaseClient, id: string): Promise<N
   if (!laUuid(id)) return [];
   const data = await docTungTrang((tu, den) => client
     .from('kho_phien_pha_quet')
-    .select('mat_hang_id, thu_tu')
+    .select('mat_hang_id, thu_tu', { count: 'exact' })
     .eq('phien_pha_id', id)
     .order('thu_tu')
     .range(tu, den));

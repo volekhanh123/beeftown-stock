@@ -691,8 +691,8 @@ export async function docSoThanhToan(
 ): Promise<{ dong: Record<string, unknown>[]; loi: string | null }> {
   let data: Record<string, unknown>[];
   try {
-    data = await docTungTrang((a, z) => client.rpc('kho_so_thanh_toan', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den })
-      .range(a, z));
+    data = await docTungTrang((a, z) => client.rpc('kho_so_thanh_toan', { p_chi_nhanh_id: chiNhanhId, p_tu: tu, p_den: den },
+      { count: 'exact' }).range(a, z));
   } catch (e) {
     return { dong: [], loi: cauLoiKho(e) };
   }

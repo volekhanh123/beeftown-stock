@@ -123,6 +123,15 @@ await nhom('5 · ĐỌC SỐ KIỂU VIỆT', async () => {
   ok('"1.25.000" (nhóm lệch) → sai', Number.isNaN(docTien('1.25.000')));
   ok('"1.250,000" (trộn dấu) → sai', Number.isNaN(docTien('1.250,000')));
   ok('Số nguyên trong khoảng', docSoNguyen('7', 0, 10) === 7 && Number.isNaN(docSoNguyen('11', 0, 10)));
+  ok('"650.000 đ" có dấu cách không ngắt trước đ = 650000', docTien('650.000\u00a0đ') === 650000);
+  {
+    // Bỏ hậu tố "đ" bằng regex có \s* phía trước thì chuỗi nhiều dấu cách không kết thúc bằng đ chạy theo cấp hai
+    // (80.000 dấu cách mất vài giây) — một ô dán / gõ dài chặn Worker. Phải chạy tuyến tính.
+    const t0 = performance.now();
+    const kq = docTien('1' + ' '.repeat(80000) + 'x');
+    ok('docTien chuỗi 80.000 dấu cách trả lời ngay (< 200 ms)', Number.isNaN(kq) && performance.now() - t0 < 200,
+       `${Math.round(performance.now() - t0)} ms`);
+  }
   // Số gói / số ngày: dấu chấm chỉ là dấu nghìn ("1.000" = một nghìn). "1.5" gói là gõ nhầm số lẻ —
   // trước đây bị đọc thành 15 gói và lưu luôn, câu "số gói là số nguyên" không bao giờ hiện.
   ok('"1.000" gói = 1000', docSoNguyen('1.000', 0, 100000) === 1000);
@@ -279,6 +288,10 @@ await nhom('8 · FORM CHUYỂN / XUẤT / HỦY VÀ QUÉT NHÃN', async () => {
   const g1 = gop.find(x => x.mat_hang_id === U(1));
   ok('Quét thêm vào dòng đang có: cộng dồn gói và kg', g1?.so_goi === '3' && g1?.so_kg === '1,51', JSON.stringify(g1));
   ok('Dòng trống bị bỏ khi gộp', gop.every(x => x.mat_hang_id));
+  // Số gói đã gõ sai ("1.5") rồi quét thêm: không được lặng lẽ thay bằng số gói quét — giữ chữ đã gõ để form báo
+  // "số gói là số nguyên" như khi không quét.
+  const gopSai = gopDong([{ mat_hang_id: U(1), so_goi: '1.5', so_kg: '' }], [{ mat_hang_id: U(1), so_goi: '1', so_kg: '' }]);
+  ok('Quét thêm vào dòng gõ sai số gói → giữ "1.5" để form báo lỗi', gopSai[0]?.so_goi === '1.5', JSON.stringify(gopSai));
 });
 
 // ===========================================================================
