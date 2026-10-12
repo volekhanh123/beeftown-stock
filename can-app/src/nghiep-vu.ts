@@ -410,6 +410,42 @@ function hangTuFile(f: FileCan): Map<number, HangTrenCan> {
   return m;
 }
 
+/** Đọc một bảng dạng tren-can.tsv (số PLU, mã, giá trong file, tên — cách bằng tab); không có file → rỗng. */
+function docBangTrenCan(file: string): Map<number, HangTrenCan> {
+  const m = new Map<number, HangTrenCan>();
+  let chu = '';
+  try { chu = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, ''); } catch { return m; }
+  for (const d of chu.split(/\r?\n/)) {
+    const c = d.split('\t');
+    const so = Number(c[0]);
+    if (c.length >= 4 && Number.isInteger(so) && c[0] !== '') m.set(so, { so, ma: c[1], gia: c[2], ten: c[3] });
+  }
+  return m;
+}
+
+/** Chữ của một bảng dạng tren-can.tsv — theo số PLU, CRLF (cùng dạng với Nap-Can-WiFi.ps1). */
+function chuBangTrenCan(m: Map<number, HangTrenCan>): string {
+  const dong = [...m.values()].sort((a, b) => a.so - b.so).map(h => `${h.so}\t${h.ma}\t${h.gia}\t${h.ten}`);
+  return dong.join('\r\n') + (dong.length ? '\r\n' : '');
+}
+
+/**
+ * Hàng còn nằm lại sau khi cân có `moi`: hàng có thể đang trên cân mà file mới không có (gửi qua WiFi không xoá được). Dòng
+ * trống (số PLU đã gỡ bằng ghi đè, 2.7) không phải hàng còn nằm lại.
+ */
+function conLaiSau(moi: FileCan, coThe: Map<number, HangTrenCan>): HangTrenCan[] {
+  const soMoi = new Set(moi.plu.map(p => p.so));
+  return [...coThe.values()].filter(h => !soMoi.has(h.so) && !laPluTrong(h)).sort((a, b) => a.so - b.so);
+}
+
+/**
+ * 2.9.2 — hàng CÓ THỂ đang trên cân: tren-can.tsv (đã xác nhận) cùng cho-xac-nhan.tsv (đã gửi, chưa xác nhận — dòng này
+ * thay dòng cùng số PLU: lần ghi sau cùng). Chỉ dùng để tính hàng còn nằm lại; báo kho, tảng & ô chỉ dùng tren-can.tsv.
+ */
+function hangCoTheTrenCan(tren: Map<number, HangTrenCan>, cho: Map<number, HangTrenCan>): Map<number, HangTrenCan> {
+  return new Map([...tren, ...cho]);
+}
+
 // -----------------------------------------------------------------------------
 // 2.6: ĐỌC LẠI CÂN SAU KHI GỬI (xacNhanSauGui)
 // -----------------------------------------------------------------------------
@@ -580,6 +616,11 @@ const CHO_CHAY_THU_MS = 180_000;
 
 /** Đọc lại sau khi gửi: lần 1 ngay, chưa khớp thì chờ rồi đọc lại (cân có thể còn đang lưu) — ms trước mỗi lần đọc. */
 const CHO_XAC_NHAN_MS = [0, 3000, 5000];
+/**
+ * 2.9.2 — gửi mà chưa đọc lại được cân (cổng hai chiều bận: TM-xA đang mở, cân đang lưu…): lần thứ n liên tiếp thì tự gửi
+ * thử lại sau THU_LAI_KHONG_DOC_MS[n − 1] (lần thứ 4 trở đi: phần tử cuối). Bấm Gửi xuống cân không phải chờ.
+ */
+export const THU_LAI_KHONG_DOC_MS = [60_000, 2 * 60_000, 5 * 60_000, 10 * 60_000];
 /** 2.7: xoá qua WiFi hỏng giữa chừng → gửi lại cả danh sách ngay, chưa đủ thì chờ rồi gửi lại — ms trước mỗi lần. */
 const CHO_PHUC_HOI_MS = [0, 3000, 8000];
 /** 2.7: Chẩn đoán WiFi — cổng 33571 không trả lời, chờ chừng này cho cân lưu rồi mới đọc lại qua cổng hai chiều. */
@@ -734,14 +775,24 @@ export interface CanChuaRo { luc: string; cau: string }
 /**
  * 2.6 — dấu "lần gửi chưa được cân xác nhận" (chua-xac-nhan.json). Gửi qua cổng 33571 thì cân không trả lời gì; gửi
  * xong chương trình đọc lại danh sách hàng qua cổng hai chiều để kiểm (xacNhanSauGui):
- *   'khong-doc' — không đọc lại được (cổng hai chiều hỏng, cân khác mã máy, trả rỗng): lần gửi ĐÃ ghi nhận như trước
- *                 bản 2.6, nhưng "Giữ nguyên" / "Khớp kho" chỉ là theo lần gửi đó, chưa chắc cân đã có;
+ *   'khong-doc' — không đọc lại được (cổng hai chiều bận / hỏng, cân khác mã máy, trả rỗng). 2.9.2: KHÔNG ghi nhận gì
+ *                 (2.6–2.9.1 ghi nhận như cân đã nhận — rà soát 11/10/2026: TM-xA mở làm cổng hai chiều bận, gửi rơi
+ *                 về 33571 mà cân bỏ qua, kho nhận tên ô mới và trang pha lóc báo "Cân sẵn sàng" khi cân vẫn tên cũ).
+ *                 Tự gửi thử lại cả danh sách, lùi dần (THU_LAI_KHONG_DOC_MS): soLanThu, thuLaiLuc;
  *   'lech'      — đọc lại thấy cân CHƯA có hàng vừa gửi (thiếu, khác mã hay giá): KHÔNG ghi nhận gì; tự gửi tạm dừng
  *                 tới khi người bấm Gửi được hay nạp USB.
+ * Hàng vừa gửi của lần chưa xác nhận nằm ở cho-xac-nhan.tsv ("có thể đã trên cân" — chỉ để tính hàng còn nằm lại),
+ * không ở tren-can.tsv (trạng thái đã xác nhận — báo kho, tảng & ô).
  * Hết dấu khi: gửi mà đọc lại khớp, ghi nhận file từ cân (USB / đọc qua WiFi), xoá qua WiFi đọc lại khớp.
  * Thấy ở quán 02–03/10/2026: chương trình ghi nhận 69 hàng kho đã gửi, cân thật chỉ có 7 hàng.
  */
-export interface ChuaXacNhan { luc: string; loai: 'khong-doc' | 'lech'; soHang: number; cau: string }
+export interface ChuaXacNhan {
+  luc: string; loai: 'khong-doc' | 'lech'; soHang: number; cau: string;
+  /** 2.9.2 — 'khong-doc': số lần liên tiếp gửi mà chưa đọc lại được cân (1 = lần đầu). */
+  soLanThu?: number;
+  /** 2.9.2 — 'khong-doc': tự gửi thử lại từ lúc này (ISO); null / không có = thử lại ngay lượt sau. */
+  thuLaiLuc?: string | null;
+}
 
 /** Kết quả đọc lại cân sau khi gửi (xacNhanSauGui). */
 export type KetQuaXacNhan = { loai: 'khop' } | { loai: 'khong-doc' | 'lech'; cau: string };
@@ -954,7 +1005,8 @@ interface KhoChoCan { dm: DanhMucKho; ngayHsd: string; soLanAp: number }
 
 interface KeHoachGui {
   goc: FileCan; kh: KeHoach; du: Uint8Array; moi: FileCan;
-  tren: Map<number, HangTrenCan>; conLai: HangTrenCan[];
+  /** tren-can.tsv (đã xác nhận) và cho-xac-nhan.tsv (2.9.2: lần gửi chưa xác nhận — có thể đã trên cân). */
+  tren: Map<number, HangTrenCan>; cho: Map<number, HangTrenCan>; conLai: HangTrenCan[];
   ngayHsd: string;
 }
 
@@ -985,6 +1037,11 @@ export class UngDung {
   readonly fileHsdNgayChoUsb: string;
   /** Tài liệu\Beeftown Can\chua-xac-nhan.json — lần gửi gần nhất cân chưa xác nhận (ChuaXacNhan). */
   readonly fileChuaXacNhan: string;
+  /**
+   * Tài liệu\Beeftown Can\cho-xac-nhan.tsv — 2.9.2: dòng PLU đã gửi mà cân chưa xác nhận (cùng dạng tren-can.tsv). "Có thể
+   * đã trên cân": chỉ để tính hàng còn nằm lại; lần đọc lại khớp sau quyết định dòng nào vào tren-can.tsv. Hết cùng dấu.
+   */
+  readonly fileChoXacNhan: string;
   /** %APPDATA%\BeeftownCan\tu-dat-gio.json — 2.8: các lần tự chỉnh giờ cân trong ngày (TuDatGio). */
   readonly fileTuDatGio: string;
   /** %APPDATA%\BeeftownCan\ma-may.txt — 2.9: mã cài đặt của máy quầy (kho_may_can.ma_may), sinh một lần. */
@@ -1072,6 +1129,11 @@ export class UngDung {
       homNay?: () => string;
       /** Kiểm thử: chờ (ms) trước mỗi lần đọc lại cân sau khi gửi — mặc định CHO_XAC_NHAN_MS. */
       choXacNhanMs?: number[];
+      /**
+       * 2.9.2 — kiểm thử: đọc danh sách PLU trên cân sau khi gửi (các dòng "PLU…" dạng byte) thay cho cổng hai chiều — cân giả
+       * của các phần kiểm thử 2.1 chỉ có cổng 33571. Từ 2.9.2 lần gửi chỉ được ghi nhận khi đọc lại khớp.
+       */
+      docLaiPlu?: () => Promise<string[]>;
       /** 2.7 — kiểm thử: chờ (ms) trước mỗi lần tự gửi lại cả danh sách sau lần xoá qua WiFi hỏng — mặc định CHO_PHUC_HOI_MS. */
       choPhucHoiMs?: number[];
       /** 2.7 — kiểm thử: Chẩn đoán WiFi chờ (ms) sau khi gửi file nhỏ qua 33571 rồi mới đọc lại — mặc định CHO_33571_MS. */
@@ -1136,6 +1198,7 @@ export class UngDung {
     this.fileHsdNgay = path.join(dd.duLieu, 'hsd-tinh-ngay.txt');
     this.fileHsdNgayChoUsb = path.join(dd.duLieu, 'cho-usb', 'hsd-tinh-ngay.txt');
     this.fileChuaXacNhan = path.join(dd.duLieu, 'chua-xac-nhan.json');
+    this.fileChoXacNhan = path.join(dd.duLieu, 'cho-xac-nhan.tsv');
     this.fileTuDatGio = path.join(dd.cauHinh, 'tu-dat-gio.json');
     this.fileMaMay = path.join(dd.cauHinh, 'ma-may.txt');
     this.fileNhatKyDaGui = path.join(dd.cauHinh, 'nhat-ky-da-gui.json');
@@ -1468,16 +1531,29 @@ export class UngDung {
     } catch { return null; }
   }
 
-  docTrenCan(): Map<number, HangTrenCan> {
-    const m = new Map<number, HangTrenCan>();
-    let chu = '';
-    try { chu = fs.readFileSync(this.fileTrenCan, 'utf8').replace(/^﻿/, ''); } catch { return m; }
-    for (const d of chu.split(/\r?\n/)) {
-      const c = d.split('\t');
-      const so = Number(c[0]);
-      if (c.length >= 4 && Number.isInteger(so) && c[0] !== '') m.set(so, { so, ma: c[1], gia: c[2], ten: c[3] });
-    }
-    return m;
+  /** tren-can.tsv — hàng cân đã xác nhận (đọc lại khớp, file từ cân) cùng hàng còn nằm lại; 2.9.2: không có lần gửi chưa xác nhận. */
+  docTrenCan(): Map<number, HangTrenCan> { return docBangTrenCan(this.fileTrenCan); }
+
+  /** 2.9.2 — cho-xac-nhan.tsv: dòng PLU đã gửi mà cân chưa xác nhận ("có thể đã trên cân"). */
+  docChoXacNhan(): Map<number, HangTrenCan> { return docBangTrenCan(this.fileChoXacNhan); }
+
+  /**
+   * 2.9.2 — lần gửi chưa được cân xác nhận (đọc lại lệch / không đọc được): hàng vừa gửi có thể đã nằm trên cân (cân lưu mà
+   * chưa đọc lại được, lưu một phần) → thêm vào cho-xac-nhan.tsv, KHÔNG vào tren-can.tsv. Hàng còn nằm lại tính cả các dòng
+   * này: kho bỏ món trước khi cân được kiểm thì món đó vẫn được báo "có thể còn nằm lại", không lặng lẽ ở lại trên cân.
+   */
+  private themChoXacNhan(moi: FileCan, soDaGui: Set<number>) {
+    const cho = this.docChoXacNhan();
+    for (const [so, h] of hangTuFile(moi)) if (soDaGui.has(so)) cho.set(so, h);
+    ghiFileAnToan(this.fileChoXacNhan, chuBangTrenCan(cho), this.phu.vietByte);
+  }
+
+  /** 2.9.2 — bỏ các số PLU khỏi cho-xac-nhan.tsv (vừa gỡ bằng ghi đè, đọc lại khớp). */
+  private boChoXacNhan(so: Iterable<number>) {
+    const cho = this.docChoXacNhan();
+    let doi = false;
+    for (const x of so) doi = cho.delete(x) || doi;
+    if (doi) ghiFileAnToan(this.fileChoXacNhan, chuBangTrenCan(cho), this.phu.vietByte);
   }
 
   /**
@@ -1487,8 +1563,7 @@ export class UngDung {
    * tren-can.tsv, kho không có → không ai biết nó còn nằm lại.
    */
   private ghiTrenCan(m: Map<number, HangTrenCan>) {
-    const dong = [...m.values()].sort((a, b) => a.so - b.so).map(h => `${h.so}\t${h.ma}\t${h.gia}\t${h.ten}`);
-    ghiFileAnToan(this.fileTrenCan, dong.join('\r\n') + (dong.length ? '\r\n' : ''), this.phu.vietByte);
+    ghiFileAnToan(this.fileTrenCan, chuBangTrenCan(m), this.phu.vietByte);
   }
 
   /** Ghi file gốc, và một bản vào da-gui (`daGui`: đúng thứ đã gửi — file nhỏ thông số / phím; mặc định = file gốc). */
@@ -1520,12 +1595,22 @@ export class UngDung {
   chuaXacNhan(): ChuaXacNhan | null {
     return docDau<ChuaXacNhan>(this.fileChuaXacNhan,
       j => (typeof j.luc === 'string' && typeof j.cau === 'string' && (j.loai === 'khong-doc' || j.loai === 'lech')
-        ? { luc: j.luc, loai: j.loai, soHang: Number.isInteger(j.soHang) ? j.soHang as number : 0, cau: j.cau } : null),
-      { luc: '', loai: 'khong-doc', soHang: 0, cau: 'Lần gửi trước chưa được cân xác nhận.' });
+        ? { luc: j.luc, loai: j.loai, soHang: Number.isInteger(j.soHang) ? j.soHang as number : 0, cau: j.cau,
+            ...(j.loai === 'khong-doc' ? {
+              soLanThu: Number.isInteger(j.soLanThu) && (j.soLanThu as number) > 0 ? j.soLanThu as number : 1,
+              thuLaiLuc: typeof j.thuLaiLuc === 'string' && Number.isFinite(Date.parse(j.thuLaiLuc)) ? j.thuLaiLuc : null,
+            } : {}) } : null),
+      { luc: '', loai: 'khong-doc', soHang: 0, cau: 'Lần gửi trước chưa được cân xác nhận.', soLanThu: 1, thuLaiLuc: null });
   }
   private ghiChuaXacNhan(dau: ChuaXacNhan) { ghiJson(this.fileChuaXacNhan, dau, this.phu.vietByte); }
-  /** Cân vừa được kiểm là có đúng danh sách chương trình ghi nhận (đọc lại khớp, file từ cân). */
-  private xoaChuaXacNhan() { fs.rmSync(this.fileChuaXacNhan, { force: true }); }
+  /**
+   * Cân vừa được kiểm là có đúng danh sách chương trình ghi nhận (đọc lại khớp, file từ cân). 2.9.2: hết cả cho-xac-nhan.tsv —
+   * người gọi đã đưa dòng nào thật sự trên cân vào tren-can.tsv (guiKeHoach), hay cân vừa có đúng cả danh sách.
+   */
+  private xoaChuaXacNhan() {
+    fs.rmSync(this.fileChuaXacNhan, { force: true });
+    fs.rmSync(this.fileChoXacNhan, { force: true });
+  }
 
   // ---- HSD trên cân tính cho ngày nào (hsd-tinh-ngay.txt) -----------------------------
   /** HSD trên cân tính cho ngày nào, cân có in HSD không, và có cũ không (trước hôm nay giờ VN, hay chưa biết). */
@@ -1553,10 +1638,11 @@ export class UngDung {
 
   /**
    * Kế hoạch tính cho `ngay` không đổi HSD của hàng nào đang trên cân (mọi hàng kho quản HSD: số trên cân = số tính
-   * hôm nay) → HSD trên cân đúng cho ngày đó, như vừa gửi. Lần xoá qua WiFi trước hỏng (chưa rõ cân có gì) thì không.
+   * hôm nay) → HSD trên cân đúng cho ngày đó, như vừa gửi. Lần xoá qua WiFi trước hỏng, hay (2.9.2) lần gửi trước cân chưa
+   * xác nhận — chưa rõ cân có gì (cân có thể đang giữ HSD của lần gửi đó) — thì không.
    */
   private ghiNhanHsdKhop(kh: KeHoach, ngay: string) {
-    if (this.canChuaRo()) return;
+    if (this.canChuaRo() || this.chuaXacNhan()) return;
     if (kh.dong.some(d => d.hsd !== undefined && d.hsdCu !== undefined && d.hsd !== d.hsdCu)) return;
     if (docNgayHsd(this.fileHsdNgay) !== ngay) this.ghiNgayHsd(ngay);
   }
@@ -1628,11 +1714,8 @@ export class UngDung {
     const kh = lapKeHoach(goc, dm.matHang, tuy, 'vi');
     const du = ghiFileCan(goc, kh, tuy);
     const moi = docFileCan(du);
-    const tren = this.docTrenCan();
-    const soMoi = new Set(moi.plu.map(p => p.so));
-    // Dòng trống (số PLU đã gỡ bằng ghi đè, 2.7) không phải hàng còn nằm lại.
-    const conLai = [...tren.values()].filter(h => !soMoi.has(h.so) && !laPluTrong(h)).sort((a, b) => a.so - b.so);
-    return { goc, kh, du, moi, tren, conLai, ngayHsd };
+    const tren = this.docTrenCan(), cho = this.docChoXacNhan();
+    return { goc, kh, du, moi, tren, cho, conLai: conLaiSau(moi, hangCoTheTrenCan(tren, cho)), ngayHsd };
   }
 
   async xemTruoc(giuHangNgoaiKho = false): Promise<XemTruoc> {
@@ -1652,9 +1735,13 @@ export class UngDung {
    * Gửi một kế hoạch đã dựng (dung) — 2.6.1: qua cổng hai chiều, hỏng thì 33571 (guiPlu) —, đọc lại cân để kiểm (2.6,
    * xacNhanSauGui), rồi ghi nhận. Tự gửi dùng
    * thẳng kế hoạch nó vừa kiểm — không đọc kho lần hai (kho đổi giữa hai lần đọc thì thứ gửi đi khác thứ đã kiểm).
-   * Gửi đủ danh sách → hết dấu "chưa rõ", và HSD trên cân là số tính cho ngày của kế hoạch (hsd-tinh-ngay.txt).
-   * Gửi hỏng, hay đọc lại thấy cân CHƯA nhận → không ghi nhận gì (đọc lại lệch: ghi dấu 'lech', tự gửi tạm dừng).
-   * Không đọc lại được → ghi nhận như trước 2.6, kèm dấu 'khong-doc': cân có thể đã nhận, nhưng chưa ai kiểm.
+   * CHỈ khi đọc lại khớp mới ghi nhận (tren-can.tsv, file gốc, hsd-tinh-ngay.txt): gửi đủ danh sách → hết dấu "chưa rõ",
+   * và HSD trên cân là số tính cho ngày của kế hoạch.
+   * Gửi hỏng → không ghi nhận gì. Đọc lại thấy cân CHƯA nhận → không ghi nhận gì, dấu 'lech', tự gửi tạm dừng.
+   * Không đọc lại được (2.9.2) → cũng KHÔNG ghi nhận gì: dấu 'khong-doc' kèm giờ tự gửi thử lại (lùi dần); trước 2.9.2 lần
+   * gửi này được ghi nhận như cân đã nhận (rà soát 11/10/2026 — xem ChuaXacNhan).
+   * Lần gửi chưa xác nhận: hàng vừa gửi vào cho-xac-nhan.tsv (có thể đã trên cân); lần đọc lại khớp sau đưa dòng nào cân
+   * thật sự có vào tren-can.tsv.
    */
   private async guiKeHoach(p: KeHoachGui, timLai: boolean): Promise<KetQuaGui> {
     const { du, moi, tren } = p;
@@ -1666,6 +1753,8 @@ export class UngDung {
     const veHaiChieu = !loiHaiChieu ? ''
       : cachGui === 'mot-chieu' ? ` (Cổng hai chiều không ghi được: ${loiHaiChieu.replace(/[.\s]+$/, '')} — nên đã gửi qua cổng 33571; ở quán cân từng bỏ qua cổng này.)`
       : ` (Cổng hai chiều báo lỗi sau khi đã gửi: ${loiHaiChieu.replace(/[.\s]+$/, '')} — cân có thể còn đang lưu.)`;
+    // Đã gửi mà chưa xác nhận: các dòng vừa gửi có thể đã nằm trên cân.
+    if (ketQua.loai !== 'khop') this.themChoXacNhan(moi, soDaGui);
     if (ketQua.loai === 'lech') {
       // Địa chỉ mới (nếu dò thấy) đã lưu — vẫn nói ra, không để đổi địa chỉ lặng lẽ.
       const cau = ketQua.cau + veHaiChieu
@@ -1673,22 +1762,38 @@ export class UngDung {
       this.ghiChuaXacNhan({ luc, loai: 'lech', soHang: moi.plu.length, cau });
       throw new LoiCan(cau);
     }
-    // Cân chỉ thêm / sửa: dòng cũ vẫn nằm lại.
+    if (ketQua.loai === 'khong-doc') {
+      // Cân có thể đã nhận (lần gửi này có thể đã đè giá / tên lên cân): lần đọc kho cũ hơn của tự gửi không được gửi nữa.
+      this.soLanApKho++;
+      const truoc = this.chuaXacNhan();
+      const soLanThu = (truoc?.loai === 'khong-doc' ? truoc.soLanThu ?? 1 : 0) + 1;
+      const thuLai = this.bayGio() + THU_LAI_KHONG_DOC_MS[Math.min(soLanThu, THU_LAI_KHONG_DOC_MS.length) - 1];
+      const cauXacNhan = `Đã gửi ${soHangGui} hàng nhưng chưa đọc lại được cân để kiểm (${ketQua.cau.replace(/[.\s]+$/, '')}).${veHaiChieu} `
+        + 'Chương trình CHƯA ghi nhận lần gửi này (bảng vẫn theo lần cân xác nhận gần nhất). '
+        + (this.cauHinh().tuGui === true ? `Tự gửi thử lại lúc ${gioPhutVn(thuLai)}.`
+          : 'Đóng phần mềm của hãng (TM-xA) nếu đang mở, để cân ở màn hình bán hàng rồi bấm Gửi xuống cân lần nữa.')
+        + (doiDiaChi ? ` Cân đã đổi địa chỉ — tìm thấy ở ${doiDiaChi.den}, đã lưu địa chỉ mới.` : '');
+      this.ghiChuaXacNhan({ luc, loai: 'khong-doc', soHang: moi.plu.length, cau: cauXacNhan, soLanThu, thuLaiLuc: new Date(thuLai).toISOString() });
+      return { soHang: moi.plu.length, conLai: conLaiSau(moi, hangCoTheTrenCan(tren, this.docChoXacNhan())), doiDiaChi,
+               xacNhan: false, cauXacNhan, soHangGui, cachGui };
+    }
+    // Đọc lại khớp. Cân chỉ thêm / sửa: dòng cũ vẫn nằm lại.
     for (const [so, h] of hangTuFile(moi)) tren.set(so, h);
+    // Dòng của lần gửi chưa xác nhận trước mà kế hoạch này không có: cân đọc lại còn đúng dòng đó (cùng số PLU, mã) thì nó
+    // thật sự nằm trên cân → tren-can.tsv (hàng còn nằm lại, gỡ được); không thì cân chưa từng nhận — bỏ.
+    const soMoi = new Set(moi.plu.map(x => x.so));
+    const doc = new Map(ketQua.trenCan.map(c => [c.so, c]));
+    for (const [so, h] of this.docChoXacNhan()) {
+      const c = doc.get(so);
+      if (!soMoi.has(so) && c && c.ma === chuanMa(h.ma)) tren.set(so, { so, ma: c.ma, gia: c.cot[5] ?? '', ten: c.ten });
+    }
     this.ghiTrenCan(tren);
     this.luuGoc(du);
     this.soLanApKho++;
     this.xoaCanChuaRo();
     this.ghiNgayHsd(p.ngayHsd);
-    let cauXacNhan: string | null = null;
-    if (ketQua.loai === 'khop') this.xoaChuaXacNhan();
-    else {
-      cauXacNhan = `Đã gửi ${soHangGui} hàng nhưng chưa đọc lại được cân để kiểm (${ketQua.cau.replace(/[.\s]+$/, '')}).${veHaiChieu}`;
-      this.ghiChuaXacNhan({ luc, loai: 'khong-doc', soHang: moi.plu.length, cau: cauXacNhan });
-    }
-    const soMoi = new Set(moi.plu.map(x => x.so));
-    return { soHang: moi.plu.length, conLai: [...tren.values()].filter(h => !soMoi.has(h.so) && !laPluTrong(h)), doiDiaChi,
-             xacNhan: ketQua.loai === 'khop', cauXacNhan, soHangGui, cachGui };
+    this.xoaChuaXacNhan();
+    return { soHang: moi.plu.length, conLai: conLaiSau(moi, tren), doiDiaChi, xacNhan: true, cauXacNhan: null, soHangGui, cachGui };
   }
 
   /**
@@ -1848,7 +1953,8 @@ export class UngDung {
    * hết lượt mà chưa lần nào đọc được → 'khong-doc' kèm câu lỗi lần cuối; đã có lần đọc thấy lệch → 'lech' (đã thấy cân
    * chưa có hàng vừa gửi, không coi như chưa biết).
    */
-  private async xacNhanSauGui(moi: FileCan, soDaGui: Set<number>, cachGui: CachGui): Promise<KetQuaXacNhan> {
+  private async xacNhanSauGui(moi: FileCan, soDaGui: Set<number>, cachGui: CachGui):
+    Promise<{ loai: 'khop'; trenCan: DongPlu[] } | { loai: 'khong-doc'; cau: string } | { loai: 'lech'; cau: string }> {
     const cacLanCho = this.phu.choXacNhanMs ?? CHO_XAC_NHAN_MS;
     let lech: LechPlu[] | null = null;
     let loiCuoi = '';
@@ -1856,7 +1962,8 @@ export class UngDung {
       if (ms > 0) await new Promise(r => setTimeout(r, ms));
       let trenCan: DongPlu[];
       try {
-        const dong = (await this.voiKetNoi(kn => kn.docPhan('PLU'), false)).filter(d => d.startsWith('PLU\t'));
+        const docLai = this.phu.docLaiPlu ?? (() => this.voiKetNoi(kn => kn.docPhan('PLU'), false));
+        const dong = (await docLai()).filter(d => d.startsWith('PLU\t'));
         if (!dong.length) throw new LoiCan('cân trả danh sách hàng rỗng qua cổng hai chiều');
         trenCan = docPluDocLai(dong, moi);
       } catch (e) {
@@ -1865,7 +1972,7 @@ export class UngDung {
         continue;
       }
       lech = soPluVuaGui(moi.plu, trenCan);
-      if (!lech.length) return { loai: 'khop' };
+      if (!lech.length) return { loai: 'khop', trenCan };
     }
     return lech ? { loai: 'lech', cau: cauLechPlu(lech, soDaGui, cachGui) } : { loai: 'khong-doc', cau: loiCuoi };
   }
@@ -1891,6 +1998,9 @@ export class UngDung {
    * ô mã đổi tên theo số tảng, HSD đếm ngược sang ngày mới) thì gửi qua WiFi.
    * Không có gì đổi thì thôi. Hàng cần xoá không tính — WiFi không xoá được,
    * để người bấm nạp USB.
+   * 2.9.2: lần gửi trước chưa đọc lại được cân (dấu 'khong-doc') → tới giờ thử lại (thuLaiLuc, lùi dần) thì gửi lại cả
+   * danh sách, KỂ CẢ khi kế hoạch thấy kho không đổi so với lần cân xác nhận (cân có thể đang giữ bản chưa xác nhận); chưa
+   * tới giờ thì không gửi, nói giờ thử lại.
    */
   lanTuGui: LanTuGui | null = null;
   async tuGuiMotLan(): Promise<LanTuGui> {
@@ -1918,35 +2028,51 @@ export class UngDung {
         const p = await this.dung(false, true, kho);
         this.lechCuoi = p.kh.dem.them + p.kh.dem.sua;
         const chuaRo = this.canChuaRo();
+        const nhacChuaRo = chuaRo ? 'Lần xoá qua WiFi trước hỏng giữa chừng — cân có thể thiếu hàng, nạp USB ngay. ' : '';
         // Bật / tắt in hạn dùng (HSD) của hàng trên cân (null ↔ số), hay hàng mới bật in HSD khi cân chưa in HSD hàng nào
         // (lần đầu là bật in HSD cho cả loạt hàng): tem in khác hẳn, và cân in HSD ra sao chưa thử trên cân thật → không
         // tự gửi, để quản lý xem trước rồi bấm Gửi. Chỉ đổi số ngày (đếm ngược hằng ngày, đổi lô) thì gửi như đổi giá.
         const batTat = demBatTatHsd(p.kh.dong, p.goc);
         if (batTat > 0) {
-          return { luc, daGui: false, cau: (chuaRo ? 'Lần xoá qua WiFi trước hỏng giữa chừng — cân có thể thiếu hàng, nạp USB ngay. ' : '')
+          return { luc, daGui: false, cau: nhacChuaRo
             + `Kho bật / tắt in hạn dùng (HSD) của ${batTat} hàng (hàng trên cân, hay hàng mới lần đầu in HSD) — tự gửi không bật / tắt HSD, `
             + 'nên chưa gửi gì (cả HSD đếm ngược của hàng khác). Mở thẻ Gửi giá từ kho, xem lại rồi bấm Gửi xuống cân (in HSD chưa thử trên cân thật).' };
         }
-        // Xoá qua WiFi hỏng giữa chừng: file gốc không nói được cân đang có gì — không bao giờ báo "khớp kho"; gửi lại cả
-        // danh sách (guiPlu: cổng hai chiều, hỏng thì 33571; cân thêm / sửa theo số PLU nên đặt lại mọi hàng lệnh xoá có
-        // thể đã xoá).
-        if (!chuaRo && p.kh.dem.them + p.kh.dem.sua === 0) {
+        // 2.9.2 — lần gửi trước chưa đọc lại được cân: thử lại theo giờ đã hẹn (lùi dần), không gửi mỗi phút.
+        const thuLai = dauTruoc?.loai === 'khong-doc' ? dauTruoc : null;
+        const henThuLai = Date.parse(thuLai?.thuLaiLuc ?? '');
+        if (thuLai && Number.isFinite(henThuLai) && this.bayGio() < henThuLai) {
+          return { luc, daGui: false, cau: nhacChuaRo + 'Lần gửi trước chưa đọc lại được cân để kiểm (cân bận, phần mềm của hãng đang mở…) — '
+            + `chương trình chưa ghi nhận; tự gửi thử lại lúc ${gioPhutVn(henThuLai)}.` };
+        }
+        // Xoá qua WiFi hỏng giữa chừng, hay lần gửi trước chưa đọc lại được: file gốc không nói được cân đang có gì — không
+        // bao giờ báo "khớp kho"; gửi lại cả danh sách (guiPlu: cổng hai chiều, hỏng thì 33571; cân thêm / sửa theo số PLU
+        // nên đặt lại mọi hàng lệnh xoá — hay lần gửi chưa xác nhận — có thể đã đổi).
+        if (!chuaRo && !thuLai && p.kh.dem.them + p.kh.dem.sua === 0) {
           this.ghiNhanHsdKhop(p.kh, p.ngayHsd);   // HSD trên cân đúng số tính hôm nay
-          return { luc, daGui: false, cau: dauTruoc ? 'Kho không đổi so với lần gửi trước — lần gửi đó chưa đọc lại được cân để kiểm.' : 'Cân đã khớp kho.' };
+          return { luc, daGui: false, cau: 'Cân đã khớp kho.' };
         }
         const demNguoc = demDemNguocHsd(p.kh.dong);
         const k = await this.guiKeHoach(p, Date.now() - this.lanDoHong >= DO_LAI_SAU_MS);
         this.lucGuiDuoc = this.bayGio();
-        // Cân đọc lại khớp → hết lệch; chưa đọc lại được thì chưa biết cân đã nhận chưa (vẫn tính lệch).
+        // Cân đọc lại khớp → hết lệch; chưa đọc lại được thì chưa biết cân đã nhận chưa (vẫn tính lệch — file gốc chưa đổi).
         if (k.xacNhan) this.lechCuoi = 0;
         const diaChi = k.doiDiaChi ? ` — cân đổi địa chỉ, đã tìm thấy ở ${k.doiDiaChi.den}.` : '.';
+        const qua = k.cachGui === 'hai-chieu' ? 'cổng hai chiều' : 'cổng 33571';
+        const henSau = Date.parse(this.chuaXacNhan()?.thuLaiLuc ?? '');
+        const ketQua = k.xacNhan ? ', cân đã nhận (đọc lại khớp)'
+          : ' — chưa đọc lại được cân để kiểm, chương trình chưa ghi nhận' + (Number.isFinite(henSau) ? `; tự gửi thử lại lúc ${gioPhutVn(henSau)}` : '');
         if (chuaRo) {
-          return { luc, daGui: true, cau: `Đã gửi lại cả danh sách ${k.soHangGui} hàng sau lần xoá qua WiFi hỏng — vẫn nên nạp USB để chắc cân đủ hàng`
-            + diaChi };
+          return { luc, daGui: true, cau: `Đã gửi lại cả danh sách ${k.soHangGui} hàng sau lần xoá qua WiFi hỏng`
+            + (k.xacNhan ? ' — vẫn nên nạp USB để chắc cân đủ hàng' : ketQua) + diaChi };
         }
-        return { luc, daGui: true, cau: `Đã tự gửi ${p.kh.dem.them} thêm, ${p.kh.dem.sua} sửa (gửi ${k.soHangGui} hàng qua ${k.cachGui === 'hai-chieu' ? 'cổng hai chiều' : 'cổng 33571'})`
+        if (thuLai) {
+          return { luc, daGui: true, cau: `Thử lại lần ${(thuLai.soLanThu ?? 1) + 1}: đã gửi lại cả danh sách ${k.soHangGui} hàng qua ${qua} `
+            + '(lần gửi trước chưa đọc lại được cân)' + ketQua + diaChi };
+        }
+        return { luc, daGui: true, cau: `Đã tự gửi ${p.kh.dem.them} thêm, ${p.kh.dem.sua} sửa (gửi ${k.soHangGui} hàng qua ${qua})`
           + (demNguoc ? `, HSD đếm ngược ${demNguoc} hàng — tính cho ngày ${ngayNgan(p.ngayHsd)}` : '')
-          + (k.xacNhan ? ', cân đã nhận (đọc lại khớp)' : ' — chưa đọc lại được cân để kiểm') + diaChi };
+          + ketQua + diaChi };
       });
     } catch (e) {
       this.lanTuGui = { luc, daGui: false, cau: cauLoi(e), hong: true };
@@ -1997,7 +2123,11 @@ export class UngDung {
     }
   }
 
-  /** Dòng đang nằm trên cân (tren-can.tsv) kèm phím tắt trong file gốc — bỏ dòng trống, hàng thử. */
+  /**
+   * Dòng đang nằm trên cân (tren-can.tsv) kèm phím tắt trong file gốc — bỏ dòng trống, hàng thử. 2.9.2: chỉ hàng cân đã
+   * xác nhận (đọc lại khớp, file từ cân) — không có lần gửi chưa xác nhận (cho-xac-nhan.tsv); trước 2.9.2 lần gửi "khong-doc"
+   * cũng vào đây, kho thấy tên ô mới khi cân vẫn tên cũ.
+   */
   private trenCanBao() {
     let phim: PhimXem[] = [];
     try { phim = docPhim(docFileCan(this.docGoc())); } catch { /* chưa có file gốc: không phím */ }
@@ -2080,6 +2210,9 @@ export class UngDung {
           can_tra_loi_giay: giay(this.giu.lucNgheMs()),
           tu_gui: ch.tuGui === true,
           lech_so: this.lechCuoi,
+          // 2.9.2 (migration 0066): lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được / đọc lại lệch), hay lần xoá qua WiFi
+          // hỏng giữa chừng — cân có thể khác tren_can. Trang pha lóc không nói "Cân sẵn sàng" khi cờ này bật.
+          chua_xac_nhan: this.chuaXacNhan() !== null || this.canChuaRo() !== null,
           gui_loi: ch.tuGui === true && this.lanTuGui?.hong === true,
           gui_giay: giay(this.lucGuiDuoc),
           tren_can: guiTren ? tren : null,
@@ -2181,7 +2314,11 @@ export class UngDung {
     }
 
     const trongFile = new Set(goc.plu.map(p => p.so));
-    for (const h of this.docTrenCan().values()) {
+    // 2.9.2: dòng của lần gửi chưa xác nhận (cho-xac-nhan.tsv) mà số PLU không còn trong kế hoạch: có thể đang nằm trên cân.
+    const tren = this.docTrenCan(), cho = this.docChoXacNhan();
+    const soKeHoach = new Set(hang.map(x => x.so).filter((so): so is number => so !== null));
+    for (const [so, h] of cho) if (!tren.has(so) && !soKeHoach.has(so) && !trongFile.has(so)) tren.set(so, h);
+    for (const h of tren.values()) {
       if (trongFile.has(h.so)) continue;
       if (laPluTrong(h)) {
         hang.push({ so: h.so, phim: null, maCan: h.ma, maFabi: '', ten: h.ten, gia: giaTuFile(h.gia, goc.soLeGia),
@@ -2189,7 +2326,9 @@ export class UngDung {
         continue;
       }
       hang.push({ so: h.so, phim: null, maCan: h.ma, maFabi: fabi(h.ma), ten: h.ten, gia: giaTuFile(h.gia, goc.soLeGia),
-        theoGoi: false, tinhTrang: 'con_lai', ghiChu: 'Đã bỏ khỏi danh sách nhưng gửi qua WiFi không xoá được — gỡ khỏi cân qua WiFi (ghi đè) hoặc nạp USB.' });
+        theoGoi: false, tinhTrang: 'con_lai', ghiChu: cho.get(h.so) === h
+          ? 'Đã gửi xuống cân nhưng cân chưa xác nhận, rồi kho bỏ — có thể còn nằm trên cân: gỡ khỏi cân qua WiFi (ghi đè) hoặc nạp USB.'
+          : 'Đã bỏ khỏi danh sách nhưng gửi qua WiFi không xoá được — gỡ khỏi cân qua WiFi (ghi đè) hoặc nạp USB.' });
     }
     hang.sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity) || Number(a.maCan) - Number(b.maCan));
     return { hang, coKho: dm !== null, loiKho, canChuaRo: this.canChuaRo(), chuaXacNhan: this.chuaXacNhan(), hsdTrenCan: this.hsdTrenCan() };
@@ -2685,7 +2824,7 @@ export class UngDung {
       throw new LoiCan('Thiếu danh sách đã xem trước — bấm Xem lại (thẻ Gửi giá từ kho, hay "Xem hàng còn nằm lại") rồi thử lại. Chưa gửi gì xuống cân.');
     }
     return this.motLuc(async () => {
-      const { goc, moi, tren, conLai } = await this.dung(giuHangNgoaiKho);
+      const { goc, moi, tren, cho, conLai } = await this.dung(giuHangNgoaiKho);
       if (!conLai.length) throw new LoiCan('Không có hàng nào còn nằm lại trên cân — không cần gỡ.');
       if (dauKeHoach(conLai, moi) !== dauVan) {
         throw new LoiCan('Danh sách trên cân hoặc trong kho đã đổi từ lúc xem trước — bấm Xem lại rồi thử lại. Chưa gửi gì xuống cân.');
@@ -2712,7 +2851,9 @@ export class UngDung {
           if (!dangCo.size) {
             throw new LoiCan('Cân không trả danh sách hàng qua WiFi (cổng hai chiều) — không kiểm được cân đang có gì nên chưa gửi gì. Dùng "Lưu file để nạp USB".');
           }
-          const khac = conLai.filter(h => { const p = dangCo.get(h.so); return !!p && !laPluTrong(p) && p.ma !== chuanMa(h.ma); });
+          // Mã chương trình biết cho số đó: dòng đã xác nhận, và (2.9.2) dòng của lần gửi chưa xác nhận — cân có thể giữ một trong hai.
+          const maBiet = (so: number) => [tren.get(so), cho.get(so)].filter((x): x is HangTrenCan => !!x).map(x => chuanMa(x.ma));
+          const khac = conLai.filter(h => { const p = dangCo.get(h.so); return !!p && !laPluTrong(p) && !maBiet(h.so).includes(p.ma); });
           if (khac.length) {
             throw new LoiCan(`Trên cân, ${khac.length} số PLU giờ là hàng khác (${khac.slice(0, 5).map(h => `PLU ${h.so}: "${dangCo.get(h.so)!.ten.trim()}" `
               + `mã ${dangCo.get(h.so)!.ma || '—'}`).join('; ')}) — thêm trên bàn phím cân, bằng phần mềm của hãng, hay đây không phải cân vẫn dùng. `
@@ -2744,6 +2885,7 @@ export class UngDung {
       for (const h of [...canGo, ...daTrong]) tren.set(h.so, { so: h.so, ma: MA_CAN_TRONG, gia: '0,0', ten: TEN_PLU_TRONG });
       for (const h of khongCo) tren.delete(h.so);   // cân không còn số đó (đã nạp USB…): chỉ bỏ khỏi danh sách
       this.ghiTrenCan(tren);
+      this.boChoXacNhan(soGo);   // 2.9.2: số vừa gỡ không còn "có thể" là hàng của lần gửi chưa xác nhận
       let loiPhim: string | null = null, phimXong = false;
       if (ph) {
         const kp = await this.docLaiCaiDat('SCP', ph.khoi);
@@ -2783,7 +2925,7 @@ export class UngDung {
       throw new LoiCan('Thiếu danh sách đã xem trước — bấm Xem lại (thẻ Gửi giá từ kho, hay "Xem hàng còn nằm lại") rồi thử lại. Chưa gửi gì xuống cân.');
     }
     return this.motLuc(async () => {
-      const { goc, kh, du, moi, tren, conLai, ngayHsd } = await this.dung(giuHangNgoaiKho);
+      const { goc, kh, du, moi, tren, cho, conLai, ngayHsd } = await this.dung(giuHangNgoaiKho);
       if (!conLai.length) throw new LoiCan('Không có hàng nào còn nằm lại trên cân — không cần xoá.');
       if (dauKeHoach(conLai, moi) !== dauVan) {
         throw new LoiCan('Danh sách trên cân hoặc trong kho đã đổi từ lúc xem trước — bấm Xem lại rồi thử lại. Chưa gửi gì xuống cân.');
@@ -2798,9 +2940,12 @@ export class UngDung {
       const khoi = khoiXoaVaNapPlu(moi.plu.map(p => p.tho));   // danh sách rỗng → LoiGiaoThuc, không xoá sạch cân
       const khoa = (so: number, ma: string) => `${so}\t${ma}`;
       const muon = new Set(moi.plu.map(p => khoa(p.so, p.ma)));
-      // Cân phải đang có: hàng của file gốc và hàng còn nằm lại (tren-can.tsv) — số PLU và mã cân.
-      const biet = new Map<number, string>(goc.plu.map(p => [p.so, p.ma]));
-      for (const h of tren.values()) biet.set(h.so, chuanMa(h.ma));
+      // Cân phải đang có: hàng của file gốc và hàng còn nằm lại (tren-can.tsv) — số PLU và mã cân; 2.9.2: hay hàng của lần
+      // gửi chưa xác nhận (cho-xac-nhan.tsv) — cân có thể đã nhận.
+      const biet = new Map<number, Set<string>>();
+      const bietThem = (so: number, ma: string) => biet.set(so, (biet.get(so) ?? new Set<string>()).add(chuanMa(ma)));
+      for (const p of goc.plu) bietThem(p.so, p.ma);
+      for (const h of [...tren.values(), ...cho.values()]) bietThem(h.so, h.ma);
       const ke = (ds: number[]) => ds.slice(0, 8).map(so => 'PLU ' + so).join(', ') + (ds.length > 8 ? '…' : '');
       let daGuiXoa = false;
       let lechSauXoa: string | null = null;   // đọc lại sau lệnh xoá thấy cân chưa đúng: thiếu / thừa hàng nào
@@ -2813,7 +2958,7 @@ export class UngDung {
               + 'nên chưa gửi gì. Dùng "Lưu file để nạp USB".');
           }
           const la = dongTruoc.map(c => ({ so: parseInt(c[1], 10) || 0, ma: chuanMa(c[2]) }))
-            .filter(x => biet.get(x.so) !== x.ma).map(x => x.so).sort((a, b) => a - b);
+            .filter(x => !biet.get(x.so)?.has(x.ma)).map(x => x.so).sort((a, b) => a - b);
           if (la.length) {
             throw new LoiCan(`Cân đang có ${la.length} hàng chương trình không biết (${ke(la)}) — thêm trên bàn phím cân, bằng phần mềm của hãng, `
               + 'hay đây không phải cân vẫn dùng. Xoá qua WiFi sẽ xoá luôn các hàng này, nên chưa gửi gì xuống cân. Bấm "Đọc dữ liệu từ cân qua WiFi" '
@@ -3721,6 +3866,8 @@ export class UngDung {
 // HÀM NHỎ (2.2)
 // -----------------------------------------------------------------------------
 const hai = (n: number) => String(n).padStart(2, '0');
+/** "HH:MM" giờ Việt Nam của một mốc (ms) — gio-vn.ts, máy tính để múi giờ nào cũng vậy. */
+const gioPhutVn = (ms: number) => gioVnTuMs(ms).slice(11, 16);
 const laDoiTuong = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 /**
  * Chữ cài đặt chung định sửa, từ thân yêu cầu: số chữ → giá trị, giữ nguyên để kiemChuChung kiểm từng mục (giá trị không

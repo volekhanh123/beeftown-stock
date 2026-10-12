@@ -561,6 +561,10 @@
 
   // ---- ô Cân: địa chỉ, lần tự đổi địa chỉ, tự gửi ---------------------------
   const lucNgan = (t) => new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' });
+  /** 2.9.2 — "HH:MM" giờ Việt Nam (giờ tự gửi thử lại). */
+  const gioPhut = (t) => new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
+  /** Tự gửi đang bật (Cài đặt) — câu "tự gửi thử lại lúc …" chỉ đúng khi bật. */
+  const tuGuiBat = () => !!(trangThai && trangThai.cauHinh && trangThai.cauHinh.tuGui);
   function veOCan() {
     const ch = trangThai.cauHinh;
     $('o-can').textContent = ch.ipCan + ' · cổng ' + ch.congCan;
@@ -750,8 +754,13 @@
         + `<span class="phu">${x.canChuaRo ? 'Lần xoá qua WiFi trước hỏng — bấm Gửi để gửi lại cả danh sách ' + x.soHangSauKhiGui + ' hàng, hoặc nạp USB.'
           // Lần gửi trước cân chưa nhận: tự gửi đang tạm dừng — kể cả khi kho đã quay về như file gốc, phải bấm Gửi.
           : canChuaNhan ? 'Lần gửi trước cân chưa nhận — tự gửi đang tạm dừng. Để cân ở màn hình bán hàng rồi bấm Gửi; gửi xong chương trình đọc lại cân để kiểm.'
+          // 2.9.2: lần gửi trước chưa đọc lại được cân — chưa ghi nhận, bảng theo lần cân xác nhận gần nhất; cân có thể đang
+          // giữ bản đó dù kho đã quay về như file gốc → vẫn phải gửi lại.
+          : chuaKiemDuoc ? 'Lần gửi trước chưa đọc lại được cân nên chưa ghi nhận'
+            + (x.chuaXacNhan.thuLaiLuc && tuGuiBat() ? ' — tự gửi thử lại lúc ' + e(gioPhut(x.chuaXacNhan.thuLaiLuc)) : '')
+            + '. Đóng phần mềm của hãng (TM-xA) nếu đang mở, để cân ở màn hình bán hàng rồi bấm Gửi để gửi lại cả danh sách '
+            + x.soHangSauKhiGui + ' hàng và đọc lại cân để kiểm.'
           : x.coThayDoi ? 'Sau khi gửi, cân có ' + x.soHangSauKhiGui + ' hàng từ kho. Gửi xong chương trình đọc lại cân để kiểm.'
-          : chuaKiemDuoc ? 'Kho khớp với lần gửi trước, nhưng lần đó chưa được cân xác nhận — bấm Gửi để gửi lại và đọc lại cân để kiểm.'
           : 'Cân đã khớp với kho — không cần gửi.'}</span></div><div id="ket-qua-gui"></div>`;
       noi.innerHTML = h;
       $('nut-gui').onclick = gui;
@@ -798,8 +807,9 @@
   const hsdChu = (v) => (v === undefined ? '' : v === null ? 'không in' : `${Number(v).toLocaleString('vi-VN')} ngày`);
 
   /**
-   * 2.6 — lần gửi gần nhất cân chưa xác nhận (chua-xac-nhan.json). 'khong-doc': đã ghi nhận nhưng chưa đọc lại được cân
-   * (khung vàng); 'lech': đọc lại thấy cân chưa nhận, chương trình chưa ghi nhận lần gửi đó, tự gửi tạm dừng (khung đỏ).
+   * 2.6 — lần gửi gần nhất cân chưa xác nhận (chua-xac-nhan.json). 'khong-doc': chưa đọc lại được cân (khung vàng) — 2.9.2:
+   * chương trình CHƯA ghi nhận (trước 2.9.2 ghi nhận như cân đã nhận), tự gửi thử lại lúc thuLaiLuc; 'lech': đọc lại thấy cân
+   * chưa nhận, chương trình chưa ghi nhận lần gửi đó, tự gửi tạm dừng (khung đỏ).
    */
   function baoChuaXacNhan(c) {
     if (!c) return '';
@@ -808,8 +818,11 @@
       return `<div class="bao loi"><p><b>Lần gửi${luc}: cân chưa nhận.</b> ${e(c.cau)}</p></div>`;
     }
     return `<div class="bao luu-y"><p><b>Lần gửi${luc} chưa được cân xác nhận.</b> ${e(c.cau)}</p>`
-      + '<p>Nhãn "Giữ nguyên" / "Khớp kho" là theo lần gửi đó, chưa chắc cân đã có. Kiểm: trên cân gọi thử một số PLU, '
-      + 'hoặc bấm <b>Đọc dữ liệu từ cân qua WiFi</b> (thẻ Cân &amp; thông số), hoặc lưu cân ra USB rồi Cập nhật file gốc từ cân.</p></div>';
+      + '<p>Chương trình chưa ghi nhận lần gửi đó: bảng theo lần cân xác nhận gần nhất, hàng vừa gửi vẫn hiện Thêm / Sửa; kho chưa '
+      + 'thấy tên mới (trang pha lóc chưa báo "Cân sẵn sàng"). '
+      + (c.thuLaiLuc && tuGuiBat() ? 'Tự gửi thử lại lúc ' + e(gioPhut(c.thuLaiLuc)) + ' (lần ' + e(String((c.soLanThu || 1) + 1)) + '). ' : '')
+      + 'Kiểm ngay: trên cân gọi thử một số PLU, hoặc bấm <b>Đọc dữ liệu từ cân qua WiFi</b> (thẻ Cân &amp; thông số), hoặc lưu cân '
+      + 'ra USB rồi Cập nhật file gốc từ cân.</p></div>';
   }
 
   /** Khung đỏ khi lần xoá qua WiFi trước hỏng sau khi đã gửi lệnh xoá (can-chua-ro.json) — cân có thể đang thiếu hàng. */
