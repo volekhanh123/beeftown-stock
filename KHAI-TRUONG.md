@@ -9,7 +9,7 @@ Các bước kỹ thuật đã có hướng dẫn trong `README.md` thì ở đ�
 | # | Việc | Ai | Hạn |
 |---|---|---|---|
 | 1 | Gộp PR #73 (soát luồng 6 bước của kho), #79, #88 (đổi màu `/noi-bo` và kho) — **xong 13/10**. | Khánh | 14/10 |
-| 2 | Chạy migration theo số ở SQL Editor, mỗi file một lần: trước hết các file đã ở main mà production còn thiếu (`npm run doi-chieu` chỉ ra; khi viết: `0063`, `0065` chưa chạy; `0069`–`0074`, `0078`, `0081`, `0084`, `0086` vừa gộp ở PR #74, #75, #77, #78, #81, #87), rồi hai file của PR #73: `0088`, `0089`. Sau đó `npm run doi-chieu` phải báo KHỚP. Cách làm: `README.md`, mục "Chạy migration lên production". | Khánh | 15/10 |
+| 2 | Chạy migration theo số ở SQL Editor, mỗi file một lần: trước hết các file đã ở main mà production còn thiếu (`npm run doi-chieu` chỉ ra; khi viết: `0063`, `0065` chưa chạy; `0069`–`0074`, `0078`, `0081`, `0084`, `0086` vừa gộp ở PR #74, #75, #77, #78, #81, #87), rồi hai file của PR #73: `0088`, `0089`, rồi `0090` của PR #80 (Beeftown Cân 2.9.3). Sau đó `npm run doi-chieu` phải báo KHỚP. Cách làm: `README.md`, mục "Chạy migration lên production". | Khánh | 15/10 |
 | 3 | `npm run deploy` khi CI xanh — beeftown.vn hiện địa chỉ mới. | Khánh | 15/10 |
 | 4 | Bật sao lưu hằng đêm: thêm 2 secret `SAO_LUU_DB_URL`, `SAO_LUU_MAT_KHAU`, chạy tay một lượt, đèn "Sao lưu dữ liệu" ở `/noi-bo` phải xanh. Đèn đang đỏ từ 05/10 — **chưa có bản sao nào**. Cách làm: `README.md`, mục "Sao lưu và khôi phục". | Khánh | 15/10 |
 
