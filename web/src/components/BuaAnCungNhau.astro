@@ -44,8 +44,10 @@ const t = dich(ngonNgu, {
   doUong: { vi: 'Đồ uống', en: 'Drinks', ko: '음료' },
   goiThem: { vi: 'Gọi thêm', en: 'Add-ons', ko: '추가 주문' },
 });
-// Tên nhóm lấy từ lib/chu.ts — MỘT bộ tên cho trang chủ và trang Thực đơn, theo thứ tự của cuốn menu
-// bản sáng (11/10/2026).
+// Tên nhóm lấy từ lib/chu.ts — MỘT bộ tên cho trang chủ và trang Thực đơn (cuốn menu bản sáng 11/10/2026).
+// Thứ tự: Salad, Món thêm, Canh, Cơm, Mì, Lẩu — thứ tự trang của cuốn, trừ Lẩu đưa xuống cuối vì chỉ bán
+// buổi trưa (gọi theo combo); Món đặc trưng không có ở đây vì đó là hai món riêng (hai tartare), không phải
+// một nhóm để giới thiệu bằng tên.
 const MON_AN = [tChung.nhomSalad, tChung.nhomMonThem, tChung.nhomCanh, tChung.nhomCom, tChung.nhomMi, tChung.nhomLau];
 const DO_UONG = [tChung.nhomNuocEp, tChung.nhomNuocNgot, tChung.nhomNuocSuoi,
   ...(coCon ? [tChung.nhomHighball, tChung.nhomSoju, tChung.nhomMakgeolli, tChung.nhomBia] : [])];

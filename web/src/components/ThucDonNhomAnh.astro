@@ -21,7 +21,9 @@
  *    ANH_CUA_MON[mã].gon (món tách nền 1:1, dải đáy 20 % cho nhãn; tartare 4:5 cắt sát đáy ảnh, nhãn trên
  *    mặt bàn) qua khungNho của <Anh>, nên từ 600px trở lên vẫn đúng khung cũ. Nhãn "Ảnh minh họa" của ảnh
  *    nhỏ: giữa, sát đáy khung, đệm hẹp — tiếng Anh (≈ 124px) vừa một dòng trong 128px; phông dự phòng rộng
- *    hơn thì xuống dòng nhưng vẫn trong khung. Nhóm hai món cũng vậy: không có món dẫn đầu.
+ *    hơn thì xuống dòng nhưng vẫn trong khung. Nhóm KHÔNG có món dẫn đầu (đúng hai món — Món đặc trưng)
+ *    giữ thẻ to trên điện thoại: hai món đó là chính nhóm; thành hàng gọn thì hai món đặc trưng nhỏ hơn
+ *    ảnh dẫn đầu của nhóm Lẩu (chỉ bán buổi trưa) — sai thứ bậc (rà soát 13/10/2026).
  *  · kieu 'deu' (ba ly signature): mọi món cùng cỡ, ảnh trên chữ dưới — như trang Có cồn của cuốn.
  *
  * Món dẫn đầu nằm ngoài danh sách <ul> của các món còn lại (cột trái của nó còn có tên nhóm — một <li>
@@ -100,8 +102,9 @@ const sizesGon = sizesNho.replace(/calc\(100vw - 40px\)$/, '128px');
     <ul class:list={['tdn-luoi', { 'tdn-ba-cot': baCot }]} role="list" aria-labelledby={id}>
       {conLai.map(m => {
         const anh = ANH_CUA_MON[m.ma];
-        // Hàng gọn dưới 600px: chỉ nhóm món ăn (ly signature giữ thẻ ảnh trên chữ dưới) và ảnh có khung gọn.
-        const gon = kieu === 'dan-dau' && !!anh?.gon;
+        // Hàng gọn dưới 600px: chỉ món đứng sau một món dẫn đầu (nhóm hai món và ly signature giữ thẻ ảnh
+        // trên chữ dưới) và ảnh có khung gọn.
+        const gon = !!danDau && !!anh?.gon;
         return (
           <li class:list={['tdn-mon', { 'tdn-gon': gon }]}>
             <ThucDonMon mon={m} ngonNgu={ngonNgu} khongGia={khongGia} />

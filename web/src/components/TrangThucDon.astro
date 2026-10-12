@@ -17,7 +17,8 @@
  *     ảnh không khí nữa chỉ chen vào giữa tiêu đề và món).
  *     Chưa công bố món nào thì không để trống: giới thiệu theo các nhóm món của cuốn.
  *     Phần Đồ uống luôn có ảnh uong-khong-con-ba-ly (đồ uống không cồn — nhắc được ở
- *     mọi trạng thái). Đồ uống có cồn chỉ được nhắc khi hien_do_uong_co_con bật.
+ *     mọi trạng thái); chưa công bố món không cồn nào thì luôn có tên các nhóm không cồn
+ *     cạnh ảnh đó. Đồ uống có cồn chỉ được nhắc khi hien_do_uong_co_con bật.
  *
  * Thanh chọn phần: KHÔNG có JavaScript thì là ba link neo và cả ba phần cùng hiện.
  * CÓ JavaScript thì thành tab ARIA (tablist / tab / tabpanel, roving tabindex, mũi
@@ -144,8 +145,10 @@ const c = dich(ngonNgu, {
   },
 });
 
-// Các nhóm món của cuốn menu bản sáng (11/10/2026), theo thứ tự trang của cuốn — chỉ dùng khi chưa
-// công bố món nào. Tên nhóm lấy từ lib/chu.ts: một bộ tên cho cả trang chủ lẫn trang này.
+// Lời giới thiệu theo nhóm món của cuốn menu bản sáng (11/10/2026) — chỉ dùng khi chưa công bố món nào.
+// Thứ tự: Salad, Món thêm, Canh, Cơm, Mì, Lẩu — thứ tự trang của cuốn, trừ Lẩu đưa xuống cuối vì chỉ bán
+// buổi trưa (gọi theo combo); Món đặc trưng không có ở đây vì đó là hai món riêng (hai tartare), không phải
+// một nhóm để giới thiệu bằng tên. Tên nhóm lấy từ lib/chu.ts: một bộ tên cho cả trang chủ lẫn trang này.
 const NHOM_MON_AN = [t.nhomSalad, t.nhomMonThem, t.nhomCanh, t.nhomCom, t.nhomMi, t.nhomLau];
 const DO_UONG_KHONG_CON = [t.nhomNuocEp, t.nhomNuocNgot, t.nhomNuocSuoi];
 // Đồ uống có cồn: luật quảng cáo rượu bia — chỉ nhắc khi công tắc hien_do_uong_co_con bật.
@@ -153,6 +156,10 @@ const DO_UONG_CO_CON = [t.nhomHighball, t.nhomSoju, t.nhomMakgeolli, t.nhomBia];
 
 const coMonAn = td.monAn.length > 0;
 const coDoUong = td.doUong.length > 0;
+// Đã công bố đồ uống nhưng chưa có món không cồn nào (vd. mới công bố ba ly signature, công tắc có cồn bật):
+// ảnh ba ly không cồn vẫn đứng đầu phần, nên cột thực đơn mở đầu bằng tên các nhóm không cồn như lời giới
+// thiệu — không để ảnh nước không cồn đứng trên một trang toàn đồ uống có cồn.
+const nhacKhongCon = coDoUong && !td.doUong.some(n => n.mon.some(m => !m.coCon));
 const nhacCoCon = !coDoUong && nd.hien_do_uong_co_con === true;
 const hienLuatRuou = td.coDoUongCoCon || nhacCoCon;
 const doUongGioiThieu = [
@@ -284,6 +291,11 @@ const coKenh = coKenhHoiBan(nd);
       <div class="td-chinh">
         {coDoUong ? (
           <>
+            {nhacKhongCon && (
+              <ul class="td-danh-muc mot-cot td-uong-khong-con" role="list">
+                {DO_UONG_KHONG_CON.map(ten => <li><span class="td-dm-ten">{ten}</span></li>)}
+              </ul>
+            )}
             {uongCoAnh.map(n => <ThucDonNhomAnh nhom={n} ngonNgu={ngonNgu} kieu="deu" />)}
             {uongDanhSach.length > 0 && (
               <div class:list={['td-cac-nhom', { 'mot-nhom': uongDanhSach.length === 1, 'sau-nhom-anh': uongCoAnh.length > 0 }]}>
@@ -554,6 +566,8 @@ const coKenh = coKenhHoiBan(nd);
     font-size: clamp(21px, 1vw + 16px, 28px); font-weight: 700; line-height: 1.25; letter-spacing: -.01em;
   }
   .td-danh-muc .nhan-mon { justify-self: end; }
+  /* Tên các nhóm không cồn đứng trước đồ uống đã công bố (toàn đồ có cồn): cách nhóm sau như hai nhóm món. */
+  .td-uong-khong-con { margin-bottom: var(--k-8); }
 
   .td-luat {
     display: flex; gap: var(--k-3); align-items: flex-start;

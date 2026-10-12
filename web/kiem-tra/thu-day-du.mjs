@@ -60,6 +60,8 @@
  *       bốn phép đo của do-giao-dien.mjs trên từng tab. khong-con-tat (công tắc đồ uống có cồn tắt): ba ly
  *       signature, nhãn Có cồn, dòng luật rượu đều không hiện. thuc-don-thu-suc: món không ảnh, tên và mô tả
  *       rất dài, nhóm lạ chưa có câu, nhóm đồ uống dạng danh sách — không tràn, vẫn đạt mọi phép đo.
+ *       day-du chỉ có ba ly signature (có cồn) ở phần Đồ uống: tên ba nhóm không cồn phải đứng đầu cột
+ *       thực đơn, cạnh ảnh ba ly không cồn; có món không cồn thì không có danh sách đó.
  *
  * Hỏng thì ảnh chụp nằm ở kiem-tra/anh-loi/day-du/ (CI tải lên cùng artifact của
  * trinh-duyet.mjs).
@@ -1179,6 +1181,28 @@ try {
             tot.push(ok(`${nhan} · nhóm ${ma}: ${mong ? `câu dưới tên nhóm «${mong}»` : 'không có câu dưới tên nhóm'}`, cau === mong, `thấy «${cau}»`));
           }
           tot.push(ok(`${nhan} · tab #${phan}: không phần tử giá (.mon-gia)`, kq.giaPhanTu === 0, `${kq.giaPhanTu} phần tử`));
+          if (phan === 'do-uong') {
+            // Đã công bố đồ uống mà chưa có món không cồn nào (day-du: chỉ ba ly signature, đều có cồn): cột thực đơn
+            // mở đầu bằng tên các nhóm không cồn, đứng trước nhóm đầu tiên — cạnh ảnh ba ly không cồn. Có món không
+            // cồn (thuc-don-thu-suc) hay chưa công bố đồ uống nào (khong-con-tat) thì không có danh sách này.
+            const uong = monMong.filter(m => phanCua(m) === 'do-uong');
+            const tChu = chu(nn);
+            const mong = uong.length && !uong.some(m => !m.coCon) ? [tChu.nhomNuocEp, tChu.nhomNuocNgot, tChu.nhomNuocSuoi] : [];
+            const thayDs = await p.evaluate(() => {
+              const ds = document.querySelector('#do-uong .td-uong-khong-con');
+              const nhomDau = document.querySelector('#do-uong .td-chinh .tdn, #do-uong .td-chinh .td-nhom');
+              return {
+                ten: [...(ds?.querySelectorAll('.td-dm-ten') ?? [])].map(e => e.textContent.trim()),
+                hien: !!ds?.checkVisibility(),
+                truoc: !ds || !nhomDau || ds.getBoundingClientRect().bottom <= nhomDau.getBoundingClientRect().top + 0.5,
+              };
+            });
+            tot.push(ok(mong.length
+              ? `${nhan} · tab #do-uong: chưa có đồ uống không cồn nào công bố → tên ba nhóm không cồn (${mong.join(', ')}) hiện trước nhóm đầu tiên`
+              : `${nhan} · tab #do-uong: không có danh sách nhóm không cồn chen trước đồ uống đã công bố`,
+              JSON.stringify(thayDs.ten) === JSON.stringify(mong) && (!mong.length || (thayDs.hien && thayDs.truoc)),
+              `thấy ${JSON.stringify(thayDs.ten)}, hiện ${thayDs.hien}, đứng trước ${thayDs.truoc}`));
+          }
           chuCaTrang += '\n' + await chuTrangCua(p, 'main');
         }
         const cam = timChuoiCam(chuCaTrang);

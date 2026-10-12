@@ -26,10 +26,10 @@ export const PHEP_DO = {
   bieuTuong: 'biểu tượng: 24px, nét 1,5px, Beef Red trên kem và Cream trên đỏ, đi kèm nhãn chữ',
   chu: 'chữ và lưới: chỉ Montserrat, chữ chạy 16/24px, h1 32/38 → 48/56px (tiếng Hàn cùng cỡ, dòng 1,28: 32/41 → 48/61px), lề điện thoại clamp(20px, 5vw, 40px) — 20px tới màn 400px, khung ≤ 1200px, khoảng cách khối 48–64 / 72–96px',
   chanTrang: 'chân trang: dải đỏ, logo Cream, không hoa văn chữ, chữ ≥ 14px, điện thoại chia link 2 cột, dải pháp nhân nền Charcoal',
-  anh: 'ảnh: ảnh AI nào cũng có nhãn "Ảnh minh họa" nhìn thấy, đọc được; không bóng đổ; đúng tỷ lệ khung; không chữ, logo hay phần tử nào đè lên ảnh; chỉ ảnh màn đầu tải ngay',
+  anh: 'ảnh: ảnh AI nào cũng có nhãn "Ảnh minh họa" nhìn thấy, đọc được; nhãn của ảnh tách nền không che món (0 điểm ảnh đặc dưới nhãn); không bóng đổ; đúng tỷ lệ khung; không chữ, logo hay phần tử nào đè lên ảnh; chỉ ảnh màn đầu tải ngay',
   nhanKhay: 'thẻ "Cách đọc nhãn khay": đặt thẳng, không bóng đổ, nền Cream hoặc kem sau, đủ 5 trường theo thứ tự, chỉ tên trường (không giá trị mẫu), đủ lớn để đọc',
   trangChu: 'trang chủ: đủ 8 khối theo thứ tự, dải tối và dải đỏ giữ nguyên; màn đầu có ảnh, câu chính đứng trước ảnh trên điện thoại, hai cột cân nhau trên máy tính, tagline là một dải đỏ gọn không đè lên ảnh; ba bước, cả bữa, đi nhóm đúng bố cục',
-  thucDon: 'thực đơn: "Bò tại quầy" vẫn dải tối, có ảnh lát bò và thẻ đọc nhãn khay; "Món ăn" chưa có món thì có ảnh sốt chấm, đã có món thì từng nhóm kiểu cuốn menu (tên nhóm 28px tới cỡ h1, chữ hoa); thẻ món không tràn chữ, thẻ dẫn đầu từ 768px có ảnh bên phải chữ, dưới 600px món không dẫn đầu là hàng gọn (ảnh 112–128px bên trái chữ, nhãn ảnh một dòng ở 20 % đáy khung); "Đồ uống" có ảnh ba ly không cồn; không phần tử giá',
+  thucDon: 'thực đơn: "Bò tại quầy" vẫn dải tối, có ảnh lát bò và thẻ đọc nhãn khay; "Món ăn" chưa có món thì có ảnh sốt chấm, đã có món thì từng nhóm kiểu cuốn menu (tên nhóm 28px tới cỡ h1, chữ hoa); thẻ món không tràn chữ, thẻ dẫn đầu từ 768px có ảnh bên phải chữ, dưới 600px món đứng sau món dẫn đầu là hàng gọn (ảnh 112–128px bên trái chữ, nhãn ảnh một dòng ở 20 % đáy khung), nhóm không có món dẫn đầu giữ thẻ to; "Đồ uống" có ảnh ba ly không cồn, chưa công bố đồ uống không cồn nào thì vẫn có tên các nhóm không cồn; không phần tử giá',
 };
 
 export function doGiaoDien() {
@@ -439,6 +439,23 @@ export function doGiaoDien() {
     if (!hien(nhan)) kq.anh.push(`${ten}: nhãn không hiện ra`);
     if (kn.left < kf.left - 0.5 || kn.right > kf.right + 0.5 || kn.top < kf.top - 0.5 || kn.bottom > kf.bottom + 0.5) kq.anh.push(`${ten}: nhãn nằm ngoài khung ảnh`);
     if (so(csN.fontSize) < 13) kq.anh.push(`${ten}: nhãn cỡ ${csN.fontSize}, cần ≥ 13px`);
+    // Ảnh tách nền: nhãn không che món. Vẽ ảnh đang hiện lên canvas đúng cỡ khung rồi đếm điểm ảnh ĐẶC (độ đục
+    // ≥ 50 %) nằm dưới nhãn — phải là 0: nhãn chỉ được nằm trong dải trống tao-co-anh.py chừa ở đáy khung (bóng
+    // đổ mờ dưới 50 % không tính). Ảnh có nền thì nhãn luôn nằm trên ảnh — luật của nó là nền riêng ở dưới.
+    if (f.classList.contains('tach-nen') && a.complete && a.naturalWidth > 0 && hien(nhan)) {
+      const [w, h] = [Math.round(kf.width), Math.round(kf.height)];
+      const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+      const ctx = cv.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(a, 0, 0, w, h);
+      const [x0, y0] = [Math.max(0, Math.floor(kn.left - kf.left)), Math.max(0, Math.floor(kn.top - kf.top))];
+      const [x1, y1] = [Math.min(w, Math.ceil(kn.right - kf.left)), Math.min(h, Math.ceil(kn.bottom - kf.top))];
+      if (x1 > x0 && y1 > y0) {
+        const d = ctx.getImageData(x0, y0, x1 - x0, y1 - y0).data;
+        let dac = 0;
+        for (let i = 3; i < d.length; i += 4) if (d[i] >= 128) dac++;
+        if (dac) kq.anh.push(`${ten}: nhãn "${NHAN_ANH[NGON_NGU]}" che món — ${dac} điểm ảnh đặc (độ đục ≥ 50 %) dưới nhãn (${((dac / (d.length / 4)) * 100).toFixed(1)} %)`);
+      }
+    }
     // Nhãn có nền riêng (Charcoal có độ trong) nên đọc được trên vùng ảnh nào cũng vậy: tính tương phản của chữ
     // với nền nhãn pha lên vùng ảnh SÁNG NHẤT có thể (trắng tinh).
     const [chuN, nenN] = [mau(csN.color), mau(csN.backgroundColor)];
@@ -733,7 +750,18 @@ export function doGiaoDien() {
     const theMon = [...(monAn?.querySelectorAll('.tdn-mon') ?? [])];
     if (!theMon.length && !coAnh(monAn, 'sot-cham')) kq.thucDon.push('"Món ăn" chưa có món: thiếu ảnh sot-cham');
     if (theMon.length && coAnh(monAn, 'sot-cham')) kq.thucDon.push('"Món ăn" đã có món mà vẫn còn ảnh sot-cham');
-    if (!coAnh(document.getElementById('do-uong'), 'uong-khong-con-ba-ly')) kq.thucDon.push('"Đồ uống": thiếu ảnh uong-khong-con-ba-ly');
+    const doUong = document.getElementById('do-uong');
+    if (!coAnh(doUong, 'uong-khong-con-ba-ly')) kq.thucDon.push('"Đồ uống": thiếu ảnh uong-khong-con-ba-ly');
+    // Ảnh ba ly không cồn đứng đầu phần Đồ uống ở mọi trạng thái. Đã công bố đồ uống mà chưa có món không cồn
+    // nào (mới công bố ba ly signature, công tắc có cồn bật) thì trang vẫn phải có tên các nhóm không cồn —
+    // không thì ảnh nước không cồn đứng trên một trang toàn đồ có cồn. Nhãn "Có cồn" chép tay theo thứ tiếng.
+    const NHAN_CO_CON = { vi: 'Có cồn', en: 'Contains alcohol', ko: '알코올 포함' }[NGON_NGU];
+    const coNhanCoCon = e => [...e.querySelectorAll('.nhan-mon')].some(n => n.textContent.trim() === NHAN_CO_CON);
+    const uongDaCo = [...(doUong?.querySelectorAll('.tdn-mon, li.mon') ?? [])];
+    if (uongDaCo.length && uongDaCo.every(coNhanCoCon)) {
+      const tenKhongCon = [...(doUong?.querySelectorAll('.td-danh-muc li') ?? [])].filter(li => !coNhanCoCon(li));
+      if (!tenKhongCon.length) kq.thucDon.push(`"Đồ uống": ${uongDaCo.length} món đã công bố đều có cồn mà không có tên nhóm đồ uống không cồn nào cạnh ảnh ba ly không cồn`);
+    }
     // Giá chưa duyệt không bao giờ có phần tử giá (database trả null).
     if (document.querySelector('.mon-gia')) kq.thucDon.push('có phần tử giá (.mon-gia) trên trang');
     // Tên nhóm kiểu tiêu đề trang của cuốn: chữ hoa, đậm 800, ≥ 28px và không to hơn h1 (dải tối dùng tiêu đề nhỏ).
@@ -753,15 +781,18 @@ export function doGiaoDien() {
         if (e.scrollWidth > e.clientWidth + 1 || k.right > km.right + 1 || k.left < km.left - 1) { kq.thucDon.push(`thẻ «${ten}»: chữ tràn khỏi thẻ (${moTa(e).slice(0, 40)})`); break; }
       }
       // Thẻ của lưới: ảnh (nếu có) ở trên chữ. Món dẫn đầu: từ 768px ảnh ở cột phải, bên phải chữ;
-      // dưới 768px ảnh ở trên chữ. Dưới 600px, món KHÔNG dẫn đầu của nhóm món ăn (lưới .tdn-dan-dau) là hàng
-      // gọn: ảnh nhỏ 112–128px bên trái, chữ bên phải, cùng mép trên — tab Món ăn ở 390px từng dài hơn
-      // 12.000px vì mỗi món là một thẻ ảnh to. Nhãn "Ảnh minh họa" của ảnh nhỏ một dòng, nằm trong 20 % đáy
-      // khung (dải trống dưới món của ảnh tách nền; mặt bàn của ảnh tartare) — không đè lên món.
+      // dưới 768px ảnh ở trên chữ. Dưới 600px, món đứng sau món dẫn đầu của nhóm món ăn là hàng gọn: ảnh nhỏ
+      // 112–128px bên trái, chữ bên phải, cùng mép trên — tab Món ăn ở 390px từng dài hơn 12.000px vì mỗi
+      // món là một thẻ ảnh to. Nhãn "Ảnh minh họa" của ảnh nhỏ một dòng, nằm trong 20 % đáy khung (dải trống
+      // dưới món của ảnh tách nền; mặt bàn của ảnh tartare) — không đè lên món. Nhóm KHÔNG có món dẫn đầu
+      // (đúng hai món — Món đặc trưng) giữ thẻ ảnh trên chữ dưới: hai món đó là chính nhóm, không được nhỏ
+      // hơn ảnh dẫn đầu của nhóm khác.
       const chu = m.querySelector('.tdm');
       const f = m.classList.contains('tdn-lon') ? m.closest('.tdn-mo')?.querySelector('.tdn-lon-anh figure.anh') : m.querySelector('figure.anh');
       if (!f || !chu || !hien(f)) continue;
       const [ka, kc] = [f.getBoundingClientRect(), chu.getBoundingClientRect()];
-      const hangGon = RONG < 600 && !m.classList.contains('tdn-lon') && !!m.closest('.tdn-dan-dau .tdn-luoi');
+      const hangGon = RONG < 600 && !m.classList.contains('tdn-lon') && !!m.closest('.tdn-dan-dau .tdn-luoi')
+        && !!m.closest('.tdn')?.querySelector('.tdn-lon');
       if (m.classList.contains('tdn-lon') && RONG >= 768) {
         if (ka.left < kc.right - 0.5) kq.thucDon.push(`món dẫn đầu «${ten}»: từ 768px ảnh phải ở bên phải chữ`);
       } else if (hangGon) {
