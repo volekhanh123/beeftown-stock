@@ -27,23 +27,19 @@
 --   ---------------------  ------------------------------  -----  -------  ----------------
 --   tao_dat_ban            số điện thoại: yêu cầu còn      3      —        câu SĐT (mới)
 --   (chỉ lời gọi KHÔNG       chờ, ngày từ hôm nay (VN)
---   phiên — website,       IP (p_ip)                        5      1 giờ    câu mạng (mới)
---   Messenger)             IP null: MỘT xô chung            20     1 giờ    câu bận (mới)
---                          chi nhánh                        30     1 giờ    câu bận (mới)
---   tra_cuu_dat_ban        IP: lần sai                      6      15 phút  câu khoá 0013
---   + huy_dat_ban          IP null: lần sai, xô chung       20     15 phút  câu khoá 0013
---   (chung một sổ)         số điện thoại: lần sai           5      15 phút  câu khoá 0013
---                          toàn cục: mọi lần                100    15 phút  câu khoá 0013
---   xin_phieu_tai_cv       IP                               10     1 giờ    câu 0012
---                          IP null: xô chung                30     1 giờ    câu bận
---                          toàn cục                         60     1 giờ    câu bận
+--   phiên — website,       IP (p_ip khác null)              5      1 giờ    câu mạng (mới)
+--   Messenger)             chi nhánh                        30     1 giờ    câu bận (mới)
+--   tra_cuu_dat_ban        IP (p_ip khác null): lần sai     6      15 phút  câu khoá 0013
+--   + huy_dat_ban          số điện thoại: lần sai           5      15 phút  câu khoá 0013
+--   (chung một sổ)         toàn cục: mọi lần                100    15 phút  câu khoá 0013
+--   xin_phieu_tai_cv       IP — null đếm như MỘT IP         10     1 giờ    câu 0012 / câu bận
+--                          toàn cục                         30     1 giờ    câu bận
+--                          toàn cục                         100    24 giờ   câu bận
 --   vé tải CV              một vé                           1 file hạn vé  storage từ chối
---   nop_ho_so_ung_tuyen    IP                               5      1 giờ    câu 0012
---                          IP null: xô chung                15     1 giờ    câu bận
+--   nop_ho_so_ung_tuyen    IP — null đếm như MỘT IP         5      1 giờ    câu 0012 / câu bận
 --                          toàn cục                         30     1 giờ    câu bận
 --                          số điện thoại: một vị trí một ngày — chỉ mục ho_so_khong_trung_idx (0012)
---   ghi_su_kien_web        phiên (p_phien)                  60     1 phút   bỏ qua, không lỗi
---                          phiên null: xô chung             60     1 phút   bỏ qua
+--   ghi_su_kien_web        phiên — null đếm như MỘT phiên   60     1 phút   bỏ qua, không lỗi
 --                          toàn cục                         300    1 phút   bỏ qua
 --                          toàn cục                         3000   1 giờ    bỏ qua
 --
@@ -55,25 +51,34 @@
 --             lại sau hoặc gọi nhà hàng'
 --   câu bận  'Hệ thống đang nhận quá nhiều yêu cầu, vui lòng thử lại sau hoặc
 --             liên hệ trực tiếp với nhà hàng'
--- Xô chung và trần toàn cục dùng câu bận, không dùng "Bạn đã gửi…": người chạm
+-- Trần toàn cục và xô IP null dùng câu bận, không dùng "Bạn đã gửi…": người chạm
 -- trần có thể là một khách thật chưa gửi lần nào. Câu raise exception cũ giữ
--- nguyên từng chữ.
+-- nguyên từng chữ. Thêm một câu chỉ storage thấy (trigger mục 4): 'Vé tải CV
+-- này đã có một file'.
 --
--- VÌ SAO NHIỀU LỚP
+-- VÌ SAO NHIỀU LỚP — VÀ VÌ SAO IP NULL KHÔNG PHẢI MỘT XÔ Ở ĐẶT BÀN, TRA CỨU
 --
 -- Giới hạn theo IP chỉ là lớp MỎNG: website truyền CF-Connecting-IP (Cloudflare
 -- tự đặt, khách không giả được — web/src/lib/phien.ts), nhưng kẻ gọi thẳng
--- PostgREST tự bịa p_ip mỗi lần. IP null không còn là "không giới hạn" mà là
--- MỘT xô chung — Messenger (luôn null, đã có giới hạn riêng theo khách ở
--- mess_xin_dat_ban 0053) và mọi lời gọi bỏ trống p_ip đếm chung. Lớp chặn thật
--- là số điện thoại, chi nhánh và toàn cục: kẻ đổi cả IP lẫn số điện thoại vẫn
--- chỉ lấy được tới trần chi nhánh (30 yêu cầu / giờ) — có hạn, không còn vô hạn.
+-- PostgREST tự bịa p_ip mỗi lần. Lớp chặn thật là số điện thoại, chi nhánh và
+-- toàn cục — chúng không đọc p_ip: kẻ đổi cả IP lẫn số điện thoại vẫn chỉ lấy
+-- được tới trần chi nhánh (30 yêu cầu / giờ) — có hạn, không còn vô hạn.
+--
+-- IP null: ở vé tải CV, hồ sơ, sự kiện web thì null đếm như MỘT IP — website
+-- luôn có IP, không ai thật gọi bằng null. Ở tao_dat_ban, tra_cuu_dat_ban,
+-- huy_dat_ban thì KHÔNG có xô IP null: nơi gọi thật duy nhất với null là bot
+-- Messenger (đã giới hạn theo từng khách ở mess_xin_dat_ban / mess_ghi_tra_cuu,
+-- 0053). Một xô chung cho null chỉ cho kẻ phá một công tắc tắt bot của MỌI khách
+-- bằng 20 lời gọi, trong khi chính kẻ đó thoát xô bằng cách bịa IP. Lời gọi
+-- null vẫn bị đếm đủ theo số điện thoại, chi nhánh, toàn cục.
 --
 -- Trần chung là con dao hai lưỡi: ai cố tình đốt hết trần thì khách thật cũng
--- nhận câu bận cho tới hết cửa sổ. Câu đó nói đúng sự thật và chỉ đường gọi nhà
--- hàng; khung giờ không bị lấp, bảng không đầy. Chặn hẳn kẻ gọi thẳng cần thứ
--- database không tự làm được (Cloudflare Turnstile trên form, hay giữ chỗ riêng
--- cho yêu cầu đã xác nhận) — để Khánh quyết, ghi trong PR.
+-- nhận câu bận / câu khoá cho tới hết cửa sổ; ai biết số điện thoại của một
+-- khách thì khoá được tra cứu của khách đó 15 phút một lần. Câu đó nói đúng sự
+-- thật và chỉ đường gọi nhà hàng; khung giờ không bị lấp vô hạn, bảng không
+-- đầy, mã đặt bàn không dò được. Chặn hẳn kẻ gọi thẳng cần thứ database không
+-- tự làm được (Cloudflare Turnstile trên form, hay giữ chỗ riêng cho yêu cầu
+-- đã xác nhận) — để Khánh quyết, ghi trong PR.
 --
 -- CHỈ ĐẾM LƯỢT ĐƯỢC NHẬN
 --
@@ -87,10 +92,14 @@
 --
 -- Đếm rồi ghi mà không khoá thì 50 lượt song song cùng đếm thấy 0 và cùng lọt.
 -- Mỗi câu đếm đứng SAU một khoá: tao_dat_ban có khoá dòng chi_nhanh (0062) và
--- khoá theo số điện thoại; các xô còn lại dùng pg_advisory_xact_lock — tự nhả
+-- khoá theo số điện thoại; các hàm còn lại dùng pg_advisory_xact_lock — tự nhả
 -- khi giao dịch kết thúc. Ở READ COMMITTED câu đếm sau khoá chụp ảnh mới, thấy
 -- dòng lượt trước vừa commit. Thứ tự lấy khoá cố định (chi nhánh → số điện thoại
--- → xô IP → xô chi nhánh) nên không có vòng chờ.
+-- → xô IP → xô chi nhánh) nên không có vòng chờ. Hàm có bảng riêng (vé, hồ sơ,
+-- nhật ký tra cứu, sự kiện web) đếm thẳng trên bảng đó, MỘT lần quét theo
+-- created_at cho mọi xô (count … filter); chỉ tao_dat_ban cần sổ riêng (mục 1).
+-- Vé tải CV: storage-api kiểm policy trong một savepoint rồi hủy — khoá ở đó
+-- nhả trước khi dòng commit — nên chặn song song nằm ở trigger (mục 4).
 --
 -- GIỜ: mọi cửa sổ là now() - interval — một khoảng thời gian, không phải ngày,
 -- nên không phụ thuộc múi giờ phiên. "Ngày từ hôm nay" của số điện thoại dùng
@@ -114,7 +123,7 @@
 -- hay nhân viên tạo. Các hàm khác đếm thẳng trên bảng của chúng (phieu_tai_len,
 -- ho_so_ung_tuyen, nhat_ky_tra_cuu, su_kien_web), như 0012 / 0013 vẫn làm.
 --
--- khoa: 'ip:<địa chỉ>', 'ip:-' (xô chung của IP null), 'cn:<id chi nhánh>'.
+-- khoa: 'ip:<địa chỉ>', 'cn:<id chi nhánh>'.
 -- Dòng quá 1 ngày tự dọn dần ở mỗi lượt lấy (cửa sổ dài nhất là 1 giờ).
 -- RLS bật, không policy, thu mọi quyền: không ai đọc / ghi thẳng.
 create table gioi_han_luot (
@@ -311,14 +320,11 @@ begin
       end if;
     end if;
 
-    -- Theo IP. p_ip do người gọi truyền — lớp mỏng; null là MỘT xô chung.
-    if p_ip is not null then
-      if not gioi_han_lay_luot('tao_dat_ban', 'ip:' || host(p_ip), 5, interval '1 hour') then
-        raise exception 'Mạng bạn đang dùng đã gửi quá nhiều yêu cầu đặt bàn, vui lòng thử lại sau hoặc gọi nhà hàng'
-          using errcode = 'check_violation';
-      end if;
-    elsif not gioi_han_lay_luot('tao_dat_ban', 'ip:-', 20, interval '1 hour') then
-      raise exception 'Hệ thống đang nhận quá nhiều yêu cầu, vui lòng thử lại sau hoặc liên hệ trực tiếp với nhà hàng'
+    -- Theo IP. p_ip do người gọi truyền — lớp mỏng. Null (bot Messenger) không
+    -- có xô riêng: xem đầu file.
+    if p_ip is not null
+       and not gioi_han_lay_luot('tao_dat_ban', 'ip:' || host(p_ip), 5, interval '1 hour') then
+      raise exception 'Mạng bạn đang dùng đã gửi quá nhiều yêu cầu đặt bàn, vui lòng thử lại sau hoặc gọi nhà hàng'
         using errcode = 'check_violation';
     end if;
 
@@ -355,7 +361,7 @@ end;
 $$;
 
 comment on function tao_dat_ban is
-  'API công khai cho website và Messenger. SECURITY DEFINER. Kiểm tra chỗ trống nguyên tử và chặn khung giờ đã qua theo giờ Việt Nam. Từ 0062: lời gọi không phiên gửi lại Y HỆT trong 10 phút nhận lại đúng dòng cũ. Từ 0066: lời gọi không phiên bị giới hạn — 3 yêu cầu còn chờ mỗi số điện thoại, 5 / giờ mỗi IP (IP null là một xô chung 20 / giờ), 30 / giờ mỗi chi nhánh.';
+  'API công khai cho website và Messenger. SECURITY DEFINER. Kiểm tra chỗ trống nguyên tử và chặn khung giờ đã qua theo giờ Việt Nam. Từ 0062: lời gọi không phiên gửi lại Y HỆT trong 10 phút nhận lại đúng dòng cũ. Từ 0066: lời gọi không phiên bị giới hạn — 3 yêu cầu còn chờ mỗi số điện thoại, 5 / giờ mỗi IP (p_ip khác null), 30 / giờ mỗi chi nhánh.';
 
 
 -- =============================================================================
@@ -363,20 +369,21 @@ comment on function tao_dat_ban is
 -- =============================================================================
 -- nhat_ky_tra_cuu thêm sdt_bam: md5 của số điện thoại đã chuẩn hóa, để đếm lần
 -- sai theo số mà bảng không hiện số thô cho người đọc lướt. KHÔNG phải ẩn danh —
--- 10 chữ số dò ngược được; bảng chỉ chủ sở hữu đọc (0013).
+-- 10 chữ số dò ngược được; bảng chỉ chủ sở hữu đọc (0013). Từ bản này mọi lần
+-- tra đều ghi, nên dòng quá 90 ngày tự dọn dần (như su_kien_web, 0013) — đủ dài
+-- để làm bằng chứng nếu có ai dò mã, không giữ IP và số điện thoại mãi.
 alter table nhat_ky_tra_cuu add column sdt_bam text;
 
-create index nhat_ky_tra_cuu_sdt_idx on nhat_ky_tra_cuu (sdt_bam, created_at desc)
-  where sdt_bam is not null;
 create index nhat_ky_tra_cuu_tao_idx on nhat_ky_tra_cuu (created_at);
 
 comment on column nhat_ky_tra_cuu.sdt_bam is
-  'md5 của số điện thoại đã chuẩn hóa người tra gõ (0066) — để khoá dò mã theo số. Không phải ẩn danh.';
+  'md5 của số điện thoại đã chuẩn hóa người tra gõ (0066) — để khoá dò mã theo số. Không phải ẩn danh. Dòng quá 90 ngày tự dọn.';
 
 
 -- -----------------------------------------------------------------------------
--- Khoá tra cứu: ném 'Tra cứu bị tạm khoá…' (câu 0013) khi một trong bốn xô đã
--- đầy trong 15 phút. Chỉ đếm — tra_cuu_dat_ban / huy_dat_ban ghi dòng sau đó.
+-- Khoá tra cứu: ném 'Tra cứu bị tạm khoá…' (câu 0013) khi một trong ba xô đã
+-- đầy trong 15 phút. Chỉ đếm — tra_cuu_dat_ban / huy_dat_ban ghi dòng sau đó
+-- (ghi_lan_tra_cuu). Một lần quét: trần toàn cục giữ cửa sổ ≤ 100 dòng.
 -- Khoá advisory chung cho mọi lượt tra và hủy: lượt cùng lúc đếm lần lượt.
 -- KHÔNG security definer: chỉ hai hàm definer trên gọi nó.
 -- -----------------------------------------------------------------------------
@@ -387,44 +394,23 @@ volatile
 set search_path = public
 as $$
 declare
-  v_dem integer;
+  v_sai_ip  integer;
+  v_sai_sdt integer;
+  v_tat_ca  integer;
 begin
   perform pg_advisory_xact_lock(hashtext('nhat_ky_tra_cuu'));
 
-  -- Theo IP: 6 lần sai như 0013. IP null (Messenger) là MỘT xô chung, trần 20.
-  if p_ip is not null then
-    select count(*) into v_dem from nhat_ky_tra_cuu
-    where ip = p_ip and not thanh_cong
-      and created_at > now() - interval '15 minutes';
-    if v_dem >= 6 then
-      raise exception 'Tra cứu bị tạm khoá, vui lòng gọi nhà hàng'
-        using errcode = 'check_violation';
-    end if;
-  else
-    select count(*) into v_dem from nhat_ky_tra_cuu
-    where ip is null and not thanh_cong
-      and created_at > now() - interval '15 minutes';
-    if v_dem >= 20 then
-      raise exception 'Tra cứu bị tạm khoá, vui lòng gọi nhà hàng'
-        using errcode = 'check_violation';
-    end if;
-  end if;
-
-  -- Theo số điện thoại: dò mã của MỘT khách từ nhiều IP.
-  if p_sdt_bam is not null then
-    select count(*) into v_dem from nhat_ky_tra_cuu
-    where sdt_bam = p_sdt_bam and not thanh_cong
-      and created_at > now() - interval '15 minutes';
-    if v_dem >= 5 then
-      raise exception 'Tra cứu bị tạm khoá, vui lòng gọi nhà hàng'
-        using errcode = 'check_violation';
-    end if;
-  end if;
-
-  -- Toàn cục, mọi lần (đúng cả): đổi IP lẫn số mỗi lần cũng không làm đầy bảng.
-  select count(*) into v_dem from nhat_ky_tra_cuu
+  select count(*) filter (where p_ip is not null and ip = p_ip and not thanh_cong),
+         count(*) filter (where p_sdt_bam is not null and sdt_bam = p_sdt_bam and not thanh_cong),
+         count(*)
+    into v_sai_ip, v_sai_sdt, v_tat_ca
+  from nhat_ky_tra_cuu
   where created_at > now() - interval '15 minutes';
-  if v_dem >= 100 then
+
+  -- IP: 6 lần sai như 0013 (null — bot Messenger — không có xô riêng: đầu file).
+  -- Số điện thoại: dò mã của MỘT khách từ nhiều IP. Toàn cục, mọi lần (đúng
+  -- cả): đổi IP lẫn số mỗi lần cũng không dò được mã, không làm đầy bảng.
+  if v_sai_ip >= 6 or v_sai_sdt >= 5 or v_tat_ca >= 100 then
     raise exception 'Tra cứu bị tạm khoá, vui lòng gọi nhà hàng'
       using errcode = 'check_violation';
   end if;
@@ -432,7 +418,33 @@ end;
 $$;
 
 comment on function kiem_khoa_tra_cuu(inet, text) is
-  'NỘI BỘ (0066): khoá tra cứu / hủy đặt bàn — 15 phút: 6 lần sai mỗi IP (IP null: 20, xô chung), 5 lần sai mỗi số điện thoại, 100 lần mọi người. Ném câu khoá của 0013.';
+  'NỘI BỘ (0066): khoá tra cứu / hủy đặt bàn — 15 phút: 6 lần sai mỗi IP (p_ip khác null), 5 lần sai mỗi số điện thoại, 100 lần mọi người. Ném câu khoá của 0013.';
+
+
+-- Ghi một lần tra / hủy và dọn dần dòng quá 90 ngày (tối đa 50 dòng mỗi lần,
+-- skip locked như gioi_han_lay_luot). KHÔNG security definer: chỉ tra_cuu_dat_ban
+-- và huy_dat_ban gọi.
+create or replace function ghi_lan_tra_cuu(p_ip inet, p_ma text, p_thanh_cong boolean, p_sdt_bam text)
+returns void
+language plpgsql
+volatile
+set search_path = public
+as $$
+begin
+  insert into nhat_ky_tra_cuu (ip, ma_thu, thanh_cong, sdt_bam)
+  values (p_ip, left(coalesce(p_ma, ''), 12), coalesce(p_thanh_cong, false), p_sdt_bam);
+
+  delete from nhat_ky_tra_cuu
+  where id in (select n.id from nhat_ky_tra_cuu n
+               where n.created_at < now() - interval '90 days'
+               order by n.created_at
+               limit 50
+               for update skip locked);
+end;
+$$;
+
+comment on function ghi_lan_tra_cuu(inet, text, boolean, text) is
+  'NỘI BỘ (0066): ghi một dòng nhat_ky_tra_cuu (kèm sdt_bam) và dọn dần dòng quá 90 ngày. Chỉ tra_cuu_dat_ban / huy_dat_ban gọi.';
 
 
 -- Chép 0013; VOLATILE (tự ghi nhật ký), kiểm khoá cho cả IP null, ghi một dòng
@@ -489,8 +501,7 @@ begin
   v_thay := found;
 
   -- 0066: tự ghi — không còn trông vào người gọi gọi thêm ghi_nhat_ky_tra_cuu.
-  insert into nhat_ky_tra_cuu (ip, ma_thu, thanh_cong, sdt_bam)
-  values (p_ip, left(coalesce(p_ma, ''), 12), v_thay, v_bam);
+  perform ghi_lan_tra_cuu(p_ip, p_ma, v_thay, v_bam);
 end;
 $$;
 
@@ -527,8 +538,7 @@ begin
   for update;
 
   if not found then
-    insert into nhat_ky_tra_cuu (ip, ma_thu, thanh_cong, sdt_bam)
-    values (p_ip, left(coalesce(p_ma, ''), 12), false, v_bam);
+    perform ghi_lan_tra_cuu(p_ip, p_ma, false, v_bam);
     return false;
   end if;
 
@@ -543,8 +553,7 @@ begin
                 || coalesce(': ' || p_ly_do, '')
   where id = v_dat.id;
 
-  insert into nhat_ky_tra_cuu (ip, ma_thu, thanh_cong, sdt_bam)
-  values (p_ip, left(coalesce(p_ma, ''), 12), true, v_bam);
+  perform ghi_lan_tra_cuu(p_ip, p_ma, true, v_bam);
   return true;
 end;
 $$;
@@ -558,7 +567,7 @@ comment on function ghi_nhat_ky_tra_cuu(inet, text, boolean) is
 -- =============================================================================
 create index phieu_tai_len_tao_idx on phieu_tai_len (created_at);
 
--- Chép 0012; khoá trước khi đếm, IP null là xô chung, thêm trần toàn cục.
+-- Chép 0012; khoá trước khi đếm, IP null đếm như một IP, thêm trần toàn cục.
 create or replace function xin_phieu_tai_cv(p_ip inet default null)
 returns uuid
 language plpgsql
@@ -566,8 +575,10 @@ security definer
 set search_path = public
 as $$
 declare
-  v_dem int;
-  v_id  uuid;
+  v_cua_ip int;
+  v_gio    int;
+  v_ngay   int;
+  v_id     uuid;
 begin
   if not cong_tac_bat('hien_tuyen_dung') then
     raise exception 'Cổng tuyển dụng đang tạm đóng'
@@ -575,30 +586,23 @@ begin
   end if;
 
   -- Vé là quyền ghi vào kho file. Không phát vô tội vạ.
-  -- 0066: lượt cùng lúc đếm lần lượt.
+  -- 0066: khoá trước khi đếm; IP null đếm như MỘT IP; trần toàn cục giờ và
+  -- ngày (đổi p_ip mỗi lần không lách được). Mỗi vé tối đa 5 MB (file_size_limit
+  -- 0014), một file (mục dưới): 100 vé / ngày là ≤ 500 MB / ngày trong kho.
   perform pg_advisory_xact_lock(hashtext('phieu_tai_len'));
 
-  if p_ip is not null then
-    select count(*) into v_dem from phieu_tai_len
-    where ip = p_ip and created_at > now() - interval '1 hour';
-    if v_dem >= 10 then
-      raise exception 'Bạn đã thử tải lên quá nhiều lần, vui lòng chờ ít phút'
-        using errcode = 'check_violation';
-    end if;
-  else
-    -- 0066: IP null là MỘT xô chung, không phải "không giới hạn".
-    select count(*) into v_dem from phieu_tai_len
-    where ip is null and created_at > now() - interval '1 hour';
-    if v_dem >= 30 then
-      raise exception 'Hệ thống đang nhận quá nhiều yêu cầu, vui lòng thử lại sau hoặc liên hệ trực tiếp với nhà hàng'
-        using errcode = 'check_violation';
-    end if;
-  end if;
+  select count(*) filter (where ip is not distinct from p_ip and created_at > now() - interval '1 hour'),
+         count(*) filter (where created_at > now() - interval '1 hour'),
+         count(*)
+    into v_cua_ip, v_gio, v_ngay
+  from phieu_tai_len
+  where created_at > now() - interval '24 hours';
 
-  -- 0066: trần toàn cục — đổi p_ip mỗi lần cũng không lách được.
-  select count(*) into v_dem from phieu_tai_len
-  where created_at > now() - interval '1 hour';
-  if v_dem >= 60 then
+  if v_cua_ip >= 10 and p_ip is not null then
+    raise exception 'Bạn đã thử tải lên quá nhiều lần, vui lòng chờ ít phút'
+      using errcode = 'check_violation';
+  end if;
+  if v_cua_ip >= 10 or v_gio >= 30 or v_ngay >= 100 then
     raise exception 'Hệ thống đang nhận quá nhiều yêu cầu, vui lòng thử lại sau hoặc liên hệ trực tiếp với nhà hàng'
       using errcode = 'check_violation';
   end if;
@@ -610,18 +614,26 @@ $$;
 
 
 -- -----------------------------------------------------------------------------
--- MỘT VÉ = MỘT FILE. Policy tải CV (0016) gọi hàm này dưới vai anon cho từng
--- file. Bản 0016 chỉ hỏi "vé còn hạn, chưa dùng" — vé chỉ thành "đã dùng" lúc
--- nộp hồ sơ, nên trong 15 phút một vé tải bao nhiêu file cũng được.
+-- MỘT VÉ = MỘT FILE. Policy tải CV (0016) gọi ve_con_hieu_luc() dưới vai anon
+-- cho từng file. Bản 0016 chỉ hỏi "vé còn hạn, chưa dùng" — vé chỉ thành "đã
+-- dùng" lúc nộp hồ sơ, nên trong 15 phút một vé tải bao nhiêu file cũng được
+-- (đã thử trên Supabase dựng cục bộ, crm/README.md "Nhật ký kiểm tay kho file").
 --
--- Từ 0066: thư mục của vé đã có file trong kho ho-so-ung-tuyen thì từ chối.
---   · So không phân biệt hoa thường: đoạn đầu đường dẫn do người gửi đặt, và
---     regex dưới nhận cả chữ hoa — 'ABCD…/' và 'abcd…/' là cùng một vé.
---   · VOLATILE + khoá advisory theo vé: hai lượt tải cùng vé xếp hàng; lượt sau
---     tìm file SAU khi lượt trước commit (hàm STABLE dùng ảnh chụp của câu gọi
---     nên sẽ không thấy).
---   · Không có schema storage (PGlite, CI) thì bỏ qua bước tìm file.
--- Thử tay trên Beeftown-thu: ghi trong PR.
+-- Hai chốt, vì storage-api (src/storage/uploader.ts, đọc 12/10/2026) kiểm
+-- policy HAI lần:
+--   1. ve_con_hieu_luc — lần kiểm trước khi nhận file (testPermission): thư
+--      mục của vé đã có file trong kho ho-so-ung-tuyen thì từ chối. Chặn tải
+--      lần lượt, trước khi tốn băng thông.
+--   2. Trigger ho_so_mot_ve_mot_file — lần ghi dòng thật (completeUpload ghi
+--      bằng vai quản trị kho; lần kiểm policy thứ hai nằm trong một savepoint
+--      bị hủy, khoá lấy trong policy nhả ra cùng savepoint, TRƯỚC khi dòng
+--      commit). Trigger giữ khoá advisory theo vé tới hết giao dịch: hai lượt
+--      tải SONG SONG cùng vé — lượt sau chờ, thấy file lượt trước, ném lỗi;
+--      storage-api xoá phần file đã nhận (ObjectAdminDelete).
+-- So không phân biệt hoa thường: đoạn đầu đường dẫn do người gửi đặt, và regex
+-- nhận cả chữ hoa — 'ABCD…/' và 'abcd…/' là cùng một vé.
+-- Không có schema storage (PGlite, CI) thì bỏ qua bước tìm file; trigger chỉ
+-- gắn khi có schema storage. Thử tay trên Beeftown-thu: ghi trong PR.
 -- -----------------------------------------------------------------------------
 create or replace function ve_con_hieu_luc(p_doan text)
 returns boolean
@@ -644,6 +656,8 @@ begin
 
   v_id := p_doan::uuid;
 
+  -- Khi lần kiểm nằm ngay trong giao dịch ghi dòng (bản storage-api khác), khoá
+  -- này tự xếp hàng hai lượt cùng vé; ở bản hiện tại trigger dưới mới giữ được.
   perform pg_advisory_xact_lock(hashtext('ve_tai_cv:' || v_id::text));
 
   if not exists (
@@ -669,6 +683,68 @@ $$;
 
 comment on function ve_con_hieu_luc is
   'Đoạn đầu đường dẫn kho CV có phải một vé còn hiệu lực VÀ chưa có file nào không (0066: một vé = một file). Chỉ trả boolean — không mở đường đọc nào vào phieu_tai_len.';
+
+
+-- Trigger BEFORE INSERT trên storage.objects — chốt 2 ở trên. KHÔNG security
+-- definer: chạy dưới vai đang ghi dòng — quản trị kho (chủ bảng, thấy mọi
+-- dòng) ở lần ghi thật. Ở lần kiểm thử của storage-api (vai anon, bị hủy) vai
+-- đó không đọc được storage.objects thì bỏ qua — chốt 1 đã kiểm lúc đó.
+create or replace function ho_so_mot_ve_mot_file()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+declare
+  v_doan text;
+begin
+  if new.bucket_id is distinct from 'ho-so-ung-tuyen' then
+    return new;
+  end if;
+
+  v_doan := lower(split_part(new.name, '/', 1));
+  if v_doan !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then
+    return new;   -- không phải thư mục vé: policy của kho quyết
+  end if;
+
+  if not has_table_privilege('storage.objects', 'select') then
+    return new;
+  end if;
+
+  perform pg_advisory_xact_lock(hashtext('ve_tai_cv:' || v_doan));
+
+  if exists (select 1 from storage.objects o
+             where o.bucket_id = new.bucket_id
+               and lower(o.name) like v_doan || '/%'
+               and o.name is distinct from new.name) then
+    raise exception 'Vé tải CV này đã có một file'
+      using errcode = 'unique_violation';
+  end if;
+
+  return new;
+end;
+$$;
+
+comment on function ho_so_mot_ve_mot_file() is
+  'Trigger BEFORE INSERT trên storage.objects (0066): thư mục vé tải CV đã có một file thì từ chối file thứ hai — giữ khoá theo vé tới hết giao dịch nên hai lượt tải song song không cùng lọt.';
+
+-- KHỐI STORAGE 0066 — PGlite không có schema storage: bỏ qua, như 0014 / 0016.
+-- test-cong-khai-gioi-han.mjs chạy lại nguyên khối này trên bảng storage.objects
+-- dựng giả. Changelog Supabase 21/04/2025: trigger trên storage.objects vẫn được
+-- phép (chỉ cấm tạo bảng / hàm / chỉ mục trong schema storage).
+do $$
+begin
+  if not exists (select 1 from pg_namespace where nspname = 'storage') then
+    raise notice 'Không có schema storage (đang chạy PGlite) — bỏ qua trigger một vé một file của 0066.';
+    return;
+  end if;
+
+  execute 'drop trigger if exists ho_so_mot_ve_mot_file on storage.objects';
+  execute 'create trigger ho_so_mot_ve_mot_file before insert on storage.objects for each row execute function public.ho_so_mot_ve_mot_file()';
+
+  raise notice '0066: đã gắn trigger một vé một file vào storage.objects.';
+end
+$$;
+-- HẾT KHỐI STORAGE 0066
 
 
 -- =============================================================================
@@ -703,6 +779,7 @@ declare
   v_vi_tri vi_tri_tuyen_dung;
   v_sdt    text;
   v_dem    int;
+  v_tong   int;
   v_phieu  phieu_tai_len;
   v_ma     text;
   v_duong_dan text;
@@ -721,28 +798,19 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  -- ---- 0066 · Khoá trước khi đếm; IP null là xô chung; trần toàn cục ------
+  -- ---- 0066 · Khoá trước khi đếm; IP null đếm như một IP; trần toàn cục ---
   perform pg_advisory_xact_lock(hashtext('ho_so_ung_tuyen'));
 
-  if p_ip is not null then
-    select count(*) into v_dem from ho_so_ung_tuyen
-    where ip = p_ip and created_at > now() - interval '1 hour';
-    if v_dem >= 5 then
-      raise exception 'Bạn đã nộp quá nhiều hồ sơ, vui lòng liên hệ trực tiếp với nhà hàng'
-        using errcode = 'check_violation';
-    end if;
-  else
-    select count(*) into v_dem from ho_so_ung_tuyen
-    where ip is null and created_at > now() - interval '1 hour';
-    if v_dem >= 15 then
-      raise exception 'Hệ thống đang nhận quá nhiều yêu cầu, vui lòng thử lại sau hoặc liên hệ trực tiếp với nhà hàng'
-        using errcode = 'check_violation';
-    end if;
-  end if;
-
-  select count(*) into v_dem from ho_so_ung_tuyen
+  select count(*) filter (where ip is not distinct from p_ip), count(*)
+    into v_dem, v_tong
+  from ho_so_ung_tuyen
   where created_at > now() - interval '1 hour';
-  if v_dem >= 30 then
+
+  if v_dem >= 5 and p_ip is not null then
+    raise exception 'Bạn đã nộp quá nhiều hồ sơ, vui lòng liên hệ trực tiếp với nhà hàng'
+      using errcode = 'check_violation';
+  end if;
+  if v_dem >= 5 or v_tong >= 30 then
     raise exception 'Hệ thống đang nhận quá nhiều yêu cầu, vui lòng thử lại sau hoặc liên hệ trực tiếp với nhà hàng'
       using errcode = 'check_violation';
   end if;
@@ -862,36 +930,24 @@ security definer
 set search_path = public
 as $$
 declare
-  v_dem int;
-  v_cn  uuid;
+  v_phien int;
+  v_phut  int;
+  v_gio   int;
+  v_cn    uuid;
 begin
   -- Trần thô để một trang bị lỗi vòng lặp không làm ngập bảng.
-  if p_phien is not null then
-    select count(*) into v_dem from su_kien_web
-    where phien_id = p_phien and created_at > now() - interval '1 minute';
-    if v_dem >= 60 then
-      return;
-    end if;
-  else
-    -- 0066: phiên null là MỘT xô chung, không phải "không giới hạn".
-    select count(*) into v_dem from su_kien_web
-    where phien_id is null and created_at > now() - interval '1 minute';
-    if v_dem >= 60 then
-      return;
-    end if;
-  end if;
-
-  -- 0066: p_phien do người gọi chọn — đổi mỗi lần là lách được trần trên.
-  -- Không khoá: đây là đếm thô, vượt vài dòng khi nhiều lượt cùng lúc không hại.
-  select count(*) into v_dem from su_kien_web
-  where created_at > now() - interval '1 minute';
-  if v_dem >= 300 then
-    return;
-  end if;
-
-  select count(*) into v_dem from su_kien_web
+  -- 0066: phiên null đếm như MỘT phiên; p_phien do người gọi chọn — đổi mỗi
+  -- lần là lách được, nên thêm trần toàn cục phút và giờ. Một lần quét theo
+  -- created_at (≤ 3000 dòng). Không khoá: đây là đếm thô, vượt vài dòng khi
+  -- nhiều lượt cùng lúc không hại.
+  select count(*) filter (where phien_id is not distinct from p_phien and created_at > now() - interval '1 minute'),
+         count(*) filter (where created_at > now() - interval '1 minute'),
+         count(*)
+    into v_phien, v_phut, v_gio
+  from su_kien_web
   where created_at > now() - interval '1 hour';
-  if v_dem >= 3000 then
+
+  if v_phien >= 60 or v_phut >= 300 or v_gio >= 3000 then
     return;
   end if;
 
@@ -924,6 +980,8 @@ begin
   if exists (select 1 from pg_roles where rolname = 'authenticated') then
     execute 'revoke execute on function gioi_han_lay_luot(text, text, integer, interval) from authenticated';
     execute 'revoke execute on function kiem_khoa_tra_cuu(inet, text) from authenticated';
+    execute 'revoke execute on function ghi_lan_tra_cuu(inet, text, boolean, text) from authenticated';
+    execute 'revoke execute on function ho_so_mot_ve_mot_file() from authenticated';
     execute 'revoke execute on function ghi_nhat_ky_tra_cuu(inet, text, boolean) from authenticated';
   end if;
 end

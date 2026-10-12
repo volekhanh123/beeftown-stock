@@ -132,6 +132,7 @@ export const CAU_EN: Readonly<Record<string, string>> = {
     'Too many table requests from your network, please try again later or call the restaurant',
   'Hệ thống đang nhận quá nhiều yêu cầu, vui lòng thử lại sau hoặc liên hệ trực tiếp với nhà hàng':
     'The system is receiving too many requests, please try again later or contact the restaurant directly',
+  'Vé tải CV này đã có một file': 'This CV upload ticket already has a file',
   'Đặt bàn này không huỷ được nữa, vui lòng gọi nhà hàng': 'This booking can no longer be cancelled, please call the restaurant',
   'Không có quyền xem phiếu đo': 'You are not allowed to view analytics records',
   'Chỉ chủ sở hữu mới dọn được dữ liệu đo lường': 'Only the owner can clean up analytics data',

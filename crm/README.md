@@ -214,6 +214,13 @@ Hai điều lộ ra, cần biết khi đọc bước 6 ở cuối `0014`:
 
 **Chưa làm:** bước 1, 3, 4, 7, 8, và **toàn bộ danh sách trên project Supabase thật** — vẫn bắt buộc trước khi mở cổng tuyển dụng.
 
+**`0066` — một vé = một file. Chưa thử tay.** Điều thấy ở lần một ("cùng một vé vẫn tải thêm được file tên khác") là lỗ `0066` vá, bằng hai chốt: `ve_con_hieu_luc()` trong policy (tải lần lượt) và trigger `ho_so_mot_ve_mot_file` trên `storage.objects` (tải song song — storage-api kiểm policy lần cuối trong một savepoint bị hủy, nên khoá trong policy nhả trước khi dòng commit). Trên Beeftown-thu, sau khi chạy `0066`, bằng khóa anon:
+
+1. `select tgname from pg_trigger where tgrelid = 'storage.objects'::regclass` có `ho_so_mot_ve_mot_file`.
+2. Xin vé, tải `<mã vé>/cv.pdf` → được; tải thêm `<mã vé>/cv-2.pdf` → bị từ chối (RLS).
+3. Xin vé mới, tải **cùng lúc** 5 file tên khác nhau vào thư mục vé đó (`Promise.all`) → đúng một file lên kho; bốn lượt kia lỗi, và trong kho không còn file thừa nào của vé đó.
+4. Nộp hồ sơ qua website kèm CV (tin có hỏi CV) → hồ sơ vẫn kèm CV như trước.
+
 ## Bốn quyết định thiết kế quan trọng
 
 ### 1. Sổ cái điểm bất biến

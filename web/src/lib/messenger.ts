@@ -585,7 +585,7 @@ export type KetQuaGoi =
   | { goi: 'huy'; ok: true; daHuy: boolean; biKhoa: boolean }
   | { goi: 'huy'; ok: false; loi?: string }
   | { goi: 'thong_tin'; ok: true; muc: 'gio_mo' | 'thuc_don' | 'dat_ban' | 'khoa'; tt: ThongTinCongKhai }
-  /** loi = câu database (tiếng Việt) khi tra cứu bị từ chối — đang khoá (0066). */
+  /** loi = câu lỗi khi tra cứu không được — database đang khoá (0066) hay lỗi khác. */
   | { goi: 'lich_trong' | 'tra_cuu' | 'thong_tin'; ok: false; muc?: string; loi?: string };
 
 export type DauVao = SuKienKhach | { loai: 'ket_qua'; kq: KetQuaGoi };
@@ -698,6 +698,9 @@ const TRANG_THAI: Record<string, string> = {
 
 /** Câu database tiếng Việt (có dấu) thì hiện nguyên văn cho khách — như cauLoiDatabase() của lib/chu.ts. */
 const CO_DAU = /[àáâãèéêìíòóôõùúýăđĩũơưạảấầẩẫậắằẳẵặẹẻẽếềểễệỉịọỏốồổỗộớờởỡợụủứừửữựỳỵỷỹ]/i;
+
+/** Câu khoá tra cứu / hủy của database (0013, 0066). */
+const KHOA_TRA_CUU = /^Tra cứu bị tạm khoá/;
 
 /** Câu tao_dat_ban từ chối vì giới hạn tần suất (0066) — phần đầu câu, đuôi có thể đổi. */
 const GIOI_HAN_DAT_BAN = /^(Số điện thoại này đã có nhiều yêu cầu đặt bàn|Mạng bạn đang dùng đã gửi quá nhiều|Hệ thống đang nhận quá nhiều yêu cầu)/;
@@ -1119,11 +1122,11 @@ function xuLyKetQua(phien: PhienBot, r: KetQuaGoi, nc: NguCanh): KetQuaBuoc {
     }
     case 'tra_cuu': {
       if (!r.ok) {
-        // Database đang khoá tra cứu (0066 — kể cả xô chung của mọi khách Messenger): hiện nguyên
-        // câu của nó như nhánh 'huy'. Không dùng CAU_BOT.khoaTra — câu đó nói "bạn đã nhập sai",
-        // sai khi khoá do người khác. Không đếm 'loi': hệ thống không hỏng.
+        // Database đang khoá tra cứu (0066 — theo số điện thoại hay trần toàn cục, có thể do người
+        // KHÁC dò mã): hiện nguyên câu của nó. Không dùng CAU_BOT.khoaTra — câu đó nói "bạn đã nhập
+        // sai". Không đếm 'loi': hệ thống không hỏng. Lỗi khác vẫn là câu chung + đếm 'loi'.
         const loi = String(r.loi ?? '');
-        return veMenu([CO_DAU.test(loi) ? loi : CAU_BOT.khongTraDuoc], { dem: CO_DAU.test(loi) ? [] : ['loi'] });
+        return KHOA_TRA_CUU.test(loi) ? veMenu([loi]) : veMenu([CAU_BOT.khongTraDuoc], { dem: ['loi'] });
       }
       if (!r.dong) {
         if (r.biKhoa) return kq('menu', {}, [{ chu: CAU_BOT.khongThay }], { goi: { goi: 'thong_tin', muc: 'khoa' } });

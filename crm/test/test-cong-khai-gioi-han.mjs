@@ -25,6 +25,7 @@
  * như test-dat-ban-goi-lai.mjs.
  */
 
+import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dungDatabase, taoBoDem, UID } from './kho-chung.mjs';
@@ -33,7 +34,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const WEB = join(__dirname, '..', '..', 'web', 'src', 'lib');
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN CRM — GIỚI HẠN TẦN SUẤT CỦA CÁC HÀM CÔNG KHAI (0066)');
-const { db, cnA, cnB, duoi, duoiAnon } = await dungDatabase();
+const { db, cnA, cnB, duoi, duoiAnon, phaiLoi } = await dungDatabase();
 
 // Chi nhánh A rộng (60 bàn) để thứ chặn là giới hạn, không phải hết chỗ. Chi
 // nhánh B 4 bàn: chỉ dùng để thấy trần tính riêng từng chi nhánh.
@@ -138,7 +139,7 @@ await nhom('0 · TIỀN ĐỀ — chữ ký không đổi, quyền gọi, bảng
   const { vol } = await mot(`select provolatile as vol from pg_proc where proname = 'tra_cuu_dat_ban'`);
   ok('tra_cuu_dat_ban() là VOLATILE — tự ghi nhật ký được, không phụ thuộc người gọi có ghi hay không', vol === 'v', vol);
 
-  for (const ham of ['gioi_han_lay_luot', 'kiem_khoa_tra_cuu']) {
+  for (const ham of ['gioi_han_lay_luot', 'kiem_khoa_tra_cuu', 'ghi_lan_tra_cuu', 'ho_so_mot_ve_mot_file']) {
     const r = await mot(`select p.prosecdef as dinh, array_to_string(p.proconfig, ',') as cfg,
                                 has_function_privilege('anon', p.oid, 'execute') as anon,
                                 has_function_privilege('authenticated', p.oid, 'execute') as auth
@@ -150,7 +151,7 @@ await nhom('0 · TIỀN ĐỀ — chữ ký không đổi, quyền gọi, bảng
 
   for (const [ai, chay] of [['anon', s => duoiAnon(s)], ['tài khoản không có nhan_su', s => duoi(null, s)], ['chủ sở hữu', s => duoi(UID.chu, s)]]) {
     const doc = await chay(`select count(*) from gioi_han_luot`);
-    const ghi = await chay(`insert into gioi_han_luot (viec, khoa) values ('tao_dat_ban', 'ip:-')`);
+    const ghi = await chay(`insert into gioi_han_luot (viec, khoa) values ('tao_dat_ban', 'ip:192.0.2.1')`);
     ok(`${ai} KHÔNG đọc / ghi thẳng được gioi_han_luot`, /permission denied/i.test(doc.loi ?? '') && /permission denied/i.test(ghi.loi ?? ''),
        `${doc.loi ?? 'ĐỌC ĐƯỢC'} · ${ghi.loi ?? 'GHI ĐƯỢC'}`);
   }
@@ -158,20 +159,19 @@ await nhom('0 · TIỀN ĐỀ — chữ ký không đổi, quyền gọi, bảng
 
 // ===========================================================================
 await nhom('1 · tao_dat_ban — RÀ SOÁT 11/10: chiếm hết bàn, đổ rác vào khach_hang', async () => {
-  // Kịch bản báo cáo: lời gọi anon thẳng (p_ip null) với số điện thoại mới mỗi lần. Giới hạn
-  // không làm khung giờ rộng ra — kẻ đổi cả IP lẫn số vẫn lấy được tới trần chi nhánh (30 / giờ,
-  // mục dưới). Điều 0066 đổi: một nguồn không gửi tiếp được không giới hạn, khach_hang không đầy
-  // rác, và câu từ chối nói đúng chuyện đang xảy ra.
+  // Kịch bản báo cáo: lời gọi anon thẳng (p_ip null, hay p_ip tự bịa) với số điện thoại mới mỗi
+  // lần. Giới hạn không làm khung giờ rộng ra — kẻ đổi cả IP lẫn số vẫn lấy được tới trần chi nhánh
+  // (30 / giờ), và khi trần đã chạm thì khách thật cũng nhận câu bận tới hết giờ (đánh đổi ghi ở
+  // đầu 0066). Điều 0066 đổi: không còn vô hạn, khach_hang không đầy rác, câu từ chối nói đúng.
   await xoaSoGioiHan();
   const khachTruoc = await dem(`select count(*) from khach_hang`);
-  const nullIp = await guiLienTuc(40, i => datBan({ sdt: sdtThu(1000 + i), gio: '19:00' }));
-  ok('RÀ SOÁT 11/10: IP null (gọi thẳng bằng khoá anon) KHÔNG còn gửi được không giới hạn — lượt thứ 21 bị chặn',
-     nullIp.bi === 21, `bị chặn ở lượt ${nullIp.bi}: ${nullIp.loi}`);
+  const nullIp = await guiLienTuc(50, i => datBan({ sdt: sdtThu(1000 + i), gio: '19:00' }));
+  ok('RÀ SOÁT 11/10: IP null (gọi thẳng bằng khoá anon) KHÔNG còn gửi được không giới hạn — lượt thứ 31 bị chặn (trần chi nhánh)',
+     nullIp.bi === 31, `bị chặn ở lượt ${nullIp.bi}: ${nullIp.loi}`);
   ok('…bằng câu nói đúng sự thật (hệ thống bận), không phải "đã hết bàn"', nullIp.loi?.includes(CAU.heThongBan), nullIp.loi);
-  ok('RÀ SOÁT 11/10: khach_hang thêm đúng 20 dòng, không phải 40', (await dem(`select count(*) from khach_hang`)) - khachTruoc === 20);
-
-  const that = await datBan({ sdt: sdtThu(1999), gio: '19:00', ip: '198.51.100.10' });
-  ok('…khách thật gửi qua website (IP thật) vẫn được nhận', !that.loi && that.ma_dat_ban, moTa(that));
+  ok('RÀ SOÁT 11/10: khach_hang thêm đúng 30 dòng, không phải 50', (await dem(`select count(*) from khach_hang`)) - khachTruoc === 30);
+  // IP null không có xô riêng nhỏ hơn trần chi nhánh (đầu 0066): xô đó chỉ là công tắc tắt bot
+  // Messenger cho kẻ phá, trong khi kẻ phá thoát xô bằng cách bịa IP.
   await huyHetChoXacNhan();
 
   // Một IP thật: 5 yêu cầu mỗi giờ.
@@ -260,24 +260,30 @@ await nhom('3 · tra_cuu_dat_ban / huy_dat_ban — khoá dò mã thật sự ch�
      nk.length === 2 && nk[0].thanh_cong === true && nk[1].thanh_cong === false, JSON.stringify(nk));
   ok('…nhật ký không chứa số điện thoại thô', nk.every(r => r.sdt_bam && !String(r.sdt_bam).includes(sdtKhach.slice(2))), JSON.stringify(nk));
 
-  // RÀ SOÁT 11/10: Messenger luôn truyền p_ip null → khoá cũ là mã chết.
+  // RÀ SOÁT 11/10: Messenger luôn truyền p_ip null → khoá cũ (chỉ theo IP) là mã chết. Từ 0066
+  // khoá theo số điện thoại và toàn cục không đọc p_ip.
   await db.query(`delete from nhat_ky_tra_cuu`);
   let biKhoa = null;
-  for (let i = 1; i <= 30 && biKhoa === null; i++) {
-    const r = await tra('XXXXXX', sdtThu(5100 + i));   // mỗi lần một số khác: chỉ thử xô IP null
+  for (let i = 1; i <= 10 && biKhoa === null; i++) {
+    const r = await tra(`ZZZZZ${i + 1}`, sdtKhach);   // IP null, như bot Messenger
     if (r.loi) biKhoa = { i, loi: r.loi };
   }
-  ok('RÀ SOÁT 11/10: IP null (Messenger) giờ bị khoá — 20 lần sai, lần 21 bị khoá', biKhoa?.i === 21, JSON.stringify(biKhoa));
+  ok('RÀ SOÁT 11/10: IP null (Messenger) giờ bị khoá — 5 lần sai mã cùng một số, lần 6 bị khoá', biKhoa?.i === 6, JSON.stringify(biKhoa));
   ok('…câu khoá giữ nguyên chữ cũ', biKhoa?.loi?.includes(CAU.khoaTraCuu), biKhoa?.loi);
-  const ipThat = await tra(ma, sdtKhach, '198.51.100.61');
-  ok('…website / IP thật không bị kéo theo', ipThat.loi === null && ipThat.rows.length === 1, ipThat.loi ?? '');
   const soDongKhiKhoa = await dem(`select count(*) from nhat_ky_tra_cuu`);
-  await tra('XXXXXX', sdtThu(5199));
+  await tra('XXXXXX', sdtKhach);
   ok('Bị khoá thì không ghi thêm dòng nào (bảng không đầy dù bị gọi liên tục)',
      (await dem(`select count(*) from nhat_ky_tra_cuu`)) === soDongKhiKhoa);
   await db.query(`update nhat_ky_tra_cuu set created_at = created_at - interval '16 minutes'`);
   const sau15 = await tra(ma, sdtKhach);
   ok('…qua 15 phút thì mở lại', sau15.loi === null && sau15.rows.length === 1, sau15.loi ?? '');
+
+  // Không có xô chung cho IP null: lần sai của khách Messenger này không khoá khách Messenger khác.
+  await db.query(`delete from nhat_ky_tra_cuu`);
+  for (let i = 1; i <= 30; i++) await tra('XXXXXX', sdtThu(5100 + i));
+  const khachKhac = await tra(ma, sdtKhach);
+  ok('30 lần sai IP null với 30 số khác → khách Messenger khác vẫn tra được (không có công tắc chung dưới trần toàn cục)',
+     khachKhac.loi === null && khachKhac.rows.length === 1, khachKhac.loi ?? '');
 
   // IP thật: 6 lần sai như 0013.
   await db.query(`delete from nhat_ky_tra_cuu`);
@@ -319,6 +325,18 @@ await nhom('3 · tra_cuu_dat_ban / huy_dat_ban — khoá dò mã thật sự ch�
   }
   ok('Đổi cả IP lẫn số điện thoại mỗi lần → lần 101 bị khoá (trần toàn cục)', toanCuc?.i === 101, JSON.stringify(toanCuc));
   ok('…nhật ký tra cứu giữ đúng 100 dòng', (await dem(`select count(*) from nhat_ky_tra_cuu`)) === 100);
+
+  // Hạn giữ: mọi lần tra giờ đều ghi IP và md5 số điện thoại — dòng quá 90 ngày tự dọn dần.
+  await db.query(`delete from nhat_ky_tra_cuu`);
+  await db.query(`insert into nhat_ky_tra_cuu (ip, ma_thu, thanh_cong, created_at)
+                  select '192.0.2.200', 'CU', false, now() - interval '91 days' from generate_series(1, 60)`);
+  await db.query(`insert into nhat_ky_tra_cuu (ip, ma_thu, thanh_cong, created_at) values ('192.0.2.201', 'MOI', false, now() - interval '89 days')`);
+  await tra(ma, sdtKhach, '192.0.2.202');
+  const conCu = await dem(`select count(*) from nhat_ky_tra_cuu where ma_thu = 'CU'`);
+  ok('Mỗi lần tra dọn tối đa 50 dòng nhật ký quá 90 ngày (ghi_lan_tra_cuu)', conCu === 10, `còn ${conCu} dòng cũ`);
+  ok('…dòng 89 ngày vẫn giữ', (await dem(`select count(*) from nhat_ky_tra_cuu where ma_thu = 'MOI'`)) === 1);
+  await tra(ma, sdtKhach, '192.0.2.203');
+  ok('…lần sau dọn nốt', (await dem(`select count(*) from nhat_ky_tra_cuu where ma_thu = 'CU'`)) === 0);
   await db.query(`delete from nhat_ky_tra_cuu`);
 });
 
@@ -327,48 +345,53 @@ await nhom('4 · xin_phieu_tai_cv và vé tải CV', async () => {
   await db.query(`insert into noi_dung_cong_bo (khoa, kieu, gia_tri_bool, trang_thai)
                   values ('hien_tuyen_dung', 'bool', true, 'da_cong_bo')`);
   const xin = ip => duoiAnon(`select xin_phieu_tai_cv($1::inet) as id`, [ip]);
+  const xinDenKhiChan = async (n, ip) => {
+    for (let i = 1; i <= n; i++) {
+      const r = await xin(typeof ip === 'function' ? ip(i) : ip);
+      if (r.loi) return { i, loi: r.loi };
+    }
+    return null;
+  };
 
   await db.query(`delete from phieu_tai_len`);
-  let nullIp = null;
-  for (let i = 1; i <= 50 && nullIp === null; i++) {
-    const r = await xin(null);
-    if (r.loi) nullIp = { i, loi: r.loi };
-  }
-  ok('RÀ SOÁT 11/10: IP null không còn xin vé không giới hạn — vé thứ 31 bị từ chối', nullIp?.i === 31, JSON.stringify(nullIp));
-  ok('…câu hệ thống bận (xô chung, không phải "bạn đã thử")', nullIp?.loi?.includes(CAU.heThongBan), nullIp?.loi);
+  const nullIp = await xinDenKhiChan(30, null);
+  ok('RÀ SOÁT 11/10: IP null không còn xin vé không giới hạn — đếm như MỘT IP, vé thứ 11 bị từ chối', nullIp?.i === 11, JSON.stringify(nullIp));
+  ok('…câu hệ thống bận (không phải "bạn đã thử")', nullIp?.loi?.includes(CAU.heThongBan), nullIp?.loi);
 
   await db.query(`delete from phieu_tai_len`);
-  let motIp = null;
-  for (let i = 1; i <= 20 && motIp === null; i++) {
-    const r = await xin('198.51.100.70');
-    if (r.loi) motIp = { i, loi: r.loi };
-  }
+  const motIp = await xinDenKhiChan(20, '198.51.100.70');
   ok('Một IP thật: 10 vé / giờ như 0012, vé 11 bị từ chối bằng câu cũ', motIp?.i === 11 && motIp.loi.includes(CAU.taiNhieu), JSON.stringify(motIp));
 
   await db.query(`delete from phieu_tai_len`);
-  let toanCuc = null;
-  for (let i = 1; i <= 80 && toanCuc === null; i++) {
-    const r = await xin(`203.0.113.${i}`);
-    if (r.loi) toanCuc = { i, loi: r.loi };
-  }
-  ok('Đổi IP mỗi lần → vé 61 bị từ chối (trần toàn cục 60 / giờ)', toanCuc?.i === 61 && toanCuc.loi.includes(CAU.heThongBan), JSON.stringify(toanCuc));
+  const gio = await xinDenKhiChan(50, i => `203.0.113.${i}`);
+  ok('Đổi IP mỗi lần → vé 31 bị từ chối (trần toàn cục 30 / giờ)', gio?.i === 31 && gio.loi.includes(CAU.heThongBan), JSON.stringify(gio));
   await db.query(`update phieu_tai_len set created_at = created_at - interval '61 minutes'`);
   const sauGio = await xin('203.0.113.250');
   ok('…qua 1 giờ thì xin lại được', sauGio.loi === null, sauGio.loi ?? '');
 
+  // Trần ngày: mỗi vé ≤ 5 MB một file — 100 vé / 24 giờ là ≤ 500 MB / ngày trong kho.
+  await db.query(`insert into phieu_tai_len (ip, created_at)
+                  select ('192.0.2.' || g)::inet, now() - interval '2 hours' from generate_series(1, 69) g`);
+  const ngay = await xinDenKhiChan(5, i => `198.18.0.${i}`);
+  ok('Trần ngày: đủ 100 vé trong 24 giờ (dù rải ngoài giờ gần nhất) → vé mới bị từ chối', ngay?.i === 1 && ngay.loi.includes(CAU.heThongBan),
+     `${JSON.stringify(ngay)} · ${await dem(`select count(*) from phieu_tai_len where created_at > now() - interval '24 hours'`)} vé trong ngày`);
+  await db.query(`update phieu_tai_len set created_at = created_at - interval '25 hours'`);
+  const ve = (await xin('203.0.113.251')).rows?.[0]?.id;
+  ok('…qua 24 giờ thì xin lại được', !!ve);
+
   // RÀ SOÁT 11/10: policy tải CV chỉ hỏi "vé còn hạn, chưa dùng" → một vé tải bao nhiêu file
-  // cũng được trong 15 phút. PGlite không có schema storage: dựng đúng hai cột policy cần.
-  const ve = sauGio.rows[0].id;
+  // cũng được trong 15 phút. PGlite không có schema storage: dựng đúng các cột cần.
   const truocKhiCoKho = await duoiAnon(`select ve_con_hieu_luc($1) as duoc`, [ve]);
   ok('Không có schema storage (PGlite, CI) → ve_con_hieu_luc() vẫn chạy, vé mới hợp lệ', truocKhiCoKho.rows?.[0]?.duoc === true,
      truocKhiCoKho.loi ?? '');
   await db.exec(`create schema storage;
-                 create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text)`);
+                 create table storage.objects (id uuid primary key default gen_random_uuid(), bucket_id text, name text,
+                                               unique (bucket_id, name))`);
   const chuaCoFile = await duoiAnon(`select ve_con_hieu_luc($1) as duoc`, [ve]);
-  ok('Vé chưa có file nào → tải được file đầu tiên', chuaCoFile.rows?.[0]?.duoc === true, chuaCoFile.loi ?? '');
+  ok('Chốt 1 (policy): vé chưa có file nào → tải được file đầu tiên', chuaCoFile.rows?.[0]?.duoc === true, chuaCoFile.loi ?? '');
   await db.query(`insert into storage.objects (bucket_id, name) values ('ho-so-ung-tuyen', $1)`, [`${ve}/cv.pdf`]);
   const fileHai = await duoiAnon(`select ve_con_hieu_luc($1) as duoc`, [ve]);
-  ok('RÀ SOÁT 11/10: vé đã có một file → file thứ hai bị từ chối (một vé = một file)', fileHai.rows?.[0]?.duoc === false,
+  ok('RÀ SOÁT 11/10 — chốt 1: vé đã có một file → file thứ hai bị từ chối (một vé = một file)', fileHai.rows?.[0]?.duoc === false,
      fileHai.loi ?? 'VẪN TẢI ĐƯỢC');
   const veHoa = await duoiAnon(`select ve_con_hieu_luc($1) as duoc`, [ve.toUpperCase()]);
   ok('…viết mã vé bằng chữ HOA cũng là cùng vé — không lách được', veHoa.rows?.[0]?.duoc === false, veHoa.loi ?? 'VẪN TẢI ĐƯỢC');
@@ -377,12 +400,42 @@ await nhom('4 · xin_phieu_tai_cv và vé tải CV', async () => {
   const ve3Thuong = await duoiAnon(`select ve_con_hieu_luc($1) as duoc`, [ve3]);
   ok('…file đã tải dưới thư mục chữ HOA thì thư mục chữ thường cũng bị từ chối', ve3Thuong.rows?.[0]?.duoc === false,
      ve3Thuong.loi ?? 'VẪN TẢI ĐƯỢC');
-  const ve2 = (await xin('203.0.113.251')).rows[0].id;
+  const ve2 = (await xin('203.0.113.253')).rows[0].id;
   await db.query(`insert into storage.objects (bucket_id, name) values ('anh-cong-khai', $1)`, [`${ve2}/x.jpg`]);
   const khoKhac = await duoiAnon(`select ve_con_hieu_luc($1) as duoc`, [ve2]);
   ok('…file trùng thư mục ở kho KHÁC không tính', khoKhac.rows?.[0]?.duoc === true, khoKhac.loi ?? '');
   const tiemSql = await duoiAnon(`select ve_con_hieu_luc($1) as duoc`, ["%' or '1'='1"]);
   ok('…đoạn đường dẫn lạ vẫn trả false, không ném lỗi', tiemSql.rows?.[0]?.duoc === false, tiemSql.loi ?? '');
+
+  // Chốt 2 (trigger): storage-api kiểm policy lần cuối trong một savepoint rồi hủy, sau đó mới ghi
+  // dòng — hai lượt tải SONG SONG cùng vé đều qua chốt 1. Trigger chặn ở bước ghi dòng. Chạy lại
+  // NGUYÊN VĂN khối storage của 0066 trên bảng giả (PGlite một kết nối: thử thứ tự, không thử song song).
+  const mig = readFileSync(join(__dirname, '..', 'supabase', 'migrations', '0066_gioi_han_cong_khai.sql'), 'utf8');
+  const khoi = mig.slice(mig.indexOf('-- KHỐI STORAGE 0066'), mig.indexOf('-- HẾT KHỐI STORAGE 0066'));
+  ok('Đọc được khối storage của 0066', khoi.includes('create trigger ho_so_mot_ve_mot_file'), khoi.slice(0, 80));
+  await db.exec(khoi);
+  const { n: soTrigger } = await mot(`select count(*)::int as n from pg_trigger t join pg_class c on c.oid = t.tgrelid
+                                       join pg_namespace s on s.oid = c.relnamespace
+                                      where s.nspname = 'storage' and c.relname = 'objects' and t.tgname = 'ho_so_mot_ve_mot_file'`);
+  ok('Khối storage gắn trigger ho_so_mot_ve_mot_file vào storage.objects', soTrigger === 1, `${soTrigger}`);
+  await db.exec(khoi);
+  ok('…chạy lại khối không gắn trigger thứ hai', (await dem(`select count(*) from pg_trigger where tgname = 'ho_so_mot_ve_mot_file'`)) === 1);
+
+  const ve4 = (await xin('203.0.113.254')).rows[0].id;
+  // Lượt A và lượt B cùng qua chốt 1 (chưa có file nào) — như hai lượt song song.
+  const a = await duoiAnon(`select ve_con_hieu_luc($1) as duoc`, [ve4]);
+  const b = await duoiAnon(`select ve_con_hieu_luc($1) as duoc`, [ve4]);
+  ok('(tiền đề: hai lượt song song cùng qua chốt 1)', a.rows?.[0]?.duoc === true && b.rows?.[0]?.duoc === true);
+  const ghiA = await phaiLoi(`insert into storage.objects (bucket_id, name) values ('ho-so-ung-tuyen', $1)`, [`${ve4}/a.pdf`]);
+  const ghiB = await phaiLoi(`insert into storage.objects (bucket_id, name) values ('ho-so-ung-tuyen', $1)`, [`${ve4}/b.pdf`]);
+  ok('RÀ SOÁT 11/10 — chốt 2: lượt A ghi được, lượt B (file khác, cùng vé) bị trigger từ chối',
+     ghiA === null && /Vé tải CV này đã có một file/.test(ghiB ?? ''), `A: ${ghiA} · B: ${ghiB ?? 'GHI ĐƯỢC'}`);
+  const ghiHoa = await phaiLoi(`insert into storage.objects (bucket_id, name) values ('ho-so-ung-tuyen', $1)`, [`${ve4.toUpperCase()}/c.pdf`]);
+  ok('…thư mục vé viết HOA cũng bị trigger từ chối', /Vé tải CV này đã có một file/.test(ghiHoa ?? ''), ghiHoa ?? 'GHI ĐƯỢC');
+  const khac = await phaiLoi(`insert into storage.objects (bucket_id, name) values ('anh-cong-khai', $1), ('ho-so-ung-tuyen', 'khong-phai-ve/x.pdf')`,
+                                [`${ve4}/d.jpg`]);
+  ok('…kho khác, thư mục không phải vé: trigger không đụng tới (policy của kho quyết)', khac === null, khac ?? '');
+
   await db.exec(`drop schema storage cascade`);
   await db.query(`delete from phieu_tai_len`);
 });
@@ -406,7 +459,7 @@ await nhom('5 · nop_ho_so_ung_tuyen', async () => {
     const r = await nop(sdtThu(7000 + i), null);
     if (r.loi) nullIp = { i, loi: r.loi };
   }
-  ok('RÀ SOÁT 11/10: IP null không còn nộp không giới hạn — hồ sơ thứ 16 bị từ chối', nullIp?.i === 16, JSON.stringify(nullIp));
+  ok('RÀ SOÁT 11/10: IP null không còn nộp không giới hạn — đếm như MỘT IP, hồ sơ thứ 6 bị từ chối', nullIp?.i === 6, JSON.stringify(nullIp));
   ok('…câu hệ thống bận', nullIp?.loi?.includes(CAU.heThongBan), nullIp?.loi);
 
   await lui2Gio();
@@ -451,7 +504,7 @@ await nhom('6 · ghi_su_kien_web — RÀ SOÁT 11/10: khoá theo p_phien ngườ
   await db.query(`delete from su_kien_web`);
   let loiNem = 0;
   for (let i = 0; i < 80; i++) if ((await ghi(null)).loi) loiNem++;
-  ok('RÀ SOÁT 11/10: p_phien null không còn chèn không giới hạn — giữ 60 dòng / phút', (await soDong()) === 60, `${await soDong()} dòng`);
+  ok('RÀ SOÁT 11/10: p_phien null không còn chèn không giới hạn — đếm như MỘT phiên, giữ 60 dòng / phút', (await soDong()) === 60, `${await soDong()} dòng`);
   ok('…lượt thừa bị bỏ qua, không ném lỗi cho trang khách', loiNem === 0, `${loiNem} lỗi`);
 
   await db.query(`delete from su_kien_web`);
@@ -485,9 +538,9 @@ await nhom('7 · HAI LƯỢT CÙNG LÚC — khoá đứng trước câu đếm (
   ok('gioi_han_lay_luot: pg_advisory_xact_lock đứng trước câu đếm', truoc(conLuot, /pg_advisory_xact_lock/i, /count\(\*\)/i));
   const khoaTra = await nguon('kiem_khoa_tra_cuu');
   ok('kiem_khoa_tra_cuu: pg_advisory_xact_lock đứng trước câu đếm', truoc(khoaTra, /pg_advisory_xact_lock/i, /count\(\*\)/i));
-  for (const ham of ['xin_phieu_tai_cv', 'nop_ho_so_ung_tuyen', 've_con_hieu_luc']) {
+  for (const ham of ['xin_phieu_tai_cv', 'nop_ho_so_ung_tuyen', 've_con_hieu_luc', 'ho_so_mot_ve_mot_file']) {
     const s = await nguon(ham);
-    ok(`${ham}: pg_advisory_xact_lock đứng trước câu đếm / câu tìm`, truoc(s, /pg_advisory_xact_lock/i, /count\(\*\)|storage\.objects/i));
+    ok(`${ham}: pg_advisory_xact_lock đứng trước câu đếm / câu tìm`, truoc(s, /pg_advisory_xact_lock/i, /count\(\*\)|from storage\.objects/i));
   }
   const { vol } = await mot(`select provolatile as vol from pg_proc where proname = 've_con_hieu_luc'`);
   ok('ve_con_hieu_luc: VOLATILE — câu tìm file sau khoá chụp ảnh mới, thấy file lượt trước vừa ghi', vol === 'v', vol);
