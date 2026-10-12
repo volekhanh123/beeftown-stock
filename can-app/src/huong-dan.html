@@ -761,7 +761,7 @@
     <ul>
       <li>Khung xanh <b>"Cân đã nhận."</b> (kèm số hàng vừa gửi, gửi qua cổng nào): đọc lại thấy cân có đủ hàng của kho, đúng giá.</li>
       <li>Khung đỏ <b>"… cân CHƯA nhận"</b>: đọc lại thấy cân vẫn là hàng cũ — câu báo nêu PLU nào. Chương trình <b>không ghi nhận</b> lần gửi đó (bảng vẫn "Thêm" / "Sửa"), và tự gửi tạm dừng. Để cân ở màn hình bán hàng rồi gửi lại một lần; vẫn vậy thì nạp USB (<a href="#usb-du-phong">mục 25</a>).</li>
-      <li>Khung vàng <b>"chưa kiểm được cân đã nhận chưa"</b>: không đọc lại được cân (cổng hai chiều không trả lời). Lần gửi được ghi nhận, nhưng nhãn "Giữ nguyên" / "Khớp kho" ghi thêm "chưa xác nhận" — tới khi gửi mà đọc lại khớp, hay đọc dữ liệu từ cân (WiFi / USB).</li>
+      <li>Khung vàng <b>"chưa kiểm được cân đã nhận chưa"</b>: không đọc lại được cân (cổng hai chiều bận hay không trả lời — phần mềm của hãng TM-xA đang mở, cân đang lưu…). <span class="nhan moi">Mới 2.9.3</span> Chương trình <b>chưa ghi nhận</b> lần gửi đó: bảng vẫn "Thêm" / "Sửa", kho chưa thấy tên mới (trang pha lóc chưa báo "Cân sẵn sàng"), khung đỏ HSD cũ vẫn hiện. Tự gửi <b>thử lại</b> cả danh sách sau 1 phút, rồi 2, 5, 10 phút; đọc lại khớp mới ghi nhận. Đóng TM-xA nếu đang mở; muốn nhanh thì bấm Gửi lại khi cân rảnh. (Trước 2.9.3 lần gửi này được ghi nhận như cân đã nhận.)</li>
     </ul></li>
   <li><b>Kiểm tra trên cân:</b> gõ số PLU của một hàng vừa đổi rồi bấm <kbd class="p">PLU</kbd> — giá mới hiện ra là cân đã nhận.</li>
 </ol>

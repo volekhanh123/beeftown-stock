@@ -182,8 +182,12 @@ export async function docGiaoOMaCan(client: SupabaseClient, chiNhanhId: string):
   return ds.map(r => ({ ...r, con_kg: Number(r.con_kg), con_goi: Number(r.con_goi) })) as unknown as GiaoOMa[];
 }
 
-/** Một dòng ô mã đang nằm trên cân, theo một máy quầy (kho_may_can.tren_can). */
-export interface TrenCanO { plu: number; ten: string; phim: string[]; bao_luc: string }
+/**
+ * Một dòng ô mã đang nằm trên cân, theo một máy quầy (kho_may_can.tren_can). chua_xac_nhan (0090, Beeftown Cân 2.9.3): máy đó
+ * báo cân có thể đang khác dòng này (lần gửi chưa xác nhận đổi dòng này, đọc lại lệch, xoá hỏng); không có (database / máy quầy
+ * cũ) = như false.
+ */
+export interface TrenCanO { plu: number; ten: string; phim: string[]; bao_luc: string; chua_xac_nhan?: boolean }
 /** Một ô của phiên lóc (kho_phien_pha_can). in / in_kg: tem cân in bằng mã ô từ lúc giao tới lúc chốt. */
 export interface OCanPhien {
   giao_id: string; o_ma_id: string; mat_hang_id: string; ten_hang: string; so_o: number; ma_can: string;
@@ -195,6 +199,8 @@ export interface MayCanPhien {
   bao_luc: string; phien_ban: string | null; giu_ket_noi: boolean; can_tra_loi_luc: string | null;
   tu_gui: boolean; lech_so: number | null; lech_tu: string | null; gui_loi: boolean; gui_luc: string | null;
   nhat_ky_luc: string | null;
+  /** 0090: lần gửi gần nhất cân chưa xác nhận, từ lúc nào (database ghi). Không có = database chưa chạy 0090. */
+  chua_xac_nhan?: boolean; chua_xac_nhan_tu?: string | null;
 }
 /** Nhãn mã thường (mã món / mã giảm) của phần cắt có ô, đã quét vào phiên theo tảng. */
 export interface NhanThuong { mat_hang_id: string; ten: string; ma_can: string; so_nhan: number; so_kg: number }
