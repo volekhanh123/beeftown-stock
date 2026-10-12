@@ -47,10 +47,6 @@ const nn = k.nn;
 const CAU = {
   khongThayPhieu: { vi: 'Không tìm thấy phiếu nhập.', en: 'Goods receipt not found.' },
   chiPhieuMua: { vi: 'Chỉ trả hàng được cho phiếu nhập mua đã duyệt.', en: 'Goods can only be returned against an approved purchase receipt.' },
-  mangDut: {
-    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
-    en: 'Could not read what was sent — the connection may have dropped. Please send it again.',
-  },
   xacNhanKeToan: { vi: 'Xác nhận tiền trả hàng do kế toán làm.', en: 'The accountant confirms the amount for returns.' },
   loKhongCon: { vi: 'Lô này không còn ở nơi đã chọn — tải lại trang.', en: 'This lot is no longer at the chosen location — reload the page.' },
   viecSai: { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
@@ -215,9 +211,6 @@ const loTrang = catTrangBoNho(dsLo, tim);
 
 let bao: KetQua | null = k.bao;
 const form = await docFormGui(Astro);
-if (Astro.request.method === 'POST' && !form) {
-  bao = kqHai(false, CAU.mangDut);
-}
 if (form) {
   const viec = String(form.get('viec') ?? '');
   if (viec === 'xac_nhan_tien') {

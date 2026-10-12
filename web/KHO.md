@@ -983,8 +983,10 @@ Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa th
    rồi một dòng chặn quyền `if (!k.duoc('…')) return Astro.redirect('/noi-bo/kho', 302);`.
 2. Bọc trong `<Kho k={k} tieuDe="…" huongDan="…">`, có `<h1>` và `<BaoKho>`. Chưa có mục hướng dẫn
    hợp thì thêm vào `lib/kho/huong-dan.ts` (mục 3i).
-3. Form: POST + ô ẩn `viec`; thành công → `chuyenHuong(Astro, url, kq)`. Form tạo chứng từ có
-   `ma_gui`; form sửa có `phien_ban`.
+3. Form: POST + ô ẩn `viec`; đọc thân bằng `docFormGui(Astro)`; thành công → `chuyenHuong(Astro, url, kq)`.
+   Form tạo chứng từ có `ma_gui`; form sửa có `phien_ban`. Không đọc được thân (mạng đứt giữa chừng):
+   `docFormGui` trả null và đánh dấu lượt xem, `<BaoKho>` tự hiện câu "Không đọc được dữ liệu gửi lên…"
+   (`CAU_DOC_FORM_HONG`, `lib/gui-noi-bo.ts`) — trang không tự đặt câu đó (`crm/test/test-kho-doc-form.mjs`).
 4. Chữ cho nhân viên: tiếng Việt đơn giản, không thuật ngữ ("hạn gần bán trước", không "FEFO").
    Nút ≥ 48px, ô nhập cỡ chữ 16px (iPhone không tự phóng to).
 5. Nếu có ô menu: thêm vào `MUC_KHO` với đúng quyền của dòng chặn; nếu có số đỏ thì ghi `dem`.

@@ -144,7 +144,7 @@ const TOI = ['17:00', '17:30', '18:00', '18:30', '19:00', '19:30', '20:00', '20:
 
 function anonGia({ kin = [], loiDatBan = null, formMo = true, gioChot = true, hienThucDon = false, nemLoi = false, khoaTra = false } = {}) {
   const st = { goi: [], datBan: new Map(), soMa: 0, loiDatBan, formMo, gioChot, hienThucDon, kin: new Set(kin), bayGio: BAY_GIO, khoaTra };
-  // 0079: database tự khoá tra / hủy (kể cả IP null — theo số điện thoại và trần toàn cục).
+  // 0084: database tự khoá tra / hủy (kể cả IP null — theo số điện thoại và trần toàn cục).
   const KHOA_TRA = { data: null, error: { message: 'Tra cứu bị tạm khoá, vui lòng gọi nhà hàng', code: '23514' } };
   const MA = ['K7M2QX', 'P3R8TW', 'H4N6VZ'];
   const client = {
@@ -165,7 +165,7 @@ function anonGia({ kin = [], loiDatBan = null, formMo = true, gioChot = true, hi
           st.datBan.set(ma, { ma, sdt: ts.p_sdt, ho_ten: ts.p_ho_ten, ngay: ts.p_ngay, gio: ts.p_gio, so_khach: ts.p_so_khach, trang_thai: 'cho_xac_nhan' });
           return { data: [{ dat_ban_id: 'id-' + ma, ma_dat_ban: ma, con_trong: 3 }], error: null };
         }
-        // 0079: trả MỘT giá trị jsonb (null = không thấy), không phải mảng dòng.
+        // 0084: trả MỘT giá trị jsonb (null = không thấy), không phải mảng dòng.
         case 'tra_cuu_mot_dat_ban': {
           if (st.khoaTra) return KHOA_TRA;
           const d = st.datBan.get(String(ts.p_ma).trim().toUpperCase());
@@ -173,7 +173,7 @@ function anonGia({ kin = [], loiDatBan = null, formMo = true, gioChot = true, hi
           return { data: { ma_dat_ban: d.ma, chi_nhanh_ten: 'Beeftown Quận 1', ngay: d.ngay, gio: d.gio + ':00', so_khach: d.so_khach,
             trang_thai: d.trang_thai, ho_ten_che: 'Nguyễn V. A', sdt_che: M.cheSdt(d.sdt) }, error: null };
         }
-        // ghi_nhat_ky_tra_cuu: từ 0079 anon không còn quyền gọi — rơi xuống "permission denied" cuối hàm.
+        // ghi_nhat_ky_tra_cuu: từ 0084 anon không còn quyền gọi — rơi xuống "permission denied" cuối hàm.
         case 'huy_dat_ban': {
           if (st.khoaTra) return KHOA_TRA;
           const d = st.datBan.get(String(ts.p_ma).trim().toUpperCase());
@@ -505,7 +505,7 @@ await nhom('5 · HẾT BÀN, NGÀY QUÁ KHỨ / QUÁ XA, NGÀY GÕ TAY, SĐT SAI
   r = await d.gui(suNut(PSID.b, M.PAYLOAD.datBan), '[Đặt bàn]');
   ok('Form đặt bàn đang tắt → "chưa mở đặt bàn qua tin nhắn", không hỏi ngày', /chưa mở đặt bàn/.test(r.chu) && d.goi('lich_trong_theo_ma').length === 0);
 
-  // 0079: tao_dat_ban từ chối vì giới hạn tần suất → câu database viết để hiện thẳng cho khách.
+  // 0084: tao_dat_ban từ chối vì giới hạn tần suất → câu database viết để hiện thẳng cho khách.
   for (const cau of ['Hệ thống đang nhận quá nhiều yêu cầu, vui lòng thử lại sau hoặc liên hệ trực tiếp với nhà hàng',
                      'Số điện thoại này đã có nhiều yêu cầu đặt bàn đang chờ nhà hàng xác nhận, vui lòng gọi nhà hàng']) {
     const g = taoCuoc({ anon: anonGia({ loiDatBan: cau }) });
@@ -517,7 +517,7 @@ await nhom('5 · HẾT BÀN, NGÀY QUÁ KHỨ / QUÁ XA, NGÀY GÕ TAY, SĐT SAI
     await g.gui(suTin(PSID.d, 'Trần Bình'), 'Trần Bình');
     await g.gui(suTin(PSID.d, '0987654321'), '0987654321');
     const rg = await g.gui(suNut(PSID.d, M.PAYLOAD.xacNhan), '[Xác nhận]');
-    ok(`tao_dat_ban bị giới hạn (0079) → hiện nguyên «${cau.slice(0, 36)}…», không "đã nhận", đếm dat_ban_that_bai, không đếm lỗi`,
+    ok(`tao_dat_ban bị giới hạn (0084) → hiện nguyên «${cau.slice(0, 36)}…», không "đã nhận", đếm dat_ban_that_bai, không đếm lỗi`,
        g.goi('tao_dat_ban').length === 1 && rg.chu.includes(cau) && !/đã nhận yêu cầu/.test(rg.chu)
        && g.may.st.suKien.includes('dat_ban_that_bai') && !g.may.st.suKien.includes('loi'), rg.chu);
   }
@@ -587,7 +587,7 @@ await nhom('7 · TRA CỨU + HỦY; KHÓA SAU 5 LẦN SAI', async () => {
   ok('Mã gõ thường, có dấu cách → nhận, hỏi SĐT (có nút số trong Facebook)', /Số điện thoại đã dùng/.test(r.chu) && r.body[0].message.quick_replies[0].content_type === 'user_phone_number');
   r = await c.gui(suTin(PSID.a, '0912 345 678'), '0912 345 678');
   const tc = cuoiCung(c.goi('tra_cuu_mot_dat_ban'));
-  ok('tra_cuu_mot_dat_ban(p_ma K7M2QX, p_sdt chuẩn hóa, p_ip null) → mess_ghi_tra_cuu(true); KHÔNG gọi ghi_nhat_ky_tra_cuu (0079: hàm tra tự ghi)',
+  ok('tra_cuu_mot_dat_ban(p_ma K7M2QX, p_sdt chuẩn hóa, p_ip null) → mess_ghi_tra_cuu(true); KHÔNG gọi ghi_nhat_ky_tra_cuu (0084: hàm tra tự ghi)',
      JSON.stringify(tc.ts) === JSON.stringify({ p_ma: 'K7M2QX', p_sdt: SDT, p_ip: null })
      && c.goi('ghi_nhat_ky_tra_cuu').length === 0
      && cuoiCung(c.goi('mess_ghi_tra_cuu')).ts.p_thanh_cong === true);
@@ -621,13 +621,13 @@ await nhom('7 · TRA CỨU + HỦY; KHÓA SAU 5 LẦN SAI', async () => {
   r = await k.gui(suNut(PSID.f, M.PAYLOAD.traCuu), '[Tra/hủy đặt bàn] (đang khóa)');
   ok('Đang khóa → báo ngay, KHÔNG gọi tra_cuu_mot_dat_ban nữa', /tạm khóa/.test(r.chu) && k.goi('tra_cuu_mot_dat_ban').length === soTra && lan === 5);
 
-  // 0079: database tự khoá tra cứu — theo số điện thoại hay trần toàn cục, có thể do người KHÁC dò mã. Bot hiện nguyên
+  // 0084: database tự khoá tra cứu — theo số điện thoại hay trần toàn cục, có thể do người KHÁC dò mã. Bot hiện nguyên
   // câu database (như nhánh hủy), không mượn câu "bạn đã nhập sai" của khoá theo khách.
   const kd = taoCuoc({ anon: anonGia({ khoaTra: true }), ten: 'Database khoá tra cứu' });
   await kd.gui(suNut(PSID.f, M.PAYLOAD.traCuu), '[Tra/hủy đặt bàn]');
   await kd.gui(suTin(PSID.f, 'K7M2QX'), 'K7M2QX');
   r = await kd.gui(suTin(PSID.f, '0909000111'), '0909000111');
-  ok('Database khoá tra cứu (0079) → hiện nguyên "Tra cứu bị tạm khoá, vui lòng gọi nhà hàng"; không "nhập sai", không đếm lỗi, không ghi lượt sai',
+  ok('Database khoá tra cứu (0084) → hiện nguyên "Tra cứu bị tạm khoá, vui lòng gọi nhà hàng"; không "nhập sai", không đếm lỗi, không ghi lượt sai',
      /Tra cứu bị tạm khoá, vui lòng gọi nhà hàng/.test(r.chu) && !/nhập sai/.test(r.chu) && !kd.may.st.suKien.includes('loi')
      && kd.goi('mess_ghi_tra_cuu').length === 0, r.chu);
 });
@@ -844,7 +844,7 @@ await nhom('11 · CHẠY THẬT TRÊN PGLITE: ĐẶT BÀN QUA BOT → dat_ban (u
 
   const KIEU = { p_ngay: 'date', p_gio: 'time', p_so_khach: 'smallint', p_ip: 'inet', p_dong_y: 'boolean', p_thanh_cong: 'boolean',
                  p_du_lieu: 'jsonb', p_tam_dung_phut: 'integer', p_phut_tam_dung: 'integer', p_dang_bat: 'boolean' };
-  const TAP = new Set(['lich_trong_theo_ma', 'tao_dat_ban', 'chi_nhanh_cong_khai']);   // tra_cuu_mot_dat_ban trả jsonb (0079)
+  const TAP = new Set(['lich_trong_theo_ma', 'tao_dat_ban', 'chi_nhanh_cong_khai']);   // tra_cuu_mot_dat_ban trả jsonb (0084)
   const sqlGoi = (ten, ts) => {
     const k = Object.keys(ts);
     const thamSo = k.map((x, i) => `${x} => $${i + 1}${KIEU[x] ? '::' + KIEU[x] : ''}`).join(', ');

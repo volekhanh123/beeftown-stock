@@ -32,10 +32,6 @@ if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const cn = k.chiNhanh;
 const nn = k.nn;
 const CAU = {
-  mangDut: {
-    vi: 'Không đọc được dữ liệu gửi lên — mạng có thể đã đứt giữa chừng. Thử gửi lại.',
-    en: 'Could not read the submitted data — the connection may have dropped. Try sending again.',
-  },
   viecSai: { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
 } satisfies Record<string, HaiThuTieng>;
 // Bảng chữ tên `ch` (không phải `t`): nút tảng dùng `t` cho từng loại tảng.
@@ -74,9 +70,6 @@ try {
 const tang = tomTatTang(ton);
 
 const form = await docFormGui(Astro);
-if (Astro.request.method === 'POST' && !form) {
-  bao = kqHai(false, CAU.mangDut);
-}
 if (form) {
   const viec = String(form.get('viec') ?? '');
   const mhId = String(form.get('mat_hang_vao_id') ?? '');

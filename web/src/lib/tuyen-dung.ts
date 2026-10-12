@@ -1,6 +1,6 @@
 /** Đọc tin tuyển dụng đã công bố. Chưa có database thì trả về mảng rỗng, và
  *  trang tự dùng danh sách dự phòng tĩnh. */
-import { taoClient } from './noi-dung';
+import { taoClient } from './noi-dung.ts';
 import type { NgonNgu } from './noi-dung';
 import type { BaThuTieng } from './chu';
 import type { ViTri } from '../components/TrangTuyenDung.astro';

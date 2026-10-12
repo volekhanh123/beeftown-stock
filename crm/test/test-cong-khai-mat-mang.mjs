@@ -27,8 +27,9 @@
  * 3. Không sửa quá tay: lỗi THẬT của database (P0001, 23505, 42501,
  *    PGRST202) vẫn là "chưa gửi được" với đúng câu; trả lời hợp lệ vẫn là
  *    "đã nhận".
- * 4. Tầng chuyển hướng (xu-ly-form.ts): lời gọi nằm trong try, catch ghi câu
- *    KHÔNG CHẮC, và câu đó đủ vi / en / ko, không nói "CHƯA được ghi nhận".
+ * 4. Tầng chuyển hướng (xu-ly-form.ts, luotDatBan / luotUngTuyen): lỗi ném ra
+ *    thành câu KHÔNG CHẮC đủ vi / en / ko, kèm cờ khongChac ở CẢ HAI form, không
+ *    nói "CHƯA được ghi nhận".
  * 5. laLoiDatabase (lib/chu.ts) — một định nghĩa dùng chung cho đặt bàn, nộp
  *    hồ sơ và Messenger.
  *
@@ -218,25 +219,41 @@ await nhom('3 · Không sửa quá tay: lỗi THẬT của database vẫn là "c
 });
 
 // ===========================================================================
-await nhom('4 · Tầng chuyển hướng (lib/xu-ly-form.ts): lỗi ném ra thành câu KHÔNG CHẮC đủ ba thứ tiếng', async () => {
-  // Đọc mã nguồn: xuLyDatBan / xuLyUngTuyen ghi cookie qua lib/phien.ts, cần import.meta.env của Astro.
+await nhom('4 · Tầng chuyển hướng (lib/xu-ly-form.ts): lỗi ném ra thành câu KHÔNG CHẮC đủ ba thứ tiếng, kèm cờ khongChac', async () => {
+  // Bản trước của nhóm này đọc mã nguồn và khẳng định catch của nopHoSo() ghi câu KHÔNG CHẮC mà
+  // KHÔNG kèm khongChac: true — tức ghim đúng chỗ lệch giữa hai form: trang tuyển dụng không biết
+  // lượt gửi là "không chắc" nên dựng lại form trống ngay dưới câu "đừng gửi lại" (rà soát nợ kỹ
+  // thuật 11/10/2026). Từ khi xu-ly-form.ts tách phần quyết định kết quả (luotDatBan, luotUngTuyen)
+  // khỏi Astro, nhóm này gọi thẳng hai hàm đó với client mất mạng: CẢ HAI form ghi khongChac: true.
+  // Thân đọc hỏng / quá lớn (database chưa được gọi): test-cong-khai-gui-lai.mjs nhóm 4–5.
+  const { luotDatBan, luotUngTuyen } = await import('../../web/src/lib/xu-ly-form.ts');
   const nguon = readFileSync(join(GOC, 'web', 'src', 'lib', 'xu-ly-form.ts'), 'utf8');
-  for (const [ham, khoa] of [['guiYeuCauDatBan', 'datBanKhongChac'], ['nopHoSo', 'ungTuyenKhongChac']]) {
-    const m = nguon.match(new RegExp(`try \\{\\s*kq = await ${ham}\\([^]*?\\}\\s*catch\\b[^{]*\\{([^]*?)\\n  \\}`));
-    // Hỏi bàn ghi thêm cờ khongChac: trang /dat-ban dựa vào nó để KHÔNG điền lại form (gửi lại một cú bấm
-    // = nhà hàng nhận hai bản) — xem TrangDatBan.astro và nhóm 3 của web/kiem-tra/thu-day-du.mjs.
-    const ghiDung = ham === 'guiYeuCauDatBan'
-      ? `ghiKetQua(ctx.cookies, { ok: false, loi: CAU.${khoa}[ngonNgu], khongChac: true })`
-      : `ghiKetQua(ctx.cookies, { ok: false, loi: CAU.${khoa}[ngonNgu] })`;
-    ok(`xu-ly-form.ts: lời gọi ${ham}() nằm trong try, và catch ghi CAU.${khoa}${ham === 'guiYeuCauDatBan' ? ' kèm khongChac: true' : ''}`,
-       !!m && m[1].includes(ghiDung), m ? m[1].trim() : 'không thấy khối try/catch');
-    ok(`xu-ly-form.ts: catch của ${ham}() ghi log (console.error) — Workers Logs thấy sự cố, không đợi khách báo`,
-       !!m && /console\.error\(/.test(m[1]), m ? m[1].trim() : '');
-
+  const CA = [
+    ['guiYeuCauDatBan', 'datBanKhongChac', luotDatBan, formDatBan, '/dat-ban', 'tao_dat_ban'],
+    ['nopHoSo', 'ungTuyenKhongChac', luotUngTuyen, formHoSo, '/tuyen-dung', 'nop_ho_so_ung_tuyen'],
+  ];
+  for (const [ham, khoa, luot, taoForm, duong, tenRpc] of CA) {
     const cau = nguon.match(new RegExp(`\\n  ${khoa}: \\{([^]*?)\\n  \\},`))?.[1] ?? '';
     ok(`CAU.${khoa}: vi "KHÔNG CHẮC … đừng gửi lại", en "NOT SURE … do not send it again", ko "확실히 알 수 없어요"; không có "CHƯA được ghi nhận"`,
        /vi:[^]*KHÔNG CHẮC[^]*đừng gửi lại/.test(cau) && /en:[^]*NOT SURE[^]*do not send it again/.test(cau)
        && /ko:[^]*확실히 알 수 없어요/.test(cau) && !/CHƯA được ghi nhận|NOT been recorded/.test(cau), cau.trim());
+
+    for (const nn of NGON_NGU) {
+      const loiLog = [];
+      const goc = console.error;
+      console.error = (...x) => loiLog.push(x.join(' '));
+      let soLan = 0;
+      let l;
+      try {
+        const client = { rpc: async (ten) => { if (ten === tenRpc) soLan++; return { data: null, error: { code: '', message: 'TypeError: fetch failed' } }; } };
+        l = await luot(new Request(`https://beeftown.vn${duong}`, { method: 'POST', body: taoForm() }), client, duong, nn);
+      } finally { console.error = goc; }
+      ok(`${ham}() đứt mạng (${nn}) → cookie ghi ok: false, khongChac: true, câu KHÔNG CHẮC của CAU.${khoa}`,
+         soLan === 1 && l.ketQua.ok === false && l.ketQua.khongChac === true && /KHÔNG CHẮC|NOT SURE|확실히 알 수 없어요/.test(l.ketQua.loi ?? '')
+           && !/CHƯA được ghi nhận|NOT been recorded/.test(l.ketQua.loi ?? ''), `${soLan} lần gọi; ${JSON.stringify(l)}`);
+      ok(`${ham}() đứt mạng (${nn}) → ghi log (console.error) — Workers Logs thấy sự cố, không đợi khách báo`,
+         loiLog.length === 1 && /không chắc đã ghi/.test(loiLog[0]), loiLog.join(' | '));
+    }
   }
 });
 

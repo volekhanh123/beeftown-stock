@@ -17,6 +17,7 @@ import {
 } from '../../../lib/tin-tuyen-dung';
 import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
 import { dichCau } from '../../../lib/cau-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo } from '../../../lib/gui-noi-bo';
 
 const phien = Astro.locals.phien!;
 const { client, nhanSu } = phien;
@@ -26,8 +27,6 @@ const t = dichNB(nn, {
   dan:         { vi: 'Soạn, đăng và gỡ tin; chọn form nộp hồ sơ của từng tin hỏi những gì. ',
                  en: 'Write, publish and take down postings; choose what each posting\'s application form asks. ' },
   xemHoSo:     { vi: 'Xem hồ sơ đã nộp →', en: 'See applications →' },
-  khongDocForm:{ vi: 'Không đọc được dữ liệu gửi lên. Mạng có thể đã đứt giữa chừng — bạn thử gửi lại.',
-                 en: 'Could not read what was sent. The connection may have dropped — please try again.' },
   chuaChiNhanh:{ vi: 'Chưa có chi nhánh nào. Tạo chi nhánh ở màn Cài đặt trước.', en: 'There is no branch yet. Create one on the Settings screen first.' },
   viecSai:     { vi: 'Việc không hợp lệ.', en: 'Invalid action.' },
   khongDoc:    { vi: 'Không đọc được danh sách tin.', en: 'Could not read the postings.' },
@@ -69,15 +68,11 @@ try { chiNhanh = await docChiNhanh(client); } catch { /* ô chọn chi nhánh ch
 const chonChiNhanh = !nhanSu.chi_nhanh_id && chiNhanh.length > 1;
 const chiNhanhMacDinh = nhanSu.chi_nhanh_id ?? chiNhanh[0]?.id ?? null;
 
-let bao: KetQua | null = null;
+let bao: KetQua | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
 
 if (Astro.request.method === 'POST') {
-  let form: FormData | null = null;
-  try {
-    form = await Astro.request.formData();
-  } catch {
-    bao = { ok: false, cau: t.khongDocForm };
-  }
+  const form = await docFormNoiBo(Astro.request);
+  if (!form) bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
 
   if (form) {
     const viec = String(form.get('viec') ?? '');
@@ -91,7 +86,10 @@ if (Astro.request.method === 'POST') {
       if (kq.ok) return Astro.redirect(`/noi-bo/tin-tuyen-dung/${kq.id}?moi=1`, 303);
       bao = kq;
     } else if (viec === 'tin_mau') {
-      bao = await taoTinMau(client, cn, nn);
+      // Tạo xong thì chuyển hướng 303 (lib/gui-noi-bo.ts): F5 không chạy lại việc tạo tin mẫu.
+      const kq = await taoTinMau(client, cn, nn);
+      if (kq.ok) return chuyenHuongNoiBo(Astro, kq);
+      bao = kq;
     } else {
       bao = { ok: false, cau: t.viecSai };
     }

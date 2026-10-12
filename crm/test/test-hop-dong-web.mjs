@@ -115,6 +115,9 @@ const CHAY_DA_DANG_NHAP = [
   'web/src/lib/cong-tac.ts',
   // Chi nhánh, bàn ăn, dọn dữ liệu — cũng chỉ gọi từ /noi-bo.
   'web/src/lib/cai-dat.ts',
+  // Đổi trạng thái đặt bàn / hồ sơ ứng tuyển (chuyenTrangThai) — chỉ gọi từ /noi-bo/dat-ban và
+  // /noi-bo/tuyen-dung, sau middleware, bằng client của nhân sự (rà soát 11/10/2026).
+  'web/src/lib/gui-noi-bo.ts',
   // Xóa file CV rồi ẩn danh, quét CV mồ côi (0074) — chỉ cai-dat.ts gọi, bằng
   // client của chủ / quản lý đang đăng nhập.
   'web/src/lib/xoa-cv.ts',
@@ -364,7 +367,7 @@ await nhom('5 · WEB KHÔNG GỌI HÀM NGOÀI DANH SÁCH CHO PHÉP', async () =>
   const CONG_KHAI = [
     'noi_dung_cong_khai', 'tin_tuyen_dung_cong_khai', 'thuc_don_cong_khai',
     'chi_nhanh_cong_khai', 'lich_trong_theo_ma', 'tao_dat_ban',
-    // 0079: tra_cuu_mot_dat_ban (trả jsonb) thay tra_cuu_dat_ban (trả bảng — người gọi hủy được
+    // 0084: tra_cuu_mot_dat_ban (trả jsonb) thay tra_cuu_dat_ban (trả bảng — người gọi hủy được
     // giao dịch của lần sai); ghi_nhat_ky_tra_cuu ra khỏi danh sách — hai hàm tra / hủy tự ghi.
     // Web gọi lại hàm cũ thì kiểm tra dưới đỏ, như production 403.
     'tra_cuu_mot_dat_ban', 'huy_dat_ban',

@@ -221,10 +221,10 @@ await nhom('7 · THỪA: TẠO TAY, HAY CÂU DROP CHƯA CHẠY', async () => {
 
 // ===========================================================================
 await nhom('7b · GỢI Ý FILE: CHỈ CÂU CREATE / DROP THẬT, KHÔNG PHẢI GRANT / ALTER NHẮC TÊN', async () => {
-  // tao_dat_ban: tạo lại ở 0004, 0008, 0010, 0013, 0062, 0079 (giới hạn tần suất); các file khác chỉ grant / revoke nó
+  // tao_dat_ban: tạo lại ở 0004, 0008, 0010, 0013, 0062, 0084 (giới hạn tần suất); các file khác chỉ grant / revoke nó
   // trong khối chốt quyền.
-  ok('Hàm tạo nhiều lần → file CUỐI có create (tao_dat_ban → 0079), không phải file chỉ grant nó',
-    timTep(chiMuc, 'ham', 'tao_dat_ban(p_chi_nhanh_ma text)') === '0079_gioi_han_cong_khai.sql', timTep(chiMuc, 'ham', 'tao_dat_ban()'));
+  ok('Hàm tạo nhiều lần → file CUỐI có create (tao_dat_ban → 0084), không phải file chỉ grant nó',
+    timTep(chiMuc, 'ham', 'tao_dat_ban(p_chi_nhanh_ma text)') === '0084_gioi_han_cong_khai.sql', timTep(chiMuc, 'ham', 'tao_dat_ban()'));
   ok('Bảng → file create table (chi_nhanh → 0001, khach_hang → 0002), không phải file alter / bật RLS',
     timTep(chiMuc, 'bang', 'chi_nhanh') === '0001_nen_mong.sql' && timTep(chiMuc, 'bang', 'khach_hang') === '0002_khach_hang.sql',
     `${timTep(chiMuc, 'bang', 'chi_nhanh')}, ${timTep(chiMuc, 'bang', 'khach_hang')}`);

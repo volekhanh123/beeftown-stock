@@ -61,8 +61,8 @@ const soDong = async (sdt, ngay) => (await mot(
 const moTa = r => (r?.loi ? `LỖI: ${r.loi}` : `mã ${r?.ma_dat_ban}`);
 
 /**
- * 0079 giới hạn lời gọi không phiên: mỗi chi nhánh 30 lượt / giờ (sổ gioi_han_luot), mỗi số điện thoại
- * 3 yêu cầu còn chờ; IP null không có xô IP riêng (đầu 0079).
+ * 0084 giới hạn lời gọi không phiên: mỗi chi nhánh 30 lượt / giờ (sổ gioi_han_luot), mỗi số điện thoại
+ * 3 yêu cầu còn chờ; IP null không có xô IP riêng (đầu 0084).
  * File này thử 0062 (gửi lại y hệt) với hơn 30 lượt anon IP null — mỗi nhóm bắt đầu với sổ giới hạn
  * trống để lượt của nhóm trước không chặn nhầm kịch bản nhóm sau. Giới hạn KHÔNG bị tắt: nó vẫn chạy
  * trong từng nhóm (và giới hạn theo số điện thoại không dùng sổ này), được thử riêng ở
@@ -171,7 +171,7 @@ await nhomMoi('3 · KHÁC BẤT KỲ TRƯỜNG NÀO → DÒNG MỚI (khách sử
   ok('Khác GIỜ → hai dòng, hai mã', !gioKhac.loi && gioKhac.ma_dat_ban !== dau.ma_dat_ban && (await soDong(goc.sdt, ngay)) === 2,
      `${moTa(dau)} · ${moTa(gioKhac)}`);
 
-  // 0079: một số điện thoại giữ tối đa 3 yêu cầu còn chờ. Bản cũ gửi cả sáu biến thể dưới CÙNG một
+  // 0084: một số điện thoại giữ tối đa 3 yêu cầu còn chờ. Bản cũ gửi cả sáu biến thể dưới CÙNG một
   // số (tới 7 dòng chờ) — giờ lượt thứ tư bị chặn đúng luật. Mỗi biến thể dưới đây đi cùng yêu cầu gốc
   // của RIÊNG nó (một số mới): vẫn là "gốc rồi sửa một trường → dòng mới", hai dòng chờ mỗi số.
   const bienThe = [
@@ -203,7 +203,7 @@ await nhomMoi('3 · KHÁC BẤT KỲ TRƯỜNG NÀO → DÒNG MỚI (khách sử
      `${moTa(rCn)} · ${moTa(rCn2)}`);
 
   const thuTu = await gui({ ...goc, gio: '21:00' });
-  ok('0079: số gốc đã có 3 yêu cầu chờ → yêu cầu thứ tư (sửa giờ lần nữa) bị chặn bằng câu giới hạn',
+  ok('0084: số gốc đã có 3 yêu cầu chờ → yêu cầu thứ tư (sửa giờ lần nữa) bị chặn bằng câu giới hạn',
      /^Số điện thoại này đã có nhiều yêu cầu đặt bàn/.test(thuTu.loi ?? ''), moTa(thuTu));
 
   const giongHet = await gui(goc);

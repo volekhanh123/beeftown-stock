@@ -112,7 +112,7 @@ await db.query(
  *
  * Website luôn truyền IP thật của khách (CF-Connecting-IP — layIp() ở web/src/lib/phien.ts). Bản
  * trước để trống IP cho mọi lượt, và IP null từng nghĩa là "không giới hạn" (lỗi rà soát 11/10).
- * Từ 0079 IP null đếm như MỘT IP (5 hồ sơ / giờ) — file này nộp hơn thế, nên lượt không ghi IP
+ * Từ 0084 IP null đếm như MỘT IP (5 hồ sơ / giờ) — file này nộp hơn thế, nên lượt không ghi IP
  * nhận một IP riêng như mỗi ứng viên thật. Giới hạn theo IP vẫn thử ở nhóm 3 (một IP, sáu lần);
  * IP null ở test-cong-khai-gioi-han.mjs.
  */
