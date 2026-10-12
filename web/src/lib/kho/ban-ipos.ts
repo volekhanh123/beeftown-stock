@@ -25,7 +25,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { boDau, cauLoiKho, docSoNguyen, docTungTrang, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { boDau, cauLoiKho, dinhDangThoiDiem, docSoNguyen, docTungTrang, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 import { docGioVnDiaPhuong, gioVnTuMs } from '../gio-vn.ts';
@@ -529,7 +529,8 @@ export async function chuyenSangIpos(client: SupabaseClient, chiNhanhId: string,
   const { data, error } = await client.rpc('kho_ipos_chuyen_sang', { p_chi_nhanh_id: chiNhanhId, p_tu_luc: moc });
   if (error) return { ok: false, cau: cauLoiKho(error) };
   const tu = (data as { ipos_tu_luc?: string } | null)?.ipos_tu_luc;
-  const luc = tu ? gioVnTuMs(new Date(tu).getTime()).slice(0, 16).replace('T', ' ') : '';
+  // Mốc ghi kiểu Việt, giờ Việt Nam ("11/10 21:48") — cùng dạng với dòng "Đang trừ kho theo iPOS từ …" ngay dưới câu báo.
+  const luc = tu ? dinhDangThoiDiem(tu) : '';
   return kqHai(true, {
     vi: `Đã chuyển sang trừ kho theo iPOS${tu ? ` từ ${luc}` : ''}. Bán trước mốc này được bỏ qua (đã tính trong lần đếm quầy).`,
     en: `Switched to deducting stock from iPOS${tu ? ` from ${luc}` : ''}. Sales before this time are skipped (already covered by the counter count).`,

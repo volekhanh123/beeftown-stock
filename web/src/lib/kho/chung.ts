@@ -341,6 +341,21 @@ export function dinhDangNgay(iso: string | null | undefined): string {
   return nam && thang && ngay ? `${ngay}/${thang}/${nam}` : iso;
 }
 
+/** Chữ chung khi không biết đơn vị đếm của món — cũng là giá trị mặc định của cột kho_mat_hang.don_vi_goi (0019). */
+export const DON_VI_GOI_CHUNG: HaiThuTieng = { vi: 'gói', en: 'packs' };
+
+/**
+ * Đơn vị đếm CHUNG của một nhóm món ("khay", "tảng"…): mọi món ĐẾM trong nhóm cùng một đơn vị thì trả đơn vị đó,
+ * khác nhau hoặc không món nào đếm → null (câu dùng chữ chung). Món cân ký không tính; món đếm mà thiếu
+ * đơn vị coi như đơn vị mặc định của cột. Dùng cho câu nói về số gói của cả một phiếu / một yêu cầu.
+ */
+export function donViChung(
+  ds: readonly ({ dem_goi?: boolean | null; don_vi_goi?: string | null } | null | undefined)[],
+): string | null {
+  const dv = new Set(ds.filter(m => m?.dem_goi === true).map(m => m!.don_vi_goi || DON_VI_GOI_CHUNG.vi));
+  return dv.size === 1 ? [...dv][0] : null;
+}
+
 /** "2026-09-25" → "25/09" */
 export function dinhDangNgayNgan(iso: string | null | undefined): string {
   if (!iso) return '—';

@@ -298,3 +298,74 @@ export async function traGioDatabase(db) {
 export function maGui() {
   return crypto.randomUUID();
 }
+
+/**
+ * Client Supabase giả chạy trên chính database PGlite, dưới danh nghĩa một vai — để gọi THẲNG các hàm
+ * đọc / ghi của web/src/lib/kho (from().select().eq().in().order().limit().range(), maybeSingle(), rpc())
+ * và thấy đúng RLS, đúng quyền hàm như trên Supabase thật. select(cột, { count: 'exact' }) trả thêm
+ * `count` (tổng số dòng khớp điều kiện, như PostgREST) — docTungTrang (chung.ts) dựa vào nó để biết đã
+ * đọc đủ trang.
+ *
+ *     const clientCua = await taoClientPg({ db, duoi, duoiAnon });
+ *     const nv = clientCua(UID.nvQuayA);      // 'anon' = chưa đăng nhập · null = đăng nhập nhưng không phải nhân sự
+ *
+ * Kết quả đi qua to_jsonb của chính Postgres, như PostgREST: ngày là chuỗi "YYYY-MM-DD", numeric là số
+ * (PGlite đọc thẳng thì ngày thành Date, numeric thành chuỗi — khác với thứ web nhận trên Supabase).
+ * rpc(): tham số ép kiểu theo chữ ký hàm trong pg_proc (jsonb, uuid, text[]…); hàm trả bảng → data là các
+ * dòng, hàm trả một giá trị → data là giá trị đó. Lỗi → { data: null, error: { message, code } }.
+ * Chỉ hiểu danh sách cột thường trong select() — không hiểu đổi tên cột hay join lồng của PostgREST.
+ */
+export async function taoClientPg({ db, duoi, duoiAnon }) {
+  const ham = new Map((await db.query(`
+    select p.proname, p.proretset, p.proargnames, p.prorettype::regtype::text as tra,
+           (select array_agg(t::regtype::text order by thu) from unnest(p.proargtypes::oid[]) with ordinality as x(t, thu)) as kieu
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'`)).rows.map(r => [r.proname, r]));
+  return function clientCua(uid) {
+    const chay = async (sql, gt) => {
+      const kq = await (uid === 'anon' ? duoiAnon(sql, gt) : duoi(uid, sql, gt));
+      return kq.loi ? { data: null, error: { message: kq.loi, code: kq.ma } } : { data: kq.rows[0]?.r ?? null, error: null };
+    };
+    return {
+      rpc(ten, thamSo = {}) {
+        const h = ham.get(ten);
+        if (!h) return Promise.resolve({ data: null, error: { message: `Could not find the function public.${ten}`, code: 'PGRST202' } });
+        const ds = Object.entries(thamSo);
+        const kieuCua = k => h.kieu?.[(h.proargnames ?? []).indexOf(k)] ?? 'text';
+        const gt = ds.map(([k, v]) => {
+          if (v === null || v === undefined) return null;
+          const kieu = kieuCua(k);
+          if (kieu.endsWith('[]')) return `{${v.map(x => JSON.stringify(String(x))).join(',')}}`;
+          return /^jsonb?$/.test(kieu) ? JSON.stringify(v) : v;
+        });
+        const goi = `${ten}(${ds.map(([k], i) => `${k} => $${i + 1}::${kieuCua(k)}`).join(', ')})`;
+        if (h.proretset) return chay(`select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) as r from ${goi} x`, gt);
+        return chay(h.tra === 'void' ? `select null::jsonb as r from (select ${goi}) x` : `select to_jsonb(${goi}) as r`, gt);
+      },
+      from(bang) {
+        const q = { cot: '*', dk: [], gt: [], sap: [], gioiHan: null, boQua: 0, demTong: false };
+        const dieuKien = () => (q.dk.length ? ` where ${q.dk.join(' and ')}` : '');
+        const chayBang = async () => {
+          const kq = await chay(
+            `select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) as r from (select ${q.cot} from ${bang}`
+            + `${dieuKien()}${q.sap.length ? ` order by ${q.sap.join(', ')}` : ''}`
+            + `${q.gioiHan !== null ? ` limit ${q.gioiHan}` : ''}${q.boQua ? ` offset ${q.boQua}` : ''}) x`, q.gt);
+          if (kq.error || !q.demTong) return kq;
+          const dem = await chay(`select to_jsonb(count(*)) as r from ${bang}${dieuKien()}`, q.gt);
+          return dem.error ? dem : { ...kq, count: Number(dem.data) };
+        };
+        const b = {
+          select(cot, tuy) { q.cot = cot; q.demTong = tuy?.count === 'exact'; return b; },
+          eq(k, v) { q.gt.push(v); q.dk.push(`${k} = $${q.gt.length}`); return b; },
+          in(k, ds) { q.gt.push(`{${ds.join(',')}}`); q.dk.push(`${k}::text = any($${q.gt.length}::text[])`); return b; },
+          order(k, tuy) { q.sap.push(`${k}${tuy?.ascending === false ? ' desc' : ''}`); return b; },
+          limit(n) { q.gioiHan = n; return b; },
+          range(tu, den) { q.boQua = tu; q.gioiHan = den - tu + 1; return b; },
+          async maybeSingle() { const kq = await chayBang(); return kq.error ? kq : { data: kq.data[0] ?? null, error: null }; },
+          then(xong, hong) { return chayBang().then(xong, hong); },
+        };
+        return b;
+      },
+    };
+  };
+}

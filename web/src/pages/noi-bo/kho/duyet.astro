@@ -21,7 +21,7 @@ import BaoKho from '../../../components/kho/BaoKho.astro';
 import BieuTuong from '../../../components/kho/BieuTuong.astro';
 import { moTrangKho, tenNhanSu } from '../../../lib/kho/trang.ts';
 import { docDanhSachPhieuNhap, type PhieuNhapTom } from '../../../lib/kho/nhap.ts';
-import { docDanhSachPhieuXuat, type PhieuXuatTom } from '../../../lib/kho/xuat.ts';
+import { docDanhSachPhieuXuat, docDonViPhieuXuat, type PhieuXuatTom } from '../../../lib/kho/xuat.ts';
 import { docDanhSachKiemKe, type KiemKeTom } from '../../../lib/kho/kiem-ke.ts';
 import { docDanhSachPhienPha, type PhienPhaTom } from '../../../lib/kho/pha-loc.ts';
 import { cauLoiKho, dinhDangKg, dinhDangTien } from '../../../lib/kho/chung.ts';
@@ -56,7 +56,8 @@ const t = dichNB(nn, {
   },
   baoHuy: { vi: 'Báo hủy', en: 'Write-offs' },
   khongLyDo: { vi: 'Không ghi lý do', en: 'No reason given' },
-  soGoi: { vi: (n: number) => `${n} gói · `, en: (n: number) => `${n} ${s(n, 'pack', 'packs')} · ` },
+  // dv: đơn vị đếm chung của các món trên phiếu ("khay"); phiếu có món khác đơn vị thì chữ chung.
+  soGoi: { vi: (n: number, dv?: string) => `${n} ${dv ?? 'gói'} · `, en: (n: number, dv?: string) => `${n} ${dv ?? s(n, 'pack', 'packs')} · ` },
   o: { vi: 'ở', en: 'at' },
   bao: { vi: 'báo', en: 'reported' },
   xemAnhDuyet: { vi: 'Xem ảnh & duyệt', en: 'See photos & approve' },
@@ -70,6 +71,8 @@ let huy: PhieuXuatTom[] = [];
 let kiemKe: KiemKeTom[] = [];
 let phaNhap: PhienPhaTom[] = [];
 let ten = new Map<string, string>();
+/** Đơn vị đếm chung của từng phiếu báo hủy ("khay"). */
+let donVi = new Map<string, string>();
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   const cn = k.chiNhanh.id;
@@ -82,7 +85,10 @@ if (k.chiNhanh && k.daKhoiTao) {
     ]);
     const cu = <T extends { created_at: string }>(a: T, b: T) => a.created_at.localeCompare(b.created_at);
     nhap.sort(cu); huy.sort(cu); kiemKe.sort(cu); phaNhap.sort(cu);
-    ten = await tenNhanSu(k.client, [...nhap, ...huy, ...kiemKe, ...phaNhap].map(x => x.nguoi_tao));
+    [ten, donVi] = await Promise.all([
+      tenNhanSu(k.client, [...nhap, ...huy, ...kiemKe, ...phaNhap].map(x => x.nguoi_tao)),
+      docDonViPhieuXuat(k.client, huy.map(p => p.id)),
+    ]);
   } catch (e) {
     loiDoc = cauLoiKho(e, t.khongDoc);
   }
@@ -135,7 +141,7 @@ const truoc = (luc: string) => thoiGianTruoc(luc, new Date(), nn);
                 <a href={`/noi-bo/kho/xuat/${p.id}`} class="kho-duyet-the">
                   <span class="kho-duyet-chinh">
                     <strong>{p.so_phieu} · {p.ten_ly_do ?? t.khongLyDo}</strong>
-                    <span>{p.tong_goi > 0 ? t.soGoi(p.tong_goi) : ''}{dinhDangKg(p.tong_kg, nn)} · {t.o} {p.ten_vi_tri}</span>
+                    <span>{p.tong_goi > 0 ? t.soGoi(p.tong_goi, donVi.get(p.id)) : ''}{dinhDangKg(p.tong_kg, nn)} kg · {t.o} {p.ten_vi_tri}</span>
                     <small>{ten.get(p.nguoi_tao ?? '') ?? '—'} {t.bao} · {truoc(p.created_at)}</small>
                   </span>
                   <span class="nb-nut phu">{t.xemAnhDuyet}</span>

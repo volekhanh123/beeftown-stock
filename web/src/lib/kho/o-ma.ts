@@ -12,6 +12,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cauLoiKho, kqHai, type HaiThuTieng, type KetQua } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
+import { docMaGiam, type DongMaGiam } from './ma-giam.ts';
 
 export interface DongOMa { id: string; mat_hang_id: string; so_o: number; ma_can: string }
 
@@ -66,6 +67,16 @@ export async function docOMa(client: SupabaseClient): Promise<Map<string, DongOM
   const ra = new Map<string, DongOMa[]>();
   for (const r of (data ?? []) as DongOMa[]) ra.set(r.mat_hang_id, [...(ra.get(r.mat_hang_id) ?? []), r]);
   return ra;
+}
+
+/**
+ * Mọi mã có thể nằm trên nhãn ngoài mã của chính món: ô mã và mã giảm giá của mọi món (RLS: vai xem kho).
+ * Hai bảng đọc song song, MỘT lần mỗi yêu cầu — trang đưa kết quả cho bộ tra chung tra-ma-can.ts
+ * (traMaCan, dongTuQuet, apDungQuet). Gọi trong cùng Promise.all với danh mục để không thêm lượt chờ.
+ */
+export async function docMaTrenNhan(client: SupabaseClient): Promise<{ oMa: DongOMa[]; maGiam: DongMaGiam[] }> {
+  const [o, g] = await Promise.all([docOMa(client), docMaGiam(client)]);
+  return { oMa: [...o.values()].flat(), maGiam: g };
 }
 
 /**
@@ -129,14 +140,6 @@ export async function docGiaoOMa(client: SupabaseClient, chiNhanhId: string, phi
   const { data, error } = await q.order('ten_hang').order('so_o');
   if (error) throw error;
   return (data ?? []).map(r => ({ ...r, con_kg: Number(r.con_kg), con_goi: Number(r.con_goi) })) as GiaoOMa[];
-}
-
-/** Số tảng của các lô (lô vào của phiên lóc). */
-export async function docSoTang(client: SupabaseClient, loIds: string[]): Promise<Map<string, number | null>> {
-  if (!loIds.length) return new Map();
-  const { data, error } = await client.from('kho_lo').select('id, so_tang').in('id', loIds);
-  if (error) throw error;
-  return new Map((data ?? []).map(r => [r.id as string, r.so_tang === null ? null : Number(r.so_tang)]));
 }
 
 /** Giao ô trống cho mọi phần cắt có ô mã trong công thức của tảng (quyền pha_loc). */

@@ -10,7 +10,8 @@
  * ủ 14, còn lại ủ 10. Các hàm đọc / viết / tra là hàm thuần — test bằng node.
  */
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, dinhDangNgay, kqHai, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, dinhDangNgay, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { laNgayCoThat } from '../gio-vn.ts';
 import type { CotBaoCao, DinhNghiaBaoCao } from './bao-cao.ts';
 
 // -----------------------------------------------------------------------------
@@ -125,6 +126,15 @@ export function soTangChu(so: number | null | undefined): string {
   return so === null || so === undefined ? '' : `#${String(so).padStart(4, '0')}`;
 }
 
+/**
+ * Chữ đặt cạnh mã lô ở mọi danh sách: "tảng #0142" / "primal #0142". Số tảng là thứ duy nhất ghi trên túi
+ * tảng và in trên tem khay — mã lô (L261011-001) không có ở đâu ngoài đời. Lô không thuộc tảng nào → ''.
+ */
+export function chuTang(soTang: number | null | undefined, nn: NgonNguNB = 'vi'): string {
+  const so = soTangChu(soTang);
+  return so ? `${{ vi: 'tảng', en: 'primal' }[nn]} ${so}` : '';
+}
+
 export type TinhTrangU = 'dang_u' | 'san_sang' | 'chua_co_bang_u';
 
 export const TINH_TRANG_U_NB: Record<TinhTrangU, HaiThuTieng> = {
@@ -193,6 +203,49 @@ export function cauConU(t: Pick<TangTon, 'tinh_trang_u' | 'con_ngay_u'>, nn: Ngo
   if (n > 0) return CHU_CON_U.con[nn](n);
   if (n === 0) return CHU_CON_U.homNay[nn];
   return CHU_CON_U.truoc[nn](-n);
+}
+
+/** "2026-10-18" → mốc của ngày lịch đó. Ngày không có thật (31/02), chuỗi không phải ngày → NaN. */
+function mocNgay(iso: unknown): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? ''));
+  if (!m) return NaN;
+  const [nam, thang, ngay] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  return laNgayCoThat(nam, thang, ngay) ? Date.UTC(nam, thang - 1, ngay) : NaN;
+}
+
+/** Số ngày lịch từ `tu` tới `den` (âm khi `den` trước `tu`). Một trong hai không phải ngày có thật → NaN. */
+export function soNgayGiua(tu: string, den: string): number {
+  return Math.round((mocNgay(den) - mocNgay(tu)) / 86_400_000);
+}
+
+/**
+ * Tình trạng ủ của một tảng theo ngày ủ xong — giống hệt view kho_v_tang (ủ xong SAU hôm nay = đang ủ;
+ * hôm nay hoặc trước đó = sẵn sàng lóc; chưa có ngày ủ xong = chưa có bảng ủ). Tính ở web cho những chỗ
+ * view không có: tảng đã vào phiên lóc (hết tồn nên không còn trong view). `homNay` lấy từ homNayVn().
+ */
+export function tinhTrangU(ngayUXong: string | null | undefined, homNay: string): Pick<TangTon, 'tinh_trang_u' | 'con_ngay_u'> {
+  const con = ngayUXong ? soNgayGiua(homNay, ngayUXong) : NaN;
+  if (Number.isNaN(con)) return { tinh_trang_u: 'chua_co_bang_u', con_ngay_u: null };
+  return { tinh_trang_u: con > 0 ? 'dang_u' : 'san_sang', con_ngay_u: con };
+}
+
+/**
+ * Câu nhắc khi lóc một tảng còn đang ủ: "Tảng #0001 còn đang ủ — ủ xong ngày 18/10/2026 (còn 7 ngày)."
+ * Chỉ nhắc, không chặn (có lúc phải lóc sớm). Đã ủ xong, ủ xong hôm nay, chưa có bảng ủ → null.
+ */
+export function cauTangConU(
+  t: { so_tang: number | null | undefined; ngay_u_xong: string | null | undefined } | null | undefined,
+  homNay: string, nn: NgonNguNB = 'vi',
+): string | null {
+  if (!t) return null;
+  const tt = tinhTrangU(t.ngay_u_xong, homNay);
+  if (tt.tinh_trang_u !== 'dang_u') return null;
+  const so = soTangChu(t.so_tang);
+  const [ngay, con] = [dinhDangNgay(t.ngay_u_xong), cauConU(tt, nn)];
+  return {
+    vi: `Tảng${so ? ` ${so}` : ''} còn đang ủ — ủ xong ngày ${ngay} (${con}).`,
+    en: `Primal${so ? ` ${so}` : ''} is still aging — aging ends on ${ngay} (${con}).`,
+  }[nn];
 }
 
 // -----------------------------------------------------------------------------
@@ -347,6 +400,58 @@ export async function docSoTangCuaLo(client: SupabaseClient, chiNhanhId: string)
   const { data, error } = await client.from('kho_v_lo_tang').select('lo_id, so_tang').eq('chi_nhanh_id', chiNhanhId);
   if (error) throw error;
   return new Map((data ?? []).filter(r => r.so_tang !== null).map(r => [r.lo_id as string, Number(r.so_tang)]));
+}
+
+/** Mỗi lượt đọc `.in(…)` không quá ngần này lô — 150 mã lô vào khoảng 5.500 ký tự trên đường dẫn, dưới mọi giới hạn. */
+const LO_MOI_LUOT = 150;
+
+function chiaLuot(loIds: readonly unknown[]): string[][] {
+  const ids = [...new Set(loIds.filter(laUuid))];
+  const luot: string[][] = [];
+  for (let i = 0; i < ids.length; i += LO_MOI_LUOT) luot.push(ids.slice(i, i + LO_MOI_LUOT));
+  return luot;
+}
+
+/**
+ * Số tảng của ĐÚNG các lô đang hiện trên trang (kho_v_lo_tang): lô là một tảng → chính nó; lô cắt ra từ một
+ * tảng → tảng gốc; lô khác vắng mặt. Không có tiền — vai không xem giá (thủ kho, NV quầy) đọc được như nhau.
+ * Đọc theo danh sách lô chứ không cả chi nhánh (docSoTangCuaLo): chi nhánh quá 1.000 lô thì PostgREST cắt bớt
+ * mà không báo. Nhiều lô → vài lượt song song, không mỗi lô một lượt. Đọc hỏng thì ném — trang tự bắt và
+ * vẫn hiện mã lô như cũ.
+ */
+export async function docLoTang(
+  client: SupabaseClient, loIds: readonly unknown[],
+): Promise<Map<string, { tang_id: string; so_tang: number | null }>> {
+  const ra = new Map<string, { tang_id: string; so_tang: number | null }>();
+  const kq = await Promise.all(chiaLuot(loIds).map(ds =>
+    client.from('kho_v_lo_tang').select('lo_id, tang_id, so_tang').in('lo_id', ds)));
+  for (const { data, error } of kq) {
+    if (error) throw error;
+    for (const r of data ?? []) {
+      ra.set(r.lo_id as string, { tang_id: r.tang_id as string, so_tang: r.so_tang === null || r.so_tang === undefined ? null : Number(r.so_tang) });
+    }
+  }
+  return ra;
+}
+
+/** Ngày mổ, ngày ủ xong, số tảng của các lô tảng (kho_lo) — cho mục "Tảng đem pha" và câu nhắc tảng còn ủ. */
+export async function docNgayUTang(
+  client: SupabaseClient, loIds: readonly unknown[],
+): Promise<Map<string, { so_tang: number | null; ngay_mo: string | null; ngay_u_xong: string | null }>> {
+  const ra = new Map<string, { so_tang: number | null; ngay_mo: string | null; ngay_u_xong: string | null }>();
+  const kq = await Promise.all(chiaLuot(loIds).map(ds =>
+    client.from('kho_lo').select('id, so_tang, ngay_mo, ngay_u_xong').in('id', ds)));
+  for (const { data, error } of kq) {
+    if (error) throw error;
+    for (const r of data ?? []) {
+      ra.set(r.id as string, {
+        so_tang: r.so_tang === null || r.so_tang === undefined ? null : Number(r.so_tang),
+        ngay_mo: (r.ngay_mo as string | null) ?? null,
+        ngay_u_xong: (r.ngay_u_xong as string | null) ?? null,
+      });
+    }
+  }
+  return ra;
 }
 
 /** Tìm tảng theo số ("142", "#0142") trong danh sách. */
