@@ -205,8 +205,10 @@ Năm chỗ hỏng thấy khi rà soát (`test/thu-no-ky-thuat.ts` — kiểm th�
   "already exists" ở bước ảnh mãi, `kho_tao_phieu_xuat` (một ma_gui một phiếu) không bao giờ được gọi; người dùng bấm Thôi rồi
   mở form mới (ma_gui mới) → phiếu thứ hai. Từ 2.9.2 (`taoPhieuHuy`, `taiAnhHuyGiuSo`): chương trình nhớ ảnh đã tải theo lần
   gửi form (dấu sha256 của ảnh) — gửi lại thì dùng lại đường dẫn cũ, ảnh mới đánh số sau số lớn nhất đã thử (ảnh hết giờ chờ có
-  thể đã nằm trong kho); hai yêu cầu cùng ma_gui chạy lần lượt (bấm đúp: một phiếu); trang mở lại form cùng các lô sau lần gửi
-  hỏng thì giữ ma_gui cũ (kho trả "Phiếu này đã gửi trước đó").
+  thể đã nằm trong kho; số đã có trong kho thì thử số sau); hai yêu cầu cùng ma_gui chạy lần lượt (bấm đúp: một phiếu). Lần gửi
+  hỏng mà chưa biết kho đã ghi chưa được nhớ theo các lô trong `%APPDATA%\BeeftownCan\phieu-huy-chua-chac.json` (24 giờ): mở lại
+  form cùng các lô — kể cả sau khi chương trình khởi động lại — thì gửi bằng ma_gui của lần đó, kho trả "Phiếu này đã gửi trước
+  đó" (trang nói rõ phiếu giữ nội dung lần gửi trước); kho trả lời được thì quên.
 - **Hai gốc giờ cho cân.** Nhịp 30 giây và tự chỉnh giờ (2.8) theo giờ Việt Nam (`gio-vn.ts`), còn nút "Chỉnh giờ cân" (không
   chọn giờ), "Đọc giờ cân", "Đọc thông tin cân", Chẩn đoán WiFi, tên file `da-gui` / `chan-doan` theo **múi giờ của Windows**:
   máy để UTC thì 23:26 giờ VN nút đặt cân về 16:26, tự chỉnh giờ kéo lại — tem in sai ngày đóng gói / HSD giữa hai lần. Từ
@@ -216,15 +218,16 @@ Năm chỗ hỏng thấy khi rà soát (`test/thu-no-ky-thuat.ts` — kiểm th�
 - **Nhớ địa chỉ / khoá Supabase mãi.** `kho-can.json` đọc một lần rồi lưu trong `cau-hinh.json`, chỉ đọc lại khi đổi ô Địa
   chỉ kho: kho đổi khoá anon → mọi máy quầy "Sai email hoặc mật khẩu" (kho trả 401 "Invalid API key"); khôi phục sang project
   mới mà project cũ còn chạy → máy quầy âm thầm đọc / ghi project cũ. Từ 2.9.2 (`kiemLaiKhoCan`) đọc lại khi: **mở chương
-  trình** (ngầm, không chờ), **đăng nhập hỏng** (khác thì đăng nhập lại một lần bằng cái mới), **kho trả 401** (tối đa một lần
-  mỗi phút). Đổi → lưu, bỏ client cũ, quên người đăng nhập (project mới: đăng nhập lại). Không đọc được → giữ bản đang lưu. Câu
+  trình** (ngầm, không chờ — đăng nhập trong lúc đó thì chờ nó), **đăng nhập hỏng** vì khoá / project (không đọc khi sai mật
+  khẩu hay mạng treo hết giờ; khác thì đăng nhập lại một lần bằng cái mới), **kho trả 401 "Invalid API key"** (tối đa một lần
+  mỗi phút; 401 "JWT expired" — phiên hết hạn — không tính). Đổi → lưu, bỏ client cũ, quên người đăng nhập (project mới: đăng nhập lại). Không đọc được → giữ bản đang lưu. Câu
   báo nói đúng "kho không nhận khoá truy cập", không còn "Sai email hoặc mật khẩu" / "Có lỗi: Invalid API key".
 - **`da-gui` giữ bản sao mật khẩu WiFi mỗi lần gửi, không bao giờ dọn; `loi.txt` ghi thêm mãi.** Từ 2.9.2 (`luuGoc`,
   `donDaGui`): bản lưu bỏ dòng cài đặt mạng (`boDongMang`: TMT 15, 16, 19 và thông số mạng — file gốc `A_000.TMS` vẫn đủ); giữ
-  100 bản mới nhất, bỏ bản cũ hơn 30 ngày; lần dọn đầu mỗi lần mở chương trình bỏ dòng mạng khỏi các bản cũ còn giữ (giữ
-  ngày sửa). `loi.txt` tối đa 1 MB rồi thành `loi-cu.txt` (`ghiLoiTxt`), mỗi lần ghi tối đa 8.000 ký tự.
-- **Chưa kiểm kiểu.** `tsconfig.json` strict + `@types/bun`, `npm run kiem-kieu` (`tsc --noEmit`) chạy trong CI trước kiểm
-  thử. Sửa các chỗ tsc báo (không đổi cách chạy; bản đóng gói `bun build` giống hệt từng byte): kiểu nhập file `.html`, `ok` trùng ở
+  100 bản mới nhất, bỏ bản cũ hơn 30 ngày (mỗi lần gửi, và 10 giây sau khi mở chương trình); lúc mở còn bỏ dòng mạng khỏi các
+  bản cũ còn giữ (giữ ngày sửa; đọc / ghi bất đồng bộ, không chặn việc với cân — `lamSachDaGuiLucMo`). `loi.txt` tối đa 1 MB rồi thành `loi-cu.txt` (`ghiLoiTxt`), mỗi lần ghi tối đa 8.000 ký tự.
+- **Chưa kiểm kiểu.** `tsconfig.json` strict + `@types/bun`, `npm run kiem-kieu` (`tsc --noEmit`) chạy trong CI sau kiểm
+  thử (cả khi kiểm thử hỏng). Sửa các chỗ tsc báo (không đổi cách chạy; bản đóng gói `bun build` giống hệt từng byte): kiểu nhập file `.html`, `ok` trùng ở
   `/api/tem/gui`, kiểu kho giả, hẹp kiểu trong kiểm thử. Client Supabase của web và của can-app là hai bản cài — `paths` trỏ về
   bản của can-app; kiểu Astro của web lấy từ `web/src/env.d.ts` (cài `web/` trước như CI).
 
@@ -653,7 +656,7 @@ dò WiFi hay kho chậm có thể lâu hơn.
 
 | Nơi | Có gì |
 |---|---|
-| `%APPDATA%\BeeftownCan\` | `cau-hinh.json` (IP cân, cổng, cổng hai chiều `congHaiChieu`, địa chỉ kho, các lần cân đổi địa chỉ, cổng COM lần thử trước; 2.8: `giuKetNoi`, `tuDatGio`, `ngheUdp`), `phien.json` (đăng nhập), `loi.txt` (lỗi; 2.9.2: tối đa 1 MB rồi thành `loi-cu.txt`), `tu-dat-gio.json` (2.8: các lần tự chỉnh giờ cân trong ngày), `ma-may.txt` (2.9: mã máy quầy báo kho), `nhat-ky-da-gui.json` (2.9: mốc nhật ký tem đã gửi kho, theo chi nhánh) |
+| `%APPDATA%\BeeftownCan\` | `cau-hinh.json` (IP cân, cổng, cổng hai chiều `congHaiChieu`, địa chỉ kho, các lần cân đổi địa chỉ, cổng COM lần thử trước; 2.8: `giuKetNoi`, `tuDatGio`, `ngheUdp`), `phien.json` (đăng nhập), `loi.txt` (lỗi; 2.9.2: tối đa 1 MB rồi thành `loi-cu.txt`), `phieu-huy-chua-chac.json` (2.9.2: lần gửi phiếu huỷ chưa chắc kho đã ghi, theo các lô — 24 giờ), `tu-dat-gio.json` (2.8: các lần tự chỉnh giờ cân trong ngày), `ma-may.txt` (2.9: mã máy quầy báo kho), `nhat-ky-da-gui.json` (2.9: mốc nhật ký tem đã gửi kho, theo chi nhánh) |
 | `Tài liệu\Beeftown Can\` | `A_000.TMS` (file gốc = bản gần nhất đã nạp vào cân), `tren-can.tsv` (2.7: dòng mã `99999` là PLU trống — đã gỡ bằng ghi đè), `tem-da-tat.json`, `nhat-ky-can.tsv` (nhật ký bán của cân, TSV UTF-8 có tiêu đề; có dòng không đọc được thì giữ bản sao `nhat-ky-can-ban-sao-….tsv` trước khi ghi đè), `da-gui\` (mỗi lần gửi một bản; thông số / phím / giờ: đúng file nhỏ đã gửi; 2.9.2: không có dòng cài đặt mạng — tên / mật khẩu WiFi — giữ 100 bản, 30 ngày; tên file theo giờ VN), `cho-usb\`, `chan-doan\` (2.7: kết quả Chẩn đoán WiFi) |
 
 Thư mục `Tài liệu\Beeftown Can` dùng chung với `web/public/kho/can-wifi/Nap-Can-WiFi.ps1`.
@@ -665,7 +668,7 @@ Máy chủ chỉ nghe `127.0.0.1` và mọi yêu cầu phải mang đúng mã b�
 
 ```bash
 cd can-app && npm ci             # cài web/ trước (npm ci ở web/): mã dùng chung và kiểu Astro ở đó
-npm run kiem-kieu                # 2.9.2: tsc --noEmit theo tsconfig.json (strict) — CI chạy trước kiểm thử
+npm run kiem-kieu                # 2.9.2: tsc --noEmit theo tsconfig.json (strict) — CI chạy sau kiểm thử, cả khi kiểm thử hỏng
 npx bun test/thu.ts              # cân giả, kho giả (test/kho-gia.ts), tem, danh sách hàng, tự gửi, máy quầy,
                                  # cân đổi địa chỉ (cân giả ở 127.0.0.37, .38…), dây RS232 (PowerShell giả),
                                  # 2.2: cân giả hai chiều (test/can-gia-hai-chieu.ts) + cân giả 33571 — nhật ký, xoá qua WiFi,

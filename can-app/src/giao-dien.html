@@ -1451,7 +1451,7 @@
   const kgChu = (n) => n === null || n === undefined ? '—' : Number(n).toLocaleString('vi-VN', { maximumFractionDigits: 3 }) + ' kg';
   const soChu = (n) => Number(n || 0).toLocaleString('vi-VN');
   const ngayVn = (d) => { if (!d) return '—'; const [y, m, dd] = String(d).slice(0, 10).split('-'); return `${dd}/${m}`; };
-  const lucVn = (t) => t ? new Date(t).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', timeZone: MUI_VN }) : '—';
+  const lucVn = (t) => t ? lucNgan(t) : '—';
   const maGuiMoi = () => (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g, () => (Math.random() * 16 | 0).toString(16)));
   const conNgay = (n) => n === null || n === undefined ? '' : n < 0 ? `quá ${-n} ngày` : n === 0 ? 'hết hạn hôm nay' : `còn ${n} ngày`;
   function taiCsv(ten, dong) {
@@ -1472,10 +1472,9 @@
   }
 
   // ---- thẻ Quầy ----------------------------------------------------------
+  // 2.9.2: lần gửi phiếu huỷ hỏng có thể kho ĐÃ ghi — mở lại form cùng các lô (cả sau khi chương trình khởi động lại) thì máy chủ
+  // gửi bằng ma_gui của lần đó (nghiep-vu.ts HuyChuaChac): kho trả phiếu đã có, không thành hai phiếu.
   let quay = null, dangSuaQuay = false, maGuiHuy = null, maGuiYc = null;
-  // 2.9.2: lần gửi phiếu huỷ hỏng (mất mạng, kho chưa trả lời) có thể kho ĐÃ ghi — người bấm Thôi rồi mở lại form cùng các lô
-  // thì gửi bằng mã cũ (kho trả phiếu đã có, không thành hai phiếu). Gửi được thì quên.
-  let huyChuaChac = null;
   async function taiQuay(imLang) {
     if (!imLang) $('quay-noi-dung').innerHTML = quay ? $('quay-noi-dung').innerHTML : '<p class="dang-lam">Đang đọc quầy…</p>';
     try { quay = await goi('/api/quay'); veQuay(); $('quay-luc').textContent = 'Cập nhật ' + new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', timeZone: MUI_VN }); }
@@ -1585,8 +1584,7 @@
     const chon = [...document.querySelectorAll('.chon-huy:checked')].map(c => c.dataset.lo);
     if (!chon.length) { bao($('khung-huy'), 'loi', 'Chọn ít nhất một lô ở bảng trên.'); return; }
     dangSuaQuay = true;
-    const khoaLo = [...chon].sort().join();
-    maGuiHuy = huyChuaChac && huyChuaChac.lo === khoaLo ? huyChuaChac.maGui : maGuiMoi();
+    maGuiHuy = maGuiMoi();
     const tatCa = [...quay.hetHan, ...quay.canDate];
     const lo = chon.map(id => tatCa.find(l => l.lo_id === id)).filter(Boolean);
     const macDinh = quay.lyDoHuy.find(l => /hạn/i.test(l.ten)) || quay.lyDoHuy[0];
@@ -1608,11 +1606,12 @@
         const anh = await docAnh($('anh-huy').files);
         const k = await goi('/api/quay/huy', { maGui: maGuiHuy, lyDoId: $('ly-do-huy').value, ghiChu: $('ghi-chu-huy').value, dong, anh });
         dangSuaQuay = false;
-        huyChuaChac = null;
         baoChung('xong', `<p><b>${k.daCo ? 'Phiếu này đã gửi trước đó' : 'Đã gửi phiếu huỷ'} ${e(k.soPhieu)}</b> — chờ quản lý duyệt.</p>`
+          + (k.daCo ? '<p>Phiếu giữ đúng nội dung của lần gửi trước — số lượng, lý do, ảnh đổi sau lần đó không được ghi. Cần sửa thì nhờ '
+            + 'quản lý từ chối phiếu này rồi tạo phiếu mới.</p>' : '')
           + (k.loiAnh.length ? `<p>Lưu ý ảnh: ${e(k.loiAnh.join(' · '))}</p>` : ''));
         await taiQuay();
-      } catch (err) { huyChuaChac = { maGui: maGuiHuy, lo: khoaLo }; bao($('kq-huy'), 'loi', e(err.message)); nut.disabled = false; nut.textContent = 'Gửi phiếu huỷ'; }
+      } catch (err) { bao($('kq-huy'), 'loi', e(err.message)); nut.disabled = false; nut.textContent = 'Gửi phiếu huỷ'; }
     };
   }
 

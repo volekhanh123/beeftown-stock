@@ -120,11 +120,39 @@ async function thuPhieuHuy(ok: Ok, ddMoi: () => { cauHinh: string; duLieu: strin
     ok('Form mới cùng ảnh → ảnh tải vào thư mục của ma_gui mới, số 1 (không dùng ảnh của phiếu khác)', !k.daCo
       && JSON.stringify(goiXuat().at(-1)?.thamSo.p_anh) === JSON.stringify([`cn1/huy/${mg}/1.jpg`]), JSON.stringify(goiXuat().at(-1)?.thamSo.p_anh));
   }
+  {
+    // Kho đã ghi phiếu, câu trả lời mất, rồi chương trình KHỞI ĐỘNG LẠI (Cập nhật, mất điện, F5): bộ nhớ trống, trang mở form
+    // mới — ma_gui mới cho đúng các lô đó. Lần gửi chưa chắc nằm trong file → dùng lại ma_gui cũ; ảnh số 1 đã có trong kho thì
+    // tải vào số sau, không kẹt "already exists".
+    const dd = ddMoi();
+    const mg = crypto.randomUUID();
+    g.hong.phieuXuat = 'sau';
+    await loiCua(() => new UngDung(dd, { kho: g.kho, nguoi }).taoPhieuHuy(phieu(mg, [anh('g')])));
+    const soPhieu = g.phieuXuat.size;
+    const u2 = new UngDung(dd, { kho: g.kho, nguoi });
+    const k = await u2.taoPhieuHuy(phieu(crypto.randomUUID(), [anh('g')])).catch((e: Error) => e);
+    ok('HỒI QUY: kho đã ghi phiếu huỷ, mất câu trả lời, chương trình khởi động lại, mở form mới cùng các lô → vẫn MỘT phiếu (kho trả '
+      + 'phiếu đã có), không kẹt ở ảnh',
+      !(k instanceof Error) && k.daCo && k.soPhieu === g.phieuXuat.get(mg) && g.phieuXuat.size === soPhieu
+      && String(goiXuat().at(-1)?.thamSo.p_ma_gui) === mg, JSON.stringify(k instanceof Error ? k.message : k));
+    const k2 = await u2.taoPhieuHuy(phieu(crypto.randomUUID(), [anh('h')])).catch((e: Error) => e);
+    ok('… kho đã trả lời (phiếu chắc chắn có) thì quên: lần sau cùng các lô là phiếu mới',
+      !(k2 instanceof Error) && !k2.daCo && g.phieuXuat.size === soPhieu + 1, JSON.stringify(k2 instanceof Error ? k2.message : k2));
+  }
   const gd = fs.readFileSync(path.join(SRC, 'giao-dien.html'), 'utf8');
-  ok('HỒI QUY: giao diện — gửi phiếu huỷ hỏng rồi bấm Thôi, mở lại form cùng các lô → giữ ma_gui cũ (lần trước có thể kho đã ghi); '
-    + 'gửi được thì quên',
-    /maGuiHuy = huyChuaChac && huyChuaChac\.lo === khoaLo \? huyChuaChac\.maGui : maGuiMoi\(\);/.test(gd)
-    && /catch \(err\) \{ huyChuaChac = \{ maGui: maGuiHuy, lo: khoaLo \};/.test(gd) && /huyChuaChac = null;/.test(gd));
+  ok('Giao diện: kho trả phiếu đã có → nói rõ phiếu giữ nội dung lần gửi trước (số lượng, lý do, ảnh đổi sau không được ghi)',
+    /k\.daCo \? '<p>Phiếu giữ đúng nội dung của lần gửi trước/.test(gd));
+  {
+    // Cùng chương trình (không khởi động lại): gửi hỏng chưa chắc → bấm Thôi, mở lại form cùng các lô (trang tạo ma_gui mới).
+    const mg = crypto.randomUUID();
+    g.hong.phieuXuat = 'sau';
+    await loiCua(() => u.taoPhieuHuy(phieu(mg, [anh('i')])));
+    const soPhieu = g.phieuXuat.size;
+    const k = await u.taoPhieuHuy(phieu(crypto.randomUUID(), [anh('i')])).catch((e: Error) => e);
+    ok('HỒI QUY: gửi phiếu huỷ hỏng rồi bấm Thôi, mở lại form cùng các lô (ma_gui mới) → kho trả phiếu đã có, không thành hai phiếu',
+      !(k instanceof Error) && k.daCo && k.soPhieu === g.phieuXuat.get(mg) && g.phieuXuat.size === soPhieu,
+      JSON.stringify(k instanceof Error ? k.message : k));
+  }
 }
 
 // =============================================================================
@@ -233,8 +261,9 @@ const phienGia = () => ({
 function moiTruongKho() {
   const json = (v: unknown, status = 200) => new Response(JSON.stringify(v), { status, headers: { 'content-type': 'application/json' } });
   const m = {
-    web: { url: 'http://a.thu', khoa: 'khoa-moi', cheDo: 'tot' as 'tot' | 'hong' | '404' },
-    project: { 'a.thu': { khoa: 'khoa-moi' }, 'b.thu': { khoa: 'khoa-b' } } as Record<string, { khoa: string }>,
+    web: { url: 'http://a.thu', khoa: 'khoa-moi', cheDo: 'tot' as 'tot' | 'hong' | '404', treMs: 0 },
+    /** jwtHetHan: bảng trả 401 "JWT expired" (phiên hết hạn — không phải sai khoá). */
+    project: { 'a.thu': { khoa: 'khoa-moi' }, 'b.thu': { khoa: 'khoa-b' } } as Record<string, { khoa: string; jwtHetHan?: boolean }>,
     goi: [] as string[],
     f: null as unknown as typeof fetch,
   };
@@ -242,6 +271,7 @@ function moiTruongKho() {
     const url = new URL(typeof dau === 'string' ? dau : dau instanceof URL ? dau.href : dau.url);
     m.goi.push(`${init?.method ?? 'GET'} ${url.host}${url.pathname}`);
     if (url.host === 'web.thu') {
+      if (m.web.treMs) await nghi(m.web.treMs);
       if (m.web.cheDo === 'hong') throw new TypeError('fetch failed');
       if (m.web.cheDo === '404') return new Response('Không có', { status: 404 });
       return json({ supabaseUrl: m.web.url, anonKey: m.web.khoa });
@@ -258,6 +288,7 @@ function moiTruongKho() {
       return json(phienGia());
     }
     if (url.pathname === '/auth/v1/logout') return new Response(null, { status: 204 });
+    if (p.jwtHetHan && url.pathname.startsWith('/rest/v1/')) return json({ code: 'PGRST303', message: 'JWT expired', hint: null, details: null }, 401);
     if (url.pathname === '/rest/v1/nhan_su') return json({ id: 'ns1', ho_ten: 'QL thử', vai_tro: 'quan_ly', chi_nhanh_id: 'cn1' });
     if (url.pathname === '/rest/v1/chi_nhanh') return json([{ id: 'cn1', ma: 'Q1', ten: 'Quầy thử' }]);
     return json({}, 404);
@@ -282,16 +313,24 @@ async function thuKhoCan(ok: Ok, ddMoi: () => { cauHinh: string; duLieu: string 
     !(dn instanceof Error) && dn.vaiTro === 'quan_ly' && ch().anonKey === 'khoa-moi', dn instanceof Error ? dn.message : JSON.stringify(ch()));
 
   const soToken = () => m.goi.filter(g => g.includes('/auth/v1/token')).length;
-  const t0 = soToken();
+  const soWeb = () => m.goi.filter(g => g.startsWith('GET web.thu')).length;
+  const t0 = soToken(), w00 = soWeb();
   const sai = await loiCua(() => u.dangNhap('ql@beeftown.vn', 'sai'));
-  ok('Sai mật khẩu thật (khoá đúng) → vẫn "Sai email hoặc mật khẩu", đăng nhập thử một lần (không lặp)', sai === 'Sai email hoặc mật khẩu.' && soToken() === t0 + 1,
-    `${sai} · ${soToken() - t0} lần`);
+  ok('Sai mật khẩu thật (khoá đúng, kho trả 400) → vẫn "Sai email hoặc mật khẩu", đăng nhập thử một lần, không đọc lại kho-can.json',
+    sai === 'Sai email hoặc mật khẩu.' && soToken() === t0 + 1 && soWeb() === w00, `${sai} · ${soToken() - t0} lần đăng nhập, ${soWeb() - w00} lần đọc web`);
   await u.dangNhap('ql@beeftown.vn', 'dung').catch(() => null);
 
   // Đang chạy thì kho đổi khoá, web chưa kịp đổi: 401 liên tiếp chỉ đọc kho-can.json một lần mỗi phút.
-  m.project['a.thu'].khoa = 'khoa-moi-2';
+  // Phiên hết hạn (401 "JWT expired") không phải sai khoá: không đọc lại kho-can.json (tự gửi, báo kho chạy mỗi phút).
+  m.project['a.thu'].jwtHetHan = true;
   moc += 61_000;
-  const soWeb = () => m.goi.filter(g => g.startsWith('GET web.thu')).length;
+  const wJwt = soWeb();
+  await loiCua(() => u.nguoiDung());
+  await nghi(50);
+  m.project['a.thu'].jwtHetHan = false;
+  ok('Kho trả 401 "JWT expired" (phiên hết hạn) → không đọc lại kho-can.json', soWeb() === wJwt, `${soWeb() - wJwt} lần`);
+
+  m.project['a.thu'].khoa = 'khoa-moi-2';
   const w0 = soWeb();
   const l1 = await loiCua(() => u.nguoiDung());
   await choToi(() => soWeb() > w0, 1000);
@@ -324,6 +363,27 @@ async function thuKhoCan(ok: Ok, ddMoi: () => { cauHinh: string; duLieu: string 
   const dn2 = await u2.dangNhap('ql@beeftown.vn', 'dung').catch((e: Error) => e);
   ok('… đăng nhập lại vào project mới được', !(dn2 instanceof Error) && m.goi.at(-1)?.includes('b.thu') === true, dn2 instanceof Error ? dn2.message : '');
   u2.dongNen();
+
+  // Cuộc đua: kho đã chuyển project (cũ vẫn chạy), web trả chậm — người đăng nhập ngay lúc mở, đăng nhập vào project cũ được
+  // TRƯỚC khi lần kiểm ngầm xong. Phải chờ lần kiểm đó rồi đăng nhập lại vào project mới, không để phiên ở project cũ.
+  {
+    const dd2 = ddMoi();
+    fs.mkdirSync(dd2.cauHinh, { recursive: true });
+    fs.writeFileSync(path.join(dd2.cauHinh, 'cau-hinh.json'), JSON.stringify({ ipCan: '127.0.0.1', congCan: 1, diaChiKho: 'http://web.thu',
+      supabaseUrl: 'http://a.thu', anonKey: 'khoa-moi-2' }));
+    const chDua = () => JSON.parse(fs.readFileSync(path.join(dd2.cauHinh, 'cau-hinh.json'), 'utf8')) as { supabaseUrl?: string };
+    m.project['a.thu'].khoa = 'khoa-moi-2';
+    m.web.treMs = 300;
+    const u5 = new UngDung(dd2, tuy);
+    const dn5 = await u5.dangNhap('ql@beeftown.vn', 'dung').catch((e: Error) => e);
+    const sau = await u5.nguoiDung().catch((e: Error) => e);
+    m.web.treMs = 0;
+    ok('HỒI QUY: đăng nhập ngay lúc mở, project cũ trả lời trước lần kiểm ngầm kho-can.json → chờ lần kiểm, đăng nhập lại vào project '
+      + 'mới; sau đó vẫn đăng nhập (không "không phải nhân viên kho", không phiên ở project cũ)',
+      !(dn5 instanceof Error) && !(sau instanceof Error) && sau?.vaiTro === 'quan_ly' && chDua().supabaseUrl === 'http://b.thu',
+      JSON.stringify([dn5 instanceof Error ? dn5.message : dn5?.vaiTro, sau instanceof Error ? sau.message : sau, chDua()]));
+    u5.dongNen();
+  }
 
   // Web không trả lời / trả 404: giữ cấu hình cũ, không làm hỏng việc gì.
   for (const cheDo of ['hong', '404'] as const) {
@@ -385,10 +445,38 @@ async function thuDaGuiVaLoi(ok: Ok, h: TroGiup, ddMoi: () => { cauHinh: string;
   ok('HỒI QUY: bản lưu da-gui không có tên / mật khẩu WiFi, tên miền (TMT 15, 16, 19); còn các chữ khác; file gốc A_000.TMS giữ nguyên đủ',
     banMoi.includes('TMT\t0\tBEEFTOWN\t') && !/WIFI-QUAN|mat-khau-wifi|quan\.local/.test(banMoi)
     && fs.readFileSync(u.fileGoc).toString('latin1').includes('mat-khau-wifi'), banMoi.slice(-200));
+  ok('Gửi xuống cân không đọc / ghi lại các bản cũ (việc làm sạch chạy riêng lúc mở chương trình, không chặn đường gửi)',
+    fs.readFileSync(path.join(daGui, 'cu-125.TMS')).toString('latin1').includes('mat-khau-wifi'));
+  const lamSach = async (x: UngDung) => {
+    const f = (x as unknown as { lamSachDaGuiLucMo?: () => Promise<void> }).lamSachDaGuiLucMo;
+    if (typeof f !== 'function') throw new Error('chưa có lamSachDaGuiLucMo');
+    await f.call(x);
+  };
+  const loiLam = await loiCua(() => lamSach(u));
   const cu125 = fs.readFileSync(path.join(daGui, 'cu-125.TMS')).toString('latin1');
-  ok('HỒI QUY: bản lưu cũ còn mật khẩu WiFi (từ bản trước 2.9.2) được xoá dòng mạng, giữ ngày sửa',
-    !/WIFI-QUAN|mat-khau-wifi/.test(cu125) && cu125.includes('TMT\t0\tBEEFTOWN\t') && Math.abs(fs.statSync(path.join(daGui, 'cu-125.TMS')).mtimeMs - mtime125) < 2000);
+  ok('HỒI QUY: lúc mở chương trình, bản lưu cũ còn mật khẩu WiFi (từ bản trước 2.9.2) được xoá dòng mạng, giữ ngày sửa',
+    loiLam === '' && !/WIFI-QUAN|mat-khau-wifi/.test(cu125) && cu125.includes('TMT\t0\tBEEFTOWN\t')
+    && Math.abs(fs.statSync(path.join(daGui, 'cu-125.TMS')).mtimeMs - mtime125) < 2000, loiLam);
   u.dongNen();
+  {
+    // Máy chưa gửi gì từ khi lên 2.9.2: dọn cũng phải chạy lúc mở. Một file hỏng (liên kết gãy — OneDrive đang giữ, vừa bị xoá)
+    // không làm dừng cả lượt.
+    const dd2 = ddMoi();
+    const dg2 = path.join(dd2.duLieu, 'da-gui');
+    fs.mkdirSync(dg2, { recursive: true });
+    for (const [ten, tuoi] of [['cu-1.TMS', 40], ['cu-2.TMS', 2]] as const) {
+      fs.writeFileSync(path.join(dg2, ten), coWifi(goc));
+      fs.utimesSync(path.join(dg2, ten), new Date(bay - tuoi * ngay), new Date(bay - tuoi * ngay));
+    }
+    fs.symlinkSync(path.join(dg2, 'khong-co.TMS'), path.join(dg2, 'gay.TMS'));
+    const u2 = new UngDung(dd2, { mang: [], mac: async () => null });
+    const loi2 = await loiCua(() => lamSach(u2));
+    const con = fs.readdirSync(dg2).sort();
+    ok('HỒI QUY: máy chưa gửi gì → lúc mở vẫn bỏ bản cũ hơn 30 ngày, xoá dòng mạng bản còn giữ; một file hỏng không dừng cả lượt',
+      loi2 === '' && !con.includes('cu-1.TMS') && con.includes('cu-2.TMS')
+      && !fs.readFileSync(path.join(dg2, 'cu-2.TMS')).toString('latin1').includes('mat-khau-wifi'), `${loi2} · ${con.join()}`);
+    u2.dongNen();
+  }
 
   // loi.txt: đầy thì đổi thành loi-cu.txt, ghi tiếp file mới; một dòng quá dài bị cắt.
   const thuMuc = path.join(tam, 'loi');
@@ -404,6 +492,7 @@ async function thuDaGuiVaLoi(ok: Ok, h: TroGiup, ddMoi: () => { cauHinh: string;
       && fs.readdirSync(thuMuc).sort().join() === 'loi-cu.txt,loi.txt', `${Buffer.byteLength(loi)} / ${Buffer.byteLength(cu)} byte`);
   }
   const mn = fs.readFileSync(path.join(SRC, 'main.ts'), 'utf8');
+  ok('main.ts: dọn da-gui một lần sau khi mở (không chờ, không chặn việc khác)', /void ud\.lamSachDaGuiLucMo\(\)/.test(mn));
   ok('main.ts ghi loi.txt qua ghiLoiTxt của nghiep-vu.ts (có hạn), không appendFileSync thẳng', !/appendFileSync/.test(mn)
     && /ghiLoiTxt as ghiLoiCoHan \} from '\.\/nghiep-vu\.ts'/.test(mn) && /ghiLoiCoHan\(ud\.dd\.cauHinh, cau\)/.test(mn));
 }
@@ -417,10 +506,11 @@ function thuKiemKieu(ok: Ok) {
   try { ts = JSON.parse(fs.readFileSync(path.join(SRC, '..', 'tsconfig.json'), 'utf8')); } catch { /* chưa có */ }
   const ci = fs.readFileSync(path.join(GOC_REPO, '.github', 'workflows', 'kiem-thu.yml'), 'utf8');
   const pk = JSON.parse(fs.readFileSync(path.join(SRC, '..', 'package.json'), 'utf8')) as { scripts?: Record<string, string>; devDependencies?: Record<string, string> };
-  ok('can-app/tsconfig.json strict, có @types/bun; CI chạy tsc --noEmit (npm run kiem-kieu) trước kiểm thử Beeftown Cân',
+  ok('can-app/tsconfig.json strict, có @types/bun; CI chạy tsc --noEmit (npm run kiem-kieu) sau kiểm thử Beeftown Cân, cả khi kiểm thử hỏng',
     ts.compilerOptions?.strict === true && ts.compilerOptions.types?.includes('bun') === true && !!pk.devDependencies?.['@types/bun']
     && !!pk.devDependencies?.typescript && /tsc --noEmit/.test(pk.scripts?.['kiem-kieu'] ?? '')
-    && /working-directory: can-app\n\s+run: npm run kiem-kieu/.test(ci), JSON.stringify(ts));
+    && /run: npx bun test\/thu\.ts\n[^\n]*\n\s+- name: Kiểm kiểu Beeftown Cân[^\n]*\n\s+if: \$\{\{ !cancelled\(\) \}\}\n\s+working-directory: can-app\n\s+run: npm run kiem-kieu/.test(ci),
+    JSON.stringify(ts));
 }
 
 // Chạy riêng: in tổng và mã thoát. Cần file cân giả của test/thu.ts — dựng gọn ở đây.

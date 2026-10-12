@@ -165,6 +165,8 @@ setInterval(async () => {
 }, HOI_KHO_MS);
 // 2.9: báo trạng thái cân + nhật ký tem về kho mỗi phút (đèn "Beeftown Cân" ở /noi-bo, trang pha lóc) — lần đầu sau 5 giây.
 setTimeout(() => { if (!dangCapNhat()) void ud.baoKhoMotLan(); }, 5_000);
+// 2.9.2: dọn Tài liệu\Beeftown Can\da-gui một lần sau khi mở — giữ 100 bản / 30 ngày, bỏ mật khẩu WiFi khỏi bản lưu cũ (không chờ).
+setTimeout(() => { void ud.lamSachDaGuiLucMo(); }, 10_000);
 setInterval(() => { if (!dangCapNhat()) void ud.baoKhoMotLan(); }, BAO_KHO_MS);
 
 // 2.8: giữ kết nối hai chiều mở với cân (nghe cân tự báo in tem, đèn ô Cân, tự chỉnh giờ cân mỗi ngày) — nhịp 30 giây như

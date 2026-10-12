@@ -679,7 +679,7 @@ const DOC_LAI_KHO_CAN_CACH_MS = 60_000;
 /** Kho trả 401 "Invalid API key" — chương trình đang đọc lại kho-can.json (kiemLaiKhoCan). */
 const KHOA_KHO_DOI = 'Kho không nhận khoá truy cập đang lưu trên máy này (kho vừa đổi khoá hay chuyển sang project mới). '
   + 'Chương trình tự đọc lại cấu hình kho (tối đa mỗi phút một lần) — thử lại sau ít phút; có thể phải đăng nhập lại.';
-const laSaiKhoaKho = (m: string) => /Invalid API key|No API key found/i.test(m);
+const laSaiKhoaKho = (m: string) => /Invalid API key|Unregistered API key|No API key found/i.test(m);
 /** cauLoiKho của web, thêm câu cho 401 "Invalid API key" (hàm kho của máy quầy — khoTuClient). */
 const cauLoiKhoMay = (e: unknown) => {
   const m = laDoiTuong(e) && typeof e.message === 'string' ? e.message : '';
@@ -754,6 +754,15 @@ export interface AnhGui { ten: string; loai: string; base64: string }
 interface AnhHuyDaTai { soCuoi: number; theoDau: Map<string, string> }
 /** Nhớ ảnh của chừng này lần gửi form gần nhất. */
 const ANH_HUY_NHO_TOI_DA = 50;
+/** Ảnh vào số đã có trong kho file (bộ nhớ ảnh mất sau khi khởi động lại) → thử số sau, tối đa chừng này lần mỗi ảnh. */
+const ANH_HUY_THU_SO_SAU = 8;
+/**
+ * 2.9.2 — lần gửi phiếu huỷ hỏng mà chưa biết kho đã ghi chưa (mất câu trả lời), theo chi nhánh + các lô: lần gửi sau cùng các
+ * lô (form mới, kể cả sau khi chương trình khởi động lại) dùng lại ma_gui này — kho trả phiếu đã có, không thành hai phiếu.
+ * Lưu trong %APPDATA%\BeeftownCan\phieu-huy-chua-chac.json, giữ HUY_CHUA_CHAC_GIU_MS; kho trả lời được thì xoá.
+ */
+interface HuyChuaChac { khoa: string; maGui: string; luc: number }
+const HUY_CHUA_CHAC_GIU_MS = 24 * 3600_000;
 const LA_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type DongGuiVe = Omit<DongKeHoach, 'goc'>;
@@ -1050,6 +1059,8 @@ export class UngDung {
   readonly fileMaMay: string;
   /** %APPDATA%\BeeftownCan\nhat-ky-da-gui.json — 2.9: mốc nhật ký tem đã gửi kho, theo chi nhánh {id: giờ cân}. */
   readonly fileNhatKyDaGui: string;
+  /** %APPDATA%\BeeftownCan\phieu-huy-chua-chac.json — 2.9.2: lần gửi phiếu huỷ chưa chắc kho đã ghi (HuyChuaChac). */
+  readonly fileHuyChuaChac: string;
   /** 2.9 — số hàng kho thêm / sửa mà cân chưa có, theo lần tự gửi gần nhất; null = chưa biết. */
   private lechCuoi: number | null = null;
   /** 2.9 — lần gửi xuống cân được gần nhất (ms). */
@@ -1087,8 +1098,6 @@ export class UngDung {
   private khoCanDangDoc: Promise<boolean> | null = null;
   private lucDocKhoCan = Number.NEGATIVE_INFINITY;
   private daKiemKhoCanLucMo = false;
-  /** 2.9.2 — đã bỏ dòng mạng khỏi các bản lưu cũ trong da-gui ở lần mở chương trình này (donDaGui). */
-  private daSachDaGui = false;
   /** 2.9.2 — ảnh phiếu huỷ đã tải theo lần gửi form ('<chi nhánh>/<ma_gui>'). */
   private readonly anhHuy = new Map<string, AnhHuyDaTai>();
   /** 2.9.2 — phiếu huỷ đang gửi theo ma_gui: bấm hai lần thì lần sau chờ lần trước xong (dùng lại ảnh, kho trả phiếu đã có). */
@@ -1208,6 +1217,7 @@ export class UngDung {
     this.fileTuDatGio = path.join(dd.cauHinh, 'tu-dat-gio.json');
     this.fileMaMay = path.join(dd.cauHinh, 'ma-may.txt');
     this.fileNhatKyDaGui = path.join(dd.cauHinh, 'nhat-ky-da-gui.json');
+    this.fileHuyChuaChac = path.join(dd.cauHinh, 'phieu-huy-chua-chac.json');
     this.giu = new GiuKetNoi((ip, cong, tuy) => moKetNoi(ip, cong, tuy), () => this.bayGio());
     this.udp = new NgheUdp({ ...(this.phu.udp ?? {}), bayGio: () => this.bayGio() });
   }
@@ -1328,10 +1338,11 @@ export class UngDung {
       removeItem: (k: string) => { delete kho[k]; ghiJson(file, kho, this.phu.vietByte); },
     };
     const fetchHan = fetchCoHan(this.phu.fetch ?? fetch, this.phu.hanYeuCauKhoMs ?? HAN_YEU_CAU_KHO_MS, HAN_YEU_CAU_LAU_MS);
-    // 2.9.2: kho trả 401 (khoá anon bị từ chối — kho đổi khoá / chuyển project) → đọc lại kho-can.json ngầm.
+    // 2.9.2: kho trả 401 "Invalid API key" (khoá anon bị từ chối — kho đổi khoá / chuyển project) → đọc lại kho-can.json ngầm.
     const fetchKho = (async (dau: Parameters<typeof fetch>[0], init?: RequestInit) => {
       const r = await fetchHan(dau, init);
-      if (r.status === 401) void this.kiemLaiKhoCan(false);
+      // Chỉ khi kho từ chối KHOÁ — phiên hết hạn ("JWT expired") cũng là 401 mà kho-can.json không đổi gì.
+      if (r.status === 401) void r.clone().text().then(t => { if (laSaiKhoaKho(t)) void this.kiemLaiKhoCan(false); }, () => { /* thôi */ });
       return r;
     }) as typeof fetch;
     this.client = createClient(ch.supabaseUrl!, ch.anonKey!, {
@@ -1354,9 +1365,13 @@ export class UngDung {
     this.lanDangNhap++;
     let c = await this.layClient();
     let { error } = await c.auth.signInWithPassword({ email: email.trim(), password: matKhau });
-    // 2.9.2: đăng nhập hỏng (khoá bị từ chối, project cũ không trả lời, sai mật khẩu…) → đọc lại kho-can.json; địa chỉ / khoá
-    // đã khác (lần này hay lần kiểm ngầm vừa xong) → đăng nhập lại MỘT lần bằng cái mới.
-    if (error && (await this.kiemLaiKhoCan(true) || this.client !== c)) {
+    // 2.9.2: đăng nhập hỏng vì khoá bị từ chối (401) hay project không trả lời → đọc lại kho-can.json. Sai mật khẩu (400: khoá
+    // đúng, kho trả lời) hay mạng treo hết giờ thì không — chỉ thêm chờ. Lần kiểm ngầm lúc mở còn đang đọc thì chờ nó: đăng
+    // nhập vào project cũ được rồi kho-can.json mới báo project mới là phiên nằm ở project cũ. Địa chỉ / khoá đã khác (lần này
+    // hay lần kiểm ngầm) → đăng nhập lại MỘT lần bằng cái mới.
+    if (error && error.status !== 400 && !/không trả lời kịp/i.test(error.message)) await this.kiemLaiKhoCan(true);
+    else if (this.khoCanDangDoc) await this.khoCanDangDoc;
+    if (this.client !== c) {
       c = await this.layClient();
       ({ error } = await c.auth.signInWithPassword({ email: email.trim(), password: matKhau }));
     }
@@ -1510,16 +1525,44 @@ export class UngDung {
       tep.push({ f: new File([du], String(a.ten || 'anh.jpg').slice(0, 80), { type: a.loai }), dau: createHash('sha256').update(a.loai).update(du).digest('hex') });
     }
     if (ld.can_anh && tep.length === 0) throw new LoiCan(`Lý do "${ld.ten}" cần ảnh chụp hàng — chọn ít nhất một ảnh.`);
-    const tai = await this.taiAnhHuyGiuSo(kho, cn, maGui, tep);
-    if (ld.can_anh && tai.duongDan.length === 0) {
-      throw new LoiCan(`Ảnh chưa tải lên được${tai.loi.length ? ': ' + tai.loi.join(' · ') : ''}. Thử lại.`);
+    // 2.9.2: lần gửi trước cùng các lô hỏng mà chưa biết kho đã ghi chưa (HuyChuaChac — kể cả trước khi chương trình khởi động
+    // lại, trang mở form mới với ma_gui mới) → gửi bằng ma_gui của lần đó.
+    const khoaLo = `${cn}|${[...new Set(x.dong.map(d => d.lo_id))].sort().join(',')}`;
+    const maGuiDung = this.docHuyChuaChac().find(h => h.khoa === khoaLo)?.maGui ?? maGui;
+    try {
+      const tai = await this.taiAnhHuyGiuSo(kho, cn, maGuiDung, tep);
+      if (ld.can_anh && tai.duongDan.length === 0) {
+        throw new LoiCan(`Ảnh chưa tải lên được${tai.loi.length ? ': ' + tai.loi.join(' · ') : ''}. Thử lại.`);
+      }
+      const kq = await kho.rpc('kho_tao_phieu_xuat', {
+        p_chi_nhanh_id: cn, p_ma_gui: maGuiDung, p_loai: 'huy', p_vi_tri_id: x.viTriId, p_vi_tri_den_id: null,
+        p_ly_do_id: ld.id, p_ghi_chu: String(b.ghiChu ?? '').trim().slice(0, 500) || null, p_anh: tai.duongDan, p_dong: x.dong,
+      }) as { so_phieu: string; da_co: boolean }[] | { so_phieu: string; da_co: boolean };
+      const r = Array.isArray(kq) ? kq[0] : kq;
+      this.ghiHuyChuaChac(khoaLo, null);
+      return { soPhieu: r?.so_phieu ?? '', daCo: !!r?.da_co, loiAnh: tai.loi };
+    } catch (e) {
+      // Hỏng từ bước ảnh trở đi: chưa biết kho đã ghi phiếu chưa — lần gửi sau cùng các lô dùng lại ma_gui này.
+      this.ghiHuyChuaChac(khoaLo, maGuiDung);
+      throw e;
     }
-    const kq = await kho.rpc('kho_tao_phieu_xuat', {
-      p_chi_nhanh_id: cn, p_ma_gui: maGui, p_loai: 'huy', p_vi_tri_id: x.viTriId, p_vi_tri_den_id: null,
-      p_ly_do_id: ld.id, p_ghi_chu: String(b.ghiChu ?? '').trim().slice(0, 500) || null, p_anh: tai.duongDan, p_dong: x.dong,
-    }) as { so_phieu: string; da_co: boolean }[] | { so_phieu: string; da_co: boolean };
-    const r = Array.isArray(kq) ? kq[0] : kq;
-    return { soPhieu: r?.so_phieu ?? '', daCo: !!r?.da_co, loiAnh: tai.loi };
+  }
+
+  /** 2.9.2 — các lần gửi phiếu huỷ chưa chắc còn hạn (HuyChuaChac). File hỏng / không có → rỗng. */
+  private docHuyChuaChac(): HuyChuaChac[] {
+    const ds = docJson<{ ds?: unknown }>(this.fileHuyChuaChac, {}).ds;
+    const bay = this.bayGio();
+    return (Array.isArray(ds) ? ds : []).filter((h): h is HuyChuaChac => laDoiTuong(h) && typeof h.khoa === 'string'
+      && typeof h.maGui === 'string' && LA_UUID.test(h.maGui) && typeof h.luc === 'number' && bay - h.luc < HUY_CHUA_CHAC_GIU_MS);
+  }
+
+  /** Nhớ (`maGui`) hay quên (null) lần gửi chưa chắc của các lô `khoa`. Không ghi được thì thôi — chỉ mất phần nhớ qua lần mở. */
+  private ghiHuyChuaChac(khoa: string, maGui: string | null): void {
+    const cu = this.docHuyChuaChac();
+    if (!maGui && !cu.some(h => h.khoa === khoa)) return;
+    const ds = cu.filter(h => h.khoa !== khoa);
+    if (maGui) ds.push({ khoa, maGui, luc: this.bayGio() });
+    try { ghiJson(this.fileHuyChuaChac, { ds: ds.slice(-20) }, this.phu.vietByte); } catch { /* thôi */ }
   }
 
   /**
@@ -1537,11 +1580,16 @@ export class UngDung {
     for (const { f, dau } of tep) {
       const cu = nho.theoDau.get(dau);
       if (cu) { if (!duongDan.includes(cu)) duongDan.push(cu); continue; }
-      nho.soCuoi += 1;
-      const r = await kho.taiAnhHuy(cn, maGui, [f], nho.soCuoi);
-      loi.push(...r.loi);
-      const d = r.duongDan[0];
-      if (d) { nho.theoDau.set(dau, d); duongDan.push(d); }
+      for (let lan = 0; ; lan++) {
+        nho.soCuoi += 1;
+        const r = await kho.taiAnhHuy(cn, maGui, [f], nho.soCuoi);
+        const d = r.duongDan[0];
+        if (d) { nho.theoDau.set(dau, d); duongDan.push(d); break; }
+        // Số này đã có trong kho file (lần gửi trước khi chương trình khởi động lại — bộ nhớ ảnh đã mất): thử số sau.
+        if (lan < ANH_HUY_THU_SO_SAU && r.loi.some(l => /already exists|Duplicate/i.test(l))) continue;
+        loi.push(...r.loi);
+        break;
+      }
     }
     return { duongDan, loi };
   }
@@ -1672,28 +1720,44 @@ export class UngDung {
 
   /**
    * 2.9.2 — da-gui giữ DA_GUI_GIU_TOI_DA bản .TMS mới nhất, bỏ bản cũ hơn DA_GUI_GIU_NGAY ngày (theo ngày sửa file; bản mới
-   * nhất luôn giữ). Trước 2.9.2 không bao giờ dọn — tự gửi mỗi lần kho đổi là thêm một bản. Lần dọn đầu mỗi lần mở chương
-   * trình: bỏ dòng mạng khỏi các bản còn giữ (bản lưu trước 2.9.2 có mật khẩu WiFi), giữ ngày sửa. File không phải .TMS
-   * (người dùng để vào) không đụng. Không dọn được file nào (đang mở…) thì bỏ qua file đó — không làm hỏng lần gửi.
+   * nhất luôn giữ). Trước 2.9.2 không bao giờ dọn — tự gửi mỗi lần kho đổi là thêm một bản. File không phải .TMS (người dùng
+   * để vào) không đụng. Từng file một: file hỏng (vừa mất, OneDrive đang giữ) bỏ qua, không dừng cả lượt, không làm hỏng lần
+   * gửi. Trả các bản còn giữ, mới trước.
    */
-  private donDaGui(): void {
-    let ds: { f: string; ms: number }[];
-    try {
-      ds = fs.readdirSync(this.thuMucDaGui).filter(t => /\.tms$/i.test(t)).map(t => path.join(this.thuMucDaGui, t))
-        .map(f => ({ f, ms: fs.statSync(f).mtimeMs })).sort((a, b) => b.ms - a.ms);
-    } catch { return; }
+  private donDaGui(): { f: string; ms: number }[] {
+    let ten: string[];
+    try { ten = fs.readdirSync(this.thuMucDaGui).filter(t => /\.tms$/i.test(t)); } catch { return []; }
+    const ds: { f: string; ms: number }[] = [];
+    for (const t of ten) {
+      const f = path.join(this.thuMucDaGui, t);
+      try { ds.push({ f, ms: fs.statSync(f).mtimeMs }); } catch { /* bỏ qua file này */ }
+    }
+    ds.sort((a, b) => b.ms - a.ms);
     // Ngày sửa file là giờ thật của máy (không phải đồng hồ kiểm thử bayGio).
     const bay = Date.now();
-    ds.forEach((x, i) => {
-      try {
-        if (i > 0 && (i >= DA_GUI_GIU_TOI_DA || bay - x.ms > DA_GUI_GIU_NGAY * 86_400_000)) { fs.rmSync(x.f, { force: true }); return; }
-        if (this.daSachDaGui) return;
-        const du = new Uint8Array(fs.readFileSync(x.f));
-        const sach = boDongMang(du);
-        if (sach !== du) { fs.writeFileSync(x.f, sach); fs.utimesSync(x.f, new Date(x.ms), new Date(x.ms)); }
-      } catch { /* file này thôi */ }
+    return ds.filter((x, i) => {
+      if (i === 0 || (i < DA_GUI_GIU_TOI_DA && bay - x.ms <= DA_GUI_GIU_NGAY * 86_400_000)) return true;
+      try { fs.rmSync(x.f, { force: true }); return false; } catch { return true; }
     });
-    this.daSachDaGui = true;
+  }
+
+  /**
+   * 2.9.2 — main.ts gọi một lần sau khi mở: dọn da-gui (cả máy chưa gửi gì từ khi lên 2.9.2), rồi bỏ dòng mạng khỏi các bản còn
+   * giữ — bản lưu trước 2.9.2 có tên / mật khẩu WiFi — giữ ngày sửa. Đọc / ghi bất đồng bộ từng file (file tạm rồi đổi tên):
+   * không chặn máy chủ nhỏ, nhịp với cân, lần gửi. File không làm được thì bỏ qua — lần mở sau thử lại.
+   */
+  async lamSachDaGuiLucMo(): Promise<void> {
+    for (const x of this.donDaGui()) {
+      try {
+        const du = new Uint8Array(await fs.promises.readFile(x.f));
+        const sach = boDongMang(du);
+        if (sach === du) continue;
+        const tam = x.f + '.tam';
+        await fs.promises.writeFile(tam, sach);
+        await fs.promises.utimes(tam, new Date(x.ms), new Date(x.ms));
+        await fs.promises.rename(tam, x.f);
+      } catch { /* file này thôi */ }
+    }
   }
 
   // ---- dấu "hàng trên cân chưa rõ" (xoá qua WiFi hỏng giữa chừng) ------------------
@@ -3199,12 +3263,12 @@ export class UngDung {
         else if (ket('33571') === 'hong') ketLuan.push('Cổng 33571 không nhận (như ở quán từ 02/10/2026): chỉ cổng hai chiều và USB dùng được.');
       }
 
-      const luc = new Date(this.bayGio());
+      const luc = this.bayGio();
       const thuMuc = path.join(this.dd.duLieu, 'chan-doan');
-      const duongDan = path.join(thuMuc, `chan-doan-${tenTheoGioVn(luc.getTime())}.txt`);
+      const duongDan = path.join(thuMuc, `chan-doan-${tenTheoGioVn(luc)}.txt`);
       const tt = thongTin as ThongTinCan | null;
       const dong = [
-        'BEEFTOWN CÂN — CHẨN ĐOÁN WIFI', `Lúc: ${chuoiGio(gioVnLuc(luc.getTime()))}`, `Phiên bản chương trình: ${this.phu.capNhat?.phienBan ?? 'không rõ'}`,
+        'BEEFTOWN CÂN — CHẨN ĐOÁN WIFI', `Lúc: ${chuoiGio(gioVnLuc(luc))}`, `Phiên bản chương trình: ${this.phu.capNhat?.phienBan ?? 'không rõ'}`,
         `Cân: ${ch.ipCan} · cổng hai chiều ${cong} · cổng một chiều ${ch.congCan}`,
         `Mã máy / loại máy: ${tt ? `${tt.mac} / ${tt.model} / bảng mã ${tt.maHoa || '—'}` : '—'}`,
         `Có ghi thử: ${ghiThu ? 'có' : 'không (chỉ đọc)'}`, '',
@@ -3213,7 +3277,7 @@ export class UngDung {
       ];
       fs.mkdirSync(thuMuc, { recursive: true });
       fs.writeFileSync(duongDan, '﻿' + dong.join('\r\n'), 'utf8');
-      return { luc: luc.toISOString(), ip: ch.ipCan, congHaiChieu: cong, congMotChieu: ch.congCan, ghiThu, buoc, ketLuan, duongDan };
+      return { luc: new Date(luc).toISOString(), ip: ch.ipCan, congHaiChieu: cong, congMotChieu: ch.congCan, ghiThu, buoc, ketLuan, duongDan };
     });
   }
 
