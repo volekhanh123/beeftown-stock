@@ -180,7 +180,7 @@ export async function docGiaoOMaCan(client: SupabaseClient, chiNhanhId: string):
 }
 
 /**
- * Một dòng ô mã đang nằm trên cân, theo một máy quầy (kho_may_can.tren_can). chua_xac_nhan (0068, Beeftown Cân 2.9.2): máy đó
+ * Một dòng ô mã đang nằm trên cân, theo một máy quầy (kho_may_can.tren_can). chua_xac_nhan (0068, Beeftown Cân 2.9.3): máy đó
  * báo cân có thể đang khác dòng này (lần gửi chưa xác nhận đổi dòng này, đọc lại lệch, xoá hỏng); không có (database / máy quầy
  * cũ) = như false.
  */

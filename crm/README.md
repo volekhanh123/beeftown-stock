@@ -165,7 +165,7 @@ crm/
 │   ├── 0062_dat_ban_goi_lai.sql        ĐẶT BÀN · tao_dat_ban() gọi lại Y HỆT (số điện thoại, chi nhánh, ngày, giờ, số khách, dịp, ghi chú, đồng ý nhận tin) trong 10 phút, dòng cũ còn cho_xac_nhan → trả lại dòng cũ và mã cũ, không ghi gì thêm · chỉ lời gọi không phiên (website, Messenger)
 │   ├── 0063_zalo_chi_gui_khi_xac_nhan.sql ZALO · ZBS-01/ZBS-02 chỉ xếp khi nhân viên bấm "Đã gọi xác nhận" (cho_xac_nhan → da_xac_nhan), không phải lúc khách gửi yêu cầu · zalo_xep_tin_dat_ban(p_dat_ban_id, p_vua_xac_nhan, p_doi_gio) · máy gửi không lấy tin của đặt bàn chưa xác nhận (tin xếp trước 0063 nằm chờ)
 │   ├── 0065_crm_bo_policy_ghi_thang.sql ⚠ VÁ — bỏ policy ghi thẳng nhat_ky_dong_y, nhat_ky_tin, so_cai_diem, luot_ghe, khach_hang (mọi đường ghi là hàm definer tự kiểm vai) · don_dep_phieu_tai_len kiểm vai
-│   └── 0068_kho_can_chua_xac_nhan.sql  KHO · Beeftown Cân 2.9.2 báo cờ "chưa xác nhận" (kho_may_can.chua_xac_nhan, chua_xac_nhan_tu) và của từng dòng tren_can · kho_may_can_bao ghi, kho_phien_pha_can trả kèm từng dòng — trang pha lóc không "Cân sẵn sàng" theo dòng chưa xác nhận · suc_khoe_so_lieu (thân 0063) thêm cờ vào máy của ô can — đèn "Beeftown Cân" vàng · chạy sau 0063
+│   └── 0068_kho_can_chua_xac_nhan.sql  KHO · Beeftown Cân 2.9.3 báo cờ "chưa xác nhận" (kho_may_can.chua_xac_nhan, chua_xac_nhan_tu) và của từng dòng tren_can · kho_may_can_bao ghi, kho_phien_pha_can trả kèm từng dòng — trang pha lóc không "Cân sẵn sàng" theo dòng chưa xác nhận · suc_khoe_so_lieu (thân 0063) thêm cờ vào máy của ô can — đèn "Beeftown Cân" vàng · chạy sau 0063
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```

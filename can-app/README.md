@@ -196,16 +196,16 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
-## Bản 2.9.2 — chỉ ghi nhận khi đọc lại cân khớp; không đọc lại được thì tự thử lại
+## Bản 2.9.3 — chỉ ghi nhận khi đọc lại cân khớp; không đọc lại được thì tự thử lại
 
 **Lỗi (rà soát nợ kỹ thuật 11/10/2026, tái hiện trên cân giả — `test/thu.ts` 6g6–6g8):** cổng hai chiều 33581 bận chốc lát
 (phần mềm của hãng TM-xA đang mở, cân đang lưu) → lần gửi rơi về cổng 33571 (cân của quán bỏ qua cổng này từ 02/10/2026) →
-đọc lại cân không được (`khong-doc`). Bản 2.6–2.9.1 vẫn ghi `tren-can.tsv`, `A_000.TMS`, `hsd-tinh-ngay.txt` như cân đã nhận:
+đọc lại cân không được (`khong-doc`). Bản 2.6–2.9.2 vẫn ghi `tren-can.tsv`, `A_000.TMS`, `hsd-tinh-ngay.txt` như cân đã nhận:
 phút sau kế hoạch thấy "không có thay đổi", tự gửi không thử lại, báo kho `lech_so = 0` và tên ô MỚI → trang pha lóc hiện
 **"Cân sẵn sàng"** xanh trong khi cân vẫn tên cũ (tem in sai số tảng); khung đỏ HSD cũ cũng bị giấu. Gốc: `tren-can.tsv` thiết kế
 là "có thể đã trên cân" (2.6 / 2.7), từ 2.9 lại được báo kho như "chắc chắn trên cân".
 
-Từ 2.9.2 (`nghiep-vu.ts` `guiKeHoach`, `tuGuiMotLan`, `baoKhoMotLan`):
+Từ 2.9.3 (`nghiep-vu.ts` `guiKeHoach`, `tuGuiMotLan`, `baoKhoMotLan`):
 - **Trạng thái "trên cân" chỉ đổi khi đọc lại khớp**: `tren-can.tsv`, file gốc `A_000.TMS`, `hsd-tinh-ngay.txt` là thứ cân ĐÃ XÁC
   NHẬN (đọc lại khớp, file từ cân / nạp USB, xoá qua WiFi đọc lại khớp). Không đọc lại được → không ghi nhận gì: bảng vẫn "Thêm" /
   "Sửa", khung đỏ HSD cũ vẫn hiện, thẻ Tảng & ô vẫn "cân chưa đổi tên".
@@ -215,7 +215,7 @@ Từ 2.9.2 (`nghiep-vu.ts` `guiKeHoach`, `tuGuiMotLan`, `baoKhoMotLan`):
 - **Tự thử lại có lùi giờ** (`THU_LAI_KHONG_DOC_MS`): lần gửi không đọc lại được thứ 1, 2, 3, 4+ liên tiếp → tự gửi thử lại cả
   danh sách sau 1, 2, 5, 10 phút (`chua-xac-nhan.json` ghi `soLanThu`, `thuLaiLuc`) — kể cả khi kế hoạch thấy kho không đổi (cân
   có thể đang giữ bản chưa xác nhận). Chưa tới giờ: ô Cân "… chưa ghi nhận; tự gửi thử lại lúc 10:03". Bấm Gửi xuống cân không
-  phải chờ. Dấu kiểu 2.9.1 (chưa có giờ) → thử lại ngay lượt đầu sau khi cập nhật.
+  phải chờ. Dấu kiểu 2.9.2 (chưa có giờ) → thử lại ngay lượt đầu sau khi cập nhật.
 - **Báo kho cờ chưa xác nhận** (migration `0068_kho_can_chua_xac_nhan.sql`): `kho_may_can_bao` nhận `chua_xac_nhan` của máy (lần
   gửi gần nhất chưa đọc lại được / đọc lại lệch, hay xoá qua WiFi hỏng) và của từng dòng `tren_can` (cân có thể đang khác dòng đó:
   dòng chờ xác nhận khác dòng đã xác nhận; đọc lại lệch / xoá hỏng thì mọi dòng — gửi lại cả danh sách y hệt không đánh dấu dòng
@@ -227,7 +227,7 @@ Từ 2.9.2 (`nghiep-vu.ts` `guiKeHoach`, `tuGuiMotLan`, `baoKhoMotLan`):
 - Kiểm thử: các cân giả kiểu 2.1 (chỉ cổng 33571) đọc lại thẳng dữ liệu của chúng (`phu.docLaiPlu`) — từ bản này không đọc lại
   được là không ghi nhận. Gửi thông số / chữ chung / phím / tem không đọc lại được vẫn ghi nhận như 2.7 (khung vàng) — chưa đổi.
 
-**Thử ở quán (2.9.2)** — ngoài giờ bán, đã đóng TM-xA, Tự gửi bật:
+**Thử ở quán (2.9.3)** — ngoài giờ bán, đã đóng TM-xA, Tự gửi bật:
 1. Sửa giá một món ít bán trong kho → trong 1 phút ô Cân "Đã tự gửi … cân đã nhận (đọc lại khớp)" như trước.
 2. Cài đặt → **Cổng hai chiều** gõ `33599` (sai cố ý — giả cổng hai chiều bận) → Lưu. Sửa giá món đó lần nữa → trong 1 phút ô
    Cân: "… chưa đọc lại được cân để kiểm, chương trình chưa ghi nhận; tự gửi thử lại lúc …". Thẻ Gửi giá từ kho: món đó vẫn
@@ -447,7 +447,7 @@ sách PLU qua cổng hai chiều ở đúng địa chỉ vừa gửi (không dò
 |---|---|---|
 | Khớp | Ghi nhận như cũ, xoá dấu | Khung xanh "Cân đã nhận." |
 | Lệch: cân thiếu, hay khác mã / giá | **Không ghi nhận gì.** Ghi dấu `lech` vào `chua-xac-nhan.json`, tự gửi tạm dừng | Khung đỏ nêu tối đa 5 PLU ("PLU 1 trên cân vẫn là … 845.000 đ (gửi … 780.000 đ)") |
-| Không đọc được: cổng đóng, đứt giữa chừng, trả rỗng, cân khác mã máy (2.6.1: khác mã máy thì không gửi gì cả) | Ghi nhận như trước 2.6, kèm dấu `khong-doc` — **từ 2.9.2 không ghi nhận gì**, tự gửi thử lại có lùi giờ (mục "Bản 2.9.2") | Khung vàng "chưa kiểm được cân đã nhận chưa"; nhãn "Giữ nguyên (chưa xác nhận)", "Khớp kho, chưa xác nhận" |
+| Không đọc được: cổng đóng, đứt giữa chừng, trả rỗng, cân khác mã máy (2.6.1: khác mã máy thì không gửi gì cả) | Ghi nhận như trước 2.6, kèm dấu `khong-doc` — **từ 2.9.3 không ghi nhận gì**, tự gửi thử lại có lùi giờ (mục "Bản 2.9.3") | Khung vàng "chưa kiểm được cân đã nhận chưa"; nhãn "Giữ nguyên (chưa xác nhận)", "Khớp kho, chưa xác nhận" |
 
 Dấu hết khi một lần gửi đọc lại khớp, khi ghi nhận file từ cân (USB hay đọc qua WiFi), hoặc khi xoá qua WiFi đọc lại khớp.
 Chữ có dấu qua cổng hai chiều chưa thử trên cân thật. Nếu lần thử đầu báo lệch chỉ vì tên (khung đỏ cho thấy tên đọc
@@ -652,7 +652,7 @@ dò WiFi hay kho chậm có thể lâu hơn.
 | Nơi | Có gì |
 |---|---|
 | `%APPDATA%\BeeftownCan\` | `cau-hinh.json` (IP cân, cổng, cổng hai chiều `congHaiChieu`, địa chỉ kho, các lần cân đổi địa chỉ, cổng COM lần thử trước; 2.8: `giuKetNoi`, `tuDatGio`, `ngheUdp`), `phien.json` (đăng nhập), `loi.txt` (lỗi), `tu-dat-gio.json` (2.8: các lần tự chỉnh giờ cân trong ngày), `ma-may.txt` (2.9: mã máy quầy báo kho), `nhat-ky-da-gui.json` (2.9: mốc nhật ký tem đã gửi kho, theo chi nhánh) |
-| `Tài liệu\Beeftown Can\` | `A_000.TMS` (file gốc = bản gần nhất cân đã xác nhận), `tren-can.tsv` (2.7: dòng mã `99999` là PLU trống — đã gỡ bằng ghi đè; 2.9.2: chỉ hàng cân đã xác nhận), `cho-xac-nhan.tsv` + `chua-xac-nhan.json` (2.9.2: lần gửi cân chưa xác nhận, giờ tự thử lại), `tem-da-tat.json`, `nhat-ky-can.tsv` (nhật ký bán của cân, TSV UTF-8 có tiêu đề; có dòng không đọc được thì giữ bản sao `nhat-ky-can-ban-sao-….tsv` trước khi ghi đè), `da-gui\` (mỗi lần gửi một bản; thông số / phím / giờ: đúng file nhỏ đã gửi), `cho-usb\`, `chan-doan\` (2.7: kết quả Chẩn đoán WiFi) |
+| `Tài liệu\Beeftown Can\` | `A_000.TMS` (file gốc = bản gần nhất cân đã xác nhận), `tren-can.tsv` (2.7: dòng mã `99999` là PLU trống — đã gỡ bằng ghi đè; 2.9.3: chỉ hàng cân đã xác nhận), `cho-xac-nhan.tsv` + `chua-xac-nhan.json` (2.9.3: lần gửi cân chưa xác nhận, giờ tự thử lại), `tem-da-tat.json`, `nhat-ky-can.tsv` (nhật ký bán của cân, TSV UTF-8 có tiêu đề; có dòng không đọc được thì giữ bản sao `nhat-ky-can-ban-sao-….tsv` trước khi ghi đè), `da-gui\` (mỗi lần gửi một bản; thông số / phím / giờ: đúng file nhỏ đã gửi), `cho-usb\`, `chan-doan\` (2.7: kết quả Chẩn đoán WiFi) |
 
 Thư mục `Tài liệu\Beeftown Can` dùng chung với `web/public/kho/can-wifi/Nap-Can-WiFi.ps1`.
 **File .TMS có tên và mật khẩu WiFi của quán** — chỉ nằm trên máy này và gửi tới cân, không lên kho, không commit.
@@ -688,9 +688,9 @@ npx bun scripts/dong-goi.ts      # ra dist/BeeftownCan.exe (~87 MB), đóng gói
 
 - Thử bản 2.7 trên cân thật (mục "Thử ở quán (2.7)") và sửa `CAN-TMA.md` theo file kết quả Chẩn đoán WiFi.
 - Thử bản 2.8 trên cân thật (mục "Thử ở quán (2.8)").
-- Thử bản 2.9 trên cân thật (mục "Thử ở quán (2.9)"), rồi 2.9.1 (mục "Thử ở quán (2.9.1)"), rồi 2.9.2 (mục "Thử ở quán (2.9.2)").
+- Thử bản 2.9 trên cân thật (mục "Thử ở quán (2.9)"), rồi 2.9.1 (mục "Thử ở quán (2.9.1)"), rồi 2.9.3 (mục "Thử ở quán (2.9.3)").
 - Gửi thông số / chữ chung / phím / mẫu tem mà không đọc lại được vẫn ghi nhận vào file gốc (2.7, khung vàng) — chưa tách "đang chờ"
-  như gửi giá (2.9.2).
+  như gửi giá (2.9.3).
 - Tự gửi dừng hẳn sau một lần đọc lại thấy cân CHƯA nhận (cân đang ở menu Prog lúc gửi…) tới khi người bấm Gửi — tên ô mã theo
   tảng không lên cân trong lúc đó. Có thể tự gửi lại cả danh sách sau 10 phút (bấm Gửi cũng chỉ làm vậy): chủ quyết.
 - Phím tắt cố định cho từng ô: trang pha lóc mới HIỆN phím; gán phím vẫn bằng tay ở thẻ Phím tắt.

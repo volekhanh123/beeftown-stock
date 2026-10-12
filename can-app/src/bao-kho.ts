@@ -17,7 +17,7 @@ import type { DongBanCan } from './bao-cao-can.ts';
 import type { PhimXem } from './thong-so.ts';
 
 /**
- * Một dòng đang nằm trên cân gửi lên kho (kho_may_can_bao → tren_can). chua_xac_nhan (2.9.2, migration 0068): cân có thể đang
+ * Một dòng đang nằm trên cân gửi lên kho (kho_may_can_bao → tren_can). chua_xac_nhan (2.9.3, migration 0068): cân có thể đang
  * khác dòng này — chỉ có khóa khi true.
  */
 export interface DongTrenCanBao { plu: number; ma_can: string; ten: string; phim: string[]; chua_xac_nhan?: true }
@@ -42,7 +42,7 @@ export function nhanPhim(k: Pick<PhimXem, 'trang' | 'nhan'>): string {
 
 /**
  * Dòng trên cân (tren-can.tsv) + phím tắt trong file gốc → dòng gửi kho. Bỏ dòng không có mã (dòng trống, hàng thử);
- * mỗi PLU tối đa 8 phím (kho cũng cắt 8). `chuaChac` (2.9.2): dòng cân có thể đang khác → kèm chua_xac_nhan: true.
+ * mỗi PLU tối đa 8 phím (kho cũng cắt 8). `chuaChac` (2.9.3): dòng cân có thể đang khác → kèm chua_xac_nhan: true.
  */
 export function dongTrenCanBao(tren: Iterable<{ so: number; ma: string; ten: string }>, phim: PhimXem[],
                                bo: (h: { so: number; ma: string }) => boolean = () => false,

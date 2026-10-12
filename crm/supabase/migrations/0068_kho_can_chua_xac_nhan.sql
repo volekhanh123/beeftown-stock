@@ -1,15 +1,15 @@
 -- =============================================================================
--- BEEFTOWN — 0068 · BEEFTOWN CÂN: CỜ "CHƯA XÁC NHẬN" (Beeftown Cân 2.9.2)
+-- BEEFTOWN — 0068 · BEEFTOWN CÂN: CỜ "CHƯA XÁC NHẬN" (Beeftown Cân 2.9.3)
 -- =============================================================================
 -- PHẢI CHẠY SAU 0061 (kho_may_can, kho_may_can_bao, kho_phien_pha_can) VÀ 0063 (thân suc_khoe_so_lieu mới nhất).
 --
 -- Lỗi (rà soát nợ kỹ thuật 11/10/2026, tái hiện trên cân giả — can-app/test/thu.ts 6g6): cổng hai chiều
 -- 33581 của cân bận chốc lát (phần mềm của hãng TM-xA đang mở, cân đang lưu) → Beeftown Cân gửi rơi về
 -- cổng 33571 (cân của quán bỏ qua cổng này từ 02/10/2026) → đọc lại cân không được ("khong-doc"). Bản 2.6–
--- 2.9.1 vẫn ghi tren-can.tsv như cân đã nhận, nên lần báo kho kế tiếp gửi lech_so = 0 và TÊN Ô MỚI trong
+-- 2.9.2 vẫn ghi tren-can.tsv như cân đã nhận, nên lần báo kho kế tiếp gửi lech_so = 0 và TÊN Ô MỚI trong
 -- tren_can → trang pha lóc hiện "Cân sẵn sàng" xanh trong khi cân vẫn tên cũ: tem in sai số tảng.
 --
--- Beeftown Cân 2.9.2 chỉ ghi nhận khi đọc lại khớp (tren_can là thứ cân ĐÃ XÁC NHẬN) và báo thêm:
+-- Beeftown Cân 2.9.3 chỉ ghi nhận khi đọc lại khớp (tren_can là thứ cân ĐÃ XÁC NHẬN) và báo thêm:
 --   · chua_xac_nhan của MÁY: lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được / đọc lại lệch), hay lần
 --     xoá qua WiFi hỏng giữa chừng;
 --   · chua_xac_nhan của từng DÒNG tren_can: cân có thể đang khác dòng đó (dòng có lần gửi chờ xác nhận khác
@@ -17,7 +17,7 @@
 --     dòng nào — một lần đếm ngược HSD chưa đọc lại được không chặn in tem mọi ô ở trang pha lóc.
 -- File này:
 --
---   1 · kho_may_can: thêm chua_xac_nhan (mặc định false — máy quầy trước 2.9.2 không gửi cờ) và
+--   1 · kho_may_can: thêm chua_xac_nhan (mặc định false — máy quầy trước 2.9.3 không gửi cờ) và
 --       chua_xac_nhan_tu (database ghi lần đầu thấy cờ bật, như lech_tu).
 --   2 · kho_may_can_bao: thân 0061 NGUYÊN VĂN, chỉ thêm ghi hai cột đó và giữ cờ của từng dòng tren_can
 --       (chỉ đúng true là bật). Cùng chữ ký, cùng quyền (xem).
@@ -26,8 +26,8 @@
 --       (web/src/lib/kho/danh-muc-can.ts, tomTatCanPhien) không nói "Cân sẵn sàng" theo dòng chưa xác nhận.
 --   4 · suc_khoe_so_lieu: thân 0063 NGUYÊN VĂN, chỉ thêm chua_xac_nhan / chua_xac_nhan_tu vào mỗi máy của
 --       ô `can` — đèn "Beeftown Cân" vàng khi máy chưa xác nhận quá PHUT_LECH_CAN phút (web/src/lib/suc-khoe.ts),
---       kể cả khi lech_so = 0 (máy vừa lên từ 2.9.1, kho quay về như lần đã xác nhận).
--- Triển khai: chạy được trước hay sau khi máy quầy lên 2.9.2 / web mới — khóa thiếu là false.
+--       kể cả khi lech_so = 0 (máy vừa lên từ 2.9.2, kho quay về như lần đã xác nhận).
+-- Triển khai: chạy được trước hay sau khi máy quầy lên 2.9.3 / web mới — khóa thiếu là false.
 -- =============================================================================
 
 
@@ -39,7 +39,7 @@ alter table kho_may_can
   add column chua_xac_nhan_tu timestamptz;                       -- 0068: chưa xác nhận từ lúc nào (database ghi lần đầu thấy)
 
 comment on column kho_may_can.chua_xac_nhan is
-  'Beeftown Cân 2.9.2 (0068): lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được / đọc lại lệch) hay lần xoá qua WiFi hỏng — cân có thể khác tren_can. Máy trước 2.9.2: luôn false.';
+  'Beeftown Cân 2.9.3 (0068): lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được / đọc lại lệch) hay lần xoá qua WiFi hỏng — cân có thể khác tren_can. Máy trước 2.9.3: luôn false.';
 comment on column kho_may_can.chua_xac_nhan_tu is
   'Lúc database thấy chua_xac_nhan bật lần đầu (0068); hết chưa xác nhận thì null.';
 
@@ -126,7 +126,7 @@ begin
 
   v_nv := nhan_su_hien_tai();
   -- Hai lần báo cùng lúc (hai cửa sổ, gửi lại): ON CONFLICT ghi lần lượt, một dòng mỗi máy.
-  -- 0068: chua_xac_nhan — chỉ đúng true là bật; thiếu / sai kiểu (máy quầy trước 2.9.2) = false.
+  -- 0068: chua_xac_nhan — chỉ đúng true là bật; thiếu / sai kiểu (máy quầy trước 2.9.3) = false.
   v_cxn := coalesce(p_bao -> 'chua_xac_nhan' = 'true'::jsonb, false);
   insert into kho_may_can as m (chi_nhanh_id, ma_may, phien_ban, mac_can, bao_luc, nguoi, giu_ket_noi, can_tra_loi_luc,
                                 tu_gui, lech_so, lech_tu, gui_loi, gui_luc, tren_can, chua_xac_nhan, chua_xac_nhan_tu)

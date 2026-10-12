@@ -6,7 +6,7 @@
  *
  * tomTatCanPhien (web/src/lib/kho/danh-muc-can.ts) soạn câu từ kho_phien_pha_can — hàm thuần, dữ liệu giả:
  *   · "Cân sẵn sàng: <tên + số tảng> = PLU · phím" CHỈ khi máy quầy báo đúng TÊN MỚI cho mã ô (tên cũ = tem sai tảng);
- *   · 0068 (Beeftown Cân 2.9.2): dòng máy quầy đánh dấu chưa xác nhận (cân có thể đang khác) → không "sẵn sàng" theo dòng đó;
+ *   · 0068 (Beeftown Cân 2.9.3): dòng máy quầy đánh dấu chưa xác nhận (cân có thể đang khác) → không "sẵn sàng" theo dòng đó;
  *   · chưa máy quầy nào báo → "không biết", không bao giờ "sẵn sàng";
  *   · tem cân in / nhãn quét: khớp, thiếu quét, nhật ký chưa đủ; nhãn mã thường của phiên theo tảng;
  *   · docCanPhien không bao giờ ném (database chưa chạy 0061 → null, trang không vẽ gì);
@@ -75,8 +75,8 @@ await nhom('1 · CÂN SẴN SÀNG CHỈ KHI ĐÚNG TÊN MỚI (TÊN + SỐ TẢN
 
 // ===========================================================================
 await nhom('1b · 0068: MÁY QUẦY CHƯA XÁC NHẬN LẦN GỬI GẦN NHẤT → KHÔNG "SẴN SÀNG" (rà soát 11/10/2026)', async () => {
-  // Beeftown Cân 2.9.1 báo tên ô mới sau một lần gửi chưa đọc lại được cân (cổng hai chiều bận, gửi rơi về 33571 mà cân bỏ
-  // qua) → trang xanh "Cân sẵn sàng" khi cân vẫn tên cũ, tem in sai số tảng. 2.9.2 báo thêm cờ chua_xac_nhan.
+  // Beeftown Cân 2.9.2 báo tên ô mới sau một lần gửi chưa đọc lại được cân (cổng hai chiều bận, gửi rơi về 33571 mà cân bỏ
+  // qua) → trang xanh "Cân sẵn sàng" khi cân vẫn tên cũ, tem in sai số tảng. 2.9.3 báo thêm cờ chua_xac_nhan.
   const chuaXn = { plu: 23, ten: 'Thăn ngoại cắt lát #0142', phim: ['F5'], bao_luc: truoc(1), chua_xac_nhan: true };
   const d = dong0(CP({ o: [O({ tren_can: [chuaXn] })], may: [MAY({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(3) })] }));
   ok('HỒI QUY 11/10: đúng tên mới nhưng máy quầy chưa xác nhận lần gửi gần nhất → vàng "chưa chắc", KHÔNG "Cân sẵn sàng"',
@@ -88,7 +88,7 @@ await nhom('1b · 0068: MÁY QUẦY CHƯA XÁC NHẬN LẦN GỬI GẦN NHẤT �
   const cu = dong0(CP({ o: [O({ tren_can: [{ ...chuaXn, ten: 'Thăn ngoại cắt lát #0141' }] })] }));
   ok('Máy chưa xác nhận còn tên cũ → vẫn "còn tên cũ" (không in)', cu.muc === 'ten_cu', cu.cau.vi);
   const cu29 = dong0(CP({ o: [O({ tren_can: [{ plu: 23, ten: 'Thăn ngoại cắt lát #0142', phim: ['F5'], bao_luc: truoc(1) }] })] }));
-  ok('Máy quầy trước 2.9.2 (không có cờ) → như 0061: sẵn sàng theo tên', cu29.muc === 'san_sang', cu29.cau.vi);
+  ok('Máy quầy trước 2.9.3 (không có cờ) → như 0061: sẵn sàng theo tên', cu29.muc === 'san_sang', cu29.cau.vi);
   const may = tomTatCanPhien(CP({ o: [O({ tren_can: [chuaXn] })], may: [MAY({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(3) })] })).may;
   ok('Câu máy quầy nói lần gửi gần nhất chưa được cân xác nhận (đã 3 phút) — xem ô Cân của Beeftown Cân',
      /Lần gửi gần nhất của Beeftown Cân chưa được cân xác nhận \(đã 3 phút\)/.test(may.vi) && /ô Cân/.test(may.vi)

@@ -7,7 +7,7 @@
  *   · kho_can_giao_o_ma: danh mục cân đọc ô đang giao bằng MỌI vai xem (NV quầy ở máy quầy đọc view
  *     thì rỗng) — đúng từng dòng của view.
  *   · kho_may_can_bao: máy quầy báo trạng thái — một dòng mỗi máy, chỉ giữ dòng mã ô trên cân, mốc giờ
- *     không lùi / không ở tương lai, lệch từ lúc nào; 0068: cờ "chưa xác nhận" (Beeftown Cân 2.9.2) và từ lúc nào.
+ *     không lùi / không ở tương lai, lệch từ lúc nào; 0068: cờ "chưa xác nhận" (Beeftown Cân 2.9.3) và từ lúc nào.
  *   · kho_may_can_nhat_ky: tem cân in bằng mã ô — gửi lại không trùng, giờ đồng hồ cân là giờ VN
  *     (23:50 / 00:10), ngày không có thật bỏ qua.
  *   · kho_phien_pha_can: trang pha lóc — ô đã lên cân chưa, tem in / nhãn quét, nhãn mã thường; 0068: máy chưa
@@ -202,9 +202,9 @@ await nhom('3 · MÁY QUẦY BÁO TRẠNG THÁI (kho_may_can_bao)', async () => 
   await bao(UID.nvQuayA, cnA.id, MAY_1, { lech_so: '7' });
   ok('lech_so không phải số → chưa biết (null)', (await dongMay(MAY_1)).lech_so === null);
 
-  // 0068 (Beeftown Cân 2.9.2): lần gửi gần nhất cân chưa xác nhận — cờ và từ lúc nào (như lech_tu).
+  // 0068 (Beeftown Cân 2.9.3): lần gửi gần nhất cân chưa xác nhận — cờ và từ lúc nào (như lech_tu).
   const x0 = await dongMay(MAY_1);
-  ok('0068: máy quầy trước 2.9.2 (không gửi cờ) → chua_xac_nhan false, không mốc', x0.chua_xac_nhan === false && x0.chua_xac_nhan_tu === null,
+  ok('0068: máy quầy trước 2.9.3 (không gửi cờ) → chua_xac_nhan false, không mốc', x0.chua_xac_nhan === false && x0.chua_xac_nhan_tu === null,
      JSON.stringify(x0));
   await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true });
   const x1 = await dongMay(MAY_1);

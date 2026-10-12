@@ -235,7 +235,7 @@ await nhom('4b · BEEFTOWN CÂN (MÁY QUẦY BÁO VỀ KHO, 0061)', async () => 
   const sang = dc([may({ bao_luc: truoc(1), lech_so: 5, lech_tu: '2026-09-28T17:00:00Z' })], '2026-09-29T03:10:00Z');
   ok('10:10 giờ VN: lệch từ nửa đêm (HSD đếm ngược) → chưa vàng — tính từ lúc mở cửa (10:00), mới 10 phút', sang.mau === 'xanh', tom(sang));
   ok('10:16 giờ VN: vẫn lệch → vàng', dc([may({ bao_luc: truoc(1), lech_so: 5, lech_tu: '2026-09-28T17:00:00Z' })], '2026-09-29T03:16:00Z').mau === 'vang');
-  // 0068 (Beeftown Cân 2.9.2): lần gửi gần nhất cân chưa xác nhận — kể cả khi lech_so = 0 (rà soát code-review: máy lên từ 2.9.1).
+  // 0068 (Beeftown Cân 2.9.3): lần gửi gần nhất cân chưa xác nhận — kể cả khi lech_so = 0 (rà soát code-review: máy lên từ 2.9.2).
   const xn = dc([may({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(PHUT_LECH_CAN + 1) })]);
   ok(`0068: chưa xác nhận ${PHUT_LECH_CAN + 1} phút, lech_so 0 → vàng "Lần gửi gần nhất của Beeftown Cân chưa được cân xác nhận (từ 16 phút trước)"`,
      xn.mau === 'vang' && /^Lần gửi gần nhất của Beeftown Cân chưa được cân xác nhận \(từ 16 phút trước\) — cân có thể còn giá \/ tên cũ/.test(xn.cau), tom(xn));

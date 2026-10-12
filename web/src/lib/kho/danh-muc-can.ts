@@ -288,8 +288,8 @@ const gioPhut = (iso: string | null | undefined): string => {
 /**
  * Số liệu kho_phien_pha_can → các dòng trang pha lóc hiện (hàm thuần — test bằng node). Không bao giờ nói "Cân sẵn
  * sàng" khi chưa máy quầy nào báo đúng TÊN MỚI (tên + số tảng) cho mã ô: tên cũ trên cân = tem in ra sai tảng. 0068: dòng
- * máy quầy đánh dấu chua_xac_nhan (Beeftown Cân 2.9.2 — cân có thể đang khác dòng đó: lần gửi chưa đọc lại được, đọc lại lệch)
- * chưa đủ để nói "sẵn sàng" (rà soát 11/10/2026: 2.9.1 báo tên mới sau một lần gửi cân bỏ qua).
+ * máy quầy đánh dấu chua_xac_nhan (Beeftown Cân 2.9.3 — cân có thể đang khác dòng đó: lần gửi chưa đọc lại được, đọc lại lệch)
+ * chưa đủ để nói "sẵn sàng" (rà soát 11/10/2026: 2.9.2 báo tên mới sau một lần gửi cân bỏ qua).
  */
 export function tomTatCanPhien(cp: CanPhien): TomTatCan {
   const bayGio = Date.parse(cp.luc);
