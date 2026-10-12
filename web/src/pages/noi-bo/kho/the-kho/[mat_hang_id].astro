@@ -32,6 +32,7 @@ import {
 import {
   cauLoiKho, dinhDangKg, dinhDangNgay, homNayVn, nhanKho, TEN_LOAI_MAT_HANG_NB, TEN_LOAI_SO_CAI_NB, TEN_LOAI_VI_TRI_NB,
 } from '../../../../lib/kho/chung.ts';
+import { chuTang, docLoTang } from '../../../../lib/kho/tang.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
@@ -118,6 +119,11 @@ if (mh && k.chiNhanh && !loiDoc && !chanQuay) {
     loiDoc = cauLoiKho(e, t.khongDocThe);
   }
 }
+
+// Số tảng của các lô trong thẻ (lô là một tảng, hoặc cắt ra từ một tảng) — một lượt đọc cho cả thẻ; đọc hỏng
+// thì vẫn hiện mã lô như cũ.
+const soTangLo = await docLoTang(k.client, dong.map(d => d.lo_id)).catch(() => new Map<string, { tang_id: string; so_tang: number | null }>());
+const tangChu = (loId: string | null) => chuTang(soTangLo.get(loId ?? '')?.so_tang, nn);
 
 const tong = tongKy(dong);
 const coGoi = !!mh?.dem_goi;
@@ -218,7 +224,7 @@ const tenLoai = (d: DongTheKho) => (nn === 'vi' ? d.ten_loai : (TEN_LOAI_SO_CAI_
                         <td class="o-ct" data-nhan={t.chungTu}>
                           {d.so_chung_tu ? (link ? <a href={link}>{d.so_chung_tu}</a> : d.so_chung_tu) : '—'}
                         </td>
-                        <td class="o-noi" data-nhan={t.oDauLo}>{d.vi_tri ?? '—'}{d.ma_lo && <span class="kho-phu">{' · '}{d.ma_lo}</span>}</td>
+                        <td class="o-noi" data-nhan={t.oDauLo}>{d.vi_tri ?? '—'}{d.ma_lo && <span class="kho-phu">{' · '}{d.ma_lo}{tangChu(d.lo_id) && <>{' · '}<strong>{tangChu(d.lo_id)}</strong></>}</span>}</td>
                         <td class="so o-nhap" data-nhan={t.nhapKg}>{soKg(d.nhap_kg)}</td>
                         <td class="so o-xuat" data-nhan={t.xuatKg}>{soKg(d.xuat_kg)}</td>
                         <td class:list={['so o-ton', { am: am(d.ton_kg) }]} data-nhan={t.tonKg}><b>{dinhDangKg(d.ton_kg, nn)}</b></td>

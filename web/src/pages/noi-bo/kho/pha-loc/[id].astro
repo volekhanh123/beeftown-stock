@@ -59,10 +59,13 @@ import {
 } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
-import { docCanPhien, docGiaoOMa, docSoTang, giaoOMa, type GiaoOMa } from '../../../../lib/kho/o-ma.ts';
+import { docCanPhien, docGiaoOMa, giaoOMa, type GiaoOMa } from '../../../../lib/kho/o-ma.ts';
 import { tomTatCanPhien, type TomTatCan } from '../../../../lib/kho/danh-muc-can.ts';
 import DoiChieuCan from '../../../../components/kho/DoiChieuCan.astro';
-import { soTangChu } from '../../../../lib/kho/tang.ts';
+import {
+  cauConU, cauTangConU, chuTang, docLoTang, docNgayUTang, soTangChu, tinhTrangU, TINH_TRANG_U_NB, type TinhTrangU,
+} from '../../../../lib/kho/tang.ts';
+import { doiDonViCau } from '../../../../lib/kho/xuat.ts';
 
 const k = await moTrangKho(Astro);
 if (k instanceof Response) return k;
@@ -116,7 +119,8 @@ const t = dichNB(nn, {
   daQuet: { vi: 'Đã quét', en: 'Scanned' },
   chuaQuet: { vi: 'Chưa quét gói nào.', en: 'No packs scanned yet.' },
   deO: { vi: (noi: string) => `để ở ${noi}`, en: (noi: string) => `kept at ${noi}` },
-  botMot: { vi: (ten: string) => `Bớt 1 gói ${ten}`, en: (ten: string) => `Remove 1 pack of ${ten}` },
+  botMot: { vi: (dv: string, ten: string) => `Bớt 1 ${dv} ${ten}`, en: (dv: string, ten: string) => `Remove 1 ${dv} of ${ten}` },
+  moNgay: { vi: (ngay: string) => `mổ ${ngay}`, en: (ngay: string) => `slaughtered ${ngay}` },
   boLuot: { vi: 'Bỏ lượt vừa quét', en: 'Undo the last scan' },
   boHanMon: { vi: 'Bỏ hẳn một món đã quét', en: 'Remove a scanned item completely' },
   boHanGoiY: {
@@ -228,10 +232,14 @@ const t = dichNB(nn, {
     en: 'Closing the session: the primal leaves stock and each part kept becomes a new lot where it is kept. If you close by mistake, you can reopen it as long as the new lots have not been touched.',
   },
   kgThitRa: { vi: 'kg thịt ra', en: 'kg of meat out' },
-  daOQuay: { vi: (n: number) => `${n} gói đã để thẳng ở quầy.`, en: (n: number) => `${n} ${s(n, 'pack', 'packs')} went straight to the counter.` },
+  // dv: đơn vị đếm chung của các lô ("khay"); null khi các món khác đơn vị → chữ chung.
+  daOQuay: {
+    vi: (n: number, dv: string | null) => `${n} ${dv ?? 'gói'} đã để thẳng ở quầy.`,
+    en: (n: number, dv: string | null) => `${n} ${dv ?? s(n, 'pack', 'packs')} went straight to the counter.`,
+  },
   chuyenRaQuay: {
-    vi: (n: number) => `Chuyển ${n > 0 ? `${n} gói` : 'hàng'} ra quầy ngay`,
-    en: (n: number) => `Take ${n > 0 ? `${n} ${s(n, 'pack', 'packs')}` : 'the goods'} to the counter now`,
+    vi: (n: number, dv: string | null) => `Chuyển ${n > 0 ? `${n} ${dv ?? 'gói'}` : 'hàng'} ra quầy ngay`,
+    en: (n: number, dv: string | null) => `Take ${n > 0 ? `${n} ${dv ?? s(n, 'pack', 'packs')}` : 'the goods'} to the counter now`,
   },
   chuyenGoiY: {
     vi: 'Các phần này đang ở kho lạnh. Bấm để mở sẵn phiếu chuyển ra quầy, sửa số nếu chỉ mang một phần.',
@@ -412,8 +420,9 @@ if (form && phien) {
     } else if (daLuu) {
       // Món cần sửa đi theo URL của nút (formaction ?mon=…), ma_gui riêng của lệnh sửa.
       const cach = viec === 'bo_luot' ? 'lan_cuoi' as const : viec === 'bot_mot' ? 'bot_mot' as const : 'xoa_mon' as const;
-      return ve(await suaQuetPhienPha(k.client, phien.id, String(form.get('ma_gui_sua') ?? ''), cach,
-        q.get('mon') || null));
+      // "Đã bớt 1 gói." → đơn vị của chính món đó ("Đã bớt 1 khay.").
+      return ve(doiDonViCau(await suaQuetPhienPha(k.client, phien.id, String(form.get('ma_gui_sua') ?? ''), cach,
+        q.get('mon') || null), cach === 'bot_mot' ? matHang.find(m => m.id === q.get('mon'))?.don_vi_goi : null));
     }
   } else if (viec === 'giao_o_ma') {
     if (!soanDuoc) return ve(khongSua);
@@ -446,10 +455,8 @@ const loVaoPhien = [...new Set(vaoDb.map(v => v.lo_id))];
 let tomTatCan: TomTatCan | null = null;
 if (phien && mhVao?.theo_tang && !loiDoc) {
   try {
-    const [g, st, cp] = await Promise.all([docGiaoOMa(k.client, cn.id, phien.id), docSoTang(k.client, loVaoPhien),
-                                           docCanPhien(k.client, phien.id)]);
+    const [g, cp] = await Promise.all([docGiaoOMa(k.client, cn.id, phien.id), docCanPhien(k.client, phien.id)]);
     oMaPhien = g;
-    soTangPhien = loVaoPhien.length === 1 ? soTangChu(st.get(loVaoPhien[0])) : '';
     tomTatCan = cp ? tomTatCanPhien(cp) : null;
   } catch { /* không đọc được ô mã: khung ô mã hiện "chưa giao" */ }
 }
@@ -472,7 +479,33 @@ const dongVao: DongVao[] = ton
   .map(t => ({ key: `${t.lo_id}|${t.vi_tri_id}`, lo_id: t.lo_id, vi_tri_id: t.vi_tri_id, ton_kg: t.so_kg, ton_goi: t.so_goi,
                ma_lo: t.ma_lo, han_dung: t.han_dung, tinh_trang: t.tinh_trang_han }));
 const thieu = vaoDb.filter(v => !dongVao.some(d => d.key === `${v.lo_id}|${v.vi_tri_id}`));
-const loThem = await docThongTinLo(k.client, [...thieu.map(v => v.lo_id), ...raDb.map(r => r.lo_id ?? ''), ...vaoDb.map(v => v.lo_id)]);
+// Ba lượt đọc song song: mã lô + hạn dùng của lô không còn tồn; số tảng, ngày mổ, ngày ủ xong của tảng đem pha và
+// tảng còn trong kho (mục chọn tảng); số tảng gốc của các lô phiên này sinh ra. Hai lượt sau đọc hỏng thì trang
+// vẫn hiện mã lô như cũ, chỉ thiếu số tảng và câu nhắc.
+type NgayU = { so_tang: number | null; ngay_mo: string | null; ngay_u_xong: string | null };
+const [loThem, ngayU, tangRa] = await Promise.all([
+  docThongTinLo(k.client, [...thieu.map(v => v.lo_id), ...raDb.map(r => r.lo_id ?? ''), ...vaoDb.map(v => v.lo_id)]),
+  docNgayUTang(k.client, [...dongVao.map(d => d.lo_id), ...vaoDb.map(v => v.lo_id)]).catch(() => new Map<string, NgayU>()),
+  docLoTang(k.client, raDb.map(r => r.lo_id)).catch(() => new Map<string, { tang_id: string; so_tang: number | null }>()),
+]);
+soTangPhien = loVaoPhien.length === 1 ? soTangChu(ngayU.get(loVaoPhien[0])?.so_tang) : '';
+// Tảng đã chọn mà hôm nay (ngày Việt Nam) còn đang ủ: nhắc ở bước Cân & quét và bước Kết quả. Chỉ nhắc, không
+// chặn — có lúc phải lóc sớm; người lóc cần biết mình đang làm thế.
+const homNay = homNayVn();
+const canhBaoU = loVaoPhien.map(id => cauTangConU(ngayU.get(id), homNay, nn)).filter((c): c is string => !!c);
+/** "tảng #0001" của một tảng trong mục chọn tảng; lô không phải tảng thì rỗng. */
+const tangVao = (loId: string) => chuTang(ngayU.get(loId)?.so_tang, nn);
+// Ngày mổ và tình trạng ủ ở mục chọn tảng. Lô không phải tảng (không số tảng, không ngày mổ, không ngày ủ xong) → null.
+const LOP_U: Record<TinhTrangU, string> = { dang_u: 'nhap', san_sang: 'song', chua_co_bang_u: 'tat' };
+const uCua = (loId: string) => {
+  const x = ngayU.get(loId);
+  if (!x || (x.so_tang === null && !x.ngay_mo && !x.ngay_u_xong)) return null;
+  const tt = tinhTrangU(x.ngay_u_xong, homNay);
+  return {
+    mo: x.ngay_mo ? t.moNgay(dinhDangNgay(x.ngay_mo)) : '', lop: LOP_U[tt.tinh_trang_u],
+    nhan: nhanKho(TINH_TRANG_U_NB, tt.tinh_trang_u, nn), con: cauConU(tt, nn),
+  };
+};
 for (const v of thieu) {
   const l = loThem.get(v.lo_id);
   dongVao.push({ key: `${v.lo_id}|${v.vi_tri_id}`, lo_id: v.lo_id, vi_tri_id: v.vi_tri_id, ton_kg: 0, ton_goi: 0,
@@ -533,7 +566,7 @@ const nguong = xemThuKg?.nguong_thu_hoi_diem ?? 3;
 const soSanh = soSanhThuHoi(tyLeHien, duKien, nguong);
 const coTheChot = vaoDb.length > 0 && raDb.length > 0;
 
-const raQuay = buoc === 'xong' ? goiRaQuay(raDb, ton) : { lo: [], tongGoi: 0, daOQuay: 0 };
+const raQuay = buoc === 'xong' ? goiRaQuay(raDb, ton) : { lo: [], tongGoi: 0, daOQuay: 0, donVi: null, donViQuay: null };
 const ten = phien ? await tenNhanSu(k.client, [phien.nguoi_tao, phien.nguoi_chot, phien.nguoi_huy, phien.da_xem_boi]) : new Map<string, string>();
 // Trạng thái lạ: hiện nguyên mã, màu xám (như trước).
 const [nhanTT, lopTT] = phien
@@ -581,6 +614,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
       {/* MỘT form cho cả bước (GĐ5e): ô quét, −1 / bỏ lượt / bỏ món và các ô gõ
           kg. Bấm nút nào máy chủ cũng lưu phần gõ tay trước (VIEC_LUU_GO_TAY_TRUOC)
           — gõ kg phụ phẩm rồi quét nhãn ngay thì số vừa gõ không mất. */}
+      {canhBaoU.length > 0 && <div class="nb-bao luu-y" role="status">{canhBaoU.map(c => <p>{c}</p>)}</div>}
       {mhVao?.theo_tang && (
         <section class="nb-the" id="o-ma">
           <h2 style="margin-top:0">{t.oMaTd}{soTangPhien && <> · {t.oMaTang(soTangPhien)}</>}</h2>
@@ -643,7 +677,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
                   <span class="kho-phu">{t.deO(tenNoiDe(m.vi_tri_id))}</span>
                 </div>
                 <button type="submit" name="viec" value="bot_mot" formaction={`${DUONG}?mon=${m.mat_hang_id}`} formnovalidate
-                  class="nb-nut phu pl-bot" aria-label={t.botMot(m.ten)}>−1</button>
+                  class="nb-nut phu pl-bot" aria-label={t.botMot(m.don_vi_goi, m.ten)}>−1</button>
               </div>
             ))}
             <div class="kho-thanh-nut">
@@ -717,6 +751,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
               {dongVao.map((d, i) => {
                 const gt = giaTriVao(d);
                 const gia = giaLo.get(d.lo_id);
+                const u = uCua(d.lo_id);
                 return (
                   <div>
                     <input type="hidden" name={`v${i}_lo`} value={d.lo_id} />
@@ -724,7 +759,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
                     <div class="dau">
                       <label class="kho-tich" style="padding:0">
                         <input type="checkbox" name={`v${i}_dung`} value="co" checked={gt.dung} />
-                        <b>{t.lo(d.ma_lo)}</b>
+                        <b>{t.lo(d.ma_lo)}{tangVao(d.lo_id) && ` · ${tangVao(d.lo_id)}`}</b>
                       </label>
                       <span class="kho-phu">
                         {tenVt.get(d.vi_tri_id)?.ten ?? '—'} · {t.conTruoc}<strong>{kgs(d.ton_kg)} kg</strong>{t.conSau}
@@ -733,6 +768,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
                         {' · '}<span class={`kho-han ${d.tinh_trang}`}>{t.hsd} {dinhDangNgay(d.han_dung)}</span>
                       </span>
                     </div>
+                    {u && <p class="kho-phu pl-u">{u.mo && <>{u.mo}{' · '}</>}<span class={`nb-nhan ${u.lop}`}>{u.nhan}</span>{u.con && <>{' '}{u.con}</>}</p>}
                     <div class="kho-luoi">
                       <label class="nb-o"><span>{t.kgLay}</span>
                         <input type="text" inputmode="decimal" name={`v${i}_so_kg`} value={gt.kg} placeholder={t.layHet} /></label>
@@ -788,6 +824,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
     // =======================================================================
     <>
       {loiXemThu && <div class="nb-bao loi"><p>{dichCau(nn, loiXemThu)}</p></div>}
+      {canhBaoU.length > 0 && <div class="nb-bao luu-y" role="status">{canhBaoU.map(c => <p>{c}</p>)}</div>}
       {xemThuKg && (
         <>
           <div class="kho-o-so-luoi">
@@ -886,10 +923,10 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
         <div class={`kho-o-so ${soSanh.muc === 'thap' ? 'gap' : ''}`}><b>{pt(phien.ty_le_thu_hoi)}</b><span>{t.thuHoiThit}</span></div>
         <div class="kho-o-so"><b>{kgs(phien.tong_kg_thit)}</b><span>{t.kgThitRa}</span></div>
       </div>
-      {raQuay.daOQuay > 0 && <p class="nb-dan">{t.daOQuay(raQuay.daOQuay)}</p>}
+      {raQuay.daOQuay > 0 && <p class="nb-dan">{t.daOQuay(raQuay.daOQuay, raQuay.donViQuay)}</p>}
       {raQuay.lo.length > 0 ? (
         <section class="nb-the">
-          <h2 style="margin-top:0">{t.chuyenRaQuay(raQuay.tongGoi)}</h2>
+          <h2 style="margin-top:0">{t.chuyenRaQuay(raQuay.tongGoi, raQuay.donVi)}</h2>
           <p class="nb-dan" style="margin-top:0">{t.chuyenGoiY}</p>
           <div class="pl-luoi">
             {raQuay.lo.map(l => (
@@ -960,7 +997,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
           <tbody>
             {vaoDb.map(v => (
               <tr>
-                <td>{loThem.get(v.lo_id)?.ma_lo ?? '—'}<br /><span class="kho-phu">{t.hsd} {dinhDangNgay(loThem.get(v.lo_id)?.han_dung)}</span></td>
+                <td>{loThem.get(v.lo_id)?.ma_lo ?? '—'}{chuTang(ngayU.get(v.lo_id)?.so_tang, nn) && <>{' · '}<strong>{chuTang(ngayU.get(v.lo_id)?.so_tang, nn)}</strong></>}<br /><span class="kho-phu">{ngayU.get(v.lo_id)?.ngay_mo && <>{t.moNgay(dinhDangNgay(ngayU.get(v.lo_id)?.ngay_mo))}{' · '}</>}{t.hsd} {dinhDangNgay(loThem.get(v.lo_id)?.han_dung)}</span></td>
                 <td>{tenVt.get(v.vi_tri_id)?.ten ?? '—'}</td>
                 <td class="so">{kgs(v.so_kg)}</td>
                 <td class="so">{v.so_goi || '—'}</td>
@@ -986,7 +1023,7 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
                   <td class="so">{r.so_goi || '—'}</td>
                   <td class="so">{pt(kgTheoRa.get(r.id)?.ty_le ?? null)}</td>
                   <td>{nhanKho(TEN_XU_LY_NB, r.xu_ly, nn)}{r.xu_ly === 'nhap_kho' && r.vi_tri_id ? ` · ${tenVt.get(r.vi_tri_id)?.ten ?? ''}` : ''}</td>
-                  <td>{l ? <>{l.ma_lo}<br /><span class="kho-phu">{t.hsd} {dinhDangNgay(l.han_dung)}</span></> : '—'}</td>
+                  <td>{l ? <>{l.ma_lo}{chuTang(tangRa.get(r.lo_id ?? '')?.so_tang, nn) && <>{' · '}<strong>{chuTang(tangRa.get(r.lo_id ?? '')?.so_tang, nn)}</strong></>}<br /><span class="kho-phu">{t.hsd} {dinhDangNgay(l.han_dung)}</span></> : '—'}</td>
                   {xemGia && <>
                     <td class="so">{g ? tien(g.gia_von_kg) : '—'}</td>
                     <td class="so">{g ? bienLai(r.gia_ban_kg, g.gia_von_kg) : '—'}</td>
@@ -1017,6 +1054,8 @@ const tenNguon = (ma: string) => nhanKho(TEN_NGUON_DU_KIEN_NB, ma, nn);
 <style>
   .pl-buoc { margin: 0 0 .15rem; font-size: .85rem; font-weight: 700; color: var(--muc-nhat); }
   .pl-mon { display: flex; align-items: center; gap: .75rem; }
+  /* Ngày mổ và tình trạng ủ của tảng, ngay dưới dòng lô trong mục chọn tảng. */
+  .pl-u { margin: 0 0 .5rem; }
   .pl-mon-chu { flex: 1; min-width: 0; }
   .pl-so { font-size: 1.15rem; }
   .pl-bot { min-width: 64px; min-height: 48px; }

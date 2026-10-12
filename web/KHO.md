@@ -183,7 +183,7 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
 | Trang | Ai | Việc |
 |---|---|---|
 | `/noi-bo/kho/the-kho/<mặt hàng>?vi_tri=&tu=&den=` | Mọi vai `xem` (NV quầy chỉ chọn quầy) | Sổ của một món: dòng "Tồn đầu kỳ", rồi từng lần nhập / xuất, cột tồn cộng dồn (kg, gói). Mặc định tháng này; nút nhanh Tháng này / Tháng trước / 7 ngày. Số chứng từ bấm được khi người xem mở được trang đó (`linkChungTu`). Khung hẹp mỗi dòng một thẻ; in được (InDau + KyTen) |
-| `/noi-bo/kho/quet` | Mọi vai `xem` | Thêm: nút theo từng lô (`viecVoiLo`), Ra quầy mở sẵn lô kho hạn gần nhất, Báo hủy mở sẵn lô hết hạn, Thẻ kho, Đếm quầy (NV quầy), "Thêm vào phiên pha <số>" (vai `pha_loc`, có phiên nháp, món không phải tảng) — POST một lượt `kho_quet_phien_pha` với `ma_gui` riêng rồi mở phiên |
+| `/noi-bo/kho/quet` | Mọi vai `xem` | Thêm: nút theo từng lô (`viecVoiLo`), Ra quầy mở sẵn lô kho hạn gần nhất, Báo hủy mở sẵn lô hết hạn, Thẻ kho, Đếm quầy (NV quầy), "Thêm vào phiên pha <số>" (vai `pha_loc`, có phiên nháp, món không phải tảng) — POST một lượt `kho_quet_phien_pha` với `ma_gui` riêng rồi mở phiên. Nhãn in bằng **ô mã** hiện "Ô 1 · tảng #0001", lô của tảng đó xếp lên đầu và các nút làm nhanh mở đúng lô đó; nhãn **mã giảm giá** hiện "Tem giảm 30%" (xem gạch đầu dòng dưới) |
 | `/noi-bo/kho/cai-dat/mat-hang` | `danh_muc` | Ô "Sau pha để ở: Kho lạnh / Quầy" (`kho_mat_hang.noi_de_sau_pha`, trống = kho lạnh). Dán Excel có cột "Sau pha để ở" (cột thứ 9 khi không có tiêu đề) |
 
 - `kho_the_kho` **không có tiền**. Không chọn nơi = cả chi nhánh, kể cả hàng đang mang ra quầy và
@@ -192,6 +192,18 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
   (`khop` trong `dieu-huong.ts`).
 - Hàm thuần (`docBoLocTheKho`, `linkTheKho`, `khoangNhanh`, `linkChungTu`, `tongKy`) ở `lib/kho/the-kho.ts`,
   test trong `test-kho-ma-vach.mjs` nhóm 15 và `test-kho-giao-dien.mjs` nhóm 14.
+- **Màn Quét với nhãn mã ô / mã giảm giá** (mã trên nhãn tra bằng `lib/kho/tra-ma-can.ts` — mục 3o): ô mã,
+  mã giảm đọc một lần cùng lượt với danh mục (`docMaTrenNhan`); nhãn là mã ô thì đọc thêm ô đang giao
+  (`kho_can_giao_o_ma`) song song với tồn kho.
+  - Ô đang giao cho một tảng đã chốt phiên lóc: dòng "Ô 1 · tảng #0001"; lô của tảng lên đầu danh sách, có vạch
+    đỏ và chữ "khay vừa quét thuộc lô này"; **Ra quầy / Đưa bếp / Báo hủy** mở đúng lô đó khi lô còn hàng ở kho
+    hay quầy (NV quầy ưu tiên dòng ở quầy). Lô đó **đã hết hạn** → câu vàng "để riêng và báo hủy", chỉ còn nút
+    Báo hủy. Sổ không còn hàng của tảng ở kho / quầy → câu vàng nói rõ, các nút quay về lô hạn gần như nhãn thường.
+  - Ô đang giao cho phiên lóc **chưa chốt** → câu vàng "khay chưa vào sổ". "Thêm vào phiên pha" chỉ mời đúng
+    phiên đang giữ ô (database từ chối phiên khác); nhãn mã giảm thì không mời.
+  - Ô không còn gắn với tảng nào → vẫn hiện món, kèm một câu nói rõ. Mã lạ → câu cũ "chưa gắn với món nào".
+  - Chữ đếm theo đơn vị của món ("Khay này: 0,312 kg", "không còn khay nào"), không viết cứng "gói".
+- **Số tảng cạnh lô**: màn Quét, Tồn kho, Thẻ kho hiện "tảng #0001" ở mỗi lô thuộc một tảng (mục 3o).
 
 ## 3e. Pha lóc 3 bước bằng quét nhãn · báo thu hồi thấp (GĐ5c, migration 0033)
 
@@ -200,7 +212,7 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
 | `/noi-bo/kho/pha-loc/moi` | `pha_loc` | Bước 1: mỗi loại tảng đang có (trừ chờ hủy, đang mang ra quầy) là một nút lớn kèm kg, số tảng, số lô. Bấm = tạo phiên nháp ngay (`ma_gui` riêng mỗi nút); tảng chỉ một lô thì điền sẵn lô đó, loại tảng có đúng một công thức thì gắn luôn. Phiên nháp đang dở hiện lên trước |
 | `/noi-bo/kho/pha-loc/<id>` | `pha_loc` (nháp) | Bước 2 "Cân & quét": ô quét trên cùng (`QuetMa tuFocus`), mỗi lần gửi là một lượt `kho_quet_phien_pha` (như đếm quầy: cùng `ma_gui` không cộng đôi, lỗi mạng giữ mã trong ô). Danh sách món đã quét (gói, kg, để ở đâu) có −1, "Bỏ lượt vừa quét", "Bỏ hẳn một món" (`kho_bo_quet_phien_pha`). Phụ phẩm, mỡ bỏ gõ kg (điền sẵn theo công thức); lô tảng, ngày, ghi chú, công thức nằm trong mục "Thêm". `?ma=<mã>` điền sẵn ô quét |
 | `/noi-bo/kho/pha-loc/<id>?buoc=ket-qua` | `pha_loc` | Bước 3: 4 số lớn — thu hồi, dự kiến (theo công thức / trung bình 30 ngày), trung bình 30 ngày, hao hụt. **Nút Chốt chỉ ở đây.** Thấp quá ngưỡng thì báo trước khi chốt (chốt vẫn được). Bảng giá vốn chỉ với `xem_gia` |
-| `/noi-bo/kho/pha-loc/<id>?buoc=xong` | `pha_loc` | Sau chốt: "Chuyển N gói ra quầy ngay" — mỗi lô mới còn ở kho lạnh một nút `/noi-bo/kho/xuat/moi?loai=chuyen&tu=…&lo=…` |
+| `/noi-bo/kho/pha-loc/<id>?buoc=xong` | `pha_loc` | Sau chốt: "Chuyển N khay ra quầy ngay" (đơn vị đếm của món; các lô khác đơn vị thì chữ chung "gói" — `goiRaQuay` trả `donVi`) — mỗi lô mới còn ở kho lạnh một nút `/noi-bo/kho/xuat/moi?loai=chuyen&tu=…&lo=…` |
 
 - **Dòng quét** (`kho_phien_pha_ra.tu_quet`): mỗi món một dòng, gói = số nhãn (món không đếm gói thì 0),
   kg = tổng kg trên nhãn, nơi để = `kho_mat_hang.noi_de_sau_pha` (trống = kho lạnh; chi nhánh không có
@@ -220,6 +232,13 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
   rồi mới quét / sửa — gõ kg phụ phẩm xong quét nhãn ngay thì số vừa gõ không mất. Phần gõ tay lỗi → chưa quét,
   hiện lại chữ đã gõ, giữ mã trong ô và `ma_gui`. −1 / bỏ món gửi món qua `formaction ?mon=<id>`, lệnh sửa
   có `ma_gui_sua` riêng. Enter trong ô kg = nút quét (nút đầu form) với ô quét trống → chỉ lưu.
+- **Tảng đem pha có số tảng, ngày mổ, tình trạng ủ**: mục chọn tảng ở bước 2 ghi "Lô … · tảng #0002", dòng dưới
+  "mổ 01/10/2026 · Đang ủ còn 13 ngày" / "Sẵn sàng lóc" / "Chưa có bảng ủ" (`docNgayUTang` đọc `kho_lo`,
+  `tinhTrangU` tính ở web theo `homNayVn()` — cùng luật với view `kho_v_tang`, test so thẳng). Tảng đã chọn mà
+  hôm nay còn đang ủ: câu vàng "Tảng #0001 còn đang ủ — ủ xong ngày 18/10/2026 (còn 7 ngày)." ở bước 2 và
+  bước 3 (`cauTangConU`). **Chỉ nhắc, không chặn** — nút Chốt vẫn bấm được. Màn xem phiên: bảng "Tảng đem
+  pha" và cột "Lô mới" có số tảng. Không cái nào phụ thuộc quyền xem giá. Test: `test-kho-so-tang-lo.mjs`.
+- Nút −1 và câu "Đã bớt 1 khay." theo đơn vị của món (`doiDonViCau`, mục 3o).
 - Thủ kho chỉ thấy kg, gói, %: bước 2, 3 và màn xem đọc `kho_xem_thu_phien_pha_kg`; hàm có tiền
   `kho_xem_thu_phien_pha` chỉ gọi khi `xem_gia`. Hàm thuần của 3 bước ở `lib/kho/pha-loc.ts`, test ở
   `test-kho-pha-web.mjs`; database ở `test-kho-pha-loc-quet.mjs`.
@@ -812,6 +831,35 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   phải thuộc ô của chính phiên. Chốt → ô gắn lô ra (`kho_o_ma_giao.lo_id`); mở lại → bỏ; huỷ phiên → trả
   ô. Lô ra hết tồn thì lần giao sau tự đóng ô cũ; quản lý giải phóng tay được (`kho_giai_phong_o_ma`).
   Quét kiểm kê cũng nhận nhãn mã ô (`kho_mat_hang_theo_ma_can`). View `kho_v_o_ma_giao`.
+- **Tra mã trên nhãn ở web — một bộ tra chung** (`lib/kho/tra-ma-can.ts`, file thuần): `taoBangTraMaCan` +
+  `traMaCan` soi đúng `kho_mat_hang_theo_ma_can` (món đang dùng có mã đó → ô mã của món đang dùng → mã giảm
+  giá, mà không ô nào mang mã đó; bỏ số 0 đầu), trả món kèm lý do khớp: mã món / ô mã + số ô / mã giảm + %.
+  `test-kho-tra-ma-can.mjs` so từng mã với hàm SQL trên cùng dữ liệu và giữ một bản chép thân hàm — **đổi
+  luật trong SQL thì sửa file này cùng PR**. Bốn chỗ dùng: màn Quét nhãn, quét nhãn vào phiếu chuyển / xuất
+  bếp / xuất khác / báo hủy (`dongTuQuet`), kiểm kê dán nhãn (`apDungQuet`), "Thử một nhãn" ở Mã vạch cân. Ô
+  mã và mã giảm đọc **một lần mỗi yêu cầu** (`docMaTrenNhan`), cùng `Promise.all` với danh mục.
+- **Quét nhãn mã ô vào phiếu → đúng lô của tảng** (`dongTuQuet` với `datLo`): một món được ghi ở phần **chọn
+  lô**, vào dòng lô của tảng trên nhãn, khi mọi nhãn của món trong lượt quét đều là nhãn mã ô, ô nào cũng
+  đang giao cho một tảng có lô ở nơi lấy hàng, lô đủ tồn (tính cả số đã ghi ở dòng lô đó) và món chưa có
+  số ở dòng theo món. Thiếu một điều → cả món ghi theo món (database lấy hàng hạn gần trước như nhãn
+  thường), có câu vàng nói vì sao: sổ chỉ còn N khay của tảng, tảng không còn hàng ở nơi lấy, phiên lóc
+  chưa chốt, ô không còn gắn với tảng. Trộn nhãn mã ô với nhãn mã món / mã giảm của cùng món thì ghi theo
+  món, không câu báo. Form vẫn giữ luật "một món chỉ ghi một phần" nên một lượt quét không bao giờ tách một
+  món ra hai phần — không khay nào bị tính hai lần. Nhãn của lô **đã hết hạn** trên phiếu chỉ nhận hàng
+  còn hạn thì **không ghi vào đâu**, câu vàng bảo để riêng và báo hủy. Kiểm kê dán nhãn: mọi mã của cùng
+  một món cộng vào một số đếm (theo món là đủ).
+- **Số tảng cạnh mã lô**: số tảng là thứ ghi trên túi và in trên tem; mã lô không có ở đâu ngoài đời. Lô là
+  một tảng hoặc cắt ra từ một tảng thì hiện "tảng #0001" (`chuTang`) ở: phần chọn lô, "Lô chỉ định", "Lô
+  đã lấy" của phiếu chuyển / xuất / hủy; kiểm kê theo lô và bảng chênh lệch; Tồn kho; Thẻ kho; màn Quét; trả
+  hàng nhà cung cấp; cột Lô của phiếu nhập; phiên lóc. `docLoTang(client, loIds)` đọc `kho_v_lo_tang` theo
+  **đúng các lô đang hiện** (150 lô một lượt, song song) — một lượt đọc mỗi trang, không mỗi lô một lượt; đọc
+  hỏng thì trang vẫn hiện mã lô như cũ. (`docSoTangCuaLo` đọc cả chi nhánh, không chia trang — trang chủ
+  quầy và màn Nhận hàng còn dùng; quá 1.000 lô thuộc tảng thì PostgREST cắt bớt.)
+- **Đơn vị đếm trong câu**: câu nói về số gói của một phiếu / yêu cầu dùng đơn vị của món khi mọi món đếm
+  cùng một đơn vị (`donViChung` — "10 khay"), khác nhau thì chữ chung "gói". Câu database trả về viết "N
+  gói" **không sửa trong SQL**: `doiDonViCau` đổi ở web, cả bản tiếng Việt lẫn tiếng Anh (nhận hàng ra
+  quầy, trả về kho / ghi mất, hủy chuyến, duyệt kiểm kê, −1). Danh sách đọc đơn vị cho cả trang bằng một
+  lượt (`docDonViPhieuXuat`, `docDonViYeuCau`). Test: `test-kho-cau-don-vi.mjs`.
 - **Cân theo tảng (GĐ3)**: `lib/kho/danh-muc-can.ts` (`hangChoCan`) — nguồn chung của màn Đồng bộ cân và
   Beeftown Cân: mỗi ô mã một dòng, cùng giá món, tên kèm số tảng đang giữ ô ("… #0142", cắt tên cho vừa
   24 ký tự, không cắt số tảng); ô trống vẫn ở trên cân nên PLU không đổi. Beeftown Cân có tuỳ chọn **Tự gửi

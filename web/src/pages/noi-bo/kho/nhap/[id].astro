@@ -53,6 +53,7 @@ import {
 } from '../../../../lib/kho/chung.ts';
 import { CO_KHONG, type DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
 import { haoRepack } from '../../../../lib/kho/nhan-hang.ts';
+import { chuTang } from '../../../../lib/kho/tang.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
@@ -268,6 +269,7 @@ let dnLo: DinhNghiaTruong[] = [];
 let phieu: PhieuNhap | null = null;
 let dongDb: DongPhieuNhap[] = [];
 let maLo = new Map<string, string>();
+let soTang = new Map<string, number>();
 let loiDoc = k.loiDoc;
 
 try {
@@ -277,7 +279,7 @@ try {
   ]);
   if (!moi) {
     const doc = await docPhieuNhap(k.client, idThamSo);
-    if (doc) { phieu = doc.phieu; dongDb = doc.dong; maLo = doc.maLo; }
+    if (doc) { phieu = doc.phieu; dongDb = doc.dong; maLo = doc.maLo; soTang = doc.soTang; }
   }
 } catch (e) {
   loiDoc = cauLoiKho(e, t.khongDoc);
@@ -836,7 +838,7 @@ const huongDan = 'duyet-nhap';
                 <td class="so">{tien(d.don_gia_kg)}</td>
                 <td class="so">{tien(d.thanh_tien)}</td>
                 <td>{dinhDangNgay(d.han_dung)}</td>
-                <td>{d.lo_id ? maLo.get(d.lo_id) ?? '—' : '—'}</td>
+                <td>{d.lo_id ? maLo.get(d.lo_id) ?? '—' : '—'}{d.lo_id && chuTang(soTang.get(d.lo_id), nn) && <>{' · '}<strong>{chuTang(soTang.get(d.lo_id), nn)}</strong></>}</td>
                 {giaVon.length > 0 && <td class="so">{tien(giaVon[i]?.gia_von_kg)}</td>}
               </tr>
             ))}

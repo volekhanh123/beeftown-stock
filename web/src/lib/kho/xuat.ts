@@ -11,7 +11,8 @@
  * FORM (không JavaScript) — hai kiểu dòng, gửi chung:
  *   Theo mặt hàng: d{i}_mat_hang, d{i}_so_goi, d{i}_so_kg   (FEFO)
  *   Theo lô:       l{i}_lo, l{i}_mat_hang (ẩn), l{i}_so_goi, l{i}_so_kg
- *   Quét nhãn: ô "ma_quet" — mỗi mã một dòng; gom thành dòng theo mặt hàng.
+ *   Quét nhãn: ô "ma_quet" — mỗi mã một dòng; gom thành dòng theo mặt hàng. Nhãn in bằng Ô MÃ của một tảng
+ *   (0049) mà lô của tảng đó còn đủ ở nơi lấy hàng thì thành dòng theo LÔ của đúng tảng đó (dongTuQuet).
  * Một món KHÔNG được ghi ở cả hai kiểu dòng: kho sẽ bị trừ hai lần.
  *
  * ẢNH BÁO HỦY: tải lên MỘT lần, ngay lần gửi đầu tiên có chọn ảnh (kể cả bấm
@@ -36,8 +37,10 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, docKg, docSoNguyen, donViChung, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { gomTheoMaCan, tachDanhSachMa } from './ma-vach.ts';
+import { oDangGiao, taoBangTraMaCan, traMaCan, type KhopMaCan, type MaGiamDeTra, type OMaDeTra } from './tra-ma-can.ts';
+import { chuTang } from './tang.ts';
 import { docAnhDaTai, layTepAnh, soThuTuCuoi, taiAnh } from './anh.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 import { dichCau } from '../cau-noi-bo.ts';
@@ -226,7 +229,9 @@ export interface KetQuaDocXuat {
 
 type BaoLoi = (c: HaiThuTieng) => void;
 
-export function docFormPhieuXuat(form: FormData, matHang: { id: string; ten: string; dem_goi: boolean }[]): KetQuaDocXuat {
+export function docFormPhieuXuat(
+  form: FormData, matHang: { id: string; ten: string; dem_goi: boolean; don_vi_goi?: string | null }[],
+): KetQuaDocXuat {
   const loi: string[] = [];
   const loiEn: string[] = [];
   const bao: BaoLoi = c => { loi.push(c.vi); loiEn.push(c.en); };
@@ -277,17 +282,19 @@ export function docFormPhieuXuat(form: FormData, matHang: { id: string; ten: str
 }
 
 function docDong(
-  m: { dem_goi: boolean }, goiChu: string, kgChu: string, nhan: HaiThuTieng, bao: BaoLoi,
+  m: { dem_goi: boolean; don_vi_goi?: string | null }, goiChu: string, kgChu: string, nhan: HaiThuTieng, bao: BaoLoi,
 ): Record<string, unknown> | null {
   const goi = docSoNguyen(goiChu, 0, 100000);
   const kg = docKg(kgChu);
-  if (Number.isNaN(goi)) { bao({ vi: `${nhan.vi}: số gói là số nguyên`, en: `${nhan.en}: the number of packs must be a whole number` }); return null; }
+  // Đơn vị đếm của chính món ("khay", "tảng"…) — món không mang đơn vị thì chữ chung.
+  const dv = { vi: m.don_vi_goi || GOI_MAC_DINH.vi, en: m.don_vi_goi || GOI_MAC_DINH.en };
+  if (Number.isNaN(goi)) { bao({ vi: `${nhan.vi}: số ${dv.vi} là số nguyên`, en: `${nhan.en}: the number of ${dv.en} must be a whole number` }); return null; }
   if (Number.isNaN(kg) || (kg !== null && kg <= 0)) {
     bao({ vi: `${nhan.vi}: số kg chưa đúng (ví dụ 1,25)`, en: `${nhan.en}: the kg is not right (for example 1.25)` });
     return null;
   }
   if (m.dem_goi) {
-    if (!goi) { bao({ vi: `${nhan.vi}: chưa nhập số gói`, en: `${nhan.en}: number of packs not entered` }); return null; }
+    if (!goi) { bao({ vi: `${nhan.vi}: chưa nhập số ${dv.vi}`, en: `${nhan.en}: number of ${dv.en} not entered` }); return null; }
     return kg !== null ? { so_goi: goi, so_kg: kg } : { so_goi: goi };
   }
   if (kg === null) { bao({ vi: `${nhan.vi}: chưa nhập số kg`, en: `${nhan.en}: kg not entered` }); return null; }
@@ -296,13 +303,20 @@ function docDong(
 
 export interface KetQuaQuet {
   dong: DongXuatForm[];
+  /**
+   * Dòng theo LÔ cần cộng thêm vào form (gopDongLo): nhãn in bằng ô mã của một tảng mà lô của tảng đó còn đủ ở
+   * nơi lấy hàng. Chỉ có khi trang truyền `datLo`. Một gói không bao giờ nằm ở cả `dong` lẫn `theoLo`.
+   */
+  theoLo: DongLoForm[];
+  /** Câu nói các nhãn mã ô đã ghi vào lô của tảng nào — null khi không có dòng lô nào. */
+  cauDatLo: HaiThuTieng | null;
   /** Câu cho nhân viên, chữ thường ngày — không có mã, không có "Cài đặt". */
   loi: string[];
   /** Các câu đó bằng tiếng Anh, cùng thứ tự. */
   loiEn: string[];
   /** Tổng số mã trong ô quét. */
   soMa: number;
-  /** Số nhãn đã thành dòng hàng. */
+  /** Số nhãn đã thành dòng hàng (theo món + theo lô). */
   soDoc: number;
   /** Nhãn không đọc được: mã hỏng, sai số kiểm tra, không phải nhãn cân. */
   soNhanHong: number;
@@ -310,40 +324,204 @@ export interface KetQuaQuet {
   soGoiLa: number;
   /** Các mã cân lạ — chỉ để hiện cho người sửa được danh mục. */
   maCanLa: string[];
+  /** Nhãn của lô ĐÃ HẾT HẠN quét vào phiếu chỉ nhận hàng còn hạn — KHÔNG ghi vào đâu, có câu báo riêng. */
+  soHetHan: number;
+}
+
+/** Ô mã và mã giảm giá của mọi món (o-ma.ts docMaTrenNhan) — để nhận nhãn không in bằng mã của chính món. */
+export interface MaTrenNhan { oMa: readonly OMaDeTra[]; maGiam: readonly MaGiamDeTra[] }
+
+/** Thứ cần để đặt nhãn mã ô vào ĐÚNG LÔ của tảng. Chỉ phiếu mới, lúc bấm "Đọc mã". */
+export interface DatLoQuet {
+  /** Ô đang giao ở chi nhánh (o-ma.ts docGiaoOMaCan). */
+  giao: readonly { ma_can: string; lo_id: string | null; so_tang: number | null; so_phieu?: string | null }[];
+  /** Tồn theo lô ở NƠI LẤY HÀNG của phiếu (các dòng kho_v_ton của vị trí đó). */
+  lo: readonly { lo_id: string; mat_hang_id: string; so_goi: number; so_kg: number; tinh_trang_han?: string | null; han_dung?: string | null }[];
+  tenNoiLay: string;
+  /** Phiếu chỉ nhận hàng còn hạn (chuyển, xuất bếp, xuất khác): lô hết hạn không ghi được. */
+  chiConHan: boolean;
+  /** Dòng theo món và dòng theo lô đang có trên form, TRƯỚC lượt quét này. */
+  dong: readonly DongXuatForm[];
+  theoLo: readonly DongLoForm[];
+}
+
+/** Tảng nhận trước khi có số tảng (dữ liệu cũ) — câu vẫn phải gọi được nó. */
+const TANG_CHUA_SO: HaiThuTieng = { vi: 'một tảng chưa có số', en: 'an unnumbered primal' };
+
+interface MonQuet {
+  id: string; ten: string; ma_can: string | null; dang_dung: boolean;
+  dem_goi?: boolean; don_vi_goi?: string | null;
 }
 
 /**
  * Đọc ô dán mã vạch → dòng theo mặt hàng (số gói, tổng kg). Mã cân không
  * khớp mặt hàng nào, mã hỏng → báo, không đoán. Câu báo viết cho nhân viên
  * quầy: đếm số nhãn hỏng, số gói lạ, và nói phải làm gì với gói đó.
+ *
+ * Mã trên nhãn tra bằng bộ tra chung (tra-ma-can.ts): mã của món, ô mã, mã giảm giá. Mọi nhãn của cùng một món
+ * cộng vào MỘT dòng (cộng theo gram). Trang không truyền `them.maNhan` → chỉ nhận mã của chính món.
+ *
+ * ĐẶT VÀO ĐÚNG LÔ CỦA TẢNG (`them.datLo`): nhãn mã ô mang theo tảng nó cắt ra. Một món được ghi theo LÔ khi MỌI
+ * nhãn của món trong lượt quét đều là nhãn mã ô, ô nào cũng đang giao cho một tảng có lô ở nơi lấy hàng, lô đủ
+ * tồn (tính cả số đã ghi ở dòng lô đó), và món chưa có số ở dòng theo món. Thiếu một điều → cả món ghi theo món,
+ * database lấy hàng hạn gần trước như nhãn thường, kèm câu nói rõ vì sao (trừ khi chỉ vì trộn với nhãn mã món:
+ * lúc đó không có gì sai để báo). Vì form không cho một món nằm ở cả hai phần nên không bao giờ tách một món
+ * ra hai phần trong cùng một lượt quét. Riêng nhãn của lô ĐÃ HẾT HẠN trên phiếu chỉ nhận hàng còn hạn thì không
+ * ghi vào đâu: ghi theo món là trừ nhầm một lô còn hạn trong khi khay cầm trên tay đã hết hạn.
  */
 export function dongTuQuet(
   noiDung: string,
-  matHang: { id: string; ten: string; ma_can: string | null; dang_dung: boolean }[],
+  matHang: MonQuet[],
   mau?: string | null,
   soLeKg = 3,
+  them: { maNhan?: MaTrenNhan | null; datLo?: DatLoQuet | null } = {},
 ): KetQuaQuet {
   const ds = tachDanhSachMa(noiDung);
   const gom = gomTheoMaCan(ds, mau || undefined, soLeKg);
-  const theoCan = new Map(matHang.filter(m => m.dang_dung && m.ma_can).map(m => [m.ma_can!, m]));
-  const dong: DongXuatForm[] = [];
+  const bang = taoBangTraMaCan(matHang, them.maNhan?.oMa ?? [], them.maNhan?.maGiam ?? []);
+  const heSo = 10 ** soLeKg;
+  const chuKg = (don: number) => String(don / heSo).replace('.', ',');
+  const datLo = them.datLo ?? null;
+
+  // Gom nhãn theo MÓN: mỗi mã (mã món, từng ô, từng mã giảm) là một phần của món đó.
+  interface Phan { khop: KhopMaCan<MonQuet>; soGoi: number; don: number }
+  const theoMon = new Map<string, { mon: MonQuet; phan: Phan[] }>();
   const maCanLa: string[] = [];
-  let soDoc = 0;
   let soGoiLa = 0;
   for (const [maCan, g] of gom.theoMa) {
-    const m = theoCan.get(maCan);
-    if (!m) { soGoiLa += g.soGoi; maCanLa.push(maCan); continue; }
-    soDoc += g.soGoi;
-    dong.push({
-      mat_hang_id: m.id,
-      so_goi: String(g.soGoi),
-      so_kg: g.soKg > 0 ? String(g.soKg).replace('.', ',') : '',
-    });
+    const khop = traMaCan(bang, maCan);
+    if (!khop) { soGoiLa += g.soGoi; maCanLa.push(maCan); continue; }
+    const n = theoMon.get(khop.matHang.id) ?? { mon: khop.matHang, phan: [] };
+    n.phan.push({ khop, soGoi: g.soGoi, don: Math.round(g.soKg * heSo) });
+    theoMon.set(khop.matHang.id, n);
   }
-  const soNhanHong = gom.loi.length;
+
+  const dong: DongXuatForm[] = [];
+  const theoLo: DongLoForm[] = [];
   const loi: string[] = [];
   const loiEn: string[] = [];
   const bao: BaoLoi = c => { loi.push(c.vi); loiEn.push(c.en); };
+  const daDat: HaiThuTieng[] = [];
+  let soDoc = 0;
+  let soHetHan = 0;
+  const coSo = (x: { so_goi: string; so_kg: string }) => !!(x.so_goi || x.so_kg);
+
+  for (const { mon, phan } of theoMon.values()) {
+    const demGoi = mon.dem_goi !== false;
+    const dv = { vi: mon.don_vi_goi || GOI_MAC_DINH.vi, en: mon.don_vi_goi || GOI_MAC_DINH.en };
+    /** "2 khay" · món cân ký thì "1,55 kg". */
+    const luong = (soGoi: number, don: number): HaiThuTieng => (demGoi
+      ? { vi: `${soGoi} ${dv.vi}`, en: `${soGoi} ${dv.en}` }
+      : { vi: `${dinhDangKg(don / heSo, 'vi')} kg`, en: `${dinhDangKg(don / heSo, 'en')} kg` });
+    const tang = (soTang: number | null): HaiThuTieng => ({
+      vi: chuTang(soTang, 'vi') || TANG_CHUA_SO.vi, en: chuTang(soTang, 'en') || TANG_CHUA_SO.en,
+    });
+    const theoHan: HaiThuTieng = { vi: 'máy lấy hàng hạn gần trước', en: 'nearest expiry first' };
+
+    let conGhi = phan;                    // các phần còn được ghi vào phiếu
+    const lyDo: HaiThuTieng[] = [];       // vì sao nhãn mã ô không vào được lô của tảng
+    /** Lô đặt được: cộng mọi ô cùng trỏ về một lô. */
+    const dat = new Map<string, { soTang: number | null; soGoi: number; don: number }>();
+    let datHet = !!datLo && phan.every(p => p.khop.nguon === 'o_ma')
+      && !datLo.dong.some(d => d.mat_hang_id === mon.id && coSo(d));
+
+    if (datLo) {
+      const ungVien = new Map<string, { soTang: number | null; lo: DatLoQuet['lo'][number]; soGoi: number; don: number }>();
+      const hetHan: Phan[] = [];
+      for (const p of phan) {
+        if (p.khop.nguon !== 'o_ma') continue;
+        const g = oDangGiao(p.khop, datLo.giao);
+        const l = luong(p.soGoi, p.don);
+        if (!g) {
+          lyDo.push({
+            vi: `Ô ${p.khop.soO} của ${mon.ten} hiện không còn gắn với tảng nào — ${l.vi} vừa quét ghi theo món, ${theoHan.vi}.`,
+            en: `Slot ${p.khop.soO} of ${mon.ten} is not assigned to any primal right now — the ${l.en} just scanned go in by item, ${theoHan.en}.`,
+          });
+          continue;
+        }
+        const t = tang(g.so_tang);
+        if (!g.lo_id) {
+          const phien = g.so_phieu ? ` ${g.so_phieu}` : '';
+          lyDo.push({
+            vi: `${l.vi} ${mon.ten} thuộc ${t.vi}, phiên lóc${phien} chưa chốt nên chưa vào sổ — ghi theo món, ${theoHan.vi}. Chốt phiên lóc đó trước rồi quét lại thì phiếu mới trừ đúng tảng.`,
+            en: `${l.en} of ${mon.ten} belong to ${t.en}; butchery session${phien} is not closed yet, so they are not on the books — entered by item, ${theoHan.en}. Close that session first, then scan again so the slip deducts the right primal.`,
+          });
+          continue;
+        }
+        const lo = datLo.lo.find(x => x.lo_id === g.lo_id && x.mat_hang_id === mon.id);
+        if (!lo || (!(Number(lo.so_goi) > 0) && !(Number(lo.so_kg) > 0))) {
+          const gi = demGoi ? dv : { vi: 'kg', en: 'kg' };
+          lyDo.push({
+            vi: `Sổ không còn ${gi.vi} nào của ${t.vi} ở ${datLo.tenNoiLay} — ${l.vi} ${mon.ten} vừa quét ghi theo món, ${theoHan.vi}. Kiểm lại nơi lấy hàng của phiếu.`,
+            en: `The books show no ${gi.en} of ${t.en} left at ${datLo.tenNoiLay} — the ${l.en} of ${mon.ten} just scanned go in by item, ${theoHan.en}. Check where this slip takes goods from.`,
+          });
+          continue;
+        }
+        if (datLo.chiConHan && lo.tinh_trang_han === 'het_han') {
+          const han = lo.han_dung ? dinhDangNgay(lo.han_dung) : '';
+          bao({
+            vi: `${l.vi} ${mon.ten} của ${t.vi} đã hết hạn${han ? ` (hạn dùng ${han})` : ''} — chưa ghi vào phiếu này. Để riêng và báo hủy.`,
+            en: `${l.en} of ${mon.ten} from ${t.en} ${p.soGoi === 1 ? 'has' : 'have'} expired${han ? ` (use-by ${han})` : ''} — not added to this slip. Set ${p.soGoi === 1 ? 'it' : 'them'} aside and write ${p.soGoi === 1 ? 'it' : 'them'} off.`,
+          });
+          hetHan.push(p);
+          soHetHan += p.soGoi;
+          continue;
+        }
+        const u = ungVien.get(lo.lo_id) ?? { soTang: g.so_tang, lo, soGoi: 0, don: 0 };
+        u.soGoi += p.soGoi;
+        u.don += p.don;
+        ungVien.set(lo.lo_id, u);
+      }
+      conGhi = phan.filter(p => !hetHan.includes(p));
+
+      // Lô của tảng có đủ trên sổ không — tính cả số đã ghi ở dòng lô đó từ lượt quét trước.
+      for (const [loId, u] of ungVien) {
+        const cu = datLo.theoLo.filter(x => x.lo_id === loId);
+        const t = tang(u.soTang);
+        if (demGoi) {
+          const daGhi = cu.reduce((tong, x) => tong + (docSoNguyen(x.so_goi, 0, 100000) || 0), 0);
+          const con = Number(u.lo.so_goi) || 0;
+          if (daGhi + u.soGoi > con) {
+            lyDo.push({
+              vi: `Sổ chỉ còn ${con} ${dv.vi} ${mon.ten} của ${t.vi} ở ${datLo.tenNoiLay}${daGhi > 0 ? `, phiếu đã ghi ${daGhi}` : ''} mà vừa quét ${u.soGoi} — ${u.soGoi} ${dv.vi} này ghi theo món, ${theoHan.vi}. Kiểm lại xem có ${dv.vi} nào quét hai lần không.`,
+              en: `The books show only ${con} ${dv.en} of ${mon.ten} from ${t.en} at ${datLo.tenNoiLay}${daGhi > 0 ? ` (the slip already has ${daGhi})` : ''} but ${u.soGoi} ${u.soGoi === 1 ? 'was' : 'were'} scanned — ${u.soGoi === 1 ? 'it goes' : 'these go'} in by item, ${theoHan.en}. Check whether a label was scanned twice.`,
+            });
+            continue;
+          }
+        } else {
+          const daGhi = cu.reduce((tong, x) => { const k = docKg(x.so_kg); return tong + (k !== null && !Number.isNaN(k) ? Math.round(k * heSo) : 0); }, 0);
+          const con = Math.round(Number(u.lo.so_kg) * heSo);
+          // Nhãn không in cân nặng thì không có số kg để ghi vào lô — ghi theo món như trước, không có gì để báo.
+          if (!(u.don > 0)) { datHet = false; continue; }
+          if (daGhi + u.don > con) {
+            lyDo.push({
+              vi: `Sổ chỉ còn ${dinhDangKg(con / heSo, 'vi')} kg ${mon.ten} của ${t.vi} ở ${datLo.tenNoiLay}${daGhi > 0 ? `, phiếu đã ghi ${dinhDangKg(daGhi / heSo, 'vi')} kg` : ''} mà vừa quét ${dinhDangKg(u.don / heSo, 'vi')} kg — số vừa quét ghi theo món, ${theoHan.vi}. Kiểm lại xem có nhãn nào quét hai lần không.`,
+              en: `The books show only ${dinhDangKg(con / heSo, 'en')} kg of ${mon.ten} from ${t.en} at ${datLo.tenNoiLay}${daGhi > 0 ? ` (the slip already has ${dinhDangKg(daGhi / heSo, 'en')} kg)` : ''} but ${dinhDangKg(u.don / heSo, 'en')} kg was scanned — it goes in by item, ${theoHan.en}. Check whether a label was scanned twice.`,
+            });
+            continue;
+          }
+        }
+        dat.set(loId, { soTang: u.soTang, soGoi: u.soGoi, don: u.don });
+      }
+    }
+    if (!conGhi.length) continue;
+
+    const tongGoi = conGhi.reduce((t, p) => t + p.soGoi, 0);
+    const tongDon = conGhi.reduce((t, p) => t + p.don, 0);
+    soDoc += tongGoi;
+    if (datLo && datHet && lyDo.length === 0 && dat.size > 0) {
+      for (const [loId, d] of dat) {
+        theoLo.push({ lo_id: loId, mat_hang_id: mon.id, so_goi: demGoi ? String(d.soGoi) : '', so_kg: d.don > 0 ? chuKg(d.don) : '' });
+        const l = luong(d.soGoi, d.don), t = { vi: chuTang(d.soTang, 'vi'), en: chuTang(d.soTang, 'en') };
+        daDat.push({ vi: `${l.vi} ${mon.ten}${t.vi ? ` ${t.vi}` : ''}`, en: `${l.en} ${mon.ten}${t.en ? ` ${t.en}` : ''}` });
+      }
+      continue;
+    }
+    dong.push({ mat_hang_id: mon.id, so_goi: String(tongGoi), so_kg: tongDon > 0 ? chuKg(tongDon) : '' });
+    lyDo.forEach(bao);
+  }
+
+  const soNhanHong = gom.loi.length;
   const n = soNhanHong, g = soGoiLa;
   if (n > 0) {
     bao({ vi: `${n} nhãn không đọc được — quét lại ${n > 1 ? 'các gói' : 'gói'} đó`,
@@ -353,7 +531,10 @@ export function dongTuQuet(
     bao({ vi: `${g} gói không nhận ra món — để riêng, báo quản lý`,
           en: `${g} ${g === 1 ? 'pack' : 'packs'} not recognised — set ${g === 1 ? 'it' : 'them'} aside and tell the manager` });
   }
-  return { dong, loi, loiEn, soMa: ds.length, soDoc, soNhanHong, soGoiLa, maCanLa };
+  const cauDatLo: HaiThuTieng | null = daDat.length
+    ? { vi: `Ghi vào đúng lô của tảng: ${daDat.map(c => c.vi).join(' · ')}.`, en: `Entered on the lot of its primal: ${daDat.map(c => c.en).join(' · ')}.` }
+    : null;
+  return { dong, theoLo, cauDatLo, loi, loiEn, soMa: ds.length, soDoc, soNhanHong, soGoiLa, maCanLa, soHetHan };
 }
 
 /**
@@ -407,6 +588,82 @@ export function gopDong(cu: DongXuatForm[], moi: DongXuatForm[]): DongXuatForm[]
       co.so_kg = String(tong).replace('.', ',');
     }
   }
+  return ra;
+}
+
+/**
+ * Cộng các dòng LÔ vừa quét (dongTuQuet.theoLo) vào các dòng lô đang có trên form: cùng lô thì cộng số gói và kg,
+ * dòng lô khác giữ nguyên. Dòng lô đang có số gói mà CHƯA có kg (gõ tay) thì để trống kg sau khi cộng — tổng kg
+ * không biết đủ, database tự tính theo cân nặng của lô; cộng riêng kg của nhãn vừa quét sẽ thành kg của cả dòng.
+ */
+export function gopDongLo(cu: readonly DongLoForm[], moi: readonly DongLoForm[]): DongLoForm[] {
+  const ra = cu.map(l => ({ ...l }));
+  for (const m of moi) {
+    const co = ra.find(x => x.lo_id === m.lo_id);
+    if (!co) { ra.push({ ...m }); continue; }
+    const goiCu = docSoNguyen(co.so_goi, 0, 100000) || 0, goiMoi = docSoNguyen(m.so_goi, 0, 100000) || 0;
+    const kgCu = docKg(co.so_kg), kgMoi = docKg(m.so_kg);
+    const coKg = (k: number | null): k is number => k !== null && !Number.isNaN(k);
+    /** Phần này biết đủ kg: không có gói nào, hoặc có kg đi kèm. */
+    const bietKg = (goi: number, kg: number | null) => goi === 0 || coKg(kg);
+    co.so_goi = goiCu + goiMoi ? String(goiCu + goiMoi) : '';
+    const tong = (coKg(kgCu) ? kgCu : 0) + (coKg(kgMoi) ? kgMoi : 0);
+    co.so_kg = bietKg(goiCu, kgCu) && bietKg(goiMoi, kgMoi) && tong > 0 ? String(Math.round(tong * 1000) / 1000).replace('.', ',') : '';
+  }
+  return ra;
+}
+
+// -----------------------------------------------------------------------------
+// ĐƠN VỊ ĐẾM CỦA MÓN TRONG CÂU ("10 khay", không phải "10 gói")
+// -----------------------------------------------------------------------------
+/**
+ * Câu database trả về luôn viết "N gói" (kho_nhan_hang_chuyen, kho_xu_ly_chuyen_thieu, kho_huy_chuyen…). Khi
+ * mọi món đếm của phiếu cùng một đơn vị khác "gói" (donViChung) thì đổi ở ĐÂY, cả bản tiếng Việt lẫn tiếng Anh —
+ * không sửa chữ trong SQL (kiểm thử khác khớp theo chữ đó). Bản tiếng Anh dịch từ câu GỐC rồi mới đổi đơn vị, vì
+ * bảng dịch khớp theo chữ "gói". Chỉ đổi "gói" đi liền sau một con số; câu báo lỗi, đơn vị không biết hoặc vốn là
+ * "gói", câu không có số gói → trả nguyên đối tượng cũ.
+ */
+export function doiDonViCau<K extends KetQua>(kq: K, donVi: string | null | undefined): K {
+  if (!kq.ok || !donVi || donVi === GOI_MAC_DINH.vi) return kq;
+  // Chữ chung của database ngay sau một con số ("10 gói") — không đụng chữ đó ở chỗ khác trong câu.
+  const vi = new RegExp(`(\\d+) ${GOI_MAC_DINH.vi}(?![\\p{L}])`, 'gu');
+  if (!vi.test(kq.cau)) return kq;
+  const en = (kq.cauEn ?? dichCau('en', kq.cau))
+    .replace(/(\d+)( short)? pack(?:\(s\)|s)?(?![a-z])/g, `$1$2 ${donVi}`)
+    .replace(vi, `$1 ${donVi}`);
+  return { ...kq, cau: kq.cau.replace(vi, `$1 ${donVi}`), cauEn: en };
+}
+
+/**
+ * Đơn vị đếm chung của TỪNG phiếu trong một danh sách (hộp Duyệt, danh sách phiếu): phieu_id → "khay". Phiếu
+ * có món khác đơn vị, chỉ có món cân ký, hoặc không đọc được → vắng mặt, trang dùng chữ chung "gói". Hai lượt
+ * đọc song song cho cả danh sách (dòng của mọi phiếu + đơn vị của danh mục), không mỗi phiếu một lượt. Đọc hỏng
+ * không làm hỏng trang: trả Map rỗng.
+ */
+export async function docDonViPhieuXuat(client: SupabaseClient, phieuIds: readonly unknown[]): Promise<Map<string, string>> {
+  const ra = new Map<string, string>();
+  const ids = [...new Set(phieuIds.filter(laUuid))];
+  if (!ids.length) return ra;
+  try {
+    const [d, m] = await Promise.all([
+      client.from('kho_phieu_xuat_dong').select('phieu_xuat_id, mat_hang_id').in('phieu_xuat_id', ids),
+      client.from('kho_mat_hang').select('id, dem_goi, don_vi_goi'),
+    ]);
+    // Đủ 1.000 dòng là mức PostgREST cắt bớt mà không báo: không chắc đã thấy hết món của phiếu → dùng chữ chung.
+    if (d.error || m.error || (d.data ?? []).length >= 1000) return ra;
+    const mon = new Map((m.data ?? []).map(r => [r.id as string, r as { dem_goi: boolean; don_vi_goi: string | null }]));
+    const theoPhieu = new Map<string, string[]>();
+    for (const r of d.data ?? []) {
+      const id = r.phieu_xuat_id as string;
+      theoPhieu.set(id, [...(theoPhieu.get(id) ?? []), r.mat_hang_id as string]);
+    }
+    for (const [id, cacMon] of theoPhieu) {
+      // Một món của phiếu không có trong danh mục đọc được → không chắc đơn vị, bỏ qua phiếu đó.
+      if (cacMon.some(x => !mon.has(x))) continue;
+      const dv = donViChung(cacMon.map(x => mon.get(x)));
+      if (dv) ra.set(id, dv);
+    }
+  } catch { return new Map(); }
   return ra;
 }
 

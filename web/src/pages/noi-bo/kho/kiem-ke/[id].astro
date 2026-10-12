@@ -41,13 +41,16 @@ import QuetMa from '../../../../components/kho/QuetMa.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docMatHang, type CaiDat, type MatHang } from '../../../../lib/kho/danh-muc.ts';
 import { docThongTinLo, docGiaVonLo } from '../../../../lib/kho/pha-loc.ts';
+import { docMaTrenNhan } from '../../../../lib/kho/o-ma.ts';
+import { chuTang, docLoTang } from '../../../../lib/kho/tang.ts';
+import { doiDonViCau } from '../../../../lib/kho/xuat.ts';
 import {
   docKiemKe, docFormKiemKe, payloadTuDong, apDungQuet, dongDemTuDb, luuKiemKe, guiKiemKe, duyetKiemKe,
   tuChoiKiemKe, huyKiemKe, gopKhiTrung, laLoiMayKhac, daDemDong, cauQuetLoi, docSoNhanQuet,
   type KiemKe, type DongKiemKe, type LoKiemKe, type DongDemForm, type KetQuaQuetKiemKe,
 } from '../../../../lib/kho/kiem-ke.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, homNayVn, kqHai, trangThaiKho,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, dinhDangTien, donViChung, homNayVn, kqHai, trangThaiKho,
   type HaiThuTieng, type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
@@ -215,11 +218,16 @@ let kk: KiemKe | null = null;
 let dongDb: DongKiemKe[] = [];
 let loDb: LoKiemKe[] = [];
 let loiDoc = k.loiDoc;
+// Đọc form TRƯỚC khi đọc database: bấm "Đọc mã" thì cần thêm ô mã và mã giảm giá của mọi món (nhãn của khay
+// thịt ủ in bằng mã ô, khay cận date in bằng mã giảm) — đọc cùng lượt với danh mục, không thêm lượt chờ.
+const form = await docFormGui(Astro);
+let maNhan: Awaited<ReturnType<typeof docMaTrenNhan>> | null = null;
 try {
-  const [mh, cd, doc] = await Promise.all([
+  const [mh, cd, doc, ma] = await Promise.all([
     docMatHang(k.client), docCaiDat(k.client, k.chiNhanh.id), docKiemKe(k.client, Astro.params.id ?? ''),
+    String(form?.get('viec') ?? '') === 'quet' ? docMaTrenNhan(k.client) : Promise.resolve(null),
   ]);
-  matHang = mh; caiDat = cd;
+  matHang = mh; caiDat = cd; maNhan = ma;
   if (doc) { kk = doc.kk; dongDb = doc.dong; loDb = doc.lo; }
 } catch (e) {
   loiDoc = cauLoiKho(e, t.khongDoc);
@@ -244,7 +252,6 @@ let phienBanForm: number | null = null;
 let ghiChuForm: string | null = null;
 let ghiChuGocForm: string | null = null;
 
-const form = await docFormGui(Astro);
 if (Astro.request.method === 'POST' && !form) {
   bao = kqHai(false, CAU.mangDut);
 }
@@ -266,7 +273,7 @@ if (form && kk) {
       let loiEn = doc.loiEn;
       let quet: KetQuaQuetKiemKe | null = null;
       if (viec === 'quet') {
-        quet = apDungQuet(doc.dong, String(form.get('ma_quet') ?? ''), matHang, caiDat?.mau_ma_vach, caiDat?.so_le_kg ?? 3);
+        quet = apDungQuet(doc.dong, String(form.get('ma_quet') ?? ''), matHang, caiDat?.mau_ma_vach, caiDat?.so_le_kg ?? 3, maNhan);
         const p = payloadTuDong(quet.dong, matHang);
         dongGui = quet.dong; payload = p.payload; loi = p.loi; loiEn = p.loiEn;
       }
@@ -349,7 +356,8 @@ if (form && kk) {
     const lyDo = String(form.get('ly_do') ?? '').trim();
     const choDuyet = kk.trang_thai === 'cho_duyet';
     let kq: KetQua;
-    if (viec === 'duyet') kq = await duyetKiemKe(k.client, kk.id);
+    // Câu database viết "ghi bán N gói" — mọi món đếm trên phiếu cùng một đơn vị ("khay") thì đổi theo, ở web.
+    if (viec === 'duyet') kq = doiDonViCau(await duyetKiemKe(k.client, kk.id), donViChung(dongDb.map(d => tenMh.get(d.mat_hang_id))));
     else if (viec === 'tu_choi') kq = await tuChoiKiemKe(k.client, kk.id, lyDo);
     else if (viec === 'huy') kq = await huyKiemKe(k.client, kk.id, lyDo || null);
     else kq = kqHai(false, CAU.viecSai);
@@ -381,7 +389,13 @@ const phienBanHien = phienBanForm ?? kk?.phien_ban ?? 0;
 const ghiChuHien = ghiChuForm ?? kk?.ghi_chu ?? '';
 const ghiChuGocHien = ghiChuGocForm ?? kk?.ghi_chu ?? '';
 const loIds = [...dongHien.map(d => d.lo_id), ...dongDb.map(d => d.lo_id ?? ''), ...loDb.map(l => l.lo_id)];
-const thongTinLo = await docThongTinLo(k.client, loIds);
+// Mã lô và số tảng của các lô đang hiện — hai lượt đọc song song. Số tảng đọc hỏng thì vẫn hiện mã lô như cũ.
+const [thongTinLo, soTangLo] = await Promise.all([
+  docThongTinLo(k.client, loIds),
+  docLoTang(k.client, loIds).catch(() => new Map<string, { tang_id: string; so_tang: number | null }>()),
+]);
+/** " · tảng #0001" để nối ngay sau mã lô; lô không thuộc tảng nào thì rỗng. */
+const tangCua = (loId: string) => { const c = chuTang(soTangLo.get(loId)?.so_tang, nn); return c ? ` · ${c}` : ''; };
 const giaLo = kk && kk.trang_thai !== 'dang_dem' ? await docGiaVonLo(k.client, loDb.map(l => l.lo_id)) : new Map();
 const coGia = giaLo.size > 0;
 const ten = kk ? await tenNhanSu(k.client, [kk.nguoi_tao, kk.nguoi_gui, kk.nguoi_duyet]) : new Map<string, string>();
@@ -394,11 +408,11 @@ const [nhanTT, lopTT] = kk
 const moTaLo = (id: string | null) => {
   if (!id) return '';
   const l = thongTinLo.get(id);
-  return l ? t.moTaLo(l.ma_lo, dinhDangNgay(l.han_dung)) : '';
+  return l ? t.moTaLo(`${l.ma_lo}${tangCua(id)}`, dinhDangNgay(l.han_dung)) : '';
 };
 const tenDong = (d: DongDemForm) => {
   const lo = d.lo_id ? thongTinLo.get(d.lo_id) : undefined;
-  return `${tenMh.get(d.mat_hang_id)?.ten ?? '—'}${lo ? t.loNgoac(lo.ma_lo) : ''}`;
+  return `${tenMh.get(d.mat_hang_id)?.ten ?? '—'}${lo ? t.loNgoac(`${lo.ma_lo}${tangCua(d.lo_id)}`) : ''}`;
 };
 const daDem = dongHien.map(d => daDemDong(d, tenMh.get(d.mat_hang_id)?.dem_goi ?? false));
 const soDaDem = daDem.filter(Boolean).length;

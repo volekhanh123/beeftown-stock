@@ -5,12 +5,19 @@
  * Cách đọc dãy 13 số dưới mã vạch nhãn cân Dahua TM-A. Mặc định 2+5+5+1.
  * Ô "Thử một nhãn" để chủ nhà hàng gõ đúng 13 số trên một nhãn thật và xem
  * phần mềm đọc ra mặt hàng nào, bao nhiêu kg — sai thì sửa mẫu ngay tại đây.
+ *
+ * Mã hàng trên nhãn tra bằng bộ tra chung (tra-ma-can.ts) như mọi chỗ quét khác: mã của món, ô mã xoay vòng
+ * (kèm số ô và tảng đang giữ ô), mã giảm giá (kèm phần trăm). Phần cắt chỉ có ô mã thì KHÔNG nằm trong danh
+ * sách "chưa có mã cân": nhãn của nó quét vẫn nhận ra món.
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docMatHang, luuCaiDat, type CaiDat, type MatHang } from '../../../../lib/kho/danh-muc.ts';
 import { docMaVach, MAU_MAC_DINH } from '../../../../lib/kho/ma-vach.ts';
+import { oDangGiao, taoBangTraMaCan, traMaCan } from '../../../../lib/kho/tra-ma-can.ts';
+import { docGiaoOMaCan, docMaTrenNhan, type GiaoOMa } from '../../../../lib/kho/o-ma.ts';
+import { chuTang } from '../../../../lib/kho/tang.ts';
 import { cauLoiKho, dinhDangKg, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
@@ -32,6 +39,11 @@ const t = dichNB(nn, {
   nang: { vi: ' · nặng ', en: ' · weight ' },
   thanhTien: { vi: ' · thành tiền ', en: ' · amount ' },
   khop: { vi: 'Khớp mặt hàng ', en: 'Matches the item ' },
+  nhoOMa: { vi: (o: number) => ` — nhãn in bằng ô mã số ${o}`, en: (o: number) => ` — printed with rotating code slot ${o}` },
+  oCoTang: { vi: (tang: string) => `, đang giao cho ${tang}.`, en: (tang: string) => `, currently assigned to ${tang}.` },
+  oKhongSo: { vi: ', đang giao cho một tảng chưa có số.', en: ', currently assigned to a primal without a number.' },
+  oTrong: { vi: ', ô này hiện không gắn với tảng nào.', en: ', and this slot is not assigned to a primal right now.' },
+  nhoMaGiam: { vi: (pt: number) => ` — nhãn in bằng mã giảm giá ${pt}%.`, en: (pt: number) => ` — printed with the ${pt}% discount code.` },
   chuaCo1: { vi: 'Chưa có mặt hàng nào mang mã cân ', en: 'No item has the scale code ' },
   chuaCo2: { vi: ' — vào ', en: ' yet — go to ' },
   matHang: { vi: 'Mặt hàng', en: 'Items' },
@@ -62,20 +74,34 @@ if (form && k.chiNhanh) {
   bao = kq;
 }
 
+const thu = (Astro.url.searchParams.get('thu') ?? '').replace(/\s/g, '');
 let caiDat: CaiDat | null = null;
 let matHang: MatHang[] = [];
+let maNhan: Awaited<ReturnType<typeof docMaTrenNhan>> = { oMa: [], maGiam: [] };
+/** Ô đang giao — chỉ đọc khi đang thử một nhãn; null = không đọc được (khi đó không nói gì về tảng). */
+let giao: GiaoOMa[] | null = null;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
-    [caiDat, matHang] = await Promise.all([docCaiDat(k.client, k.chiNhanh.id), docMatHang(k.client)]);
+    [caiDat, matHang, maNhan, giao] = await Promise.all([
+      docCaiDat(k.client, k.chiNhanh.id), docMatHang(k.client), docMaTrenNhan(k.client),
+      thu ? docGiaoOMaCan(k.client, k.chiNhanh.id).catch(() => null) : Promise.resolve(null),
+    ]);
   } catch (e) { loiDoc = cauLoiKho(e, t.khongDoc); }
 }
 
 const mau = caiDat?.mau_ma_vach ?? '';
-const thu = (Astro.url.searchParams.get('thu') ?? '').replace(/\s/g, '');
 const kq = thu ? docMaVach(thu, mau || MAU_MAC_DINH, caiDat?.so_le_kg ?? 3) : null;
-const mh = kq?.hopLe ? matHang.find(m => m.ma_can === kq.maCan && m.dang_dung) : undefined;
-const chuaCoMaCan = matHang.filter(m => m.dang_dung && m.loai === 'phan_cat' && !m.ma_can);
+const khop = kq?.hopLe ? traMaCan(taoBangTraMaCan(matHang, maNhan.oMa, maNhan.maGiam), kq.maCan) : null;
+const mh = khop?.matHang;
+const giaoNhan = giao ? oDangGiao(khop, giao) : null;
+/** Câu nối sau tên món: nhãn in bằng ô mã nào (và tảng đang giữ ô), hay mã giảm giá bao nhiêu phần trăm. */
+const nguonNhan = !khop || khop.nguon === 'ma_mon' ? '.'
+  : khop.nguon === 'ma_giam' ? t.nhoMaGiam(khop.phanTram ?? 0)
+  : `${t.nhoOMa(khop.soO ?? 0)}${giao === null ? '.' : !giaoNhan ? t.oTrong : chuTang(giaoNhan.so_tang, nn) ? t.oCoTang(chuTang(giaoNhan.so_tang, nn)) : t.oKhongSo}`;
+// Phần cắt có ô mã thì nhãn của nó (in bằng mã ô) quét vẫn nhận ra món — không tính là "chưa có mã cân".
+const coOMa = new Set(maNhan.oMa.map(o => o.mat_hang_id));
+const chuaCoMaCan = matHang.filter(m => m.dang_dung && m.loai === 'phan_cat' && !m.ma_can && !coOMa.has(m.id));
 /** Số tên hiện thành nút sửa; còn lại dồn vào link "Mặt hàng". */
 const HIEN_TOI_DA = 12;
 ---
@@ -100,7 +126,7 @@ const HIEN_TOI_DA = 12;
             <p>{t.maHangTrenCan}<strong>{kq.maCan}</strong>
               {kq.soKg !== null && <>{t.nang}<strong>{dinhDangKg(kq.soKg, nn)} kg</strong></>}
               {kq.thanhTien !== null && <>{t.thanhTien}<strong>{dinhDangTien(kq.thanhTien, nn)}</strong></>}</p>
-            <p>{mh ? <>{t.khop}<strong>{mh.ten}</strong> ({mh.ma}).</> : <>{t.chuaCo1}<strong>{kq.maCan}</strong>{t.chuaCo2}<a href="/noi-bo/kho/cai-dat/mat-hang">{t.matHang}</a>{t.chuaCo3}</>}</p>
+            <p>{mh ? <>{t.khop}<strong>{mh.ten}</strong> ({mh.ma}){nguonNhan}</> : <>{t.chuaCo1}<strong>{kq.maCan}</strong>{t.chuaCo2}<a href="/noi-bo/kho/cai-dat/mat-hang">{t.matHang}</a>{t.chuaCo3}</>}</p>
             <p class="kho-phu">{t.neuKg}</p>
           </div>
         ) : (

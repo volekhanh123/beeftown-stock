@@ -21,7 +21,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, donViChung, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { tachDanhSachMa } from './ma-vach.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 
@@ -268,6 +268,18 @@ export function cauQuaNhieuNhan(soMa: number): HaiThuTieng {
     vi: `Một lần gửi tối đa ${TOI_DA_MOT_LUOT} nhãn — đang có ${soMa}. Xóa bớt, gửi, rồi quét tiếp.`,
     en: `You can send at most ${TOI_DA_MOT_LUOT} labels at a time — there are ${soMa}. Remove some, send, then keep scanning.`,
   };
+}
+
+/**
+ * Đơn vị đếm của MỘT món ("khay") cho câu "Đã bớt 1 khay." sau khi bấm −1. Món cân ký, món không có, đọc hỏng
+ * → null: câu giữ chữ chung "gói". Trang gọi song song với lệnh −1 nên không thêm lượt chờ.
+ */
+export async function docDonViMon(client: SupabaseClient, matHangId: string | null): Promise<string | null> {
+  if (!laUuid(matHangId)) return null;
+  try {
+    const { data, error } = await client.from('kho_mat_hang').select('dem_goi, don_vi_goi').eq('id', matHangId).maybeSingle();
+    return error || !data ? null : donViChung([data]);
+  } catch { return null; }
 }
 
 /** "Bỏ lượt vừa quét" (cach = lan_cuoi) hoặc "−1" một gói của một món (bot_mot). */

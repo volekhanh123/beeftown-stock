@@ -167,7 +167,7 @@ export async function demPhieuChoDuyet(client: SupabaseClient, chiNhanhId: strin
 
 export async function docPhieuNhap(
   client: SupabaseClient, id: string,
-): Promise<{ phieu: PhieuNhap; dong: DongPhieuNhap[]; maLo: Map<string, string> } | null> {
+): Promise<{ phieu: PhieuNhap; dong: DongPhieuNhap[]; maLo: Map<string, string>; soTang: Map<string, number> } | null> {
   if (!laUuid(id)) return null;
   const { data: phieu, error } = await client
     .from('kho_phieu_nhap')
@@ -184,9 +184,14 @@ export async function docPhieuNhap(
 
   const loIds = (dong ?? []).map(d => d.lo_id).filter(Boolean) as string[];
   const maLo = new Map<string, string>();
+  // Số tảng của lô (món theo dõi theo tảng, 0048) — đọc cùng lượt với mã lô: đó là số ghi trên túi tảng.
+  const soTang = new Map<string, number>();
   if (loIds.length) {
-    const { data: lo } = await client.from('kho_lo').select('id, ma_lo').in('id', loIds);
-    for (const l of lo ?? []) maLo.set(l.id, l.ma_lo);
+    const { data: lo } = await client.from('kho_lo').select('id, ma_lo, so_tang').in('id', loIds);
+    for (const l of lo ?? []) {
+      maLo.set(l.id, l.ma_lo);
+      if (l.so_tang !== null && l.so_tang !== undefined) soTang.set(l.id, Number(l.so_tang));
+    }
   }
 
   return {
@@ -196,6 +201,7 @@ export async function docPhieuNhap(
       so_kg_thuc: d.so_kg_thuc == null ? null : Number(d.so_kg_thuc),
     })) as DongPhieuNhap[],
     maLo,
+    soTang,
   };
 }
 

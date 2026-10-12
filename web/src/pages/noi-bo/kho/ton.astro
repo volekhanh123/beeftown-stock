@@ -36,6 +36,7 @@ import {
 } from '../../../lib/kho/ton.ts';
 import { docMatHang, type MatHang } from '../../../lib/kho/danh-muc.ts';
 import { linkTheKho } from '../../../lib/kho/the-kho.ts';
+import { chuTang, docLoTang } from '../../../lib/kho/tang.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangTien, nhanKho,
   TEN_LOAI_MAT_HANG_NB, TEN_LOAI_VI_TRI_NB,
@@ -153,6 +154,10 @@ const khoCon = (id: string) => Math.round(ton
 
 const loc = locTon(ton, boLoc, duoiMuc ? new Set(duoiMucDs.map(m => m.id)) : null);
 const nhom = gomTheoMatHang(loc);
+// Số tảng của các lô đang hiện (lô là một tảng, hoặc cắt ra từ một tảng) — thứ ghi trên túi tảng và in trên tem
+// khay; mã lô thì không có ở đâu ngoài đời. Một lượt đọc cho cả danh sách; đọc hỏng thì vẫn hiện mã lô như cũ.
+const soTangLo = await docLoTang(k.client, loc.map(t => t.lo_id)).catch(() => new Map<string, { tang_id: string; so_tang: number | null }>());
+const tangChu = (t: DongTon) => chuTang(soTangLo.get(t.lo_id)?.so_tang, nn);
 const giaCua = (t: DongTon) => gia.get(`${t.lo_id}|${t.vi_tri_id}`);
 const coGia = xemGia && gia.size > 0;
 const tongGiaTri = coGia ? loc.reduce((s, t) => s + (giaCua(t)?.gia_tri ?? 0), 0) : 0;
@@ -301,7 +306,7 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
                   <td class="o-noi" data-nhan={ch.oDau}>{t.ten_vi_tri}</td>
                   <td class="so o-kg" data-nhan="Kg"><b>{dinhDangKg(t.so_kg, nn)}</b></td>
                   {g.dem_goi && <td class="so o-goi" data-nhan={g.don_vi_goi}><b>{t.so_goi}</b></td>}
-                  <td class="o-lo" data-nhan={ch.cotLo}>{t.ma_lo}{' '}<span class="kho-phu">{nguonLo(t)} {dinhDangNgay(t.ngay_dong_goi)}</span>
+                  <td class="o-lo" data-nhan={ch.cotLo}>{t.ma_lo}{tangChu(t) && <>{' · '}<strong>{tangChu(t)}</strong></>}{' '}<span class="kho-phu">{nguonLo(t)} {dinhDangNgay(t.ngay_dong_goi)}</span>
                     {linkTraNcc(t) && <>{' '}<a class="kho-phu" href={linkTraNcc(t)!} aria-label={ch.traNccLo(t.ma_lo)}>{ch.traNcc}</a></>}</td>
                   {coGia && <td class="so o-gia" data-nhan={ch.giaVonKg}>{giaCua(t) ? dinhDangTien(giaCua(t)!.gia_von_kg, nn) : '—'}</td>}
                   {vanHanh && (
