@@ -1,0 +1,340 @@
+=================== tms-format [mostly-right] corrections=13 additions=15
+SUMMARY: A .TMS file is a recorded copy of the same tab-separated command stream the program sends to the scale over TCP and RS-232. The tags are DWL (PC→scale data block), END, CLR (clear a whole table), UPL (PC asks the scale for data), ECS VER / END ECS (file header and trailer only) and LAE (end of one label block). Nothing in the decompiled code or install data writes or checks "XD1".
+
+The PC export (SaveForm.cs:928-1239) writes a UTF-8 BOM, then an empty line, then "ECS\tVER\t100\t". Every record ends with a trailing tab and CRLF. It writes to a temp file first and then copies it to JHSCALE\A_nnn.TMS (nnn = 000-999), or to A_xxx.TMS for the "Boot File" that the scale auto-loads at power-on when Spec 42 = 1. The factory sample Config\en\_ECS.TMS matches Default.mdb exactly (500 TMS rows, 28 TMT, 10 BAR, 33 LAB and 2230 LAS rows). Its layout is an older one: blank lines between sections, a UNT section and 3-field CLS lines. This is probably the same layout the scale uses for its own USB export.
+
+Every section's column list is documented from the writer and reader code: TMS, TMT, SCP, DPT, CLS, PLU, UNT, BAR (including the TChar barcode grammar), LAB/LAS/LAE, SAL, FNT, BMP, VIP, PAS, TIM, INF/INA/INM/MAC, VER and REP/RES/REE. Decimals use Program.FormatDecimal: rounded half-to-even to the price/weight decimals, written in the shortest "mantissa,decimals" form, with a mantissa of about 7 digits at most. Values above 9,999,999 are silently written as "0,0". Strings only turn CRLF into \v; a tab inside a value is never escaped.
+
+When the PC reads a file (RDS.DataSet_ReadTMS) it ignores the section markers and dispatches only on each line's own tag. It accepts lines with fewer columns (missing fields get table defaults) and ignores extra columns. It then merges by primary key (an upsert), except that a label with the same ID is replaced.
+
+There is no command to delete a single PLU. The vendor's way to remove items is CLR PLU + CLR END and then re-sending the full PLU list; on the scale itself it is P33 DEL.03 (code 9958). So our tool's habit of just leaving deleted lines out probably leaves those items on the scale (inferred).
+
+The PLU line has 69 split elements: the tag, 67 data fields and a trailing empty element. Every column is mapped to its ECSDataSet column. The manual's scale editor steps "PLU.nn" equal column nn+1, which independently confirms the order. An emulation of the PC writer reproduces our tool's template exactly for default rows, so COL {NO:1, CODE:2, UNIT:4, PRICE:5, NAME:15, ALIAS:64} is confirmed: col 3 is the Index barcode, col 14 is ClassID (default 9) and col 64 is ALPHA.
+
+Four bugs were found in our tool's parser:
+- It rejects PC-made files, because they start with an empty line before the header.
+- It treats a "CLR PLU" line as the start of the PLU section.
+- parseLas reads Align (f[7]) as the font size; the font is f[8].
+- It re-sends the REP (sales) and INF sections to the scale.
+CORRECTIONS:
+  * DWL <SEC> without CLR is an add/overwrite (upsert) on the scale, so TOOL's habit of leaving deleted PLU lines out probably leaves those items on the scale (INFERRED, §6.1/§6.3/§9.3). => The team tested this on the real scale (26/09/2026, V3.14E8). A USB file load replaces the whole PLU list, so omitted PLUs are deleted. Only the TCP path (port 33571) adds/updates without deleting. TOOL's USB workflow is therefore fine. CLR PLU/CLR END (sent by the vendor over TCP, NetForm.cs:3428-3429) is needed only for the WiFi path, and it is untested.
+  * SAMPLE (_ECS.TMS) layout — BOM, leading empty line, 3-field CLS, UNT section — is probably the layout the scale uses for its own USB export. => A real V3.14E8 scale export was found. Only the section order and the blank lines between sections match. The real file has no BOM, no leading empty line, and `ECS\tVER\tV3.14E8\t` as line 1. CLS lines have the full 9 fields, DPT/CLS hold IDs 1-9, BAR 0 is absent, and there are REP, SCP, INF (with INA and INM) and TIM sections.
+  * The other 5 language _ECS.TMS files have the same layout as en. => pt differs. It has 9 DPT and 9 CLS rows, CLS lines with the full 9 data fields, and its accented letters are stored as U+FFFD (mojibake). es has an extra blank line, and zh-CHS has 2280 LAS rows instead of 2230.
+  * Config/en/Default.mdb matches SAMPLE exactly. => Every SAMPLE line matches its DB row, but Default.mdb (modified 2026-01-30) is a superset. It has 7 PLU rows, 12 barcodes, 38 labels and 2398 label items, and String.Valid is False for all 28 rows, so the PC would write no TMT lines from it.
+  * SCP: PageID 0..1, KeyID 1-based, 128 rows = 2×64. => The PC's default blank layout uses KeyID 0..63 (0-based, key 0 is an unused dummy) on pages 0-1. The real scale exports 199 rows: PageID 0..2, KeyID 1..73 on page 0 and 1..63 on pages 1-2. B_ECS shows the PC imports such data unchanged. Writers must not assume 2×64.
+  * Serial and TCP send `CLR\tSCP\t` (SaveForm.cs:1337-1341). => Only the serial writer sends it. The TCP writer has no CLR SCP; like the file writer, it clears keys by writing PLUID 0. TCP instead has a CLR FNT that the file writer lacks.
+  * LAS Item element (Flag1=1) Flag2: meaning unknown, all samples use 0. => Flag2 = 1..10 is used on the sum labels. It selects the n-th accumulated item (Name at x=252 and Price at x=360, rows 18 dots apart); 0 = the current item. The values are confirmed; the meaning is inferred from the layout.
+  * A shorter line keeps the parsed fields and the rest get DataTable defaults (proved by 3-field CLS). => The trailing tab produces a final '' element, which is parsed as the next column. So the first missing column gets 0 / '' / 0 (for SAMPLE CLS, LabelID1 = ParseInt('') = 0), and only the columns after it get defaults. A PLU line cut after DA_Sort1 would get DA_Day1 = 0, not 127.
+  * INA = `INA\t<enc1>\t<enc2>\t<?>\t<memData>\t<memFont>\t`, INM = MAC + optional original MAC; unknown whether they appear in USB exports. => The real export has `INA\t\tUTF-8\t0\t8388608\t8388608\t7\t7\t` (7 data fields) and `INM\t<MAC>\t<MAC>\t0\t` (3 data fields; [3] is an int read into Args[8]). Both sit inside DWL INF before INF. There is no PAS.
+  * Spec 105: 0 = use PLU setting; 1/2 = use Spec 106. => Tm.xml defines 0-6. Values 0/1/2 are the due-date modes, 3 = do not print shelf, and 4/5/6 are the same as 0/1/2 in days mode. REAL has 0.
+  * Spec value Type 2 = checkbox (listed as one of the used types). => SpecForm.cs handles Type 2, but no Spec in Tm.xml uses it. The counts are 214 × type 0, 168 × type 1 and 1 × type 3 (Spec 297).
+  * The real scale export VER = V3.14E8 is UNVERIFIED (team fixture only). => Confirmed: REAL line 1 is `ECS\tVER\tV3.14E8\t`, with no encoding field. The encoding is reported in INA instead.
+  * MANUAL says auto-load file is A_xxx.TMS (spec correct), but TOOL's user note says A_000.TMS auto-loads at power-on (not flagged). => Flagged: per MANUAL p.69 only the auto-update file A_xxx.TMS auto-loads (Spec 42 = 1). TOOL:298 is probably wrong in wording, although the caution it gives is harmless.
+STILL UNKNOWN:
+  - Whether V3.14E8/V3.15 firmware accepts 'XD1' as a section opener. There is no real-file evidence it exists; its only source is the team's hand-made fixture.
+  - Which tables other than PLU a USB load replaces (LAB, SCP, BAR, DPT/CLS?), and whether the replace is per-DWL-section.
+  - Whether 'CLR PLU'/'CLR END' over TCP port 33571 wipes the PLU list on V3.14E8. The vendor sends it that way, but it is untested.
+  - How the scale treats re-sent INA/INM lines and the full 500-row TMS. There was no visible harm after the 25/09 reload, but that does not prove they are ignored.
+  - Scale-side limits: maximum name length (TOOL's 40 is unverified; REAL's longest name is 22 characters), Index barcode length, maximum PLU count (INA memData = 8 MiB), and rounding vs truncation of decimals beyond Spec 202.
+  - Whether label IDs 30-99 (exportable by the PC) are accepted, given the MANUAL's user range of 10~29.
+  - The exact UNT line layout. The section is empty in REAL too; the inferred positions come from MANUAL UNT.00/.01/.04/.05.
+  - The meaning of Spec 499 (1522729470), of the two trailing INA fields (7, 7), and of RES Type 1254.
+  - The meaning of the 'S' (shift) digit in BAR TChar items, which was not re-verified.
+=================== net-protocol [mostly-right] corrections=9 additions=18
+SUMMARY: The network link carries plain TMS text, the same format as the USB file A_000.TMS. It is tab-separated, one record per line, ends every line with CRLF, and uses UTF-8 on this install. There is no binary framing, length field, command code, CRC or checksum, and no per-line ACK/NAK; TCP provides reliability.
+
+The only code that touches the network is ECS\NetForm.cs. The scale is the TCP server on port 33581 (Spec43=1 server mode, Spec166). In client mode (Spec43=2) the scale connects to the PC on port 33582 instead.
+
+Discovery uses UDP. The PC binds port 33584 and sends the 6 bytes "UDP\t\r\n" (hex 55 44 50 09 0D 0A) five times to 255.255.255.255:33583. The scale answers "UDP\t<tcpPort>\t..." to the PC's port 33584, and the PC then opens TCP to the sender's IP on that port. MAC, model and firmware are not in the UDP reply; they come over TCP.
+
+On connect the PC writes an empty line (most likely preceded by a UTF-8 BOM, as .NET does). It then sends "UPL\tMAC\t" and gets the MAC back as six decimal bytes. Next it sends "UPL\tINF\t" and gets three lines: INF (shop, machine, number, model such as "TM-xA UA006 V3.14E8"), INA (encoding) and INM (hex MAC and which network interface, primary or secondary). It closes the exchange with "UPL\tEND\t". There is no login or password.
+
+After that, the original program automatically pushes the PC clock with DWL TIM, pulls the sales logs, writes hidden Spec58=1 (asks the scale to announce new sales), and sends a "UPL\tTIM\t" link test every 30 s.
+
+- **PC to scale:** blocks of "DWL\t<SEC>\t" rows then "END\t<SEC>\t". Sending "CLR\t<SEC>\t" plus "CLR\tEND\t" first erases that whole table. The scale sends nothing back. The PC ends every download with "UPL\tTIM\t" and waits up to 30 s for a line starting with END, which proves the scale has stored everything.
+- **Scale to PC:** the PC sends "UPL\t<SEC>\t", the scale streams rows until a line starting with END, and the PC replies "UPL\tEND\t".
+- **Sales logs:** "UPL\tREP\t[-]<first FID>\t" returns REP (receipt header), RES (item or payment lines) and REE (end of receipt). The PC asks twice and keeps the answer only when two reads agree. FID is the scale's receipt serial number, not a file id. "Success: N FID" in LogInfo.txt means N new receipts were imported in one pull.
+- **Font, firmware and bitmaps:** binary is sent as text, one character per 4-bit nibble ('@' plus the nibble, high nibble first).
+- **PLU line:** PLU plus 67 fields, which splits into 69 elements and confirms our tool's V3.14E8 layout. Prices use the "mantissa,decimals" format.
+
+For our tool, the simplest upload is: open TCP to the scale on 33581, send an empty line, send only the needed sections (for example DWL PLU) from the edited file, and finish with the UPL TIM check.
+CORRECTIONS:
+  * §0: the PC 'reads its own write back' with UPL\tTIM\t => The barrier only reads the scale's clock line and discards it. It never reads back written rows, so it is at best an ordering barrier. Checking content needs a UPL of the section.
+  * §4.2: for nVersion >= V2.49A the PC writes the ASK flags in Spec58 => UpdateAsk writes DWL TMS / TMS 58 n / END TMS for every firmware. The V2.49A check only decides whether n gets bits, so older firmware gets 58=0.
+  * §5.10: the serial code shows 'clearly' that both signs mean starting FID => The serial code cannot distinguish >=N from >N. The data settles the '-N' form as inclusive: 0023F01B20EE (V3.15D) has gap-free FIDs 2..17 over 9 LAN pulls whose Success counts sum to 16, all 11 MACs in 6 Report dumps have gap-free runs, and no LogError.txt exists. The positive form stays unknown.
+  * §5.8: 'That only works if the scale sends no replies ... so the scale is silent on downloads' => This is an inference. During DownloadECS, incoming lines are queued (RxMFucing true) and the barrier stops at the first field-0 END line, so early END acknowledgements would pass unnoticed. A clone should wait for the TIM line and only then the END.
+  * Throughout: 'reads until a line that starts with END' => Every loop tests Split('\t')[0] == "END" exactly. Inside UPL LAB the inner loop waits for LAE and ignores END.
+  * §3.3: duplicates are closed only when MAC and P1S2 are both equal => The older link is also closed when either link has P1S2 = 0, which happens when the scale sends no INM line.
+  * §8 Dec() clone: return $"{(int)d},{n}" => The original uses Convert.ToInt32, which rounds half-to-even, while (int) truncates. They differ when the loop stops on |d| > 999999.9 with a fraction left.
+  * §8 PullLogs: string.Join("\n", cur) and StartsWith(prev) => The original compares AppendLine output, where every line ends with CRLF, so the prefix match always falls on a line boundary. Build curS with a trailing separator on each line. Also use TryParse for the version.
+  * §10: the V3.15C5 + XD1 fixture suggests XD1 comes from newer firmware => That fixture is synthetic, built by our own taoFile(), so it is not firmware evidence. What is confirmed: a real scale export writes ECS\tVER\t<firmware>\t, while the PC writes ECS\tVER\t100\t.
+STILL UNKNOWN:
+  - Payload of the scale's UDP reply after 'UDP\t<port>\t', whether it is unicast or broadcast, and whether the scale self-announces at boot.
+  - Meaning of INM[1] versus INM[2] on the wire, INA[3], and the units of mem_DATA/mem_FONT.
+  - Meaning of the '-' sign itself and of the positive UPL REP N form (firmware < 2.38), and why FID 1 is never returned by '-1'.
+  - Whether the scale wraps UPL answers in DWL/END, sends a BOM, uses CRLF or LF, or acknowledges DWL/CLR blocks with any line.
+  - What CLR TMS / CLR TMT reset to, and how the scale handles DWL of REP, INF, TIM or MAC blocks from an old export.
+  - Whether the scale accepts two TCP clients at once (TM-xA plus our tool).
+  - How Spec49 'Password Authorization' gates PAS and other writes over the network.
+  - How long the scale needs to store large PLU or label sets, and whether 30 s after the last byte is always enough.
+  - Whether XD1 openers come from older or newer firmware (the only XD1 sample is synthetic).
+=================== plu-hsd [mostly-right] corrections=10 additions=16
+SUMMARY: The spec covers all 68 PLU columns: meaning, type, TMS encoding, default, UI range, UI label and evidence for each. Five topics are answered: HSD semantics, price/unit/text/ALPHA rules, the Excel/CSV/TXT import-export formats, the PluForm validation rules, and a check of each belief in our tool's PART 1.
+
+The task's assumption "TMS index = DB column position + 1" is wrong. The MDB column order (PLUID, Valid, Remark, ...) is different from the wire order. The wire order follows the scale menu `P23 PLU.nn`, so TMS index = nn + 1. The PLU line is `PLU<TAB>` plus 67 values, each followed by a TAB. Splitting on TAB gives 69 items, and the last one is empty.
+
+For dates, the PS_* fields are print switches: 0/1 for the three dates, and 0/1/2 for sale and pack time. The PC_* fields are relative days (0…999) counted from the day of printing, or a fixed HHMM time (0…2359). They are never absolute dates. So HSD = print date + PC_UD, and PS_UD=1 with PC_UD=0 prints today's date. The label needs item Flag1=1, Flag2=0, Flag3=15 (Shelf Date). Pack date is either Sale-info Print Date (2/3) or Item 13 with PS_PD=1, PC_PD=0. Specs 104 (date format), 105/106 (shelf-date policy and global days), 265 and 266 affect how dates print.
+
+The technician's "co hsd" build contains no code change. The difference is data only: spec rows 104-106 are marked Valid (so they are sent to the scale), there is an Excel import mapping (PLUID, Name, Price, UnitID, Remark, PS_UD, PC_UD_Plus), and there are sample PLUs with PS_UD=1, PC_UD=30. The pseudo-field PC_UD_Plus sets PS_UD = (PC_UD ≥ 1).
+
+Excel/CSV import matches columns by position with no header (HDR=NO), and a text header row is skipped automatically. The import overwrites existing PLUs with the same number. Export writes only .xls or .csv, with Combo.xml display names as headers.
+
+Our tool's column map, 69-field template and default values are exactly what the vendor software writes. Corrections needed in the tool: PC-exported TMS files start with a blank line, which our parser rejects. Deleting a product by leaving its line out probably does not delete it on the scale; a CLR PLU block is needed. Newlines in names and texts travel as \v and should be converted, not flattened to spaces. parseLas reads the align field as the font size. aliasOf differs from the vendor's GetAlpha, which drops every Vietnamese accented letter and caps at 14 characters.
+CORRECTIONS:
+  * The 'co hsd' build's changes include an Excel import mapping PLUID,Name,Price,UnitID,Remark,PS_UD,PC_UD_Plus (implied to be an A-vs-B difference) => The same 7-row mapping is also in B_ECS (and A_en_Default), so it does not distinguish the installs. The HSD-specific differences in A (and in Config\en\Default.mdb) are: Spec 104-106 Valid; label 28 has the Shelf Date item (SubID 27, Flag3=15) and the 'HSD' caption (SubID 28), which B's label 28 lacks; and PLUs 1-2 have PS_UD=1, PC_UD=30.
+  * NetForm.cs FillFields is the 'same copy' as ExcelForm (Ethernet Excel monitor) => Not the same. There, an unknown [Unit].[Name] sets UnitID=0 (no Text7, no Flag). The monitor never calls NL_PLUImportKeep, so ALPHA is not generated and keep options are ignored. It merges with preserveChanges:true, optionally after DeleteQuery of all PC PLUs.
+  * Factory labels incl. 90000: const caption 'Shelf Date' with Print 9 paired with Item Flag3=15 => Label 90000 has Vietnamese captions: 'ngày bán' (Text5, Print 1) and 'ngày dóng gói' [sic] (Text7, Print 9). The Shelf Date value (Flag3=15, Print 9) is therefore captioned as 'packing date'. The other six labels are as stated.
+  * Flag bitmask: 'bit1 measure word, bit2 save-as-weight/fixed weight, bit4 percent tare' => These are mask values 1/2/4 (bit positions 0/1/2), not bit numbers.
+  * DF_UN enabled 'idem' (only if DF_D=3) => DF_UN is enabled when DF_U=3; DF_DN when DF_D=3. The manual's 'DF_D=3' for both is a typo, and the manual's P31 list also swaps the DF-U and DF-D names.
+  * Excel export: a leading PC_UD_Plus 'is not translated' => GetField looks up the column ecsDataSet.PLU.Columns['PC_UD_Plus'], which is null, so a NullReferenceException is thrown and the export fails with 'Operation failed'.
+  * Real sample INST/Config/en/_ECS.TMS illustrates the PC writer output => _ECS.TMS is the factory reset file read by RDS.cs:1225, not SaveForm output: sections run DPT,CLS,PLU,UNT,BAR,LAB,SAL,TMS,TMT with blank lines between them. It does share the BOM, the blank first line and the END ECS ending. The blank first line is confirmed by code (SaveForm.cs:946, :1287; NetForm.cs:2320).
+  * PC_ST/PC_PT are HHMM [C] => The range 0..2359 is confirmed. The HHMM encoding is inferred (I-strong) from the single box's Max=2359 and the manual's HHMM rule for time discounts; the CHM describes separate hour/minute boxes.
+  * Merge overwriting unmapped fields on Excel import is [I] => Upgraded to confirmed by code path (not executed): PLU is pre-filled, rows are added with the full ItemArray, Merge uses preserveChanges=false, and UpdateCommand writes all columns WHERE PLUID=?. A sheet without HSD columns resets PS_UD/PC_UD to 0.
+  * PS_SD = sell-by date [C] => The switch semantics are confirmed; 'sell-by' is an interpretation. The vendor only says 'Sale date / days after current day', and factory labels print 'Sale Date' as the Print Date.
+STILL UNKNOWN:
+  - Firmware behaviour of Spec105 'days mode' (4-6), and whether 'PLU does not set shelf day' means PS_UD=0 or PC_UD=0.
+  - Whether label print conditions 7/8/9 test only PS_xx or also Spec105 overrides. What the firmware prints for a Shelf Date item with Print=1 when PS_UD=0.
+  - Per-firmware (V3.14E8) Name/Text/ALPHA byte limits and how Spec249 splits them.
+  - Whether V3.14E8 honours CLR PLU and TIM blocks inside a USB A_000.TMS (the upsert behaviour is only circumstantial).
+  - Whether Spec104 changes the printed Print Date item (screen only follows 104 when Spec266=1); a test print is needed.
+  - Exact behaviour of Jet IMEX=1 text conversion of numeric cells when a header row forces text type (decimal separator). This is low risk on en-GB for integer prices.
+  - The exact PLUID sequence when an Excel mapping has no PLUID column (AutoIncrement consumption).
+=================== label-format [mostly-right] corrections=10 additions=20
+SUMMARY: The label spec is written. A print format (tem) is one Label row plus 0–100 LabelItem rows. In a TMS file it is written as a LAB line, then its LAS lines, then LAE, all inside DWL LAB … END LAB.
+
+**LAB line (confirmed):** `LAB, LabelID, Name, Sort, Width_mm, Height_mm, Text1..Text16, Version, Text17..Text32`, ending with a TAB (40 fields after split). Sources: SaveForm.cs:1097, NetForm.cs:3510, and the scale's own P26 menu in the V3.04A manual.
+- The database stores width and height in dots, always a multiple of 8. The TMS file carries millimetres (the writer divides by 8, readers multiply by 8).
+- A "60×40" template is really 432×296 dots, i.e. 54×37 mm of printable area.
+
+**LAS line (confirmed):** `LAS, SubID, Flag1, Flag2, Flag3, Print, Angle, Align, Font, Left, Top, Width, Height`, ending with a TAB.
+- Left/Top/Width/Height are in dots (8 dots/mm), measured from the label's top-left corner.
+- Angle rotates the box k×90° clockwise about (Left, Top).
+- SubID (0–99) is the print order.
+
+**Flag1 is the element type:** 0 Barcode, 1 Item, 2 Sale Info, 3 Const Text, 4 Outline Border, 5 Partition, 6 Bitmap, 7 Custom Print.
+- For Item, the field is Flag3 (Name, Weight/Pcs, Unit Price, Shelf Date, Text1–7, and so on); Flag2 is the item index (0 = the current item).
+- For Sale Info, the field is Flag2 (Print Date/Time, Grand Total 27, Store Name, …).
+- For Const Text, Flag2 = n prints the label's Text(n+1).
+- Print is the condition for printing an element (0–33, e.g. 2 = weighed items only, 3 = counted items only, 9 = only when a shelf date prints). Font is 0–9 with line heights of 18, 26, 34 dots and double/triple-size variants.
+- There is no bold or inverse attribute.
+- Partition elements split the label into areas, and SubIDs must follow the vertical order when partitions exist.
+
+**LAE** carries no data; it only closes each format.
+
+**Which label prints:** if the PLU's LabelID1 (PLU line f[8]) is non-zero it is used, otherwise Spec000. When two or more items are accumulated, the sum format Spec005 is used instead. Spec054 can switch the source to Spec or Class. Bill 2 works the same way with LabelID2 (f[11]) and Spec010/015.
+
+**Bitmaps:** stored on the PC in ECS.SBP, not in the database. They are converted to 1-bit by BitmapConvert.exe, packed with '@'-nibble encoding, and sent in their own `DWL BMP … END BMP` section. LAS rows only reference a bitmap by ID. Both installs' ECS.SBP files are empty.
+
+**Our tool (Beeftown_Can_TMA.html):**
+- Correct: type=f[2], text=f[3], data=f[4], cond=f[5], x/y/w/h=f[9..12], and textCol.
+- Wrong: size=f[7] is actually Align. Font is f[8] and Angle is f[6].
+- Only a fallback: picking the label by spec[0] alone. It should honour the PLU's LabelID1, Spec054, Spec005 and factory formats 1–9.
+
+**Templates:** 11000/11100/11200/11300 (item), 12xxx (sum), 13xxx (receipt), 14xxx (list), IDs 1–9 are factory formats built into the firmware, and user formats live in IDs 10–99.
+
+**The technician's Vietnamese 60×40 label** is B_ECS 90000, a recycled clone of 11000 with captions 'giá', 'số kg', 'tiền', 'ngày bán', 'thời gian', and 'ngày dóng gói' in the shelf-date slot. The "HSD" layout is A_ECS label 28 (58×40 mm), which has an Item Shelf Date element and a const text 'HSD'. Our tool's built-in example has the same structure.
+CORRECTIONS:
+  * LAB f[2] Name is written through Program.FormatString (CRLF -> \v) => Name is written raw by all three writers; only Text1..32 are FormatString'd. The readers still apply ParseString. Strip CR/LF/TAB from Name.
+  * Label Width/Height in the DB are always a multiple of 8 (default 360x270) => True for all stored data, but not enforced. The DataSet default Height 270 is not a multiple of 8, and the wizard auto-grow does not round. Only the LabelForm mm boxes round. The writer must round up before /8.
+  * SaveForm.cs:1439/1433 is an 'other export path' (file export filter) => It is SaveToSerial (RS-232 download) and always filters to 10..99. The file export (SaveForm.cs:1092) filters only for non-SuperAdmin.
+  * PF-1/2/3/5/6 are identical to templates 11000/11100/11200/12100/12200 element for element => Only PF-1 == 11000 exactly. PF-2/3 have the same elements with different SubIDs. PF-5/6 also differ in caption Text1 ('Total Label:' vs 'T-Label:'). PF-4 differs geometrically from 12000 (heights 32 vs 34, rows 2-6 dots higher).
+  * SubIDs are 'renumbered' by vertical position when partitions exist => SaveData runs a selection sort that permutes the existing SubID values (gaps kept). The key clamps Left+1 to 1..9999. A partition key Top*10000 sorts before normal items on the same Top but after Angle 2/3 items.
+  * A language switch copies <lang>\LabelItem.xml to the root; the root copy is a 2026-05 customisation => MergeXML merges <culture>\, Config\<configFolder>\ and Config\ files and rewrites root Combo.xml/LabelItem.xml/Tm.xml/Lang.xml at every program start. The 2026-05-14 timestamp is just the last launch, and FlagDesigner edits to the root are lost at the next start.
+  * Sort is a UI category that the wizard uses => No PC code branches on Sort. The wizard selects templates by LabelID range. Firmware use of Sort is unknown, so the tool's Sort==1 filter is only a heuristic.
+  * Outline Border Flag2 = line thickness 1..24 dots => The unit 'dots' is INFERRED: the Manual and Help only say 'thickness'. No Border (Flag1=4) or Custom Print (Flag1=7) element exists in any data set, so rendering is unverified.
+  * 90000 is an older label 28 replaced by a later wizard run => INFERRED. The recycle code also recycles 26/27/29 (26 for the generic step). 28 is only the most likely source.
+  * Vendor templates = dump A_en_Default (a clean vendor DB) => Templates are identical, but Config\en\Default.mdb is not pristine: its Label/LabelItem equal A_ECS byte-for-byte, including the technician's labels 10, 11, 27, 28 and 90000. Only _ECS.TMS is a clean source.
+STILL UNKNOWN:
+  - Meaning of Align high bits 0x40/0x80 (192/198) in firmware formats PF-7/8/9
+  - Exact field of Item Flag3=38, and the exact semantics of Sale Info 70/71/72 and Print 34/35/36 (only captions are known)
+  - What the firmware prints for Align=0 'Default' versus the PC's centred preview
+  - Whether barcode element Flag3 10..29 selects a BAR ID (V3.04A manual says Flag3 has no effect)
+  - Exact Spec054 semantics beyond the option list
+  - Whether the scale's USB export A_000.TMS contains factory LAB 1-9 and BMP/FNT sections
+  - Text overflow/wrap rules (Spec035), bitmap clipping, border stroke unit and placement (no Border element exists in any data)
+  - Firmware max lengths for LAB Name/Text (one weak hint: Name cut to 49 chars)
+  - Custom Print (Flag1=7) semantics; no definitions or uses anywhere
+  - Whether the firmware uses LAB Sort at all
+  - Whether BitmapConvert's 1-bpp palette makes index 0 black (determines the meaning of the ~ inversion); padding-bit handling by the printer
+  - Firmware output for an Item Shelf Date element with Print=1 when the PLU has no shelf date or Spec105=3
+=================== barcode-keys [mostly-right] corrections=7 additions=14
+SUMMARY: I worked out both formats from the decompiled code, the shipped XML files, the DB dumps, the V3.04A manual and the CHM help, and checked them against each other.
+
+**Barcode rows.** A BAR line is `BAR BarID Name Format Check Num1 Num2 TChar` with a trailing tab. The PC reads and writes it the same way (SaveForm.cs:1078, RDS.cs:933-955, NetForm.cs:3479).
+- BarID 1..9 are factory barcodes, 10..99 are user barcodes, 0 is "System Default".
+- TChar is a list of 6 to 32 elements. A numeric element is `<letters><length><shift><overflow>`, for example `B201` or `K500`. The letters are base-26 with A=0, so they cover 42 data sources (A..Z, then BA..BP).
+- Some elements are not numeric: `>text\v` is constant text, `?nnn` is custom, `@gii` is a text field and `=gii` is a symbol. The symbols are loop markers, a checksum, or CRLF, and they are used to build QR codes that list every item of a sale (BarItemBox.cs:300-455).
+- Shift drops that many digits from the right. Weight, money and count are turned into whole numbers using Spec208, Spec209 and Spec196 (factory values 3, 2 and 3).
+
+**Barcode types.** Combo.xml gives: 0 Default (auto), 1 EAN13, 2 EAN8, 3 UPC-A, 4 UPC-E, 5 EAN-128C, 6 Code-128C, 7 ITF25, 8 PDF417, 9 EAN-128 (char), 10 Code-128 (char), 11 QR, 12 and 13 Code39, 14 Code93. There is no EAN-18 type. 18-digit barcodes are 17 data digits plus a check digit, printed as a Code-128 type.
+
+**The "20 + 5-digit code + 5-digit value + check" layout.** Factory barcode ID 2 (`B201F501K500`) prints this with the total price, and it is already the factory default (Spec1=2, Spec2=20). For weight instead of price you need a user barcode 10..99 with `B201F501J500`. That is exactly what the vendor Wizard writes as ID 28 "QS-Item".
+
+**How a PLU picks its barcode.** BarT1/BarT2 are the barcode number and BarF1/BarF2 the barcode flag, for Bill 1 and Bill 2. These are two separate printouts, for example a label on gap paper and a receipt on plain paper. They are not weighed-vs-counted and not front/back. A value of 0 falls back to Spec1/Spec2 for item labels and Spec6/Spec7 for sum labels. Class rows have the same six fields, and Spec54 decides which level wins. Right now every Beeftown PLU has 0, so the scale uses the factory default.
+
+**Key lines.** An SCP line is `SCP PageID KeyID PLUID`.
+- **Layers:** Page 0 is the first layer and page 1 is the Shift layer. The manual shows `scPLU 0-01` for key SC1 and `1-01` for Shift+SC1.
+- **Key and PLU fields:** KeyID is the number printed on the key. PLUID is the PLU number, not the item code. A negative PLUID means a function key (-code). The manual only documents 0 as the first layer; that 1 is the Shift layer comes from its examples.
+- **Face files:** each saved key map (a "face") has a layout and a page mode, but these only matter on the PC and are never sent to the scale. Only the face you select is exported.
+- **Clearing keys:** in TMS and network exports, keys set to 0 are only written in "clear" mode. So to empty a key our tool must write an explicit 0 row.
+
+**Keyboard models.**
+| Model | Keys per layer |
+|---|---|
+| KA / KAB | 63 (numbered as a 5-column block then a 4-column block) |
+| KAD | 40 |
+| KB | 30 |
+| KC | 40 |
+| KD | 30 |
+| KE | 10 |
+| KF | 40 |
+
+There can be up to 3 layers.
+
+**Our tool's beliefs.** "Level 0 = first layer" is correct. KEY_LABELS is correct for the 63-key KA/KAB keyboards except key 58, which is `_` (underscore), not an em dash. The labels are wrong for the 40-, 30- and 10-key keyboards.
+
+**Decoding for inventory.** Split the digits by the element lengths and verify the check digit. Then weight in kg = n/10^Spec208 and money = n×10^shift/10^Spec209. For Beeftown, which enters prices in thousands of VND, VND = money × 1000. With the factory Spec209=2, the 5-digit total field overflows at 1,000,000 VND. My reading of the overflow setting is that the barcode is then not printed at all, but this still needs a test print.
+CORRECTIONS:
+  * When the PC runs with 'User' rights, BAR rows with BarID < 10 are neither written (SaveForm.cs:1074) nor imported (RDS.cs:950). => That filter is dead code in v3.10. The flag is hard-coded false at every call site, so the PC always writes and imports BAR rows 0..9, including row 0 'System Default'.
+  * Manual Table 5-4 shows overflow 0 instead of 1 on the item-code field for IDs 2/3. => The manual differs on IDs 2, 3, 5 and 6 (B201F500K500, F700K500, B201F400K600, F600K600) and calls them 'B-Item 1..6'.
+  * The vendor Wizard writes IDs 28/29 and sets Spec1/6 = 28/29. => Spec1 is always 28. Spec6 is 28 unless the scale is in Prepack mode with more than one item, in which case it is 29. In the Wizard's 'special' and 'manual' barcode modes, Spec1 = Spec6 = 28 and only ID 28 is written.
+  * Sum as EAN (GetBarcode_SumEAN): flag length += key length, key -> A000. => The merge happens only when Barcode_CR_Flag_SumUsingItem is false, and the Wizard default is true, so by default the sum barcode keeps the item layout and Spec7 = the item flag. When the merge does happen only chars 4-5 change, so the key becomes A001 (still 'not print'). The Wizard's default sum barcode is QR.
+  * 18-digit `B101F501J500K600` is Wizard '15651'-like. => Wizard 15651 is 1+5+6+5: B101F501J600K500 (weight option) or B101F501K600J500 (total option). J500K600 is a valid user layout but not the Wizard's.
+  * Decoder: verify the GS1 mod-10 check; the check digit is always the last digit. Recommended B201F501J500K600 + Format 6. => For Formats 5/6/7 a check digit is auto-added only when the data length is odd. B201F501J500K600 has 18 data digits (even), so it is INFERRED to have no check digit. Decode by comparing the scan length with the sum of the element lengths. For a checked 18-digit code use B201F501J500K500 or B101F501J500K600 (17 data digits + 1 check).
+  * Executive summary: a 5-digit total overflows and 'the barcode is then NOT printed (overflow code 0)', stated as fact. => This is INFERRED, not confirmed. It is still untested whether the whole barcode or only the field is dropped.
+STILL UNKNOWN:
+  - Firmware rounding vs truncation when scaling money/weight by 10^Spec208/209 (18167.5 -> 18167 or 18168)
+  - Exact overflow behaviour: whether code 0 drops the whole symbol or only the field; which digits Cut Off keeps; what Extend does
+  - Whether an even-length Code-128C/EAN-128 payload really gets no check digit (MAN304 Note 2 wording), and which symbology Format 0 picks for 17 digits
+  - Source B (Spec Flag) vs H (PLU Flag) vs PLU BarF1, and what 'default' means in Spec54 (PLU-then-Spec is inferred)
+  - Spec139 = 1 (Non-standard) and the Wizard's value 2 (Character '0'); meaning of the '?nnn' Custom element; firmware reading of Symbol checksum indexes 32..35 as PCDV
+  - QR loop/partition symbol semantics (=001/=002/=000) are inferred
+  - How the operator reaches SCP page 2; whether keys SC64+ can hold PLUs or only functions (the manual says the presets cannot be changed)
+  - Whether firmware accepts or ignores TMS BAR rows 1..9 (the PC always sends them; the manual says users cannot edit 1..9 on the keyboard)
+  - Which keyboard the Beeftown TM-A has (on pole models Shift is numbered 64, on bench models 47) and its real Spec1/2/6/7/54/88/100/203/208/209 values (the dumps contain only factory values)
+=================== spec-wizard [mostly-right] corrections=6 additions=11
+SUMMARY: I decoded all 500 scale settings ("specs"). Tm.xml names and describes 383 of them. The value options are written into each name after "|" separators, and a Visible flag (TRUE / admin / FALSE) controls who sees each setting in the PC program. The spec file has a full table of every setting (name, type, options, factory default, which wizard page writes it), plus a short list of the ones that matter for Beeftown with suggested Vietnamese labels.
+
+Our tool's two beliefs are correct, with caveats:
+- **spec[202]** is the unit-price decimals and **spec[203]** is the total-price decimals. The PLU price in the file is an absolute number written as "mantissa,exp" (Program.cs:530), not scaled by 202. So "845,0" is 845, which a 3-decimal scale shows as 845.000.
+- **spec[0]** is the default item label for bill 1. The scale uses it only when the product's own label field (PLU field 8) is 0; spec 54 and spec 56 can override or block it.
+
+The technician changed none of the 500 spec values in the three PC databases (A_ECS, B_ECS, Default.mdb). All match the factory file _ECS.TMS; B only unticks the export box on 104-106. The real settings are in Wizard.BIN. I decoded both copies with a small reader written for this task (scratchpad\work\nrbf.py). The nested install B sent:
+- 202=203=3 decimals, money suffix "VND", no prefix, unit printed after weight/price/total (185-187=1), no rounding.
+- Label 28, gap paper, darkness 9, and 250=1 (each weighing prints one label).
+- A 5-window A17 display setup, and a barcode made only of fixed numbers that looks like a test.
+- It never set the date format, so spec 104 is still 0 (YYYY.MM.DD). For Vietnamese dates use 104=4 (DD/MM/YY) and 266=1. There is no DD/MM/YYYY option.
+
+The 3-decimal setup means prices are entered in thousands of đồng. The display limit is 999.999, so the highest unit price is 999,999 đ/kg.
+
+The wizard's 14 steps and exactly what each page writes are in section 9, including the Full/Limited/No-right management presets and label cloning to ids 26-29. The wizard also writes one setting (131=1, auto-accumulate after zero-return) by accident when its Sale page is left untouched. TMT is the 28 global texts. Units are fixed in the firmware; this version never writes a UNT section. Line formats for DPT, CLS, SAL, VIP and PAS (scale passwords) are also documented.
+
+Two parsing problems in our tool: it rejects files made by the vendor program (they start with a byte-order mark and a blank line), and it keeps only the last TMS block when a file has several.
+CORRECTIONS:
+  * The number nnn in USB file JHSCALE\A_nnn.TMS matches Spec040 'Device Number' (INFERRED), so A_000.TMS belongs to device number 0. => nnn is the file serial number the operator types in keypad menu P41 (the display starts at 000). A_xxx.TMS is the auto-update file, which the scale loads at power-on when Spec042=1. The PC's USB export ticks 'Boot File' by default, so TM-xA writes A_xxx.TMS unless the box is unticked.
+  * B_ECS changed Valid on 104/105/106 from True to False; Default.mdb (Valid=True on 104-106) is the factory state. => It is the other way round. Seeding from _ECS.TMS into an empty DB gives Valid=False for all 500 rows, so B is the factory state. A_ECS and install A's Config\en\Default.mdb were ticked by the technician. That Default.mdb is a technician profile dated 2026-01-30 with the same size and time as A's ECS2.mdb; it is not a factory file. The PC DBs cannot reveal the scale's specs anyway, because an uploa
+  * TMT line breaks are encoded as \v via Program.FormatString. => Only the TMT readers convert \v to CRLF (ParseString). Every TMT writer outputs the value raw, without FormatString, so the PC never emits \v in TMT.
+  * Spec058 is undefined (no Tm.xml or manual entry). => Spec058 holds the PC Ethernet 'ask' flags: +1 = the scale pushes 'ASK REP' (new sales logs), +2 = 'ASK PLU' requests. The Ethernet form writes it on every connection to firmware >= V2.49A. With the config defaults it is normally 1.
+  * User label ids are 10-99, and a chosen template is always cloned to 28/29/27/26. => User-editable labels are 10-29 (maxUserLabelID=29); 10-99 is only the non-SuperAdmin export filter. PT_Clone does not clone when the chosen label is already a user label 10-29, and that label's own id goes into spec 0/5. This explains why install A's wizard wrote 5=10.
+  * Section 3 intro: 106 ids are undefined. => 105 ids are undefined; 58 is defined by the PC code (see above).
+STILL UNKNOWN:
+  - The actual spec values inside Beeftown's scale: read the TMS rows from the scale's own USB export. The PC DBs cannot hold them, and neither Wizard.BIN can be tied to Beeftown's MAC.
+  - Firmware meaning of Spec054=0, and whether Spec054/055 exist in V3.14E8 (they are absent from manual V3.04A).
+  - Whether Spec188=7 (7-digit unit price) works on the Beeftown model (the manual allows 0~6); this sets the 999,999 đ/kg ceiling.
+  - The scale's real Spec209 (money decimals in the barcode), and whether B's constant manual barcode (>82…>09) is what Beeftown prints.
+  - Meaning of undefined ids 243 and 273 (default 1), 499 (default 1522729470, which looks like a Unix timestamp for 2018-04-03), and the other undefined ranges.
+  - Spec139 value 2 ('Character 0' in the wizard); all manuals list only 0/1.
+  - The exact UNT row layout (only inferred from the manual's P24 step numbers; no writer or sample exists).
+  - Whether the firmware accepts \v line breaks in TMT texts (the PC never writes them).
+  - Whether an older firmware really rejects 250=2 and keeps 1. This is strongly suggested by the manual (0~1 only) and the per-row loader, but not proven.
+=================== reports-sales [mostly-right] corrections=7 additions=19
+SUMMARY: The spec is complete, but I could not save it to scratchpad\spec\reports-sales.md: the harness refused subagent report files. The full markdown is in the specFile field; save it to that path if needed.
+
+The scale sends sales records as plain REP/RES/REE text lines: UTF-8, tab-separated, CRLF, numbers written as "mantissa,decimals". The same text comes in the USB export (a DWL REP … END REP section), as the LAN reply to UPL REP, and over RS232. TM-xA parses it in RDS.NL_Log_Get (RDS.cs:2308-2607) into Log (one row per transaction number, FID) and LogItem (one row per line). Payment lines (special PLUs 9999981-9999997) are folded into Log columns, not stored as items.
+
+Pulling logs never clears the scale. "Reset Report" only wipes the PC tables after a backup copy. The scale is cleared only by the keypad (A52 with code 9958), a factory reset, or when its 6,000-10,000-record memory overflows and drops the oldest records.
+
+The most important finding: the PLU name in a log line is looked up from the scale's current PLU table when the log is exported. Weight, unit, unit price and total are the values at sale time. I proved this by comparing the Beeftown scale's FIDs 2-6, imported by TM-xA in 2024, with the same FIDs in the 2026 USB export: the numbers match and only the names differ. The item code is not in the log unless Spec 290 is set to 9 (it is 0 now). PLU numbers were reused on this scale, so matching today's PLU table would misassign 21 of the 38 item lines.
+
+15 of the scale's 41 records are Type 2 "Unconfirmed" (weighed but no label printed), caused by Spec 283 = 1. An inventory import must count only Type 0 (sale) and Type 1 (return).
+
+I decoded all 33 log type codes. Event types follow the rule Type = 256 + code (A52 = 308, P521-P524 = 777-780, E9.98 = 1254).
+
+TM-xA's PC reports are a per-scale Bill Report, a PLU Total Report by type, and a PLU List Report by PLU and type. They can be filtered and exported to .xls with 25 selectable columns. The scale prints its own total, department, class, PLU, salesman and sale-list reports. Stock is a PC-only running inventory per stock group and PLU, fed by sales and manual documents, with recipe (produce) and box-to-pieces (unpack) rules.
+
+For the Beeftown kho I propose three tables and a 24-column CSV. Key choices:
+- The dedupe key includes the transaction time, so it survives a FID restart.
+- Money converts to VND via Spec 202 (unit price) and Spec 203 (totals).
+- Each item code records how it was found.
+- The label barcode is rebuilt as EAN-13 "20" + 5-digit code + weight in grams + check digit.
+
+A reference parser is at scratchpad\work-rep\rep2csv.py, with sample output (names masked) in ban-can-mau.csv.
+
+For the current tool, the format beliefs are right, with one correction: RES line totals should use Spec 203, not 202. Its write-back copies the REP, INF and TIM sections back to the scale; the file saved on 2026-09-28 contains DWL REP. It should strip those sections.
+CORRECTIONS:
+  * 15 of the scale's 41 records are Type 2 'Unconfirmed'. => 19 of the 41 records are Type 2. REAL has FID 2..42 with no gap. It holds 1 event (FID 2, type 1254), 21 Type 0, 19 Type 2, and no Type 1 or 3. Of the 21 Type 0 lines, 4 use the open PLUs 9999998/9999999: FID 3 and 4 are factory tests, and FID 29 (9 pcs @455) and FID 30 (9.000 kg @0) are test weighings. So only 17 are real product sales.
+  * Matching today's PLU table would misassign 21 of the 38 item lines. => REAL has 36 regular-PLU item lines (PLU < 9999981). 20 of them fail the unit-price/unit check against the current PLU section and 16 pass. The 4 open-PLU lines have no catalogue entry at all.
+  * The .xls export offers 25 selectable columns. => It offers 26 columns. Combo.xml Report_Col has 27 entries, and the first is '(NULL)'. The 26 are: Stock Group, Stock Name, MAC, Device, Date and Time, FID, SID, Salesman Number, Sub ID, PLU Number, PLU Name, Dept No, Class No, Unit Number, Unit Name, Price, Cost, Tax, Weight/Pcs, Type, Related FID, Text 1-4, Unit Price. PLU Name here is [rPLU].[Name], the PC's CURRENT catalogue name, not LogItem.P
+  * For the current tool, RES line totals should use Spec 203, not 202 (presented as a correction of the tool). => The current tool and web/src/lib/kho/can-tma.ts have no REP/RES parser at all. They only use 202 (fallback 203) for PLU unit prices, which is correct. The 203 rule belongs in the future sales reader: U.Price uses S=202; T.Price, Cost and Tax use S=203; VND = mantissa x 10^(S - token decimals). Every token carries its own decimals: the same scale wrote '7,2' and '888,2' in April 2024 and '60000,3' 
+  * The tool's write-back copies REP, INF and TIM, as shown by the file saved on 2026-09-28, which contains DWL REP. => From code (TOOL:504-512): write-back copies every line except PLU rows, so REP, INF/INA/INM and TMT always go back. TIM is dropped only when keepClock is on. The 2026-09-28 file is not proof of a write-back: da-gui\20260928-000207.TMS is byte-identical to the scale's own raw export (mtime 2013-08-09 FAT stamp). TM-xA never writes DWL REP, DWL INF or TIM into a file. Strip REP and INF in catalogue 
+  * Reference parser / CSV: tinh_kho = +1 for sale and -1 for Buy Back, applied to a signed so_kg; all Type 0 lines count for kho. => Two fixes. (1) Open-PLU lines (9999981..9999999) must get tinh_kho = 0. REF gives tinh_kho = 1 to FIDs 3, 4, 29 and 30, including 9.000 kg of 'T-Weight PLU' at price 0. (2) Use TM-xA's own rule: stock delta = -Amount for both Type 0 and Type 1. Scale-sourced amounts are never sign-flipped, and StockItem.Amount = -pAmount, so a return only adds stock if the scale sends a negative Amount (INFERRED).
+  * Stock is a PC-only running inventory. => True for TM-xA's Stock/StockItem, which never goes to the scale. But the scale also keeps its own separate stock counter, which TM-xA neither reads nor writes: A61 Stock Print/amend, A62 Stock Audit, A53 Clear Stock, Specs 141/142. The PC stock is keyed by (GID, PLU number) and merged across all scales in the group, so PLU reuse corrupts it too.
+STILL UNKNOWN:
+  - Whether Spec 290 = 9 fills RES[11] with the item code on V3.14E8, and whether the value is captured at sale time. The manual says Log Text needs a special firmware version.
+  - What the scale does when it loads a file that contains a DWL REP block (or DWL INF).
+  - Whether FIDs restart after A52, P521-P524 or E9.97. A restart would defeat (MAC, FID) dedupe and the LAN request from FIDed+1.
+  - Whether a LAN UPL REP sets the scale's 'uploaded' mark, which the USB [PLU] export honours, and what the '-' sign means. REAL's FIDs 2-6 prove only that one of the two is true: [F-Prog]+[PLU] was used, or LAN does not set the mark.
+  - The actual sign of Type 1 (Buy Back) amounts and prices, and the use of CoFID. Negative is INFERRED from Stock_Add. Spec 74 = 0 on Beeftown, so there are no samples.
+  - Whether keypad stock operations (A61/A62) create Type 10/11/12 log records. Exact behaviour of Type 4 (Hangup) and Type 5 (Auto Mode) beyond the spec names (278/279, 264).
+  - Whether RES Class/Dept are historical. Data shows 9/9 for user PLUs, 2/2 for 9999998 and 1/1 for 9999999, identical in 2024 and 2026.
+  - Why FID 1 is never delivered: every scale's first record in all dumps and in REAL is FID 2, a 1254 event.
+  - Meaning of INA[3] and INA[6..7], and of 9999991 'Store Payments' lines, which NL_Log_Get ignores.
+  - BAR TChar letters beyond B/E/F/J/K/L, and whether J5 weight digits are grams. The reconstructed EAN (e.g. FID 27 → 2012304001605) needs to be checked against a physical label.
+  - Whether the P52x factory resets wipe the sales log. The events being logged suggests the log survives, but this is INFERRED.
+=================== manuals [mostly-right] corrections=9 additions=14
+SUMMARY: I extracted all 6 manual PDFs and rendered the pages whose diagrams matter (keyboards, display, paper loading, menu tree, the Easy Manual key icons). I decompiled the CHM help with the Windows hh.exe, looked at every Guider icon, and cross-checked the manuals against the decompiled code and the install's XML files. The spec is organised for a Vietnamese guide: safety and cleaning, keyboard, display, modes, the full menu tree, staff how-tos, manager how-tos, paper and label calibration, error table, codes, what not to touch, and where the manual disagrees with Tm.xml.
+
+Menu tree: the scale's Prog menu has only P1–P5, plus a P15 function-key remap under P1. Account has A1–A8. There is no P6–P9.
+
+Keyboard: the V1–V4 keys double as the ↑ ← ↓ → arrows. The bench keyboard has no Paper Type, Mode or Manual Weight key, so on that model paper type must be set through Spec021.
+
+Checking our tool (Beeftown_Can_TMA.html):
+- Step 1 (save to USB) is consistent with the manual.
+- Step 3 (load) is probably one Accu/Confirm short: the second press only reaches the "000" file-number screen, and a third press loads the file.
+- The power-on auto-load warning names the wrong file: auto-update applies to the literal JHSCALE\A_xxx.TMS, not A_000.TMS (manual p.59 and SaveForm.cs:487-494).
+- The 9958 warning is correct. Code 9958 guards P33 Delete, P52x factory reset, A52 clear-all and A53 clear-stock. P5 first asks the admin password, which is <factory default>. A51 and A54 need no code, so they are the easiest to hit by accident.
+
+HSD: the use-by date is controlled by PLU fields PS_UD (print flag) and PC_UD (shelf days, 0–999). These are TMS PLU fields 27 and 32 (SaveForm.cs:1060). Our 69-field template currently writes 0 in fields 23–32, which turns off every date print. Globally, Spec105 (with new "due date / days" modes in Tm.xml) and Spec106 set shelf life for all items. Spec104 sets the date format; the day-first options are only DD/MM/YY and DD-MM-YY, with no 4-digit year. On the label, print-item code 15 prints the shelf date, and print condition 9 prints a caption only when the item has a shelf date. The barcode can also carry the shelf date. The Excel import column "Shelf date data(+print)" automatically sets PS_UD=1, which is a good behaviour to copy.
+
+The PC software inventory covers every menu, form and Config Wizard page, rated H/M/L/— for Beeftown. Must-haves: TMS round trip, Excel/CSV price list, PLU basic + text + time fields, Global Text, shortcut-key map with a printable overlay, a curated Spec subset, and the label format. Useful later: logo bitmap, sale-list import from USB, time sync, barcode format. Skip: VIP, salesman, tax, service fee, stock, packages, designers, firmware and MAC tools.
+CORRECTIONS:
+  * The PC TMS export writes A_xxx.TMS when an 'Update at once' box is ticked; 'Boot file' is one of the data types you can export => The checkbox is labelled 'Boot File' and is ticked by default. It chooses JHSCALE\A_xxx.TMS, the file the scale loads at power-on, instead of a numbered file. It is not a data type. The old CHM calls it 'Update when start'.
+  * Excel column 'Shelf date data(+print)' (PC_UD_Plus) sets PS_UD=1 when the value is at least 1 => The same code also sets PS_UD=0 when the value is 0. Through that column, 'valid today only' (0 days) turns HSD printing off.
+  * Shortcut function codes: '1-11 digits' => The codes are shifted by one: 1 = digit 0, 2 = digit 1 … 10 = digit 9, 11 = '00', 68 = '000'.
+  * P12 Spec range: SP.000-249 plus higher 250-457 => The manual stops at 457, but Tm.xml has 383 Spec rows with IDs up to 498. Specs 480-498 are 'Special Version Spec 0-18'.
+  * P23 PLU number: user range 10-9 999 996 when Spec092=1 => User PLUs are 1-9 999 996 with Spec092=1 and 10-5 999 with Spec092=0. Tm.xml renames Spec092 'Dummy Number' with different options.
+  * Tm.xml:630 adds Spec083 option 3 (long press = edit name) and option 4 => Option 3 is already in the manual (range 0-3). Only option 4, which saves the price automatically after each sale, is new.
+  * Spec080/082 in Tm.xml only 'add allowed with authentication' => The values are renumbered: 0 forbidden, 1 allowed with authentication, 2 allowed. In the manual, 1 = allow (the default). A value of 1 therefore means something different on newer firmware.
+  * E2.05 = 'Leave the menu with Cancel' => E2.05 means leaving a menu with Sale, Prog or Account is forbidden. Press Cancel several times to go back.
+  * PC PLU Time Info tab has hour and minute boxes for sale and packing time => In v3.10 each preset time is one HHMM number box (0-2359). The hour/minute screenshot comes from the old CHM.
+STILL UNKNOWN:
+  - Whether the Beeftown scale has the pole (SC1-63) or bench (SC1-40) keyboard and which firmware letter variant (U font or not). The tool assumes the 63-key layout; read INF field 4 from a real A_000.TMS to settle it.
+  - Whether loading from USB really needs a third Accu/Confirm on V3.14E8. The manual says yes; test once on the scale.
+  - Whether the scale applies TMS rows without CLR as merge-only, so tool deletions and renumbering do not propagate. Needs a test on the scale.
+  - The exact meaning of Spec105 'Due date mode' vs 'Days mode' (options 3-6). No code interprets them.
+  - Whether Spec105=1/2 also needs PS_UD=1 per PLU to print HSD.
+  - What the Beeftown scale prints in the Shelf Date slot when PS_UD=0 while the label uses condition 1, and whether the real Beeftown format equals PC label 28.
+  - The Beeftown scale's actual Spec104/105/106/042/092 values (no real Beeftown TMS exists on disk).
+  - Whether DD/MM/YY (2-digit year) is acceptable for Vietnamese food labelling (not covered by any source).
+  - Whether the scale re-applies the TIM clock row when it loads a file.
+  - Whether MAC 0023F01AECB1 is the Beeftown scale.

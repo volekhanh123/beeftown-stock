@@ -38,7 +38,7 @@ Mọi kiểm thử đều đạt — số kiểm tra xem ở dòng cuối của 
 
 ## Chạy kiểm thử
 
-Không cần Docker, không cần cài Postgres — dùng PGlite (Postgres chạy WASM trong Node).
+Không cần Docker, không cần cài Postgres — dùng PGlite (Postgres chạy WASM trong Node), bản Postgres 17 như Supabase production (`test-quy-trinh.mjs` mục 1 giữ điều này).
 
 ```bash
 cd web && npm ci        # một lần — test ở đây đọc cả mã web (@astrojs/compiler-rs, supabase-js)
@@ -71,7 +71,7 @@ cd ../crm && npm ci && npm test
 | `node test/test-kho-ipos-ghep-ma-v1.mjs`, `test-kho-chi-muc-tra-nguoc.mjs` | **`0072`**: ghép lại bằng `kho_ipos_gan_ma` (v1) món đang gắn ô sang gói cân / bỏ qua / món khác → bỏ ô như v2; năm chỉ mục tra ngược của kho và chỉ mục mốc `nhat_ky_tin` được planner dùng (EXPLAIN) |
 | `node test/test-bao-dong-don-nhat-ky.mjs` | **dọn nhật ký `0073`**: một lượt báo động xóa đúng dòng quá hạn của bốn bảng, giữ dòng trong hạn, tin chờ gửi, 10 lượt iPOS mới nhất và nhịp tim cron; đèn iPOS / tin Zalo không đổi; tối đa 5.000 dòng mỗi lượt; lượt bị khóa không dọn; dọn hỏng (cả hết giờ) thì lượt vẫn chạy, câu lỗi ở `loi_don` — `test-bao-dong-web.mjs` kiểm Worker ghi nó vào lỗi của lượt và đèn Báo động đỏ; câu dọn đi qua chỉ mục; hàm dọn là nội bộ |
 | `node test/test-dat-ban-goi-lai.mjs` | **gửi đặt bàn hai lần `0062`**: gửi lại y hệt → một dòng, cùng mã, một tin Zalo, một dòng đồng ý, không trừ chỗ hai lần; lượt đầu lấy bàn cuối hay khung giờ vừa qua thì gửi lại vẫn nhận mã cũ; khác bất kỳ trường nào, dòng cũ đã hủy / đã xác nhận / quá 10 phút → dòng mới; số điện thoại viết khác kiểu là một; phiên đăng nhập không thuộc CRM không lấy được mã của khách; giao dịch đầu hủy giữa chừng thì gửi lại ra đúng một dòng |
-| `node test/test-tuyen-dung-gui-lai.mjs` | **nộp hồ sơ hai lần `0079`**: gửi lại y hệt cùng ngày nộp (hay trong 10 phút, vắt qua nửa đêm) → cùng mã hồ sơ, không lỗi 23505 "chưa ghi nhận"; khác một trường → không nhận mã cũ, vẫn một hồ sơ / vị trí / ngày; trường tin không hỏi khác nhau vẫn là y hệt; kèm CV thì chỉ khớp hồ sơ đã có CV, không bao giờ gắn file vào hồ sơ cũ (người lạ biết tên + số điện thoại không gắn được file); đã 5 hồ sơ / IP / giờ hay tin vừa hết hạn thì gửi lại vẫn nhận mã cũ; phiên đăng nhập không lấy được mã; bẫy bot vẫn chặn |
+| `node test/test-tuyen-dung-gui-lai.mjs` | **nộp hồ sơ hai lần `0080`**: gửi lại y hệt cùng ngày nộp (hay trong 10 phút, vắt qua nửa đêm) → cùng mã hồ sơ, không lỗi 23505 "chưa ghi nhận"; khác một trường → không nhận mã cũ, vẫn một hồ sơ / vị trí / ngày; trường tin không hỏi khác nhau vẫn là y hệt; kèm CV thì chỉ khớp hồ sơ đã có CV, không bao giờ gắn file vào hồ sơ cũ (người lạ biết tên + số điện thoại không gắn được file); đã 5 hồ sơ / IP / giờ hay tin vừa hết hạn thì gửi lại vẫn nhận mã cũ; phiên đăng nhập không lấy được mã; bẫy bot vẫn chặn |
 | `node test/test-cong-khai-gui-lai.mjs` | **form công khai: mất mạng, gửi lại, thân quá lớn** (`web/src/lib/xu-ly-form.ts`, `than-gioi-han.ts`): mất mạng → `khongChac` ở cả hỏi bàn lẫn nộp hồ sơ; database từ chối → quay về `?vi_tri=`; thân quá lớn hay đứt giữa chừng → không gọi database, dừng đọc ngay, "CHƯA được ghi nhận"; hai webhook dùng cùng bộ đọc giới hạn |
 | `node test/test-noi-bo-gui-lai.mjs` | **/noi-bo (CRM): ghi xong thì chuyển hướng 303** (`web/src/lib/gui-noi-bo.ts`): năm trang không gọi `formData()` trần; lần hai của cú bấm đúp / F5 nói "đã ở …", "đã lưu", "đã có" — không "người khác xử lý", "Tên này đã có rồi", "CHƯA được lưu" |
 | `node test/test-kho-doc-form.mjs` | **kho: không đọc được thân POST thì nói ra**: `docFormGui` đánh dấu, `BaoKho` hiện một câu dùng chung trên mọi trang kho; không trang nào tự đặt câu đó |
@@ -93,7 +93,10 @@ cd ../crm && npm ci && npm test
 - **ràng buộc giá làm quản lý không đề xuất được giá cho món đã công bố** — một trạng thái vận hành bình thường bị chặn nhầm. Nay tách `gia_de_xuat` khỏi `gia`.
 - **`coalesce(..., false)` ở hai vế lọc của `v_viec_dich`** (`0036`). Gỡ đi thì ô CHƯA TỪNG DỊCH biến mất khỏi danh sách việc — `not (null = x)` là null, và WHERE coi null là sai. `test-ban-dich.mjs` đỏ năm chỗ khi thử gỡ.
 
-`test-phan-quyen.mjs` **mô phỏng quyền mặc định của Supabase** trước khi chạy migration. Thiếu khối đó thì mọi khẳng định "anon không làm được X" đều đúng một cách RỖNG — đúng vì PGlite vốn không cấp gì cho `anon`, chứ không phải vì schema an toàn.
+`test-phan-quyen.mjs` (như mọi file dựng database qua `dungDatabaseTrong()` của `kho-chung.mjs`) **mô phỏng quyền mặc định của Supabase** trước khi chạy migration. Thiếu khối đó thì mọi khẳng định "anon không làm được X" đều đúng một cách RỖNG — đúng vì PGlite vốn không cấp gì cho `anon`, chứ không phải vì schema an toàn.
+Chiều ngược lại cũng sai được: **cấp hàng loạt SAU khi nạp migration** (`grant execute on all functions … to authenticated`)
+xoá trắng mọi `revoke` của migration — bảy file test cũ từng tự dựng Supabase giả và cấp như vậy cho tới 12/10/2026; nay
+chúng dùng `kho-chung.mjs`, và `test-quy-trinh.mjs` mục 6 chặn.
 
 ### Kiểm thử tự động (CI)
 
@@ -180,7 +183,7 @@ crm/
 │   ├── 0072_kho_ghep_ma_v1_chi_muc.sql  KHO · kho_ipos_gan_ma (v1) ghép lại = bỏ ô mã như v2 · năm chỉ mục tra ngược (lô ↔ phiên pha / phiếu nhập / dòng xuất)
 │   ├── 0073_bao_dong_don_nhat_ky.sql  lượt báo động 5 phút dọn nhat_ky_tra_cuu (30 ngày), kho_may_nhat_ky (180), kho_ipos_lan_chay (90, giữ 10 lượt mới nhất + nhịp tim), nhat_ky_tin (400, không xóa tin chờ gửi); dọn hỏng không làm hỏng lượt — câu lỗi về Worker (loi_don) → đèn Báo động · chỉ mục mốc nhat_ky_tin cho bảng sức khỏe, chỉ mục thời gian cho câu dọn
 │   ├── 0074_xoa_file_cv.sql            ⚠ VÁ TUYỂN DỤNG · ẩn danh hồ sơ hết hạn KHÔNG còn xóa đường dẫn của CV chưa xóa: web xóa file trong kho trước (ho_so_cv_het_han → Storage → an_danh_ho_so_het_han) · ho_so_thu_muc_cv_mo_coi: thư mục kho CV không hồ sơ nào trỏ tới → xóa trước khi dọn vé · trigger ho_so_khoa_cot_don_dep: người đăng nhập không sửa thẳng duong_dan_cv, luu_den, da_an_danh · ô don_dep cho đèn "Dọn dữ liệu cá nhân"
-│   └── 0079_ho_so_gui_lai.sql       TUYỂN DỤNG · nop_ho_so_ung_tuyen() gọi lại Y HỆT (vị trí, số điện thoại, họ tên, email, năm sinh, giới thiệu, kinh nghiệm, ca, đồng ý) cùng ngày nộp hoặc trong 10 phút → trả lại mã hồ sơ cũ thay vì 23505 "chưa ghi nhận" · khóa tư vấn theo (vị trí, số điện thoại) trước khi tìm · kèm CV thì chỉ khớp hồ sơ đã có CV, không gắn file vào hồ sơ cũ · chỉ lời gọi không phiên
+│   └── 0080_ho_so_gui_lai.sql       TUYỂN DỤNG · nop_ho_so_ung_tuyen() gọi lại Y HỆT (vị trí, số điện thoại, họ tên, email, năm sinh, giới thiệu, kinh nghiệm, ca, đồng ý) cùng ngày nộp hoặc trong 10 phút → trả lại mã hồ sơ cũ thay vì 23505 "chưa ghi nhận" · khóa tư vấn theo (vị trí, số điện thoại) trước khi tìm · kèm CV thì chỉ khớp hồ sơ đã có CV, không gắn file vào hồ sơ cũ · chỉ lời gọi không phiên
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```
