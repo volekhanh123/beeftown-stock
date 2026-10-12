@@ -80,7 +80,9 @@ if (Astro.request.method === 'POST') {
   const toi = String(form.get('toi') ?? '');
 
   // Chỉ nhận đúng những bước đã khai ở trên. Một tham số toi= tự chế sẽ bị
-  // chặn ở đây trước khi tới database — và nếu lọt thì RLS vẫn chặn.
+  // chặn ở đây trước khi tới database. RLS (dat_ban_sua) KHÔNG nhìn bước
+  // chuyển; chốt chặn ở database là trigger dat_ban_kiem_sua (0069) — cùng
+  // 5 bước này (test-quyen-chi-nhanh-crm.mjs đọc CHUYEN_DUOC để so).
   const hopLe = CHUYEN_DUOC[tu]?.some(b => b.toi === toi);
   if (!id || !hopLe) {
     bao = { ok: false, cau: t.sai };
