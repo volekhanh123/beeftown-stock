@@ -1,7 +1,9 @@
 -- =============================================================================
 -- BEEFTOWN — 0085 · BEEFTOWN CÂN: CỜ "CHƯA XÁC NHẬN" (Beeftown Cân 2.9.3)
 -- =============================================================================
--- PHẢI CHẠY SAU 0061 (kho_may_can, kho_may_can_bao, kho_phien_pha_can) VÀ 0074 (thân suc_khoe_so_lieu mới nhất).
+-- PHẢI CHẠY SAU 0061 (kho_may_can, kho_may_can_bao, kho_phien_pha_can), 0074 (thân suc_khoe_so_lieu mới nhất)
+-- VÀ 0084 (khối CHỐT QUYỀN cuối file là của 0084: cấp tra_cuu_mot_dat_ban, không còn tra_cuu_dat_ban /
+-- ghi_nhat_ky_tra_cuu cho anon).
 --
 -- Lỗi (rà soát nợ kỹ thuật 11/10/2026, tái hiện trên cân giả — can-app/test/thu.ts 6g6): cổng hai chiều
 -- 33581 của cân bận chốc lát (phần mềm của hãng TM-xA đang mở, cân đang lưu) → Beeftown Cân gửi rơi về
@@ -27,6 +29,7 @@
 --   4 · suc_khoe_so_lieu: thân 0074 NGUYÊN VĂN, chỉ thêm chua_xac_nhan / chua_xac_nhan_tu vào mỗi máy của
 --       ô `can` — đèn "Beeftown Cân" vàng khi máy chưa xác nhận quá PHUT_LECH_CAN phút (web/src/lib/suc-khoe.ts),
 --       kể cả khi lech_so = 0 (máy vừa lên từ 2.9.2, kho quay về như lần đã xác nhận).
+--   Cuối file: khối CHỐT QUYỀN chép NGUYÊN VĂN từ 0084 (chép khối cũ hơn sẽ cấp lại cho anon hai hàm 0084 đã thu).
 -- Triển khai: chạy được trước hay sau khi máy quầy lên 2.9.3 / web mới — khóa thiếu là false.
 -- =============================================================================
 
@@ -451,6 +454,9 @@ $$;
 -- =============================================================================
 -- CHỐT QUYỀN — xem giải thích ở 0008 mục 6. Giữ dòng ve_con_hieu_luc: xem 0025.
 -- =============================================================================
+-- Từ 0084 KHÔNG còn dòng ghi_nhat_ky_tra_cuu, và tra_cuu_dat_ban nhường chỗ cho
+-- tra_cuu_mot_dat_ban (mục 3). Migration sau chép khối này, đừng chép khối của
+-- 0062 trở về trước.
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
@@ -461,8 +467,7 @@ begin
     execute 'grant execute on function tao_dat_ban(text,text,text,date,time,smallint,text,text,boolean,text,text,text,text,inet) to anon';
     execute 'grant execute on function lich_trong_theo_ma(text,date) to anon';
     execute 'grant execute on function chi_nhanh_cong_khai() to anon';
-    execute 'grant execute on function tra_cuu_dat_ban(text,text,inet) to anon';
-    execute 'grant execute on function ghi_nhat_ky_tra_cuu(inet,text,boolean) to anon';
+    execute 'grant execute on function tra_cuu_mot_dat_ban(text,text,inet) to anon';
     execute 'grant execute on function huy_dat_ban(text,text,text,inet) to anon';
 
     -- Nội dung

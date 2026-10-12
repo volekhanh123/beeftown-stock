@@ -38,7 +38,9 @@ export interface ThamSoDatBanMess {
 /**
  * tao_dat_ban đúng như form website, đánh dấu nguồn bằng utm (không cần cột
  * mới): p_utm_source='messenger', p_utm_medium='chatbot'. Đồng ý nhận tin là
- * TÙY CHỌN và bot không hỏi → p_dong_y=false. Messenger không có IP → null.
+ * TÙY CHỌN và bot không hỏi → p_dong_y=false. Messenger không có IP → null:
+ * database không có xô IP cho lời gọi đó, chỉ đếm theo số điện thoại và chi
+ * nhánh (0084) — giới hạn theo khách của bot nằm ở mess_xin_dat_ban (0053).
  */
 export async function taoDatBanMess(
   client: SupabaseClient, t: ThamSoDatBanMess,
@@ -76,23 +78,27 @@ export async function taoDatBanMess(
   }
 }
 
+/**
+ * tra_cuu_mot_dat_ban (0084) — trả một giá trị jsonb (null = không thấy), không phải bảng: với
+ * hàm trả bảng, người gọi PostgREST tự hủy được giao dịch của lần sai (406 vnd.pgrst.object+json)
+ * và khoá dò mã không bao giờ đếm. Hàm tự ghi nhật ký và tự khoá, kể cả với p_ip null. Đang khoá
+ * thì database trả câu tiếng Việt "Tra cứu bị tạm khoá…" → { ok: false, loi }.
+ */
 export async function traCuuMess(
   client: SupabaseClient, ma: string, sdt: string,
 ): Promise<{ ok: true; dong: DongTraCuu | null } | { ok: false; loi: string }> {
   try {
-    const { data, error } = await client.rpc('tra_cuu_dat_ban', { p_ma: ma, p_sdt: sdt, p_ip: null });
+    const { data, error } = await client.rpc('tra_cuu_mot_dat_ban', { p_ma: ma, p_sdt: sdt, p_ip: null });
     if (error) return { ok: false, loi: error.message };
     const dong = (Array.isArray(data) ? data[0] : data) as DongTraCuu | null | undefined;
     return { ok: true, dong: dong && dong.ma_dat_ban ? dong : null };
   } catch (e) { return { ok: false, loi: loiCua(e) }; }
 }
 
-/** Website gọi hàm này ngay sau mỗi lần tra cứu (tra_cuu_dat_ban là STABLE, không tự ghi được). */
-export async function ghiNhatKyTraCuuMess(client: SupabaseClient, ma: string, thanhCong: boolean): Promise<void> {
-  try { await client.rpc('ghi_nhat_ky_tra_cuu', { p_ip: null, p_ma: ma, p_thanh_cong: thanhCong }); } catch { /* chỉ là nhật ký */ }
-}
-
-/** huy_dat_ban tự ghi nhật ký tra cứu. true = đã hủy; false = không tìm thấy; lỗi = tìm thấy nhưng không hủy được nữa. */
+/**
+ * huy_dat_ban tự ghi nhật ký tra cứu và dùng chung khoá với tra_cuu_mot_dat_ban (0084). true = đã hủy;
+ * false = không tìm thấy; lỗi = tìm thấy nhưng không hủy được nữa, hoặc đang khoá.
+ */
 export async function huyDatBanMess(
   client: SupabaseClient, ma: string, sdt: string,
 ): Promise<{ ok: true; daHuy: boolean } | { ok: false; loi: string }> {
