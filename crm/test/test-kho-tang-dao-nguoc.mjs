@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN KHO — Kiểm thử hồi quy: số của tảng phải TRỪ dòng đảo ngược (0064)
+ * BEEFTOWN KHO — Kiểm thử hồi quy: số của tảng phải TRỪ dòng đảo ngược (0067)
  * ==========================================================================
  *
  *     node test/test-kho-tang-dao-nguoc.mjs
@@ -18,7 +18,7 @@
  * Rà cùng lỗi ở chỗ khác ra thêm một chỗ:
  *   · kho_bao_cao_ban_gio (0054) — "giảm sớm" lấy hạn dùng nhỏ nhất của MỌI dòng sổ bán của dòng
  *     iPOS, kể cả dòng đã bị đảo khi hoá đơn sửa.
- * 0064 sửa cả bốn theo cách các báo cáo khác vẫn làm (0024, 0032, 0037, 0041): dòng đảo xét theo dòng
+ * 0067 sửa cả bốn theo cách các báo cáo khác vẫn làm (0024, 0032, 0037, 0041): dòng đảo xét theo dòng
  * nó đảo — left join kho_so_cai g on g.id = s.dao_cua, coalesce(g.loai, s.loai).
  *
  * Con số mong đợi ở đây so với SỔ RÒNG tính bằng một câu viết khác hẳn (soRong): chỉ cộng dòng còn
@@ -35,7 +35,7 @@
 
 import { dungDatabase, taoBoDem, UID, maGui, UID_MAY_IPOS, themMayIpos } from './kho-chung.mjs';
 
-const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — HỒI QUY: SỐ CỦA TẢNG TRỪ DÒNG ĐẢO NGƯỢC (0064)');
+const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN KHO — HỒI QUY: SỐ CỦA TẢNG TRỪ DÒNG ĐẢO NGƯỢC (0067)');
 const { db, cnA, cnB, duoi, duoiAnon } = await dungDatabase();
 await themMayIpos(db, cnA, cnB);
 const MAY = UID_MAY_IPOS.mayIposA;
@@ -512,7 +512,7 @@ await nhom('8 · HỒI QUY: BÁN THEO GIỜ — "GIẢM SỚM" XÉT LÔ CỦA L�
 });
 
 // ===========================================================================
-await nhom('9 · QUYỀN: 0064 KHÔNG NỚI QUYỀN CỦA BỐN HÀM', async () => {
+await nhom('9 · QUYỀN: 0067 KHÔNG NỚI QUYỀN CỦA BỐN HÀM', async () => {
   const HAM = {
     kho_bao_cao_tang: [`select * from kho_bao_cao_tang($1, $2::date, $3::date)`, [cnA.id, N[-30], homNay]],
     kho_truy_vet_tang: [`select kho_truy_vet_tang($1)`, [tangA.id]],
