@@ -68,7 +68,7 @@ try { chiNhanh = await docChiNhanh(client); } catch { /* ô chọn chi nhánh ch
 const chonChiNhanh = !nhanSu.chi_nhanh_id && chiNhanh.length > 1;
 const chiNhanhMacDinh = nhanSu.chi_nhanh_id ?? chiNhanh[0]?.id ?? null;
 
-let bao: KetQua | null = docBaoNoiBo(Astro.cookies);
+let bao: KetQua | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
 
 if (Astro.request.method === 'POST') {
   const form = await docFormNoiBo(Astro.request);

@@ -41,21 +41,25 @@ export async function docFormNoiBo(request: Request): Promise<FormData | null> {
   try { return await request.formData(); } catch { return null; }
 }
 
-export function ghiBaoNoiBo(cookies: AstroCookies, bao: BaoNoiBo) {
+/**
+ * Ghi câu báo cho ĐÚNG trang sẽ đọc nó (cookie path = đường dẫn trang). Lần chuyển hướng bị bỏ
+ * dở (bấm sang trang khác trước khi GET xong) thì câu không hiện nhầm ở một trang CRM khác.
+ */
+export function ghiBaoNoiBo(cookies: AstroCookies, bao: BaoNoiBo, duong: string) {
   cookies.set(COOKIE_BAO, JSON.stringify({ ok: bao.ok, cau: bao.cau }), {
     httpOnly: true,
     secure: banThat(),
     sameSite: 'lax',
-    path: '/noi-bo',
+    path: duong,
     maxAge: 120,
   });
 }
 
-/** Câu báo của lần chuyển hướng vừa rồi; đọc một lần rồi xóa. */
-export function docBaoNoiBo(cookies: AstroCookies): BaoNoiBo | null {
+/** Câu báo của lần chuyển hướng vừa rồi về trang `duong`; đọc một lần rồi xóa. */
+export function docBaoNoiBo(cookies: AstroCookies, duong: string): BaoNoiBo | null {
   const raw = cookies.get(COOKIE_BAO)?.value;
   if (!raw) return null;
-  cookies.delete(COOKIE_BAO, { path: '/noi-bo' });
+  cookies.delete(COOKIE_BAO, { path: duong });
   try {
     const v = JSON.parse(raw);
     return typeof v?.ok === 'boolean' && typeof v?.cau === 'string' ? { ok: v.ok, cau: v.cau } : null;
@@ -67,7 +71,7 @@ export function chuyenHuongNoiBo(
   Astro: Pick<AstroGlobal, 'cookies' | 'url' | 'redirect'>, bao: BaoNoiBo,
   url = Astro.url.pathname + Astro.url.search,
 ): Response {
-  ghiBaoNoiBo(Astro.cookies, bao);
+  ghiBaoNoiBo(Astro.cookies, bao, new URL(url, Astro.url).pathname);
   return Astro.redirect(url, 303);
 }
 
@@ -87,21 +91,36 @@ export type KetQuaChuyen = 'da_chuyen' | 'da_o_san' | 'nguoi_khac' | { loi: stri
  * kiện đó thì người bấm sau ghi đè lặng lẽ lên việc người bấm trước. RLS vẫn là chốt chặn.
  *
  * Không khớp dòng nào thì đọc lại trạng thái hiện tại; không đọc được thì KHÔNG đoán là đã xong.
+ * Người bấm có ghi chú (hồ sơ ứng tuyển, cột ghi_chu_buoc → nhật ký): dòng đã ở trạng thái đích
+ * chưa chắc mang ghi chú của họ — có thể người khác chuyển trước với ghi chú khác. Chỉ báo "đã ở"
+ * khi bước đó trong nhat_ky_ho_so có đúng ghi chú này (lần hai của cú bấm đúp); không thì ghi chú
+ * CHƯA được lưu — báo "người khác".
  */
 export async function chuyenTrangThai(
   client: SupabaseClient, bang: 'dat_ban' | 'ho_so_ung_tuyen',
   id: string, tu: string, toi: string, them: Record<string, unknown>,
 ): Promise<KetQuaChuyen> {
-  const capNhat = { trang_thai: toi, ...them };
-  const { data, error } = bang === 'dat_ban'
-    ? await client.from('dat_ban').update(capNhat).eq('id', id).eq('trang_thai', tu).select('id')
-    : await client.from('ho_so_ung_tuyen').update(capNhat).eq('id', id).eq('trang_thai', tu).select('id');
+  // Tên bảng viết thẳng ở từng nhánh: test-hop-dong-web.mjs đối chiếu from('…') với database.
+  const bangNay = () => (bang === 'dat_ban' ? client.from('dat_ban') : client.from('ho_so_ung_tuyen'));
+  const { data, error } = await bangNay()
+    .update({ trang_thai: toi, ...them }).eq('id', id).eq('trang_thai', tu).select('id');
   if (error) return { loi: error.message ?? '' };
   if (data && data.length > 0) return 'da_chuyen';
 
-  const { data: hienTai, error: loiDoc } = bang === 'dat_ban'
-    ? await client.from('dat_ban').select('trang_thai').eq('id', id).maybeSingle()
-    : await client.from('ho_so_ung_tuyen').select('trang_thai').eq('id', id).maybeSingle();
-  if (!loiDoc && (hienTai as { trang_thai?: string } | null)?.trang_thai === toi) return 'da_o_san';
-  return 'nguoi_khac';
+  const { data: hienTai, error: loiDoc } = await bangNay().select('trang_thai').eq('id', id).maybeSingle();
+  if (loiDoc || (hienTai as { trang_thai?: string } | null)?.trang_thai !== toi) return 'nguoi_khac';
+
+  const ghiChu = typeof them.ghi_chu_buoc === 'string' ? them.ghi_chu_buoc.trim() : '';
+  if (bang === 'ho_so_ung_tuyen' && ghiChu) {
+    const { data: nk, error: loiNk } = await client
+      .from('nhat_ky_ho_so')
+      .select('ghi_chu')
+      .eq('ho_so_id', id)
+      .eq('den_trang_thai', toi)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    const cuoi = Array.isArray(nk) ? (nk[0] as { ghi_chu?: string | null } | undefined)?.ghi_chu : null;
+    if (loiNk || (cuoi ?? '').trim() !== ghiChu) return 'nguoi_khac';
+  }
+  return 'da_o_san';
 }

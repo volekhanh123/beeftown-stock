@@ -96,7 +96,8 @@ await nhom(`4 · ${goiDocForm.length} trang gọi docFormGui: đều có BaoKho,
   const khoiRieng = trangKho.filter(f => /method === 'POST' && !(form|fd)\b/.test(readFileSync(f, 'utf8')));
   ok('Không trang kho nào còn khối "method === \'POST\' && !form" riêng', khoiRieng.length === 0, khoiRieng.map(ten).join(', '));
   const nguon = readFileSync(join(SRC, 'lib', 'kho', 'trang.ts'), 'utf8');
-  ok('lib/kho/trang.ts: docFormGui đánh dấu locals.formGuiHong trong catch', /catch\s*\{[^}]*formGuiHong\s*=\s*true/.test(nguon));
+  ok('lib/kho/trang.ts: docFormGui đọc thân bằng docFormNoiBo (cùng bộ đọc với CRM) và đánh dấu locals.formGuiHong khi hỏng',
+     /docFormNoiBo\(Astro\.request\)/.test(nguon) && /if \(!form\) Astro\.locals\.formGuiHong = true/.test(nguon));
 });
 
 process.exit(ketThuc('KHÔNG ĐỌC ĐƯỢC THÂN POST'));

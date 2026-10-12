@@ -109,7 +109,7 @@ const CHUYEN_DUOC: Record<string, { toi: string; phu?: boolean }[]> = {
   ],
 };
 
-let bao: BaoNoiBo | null = docBaoNoiBo(Astro.cookies);
+let bao: BaoNoiBo | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
 
 if (Astro.request.method === 'POST') {
   const form = await docFormNoiBo(Astro.request);

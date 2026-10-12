@@ -883,16 +883,19 @@ try {
             sessionStorage.setItem(k, JSON.stringify(b && { tat: b.disabled, ban: b.getAttribute('aria-busy'), chu: b.textContent.trim() }));
           });
         }, KHOA_NUT);
-        const sau = page.waitForNavigation({ waitUntil: 'load', timeout: 30000 });
+        // Không có gì chặn lần bấm thứ hai thì trình duyệt hủy lượt chuyển trang đầu (ERR_ABORTED):
+        // bắt lại để phép thử báo đỏ ở các kiểm tra dưới, không làm sập cả lượt chạy.
+        const sau = page.waitForNavigation({ waitUntil: 'load', timeout: 30000 })
+          .catch(() => page.waitForLoadState('load'));
         if (cach === 'bấm đúp') await page.mouse.dblclick(x, y);
         else { await page.mouse.click(x, y); await cho(300); await page.mouse.click(x, y); }
         await sau;
+        await page.waitForLoadState('networkidle').catch(() => {});
         const nut = await page.evaluate(k => {
           const v = sessionStorage.getItem(k);
           sessionStorage.removeItem(k);
           try { return JSON.parse(v ?? 'null'); } catch { return { loi: v }; }
-        }, KHOA_NUT);
-        await page.waitForLoadState('networkidle').catch(() => {});
+        }, KHOA_NUT).catch(e => ({ loi: e.message }));
         await cho(1000);
         const dem = mayGia.dem().nop_ho_so_ung_tuyen ?? 0;
         const chu_ = await chuTrang();

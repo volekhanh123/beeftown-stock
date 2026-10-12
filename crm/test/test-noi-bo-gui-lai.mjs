@@ -101,22 +101,25 @@ await nhom('1 · lib/gui-noi-bo.ts — đọc thân không ném, câu báo qua c
     get: (ten) => (v && v.ten === ten ? { value: v.gt } : undefined),
     delete: (ten) => { if (v?.ten === ten) v = null; },
   };
-  GNB.ghiBaoNoiBo(cookies, { ok: true, cau: 'Đã chuyển sang "Đã xác nhận".' });
-  ok('Cookie câu báo: httpOnly, sameSite lax, sống dưới /noi-bo, ngắn hạn', v?.tuy?.httpOnly === true && v?.tuy?.sameSite === 'lax'
-     && v?.tuy?.path === '/noi-bo' && v?.tuy?.maxAge > 0 && v?.tuy?.maxAge <= 300, JSON.stringify(v?.tuy));
-  const doc1 = GNB.docBaoNoiBo(cookies);
-  const doc2 = GNB.docBaoNoiBo(cookies);
+  GNB.ghiBaoNoiBo(cookies, { ok: true, cau: 'Đã chuyển sang "Đã xác nhận".' }, '/noi-bo/dat-ban');
+  ok('Cookie câu báo: httpOnly, sameSite lax, chỉ sống ở ĐÚNG trang sẽ đọc nó (/noi-bo/dat-ban), ngắn hạn',
+     v?.tuy?.httpOnly === true && v?.tuy?.sameSite === 'lax'
+     && v?.tuy?.path === '/noi-bo/dat-ban' && v?.tuy?.maxAge > 0 && v?.tuy?.maxAge <= 300, JSON.stringify(v?.tuy));
+  const doc1 = GNB.docBaoNoiBo(cookies, '/noi-bo/dat-ban');
+  const doc2 = GNB.docBaoNoiBo(cookies, '/noi-bo/dat-ban');
   ok('Đọc câu báo một lần rồi xóa (F5 trang GET không hiện lại)', doc1?.ok === true && doc1.cau === 'Đã chuyển sang "Đã xác nhận".' && doc2 === null,
      JSON.stringify([doc1, doc2]));
   v = { ten: 'bt_nb_bao', gt: '{"ok":"co"}' };
-  ok('Cookie hỏng / sai hình dạng → null', GNB.docBaoNoiBo(cookies) === null);
+  ok('Cookie hỏng / sai hình dạng → null', GNB.docBaoNoiBo(cookies, '/noi-bo/dat-ban') === null);
 
   let chuyen = null;
   const r = GNB.chuyenHuongNoiBo({ cookies, url: new URL('https://beeftown.vn/noi-bo/dat-ban?loc=hom_nay'),
     redirect: (duong, ma) => { chuyen = { duong, ma }; return new Response(null, { status: ma, headers: { location: duong } }); } },
     { ok: true, cau: 'x' });
-  ok('chuyenHuongNoiBo: 303 về chính trang, giữ bộ lọc ?loc=hom_nay, ghi câu báo', r.status === 303 && chuyen?.duong === '/noi-bo/dat-ban?loc=hom_nay'
-     && GNB.docBaoNoiBo(cookies)?.cau === 'x', JSON.stringify(chuyen));
+  const duongCookie = v?.tuy?.path;
+  ok('chuyenHuongNoiBo: 303 về chính trang, giữ bộ lọc ?loc=hom_nay, ghi câu báo cho đúng đường dẫn trang (không kèm ?loc)',
+     r.status === 303 && chuyen?.duong === '/noi-bo/dat-ban?loc=hom_nay' && duongCookie === '/noi-bo/dat-ban'
+     && GNB.docBaoNoiBo(cookies, '/noi-bo/dat-ban')?.cau === 'x', `${JSON.stringify(chuyen)} · ${duongCookie}`);
 });
 
 // ===========================================================================
@@ -144,10 +147,33 @@ await nhom('2 · chuyenTrangThai — "đã ở trạng thái đó" khác "ngư�
        (await GNB.chuyenTrangThai(c4, bang, 'd1', 'cho_xac_nhan', 'da_xac_nhan', {})) === 'nguoi_khac');
 
     const c5 = clientGia(() => ({ data: null, error: { message: 'new row violates row-level security policy for table "dat_ban"' } }));
+    // (c5 kiểm ở cuối vòng — trước đó: ghi chú của người bấm.)
     const k5 = await GNB.chuyenTrangThai(c5, bang, 'd1', 'cho_xac_nhan', 'da_xac_nhan', {});
     ok(`${bang}: database báo lỗi → { loi } nguyên câu, không đọc lại`, typeof k5 === 'object' && /row-level security/.test(k5.loi) && c5.goi.length === 1,
        JSON.stringify(k5));
   }
+
+  // Hồ sơ ứng tuyển có ghi chú: "đã ở" CHỈ khi nhật ký bước đó mang đúng ghi chú này (lần hai của cú
+  // bấm đúp). Người khác chuyển trước với ghi chú khác → ghi chú của người bấm CHƯA được lưu.
+  const traNk = (ghiChu, loi = null) => q => (q.loai === 'update' ? { data: [], error: null }
+    : q.bang === 'nhat_ky_ho_so' ? { data: loi ? null : [{ ghi_chu: ghiChu }], error: loi }
+    : { data: { trang_thai: 'tu_choi' }, error: null });
+  const them = { nguoi_phu_trach: 'ns1', ghi_chu_buoc: 'Thiếu kinh nghiệm bếp nóng' };
+  const cNk1 = clientGia(traNk('Thiếu kinh nghiệm bếp nóng'));
+  const kNk1 = await GNB.chuyenTrangThai(cNk1, 'ho_so_ung_tuyen', 'h1', 'dang_xem', 'tu_choi', them);
+  const qNk = cNk1.goi.find(q => q.bang === 'nhat_ky_ho_so');
+  ok('Hồ sơ có ghi chú, đã ở trạng thái đích và nhật ký bước đó có ĐÚNG ghi chú này → "da_o_san"',
+     kNk1 === 'da_o_san' && loc(qNk, 'ho_so_id') === 'h1' && loc(qNk, 'den_trang_thai') === 'tu_choi', `${JSON.stringify(kNk1)} · ${inGoi(cNk1)}`);
+  ok('…ghi chú khác (người khác chuyển trước) → "nguoi_khac": không báo xanh khi ghi chú chưa được lưu',
+     (await GNB.chuyenTrangThai(clientGia(traNk('Đã nhận việc nơi khác')), 'ho_so_ung_tuyen', 'h1', 'dang_xem', 'tu_choi', them)) === 'nguoi_khac');
+  ok('…nhật ký không có ghi chú → "nguoi_khac"',
+     (await GNB.chuyenTrangThai(clientGia(traNk(null)), 'ho_so_ung_tuyen', 'h1', 'dang_xem', 'tu_choi', them)) === 'nguoi_khac');
+  ok('…không đọc được nhật ký → "nguoi_khac" (không đoán)',
+     (await GNB.chuyenTrangThai(clientGia(traNk(null, { message: 'fetch failed' })), 'ho_so_ung_tuyen', 'h1', 'dang_xem', 'tu_choi', them)) === 'nguoi_khac');
+  const cKhongGhi = clientGia(traNk('bất kỳ'));
+  ok('Không ghi chú → "da_o_san", không đọc nhật ký',
+     (await GNB.chuyenTrangThai(cKhongGhi, 'ho_so_ung_tuyen', 'h1', 'dang_xem', 'tu_choi', { nguoi_phu_trach: 'ns1', ghi_chu_buoc: null })) === 'da_o_san'
+       && !cKhongGhi.goi.some(q => q.bang === 'nhat_ky_ho_so'));
 });
 
 // ===========================================================================
@@ -240,8 +266,8 @@ await nhom('5 · Năm trang CRM: không formData() trần, ghi được thì chu
     const s = docNguon(tep);
     ok(`${tep}: không gọi Astro.request.formData() trần (thân cụt → trang 500)`, !/request\.formData\(\)/.test(s));
     ok(`${tep}: đọc thân bằng docFormNoiBo, báo bằng CAU_DOC_FORM_HONG khi hỏng`, /docFormNoiBo\(/.test(s) && /CAU_DOC_FORM_HONG/.test(s));
-    ok(`${tep}: ghi được thì return chuyenHuongNoiBo(…) (303), đọc câu báo bằng docBaoNoiBo`,
-       /return chuyenHuongNoiBo\(/.test(s) && /docBaoNoiBo\(Astro\.cookies\)/.test(s));
+    ok(`${tep}: ghi được thì return chuyenHuongNoiBo(…) (303), đọc câu báo của đúng trang bằng docBaoNoiBo`,
+       /return chuyenHuongNoiBo\(/.test(s) && /docBaoNoiBo\(Astro\.cookies, Astro\.url\.pathname\)/.test(s));
     ok(`${tep}: không còn câu "Không đọc được dữ liệu gửi lên" riêng`, !/Không đọc được dữ liệu gửi lên/.test(s));
   }
   for (const tep of ['pages/noi-bo/dat-ban.astro', 'pages/noi-bo/tuyen-dung.astro']) {

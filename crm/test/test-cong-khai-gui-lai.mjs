@@ -33,7 +33,7 @@
  *   8. Trang tuyển dụng: có script bổ trợ chặn bấm đúp và giữ chữ đã gõ như hỏi bàn; trạng thái
  *      KHÔNG CHẮC không dựng form. Hành vi thật trên trình duyệt: web/kiem-tra/thu-day-du.mjs nhóm 9.
  *
- * Database chặn hồ sơ trùng (gửi lại y hệt trong 10 phút → cùng mã): test-tuyen-dung-gui-lai.mjs.
+ * Database trả lại mã cũ cho hồ sơ gửi lại y hệt (cùng ngày nộp, hay trong 10 phút): test-tuyen-dung-gui-lai.mjs.
  */
 
 import { readFileSync } from 'node:fs';

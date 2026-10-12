@@ -22,6 +22,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { NhanSu } from '../phien';
 import { duoc as vaiDuoc, cauLoiKho, kqHai, kqLoi, type KetQua, type ViecKho, type HaiThuTieng, type NgonNguNB } from './chung.ts';
 import { docBao, ghiBao } from './bao.ts';
+import { docFormNoiBo } from '../gui-noi-bo.ts';
 import type { SoViec } from './dieu-huong.ts';
 import { kiemMayChung, laVaiMay, laDuongMay, DUONG_MAY, type CheDoMay } from './may-chung.ts';
 
@@ -209,7 +210,9 @@ export async function moKhoTai(ctx: APIContext): Promise<KhoTai | Response> {
  */
 export async function docFormGui(Astro: Pick<AstroGlobal, 'request' | 'locals'>): Promise<FormData | null> {
   if (Astro.request.method !== 'POST') return null;
-  try { return await Astro.request.formData(); } catch { Astro.locals.formGuiHong = true; return null; }
+  const form = await docFormNoiBo(Astro.request);
+  if (!form) Astro.locals.formGuiHong = true;
+  return form;
 }
 
 /** Ghi câu báo rồi chuyển hướng 303 sang GET — F5 không gửi lại lệnh cũ. */

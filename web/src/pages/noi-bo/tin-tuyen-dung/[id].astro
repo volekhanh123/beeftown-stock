@@ -119,7 +119,7 @@ const id = Astro.params.id ?? '';
 // Gửi về đúng đường dẫn tin, bỏ ?moi=1 — không thì F5 lại hiện câu "Đã tạo tin".
 const duongDan = `/noi-bo/tin-tuyen-dung/${id}`;
 
-let bao: KetQuaLuu | null = docBaoNoiBo(Astro.cookies)
+let bao: KetQuaLuu | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname)
   ?? (Astro.url.searchParams.has('moi') ? { ok: true, cau: t.daTao } : null);
 
 if (Astro.request.method === 'POST') {

@@ -24,12 +24,19 @@
 -- mục 0012 — hoặc tạo trong 10 phút (lượt gửi 23:59 mà lần gửi lại rơi sau nửa
 -- đêm: ngày nộp đã khác, chỉ mục không chặn, sẽ thành hai hồ sơ).
 --
+-- Biết trước: lần đầu tải CV được mà mất câu trả lời, lần gửi lại tải CV hỏng —
+-- hồ sơ cũ CÓ CV nhưng website vẫn kèm câu "nộp không kèm CV" (nop-ho-so.ts không
+-- biết hồ sơ cũ có gì; hàm chỉ trả mã). Cần ba sự cố liền nhau; câu sai theo
+-- hướng an toàn (ứng viên gửi CV lại khi được gọi).
+--
 -- Không so: IP (điện thoại đổi mạng giữa hai lần gửi), nguồn utm, số giây trên
--- form, file CV. CV: lần gửi lại mang vé hợp lệ mà hồ sơ cũ CHƯA có CV (lần đầu
--- tải hỏng) thì gắn CV vào hồ sơ cũ — website sắp nói "đã nhận", và câu đó phải
--- đúng cả cho CV. Hồ sơ cũ đã có CV thì giữ nguyên; vé của lần gửi lại không bị
--- dùng, tự hết hạn sau 15 phút (file đã tải lên nằm lại trong kho, không hồ sơ
--- nào trỏ tới — như vé của tin không hỏi CV ở 0026).
+-- form. CV: lần gửi lại KHÔNG kèm CV khớp với hồ sơ cũ có hay không có CV; lần
+-- gửi lại CÓ kèm CV chỉ khớp hồ sơ cũ ĐÃ có CV — hồ sơ cũ chưa có CV thì đi
+-- đường cũ (chỉ mục 0012 chặn, như trước bản này). Lần gửi lại không bao giờ gắn
+-- file vào hồ sơ cũ: chỉ cần biết vị trí, số điện thoại và họ tên của một ứng
+-- viên là gắn được file của mình vào hồ sơ người đó (rà soát PR này). Vé của lần
+-- gửi lại không bị dùng, tự hết hạn sau 15 phút (file đã tải lên nằm lại trong
+-- kho, không hồ sơ nào trỏ tới — như vé của tin không hỏi CV ở 0026).
 --
 -- Khác bất kỳ trường nào thì đi đường cũ: chỉ mục 0012 vẫn chặn hồ sơ thứ hai
 -- cùng ngày, câu lỗi không đổi. (Ứng viên SỬA hồ sơ rồi gửi lại cùng ngày vẫn
@@ -40,9 +47,12 @@
 -- được mã của ứng viên.
 --
 -- THỨ TỰ ĐỔI:
---   · Tìm vị trí dời lên trước bước đếm IP, và KHÓA dòng vị trí (for update). Hai
---     lượt gửi chồng nhau xếp hàng ở khóa này; ở READ COMMITTED, câu tìm hồ sơ cũ
---     đứng sau khóa chụp ảnh mới, nên lượt sau thấy dòng lượt trước vừa ghi.
+--   · Tìm vị trí dời lên trước bước đếm IP, rồi lấy KHÓA TƯ VẤN theo (vị trí, số
+--     điện thoại) — pg_advisory_xact_lock, nhả khi giao dịch xong. Hai lượt gửi
+--     chồng nhau của cùng một người xếp hàng ở khóa này; ở READ COMMITTED, câu
+--     tìm hồ sơ cũ đứng sau khóa chụp ảnh mới, nên lượt sau thấy dòng lượt trước
+--     vừa ghi. Không khóa dòng vị_tri_tuyen_dung: lưu lượng bot (kể cả lượt sắp
+--     bị chặn ở bước đếm IP) không làm ứng viên khác và người sửa tin phải xếp hàng.
 --   · Bỏ trường tin không hỏi (0026) dời lên theo, vì khóa so sánh cần nó.
 --   · Tìm hồ sơ cũ đứng TRƯỚC đếm IP, kiểm hạn nộp, kiểm vé CV: đã đủ 5 hồ sơ / IP
 --     / giờ, tin vừa hết hạn, hay vé vừa hết hạn thì lần gửi lại vẫn nhận đúng mã
@@ -105,11 +115,9 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  -- 0066: dời lên từ sau bước đếm IP, và khóa dòng vị trí — hai lượt gửi chồng
-  -- nhau xếp hàng ở đây, lượt sau thấy hồ sơ lượt trước vừa ghi.
+  -- 0066: dời lên từ sau bước đếm IP.
   select * into v_vi_tri from vi_tri_tuyen_dung
-  where ma = p_vi_tri_ma and trang_thai = 'da_cong_bo'
-  for update;
+  where ma = p_vi_tri_ma and trang_thai = 'da_cong_bo';
   if not found then
     raise exception 'Không tìm thấy vị trí tuyển dụng %', p_vi_tri_ma
       using errcode = 'foreign_key_violation';
@@ -132,6 +140,10 @@ begin
 
   -- ---- 0066 · Gửi lại y hệt → trả lại hồ sơ cũ ------------------------------
   if not co_phien_dang_nhap() and p_dong_y then
+    -- Hai lượt gửi chồng nhau của cùng một người xếp hàng ở đây; lượt sau thấy
+    -- hồ sơ lượt trước vừa ghi. Khóa nhả khi giao dịch xong.
+    perform pg_advisory_xact_lock(hashtextextended(v_vi_tri.id::text || '|' || coalesce(v_sdt, ''), 0));
+
     select h.* into v_cu
     from ho_so_ung_tuyen h
     where h.vi_tri_id = v_vi_tri.id
@@ -144,23 +156,12 @@ begin
       and h.gioi_thieu is not distinct from p_gioi_thieu
       and h.kinh_nghiem is not distinct from p_kinh_nghiem
       and h.ca_lam_duoc is not distinct from p_ca_lam_duoc
+      -- Có kèm CV thì chỉ khớp hồ sơ đã có CV — không gắn file vào hồ sơ cũ (xem đầu file).
+      and (p_ma_tai_len is null or h.duong_dan_cv is not null)
     order by h.created_at desc
     limit 1;
 
     if found then
-      -- Lần đầu không kèm CV (tải hỏng), lần này có vé còn hạn: gắn CV vào hồ sơ cũ.
-      if p_ma_tai_len is not null and v_cu.duong_dan_cv is null then
-        select * into v_phieu from phieu_tai_len
-        where id = p_ma_tai_len and not da_dung and het_han > now()
-        for update;
-        if found then
-          update phieu_tai_len set da_dung = true where id = p_ma_tai_len;
-          update ho_so_ung_tuyen
-             set duong_dan_cv = 'ho-so-ung-tuyen/' || p_ma_tai_len::text || '/'
-                                || coalesce(nullif(btrim(p_ten_tep), ''), 'cv')
-           where id = v_cu.id;
-        end if;
-      end if;
       return v_cu.ma_ho_so;
     end if;
   end if;
@@ -242,4 +243,4 @@ end;
 $$;
 
 comment on function nop_ho_so_ung_tuyen is
-  'API công khai cho form nộp hồ sơ. SECURITY DEFINER. Bẫy bot, công tắc cổng tuyển dụng, 5 hồ sơ / IP / giờ, trường tin không hỏi thì không lưu (0026). Từ 0066: lời gọi không phiên gửi lại Y HỆT (vị trí, số điện thoại, họ tên, email, năm sinh, giới thiệu, kinh nghiệm, ca, đồng ý) cùng ngày nộp hoặc trong 10 phút nhận lại đúng mã hồ sơ cũ — không ghi gì thêm, trừ gắn CV vào hồ sơ cũ chưa có CV.';
+  'API công khai cho form nộp hồ sơ. SECURITY DEFINER. Bẫy bot, công tắc cổng tuyển dụng, 5 hồ sơ / IP / giờ, trường tin không hỏi thì không lưu (0026). Từ 0066: lời gọi không phiên gửi lại Y HỆT (vị trí, số điện thoại, họ tên, email, năm sinh, giới thiệu, kinh nghiệm, ca, đồng ý) cùng ngày nộp hoặc trong 10 phút nhận lại đúng mã hồ sơ cũ — không ghi gì thêm (kèm CV thì chỉ khớp hồ sơ đã có CV).';

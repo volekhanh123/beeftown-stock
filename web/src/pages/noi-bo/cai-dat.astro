@@ -137,7 +137,7 @@ const t = dichNB(nn, {
 
 // Lưu được thì chuyển hướng 303 về chính trang này (lib/gui-noi-bo.ts): F5 không thêm
 // bàn lần nữa, không chạy lại việc dọn dữ liệu. Không lưu được thì dựng lại trang ngay.
-let bao: KetQua | null = docBaoNoiBo(Astro.cookies);
+let bao: KetQua | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
 
 if (Astro.request.method === 'POST') {
   const form = await docFormNoiBo(Astro.request);

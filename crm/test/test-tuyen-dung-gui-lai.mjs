@@ -16,8 +16,9 @@
  *
  * Kiểm: hai, ba lần y hệt → một dòng, một mã; khác một trường → không nhận mã cũ, không thêm
  * dòng; trường tin không hỏi khác nhau vẫn là y hệt; số điện thoại viết kiểu khác vẫn là một;
- * vắt qua nửa đêm; múi giờ phiên không đổi gì; CV của lần gửi lại gắn vào hồ sơ cũ chưa có CV;
- * đã 5 hồ sơ / IP / giờ mà gửi lại vẫn nhận mã; tin vừa hết hạn mà gửi lại vẫn nhận mã; phiên
+ * vắt qua nửa đêm; múi giờ phiên không đổi gì; lần gửi lại kèm CV chỉ khớp hồ sơ đã có CV và
+ * không bao giờ gắn file vào hồ sơ cũ (người lạ biết tên + số điện thoại không gắn được file vào
+ * hồ sơ của ứng viên); đã 5 hồ sơ / IP / giờ mà gửi lại vẫn nhận mã; tin vừa hết hạn mà gửi lại vẫn nhận mã; phiên
  * đăng nhập không lấy được mã; bẫy bot, chưa đồng ý vẫn bị chặn; giao dịch đầu bị hủy thì lần
  * sau tạo đúng một dòng.
  */
@@ -85,17 +86,21 @@ await nhom('0 · TIỀN ĐỀ — một bản hàm, chữ ký không đổi, ano
      && (await mot(`select has_function_privilege('anon', 've_con_hieu_luc(text)'::regprocedure, 'execute') as d`)).d === true);
 
   // Hai lượt gửi CÙNG LÚC: PGlite chỉ có một kết nối, không dựng được hai giao dịch song song.
-  // Điều giữ cho chúng ra một mã là THỨ TỰ trong thân hàm: khóa dòng vị trí trước, tìm hồ sơ cũ
-  // sau (READ COMMITTED chụp ảnh mới sau khi chờ khóa), rồi mới insert. Lượt sau mà lọt qua
-  // khóa thì chỉ mục 0012 ném 23505 — lại là câu "chưa ghi nhận" sai.
+  // Điều giữ cho chúng ra một mã là THỨ TỰ trong thân hàm: khóa tư vấn theo (vị trí, số điện
+  // thoại) trước, tìm hồ sơ cũ sau (READ COMMITTED chụp ảnh mới sau khi chờ khóa), rồi mới
+  // insert. Lượt sau mà lọt qua khóa thì chỉ mục 0012 ném 23505 — lại là câu "chưa ghi nhận" sai.
   const { nguon } = await mot(`select prosrc as nguon from pg_proc where proname = 'nop_ho_so_ung_tuyen'`);
   const viTri = mau => nguon.search(mau);
-  const khoa = viTri(/from\s+vi_tri_tuyen_dung\s+where\s+ma\s*=\s*p_vi_tri_ma\s+and\s+trang_thai\s*=\s*'da_cong_bo'\s+for\s+update/i);
+  const khoa = viTri(/pg_advisory_xact_lock\(\s*hashtextextended\(\s*v_vi_tri\.id::text\s*\|\|\s*'\|'\s*\|\|\s*coalesce\(v_sdt/i);
   const tim = viTri(/interval\s+'10 minutes'/i);
   const ip = viTri(/where\s+ip\s*=\s*p_ip/i);
   const chen = viTri(/insert\s+into\s+ho_so_ung_tuyen/i);
-  ok('Thứ tự trong thân hàm: khóa dòng vị trí → tìm hồ sơ gửi lại → đếm IP → insert',
+  ok('Thứ tự trong thân hàm: khóa tư vấn (vị trí, số điện thoại) → tìm hồ sơ gửi lại → đếm IP → insert',
      khoa >= 0 && tim > khoa && ip > tim && chen > ip, `khóa ${khoa} · tìm ${tim} · IP ${ip} · insert ${chen}`);
+  ok('Không khóa dòng vi_tri_tuyen_dung (for update): lưu lượng bot không chặn ứng viên khác và người sửa tin',
+     !/from\s+vi_tri_tuyen_dung[^;]*for\s+update/i.test(nguon));
+  const { n: lk } = await mot(`select count(*)::int as n from pg_locks where locktype = 'advisory'`);
+  ok('Khóa tư vấn nhả khi giao dịch xong (không còn khóa nào sau các lần gọi)', lk === 0, `${lk} khóa`);
   const { muc } = await mot(`select current_setting('default_transaction_isolation') as muc`);
   ok('Mức cô lập mặc định là READ COMMITTED (câu sau khóa thấy dòng vừa commit)', muc === 'read committed', muc);
 });
@@ -195,32 +200,40 @@ await nhom('4 · GIỜ VIỆT NAM — vắt qua nửa đêm, múi giờ phiên',
 });
 
 // ===========================================================================
-await nhom('5 · CV — lần gửi lại có CV gắn vào hồ sơ cũ chưa có; hồ sơ cũ đã có CV thì giữ nguyên', async () => {
-  const goc = { viTri: 'quan-ly-cua-hang', sdt: '0912000501' };
-  const r1 = await nop(goc);                                   // tải CV hỏng ở lần đầu: nộp không kèm CV
-  const ve = await xinVe();
-  const r2 = await nop({ ...goc, ve, tep: 'CV-Tran-Thi-Binh.pdf' });
-  const dong = await mot(`select duong_dan_cv from ho_so_ung_tuyen where ma_ho_so = $1`, [r1.ma]);
-  const daDung = (await mot(`select da_dung from phieu_tai_len where id = $1`, [ve])).da_dung;
-  ok('Lần đầu không CV, lần sau có vé hợp lệ → cùng mã, CV gắn vào hồ sơ cũ, vé đã dùng',
-     !r1.loi && r2.ma === r1.ma && dong.duong_dan_cv === `ho-so-ung-tuyen/${ve}/CV-Tran-Thi-Binh.pdf` && daDung === true,
-     `${moTa(r2)} · ${dong.duong_dan_cv} · da_dung ${daDung}`);
-  ok('…vẫn một dòng', (await soDong(goc.sdt)) === 1);
-
+await nhom('5 · CV — kèm CV chỉ khớp hồ sơ đã có CV; không bao giờ gắn file vào hồ sơ cũ', async () => {
+  const coCv = { viTri: 'quan-ly-cua-hang', sdt: '0912000501' };
+  const ve1 = await xinVe();
+  const r1 = await nop({ ...coCv, ve: ve1, tep: 'CV-Tran-Thi-Binh.pdf' });
+  const cvGoc = (await mot(`select duong_dan_cv from ho_so_ung_tuyen where ma_ho_so = $1`, [r1.ma])).duong_dan_cv;
+  ok('Hồ sơ đầu kèm CV ghi được', !r1.loi && cvGoc === `ho-so-ung-tuyen/${ve1}/CV-Tran-Thi-Binh.pdf`, `${moTa(r1)} · ${cvGoc}`);
   const ve2 = await xinVe();
-  const r3 = await nop({ ...goc, ve: ve2, tep: 'CV-khac.pdf' });
-  const dong3 = await mot(`select duong_dan_cv from ho_so_ung_tuyen where ma_ho_so = $1`, [r1.ma]);
-  const daDung2 = (await mot(`select da_dung from phieu_tai_len where id = $1`, [ve2])).da_dung;
-  ok('Hồ sơ cũ đã có CV, gửi lại kèm vé khác → cùng mã, CV cũ giữ nguyên, vé mới KHÔNG bị dùng (tự hết hạn)',
-     r3.ma === r1.ma && dong3.duong_dan_cv === dong.duong_dan_cv && daDung2 === false, `${moTa(r3)} · ${dong3.duong_dan_cv}`);
+  const r2 = await nop({ ...coCv, ve: ve2, tep: 'CV-lan-hai.pdf' });
+  const sau2 = (await mot(`select duong_dan_cv from ho_so_ung_tuyen where ma_ho_so = $1`, [r1.ma])).duong_dan_cv;
+  const dung2 = (await mot(`select da_dung from phieu_tai_len where id = $1`, [ve2])).da_dung;
+  ok('Gửi lại kèm CV (vé mới) → cùng mã, CV cũ giữ nguyên, vé mới KHÔNG bị dùng (tự hết hạn)',
+     r2.ma === r1.ma && sau2 === cvGoc && dung2 === false, `${moTa(r2)} · ${sau2} · da_dung ${dung2}`);
+  const r3 = await nop(coCv);
+  ok('Gửi lại KHÔNG kèm CV (lần này tải CV hỏng) → vẫn cùng mã, hồ sơ cũ còn CV', r3.ma === r1.ma
+     && (await mot(`select duong_dan_cv from ho_so_ung_tuyen where ma_ho_so = $1`, [r1.ma])).duong_dan_cv === cvGoc, moTa(r3));
+  ok('…vẫn một dòng', (await soDong(coCv.sdt)) === 1);
 
-  const hetHan = { viTri: 'quan-ly-cua-hang', sdt: '0912000502' };
-  const h1 = await nop(hetHan);
+  const khongCv = { viTri: 'quan-ly-cua-hang', sdt: '0912000502', ten: 'Lê Thị Hoa' };
+  const k1 = await nop(khongCv);
   const ve3 = await xinVe();
-  await db.query(`update phieu_tai_len set het_han = now() - interval '1 minute' where id = $1`, [ve3]);
-  const h2 = await nop({ ...hetHan, ve: ve3, tep: 'cv.pdf' });
-  ok('Vé đã hết hạn ở lần gửi lại → vẫn nhận mã cũ (hồ sơ ĐÃ vào), không gắn CV',
-     h2.ma === h1.ma && (await mot(`select duong_dan_cv from ho_so_ung_tuyen where ma_ho_so = $1`, [h1.ma])).duong_dan_cv === null, moTa(h2));
+  const k2 = await nop({ ...khongCv, ve: ve3, tep: 'file-cua-nguoi-la.pdf' });
+  const sauK = (await mot(`select duong_dan_cv from ho_so_ung_tuyen where ma_ho_so = $1`, [k1.ma])).duong_dan_cv;
+  const dung3 = (await mot(`select da_dung from phieu_tai_len where id = $1`, [ve3])).da_dung;
+  ok('Hồ sơ cũ CHƯA có CV, lần gửi lại (hay người lạ biết tên + số điện thoại) kèm file → KHÔNG nhận mã, KHÔNG gắn file vào hồ sơ, vé không bị dùng',
+     !!k1.ma && k2.ma !== k1.ma && !JSON.stringify(k2).includes(k1.ma) && sauK === null && dung3 === false && (await soDong(khongCv.sdt)) === 1,
+     `${moTa(k2)} · ${sauK} · da_dung ${dung3}`);
+
+  const hetHan = { viTri: 'quan-ly-cua-hang', sdt: '0912000503' };
+  const ve4 = await xinVe();
+  const h1 = await nop({ ...hetHan, ve: ve4, tep: 'cv.pdf' });
+  const ve5 = await xinVe();
+  await db.query(`update phieu_tai_len set het_han = now() - interval '1 minute' where id = $1`, [ve5]);
+  const h2 = await nop({ ...hetHan, ve: ve5, tep: 'cv.pdf' });
+  ok('Vé của lần gửi lại đã hết hạn, hồ sơ cũ có CV → vẫn nhận mã cũ (hồ sơ ĐÃ vào), không "phiếu hết hạn"', !h1.loi && h2.ma === h1.ma, moTa(h2));
 });
 
 // ===========================================================================
