@@ -89,9 +89,9 @@ Lưu ý khi sửa code phần mềm cân:
 
 Năm dòng đầu là năm màu của guideline. Ba dòng sau là màu pha cho màn hình, Khánh cho phép ngày 10/10/2026. Token khai ở **hai nơi cùng giá trị, chưa gộp** — khối `.ck` đầu tiên của `web/src/styles/cong-khai.css` (trang công khai) và hai khối `:root` của `web/src/styles/chung.css` (`/noi-bo`, kho). Đổi một mã là đổi mọi nơi đó trong cùng PR: `crm/test/test-cong-khai-giao-dien.mjs` (nhóm 2, 6) và `crm/test/test-noi-bo-bang-mau.mjs` gác từng mã.
 
-`/noi-bo`, kho và Beeftown Cân có thêm **màu trạng thái** (xanh = xong, vàng = lưu ý, đỏ nhạt = làm ngay) — màu chức năng của công cụ, không thuộc năm màu thương hiệu, không dùng ở trang công khai. Mã và tương phản: `THUONG-HIEU.md`, mục 4.
+`/noi-bo` và kho có thêm **màu trạng thái** (xanh = xong, vàng = lưu ý, đỏ nhạt = làm ngay) — màu chức năng của công cụ, không thuộc năm màu thương hiệu, không dùng ở trang công khai. Mã và tương phản: `THUONG-HIEU.md`, mục 4. Beeftown Cân có màu trạng thái riêng trong file HTML của nó, theo bảng cũ.
 
-**Bảng màu không có trắng**, và website không có nền trắng: trang công khai thẻ nền kem sau trên nền Cream, ô nhập nền Cream (`test-cong-khai-giao-dien.mjs` nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`); `/noi-bo` và kho thẻ Cream trên nền kem sau, ô nhập Cream, ô đánh dấu tự vẽ (`test-noi-bo-bang-mau.mjs` nhóm 3–4). Trắng chỉ có trên giấy in.
+**Bảng màu không có trắng**, và website không có nền trắng: trang công khai thẻ nền kem sau trên nền Cream, ô nhập nền Cream (`test-cong-khai-giao-dien.mjs` nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`); `/noi-bo` và kho thẻ Cream trên nền kem sau, ô nhập Cream, ô đánh dấu tự vẽ (`test-noi-bo-bang-mau.mjs` nhóm 3–4). Trắng chỉ còn trên giấy in và ở thẻ "Đọc nhãn khay" của trang công khai (chờ PR bố cục trang chủ).
 
 Warm Stone và Marigold **không bao giờ** làm chữ trên nền sáng (tương phản 1,83 và 1,56 : 1 với kem; 1,71 và 1,46 : 1 với kem sau); không đặt chữ đỏ trên nền tối (2,43 : 1). Tỷ lệ trang công khai đang chạy: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 % — guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5, Khánh chưa quyết theo bên nào. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
 

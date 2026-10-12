@@ -44,6 +44,7 @@ const { name, ds, chon = '', nhan } = Astro.props;
   .nh-chon-chu { display: flex; flex-direction: column; line-height: 1.25; }
   .nh-chon-chu strong { font-size: 1rem; }
   .nh-chon-chu small { font-size: .78rem; color: var(--muc-nhat); }
-  .nh-chon-o:has(input:checked) { border-color: var(--than); background: var(--kem); }
+  /* Thẻ đã chọn: viền than và nền kem đậm — thẻ chưa chọn đã là Cream (--nb-the). */
+  .nh-chon-o:has(input:checked) { border-color: var(--than); background: var(--kem-dam); }
   .nh-chon-o:focus-within { outline: 3px solid var(--do); outline-offset: 1px; }
 </style>

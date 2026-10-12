@@ -248,6 +248,22 @@
 .nb-than :is(input, select, textarea):is(:autofill, :-webkit-autofill):focus {
   box-shadow: inset 0 0 0 1px var(--than), inset 0 0 0 1000px var(--kem);
 }
+/* Chữ gợi ý trong ô: xám mặc định của Chrome (#757575) chỉ 3,64 : 1 trên ô Cream (Safari còn kém hơn) — dùng
+   chữ phụ --muc-nhat (5,92 : 1). opacity 1: Firefox tự làm mờ chữ gợi ý thêm một lớp. */
+.nb-than ::placeholder { color: var(--muc-nhat); opacity: 1; }
+/* Khung nhóm ô (fieldset) không lớp riêng: viền lõm mặc định có một nét gần trắng — thay bằng vạch mảnh. */
+:where(.nb-than) fieldset { border: 1px solid var(--vach); border-radius: 8px; }
+/* Thanh tiến độ (<progress>, màn kiểm kê đang đếm): của trình duyệt là rãnh xám trắng, phần đã xong xanh dương.
+   Tự tô như thanh của màn Thiết lập kho: rãnh kem sau, phần xong --xanh (5,03 : 1 với rãnh). Số đếm luôn ghi
+   bằng chữ ngay trên thanh — thanh chỉ là hình. */
+.nb-than progress {
+  -webkit-appearance: none; appearance: none;
+  border: 0; border-radius: 999px; overflow: hidden;
+  background: var(--kem-sau); color: var(--xanh);
+}
+.nb-than progress::-webkit-progress-bar { background: var(--kem-sau); }
+.nb-than progress::-webkit-progress-value { background: var(--xanh); }
+.nb-than progress::-moz-progress-bar { background: var(--xanh); }
 /* Ô đánh dấu và ô chọn một: tự vẽ — ô của hệ thống nền trắng. Chưa chọn: nền Cream, viền --vien-o (3,71 : 1);
    đã chọn: ô đánh dấu nền Beef Red, dấu ✓ Cream; ô chọn một viền đỏ, chấm đỏ. Cỡ ô do từng trang đặt (20–24px);
    trang không đặt thì 20px (ô của hệ thống là 13px). Vẫn là <input> thật: phím cách, nhãn bấm được, trình đọc màn
@@ -286,13 +302,17 @@
 .nb-than input[type='file']::file-selector-button:hover { background: var(--kem-dam); }
 /* Hộp thoại (quét nhãn bằng camera): mặc định của trình duyệt là nền trắng. */
 .nb-than dialog { background: var(--kem); color: var(--than); }
-/* Giấy in là trắng: hai bề mặt về trắng, để máy in bật "in nền" không in thẻ, bảng, thanh thành mảng kem. */
+/* Giấy in là trắng: cả họ kem về trắng (nền trang, thẻ, bảng, ô nhập, đầu bảng), để máy in bật "in nền" không in
+   thành mảng kem. Ô đánh dấu, ô chọn một trả về ô của hệ thống, màu đen: in tắt nền (mặc định) thì nền đỏ và dấu ✓
+   Cream của ô tự vẽ không lên giấy — không còn biết ô nào đã chọn. */
 @media print {
-  .nb-than { --nb-nen: #fff; --nb-the: #fff; background: #fff; }
+  .nb-than { --nb-nen: #fff; --nb-the: #fff; --kem: #fff; --kem-sau: #fff; --kem-dam: #fff; background: #fff; }
+  .nb-than input:is([type='checkbox'], [type='radio']) { -webkit-appearance: auto; appearance: auto; accent-color: #000; }
+  .nb-than input:is([type='checkbox'], [type='radio'])::before { content: none; }
 }
 /* Tương phản cao (Windows): trả về ô của hệ thống — màu tự vẽ bị ép mất thì không còn thấy dấu ✓. */
 @media (forced-colors: active) {
-  .nb-than input:is([type='checkbox'], [type='radio']) { -webkit-appearance: auto; appearance: auto; }
+  .nb-than input:is([type='checkbox'], [type='radio']), .nb-than progress { -webkit-appearance: auto; appearance: auto; }
   .nb-than input:is([type='checkbox'], [type='radio'])::before { content: none; }
 }
 

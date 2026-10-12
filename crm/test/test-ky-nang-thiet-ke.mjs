@@ -171,7 +171,7 @@ await nhom('3 · MÃ MÀU VÀ BIẾN CSS GHI TRONG SKILL CÓ THẬT, ĐÚNG GIÁ
   // ---- Một bảng token, khai ở hai nơi -------------------------------------------------------------
   // Phép so ở trên gom giá trị từ mọi file CSS. Bảng màu của website khai ở HAI nơi chưa gộp: khối .ck
   // (trang công khai) và :root (/noi-bo, kho). Tới 10/10/2026 hai nơi mang hai bảng khác nhau và skill
-  // có hai bảng token; từ 11/10/2026 cả website một bảng. Các kiểm tra dưới đây buộc: hai nơi cùng giá
+  // có hai bảng token; từ 12/10/2026 cả website một bảng. Các kiểm tra dưới đây buộc: hai nơi cùng giá
   // trị, bảng token của skill đúng với CẢ hai nơi (hai chiều), và không cặp token–mã nào trong skill
   // lệch bảng. Đổi một mã ở một nơi mà quên nơi kia, hoặc quên skill, là đỏ.
   /** Khai báo màu trong một khối CSS (hex 6 số hoặc rgb()/rgba()): tên biến → giá trị, bỏ khoảng trắng. */

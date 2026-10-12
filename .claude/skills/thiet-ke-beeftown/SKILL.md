@@ -13,7 +13,7 @@ tài liệu gốc — khi hai bên lệch nhau, thứ tự thắng là:
    cũ hơn.
 2. **`web/THIET-KE.md`** — giao diện trang công khai **đang chạy**, lý do từng quyết định, manifest tài
    sản. Mục 2 ở đó ghi token và bảng tương phản của trang công khai; `/noi-bo` và kho dùng cùng token
-   từ ngày 11/10/2026.
+   từ ngày 12/10/2026.
 3. **Mã đang chạy** — `web/src/styles/*.css`, component trong `web/src/components/`.
 4. Skill này.
 
@@ -113,7 +113,7 @@ Beeftown Cân chạy không mạng nên khai màu ngay trong `can-app/src/giao-d
 |---|---|---|---|---|
 | `--kem` | `#F0E3D0` | Cream | Nền đọc mặc định; chữ trên nền tối và nền đỏ | Thẻ, thanh, menu thả, ô nhập (`--nb-the`); chữ trên đầu trang tối và trên nút đỏ |
 | `--kem-sau` | `#EBDCC6` | màu pha | Nền khối phụ nhẹ | Nền trang (`--nb-nen`); đầu bảng, dòng tổng |
-| `--kem-dam` | `#E7D5BC` | màu pha | Nền khối phụ đậm hơn | Nút phụ, mục menu thả khi di chuột; nhãn phụ trong thẻ |
+| `--kem-dam` | `#E7D5BC` | màu pha | Nền khối phụ đậm hơn | Nút phụ, mục menu thả, nút chọn tệp khi di chuột; thẻ đã chọn của `NhanHangChon` |
 | `--do` | `#A70C0C` | Beef Red | Nút chính, nhãn, dải đỏ, chữ nhấn cỡ thường trên kem | Nút chính, số báo việc, trạng thái "làm ngay"; ô đánh dấu đã chọn |
 | `--do-dam` | `#890607` | màu pha | Nút khi di chuột / đang gửi; câu lỗi dưới ô nhập | Nút khi di chuột |
 | `--do-sau` | `#890607` | màu pha, cùng mã với `--do-dam` | Chữ nhấn ≤ 13px trên kem; chữ nút trên nền đỏ; nét artwork trên kem | Chưa dùng |

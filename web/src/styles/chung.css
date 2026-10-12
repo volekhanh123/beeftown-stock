@@ -27,15 +27,15 @@
   --kem:       #F0E3D0;   /* Cream — nền sáng */
   --kem-sau:   #EBDCC6;   /* màu pha: nền khối phụ nhẹ */
   --mu-tat:    #F5AA14;   /* Marigold — guideline chỉ có một vàng: tên biến cũ, cùng mã với --cuc-vang */
-  --cuc-vang:  #F5AA14;   /* Marigold — điểm nhấn nhỏ; KHÔNG làm chữ trên nền sáng (1,97 : 1 với trắng) */
+  --cuc-vang:  #F5AA14;   /* Marigold — điểm nhấn nhỏ; KHÔNG làm chữ trên nền sáng (1,56 : 1 với kem) */
   --than:      #151008;   /* Charcoal — nền tối, chữ. Tên màu; Beeftown nướng vỉ gas */
-  --da:        #B8A98C;   /* Warm Stone — nét kẻ; chữ phụ CHỈ trên nền tối (2,31 : 1 với trắng) */
+  --da:        #B8A98C;   /* Warm Stone — nét kẻ; chữ phụ CHỈ trên nền tối (1,83 : 1 với kem) */
 
   --muc-nhat:  rgba(21, 16, 8, .68);
   --vach:      rgba(21, 16, 8, .16);
   --vach-kem:  rgba(240, 227, 208, .22);
-  /* Viền ô nhập trên nền sáng: tương phản 3,71 : 1 với kem và 4,70 : 1 với nền
-     trắng của ô — mức tối thiểu cho viền ô nhập là 3 : 1 (WCAG 1.4.11). Viền
+  /* Viền ô nhập trên nền sáng: tương phản 3,71 : 1 với nền Cream của ô và 3,49 : 1
+     với kem sau — mức tối thiểu cho viền ô nhập là 3 : 1 (WCAG 1.4.11). Viền
      --vach mờ quá, người ta không thấy chỗ để chạm vào. */
   --vien-o:    #7A7366;
 

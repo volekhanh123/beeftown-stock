@@ -36,6 +36,7 @@ import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { join, dirname, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
+import { taoMauLaTrong } from './mau-css.mjs';
 
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WEB = join(GOC, 'web');
@@ -112,12 +113,15 @@ function docQuyTac(css) {
   }
   return ra;
 }
-/** Mọi quy tắc thường (đi vào trong @media, @container, @supports), kèm cờ "nằm trong @media print". */
-function quyTacPhang(css, trongIn = false) {
+/** Mọi quy tắc thường (đi vào trong @media, @container, @supports), kèm cờ "nằm trong @media print" và
+    "nằm trong @media (forced-colors: active)" (chế độ tương phản cao — ở đó màu hệ thống là đúng). */
+function quyTacPhang(css, trongIn = false, tuongPhanCao = false) {
   return docQuyTac(css).flatMap(q => {
-    if (/^@(media|container|supports)\b/.test(q.boChon)) return quyTacPhang(q.trong, trongIn || /^@media[^{]*\bprint\b/.test(q.boChon));
+    if (/^@(media|container|supports)\b/.test(q.boChon)) {
+      return quyTacPhang(q.trong, trongIn || /^@media[^{]*\bprint\b/.test(q.boChon), tuongPhanCao || /forced-colors:\s*active/.test(q.boChon));
+    }
     if (q.boChon.startsWith('@')) return [];
-    return [{ boChon: q.boChon.replace(/\s+/g, ' '), trong: q.trong, trongIn }];
+    return [{ boChon: q.boChon.replace(/\s+/g, ' '), trong: q.trong, trongIn, tuongPhanCao }];
   });
 }
 /** Phần CSS của một file: cả file .css; với .astro / .html / .ts là các khối <style> cộng mọi thuộc tính style. */
@@ -125,8 +129,23 @@ function cssCua(tep) {
   const s = doc(tep);
   if (tep.endsWith('.css')) return { khoi: boChuThich(s), noiTuyen: '' };
   const khoi = [...s.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join('\n');
-  const noiTuyen = [...s.matchAll(/\bstyle=(?:"([^"]*)"|\{`([^`]*)`\}|\{[^}]*?'([^']*)'[^}]*\})/g)].map(m => m[1] ?? m[2] ?? m[3] ?? '').join(';\n');
-  return { khoi: boChuThich(khoi), noiTuyen };
+  return { khoi: boChuThich(khoi), noiTuyen: thuocTinhStyle(s) };
+}
+/** Mọi giá trị của thuộc tính style trong một trang: style="…", và style={…} — với biểu thức thì lấy MỌI chuỗi
+    bên trong (cả hai nhánh của x ? '…' : '…', chuỗi trong "…", `…`). Ngoặc {…} đếm lồng nhau: ${…} trong `…`
+    không làm cắt biểu thức giữa chừng. */
+function thuocTinhStyle(s) {
+  const ra = [...s.matchAll(/\bstyle="([^"]*)"/g)].map(m => m[1]);
+  for (const m of s.matchAll(/\bstyle=\{/g)) {
+    let i = m.index + m[0].length, muc = 1;
+    for (; i < s.length && muc > 0; i++) {
+      if (s[i] === '{') muc++;
+      else if (s[i] === '}') muc--;
+    }
+    const bieuThuc = s.slice(m.index + m[0].length, i - 1);
+    for (const c of bieuThuc.matchAll(/'([^']*)'|"([^"]*)"|`([^`]*)`/g)) ra.push(c[1] ?? c[2] ?? c[3]);
+  }
+  return ra.join(';\n');
 }
 
 /** Độ sáng tương đối và tỷ lệ tương phản theo WCAG 2.2. Màu là '#RRGGBB'. */
@@ -205,8 +224,14 @@ await nhom('2 · HAI BỀ MẶT VÀ MÀU TRẠNG THÁI Ở .nb-than, TOKEN CỦA
        !!m && chuanHoa(m[1]) === chuanHoa(giaTri) && soLanKhai === 1, m ? `${m[1].trim()} · khai ${soLanKhai} lần` : 'không thấy trong khối .nb-than đầu tiên');
   }
   ok('noi-bo.css .nb-than: nền trang là --nb-nen (kem sau), chữ than', /(?:^|[;\s])background\s*:\s*var\(--nb-nen\)\s*;/.test(nbThan) && /(?:^|[;\s])color\s*:\s*var\(--than\)\s*;/.test(nbThan));
-  ok('Thẻ Cream đặt trên nền kem sau — như khối thẻ trên dải kem sau của trang công khai (thẻ sáng hơn nền, không ngược lại)',
-     BE_MAT['--nb-the'] === 'var(--kem)' && BE_MAT['--nb-nen'] === 'var(--kem-sau)' && doSang(THE) > doSang(NEN));
+  // Giá trị thật của hai bề mặt: biến trong .nb-than trỏ tới biến nào của :root (chung.css), mã của biến đó.
+  const chung = boChuThich(doc(join(SRC, 'styles', 'chung.css')));
+  const rootKhai = new Map([...[...chung.matchAll(/(?<=^|\})\s*:root\s*\{([^{}]*)\}/g)].map(m => m[1]).join('\n')
+    .matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)].map(m => [m[1], m[2].trim()]));
+  const giaiMa = bien => rootKhai.get(nbThan.match(new RegExp(`(?:^|[;\\s])${bien}\\s*:\\s*var\\((--[a-z0-9-]+)\\)`))?.[1] ?? '') ?? '';
+  const [maThe, maNen] = [giaiMa('--nb-the'), giaiMa('--nb-nen')];
+  ok(`Thẻ sáng hơn nền trang (đọc từ CSS: thẻ ${maThe}, nền ${maNen}) — như khối thẻ Cream trên dải kem sau của trang công khai`,
+     /^#[0-9a-f]{6}$/i.test(maThe) && /^#[0-9a-f]{6}$/i.test(maNen) && doSang(maThe) > doSang(maNen), `${maThe} · ${maNen}`);
 
   const khung = boChuThich(doc(join(SRC, 'styles', 'kho-khung.css')));
   const khoThan = docQuyTac(khung).find(q => q.boChon === '.kho-than')?.trong ?? '';
@@ -241,8 +266,11 @@ const HEX_BAN_IN = new Set(['#FFF', '#FFFFFF', '#000', '#000000', '#999', '#EEE'
 const BO_BA_DUOC = new Set(['21,16,8', '240,227,208', '167,12,12', '137,6,7']);        // Charcoal · Cream · Beef Red · đỏ đậm
 /** Mọi mã hex màu trong một đoạn CSS (3, 4, 6 hoặc 8 chữ số; bỏ qua #id trong bộ chọn nhờ chỉ đọc phần khai báo). */
 const hexTrong = css => [...css.matchAll(/#([0-9a-f]{8}|[0-9a-f]{6}|[0-9a-f]{3,4})\b/gi)].map(m => m[0].toUpperCase());
-/** Từ khóa màu trắng / đen trong phần khai báo (white-space, black-translucent… không tính). */
-const tuKhoaTrangDen = css => [...css.matchAll(/(?<![-\w])(white|black)(?![-\w])/gi)].map(m => m[1].toLowerCase());
+/** Bộ quét cách viết màu (mau-css.mjs, dùng chung với trang công khai): rgb() lạ, hsl(), oklch(), color()…, tên màu
+    CSS (white, ivory, snow, black…), màu hệ thống ngoài forced-colors (Canvas, Field là trắng). */
+const mauLaTrong = taoMauLaTrong(BO_BA_DUOC);
+/** Phần giá trị của từng khai báo trong một khối CSS (bỏ tên thuộc tính: white-space, …). */
+const giaTriKhaiBao = trong => trong.split(';').map(d => d.slice(d.indexOf(':') + 1)).filter(v => v.trim());
 
 await nhom('3 · KHÔNG MÃ CŨ, KHÔNG TRẮNG: MÀU VIẾT CỨNG CHỈ LÀ MÃ CỦA BẢNG MỚI (TRẮNG, ĐEN CHỈ KHI IN)', async () => {
   // Quét cả chú thích: chú thích ghi mã cũ là chỗ người sau chép lại. web/src/lib quét trọn (qua-tai.ts dựng HTML có màu).
@@ -271,33 +299,46 @@ await nhom('3 · KHÔNG MÃ CŨ, KHÔNG TRẮNG: MÀU VIẾT CỨNG CHỈ LÀ M�
       const duoc = q.trongIn ? HEX_BAN_IN : HEX_DUOC;
       for (const h of hexTrong(q.trong)) if (!duoc.has(h)) (q.trongIn ? inMau : la).push(`${tuGoc(f)}: ${q.boChon.slice(0, 40)} ${h}`);
       if (q.trongIn && /var\(--(do|do-dam|do-sau|mu-tat|cuc-vang|xanh|vang-chu|kem|kem-sau|kem-dam|kho-nen|kho-the|nb-nen|nb-the)\)/.test(q.trong)) inMau.push(`${tuGoc(f)}: ${q.boChon.slice(0, 40)} dùng biến màu`);
-      if (!q.trongIn) for (const k of tuKhoaTrangDen(q.trong)) tuKhoa.push(`${tuGoc(f)}: ${q.boChon.slice(0, 40)} ${k}`);
+      if (!q.trongIn) for (const v of giaTriKhaiBao(q.trong)) for (const k of mauLaTrong(v, q.tuongPhanCao)) tuKhoa.push(`${tuGoc(f)}: ${q.boChon.slice(0, 40)} ${k}`);
     }
     for (const h of hexTrong(c.noiTuyen)) if (!HEX_DUOC.has(h)) la.push(`${tuGoc(f)}: style="…${h}…"`);
-    for (const k of tuKhoaTrangDen(c.noiTuyen)) tuKhoa.push(`${tuGoc(f)}: style="…${k}…"`);
+    for (const v of giaTriKhaiBao(c.noiTuyen)) for (const k of mauLaTrong(v, false)) tuKhoa.push(`${tuGoc(f)}: style="…${k}…"`);
     for (const m of (c.khoi + '\n' + c.noiTuyen).matchAll(/rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})/g)) {
       if (!BO_BA_DUOC.has(m.slice(1).join(','))) boBaLa.push(`${tuGoc(f)}: ${m[0]}…)`);
     }
   }
   ok('Màu hex viết cứng trong giao diện nội bộ chỉ là mã của bảng mới và màu trạng thái — không #FFF, không #000 (ngoài bản in)', la.length === 0, la.slice(0, 8).join(' | '));
-  ok('Không từ khóa white / black làm màu trong giao diện nội bộ (ngoài bản in)', tuKhoa.length === 0, tuKhoa.slice(0, 8).join(' | '));
+  ok('Không tên màu CSS (white, ivory, snow, black…), không hsl() / oklch() / color()…, không rgb() lạ, không màu hệ thống ngoài tương phản cao (Canvas, Field là trắng) — ngoài bản in',
+     tuKhoa.length === 0, tuKhoa.slice(0, 8).join(' | '));
   ok('Màu rgb() / rgba() trong giao diện nội bộ chỉ dùng số của Charcoal, Cream, Beef Red, đỏ đậm — không rgb(255, 255, 255)', boBaLa.length === 0, boBaLa.slice(0, 8).join(' | '));
   ok('Bản in (@media print) của nội bộ và kho chỉ đen, trắng, xám — không mã màu, không biến màu', inMau.length === 0, inMau.slice(0, 8).join(' | '));
-  // Bộ lọc trắng / đen phải bắt được mọi kiểu viết, và không bắt nhầm white-space hay tên lớp.
-  const THU_TRANG = ['background: #fff;', 'color:#FFFFFF', 'background: white;', 'box-shadow: 0 0 0 2px white', 'background:#000'];
-  const lotTrang = THU_TRANG.filter(t => hexTrong(t).every(h => HEX_DUOC.has(h)) && tuKhoaTrangDen(t).length === 0);
-  ok(`Bộ lọc trắng / đen bắt được ${THU_TRANG.length} kiểu viết; không bắt nhầm white-space, nowrap`,
-     lotTrang.length === 0 && tuKhoaTrangDen('white-space: nowrap; content: "white-list"').length === 0, lotTrang.join(' | '));
+  // Bộ lọc trắng / đen phải bắt được mọi kiểu viết, và không bắt nhầm white-space, nowrap hay tên lớp.
+  const bat = t => hexTrong(t).some(h => !HEX_DUOC.has(h)) || giaTriKhaiBao(t).some(v => mauLaTrong(v, false).length > 0);
+  const THU_TRANG = ['background: #fff;', 'color:#FFFFFF', 'background: white;', 'box-shadow: 0 0 0 2px white', 'background:#000',
+    'background: rgb(255 255 255)', 'background: rgba(255,255,255,.5)', 'color: hsl(0 0% 100%)', 'background: whitesmoke', 'background: ivory',
+    'background: snow', 'background: Canvas', 'background-color: Field', 'background: oklch(1 0 0)', 'background: color(srgb 1 1 1)',
+    'background: linear-gradient(white, var(--kem))'];
+  const lotTrang = THU_TRANG.filter(t => !bat(t));
+  ok(`Bộ lọc trắng / đen bắt được ${THU_TRANG.length} cách viết`, lotTrang.length === 0, lotTrang.join(' | '));
+  const THU_DUNG = ['white-space: nowrap', 'background: var(--kem)', 'color: currentColor', 'border-color: transparent', 'background: rgba(21, 16, 8, .16)',
+    'background: url("/kho/white.svg") no-repeat', 'content: "white-list"'];
+  const batNhamTrang = THU_DUNG.filter(bat);
+  ok(`…và không bắt nhầm ${THU_DUNG.length} cách viết hợp lệ (white-space, url có chữ white, chuỗi, transparent…)`, batNhamTrang.length === 0, batNhamTrang.join(' | '));
+  ok('…màu hệ thống trong @media (forced-colors: active) thì được', mauLaTrong('Canvas', true).length === 0);
   const khungIn = quyTacPhang(boChuThich(doc(join(SRC, 'styles', 'kho-khung.css')))).filter(q => q.trongIn);
   ok('kho-khung.css: khi in, nền trang kho là trắng (nền kem không lên giấy)',
      khungIn.some(q => q.boChon === '.kho-than' && /background\s*:\s*#fff\b/i.test(q.trong)));
-  const noiBoIn = quyTacPhang(boChuThich(doc(join(SRC, 'styles', 'noi-bo.css')))).filter(q => q.trongIn && q.boChon === '.nb-than');
-  ok('noi-bo.css: khi in, hai bề mặt về trắng (--nb-nen, --nb-the) — máy in bật "in nền" cũng không in thẻ, bảng thành mảng kem',
-     noiBoIn.some(q => /--nb-nen\s*:\s*#fff\s*;/i.test(q.trong) && /--nb-the\s*:\s*#fff\s*;/i.test(q.trong)));
+  const noiBoIn = quyTacPhang(boChuThich(doc(join(SRC, 'styles', 'noi-bo.css')))).filter(q => q.trongIn);
+  const HO_KEM = ['--nb-nen', '--nb-the', '--kem', '--kem-sau', '--kem-dam'];
+  ok(`noi-bo.css: khi in, cả họ kem về trắng (${HO_KEM.join(', ')}) — máy in bật "in nền" cũng không in thẻ, bảng, ô nhập thành mảng kem`,
+     noiBoIn.some(q => q.boChon === '.nb-than' && HO_KEM.every(b => new RegExp(`(?:^|[;\\s])${b}\\s*:\\s*#fff\\s*;`, 'i').test(q.trong))));
+  ok('noi-bo.css: khi in, ô đánh dấu và ô chọn một trả về ô của hệ thống, màu đen — in tắt nền thì nền đỏ, dấu ✓ Cream của ô tự vẽ không lên giấy',
+     noiBoIn.some(q => q.boChon === ".nb-than input:is([type='checkbox'], [type='radio'])" && /appearance\s*:\s*auto/.test(q.trong) && /accent-color\s*:\s*#000\b/.test(q.trong))
+     && noiBoIn.some(q => q.boChon === ".nb-than input:is([type='checkbox'], [type='radio'])::before" && /content\s*:\s*none/.test(q.trong)));
 });
 
 // ===========================================================================
-await nhom('4 · Ô CỦA TRÌNH DUYỆT KHÔNG TÔ TRẮNG: Ô NHẬP, Ô TỰ ĐIỀN, Ô ĐÁNH DẤU, NÚT CHỌN TỆP, HỘP THOẠI', async () => {
+await nhom('4 · Ô CỦA TRÌNH DUYỆT KHÔNG TÔ TRẮNG: Ô NHẬP, Ô TỰ ĐIỀN, Ô ĐÁNH DẤU, NÚT CHỌN TỆP, HỘP THOẠI, THANH TIẾN ĐỘ', async () => {
   const css = boChuThich(doc(join(SRC, 'styles', 'noi-bo.css')));
   const qt = quyTacPhang(css).filter(q => !q.trongIn);
   const tim = (dk) => qt.find(q => dk(q.boChon));
@@ -330,8 +371,20 @@ await nhom('4 · Ô CỦA TRÌNH DUYỆT KHÔNG TÔ TRẮNG: Ô NHẬP, Ô TỰ 
      !!macDinh && /border\s*:\s*1px solid var\(--vien-o\)/.test(macDinh.trong));
   ok('Ô tự vẽ trong .nb-o không nhận cao 48px và đệm của ô chữ (thành hình bầu dục): min-height 0, padding 0',
      !!danhDau && /min-height\s*:\s*0\s*;/.test(danhDau.trong) && /(?:^|[;\s])padding\s*:\s*0\s*;/.test(danhDau.trong));
-  const accent = GIAO_DIEN_NOI_BO.flatMap(f => { const c = cssCua(f); return /accent-color/.test(c.khoi + c.noiTuyen) ? [tuGoc(f)] : []; });
-  ok('Không trang nội bộ nào đặt accent-color — ô đánh dấu tự vẽ không đọc nó', accent.length === 0, accent.join(' | '));
+  // accent-color chỉ có nghĩa với ô của hệ thống — tức là khi in (noi-bo.css đặt đen) và ở chế độ tương phản cao.
+  const accent = GIAO_DIEN_NOI_BO.flatMap(f => { const c = cssCua(f);
+    return quyTacPhang(c.khoi).some(q => !q.trongIn && /accent-color/.test(q.trong)) || /accent-color/.test(c.noiTuyen) ? [tuGoc(f)] : []; });
+  ok('Không trang nội bộ nào đặt accent-color ngoài bản in — ô đánh dấu tự vẽ không đọc nó', accent.length === 0, accent.join(' | '));
+  ok('Chữ gợi ý (placeholder) là --muc-nhat, không mờ thêm — xám mặc định của Chrome chỉ 3,64 : 1 trên ô Cream',
+     /color\s*:\s*var\(--muc-nhat\)/.test(tim(b => b === '.nb-than ::placeholder')?.trong ?? '') && /opacity\s*:\s*1\b/.test(tim(b => b === '.nb-than ::placeholder')?.trong ?? ''));
+  ok('Khung nhóm ô (fieldset) không lớp riêng: vạch --vach thay cho viền lõm mặc định (có một nét gần trắng)',
+     /border\s*:\s*1px solid var\(--vach\)/.test(tim(b => b === ':where(.nb-than) fieldset')?.trong ?? ''));
+  const thanh = tim(b => b === '.nb-than progress');
+  ok('Thanh tiến độ (<progress>) tự tô: rãnh kem sau, phần xong --xanh — của trình duyệt là rãnh xám trắng, phần xong xanh dương',
+     !!thanh && /appearance\s*:\s*none/.test(thanh.trong) && coBien(thanh, 'background', 'var(--kem-sau)')
+     && /background\s*:\s*var\(--xanh\)/.test(tim(b => b === '.nb-than progress::-webkit-progress-value')?.trong ?? '')
+     && /background\s*:\s*var\(--xanh\)/.test(tim(b => b === '.nb-than progress::-moz-progress-bar')?.trong ?? '')
+     && /progress/.test(tuongPhanCao));
 
   // Ô nhập có lớp riêng: nền Cream (không phải --nb-the: ô luôn Cream, kể cả khi đặt thẳng trên nền trang).
   const moiQuyTac = GIAO_DIEN_NOI_BO.flatMap(f => quyTacPhang(cssCua(f).khoi).filter(q => !q.trongIn).map(q => ({ ...q, tep: tuGoc(f) })));
@@ -380,7 +433,13 @@ await nhom('5 · TƯƠNG PHẢN CỦA /noi-bo VÀ KHO (WCAG 2.2)', async () => {
     ['vòng focus Charcoal trên thẻ Cream', M['--than'], THE, 3],
     ['vòng focus Charcoal trên nền trang kem sau', M['--than'], NEN, 3],
     ['vòng focus Marigold trên đầu trang tối', M['--cuc-vang'], M['--than'], 3],
+    ['phần đã xong của thanh tiến độ (--xanh) trên rãnh kem sau', T['--xanh'], NEN, 3],
   ]);
+  // Chữ gợi ý (placeholder) --muc-nhat trong ô Cream; ô đặt trong dòng nền vàng nhạt vẫn là ô Cream.
+  kiemCap([['chữ gợi ý (--muc-nhat) trong ô nhập Cream', mucNhat(THE), THE, 4.5]]);
+  const xamChrome = '#757575';
+  ok(`…xám mặc định của chữ gợi ý (Chrome ${xamChrome}) trên ô Cream chỉ ${so(tuongPhan(xamChrome, THE))} : 1 — lý do của quy tắc ::placeholder`,
+     tuongPhan(xamChrome, THE) < 4.5);
   // Nhãn "tắt" (.nb-nhan.tat): nền --vach (than 16 %), chữ --muc-nhat (than 68 %) — cả hai có độ trong, tính trên từng nền.
   for (const [ten, nen] of NEN_SANG.slice(0, 2)) {
     const nenNhan = phaTren(M['--than'], nen, 0.16);
@@ -439,6 +498,9 @@ await nhom('5 · TƯƠNG PHẢN CỦA /noi-bo VÀ KHO (WCAG 2.2)', async () => {
   ok('Vòng focus của nội bộ và kho: Charcoal trên nền sáng, Marigold trên đầu trang tối',
      noiBo.some(q => q.boChon === '.nb-than :focus-visible' && /outline-color\s*:\s*var\(--than\)/.test(q.trong))
      && noiBo.some(q => q.boChon === '.nb-dau :focus-visible, .kho-dau :focus-visible' && /outline-color\s*:\s*var\(--cuc-vang\)/.test(q.trong)));
+  // Link "Bỏ qua menu" của kho nằm ngoài .kho-dau mà nền Charcoal, hiện đè lên đầu trang tối: vòng Charcoal thì không thấy.
+  ok('Link "Bỏ qua menu" của kho (nền Charcoal, ngoài .kho-dau): vòng focus Marigold',
+     quyTacPhang(boChuThich(doc(join(SRC, 'styles', 'kho-khung.css')))).some(q => q.boChon === '.kho-bo-qua:focus-visible' && /outline-color\s*:\s*var\(--cuc-vang\)/.test(q.trong)));
 });
 
 // ===========================================================================

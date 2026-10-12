@@ -17,7 +17,7 @@ README khi hai bên lệch).
   biểu tượng rõ, số to). **Đỏ dành cho số báo việc và nút chính — chỗ nào đỏ là chỗ đó cần làm.**
 - **Không cần JavaScript**: mọi thao tác là form POST rồi chuyển hướng 303 (F5 không gửi lại).
 - **Màu: cùng bảng với trang công khai** — bảng thương hiệu chốt 09/10/2026, hai khu này đổi ngày
-  11/10/2026. Token đọc ở `:root` của `chung.css`, cùng giá trị với khối `.ck` (bảng "Token màu của
+  12/10/2026. Token đọc ở `:root` của `chung.css`, cùng giá trị với khối `.ck` (bảng "Token màu của
   website" trong `SKILL.md`). Hai khu có thêm token của kho và màu trạng thái, ở mục "CSS và layout"
   dưới đây. Màn mới chỉ dùng biến: `crm/test/test-noi-bo-bang-mau.mjs` đỏ khi một file nội bộ gõ mã
   màu ngoài bảng, dùng biến chưa khai hay để lại mã của bảng cũ.
@@ -41,9 +41,10 @@ README khi hai bên lệch).
 
 Ô nhập luôn nền `--kem` (kể cả khi đặt thẳng trên nền trang), viền `--vien-o`. Cream và kem sau chỉ
 chênh 1,07 : 1 — thẻ tách khỏi nền bằng viền `--vach`. Di chuột trên thẻ, nút phụ, menu thả: `--kem-dam`.
-Ô nhập không lớp riêng, ô đánh dấu, ô chọn một, nút "Chọn tệp", `<dialog>` đã có nền Cream sẵn từ
-`noi-bo.css` (ô đánh dấu và ô chọn một tự vẽ — ô của hệ thống nền trắng): trang chỉ đặt cỡ ô, không đặt
-màu, không `accent-color`.
+Ô nhập không lớp riêng, ô đánh dấu, ô chọn một, nút "Chọn tệp", `<dialog>`, `<fieldset>`, thanh
+`<progress>` đã có màu sẵn từ `noi-bo.css` (ô đánh dấu và ô chọn một tự vẽ — ô của hệ thống nền trắng;
+khi in và ở chế độ tương phản cao thì trả về ô của hệ thống): trang chỉ đặt cỡ ô, không đặt màu, không
+`accent-color`. Chữ gợi ý (placeholder) là `--muc-nhat`.
 
 **Token thêm của kho** (khai trên `.kho-than`). Kho không có sắc riêng — token chỉ trỏ về biến:
 `--kho-nen` là `--nb-nen`, `--kho-the` là `--nb-the`, `--kho-vach` là `--vach` (viền thẻ, vạch ngăn
@@ -89,7 +90,9 @@ mảng gần trắng giữa thẻ kem. Đỏ của trạng thái là chính `--d
 - **Vòng focus**: Charcoal trên nền sáng, Marigold trên đầu trang tối (`.nb-than :focus-visible`,
   `.nb-dau :focus-visible`). Ô nhập đang focus: viền than, thêm một nét than phía trong và quầng
   Marigold phía ngoài.
-- **Bản in** (`@media print`): chỉ đen, trắng, xám; nền kem không lên giấy.
+- **Bản in** (`@media print`): chỉ đen, trắng, xám. Khi in, `noi-bo.css` đặt cả họ kem (`--kem`, `--kem-sau`,
+  `--kem-dam`, hai bề mặt) về trắng — nền kem không lên giấy kể cả khi máy in bật "in nền" — và trả ô đánh
+  dấu, ô chọn một về ô của hệ thống (dấu ✓ Cream tự vẽ không lên giấy khi in tắt nền).
 
 Đèn sức khỏe (`MauDen` trong `web/src/lib/suc-khoe.ts`): đỏ = xử lý ngay · vàng = xem hôm nay · xanh =
 ổn · xám = chưa bật. **Không đọc được số liệu thì không bao giờ hiện xanh.** Màu và câu do

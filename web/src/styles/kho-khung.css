@@ -32,6 +32,9 @@
   background: var(--than); color: var(--kem); padding: .75rem 1rem; border-radius: 0 0 8px 0;
 }
 .kho-bo-qua:focus { left: 0; }
+/* Link "Bỏ qua menu" nằm ngoài .kho-dau nên nhận vòng Charcoal của .nb-than — trên nền Charcoal của chính nó
+   và của đầu trang thì vòng ấy không thấy. Marigold như mọi thứ trên đầu trang tối (9,59 : 1). */
+.kho-bo-qua:focus-visible { outline-color: var(--cuc-vang); }
 
 /* .kho-an (chữ chỉ cho trình đọc màn hình) nằm ở noi-bo.css, chung với .nb-an. */
 
@@ -186,7 +189,7 @@
 .kho-ben-muc .kho-bt { color: var(--do); }
 .kho-ben-muc span { flex: 1; min-width: 0; }
 /* Cột bên nằm trên nền kem sau của trang: di chuột nổi lên thành một dải Cream, như thẻ. --kem-dam gần
-   trùng nền (1,03 : 1). */
+   trùng nền (1,06 : 1). */
 .kho-ben-muc:hover { background: var(--nb-the); }
 .kho-ben-muc[aria-current='page'] { background: var(--than); color: var(--kem); }
 .kho-ben-muc[aria-current='page'] .kho-bt { color: var(--cuc-vang); }
