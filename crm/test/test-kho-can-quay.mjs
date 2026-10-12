@@ -7,10 +7,10 @@
  *   · kho_can_giao_o_ma: danh mục cân đọc ô đang giao bằng MỌI vai xem (NV quầy ở máy quầy đọc view
  *     thì rỗng) — đúng từng dòng của view.
  *   · kho_may_can_bao: máy quầy báo trạng thái — một dòng mỗi máy, chỉ giữ dòng mã ô trên cân, mốc giờ
- *     không lùi / không ở tương lai, lệch từ lúc nào; 0080: cờ "chưa xác nhận" (Beeftown Cân 2.9.3) và từ lúc nào.
+ *     không lùi / không ở tương lai, lệch từ lúc nào; 0085: cờ "chưa xác nhận" (Beeftown Cân 2.9.3) và từ lúc nào.
  *   · kho_may_can_nhat_ky: tem cân in bằng mã ô — gửi lại không trùng, giờ đồng hồ cân là giờ VN
  *     (23:50 / 00:10), ngày không có thật bỏ qua.
- *   · kho_phien_pha_can: trang pha lóc — ô đã lên cân chưa, tem in / nhãn quét, nhãn mã thường; 0080: máy chưa
+ *   · kho_phien_pha_can: trang pha lóc — ô đã lên cân chưa, tem in / nhãn quét, nhãn mã thường; 0085: máy chưa
  *     xác nhận lần gửi gần nhất thì trang không nói "Cân sẵn sàng".
  *   · suc_khoe_so_lieu: ô `can` của đèn "Beeftown Cân".
  * Quyền: anon, vai khác, chi nhánh khác, người đã nghỉ, tài khoản không có dòng nhan_su đều bị từ chối.
@@ -202,26 +202,26 @@ await nhom('3 · MÁY QUẦY BÁO TRẠNG THÁI (kho_may_can_bao)', async () => 
   await bao(UID.nvQuayA, cnA.id, MAY_1, { lech_so: '7' });
   ok('lech_so không phải số → chưa biết (null)', (await dongMay(MAY_1)).lech_so === null);
 
-  // 0080 (Beeftown Cân 2.9.3): lần gửi gần nhất cân chưa xác nhận — cờ và từ lúc nào (như lech_tu).
+  // 0085 (Beeftown Cân 2.9.3): lần gửi gần nhất cân chưa xác nhận — cờ và từ lúc nào (như lech_tu).
   const x0 = await dongMay(MAY_1);
-  ok('0080: máy quầy trước 2.9.3 (không gửi cờ) → chua_xac_nhan false, không mốc', x0.chua_xac_nhan === false && x0.chua_xac_nhan_tu === null,
+  ok('0085: máy quầy trước 2.9.3 (không gửi cờ) → chua_xac_nhan false, không mốc', x0.chua_xac_nhan === false && x0.chua_xac_nhan_tu === null,
      JSON.stringify(x0));
   await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true });
   const x1 = await dongMay(MAY_1);
   await db.query(`update kho_may_can set chua_xac_nhan_tu = chua_xac_nhan_tu - interval '20 minutes' where ma_may = $1`, [MAY_1]);
   await Promise.all([bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true }), bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true })]);
   const x2 = await dongMay(MAY_1);
-  ok('0080: chưa xác nhận → ghi mốc lần đầu; báo lại (cả hai lần cùng lúc) vẫn giữ mốc đầu, vẫn một dòng',
+  ok('0085: chưa xác nhận → ghi mốc lần đầu; báo lại (cả hai lần cùng lúc) vẫn giữ mốc đầu, vẫn một dòng',
      x1.chua_xac_nhan === true && gan(x1.chua_xac_nhan_tu, 0) && x2.chua_xac_nhan === true
      && new Date(x2.chua_xac_nhan_tu).getTime() === new Date(x1.chua_xac_nhan_tu).getTime() - 20 * 60_000
      && (await db.query(`select count(*)::int n from kho_may_can where ma_may = $1`, [MAY_1])).rows[0].n === 1, `${x1.chua_xac_nhan_tu} / ${x2.chua_xac_nhan_tu}`);
   await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: 'true' });
   const x3 = await dongMay(MAY_1);
-  ok('0080: cờ không phải boolean ("true" là chữ) → coi như false, xoá mốc', x3.chua_xac_nhan === false && x3.chua_xac_nhan_tu === null, JSON.stringify(x3));
+  ok('0085: cờ không phải boolean ("true" là chữ) → coi như false, xoá mốc', x3.chua_xac_nhan === false && x3.chua_xac_nhan_tu === null, JSON.stringify(x3));
   await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true });
   await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: false });
   const x4 = await dongMay(MAY_1);
-  ok('0080: lần báo sau đã xác nhận (đọc lại khớp) → hết cờ, xoá mốc', x4.chua_xac_nhan === false && x4.chua_xac_nhan_tu === null, JSON.stringify(x4));
+  ok('0085: lần báo sau đã xác nhận (đọc lại khớp) → hết cờ, xoá mốc', x4.chua_xac_nhan === false && x4.chua_xac_nhan_tu === null, JSON.stringify(x4));
   await bao(UID.nvQuayA, cnA.id, MAY_1, { lech_so: 2, tu_gui: true, gui_loi: true });
 
   const sai = await duoi(UID.nvQuayA, `select kho_may_can_bao($1, $2, '[1,2]'::jsonb)`, [cnA.id, MAY_1]);
@@ -322,24 +322,24 @@ await nhom('6 · TRANG PHA LÓC: Ô ĐÃ LÊN CÂN CHƯA, TEM IN / NHÃN QUÉT, 
   ok('Máy quầy báo đúng tên mới → trang "Cân sẵn sàng: Thăn ngoại cắt lát #0001 = PLU 23 · phím F5"',
      tomTatCanPhien(k2).dong[0]?.cau?.vi === 'Cân sẵn sàng: Thăn ngoại cắt lát #0001 = PLU 23 · phím F5', JSON.stringify(tomTatCanPhien(k2).dong[0]));
   ok('Trang: nhãn mã thường 301 → cảnh báo in lại bằng phím ô của phiên', /in bằng mã thường 301/.test(tomTatCanPhien(k2).nhanThuong[0]?.vi ?? ''));
-  // 0080 — rà soát 11/10/2026: Beeftown Cân báo tên ô mới khi lần gửi gần nhất chưa đọc lại được cân → trang không được xanh.
+  // 0085 — rà soát 11/10/2026: Beeftown Cân báo tên ô mới khi lần gửi gần nhất chưa đọc lại được cân → trang không được xanh.
   const tenMoi = [{ plu: 23, ma_can: '10011', ten: 'Thăn ngoại cắt lát #0001', phim: ['F5'] }];
   await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true, tren_can: [{ ...tenMoi[0], chua_xac_nhan: true }] });
   const k3 = (await doiChieu(UID.thuKhoA, P[1])).rows?.[0]?.kq;
-  ok('HỒI QUY 11/10 (0080): máy quầy báo dòng ô cân có thể đang khác (lần gửi chưa xác nhận) → kho_phien_pha_can kèm cờ ở dòng và ở máy; trang "chưa chắc", không "Cân sẵn sàng"',
+  ok('HỒI QUY 11/10 (0085): máy quầy báo dòng ô cân có thể đang khác (lần gửi chưa xác nhận) → kho_phien_pha_can kèm cờ ở dòng và ở máy; trang "chưa chắc", không "Cân sẵn sàng"',
      k3?.o?.[0]?.tren_can?.[0]?.chua_xac_nhan === true && k3.may?.[0]?.chua_xac_nhan === true && k3.may[0].chua_xac_nhan_tu !== null
      && tomTatCanPhien(k3).dong[0]?.muc === 'chua_xac_nhan' && !/sẵn sàng/.test(tomTatCanPhien(k3).dong[0]?.cau?.vi ?? ''),
      JSON.stringify([k3?.o?.[0]?.tren_can, tomTatCanPhien(k3).dong[0]?.cau]));
   const luuDong = (await dongMay(MAY_1)).tren_can;
-  ok('0080: kho giữ cờ của từng dòng tren_can (chỉ đúng true là bật)', luuDong.length === 1 && luuDong[0].chua_xac_nhan === true, JSON.stringify(luuDong));
+  ok('0085: kho giữ cờ của từng dòng tren_can (chỉ đúng true là bật)', luuDong.length === 1 && luuDong[0].chua_xac_nhan === true, JSON.stringify(luuDong));
   await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true, tren_can: [{ ...tenMoi[0], chua_xac_nhan: 'true' }] });
   const k3b = (await doiChieu(UID.thuKhoA, P[1])).rows?.[0]?.kq;
-  ok('0080: máy chưa xác nhận lần gửi khác (dòng ô này không đổi — cờ dòng không phải true) → dòng không cờ, trang vẫn "Cân sẵn sàng" (không chặn mọi ô)',
+  ok('0085: máy chưa xác nhận lần gửi khác (dòng ô này không đổi — cờ dòng không phải true) → dòng không cờ, trang vẫn "Cân sẵn sàng" (không chặn mọi ô)',
      k3b?.o?.[0]?.tren_can?.[0]?.chua_xac_nhan === false && k3b.may[0].chua_xac_nhan === true && tomTatCanPhien(k3b).dong[0]?.muc === 'san_sang'
      && /chưa được cân xác nhận/.test(tomTatCanPhien(k3b).may?.vi ?? ''), JSON.stringify([k3b?.o?.[0]?.tren_can, tomTatCanPhien(k3b).may]));
   await bao(UID.nvQuayA, cnA.id, MAY_1, { tren_can: tenMoi });
   const k4 = (await doiChieu(UID.thuKhoA, P[1])).rows?.[0]?.kq;
-  ok('0080: lần báo sau cân đã xác nhận → hết cờ, mốc xoá; trang "Cân sẵn sàng"', k4?.o?.[0]?.tren_can?.[0]?.chua_xac_nhan === false
+  ok('0085: lần báo sau cân đã xác nhận → hết cờ, mốc xoá; trang "Cân sẵn sàng"', k4?.o?.[0]?.tren_can?.[0]?.chua_xac_nhan === false
      && k4.may[0].chua_xac_nhan === false && k4.may[0].chua_xac_nhan_tu === null && tomTatCanPhien(k4).dong[0]?.muc === 'san_sang',
      JSON.stringify(k4?.o?.[0]?.tren_can));
   ok('Nhãn quét bằng mã ô: 2 nhãn · 1,02 kg', Number(o?.quet) === 2 && Number(o?.quet_kg) === 1.02, `${o?.quet} · ${o?.quet_kg}`);
@@ -400,14 +400,14 @@ await nhom('6 · TRANG PHA LÓC: Ô ĐÃ LÊN CÂN CHƯA, TEM IN / NHÃN QUÉT, 
 await nhom('7 · ĐÈN "BEEFTOWN CÂN": Ô `can` CỦA suc_khoe_he_thong', async () => {
   const k = (await duoi(UID.chu, `select suc_khoe_he_thong() as k`)).rows?.[0]?.k;
   const a = k?.chi_nhanh?.find(c => c.id === cnA.id)?.can, b = k?.chi_nhanh?.find(c => c.id === cnB.id)?.can;
-  ok('Q1: giờ mở cửa mặc định 10–23, 1 máy với đủ ô (0080: thêm chua_xac_nhan, chua_xac_nhan_tu)', a?.gio_mo_cua === 10 && a?.gio_dong_cua === 23 && a?.may?.length === 1
+  ok('Q1: giờ mở cửa mặc định 10–23, 1 máy với đủ ô (0085: thêm chua_xac_nhan, chua_xac_nhan_tu)', a?.gio_mo_cua === 10 && a?.gio_dong_cua === 23 && a?.may?.length === 1
      && JSON.stringify(Object.keys(a.may[0]).sort()) === JSON.stringify(['bao_luc', 'can_tra_loi_luc', 'chua_xac_nhan', 'chua_xac_nhan_tu', 'giu_ket_noi', 'gui_loi', 'lech_so', 'lech_tu', 'tu_gui']),
      JSON.stringify(a));
   ok('Q7: 1 máy của chủ báo', b?.may?.length === 1 && b.may[0].tu_gui === false, JSON.stringify(b));
   await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true });
   const kx = (await duoi(UID.chu, `select suc_khoe_he_thong() as k`)).rows?.[0]?.k;
   const mx = kx?.chi_nhanh?.find(c => c.id === cnA.id)?.can?.may?.[0];
-  ok('0080: máy chưa xác nhận → ô can của bảng sức khỏe trả chua_xac_nhan và từ lúc nào (đèn vàng sau 15 phút — test-suc-khoe-web)',
+  ok('0085: máy chưa xác nhận → ô can của bảng sức khỏe trả chua_xac_nhan và từ lúc nào (đèn vàng sau 15 phút — test-suc-khoe-web)',
      mx?.chua_xac_nhan === true && mx.chua_xac_nhan_tu !== null, JSON.stringify(mx));
   await bao(UID.nvQuayA, cnA.id, MAY_1, {});
   await db.query(`insert into kho_ipos_cau_hinh (chi_nhanh_id, gio_mo_cua, gio_dong_cua) values ($1, 8, 22)

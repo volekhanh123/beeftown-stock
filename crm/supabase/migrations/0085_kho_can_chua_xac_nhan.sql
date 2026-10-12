@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN — 0080 · BEEFTOWN CÂN: CỜ "CHƯA XÁC NHẬN" (Beeftown Cân 2.9.3)
+-- BEEFTOWN — 0085 · BEEFTOWN CÂN: CỜ "CHƯA XÁC NHẬN" (Beeftown Cân 2.9.3)
 -- =============================================================================
 -- PHẢI CHẠY SAU 0061 (kho_may_can, kho_may_can_bao, kho_phien_pha_can) VÀ 0074 (thân suc_khoe_so_lieu mới nhất).
 --
@@ -35,13 +35,13 @@
 -- 1 · CỘT MỚI
 -- =============================================================================
 alter table kho_may_can
-  add column chua_xac_nhan    boolean not null default false,   -- 0080: lần gửi gần nhất cân chưa xác nhận (máy quầy báo)
-  add column chua_xac_nhan_tu timestamptz;                       -- 0080: chưa xác nhận từ lúc nào (database ghi lần đầu thấy)
+  add column chua_xac_nhan    boolean not null default false,   -- 0085: lần gửi gần nhất cân chưa xác nhận (máy quầy báo)
+  add column chua_xac_nhan_tu timestamptz;                       -- 0085: chưa xác nhận từ lúc nào (database ghi lần đầu thấy)
 
 comment on column kho_may_can.chua_xac_nhan is
-  'Beeftown Cân 2.9.3 (0080): lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được / đọc lại lệch) hay lần xoá qua WiFi hỏng — cân có thể khác tren_can. Máy trước 2.9.3: luôn false.';
+  'Beeftown Cân 2.9.3 (0085): lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được / đọc lại lệch) hay lần xoá qua WiFi hỏng — cân có thể khác tren_can. Máy trước 2.9.3: luôn false.';
 comment on column kho_may_can.chua_xac_nhan_tu is
-  'Lúc database thấy chua_xac_nhan bật lần đầu (0080); hết chưa xác nhận thì null.';
+  'Lúc database thấy chua_xac_nhan bật lần đầu (0085); hết chưa xác nhận thì null.';
 
 
 -- =============================================================================
@@ -107,7 +107,7 @@ begin
                        from (select ph from jsonb_array_elements(
                                case when jsonb_typeof(d -> 'phim') = 'array' then d -> 'phim' else '[]'::jsonb end) ph
                              where jsonb_typeof(ph) = 'string' limit 8) p8), '[]'::jsonb) as phim,
-             -- 0080: cân có thể đang khác dòng này — chỉ đúng true là bật.
+             -- 0085: cân có thể đang khác dòng này — chỉ đúng true là bật.
              coalesce(d -> 'chua_xac_nhan' = 'true'::jsonb, false) as chua_xac_nhan
       from jsonb_array_elements(p_bao -> 'tren_can') d
       where jsonb_typeof(d) = 'object'
@@ -126,7 +126,7 @@ begin
 
   v_nv := nhan_su_hien_tai();
   -- Hai lần báo cùng lúc (hai cửa sổ, gửi lại): ON CONFLICT ghi lần lượt, một dòng mỗi máy.
-  -- 0080: chua_xac_nhan — chỉ đúng true là bật; thiếu / sai kiểu (máy quầy trước 2.9.3) = false.
+  -- 0085: chua_xac_nhan — chỉ đúng true là bật; thiếu / sai kiểu (máy quầy trước 2.9.3) = false.
   v_cxn := coalesce(p_bao -> 'chua_xac_nhan' = 'true'::jsonb, false);
   insert into kho_may_can as m (chi_nhanh_id, ma_may, phien_ban, mac_can, bao_luc, nguoi, giu_ket_noi, can_tra_loi_luc,
                                 tu_gui, lech_so, lech_tu, gui_loi, gui_luc, tren_can, chua_xac_nhan, chua_xac_nhan_tu)
@@ -151,7 +151,7 @@ begin
     gui_luc         = greatest(excluded.gui_luc, m.gui_luc),
     tren_can        = case when v_tren is null then m.tren_can else excluded.tren_can end,
     chua_xac_nhan   = excluded.chua_xac_nhan,
-    -- 0080: còn chưa xác nhận thì giữ mốc bắt đầu; đã xác nhận thì xóa (như lech_tu).
+    -- 0085: còn chưa xác nhận thì giữ mốc bắt đầu; đã xác nhận thì xóa (như lech_tu).
     chua_xac_nhan_tu = case when excluded.chua_xac_nhan then coalesce(case when m.chua_xac_nhan then m.chua_xac_nhan_tu end, now()) end
   returning jsonb_array_length(m.tren_can) into v_so_o;
 
@@ -160,7 +160,7 @@ end;
 $$;
 
 comment on function kho_may_can_bao(uuid, uuid, jsonb) is
-  'Beeftown Cân ở máy quầy báo trạng thái (quyền xem, 0061; 0080 thêm chua_xac_nhan): phiên bản, MAC cân, cân trả lời cách đây bao nhiêu giây, tự gửi, số hàng lệch kho, tự gửi hỏng, gửi được cách đây bao nhiêu giây, lần gửi gần nhất cân chưa xác nhận, dòng ô mã đang trên cân (tren_can null = không đổi). Gọi lại bao nhiêu lần cũng một dòng mỗi máy. Trả {luc, so_o_tren_can}.';
+  'Beeftown Cân ở máy quầy báo trạng thái (quyền xem, 0061; 0085 thêm chua_xac_nhan): phiên bản, MAC cân, cân trả lời cách đây bao nhiêu giây, tự gửi, số hàng lệch kho, tự gửi hỏng, gửi được cách đây bao nhiêu giây, lần gửi gần nhất cân chưa xác nhận, dòng ô mã đang trên cân (tren_can null = không đổi). Gọi lại bao nhiêu lần cũng một dòng mỗi máy. Trả {luc, so_o_tren_can}.';
 
 
 -- =============================================================================
@@ -208,7 +208,7 @@ begin
       'quet', (select count(*) from quet q where q.ma_can = o.ma_can),
       'quet_kg', (select coalesce(sum(q.so_kg), 0) from quet q where q.ma_can = o.ma_can),
       'in', ti.so, 'in_kg', ti.kg,
-      -- 0080: kèm cờ chua_xac_nhan của dòng (máy báo cân có thể đang khác dòng đó) — trang không nói "Cân sẵn sàng" theo nó.
+      -- 0085: kèm cờ chua_xac_nhan của dòng (máy báo cân có thể đang khác dòng đó) — trang không nói "Cân sẵn sàng" theo nó.
       'tren_can', (select coalesce(jsonb_agg(jsonb_build_object('plu', e -> 'plu', 'ten', e -> 'ten', 'phim', e -> 'phim',
                                                                 'bao_luc', mc.bao_luc,
                                                                 'chua_xac_nhan', coalesce(e -> 'chua_xac_nhan' = 'true'::jsonb, false))
@@ -263,7 +263,7 @@ end;
 $$;
 
 comment on function kho_phien_pha_can(uuid) is
-  'Trang pha lóc (quyền pha_loc hoặc xem_gia, 0061; 0080 thêm chua_xac_nhan): mỗi ô của phiên — đang giữ không, trên cân (số PLU, tên, phím, dòng đó cân đã xác nhận chưa, theo từng máy quầy), số nhãn đã quét bằng mã ô, số tem cân in bằng mã ô từ lúc giao tới lúc chốt; nhãn mã thường của phần cắt có ô (phiên theo tảng); các máy quầy báo trong 14 ngày. Không tiền.';
+  'Trang pha lóc (quyền pha_loc hoặc xem_gia, 0061; 0085 thêm chua_xac_nhan): mỗi ô của phiên — đang giữ không, trên cân (số PLU, tên, phím, dòng đó cân đã xác nhận chưa, theo từng máy quầy), số nhãn đã quét bằng mã ô, số tem cân in bằng mã ô từ lúc giao tới lúc chốt; nhãn mã thường của phần cắt có ô (phiên theo tảng); các máy quầy báo trong 14 ngày. Không tiền.';
 
 
 -- =============================================================================
@@ -381,7 +381,7 @@ begin
         'may', (select coalesce(jsonb_agg(jsonb_build_object(
                           'bao_luc', mc.bao_luc, 'giu_ket_noi', mc.giu_ket_noi, 'can_tra_loi_luc', mc.can_tra_loi_luc,
                           'tu_gui', mc.tu_gui, 'lech_so', mc.lech_so, 'lech_tu', mc.lech_tu, 'gui_loi', mc.gui_loi,
-                          -- 0080: lần gửi gần nhất cân chưa xác nhận, từ lúc nào.
+                          -- 0085: lần gửi gần nhất cân chưa xác nhận, từ lúc nào.
                           'chua_xac_nhan', mc.chua_xac_nhan, 'chua_xac_nhan_tu', mc.chua_xac_nhan_tu)
                         order by mc.bao_luc), '[]'::jsonb)
                 from kho_may_can mc
@@ -435,7 +435,7 @@ end;
 $$;
 
 comment on function suc_khoe_so_lieu(uuid[], jsonb) is
-  'NỘI BỘ (0060, 0061 thêm ô can, 0063 cho_qua_han bỏ tin đặt bàn chưa xác nhận — máy gửi không lấy, 0074 thêm ô don_dep — đèn Dọn dữ liệu cá nhân, 0080 thêm chua_xac_nhan vào máy của ô can): số liệu bảng sức khỏe cho các chi nhánh ĐANG HOẠT ĐỘNG trong danh sách, không kiểm vai. p_lech: đối soát sổ kho đã có (null = quét). Chỉ gọi từ suc_khoe_he_thong() (chủ / quản lý) và bao_dong_bat_dau_luot() (máy báo động). Không ai đăng nhập gọi thẳng được.';
+  'NỘI BỘ (0060, 0061 thêm ô can, 0063 cho_qua_han bỏ tin đặt bàn chưa xác nhận — máy gửi không lấy, 0074 thêm ô don_dep — đèn Dọn dữ liệu cá nhân, 0085 thêm chua_xac_nhan vào máy của ô can): số liệu bảng sức khỏe cho các chi nhánh ĐANG HOẠT ĐỘNG trong danh sách, không kiểm vai. p_lech: đối soát sổ kho đã có (null = quét). Chỉ gọi từ suc_khoe_he_thong() (chủ / quản lý) và bao_dong_bat_dau_luot() (máy báo động). Không ai đăng nhập gọi thẳng được.';
 
 -- Hàm nội bộ: chỉ suc_khoe_he_thong() (chủ / quản lý) và bao_dong_bat_dau_luot() gọi — rút khỏi authenticated như 0061 mục 6.
 do $$
