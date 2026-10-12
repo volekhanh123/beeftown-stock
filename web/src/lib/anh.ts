@@ -332,7 +332,7 @@ export const DANH_MUC_ANH: Readonly<Record<IdAnh, MoTaAnh>> = {
     alt: {
       vi: 'Ly ade chanh dây, ly ade chanh có lát chanh vàng và ly nước cam đứng cạnh nhau.',
       en: 'A passion fruit ade, a lemon ade with lemon slices and a glass of orange juice, side by side.',
-      ko: '패션프루트 에이드, 레몬 슬라이스를 넣은 레몬 에이드, 오렌지 주스가 나란히 놓여 있어요.',
+      ko: '패션프루트에이드, 레몬 슬라이스를 넣은 레몬에이드, 오렌지 주스가 나란히 놓여 있어요.',
     },
   },
 };
