@@ -92,7 +92,7 @@ function quaMang(du: Uint8Array): Promise<Uint8Array> {
   return new Promise((xong, hong) => {
     const may = net.createServer((s) => {
       const phan: Buffer[] = [];
-      s.on('data', d => phan.push(d));
+      s.on('data', (d: Buffer) => phan.push(d));
       s.on('end', () => { s.end(); may.close(); xong(new Uint8Array(Buffer.concat(phan))); });
     });
     may.on('error', hong);

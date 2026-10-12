@@ -333,7 +333,9 @@ await nhom('7 · MÃ NGUỒN TRANG, MENU, HƯỚNG DẪN', async () => {
      && /href=\{TT\}>\{t\.traTien\}</.test(trang.ncc) && /\btraTien: \{ vi: 'Trả tiền'/.test(trang.ncc)
      && /\/hoa-don-gop`\}>\{t\.doiChieuGop\}</.test(trang.ncc) && /\bdoiChieuGop: \{ vi: 'Đối chiếu hóa đơn gộp'/.test(trang.ncc)
      && /\/doi-chieu`\}>\{t\.inBienBan\}</.test(trang.ncc) && /\binBienBan: \{ vi: 'In biên bản đối chiếu'/.test(trang.ncc)
-     && /doiTaiKhoanGanDay/.test(trang.ncc));
+     // Cảnh báo đổi tài khoản: qua docCanhBaoTaiKhoan (gọi doiTaiKhoanGanDay) + khối CanhBaoTaiKhoan, chung với màn Trả tiền.
+     && /docCanhBaoTaiKhoan\(/.test(trang.ncc) && /<CanhBaoTaiKhoan\b/.test(trang.ncc)
+     && /doiTaiKhoanGanDay\(await docNhatKyTaiKhoan\(/.test(readFileSync(join(GOC, 'web', 'src', 'lib', 'kho', 'cong-no.ts'), 'utf8')));
   ok('Phiếu trong hóa đơn gộp không có form đối chiếu lẻ', /p\.hoa_don_gop_id \? \(/.test(trang.ncc));
   ok('Biên bản in được: InDau, KyTen, NutIn', /<InDau /.test(trang.bb) && /<KyTen /.test(trang.bb) && /<NutIn /.test(trang.bb));
   ok('MISA: tải qua misa.csv, route có thật', /cong-no\/misa\.csv\?/.test(trang.misa) && existsSync(join(KHO, 'cong-no', 'misa.csv.ts')));

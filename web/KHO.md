@@ -708,7 +708,8 @@ còn nợ = phải trả − đã trả − giảm trừ không đổi và mọi
 `no_den_han_7_ngay`). Bù trừ bắt buộc ghi chú; NCC hoàn tiền chỉ chia vào phiếu đang âm, không vượt 0.
 Form Trả tiền: bảng chia có ô ẩn `pb<i>_goi_y` (số database gợi ý). Không ô nào khác gợi ý →
 `docFormTraTien` gửi `p_phan_bo` rỗng, database tự chia lại lúc ghi; sửa bất kỳ ô nào → gửi đủ phần chia,
-tổng phải bằng số tiền. Hàm cũ `kho_ghi_thanh_toan` / `ghiThanhToan` giữ nguyên (không trang nào gọi nữa).
+tổng phải bằng số tiền. Hàm database cũ `kho_ghi_thanh_toan` còn đó (không trang nào gọi nữa); hàm web v1
+`ghiThanhToan` / `docFormThanhToan` đã xóa 12/10/2026 — kiểm thử của nó chuyển sang `docFormTraTien`.
 
 **Hóa đơn gộp.** Web xếp phiếu theo ngày nhập rồi số phiếu và chia bằng `chiaSoDuLonNhat` — y như
 database; test so từng đồng với `kho_hoa_don_phieu`. Chỉ phiếu mua (không gộp nợ đầu kỳ), ≥ 2 phiếu.
