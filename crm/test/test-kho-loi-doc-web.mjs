@@ -97,11 +97,14 @@ await nhom('1 · docCongNoMotPhieu / docTenNcc: lỗi đọc ném, không thành
 await nhom('2 · docTenNccTrang: bốn trang NCC phân biệt "không có" và "chưa đọc được"', async () => {
   ok('cong-no.ts có docTenNccTrang', typeof congNo.docTenNccTrang === 'function');
   if (typeof congNo.docTenNccTrang !== 'function') return;
-  const loi = await congNo.docTenNccTrang(clientBang(() => ({ data: null, error: LOI_MANG })), U(2));
+  const loi = await congNo.docTenNccTrang(clientBang(() => ({ data: null, error: LOI_MANG })), U(2), { dangGui: true });
   ok('Lỗi mạng → không có ncc, câu báo "không đọc được", ok:false', loi.ncc === null && loi.bao?.ok === false
      && /Không đọc được nhà cung cấp/.test(loi.bao.cau), JSON.stringify(loi));
-  ok('… nói rõ chưa ghi gì (trang Trả tiền có thể đang gửi form)', /Chưa ghi gì/.test(loi.bao?.cau ?? ''));
+  ok('… đang gửi form (POST) → nói rõ chưa ghi gì', /Chưa ghi gì/.test(loi.bao?.cau ?? ''));
   ok('… có bản tiếng Anh', /Could not read this supplier/.test(loi.bao?.cauEn ?? '') && /Nothing was saved/.test(loi.bao?.cauEn ?? ''), loi.bao?.cauEn);
+  const loiXem = await congNo.docTenNccTrang(clientBang(() => ({ data: null, error: LOI_MANG })), U(2));
+  ok('… chỉ mở xem (GET) → không nói "chưa ghi gì" (không có gì để ghi)', /Không đọc được nhà cung cấp/.test(loiXem.bao?.cau ?? '')
+     && !/Chưa ghi gì/.test(loiXem.bao?.cau ?? '') && !/Nothing was saved/.test(loiXem.bao?.cauEn ?? ''), `${loiXem.bao?.cau} / ${loiXem.bao?.cauEn}`);
   const khong = await congNo.docTenNccTrang(clientBang(() => ({ data: null, error: null })), U(2));
   ok('Không có dòng → "Không tìm thấy nhà cung cấp này." (câu cũ, vi/en)', khong.ncc === null
      && khong.bao?.cau === 'Không tìm thấy nhà cung cấp này.' && khong.bao?.cauEn === 'This supplier was not found.', JSON.stringify(khong));
@@ -112,6 +115,7 @@ await nhom('2 · docTenNccTrang: bốn trang NCC phân biệt "không có" và "
   for (const trang of ['cong-no/[id].astro', 'cong-no/[id]/tra-tien.astro', 'cong-no/[id]/hoa-don-gop.astro', 'cong-no/[id]/doi-chieu.astro']) {
     const ma = doc(`pages/noi-bo/kho/${trang}`);
     ok(`${trang}: đọc NCC bằng docTenNccTrang (không gọi docTenNcc trần)`, /docTenNccTrang\(/.test(ma) && !/await docTenNcc\(/.test(ma));
+    ok(`${trang}: báo "chưa ghi gì" chỉ khi trang đang nhận form`, /dangGui: Astro\.request\.method === 'POST'/.test(ma));
   }
 });
 
@@ -213,6 +217,13 @@ await nhom('5 · docDonChoNhan: lỗi mạng không thành "không có đơn ch�
   const quyen = await datHang.docDonChoNhan(clientRpc(() => ({ data: null,
     error: { message: 'Tài khoản của bạn không xem được đơn đặt hàng ở chi nhánh này', code: '42501' } })), U(3));
   ok('Lỗi quyền (42501) → [] như cũ: vai này không nhận theo đơn', Array.isArray(quyen) && quyen.length === 0);
+  // Quyền hỏng vì migration (thu mất EXECUTE / grant bảng): KHÔNG phải "vai này không nhận theo đơn" → báo.
+  for (const [ten, loi] of [['mất EXECUTE', { message: 'permission denied for function kho_ds_don_dat_kg', code: '42501' }],
+                            ['mất grant bảng', { message: 'permission denied for table kho_don_dat', code: '42501' }]]) {
+    let nem = null;
+    try { await datHang.docDonChoNhan(clientRpc(() => ({ data: null, error: loi })), U(3)); } catch (e) { nem = e; }
+    ok(`Lỗi quyền lạ (${ten}) → ném (trang báo chưa đọc được), không giả là không có đơn`, nem !== null);
+  }
 
   const trang = doc('pages/noi-bo/kho/nhan-hang/moi.astro');
   ok('Màn nhận hàng bắt lỗi docDonChoNhan và báo, không im', /try\s*\{[^}]*docDonChoNhan/.test(trang) && /catch/.test(trang.slice(trang.indexOf('docDonChoNhan('))));
@@ -242,7 +253,9 @@ await nhom('6 · dongBoIpos: kết thúc lượt lỗi thì không báo xong', a
     };
   };
   const ENV = { IPOS_ACCESS_TOKEN: undefined };
-  const chay = s => iposDongBo.dongBoIpos({ supabase: s, chiNhanhId: U(5), nguon: 'cron', env: ENV, docMenu: false });
+  const cho = [];
+  const chay = s => iposDongBo.dongBoIpos({ supabase: s, chiNhanhId: U(5), nguon: 'cron', env: ENV, docMenu: false,
+    cho: async ms => { cho.push(ms); } });
 
   const tot = supaGia();
   const kqTot = await chay(tot);
@@ -252,6 +265,7 @@ await nhom('6 · dongBoIpos: kết thúc lượt lỗi thì không báo xong', a
   const kqMot = await chay(motLan);
   ok('kho_ipos_ket_thuc lỗi MỘT lần → gọi lại (hàm database gọi lại an toàn), ok:true',
      kqMot.ok === true && motLan.goi.filter(g => g.ten === 'kho_ipos_ket_thuc').length === 2, `${kqMot.cau} · ${motLan.goi.map(g => g.ten).join()}`);
+  ok('… chờ một chút trước khi gọi lại (mạng chập chờn một giây thì lần gọi ngay cũng hỏng)', cho.length === 1 && cho[0] >= 1000, cho.join());
 
   const hong = supaGia({ ketThucHong: 5 });
   const kqHong = await chay(hong);

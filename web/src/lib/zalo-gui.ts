@@ -258,27 +258,26 @@ async function motLuot(
    * Tin ĐÃ TỚI Zalo mà chưa ghi được "da_gui" (database lỗi hai lần liền). zalo_ket_thuc_luot trả
    * mọi tin chưa báo kết quả về hàng chờ → lượt sau gửi khách lần hai. Thử ghi lại cuối lượt, mỗi
    * lần sau một lúc chờ, TRƯỚC khi kết thúc lượt; gọi lại an toàn (tin đã ở trạng thái cuối → bo_qua).
+   * Nhiều nhất MỘT tin: vòng gửi dừng ngay ở tin đầu tiên không ghi được.
    */
-  const chuaGhi: { tin: TinLuot; thamSo: Record<string, unknown> }[] = [];
+  let chuaGhi: { tin: TinLuot; thamSo: Record<string, unknown> } | null = null;
+  /** Câu "dừng gửi" của chính vòng gửi — câu lỗi khác có trước (token chưa lưu…) thì giữ câu đó. */
+  let cauDung: string | null = null;
   const cho = phuThuoc.cho ?? ((ms: number) => new Promise<void>(xong => setTimeout(xong, ms)));
-  const tenTin = (ds: { tin: TinLuot }[]) => ds.map(x => x.tin.id.slice(0, 8)).join(', ');
   const ghiLaiCuoiLuot = async () => {
+    const x = chuaGhi;
+    if (!x) return;
     for (const ms of CHO_GHI_LAI_MS) {
-      if (!chuaGhi.length) return;
       await cho(ms);
-      for (const x of [...chuaGhi]) {
-        let loi: string | null;
-        try { loi = (await client.rpc('zalo_ghi_ket_qua', x.thamSo)).error?.message ?? null; }
-        catch (e) { loi = e instanceof Error ? e.message : String(e); }
-        if (loi) continue;
-        chuaGhi.splice(chuaGhi.indexOf(x), 1);
-        ghi(`đã ghi lại được kết quả tin ${x.tin.id.slice(0, 8)}`);
-      }
+      let loi: string | null;
+      try { loi = (await client.rpc('zalo_ghi_ket_qua', x.thamSo)).error?.message ?? null; }
+      catch (e) { loi = e instanceof Error ? e.message : String(e); }
+      if (!loi) { chuaGhi = null; ghi(`đã ghi lại được kết quả tin ${x.tin.id.slice(0, 8)}`); return; }
     }
-    if (chuaGhi.length) {
-      loiLuot = CAU_GUI.daToiChuaGhi.vi(tenTin(chuaGhi));
-      ghi(loiLuot);
-    }
+    const cau = CAU_GUI.daToiChuaGhi.vi(x.tin.id.slice(0, 8));
+    ghi(cau);
+    // Nặng hơn câu "dừng gửi" (khách có thể nhận hai lần), nhưng không đè lỗi khác có từ trước.
+    if (loiLuot === null || loiLuot === cauDung) loiLuot = cau;
   };
 
   const ketThuc = async () => {
@@ -309,7 +308,7 @@ async function motLuot(
     if (error) {
       ghi(`không ghi được kết quả tin ${tin.id.slice(0, 8)}: ${error.message}`);
       if (ketQua !== 'da_gui') return true;
-      chuaGhi.push({ tin, thamSo });
+      chuaGhi = { tin, thamSo };
       tom.da_gui++;               // đã tới Zalo — đếm như đã gửi, dù database chưa ghi
       return false;
     }
@@ -326,9 +325,14 @@ async function motLuot(
   // về hàng chờ 5 phút một lần, mỗi lần lan_thu + 1 — sau 25 phút mọi tin đến
   // hạn thành that_bai "Đã thử 5 lần mà không nhận được kết quả" (sai lý do,
   // và chủ không kịp dán lại token).
+  // Database chậm thì vòng này cũng dừng khi hết thời gian lượt: tin chưa báo về hàng chờ (thà mất một
+  // lần thử còn hơn Worker bị giết giữa chừng mà khóa lượt giữ 10 phút).
   const khongGuiLo = async (cau: string, thuLaiSau: number) => {
     loiLuot = cau;
-    for (const tin of lo) await ghiKetQua(tin, 'that_bai', { loi: CAU_GUI.chuaGui.vi(cau), thuLaiSau, chuaGui: true });
+    for (let i = 0; i < lo.length; i++) {
+      if (bayGio() > hetGioLuc) { tom.chua_gui += lo.length - i; break; }
+      await ghiKetQua(lo[i], 'that_bai', { loi: CAU_GUI.chuaGui.vi(cau), thuLaiSau, chuaGui: true });
+    }
   };
   /** Lỗi cần người làm (dán lại token, sửa bí mật) → hẹn 1 giờ; lỗi tạm → như lỗi mạng. */
   const HEN_CAN_NGUOI = XU_LY_LOI.cau_hinh.thuLaiSau ?? 3600;
@@ -405,16 +409,17 @@ async function motLuot(
     let dung: { loi: string; thuLaiSau: number | null } | null = null;
     for (let i = 0; i < lo.length; i++) {
       const tin = lo[i];
+      if (bayGio() > hetGioLuc) {
+        // Không báo kết quả: zalo_ket_thuc_luot trả tin về hàng chờ. Cả khi lượt đã dừng vì lỗi
+        // chung — database chậm thì vòng ghi "Chưa gửi" cũng không được kéo quá thời gian lượt.
+        loiLuot = loiLuot ?? CAU_GUI.hetGio.vi;
+        tom.chua_gui += lo.length - i;
+        break;
+      }
       if (dung) {
         // Lỗi chung (hết quota, token hỏng, App sai…) — không gọi Zalo nữa, hẹn lượt sau.
         await ghiKetQua(tin, 'that_bai', { loi: CAU_GUI.chuaGui.vi(dung.loi), thuLaiSau: dung.thuLaiSau, chuaGui: true });
         continue;
-      }
-      if (bayGio() > hetGioLuc) {
-        // Không báo kết quả: zalo_ket_thuc_luot trả tin về hàng chờ.
-        loiLuot = loiLuot ?? CAU_GUI.hetGio.vi;
-        tom.chua_gui += lo.length - i;
-        break;
       }
       const sdt84 = sdtZalo(tin.sdt);
       if (!sdt84) { await ghiKetQua(tin, 'bi_tu_choi', { loi: CAU_GUI.sdtSai.vi }); continue; }
@@ -436,7 +441,8 @@ async function motLuot(
         if (!daGhi) {
           // Database đang không ghi được: mỗi tin gửi thêm là thêm một tin có thể tới khách
           // hai lần. Dừng lượt; tin còn lại không báo kết quả → về hàng chờ, lượt sau gửi.
-          loiLuot = CAU_GUI.dungChuaGhi.vi(tin.id.slice(0, 8));
+          cauDung = CAU_GUI.dungChuaGhi.vi(tin.id.slice(0, 8));
+          loiLuot = loiLuot ?? cauDung;
           tom.chua_gui += lo.length - i - 1;
           break;
         }

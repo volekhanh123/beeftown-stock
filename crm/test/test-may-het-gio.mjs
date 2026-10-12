@@ -184,6 +184,28 @@ await nhom('3 · taoPhienMayNho: dùng lại tới 2 phút trước khi hết h�
   await c.dangNhap({ ...T, email: 'khac@b' }, bay);
   await c.dangNhap(T, bay);
   ok('Đổi email máy → không dùng phiên của email cũ', dangNhap === 6);
+
+  // Hai webhook tới cùng lúc khi chưa có phiên (hoặc phiên sắp hết): một lần đăng nhập, không phiên mồ côi.
+  let dnCham = 0, dxCham = 0;
+  const cham = () => ({ auth: {
+    // Phiên mới hết hạn sau phiên trước một giờ — như Supabase thật cấp phiên mới.
+    signInWithPassword: async () => { dnCham++; await new Promise(x => setTimeout(x, 30));
+      return { data: { session: { access_token: 'x', expires_at: het + (dnCham - 1) * 3600 } }, error: null }; },
+    signOut: async () => { dxCham++; return { error: null }; } } });
+  const d = may.taoPhienMayNho();
+  const Tc = { ...T, taoClient: cham };
+  const [x1, x2, x3] = await Promise.all([d.dangNhap(Tc, bay), d.dangNhap(Tc, bay), d.dangNhap(Tc, bay)]);
+  ok('Ba lời gọi đồng thời → đăng nhập đúng một lần, cùng một client', dnCham === 1 && x1.ok && x2.ok && x3.ok
+     && x1.client === x2.client && x2.client === x3.client, `đăng nhập ${dnCham} lần`);
+  await Promise.all([d.dangNhap(Tc, het * 1000 - 60_000), d.dangNhap(Tc, het * 1000 - 60_000)]);
+  ok('Phiên sắp hết, hai lời gọi đồng thời → đăng xuất phiên cũ một lần, đăng nhập lại một lần', dnCham === 2 && dxCham === 1,
+     `đăng nhập ${dnCham}, đăng xuất ${dxCham}`);
+  const hong = may.taoPhienMayNho();
+  let dnHong = 0;
+  const Th = { ...T, taoClient: () => ({ auth: { signInWithPassword: async () => { dnHong++; await new Promise(x => setTimeout(x, 10));
+    return { data: { session: null }, error: { message: 'Invalid login credentials' } }; }, signOut: async () => ({}) } }) };
+  const [h1, h2] = await Promise.all([hong.dangNhap(Th, bay), hong.dangNhap(Th, bay)]);
+  ok('Đăng nhập hỏng → mọi lời gọi đang chờ đều nhận lỗi, lần sau thử lại', !h1.ok && !h2.ok && (await hong.dangNhap(Th, bay), dnHong >= 2));
 });
 
 // ===========================================================================
@@ -259,6 +281,39 @@ await nhom('6 · Messenger: Supabase treo không ăn hết thời gian waitUntil
     ok(`${ten}: log nói rõ hết giờ`, mau.test(log.join(' | ')), log.join(' | '));
     ok(`${ten}: không lộ mật khẩu máy`, !log.join().includes(MAT_KHAU));
   }
+  // Lô nhiều tin khi database đang hỏng: báo khách TRƯỚC khi đếm sự kiện, tin sau trong lô không gọi
+  // database nữa — mỗi lời gọi 8 giây cộng dồn qua cả lô sẽ quá ~30 giây của waitUntil (rà soát).
+  mess.quenTrangThaiMess?.();
+  const dongThoiGian = [];
+  const mayClient = (rpcTra) => ({
+    rpc: async (ten) => { dongThoiGian.push(`db:${ten}`); return rpcTra(ten); },
+    auth: { signInWithPassword: async () => ({ data: { session: { access_token: 'x' } }, error: null }), signOut: async () => ({ error: null }) },
+  });
+  const metaGhi = async (url, init) => { dongThoiGian.push(`meta:${JSON.parse(init.body).recipient?.id}`); return new Response('{"recipient_id":"1"}', { status: 200 }); };
+  const goi = async (body, client) => {
+    const raw2 = JSON.stringify(body);
+    const cho2 = [];
+    await mess.xuLyHookMessenger(new Request('https://beeftown.vn/hook/messenger', { method: 'POST', body: raw2, headers: {
+      'content-type': 'application/json', 'x-hub-signature-256': 'sha256=' + createHmac('sha256', APP_SECRET).update(raw2).digest('hex') } }),
+      { env: MESS_ENV, ctx: { waitUntil: p => cho2.push(p) }, taoClientMay: () => client, taoClientAnon: () => null, fetchFn: metaGhi,
+        nhoPhien: false, ghiLog: () => {} });
+    await Promise.all(cho2);
+  };
+  const tinKhach = (psid) => ({ sender: { id: psid }, recipient: { id: 'PAGE' }, timestamp: 1, message: { mid: `m.${psid}`, text: 'hi' } });
+  // Lượt 1: database trả lời — bot đang bật (nhân viên đang trực nên bot im) → isolate biết bot bật.
+  await goi({ object: 'page', entry: [{ id: 'PAGE', time: 1, messaging: [tinKhach('8001')] }] },
+    mayClient(ten => (ten === 'mess_lay_phien' ? { data: { dang_bat: true, phien: { dang_tam_dung: true } }, error: null } : { data: null, error: null })));
+  dongThoiGian.length = 0;
+  // Lượt 2: hai khách trong một lô, database hết giờ ở mọi lời gọi.
+  await goi({ object: 'page', entry: [{ id: 'PAGE', time: 1, messaging: [tinKhach('8002'), tinKhach('8003')] }] },
+    mayClient(() => ({ data: null, error: { message: 'Error: quá 8 giây không trả lời', code: '' } })));
+  const db = dongThoiGian.filter(x => x.startsWith('db:'));
+  ok('Lô hai tin, database hỏng: cả hai khách được báo "đang trục trặc"', dongThoiGian.includes('meta:8002') && dongThoiGian.includes('meta:8003'),
+     dongThoiGian.join(' → '));
+  ok('… báo khách TRƯỚC khi đếm sự kiện lỗi', dongThoiGian.indexOf('meta:8002') < dongThoiGian.indexOf('db:mess_ghi_su_kien'),
+     dongThoiGian.join(' → '));
+  ok('… tin thứ hai không gọi database nữa (đúng một mess_lay_phien cả lô)', db.filter(x => x === 'db:mess_lay_phien').length === 1, db.join(', '));
+
   ok('Hạn giờ Messenger ngắn hơn 30 giây waitUntil (HET_GIO_SUPABASE_MESS_MS ≤ 10 giây)',
      Number(mess.HET_GIO_SUPABASE_MESS_MS) > 0 && Number(mess.HET_GIO_SUPABASE_MESS_MS) <= 10_000);
 });

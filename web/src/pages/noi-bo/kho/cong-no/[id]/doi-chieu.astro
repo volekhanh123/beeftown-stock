@@ -32,7 +32,7 @@ if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const nn = k.nn;
 const cn = k.chiNhanh;
 // Không có → "Không tìm thấy"; đọc lỗi → "Không đọc được… Chưa ghi gì".
-const docNcc = await docTenNccTrang(k.client, Astro.params.id ?? '');
+const docNcc = await docTenNccTrang(k.client, Astro.params.id ?? '', { dangGui: Astro.request.method === 'POST' });
 if (!docNcc.ncc) return chuyenHuong(Astro, '/noi-bo/kho/cong-no', docNcc.bao);
 const ncc = docNcc.ncc;
 const homNay = homNayVn();

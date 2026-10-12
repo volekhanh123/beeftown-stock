@@ -28,9 +28,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { layBienCong, type Env } from './bien-moi-truong.ts';
 
-/** Hạn giờ mặc định của một lời gọi Supabase từ tài khoản máy (ms). */
-export const HET_GIO_GOI_MAY_MS = 20_000;
-
 /**
  * fetch có hạn giờ: mỗi lời gọi tối đa goiMs, và không quá hạn chót của lượt (tối thiểu 1 giây,
  * để lời gọi sau hạn chót hỏng nhanh thay vì treo). Giữ tín hiệu hủy của người gọi nếu có.
@@ -67,8 +64,8 @@ export interface ThamSoDangNhapMay {
   taoClient?: () => SupabaseClient;
   /** fetch gốc đi Supabase (test: fetch giả). Mặc định fetch toàn cục. */
   fetchGoc?: typeof fetch;
-  /** Hạn giờ mỗi lời gọi (ms). Mặc định HET_GIO_GOI_MAY_MS. */
-  goiMs?: number;
+  /** Hạn giờ mỗi lời gọi (ms) — mỗi việc khai hằng của mình (HET_GIO_SUPABASE_ZALO_MS…). */
+  goiMs: number;
   /** Hạn chót của cả lượt (ms theo đồng hồ bayGio). Mặc định không có — chỉ hạn từng lời gọi. */
   hanChot?: () => number;
   bayGio?: () => number;
@@ -92,7 +89,7 @@ export async function dangNhapMay(t: ThamSoDangNhapMay): Promise<KetQuaDangNhapM
     const goc: typeof fetch = t.fetchGoc ?? ((input, init) => fetch(input, init));
     client = createClient(url, anon, {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-      global: { fetch: taoFetchCoHan(goc, t.hanChot ?? (() => Infinity), t.goiMs ?? HET_GIO_GOI_MAY_MS, t.bayGio) },
+      global: { fetch: taoFetchCoHan(goc, t.hanChot ?? (() => Infinity), t.goiMs, t.bayGio) },
     });
   }
   let hetLuc: number | undefined;
@@ -123,25 +120,45 @@ export interface PhienMayNho {
   quen(): void;
 }
 
-/** Một bộ nhớ phiên cho MỘT việc (gọi một lần ở đầu module của việc đó). */
+/**
+ * Một bộ nhớ phiên cho MỘT việc (gọi một lần ở đầu module của việc đó). Nhiều lời gọi cùng lúc
+ * (webhook tới dồn) khi chưa có phiên dùng được thì chờ chung MỘT lần đăng nhập — không mỗi lời
+ * gọi một phiên, không phiên nào bị ghi đè mà không đăng xuất.
+ */
 export function taoPhienMayNho(): PhienMayNho {
   let nho: { email: string; client: SupabaseClient; hetLuc: number } | null = null;
+  let dangChay: Promise<unknown> | null = null;
   const khongLam = async () => { /* phiên còn dùng lại — không đăng xuất */ };
+  const dungLai = (t: ThamSoDangNhapMay, bayGio: number): KetQuaDangNhapMay | null =>
+    (nho && nho.email === t.email && nho.hetLuc - NHO_TRUOC_HET_MS > bayGio
+      ? { ok: true, client: nho.client, dangXuat: khongLam, hetLuc: nho.hetLuc } : null);
+  const dangNhapMoi = async (t: ThamSoDangNhapMay): Promise<KetQuaDangNhapMay> => {
+    const cu = nho;
+    nho = null;
+    if (cu) { try { await cu.client.auth.signOut({ scope: 'local' }); } catch { /* bỏ qua */ } }
+    const dn = await dangNhapMay(t);
+    if (!dn.ok) return dn;
+    // Không biết hạn phiên → không nhớ, dùng một lần rồi đăng xuất như thường.
+    if (!dn.hetLuc || !t.email) return dn;
+    nho = { email: t.email, client: dn.client, hetLuc: dn.hetLuc };
+    return { ...dn, dangXuat: khongLam };
+  };
   return {
     quen() { nho = null; },
     async dangNhap(t, bayGio = Date.now()) {
-      if (nho && nho.email === t.email && nho.hetLuc - NHO_TRUOC_HET_MS > bayGio) {
-        return { ok: true, client: nho.client, dangXuat: khongLam, hetLuc: nho.hetLuc };
+      const co = dungLai(t, bayGio);
+      if (co) return co;
+      // Có lần đăng nhập đang chạy → chờ nó xong rồi xét lại phiên nhớ (đăng nhập hỏng / không nhớ
+      // được thì tự đăng nhập — client không nhớ là của riêng người gọi, người gọi tự đăng xuất).
+      while (dangChay) {
+        await dangChay;
+        const sau = dungLai(t, bayGio);
+        if (sau) return sau;
       }
-      const cu = nho;
-      nho = null;
-      if (cu) { try { await cu.client.auth.signOut({ scope: 'local' }); } catch { /* bỏ qua */ } }
-      const dn = await dangNhapMay(t);
-      if (!dn.ok) return dn;
-      // Không biết hạn phiên → không nhớ, dùng một lần rồi đăng xuất như thường.
-      if (!dn.hetLuc || !t.email) return dn;
-      nho = { email: t.email, client: dn.client, hetLuc: dn.hetLuc };
-      return { ...dn, dangXuat: khongLam };
+      const p = dangNhapMoi(t);
+      const xong = p.then(() => undefined, () => undefined);
+      dangChay = xong;
+      try { return await p; } finally { if (dangChay === xong) dangChay = null; }
     },
   };
 }

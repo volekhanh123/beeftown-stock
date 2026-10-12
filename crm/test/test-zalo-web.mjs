@@ -525,6 +525,33 @@ await nhom('9b · TIN ĐÃ TỚI ZALO MÀ GHI "da_gui" HỎNG: DỪNG GỬI TI�
      /m1 đã tới Zalo nhưng chưa ghi được/.test(logHong.join()) && /có thể bị gửi lần hai/.test(hong.rpc('zalo_ket_thuc_luot')[0]?.ts.p_loi ?? ''),
      `${logHong.join(' | ')} · ${hong.rpc('zalo_ket_thuc_luot')[0]?.ts.p_loi}`);
 
+  // Lỗi lượt quan trọng hơn có từ trước (token mới chưa lưu được) không bị câu "dừng gửi" ghi đè.
+  const tk = dungGia({ batDau: await luot([tin('p1'), tin('p2')], { hetPhut: 10 }), rpcLoi: { zalo_luu_token: 2, zalo_ghi_ket_qua: 2 } });
+  const logTk = await chay(tk, ENV, { cho: choGia });
+  ok('Token mới chưa lưu được + ghi da_gui hỏng → loi_cuoi vẫn là câu token chưa lưu (chủ phải dán lại)',
+     /không lưu được/.test(tk.rpc('zalo_ket_thuc_luot')[0]?.ts.p_loi ?? ''), `${tk.rpc('zalo_ket_thuc_luot')[0]?.ts.p_loi} · ${logTk.join(' | ')}`);
+
+  // Database chậm khi không gửi được tin nào (chưa có token): vòng ghi "Chưa gửi" cũng dừng khi hết thời
+  // gian của lượt — 50 tin × 2 lần × 20 giây sẽ quá giới hạn của cron, Worker bị giết trước khi nhả khóa.
+  let dongHo = BAY_GIO;
+  const cham = dungGia({ batDau: await luot([tin('q1'), tin('q2'), tin('q3'), tin('q4'), tin('q5')], { refresh: null }) });
+  const rpcCham = cham.client.rpc;
+  cham.client.rpc = async (ten, ts) => { if (ten === 'zalo_ghi_ket_qua') dongHo += 100_000; return rpcCham(ten, ts); };
+  const logCham = await guiZaloTatCa(ENV, { taoClient: () => cham.client, fetchFn: cham.fetchFn, ghiLog: () => {}, bayGio: () => dongHo,
+    thoiGianToiDaMs: 150_000, cho: choGia });
+  ok('Chưa có token, database chậm → ngừng ghi "Chưa gửi" khi hết thời gian lượt, vẫn kết thúc lượt',
+     cham.rpc('zalo_ghi_ket_qua').length < 5 && cham.rpc('zalo_ket_thuc_luot').length === 1, `${cham.rpc('zalo_ghi_ket_qua').length} lần ghi · ${logCham.join(' | ')}`);
+  const dungCham = dungGia({ batDau: await luot([tin('r1'), tin('r2'), tin('r3'), tin('r4'), tin('r5')]),
+    gui: () => ({ error: -144, message: 'quota exceeded' }) });
+  let dongHo2 = BAY_GIO;
+  const rpcDung = dungCham.client.rpc;
+  dungCham.client.rpc = async (ten, ts) => { if (ten === 'zalo_ghi_ket_qua') dongHo2 += 100_000; return rpcDung(ten, ts); };
+  await guiZaloTatCa(ENV, { taoClient: () => dungCham.client, fetchFn: dungCham.fetchFn, ghiLog: () => {}, bayGio: () => dongHo2,
+    thoiGianToiDaMs: 150_000, cho: choGia });
+  ok('Lượt đã dừng (lỗi chung), database chậm → ngừng ghi "Chưa gửi" cho tin còn lại khi hết thời gian lượt',
+     dungCham.fetch().length === 1 && dungCham.rpc('zalo_ghi_ket_qua').length < 5 && dungCham.rpc('zalo_ket_thuc_luot').length === 1,
+     `${dungCham.fetch().length} lần gửi · ${dungCham.rpc('zalo_ghi_ket_qua').length} lần ghi`);
+
   // Ghi "that_bai" / "bi_tu_choi" hỏng thì KHÔNG dừng: tin đó chưa tới khách, gửi lại không thành tin đôi.
   const tc = dungGia({ batDau: await luot([tin('n1', { sdt: '123' }), tin('n2')]), rpcLoi: { zalo_ghi_ket_qua: 2 } });
   await chay(tc, ENV, { cho: choGia });

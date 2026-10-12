@@ -186,6 +186,8 @@ export interface ThamSoDongBo {
   fetchFn?: typeof fetch;
   /** Ép đọc thực đơn (mặc định: bấm tay, iPOS báo đổi, hoặc quá MENU_MOI_PHUT). */
   docMenu?: boolean;
+  /** Chờ ms (test: không chờ thật). */
+  cho?: (ms: number) => Promise<void>;
 }
 
 /** Thực đơn cũ hơn chừng này (phút) thì lượt cron đọc lại. */
@@ -310,15 +312,21 @@ function dichChiTietLoi(s: string): string {
   return dichCau('en', s);
 }
 
+/** Chờ trước khi gọi lại kho_ipos_ket_thuc (ms) — mạng chập chờn một giây thì gọi ngay cũng hỏng. */
+const CHO_KET_THUC_LAI_MS = 1_500;
+
 /**
- * Kết thúc lượt (kho_ipos_ket_thuc): nhả khóa, ghi nhật ký, đèn iPOS. Hỏng thì gọi lại MỘT lần —
- * hàm database gọi lại an toàn (lượt đã kết thúc thì trả da_co). Không bao giờ ném lỗi.
+ * Kết thúc lượt (kho_ipos_ket_thuc): nhả khóa, ghi nhật ký, đèn iPOS. Hỏng thì chờ một chút rồi gọi
+ * lại MỘT lần — hàm database gọi lại an toàn (lượt đã kết thúc thì trả da_co). Không bao giờ ném lỗi.
  * Trả câu lỗi (đã xóa token); null = đã ghi. Hỏng hẳn thì khóa lượt giữ tới khi database tự coi
  * lượt là hỏng (10 phút) và nhật ký không có lượt này — nơi gọi KHÔNG được báo xong.
  */
-async function ketThucLuot(supabase: SupabaseClient, lanId: string, loi: string | null, token: string | undefined): Promise<string | null> {
+async function ketThucLuot(
+  supabase: SupabaseClient, lanId: string, loi: string | null, token: string | undefined, cho: (ms: number) => Promise<void>,
+): Promise<string | null> {
   let cuoi = '';
   for (let lan = 0; lan < 2; lan++) {
+    if (lan > 0) await cho(CHO_KET_THUC_LAI_MS);
     try {
       const { error } = await supabase.rpc('kho_ipos_ket_thuc', { p_lan_id: lanId, p_loi: loi });
       if (!error) return null;
@@ -334,9 +342,10 @@ async function ketThucLuot(supabase: SupabaseClient, lanId: string, loi: string 
  * Một lượt cho một chi nhánh. Không bao giờ ném lỗi: mọi lỗi thành
  * `{ ok: false, cau }` với câu đã xóa token.
  */
-export async function dongBoIpos({ supabase, chiNhanhId, nguon, env, fetchFn, docMenu }: ThamSoDongBo): Promise<KetQuaDongBo> {
+export async function dongBoIpos({ supabase, chiNhanhId, nguon, env, fetchFn, docMenu, cho }: ThamSoDongBo): Promise<KetQuaDongBo> {
   const { token } = await layBiMatIpos(env);
   const goi = fetchFn ?? fetch;
+  const choMs = cho ?? ((ms: number) => new Promise<void>(xong => setTimeout(xong, ms)));
 
   let lanId: string | undefined;
   try {
@@ -401,7 +410,7 @@ export async function dongBoIpos({ supabase, chiNhanhId, nguon, env, fetchFn, do
       }
     }
 
-    const loiKetThuc = await ketThucLuot(supabase, lanId, loi, token);
+    const loiKetThuc = await ketThucLuot(supabase, lanId, loi, token, choMs);
     lanId = undefined;   // đã kết thúc (hoặc đã thử hai lần) — nhánh catch không gọi lại
     let cau = loi ? `${cauTomTat(tomTat, null)} ${loi}` : cauTomTat(tomTat, menu);
     let cauEn = loi ? `${cauTomTat(tomTat, null, 'en')} ${loiEn}` : cauTomTat(tomTat, menu, 'en');
@@ -417,7 +426,7 @@ export async function dongBoIpos({ supabase, chiNhanhId, nguon, env, fetchFn, do
     const cau = xoaToken(CAU_LUOT.dongBo.vi(ct.vi), token);
     const cauEn = xoaToken(CAU_LUOT.dongBo.en(ct.en), token);
     // Kết thúc hỏng nữa thì database tự coi lượt là hỏng sau 10 phút — câu đã là câu lỗi.
-    if (lanId) await ketThucLuot(supabase, lanId, cau.slice(0, 300), token);
+    if (lanId) await ketThucLuot(supabase, lanId, cau.slice(0, 300), token, choMs);
     return { ok: false, cau, cauEn };
   }
 }

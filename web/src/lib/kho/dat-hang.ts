@@ -508,17 +508,18 @@ export async function docDsDonDat(
 
 /**
  * Đơn đang chờ hàng về (đã gửi / nhận một phần) — cho màn nhận hàng. Vai không xem được đơn
- * (database từ chối quyền, 42501) → rỗng: vai đó không nhận theo đơn. Lỗi khác (mạng, hết giờ,
- * database) → NÉM: "không đọc được" khác "không có đơn chờ" — trang phải nói ra, kẻo thủ kho
- * nhận hàng không gắn đơn.
+ * (đúng câu từ chối của kho_ds_don_dat_kg) → rỗng: vai đó không nhận theo đơn. Lỗi khác — mạng,
+ * hết giờ, database, cả quyền hỏng vì migration ("permission denied for function…") → NÉM:
+ * "không đọc được" khác "không có đơn chờ" — trang phải nói ra, kẻo thủ kho nhận hàng không gắn đơn.
  */
 export async function docDonChoNhan(client: SupabaseClient, chiNhanhId: string): Promise<DonDatTom[]> {
   try {
     return await docDsDonDat(client, chiNhanhId, 'dang_cho',
       { q: '', tu: null, den: null, cuaToi: false, trang: 1 }, { gioiHan: 30 });
   } catch (e) {
-    const loi = e as { code?: unknown; message?: unknown } | null;
-    if (loi?.code === '42501' || /permission denied|insufficient_privilege/i.test(String(loi?.message ?? ''))) return [];
+    // So trên chữ đã bỏ dấu (như docDonDat): file thư viện không giữ câu tiếng Việt ngoài cặp { vi, en }.
+    const cau = boDau(String((e as { message?: unknown } | null)?.message ?? ''));
+    if (/Tai khoan cua ban khong xem duoc don dat hang/.test(cau)) return [];
     throw e;
   }
 }

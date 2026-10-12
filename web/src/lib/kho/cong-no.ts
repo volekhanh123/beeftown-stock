@@ -49,6 +49,10 @@ const CAU = {
   },
   khongThayNcc: { vi: 'Không tìm thấy nhà cung cấp này.', en: 'This supplier was not found.' },
   docNccLoi: {
+    vi: 'Không đọc được nhà cung cấp này — mạng hoặc database đang trục trặc. Mở lại nhà cung cấp để thử lại.',
+    en: 'Could not read this supplier — the connection or the database is having trouble. Open the supplier again to retry.',
+  },
+  docNccLoiGui: {
     vi: 'Không đọc được nhà cung cấp này — mạng hoặc database đang trục trặc. Chưa ghi gì; mở lại nhà cung cấp để thử lại.',
     en: 'Could not read this supplier — the connection or the database is having trouble. Nothing was saved; open the supplier again to retry.',
   },
@@ -345,16 +349,17 @@ export async function docTenNcc(client: SupabaseClient, nccId: string): Promise<
 
 /**
  * Đầu các trang /cong-no/<ncc>: có NCC → { ncc }; không có → câu "Không tìm thấy…"; đọc lỗi →
- * câu "Không đọc được… Chưa ghi gì" (trang chuyển về danh sách công nợ với câu đó). Không ném.
+ * câu "Không đọc được…" (trang chuyển về danh sách công nợ với câu đó). Đang nhận form
+ * (dangGui) thì câu nói thêm "Chưa ghi gì" — form đó chưa được ghi. Không ném.
  */
 export async function docTenNccTrang(
-  client: SupabaseClient, nccId: string,
+  client: SupabaseClient, nccId: string, o: { dangGui?: boolean } = {},
 ): Promise<{ ncc: NccCongNo; bao?: undefined } | { ncc: null; bao: KetQua }> {
   try {
     const ncc = await docTenNcc(client, nccId);
     return ncc ? { ncc } : { ncc: null, bao: kqHai(false, CAU.khongThayNcc) };
   } catch {
-    return { ncc: null, bao: kqHai(false, CAU.docNccLoi) };
+    return { ncc: null, bao: kqHai(false, o.dangGui ? CAU.docNccLoiGui : CAU.docNccLoi) };
   }
 }
 
@@ -1033,7 +1038,7 @@ export const CHIP_CONG_NO_NB = {
   chua_doi_chieu: { vi: 'Chưa đối chiếu', en: 'Not reconciled' },
   gop: { vi: 'Có hóa đơn gộp', en: 'Combined invoice' },
 } as const satisfies Record<string, HaiThuTieng>;
-/** Bản chỉ tiếng Việt, cùng kiểu với trước ({ readonly qua_han: 'Quá hạn', … }). */
+/** Mã một chip lọc công nợ (khóa của CHIP_CONG_NO_NB). */
 export type ChipCongNo = keyof typeof CHIP_CONG_NO_NB;
 
 export function docChipCongNo(v: string | null): ChipCongNo | '' {

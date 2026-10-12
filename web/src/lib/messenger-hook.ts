@@ -322,8 +322,13 @@ async function xuLyCacSuKien(ds: SuKien[], bm: BiMatMess, pt: PhuThuocMess, ghi:
     return;
   }
   try {
+    // Database đã hỏng ở một tin trong lô → các tin sau chỉ báo khách "đang trục trặc", không gọi
+    // database nữa: mỗi lời gọi chờ tới HET_GIO_SUPABASE_MESS_MS, cộng dồn qua cả lô sẽ quá thời gian
+    // waitUntil còn lại và khách cuối lô không được trả lời gì.
+    let dbHong = false;
     for (const sk of ds) {
-      try { await motSuKien(sk, dn.client, bm, pt, ghi); }
+      if (dbHong) { await baoTrucTrac(sk, bm, pt, ghi); continue; }
+      try { dbHong = (await motSuKien(sk, dn.client, bm, pt, ghi)) === 'db_hong'; }
       catch (e) {
         if (nho) quenPhienMayMess();
         ghi(`lỗi xử lý sự kiện: ${e instanceof Error ? e.message : String(e)}`);
@@ -342,7 +347,10 @@ interface KetQuaLayPhien {
   } | null;
 }
 
-async function motSuKien(sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: PhuThuocMess, ghi: (c: string) => void): Promise<void> {
+/** Một sự kiện. Trả 'db_hong' khi database không đọc được phiên (lô bỏ gọi database cho tin sau). */
+async function motSuKien(
+  sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: PhuThuocMess, ghi: (c: string) => void,
+): Promise<'db_hong' | void> {
   const fetchFn = pt.fetchFn ?? fetch;
   const psidBam = await bamPsid(sk.psid, bm.khoaBam!);
   const demSuKien = async (loai: LoaiDem, loi: string | null = null) => {
@@ -369,9 +377,10 @@ async function motSuKien(sk: SuKien, may: SupabaseClient, bm: BiMatMess, pt: Phu
   const { data, error } = await may.rpc('mess_lay_phien', { p_psid_bam: psidBam });
   if (error) {
     ghi(`không đọc được phiên: ${error.message}`);
-    await demSuKien('loi', `mess_lay_phien: ${error.message}`);
+    // Báo khách TRƯỚC: đếm sự kiện cũng là một lời gọi database đang hỏng (có thể chờ hết hạn giờ).
     await baoTrucTrac(sk, bm, pt, ghi);
-    return;
+    await demSuKien('loi', `mess_lay_phien: ${error.message}`);
+    return 'db_hong';
   }
   const lp = (data ?? {}) as KetQuaLayPhien;
   const phut = Number.isInteger(lp.phut_tam_dung) && Number(lp.phut_tam_dung) > 0 ? Number(lp.phut_tam_dung) : 60;

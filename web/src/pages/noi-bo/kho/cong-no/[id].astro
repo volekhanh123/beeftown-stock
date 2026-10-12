@@ -61,7 +61,7 @@ const cn = k.chiNhanh;
 const nccId = Astro.params.id ?? '';
 
 // Không có NCC → "Không tìm thấy"; đọc lỗi → "Không đọc được… Chưa ghi gì" (không giả là không có).
-const docNcc = await docTenNccTrang(k.client, nccId);
+const docNcc = await docTenNccTrang(k.client, nccId, { dangGui: Astro.request.method === 'POST' });
 if (!docNcc.ncc) return chuyenHuong(Astro, '/noi-bo/kho/cong-no', docNcc.bao);
 const ncc = docNcc.ncc;
 
