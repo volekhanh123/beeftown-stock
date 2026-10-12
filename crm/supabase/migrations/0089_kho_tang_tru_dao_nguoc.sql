@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN KHO — 0087 · SỐ CỦA TẢNG TRỪ DÒNG ĐẢO NGƯỢC
+-- BEEFTOWN KHO — 0089 · SỐ CỦA TẢNG TRỪ DÒNG ĐẢO NGƯỢC
 -- =============================================================================
 -- LỖI (thấy ngày 11/10/2026 khi soát luồng trên máy chạy thử): trang truy vết
 -- tảng #0001 ghi "Đã bán 3,342 kg" trong khi sổ ròng là 2,119 kg; thịt 15,228 ≠
@@ -28,7 +28,7 @@
 --   phải dòng đảo và chưa bị dòng nào đảo.
 --
 -- THAY THÂN (cùng chữ ký, cùng cột trả về, cùng chỗ kiểm quyền) — chép nguyên
--- văn, chỗ đổi ghi 0087:
+-- văn, chỗ đổi ghi 0089:
 --   kho_bao_cao_tang, kho_truy_vet_tang — chép 0050.
 --   kho_can_o_ma, kho_bao_cao_ban_gio   — chép 0054.
 -- Không bảng, cột, hàm mới. Không đổi quyền: create or replace giữ nguyên quyền
@@ -45,7 +45,7 @@
 --   kg_bo / kg_hao_hut (thu_hoi_pt = thịt ÷ vào lóc) → kg_ban / kg_bep /
 --   kg_huy / kg_con (tảng + mọi lô cắt ra). ngay_het: ngày của dòng sổ còn hiệu
 --   lực cuối cùng khi đã hết sạch; so_ngay_ban = ngay_het − ngay_loc.
--- 0087: kg_ban / kg_bep / kg_huy là số RÒNG. Tảng đã lóc hết thì kg_thit +
+-- 0089: kg_ban / kg_bep / kg_huy là số RÒNG. Tảng đã lóc hết thì kg_thit +
 --   kg_phu_pham khớp với kg_ban + kg_bep + kg_huy + kg_con; phần chênh đúng
 --   bằng các dòng lệch cân, kiểm kê, xuất khác của các lô cắt.
 create or replace function kho_bao_cao_tang(p_chi_nhanh_id uuid, p_tu date, p_den date)
@@ -110,12 +110,12 @@ begin
   ),
   so as (
     select cay.tang_id,
-           -- 0087: dòng đảo ngược xét theo dòng nó đảo (g) — lần bán / xuất bếp / huỷ đã
+           -- 0089: dòng đảo ngược xét theo dòng nó đảo (g) — lần bán / xuất bếp / huỷ đã
            -- bị đảo tự triệt với dòng đảo của nó.
            -coalesce(sum(s.so_kg) filter (where coalesce(g.loai, s.loai) = 'ban'), 0)       as kg_ban,
            -coalesce(sum(s.so_kg) filter (where coalesce(g.loai, s.loai) = 'xuat_bep'), 0)  as kg_bep,
            -coalesce(sum(s.so_kg) filter (where coalesce(g.loai, s.loai) = 'huy'), 0)       as kg_huy,
-           -- 0087: ngày sổ cuối chỉ xét dòng còn hiệu lực — không phải dòng đảo, chưa bị đảo.
+           -- 0089: ngày sổ cuối chỉ xét dòng còn hiệu lực — không phải dòng đảo, chưa bị đảo.
            max(s.ngay) filter (where s.dao_cua is null and dao.id is null) as ngay_cuoi
     from cay join kho_so_cai s on s.lo_id = cay.lo_id
     left join kho_so_cai g on g.id = s.dao_cua
@@ -165,7 +165,7 @@ end;
 $$;
 
 comment on function kho_bao_cao_tang is
-  'Báo cáo theo tảng (quyền xem; 0050): mỗi tảng nhận trong kỳ — kg nhà cung cấp → sau repack → vào lóc → thịt / phụ phẩm / bỏ / hao hụt, đã bán / bếp / huỷ / còn, số ngày từ lóc tới bán hết, tình trạng chua_loc / dang_ban / het. Cột tiền (don_gia_ncc, gia_von_repack_kg, gia_von_thit_kg) và phieu_nhap_id chỉ vai xem_gia, không thì null. 0087: bán / bếp / huỷ là số RÒNG — đã trừ dòng đảo ngược (hoá đơn iPOS sửa / huỷ, phiên lóc mở lại); ngay_het là ngày của dòng sổ còn hiệu lực cuối cùng.';
+  'Báo cáo theo tảng (quyền xem; 0050): mỗi tảng nhận trong kỳ — kg nhà cung cấp → sau repack → vào lóc → thịt / phụ phẩm / bỏ / hao hụt, đã bán / bếp / huỷ / còn, số ngày từ lóc tới bán hết, tình trạng chua_loc / dang_ban / het. Cột tiền (don_gia_ncc, gia_von_repack_kg, gia_von_thit_kg) và phieu_nhap_id chỉ vai xem_gia, không thì null. 0089: bán / bếp / huỷ là số RÒNG — đã trừ dòng đảo ngược (hoá đơn iPOS sửa / huỷ, phiên lóc mở lại); ngay_het là ngày của dòng sổ còn hiệu lực cuối cùng.';
 
 
 -- =============================================================================
@@ -229,14 +229,14 @@ begin
                'o_ma', (select jsonb_build_object('so_o', o.so_o, 'ma_can', o.ma_can, 'dang_giu', g.den_luc is null)
                           from kho_o_ma_giao g join kho_o_ma o on o.id = g.o_ma_id
                          where g.lo_id = x.id order by g.tu_luc desc limit 1),
-               -- 0087: dòng đảo ngược xét theo dòng nó đảo (g) — như kho_bao_cao_tang.
+               -- 0089: dòng đảo ngược xét theo dòng nó đảo (g) — như kho_bao_cao_tang.
                'kg_ban', -coalesce((select sum(s.so_kg) from kho_so_cai s left join kho_so_cai g on g.id = s.dao_cua
                                      where s.lo_id = x.id and coalesce(g.loai, s.loai) = 'ban'), 0),
                'kg_bep', -coalesce((select sum(s.so_kg) from kho_so_cai s left join kho_so_cai g on g.id = s.dao_cua
                                      where s.lo_id = x.id and coalesce(g.loai, s.loai) = 'xuat_bep'), 0),
                'kg_huy', -coalesce((select sum(s.so_kg) from kho_so_cai s left join kho_so_cai g on g.id = s.dao_cua
                                      where s.lo_id = x.id and coalesce(g.loai, s.loai) = 'huy'), 0),
-               -- 0087: lần bán cuối CÒN HIỆU LỰC — dòng bán đã bị đảo (hoá đơn sửa / huỷ) không tính.
+               -- 0089: lần bán cuối CÒN HIỆU LỰC — dòng bán đã bị đảo (hoá đơn sửa / huỷ) không tính.
                'ngay_ban_cuoi', (select max(s.ngay) from kho_so_cai s
                                   where s.lo_id = x.id and s.loai = 'ban'
                                     and not exists (select 1 from kho_so_cai dao where dao.dao_cua = s.id)),
@@ -262,14 +262,14 @@ end;
 $$;
 
 comment on function kho_truy_vet_tang is
-  'Truy vết một tảng (quyền xem; 0050): p_lo_id là tảng hoặc lô cắt ra từ nó. Trả {co_gia, tang (một dòng kho_bao_cao_tang), ton_tang[], phien[], lo_ra[{…, o_ma, kg_ban, kg_bep, kg_huy, con[]}], phieu_huy[]}. gia_von_kg và cột tiền của tang chỉ vai xem_gia. 0087: kg_ban / kg_bep / kg_huy của từng lô là số ròng (đã trừ dòng đảo ngược); ngay_ban_cuoi là ngày của lần bán cuối còn hiệu lực.';
+  'Truy vết một tảng (quyền xem; 0050): p_lo_id là tảng hoặc lô cắt ra từ nó. Trả {co_gia, tang (một dòng kho_bao_cao_tang), ton_tang[], phien[], lo_ra[{…, o_ma, kg_ban, kg_bep, kg_huy, con[]}], phieu_huy[]}. gia_von_kg và cột tiền của tang chỉ vai xem_gia. 0089: kg_ban / kg_bep / kg_huy của từng lô là số ròng (đã trừ dòng đảo ngược); ngay_ban_cuoi là ngày của lần bán cuối còn hiệu lực.';
 
 
 -- =============================================================================
 -- 3 · TẢNG & Ô MÃ cho Beeftown Cân (chép 0054)
 -- =============================================================================
 -- Mỗi ô: đang giữ tảng nào, lóc ra bao nhiêu, bán / huỷ / khác / còn bao nhiêu,
--- bán lệch ô mấy lần. 0087: bán / huỷ / khác là số ròng. Số lần bán đúng ô /
+-- bán lệch ô mấy lần. 0089: bán / huỷ / khác là số ròng. Số lần bán đúng ô /
 -- lệch ô đếm dòng iPOS đang da_ghi (dòng của hoá đơn huỷ đã là da_huy) — không đổi.
 create or replace function kho_can_o_ma(p_chi_nhanh_id uuid)
 returns jsonb
@@ -314,7 +314,7 @@ begin
     left join lateral (select sum(t.so_kg) as so_kg, sum(t.so_goi)::int as so_goi from kho_ton t
                        where t.lo_id = g.lo_id) tr on true
     left join lateral (
-      -- 0087: dòng đảo ngược xét theo dòng nó đảo (goc — chữ g ở hàm này đã là lần giao ô).
+      -- 0089: dòng đảo ngược xét theo dòng nó đảo (goc — chữ g ở hàm này đã là lần giao ô).
       select -sum(s.so_kg) filter (where coalesce(goc.loai, s.loai) = 'ban') as kg_ban,
              -sum(s.so_goi) filter (where coalesce(goc.loai, s.loai) = 'ban') as goi_ban,
              -sum(s.so_kg) filter (where coalesce(goc.loai, s.loai) = 'huy') as kg_huy,
@@ -336,14 +336,14 @@ end;
 $$;
 
 comment on function kho_can_o_ma is
-  'Tảng & ô mã cho Beeftown Cân (quyền xem, 0054): mỗi ô mã của món đang dùng — tảng đang giữ ô (số tảng, lô vào), phiên lóc, lô ra (hạn), kg / gói lóc ra, còn, đã bán, huỷ, khác; số lần bán đúng ô và lệch ô từ lúc giao. Ô trống: các cột giao là null. Không có tiền. 0087: đã bán / huỷ / khác là số ròng (đã trừ dòng đảo ngược của hoá đơn iPOS sửa / huỷ).';
+  'Tảng & ô mã cho Beeftown Cân (quyền xem, 0054): mỗi ô mã của món đang dùng — tảng đang giữ ô (số tảng, lô vào), phiên lóc, lô ra (hạn), kg / gói lóc ra, còn, đã bán, huỷ, khác; số lần bán đúng ô và lệch ô từ lúc giao. Ô trống: các cột giao là null. Không có tiền. 0089: đã bán / huỷ / khác là số ròng (đã trừ dòng đảo ngược của hoá đơn iPOS sửa / huỷ).';
 
 
 -- =============================================================================
 -- 4 · BÁO CÁO BÁN THEO GIỜ (iPOS) — kèm bán giảm giá (chép 0054)
 -- =============================================================================
 -- Số dòng, kg, gói, doanh thu lấy từ dòng iPOS đang da_ghi của hoá đơn chưa huỷ
--- — không đổi. 0087: "giảm sớm" chỉ xét lô của dòng sổ bán còn hiệu lực.
+-- — không đổi. 0089: "giảm sớm" chỉ xét lô của dòng sổ bán còn hiệu lực.
 create or replace function kho_bao_cao_ban_gio(p_chi_nhanh_id uuid, p_tu date, p_den date)
 returns table (
   ngay date, gio int, mat_hang_id uuid, ma text, ten text, nhom text,
@@ -384,7 +384,7 @@ begin
            d.ma_giam_id is not null and (
              select min(l.han_dung) from kho_so_cai s join kho_lo l on l.id = s.lo_id
              where s.chung_tu_loai = 'ban_hang' and s.chung_tu_id = d.id and s.loai = 'ban'
-               -- 0087: chỉ dòng bán còn hiệu lực — hoá đơn sửa thì dòng cũ đã bị đảo, lô của nó không tính.
+               -- 0089: chỉ dòng bán còn hiệu lực — hoá đơn sửa thì dòng cũ đã bị đảo, lô của nó không tính.
                and not exists (select 1 from kho_so_cai dao where dao.dao_cua = s.id)
            ) - d.luc_vn::date > d.canh_bao as giam_som
     from d
@@ -408,7 +408,7 @@ end;
 $$;
 
 comment on function kho_bao_cao_ban_gio is
-  'Bán theo ngày × giờ × món từ dòng iPOS đã trừ kho (xem_gia, 0054): số dòng, kg, gói, doanh thu; phần bán bằng mã giảm giá (kg, doanh thu, tiền đã giảm ước theo giá bán hiện tại, số dòng giảm SỚM — lô còn hạn xa hơn mức cảnh báo); số dòng lệch ô. Hoá đơn đã huỷ không tính. 0087: giảm sớm xét lô của dòng sổ bán còn hiệu lực (dòng đã bị đảo khi hoá đơn sửa không tính).';
+  'Bán theo ngày × giờ × món từ dòng iPOS đã trừ kho (xem_gia, 0054): số dòng, kg, gói, doanh thu; phần bán bằng mã giảm giá (kg, doanh thu, tiền đã giảm ước theo giá bán hiện tại, số dòng giảm SỚM — lô còn hạn xa hơn mức cảnh báo); số dòng lệch ô. Hoá đơn đã huỷ không tính. 0089: giảm sớm xét lô của dòng sổ bán còn hiệu lực (dòng đã bị đảo khi hoá đơn sửa không tính).';
 
 
 -- =============================================================================
