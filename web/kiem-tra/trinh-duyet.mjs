@@ -62,16 +62,14 @@
  * Hỏng thì ảnh chụp màn hình nằm ở kiem-tra/anh-loi/ (CI tải lên thành artifact).
  */
 
-import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
 import { setTimeout as cho } from 'node:timers/promises';
 import { chromium } from 'playwright';
 import { TEN_DIA_CHI_KHAC, SO_NHA_KHAC, PHUONG_QUAN, CAU_THANG, boPhapNhan } from './mau-dia-diem.mjs';
 import { doGiaoDien, PHEP_DO } from './do-giao-dien.mjs';
+import { WEB, batMayChuBanBuild, tatMayChu } from './may-chu-ban-build.mjs';
 
-const WEB = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ANH_LOI = join(WEB, 'kiem-tra', 'anh-loi');
 const CONG = 4330;
 
@@ -94,41 +92,9 @@ async function nhom(ten, fn) {
 }
 
 // ---------------------------------------------------------------------------
-// Máy chủ: bản build chạy trong wrangler dev
+// Máy chủ: bản build chạy trong wrangler dev (may-chu-ban-build.mjs, dùng chung với quet-chuoi-cam.mjs)
 // ---------------------------------------------------------------------------
-async function song(goc) {
-  try { return (await fetch(goc, { signal: AbortSignal.timeout(2000) })).ok; } catch { return false; }
-}
-
-async function batMayChu() {
-  // Mặc định luôn build lại: thử trên dist/ cũ thì sửa mã rồi chạy vẫn xanh — lỗi vừa thêm không ai thấy.
-  if (!process.argv.includes('--khong-build') || !existsSync(join(WEB, 'dist', 'server'))) {
-    console.log('Build lại bản mới nhất (astro build)…');
-    // Build KHÔNG database, kể cả khi máy đang chạy có sẵn PUBLIC_SUPABASE_* (biến môi trường của phiên,
-    // hay web/.env): Vite nướng hai biến này vào bản build, và biến môi trường thắng .env — đặt rỗng là
-    // trang chắc chắn ở trạng thái của CI. Không vậy thì mục 2–3 gửi form vào database THẬT.
-    const b = spawnSync(process.execPath, [join(WEB, 'node_modules', 'astro', 'bin', 'astro.mjs'), 'build'],
-      { cwd: WEB, stdio: 'inherit', env: { ...process.env, PUBLIC_SUPABASE_URL: '', PUBLIC_SUPABASE_ANON_KEY: '' } });
-    if (b.status !== 0) throw new Error('astro build hỏng');
-  }
-  const goc = `http://127.0.0.1:${CONG}`;
-  if (await song(goc)) throw new Error(`Cổng ${CONG} đang bận — tắt máy chủ cũ rồi chạy lại`);
-  const p = spawn(process.execPath, [join(WEB, 'node_modules', 'wrangler', 'bin', 'wrangler.js'), 'dev',
-    '--port', String(CONG), '--ip', '127.0.0.1', '--log-level', 'warn'],
-    { cwd: WEB, stdio: 'ignore', detached: process.platform !== 'win32' });
-  for (let i = 0; i < 60; i++) {
-    if (await song(goc)) return { p, goc };
-    await cho(1000);
-  }
-  tatMayChu(p);
-  throw new Error(`wrangler dev không lên sau 60 giây ở cổng ${CONG}`);
-}
-
-function tatMayChu(p) {
-  if (!p?.pid) return;
-  if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(p.pid), '/T', '/F'], { stdio: 'ignore' });
-  else { try { process.kill(-p.pid, 'SIGTERM'); } catch { p.kill('SIGTERM'); } }
-}
+const batMayChu = () => batMayChuBanBuild({ cong: CONG, khongBuild: process.argv.includes('--khong-build') });
 
 async function danhSachTrang(goc) {
   const bo = new Set(['/', '/thuc-don', '/den-beeftown', '/dat-ban', '/tuyen-dung', '/quyen-rieng-tu', '/xoa-du-lieu',
