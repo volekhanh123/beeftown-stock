@@ -66,6 +66,9 @@ export const NHOM: Readonly<Record<MaDenBaoDong, NhomDen>> = {
   dat_ban: 'khach',
   tuyen_dung: 'khach',
   tin_zalo: 'khach',
+  // Dọn dữ liệu cá nhân (0074): đỏ khi hồ sơ quá hạn lưu hơn 7 ngày chưa ẩn danh — lời hứa với ứng viên, không phải
+  // máy hỏng; chỉ chủ bấm được nút dọn. Ban đêm không đánh thức ai, đợi 07:00 như đèn khách.
+  don_dep: 'khach',
 };
 
 export function nhomCua(maDen: string): NhomDen {

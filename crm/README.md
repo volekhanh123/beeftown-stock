@@ -174,7 +174,8 @@ crm/
 │   ├── 0070_crm_policy_doc_tinh_mot_lan.sql ⚠ VÁ — tám policy đọc chỉ kiểm "có đăng nhập" (nội dung, ảnh, thực đơn, mẫu tin) và kho file beeftown-noi-bo: chỉ bốn vai CRM đang làm · mọi policy CRM tính hàm phân quyền MỘT LẦN (crm_cn_duoc(), (select …)) — 5.000 khách: 339 → 10 ms
 │   ├── 0071_crm_chi_so_ngay_vn.sql    ngay_vn(timestamptz) · chi_so_crm đếm ngày theo giờ Việt Nam (lượt ghé 0h–7h sáng không lệch sang hôm trước)
 │   ├── 0072_kho_ghep_ma_v1_chi_muc.sql  KHO · kho_ipos_gan_ma (v1) ghép lại = bỏ ô mã như v2 · năm chỉ mục tra ngược (lô ↔ phiên pha / phiếu nhập / dòng xuất)
-│   └── 0073_bao_dong_don_nhat_ky.sql  lượt báo động 5 phút dọn nhat_ky_tra_cuu (30 ngày), kho_may_nhat_ky (180), kho_ipos_lan_chay (90, giữ 10 lượt mới nhất + nhịp tim), nhat_ky_tin (400, không xóa tin chờ gửi); dọn hỏng không làm hỏng lượt — câu lỗi về Worker (loi_don) → đèn Báo động · chỉ mục mốc nhat_ky_tin cho bảng sức khỏe, chỉ mục thời gian cho câu dọn
+│   ├── 0073_bao_dong_don_nhat_ky.sql  lượt báo động 5 phút dọn nhat_ky_tra_cuu (30 ngày), kho_may_nhat_ky (180), kho_ipos_lan_chay (90, giữ 10 lượt mới nhất + nhịp tim), nhat_ky_tin (400, không xóa tin chờ gửi); dọn hỏng không làm hỏng lượt — câu lỗi về Worker (loi_don) → đèn Báo động · chỉ mục mốc nhat_ky_tin cho bảng sức khỏe, chỉ mục thời gian cho câu dọn
+│   └── 0074_xoa_file_cv.sql            ⚠ VÁ TUYỂN DỤNG · ẩn danh hồ sơ hết hạn KHÔNG còn xóa đường dẫn của CV chưa xóa: web xóa file trong kho trước (ho_so_cv_het_han → Storage → an_danh_ho_so_het_han) · ho_so_thu_muc_cv_mo_coi: thư mục kho CV không hồ sơ nào trỏ tới → xóa trước khi dọn vé · trigger ho_so_khoa_cot_don_dep: người đăng nhập không sửa thẳng duong_dan_cv, luu_den, da_an_danh · ô don_dep cho đèn "Dọn dữ liệu cá nhân"
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```
@@ -222,6 +223,8 @@ Hai điều lộ ra, cần biết khi đọc bước 6 ở cuối `0014`:
 - Tắt năm sinh, bật CV cho *Nhân viên sảnh* ở `/noi-bo/tin-tuyen-dung` (đăng nhập bằng Auth giả của bộ thử): form công khai đổi ngay.
 
 **Chưa làm:** bước 1, 3, 4, 7, 8, và **toàn bộ danh sách trên project Supabase thật** — vẫn bắt buộc trước khi mở cổng tuyển dụng.
+
+**`0074` (xóa file CV khi ẩn danh, quét CV mồ côi) · chưa kiểm tay.** Sáu bước ở cuối `0074_xoa_file_cv.sql` — quản lý không xóa được file, chủ xóa được CV mồ côi và CV của hồ sơ hết hạn, file của hồ sơ còn hạn không bị đụng, quản lý không sửa thẳng được hạn lưu — làm trên project Beeftown-thu rồi ghi kết quả vào đây. `npm test` chỉ thử được phần database và một kho file giả (`test-tuyen-dung-xoa-cv.mjs`).
 
 ## Bốn quyết định thiết kế quan trọng
 
@@ -300,6 +303,8 @@ Ngoài ra `cau_hinh_tich_diem.ty_le_tich` có **trần cứng 20%** — biên đ
 | `phieu_do_launch()` | Phiếu đo ra mắt: lượt xem, bấm, ba con số đặt bàn khác nhau | Chủ sở hữu (mọi chi nhánh); quản lý, marketing (chi nhánh của mình, `0069`) |
 | `suc_khoe_he_thong()` | Số liệu cho bảng đèn sức khỏe ở `/noi-bo`: việc chạy nền iPOS / Zalo / báo động, lỗi Messenger, máy dịch, yêu cầu và hồ sơ nằm im, sổ kho lệch — chỉ số đếm và mốc giờ. Từ `0060` là lớp kiểm vai bọc `suc_khoe_so_lieu` (nội bộ, kết quả không đổi) | Chủ sở hữu (mọi chi nhánh), quản lý (chi nhánh của mình) (`0055`, `0060`) |
 | `suc_khoe_sao_luu()` | Số liệu cho đèn "Sao lưu dữ liệu": lượt sao lưu gần nhất và bản dùng được (khôi phục thử đạt) gần nhất — mốc giờ, cờ, cỡ file. Từ `0060` là lớp kiểm vai bọc `suc_khoe_sao_luu_so_lieu` (nội bộ, kết quả không đổi) | Chủ sở hữu, quản lý (`0058`, `0060`) |
+| `ho_so_cv_het_han()` · `an_danh_ho_so_het_han()` | Ẩn danh hồ sơ hết hạn KÈM file CV: đọc đường dẫn CV → web xóa trong kho → ẩn danh hồ sơ không CV hoặc có CV đã chắc chắn xóa (`web/src/lib/xoa-cv.ts`). `don_dep_ho_so_het_han()` từ `0074` chỉ ẩn danh hồ sơ không CV | Chủ sở hữu (`0074`) |
+| `ho_so_thu_muc_cv_mo_coi()` | Trong các thư mục web liệt kê từ kho CV: thư mục nào không hồ sơ nào trỏ tới và vé không còn hiệu lực — web xóa file trong đó trước khi dọn vé | Chủ sở hữu, quản lý (`0074`; chỉ chủ xóa được file) |
 | `bao_dong_*()` | Báo động: 4 RPC máy (`may_bao_dong`) — bắt đầu lượt / ghi lượt / đã gửi / kết thúc lượt; chữ ký và JSON trả về ở `0060` | Chỉ `may_bao_dong` (`0060`) |
 
 Website công khai **không có quyền vào bảng nào cả** — chỉ gọi được danh sách hàm `SECURITY DEFINER` trong khối chốt quyền ở cuối migration MỚI NHẤT có khối đó. Đừng chép số lượng vào đây: bảng trên đã từng nói "ba hàm" trong khi thực tế là 12, và nó lạc hậu suốt tám migration mà không ai để ý. `test-an-toan.mjs` canh danh sách đó.
