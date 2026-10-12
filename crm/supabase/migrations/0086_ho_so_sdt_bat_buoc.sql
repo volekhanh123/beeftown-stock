@@ -1,9 +1,10 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0084 · HỒ SƠ ỨNG TUYỂN PHẢI CÓ SỐ ĐIỆN THOẠI
+-- BEEFTOWN CRM — 0086 · HỒ SƠ ỨNG TUYỂN PHẢI CÓ SỐ ĐIỆN THOẠI
 -- =============================================================================
--- (Trước đây đánh số 0080. Main nhận 0081_ho_so_gui_lai — viết lại cùng hàm — nên
--- file này phải chạy SAU nó; 0079, 0080, 0082, 0083 đã có chủ ở các nhánh làm song
--- song. Số lấy bằng npm run so-migration, đổi 12/10/2026.)
+-- (Trước đây đánh số 0080 rồi 0084. Main nhận 0081_ho_so_gui_lai rồi
+-- 0084_gioi_han_cong_khai — cả hai viết lại cùng hàm — nên file này phải chạy SAU
+-- chúng. Thứ tự gộp Khánh chốt 12/10/2026: PR #77 trước, PR này sau. Số lấy bằng
+-- npm run so-migration.)
 --
 -- LỖI (có từ 0012, phát hiện khi làm PR #74, tái hiện trên PGlite)
 --
@@ -26,8 +27,9 @@
 --
 -- ĐỔI GÌ
 --
---   1. nop_ho_so_ung_tuyen — thân 0081 NGUYÊN VĂN (0081 làm cho lần gửi lại nhận
---      đúng mã cũ, viết từ thân 0026), chỉ đổi điều kiện thành
+--   1. nop_ho_so_ung_tuyen — thân 0084_gioi_han_cong_khai NGUYÊN VĂN (0081 cho lần
+--      gửi lại nhận đúng mã cũ; 0084 thêm giới hạn tần suất và khóa), chỉ đổi
+--      điều kiện thành
 --      "if v_sdt is null or not sdt_hop_le(v_sdt) then": đúng mẫu tao_dat_ban
 --      (0002, 0045, 0069) và tim_hoac_tao_khach (0002) đang dùng. Câu
 --      raise exception giữ nguyên chữ — trang vi / en / ko (web/src/lib/chu.ts)
@@ -39,7 +41,7 @@
 --      có số, và số đúng dạng. Hồ sơ đã ẩn danh (0012, 0074) vẫn sdt = null.
 --
 -- Rà các hàm còn lại (grep "not sdt_hop_le" trên mọi migration): chỉ
--- nop_ho_so_ung_tuyen (0012, 0026, 0081) thiếu "is null". Kiểm thử đọc định nghĩa
+-- nop_ho_so_ung_tuyen (0012, 0026, 0081, 0084) thiếu "is null". Kiểm thử đọc định nghĩa
 -- ĐANG CHẠY của mọi hàm trong database, nên nhánh nào viết lại hàm này từ thân
 -- cũ sẽ đỏ: crm/test/test-tuyen-dung-sdt-rong.mjs.
 --
@@ -53,12 +55,12 @@
 -- sớm) — đừng tự thêm "not valid": dòng cũ sẽ không sửa được trạng thái nữa.
 --
 -- Không hàm mới. Hàm viết lại giữ security definer, set search_path và quyền
--- của anon; khối CHỐT QUYỀN cuối file chép từ 0074.
+-- của anon; khối CHỐT QUYỀN cuối file chép từ 0084_gioi_han_cong_khai (danh sách anon mới).
 -- =============================================================================
 
 
 -- =============================================================================
--- 1 · NỘP HỒ SƠ — thân 0081, chỉ thêm "v_sdt is null or" vào điều kiện số điện thoại
+-- 1 · NỘP HỒ SƠ — thân 0084_gioi_han_cong_khai, chỉ thêm "v_sdt is null or" vào điều kiện số điện thoại
 -- =============================================================================
 create or replace function nop_ho_so_ung_tuyen(
   p_vi_tri_ma   text,
@@ -87,6 +89,7 @@ declare
   v_vi_tri vi_tri_tuyen_dung;
   v_sdt    text;
   v_dem    int;
+  v_tong   int;
   v_phieu  phieu_tai_len;
   v_ma     text;
   v_duong_dan text;
@@ -158,14 +161,25 @@ begin
   end if;
   -- ---- Hết phần 0081 — từ đây là nguyên văn 0026 (trừ hai bước đã dời lên) ----
 
-  if p_ip is not null then
-    select count(*) into v_dem from ho_so_ung_tuyen
-    where ip = p_ip and created_at > now() - interval '1 hour';
-    if v_dem >= 5 then
-      raise exception 'Bạn đã nộp quá nhiều hồ sơ, vui lòng liên hệ trực tiếp với nhà hàng'
-        using errcode = 'check_violation';
-    end if;
+  -- ---- 0084 · Khoá trước khi đếm; IP null đếm như một IP; trần toàn cục ---
+  -- Đứng SAU bước gửi lại y hệt của 0081: lần gửi lại khi đã chạm giới hạn vẫn
+  -- nhận đúng mã cũ (hồ sơ đã ghi), không phải "quá nhiều".
+  perform pg_advisory_xact_lock(hashtext('ho_so_ung_tuyen'));
+
+  select count(*) filter (where ip is not distinct from p_ip), count(*)
+    into v_dem, v_tong
+  from ho_so_ung_tuyen
+  where created_at > now() - interval '1 hour';
+
+  if v_dem >= 5 and p_ip is not null then
+    raise exception 'Bạn đã nộp quá nhiều hồ sơ, vui lòng liên hệ trực tiếp với nhà hàng'
+      using errcode = 'check_violation';
   end if;
+  if v_dem >= 5 or v_tong >= 30 then
+    raise exception 'Hệ thống đang nhận quá nhiều yêu cầu, vui lòng thử lại sau hoặc liên hệ trực tiếp với nhà hàng'
+      using errcode = 'check_violation';
+  end if;
+  -- ---- Hết phần 0084 — từ đây là nguyên văn 0081 ----------------------------
 
   if v_vi_tri.han_nop is not null and v_vi_tri.han_nop < hom_nay_vn() then
     raise exception 'Vị trí này đã hết hạn nhận hồ sơ'
@@ -243,12 +257,15 @@ alter table ho_so_ung_tuyen
   add constraint ho_so_sdt_bat_buoc check (da_an_danh or sdt is not null);
 
 comment on constraint ho_so_sdt_bat_buoc on ho_so_ung_tuyen is
-  'Hồ sơ chưa ẩn danh phải có số điện thoại (0084). ho_so_sdt_hop_le kiểm dạng số nhưng cho qua null.';
+  'Hồ sơ chưa ẩn danh phải có số điện thoại (0086). ho_so_sdt_hop_le kiểm dạng số nhưng cho qua null.';
 
 
 -- =============================================================================
 -- CHỐT QUYỀN — xem giải thích ở 0008 mục 6. Giữ dòng ve_con_hieu_luc: xem 0025.
 -- =============================================================================
+-- Từ 0084 KHÔNG còn dòng ghi_nhat_ky_tra_cuu, và tra_cuu_dat_ban nhường chỗ cho
+-- tra_cuu_mot_dat_ban (mục 3). Migration sau chép khối này, đừng chép khối của
+-- 0062 trở về trước.
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
@@ -259,8 +276,7 @@ begin
     execute 'grant execute on function tao_dat_ban(text,text,text,date,time,smallint,text,text,boolean,text,text,text,text,inet) to anon';
     execute 'grant execute on function lich_trong_theo_ma(text,date) to anon';
     execute 'grant execute on function chi_nhanh_cong_khai() to anon';
-    execute 'grant execute on function tra_cuu_dat_ban(text,text,inet) to anon';
-    execute 'grant execute on function ghi_nhat_ky_tra_cuu(inet,text,boolean) to anon';
+    execute 'grant execute on function tra_cuu_mot_dat_ban(text,text,inet) to anon';
     execute 'grant execute on function huy_dat_ban(text,text,text,inet) to anon';
 
     -- Nội dung

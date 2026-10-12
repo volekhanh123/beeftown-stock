@@ -84,6 +84,14 @@ async function taoHoSo(hoTen, { cv = false, ten = 'cv.pdf', quaHan = null } = {}
     [VI_TRI, hoTen, sdt, ve, cv ? ten : null]);
   if (r.loi) throw new Error(`nop_ho_so_ung_tuyen: ${r.loi}`);
   const ma = r.rows[0].ma;
+  // 0084 giới hạn nộp hồ sơ (5 / giờ / IP — IP null đếm như một IP — và 30 / giờ toàn cục) và xin vé
+  // (10 / giờ / IP, 30 / giờ toàn cục). File này dựng hơn 40 hồ sơ mẫu trong vài giây — đúng điều 0084
+  // chặn — nên hồ sơ mẫu coi như nộp trước giờ chạy: dời created_at của hồ sơ và vé ra ngoài cửa sổ
+  // một giờ. Không đụng luu_den / het_han (thứ file này kiểm: hạn lưu, vé còn hiệu lực); vẫn dưới hai
+  // ngày nên số liệu hồ sơ mới của bảng sức khỏe không đổi. Giới hạn tự nó kiểm ở
+  // test-cong-khai-gioi-han.mjs; nopHoSo của web ở mục 11 vẫn đi qua giới hạn thật.
+  await db.query(`update ho_so_ung_tuyen set created_at = now() - interval '61 minutes' where ma_ho_so = $1`, [ma]);
+  if (ve) await db.query(`update phieu_tai_len set created_at = now() - interval '61 minutes' where id = $1`, [ve]);
   if (quaHan !== null) {
     await db.query(`update ho_so_ung_tuyen set luu_den = hom_nay_vn() - $2::int where ma_ho_so = $1`, [ma, quaHan]);
   }

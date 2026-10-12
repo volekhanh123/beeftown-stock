@@ -544,6 +544,20 @@ const LOI_DATABASE: ReadonlyArray<readonly [RegExp, Readonly<Record<'en' | 'ko',
     en: 'No tables are available at that time.',
     ko: '선택하신 시간대에는 가능한 자리가 없어요.',
   }],
+  // tao_dat_ban() — 0084, giới hạn tần suất
+  [/^Mạng bạn đang dùng đã gửi quá nhiều yêu cầu đặt bàn/, {
+    en: 'Too many table requests have been sent from your network. Please try again later or call the restaurant.',
+    ko: '사용 중인 네트워크에서 테이블 문의가 너무 많이 들어왔어요. 잠시 후 다시 시도하시거나 매장에 전화해 주세요.',
+  }],
+  [/^Số điện thoại này đã có nhiều yêu cầu đặt bàn đang chờ/, {
+    en: 'This phone number already has several table requests waiting for the restaurant to confirm. Please call the restaurant.',
+    ko: '이 전화번호로 매장 확인을 기다리는 테이블 문의가 이미 여러 건 있어요. 매장에 전화해 주세요.',
+  }],
+  // tao_dat_ban(), xin_phieu_tai_cv(), nop_ho_so_ung_tuyen() — 0084, trần chung
+  [/^Hệ thống đang nhận quá nhiều yêu cầu/, {
+    en: 'The system is receiving too many requests right now. Please try again later or contact the restaurant directly.',
+    ko: '지금 시스템에 요청이 너무 많이 들어오고 있어요. 잠시 후 다시 시도하시거나 매장에 직접 연락해 주세요.',
+  }],
   // tim_hoac_tao_khach() — 0002, gọi từ tao_dat_ban(); và nop_ho_so_ung_tuyen() — 0026
   [/^Số điện thoại không hợp lệ/, {
     en: 'The phone number is not valid.',

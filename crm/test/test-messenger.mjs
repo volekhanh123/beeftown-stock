@@ -579,17 +579,19 @@ await nhom('7 · MÁY MESSENGER KHÔNG ĐỌC / GHI ĐƯỢC CRM, KHÔNG CÓ VI�
 
 // ===========================================================================
 await nhom('8 · ANON VÀ CHỐT QUYỀN KHÔNG ĐỔI', async () => {
-  // Chép từ DUOC_PHEP của test-an-toan.mjs — 0053 không được thêm hàm nào cho anon.
-  const DUOC_PHEP = ['chi_nhanh_cong_khai', 'ghi_nhat_ky_tra_cuu', 'ghi_su_kien_web', 'huy_dat_ban', 'lich_trong_theo_ma',
+  // Chép từ DUOC_PHEP của test-an-toan.mjs — 0053 không được thêm hàm nào cho anon. 0084 bớt
+  // ghi_nhat_ky_tra_cuu (hai hàm tra / hủy tự ghi nhật ký): 13 → 12 hàm; tra_cuu_mot_dat_ban (trả jsonb)
+  // thay tra_cuu_dat_ban (trả bảng).
+  const DUOC_PHEP = ['chi_nhanh_cong_khai', 'ghi_su_kien_web', 'huy_dat_ban', 'lich_trong_theo_ma',
                      'noi_dung_cong_khai', 'nop_ho_so_ung_tuyen', 'tao_dat_ban', 'thuc_don_cong_khai',
-                     'tin_tuyen_dung_cong_khai', 'tra_cuu_dat_ban', 've_con_hieu_luc', 'xin_phieu_tai_cv'].sort();
+                     'tin_tuyen_dung_cong_khai', 'tra_cuu_mot_dat_ban', 've_con_hieu_luc', 'xin_phieu_tai_cv'].sort();
   const anon = (await q(`select distinct p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                          where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute') order by 1`))
     .map(r => r.proname);
   ok('anon gọi được đúng danh sách cũ (DUOC_PHEP của test-an-toan)', anon.join() === DUOC_PHEP.join(), anon.join());
   const aT = readFileSync(join(__dirname, 'test-an-toan.mjs'), 'utf8');
-  ok('test-an-toan.mjs vẫn liệt kê đúng 13 hàm, không có mess_',
-     DUOC_PHEP.every(h => aT.includes(`'${h}'`)) && !/'mess_/.test(aT));
+  ok('test-an-toan.mjs vẫn liệt kê đúng 12 hàm (0084 bớt ghi_nhat_ky_tra_cuu), không có mess_',
+     DUOC_PHEP.length === 12 && DUOC_PHEP.every(h => aT.includes(`'${h}'`)) && !/'mess_/.test(aT));
 
   const khoi = f => {
     const s = readFileSync(join(MIG, f), 'utf8');
