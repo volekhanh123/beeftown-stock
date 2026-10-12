@@ -38,7 +38,7 @@ Mọi kiểm thử đều đạt — số kiểm tra xem ở dòng cuối của 
 
 ## Chạy kiểm thử
 
-Không cần Docker, không cần cài Postgres — dùng PGlite (Postgres chạy WASM trong Node).
+Không cần Docker, không cần cài Postgres — dùng PGlite (Postgres chạy WASM trong Node), bản Postgres 17 như Supabase production (`test-quy-trinh.mjs` mục 1 giữ điều này).
 
 ```bash
 cd web && npm ci        # một lần — test ở đây đọc cả mã web (@astrojs/compiler-rs, supabase-js)
@@ -73,6 +73,7 @@ cd ../crm && npm ci && npm test
 | `node test/test-dat-ban-goi-lai.mjs` | **gửi đặt bàn hai lần `0062`**: gửi lại y hệt → một dòng, cùng mã, một tin Zalo, một dòng đồng ý, không trừ chỗ hai lần; lượt đầu lấy bàn cuối hay khung giờ vừa qua thì gửi lại vẫn nhận mã cũ; khác bất kỳ trường nào, dòng cũ đã hủy / đã xác nhận / quá 10 phút → dòng mới; số điện thoại viết khác kiểu là một; phiên đăng nhập không thuộc CRM không lấy được mã của khách; giao dịch đầu hủy giữa chừng thì gửi lại ra đúng một dòng |
 | `node test/test-zalo-xac-nhan.mjs` | **tin Zalo đặt bàn chỉ đi khi đã xác nhận `0063`**: yêu cầu web / Messenger / nhân viên ghi hộ chưa xác nhận → không tin nào, kể cả khi đổi giờ; bấm "Đã gọi xác nhận" → đúng một ZBS-01 + một ZBS-02, bấm đúp không thêm; hẹn sau nửa đêm (giờ VN), xác nhận sát giờ; tin xếp trước `0063` cho yêu cầu chưa xác nhận bị máy gửi giữ lại, xác nhận rồi mới đi (đúng một lần), hủy / quá giờ thì bỏ; ai không được xác nhận thì không làm nảy tin; trigger hỏng không làm hỏng việc xác nhận |
 | `npm run test:zalo` | **gửi tin Zalo `0046`–`0047`**: đặt bàn được xác nhận → đúng một ZBS-01 + một ZBS-02 (giờ hẹn − 2 tiếng), không trùng khi gọi lại; hủy / đổi giờ; mẫu chưa duyệt / Zalo tắt → không xếp; khách lần đầu nhận giao dịch nhưng không nhận chăm sóc; trần 2 tin/tháng tính cả tin chờ; khung giờ; xem trước chiến dịch; lượt gửi của máy (khóa 10 phút, kiểm lại, thử lại); máy không đọc được bảng CRM, không ai ngoài máy lấy được token |
+| `node test/test-zalo.mjs` (nhóm 8b), `test-zalo-web.mjs` (9b, 10b) | **kết thúc lượt ghi luôn tin đã tới Zalo `0078`**: `zalo_ket_thuc_luot(…, p_da_gui)` ghi `da_gui` TRƯỚC khi trả tin chưa báo về hàng chờ — tin không trở về `cho_gui`, lượt sau (chạy thật trên PGlite) không gửi lại; tin đã ghi / bị hủy giữa lượt / id lạ theo đúng luật `zalo_ghi_ket_qua`; gọi lại không đổi gì; sai dạng → 23514, không ghi nửa vời; chỉ máy Zalo đang làm gọi được; chữ ký cũ vẫn chạy; web chỉ gửi `p_da_gui` khi ghi lại cuối lượt vẫn hỏng, không bao giờ log "đã ghi" khi database chưa xác nhận |
 | `node test/test-suc-khoe.mjs`, `test-suc-khoe-web.mjs` | **bảng sức khỏe hệ thống `0055`**: chỉ chủ (mọi chi nhánh) và quản lý (chi nhánh của mình) đọc được — vai khác, người đã nghỉ, tài khoản máy, anon bị từ chối; database mới không báo nhầm; đặt bàn / hồ sơ nằm im, tin Zalo kẹt, lỗi bot Messenger, ô dịch lỗi, sổ kho lệch đếm đúng từng chi nhánh; đèn iPOS giống hệt màn Kết nối iPOS, nhịp tim = lượt cron gần nhất; không trả SĐT, tên, token, câu lỗi thô; tên từng ô khớp giữa database và web. Phía web: từng ngưỡng màu, câu vi/en, và không đọc được thì không bao giờ báo "mọi thứ đang chạy tốt" |
 | `node test/test-bao-dong.mjs` | **báo động `0059`–`0060`**: `0059` đúng một lệnh; chỉ máy `may_bao_dong` đang làm gọi được bốn RPC (mọi vai khác, máy đã tắt, máy Zalo / Messenger / iPOS, tài khoản không có dòng `nhan_su`, anon bị từ chối); máy không đọc được bảng nào, không gọi được hàm nội bộ hay hàm của máy khác; khóa lượt 10 phút, lượt cũ không nhả khóa của lượt mới; một đèn đỏ qua nhiều lượt vẫn là một sự cố; chập chờn trong 15 phút không thành sự cố mới, đỏ lại sau 15 phút hết đỏ (tin hết đỏ đang giữ tới 07:00) thành sự cố mới; danh sách đèn không đầy đủ thì không đóng gì; đánh dấu "đã gửi" gọi lại không đổi mốc, đánh dấu hết đỏ đóng luôn sự cố; hết giờ khi đọc số liệu (statement_timeout) vẫn chạy lượt; đối soát sổ kho dùng lại dưới 30 phút; câu lỗi lưu lại đã xóa token / SĐT; dọn sự cố quá 90 ngày. `test-suc-khoe.mjs` nhóm 13: `kho_ipos_trang_thai`, `suc_khoe_he_thong` và `suc_khoe_sao_luu` sau khi tách cho kết quả y hệt hàm cũ; mọi đèn trang `/noi-bo` thấy thì lượt báo động thấy y hệt |
 | `node test/test-bao-dong-web.mjs` | **báo động phía web**: luật từng mốc giờ VN (21:59 / 22:00, 06:59 / 07:00, 07:59 / 08:00, 23:50 / 00:10), trần 5 tin không đặt lại lúc nửa đêm, đèn hệ thống hết đỏ ban đêm chỉ báo ngay khi tin đỏ cũng đến trong đêm (sao lưu ổn lại 3 giờ sáng → 07:00), tóm tắt 8 giờ kể cả khi mọi thứ xanh, không đọc được số liệu thì không "đã ổn lại" giả; câu chữ vi / en, số kiểu Việt, cắt cho vừa kênh; việc chạy nền đầu–cuối trên database với kênh giả: gửi hỏng / treo / đánh dấu hỏng / mất mạng giữa chừng, khóa, cron riêng |
@@ -89,7 +90,10 @@ cd ../crm && npm ci && npm test
 - **ràng buộc giá làm quản lý không đề xuất được giá cho món đã công bố** — một trạng thái vận hành bình thường bị chặn nhầm. Nay tách `gia_de_xuat` khỏi `gia`.
 - **`coalesce(..., false)` ở hai vế lọc của `v_viec_dich`** (`0036`). Gỡ đi thì ô CHƯA TỪNG DỊCH biến mất khỏi danh sách việc — `not (null = x)` là null, và WHERE coi null là sai. `test-ban-dich.mjs` đỏ năm chỗ khi thử gỡ.
 
-`test-phan-quyen.mjs` **mô phỏng quyền mặc định của Supabase** trước khi chạy migration. Thiếu khối đó thì mọi khẳng định "anon không làm được X" đều đúng một cách RỖNG — đúng vì PGlite vốn không cấp gì cho `anon`, chứ không phải vì schema an toàn.
+`test-phan-quyen.mjs` (như mọi file dựng database qua `dungDatabaseTrong()` của `kho-chung.mjs`) **mô phỏng quyền mặc định của Supabase** trước khi chạy migration. Thiếu khối đó thì mọi khẳng định "anon không làm được X" đều đúng một cách RỖNG — đúng vì PGlite vốn không cấp gì cho `anon`, chứ không phải vì schema an toàn.
+Chiều ngược lại cũng sai được: **cấp hàng loạt SAU khi nạp migration** (`grant execute on all functions … to authenticated`)
+xoá trắng mọi `revoke` của migration — bảy file test cũ từng tự dựng Supabase giả và cấp như vậy cho tới 12/10/2026; nay
+chúng dùng `kho-chung.mjs`, và `test-quy-trinh.mjs` mục 6 chặn.
 
 ### Kiểm thử tự động (CI)
 
@@ -175,8 +179,10 @@ crm/
 │   ├── 0071_crm_chi_so_ngay_vn.sql    ngay_vn(timestamptz) · chi_so_crm đếm ngày theo giờ Việt Nam (lượt ghé 0h–7h sáng không lệch sang hôm trước)
 │   ├── 0072_kho_ghep_ma_v1_chi_muc.sql  KHO · kho_ipos_gan_ma (v1) ghép lại = bỏ ô mã như v2 · năm chỉ mục tra ngược (lô ↔ phiên pha / phiếu nhập / dòng xuất)
 │   ├── 0073_bao_dong_don_nhat_ky.sql  lượt báo động 5 phút dọn nhat_ky_tra_cuu (30 ngày), kho_may_nhat_ky (180), kho_ipos_lan_chay (90, giữ 10 lượt mới nhất + nhịp tim), nhat_ky_tin (400, không xóa tin chờ gửi); dọn hỏng không làm hỏng lượt — câu lỗi về Worker (loi_don) → đèn Báo động · chỉ mục mốc nhat_ky_tin cho bảng sức khỏe, chỉ mục thời gian cho câu dọn
+│   ├── 0074_xoa_file_cv.sql            ⚠ VÁ TUYỂN DỤNG · ẩn danh hồ sơ hết hạn KHÔNG còn xóa đường dẫn của CV chưa xóa: web xóa file trong kho trước (ho_so_cv_het_han → Storage → an_danh_ho_so_het_han) · ho_so_thu_muc_cv_mo_coi: thư mục kho CV không hồ sơ nào trỏ tới → xóa trước khi dọn vé · trigger ho_so_khoa_cot_don_dep: người đăng nhập không sửa thẳng duong_dan_cv, luu_den, da_an_danh · ô don_dep cho đèn "Dọn dữ liệu cá nhân"
 │   ├── 0075_kho_o_ma_mot_lo.sql        KHO · một ô mã chỉ về một lô: trigger kho_phien_pha_ra_o_ma cho ô theo lô của dòng NHẬP KHO (không theo lô chuyển thẳng bếp — trước đây dòng chốt sau cùng thắng, ô bị coi là trống và tảng sau lấy lại ô đó); hai dòng nhập kho của cùng phần cắt đang giữ ô → chốt phiên lóc bị từ chối; trigger mới kho_phien_pha_chot_tra_o_ma trả ngay lúc chốt các ô không có lô nhập kho. Không bảng, cột mới
-│   └── 0076_kho_tang_tru_dao_nguoc.sql KHO · số của tảng trừ dòng đảo ngược (hoá đơn iPOS sửa / huỷ, phiên lóc mở lại): kho_bao_cao_tang, kho_truy_vet_tang — bán / bếp / huỷ là số ròng, ngày hết và ngày bán cuối chỉ xét dòng sổ còn hiệu lực · kho_can_o_ma — bán / huỷ / khác ròng · kho_bao_cao_ban_gio — "giảm sớm" xét lô của dòng bán còn hiệu lực · thay thân, không đổi chữ ký hay quyền
+│   ├── 0076_kho_tang_tru_dao_nguoc.sql KHO · số của tảng trừ dòng đảo ngược (hoá đơn iPOS sửa / huỷ, phiên lóc mở lại): kho_bao_cao_tang, kho_truy_vet_tang — bán / bếp / huỷ là số ròng, ngày hết và ngày bán cuối chỉ xét dòng sổ còn hiệu lực · kho_can_o_ma — bán / huỷ / khác ròng · kho_bao_cao_ban_gio — "giảm sớm" xét lô của dòng bán còn hiệu lực · thay thân, không đổi chữ ký hay quyền
+│   └── 0078_zalo_ket_thuc_ghi_da_gui.sql ZALO · zalo_ket_thuc_luot(p_loi, p_quota, p_da_gui jsonb): tin đã tới Zalo mà máy chưa ghi được → ghi da_gui (qua zalo_ghi_ket_qua) TRƯỚC khi trả tin chưa báo về hàng chờ, cùng giao dịch với nhả khóa — khách không nhận lần hai · DROP bản (text, integer) rồi tạo lại, chữ ký cũ vẫn gọi được · chạy TRƯỚC Worker
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```
@@ -224,6 +230,8 @@ Hai điều lộ ra, cần biết khi đọc bước 6 ở cuối `0014`:
 - Tắt năm sinh, bật CV cho *Nhân viên sảnh* ở `/noi-bo/tin-tuyen-dung` (đăng nhập bằng Auth giả của bộ thử): form công khai đổi ngay.
 
 **Chưa làm:** bước 1, 3, 4, 7, 8, và **toàn bộ danh sách trên project Supabase thật** — vẫn bắt buộc trước khi mở cổng tuyển dụng.
+
+**`0074` (xóa file CV khi ẩn danh, quét CV mồ côi) · chưa kiểm tay.** Sáu bước ở cuối `0074_xoa_file_cv.sql` — quản lý không xóa được file, chủ xóa được CV mồ côi và CV của hồ sơ hết hạn, file của hồ sơ còn hạn không bị đụng, quản lý không sửa thẳng được hạn lưu — làm trên project Beeftown-thu rồi ghi kết quả vào đây. `npm test` chỉ thử được phần database và một kho file giả (`test-tuyen-dung-xoa-cv.mjs`).
 
 ## Bốn quyết định thiết kế quan trọng
 
@@ -302,6 +310,8 @@ Ngoài ra `cau_hinh_tich_diem.ty_le_tich` có **trần cứng 20%** — biên đ
 | `phieu_do_launch()` | Phiếu đo ra mắt: lượt xem, bấm, ba con số đặt bàn khác nhau | Chủ sở hữu (mọi chi nhánh); quản lý, marketing (chi nhánh của mình, `0069`) |
 | `suc_khoe_he_thong()` | Số liệu cho bảng đèn sức khỏe ở `/noi-bo`: việc chạy nền iPOS / Zalo / báo động, lỗi Messenger, máy dịch, yêu cầu và hồ sơ nằm im, sổ kho lệch — chỉ số đếm và mốc giờ. Từ `0060` là lớp kiểm vai bọc `suc_khoe_so_lieu` (nội bộ, kết quả không đổi) | Chủ sở hữu (mọi chi nhánh), quản lý (chi nhánh của mình) (`0055`, `0060`) |
 | `suc_khoe_sao_luu()` | Số liệu cho đèn "Sao lưu dữ liệu": lượt sao lưu gần nhất và bản dùng được (khôi phục thử đạt) gần nhất — mốc giờ, cờ, cỡ file. Từ `0060` là lớp kiểm vai bọc `suc_khoe_sao_luu_so_lieu` (nội bộ, kết quả không đổi) | Chủ sở hữu, quản lý (`0058`, `0060`) |
+| `ho_so_cv_het_han()` · `an_danh_ho_so_het_han()` | Ẩn danh hồ sơ hết hạn KÈM file CV: đọc đường dẫn CV → web xóa trong kho → ẩn danh hồ sơ không CV hoặc có CV đã chắc chắn xóa (`web/src/lib/xoa-cv.ts`). `don_dep_ho_so_het_han()` từ `0074` chỉ ẩn danh hồ sơ không CV | Chủ sở hữu (`0074`) |
+| `ho_so_thu_muc_cv_mo_coi()` | Trong các thư mục web liệt kê từ kho CV: thư mục nào không hồ sơ nào trỏ tới và vé không còn hiệu lực — web xóa file trong đó trước khi dọn vé | Chủ sở hữu, quản lý (`0074`; chỉ chủ xóa được file) |
 | `bao_dong_*()` | Báo động: 4 RPC máy (`may_bao_dong`) — bắt đầu lượt / ghi lượt / đã gửi / kết thúc lượt; chữ ký và JSON trả về ở `0060` | Chỉ `may_bao_dong` (`0060`) |
 
 Website công khai **không có quyền vào bảng nào cả** — chỉ gọi được danh sách hàm `SECURITY DEFINER` trong khối chốt quyền ở cuối migration MỚI NHẤT có khối đó. Đừng chép số lượng vào đây: bảng trên đã từng nói "ba hàm" trong khi thực tế là 12, và nó lạc hậu suốt tám migration mà không ai để ý. `test-an-toan.mjs` canh danh sách đó.

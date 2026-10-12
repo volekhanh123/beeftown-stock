@@ -110,11 +110,20 @@ await nhom('0 · TIỀN ĐỀ — enum, chữ ký, quyền gọi hàm', async ()
   const kq = (await q(`select unnest(enum_range(null::ket_qua_gui))::text as v`)).map(r => r.v);
   ok('0046: ket_qua_gui có da_huy', kq.includes('da_huy'));
 
-  for (const ham of ['duoc_phep_gui', 'chan_vai_ngoai_crm', 'xep_hang_gui_tin', 'tao_dat_ban', 'duoc_truy_cap_chi_nhanh']) {
+  // zalo_ket_thuc_luot: 0078 thêm p_da_gui bằng DROP rồi tạo lại. Còn bản hai tham số cũ thì mọi lời gọi
+  // zalo_ket_thuc_luot() / (p_loi, p_quota) thành "không duy nhất" — máy gửi không nhả được khóa lượt nào nữa.
+  for (const ham of ['duoc_phep_gui', 'chan_vai_ngoai_crm', 'xep_hang_gui_tin', 'tao_dat_ban', 'duoc_truy_cap_chi_nhanh',
+                     'zalo_ket_thuc_luot']) {
     const { n } = await mot(`select count(*)::int as n from pg_proc p join pg_namespace s on s.oid = p.pronamespace
                               where s.nspname = 'public' and p.proname = $1`, [ham]);
     ok(`${ham}() vẫn chỉ có MỘT bản (không đẻ overload)`, n === 1, `${n} bản`);
   }
+  const ktl = await mot(`select pg_get_function_arguments('zalo_ket_thuc_luot'::regproc) as args, prosecdef as dinh,
+                                coalesce(array_to_string(proconfig, ','), '') as cfg
+                           from pg_proc where proname = 'zalo_ket_thuc_luot'`);
+  ok('0078: zalo_ket_thuc_luot(p_loi, p_quota, p_da_gui jsonb) — ba tham số đều mặc định null, definer, search_path cố định',
+     ktl.args === 'p_loi text DEFAULT NULL::text, p_quota integer DEFAULT NULL::integer, p_da_gui jsonb DEFAULT NULL::jsonb'
+     && ktl.dinh === true && ktl.cfg === 'search_path=public', JSON.stringify(ktl));
   const { args } = await mot(`select pg_get_function_identity_arguments('duoc_phep_gui'::regproc) as args`);
   ok('duoc_phep_gui giữ nguyên chữ ký (uuid, loai_mau_tin)', args === 'p_khach_hang_id uuid, p_loai_tin loai_mau_tin', args);
   const { dinh } = await mot(`select prosecdef as dinh from pg_proc where proname = 'duoc_phep_gui'`);
@@ -576,6 +585,117 @@ await nhom('8 · GHI KẾT QUẢ, THỬ LẠI, TOKEN', async () => {
 });
 
 // ===========================================================================
+// Rà soát 12/10/2026 (sau PR #71): tin ĐÃ TỚI Zalo mà zalo_ghi_ket_qua hỏng cả lúc gửi lẫn lúc thử lại cuối
+// lượt → zalo_ket_thuc_luot trả nó về hàng chờ cùng mọi tin chưa báo → lượt 5 phút sau gửi khách lần hai.
+// 0078: máy gửi kèm các tin đó (p_da_gui) trong chính lời kết thúc lượt; hàm ghi da_gui TRƯỚC khi trả tin
+// chưa báo về hàng chờ — cùng một giao dịch với việc nhả khóa.
+await nhom('8b · KẾT THÚC LƯỢT GHI LUÔN TIN ĐÃ TỚI ZALO MÀ CHƯA GHI ĐƯỢC (0078, p_da_gui)', async () => {
+  const kh = await mot(`select id, sdt from khach_hang where sdt ~ '^0[0-9]{9}$' order by created_at limit 1`);
+  const { id: mauId } = await mot(`select id from mau_tin where ma = 'ZBS-02'`);
+  // Một lượt đang chạy như zalo_bat_dau_luot để lại: bốn tin đang gửi (dang_gui_tu, lan_thu + 1), khóa lượt đang giữ.
+  const ids = [];
+  for (const ten of ['A', 'B', 'C', 'D']) {
+    const { id } = await mot(`insert into nhat_ky_tin (chi_nhanh_id, khach_hang_id, mau_tin_id, sdt_gui, noi_dung, ket_qua,
+                                                       loai_tin, dang_gui_tu, lan_thu)
+                              values ($1, $2, $3, $4, $5, 'cho_gui', 'giao_dich', now(), 1) returning id`,
+                             [cnA.id, kh.id, mauId, kh.sdt, `0078-${ten}`]);
+    ids.push(id);
+  }
+  const [A, B, C, D] = ids;
+  await db.query(`update zalo_cau_hinh set dang_chay_tu = now() where id = 1`);
+  const tin = async id => mot(`select ket_qua, ma_zalo_tra_ve, gui_luc, dang_gui_tu, lan_thu, loi from nhat_ky_tin where id = $1`, [id]);
+  const khoaLuot = async () => (await mot(`select dang_chay_tu from zalo_cau_hinh`)).dang_chay_tu;
+  const dsDaGui = x => JSON.stringify(x);
+
+  // C: máy ghi được kết quả bình thường. D: chủ dừng chiến dịch giữa lượt (zalo_dung_chien_dich → da_huy).
+  await rpc(UID_MAY_ZALO, `zalo_ghi_ket_qua($1, 'da_gui', 'msg-0078-C')`, [C]);
+  await db.query(`update nhat_ky_tin set ket_qua = 'da_huy', loi = 'Chiến dịch đã dừng', dang_gui_tu = null where id = $1`, [D]);
+
+  // ---- Quyền: chỉ máy Zalo đang làm; bị từ chối thì không ghi gì, không nhả khóa -----------------------
+  const mot1 = dsDaGui([{ id: A, ma_zalo: 'msg-gia' }]);
+  const lotQuyen = [];
+  for (const [ai, uid] of [['Chủ sở hữu', UID.chu], ['Quản lý', UID.qlA], ['Marketing', UID.mktA], ['Máy iPOS', UID_MAY_IPOS],
+                           ['Không phải nhân sự', UID_LA]]) {
+    const r = await rpc(uid, `zalo_ket_thuc_luot(null, null, $1::jsonb)`, [mot1]);
+    if (!tuChoi(r)) lotQuyen.push(`${ai}: ${vi(r)}`);
+  }
+  await db.query(`update nhan_su set dang_lam = false where auth_uid = $1`, [UID_MAY_ZALO]);
+  const daNghi = await rpc(UID_MAY_ZALO, `zalo_ket_thuc_luot(null, null, $1::jsonb)`, [mot1]);
+  await db.query(`update nhan_su set dang_lam = true where auth_uid = $1`, [UID_MAY_ZALO]);
+  if (!tuChoi(daNghi)) lotQuyen.push(`Máy Zalo đã khóa: ${vi(daNghi)}`);
+  const khongPhien = await db.query(`select zalo_ket_thuc_luot(null, null, $1::jsonb)`, [mot1]).then(() => 'CHẠY ĐƯỢC', e => e.code);
+  if (khongPhien !== '42501') lotQuyen.push(`Không phiên: ${khongPhien}`);
+  const aSauQuyen = await tin(A);
+  ok('p_da_gui: người, máy khác, máy Zalo đã khóa, không phiên → 42501; tin vẫn đang gửi, khóa lượt vẫn giữ',
+     lotQuyen.length === 0 && aSauQuyen.ket_qua === 'cho_gui' && aSauQuyen.dang_gui_tu !== null && await khoaLuot() !== null,
+     `${lotQuyen.join(' | ')} · ${JSON.stringify(aSauQuyen)}`);
+
+  // ---- Sai dạng: 23514, cả lời gọi không chạy (không nửa vời) ----------------------------------------
+  const SAI = [
+    ['đối tượng thay vì mảng', dsDaGui({ id: A, ma_zalo: 'x' })],
+    ['id không phải uuid', dsDaGui([{ id: 'khong-phai-uuid', ma_zalo: 'x' }])],
+    ['phần tử là chuỗi', dsDaGui([A])],
+    ['thiếu id', dsDaGui([{ ma_zalo: 'x' }])],
+    ['ma_zalo là số', dsDaGui([{ id: A, ma_zalo: 5 }])],
+    ['quá 200 tin (một lô tối đa 200)', dsDaGui(Array.from({ length: 201 }, () => ({ id: A, ma_zalo: 'x' })))],
+  ];
+  const lotSai = [];
+  for (const [ten, x] of SAI) {
+    const r = await rpc(UID_MAY_ZALO, `zalo_ket_thuc_luot('lỗi thử', 5, $1::jsonb)`, [x]);
+    if (r.ma !== '23514') lotSai.push(`${ten}: ${vi(r)}`);
+  }
+  const aSauSai = await tin(A);
+  ok('p_da_gui sai dạng (đối tượng, id lạ, phần tử chuỗi, thiếu id, ma_zalo số, quá 200) → 23514, không ghi gì: tin vẫn đang gửi, khóa vẫn giữ',
+     lotSai.length === 0 && aSauSai.ket_qua === 'cho_gui' && aSauSai.dang_gui_tu !== null && await khoaLuot() !== null,
+     `${lotSai.join(' | ')} · ${JSON.stringify(aSauSai)}`);
+  const cauSai = (await rpc(UID_MAY_ZALO, `zalo_ket_thuc_luot(null, null, '{}'::jsonb)`)).loi;
+  ok('…câu lỗi sai dạng nói rõ cần gì', /không đúng dạng/.test(cauSai ?? ''), cauSai);
+
+  // ---- Lời gọi thật: A, C (đã ghi), D (đã hủy), một id không có trong bảng ------------------------------
+  const { n: dangGui } = await mot(`select count(*)::int as n from nhat_ky_tin where ket_qua = 'cho_gui' and dang_gui_tu is not null`);
+  const LA = crypto.randomUUID();
+  const kt = await rpc(UID_MAY_ZALO, `zalo_ket_thuc_luot($1, 77, $2::jsonb)`, ['Database không ghi được kết quả tin — dừng gửi', dsDaGui([
+    { id: A, ma_zalo: 'msg-0078-A' }, { id: C, ma_zalo: 'msg-khac' }, { id: D, ma_zalo: 'msg-0078-D' }, { id: LA, ma_zalo: 'x' },
+  ])]);
+  const [rA, rB, rC, rD] = [await tin(A), await tin(B), await tin(C), await tin(D)];
+  ok('HỒI QUY: tin đã tới Zalo nằm trong p_da_gui → da_gui, mã Zalo, giờ gửi; KHÔNG trở về hàng chờ',
+     kt.kq?.ok === true && rA.ket_qua === 'da_gui' && rA.ma_zalo_tra_ve === 'msg-0078-A' && rA.gui_luc !== null
+     && rA.dang_gui_tu === null && rA.lan_thu === 1 && rA.loi === null, `${vi(kt)} · ${JSON.stringify(rA)}`);
+  ok('…tin chưa báo kết quả (không nằm trong p_da_gui) vẫn trở về hàng chờ như cũ',
+     rB.ket_qua === 'cho_gui' && rB.dang_gui_tu === null && kt.kq?.so_tin_tra_lai === dangGui - 1, `${JSON.stringify(rB)} · trả lại ${kt.kq?.so_tin_tra_lai}/${dangGui}`);
+  ok('…tin đã ghi trong lượt → giữ nguyên (không đè mã Zalo); tin bị hủy giữa lượt mà Zalo đã gửi → da_gui (như zalo_ghi_ket_qua)',
+     rC.ket_qua === 'da_gui' && rC.ma_zalo_tra_ve === 'msg-0078-C' && rD.ket_qua === 'da_gui' && rD.ma_zalo_tra_ve === 'msg-0078-D',
+     JSON.stringify([rC, rD]));
+  const kqDaGui = kt.kq?.da_gui ?? [];
+  ok('…trả từng tin theo thứ tự: A ghi mới, C bỏ qua, D ghi mới, id lạ ok = false; so_ghi_da_gui = 2',
+     kt.kq?.so_ghi_da_gui === 2 && kqDaGui.length === 4
+     && kqDaGui[0].id === A && kqDaGui[0].ok === true && kqDaGui[0].bo_qua === false && kqDaGui[0].ket_qua === 'da_gui'
+     && kqDaGui[1].id === C && kqDaGui[1].bo_qua === true && kqDaGui[2].id === D && kqDaGui[2].bo_qua === false
+     && kqDaGui[3].id === LA && kqDaGui[3].ok === false && /Không tìm thấy tin/.test(kqDaGui[3].loi ?? ''), vi(kt));
+  const cfg = await mot(`select dang_chay_tu, loi_cuoi, quota_con from zalo_cau_hinh`);
+  ok('…cùng lời gọi: nhả khóa, ghi loi_cuoi, quota', cfg.dang_chay_tu === null && /dừng gửi/.test(cfg.loi_cuoi ?? '') && cfg.quota_con === 77,
+     JSON.stringify(cfg));
+
+  // ---- Gọi lại y hệt (Worker không nhận được câu trả lời): không đổi gì ----------------------------------
+  const kt2 = await rpc(UID_MAY_ZALO, `zalo_ket_thuc_luot(null, null, $1::jsonb)`, [dsDaGui([{ id: A, ma_zalo: 'msg-lan-hai' }])]);
+  const rA2 = await tin(A);
+  ok('Gọi lại cùng p_da_gui → bỏ qua: so_ghi_da_gui = 0, mã Zalo và giờ gửi giữ nguyên',
+     kt2.kq?.ok === true && kt2.kq.so_ghi_da_gui === 0 && rA2.ma_zalo_tra_ve === 'msg-0078-A'
+     && new Date(rA2.gui_luc).getTime() === new Date(rA.gui_luc).getTime(), `${vi(kt2)} · ${JSON.stringify(rA2)}`);
+
+  // ---- Chữ ký cũ: web chưa cập nhật vẫn kết thúc lượt được ------------------------------------------------
+  await db.query(`update zalo_cau_hinh set dang_chay_tu = now() where id = 1`);
+  const cu = await rpc(UID_MAY_ZALO, `zalo_ket_thuc_luot(p_loi => null, p_quota => null)`);
+  const rong = await rpc(UID_MAY_ZALO, `zalo_ket_thuc_luot(null, null, '[]'::jsonb)`);
+  ok('Gọi kiểu cũ (p_loi, p_quota — như PostgREST) và p_da_gui = [] vẫn chạy, nhả khóa, so_ghi_da_gui = 0',
+     cu.kq?.ok === true && cu.kq.so_ghi_da_gui === 0 && Array.isArray(cu.kq.da_gui) && cu.kq.da_gui.length === 0
+     && rong.kq?.ok === true && rong.kq.so_ghi_da_gui === 0 && await khoaLuot() === null, `${vi(cu)} · ${vi(rong)}`);
+
+  // Dọn để các nhóm sau đếm tin như cũ.
+  await db.query(`delete from nhat_ky_tin where id = any($1::uuid[])`, [ids]);
+});
+
+// ===========================================================================
 await nhom('9 · LƯỢT GỬI DỌN TIN CŨ; MẪU BỊ TẮT; CHIẾN DỊCH XONG', async () => {
   // Đặt bàn 1 tiếng nữa (ZBS-01 chờ gửi), rồi giờ hẹn bị dời về quá khứ.
   const kh = await mot(`select * from tim_hoac_tao_khach('0901000050', 'Khách Quá Giờ', $1)`, [cnA.id]);
@@ -681,6 +801,7 @@ await nhom('11 · AI GỌI ĐƯỢC GÌ — máy chỉ gọi RPC máy, người 
     ['zalo_ghi_ket_qua', `zalo_ghi_ket_qua($1, 'da_gui')`, [mot1]],
     ['zalo_luu_token', `zalo_luu_token($1, now())`, [ACCESS_1]],
     ['zalo_ket_thuc_luot', `zalo_ket_thuc_luot()`, []],
+    ['zalo_ket_thuc_luot (p_da_gui)', `zalo_ket_thuc_luot(null, null, jsonb_build_array(jsonb_build_object('id', $1::text, 'ma_zalo', 'x')))`, [mot1]],
   ];
   for (const [ai, uid] of [['Chủ sở hữu', UID.chu], ['Quản lý', UID.qlA], ['Marketing', UID.mktA], ['Thu ngân', UID.thuNganA],
                            ['Thủ kho', UID.thuKhoA], ['Máy iPOS', UID_MAY_IPOS], ['Không phải nhân sự', UID_LA]]) {
