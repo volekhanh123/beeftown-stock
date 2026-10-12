@@ -267,14 +267,15 @@ await nhom('8 · CỔNG — mọi hàm definer authenticated gọi được ph�
     // Dùng trong policy RLS — chỉ trả lời về CHÍNH người gọi, không đọc dữ liệu ai khác.
     co_phien_dang_nhap: 'policy', co_vai_tro: 'policy', duoc_truy_cap_chi_nhanh: 'policy',
     la_chu_so_huu: 'policy', la_nhan_su_ngoai_crm: 'policy', nhan_su_hien_tai: 'policy',
-    // Hàm trigger — Postgres không cho gọi thẳng.
-    chan_vai_ngoai_crm: 'trigger', ho_so_kiem_tra_vong_doi: 'trigger',
+    crm_cn_duoc: 'policy',   // 0070 — mảng chi nhánh CRM của người gọi; test-quyen-doc-crm.mjs mục 3
+    // Hàm trigger — Postgres không cho gọi thẳng. dat_ban_kiem_sua: 0069, test-quyen-chi-nhanh-crm.mjs mục 5.
+    chan_vai_ngoai_crm: 'trigger', ho_so_kiem_tra_vong_doi: 'trigger', dat_ban_kiem_sua: 'trigger',
     // Tự kiểm vai ở đầu thân hàm (kiểm thử: test-quyen-ham-crm.mjs, test-tuyen-dung.mjs, test-cong-khai.mjs,
     // test-suc-khoe.mjs, mục 7 ở trên).
     ghi_luot_ghe: 'tu_kiem_vai', tim_hoac_tao_khach: 'tu_kiem_vai', xep_hang_gui_tin: 'tu_kiem_vai',
     don_dep_ho_so_het_han: 'tu_kiem_vai', don_dep_su_kien_web: 'tu_kiem_vai', don_dep_phieu_tai_len: 'tu_kiem_vai',
     tao_tin_tuyen_dung_mau: 'tu_kiem_vai', phieu_do_launch: 'tu_kiem_vai', thong_ke_tuyen_dung: 'tu_kiem_vai',
-    // 0066 — xóa file CV rồi mới ẩn danh, quét CV mồ côi (từ chối từng vai: test-tuyen-dung-xoa-cv.mjs nhóm 2, 3, 5).
+    // 0074 — xóa file CV rồi mới ẩn danh, quét CV mồ côi (từ chối từng vai: test-tuyen-dung-xoa-cv.mjs nhóm 2, 3, 5).
     ho_so_cv_het_han: 'tu_kiem_vai', an_danh_ho_so_het_han: 'tu_kiem_vai', ho_so_thu_muc_cv_mo_coi: 'tu_kiem_vai',
     suc_khoe_he_thong: 'tu_kiem_vai', suc_khoe_sao_luu: 'tu_kiem_vai',
     // Chỉ đọc thứ đã công khai cho anon (cong_tac_bat: công tắc đã công bố; lịch trống: như lich_trong_theo_ma).

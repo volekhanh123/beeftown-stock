@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN — XÓA FILE CV KHI ẨN DANH, QUÉT CV MỒ CÔI (0066)
+ * BEEFTOWN — XÓA FILE CV KHI ẨN DANH, QUÉT CV MỒ CÔI (0074)
  * ==========================================================
  *
  *     node test/test-tuyen-dung-xoa-cv.mjs
@@ -15,7 +15,7 @@
  * (bẫy bot, quá 5 lần/giờ/IP, số điện thoại sai, trùng trong ngày) và file thì đã nằm trong kho. Vé tải
  * CV là dấu vết duy nhất của thư mục đó, và don_dep_phieu_tai_len() xóa vé.
  *
- * SỬA (0066 + lib/xoa-cv.ts)
+ * SỬA (0074 + lib/xoa-cv.ts)
  *
  *   · Đọc đường dẫn CV sắp ẩn danh (ho_so_cv_het_han) → xóa trong kho (bỏ tiền tố "ho-so-ung-tuyen/")
  *     → kiểm lại file đã thật sự không còn → rồi mới ẩn danh, và CHỈ ẩn danh hồ sơ không CV hoặc có
@@ -38,7 +38,7 @@
  *        thì nút ẩn danh của chủ xóa giùm file của người khác. Ba cột đó chỉ đổi được qua hàm definer.
  *
  * Chính sách Storage (ai xóa / đọc được kho CV) PGlite không có — bước thử tay trên project Beeftown-thu
- * ghi ở cuối migration 0066 và trong mô tả PR.
+ * ghi ở cuối migration 0074 và trong mô tả PR.
  */
 
 import { join, dirname } from 'node:path';
@@ -867,7 +867,7 @@ await nhom('11 · nopHoSo — form chắc chắn bị từ chối thì không t�
 });
 
 // ===========================================================================
-await nhom('12 · 0066 VIẾT LẠI HÀM CŨ — chỉ thêm đúng phần cần thêm', async () => {
+await nhom('12 · 0074 VIẾT LẠI HÀM CŨ — chỉ thêm đúng phần cần thêm', async () => {
   const MIG = join(GOC, 'crm', 'supabase', 'migrations');
   const tep = dau => readFileSync(join(MIG, readdirSync(MIG).find(f => f.startsWith(dau))), 'utf8');
   /** Nguyên văn một hàm: từ "create or replace function <ten>(" tới dòng "$$;" đầu tiên sau đó. */
@@ -876,9 +876,9 @@ await nhom('12 · 0066 VIẾT LẠI HÀM CŨ — chỉ thêm đúng phần cần
     const j = i < 0 ? -1 : s.indexOf('\n$$;', i);
     return j < 0 ? '' : s.slice(i, j + 4);
   };
-  const m66 = tep('0066_');
+  const m66 = tep('0074_');
   const cu = ham(tep('0063_'), 'suc_khoe_so_lieu'), moi = ham(m66, 'suc_khoe_so_lieu');
-  const i = moi.indexOf('    -- 0066:'), j = moi.indexOf("    'chi_nhanh', v_ds);");
+  const i = moi.indexOf('    -- 0074:'), j = moi.indexOf("    'chi_nhanh', v_ds);");
   const o = i > 0 && j > i ? moi.slice(i, j) : '';
   ok('suc_khoe_so_lieu thêm đúng một ô don_dep gồm bốn số',
      /'don_dep', jsonb_build_object\(/.test(o) && (o.match(/'[a-z_0-9]+',/g) ?? []).length === 5
@@ -895,19 +895,19 @@ await nhom('12 · 0066 VIẾT LẠI HÀM CŨ — chỉ thêm đúng phần cần
   const set12 = m12.slice(m12.indexOf('    set ho_ten'), m12.indexOf("trang_thai = 'da_an_danh'"));
   ok('an_danh_ho_so_het_han xóa đúng các cột của 0012 (chép nguyên văn)',
      set12.length > 50 && ham(m66, 'an_danh_ho_so_het_han').includes(set12), set12);
-  ok('don_dep_ho_so_het_han() (0066) gọi an_danh_ho_so_het_han với danh sách RỖNG — từ SQL không xóa được file',
+  ok('don_dep_ho_so_het_han() (0074) gọi an_danh_ho_so_het_han với danh sách RỖNG — từ SQL không xóa được file',
      ham(m66, 'don_dep_ho_so_het_han').includes('return an_danh_ho_so_het_han(array[]::text[]);'));
 });
 
 // ===========================================================================
-// Rà soát bảo mật: từ 0066 nút ẩn danh của chủ XÓA FILE theo duong_dan_cv — chủ xóa được mọi file trong kho
+// Rà soát bảo mật: từ 0074 nút ẩn danh của chủ XÓA FILE theo duong_dan_cv — chủ xóa được mọi file trong kho
 // (policy 0014). Policy ho_so_sua (0012) cho quản lý UPDATE mọi cột hồ sơ của chi nhánh mình, nên quản lý ghi
 // đường dẫn của người khác vào một hồ sơ mồi, lùi hạn lưu về quá khứ, đèn đỏ, chủ bấm → file của người khác mất.
 await nhom('13 · ĐƯỜNG DẪN CV, HẠN LƯU, CỜ ẨN DANH CHỈ ĐỔI QUA HÀM — nút của chủ không thành công cụ xóa file của người khác', async () => {
   await donSach();
   const { rows: tg } = await db.query(`select tgname from pg_trigger where tgrelid = 'ho_so_ung_tuyen'::regclass and not tgisinternal
                                        and tgname = 'ho_so_khoa_cot_don_dep'`);
-  ok('Trigger ho_so_khoa_cot_don_dep có trên ho_so_ung_tuyen (0066)', tg.length === 1);
+  ok('Trigger ho_so_khoa_cot_don_dep có trên ho_so_ung_tuyen (0074)', tg.length === 1);
   const nanNhan = await taoHoSo('Nạn Nhân Còn Hạn', { cv: true });
   const moi = await taoHoSo('Hồ Sơ Mồi');
   const tep = new Set([nanNhan.khoa]);
@@ -947,9 +947,9 @@ await nhom('13 · ĐƯỜNG DẪN CV, HẠN LƯU, CỜ ẨN DANH CHỈ ĐỔI QU
   ok('anon không sửa được dòng nào', sp.loi !== null || sp.rows?.length === 0, sp.loi ?? '');
 
   const en = readFileSync(join(LIB, 'cau-noi-bo.ts'), 'utf8');
-  const m66 = readFileSync(join(GOC, 'crm', 'supabase', 'migrations', '0066_xoa_file_cv.sql'), 'utf8');
+  const m66 = readFileSync(join(GOC, 'crm', 'supabase', 'migrations', '0074_xoa_file_cv.sql'), 'utf8');
   const cau = m66.match(/raise exception '([^']*chỉ đổi được qua việc dọn dữ liệu[^']*)'/)?.[1];
-  ok('Câu từ chối mới có bản tiếng Anh ở cau-noi-bo.ts', !!cau && en.includes(`'${cau}'`), cau ?? 'không thấy câu trong 0066');
+  ok('Câu từ chối mới có bản tiếng Anh ở cau-noi-bo.ts', !!cau && en.includes(`'${cau}'`), cau ?? 'không thấy câu trong 0074');
   await donSach();
 });
 

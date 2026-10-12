@@ -665,7 +665,7 @@ await nhom('13 · 0060 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
                     .replace('kho_ipos_trang_thai(v_cn.id)', 'kho_ipos_trang_thai_cu(v_cn.id)'));
   await db.exec(cu58.replace('function suc_khoe_sao_luu()', 'function suc_khoe_sao_luu_cu()'));
   const bo = (k, ...khoa) => { if (!k || typeof k !== 'object') return k; const c = { ...k }; for (const x of khoa) delete c[x]; return c; };
-  // 0061 thêm ô `can` vào mỗi chi nhánh (đèn Beeftown Cân), 0066 thêm ô `don_dep` (đèn Dọn dữ liệu cá nhân; số đếm kiểm ở
+  // 0061 thêm ô `can` vào mỗi chi nhánh (đèn Beeftown Cân), 0074 thêm ô `don_dep` (đèn Dọn dữ liệu cá nhân; số đếm kiểm ở
   // test-tuyen-dung-xoa-cv.mjs nhóm 5b, thân hàm còn lại so nguyên văn với 0063 ở đó) — phần còn lại phải y hệt.
   const boCan = k => (k && Array.isArray(k.chi_nhanh) ? { ...k, chi_nhanh: k.chi_nhanh.map(c => bo(c, 'can')) } : k);
   const NGUOI = [['Chủ', UID.chu], ['Quản lý Q1', UID.qlA], ['Quản lý Q7', UID.qlB], ['Thủ kho Q1', UID.thuKhoA],
@@ -695,7 +695,7 @@ await nhom('13 · 0060 TÁCH KIỂM QUYỀN KHỎI SỐ LIỆU — Y HỆT TRƯ�
       m.loi ? iposTuChoi++ : iposDuoc++;
     }
   }
-  ok(`suc_khoe_he_thong(): ${NGUOI.length} người — số liệu và câu từ chối y hệt trước khi tách (trừ ô bao_dong, ô can của 0061, ô don_dep của 0066)`,
+  ok(`suc_khoe_he_thong(): ${NGUOI.length} người — số liệu và câu từ chối y hệt trước khi tách (trừ ô bao_dong, ô can của 0061, ô don_dep của 0074)`,
      lechSk.length === 0 && skDuoc >= 3 && skTuChoi >= 5, lechSk.join(' | ') || `${skDuoc} đọc được, ${skTuChoi} bị từ chối`);
   ok(`kho_ipos_trang_thai(): ${NGUOI.length} người × 2 chi nhánh — kết quả và câu từ chối y hệt trước khi tách`,
      lechIpos.length === 0 && iposDuoc >= 4 && iposTuChoi >= 4,

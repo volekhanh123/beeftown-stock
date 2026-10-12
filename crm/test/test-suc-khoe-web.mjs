@@ -52,7 +52,7 @@ function cnGoc() {
 const SAO_LUU_TOT = { lan_cuoi: truoc(10 * 60), lan_cuoi_ok: true, lan_cuoi_thu: 'dat', dung_duoc_cuoi: truoc(10 * 60),
                       kich_thuoc: 89456123 };
 const SAO_LUU_RONG = { lan_cuoi: null, lan_cuoi_ok: null, lan_cuoi_thu: null, dung_duoc_cuoi: null, kich_thuoc: null };
-/** Ô don_dep (0066) khi không có gì quá hạn lưu. */
+/** Ô don_dep (0074) khi không có gì quá hạn lưu. */
 const DON_DEP_SACH = { ho_so_qua_han: 0, ho_so_qua_han_7_ngay: 0, ve_qua_han: 0, su_kien_qua_han: false };
 /**
  * Đúng dạng database mới: chưa bật gì, không có gì chờ — và sao lưu hằng đêm đang chạy (sao lưu
@@ -681,7 +681,7 @@ await nhom('17 · docSaoLuu / docSucKhoeVaSaoLuu: KHÔNG BAO GIỜ NÉM LỖI, K
 });
 
 // ===========================================================================
-await nhom('18 · DỌN DỮ LIỆU CÁ NHÂN (0066) — đèn nói khi nào phải bấm nút dọn', async () => {
+await nhom('18 · DỌN DỮ LIỆU CÁ NHÂN (0074) — đèn nói khi nào phải bấm nút dọn', async () => {
   const dd = (o, laChu = true, nn = 'vi') => den(voi(t => { t.don_dep = { ...DON_DEP_SACH, ...o }; }), 'don_dep', nn, laChu);
   let d = dd({});
   ok('Không gì quá hạn → xanh, nằm ở khối "Toàn thương hiệu", mở màn Cài đặt',
@@ -710,7 +710,7 @@ await nhom('18 · DỌN DỮ LIỆU CÁ NHÂN (0066) — đèn nói khi nào ph�
   ok('Tiếng Anh: số ít đúng, không lẫn chữ Việt', d.ten === 'Personal data clean-up' && /^1 job application just past/.test(d.cau)
      && /1 CV upload ticket expired/.test(d.cau) && !VIET.test(d.cau), tom(d));
   d = den(voi(t => { delete t.don_dep; }), 'don_dep');
-  ok('Database chưa chạy 0066 (thiếu ô) → vàng, nói rõ — không bao giờ xanh', d.mau === 'vang' && /migration 0066/.test(d.cau), tom(d));
+  ok('Database chưa chạy 0074 (thiếu ô) → vàng, nói rõ — không bao giờ xanh', d.mau === 'vang' && /migration 0074/.test(d.cau), tom(d));
   d = dd({ ho_so_qua_han: 'x', ve_qua_han: null });
   ok('Số lạ → coi là 0, không vỡ trang', d.mau === 'xanh', tom(d));
 });

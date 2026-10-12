@@ -215,7 +215,7 @@ Chủ và quản lý mở `/noi-bo` là thấy ngay phần nào đang hỏng, th
 | Hồ sơ ứng tuyển | chưa ai mở quá 7 ngày | chưa ai mở 2–7 ngày |
 | Sao lưu dữ liệu (`0058`) | chưa có bản sao lưu nào; bản dùng được (khôi phục thử đạt) gần nhất quá 36 giờ | lượt gần nhất hỏng hoặc khôi phục thử không đạt (vẫn còn bản dùng được trong 36 giờ); không đọc được số liệu |
 | Báo động (`0060`) | quá 30 phút không có lượt báo động nào chạy xong; lượt gần nhất lỗi (gửi hỏng, không đọc được số liệu) | có kênh mà 26 giờ không gửi được tin nào (tóm tắt 8 giờ sáng phải tới mỗi ngày) |
-| Dọn dữ liệu cá nhân (`0066`) | hồ sơ ứng tuyển quá hạn lưu 6 tháng **hơn 7 ngày** mà chưa ẩn danh (lời hứa trên trang quyền riêng tư) | hồ sơ vừa quá hạn (1–7 ngày); vé tải CV chưa dùng hết hạn quá 7 ngày (có thể còn CV mồ côi); dữ liệu đo lường quá 90 ngày + 7; database chưa chạy `0066` |
+| Dọn dữ liệu cá nhân (`0074`) | hồ sơ ứng tuyển quá hạn lưu 6 tháng **hơn 7 ngày** mà chưa ẩn danh (lời hứa trên trang quyền riêng tư) | hồ sơ vừa quá hạn (1–7 ngày); vé tải CV chưa dùng hết hạn quá 7 ngày (có thể còn CV mồ côi); dữ liệu đo lường quá 90 ngày + 7; database chưa chạy `0074` |
 
 Xám = chưa bật / chưa dùng. **Không đọc được số liệu thì bảng nói thẳng là không đọc được** — không bao giờ hiện "mọi thứ đang chạy tốt" khi không biết. Database chưa chạy `0055` thì bảng báo cần migration đó.
 

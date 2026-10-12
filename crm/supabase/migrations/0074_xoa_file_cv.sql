@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0066 · XÓA FILE CV KHI ẨN DANH, QUÉT CV MỒ CÔI, ĐÈN DỌN DỮ LIỆU
+-- BEEFTOWN CRM — 0074 · XÓA FILE CV KHI ẨN DANH, QUÉT CV MỒ CÔI, ĐÈN DỌN DỮ LIỆU
 -- =============================================================================
 -- Rà soát nợ kỹ thuật 11/10/2026 thấy ba lỗ, cùng một gốc: database không xóa
 -- được file trong Supabase Storage (bảng storage.objects chặn DELETE thẳng —
@@ -43,7 +43,7 @@
 --   5. Trigger ho_so_khoa_cot_don_dep: người đăng nhập không UPDATE thẳng được
 --      duong_dan_cv, luu_den, da_an_danh (rà soát bảo mật của chính PR này).
 --      Policy ho_so_sua (0012) cho chủ / quản lý sửa MỌI cột hồ sơ của chi
---      nhánh mình. Trước 0066 điều đó vô hại với kho file; từ 0066 nút ẩn danh
+--      nhánh mình. Trước 0074 điều đó vô hại với kho file; từ 0074 nút ẩn danh
 --      XÓA FILE theo duong_dan_cv bằng tài khoản chủ (xóa được mọi file trong
 --      kho), nên quản lý ghi đường dẫn CV của người khác vào một hồ sơ mồi, lùi
 --      hạn lưu → đèn đỏ → chủ bấm → file của người khác mất. Giao diện chỉ sửa
@@ -94,7 +94,7 @@ end;
 $$;
 
 comment on function ho_so_cv_het_han() is
-  'Đường dẫn CV (dạng ho-so-ung-tuyen/<vé>/<tên>) của hồ sơ quá hạn lưu chưa ẩn danh. Chỉ chủ sở hữu. Web xóa các file này trong kho rồi mới gọi an_danh_ho_so_het_han (0066).';
+  'Đường dẫn CV (dạng ho-so-ung-tuyen/<vé>/<tên>) của hồ sơ quá hạn lưu chưa ẩn danh. Chỉ chủ sở hữu. Web xóa các file này trong kho rồi mới gọi an_danh_ho_so_het_han (0074).';
 
 
 -- =============================================================================
@@ -133,7 +133,7 @@ end;
 $$;
 
 comment on function an_danh_ho_so_het_han(text[]) is
-  'Ẩn danh hồ sơ quá hạn lưu không có CV, hoặc có CV đã xóa khỏi kho (p_cv_da_xoa: đường dẫn nguyên dạng duong_dan_cv mà web đã xóa và kiểm lại). Hồ sơ còn file giữ nguyên. Chỉ chủ sở hữu (0066).';
+  'Ẩn danh hồ sơ quá hạn lưu không có CV, hoặc có CV đã xóa khỏi kho (p_cv_da_xoa: đường dẫn nguyên dạng duong_dan_cv mà web đã xóa và kiểm lại). Hồ sơ còn file giữ nguyên. Chỉ chủ sở hữu (0074).';
 
 
 -- =============================================================================
@@ -158,7 +158,7 @@ end;
 $$;
 
 comment on function don_dep_ho_so_het_han() is
-  'Ẩn danh hồ sơ quá hạn lưu KHÔNG có CV (0066). Hồ sơ có CV chỉ được ẩn danh sau khi web xóa file — xem an_danh_ho_so_het_han.';
+  'Ẩn danh hồ sơ quá hạn lưu KHÔNG có CV (0074). Hồ sơ có CV chỉ được ẩn danh sau khi web xóa file — xem an_danh_ho_so_het_han.';
 
 
 -- =============================================================================
@@ -194,7 +194,7 @@ end;
 $$;
 
 comment on function ho_so_thu_muc_cv_mo_coi(text[]) is
-  'Trong các tên thư mục web liệt kê từ kho ho-so-ung-tuyen: những thư mục mồ côi (mã vé không còn hiệu lực hơn một ngày, không hồ sơ chưa ẩn danh nào trỏ tới). Tên không phải mã vé không bao giờ mồ côi. Chủ sở hữu hoặc quản lý (0066).';
+  'Trong các tên thư mục web liệt kê từ kho ho-so-ung-tuyen: những thư mục mồ côi (mã vé không còn hiệu lực hơn một ngày, không hồ sơ chưa ẩn danh nào trỏ tới). Tên không phải mã vé không bao giờ mồ côi. Chủ sở hữu hoặc quản lý (0074).';
 
 
 -- =============================================================================
@@ -222,7 +222,7 @@ end;
 $$;
 
 comment on function ho_so_khoa_cot_don_dep() is
-  'Trigger (0066): người đăng nhập không UPDATE thẳng duong_dan_cv, luu_den, da_an_danh của hồ sơ — nút ẩn danh xóa file theo duong_dan_cv bằng quyền của chủ, nên các cột đó phải do database tự đặt.';
+  'Trigger (0074): người đăng nhập không UPDATE thẳng duong_dan_cv, luu_den, da_an_danh của hồ sơ — nút ẩn danh xóa file theo duong_dan_cv bằng quyền của chủ, nên các cột đó phải do database tự đặt.';
 
 drop trigger if exists ho_so_khoa_cot_don_dep on ho_so_ung_tuyen;
 create trigger ho_so_khoa_cot_don_dep
@@ -389,7 +389,7 @@ begin
       'kenh',          coalesce(v_bd.kenh, 'khong'),
       'co_loi',        v_bd.loi_cuoi is not null,
       'lan_gui_cuoi',  v_bd.lan_gui_cuoi),
-    -- 0066: đèn "Dọn dữ liệu cá nhân" — việc dọn chỉ chạy khi chủ bấm (0012), đèn nói khi nào phải bấm.
+    -- 0074: đèn "Dọn dữ liệu cá nhân" — việc dọn chỉ chạy khi chủ bấm (0012), đèn nói khi nào phải bấm.
     -- Hai nhóm hồ sơ không chồng nhau: quá hạn hơn 7 ngày > quá hạn 1–7 ngày.
     'don_dep', jsonb_build_object(
       'ho_so_qua_han',        (select count(*) from ho_so_ung_tuyen h
@@ -404,7 +404,7 @@ end;
 $$;
 
 comment on function suc_khoe_so_lieu(uuid[], jsonb) is
-  'NỘI BỘ (0060, 0061 thêm ô can, 0063 cho_qua_han bỏ tin đặt bàn chưa xác nhận — máy gửi không lấy, 0066 thêm ô don_dep — đèn Dọn dữ liệu cá nhân): số liệu bảng sức khỏe cho các chi nhánh ĐANG HOẠT ĐỘNG trong danh sách, không kiểm vai. p_lech: đối soát sổ kho đã có (null = quét). Chỉ gọi từ suc_khoe_he_thong() (chủ / quản lý) và bao_dong_bat_dau_luot() (máy báo động). Không ai đăng nhập gọi thẳng được.';
+  'NỘI BỘ (0060, 0061 thêm ô can, 0063 cho_qua_han bỏ tin đặt bàn chưa xác nhận — máy gửi không lấy, 0074 thêm ô don_dep — đèn Dọn dữ liệu cá nhân): số liệu bảng sức khỏe cho các chi nhánh ĐANG HOẠT ĐỘNG trong danh sách, không kiểm vai. p_lech: đối soát sổ kho đã có (null = quét). Chỉ gọi từ suc_khoe_he_thong() (chủ / quản lý) và bao_dong_bat_dau_luot() (máy báo động). Không ai đăng nhập gọi thẳng được.';
 
 
 -- =============================================================================
@@ -468,7 +468,7 @@ $$;
 --  2. Nộp ở /tuyen-dung (tin có hỏi CV) hai lần cùng số điện thoại, cùng tin,
 --     trong cùng ngày, lần hai kèm CV → database từ chối lần hai (trùng) sau khi
 --     file đã lên → Storage có thêm một thư mục <mã vé>/ mà không hồ sơ nào trỏ
---     tới. (Số điện thoại sai dạng thì từ 0066 web không tải CV lên nữa.)
+--     tới. (Số điện thoại sai dạng thì từ 0074 web không tải CV lên nữa.)
 --     Đợi vé quá hạn hơn một ngày, hoặc trong SQL Editor:
 --       update phieu_tai_len set het_han = now() - interval '2 days' where id = '<mã vé>';
 --     Tài khoản CHỦ bấm "Xóa CV mồ côi và dọn vé" → câu "Đã xóa 1 file CV mồ

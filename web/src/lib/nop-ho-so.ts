@@ -175,7 +175,7 @@ export async function nopHoSo(
   //
   // Database từ chối sau khi file đã lên thì file mồ côi — anon không xóa
   // được, nút "Xóa CV mồ côi và dọn vé" ở /noi-bo/cai-dat dọn (lib/xoa-cv.ts,
-  // 0066). Chỗ nào biết chắc trước là sẽ bị từ chối thì đừng tải: bẫy bot,
+  // 0074). Chỗ nào biết chắc trước là sẽ bị từ chối thì đừng tải: bẫy bot,
   // điền dưới 3 giây (đúng điều kiện đầu tiên của nop_ho_so_ung_tuyen — btrim
   // của Postgres chỉ bỏ dấu cách, không bỏ tab / xuống dòng) và số điện thoại
   // sai dạng. Lỡ database vẫn nhận (hai bên lệch nhau) thì câu trả lời nói

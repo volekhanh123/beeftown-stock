@@ -7,7 +7,7 @@
  * /noi-bo/cai-dat. Quyền do database và policy Storage quyết: chỉ chủ sở hữu xóa được file trong kho
  * ho-so-ung-tuyen (0014); quản lý đọc được kho, không xóa được.
  *
- * HAI VIỆC (migration 0066)
+ * HAI VIỆC (migration 0074)
  *
  *   anDanhHoSoHetHan — đọc đường dẫn CV của hồ sơ quá hạn (ho_so_cv_het_han) → xóa trong kho → KIỂM LẠI
  *     file đã không còn → an_danh_ho_so_het_han(những đường dẫn đã chắc chắn xóa). Hồ sơ còn file thì
@@ -23,7 +23,7 @@
  * làm lại được mà không hỏng gì (xóa file đã không còn = không làm gì; ẩn danh hồ sơ đã ẩn danh = 0).
  *
  * GIẢ ĐỊNH VỀ SUPABASE STORAGE (storage-js 2.x, storage-api; kiểm bằng supabase-js thật trong
- * crm/test/test-tuyen-dung-xoa-cv.mjs nhóm 10, thử thật trên Beeftown-thu — cuối migration 0066):
+ * crm/test/test-tuyen-dung-xoa-cv.mjs nhóm 10, thử thật trên Beeftown-thu — cuối migration 0074):
  *   · remove(khóa[]) trả các dòng ĐÃ xóa, `name` là khóa đầy đủ. Khóa không còn, hoặc bị policy chặn,
  *     KHÔNG báo lỗi — chỉ vắng mặt trong danh sách trả về. Nên khóa vắng mặt phải được liệt kê lại.
  *   · list(tiền tố) trả một cấp; thư mục có id null. Lỗi mạng / cổng / thân hỏng thành { error },

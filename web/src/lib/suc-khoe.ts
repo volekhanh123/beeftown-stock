@@ -3,7 +3,7 @@
  * =====================================================================
  *
  * Database (suc_khoe_he_thong, migration 0055; suc_khoe_sao_luu, 0058; 0060 thêm ô bao_dong; 0061 thêm ô can — đèn
- * Beeftown Cân của mỗi chi nhánh; 0066 thêm ô don_dep — đèn Dọn dữ liệu cá nhân) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
+ * Beeftown Cân của mỗi chi nhánh; 0074 thêm ô don_dep — đèn Dọn dữ liệu cá nhân) chỉ trả SỐ LIỆU: số đếm và mốc giờ. File này
  * quyết định MÀU và CÂU hai thứ tiếng; crm/test/test-suc-khoe-web.mjs thử từng ngưỡng bằng dữ
  * liệu giả, không cần database.
  *
@@ -75,9 +75,9 @@ export const PHUT_LECH_CAN = 15;
  */
 export const GIO_MAY_CAN_THOI_DUNG = 48;
 /**
- * Dọn dữ liệu cá nhân (0066): số ngày cho phép chậm bấm nút dọn trước khi đèn đổi màu — hồ sơ quá hạn lưu hơn chừng
+ * Dọn dữ liệu cá nhân (0074): số ngày cho phép chậm bấm nút dọn trước khi đèn đổi màu — hồ sơ quá hạn lưu hơn chừng
  * này ngày → đỏ; vé tải CV chưa dùng hết hạn quá chừng này ngày → vàng; dữ liệu đo lường quá 90 ngày cộng chừng này
- * ngày → vàng. PHẢI bằng các số trong ô don_dep của 0066 (test-tuyen-dung-xoa-cv.mjs đối chiếu với file migration).
+ * ngày → vàng. PHẢI bằng các số trong ô don_dep của 0074 (test-tuyen-dung-xoa-cv.mjs đối chiếu với file migration).
  */
 export const NGAY_CHO_BAM_DON = 7;
 
@@ -115,7 +115,7 @@ export interface ChiNhanhTho {
 }
 
 /**
- * Ô don_dep (0066) — đèn "Dọn dữ liệu cá nhân", cả thương hiệu. Hai nhóm hồ sơ KHÔNG chồng nhau: quá hạn lưu 1–7
+ * Ô don_dep (0074) — đèn "Dọn dữ liệu cá nhân", cả thương hiệu. Hai nhóm hồ sơ KHÔNG chồng nhau: quá hạn lưu 1–7
  * ngày; quá hạn hơn 7 ngày. ve_qua_han: vé tải CV chưa dùng hết hạn quá 7 ngày (mỗi vé có thể còn một CV mồ côi).
  * su_kien_qua_han: còn dữ liệu đo lường cũ hơn 97 ngày.
  */
@@ -143,7 +143,7 @@ export interface SucKhoeTho {
    * Thiếu ô (database chưa chạy 0060) = chưa chạy lần nào.
    */
   bao_dong?: { lan_chay_cuoi: string | null; kenh: string; co_loi: boolean; lan_gui_cuoi: string | null };
-  /** 0066. Thiếu ô (database chưa chạy 0066) → đèn vàng nói rõ, không bao giờ xanh. */
+  /** 0074. Thiếu ô (database chưa chạy 0074) → đèn vàng nói rõ, không bao giờ xanh. */
   don_dep?: DonDepTho;
   /** Gắn thêm từ suc_khoe_sao_luu() (docSucKhoeVaSaoLuu). undefined: database chưa chạy 0058; null: không đọc được. */
   sao_luu?: SaoLuuTho | null;
@@ -714,7 +714,7 @@ function denBaoDong(b: Partial<NonNullable<SucKhoeTho['bao_dong']>>, bayGio: num
         en: `Alerts go via ${ten.en} — last run ${tuTruoc(bayGio, chay).en}, last message ${tuTruoc(bayGio, gui).en}.` }, null, nn);
 }
 
-// --- Dọn dữ liệu cá nhân (cả thương hiệu, 0066) ------------------------------------
+// --- Dọn dữ liệu cá nhân (cả thương hiệu, 0074) ------------------------------------
 /**
  * Ba việc dọn ở /noi-bo/cai-dat chỉ chạy khi có người bấm (0012: việc hủy dữ liệu cá nhân do người bấm). Đèn nói khi
  * nào phải bấm. Đỏ: hồ sơ quá hạn lưu hơn NGAY_CHO_BAM_DON ngày mà chưa ẩn danh — lời hứa trên trang quyền riêng tư
@@ -725,8 +725,8 @@ function denDonDep(d: Partial<DonDepTho> | undefined, laChu: boolean, nn: NgonNg
   const di = '/noi-bo/cai-dat';
   if (d === undefined || d === null) {
     return denTu('don_dep', [{ muc: 'vang', cau: {
-      vi: 'Chưa có số liệu dọn dữ liệu cá nhân — database chưa chạy migration 0066. Báo người quản trị kỹ thuật.',
-      en: 'No personal data clean-up figures — the database has not run migration 0066 yet. Tell the technical admin.' } }],
+      vi: 'Chưa có số liệu dọn dữ liệu cá nhân — database chưa chạy migration 0074. Báo người quản trị kỹ thuật.',
+      en: 'No personal data clean-up figures — the database has not run migration 0074 yet. Tell the technical admin.' } }],
       { vi: '', en: '' }, di, nn);
   }
   const qua7 = so(d.ho_so_qua_han_7_ngay), qua = so(d.ho_so_qua_han), ve = so(d.ve_qua_han);

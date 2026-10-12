@@ -92,7 +92,7 @@ await nhom('1 · MỖI ĐÈN CÓ NHÓM: HỆ THỐNG BÁO CẢ ĐÊM, KHÁCH Đ�
   const coNhom = Object.keys(NHOM).filter(m => m !== 'doc_so_lieu').sort();
   ok('NHOM có đúng mọi đèn của bảng sức khỏe (+ đèn giả doc_so_lieu) — đèn mới phải xếp nhóm',
      JSON.stringify(maDen) === JSON.stringify(coNhom) && NHOM.doc_so_lieu === 'he_thong', `${maDen.join()} | ${coNhom.join()}`);
-  ok('Nhóm khách đúng bốn đèn: đặt bàn, hồ sơ, tin Zalo kẹt, dọn dữ liệu cá nhân (0066)',
+  ok('Nhóm khách đúng bốn đèn: đặt bàn, hồ sơ, tin Zalo kẹt, dọn dữ liệu cá nhân (0074)',
      Object.keys(NHOM).filter(m => NHOM[m] === 'khach').sort().join() === 'dat_ban,don_dep,tin_zalo,tuyen_dung');
   // Đèn Dọn dữ liệu cá nhân đỏ khi hồ sơ quá hạn lưu hơn 7 ngày — mốc tính theo NGÀY Việt Nam, nên đèn đổi màu đúng lúc
   // 00:00. Nhóm hệ thống thì tin báo đến lúc nửa đêm cho một việc chờ tới sáng được.
@@ -874,6 +874,29 @@ await nhom('BIẾN BẢN BUILD: tên biến layBienCong đọc phải viết ra 
   const thieu = [...ten].filter(t => !ma.includes(`'${t}'`));
   ok(`Mọi tên layBienCong được gọi (${[...ten].join(', ')}) có trong MÃ (không phải chú thích) của bien-moi-truong.ts`,
      ten.has('SITE_URL') && thieu.length === 0, `thiếu: ${thieu.join(', ')}`);
+});
+
+// ===========================================================================
+await nhom('DỌN NHẬT KÝ HỎNG (0073): lượt vẫn trọn, câu lỗi vào lỗi của lượt → đèn Báo động', async () => {
+  // Hàm dọn chạy TRONG bao_dong_bat_dau_luot; hỏng thì database trả loi_don, lượt vẫn chạy. Worker phải gộp câu đó
+  // vào lỗi của lượt — không thì việc dọn hỏng mãi mà không đèn nào báo.
+  const { rows: [{ d: goc }] } = await db.query(`select pg_get_functiondef('don_nhat_ky_qua_han()'::regprocedure) d`);
+  await db.exec(`create or replace function don_nhat_ky_qua_han() returns jsonb language plpgsql
+                 security definer set search_path = public as $$ begin raise exception 'hỏng thử dọn nhật ký'; end $$`);
+  try {
+    const r = await chay();
+    ok('Lượt trọn dù dọn hỏng: bắt đầu → ghi → kết thúc',
+       r.c.goi.join() === 'signIn,bao_dong_bat_dau_luot,bao_dong_ghi_luot,bao_dong_ket_thuc_luot,signOut', r.c.goi.join());
+    const tt = await trangThai();
+    ok('loi_cuoi của lượt có câu "dọn nhật ký quá hạn hỏng"', /dọn nhật ký quá hạn hỏng: hỏng thử dọn nhật ký/.test(tt.loi_cuoi ?? ''),
+       String(tt.loi_cuoi));
+    const { o, d } = await denBaoDong();
+    ok('Đèn Báo động trên bảng: đỏ "lượt gần nhất bị lỗi"', o?.co_loi === true && d?.mau === 'do', `${d?.mau} — ${d?.cau}`);
+  } finally {
+    await db.exec(goc);
+  }
+  await chay();
+  ok('Dọn chạy lại được → lượt sau xoá lỗi', (await trangThai()).loi_cuoi === null);
 });
 
 process.exit(ketThuc('BÁO ĐỘNG PHÍA WEB'));

@@ -263,7 +263,7 @@ export async function xoaBan(client: SupabaseClient, id: string, nn: NgonNguNB =
 // giờ chạy. Trong đó don_dep_ho_so_het_han() là nghĩa vụ theo Nghị định
 // 13/2023 và là lời hứa đang nằm trên trang quyền riêng tư.
 //
-// Từ 0066 hai việc đầu có `chay` riêng (lib/xoa-cv.ts): database không xóa
+// Từ 0074 hai việc đầu có `chay` riêng (lib/xoa-cv.ts): database không xóa
 // được file trong kho CV, nên web xóa file trước rồi mới gọi database. `ham`
 // vẫn là tên hàm database quyết quyền của nút (test-quyen-ghi-thang-crm.mjs so
 // chi_chu_so_huu với quyền thật); `chay: null` = gọi thẳng hàm đó. Đèn "Dọn dữ
