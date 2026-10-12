@@ -12,7 +12,7 @@
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
-import { docDanhSachPhieuXuat, TEN_LOAI_XUAT_NB, type PhieuXuatTom, type LoaiXuat } from '../../../../lib/kho/xuat.ts';
+import { docDanhSachPhieuXuat, docDonViPhieuXuat, TEN_LOAI_XUAT_NB, type PhieuXuatTom, type LoaiXuat } from '../../../../lib/kho/xuat.ts';
 import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, nhanKho, trangThaiKho } from '../../../../lib/kho/chung.ts';
 import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
@@ -61,7 +61,8 @@ const t = dichNB(nn, {
   noi: { vi: 'Nơi', en: 'Where' },
   hang: { vi: 'Hàng', en: 'Goods' },
   soDong: { vi: (n: number) => `${n} dòng`, en: (n: number) => `${n} ${s(n, 'line', 'lines')}` },
-  soGoi: { vi: (n: number) => `${n} gói`, en: (n: number) => `${n} ${s(n, 'pack', 'packs')}` },
+  // dv: đơn vị đếm chung của các món trên phiếu ("khay"); phiếu có món khác đơn vị thì chữ chung.
+  soGoi: { vi: (n: number, dv?: string) => `${n} ${dv ?? 'gói'}`, en: (n: number, dv?: string) => `${n} ${dv ?? s(n, 'pack', 'packs')}` },
   lyDo: { vi: 'Lý do', en: 'Reason' },
   nguoiLap: { vi: 'Người lập', en: 'Made by' },
 });
@@ -90,7 +91,10 @@ if (k.chiNhanh && k.daKhoiTao) {
     loiDoc = cauLoiKho(e, t.khongDoc);
   }
 }
-const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
+// Tên người lập và đơn vị đếm chung của từng phiếu ("khay") — hai lượt đọc song song.
+const [ten, donVi] = await Promise.all([
+  tenNhanSu(k.client, ds.map(p => p.nguoi_tao)), docDonViPhieuXuat(k.client, ds.map(p => p.id)),
+]);
 const moTa = (p: PhieuXuatTom) =>
   p.loai === 'chuyen' ? `${p.ten_vi_tri} → ${p.ten_vi_tri_den ?? '—'}` : t.tu(p.ten_vi_tri);
 ---
@@ -137,7 +141,7 @@ const moTa = (p: PhieuXuatTom) =>
             </div>
             <dl>
               <dt>{t.noi}</dt><dd>{moTa(p)}</dd>
-              <dt>{t.hang}</dt><dd>{t.soDong(p.so_dong)} · {p.tong_goi ? `${t.soGoi(p.tong_goi)} · ` : ''}{dinhDangKg(p.tong_kg, nn)} kg</dd>
+              <dt>{t.hang}</dt><dd>{t.soDong(p.so_dong)} · {p.tong_goi ? `${t.soGoi(p.tong_goi, donVi.get(p.id))} · ` : ''}{dinhDangKg(p.tong_kg, nn)} kg</dd>
               {p.ten_ly_do && <><dt>{t.lyDo}</dt><dd>{p.ten_ly_do}</dd></>}
               <dt>{t.nguoiLap}</dt><dd>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
             </dl>

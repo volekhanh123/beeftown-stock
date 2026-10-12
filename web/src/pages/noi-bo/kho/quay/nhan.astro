@@ -25,7 +25,8 @@ import {
   docHangDangMang, docMatHangQuay, docCaiDatQuay, docFormNhan, nhanHangChuyen, huyChuyen, cauSoLuong,
   type HangDangMang, type MatHangQuay,
 } from '../../../../lib/kho/quay.ts';
-import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, kqHai, laUuid, type HaiThuTieng, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, donViChung, kqHai, laUuid, type HaiThuTieng, type KetQua } from '../../../../lib/kho/chung.ts';
+import { doiDonViCau } from '../../../../lib/kho/xuat.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../lib/cau-noi-bo.ts';
 
@@ -105,6 +106,9 @@ const form = await docFormGui(Astro);
 const idForm = String(form?.get('id') ?? '');
 const maGuiCu = String(form?.get('ma_gui') ?? '');
 let bao: KetQua | null = k.bao;
+// Câu database trả về viết "N gói" ("Đã nhận đủ XC-…: 10 gói"). Mọi món đếm của phiếu cùng một đơn vị ("khay")
+// thì đổi theo ở web, cả hai thứ tiếng; phiếu có món khác đơn vị thì giữ chữ chung.
+const donViCua = (p: HangDangMang) => donViChung(p.mon.map(x => matHang.find(m => m.id === x.mat_hang_id)));
 if (form) {
   const viec = String(form.get('viec') ?? '');
   const p = ds.find(x => x.id === idForm);
@@ -119,10 +123,11 @@ if (form) {
   } else if (!p) {
     kq = kqHai(false, CAU.khongCho);
   } else if (viec === 'nhan_du') {
-    kq = await nhanHangChuyen(k.client, p.id, maGuiCu, null);
+    kq = doiDonViCau(await nhanHangChuyen(k.client, p.id, maGuiCu, null), donViCua(p));
   } else if (viec === 'nhan_thieu') {
     const { pDong, loi, loiEn } = docFormNhan(form, p.mon, matHang);
-    kq = loi.length > 0 ? kqHai(false, { vi: loi.join(' '), en: loiEn.join(' ') }) : await nhanHangChuyen(k.client, p.id, maGuiCu, pDong);
+    kq = loi.length > 0 ? kqHai(false, { vi: loi.join(' '), en: loiEn.join(' ') })
+      : doiDonViCau(await nhanHangChuyen(k.client, p.id, maGuiCu, pDong), donViCua(p));
     if (kq.ok && pDong) {
       kq = kqHai(true, {
         vi: `${kq.cau} Phần thiếu đã báo quản lý.`,
@@ -130,7 +135,7 @@ if (form) {
       });
     }
   } else if (viec === 'huy_chuyen') {
-    kq = await huyChuyen(k.client, p.id, String(form.get('ly_do') ?? '').trim());
+    kq = doiDonViCau(await huyChuyen(k.client, p.id, String(form.get('ly_do') ?? '').trim()), donViCua(p));
   } else {
     kq = kqHai(false, CAU.viecSai);
   }

@@ -23,7 +23,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, dinhDangKg, docKg, docSoNguyen, donViChung, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 
 /** Đơn vị gói mặc định của cột kho_mat_hang.don_vi_goi (0019) — khi món không mang đơn vị. */
 const GOI_MAC_DINH: HaiThuTieng = { vi: 'gói', en: 'packs' };
@@ -286,6 +286,37 @@ export async function docDanhSachYeuCau(
   const { data, error } = await q.limit(tuy.gioiHan ?? 30);
   if (error) throw error;
   return (data ?? []) as YeuCauQuay[];
+}
+
+/**
+ * Đơn vị đếm chung của TỪNG yêu cầu trong danh sách: yeu_cau_id → "khay" (cho dòng "1 món · 10 khay"). Yêu cầu có
+ * món khác đơn vị, chỉ có món cân ký, hoặc không đọc được → vắng mặt, trang dùng chữ chung "gói". Một lượt đọc
+ * cho cả danh sách (danh mục thì trang đã có sẵn). Đọc hỏng không làm hỏng trang: trả Map rỗng.
+ */
+export async function docDonViYeuCau(
+  client: SupabaseClient, yeuCauIds: readonly unknown[],
+  matHang: readonly { id: string; dem_goi: boolean; don_vi_goi?: string | null }[],
+): Promise<Map<string, string>> {
+  const ra = new Map<string, string>();
+  const ids = [...new Set(yeuCauIds.filter(laUuid))];
+  if (!ids.length) return ra;
+  try {
+    const { data, error } = await client.from('kho_yeu_cau_quay_dong').select('yeu_cau_id, mat_hang_id').in('yeu_cau_id', ids);
+    // Đủ 1.000 dòng là mức PostgREST cắt bớt mà không báo: không chắc đã thấy hết món → dùng chữ chung.
+    if (error || (data ?? []).length >= 1000) return ra;
+    const mon = new Map(matHang.map(m => [m.id, m]));
+    const theoYc = new Map<string, string[]>();
+    for (const r of data ?? []) {
+      const id = r.yeu_cau_id as string;
+      theoYc.set(id, [...(theoYc.get(id) ?? []), r.mat_hang_id as string]);
+    }
+    for (const [id, cacMon] of theoYc) {
+      if (cacMon.some(x => !mon.has(x))) continue;
+      const dv = donViChung(cacMon.map(x => mon.get(x)));
+      if (dv) ra.set(id, dv);
+    }
+  } catch { return new Map(); }
+  return ra;
 }
 
 export async function docYeuCau(client: SupabaseClient, id: string): Promise<{ yc: YeuCauQuay; dong: DongYeuCau[] } | null> {

@@ -31,9 +31,10 @@ import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.t
 import { docViTri, docCaiDat, type ViTri, type CaiDat } from '../../../../lib/kho/danh-muc.ts';
 import { batDauKiemKe } from '../../../../lib/kho/kiem-ke.ts';
 import {
-  docPhieuQuay, docMonDaQuet, docDongDemQuay, quetMotLuot, suaQuet, hetHangVaGui, monKhongThay,
+  docPhieuQuay, docMonDaQuet, docDongDemQuay, docDonViMon, quetMotLuot, suaQuet, hetHangVaGui, monKhongThay,
   type PhieuDemQuay, type MonDaQuet, type DongDemQuay,
 } from '../../../../lib/kho/dem-quay.ts';
+import { doiDonViCau } from '../../../../lib/kho/xuat.ts';
 import {
   cauLoiKho, dinhDangKg, dinhDangThoiDiem, homNayVn, kqHai, laUuid, type HaiThuTieng, type KetQua,
 } from '../../../../lib/kho/chung.ts';
@@ -177,9 +178,13 @@ if (form && quayChon) {
     maConLai = String(form.get('ma_quet') ?? '').trim();
     maGuiLai = laUuid(maGui) ? maGui : null;
   } else if (viec === 'bo_luot' || viec === 'bot_mot') {
-    const kq = await suaQuet(k.client, id, String(form.get('ma_gui') ?? ''),
-      viec === 'bo_luot' ? 'lan_cuoi' : 'bot_mot', String(form.get('mat_hang_id') ?? '') || null);
-    return chuyenHuong(Astro, veQuay(), kq);
+    // "Đã bớt 1 gói." → đơn vị của chính món đó ("Đã bớt 1 khay."); đơn vị đọc song song với lệnh −1.
+    const monId = String(form.get('mat_hang_id') ?? '') || null;
+    const [kq, dv] = await Promise.all([
+      suaQuet(k.client, id, String(form.get('ma_gui') ?? ''), viec === 'bo_luot' ? 'lan_cuoi' : 'bot_mot', monId),
+      viec === 'bot_mot' ? docDonViMon(k.client, monId) : Promise.resolve(null),
+    ]);
+    return chuyenHuong(Astro, veQuay(), doiDonViCau(kq, dv));
   } else if (viec === 'xong') {
     return chuyenHuong(Astro, veQuay('&buoc=xong'), kqHai(true, CAU.xemLai));
   } else if (viec === 'gui') {
