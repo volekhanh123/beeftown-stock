@@ -838,9 +838,9 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   phải thuộc ô của chính phiên. Chốt → ô gắn lô ra (`kho_o_ma_giao.lo_id`); mở lại → bỏ; huỷ phiên → trả
   ô. Lô ra hết tồn thì lần giao sau tự đóng ô cũ; quản lý giải phóng tay được (`kho_giai_phong_o_ma`).
   Quét kiểm kê cũng nhận nhãn mã ô (`kho_mat_hang_theo_ma_can`). View `kho_v_o_ma_giao`.
-- **Một ô, một lô — lô có khay mang nhãn (0082)**: ô chỉ nhớ được một lô, còn chốt phiên sinh một lô cho mỗi
+- **Một ô, một lô — lô có khay mang nhãn (0086)**: ô chỉ nhớ được một lô, còn chốt phiên sinh một lô cho mỗi
   dòng ra giữ lại. Trigger `kho_phien_pha_ra_o_ma` vì vậy chỉ cho ô theo lô của dòng **nhập kho**; dòng
-  **chuyển thẳng bếp** của cùng phần cắt (lô sinh ra rồi xuất hết ngay) không đụng tới ô. Trước 0082 dòng
+  **chuyển thẳng bếp** của cùng phần cắt (lô sinh ra rồi xuất hết ngay) không đụng tới ô. Trước 0086 dòng
   chốt sau cùng thắng: ô rơi vào lô chuyển bếp, sổ coi ô trống, tảng sau lấy lại đúng ô đó và mọi khay của
   tảng trước bị trừ vào tảng sau (phiếu quét nhãn lẫn hóa đơn iPOS). **Hai dòng nhập kho** của cùng phần cắt
   đang giữ ô (4 khay → Quầy + 6 khay → Kho lạnh) thì **chốt bị từ chối**, câu bảo gộp thành một dòng, chốt
@@ -918,7 +918,7 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   kg NCC → sau repack → vào lóc → thịt / phụ phẩm / bỏ / hao hụt; giá NCC → giá vốn sau repack → giá vốn
   thịt ra; các lô cắt ra (ô mã, đã bán, bếp, huỷ, còn ở đâu); phiếu huỷ của tảng. Mở bằng lô tảng hoặc
   bất kỳ lô cắt ra. Màn Tảng · ủ: số tảng là link, ô **Tìm tảng theo số** (`?tim=142` / `#0142`), mục
-  **Đã lóc** (tảng nhận trong 90 ngày). Từ 0083, đã bán / bếp / huỷ của tảng và của từng lô cắt là **số ròng**:
+  **Đã lóc** (tảng nhận trong 90 ngày). Từ 0087, đã bán / bếp / huỷ của tảng và của từng lô cắt là **số ròng**:
   dòng sổ `dao_nguoc` (hoá đơn iPOS sửa / huỷ, phiên lóc mở lại) xét theo dòng nó đảo nên tự triệt; ngày bán cuối
   của lô là lần bán còn hiệu lực.
 - **Huỷ cả tảng** (`kho_huy_ca_tang`, quyền van_hanh): mỗi vị trí còn hàng của tảng (kể cả tảng chưa lóc
@@ -927,7 +927,7 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   Hàng đang chờ huỷ bỏ qua; hàng đang mang ra quầy báo lại số kg. Duyệt xong ô mã tự trống.
 - **Báo cáo theo tảng** (`/noi-bo/kho/bao-cao/theo-tang` + CSV, `kho_bao_cao_tang`, quyền xem, cột tiền
   chỉ vai xem giá): mỗi tảng nhận trong kỳ — hao repack, thu hồi, bán / bếp / huỷ / còn, số ngày từ lóc
-  tới bán hết, tình trạng chưa lóc / đang bán / đã hết. Từ 0083 bán / bếp / huỷ là số ròng (đã trừ dòng
+  tới bán hết, tình trạng chưa lóc / đang bán / đã hết. Từ 0087 bán / bếp / huỷ là số ròng (đã trừ dòng
   `dao_nguoc`): tảng đã lóc hết thì kg thịt + phụ phẩm khớp với bán + bếp + huỷ + còn, chênh đúng bằng dòng lệch
   cân / kiểm kê của các lô cắt; ngày hết là ngày của dòng sổ còn hiệu lực cuối cùng (`test-kho-tang-dao-nguoc.mjs`).
 - **Xếp quầy**: `goiYXepQuay(ton, nn, soTang)` — câu dặn nói số tảng trên tem ("tảng #0142").
@@ -958,11 +958,11 @@ theo vai. Gửi xuống cân, sửa tem, tạo mã giảm: quản lý / chủ (`
   `kho_tao_phieu_xuat`); cận date → xếp trước + "cân lại bằng PLU n · mã 90001"; dưới mức → `kho_tao_yeu_cau`.
 - **Tảng & ô** `kho_can_o_ma(cn)` (quyền xem — NV quầy không đọc được phiên lóc nên hàm SECURITY DEFINER):
   mỗi ô — tảng đang giữ, lóc ra / bán / huỷ / còn, số lần bán đúng ô và lệch ô. Máy so tên trên cân với tên
-  kho muốn → báo "cân chưa đổi tên theo tảng". Từ 0083 bán / huỷ / khác là số ròng (đã trừ dòng `dao_nguoc` của
+  kho muốn → báo "cân chưa đổi tên theo tảng". Từ 0087 bán / huỷ / khác là số ròng (đã trừ dòng `dao_nguoc` của
   hoá đơn iPOS sửa / huỷ).
 - **Báo cáo bán theo giờ** `kho_bao_cao_ban_gio(cn, từ, đến)` (xem_gia): ngày × giờ × món từ dòng iPOS đã trừ
   kho; phần bán giảm giá (kg, doanh thu, tiền đã giảm ước theo giá hiện tại) và **giảm sớm** — lô đã trừ còn hạn
-  xa hơn mức cảnh báo (bắt giảm giá gói còn tươi; từ 0083 chỉ xét lô của dòng sổ bán còn hiệu lực); lệch ô. Máy
+  xa hơn mức cảnh báo (bắt giảm giá gói còn tươi; từ 0087 chỉ xét lô của dòng sổ bán còn hiệu lực); lệch ô. Máy
   thêm bảng theo tảng (`kho_bao_cao_tang`).
 
 ## 3q. Beeftown Cân báo về kho · Cân sẵn sàng · đối chiếu tem in / quét (migration 0061, Beeftown Cân 2.9)

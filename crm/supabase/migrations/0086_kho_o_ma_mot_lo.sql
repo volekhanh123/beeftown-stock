@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN KHO — 0082 · MỘT Ô MÃ CHỈ VỀ MỘT LÔ: LÔ CÓ KHAY MANG NHÃN
+-- BEEFTOWN KHO — 0086 · MỘT Ô MÃ CHỈ VỀ MỘT LÔ: LÔ CÓ KHAY MANG NHÃN
 -- =============================================================================
 -- LỖI (rà soát độc lập ngày 12/10/2026, trước khi mở PR soát luồng 6 bước; dựng
 -- lại được trên PGlite): phiên lóc một tảng gõ tay HAI dòng ra cho cùng một phần
@@ -73,13 +73,13 @@ begin
     return new;
   end if;
 
-  -- 0082: phần chuyển thẳng bếp thành lô rồi xuất hết ngay trong lúc chốt —
+  -- 0086: phần chuyển thẳng bếp thành lô rồi xuất hết ngay trong lúc chốt —
   -- không khay nào mang nhãn ra quầy, ô không theo lô đó.
   if new.xu_ly is distinct from 'nhap_kho' then
     return new;
   end if;
 
-  -- 0082: ô chỉ nhớ được MỘT lô. Ô của phần cắt này trong phiên đã có lô khác
+  -- 0086: ô chỉ nhớ được MỘT lô. Ô của phần cắt này trong phiên đã có lô khác
   -- (một dòng nhập kho trước đó của cùng lần chốt) → hai lô, một ô: từ chối.
   select o.so_o, o.ma_can into v_so_o, v_ma_can
   from kho_o_ma_giao g join kho_o_ma o on o.id = g.o_ma_id
@@ -101,7 +101,7 @@ end;
 $$;
 
 comment on function kho_phien_pha_ra_o_ma is
-  'NỘI BỘ (trigger, 0049). Chốt phiên lóc → ô mã của phần cắt nhận lô ra; mở lại phiên → bỏ lô. 0082: ô chỉ theo lô của dòng NHẬP KHO (không theo lô chuyển thẳng bếp); dòng nhập kho thứ hai của cùng phần cắt đang giữ ô thì từ chối chốt.';
+  'NỘI BỘ (trigger, 0049). Chốt phiên lóc → ô mã của phần cắt nhận lô ra; mở lại phiên → bỏ lô. 0086: ô chỉ theo lô của dòng NHẬP KHO (không theo lô chuyển thẳng bếp); dòng nhập kho thứ hai của cùng phần cắt đang giữ ô thì từ chối chốt.';
 
 
 -- =============================================================================
@@ -124,7 +124,7 @@ end;
 $$;
 
 comment on function kho_phien_pha_chot_tra_o_ma is
-  'NỘI BỘ (trigger, 0082). Phiên lóc chuyển sang da_chot → trả ngay các ô mã của phiên chưa gắn lô (phần cắt chỉ chuyển thẳng bếp, hoặc không cắt ra).';
+  'NỘI BỘ (trigger, 0086). Phiên lóc chuyển sang da_chot → trả ngay các ô mã của phiên chưa gắn lô (phần cắt chỉ chuyển thẳng bếp, hoặc không cắt ra).';
 
 drop trigger if exists kho_phien_pha_chot_tra_o_ma_trigger on kho_phien_pha;
 create trigger kho_phien_pha_chot_tra_o_ma_trigger
