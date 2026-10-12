@@ -11,13 +11,7 @@
  * chính sách đều "đạt" một cách giả tạo.
  */
 
-import { PGlite } from '@electric-sql/pglite';
-import { readFileSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = join(__dirname, '..', 'supabase', 'migrations');
+import { dungDatabaseTrong } from './kho-chung.mjs';
 
 let dat = 0, hong = 0;
 const loi = [];
@@ -30,42 +24,12 @@ function ok(ten, dieuKien, chiTiet = '') {
   }
 }
 
-const db = new PGlite();
-
 console.log('\x1b[1m\nBEEFTOWN CRM — KIỂM THỬ PHÂN QUYỀN (RLS)\x1b[0m');
 console.log('='.repeat(60));
 
-// ---------------------------------------------------------------------------
-// Mô phỏng môi trường Supabase: schema auth + vai trò anon/authenticated
-// ---------------------------------------------------------------------------
-await db.exec(`
-  create schema if not exists auth;
-  create table if not exists auth._phien (uid uuid);
-  create or replace function auth.uid() returns uuid
-    language sql stable as $$ select uid from auth._phien limit 1 $$;
-
-  create role anon nologin;
-  create role authenticated nologin;
-  create role service_role nologin;
-  grant usage on schema public to anon, authenticated, service_role;
-
-  -- QUAN TRỌNG: mô phỏng QUYỀN MẶC ĐỊNH của Supabase.
-  -- Supabase cấp sẵn mọi bảng/hàm/sequence mới cho anon và authenticated.
-  -- PGlite thì không cấp gì cả — nên nếu thiếu khối này, MỌI khẳng định
-  -- "anon không làm được X" trong file này đều đúng một cách RỖNG: đúng vì
-  -- PGlite keo kiệt, không phải vì schema an toàn. Lỗ hổng quyền thực thi hàm
-  -- (0008 mục 1) không thể tái hiện nếu thiếu mấy dòng này.
-  --
-  -- Phải đặt TRƯỚC vòng chạy migration thì default privileges mới áp lên các
-  -- đối tượng do migration tạo ra.
-  alter default privileges in schema public grant all on tables    to anon, authenticated;
-  alter default privileges in schema public grant all on functions to anon, authenticated;
-  alter default privileges in schema public grant all on sequences to anon, authenticated;
-`);
-
-for (const f of readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort()) {
-  await db.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
-}
+// Mô phỏng Supabase (schema auth, ba vai, quyền mặc định đặt TRƯỚC khi nạp migration — thiếu nó thì mọi
+// khẳng định "anon không làm được X" đều đúng một cách rỗng) rồi nạp migration: dungDatabaseTrong() của kho-chung.mjs.
+const { db } = await dungDatabaseTrong();
 console.log('\n\x1b[1m1 · CHUẨN BỊ\x1b[0m');
 ok('Nạp xong toàn bộ migration', true);
 

@@ -352,7 +352,7 @@ có khi script đã chạy).
 ```bash
 cd crm && npm test                                     # gồm quét chữ dính, chữ cấm, giao diện, tiếng Anh
 node test/dinh-chu.mjs ../web/src/components/<file>.astro   # chữ dính của một component
-cd ../web && npx astro check && npm run quet && npm run thu-trinh-duyet
+cd ../web && npx astro check && npm run quet && npm run thu-trinh-duyet -- --khong-build   # quet vừa build (không database)
 npm run thu-day-du -- --chup                           # ảnh chụp 360 / 390 / 768 / 1024 / 1440 × vi / en / ko
 ```
 

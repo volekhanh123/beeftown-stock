@@ -18,7 +18,7 @@
  * phần khởi tạo sổ chỉ kiểm được trên một database đã có sẵn bản tiếng Anh.
  */
 
-import { PGlite } from '@electric-sql/pglite';
+import { dungDatabaseTrong } from './kho-chung.mjs';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -43,29 +43,13 @@ async function nhom(ten, fn) {
   catch (e) { ok(`${ten} chạy được đến cuối`, false, e.message); }
 }
 
-const db = new PGlite();
-
 console.log('\x1b[1m\nBEEFTOWN CRM — KIỂM THỬ BẢN DỊCH VÀ TIẾNG HÀN\x1b[0m');
 console.log('='.repeat(60));
 
-await db.exec(`
-  create schema if not exists auth;
-  create table if not exists auth._phien (uid uuid);
-  create or replace function auth.uid() returns uuid
-    language sql stable as $$ select uid from auth._phien limit 1 $$;
-
-  create role anon nologin;
-  create role authenticated nologin;
-  grant usage on schema public to anon, authenticated;
-
-  alter default privileges in schema public grant all on tables    to anon, authenticated;
-  alter default privileges in schema public grant all on functions to anon, authenticated;
-`);
-
+// Mô phỏng Supabase (schema auth, ba vai, quyền mặc định đặt TRƯỚC khi nạp migration — thiếu nó thì mọi
+// khẳng định "anon không làm được X" đều đúng một cách rỗng) rồi nạp migration: dungDatabaseTrong() của kho-chung.mjs.
+const { db } = await dungDatabaseTrong({ den: 35 });
 const tatCa = readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort();
-for (const f of tatCa.filter(f => f < '0036')) {
-  await db.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
-}
 
 // ---------------------------------------------------------------------------
 // Dữ liệu KIỂU CŨ — có trước 0036, bản tiếng Anh do người gõ tay

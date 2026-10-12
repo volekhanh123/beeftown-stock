@@ -271,10 +271,12 @@ await nhom('6 · KHÔNG FILE KIỂM THỬ NÀO CẤP QUYỀN HÀNG LOẠT SAU KH
   // xoá trắng, nên một hàm lẽ ra nhân viên không gọi được vẫn gọi được trong test — và một hàm web gọi được trong
   // test có thể bị từ chối trên production. Bỏ đi thì cả bảy vẫn xanh (12/10/2026): chúng không cần. Quyền mặc định
   // của Supabase đặt bằng "alter default privileges" TRƯỚC khi nạp migration (kho-chung.mjs) thì vẫn đúng.
-  const HANG_LOAT = /\bgrant\b[^;`]*\bon\s+all\s+(functions|tables|sequences|routines|procedures)\s+in\s+schema\b/i;
+  // Đọc theo CÂU LỆNH (tách ở dấu ;, gộp khoảng trắng), không theo dòng: "grant execute\n on all functions …" viết
+  // xuống dòng cũng bị bắt.
+  const HANG_LOAT = /\bgrant\b[^`]*\bon all (functions|tables|sequences|routines|procedures) in schema\b/i;
   const tep = readdirSync(THU_MUC).filter(f => f.endsWith('.mjs')).sort();
-  const vi = tep.filter(f => readFileSync(join(THU_MUC, f), 'utf8').split('\n')
-    .some(dong => HANG_LOAT.test(dong) && !/default\s+privileges/i.test(dong)));
+  const vi = tep.filter(f => readFileSync(join(THU_MUC, f), 'utf8').replace(/\s+/g, ' ').split(';')
+    .some(cau => HANG_LOAT.test(cau) && !/default privileges/i.test(cau)));
   ok(`Không file nào trong crm/test/ (${tep.length} file) có "grant … on all functions/tables in schema"`,
      vi.length === 0, `có trong: ${vi.join(', ')} — dùng quyền Supabase mặc định (kho-chung.mjs), cấp riêng từng hàm nếu thật sự cần`);
 });

@@ -6,15 +6,16 @@
  * test chỉ còn phần kiểm tra.
  *
  * CÓ Ý THỨC không cấp EXECUTE hàng loạt cho authenticated sau khi nạp migration
- * (bảy file test CRM cũ từng làm vậy — đã bỏ 12/10/2026, test-quy-trinh.mjs mục 6
- * chặn). Quyền của authenticated ở đây đúng là quyền Supabase cấp mặc định trừ
- * đi những gì migration đã thu hồi — nên một hàm nội bộ lỡ để lọt ra ngoài sẽ lộ
- * ra trong test thay vì bị che.
+ * (bảy file test CRM cũ từng tự dựng Supabase giả và cấp như vậy — 12/10/2026 bỏ
+ * cấp, chuyển về dungDatabaseTrong() ở đây; test-quy-trinh.mjs mục 6 chặn). Quyền
+ * của authenticated ở đây đúng là quyền Supabase cấp mặc định trừ đi những gì
+ * migration đã thu hồi — nên một hàm nội bộ lỡ để lọt ra ngoài sẽ lộ ra trong test
+ * thay vì bị che.
  */
 
 import { PGlite } from '@electric-sql/pglite';
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, openAsBlob, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -80,7 +81,7 @@ export async function dungDatabaseTrong({ den = Infinity } = {}) {
     .filter(f => den === Infinity || Number(f.slice(0, 4)) <= den);
   const vanBan = new Map(daNap.map(f => [f, readFileSync(join(MIGRATIONS_DIR, f), 'utf8')]));
 
-  const anh = den === Infinity ? docAnhDatabase(vanBan) : null;
+  const anh = den === Infinity ? await docAnhDatabase(vanBan) : null;
   if (anh) return { db: new PGlite({ loadDataDir: anh }), daNap, vanBan };
 
   const db = new PGlite();
@@ -126,11 +127,12 @@ function dauVanMigration(vanBan) {
   return h.digest('hex');
 }
 
-function docAnhDatabase(vanBan) {
+async function docAnhDatabase(vanBan) {
   const duongDan = process.env[BIEN_ANH_DATABASE];
   if (!duongDan || !existsSync(duongDan) || !existsSync(`${duongDan}.dau-van`)) return null;
   if (readFileSync(`${duongDan}.dau-van`, 'utf8') !== dauVanMigration(vanBan)) return null;
-  return new Blob([readFileSync(duongDan)]);
+  // Blob đọc thẳng từ file: không chép ~80 MB vào bộ nhớ của Node trước khi PGlite tự chép một lần nữa.
+  return openAsBlob(duongDan);
 }
 
 /** Dựng database trống (luôn nạp migration, không đọc ảnh cũ) rồi chụp vào `duongDan` kèm dấu vân. */
@@ -243,10 +245,32 @@ export async function themMayIpos(db, cnA, cnB) {
 const HAM_GIO_VN = ['bay_gio_vn', 'hom_nay_vn', 'gio_vn'];
 const dinhNghiaGioThat = new WeakMap();
 
-/** `thoiDiem`: chuỗi ISO có múi giờ ('2026-10-12T16:50:00Z' = 23:50 giờ VN) hoặc số mili-giây. */
+const ISO_CO_MUI_GIO = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/i;
+/** Số mili-giây, hoặc báo lỗi: thiếu múi giờ, sai dạng, hay ngày giờ không có thật (Date.parse đọc 31/02 thành 03/03). */
+function docThoiDiem(thoiDiem) {
+  if (typeof thoiDiem === 'number') {
+    if (!Number.isFinite(thoiDiem)) throw new Error(`datGioDatabase: ${thoiDiem} không phải số mili-giây`);
+    return thoiDiem;
+  }
+  const m = ISO_CO_MUI_GIO.exec(String(thoiDiem).trim());
+  if (!m) throw new Error(`datGioDatabase: "${thoiDiem}" không phải thời điểm ISO có múi giờ (ghi rõ Z hoặc +07:00)`);
+  const ms = Date.parse(m[0]);
+  const lechPhut = m[6].toUpperCase() === 'Z' ? 0
+    : (m[6][0] === '-' ? -1 : 1) * (Number(m[6].slice(1, 3)) * 60 + Number(m[6].slice(-2)));
+  const tai = new Date(ms + lechPhut * 60000);   // giờ đồng hồ tại múi giờ đã ghi
+  const khop = tai.getUTCFullYear() === Number(m[1]) && tai.getUTCMonth() + 1 === Number(m[2])
+    && tai.getUTCDate() === Number(m[3]) && tai.getUTCHours() === Number(m[4]) && tai.getUTCMinutes() === Number(m[5]);
+  if (!Number.isFinite(ms) || !khop) throw new Error(`datGioDatabase: "${thoiDiem}" là ngày giờ không có thật`);
+  return ms;
+}
+
+/**
+ * `thoiDiem`: chuỗi ISO CÓ múi giờ ('2026-10-12T16:50:00Z' hay '2026-10-12T23:50:00+07:00' = 23:50 giờ VN)
+ * hoặc số mili-giây. Chuỗi thiếu múi giờ bị từ chối: Node đọc nó theo giờ của máy, nên cùng một kiểm thử ra
+ * 23:50 ở lượt đêm (TZ giờ VN) mà 06:50 hôm sau ở lượt PR (UTC).
+ */
 export async function datGioDatabase(db, thoiDiem) {
-  const ms = typeof thoiDiem === 'number' ? thoiDiem : Date.parse(thoiDiem);
-  if (!Number.isFinite(ms)) throw new Error(`datGioDatabase: thời điểm không hợp lệ ${thoiDiem}`);
+  const ms = docThoiDiem(thoiDiem);
   if (!dinhNghiaGioThat.has(db)) {
     const { rows } = await db.query(
       `select pg_get_functiondef(p.oid) as dinh_nghia from pg_proc p

@@ -11,6 +11,7 @@
  */
 
 import { dungDatabase, taoBoDem, datGioDatabase, traGioDatabase } from './kho-chung.mjs';
+import { homNayVn } from '../../web/src/lib/gio-vn.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — ĐỒNG HỒ GIẢ PHÍA DATABASE');
 const { db, cnA, duoiAnon } = await dungDatabase();
@@ -66,16 +67,29 @@ await nhom('3 · GIỮA BUỔI TRƯA — CHỈ KHUNG ĐÃ QUA BỊ ĐÁNH DẤU'
 await nhom('4 · TRẢ GIỜ THẬT', async () => {
   await traGioDatabase(db);
   ok('Định nghĩa ba hàm y nguyên như trước khi giả', (await dinhNghia()) === dinhNghiaThat);
-  // Ngày VN tính ở Node trước và sau câu hỏi — lượt chạy vắt qua nửa đêm VN thì chấp nhận cả hai.
-  const vnJs = () => new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 10);
-  const truoc = vnJs(), g = await gioVn(), sau = vnJs();
+  // Ngày VN tính ở Node (homNayVn của web) trước và sau câu hỏi — lượt chạy vắt qua nửa đêm VN thì chấp nhận cả hai.
+  const truoc = homNayVn(), g = await gioVn(), sau = homNayVn();
   ok('hom_nay_vn() lại là ngày VN thật', g.ngay === truoc || g.ngay === sau, `${g.ngay} — Node: ${truoc}`);
   await traGioDatabase(db);
   ok('Trả giờ hai lần không hỏng gì', (await dinhNghia()) === dinhNghiaThat);
   let loi = null;
   try { await datGioDatabase(db, 'không phải thời điểm'); } catch (e) { loi = e.message; }
-  ok('Thời điểm không đọc được → báo lỗi, không đặt bừa', /không hợp lệ/.test(loi ?? ''), loi ?? 'không báo lỗi');
+  ok('Thời điểm không đọc được → báo lỗi, không đặt bừa', /không phải thời điểm/.test(loi ?? ''), loi ?? 'không báo lỗi');
   ok('…và không đổi định nghĩa nào', (await dinhNghia()) === dinhNghiaThat);
+  loi = null;
+  try { await datGioDatabase(db, '2026-10-12T23:50:00'); } catch (e) { loi = e.message; }
+  ok('Chuỗi thiếu múi giờ → báo lỗi (Node đọc theo giờ máy: PR và lượt đêm ra hai giờ khác nhau)',
+     /có múi giờ/.test(loi ?? ''), loi ?? 'không báo lỗi');
+  loi = null;
+  try { await datGioDatabase(db, '2026-02-31T10:00:00+07:00'); } catch (e) { loi = e.message; }
+  ok('Ngày không có thật (31/02) → báo lỗi, không lặng lẽ thành 03/03', /không có thật/.test(loi ?? ''), loi ?? 'không báo lỗi');
+  ok('…và không đổi định nghĩa nào', (await dinhNghia()) === dinhNghiaThat);
+  await datGioDatabase(db, '2026-10-12T23:50:00+07:00');
+  const g2 = await gioVn();
+  ok('Ghi +07:00 thì đúng 23:50 ngày 12/10 giờ VN, máy chạy múi giờ nào cũng vậy',
+     g2.ngay === '2026-10-12' && g2.gio === '23:50:00', `${g2.ngay} ${g2.gio}`);
+  await traGioDatabase(db);
+  ok('Trả giờ thật sau lượt đặt thứ hai', (await dinhNghia()) === dinhNghiaThat);
 });
 
 process.exit(ketThuc('ĐỒNG HỒ GIẢ PHÍA DATABASE'));

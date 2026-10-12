@@ -13,13 +13,7 @@
  * sách lệch, và npm test đỏ ngay.
  */
 
-import { PGlite } from '@electric-sql/pglite';
-import { readFileSync, readdirSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const MIGRATIONS_DIR = join(__dirname, '..', 'supabase', 'migrations');
+import { dungDatabaseTrong } from './kho-chung.mjs';
 
 let dat = 0, hong = 0;
 const loi = [];
@@ -44,35 +38,12 @@ async function phaiLoi(db, sql, params = []) {
   catch (e) { return e.message; }
 }
 
-const db = new PGlite();
-
 console.log('\x1b[1m\nBEEFTOWN CRM — KIỂM THỬ AN TOÀN\x1b[0m');
 console.log('='.repeat(60));
 
-// ---------------------------------------------------------------------------
-// Mô phỏng Supabase: schema auth, ba vai trò, VÀ quyền mặc định.
-// Khối default privileges là thứ làm cho bài test này có nghĩa — thiếu nó thì
-// PGlite vốn đã không cấp gì cho anon, và mọi khẳng định đều đúng một cách rỗng.
-// ---------------------------------------------------------------------------
-await db.exec(`
-  create schema if not exists auth;
-  create table if not exists auth._phien (uid uuid);
-  create or replace function auth.uid() returns uuid
-    language sql stable as $$ select uid from auth._phien limit 1 $$;
-
-  create role anon nologin;
-  create role authenticated nologin;
-  create role service_role nologin;
-  grant usage on schema public to anon, authenticated, service_role;
-
-  alter default privileges in schema public grant all on tables    to anon, authenticated;
-  alter default privileges in schema public grant all on functions to anon, authenticated;
-  alter default privileges in schema public grant all on sequences to anon, authenticated;
-`);
-
-for (const f of readdirSync(MIGRATIONS_DIR).filter(f => f.endsWith('.sql')).sort()) {
-  await db.exec(readFileSync(join(MIGRATIONS_DIR, f), 'utf8'));
-}
+// Mô phỏng Supabase (schema auth, ba vai, quyền mặc định đặt TRƯỚC khi nạp migration — thiếu nó thì mọi
+// khẳng định "anon không làm được X" đều đúng một cách rỗng) rồi nạp migration: dungDatabaseTrong() của kho-chung.mjs.
+const { db } = await dungDatabaseTrong();
 
 // ---------------------------------------------------------------------------
 // Dữ liệu mẫu: hai chi nhánh với tỷ lệ quay lại KHÁC NHAU, để mục 4 có thể

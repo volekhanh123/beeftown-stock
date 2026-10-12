@@ -260,9 +260,7 @@ const i = process.argv.indexOf('--url');
 const URL_NGOAI = i > -1 ? process.argv[i + 1] : null;
 
 rmSync(ANH_LOI, { recursive: true, force: true });
-// wrangler dev chạy ở nhóm tiến trình riêng nên không nhận Ctrl+C — tự tắt nó trước khi thoát, kẻo nó giữ cổng.
-let mayChuDangChay = null;
-for (const tin of ['SIGINT', 'SIGTERM']) process.on(tin, () => { tatMayChu(mayChuDangChay); process.exit(130); });
+// Ctrl+C giữa chừng: may-chu-ban-build.mjs tự tắt wrangler dev (nhóm tiến trình riêng) trước khi thoát.
 console.log('\x1b[1m\nBEEFTOWN — KIỂM THỬ BẰNG TRÌNH DUYỆT THẬT\x1b[0m');
 console.log('='.repeat(60));
 
@@ -270,7 +268,6 @@ let mayChu = null;
 let trinhDuyet = null;
 try {
   const goc = URL_NGOAI ?? (mayChu = await batMayChu()).goc;
-  mayChuDangChay = mayChu?.p ?? null;
   console.log(`Trang: ${goc}`);
   trinhDuyet = await chromium.launch();
   const trang = await danhSachTrang(goc);

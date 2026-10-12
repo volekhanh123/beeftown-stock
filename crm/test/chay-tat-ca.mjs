@@ -100,13 +100,13 @@ function docTong(ra) {
 const THU_MUC_TAM = mkdtempSync(join(tmpdir(), 'beeftown-test-'));
 process.on('exit', () => { try { rmSync(THU_MUC_TAM, { recursive: true, force: true }); } catch { /* bỏ qua */ } });
 
-function chayMot(f) {
+function chayMot(f, bien = {}) {
   return new Promise(xong => {
     const batDau = Date.now();
     const duongRa = join(THU_MUC_TAM, `${f}.log`);
     const fd = openSync(duongRa, 'w');
     const con = spawn(process.execPath, [join(THU_MUC, f)], {
-      cwd: join(THU_MUC, '..'), env: { ...process.env, ...bienAnh, FORCE_COLOR: '1' }, stdio: ['ignore', fd, fd],
+      cwd: join(THU_MUC, '..'), env: { ...process.env, ...bien, FORCE_COLOR: '1' }, stdio: ['ignore', fd, fd],
     });
     let quaGio = false;
     const hen = setTimeout(() => { quaGio = true; con.kill('SIGKILL'); }, GIOI_HAN_MS);
@@ -145,15 +145,19 @@ function inKetQua(kq) {
 
 const batDau = Date.now();
 
+// Ảnh chụp database trống dựng song song với lượt chạy. Chỉ file dựng database qua kho-chung.mjs mới chờ ảnh;
+// file khác (kiem-migration, chay-test, test chỉ đọc mã web…) chạy ngay. test-kho-du-lieu-thu.mjs dài nhất (~75 giây)
+// cũng không chờ: tự nạp migration (~2,5 giây) còn nhanh hơn chờ ảnh xong rồi mới bắt đầu.
 // Migration hỏng thì không chụp được: không dừng ở đây — mỗi file tự nạp migration và chay-test.mjs báo đúng file hỏng.
 const ANH_DATABASE = join(THU_MUC_TAM, 'database-trong.tar');
-let bienAnh = {};
-try {
-  await chupDatabaseTrong(ANH_DATABASE);
-  bienAnh = { [BIEN_ANH_DATABASE]: ANH_DATABASE };
-} catch (e) {
-  console.log(`\x1b[33m(Không chụp được database trống — mỗi file tự nạp migration: ${e.message.split('\n')[0]})\x1b[0m\n`);
-}
+const KHONG_CHO_ANH = new Set(['test-kho-du-lieu-thu.mjs']);
+const canAnh = f => !KHONG_CHO_ANH.has(f) && readFileSync(join(THU_MUC, f), 'utf8').includes("from './kho-chung.mjs'");
+const anhSanSang = chupDatabaseTrong(ANH_DATABASE).then(
+  () => ({ [BIEN_ANH_DATABASE]: ANH_DATABASE }),
+  e => {
+    console.log(`\x1b[33m(Không chụp được database trống — mỗi file tự nạp migration: ${e.message.split('\n')[0]})\x1b[0m`);
+    return {};
+  });
 
 const ketQua = [];
 const hang = [...thuTu];
@@ -163,7 +167,8 @@ console.log(`\x1b[1mBEEFTOWN — CHẠY ${thuTu.length} FILE KIỂM THỬ (song 
 
 async function tho() {
   while (hang.length && !dungNhan) {
-    const kq = await chayMot(hang.shift());
+    const f = hang.shift();
+    const kq = await chayMot(f, canAnh(f) ? await anhSanSang : {});
     ketQua.push(kq);
     inKetQua(kq);
     if (!kq.dat && !TAT_CA) dungNhan = true;

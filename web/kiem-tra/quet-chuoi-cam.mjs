@@ -132,8 +132,6 @@ async function main() {
     // Không còn tự dùng astro dev đang bật ở cổng 4321: đó không phải bản sẽ deploy, và có thể
     // đang nối database thật. Muốn quét nó thì gõ rõ --url http://localhost:4321.
     ({ p: tienTrinh, goc } = await batMayChuBanBuild({ cong: 4329, khongBuild: process.argv.includes('--khong-build') }));
-    // wrangler dev chạy ở nhóm tiến trình riêng nên không nhận Ctrl+C — tự tắt nó trước khi thoát, kẻo nó giữ cổng.
-    for (const tin of ['SIGINT', 'SIGTERM']) process.on(tin, () => { tatMayChu(tienTrinh); process.exit(130); });
     console.log(`Bản build chạy trong wrangler dev ở ${goc}\n`);
   }
 
