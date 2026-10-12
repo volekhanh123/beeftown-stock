@@ -19,7 +19,7 @@
  * thứ quanh nó mời nộp — form trống ngay bên dưới, "Cách ứng tuyển", nút "Nộp hồ sơ",
  * "Ứng tuyển vị trí này" — đều cãi câu đó, và ứng viên nộp hai bản. Nên thẻ chỉ còn
  * khung lỗi và nút liên hệ, như thẻ "không chắc" của trang hỏi bàn. Muốn nộp lại thì
- * tải lại trang; database trả đúng mã cũ nếu hồ sơ y hệt đã vào (0080).
+ * tải lại trang; database trả đúng mã cũ nếu hồ sơ y hệt đã vào (0081).
  *
  * MỨC LƯƠNG CHỈ HIỆN KHI ĐÃ DUYỆT. Bảng lương nằm trong tài liệu vận hành
  * mật, và ràng buộc vi_tri_luong_chi_khi_duyet trong database đòi phải có
@@ -330,7 +330,7 @@ const tRieng = dich(ngonNgu, {
    * Cùng khuôn với script của TrangDatBan.astro.
    *
    * · Chặn bấm đúp: lần gửi thứ hai bị bỏ, nút khóa và ghi "Đang gửi…". Database cũng trả lại
-   *   đúng mã cũ cho hồ sơ y hệt (0080) — script này để lượt thứ hai không phải đi tới đó.
+   *   đúng mã cũ cho hồ sơ y hệt (0081) — script này để lượt thứ hai không phải đi tới đó.
    * · File CV lớn hơn 5MB: báo sát ô, không gửi — máy chủ từ chối cả hồ sơ khi thân quá lớn
    *   (lib/xu-ly-form.ts). Tin không hỏi CV (ô bị ẩn) mà vẫn còn file đã chọn: bỏ file trước khi
    *   gửi, máy chủ cũng bỏ nó (nop-ho-so.ts) — không đẩy vài MB đi cho không.
