@@ -197,8 +197,10 @@ export function maGui() {
 
 /**
  * Client Supabase giả chạy trên chính database PGlite, dưới danh nghĩa một vai — để gọi THẲNG các hàm
- * đọc / ghi của web/src/lib/kho (from().select().eq().in().order().limit(), maybeSingle(), rpc()) và
- * thấy đúng RLS, đúng quyền hàm như trên Supabase thật.
+ * đọc / ghi của web/src/lib/kho (from().select().eq().in().order().limit().range(), maybeSingle(), rpc())
+ * và thấy đúng RLS, đúng quyền hàm như trên Supabase thật. select(cột, { count: 'exact' }) trả thêm
+ * `count` (tổng số dòng khớp điều kiện, như PostgREST) — docTungTrang (chung.ts) dựa vào nó để biết đã
+ * đọc đủ trang.
  *
  *     const clientCua = await taoClientPg({ db, duoi, duoiAnon });
  *     const nv = clientCua(UID.nvQuayA);      // 'anon' = chưa đăng nhập · null = đăng nhập nhưng không phải nhân sự
@@ -237,17 +239,24 @@ export async function taoClientPg({ db, duoi, duoiAnon }) {
         return chay(h.tra === 'void' ? `select null::jsonb as r from (select ${goi}) x` : `select to_jsonb(${goi}) as r`, gt);
       },
       from(bang) {
-        const q = { cot: '*', dk: [], gt: [], sap: [], gioiHan: null };
-        const chayBang = () => chay(
-          `select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) as r from (select ${q.cot} from ${bang}`
-          + `${q.dk.length ? ` where ${q.dk.join(' and ')}` : ''}${q.sap.length ? ` order by ${q.sap.join(', ')}` : ''}`
-          + `${q.gioiHan ? ` limit ${q.gioiHan}` : ''}) x`, q.gt);
+        const q = { cot: '*', dk: [], gt: [], sap: [], gioiHan: null, boQua: 0, demTong: false };
+        const dieuKien = () => (q.dk.length ? ` where ${q.dk.join(' and ')}` : '');
+        const chayBang = async () => {
+          const kq = await chay(
+            `select coalesce(jsonb_agg(to_jsonb(x)), '[]'::jsonb) as r from (select ${q.cot} from ${bang}`
+            + `${dieuKien()}${q.sap.length ? ` order by ${q.sap.join(', ')}` : ''}`
+            + `${q.gioiHan !== null ? ` limit ${q.gioiHan}` : ''}${q.boQua ? ` offset ${q.boQua}` : ''}) x`, q.gt);
+          if (kq.error || !q.demTong) return kq;
+          const dem = await chay(`select to_jsonb(count(*)) as r from ${bang}${dieuKien()}`, q.gt);
+          return dem.error ? dem : { ...kq, count: Number(dem.data) };
+        };
         const b = {
-          select(cot) { q.cot = cot; return b; },
+          select(cot, tuy) { q.cot = cot; q.demTong = tuy?.count === 'exact'; return b; },
           eq(k, v) { q.gt.push(v); q.dk.push(`${k} = $${q.gt.length}`); return b; },
           in(k, ds) { q.gt.push(`{${ds.join(',')}}`); q.dk.push(`${k}::text = any($${q.gt.length}::text[])`); return b; },
           order(k, tuy) { q.sap.push(`${k}${tuy?.ascending === false ? ' desc' : ''}`); return b; },
           limit(n) { q.gioiHan = n; return b; },
+          range(tu, den) { q.boQua = tu; q.gioiHan = den - tu + 1; return b; },
           async maybeSingle() { const kq = await chayBang(); return kq.error ? kq : { data: kq.data[0] ?? null, error: null }; },
           then(xong, hong) { return chayBang().then(xong, hong); },
         };
