@@ -118,6 +118,9 @@ const CHAY_DA_DANG_NHAP = [
   // Đổi trạng thái đặt bàn / hồ sơ ứng tuyển (chuyenTrangThai) — chỉ gọi từ /noi-bo/dat-ban và
   // /noi-bo/tuyen-dung, sau middleware, bằng client của nhân sự (rà soát 11/10/2026).
   'web/src/lib/gui-noi-bo.ts',
+  // Xóa file CV rồi ẩn danh, quét CV mồ côi (0074) — chỉ cai-dat.ts gọi, bằng
+  // client của chủ / quản lý đang đăng nhập.
+  'web/src/lib/xoa-cv.ts',
   // Kho — mọi file chỉ được gọi từ /noi-bo/kho, sau middleware, bằng client
   // mang access token của nhân sự. Liệt kê từng file: file kho mới đọc bảng
   // sẽ làm phép thử đỏ cho tới khi có người phân loại nó.

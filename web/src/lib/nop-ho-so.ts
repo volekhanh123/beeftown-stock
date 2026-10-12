@@ -24,6 +24,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { TruongForm } from './truong-form';
 import type { NgonNgu } from './noi-dung';
 import { cauLoiDatabase, laLoiDatabase, dich, type BaThuTieng } from './chu.ts';
+// Bản web của chuan_hoa_sdt() + sdt_hop_le() (0001) — test-tuyen-dung-xoa-cv.mjs đối chiếu với database.
+import { sdtHopLe } from './messenger.ts';
 
 export interface KetQuaNop {
   ok: boolean;
@@ -170,15 +172,27 @@ export async function nopHoSo(
   const giay = moc > 0 ? Math.floor((Date.now() - moc) / 1000) : null;
 
   const ca = form.getAll('ca').map(String).filter(Boolean);
+  const bay = String(form.get('website') ?? '');
 
   // Tải CV TRƯỚC khi nộp, vì nop_ho_so_ung_tuyen() cần mã vé. Hỏng thì bỏ
   // qua CV chứ không bỏ hồ sơ. Tin không hỏi CV thì không tải gì: database
-  // sẽ bỏ vé, và file đã lên kho thì không hồ sơ nào trỏ tới, không việc dọn
-  // nào xóa được.
+  // sẽ bỏ vé, và file đã lên kho thì không hồ sơ nào trỏ tới.
+  //
+  // Database từ chối sau khi file đã lên thì file mồ côi — anon không xóa
+  // được, nút "Xóa CV mồ côi và dọn vé" ở /noi-bo/cai-dat dọn (lib/xoa-cv.ts,
+  // 0074). Chỗ nào biết chắc trước là sẽ bị từ chối thì đừng tải: bẫy bot,
+  // điền dưới 3 giây (đúng điều kiện đầu tiên của nop_ho_so_ung_tuyen — btrim
+  // của Postgres chỉ bỏ dấu cách, không bỏ tab / xuống dòng) và số điện thoại
+  // sai dạng. Lỡ database vẫn nhận (hai bên lệch nhau) thì câu trả lời nói
+  // đúng: hồ sơ nộp không kèm CV.
+  const chacBiTuChoi = bay.replace(/^ +| +$/g, '') !== '' || (giay !== null && giay < 3) || sdtHopLe(sdt) === null;
   const tep = form.get('cv');
+  const coTep = tep instanceof File && tep.size > 0;
   let cv: { ve: string; ten: string } | null = null;
   let cvHong = false;
-  if (tep instanceof File && tep.size > 0 && await tinHoiCv(client, viTri)) {
+  if (coTep && chacBiTuChoi) {
+    cvHong = true;
+  } else if (coTep && await tinHoiCv(client, viTri)) {
     cv = await taiCv(client, tep, ip);
     cvHong = cv === null;
   }
@@ -195,7 +209,7 @@ export async function nopHoSo(
     p_ma_tai_len: cv?.ve ?? null,
     p_ten_tep: cv?.ten ?? null,
     p_dong_y: true,
-    p_bay: String(form.get('website') ?? ''),   // honeypot
+    p_bay: bay,   // honeypot
     p_giay_tren_form: giay,
     p_utm_source: String(form.get('utm_source') ?? '').trim() || null,
     p_utm_campaign: String(form.get('utm_campaign') ?? '').trim() || null,

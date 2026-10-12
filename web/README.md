@@ -217,6 +217,7 @@ Chủ và quản lý mở `/noi-bo` là thấy ngay phần nào đang hỏng, th
 | Hồ sơ ứng tuyển | chưa ai mở quá 7 ngày | chưa ai mở 2–7 ngày |
 | Sao lưu dữ liệu (`0058`) | chưa có bản sao lưu nào; bản dùng được (khôi phục thử đạt) gần nhất quá 36 giờ | lượt gần nhất hỏng hoặc khôi phục thử không đạt (vẫn còn bản dùng được trong 36 giờ); không đọc được số liệu |
 | Báo động (`0060`) | quá 30 phút không có lượt báo động nào chạy xong; lượt gần nhất lỗi (gửi hỏng, không đọc được số liệu) | có kênh mà 26 giờ không gửi được tin nào (tóm tắt 8 giờ sáng phải tới mỗi ngày) |
+| Dọn dữ liệu cá nhân (`0074`) | hồ sơ ứng tuyển quá hạn lưu 6 tháng **hơn 7 ngày** mà chưa ẩn danh (lời hứa trên trang quyền riêng tư) | hồ sơ vừa quá hạn (1–7 ngày); vé tải CV chưa dùng hết hạn quá 7 ngày (có thể còn CV mồ côi); dữ liệu đo lường quá 90 ngày + 7; database chưa chạy `0074` |
 
 Xám = chưa bật / chưa dùng. **Không đọc được số liệu thì bảng nói thẳng là không đọc được** — không bao giờ hiện "mọi thứ đang chạy tốt" khi không biết. Database chưa chạy `0055` thì bảng báo cần migration đó.
 
@@ -237,7 +238,7 @@ Việc chạy nền đọc đúng số liệu của bảng sức khỏe 5 phút 
 | Tình huống | Làm gì |
 |---|---|
 | Đèn đỏ hai lượt liền (≥ 4 phút) | Báo. Đỏ một lượt rồi tự hết → không báo |
-| Ban đêm 22:00–07:00 | Chỉ đèn **hệ thống** (Bộ gửi Zalo, Bot Messenger, iPOS, Sổ kho, Máy dịch, Sao lưu dữ liệu, không đọc được số liệu) báo ngay. Đèn **khách** (Đặt bàn, Hồ sơ, Tin Zalo) giữ lại; lượt đầu sau 07:00 gửi gộp nếu vẫn đỏ |
+| Ban đêm 22:00–07:00 | Chỉ đèn **hệ thống** (Bộ gửi Zalo, Bot Messenger, iPOS, Sổ kho, Máy dịch, Sao lưu dữ liệu, không đọc được số liệu) báo ngay. Đèn **khách** (Đặt bàn, Hồ sơ, Tin Zalo, Dọn dữ liệu cá nhân) giữ lại; lượt đầu sau 07:00 gửi gộp nếu vẫn đỏ |
 | Hết đỏ | Chờ 15 phút liền mới đóng sự cố; đỏ lại trong 15 phút vẫn là sự cố cũ, không báo lại; đỏ lại sau khi đã hết đỏ đủ 15 phút là lần hỏng mới, được báo như thường (kể cả khi tin hết đỏ của lần trước đang giữ tới 07:00). Sự cố đã báo → "đã ổn lại" / "hết đỏ, còn cần xem hôm nay" / "đã tắt"; chi nhánh ngừng hoạt động → đóng im lặng. Ban đêm, đèn hệ thống chỉ báo hết đỏ ngay khi tin báo đỏ của nó cũng đến trong đêm đó (người nhận đã biết); còn lại — đèn khách, đèn đã báo đỏ từ trước 22:00 như Sao lưu ổn lại lúc 3 giờ sáng — đợi 07:00 |
 | Một đèn đỏ đi đỏ lại | Tối đa 5 tin "mới đỏ" mỗi đèn từ 8 giờ sáng tới 8 giờ sáng hôm sau; tin thứ 5 nói rõ sẽ không nhắn riêng nữa tới bản tóm tắt |
 | 8 giờ sáng mỗi ngày | Tóm tắt, **kể cả khi mọi thứ xanh** — không thấy tin sáng nghĩa là chính việc báo động đang hỏng. Lỡ 8 giờ thì gửi bù tới 22:00 |
@@ -545,7 +546,7 @@ trang chủ · **thực đơn** · **đến Beeftown** · **hỏi bàn** · tuy�
 
 - Thân POST đọc có giới hạn (`lib/than-gioi-han.ts`): hỏi bàn 256 KB, nộp hồ sơ 6 MB (CV 5 MB cộng các ô chữ). Quá ngưỡng hay đứt giữa chừng thì database chưa được gọi — trang nói "CHƯA được ghi nhận", không phải trang 500.
 - Database không trả lời thì trang nói "KHÔNG CHẮC đã ghi nhận — đừng gửi lại, nhắn Facebook để kiểm tra", và không mời gửi lại: không điền sẵn form; trang tuyển dụng không dựng form, chỉ còn khung lỗi và nút liên hệ.
-- Gửi lại y hệt (bấm đúp khi tắt JavaScript, gửi lại sau câu "không chắc") nhận lại đúng mã cũ — đặt bàn trong 10 phút (`0062`), hồ sơ trong ngày nộp (`0074`).
+- Gửi lại y hệt (bấm đúp khi tắt JavaScript, gửi lại sau câu "không chắc") nhận lại đúng mã cũ — đặt bàn trong 10 phút (`0062`), hồ sơ trong ngày nộp (`0079`).
 - Database từ chối hồ sơ thì trang quay về đúng vị trí đã chọn (`?vi_tri=`).
 
 | Form | Hiện khi nào |
