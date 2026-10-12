@@ -74,6 +74,11 @@ jobs:
       - name: Kiểm thử Beeftown Cân (cân giả, kho giả)
         working-directory: can-app
         run: npx bun test/thu.ts
+      # Sau kiểm thử, chạy cả khi kiểm thử hỏng: lỗi kiểu không che kết quả kiểm thử, kiểm thử hỏng không che lỗi kiểu.
+      - name: Kiểm kiểu Beeftown Cân (tsc strict — can-app/tsconfig.json)
+        if: ${{ !cancelled() }}
+        working-directory: can-app
+        run: npm run kiem-kieu
 
   web:
     name: Web · astro check · build · chữ cấm · trình duyệt

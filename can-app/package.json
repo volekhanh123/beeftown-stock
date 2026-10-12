@@ -6,6 +6,7 @@
   "description": "Beeftown Cân: đưa danh mục kho xuống cân in tem TM-A qua WiFi (file .exe cho máy tính ở quán)",
   "scripts": {
     "thu": "bun test/thu.ts",
+    "kiem-kieu": "tsc --noEmit -p .",
     "chay": "bun src/main.ts --khong-mo",
     "dong-goi": "bun scripts/dong-goi.ts"
   },
@@ -13,6 +14,8 @@
     "@supabase/supabase-js": "^2.58.0"
   },
   "devDependencies": {
-    "bun": "^1.4.2"
+    "@types/bun": "^1.4.2",
+    "bun": "^1.4.2",
+    "typescript": "^6.0.3"
   }
 }

@@ -38,7 +38,7 @@ const THU_MUC = dirname(fileURLToPath(import.meta.url));
  */
 const THU_VIEN = new Set([
   'chay-tat-ca.mjs', 'chay-kho.mjs', 'kho-chung.mjs', 'dinh-chu.mjs', 'kiem-nn.mjs',
-  'quet-chu-viet.mjs', 'dong-ho-gia.mjs', 'thu-tai.mjs', 'doi-chieu-production.mjs',
+  'quet-chu-viet.mjs', 'dong-ho-gia.mjs', 'thu-tai.mjs', 'doi-chieu-production.mjs', 'gio-utc.mjs',
 ]);
 
 /** Chạy trước: rẻ nhất và hay hỏng nhất khi gộp nhánh; rồi thứ tự của chuỗi && cũ. */
