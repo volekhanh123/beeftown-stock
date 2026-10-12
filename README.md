@@ -331,7 +331,7 @@ Chỉ khôi phục vào một project **MỚI, TRỐNG**. Script tự từ chố
    ```
 
    Dòng cuối phải là `KET_QUA=dat …`. Script dừng mà không nạp gì khi: sai mật khẩu, file tải thiếu, file bị sửa (lệch mã kiểm), database đích đã có dữ liệu. Nạp rồi mà lệch số dòng hay sổ kho lệch tồn → báo rõ bảng nào.
-4. Cloudflare → Worker của web → đổi `PUBLIC_SUPABASE_URL` và `PUBLIC_SUPABASE_ANON_KEY` sang project mới → deploy. Mọi người **đăng nhập lại** (tài khoản và mật khẩu giữ nguyên — có trong bản sao). Beeftown Cân lấy địa chỉ kho từ web nên đi theo.
+4. Cloudflare → Worker của web → đổi `PUBLIC_SUPABASE_URL` và `PUBLIC_SUPABASE_ANON_KEY` sang project mới → deploy. Mọi người **đăng nhập lại** (tài khoản và mật khẩu giữ nguyên — có trong bản sao). Beeftown Cân (từ 2.9.2) tự đọc lại `/kho-can.json` của web mỗi lần mở chương trình, khi đăng nhập hỏng và khi kho từ chối khoá (401) — nên chỉ cần **tắt rồi mở lại Beeftown Cân** ở từng máy quầy và đăng nhập lại; không phải sửa ô Địa chỉ kho. Máy quầy còn bản trước 2.9.2: bấm **Cập nhật** lên 2.9.2 trước — bản cũ nhớ địa chỉ / khoá mãi (báo "Sai email hoặc mật khẩu", hoặc vẫn đọc / ghi project cũ nếu project cũ còn chạy); gõ lại đúng địa chỉ kho cũ rồi Lưu không làm nó đọc lại.
 5. Làm lại những thứ không nằm trong bản sao: hạn mức đăng nhập và email ở trang quản trị Supabase (mục "Hạ tầng" ở trên), file Storage (CV cũ không còn), và đổi secret `SAO_LUU_DB_URL` sang project mới. Khóa bí mật của Worker giữ nguyên — tài khoản máy (iPOS, máy quầy) có trong bản sao.
 
 Sao lưu tay (máy **của mình** có Docker, `psql`, `gpg` — chuỗi kết nối nằm trên dòng lệnh của Supabase CLI, người dùng khác cùng máy thấy được): `SAO_LUU_DB_URL='…' SAO_LUU_MAT_KHAU='…' SUPABASE='npx supabase' bash crm/sao-luu/sao-luu.sh ra/`.

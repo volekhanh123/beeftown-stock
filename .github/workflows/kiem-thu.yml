@@ -68,6 +68,9 @@ jobs:
       - name: Toàn bộ kiểm thử database, kho, Zalo, Messenger
         working-directory: crm
         run: node test/chay-tat-ca.mjs --tat-ca
+      - name: Kiểm kiểu Beeftown Cân (tsc strict — can-app/tsconfig.json)
+        working-directory: can-app
+        run: npm run kiem-kieu
       - name: Kiểm thử Beeftown Cân (cân giả, kho giả)
         working-directory: can-app
         run: npx bun test/thu.ts
