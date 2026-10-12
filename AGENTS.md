@@ -10,7 +10,7 @@ Khi hai file nói khác nhau thì làm theo `CLAUDE.md` và báo chỗ lệch tr
 |---|---|
 | `CLAUDE.md` | Quy trình bắt buộc: cách chạy kiểm thử, 9 mục "định nghĩa xong", việc trước khi mở PR, các điều không bao giờ làm |
 | `README.md` | Concept, giọng văn, các cảnh báo về bản nháp cũ, việc còn phải làm |
-| `THUONG-HIEU.md` | Bảng màu thương hiệu Khánh chốt 09/10/2026: giá trị đã áp dụng ở trang công khai, `/noi-bo`, kho và Beeftown Cân; thứ còn mang màu cũ; địa điểm |
+| `THUONG-HIEU.md` | Bảng màu thương hiệu Khánh chốt 09/10/2026: giá trị đã áp dụng ở trang công khai, `/noi-bo` và kho; thứ còn mang màu cũ (Beeftown Cân, ảnh hướng dẫn kho); địa điểm |
 | `web/THIET-KE.md` | Giao diện trang công khai đang chạy: màu theo vai (mục 2; `/noi-bo` và kho dùng cùng token), chữ, thành phần |
 | `web/src/lib/chuoi-cam.js` | Danh sách chữ cấm trên trang công khai, kèm lý do |
 
@@ -46,14 +46,14 @@ Chữ và thương hiệu trên trang công khai:
 - Ảnh do AI tạo trên trang công khai phải có chú thích "Ảnh minh họa". Thiếu chú thích thì báo.
 - Logo là file vector trong `web/public/thuong-hieu/`. Báo khi PR gõ lại chữ BEEFTOWN bằng phông, đổi màu, kéo giãn, xoay, thêm bóng hay viền, hoặc đặt logo lên ảnh. Bản logo cho nền sáng và bản cho nền tối là hai bản vẽ khác nhau: không lấy bản này đổi màu thành bản kia.
 
-Màu. Cả website — trang công khai, `/noi-bo`, kho — và Beeftown Cân dùng bảng màu Khánh chốt 09/10/2026 (`THUONG-HIEU.md` mục 1 và 4). Bảng khai ở hai nơi cùng giá trị, chưa gộp: khối `.ck` đầu tiên của `web/src/styles/cong-khai.css` (trang công khai) và hai khối `:root` của `web/src/styles/chung.css` (`/noi-bo`, kho). Beeftown Cân khai lại trong `can-app/src/giao-dien.html` và `can-app/src/huong-dan.html`:
+Màu. Cả website — trang công khai, `/noi-bo`, kho — dùng bảng màu Khánh chốt 09/10/2026 (`THUONG-HIEU.md` mục 1 và 4). Bảng khai ở hai nơi cùng giá trị, chưa gộp: khối `.ck` đầu tiên của `web/src/styles/cong-khai.css` (trang công khai) và hai khối `:root` của `web/src/styles/chung.css` (`/noi-bo`, kho). Beeftown Cân (`can-app/src/giao-dien.html`, `can-app/src/huong-dan.html`) còn bảng cũ, đổi ở một PR riêng:
 
-- Báo mọi mã hex hay bộ ba số RGB của bảng cũ (`#B23A2C`, `#FBF4E1`, `#1E160E`, `#F2A900`, `#F5C211`, `#8F2C21`, `#960F13`, `#F5ECD7`, `#F1E4C2`, `#8C8577`) trong file giao diện: `web/src/styles/`, trang, component, layout, `web/src/lib/qua-tai.ts`, SVG trong `web/public/thuong-hieu/`, hai file HTML của Beeftown Cân. Báo khi PR thêm một mã màu không có trong `THUONG-HIEU.md` mục 4 hay `web/THIET-KE.md` mục 2.
-- Báo khi PR đổi một mã ở khối `.ck` mà không đổi `:root` của `chung.css` (hay ngược lại), và khi đổi một file HTML của Beeftown Cân mà không đổi file kia.
-- Báo chữ hay biểu tượng màu Warm Stone, Marigold đặt trên nền sáng — nền kem hay thẻ trắng (tương phản từ 1,56 tới 2,31 : 1) — và chữ đỏ đặt trên nền tối (2,43 : 1).
+- Báo mọi mã hex hay bộ ba số RGB của bảng cũ (`#B23A2C`, `#FBF4E1`, `#1E160E`, `#F2A900`, `#F5C211`, `#8F2C21`, `#960F13`, `#F5ECD7`, `#F1E4C2`, `#8C8577`) trong file giao diện: `web/src/styles/`, trang, component, layout, `web/src/lib/qua-tai.ts`, SVG trong `web/public/thuong-hieu/`. Báo khi PR thêm một mã màu không có trong `THUONG-HIEU.md` mục 4 hay `web/THIET-KE.md` mục 2.
+- Báo khi PR đổi một mã ở khối `.ck` mà không đổi `:root` của `chung.css` (hay ngược lại), và khi đổi màu một file HTML của Beeftown Cân mà không đổi file kia.
+- Báo chữ hay biểu tượng màu Warm Stone, Marigold đặt trên nền sáng — kem, kem sau, kem đậm (tương phản từ 1,46 tới 1,83 : 1) — và chữ đỏ đặt trên nền tối (2,43 : 1).
 - `/noi-bo`, kho, Beeftown Cân có thêm màu trạng thái (xanh, vàng, đỏ nhạt), khai một lần trên `.nb-than` của `web/src/styles/noi-bo.css`. Báo khi một trang nội bộ gõ mã màu thay vì dùng biến, khi trang công khai dùng màu trạng thái, và khi ô nhập kẻ viền bằng màu mờ hơn `--vien-o`.
 - 15 ảnh `web/public/kho/hd-*.png` (trang hướng dẫn của kho) chụp trước ngày đổi màu và còn giao diện cũ: không báo, cho tới khi chúng được chụp lại.
-- Trang công khai không có nền trắng (bảng màu không có trắng): báo `#fff`, `white`, mã trắng ngà hay `color-mix` với trắng trong file công khai. Hai ngoại lệ đang có: `@media print` trong `cong-khai.css` và thẻ nhãn khay `web/src/components/NhanKhay.astro` (chờ PR bố cục trang chủ). `/noi-bo`, kho và Beeftown Cân vẫn có thẻ và ô nhập nền trắng (lần đổi màu ngày 11/10/2026 giữ cách dựng đó): không báo trắng ở ba nơi này.
+- Website không có nền trắng (bảng màu không có trắng): báo `#fff`, `white`, mã trắng ngà hay `color-mix` với trắng trong file của trang công khai, `/noi-bo` và kho — kể cả ô nhập, ô đánh dấu, nút chọn tệp của trình duyệt chưa có nền Cream. Ngoại lệ đang có: `@media print`, và ở trang công khai thẻ nhãn khay `web/src/components/NhanKhay.astro` (chờ PR bố cục trang chủ). Beeftown Cân còn thẻ và ô nhập nền trắng (chưa đổi màu): không báo ở đó.
 - Thành phần của trang công khai (`web/THIET-KE.md` mục 3–5, đo ở `web/kiem-tra/do-giao-dien.mjs`): mọi thứ bấm được cao ít nhất 48px; nút phụ trên nền kem là nền Cream, chữ và viền Beef Red; mỗi nhóm nút một nút chính; thẻ không bóng đổ; ô nhập nền Cream, viền `--vien-o`, nhãn ở trên ô; mọi `:hover` nằm trong `@media (hover: hover)`; lớp phủ và khoá cuộn của menu gọn chỉ có khi script đã chạy. Báo khi PR thêm thành phần lệch các số đó, hoặc gỡ một ngoại lệ trong `do-giao-dien.mjs` mà không sửa thành phần tương ứng.
 
 Địa điểm:

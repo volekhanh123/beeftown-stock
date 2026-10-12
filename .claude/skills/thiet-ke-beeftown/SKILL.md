@@ -35,8 +35,8 @@ Mỗi khu có CSS, layout và số thứ tiếng riêng. Xác định trước k
 | Beeftown Cân (`can-app/`) | Máy tính ở quầy | `can-app/src/*.html` | vi | [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md) |
 | Ấn phẩm ngoài web | Khách trên mạng xã hội, tại quán | — | vi (en / ko khi cần) | [tham-khao/an-pham.md](tham-khao/an-pham.md) |
 
-**Mọi khu chung một bảng màu** — bảng thương hiệu chốt 09/10/2026 (mục "Màu"): trang công khai đổi
-trước, `/noi-bo`, kho và Beeftown Cân đổi ngày 11/10/2026. Mọi khu web dùng Montserrat (Beeftown Cân
+**Mọi khu web chung một bảng màu** — bảng thương hiệu chốt 09/10/2026 (mục "Màu"): trang công khai đổi
+trước, `/noi-bo` và kho đổi ngày 12/10/2026; Beeftown Cân chưa đổi. Mọi khu web dùng Montserrat (Beeftown Cân
 chạy không mạng nên dùng phông hệ thống). **Đừng mang lớp của khu này sang khu kia**: lớp `.nut`,
 `.be-kem`… của trang công khai chỉ sống dưới `.ck`; `cong-khai.css` chỉ `Trang.astro` được nạp
 (có kiểm thử).
@@ -45,8 +45,9 @@ chạy không mạng nên dùng phông hệ thống). **Đừng mang lớp của
 
 Trang như lúc bước tới quầy Beeftown — một tiệm thịt tử tế, gần gũi như bữa tối cả nhà.
 
-- **Nền kem** như giấy gói tiệm thịt — nền đọc, phần lớn trang. **Không có màu trắng** trên trang công
-  khai: thẻ là kem sau, ô nhập là Cream.
+- **Nền kem** như giấy gói tiệm thịt — nền đọc, phần lớn trang. **Không có màu trắng** trên website:
+  trang công khai thẻ kem sau trên nền Cream; `/noi-bo` và kho thẻ Cream trên nền kem sau; ô nhập luôn
+  Cream.
 - **Đỏ Beeftown** là nhãn, tem và nút — dẫn hành động, vài khoảnh khắc nhận diện.
 - **Vài dải tối có chủ đích** — "bữa tối bên vỉ", thịt và ánh ấm sáng lên trên nền tối.
 - **Một chút vui** lấy từ chính artwork của PDF: mảng vân mỡ, nét rosemary, nét miếng steak, tem tròn,
@@ -64,8 +65,9 @@ bạn bè, nhóm văn phòng.
 
 ## Màu
 
-Beeftown có **một bảng màu**: bảng thương hiệu Khánh chốt 09/10/2026. Trang công khai, `/noi-bo`, kho
-và Beeftown Cân đều đã theo bảng này (ba nơi sau đổi ngày 11/10/2026).
+Beeftown có **một bảng màu**: bảng thương hiệu Khánh chốt 09/10/2026. Trang công khai, `/noi-bo` và kho
+đã theo bảng này (hai nơi sau đổi ngày 12/10/2026). Beeftown Cân còn bảng cũ — đổi ở một PR riêng, kèm
+phiên bản mới của chương trình.
 
 ### Bảng màu thương hiệu — Khánh chốt 09/10/2026
 
@@ -86,8 +88,8 @@ còn mang màu cũ (ảnh chụp trong trang hướng dẫn của kho, tài li�
 
 - **Ấn phẩm ngoài web** (bài đăng, story, in ấn, slide, biển): năm màu ở trên, không màu pha; logo
   vector bản 17 trên máy Khánh — xem [tham-khao/an-pham.md](tham-khao/an-pham.md).
-- **Website** (trang công khai, `/noi-bo`, kho) **và Beeftown Cân**: năm màu đó, cộng vài màu pha chỉ
-  dùng trên màn hình (Khánh cho phép ngày 10/10/2026). Token ở bảng "Token màu của website" dưới đây.
+- **Website** (trang công khai, `/noi-bo`, kho): năm màu đó, cộng vài màu pha chỉ dùng trên màn hình
+  (Khánh cho phép ngày 10/10/2026). Token ở bảng "Token màu của website" dưới đây.
 - **`/noi-bo`, kho, Beeftown Cân** có thêm **màu trạng thái** (xanh = xong, vàng = lưu ý, đỏ nhạt =
   làm ngay). Đó là màu chức năng của công cụ, không thuộc bảng thương hiệu: không dùng ở trang công
   khai, không dùng cho ấn phẩm — xem [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md).
@@ -104,45 +106,45 @@ Một bảng, khai ở **hai nơi cùng giá trị, chưa gộp**: khối `.ck` 
 từng mã — `crm/test/test-noi-bo-bang-mau.mjs` (nhóm 1 còn so hai khối với nhau),
 `crm/test/test-cong-khai-giao-dien.mjs` và `crm/test/test-ky-nang-thiet-ke.mjs` (so bảng này với cả hai
 nơi). Thêm token mới ở `chung.css` thì khai một khối `:root` riêng, như `--do-sau`, `--kem-dam`.
-Beeftown Cân chạy không mạng nên khai lại cùng các mã này ngay trong `can-app/src/giao-dien.html` và
-`can-app/src/huong-dan.html`.
+Beeftown Cân chạy không mạng nên khai màu ngay trong `can-app/src/giao-dien.html` và
+`can-app/src/huong-dan.html` — chưa đổi sang bảng này (PR riêng, kèm phiên bản mới của chương trình).
 
 | Token | Mã | Tên trong guideline | Vai ở trang công khai | Vai ở `/noi-bo` và kho |
 |---|---|---|---|---|
-| `--kem` | `#F0E3D0` | Cream | Nền đọc mặc định; chữ trên nền tối và nền đỏ | Nền trang; chữ trên đầu trang tối |
-| `--kem-sau` | `#EBDCC6` | màu pha | Nền khối phụ nhẹ | Đầu bảng, dòng tổng; nút phụ và mục menu khi di chuột |
-| `--kem-dam` | `#E7D5BC` | màu pha | Nền khối phụ đậm hơn | Mục cột bên khi di chuột; cùng mã với vạch trong thẻ của kho |
-| `--do` | `#A70C0C` | Beef Red | Nút chính, nhãn, dải đỏ, chữ nhấn cỡ thường trên kem | Nút chính, số báo việc, trạng thái "làm ngay" |
+| `--kem` | `#F0E3D0` | Cream | Nền đọc mặc định; chữ trên nền tối và nền đỏ | Thẻ, thanh, menu thả, ô nhập (`--nb-the`); chữ trên đầu trang tối và trên nút đỏ |
+| `--kem-sau` | `#EBDCC6` | màu pha | Nền khối phụ nhẹ | Nền trang (`--nb-nen`); đầu bảng, dòng tổng |
+| `--kem-dam` | `#E7D5BC` | màu pha | Nền khối phụ đậm hơn | Nút phụ, mục menu thả khi di chuột; nhãn phụ trong thẻ |
+| `--do` | `#A70C0C` | Beef Red | Nút chính, nhãn, dải đỏ, chữ nhấn cỡ thường trên kem | Nút chính, số báo việc, trạng thái "làm ngay"; ô đánh dấu đã chọn |
 | `--do-dam` | `#890607` | màu pha | Nút khi di chuột / đang gửi; câu lỗi dưới ô nhập | Nút khi di chuột |
 | `--do-sau` | `#890607` | màu pha, cùng mã với `--do-dam` | Chữ nhấn ≤ 13px trên kem; chữ nút trên nền đỏ; nét artwork trên kem | Chưa dùng |
 | `--than` | `#151008` | Charcoal | Chữ chính trên kem; nền dải tối | Chữ chính; đầu trang tối; vòng focus trên nền sáng |
 | `--muc-nhat` | than 68 % | màu pha | Chữ phụ trên kem | Chữ phụ |
-| `--vach` | than 16 % | màu pha | Vạch ngăn và viền trên nền sáng | Vạch ngăn, viền mờ; nền nhãn "tắt, chưa bật" |
+| `--vach` | than 16 % | màu pha | Vạch ngăn và viền trên nền sáng | Viền thẻ, vạch ngăn (kho: `--kho-vach`); nền nhãn "tắt, chưa bật" |
 | `--vach-kem` | kem 22 % | màu pha | Vạch ngăn và viền trên nền tối | Viền nút trên đầu trang tối |
-| `--da` | `#B8A98C` | Warm Stone | **Chỉ** chữ phụ trên nền tối | Chữ phụ trên đầu trang tối; viền nút phụ; vạch đậm của kho |
+| `--da` | `#B8A98C` | Warm Stone | **Chỉ** chữ phụ trên nền tối | Chữ phụ trên đầu trang tối; vạch đậm của kho (`--kho-vach-dam`) |
 | `--cuc-vang` | `#F5AA14` | Marigold | Vòng focus trên nền tối | Chữ nhấn và vòng focus trên đầu trang tối |
 | `--mu-tat` | `#F5AA14` | Marigold (tên biến cũ, cùng mã) | Điểm nhấn nhỏ: vạch, chấm, chữ nhấn trên nền tối | Nền nhãn "lưu ý" (chữ than đặt lên), vạch và chấm báo — **không làm chữ** |
-| `--vien-o` | `#7A7366` | màu pha | Viền ô nhập (3,71 : 1 với nền Cream của ô; 3,49 : 1 với thẻ kem sau quanh ô) | Viền ô nhập (4,70 : 1 với nền trắng của ô); viền đèn "chưa bật" |
+| `--vien-o` | `#7A7366` | màu pha | Viền ô nhập (3,71 : 1 với nền Cream của ô; 3,49 : 1 với thẻ kem sau quanh ô) | Viền ô nhập, ô đánh dấu, nút phụ (3,71 : 1 với Cream, 3,49 với nền kem sau); viền đèn "chưa bật" |
 
 `--mu-tat` / `--cuc-vang` cùng một mã (guideline chỉ có một vàng); `--do-dam` / `--do-sau` cùng một mã
 (một đỏ đậm cho màn hình) — hai tên giữ lại vì mã đang gọi cả hai. Màu viết bằng `rgba()` phải dùng số
 RGB của bảng này (21, 16, 8 · 240, 227, 208 · 167, 12, 12 · 137, 6, 7): kiểm thử đỏ khi một file của
-trang công khai, `/noi-bo`, kho hay Beeftown Cân còn mã hex hay bộ ba số RGB của bảng cũ.
+trang công khai, `/noi-bo` hay kho còn mã hex hay bộ ba số RGB của bảng cũ.
 
-Token thêm của kho (`--kho-…`) và màu trạng thái (`--xanh`, `--vang-chu`, `--do-nen`…):
-[tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md).
+Hai bề mặt của nội bộ (`--nb-nen`, `--nb-the`), token thêm của kho (`--kho-…`) và màu trạng thái
+(`--xanh`, `--vang-chu`, `--do-nen`…): [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md).
 
-**Không trắng — ở trang công khai.** Bảng màu không có trắng: trong file công khai không viết mã trắng,
-trắng ngà, từ khóa `white`, hay pha màu với trắng. Thẻ nền `--kem-sau` (trên nền kem sau / kem đậm / đỏ
-thì Cream), ô nhập và ô chọn giờ nền `--kem`, ô đánh dấu tự vẽ. Hai ngoại lệ có chủ đích: `@media
-print` và thẻ "Đọc nhãn khay" (`NhanKhay.astro`, chờ PR bố cục trang chủ).
-`test-cong-khai-giao-dien.mjs` nhóm 7 quét mã nguồn, `do-giao-dien.mjs` đo màu nền của mọi phần tử trên
-trang đã dựng. **`/noi-bo`, kho và Beeftown Cân thì vẫn có thẻ và ô nhập nền trắng**: lần đổi màu ngày
-11/10/2026 giữ cách dựng "thẻ trắng trên nền kem" của kho. Luật "không trắng" là của trang công khai,
-chưa áp dụng cho ba nơi đó — đừng tự bỏ trắng ở một màn nội bộ lẻ.
+**Không trắng — cả website.** Bảng màu không có trắng: trong file của trang công khai, `/noi-bo` và kho
+không viết mã trắng, trắng ngà, từ khóa `white`, hay pha màu với trắng. Trang công khai: thẻ nền
+`--kem-sau` (trên nền kem sau / kem đậm / đỏ thì Cream), ô nhập và ô chọn giờ nền `--kem`, ô đánh dấu
+tự vẽ. `/noi-bo` và kho: nền trang `--kem-sau`, thẻ và mọi thứ nổi lên `--kem`, ô nhập `--kem`, ô đánh
+dấu và ô chọn một tự vẽ, chữ trên nút đỏ là `--kem`. Ngoại lệ có chủ đích: `@media print` (giấy), và ở
+trang công khai thẻ "Đọc nhãn khay" (`NhanKhay.astro`, chờ PR bố cục trang chủ).
+`test-cong-khai-giao-dien.mjs` nhóm 7 và `test-noi-bo-bang-mau.mjs` nhóm 3–4 quét mã nguồn,
+`do-giao-dien.mjs` đo màu nền của mọi phần tử trên trang công khai đã dựng. Beeftown Cân chưa đổi.
 
 **Không bao giờ:** Warm Stone, Marigold làm chữ hay biểu tượng trên nền sáng — với kem chỉ được 1,83
-và 1,56 : 1, với thẻ trắng 2,31 và 1,97 : 1. Không đặt chữ đỏ trên nền tối (2,43 : 1). Marigold trên
+và 1,56 : 1, với kem sau 1,71 và 1,46 : 1. Không đặt chữ đỏ trên nền tối (2,43 : 1). Marigold trên
 nền đỏ (3,94 : 1) chỉ cho chữ lớn hoặc hình. Không khối vàng — vàng chỉ là vạch, chấm, nhãn nhỏ, chữ
 nhấn nhỏ trên nền tối. Tên `--than` (Charcoal) chỉ là tên màu: Beeftown nướng **vỉ gas**, không than.
 
@@ -171,10 +173,10 @@ Thẻ sáng lồng trong dải tối phải tự khai `.be-kem` — bề mặt s
 đã tự làm việc đó: thẻ luôn là một bề mặt sáng.)
 
 Bảng tương phản đầy đủ (WCAG 2.2, đã tính): `web/THIET-KE.md`, mục 2 cho trang công khai;
-[tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md) cho `/noi-bo` và kho (nền thẻ trắng, màu trạng
-thái). Cặp màu mới chưa có trong bảng: tính tỷ lệ trước khi dùng — chữ thường ≥ 4,5 : 1, chữ ≥ 24px
+[tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md) cho `/noi-bo` và kho (thẻ Cream trên nền kem
+sau, màu trạng thái). Cặp màu mới chưa có trong bảng: tính tỷ lệ trước khi dùng — chữ thường ≥ 4,5 : 1, chữ ≥ 24px
 hoặc ≥ 18,66px đậm ≥ 3 : 1, viền ô nhập và biểu tượng mang nghĩa ≥ 3 : 1 (kiểm thử trình duyệt đo đúng
-các ngưỡng này ở trang công khai; `test-noi-bo-bang-mau.mjs` tính các cặp của nội bộ, kho, Beeftown Cân).
+các ngưỡng này ở trang công khai; `test-noi-bo-bang-mau.mjs` tính các cặp của nội bộ và kho).
 
 ## Chữ
 
@@ -229,7 +231,7 @@ Thang chữ trang công khai (khai trên `.ck`; theo plan redesign 11/10/2026):
   trang, liên kết có mũi tên, ô nhập, ô chọn giờ; hàng câu hỏi 56px.
 
 Thang trên là của trang công khai. Nội bộ và kho có thang riêng (đơn vị `rem`, mật độ cao hơn, thẻ
-trắng, màu trạng thái xanh / vàng / đỏ / xám): [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md).
+Cream trên nền kem sau, màu trạng thái xanh / vàng / đỏ / xám): [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md).
 
 ## Thành phần — dùng cái có sẵn trước
 
@@ -347,11 +349,12 @@ Kiểm thử nào gác luật nào, và bẫy hay gặp: [tham-khao/kiem-thu.md]
 Danh sách tự rà:
 
 - [ ] Đúng khu, đúng layout, không lớp lạc khu.
-- [ ] Màu đúng bảng thương hiệu: ấn phẩm ngoài web chỉ năm màu; website và Beeftown Cân dùng token
-      (năm màu cộng màu pha của màn hình); màu trạng thái chỉ ở `/noi-bo`, kho, Beeftown Cân.
-- [ ] Chỉ token / biến bề mặt; không chữ vàng hay Warm Stone trên nền sáng (kem lẫn thẻ trắng); cặp
+- [ ] Màu đúng bảng thương hiệu: ấn phẩm ngoài web chỉ năm màu; website dùng token (năm màu cộng màu
+      pha của màn hình); màu trạng thái chỉ ở `/noi-bo`, kho, Beeftown Cân.
+- [ ] Chỉ token / biến bề mặt; không chữ vàng hay Warm Stone trên nền sáng (kem, kem sau, kem đậm); cặp
       màu mới đã tính tương phản.
-- [ ] Trang công khai không nền trắng, thẻ không bóng đổ; mỗi nhóm nút một nút chính.
+- [ ] Không nền trắng (trang công khai, `/noi-bo`, kho), thẻ trang công khai không bóng đổ; mỗi nhóm nút
+      một nút chính.
 - [ ] Montserrat, đúng độ đậm; không chữ < 13px (trừ dòng hoa nhỏ 12px); ô nhập 16px.
 - [ ] Nút, link, biểu tượng, ảnh dùng component có sẵn; không emoji; không `<img>` trỏ file chưa có.
 - [ ] Không tràn ngang ở 360px; vùng chạm ≥ 48px; focus thấy rõ trên mọi bề mặt.

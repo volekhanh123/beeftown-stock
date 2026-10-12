@@ -7,11 +7,14 @@ README khi hai bên lệch).
 ## Tinh thần
 
 - **Nền sáng, mật độ cao hơn trang công khai** — để đứng ở quầy dò một danh sách, không phải để đọc
-  lướt. Nền Cream, thẻ và ô nhập trắng, đầu trang tối (`--than`). Chỉ có giao diện sáng. Dấu hiệu
-  "đang ở trang quản trị" là đầu trang tối, thanh điều hướng và mật độ — không phải một bảng màu khác.
+  lướt. Nền trang kem sau, thẻ và ô nhập Cream, đầu trang tối (`--than`). Chỉ có giao diện sáng. Dấu
+  hiệu "đang ở trang quản trị" là đầu trang tối, thanh điều hướng và mật độ — không phải một bảng màu
+  khác.
+- **Không có màu trắng**, như trang công khai: bảng màu thương hiệu không có trắng. Thẻ tách khỏi nền
+  bằng viền mảnh, không bằng một mảng trắng. Trắng, đen chỉ có trên giấy in.
 - **Thiết kế cho ngón cái trước, màn lớn sau.** Thủ kho, nhân viên quầy dùng điện thoại, tay có thể ướt.
-- **Kho** thoáng hơn CRM (học cách iPOS Inventory Pro sắp xếp: thẻ trắng bo góc trên nền kem, biểu
-  tượng rõ, số to). **Đỏ dành cho số báo việc và nút chính — chỗ nào đỏ là chỗ đó cần làm.**
+- **Kho** thoáng hơn CRM (học cách iPOS Inventory Pro sắp xếp: thẻ Cream bo góc trên nền kem sau,
+  biểu tượng rõ, số to). **Đỏ dành cho số báo việc và nút chính — chỗ nào đỏ là chỗ đó cần làm.**
 - **Không cần JavaScript**: mọi thao tác là form POST rồi chuyển hướng 303 (F5 không gửi lại).
 - **Màu: cùng bảng với trang công khai** — bảng thương hiệu chốt 09/10/2026, hai khu này đổi ngày
   11/10/2026. Token đọc ở `:root` của `chung.css`, cùng giá trị với khối `.ck` (bảng "Token màu của
@@ -29,10 +32,23 @@ README khi hai bên lệch).
 | Rộng | `.nb-khung` min(880px, 92 %) | `.kho-chinh` 880px; `.rong` 1200px |
 | Mốc | 640px: thanh trên ↔ thanh đáy | 420 (lưới một cột) · 640 · 1024 (cột bên ↔ thanh đáy) |
 
-**Token thêm của kho** (khai trên `.kho-than`). Kho không có sắc riêng — mỗi token cùng mã với một màu
-của bảng: `--kho-nen` `#F0E3D0` (nền trang, là Cream), `--kho-the` `#FFFFFF` (thẻ và ô nhập),
-`--kho-vach` `#E7D5BC` (viền thẻ, vạch ngăn trong thẻ; là kem đậm), `--kho-vach-dam` `#B8A98C` (viền thẻ
-khi di chuột, vạch của dòng "xem cho biết"; là Warm Stone), `--kho-bo` 14px.
+**Hai bề mặt** (khai một lần trên `.nb-than`, đầu `noi-bo.css`; kho đọc chung):
+
+| Biến | Là | Dùng cho |
+|---|---|---|
+| `--nb-nen` | `--kem-sau` | Nền trang; nền của hàng nút dính đáy |
+| `--nb-the` | `--kem` | Thẻ, dòng danh sách, bảng, thanh điều hướng, thanh đáy, menu thả, hộp thoại, mục cột bên khi di chuột |
+
+Ô nhập luôn nền `--kem` (kể cả khi đặt thẳng trên nền trang), viền `--vien-o`. Cream và kem sau chỉ
+chênh 1,07 : 1 — thẻ tách khỏi nền bằng viền `--vach`. Di chuột trên thẻ, nút phụ, menu thả: `--kem-dam`.
+Ô nhập không lớp riêng, ô đánh dấu, ô chọn một, nút "Chọn tệp", `<dialog>` đã có nền Cream sẵn từ
+`noi-bo.css` (ô đánh dấu và ô chọn một tự vẽ — ô của hệ thống nền trắng): trang chỉ đặt cỡ ô, không đặt
+màu, không `accent-color`.
+
+**Token thêm của kho** (khai trên `.kho-than`). Kho không có sắc riêng — token chỉ trỏ về biến:
+`--kho-nen` là `--nb-nen`, `--kho-the` là `--nb-the`, `--kho-vach` là `--vach` (viền thẻ, vạch ngăn
+trong thẻ), `--kho-vach-dam` là `--da` (viền thẻ khi di chuột, vạch của dòng "xem cho biết"; Warm Stone),
+`--kho-bo` 14px.
 
 **Màu trạng thái** — màu chức năng của công cụ, không thuộc bảng thương hiệu, không dùng ở trang công
 khai. Khai **một lần** trên `.nb-than`, đầu `noi-bo.css`; kho đọc chung (`Kho.astro` đặt
@@ -40,30 +56,32 @@ khai. Khai **một lần** trên `.nb-than`, đầu `noi-bo.css`; kho đọc chu
 
 | Token | Mã | Dùng cho |
 |---|---|---|
-| `--xanh` | `#1A683F` | Chữ, vạch, đèn "xong, đang chạy"; nền đặc của nhãn (chữ trắng đặt lên) |
-| `--xanh-nen` | `#E4F0E5` | Nền nhạt của khối và nhãn "xong" |
-| `--xanh-vien` | `#B9D8C0` | Viền của khối nền xanh nhạt |
+| `--xanh` | `#1A683F` | Chữ, vạch, đèn "xong, đang chạy"; nền đặc của nhãn (chữ kem đặt lên) |
+| `--xanh-nen` | `#D3E3C6` | Nền nhạt của khối và nhãn "xong" |
+| `--xanh-vien` | `#A3C597` | Viền của khối nền xanh nhạt |
 | `--vang-chu` | `#7A5200` | Chữ và biểu tượng "lưu ý" trên nền sáng; viền của đèn vàng và chấm "chưa đọc" |
-| `--vang-nen` | `#FDE9B5` | Nền nhạt của khối "lưu ý" |
-| `--vang-vien` | `#E8C36A` | Viền của khối nền vàng nhạt |
-| `--do-nen` | `#FAE9E6` | Nền nhạt của khối "lỗi, làm ngay" |
-| `--do-vien` | `#E8BDB7` | Viền của khối nền đỏ nhạt |
+| `--vang-nen` | `#F6DC9E` | Nền nhạt của khối "lưu ý" |
+| `--vang-vien` | `#DDB65C` | Viền của khối nền vàng nhạt |
+| `--do-nen` | `#F2D6CE` | Nền nhạt của khối "lỗi, làm ngay" |
+| `--do-vien` | `#DDA79C` | Viền của khối nền đỏ nhạt |
 
-Đỏ của trạng thái là chính `--do`. Vàng đặc là `--mu-tat` (Marigold) với **chữ than đặt lên trên**.
+Ba nền nhạt sẫm ngang kem sau, **không sáng hơn thẻ Cream** (có kiểm thử): sáng hơn thì thành một
+mảng gần trắng giữa thẻ kem. Đỏ của trạng thái là chính `--do`. Vàng đặc là `--mu-tat` (Marigold) với
+**chữ than đặt lên trên**.
 
 | Nghĩa | Chữ, vạch, đèn | Nền nhạt | Nhãn đặc | Lớp ví dụ |
 |---|---|---|---|---|
-| Xong, đang chạy | `--xanh` | `--xanh-nen` | nền `--xanh`, chữ trắng | `.nb-nhan.song`, `.nb-bao.xong`, `.kho-han.con_han` |
+| Xong, đang chạy | `--xanh` | `--xanh-nen` | nền `--xanh`, chữ kem | `.nb-nhan.song`, `.nb-bao.xong`, `.kho-han.con_han` |
 | Lưu ý — xem hôm nay | `--vang-chu` | `--vang-nen` | nền `--mu-tat`, chữ than | `.nb-bao.luu-y`, `.nb-nhan.nhap`, `.kho-han.sap_het` |
-| Lỗi, chờ người khác — làm ngay | `--do` | `--do-nen` | nền `--do`, chữ trắng | `.nb-bao.loi`, `.nb-nhan.cho`, `.kho-han.het_han` |
+| Lỗi, chờ người khác — làm ngay | `--do` | `--do-nen` | nền `--do`, chữ kem | `.nb-bao.loi`, `.nb-nhan.cho`, `.kho-han.het_han` |
 | Tắt, chưa bật | `--muc-nhat` | — | nền `--vach`, chữ `--muc-nhat` | `.nb-nhan.tat`; đèn `.sk-den.tat` là vòng rỗng viền `--vien-o` |
 
-**Luật màu của hai khu** (đã tính theo WCAG 2.2; `test-noi-bo-bang-mau.mjs` nhóm 4 tính lại từng cặp):
+**Luật màu của hai khu** (đã tính theo WCAG 2.2; `test-noi-bo-bang-mau.mjs` nhóm 5 tính lại từng cặp):
 
-- Chữ than: 18,93 : 1 trên thẻ trắng, 14,96 trên kem. Chữ phụ `--muc-nhat`: 6,63 và 5,92. Chữ đỏ: 7,77
-  và 6,15. Chữ trắng trên nút đỏ: 7,77. `--xanh`: 6,78 và 5,36. `--vang-chu`: 6,92 và 5,47.
-- **Marigold và Warm Stone không làm chữ hay biểu tượng trên nền sáng** (1,97 và 2,31 : 1 với thẻ
-  trắng). Cần chữ "lưu ý" trên nền sáng: `--vang-chu`. Cần chấm, đèn hay vạch vàng: tô `--mu-tat` và kẻ
+- Chữ than: 14,96 : 1 trên thẻ Cream, 14,05 trên nền kem sau. Chữ phụ `--muc-nhat`: 5,92 và 5,80. Chữ
+  đỏ: 6,15 và 5,77. Chữ kem trên nút đỏ: 6,15. `--xanh`: 5,36 và 5,03. `--vang-chu`: 5,47 và 5,14.
+- **Marigold và Warm Stone không làm chữ hay biểu tượng trên nền sáng** (1,56 và 1,83 : 1 với thẻ
+  Cream). Cần chữ "lưu ý" trên nền sáng: `--vang-chu`. Cần chấm, đèn hay vạch vàng: tô `--mu-tat` và kẻ
   viền `--vang-chu` (viền là thứ mang tương phản — xem `.sk-den.vang`, chấm "chưa đọc" của trang Thông
   báo). Marigold và Warm Stone làm chữ **chỉ** trên đầu trang tối và mục đang chọn của cột bên.
 - **Không tô nền vàng cho cả dòng danh sách** để báo "mới": vài chục dòng chưa đọc thành một mảng vàng,
@@ -91,9 +109,10 @@ Trạng thái chứng từ → nhãn: `trangThaiKho(ma, nn)` (`TRANG_THAI_CHUNG_
   4,25rem, chừa `env(safe-area-inset-bottom)`. (Vài chỗ cũ 36 – 44px là nợ, đừng bắt chước.)
 - Bo góc: nhãn 4px · nút nhỏ 6px · nút, ô 8px (kho 10px) · thẻ 10px (kho `--kho-bo` 14px) · chip
   999px.
-- Viền ô nhập là `--vien-o` (4,70 : 1 với nền trắng của ô; mức tối thiểu là 3 : 1). Không kẻ viền ô
-  bằng `--vach`, `--kho-vach` hay Warm Stone — đứng ở quầy không thấy chỗ để chạm vào (có kiểm thử).
-  Viền của **nút phụ** `.nb-nut.phu` thì là Warm Stone: nút đã có nền trắng và chữ than để nhận ra.
+- Viền ô nhập là `--vien-o` (3,71 : 1 với nền Cream của ô, 3,49 với nền kem sau; mức tối thiểu là
+  3 : 1). Không kẻ viền ô bằng `--vach`, `--kho-vach` hay Warm Stone — đứng ở quầy không thấy chỗ để chạm
+  vào (có kiểm thử). **Nút phụ** `.nb-nut.phu` cũng viền `--vien-o`: nút Cream trên thẻ Cream, viền Warm
+  Stone chỉ 1,83 : 1.
 
 ## Biểu tượng
 
@@ -137,7 +156,7 @@ Ví dụ: `web/src/pages/noi-bo/kho/nhap/index.astro` (danh sách), `nhan-hang/m
 
 | Thứ | Dùng | Luật |
 |---|---|---|
-| Nút | `.nb-nut` (đỏ), `.nb-nut.phu` (trắng viền), `.kho-nut-xoa` (xóa: chữ, viền đỏ), `.kho-thanh-nut` (hàng nút; `.dinh` dính đáy dưới 1024px) | Tên nút kể **việc ngoài đời** ("Đã gọi xác nhận"), không việc trong database ("Duyệt"). `.nb-nut` đè `hidden` — thêm `[hidden]{display:none!important}` khi cần |
+| Nút | `.nb-nut` (đỏ, chữ kem), `.nb-nut.phu` (Cream, viền `--vien-o`), `.kho-nut-xoa` (xóa: chữ, viền đỏ), `.kho-thanh-nut` (hàng nút; `.dinh` dính đáy dưới 1024px) | Tên nút kể **việc ngoài đời** ("Đã gọi xác nhận"), không việc trong database ("Duyệt"). `.nb-nut` đè `hidden` — thêm `[hidden]{display:none!important}` khi cần |
 | Form | `label.nb-o > span` (nhãn, thêm " *" nếu bắt buộc) + `small` (gợi ý, **trên** ô) + ô; lưới `.kho-luoi`, `.kho-luoi-2`; bọc `.nb-the` | Số nhập bằng `type="text"` + `inputmode="numeric"` / `"decimal"`, không `type="number"`. Có / không là `select` ba lựa chọn, **không ô tick** (`TruongThem`). Ô mã: `autocapitalize="characters"`, `spellcheck="false"` |
 | Chọn | `ChonMatHang` (`select` theo nhóm, mã để trong `title`), `NhanHangChon` (thẻ radio 56px, `:has(input:checked)`) | Không mã trong chữ của lựa chọn |
 | Bảng | `BangBaoCao` → `.kho-bang-khung > table.kho-bang.kho-bao-cao` | Cột đầu dính; `td.so` canh phải; tổng ở `tfoot tr.tong`; 0 hiện `·`, không có hiện `—`; trống thì `p.nb-rong` nói số liệu từ đâu ra. Điện thoại: một thẻ mỗi dòng thay vì bảng |
@@ -194,13 +213,9 @@ Thao tác xóa / hủy: đặt trong `<details class="nb-the">` đóng sẵn, c�
 
 Chương trình Windows mở giao diện trong cửa sổ ứng dụng của Edge (1180 × 860), máy chủ Bun ở `127.0.0.1`. Giao diện
 `can-app/src/giao-dien.html`, hướng dẫn in được `can-app/src/huong-dan.html` (tự chứa, không tải gì từ
-mạng). **Cùng bảng màu chốt 09/10/2026** như `/noi-bo` và kho (từ bản 2.9.2): vì chạy không mạng, mỗi
-file HTML khai lại bảng trong khối `:root` của nó — hai file phải khai giống hệt nhau, đúng mã của bảng
-"Token màu của website" và của bảng màu trạng thái ở trên (`test-noi-bo-bang-mau.mjs` nhóm 5 và
-`can-app/test/thu.ts` gác). Hai tên biến trong app khác web: `--vach` ở đây là kem đậm (web gọi là
-`--kem-dam`), chữ phụ Charcoal 68 % tên là `--chu-phu` (web gọi là `--muc-nhat`). **Phông hệ thống
-(Segoe UI)** vì chạy không mạng. Khi sửa: chỉ dùng biến, đừng thêm phông tải từ mạng, việc chính
-dùng nút to sẵn có (`button.to`); đổi giao diện thì tăng `PHIEN_BAN` trong `can-app/src/main.ts`. Màu
-viết cứng còn lại là hình của vật thật, không phải màu giao diện: mực và nét gạch của tờ tem vẽ thử,
-màn hình tinh thể lỏng của cân vẽ trong hướng dẫn. Hai chỗ app khác web — đừng chép sang web: nút lọc
-bo tròn kiểu viên thuốc, nút khóa mờ đi (`opacity: .5`) thay vì tối đi.
+mạng). **Chưa đổi** sang bảng màu chốt 09/10/2026: vẫn dùng đỏ, kem, than, mù tạt của **bảng cũ** (token
+khai ngay trong file HTML). Đổi màu Beeftown Cân là một PR riêng, kèm phiên bản mới của chương trình — đổi
+giao diện thì tăng `PHIEN_BAN` trong `can-app/src/main.ts`. **Phông hệ thống (Segoe UI)** vì chạy không
+mạng. Khi sửa: giữ bảng màu app đang dùng, đừng thêm phông tải từ mạng, việc chính dùng nút to sẵn có
+(`button.to`). Hai chỗ app khác web — đừng chép sang web: nút lọc bo tròn kiểu viên thuốc, nút khóa mờ
+đi (`opacity: .5`) thay vì tối đi.

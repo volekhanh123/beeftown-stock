@@ -25,7 +25,7 @@ Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần c�
 | `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động — và **toàn bộ kiểm thử** (`crm/test/`). |
 | `CLAUDE.md` | **Quy trình kiểm thử bắt buộc** cho mọi tính năng mới: 9 mục "định nghĩa xong", cách chạy test, việc trước khi mở PR. |
 | `AGENTS.md` | Cùng quy trình đó cho Codex và các agent không phải Claude, kèm quy tắc rà soát PR (mục "Code Review Rules"). |
-| `THUONG-HIEU.md` | **Bảng màu thương hiệu Khánh chốt 09/10/2026**: giá trị đã áp dụng trên trang công khai, `/noi-bo`, kho và Beeftown Cân; chỗ website còn khác guideline; thứ còn mang màu cũ. |
+| `THUONG-HIEU.md` | **Bảng màu thương hiệu Khánh chốt 09/10/2026**: giá trị đã áp dụng trên trang công khai, `/noi-bo` và kho; chỗ website còn khác guideline; thứ còn mang màu cũ (Beeftown Cân, ảnh hướng dẫn kho). |
 | `.github/` | Kiểm thử tự động (GitHub Actions) mỗi PR, mỗi lần gộp và mỗi đêm 00:30 giờ VN; đóng gói `BeeftownCan.exe` (tải về không cần gõ lệnh: `can-app/README.md`, mục "Tải BeeftownCan.exe về"); mẫu PR; mẫu báo lỗi. |
 | ~~`Beeftown_Website/index.html`~~ | ⚠️ **BẢN NHÁP CŨ — KHÔNG PHÁT HÀNH.** Xem cảnh báo bên dưới. |
 | ~~`Beeftown_Website/google-apps-script.gs`~~ | ⚠️ Đã thay bằng `tao_dat_ban()` trong database. |
@@ -74,7 +74,7 @@ Lưu ý khi sửa code phần mềm cân:
 
 ### Bảng màu
 
-> **Cả website và Beeftown Cân** dùng bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (`THUONG-HIEU.md`): trang công khai đổi trước; `/noi-bo`, kho và Beeftown Cân (bản 2.9.2) đổi ngày 11/10/2026. Còn mang màu cũ: 15 ảnh chụp trong trang hướng dẫn của kho (`web/public/kho/hd-*.png`), chờ chụp lại.
+> **Cả website** dùng bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (`THUONG-HIEU.md`): trang công khai đổi trước; `/noi-bo` và kho đổi ngày 12/10/2026. Còn mang màu cũ: Beeftown Cân (PR riêng, kèm phiên bản mới của chương trình) và 15 ảnh chụp trong trang hướng dẫn của kho (`web/public/kho/hd-*.png`), chờ chụp lại.
 
 | Tên | Mã | Token web | Dùng cho |
 |---|---|---|---|
@@ -84,16 +84,16 @@ Lưu ý khi sửa code phần mềm cân:
 | Marigold | `#F5AA14` | `--cuc-vang`, `--mu-tat` | Điểm nhấn nhỏ, vòng focus trên nền tối; chữ chỉ trên nền tối |
 | Warm Stone | `#B8A98C` | `--da` | Chữ phụ **chỉ trên nền tối**; nét kẻ |
 | Đỏ đậm (màu pha) | `#890607` | `--do-dam`, `--do-sau` | Nút khi di chuột, chữ nhấn rất nhỏ trên kem, chữ nút trên nền đỏ, nét artwork trên kem |
-| Kem sau · kem đậm (màu pha) | `#EBDCC6` · `#E7D5BC` | `--kem-sau` · `--kem-dam` | Nền khối phụ trên trang sáng; kem sau là nền của thẻ ở trang công khai, của đầu bảng ở kho; kem đậm là vạch trong thẻ của kho |
-| Viền ô nhập (màu pha) | `#7A7366` | `--vien-o` | Viền ô nhập của form (trang công khai: ô nền Cream; `/noi-bo` và kho: ô nền trắng) |
+| Kem sau · kem đậm (màu pha) | `#EBDCC6` · `#E7D5BC` | `--kem-sau` · `--kem-dam` | Nền khối phụ trên trang sáng; kem sau là nền của thẻ ở trang công khai, nền trang của `/noi-bo` và kho; kem đậm là nền khi di chuột |
+| Viền ô nhập (màu pha) | `#7A7366` | `--vien-o` | Viền ô nhập của form (ô nền Cream ở cả website); ở `/noi-bo` và kho còn là viền nút phụ, ô đánh dấu |
 
-Năm dòng đầu là năm màu của guideline. Ba dòng sau là màu pha cho màn hình, Khánh cho phép ngày 10/10/2026. Token khai ở **hai nơi cùng giá trị, chưa gộp** — khối `.ck` đầu tiên của `web/src/styles/cong-khai.css` (trang công khai) và hai khối `:root` của `web/src/styles/chung.css` (`/noi-bo`, kho); Beeftown Cân khai lại trong hai file HTML của nó. Đổi một mã là đổi mọi nơi đó trong cùng PR: `crm/test/test-cong-khai-giao-dien.mjs` (nhóm 2, 6) và `crm/test/test-noi-bo-bang-mau.mjs` gác từng mã.
+Năm dòng đầu là năm màu của guideline. Ba dòng sau là màu pha cho màn hình, Khánh cho phép ngày 10/10/2026. Token khai ở **hai nơi cùng giá trị, chưa gộp** — khối `.ck` đầu tiên của `web/src/styles/cong-khai.css` (trang công khai) và hai khối `:root` của `web/src/styles/chung.css` (`/noi-bo`, kho). Đổi một mã là đổi mọi nơi đó trong cùng PR: `crm/test/test-cong-khai-giao-dien.mjs` (nhóm 2, 6) và `crm/test/test-noi-bo-bang-mau.mjs` gác từng mã.
 
 `/noi-bo`, kho và Beeftown Cân có thêm **màu trạng thái** (xanh = xong, vàng = lưu ý, đỏ nhạt = làm ngay) — màu chức năng của công cụ, không thuộc năm màu thương hiệu, không dùng ở trang công khai. Mã và tương phản: `THUONG-HIEU.md`, mục 4.
 
-**Bảng màu không có trắng**: trang công khai không có nền trắng — thẻ nền kem sau, ô nhập nền Cream (kiểm thử nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`). `/noi-bo`, kho và Beeftown Cân thì vẫn dựng thẻ và ô nhập nền trắng trên nền kem: lần đổi màu ngày 11/10/2026 giữ cách dựng đó.
+**Bảng màu không có trắng**, và website không có nền trắng: trang công khai thẻ nền kem sau trên nền Cream, ô nhập nền Cream (`test-cong-khai-giao-dien.mjs` nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`); `/noi-bo` và kho thẻ Cream trên nền kem sau, ô nhập Cream, ô đánh dấu tự vẽ (`test-noi-bo-bang-mau.mjs` nhóm 3–4). Trắng chỉ có trên giấy in.
 
-Warm Stone và Marigold **không bao giờ** làm chữ trên nền sáng (tương phản 1,83 và 1,56 : 1 với kem; 2,31 và 1,97 : 1 với thẻ trắng); không đặt chữ đỏ trên nền tối (2,43 : 1). Tỷ lệ trang công khai đang chạy: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 % — guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5, Khánh chưa quyết theo bên nào. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
+Warm Stone và Marigold **không bao giờ** làm chữ trên nền sáng (tương phản 1,83 và 1,56 : 1 với kem; 1,71 và 1,46 : 1 với kem sau); không đặt chữ đỏ trên nền tối (2,43 : 1). Tỷ lệ trang công khai đang chạy: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 % — guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5, Khánh chưa quyết theo bên nào. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
 
 ### Phông chữ
 
