@@ -18,7 +18,7 @@ Hệ thống CRM và thẻ thành viên của Beeftown. Beeftown **sở hữu 10
 | 4c | Báo động khi đèn sức khỏe đỏ | ✅ Lõi xong (`0059`–`0060`): máy `may_bao_dong` đọc số liệu bảng sức khỏe qua `suc_khoe_so_lieu` (không mở quyền kho / CRM), sổ sự cố mỗi đèn đỏ một sự cố, khóa lượt, đánh dấu không lặp, dọn sau 90 ngày; mỗi lượt dọn luôn bốn bảng nhật ký quá hạn (`0073`); luật báo và câu chữ ở `web/src/lib/bao-dong-*.ts` — chờ chọn kênh (Telegram / email / Zalo) |
 | 5 | Báo cáo BI | ✅ Hàm chỉ số xong (`chi_so_crm`, `phieu_do_launch`) |
 | 6 | **Cổng nội dung** — công tắc cho từng dữ kiện | ✅ Xong (`0010`) |
-| 7 | **Thực đơn** — 31 món, duyệt giá từng món | ✅ Xong (`0011`) |
+| 7 | **Thực đơn** — duyệt giá từng món (`0011`); danh mục theo cuốn menu bản sáng 11/10/2026: 17 nhóm, 42 món còn dùng, 10 món thu hồi, chưa món nào công bố (`0091`) — công bố theo `web/THUC-DON.md` | ✅ Xong (`0011`, `0091`) |
 | 8 | **Tuyển dụng** — tin, hồ sơ, vé tải CV | ✅ Xong (`0012`) |
 | 9 | **Đặt nội dung một giao dịch** — công bố bốn bước thành một | ✅ Xong (`0015`) |
 | 9b | **Vá vé tải CV, quyền thu hồi, nhật ký trùng** | ✅ Xong (`0016`) |
@@ -56,7 +56,8 @@ cd ../crm && npm ci && npm test
 | `npm run test:an-toan` | **bốn lỗ hổng ở `0008`** và hai lỗi chỉ số |
 | `npm run test:qua-tai` | **Supabase bận không phải là hết phiên** (`web/src/lib/qua-tai.ts`): lỗi thật của supabase-js dựng bằng fetch giả — 429, 5xx, 52x của Cloudflare, mất mạng là TẠM THỜI; token hết hạn / thu hồi, sai mật khẩu là TỪ CHỐI; câu báo hai thứ tiếng; trang "đang bận" 503 (GET tự tải lại, POST nói rõ CHƯA ghi); nhật ký `[qua-tai]` không chép token / email; `phien.ts`, `middleware.ts`, `kho/may-chung.ts` không xóa cookie / token khi lỗi tạm thời. Không cần PGlite |
 | `npm run test:cong-bo` | cổng nội dung và ảnh |
-| `npm run test:thuc-don` | thực đơn và duyệt giá |
+| `npm run test:thuc-don` | thực đơn và duyệt giá (seed `0011` kiểm trên database dừng ở `0011`) |
+| `node test/test-thuc-don-ban-sang.mjs` | **danh mục cuốn menu bản sáng `0091`**: đúng nhóm, tên ba thứ tiếng, thứ tự, số món từng nhóm; không công bố, không giá, độ cay chỉ đề xuất, đúng 2 món sống; trang rỗng kể cả khi bật công tắc, món thu hồi và nhóm tắt không bao giờ lên trang hay thành "món còn vướng"; sổ bản dịch không lệch; chạy lại không đổi gì; quyền; database đã công bố theo `web/THUC-DON.md` bản cũ (có bản dịch máy) về đúng như database mới cài |
 | `npm run test:tuyen-dung` | tuyển dụng, dữ liệu cá nhân, nhật ký bất biến, form theo từng tin, duyệt lương, lương giờ/tháng |
 | `npm run test:cong-khai` | API công khai, mã đặt bàn, đo lường |
 | `npm run test:noi-dung` | đặt/thu hồi nội dung trong một giao dịch, vé tải CV |
@@ -127,7 +128,7 @@ crm/
 │   ├── 0008_siet_an_toan.sql    ⚠ VÁ 4 LỖ HỔNG — phải chạy trước 0009+
 │   ├── 0009_tep_va_anh.sql      khung ảnh có tên · chốt chặn ảnh minh họa
 │   ├── 0010_noi_dung_cong_bo.sql   CỔNG NỘI DUNG — công tắc từng dữ kiện
-│   ├── 0011_thuc_don.sql        31 món · duyệt giá từng món · bò xem tại quầy
+│   ├── 0011_thuc_don.sql        seed 31 món (bảng 17/09 — 0091 thay danh mục) · duyệt giá từng món · bò xem tại quầy
 │   ├── 0012_tuyen_dung.sql      tin tuyển dụng · hồ sơ · vé tải CV
 │   ├── 0013_cong_khai_va_do_luong.sql   API công khai · đo lường website
 │   ├── 0014_storage_supabase.sql   kho file — PGlite BỎ QUA, kiểm bằng tay
@@ -191,7 +192,8 @@ crm/
 │   ├── 0086_ho_so_sdt_bat_buoc.sql    ⚠ VÁ TUYỂN DỤNG · nop_ho_so_ung_tuyen từ chối số không có chữ số nào ("abc", rỗng, null — chuan_hoa_sdt trả null, sdt_hop_le(null) là null nên "if not" không chạy): thân 0084_gioi_han_cong_khai + "v_sdt is null or" · ràng buộc mới ho_so_sdt_bat_buoc (chưa ẩn danh thì phải có sdt)
 │   ├── 0088_kho_o_ma_mot_lo.sql        KHO · một ô mã chỉ về một lô: trigger kho_phien_pha_ra_o_ma cho ô theo lô của dòng NHẬP KHO (không theo lô chuyển thẳng bếp — trước đây dòng chốt sau cùng thắng, ô bị coi là trống và tảng sau lấy lại ô đó); hai dòng nhập kho của cùng phần cắt đang giữ ô → chốt phiên lóc bị từ chối; trigger mới kho_phien_pha_chot_tra_o_ma trả ngay lúc chốt các ô không có lô nhập kho. Không bảng, cột mới
 │   ├── 0089_kho_tang_tru_dao_nguoc.sql KHO · số của tảng trừ dòng đảo ngược (hoá đơn iPOS sửa / huỷ, phiên lóc mở lại): kho_bao_cao_tang, kho_truy_vet_tang — bán / bếp / huỷ là số ròng, ngày hết và ngày bán cuối chỉ xét dòng sổ còn hiệu lực · kho_can_o_ma — bán / huỷ / khác ròng · kho_bao_cao_ban_gio — "giảm sớm" xét lô của dòng bán còn hiệu lực · thay thân, không đổi chữ ký hay quyền
-│   └── 0090_kho_can_chua_xac_nhan.sql  KHO · Beeftown Cân 2.9.3 báo cờ "chưa xác nhận" (kho_may_can.chua_xac_nhan, chua_xac_nhan_tu) và của từng dòng tren_can · kho_may_can_bao ghi, kho_phien_pha_can trả kèm từng dòng — trang pha lóc không "Cân sẵn sàng" theo dòng chưa xác nhận · suc_khoe_so_lieu (thân 0074) thêm cờ vào máy của ô can — đèn "Beeftown Cân" vàng · CHỐT QUYỀN chép từ 0084 · chạy sau 0084
+│   ├── 0090_kho_can_chua_xac_nhan.sql  KHO · Beeftown Cân 2.9.3 báo cờ "chưa xác nhận" (kho_may_can.chua_xac_nhan, chua_xac_nhan_tu) và của từng dòng tren_can · kho_may_can_bao ghi, kho_phien_pha_can trả kèm từng dòng — trang pha lóc không "Cân sẵn sàng" theo dòng chưa xác nhận · suc_khoe_so_lieu (thân 0074) thêm cờ vào máy của ô can — đèn "Beeftown Cân" vàng · CHỐT QUYỀN chép từ 0084 · chạy sau 0084
+│   └── 0091_thuc_don_ban_sang.sql      THỰC ĐƠN · danh mục theo cuốn menu bản sáng Khánh chốt 11/10/2026: 17 nhóm (7 mới; mien-mi, trang-mieng, cocktail tắt), 42 món còn dùng (21 giữ mã, 21 mới F19–F23, D13–D28), 10 món không có trong cuốn → da_thu_hoi — không xóa, không công bố, không giá (gia_de_xuat 69.000 cho S01 và ba ly signature), độ cay chỉ đề xuất · mô tả của cuốn ở copy_nhap / nguyen_van_nguon, mo_ta_* để web/THUC-DON.md ghi · sổ bản dịch: tên ba thứ tiếng là bản tay · v_mon_con_vuong bỏ món thu hồi và nhóm tắt · không hàm mới · chạy xong: khối kiem-danh-muc của web/THUC-DON.md
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```
