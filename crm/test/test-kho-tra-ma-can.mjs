@@ -350,15 +350,26 @@ await nhom('3 · PHIẾU CHUYỂN / XUẤT BẾP / BÁO HỦY: QUÉT NHÃN MÃ �
   const vConHan = vang({ chiConHan: true });
   ok('HỒI QUY: lô của tảng trên nhãn đã hết hạn, sổ không còn lô đó ở nơi lấy, phiếu chỉ nhận hàng còn hạn → khay KHÔNG thành dòng theo món (không trừ nhầm lô còn hạn)',
      vConHan.dong.length === 0 && vConHan.theoLo.length === 0 && vConHan.soHetHan === 1 && vConHan.soDoc === 0, JSON.stringify(vConHan));
-  ok('HỒI QUY: … câu báo: 1 khay Ribeye của tảng #0001 đã hết hạn (hạn dùng 09/10/2026) — để riêng, báo hủy (vi + en)',
-     vConHan.loi.some(c => /1 khay Ribeye/.test(c) && /#0001/.test(c) && /09\/10\/2026/.test(c) && /báo hủy/.test(c))
-     && vConHan.loiEn.some(c => /#0001/.test(c) && /09\/10\/2026/.test(c) && /write/.test(c) && !VIET.test(c.replace(/Ribeye/g, ''))),
+  ok('HỒI QUY: … câu báo: 1 khay Ribeye của tảng #0001 đã hết hạn (hạn dùng 09/10/2026) — chưa ghi, để riêng (vi + en, tiếng Anh không lẫn chữ Việt)',
+     vConHan.loi.some(c => /1 khay Ribeye/.test(c) && /#0001/.test(c) && /09\/10\/2026/.test(c) && /chưa ghi vào phiếu này/.test(c) && /Để riêng/.test(c))
+     && vConHan.loiEn.some(c => /#0001/.test(c) && /09\/10\/2026/.test(c) && /not added to this slip/.test(c) && /aside/.test(c) && !VIET.test(c.replace(/Ribeye/g, ''))),
      `${vConHan.loi.join(' · ')} || ${vConHan.loiEn.join(' · ')}`);
-  ok('… câu nói sổ không còn lô đó ở nơi lấy và chỉ chỗ xem (Tồn kho) — không bảo báo hủy từ chính nơi lấy này',
-     vConHan.loi.some(c => /sổ không còn lô đó ở Quầy thịt/.test(c) && /Tồn kho/.test(c)) && vConHan.loiEn.some(c => /Stock/.test(c)), vConHan.loi.join(' · '));
+  ok('… sổ không còn lô đó ở đâu cả: câu nói rõ vậy và bảo để riêng, báo quản lý (không bảo báo hủy từ chính nơi lấy này)',
+     vConHan.loi.some(c => /sổ không còn khay nào của lô đó/.test(c) && /báo quản lý/.test(c))
+     && vConHan.loiEn.some(c => /nothing left of that lot/.test(c) && /tell the manager/.test(c)), vConHan.loi.join(' · '));
   const vHuy = vang({ chiConHan: false });
   ok('HỒI QUY (rà soát lần hai): phiếu BÁO HỦY cũng không ghi theo món khay của lô hết hạn mà sổ không còn ở nơi lấy — ghi theo món là hủy nhầm một lô còn hạn (hoặc hủy hai lần khay đã báo)',
-     vHuy.dong.length === 0 && vHuy.theoLo.length === 0 && vHuy.soHetHan === 1 && vHuy.loi.some(c => /#0001/.test(c) && /Tồn kho/.test(c)), JSON.stringify(vHuy));
+     vHuy.dong.length === 0 && vHuy.theoLo.length === 0 && vHuy.soHetHan === 1 && vHuy.loi.some(c => /#0001/.test(c) && /09\/10\/2026/.test(c)), JSON.stringify(vHuy));
+  const tonO = (noi, loai) => [{ lo_id: L(1), ten_vi_tri: noi, loai_vi_tri: loai, so_goi: 2, so_kg: 0.6 }, { lo_id: L(2), ten_vi_tri: 'Quầy thịt', loai_vi_tri: 'quay', so_goi: 1, so_kg: 0.3 }];
+  const vKho = vang({ chiConHan: false, tonKhac: tonO('Kho lạnh', 'kho') });
+  ok('Sổ để lô hết hạn đó ở Kho lạnh: câu nói "sổ ghi lô đó ở Kho lạnh, không ở Quầy thịt" và bảo báo hủy từ Kho lạnh (vi + en)',
+     vKho.dong.length === 0 && vKho.loi.some(c => /sổ ghi lô đó ở Kho lạnh, không ở Quầy thịt/.test(c) && /Báo hủy từ Kho lạnh/.test(c))
+     && vKho.loiEn.some(c => /hold that lot at Kho lạnh, not at Quầy thịt/.test(c) && /off from Kho lạnh/.test(c)), `${vKho.loi.join(' · ')} || ${vKho.loiEn.join(' · ')}`);
+  const vCho = vang({ chiConHan: true, tonKhac: tonO('Hàng chờ hủy', 'cho_huy') });
+  ok('Lô đó chỉ còn ở Hàng chờ hủy: câu nói đã báo hủy, chờ duyệt — hỏi quản lý trước khi báo lại (không hủy hai lần)',
+     vCho.dong.length === 0 && vCho.loi.some(c => /đang ở Hàng chờ hủy/.test(c) && /Hỏi quản lý/.test(c))
+     && vCho.loiEn.some(c => /already in Hàng chờ hủy/.test(c) && /Ask the manager/.test(c)), `${vCho.loi.join(' · ')} || ${vCho.loiEn.join(' · ')}`);
+  ok('Trang phiếu xuất truyền tồn mọi nơi (tonKhac) cho dongTuQuet', /datLo: \{[^}]*tonKhac: ton\b/.test(doc('web/src/pages/noi-bo/kho/xuat/[id].astro')));
   const vHuyCoLo = quet([nhan(10011, 300)], { maNhan: MA_NHAN, datLo: datLo({ giao: giaoHan, homNay: '2026-10-12', chiConHan: false,
     lo: LO_NOI_LAY().map(l => (l.lo_id === L(1) ? { ...l, tinh_trang_han: 'het_han', han_dung: '2026-10-09' } : l)) }) });
   ok('Báo hủy khi sổ CÒN lô hết hạn đó ở nơi lấy: vào đúng dòng lô của tảng như trước',

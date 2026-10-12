@@ -521,7 +521,7 @@ if (form) {
         // Nhãn mã ô của một tảng: ghi vào đúng lô của tảng đó khi lô còn đủ ở nơi lấy; không thì ghi theo món.
         const quet = dongTuQuet(String(form.get('ma_quet') ?? ''), matHang, caiDat?.mau_ma_vach, caiDat?.so_le_kg ?? 3, {
           maNhan,
-          datLo: { giao: giaoO, lo: loTaiTu, tenNoiLay: tu.ten, chiConHan, homNay: homNayVn(), dong: doc.dong, theoLo: doc.theoLo },
+          datLo: { giao: giaoO, lo: loTaiTu, tonKhac: ton, tenNoiLay: tu.ten, chiConHan, homNay: homNayVn(), dong: doc.dong, theoLo: doc.theoLo },
         });
         // Món vừa vào lô của tảng: bỏ dòng theo món còn trống số của chính món đó (phiếu mở sẵn món rồi mới quét).
         const gop = gopKetQuaQuet(doc.dong, doc.theoLo, quet);

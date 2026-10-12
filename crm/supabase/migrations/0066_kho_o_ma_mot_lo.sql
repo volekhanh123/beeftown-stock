@@ -34,10 +34,22 @@
 -- Phiên không giao ô mã (không có dòng kho_o_ma_giao) không đổi gì: hai dòng
 -- nhập kho vẫn chốt được như trước.
 --
--- Không bảng, cột, hàm mới. Không đổi quyền: create or replace giữ nguyên quyền
--- (hàm trigger nội bộ, authenticated / anon không gọi thẳng được — 0049). Không
--- sửa dữ liệu: ô đang giao giữ nguyên lô đang trỏ. Một câu raise exception mới —
--- bản tiếng Anh ở web/src/lib/kho/cau-kho-en.ts.
+-- TRẢ Ô LÚC CHỐT (rà soát lần hai, cùng ngày): phần cắt giữ ô mà phiên chốt
+-- KHÔNG có dòng nhập kho nào — chỉ chuyển thẳng bếp (đường này do mục 1 mở ra),
+-- hoặc không cắt ra (kho_giao_o_ma giao ô cho mọi phần cắt có ô trong công thức;
+-- có từ 0049) — để lại ô không lô trong khi phiên đã chốt. Ba chỗ đọc coi "ô
+-- không lô" là phiên còn đang lóc: Beeftown Cân hiện "Đang lóc" và đếm ô đó là
+-- đang dùng, phiếu quét nhãn và màn Quét nhãn nói "phiên lóc … chưa chốt" — đều
+-- sai. Trigger mới kho_phien_pha_chot_tra_o_ma trên kho_phien_pha: phiên chuyển
+-- sang da_chot → trả ngay (den_luc) các ô của phiên chưa gắn lô. Không khay nào
+-- mang nhãn các ô đó nằm trên sổ, và kho_o_ma_con_giu vốn đã coi chúng là trống
+-- (lần giao sau tự đóng) — nay đóng ngay lúc chốt. Lịch sử giao ô giữ nguyên.
+-- Mở lại phiên rồi cần lại ô cho phần cắt đó thì bấm "Giao ô mã" lần nữa.
+--
+-- Không bảng, cột mới. Một hàm trigger mới (nội bộ, rút khỏi authenticated như
+-- các trigger ô mã của 0049). create or replace giữ nguyên quyền của
+-- kho_phien_pha_ra_o_ma. Không sửa dữ liệu: ô đang giao giữ nguyên lô đang trỏ.
+-- Một câu raise exception mới — bản tiếng Anh ở web/src/lib/kho/cau-kho-en.ts.
 -- =============================================================================
 
 
@@ -90,6 +102,47 @@ $$;
 
 comment on function kho_phien_pha_ra_o_ma is
   'NỘI BỘ (trigger, 0049). Chốt phiên lóc → ô mã của phần cắt nhận lô ra; mở lại phiên → bỏ lô. 0066: ô chỉ theo lô của dòng NHẬP KHO (không theo lô chuyển thẳng bếp); dòng nhập kho thứ hai của cùng phần cắt đang giữ ô thì từ chối chốt.';
+
+
+-- =============================================================================
+-- CHỐT PHIÊN → TRẢ NGAY Ô KHÔNG CÓ LÔ NHẬP KHO
+-- =============================================================================
+create or replace function kho_phien_pha_chot_tra_o_ma()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Chạy sau khi kho_chot_phien_pha đã gắn lô cho mọi dòng nhập kho (trigger
+  -- trên kho_phien_pha_ra): ô nào của phiên vẫn chưa có lô thì không có khay
+  -- nào mang nhãn ô đó trên sổ.
+  update kho_o_ma_giao set den_luc = now()
+  where phien_pha_id = new.id and den_luc is null and lo_id is null;
+  return new;
+end;
+$$;
+
+comment on function kho_phien_pha_chot_tra_o_ma is
+  'NỘI BỘ (trigger, 0066). Phiên lóc chuyển sang da_chot → trả ngay các ô mã của phiên chưa gắn lô (phần cắt chỉ chuyển thẳng bếp, hoặc không cắt ra).';
+
+drop trigger if exists kho_phien_pha_chot_tra_o_ma_trigger on kho_phien_pha;
+create trigger kho_phien_pha_chot_tra_o_ma_trigger
+  after update of trang_thai on kho_phien_pha
+  for each row when (new.trang_thai = 'da_chot' and old.trang_thai is distinct from 'da_chot')
+  execute function kho_phien_pha_chot_tra_o_ma();
+
+
+-- =============================================================================
+-- HÀM NỘI BỘ — rút khỏi authenticated (như các trigger ô mã của 0049)
+-- =============================================================================
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'authenticated') then
+    execute 'revoke execute on function kho_phien_pha_chot_tra_o_ma() from authenticated';
+  end if;
+end
+$$;
 
 
 -- =============================================================================

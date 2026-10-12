@@ -345,6 +345,11 @@ export interface DatLoQuet {
    * không còn lô đó ở nơi lấy (so `giao.han_dung` với ngày này). Không truyền → chỉ biết hết hạn qua dòng tồn `lo`.
    */
   homNay?: string | null;
+  /**
+   * Tồn của MỌI nơi ở chi nhánh (ton.ts docTon, kể cả chờ hủy) — để câu báo nói sổ đang để lô của một khay hết hạn ở
+   * đâu khi lô đó không ở nơi lấy. Không truyền → câu không nói được chỗ.
+   */
+  tonKhac?: readonly { lo_id: string; ten_vi_tri: string; loai_vi_tri: string; so_goi: number; so_kg: number }[];
   /** Dòng theo món và dòng theo lô đang có trên form, TRƯỚC lượt quét này. */
   dong: readonly DongXuatForm[];
   theoLo: readonly DongLoForm[];
@@ -458,15 +463,34 @@ export function dongTuQuet(
         const lo = loTim && (Number(loTim.so_goi) > 0 || Number(loTim.so_kg) > 0) ? loTim : null;
         // Lô của tảng trên nhãn ĐÃ HẾT HẠN — xét trước mọi thứ khác. Sổ còn lô đó ở nơi lấy: theo dòng tồn. Sổ không
         // còn (sổ lệch với kệ, hoặc lô đã sang chờ hủy): theo hạn dùng của lô mà ô đang gắn so với hôm nay giờ Việt
-        // Nam. Khay cầm trên tay đã hết hạn thì không được thành dòng theo món — database sẽ trừ một lô còn hạn.
+        // Nam. Khay cầm trên tay đã hết hạn thì không được thành dòng theo món — database sẽ trừ một lô còn hạn. Lô
+        // đó không ở nơi lấy thì chặn ở MỌI loại phiếu, kể cả báo hủy: hủy theo món là hủy nhầm một lô còn hạn, hoặc
+        // hủy lần hai khay đã báo — câu nói sổ đang để lô đó ở đâu (datLo.tonKhac).
         const hanHet = lo
           ? (lo.tinh_trang_han === 'het_han' ? lo.han_dung ?? '' : null)
           : (g.han_dung && datLo.homNay && g.han_dung < datLo.homNay ? g.han_dung : null);
-        if (datLo.chiConHan && hanHet !== null) {
+        if (hanHet !== null && (datLo.chiConHan || !lo)) {
           const han = hanHet ? dinhDangNgay(hanHet) : '';
-          bao({
-            vi: `${l.vi} ${mon.ten} của ${t.vi} đã hết hạn${han ? ` (hạn dùng ${han})` : ''} — chưa ghi vào phiếu này. Để riêng và báo hủy.`,
-            en: `${l.en} of ${mon.ten} from ${t.en} ${p.soGoi === 1 ? 'has' : 'have'} expired${han ? ` (use-by ${han})` : ''} — not added to this slip. Set ${p.soGoi === 1 ? 'it' : 'them'} aside and write ${p.soGoi === 1 ? 'it' : 'them'} off.`,
+          const mot = p.soGoi === 1;
+          const daHet = {
+            vi: `${l.vi} ${mon.ten} của ${t.vi} đã hết hạn${han ? ` (hạn dùng ${han})` : ''}`,
+            en: `${l.en} of ${mon.ten} from ${t.en} ${mot ? 'has' : 'have'} expired${han ? ` (use-by ${han})` : ''}`,
+          };
+          const noiSo = (datLo.tonKhac ?? []).filter(x => x.lo_id === g.lo_id && (Number(x.so_goi) > 0 || Number(x.so_kg) > 0));
+          const noiKhac = [...new Set(noiSo.filter(x => x.loai_vi_tri !== 'cho_huy').map(x => x.ten_vi_tri))];
+          const choHuy = noiSo.find(x => x.loai_vi_tri === 'cho_huy');
+          bao(lo ? {
+            vi: `${daHet.vi} — chưa ghi vào phiếu này. Để riêng và báo hủy.`,
+            en: `${daHet.en} — not added to this slip. Set ${mot ? 'it' : 'them'} aside and write ${mot ? 'it' : 'them'} off.`,
+          } : noiKhac.length ? {
+            vi: `${daHet.vi} — sổ ghi lô đó ở ${noiKhac.join(', ')}, không ở ${datLo.tenNoiLay}, nên chưa ghi vào phiếu này. Báo hủy từ ${noiKhac[0]}.`,
+            en: `${daHet.en} — the books hold that lot at ${noiKhac.join(', ')}, not at ${datLo.tenNoiLay}, so ${mot ? 'it was' : 'they were'} not added to this slip. Write ${mot ? 'it' : 'them'} off from ${noiKhac[0]}.`,
+          } : choHuy ? {
+            vi: `${daHet.vi} — lô đó đang ở ${choHuy.ten_vi_tri} (đã báo hủy, chờ duyệt), nên chưa ghi vào phiếu này. Hỏi quản lý trước khi báo lại.`,
+            en: `${daHet.en} — that lot is already in ${choHuy.ten_vi_tri} (reported, awaiting approval), so ${mot ? 'it was' : 'they were'} not added to this slip. Ask the manager before reporting ${mot ? 'it' : 'them'} again.`,
+          } : {
+            vi: `${daHet.vi} — sổ không còn khay nào của lô đó, nên chưa ghi vào phiếu này. Để riêng và báo quản lý.`,
+            en: `${daHet.en} — the books show nothing left of that lot, so ${mot ? 'it was' : 'they were'} not added to this slip. Set ${mot ? 'it' : 'them'} aside and tell the manager.`,
           });
           hetHan.push(p);
           soHetHan += p.soGoi;

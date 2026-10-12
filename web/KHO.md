@@ -838,7 +838,11 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   tảng trước bị trừ vào tảng sau (phiếu quét nhãn lẫn hóa đơn iPOS). **Hai dòng nhập kho** của cùng phần cắt
   đang giữ ô (4 khay → Quầy + 6 khay → Kho lạnh) thì **chốt bị từ chối**, câu bảo gộp thành một dòng, chốt
   xong rồi chuyển ra quầy. Chỉ gặp khi gõ tay: món đã quét nhãn thì database không cho dòng thứ hai (0033).
-  Phiên không giao ô mã không đổi gì. Test: `test-kho-o-ma-mot-lo.mjs`.
+  Phiên không giao ô mã không đổi gì. **Chốt phiên mà phần cắt giữ ô không có dòng nhập kho nào** (chỉ chuyển
+  thẳng bếp, hoặc không cắt ra — `kho_giao_o_ma` giao ô cho mọi phần cắt có ô trong công thức) → trigger
+  `kho_phien_pha_chot_tra_o_ma` trả ô ngay lúc chốt. Trước đây ô nằm lại không lô với phiên đã chốt: Beeftown
+  Cân hiện "Đang lóc", phiếu và màn Quét nói "phiên lóc chưa chốt". Mở lại phiên rồi cần lại ô thì bấm "Giao ô
+  mã" lần nữa. Test: `test-kho-o-ma-mot-lo.mjs`.
 - **Tra mã trên nhãn ở web — một bộ tra chung** (`lib/kho/tra-ma-can.ts`, file thuần): `taoBangTraMaCan` +
   `traMaCan` soi đúng `kho_mat_hang_theo_ma_can` (món đang dùng có mã đó → ô mã của món đang dùng → mã giảm
   giá, mà không ô nào mang mã đó; bỏ số 0 đầu), trả món kèm lý do khớp: mã món / ô mã + số ô / mã giảm + %.
@@ -857,7 +861,10 @@ dùng khác nhau; có sự cố thì huỷ đúng miếng của tảng đó. Ch�
   còn hạn thì **không ghi vào đâu**, câu vàng bảo để riêng và báo hủy — kể cả khi sổ không còn lô đó ở nơi
   lấy (sổ lệch với kệ, lô đã sang chờ hủy): lúc đó so hạn dùng của lô mà ô đang gắn
   (`kho_can_giao_o_ma.han_dung`) với hôm nay giờ Việt Nam (`datLo.homNay` = `homNayVn()`); hạn đúng hôm nay
-  thì chưa hết hạn. Trang gộp kết quả quét vào form bằng `gopKetQuaQuet`: món vừa vào lô mà form còn một
+  thì chưa hết hạn. Lô hết hạn đó không ở nơi lấy thì chặn ở **mọi loại phiếu, kể cả báo hủy** (hủy theo món là
+  hủy nhầm một lô còn hạn, hoặc hủy lần hai khay đã báo); câu nói sổ đang để lô đó ở đâu (`datLo.tonKhac` = tồn
+  mọi nơi): "sổ ghi lô đó ở Kho lạnh… Báo hủy từ Kho lạnh", "đang ở Hàng chờ hủy… hỏi quản lý trước khi báo lại",
+  hoặc "sổ không còn khay nào của lô đó… báo quản lý". Trang gộp kết quả quét vào form bằng `gopKetQuaQuet`: món vừa vào lô mà form còn một
   dòng theo món **chưa có số** của chính món đó (phiếu mở từ "Lấy thêm", "Lấy ra quầy", món nhanh) thì bỏ
   dòng trống ấy — để lại là "Ghi phiếu" bị chặn "chưa nhập số khay". Kiểm kê dán nhãn: mọi mã của cùng
   một món cộng vào một số đếm (theo món là đủ).
