@@ -544,7 +544,7 @@ const huongDan = 'duyet-nhap';
                     : <span>{a.split('/').pop()}</span>}
                   <span style="display:flex;align-items:center;gap:.4rem;min-height:48px;font-size:.9rem">
                     <input type="checkbox" name="anh_giu" value={a} checked={giuAnh(a)}
-                      style="width:22px;height:22px;min-height:0;padding:0;margin:0;accent-color:var(--do)" /> {t.giu}
+                      style="width:22px;height:22px;min-height:0;padding:0;margin:0" /> {t.giu}
                   </span>
                   {anhDaTai.includes(a) && <input type="hidden" name="anh_da_tai" value={a} />}
                 </label>
@@ -907,7 +907,7 @@ const huongDan = 'duyet-nhap';
   .dg-anh { display: grid; gap: .6rem; margin: 0 0 1rem; }
   .dg-anh img {
     display: block; width: 100%; max-height: 85vh; object-fit: contain;
-    border: 1px solid var(--kho-vach); border-radius: 10px; background: #fff;
+    border: 1px solid var(--kho-vach); border-radius: 10px; background: var(--nb-the);
   }
   .dg-ten { margin: .4rem 0 .2rem; }
   .dg-chip-hang { margin: .1rem 0 0; }
@@ -916,5 +916,5 @@ const huongDan = 'duyet-nhap';
     display: inline-block; padding: .3rem .7rem; border-radius: 999px;
     font-size: .9rem; font-weight: 600; background: var(--kem-sau); color: var(--than);
   }
-  .dg-chip.vuot { background: var(--kho-do-nen); color: var(--do); }
+  .dg-chip.vuot { background: var(--do-nen); color: var(--do); }
 </style>

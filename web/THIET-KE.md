@@ -44,13 +44,13 @@ Tên màu `--than` (Charcoal) chỉ là tên màu. Beeftown nướng bằng **v�
 
 ## 2. Màu theo vai
 
-> **Trang công khai** (`<body class="ck">`) dùng bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (`THUONG-HIEU.md` ở thư mục gốc), cùng các màu pha cho màn hình Khánh cho phép ngày 10/10/2026. **`/noi-bo`, kho và Beeftown Cân chưa đổi**: chúng vẫn đọc khối `:root` của `src/styles/chung.css` — bảng cũ, ghi ở cuối mục này.
+> **Trang công khai** (`<body class="ck">`) dùng bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (`THUONG-HIEU.md` ở thư mục gốc), cùng các màu pha cho màn hình Khánh cho phép ngày 10/10/2026. **`/noi-bo` và kho dùng cùng bảng đó từ ngày 12/10/2026**: chúng đọc khối `:root` của `src/styles/chung.css`, nay cùng giá trị với khối `.ck` — phần riêng của hai nơi đó ghi ở cuối mục này. Beeftown Cân chưa đổi.
 
 Màu chữ theo **bề mặt**, không theo từng chỗ: mỗi khối khai một lớp bề mặt, mọi thứ bên trong đọc biến của bề mặt đó. Thêm khối mới chỉ cần chọn bề mặt, không phải tự chọn màu chữ — và không ai lỡ tay đặt chữ vàng lên nền kem.
 
 ### Token của trang công khai
 
-Khai trong khối `.ck` đầu tiên của `src/styles/cong-khai.css`, mỗi biến đúng một lần. `crm/test/test-cong-khai-giao-dien.mjs` nhóm 6 chép tay từng mã và đỏ khi có mã nào lệch.
+Khai trong khối `.ck` đầu tiên của `src/styles/cong-khai.css`, mỗi biến đúng một lần. `crm/test/test-cong-khai-giao-dien.mjs` nhóm 6 chép tay từng mã và đỏ khi có mã nào lệch. Hai khối `:root` của `src/styles/chung.css` khai **cùng các biến này, cùng giá trị** cho `/noi-bo` và kho; hai nơi chưa gộp, nên đổi một mã là đổi cả hai (`crm/test/test-noi-bo-bang-mau.mjs` nhóm 1 so hai khối với nhau).
 
 | Token | Mã | Tên trong guideline | Vai |
 |---|---|---|---|
@@ -114,20 +114,15 @@ Chú thích "Ảnh minh họa" (chữ kem trên nền than 78 %, nằm trên ả
 
 Trang đang chạy vào khoảng **kem 60 % / tối 25 % / đỏ 12 % / vàng 3 %** — tỷ lệ gợi ý của brief 06/10/2026. Guideline ghi Cream 60 % / Beef Red 25 % / Charcoal 10 % / Marigold dưới 5 %. Khánh chưa quyết trang web theo bên nào (`THUONG-HIEU.md` mục 3); đổi tỷ lệ là đổi bề mặt của vài khối, thuộc các PR bố cục sau. Vàng chỉ là vạch, chấm, chữ nhấn nhỏ trên nền tối; không có khối vàng.
 
-### Bảng cũ — `/noi-bo`, kho, Beeftown Cân còn dùng
+### `/noi-bo` và kho — cùng bảng từ ngày 12/10/2026
 
-Khối `:root` của `chung.css` giữ nguyên từng dòng; `test-cong-khai-giao-dien.mjs` nhóm 2 chép tay các giá trị này và đỏ khi có giá trị nào đổi, vì đổi `:root` là đổi màu cả `/noi-bo` và kho.
+File này là tài liệu của trang công khai; phần dưới chỉ ghi điều người sửa trang công khai cần biết về hai nơi kia. Luật dựng màn nội bộ: skill `.claude/skills/thiet-ke-beeftown/` (file `tham-khao/noi-bo-va-kho.md`); mã và tương phản đầy đủ: `THUONG-HIEU.md` mục 4.
 
-| Token | Mã cũ | | Token | Mã cũ |
-|---|---|---|---|---|
-| `--do` | `#B23A2C` | | `--than` | `#1E160E` |
-| `--do-dam` | `#8F2C21` | | `--da` | `#B8A98C` |
-| `--do-sau` | `#960F13` | | `--mu-tat` | `#F2A900` |
-| `--kem` | `#FBF4E1` | | `--cuc-vang` | `#F5C211` |
-| `--kem-sau` | `#F5ECD7` | | `--vien-o` | `#8C8577` |
-| `--kem-dam` | `#F1E4C2` | | `--muc-nhat` | than cũ 68 % |
-
-Đổi ba nơi đó theo bảng màu chốt là một việc riêng, chưa làm: danh sách file ở `THUONG-HIEU.md` mục 5.
+- **Cùng token, khai ở nơi khác.** `/noi-bo` và kho không có lớp `.ck`: chúng đọc hai khối `:root` của `chung.css`. Hai khối đó mang đúng các giá trị ở bảng "Token của trang công khai". `test-cong-khai-giao-dien.mjs` nhóm 2 chép tay 13 biến gốc của `:root`; `test-noi-bo-bang-mau.mjs` chép đủ 14 biến màu và so với khối `.ck`. Đổi một mã ở khối `.ck` mà quên `:root` (hay ngược lại) là kiểm thử đỏ.
+- **Không có hệ bề mặt, và cũng không có trắng.** Nội bộ và kho chỉ có nền sáng và đầu trang Charcoal: hai bề mặt khai trên `.nb-than` — nền trang `--nb-nen` (kem sau) và thẻ, thanh, menu, ô nhập `--nb-the` (Cream). Cách xếp ngược trang công khai (thẻ kem sau trên nền Cream) mà giống khối thẻ đặt trên dải kem sau: màn nội bộ dày thẻ, thẻ sáng hơn nền thì đọc dễ hơn. Trên thẻ Cream: chữ than 14,96 : 1, chữ phụ `--muc-nhat` 5,92, chữ đỏ 6,15, viền ô nhập 3,71. Marigold và Warm Stone trên thẻ Cream chỉ 1,56 và 1,83 : 1 — không làm chữ hay biểu tượng ở đó.
+- **Thêm màu trạng thái** (xanh = xong, vàng = lưu ý, đỏ nhạt = làm ngay), khai một lần trên `.nb-than` của `src/styles/noi-bo.css`: `--xanh`, `--xanh-nen`, `--xanh-vien`, `--vang-chu`, `--vang-nen`, `--vang-vien`, `--do-nen`, `--do-vien`. Đây là màu chức năng của công cụ, không thuộc năm màu thương hiệu: **không dùng ở trang công khai**.
+- **Token của kho** (`--kho-nen`, `--kho-the`, `--kho-vach`, `--kho-vach-dam` trên `.kho-than`) không phải sắc riêng: chúng trỏ về `--nb-nen`, `--nb-the`, `--vach`, `--da`.
+- **Còn màu cũ:** Beeftown Cân (`can-app/src/giao-dien.html`, `huong-dan.html` — PR riêng, kèm phiên bản mới) và 15 ảnh chụp trong trang hướng dẫn của kho (`public/kho/hd-*.png`), chờ chụp lại.
 
 ---
 

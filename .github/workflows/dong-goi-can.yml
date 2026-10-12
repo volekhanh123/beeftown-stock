@@ -84,11 +84,11 @@ jobs:
             exit 1
           fi
           echo "so_pr=$SO_PR" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           ref: ${{ steps.nguon.outputs.ref }}
           persist-credentials: false
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: web/.node-version
           # Bản thử PR chạy mã chưa gộp trên nhánh main: không cho nó lưu bộ nhớ đệm npm mà lượt chính thức sẽ dùng lại.

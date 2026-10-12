@@ -62,6 +62,25 @@ Biểu tượng: `lib/kho/bieu-tuong.ts` (đường vẽ SVG 24×24) + `componen
 Màu và khoảng cách: `styles/kho-khung.css` (giao diện sáng, token `--kho-*` dưới `.kho-than`).
 `styles/kho.css` giữ các lớp cũ của form và bảng.
 
+**Màu** là bảng màu thương hiệu Khánh chốt 09/10/2026 (`THUONG-HIEU.md` ở gốc repo; kho đổi ngày
+12/10/2026, cùng lúc với `/noi-bo`): nền trang kem sau, thẻ và ô nhập Cream, thanh trên Charcoal, đỏ
+dành cho số báo việc và nút chính. **Không có màu trắng** (bảng màu không có trắng), trừ trên giấy in.
+
+- Hai bề mặt khai trên `.nb-than` (`styles/noi-bo.css`): `--nb-nen` (kem sau, nền trang), `--nb-the`
+  (Cream: thẻ, bảng, thanh đáy, menu thả, hộp thoại). Ô của trình duyệt — ô nhập không lớp riêng, ô
+  đánh dấu, ô chọn một, nút "Chọn tệp" — đã có nền Cream sẵn; ô đánh dấu và ô chọn một tự vẽ. Trang chỉ
+  đặt cỡ ô, không đặt màu, không `accent-color`.
+- Token `--kho-*` không phải sắc riêng: `--kho-nen` là `--nb-nen`, `--kho-the` là `--nb-the`,
+  `--kho-vach` là `--vach` (Charcoal 16 %), `--kho-vach-dam` là Warm Stone.
+- Màu trạng thái (`--xanh`, `--xanh-nen`, `--vang-chu`, `--vang-nen`, `--do-nen`… — xanh = xong, vàng =
+  lưu ý, đỏ nhạt = làm ngay) khai một lần trên `.nb-than` của `styles/noi-bo.css`; kho đọc chung, không
+  khai lại.
+- Trang kho **chỉ dùng biến**, không gõ mã màu, không `var()` kèm mã dự phòng. Chữ "lưu ý" trên nền
+  sáng dùng `--vang-chu`: Marigold (`--mu-tat`) và Warm Stone trên thẻ Cream chỉ được 1,56 và 1,83 : 1,
+  không làm chữ hay biểu tượng. Viền ô nhập và nút phụ là `--vien-o`.
+- `crm/test/test-noi-bo-bang-mau.mjs` gác: mã của bảng, biến chưa khai, mã cũ còn sót, không trắng, ô
+  của trình duyệt, tương phản, viền ô nhập, bản in chỉ đen trắng.
+
 ## 2. Số đỏ, chuông, việc cần làm (migration 0030)
 
 Một lần gọi `kho_dem_viec(chi_nhanh)` trả **mọi con số đỏ** của người đang xem. `trang.ts`
@@ -433,6 +452,11 @@ Supabase giả chạy cục bộ (máy chủ HTTP giả, để ngoài repo), đ�
 diện màn đó đổi nhiều. Danh sách tên: `hd-trang-chu-thu-kho`, `hd-nhan-hang`, `hd-nhan-hang-dong`,
 `hd-pha-loc`, `hd-quet`, `hd-quay-hom-nay`, `hd-yeu-cau`, `hd-dem-quay`, `hd-bao-huy`, `hd-hom-nay`,
 `hd-duyet`, `hd-dien-gia`, `hd-cong-no`, `hd-thiet-lap`, `hd-menu` (thanh đáy, 390×69).
+
+> **Cả 15 ảnh còn giao diện bảng màu cũ, thẻ trắng.** Kho đổi sang bảng màu chốt 09/10/2026 ngày
+> 12/10/2026; ảnh chụp trước ngày đó và chưa chụp lại. Trang hướng dẫn vì vậy đang hiện ảnh màu cũ cạnh giao diện màu
+> mới — chụp lại cả bộ (cùng cỡ file, cùng tên) rồi xóa ghi chú này và dòng tương ứng ở
+> `THUONG-HIEU.md` mục 5.
 
 **Test**: `crm/test/test-kho-giao-dien.mjs` nhóm 5 — mọi trang kho (trừ Hướng dẫn) có `huongDan` trỏ
 mục có thật; id không trùng, đúng dạng, giữ id cũ; ≥ 15 câu hỏi; ảnh có file, là PNG đúng cỡ, ≤ 120KB;
@@ -927,6 +951,9 @@ theo vai. Gửi xuống cân, sửa tem, tạo mã giảm: quản lý / chủ (`
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng
 (không thanh địa chỉ). Có lối tắt Quét / Việc / Tồn kho khi nhấn giữ biểu tượng trên Android.
+`theme_color` là Charcoal `#151008` (màu thanh trên, cùng thẻ `theme-color` của `layouts/Kho.astro`),
+`background_color` là kem sau `#EBDCC6` (nền trang kho; hiện ở màn chờ lúc mở app) —
+`test-noi-bo-bang-mau.mjs` nhóm 6 gác.
 
 - **Android (Chrome)**: menu ⋮ → "Cài đặt ứng dụng" / "Thêm vào màn hình chính".
 - **iPhone/iPad (Safari)**: nút Chia sẻ → "Thêm vào MH chính".
@@ -1013,6 +1040,7 @@ Postgres không cho dùng giá trị enum mới trong cùng giao dịch vừa th
 cd crm && npm test                    # toàn bộ; phần kho chạy qua test/chay-kho.mjs
 node test/chay-kho.mjs                # chỉ kho: tự tìm mọi test-kho-*.mjs
 node test/test-kho-giao-dien.mjs      # menu, link, hướng dẫn, manifest, JavaScript (không cần database)
+node test/test-noi-bo-bang-mau.mjs    # bảng màu của /noi-bo và kho: mã, biến, mã cũ còn sót, không trắng, tương phản
 node test/test-kho-viec.mjs           # số đỏ, thông báo, ngưỡng, chỉ số quản trị
 node test/test-kho-ipos.mjs           # đồng bộ iPOS: phần database
 node test/test-kho-ipos-callback.mjs  # iPOS đẩy hóa đơn (0042): bán theo kg / gói / suất, bắn trùng, mất kết nối — database

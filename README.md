@@ -25,7 +25,7 @@ Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần c�
 | `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động — và **toàn bộ kiểm thử** (`crm/test/`). |
 | `CLAUDE.md` | **Quy trình kiểm thử bắt buộc** cho mọi tính năng mới: 9 mục "định nghĩa xong", cách chạy test, việc trước khi mở PR. |
 | `AGENTS.md` | Cùng quy trình đó cho Codex và các agent không phải Claude, kèm quy tắc rà soát PR (mục "Code Review Rules"). |
-| `THUONG-HIEU.md` | **Bảng màu thương hiệu Khánh chốt 09/10/2026**: giá trị đã áp dụng trên trang công khai, chỗ website còn khác guideline, và danh sách nơi chưa đổi (`/noi-bo`, kho, Beeftown Cân). |
+| `THUONG-HIEU.md` | **Bảng màu thương hiệu Khánh chốt 09/10/2026**: giá trị đã áp dụng trên trang công khai, `/noi-bo` và kho; chỗ website còn khác guideline; thứ còn mang màu cũ (Beeftown Cân, ảnh hướng dẫn kho). |
 | `.github/` | Kiểm thử tự động (GitHub Actions) mỗi PR, mỗi lần gộp và mỗi đêm 00:30 giờ VN; đóng gói `BeeftownCan.exe` (tải về không cần gõ lệnh: `can-app/README.md`, mục "Tải BeeftownCan.exe về"); mẫu PR; mẫu báo lỗi. |
 | `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên — đặc tả nghiệp vụ của `crm/` (tỷ lệ tích điểm, ngưỡng, nhóm khách). |
 | `Beeftown_Bo_Nhan_Dien_So.html` | Bộ nhận diện trên Google Maps, Zalo OA, Facebook, Instagram, TikTok (bảng kích thước F4 còn dùng; phần nội dung đã cũ). |
@@ -66,22 +66,26 @@ Lưu ý khi sửa code phần mềm cân:
 
 ### Bảng màu
 
-> **Trang công khai** dùng bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (`THUONG-HIEU.md`). **`/noi-bo`, kho và Beeftown Cân chưa đổi** — chúng còn dùng bảng cũ trong khối `:root` của `web/src/styles/chung.css` (ghi ở cuối `web/THIET-KE.md` mục 2).
+> **Cả website** dùng bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (`THUONG-HIEU.md`): trang công khai đổi trước; `/noi-bo` và kho đổi ngày 12/10/2026. Còn mang màu cũ: Beeftown Cân (PR riêng, kèm phiên bản mới của chương trình) và 15 ảnh chụp trong trang hướng dẫn của kho (`web/public/kho/hd-*.png`), chờ chụp lại.
 
 | Tên | Mã | Token web | Dùng cho |
 |---|---|---|---|
-| Beef Red | `#A70C0C` | `--do` | Màu chủ đạo: nút chính, nhãn, dải đỏ, chữ nhấn trên kem |
+| Beef Red | `#A70C0C` | `--do` | Màu chủ đạo: nút chính, nhãn, dải đỏ, chữ nhấn trên kem; ở `/noi-bo` và kho là số báo việc và việc "làm ngay" |
 | Cream | `#F0E3D0` | `--kem` | Nền đọc; chữ trên nền tối và nền đỏ |
-| Charcoal | `#151008` | `--than` | Chữ chính, nền dải tối (tên màu — Beeftown nướng vỉ gas, không than) |
-| Marigold | `#F5AA14` | `--cuc-vang`, `--mu-tat` | Điểm nhấn nhỏ, vòng focus; chữ chỉ trên nền tối |
-| Warm Stone | `#B8A98C` | `--da` | Chữ phụ **chỉ trên nền tối** |
+| Charcoal | `#151008` | `--than` | Chữ chính, nền dải tối, đầu trang nội bộ (tên màu — Beeftown nướng vỉ gas, không than) |
+| Marigold | `#F5AA14` | `--cuc-vang`, `--mu-tat` | Điểm nhấn nhỏ, vòng focus trên nền tối; chữ chỉ trên nền tối |
+| Warm Stone | `#B8A98C` | `--da` | Chữ phụ **chỉ trên nền tối**; nét kẻ |
 | Đỏ đậm (màu pha) | `#890607` | `--do-dam`, `--do-sau` | Nút khi di chuột, chữ nhấn rất nhỏ trên kem, chữ nút trên nền đỏ, nét artwork trên kem |
-| Kem sau · kem đậm (màu pha) | `#EBDCC6` · `#E7D5BC` | `--kem-sau` · `--kem-dam` | Nền khối phụ trên trang sáng; kem sau là nền của thẻ |
-| Viền ô nhập (màu pha) | `#7A7366` | `--vien-o` | Viền ô nhập của form (ô nền Cream) |
+| Kem sau · kem đậm (màu pha) | `#EBDCC6` · `#E7D5BC` | `--kem-sau` · `--kem-dam` | Nền khối phụ trên trang sáng; kem sau là nền của thẻ ở trang công khai, nền trang của `/noi-bo` và kho; kem đậm là nền khi di chuột |
+| Viền ô nhập (màu pha) | `#7A7366` | `--vien-o` | Viền ô nhập của form (ô nền Cream ở cả website); ở `/noi-bo` và kho còn là viền nút phụ, ô đánh dấu |
 
-Năm dòng đầu là năm màu của guideline. Ba dòng sau là màu pha cho màn hình, Khánh cho phép ngày 10/10/2026. Token khai trong khối `.ck` đầu tiên của `web/src/styles/cong-khai.css`; `crm/test/test-cong-khai-giao-dien.mjs` nhóm 6 gác từng mã.
+Năm dòng đầu là năm màu của guideline. Ba dòng sau là màu pha cho màn hình, Khánh cho phép ngày 10/10/2026. Token khai ở **hai nơi cùng giá trị, chưa gộp** — khối `.ck` đầu tiên của `web/src/styles/cong-khai.css` (trang công khai) và hai khối `:root` của `web/src/styles/chung.css` (`/noi-bo`, kho). Đổi một mã là đổi mọi nơi đó trong cùng PR: `crm/test/test-cong-khai-giao-dien.mjs` (nhóm 2, 6) và `crm/test/test-noi-bo-bang-mau.mjs` gác từng mã.
 
-**Bảng màu không có trắng**: trang công khai không có nền trắng — thẻ nền kem sau, ô nhập nền Cream (kiểm thử nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`). Warm Stone và Marigold **không bao giờ** làm chữ trên nền kem (tương phản 1,83 và 1,56 : 1); không đặt chữ đỏ trên dải tối (2,43 : 1). Tỷ lệ trang đang chạy: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 % — guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5, Khánh chưa quyết theo bên nào. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
+`/noi-bo` và kho có thêm **màu trạng thái** (xanh = xong, vàng = lưu ý, đỏ nhạt = làm ngay) — màu chức năng của công cụ, không thuộc năm màu thương hiệu, không dùng ở trang công khai. Mã và tương phản: `THUONG-HIEU.md`, mục 4. Beeftown Cân có màu trạng thái riêng trong file HTML của nó, theo bảng cũ.
+
+**Bảng màu không có trắng**, và website không có nền trắng: trang công khai thẻ nền kem sau trên nền Cream, ô nhập nền Cream (`test-cong-khai-giao-dien.mjs` nhóm 7 và `web/kiem-tra/do-giao-dien.mjs`); `/noi-bo` và kho thẻ Cream trên nền kem sau, ô nhập Cream, ô đánh dấu tự vẽ (`test-noi-bo-bang-mau.mjs` nhóm 3–4). Trắng chỉ còn trên giấy in và ở thẻ "Đọc nhãn khay" của trang công khai (chờ PR bố cục trang chủ).
+
+Warm Stone và Marigold **không bao giờ** làm chữ trên nền sáng (tương phản 1,83 và 1,56 : 1 với kem; 1,71 và 1,46 : 1 với kem sau); không đặt chữ đỏ trên nền tối (2,43 : 1). Tỷ lệ trang công khai đang chạy: kem 60 % / tối 25 % / đỏ 12 % / vàng 3 % — guideline ghi Cream 60 / Beef Red 25 / Charcoal 10 / Marigold dưới 5, Khánh chưa quyết theo bên nào. Vai từng màu theo bề mặt và bảng tương phản: `web/THIET-KE.md`, mục 2.
 
 ### Phông chữ
 

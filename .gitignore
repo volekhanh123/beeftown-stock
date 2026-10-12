@@ -31,6 +31,8 @@
 # THUONG-HIEU.md: bảng màu thương hiệu đã chốt và phần website chưa đổi theo.
 !/AGENTS.md
 !/THUONG-HIEU.md
+# KHAI-TRUONG.md: việc phải làm để đưa kho vào chạy thật (dọn dữ liệu thử, migration, tài khoản, hai tuần đầu).
+!/KHAI-TRUONG.md
 !/.github/workflows/*.yml
 # Dependabot: PR nâng thư viện và action mỗi tháng (lịch và cách gom ghi ở đầu file).
 !/.github/dependabot.yml

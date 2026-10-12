@@ -218,7 +218,7 @@ const linkTai = `/noi-bo/kho/cong-no/misa.csv?tu=${loc.tu}&den=${loc.den}&loai=$
             : c.ten}</th>)}</tr></thead>
           <tbody>
             {dong.slice(0, XEM).map(d => (
-              <tr style={d.thieu_ma ? 'background:var(--kho-vang-nhat, #fff7e0)' : undefined}>
+              <tr style={d.thieu_ma ? 'background:var(--vang-nen)' : undefined}>
                 {cot.map(c => <td class={c.kieu === 'tien' || c.kieu === 'so' || c.kieu === 'phan_tram' ? 'so' : undefined}>{oXem(d, c)}</td>)}
               </tr>
             ))}

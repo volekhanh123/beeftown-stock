@@ -45,13 +45,13 @@ jobs:
       # PR và main: UTC như Cloudflare Workers và Supabase. Lượt đêm: giờ Việt Nam như máy ở quán.
       TZ: ${{ inputs.mui_gio || (github.event_name == 'schedule' && 'Asia/Ho_Chi_Minh') || 'UTC' }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0   # cần lịch sử và mọi nhánh: so migration với main, test quét git ls-files
           # Chỉ tải commit và cây thư mục; nội dung file chỉ tải cho commit đang thử (và file nào lệnh git
           # đọc tới, khi cần). Nhánh phan-mem-can-cu (~39 MB nén) không còn bị tải về mỗi lượt.
           filter: blob:none
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: web/.node-version
           cache: npm
@@ -91,8 +91,8 @@ jobs:
       # Intl) đều theo giờ quán, đúng khung 0h–7h khi ngày UTC còn là hôm qua.
       TZ: ${{ inputs.mui_gio || (github.event_name == 'schedule' && 'Asia/Ho_Chi_Minh') || 'UTC' }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: web/.node-version
           cache: npm
@@ -120,7 +120,7 @@ jobs:
         run: echo "phien-ban=$(node -p "require('playwright/package.json').version")" >> "$GITHUB_OUTPUT"
       - name: Lấy Chromium từ bộ nhớ đệm
         id: chromium
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: chromium-${{ runner.os }}-playwright-${{ steps.playwright.outputs.phien-ban }}
@@ -159,8 +159,8 @@ jobs:
       # Đổi địa chỉ ở Settings → Secrets and variables → Actions → Variables → DIA_CHI_WEB.
       DIA_CHI_WEB: ${{ vars.DIA_CHI_WEB || 'https://beeftown.vn' }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version-file: web/.node-version
           cache: npm
@@ -184,12 +184,12 @@ jobs:
       pull-requests: write
       issues: write
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           # Đọc migration của từng nhánh bằng git show: file nào cần mới tải (xem job đầu).
           filter: blob:none
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@v7
         with:
           node-version-file: web/.node-version
       # PR xanh lúc mở vẫn có thể hỏng khi PR khác gộp trước với cùng số migration — CI của nó không tự
