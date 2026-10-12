@@ -399,6 +399,8 @@ export function gopDong(cu: DongXuatForm[], moi: DongXuatForm[]): DongXuatForm[]
   for (const d of moi) {
     const co = ra.find(x => x.mat_hang_id === d.mat_hang_id);
     if (!co) { ra.push({ ...d }); continue; }
+    // Số gói đã gõ sai ("1.5"): giữ nguyên để form báo "số gói là số nguyên", không lặng lẽ thay bằng số quét.
+    if (Number.isNaN(docSoNguyen(co.so_goi, 0, 100000))) continue;
     const goi = (docSoNguyen(co.so_goi, 0, 100000) || 0) + (docSoNguyen(d.so_goi, 0, 100000) || 0);
     const kgCu = docKg(co.so_kg), kgMoi = docKg(d.so_kg);
     co.so_goi = goi ? String(goi) : '';
@@ -529,11 +531,12 @@ export async function taoPhieuXuat(
     en: tomTatHang(doc.payload, ctx.matHang, 3, 'en') || CAU_XUAT.hang.en,
   };
   // Phiếu chuyển ra quầy có thể thành hàng đi đường (cài đặt + vai người lập
-  // do database quyết) — đọc lại trạng thái để câu báo nói đúng.
-  let diDuong = false;
+  // do database quyết) — đọc lại trạng thái để câu báo nói đúng. Đọc lại lỗi
+  // (mạng chập) thì KHÔNG đoán: diDuong = null → câu chỉ nói phiếu đã ghi.
+  let diDuong: boolean | null = false;
   if (ctx.loai === 'chuyen' && !kq.da_co) {
-    const { data: tt } = await client.from('kho_phieu_xuat').select('trang_thai').eq('id', kq.phieu_id).maybeSingle();
-    diDuong = tt?.trang_thai === 'dang_chuyen';
+    const { data: tt, error: eTt } = await client.from('kho_phieu_xuat').select('trang_thai').eq('id', kq.phieu_id).maybeSingle();
+    diDuong = eTt || !tt ? null : tt.trang_thai === 'dang_chuyen';
   }
   const tenLyDo = ctx.lyDo?.find(l => l.id === lyDo)?.ten;
   const cau = cauDaGhi(kq.so_phieu, kq.da_co, ctx.loai, hang, { tenLyDo, diDuong, den: ctx.den ?? null });
@@ -543,7 +546,7 @@ export async function taoPhieuXuat(
 /** Câu báo sau khi ghi phiếu: đã ghi từ trước, đã báo hủy, đã đưa bếp, đang mang ra quầy… */
 function cauDaGhi(
   soPhieu: string, daCo: boolean, loai: LoaiXuat, hang: HaiThuTieng,
-  t: { tenLyDo: string | undefined; diDuong: boolean; den: { ten: string; loai: string } | null },
+  t: { tenLyDo: string | undefined; diDuong: boolean | null; den: { ten: string; loai: string } | null },
 ): HaiThuTieng {
   const { tenLyDo, diDuong, den } = t;
   if (daCo) return { vi: `Phiếu ${soPhieu} đã được ghi từ lần bấm trước.`, en: `Slip ${soPhieu} was already recorded by the previous press.` };
@@ -554,6 +557,10 @@ function cauDaGhi(
   if (loai === 'xuat_bep') return { vi: `Đã đưa bếp ${hang.vi}.`, en: `Sent to the kitchen: ${hang.en}.` };
   if (loai === 'xuat_khac') {
     return { vi: `Đã xuất ${hang.vi}${tenLyDo ? ` (${tenLyDo})` : ''}.`, en: `Issued ${hang.en}${tenLyDo ? ` (${tenLyDo})` : ''}.` };
+  }
+  if (diDuong === null) {
+    return { vi: `Đã ghi phiếu chuyển ${soPhieu} (${hang.vi}). Chưa đọc lại được trạng thái — mở phiếu để xem hàng đã vào ${den?.ten ?? 'nơi nhận'} hay đang mang đi.`,
+             en: `Transfer slip ${soPhieu} recorded (${hang.en}). Its status could not be read back — open the slip to see whether the goods are already at ${den?.ten ?? 'the destination'} or still on the way.` };
   }
   if (diDuong) {
     return { vi: `Đang mang ${hang.vi} ra ${den?.ten ?? 'quầy'} — quầy kiểm hàng rồi bấm "Đã nhận" thì hàng mới vào quầy.`,

@@ -25,7 +25,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { boDau, cauLoiKho, docSoNguyen, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { boDau, cauLoiKho, docSoNguyen, docTungTrang, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 import { docGioVnDiaPhuong, gioVnTuMs } from '../gio-vn.ts';
@@ -449,16 +449,16 @@ export async function docDongIpos(
   }));
 }
 
-/** Mọi dòng chưa ghép (để gom theo mã). Tối đa 2000 dòng — đủ cho vài ngày chưa ai xử lý. */
+/** Mọi dòng chưa ghép (để gom theo mã), đọc từng trang — mã cũ nhất sau một đợt iPOS dồn vẫn lên màn ghép. */
 export async function docMaChuaGhep(client: SupabaseClient, chiNhanhId: string): Promise<MaChuaGhep[]> {
-  const { data, error } = await client.from('kho_v_ipos_dong')
-    .select('ma_ipos, ten_ipos, ma_can, thoi_diem_ban')
+  const data = await docTungTrang((tu, den) => client.from('kho_v_ipos_dong')
+    .select('ma_ipos, ten_ipos, ma_can, thoi_diem_ban', { count: 'exact' })
     .eq('chi_nhanh_id', chiNhanhId)
     .eq('trang_thai', 'chua_khop')
     .order('thoi_diem_ban', { ascending: false })
-    .limit(2000);
-  if (error) throw error;
-  return gomMaChuaGhep((data ?? []) as { ma_ipos: string | null; ten_ipos: string | null; ma_can: string | null; thoi_diem_ban: string }[]);
+    .order('id')
+    .range(tu, den));
+  return gomMaChuaGhep(data as { ma_ipos: string | null; ten_ipos: string | null; ma_can: string | null; thoi_diem_ban: string }[]);
 }
 
 export async function docMaDaGhep(client: SupabaseClient, chiNhanhId: string): Promise<MaIposDaGhep[]> {

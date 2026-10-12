@@ -32,6 +32,7 @@
  */
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { docChuoi, envNode, envWorker, layBienCong, type Env } from '../bien-moi-truong.ts';
 import { CAU_MENU_IPOS, TRUONG_IPOS, phanTichMenu, taoUrlMenu, xoaToken, type NoiIpos } from './ipos.ts';
 import type { HaiThuTieng, NgonNguNB } from './chung.ts';
 import { dichCau } from '../cau-noi-bo.ts';
@@ -46,7 +47,7 @@ export interface BiMatIpos {
   khoaCallback?: string;
 }
 
-export type Env = Record<string, unknown> | undefined;
+export type { Env } from '../bien-moi-truong.ts';
 
 export const TEN_BI_MAT = {
   token: 'IPOS_ACCESS_TOKEN', email: 'KHO_IPOS_EMAIL', matKhau: 'KHO_IPOS_MAT_KHAU', khoaCallback: 'IPOS_CALLBACK_KHOA',
@@ -54,24 +55,6 @@ export const TEN_BI_MAT = {
 
 /** Khóa callback phải dài ít nhất chừng này (ngẫu nhiên). */
 export const KHOA_TOI_THIEU = 32;
-
-async function envWorker(): Promise<Env> {
-  try {
-    // @ts-ignore — dự án không cài kiểu của workerd; module này chỉ có trên Worker.
-    const m = await import('cloudflare:workers');
-    return (m as { env?: Record<string, unknown> })?.env;
-  } catch { return undefined; }
-}
-
-function docChuoi(ten: string, ...nguon: Env[]): string | undefined {
-  for (const n of nguon) {
-    const v = n?.[ten];
-    if (typeof v === 'string' && v.trim()) return v.trim();
-  }
-  return undefined;
-}
-
-const envNode = (): Env => (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
 
 /** Đọc bí mật iPOS. Không có → undefined; không bao giờ ném lỗi. */
 export async function layBiMatIpos(env?: Env): Promise<BiMatIpos> {
@@ -114,11 +97,6 @@ export async function layKhoaCallback(env?: Env): Promise<string | undefined> {
 // -----------------------------------------------------------------------------
 // TÀI KHOẢN MÁY may_ipos
 // -----------------------------------------------------------------------------
-function layBienCong(ten: string, env: Env): string | undefined {
-  const v = (import.meta as { env?: Record<string, unknown> }).env?.[ten];
-  if (typeof v === 'string' && v) return v;
-  return docChuoi(ten, env, envNode());
-}
 
 export interface PhuThuocMay {
   /** Tạo client Supabase (test thay bằng client giả). */

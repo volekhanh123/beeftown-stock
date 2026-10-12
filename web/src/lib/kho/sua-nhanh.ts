@@ -102,11 +102,16 @@ function chuan(kieu: KieuO, s: string): string {
   return t;
 }
 
-/** Giá trị gửi database: số khi đọc được, không thì chữ gõ nguyên văn (database báo lỗi đúng ô). */
+/**
+ * Giá trị gửi database: số khi docTien / docKg / docSoNguyen ĐỌC ĐƯỢC, không thì chữ gõ nguyên văn (database báo lỗi
+ * đúng ô). Không tự đoán bằng regex số thập phân: "650.00" (gõ thiếu một số 0) từng thành 650 đ và được lưu lặng lẽ.
+ */
 function giaTriGui(kieu: KieuO, s: string): string | number {
   const c = chuan(kieu, s);
-  if ((kieu === 'tien' || kieu === 'kg' || kieu === 'so') && c !== '' && /^-?\d+(\.\d+)?$/.test(c)) return Number(c);
-  return c;
+  if (c === '' || c === CHU_XOA) return c;
+  const t = s.trim();
+  const n = kieu === 'tien' ? docTien(t) : kieu === 'kg' ? docKg(t) : kieu === 'so' ? docSoNguyen(t, -1e9, 1e9) : null;
+  return n === null || Number.isNaN(n) ? c : n;
 }
 
 export type DongGuiSuaNhanh = { id: string; phien_ban: string } & Partial<Record<OSuaNhanh, string | number | null>>;

@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Hệ thống CRM & thẻ thành viên Beeftown",
+  "engines": {
+    "node": ">=22.18"
+  },
   "scripts": {
     "test": "node test/chay-tat-ca.mjs",
     "test:ci": "node test/chay-tat-ca.mjs --tat-ca",
