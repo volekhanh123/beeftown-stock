@@ -165,7 +165,7 @@ crm/
 │   ├── 0062_dat_ban_goi_lai.sql        ĐẶT BÀN · tao_dat_ban() gọi lại Y HỆT (số điện thoại, chi nhánh, ngày, giờ, số khách, dịp, ghi chú, đồng ý nhận tin) trong 10 phút, dòng cũ còn cho_xac_nhan → trả lại dòng cũ và mã cũ, không ghi gì thêm · chỉ lời gọi không phiên (website, Messenger)
 │   ├── 0063_zalo_chi_gui_khi_xac_nhan.sql ZALO · ZBS-01/ZBS-02 chỉ xếp khi nhân viên bấm "Đã gọi xác nhận" (cho_xac_nhan → da_xac_nhan), không phải lúc khách gửi yêu cầu · zalo_xep_tin_dat_ban(p_dat_ban_id, p_vua_xac_nhan, p_doi_gio) · máy gửi không lấy tin của đặt bàn chưa xác nhận (tin xếp trước 0063 nằm chờ)
 │   ├── 0065_crm_bo_policy_ghi_thang.sql ⚠ VÁ — bỏ policy ghi thẳng nhat_ky_dong_y, nhat_ky_tin, so_cai_diem, luot_ghe, khach_hang (mọi đường ghi là hàm definer tự kiểm vai) · don_dep_phieu_tai_len kiểm vai
-│   └── 0066_xoa_file_cv.sql            ⚠ VÁ TUYỂN DỤNG · ẩn danh hồ sơ hết hạn KHÔNG còn xóa đường dẫn của CV chưa xóa: web xóa file trong kho trước (ho_so_cv_het_han → Storage → an_danh_ho_so_het_han) · ho_so_thu_muc_cv_mo_coi: thư mục kho CV không hồ sơ nào trỏ tới → xóa trước khi dọn vé · ô don_dep cho đèn "Dọn dữ liệu cá nhân"
+│   └── 0066_xoa_file_cv.sql            ⚠ VÁ TUYỂN DỤNG · ẩn danh hồ sơ hết hạn KHÔNG còn xóa đường dẫn của CV chưa xóa: web xóa file trong kho trước (ho_so_cv_het_han → Storage → an_danh_ho_so_het_han) · ho_so_thu_muc_cv_mo_coi: thư mục kho CV không hồ sơ nào trỏ tới → xóa trước khi dọn vé · trigger ho_so_khoa_cot_don_dep: người đăng nhập không sửa thẳng duong_dan_cv, luu_den, da_an_danh · ô don_dep cho đèn "Dọn dữ liệu cá nhân"
 └── test/                    ← kiểm thử chạy trên Postgres thật
     └── kho-chung.mjs            khung dựng database dùng chung cho test-kho-*.mjs và test-quyen-ham-crm.mjs
 ```

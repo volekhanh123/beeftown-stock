@@ -40,7 +40,16 @@
 --      bị xóa từ trước vẫn tìm ra. Chủ sở hữu hoặc quản lý (hai vai dọn được
 --      vé — 0065); chỉ chủ xóa được file (policy ho_so_xoa_khi_het_han, 0014),
 --      nên quản lý chỉ biết số thư mục mồ côi để nhờ chủ.
---   5. suc_khoe_so_lieu() thêm ô don_dep — đèn "Dọn dữ liệu cá nhân" ở bảng sức
+--   5. Trigger ho_so_khoa_cot_don_dep: người đăng nhập không UPDATE thẳng được
+--      duong_dan_cv, luu_den, da_an_danh (rà soát bảo mật của chính PR này).
+--      Policy ho_so_sua (0012) cho chủ / quản lý sửa MỌI cột hồ sơ của chi
+--      nhánh mình. Trước 0066 điều đó vô hại với kho file; từ 0066 nút ẩn danh
+--      XÓA FILE theo duong_dan_cv bằng tài khoản chủ (xóa được mọi file trong
+--      kho), nên quản lý ghi đường dẫn CV của người khác vào một hồ sơ mồi, lùi
+--      hạn lưu → đèn đỏ → chủ bấm → file của người khác mất. Giao diện chỉ sửa
+--      trang_thai, nguoi_phu_trach, ghi_chu_buoc; ba cột này chỉ đổi qua hàm
+--      definer (nộp hồ sơ, ẩn danh) — chúng chạy dưới vai chủ hàm nên đi qua.
+--   6. suc_khoe_so_lieu() thêm ô don_dep — đèn "Dọn dữ liệu cá nhân" ở bảng sức
 --      khỏe (web/src/lib/suc-khoe.ts), cả thương hiệu. Thân 0063 NGUYÊN VĂN, chỉ
 --      thêm ô đó trước 'chi_nhanh'.
 --
@@ -189,7 +198,40 @@ comment on function ho_so_thu_muc_cv_mo_coi(text[]) is
 
 
 -- =============================================================================
--- 5 · SỐ LIỆU BẢNG SỨC KHỎE — ô don_dep
+-- 5 · ĐƯỜNG DẪN CV, HẠN LƯU, CỜ ẨN DANH — CHỈ ĐỔI QUA HÀM
+-- =============================================================================
+-- current_user: lời UPDATE thẳng qua PostgREST chạy dưới vai authenticated;
+-- UPDATE bên trong hàm security definer (an_danh_ho_so_het_han) chạy dưới vai
+-- chủ hàm. Không kiểm vai người (co_vai_tro): chủ sở hữu cũng chỉ đổi ba cột
+-- này qua việc dọn — SQL Editor (vai postgres) vẫn sửa tay được khi cần.
+create or replace function ho_so_khoa_cot_don_dep()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if current_user in ('anon', 'authenticated')
+     and (new.duong_dan_cv is distinct from old.duong_dan_cv
+          or new.luu_den is distinct from old.luu_den
+          or new.da_an_danh is distinct from old.da_an_danh) then
+    raise exception 'Đường dẫn CV, hạn lưu và trạng thái ẩn danh của hồ sơ chỉ đổi được qua việc dọn dữ liệu ở màn Cài đặt'
+      using errcode = 'insufficient_privilege';
+  end if;
+  return new;
+end;
+$$;
+
+comment on function ho_so_khoa_cot_don_dep() is
+  'Trigger (0066): người đăng nhập không UPDATE thẳng duong_dan_cv, luu_den, da_an_danh của hồ sơ — nút ẩn danh xóa file theo duong_dan_cv bằng quyền của chủ, nên các cột đó phải do database tự đặt.';
+
+drop trigger if exists ho_so_khoa_cot_don_dep on ho_so_ung_tuyen;
+create trigger ho_so_khoa_cot_don_dep
+  before update on ho_so_ung_tuyen
+  for each row execute function ho_so_khoa_cot_don_dep();
+
+
+-- =============================================================================
+-- 6 · SỐ LIỆU BẢNG SỨC KHỎE — ô don_dep
 -- =============================================================================
 -- Thân 0063 NGUYÊN VĂN, chỉ thêm ô don_dep trước 'chi_nhanh'. Ngưỡng:
 --   · hồ sơ quá hạn lưu, chưa ẩn danh: hai nhóm không chồng nhau — quá hạn 1–7
@@ -366,7 +408,7 @@ comment on function suc_khoe_so_lieu(uuid[], jsonb) is
 
 
 -- =============================================================================
--- 6 · HÀM NỘI BỘ — giữ suc_khoe_so_lieu ngoài tầm authenticated (như 0063 mục 5)
+-- 7 · HÀM NỘI BỘ — giữ suc_khoe_so_lieu ngoài tầm authenticated (như 0063 mục 5)
 -- =============================================================================
 do $$
 begin
@@ -439,6 +481,10 @@ $$;
 --     gọi thẳng rpc('ho_so_cv_het_han') bằng khóa của quản lý → bị từ chối.
 --  5. Trong Storage, đặt một file vào thư mục của hồ sơ CÒN HẠN rồi bấm bước 2
 --     lần nữa → file đó KHÔNG bị xóa (hồ sơ chưa ẩn danh trỏ vào thư mục).
+--  6. Bằng khóa anon + phiên của QUẢN LÝ, gọi thẳng PostgREST:
+--       PATCH /rest/v1/ho_so_ung_tuyen?id=eq.<một hồ sơ của chi nhánh mình>
+--       {"luu_den":"2020-01-01"}
+--     → bị từ chối với câu "… chỉ đổi được qua việc dọn dữ liệu ở màn Cài đặt".
 --
 -- Ghi lại ngày kiểm tra và người kiểm tra vào crm/README.md, mục "Nhật ký kiểm
 -- tay kho file".

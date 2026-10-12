@@ -34,6 +34,8 @@
  *        Không bao giờ nói "đã xóa" / "đã ẩn danh" khi chưa chắc.
  *   10   supabase-js THẬT với fetch giả: hình dạng lỗi của Storage và PostgREST đúng như mã đang giả định.
  *   11   nopHoSo: bẫy bot không để lại file trong kho.
+ *   13   (rà soát bảo mật) policy ho_so_sua cho quản lý sửa MỌI cột hồ sơ của chi nhánh mình: sửa đường dẫn CV / hạn lưu
+ *        thì nút ẩn danh của chủ xóa giùm file của người khác. Ba cột đó chỉ đổi được qua hàm definer.
  *
  * Chính sách Storage (ai xóa / đọc được kho CV) PGlite không có — bước thử tay trên project Beeftown-thu
  * ghi ở cuối migration 0066 và trong mô tả PR.
@@ -49,7 +51,7 @@ import { VIET } from './quet-chu-viet.mjs';
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const LIB = join(GOC, 'web', 'src', 'lib');
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — XÓA FILE CV KHI ẨN DANH, QUÉT CV MỒ CÔI');
-const { db, cnA, duoi, duoiAnon } = await dungDatabase();
+const { db, cnA, nsId, duoi, duoiAnon } = await dungDatabase();
 
 // Tài khoản đăng nhập mà không có dòng nhan_su.
 const UID_LA = '00000000-0000-4000-8000-0000000000ee';
@@ -895,6 +897,60 @@ await nhom('12 · 0066 VIẾT LẠI HÀM CŨ — chỉ thêm đúng phần cần
      set12.length > 50 && ham(m66, 'an_danh_ho_so_het_han').includes(set12), set12);
   ok('don_dep_ho_so_het_han() (0066) gọi an_danh_ho_so_het_han với danh sách RỖNG — từ SQL không xóa được file',
      ham(m66, 'don_dep_ho_so_het_han').includes('return an_danh_ho_so_het_han(array[]::text[]);'));
+});
+
+// ===========================================================================
+// Rà soát bảo mật: từ 0066 nút ẩn danh của chủ XÓA FILE theo duong_dan_cv — chủ xóa được mọi file trong kho
+// (policy 0014). Policy ho_so_sua (0012) cho quản lý UPDATE mọi cột hồ sơ của chi nhánh mình, nên quản lý ghi
+// đường dẫn của người khác vào một hồ sơ mồi, lùi hạn lưu về quá khứ, đèn đỏ, chủ bấm → file của người khác mất.
+await nhom('13 · ĐƯỜNG DẪN CV, HẠN LƯU, CỜ ẨN DANH CHỈ ĐỔI QUA HÀM — nút của chủ không thành công cụ xóa file của người khác', async () => {
+  await donSach();
+  const { rows: tg } = await db.query(`select tgname from pg_trigger where tgrelid = 'ho_so_ung_tuyen'::regclass and not tgisinternal
+                                       and tgname = 'ho_so_khoa_cot_don_dep'`);
+  ok('Trigger ho_so_khoa_cot_don_dep có trên ho_so_ung_tuyen (0066)', tg.length === 1);
+  const nanNhan = await taoHoSo('Nạn Nhân Còn Hạn', { cv: true });
+  const moi = await taoHoSo('Hồ Sơ Mồi');
+  const tep = new Set([nanNhan.khoa]);
+  const TU_CHOI = /chỉ đổi được qua việc dọn dữ liệu/;
+
+  const sua = await duoi(UID.qlA, `update ho_so_ung_tuyen set duong_dan_cv = $2, luu_den = '2020-01-01'
+                                   where ma_ho_so = $1 returning id`, [moi.ma, nanNhan.duongDan]);
+  ok('TÁI HIỆN: quản lý KHÔNG ghi được đường dẫn CV của người khác và hạn lưu cũ vào một hồ sơ mồi',
+     sua.loi !== null && TU_CHOI.test(sua.loi), sua.loi ?? `sửa được ${sua.rows?.length} dòng`);
+  await anDanhHoSoHetHan(taoClient({ tep }), 'vi');
+  ok('…nên chủ bấm "Ẩn danh hồ sơ đã quá hạn lưu" không xóa file của hồ sơ còn hạn', tep.has(nanNhan.khoa) && !(await daAnDanh(nanNhan.ma)));
+
+  for (const [ten, sql] of [
+    ['lùi hạn lưu của hồ sơ còn hạn về quá khứ', `update ho_so_ung_tuyen set luu_den = '2020-01-01' where ma_ho_so = $1 returning id`],
+    ['xóa đường dẫn CV (thư mục thành mồ côi, nút quét xóa file)', `update ho_so_ung_tuyen set duong_dan_cv = null where ma_ho_so = $1 returning id`],
+    ['tự ẩn danh thẳng (bỏ qua bước xóa file)', `update ho_so_ung_tuyen set ho_ten = null, sdt = null, email = null, duong_dan_cv = null,
+       da_an_danh = true, trang_thai = 'da_an_danh' where ma_ho_so = $1 returning id`],
+  ]) {
+    const r = await duoi(UID.qlA, sql, [nanNhan.ma]);
+    ok(`Quản lý KHÔNG ${ten}`, r.loi !== null && TU_CHOI.test(r.loi), r.loi ?? `sửa được ${r.rows?.length} dòng`);
+  }
+  const chu = await duoi(UID.chu, `update ho_so_ung_tuyen set luu_den = luu_den + 30 where ma_ho_so = $1 returning id`, [nanNhan.ma]);
+  ok('Chủ cũng không sửa thẳng hạn lưu — chỉ qua hàm', chu.loi !== null && TU_CHOI.test(chu.loi), chu.loi ?? 'SỬA ĐƯỢC');
+  const sau = await hoSo(nanNhan.ma);
+  ok('Hồ sơ nạn nhân còn nguyên', sau.duong_dan_cv === nanNhan.duongDan && sau.ho_ten === 'Nạn Nhân Còn Hạn' && !sau.da_an_danh, JSON.stringify(sau));
+
+  const doi = await duoi(UID.qlA, `update ho_so_ung_tuyen set trang_thai = 'dang_xem', nguoi_phu_trach = $2, ghi_chu_buoc = 'Đã gọi'
+                                   where ma_ho_so = $1 and trang_thai = 'moi' returning id`, [nanNhan.ma, nsId[UID.qlA]]);
+  ok('Giao diện /noi-bo/tuyen-dung vẫn đổi được trạng thái, người phụ trách, ghi chú (đúng ba cột nó gửi)',
+     doi.loi === null && doi.rows?.length === 1, doi.loi ?? '');
+
+  await db.query(`update ho_so_ung_tuyen set luu_den = hom_nay_vn() - 2 where ma_ho_so = $1`, [nanNhan.ma]);
+  const r = await anDanhHoSoHetHan(taoClient({ tep }), 'vi');
+  ok('Hết hạn thật thì việc dọn (hàm definer) vẫn xóa file và ẩn danh được', r.ok === true && !tep.has(nanNhan.khoa)
+     && await daAnDanh(nanNhan.ma), r.cau);
+  const sp = await duoiAnon(`update ho_so_ung_tuyen set luu_den = '2020-01-01' returning id`);
+  ok('anon không sửa được dòng nào', sp.loi !== null || sp.rows?.length === 0, sp.loi ?? '');
+
+  const en = readFileSync(join(LIB, 'cau-noi-bo.ts'), 'utf8');
+  const m66 = readFileSync(join(GOC, 'crm', 'supabase', 'migrations', '0066_xoa_file_cv.sql'), 'utf8');
+  const cau = m66.match(/raise exception '([^']*chỉ đổi được qua việc dọn dữ liệu[^']*)'/)?.[1];
+  ok('Câu từ chối mới có bản tiếng Anh ở cau-noi-bo.ts', !!cau && en.includes(`'${cau}'`), cau ?? 'không thấy câu trong 0066');
+  await donSach();
 });
 
 process.exit(ketThuc('XÓA FILE CV'));
