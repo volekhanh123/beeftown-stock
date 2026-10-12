@@ -185,7 +185,7 @@ các ngưỡng này ở trang công khai; `test-noi-bo-bang-mau.mjs` tính các 
 
 - **Một họ phông: Montserrat** (Google Fonts, OFL). Website đang chạy dùng bốn độ đậm: **400** chữ
   chạy · **600** điều hướng, nhãn ô, chú thích · **700** tiêu đề, nút, tên món · **800** tên thương
-  hiệu và số lớn. Guideline ghi **500 / 700 / 800 / 900** — ấn phẩm ngoài web theo guideline; website
+  hiệu, số lớn và tên nhóm món của trang Thực đơn (chữ hoa). Guideline ghi **500 / 700 / 800 / 900** — ấn phẩm ngoài web theo guideline; website
   **chưa đổi** độ đậm (hai lần đổi màu — trang công khai, rồi `/noi-bo`, kho — không đụng tới chữ;
   Khánh chưa quyết), nên mã web giữ 400 / 600 / 700 / 800 cho tới khi có PR riêng.
 - Giá ghi dạng `000.000 đ`, ngày dạng `dd/mm/yyyy` (guideline).
@@ -207,7 +207,8 @@ Thang chữ trang công khai (khai trên `.ck`; theo plan redesign 11/10/2026):
 |---|---|---|
 | `--co-h1` | 32 → 48px, dòng 1,17 (32/38 → 48/56px); tiếng Hàn cùng cỡ, dòng 1,28 | Câu chính màn đầu và tiêu đề đầu trang con |
 | `--co-h2` | 26 → 36px | Tiêu đề khối — luôn nhỏ hơn h1 |
-| `--co-h3` | 18 → 20px | Tiêu đề nhỏ |
+| `--co-h3` | 18 → 20px | Tiêu đề nhỏ; tên món (đậm 700, chữ thường — món dẫn đầu 1,25 lần) |
+| `--co-nhom` | 28 → 40px, đậm 800, chữ hoa | Tên nhóm món của trang Thực đơn, kiểu tiêu đề trang của cuốn menu bản sáng — to hơn h2, **không bao giờ to hơn h1**; câu dưới tên nhóm dùng `--co-dan` đậm 700 |
 | `--co-dan` | 18 → 20px | Đoạn dẫn `.dan`, tối đa 58 ký tự một dòng |
 | `--co-than` | 16px, dòng 24px | Chữ chạy, ở mọi bề rộng |
 | `--co-nho` | 14px | Chữ phụ `.nho`, gợi ý dưới ô |
@@ -259,7 +260,12 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
   `web/src/components/kho/BieuTuong.astro` (nét 2px, tên trong `web/src/lib/kho/bieu-tuong.ts`).
   Thiếu thì vẽ thêm vào đúng bộ, cùng lưới 24 và cùng nét — **không emoji, không thư viện biểu tượng**.
 - **Ảnh** chỉ qua `<Anh id="…">`; chỗ chưa có ảnh thật là `<KhungAnh loai="…">` — không bao giờ
-  `<img>` trỏ tới file không có, không hộp xám, không chữ "ảnh đang cập nhật".
+  `<img>` trỏ tới file không có, không hộp xám, không chữ "ảnh đang cập nhật". Ảnh của một món: chỉ qua
+  `ANH_CUA_MON` (`web/src/lib/anh.ts`, khóa theo mã món) trong `ThucDonNhomAnh.astro`.
+- **Thực đơn kiểu cuốn menu bản sáng** (`ThucDonNhomAnh.astro` + `ThucDonMon.astro`): tên nhóm chữ hoa
+  800 (`--co-nhom`) màu `--nhan`, câu của nhóm (`CAU_NHOM`, khóa theo mã nhóm), món dẫn đầu chữ trái –
+  ảnh phải từ 768px, các món còn lại lưới thẻ ảnh trên chữ dưới; không giá khi `gia` null, không độ cay,
+  không sao "Nên thử". Bố cục và lý do: `web/THIET-KE.md` mục 1, "Trang Thực đơn".
 - **Form**: nhãn trên ô (không placeholder thay nhãn), ô một dòng cao đúng 48px (kể cả ô ngày) nền
   Cream viền `--vien-o`, ô tự điền (`:autofill`) vẫn nền Cream, lỗi sát ô
   bằng câu chữ màu đỏ đậm (`.loi-o` + `aria-invalid` + `aria-describedby`), không tick sẵn ô đồng ý
@@ -270,8 +276,12 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
 
 ## Ảnh, logo, artwork
 
-- **Ảnh minh họa** (AI) chỉ cho ảnh không khí món và bữa ăn, luôn có nhãn **"Ảnh minh họa"** ngay
-  trong khung ảnh (`<Anh>` tự gắn). Khánh quyết ngày 11/10/2026: ảnh AI được lên trang; **bàn tay người
+- **Ảnh minh họa** (AI) chỉ cho ảnh không khí món, ảnh món và bữa ăn, luôn có nhãn **"Ảnh minh họa"** ngay
+  trong khung ảnh (`<Anh>` tự gắn). Ảnh món của trang Thực đơn lấy từ cuốn menu bản sáng (11/10/2026) —
+  kể cả ảnh "đã duyệt" của menu chuẩn 29/09 chưa rõ chụp thật hay dựng: vẫn gắn nhãn. **Ảnh tách nền**
+  (`tachNen` trong `DANH_MUC_ANH`): khung `.tach-nen` trong suốt, không bo góc, món đặt thẳng lên nền;
+  `web/cong-cu/anh/tao-co-anh.py` (mục `tach_nen` của `danh-sach.json`) chừa dải trống 12–14 % ở đáy khung
+  và nhãn nằm giữa đáy — ngay dưới món, không đè lên món. Khánh quyết ngày 11/10/2026: ảnh AI được lên trang; **bàn tay người
   thì được, mặt người thì không**; hai ảnh bữa ăn có món phụ (`mon-an-chia-se`, `bua-an-cung-ban`) là
   hình minh họa — câu chữ và alt không kể tên, không hứa món phụ nào. **Quầy, khay skin-pack, không
   gian quán, lối vào, thang máy, mặt người: chỉ ảnh chụp thật** (cho tới khi có: `<KhungAnh>`). Không

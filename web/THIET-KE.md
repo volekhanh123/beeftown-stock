@@ -40,6 +40,25 @@ Hai ảnh bữa ăn (khối 4 và 5) có kim chi, mấy chén món phụ và bà
 
 **Tránh:** mọi khối đều là ba thẻ giống nhau; pill / card ở mọi nơi; gradient tím xanh; kính mờ; hiệu ứng cuộn; bộ đen – vàng thay nhận diện; giọng fine dining xa cách; giao diện thiên về trẻ em.
 
+### Trang Thực đơn — theo cuốn menu in "bản sáng"
+
+Khánh chốt cuốn menu in **bản sáng** (Cuốn C nền sáng, artifact "Beeftown — Menu", Version 45) ngày 11/10/2026 và bảo đưa lên trang Thực đơn. Trang **không** đưa nguyên trang cuốn lên (giá trong cuốn là giá dummy, nhiều chữ còn chờ chốt, ảnh khay là ảnh AI): món vẫn đọc từ `thuc_don_cong_khai()` và chỉ món **đã công bố** mới hiện (`THUC-DON.md`); trang chỉ mượn cách trình bày của cuốn. Ba phần là ba tab (không JavaScript thì ba link neo, cả ba phần cùng hiện):
+
+| Phần | Bề mặt | Chưa công bố món nào (trạng thái ngay sau deploy) | Đã công bố món |
+|---|---|---|---|
+| Bò tại quầy | **tối** (Khánh giữ ngày 11/10/2026) | Lời giải thích, ảnh `bo-cat-lat`, thẻ "Cách đọc nhãn khay" | Như trên, thêm nhóm "Gọi thêm tùy chọn": Set 4 sốt (S01) có ảnh `mon-set-4-sot` — ảnh tách nền đặt thẳng trên nền tối vẫn rõ (khay đen có viền sáng, rau và sốt nổi màu); tên nhóm cỡ tiêu đề nhỏ như nhóm bò bên cạnh |
+| Món ăn | kem | Cột trái: tiêu đề, đoạn dẫn, ảnh `sot-cham`; cột phải: sáu nhóm của cuốn bằng chữ (Salad, Món thêm, Canh, Cơm, Mì, Lẩu) | Đầu phần trải ngang, rồi từng nhóm **dùng hết bề ngang khung** theo kiểu trang của cuốn (`ThucDonNhomAnh`). Ảnh `sot-cham` không còn ở trạng thái này: món đã có ảnh riêng, thêm một ảnh không khí chỉ chen vào giữa tiêu đề và món |
+| Đồ uống | kem đậm | Cột trái: tiêu đề, đoạn dẫn, ảnh `uong-khong-con-ba-ly`; cột phải: Nước ép & ade, Nước ngọt, Nước suối — Highball, Soju, Makgeolli, Bia chỉ khi công tắc `hien_do_uong_co_con` bật | Cột trái như cũ (ảnh ba ly không cồn nhắc được ở mọi trạng thái); cột phải: nhóm có ảnh (ba ly signature, ba thẻ ngang nhau) trước, nhóm danh sách (highball, bia…) gọn như cũ sau. Đồ uống có cồn vẫn sau công tắc |
+
+**Một nhóm kiểu cuốn** (`ThucDonNhomAnh.astro`, chữ của từng món `ThucDonMon.astro`):
+
+- **Tên nhóm** chữ hoa, đậm 800, cỡ `--co-nhom` 28 → 40px — to hơn h2 (26 → 36px) để nhóm đọc như tiêu đề trang của cuốn, không bao giờ to hơn h1 (32 → 48px); màu nhấn của bề mặt (Beef Red trên kem, đỏ đậm trên kem đậm). Ngay dưới: **câu của nhóm** (cuốn in dưới tiêu đề trang), đậm 700, cỡ `--co-dan`, màu chữ chính — chép nguyên văn cuốn vào `CAU_NHOM` (`src/lib/thuc-don.ts`, khóa theo mã nhóm; database không có cột này). Nhóm không có câu (Món đặc trưng, đồ uống, nhóm mới) thì không in gì.
+- **Món dẫn đầu** là món đầu tiên database trả (`thu_tu` nhỏ nhất — migration 0091 xếp món to nhất trang của cuốn lên đầu). Từ 768px: tên nhóm, câu và chữ của món ở cột trái; ảnh lớn (tối đa 560px) ở cột phải, như trang của cuốn. Điện thoại: tên nhóm → ảnh → chữ.
+- **Các món còn lại**: lưới thẻ ảnh trên, chữ dưới, thẳng lề trái — 1 cột dưới 600px, 2 cột từ 600px, 3 cột từ 1024px khi còn từ ba món (nhóm Mì); còn hai món thì hai cột như trang Salad của cuốn, ảnh tối đa 460px để thẻ nhỏ vẫn nhỏ hơn ảnh dẫn đầu. Nhóm **đúng hai món** (Món đặc trưng): hai thẻ ngang nhau như tờ kẹp của cuốn. Ba ly signature: ba thẻ đều; điện thoại một cột, ảnh ly tối đa 220px.
+- **Tên món chữ thường, đậm 700** (không chữ hoa như cuốn): tên món là thứ khách đọc kỹ, tên dài ("Cơm trộn tartare bò cay", "Signature spicy cold noodles") viết hoa khó đọc và cần dòng cao hơn cho dấu chồng; tiếng Hàn không có chữ hoa, nên ba thứ tiếng cùng một nhịp. Chữ hoa chỉ dành cho tên nhóm. Món dẫn đầu tên 1,25 lần `--co-h3`.
+- Không giá (`gia` null → không phần tử giá), không độ cay, không sao "Nên thử" — số trong cuốn là số giả lập. Nhãn Món sống / Có cồn và câu cảnh báo món sống như dòng món cũ.
+- Thẻ chịu được dữ liệu sau này: món không ảnh (thẻ chỉ có chữ, không khung thay thế), mô tả bốn câu (tartare), tên rất dài, nhóm lạ chưa có câu — kịch bản `thuc-don-thu-suc` của `kiem-tra/gia-supabase.mjs`, `kiem-tra/thu-day-du.mjs` nhóm 11 đo ở 320 → 1440px.
+
 ### Từ PDF tới web
 
 | Trang PDF | Chất liệu trong PDF | Trên web | Ghi chú |
@@ -143,7 +162,7 @@ File này là tài liệu của trang công khai; phần dưới chỉ ghi đi�
 
 ## 3. Chữ
 
-- **Một họ phông: Montserrat** (Google Fonts, giấy phép OFL) ở bốn độ đậm: **400** chữ chạy; **600** điều hướng, nhãn ô, chú thích; **700** tiêu đề, nút, tên món; **800** tên thương hiệu (`.ten-thuong-hieu`) và số lớn của ba bước.
+- **Một họ phông: Montserrat** (Google Fonts, giấy phép OFL) ở bốn độ đậm: **400** chữ chạy; **600** điều hướng, nhãn ô, chú thích; **700** tiêu đề, nút, tên món; **800** tên thương hiệu (`.ten-thuong-hieu`), số lớn của ba bước và tên nhóm món của trang Thực đơn.
 - **Tiếng Hàn:** trang `/ko` tải thêm Noto Sans KR, xếp ngay sau Montserrat (chữ Latin vẫn là Montserrat), `word-break: keep-all` để không cắt giữa một từ, tiêu đề không siết chữ và dòng thoáng hơn (1,28). Cỡ chữ thì như tiếng Việt và tiếng Anh ở mọi bề rộng — không co riêng: h1 **32/41px → 48/61px**. Câu chính trang chủ tiếng Hàn vì vậy xuống bốn dòng ở màn dưới 375px (như bản tiếng Việt), ba dòng từ 375px.
 - **Logo luôn là vector gốc** từ PDF — không bao giờ gõ chữ BEEFTOWN bằng phông nào.
 - **Phông display chưa dùng:** trang 1 của PDF ghi Hypo-me Bold, trang 6 ghi NVN Beloved Bold. Chưa có file phông và giấy phép dùng trên web, và chính tài liệu chưa rõ hai tên đó có phải một phông. Cần: file phông (WOFF2 hoặc OTF) + giấy phép web ghi rõ phạm vi (số lượt xem, tên miền). Khi có, chỉ dùng cho điểm nhấn (câu chính màn đầu, số ba bước), không dùng cho chữ chạy, và phải hiện đủ dấu tiếng Việt. Không tự thay bằng một phông "vui" ngẫu nhiên.
@@ -154,8 +173,9 @@ File này là tài liệu của trang công khai; phần dưới chỉ ghi đi�
 |---|---|---|
 | `--co-h1` | 32 → 48px (`clamp`; 32px tới 390px, 48px từ 1280px), dòng 1,17: **32/38px → 48/56px**. Tiếng Hàn cùng cỡ, dòng 1,28: 32/41px → 48/61px | Câu chính màn đầu và tiêu đề đầu trang con — một cỡ cho mọi trang, mọi thứ tiếng |
 | `--co-h2` | 26 → 36px, dòng 1,2 | Tiêu đề khối — luôn nhỏ hơn h1 |
-| `--co-h3` | 18 → 20px | Tiêu đề nhỏ |
-| `--co-dan` | 18 → 20px | Đoạn dẫn (`.dan`), tối đa 58 ký tự một dòng |
+| `--co-h3` | 18 → 20px | Tiêu đề nhỏ; tên món trên trang Thực đơn |
+| `--co-nhom` | 28 → 40px (28px tới 390px, 40px ở 1440px), đậm 800, chữ hoa | Tên nhóm món của trang Thực đơn (kiểu tiêu đề trang của cuốn menu bản sáng) — giữa h2 và h1, không bao giờ to hơn h1 |
+| `--co-dan` | 18 → 20px | Đoạn dẫn (`.dan`), tối đa 58 ký tự một dòng; câu dưới tên nhóm món (đậm 700) |
 | `--co-than` | **16px, dòng 24px** ở mọi bề rộng | Chữ chạy |
 | `--co-nho` | 14px | Chữ phụ (`.nho`), gợi ý dưới ô |
 | `--co-ti` | 13px | **Sàn** — nhãn. Không chữ nào nhỏ hơn, trừ dòng nhỏ viết hoa (`.hieu`, nhãn món — 12px, đậm, giãn chữ). Chân trang có sàn riêng: 14px |
@@ -205,7 +225,9 @@ Không dùng `100vw` (tính cả thanh cuộn → tràn ngang). Khối có trang
 
 **Dòng trạng thái** (`.trang-thai`): vạch Marigold bên trái, chữ từ khóa `dong_trang_thai`; chưa công bố thì câu nền "đang chuẩn bị đón bạn".
 
-**Dòng món** (`.mon`): tên Việt (`.mon-ten`, 18px đậm) → tên gốc (`.mon-goc`) → mô tả (`.mon-mo-ta`, chỉ khi đã duyệt) → nhãn **Món sống** / **Có cồn** (`.nhan-mon`, chữ hoa nhỏ đỏ đậm kèm biểu tượng 24px). Món sống luôn kèm câu cảnh báo (`.canh-bao-mon`); món sống thiếu câu cảnh báo thì không hiện món. Vùng giá (`.mon-gia`) chỉ có khi `gia !== null` và nhóm không phải "xem giá tại quầy" — `gia` null thì **không render phần tử giá**, không ô trống. Không tự thêm nhãn chay, dị ứng, độ cay, khẩu phần, combo.
+**Dòng món** (`.mon`, `ThucDonNhom.astro` — nhóm dạng danh sách: bò tại quầy, đồ uống không có ảnh): tên Việt (`.mon-ten`, 18px đậm) → tên gốc (`.mon-goc`) → mô tả (`.mon-mo-ta`, chỉ khi đã duyệt) → nhãn **Món sống** / **Có cồn** (`.nhan-mon`, chữ hoa nhỏ đỏ đậm kèm biểu tượng 24px). Món sống luôn kèm câu cảnh báo (`.canh-bao-mon`); món sống thiếu câu cảnh báo thì không hiện món. Vùng giá (`.mon-gia`) chỉ có khi `gia !== null` và nhóm không phải "xem giá tại quầy" — `gia` null thì **không render phần tử giá**, không ô trống. Không tự thêm nhãn chay, dị ứng, độ cay, khẩu phần, combo.
+
+**Thẻ món kiểu cuốn menu bản sáng** (`ThucDonNhomAnh.astro` + `ThucDonMon.astro`): tên nhóm chữ hoa 800 cỡ `--co-nhom`, câu của nhóm, món dẫn đầu chữ trái – ảnh phải từ 768px, các món còn lại lưới thẻ ảnh trên chữ dưới — chi tiết và lý do ở mục 1, "Trang Thực đơn". Cùng luật giá, nhãn, cảnh báo với dòng món. Ảnh theo mã món (`ANH_CUA_MON`, `src/lib/anh.ts`); món không có trong bảng thì thẻ chỉ có chữ.
 
 **Đọc nhãn khay** (`NhanKhay.astro`): xem mục 1. Một thẻ `.the` (nền Cream trên dải tối, viền mảnh, đệm 20 / 24px), **đặt thẳng, không bóng đổ, không nền trắng**, rộng tối đa 880px. Đầu thẻ: logo cho nền kem rộng 160px (mức tối thiểu của lockup) và tiêu đề, dưới là một nét Beef Red 2px. Năm dòng cách nhau bằng nét đứt: số thứ tự trong chấm tròn đỏ 28px, tên trường 17px đậm, lời giải thích 16px; từ 600px ba thứ đó nằm trên một hàng, điện thoại thì lời giải thích xuống dưới tên trường. Thẻ là nội dung thật (không `aria-hidden`). Dùng chung ở khối Quầy chọn bò và phần Bò tại quầy của trang Thực đơn.
 
@@ -215,7 +237,7 @@ Không dùng `100vw` (tính cả thanh cuộn → tràn ngang). Khối có trang
 
 **Form** (`.o`): nhãn trên ô (15px đậm), gợi ý ngay dưới nhãn (`small`), **không dùng placeholder thay nhãn**. Ô nhập, ô chọn, ô ngày cao **đúng 48px** (ô ngày ghim `height: 48px` — Chromium tự cộng 2px cho phần chữ ngày; ô nhiều dòng từ 48px trở lên), chữ 16px (iPhone không tự phóng to), **nền Cream**, viền 1px `--vien-o`; focus viền đỏ 3px. Ô trình duyệt tự điền (`:autofill`) vẫn nền Cream, chữ Charcoal: Chrome và Safari tô nền riêng không ghi đè được bằng `background`, nên phủ bằng bóng trong màu Cream. Thẻ form nền kem sau `#EBDCC6` — viền ô đạt 3,71 : 1 với nền ô và 3,49 : 1 với thẻ. Ô đánh dấu tự vẽ 24px: nền Cream, đã chọn thì nền Beef Red và dấu ✓ Cream. **Lỗi sát ô:** `.loi-o` ngay dưới ô (chữ đỏ đậm `#890607`, luôn là một câu chữ), ô có `aria-invalid="true"` (viền đỏ đậm) và `aria-describedby` trỏ tới câu lỗi; sau khi gửi, khung kết quả hoặc khung lỗi nhận focus. Mất mạng hay database báo lỗi: dữ liệu đã gõ được giữ lại (trong thẻ trình duyệt đó, 15 phút) để khách gửi lại. Giờ chọn bằng nút radio dạng chip cao 48px: chưa chọn nền Cream, **đang chọn nền Beef Red, chữ Cream** kèm dấu ✓. Ô đồng ý nhận tin **không tick sẵn, không bắt buộc**. Bấm gửi → "Đang gửi…", nút khóa, chặn bấm đúp. Kết quả là **"đã nhận yêu cầu"** kèm tem tròn — nhà hàng kiểm tra rồi liên hệ xác nhận; không bao giờ "thành công".
 
-**Ảnh** (`Anh.astro`, `.anh`): `<picture>` AVIF rồi WebP, khung riêng cho điện thoại (`khungNho`, dưới 600px) và màn rộng (`khung`), luôn có `width` / `height`. Khung `<figure>` **tự giữ đúng tỷ lệ của ảnh** (`aspect-ratio` qua `--ti-le` / `--ti-le-nho`) từ trước khi ảnh về — ảnh về chậm thì trang không xô lệch (`kiem-tra/trinh-duyet.mjs` nhóm 10). Nền chờ là màu của bảng theo dải đặt ảnh (`nenKhung`: kem đậm, `#211A10` trên dải tối, đỏ đậm trên dải đỏ). Bo góc 6px, **không bóng đổ, không viền**; không đặt logo hay chữ nào lên ảnh. Ảnh màn đầu `uuTien` (tải ngay, `fetchpriority="high"`) — mỗi trang nhiều nhất một ảnh như vậy, và nó phải nằm trong màn hình đầu; mọi ảnh khác lazy. Ảnh minh họa luôn có nhãn **"Ảnh minh họa"** / "Illustrative image" / "연출 이미지" (`.chu-thich-anh`: trong khung, góc dưới trái, chữ Cream 13px trên nền Charcoal 78 %) — component tự gắn, không ai quên được. Ảnh chưa dựng cỡ → hiện `KhungAnh` thay vào, không bao giờ là thẻ `<img>` trỏ tới file không có.
+**Ảnh** (`Anh.astro`, `.anh`): `<picture>` AVIF rồi WebP, khung riêng cho điện thoại (`khungNho`, dưới 600px) và màn rộng (`khung`), luôn có `width` / `height`. Khung `<figure>` **tự giữ đúng tỷ lệ của ảnh** (`aspect-ratio` qua `--ti-le` / `--ti-le-nho`) từ trước khi ảnh về — ảnh về chậm thì trang không xô lệch (`kiem-tra/trinh-duyet.mjs` nhóm 10). Nền chờ là màu của bảng theo dải đặt ảnh (`nenKhung`: kem đậm, `#211A10` trên dải tối, đỏ đậm trên dải đỏ). Bo góc 6px, **không bóng đổ, không viền**; không đặt logo hay chữ nào lên ảnh. Ảnh màn đầu `uuTien` (tải ngay, `fetchpriority="high"`) — mỗi trang nhiều nhất một ảnh như vậy, và nó phải nằm trong màn hình đầu; mọi ảnh khác lazy. Ảnh minh họa luôn có nhãn **"Ảnh minh họa"** / "Illustrative image" / "연출 이미지" (`.chu-thich-anh`: trong khung, góc dưới trái, chữ Cream 13px trên nền Charcoal 78 %) — component tự gắn, không ai quên được. **Ảnh tách nền** (`tachNen` trong `DANH_MUC_ANH` — ảnh món của trang Thực đơn): khung thêm lớp `.tach-nen` — trong suốt, không bo góc, món đặt thẳng lên nền của dải như trong cuốn; `tao-co-anh.py` chừa sẵn một dải trống 12–14 % chiều cao ở đáy khung, và nhãn nằm giữa đáy khung, trong dải đó — tức là ngay dưới món, không đè lên món (nhãn chỉ đổi chỗ; cỡ chữ, màu, nền riêng giữ nguyên). Ảnh chưa dựng cỡ → hiện `KhungAnh` thay vào, không bao giờ là thẻ `<img>` trỏ tới file không có.
 
 **Khung ảnh** (`KhungAnh.astro`, `.khung-anh`): chỗ của ảnh chụp thật chưa có. Đúng tỷ lệ của ảnh sau này, nét vẽ cùng nét và cùng màu với rosemary, một mảng vân mỡ chìm ở góc; năm loại `quay`, `khay`, `thang-may`, `loi-vao`, `ban-nuong`; nền `kem` | `toi` | `do`. **Không có chữ nào bên trong** ("ảnh đang cập nhật"…) — khách không cần biết chuyện sản xuất. Thay bằng ảnh thật là đổi một thẻ, không đổi bố cục.
 
@@ -274,14 +296,37 @@ Tám ảnh do **ChatGPT tạo ngày 11/10/2026**, gọi qua Codex CLI bằng gó
 | `hero-vi-gas` | Bàn tay cầm kẹp đặt lát bò lên vỉ gas tròn viền thép; đĩa bò sống, chén sốt, rau. Bản ngang và bản dọc là hai ảnh của **cùng một cảnh** (vỉ lưới thép, bàn tay từ bên trái; bản dọc tạo lại từ bản ngang làm ảnh mẫu) | Màn đầu trang chủ (`KhoiMoDau`), tải ngay | 4:3 cắt từ bản ngang 16:9 (640 / 960 / 1254) – 4:5 (480 / 720 / 1121) | minh họa | Ảnh chụp hero thật (brief mục 8, cảnh 1) |
 | `bo-van-mo-can` | Một miếng bò sống dày có vân mỡ, trên giấy lót màu kem | Quầy chọn bò (`QuayChonBo`), dải tối | 4:5 (480 / 800 / 1121) – 1:1 (480 / 800 / 1122) | minh họa | Ảnh cận cảnh phần cắt thật tại quầy |
 | `bo-cat-lat` | Lát bò sống xếp trên đĩa sứ kem, cạnh chiếc kẹp | Thực đơn, phần Bò tại quầy | 3:2 – 3:2 (480 / 800 / 1200) | minh họa | Ảnh phần cắt thật |
-| `sot-cham` | Ba chén sốt trước đĩa bò nướng cắt lát và xà lách (alt trên trang **không** ghi số chén — set sốt thật chưa chốt số loại) | Thực đơn, phần Món ăn | 4:3 – 4:3 (480 / 800 / 1200) | minh họa | Ảnh set sốt S01 thật |
+| `sot-cham` | Ba chén sốt trước đĩa bò nướng cắt lát và xà lách (alt trên trang **không** ghi số chén — set sốt thật chưa chốt số loại) | Thực đơn, phần Món ăn — **chỉ khi chưa công bố món nào** (lời giới thiệu theo nhóm); đã có món thì nhóm món trải hết khung, ảnh này không hiện | 4:3 – 4:3 (480 / 800 / 1200) | minh họa | Ảnh không khí bàn ăn thật |
 | `mon-an-chia-se` | Đĩa bò nướng cắt lát giữa bàn, quanh là salad, cơm, canh, kim chi, các chén món phụ; không có người | Cả bữa (`BuaAnCungNhau`) | 3:2 – 4:3 (480 / 800 / 1200) | minh họa | Ảnh bàn ăn thật với món đã chốt (mục 8, cảnh 3 – 4) |
 | `bua-an-cung-ban` | Nhiều bàn tay cùng gắp bò trên vỉ gas tròn giữa bàn; cơm, rau, món phụ, ba ly nước; không thấy mặt ai | Đi cùng nhóm (`DiCungNhom`), dải đỏ | 3:2 – 4:3 (480 / 800 / 1200) | minh họa | Ảnh người cùng ăn thật, có giấy đồng ý (mục 8, cảnh 4) |
 | `bo-xeo-vi` | Lát bò đang chín trên vỉ gas tròn, có làn hơi | **Dự phòng — chưa đặt ở trang nào, chưa dựng cỡ** (mục `du_phong` của `danh-sach.json`; alt đã viết sẵn trong `anh.ts`) | — | minh họa, chưa dùng | — |
 
-Mọi file AVIF + WebP ≤ 300 KB, cả thư mục ≤ 8 MB (hiện khoảng 3,6 MB, 60 file). Ảnh nào đã dựng thì phải có chỗ dùng, chỗ nào dùng thì phải đã dựng (`crm/test/test-cong-khai-anh.mjs` nhóm 3) — không để file ảnh chết trong repo.
+**Ảnh món của trang Thực đơn — cuốn menu bản sáng** (26 ảnh, lấy từ artifact "Beeftown — Menu", Cuốn C nền sáng, Version 45, Khánh chốt 11/10/2026; file gốc nằm **ngoài repo**). Vẫn là **ảnh minh họa**, trang vẫn ghi "Ảnh minh họa":
+
+- 21 ảnh món ăn và ảnh ba ly không cồn: **ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026, rồi tách nền** (WebP / PNG có kênh trong suốt, bóng đổ nằm sẵn trong ảnh). `tao-co-anh.py` không cắt mà đặt chúng vào khung trong suốt (mục `tach_nen` của `danh-sach.json`: lề 4 %, dải trống ở đáy 13 % cho món ăn, 12 % cho ly, 14 % cho ảnh ba ly).
+- Ba ly signature (tách nền) và hai món tartare (ảnh chữ nhật đứng có nền bàn gỗ, cắt vuông quanh đĩa / bát như ảnh cũ): **lấy từ menu chuẩn 29/09 của quán** — ghi chú dự án gọi là "ảnh đã duyệt" nhưng **chưa rõ là ảnh chụp thật hay ảnh dựng**; chưa rõ thì vẫn gắn nhãn minh họa.
+- Alt tả đúng thứ nhìn thấy, ba thứ tiếng, không đếm số món / số ly, không giá, không kể tên món phụ — kể cả khi đó là một phần của món chính (alt của canh kim chi, lẩu kim chi, Set 4 sốt không viết chữ "kim chi"), không chữ "núi lửa", "xông khói" (luật than, lửa, khói của alt).
+
+| Id | Món (mã) | Khung (bề rộng đã dựng) | Chỗ dùng |
+|---|---|---|---|
+| `mon-tartare-bo-hoa-tuyet`, `mon-com-tron-tartare-bo-cay` | Tartare bò hoa tuyết (F03), Cơm trộn tartare bò cay (F19) — ảnh có nền | 1:1 (480 / 800) | Món đặc trưng |
+| `mon-lau-kim-chi`, `mon-lau-bo-bulgogi`, `mon-lau-nam` | F15, F16, F20 | 4:3 tách nền (480 / 800) | Lẩu |
+| `mon-set-4-sot` | Set 4 sốt (S01) | 4:3 tách nền (480 / 800) | Dải tối Bò tại quầy, nhóm Gọi thêm |
+| `mon-salad-nam`, `mon-caesar-salad`, `mon-mien-tron-han` | F21, F01, F10 | 4:3 tách nền (480 / 800) | Salad |
+| `mon-trung-hap-nui-lua`, `mon-khoai-tay-chien-sot-bo`, `mon-banh-gao-chien-pho-mai` | F22, F23, F18 | 4:3 tách nền (480 / 800) | Món thêm |
+| `mon-canh-kim-chi`, `mon-dau-phu-ham`, `mon-canh-tuong-dau` | F12, F14, F13 | 4:3 tách nền (480 / 800) | Canh |
+| `mon-com-kim-chi-bo`, `mon-com-tron-han`, `mon-com-tron-trung-ca` | F06, F05, F04 | 4:3 tách nền (480 / 800) | Cơm |
+| `mon-mi-lanh-cay`, `mon-mi-toowoomba`, `mon-mi-carbonara`, `mon-mi-bo-sot-ca` | F11, F08, F07, F09 | 4:3 tách nền (480 / 800) | Mì |
+| `uong-milky-cloud-makgeolli`, `uong-strawberry-crush`, `uong-berry-rouge-highball` | D13, D01, D14 | 4:5 tách nền (400 / 640) | Đồ uống, nhóm Signature (có cồn — chỉ khi công tắc bật) |
+| `uong-khong-con-ba-ly` | — (ade chanh dây, ade chanh, nước cam) | 3:2 tách nền (480 / 800) | Ảnh của cả phần Đồ uống, mọi trạng thái |
+
+Bảng mã món → ảnh là `ANH_CUA_MON` (`src/lib/anh.ts`); ảnh chỉ hiện khi món đã công bố. Ảnh dẫn đầu hiện tới 560px nhưng chỉ có bản 800px — màn Retina thấy hơi mềm; thêm bản 1100–1200px cho món dẫn đầu thì cả thư mục lên khoảng 7,6 MB, chưa thêm.
+
+Mọi file AVIF + WebP ≤ 300 KB, cả thư mục ≤ 8 MB (hiện khoảng 6,9 MB, 164 file). Ảnh nào đã dựng thì phải có chỗ dùng, chỗ nào dùng thì phải đã dựng (`crm/test/test-cong-khai-anh.mjs` nhóm 3) — không để file ảnh chết trong repo.
 
 Ảnh AI **không bao giờ** dùng cho quầy, khay skin-pack, không gian quán, lối vào, thang máy hay mặt người — những chỗ đó là khung đồ họa cho tới khi có ảnh chụp thật. Không dùng ảnh AI cho quảng cáo và thực đơn in (`../THUONG-HIEU.md` mục 2).
+
+**Điểm cần người xem lại bằng mắt — ảnh món** (13/10/2026): ảnh ba ly signature và hai món tartare cần Khánh xác nhận là ảnh chụp thật hay ảnh dựng (ảnh chụp thật thì đổi `minhHoa` và nguồn); tartare cắt vuông bỏ phần nền phía trên của ảnh gốc; ảnh món là ảnh AI của cuốn — Sang xem dụng cụ (nồi inox, thố đá, đĩa đen) và khẩu phần có giống món quán dọn không.
 
 **Điểm cần người xem lại bằng mắt** (ghi lúc đưa ảnh lên, 11/10/2026): miếng bò của `bo-van-mo-can` có vân mỡ khá dày — cần Sang xem có đúng với thịt quán bán không (guideline: ảnh không được có vân mỡ đẹp hơn thịt quán bán); `bua-an-cung-ban` có ba ly nước màu vàng nhạt, người xem có thể hiểu là bia; `hero-vi-gas` vẽ vỉ lưới thép ở cả hai bản — nếu vỉ thật của quán là loại khác thì tạo lại cả hai; `mon-an-chia-se` và `bua-an-cung-ban` bày nhiều món phụ hơn điều trang hứa; `bo-van-mo-can` và `bo-cat-lat` đứng ở chỗ của khung vẽ khay trong hai khối nói về khay ("Nhìn tận mắt, chọn tận tay" ở trang chủ, "Chọn theo khay, giá xem trên nhãn" ở trang Thực đơn) — ảnh không vẽ khay hay quầy và có nhãn "Ảnh minh họa", nhưng khách có thể hiểu thịt ở quán bày trên giấy lót hoặc đĩa chứ không đóng khay: Khánh xem và quyết giữ ảnh hay trả lại khung vẽ khay.
 
@@ -293,7 +338,7 @@ Mọi file AVIF + WebP ≤ 300 KB, cả thư mục ≤ 8 MB (hiện khoảng 3,6
 | `thang-may` | Đến Beeftown, bước 2 (thang máy lên tầng 3) | 4:3 | cần chụp | Ảnh thang máy ở lối vào riêng (mục 8, cảnh 6) |
 | `quay` | Đến Beeftown, bước 3 (ghé quầy) | 4:3 | cần chụp | Ảnh quầy thật (mục 8, cảnh 2) |
 | `khay` | Chỉ còn là hình thay cho `bo-van-mo-can`, `bo-cat-lat` nếu ảnh chưa dựng cỡ — hiện không hiện ở trang nào | theo khung của ảnh | cần chụp | Ảnh khay skin-pack có nhãn thật — khi có thì đặt cạnh thẻ đọc nhãn khay |
-| `ban-nuong` | Chỉ còn là hình thay cho `hero-vi-gas`, `sot-cham`, `mon-an-chia-se`, `bua-an-cung-ban` nếu ảnh chưa dựng cỡ — hiện không hiện ở trang nào | theo khung của ảnh | cần chụp | Ảnh bàn nướng có người (mục 8, cảnh 4) |
+| `ban-nuong` | Chỉ còn là hình thay cho `hero-vi-gas`, `sot-cham`, `mon-an-chia-se`, `bua-an-cung-ban`, ảnh món và `uong-khong-con-ba-ly` nếu ảnh chưa dựng cỡ — hiện không hiện ở trang nào | theo khung của ảnh | cần chụp | Ảnh bàn nướng có người (mục 8, cảnh 4) |
 
 **Đưa một ảnh chụp thật lên trang:** thêm id vào `IdAnh` và `DANH_MUC_ANH` (`src/lib/anh.ts`, `minhHoa: false`, alt đủ vi / en / ko), khai id trong `cong-cu/anh/danh-sach.json`, chạy `tao-co-anh.py`, rồi đổi `<KhungAnh loai="…" />` thành `<Anh id="…" />`. Ảnh thật không có dòng "Ảnh minh họa".
 
@@ -314,15 +359,18 @@ python3 -I tao-bieu-tuong.py <thư-mục-tạm>/svg ../../public             # c
 **Ảnh** — cần Pillow có AVIF (Pillow ≥ 11.3 cài bằng pip):
 
 ```bash
-python3 -I web/cong-cu/anh/tao-co-anh.py <thư-mục-ảnh-gốc>                 # mọi ảnh
-python3 -I web/cong-cu/anh/tao-co-anh.py <thư-mục-ảnh-gốc> --chi sot-cham   # một ảnh
+python3 -I web/cong-cu/anh/tao-co-anh.py <thư-mục-ChatGPT> <thư-mục-cuốn-menu>      # mọi ảnh (tìm file gốc lần lượt trong hai thư mục)
+python3 -I web/cong-cu/anh/tao-co-anh.py <thư-mục-ChatGPT> --chi sot-cham           # một ảnh
+python3 -I web/cong-cu/anh/tao-co-anh.py <thư-mục-cuốn-menu> --chi 'mon-l*' --chi 'uong-*'   # một nhóm ảnh (dấu * khớp như tên file)
 ```
 
-1. Để file ảnh gốc (PNG của công cụ tạo ảnh, hoặc ảnh chụp) trong một thư mục **ngoài repo**, tên đúng trường `goc` của `danh-sach.json` (vd. `hero-vi-gas-16x9.png`). Ghi công cụ, ngày tạo vào `nguon.cong_cu` và bản được chọn vào `nguon.da_chon`.
-2. Chạy script. Nó chuyển sRGB, bỏ EXIF và mọi siêu dữ liệu, cắt theo tỷ lệ quanh điểm lấy nét (`fx`, `fy`), thu nhỏ (không phóng to), xuất AVIF + WebP vào `public/anh/`, giữ mỗi file ≤ 300 KB (hạ chất lượng dần) và cả thư mục ≤ 8 MB, rồi ghi `src/lib/anh-tao-san.ts`. Chỉ dựng ảnh ở mục `anh`; ảnh ở mục `du_phong` (chưa đặt ở trang nào) không dựng, file cũ của nó bị xóa. In bảng kết quả; lỗi thì thoát mã 1 và không thay file cũ.
+Ảnh gốc ở hai thư mục ngoài repo: bảy PNG của ChatGPT (`Beeftown_Web_Redesign_2026-10-11/03_Anh-ChatGPT` trên máy Khánh) và 26 file ảnh món của cuốn menu bản sáng (xuất từ artifact "Beeftown — Menu", Version 45; tên file đúng trường `goc`, vd. `mon-salad-nam.webp`). Cẩn thận với `--chi 'mon-*'`: mẫu đó khớp cả `mon-an-chia-se` (ảnh bữa ăn của đợt ChatGPT) — chạy với cả hai thư mục, hoặc liệt kê từng id.
+
+1. Để file ảnh gốc (PNG của công cụ tạo ảnh, ảnh tách nền, hoặc ảnh chụp) trong một thư mục **ngoài repo**, tên đúng trường `goc` của `danh-sach.json` (vd. `hero-vi-gas-16x9.png`). Ghi nguồn, công cụ, ngày tạo vào `nguon` và bản được chọn vào `nguon.da_chon`. Ảnh đã tách nền (kênh trong suốt) thì khai `tach_nen: { le, duoi }` thay cho `fx`, `fy`.
+2. Chạy script. Nó chuyển sRGB, bỏ EXIF và mọi siêu dữ liệu, cắt theo tỷ lệ quanh điểm lấy nét (`fx`, `fy`) — ảnh tách nền thì cắt sát phần có hình rồi đặt vào khung trong suốt, chừa dải trống ở đáy cho nhãn —, thu nhỏ (không phóng to), xuất AVIF + WebP (ảnh tách nền giữ kênh trong suốt) vào `public/anh/`, giữ mỗi file ≤ 300 KB (hạ chất lượng dần) và cả thư mục ≤ 8 MB, rồi ghi `src/lib/anh-tao-san.ts`. Chỉ dựng ảnh ở mục `anh`; ảnh ở mục `du_phong` (chưa đặt ở trang nào) không dựng, file cũ của nó bị xóa. In bảng kết quả; lỗi thì thoát mã 1 và không thay file cũ.
 3. Mở từng file vừa xuất xem vùng cắt ở từng khung: không cắt mất món chính, không cắt ngang bàn tay; lệch chủ thể thì chỉnh `fx`, `fy` rồi chạy lại (chạy lại bao nhiêu lần cũng cho cùng kết quả).
 4. `git status --short` phải thấy `public/anh/*.avif`, `*.webp` và `anh-tao-san.ts`; không có PNG gốc nào.
-5. Ảnh mới (id mới): thêm vào `IdAnh`, `DANH_MUC_ANH` (alt vi / en / ko tả đúng thứ nhìn thấy) **và** vào các danh sách chép tay của kiểm thử — `ANH_AI` / `ANH_THAT`, `ANH_DA_DAT`, `CO_GOC` trong `crm/test/test-cong-khai-anh.mjs`; `ANH_AI` trong `kiem-tra/do-giao-dien.mjs`; `KHUNG_MONG` trong `kiem-tra/trinh-duyet.mjs`.
+5. Ảnh mới (id mới): thêm vào `IdAnh`, `DANH_MUC_ANH` (alt vi / en / ko tả đúng thứ nhìn thấy) **và** vào các danh sách chép tay của kiểm thử — `ANH_CHATGPT` / `ANH_MON` / `ANH_THAT`, `ANH_DA_DAT`, `CO_GOC` trong `crm/test/test-cong-khai-anh.mjs`; `ANH_AI` trong `kiem-tra/do-giao-dien.mjs`; `KHUNG_MONG` trong `kiem-tra/trinh-duyet.mjs` (ảnh hiện khi chưa có database). Ảnh của một món: thêm vào `ANH_CUA_MON` (`src/lib/anh.ts`) và bảng `MONG` của `test-cong-khai-anh.mjs` nhóm 7.
 
 ---
 
@@ -341,7 +389,7 @@ python3 -I web/cong-cu/anh/tao-co-anh.py <thư-mục-ảnh-gốc> --chi sot-cham
 |---|---|---|---|---|
 | 1 | **Hero**: bò có vân trên vỉ gas, một tay gắp đang đặt lát thịt, một góc bàn chia sẻ (chén sốt, rau, đĩa) | 4:3 **và** 4:5 (chụp riêng, hoặc chụp ngang 16:9 đủ rộng để cắt 4:3) | Màn đầu trang chủ | 4:3 (màn rộng): chủ thể ở giữa – trái; góc dưới bên trái yên — nhãn và chú thích nằm ở đó. 4:5 (điện thoại): chủ thể giữa khung, chừa khoảng thở trên và hai mép. Trang không đặt chữ hay logo lên ảnh (tagline là dải đỏ dưới ảnh); bài đăng, bạt thì chừa khoảng chữ riêng |
 | 2 | **Quầy và ba bước**: (a) quầy toàn cảnh với khay xếp ngay ngắn; (b) cận khay skin-pack có nhãn thật; (c) tay khách chọn khay, nhân viên chỉ vào nhãn tư vấn; (d) khay bên vỉ gas, cả bàn cùng nướng | 4:5 và 4:3 | Quầy chọn bò; ba bước; Đến Beeftown bước 3 | **Cùng ánh sáng, cùng góc máy** để nối thành hành trình. Nhãn đọc được tên phần cắt và các trường; khi giá chưa được duyệt công bố thì canh nét sao cho số tiền không đọc rõ — ảnh có số tiền là công bố giá |
-| 3 | **Món đi cùng và đồ uống** | 1:1 hoặc 4:3, chọn một cho cả bộ | Trang Thực đơn | Dụng cụ, khẩu phần thật của quán; một nền thống nhất (mặt bàn của quán). Tên file theo mã món: `F05-1x1.jpg`, `D09-1x1.jpg`, `S01-4x3.jpg` (F01–F18 món ăn, D01–D12 đồ uống, S01 set sốt). Chỉ chụp món đã chốt công thức |
+| 3 | **Món đi cùng và đồ uống** | 1:1 hoặc 4:3, chọn một cho cả bộ | Trang Thực đơn | Dụng cụ, khẩu phần thật của quán; một nền thống nhất (mặt bàn của quán). Tên file theo mã món: `F05-1x1.jpg`, `D09-1x1.jpg`, `S01-4x3.jpg` (mã theo danh mục cuốn bản sáng 11/10/2026: F01–F23 món ăn, D01–D28 đồ uống, S01 Set 4 sốt). Chỉ chụp món đã chốt công thức. Trang đang dùng ảnh minh họa của cuốn (mục 7); ảnh chụp tách nền trên phông trơn thì đặt được thẳng lên nền kem như hiện nay |
 | 4 | **Người cùng ăn**: người trưởng thành đi cùng gia đình, người thân; bạn bè; nhóm đồng nghiệp — đang chia món, nướng, trò chuyện tự nhiên | 4:3, 16:9 | Đi cùng nhóm, Cả bữa | Không dàn dựng cụng ly quá đà; trẻ em không làm trung tâm |
 | 5 | **Không gian** | 4:3, 16:9 | Trang chủ, Đến Beeftown | Ống kính gần góc nhìn người đứng — **không** dùng ống siêu rộng làm phòng rộng hơn thực tế |
 | 6 | **Đường đến**: số 63 Hồ Tùng Mậu nhìn từ vỉa hè (thấy số nhà); lối vào riêng ngay cạnh GS25; thang máy; cửa tầng 3 | 4:3 (ba khung của trang Đến Beeftown) + 4:5 cho mạng xã hội | Đến Beeftown, bước 1–3 | Chụp **cả ban ngày và ban đêm** (đèn thật lúc mở cửa) |
@@ -382,7 +430,8 @@ Nguyên tắc: logo vector gốc; chất liệu PDF (vân mỡ, rosemary, tem tr
 | Trang Facebook | Không nút "Theo dõi"; trang Hỏi bàn khi form đóng vẫn nhắc nhắn qua Facebook | Công bố `facebook_url` |
 | Tên món tiếng Việt cuối, mô tả | Thực đơn chỉ hiện lời giới thiệu theo nhóm | Duyệt và công bố món theo `THUC-DON.md` |
 | Giá | Không giá nào trên trang | Duyệt giá (việc "Duyệt giá" trong `README.md`) |
-| Ảnh thật | Sáu ảnh minh họa (AI, có nhãn) ở trang chủ và trang Thực đơn; khung đồ họa ở trang Đến Beeftown | Brief chụp mục 8 |
+| Ảnh thật | Sáu ảnh minh họa (AI, có nhãn) ở trang chủ và trang Thực đơn; 26 ảnh món của cuốn menu bản sáng (minh họa, hiện khi món được công bố); khung đồ họa ở trang Đến Beeftown | Brief chụp mục 8 |
+| Ảnh ba ly signature và hai món tartare | Gắn nhãn "Ảnh minh họa": menu chuẩn 29/09 gọi là "ảnh đã duyệt" nhưng chưa rõ ảnh chụp thật hay ảnh dựng | Khánh xác nhận; ảnh chụp thật thì đổi `minhHoa: false` trong `src/lib/anh.ts`, sửa nguồn trong `danh-sach.json` và danh sách chép tay của `crm/test/test-cong-khai-anh.mjs` |
 | Phông display | Montserrat | File phông + giấy phép web (mục 3) |
 | "Floor 3" trong tiếng Anh; nút thang máy | Trang tiếng Anh ghi "Floor 3", tiếng Hàn "3층". Khánh xác nhận ngày 11/10/2026 địa điểm có thang máy; nút thang máy ghi số mấy cho tầng của quán thì chưa biết, nên trang không ghi số nút | Xác nhận cách gọi thống nhất với biển chỉ dẫn và nút bấm trong thang máy |
 | Câu luật rượu | "Beeftown không phục vụ đồ uống có cồn cho người dưới 18 tuổi." — chỉ hiện khi đồ uống có cồn được bật | Xác nhận câu chữ |
@@ -390,7 +439,7 @@ Nguyên tắc: logo vector gốc; chất liệu PDF (vân mỡ, rosemary, tem tr
 
 ### Phần chỉ là minh họa
 
-Sáu ảnh tạo bằng AI đang ở trang chủ và trang Thực đơn (mục 7) — luôn có dòng "Ảnh minh họa", không bao giờ dùng cho quầy, khay, không gian, lối vào, thang máy hay mặt người. Món phụ và bàn tay trong hai ảnh bữa ăn là hình minh họa, không phải lời hứa của quán. Hình nét trong khung ảnh là đồ họa, không phải sơ đồ thật của quán.
+Sáu ảnh tạo bằng AI đang ở trang chủ và trang Thực đơn, và 26 ảnh món của cuốn menu bản sáng (mục 7) — luôn có dòng "Ảnh minh họa", không bao giờ dùng cho quầy, khay, không gian, lối vào, thang máy hay mặt người. Món phụ và bàn tay trong hai ảnh bữa ăn là hình minh họa, không phải lời hứa của quán. Hình nét trong khung ảnh là đồ họa, không phải sơ đồ thật của quán.
 
 ### Tài sản cần thay
 
