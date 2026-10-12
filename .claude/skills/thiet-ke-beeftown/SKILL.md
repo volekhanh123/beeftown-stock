@@ -281,12 +281,11 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
   là tham chiếu** — không đưa lên trang.
 - Manifest từng tài sản (nguồn, chỗ dùng, trạng thái, điều kiện thay) và brief chụp ảnh:
   `web/THIET-KE.md`, mục 7 – 8.
-- Sáu tài liệu thiết kế ở gốc repo (`Beeftown_Bo_Nhan_Dien_So.html`,
-  `Beeftown_Logo_Suite_and_Directions.html`, `Beeftown_Instore_Art.html`, `Beeftown_CRM_Design.html`,
-  `Beeftown_Dashboard.html`, `Beeftown_Concept_Board_v1.svg`) và bản nháp `Beeftown_Website/index.html`
-  làm **trước** brief 06/10/2026: phông Baloo / Anton, bảng màu khác, "Thịt chuẩn · Giá thật", phòng
-  riêng, giá — **đã cũ, không chép**. (`Beeftown_Can_TMA.html` là công cụ cân, không phải tài liệu
-  thiết kế.) Phần còn dùng được (kích thước mạng xã hội, luật đặt logo) và cỡ ấn phẩm:
+- Hai tài liệu thiết kế còn ở gốc repo (`Beeftown_Bo_Nhan_Dien_So.html`, `Beeftown_CRM_Design.html`),
+  cùng bốn tài liệu và bản nháp website đã lưu trữ 12/10/2026 (Logo Suite, Instore Art, Dashboard,
+  Concept Board, bản nháp website — [commit 9443cc2](https://github.com/volekhanh123/beeftown-stock/tree/9443cc2cabb71b792772b1a52d7c134edab456cc)), làm **trước** brief 06/10/2026: phông
+  Baloo / Anton, bảng màu khác, "Thịt chuẩn · Giá thật", phòng riêng, giá — **đã cũ, không chép**.
+  Phần còn dùng được (kích thước mạng xã hội, luật đặt logo) và cỡ ấn phẩm:
   [tham-khao/an-pham.md](tham-khao/an-pham.md).
 
 ## Câu chữ
@@ -340,7 +339,7 @@ có khi script đã chạy).
 ```bash
 cd crm && npm test                                     # gồm quét chữ dính, chữ cấm, giao diện, tiếng Anh
 node test/dinh-chu.mjs ../web/src/components/<file>.astro   # chữ dính của một component
-cd ../web && npx astro check && npm run quet && npm run thu-trinh-duyet
+cd ../web && npx astro check && npm run quet && npm run thu-trinh-duyet -- --khong-build   # quet vừa build (không database)
 npm run thu-day-du -- --chup                           # ảnh chụp 360 / 390 / 768 / 1024 / 1440 × vi / en / ko
 ```
 

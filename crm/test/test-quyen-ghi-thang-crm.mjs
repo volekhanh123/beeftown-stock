@@ -275,6 +275,8 @@ await nhom('8 · CỔNG — mọi hàm definer authenticated gọi được ph�
     ghi_luot_ghe: 'tu_kiem_vai', tim_hoac_tao_khach: 'tu_kiem_vai', xep_hang_gui_tin: 'tu_kiem_vai',
     don_dep_ho_so_het_han: 'tu_kiem_vai', don_dep_su_kien_web: 'tu_kiem_vai', don_dep_phieu_tai_len: 'tu_kiem_vai',
     tao_tin_tuyen_dung_mau: 'tu_kiem_vai', phieu_do_launch: 'tu_kiem_vai', thong_ke_tuyen_dung: 'tu_kiem_vai',
+    // 0074 — xóa file CV rồi mới ẩn danh, quét CV mồ côi (từ chối từng vai: test-tuyen-dung-xoa-cv.mjs nhóm 2, 3, 5).
+    ho_so_cv_het_han: 'tu_kiem_vai', an_danh_ho_so_het_han: 'tu_kiem_vai', ho_so_thu_muc_cv_mo_coi: 'tu_kiem_vai',
     suc_khoe_he_thong: 'tu_kiem_vai', suc_khoe_sao_luu: 'tu_kiem_vai',
     // Chỉ đọc thứ đã công khai cho anon (cong_tac_bat: công tắc đã công bố; lịch trống: như lich_trong_theo_ma).
     cong_tac_bat: 'cong_khai', khung_gio_trong_ngay: 'cong_khai', so_ban_con_trong: 'cong_khai',

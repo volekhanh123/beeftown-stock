@@ -26,6 +26,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0   # cần main và mọi nhánh khác để so số
+          filter: blob:none   # so số chỉ cần danh sách file (git ls-tree), không cần nội dung mọi nhánh
       - uses: actions/setup-node@v5
         with:
           node-version-file: web/.node-version

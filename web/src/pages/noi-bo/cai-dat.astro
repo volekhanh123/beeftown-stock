@@ -121,8 +121,8 @@ const t = dichNB(nn, {
   donDL:        { vi: 'Dọn dữ liệu', en: 'Data clean-up' },
   donPhu1:      { vi: 'Ba việc này ', en: 'These three jobs ' },
   donPhu2:      { vi: 'cố ý không chạy tự động', en: 'deliberately do not run automatically' },
-  donPhu3:      { vi: ' — một công việc chạy ngầm âm thầm hủy dữ liệu cá nhân thì nên do người bấm. Nhưng trước đây không có nút nào, nên trên thực tế chúng chưa bao giờ chạy.',
-                  en: ' — a background job that silently destroys personal data should be started by a person. But there used to be no button, so in practice they never ran.' },
+  donPhu3:      { vi: ' — một công việc chạy ngầm âm thầm hủy dữ liệu cá nhân thì nên do người bấm. Đèn "Dọn dữ liệu cá nhân" ở trang Tổng quan đổi màu khi tới lúc bấm: vàng là nên bấm trong tuần này, đỏ là hồ sơ đã quá hạn lưu hơn 7 ngày.',
+                  en: ' — a background job that silently destroys personal data should be started by a person. The "Personal data clean-up" light on the Overview page changes colour when it is time to press: yellow means press this week, red means applications have been past their retention period for over 7 days.' },
   chiChuChay:   { vi: 'Chỉ chủ nhà hàng chạy được việc này.', en: 'Only the owner can run this job.' },
   chayNgay:     { vi: 'Chạy ngay', en: 'Run now' },
   supabase:     { vi: 'Vẫn phải làm trong Supabase', en: 'Still done in Supabase' },
@@ -157,7 +157,7 @@ if (Astro.request.method === 'POST') {
       else if (viec === 'ngung')       bao = await doiTrangThaiBan(client, String(form.get('id')), false, nn);
       else if (viec === 'dung_lai')    bao = await doiTrangThaiBan(client, String(form.get('id')), true, nn);
       else if (viec === 'xoa')         bao = await xoaBan(client, String(form.get('id')), nn);
-      else if (viec === 'don')         bao = await chayViecDon(client, String(form.get('ham')), nn);
+      else if (viec === 'don')         bao = await chayViecDon(client, String(form.get('ham')), nn, laChu);
       else                             bao = { ok: false, cau: t.viecSai };
     } catch (e) {
       bao = { ok: false, cau: e instanceof Error ? dichCau(nn, e.message) : t.khongLam };

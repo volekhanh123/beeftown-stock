@@ -147,7 +147,7 @@ export function chuanHoaThan(sql) {
 const gonKhoangTrang = s => String(s ?? '').replace(/\s+/g, ' ').trim();
 
 // ---------------------------------------------------------------------------
-// CÂU HỎI CATALOG — chạy y hệt trên mẫu (PGlite, Postgres 16) và database đích (Supabase, Postgres 17).
+// CÂU HỎI CATALOG — chạy y hệt trên mẫu (PGlite) và database đích (Supabase) — cả hai Postgres 17 (test-quy-trinh.mjs mục 1).
 // Mỗi câu trả về (khoa, gia_tri, cha). `cha` = "<loai>:<khoa>" của đối tượng chứa nó (bảng, hàm).
 // search_path rỗng: mọi tên trong định nghĩa Postgres tự sinh đều kèm schema, hai bên viết như nhau.
 // ---------------------------------------------------------------------------
