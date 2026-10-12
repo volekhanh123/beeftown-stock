@@ -1,5 +1,5 @@
 /**
- * BEEFTOWN — HỒ SƠ ỨNG TUYỂN KHÔNG CÓ SỐ ĐIỆN THOẠI (0080)
+ * BEEFTOWN — HỒ SƠ ỨNG TUYỂN KHÔNG CÓ SỐ ĐIỆN THOẠI (0084)
  * =========================================================
  *
  *     node test/test-tuyen-dung-sdt-rong.mjs
@@ -17,9 +17,9 @@
  * trả null thì Postgres tính là đạt. Hồ sơ được lưu với sdt = null — không liên lạc được ứng viên, và chỉ
  * mục chống nộp trùng (vi_tri_id, sdt, ngay_nop) không chặn được hai dòng null.
  *
- * SỬA (0080)
+ * SỬA (0084 — trước đây đánh số 0080; chạy sau 0081_ho_so_gui_lai, cũng viết lại hàm này)
  *
- *   · nop_ho_so_ung_tuyen: thân 0026 NGUYÊN VĂN, chỉ đổi điều kiện thành
+ *   · nop_ho_so_ung_tuyen: thân 0081 NGUYÊN VĂN, chỉ đổi điều kiện thành
  *     "if v_sdt is null or not sdt_hop_le(v_sdt)" — đúng mẫu tao_dat_ban / tim_hoac_tao_khach đang dùng.
  *   · Ràng buộc mới ho_so_sdt_bat_buoc check (da_an_danh or sdt is not null): đường nào khác ghi hồ sơ
  *     (sửa thẳng, hàm sau này) cũng không để lọt sdt rỗng. ho_so_sdt_hop_le giữ nguyên.
@@ -30,7 +30,7 @@
  *   3  ràng buộc mới: không ghi thẳng / sửa được hồ sơ chưa ẩn danh mà sdt rỗng; ẩn danh vẫn chạy
  *   4  quyền: hàm vẫn security definer + search_path, anon vẫn gọi được, anon vẫn không đọc được hồ sơ
  *   5  câu báo trên trang vi / en / ko khớp đúng câu database trả
- *   6  rà mã: 0080 chép nguyên văn bản trước (0026) trừ đúng một dòng; không hàm nào trong database còn
+ *   6  rà mã: 0084 chép nguyên văn bản trước (0081) trừ đúng một dòng; không hàm nào trong database còn
  *      phủ định sdt_hop_le(x) ("not …", "… is false") mà thiếu "x is null or"
  */
 
@@ -177,7 +177,7 @@ await nhom('5 · CÂU BÁO TRÊN TRANG vi / en / ko', async () => {
 });
 
 // ===========================================================================
-await nhom('6 · RÀ MÃ — 0080 chép nguyên văn bản trước; không hàm nào còn mẫu thiếu "is null"', async () => {
+await nhom('6 · RÀ MÃ — 0084 chép nguyên văn bản trước; không hàm nào còn mẫu thiếu "is null"', async () => {
   /** Nguyên văn một hàm: từ "create or replace function <ten>(" tới dòng "$$;" đầu tiên sau đó. */
   const ham = (s, ten) => {
     const i = s.indexOf(`create or replace function ${ten}(`);
@@ -185,7 +185,7 @@ await nhom('6 · RÀ MÃ — 0080 chép nguyên văn bản trước; không hàm
     return j < 0 ? '' : s.slice(i, j + 4);
   };
   // Migration này tìm theo tên (đánh lại số vẫn đúng); bản trước = migration gần nhất TRƯỚC nó có viết hàm này
-  // (hôm nay là 0026). Nhánh khác viết lại hàm và gộp trước thì đặt 0080 lên thân của nhánh đó — phép thử theo.
+  // (hôm nay là 0081). Nhánh khác viết lại hàm và gộp trước thì đặt migration này lên thân của nhánh đó — phép thử theo.
   const tepMig = readdirSync(MIG).filter(f => /^\d{4}_.+\.sql$/.test(f)).sort();
   const day = tepMig.findIndex(f => f.endsWith('_ho_so_sdt_bat_buoc.sql'));
   const docMig = f => readFileSync(join(MIG, f), 'utf8');

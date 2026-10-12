@@ -1,7 +1,9 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0080 · HỒ SƠ ỨNG TUYỂN PHẢI CÓ SỐ ĐIỆN THOẠI
+-- BEEFTOWN CRM — 0084 · HỒ SƠ ỨNG TUYỂN PHẢI CÓ SỐ ĐIỆN THOẠI
 -- =============================================================================
--- (0075–0079 đã có chủ ở các nhánh làm song song — số lấy bằng npm run so-migration.)
+-- (Trước đây đánh số 0080. Main nhận 0081_ho_so_gui_lai — viết lại cùng hàm — nên
+-- file này phải chạy SAU nó; 0079, 0080, 0082, 0083 đã có chủ ở các nhánh làm song
+-- song. Số lấy bằng npm run so-migration, đổi 12/10/2026.)
 --
 -- LỖI (có từ 0012, phát hiện khi làm PR #74, tái hiện trên PGlite)
 --
@@ -24,7 +26,8 @@
 --
 -- ĐỔI GÌ
 --
---   1. nop_ho_so_ung_tuyen — thân 0026 NGUYÊN VĂN, chỉ đổi điều kiện thành
+--   1. nop_ho_so_ung_tuyen — thân 0081 NGUYÊN VĂN (0081 làm cho lần gửi lại nhận
+--      đúng mã cũ, viết từ thân 0026), chỉ đổi điều kiện thành
 --      "if v_sdt is null or not sdt_hop_le(v_sdt) then": đúng mẫu tao_dat_ban
 --      (0002, 0045, 0069) và tim_hoac_tao_khach (0002) đang dùng. Câu
 --      raise exception giữ nguyên chữ — trang vi / en / ko (web/src/lib/chu.ts)
@@ -36,7 +39,7 @@
 --      có số, và số đúng dạng. Hồ sơ đã ẩn danh (0012, 0074) vẫn sdt = null.
 --
 -- Rà các hàm còn lại (grep "not sdt_hop_le" trên mọi migration): chỉ
--- nop_ho_so_ung_tuyen (0012, 0026) thiếu "is null". Kiểm thử đọc định nghĩa
+-- nop_ho_so_ung_tuyen (0012, 0026, 0081) thiếu "is null". Kiểm thử đọc định nghĩa
 -- ĐANG CHẠY của mọi hàm trong database, nên nhánh nào viết lại hàm này từ thân
 -- cũ sẽ đỏ: crm/test/test-tuyen-dung-sdt-rong.mjs.
 --
@@ -55,7 +58,7 @@
 
 
 -- =============================================================================
--- 1 · NỘP HỒ SƠ — thân 0026, chỉ thêm "v_sdt is null or" vào điều kiện số điện thoại
+-- 1 · NỘP HỒ SƠ — thân 0081, chỉ thêm "v_sdt is null or" vào điều kiện số điện thoại
 -- =============================================================================
 create or replace function nop_ho_so_ung_tuyen(
   p_vi_tri_ma   text,
@@ -87,6 +90,7 @@ declare
   v_phieu  phieu_tai_len;
   v_ma     text;
   v_duong_dan text;
+  v_cu     ho_so_ung_tuyen;
   i        int;
 begin
   -- Honeypot và thời gian điền form: bot trượt cả hai. Câu báo lỗi CỐ Ý
@@ -102,15 +106,7 @@ begin
       using errcode = 'check_violation';
   end if;
 
-  if p_ip is not null then
-    select count(*) into v_dem from ho_so_ung_tuyen
-    where ip = p_ip and created_at > now() - interval '1 hour';
-    if v_dem >= 5 then
-      raise exception 'Bạn đã nộp quá nhiều hồ sơ, vui lòng liên hệ trực tiếp với nhà hàng'
-        using errcode = 'check_violation';
-    end if;
-  end if;
-
+  -- 0081: dời lên từ sau bước đếm IP.
   select * into v_vi_tri from vi_tri_tuyen_dung
   where ma = p_vi_tri_ma and trang_thai = 'da_cong_bo';
   if not found then
@@ -118,13 +114,8 @@ begin
       using errcode = 'foreign_key_violation';
   end if;
 
-  if v_vi_tri.han_nop is not null and v_vi_tri.han_nop < hom_nay_vn() then
-    raise exception 'Vị trí này đã hết hạn nhận hồ sơ'
-      using errcode = 'check_violation';
-  end if;
-
   -- 0026: trường tin này không hỏi thì không lưu, dù có gửi lên. Form chỉ ẩn
-  -- bằng CSS, nên trình duyệt cũ vẫn thấy và vẫn gửi.
+  -- bằng CSS, nên trình duyệt cũ vẫn thấy và vẫn gửi. (0081: dời lên theo.)
   if not v_vi_tri.hoi_email       then p_email       := null; end if;
   if not v_vi_tri.hoi_nam_sinh    then p_nam_sinh    := null; end if;
   if not v_vi_tri.hoi_ca_lam      then p_ca_lam_duoc := null; end if;
@@ -136,12 +127,56 @@ begin
     p_ten_tep    := null;
   end if;
 
+  v_sdt := chuan_hoa_sdt(p_sdt);
+
+  -- ---- 0081 · Gửi lại y hệt → trả lại hồ sơ cũ ------------------------------
+  if not co_phien_dang_nhap() and p_dong_y then
+    -- Hai lượt gửi chồng nhau của cùng một người xếp hàng ở đây; lượt sau thấy
+    -- hồ sơ lượt trước vừa ghi. Khóa nhả khi giao dịch xong.
+    perform pg_advisory_xact_lock(hashtextextended(v_vi_tri.id::text || '|' || coalesce(v_sdt, ''), 0));
+
+    select h.* into v_cu
+    from ho_so_ung_tuyen h
+    where h.vi_tri_id = v_vi_tri.id
+      and h.sdt = v_sdt
+      and not h.da_an_danh
+      and (h.ngay_nop = hom_nay_vn() or h.created_at > now() - interval '10 minutes')
+      and h.ho_ten = btrim(p_ho_ten)
+      and h.email is not distinct from nullif(btrim(p_email), '')
+      and h.nam_sinh is not distinct from p_nam_sinh
+      and h.gioi_thieu is not distinct from p_gioi_thieu
+      and h.kinh_nghiem is not distinct from p_kinh_nghiem
+      and h.ca_lam_duoc is not distinct from p_ca_lam_duoc
+      -- Có kèm CV thì chỉ khớp hồ sơ đã có CV — không gắn file vào hồ sơ cũ (xem đầu file).
+      and (p_ma_tai_len is null or h.duong_dan_cv is not null)
+    order by h.created_at desc
+    limit 1;
+
+    if found then
+      return v_cu.ma_ho_so;
+    end if;
+  end if;
+  -- ---- Hết phần 0081 — từ đây là nguyên văn 0026 (trừ hai bước đã dời lên) ----
+
+  if p_ip is not null then
+    select count(*) into v_dem from ho_so_ung_tuyen
+    where ip = p_ip and created_at > now() - interval '1 hour';
+    if v_dem >= 5 then
+      raise exception 'Bạn đã nộp quá nhiều hồ sơ, vui lòng liên hệ trực tiếp với nhà hàng'
+        using errcode = 'check_violation';
+    end if;
+  end if;
+
+  if v_vi_tri.han_nop is not null and v_vi_tri.han_nop < hom_nay_vn() then
+    raise exception 'Vị trí này đã hết hạn nhận hồ sơ'
+      using errcode = 'check_violation';
+  end if;
+
   if not p_dong_y then
     raise exception 'Chưa đồng ý cho Beeftown xử lý thông tin ứng tuyển'
       using errcode = 'check_violation';
   end if;
 
-  v_sdt := chuan_hoa_sdt(p_sdt);
   if v_sdt is null or not sdt_hop_le(v_sdt) then
     raise exception 'Số điện thoại không hợp lệ: %', p_sdt
       using errcode = 'check_violation';
@@ -208,7 +243,7 @@ alter table ho_so_ung_tuyen
   add constraint ho_so_sdt_bat_buoc check (da_an_danh or sdt is not null);
 
 comment on constraint ho_so_sdt_bat_buoc on ho_so_ung_tuyen is
-  'Hồ sơ chưa ẩn danh phải có số điện thoại (0080). ho_so_sdt_hop_le kiểm dạng số nhưng cho qua null.';
+  'Hồ sơ chưa ẩn danh phải có số điện thoại (0084). ho_so_sdt_hop_le kiểm dạng số nhưng cho qua null.';
 
 
 -- =============================================================================

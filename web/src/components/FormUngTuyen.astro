@@ -11,8 +11,12 @@
  * để người ta điền rồi báo lỗi — tệ hơn hẳn việc nói thẳng "chưa mở, nhắn
  * Facebook nhé".
  *
- * KHÔNG CÓ JAVASCRIPT. Ứng viên phục vụ và phụ bếp dùng điện thoại rẻ, mạng
- * 4G chập chờn. Form HTML thuần gửi được ngay khi phần HTML tải xong.
+ * KHÔNG CẦN JAVASCRIPT ĐỂ GỬI. Ứng viên phục vụ và phụ bếp dùng điện thoại rẻ,
+ * mạng 4G chập chờn. Form HTML thuần gửi được ngay khi phần HTML tải xong.
+ * Script cuối TrangTuyenDung.astro chỉ BỔ TRỢ, cùng khuôn với form hỏi bàn:
+ * chặn bấm đúp ("Đang gửi…"), báo file CV quá 5MB sát ô trước khi gửi, giữ
+ * chữ đã gõ khi máy chủ báo lỗi. Nằm ở trang chứ không ở đây vì nó còn phải
+ * chạy khi form KHÔNG được dựng (đã nhận, không chắc — để xóa bản giữ tạm).
  *
  * MỖI TIN HỎI MỘT BỘ TRƯỜNG RIÊNG (0026) — cũng không cần JavaScript. Mỗi
  * <option> mang danh sách trường mà tin đó KHÔNG hỏi; CSS :has() ẩn các ô
@@ -87,6 +91,13 @@ const t = dich(ngonNgu, {
     ko: 'Beeftown이 이 지원서의 정보를 채용 목적으로 제출일로부터 6개월 동안 보관하고 이용하는 데 동의해요.',
   },
   gui:     { vi: 'Gửi hồ sơ', en: 'Send application', ko: '지원서 보내기' },
+  dangGui: { vi: 'Đang gửi…', en: 'Sending…', ko: '보내는 중…' },
+  // Script báo ngay khi chọn file quá 5MB (máy chủ từ chối cả hồ sơ khi thân quá lớn — xu-ly-form.ts).
+  cvQuaLon: {
+    vi: 'File này lớn hơn 5MB. Bạn chọn file nhỏ hơn (ảnh chụp CV cũng được) rồi gửi lại.',
+    en: 'This file is larger than 5MB. Please choose a smaller file (a photo of your CV is fine) and send again.',
+    ko: '이 파일은 5MB보다 커요. 더 작은 파일(이력서 사진도 괜찮아요)을 골라 다시 보내 주세요.',
+  },
   // Cùng một kiểu cho cả hai: tên ô in đậm, phần trong ngoặc là <em> chữ thường màu
   // phụ (giống form hỏi bàn) — "(không bắt buộc)" không đậm hơn "(bắt buộc)".
   batBuoc: { vi: 'bắt buộc', en: 'required', ko: '필수' },
@@ -114,7 +125,7 @@ const t = dich(ngonNgu, {
 ---
 
 {ketQua?.ok ? (
-  <div class="the ut-the ut-da-nhan">
+  <div class="the ut-the ut-da-nhan" data-ket-qua="da-nhan" tabindex="-1">
     <h3 class="ut-tieu-de">{t.daNhan}</h3>
     {ketQua.ma && (
       <p class="ut-ma">{t.maHoSo}<strong>{ketQua.ma}</strong></p>
@@ -127,7 +138,7 @@ const t = dich(ngonNgu, {
     <h3 class="ut-tieu-de">{t.tieuDe}</h3>
 
     {ketQua && !ketQua.ok && (
-      <div class="ut-loi" role="alert">
+      <div class="ut-loi" role="alert" data-ket-qua="loi" tabindex="-1">
         <p><strong>{ketQua.cau}</strong></p>
         {nhanTin && (
           <p class="nho">{t.nhanThang}<a href={nhanTin.url} rel="noopener">{nhanTin.chu}</a></p>
@@ -135,7 +146,8 @@ const t = dich(ngonNgu, {
       </div>
     )}
 
-    <form method="POST" enctype="multipart/form-data" class="form-nop">
+    <form method="POST" enctype="multipart/form-data" class="form-nop"
+          data-dang-gui-chu={t.dangGui} data-loi-cv={t.cvQuaLon}>
       <input type="hidden" name="moc" value={String(moc)} />
       <input type="hidden" name="viec" value="ung_tuyen" />
 
@@ -212,9 +224,11 @@ const t = dich(ngonNgu, {
 
       <label class="o o-cv">
         <span>{t.cv} <em>({t.khongBatBuoc})</em></span>
-        <small>{t.cvPhu}</small>
-        <input type="file" name="cv"
+        <small id="goi-y-cv">{t.cvPhu}</small>
+        <input type="file" name="cv" aria-describedby="goi-y-cv loi-cv"
                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" />
+        {/* span chứ không p: trong <label> chỉ được chữ. Script điền câu và bỏ hidden. */}
+        <span class="loi-o" data-loi="cv" id="loi-cv" hidden></span>
       </label>
 
       <label class="o-chon o-dong-y">
@@ -245,6 +259,9 @@ const t = dich(ngonNgu, {
   }
   .ut-giu-ma { margin: 0; }
   .ut-luu-y { margin: var(--k-4) 0 0; }
+  /* Khung kết quả nhận con trỏ bằng script (tabindex="-1") để trình đọc màn hình đọc ngay;
+     nó không phải thứ bấm được, nên không vẽ vòng focus quanh cả khung (như trang hỏi bàn). */
+  .ut-da-nhan:focus, .ut-loi:focus { outline: none; }
 
   /* Khung lỗi của máy chủ: chữ than trên nền nhuộm đỏ nhạt, vạch đỏ đậm bên trái. */
   .ut-loi {
@@ -298,6 +315,8 @@ const t = dich(ngonNgu, {
   }
   .form-nop :is(input, textarea)::placeholder { color: var(--chu-phu); }
   .form-nop textarea { min-height: 84px; resize: vertical; line-height: 1.55; }
+  /* Câu lỗi sát ô CV (.loi-o của cong-khai.css) nằm trong <label> nên là span — cho nó đứng một dòng. */
+  .form-nop .loi-o:not([hidden]) { display: block; }
 
   /* Ô CV: nút chọn file theo hệ nút phụ (.nut-vien: nền Cream, chữ và viền Beef Red, cao 48px)
      thay cho nút xám mặc định của trình duyệt; chữ "chưa chọn tệp" bên cạnh là chữ phụ. */

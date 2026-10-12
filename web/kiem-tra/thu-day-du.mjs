@@ -45,6 +45,10 @@
  *      #7A7366; nhãn 14–16px đặt trên ô, không placeholder; thẻ form nền kem sau, không
  *      nền trắng; ô giờ đang chọn nền Beef Red chữ Cream; gửi thiếu thì có câu lỗi bằng
  *      chữ màu #890607 và tiêu điểm vào ô sai.
+ *   9. Form nộp hồ sơ (tuyen-dung-mo / -dut / -loi): bấm đúp khi database chậm → nop_ho_so_ung_tuyen
+ *      đúng một lần, nút khóa "Đang gửi…"; mạng đứt → khung "KHÔNG CHẮC", không form, không nút mời
+ *      nộp; database từ chối → câu của database, quay về ?vi_tri=<mã>, chữ đã gõ được điền lại, ô đồng
+ *      ý không tích sẵn; file CV quá 5MB → câu lỗi sát ô, không gửi.
  *
  * Hỏng thì ảnh chụp nằm ở kiem-tra/anh-loi/day-du/ (CI tải lên cùng artifact của
  * trinh-duyet.mjs).
@@ -830,6 +834,168 @@ try {
       }
     }
     await page.setViewportSize({ width: 390, height: 844 });
+    mayGia.datKichBan('day-du');
+  });
+
+  // =========================================================================
+  // Form nộp hồ sơ cùng khuôn với form hỏi bàn (rà soát nợ kỹ thuật 11/10/2026): chặn bấm đúp, lượt gửi
+  // KHÔNG CHẮC không mời gửi lại (không dựng form dưới câu "đừng gửi lại"), database từ chối thì quay về
+  // đúng vị trí đã chọn và điền lại chữ đã gõ, file CV quá 5MB báo sát ô trước khi gửi.
+  await nhom('9 · FORM NỘP HỒ SƠ: BẤM ĐÚP, MẤT MẠNG, DATABASE TỪ CHỐI, CV QUÁ 5MB', async () => {
+    const UNG_VIEN = { ho_ten: 'Ứng Viên Thử', sdt: '0912345680', vi_tri: 'SANH-THU' };
+    const KHOA_UT = 'bt-ung-tuyen';
+    const nutNop = () => page.locator('form.form-nop [type="submit"]').first();
+    async function dienHoSo() {
+      await page.selectOption('form.form-nop select[name="vi_tri"]', UNG_VIEN.vi_tri);
+      await page.fill('form.form-nop [name="ho_ten"]', UNG_VIEN.ho_ten);
+      await page.fill('form.form-nop [name="sdt"]', UNG_VIEN.sdt);
+      await page.locator('form.form-nop input[name="dong_y"]').check({ force: true });
+    }
+    async function moTrang(duong) {
+      await page.goto(goc + duong, { waitUntil: 'load' });
+      await page.evaluate(k => sessionStorage.removeItem(k), KHOA_UT);
+      await page.goto(goc + duong, { waitUntil: 'load' });
+    }
+    async function guiHoSo() {
+      const sau = page.waitForNavigation({ waitUntil: 'load', timeout: 30000 });
+      await nutNop().click();
+      await sau;
+      await page.waitForLoadState('networkidle').catch(() => {});
+      await cho(300);
+    }
+
+    for (const nn of NGON_NGU) {
+      const tuyenDung = duongDanTuongUng('/tuyen-dung', nn);
+
+      // --- Bấm đúp khi database trả lời chậm: đúng một lượt nộp ---------------------------------
+      for (const cach of ['bấm đúp', 'bấm lần hai sau 0,3 giây']) {
+        mayGia.datKichBan('tuyen-dung-mo', { cham: 1500 });
+        await moTrang(tuyenDung);
+        await dienHoSo();
+        await nutNop().scrollIntoViewIfNeeded();
+        const hop = await nutNop().boundingBox();
+        const [x, y] = [hop.x + hop.width / 2, hop.y + hop.height / 2];
+        await page.evaluate(k => {
+          sessionStorage.removeItem(k);
+          document.querySelector('form.form-nop')?.addEventListener('submit', () => {
+            if (sessionStorage.getItem(k)) return;
+            const b = document.querySelector('form.form-nop [type="submit"]');
+            sessionStorage.setItem(k, JSON.stringify(b && { tat: b.disabled, ban: b.getAttribute('aria-busy'), chu: b.textContent.trim() }));
+          });
+        }, KHOA_NUT);
+        // Không có gì chặn lần bấm thứ hai thì trình duyệt hủy lượt chuyển trang đầu (ERR_ABORTED):
+        // bắt lại để phép thử báo đỏ ở các kiểm tra dưới, không làm sập cả lượt chạy.
+        const sau = page.waitForNavigation({ waitUntil: 'load', timeout: 30000 })
+          .catch(() => page.waitForLoadState('load'));
+        if (cach === 'bấm đúp') await page.mouse.dblclick(x, y);
+        else { await page.mouse.click(x, y); await cho(300); await page.mouse.click(x, y); }
+        await sau;
+        await page.waitForLoadState('networkidle').catch(() => {});
+        const nut = await page.evaluate(k => {
+          const v = sessionStorage.getItem(k);
+          sessionStorage.removeItem(k);
+          try { return JSON.parse(v ?? 'null'); } catch { return { loi: v }; }
+        }, KHOA_NUT).catch(e => ({ loi: e.message }));
+        await cho(1000);
+        const dem = mayGia.dem().nop_ho_so_ung_tuyen ?? 0;
+        const chu_ = await chuTrang();
+        const nhan = `${tuyenDung} nộp hồ sơ (${cach})`;
+        const tot = [
+          ok(`${nhan}: đang gửi thì nút bị khóa, aria-busy="true", chữ "${DANG_GUI[nn]}"`,
+             nut?.tat === true && nut?.ban === 'true' && nut?.chu.includes(DANG_GUI[nn]), JSON.stringify(nut)),
+          ok(`${nhan}: nop_ho_so_ung_tuyen được gọi ĐÚNG MỘT lần`, dem === 1, `${dem} lần`),
+          ok(`${nhan}: trang sau có thẻ "đã nhận" kèm mã hồ sơ`,
+             await page.locator('[data-ket-qua="da-nhan"]').count() === 1 && /BT-UV-2610-/.test(chu_) && CHU_DA_NHAN[nn].test(chu_), chu_.slice(0, 200)),
+          ok(`${nhan}: không có chữ "thành công"/"success"/"성공", không chữ cấm`,
+             !CHU_THANH_CONG.test(chu_) && timChuoiCam(chu_).length === 0, chu_.match(CHU_THANH_CONG)?.[0]),
+          ok(`${nhan}: tiêu điểm ở thẻ "đã nhận"; bản giữ tạm bị xóa`,
+             await page.evaluate(() => document.activeElement?.getAttribute('data-ket-qua')) === 'da-nhan'
+               && await page.evaluate(k => sessionStorage.getItem(k), KHOA_UT) === null),
+        ];
+        if (tot.includes(false)) await chupLoi(`ho-so-bam-hai-lan${tuyenDung}-${cach === 'bấm đúp' ? 'dup' : 'cach'}`);
+      }
+
+      // --- Mạng đứt giữa lượt gửi: KHÔNG CHẮC — không dựng lại form, không mời nộp -------------
+      mayGia.datKichBan('tuyen-dung-dut');
+      await moTrang(tuyenDung);
+      await dienHoSo();
+      await guiHoSo();
+      {
+        const chuMain = await chuTrang('main');
+        const nhan = `tuyen-dung-dut ${tuyenDung}`;
+        const tot = [
+          ok(`${nhan}: khung "KHÔNG CHẮC đã ghi" hiện (role="alert", data-ket-qua="khong-chac")`,
+             await page.locator('[role="alert"][data-ket-qua="khong-chac"]').count() === 1),
+          ok(`${nhan}: KHÔNG dựng form nộp hồ sơ dưới câu "đừng gửi lại"`, await page.locator('form.form-nop').count() === 0),
+          ok(`${nhan}: không nút "Nộp hồ sơ" ở đầu trang, không nút "Ứng tuyển vị trí này" trên thẻ`,
+             await page.locator('main a.nut[href="#nop-ho-so"]').count() === 0 && await page.locator('.td-nut-the').count() === 0),
+          ok(`${nhan}: vẫn có nút sang Facebook đã công bố để kiểm tra`,
+             await page.locator(`#nop-ho-so a[href="${LIEN_HE_THU.facebook_url}"]`).count() === 1),
+          ok(`${nhan}: KHÔNG có "đã nhận" / "received" / "접수되었"`, !BAT_KY_DA_NHAN.test(chuMain), chuMain.match(BAT_KY_DA_NHAN)?.[0]),
+          ok(`${nhan}: tiêu điểm ở khung "không chắc"; bản giữ tạm bị xóa (gửi lại không còn là một cú bấm)`,
+             await page.evaluate(() => document.activeElement?.getAttribute('data-ket-qua')) === 'khong-chac'
+               && await page.evaluate(k => sessionStorage.getItem(k), KHOA_UT) === null),
+          ok(`${nhan}: gửi một lần → nop_ho_so_ung_tuyen một lần (không tự gửi lại)`, (mayGia.dem().nop_ho_so_ung_tuyen ?? 0) === 1,
+             `${mayGia.dem().nop_ho_so_ung_tuyen ?? 0} lần`),
+        ];
+        if (tot.includes(false)) await chupLoi(`tuyen-dung-dut${tuyenDung}`);
+      }
+
+      // --- Database từ chối (chưa ghi gì): quay về đúng vị trí, điền lại chữ đã gõ ---------------
+      mayGia.datKichBan('tuyen-dung-loi');
+      await moTrang(tuyenDung);
+      await dienHoSo();
+      await guiHoSo();
+      {
+        const o = await page.evaluate(() => ({
+          vi_tri: document.querySelector('form.form-nop select[name="vi_tri"]')?.value ?? null,
+          ho_ten: document.querySelector('form.form-nop [name="ho_ten"]')?.value ?? null,
+          sdt: document.querySelector('form.form-nop [name="sdt"]')?.value ?? null,
+          dong_y: document.querySelector('form.form-nop input[name="dong_y"]')?.checked ?? null,
+        }));
+        const khung = await chuTrang('[data-ket-qua="loi"]');
+        const cau = nn === 'vi' ? 'Vị trí này đã hết hạn nhận hồ sơ' : cauLoiDatabase('Vị trí này đã hết hạn nhận hồ sơ', nn, '(câu chung)');
+        const nhan = `tuyen-dung-loi ${tuyenDung}`;
+        const tot = [
+          ok(`${nhan}: câu từ chối của database hiện trong khung lỗi, đúng thứ tiếng ("${cau}")`, khung.includes(cau), khung.slice(0, 200)),
+          ok(`${nhan}: URL quay về ?vi_tri=${UNG_VIEN.vi_tri}#nop-ho-so`,
+             new URL(page.url()).searchParams.get('vi_tri') === UNG_VIEN.vi_tri && new URL(page.url()).hash === '#nop-ho-so', page.url()),
+          ok(`${nhan}: vị trí, họ tên, số điện thoại đã chọn / đã gõ được điền lại; ô đồng ý KHÔNG tích sẵn`,
+             o.vi_tri === UNG_VIEN.vi_tri && o.ho_ten === UNG_VIEN.ho_ten && o.sdt === UNG_VIEN.sdt && o.dong_y === false, JSON.stringify(o)),
+          ok(`${nhan}: KHÔNG có "đã nhận"`, !BAT_KY_DA_NHAN.test(await chuTrang('main'))),
+        ];
+        if (tot.includes(false)) await chupLoi(`tuyen-dung-loi${tuyenDung}`);
+      }
+
+      // --- File CV lớn hơn 5MB: báo sát ô, không gửi ------------------------------------------
+      mayGia.datKichBan('tuyen-dung-mo');
+      await moTrang(tuyenDung);
+      await dienHoSo();
+      await page.setInputFiles('form.form-nop input[name="cv"]', {
+        name: 'CV-qua-lon.pdf', mimeType: 'application/pdf', buffer: Buffer.alloc(5 * 1024 * 1024 + 1024, 0x25),
+      });
+      await nutNop().click();
+      await cho(800);
+      {
+        const loiCv = await page.evaluate(() => {
+          const p = document.querySelector('form.form-nop [data-loi="cv"]');
+          const o = document.querySelector('form.form-nop input[name="cv"]');
+          return { hien: !!p && !p.hidden, chu: p?.textContent?.trim() ?? '', mau: p ? getComputedStyle(p).color : '',
+                   sai: o?.getAttribute('aria-invalid'), tieuDiem: document.activeElement?.getAttribute('name') };
+        });
+        const nhan = `CV quá 5MB ${tuyenDung}`;
+        const tot = [
+          ok(`${nhan}: không gửi (nop_ho_so_ung_tuyen 0 lần, vẫn ở trang form)`,
+             (mayGia.dem().nop_ho_so_ung_tuyen ?? 0) === 0 && await page.locator('form.form-nop').count() === 1),
+          ok(`${nhan}: câu lỗi sát ô CV, màu #890607, nói 5MB; ô CV aria-invalid, tiêu điểm vào ô CV`,
+             loiCv.hien && /5MB/.test(loiCv.chu) && loiCv.mau === 'rgb(137, 6, 7)' && loiCv.sai === 'true' && loiCv.tieuDiem === 'cv',
+             JSON.stringify(loiCv)),
+          ok(`${nhan}: nút gửi không bị khóa (gửi được sau khi chọn file khác)`,
+             await nutNop().evaluate(b => !b.disabled && b.getAttribute('aria-busy') !== 'true')),
+        ];
+        if (tot.includes(false)) await chupLoi(`cv-qua-lon${tuyenDung}`);
+      }
+    }
     mayGia.datKichBan('day-du');
   });
 

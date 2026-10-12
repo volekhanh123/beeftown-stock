@@ -101,6 +101,9 @@ giờ "thành công"; mọi trang × ba kịch bản ở 360 và 1440px không t
 đúng 48px, ô nhiều dòng ≥ 48px, chữ 16px, nền Cream, viền 1px `#7A7366`; nhãn 14–16px nằm trên ô, không `placeholder`; thẻ form nền kem
 sau; ô giờ chưa chọn nền Cream, đang chọn nền Beef Red chữ Cream; gửi thiếu thì hai câu lỗi màu
 `#890607`, tiêu điểm vào ô sai đầu tiên. Kịch bản
+`tuyen-dung-mo` / `tuyen-dung-dut` / `tuyen-dung-loi` (nhóm 9): form nộp hồ sơ bấm đúp chỉ gửi một
+hồ sơ; mạng đứt thì khung "không chắc", không dựng form, không nút mời nộp; database từ chối thì quay về
+`?vi_tri=` và điền lại chữ đã gõ, ô đồng ý không tích sẵn; file CV quá 5MB báo sát ô, không gửi. Kịch bản
 `dia-chi-cong-bo`: địa chỉ đã công bố trong `/noi-bo` tới được màn đầu, khối địa chỉ, chân trang, menu
 gọn và JSON-LD của cả ba thứ tiếng — không chỗ nào còn in bản trong mã; màn đầu bỏ vế phường.
 
