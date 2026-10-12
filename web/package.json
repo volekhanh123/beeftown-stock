@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Website Beeftown — trang công khai, cổng tuyển dụng, giao diện nội bộ",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.18"
   },
   "scripts": {
     "dev": "astro dev",

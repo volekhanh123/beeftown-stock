@@ -30,8 +30,8 @@ const git = args => execFileSync('git', args, { cwd: GOC, encoding: 'utf8' });
 
 /** Hàm có từ trước quy tắc 1 mà chưa file test nào nhắc tên. CHỈ ĐƯỢC XOÁ BỚT, không thêm. */
 const CHUA_CO_TEST = [
-  'chuan_ban_dich', 'don_dep_phieu_tai_len', 'ghi_so_ban_dich', 'khach_hang_chuan_hoa_sdt',
-  'khung_gio_trong_ngay', 'la_chu_so_huu', 'la_van_ban_tam', 'mon_an_kiem_tra_nhom',
+  'chuan_ban_dich', 'ghi_so_ban_dich', 'khach_hang_chuan_hoa_sdt',
+  'la_van_ban_tam', 'mon_an_kiem_tra_nhom',
   'nhat_ky_ho_so_chan_sua_xoa', 'noi_dung_cong_bo_kiem_tra', 'sdt_hop_le',
   'so_cai_diem_chan_sua_xoa', 'so_cai_diem_tinh_so_du', 'tep_anh_kiem_tra_cong_bo',
   'tu_dong_cap_nhat_updated_at', 'vi_tri_kiem_tra',
@@ -237,6 +237,22 @@ await nhom('4 · CLAUDE.md VÀ MẪU PR CÙNG 9 MỤC "ĐỊNH NGHĨA XONG"', as
     const thieu = MUC_XONG.filter(m => !s.includes('`' + m + '`'));
     ok(`${f} có đủ ${MUC_XONG.length} mục`, thieu.length === 0, `thiếu: ${thieu.join(', ')}`);
   }
+});
+
+// ===========================================================================
+await nhom('5 · crm/README.md: CÂY MIGRATION ĐỦ FILE, MIGRATION THÊM GIÁ TRỊ ENUM CÓ TRONG DANH SÁCH "CHẠY RIÊNG"', async () => {
+  // README gốc (mục "Chạy migration lên production") trỏ sang danh sách này làm nguồn thật. Sót 0029 (thêm
+  // may_chung, may_ipos vào vai_tro): dựng lại một project theo README là hỏng ở 0030 — Postgres không cho dùng
+  // giá trị enum mới trong cùng giao dịch vừa thêm nó.
+  const readme = readFileSync(join(GOC, 'crm', 'README.md'), 'utf8');
+  const thuMucMig = join(GOC, 'crm', 'supabase', 'migrations');
+  const tep = readdirSync(thuMucMig).filter(f => /^\d{4}_.+\.sql$/.test(f)).sort();
+  const thieuCay = tep.filter(f => !readme.includes(f));
+  ok(`Cây thư mục trong crm/README.md nhắc đủ ${tep.length} migration`, thieuCay.length === 0, `thiếu: ${thieuCay.join(', ')}`);
+  const themEnum = tep.filter(f => /alter\s+type\s+\w+\s+add\s+value/i.test(readFileSync(join(thuMucMig, f), 'utf8')));
+  const thieuRieng = themEnum.map(f => f.slice(0, 4)).filter(so => !new RegExp(`\\*\\*\`${so}\` phải chạy RIÊNG`).test(readme));
+  ok(`Mọi migration thêm giá trị enum (${themEnum.map(f => f.slice(0, 4)).join(', ')}) có dòng "\`00NN\` phải chạy RIÊNG"`,
+     themEnum.length > 0 && thieuRieng.length === 0, `thiếu: ${thieuRieng.join(', ')}`);
 });
 
 process.exit(ketThuc('QUY TRÌNH'));

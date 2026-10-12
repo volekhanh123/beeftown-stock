@@ -63,7 +63,7 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
 
   // Không quét — kèm lý do. Chữ Việt ở đây KHÔNG hiện trên màn nội bộ.
   const KHONG_QUET = {
-    'pages/noi-bo/kho/cong-no/misa.csv.ts': 'file cho phần mềm MISA — tên cột phải đúng mẫu tiếng Việt của MISA',
+    // misa.csv.ts KHÔNG còn ở đây: tên cột MISA nằm ở lib/kho/misa.ts; câu lỗi của route có đủ hai thứ tiếng.
     'lib/kho/misa.ts': 'tên cột, mã chứng từ theo mẫu nhập của MISA',
     'lib/kho/may-chung-ma-hoa.ts': 'mã hóa, không có chữ cho người dùng',
   };
@@ -81,7 +81,7 @@ nhom('1 · MÀN KHO KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     ".replace(/[đĐ]/g, 'd')",                                            // can-tma.ts: bỏ dấu cho mã tìm kiếm trên cân
     "TEN_PLU_TRONG = 'KHÔNG DÙNG (PLU trống)'",                          // can-tma.ts: tên dòng trống ghi xuống cân (in trên tem), không phải câu màn hình
     "throw new RangeError(`Số PLU của dòng riêng phải từ 1 đến ${PLU_RIENG_TOI_DA}.`)", // can-tma.ts: lỗi lập trình — goHangConLai kiểm số PLU trước khi gọi
-    ".replace(/đ$|d$|vnd$/i, '')",              // đọc ô tiền: "450.000đ"
+    ".replace(/(đ|d|vnd)$/i, '')",              // đọc ô tiền: "450.000đ", "450.000 đ"
     ".replace(/đ/g, 'd').replace(/Đ/g, 'D')",   // bỏ dấu khi sinh mã / tìm không dấu
     // gói máy & iPOS — câu cho máy / log, không hiện trên màn nào:
     // lib/kho/ipos-dong-bo.ts — câu đăng nhập tài khoản máy (chỉ vào log) và log của cron

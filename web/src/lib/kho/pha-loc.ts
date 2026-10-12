@@ -36,7 +36,7 @@
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { cauLoiKho, docKg, docNgay, docSoNguyen, donViChung, homNayVn, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
+import { cauLoiKho, docKg, docNgay, docSoNguyen, docTungTrang, donViChung, homNayVn, kqHai, laUuid, type HaiThuTieng, type KetQua, type NgonNguNB } from './chung.ts';
 import { apDungTim, type TimDs } from './tim-ds.ts';
 import { maTuO, cauLoiNhan, cauQuaNhieuNhan, cauBoLuot, TOI_DA_MOT_LUOT } from './dem-quay.ts';
 import type { DongTon } from './ton.ts';
@@ -596,13 +596,13 @@ export interface NhanQuet { mat_hang_id: string; thu_tu: number }
 
 export async function docNhanQuet(client: SupabaseClient, id: string): Promise<NhanQuet[]> {
   if (!laUuid(id)) return [];
-  const { data, error } = await client
+  const data = await docTungTrang((tu, den) => client
     .from('kho_phien_pha_quet')
-    .select('mat_hang_id, thu_tu')
+    .select('mat_hang_id, thu_tu', { count: 'exact' })
     .eq('phien_pha_id', id)
-    .limit(5000);
-  if (error) throw error;
-  return (data ?? []).map(q => ({ mat_hang_id: q.mat_hang_id, thu_tu: Number(q.thu_tu) }));
+    .order('thu_tu')
+    .range(tu, den));
+  return data.map(q => ({ mat_hang_id: q.mat_hang_id, thu_tu: Number(q.thu_tu) }));
 }
 
 /** Nơi để sau pha của từng mặt hàng (kho_mat_hang.noi_de_sau_pha, 0033). */

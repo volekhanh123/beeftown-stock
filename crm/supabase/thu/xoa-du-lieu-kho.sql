@@ -14,8 +14,9 @@
 do $$
 declare
   -- Bảng cài đặt gốc: giữ nguyên.
+  -- kho_may_can (0061): máy Beeftown Cân đã đăng ký ở quán — cài đặt, không phải dữ liệu thử.
   v_giu text[] := array['kho_cai_dat', 'kho_vi_tri', 'kho_ly_do', 'kho_may', 'kho_may_nguoi', 'kho_may_nhat_ky',
-                        'kho_nguoi_xem', 'kho_truong_them', 'kho_thiet_lap_bo_qua'];
+                        'kho_may_can', 'kho_nguoi_xem', 'kho_truong_them', 'kho_thiet_lap_bo_qua'];
   v_ds  text;
   v_n   int;
 begin

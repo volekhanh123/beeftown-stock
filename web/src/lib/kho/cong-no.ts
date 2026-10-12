@@ -17,7 +17,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
-  boDau, cauLoiKho, chiaSoDuLonNhat, docKg, docNgay, docSoNguyen, docTien, homNayVn, laUuid, kqHai, nhanKho,
+  boDau, cauLoiKho, chiaSoDuLonNhat, docKg, docNgay, docSoNguyen, docTien, docTungTrang, homNayVn, laUuid, kqHai, nhanKho,
   TEN_LOAI_PHIEU_NHAP_NB, type HaiThuTieng, type KetQua, type NgonNguNB,
 } from './chung.ts';
 import { layTepAnh, taiAnh } from './anh.ts';
@@ -1208,14 +1208,13 @@ export interface DongSoCongNo {
 export async function docCongNoTheoKy(
   client: SupabaseClient, chiNhanhId: string, nccId: string | null, tu: string, den: string,
 ): Promise<DongSoCongNo[]> {
-  const { data, error } = await client.rpc('kho_cong_no_theo_ky', {
+  const data = await docTungTrang((a, z) => client.rpc('kho_cong_no_theo_ky', {
     p_chi_nhanh_id: chiNhanhId,
     p_ncc: nccId,
     p_tu: tu,
     p_den: den,
-  });
-  if (error) throw error;
-  return ((data ?? []) as Dong[]).map(r => ({
+  }, { count: 'exact' }).range(a, z));
+  return (data as Dong[]).map(r => ({
     ...r,
     tang: r.tang === null || r.tang === undefined ? null : so(r.tang),
     giam: r.giam === null || r.giam === undefined ? null : so(r.giam),
@@ -1588,15 +1587,15 @@ export function doiTaiKhoanGanDay(nk: DoiTaiKhoan[], bayGio: number, soNgay = 30
 export async function docDuLieuMisa(
   client: SupabaseClient, chiNhanhId: string, tu: string, den: string, loai: LoaiMisa,
 ): Promise<DongMisa[]> {
-  const { data, error } = await client.rpc('kho_du_lieu_misa', {
+  // Một quý có thể quá 1.000 dòng chứng từ: đọc từng trang, không để file MISA thiếu lặng lẽ.
+  const data = await docTungTrang((a, z) => client.rpc('kho_du_lieu_misa', {
     p_chi_nhanh_id: chiNhanhId,
     p_tu: tu,
     p_den: den,
     p_loai: loai,
-  });
-  if (error) throw error;
+  }, { count: 'exact' }).range(a, z));
   const soHoacNull = (v: unknown) => (v === null || v === undefined ? null : Number(v));
-  return ((data ?? []) as Dong[]).map(r => ({
+  return (data as Dong[]).map(r => ({
     ...r, thu_tu: so(r.thu_tu), so_luong: soHoacNull(r.so_luong), don_gia: soHoacNull(r.don_gia),
     thanh_tien: soHoacNull(r.thanh_tien), thue_suat: soHoacNull(r.thue_suat), tien_thue: soHoacNull(r.tien_thue),
     thieu_ma: !!r.thieu_ma,
