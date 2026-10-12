@@ -14,6 +14,12 @@
  * Mọi quyết định "được gửi không" nằm trong database (duoc_phep_gui, khung giờ,
  * trần tháng — kiểm lại lúc lấy lô). File này chỉ chuyển tin và ghi kết quả.
  *
+ * Đăng nhập máy: dangNhapMay (lib/tai-khoan-may.ts) — mỗi lời gọi Supabase tối đa
+ * HET_GIO_SUPABASE_ZALO_MS. Tin ĐÃ TỚI Zalo mà ghi "da_gui" hỏng hai lần liền:
+ * dừng gửi tin kế tiếp, thử ghi lại cuối lượt TRƯỚC zalo_ket_thuc_luot (hàm đó
+ * trả tin chưa báo kết quả về hàng chờ → khách nhận lần hai). Vẫn hỏng thì
+ * loi_cuoi nói thật "có thể bị gửi lần hai".
+ *
  * BÍ MẬT (bí mật Worker, KHÔNG đặt trong wrangler.toml / .env / repo / log):
  *   ZALO_SECRET_KEY — secret key của App Zalo (làm mới token)
  *   ZALO_KHOA       — khóa mã hóa token trong database (≥ 32 ký tự)
@@ -27,7 +33,9 @@
  * tiếng Việt cho người vận hành (như lib/kho/ipos-dong-bo.ts).
  */
 
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { envNode, envWorker, docChuoi, type Env } from './bien-moi-truong.ts';
+import { dangNhapMay, type KetQuaDangNhapMay } from './tai-khoan-may.ts';
 import {
   ZALO_API, XU_LY_LOI, CAU_GUI, sdtZalo, dungYeuCauGui, dungYeuCauToken, docPhanHoi, docPhanHoiToken,
   xoaBiMatZalo, type PhanHoiGui, type PhanHoiToken, type YeuCau,
@@ -37,7 +45,7 @@ import { danKhoaZalo, giaiMaTokenZalo, khoaZaloHopLe, maHoaTokenZalo } from './z
 // -----------------------------------------------------------------------------
 // BÍ MẬT
 // -----------------------------------------------------------------------------
-export type Env = Record<string, unknown> | undefined;
+export type { Env };
 
 export const TEN_BI_MAT_ZALO = {
   secretKey: 'ZALO_SECRET_KEY', khoa: 'ZALO_KHOA', email: 'ZALO_MAY_EMAIL', matKhau: 'ZALO_MAY_MAT_KHAU',
@@ -49,24 +57,6 @@ export interface BiMatZalo {
   email?: string;
   matKhau?: string;
 }
-
-async function envWorker(): Promise<Env> {
-  try {
-    // @ts-ignore — dự án không cài kiểu của workerd; module này chỉ có trên Worker.
-    const m = await import('cloudflare:workers');
-    return (m as { env?: Record<string, unknown> })?.env;
-  } catch { return undefined; }
-}
-
-function docChuoi(ten: string, ...nguon: Env[]): string | undefined {
-  for (const n of nguon) {
-    const v = n?.[ten];
-    if (typeof v === 'string' && v.trim()) return v.trim();
-  }
-  return undefined;
-}
-
-const envNode = (): Env => (globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env;
 
 /** Đọc bí mật Zalo. Không có → undefined; không bao giờ ném lỗi. */
 export async function layBiMatZalo(env?: Env): Promise<BiMatZalo> {
@@ -106,11 +96,14 @@ export async function maHoaRefreshToken(token: string, env?: Env): Promise<strin
 // -----------------------------------------------------------------------------
 // TÀI KHOẢN MÁY may_zalo
 // -----------------------------------------------------------------------------
-function layBienCong(ten: string, env: Env): string | undefined {
-  const v = (import.meta as { env?: Record<string, unknown> }).env?.[ten];
-  if (typeof v === 'string' && v) return v;
-  return docChuoi(ten, env, envNode());
-}
+/**
+ * Hạn giờ mỗi lời gọi Supabase của máy Zalo (ms). Một lượt dài tối đa ~4 phút (thoiGianToiDaMs);
+ * Supabase treo thì lời gọi hỏng sau chừng này thay vì giữ khóa lượt tới khi Worker bị giết.
+ */
+export const HET_GIO_SUPABASE_ZALO_MS = 20_000;
+
+/** Chờ trước mỗi lần thử ghi lại kết quả cuối lượt (ms) — cho database đang chập chờn thêm thời gian. */
+const CHO_GHI_LAI_MS = [1_000, 3_000] as const;
 
 export interface PhuThuocZalo {
   /** Tạo client Supabase (test thay bằng client giả). */
@@ -123,39 +116,20 @@ export interface PhuThuocZalo {
   gioiHan?: number;
   /** Thời gian tối đa một lượt (ms) trước khi ngừng lấy tin mới. */
   thoiGianToiDaMs?: number;
+  /** fetch đi Supabase của client máy (test: fetch giả treo / lỗi). Mặc định fetch toàn cục. */
+  fetchSupabase?: typeof fetch;
+  /** Hạn giờ mỗi lời gọi Supabase (ms). Mặc định HET_GIO_SUPABASE_ZALO_MS. */
+  hetGioSupabaseMs?: number;
+  /** Chờ ms (test: không chờ thật). */
+  cho?: (ms: number) => Promise<void>;
 }
 
-type KetQuaDangNhap =
-  | { ok: true; client: SupabaseClient; dangXuat: () => Promise<void> }
-  | { ok: false; cau: string };
-
-/** Đăng nhập may_zalo bằng client anon RIÊNG. Dùng xong PHẢI gọi dangXuat(). */
-export async function dangNhapMayZalo(bm: BiMatZalo, env: Env, phuThuoc: PhuThuocZalo = {}): Promise<KetQuaDangNhap> {
-  if (!bm.email || !bm.matKhau) {
-    return { ok: false, cau: `chưa cài ${TEN_BI_MAT_ZALO.email} / ${TEN_BI_MAT_ZALO.matKhau}` };
-  }
-  let client: SupabaseClient;
-  if (phuThuoc.taoClient) client = phuThuoc.taoClient();
-  else {
-    const url = layBienCong('PUBLIC_SUPABASE_URL', env);
-    const anon = layBienCong('PUBLIC_SUPABASE_ANON_KEY', env);
-    if (!url || !anon) return { ok: false, cau: 'chưa nối database' };
-    client = createClient(url, anon, {
-      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-    });
-  }
-  try {
-    const { data, error } = await client.auth.signInWithPassword({ email: bm.email, password: bm.matKhau });
-    if (error || !data?.session) {
-      return { ok: false, cau: `tài khoản máy Zalo không đăng nhập được: ${error?.message ?? 'không có phiên'}` };
-    }
-  } catch (e) {
-    return { ok: false, cau: `tài khoản máy Zalo không đăng nhập được: ${e instanceof Error ? e.message : String(e)}` };
-  }
-  return {
-    ok: true, client,
-    dangXuat: async () => { try { await client.auth.signOut({ scope: 'local' }); } catch { /* bỏ qua */ } },
-  };
+/** Đăng nhập may_zalo (dangNhapMay: client anon RIÊNG, mỗi lời gọi có hạn giờ). Dùng xong PHẢI gọi dangXuat(). */
+export function dangNhapMayZalo(bm: BiMatZalo, env: Env, phuThuoc: PhuThuocZalo = {}): Promise<KetQuaDangNhapMay> {
+  return dangNhapMay({
+    email: bm.email, matKhau: bm.matKhau, tenBiMat: TEN_BI_MAT_ZALO, nhan: 'tài khoản máy Zalo', env,
+    taoClient: phuThuoc.taoClient, fetchGoc: phuThuoc.fetchSupabase, goiMs: phuThuoc.hetGioSupabaseMs ?? HET_GIO_SUPABASE_ZALO_MS,
+  });
 }
 
 // -----------------------------------------------------------------------------
@@ -280,7 +254,35 @@ async function motLuot(
   let loiLuot: string | null = null;
   const lo = Array.isArray(b.lo) ? b.lo : [];
 
+  /**
+   * Tin ĐÃ TỚI Zalo mà chưa ghi được "da_gui" (database lỗi hai lần liền). zalo_ket_thuc_luot trả
+   * mọi tin chưa báo kết quả về hàng chờ → lượt sau gửi khách lần hai. Thử ghi lại cuối lượt, mỗi
+   * lần sau một lúc chờ, TRƯỚC khi kết thúc lượt; gọi lại an toàn (tin đã ở trạng thái cuối → bo_qua).
+   */
+  const chuaGhi: { tin: TinLuot; thamSo: Record<string, unknown> }[] = [];
+  const cho = phuThuoc.cho ?? ((ms: number) => new Promise<void>(xong => setTimeout(xong, ms)));
+  const tenTin = (ds: { tin: TinLuot }[]) => ds.map(x => x.tin.id.slice(0, 8)).join(', ');
+  const ghiLaiCuoiLuot = async () => {
+    for (const ms of CHO_GHI_LAI_MS) {
+      if (!chuaGhi.length) return;
+      await cho(ms);
+      for (const x of [...chuaGhi]) {
+        let loi: string | null;
+        try { loi = (await client.rpc('zalo_ghi_ket_qua', x.thamSo)).error?.message ?? null; }
+        catch (e) { loi = e instanceof Error ? e.message : String(e); }
+        if (loi) continue;
+        chuaGhi.splice(chuaGhi.indexOf(x), 1);
+        ghi(`đã ghi lại được kết quả tin ${x.tin.id.slice(0, 8)}`);
+      }
+    }
+    if (chuaGhi.length) {
+      loiLuot = CAU_GUI.daToiChuaGhi.vi(tenTin(chuaGhi));
+      ghi(loiLuot);
+    }
+  };
+
   const ketThuc = async () => {
+    try { await ghiLaiCuoiLuot(); } catch (e) { ghi(`không ghi lại được kết quả: ${e instanceof Error ? e.message : String(e)}`); }
     const { error } = await client.rpc('zalo_ket_thuc_luot', {
       p_loi: loiLuot ? sach(loiLuot).slice(0, 500) : null, p_quota: tom.quota,
     });
@@ -295,20 +297,28 @@ async function motLuot(
   // Ghi kết quả một tin. Lỗi mạng khi ghi thì thử lại MỘT lần: tin đã tới Zalo
   // mà không ghi được "da_gui" sẽ bị zalo_ket_thuc_luot trả về hàng chờ và gửi
   // lần hai cho khách. Gọi lại an toàn — tin đã ở trạng thái cuối thì bo_qua.
+  // Vẫn hỏng: "da_gui" vào chuaGhi (thử lại cuối lượt), trả false để vòng gửi dừng.
   const ghiKetQua = async (tin: TinLuot, ketQua: 'da_gui' | 'that_bai' | 'bi_tu_choi',
-    o: { maZalo?: string | null; loi?: string | null; thuLaiSau?: number | null; chuaGui?: boolean } = {}) => {
+    o: { maZalo?: string | null; loi?: string | null; thuLaiSau?: number | null; chuaGui?: boolean } = {}): Promise<boolean> => {
     const thamSo = {
       p_id: tin.id, p_ket_qua: ketQua, p_ma_zalo: o.maZalo ?? null,
       p_loi: o.loi ? sach(o.loi).slice(0, 500) : null, p_thu_lai_sau: o.thuLaiSau ?? null,
     };
     let { data, error } = await client.rpc('zalo_ghi_ket_qua', thamSo);
     if (error) ({ data, error } = await client.rpc('zalo_ghi_ket_qua', thamSo));
-    if (error) { ghi(`không ghi được kết quả tin ${tin.id.slice(0, 8)}: ${error.message}`); return; }
+    if (error) {
+      ghi(`không ghi được kết quả tin ${tin.id.slice(0, 8)}: ${error.message}`);
+      if (ketQua !== 'da_gui') return true;
+      chuaGhi.push({ tin, thamSo });
+      tom.da_gui++;               // đã tới Zalo — đếm như đã gửi, dù database chưa ghi
+      return false;
+    }
     if ((data as { ok?: boolean } | null)?.ok === false) ghi(`tin ${tin.id.slice(0, 8)}: ${(data as { loi?: string }).loi ?? 'không ghi được'}`);
     if (o.chuaGui) tom.chua_gui++;
     else if (ketQua === 'da_gui') tom.da_gui++;
     else if (ketQua === 'bi_tu_choi') tom.bi_tu_choi++;
     else tom.that_bai++;
+    return true;
   };
 
   // Không có token dùng được → KHÔNG gửi tin nào của lô, nhưng vẫn báo từng tin
@@ -421,8 +431,15 @@ async function motLuot(
       }
 
       if (ph.ok) {
-        await ghiKetQua(tin, 'da_gui', { maZalo: ph.msgId });
+        const daGhi = await ghiKetQua(tin, 'da_gui', { maZalo: ph.msgId });
         if (ph.quotaConLai !== null) tom.quota = ph.quotaConLai;
+        if (!daGhi) {
+          // Database đang không ghi được: mỗi tin gửi thêm là thêm một tin có thể tới khách
+          // hai lần. Dừng lượt; tin còn lại không báo kết quả → về hàng chờ, lượt sau gửi.
+          loiLuot = CAU_GUI.dungChuaGhi.vi(tin.id.slice(0, 8));
+          tom.chua_gui += lo.length - i - 1;
+          break;
+        }
         continue;
       }
       const xl = XU_LY_LOI[ph.loai];

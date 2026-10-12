@@ -19,9 +19,9 @@ import KyTen from '../../../../../components/kho/KyTen.astro';
 import NutIn from '../../../../../components/kho/NutIn.astro';
 import { moTrangKho, chuyenHuong } from '../../../../../lib/kho/trang.ts';
 import {
-  docTenNcc, docCongNoTheoKy, docKyCongNo, tomTatKy, TEN_LOAI_SO_CONG_NO_NB, type DongSoCongNo,
+  docTenNccTrang, docCongNoTheoKy, docKyCongNo, tomTatKy, TEN_LOAI_SO_CONG_NO_NB, type DongSoCongNo,
 } from '../../../../../lib/kho/cong-no.ts';
-import { cauLoiKho, dinhDangNgay, dinhDangTien, homNayVn, kqHai, nhanKho } from '../../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangNgay, dinhDangTien, homNayVn, nhanKho } from '../../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../../lib/ngon-ngu-noi-bo.ts';
 import { dichCau } from '../../../../../lib/cau-noi-bo.ts';
 
@@ -31,10 +31,10 @@ if (!k.duoc('ke_toan')) return Astro.redirect('/noi-bo/kho', 302);
 if (!k.chiNhanh || !k.daKhoiTao) return Astro.redirect('/noi-bo/kho', 302);
 const nn = k.nn;
 const cn = k.chiNhanh;
-const ncc = await docTenNcc(k.client, Astro.params.id ?? '');
-if (!ncc) {
-  return chuyenHuong(Astro, '/noi-bo/kho/cong-no', kqHai(false, { vi: 'Không tìm thấy nhà cung cấp này.', en: 'This supplier was not found.' }));
-}
+// Không có → "Không tìm thấy"; đọc lỗi → "Không đọc được… Chưa ghi gì".
+const docNcc = await docTenNccTrang(k.client, Astro.params.id ?? '');
+if (!docNcc.ncc) return chuyenHuong(Astro, '/noi-bo/kho/cong-no', docNcc.bao);
+const ncc = docNcc.ncc;
 const homNay = homNayVn();
 const ky = docKyCongNo(Astro.url.searchParams, homNay);
 const t = dichNB(nn, {

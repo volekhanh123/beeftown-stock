@@ -506,13 +506,20 @@ export async function docDsDonDat(
   }));
 }
 
-/** Đơn đang chờ hàng về (đã gửi / nhận một phần) — cho màn nhận hàng. Lỗi → rỗng. */
+/**
+ * Đơn đang chờ hàng về (đã gửi / nhận một phần) — cho màn nhận hàng. Vai không xem được đơn
+ * (database từ chối quyền, 42501) → rỗng: vai đó không nhận theo đơn. Lỗi khác (mạng, hết giờ,
+ * database) → NÉM: "không đọc được" khác "không có đơn chờ" — trang phải nói ra, kẻo thủ kho
+ * nhận hàng không gắn đơn.
+ */
 export async function docDonChoNhan(client: SupabaseClient, chiNhanhId: string): Promise<DonDatTom[]> {
   try {
     return await docDsDonDat(client, chiNhanhId, 'dang_cho',
       { q: '', tu: null, den: null, cuaToi: false, trang: 1 }, { gioiHan: 30 });
-  } catch {
-    return [];
+  } catch (e) {
+    const loi = e as { code?: unknown; message?: unknown } | null;
+    if (loi?.code === '42501' || /permission denied|insufficient_privilege/i.test(String(loi?.message ?? ''))) return [];
+    throw e;
   }
 }
 

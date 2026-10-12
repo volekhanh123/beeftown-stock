@@ -496,6 +496,42 @@ await nhom('9 · NGƯỜI GỬI KHÔNG BAO GIỜ NÉM LỖI', async () => {
 });
 
 // ===========================================================================
+await nhom('9b · TIN ĐÃ TỚI ZALO MÀ GHI "da_gui" HỎNG: DỪNG GỬI TIẾP, THỬ GHI LẠI CUỐI LƯỢT', async () => {
+  // Rà soát 11/10/2026: zalo_ghi_ket_qua hỏng (mạng, hết giờ) hai lần liền → tin bị zalo_ket_thuc_luot
+  // trả về hàng chờ và gửi khách lần hai. Lần chờ cuối lượt cho database thêm cơ hội; database đang hỏng
+  // thì không gửi thêm tin nào (mỗi tin là thêm một tin có thể bị gửi đôi).
+  const cho = [];
+  const choGia = async ms => { cho.push(ms); };
+  const g = dungGia({ batDau: await luot([tin('k1'), tin('k2'), tin('k3')]), rpcLoi: { zalo_ghi_ket_qua: 2 } });
+  const log = await chay(g, ENV, { cho: choGia });
+  const ghiK1 = g.rpc('zalo_ghi_ket_qua').filter(s => s.ts.p_id === 'k1');
+  ok('Ghi da_gui hỏng hai lần → dừng: không gửi k2, k3', g.fetch().length === 1 && g.rpc('zalo_ghi_ket_qua').every(s => s.ts.p_id === 'k1'),
+     g.su.map(s => s.ten ?? s.loai).join());
+  ok('… thử ghi lại k1 lần ba (đúng tham số da_gui, mã Zalo) TRƯỚC zalo_ket_thuc_luot, sau một lần chờ',
+     ghiK1.length === 3 && ghiK1.every(s => s.ts.p_ket_qua === 'da_gui' && s.ts.p_ma_zalo === 'msg0')
+     && g.su.findIndex(s => s.ten === 'zalo_ket_thuc_luot') > g.su.lastIndexOf(ghiK1[2]) && cho.length >= 1 && cho.every(ms => ms > 0),
+     `${g.su.map(s => s.ten ?? s.loai).join()} · chờ ${cho.join()}`);
+  ok('… log: lúc hỏng nói "không ghi được kết quả", cuối lượt nói đã ghi lại được', /không ghi được kết quả tin k1/.test(log.join())
+     && /đã ghi lại được kết quả tin k1/.test(log.join()), log.join(' | '));
+  ok('… tóm tắt: đã gửi 1, chưa gửi 2 (k2, k3 về hàng chờ, chưa tới Zalo)', /đã gửi 1, .*chưa gửi 2/.test(log.join()), log.join(' | '));
+  ok('… lỗi lượt (loi_cuoi trên bảng sức khỏe) nói lý do dừng', /dừng gửi/.test(g.rpc('zalo_ket_thuc_luot')[0]?.ts.p_loi ?? ''),
+     g.rpc('zalo_ket_thuc_luot')[0]?.ts.p_loi);
+
+  const hong = dungGia({ batDau: await luot([tin('m1'), tin('m2')]), rpcLoi: { zalo_ghi_ket_qua: 99 } });
+  const logHong = await chay(hong, ENV, { cho: choGia });
+  ok('Database hỏng mãi → thử ghi lại có giới hạn, rồi vẫn kết thúc lượt', hong.rpc('zalo_ghi_ket_qua').length <= 5
+     && hong.rpc('zalo_ket_thuc_luot').length === 1 && hong.fetch().length === 1, hong.su.map(s => s.ten ?? s.loai).join());
+  ok('… log và loi_cuoi nói thật: tin m1 đã tới Zalo nhưng chưa ghi được, có thể bị gửi lần hai',
+     /m1 đã tới Zalo nhưng chưa ghi được/.test(logHong.join()) && /có thể bị gửi lần hai/.test(hong.rpc('zalo_ket_thuc_luot')[0]?.ts.p_loi ?? ''),
+     `${logHong.join(' | ')} · ${hong.rpc('zalo_ket_thuc_luot')[0]?.ts.p_loi}`);
+
+  // Ghi "that_bai" / "bi_tu_choi" hỏng thì KHÔNG dừng: tin đó chưa tới khách, gửi lại không thành tin đôi.
+  const tc = dungGia({ batDau: await luot([tin('n1', { sdt: '123' }), tin('n2')]), rpcLoi: { zalo_ghi_ket_qua: 2 } });
+  await chay(tc, ENV, { cho: choGia });
+  ok('Ghi "bị từ chối" hỏng → vẫn gửi tin sau', tc.fetch().length === 1 && tc.rpc('zalo_ghi_ket_qua').some(s => s.ts.p_id === 'n2' && s.ts.p_ket_qua === 'da_gui'),
+     tc.su.map(s => s.ten ?? s.loai).join());
+});
+
 await nhom('10 · CHẠY THẬT TRÊN PGLITE: ĐẶT BÀN → XÁC NHẬN → ZBS-01 → NGƯỜI GỬI → da_gui', async () => {
   const { db, cnA, nsId, duoi, duoiAnon } = await dungDatabase();
   const UID_MAY_ZALO = '00000000-0000-4000-8000-0000000000e1';
@@ -569,7 +605,10 @@ await nhom('11 · WORKER, TRANG, MENU, KHÔNG BÍ MẬT TRONG REPO', async () =>
   ok('worker.ts: /hook/ipos vẫn chặn trước handle của adapter',
      /async fetch\([\s\S]*startsWith\(DUONG_HOOK\)[\s\S]*xuLyHookIpos\([\s\S]*return handle\(/.test(w));
   const gui = readFileSync(join(GOC, 'web/src/lib/zalo-gui.ts'), 'utf8');
-  ok('zalo-gui.ts: client anon riêng không lưu phiên, không tự làm mới', /persistSession: false, autoRefreshToken: false/.test(gui));
+  // Đăng nhập máy dùng chung (lib/tai-khoan-may.ts, rà soát 11/10/2026): zalo-gui.ts phải đi qua đó.
+  const mayChung = readFileSync(join(GOC, 'web/src/lib/tai-khoan-may.ts'), 'utf8');
+  ok('zalo-gui.ts: client anon riêng không lưu phiên, không tự làm mới (qua dangNhapMay)', /dangNhapMay\(\{/.test(gui)
+     && /persistSession: false, autoRefreshToken: false/.test(mayChung) && /global: \{ fetch: taoFetchCoHan\(/.test(mayChung));
 
   const P = f => readFileSync(join(GOC, 'web/src/pages/noi-bo/zalo', f), 'utf8');
   const cd = P('cai-dat.astro'), idx = P('index.astro'), moi = P('chien-dich/moi.astro');
