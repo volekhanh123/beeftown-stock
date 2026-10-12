@@ -53,8 +53,8 @@ import { chuanTenCan, type HangKho } from './can-tma.ts';
 import { dinhDangKg, type HaiThuTieng } from './chung.ts';
 import type { MatHang } from './danh-muc.ts';
 import { congNgay, gioVnTuMs, homNayVn, laNgayCoThat } from '../gio-vn.ts';
-import { tuTruoc } from '../suc-khoe.ts';
-import { docGiaoOMaCan, docOMa, type CanPhien, type DongOMa, type GiaoOMa } from './o-ma.ts';
+import { khoangThoiGian, tuTruoc } from '../suc-khoe.ts';
+import { docGiaoOMaCan, docOMa, type CanPhien, type DongOMa, type GiaoOMa, type TrenCanO } from './o-ma.ts';
 import { docMaGiam, giaGiam, tenGiam, type DongMaGiam } from './ma-giam.ts';
 import { soTangChu } from './tang.ts';
 import { docLoConTon, type LoTon } from './ton.ts';
@@ -253,7 +253,8 @@ export async function hangChoCan(client: SupabaseClient, chiNhanhId: string, mat
 /** Máy quầy báo quá chừng này phút trước thì "trên cân" có thể đã cũ — nói rõ lần báo cuối. */
 export const PHUT_BAO_CAN_CU = 5;
 
-export type MucCan = 'san_sang' | 'ten_cu' | 'chua_len' | 'khong_biet';
+/** chua_xac_nhan (0066): đúng tên mới, nhưng máy quầy báo dòng đó chưa xác nhận lần gửi gần nhất với cân — không xanh. */
+export type MucCan = 'san_sang' | 'chua_xac_nhan' | 'ten_cu' | 'chua_len' | 'khong_biet';
 export interface DongCanO {
   giao_id: string; ten_hang: string; so_o: number; ma_can: string;
   /** Tên kho muốn in trên tem của ô (tên + số tảng) — đúng tên hangChoCan gửi xuống cân. */
@@ -286,7 +287,9 @@ const gioPhut = (iso: string | null | undefined): string => {
 
 /**
  * Số liệu kho_phien_pha_can → các dòng trang pha lóc hiện (hàm thuần — test bằng node). Không bao giờ nói "Cân sẵn
- * sàng" khi chưa máy quầy nào báo đúng TÊN MỚI (tên + số tảng) cho mã ô: tên cũ trên cân = tem in ra sai tảng.
+ * sàng" khi chưa máy quầy nào báo đúng TÊN MỚI (tên + số tảng) cho mã ô: tên cũ trên cân = tem in ra sai tảng. 0066: máy
+ * quầy báo lần gửi gần nhất cân chưa xác nhận (Beeftown Cân 2.9.2 — chưa đọc lại được cân, đọc lại lệch) thì dòng của máy
+ * đó chưa đủ để nói "sẵn sàng" (rà soát 11/10/2026: 2.9.1 báo tên mới sau một lần gửi cân bỏ qua).
  */
 export function tomTatCanPhien(cp: CanPhien): TomTatCan {
   const bayGio = Date.parse(cp.luc);
@@ -297,7 +300,10 @@ export function tomTatCanPhien(cp: CanPhien): TomTatCan {
     let cau: HaiThuTieng | null = null;
     if (o.dang_giu) {
       const muon = chuanTenCan(tenMuon);
-      const dung = o.tren_can.find(t => chuanTenCan(String(t.ten ?? '')) === muon);
+      const dungTen = (t: TrenCanO) => chuanTenCan(String(t.ten ?? '')) === muon;
+      // Máy đã xác nhận với cân trước; chỉ máy chưa xác nhận có đúng tên thì "chưa chắc".
+      const dung = o.tren_can.find(t => dungTen(t) && t.chua_xac_nhan !== true);
+      const chuaChac = dung ? undefined : o.tren_can.find(dungTen);
       const cu = o.tren_can[0];
       if (dung) {
         muc = 'san_sang';
@@ -310,6 +316,13 @@ export function tomTatCanPhien(cp: CanPhien): TomTatCan {
           ? { vi: ` (máy quầy báo ${tuTruoc(bayGio, bao).vi})`, en: ` (counter computer reported ${tuTruoc(bayGio, bao).en})` } : { vi: '', en: '' };
         cau = { vi: `Cân sẵn sàng: ${tenMuon} = PLU ${dung.plu}${p.vi}${cuQua.vi}`,
                 en: `Scale ready: ${tenMuon} = PLU ${dung.plu}${p.en}${cuQua.en}` };
+      } else if (chuaChac) {
+        muc = 'chua_xac_nhan';
+        const p = chuaChac.plu;
+        cau = {
+          vi: `Chưa chắc cân đã có ${tenMuon} (PLU ${p}): lần gửi gần nhất của Beeftown Cân chưa được cân xác nhận — chưa in tem; chờ Beeftown Cân gửi lại rồi bấm Xem lại cân, hoặc gọi PLU ${p} trên cân thấy đúng tên mới in`,
+          en: `Not sure the scale has ${tenMuon} (PLU ${p}): Beeftown Scale's latest send has not been confirmed by the scale — do not print yet; wait for Beeftown Scale to resend and press Check the scale again, or call PLU ${p} on the scale and print only if the name is right`,
+        };
       } else if (cu) {
         muc = 'ten_cu';
         cau = { vi: `Cân còn tên cũ "${cu.ten}" (PLU ${cu.plu}) — chưa in tem; chờ Beeftown Cân gửi tên ${tenMuon}`,
@@ -348,6 +361,15 @@ export function tomTatCanPhien(cp: CanPhien): TomTatCan {
             en: `Beeftown Scale at the counter sends new names to the scale within about 15–60 seconds${lanCuoi.en} — press Check the scale again to see whether it has them.` }
         : { vi: `Tự gửi đang tắt ở máy quầy${lanCuoi.vi} — quản lý mở Beeftown Cân, bấm Gửi xuống cân (hay bật Tự gửi ở Cài đặt).`,
             en: `Automatic sending is off on the counter computer${lanCuoi.en} — a manager opens Beeftown Scale and presses Send to scale (or turns on automatic sending in Settings).` };
+      // 0066: máy quầy báo lần gửi gần nhất cân chưa xác nhận (chưa đọc lại được cân, đọc lại lệch, xoá qua WiFi hỏng).
+      const chuaXn = cp.may.filter(x => x.chua_xac_nhan === true);
+      if (chuaXn.length) {
+        const tuMs = chuaXn.map(x => msCua(x.chua_xac_nhan_tu)).filter((t): t is number => t !== null);
+        const k = tuMs.length ? khoangThoiGian((bayGio - Math.min(...tuMs)) / 60000) : null;
+        const tu = k ? { vi: ` (đã ${k.vi})`, en: ` (for ${k.en})` } : { vi: '', en: '' };
+        may = { vi: `${may.vi} Lần gửi gần nhất của Beeftown Cân chưa được cân xác nhận${tu.vi} — xem câu báo ở ô Cân của Beeftown Cân (phần mềm của hãng đang mở thì đóng lại).`,
+                en: `${may.en} Beeftown Scale's latest send has not been confirmed by the scale${tu.en} — read the Scale box in Beeftown Scale (close the manufacturer's software if it is open).` };
+      }
     }
   }
 

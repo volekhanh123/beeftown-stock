@@ -2283,9 +2283,12 @@ export class UngDung {
     const fabi = (ma: string) => (ma ? ma.padStart(soChuSo, '0') : '');
     const hang: HangXem[] = [];
     const theoGoi = new Map(goc.plu.map(p => [p.so, p.cachBan === '2']));
+    /** Số PLU kế hoạch theo kho dùng (cả hàng "Thêm" — dòng hiện không kèm số). */
+    const soKeHoach = new Set<number>();
 
     if (dm) {
       const kh = lapKeHoach(goc, dm.matHang, { giuHangNgoaiKho: false, giuGioCan: true, soChuSoMa: soChuSo }, 'vi');
+      for (const d of kh.dong) if (d.so !== null) soKeHoach.add(d.so);
       this.ghiNhanHsdKhop(kh, ngayHsd);   // HSD trên cân đã đúng số tính hôm nay → ghi nhận
       for (const d of kh.dong) {
         const base = { phim: d.so !== null && d.goc ? phim.get(d.so) ?? null : null, maCan: d.maCan, maFabi: fabi(d.maCan) };
@@ -2314,10 +2317,11 @@ export class UngDung {
     }
 
     const trongFile = new Set(goc.plu.map(p => p.so));
-    // 2.9.2: dòng của lần gửi chưa xác nhận (cho-xac-nhan.tsv) mà số PLU không còn trong kế hoạch: có thể đang nằm trên cân.
+    // 2.9.2: dòng của lần gửi chưa xác nhận (cho-xac-nhan.tsv) mà số PLU không thuộc file gốc, tren-can.tsv hay kế hoạch theo kho
+    // (hàng kho còn muốn đã hiện ở dòng "Chưa lên cân" / "Khác kho"): có thể đang nằm trên cân.
     const tren = this.docTrenCan(), cho = this.docChoXacNhan();
-    const soKeHoach = new Set(hang.map(x => x.so).filter((so): so is number => so !== null));
-    for (const [so, h] of cho) if (!tren.has(so) && !soKeHoach.has(so) && !trongFile.has(so)) tren.set(so, h);
+    const choRieng = new Set<number>();
+    for (const [so, h] of cho) if (!tren.has(so) && !soKeHoach.has(so) && !trongFile.has(so)) { tren.set(so, h); choRieng.add(so); }
     for (const h of tren.values()) {
       if (trongFile.has(h.so)) continue;
       if (laPluTrong(h)) {
@@ -2325,10 +2329,13 @@ export class UngDung {
           theoGoi: false, tinhTrang: 'trong', ghiChu: 'PLU trống — đã gỡ hàng bằng ghi đè qua WiFi. Hàng mới sẽ dùng lại số PLU này.' });
         continue;
       }
+      // Chưa đọc được kho: dòng chờ xác nhận không biết kho còn muốn không — "trên cân" (chưa đối chiếu), không "còn nằm lại".
+      const cho1 = choRieng.has(h.so);
       hang.push({ so: h.so, phim: null, maCan: h.ma, maFabi: fabi(h.ma), ten: h.ten, gia: giaTuFile(h.gia, goc.soLeGia),
-        theoGoi: false, tinhTrang: 'con_lai', ghiChu: cho.get(h.so) === h
-          ? 'Đã gửi xuống cân nhưng cân chưa xác nhận, rồi kho bỏ — có thể còn nằm trên cân: gỡ khỏi cân qua WiFi (ghi đè) hoặc nạp USB.'
-          : 'Đã bỏ khỏi danh sách nhưng gửi qua WiFi không xoá được — gỡ khỏi cân qua WiFi (ghi đè) hoặc nạp USB.' });
+        theoGoi: false, tinhTrang: cho1 && !dm ? 'tren_can' : 'con_lai', ghiChu: !cho1
+          ? 'Đã bỏ khỏi danh sách nhưng gửi qua WiFi không xoá được — gỡ khỏi cân qua WiFi (ghi đè) hoặc nạp USB.'
+          : dm ? 'Đã gửi xuống cân nhưng cân chưa xác nhận, rồi kho bỏ — có thể còn nằm trên cân: gỡ khỏi cân qua WiFi (ghi đè) hoặc nạp USB.'
+          : 'Đã gửi xuống cân nhưng cân chưa xác nhận — có thể đang nằm trên cân.' });
     }
     hang.sort((a, b) => (a.so ?? Infinity) - (b.so ?? Infinity) || Number(a.maCan) - Number(b.maCan));
     return { hang, coKho: dm !== null, loiKho, canChuaRo: this.canChuaRo(), chuaXacNhan: this.chuaXacNhan(), hsdTrenCan: this.hsdTrenCan() };

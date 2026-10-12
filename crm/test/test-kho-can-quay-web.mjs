@@ -6,6 +6,7 @@
  *
  * tomTatCanPhien (web/src/lib/kho/danh-muc-can.ts) soạn câu từ kho_phien_pha_can — hàm thuần, dữ liệu giả:
  *   · "Cân sẵn sàng: <tên + số tảng> = PLU · phím" CHỈ khi máy quầy báo đúng TÊN MỚI cho mã ô (tên cũ = tem sai tảng);
+ *   · 0066 (Beeftown Cân 2.9.2): máy quầy báo lần gửi gần nhất cân chưa xác nhận → không "sẵn sàng" theo dòng của máy đó;
  *   · chưa máy quầy nào báo → "không biết", không bao giờ "sẵn sàng";
  *   · tem cân in / nhãn quét: khớp, thiếu quét, nhật ký chưa đủ; nhãn mã thường của phiên theo tảng;
  *   · docCanPhien không bao giờ ném (database chưa chạy 0061 → null, trang không vẽ gì);
@@ -70,6 +71,31 @@ await nhom('1 · CÂN SẴN SÀNG CHỈ KHI ĐÚNG TÊN MỚI (TÊN + SỐ TẢN
                                  tren_can: [{ plu: 30, ten: 'Thăn ngoại bò Úc B #0007', phim: ['F1'], bao_luc: truoc(1) }] })] }));
   ok('Tên dài: so với ĐÚNG tên đã cắt mà danh mục cân gửi (24 ký tự, giữ số tảng)', dai.muc === 'san_sang'
      && dai.tenMuon === 'Thăn ngoại bò Úc B #0007', `${dai.tenMuon} · ${dai.muc}`);
+});
+
+// ===========================================================================
+await nhom('1b · 0066: MÁY QUẦY CHƯA XÁC NHẬN LẦN GỬI GẦN NHẤT → KHÔNG "SẴN SÀNG" (rà soát 11/10/2026)', async () => {
+  // Beeftown Cân 2.9.1 báo tên ô mới sau một lần gửi chưa đọc lại được cân (cổng hai chiều bận, gửi rơi về 33571 mà cân bỏ
+  // qua) → trang xanh "Cân sẵn sàng" khi cân vẫn tên cũ, tem in sai số tảng. 2.9.2 báo thêm cờ chua_xac_nhan.
+  const chuaXn = { plu: 23, ten: 'Thăn ngoại cắt lát #0142', phim: ['F5'], bao_luc: truoc(1), chua_xac_nhan: true };
+  const d = dong0(CP({ o: [O({ tren_can: [chuaXn] })], may: [MAY({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(3) })] }));
+  ok('HỒI QUY 11/10: đúng tên mới nhưng máy quầy chưa xác nhận lần gửi gần nhất → vàng "chưa chắc", KHÔNG "Cân sẵn sàng"',
+     d.muc === 'chua_xac_nhan' && !/sẵn sàng/i.test(d.cau.vi) && !/ready/i.test(d.cau.en)
+     && /^Chưa chắc cân đã có Thăn ngoại cắt lát #0142 \(PLU 23\)/.test(d.cau.vi) && /chưa in tem/.test(d.cau.vi)
+     && /Not sure the scale has Thăn ngoại cắt lát #0142 \(PLU 23\)/.test(d.cau.en) && /do not print yet/.test(d.cau.en), JSON.stringify(d));
+  const hai = dong0(CP({ o: [O({ tren_can: [chuaXn, { plu: 41, ten: 'Thăn ngoại cắt lát #0142', phim: ['A1'], bao_luc: truoc(2), chua_xac_nhan: false }] })] }));
+  ok('Hai máy quầy: máy đã xác nhận có đúng tên → sẵn sàng theo máy đó (PLU 41)', hai.muc === 'san_sang' && /= PLU 41 · phím A1/.test(hai.cau.vi), hai.cau.vi);
+  const cu = dong0(CP({ o: [O({ tren_can: [{ ...chuaXn, ten: 'Thăn ngoại cắt lát #0141' }] })] }));
+  ok('Máy chưa xác nhận còn tên cũ → vẫn "còn tên cũ" (không in)', cu.muc === 'ten_cu', cu.cau.vi);
+  const cu29 = dong0(CP({ o: [O({ tren_can: [{ plu: 23, ten: 'Thăn ngoại cắt lát #0142', phim: ['F5'], bao_luc: truoc(1) }] })] }));
+  ok('Máy quầy trước 2.9.2 (không có cờ) → như 0061: sẵn sàng theo tên', cu29.muc === 'san_sang', cu29.cau.vi);
+  const may = tomTatCanPhien(CP({ o: [O({ tren_can: [chuaXn] })], may: [MAY({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(3) })] })).may;
+  ok('Câu máy quầy nói lần gửi gần nhất chưa được cân xác nhận (đã 3 phút) — xem ô Cân của Beeftown Cân',
+     /Lần gửi gần nhất của Beeftown Cân chưa được cân xác nhận \(đã 3 phút\)/.test(may.vi) && /ô Cân/.test(may.vi)
+     && /has not been confirmed by the scale \(for 3 min\)/.test(may.en), `${may.vi} | ${may.en}`);
+  ok('Chưa xác nhận → trang vẫn hiện nút Xem lại cân (mức khác san_sang)',
+     /d\.muc !== null && d\.muc !== 'san_sang'/.test(doc('web/src/pages/noi-bo/kho/pha-loc/[id].astro')));
+  ok('Component: chỉ "san_sang" mới xanh — mức mới vàng, role="alert"', /m === 'san_sang' \? 'xong' : 'luu-y'/.test(doc('web/src/components/kho/DoiChieuCan.astro')));
 });
 
 // ===========================================================================
@@ -153,6 +179,8 @@ await nhom('6 · TIẾNG ANH KHÔNG LẪN CHỮ VIỆT (tên hàng là dữ li�
     CP({ o: [OEn({ in: 3, quet: 5 })], may: [MAY({ tu_gui: false, nhat_ky_luc: null })],
          nhan_thuong: [{ mat_hang_id: 'm1', ten: 'Striploin slices', ma_can: '301', so_nhan: 1, so_kg: 0.5 }] }),
     CP({ o: [], nhan_thuong: [{ mat_hang_id: 'm9', ten: 'Tenderloin', ma_can: '302', so_nhan: 2, so_kg: 1 }] }),
+    CP({ o: [OEn({ tren_can: [{ plu: 23, ten: 'Striploin slices #0142', phim: ['F5'], bao_luc: truoc(1), chua_xac_nhan: true }] })],
+         may: [MAY({ chua_xac_nhan: true, chua_xac_nhan_tu: truoc(12) })] }),
   ];
   const sot = [];
   let soCau = 0;

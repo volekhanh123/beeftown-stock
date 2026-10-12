@@ -2055,6 +2055,9 @@ console.log('6g · 2.6: gửi xong đọc lại cân để kiểm');
     const coTrenCanThat = (can.du.phan.PLU ?? []).some(d => d.split('\t')[1] === '4');
     ok(`${canNhan ? 'Cân nhận' : 'Cân bỏ qua'} qua 33571, không đọc lại được → PLU 4 (Steak Ribeye) chưa vào tren-can.tsv`,
       !k1.xacNhan && !u.docTrenCan().has(4) && coTrenCanThat === canNhan, k1.cauXacNhan ?? '');
+    const thCon = (await u.tatCaHang()).hang.filter(h => h.maCan === '120');
+    ok(`${canNhan ? 'Cân nhận' : 'Cân bỏ qua'}: kho vẫn có Steak Ribeye → Tất cả hàng hiện MỘT dòng "Chưa lên cân" (không thêm dòng còn nằm lại)`,
+      thCon.length === 1 && thCon[0].tinhTrang === 'chua_len', JSON.stringify(thCon));
     coRib = false;   // kho bỏ món mới trước khi cân được kiểm
     const x = await u.xemTruoc();
     ok(`${canNhan ? 'Cân nhận' : 'Cân bỏ qua'}: kho bỏ món vừa gửi chưa xác nhận → Xem trước vẫn báo PLU 4 "có thể còn nằm lại" (không mất dấu)`,

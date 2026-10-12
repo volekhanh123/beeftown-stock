@@ -7,10 +7,11 @@
  *   · kho_can_giao_o_ma: danh mục cân đọc ô đang giao bằng MỌI vai xem (NV quầy ở máy quầy đọc view
  *     thì rỗng) — đúng từng dòng của view.
  *   · kho_may_can_bao: máy quầy báo trạng thái — một dòng mỗi máy, chỉ giữ dòng mã ô trên cân, mốc giờ
- *     không lùi / không ở tương lai, lệch từ lúc nào.
+ *     không lùi / không ở tương lai, lệch từ lúc nào; 0066: cờ "chưa xác nhận" (Beeftown Cân 2.9.2) và từ lúc nào.
  *   · kho_may_can_nhat_ky: tem cân in bằng mã ô — gửi lại không trùng, giờ đồng hồ cân là giờ VN
  *     (23:50 / 00:10), ngày không có thật bỏ qua.
- *   · kho_phien_pha_can: trang pha lóc — ô đã lên cân chưa, tem in / nhãn quét, nhãn mã thường.
+ *   · kho_phien_pha_can: trang pha lóc — ô đã lên cân chưa, tem in / nhãn quét, nhãn mã thường; 0066: máy chưa
+ *     xác nhận lần gửi gần nhất thì trang không nói "Cân sẵn sàng".
  *   · suc_khoe_so_lieu: ô `can` của đèn "Beeftown Cân".
  * Quyền: anon, vai khác, chi nhánh khác, người đã nghỉ, tài khoản không có dòng nhan_su đều bị từ chối.
  * Cuối cùng: kho_doi_soat_ton() rỗng.
@@ -200,6 +201,27 @@ await nhom('3 · MÁY QUẦY BÁO TRẠNG THÁI (kho_may_can_bao)', async () => 
   ok('Hết lệch → xóa lech_tu', (await dongMay(MAY_1)).lech_tu === null);
   await bao(UID.nvQuayA, cnA.id, MAY_1, { lech_so: '7' });
   ok('lech_so không phải số → chưa biết (null)', (await dongMay(MAY_1)).lech_so === null);
+
+  // 0066 (Beeftown Cân 2.9.2): lần gửi gần nhất cân chưa xác nhận — cờ và từ lúc nào (như lech_tu).
+  const x0 = await dongMay(MAY_1);
+  ok('0066: máy quầy trước 2.9.2 (không gửi cờ) → chua_xac_nhan false, không mốc', x0.chua_xac_nhan === false && x0.chua_xac_nhan_tu === null,
+     JSON.stringify(x0));
+  await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true });
+  const x1 = await dongMay(MAY_1);
+  await db.query(`update kho_may_can set chua_xac_nhan_tu = chua_xac_nhan_tu - interval '20 minutes' where ma_may = $1`, [MAY_1]);
+  await Promise.all([bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true }), bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true })]);
+  const x2 = await dongMay(MAY_1);
+  ok('0066: chưa xác nhận → ghi mốc lần đầu; báo lại (cả hai lần cùng lúc) vẫn giữ mốc đầu, vẫn một dòng',
+     x1.chua_xac_nhan === true && gan(x1.chua_xac_nhan_tu, 0) && x2.chua_xac_nhan === true
+     && new Date(x2.chua_xac_nhan_tu).getTime() === new Date(x1.chua_xac_nhan_tu).getTime() - 20 * 60_000
+     && (await db.query(`select count(*)::int n from kho_may_can where ma_may = $1`, [MAY_1])).rows[0].n === 1, `${x1.chua_xac_nhan_tu} / ${x2.chua_xac_nhan_tu}`);
+  await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: 'true' });
+  const x3 = await dongMay(MAY_1);
+  ok('0066: cờ không phải boolean ("true" là chữ) → coi như false, xoá mốc', x3.chua_xac_nhan === false && x3.chua_xac_nhan_tu === null, JSON.stringify(x3));
+  await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true });
+  await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: false });
+  const x4 = await dongMay(MAY_1);
+  ok('0066: lần báo sau đã xác nhận (đọc lại khớp) → hết cờ, xoá mốc', x4.chua_xac_nhan === false && x4.chua_xac_nhan_tu === null, JSON.stringify(x4));
   await bao(UID.nvQuayA, cnA.id, MAY_1, { lech_so: 2, tu_gui: true, gui_loi: true });
 
   const sai = await duoi(UID.nvQuayA, `select kho_may_can_bao($1, $2, '[1,2]'::jsonb)`, [cnA.id, MAY_1]);
@@ -300,6 +322,19 @@ await nhom('6 · TRANG PHA LÓC: Ô ĐÃ LÊN CÂN CHƯA, TEM IN / NHÃN QUÉT, 
   ok('Máy quầy báo đúng tên mới → trang "Cân sẵn sàng: Thăn ngoại cắt lát #0001 = PLU 23 · phím F5"',
      tomTatCanPhien(k2).dong[0]?.cau?.vi === 'Cân sẵn sàng: Thăn ngoại cắt lát #0001 = PLU 23 · phím F5', JSON.stringify(tomTatCanPhien(k2).dong[0]));
   ok('Trang: nhãn mã thường 301 → cảnh báo in lại bằng phím ô của phiên', /in bằng mã thường 301/.test(tomTatCanPhien(k2).nhanThuong[0]?.vi ?? ''));
+  // 0066 — rà soát 11/10/2026: Beeftown Cân báo tên ô mới khi lần gửi gần nhất chưa đọc lại được cân → trang không được xanh.
+  const tenMoi = [{ plu: 23, ma_can: '10011', ten: 'Thăn ngoại cắt lát #0001', phim: ['F5'] }];
+  await bao(UID.nvQuayA, cnA.id, MAY_1, { chua_xac_nhan: true, tren_can: tenMoi });
+  const k3 = (await doiChieu(UID.thuKhoA, P[1])).rows?.[0]?.kq;
+  ok('HỒI QUY 11/10 (0066): máy quầy chưa xác nhận lần gửi gần nhất → kho_phien_pha_can kèm cờ ở dòng trên cân và ở máy; trang "chưa chắc", không "Cân sẵn sàng"',
+     k3?.o?.[0]?.tren_can?.[0]?.chua_xac_nhan === true && k3.may?.[0]?.chua_xac_nhan === true && k3.may[0].chua_xac_nhan_tu !== null
+     && tomTatCanPhien(k3).dong[0]?.muc === 'chua_xac_nhan' && !/sẵn sàng/.test(tomTatCanPhien(k3).dong[0]?.cau?.vi ?? ''),
+     JSON.stringify([k3?.o?.[0]?.tren_can, tomTatCanPhien(k3).dong[0]?.cau]));
+  await bao(UID.nvQuayA, cnA.id, MAY_1, { tren_can: tenMoi });
+  const k4 = (await doiChieu(UID.thuKhoA, P[1])).rows?.[0]?.kq;
+  ok('0066: lần báo sau cân đã xác nhận → hết cờ, mốc xoá; trang lại "Cân sẵn sàng"', k4?.o?.[0]?.tren_can?.[0]?.chua_xac_nhan === false
+     && k4.may[0].chua_xac_nhan === false && k4.may[0].chua_xac_nhan_tu === null && tomTatCanPhien(k4).dong[0]?.muc === 'san_sang',
+     JSON.stringify(k4?.o?.[0]?.tren_can));
   ok('Nhãn quét bằng mã ô: 2 nhãn · 1,02 kg', Number(o?.quet) === 2 && Number(o?.quet_kg) === 1.02, `${o?.quet} · ${o?.quet_kg}`);
   ok('Tem cân in bằng mã ô từ lúc giao: 4 (23:50, 00:10 và 00:20 qua nửa đêm, vừa xong) — không tính 23:30 trước lúc giao, ô khác, loại 2',
      Number(o?.in) === 4 && Number(o?.in_kg) === 2.12, `${o?.in} · ${o?.in_kg}`);
