@@ -165,12 +165,13 @@ function anonGia({ kin = [], loiDatBan = null, formMo = true, gioChot = true, hi
           st.datBan.set(ma, { ma, sdt: ts.p_sdt, ho_ten: ts.p_ho_ten, ngay: ts.p_ngay, gio: ts.p_gio, so_khach: ts.p_so_khach, trang_thai: 'cho_xac_nhan' });
           return { data: [{ dat_ban_id: 'id-' + ma, ma_dat_ban: ma, con_trong: 3 }], error: null };
         }
-        case 'tra_cuu_dat_ban': {
+        // 0066: trả MỘT giá trị jsonb (null = không thấy), không phải mảng dòng.
+        case 'tra_cuu_mot_dat_ban': {
           if (st.khoaTra) return KHOA_TRA;
           const d = st.datBan.get(String(ts.p_ma).trim().toUpperCase());
-          if (!d || d.sdt !== M.chuanHoaSdt(ts.p_sdt)) return { data: [], error: null };
-          return { data: [{ ma_dat_ban: d.ma, chi_nhanh_ten: 'Beeftown Quận 1', ngay: d.ngay, gio: d.gio + ':00', so_khach: d.so_khach,
-            trang_thai: d.trang_thai, ho_ten_che: 'Nguyễn V. A', sdt_che: M.cheSdt(d.sdt) }], error: null };
+          if (!d || d.sdt !== M.chuanHoaSdt(ts.p_sdt)) return { data: null, error: null };
+          return { data: { ma_dat_ban: d.ma, chi_nhanh_ten: 'Beeftown Quận 1', ngay: d.ngay, gio: d.gio + ':00', so_khach: d.so_khach,
+            trang_thai: d.trang_thai, ho_ten_che: 'Nguyễn V. A', sdt_che: M.cheSdt(d.sdt) }, error: null };
         }
         // ghi_nhat_ky_tra_cuu: từ 0066 anon không còn quyền gọi — rơi xuống "permission denied" cuối hàm.
         case 'huy_dat_ban': {
@@ -585,8 +586,8 @@ await nhom('7 · TRA CỨU + HỦY; KHÓA SAU 5 LẦN SAI', async () => {
   r = await c.gui(suTin(PSID.a, 'k7m 2qx'), 'k7m 2qx');
   ok('Mã gõ thường, có dấu cách → nhận, hỏi SĐT (có nút số trong Facebook)', /Số điện thoại đã dùng/.test(r.chu) && r.body[0].message.quick_replies[0].content_type === 'user_phone_number');
   r = await c.gui(suTin(PSID.a, '0912 345 678'), '0912 345 678');
-  const tc = cuoiCung(c.goi('tra_cuu_dat_ban'));
-  ok('tra_cuu_dat_ban(p_ma K7M2QX, p_sdt chuẩn hóa, p_ip null) → mess_ghi_tra_cuu(true); KHÔNG gọi ghi_nhat_ky_tra_cuu (0066: hàm tra tự ghi)',
+  const tc = cuoiCung(c.goi('tra_cuu_mot_dat_ban'));
+  ok('tra_cuu_mot_dat_ban(p_ma K7M2QX, p_sdt chuẩn hóa, p_ip null) → mess_ghi_tra_cuu(true); KHÔNG gọi ghi_nhat_ky_tra_cuu (0066: hàm tra tự ghi)',
      JSON.stringify(tc.ts) === JSON.stringify({ p_ma: 'K7M2QX', p_sdt: SDT, p_ip: null })
      && c.goi('ghi_nhat_ky_tra_cuu').length === 0
      && cuoiCung(c.goi('mess_ghi_tra_cuu')).ts.p_thanh_cong === true);
@@ -616,9 +617,9 @@ await nhom('7 · TRA CỨU + HỦY; KHÓA SAU 5 LẦN SAI', async () => {
   }
   ok('Sai lần thứ 5 → mess_ghi_tra_cuu báo bi_khoa → "tạm khóa 15 phút" + hotline nhà hàng',
      /tạm khóa 15 phút/.test(r.chu) && /0281234567/.test(r.chu) && k.goi('mess_ghi_tra_cuu').every(g => g.ts.p_thanh_cong === false), r.chu);
-  const soTra = k.goi('tra_cuu_dat_ban').length;
+  const soTra = k.goi('tra_cuu_mot_dat_ban').length;
   r = await k.gui(suNut(PSID.f, M.PAYLOAD.traCuu), '[Tra/hủy đặt bàn] (đang khóa)');
-  ok('Đang khóa → báo ngay, KHÔNG gọi tra_cuu_dat_ban nữa', /tạm khóa/.test(r.chu) && k.goi('tra_cuu_dat_ban').length === soTra && lan === 5);
+  ok('Đang khóa → báo ngay, KHÔNG gọi tra_cuu_mot_dat_ban nữa', /tạm khóa/.test(r.chu) && k.goi('tra_cuu_mot_dat_ban').length === soTra && lan === 5);
 
   // 0066: database tự khoá tra cứu — xô chung của IP null, có thể do khách KHÁC dò mã. Bot hiện nguyên
   // câu database (như nhánh hủy), không mượn câu "bạn đã nhập sai" của khoá theo khách.
@@ -843,7 +844,7 @@ await nhom('11 · CHẠY THẬT TRÊN PGLITE: ĐẶT BÀN QUA BOT → dat_ban (u
 
   const KIEU = { p_ngay: 'date', p_gio: 'time', p_so_khach: 'smallint', p_ip: 'inet', p_dong_y: 'boolean', p_thanh_cong: 'boolean',
                  p_du_lieu: 'jsonb', p_tam_dung_phut: 'integer', p_phut_tam_dung: 'integer', p_dang_bat: 'boolean' };
-  const TAP = new Set(['lich_trong_theo_ma', 'tao_dat_ban', 'tra_cuu_dat_ban', 'chi_nhanh_cong_khai']);
+  const TAP = new Set(['lich_trong_theo_ma', 'tao_dat_ban', 'chi_nhanh_cong_khai']);   // tra_cuu_mot_dat_ban trả jsonb (0066)
   const sqlGoi = (ten, ts) => {
     const k = Object.keys(ts);
     const thamSo = k.map((x, i) => `${x} => $${i + 1}${KIEU[x] ? '::' + KIEU[x] : ''}`).join(', ');
@@ -940,7 +941,7 @@ await nhom('12 · WORKER, TRANG, MENU, TRANG CÔNG KHAI, README, GIT', async () 
   ok('Route dự phòng pages/hook/messenger.ts cho astro dev', /xuLyHookMessenger\(request\)/.test(route) && /prerender = false/.test(route));
   const hook = readFileSync(join(GOC, 'web/src/lib/messenger-hook.ts'), 'utf8');
   ok('messenger-hook.ts: client máy anon riêng không lưu phiên; không có lời gọi hàm công khai (nằm ở messenger-anon.ts)',
-     /persistSession: false, autoRefreshToken: false/.test(hook) && !/\.rpc\('(tao_dat_ban|tra_cuu_dat_ban|huy_dat_ban|lich_trong_theo_ma)'/.test(hook));
+     /persistSession: false, autoRefreshToken: false/.test(hook) && !/\.rpc\('(tao_dat_ban|tra_cuu_dat_ban|tra_cuu_mot_dat_ban|huy_dat_ban|lich_trong_theo_ma)'/.test(hook));
   const anon = readFileSync(join(GOC, 'web/src/lib/messenger-anon.ts'), 'utf8');
   ok('messenger-anon.ts: không gọi mess_*', !/rpc\('mess_/.test(anon) && /p_utm_source: 'messenger'/.test(anon) && /p_utm_medium: 'chatbot'/.test(anon));
   const hd = readFileSync(join(GOC, 'crm/test/test-hop-dong-web.mjs'), 'utf8');

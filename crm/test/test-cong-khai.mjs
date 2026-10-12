@@ -188,6 +188,16 @@ await nhom('3 · LỊCH TRỐNG KHÔNG TIẾT LỘ SỐ BÀN', async () => {
      maLa.loi === null && maLa.rows.length === 0);
 });
 
+/**
+ * Tra cứu như website / Messenger. Từ 0066 anon gọi tra_cuu_mot_dat_ban (trả jsonb, null khi không
+ * thấy) thay tra_cuu_dat_ban (trả bảng — người gọi PostgREST hủy được giao dịch của lần sai, khoá dò
+ * mã không đếm). Đổi về dạng { rows } như trước để các kiểm tra dưới giữ nguyên.
+ */
+async function traCuu(ma, sdt, ip = null) {
+  const r = await duoiDanhNghiaAnon(`select tra_cuu_mot_dat_ban($1, $2, $3::inet) as kq`, [ma, sdt, ip]);
+  return r.loi ? r : { rows: r.rows[0].kq ? [r.rows[0].kq] : [], loi: null };
+}
+
 // ===========================================================================
 await nhom('4 · TRA CỨU ĐẶT BÀN — MÃ KHÔNG BAO GIỜ ĐỦ', async () => {
   const dat = await duoiDanhNghiaAnon(
@@ -200,13 +210,11 @@ await nhom('4 · TRA CỨU ĐẶT BÀN — MÃ KHÔNG BAO GIỜ ĐỦ', async ()
     `select ma_dat_ban as luu from dat_ban where id = $1`, [dat.rows[0].dat_ban_id]);
   ok('Mã được LƯU vào cột thật, không phải suy từ uuid', luu === ma, `${luu} vs ${ma}`);
 
-  const saiSdt = await duoiDanhNghiaAnon(
-    `select * from tra_cuu_dat_ban($1,$2,null::inet)`, [ma, '0999999999']);
+  const saiSdt = await traCuu(ma, '0999999999');
   ok('Đúng mã nhưng sai số điện thoại → không trả về gì',
      saiSdt.loi === null && saiSdt.rows.length === 0);
 
-  const dung = await duoiDanhNghiaAnon(
-    `select * from tra_cuu_dat_ban($1,$2,null::inet)`, [ma, '0912345678']);
+  const dung = await traCuu(ma, '0912345678');
   ok('Đúng cả mã và số thì tra được', dung.rows.length === 1, `${dung.rows.length} kết quả`);
 
   ok('Tên trả về đã được rút gọn', dung.rows[0].ho_ten_che === 'Nguyễn V. A',
@@ -216,27 +224,23 @@ await nhom('4 · TRA CỨU ĐẶT BÀN — MÃ KHÔNG BAO GIỜ ĐỦ', async ()
   ok('Không trả về số điện thoại đầy đủ',
      !Object.values(dung.rows[0]).includes('0912345678'));
 
-  const thuongHoaThuong = await duoiDanhNghiaAnon(
-    `select * from tra_cuu_dat_ban($1,$2,null::inet)`, [ma.toLowerCase(), '0912345678']);
+  const thuongHoaThuong = await traCuu(ma.toLowerCase(), '0912345678');
   ok('Mã không phân biệt hoa thường', thuongHoaThuong.rows.length === 1);
 
-  // Giới hạn dò mã. Từ 0066 tra_cuu_dat_ban tự ghi mỗi lần tra (anon không còn gọi được
+  // Giới hạn dò mã. Từ 0066 hàm tra tự ghi mỗi lần tra (anon không còn gọi được
   // ghi_nhat_ky_tra_cuu — bản cũ của kiểm tra này chèn sáu dòng "sai" bằng hàm đó). Sáu lần tra
   // sai thật từ một IP; mỗi lần một số điện thoại khác để chỉ khoá theo IP được thử ở đây
   // (khoá theo số và toàn cục: test-cong-khai-gioi-han.mjs).
   const ip = '203.0.113.99';
   for (let i = 0; i < 6; i++) {
-    const sai = await duoiDanhNghiaAnon(
-      `select * from tra_cuu_dat_ban($1,$2,$3::inet)`, [ma, `099999999${i}`, ip]);
+    const sai = await traCuu(ma, `099999999${i}`, ip);
     ok(`Lần tra sai ${i + 1} từ một IP → không thấy gì, chưa khoá`, sai.loi === null && sai.rows.length === 0, sai.loi ?? '');
   }
-  const bikhoa = await duoiDanhNghiaAnon(
-    `select * from tra_cuu_dat_ban($1,$2,$3::inet)`, [ma, '0912345678', ip]);
+  const bikhoa = await traCuu(ma, '0912345678', ip);
   ok('Quá 6 lần thử sai từ một IP → tạm khoá',
      bikhoa.loi !== null && /tạm khoá/i.test(bikhoa.loi), bikhoa.loi || 'VẪN TRA ĐƯỢC');
 
-  const ipKhac = await duoiDanhNghiaAnon(
-    `select * from tra_cuu_dat_ban($1,$2,$3::inet)`, [ma, '0912345678', '203.0.113.100']);
+  const ipKhac = await traCuu(ma, '0912345678', '203.0.113.100');
   ok('IP khác không bị ảnh hưởng', ipKhac.loi === null && ipKhac.rows.length === 1);
 });
 

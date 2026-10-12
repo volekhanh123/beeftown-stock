@@ -361,9 +361,10 @@ await nhom('5 · WEB KHÔNG GỌI HÀM NGOÀI DANH SÁCH CHO PHÉP', async () =>
   const CONG_KHAI = [
     'noi_dung_cong_khai', 'tin_tuyen_dung_cong_khai', 'thuc_don_cong_khai',
     'chi_nhanh_cong_khai', 'lich_trong_theo_ma', 'tao_dat_ban',
-    'tra_cuu_dat_ban', 'huy_dat_ban',
-    // ghi_nhat_ky_tra_cuu ra khỏi danh sách từ 0066 — anon hết quyền gọi; tra_cuu_dat_ban và
-    // huy_dat_ban tự ghi nhật ký. Web gọi lại nó thì kiểm tra dưới đỏ, như production 403.
+    // 0066: tra_cuu_mot_dat_ban (trả jsonb) thay tra_cuu_dat_ban (trả bảng — người gọi hủy được
+    // giao dịch của lần sai); ghi_nhat_ky_tra_cuu ra khỏi danh sách — hai hàm tra / hủy tự ghi.
+    // Web gọi lại hàm cũ thì kiểm tra dưới đỏ, như production 403.
+    'tra_cuu_mot_dat_ban', 'huy_dat_ban',
     'nop_ho_so_ung_tuyen', 'xin_phieu_tai_cv', 'ghi_su_kien_web',
   ];
 

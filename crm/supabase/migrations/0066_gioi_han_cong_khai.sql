@@ -29,7 +29,7 @@
 --   (chỉ lời gọi KHÔNG       chờ, ngày từ hôm nay (VN)
 --   phiên — website,       IP (p_ip khác null)              5      1 giờ    câu mạng (mới)
 --   Messenger)             chi nhánh                        30     1 giờ    câu bận (mới)
---   tra_cuu_dat_ban        IP (p_ip khác null): lần sai     6      15 phút  câu khoá 0013
+--   tra_cuu_mot_dat_ban    IP (p_ip khác null): lần sai     6      15 phút  câu khoá 0013
 --   + huy_dat_ban          số điện thoại: lần sai           5      15 phút  câu khoá 0013
 --   (chung một sổ)         toàn cục: mọi lần                100    15 phút  câu khoá 0013
 --   xin_phieu_tai_cv       IP — null đếm như MỘT IP         10     1 giờ    câu 0012 / câu bận
@@ -105,11 +105,13 @@
 -- nên không phụ thuộc múi giờ phiên. "Ngày từ hôm nay" của số điện thoại dùng
 -- hom_nay_vn().
 --
--- KHÔNG ĐỔI chữ ký, tham số mặc định, cột trả về của hàm công khai nào — web
--- không phải đổi lời gọi. tra_cuu_dat_ban đổi STABLE → VOLATILE để tự ghi nhật
--- ký (PostgREST chạy hàm STABLE trong giao dịch chỉ đọc); supabase-js gọi rpc
--- bằng POST nên không ảnh hưởng. ghi_nhat_ky_tra_cuu ở lại nhưng thu quyền của
--- anon và authenticated: tra_cuu_dat_ban / huy_dat_ban tự ghi.
+-- KHÔNG ĐỔI chữ ký, tham số mặc định, cột trả về của hàm công khai nào.
+-- tra_cuu_dat_ban đổi STABLE → VOLATILE để tự ghi nhật ký (PostgREST chạy hàm
+-- STABLE trong giao dịch chỉ đọc), và anon / authenticated thôi gọi nó: hàm trả
+-- bảng cho người gọi tự hủy giao dịch của lần sai (mục 3). Anon tra cứu qua hàm
+-- MỚI tra_cuu_mot_dat_ban (trả jsonb) — web đổi tên lời gọi, giữ cách đọc.
+-- ghi_nhat_ky_tra_cuu ở lại nhưng thu quyền của anon và authenticated:
+-- tra_cuu_dat_ban / huy_dat_ban tự ghi.
 --
 -- Kiểm thử: crm/test/test-cong-khai-gioi-han.mjs.
 -- =============================================================================
@@ -504,6 +506,51 @@ begin
   perform ghi_lan_tra_cuu(p_ip, p_ma, v_thay, v_bam);
 end;
 $$;
+
+
+-- -----------------------------------------------------------------------------
+-- tra_cuu_mot_dat_ban — cửa tra cứu cho anon, trả MỘT giá trị jsonb
+-- -----------------------------------------------------------------------------
+-- tra_cuu_dat_ban trả BẢNG, và với hàm trả bảng PostgREST cho người gọi tự hủy
+-- giao dịch của chính lần gọi: gửi Accept: application/vnd.pgrst.object+json
+-- (supabase-js .single()) — 0 dòng thì PostgREST trả 406 VÀ rollback; thêm bộ lọc
+-- trên cột kết quả (?trang_thai=not.is.null) để lần sai nào cũng ra 0 dòng. Dòng
+-- "lần sai" ghi_lan_tra_cuu vừa ghi hủy theo — khoá ở trên không bao giờ đếm,
+-- dò mã vẫn không giới hạn (rà soát bảo mật của bản này, 12/10/2026).
+--
+-- Hàm trả một giá trị (không phải bảng) thì PostgREST không lọc được kết quả và
+-- luôn có đúng một dòng: không có 406, lần sai được ghi. Nên anon gọi hàm này;
+-- tra_cuu_dat_ban (giữ chữ ký cũ — không đổi chữ ký hàm công khai) thu quyền anon
+-- ở khối CHỐT QUYỀN, authenticated ở mục 7. Thân chỉ gọi tra_cuu_dat_ban: một
+-- luật khoá, một chỗ ghi.
+-- Trả: null khi không thấy; thấy thì đối tượng cùng các cột tra_cuu_dat_ban
+-- (ma_dat_ban, chi_nhanh_ten, ngay, gio, so_khach, trang_thai, ho_ten_che,
+-- sdt_che) — đúng hình dạng web đang đọc (DongTraCuu, web/src/lib/messenger.ts).
+-- -----------------------------------------------------------------------------
+create or replace function tra_cuu_mot_dat_ban(
+  p_ma  text,
+  p_sdt text,
+  p_ip  inet default null
+)
+returns jsonb
+language plpgsql
+volatile
+security definer
+set search_path = public
+as $$
+declare
+  v_dong jsonb;
+begin
+  -- ma_dat_ban duy nhất (dat_ban_ma_idx, 0013): nhiều nhất một dòng.
+  select to_jsonb(t) into v_dong
+  from tra_cuu_dat_ban(p_ma, p_sdt, p_ip) t
+  limit 1;
+  return v_dong;
+end;
+$$;
+
+comment on function tra_cuu_mot_dat_ban(text, text, inet) is
+  'API công khai (0066): tra cứu đặt bàn theo mã + số điện thoại, trả jsonb (null khi không thấy). Trả một giá trị để PostgREST không hủy được giao dịch của lần sai (406 vnd.pgrst.object+json) — khoá dò mã luôn đếm. Thay tra_cuu_dat_ban cho anon.';
 
 
 -- Chép 0013; kiểm khoá trước khi tìm, ghi nhật ký kèm sdt_bam.
@@ -983,6 +1030,8 @@ begin
     execute 'revoke execute on function ghi_lan_tra_cuu(inet, text, boolean, text) from authenticated';
     execute 'revoke execute on function ho_so_mot_ve_mot_file() from authenticated';
     execute 'revoke execute on function ghi_nhat_ky_tra_cuu(inet, text, boolean) from authenticated';
+    -- Cùng lý do với anon (mục 3, tra_cuu_mot_dat_ban): hàm trả bảng cho người gọi hủy lần sai.
+    execute 'revoke execute on function tra_cuu_dat_ban(text, text, inet) from authenticated';
   end if;
 end
 $$;
@@ -990,8 +1039,9 @@ $$;
 -- =============================================================================
 -- CHỐT QUYỀN — xem giải thích ở 0008 mục 6. Giữ dòng ve_con_hieu_luc: xem 0025.
 -- =============================================================================
--- Từ 0066 KHÔNG còn dòng ghi_nhat_ky_tra_cuu (mục 3). Migration sau chép khối
--- này, đừng chép khối của 0062 trở về trước.
+-- Từ 0066 KHÔNG còn dòng ghi_nhat_ky_tra_cuu, và tra_cuu_dat_ban nhường chỗ cho
+-- tra_cuu_mot_dat_ban (mục 3). Migration sau chép khối này, đừng chép khối của
+-- 0062 trở về trước.
 do $$
 begin
   if exists (select 1 from pg_roles where rolname = 'anon') then
@@ -1002,7 +1052,7 @@ begin
     execute 'grant execute on function tao_dat_ban(text,text,text,date,time,smallint,text,text,boolean,text,text,text,text,inet) to anon';
     execute 'grant execute on function lich_trong_theo_ma(text,date) to anon';
     execute 'grant execute on function chi_nhanh_cong_khai() to anon';
-    execute 'grant execute on function tra_cuu_dat_ban(text,text,inet) to anon';
+    execute 'grant execute on function tra_cuu_mot_dat_ban(text,text,inet) to anon';
     execute 'grant execute on function huy_dat_ban(text,text,text,inet) to anon';
 
     -- Nội dung

@@ -107,6 +107,7 @@ await nhom('0 · TIỀN ĐỀ — chữ ký không đổi, quyền gọi, bảng
       + 'p_dip text, p_ghi_chu text, p_dong_y boolean, p_utm_source text, p_utm_medium text, p_utm_campaign text, '
       + 'p_trang_gioi_thieu text, p_ip inet',
     tra_cuu_dat_ban: 'p_ma text, p_sdt text, p_ip inet',
+    tra_cuu_mot_dat_ban: 'p_ma text, p_sdt text, p_ip inet',
     huy_dat_ban: 'p_ma text, p_sdt text, p_ly_do text, p_ip inet',
     xin_phieu_tai_cv: 'p_ip inet',
     ve_con_hieu_luc: 'p_doan text',
@@ -122,11 +123,26 @@ await nhom('0 · TIỀN ĐỀ — chữ ký không đổi, quyền gọi, bảng
   const { n: soNop } = await mot(`select count(*)::int as n from pg_proc where proname = 'nop_ho_so_ung_tuyen'`);
   ok('nop_ho_so_ung_tuyen(): đúng MỘT bản', soNop === 1);
 
-  for (const ham of ['tao_dat_ban', 'tra_cuu_dat_ban', 'huy_dat_ban', 'xin_phieu_tai_cv', 'nop_ho_so_ung_tuyen',
+  for (const ham of ['tao_dat_ban', 'tra_cuu_mot_dat_ban', 'huy_dat_ban', 'xin_phieu_tai_cv', 'nop_ho_so_ung_tuyen',
                      'ghi_su_kien_web', 've_con_hieu_luc']) {
     const { anon } = await mot(`select has_function_privilege('anon', $1::regproc, 'execute') as anon`, [ham]);
-    ok(`anon vẫn gọi được ${ham}()`, anon === true);
+    ok(`anon gọi được ${ham}()`, anon === true);
   }
+
+  // RÀ SOÁT BẢO MẬT 12/10 (của chính bản này): tra_cuu_dat_ban trả BẢNG — người gọi PostgREST gửi
+  // Accept: application/vnd.pgrst.object+json (và lọc cột kết quả) thì lần sai ra 0 dòng, PostgREST
+  // trả 406 và HỦY giao dịch, kéo theo dòng "lần sai" vừa ghi: khoá dò mã không bao giờ đếm. Anon
+  // tra qua tra_cuu_mot_dat_ban — trả một giá trị, không lọc được, luôn đúng một dòng.
+  const traBang = await duoiAnon(`select * from tra_cuu_dat_ban('XXXXXX', '0900000000', null::inet)`);
+  ok('RÀ SOÁT BẢO MẬT: anon KHÔNG còn gọi được tra_cuu_dat_ban (hàm trả bảng — hủy được lần sai)',
+     /permission denied/i.test(traBang.loi ?? ''), traBang.loi ?? 'GỌI ĐƯỢC');
+  const traBangLa = await duoi(null, `select * from tra_cuu_dat_ban('XXXXXX', '0900000000', null::inet)`);
+  ok('…tài khoản đăng nhập cũng không', /permission denied/i.test(traBangLa.loi ?? ''), traBangLa.loi ?? 'GỌI ĐƯỢC');
+  const kieu = await mot(`select p.proretset as tap, format_type(p.prorettype, null) as kieu, p.prosecdef as dinh,
+                                 array_to_string(p.proconfig, ',') as cfg
+                            from pg_proc p where p.proname = 'tra_cuu_mot_dat_ban'`);
+  ok('tra_cuu_mot_dat_ban trả MỘT giá trị jsonb (không phải bảng), security definer có set search_path',
+     kieu?.tap === false && kieu.kieu === 'jsonb' && kieu.dinh === true && /search_path=public/.test(kieu.cfg ?? ''), JSON.stringify(kieu));
 
   // RÀ SOÁT 11/10: ghi_nhat_ky_tra_cuu chèn thẳng một dòng mỗi lần gọi, không giới hạn — kể cả
   // dòng thanh_cong = false giả để khoá tra cứu của người khác. Từ 0066 tra_cuu_dat_ban và
@@ -243,13 +259,17 @@ await nhom('2 · tao_dat_ban — một số điện thoại giữ tối đa 3 y�
 });
 
 // ===========================================================================
-await nhom('3 · tra_cuu_dat_ban / huy_dat_ban — khoá dò mã thật sự chạy', async () => {
+await nhom('3 · tra_cuu_mot_dat_ban / huy_dat_ban — khoá dò mã thật sự chạy', async () => {
   await xoaSoGioiHan();
   await db.query(`delete from nhat_ky_tra_cuu`);
   const sdtKhach = sdtThu(5000);
   const dat = await datBan({ sdt: sdtKhach, ip: '198.51.100.60', gio: '19:30' });
   const ma = dat.ma_dat_ban;
-  const tra = (m, s, ip = null) => duoiAnon(`select * from tra_cuu_dat_ban($1, $2, $3::inet)`, [m, s, ip]);
+  /** Tra như Messenger: tra_cuu_mot_dat_ban → { rows: [] | [dòng] } để đọc như bảng. */
+  const tra = async (m, s, ip = null) => {
+    const r = await duoiAnon(`select tra_cuu_mot_dat_ban($1, $2, $3::inet) as kq`, [m, s, ip]);
+    return r.loi ? r : { rows: r.rows[0].kq ? [r.rows[0].kq] : [], loi: null };
+  };
   const huy = (m, s, ip = null) => duoiAnon(`select huy_dat_ban($1, $2, 'thử', $3::inet) as ok`, [m, s, ip]);
 
   // Tự ghi nhật ký: không cần ai gọi ghi_nhat_ky_tra_cuu sau đó.

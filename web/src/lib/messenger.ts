@@ -516,7 +516,7 @@ export function thanHoSo(loiChao: string): Record<string, unknown> {
 /** Khung giờ như lich_trong_theo_ma trả về. */
 export interface KhungGio { gio: string; buoi: 'trua' | 'toi' | string; con_cho: boolean; da_qua: boolean }
 
-/** Một dòng tra_cuu_dat_ban (đã che tên / SĐT). */
+/** Kết quả tra_cuu_mot_dat_ban — một dòng tra_cuu_dat_ban (đã che tên / SĐT). */
 export interface DongTraCuu {
   ma_dat_ban: string; chi_nhanh_ten?: string | null; ngay: string; gio: string; so_khach: number;
   trang_thai: string; ho_ten_che?: string | null; sdt_che?: string | null;

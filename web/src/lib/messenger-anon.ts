@@ -79,14 +79,16 @@ export async function taoDatBanMess(
 }
 
 /**
- * tra_cuu_dat_ban tự ghi nhật ký tra cứu và tự khoá (0066) — kể cả với p_ip null.
- * Đang khoá thì database trả câu tiếng Việt "Tra cứu bị tạm khoá…" → { ok: false, loi }.
+ * tra_cuu_mot_dat_ban (0066) — trả một giá trị jsonb (null = không thấy), không phải bảng: với
+ * hàm trả bảng, người gọi PostgREST tự hủy được giao dịch của lần sai (406 vnd.pgrst.object+json)
+ * và khoá dò mã không bao giờ đếm. Hàm tự ghi nhật ký và tự khoá, kể cả với p_ip null. Đang khoá
+ * thì database trả câu tiếng Việt "Tra cứu bị tạm khoá…" → { ok: false, loi }.
  */
 export async function traCuuMess(
   client: SupabaseClient, ma: string, sdt: string,
 ): Promise<{ ok: true; dong: DongTraCuu | null } | { ok: false; loi: string }> {
   try {
-    const { data, error } = await client.rpc('tra_cuu_dat_ban', { p_ma: ma, p_sdt: sdt, p_ip: null });
+    const { data, error } = await client.rpc('tra_cuu_mot_dat_ban', { p_ma: ma, p_sdt: sdt, p_ip: null });
     if (error) return { ok: false, loi: error.message };
     const dong = (Array.isArray(data) ? data[0] : data) as DongTraCuu | null | undefined;
     return { ok: true, dong: dong && dong.ma_dat_ban ? dong : null };
@@ -94,7 +96,7 @@ export async function traCuuMess(
 }
 
 /**
- * huy_dat_ban tự ghi nhật ký tra cứu và dùng chung khoá với tra_cuu_dat_ban (0066). true = đã hủy;
+ * huy_dat_ban tự ghi nhật ký tra cứu và dùng chung khoá với tra_cuu_mot_dat_ban (0066). true = đã hủy;
  * false = không tìm thấy; lỗi = tìm thấy nhưng không hủy được nữa, hoặc đang khoá.
  */
 export async function huyDatBanMess(

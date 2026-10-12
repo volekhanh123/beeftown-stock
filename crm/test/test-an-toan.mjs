@@ -145,7 +145,10 @@ await nhom('1 · QUYỀN THỰC THI HÀM (lỗ hổng 1 và 4)', async () => {
     'tao_dat_ban',
     'thuc_don_cong_khai',
     'tin_tuyen_dung_cong_khai',
-    'tra_cuu_dat_ban',
+    // tra_cuu_mot_dat_ban THAY tra_cuu_dat_ban từ 0066: hàm trả bảng cho người gọi PostgREST hủy
+    // giao dịch của lần tra sai (406 vnd.pgrst.object+json) — khoá dò mã không bao giờ đếm. Hàm
+    // mới trả jsonb, cùng khoá, cùng nhật ký.
+    'tra_cuu_mot_dat_ban',
     // Không phải để website gọi: policy tải CV trên storage.objects gọi nó
     // dưới vai anon. Thiếu thì mọi lượt tải CV lỗi quyền — xem 0025.
     've_con_hieu_luc',
