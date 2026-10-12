@@ -31,6 +31,11 @@
  *      đúng khối; chỗ của ảnh chụp thật vẫn là KhungAnh.
  *   6. Thẻ "Cách đọc nhãn khay": năm trường theo thứ tự, chỉ tên trường — không giá trị mẫu, không
  *      mã vạch giả; không nghiêng, không bóng đổ, không mã màu viết thẳng (nền lấy từ bảng màu).
+ *   7. Ảnh món của trang Thực đơn (cuốn menu bản sáng Khánh chốt 11/10/2026, 26 ảnh): đều là ảnh minh
+ *      họa (kể cả ba ly signature và hai món tartare lấy từ menu chuẩn 29/09 — chưa rõ ảnh chụp thật hay
+ *      ảnh dựng); nguồn ghi đúng sự thật; ảnh tách nền khai "tach_nen" (không cắt, chừa dải trống ở đáy
+ *      cho nhãn); ANH_CUA_MON ghép đúng mã món của bảng danh mục với ảnh và khung đã dựng; chỉ
+ *      ThucDonNhomAnh.astro gọi <Anh> bằng id lấy từ bảng đó.
  */
 
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
@@ -60,9 +65,24 @@ const kieuCua = nguon => boChuThichCss((nguon.match(/<style[^>]*>([\s\S]*?)<\/st
 const mauCua = nguon => nguon.replace(/^---[\s\S]*?\n---/, '').replace(/<style[^>]*>[\s\S]*?<\/style>/g, '')
   .replace(/<script[^>]*>[\s\S]*?<\/script>/g, '').replace(/\{\/\*[\s\S]*?\*\/\}/g, '').replace(/<!--[\s\S]*?-->/g, '');
 
-// Bảy ảnh ChatGPT tạo ngày 11/10/2026 — chép tay, KHÔNG đọc từ anh.ts: thêm, bớt hay đổi cờ của một ảnh
-// AI mà không sửa ở đây thì phép thử đỏ. Thêm ảnh CHỤP THẬT (minhHoa: false) thì thêm vào ANH_THAT.
-const ANH_AI = ['hero-vi-gas', 'bo-van-mo-can', 'bo-cat-lat', 'sot-cham', 'mon-an-chia-se', 'bua-an-cung-ban', 'bo-xeo-vi'];
+// Bảy ảnh ChatGPT tạo ngày 11/10/2026 và 26 ảnh món của cuốn menu bản sáng — chép tay, KHÔNG đọc từ anh.ts:
+// thêm, bớt hay đổi cờ của một ảnh AI mà không sửa ở đây thì phép thử đỏ. Thêm ảnh CHỤP THẬT (minhHoa:
+// false) thì thêm vào ANH_THAT.
+const ANH_CHATGPT = ['hero-vi-gas', 'bo-van-mo-can', 'bo-cat-lat', 'sot-cham', 'mon-an-chia-se', 'bua-an-cung-ban', 'bo-xeo-vi'];
+// Ảnh món của cuốn menu bản sáng (artifact "Beeftown — Menu", Version 45, 11/10/2026). Năm ảnh lấy từ menu
+// chuẩn 29/09 của quán (ba ly signature, hai món tartare): "ảnh đã duyệt" nhưng CHƯA rõ ảnh chụp thật hay ảnh
+// dựng — chưa rõ thì vẫn gắn nhãn minh họa. 21 ảnh còn lại là ảnh AI tạo qua cầu nối Codex rồi tách nền.
+const ANH_MON_MENU_CHUAN = ['mon-tartare-bo-hoa-tuyet', 'mon-com-tron-tartare-bo-cay', 'uong-milky-cloud-makgeolli', 'uong-strawberry-crush', 'uong-berry-rouge-highball'];
+const ANH_MON = [
+  'mon-tartare-bo-hoa-tuyet', 'mon-com-tron-tartare-bo-cay', 'mon-lau-kim-chi', 'mon-lau-bo-bulgogi', 'mon-lau-nam', 'mon-set-4-sot',
+  'mon-salad-nam', 'mon-caesar-salad', 'mon-mien-tron-han', 'mon-trung-hap-nui-lua', 'mon-khoai-tay-chien-sot-bo', 'mon-banh-gao-chien-pho-mai',
+  'mon-canh-kim-chi', 'mon-dau-phu-ham', 'mon-canh-tuong-dau', 'mon-com-kim-chi-bo', 'mon-com-tron-han', 'mon-com-tron-trung-ca',
+  'mon-mi-lanh-cay', 'mon-mi-toowoomba', 'mon-mi-carbonara', 'mon-mi-bo-sot-ca',
+  'uong-milky-cloud-makgeolli', 'uong-strawberry-crush', 'uong-berry-rouge-highball', 'uong-khong-con-ba-ly',
+];
+// Ảnh tách nền: mọi ảnh món trừ hai ảnh tartare (ảnh có nền bàn gỗ, cắt như ảnh cũ).
+const TACH_NEN = ANH_MON.filter(id => !['mon-tartare-bo-hoa-tuyet', 'mon-com-tron-tartare-bo-cay'].includes(id));
+const ANH_AI = [...ANH_CHATGPT, ...ANH_MON];
 const ANH_THAT = [];
 // Ảnh đang đặt trên trang và khung của từng ảnh; bo-xeo-vi là ảnh dự phòng, chưa đặt ở đâu nên không dựng.
 const ANH_DA_DAT = {
@@ -72,16 +92,28 @@ const ANH_DA_DAT = {
   'sot-cham': ['4x3'],
   'mon-an-chia-se': ['3x2', '4x3'],
   'bua-an-cung-ban': ['3x2', '4x3'],
+  // Ảnh món: món ăn tách nền 4:3, hai ảnh tartare vuông, ba ly 4:5, ảnh ba ly không cồn của phần Đồ uống 3:2.
+  ...Object.fromEntries(ANH_MON.map(id => [id, [id.startsWith('mon-tartare') || id === 'mon-com-tron-tartare-bo-cay' ? '1x1'
+    : id === 'uong-khong-con-ba-ly' ? '3x2' : id.startsWith('uong-') ? '4x5' : '4x3']])),
 };
-// Cỡ thật của tám file PNG gốc (để ngoài repo) — chép tay từ file.
+// Cỡ thật của các file gốc (để ngoài repo) — chép tay từ file. Tám PNG của ChatGPT; 26 file của cuốn menu bản sáng.
 const CO_GOC = {
   'hero-vi-gas-16x9.png': [1672, 941], 'hero-vi-gas-4x5.png': [1122, 1402], 'bo-van-mo-can-4x5.png': [1122, 1402],
   'bo-cat-lat-3x2.png': [1536, 1024], 'sot-cham-4x3.png': [1448, 1086], 'bo-xeo-vi-4x3.png': [1448, 1086],
   'mon-an-chia-se-3x2.png': [1536, 1024], 'bua-an-cung-ban-3x2.png': [1536, 1024],
+  'mon-banh-gao-chien-pho-mai.webp': [760, 768], 'mon-caesar-salad.webp': [1000, 881], 'mon-canh-kim-chi.webp': [1000, 890],
+  'mon-canh-tuong-dau.webp': [1000, 913], 'mon-com-kim-chi-bo.webp': [1000, 907], 'mon-com-tron-han.webp': [1000, 894],
+  'mon-com-tron-tartare-bo-cay.jpg': [1024, 1656], 'mon-com-tron-trung-ca.webp': [1000, 1004], 'mon-dau-phu-ham.webp': [1000, 884],
+  'mon-khoai-tay-chien-sot-bo.webp': [760, 755], 'mon-lau-bo-bulgogi.webp': [1000, 767], 'mon-lau-kim-chi.webp': [1000, 785],
+  'mon-lau-nam.webp': [1000, 778], 'mon-mi-bo-sot-ca.webp': [1000, 817], 'mon-mi-carbonara.webp': [1000, 823],
+  'mon-mi-lanh-cay.webp': [900, 799], 'mon-mi-toowoomba.webp': [1000, 877], 'mon-mien-tron-han.webp': [1000, 794],
+  'mon-salad-nam.webp': [1000, 863], 'mon-set-4-sot.webp': [1000, 610], 'mon-tartare-bo-hoa-tuyet.jpg': [1024, 1656],
+  'mon-trung-hap-nui-lua.webp': [760, 752], 'uong-berry-rouge-highball.webp': [479, 756], 'uong-khong-con-ba-ly.png': [1200, 758],
+  'uong-milky-cloud-makgeolli.webp': [524, 754], 'uong-strawberry-crush.webp': [449, 920],
 };
 
 // ===========================================================================
-await nhom('1 · DANH MỤC ẢNH: ĐÚNG BẢY ID, CỜ MINH HỌA, ALT BA THỨ TIẾNG TẢ ĐÚNG ẢNH MỚI', async () => {
+await nhom('1 · DANH MỤC ẢNH: ĐÚNG 33 ID, CỜ MINH HỌA, ALT BA THỨ TIẾNG TẢ ĐÚNG ẢNH', async () => {
   const idKhai = (doc(SRC, 'lib', 'anh.ts').match(/export\s+type\s+IdAnh\s*=\s*([^;]+);/)?.[1].match(/'([^']+)'/g) ?? []).map(s => s.slice(1, -1));
   const mong = [...ANH_AI, ...ANH_THAT].sort();
   ok(`IdAnh khai đúng ${mong.length} id: ${mong.join(', ')}`, JSON.stringify([...idKhai].sort()) === JSON.stringify(mong), idKhai.join(', '));
@@ -157,19 +189,53 @@ await nhom('2 · danh-sach.json: NGUỒN ĐÚNG SỰ THẬT, KHÔNG PHÓNG TO �
      !/higgsfield|nano_banana|ung_vien|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(nguyenVan),
      nguyenVan.match(/higgsfield|nano_banana|ung_vien|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i)?.[0]);
   for (const [id, mt] of [...Object.entries(danhSach.anh ?? {}), ...Object.entries(danhSach.du_phong ?? {})]) {
-    ok(`${id}: nguồn ghi ChatGPT (qua Codex), tạo ngày 11/10/2026; có mô tả`,
-       /ChatGPT/.test(mt.nguon?.cong_cu ?? '') && /Codex/.test(mt.nguon?.cong_cu ?? '') && /11\/10\/2026/.test(mt.nguon?.cong_cu ?? '')
-         && typeof mt.mo_ta === 'string' && mt.mo_ta.length > 20, JSON.stringify(mt.nguon));
+    const nguon = `${mt.nguon?.tu ?? ''} · ${mt.nguon?.cong_cu ?? ''}`;
+    if (!ANH_MON.includes(id)) {
+      ok(`${id}: nguồn ghi ChatGPT (qua Codex), tạo ngày 11/10/2026; có mô tả`,
+         /ChatGPT/.test(mt.nguon?.cong_cu ?? '') && /Codex/.test(mt.nguon?.cong_cu ?? '') && /11\/10\/2026/.test(mt.nguon?.cong_cu ?? '')
+           && typeof mt.mo_ta === 'string' && mt.mo_ta.length > 20, JSON.stringify(mt.nguon));
+    } else {
+      // Ảnh món: lấy từ cuốn menu bản sáng; không nhận vơ công cụ (không ghi ChatGPT — không ai nói ảnh món do ChatGPT tạo).
+      ok(`${id}: nguồn ghi artifact "Beeftown — Menu" (cuốn C nền sáng, Version 45, 11/10/2026); có mô tả`,
+         /Beeftown — Menu/.test(nguon) && /Version 45/.test(nguon) && /11\/10\/2026/.test(nguon) && !/ChatGPT/.test(nguon)
+           && typeof mt.mo_ta === 'string' && mt.mo_ta.length > 20, JSON.stringify(mt.nguon));
+      ok(ANH_MON_MENU_CHUAN.includes(id)
+        ? `${id}: nguồn ghi đúng "lấy từ menu chuẩn 29/09 của quán", CHƯA rõ ảnh chụp thật hay ảnh dựng`
+        : `${id}: nguồn ghi đúng "ảnh AI tạo qua cầu nối Codex ngày 09–11/10/2026", rồi tách nền`,
+         ANH_MON_MENU_CHUAN.includes(id) ? /menu chuẩn 29\/09/.test(nguon) && /CHƯA rõ/.test(nguon)
+           : /ảnh AI/.test(nguon) && /Codex/.test(nguon) && /09–11\/10\/2026/.test(nguon) && /tách nền/.test(nguon),
+         mt.nguon?.cong_cu);
+    }
     ok(`${id}: mô tả không còn chữ của bộ ảnh cũ`, !/vỉ gang|hương thảo|muối hạt|đĩa đá|bốn chén/iu.test(mt.mo_ta ?? ''), mt.mo_ta);
+    const tachNen = mt.tach_nen;
+    ok(`${id}: ${TACH_NEN.includes(id) ? 'khai "tach_nen" (ảnh tách nền: không cắt, đặt vào khung, chừa dải trống ở đáy cho nhãn)' : 'không khai "tach_nen" (ảnh có nền: cắt theo khung)'}`,
+       TACH_NEN.includes(id) === !!tachNen, JSON.stringify(tachNen));
     for (const [tenKhung, k] of Object.entries(mt.khung ?? {})) {
       const goc = k.goc ?? mt.goc;
       const co = CO_GOC[goc];
       const noi = `${id} / ${tenKhung}`;
-      if (!ok(`${noi}: file gốc ${goc} là một trong tám ảnh đã biết cỡ, tên dạng <id>-<khung>.png`, !!co && goc.startsWith(`${id}-`) && !!KHUNG[tenKhung], goc)) continue;
-      const rongCat = Math.floor(rongVungCat(co, KHUNG[tenKhung]));
-      ok(`${noi}: bề rộng lớn nhất ${Math.max(...k.rong)}px không vượt vùng cắt ${rongCat}px của ảnh gốc (không phóng to)`,
-         Array.isArray(k.rong) && k.rong.length >= 2 && Math.max(...k.rong) <= rongCat, JSON.stringify(k.rong));
-      ok(`${noi}: điểm lấy nét fx, fy nằm trong 0..1`, [k.fx ?? 0.5, k.fy ?? 0.5].every(v => typeof v === 'number' && v >= 0 && v <= 1), `${k.fx}, ${k.fy}`);
+      const tenDung = ANH_MON.includes(id) ? new RegExp(`^${id}\\.(?:webp|png|jpg)$`).test(goc) : goc.startsWith(`${id}-`);
+      if (!ok(`${noi}: file gốc ${goc} là một trong các ảnh đã biết cỡ, tên đúng quy ước (<id>-<khung>.png; ảnh của cuốn: <id>.webp/.png/.jpg)`,
+              !!co && tenDung && !!KHUNG[tenKhung], goc)) continue;
+      if (tachNen) {
+        // Ảnh tách nền không cắt: khung dựng quanh phần có hình, đúng cỡ điểm ảnh của ảnh gốc. Phần có hình không
+        // lớn hơn ảnh gốc, nên khung không bao giờ rộng hơn khung dựng quanh CẢ ảnh gốc — bề rộng xuất vượt mức
+        // đó là phóng to. (tao-co-anh.py còn kiểm sát hơn, theo đúng phần có hình.)
+        const [rx, ry] = KHUNG[tenKhung];
+        const rongToiDa = Math.ceil(Math.max(co[0] / (1 - 2 * tachNen.le), co[1] / (1 - tachNen.le - tachNen.duoi) * rx / ry));
+        ok(`${noi}: bề rộng lớn nhất ${Math.max(...k.rong)}px không vượt khung dựng quanh ảnh gốc (${rongToiDa}px) — không phóng to`,
+           Array.isArray(k.rong) && k.rong.length >= 2 && Math.max(...k.rong) <= rongToiDa, JSON.stringify(k.rong));
+        ok(`${noi}: ảnh tách nền không có điểm lấy nét (không cắt)`, k.fx === undefined && k.fy === undefined);
+        // Dải trống ở đáy đủ chỗ cho nhãn: nhãn cao ~24px (chữ 13px, dòng 1,4, đệm 3px) và khung nhỏ nhất trên trang
+        // rộng ~250px (thẻ hai cột ở màn 600px; ly signature ~170px khung 4:5) → dải ≥ 12 % chiều cao khung.
+        ok(`${noi}: dải trống ở đáy (duoi ${tachNen.duoi}) ≥ 12 % chiều cao khung — nhãn "Ảnh minh họa" nằm dưới món, không đè lên món`,
+           tachNen.duoi >= 0.12 && tachNen.le >= 0 && tachNen.le <= 0.1, JSON.stringify(tachNen));
+      } else {
+        const rongCat = Math.floor(rongVungCat(co, KHUNG[tenKhung]));
+        ok(`${noi}: bề rộng lớn nhất ${Math.max(...k.rong)}px không vượt vùng cắt ${rongCat}px của ảnh gốc (không phóng to)`,
+           Array.isArray(k.rong) && k.rong.length >= 2 && Math.max(...k.rong) <= rongCat, JSON.stringify(k.rong));
+        ok(`${noi}: điểm lấy nét fx, fy nằm trong 0..1`, [k.fx ?? 0.5, k.fy ?? 0.5].every(v => typeof v === 'number' && v >= 0 && v <= 1), `${k.fx}, ${k.fy}`);
+      }
     }
   }
   for (const [id, cacKhung] of Object.entries(ANH_DA_DAT)) {
@@ -187,19 +253,36 @@ const moiAstro = thu => readdirSync(join(SRC, thu), { withFileTypes: true }).fla
   return d.isDirectory() ? moiAstro(duong) : d.name.endsWith('.astro') ? [duong] : [];
 });
 const congKhai = moiAstro('').filter(f => !NOI_BO.some(n => f.startsWith(n)));
-/** Mọi chỗ gọi <Anh …> trong một file: { id, khung, khungNho, uuTien }. */
+/** Mọi chỗ gọi <Anh …> trong một file: { id, khung, khungNho, uuTien } — và idDong / khungDong khi id, khung
+ *  là biểu thức ({anh.id}) thay vì chữ thẳng (chỉ ảnh món, lấy từ ANH_CUA_MON). */
 function choGoiAnh(nguon) {
   return [...mauCua(nguon).matchAll(/<Anh\b([\s\S]*?)\/>/g)].map(m => {
     const tt = ten => m[1].match(new RegExp(`\\b${ten}="([^"]*)"`))?.[1] ?? null;
-    return { id: tt('id'), khung: tt('khung'), khungNho: tt('khungNho'), uuTien: /\buuTien\b/.test(m[1]), thayBang: tt('thayBang') };
+    const dong = ten => m[1].match(new RegExp(`\\b${ten}=\\{([^}]*)\\}`))?.[1] ?? null;
+    return { id: tt('id'), khung: tt('khung'), khungNho: tt('khungNho'), uuTien: /\buuTien\b/.test(m[1]), thayBang: tt('thayBang'),
+             idDong: dong('id'), khungDong: dong('khung') };
   });
 }
 const goiAnh = congKhai.flatMap(f => choGoiAnh(doc(SRC, f)).map(g => ({ ...g, file: f })));
+// Ảnh món: ThucDonNhomAnh.astro gọi <Anh id={anh.id} khung={anh.khung}> với anh = ANH_CUA_MON[mã món].
+const { ANH_CUA_MON } = await nap('anh.ts');
+const goiAnhChuThang = goiAnh.filter(g => !g.idDong && !g.khungDong);
+const goiAnhMon = goiAnh.filter(g => g.idDong || g.khungDong);
 
 await nhom('3 · ẢNH ĐÃ DỰNG KHỚP VỚI CHỖ DÙNG; KHÔNG ẢNH CHẾT, KHÔNG PNG GỐC', async () => {
-  ok(`Trang công khai gọi <Anh> ở ${goiAnh.length} chỗ, chỗ nào cũng ghi id và khung bằng chữ thẳng (kiểm được)`,
-     goiAnh.length >= 6 && goiAnh.every(g => g.id && g.khung), goiAnh.filter(g => !g.id || !g.khung).map(g => g.file).join(', '));
-  const dung = new Set(goiAnh.flatMap(g => [`${g.id} ${g.khung}`, ...(g.khungNho ? [`${g.id} ${g.khungNho}`] : [])]));
+  ok(`Trang công khai gọi <Anh> ở ${goiAnhChuThang.length} chỗ ghi id và khung bằng chữ thẳng (kiểm được)`,
+     goiAnhChuThang.length >= 7 && goiAnhChuThang.every(g => g.id && g.khung), goiAnhChuThang.filter(g => !g.id || !g.khung).map(g => g.file).join(', '));
+  // Chỗ gọi bằng biểu thức chỉ được là ảnh món: trong ThucDonNhomAnh.astro, id và khung lấy cùng một mục của
+  // ANH_CUA_MON (anh.id / anh.khung) — nhờ vậy khung của ảnh món đọc được từ ANH_CUA_MON.
+  ok(`Chỉ ThucDonNhomAnh.astro gọi <Anh> bằng biểu thức, và chỉ dạng id={x.id} khung={x.khung} (${goiAnhMon.length} chỗ)`,
+     goiAnhMon.length >= 1 && goiAnhMon.every(g => g.file === 'components/ThucDonNhomAnh.astro' && /^\w+\.id$/.test(g.idDong ?? '')
+       && g.khungDong === g.idDong.replace(/\.id$/, '.khung') && !g.khungNho)
+       && /import \{ ANH_CUA_MON \} from '\.\.\/lib\/anh'/.test(doc(SRC, 'components', 'ThucDonNhomAnh.astro')),
+     goiAnhMon.map(g => `${g.file}: id={${g.idDong}} khung={${g.khungDong}}`).join(' | '));
+  const dung = new Set([
+    ...goiAnhChuThang.flatMap(g => [`${g.id} ${g.khung}`, ...(g.khungNho ? [`${g.id} ${g.khungNho}`] : [])]),
+    ...(goiAnhMon.length ? Object.values(ANH_CUA_MON).map(a => `${a.id} ${a.khung}`) : []),
+  ]);
   const daDung = new Set(Object.entries(ANH_TAO_SAN).flatMap(([id, k]) => Object.keys(k).map(ten => `${id} ${ten}`)));
   const chuaDung = [...dung].filter(d => !daDung.has(d));
   const chet = [...daDung].filter(d => !dung.has(d));
@@ -299,14 +382,15 @@ await nhom('5 · BỐN QUYẾT ĐỊNH CỦA KHÁNH (11/10/2026): DẢI TỐI, C
   ok('Ảnh bữa ăn mon-an-chia-se ở khối "Cả bữa, cho cả bàn" (BuaAnCungNhau.astro)', o('mon-an-chia-se', 'BuaAnCungNhau.astro'));
   ok('Ảnh bữa ăn bua-an-cung-ban ở khối "Rủ cả nhà, cả nhóm cùng đến" (DiCungNhom.astro), thay hình vẽ bàn nướng',
      o('bua-an-cung-ban', 'DiCungNhom.astro') && !/<KhungAnh\b/.test(mauCua(doc(SRC, 'components', 'DiCungNhom.astro'))));
-  ok('hero-vi-gas ở màn đầu, bo-van-mo-can ở Quầy chọn bò, bo-cat-lat và sot-cham ở trang Thực đơn',
-     o('hero-vi-gas', 'KhoiMoDau.astro') && o('bo-van-mo-can', 'QuayChonBo.astro') && o('bo-cat-lat', 'TrangThucDon.astro') && o('sot-cham', 'TrangThucDon.astro'));
+  ok('hero-vi-gas ở màn đầu, bo-van-mo-can ở Quầy chọn bò; bo-cat-lat, sot-cham và uong-khong-con-ba-ly ở trang Thực đơn',
+     o('hero-vi-gas', 'KhoiMoDau.astro') && o('bo-van-mo-can', 'QuayChonBo.astro') && o('bo-cat-lat', 'TrangThucDon.astro') && o('sot-cham', 'TrangThucDon.astro')
+       && o('uong-khong-con-ba-ly', 'TrangThucDon.astro'));
 
   // Ảnh AI không bao giờ thay cho ảnh chụp thật: đường đến, thang máy, quầy vẫn là khung đồ họa.
   const den = mauCua(doc(SRC, 'components', 'TrangDenBeeftown.astro'));
   ok('Đến Beeftown: lối vào, thang máy, quầy vẫn là <KhungAnh> — không ảnh AI nào ở đó',
      ['loi-vao', 'thang-may', 'quay'].every(l => new RegExp(`<KhungAnh\\b[^>]*loai="${l}"`).test(den)) && !/<Anh\b/.test(den));
-  const ngoaiHaiTrang = goiAnh.filter(g => !['KhoiMoDau', 'QuayChonBo', 'BuaAnCungNhau', 'DiCungNhom', 'TrangThucDon'].some(c => g.file === `components/${c}.astro`));
+  const ngoaiHaiTrang = goiAnh.filter(g => !['KhoiMoDau', 'QuayChonBo', 'BuaAnCungNhau', 'DiCungNhom', 'TrangThucDon', 'ThucDonNhomAnh'].some(c => g.file === `components/${c}.astro`));
   ok('Ảnh AI chỉ nằm ở trang chủ và trang Thực đơn', ngoaiHaiTrang.length === 0, ngoaiHaiTrang.map(g => `${g.file}: ${g.id}`).join(' | '));
   ok('Chỗ của ảnh AI khi chưa dựng cỡ không bao giờ là hình quầy, lối vào hay thang máy (thayBang chỉ khay / ban-nuong)',
      goiAnh.every(g => [null, 'khay', 'ban-nuong'].includes(g.thayBang)), goiAnh.map(g => g.thayBang).join(', '));
@@ -343,6 +427,49 @@ await nhom('6 · THẺ "CÁCH ĐỌC NHÃN KHAY": NĂM TRƯỜNG THEO THỨ TỰ
      /<img src="\/thuong-hieu\/logo-ngang-do\.svg" width="446" height="124" alt=""/.test(mau));
   const dung = ['QuayChonBo.astro', 'TrangThucDon.astro'].filter(f => /<NhanKhay\b/.test(mauCua(doc(SRC, 'components', f))));
   ok('Trang chủ (Quầy chọn bò) và trang Thực đơn (Bò tại quầy) dùng chung một thẻ', dung.length === 2, dung.join(', '));
+});
+
+// ===========================================================================
+await nhom('7 · ẢNH MÓN CỦA TRANG THỰC ĐƠN (CUỐN MENU BẢN SÁNG 11/10/2026): BẢNG GHÉP MÃ MÓN, ẢNH TÁCH NỀN, NHÃN', async () => {
+  // Mã món → ảnh, chép tay từ bảng danh mục cuốn bản sáng (scratchpad danh-muc-ban-sang.md, mục "Món ăn" và
+  // "do-uong-signature"): 22 món ăn kể cả Set 4 sốt S01, ba ly signature. 17 đồ uống dạng danh sách không có ảnh.
+  const MONG = {
+    F03: 'mon-tartare-bo-hoa-tuyet', F19: 'mon-com-tron-tartare-bo-cay', F15: 'mon-lau-kim-chi', F16: 'mon-lau-bo-bulgogi',
+    F20: 'mon-lau-nam', S01: 'mon-set-4-sot', F21: 'mon-salad-nam', F01: 'mon-caesar-salad', F10: 'mon-mien-tron-han',
+    F22: 'mon-trung-hap-nui-lua', F23: 'mon-khoai-tay-chien-sot-bo', F18: 'mon-banh-gao-chien-pho-mai', F12: 'mon-canh-kim-chi',
+    F14: 'mon-dau-phu-ham', F13: 'mon-canh-tuong-dau', F06: 'mon-com-kim-chi-bo', F05: 'mon-com-tron-han', F04: 'mon-com-tron-trung-ca',
+    F11: 'mon-mi-lanh-cay', F08: 'mon-mi-toowoomba', F07: 'mon-mi-carbonara', F09: 'mon-mi-bo-sot-ca',
+    D13: 'uong-milky-cloud-makgeolli', D01: 'uong-strawberry-crush', D14: 'uong-berry-rouge-highball',
+  };
+  const thucTe = Object.fromEntries(Object.entries(ANH_CUA_MON).map(([ma, a]) => [ma, a.id]));
+  ok(`ANH_CUA_MON ghép đúng ${Object.keys(MONG).length} mã món của bảng danh mục với ảnh của món đó`,
+     JSON.stringify(Object.entries(thucTe).sort()) === JSON.stringify(Object.entries(MONG).sort()),
+     Object.entries(thucTe).filter(([ma, id]) => MONG[ma] !== id).map(([ma, id]) => `${ma} → ${id}`).join(', ') || Object.keys(MONG).filter(ma => !thucTe[ma]).join(', '));
+  for (const [ma, a] of Object.entries(ANH_CUA_MON)) {
+    ok(`${ma}: khung ${a.khung} của ảnh ${a.id} có trong danh-sach.json và đã dựng`,
+       !!danhSach.anh?.[a.id]?.khung?.[a.khung] && !!ANH_TAO_SAN[a.id]?.[a.khung], JSON.stringify(a));
+  }
+  ok('Ảnh ba ly không cồn (uong-khong-con-ba-ly) là ảnh của cả phần Đồ uống — không gắn với một món nào',
+     !Object.values(ANH_CUA_MON).some(a => a.id === 'uong-khong-con-ba-ly'));
+  for (const id of ANH_MON) {
+    ok(`${id}: ảnh minh họa (minhHoa: true)${TACH_NEN.includes(id) ? ', tách nền (tachNen: true)' : ', ảnh có nền (không tachNen)'}`,
+       DANH_MUC_ANH[id]?.minhHoa === true && (DANH_MUC_ANH[id]?.tachNen === true) === TACH_NEN.includes(id), JSON.stringify(DANH_MUC_ANH[id] && { ...DANH_MUC_ANH[id], alt: '…' }));
+  }
+
+  // Khung ảnh tách nền: trong suốt (món đặt thẳng lên nền của dải), nhãn chỉ đổi CHỖ — cỡ chữ, màu, nền riêng của nhãn
+  // giữ như nhóm 4 đã tính (đọc được trên vùng ảnh trắng tinh).
+  const ck = boChuThichCss(doc(SRC, 'styles', 'cong-khai.css'));
+  const khungTach = ck.match(/\.ck \.anh\.tach-nen\s*\{([^}]*)\}/)?.[1] ?? '';
+  const nhanTach = ck.match(/\.ck \.anh\.tach-nen \.chu-thich-anh\s*\{([^}]*)\}/)?.[1] ?? '';
+  ok('cong-khai.css: khung .anh.tach-nen trong suốt (không nền chờ, không mảng màu sau món)', /background:\s*transparent/.test(khungTach), khungTach.trim());
+  const thuocTinh = [...nhanTach.matchAll(/([a-z-]+)\s*:/g)].map(m => m[1]);
+  ok('cong-khai.css: nhãn của ảnh tách nền chỉ đổi chỗ (left, bottom, transform, white-space) — giữ cỡ chữ, màu và nền riêng của nhãn',
+     thuocTinh.length > 0 && thuocTinh.every(t => ['left', 'bottom', 'transform', 'white-space'].includes(t)), nhanTach.trim());
+  const anhAstro = doc(SRC, 'components', 'Anh.astro');
+  ok('Anh.astro: ảnh tachNen thì khung thêm lớp tach-nen (đọc từ DANH_MUC_ANH, nơi dùng không quên được)',
+     /const tachNen = DANH_MUC_ANH\[id\]\.tachNen === true;/.test(anhAstro) && /tachNen \? 'tach-nen'/.test(anhAstro));
+  const dungNhomAnh = congKhai.filter(f => /<ThucDonNhomAnh\b/.test(mauCua(doc(SRC, f))));
+  ok('ThucDonNhomAnh (ảnh món) chỉ nằm ở trang Thực đơn (TrangThucDon.astro)', JSON.stringify(dungNhomAnh) === JSON.stringify(['components/TrangThucDon.astro']), dungNhomAnh.join(', '));
 });
 
 process.exit(ketThuc('ẢNH, NHÃN "ẢNH MINH HỌA", THẺ ĐỌC NHÃN KHAY, BỐ CỤC TRANG CHỦ'));

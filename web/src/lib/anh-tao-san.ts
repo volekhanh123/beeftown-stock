@@ -39,64 +39,64 @@ export const ANH_TAO_SAN: Readonly<Record<string, Readonly<Record<string, CoAnh>
     '1x1': { rong: 800, cao: 800, cac: [480, 800], mau: '#986C46' },
   },
   'mon-lau-kim-chi': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#D7B798' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#D5B494' },
   },
   'mon-lau-bo-bulgogi': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#CDBDA3' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#CABAA0' },
   },
   'mon-lau-nam': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#CBBCA0' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#C9B99C' },
   },
   'mon-set-4-sot': {
     '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#A79878' },
   },
   'mon-salad-nam': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#D2BE9E' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#D0BB9A' },
   },
   'mon-caesar-salad': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#D7CBA7' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#D5C9A4' },
   },
   'mon-mien-tron-han': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#B69E84' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#B1997E' },
   },
   'mon-trung-hap-nui-lua': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#D2C3A5' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#CFC0A2' },
   },
   'mon-khoai-tay-chien-sot-bo': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#D8BC9F' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#D6B99C' },
   },
   'mon-banh-gao-chien-pho-mai': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#CCB79C' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#C9B498' },
   },
   'mon-canh-kim-chi': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#C4AA92' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#C1A68D' },
   },
   'mon-dau-phu-ham': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#C6AD94' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#C3A88F' },
   },
   'mon-canh-tuong-dau': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#C1B098' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#BDAC93' },
   },
   'mon-com-kim-chi-bo': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#DDC1A2' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#DBBE9E' },
   },
   'mon-com-tron-han': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#C6B39A' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#C2AF96' },
   },
   'mon-com-tron-trung-ca': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#CEB99C' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#CBB698' },
   },
   'mon-mi-lanh-cay': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#D1B9A0' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#CEB69C' },
   },
   'mon-mi-toowoomba': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#CBBBA2' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#C8B89E' },
   },
   'mon-mi-carbonara': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#C6B196' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#C2AD91' },
   },
   'mon-mi-bo-sot-ca': {
-    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#BEA58D' },
+    '4x3': { rong: 800, cao: 600, cac: [480, 800], mau: '#BAA088' },
   },
   'uong-milky-cloud-makgeolli': {
     '4x5': { rong: 640, cao: 800, cac: [400, 640], mau: '#DEC9B0' },

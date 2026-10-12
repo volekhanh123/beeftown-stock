@@ -122,7 +122,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-lau-kim-chi.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -135,7 +135,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-lau-bo-bulgogi.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -148,7 +148,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-lau-nam.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -161,7 +161,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-set-4-sot.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -174,7 +174,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-salad-nam.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -187,7 +187,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-caesar-salad.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -200,7 +200,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-mien-tron-han.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -213,7 +213,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-trung-hap-nui-lua.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -226,7 +226,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-khoai-tay-chien-sot-bo.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -239,7 +239,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-banh-gao-chien-pho-mai.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -252,7 +252,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-canh-kim-chi.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -265,7 +265,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-dau-phu-ham.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -278,7 +278,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-canh-tuong-dau.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -291,7 +291,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-com-kim-chi-bo.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -304,7 +304,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-com-tron-han.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -317,7 +317,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-com-tron-trung-ca.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -330,7 +330,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-mi-lanh-cay.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -343,7 +343,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-mi-toowoomba.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -356,7 +356,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-mi-carbonara.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }
@@ -369,7 +369,7 @@
         "da_chon": "ảnh của cuốn menu bản sáng"
       },
       "goc": "mon-mi-bo-sot-ca.webp",
-      "tach_nen": { "le": 0.04, "duoi": 0.16 },
+      "tach_nen": { "le": 0.04, "duoi": 0.13 },
       "khung": {
         "4x3": { "rong": [480, 800] }
       }

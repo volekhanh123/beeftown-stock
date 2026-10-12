@@ -151,6 +151,26 @@ export function dinhDangGia(n: number): string {
   return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
+/**
+ * Câu dưới tên nhóm — chép NGUYÊN VĂN câu dưới tiêu đề trang của cuốn menu bản sáng (Khánh chốt
+ * 11/10/2026; tiếng Hàn do Claude dịch, chưa có người đọc tiếng Hàn xem). Database không có cột này
+ * nên câu nằm ở đây, khóa là MÃ NHÓM (nhom_mon.ma). Nhóm không có ở đây (Món đặc trưng, Gọi thêm, các
+ * nhóm đồ uống, nhóm mới sau này) thì trang không in câu nào. Không câu nào được có giá: câu "Ba ly
+ * signature, mỗi ly 69.000đ." của cuốn không dùng.
+ */
+export const CAU_NHOM: Readonly<Record<string, BaThuTieng>> = {
+  lau: { vi: 'Chỉ buổi trưa, gọi theo combo.', en: 'Lunch only, as part of a combo.', ko: '점심에만, 콤보로 주문하실 수 있어요.' },
+  salad: { vi: 'Ăn xen giữa các lượt bò.', en: 'Between rounds of beef.', ko: '고기 사이사이에 곁들여 드세요.' },
+  'mon-them': { vi: 'Gọi cùng bò cho đủ bữa.', en: 'Order with your beef.', ko: '고기와 함께 주문해 보세요.' },
+  canh: { vi: 'Ăn kèm bò nướng.', en: 'To go with your grilled beef.', ko: '구운 고기와 함께 드세요.' },
+  com: { vi: 'Kết bữa bằng một món cơm.', en: 'Finish with a rice dish.', ko: '식사는 밥 요리로 마무리해 보세요.' },
+  'mi-y': {
+    vi: 'Mì Ý cho cả bàn, mì lạnh để kết bữa.',
+    en: 'Pasta to share, cold noodles to finish.',
+    ko: '파스타는 함께 나눠 드시고, 냉면으로 식사를 마무리해 보세요.',
+  },
+};
+
 /** Nhãn món: chỉ hai nhãn có căn cứ trong database — không tự thêm chay, cay, dị ứng. */
 export const NHAN_MON: Readonly<Record<'monSong' | 'coCon', BaThuTieng>> = {
   monSong: { vi: 'Món sống', en: 'Raw dish', ko: '날음식' },

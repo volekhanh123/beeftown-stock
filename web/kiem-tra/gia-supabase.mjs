@@ -31,7 +31,12 @@
  * ở xa / mạng 4G chậm — để kịp bấm lần hai trong lúc lần một còn đang chạy):
  *   rong          database nối rồi nhưng CHƯA công bố gì: mọi khóa null, thực đơn rỗng
  *   day-du        Facebook, Maps, hotline, email đã công bố; form hỏi bàn mở; thực đơn
- *                 và đồ uống có cồn bật; thực đơn mẫu (không món nào có giá)
+ *                 và đồ uống có cồn bật; thực đơn = danh mục cuốn menu bản sáng (MON_MAU: 22 món
+ *                 ăn, ba ly signature; không món nào có giá)
+ *   khong-con-tat như day-du nhưng công tắc hien_do_uong_co_con TẮT: thuc_don_cong_khai() không trả
+ *                 ba ly signature (như hàm thật), trang không nhắc đồ uống có cồn ở đâu
+ *   thuc-don-thu-suc  như day-du, thêm MON_THU_SUC: nhóm mã lạ chưa có câu, món không ảnh, tên và mô
+ *                 tả rất dài, hai nhóm đồ uống dạng danh sách — thẻ món phải chịu được
  *   dat-ban-dong  như day-du nhưng form hỏi bàn đang tắt
  *   dat-ban-loi   như day-du; tao_dat_ban trả 400 "Khung giờ … ngày … đã hết bàn"
  *   dat-ban-500   như day-du; tao_dat_ban trả 500
@@ -65,7 +70,7 @@ import { homNayVn } from '../src/lib/gio-vn.ts';
 
 export const CONG_MAC_DINH = 54331;
 export const KICH_BAN = ['rong', 'day-du', 'dat-ban-dong', 'dat-ban-loi', 'dat-ban-500', 'dat-ban-dut', 'dat-ban-sap', 'dia-chi-cong-bo',
-  'tuyen-dung-mo', 'tuyen-dung-dut', 'tuyen-dung-loi', 'sap-mo', 'da-mo'];
+  'tuyen-dung-mo', 'tuyen-dung-dut', 'tuyen-dung-loi', 'sap-mo', 'da-mo', 'khong-con-tat', 'thuc-don-thu-suc'];
 
 // Liên hệ "đã công bố" của kịch bản day-du. Đường dẫn thử, không phải trang thật của nhà hàng.
 export const LIEN_HE_THU = {
@@ -114,7 +119,7 @@ function noiDung(kichBan) {
     ...LIEN_HE_THU,
     form_dat_ban_dang_mo: kichBan !== 'dat-ban-dong',
     hien_thuc_don: true,
-    hien_do_uong_co_con: true,
+    hien_do_uong_co_con: kichBan !== 'khong-con-tat',
     ...(kichBan === 'dia-chi-cong-bo' ? { dia_chi_hien_thi: DIA_CHI_CONG_BO_THU } : {}),
     ...(kichBan === 'sap-mo' ? { ngay_khai_truong: ngaySapMoThu(), dong_trang_thai: TRANG_THAI_THU['sap-mo'] } : {}),
     ...(kichBan === 'da-mo' ? { ngay_khai_truong: NGAY_DA_MO_THU, dong_trang_thai: TRANG_THAI_THU['da-mo'] } : {}),
@@ -122,48 +127,179 @@ function noiDung(kichBan) {
 }
 
 // ---------------------------------------------------------------------------
-// Thực đơn mẫu — tên món lấy từ seed 0011; KHÔNG món nào có giá (gia null), đúng
-// như database hiện nay: chưa một mức giá nào được duyệt.
+// Thực đơn mẫu — ĐÚNG danh mục của cuốn menu bản sáng Khánh chốt 11/10/2026 (bảng danh mục 11/10,
+// migration 0091) ở trạng thái "đã công bố hết những món công bố được": 22 món ăn (kể cả Set 4 sốt S01)
+// và ba ly signature. Tên, mô tả ba thứ tiếng chép NGUYÊN VĂN bảng danh mục. 17 đồ uống dạng danh sách
+// (highball, bia, soju, makgeolli, nước ép & ade, nước ngọt, nước suối) KHÔNG trả về: cuốn không có mô tả
+// cho chúng, database đòi mô tả mới cho công bố. KHÔNG món nào có giá (gia null) — đúng như database:
+// 69.000đ của Set 4 sốt và ba ly signature chỉ là giá đề xuất chờ duyệt, không bao giờ tới trang.
+// Thứ tự: nhom_mon.thu_tu rồi mon_an.thu_tu, như thuc_don_cong_khai() trả.
 // ---------------------------------------------------------------------------
 const NN = ['vi', 'en', 'ko'];
 const ba = (vi, en, ko) => ({ vi, en, ko });
 
+// Nhóm theo thu_tu của bảng nhóm (0091). bo-tai-quay không có món nào trong danh mục.
 const NHOM = {
-  'goi-them':    { loai: 'goi_them', xemTaiQuay: false, ten: ba('Gọi thêm tùy chọn', 'Add-ons', '추가 메뉴') },
-  'bo-tai-quay': { loai: 'thit_bo', xemTaiQuay: true, ten: ba('Bò tại quầy', 'Beef at the Counter', '정육 코너') },
-  'salad':       { loai: 'khai_vi', xemTaiQuay: false, ten: ba('Salad & khai vị', 'Salads & Starters', '샐러드 & 애피타이저') },
-  'khong-con':   { loai: 'do_uong', xemTaiQuay: false, ten: ba('Không cồn', 'Non-alcoholic', '논알코올') },
-  'highball':    { loai: 'do_uong', xemTaiQuay: false, ten: ba('Highball', 'Highball', '하이볼') },
+  'goi-them':          { loai: 'goi_them', xemTaiQuay: false, ten: ba('Gọi thêm tùy chọn', 'Add-ons', '추가 메뉴') },
+  'bo-tai-quay':       { loai: 'thit_bo', xemTaiQuay: true, ten: ba('Bò tại quầy', 'Beef at the Counter', '정육 코너') },
+  'dac-trung':         { loai: 'khai_vi', xemTaiQuay: false, ten: ba('Món đặc trưng', 'Signature', '시그니처 메뉴') },
+  'lau':               { loai: 'mon_chinh', xemTaiQuay: false, ten: ba('Lẩu', 'Hot pot', '전골') },
+  'salad':             { loai: 'khai_vi', xemTaiQuay: false, ten: ba('Salad', 'Salads', '샐러드') },
+  'mon-them':          { loai: 'khai_vi', xemTaiQuay: false, ten: ba('Món thêm', 'Sides', '사이드 메뉴') },
+  'canh':              { loai: 'mon_chinh', xemTaiQuay: false, ten: ba('Canh', 'Stews', '찌개') },
+  'com':               { loai: 'mon_chinh', xemTaiQuay: false, ten: ba('Cơm', 'Rice', '밥') },
+  'mi-y':              { loai: 'mon_chinh', xemTaiQuay: false, ten: ba('Mì', 'Noodles & pasta', '면·파스타') },
+  'do-uong-signature': { loai: 'do_uong', xemTaiQuay: false, ten: ba('Signature', 'Signature drinks', '시그니처 드링크') },
+  'highball':          { loai: 'do_uong', xemTaiQuay: false, ten: ba('Highball', 'Highball', '하이볼') },
+  'khong-con':         { loai: 'do_uong', xemTaiQuay: false, ten: ba('Nước ép & ade', 'Juice & ade', '주스·에이드') },
+  // Chỉ kịch bản thuc-don-thu-suc: một nhóm mã lạ, chưa có câu dưới tên nhóm, chưa có ảnh.
+  'nhom-thu':          { loai: 'khai_vi', xemTaiQuay: false, ten: ba('Nhóm thử chưa có câu', 'Test group without a line', '문구 없는 테스트 그룹') },
 };
+
+// Câu cảnh báo chung của hai món sống (nguyên văn tờ kẹp của cuốn).
+const CANH_BAO_SONG = ba(
+  'Món có bò sống và lòng đỏ trứng sống. Người đang mang thai, trẻ nhỏ, người lớn tuổi nên hỏi nhân viên trước khi gọi.',
+  'Contains raw beef and raw egg yolk. If you are pregnant, or ordering for a child or an older guest, please ask our staff first.',
+  '생소고기와 날계란 노른자가 들어간 메뉴예요. 임산부, 어린이, 어르신은 주문 전에 직원에게 문의해 주세요.',
+);
 
 /** Món mẫu, theo thứ tự database trả (nhom_mon.thu_tu, mon_an.thu_tu). */
 export const MON_MAU = [
-  { nhom: 'goi-them', ma: 'S01', ten: ba('Set sốt gọi thêm', 'Sauce set add-on', '소스 세트 추가'),
-    moTa: ba('Các loại sốt dùng cùng bò, kèm một phần rau và kimchi.',
-             'Dipping sauces for the beef, with greens and kimchi.',
-             '고기와 함께 드시는 소스에 채소와 김치가 곁들여져요.') },
-  { nhom: 'bo-tai-quay', ma: 'B01', ten: ba('Thăn lưng bò', 'Striploin', '채끝') },
-  { nhom: 'salad', ma: 'F01', ten: ba('Salad Caesar', 'Caesar Salad', '시저 샐러드'),
-    moTa: ba('Xà lách romaine, sốt Caesar và phô mai Parmesan.',
-             'Romaine, Caesar dressing and Parmesan.',
-             '로메인, 시저 드레싱, 파르메산 치즈.') },
-  { nhom: 'salad', ma: 'F03', ten: ba('Bò sống trộn kiểu Hàn', 'Korean-style raw beef', '육회'),
-    moTa: ba('Bò sống trộn kiểu Hàn.', 'Raw beef dressed the Korean way.', '한국식으로 무친 생소고기.'),
-    laMonSong: true,
-    canhBao: ba('Món dùng bò sống. Hỏi nhân viên về thành phần.',
-                'This dish uses raw beef. Ask our staff about the ingredients.',
-                '생소고기를 사용한 메뉴예요. 재료는 직원에게 문의해 주세요.') },
-  { nhom: 'khong-con', ma: 'D09', ten: ba('Nước cam', 'Orange juice', '오렌지 주스'),
-    moTa: ba('Nước cam dùng lạnh.', 'Orange juice, served cold.', '차갑게 드리는 오렌지 주스.') },
-  { nhom: 'highball', ma: 'D02', ten: ba('Highball cổ điển', 'Classic Highball', '클래식 하이볼'),
-    moTa: ba('Whisky, soda và chanh.', 'Whisky, soda and lemon.', '위스키, 탄산수, 레몬.'),
+  { nhom: 'goi-them', ma: 'S01', ten: ba('Set 4 sốt', 'Signature set', '시그니처 소스 4종 세트'),
+    moTa: ba('4 sốt hâm nóng ngay trên vỉ: phô mai, tare, ssamjang, sốt cay Tứ Xuyên. Kèm kimchi nhà làm và rau cuốn. Thêm 1 lần.',
+             'Four sauces, served warm on the grill: cheese, tare, ssamjang and Sichuan chili. With house kimchi and wrap greens. One refill.',
+             '치즈, 타레, 쌈장, 쓰촨식 매운 소스 네 가지를 그릴 위에서 따뜻하게 데워 드려요. 직접 담근 김치와 쌈 채소가 함께 나오고, 한 번 리필해 드려요.') },
+  { nhom: 'dac-trung', ma: 'F03', ten: ba('Tartare bò hoa tuyết', 'Snow flower flank tartare', '눈꽃 소고기 타르타르'),
+    moTa: ba('Nạm có thớ rõ, vị bò đậm, dai vừa. Thịt tươi xếp như cánh hoa, phủ phô mai Grana Padano hoặc Parmigiano bào mịn như tuyết. Trộn lòng đỏ trứng với gia vị Hàn mặn ngọt. Vị mặn của phô mai, độ béo của lòng đỏ làm tròn vị bò.',
+             'Flank, for its clear grain and deep beef flavour, arranged like petals under grated Grana Padano or Parmigiano. Mix in the yolk and our sweet-savoury Korean seasoning.',
+             '결이 선명하고 풍미가 진한 플랭크 부위를 꽃잎처럼 담고, 그라나 파다노 또는 파르미지아노 치즈를 눈처럼 갈아 올렸어요. 노른자와 달콤 짭짤한 한국식 양념을 넣어 비벼 드세요.'),
+    laMonSong: true, canhBao: CANH_BAO_SONG },
+  { nhom: 'dac-trung', ma: 'F19', ten: ba('Cơm trộn tartare bò cay', 'Spicy flank tartare rice bowl', '매콤 소고기 타르타르 비빔밥'),
+    moTa: ba('Nạm, phần cắt có ít trên mỗi con bò, cùng rau củ giòn theo mùa và sốt cay riêng của Beeftown. Trộn đều bò, sốt và cơm: một bát bibimbap tươi, cay dịu, làm vị bò rõ hơn.',
+             'Flank, a cut each animal yields little of, with crisp seasonal vegetables and our own spicy sauce. Mix it through the rice, a fresh take on bibimbap.',
+             '소 한 마리에서 조금밖에 나오지 않는 플랭크 부위에 아삭한 제철 채소와 Beeftown만의 매콤한 소스를 곁들였어요. 밥과 함께 고루 비벼 드세요.'),
+    laMonSong: true, canhBao: CANH_BAO_SONG },
+  { nhom: 'lau', ma: 'F15', ten: ba('Lẩu kim chi', 'Kimchi hot pot', '김치전골'),
+    moTa: ba('Nấu từ kimchi nhà làm, với thịt heo, đậu hũ và nấm. Nước dùng chua, cay.',
+             'Made with our house kimchi, pork, tofu and mushrooms. Sour, spicy broth.',
+             '직접 담근 김치에 돼지고기, 두부, 버섯을 넣어 끓였어요. 새콤하고 매콤한 국물이에요.') },
+  { nhom: 'lau', ma: 'F16', ten: ba('Lẩu bò bulgogi', 'Bulgogi hot pot', '불고기전골'),
+    moTa: ba('Bò thái mỏng ướp bulgogi, miến, nấm. Nước dùng ngọt thanh.',
+             'Thin-sliced bulgogi beef in a light, sweet broth.',
+             '얇게 썬 불고기와 당면, 버섯을 넣었어요. 국물이 달큰하고 깔끔해요.') },
+  { nhom: 'lau', ma: 'F20', ten: ba('Lẩu nấm', 'Mushroom hot pot', '버섯전골'),
+    moTa: ba('Nhiều loại nấm tươi, đậu hũ, cải thảo. Nước dùng thanh.',
+             'Assorted fresh mushrooms in a light broth.',
+             '여러 가지 생버섯과 두부, 배추를 넣었어요. 국물이 맑고 담백해요.') },
+  { nhom: 'salad', ma: 'F21', ten: ba('Salad nấm', 'Grilled mushroom salad', '구운 버섯 샐러드'),
+    moTa: ba('Nấm nướng trên rau xanh, sốt mè. Ăn xen với bò cho đỡ ngán.',
+             'Grilled mushrooms on fresh greens with sesame dressing.',
+             '신선한 채소 위에 구운 버섯을 올리고 참깨 드레싱을 곁들였어요.') },
+  { nhom: 'salad', ma: 'F01', ten: ba('Caesar salad', 'Caesar salad', '시저 샐러드'),
+    moTa: ba('Xà lách romaine, bánh mì nướng giòn, phô mai bào, sốt Caesar.',
+             'Romaine, croutons, shaved parmesan and Caesar dressing.',
+             '로메인, 크루통, 파르메산 치즈에 시저 드레싱을 곁들였어요.') },
+  { nhom: 'salad', ma: 'F10', ten: ba('Miến trộn Hàn', 'Hot plate japchae', '철판 잡채'),
+    moTa: ba('Miến xào với bò và rau củ, dọn trên chảo gang nóng.',
+             'Glass noodles stir-fried with beef and vegetables, on a sizzling plate.',
+             '소고기와 채소를 넣고 볶은 당면을 뜨거운 철판에 담아 드려요.') },
+  { nhom: 'mon-them', ma: 'F22', ten: ba('Trứng hấp núi lửa', 'Bomb egg soufflé', '폭탄 계란찜'),
+    moTa: ba('Trứng hấp trong thố đá, phồng cao, mềm và nóng.',
+             'Fluffy steamed egg, served hot in a stone pot.',
+             '뚝배기에 봉긋하게 부풀려 낸, 부드럽고 뜨거운 계란찜이에요.') },
+  { nhom: 'mon-them', ma: 'F23', ten: ba('Khoai tây chiên sốt bò', 'Beef chili fries', '비프 칠리 프라이'),
+    moTa: ba('Khoai tây chiên giòn, phủ sốt bò bằm và sốt phô mai.',
+             'Crispy fries topped with minced beef sauce and cheese sauce.',
+             '바삭한 감자튀김에 다진 소고기 소스와 치즈 소스를 올렸어요.') },
+  { nhom: 'mon-them', ma: 'F18', ten: ba('Bánh gạo chiên phô mai', 'Fried injeolmi rice cake', '치즈 인절미 튀김'),
+    moTa: ba('Vỏ giòn, nhân phô mai kéo sợi, rắc bột đậu nành rang.',
+             'Crispy outside, stretchy cheese inside, dusted with roasted soybean powder.',
+             '겉은 바삭하고 속에는 치즈가 쭉 늘어나요. 볶은 콩가루를 뿌렸어요.') },
+  { nhom: 'canh', ma: 'F12', ten: ba('Canh kim chi', 'Kimchi jjigae', '김치찌개'),
+    moTa: ba('Nấu từ kimchi nhà làm, thịt heo, đậu hũ. Chua, cay.',
+             'House kimchi, pork and tofu. Sour and spicy.',
+             '직접 담근 김치에 돼지고기와 두부를 넣어 끓였어요. 새콤하고 매콤해요.') },
+  { nhom: 'canh', ma: 'F14', ten: ba('Đậu phụ hầm', 'Sundubu jjigae', '순두부찌개'),
+    moTa: ba('Đậu hũ non mềm trong nước dùng cay, nóng.',
+             'Silky soft tofu in a hot, spicy broth.',
+             '부드러운 순두부를 뜨겁고 매콤한 국물에 끓였어요.') },
+  { nhom: 'canh', ma: 'F13', ten: ba('Canh tương đậu', 'Doenjang jjigae', '된장찌개'),
+    moTa: ba('Tương đậu nành, đậu hũ và rau củ. Vị đậm.',
+             'Soybean paste with tofu and vegetables. Rich and savoury.',
+             '된장에 두부와 채소를 넣어 끓였어요. 맛이 깊고 구수해요.') },
+  { nhom: 'com', ma: 'F06', ten: ba('Cơm kim chi bò', 'Beef kimchi fried rice', '소고기 김치볶음밥'),
+    moTa: ba('Cơm rang kimchi nhà làm với bò, trứng ốp la.',
+             'Fried rice with house kimchi and beef, topped with a fried egg.',
+             '직접 담근 김치와 소고기를 넣어 볶고, 계란 프라이를 올렸어요.') },
+  { nhom: 'com', ma: 'F05', ten: ba('Cơm trộn Hàn', 'Bibimbap', '비빔밥'),
+    moTa: ba('Cơm, rau trộn, bò, trứng. Trộn cùng tương ớt.',
+             'Rice with vegetables, beef and egg. Mix in the chili paste.',
+             '밥에 나물, 소고기, 계란을 올렸어요. 고추장과 함께 비벼 드세요.') },
+  { nhom: 'com', ma: 'F04', ten: ba('Cơm trộn trứng cá', 'Cheese al-bap', '치즈 알밥'),
+    moTa: ba('Cơm bát đá nóng, phô mai, trứng cá, rau củ giòn.',
+             'Hot stone-bowl rice with cheese, fish roe and crunchy vegetables.',
+             '뜨거운 돌솥밥에 치즈, 생선알, 아삭한 채소를 올렸어요.') },
+  { nhom: 'mi-y', ma: 'F11', ten: ba('Mì lạnh cay', 'Signature spicy cold noodles', '시그니처 매운 냉면'),
+    moTa: ba('Mì lạnh sốt cay, nước dùng đá. Kèm cơm, khoảng 70% chén thường.',
+             'Spicy cold noodles with icy broth. With rice, about 70% of a regular bowl.',
+             '매콤한 양념의 냉면에 살얼음 육수를 곁들였어요. 밥은 보통 공기의 70% 정도로 함께 나와요.') },
+  { nhom: 'mi-y', ma: 'F08', ten: ba('Mì Toowoomba', 'Toowoomba pasta', '투움바 파스타'),
+    moTa: ba('Tôm và nấm trong sốt kem, cay nhẹ ở hậu vị.',
+             'Shrimp and mushrooms in a creamy sauce with a gentle heat.',
+             '새우와 버섯을 넣은 크림소스 파스타예요. 끝맛이 살짝 매콤해요.') },
+  { nhom: 'mi-y', ma: 'F07', ten: ba('Mì carbonara', 'Carbonara pasta', '카르보나라 파스타'),
+    moTa: ba('Sốt trứng và phô mai, thêm lòng đỏ tươi.',
+             'Egg and cheese sauce, finished with a fresh yolk.',
+             '계란과 치즈로 만든 소스에 신선한 노른자를 올렸어요.') },
+  { nhom: 'mi-y', ma: 'F09', ten: ba('Mì bò sốt cà', 'Beef tomato pasta', '비프 토마토 파스타'),
+    moTa: ba('Sốt cà chua nấu với bò bằm.',
+             'Minced beef simmered in a rich tomato sauce.',
+             '다진 소고기를 넣고 진하게 끓인 토마토소스 파스타예요.') },
+  { nhom: 'do-uong-signature', ma: 'D13', ten: ba('Milky Cloud Makgeolli', 'Milky Cloud Makgeolli', '밀키 클라우드 막걸리'),
+    moTa: ba('Makgeolli sữa. Makgeolli, sữa, kẹo cứng nghiền.',
+             'Makgeolli, milk, crushed hard candy.',
+             '막걸리에 우유와 잘게 부순 사탕을 더했어요.'),
+    coCon: true },
+  { nhom: 'do-uong-signature', ma: 'D01', ten: ba('Strawberry Crush', 'Strawberry Crush', '스트로베리 크러시'),
+    moTa: ba('Highball dâu. Siro dâu, soda, whisky, dâu sấy.',
+             'Strawberry syrup, soda, whisky, dried strawberry.',
+             '딸기 시럽, 탄산수, 위스키에 건조 딸기를 올렸어요.'),
+    coCon: true },
+  { nhom: 'do-uong-signature', ma: 'D14', ten: ba('Berry Rouge Highball', 'Berry Rouge Highball', '베리 루즈 하이볼'),
+    moTa: ba('Highball quả mọng. Hương quả mọng, chua nhẹ, ngọt dịu.',
+             'Deep berry, bright acidity, soft sweetness.',
+             '베리 향에 가벼운 산미와 은은한 단맛이 어우러져요.'),
     coCon: true },
 ];
 
+/**
+ * Kịch bản thuc-don-thu-suc: dữ liệu mà database có thể trả SAU NÀY, để thử thẻ món chịu được — thêm vào
+ * MON_MAU: một nhóm mã lạ (chưa có câu dưới tên nhóm) với một món không có ảnh, tên rất dài và mô tả dài;
+ * hai nhóm đồ uống dạng danh sách (tên theo danh mục; mô tả là câu của seed 0011 — bản cuốn chưa có mô tả).
+ */
+export const MON_THU_SUC = [
+  { nhom: 'nhom-thu', ma: 'X01',
+    ten: ba('Cơm trộn tartare bò cay kèm rau củ giòn theo mùa và sốt cay riêng', 'Spicy flank tartare rice bowl with crisp seasonal vegetables and our own spicy sauce',
+            '아삭한 제철 채소와 Beeftown만의 매콤한 소스를 곁들인 매콤 소고기 타르타르 비빔밥'),
+    moTa: ba('Nạm, phần cắt có ít trên mỗi con bò, cùng rau củ giòn theo mùa và sốt cay riêng của Beeftown. Trộn đều bò, sốt và cơm: một bát bibimbap tươi, cay dịu, làm vị bò rõ hơn. Nạm có thớ rõ, vị bò đậm, dai vừa. Trộn lòng đỏ trứng với gia vị Hàn mặn ngọt.',
+             'Flank, a cut each animal yields little of, with crisp seasonal vegetables and our own spicy sauce. Mix it through the rice, a fresh take on bibimbap. Flank, for its clear grain and deep beef flavour.',
+             '소 한 마리에서 조금밖에 나오지 않는 플랭크 부위에 아삭한 제철 채소와 Beeftown만의 매콤한 소스를 곁들였어요. 밥과 함께 고루 비벼 드세요. 결이 선명하고 풍미가 진한 플랭크 부위예요.') },
+  { nhom: 'highball', ma: 'D02', ten: ba('Highball cổ điển', 'Classic highball', '클래식 하이볼'),
+    moTa: ba('Whisky, soda và chanh.', 'Whisky, soda and lemon.', '위스키, 탄산수, 레몬.'), coCon: true },
+  { nhom: 'khong-con', ma: 'D09', ten: ba('Nước cam', 'Orange juice', '오렌지 주스'),
+    moTa: ba('Nước cam dùng lạnh.', 'Orange juice, served cold.', '차갑게 드리는 오렌지 주스.') },
+];
+
+const THU_TU_NHOM = Object.keys(NHOM);
 function thucDon(kichBan, nn) {
   if (kichBan === 'rong') return [];
   const n = NN.includes(nn) ? nn : 'vi';
-  return MON_MAU.map(m => ({
+  // Như thuc_don_cong_khai() (0036): công tắc hien_do_uong_co_con tắt thì món có cồn không ra khỏi database.
+  const coCon = noiDung(kichBan).hien_do_uong_co_con === true;
+  const mon = kichBan === 'thuc-don-thu-suc'
+    ? [...MON_MAU, ...MON_THU_SUC].sort((a, b) => THU_TU_NHOM.indexOf(a.nhom) - THU_TU_NHOM.indexOf(b.nhom))
+    : MON_MAU;
+  return mon.filter(m => coCon || m.coCon !== true).map(m => ({
     nhom_ma: m.nhom,
     nhom_ten: NHOM[m.nhom].ten[n],
     nhom_loai: NHOM[m.nhom].loai,

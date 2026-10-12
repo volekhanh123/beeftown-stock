@@ -29,7 +29,7 @@ export const PHEP_DO = {
   anh: 'ảnh: ảnh AI nào cũng có nhãn "Ảnh minh họa" nhìn thấy, đọc được; không bóng đổ; đúng tỷ lệ khung; không chữ, logo hay phần tử nào đè lên ảnh; chỉ ảnh màn đầu tải ngay',
   nhanKhay: 'thẻ "Cách đọc nhãn khay": đặt thẳng, không bóng đổ, nền Cream hoặc kem sau, đủ 5 trường theo thứ tự, chỉ tên trường (không giá trị mẫu), đủ lớn để đọc',
   trangChu: 'trang chủ: đủ 8 khối theo thứ tự, dải tối và dải đỏ giữ nguyên; màn đầu có ảnh, câu chính đứng trước ảnh trên điện thoại, hai cột cân nhau trên máy tính, tagline là một dải đỏ gọn không đè lên ảnh; ba bước, cả bữa, đi nhóm đúng bố cục',
-  thucDon: 'thực đơn: "Bò tại quầy" vẫn dải tối, có ảnh lát bò, thẻ đọc nhãn khay và ảnh sốt chấm ở nhóm Món ăn',
+  thucDon: 'thực đơn: "Bò tại quầy" vẫn dải tối, có ảnh lát bò và thẻ đọc nhãn khay; "Món ăn" chưa có món thì có ảnh sốt chấm, đã có món thì từng nhóm kiểu cuốn menu (tên nhóm 28px tới cỡ h1, chữ hoa); thẻ món không tràn chữ, thẻ dẫn đầu từ 768px có ảnh bên phải chữ; "Đồ uống" có ảnh ba ly không cồn; không phần tử giá',
 };
 
 export function doGiaoDien() {
@@ -406,10 +406,18 @@ export function doGiaoDien() {
 
   // --- 11. Ảnh và nhãn "Ảnh minh họa" -------------------------------------------------------------
   // Mọi ảnh của trang công khai đi qua component <Anh>: <figure class="anh"> chứa <picture> và, với ảnh AI,
-  // <figcaption class="chu-thich-anh">. Bảy id dưới đây là ảnh ChatGPT tạo ngày 11/10/2026 — chép tay, KHÔNG
-  // đọc danh mục của trang: gỡ cờ minhHoa của một ảnh AI thì nhãn biến mất và phép đo này đỏ.
+  // <figcaption class="chu-thich-anh">. Bảy id đầu là ảnh ChatGPT tạo ngày 11/10/2026; 26 id sau là ảnh món của
+  // cuốn menu bản sáng (11/10/2026, đều gắn nhãn minh họa) — chép tay, KHÔNG đọc danh mục của trang: gỡ cờ
+  // minhHoa của một ảnh thì nhãn biến mất và phép đo này đỏ.
   kq.anh = [];
-  const ANH_AI = /\/anh\/(?:hero-vi-gas|bo-van-mo-can|bo-cat-lat|sot-cham|mon-an-chia-se|bua-an-cung-ban|bo-xeo-vi)-\d+x\d+-\d+\.(?:avif|webp)(?:$|[?#])/;
+  const ANH_AI = new RegExp('/anh/(?:' + [
+    'hero-vi-gas', 'bo-van-mo-can', 'bo-cat-lat', 'sot-cham', 'mon-an-chia-se', 'bua-an-cung-ban', 'bo-xeo-vi',
+    'mon-tartare-bo-hoa-tuyet', 'mon-com-tron-tartare-bo-cay', 'mon-lau-kim-chi', 'mon-lau-bo-bulgogi', 'mon-lau-nam', 'mon-set-4-sot',
+    'mon-salad-nam', 'mon-caesar-salad', 'mon-mien-tron-han', 'mon-trung-hap-nui-lua', 'mon-khoai-tay-chien-sot-bo',
+    'mon-banh-gao-chien-pho-mai', 'mon-canh-kim-chi', 'mon-dau-phu-ham', 'mon-canh-tuong-dau', 'mon-com-kim-chi-bo', 'mon-com-tron-han',
+    'mon-com-tron-trung-ca', 'mon-mi-lanh-cay', 'mon-mi-toowoomba', 'mon-mi-carbonara', 'mon-mi-bo-sot-ca',
+    'uong-milky-cloud-makgeolli', 'uong-strawberry-crush', 'uong-berry-rouge-highball', 'uong-khong-con-ba-ly',
+  ].join('|') + ')-\\d+x\\d+-\\d+\\.(?:avif|webp)(?:$|[?#])');
   const NHAN_ANH = { vi: 'Ảnh minh họa', en: 'Illustrative image', ko: '연출 이미지' };
   const cuonDau = scrollY;
   const veCho = y => scrollTo({ top: y, left: 0, behavior: 'instant' });
@@ -720,7 +728,42 @@ export function doGiaoDien() {
     if (!coAnh(quay, 'bo-cat-lat')) kq.thucDon.push('"Bò tại quầy": thiếu ảnh bo-cat-lat');
     if (!quay?.querySelector('.nk-the')) kq.thucDon.push('"Bò tại quầy": thiếu thẻ đọc nhãn khay');
     if (quay?.querySelector('.khung-anh')) kq.thucDon.push('"Bò tại quầy": còn khung vẽ khay');
-    if (!coAnh(monAn, 'sot-cham')) kq.thucDon.push('"Món ăn": thiếu ảnh sot-cham');
+    // "Món ăn": chưa công bố món nào → lời giới thiệu có ảnh sot-cham; đã có món → các nhóm kiểu cuốn menu bản
+    // sáng, không còn ảnh sot-cham (món đã có ảnh riêng).
+    const theMon = [...(monAn?.querySelectorAll('.tdn-mon') ?? [])];
+    if (!theMon.length && !coAnh(monAn, 'sot-cham')) kq.thucDon.push('"Món ăn" chưa có món: thiếu ảnh sot-cham');
+    if (theMon.length && coAnh(monAn, 'sot-cham')) kq.thucDon.push('"Món ăn" đã có món mà vẫn còn ảnh sot-cham');
+    if (!coAnh(document.getElementById('do-uong'), 'uong-khong-con-ba-ly')) kq.thucDon.push('"Đồ uống": thiếu ảnh uong-khong-con-ba-ly');
+    // Giá chưa duyệt không bao giờ có phần tử giá (database trả null).
+    if (document.querySelector('.mon-gia')) kq.thucDon.push('có phần tử giá (.mon-gia) trên trang');
+    // Tên nhóm kiểu tiêu đề trang của cuốn: chữ hoa, đậm 800, ≥ 28px và không to hơn h1 (dải tối dùng tiêu đề nhỏ).
+    const coH1 = so(getComputedStyle(document.querySelector('h1') ?? document.body).fontSize);
+    for (const t of moi('.tdn:not(.tdn-tieu-de-nho) .tdn-ten').filter(hien)) {
+      const cs = getComputedStyle(t);
+      if (so(cs.fontSize) < 27.5 || so(cs.fontSize) > coH1 + 0.5) kq.thucDon.push(`tên nhóm «${t.textContent.trim()}» cỡ ${cs.fontSize} — cần từ 28px tới cỡ h1 (${coH1}px)`);
+      if (cs.textTransform !== 'uppercase' || Number(cs.fontWeight) < 800) kq.thucDon.push(`tên nhóm «${t.textContent.trim()}» phải chữ hoa, đậm 800 (${cs.textTransform}, ${cs.fontWeight})`);
+    }
+    for (const m of theMon.filter(hien)) {
+      const ten = (m.querySelector('.tdm-ten')?.textContent ?? '').trim().slice(0, 30);
+      const km = m.getBoundingClientRect();
+      if (!ten) kq.thucDon.push('thẻ món không có tên');
+      // Chữ không tràn khỏi thẻ (tên dài, tiếng Hàn dài, mô tả bốn câu).
+      for (const e of m.querySelectorAll('.tdm, .tdm > *')) {
+        const k = e.getBoundingClientRect();
+        if (e.scrollWidth > e.clientWidth + 1 || k.right > km.right + 1 || k.left < km.left - 1) { kq.thucDon.push(`thẻ «${ten}»: chữ tràn khỏi thẻ (${moTa(e).slice(0, 40)})`); break; }
+      }
+      // Thẻ của lưới: ảnh (nếu có) ở trên chữ. Món dẫn đầu: từ 768px ảnh ở cột phải, bên phải chữ;
+      // dưới 768px ảnh ở trên chữ.
+      const chu = m.querySelector('.tdm');
+      const f = m.classList.contains('tdn-lon') ? m.closest('.tdn-mo')?.querySelector('.tdn-lon-anh figure.anh') : m.querySelector('figure.anh');
+      if (!f || !chu || !hien(f)) continue;
+      const [ka, kc] = [f.getBoundingClientRect(), chu.getBoundingClientRect()];
+      if (m.classList.contains('tdn-lon') && RONG >= 768) {
+        if (ka.left < kc.right - 0.5) kq.thucDon.push(`món dẫn đầu «${ten}»: từ 768px ảnh phải ở bên phải chữ`);
+      } else if (ka.bottom > kc.top + 0.5) {
+        kq.thucDon.push(`thẻ «${ten}»: ảnh phải ở trên chữ`);
+      }
+    }
     for (const tab of moi('.td-tab a').filter(hien)) {
       if (tab.getBoundingClientRect().height < 47.5) kq.thucDon.push(`mục «${tab.textContent.trim()}» của thanh chọn phần cao ${tab.getBoundingClientRect().height.toFixed(1)}px, cần ≥ 48px`);
     }

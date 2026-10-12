@@ -938,7 +938,7 @@ try {
     // Khung của từng ảnh theo bề rộng màn hình: dưới 600px dùng khung điện thoại (khungNho), từ 600px khung chính.
     const KHUNG_MONG = {
       'hero-vi-gas': ['4x5', '4x3'], 'bo-van-mo-can': ['1x1', '4x5'], 'bo-cat-lat': ['3x2', '3x2'], 'sot-cham': ['4x3', '4x3'],
-      'mon-an-chia-se': ['4x3', '3x2'], 'bua-an-cung-ban': ['4x3', '3x2'],
+      'mon-an-chia-se': ['4x3', '3x2'], 'bua-an-cung-ban': ['4x3', '3x2'], 'uong-khong-con-ba-ly': ['3x2', '3x2'],
     };
     for (const [rong, cao] of [[390, 844], [768, 1024], [1440, 900]]) {
       for (const duong of ['/', '/ko', '/thuc-don']) {
@@ -993,8 +993,9 @@ try {
   // nhãn "Ảnh minh họa" của nó, chèn chữ đè lên, bóp méo khung… phép đo vẫn đạt. Ở đây bấm từng tab như khách
   // rồi đo lại trên phần vừa mở.
   await nhom('11 · TRANG THỰC ĐƠN: BẤM TỪNG TAB RỒI ĐO LẠI ẢNH VÀ THÀNH PHẦN CỦA PHẦN VỪA MỞ Ở 390 VÀ 1440 PX', async () => {
-    // Ảnh của từng phần — chép tay theo TrangThucDon.astro; phần không có ảnh thì để [].
-    const ANH_CUA_PHAN = { 'bo-tai-quay': ['bo-cat-lat'], 'mon-an': ['sot-cham'], 'do-uong': [] };
+    // Ảnh của từng phần lúc CHƯA công bố món (CI không có database) — chép tay theo TrangThucDon.astro; phần không
+    // có ảnh thì để []. Ảnh món (đã công bố) đo ở thu-day-du.mjs nhóm 11.
+    const ANH_CUA_PHAN = { 'bo-tai-quay': ['bo-cat-lat'], 'mon-an': ['sot-cham'], 'do-uong': ['uong-khong-con-ba-ly'] };
     for (const [rong, cao] of [[390, 844], [1440, 900]]) {
       const ctx = await trinhDuyet.newContext({ viewport: { width: rong, height: cao } });
       const page = await ctx.newPage();

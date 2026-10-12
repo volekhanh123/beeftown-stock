@@ -76,6 +76,9 @@
   --co-ti:    13px;               /* sàn cho nhãn — không nhỏ hơn (chân trang: 14px) */
   --co-dan:   clamp(18px, 0.19vw + 17.26px, 20px);
   --co-h3:    clamp(18px, 0.19vw + 17.26px, 20px);
+  /* Tên nhóm món của trang Thực đơn (kiểu tiêu đề trang của cuốn menu bản sáng: chữ hoa, đậm 800):
+     28px (390px) → 40px (1440px) — giữa h2 và h1, không bao giờ to hơn h1. */
+  --co-nhom:  clamp(28px, 1.14vw + 23.54px, 40px);
   --co-h2:    clamp(26px, 0.95vw + 22.3px, 36px);
   --co-h1:    clamp(32px, 1.8vw + 25px, 48px);
   --co-so:    clamp(44px, 2.29vw + 35.1px, 68px);   /* số thứ tự của ba bước: 44px (390px) → 68px (1440px) */
@@ -307,9 +310,10 @@ html:has(body.ck) {
   font-size: var(--co-ti); font-weight: 600; line-height: 1.4; letter-spacing: .02em;
   color: var(--kem); background: rgba(21, 16, 8, .78);
 }
-/* Ảnh tách nền: nhãn sát góc dưới trái, trong dải trống tao-co-anh.py chừa sẵn ở đáy khung (12–16 % chiều
-   cao) — nhãn nằm ngay dưới món, thẳng lề trái với chữ của thẻ món, không đè lên món. */
-.ck .anh.tach-nen .chu-thich-anh { left: 0; bottom: 0; }
+/* Ảnh tách nền: nhãn sát đáy khung, giữa theo chiều ngang — nằm trong dải trống tao-co-anh.py chừa sẵn ở
+   đáy khung (12–14 % chiều cao), tức là ngay dưới món (món nằm giữa khung), không đè lên món. Lệch nửa bề
+   rộng bằng translate: nhãn tiếng Anh dài hay tiếng Hàn ngắn đều nằm giữa. */
+.ck .anh.tach-nen .chu-thich-anh { left: 50%; bottom: 0; transform: translateX(-50%); white-space: nowrap; }
 
 /* Khung ảnh chờ ảnh chụp thật: đúng tỷ lệ của ảnh sau này, có artwork — không
    phải hộp xám. Thay bằng ảnh thật là thay một thẻ, không đổi bố cục. */
