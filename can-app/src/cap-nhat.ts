@@ -173,7 +173,7 @@ export async function taiVaKiem(o: {
     let daTai = 0, soDau = 0;
     const doc = r.body.getReader();
     for (;;) {
-      let phan: ReadableStreamReadResult<Uint8Array>;
+      let phan: Awaited<ReturnType<typeof doc.read>>;
       try { phan = await doc.read(); }
       catch { throw new LoiCapNhat('Tải bị ngắt giữa chừng (mất mạng hoặc quá lâu).' + CHUA_DOI); }
       if (phan.done) break;
