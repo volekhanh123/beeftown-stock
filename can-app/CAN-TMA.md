@@ -1217,6 +1217,9 @@ Cùng văn bản như file và mạng (mục 2), đi qua cổng COM. Nguồn: `S
 - **Chương trình mình** (`src/day-rs232.ts`): bắt tay như hãng nhưng chờ 5 giây và đọc tới `END` đứng **sau** dòng `TIM`;
   gửi nội dung file như đường 33571; rồi hỏi `UPL⇥TIM⇥` thêm một lần (chờ 30 giây) làm hàng rào như đường mạng —
   cân trả lời là đã đọc hết dữ liệu trước đó, không trả lời thì "chưa chắc đã nhận".
+- **Đọc (chương trình mình, 2.10 — `docPhanQuaDay`)**: bắt tay, một dòng trống, rồi mỗi phần `UPL⇥PLU⇥` / `UPL⇥SCP⇥` → đọc tới
+  dòng `END` (bỏ dòng khác phần, như đọc qua mạng) → `UPL⇥END⇥`. Chờ mỗi phần đủ đẩy 160 KB ở tốc độ đó (9600: gần 3 phút).
+  Dùng cho gỡ hàng còn nằm lại qua dây (đọc trước, ghi đè dòng trống, đọc lại). **Chưa thử trên cân thật.**
 
 ## 11. Rủi ro tổng hợp
 
@@ -1257,6 +1260,8 @@ Cùng văn bản như file và mạng (mục 2), đi qua cổng COM. Nguồn: `S
 | Chương trình ghi nhận đã gửi qua 33571 mà cân thật không có hàng đó | **Đã thấy** 02–03/10/2026 | Chưa rõ vì sao; 2.6 đọc lại qua 33581 để kiểm |
 | Cân bỏ qua gửi qua 33571 — cả 69 hàng mới, cả sửa giá 4 dòng; nạp USB thì nhận | **Đã thấy** 03/10/2026 (2.6.0) | Ngày 26/09 cổng này còn nhận; vì sao: chưa biết. 2.6.1 gửi qua 33581 |
 | Đọc danh sách PLU qua **33581** (`UPL PLU`, bắt tay MAC / INF) | **Đã thử** 03/10/2026 (2.6.0) | Đọc ra đúng 7 hàng như file USB; đọc lại sau gửi chạy được |
+| Gửi danh mục qua **dây RS232** (Gửi thử: bắt tay `UPL TIM`, file, hỏi giờ) | **Đã thử** 13/10/2026 (2.9.3) | Khánh báo cân nhận giá qua cổng COM |
+| Đọc `UPL PLU` / `UPL SCP` qua dây; gỡ hàng còn nằm lại qua dây (ghi đè) | Chưa thử (2.10) | README "Bản 2.10" — thử ở quán |
 | Nạp lại file có REP / INF / TMS 500 dòng / TMT | **Đã thử** 25/09/2026 | Không hại thấy được; chưa chứng minh cân bỏ qua |
 | Cân tự phát UDP `UDP⇥33581⇥⇥` mỗi ~15 giây tới 33584 | **Đã thấy** (nhóm trước) | |
 | Gửi thẳng cả file vào **33581** | **Đã thử — cân KHÔNG nạp** | Có lẽ vì thiếu trình tự của hãng |

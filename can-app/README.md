@@ -197,6 +197,36 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
+## Bản 2.10 — gỡ hàng còn nằm lại qua dây RS232 (ghi đè)
+
+Ở quán 13/10/2026, **Gửi thử qua dây** (cổng COM) cân đã nhận giá (Khánh báo). Gỡ bằng ghi đè (2.7) chỉ là gửi dòng PLU như
+vậy, nên 2.10 cho gỡ qua dây — dùng được khi WiFi tới cân hỏng. **Gỡ qua dây chưa thử trên cân thật**: đọc danh sách hàng và
+phím qua dây (`UPL PLU` / `UPL SCP`, như phần mềm hãng — `CAN-TMA.md` §10.6) chưa chạy lần nào.
+
+Nút **Gỡ qua dây RS232 (ghi đè)** ở thẻ Gửi giá từ kho (khung "hàng sẽ còn nằm trên cân") và Cân & thông số → mục 4. Cổng, tốc độ:
+ô ở Cài đặt → Dây RS232; chưa chọn thì dùng cổng của lần Kiểm tra dây / Gửi thử trước. Quản lý, chủ. Các bước như gỡ qua WiFi
+(`nghiep-vu.ts` `goHangConLaiQuaDay`, phần chung `keHoachGo`, `chiaGo`, `ghiNhanGo`; `day-rs232.ts` `docPhanQuaDay`):
+1. đúng kế hoạch đã xem trước (dấu `dauVan`); **không cần mã máy** cổng hai chiều — dây cắm thẳng vào cân này;
+2. **đọc danh sách hàng qua dây trước** (chưa gửi gì): số PLU nào trên cân giờ là hàng khác → không gửi gì; cân im lặng / không trả
+   hết danh sách → báo "Chưa gửi gì";
+3. gửi khối PLU (dòng trống "KHÔNG DÙNG (PLU trống)", mã 99999, giá 0) và khối SCP bỏ phím, như Gửi thử (bắt tay, file, hỏi giờ) —
+   file chỉ có hai khối đó, không bao giờ có thông số / chữ cài đặt (tên, mật khẩu WiFi);
+4. **đọc lại** PLU (và SCP khi có bỏ phím): khớp → ghi nhận như gỡ qua WiFi; lệch hay không đọc lại được → **không ghi nhận gì**,
+   bấm lại được (ghi đè lần nữa không hại gì). Cổng báo lỗi giữa lúc gửi: vẫn đọc lại — cân có thể đã nhận.
+
+Mỗi việc mở cổng COM một lần: đọc PLU, gửi, đọc lại PLU, đọc lại phím (lệch / không đọc được thì chờ rồi đọc lại một lần).
+Ở 9600 bit/giây đọc danh sách chừng 100 KB mất khoảng 1–2 phút mỗi lần; chương trình chờ mỗi phần tới gần 3 phút
+(`choDocPhanMs`). Không có **xoá hẳn** qua dây (`CLR PLU` — đứt dây giữa chừng là cân thiếu hàng).
+
+**Thử ở quán (2.10)** — ngoài giờ bán, đóng TM-xA, có USB lưu sẵn dữ liệu cân:
+1. Cài đặt → Dây RS232: Tìm cổng COM, chọn cổng; trên cân `Prog → 4 → 3`; **Kiểm tra dây** → "Dây thông".
+2. Trong kho tắt một món ít bán đang có trên cân → thẻ Gửi giá từ kho → **Xem lại**: món đó ở khung "hàng sẽ còn nằm trên cân".
+3. Cân vẫn ở màn hình `Prog → 4 → 3` → **Gỡ qua dây RS232 (ghi đè)** → OK. Chờ (vài phút ở 9600) tới khung xanh "Đã gỡ 1 hàng
+   khỏi cân qua dây COMn … đọc lại thấy … dòng trống".
+4. Thoát `Prog`, gọi số PLU đó trên cân: ra "KHÔNG DÙNG (PLU trống)", giá 0. Phím tắt gọi món đó (nếu có) không còn gọi được.
+5. Khung đỏ / vàng: chụp câu báo nguyên văn. "không trả hết danh sách hàng" = đọc qua dây chưa chạy (cân không trả lời `UPL PLU` qua
+   dây) — dùng WiFi hay USB, ghi lại để sửa `CAN-TMA.md` §12.
+
 ## Bản 2.9.3 — chỉ ghi nhận khi đọc lại cân khớp; không đọc lại được thì tự thử lại
 
 **Lỗi (rà soát nợ kỹ thuật 11/10/2026, tái hiện trên cân giả — `test/thu.ts` 6g6–6g8):** cổng hai chiều 33581 bận chốc lát
@@ -609,7 +639,8 @@ viên quầy. Dò bằng kết nối ra ngoài thì không.
 
 ## Dây RS232 (thử, từ 2.1.0; làm như phần mềm hãng từ 2.3.0)
 
-Mới chắc cân nhận danh mục qua **USB** và **WiFi**. Qua dây RS232 thì **chưa thử trên cân thật**. Cân của quán có menu
+Mới chắc cân nhận danh mục qua **USB** và **WiFi**; **Gửi thử qua dây** cân đã nhận giá ở quán 13/10/2026 (Khánh báo). Đọc qua
+dây (gỡ hàng qua dây, 2.10) thì **chưa thử trên cân thật**. Cân của quán có menu
 `Prog → 4 → 3` (P43 RS-232), tức có cổng RS232. Thẻ Cài đặt có phần thử (`src/day-rs232.ts`): mở cổng COM bằng
 PowerShell có sẵn trong Windows, cài **đúng như phần mềm TM-xA của hãng**: 8 bit, không chẵn lẻ, 1 bit dừng, điều
 khiển luồng **XOn/XOff**, không bật DTR / RTS. Chi tiết: `CAN-TMA.md` mục 10.6.
@@ -630,7 +661,7 @@ khiển luồng **XOn/XOff**, không bật DTR / RTS. Chi tiết: `CAN-TMA.md` m
 
 9600 bit/giây là khoảng 1 KB mỗi giây: file cân 100 KB mất gần 2 phút. Dây chỉ nên là **đường dự phòng** khi WiFi
 hỏng. Cân nhận qua dây thì làm tiếp: chọn dây hay WiFi ở Cài đặt; qua dây đọc lại dữ liệu và nhật ký bán (hãng có
-`UPL` qua dây như qua mạng).
+`UPL` qua dây như qua mạng). 2.10 đã có đọc `UPL PLU` / `UPL SCP` qua dây cho **Gỡ qua dây RS232 (ghi đè)** (mục "Bản 2.10").
 
 - PowerShell chỉ làm đường ống theo kịch bản (ghi byte, ghi file, đọc dòng tới `END` sau dòng `TIM`); trình tự và cách
   đọc kết quả nằm trong TypeScript, kiểm thử bằng PowerShell giả đóng vai cân (`test/thu.ts` mục 6c). Đoạn lệnh

@@ -221,6 +221,8 @@ export function moMayChu(ud: UngDung, tuy: {
           case '/api/com': return json({ ok: true, ...(await ud.dsCom()) });
           case '/api/com/gui': return json({ ok: true, ...(await ud.guiThuQuaDay(await docThan(req))) });
           case '/api/com/kiem': return json({ ok: true, ...(await ud.kiemTraDay(await docThan(req))) });
+          // 2.10: gỡ hàng còn nằm lại qua dây (ghi đè) — thân { com, baud, giuHangNgoaiKho, dauVan }; cổng trống thì dùng cổng lần trước.
+          case '/api/com/go-con-lai': return json({ ok: true, ...(await ud.goHangConLaiQuaDay(await docThan(req))) });
           // ---- máy quầy (0054) ----
           case '/api/quay': return json({ ok: true, ...(await ud.bangQuay()) });
           case '/api/quay/yeu-cau': return json({ ok: true, ...(await ud.taoYeuCau(await docThan(req))) });

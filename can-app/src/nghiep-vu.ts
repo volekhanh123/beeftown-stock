@@ -82,7 +82,7 @@ import {
   type DaTat, type MauTem, type TemXem, type ThayDoiTem,
 } from './tem.ts';
 import {
-  CONG_HAI_CHIEU, LoiGiaoThuc, docFileTuKetNoi, ghepFileUsb, khoiTim, khoiXoaVaNapPlu, laThongSoMang, moKetNoi,
+  CONG_HAI_CHIEU, LoiGiaoThuc, docFileTuKetNoi, ghepFileUsb, khoiTim, khoiXoaVaNapPlu, kiemKhoiGhi, laThongSoMang, moKetNoi,
   type GioCan, type KetNoiCan, type ThongTinCan, type TuyChonKetNoi,
 } from './giao-thuc.ts';
 import { GiuKetNoi, type TrangThaiGiu } from './giu-ket-noi.ts';
@@ -98,7 +98,9 @@ import {
 } from './thong-so.ts';
 import { chonNhatKyGui, dongTrenCanBao, vanTayGiaoO } from './bao-kho.ts';
 import { LA_IP, layMac, thuKetNoi, timCan as doTimCan, type KetQuaTim, type MangMay } from './tim-can.ts';
-import { LoiDay, dsCongCom, giayDay, guiCom, hoiGioQuaDay, kiemCom, tocDoTuThongSo, type ChayPs, type CongCom } from './day-rs232.ts';
+import {
+  LoiBatTay, LoiDay, docPhanQuaDay, dsCongCom, giayDay, guiCom, hoiGioQuaDay, kiemCom, tocDoTuThongSo, type ChayPs, type CongCom, type PhanDocDay,
+} from './day-rs232.ts';
 import {
   CHO_MAC_DINH, FS_THAT, GIOI_HAN_MAC_DINH, GOC_BAN_CAI, LoiCapNhat, cacTepCapNhat, chayThuBanMoi, doiTep, duongTepBanMoi, hoiBanMoi, moTaMb,
   ngayPhatHanhVn, taiVaKiem, thuGhiThuMuc, type ChayThu, type FsHam,
@@ -2148,7 +2150,8 @@ export class UngDung {
    * Chưa khớp, hay đọc hỏng (cân đang lưu có thể chưa trả lời), thì chờ rồi đọc lại như xacNhanSauGui. Không bao giờ ném.
    * Cân trả phần rỗng → 'khong-doc' (cổng chưa thử trên cân thật trả dạng lạ — không kết luận "cân chưa nhận").
    */
-  private async docLaiCaiDat(phan: PhanKiem, khoi: string[], cacLanCho: number[] = this.phu.choXacNhanMs ?? CHO_XAC_NHAN_MS):
+  private async docLaiCaiDat(phan: PhanKiem, khoi: string[], cacLanCho: number[] = this.phu.choXacNhanMs ?? CHO_XAC_NHAN_MS,
+    docPhan: (phan: PhanKiem) => Promise<string[]> = p => this.voiKetNoi(kn => kn.docPhan(p), false), qua = 'qua cổng hai chiều'):
     Promise<KetQuaXacNhan & { lech?: string[] }> {
     let lech: string[] | null = null;
     let loiCuoi = '';
@@ -2156,8 +2159,8 @@ export class UngDung {
       if (ms > 0) await new Promise(r => setTimeout(r, ms));
       let doc: string[];
       try {
-        doc = await this.voiKetNoi(kn => kn.docPhan(phan), false);
-        if (!doc.length) throw new LoiCan('cân trả phần này rỗng qua cổng hai chiều');
+        doc = await docPhan(phan);
+        if (!doc.length) throw new LoiCan(`cân trả phần này rỗng ${qua}`);
       } catch (e) {
         loiCuoi = cauLoi(e);
         if (e instanceof LoiGiaoThuc && e.loai === 'khong-cho-phep') break;   // cân khác mã máy: đọc lại vẫn vậy
@@ -2166,7 +2169,7 @@ export class UngDung {
       lech = lechCaiDat(phan, khoi, doc);
       if (!lech.length) return { loai: 'khop' };
     }
-    return lech ? { loai: 'lech', cau: lech.slice(0, 5).join('; ') + (lech.length > 5 ? `; và ${lech.length - 5} chỗ khác` : ''), lech }
+    return lech ? { loai: 'lech', cau: noiLech(lech), lech }
       : { loai: 'khong-doc', cau: loiCuoi };
   }
 
@@ -3102,62 +3105,28 @@ export class UngDung {
    *   3. đọc lại PLU: mọi số vừa gỡ phải là dòng trống → tren-can.tsv ghi các số đó là dòng trống (số cân không còn thì
    *      bỏ khỏi tren-can.tsv); lệch / không đọc được → ném lỗi, không ghi nhận gì;
    *   4. đọc lại SCP (khi có bỏ phím): khớp → file gốc nhận phím đã bỏ; không thì báo riêng (loiPhim) — hàng vẫn đã gỡ.
+   * 2.10: cùng các bước qua dây RS232 — goHangConLaiQuaDay; phần chung ở keHoachGo, chiaGo, ghiNhanHangGo, ghiNhanGocGo.
    */
   async goHangConLai(giuHangNgoaiKho = false, dauVan?: unknown): Promise<KetQuaGo> {
     await this.kiemQuyenCan('Gỡ hàng còn nằm lại qua WiFi');
-    if (typeof dauVan !== 'string' || !dauVan) {
-      throw new LoiCan('Thiếu danh sách đã xem trước — bấm Xem lại (thẻ Gửi giá từ kho, hay "Xem hàng còn nằm lại") rồi thử lại. Chưa gửi gì xuống cân.');
-    }
+    const dau = kiemDauVan(dauVan);
     return this.motLuc(async () => {
-      const { goc, moi, tren, cho, conLai } = await this.dung(giuHangNgoaiKho);
-      if (!conLai.length) throw new LoiCan('Không có hàng nào còn nằm lại trên cân — không cần gỡ.');
-      if (dauKeHoach(conLai, moi) !== dauVan) {
-        throw new LoiCan('Danh sách trên cân hoặc trong kho đã đổi từ lúc xem trước — bấm Xem lại rồi thử lại. Chưa gửi gì xuống cân.');
-      }
-      if (!this.cauHinh().macHaiChieu) {
-        throw new LoiCan('Chưa biết mã máy của cân qua cổng hai chiều — bấm "Đọc thông tin cân" (thẻ Cân & thông số), xem đúng cân của quầy rồi mới gỡ. '
-          + 'Chưa gửi gì xuống cân.');
-      }
-      const ke = (ds: number[]) => ds.slice(0, 8).map(so => 'PLU ' + so).join(', ') + (ds.length > 8 ? '…' : '');
-      const saiSo = conLai.filter(h => h.so < 1 || h.so > PLU_RIENG_TOI_DA).map(h => h.so);
-      if (saiSo.length) {
-        throw new LoiCan(`Số PLU không hợp lệ trong danh sách hàng trên cân của chương trình (${ke(saiSo)}) — bấm "Đọc dữ liệu từ cân qua WiFi" `
-          + '(hay cập nhật file gốc bằng USB) rồi xem lại. Chưa gửi gì xuống cân.');
-      }
-      const soGo = new Set(conLai.map(h => h.so));
-      const phimBo = docPhim(goc).filter(k => k.plu > 0 && soGo.has(k.plu)).map(k => ({ trang: k.trang, phim: k.phim, plu: 0 }));
-      const ph = phimBo.length ? suaPhimTrongFile(this.docGoc(), phimBo) : null;
-      const dongTrong = (so: number) => dongPluRieng(goc, { so, ma: MA_CAN_TRONG, ten: TEN_PLU_TRONG, gia: 0 });
-
-      let canGo: HangTrenCan[] = [], khongCo: HangTrenCan[] = [], daTrong: HangTrenCan[] = [];
+      const ke = await this.keHoachGo(giuHangNgoaiKho, dau, true);
+      let chia: ChiaGo = { canGo: [], khongCo: [], daTrong: [] };
       try {
         await this.voiKetNoi(async (kn) => {
-          const dangCo = new Map(docPluDocLai(await kn.docPhan('PLU'), goc).map(p => [p.so, p]));
-          if (!dangCo.size) {
-            throw new LoiCan('Cân không trả danh sách hàng qua WiFi (cổng hai chiều) — không kiểm được cân đang có gì nên chưa gửi gì. Dùng "Lưu file để nạp USB".');
-          }
-          // Mã chương trình biết cho số đó: dòng đã xác nhận, và (2.9.3) dòng của lần gửi chưa xác nhận — cân có thể giữ một trong hai.
-          const maBiet = (so: number) => [tren.get(so), cho.get(so)].filter((x): x is HangTrenCan => !!x).map(x => chuanMa(x.ma));
-          const khac = conLai.filter(h => { const p = dangCo.get(h.so); return !!p && !laPluTrong(p) && !maBiet(h.so).includes(p.ma); });
-          if (khac.length) {
-            throw new LoiCan(`Trên cân, ${khac.length} số PLU giờ là hàng khác (${khac.slice(0, 5).map(h => `PLU ${h.so}: "${dangCo.get(h.so)!.ten.trim()}" `
-              + `mã ${dangCo.get(h.so)!.ma || '—'}`).join('; ')}) — thêm trên bàn phím cân, bằng phần mềm của hãng, hay đây không phải cân vẫn dùng. `
-              + 'Gỡ sẽ ghi đè mất hàng đó, nên chưa gửi gì. Bấm "Đọc dữ liệu từ cân qua WiFi" (hay cập nhật file gốc bằng USB) rồi xem lại.');
-          }
-          canGo = conLai.filter(h => { const p = dangCo.get(h.so); return !!p && !laPluTrong(p); });
-          daTrong = conLai.filter(h => { const p = dangCo.get(h.so); return !!p && laPluTrong(p); });
-          khongCo = conLai.filter(h => !dangCo.has(h.so));
-          const khoi = [...(canGo.length ? ['DWL\tPLU\t', ...canGo.map(h => dongTrong(h.so)), 'END\tPLU\t'] : []), ...(ph?.khoi ?? [])];
+          chia = chiaGo(ke, docPluDocLai(await kn.docPhan('PLU'), ke.goc), 'qua WiFi (cổng hai chiều)');
+          const khoi = khoiGo(ke, chia.canGo);
           if (khoi.length) await kn.ghi(khoi);
         }, false);
       } catch (e) {
         // Đã gửi rồi mới hỏng (hết giờ hàng rào, đứt): cân có thể đã nhận — đọc lại quyết định. Chưa gửi gì: báo luôn.
         if (!(e instanceof LoiGiaoThuc) || !e.daGhi) throw e;
       }
-      const khoiPlu = ['DWL\tPLU\t', ...canGo.map(h => dongTrong(h.so)), 'END\tPLU\t'];
+      const { canGo } = chia;
       if (canGo.length) {
-        const kq = await this.docLaiCaiDat('PLU', khoiPlu);
-        const ds = ke(canGo.map(h => h.so));
+        const kq = await this.docLaiCaiDat('PLU', khoiPluGo(ke, canGo));
+        const ds = kePlu(canGo.map(h => h.so));
         if (kq.loai === 'lech') {
           throw new LoiCan(`Đã gửi dòng trống cho ${canGo.length} hàng (${ds}) qua cổng hai chiều nhưng đọc lại thấy cân CHƯA nhận: ${kq.cau}. `
             + 'Chương trình chưa ghi nhận gì. Để cân ở màn hình bán hàng rồi bấm lại (ghi đè lần nữa không hại gì), hoặc nạp USB.');
@@ -3167,27 +3136,129 @@ export class UngDung {
             + 'Chương trình chưa ghi nhận gì — bấm lại (ghi đè lần nữa không hại gì), hoặc gọi thử số PLU đó trên cân: ra "KHÔNG DÙNG" là đã gỡ.');
         }
       }
-      for (const h of [...canGo, ...daTrong]) tren.set(h.so, { so: h.so, ma: MA_CAN_TRONG, gia: '0,0', ten: TEN_PLU_TRONG });
-      for (const h of khongCo) tren.delete(h.so);   // cân không còn số đó (đã nạp USB…): chỉ bỏ khỏi danh sách
-      this.ghiTrenCan(tren);
-      this.boChoXacNhan(soGo);   // 2.9.3: số vừa gỡ không còn "có thể" là hàng của lần gửi chưa xác nhận
-      let loiPhim: string | null = null, phimXong = false;
-      if (ph) {
-        const kp = await this.docLaiCaiDat('SCP', ph.khoi);
-        if (kp.loai === 'khop') phimXong = true;
-        else {
-          loiPhim = (kp.loai === 'lech' ? `Đọc lại thấy phím tắt chưa đổi: ${kp.cau}.` : `Chưa đọc lại được phím tắt (${kp.cau.replace(/[.\s]+$/, '')}).`)
-            + ' Hàng đã gỡ; phím vẫn gọi số PLU đó (ra dòng trống) — bỏ phím ở thẻ Phím tắt.';
+      this.ghiNhanHangGo(ke, chia);
+      const phim = ke.ph ? cauPhimGo(await this.docLaiCaiDat('SCP', ke.ph.khoi)) : { phimXong: false, loiPhim: null };
+      return this.ghiNhanGocGo(ke, chia, phim.phimXong, phim.loiPhim);
+    });
+  }
+
+  /**
+   * 2.10 — GỠ hàng "còn nằm lại" qua DÂY RS232 bằng ghi đè, đúng các bước của goHangConLai (CHƯA THỬ TRÊN CÂN THẬT; gửi giá
+   * qua dây đã chạy ở quán 13/10/2026 — ghi đè chỉ là gửi dòng PLU như vậy). Khác đường WiFi:
+   *   · cổng, tốc độ: lần Kiểm tra dây / Gửi thử trước (cauHinh com, baud), hay người chọn lúc bấm; trên cân phải đang ở
+   *     màn hình Prog → 4 → 3 suốt lúc gỡ;
+   *   · không cần mã máy qua cổng hai chiều (dây cắm thẳng vào cân này) — bước đọc cân trước vẫn chặn ghi đè lên hàng khác;
+   *   · mỗi việc một lượt mở cổng COM (day-rs232.ts): đọc PLU (chưa gửi gì) → gửi khối PLU + SCP + hỏi giờ (như Gửi thử) →
+   *     đọc lại PLU, rồi SCP khi có bỏ phím (docLaiCaiDat: lệch / không đọc được thì chờ rồi đọc lại một lần). Gửi hỏng giữa
+   *     chừng: vẫn đọc lại — cân có thể đã nhận; đọc lại quyết định.
+   * Đọc lại PLU không được / lệch → ném lỗi, không ghi nhận gì (như WiFi); phím chưa đổi → báo riêng, hàng vẫn đã gỡ.
+   */
+  async goHangConLaiQuaDay(b: { com?: unknown; baud?: unknown; giuHangNgoaiKho?: unknown; dauVan?: unknown }): Promise<KetQuaGo & { com: string; baud: number }> {
+    await this.kiemQuyenCan('Gỡ hàng còn nằm lại qua dây RS232');
+    const ch = this.cauHinh();
+    // Cổng trống → cổng và tốc độ lần trước. Có cổng mà thiếu tốc độ → tốc độ đã nhớ chỉ khi đúng cổng đó, không thì 9600.
+    const com = typeof b.com === 'string' && b.com ? b.com : ch.com ?? '';
+    const coBaud = b.baud !== undefined && b.baud !== null && b.baud !== '';
+    const baud = coBaud ? Number(b.baud) : (com === ch.com ? ch.baud : undefined) ?? 9600;
+    if (!com) {
+      throw new LoiCan('Chưa chọn cổng COM của dây — Cài đặt → Dây RS232: bấm Tìm cổng COM, chọn cổng, Kiểm tra dây rồi thử lại. Chưa gửi gì xuống cân.');
+    }
+    kiemCom(com, baud);
+    const dau = kiemDauVan(b.dauVan);
+    return this.motLuc(async () => {
+      const ke = await this.keHoachGo(b.giuHangNgoaiKho === true, dau, false);
+      const chay = this.phu.chayPs;
+      // Mỗi lần đọc một phần, mỗi lần mở cổng một lần: hết giờ ở phím không làm mất lần đọc PLU đã xong.
+      const docQuaDay = async (p: PhanKiem) => (await docPhanQuaDay(com, baud, [p as PhanDocDay], chay))[0];
+      const truoc = await docQuaDay('PLU').catch((e: unknown) => {
+        if (!(e instanceof LoiDay)) throw e;
+        const cau = cauLoi(e);   // câu bắt tay đã nói "chưa gửi gì"
+        throw new LoiCan(/chưa gửi gì/i.test(cau) ? cau : `${cau.replace(/[.\s]+$/, '')}. Chưa gửi gì xuống cân.`);
+      });
+      const chia = chiaGo(ke, docPluDocLai(truoc, ke.goc), 'qua dây RS232', 'Cập nhật file gốc bằng USB (Cài đặt → Cập nhật file gốc từ cân) rồi xem lại.');
+      const { canGo } = chia;
+      const khoi = khoiGo(ke, canGo);
+      let loiGui = '';
+      if (khoi.length) {
+        kiemKhoiGhi(khoi);
+        try {
+          await guiCom(com, baud, new Uint8Array(Buffer.from(khoi.map(d => d + '\r\n').join(''), 'latin1')), chay);
+        } catch (e) {
+          // Bắt tay không được: chưa gửi byte nào — báo luôn. Hỏng giữa lúc gửi: cân có thể đã nhận — đọc lại quyết định.
+          if (e instanceof LoiBatTay || !(e instanceof LoiDay)) throw e;
+          loiGui = cauLoi(e).replace(/[.\s]+$/, '');
         }
       }
-      // File gốc bỏ dòng của các số vừa gỡ (như hàng còn nằm lại sau một lần gửi: chỉ tren-can.tsv giữ — ở đây là dòng
-      // trống), và nhận phím đã bỏ khi cân đọc lại khớp. Không bỏ thì thẻ Tất cả hàng vẫn hiện hàng cũ "Kho không có".
-      const duMoi = boDongPlu(phimXong && ph ? ph.du : this.docGoc(), soGo);
-      const khoiDaGui = [...(canGo.length ? khoiPlu : []), ...(phimXong && ph ? ph.khoi : [])];
-      if (khoiDaGui.length) this.luuGoc(duMoi, fileNho(goc.phienBan, khoiDaGui));
-      else ghiFileAnToan(this.fileGoc, duMoi, this.phu.vietByte);   // không gửi gì (cân đã không còn / đã là dòng trống): chỉ sửa file gốc
-      return { daGo: conLai, khongCoTrenCan: khongCo.map(h => h.so), boPhim: phimXong ? phimBo.length : 0, loiPhim };
+      // Đọc lại như đường WiFi (docLaiCaiDat: lệch / không đọc được thì chờ rồi đọc lại) — hai lượt: mỗi lượt qua dây tới vài phút.
+      const cacLanCho = (this.phu.choXacNhanMs ?? CHO_XAC_NHAN_MS).slice(0, 2);
+      if (canGo.length) {
+        const kq = await this.docLaiCaiDat('PLU', khoiPluGo(ke, canGo), cacLanCho, docQuaDay, 'qua dây');
+        const ds = kePlu(canGo.map(h => h.so));
+        const daGui = loiGui ? `Gửi dòng trống cho ${canGo.length} hàng (${ds}) qua dây chưa chắc xong (${loiGui})`
+          : `Đã gửi dòng trống cho ${canGo.length} hàng (${ds}) qua dây`;
+        if (kq.loai === 'lech') {
+          throw new LoiCan(`${daGui}; đọc lại thấy cân CHƯA nhận: ${kq.cau}. Chương trình chưa ghi nhận gì. Trên cân vào lại Prog → 4 → 3 `
+            + 'rồi bấm lại (ghi đè lần nữa không hại gì), hoặc nạp USB.');
+        }
+        if (kq.loai === 'khong-doc') {
+          throw new LoiCan(`${daGui}; chưa đọc lại được cân để kiểm (${kq.cau.replace(/[.\s]+$/, '')}). Chương trình chưa ghi nhận gì — trên cân vào lại `
+            + 'Prog → 4 → 3 rồi bấm lại (ghi đè lần nữa không hại gì), hoặc gọi thử số PLU đó trên cân: ra "KHÔNG DÙNG" là đã gỡ.');
+        }
+      }
+      this.ghiNhanHangGo(ke, chia);
+      const phim = ke.ph ? cauPhimGo(await this.docLaiCaiDat('SCP', ke.ph.khoi, cacLanCho, docQuaDay, 'qua dây')) : { phimXong: false, loiPhim: null };
+      this.ghiThem({ com, baud });
+      return { ...this.ghiNhanGocGo(ke, chia, phim.phimXong, phim.loiPhim), com, baud };
     });
+  }
+
+  /**
+   * Phần chung của gỡ qua WiFi và qua dây: kế hoạch đúng cái người đã xem (dauVan), có hàng còn nằm lại, (WiFi) cân đã biết
+   * mã máy, số PLU hợp lệ; phím tắt đang gọi các số đó (khối SCP bỏ phím). Chưa nối cân.
+   */
+  private async keHoachGo(giuHangNgoaiKho: boolean, dauVan: string, canMaMay: boolean): Promise<KeHoachGo> {
+    const { goc, moi, tren, cho, conLai } = await this.dung(giuHangNgoaiKho);
+    if (!conLai.length) throw new LoiCan('Không có hàng nào còn nằm lại trên cân — không cần gỡ.');
+    if (dauKeHoach(conLai, moi) !== dauVan) {
+      throw new LoiCan('Danh sách trên cân hoặc trong kho đã đổi từ lúc xem trước — bấm Xem lại rồi thử lại. Chưa gửi gì xuống cân.');
+    }
+    if (canMaMay && !this.cauHinh().macHaiChieu) {
+      throw new LoiCan('Chưa biết mã máy của cân qua cổng hai chiều — bấm "Đọc thông tin cân" (thẻ Cân & thông số), xem đúng cân của quầy rồi mới gỡ. '
+        + 'Chưa gửi gì xuống cân.');
+    }
+    const saiSo = conLai.filter(h => h.so < 1 || h.so > PLU_RIENG_TOI_DA).map(h => h.so);
+    if (saiSo.length) {
+      throw new LoiCan(`Số PLU không hợp lệ trong danh sách hàng trên cân của chương trình (${kePlu(saiSo)}) — bấm "Đọc dữ liệu từ cân qua WiFi" `
+        + '(hay cập nhật file gốc bằng USB) rồi xem lại. Chưa gửi gì xuống cân.');
+    }
+    const soGo = new Set(conLai.map(h => h.so));
+    const phimBo = docPhim(goc).filter(k => k.plu > 0 && soGo.has(k.plu)).map(k => ({ trang: k.trang, phim: k.phim, plu: 0 }));
+    const ph = phimBo.length ? suaPhimTrongFile(this.docGoc(), phimBo) : null;
+    return { goc, tren, cho, conLai, soGo, soPhimBo: phimBo.length, ph };
+  }
+
+  /**
+   * Gỡ đã kiểm xong (đọc lại PLU khớp, hay không cần ghi gì) — ghi nhận ngay, trước khi kiểm phím: tren-can.tsv ghi các số đó
+   * là dòng trống (số cân không còn thì bỏ), bỏ khỏi lần gửi chưa xác nhận.
+   */
+  private ghiNhanHangGo(ke: KeHoachGo, chia: ChiaGo): void {
+    const { tren, soGo } = ke;
+    for (const h of [...chia.canGo, ...chia.daTrong]) tren.set(h.so, { so: h.so, ma: MA_CAN_TRONG, gia: '0,0', ten: TEN_PLU_TRONG });
+    for (const h of chia.khongCo) tren.delete(h.so);   // cân không còn số đó (đã nạp USB…): chỉ bỏ khỏi danh sách
+    this.ghiTrenCan(tren);
+    this.boChoXacNhan(soGo);   // 2.9.3: số vừa gỡ không còn "có thể" là hàng của lần gửi chưa xác nhận
+  }
+
+  /** Sau khi kiểm phím: file gốc bỏ dòng của các số vừa gỡ, nhận phím đã bỏ khi đọc lại khớp; bản đã gửi vào da-gui. */
+  private ghiNhanGocGo(ke: KeHoachGo, chia: ChiaGo, phimXong: boolean, loiPhim: string | null): KetQuaGo {
+    const { goc, conLai, soGo, ph } = ke;
+    // File gốc bỏ dòng của các số vừa gỡ (như hàng còn nằm lại sau một lần gửi: chỉ tren-can.tsv giữ — ở đây là dòng
+    // trống), và nhận phím đã bỏ khi cân đọc lại khớp. Không bỏ thì thẻ Tất cả hàng vẫn hiện hàng cũ "Kho không có".
+    const duMoi = boDongPlu(phimXong && ph ? ph.du : this.docGoc(), soGo);
+    const khoiDaGui = [...(chia.canGo.length ? khoiPluGo(ke, chia.canGo) : []), ...(phimXong && ph ? ph.khoi : [])];
+    if (khoiDaGui.length) this.luuGoc(duMoi, fileNho(goc.phienBan, khoiDaGui));
+    else ghiFileAnToan(this.fileGoc, duMoi, this.phu.vietByte);   // không gửi gì (cân đã không còn / đã là dòng trống): chỉ sửa file gốc
+    return { daGo: conLai, khongCoTrenCan: chia.khongCo.map(h => h.so), boPhim: phimXong ? ke.soPhimBo : 0, loiPhim };
   }
 
   /**
@@ -3206,9 +3277,7 @@ export class UngDung {
    */
   async xoaQuaWifi(giuHangNgoaiKho = false, dauVan?: unknown): Promise<{ soHang: number; daXoa: HangTrenCan[]; phucHoi: string | null }> {
     await this.kiemQuyenCan('Xoá hàng trên cân qua WiFi');
-    if (typeof dauVan !== 'string' || !dauVan) {
-      throw new LoiCan('Thiếu danh sách đã xem trước — bấm Xem lại (thẻ Gửi giá từ kho, hay "Xem hàng còn nằm lại") rồi thử lại. Chưa gửi gì xuống cân.');
-    }
+    kiemDauVan(dauVan);
     return this.motLuc(async () => {
       const { goc, kh, du, moi, tren, cho, conLai, ngayHsd } = await this.dung(giuHangNgoaiKho);
       if (!conLai.length) throw new LoiCan('Không có hàng nào còn nằm lại trên cân — không cần xoá.');
@@ -3231,7 +3300,7 @@ export class UngDung {
       const bietThem = (so: number, ma: string) => biet.set(so, (biet.get(so) ?? new Set<string>()).add(chuanMa(ma)));
       for (const p of goc.plu) bietThem(p.so, p.ma);
       for (const h of [...tren.values(), ...cho.values()]) bietThem(h.so, h.ma);
-      const ke = (ds: number[]) => ds.slice(0, 8).map(so => 'PLU ' + so).join(', ') + (ds.length > 8 ? '…' : '');
+      const ke = kePlu;
       let daGuiXoa = false;
       let lechSauXoa: string | null = null;   // đọc lại sau lệnh xoá thấy cân chưa đúng: thiếu / thừa hàng nào
       try {
@@ -4171,6 +4240,67 @@ const layThayChu = (v: unknown): Record<string, unknown> => (laDoiTuong(v) ? { .
 function dauKeHoach(conLai: HangTrenCan[], moi: FileCan): string {
   return createHash('sha1').update(conLai.map(h => `${h.so}\t${h.ma}`).join(',') + '|', 'utf8')
     .update(moi.plu.map(p => p.tho).join('\n'), 'latin1').digest('hex');
+}
+
+/** Dấu kế hoạch trang gửi kèm (gỡ / xoá chạy đúng cái người đã xem) — thiếu thì từ chối, chưa nối cân. */
+function kiemDauVan(dauVan: unknown): string {
+  if (typeof dauVan !== 'string' || !dauVan) {
+    throw new LoiCan('Thiếu danh sách đã xem trước — bấm Xem lại (thẻ Gửi giá từ kho, hay "Xem hàng còn nằm lại") rồi thử lại. Chưa gửi gì xuống cân.');
+  }
+  return dauVan;
+}
+
+/** "PLU 2, PLU 5…" — tối đa 8 số. */
+const kePlu = (ds: number[]) => ds.slice(0, 8).map(so => 'PLU ' + so).join(', ') + (ds.length > 8 ? '…' : '');
+/** Các câu lệch của lechCaiDat thành một câu: 5 chỗ đầu, còn lại đếm. */
+const noiLech = (lech: string[]) => lech.slice(0, 5).join('; ') + (lech.length > 5 ? `; và ${lech.length - 5} chỗ khác` : '');
+
+/** 2.10 — kế hoạch gỡ hàng còn nằm lại (keHoachGo), chung cho WiFi và dây. */
+interface KeHoachGo {
+  goc: FileCan; tren: Map<number, HangTrenCan>; cho: Map<number, HangTrenCan>; conLai: HangTrenCan[]; soGo: Set<number>;
+  /** Số phím tắt đang gọi một số sắp gỡ; ph: khối SCP bỏ các phím đó và file gốc đã bỏ (null: không có phím nào). */
+  soPhimBo: number; ph: { du: Uint8Array; khoi: string[] } | null;
+}
+/** Hàng còn nằm lại chia theo cân đang có: còn hàng đó (cần ghi đè), đã là dòng trống, cân không còn số đó. */
+interface ChiaGo { canGo: HangTrenCan[]; daTrong: HangTrenCan[]; khongCo: HangTrenCan[] }
+
+/** Kết quả đọc lại phím tắt sau khi gỡ: khớp → phím đã bỏ; không thì câu báo riêng (hàng vẫn đã gỡ). */
+function cauPhimGo(kp: KetQuaXacNhan): { phimXong: boolean; loiPhim: string | null } {
+  if (kp.loai === 'khop') return { phimXong: true, loiPhim: null };
+  return { phimXong: false, loiPhim: (kp.loai === 'lech' ? `Đọc lại thấy phím tắt chưa đổi: ${kp.cau}.` : `Chưa đọc lại được phím tắt (${kp.cau.replace(/[.\s]+$/, '')}).`)
+    + ' Hàng đã gỡ; phím vẫn gọi số PLU đó (ra dòng trống) — bỏ phím ở thẻ Phím tắt.' };
+}
+
+/** Khối PLU ghi dòng trống (mã 99999, giá 0, "KHÔNG DÙNG", không in HSD) cho các số cần gỡ. */
+const khoiPluGo = (ke: KeHoachGo, canGo: HangTrenCan[]) =>
+  ['DWL\tPLU\t', ...canGo.map(h => dongPluRieng(ke.goc, { so: h.so, ma: MA_CAN_TRONG, ten: TEN_PLU_TRONG, gia: 0 })), 'END\tPLU\t'];
+/** Mọi thứ một lần gỡ ghi xuống cân: khối PLU (khi có số cần ghi đè) và khối SCP bỏ phím. */
+const khoiGo = (ke: KeHoachGo, canGo: HangTrenCan[]) => [...(canGo.length ? khoiPluGo(ke, canGo) : []), ...(ke.ph?.khoi ?? [])];
+
+/**
+ * Bước 1 của gỡ: so hàng còn nằm lại với danh sách vừa đọc từ cân (chưa gửi gì). Cân không trả danh sách → không kiểm được,
+ * không gửi. Số PLU nào giờ là HÀNG KHÁC (thêm trên bàn phím, phần mềm hãng, cân khác) → không gỡ gì (ghi đè là mất hàng
+ * đó). `qua`: "qua WiFi (cổng hai chiều)", "qua dây RS232"; `cachXemLai`: đường lấy lại danh sách trên cân — cho câu báo.
+ */
+function chiaGo(ke: KeHoachGo, docDuoc: DongPlu[], qua: string,
+  cachXemLai = 'Bấm "Đọc dữ liệu từ cân qua WiFi" (hay cập nhật file gốc bằng USB) rồi xem lại.'): ChiaGo {
+  const dangCo = new Map(docDuoc.map(p => [p.so, p]));
+  if (!dangCo.size) {
+    throw new LoiCan(`Cân không trả danh sách hàng ${qua} — không kiểm được cân đang có gì nên chưa gửi gì. Dùng "Lưu file để nạp USB".`);
+  }
+  // Mã chương trình biết cho số đó: dòng đã xác nhận, và (2.9.3) dòng của lần gửi chưa xác nhận — cân có thể giữ một trong hai.
+  const maBiet = (so: number) => [ke.tren.get(so), ke.cho.get(so)].filter((x): x is HangTrenCan => !!x).map(x => chuanMa(x.ma));
+  const khac = ke.conLai.filter(h => { const p = dangCo.get(h.so); return !!p && !laPluTrong(p) && !maBiet(h.so).includes(p.ma); });
+  if (khac.length) {
+    throw new LoiCan(`Trên cân, ${khac.length} số PLU giờ là hàng khác (${khac.slice(0, 5).map(h => `PLU ${h.so}: "${dangCo.get(h.so)!.ten.trim()}" `
+      + `mã ${dangCo.get(h.so)!.ma || '—'}`).join('; ')}) — thêm trên bàn phím cân, bằng phần mềm của hãng, hay đây không phải cân vẫn dùng. `
+      + `Gỡ sẽ ghi đè mất hàng đó, nên chưa gửi gì. ${cachXemLai}`);
+  }
+  return {
+    canGo: ke.conLai.filter(h => { const p = dangCo.get(h.so); return !!p && !laPluTrong(p); }),
+    daTrong: ke.conLai.filter(h => { const p = dangCo.get(h.so); return !!p && laPluTrong(p); }),
+    khongCo: ke.conLai.filter(h => !dangCo.has(h.so)),
+  };
 }
 
 /**

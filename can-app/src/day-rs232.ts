@@ -43,6 +43,8 @@ export const CHO_XAC_NHAN_MS = 30000;
 export interface CongCom { ten: string; moTa: string }
 
 export class LoiDay extends Error {}
+/** Bắt tay không được (cân im lặng, chữ lộn xộn, không trọn câu): chưa gửi byte nào của dữ liệu, chưa đọc gì. */
+export class LoiBatTay extends LoiDay {}
 
 /** Chạy một đoạn PowerShell, trả những gì nó in ra — kiểm thử thay bằng hàm giả. */
 export type ChayPs = (lenh: string, bien: Record<string, string>, choMs: number) => Promise<string>;
@@ -260,19 +262,19 @@ export function gioTrongBuoc(kq: KetQuaKichBan, buoc: number): GioCan | null {
 const buocDoc = (kb: BuocDay[]) => kb.flatMap((b, i) => ('doc' in b ? [i] : []));
 
 /** Câu báo khi bắt tay không được: cân im lặng, nghe chữ lộn xộn (sai tốc độ), hay chữ rõ mà không trọn câu. */
-function loiBatTay(kq: KetQuaKichBan, com: string, baud: number): LoiDay {
+function loiBatTay(kq: KetQuaKichBan, com: string, baud: number): LoiBatTay {
   const nghe = kq.dong.filter(d => d.buoc === buocDoc(BAT_TAY)[0]).map(d => d.chu).join('\n');
   if (nghe) {
     const dau = nghe.replace(/\n/g, ' ').replace(/[^\x20-\x7e]/g, '·').slice(0, 40);
     const docDuoc = [...nghe].filter(c => /[\x20-\x7e\t\n]/.test(c)).length / nghe.length;
     if (docDuoc < 0.9) {
-      return new LoiDay(`Có nghe thấy cân qua ${com} nhưng chữ lộn xộn (nhận "${dau}") — chưa gửi gì xuống cân. Thường là sai tốc độ: `
+      return new LoiBatTay(`Có nghe thấy cân qua ${com} nhưng chữ lộn xộn (nhận "${dau}") — chưa gửi gì xuống cân. Thường là sai tốc độ: `
         + `xem thông số 41 của cân (Prog → 1 → 2, SP.041: 5 = 9600) rồi chọn đúng tốc độ, thử lại.`);
     }
-    return new LoiDay(`Cân có trả lời qua ${com} (dây và tốc độ có vẻ đúng) nhưng không trọn câu (nhận "${dau}") — chưa gửi gì xuống cân. `
+    return new LoiBatTay(`Cân có trả lời qua ${com} (dây và tốc độ có vẻ đúng) nhưng không trọn câu (nhận "${dau}") — chưa gửi gì xuống cân. `
       + 'Trên cân vào lại Prog → 4 → 3 rồi thử lại; vẫn vậy thì chụp lại câu này gửi người làm chương trình.');
   }
-  return new LoiDay(`Cân không trả lời qua ${com} (tốc độ ${baud}) trong ${Math.round(CHO_BAT_TAY_MS / 1000)} giây — chưa gửi gì xuống cân. `
+  return new LoiBatTay(`Cân không trả lời qua ${com} (tốc độ ${baud}) trong ${Math.round(CHO_BAT_TAY_MS / 1000)} giây — chưa gửi gì xuống cân. `
     + 'Kiểm lần lượt: (1) trên cân bấm Prog → 4 → 3 (P43 RS-232) và để cân ở màn hình đó; (2) tốc độ khớp thông số 41 '
     + 'của cân (Prog → 1 → 2, SP.041: 5 = 9600); (3) dây: nếu vẫn không được, gắn thêm đầu chuyển null-modem (đảo chân 2–3).');
 }
@@ -312,4 +314,43 @@ export async function guiCom(com: string, baud: number, du: Uint8Array, chay: Ch
   const [docDau, docSau] = buocDoc(GUI_FILE);
   if (kq.hetGio === docDau) throw loiBatTay(kq, com, baud);
   return { soByte: kq.soByte, daXacNhan: kq.hetGio === null, gio: gioTrongBuoc(kq, docSau) };
+}
+
+// -----------------------------------------------------------------------------
+// ĐỌC QUA DÂY (2.10 — gỡ hàng còn nằm lại qua dây: đọc cân trước khi ghi đè, đọc lại sau khi ghi)
+// -----------------------------------------------------------------------------
+/** Phần đọc được qua dây: danh sách hàng và phím tắt (đủ cho gỡ hàng bằng ghi đè). */
+export type PhanDocDay = 'PLU' | 'SCP';
+const TEN_PHAN_DAY: Record<PhanDocDay, string> = { PLU: 'danh sách hàng', SCP: 'phím tắt' };
+
+/**
+ * Chờ cân trả hết một phần qua dây: đủ đẩy 160 KB ở tốc độ đó (vài trăm hàng chừng 100 KB), ít nhất 1 phút — bước đọc
+ * xong ngay khi gặp dòng END, nên chờ lâu không làm chậm lúc cân trả lời bình thường. 9600 bit/giây: gần 3 phút.
+ */
+export const choDocPhanMs = (baud: number) => Math.max(60_000, giayDay(160 * 1024, baud) * 1000);
+
+/**
+ * Kịch bản đọc như phần mềm hãng (CAN-TMA §10.6 "Đọc (hãng)": UPL <phần> như mạng): bắt tay, một dòng trống, rồi mỗi
+ * phần "UPL<tab><phần><tab>", đọc tới dòng END, "UPL<tab>END<tab>".
+ */
+export const kichBanDoc = (cacPhan: readonly PhanDocDay[], baud: number): BuocDay[] => [...BAT_TAY, { ghi: '\r\n' },
+  ...cacPhan.flatMap((p): BuocDay[] => [{ ghi: `UPL\t${p}\t\r\n` }, { doc: choDocPhanMs(baud), canTim: false }, { ghi: 'UPL\tEND\t\r\n' }])];
+
+/**
+ * Đọc các phần qua dây — trả mỗi phần các dòng của đúng phần đó (chuỗi byte, như đọc qua cổng hai chiều; dòng khác bỏ
+ * qua như hãng). Chỉ đọc, không đổi gì trên cân. Bắt tay không được → LoiBatTay. Cân không trả hết một phần → LoiDay
+ * (không bao giờ trả danh sách thiếu: người gọi quyết định gửi hay không theo danh sách này).
+ */
+export async function docPhanQuaDay(com: string, baud: number, cacPhan: readonly PhanDocDay[], chay: ChayPs = chayPowerShell): Promise<string[][]> {
+  if (!cacPhan.length || cacPhan.some(p => !Object.hasOwn(TEN_PHAN_DAY, p))) throw new LoiDay('Không có phần nào để đọc qua dây.');
+  const kb = kichBanDoc(cacPhan, baud);
+  const kq = await chayKichBan(com, baud, kb, null, chay);
+  const doc = buocDoc(kb);   // [bắt tay, phần 1, phần 2, …]
+  if (kq.hetGio === doc[0]) throw loiBatTay(kq, com, baud);
+  if (kq.hetGio !== null) {
+    const p = cacPhan[doc.indexOf(kq.hetGio) - 1];
+    throw new LoiDay(`Cân có trả lời qua ${com} nhưng không trả hết ${p ? TEN_PHAN_DAY[p] : 'dữ liệu'} trong ${Math.round(choDocPhanMs(baud) / 1000)} giây `
+      + '(dây lỏng, hay cân vừa rời màn hình Prog → 4 → 3)');
+  }
+  return cacPhan.map((p, i) => kq.dong.filter(d => d.buoc === doc[i + 1] && d.chu.split('\t')[0] === p).map(d => d.chu));
 }

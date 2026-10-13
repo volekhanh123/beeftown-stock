@@ -324,10 +324,12 @@
     <div class="nut"><button type="button" class="doc-wifi">Đọc dữ liệu từ cân qua WiFi</button><span class="dang-lam an">Đang đọc từ cân… (có thể tới 1 phút)</span></div>
 
     <h3>4. Gỡ hàng còn nằm lại</h3>
-    <p class="phu">Cân không có lệnh xoá một hàng. Hai cách qua cổng hai chiều, cần đăng nhập kho:</p>
+    <p class="phu">Cân không có lệnh xoá một hàng. Hai cách qua cổng hai chiều và một cách qua dây, cần đăng nhập kho:</p>
     <p class="phu">• <b>Gỡ khỏi cân (ghi đè)</b> — an toàn, nên dùng: mỗi số PLU còn nằm lại thành một dòng trống "KHÔNG DÙNG (PLU trống)", mã 99999, giá 0;
       phím tắt gọi số đó được bỏ. Hàng mới sau dùng lại số PLU này. Không lúc nào cân thiếu hàng.<br>
       • <b>Xoá hẳn (thử)</b> — xoá cả danh sách hàng trên cân rồi nạp lại; hỏng giữa chừng thì chương trình tự gửi lại cả danh sách. Làm lúc quầy vắng.<br>
+      • <b>Gỡ qua dây RS232 (ghi đè)</b> — như gỡ ghi đè, nhưng qua dây cắm thẳng vào cân (cổng COM chọn ở Cài đặt → Dây RS232), không cần WiFi.
+      Trên cân bấm <code>Prog → 4 → 3</code> và để cân ở màn hình đó trong lúc gỡ.<br>
       Đường chắc chắn vẫn là nạp USB (thẻ Gửi giá từ kho).</p>
     <div class="nut"><button type="button" id="nut-xem-con-lai">Xem hàng còn nằm lại</button></div>
     <div id="kq-con-lai"></div>
@@ -772,7 +774,7 @@
           + '<p><b>Gỡ khỏi cân (ghi đè)</b>: mỗi số PLU đó thành dòng trống "KHÔNG DÙNG", hàng mới dùng lại số đó — an toàn, không lúc nào cân thiếu hàng. '
           + 'Hoặc nạp USB (cân thay cả danh sách), hoặc xoá hẳn qua WiFi. Gỡ và xoá qua WiFi <b>chưa thử trên cân thật</b>.</p>'
           + '<div class="nut"><button id="nut-go-wifi" class="chinh">Gỡ khỏi cân qua WiFi (ghi đè)</button><button id="nut-tao-usb">Lưu file để nạp USB</button>'
-          + '<button id="nut-xoa-wifi">Xoá hẳn qua WiFi (thử)</button></div><div id="khung-usb"></div></div>';
+          + '<button id="nut-xoa-wifi">Xoá hẳn qua WiFi (thử)</button><button id="nut-go-day">Gỡ qua dây RS232 (ghi đè)</button></div><div id="khung-usb"></div></div>';
       }
       h += `<div class="nut" style="margin-top:16px"><button class="chinh to" id="nut-gui">Gửi xuống cân</button>`
         + `<span class="phu">${x.canChuaRo ? 'Lần xoá qua WiFi trước hỏng — bấm Gửi để gửi lại cả danh sách ' + x.soHangSauKhiGui + ' hàng, hoặc nạp USB.'
@@ -791,6 +793,7 @@
       if ($('nut-tao-usb')) $('nut-tao-usb').onclick = taoUsb;
       if ($('nut-xoa-wifi')) $('nut-xoa-wifi').onclick = () => xoaQuaWifi($('khung-usb'), x, giu, $('nut-xoa-wifi'));
       if ($('nut-go-wifi')) $('nut-go-wifi').onclick = () => goQuaWifi($('khung-usb'), x, giu, $('nut-go-wifi'));
+      if ($('nut-go-day')) $('nut-go-day').onclick = () => goQuaDay($('khung-usb'), x, giu, $('nut-go-day'));
     } catch (err) {
       bao(noi, 'loi', e(err.message));
     } finally {
@@ -910,17 +913,46 @@
     if (nut) { nut.disabled = true; nut.textContent = 'Đang gỡ qua WiFi…'; }
     bao(noi, '', '');
     try {
-      const k = await goi('/api/can/go-con-lai', { giuHangNgoaiKho: giu, dauVan: x.dauVan });
-      // khongCoTrenCan: cân đã không còn số đó (đã nạp USB…) — không gửi gì, chỉ bỏ khỏi danh sách của chương trình.
-      const khong = new Set(k.khongCoTrenCan || []);
-      const go = k.daGo.filter(c => !khong.has(c.so));
-      const ke = ds => ds.map(so => 'PLU ' + so).join(', ');
-      baoChung(k.loiPhim ? 'luu-y' : 'xong', (go.length ? `<p><b>Đã gỡ ${go.length} hàng khỏi cân</b> (${ke(go.map(c => c.so))}): `
-        + 'đọc lại thấy các số PLU đó đã là dòng trống "KHÔNG DÙNG".' : '<p>')
-        + (khong.size ? ` Cân đã không còn ${khong.size} số PLU (${ke([...khong])}) — có lẽ đã nạp USB; chương trình chỉ bỏ khỏi danh sách hàng trên cân.` : '')
-        + (k.boPhim ? ` Đã bỏ ${k.boPhim} phím tắt đang gọi các số đó.` : '') + '</p>'
-        + (k.loiPhim ? `<p>${e(k.loiPhim)}</p>` : '')
-        + (go.length ? '<p>Gọi thử trên cân một số PLU vừa gỡ: ra "KHÔNG DÙNG (PLU trống)", giá 0 là đúng. Không cân hàng bằng số đó.</p>' : ''));
+      baoDaGo(await goi('/api/can/go-con-lai', { giuHangNgoaiKho: giu, dauVan: x.dauVan }), '');
+      await taiTrangThai();
+    } catch (err) {
+      bao(noi, 'loi', `<p>${e(err.message)}</p><p>Đường chắc chắn: bấm <b>Lưu file để nạp USB</b> (thẻ Gửi giá từ kho) rồi nạp USB.</p>`);
+    } finally { if (nut) { nut.disabled = false; nut.textContent = chuNut; } }
+  }
+
+  /** Báo sau khi gỡ (WiFi hay dây) — k: KetQuaGo; qua: "" hay " qua dây COM3". */
+  function baoDaGo(k, qua) {
+    // khongCoTrenCan: cân đã không còn số đó (đã nạp USB…) — không gửi gì, chỉ bỏ khỏi danh sách của chương trình.
+    const khong = new Set(k.khongCoTrenCan || []);
+    const go = k.daGo.filter(c => !khong.has(c.so));
+    const ke = ds => ds.map(so => 'PLU ' + so).join(', ');
+    baoChung(k.loiPhim ? 'luu-y' : 'xong', (go.length ? `<p><b>Đã gỡ ${go.length} hàng khỏi cân${e(qua)}</b> (${ke(go.map(c => c.so))}): `
+      + 'đọc lại thấy các số PLU đó đã là dòng trống "KHÔNG DÙNG".' : '<p>')
+      + (khong.size ? ` Cân đã không còn ${khong.size} số PLU (${ke([...khong])}) — có lẽ đã nạp USB; chương trình chỉ bỏ khỏi danh sách hàng trên cân.` : '')
+      + (k.boPhim ? ` Đã bỏ ${k.boPhim} phím tắt đang gọi các số đó.` : '') + '</p>'
+      + (k.loiPhim ? `<p>${e(k.loiPhim)}</p>` : '')
+      + (go.length ? '<p>Gọi thử trên cân một số PLU vừa gỡ: ra "KHÔNG DÙNG (PLU trống)", giá 0 là đúng. Không cân hàng bằng số đó.</p>' : ''));
+  }
+
+  /**
+   * 2.10 — gỡ hàng còn nằm lại qua dây RS232 bằng ghi đè (như goQuaWifi; chưa thử trên cân thật). Cổng, tốc độ: ô ở Cài đặt →
+   * Dây RS232; chưa chọn thì máy chủ dùng cổng của lần Kiểm tra dây / Gửi thử trước.
+   */
+  async function goQuaDay(noi, x, giu, nut) {
+    const ds = x.conLai.map(c => `PLU ${c.so} · mã ${c.ma || '—'} · ${c.ten}`).join('\n');
+    const chon = $('com-cong').value ? comChon() : {};
+    if (!confirm(`Gỡ ${x.conLai.length} hàng còn nằm lại khỏi cân qua DÂY RS232${chon.com ? ' (' + chon.com + ', tốc độ ' + chon.baud + ')' : ' (cổng lần trước)'}?\n\n${ds}\n\n`
+      + 'Trước khi bấm OK: trên cân bấm Prog → 4 → 3 (P43 RS-232) và để cân ở màn hình đó tới khi xong.\n\n'
+      + 'Mỗi số PLU trên thành dòng trống "KHÔNG DÙNG (PLU trống)" (mã 99999, giá 0); phím tắt đang gọi số đó được bỏ. Hàng khác trên cân không đổi. '
+      + 'Chương trình đọc danh sách hàng qua dây trước (số nào trên cân giờ là hàng khác thì không gỡ gì), gửi dòng trống, rồi đọc lại để kiểm. '
+      + 'Ở 9600 bit/giây mỗi lần đọc có thể tới 1–2 phút — đừng rút dây hay tắt chương trình.\n\nCHƯA THỬ TRÊN CÂN THẬT. Đóng phần mềm TM-xA của hãng trước.')) return;
+    const chuNut = nut ? nut.textContent : '';
+    if (nut) { nut.disabled = true; nut.textContent = 'Đang gỡ qua dây…'; }
+    bao(noi, '', '<p class="dang-lam">Đang đọc cân qua dây, gửi dòng trống rồi đọc lại — có thể vài phút, đừng rút dây…</p>');
+    try {
+      const k = await goi('/api/com/go-con-lai', { ...chon, giuHangNgoaiKho: giu, dauVan: x.dauVan });
+      bao(noi, '', '');
+      baoDaGo(k, ` qua dây ${k.com}`);
       await taiTrangThai();
     } catch (err) {
       bao(noi, 'loi', `<p>${e(err.message)}</p><p>Đường chắc chắn: bấm <b>Lưu file để nạp USB</b> (thẻ Gửi giá từ kho) rồi nạp USB.</p>`);
@@ -1896,11 +1928,13 @@
         return;
       }
       bao(noi, 'luu-y', `<p>${x.conLai.length} hàng còn nằm lại: ${x.conLai.map(c => `PLU ${c.so} · ${e(c.ten)}`).join(' · ')}</p>`
-        + '<div class="nut"><button type="button" class="chinh go">Gỡ khỏi cân (ghi đè)</button><button type="button" class="xoa">Xoá hẳn (thử)</button></div>'
+        + '<div class="nut"><button type="button" class="chinh go">Gỡ khỏi cân (ghi đè)</button><button type="button" class="xoa">Xoá hẳn (thử)</button>'
+        + '<button type="button" class="go-day">Gỡ qua dây RS232 (ghi đè)</button></div>'
         + '<div class="kq-go"></div>');
       const kq = noi.querySelector('.kq-go');
       noi.querySelector('.go').onclick = (ev) => goQuaWifi(kq, x, giu, ev.currentTarget);
       noi.querySelector('.xoa').onclick = (ev) => xoaQuaWifi(kq, x, giu, ev.currentTarget);
+      noi.querySelector('.go-day').onclick = (ev) => goQuaDay(kq, x, giu, ev.currentTarget);
     } catch (err) { bao(noi, 'loi', e(err.message)); }
   };
 
