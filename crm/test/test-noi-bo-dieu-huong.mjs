@@ -194,7 +194,7 @@ await nhom('3 · AI THẤY MỤC NÀO — KHỚP TRANG VÀ RLS', async () => {
   const khongNhom = MUC_KHO.filter(m => !KDH.NHOM_KHO.some(n => n.ma === m.nhom)).map(m => m.ma);
   ok('Mục kho nào cũng thuộc một nhóm có thật', khongNhom.length === 0, khongNhom.join(', '));
   ok('Nhóm kho nào cũng có mục', KDH.NHOM_KHO.every(n => MUC_KHO.some(m => m.nhom === n.ma)));
-  ok('Chủ: 23 mục kho trong 6 nhóm', KDH.nhomCuaVai('chu_so_huu').length === 6 && mucCuaVai('chu_so_huu').length === MUC_KHO.length);
+  ok(`Chủ: ${MUC_KHO.length} mục kho trong 6 nhóm`, KDH.nhomCuaVai('chu_so_huu').length === 6 && mucCuaVai('chu_so_huu').length === MUC_KHO.length);
   const tuLa = Object.keys(KDH.TU_KHOA_KHO).filter(ma => !MUC_KHO.some(m => m.ma === ma));
   ok('Từ khóa tìm chỉ cho mục kho có thật', tuLa.length === 0, tuLa.join(', '));
 });

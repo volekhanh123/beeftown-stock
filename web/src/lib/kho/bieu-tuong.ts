@@ -44,6 +44,8 @@ export const BIEU_TUONG = {
   tin_nhan:   '<path d="M4 5h16v11H9l-5 4V5z"/><path d="M8 9h8M8 12h5"/>',
   tim:        '<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
   trang_web:  '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/><path d="M6.5 6.5h.01M9 6.5h.01"/><path d="M7 13h10M7 16h6"/>',
+  // Ô menu Mặt hàng (danh mục): thẻ giá có lỗ xỏ dây.
+  mat_hang:   '<path d="M3 4.5V11l9.3 9.3a1.5 1.5 0 0 0 2.1 0l5.9-5.9a1.5 1.5 0 0 0 0-2.1L11 3H4.5A1.5 1.5 0 0 0 3 4.5z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
 } as const;
 
 export type TenBieuTuong = keyof typeof BIEU_TUONG;
