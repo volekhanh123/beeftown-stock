@@ -124,7 +124,7 @@ Hai bộ, **không trộn**:
 | Bộ | File | Nét | Tên |
 |---|---|---|---|
 | Trang công khai | `web/src/components/BieuTuong.astro` | 1,5px | mui-ten, menu, dong, cong… |
-| Nội bộ, kho | `web/src/components/kho/BieuTuong.astro` + `web/src/lib/kho/bieu-tuong.ts` | 2px, prop `co` (mặc định 22) | nha, viec, duyet, quet, ton, quay, khac, nhap, dao, chuyen, bep, huy, kiem_ke, cong_no, bao_cao, cai_dat, chuong, quy_trinh, huong_dan, dang_xuat, can, nguoi, lich, them, tiep, lui, canh_bao, dat_hang, in, tin_nhan, tim, trang_web |
+| Nội bộ, kho | `web/src/components/kho/BieuTuong.astro` + `web/src/lib/kho/bieu-tuong.ts` | 2px, prop `co` (mặc định 22) | nha, viec, duyet, quet, ton, quay, khac, nhap, dao, chuyen, bep, huy, kiem_ke, cong_no, bao_cao, cai_dat, chuong, quy_trinh, huong_dan, dang_xuat, can, nguoi, lich, them, tiep, lui, canh_bao, dat_hang, in, tin_nhan, tim, trang_web, mat_hang |
 
 Cỡ: 18 (menu) · 20 (cột bên) · 22 (thanh đáy) · 26 (nút quét, ô chức năng). Không thư viện biểu tượng.
 Thêm biểu tượng kho: thêm vào `BIEU_TUONG` — kiểm thử điều hướng đòi mọi mục menu có biểu tượng trong đó.

@@ -278,8 +278,23 @@ await nhom('3 · SỐ ĐỎ VÀ ĐÁNH DẤU MỤC ĐANG MỞ', async () => {
     dangO(oMuc('dinh_muc'), '/noi-bo/kho/bao-cao/dinh-muc') && !dangO(oMuc('bao_cao'), '/noi-bo/kho/bao-cao/dinh-muc'));
   ok('Mở Định lượng món: ô "Định lượng món" sáng, ô "Thiết lập" không',
     dangO(oMuc('dinh_luong'), '/noi-bo/kho/cai-dat/dinh-luong') && !dangO(oMuc('cai_dat'), '/noi-bo/kho/cai-dat/dinh-luong'));
+  // Mặt hàng có ô riêng ở cột trái (trước chỉ mở được qua Thiết lập): trang danh mục và màn sửa nhanh sáng ô đó.
+  ok('Mở Mặt hàng: ô "Mặt hàng" sáng, ô "Thiết lập" không',
+    dangO(oMuc('mat_hang'), '/noi-bo/kho/cai-dat/mat-hang') && !dangO(oMuc('cai_dat'), '/noi-bo/kho/cai-dat/mat-hang'));
+  ok('Mở Sửa nhanh mặt hàng: ô "Mặt hàng" sáng, ô "Thiết lập" không',
+    dangO(oMuc('mat_hang'), '/noi-bo/kho/cai-dat/mat-hang/sua-nhanh')
+    && !dangO(oMuc('cai_dat'), '/noi-bo/kho/cai-dat/mat-hang/sua-nhanh'));
+  // Ô sáng ở cả trang danh mục lẫn màn sửa nhanh, nên quyền của ô phải khớp dòng chặn của CẢ HAI trang.
+  ok('Ô "Mặt hàng" ở nhóm Thiết lập, cần quyền danh mục như dòng chặn đầu trang Mặt hàng và Sửa nhanh',
+    oMuc('mat_hang')?.nhom === 'thiet_lap' && oMuc('mat_hang')?.link === '/noi-bo/kho/cai-dat/mat-hang'
+    && JSON.stringify(oMuc('mat_hang')?.quyen) === JSON.stringify(['danh_muc'])
+    && ['mat-hang.astro', join('mat-hang', 'sua-nhanh.astro')].every(f => /if \(!k\.duoc\('danh_muc'\)\) return Astro\.redirect/.test(
+      readFileSync(join(TRANG, 'noi-bo', 'kho', 'cai-dat', f), 'utf8'))));
+  ok('Ô "Mặt hàng": chủ, quản lý thấy; thủ kho, NV quầy, kế toán không',
+    ['chu_so_huu', 'quan_ly'].every(v => mucCuaVai(v).some(m => m.ma === 'mat_hang'))
+    && ['thu_kho', 'nhan_vien_quay', 'ke_toan'].every(v => !mucCuaVai(v).some(m => m.ma === 'mat_hang')));
   ok('Trang con khác của Báo cáo / Thiết lập vẫn sáng ô cha',
-    dangO(oMuc('bao_cao'), '/noi-bo/kho/bao-cao') && dangO(oMuc('cai_dat'), '/noi-bo/kho/cai-dat/mat-hang'));
+    dangO(oMuc('bao_cao'), '/noi-bo/kho/bao-cao') && dangO(oMuc('cai_dat'), '/noi-bo/kho/cai-dat/nha-cung-cap'));
 });
 
 // ===========================================================================

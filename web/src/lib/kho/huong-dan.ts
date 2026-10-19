@@ -1389,8 +1389,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     tomTat: { vi: 'Một bảng mọi món: giá bán, hạn dùng, mã cân, mức quầy, mức kho lạnh, sau pha để ở, đang dùng — sửa nhiều món, lưu một lần.',
               en: 'One table with every item: sale price, shelf life, scale code, counter level, cold-store level, where it goes after butchery, in use — edit many items, save once.' },
     buoc: [
-      { vi: 'Mở **Thiết lập** → **Sửa nhanh mặt hàng** (hoặc link trên trang Mặt hàng).',
-        en: 'Open **Setup** → **Quick edit items** (or the link on the Items page).' },
+      { vi: 'Mở **Mặt hàng** ở cột trái → link **Sửa nhanh nhiều món** đầu trang (hoặc **Thiết lập** → **Sửa nhanh mặt hàng**).',
+        en: 'Open **Items** in the side menu → the **Quick edit many items** link at the top (or **Setup** → **Quick edit items**).' },
       { vi: 'Lọc theo loại, nhóm hoặc gõ tên vào ô **Tìm**.',
         en: 'Filter by type or category, or type a name in the **Search** box.' },
       { vi: 'Sửa thẳng trong ô. **Ô để trống = giữ nguyên**; gõ dấu **-** để xóa hẳn ô đó.',

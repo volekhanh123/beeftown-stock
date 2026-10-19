@@ -17,8 +17,8 @@
  * Quyền ở đây chỉ để ẩn/hiện. Mỗi mục ghi đúng quyền mà TRANG ĐÓ kiểm ở đầu
  * file — lệch nhau thì người dùng bấm vào một ô rồi bị đẩy ra, rất khó chịu.
  *
- * NHÓM (NHOM_KHO): chủ và quản lý thấy 23 mục. Xếp liền một dải thì tìm "Công nợ"
- * hay "Định lượng món" phải dò từng ô — trên laptop 1366×768, 9 ô cuối nằm dưới mép
+ * NHÓM (NHOM_KHO): chủ và quản lý thấy mọi mục (MUC_KHO). Xếp liền một dải thì tìm "Công nợ"
+ * hay "Định lượng món" phải dò từng ô — trên laptop 1366×768, gần chục ô cuối nằm dưới mép
  * màn hình. Mỗi mục thuộc đúng một nhóm theo việc người ta đang làm; cột trái và
  * trang Khác in theo nhóm, trang Khác có thêm ô tìm (lib/ban-do-chuc-nang.ts).
  */
@@ -112,6 +112,10 @@ export const MUC_KHO: MucKho[] = [
   // GĐ7a (0037): dòng bán iPOS chưa trừ được kho — chưa ghép món, thiếu hàng trên sổ.
   { ma: 'ban_ipos', nhom: 'tien_bao_cao', ten: { vi: 'Bán hàng iPOS', en: 'iPOS sales' }, link: '/noi-bo/kho/ban-ipos', bieuTuong: 'quay', quyen: ['duyet'],
     dem: ['ipos_cho_xu_ly'] },
+  // Danh mục mặt hàng (tảng, phần cắt, phụ phẩm) — trước chỉ tới được qua Thiết lập. Đứng đầu nhóm
+  // Thiết lập; ô riêng nên mở trang này (cả màn sửa nhanh) thì ô "Thiết lập" không sáng (dangO).
+  { ma: 'mat_hang', nhom: 'thiet_lap', ten: { vi: 'Mặt hàng', en: 'Items' }, link: '/noi-bo/kho/cai-dat/mat-hang', bieuTuong: 'mat_hang',
+    quyen: ['danh_muc'] },
   // GĐ7b (0038): định lượng món (danh_muc) và đối chiếu định mức bếp. Báo cáo mở
   // cho mọi vai xem kho, nhưng ô menu chỉ cho quản lý / chủ — người nhận cảnh
   // báo dinh_muc_lech (số đỏ). Thủ kho / NV quầy mở trang (chỉ kg) khi được gửi link.
@@ -151,10 +155,11 @@ export const TU_KHOA_KHO: Readonly<Record<string, HaiThuTieng>> = {
   cong_no:      { vi: 'nợ nhà cung cấp trả tiền thanh toán hóa đơn MISA', en: 'supplier debt pay invoice MISA' },
   bao_cao:      { vi: 'doanh thu giá vốn thống kê Excel', en: 'revenue cost statistics Excel' },
   ban_ipos:     { vi: 'POS bán hàng trừ kho ghép món', en: 'POS sales deduct stock map dishes' },
+  mat_hang:     { vi: 'danh mục SKU tảng phần cắt phụ phẩm mã cân ô mã giá bán', en: 'catalog SKU primal cut by-product scale code price' },
   dinh_luong:   { vi: 'công thức món ăn gram', en: 'dish recipe grams' },
   dinh_muc:     { vi: 'bếp dùng lệch định lượng', en: 'kitchen usage variance' },
   quy_trinh:    { vi: 'các bước làm việc', en: 'step by step' },
-  cai_dat:      { vi: 'cài đặt mặt hàng nhà cung cấp nhân viên máy cân', en: 'settings items suppliers staff scale' },
+  cai_dat:      { vi: 'cài đặt nhà cung cấp nhân viên máy cân', en: 'settings suppliers staff scale' },
   huong_dan:    { vi: 'trợ giúp cách dùng hỏi đáp', en: 'help how to FAQ' },
   quyen:        { vi: 'phân quyền vai trò', en: 'permissions roles' },
 };
