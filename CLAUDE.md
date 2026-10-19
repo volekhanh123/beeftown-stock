@@ -116,9 +116,9 @@ Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô 
 | Khi nào | Chạy gì | Thời gian |
 |---|---|---|
 | Đẩy nhánh có đổi migration | `gac-nhanh.yml`: số migration, trùng với nhánh khác | ~30 giây |
-| Mở / cập nhật PR | `kiem-thu.yml`: database, kho, Zalo, Messenger, Beeftown Cân; web: astro check, build, đóng gói thử, chữ cấm, trình duyệt | ~10 phút |
+| Mở / cập nhật PR không phải nháp; bấm "Ready for review" | `kiem-thu.yml`: database, kho, Zalo, Messenger, Beeftown Cân; web: astro check, build, đóng gói thử, chữ cấm, trình duyệt. PR nháp bỏ qua hai job này (đỡ phút CI) — chạy đủ kiểm thử trên máy trước khi đẩy | ~10 phút |
 | Main nhận commit | như PR, rồi comment vào PR đang mở nào vừa bị trùng số migration | ~10 phút |
-| 00:30 giờ VN mỗi đêm | toàn bộ với `TZ=Asia/Ho_Chi_Minh` + quét chữ cấm trên beeftown.vn thật | ~10 phút |
+| 00:30 giờ VN mỗi đêm | quét chữ cấm trên beeftown.vn thật; toàn bộ với `TZ=Asia/Ho_Chi_Minh` khi main có commit trong 48 giờ qua, đêm Chủ nhật, đêm đầu / cuối tháng, hoặc không hỏi được GitHub (job `co-doi`). Cổng deploy bỏ qua lượt đêm không kiểm mã (`web/kiem-tra/ket-qua-ci.mjs`) | ~1 phút / ~10 phút |
 | 02:00 giờ VN mỗi đêm; chạy tay | `sao-luu.yml`: sao lưu database (`crm/sao-luu/`) → mã hoá → artifact 30 ngày → khôi phục thử vào Supabase dựng tạm → ghi `he_thong_sao_luu` (đèn "Sao lưu dữ liệu"). Secret `SAO_LUU_DB_URL`, `SAO_LUU_MAT_KHAU` (README gốc, "Sao lưu và khôi phục") | ~5–10 phút |
 | Main hoặc PR đổi `can-app/`, `web/src/lib/`; chạy tay (gõ số PR) | `dong-goi-can.yml`: kiểm thử Beeftown Cân rồi đóng gói `BeeftownCan.exe` → artifact, Release khi `PHIEN_BAN` mới, bản cài lên kho công khai `beeftown-can-ban-cai` cho nút Cập nhật (secret `TOKEN_BAN_CAI_CAN`) (PR: chỉ đóng gói thử, không tải lên) | ~1 phút |
 | Đầu mỗi tháng | `dependabot.yml`: PR nâng thư viện `web/`, `crm/`, `can-app/` và action — bản nhỏ gom một PR mỗi thư mục, bản lớn PR riêng. CI xanh mới gộp | — |

@@ -379,10 +379,12 @@ Kiểm thử: `crm/test/test-sao-luu.mjs` (chính hai script, với `supabase` v
 
 ## Kiểm thử tự động — Khánh cần biết
 
-Mỗi PR, mỗi lần gộp vào main và mỗi đêm lúc 00:30 giờ Việt Nam, GitHub tự chạy toàn bộ kiểm thử
-(database, kho, Zalo, Messenger, Beeftown Cân, trang web trên trình duyệt thật). Chi tiết ở `CLAUDE.md`.
+Mỗi PR (khi bấm "Ready for review"), mỗi lần gộp vào main, và đêm 00:30 giờ Việt Nam khi main có commit mới
+hoặc đêm Chủ nhật, GitHub tự chạy toàn bộ kiểm thử (database, kho, Zalo, Messenger, Beeftown Cân, trang web
+trên trình duyệt thật). PR nháp không chạy, để đỡ phút CI. Chi tiết ở `CLAUDE.md`.
 
-- **Chỉ bấm Merge khi PR có dấu ✓ xanh.** Dấu ✗ đỏ nghĩa là có kiểm thử hỏng — phiên Claude đang theo dõi
+- **Bấm "Ready for review", đợi ~10 phút cho CI chạy, chỉ bấm Merge khi PR có dấu ✓ xanh.** PR nháp có thể
+  hiện ✓ mà chưa kiểm gì (hai job kiểm mã bỏ qua). Dấu ✗ đỏ nghĩa là có kiểm thử hỏng — phiên Claude đang theo dõi
   PR sẽ tự sửa; đừng gộp trong lúc chờ.
 - **Deploy tự chặn** commit chưa có CI xanh (`npm run deploy`). Cài `gh` một lần trên máy deploy:
   `winget install GitHub.cli`, rồi `gh auth login`.

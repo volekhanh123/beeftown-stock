@@ -141,6 +141,23 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
   ];
   const thieu = BUOC.filter(([, m]) => !m.test(yml)).map(([t]) => t);
   ok('Workflow kiểm thử còn đủ các bước', thieu.length === 0, `thiếu: ${thieu.join(', ')}`);
+  // Tiết kiệm phút CI (19/10/2026): PR nháp không chạy hai job kiểm mã — bấm "Ready for review" mới chạy, và
+  // vẫn phải xanh mới gộp. Lượt đêm bỏ hai job đó khi main không đổi — job co-doi (tên ở web/kiem-tra/ket-qua-ci.mjs).
+  // Phần điều kiện của một job: từ dòng khóa job tới dòng "steps:".
+  const khoiJob = ten => yml.match(new RegExp(`\\n  ${ten}:\\n((?:    .*\\n|\\s*\\n)*?)    steps:`))?.[1] ?? '';
+  const JOB_KIEM_MA = ['database-va-can', 'web'];
+  ok('Workflow kiểm thử: PR nháp bỏ qua job kiểm mã, "Ready for review" thì chạy',
+     /\n  pull_request:\n    types: \[opened, synchronize, reopened, ready_for_review\]\n/.test(yml)
+       && JOB_KIEM_MA.every(t => /github\.event\.pull_request\.draft/.test(khoiJob(t))));
+  ok('Workflow kiểm thử: lượt đêm bỏ job kiểm mã CHỈ khi co-doi trả chay=khong (co-doi bỏ qua / hỏng → vẫn chạy)',
+     JOB_KIEM_MA.every(t => /needs: co-doi/.test(khoiJob(t)) && /needs\.co-doi\.outputs\.chay != 'khong'/.test(khoiJob(t))
+       && /!cancelled\(\)/.test(khoiJob(t))));
+  ok('Workflow kiểm thử: lượt đêm chạy đủ khi main có commit trong 48 giờ, đêm Chủ nhật, đầu / cuối tháng, hoặc không hỏi được GitHub',
+     /since=\$TU/.test(yml) && /date -u -d '48 hours ago'/.test(yml) && /TZ=Asia\/Ho_Chi_Minh date \+%u/.test(yml)
+       && /\[ "\$NGAY" = 01 \] \|\| \[ "\$NGAY_MAI" = 01 \]/.test(yml)
+       && /CHAY=khong/.test(yml) && (yml.match(/CHAY=co/g) ?? []).length >= 3);
+  ok('Workflow kiểm thử: job co-doi không làm lượt đêm đỏ (continue-on-error, gh có hạn giờ)',
+     /continue-on-error: true/.test(khoiJob('co-doi')) && /timeout 60 gh api/.test(yml));
 
   // Đóng gói Beeftown Cân: file .exe tải từ GitHub về máy quầy. Kiểm thử phải chạy TRƯỚC — đóng gói bản hỏng
   // rồi đưa lên Releases là đưa bản hỏng ra quán. Tên artifact và Release lấy từ dòng PHIEN_BAN của main.ts.
