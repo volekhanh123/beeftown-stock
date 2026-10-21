@@ -14,7 +14,8 @@
  *   3. hỏi GitHub kết quả workflow "Kiểm thử" của commit đang deploy (cần `gh`, xem dưới):
  *        xanh → đi tiếp · đỏ → từ chối, in link · đang chạy → bảo đợi.
  *      Đỏ CHỈ vì job quét beeftown.vn đang chạy thật (bản cũ, trang mới còn 404) → đi tiếp, kèm
- *      cảnh báo quét lại site sau deploy (ket-qua-ci.mjs).
+ *      cảnh báo quét lại site sau deploy. Lượt đêm không kiểm mã (main không đổi) bị bỏ qua, xét lượt
+ *      trước nó (ket-qua-ci.mjs).
  *      Không có `gh` / mất mạng / commit chưa có lượt CI → tự chạy kiểm thử ngay trên máy
  *      (astro check + toàn bộ test crm, vài phút) thay cho CI.
  *
@@ -103,7 +104,7 @@ function hoiCi() {
     const khongCo = e.code === 'ENOENT';
     return { kq: 'khong-hoi-duoc', ly_do: khongCo ? 'máy chưa cài gh (winget install GitHub.cli, rồi gh auth login)' : 'gh không hỏi được GitHub (chưa gh auth login, hoặc mất mạng)' };
   }
-  // Lượt mới nhất quyết định; lượt đỏ thì xem từng job — xem ket-qua-ci.mjs.
+  // Lượt mới nhất CÓ kiểm mã quyết định; lượt đêm và lượt đỏ thì xem từng job — xem ket-qua-ci.mjs.
   const jobsCua = id => {
     try {
       return JSON.parse(chay('gh', ['api', `repos/${repo}/actions/runs/${id}/jobs?per_page=100`], { timeout: 30000 })).jobs ?? null;
@@ -115,7 +116,7 @@ function hoiCi() {
 const ci = hoiCi();
 if (ci.kq === 'xanh' && ci.chiTrangThatDo) {
   console.log(XANH(`  ✓ Mọi job kiểm mã xanh cho commit ${sha.slice(0, 7)}`) + `  ${ci.link}`);
-  console.log(VANG(`  ! Lượt đó đỏ chỉ vì job "${JOB_QUET_TRANG_THAT}" — nó quét bản ĐANG chạy`));
+  console.log(VANG(`  ! Lượt ${ci.linkQuetThat && ci.linkQuetThat !== ci.link ? `đêm ${ci.linkQuetThat} ` : 'đó '}đỏ chỉ vì job "${JOB_QUET_TRANG_THAT}" — nó quét bản ĐANG chạy`));
   console.log(VANG('    trên beeftown.vn (bản cũ), nên trang mới của commit này trả 404 cho tới khi deploy. Cho qua.'));
   console.log(VANG('    Deploy xong chạy ngay: npm run quet -- --url https://beeftown.vn — còn ✗ thì xem link trên:'));
   console.log(VANG('    chữ cấm trong nội dung công bố từ /noi-bo thì sửa ở /noi-bo, không cần deploy lại.'));

@@ -1,11 +1,16 @@
 # Kiểm thử tự động — chạy toàn bộ kiểm tra của repo.
 #
-#   · Mỗi PR (và mỗi lần đẩy thêm vào PR): database + kho + Zalo + Messenger + Beeftown Cân,
-#     và web (astro check, build, thử đóng gói Cloudflare, quét chữ cấm, trình duyệt thật).
+#   · Mỗi PR không phải nháp (và mỗi lần đẩy thêm vào PR đó): database + kho + Zalo + Messenger + Beeftown
+#     Cân, và web (astro check, build, thử đóng gói Cloudflare, quét chữ cấm, trình duyệt thật).
 #     PR thử trên COMMIT GỘP với main — đúng chỗ hai nhánh làm song song đụng nhau.
+#     PR nháp: hai job đó bỏ qua (đỡ phút CI — người làm đã chạy kiểm thử trên máy); bấm "Ready for
+#     review" thì chạy, và vẫn phải xanh mới gộp.
 #   · Mỗi lần main nhận commit: chạy lại như trên, rồi báo vào PR đang mở nào vừa bị trùng số migration.
-#   · Mỗi đêm 00:30 giờ Việt Nam (17:30 UTC): chạy lại toàn bộ với múi giờ Việt Nam, đúng khung
-#     0h–7h khi ngày UTC còn là hôm qua — lỗi múi giờ lộ ra ở đây — và quét chữ cấm trên trang thật.
+#   · Mỗi đêm 00:30 giờ Việt Nam (17:30 UTC): quét chữ cấm trên trang thật. Chạy lại toàn bộ với múi giờ
+#     Việt Nam — đúng khung 0h–7h khi ngày UTC còn là hôm qua, lỗi múi giờ lộ ra ở đây — khi main có commit
+#     trong 48 giờ qua, đêm Chủ nhật, đêm đầu và cuối tháng, hoặc khi không hỏi được GitHub (job co-doi). Đêm
+#     khác mã y như đêm trước: bỏ qua đỡ ~14 phút CI. Cổng deploy bỏ qua lượt đêm không kiểm mã
+#     (web/kiem-tra/ket-qua-ci.mjs).
 #
 # Đọc kết quả: tab Actions → lượt chạy → Summary (bảng từng file, số migration kế tiếp).
 # Chạy tay: Actions → Kiểm thử → Run workflow (chọn múi giờ).
@@ -14,6 +19,7 @@ name: Kiểm thử
 
 on:
   pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches: [main]
   schedule:
@@ -37,8 +43,47 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Chỉ lượt đêm: có cần chạy hai job kiểm mã không. Chạy (chay=co) khi main có commit trong 48 giờ qua (một
+  # lần gộp được hai đêm kiểm, lượt đêm có trễ vài giờ cũng không lọt), đêm Chủ nhật, đêm đầu và cuối tháng
+  # (giờ VN — lỗi ngày tháng hay lộ ở đây dù mã không đổi), hoặc khi không hỏi được GitHub. Còn lại chay=khong:
+  # mã y như đêm trước, bỏ qua đỡ ~14 phút CI. Job này không được làm lượt đêm đỏ (continue-on-error, gh có hạn
+  # giờ); cổng deploy cũng không tính nó là job kiểm mã. Tên job: JOB_XEM_DOI trong web/kiem-tra/ket-qua-ci.mjs.
+  co-doi:
+    name: Lượt đêm có cần kiểm mã không
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 3
+    continue-on-error: true
+    outputs:
+      chay: ${{ steps.xem.outputs.chay }}
+    steps:
+      - name: Đếm commit của main trong 48 giờ qua, xem thứ và ngày (giờ VN)
+        id: xem
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          TU=$(date -u -d '48 hours ago' +%Y-%m-%dT%H:%M:%SZ)
+          THU=$(TZ=Asia/Ho_Chi_Minh date +%u)
+          NGAY=$(TZ=Asia/Ho_Chi_Minh date +%d)
+          NGAY_MAI=$(TZ=Asia/Ho_Chi_Minh date -d tomorrow +%d)
+          N=$(timeout 60 gh api "repos/$REPO/commits?sha=main&since=$TU&per_page=1" --jq 'length' 2>/dev/null) || N=loi
+          if [ "$THU" = 7 ]; then CHAY=co; LY_DO="đêm Chủ nhật — mỗi tuần chạy đủ một lần"
+          elif [ "$NGAY" = 01 ] || [ "$NGAY_MAI" = 01 ]; then CHAY=co; LY_DO="đêm đầu / cuối tháng"
+          elif [ "$N" = 0 ]; then CHAY=khong; LY_DO="main không có commit nào từ $TU"
+          else CHAY=co; LY_DO="main có commit mới, hoặc không hỏi được GitHub ($N)"; fi
+          echo "chay=$CHAY" >> "$GITHUB_OUTPUT"
+          if [ "$CHAY" = co ]; then VIEC='chạy đủ kiểm thử'; else VIEC='bỏ qua hai job kiểm mã, chỉ quét trang thật'; fi
+          echo "Lượt đêm: $LY_DO → $VIEC." | tee -a "$GITHUB_STEP_SUMMARY"
+
   database-va-can:
     name: Database · kho · Zalo · Messenger · Beeftown Cân
+    needs: co-doi
+    # !cancelled(): job co-doi bỏ qua (mọi lượt trừ lượt đêm) thì job này vẫn chạy.
+    if: >-
+      ${{ !cancelled()
+      && !(github.event_name == 'pull_request' && github.event.pull_request.draft)
+      && (github.event_name != 'schedule' || needs.co-doi.outputs.chay != 'khong') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
@@ -82,6 +127,12 @@ jobs:
 
   web:
     name: Web · astro check · build · chữ cấm · trình duyệt
+    needs: co-doi
+    # Cùng điều kiện với job database-va-can.
+    if: >-
+      ${{ !cancelled()
+      && !(github.event_name == 'pull_request' && github.event.pull_request.draft)
+      && (github.event_name != 'schedule' || needs.co-doi.outputs.chay != 'khong') }}
     runs-on: ubuntu-24.04
     # 7 cỡ màn hình × 21 trang (thu-trinh-duyet) và trạng thái có database (thu-day-du, astro dev).
     timeout-minutes: 30

@@ -105,10 +105,11 @@ chúng dùng `kho-chung.mjs`, và `test-quy-trinh.mjs` mục 6 chặn.
 GitHub Actions chạy bộ này mà không cần ai nhớ (`.github/workflows/`, xem `CLAUDE.md` ở gốc repo):
 
 - **Đẩy nhánh có đổi migration** → `gac-nhanh.yml` kiểm số migration trong ~30 giây.
-- **Mở / cập nhật PR, gộp vào main** → `kiem-thu.yml` chạy `node test/chay-tat-ca.mjs --tat-ca`, Beeftown Cân,
-  và phía web. Main nhận commit thì còn comment vào PR đang mở nào vừa bị trùng số migration.
+- **Mở / cập nhật PR không phải nháp, gộp vào main** → `kiem-thu.yml` chạy `node test/chay-tat-ca.mjs --tat-ca`,
+  Beeftown Cân, và phía web. PR nháp bỏ qua — bấm "Ready for review" thì chạy. Main nhận commit thì còn comment
+  vào PR đang mở nào vừa bị trùng số migration.
 - **00:30 giờ Việt Nam mỗi đêm** → chạy lại toàn bộ với `TZ=Asia/Ho_Chi_Minh`, đúng khung 0h–7h khi ngày UTC
-  còn là hôm qua.
+  còn là hôm qua — khi main có commit trong 48 giờ qua, đêm Chủ nhật, đêm đầu / cuối tháng. Đêm khác chỉ quét trang thật.
 
 Kết quả từng file và số migration kế tiếp nằm ở tab Actions → lượt chạy → Summary.
 
