@@ -425,8 +425,9 @@
         lưu dữ liệu từ cân ra USB rồi chọn file đó.</p>
       <input type="file" accept=".TMS,.tms" class="chon-file-can">
       <hr style="border:0;border-top:1px solid var(--vach);margin:18px 0">
-      <p><b>Dây RS232 (thử).</b> Mới chắc cân nhận danh mục qua WiFi và USB; qua dây RS232 thì chưa thử trên cân thật — thử ở đây.
-        Chương trình nói với cân qua dây đúng như phần mềm của hãng (8 bit, không chẵn lẻ, 1 bit dừng, điều khiển luồng XOn/XOff).</p>
+      <p><b>Dây RS232.</b> Chương trình nói với cân qua dây đúng như phần mềm của hãng (8 bit, không chẵn lẻ, 1 bit dừng, điều khiển
+        luồng XOn/XOff). Kiểm tra dây đã chạy trên cân thật (19/10/2026). Từ 2.10 chọn được <b>dây làm đường chính</b>: gửi giá, đọc
+        hàng, gỡ hàng, thông số, tem, giờ, nhật ký đều đi qua dây, không qua WiFi — đọc / ghi qua dây <i>chưa thử trên cân thật</i>.</p>
       <ol class="phu" style="margin:6px 0 10px 18px;padding:0">
         <li>Cắm dây từ máy tính vào cổng RS232 của cân (dây USB–RS232 cần driver, Windows thường tự cài), bấm <b>Tìm cổng COM</b>.</li>
         <li><b>Trên cân bấm <code>Prog → 4 → 3</code></b> (P43 RS-232) và để cân ở màn hình đó — cân chỉ nghe dây khi đang ở đây.</li>
@@ -445,6 +446,15 @@
         <button type="button" id="nut-gui-com">Gửi thử qua dây</button>
         <span class="dang-lam an" id="dang-com"></span>
       </div>
+      <p id="duong-can" class="phu"></p>
+      <div class="nut">
+        <button type="button" id="nut-duong-day">Dùng dây làm đường chính</button>
+        <button type="button" id="nut-duong-wifi" class="an">Về lại WiFi</button>
+      </div>
+      <p class="phu"><b>Dùng dây làm đường chính</b> (quản lý, chủ): hỏi mã máy và giờ cân qua dây (chỉ đọc) — cân trả lời thì từ
+        đó mọi việc với cân đi qua dây ở cổng và tốc độ đang chọn. Mỗi lần gửi hay đọc, trên cân phải ở màn hình <code>Prog → 4 → 3</code>;
+        cân không ở đó thì chương trình báo, không gửi gì. Không giữ kết nối, không tự chỉnh giờ, không tự đọc nhật ký khi in tem
+        (các việc đó cần cân nghe liên tục). Tự gửi (nếu bật) vẫn chạy; cân không nghe dây thì 2 phút sau mới thử lại. <b>Về lại WiFi</b>: như trước.</p>
       <p class="phu"><b>Kiểm tra dây</b>: hỏi giờ cân qua dây, không đổi gì trên cân. <b>Gửi thử</b> (quản lý, chủ): hỏi cân trước
         (cân không trả lời thì không gửi gì), đẩy các thay đổi từ kho qua dây như khi gửi WiFi, rồi hỏi cân thêm một lần để biết
         cân đã đọc hết. Chương trình không ghi nhận lần gửi thử — lần gửi WiFi sau vẫn gửi lại các thay đổi đó.</p>
@@ -535,6 +545,7 @@
     f.tuDatGio.checked = ch.tuDatGio !== false;
     f.ngheUdp.checked = ch.ngheUdp === true;
     veOCan();
+    veDuongCan();
     // Cổng COM, tốc độ lần thử trước: chỉ điền lúc mở trang, không đè lựa chọn đang làm dở.
     if (!daDienCom) {
       daDienCom = true;
@@ -586,9 +597,17 @@
   const gioPhut = (t) => new Date(t).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' });
   /** Tự gửi đang bật (Cài đặt) — câu "tự gửi thử lại lúc …" chỉ đúng khi bật. */
   const tuGuiBat = () => !!(trangThai && trangThai.cauHinh && trangThai.cauHinh.tuGui);
+  /** 2.10 — đang dùng dây RS232 làm đường chính (Cài đặt → Dây RS232). */
+  const laDay = () => !!(trangThai && trangThai.cauHinh && trangThai.cauHinh.duongCan === 'day' && trangThai.cauHinh.com);
+  /** Đường vừa gửi (cachGui của máy chủ) trong câu báo. */
+  const quaDuong = (c) => c === 'day' ? 'qua dây RS232' : c === 'hai-chieu' ? 'qua cổng hai chiều' : 'qua cổng 33571';
+  /** Đường mọi việc hai chiều đang đi (đọc, gỡ, xoá, nhật ký): "qua dây COM3" hay "qua WiFi". */
+  const quaDuongDung = () => laDay() ? 'qua dây ' + trangThai.cauHinh.com : 'qua WiFi';
+  /** Như trên, kèm cổng hay việc phải làm trên cân — cho hộp xác nhận. */
+  const quaDuongDai = () => laDay() ? `qua dây ${trangThai.cauHinh.com} (trên cân bấm Prog → 4 → 3 trước)` : 'qua WiFi (cổng hai chiều 33581)';
   function veOCan() {
     const ch = trangThai.cauHinh;
-    $('o-can').textContent = ch.ipCan + ' · cổng ' + ch.congCan;
+    $('o-can').textContent = laDay() ? 'Dây ' + ch.com + ' · ' + (ch.baud || 9600) + ' bit/giây' : ch.ipCan + ' · cổng ' + ch.congCan;
     if (!ipDangSua) $('form-cau-hinh').ipCan.value = ch.ipCan;
     const ds = ch.doiDiaChi || [];
     // Cân đổi địa chỉ từ 2 lần trong 30 ngày: nhắc giữ cố định trong router.
@@ -618,7 +637,10 @@
     const o = $('o-ket-noi');
     if (!n) { o.innerHTML = ''; return; }
     const dong = [];
-    if (!n.giu.bat) {
+    if (laDay()) {
+      dong.push(`Nối cân qua dây ${e(trangThai.cauHinh.com)} — mỗi việc mở dây riêng. Trước khi gửi hay đọc: trên cân bấm <b>Prog → 4 → 3</b> `
+        + 'và để cân ở màn hình đó (cân chỉ nghe dây khi ở đây); xong bấm <b>Sale</b> để bán tiếp.');
+    } else if (!n.giu.bat) {
       dong.push('Không giữ kết nối với cân (Cài đặt) — mỗi việc nối cân riêng.');
     } else {
       const moi = n.giu.lucNghe && Date.now() - new Date(n.giu.lucNghe).getTime() < 75000;
@@ -770,9 +792,9 @@
         h += `<div class="bao loi"><p><b>${x.conLai.length} hàng sẽ còn nằm trên cân</b> — gửi qua WiFi cân chỉ thêm và sửa, không xoá:</p><p>`
           + x.conLai.map(c => `PLU ${c.so} · mã ${e(c.ma || '—')} · ${e(c.ten)}`).join('<br>') + '</p>'
           + '<p><b>Gỡ khỏi cân (ghi đè)</b>: mỗi số PLU đó thành dòng trống "KHÔNG DÙNG", hàng mới dùng lại số đó — an toàn, không lúc nào cân thiếu hàng. '
-          + 'Hoặc nạp USB (cân thay cả danh sách), hoặc xoá hẳn qua WiFi. Gỡ và xoá qua WiFi <b>chưa thử trên cân thật</b>.</p>'
-          + '<div class="nut"><button id="nut-go-wifi" class="chinh">Gỡ khỏi cân qua WiFi (ghi đè)</button><button id="nut-tao-usb">Lưu file để nạp USB</button>'
-          + '<button id="nut-xoa-wifi">Xoá hẳn qua WiFi (thử)</button></div><div id="khung-usb"></div></div>';
+          + `Hoặc nạp USB (cân thay cả danh sách), hoặc xoá hẳn ${quaDuongDung()}. Gỡ và xoá ${quaDuongDung()} <b>chưa thử trên cân thật</b>.</p>`
+          + `<div class="nut"><button id="nut-go-wifi" class="chinh">Gỡ khỏi cân ${quaDuongDung()} (ghi đè)</button><button id="nut-tao-usb">Lưu file để nạp USB</button>`
+          + `<button id="nut-xoa-wifi">Xoá hẳn ${quaDuongDung()} (thử)</button></div><div id="khung-usb"></div></div>`;
       }
       h += `<div class="nut" style="margin-top:16px"><button class="chinh to" id="nut-gui">Gửi xuống cân</button>`
         + `<span class="phu">${x.canChuaRo ? 'Lần xoá qua WiFi trước hỏng — bấm Gửi để gửi lại cả danh sách ' + x.soHangSauKhiGui + ' hàng, hoặc nạp USB.'
@@ -805,7 +827,7 @@
       const k = await goi('/api/gui', { giuHangNgoaiKho: giuNgoaiKho() });
       // Báo ở đầu trang: bảng bên dưới sẽ được dựng lại từ file vừa gửi. 2.6: chỉ nói "cân đã nhận" khi đọc lại khớp.
       baoChung(k.xacNhan ? 'xong' : 'luu-y', (k.xacNhan
-        ? `<p><b>Cân đã nhận.</b> Vừa gửi ${k.soHangGui} hàng ${k.cachGui === 'hai-chieu' ? 'qua cổng hai chiều' : 'qua cổng 33571'}; `
+        ? `<p><b>Cân đã nhận.</b> Vừa gửi ${k.soHangGui} hàng ${quaDuong(k.cachGui)}; `
           + `đọc lại thấy cân có đủ ${k.soHang} hàng, đúng số PLU, mã cân, tên, giá và HSD.</p>`
         : `<p><b>Đã gửi ${k.soHangGui} hàng, nhưng chưa kiểm được cân đã nhận chưa:</b> ${e(k.cauXacNhan || '')}</p>`
           + '<p>Trên cân gõ số PLU của một hàng vừa đổi rồi bấm <b>PLU</b>: ra đúng giá mới là cân đã nhận. Ra giá cũ thì cân chưa nhận — '
@@ -873,19 +895,19 @@
     const ds = conLai.map(c => `PLU ${c.so} · mã ${c.ma || '—'} · ${c.ten}`).join('\n');
     const kem = x.dem.them + x.dem.sua
       ? `\nCả danh sách gửi lại mang theo ${x.dem.them} hàng thêm, ${x.dem.sua} hàng sửa (giá / tên) từ kho — như bấm Gửi xuống cân.\n` : '';
-    if (!confirm(`Thử XOÁ HẲN ${conLai.length} hàng còn nằm lại qua WiFi?\n\n${ds}\n${kem}\n`
+    if (!confirm(`Thử XOÁ HẲN ${conLai.length} hàng còn nằm lại ${quaDuongDung()}?\n\n${ds}\n${kem}\n`
       + 'CHƯA THỬ TRÊN CÂN THẬT. Chương trình sẽ:\n'
-      + '1. đọc danh sách hàng trên cân (thử đường WiFi hai chiều, cổng 33581) — chưa ghi gì; cân có hàng chương trình không biết thì dừng;\n'
+      + `1. đọc danh sách hàng trên cân (${quaDuongDai()}) — chưa ghi gì; cân có hàng chương trình không biết thì dừng;\n`
       + `2. XOÁ CẢ danh sách hàng trên cân rồi gửi lại ${x.soHangSauKhiGui} hàng;\n`
       + '3. đọc lại danh sách trên cân để kiểm.\n\n'
       + 'Hỏng giữa chừng thì cân có thể thiếu hàng tới khi nạp USB. Làm lúc quầy vắng, có sẵn USB. '
       + 'Đóng phần mềm TM-xA của hãng trên máy khác trước.')) return;
     const chuNut = nut ? nut.textContent : '';
-    if (nut) { nut.disabled = true; nut.textContent = 'Đang xoá qua WiFi…'; }
+    if (nut) { nut.disabled = true; nut.textContent = `Đang xoá ${quaDuongDung()}…`; }
     bao(noi, '', '');
     try {
       const k = await goi('/api/can/xoa-wifi', { giuHangNgoaiKho: giu, dauVan: x.dauVan });
-      baoChung('xong', `<p><b>Đã xoá qua WiFi:</b> cân đọc lại đúng ${k.soHang} hàng; ${k.daXoa.length} hàng còn nằm lại đã hết `
+      baoChung('xong', `<p><b>Đã xoá ${quaDuongDung()}:</b> cân đọc lại đúng ${k.soHang} hàng; ${k.daXoa.length} hàng còn nằm lại đã hết `
         + `(${k.daXoa.map(c => 'PLU ' + c.so).join(', ')}).</p>` + (k.phucHoi ? `<p>${e(k.phucHoi)}</p>` : '')
         + '<p>Gọi thử trên cân số PLU của một hàng vừa xoá: cân không còn hàng đó là đúng.</p>');
       await taiTrangThai();
@@ -902,12 +924,12 @@
    */
   async function goQuaWifi(noi, x, giu, nut) {
     const ds = x.conLai.map(c => `PLU ${c.so} · mã ${c.ma || '—'} · ${c.ten}`).join('\n');
-    if (!confirm(`Gỡ ${x.conLai.length} hàng còn nằm lại khỏi cân qua WiFi?\n\n${ds}\n\n`
+    if (!confirm(`Gỡ ${x.conLai.length} hàng còn nằm lại khỏi cân ${quaDuongDung()}?\n\n${ds}\n\n`
       + 'Mỗi số PLU trên thành dòng trống "KHÔNG DÙNG (PLU trống)" (mã 99999, giá 0); phím tắt đang gọi số đó được bỏ. '
       + 'Hàng mới sau dùng lại số PLU này. Hàng khác trên cân không đổi. Chương trình đọc cân trước: số nào trên cân giờ là hàng khác thì không gỡ gì.\n\n'
-      + 'Qua cổng hai chiều (33581) — CHƯA THỬ TRÊN CÂN THẬT. Gửi xong chương trình đọc lại cân để kiểm. Đóng phần mềm TM-xA của hãng trên máy khác trước.')) return;
+      + `Gửi ${quaDuongDai()} — CHƯA THỬ TRÊN CÂN THẬT. Gửi xong chương trình đọc lại cân để kiểm. Đóng phần mềm TM-xA của hãng trên máy khác trước.`)) return;
     const chuNut = nut ? nut.textContent : '';
-    if (nut) { nut.disabled = true; nut.textContent = 'Đang gỡ qua WiFi…'; }
+    if (nut) { nut.disabled = true; nut.textContent = `Đang gỡ ${quaDuongDung()}…`; }
     bao(noi, '', '');
     try {
       const k = await goi('/api/can/go-con-lai', { giuHangNgoaiKho: giu, dauVan: x.dauVan });
@@ -933,7 +955,7 @@
    * chưa nhận thì máy chủ trả lỗi — không tới đây.)
    */
   function baoCaiDat(tieuDe, k, cachKiem, cachUsb) {
-    const qua = k.cachGui === 'hai-chieu' ? 'qua cổng hai chiều' : 'qua cổng 33571';
+    const qua = quaDuong(k.cachGui);
     if (k.xacNhan) {
       baoChung('xong', `<p><b>Cân đã nhận ${tieuDe}</b> (gửi ${qua}, đọc lại thấy đúng). ${cachKiem}</p>` + daDoiDiaChi(k.doiDiaChi));
       return;
@@ -1856,8 +1878,8 @@
       + 'Giờ lấy từ đồng hồ máy tính — xem đồng hồ máy tính đúng chưa trước khi bấm. Chưa thử trên cân thật: chỉnh xong bấm Time trên cân xem lại.')) return;
     lamCan($('kq-gio'), 'Đang chỉnh giờ cân…', async (noi) => {
       const k = await goi('/api/gio-can/chinh', {});
-      if (k.cach === '33581') {
-        bao(noi, 'xong', `<p>Cân đã báo lại giờ mới: <b>${gioChu(k.gio)}</b> (qua cổng hai chiều — cách này chưa thử trên cân thật). Bấm <b>Time</b> trên cân xem lại.</p>`);
+      if (k.cach === '33581' || k.cach === 'day') {
+        bao(noi, 'xong', `<p>Cân đã báo lại giờ mới: <b>${gioChu(k.gio)}</b> (${k.cach === 'day' ? 'qua dây RS232' : 'qua cổng hai chiều'} — cách này chưa thử trên cân thật). Bấm <b>Time</b> trên cân xem lại.</p>`);
       } else {
         bao(noi, 'luu-y', `<p><b>Đã gửi giờ ${gioChu(k.gio)} qua cổng 33571</b> — cách này chưa thử trên cân thật, và cân không trả lời nên chưa biết cân đã nhận chưa. `
           + 'Bấm <b>Time</b> trên cân xem giờ; chưa đổi thì chỉnh ngay trên cân (Prog → 1 → 1).</p>'
@@ -1868,14 +1890,14 @@
 
   for (const b of document.querySelectorAll('.doc-wifi')) {
     b.onclick = async () => {
-      if (trangThai.goc && !confirm('Đọc lại dữ liệu từ cân qua WiFi và thay file gốc của chương trình?\n\n'
+      if (trangThai.goc && !confirm(`Đọc lại dữ liệu từ cân ${quaDuongDai()} và thay file gốc của chương trình?\n\n`
         + 'Chưa thử trên cân thật. Không ghi gì xuống cân. Đóng phần mềm TM-xA của hãng trên máy khác trước.')) return;
       const dang = b.parentElement.querySelector('.dang-lam');
       b.disabled = true; if (dang) dang.classList.remove('an');
       try {
         const k = await goi('/api/can/doc-wifi');
-        baoChung('xong', `<p><b>Đã đọc dữ liệu từ cân qua WiFi</b> và ghi nhận làm file gốc: ${k.soHang} hàng, cân ${e(k.phienBan)} (mã máy ${e(k.thongTin.mac)}).</p>`
-          + '<p class="phu">Cách đọc qua cổng hai chiều chưa thử trên cân thật — mở thẻ Tất cả hàng xem có đúng hàng trên cân không.</p>');
+        baoChung('xong', `<p><b>Đã đọc dữ liệu từ cân ${quaDuongDung()}</b> và ghi nhận làm file gốc: ${k.soHang} hàng, cân ${e(k.phienBan)} (mã máy ${e(k.thongTin.mac)}).</p>`
+          + `<p class="phu">Cách đọc ${laDay() ? 'qua dây' : 'qua cổng hai chiều'} chưa thử trên cân thật — mở thẻ Tất cả hàng xem có đúng hàng trên cân không.</p>`);
         await taiTrangThai();
       } catch (err) { baoChung('loi', e(err.message)); }
       finally { b.disabled = false; if (dang) dang.classList.add('an'); }
@@ -2239,7 +2261,7 @@
   async function taiNhatKy(nguon) {
     nkDL = nkDL || { dang: true };
     const noi = $('nk-noi-dung'), dang = $('dang-nk');
-    dang.textContent = nguon === 'wifi' ? 'Đang đọc nhật ký qua WiFi… (có thể tới 1 phút)' : nguon === 'file' ? 'Đang đọc nhật ký trong file gốc…' : 'Đang xem…';
+    dang.textContent = nguon === 'wifi' ? `Đang đọc nhật ký ${quaDuongDung()}… (có thể tới 1 phút)` : nguon === 'file' ? 'Đang đọc nhật ký trong file gốc…' : 'Đang xem…';
     dang.classList.remove('an');
     for (const b of nutNk()) b.disabled = true;
     try {
@@ -2254,7 +2276,7 @@
     let h = '';
     if (d.doc) {
       h += `<div class="bao ${d.doc.loi.length ? 'luu-y' : 'xong'}"><p>Đã đọc ${soChu(d.doc.soDong)} dòng hàng `
-        + (d.nguon === 'wifi' ? `qua WiFi (từ giao dịch số ${d.doc.tuFid}; đọc qua WiFi chưa thử trên cân thật)` : 'trong file gốc')
+        + (d.nguon === 'wifi' ? `${quaDuongDung()} (từ giao dịch số ${d.doc.tuFid}; đọc ${quaDuongDung()} chưa thử trên cân thật)` : 'trong file gốc')
         + `: <b>${soChu(d.doc.soMoi)} dòng mới</b>, còn lại đã có từ lần đọc trước.</p>`
         + (d.doc.loi.length ? `<details><summary>${d.doc.loi.length} điều cần xem</summary><p class="phu">${d.doc.loi.map(e).join('<br>')}</p></details>` : '')
         + (d.doc.suKien.length ? `<details><summary>${d.doc.suKien.length} dòng sự kiện / thanh toán của cân</summary><p class="phu">`
@@ -2263,7 +2285,7 @@
     }
     if (!d.tongDaLuu) {
       $('nk-noi-dung').innerHTML = h + '<div class="bao luu-y">Chưa có nhật ký nào. Trên cân lưu dữ liệu ra USB bằng <b>Amend</b> rồi nạp file đó (bước Bắt đầu / Cập nhật file gốc), '
-        + 'hoặc bấm <b>Đọc qua WiFi (thử)</b>.</div>';
+        + `hoặc bấm <b>Đọc ${quaDuongDung()} (thử)</b>.</div>`;
       return;
     }
     const khoang = d.tu || d.den ? `${d.tu ? ngayVn(d.tu) : 'đầu'} → ${d.den ? ngayVn(d.den) : 'nay'}` : 'mọi ngày';
@@ -2314,7 +2336,7 @@
   $('nut-nk-xem').onclick = () => taiNhatKy('luu');
   $('nut-nk-file').onclick = () => taiNhatKy('file');
   $('nut-nk-wifi').onclick = () => {
-    if (!confirm('Đọc nhật ký bán qua WiFi (cổng hai chiều 33581)?\n\nChưa thử trên cân thật. Chỉ đọc, không xoá gì trên cân. '
+    if (!confirm(`Đọc nhật ký bán ${quaDuongDai()}?\n\nChưa thử trên cân thật. Chỉ đọc, không xoá gì trên cân. `
       + 'Đóng phần mềm TM-xA của hãng trên máy khác trước.')) return;
     taiNhatKy('wifi');
   };
@@ -2406,14 +2428,15 @@
 
   // ---- dây RS232 (thử) ---------------------------------------------------------
   const comChon = () => ({ com: $('com-cong').value, baud: Number($('com-toc-do').value) });
+  const nutCom = () => [$('nut-tim-com'), $('nut-kiem-com'), $('nut-gui-com'), $('nut-duong-day'), $('nut-duong-wifi')];
   async function lamCom(chu, viec) {
     const noi = $('ket-qua-com');
-    for (const b of [$('nut-tim-com'), $('nut-kiem-com'), $('nut-gui-com')]) b.disabled = true;
+    for (const b of nutCom()) b.disabled = true;
     $('dang-com').textContent = chu; $('dang-com').classList.remove('an'); bao(noi, '', '');
     try { await viec(noi); }
     catch (err) { bao(noi, 'loi', e(err.message)); }
     finally {
-      for (const b of [$('nut-tim-com'), $('nut-kiem-com'), $('nut-gui-com')]) b.disabled = false;
+      for (const b of nutCom()) b.disabled = false;
       $('dang-com').classList.add('an');
     }
   }
@@ -2432,6 +2455,36 @@
     const k = await goi('/api/com/kiem', comChon());
     bao(noi, 'xong', `<p>Dây thông: cân trả lời qua ${e(k.com)}, tốc độ ${k.baud}`
       + (k.gio ? ` — giờ trên cân <b>${gioChu(k.gio)}</b>.` : '.') + '</p><p>Giờ có thể bấm <b>Gửi thử qua dây</b> (cân vẫn ở màn hình Prog → 4 → 3).</p>');
+  });
+  /** 2.10 — đường nối cân đang dùng (Cài đặt → Dây RS232) và nút đổi, cùng chữ của các nút đọc từ cân. */
+  function veDuongCan() {
+    const ch = trangThai.cauHinh, day = laDay();
+    $('duong-can').innerHTML = day
+      ? `<b>Đang nối cân qua dây ${e(ch.com)}</b>, tốc độ ${ch.baud || 9600} — mọi việc với cân đi qua dây.`
+      : 'Đang nối cân qua <b>WiFi</b>.';
+    $('nut-duong-day').textContent = day ? 'Dùng dây ở cổng và tốc độ đang chọn' : 'Dùng dây làm đường chính';
+    $('nut-duong-wifi').classList.toggle('an', !day);
+    for (const b of document.querySelectorAll('.doc-wifi')) b.textContent = day ? 'Đọc dữ liệu từ cân qua dây' : 'Đọc dữ liệu từ cân qua WiFi';
+    $('nut-nk-wifi').textContent = day ? 'Đọc qua dây (thử)' : 'Đọc qua WiFi (thử)';
+  }
+  $('nut-duong-day').onclick = () => {
+    const c = comChon();
+    if (!c.com) { bao($('ket-qua-com'), 'loi', 'Bấm <b>Tìm cổng COM</b> rồi chọn cổng của dây trước.'); return; }
+    if (!confirm(`Dùng dây ${c.com} (tốc độ ${c.baud}) làm đường chính?\n\nTrên cân bấm Prog → 4 → 3 và để cân ở màn hình đó trước khi bấm OK. `
+      + 'Chương trình chỉ hỏi mã máy và giờ cân (không đổi gì trên cân). Từ đó mọi lần gửi, đọc đều đi qua dây — mỗi lần đều phải vào Prog → 4 → 3.')) return;
+    lamCom('Đang hỏi cân qua dây…', async (noi) => {
+      const k = await goi('/api/com/duong', { duong: 'day', ...c });
+      trangThai.cauHinh = k.cauHinh; veOCan(); veDuongCan();
+      bao(noi, 'xong', `<p><b>Đã chuyển sang dây ${e(k.cauHinh.com)}.</b> Cân trả lời qua dây`
+        + (k.thongTin && k.thongTin.mac ? ` (mã máy ${e(k.thongTin.mac)})` : '') + '. Từ giờ gửi giá, đọc hàng, gỡ hàng đều đi qua dây.</p>'
+        + '<p>Mỗi lần gửi hay đọc: trên cân bấm <b>Prog → 4 → 3</b> trước, xong bấm <b>Sale</b> để bán tiếp. Gửi xong chương trình đọc lại cân '
+        + 'qua dây để kiểm như khi gửi WiFi.</p>');
+    });
+  };
+  $('nut-duong-wifi').onclick = () => lamCom('Đang đổi…', async (noi) => {
+    const k = await goi('/api/com/duong', { duong: 'wifi' });
+    trangThai.cauHinh = k.cauHinh; veOCan(); veDuongCan();
+    bao(noi, 'xong', '<p>Đã về lại WiFi: mọi việc với cân đi qua WiFi như trước.</p>');
   });
   $('nut-gui-com').onclick = () => lamCom(`Đang gửi qua dây ở ${comChon().baud} bit/giây (khoảng ${soChu(Math.max(1, Math.round(comChon().baud / 10)))} byte mỗi giây) — `
     + 'đừng rút dây hay tắt chương trình…', async (noi) => {
@@ -2551,7 +2604,8 @@
   taiTrangThai().then(() => {
     // Hỏi bản mới im lặng (không vào mạng được thì thôi, nút "Kiểm tra bản mới" báo lỗi rõ).
     if (trangThai && trangThai.capNhat && trangThai.capNhat.coTheCapNhat) kiemBanMoi(false).catch(() => {});
-    return kiemTraCan();
+    // 2.10 — đường dây: lúc mở cân thường đang bán hàng (không nghe dây) — không tự hỏi; nút Kiểm tra kết nối vẫn hỏi qua dây.
+    return laDay() ? undefined : kiemTraCan();
   }).catch(err => baoChung('loi', e(err.message)));
 })();
 </script>

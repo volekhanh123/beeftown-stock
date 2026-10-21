@@ -29,8 +29,16 @@
  * Mọi lần chờ đều có hạn (mặc định 30 giây như hãng; hàng rào sau khi ghi 60 giây
  * vì §11.7 khuyên chờ lâu hơn hãng). Hết hạn, mất kết nối hay cân trả dữ liệu lạ:
  * kết nối bị đóng (không đoán tiếp trạng thái dòng dữ liệu), các lệnh sau báo lỗi.
+ *
+ * 2.10 — CÙNG GIAO THỨC QUA DÂY RS232 (moKetNoiQuaLuong, cầu nối ở day-rs232.ts): phần mềm hãng nói đúng các dòng này
+ * qua cổng COM (net-protocol.md §5 "RS-232 comparison"; ReportForm.cs đọc nhật ký qua dây bằng UPL INF, UPL MAC rồi
+ * UPL REP). Khác đường mạng ba chỗ: không gửi BOM (đường dây của hãng mở bằng một dòng trống); sau MAC có UPL END như
+ * hãng làm trên dây; cân chỉ nghe dây khi đang ở màn hình Prog → 4 → 3, nên lần hỏi MAC đầu chỉ chờ CHO_BAT_TAY_DAY_MS
+ * và cân im lặng là 'khong-noi' (chưa gửi gì ngoài câu hỏi). Dây chậm (9600 bit/giây ≈ 1 KB/giây): mọi lần chờ gửi
+ * và chờ hàng rào cộng thêm thời gian đẩy byte qua dây.
  */
 import * as net from 'node:net';
+import type { Duplex } from 'node:stream';
 // Chữ cài đặt mạng: 15 tên WiFi, 16 mật khẩu WiFi, 19 tên miền máy chủ — một danh sách chung với đường 33571 / USB.
 import { CHU_MANG } from './thong-so.ts';
 
@@ -41,6 +49,8 @@ const CHO_NOI_MAC_DINH_MS = 5_000;       // như guiTcp
 const SO_LAN_HOI = 3;                    // hãng hỏi MAC / INF lại mãi; mình hỏi tối đa 3 lần
 const SO_LAN_DOC_LAI_BAO_CAO = 10;       // như hãng: đọc tối đa 11 lần (§5.10)
 const NGHI_BAO_CAO_MAC_DINH_MS = 100;    // lần đọc lại thứ n nghỉ n × 100 ms như hãng
+/** 2.10 — qua dây: chờ cân trả lời lần hỏi đầu (hãng chờ 3 giây, kiểm dây ở day-rs232.ts chờ 5). */
+export const CHO_BAT_TAY_DAY_MS = 5_000;
 const LECH_GIO_TOI_DA_MS = 120_000;      // datGio: giờ cân đọc lại lệch hơn thế là cân chưa nhận
 const DONG_TOI_DA = 1_000_000;           // một dòng dài hơn thế là dữ liệu lạ
 const DOC_TOI_DA = 20_000_000;           // một lần đọc (một phần, một lần nhật ký) tối đa
@@ -71,6 +81,8 @@ export class LoiGiaoThuc extends Error {
 }
 
 const CHUA_THU = 'Cách nối hai chiều (cổng 33581) chưa thử trên cân thật.';
+/** 2.10 — qua dây: thay CHUA_THU trong mọi câu lỗi của kết nối dây (KetNoi.lam). */
+const CHUA_THU_DAY = 'Đọc / ghi qua dây RS232 mới thử bắt tay trên cân thật. Trên cân vào Prog → 4 → 3 rồi thử lại.';
 const LUI_DOC = `${CHUA_THU} Nếu vẫn lỗi, dùng USB: trên cân lưu dữ liệu ra USB rồi đưa file A_000.TMS (thư mục JHSCALE) vào chương trình.`;
 const LUI_GHI = `${CHUA_THU} Nếu vẫn lỗi, dùng USB: bấm "Lưu file để nạp USB" rồi nạp file vào cân.`;
 const LUI_CHUNG = `${CHUA_THU} Nếu vẫn lỗi, dùng USB như trước (lưu từ cân ra USB để đọc, nạp file USB để ghi).`;
@@ -172,7 +184,11 @@ export interface TuyChonKetNoi {
   khiCanBao?: (dong: string) => void;
 }
 
-interface ThoiGian { choMs: number; choNoiMs: number; choHangRaoMs: number; nghiBaoCaoMs: number }
+/** baud: 2.10 — tốc độ dây khi nói qua dây RS232 (null = qua mạng). */
+interface ThoiGian { choMs: number; choNoiMs: number; choHangRaoMs: number; nghiBaoCaoMs: number; baud: number | null }
+
+/** 2.10 — mili giây để đẩy `soByte` qua dây ở tốc độ `baud` (10 bit một byte), gấp đôi cho chắc; qua mạng: 0. */
+const msQuaDay = (soByte: number, baud: number | null) => (baud ? Math.ceil(soByte * 10 / baud) * 2000 : 0);
 
 // -----------------------------------------------------------------------------
 // HÀM THUẦN
@@ -435,24 +451,40 @@ class KetNoi implements KetNoiCan {
   private loiHong: LoiGiaoThuc | null = null;
   private daDong = false;
   private soByteDoc = 0;
-  private s: net.Socket;
+  /** Socket TCP, hay (2.10) luồng của cầu nối dây — cùng cách đọc / ghi. */
+  private s: Duplex;
   private tg: ThoiGian;
+  /** 2.10 — tên cổng COM khi nói qua dây (null = qua mạng). */
+  private readonly day: string | null;
+  /** 2.10 — lỗi cầu nối dây báo khi luồng hỏng (cổng không đẩy được, dây rút…) — ghép vào câu "mất kết nối". */
+  private loiLuong: string | null = null;
 
-  constructor(s: net.Socket, tg: ThoiGian, khiCanBao?: (dong: string) => void) {
+  constructor(s: Duplex, tg: ThoiGian, khiCanBao?: (dong: string) => void, day: string | null = null) {
+    this.day = day;
     this.s = s;
     this.tg = tg;
     this.doc = new DocDong(khiCanBao);
     s.on('data', (b: Buffer) => this.doc.them(b));
     s.on('end', () => this.doc.ket(new KetNoiDaDong()));
     s.on('close', () => this.doc.ket(new KetNoiDaDong()));
-    s.on('error', () => { /* 'close' theo sau */ });
+    s.on('error', (e: Error) => { if (day && e?.message) this.loiLuong = e.message; /* 'close' theo sau */ });
+  }
+
+  /** 2.10 — qua dây: câu lỗi nói về dây (không về cổng 33581), kèm lỗi cầu nối báo nếu có. Qua mạng: giữ nguyên. */
+  private theoDuong(l: LoiGiaoThuc): LoiGiaoThuc {
+    if (!this.day) return l;
+    let cau = l.message.split(CHUA_THU).join(CHUA_THU_DAY);
+    if (l.loai === 'mat-ket-noi' && this.loiLuong && !cau.includes(this.loiLuong)) cau = `${cau} (Dây báo: ${this.loiLuong})`;
+    return cau === l.message ? l : new LoiGiaoThuc(cau, l.loai, l.daGhi);
   }
 
   // ---- gửi / đọc ------------------------------------------------------------
   private gui(chu: string, nc: NguCanh): Promise<void> {
     return new Promise((xong, hong) => {
       if (this.s.destroyed || !this.s.writable) { hong(loiMat(nc)); return; }
-      const hen = setTimeout(() => hong(loiHetGio(nc, this.tg.choMs)), this.tg.choMs);
+      // Qua dây: cầu nối chỉ nhận tiếp khi dây đẩy đi được — chờ thêm thời gian đẩy hết đoạn này.
+      const ms = this.tg.choMs + msQuaDay(chu.length, this.tg.baud);
+      const hen = setTimeout(() => hong(loiHetGio(nc, ms)), ms);
       this.s.write(Buffer.from(chu, 'latin1'), (e) => { clearTimeout(hen); if (e) hong(loiMat(nc)); else xong(); });
     });
   }
@@ -469,11 +501,11 @@ class KetNoi implements KetNoiCan {
     return d;
   }
 
-  /** Mọi dòng tới dòng có cột đầu đúng bằng "END" (không tính dòng END). */
-  private async docToiEnd(nc: NguCanh): Promise<string[]> {
+  /** Mọi dòng tới dòng có cột đầu đúng bằng "END" (không tính dòng END). `ms`: chờ mỗi dòng (mặc định choMs). */
+  private async docToiEnd(nc: NguCanh, ms?: number): Promise<string[]> {
     const ra: string[] = [];
     for (;;) {
-      const d = await this.docDong(nc);
+      const d = await this.docDong(nc, ms);
       if (truong0(d) === 'END') return ra;
       ra.push(d);
     }
@@ -503,7 +535,7 @@ class KetNoi implements KetNoiCan {
   private lam<T>(nc: NguCanh, f: () => Promise<T>): Promise<T> {
     const chay = async (): Promise<T> => {
       if (this.loiHong) {
-        throw new LoiGiaoThuc(`Kết nối với cân đã đóng sau lỗi lần trước. Mở kết nối mới rồi thử lại. ${LUI_CHUNG}`, 'mat-ket-noi');
+        throw this.theoDuong(new LoiGiaoThuc(`Kết nối với cân đã đóng sau lỗi lần trước. Mở kết nối mới rồi thử lại. ${LUI_CHUNG}`, 'mat-ket-noi'));
       }
       if (this.daDong) throw new LoiGiaoThuc('Kết nối với cân đã đóng. Mở kết nối mới rồi thử lại.', 'mat-ket-noi');
       this.doc.xoaHang();
@@ -511,7 +543,9 @@ class KetNoi implements KetNoiCan {
       try {
         return await f();
       } catch (e) {
-        const l = e instanceof LoiGiaoThuc ? e : new LoiGiaoThuc(`Có lỗi khi ${nc.viec}: ${(e as Error)?.message ?? e}. ${duoiGhi(nc)}`, 'sai-du-lieu', nc.ghi);
+        // Qua dây: câu lỗi nói về dây, không về cổng 33581 (theoDuong).
+        const l = this.theoDuong(e instanceof LoiGiaoThuc ? e
+          : new LoiGiaoThuc(`Có lỗi khi ${nc.viec}: ${(e as Error)?.message ?? e}. ${duoiGhi(nc)}`, 'sai-du-lieu', nc.ghi));
         if (l.loai !== 'khong-cho-phep') { this.loiHong = l; this.huy(); }
         throw l;
       }
@@ -531,14 +565,23 @@ class KetNoi implements KetNoiCan {
   // ---- bắt tay (§3.1, §4) ---------------------------------------------------
   async batTay(): Promise<void> {
     return this.lam({ viec: 'đọc thông tin cân', ghi: false }, async () => {
-      // Như StreamWriter UTF-8 của hãng: BOM rồi một dòng trống (§1.5).
-      await this.gui(BOM + XD, { viec: 'mở kết nối', ghi: false });
+      // Như StreamWriter UTF-8 của hãng: BOM rồi một dòng trống (§1.5). Qua dây hãng chỉ mở bằng một dòng trống.
+      await this.gui(this.day ? XD : BOM + XD, { viec: 'mở kết nối', ghi: false });
 
       const ncMac: NguCanh = { viec: 'đọc mã máy (MAC)', ghi: false };
+      const choDau = Math.min(CHO_BAT_TAY_DAY_MS, this.tg.choMs);
       let mac: string | null = null;
       for (let lan = 0; lan < SO_LAN_HOI && mac === null; lan++) {
         await this.gui('UPL\tMAC\t' + XD, ncMac);
-        for (const d of await this.docToiEnd(ncMac)) {
+        let tra: string[];
+        try {
+          // Qua dây: lần hỏi đầu chờ ngắn — cân không ở màn hình P43 thì không bao giờ trả lời.
+          tra = await this.docToiEnd(ncMac, this.day && lan === 0 ? choDau : undefined);
+        } catch (e) {
+          if (this.day && lan === 0 && e instanceof LoiGiaoThuc && e.loai === 'het-gio') throw loiKhongNoiDay(this.day, choDau);
+          throw e;
+        }
+        for (const d of tra) {
           const f = d.split('\t');
           if (f[0] !== 'MAC') continue;
           const so = f.slice(1, 7);
@@ -549,7 +592,8 @@ class KetNoi implements KetNoiCan {
         }
       }
       if (mac === null) throw loiDuLieu(ncMac, `hỏi ${SO_LAN_HOI} lần mà cân không trả dòng MAC`);
-      // Hãng không gửi UPL END sau MAC trên đường mạng (§4.1).
+      // Hãng không gửi UPL END sau MAC trên đường mạng (§4.1); trên dây thì có (ReportForm.cs:6164).
+      if (this.day) await this.gui('UPL\tEND\t' + XD, ncMac);
 
       const ncInf: NguCanh = { viec: 'đọc thông tin cân (INF)', ghi: false };
       let inf: string[] | null = null, ina: string[] | null = null, inm: string[] | null = null;
@@ -681,7 +725,8 @@ class KetNoi implements KetNoiCan {
     return this.lam(nc, async () => {
       const than = XD + dong.map(d => d + XD).join('') + XD + 'UPL\tTIM\t' + XD;
       await this.gui(than, nc);
-      const kq = await this.docHangRao(nc, this.tg.choHangRaoMs);
+      // Qua dây: hàng rào chỉ tới sau khi dây đẩy hết các dòng vừa gửi.
+      const kq = await this.docHangRao(nc, this.tg.choHangRaoMs + msQuaDay(than.length, this.tg.baud));
       await this.gui('UPL\tEND\t' + XD, nc);
       return kq;
     });
@@ -713,9 +758,9 @@ class KetNoi implements KetNoiCan {
     const khoi = khoiTim(luc);
     const batDau = Date.now();
     const { gio } = await this.ghiVaChoHangRao(khoi, { viec: 'đặt giờ cân', ghi: true });
-    if (!gio) throw new LoiGiaoThuc(`Đã gửi giờ mới nhưng cân không trả giờ để kiểm lại. Xem giờ trên cân. ${LUI_GHI}`, 'sai-du-lieu', true);
+    if (!gio) throw this.theoDuong(new LoiGiaoThuc(`Đã gửi giờ mới nhưng cân không trả giờ để kiểm lại. Xem giờ trên cân. ${LUI_GHI}`, 'sai-du-lieu', true));
     if (Math.abs(msCua(gio) - (msCua(luc) + (Date.now() - batDau))) > LECH_GIO_TOI_DA_MS) {
-      throw new LoiGiaoThuc(`Đã gửi giờ ${hienGio(luc)} nhưng cân vẫn báo ${hienGio(gio)} — cân chưa nhận giờ mới. Đặt giờ trên cân bằng tay. ${CHUA_THU}`, 'sai-du-lieu', true);
+      throw this.theoDuong(new LoiGiaoThuc(`Đã gửi giờ ${hienGio(luc)} nhưng cân vẫn báo ${hienGio(gio)} — cân chưa nhận giờ mới. Đặt giờ trên cân bằng tay. ${CHUA_THU}`, 'sai-du-lieu', true));
     }
   }
 
@@ -743,16 +788,39 @@ function noi(ip: string, cong: number, tg: ThoiGian, taoSocket?: (ip: string, co
   });
 }
 
-async function moKetNoiNoiBo(ip: string, cong: number, tuy: TuyChonKetNoi): Promise<KetNoi> {
+function thoiGian(tuy: TuyChonKetNoi, baud: number | null): ThoiGian {
   const choMs = tuy.choMs ?? CHO_MAC_DINH_MS;
-  const tg: ThoiGian = {
+  return {
     choMs,
     choNoiMs: tuy.choNoiMs ?? Math.min(CHO_NOI_MAC_DINH_MS, choMs),
     choHangRaoMs: tuy.choHangRaoMs ?? 2 * choMs,
     nghiBaoCaoMs: tuy.nghiBaoCaoMs ?? NGHI_BAO_CAO_MAC_DINH_MS,
+    baud,
   };
+}
+
+async function moKetNoiNoiBo(ip: string, cong: number, tuy: TuyChonKetNoi): Promise<KetNoi> {
+  const tg = thoiGian(tuy, null);
   const s = await noi(ip, cong, tg, tuy.taoSocket);
   const kn = new KetNoi(s, tg, tuy.khiCanBao);
+  await kn.batTay();
+  return kn;
+}
+
+/** 2.10 — cân không trả lời lần hỏi đầu qua dây: 'khong-noi' (chưa gửi gì ngoài câu hỏi), chỉ đúng chỗ cần làm. */
+function loiKhongNoiDay(com: string, ms: number): LoiGiaoThuc {
+  return new LoiGiaoThuc(`Cân không trả lời qua dây ${com} trong ${giay(ms)} giây — chưa gửi gì xuống cân. `
+    + 'Trên cân bấm Prog → 4 → 3 (P43 RS-232) và để cân ở màn hình đó (cân chỉ nghe dây khi ở đây), rồi thử lại. '
+    + 'Vẫn không được: rút dây ra cắm lại, bấm Kiểm tra dây ở Cài đặt.', 'khong-noi');
+}
+
+/**
+ * 2.10 — bắt tay và nói chuyện với cân qua một luồng byte có sẵn: cầu nối dây RS232 (day-rs232.ts `moKetNoiDay`). Cùng
+ * mọi việc như moKetNoi (đọc, ghi, xoá, hàng rào, đặt giờ); khác ở bắt tay và thời gian chờ (xem đầu file). `com`: tên
+ * cổng cho câu báo; `baud`: tốc độ dây. Bắt tay hỏng thì luồng bị huỷ. Nhớ gọi `dong()` khi xong.
+ */
+export async function moKetNoiQuaLuong(luong: Duplex, com: string, baud: number, tuy: TuyChonKetNoi = {}): Promise<KetNoiCan> {
+  const kn = new KetNoi(luong, thoiGian(tuy, baud), tuy.khiCanBao, com);
   await kn.batTay();
   return kn;
 }
