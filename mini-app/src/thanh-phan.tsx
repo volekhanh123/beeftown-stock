@@ -61,7 +61,14 @@ export function NhanBaoQuan({ baoQuan }: { baoQuan: SanPham["baoQuan"] }) {
 
 /** Giá cố định của 1 khay, kèm số gam khoảng. Giá không đổi theo số gam thật của khay. */
 export function GiaKhay({ gia, soGam }: { gia: number | null; soGam: number }) {
-  if (gia === null) return <span className="gia chua-co">Khay ~{soGam} g · báo giá khi xác nhận đơn</span>;
+  if (gia === null) {
+    return (
+      <span className="gia chua-co">
+        <span>Báo giá khi xác nhận đơn</span>
+        <span className="so-gam">~{soGam} g một khay</span>
+      </span>
+    );
+  }
   return (
     <span className="gia">
       <span>
@@ -78,7 +85,7 @@ export function BaoGiaThu() {
   if (!CAU_HINH.giaThu) return null;
   return (
     <p className="bao-gia-thu" role="note">
-      <b>Giá thử.</b> Giá trong app đang để thử, chưa phải giá bán của quán.
+      <b>Giá thử.</b> Giá và số gam trong app đang để thử, chưa phải giá bán của quán.
     </p>
   );
 }

@@ -144,6 +144,11 @@ await nhom('3 · GIÁ GHI THEO CÁCH CỦA REPO: "000.000 đ"', async () => {
      !!tong && DANG.test(tong[2]) && so(tong[2]) === dongGia.reduce((t, [, , , tien]) => t + so(tien), 0)
      && Number(tong[1]) === dongDon(true).reduce((t, d) => t + d.soKhay, 0), tong?.[0] ?? 'không thấy dòng tổng');
   ok('Tin đơn không còn câu "báo tiền theo tem" của cách bán theo gam', !/theo tem/.test(tin));
+  // Gõ nhầm khi thay số thật (thiếu một số 0, số gam 0) thì đỏ ở đây, không lên màn hình khách.
+  const saiSo = SAN_PHAM.filter(sp => !(Number.isInteger(sp.soGamKhay) && sp.soGamKhay >= 50 && sp.soGamKhay <= 1000)
+    || !(sp.giaMoiKhay === null || (Number.isInteger(sp.giaMoiKhay) && sp.giaMoiKhay >= 10000 && sp.giaMoiKhay % 1000 === 0)));
+  ok('Mỗi phần thịt: số gam một khay từ 50 tới 1.000 g; giá một khay để trống hoặc từ 10.000 đ, tròn nghìn',
+     saiSo.length === 0, saiSo.map(sp => `${sp.ma}: ${sp.soGamKhay} g, ${sp.giaMoiKhay}`).join(' | '));
   ok('Không còn giá dính chữ đ ("120.000đ") trong mã nguồn hay tin đơn',
      !CHU.some(([, chu]) => /\d\.\d{3}đ/.test(chu)) && !/\d\.\d{3}đ/.test(tin));
 });

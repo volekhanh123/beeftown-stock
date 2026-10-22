@@ -31,7 +31,7 @@ export default function ThongTin() {
             <b>Gửi đơn qua Zalo.</b> App mở chat với Beeftown, đơn điền sẵn; bạn bấm Gửi.
           </li>
           <li>
-            <b>Quán soạn khay</b> và xác nhận đơn, tiền thịt đúng như tổng trong đơn. Bạn đồng ý thì quán giữ hàng.
+            <b>Quán soạn khay</b> và xác nhận đơn cùng tổng tiền. Bạn đồng ý thì quán giữ hàng.
           </li>
           <li>
             <b>Trả tiền và nhận hàng:</b> chuyển khoản theo mã QR quán gửi, hoặc trả khi nhận.
@@ -43,7 +43,7 @@ export default function ThongTin() {
         <p>
           Giá tính theo khay, không đổi theo số gam thật của từng khay. Tiền thịt = số khay × giá một khay; app tính
           sẵn tổng trong đơn. Đơn giao tận nơi cộng phí giao, quán báo khi xác nhận.
-          {CAU_HINH.giaThu && " Giá trong app hiện là giá thử, chưa phải giá bán của quán."}
+          {CAU_HINH.giaThu && " Giá và số gam trong app hiện là số thử, chưa phải giá bán của quán."}
         </p>
       </Muc>
 
