@@ -13,6 +13,7 @@ Khi hai file nói khác nhau thì làm theo `CLAUDE.md` và báo chỗ lệch tr
 | `THUONG-HIEU.md` | Bảng màu thương hiệu Khánh chốt 09/10/2026: giá trị đã áp dụng ở trang công khai, `/noi-bo` và kho; thứ còn mang màu cũ (Beeftown Cân, ảnh hướng dẫn kho); địa điểm |
 | `web/THIET-KE.md` | Giao diện trang công khai đang chạy: màu theo vai (mục 2; `/noi-bo` và kho dùng cùng token), chữ, thành phần |
 | `web/src/lib/chuoi-cam.js` | Danh sách chữ cấm trên trang công khai, kèm lý do |
+| `mini-app/CLAUDE.md` | Mini App Zalo: tình trạng trên Zalo, lệnh, việc được làm và phải hỏi Khánh (không đọc hay commit `mini-app/.env`; đổi chữ khách thấy phải hỏi trước) |
 
 ## Khi viết mã
 

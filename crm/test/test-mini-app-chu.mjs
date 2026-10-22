@@ -45,7 +45,11 @@ const KHONG_VIET = [
 ];
 const timKhongViet = chu => KHONG_VIET.filter(({ re }) => re.test(String(chu).normalize('NFC')));
 
-/** Bỏ chú thích // và /* *\/ của mã TS/TSX, giữ nguyên chuỗi ('…', "…", `…`). Chú thích không lên màn hình. */
+/**
+ * Bỏ chú thích // và /* *\/ của mã TS/TSX, giữ nguyên chuỗi ('…', "…", `…`). Chú thích không lên màn hình.
+ * `//` ngay sau dấu hai chấm là địa chỉ web viết thẳng trong chữ JSX ("https://…"), không phải chú thích:
+ * bỏ nó đi thì phần chữ sau địa chỉ không được quét.
+ */
 function boChuThich(ma) {
   let ra = '', i = 0, chuoi = null;
   while (i < ma.length) {
@@ -55,7 +59,7 @@ function boChuThich(ma) {
       if (c === '\\') { ra += sau ?? ''; i += 2; continue; }
       if (c === chuoi) chuoi = null;
       i++;
-    } else if (c === '/' && sau === '/') {
+    } else if (c === '/' && sau === '/' && ma[i - 1] !== ':') {
       while (i < ma.length && ma[i] !== '\n') i++;
     } else if (c === '/' && sau === '*') {
       const het = ma.indexOf('*/', i + 2);
