@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN — 0092 · KHO: SỐ CHUÔNG ĐẾM DÒNG ĐÃ GOM, 7 NGÀY
+-- BEEFTOWN — 0092 · KHO: SỐ CHUÔNG VÀ SỐ Ô "VIỆC" ĐẾM DÒNG ĐÃ GOM
 -- =============================================================================
 -- PHẢI CHẠY SAU 0040 (thân kho_dem_viec mới nhất).
 --
@@ -9,9 +9,12 @@
 -- trang chỉ có vài dòng. Trước file này: mọi sự kiện chưa đọc trong 30 ngày, mỗi sự kiện một.
 --
 --   kho_dem_viec: thân 0040 NGUYÊN VĂN, chỉ đổi cách tính chua_doc — số dòng có sự kiện chưa đọc, trong
---   7 ngày, khóa có ≥ 3 sự kiện (trong 7 ngày) là một dòng, ncc_doi_tai_khoan luôn từng dòng. Các số khác
---   (quay_duoi_muc, quay_chua_dem, dinh_muc_lech) như cũ, vẫn đọc kho_su_kien MỘT lần. Cùng chữ ký, cùng
---   quyền, cùng kiểm vai đầu hàm.
+--   7 ngày, khóa có ≥ 3 sự kiện (trong 7 ngày) là một dòng, ncc_doi_tai_khoan luôn từng dòng — và thêm khóa
+--   viec_dong: số dòng của trang Việc cần làm (30 ngày như kho_thong_bao, mọi khóa trừ chua_doi_chieu — khóa
+--   "để biết" duy nhất, web không coi là việc —, gom như trên). Số đỏ ô "Việc" đọc viec_dong (Khánh duyệt
+--   22/10/2026: "9 lô hết hạn" là một việc), thay cho tổng từng lô / món của các khóa việc tay chân. Các số
+--   khác (quay_duoi_muc, quay_chua_dem, dinh_muc_lech) như cũ, vẫn đọc kho_su_kien MỘT lần. Cùng chữ ký,
+--   cùng quyền, cùng kiểm vai đầu hàm.
 --
 -- Luật gom nằm hai nơi: đây và web/src/lib/kho/viec.ts (NGUONG_GOM, KHOA_KHONG_GOM, NGAY_CHUONG).
 -- crm/test/test-kho-viec.mjs so số database đếm với số dòng web gom — đổi một bên thì đổi bên kia.
@@ -36,6 +39,7 @@ declare
   v_chua_dem int;
   v_chua_doc int;
   v_dinh_muc int;
+  v_viec_dong int;
 begin
   if not kho_duoc(p_chi_nhanh_id, 'xem') then
     raise exception 'Tài khoản của bạn không xem được kho của chi nhánh này'
@@ -64,8 +68,9 @@ begin
   from kho_nguoi_xem x where x.nhan_su_id = v_ns.id and x.chi_nhanh_id = p_chi_nhanh_id;
 
   -- 0092: chua_doc = số DÒNG của trang chuông có tin chưa đọc — 7 ngày, khóa có ≥ 3 sự kiện gom một dòng
-  -- (trừ ncc_doi_tai_khoan, luôn từng dòng). Đúng luật gomSuKien / NGUONG_GOM / KHOA_KHONG_GOM /
-  -- NGAY_CHUONG của web/src/lib/kho/viec.ts.
+  -- (trừ ncc_doi_tai_khoan, luôn từng dòng). viec_dong = số DÒNG của trang Việc cần làm — 30 ngày (như
+  -- kho_thong_bao), bỏ chua_doi_chieu (để biết, không phải việc), gom như trên. Đúng luật gomSuKien /
+  -- NGUONG_GOM / KHOA_KHONG_GOM / NGAY_CHUONG / laViec của web/src/lib/kho/viec.ts.
   with e as materialized (select * from kho_su_kien(p_chi_nhanh_id)),
   g as (
     select e.khoa,
@@ -74,13 +79,21 @@ begin
     from e
     where e.luc <= now() and e.luc >= now() - interval '7 days'
     group by e.khoa
+  ),
+  vi as (
+    select e.khoa, count(*) as tong
+    from e
+    where e.luc <= now() and e.luc >= now() - interval '30 days' and e.khoa <> 'chua_doi_chieu'
+    group by e.khoa
   )
   select (select count(*) from e where e.khoa = 'quay_duoi_muc'),
          (select count(*) from e where e.khoa = 'quay_chua_dem'),
          (select coalesce(sum(case when g.tong >= 3 and g.khoa <> 'ncc_doi_tai_khoan'
                                    then (g.chua > 0)::int else g.chua end), 0)::int from g),
-         (select count(*) from e where e.khoa = 'dinh_muc_lech')
-    into v_duoi_muc, v_chua_dem, v_chua_doc, v_dinh_muc;
+         (select count(*) from e where e.khoa = 'dinh_muc_lech'),
+         (select coalesce(sum(case when vi.tong >= 3 and vi.khoa <> 'ncc_doi_tai_khoan'
+                                   then 1 else vi.tong end), 0)::int from vi)
+    into v_duoi_muc, v_chua_dem, v_chua_doc, v_dinh_muc, v_viec_dong;
 
   v := v || jsonb_build_object('quay_duoi_muc', v_duoi_muc);
   if kho_duoc(p_chi_nhanh_id, 'van_hanh') or kho_duoc(p_chi_nhanh_id, 'duyet') then
@@ -176,7 +189,7 @@ begin
       where x.chi_nhanh_id = p_chi_nhanh_id and x.loai = 'tra_ncc' and x.trang_thai = 'cho_xac_nhan_tien'));
   end if;
 
-  v := v || jsonb_build_object('chua_doc', v_chua_doc, 'thong_bao_xem_luc', v_xem_luc);
+  v := v || jsonb_build_object('chua_doc', v_chua_doc, 'thong_bao_xem_luc', v_xem_luc, 'viec_dong', v_viec_dong);
 
   return v;
 end;
@@ -184,4 +197,4 @@ $$;
 
 
 comment on function kho_dem_viec is
-  'Mọi số đỏ trên menu kho của người đang đăng nhập ở một chi nhánh, trong MỘT lần gọi. Khóa nào không có quyền thì vắng mặt. Chỉ đếm, không tiền. duyet_nhap theo quyền duyet_nhap (0031); yeu_cau_quay, hang_dang_chuyen, hang_chuyen_qua_gio, chuyen_nhan_thieu (0032); thu_hoi_thap (0033); ipos_cho_xu_ly (0037); dinh_muc_lech (0038); don_dat_tre (0039); tra_hang_cho_tien (0040). chua_doc (0092): số dòng của trang chuông có tin chưa đọc — 7 ngày, khóa có ≥ 3 sự kiện gom một dòng, trừ ncc_doi_tai_khoan.';
+  'Mọi số đỏ trên menu kho của người đang đăng nhập ở một chi nhánh, trong MỘT lần gọi. Khóa nào không có quyền thì vắng mặt. Chỉ đếm, không tiền. duyet_nhap theo quyền duyet_nhap (0031); yeu_cau_quay, hang_dang_chuyen, hang_chuyen_qua_gio, chuyen_nhan_thieu (0032); thu_hoi_thap (0033); ipos_cho_xu_ly (0037); dinh_muc_lech (0038); don_dat_tre (0039); tra_hang_cho_tien (0040). chua_doc (0092): số dòng của trang chuông có tin chưa đọc — 7 ngày, khóa có ≥ 3 sự kiện gom một dòng, trừ ncc_doi_tai_khoan. viec_dong (0092): số dòng của trang Việc cần làm — 30 ngày, trừ chua_doi_chieu, gom như chua_doc.';

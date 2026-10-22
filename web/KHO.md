@@ -268,6 +268,19 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
   "Đã hết thật").
 - `test-kho-giao-dien.mjs` nhóm 17 gác các điều trên.
 
+### Gọn phần mua và nhận hàng, thẻ phiếu (Khánh duyệt 22/10/2026)
+
+- **Thẻ phiếu hai dòng** ở mọi danh sách phiếu (Nhận hàng, Nhập hàng, Đặt hàng, Chuyển · Xuất · Hủy, Pha lóc,
+  Kiểm kê): dòng 1 số phiếu · nhà cung cấp (hoặc loại / chỗ) + nhãn trạng thái; dòng 2 `p.nb-dong-tom` — ngày ·
+  số món · kg (· tiền với vai xem giá). Không còn dòng người lập (nên không đọc `tenNhanSu`); chỗ nhận chỉ ghi khi
+  khác chỗ của đa số phiếu (`phoBienNhat`, `lib/kho/chung.ts`).
+- **Nhận hàng**: bỏ ô Ngày sản xuất, Số lô NCC (bước 2 và form soạn của phiếu nhập) và Số hóa đơn (bước 1, sửa
+  đầu phiếu — kế toán ghi lúc điền giá). Dòng / phiếu đã có giá trị thì form mang theo bằng ô ẩn, sửa không mất.
+  Câu giải thích dưới Ngày mổ, Kg sau repack còn một câu; bản đủ ở Hướng dẫn (`nhan-hang`).
+- **Điền giá**: chip chỉ "Lần trước …"; số phiếu và ngày lần trước nằm trong `title`.
+- **Số đỏ ô Việc** = `viec_dong` (0092): số dòng của trang Việc cần làm sau khi gom, không cộng từng lô / món.
+- `test-kho-giao-dien.mjs` nhóm 18, `test-kho-viec.mjs` nhóm 7b gác các điều trên.
+
 ## 3e. Pha lóc 3 bước bằng quét nhãn · báo thu hồi thấp (GĐ5c, migration 0033)
 
 | Trang | Ai | Việc |

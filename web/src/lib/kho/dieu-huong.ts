@@ -69,12 +69,10 @@ export const NHOM_KHO: readonly { ma: MaNhomKho; ten: HaiThuTieng }[] = [
   { ma: 'thiet_lap',    ten: { vi: 'Thiết lập và trợ giúp', en: 'Setup and help' } },
 ];
 
-// Các khóa "việc của chính mình / việc tay chân" — gom thành số đỏ của mục Việc.
-// 0032: yêu cầu của quầy (thủ kho mang ra), hàng đang mang ra (quầy bấm nhận).
-export const KHOA_VIEC_TAY = [
-  'nhap_bi_tra', 'huy_bi_tra', 'kiem_ke_tra_ve', 'het_han', 'quay_duoi_muc', 'quay_chua_dem',
-  'yeu_cau_quay', 'hang_dang_chuyen',
-];
+// Số đỏ của mục Việc (0092, Khánh duyệt 22/10/2026): số DÒNG của trang Việc cần làm — việc cùng loại từ 3
+// cái trở lên là một dòng ("9 lô hết hạn" là một việc), như gomSuKien (viec.ts). Trước đây cộng từng lô / món
+// của các khóa việc tay chân (nhap_bi_tra, het_han, quay_duoi_muc…): ô ghi 41 trong khi trang có 5 dòng.
+export const KHOA_VIEC = ['viec_dong'];
 export const KHOA_DUYET = ['duyet_nhap', 'duyet_huy', 'duyet_kiem_ke'];
 // 0040: + phiếu trả hàng thủ kho đã ghi kg, chờ kế toán xác nhận tiền.
 export const KHOA_CONG_NO = ['cong_no_qua_han', 'chua_doi_chieu', 'tra_hang_cho_tien'];
@@ -82,7 +80,7 @@ export const KHOA_CONG_NO = ['cong_no_qua_han', 'chua_doi_chieu', 'tra_hang_cho_
 export const MUC_KHO: MucKho[] = [
   { ma: 'trang_chu', nhom: 'hang_ngay', ten: { vi: 'Trang chủ', en: 'Home' }, link: '/noi-bo/kho', bieuTuong: 'nha', quyen: ['xem'] },
   { ma: 'viec', nhom: 'hang_ngay', ten: { vi: 'Việc cần làm', en: 'To-do' }, ngan: { vi: 'Việc', en: 'To-do' }, link: '/noi-bo/kho/viec', bieuTuong: 'viec',
-    quyen: ['nhap', 'van_hanh', 'pha_loc'], dem: KHOA_VIEC_TAY },
+    quyen: ['nhap', 'van_hanh', 'pha_loc'], dem: KHOA_VIEC },
   // Kế toán vào Duyệt bằng duyet_nhap (0031) — chỉ thấy phiếu nhập.
   { ma: 'duyet', nhom: 'hang_ngay', ten: { vi: 'Duyệt', en: 'Approvals' }, link: '/noi-bo/kho/duyet', bieuTuong: 'duyet', quyen: ['duyet', 'duyet_nhap'],
     dem: KHOA_DUYET },

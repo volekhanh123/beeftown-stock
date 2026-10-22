@@ -132,17 +132,18 @@ function trangCua(link) {
 const VAI = ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan'];
 
 // Khóa kho_dem_viec có thật: đọc từ thân hàm ở migration MỚI NHẤT còn dựng lại
-// nó (0030 → 0031 → 0032...). Migration sau thay thân thì thân cũ hết hiệu lực.
+// nó (0030 → 0031 → 0032... → 0092). Migration sau thay thân thì thân cũ hết hiệu lực. kho_su_kien và
+// kho_dem_viec không còn luôn nằm cùng một file (0092 chỉ dựng lại kho_dem_viec) — mỗi hàm đọc file riêng.
 const THU_MUC_MIG = join(GOC, 'crm/supabase/migrations');
-const SQL_VIEC = readdirSync(THU_MUC_MIG).filter(f => f.endsWith('.sql')).sort().reverse()
-  .map(f => doc(join(THU_MUC_MIG, f)))
-  .find(s => s.includes('create or replace function kho_dem_viec(')
-          && s.includes('create or replace function kho_su_kien(')) ?? '';
+const SQL_MOI_TRUOC = readdirSync(THU_MUC_MIG).filter(f => f.endsWith('.sql')).sort().reverse()
+  .map(f => doc(join(THU_MUC_MIG, f)));
+const SQL_DEM = SQL_MOI_TRUOC.find(s => s.includes('create or replace function kho_dem_viec(')) ?? '';
+const SQL_VIEC = SQL_MOI_TRUOC.find(s => s.includes('create or replace function kho_su_kien(')) ?? '';
 // Bỏ chú thích "-- …" trước khi dò khóa: dòng "-- 0033" chen giữa dấu phẩy và
 // tên khóa thì khóa đó vẫn là khóa thật.
-const thanDemViec = SQL_VIEC.slice(
-  SQL_VIEC.indexOf('create or replace function kho_dem_viec('),
-  SQL_VIEC.indexOf('comment on function kho_dem_viec'),
+const thanDemViec = SQL_DEM.slice(
+  SQL_DEM.indexOf('create or replace function kho_dem_viec('),
+  SQL_DEM.indexOf('comment on function kho_dem_viec'),
 ).replace(/--[^\n]*/g, '');
 const KHOA_DEM = new Set(
   [...thanDemViec.matchAll(/(?:jsonb_build_object\(|,)\s*'([a-z_]+)'\s*,/g)].map(m => m[1]),
@@ -392,6 +393,13 @@ await nhom('4 · THÔNG BÁO: KHÓA DATABASE ↔ CÂU CHỮ', async () => {
   ok('Migration 0092 đếm chuông bằng đúng luật gom của viec.ts (ngưỡng, khóa không gom, 7 ngày)',
     sql0092.includes(`g.tong >= ${NGUONG_GOM}`) && KHOA_KHONG_GOM.every(k => sql0092.includes(`g.khoa <> '${k}'`))
     && sql0092.includes("interval '7 days'"));
+  // viec_dong: trang Việc cần làm = sự kiện laViec (mức khác "xam"). Khóa "để biết" duy nhất là chua_doi_chieu —
+  // database bỏ đúng khóa đó. Thêm một khóa xám mới mà quên 0092 thì hai bên lệch: test này đỏ.
+  const khoaXam = KHOA_SU_KIEN.filter(k => ['kho', 'quay'].every(phu => cauSuKien(sk(k, 1, { phu })).muc === 'xam'));
+  ok('Chỉ chua_doi_chieu là "để biết" (không phải việc) — 0092 bỏ đúng khóa đó khi đếm viec_dong',
+    khoaXam.join() === 'chua_doi_chieu' && sql0092.includes("e.khoa <> 'chua_doi_chieu'")
+    && sql0092.includes(`vi.tong >= ${NGUONG_GOM}`) && KHOA_KHONG_GOM.every(k => sql0092.includes(`vi.khoa <> '${k}'`)),
+    khoaXam.join(', '));
 });
 
 // ===========================================================================
@@ -768,8 +776,9 @@ await nhom('13 · QUẦY YÊU CẦU → MANG RA → BẤM NHẬN (0032)', async 
     thaoTacCuaVai('nhan_vien_quay')[0]?.link === '/noi-bo/kho/quay/yeu-cau');
   ok('NV quầy: nút Quầy có số đỏ hàng đang mang ra',
     soDo(THANH_DAY.nhan_vien_quay[0], { hang_dang_chuyen: 2 }) === 2);
-  ok('Thủ kho: số đỏ Việc gồm yêu cầu của quầy',
-    soDo(MUC_KHO.find(m => m.ma === 'viec'), { yeu_cau_quay: 3 }) === 3);
+  // 0092: số đỏ Việc = số dòng của trang Việc cần làm (đã gom), không phải tổng từng lô / món.
+  ok('Số đỏ Việc đọc viec_dong (số dòng đã gom), không cộng từng lô / món',
+    soDo(MUC_KHO.find(m => m.ma === 'viec'), { viec_dong: 5, het_han: 9, quay_duoi_muc: 30 }) === 5);
   const qt = QUY_TRINH.find(q => q.ma === 'quay');
   ok('Quy trình "Quầy mỗi ngày": yêu cầu → mang ra → bấm nhận → xử lý thiếu',
     ['/noi-bo/kho/quay/yeu-cau', '/noi-bo/kho/quay/nhan'].every(l => qt?.buoc.some(b => b.link === l))
@@ -1070,6 +1079,37 @@ await nhom('17 · GỌN PHẦN TỒN KHO (Khánh duyệt 22/10/2026)', async () 
   ok('Kiểm kê: mỗi món một hàng gọn, vẫn đủ ô số gói, kg, "Đã hết thật"',
     /class:list=\{\['kk-dong'/.test(kk) && /name=\{`k\$\{i\}_goi`\}/.test(kk) && /name=\{`k\$\{i\}_kg`\}/.test(kk)
     && /name=\{`k\$\{i\}_het`\}/.test(kk));
+});
+
+// ===========================================================================
+await nhom('18 · GỌN PHẦN MUA VÀ NHẬN HÀNG, THẺ PHIẾU (Khánh duyệt 22/10/2026)', async () => {
+  const { phoBienNhat } = await import('../../web/src/lib/kho/chung.ts');
+  ok('phoBienNhat: chỗ gặp nhiều nhất, bỏ rỗng; bằng nhau lấy cái gặp trước; không có gì → null',
+    phoBienNhat(['Kho lạnh', null, 'Quầy thịt', 'Kho lạnh', '']) === 'Kho lạnh'
+    && phoBienNhat(['A', 'B']) === 'A' && phoBienNhat([null, undefined]) === null);
+  const DS = ['nhan-hang/index', 'nhap/index', 'dat-hang/index', 'xuat/index', 'pha-loc/index', 'kiem-ke/index'];
+  for (const f of DS) {
+    const s = doc(join(TRANG, 'noi-bo/kho', `${f}.astro`));
+    ok(`${f}: thẻ phiếu gọn hai dòng (nb-dong-tom), không bảng dl, không dòng người lập, không đọc tên người lập`,
+      /class="nb-dong-tom"/.test(s) && !/<dl>/.test(s) && !/t\.nguoiLap/.test(s) && !/tenNhanSu\(/.test(s));
+  }
+  for (const f of ['nhan-hang/index', 'nhap/index']) {
+    ok(`${f}: chỗ nhận chỉ ghi khi khác chỗ của đa số phiếu`,
+      /phoBienNhat\(ds\.map\(p => p\.ten_vi_tri\)\)/.test(doc(join(TRANG, 'noi-bo/kho', `${f}.astro`))));
+  }
+  const nh = doc(join(TRANG, 'noi-bo/kho/nhan-hang/[id].astro'));
+  ok('Nhận hàng: không còn ô Ngày sản xuất, Số lô NCC, Số hóa đơn; giá trị cũ mang theo bằng ô ẩn',
+    !/type="date" name="nsx"/.test(nh) && !/name="so_lo_ncc" value=\{dongHien\.so_lo_ncc\} maxlength/.test(nh)
+    && /type="hidden" name="nsx"/.test(nh) && /type="hidden" name="so_lo_ncc"/.test(nh)
+    && !/type="text" name="so_hoa_don"/.test(nh) && /type="hidden" name="so_hoa_don"/.test(nh));
+  ok('Nhận hàng mới (bước 1): không còn ô Số hóa đơn',
+    !/name="so_hoa_don"/.test(doc(join(TRANG, 'noi-bo/kho/nhan-hang/moi.astro'))));
+  const nhap = doc(join(TRANG, 'noi-bo/kho/nhap/[id].astro'));
+  ok('Phiếu nhập (soạn): Ngày sản xuất, Số lô NCC chỉ còn ô ẩn mang giá trị cũ',
+    !/type="date" name=\{`d\$\{i\}_nsx`\}/.test(nhap) && /type="hidden" name=\{`d\$\{i\}_nsx`\}/.test(nhap)
+    && /type="hidden" name=\{`d\$\{i\}_so_lo_ncc`\}/.test(nhap));
+  ok('Điền giá: chip chỉ "Lần trước …", số phiếu và ngày lần trước chỉ trong title',
+    !/<span class="kho-phu">\{' '\}\{t\.phieu\} \{ss\.so_phieu_truoc\}/.test(nhap) && /title=\{ss\?\.so_phieu_truoc/.test(nhap));
 });
 
 process.exit(ketThuc('KHUNG GIAO DIỆN'));
