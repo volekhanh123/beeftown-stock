@@ -6,20 +6,21 @@ Bản 1.0, dựng ngày 22/10/2026. Từ 22/10/2026 nằm trong repo `beeftown-s
 
 Có 4 màn hình:
 
-1. **Mua thịt:** 6 phần thịt của quầy: Ribeye with Cap, Outside Skirt, Chadolbagi (đông lạnh), Top Blade, Galbisal, LA Galbi (đông lạnh). Khách chọn số khay cho từng phần.
+1. **Mua thịt:** 6 phần thịt của quầy: Ribeye with Cap, Outside Skirt, Chadolbagi (đông lạnh), Top Blade, Galbisal, LA Galbi (đông lạnh). Khách chọn số khay cho từng phần. Bán theo khay, giá cố định: mỗi khay khoảng 150 g, giá không đổi theo số gam thật; app tính sẵn tổng tiền thịt.
 2. **Đơn hàng:** khách chọn nhận tại quán hay giao tận nơi, chọn ngày giờ, nhập tên và số điện thoại (bắt buộc khi giao), chọn cách trả tiền, ghi chú.
 3. **Gửi đơn qua Zalo:** app mở chat với OA "Nhà hàng Beeftown Hồ Tùng Mậu", tin đơn điền sẵn. Khách phải tự bấm Gửi thì quán mới nhận được.
 4. **Thông tin:** cách mua, cách tính tiền, thịt mát và đông lạnh, địa chỉ, liên hệ, thông tin của khách, đơn vị bán hàng.
 
-App không có máy chủ, không lưu dữ liệu của khách và không thu tiền trong app. Đơn tới OA dưới dạng tin nhắn. Nhân viên trả lời trong chat OA: báo số gam và tiền theo tem, gửi mã QR chuyển khoản hoặc hẹn trả khi nhận.
+App không có máy chủ, không lưu dữ liệu của khách và không thu tiền trong app. Đơn tới OA dưới dạng tin nhắn. Nhân viên trả lời trong chat OA: xác nhận đơn và tổng tiền (đơn giao tận nơi cộng phí giao), gửi mã QR chuyển khoản hoặc hẹn trả khi nhận.
 
 Tin nhắn mẫu:
 
 ```
 ĐẶT THỊT MANG VỀ – BEEFTOWN
-• Ribeye with Cap: 2 khay
-• LA Galbi (đông lạnh): 1 khay
-Tổng: 3 khay
+• Ribeye with Cap (khay ~150 g): 2 × 300.000 đ = 600.000 đ
+• LA Galbi (đông lạnh, khay ~150 g): 1 × 150.000 đ = 150.000 đ
+Tổng: 3 khay · 750.000 đ tiền thịt
+(Giá trong đơn là giá thử, chưa phải giá bán.)
 
 Giao tới: 12 Nguyễn Huệ, phường Sài Gòn
 Giờ nhận: khoảng 18:30, Thứ Sáu 13/11
@@ -27,17 +28,19 @@ Phí giao: nhờ quán báo
 Người nhận: Anh Khánh · 0912 345 678
 Thanh toán: trả khi nhận hàng
 
-Nhờ quán soạn khay rồi báo số gam và tiền theo tem giúp mình.
+Nhờ quán soạn khay và xác nhận đơn giúp mình.
 ```
 
-Ảnh chụp các màn hình ở `tai-lieu/anh-chup/`.
+Ảnh chụp các màn hình ở `tai-lieu/anh-chup/` (chụp trước ngày 22/10/2026, còn giá theo 100 g: chụp lại khi có giá thật).
 
 ## Sửa thông tin
 
 - `src/cau-hinh.ts`: OA ID, cờ giá thử (`giaThu`), ngày bắt đầu nhận hàng (13/11/2026), khung giờ nhận (10:30–13:30 và 16:30–21:00), số phút soạn khay (60), giờ mở cửa, địa chỉ, hotline, thông tin người bán.
-- `src/san-pham.ts`: giá cho 100 g của từng phần (để `null` thì app hiện "Báo giá khi xác nhận đơn"), tạm ngưng bán (`conHang: false`), mô tả, cách nướng.
+- `src/san-pham.ts`: số gam khoảng của một khay (`soGamKhay`) và giá một khay (`giaMoiKhay`; để `null` thì app hiện "báo giá khi xác nhận đơn"), tạm ngưng bán (`conHang: false`), mô tả, cách nướng.
 
-**Giá hiện tại là giá thử** (Claude đặt 22/10/2026 để thử app, chưa phải giá của Sang): Ribeye with Cap 120.000 đ, Outside Skirt 110.000 đ, Chadolbagi 45.000 đ, Top Blade 65.000 đ, Galbisal 100.000 đ, LA Galbi 60.000 đ cho 100 g. Khi `giaThu: true`, app ghi "Giá thử" cạnh từng giá, hiện 1 dòng báo ở trang chủ, và tin đơn có thêm dòng "(Giá trong đơn là giá thử, chưa phải giá bán.)". Có giá thật thì thay số trong `san-pham.ts` và đổi `giaThu` thành `false`.
+**Bán theo khay, giá cố định** (Khánh quyết 22/10/2026): không bán đúng số gam; giá một khay không đổi theo số gam thật của khay.
+
+**Số gam và giá hiện tại là số thử** (Claude đặt 22/10/2026 để thử app, chưa phải số của Sang), mỗi khay ~150 g: Ribeye with Cap 300.000 đ (theo ví dụ của Khánh), Outside Skirt 275.000 đ, Chadolbagi 115.000 đ, Top Blade 165.000 đ, Galbisal 250.000 đ, LA Galbi 150.000 đ một khay (giữ tỷ lệ với giá thử theo 100 g trước đó). Khi `giaThu: true`, app ghi "Giá thử" cạnh từng giá, hiện 1 dòng báo ở trang chủ, và tin đơn có thêm dòng "(Giá trong đơn là giá thử, chưa phải giá bán.)". Có số thật thì thay `soGamKhay`, `giaMoiKhay` trong `san-pham.ts` và đổi `giaThu` thành `false`.
 
 Mỗi lần sửa phải build, đưa lên lại và gửi Zalo duyệt lại.
 
@@ -70,7 +73,7 @@ Phát hành cho khách (sau khi chốt các mục ở phần dưới):
 ## Chạy thử trên máy tính
 
 - `npm run dev`, rồi mở http://localhost:3000. Ngoài Zalo, nút "Gửi đơn qua Zalo" hiện tin nhắn để xem chứ không mở chat.
-- `npm run kiem-tra`: chạy 11 kiểm tra cho giờ nhận, số điện thoại, nội dung tin và dòng giá thử (cần Node 22.6 trở lên).
+- `npm run kiem-tra`: kiểm tra giờ nhận, số điện thoại, nội dung tin, tổng tiền và dòng giá thử (cần Node 22.6 trở lên).
 - Chữ cấm: trong thư mục `crm` của repo, `node test/test-mini-app-chu.mjs` (cần `npm ci` ở `web` và `crm`). Kiểm thử này và `mini-app.yml` tự chạy trên GitHub mỗi PR.
 - Bản build trong `www/` chỉ chạy dưới đường dẫn `/zapps/<Mini App ID>/` của Zalo. Mở thẳng `www/index.html` sẽ ra trang trắng; đó là cách router của zmp-ui chạy, không phải lỗi.
 
@@ -79,11 +82,14 @@ Phát hành cho khách (sau khi chốt các mục ở phần dưới):
 - **Sang:**
   - 4 phần ghi là thịt mát (Ribeye with Cap, Outside Skirt, Top Blade, Galbisal). App ghi theo textbook 02.06; Sang xác nhận.
   - Mô tả và cách nướng lấy từ file vận hành 02/09, riêng câu "Thịt sườn đã lóc xương" của Galbisal là Claude thêm; Sang đọc lại cả 6 thẻ.
-  - Giá cho 100 g của 6 phần (thay giá thử, đổi `giaThu` thành `false`).
+  - Số gam khoảng và giá một khay của 6 phần (thay số thử, đổi `giaThu` thành `false`).
+  - Khay bán qua app đóng riêng, hay cả quầy bán theo khay giá cố định. Quầy vẫn tính theo kg thì cùng một khay có 2 giá (khay 162 g theo giá 2.000 đ/g là 324.000 đ ở quầy, 300.000 đ trên app).
   - Khung giờ nhận và 60 phút soạn khay.
   - Giao tận nơi: ai giao, giao xa nhất bao nhiêu km, phí giao, túi giữ lạnh.
-- **Luật sư:** Mini App có chức năng đặt hàng có phải thông báo với Bộ Công Thương theo Luật Thương mại điện tử 2025 và Nghị định 248/2026 không.
-- **Nhân viên trực OA:** cách trả lời đơn (báo tiền theo tem, gửi QR, hẹn giờ) và ai trực chat trong giờ mở cửa.
+- **Luật sư:**
+  - Mini App có chức năng đặt hàng có phải thông báo với Bộ Công Thương theo Luật Thương mại điện tử 2025 và Nghị định 248/2026 không.
+  - Khay bán giá cố định ghi định lượng thế nào ("~150 g" hay "từ 150 g") và được lệch bao nhiêu gam theo quy định đo lường hàng đóng gói sẵn.
+- **Nhân viên trực OA:** cách trả lời đơn (xác nhận đơn và tổng tiền, báo phí giao, gửi QR, hẹn giờ) và ai trực chat trong giờ mở cửa.
 
 ## Ghi chú kỹ thuật
 

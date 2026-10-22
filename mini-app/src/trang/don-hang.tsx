@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Page, useNavigate } from "zmp-ui";
 import { CAU_HINH, CAU_HINH_GIO } from "../cau-hinh";
-import { cacGioChon, cacNgayChon, kiemTraDon, taoNoiDungDon, type DongDon } from "../don";
+import { cacGioChon, cacNgayChon, dinhDangTien, kiemTraDon, taoNoiDungDon, tongTienThit } from "../don";
 import { useGioHang } from "../gio-hang";
-import { SAN_PHAM } from "../san-pham";
-import { DauTrang, GiaMoi100g, Muc, NhanBaoQuan, SoKhay } from "../thanh-phan";
+import { SAN_PHAM, dongTuGio } from "../san-pham";
+import { DauTrang, GiaKhay, Muc, NhanBaoQuan, SoKhay } from "../thanh-phan";
 import { useThongBao } from "../thong-bao";
 import { moChatVoiQuan } from "../zalo";
 
@@ -29,12 +29,8 @@ export default function DonHang() {
   }, [cacGio, nhan.gio, suaNhan]);
 
   const daChon = SAN_PHAM.filter((sp) => (soKhay[sp.ma] ?? 0) > 0);
-  const dong: DongDon[] = daChon.map((sp) => ({
-    ten: sp.ten,
-    baoQuan: sp.baoQuan,
-    soKhay: soKhay[sp.ma],
-    giaMoi100g: sp.giaMoi100g,
-  }));
+  const dong = dongTuGio(soKhay);
+  const tongTien = tongTienThit(dong);
 
   // Sau lần bấm gửi đầu tiên, danh sách lỗi tự cập nhật theo từng ô khách sửa.
   const loi = daBamGui ? kiemTraDon(dong, nhan) : [];
@@ -95,12 +91,17 @@ export default function DonHang() {
               <div className="ten-dong">
                 <b>{sp.ten}</b>
                 <NhanBaoQuan baoQuan={sp.baoQuan} />
-                <GiaMoi100g gia={sp.giaMoi100g} />
+                <GiaKhay gia={sp.giaMoiKhay} soGam={sp.soGamKhay} />
               </div>
               <SoKhay ten={sp.ten} so={soKhay[sp.ma]} onDoi={(so) => datSoKhay(sp.ma, so)} />
             </li>
           ))}
         </ul>
+        <p className="tong-tien">
+          <span>Tổng tiền thịt</span>
+          <b>{tongTien === null ? "Quán báo khi xác nhận" : dinhDangTien(tongTien)}</b>
+        </p>
+        {nhan.cachNhan === "giao-hang" && <p className="ghi-chu">Chưa gồm phí giao, quán báo khi xác nhận đơn.</p>}
         <button type="button" className="nut-chu" onClick={() => navigate(-1)}>
           + Chọn thêm phần khác
         </button>
@@ -210,7 +211,7 @@ export default function DonHang() {
             />
             <span>
               <b>Chuyển khoản</b>
-              <small>Quán gửi mã QR sau khi báo tiền theo tem</small>
+              <small>Quán gửi mã QR khi xác nhận đơn</small>
             </span>
           </label>
           <label className={nhan.cachTra === "tra-khi-nhan" ? "dang-chon" : ""}>

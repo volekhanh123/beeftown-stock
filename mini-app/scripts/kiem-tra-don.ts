@@ -7,6 +7,7 @@ import {
   dinhDangTien,
   kiemTraDon,
   taoNoiDungDon,
+  tongTienThit,
   type CauHinhGio,
   type DongDon,
   type ThongTinNhan,
@@ -74,9 +75,9 @@ kiem("số điện thoại", () => {
 });
 
 const dong: DongDon[] = [
-  { ten: "Ribeye with Cap", baoQuan: "mat", soKhay: 2, giaMoi100g: 84500 },
-  { ten: "Chadolbagi", baoQuan: "dong-lanh", soKhay: 0, giaMoi100g: null },
-  { ten: "LA Galbi", baoQuan: "dong-lanh", soKhay: 1, giaMoi100g: null },
+  { ten: "Ribeye with Cap", baoQuan: "mat", soKhay: 2, soGamKhay: 150, giaMoiKhay: 300000 },
+  { ten: "Chadolbagi", baoQuan: "dong-lanh", soKhay: 0, soGamKhay: 150, giaMoiKhay: 115000 },
+  { ten: "LA Galbi", baoQuan: "dong-lanh", soKhay: 1, soGamKhay: 150, giaMoiKhay: 150000 },
 ];
 const nhan: ThongTinNhan = {
   cachNhan: "tai-quan",
@@ -91,13 +92,14 @@ const nhan: ThongTinNhan = {
 
 kiem("tin nhắn nhận tại quán", () => {
   const tin = taoNoiDungDon(dong, nhan);
-  assert.ok(tin.includes("• Ribeye with Cap: 2 khay · 84.500 đ/100 g"));
-  assert.ok(tin.includes("• LA Galbi (đông lạnh): 1 khay"));
+  assert.ok(tin.includes("• Ribeye with Cap (khay ~150 g): 2 × 300.000 đ = 600.000 đ"));
+  assert.ok(tin.includes("• LA Galbi (đông lạnh, khay ~150 g): 1 × 150.000 đ = 150.000 đ"));
   assert.ok(!tin.includes("Chadolbagi"));
-  assert.ok(tin.includes("Tổng: 3 khay"));
+  assert.ok(tin.includes("Tổng: 3 khay · 750.000 đ tiền thịt"));
+  assert.ok(!tin.includes("theo tem"));
   assert.ok(tin.includes("Nhận tại quán: 18:30, Thứ Sáu 13/11"));
   assert.ok(tin.includes("Người nhận: Anh Khánh · 0912 345 678"));
-  assert.ok(tin.includes("Thanh toán: chuyển khoản sau khi quán báo tiền"));
+  assert.ok(tin.includes("Thanh toán: chuyển khoản sau khi quán xác nhận đơn"));
   assert.ok(tin.length < 1000);
   console.log("\n" + tin.split("\n").map((d) => "    | " + d).join("\n") + "\n");
 });
@@ -119,10 +121,25 @@ kiem("tin nhắn giao tận nơi", () => {
 
 kiem("giá thử: tin có dòng báo giá thử, tắt cờ thì không có", () => {
   const coCo = taoNoiDungDon(dong, nhan, { giaThu: true });
-  assert.ok(coCo.includes("Tổng: 3 khay\n(Giá trong đơn là giá thử, chưa phải giá bán.)"));
+  assert.ok(coCo.includes("Tổng: 3 khay · 750.000 đ tiền thịt\n(Giá trong đơn là giá thử, chưa phải giá bán.)"));
   assert.ok(!taoNoiDungDon(dong, nhan).includes("giá thử"));
-  const khongGia = dong.map((d) => ({ ...d, giaMoi100g: null }));
+  const khongGia = dong.map((d) => ({ ...d, giaMoiKhay: null }));
   assert.ok(!taoNoiDungDon(khongGia, nhan, { giaThu: true }).includes("giá thử"));
+});
+
+kiem("tổng tiền thịt = số khay × giá một khay; có phần chưa có giá thì quán báo", () => {
+  assert.equal(tongTienThit(dong), 2 * 300000 + 1 * 150000);
+  assert.equal(tongTienThit([]), 0);
+  const thieuGia = dong.map((d) => (d.ten === "LA Galbi" ? { ...d, giaMoiKhay: null } : d));
+  assert.equal(tongTienThit(thieuGia), null);
+  // Phần chưa có giá mà không chọn khay nào thì không làm mất tổng.
+  const khongChon = dong.map((d) => (d.ten === "Chadolbagi" ? { ...d, giaMoiKhay: null } : d));
+  assert.equal(tongTienThit(khongChon), 750000);
+  const tin = taoNoiDungDon(thieuGia, nhan);
+  assert.ok(tin.includes("• LA Galbi (đông lạnh, khay ~150 g): 1 khay, quán báo giá"));
+  assert.ok(tin.includes("Tổng: 3 khay · tiền thịt quán báo khi xác nhận"));
+  // Giá 0 là giá thật, không phải "chưa có giá".
+  assert.equal(tongTienThit(dong.map((d) => ({ ...d, giaMoiKhay: 0 }))), 0);
 });
 
 kiem("báo lỗi khi thiếu thông tin", () => {

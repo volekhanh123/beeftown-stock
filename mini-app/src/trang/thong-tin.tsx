@@ -25,13 +25,13 @@ export default function ThongTin() {
       <Muc tieuDe="Cách mua">
         <ol className="ds-buoc">
           <li>
-            <b>Chọn số khay</b> của từng phần thịt. Khay đã chia sẵn ở quầy, mỗi khay một trọng lượng.
+            <b>Chọn số khay</b> của từng phần thịt. Khay đã chia sẵn ở quầy; số gam khoảng và giá của một khay ghi ở từng phần thịt.
           </li>
           <li>
             <b>Gửi đơn qua Zalo.</b> App mở chat với Beeftown, đơn điền sẵn; bạn bấm Gửi.
           </li>
           <li>
-            <b>Quán soạn khay</b> và báo số gam, số tiền in trên tem của từng khay. Bạn đồng ý thì quán giữ hàng.
+            <b>Quán soạn khay</b> và xác nhận đơn, tiền thịt đúng như tổng trong đơn. Bạn đồng ý thì quán giữ hàng.
           </li>
           <li>
             <b>Trả tiền và nhận hàng:</b> chuyển khoản theo mã QR quán gửi, hoặc trả khi nhận.
@@ -41,8 +41,8 @@ export default function ThongTin() {
 
       <Muc tieuDe="Cách tính tiền">
         <p>
-          Giá niêm yết theo 100 g. Tiền của mỗi khay = trọng lượng thật × giá/100 g, in sẵn trên tem cùng tên phần thịt
-          và ngày đóng gói. Đơn giao tận nơi cộng phí giao, quán báo khi xác nhận.
+          Giá tính theo khay, không đổi theo số gam thật của từng khay. Tiền thịt = số khay × giá một khay; app tính
+          sẵn tổng trong đơn. Đơn giao tận nơi cộng phí giao, quán báo khi xác nhận.
           {CAU_HINH.giaThu && " Giá trong app hiện là giá thử, chưa phải giá bán của quán."}
         </p>
       </Muc>

@@ -9,7 +9,10 @@ export interface DongDon {
   ten: string;
   baoQuan: BaoQuan;
   soKhay: number;
-  giaMoi100g: number | null;
+  /** Số gam khoảng của 1 khay. Giá không đổi theo số gam thật. */
+  soGamKhay: number;
+  /** Giá cố định của 1 khay; null = quán báo giá khi xác nhận đơn. */
+  giaMoiKhay: number | null;
 }
 
 export interface ThongTinNhan {
@@ -133,6 +136,13 @@ export function tongSoKhay(dong: DongDon[]): number {
   return dong.reduce((t, d) => t + d.soKhay, 0);
 }
 
+/** Tổng tiền thịt (chưa gồm phí giao). null khi có phần đã chọn chưa có giá: quán báo khi xác nhận đơn. */
+export function tongTienThit(dong: DongDon[]): number | null {
+  const coKhay = dong.filter((d) => d.soKhay > 0);
+  if (coKhay.some((d) => d.giaMoiKhay === null)) return null;
+  return coKhay.reduce((t, d) => t + d.soKhay * (d.giaMoiKhay ?? 0), 0);
+}
+
 /** Trả về danh sách lỗi; rỗng là đủ thông tin để gửi. */
 export function kiemTraDon(dong: DongDon[], nhan: ThongTinNhan): string[] {
   const loi: string[] = [];
@@ -160,14 +170,18 @@ export function taoNoiDungDon(dong: DongDon[], nhan: ThongTinNhan, tuyChon: TuyC
   const coKhay = dong.filter((d) => d.soKhay > 0);
   const dongTin: string[] = ["ĐẶT THỊT MANG VỀ – BEEFTOWN"];
   for (const d of coKhay) {
-    let s = `• ${d.ten}`;
-    if (d.baoQuan === "dong-lanh") s += " (đông lạnh)";
-    s += `: ${d.soKhay} khay`;
-    if (d.giaMoi100g) s += ` · ${dinhDangTien(d.giaMoi100g)}/100 g`;
-    dongTin.push(s);
+    const khay = d.baoQuan === "dong-lanh" ? `đông lạnh, khay ~${d.soGamKhay} g` : `khay ~${d.soGamKhay} g`;
+    const tien =
+      d.giaMoiKhay === null
+        ? `${d.soKhay} khay, quán báo giá`
+        : `${d.soKhay} × ${dinhDangTien(d.giaMoiKhay)} = ${dinhDangTien(d.soKhay * d.giaMoiKhay)}`;
+    dongTin.push(`• ${d.ten} (${khay}): ${tien}`);
   }
-  dongTin.push(`Tổng: ${tongSoKhay(coKhay)} khay`);
-  if (tuyChon.giaThu && coKhay.some((d) => d.giaMoi100g)) {
+  const tong = tongTienThit(coKhay);
+  dongTin.push(
+    `Tổng: ${tongSoKhay(coKhay)} khay · ${tong === null ? "tiền thịt quán báo khi xác nhận" : `${dinhDangTien(tong)} tiền thịt`}`,
+  );
+  if (tuyChon.giaThu && coKhay.some((d) => d.giaMoiKhay !== null)) {
     dongTin.push("(Giá trong đơn là giá thử, chưa phải giá bán.)");
   }
   dongTin.push("");
@@ -186,10 +200,10 @@ export function taoNoiDungDon(dong: DongDon[], nhan: ThongTinNhan, tuyChon: TuyC
   if (nguoiNhan) dongTin.push(`Người nhận: ${nguoiNhan}`);
   dongTin.push(
     `Thanh toán: ${
-      nhan.cachTra === "chuyen-khoan" ? "chuyển khoản sau khi quán báo tiền" : "trả khi nhận hàng"
+      nhan.cachTra === "chuyen-khoan" ? "chuyển khoản sau khi quán xác nhận đơn" : "trả khi nhận hàng"
     }`,
   );
   if (nhan.ghiChu.trim()) dongTin.push(`Ghi chú: ${nhan.ghiChu.trim()}`);
-  dongTin.push("", "Nhờ quán soạn khay rồi báo số gam và tiền theo tem giúp mình.");
+  dongTin.push("", "Nhờ quán soạn khay và xác nhận đơn giúp mình.");
   return dongTin.join("\n");
 }

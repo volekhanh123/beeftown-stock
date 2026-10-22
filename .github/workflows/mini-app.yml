@@ -1,7 +1,7 @@
 # Kiểm thử Mini App Zalo (mini-app/) — chỉ chạy khi mini-app/ hay file này đổi.
 #
 #   · PR không phải nháp (và mỗi lần đẩy thêm vào PR đó), main nhận commit, chạy tay.
-#   · Cài thư viện, 11 kiểm tra logic đơn (npm run kiem-tra), kiểm kiểu (tsc), build — KHÔNG có mini-app/.env
+#   · Cài thư viện, kiểm tra logic đơn (npm run kiem-tra), kiểm kiểu (tsc), build — KHÔNG có mini-app/.env
 #     (file đó có ZMP_TOKEN, chỉ nằm trên máy Khánh): bản build phải đúng khi không có nó.
 #   · KHÔNG đưa lên Zalo. Đưa bản thử lên chỉ chạy tay trên máy có mạng tới Zalo (mini-app/README.md).
 #
@@ -51,7 +51,7 @@ jobs:
           cache-dependency-path: mini-app/package-lock.json
       - name: Cài thư viện
         run: npm ci --no-audit --no-fund
-      - name: Kiểm tra logic đơn (giờ nhận, số điện thoại, tin nhắn, giá thử)
+      - name: Kiểm tra logic đơn (giờ nhận, số điện thoại, tin nhắn, tổng tiền, giá thử)
         run: npm run kiem-tra
       # Sau kiểm tra, chạy cả khi kiểm tra hỏng: lỗi kiểu không che kết quả kiểm tra và ngược lại.
       - name: Kiểm kiểu (tsc --noEmit)

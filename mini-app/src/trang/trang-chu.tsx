@@ -3,12 +3,14 @@ import { Page, useNavigate } from "zmp-ui";
 import { ThongTinTron } from "../bieu-tuong";
 import logo from "../assets/logo-chinh-trang.png";
 import { useGioHang } from "../gio-hang";
-import { SAN_PHAM } from "../san-pham";
+import { SAN_PHAM, dongTuGio } from "../san-pham";
+import { dinhDangTien, tongTienThit } from "../don";
 import { BaoGiaThu, TheThit } from "../thanh-phan";
 
 export default function TrangChu() {
   const navigate = useNavigate();
-  const { tongKhay, soPhan } = useGioHang();
+  const { soKhay, tongKhay, soPhan } = useGioHang();
+  const tongTien = tongTienThit(dongTuGio(soKhay));
 
   return (
     <Page className="trang trang-chu" hideScrollbar>
@@ -25,7 +27,7 @@ export default function TrangChu() {
           </button>
         </div>
         <p className="tieu-de">Thịt bò mang về</p>
-        <p className="dong-phu">Chọn số khay, gửi đơn qua Zalo. Quán soạn khay và báo tiền theo tem trước khi bạn trả.</p>
+        <p className="dong-phu">Chọn số khay, gửi đơn qua Zalo. Giá tính theo khay, thấy tổng tiền trước khi gửi đơn.</p>
       </header>
 
       <ol className="ba-buoc" aria-label="Cách mua">
@@ -36,7 +38,7 @@ export default function TrangChu() {
           <b>2</b>Gửi đơn qua Zalo
         </li>
         <li>
-          <b>3</b>Quán báo tiền theo tem
+          <b>3</b>Quán xác nhận đơn
         </li>
       </ol>
 
@@ -49,15 +51,17 @@ export default function TrangChu() {
       </section>
 
       <p className="ghi-chu-cuoi">
-        Mỗi khay một trọng lượng. Số gam và tiền in trên tem của từng khay; quán báo cho bạn trước khi bạn trả tiền.
+        Giá tính theo khay, không đổi theo số gam thật của từng khay.
       </p>
       <div className={tongKhay > 0 ? "khoang-duoi co-thanh" : "khoang-duoi"} />
 
       {tongKhay > 0 && (
         <div className="thanh-duoi">
           <div className="tom-tat">
-            <b>{tongKhay} khay</b>
-            <span>{soPhan} phần thịt</span>
+            <b>{tongTien === null ? `${tongKhay} khay` : dinhDangTien(tongTien)}</b>
+            <span>
+              {tongTien === null ? `${soPhan} phần thịt` : `${tongKhay} khay · ${soPhan} phần thịt`}
+            </span>
           </div>
           <button type="button" className="nut-chinh" onClick={() => navigate("/don-hang")}>
             Xem đơn

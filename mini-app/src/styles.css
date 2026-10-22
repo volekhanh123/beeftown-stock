@@ -467,6 +467,24 @@ body {
 .ten-dong .gia.chua-co {
   max-width: none;
 }
+.gia .so-gam {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--chu-phu);
+}
+.tong-tien {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 12px 0 0;
+  font-size: 15px;
+}
+.tong-tien b {
+  font-size: 17px;
+  font-weight: 800;
+  white-space: nowrap;
+}
 
 .chon-hai {
   display: grid;

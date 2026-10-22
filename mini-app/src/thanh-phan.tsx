@@ -1,4 +1,4 @@
-// Thành phần dùng chung: đầu trang, nút chọn số khay, thẻ phần thịt.
+// Thành phần dùng chung: đầu trang, nút chọn số khay, giá khay, thẻ phần thịt.
 
 import React, { ReactNode } from "react";
 import { useNavigate } from "zmp-ui";
@@ -59,13 +59,15 @@ export function NhanBaoQuan({ baoQuan }: { baoQuan: SanPham["baoQuan"] }) {
   );
 }
 
-export function GiaMoi100g({ gia }: { gia: number | null }) {
-  if (!gia) return <span className="gia chua-co">Báo giá khi xác nhận đơn</span>;
+/** Giá cố định của 1 khay, kèm số gam khoảng. Giá không đổi theo số gam thật của khay. */
+export function GiaKhay({ gia, soGam }: { gia: number | null; soGam: number }) {
+  if (gia === null) return <span className="gia chua-co">Khay ~{soGam} g · báo giá khi xác nhận đơn</span>;
   return (
     <span className="gia">
       <span>
-        <b>{dinhDangTien(gia)}</b> / 100 g
+        <b>{dinhDangTien(gia)}</b> / khay
       </span>
+      <span className="so-gam">~{soGam} g một khay</span>
       {CAU_HINH.giaThu && <span className="nhan-gia-thu">Giá thử</span>}
     </span>
   );
@@ -98,7 +100,7 @@ export function TheThit({ sp }: { sp: SanPham }) {
         </p>
       )}
       <div className="the-thit-chan">
-        <GiaMoi100g gia={sp.giaMoi100g} />
+        <GiaKhay gia={sp.giaMoiKhay} soGam={sp.soGamKhay} />
         {sp.conHang ? (
           <SoKhay ten={sp.ten} so={so} onDoi={(moi) => datSoKhay(sp.ma, moi)} />
         ) : (
