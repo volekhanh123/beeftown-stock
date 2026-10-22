@@ -13,6 +13,8 @@ rà soát" *sau khi* tính năng đã gộp. Mục tiêu: chặn chúng *trướ
 | `can-app/` | Beeftown Cân (Windows `.exe`, Bun): gửi giá xuống cân TMA, máy quầy | `can-app/README.md` |
 
 Bảng màu thương hiệu đã chốt, giá trị đã áp dụng và thứ còn mang màu cũ (Beeftown Cân, ảnh hướng dẫn kho): `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
+Ngày 22/10/2026 Khánh chốt bảng mới chỉ đỏ `#BD0000`, đen, trắng (`THUONG-HIEU.md` mục 0); mã website và
+Beeftown Cân chưa đổi, danh sách việc đổi chờ Khánh duyệt — đừng tự đổi màu trước khi danh sách được duyệt.
 
 Quy ước chung:
 - Tên hàm, biến, chú thích, tài liệu viết **tiếng Việt không tắt**, giống mã đang có.
