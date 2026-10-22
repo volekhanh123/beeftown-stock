@@ -73,7 +73,8 @@ phiên bản mới của chương trình.
 > Marigold, Warm Stone** (`THUONG-HIEU.md` mục 0). Mã website và Beeftown Cân **chưa đổi**, danh sách
 > việc đổi chờ Khánh duyệt. Tới khi PR đổi màu gộp: sửa giao diện web vẫn theo bảng dưới (kiểm thử canh
 > bảng dưới), không tự đổi mã, không thêm chỗ mới ghi mã của bảng mới vào `web/`. Mini App Zalo
-> (`mini-app/`) đã theo bảng mới.
+> (`mini-app/`, vào repo ở PR riêng) dùng bảng mới cộng 7 màu pha xám và đỏ chưa được duyệt (câu 1 của
+> mục 0): đừng lấy màu pha của nó làm mẫu.
 
 ### Bảng màu thương hiệu — Khánh chốt 09/10/2026
 

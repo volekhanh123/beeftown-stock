@@ -46,7 +46,8 @@
    `--do-sau` cho đỏ đậm, 2 nền kem đậm, viền ô nhập, chữ phụ). Bảng mới có được thêm màu pha không: 1
    đỏ đậm hơn cho nút khi di chuột; 1 xám cho viền ô nhập (tối thiểu 3 : 1 với trắng); 1 xám cho chữ
    phụ (tối thiểu 4,5 : 1 với trắng); 1 nền xám nhạt để tách thẻ khỏi nền trắng? Mini App Zalo đang
-   dùng 7 màu pha như vậy (`mini-app/src/styles.css`): câu trả lời áp cho cả Mini App.
+   dùng 7 màu pha như vậy (`mini-app/src/styles.css`, vào repo ở PR riêng): câu trả lời áp cho cả Mini
+   App.
 2. **Màu trạng thái** của `/noi-bo`, kho và Beeftown Cân (xanh = xong, vàng = lưu ý, đỏ nhạt = làm
    ngay): giữ làm màu chức năng như hiện nay (không thuộc bảng thương hiệu), hay đổi?
 3. **Thay Marigold** ở vòng focus trên nền tối, chấm chưa đọc, nhãn "nháp", đèn vàng bằng màu gì.
@@ -65,10 +66,10 @@ Chưa việc nào bắt đầu. Hạn ngày Khánh ghi khi duyệt.
 | 1 | Trả lời 5 câu ở trên | Khánh | |
 | 2 | Gửi file SVG của bộ logo 21/10/2026: lockup, brandmark, wordmark, bản nền sáng và bản nền tối | Khánh | |
 | 3 | Đổi mã cả website trong **1 PR**: 14 token của khối `.ck` và 14 token của `:root` cùng giá trị; 8 màu trạng thái theo câu 2; 4 token của kho; 35 chỗ `rgba()` trong 13 file theo số RGB mới; viết lại 4 bảng chép tay trong kiểm thử (`test-cong-khai-giao-dien.mjs`, `test-noi-bo-bang-mau.mjs`, `web/kiem-tra/do-giao-dien.mjs`, `web/kiem-tra/thu-day-du.mjs`) và 2 nhóm bắt mã trắng; sửa skill thiết kế, `README.md` mục "Bảng màu", `AGENTS.md` mục "Màu", `web/THIET-KE.md` mục 2, `web/KHO.md`, file này | Claude Code | |
-| 4 | Đổi tên token cho đúng màu mới (`--kem` mang mã trắng là tên sai): 172 chỗ `var(--kem)`, `var(--kem-sau)`, `var(--kem-dam)`, `var(--cuc-vang)`, `var(--mu-tat)`, `var(--da)` trong 33 file. Làm cùng việc 3 hay PR sau: Khánh chọn | Claude Code | |
+| 4 | Đổi tên token cho đúng màu mới (`--kem` mang mã trắng, `--than` mang mã đen là tên sai): 300 chỗ `var(--kem)`, `var(--kem-sau)`, `var(--kem-dam)`, `var(--than)`, `var(--do-dam)`, `var(--do-sau)`, `var(--cuc-vang)`, `var(--mu-tat)`, `var(--da)` trong 37 file (đếm ngày 22/10/2026). Làm cùng việc 3 hay PR sau: Khánh chọn | Claude Code | |
 | 5 | Dựng lại logo, hoa văn, `bieu-tuong.svg`, `favicon.ico`, ảnh chia sẻ, 4 biểu tượng kho: từ file của việc 2, hoặc đổi bảng `DOI_MAU` của `web/cong-cu/thuong-hieu/tao-bieu-tuong.py` nếu chưa có file | Claude Code | |
 | 6 | Đổi `theme-color` ở 3 layout và `theme_color`, `background_color` của `web/public/kho/manifest.json` | Claude Code, cùng PR việc 3 | |
-| 7 | Beeftown Cân đổi thẳng sang bảng mới (bỏ qua bảng 09/10/2026): khối `:root` của 2 file HTML, nền trắng, màu trạng thái theo câu 2, tăng `PHIEN_BAN` (đang là 2.10.0) | Claude Code, PR riêng | |
+| 7 | Beeftown Cân đổi thẳng sang bảng mới (bỏ qua bảng 09/10/2026): khối `:root` của 2 file HTML, nền theo câu 4, màu trạng thái theo câu 2, tăng `PHIEN_BAN` (đang là 2.10.0) | Claude Code, PR riêng | |
 | 8 | Chụp lại 15 ảnh `web/public/kho/hd-*.png` sau khi việc 3 gộp | Claude Code | |
 | 9 | Deploy website sau khi việc 3, 5, 6 gộp và CI xanh; xem lại trang chủ, Thực đơn, `/noi-bo`, kho trên điện thoại | Khánh | |
 
