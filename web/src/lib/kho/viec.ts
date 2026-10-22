@@ -307,6 +307,160 @@ export const KHOA_SU_KIEN = [
   'tra_hang_cho_tien', 'ncc_doi_tai_khoan',
 ] as const;
 
+// -----------------------------------------------------------------------------
+// GOM VIỆC CÙNG LOẠI (Khánh duyệt 22/10/2026)
+// -----------------------------------------------------------------------------
+// Thủ kho từng thấy 57 thẻ việc trên điện thoại: 10 lô hết hạn, 30 món quầy sắp hết… mỗi cái một
+// thẻ. Từ NGUONG_GOM sự kiện cùng khóa trở lên thì thành MỘT dòng có số đếm, nút dẫn tới trang danh
+// sách đã lọc sẵn (Tồn kho ?han=het_han, Công nợ ?loc=qua_han…) — ở đó từng lô / phiếu có nút riêng.
+// Ít hơn thì vẫn từng dòng như cũ, thấy ngay số phiếu, tên lô.
+//
+// Database đếm số chưa đọc trên chuông theo ĐÚNG luật này (migration 0092: số dòng của trang chuông
+// có sự kiện chưa đọc, 7 ngày) — đổi NGUONG_GOM / KHOA_KHONG_GOM thì viết migration mới cho khớp
+// (test-kho-viec.mjs so hai bên).
+
+export const NGUONG_GOM = 3;
+/** Khóa không bao giờ gom: mỗi lần nhà cung cấp đổi số tài khoản phải được thấy riêng (chống lừa đảo). */
+export const KHOA_KHONG_GOM: readonly string[] = ['ncc_doi_tai_khoan'];
+/** Trang chuông chỉ hiện sự kiện trong chừng ấy ngày (trang Việc cần làm vẫn 30 ngày). */
+export const NGAY_CHUONG = 7;
+
+/** Một dòng của trang Việc cần làm / chuông: một sự kiện, hoặc NGUONG_GOM sự kiện cùng khóa trở lên. */
+export interface DongViec {
+  khoa: string;
+  /** Các sự kiện trong dòng (một phần tử = dòng thường). */
+  ds: SuKien[];
+  cau: CauSuKien;
+  /** Sự kiện cũ nhất / mới nhất trong dòng — trang Việc xếp cũ trước, chuông xếp mới trước. */
+  cuNhat: string;
+  moiNhat: string;
+  chuaDoc: boolean;
+}
+
+const BAC_MUC: Record<CauSuKien['muc'], number> = { do: 2, vang: 1, xam: 0 };
+
+/**
+ * Câu cho một dòng gom `ds` (cùng khóa, ≥ NGUONG_GOM). null = khóa không gom (KHOA_KHONG_GOM) hoặc
+ * khóa lạ. Mức độ của dòng = mức gấp nhất trong các sự kiện của nó.
+ */
+export function cauNhomSuKien(khoa: string, ds: SuKien[], nn: NgonNguNB = 'vi'): CauSuKien | null {
+  if (KHOA_KHONG_GOM.includes(khoa)) return null;
+  const c = (x: HaiThuTieng) => x[nn];
+  const n = ds.length;
+  const so = n.toLocaleString(VUNG[nn]);
+  const muc = ds.map(e => cauSuKien(e, nn).muc).reduce<CauSuKien['muc']>((m, x) => (BAC_MUC[x] > BAC_MUC[m] ? x : m), 'xam');
+  const xem = c({ vi: 'Xem', en: 'View' });
+  const duyet = c({ vi: 'Duyệt', en: 'Approve' });
+  // Dòng gom luôn từ NGUONG_GOM (3) sự kiện trở lên: câu tiếng Anh viết số nhiều.
+  const dong = (tieuDe: HaiThuTieng, link: string, nut: string, chiTiet?: HaiThuTieng): CauSuKien =>
+    ({ tieuDe: c(tieuDe), chiTiet: chiTiet ? c(chiTiet) : undefined, link, nut, muc });
+  switch (khoa) {
+    case 'nhap_bi_tu_choi':
+      return dong({ vi: `${so} phiếu nhập bị trả về`, en: `${so} goods receipts were sent back` },
+        '/noi-bo/kho/nhan-hang?loc=tu_choi', c({ vi: 'Sửa lại', en: 'Fix them' }),
+        { vi: 'Mở từng phiếu, sửa rồi gửi lại.', en: 'Open each one, fix it and send it again.' });
+    case 'huy_bi_tu_choi':
+      return dong({ vi: `${so} báo hủy không được duyệt`, en: `${so} write-offs were not approved` },
+        '/noi-bo/kho/xuat?loc=huy', xem, { vi: 'Hàng đã về lại chỗ cũ.', en: 'The goods are back where they were.' });
+    case 'kiem_ke_tra_ve':
+      return dong({ vi: `${so} phiếu kiểm kê cần đếm lại`, en: `${so} stocktakes need a recount` },
+        '/noi-bo/kho/kiem-ke', c({ vi: 'Đếm lại', en: 'Recount' }));
+    case 'het_han':
+      return dong({ vi: `${so} lô hết hạn`, en: `${so} lots have expired` },
+        '/noi-bo/kho/ton?han=het_han', c({ vi: 'Báo hủy', en: 'Write off' }),
+        { vi: 'Không bán, không đưa bếp — báo hủy từng lô.', en: 'Do not sell or send to the kitchen — write off each lot.' });
+    case 'sap_het_han':
+      return dong({ vi: `${so} lô sắp hết hạn`, en: `${so} lots expire soon` },
+        '/noi-bo/kho/ton?han=sap_het', xem,
+        { vi: 'Đưa ra quầy bán trước, hoặc đưa bếp.', en: 'Take them to the counter to sell first, or send them to the kitchen.' });
+    case 'quay_duoi_muc':
+      return dong({ vi: `${so} món quầy sắp hết`, en: `${so} counter items are running low` },
+        '/noi-bo/kho/ton?duoi_muc=1', xem,
+        { vi: 'Lấy thêm hàng ra quầy.', en: 'Bring more stock to the counter.' });
+    case 'quay_chua_dem':
+      return dong({ vi: `${so} quầy chưa đếm cuối ngày hôm qua`, en: `${so} counters are missing yesterday's count` },
+        '/noi-bo/kho/quay/dem', c({ vi: 'Đếm ngay', en: 'Count now' }));
+    case 'cho_duyet_nhap':
+      return dong({ vi: `${so} phiếu nhập chờ điền giá, duyệt`, en: `${so} goods receipts need prices and approval` },
+        '/noi-bo/kho/duyet', duyet);
+    case 'cho_duyet_huy':
+      return dong({ vi: `${so} báo hủy chờ duyệt`, en: `${so} write-offs await approval` }, '/noi-bo/kho/duyet', duyet);
+    case 'cho_duyet_kiem_ke':
+      return dong({ vi: `${so} phiếu kiểm kê chờ duyệt`, en: `${so} stocktakes await approval` }, '/noi-bo/kho/duyet', duyet);
+    case 'cong_no_qua_han': {
+      const lauNhat = Math.max(0, ...ds.map(e => soNguyen(e.so) ?? 0));
+      return dong({ vi: `${so} phiếu nợ quá hạn`, en: `${so} payments are overdue` },
+        '/noi-bo/kho/cong-no?loc=qua_han', c({ vi: 'Trả tiền', en: 'Pay' }),
+        lauNhat > 0 ? { vi: `Lâu nhất quá hạn ${lauNhat} ngày.`, en: `The oldest is ${lauNhat} day${lauNhat === 1 ? '' : 's'} overdue.` } : undefined);
+    }
+    case 'cong_no_den_han':
+      return dong({ vi: `${so} phiếu sắp đến hạn trả`, en: `${so} payments are due soon` }, '/noi-bo/kho/cong-no?loc=den_han', xem);
+    case 'chua_doi_chieu':
+      return dong({ vi: `${so} hóa đơn chưa đối chiếu`, en: `${so} invoices are not reconciled` },
+        '/noi-bo/kho/cong-no?loc=chua_doi_chieu', c({ vi: 'Đối chiếu', en: 'Reconcile' }));
+    case 'pha_nhap_lau':
+      return dong({ vi: `${so} phiên pha lóc để nháp hơn một ngày`, en: `${so} butchery sessions have been drafts for over a day` },
+        '/noi-bo/kho/pha-loc?loc=nhap', c({ vi: 'Mở', en: 'Open' }),
+        { vi: 'Chốt hoặc hủy để kiểm kê không bị chặn.', en: 'Close or cancel them so stocktakes are not blocked.' });
+    case 'yeu_cau_quay':
+      return dong({ vi: `${so} yêu cầu của quầy đang chờ`, en: `${so} counter requests are waiting` },
+        '/noi-bo/kho/quay/yeu-cau', c({ vi: 'Mang ra', en: 'Bring out' }),
+        { vi: 'Lấy hàng hạn gần trước.', en: 'Earliest use-by first.' });
+    case 'hang_dang_chuyen':
+      return dong({ vi: `${so} chuyến hàng đang mang ra quầy`, en: `${so} deliveries are on the way to the counter` },
+        '/noi-bo/kho/quay/nhan', c({ vi: 'Nhận hàng', en: 'Receive' }),
+        { vi: 'Kiểm hàng rồi bấm nhận từng chuyến.', en: 'Check the goods, then confirm each delivery.' });
+    case 'chuyen_nhan_thieu':
+      return dong({ vi: `${so} phiếu chuyển quầy nhận thiếu`, en: `${so} counter transfers were received short` },
+        '/noi-bo/kho/xuat?loc=dang_chuyen', c({ vi: 'Xử lý', en: 'Handle' }));
+    case 'thu_hoi_thap':
+      return dong({ vi: `${so} phiên pha lóc thu hồi thấp`, en: `${so} butchery sessions have a low yield` },
+        '/noi-bo/kho/pha-loc?loc=da_chot', xem,
+        { vi: 'Xem lại số cân từng phiên rồi bấm "Đã xem".', en: 'Check the weights of each session, then press "Seen".' });
+    case 'ipos_cho_xu_ly':
+      return dong({ vi: `${so} cảnh báo bán hàng iPOS`, en: `${so} iPOS sales warnings` }, '/noi-bo/kho/ban-ipos', c({ vi: 'Xử lý', en: 'Handle' }));
+    case 'ipos_mat_ket_noi':
+      return dong({ vi: `${so} cảnh báo kết nối iPOS`, en: `${so} iPOS connection warnings` }, '/noi-bo/kho/cai-dat/ipos', xem);
+    case 'dinh_muc_lech':
+      return dong({ vi: `${so} mặt hàng bếp dùng lệch định lượng`, en: `${so} items used by the kitchen are off the recipes` },
+        '/noi-bo/kho/bao-cao/dinh-muc', xem,
+        { vi: '7 ngày qua, so với số món bán trên iPOS.', en: 'Last 7 days, compared with the dishes sold on iPOS.' });
+    case 'don_dat_tre':
+      return dong({ vi: `${so} đơn đặt chưa thấy hàng về`, en: `${so} purchase orders have not arrived` },
+        '/noi-bo/kho/dat-hang?loc=dang_cho', xem,
+        { vi: 'Gọi nhà cung cấp hỏi lại; không giao nữa thì hủy đơn.', en: 'Call the suppliers to check; cancel orders that will not be delivered.' });
+    case 'tra_hang_cho_tien':
+      return dong({ vi: `${so} phiếu trả hàng chờ xác nhận tiền`, en: `${so} returns need the amount confirmed` },
+        '/noi-bo/kho/cong-no/tra-hang#cho-tien', c({ vi: 'Xác nhận tiền', en: 'Confirm amounts' }));
+    default:
+      return null;
+  }
+}
+
+/**
+ * Gom sự kiện thành dòng: khóa có ≥ NGUONG_GOM sự kiện (và gom được) thành một dòng, còn lại mỗi
+ * sự kiện một dòng. Dòng giữ thứ tự sự kiện đầu tiên của nó trong `ds` — trang tự xếp lại.
+ */
+export function gomSuKien(ds: SuKien[], nn: NgonNguNB = 'vi'): DongViec[] {
+  const theoKhoa = new Map<string, SuKien[]>();
+  for (const e of ds) theoKhoa.set(e.khoa, [...(theoKhoa.get(e.khoa) ?? []), e]);
+  const dong = (khoa: string, nhom: SuKien[], cau: CauSuKien): DongViec => {
+    const luc = nhom.map(e => e.luc).sort();
+    return { khoa, ds: nhom, cau, cuNhat: luc[0], moiNhat: luc[luc.length - 1], chuaDoc: nhom.some(e => !!e.chua_doc) };
+  };
+  const ra: DongViec[] = [];
+  const daGom = new Set<string>();
+  for (const e of ds) {
+    const nhom = theoKhoa.get(e.khoa)!;
+    const cauNhom = nhom.length >= NGUONG_GOM ? cauNhomSuKien(e.khoa, nhom, nn) : null;
+    if (!cauNhom) { ra.push(dong(e.khoa, [e], cauSuKien(e, nn))); continue; }
+    if (daGom.has(e.khoa)) continue;
+    daGom.add(e.khoa);
+    ra.push(dong(e.khoa, nhom, cauNhom));
+  }
+  return ra;
+}
+
 /** Sự kiện là "việc cần làm" (có nút làm ngay, không chỉ để biết). */
 export function laViec(e: SuKien): boolean {
   return cauSuKien(e).muc !== 'xam';

@@ -26,7 +26,7 @@ import { taoBoDem } from './kho-chung.mjs';
 import {
   MUC_KHO, THANH_DAY, THAO_TAC_NHANH, MUC_CRM, mucCuaVai, mucConCuaVai, thanhDayCuaVai, thaoTacCuaVai, soDo, dangO,
 } from '../../web/src/lib/kho/dieu-huong.ts';
-import { cauSuKien, KHOA_SU_KIEN } from '../../web/src/lib/kho/viec.ts';
+import { cauSuKien, KHOA_SU_KIEN, gomSuKien, cauNhomSuKien, KHOA_KHONG_GOM, NGUONG_GOM } from '../../web/src/lib/kho/viec.ts';
 import { docFormDienGia, chuSoSanhGia, cauCanhBaoGia } from '../../web/src/lib/kho/nhap.ts';
 import { QUY_TRINH } from '../../web/src/lib/kho/quy-trinh.ts';
 import {
@@ -173,6 +173,8 @@ await nhom('1 · MỌI LINK TRỎ TỚI TRANG CÓ THẬT', async () => {
     ref2: '00000000-0000-0000-0000-000000000002', ma: 'X-1', ten: 'Thăn', phu: 'kho', so: 3, luc: '2026-09-25T00:00:00Z' };
   for (const khoa of KHOA_SU_KIEN) {
     for (const phu of ['kho', 'quay']) kiem(`sự kiện ${khoa}`, cauSuKien({ ...mau, khoa, phu }).link);
+    const nhom = cauNhomSuKien(khoa, [1, 2, 3].map(() => ({ ...mau, khoa })));
+    if (nhom) kiem(`dòng gom ${khoa}`, nhom.link);
   }
   ok('Không có link nào dẫn tới trang không tồn tại', hong.length === 0, hong.join(' | '));
 });
@@ -227,8 +229,11 @@ await nhom('2 · MENU THEO VAI', async () => {
     ['cong_no', 'nhap', 'duyet'].every(ma => kt.some(m => m.ma === ma)));
   ok('Kế toán: không thấy Nhận hàng (kế toán không lập phiếu)', !kt.some(m => m.ma === 'nhan_hang'));
   ok('Kế toán: thanh đáy có Duyệt', thanhDayCuaVai('ke_toan').some(m => m.ma === 'duyet'));
-  ok('Kế toán: thao tác nhanh "Duyệt phiếu nhập"',
-    thaoTacCuaVai('ke_toan').some(t => t.link === '/noi-bo/kho/duyet'));
+  // 22/10/2026: Duyệt và Công nợ đã là nút thanh đáy của kế toán — thao tác nhanh không lặp lại.
+  ok('Kế toán: thao tác nhanh không trùng nút thanh đáy (Duyệt, Công nợ)',
+    !thaoTacCuaVai('ke_toan').some(t => thanhDayCuaVai('ke_toan').some(m => m.link === t.link))
+    && thaoTacCuaVai('ke_toan').some(t => t.link === '/noi-bo/kho/cong-no/misa'),
+    thaoTacCuaVai('ke_toan').map(t => t.link).join(', '));
   // Gọn menu 22/10/2026: 25 ô còn 15 — mục con (`cha`) không in trên menu, Nhận hàng ẩn với vai xem giá.
   ok('Chủ: thấy mọi ô menu — 15 ô, không mục con, không Nhận hàng',
     mucCuaVai('chu_so_huu').length === 15
@@ -355,6 +360,38 @@ await nhom('4 · THÔNG BÁO: KHÓA DATABASE ↔ CÂU CHỮ', async () => {
     cauSuKien({ ...mau, khoa: 'nhap_bi_tu_choi', ref_id: 'X1' }).link === '/noi-bo/kho/nhan-hang/X1');
   ok('Phiếu nhập chờ duyệt → mở trang điền giá',
     cauSuKien({ ...mau, khoa: 'cho_duyet_nhap', ref_id: 'X1' }).link.startsWith('/noi-bo/kho/nhap/X1'));
+
+  // Gom việc cùng loại (22/10/2026): từ NGUONG_GOM sự kiện cùng khóa thành một dòng có số đếm.
+  const sk = (khoa, i, them = {}) => ({ ...mau, khoa, ref_id: `R${i}`, ma: `M${i}`, luc: `2026-10-2${i}T01:00:00Z`, ...them });
+  ok('Ngưỡng gom là 3 sự kiện', NGUONG_GOM === 3);
+  ok('2 lô hết hạn: 2 dòng riêng, thấy số lô', gomSuKien([sk('het_han', 1), sk('het_han', 2)]).map(d => d.ds.length).join() === '1,1');
+  const ba = gomSuKien([sk('het_han', 1), sk('quay_duoi_muc', 2), sk('het_han', 3), sk('het_han', 4)]);
+  ok('3 lô hết hạn: một dòng "3 lô hết hạn", món quầy sắp hết vẫn riêng',
+    ba.length === 2 && ba[0].ds.length === 3 && ba[0].cau.tieuDe === '3 lô hết hạn' && ba[1].khoa === 'quay_duoi_muc',
+    ba.map(d => d.cau.tieuDe).join(' | '));
+  ok('Dòng gom dẫn tới trang đã lọc, cũ nhất / mới nhất đúng',
+    ba[0].cau.link === '/noi-bo/kho/ton?han=het_han' && ba[0].cuNhat === '2026-10-21T01:00:00Z' && ba[0].moiNhat === '2026-10-24T01:00:00Z');
+  ok('Dòng gom tiếng Anh', gomSuKien([1, 2, 3].map(i => sk('het_han', i)), 'en')[0].cau.tieuDe === '3 lots have expired');
+  ok('Dòng gom chưa đọc khi có một sự kiện chưa đọc',
+    gomSuKien([sk('het_han', 1), sk('het_han', 2, { chua_doc: true }), sk('het_han', 3)])[0].chuaDoc === true);
+  ok('Mức của dòng gom là mức gấp nhất (một chuyến quá giờ → đỏ)',
+    gomSuKien([sk('hang_dang_chuyen', 1), sk('hang_dang_chuyen', 2, { phu: 'qua_gio' }), sk('hang_dang_chuyen', 3)])[0].cau.muc === 'do');
+  ok('Nhà cung cấp đổi số tài khoản: không bao giờ gom (mỗi lần một dòng)',
+    KHOA_KHONG_GOM.includes('ncc_doi_tai_khoan')
+    && gomSuKien([1, 2, 3, 4].map(i => sk('ncc_doi_tai_khoan', i))).length === 4);
+  const thieuNhom = KHOA_SU_KIEN.filter(k => !KHOA_KHONG_GOM.includes(k) && !cauNhomSuKien(k, [1, 2, 3].map(i => sk(k, i))));
+  ok('Mọi khóa gom được đều có câu gom riêng', thieuNhom.length === 0, thieuNhom.join(', '));
+  const nhomNull = KHOA_SU_KIEN.flatMap(k => ['vi', 'en'].map(nn => [k, nn, cauNhomSuKien(k, [1, 2, 3].map(i => sk(k, i, { so: null, ten: null })), nn)]))
+    .filter(([, , c]) => c && (/null|undefined|NaN/.test(JSON.stringify(c)) || !c.tieuDe.startsWith('3 '))).map(([k, nn]) => `${k} ${nn}`);
+  ok('Câu gom hai thứ tiếng mở đầu bằng số đếm, không "null"', nhomNull.length === 0, nhomNull.join(', '));
+  const gongVi = KHOA_SU_KIEN.filter(k => !KHOA_KHONG_GOM.includes(k)).filter(k =>
+    cauNhomSuKien(k, [1, 2, 3].map(i => sk(k, i)), 'vi').tieuDe === cauNhomSuKien(k, [1, 2, 3].map(i => sk(k, i)), 'en').tieuDe);
+  ok('Câu gom tiếng Anh khác tiếng Việt', gongVi.length === 0, gongVi.join(', '));
+  // Luật gom có ở hai nơi: viec.ts và kho_dem_viec (0092) — số trên chuông = số dòng trang chuông.
+  const sql0092 = doc(join(THU_MUC_MIG, '0092_kho_chuong_gom_viec.sql'));
+  ok('Migration 0092 đếm chuông bằng đúng luật gom của viec.ts (ngưỡng, khóa không gom, 7 ngày)',
+    sql0092.includes(`g.tong >= ${NGUONG_GOM}`) && KHOA_KHONG_GOM.every(k => sql0092.includes(`g.khoa <> '${k}'`))
+    && sql0092.includes("interval '7 days'"));
 });
 
 // ===========================================================================

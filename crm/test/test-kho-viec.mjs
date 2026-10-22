@@ -303,6 +303,43 @@ await nhom('7 · CHƯA ĐỌC / ĐÃ ĐỌC', async () => {
 });
 
 // ===========================================================================
+// 0092: số chuông = số dòng của trang chuông có tin chưa đọc (7 ngày, gom ≥ 3 cùng loại) — web gom bằng
+// gomSuKien (viec.ts). Hai bên phải ra cùng một số, ở mọi vai.
+const { gomSuKien, NGAY_CHUONG } = await import('../../web/src/lib/kho/viec.ts');
+const soDongChuong = async uid => {
+  const v = (await duoi(uid, `select kho_thong_bao($1, 300) as v`, [cnA.id])).rows?.[0]?.v;
+  const tu = Date.now() - NGAY_CHUONG * 86400000;
+  const trong = (v?.su_kien ?? []).filter(e => { const t = new Date(e.luc).getTime(); return t >= tu && t <= Date.now(); });
+  return gomSuKien(trong).filter(d => d.chuaDoc).length;
+};
+await nhom('7b · SỐ CHUÔNG ĐẾM DÒNG ĐÃ GOM (0092)', async () => {
+  for (const [ten, u] of [['Thủ kho', UID.thuKhoA], ['Quản lý', UID.qlA], ['NV quầy', UID.nvQuayA], ['Kế toán', UID.keToanA]]) {
+    const soDatabase = (await demViec(u)).chua_doc;
+    const soWeb = await soDongChuong(u);
+    ok(`${ten}: số chuông database = số dòng chưa đọc web gom`, soDatabase === soWeb, `database ${soDatabase}, web ${soWeb}`);
+  }
+  // Thủ kho đã đọc ở nhóm 7, có đúng 1 tin mới (phiếu bị trả về). Thêm 3 phiếu bị trả về nữa: khóa đó
+  // thành một dòng gom → chuông vẫn 1, không phải 4.
+  for (let i = 0; i < 3; i++) {
+    const id = await guiPhieu(await luuPhieu([{ mat_hang_id: MH['T-THANNGOAI'].id, so_goi: 1, so_kg: 2,
+                                                han_dung: await ngaySau(20) }], viTri.kho));
+    await duoi(UID.qlA, `select kho_tu_choi_phieu_nhap($1, 'Thiếu ảnh')`, [id]);
+  }
+  let tk = await demViec(UID.thuKhoA);
+  ok('4 phiếu bị trả về chưa đọc → chuông 1 (một dòng gom)', tk.chua_doc === 1, `thấy ${tk.chua_doc}`);
+  ok('…và web cũng in đúng 1 dòng chưa đọc', (await soDongChuong(UID.thuKhoA)) === 1);
+  // Sự kiện ngoài 7 ngày không làm sáng chuông, dù chưa đọc.
+  await duoi(UID.thuKhoA, `select kho_da_xem_thong_bao($1)`, [cnA.id]);
+  await db.query(`update kho_nguoi_xem set thong_bao_xem_luc = now() - interval '20 days'
+                  where nhan_su_id = (select id from nhan_su where auth_uid = $1)`, [UID.thuKhoA]);
+  tk = await demViec(UID.thuKhoA);
+  ok('Mốc đã đọc lùi 20 ngày: chuông chỉ đếm dòng trong 7 ngày, khớp web',
+    tk.chua_doc === await soDongChuong(UID.thuKhoA), `database ${tk.chua_doc}`);
+  await duoi(UID.thuKhoA, `select kho_da_xem_thong_bao($1)`, [cnA.id]);
+  ok('Đọc lại → chuông 0', (await demViec(UID.thuKhoA)).chua_doc === 0);
+});
+
+// ===========================================================================
 await nhom('8 · NGƯỠNG CẢNH BÁO', async () => {
   const doc = async () => (await db.query(`select * from kho_cai_dat where chi_nhanh_id = $1`, [cnA.id])).rows[0];
   const r = await duoi(UID.qlA, `select kho_luu_nguong($1, '{"nguong_gia_mua_pt": 7.5, "gio_nhac_chuyen": 3}'::jsonb)`, [cnA.id]);

@@ -7,14 +7,15 @@
  * tượng và chữ "mới" cho lần xem này để biết dòng nào vừa tới.
  *
  * Sự kiện không lưu thành bảng — database suy ra từ chứng từ (0030), câu chữ ở
- * lib/kho/viec.ts. 30 ngày gần nhất.
+ * lib/kho/viec.ts. Từ 22/10/2026: chỉ NGAY_CHUONG (7) ngày gần nhất, sự kiện cùng loại từ 3 cái trở
+ * lên gom một dòng (gomSuKien) — số đỏ trên chuông đếm đúng số dòng có tin chưa đọc (migration 0092).
  */
 import Kho from '../../../layouts/Kho.astro';
 import BaoKho from '../../../components/kho/BaoKho.astro';
 import DongSuKien from '../../../components/kho/DongSuKien.astro';
 import { moTrangKho } from '../../../lib/kho/trang.ts';
 import { docThongBao, daXemThongBao } from '../../../lib/kho/thong-bao.ts';
-import { TEN_NHOM_NB, type NhomSuKien, type SuKien } from '../../../lib/kho/viec.ts';
+import { TEN_NHOM_NB, NGAY_CHUONG, gomSuKien, type NhomSuKien, type SuKien } from '../../../lib/kho/viec.ts';
 import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -28,20 +29,25 @@ let suKien: SuKien[] = [];
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   const r = await docThongBao(k.client, k.chiNhanh.id, 200, k.nn);
-  suKien = r.suKien;
+  // Cùng mốc với database (0092): luc trong NGAY_CHUONG ngày tới bây giờ.
+  const tu = Date.now() - NGAY_CHUONG * 86400000;
+  suKien = r.suKien.filter(e => { const t = new Date(e.luc).getTime(); return t >= tu && t <= Date.now(); });
   loiDoc = r.loi ?? loiDoc;
   if (!r.loi) {
     await daXemThongBao(k.client, k.chiNhanh.id);
     if (k.viec) k.viec.chua_doc = 0;   // chuông trên đầu trang hết số đỏ ngay lần này
   }
 }
-const dem = (n: NhomSuKien) => suKien.filter(e => e.nhom === n).length;
-const hien = chon ? suKien.filter(e => e.nhom === chon) : suKien;
+// Mới nhất lên trước. Số trên thẻ là số dòng (đã gom), như số trên chuông.
+const gom = (ds: SuKien[]) => gomSuKien(ds, k.nn).sort((a, b) => b.moiNhat.localeCompare(a.moiNhat));
+const dem = (n: NhomSuKien) => gom(suKien.filter(e => e.nhom === n)).length;
+const tatCa = gom(suKien);
+const hien = chon ? gom(suKien.filter(e => e.nhom === chon)) : tatCa;
 const t = dichNB(k.nn, {
   tieuDe: { vi: 'Thông báo', en: 'Notifications' },
   loc: { vi: 'Lọc thông báo', en: 'Filter notifications' },
   tatCa: { vi: 'Tất cả', en: 'All' },
-  khongCo: { vi: 'Không có thông báo nào trong 30 ngày qua.', en: 'No notifications in the last 30 days.' },
+  khongCo: { vi: `Không có thông báo nào trong ${NGAY_CHUONG} ngày qua.`, en: `No notifications in the last ${NGAY_CHUONG} days.` },
 });
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan="thong-bao">
@@ -49,7 +55,7 @@ const t = dichNB(k.nn, {
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
   <nav class="kho-the-chon" aria-label={t.loc}>
-    <a href="/noi-bo/kho/thong-bao" aria-current={chon === null ? 'page' : undefined}>{t.tatCa} · {suKien.length}</a>
+    <a href="/noi-bo/kho/thong-bao" aria-current={chon === null ? 'page' : undefined}>{t.tatCa} · {tatCa.length}</a>
     {NHOM.map(n => (
       <a href={`/noi-bo/kho/thong-bao?nhom=${n}`} aria-current={chon === n ? 'page' : undefined}>{TEN_NHOM_NB[n][k.nn]} · {dem(n)}</a>
     ))}
@@ -59,7 +65,7 @@ const t = dichNB(k.nn, {
     <p class="nb-rong">{t.khongCo}</p>
   ) : (
     <ul class="kho-sk-ds">
-      {hien.map(e => <DongSuKien e={e} hienChuaDoc />)}
+      {hien.map(d => <DongSuKien d={d} hienChuaDoc moc="moi" />)}
     </ul>
   )}
 </Kho>

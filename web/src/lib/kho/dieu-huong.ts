@@ -235,10 +235,9 @@ export const THAO_TAC_NHANH: Record<string, ThaoTac[]> = {
     { ten: { vi: 'Lập phiếu nhập', en: 'New goods receipt' }, link: '/noi-bo/kho/nhap/moi', bieuTuong: 'nhap', quyen: ['xem_gia'] },
     { ten: { vi: 'Báo hủy', en: 'Report write-off' }, link: '/noi-bo/kho/xuat/moi?loai=huy', bieuTuong: 'huy', quyen: ['van_hanh'] },
   ],
+  // Kế toán: Duyệt và Công nợ đã là nút thanh đáy / ô menu — bỏ hai nút trùng (22/10/2026).
   ke_toan: [
-    { ten: { vi: 'Duyệt phiếu nhập', en: 'Approve goods receipts' }, link: '/noi-bo/kho/duyet', bieuTuong: 'duyet', quyen: ['duyet_nhap'] },
     { ten: { vi: 'Đối chiếu hóa đơn', en: 'Reconcile invoices' }, link: '/noi-bo/kho/cong-no?loc=chua_doi_chieu', bieuTuong: 'viec', quyen: ['ke_toan'] },
-    { ten: { vi: 'Ghi thanh toán', en: 'Record payment' }, link: '/noi-bo/kho/cong-no', bieuTuong: 'cong_no', quyen: ['ke_toan'] },
     { ten: { vi: 'Tải công nợ (Excel)', en: 'Download payables (Excel)' }, link: '/noi-bo/kho/bao-cao/cong-no.csv', bieuTuong: 'bao_cao', quyen: ['ke_toan'] },
     { ten: { vi: 'Xuất sang MISA', en: 'Export to MISA' }, link: '/noi-bo/kho/cong-no/misa', bieuTuong: 'bao_cao', quyen: ['ke_toan'] },
   ],

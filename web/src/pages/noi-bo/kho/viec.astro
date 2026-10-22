@@ -8,13 +8,16 @@
  * ở trang Thông báo.
  *
  * NV quầy chỉ thấy việc ở quầy — database đã lọc (0030).
+ *
+ * Việc cùng loại từ 3 cái trở lên gom thành một dòng (gomSuKien, 22/10/2026): "9 lô hết hạn" dẫn tới
+ * Tồn kho đã lọc, thay cho chín thẻ.
  */
 import Kho from '../../../layouts/Kho.astro';
 import BaoKho from '../../../components/kho/BaoKho.astro';
 import DongSuKien from '../../../components/kho/DongSuKien.astro';
 import { moTrangKho } from '../../../lib/kho/trang.ts';
 import { docThongBao } from '../../../lib/kho/thong-bao.ts';
-import { cauSuKien, laViec, type SuKien } from '../../../lib/kho/viec.ts';
+import { gomSuKien, laViec, type SuKien } from '../../../lib/kho/viec.ts';
 import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -28,8 +31,9 @@ if (k.chiNhanh && k.daKhoiTao) {
   loiDoc = r.loi ?? loiDoc;
 }
 // Cũ nhất lên trước: việc tồn lâu nhất làm trước.
-const ngay = suKien.filter(e => cauSuKien(e, k.nn).muc === 'do').sort((a, b) => a.luc.localeCompare(b.luc));
-const som = suKien.filter(e => cauSuKien(e, k.nn).muc === 'vang').sort((a, b) => a.luc.localeCompare(b.luc));
+const dong = gomSuKien(suKien, k.nn).sort((a, b) => a.cuNhat.localeCompare(b.cuNhat));
+const ngay = dong.filter(d => d.cau.muc === 'do');
+const som = dong.filter(d => d.cau.muc === 'vang');
 const t = dichNB(k.nn, {
   tieuDe: { vi: 'Việc cần làm', en: 'To-do' },
   khongCo: { vi: 'Không có việc gì đang chờ. Tốt lắm!', en: 'Nothing is waiting. Well done!' },
@@ -48,13 +52,13 @@ const t = dichNB(k.nn, {
       {ngay.length > 0 && (
         <>
           <h2>{t.lamNgay} · {ngay.length}</h2>
-          <ul class="kho-sk-ds">{ngay.map(e => <DongSuKien e={e} />)}</ul>
+          <ul class="kho-sk-ds">{ngay.map(d => <DongSuKien d={d} />)}</ul>
         </>
       )}
       {som.length > 0 && (
         <>
           <h2>{t.nenLamSom} · {som.length}</h2>
-          <ul class="kho-sk-ds">{som.map(e => <DongSuKien e={e} />)}</ul>
+          <ul class="kho-sk-ds">{som.map(d => <DongSuKien d={d} />)}</ul>
         </>
       )}
     </>

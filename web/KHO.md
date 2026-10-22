@@ -111,6 +111,14 @@ gọi nó song song với danh sách chi nhánh, nên không thêm lượt chờ
 Sự kiện thông báo **không lưu thành bảng**. Hàm nội bộ `kho_su_kien` suy ra sự kiện từ chính
 chứng từ: phiếu bị trả về, lô hết hạn, nợ quá hạn… Nhờ vậy sự kiện không bao giờ lệch với sổ.
 `kho_thong_bao` trả 30 ngày gần nhất và đánh dấu `chua_doc` theo mốc `kho_nguoi_xem`.
+
+**Gom việc cùng loại (22/10/2026, migration 0092).** `gomSuKien` (`lib/kho/viec.ts`): khóa có ≥ `NGUONG_GOM`
+(3) sự kiện thành một dòng (`cauNhomSuKien`: "9 lô hết hạn", nút dẫn tới trang danh sách đã lọc — Tồn kho
+`?han=het_han`, Công nợ `?loc=qua_han`…), ít hơn thì từng dòng; `ncc_doi_tai_khoan` không bao giờ gom
+(`KHOA_KHONG_GOM`). Dùng ở Việc cần làm (30 ngày), trang chủ (chỉ "Làm ngay", tối đa 5 dòng) và chuông
+(`NGAY_CHUONG` = 7 ngày). Số đỏ trên chuông (`chua_doc` của `kho_dem_viec`, 0092) đếm đúng số dòng chuông có tin
+chưa đọc — đổi luật gom thì viết migration mới cho khớp (`test-kho-viec.mjs` nhóm 7b, `test-kho-giao-dien.mjs`
+nhóm 4 so hai bên).
 `kho_da_xem_thong_bao` dời mốc đó (mở trang chuông là đã đọc).
 
 Câu chữ và link "làm ngay" của từng khóa nằm ở `lib/kho/viec.ts` — sửa câu không cần viết
@@ -135,7 +143,7 @@ migration.
 |---|---|
 | `/noi-bo/kho` | Trang chủ **theo vai**: NV quầy "Quầy hôm nay" (hết hạn phải bỏ, **xếp ra bán trước**, quầy sắp hết); thủ kho "Việc hôm nay"; quản lý/chủ "Hôm nay" có thẻ `?tab=quan-tri` (chỉ số từ `kho_chi_so_quan_tri`); kế toán: công nợ |
 | `/noi-bo/kho/viec` | Việc cần làm: "Làm ngay" (đỏ) và "Nên làm sớm" (vàng), mỗi việc một nút |
-| `/noi-bo/kho/thong-bao` | Chuông: mọi sự kiện 30 ngày, chia thẻ Vận hành / Nhắc nhở / Hệ thống |
+| `/noi-bo/kho/thong-bao` | Chuông: sự kiện 7 ngày, gom cùng loại, chia thẻ Vận hành / Nhắc nhở / Hệ thống |
 | `/noi-bo/kho/duyet` | Hộp duyệt chung (quyền `duyet` hoặc `duyet_nhap`): phiếu nhập (điền giá rồi duyệt), báo hủy, kiểm kê — cũ nhất lên trước. Kế toán (`duyet_nhap`) chỉ thấy phiếu nhập. Duyệt xong quay về đây |
 | `/noi-bo/kho/nhan-hang` | Nhận hàng 3 bước của thủ kho (quyền `nhap`, **chỉ kg**, migration 0031): `moi` chụp hóa đơn + chọn người giao → `<id>` cân từng món → `<id>?buoc=gui` xem lại, gửi. Người có `nhap` mà không `xem_gia` mở `/noi-bo/kho/nhap/*` bị chuyển sang đây |
 | `/noi-bo/kho/nhap/<id>` | Vai xem giá. Người có `duyet_nhap` mở phiếu chờ duyệt → màn **điền giá**: ảnh hóa đơn lớn, ô đơn giá từng dòng, chip so với lần nhập trước (`kho_so_sanh_gia_nhap`, đỏ khi vượt `nguong_gia_mua_pt`), [Lưu giá] [Duyệt]. `?soan=1`: quản lý sửa cả dòng hàng |
