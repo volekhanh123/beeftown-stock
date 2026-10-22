@@ -11,6 +11,7 @@
  * bao nhiêu, còn bao nhiêu — đọc bằng kho_bao_cao_tang.
  */
 import Kho from '../../../../layouts/Kho.astro';
+import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import { cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, homNayVn, nhanKho } from '../../../../lib/kho/chung.ts';
@@ -77,6 +78,7 @@ const NHOM: TinhTrangU[] = ['san_sang', 'dang_u', 'chua_co_bang_u'];
 const theoNhom = NHOM.map(tt => ({ tt, ds: ds.filter(x => x.tinh_trang_u === tt) })).filter(x => x.ds.length);
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan="theo-tang">
+  <TheTrangCon k={k} cha="ton" />
   <h1>{t.tieuDe}</h1>
   <p class="kho-phu">{t.gioiThieu}</p>
   <p><a href="/noi-bo/kho/bao-cao/theo-tang">{t.baoCao}</a></p>

@@ -24,7 +24,7 @@ import { inflateSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
 import {
-  MUC_KHO, THANH_DAY, THAO_TAC_NHANH, MUC_CRM, mucCuaVai, thanhDayCuaVai, thaoTacCuaVai, soDo, dangO,
+  MUC_KHO, THANH_DAY, THAO_TAC_NHANH, MUC_CRM, mucCuaVai, mucConCuaVai, thanhDayCuaVai, thaoTacCuaVai, soDo, dangO,
 } from '../../web/src/lib/kho/dieu-huong.ts';
 import { cauSuKien, KHOA_SU_KIEN } from '../../web/src/lib/kho/viec.ts';
 import { docFormDienGia, chuSoSanhGia, cauCanhBaoGia } from '../../web/src/lib/kho/nhap.ts';
@@ -229,7 +229,45 @@ await nhom('2 · MENU THEO VAI', async () => {
   ok('Kế toán: thanh đáy có Duyệt', thanhDayCuaVai('ke_toan').some(m => m.ma === 'duyet'));
   ok('Kế toán: thao tác nhanh "Duyệt phiếu nhập"',
     thaoTacCuaVai('ke_toan').some(t => t.link === '/noi-bo/kho/duyet'));
-  ok('Chủ: thấy mọi ô', mucCuaVai('chu_so_huu').length === MUC_KHO.length);
+  // Gọn menu 22/10/2026: 25 ô còn 15 — mục con (`cha`) không in trên menu, Nhận hàng ẩn với vai xem giá.
+  ok('Chủ: thấy mọi ô menu — 15 ô, không mục con, không Nhận hàng',
+    mucCuaVai('chu_so_huu').length === 15
+    && mucCuaVai('chu_so_huu').length === MUC_KHO.filter(m => !m.cha && m.ma !== 'nhan_hang').length,
+    mucCuaVai('chu_so_huu').map(m => m.ma).join(', '));
+  ok('Chủ, quản lý không thấy ô Nhận hàng (ô Nhập hàng gồm nó); thủ kho thấy',
+    ['chu_so_huu', 'quan_ly'].every(v => !mucCuaVai(v).some(m => m.ma === 'nhan_hang')
+      && mucCuaVai(v).some(m => m.ma === 'nhap'))
+    && mucCuaVai('thu_kho').some(m => m.ma === 'nhan_hang'));
+  const chaLa = MUC_KHO.filter(m => m.cha && !MUC_KHO.some(c => c.ma === m.cha && !c.cha)).map(m => m.ma);
+  ok('Mục con nào cũng trỏ tới một ô menu có thật (không lồng hai tầng)', chaLa.length === 0, chaLa.join(', '));
+  const conKhongQuyen = MUC_KHO.filter(m => m.cha).filter(m => {
+    const cha = MUC_KHO.find(c => c.ma === m.cha);
+    return ['chu_so_huu', 'quan_ly', 'thu_kho', 'nhan_vien_quay', 'ke_toan']
+      .some(v => mucConCuaVai(v, m.cha).includes(m) && !cha.quyen.some(q => duoc(v, q)) && m.link !== cha.link);
+  }).map(m => m.ma);
+  ok('Vai thấy mục con thì cũng thấy ô cha (không có mục con mồ côi trên menu)',
+    conKhongQuyen.length === 0, conKhongQuyen.join(', '));
+  ok('Ô Quầy gồm cả hai đầu: yêu cầu của quầy và hàng đang mang ra (số đỏ cộng cả hai)',
+    soDo(MUC_KHO.find(m => m.ma === 'quay'), { yeu_cau_quay: 2, hang_dang_chuyen: 3 }) === 5
+    && mucConCuaVai('nhan_vien_quay', 'quay').map(m => m.ma).join() === 'yeu_cau_quay,nhan_quay');
+  ok('Ô Báo cáo mang số đỏ của Bán hàng iPOS và Định mức bếp',
+    soDo(MUC_KHO.find(m => m.ma === 'bao_cao'), { ipos_cho_xu_ly: 4, dinh_muc_lech: 1 }) === 5);
+  ok('Thao tác nhanh của chủ, quản lý chỉ là nút lập mới — không trùng ô menu',
+    !THAO_TAC_NHANH.quan_ly.some(t => MUC_KHO.some(m => !m.cha && m.link === t.link)),
+    THAO_TAC_NHANH.quan_ly.map(t => t.link).join(', '));
+  ok('Thao tác nhanh chỉ in ở trang chủ: cột trái (Kho.astro) và bản đồ chức năng không in',
+    !/thaoTacCuaVai/.test(doc(join(WEB, 'src', 'layouts', 'Kho.astro')))
+    && !/nhanh\.map/.test(doc(join(WEB, 'src', 'components', 'BanDoChucNang.astro')))
+    && /thaoTacCuaVai\(vai\)/.test(doc(join(TRANG, 'noi-bo', 'kho', 'index.astro'))));
+  // Mục con không có ô menu: trang cha và từng trang con có hàng thẻ để đi qua lại.
+  const theCon = { ton: ['ton', 'tang/index'], bao_cao: ['bao-cao/index', 'ban-ipos/index', 'bao-cao/dinh-muc'],
+    cai_dat: ['cai-dat/index', 'cai-dat/mat-hang', 'cai-dat/dinh-luong'],
+    huong_dan: ['huong-dan', 'quy-trinh', 'cai-dat/quyen'], quay: ['quay/yeu-cau/index', 'quay/nhan'] };
+  const thieuThe = Object.entries(theCon).flatMap(([cha, ds]) => ds.filter(f =>
+    !doc(join(TRANG, 'noi-bo', 'kho', `${f}.astro`)).includes(`<TheTrangCon k={k} cha="${cha}" />`)));
+  ok('Trang cha và trang con có hàng thẻ trang con (TheTrangCon)', thieuThe.length === 0, thieuThe.join(', '));
+  const chaCoCon = [...new Set(MUC_KHO.filter(m => m.cha).map(m => m.cha))].sort().join();
+  ok('Mọi ô có mục con đều có trang gắn hàng thẻ', chaCoCon === Object.keys(theCon).sort().join(), chaCoCon);
   ok('Vai lạ: chỉ Trang chủ và Khác, không lỗi', thanhDayCuaVai('thu_ngan').length <= 2);
 
   const quyenCo = new Set(Object.keys(QUYEN_KHO));
@@ -264,35 +302,37 @@ await nhom('3 · SỐ ĐỎ VÀ ĐÁNH DẤU MỤC ĐANG MỞ', async () => {
   ok('Tồn kho sáng ở /noi-bo/kho/ton', dangO(ton, '/noi-bo/kho/ton'));
   ok('Nhập hàng sáng khi mở một phiếu nhập',
     dangO(MUC_KHO.find(m => m.ma === 'nhap'), '/noi-bo/kho/nhap/abc'));
-  ok('Nhận hàng sáng khi mở một phiếu nhận hàng, Nhập hàng thì không',
+  // Cùng một lô hàng: thủ kho thấy ô Nhận hàng, chủ / quản lý thấy ô Nhập hàng — mở phiếu thủ kho đang cân thì
+  // ô của vai đó sáng (hai ô khớp dài bằng nhau, mỗi vai chỉ có một).
+  ok('Mở một phiếu nhận hàng: ô Nhận hàng và ô Nhập hàng cùng sáng',
     dangO(MUC_KHO.find(m => m.ma === 'nhan_hang'), '/noi-bo/kho/nhan-hang/abc')
-    && !dangO(MUC_KHO.find(m => m.ma === 'nhap'), '/noi-bo/kho/nhan-hang/abc'));
+    && dangO(MUC_KHO.find(m => m.ma === 'nhap'), '/noi-bo/kho/nhan-hang/abc'));
+  ok('Mở một phiếu nhập: ô Nhận hàng không sáng',
+    !dangO(MUC_KHO.find(m => m.ma === 'nhan_hang'), '/noi-bo/kho/nhap/abc'));
   ok('Số đỏ Nhận hàng = phiếu nháp + phiếu bị trả của chính mình',
     soDo(MUC_KHO.find(m => m.ma === 'nhan_hang'), { nhap_nhap: 2, nhap_bi_tra: 1 }) === 3);
   const oQuay = THANH_DAY.nhan_vien_quay.find(m => m.link.includes('vi_tri=quay'));
   ok('"Ở quầy" chỉ sáng khi có ?vi_tri=quay', dangO(oQuay, '/noi-bo/kho/ton', '?vi_tri=quay')
     && !dangO(oQuay, '/noi-bo/kho/ton', ''));
-  // GĐ7b: trang có ô riêng nằm dưới đường của ô khác — chỉ ô riêng sáng.
+  // Gọn menu 22/10/2026: mở một mục con thì ô cha sáng (ô cha gồm đường của mục con).
   const oMuc = ma => MUC_KHO.find(m => m.ma === ma);
-  ok('Mở Định mức bếp: ô "Định mức bếp" sáng, ô "Báo cáo" không',
-    dangO(oMuc('dinh_muc'), '/noi-bo/kho/bao-cao/dinh-muc') && !dangO(oMuc('bao_cao'), '/noi-bo/kho/bao-cao/dinh-muc'));
-  ok('Mở Định lượng món: ô "Định lượng món" sáng, ô "Thiết lập" không',
-    dangO(oMuc('dinh_luong'), '/noi-bo/kho/cai-dat/dinh-luong') && !dangO(oMuc('cai_dat'), '/noi-bo/kho/cai-dat/dinh-luong'));
-  // Mặt hàng có ô riêng ở cột trái (trước chỉ mở được qua Thiết lập): trang danh mục và màn sửa nhanh sáng ô đó.
-  ok('Mở Mặt hàng: ô "Mặt hàng" sáng, ô "Thiết lập" không',
-    dangO(oMuc('mat_hang'), '/noi-bo/kho/cai-dat/mat-hang') && !dangO(oMuc('cai_dat'), '/noi-bo/kho/cai-dat/mat-hang'));
-  ok('Mở Sửa nhanh mặt hàng: ô "Mặt hàng" sáng, ô "Thiết lập" không',
-    dangO(oMuc('mat_hang'), '/noi-bo/kho/cai-dat/mat-hang/sua-nhanh')
-    && !dangO(oMuc('cai_dat'), '/noi-bo/kho/cai-dat/mat-hang/sua-nhanh'));
-  // Ô sáng ở cả trang danh mục lẫn màn sửa nhanh, nên quyền của ô phải khớp dòng chặn của CẢ HAI trang.
-  ok('Ô "Mặt hàng" ở nhóm Thiết lập, cần quyền danh mục như dòng chặn đầu trang Mặt hàng và Sửa nhanh',
-    oMuc('mat_hang')?.nhom === 'thiet_lap' && oMuc('mat_hang')?.link === '/noi-bo/kho/cai-dat/mat-hang'
+  for (const [cha, duong] of [['bao_cao', '/noi-bo/kho/bao-cao/dinh-muc'], ['bao_cao', '/noi-bo/kho/ban-ipos'],
+    ['bao_cao', '/noi-bo/kho/ban-ipos/ghep'], ['cai_dat', '/noi-bo/kho/cai-dat/dinh-luong'],
+    ['cai_dat', '/noi-bo/kho/cai-dat/mat-hang'], ['cai_dat', '/noi-bo/kho/cai-dat/mat-hang/sua-nhanh'],
+    ['ton', '/noi-bo/kho/tang'], ['ton', '/noi-bo/kho/tang/abc'], ['huong_dan', '/noi-bo/kho/quy-trinh'],
+    ['quay', '/noi-bo/kho/quay/nhan'], ['quay', '/noi-bo/kho/quay/yeu-cau/abc'], ['quay', '/noi-bo/kho/quay/dem']]) {
+    const sang = MUC_KHO.filter(m => !m.cha && dangO(m, duong)).map(m => m.ma);
+    ok(`Mở ${duong}: chỉ ô "${oMuc(cha).ten.vi}" sáng`, sang.join() === cha, sang.join(', '));
+  }
+  // Ô sáng ở cả trang danh mục lẫn màn sửa nhanh, nên quyền của mục phải khớp dòng chặn của CẢ HAI trang.
+  ok('Mục "Mặt hàng" là mục con của Thiết lập, cần quyền danh mục như dòng chặn đầu trang Mặt hàng và Sửa nhanh',
+    oMuc('mat_hang')?.cha === 'cai_dat' && oMuc('mat_hang')?.link === '/noi-bo/kho/cai-dat/mat-hang'
     && JSON.stringify(oMuc('mat_hang')?.quyen) === JSON.stringify(['danh_muc'])
     && ['mat-hang.astro', join('mat-hang', 'sua-nhanh.astro')].every(f => /if \(!k\.duoc\('danh_muc'\)\) return Astro\.redirect/.test(
       readFileSync(join(TRANG, 'noi-bo', 'kho', 'cai-dat', f), 'utf8'))));
-  ok('Ô "Mặt hàng": chủ, quản lý thấy; thủ kho, NV quầy, kế toán không',
-    ['chu_so_huu', 'quan_ly'].every(v => mucCuaVai(v).some(m => m.ma === 'mat_hang'))
-    && ['thu_kho', 'nhan_vien_quay', 'ke_toan'].every(v => !mucCuaVai(v).some(m => m.ma === 'mat_hang')));
+  ok('Mục "Mặt hàng": chủ, quản lý thấy trong Thiết lập; thủ kho, NV quầy, kế toán không',
+    ['chu_so_huu', 'quan_ly'].every(v => mucConCuaVai(v, 'cai_dat').some(m => m.ma === 'mat_hang'))
+    && ['thu_kho', 'nhan_vien_quay', 'ke_toan'].every(v => !mucConCuaVai(v, 'cai_dat').some(m => m.ma === 'mat_hang')));
   ok('Trang con khác của Báo cáo / Thiết lập vẫn sáng ô cha',
     dangO(oMuc('bao_cao'), '/noi-bo/kho/bao-cao') && dangO(oMuc('cai_dat'), '/noi-bo/kho/cai-dat/nha-cung-cap'));
 });
@@ -897,9 +937,11 @@ await nhom('16 · AI LÀM ĐƯỢC GÌ · TRUNG TÂM BÁO CÁO ẨN THEO QUYỀN
   ok('Vai không dùng kho: câu riêng', tomTatVai('thu_ngan') === 'Thu ngân: không dùng kho.');
   ok('viecCuaVai theo đúng QUYEN_KHO', viecCuaVai('ke_toan').join() === viec.filter(v => duoc('ke_toan', v)).join());
   const oQuyen = MUC_KHO.find(m => m.link === '/noi-bo/kho/cai-dat/quyen');
-  ok('Ô menu "Ai làm được gì" cho mọi vai xem kho', !!oQuyen && oQuyen.quyen.join() === 'xem');
-  ok('Mở trang quyền: ô "Ai làm được gì" sáng, ô "Thiết lập" không',
-    dangO(oQuyen, '/noi-bo/kho/cai-dat/quyen') && !dangO(MUC_KHO.find(m => m.ma === 'cai_dat'), '/noi-bo/kho/cai-dat/quyen'));
+  ok('Mục "Ai làm được gì" cho mọi vai xem kho, nằm trong Hướng dẫn', !!oQuyen && oQuyen.quyen.join() === 'xem'
+    && oQuyen.cha === 'huong_dan');
+  ok('Mở trang quyền: ô "Hướng dẫn" sáng, ô "Thiết lập" không (dù đường nằm dưới /cai-dat)',
+    dangO(MUC_KHO.find(m => m.ma === 'huong_dan'), '/noi-bo/kho/cai-dat/quyen')
+    && !dangO(MUC_KHO.find(m => m.ma === 'cai_dat'), '/noi-bo/kho/cai-dat/quyen'));
 
   // --- Trung tâm báo cáo: mỗi thẻ ẩn theo quyền, khớp dòng chặn trang đích ---
   const hub = doc(join(TRANG, 'noi-bo/kho/bao-cao/index.astro'));

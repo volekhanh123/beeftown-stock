@@ -24,6 +24,7 @@
  *     Worker KHO_MAY_KHOA) và cách bật. Chỉ nói CÓ / KHÔNG, không in bí mật.
  */
 import Kho from '../../../../layouts/Kho.astro';
+import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong, khoiTaoKho } from '../../../../lib/kho/trang.ts';
 import { docCaiDat, docViTri, luuCaiDat, luuCaiDatGoc, type CaiDat, type ViTri } from '../../../../lib/kho/danh-muc.ts';
@@ -247,6 +248,7 @@ const mayChung: { bat: boolean; cau: string; cauEn?: string } | null =
   k.duoc('duyet') ? trangThaiMayChung(await docBiMatMay()) : null;
 ---
 <Kho k={k} huongDan="thiet-lap" tieuDe={t.tieuDe}>
+  <TheTrangCon k={k} cha="cai_dat" />
   <h1>{t.tieuDe}</h1>
   <p class="kho-phu" style="margin-top:0">{t.gioiThieu}</p>
   <BaoKho bao={bao} loiDoc={loiDoc} />

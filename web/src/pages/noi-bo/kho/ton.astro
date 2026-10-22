@@ -28,6 +28,7 @@
  * khung (container query), không theo màn hình.
  */
 import Kho from '../../../layouts/Kho.astro';
+import TheTrangCon from '../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../components/kho/BaoKho.astro';
 import BieuTuong from '../../../components/kho/BieuTuong.astro';
 import { moTrangKho } from '../../../lib/kho/trang.ts';
@@ -191,6 +192,7 @@ const conNgay = (t: DongTon) =>
 const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as const;
 ---
 <Kho k={k} huongDan="ton-kho" tieuDe={ch.tieuDe}>
+  <TheTrangCon k={k} cha="ton" />
   <h1>{ch.tieuDe}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 

@@ -195,25 +195,13 @@
 .kho-ben-muc[aria-current='page'] .kho-bt { color: var(--cuc-vang); }
 /* Vòng focus của dòng menu vẽ VÀO TRONG dòng: cột bên cuộn dọc (overflow) cắt mất hai mép của vòng vẽ ra ngoài,
    và vòng của dòng này đè lên dòng kề bên. Dòng đang chọn nền Charcoal nên vòng của nó là Marigold. */
-.kho-ben-muc:focus-visible, .kho-nhanh-ben a:focus-visible { outline-offset: -3px; }
+.kho-ben-muc:focus-visible { outline-offset: -3px; }
 .kho-ben-muc[aria-current='page']:focus-visible { outline-color: var(--cuc-vang); }
 /* Chuột (không phải ngón tay): dòng 36px để laptop 1366×768 thấy gần hết các nhóm. */
 @media (pointer: fine) {
   .kho-ben-muc { min-height: 36px; }
   .kho-ben-nhom { margin-top: .8rem; }
 }
-
-.kho-nhanh-ben { margin-top: 1.25rem; }
-.kho-nhanh-ben p {
-  margin: 0 0 .35rem; font-size: .7rem; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--muc-nhat);
-}
-.kho-nhanh-ben a {
-  display: flex; align-items: center; gap: .6rem; min-height: 44px; padding: 0 .6rem;
-  border-radius: 10px; text-decoration: none; font-size: .88rem; font-weight: 600; color: var(--than);
-}
-.kho-nhanh-ben a .kho-bt { color: var(--do); }
-.kho-nhanh-ben a:hover { background: var(--nb-the); }
 
 /* --- Thanh đáy (điện thoại, tablet) ----------------------------------------- */
 .kho-day {

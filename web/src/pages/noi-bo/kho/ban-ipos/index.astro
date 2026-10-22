@@ -17,6 +17,7 @@
  * trả dòng cho vai xem_gia; cột tiền chỉ hiện khi xem_gia.
  */
 import Kho from '../../../../layouts/Kho.astro';
+import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
@@ -127,6 +128,7 @@ const kgGoi = (d: DongIpos) => [
 const theDau = THE_DONG_NB[0].ma;
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan="ban-ipos" rong>
+  <TheTrangCon k={k} cha="bao_cao" />
   <h1>{t.tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 

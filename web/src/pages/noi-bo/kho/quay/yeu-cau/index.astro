@@ -12,6 +12,7 @@
  * và ma_gui. Không có JavaScript.
  */
 import Kho from '../../../../../layouts/Kho.astro';
+import TheTrangCon from '../../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../../components/kho/BaoKho.astro';
 import BieuTuong from '../../../../../components/kho/BieuTuong.astro';
 import ChonMatHang from '../../../../../components/kho/ChonMatHang.astro';
@@ -167,6 +168,7 @@ const dongThem = Array.from({ length: soDong }, (_, i) => ({
 const nhan = (tt: string) => ((x: [string, string]) => [x[0], x[1] || 'nhap'])(trangThaiKho(tt, nn));
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan={laQuay ? 'yeu-cau' : 'ra-quay'}>
+  <TheTrangCon k={k} cha="quay" />
   <h1>{choGui ? t.yeuCauRaQuay : t.tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 

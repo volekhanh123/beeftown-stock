@@ -17,6 +17,7 @@
  * quầy theo món. Để trống = kho lạnh. Dán Excel có cột "Sau pha để ở".
  */
 import Kho from '../../../../layouts/Kho.astro';
+import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import FormMatHang from '../../../../components/kho/FormMatHang.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
@@ -244,6 +245,7 @@ const ds = matHang.filter(m =>
 const coXemGia = k.duoc('xem_gia');
 ---
 <Kho k={k} huongDan="mat-hang" tieuDe={t.tieuDe} rong>
+  <TheTrangCon k={k} cha="cai_dat" />
   <h1>{t.tieuDe}</h1>
   <p><a href="/noi-bo/kho/cai-dat">{t.veThietLap}</a> · <a href="/noi-bo/kho/cai-dat/mat-hang/sua-nhanh">{t.suaNhanhLink}</a></p>
   <BaoKho bao={bao} loiDoc={loiDoc} />

@@ -33,11 +33,12 @@ Khung gồm:
   chuông có số chưa đọc, menu người dùng (các màn CRM mà vai đó được vào, Hướng dẫn, Đăng xuất).
 - **Màn ≥ 1024px**: cột trái — ô "Tìm chức năng" (gửi về trang Khác), rồi các mục **theo nhóm**
   (`NHOM_KHO`: Hằng ngày · Tồn kho · Mua và nhận hàng · Pha lóc, quầy, xuất · Tiền và báo cáo ·
-  Thiết lập và trợ giúp) có số đỏ, và "Thao tác nhanh" bên dưới. Dùng chuột thì dòng cao 36px,
-  ngón tay (iPad ngang) 44px.
+  Thiết lập và trợ giúp) có số đỏ. Dùng chuột thì dòng cao 36px, ngón tay (iPad ngang) 44px.
+  "Thao tác nhanh" (nút lập phiếu mới) chỉ ở trang chủ — từ 22/10/2026 cột trái và trang Khác không in
+  lặp lại; ô tìm vẫn tìm ra chúng. Chủ / quản lý chỉ có nút lập mới (Đặt hàng, Lập phiếu nhập, Báo hủy).
 - **Màn < 1024px**: thanh đáy 5 nút, nút giữa "Quét" nổi lên. Có chừa `safe-area` cho iPhone.
   Thanh nút lưu (`.kho-thanh-nut.dinh`) dính ngay trên thanh đáy.
-- **Trang Khác** (`/noi-bo/kho/khac`, nút cuối thanh đáy): ô tìm, thao tác nhanh, mọi mục theo
+- **Trang Khác** (`/noi-bo/kho/khac`, nút cuối thanh đáy): ô tìm, mọi ô theo
   nhóm, rồi "Phần khác của nhà hàng" (quản lý, chủ). Dữ liệu ở `lib/ban-do-chuc-nang.ts`, vẽ bằng
   `components/BanDoChucNang.astro` — dùng chung với `/noi-bo/chuc-nang` bên khung nhà hàng. Ô tìm là
   form GET, không JavaScript: chữ gõ không dấu so không dấu ("cong no" ra Công nợ), chữ có dấu so
@@ -52,9 +53,26 @@ Dữ liệu menu ở `lib/kho/dieu-huong.ts` (file thuần, test được bằng
 | Quản lý, Chủ | Hôm nay · Duyệt · Quét · Tồn kho · Khác |
 | Kế toán | Trang chủ · Duyệt · Công nợ · Nhập hàng · Khác (Báo cáo nằm trong Khác) |
 
+**Gọn menu (22/10/2026): 25 ô còn 15.** Trang ít mở hoặc là một góc của trang khác là **mục con**
+(`cha: '<mã ô>'` trong `MUC_KHO`): không in trên cột trái và trang Khác, nhưng ô tìm vẫn ra (kèm nhóm của
+ô cha), mở nó thì ô cha sáng (`dangO`: ô khớp đường dài nhất thắng), và trang cha cùng các trang con có
+hàng thẻ `components/kho/TheTrangCon.astro` (lớp `.kho-the-chon`) ngay trên `h1`:
+
+| Ô menu | Mục con (thẻ) |
+|---|---|
+| Tồn kho | Tảng · ủ |
+| Quầy (`/quay/yeu-cau`, số đỏ = yêu cầu chờ + hàng đang mang ra) | Quầy cần hàng · Nhận hàng ra quầy |
+| Báo cáo (số đỏ = Bán hàng iPOS + Định mức bếp) | Bán hàng iPOS · Định mức bếp |
+| Thiết lập | Mặt hàng · Định lượng món |
+| Hướng dẫn | Quy trình · Ai làm được gì (đường nằm dưới `/cai-dat` nhưng ô Thiết lập không sáng) |
+
+Ô **Nhận hàng** có `anKhiCo: ['xem_gia']`: chủ, quản lý không thấy nó — ô **Nhập hàng** của họ gồm cả
+`/nhan-hang` (`khop`). Thủ kho vẫn thấy Nhận hàng, kế toán vẫn thấy Nhập hàng. Mục con mới: thêm dòng có
+`cha`, thêm `<TheTrangCon k={k} cha="…" />` vào trang (`test-kho-giao-dien.mjs` nhóm 2 kiểm đủ trang).
+
 Mỗi ô ghi **quyền cần có** (`quyen`, cần một trong các quyền) — phải khớp với dòng chặn ở đầu
 trang đó. `test-kho-giao-dien.mjs` so hai chỗ này: không vai nào thấy một ô rồi bấm vào lại
-bị đá ra. Mỗi ô thuộc đúng một nhóm (`nhom`); từ khóa cho ô tìm ở `TU_KHOA_KHO`.
+bị đá ra. Mỗi ô thuộc đúng một nhóm (`nhom`), mục con không có nhóm; từ khóa cho ô tìm ở `TU_KHOA_KHO`.
 `test-noi-bo-dieu-huong.mjs` kiểm nhóm không thêm / bớt ô nào so với quyền, và ô tìm chỉ ra mục vai
 được thấy. Các màn nhà hàng trong menu người dùng (`MUC_CRM`) dựng từ `lib/dieu-huong-noi-bo.ts`.
 

@@ -16,6 +16,7 @@
  * là cặp { vi, en } trong huong-dan.ts — luôn đọc [nn].
  */
 import Kho from '../../../layouts/Kho.astro';
+import TheTrangCon from '../../../components/kho/TheTrangCon.astro';
 import { moTrangKho } from '../../../lib/kho/trang.ts';
 import {
   MUC_HUONG_DAN, NHOM_VAI, CAU_HOI, dinhDang, vaiHuongDan, nhomCua,
@@ -65,6 +66,7 @@ const khoi: Khoi[] = [
 const khoiKhac = theoNhom(conLai);
 ---
 <Kho k={k} tieuDe={t.tieuDe}>
+  <TheTrangCon k={k} cha="huong_dan" />
   <h1>{t.h1}</h1>
   <p class="nb-dan">{t.dan1}<strong>?</strong>{t.dan2}</p>
 

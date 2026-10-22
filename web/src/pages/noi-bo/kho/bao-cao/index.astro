@@ -20,6 +20,7 @@
  * mua-hang, so-thanh-toan, /noi-bo/kho/bao-cao/dinh-muc (GĐ7b), ncc (GĐ8a).
  */
 import Kho from '../../../../layouts/Kho.astro';
+import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import ChonKy from '../../../../components/kho/ChonKy.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
@@ -122,6 +123,7 @@ const kg = (n: number) => (n === 0 ? '0' : dinhDangKg(n, nn));
 const tien = (n: number) => dinhDangTien(n, nn);
 ---
 <Kho k={k} huongDan="bao-cao" tieuDe={t.tieuDe} rong>
+  <TheTrangCon k={k} cha="bao_cao" />
   <h1>{t.tieuDe}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 

@@ -10,7 +10,7 @@
  */
 import BieuTuong from './kho/BieuTuong.astro';
 import OTimChucNang from './OTimChucNang.astro';
-import type { ChucNang, KetQuaTim, NhomChucNang } from '../lib/ban-do-chuc-nang.ts';
+import type { KetQuaTim, NhomChucNang } from '../lib/ban-do-chuc-nang.ts';
 import { soDo, nhanSo, type SoViec } from '../lib/kho/dieu-huong.ts';
 import { dichNB, type NgonNguNB } from '../lib/ngon-ngu-noi-bo.ts';
 
@@ -19,14 +19,13 @@ interface Props {
   /** Trang của form tìm (chính trang đang mở). */
   hanhDong: string;
   nhom: NhomChucNang[];
-  nhanh: ChucNang[];
   /** Chữ đang tìm (đã làm sạch); '' = không tìm. */
   tim: string;
   ketQua: KetQuaTim[];
   /** Số đỏ của kho (kho_dem_viec); null = không có số. */
   viec?: SoViec | null;
 }
-const { nn, hanhDong, nhom, nhanh, tim, ketQua, viec = null } = Astro.props;
+const { nn, hanhDong, nhom, tim, ketQua, viec = null } = Astro.props;
 const t = dichNB(nn, {
   coKetQua: {
     vi: (n: number, q: string) => `${n} chức năng khớp “${q}”`,
@@ -37,7 +36,6 @@ const t = dichNB(nn, {
     en: (q: string) => `No feature matches “${q}”. Try a shorter word.`,
   },
   xemTatCa: { vi: 'Xem tất cả chức năng', en: 'See all features' },
-  thaoTacNhanh: { vi: 'Thao tác nhanh', en: 'Quick actions' },
   soViec: { vi: (n: number) => `${n} việc`, en: (n: number) => `${n} to do` },
 });
 const dangTim = tim !== '';
@@ -68,14 +66,6 @@ const dangTim = tim !== '';
   </section>
 ) : (
   <>
-    {nhanh.length > 0 && (
-      <section class="bd-nhom" aria-labelledby="bd-nhanh">
-        <h2 id="bd-nhanh">{t.thaoTacNhanh}</h2>
-        <div class="bd-nhanh">
-          {nhanh.map(x => <a class="nb-nut phu" href={x.link}><BieuTuong ten={x.bieuTuong} co={20} /><span>{x.ten[nn]}</span></a>)}
-        </div>
-      </section>
-    )}
     {nhom.map(n => (
       <section class="bd-nhom" aria-labelledby={`bd-${n.ma}`}>
         <h2 id={`bd-${n.ma}`}>{n.ten[nn]}</h2>

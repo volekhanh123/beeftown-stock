@@ -5,10 +5,9 @@
  *   · Thanh trên: logo · chi nhánh · "?" hướng dẫn · chuông có số chưa đọc ·
  *     menu người dùng (chứa "Đăng xuất" — không để nút đăng xuất trần ngay dưới
  *     ngón tay ướt của thủ kho nữa).
- *   · Máy tính (≥1024px): cột trái — ô "Tìm chức năng", rồi các mục theo nhóm
- *     (NHOM_KHO: Hằng ngày, Tồn kho, Mua và nhận hàng…) có số đỏ, dưới là
- *     "Thao tác nhanh". Nội dung bên phải. Bản cũ là 23 ô liền một dải: laptop
- *     1366×768 chỉ thấy 14 ô, Công nợ / Báo cáo / Thiết lập nằm dưới mép màn hình.
+ *   · Máy tính (≥1024px): cột trái — ô "Tìm chức năng", rồi các ô theo nhóm
+ *     (NHOM_KHO: Hằng ngày, Tồn kho, Mua và nhận hàng…) có số đỏ. Nội dung bên phải.
+ *     "Thao tác nhanh" chỉ ở trang chủ — cột trái từng in lặp lại (gọn menu 22/10/2026).
  *   · Điện thoại / tablet (<1024px): thanh 5 nút dính đáy, theo từng vai.
  *   · Điện thoại (≤640px): "Đổi chi nhánh" của chủ nằm trong menu người dùng — đặt
  *     trên thanh trên thì đè lên chữ "Kho" và tên chi nhánh đang xem.
@@ -34,7 +33,7 @@ import '../styles/kho-khung.css';
 import BieuTuong from '../components/kho/BieuTuong.astro';
 import type { TrangKho } from '../lib/kho/trang.ts';
 import {
-  nhomCuaVai, thanhDayCuaVai, thaoTacCuaVai, soDo, dangO, nhanSo, MUC_CRM,
+  nhomCuaVai, thanhDayCuaVai, soDo, dangO, nhanSo, MUC_CRM,
 } from '../lib/kho/dieu-huong.ts';
 import OTimChucNang from '../components/OTimChucNang.astro';
 import { TEN_VAI_KHO_NB } from '../lib/kho/chung.ts';
@@ -77,7 +76,6 @@ const t = dichNB(nn, {
   goToi: { vi: 'Gỡ tôi khỏi máy này', en: 'Remove me from this tablet' },
   dangXuat: { vi: 'Đăng xuất', en: 'Log out' },
   cacMuc: { vi: 'Các mục kho', en: 'Inventory sections' },
-  thaoTacNhanh: { vi: 'Thao tác nhanh', en: 'Quick actions' },
   menuChinh: { vi: 'Menu chính', en: 'Main menu' },
   soViec: { vi: (n: number) => `${n} việc`, en: (n: number) => `${n} to do` },
 });
@@ -98,7 +96,6 @@ const cheDoMay = laCheDoMay(vai, k.may);
 
 const cot = nhomCuaVai(vai);
 const day = thanhDayCuaVai(vai);
-const nhanh = thaoTacCuaVai(vai);
 const crm = cheDoMay ? [] : MUC_CRM.filter(m => m.vai.includes(vai));
 const chuaDoc = typeof k.viec?.chua_doc === 'number' ? (k.viec.chua_doc as number) : 0;
 const linkHuongDan = `/noi-bo/kho/huong-dan${huongDan ? `#${huongDan}` : ''}`;
@@ -236,12 +233,6 @@ const doiChiNhanh = (vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k
             </ul>
           </>
         ))}
-        {nhanh.length > 0 && (
-          <div class="kho-nhanh-ben">
-            <p>{t.thaoTacNhanh}</p>
-            {nhanh.map(x => <a href={x.link}><BieuTuong ten={x.bieuTuong} co={18} />{x.ten[nn]}</a>)}
-          </div>
-        )}
       </nav>
 
       <main id="noi-dung" class:list={['nb-chinh', 'kho-chinh', { rong }]}>

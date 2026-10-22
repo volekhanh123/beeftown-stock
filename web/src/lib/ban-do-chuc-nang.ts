@@ -11,8 +11,9 @@
  *     người dùng của layouts/Kho.astro.
  *
  * Ô TÌM chạy trên máy chủ (GET ?tim=), không JavaScript — trang kho phải chạy đủ khi
- * tắt JS (test-kho-giao-dien mục 8). Tìm trong tên hai thứ tiếng và từ khóa của mục,
- * cộng thao tác nhanh của vai. Mỗi chữ gõ vào khớp ĐẦU một từ, và một mục chỉ ra khi:
+ * tắt JS (test-kho-giao-dien mục 8). Tìm trong tên hai thứ tiếng và từ khóa của mục, cộng
+ * mục con của kho (không in trên trang — Tảng · ủ, Mặt hàng…) và thao tác nhanh của vai (chỉ in
+ * ở trang chủ kho). Mỗi chữ gõ vào khớp ĐẦU một từ, và một mục chỉ ra khi:
  *   · mọi chữ nằm trong TÊN mục (thứ tự nào cũng được), hoặc
  *   · các chữ đứng LIỀN NHAU, đúng thứ tự, trong tên hay từ khóa — như gõ một cụm:
  *     "tra tien" ra Công nợ (từ khóa "trả tiền").
@@ -32,7 +33,7 @@
 import type { HaiThuTieng } from './ngon-ngu-noi-bo.ts';
 import type { TenBieuTuong } from './kho/bieu-tuong.ts';
 import { MUC_NOI_BO, NHOM_NOI_BO, mucNoiBoCuaVai } from './dieu-huong-noi-bo.ts';
-import { nhomCuaVai, thaoTacCuaVai, TU_KHOA_KHO, MUC_CRM } from './kho/dieu-huong.ts';
+import { nhomCuaVai, mucConCuaVai, thaoTacCuaVai, TU_KHOA_KHO, MUC_CRM } from './kho/dieu-huong.ts';
 import { boDau } from './kho/chung.ts';
 
 export interface ChucNang {
@@ -48,6 +49,8 @@ export interface NhomChucNang {
   ma: string;
   ten: HaiThuTieng;
   muc: ChucNang[];
+  /** Mục con của các mục trong nhóm (kho, dieu-huong.ts `cha`): không in, chỉ để ô tìm ra. */
+  con?: ChucNang[];
 }
 
 export interface KetQuaTim {
@@ -68,6 +71,8 @@ function nhomKho(vai: string, tienTo: boolean): NhomChucNang[] {
     ma: `kho_${n.ma}`,
     ten: tienTo ? { vi: TIEN_TO_KHO.vi + n.ten.vi, en: TIEN_TO_KHO.en + n.ten.en } : n.ten,
     muc: n.muc.map(m => ({ ten: m.ten, link: m.link, bieuTuong: m.bieuTuong, dem: m.dem, tuKhoa: TU_KHOA_KHO[m.ma] })),
+    con: n.muc.flatMap(m => mucConCuaVai(vai, m.ma))
+      .map(m => ({ ten: m.ten, link: m.link, bieuTuong: m.bieuTuong, dem: m.dem, tuKhoa: TU_KHOA_KHO[m.ma] })),
   }));
 }
 
@@ -106,7 +111,7 @@ export function banDoChucNang(
   return [...nhomNhaHang(vai), ...nhomKho(vai, true)];
 }
 
-/** Thao tác nhanh của vai (nút tạo phiếu mới…), dạng ChucNang để in và để tìm. */
+/** Thao tác nhanh của vai (nút tạo phiếu mới…), dạng ChucNang để tìm. */
 export function thaoTacNhanhChucNang(vai: string): ChucNang[] {
   return thaoTacCuaVai(vai).map(t => ({ ten: t.ten, link: t.link, bieuTuong: t.bieuTuong }));
 }
@@ -162,7 +167,7 @@ export function timChucNang(nhom: NhomChucNang[], nhanh: ChucNang[], chuTim: str
     daCo.add(muc.link).add(tenVi);
     ra.push({ muc, nhom: tenNhom, diem: trongTen ? 0 : 1 });
   };
-  for (const n of nhom) for (const m of n.muc) xet(m, n.ten);
+  for (const n of nhom) for (const m of [...n.muc, ...(n.con ?? [])]) xet(m, n.ten);
   for (const m of nhanh) xet(m, NHOM_NHANH);
   return ra.sort((a, b) => a.diem - b.diem).map(({ muc, nhom }) => ({ muc, nhom }));
 }
