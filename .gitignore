@@ -73,6 +73,27 @@
 !/can-app/test/*.ts
 !/can-app/scripts/*.ts
 
+# --- ĐƯỢC PHÉP: Mini App Zalo (bán thịt mang về, đơn gửi vào chat Zalo OA) ---
+# Mở từng file và từng đuôi trong src/, như can-app. KHÔNG BAO GIỜ mở .env: file đó có ZMP_TOKEN
+# (khóa đăng nhập zmp-cli) — mục "Thư viện cài bằng npm" bên dưới chặn .env ở mọi cấp.
+# www/ (bản build) và node_modules/ vẫn bị chặn. Ảnh PNG mở ở cuối file (phải đứng sau *.png).
+!/mini-app/.gitignore
+!/mini-app/.gitattributes
+!/mini-app/CLAUDE.md
+!/mini-app/README.md
+!/mini-app/package.json
+!/mini-app/package-lock.json
+!/mini-app/tsconfig.json
+!/mini-app/vite.config.mts
+!/mini-app/app-config.json
+!/mini-app/zmp-cli.json
+!/mini-app/index.html
+!/mini-app/dua-len-zalo.cmd
+!/mini-app/src/**/*.ts
+!/mini-app/src/**/*.tsx
+!/mini-app/src/**/*.css
+!/mini-app/scripts/*.ts
+
 # --- ĐƯỢC PHÉP: ứng dụng web (Astro + Cloudflare Workers) ---
 # Mở theo ĐUÔI FILE chứ không mở cả thư mục. Nhờ vậy file mật thêm vào web/
 # sau này (xlsx, pdf, ảnh chụp) vẫn tự động bị chặn ở mục bên dưới — đúng
@@ -143,6 +164,7 @@ Du lieu nghien cuu/
 web/dist/
 web/.astro/
 web/.wrangler/
+mini-app/www/
 .wrangler/
 # Ảnh chụp và kết quả khi kiểm thử trình duyệt hỏng — CI tải lên làm artifact, không commit.
 web/kiem-tra/anh-loi/
@@ -159,6 +181,12 @@ node_modules/
 # web/public/bieu-tuong.svg. Chỉ mở đúng thư mục này; ảnh khác vẫn bị chặn.
 # Dòng này BẮT BUỘC đứng sau *.png ở trên, nếu không sẽ bị chặn.
 !/web/public/kho/*.png
+
+# Ảnh của Mini App Zalo: logo và đầu bò trong app (src/assets/), biểu tượng 512 × 512, banner
+# 1920 × 1080 và ảnh chụp màn hình nộp Mini App Center (tai-lieu/). Dòng BẮT BUỘC đứng sau *.png.
+!/mini-app/src/assets/*.png
+!/mini-app/tai-lieu/*.png
+!/mini-app/tai-lieu/anh-chup/*.png
 
 # Mẫu biến môi trường — CHỈ chứa TÊN biến, không chứa khóa thật.
 # Dòng này BẮT BUỘC đứng sau .env.* ở trên, nếu không sẽ bị chặn.

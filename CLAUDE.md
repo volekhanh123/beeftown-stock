@@ -11,6 +11,7 @@ rà soát" *sau khi* tính năng đã gộp. Mục tiêu: chặn chúng *trướ
 | `web/` | Website Astro trên Cloudflare Workers: trang công khai vi/en/ko, `/noi-bo`, kho, Zalo, Messenger, iPOS | `web/README.md`, `web/KHO.md` |
 | `crm/` | Database Supabase (`supabase/migrations/`) và **toàn bộ kiểm thử** (`test/`, chạy trên PGlite) | `crm/README.md` |
 | `can-app/` | Beeftown Cân (Windows `.exe`, Bun): gửi giá xuống cân TMA, máy quầy | `can-app/README.md` |
+| `mini-app/` | Mini App Zalo (React, zmp-cli): khách chọn khay thịt mang về, đơn mở sẵn trong chat Zalo OA. Không máy chủ, không database, `package.json` và lệnh đưa lên riêng | `mini-app/CLAUDE.md`, `mini-app/README.md` |
 
 Bảng màu thương hiệu đã chốt, giá trị đã áp dụng và thứ còn mang màu cũ (Beeftown Cân, ảnh hướng dẫn kho): `THUONG-HIEU.md`. Codex và các agent khác đọc `AGENTS.md` (cùng quy trình này).
 
@@ -33,6 +34,7 @@ npm run kiem-migration              # gác số migration (so với origin/main)
 npm run so-migration                # số migration kế tiếp — tính trên MỌI nhánh origin/*
 cd ../can-app && npx bun test/thu.ts                     # Beeftown Cân
 cd ../web && npx astro check && npm run quet && npm run thu-trinh-duyet -- --khong-build   # quet vừa build (không database)
+cd ../mini-app && npm ci && npm run kiem-tra && npx tsc --noEmit && npx vite build       # Mini App Zalo
 ```
 
 File test mới tên `crm/test/test-<khu>-<ten>.mjs` **tự được chạy** — không sửa `package.json`.
@@ -121,7 +123,8 @@ Mỗi tính năng hoặc bản sửa phải trả lời đủ 9 mục trong mô 
 | 00:30 giờ VN mỗi đêm | quét chữ cấm trên beeftown.vn thật; toàn bộ với `TZ=Asia/Ho_Chi_Minh` khi main có commit trong 48 giờ qua, đêm Chủ nhật, đêm đầu / cuối tháng, hoặc không hỏi được GitHub (job `co-doi`). Cổng deploy bỏ qua lượt đêm không kiểm mã (`web/kiem-tra/ket-qua-ci.mjs`) | ~1 phút / ~10 phút |
 | 02:00 giờ VN mỗi đêm; chạy tay | `sao-luu.yml`: sao lưu database (`crm/sao-luu/`) → mã hoá → artifact 30 ngày → khôi phục thử vào Supabase dựng tạm → ghi `he_thong_sao_luu` (đèn "Sao lưu dữ liệu"). Secret `SAO_LUU_DB_URL`, `SAO_LUU_MAT_KHAU` (README gốc, "Sao lưu và khôi phục") | ~5–10 phút |
 | Main hoặc PR đổi `can-app/`, `web/src/lib/`; chạy tay (gõ số PR) | `dong-goi-can.yml`: kiểm thử Beeftown Cân rồi đóng gói `BeeftownCan.exe` → artifact, Release khi `PHIEN_BAN` mới, bản cài lên kho công khai `beeftown-can-ban-cai` cho nút Cập nhật (secret `TOKEN_BAN_CAI_CAN`) (PR: chỉ đóng gói thử, không tải lên) | ~1 phút |
-| Đầu mỗi tháng | `dependabot.yml`: PR nâng thư viện `web/`, `crm/`, `can-app/` và action — bản nhỏ gom một PR mỗi thư mục, bản lớn PR riêng. CI xanh mới gộp | — |
+| Main hoặc PR đổi `mini-app/`; chạy tay | `mini-app.yml`: Mini App Zalo — kiểm tra đơn, tsc, build (không có `.env`, không đưa lên Zalo). Chữ cấm trên chữ của Mini App quét trong `kiem-thu.yml` (`crm/test/test-mini-app-chu.mjs`) | ~1 phút |
+| Đầu mỗi tháng | `dependabot.yml`: PR nâng thư viện `web/`, `crm/`, `can-app/`, `mini-app/` và action — bản nhỏ gom một PR mỗi thư mục, bản lớn PR riêng. CI xanh mới gộp | — |
 
 Kết quả: tab Actions → lượt chạy → **Summary** (bảng từng file, số migration kế tiếp).
 CI chạy Node 24 (`web/.node-version`); máy cần Node ≥ 22.18 để đọc thẳng file `.ts`.
