@@ -117,4 +117,3 @@ export function Muc({ tieuDe, children }: { tieuDe: string; children: ReactNode 
     </section>
   );
 }
-
