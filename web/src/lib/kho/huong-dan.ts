@@ -582,8 +582,8 @@ export const MUC_HUONG_DAN: MucHuongDan[] = [
     buoc: [
       { vi: 'Bấm **Kiểm kê** → chọn kho lạnh hoặc quầy → bấm **Bắt đầu đếm**.',
         en: 'Press **Stocktake** → choose the cold store or the counter → press **Start counting**.' },
-      { vi: 'Quét nhãn cân rồi bấm **Đọc mã và ghi số đếm** là nhanh nhất; hoặc gõ số gói / số kg từng món.',
-        en: 'Fastest: scan the scale labels and press **Read codes and enter counts**; or type the packs / kg for each item.' },
+      { vi: 'Nhanh nhất: mở **Quét nhãn cân để điền số**, quét rồi bấm **Đọc mã và ghi số đếm**; hoặc gõ số gói / số kg từng món.',
+        en: 'Fastest: open **Scan scale labels to fill in the counts**, scan, then press **Read codes and enter counts**; or type the packs / kg for each item.' },
       { vi: 'Món hết thật thì ghi 0. Thấy món không có trong danh sách: mở **Thấy mặt hàng không có trong danh sách**.',
         en: 'If an item has really run out, enter 0. Found an item that is not on the list? Open **Found an item that is not on the list**.' },
       { vi: 'Đếm dở phải đi: bấm **Lưu số đếm**.',

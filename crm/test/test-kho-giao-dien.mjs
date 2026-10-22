@@ -1041,4 +1041,35 @@ await nhom('16 · AI LÀM ĐƯỢC GÌ · TRUNG TÂM BÁO CÁO ẨN THEO QUYỀN
   ok('Theo tháng: cột tiền theo coGia', /const coGia = k\.duoc\('xem_gia'\)/.test(thang) && /dinhNghiaTheoThang\(coGia\)/.test(thang));
 });
 
+// ===========================================================================
+await nhom('17 · GỌN PHẦN TỒN KHO (Khánh duyệt 22/10/2026)', async () => {
+  const ton = doc(join(TRANG, 'noi-bo/kho/ton.astro'));
+  ok('Tồn kho: mỗi món gập một dòng; chỉ mở sẵn khi lọc theo hạn hoặc ≤ 3 món',
+    /const moSan = nhom\.length <= 3 \|\| han !== '';/.test(ton) && /<details class="kho-mh" open=\{moSan\}>/.test(ton));
+  ok('Tồn kho: dòng món không in mã · loại · nhóm, chỉ số lô',
+    /<small>\{ch\.soLo\(g\.so_lo\)\}<\/small>/.test(ton) && !/g\.ma_hang/.test(ton));
+  ok('Tồn kho: bảng lô không có cột giá vốn/kg, không có chữ "pha lóc / nhập dd/mm" dưới mã lô',
+    !/\.gia_von_kg/.test(ton) && !/nguonLo|ngay_dong_goi/.test(ton));
+  ok('Tồn kho: vẫn có tổng giá trị cho vai xem giá ở dòng đầu', /coGia && <> · \{ch\.giaTri\}/.test(ton));
+
+  const tang = doc(join(TRANG, 'noi-bo/kho/tang/index.astro'));
+  const bangTang = tang.slice(tang.indexOf('theoNhom.map'), tang.indexOf('</table>', tang.indexOf('theoNhom.map')));
+  ok('Tảng · ủ: bảng tảng còn 5 cột (Số tảng · Món · Tuổi · Ủ xong · Kg)', (bangTang.match(/<th\b/g) ?? []).length === 5,
+    `${(bangTang.match(/<th\b/g) ?? []).length} cột`);
+  ok('Tảng · ủ: chỗ để chỉ ghi khi khác chỗ của đa số tảng', /x\.vi_tri !== noiChinh/.test(tang));
+
+  const theKho = doc(join(TRANG, 'noi-bo/kho/the-kho/[mat_hang_id].astro'));
+  const dauBang = theKho.slice(theKho.indexOf('<thead>'), theKho.indexOf('</thead>'));
+  ok('Thẻ kho: nhập / xuất / tồn gộp một cột kg (và một cột gói) — 7 cột',
+    (dauBang.match(/<th\b/g) ?? []).length === 7 && /t\.cotKg/.test(dauBang) && !/nhapKg|xuatKg/.test(theKho),
+    `${(dauBang.match(/<th\b/g) ?? []).length} cột`);
+
+  const kk = doc(join(TRANG, 'noi-bo/kho/kiem-ke/[id].astro'));
+  ok('Kiểm kê: thẻ tiến độ chỉ "Đã đếm x/y" — không liệt kê tên món chưa đếm', !/chuaDemHai|chuaDem\.slice/.test(kk));
+  ok('Kiểm kê: phần quét nhãn gập trong <details>', /<details class="nb-the kk-quet">[\s\S]{0,200}<QuetMa/.test(kk));
+  ok('Kiểm kê: mỗi món một hàng gọn, vẫn đủ ô số gói, kg, "Đã hết thật"',
+    /class:list=\{\['kk-dong'/.test(kk) && /name=\{`k\$\{i\}_goi`\}/.test(kk) && /name=\{`k\$\{i\}_kg`\}/.test(kk)
+    && /name=\{`k\$\{i\}_het`\}/.test(kk));
+});
+
 process.exit(ketThuc('KHUNG GIAO DIỆN'));

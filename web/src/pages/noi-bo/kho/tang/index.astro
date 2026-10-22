@@ -38,12 +38,11 @@ const t = dichNB(nn, {
   },
   so: { vi: 'Số tảng', en: 'Primal no.' },
   mon: { vi: 'Món', en: 'Item' },
-  ngayMo: { vi: 'Ngày mổ', en: 'Slaughtered' },
   tuoi: { vi: 'Tuổi', en: 'Age' },
   uXong: { vi: 'Ủ xong', en: 'Aging ends' },
   kg: { vi: 'Kg', en: 'Kg' },
   han: { vi: 'Hạn dùng', en: 'Use-by' },
-  oDau: { vi: 'Ở đâu', en: 'Where' },
+  noiChinh: { vi: (noi: string) => `Tảng nằm ở ${noi}, trừ dòng có ghi chỗ khác.`, en: (noi: string) => `Primals are in ${noi} unless the line says otherwise.` },
   ngay: { vi: (n: number) => `${n} ngày`, en: (n: number) => `${n} ${n === 1 ? 'day' : 'days'}` },
   soTang: { vi: (n: number) => `${n} tảng`, en: (n: number) => `${n} ${n === 1 ? 'primal' : 'primals'}` },
   tim: { vi: 'Tìm tảng theo số', en: 'Find a primal by number' },
@@ -76,11 +75,17 @@ if (tim) {
 const daLocHien = daLoc.filter(d => d.ngay_loc !== null);
 const NHOM: TinhTrangU[] = ['san_sang', 'dang_u', 'chua_co_bang_u'];
 const theoNhom = NHOM.map(tt => ({ tt, ds: ds.filter(x => x.tinh_trang_u === tt) })).filter(x => x.ds.length);
+// Gọn 22/10/2026 (Khánh duyệt): bảng tảng còn 5 cột — bỏ Ngày mổ (đã có Tuổi), Hạn dùng (tảng đang ủ xem Ủ xong)
+// và Ở đâu: tảng gần như luôn nằm một chỗ, chỉ ghi chỗ dưới tên món khi tảng nằm khác chỗ của đa số tảng. Ngày mổ,
+// hạn dùng, chỗ để đủ ở trang chi tiết tảng.
+const demNoi = new Map<string, number>();
+for (const x of ds) if (x.vi_tri) demNoi.set(x.vi_tri, (demNoi.get(x.vi_tri) ?? 0) + 1);
+const noiChinh = [...demNoi].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan="theo-tang">
   <TheTrangCon k={k} cha="ton" />
   <h1>{t.tieuDe}</h1>
-  <p class="kho-phu">{t.gioiThieu}</p>
+  <p class="kho-phu">{t.gioiThieu}{noiChinh && demNoi.size > 0 && <>{' '}{t.noiChinh(noiChinh)}</>}</p>
   <p><a href="/noi-bo/kho/bao-cao/theo-tang">{t.baoCao}</a></p>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
   {tim && <div class="nb-bao loi" role="alert"><p>{t.khongThay(tim)}</p></div>}
@@ -99,20 +104,17 @@ const theoNhom = NHOM.map(tt => ({ tt, ds: ds.filter(x => x.tinh_trang_u === tt)
       <div class="kho-bang-khung">
         <table class="kho-bang">
           <thead><tr>
-            <th>{t.so}</th><th>{t.mon}</th><th>{t.ngayMo}</th><th class="so">{t.tuoi}</th>
-            <th>{t.uXong}</th><th class="so">{t.kg}</th><th>{t.han}</th><th>{t.oDau}</th>
+            <th>{t.so}</th><th>{t.mon}</th><th class="so">{t.tuoi}</th>
+            <th>{t.uXong}</th><th class="so">{t.kg}</th>
           </tr></thead>
           <tbody>
             {g.ds.map(x => (
               <tr>
                 <td><a href={`/noi-bo/kho/tang/${x.lo_id}`}><strong>{soTangChu(x.so_tang) || x.ma_lo}</strong></a></td>
-                <td>{x.ten_hang}</td>
-                <td>{x.ngay_mo ? dinhDangNgay(x.ngay_mo) : '—'}</td>
+                <td>{x.ten_hang}{x.vi_tri && x.vi_tri !== noiChinh && <><br /><span class="kho-phu">{x.vi_tri}</span></>}</td>
                 <td class="so">{x.tuoi_ngay === null ? '—' : t.ngay(x.tuoi_ngay)}</td>
                 <td>{x.ngay_u_xong ? dinhDangNgay(x.ngay_u_xong) : '—'}{cauConU(x, nn) && <><br /><span class="kho-phu">{cauConU(x, nn)}</span></>}</td>
                 <td class="so">{dinhDangKg(x.so_kg, nn)}</td>
-                <td>{dinhDangNgay(x.han_dung)}</td>
-                <td>{x.vi_tri ?? '—'}</td>
               </tr>
             ))}
           </tbody>

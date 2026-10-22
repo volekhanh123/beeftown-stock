@@ -39,7 +39,7 @@ import { docMatHang, type MatHang } from '../../../lib/kho/danh-muc.ts';
 import { linkTheKho } from '../../../lib/kho/the-kho.ts';
 import { chuTang, docLoTang } from '../../../lib/kho/tang.ts';
 import {
-  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangTien, nhanKho,
+  cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangNgayNgan, dinhDangTien, nhanKho,
   TEN_LOAI_MAT_HANG_NB, TEN_LOAI_VI_TRI_NB,
 } from '../../../lib/kho/chung.ts';
 import { dichNB } from '../../../lib/ngon-ngu-noi-bo.ts';
@@ -69,9 +69,6 @@ const ch = dichNB(nn, {
   monOQuay: { vi: 'Món ở quầy', en: 'Counter items' },
   moiMon: { vi: 'Mọi món', en: 'All items' },
   duoiMucToiThieu: { vi: 'Dưới mức tối thiểu', en: 'Below minimum' },
-  nguonTonDau: { vi: 'tồn đầu', en: 'opening' },
-  nguonPhaLoc: { vi: 'pha lóc', en: 'butchery' },
-  nguonNhap: { vi: 'nhập', en: 'received' },
   quaNgay: { vi: (n: number) => `quá ${n} ngày`, en: (n: number) => `${n} ${s(n, 'day', 'days')} over` },
   hetHomNay: { vi: 'hết hạn hôm nay', en: 'expires today' },
   conNgay: { vi: (n: number) => `còn ${n} ngày`, en: (n: number) => `${n} ${s(n, 'day', 'days')} left` },
@@ -104,11 +101,11 @@ const ch = dichNB(nn, {
   khongKhop: { vi: 'Không có lô nào khớp bộ lọc.', en: 'No lots match the filters.' },
   soLo: { vi: (n: number) => `${n} lô`, en: (n: number) => `${n} ${s(n, 'lot', 'lots')}` },
   hanSomNhat: { vi: 'Hạn sớm nhất', en: 'Earliest use-by' },
+  han: { vi: 'Hạn', en: 'Use by' },
   theKhoCua: { vi: (ten: string) => `Thẻ kho ${ten}`, en: (ten: string) => `Stock card for ${ten}` },
   theKho: { vi: 'Thẻ kho', en: 'Stock card' },
   cotHan: { vi: 'Hạn dùng', en: 'Use by' },
   cotLo: { vi: 'Lô', en: 'Lot' },
-  giaVonKg: { vi: 'Giá vốn/kg', en: 'Cost/kg' },
   lamGi: { vi: 'Làm gì', en: 'Actions' },
   traNccLo: { vi: (lo: string) => `Trả nhà cung cấp lô ${lo}`, en: (lo: string) => `Return lot ${lo} to the supplier` },
   traNcc: { vi: 'Trả NCC', en: 'Return' },
@@ -186,7 +183,10 @@ const HANG_LOC: { ten: string; khoa: 'vi_tri' | 'han' | 'loai' | 'duoi_muc'; dan
     chon: [['', ch.moiMon], ['1', ch.duoiMucToiThieu]] },
 ];
 
-const nguonLo = (t: DongTon) => (t.nguon === 'ton_dau' ? ch.nguonTonDau : t.nguon === 'pha_loc' ? ch.nguonPhaLoc : ch.nguonNhap);
+// Gọn 22/10/2026 (Khánh duyệt): mỗi món một dòng — tên, số lô, tổng kg / gói, hạn sớm nhất. Bảng lô và nút
+// chỉ hiện khi bấm mở; mở sẵn khi đang lọc theo hạn (đi từ "9 lô hết hạn") hoặc chỉ có vài món. Bảng lô bỏ cột
+// giá vốn/kg (giá vốn xem ở Báo cáo; tổng giá trị vẫn ở dòng đầu) và chữ "pha lóc / nhập dd/mm" dưới mã lô.
+const moSan = nhom.length <= 3 || han !== '';
 const conNgay = (t: DongTon) =>
   t.so_ngay_con < 0 ? ch.quaNgay(-t.so_ngay_con) : t.so_ngay_con === 0 ? ch.hetHomNay : ch.conNgay(t.so_ngay_con);
 const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as const;
@@ -272,16 +272,16 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
       <p class="nb-rong">{ton.length === 0 ? ch.khoTrong : ch.khongKhop}</p>
     )
   ) : nhom.map(g => (
-    <details class="kho-mh" open={nhom.length <= 3 || coLoc || g.tinh_trang_xau_nhat !== 'con_han'}>
+    <details class="kho-mh" open={moSan}>
       <summary>
         <span class="ten">
           {g.ten_hang}
-          <small>{g.ma_hang} · {nhanKho(TEN_LOAI_MAT_HANG_NB, g.loai_hang, nn)}{g.nhom ? ` · ${g.nhom}` : ''} · {ch.soLo(g.so_lo)}</small>
+          <small>{ch.soLo(g.so_lo)}</small>
         </span>
         <span class="so">
           <b class="kho-so">{dinhDangKg(g.so_kg, nn)} kg</b>
           {g.dem_goi && <span class="kho-so"> · {g.so_goi} {g.don_vi_goi}</span>}
-          <br /><span class={`kho-han ${g.tinh_trang_xau_nhat}`}>{ch.hanSomNhat} {dinhDangNgay(g.han_som_nhat)}</span>
+          <br /><span class={`kho-han ${g.tinh_trang_xau_nhat}`} title={`${ch.hanSomNhat} ${dinhDangNgay(g.han_som_nhat)}`}>{ch.han} {dinhDangNgayNgan(g.han_som_nhat)}</span>
         </span>
       </summary>
       <div class="kho-mh-lo ton-lo-khung">
@@ -293,7 +293,7 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
         <table class="kho-bang ton-lo">
           <thead><tr>
             <th>{ch.cotHan}</th><th>{ch.oDau}</th><th class="so">Kg</th>{g.dem_goi && <th class="so">{g.don_vi_goi}</th>}
-            <th>{ch.cotLo}</th>{coGia && <th class="so">{ch.giaVonKg}</th>}
+            <th>{ch.cotLo}</th>
             {vanHanh && <th><span class="kho-an">{ch.lamGi}</span></th>}
           </tr></thead>
           <tbody>
@@ -308,9 +308,8 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
                   <td class="o-noi" data-nhan={ch.oDau}>{t.ten_vi_tri}</td>
                   <td class="so o-kg" data-nhan="Kg"><b>{dinhDangKg(t.so_kg, nn)}</b></td>
                   {g.dem_goi && <td class="so o-goi" data-nhan={g.don_vi_goi}><b>{t.so_goi}</b></td>}
-                  <td class="o-lo" data-nhan={ch.cotLo}>{t.ma_lo}{tangChu(t) && <>{' · '}<strong>{tangChu(t)}</strong></>}{' '}<span class="kho-phu">{nguonLo(t)} {dinhDangNgay(t.ngay_dong_goi)}</span>
+                  <td class="o-lo" data-nhan={ch.cotLo}>{t.ma_lo}{tangChu(t) && <>{' · '}<strong>{tangChu(t)}</strong></>}
                     {linkTraNcc(t) && <>{' '}<a class="kho-phu" href={linkTraNcc(t)!} aria-label={ch.traNccLo(t.ma_lo)}>{ch.traNcc}</a></>}</td>
-                  {coGia && <td class="so o-gia" data-nhan={ch.giaVonKg}>{giaCua(t) ? dinhDangTien(giaCua(t)!.gia_von_kg, nn) : '—'}</td>}
                   {vanHanh && (
                     <td class:list={['o-nut', { trong: viec.length === 0 }]}>
                       {viec.length > 0 && (
@@ -362,9 +361,20 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
 
   .ton-tong { margin-bottom: 1rem; }
 
+  /* Món đang gập: mũi tên ▸ trước tên (mở thì ▾) — thấy ngay là bấm được để xem lô. */
+  .kho-mh > summary .ten::before { content: '▸'; display: inline-block; width: 1.1em; color: var(--muc-nhat); }
+  .kho-mh[open] > summary .ten::before { content: '▾'; }
+  .kho-mh > summary .ten small { padding-left: 1.1em; }
+  /* Dòng gập hai hàng, kể cả điện thoại: trái là tên + số lô, phải là kg · gói + hạn sớm nhất (ngày ngắn). */
+  .kho-mh > summary {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .2rem .75rem; align-items: center;
+    padding: .6rem .85rem;
+  }
+  .kho-mh > summary .so { white-space: nowrap; }
+
   /* --- Bảng lô ---------------------------------------------------------- */
   .ton-lo-khung { container-type: inline-size; overflow-x: auto; }
-  .ton-lo td.o-han .kho-phu, .ton-lo td.o-lo .kho-phu { display: block; }
+  .ton-lo td.o-han .kho-phu { display: block; }
   .ton-nut { display: flex; gap: .4rem; flex-wrap: wrap; }
   .ton-nut .nb-nut {
     min-height: 48px; padding: .45rem .75rem; font-size: .85rem; gap: .35rem;
@@ -399,10 +409,7 @@ const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as con
     .ton-lo td.o-noi { order: 2; }
     .ton-lo td.o-kg { order: 3; font-size: 1rem; }
     .ton-lo td.o-goi { order: 4; font-size: 1rem; }
-    .ton-lo td.o-gia { order: 5; }
     .ton-lo td.o-lo { order: 6; grid-column: 1 / -1; }
-    .ton-lo td.o-lo .kho-phu { display: inline; }
-    .ton-lo td.o-lo .kho-phu::before { content: '· '; }
     .ton-lo td.o-nut { order: 7; grid-column: 1 / -1; min-width: 0; }
     .ton-lo td.o-nut.trong { display: none; }
     .ton-nut .nb-nut { flex: 1 1 7rem; justify-content: center; }

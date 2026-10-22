@@ -256,6 +256,18 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
   - Chữ đếm theo đơn vị của món ("Khay này: 0,312 kg", "không còn khay nào"), không viết cứng "gói".
 - **Số tảng cạnh lô**: màn Quét, Tồn kho, Thẻ kho hiện "tảng #0001" ở mỗi lô thuộc một tảng (mục 3o).
 
+### Gọn phần tồn kho (Khánh duyệt 22/10/2026)
+
+- **Tồn kho**: mỗi món một dòng gập (`details.kho-mh`) — tên, số lô, tổng kg · gói, "Hạn dd/mm" sớm nhất; bấm mới
+  thấy bảng lô và nút. Mở sẵn khi lọc theo hạn (`?han=`) hoặc chỉ ≤ 3 món. Không còn dòng mã · loại · nhóm, cột giá
+  vốn/kg (tổng giá trị vẫn ở dòng đầu cho vai xem giá) và chữ "pha lóc / nhập dd/mm" dưới mã lô.
+- **Tảng · ủ**: bảng tảng 5 cột (Số tảng · Món · Tuổi · Ủ xong · Kg). Chỗ để chỉ ghi dưới tên món khi khác chỗ của đa
+  số tảng; ngày mổ, hạn dùng xem ở trang tảng.
+- **Thẻ kho**: nhập / xuất / tồn gộp một cột "Kg ± · tồn" (và một cột gói) — 7 cột.
+- **Kiểm kê**: thẻ tiến độ chỉ "Đã đếm x/y"; quét nhãn gập trong `details`; mỗi món một hàng gọn (ô số gói, ô kg,
+  "Đã hết thật").
+- `test-kho-giao-dien.mjs` nhóm 17 gác các điều trên.
+
 ## 3e. Pha lóc 3 bước bằng quét nhãn · báo thu hồi thấp (GĐ5c, migration 0033)
 
 | Trang | Ai | Việc |
