@@ -372,6 +372,8 @@ await nhom('5 · WEB KHÔNG GỌI HÀM NGOÀI DANH SÁCH CHO PHÉP', async () =>
     // Web gọi lại hàm cũ thì kiểm tra dưới đỏ, như production 403.
     'tra_cuu_mot_dat_ban', 'huy_dat_ban',
     'nop_ho_so_ung_tuyen', 'xin_phieu_tai_cv', 'ghi_su_kien_web',
+    // 0093: /mini-app/con-hang.json (lib/mini-app.ts) — chỉ trạng thái còn hàng, không số, không dữ liệu khách.
+    'mini_app_con_hang',
   ];
 
   for (const g of goiRpc.filter(laAnon)) {

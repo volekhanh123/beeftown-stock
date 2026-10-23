@@ -6,7 +6,7 @@ Bản 1.0, dựng ngày 22/10/2026. Từ 22/10/2026 nằm trong repo `beeftown-s
 
 Có 4 màn hình:
 
-1. **Mua thịt:** 6 phần thịt của quầy: Ribeye with Cap, Outside Skirt, Chadolbagi (đông lạnh), Top Blade, Galbisal, LA Galbi (đông lạnh). Khách chọn số khay cho từng phần. Bán theo khay, giá cố định: mỗi khay khoảng 150 g, giá không đổi theo số gam thật; app tính sẵn tổng tiền thịt.
+1. **Mua thịt:** 6 phần thịt của quầy: Ribeye with Cap, Outside Skirt, Chadolbagi (đông lạnh), Top Blade, Galbisal, LA Galbi (đông lạnh). Khách chọn số khay cho từng phần. Bán theo khay, giá cố định: mỗi khay khoảng 150 g, giá không đổi theo số gam thật; app tính sẵn tổng tiền thịt. Phần nào quầy đã hết thì thẻ hiện "Tạm hết" (đọc từ kho qua website `beeftown.vn`, khi chủ đã bật; xem `web/KHO.md` mục 3r của repo); app không hiện số khay.
 2. **Đơn hàng:** khách chọn nhận tại quán hay giao tận nơi, chọn ngày giờ, nhập tên và số điện thoại (bắt buộc khi giao), chọn cách trả tiền, ghi chú.
 3. **Gửi đơn qua Zalo:** app mở chat với OA "Nhà hàng Beeftown Hồ Tùng Mậu", tin đơn điền sẵn. Khách phải tự bấm Gửi thì quán mới nhận được.
 4. **Thông tin:** cách mua, cách tính tiền, thịt mát và đông lạnh, địa chỉ, liên hệ, thông tin của khách, đơn vị bán hàng.

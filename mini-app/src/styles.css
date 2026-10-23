@@ -264,6 +264,12 @@ body {
   font-weight: 700;
   color: var(--chu-phu);
 }
+.ghi-chu-con-hang {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--chu-phu);
+}
 
 /* ---------- Nút ---------- */
 .nut-chinh,

@@ -4,7 +4,9 @@ import { CAU_HINH, CAU_HINH_GIO } from "../cau-hinh";
 import { cacGioChon, cacNgayChon, dinhDangTien, kiemTraDon, taoNoiDungDon, tongTienThit } from "../don";
 import { useGioHang } from "../gio-hang";
 import { SAN_PHAM, dongTuGio } from "../san-pham";
-import { DauTrang, GiaKhay, Muc, NhanBaoQuan, SoKhay } from "../thanh-phan";
+import { DauTrang, GhiChuConHang, GiaKhay, Muc, NhanBaoQuan, SoKhay } from "../thanh-phan";
+import { trangThaiPhan } from "../con-hang";
+import { useConHang } from "../con-hang-kho";
 import { useThongBao } from "../thong-bao";
 import { moChatVoiQuan } from "../zalo";
 
@@ -12,6 +14,7 @@ export default function DonHang() {
   const navigate = useNavigate();
   const thongBao = useThongBao();
   const { soKhay, datSoKhay, tongKhay, nhan, suaNhan, datNoiDungDaGui } = useGioHang();
+  const conHang = useConHang();
   const [daBamGui, datDaBamGui] = useState(false);
   const [tinNgoaiZalo, datTinNgoaiZalo] = useState<string | null>(null);
   const [dangGui, datDangGui] = useState(false);
@@ -86,16 +89,25 @@ export default function DonHang() {
 
       <Muc tieuDe={`Thịt đã chọn · ${tongKhay} khay`}>
         <ul className="ds-da-chon">
-          {daChon.map((sp) => (
-            <li key={sp.ma}>
-              <div className="ten-dong">
-                <b>{sp.ten}</b>
-                <NhanBaoQuan baoQuan={sp.baoQuan} />
-                <GiaKhay gia={sp.giaMoiKhay} soGam={sp.soGamKhay} />
-              </div>
-              <SoKhay ten={sp.ten} so={soKhay[sp.ma]} onDoi={(so) => datSoKhay(sp.ma, so)} />
-            </li>
-          ))}
+          {daChon.map((sp) => {
+            const trangThai = trangThaiPhan(sp.conHang, conHang[sp.ma]);
+            return (
+              <li key={sp.ma}>
+                <div className="ten-dong">
+                  <b>{sp.ten}</b>
+                  <NhanBaoQuan baoQuan={sp.baoQuan} />
+                  <GiaKhay gia={sp.giaMoiKhay} soGam={sp.soGamKhay} />
+                  <GhiChuConHang trangThai={trangThai} daChon />
+                </div>
+                <SoKhay
+                  ten={sp.ten}
+                  so={soKhay[sp.ma]}
+                  het={trangThai === "het"}
+                  onDoi={(so) => datSoKhay(sp.ma, so)}
+                />
+              </li>
+            );
+          })}
         </ul>
         <p className="tong-tien">
           <span>Tổng tiền thịt</span>

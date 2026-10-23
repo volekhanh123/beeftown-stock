@@ -4,6 +4,8 @@ import React, { ReactNode } from "react";
 import { useNavigate } from "zmp-ui";
 import { MuiTenTrai } from "./bieu-tuong";
 import { CAU_HINH } from "./cau-hinh";
+import { trangThaiPhan, type TrangThaiKho } from "./con-hang";
+import { useConHang } from "./con-hang-kho";
 import { dinhDangTien } from "./don";
 import { useGioHang } from "./gio-hang";
 import type { SanPham } from "./san-pham";
@@ -25,7 +27,18 @@ export function DauTrang({ tieuDe, quayLai = true }: { tieuDe: string; quayLai?:
   );
 }
 
-export function SoKhay({ ten, so, onDoi }: { ten: string; so: number; onDoi: (so: number) => void }) {
+/** het: phần đã hết ở quầy — còn bớt được khay đã chọn, không thêm được. */
+export function SoKhay({
+  ten,
+  so,
+  onDoi,
+  het = false,
+}: {
+  ten: string;
+  so: number;
+  onDoi: (so: number) => void;
+  het?: boolean;
+}) {
   if (so === 0) {
     return (
       <button type="button" className="nut-them" onClick={() => onDoi(1)} aria-label={`Thêm ${ten} vào đơn`}>
@@ -44,7 +57,7 @@ export function SoKhay({ ten, so, onDoi }: { ten: string; so: number; onDoi: (so
       <button
         type="button"
         aria-label={`Thêm 1 khay ${ten}`}
-        disabled={so >= CAU_HINH.soKhayToiDa}
+        disabled={het || so >= CAU_HINH.soKhayToiDa}
         onClick={() => onDoi(so + 1)}
       >
         +
@@ -90,9 +103,21 @@ export function BaoGiaThu() {
   );
 }
 
+/** Một dòng nhỏ khi kho báo ít hay hết. Không nói số khay: kho chỉ trả trạng thái (0093). */
+export function GhiChuConHang({ trangThai, daChon }: { trangThai: TrangThaiKho; daChon: boolean }) {
+  if (trangThai === "sap_het") {
+    return <p className="ghi-chu-con-hang">Quầy còn ít khay; quán xác nhận số khay khi nhận đơn.</p>;
+  }
+  if (trangThai === "het" && daChon) {
+    return <p className="ghi-chu-con-hang">Phần này vừa hết ở quầy; quán báo lại khi xác nhận đơn.</p>;
+  }
+  return null;
+}
+
 export function TheThit({ sp }: { sp: SanPham }) {
   const { soKhay, datSoKhay } = useGioHang();
   const so = soKhay[sp.ma] ?? 0;
+  const trangThai = trangThaiPhan(sp.conHang, useConHang()[sp.ma]);
   return (
     <article className={`the-thit ${sp.baoQuan}${so > 0 ? " da-chon" : ""}`}>
       <div className="the-thit-dau">
@@ -108,12 +133,13 @@ export function TheThit({ sp }: { sp: SanPham }) {
       )}
       <div className="the-thit-chan">
         <GiaKhay gia={sp.giaMoiKhay} soGam={sp.soGamKhay} />
-        {sp.conHang ? (
-          <SoKhay ten={sp.ten} so={so} onDoi={(moi) => datSoKhay(sp.ma, moi)} />
-        ) : (
+        {trangThai === "het" && so === 0 ? (
           <span className="het-hang">Tạm hết</span>
+        ) : (
+          <SoKhay ten={sp.ten} so={so} het={trangThai === "het"} onDoi={(moi) => datSoKhay(sp.ma, moi)} />
         )}
       </div>
+      <GhiChuConHang trangThai={trangThai} daChon={so > 0} />
     </article>
   );
 }

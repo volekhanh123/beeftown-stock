@@ -16,6 +16,7 @@ Zalo Mini App bán 6 phần thịt mang về của nhà hàng Beeftown (63 Hồ 
 - Xác thực Mini App: bước chủ sở hữu đã xong (xác thực bằng OA, 22/10 11:33). Còn thiếu giấy tờ kinh doanh: giấy xác nhận ngành nghề kinh doanh phù hợp (dịch vụ ăn uống) và giấy chứng nhận cơ sở đủ điều kiện an toàn thực phẩm. Thiếu 2 giấy này thì không gửi Zalo duyệt phiên bản được. Bản thử (testing) vẫn mở được bằng tài khoản Admin, Developer, người thử.
 - **Bán theo khay, giá cố định** (Khánh quyết 22/10/2026): không bán đúng số gam. Mỗi khay khoảng `soGamKhay` gam (đang để ~150 g), giá `giaMoiKhay` không đổi theo số gam thật; tin đơn ghi từng dòng "số khay × giá = tiền" và tổng tiền thịt (chưa gồm phí giao). Bản thử phiên bản 2 trên Zalo còn bán theo giá/100 g.
 - Số gam và giá đang là **số thử** (`giaThu: true` trong `src/cau-hinh.ts`), chưa phải số của Sang. Giá ghi dạng "120.000 đ" (có dấu cách, như repo) từ 22/10/2026; bản thử phiên bản 2 trên Zalo còn ghi "120.000đ".
+- **Còn hàng theo kho** (bước 2, 23/10/2026): app hỏi `https://beeftown.vn/mini-app/con-hang.json` (`diaChiConHang` trong `src/cau-hinh.ts`) khi mở và khi khách quay lại app sau 60 giây. Kho báo `het` → thẻ hiện "Tạm hết", không thêm được khay; `sap_het` → dòng "Quầy còn ít khay; quán xác nhận số khay khi nhận đơn."; không biết → hiện như cũ. Chưa chạy được thật cho tới khi: chạy migration 0093 và deploy web; gắn ô "Phần thịt trên Mini App Zalo" cho mặt hàng ở màn mặt hàng của kho; khai `beeftown.vn` ở Mini App Center → Cấu hình API Domains; chủ bật công tắc `mini_app_hien_con_hang` ở `/noi-bo` (mặc định tắt). Chi tiết: `web/KHO.md` mục 3r.
 - Màu: Khánh chốt ngày 22/10/2026 bảng đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF`, bỏ Cream, Marigold, Warm Stone (`THUONG-HIEU.md` mục 0 của repo). `src/styles.css` dùng thêm 7 màu pha xám và đỏ chưa được duyệt — chờ câu 1 ở mục đó. Website và Beeftown Cân còn màu cũ.
 
 ## Lệnh
@@ -24,7 +25,7 @@ Zalo Mini App bán 6 phần thịt mang về của nhà hàng Beeftown (63 Hồ 
 |---|---|
 | `npm install` | Cài thư viện |
 | `npm run dev` | Chạy thử ở http://localhost:3000. Ngoài Zalo, nút "Gửi đơn qua Zalo" hiện tin nhắn thay vì mở chat |
-| `npm run kiem-tra` | Kiểm tra giờ nhận, số điện thoại, nội dung tin, tổng tiền, dòng giá thử (cần Node 22.6 trở lên) |
+| `npm run kiem-tra` | Kiểm tra giờ nhận, số điện thoại, nội dung tin, tổng tiền, dòng giá thử, đọc còn hàng (cần Node 22.6 trở lên) |
 | `npm run build` | `tsc --noEmit && vite build`. Bản build trong `www/` chỉ chạy dưới `/zapps/<APP_ID>/` |
 | `npm run deploy:thu` | `zmp deploy --testing --passive --desc "..."`. zmp-cli tự build, rồi tải `www/` lên. In "Deploy Done!", số phiên bản và mã QR mở bản thử |
 | `npx zmp login` | Đăng nhập lại khi khóa hết hạn. Phải chọn cách đăng nhập và quét mã QR bằng app Zalo, nên để Khánh tự chạy trong cửa sổ dòng lệnh (hoặc bấm đúp `dua-len-zalo.cmd`) |
@@ -43,6 +44,8 @@ Kiểm thử trong repo:
 src/cau-hinh.ts      OA ID, cờ giá thử, ngày bắt đầu nhận hàng, khung giờ nhận, giờ mở cửa, địa chỉ, người bán
 src/san-pham.ts      6 phần thịt: tên, thịt mát / đông lạnh, mô tả, cách nướng, số gam khoảng và giá một khay
 src/don.ts           logic thuần (không React, không Zalo): ngày giờ nhận, kiểm tra, soạn tin đơn
+src/con-hang.ts      logic thuần: đọc còn hàng từ website (hỏng thì {}), trạng thái hiện cho từng phần thịt
+src/con-hang-kho.tsx giữ trạng thái còn hàng trong lúc app mở, đọc lại sau 60 giây
 src/zalo.ts          openChat, followOA
 src/gio-hang.tsx     giỏ hàng trong bộ nhớ
 src/thong-bao.tsx    thông báo ngắn tự làm
@@ -120,7 +123,7 @@ Thỏa thuận nhà phát triển Zalo Mini App, cập nhật 25/09/2026: https:
 ## Hướng phát triển (Claude đề xuất 22/10, Khánh chưa chốt mốc)
 
 - **Mức 1** (bản này): bán theo khay giá cố định, tin đơn có tổng tiền; gửi đơn vào chat OA, nhân viên xác nhận và tính tiền trên FABi như khách tại quán.
-- **Mức 2:** hiện số khay còn của từng phần thịt, đọc từ phần mềm kho.
+- **Mức 2** (làm 23/10/2026, chờ gộp và bật): hiện còn hàng / sắp hết / tạm hết của từng phần thịt, đọc từ phần mềm kho — không hiện số khay.
   - Kho: repo `volekhanh123/beeftown-stock`, web và API trên Cloudflare Workers, dữ liệu ở Supabase "Beeftown" vùng ap-southeast-1. Kho đã có sẵn phần đồng bộ hóa đơn iPOS (các bảng `kho_ipos_*`) và mã cân trên nhãn khay (`kho_o_ma`, `kho_can_tem`); ngày 22/10 các bảng này chưa có dữ liệu.
   - Chỉ đọc số khay, không đụng dữ liệu khách.
   - Kho đã đếm số khay ở quầy: `kho_ton.so_goi` theo lô và vị trí, đọc qua `kho_v_ton` với vị trí loại `quay`. Mọi chỗ đọc tồn đều cần đăng nhập vai kho; chưa có gì mở cho `anon`.
@@ -149,3 +152,4 @@ Thỏa thuận nhà phát triển Zalo Mini App, cập nhật 25/09/2026: https:
 7. Khánh gửi luật sư 2 câu hỏi ở mục "Chờ người khác chốt" — 30/10.
 8. Khánh hỏi iPOS 1 câu về API tạo đơn FABi, hỏi Sang 1 câu về đếm khay ở quầy theo phần thịt — 30/10.
 9. Khi Sang gửi số gam và giá một khay: Claude Code đổi `san-pham.ts`, đặt `giaThu: false`, chạy kiểm tra, đưa bản thử; Khánh duyệt rồi gửi Zalo duyệt — trước 06/11.
+10. Sau khi PR còn hàng gộp: Khánh chạy migration 0093 rồi deploy web; Sang gắn ô "Phần thịt trên Mini App Zalo" cho 6 mặt hàng ở màn mặt hàng của kho; Khánh khai `beeftown.vn` ở Mini App Center → Cấu hình API Domains; Khánh bật công tắc `mini_app_hien_con_hang` khi Sang xác nhận quầy quét khay ra vào đúng lúc — Khánh ghi hạn.

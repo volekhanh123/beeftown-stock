@@ -1,5 +1,6 @@
 // Kiểm tra logic đơn hàng: npm run kiem-tra (cần Node 22.6 trở lên).
 import assert from "node:assert/strict";
+import { docConHang, trangThaiPhan, type HamFetch } from "../src/con-hang.ts";
 import {
   cacGioChon,
   cacNgayChon,
@@ -149,6 +150,43 @@ kiem("báo lỗi khi thiếu thông tin", () => {
   assert.equal(loiGiao.length, 2);
   assert.equal(kiemTraDon([], nhan)[0], "Bạn chưa chọn khay thịt nào.");
   assert.equal(kiemTraDon(dong, { ...nhan, dienThoai: "123" }).length, 1);
+});
+
+// --- Còn hàng ở quầy (src/con-hang.ts) --------------------------------------------------------------------
+const tra = (ok: boolean, json: unknown): HamFetch => async () => ({ ok, json: async () => json });
+const URL_KHO = "https://beeftown.vn/mini-app/con-hang.json";
+async function kiemAsync(ten: string, fn: () => Promise<void>) {
+  await fn();
+  dat++;
+  console.log(`  đạt: ${ten}`);
+}
+
+await kiemAsync("còn hàng: đọc đúng trạng thái, bỏ dòng lạ", async () => {
+  const kq = await docConHang(
+    URL_KHO,
+    tra(true, { phanThit: { "ribeye-with-cap": "con", "la-galbi": "het", "outside-skirt": "sap_het", Ribeye: "con", galbisal: "het_han" } }),
+  );
+  assert.deepEqual(kq, { "ribeye-with-cap": "con", "la-galbi": "het", "outside-skirt": "sap_het" });
+});
+
+await kiemAsync("còn hàng: hỏng thì không biết ({}), không bao giờ ra hết", async () => {
+  assert.deepEqual(await docConHang("", tra(true, { phanThit: { "la-galbi": "het" } })), {});
+  assert.deepEqual(await docConHang(URL_KHO, tra(false, { phanThit: { "la-galbi": "het" } })), {}); // 404, 500
+  assert.deepEqual(await docConHang(URL_KHO, async () => { throw new TypeError("Failed to fetch"); }), {});
+  assert.deepEqual(await docConHang(URL_KHO, async () => ({ ok: true, json: async () => { throw new SyntaxError("JSON"); } })), {});
+  assert.deepEqual(await docConHang(URL_KHO, tra(true, { phanThit: ["het"] })), {});
+  assert.deepEqual(await docConHang(URL_KHO, tra(true, null)), {});
+  // Máy chủ treo: fetch không bao giờ trả lời, kể cả khi bị hủy.
+  const batDau = Date.now();
+  assert.deepEqual(await docConHang(URL_KHO, () => new Promise(() => {}), 50), {});
+  assert.ok(Date.now() - batDau < 2000);
+});
+
+await kiemAsync("còn hàng: tạm ngưng trong cau-hinh thắng kho; kho không biết thì coi như còn", async () => {
+  assert.equal(trangThaiPhan(false, "con"), "het");
+  assert.equal(trangThaiPhan(true, undefined), "con");
+  assert.equal(trangThaiPhan(true, "het"), "het");
+  assert.equal(trangThaiPhan(true, "sap_het"), "sap_het");
 });
 
 console.log(`Đạt ${dat}/${dat} kiểm tra.`);
