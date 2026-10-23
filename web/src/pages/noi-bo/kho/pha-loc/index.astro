@@ -11,13 +11,13 @@
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
-import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import { docDanhSachPhienPha, thuHoiTheoTang, type PhienPhaTom } from '../../../../lib/kho/pha-loc.ts';
 import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
 import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
 import {
-  cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, dinhDangThoiDiem, homNayVn, trangThaiKho,
+  cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, homNayVn, trangThaiKho,
 } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
@@ -63,14 +63,11 @@ const t = dichNB(nn, {
   oTrangThai: { vi: ' ở trạng thái này', en: ' with this status' },
   thapDaXem: { vi: 'Thu hồi thấp · đã xem', en: 'Low yield · seen' },
   thap: { vi: 'Thu hồi thấp', en: 'Low yield' },
-  ngayPha: { vi: 'Ngày pha', en: 'Date' },
-  ketQua: { vi: 'Kết quả', en: 'Result' },
   vaoRa: {
     vi: (vao: string, thit: string) => `${vao} kg vào → ${thit} kg thịt · thu hồi `,
     en: (vao: string, thit: string) => `${vao} kg in → ${thit} kg meat · yield `,
   },
   duKien: { vi: (pt: string) => ` (dự kiến ${pt})`, en: (pt: string) => ` (expected ${pt})` },
-  dangGhi: { vi: 'Đang ghi', en: 'In progress' },
   loVao: {
     vi: (n: number, kg: string) => `${n} lô vào (${kg} kg)`,
     en: (n: number, kg: string) => `${n} ${s(n, 'lot', 'lots')} in (${kg} kg)`,
@@ -79,7 +76,6 @@ const t = dichNB(nn, {
     vi: (n: number, kg: string) => `${n} phần ra (${kg} kg)`,
     en: (n: number, kg: string) => `${n} ${s(n, 'output', 'outputs')} (${kg} kg)`,
   },
-  nguoiLap: { vi: 'Người lập', en: 'Made by' },
 });
 
 const LOC = [['', t.tatCa], ['nhap', t.nhap], ['da_chot', t.daChot], ['da_huy', t.daHuy]] as const;
@@ -107,7 +103,7 @@ if (k.chiNhanh && k.daKhoiTao) {
 const tu30 = congNgay(homNayVn(), -30);
 const thuHoi = thuHoiTheoTang(daChot.filter(p => p.ngay_pha >= tu30));
 const sapXep = [...ds].sort((a, b) => (a.trang_thai === 'nhap' ? 0 : 1) - (b.trang_thai === 'nhap' ? 0 : 1));
-const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
+// Thẻ phiếu gọn hai dòng (Khánh duyệt 22/10/2026): không còn dòng người lập (xem trong phiếu), nên không đọc tên.
 ---
 <Kho k={k} huongDan="pha-loc" tieuDe={t.tieuDe}>
   <h1>{t.tieuDe}</h1>
@@ -174,15 +170,14 @@ const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
                 {' '}<span class={`nb-nhan ${lop}`}>{nhan}</span>
               </span>
             </div>
-            <dl>
-              <dt>{t.ngayPha}</dt><dd>{dinhDangNgay(p.ngay_pha)}</dd>
+            <p class="nb-dong-tom">
+              {dinhDangNgay(p.ngay_pha)} ·{' '}
               {p.trang_thai === 'da_chot' ? (
-                <><dt>{t.ketQua}</dt><dd>{t.vaoRa(dinhDangKg(p.tong_kg_vao, nn), dinhDangKg(p.tong_kg_thit, nn))}<strong>{dinhDangPhanTram(p.ty_le_thu_hoi, 1, nn)}</strong>{p.ty_le_du_kien !== null && <>{t.duKien(dinhDangPhanTram(p.ty_le_du_kien, 1, nn))}</>}</dd></>
+                <>{t.vaoRa(dinhDangKg(p.tong_kg_vao, nn), dinhDangKg(p.tong_kg_thit, nn))}<strong>{dinhDangPhanTram(p.ty_le_thu_hoi, 1, nn)}</strong>{p.ty_le_du_kien !== null && <>{t.duKien(dinhDangPhanTram(p.ty_le_du_kien, 1, nn))}</>}</>
               ) : (
-                <><dt>{t.dangGhi}</dt><dd>{t.loVao(p.so_dau_vao, dinhDangKg(p.kg_vao_nhap, nn))} · {t.phanRa(p.so_dau_ra, dinhDangKg(p.kg_ra_nhap, nn))}</dd></>
+                <>{t.loVao(p.so_dau_vao, dinhDangKg(p.kg_vao_nhap, nn))} · {t.phanRa(p.so_dau_ra, dinhDangKg(p.kg_ra_nhap, nn))}</>
               )}
-              <dt>{t.nguoiLap}</dt><dd>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
-            </dl>
+            </p>
           </a>
         );
       })}

@@ -10,6 +10,7 @@
  * trình là cặp { vi, en } trong quy-trinh.ts — luôn đọc [nn].
  */
 import Kho from '../../../layouts/Kho.astro';
+import TheTrangCon from '../../../components/kho/TheTrangCon.astro';
 import BieuTuong from '../../../components/kho/BieuTuong.astro';
 import { moTrangKho } from '../../../lib/kho/trang.ts';
 import { QUY_TRINH, timQuyTrinh } from '../../../lib/kho/quy-trinh.ts';
@@ -31,6 +32,7 @@ const qt = timQuyTrinh(Astro.url.searchParams.get('qt'));
 const soCuaQt = (q: typeof qt) => q.buoc.reduce((s, b) => s + (b.quyen.some(x => k.duoc(x)) ? soDo(b, k.viec) : 0), 0);
 ---
 <Kho k={k} tieuDe={t.quyTrinh(qt.ten[nn])} huongDan="quy-trinh">
+  <TheTrangCon k={k} cha="huong_dan" />
   <h1>{t.h1}</h1>
 
   <nav class="kho-the-chon" aria-label={t.chonNghiepVu}>

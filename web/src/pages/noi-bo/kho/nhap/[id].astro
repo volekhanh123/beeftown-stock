@@ -145,8 +145,6 @@ const t = dichNB(nn, {
   hanDung: { vi: 'Hạn dùng', en: 'Use-by date' },
   themChiTiet: { vi: 'Thêm chi tiết: ngày sản xuất, số lô của nhà cung cấp', en: 'More details: production date, supplier lot no.' },
   oThongTinThem: { vi: ', ô thông tin thêm', en: ', extra fields' },
-  ngaySx: { vi: 'Ngày sản xuất', en: 'Production date' },
-  soLoNcc: { vi: 'Số lô nhà cung cấp', en: 'Supplier lot no.' },
   boDong: { vi: 'Bỏ dòng này', en: 'Remove this line' },
   ghiChuDong: {
     vi: 'Hạn dùng bỏ trống = ngày nhập + hạn mặc định của mặt hàng. Dòng để trống hoàn toàn sẽ được bỏ qua.',
@@ -291,7 +289,7 @@ if (!moi && !phieu && !loiDoc) {
 }
 // Nợ đầu kỳ (ND-, 0035) không có hàng, không có trang phiếu nhập: xem ở Công nợ.
 if (phieu && (phieu.loai as string) === 'no_dau') {
-  return Astro.redirect(phieu.nha_cung_cap_id ? `/noi-bo/kho/cong-no/${phieu.nha_cung_cap_id}#p-${phieu.id}` : '/noi-bo/kho/cong-no/no-dau', 302);
+  return Astro.redirect(phieu.nha_cung_cap_id ? `/noi-bo/kho/cong-no/${phieu.nha_cung_cap_id}?mo=${phieu.id}#p-${phieu.id}` : '/noi-bo/kho/cong-no/no-dau', 302);
 }
 
 const loai: 'mua' | 'ton_dau' = phieu?.loai
@@ -615,7 +613,7 @@ const huongDan = 'duyet-nhap';
       <h2>{t.hangNhap}</h2>
       {dongHien.map((d, i) => {
         const mh = tenMh.get(d.mat_hang_id);
-        const coChiTiet = !!(d.ngay_san_xuat || d.so_lo_ncc || d.ngay_mo || d.so_kg_thuc);
+        const coChiTiet = !!(d.ngay_mo || d.so_kg_thuc);
         return (
           <div class="kho-dong-hang">
             <span class="so-thu-tu">{i + 1}</span>
@@ -636,11 +634,10 @@ const huongDan = 'duyet-nhap';
             <TruongThem dinhNghia={dnLo.filter(x => x.bat_buoc)} giaTri={d.truong_them} dong={i} />
             <details open={coChiTiet}>
               <summary>{t.themChiTiet}{dnLo.some(x => !x.bat_buoc && x.dang_dung) ? t.oThongTinThem : ''}</summary>
+              {/* Ngày sản xuất, số lô NCC: bỏ khỏi form như màn nhận hàng (22/10/2026); dòng đã có thì mang theo ngầm. */}
+              {d.ngay_san_xuat && <input type="hidden" name={`d${i}_nsx`} value={d.ngay_san_xuat} />}
+              {d.so_lo_ncc && <input type="hidden" name={`d${i}_so_lo_ncc`} value={d.so_lo_ncc} />}
               <div class="kho-luoi">
-                <label class="nb-o"><span>{t.ngaySx}</span>
-                  <input type="date" name={`d${i}_nsx`} value={d.ngay_san_xuat} /></label>
-                <label class="nb-o"><span>{t.soLoNcc}</span>
-                  <input type="text" name={`d${i}_so_lo_ncc`} value={d.so_lo_ncc} autocapitalize="characters" /></label>
                 <label class="nb-o"><span>{t.ngayMo}</span>
                   <input type="date" name={`d${i}_ngay_mo`} value={d.ngay_mo} /></label>
                 <label class="nb-o"><span>{t.kgThuc}</span>
@@ -719,8 +716,8 @@ const huongDan = 'duyet-nhap';
                 <input type="text" inputmode="numeric" name={`gia_${d.id}`} value={gf.gia[d.id] ?? ''}
                   placeholder={ss?.gia_truoc ? t.lanTruoc(ss.gia_truoc) : t.viDuGia} /></label>
               {chip && (
-                <p class="dg-chip-hang"><span class:list={['dg-chip', { vuot: chip.vuot }]}>{chip.chu}</span>
-                  {ss?.so_phieu_truoc && <span class="kho-phu">{' '}{t.phieu} {ss.so_phieu_truoc} · {dinhDangNgay(ss.ngay_truoc)}</span>}</p>
+                <p class="dg-chip-hang"><span class:list={['dg-chip', { vuot: chip.vuot }]}
+                  title={ss?.so_phieu_truoc ? `${t.phieu} ${ss.so_phieu_truoc} · ${dinhDangNgay(ss.ngay_truoc)}` : undefined}>{chip.chu}</span></p>
               )}
               <p class="kho-phu" style="margin:.4rem 0 0">{t.thanhTienTam} <strong>{tt !== null && tt > 0 ? tien(tt) : '—'}</strong>
                 {gv && d.don_gia_kg > 0 && Math.round(gv.gia_von_kg) !== d.don_gia_kg && <>{' '}· {t.vaoKho} {tien(gv.gia_von_kg)}/kg</>}</p>

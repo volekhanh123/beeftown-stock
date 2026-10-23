@@ -87,7 +87,6 @@ const t = dichNB(nn, {
   suaDau: { vi: 'Sửa người giao, nơi nhận, ngày, số hóa đơn', en: 'Edit supplier, location, date, invoice no.' },
   noiNhan: { vi: 'Nơi nhận hàng', en: 'Receiving location' },
   ngayNhanO: { vi: 'Ngày nhận', en: 'Date received' },
-  soHoaDonO: { vi: 'Số hóa đơn (nếu có)', en: 'Invoice no. (if any)' },
   luuDau: { vi: 'Lưu thông tin phiếu', en: 'Save note details' },
   hangDaCan: { vi: 'Hàng đã cân', en: 'Weighed goods' },
   chuaCoMon: { vi: 'Chưa có món nào. Thêm món đầu tiên ở dưới.', en: 'No items yet. Add the first one below.' },
@@ -120,15 +119,10 @@ const t = dichNB(nn, {
   },
   viDuGoi: { vi: 'ví dụ 2', en: 'e.g. 2' },
   ngayMo: { vi: 'Ngày mổ (món theo dõi theo tảng)', en: 'Slaughter date (items tracked per primal)' },
-  ngayMoGoiY: {
-    vi: 'Xem trên nhãn thùng. Món theo tảng: mỗi lần thêm là MỘT tảng — cân riêng từng tảng, bỏ trống ô số tảng.',
-    en: 'See the box label. Items tracked per primal: each line is ONE primal — weigh each primal on its own, leave the count empty.',
-  },
+  // Gọn 22/10/2026: giải thích dài nằm ở nút "?" (Hướng dẫn, mục nhận hàng).
+  ngayMoGoiY: { vi: 'Mỗi dòng là MỘT tảng, cân riêng.', en: 'Each line is ONE primal, weighed on its own.' },
   kgThuc: { vi: 'Kg sau repack', en: 'Weight after repack (kg)' },
-  kgThucGoiY: {
-    vi: 'Mở túi, kiểm tra, bỏ nước rỉ, đóng lại rồi cân. Ô "Số kg" ở trên là kg trên nhãn / hoá đơn nhà cung cấp. Chưa repack thì để trống — lưu nháp được, nhưng chưa gửi được.',
-    en: 'Open the bag, check it, drain the drip, reseal, then weigh. "Weight" above is the supplier label / invoice weight. Not repacked yet? Leave blank — you can save a draft but not send it.',
-  },
+  kgThucGoiY: { vi: 'Cân lại sau khi bỏ nước rỉ. Chưa repack thì để trống.', en: 'Weigh again after draining. Not repacked yet? Leave blank.' },
   kgThucMonThuong: { vi: 'Kg sau repack (nếu có repack)', en: 'Weight after repack (if repacked)' },
   sauRepack: {
     vi: (kg: string, hao: string, pt: string) => `→ ${kg} kg sau repack (hao ${hao} kg · ${pt})`,
@@ -137,12 +131,10 @@ const t = dichNB(nn, {
   chuaRepack: { vi: 'chưa repack', en: 'not repacked yet' },
   motTang: { vi: '1 tảng', en: '1 primal' },
   moNgay: { vi: (ngay: string) => `mổ ${ngay}`, en: (ngay: string) => `slaughtered ${ngay}` },
-  themChiTiet: { vi: 'Thêm chi tiết: hạn dùng, ngày sản xuất, số lô', en: 'More details: use-by date, production date, lot no.' },
+  themChiTiet: { vi: 'Thêm chi tiết: hạn dùng', en: 'More details: use-by date' },
   thongTinKhac: { vi: ', thông tin khác', en: ', other info' },
   hanDung: { vi: 'Hạn dùng', en: 'Use-by date' },
   boTrongHsd: { vi: 'Bỏ trống = tự tính theo hạn mặc định của món.', en: 'Leave blank to use the item\'s default shelf life.' },
-  ngaySx: { vi: 'Ngày sản xuất', en: 'Production date' },
-  soLo: { vi: 'Số lô trên thùng / nhãn', en: 'Lot no. on the box / label' },
   luuDong: { vi: 'Lưu dòng này', en: 'Save this line' },
   themDong: { vi: '+ Thêm dòng', en: '+ Add line' },
   thoiKhongSua: { vi: 'Thôi, không sửa', en: 'Cancel edit' },
@@ -433,10 +425,8 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
               <div class="kho-luoi">
                 <label class="nb-o"><span>{t.ngayNhanO}</span>
                   <input type="date" name="ngay_nhap" value={dauHien?.ngay_nhap} max={homNayVn()} required /></label>
-                {phieu.loai === 'mua' && (
-                  <label class="nb-o"><span>{t.soHoaDonO}</span>
-                    <input type="text" name="so_hoa_don" value={dauHien?.so_hoa_don} maxlength="60" autocapitalize="characters" /></label>
-                )}
+                {/* Số hóa đơn: kế toán ghi lúc điền giá (22/10/2026). Phiếu đã có số thì mang theo ngầm, không mất. */}
+                {phieu.loai === 'mua' && dauHien?.so_hoa_don && <input type="hidden" name="so_hoa_don" value={dauHien.so_hoa_don} />}
               </div>
               {phieu.loai === 'mua' && <TruongThem dinhNghia={dnPhieu} giaTri={dauHien?.truong_them ?? phieu.truong_them} />}
               <button type="submit" name="viec" value="sua_dau" class="nb-nut phu">{t.luuDau}</button>
@@ -535,16 +525,15 @@ const tieuDe = phieu ? t.tdPhieu(phieu.so_phieu) : t.tdChung;
 
         <TruongThem dinhNghia={dnLo.filter(x => x.bat_buoc)} giaTri={dongHien.truong_them} dong={0} />
 
-        <details open={!!(dongHien.han_dung || dongHien.ngay_san_xuat || dongHien.so_lo_ncc || (!coTheoTang && dongHien.so_kg_thuc)) || undefined}>
+        {/* Ngày sản xuất, số lô NCC: bỏ khỏi form (Khánh duyệt 22/10/2026). Dòng đã có thì mang theo ngầm, sửa không mất. */}
+        {dongHien.ngay_san_xuat && <input type="hidden" name="nsx" value={dongHien.ngay_san_xuat} />}
+        {dongHien.so_lo_ncc && <input type="hidden" name="so_lo_ncc" value={dongHien.so_lo_ncc} />}
+        <details open={!!(dongHien.han_dung || (!coTheoTang && dongHien.so_kg_thuc)) || undefined}>
           <summary>{t.themChiTiet}{dnLo.some(x => !x.bat_buoc && x.dang_dung) ? t.thongTinKhac : ''}</summary>
           <div class="kho-luoi">
             <label class="nb-o"><span>{t.hanDung}</span>
               <small>{t.boTrongHsd}</small>
               <input type="date" name="hsd" value={dongHien.han_dung} /></label>
-            <label class="nb-o"><span>{t.ngaySx}</span>
-              <input type="date" name="nsx" value={dongHien.ngay_san_xuat} /></label>
-            <label class="nb-o"><span>{t.soLo}</span>
-              <input type="text" name="so_lo_ncc" value={dongHien.so_lo_ncc} maxlength="60" autocapitalize="characters" /></label>
             {!coTheoTang && (
               <label class="nb-o"><span>{t.kgThucMonThuong}</span>
                 <input type="text" inputmode="decimal" name="kg_thuc" value={dongHien.so_kg_thuc} placeholder={t.viDuKg} /></label>

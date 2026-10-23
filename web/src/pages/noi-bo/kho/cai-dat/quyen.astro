@@ -9,6 +9,7 @@
  * test-kho-quyen so hai bản).
  */
 import Kho from '../../../../layouts/Kho.astro';
+import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import {
@@ -49,6 +50,7 @@ const t = dichNB(nn, {
 });
 ---
 <Kho k={k} huongDan="quyen" tieuDe={t.tieuDe} rong>
+  <TheTrangCon k={k} cha="huong_dan" />
   <h1>{t.tieuDe}</h1>
   <p>
     {k.duoc('danh_muc') || k.duoc('ncc') || k.duoc('cai_dat_goc') ? <><a href="/noi-bo/kho/cai-dat">{t.veThietLap}</a> · </> : null}

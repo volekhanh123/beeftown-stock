@@ -48,8 +48,8 @@ await nhom('1 · NHẬN RA PHIẾU NỢ ĐẦU KỲ', async () => {
   ok('PN-, TD- không phải', !laNoDau({ so_phieu: 'PN-2610-0001' }) && !laNoDau({ so_phieu: 'TD-2610-0001' }) && !laNoDau({ so_phieu: null }));
   ok('Tên loại', tenLoaiCongNo({ so_phieu: 'ND-1' }) === 'Nợ đầu kỳ' && tenLoaiCongNo({ so_phieu: 'PN-1' }) === 'Nhập mua');
   const p = { id: U(9), so_phieu: 'ND-2610-0001', nha_cung_cap_id: U(1) };
-  ok('Link phiếu ND- về công nợ của nhà cung cấp (không có trang phiếu nhập)',
-     linkPhieuCongNo(p) === `/noi-bo/kho/cong-no/${U(1)}#p-${U(9)}`, linkPhieuCongNo(p));
+  ok('Link phiếu ND- về công nợ của nhà cung cấp (không có trang phiếu nhập), mở sẵn đúng phiếu (?mo=)',
+     linkPhieuCongNo(p) === `/noi-bo/kho/cong-no/${U(1)}?mo=${U(9)}#p-${U(9)}`, linkPhieuCongNo(p));
   ok('Phiếu mua vẫn mở trang phiếu nhập', linkPhieuCongNo({ ...p, so_phieu: 'PN-1' }) === `/noi-bo/kho/nhap/${U(9)}`);
 });
 

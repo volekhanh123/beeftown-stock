@@ -87,7 +87,6 @@ const t = dichNB(nn, {
   nhanVaoDau: { vi: 'Nhận vào đâu?', en: 'Where does it go?' },
   noiNhan: { vi: 'Nơi nhận hàng', en: 'Receiving location' },
   ngayNhan: { vi: 'Ngày nhận', en: 'Date received' },
-  soHoaDon: { vi: 'Số hóa đơn (nếu có)', en: 'Invoice no. (if any)' },
   tiep: { vi: 'Tiếp: cân hàng →', en: 'Next: weigh the goods →' },
   veDs: { vi: '← Danh sách nhận hàng', en: '← Receiving list' },
 });
@@ -238,10 +237,7 @@ const tieuDe = loai === 'ton_dau' ? t.tdTonDau : t.tdNhan;
       <div class="kho-luoi">
         <label class="nb-o"><span>{t.ngayNhan}</span>
           <input type="date" name="ngay_nhap" value={dau.ngay_nhap} max={homNayVn()} required /></label>
-        {loai === 'mua' && (
-          <label class="nb-o"><span>{t.soHoaDon}</span>
-            <input type="text" name="so_hoa_don" value={dau.so_hoa_don} maxlength="60" autocapitalize="characters" /></label>
-        )}
+        {/* Số hóa đơn: kế toán ghi lúc điền giá (Khánh duyệt 22/10/2026) — thủ kho chỉ chụp ảnh. */}
       </div>
       {loai === 'mua' && <TruongThem dinhNghia={dnPhieu} giaTri={dau.truong_them} />}
     </div>

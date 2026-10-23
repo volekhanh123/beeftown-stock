@@ -15,6 +15,7 @@
  * phía trước. Không có tiền.
  */
 import Kho from '../../../../layouts/Kho.astro';
+import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import BieuTuong from '../../../../components/kho/BieuTuong.astro';
 import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
@@ -173,6 +174,7 @@ const giaTriNhan = (pId: string, m: { dem_goi: boolean }, mon: { mat_hang_id: st
 const xep = goiYXepQuay(ton, nn, soTang);
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan={laQuay ? 'nhan-ra-quay' : 'ra-quay'}>
+  <TheTrangCon k={k} cha="quay" />
   <h1>{t.tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 

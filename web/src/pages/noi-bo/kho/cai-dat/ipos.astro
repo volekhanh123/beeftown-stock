@@ -14,6 +14,10 @@
  * Worker IPOS_ACCESS_TOKEN. Form cấu hình không có ô token; ô nào dán chữ
  * "token" bị từ chối (lib/kho/ban-ipos.ts + database).
  *
+ * Gọn 23/10/2026 (Khánh duyệt): phần kỹ thuật — Cấu hình, Địa chỉ nhận hóa đơn (kèm việc cần nhớ ở
+ * iPOS), Cài lần đầu (Cloudflare) — mỗi phần một mục gập, tiêu đề ghi tình trạng ngắn. Cấu hình mở sẵn
+ * khi đồng bộ đang tắt hay vừa lưu hỏng. Bày sẵn: đèn, ô số, Cập nhật ngay, Trừ kho theo iPOS, nhật ký.
+ *
  * Chuyển sang trừ kho theo iPOS: kho_ipos_chuyen_sang đặt nguồn số bán = ipos
  * và mốc cùng lúc. Mốc trống = lúc gửi của lần đếm quầy đã duyệt gần nhất —
  * bán trước mốc đã được tính trong lần đếm đó nên bỏ qua.
@@ -274,6 +278,8 @@ const t = dichNB(nn, {
   cai5b: { vi: ', bấm', en: ', presses' },
   cai5c: { vi: ', gửi địa chỉ nhận hóa đơn cho iPOS, rồi bấm', en: ', sends the invoice receiving address to iPOS, then presses' },
   cai5d: { vi: 'để đọc thực đơn.', en: 'to read the menu.' },
+  soChuaCai: { vi: (n: number) => `${n} việc chưa cài`, en: (n: number) => `${n} ${n === 1 ? 'item' : 'items'} not set up` },
+  daCaiDu: { vi: 'đã cài đủ', en: 'all set up' },
   chuaCaiThiTat: {
     vi: 'Chưa cài thì phần đó tắt, mọi thứ khác vẫn chạy bình thường.',
     en: 'Anything not set up yet stays off; everything else keeps working as usual.',
@@ -405,7 +411,8 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
         )}
       </div>
 
-      <h2>{t.cauHinh}</h2>
+      <details class="ip-gap" id="cau-hinh" open={!!formLai || !tt.bat}>
+        <summary><h2>{t.cauHinh}</h2> <span class="kho-phu">· {tt.bat ? t.dangBat : t.dangTat}{tenQuay ? ` · ${tenQuay}` : ''}</span></summary>
       {laChu ? (
         <form method="POST" class="nb-the">
           <input type="hidden" name="viec" value="luu" />
@@ -457,9 +464,10 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
           <p class="kho-phu" style="margin:.5rem 0 0">{t.chiChuSua}</p>
         </div>
       )}
+      </details>
 
-      <section class="nb-the" id="dia-chi-nhan">
-        <h2 style="margin-top:0">{t.diaChiNhan}</h2>
+      <details class="nb-the ip-gap" id="dia-chi-nhan">
+        <summary><h2>{t.diaChiNhan}</h2> <span class={`nb-nhan ${biMat.khoaCallback ? 'song' : 'cho'}`}>{biMat.khoaCallback ? t.daCai : t.chuaCai}</span></summary>
         {diaChiNhan ? (
           <>
             <label class="nb-o" style="margin-bottom:.5rem">
@@ -480,10 +488,13 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
           <li>{t.nho3a} <strong>access_token</strong> {t.nho3b}</li>
           <li>{t.nho4a} <strong>kg</strong> {t.hayTheo} <strong>{t.goi}</strong> {t.nho4b} <a href="/noi-bo/kho/ban-ipos/ghep">{t.ghepMon}</a>.</li>
         </ol>
-      </section>
+      </details>
 
-      <section class="nb-the" id="cai-lan-dau">
-        <h2 style="margin-top:0">{t.caiLanDau}</h2>
+      <details class="nb-the ip-gap" id="cai-lan-dau">
+        {(() => {
+          const chuaCai = [biMat.khoaCallback, biMat.taiKhoanMay, coToken].filter(x => !x).length;
+          return <summary><h2>{t.caiLanDau}</h2> <span class={`nb-nhan ${chuaCai ? 'cho' : 'song'}`}>{chuaCai ? t.soChuaCai(chuaCai) : t.daCaiDu}</span></summary>;
+        })()}
         <p style="margin:0">
           {t.khoaNhanHd} <span class={`nb-nhan ${biMat.khoaCallback ? 'song' : 'cho'}`}>{biMat.khoaCallback ? t.daCai : t.chuaCai}</span>{' '}
           {t.taiKhoanMay} <span class={`nb-nhan ${biMat.taiKhoanMay ? 'song' : 'cho'}`}>{biMat.taiKhoanMay ? t.daCai : t.chuaCai}</span>{' '}
@@ -497,7 +508,7 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
           <li>{t.cai5a} <strong>{t.batDongBo}</strong>{t.cai5b} <strong>{t.luuCauHinh}</strong>{t.cai5c} <strong>{t.capNhatNgay}</strong> {t.cai5d}</li>
         </ol>
         <p class="kho-phu" style="margin:.5rem 0 0">{t.chuaCaiThiTat}</p>
-      </section>
+      </details>
 
       <h2>{t.muoiLuot}</h2>
       {tt.lan_chay.length === 0 ? (
@@ -525,3 +536,14 @@ const dangIpos = tt?.nguon_so_ban === 'ipos' && !!tt?.ipos_tu_luc;
     </>
   )}
 </Kho>
+
+<style>
+  /* Phần kỹ thuật gập: tiêu đề h2 nằm trong summary, tình trạng ngắn bên cạnh. */
+  .ip-gap { margin: 1.5rem 0 1rem; scroll-margin-top: 5rem; }
+  .ip-gap > summary { cursor: pointer; list-style: none; display: flex; align-items: center; flex-wrap: wrap; gap: .25rem .6rem; min-height: 48px; }
+  .ip-gap > summary::-webkit-details-marker { display: none; }
+  .ip-gap > summary::before { content: '▸'; color: var(--muc-nhat); }
+  .ip-gap[open] > summary::before { content: '▾'; }
+  .ip-gap > summary h2 { margin: 0; }
+  .ip-gap[open] > summary { margin-bottom: .75rem; }
+</style>

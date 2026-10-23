@@ -14,6 +14,11 @@
  * duyệt phiếu nhập. Bấm hai lần / F5 → trả đúng các phiếu cũ. Database từ
  * chối → hiện lại bảng xem trước với CÙNG ma_gui.
  *
+ * Gọn 23/10/2026 (Khánh duyệt): bảng món chia theo nhóm (Tảng nhập, Phần cắt, Phụ phẩm), mỗi nhóm một
+ * mục gập ghi số món đã điền. Ô "Tìm món" gửi CẢ form (viec=tim_luoi, không JavaScript): máy chủ vẽ lại
+ * chỉ các món khớp, món khác thành ô ẩn mang đúng số đã gõ — xem trước vẫn đọc đủ mọi món. Nút tìm
+ * đứng trước nên Enter trong ô số chỉ vẽ lại (giữ số), không xem trước.
+ *
  * Quyền: nhap (như tồn đầu kỳ ở Nhận hàng). Thủ kho không thấy cột giá —
  * đơn giá do kế toán / quản lý điền lúc duyệt.
  */
@@ -22,7 +27,7 @@ import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docViTri } from '../../../../lib/kho/danh-muc.ts';
 import {
-  cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangTien, homNayVn, kqHai, laUuid, nhanKho, TEN_LOAI_MAT_HANG_NB,
+  boDau, cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangTien, homNayVn, kqHai, laUuid, nhanKho, TEN_LOAI_MAT_HANG_NB,
   type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import {
@@ -62,6 +67,19 @@ const t = dichNB(nn, {
                 en: 'This branch has not started using inventory yet — a manager opens Inventory setup and presses "Start using inventory" first.' },
   chuaCoNoi: { vi: 'Chưa có kho hay quầy nào đang dùng — thêm ở Vị trí và lý do trước.', en: 'No store or counter is in use — add one in Locations and reasons first.' },
   xemTruoc: { vi: 'Xem trước', en: 'Preview' },
+  timMon: { vi: 'Tìm món', en: 'Find an item' },
+  timGoiY: { vi: 'Tên hoặc mã món…', en: 'Item name or code…' },
+  tim: { vi: 'Tìm', en: 'Find' },
+  hienMoiMon: { vi: 'Hiện mọi món', en: 'Show every item' },
+  dangLoc: {
+    vi: (q: string, n: number) => `Đang hiện ${n} món khớp "${q}". Số đã gõ ở các món khác vẫn được giữ.`,
+    en: (q: string, n: number) => `Showing ${n} ${n === 1 ? 'item' : 'items'} matching "${q}". Numbers typed for other items are kept.`,
+  },
+  khongKhop: { vi: (q: string) => `Không có món nào khớp "${q}".`, en: (q: string) => `No item matches "${q}".` },
+  nhomDem: {
+    vi: (n: number, dien: number) => `${n} món${dien > 0 ? ` · đã điền ${dien}` : ''}`,
+    en: (n: number, dien: number) => `${n} ${n === 1 ? 'item' : 'items'}${dien > 0 ? ` · ${dien} filled in` : ''}`,
+  },
   soDong: { vi: (n: number) => `${n} dòng`, en: (n: number) => `${n} ${s(n, 'row', 'rows')}` },
   chuaGhi: { vi: 'Chưa ghi được.', en: 'Not saved yet.' },
   suaRoiXem: { vi: ' Sửa những chỗ này rồi bấm "Xem trước" lại:', en: ' Fix these, then press "Preview" again:' },
@@ -143,7 +161,12 @@ const form = await docFormGui(Astro);
 if (form && k.chiNhanh) {
   const viec = String(form.get('viec') ?? '');
   ngay = String(form.get('ngay') ?? '').trim() || homNay;
-  if (viec === 'xem_luoi' || viec === 'xem_dan') {
+  if (viec === 'tim_luoi' || viec === 'bo_loc') {
+    // Chỉ vẽ lại bảng: giữ mọi số đã gõ, lọc món theo ô tìm (bo_loc: bỏ lọc).
+    luoiLai = form;
+    vtChon = noiDe.find(v => v.id === String(form.get('vt') ?? '')) ?? vtChon;
+    if (viec === 'bo_loc') luoiLai.set('tim', '');
+  } else if (viec === 'xem_luoi' || viec === 'xem_dan') {
     if (loiDoc) {
       bao = kqHai(false, { vi: 'Chưa đọc được danh mục nên chưa xem trước được — tải lại trang rồi thử lại.',
                            en: 'Could not read the catalog, so there is no preview — reload the page and try again.' });
@@ -189,14 +212,24 @@ const tomTat = xem ? tomTatTheoViTri(xem.dong) : [];
 const choXacNhan = !!xem && xem.loi.length === 0 && xem.dong.length > 0 && laUuid(maGui);
 /** Ô bảng món: số vừa gõ (khi xem trước / lỗi) hoặc trống. */
 const oLuoi = (ten: string) => luoiLai ? String(luoiLai.get(ten) ?? '') : '';
+const timMon = luoiLai ? String(luoiLai.get('tim') ?? '').trim().slice(0, 60) : '';
+const timKhop = (m: MonTonDau) => !timMon || boDau(`${m.ten} ${m.ma}`).toLowerCase().includes(boDau(timMon).toLowerCase());
+/** Món đã gõ ít nhất một ô (gói, kg, giá, hạn). */
+const daDien = (i: number) => [O_LUOI.goi, O_LUOI.kg, O_LUOI.gia, O_LUOI.han].some(o => oLuoi(`${o}${i}`).trim() !== '');
 const nhomLuoi = (['tang', 'phan_cat', 'phu_pham'] as const)
-  .map(loai => ({ loai, hang: mon.map((m, i) => ({ m, i })).filter(x => x.m.loai === loai) }))
-  .filter(n => n.hang.length > 0);
+  .map(loai => {
+    const tat = mon.map((m, i) => ({ m, i })).filter(x => x.m.loai === loai);
+    return { loai, tat, hang: tat.filter(x => timKhop(x.m)), dien: tat.filter(x => daDien(x.i)).length };
+  })
+  .filter(n => n.tat.length > 0);
+/** Món không khớp ô tìm: chỉ còn ô ẩn mang số đã gõ (đủ chỉ số liền cho docLuoiTonDau). */
+const anDi = nhomLuoi.flatMap(n => n.tat.filter(x => !timKhop(x.m)));
+const soKhop = nhomLuoi.reduce((c, n) => c + n.hang.length, 0);
 const ngayMin = congNgay(homNay, -90);
 ---
 <Kho k={k} huongDan="ton-dau" tieuDe={t.tieuDe} rong>
   <h1>{t.tieuDe}</h1>
-  <p>{vaoThietLap ? <a href="/noi-bo/kho/cai-dat#buoc-ton_dau">{t.veThietLap}</a> : <a href="/noi-bo/kho/nhan-hang">{t.veNhanHang}</a>}</p>
+  <p>{vaoThietLap ? <a href="/noi-bo/kho/cai-dat?mo=xong#buoc-ton_dau">{t.veThietLap}</a> : <a href="/noi-bo/kho/nhan-hang">{t.veNhanHang}</a>}</p>
   <p class="kho-phu" style="margin-top:0">{t.gt1}<strong>{t.dangCoSan}</strong>{t.gt2}
     {coGia ? t.gt3CoGia : t.gt3KhongGia}</p>
   <BaoKho bao={bao} loiDoc={loiDoc} />
@@ -283,7 +316,6 @@ const ngayMin = congNgay(homNay, -90);
       </nav>
       {vtChon && (
         <form method="POST" class="nb-the">
-          <input type="hidden" name="viec" value="xem_luoi" />
           <input type="hidden" name="vt" value={vtChon.id} />
           <label class="nb-o">
             <span>{t.ngayTonDau}</span>
@@ -291,15 +323,26 @@ const ngayMin = congNgay(homNay, -90);
             <input type="date" name="ngay" value={ngay} min={ngayMin} max={homNay} required />
           </label>
           <p class="kho-phu">{t.hangDangCo}<strong>{vtChon.ten}</strong>{t.chiGhiMon} {t.hanTrong}</p>
-          <div class="kho-bang-khung">
-            <table class="kho-bang td-luoi">
-              <thead>
-                <tr><th>{t.cotMatHang}</th><th>{t.cotSoGoi}</th><th>Kg</th>{coGia && <th>{t.donGiaKg}</th>}<th>{t.cotHan}</th></tr>
-              </thead>
-              <tbody>
-                {nhomLuoi.map(n => (
-                  <>
-                    <tr class="td-nhom"><td colspan={coGia ? 5 : 4}>{nhanKho(TEN_LOAI_MAT_HANG_NB, n.loai, nn)}</td></tr>
+          <div class="td-tim">
+            <label class="nb-o"><span>{t.timMon}</span>
+              <input type="search" name="tim" value={timMon} maxlength="60" placeholder={t.timGoiY} autocomplete="off" /></label>
+            <button type="submit" name="viec" value="tim_luoi" class="nb-nut phu" formnovalidate>{t.tim}</button>
+          </div>
+          {timMon && (
+            <p class="kho-phu">
+              {soKhop > 0 ? t.dangLoc(timMon, soKhop) : t.khongKhop(timMon)}{' '}
+              <button type="submit" name="viec" value="bo_loc" class="td-bo-loc" formnovalidate>{t.hienMoiMon}</button>
+            </p>
+          )}
+          {nhomLuoi.filter(n => n.hang.length > 0).map(n => (
+            <details class="td-nhom-the" open={!!timMon || n.dien > 0}>
+              <summary><strong>{nhanKho(TEN_LOAI_MAT_HANG_NB, n.loai, nn)}</strong> <span class="kho-phu">· {t.nhomDem(n.tat.length, n.dien)}</span></summary>
+              <div class="kho-bang-khung">
+                <table class="kho-bang td-luoi">
+                  <thead>
+                    <tr><th>{t.cotMatHang}</th><th>{t.cotSoGoi}</th><th>Kg</th>{coGia && <th>{t.donGiaKg}</th>}<th>{t.cotHan}</th></tr>
+                  </thead>
+                  <tbody>
                     {n.hang.map(({ m, i }) => (
                       <tr>
                         <td>
@@ -319,12 +362,25 @@ const ngayMin = congNgay(homNay, -90);
                           aria-label={t.ariaHan(m.ten)} /></td>
                       </tr>
                     ))}
-                  </>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <button type="submit" class="nb-nut">{t.xemTruoc}</button>
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          ))}
+          {anDi.length > 0 && (
+            <div hidden>
+              {anDi.map(({ m, i }) => (
+                <>
+                  <input type="hidden" name={`${O_LUOI.mh}${i}`} value={m.id} />
+                  <input type="hidden" name={`${O_LUOI.goi}${i}`} value={oLuoi(`${O_LUOI.goi}${i}`)} />
+                  <input type="hidden" name={`${O_LUOI.kg}${i}`} value={oLuoi(`${O_LUOI.kg}${i}`)} />
+                  {coGia && <input type="hidden" name={`${O_LUOI.gia}${i}`} value={oLuoi(`${O_LUOI.gia}${i}`)} />}
+                  <input type="hidden" name={`${O_LUOI.han}${i}`} value={oLuoi(`${O_LUOI.han}${i}`)} />
+                </>
+              ))}
+            </div>
+          )}
+          <button type="submit" name="viec" value="xem_luoi" class="nb-nut">{t.xemTruoc}</button>
         </form>
       )}
 
@@ -362,7 +418,14 @@ const ngayMin = congNgay(homNay, -90);
 <style>
   .td-tom-tat { margin: 0 0 .75rem; padding-left: 1.2rem; }
   .td-luoi td { vertical-align: middle; }
-  .td-nhom td { font-weight: 700; background: var(--kem-sau); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  /* Mỗi nhóm món một mục gập; ô tìm cạnh nút Tìm. */
+  .td-nhom-the { border: 1px solid var(--vach); border-radius: 10px; margin: 0 0 .6rem; background: var(--nb-the); }
+  .td-nhom-the > summary { cursor: pointer; min-height: 48px; display: list-item; padding: .75rem 1rem; }
+  .td-nhom-the .kho-bang-khung { margin: 0; }
+  .td-tim { display: flex; gap: .5rem; align-items: end; }
+  .td-tim .nb-o { flex: 1; margin-bottom: .75rem; }
+  .td-tim .nb-nut { margin-bottom: .75rem; }
+  .td-bo-loc { font: inherit; background: none; border: 0; padding: .5rem 0; color: inherit; text-decoration: underline; cursor: pointer; font-weight: 600; min-height: 44px; }
   /* Ô trong bảng: cỡ chữ 16px (iPhone không tự phóng to), cao ≥ 48px. */
   .td-o { font-size: 16px; min-height: 48px; width: 5.5rem; padding: .4rem .5rem; border: 1px solid var(--vien-o); border-radius: 8px; background: var(--kem); }
   .td-o.rong { width: 9.5rem; }

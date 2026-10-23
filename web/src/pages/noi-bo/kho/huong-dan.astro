@@ -6,9 +6,14 @@
  * Nút "?" trên thanh trên của mọi màn kho trỏ về đây, đúng #id của màn đó.
  *
  * Lọc theo vai (?vai=thu_kho…, mặc định vai người đang xem; ?vai=tat-ca xem
- * hết) KHÔNG ẩn mục nào: mục của vai mình lên trước, các mục khác xếp sau
- * dưới tiêu đề "Việc của vai khác". Nhờ vậy mọi #id luôn có trong HTML — nút
- * "?" của màn nào cũng cuộn tới đúng chỗ, dù đang lọc vai nào.
+ * hết) KHÔNG xóa mục nào khỏi HTML: mục của vai mình bày ra (mục lục chỉ gồm
+ * các mục này), mục của vai khác nằm trong MỘT mục gập "Việc của vai khác".
+ * Nhờ vậy mọi #id luôn có trong HTML — link cũ vẫn tới đúng chỗ.
+ *
+ * Gọn 23/10/2026 (Khánh duyệt): mỗi mục là một <details> — tiêu đề và câu tóm tắt;
+ * bấm mở mới thấy bước, mẹo, ảnh. ?mo=<id> mở sẵn mục đó (và mục gập "vai khác"
+ * nếu nó nằm trong đó): nút "?" của mọi màn (layouts/Kho.astro) và mục lục dùng
+ * ?mo=<id>#<id>.
  *
  * Không JavaScript: chip vai là link, câu hỏi dùng <details>.
  *
@@ -16,6 +21,7 @@
  * là cặp { vi, en } trong huong-dan.ts — luôn đọc [nn].
  */
 import Kho from '../../../layouts/Kho.astro';
+import TheTrangCon from '../../../components/kho/TheTrangCon.astro';
 import { moTrangKho } from '../../../lib/kho/trang.ts';
 import {
   MUC_HUONG_DAN, NHOM_VAI, CAU_HOI, dinhDang, vaiHuongDan, nhomCua,
@@ -40,6 +46,7 @@ const t = dichNB(nn, {
   cauHoi: { vi: 'Câu hỏi thường gặp', en: 'Frequently asked questions' },
   viecCua: { vi: (ten: string) => `Việc của ${ten}`, en: (ten: string) => `${ten} tasks` },
   vaiKhac: { vi: 'Việc của vai khác', en: 'Tasks for other roles' },
+  soMuc: { vi: (n: number) => `${n} mục`, en: (n: number) => `${n} ${n === 1 ? 'section' : 'sections'}` },
 });
 
 const DUONG = '/noi-bo/kho/huong-dan';
@@ -63,8 +70,14 @@ const khoi: Khoi[] = [
   ...(locVai ? [{ id: 'viec-cua-toi', ten: t.viecCua(tenVai(vaiChon)), muc: cuaToi }] : []),
 ];
 const khoiKhac = theoNhom(conLai);
+/** Mục mở sẵn (?mo=<id>): nút "?" của màn, link trong mục lục. */
+const mo = Astro.url.searchParams.get('mo') ?? '';
+const moVaiKhac = locVai && conLai.some(m => m.id === mo);
+/** Link mở sẵn một mục, giữ vai đang lọc. */
+const linkMo = (id: string) => `${DUONG}?${new URLSearchParams({ ...(thamSo ? { vai: thamSo } : {}), mo: id }).toString()}#${id}`;
 ---
 <Kho k={k} tieuDe={t.tieuDe}>
+  <TheTrangCon k={k} cha="huong_dan" />
   <h1>{t.h1}</h1>
   <p class="nb-dan">{t.dan1}<strong>?</strong>{t.dan2}</p>
 
@@ -77,37 +90,52 @@ const khoiKhac = theoNhom(conLai);
 
   <section class="nb-the hd-muc-luc" aria-labelledby="muc-luc">
     <h2 id="muc-luc" style="margin-top:0">{t.mucLuc}</h2>
-    {[...khoi, ...khoiKhac].map(n => (
+    {(locVai ? khoi : [...khoi, ...khoiKhac]).map(n => (
       <>
         <p class="hd-nhom-ten"><a href={`#${n.id}`}>{n.ten}</a></p>
-        <ul>{n.muc.map(m => <li><a href={`#${m.id}`}>{m.tieuDe[nn]}</a></li>)}</ul>
+        <ul>{n.muc.map(m => <li><a href={linkMo(m.id)}>{m.tieuDe[nn]}</a></li>)}</ul>
       </>
     ))}
+    {locVai && khoiKhac.length > 0 && <p class="hd-nhom-ten"><a href="#vai-khac">{t.vaiKhac}</a></p>}
     <p class="hd-nhom-ten"><a href="#cau-hoi">{t.cauHoi}</a></p>
   </section>
 
-  {[...khoi, ...(locVai && khoiKhac.length ? [{ id: 'vai-khac', ten: t.vaiKhac, muc: [] }] : []), ...khoiKhac].map(n => (
-    <>
-      <h2 id={n.id} class:list={['hd-nhom', { 'hd-vai-khac': n.id === 'vai-khac' }]}>{n.ten}</h2>
-      {n.muc.map(m => (
-        <section class="nb-the hd-the" id={m.id}>
-          <h3 style="margin-top:0">{m.tieuDe[nn]}</h3>
-          <p class="hd-tom-tat" set:html={dinhDang(m.tomTat[nn])} />
-          <ol class="hd-buoc">{m.buoc.map(b => <li set:html={dinhDang(b[nn])} />)}</ol>
-          {m.meo && m.meo.length > 0 && (
-            <ul class="hd-meo">{m.meo.map(x => <li set:html={dinhDang(x[nn])} />)}</ul>
-          )}
-          {m.anh && (
-            <figure class="hd-anh">
-              <img src={m.anh.file} alt={m.anh.chu[nn]} width={m.anh.rong} height={m.anh.cao} loading="lazy" decoding="async" />
-              <figcaption class="kho-phu">{m.anh.chu[nn]}</figcaption>
-            </figure>
-          )}
-          {m.link && <p class="kho-khong-in" style="margin:.75rem 0 0"><a class="nb-nut phu" href={m.link.href}>{m.link.chu[nn]} →</a></p>}
-        </section>
-      ))}
-    </>
-  ))}
+  {(() => {
+    const theMuc = (m: MucHuongDan) => (
+      <details class="nb-the hd-the" id={m.id} open={m.id === mo}>
+        <summary>
+          <h3>{m.tieuDe[nn]}</h3>
+          <span class="hd-tom-tat" set:html={dinhDang(m.tomTat[nn])} />
+        </summary>
+        <ol class="hd-buoc">{m.buoc.map(b => <li set:html={dinhDang(b[nn])} />)}</ol>
+        {m.meo && m.meo.length > 0 && (
+          <ul class="hd-meo">{m.meo.map(x => <li set:html={dinhDang(x[nn])} />)}</ul>
+        )}
+        {m.anh && (
+          <figure class="hd-anh">
+            <img src={m.anh.file} alt={m.anh.chu[nn]} width={m.anh.rong} height={m.anh.cao} loading="lazy" decoding="async" />
+            <figcaption class="kho-phu">{m.anh.chu[nn]}</figcaption>
+          </figure>
+        )}
+        {m.link && <p class="kho-khong-in" style="margin:.75rem 0 0"><a class="nb-nut phu" href={m.link.href}>{m.link.chu[nn]} →</a></p>}
+      </details>
+    );
+    const theKhoi = (ds: Khoi[]) => ds.map(n => (
+      <>
+        <h2 id={n.id} class="hd-nhom">{n.ten}</h2>
+        {n.muc.map(theMuc)}
+      </>
+    ));
+    return <>
+      {theKhoi(locVai ? khoi : [...khoi, ...khoiKhac])}
+      {locVai && khoiKhac.length > 0 && (
+        <details class="hd-vai-khac" id="vai-khac" open={moVaiKhac}>
+          <summary>{t.vaiKhac} · {t.soMuc(conLai.length)}</summary>
+          {theKhoi(khoiKhac)}
+        </details>
+      )}
+    </>;
+  })()}
 
   <h2 id="cau-hoi" class="hd-nhom">{t.cauHoi}</h2>
   <section class="nb-the hd-hoi">
@@ -122,12 +150,20 @@ const khoiKhac = theoNhom(conLai);
 
 <style>
   .hd-nhom { margin: 1.75rem 0 .5rem; }
-  .hd-vai-khac { border-top: 2px solid var(--kho-vach); padding-top: 1rem; }
+  .hd-vai-khac { border-top: 2px solid var(--kho-vach); padding-top: .5rem; margin-top: 1.75rem; scroll-margin-top: 5rem; }
+  .hd-vai-khac > summary { cursor: pointer; font-weight: 700; font-size: 1.1rem; min-height: 48px; display: list-item; padding: .6rem 0; }
+  /* Mỗi mục một thẻ gập: tiêu đề + câu tóm tắt; bấm mở ra bước, mẹo, ảnh. */
+  .hd-the > summary { cursor: pointer; list-style: none; position: relative; padding-left: 1.4rem; }
+  .hd-the > summary::-webkit-details-marker { display: none; }
+  .hd-the > summary::before { content: '▸'; position: absolute; left: 0; top: .1rem; color: var(--muc-nhat); }
+  .hd-the[open] > summary::before { content: '▾'; }
+  .hd-the > summary h3 { margin: 0 0 .25rem; font-size: 1.02rem; }
+  .hd-the[open] > summary { margin-bottom: .5rem; }
   .hd-muc-luc ul { margin: .25rem 0 .75rem; padding-left: 1.2rem; }
   .hd-muc-luc li { margin: .3rem 0; }
   .hd-nhom-ten { margin: .5rem 0 0; font-weight: 700; }
   .hd-the { scroll-margin-top: 5rem; }
-  .hd-tom-tat { margin: 0 0 .5rem; }
+  .hd-tom-tat { display: block; margin: 0; color: var(--muc-nhat); font-size: .92rem; }
   .hd-buoc { margin: 0; padding-left: 1.4rem; }
   .hd-buoc li { margin: .4rem 0; line-height: 1.5; }
   .hd-meo { margin: .75rem 0 0; padding-left: 1.2rem; font-size: .92rem; color: var(--muc-nhat); }
@@ -145,5 +181,8 @@ const khoiKhac = theoNhom(conLai);
   @media print {
     .hd-anh img { max-width: 220px; }
     .hd-the { break-inside: avoid; }
+    .hd-the > summary::before { content: none; }
+    /* In ra thì in đủ bước của mọi mục, kể cả mục đang gập (trình duyệt hiểu ::details-content). */
+    .hd-the::details-content, .hd-vai-khac::details-content { content-visibility: visible; display: block; }
   }
 </style>

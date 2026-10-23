@@ -33,11 +33,12 @@ Khung gồm:
   chuông có số chưa đọc, menu người dùng (các màn CRM mà vai đó được vào, Hướng dẫn, Đăng xuất).
 - **Màn ≥ 1024px**: cột trái — ô "Tìm chức năng" (gửi về trang Khác), rồi các mục **theo nhóm**
   (`NHOM_KHO`: Hằng ngày · Tồn kho · Mua và nhận hàng · Pha lóc, quầy, xuất · Tiền và báo cáo ·
-  Thiết lập và trợ giúp) có số đỏ, và "Thao tác nhanh" bên dưới. Dùng chuột thì dòng cao 36px,
-  ngón tay (iPad ngang) 44px.
+  Thiết lập và trợ giúp) có số đỏ. Dùng chuột thì dòng cao 36px, ngón tay (iPad ngang) 44px.
+  "Thao tác nhanh" (nút lập phiếu mới) chỉ ở trang chủ — từ 22/10/2026 cột trái và trang Khác không in
+  lặp lại; ô tìm vẫn tìm ra chúng. Chủ / quản lý chỉ có nút lập mới (Đặt hàng, Lập phiếu nhập, Báo hủy).
 - **Màn < 1024px**: thanh đáy 5 nút, nút giữa "Quét" nổi lên. Có chừa `safe-area` cho iPhone.
   Thanh nút lưu (`.kho-thanh-nut.dinh`) dính ngay trên thanh đáy.
-- **Trang Khác** (`/noi-bo/kho/khac`, nút cuối thanh đáy): ô tìm, thao tác nhanh, mọi mục theo
+- **Trang Khác** (`/noi-bo/kho/khac`, nút cuối thanh đáy): ô tìm, mọi ô theo
   nhóm, rồi "Phần khác của nhà hàng" (quản lý, chủ). Dữ liệu ở `lib/ban-do-chuc-nang.ts`, vẽ bằng
   `components/BanDoChucNang.astro` — dùng chung với `/noi-bo/chuc-nang` bên khung nhà hàng. Ô tìm là
   form GET, không JavaScript: chữ gõ không dấu so không dấu ("cong no" ra Công nợ), chữ có dấu so
@@ -52,9 +53,26 @@ Dữ liệu menu ở `lib/kho/dieu-huong.ts` (file thuần, test được bằng
 | Quản lý, Chủ | Hôm nay · Duyệt · Quét · Tồn kho · Khác |
 | Kế toán | Trang chủ · Duyệt · Công nợ · Nhập hàng · Khác (Báo cáo nằm trong Khác) |
 
+**Gọn menu (22/10/2026): 25 ô còn 15.** Trang ít mở hoặc là một góc của trang khác là **mục con**
+(`cha: '<mã ô>'` trong `MUC_KHO`): không in trên cột trái và trang Khác, nhưng ô tìm vẫn ra (kèm nhóm của
+ô cha), mở nó thì ô cha sáng (`dangO`: ô khớp đường dài nhất thắng), và trang cha cùng các trang con có
+hàng thẻ `components/kho/TheTrangCon.astro` (lớp `.kho-the-chon`) ngay trên `h1`:
+
+| Ô menu | Mục con (thẻ) |
+|---|---|
+| Tồn kho | Tảng · ủ |
+| Quầy (`/quay/yeu-cau`, số đỏ = yêu cầu chờ + hàng đang mang ra) | Quầy cần hàng · Nhận hàng ra quầy |
+| Báo cáo (số đỏ = Bán hàng iPOS + Định mức bếp) | Bán hàng iPOS · Định mức bếp |
+| Thiết lập | Mặt hàng · Định lượng món |
+| Hướng dẫn | Quy trình · Ai làm được gì (đường nằm dưới `/cai-dat` nhưng ô Thiết lập không sáng) |
+
+Ô **Nhận hàng** có `anKhiCo: ['xem_gia']`: chủ, quản lý không thấy nó — ô **Nhập hàng** của họ gồm cả
+`/nhan-hang` (`khop`). Thủ kho vẫn thấy Nhận hàng, kế toán vẫn thấy Nhập hàng. Mục con mới: thêm dòng có
+`cha`, thêm `<TheTrangCon k={k} cha="…" />` vào trang (`test-kho-giao-dien.mjs` nhóm 2 kiểm đủ trang).
+
 Mỗi ô ghi **quyền cần có** (`quyen`, cần một trong các quyền) — phải khớp với dòng chặn ở đầu
 trang đó. `test-kho-giao-dien.mjs` so hai chỗ này: không vai nào thấy một ô rồi bấm vào lại
-bị đá ra. Mỗi ô thuộc đúng một nhóm (`nhom`); từ khóa cho ô tìm ở `TU_KHOA_KHO`.
+bị đá ra. Mỗi ô thuộc đúng một nhóm (`nhom`), mục con không có nhóm; từ khóa cho ô tìm ở `TU_KHOA_KHO`.
 `test-noi-bo-dieu-huong.mjs` kiểm nhóm không thêm / bớt ô nào so với quyền, và ô tìm chỉ ra mục vai
 được thấy. Các màn nhà hàng trong menu người dùng (`MUC_CRM`) dựng từ `lib/dieu-huong-noi-bo.ts`.
 
@@ -93,6 +111,17 @@ gọi nó song song với danh sách chi nhánh, nên không thêm lượt chờ
 Sự kiện thông báo **không lưu thành bảng**. Hàm nội bộ `kho_su_kien` suy ra sự kiện từ chính
 chứng từ: phiếu bị trả về, lô hết hạn, nợ quá hạn… Nhờ vậy sự kiện không bao giờ lệch với sổ.
 `kho_thong_bao` trả 30 ngày gần nhất và đánh dấu `chua_doc` theo mốc `kho_nguoi_xem`.
+
+**Gom việc cùng loại (22/10/2026, migration 0092).** `gomSuKien` (`lib/kho/viec.ts`): khóa có ≥ `NGUONG_GOM`
+(3) sự kiện thành một dòng (`cauNhomSuKien`: "9 lô hết hạn", nút dẫn tới trang danh sách đã lọc — Tồn kho
+`?han=het_han`, Công nợ `?loc=qua_han`…), ít hơn thì từng dòng; `ncc_doi_tai_khoan` không bao giờ gom
+(`KHOA_KHONG_GOM`). Dùng ở Việc cần làm (30 ngày), trang chủ (chỉ "Làm ngay", tối đa 5 dòng) và chuông
+(`NGAY_CHUONG` = 7 ngày). Số đỏ trên chuông (`chua_doc` của `kho_dem_viec`, 0092) đếm đúng số dòng chuông có tin
+chưa đọc — đổi luật gom thì viết migration mới cho khớp (`test-kho-viec.mjs` nhóm 7b, `test-kho-giao-dien.mjs`
+nhóm 4 so hai bên). Cả `chua_doc` lẫn `viec_dong` chỉ đếm 300 sự kiện mới nhất của 30 ngày — đúng phần
+`kho_thong_bao` trả; chuông, Việc cần làm, Trang chủ đều đọc 300. `gomSuKien` tính câu gom một lần mỗi khóa.
+Báo hủy bị từ chối gom lại dẫn tới `/xuat?loc=huy_tu_choi` (lọc ẩn `LOC_AN` của `xuat/index.astro`: loại hủy và
+trạng thái từ chối; thẻ lọc chỉ hiện khi đang lọc).
 `kho_da_xem_thong_bao` dời mốc đó (mở trang chuông là đã đọc).
 
 Câu chữ và link "làm ngay" của từng khóa nằm ở `lib/kho/viec.ts` — sửa câu không cần viết
@@ -117,7 +146,7 @@ migration.
 |---|---|
 | `/noi-bo/kho` | Trang chủ **theo vai**: NV quầy "Quầy hôm nay" (hết hạn phải bỏ, **xếp ra bán trước**, quầy sắp hết); thủ kho "Việc hôm nay"; quản lý/chủ "Hôm nay" có thẻ `?tab=quan-tri` (chỉ số từ `kho_chi_so_quan_tri`); kế toán: công nợ |
 | `/noi-bo/kho/viec` | Việc cần làm: "Làm ngay" (đỏ) và "Nên làm sớm" (vàng), mỗi việc một nút |
-| `/noi-bo/kho/thong-bao` | Chuông: mọi sự kiện 30 ngày, chia thẻ Vận hành / Nhắc nhở / Hệ thống |
+| `/noi-bo/kho/thong-bao` | Chuông: sự kiện 7 ngày, gom cùng loại, chia thẻ Vận hành / Nhắc nhở / Hệ thống |
 | `/noi-bo/kho/duyet` | Hộp duyệt chung (quyền `duyet` hoặc `duyet_nhap`): phiếu nhập (điền giá rồi duyệt), báo hủy, kiểm kê — cũ nhất lên trước. Kế toán (`duyet_nhap`) chỉ thấy phiếu nhập. Duyệt xong quay về đây |
 | `/noi-bo/kho/nhan-hang` | Nhận hàng 3 bước của thủ kho (quyền `nhap`, **chỉ kg**, migration 0031): `moi` chụp hóa đơn + chọn người giao → `<id>` cân từng món → `<id>?buoc=gui` xem lại, gửi. Người có `nhap` mà không `xem_gia` mở `/noi-bo/kho/nhap/*` bị chuyển sang đây |
 | `/noi-bo/kho/nhap/<id>` | Vai xem giá. Người có `duyet_nhap` mở phiếu chờ duyệt → màn **điền giá**: ảnh hóa đơn lớn, ô đơn giá từng dòng, chip so với lần nhập trước (`kho_so_sanh_gia_nhap`, đỏ khi vượt `nguong_gia_mua_pt`), [Lưu giá] [Duyệt]. `?soan=1`: quản lý sửa cả dòng hàng |
@@ -230,11 +259,86 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
   - Chữ đếm theo đơn vị của món ("Khay này: 0,312 kg", "không còn khay nào"), không viết cứng "gói".
 - **Số tảng cạnh lô**: màn Quét, Tồn kho, Thẻ kho hiện "tảng #0001" ở mỗi lô thuộc một tảng (mục 3o).
 
+### Gọn phần tồn kho (Khánh duyệt 22/10/2026)
+
+- **Tồn kho**: mỗi món một dòng gập (`details.kho-mh`) — tên, số lô, tổng kg · gói, "Hạn dd/mm" sớm nhất; bấm mới
+  thấy bảng lô và nút. Mở sẵn khi chỉ ≤ 3 món hay lọc hẹp: theo hạn (`?han=`), món quầy dưới mức (`?duoi_muc=1`,
+  dòng gom "n món quầy sắp hết" — mỗi lô một nút Mang ra quầy) hoặc ô tìm. Không còn dòng mã · loại · nhóm, cột giá
+  vốn/kg (tổng giá trị vẫn ở dòng đầu cho vai xem giá) và chữ "pha lóc / nhập dd/mm" dưới mã lô.
+- **Tảng · ủ**: bảng tảng 5 cột (Số tảng · Món · Tuổi · Ủ xong · Kg). Chỗ để chỉ ghi dưới tên món khi khác chỗ của đa
+  số tảng; ngày mổ, hạn dùng xem ở trang tảng.
+- **Thẻ kho**: nhập / xuất / tồn gộp một cột "Kg ± · tồn" (và một cột gói) — 7 cột.
+- **Kiểm kê**: thẻ tiến độ chỉ "Đã đếm x/y"; quét nhãn gập trong `details`; mỗi món một hàng gọn (ô số gói, ô kg,
+  "Đã hết thật").
+- `test-kho-giao-dien.mjs` nhóm 17 gác các điều trên.
+
+### Gọn phần mua và nhận hàng, thẻ phiếu (Khánh duyệt 22/10/2026)
+
+- **Thẻ phiếu hai dòng** ở mọi danh sách phiếu (Nhận hàng, Nhập hàng, Đặt hàng, Chuyển · Xuất · Hủy, Pha lóc,
+  Kiểm kê): dòng 1 số phiếu · nhà cung cấp (hoặc loại / chỗ) + nhãn trạng thái; dòng 2 `p.nb-dong-tom` — ngày ·
+  số món · kg (· tiền với vai xem giá). Không còn dòng người lập (nên không đọc `tenNhanSu`); chỗ nhận chỉ ghi khi
+  khác chỗ của đa số phiếu (`phoBienNhat`, `lib/kho/chung.ts`).
+- **Nhận hàng**: bỏ ô Ngày sản xuất, Số lô NCC (bước 2 và form soạn của phiếu nhập) và Số hóa đơn (bước 1, sửa
+  đầu phiếu — kế toán ghi lúc điền giá). Dòng / phiếu đã có giá trị thì form mang theo bằng ô ẩn, sửa không mất.
+  Câu giải thích dưới Ngày mổ, Kg sau repack còn một câu; bản đủ ở Hướng dẫn (`nhan-hang`).
+- **Điền giá**: chip chỉ "Lần trước …"; số phiếu và ngày lần trước nằm trong `title`.
+- **Số đỏ ô Việc** = `viec_dong` (0092): số dòng của trang Việc cần làm sau khi gom, không cộng từng lô / món.
+- `test-kho-giao-dien.mjs` nhóm 18, `test-kho-viec.mjs` nhóm 7b gác các điều trên.
+
+### Gọn phần pha lóc, quầy, xuất (Khánh duyệt 22–23/10/2026)
+
+- **Chuyển · Xuất · Hủy** (`xuat/[id]`): mục chọn lô gập sẵn (quét nhãn hoặc chọn món ở trên là đủ); mở sẵn khi
+  đi từ nút của một lô (`?lo=`) hay lô đã có số. Mỗi lô một hàng gọn: tên, dòng nhỏ "lô · còn · HSD", hai ô số
+  cạnh nhau (`.kho-lo-chon`, `kho.css`). **Báo hủy**: lô hết hạn rồi sắp hết hạn lên đầu (hạn gần trước,
+  `MUC_HAN_LO`); lô còn hạn xa trong mục gập "Xem mọi lô khác (n)" — vẫn trong form, chỉ số `l<i>_…` chạy liền
+  qua hai nhóm (`so_lo` = tổng số lô).
+- **Quầy cần hàng** (`quay/yeu-cau`): món kho cũng hết (số đề nghị đã là 0 — `kho_goi_y_ra_quay` không đề nghị quá
+  số kho) không còn ô nhập, gom vào mục gập "n món kho cũng đã hết"; vẫn chọn được ở "Thêm món khác". Món còn ở
+  kho mỗi món một hàng: tên, dòng nhỏ quầy / kho, ô số bên phải kể cả điện thoại.
+- **Pha lóc bước 1**: nút chọn tảng nhỏ, nền phụ, lưới hai cột trên điện thoại (trước là nút đỏ lớn một cột).
+- **Pha lóc bước 2**: chưa chọn tảng thì mục **Tảng đem pha** đứng đầu form (mở sẵn), khung ô mã xuống dưới form
+  (cần đúng một tảng mới giao được); chọn rồi thì về chỗ cũ sau phần gõ kg. Các đoạn hướng dẫn (ô mã, quét, gõ kg,
+  tích lô) còn một câu; bản đủ ở Hướng dẫn (`pha-loc`). Dòng phụ phẩm: máy tính một hàng Mặt hàng · Số kg · Xử lý,
+  điện thoại mặt hàng một hàng, kg và xử lý cạnh nhau; "Thêm…" và "Bỏ dòng này" chung hàng chân.
+- `test-kho-giao-dien.mjs` nhóm 19 gác các điều trên.
+
+### Gọn phần tiền và báo cáo (Khánh duyệt 23/10/2026)
+
+- **Công nợ một nhà cung cấp** (`cong-no/[id]`): mỗi phiếu một hàng gập — số phiếu · ngày · phải trả · còn nợ ·
+  nhãn (hạn / đã trả đủ / nợ đầu kỳ / hóa đơn gộp / lệch / "Chưa đối chiếu"). Bấm mở ra: đã trả (và phần chia),
+  hóa đơn đã đối chiếu, link trả hàng, ô đối chiếu — mở sẵn khi phiếu chưa đối chiếu. `?mo=<phiếu>` và lỗi đối
+  chiếu vẫn mở đúng phiếu. Bỏ dòng "Hóa đơn: chưa đối chiếu · phiếu …" (thay bằng nhãn).
+- **Xuất sang MISA**: xem trước 10 dòng (`XEM`), chữ không xuống dòng (vuốt ngang); file vẫn đủ dòng. "Mã MISA
+  còn thiếu" là mục gập `#thieu-ma` ("n nhà cung cấp, m mặt hàng"), mỗi mặt hàng một hàng: tên · ô mã · Lưu mã.
+  Mở sẵn khi vừa lưu mã (`?mo=thieu_ma`) hay mã gõ sai; ô "dòng thiếu mã" dẫn tới đó với `?mo=thieu_ma`.
+- **Trung tâm báo cáo**: mỗi báo cáo một dòng — tên (link) — mô tả ngắn · Xem · CSV, thay cho thẻ to hai nút.
+- **Bán hàng iPOS**: `gomDongIpos` (`lib/kho/ban-ipos.ts`) gom dòng cùng trạng thái + cùng món (món kho, chưa ghép
+  thì mã iPOS) trên trang đang xem thành một hàng gập "tên · n dòng · tiền" + nhãn + MỘT nút Ghép món; mở ra từng
+  hóa đơn, mỗi dòng vẫn đủ nút Thử lại / Bỏ qua / Hàng ngoài sổ. Món một dòng hiện như cũ.
+- `test-kho-giao-dien.mjs` nhóm 20 gác các điều trên.
+
+### Gọn phần thiết lập và hướng dẫn (Khánh duyệt 23/10/2026)
+
+- **Thiết lập kho**: chỉ bày các bước còn lại; bước đã xong / bỏ qua gom vào mục gập "n bước đã xong hoặc bỏ
+  qua" (mở sẵn khi vừa bấm Bỏ qua — `?mo=xong`, link "Về Thiết lập" của Tồn đầu kỳ cũng vậy). Mọi bước vẫn có
+  `id="buoc-…"`. Danh mục mỗi mục một dòng (tên — mô tả), cả dòng là link.
+- **Hướng dẫn**: mỗi mục là `<details>` (tiêu đề + câu tóm tắt; bấm mở ra bước, mẹo, ảnh). Lọc vai thì mục lục
+  chỉ gồm vai đó, mục của vai khác nằm trong MỘT mục gập `#vai-khac` — mọi `#id` vẫn có trong HTML. `?mo=<id>`
+  mở sẵn mục (và `#vai-khac` nếu cần): nút "?" của mọi màn (`layouts/Kho.astro`) và mục lục dùng
+  `?mo=<id>#<id>`. In ra vẫn đủ bước (`::details-content` trong `@media print`).
+- **Mặt hàng**: bảng bỏ cột Mã cân, Pha lóc ra (xem, sửa ở nút Sửa).
+- **Tồn đầu kỳ**: mỗi nhóm (Tảng nhập, Phần cắt, Phụ phẩm) một mục gập ghi số món đã điền. Ô **Tìm món** gửi cả
+  form (`viec=tim_luoi`, không JavaScript): vẽ lại chỉ món khớp, món khác thành ô ẩn mang đúng số đã gõ (chỉ số
+  `O_LUOI` liền nhau cho `docLuoiTonDau`); `bo_loc` bỏ lọc. Nút Tìm đứng trước nên Enter chỉ vẽ lại, không xem trước.
+- **Kết nối iPOS**: Cấu hình, Địa chỉ nhận hóa đơn (kèm việc cần nhớ), Cài lần đầu thành mục gập có tình trạng ngắn
+  ở tiêu đề; Cấu hình mở sẵn khi đồng bộ tắt hay vừa lưu hỏng.
+- `test-kho-giao-dien.mjs` nhóm 21 gác các điều trên.
+
 ## 3e. Pha lóc 3 bước bằng quét nhãn · báo thu hồi thấp (GĐ5c, migration 0033)
 
 | Trang | Ai | Việc |
 |---|---|---|
-| `/noi-bo/kho/pha-loc/moi` | `pha_loc` | Bước 1: mỗi loại tảng đang có (trừ chờ hủy, đang mang ra quầy) là một nút lớn kèm kg, số tảng, số lô. Bấm = tạo phiên nháp ngay (`ma_gui` riêng mỗi nút); tảng chỉ một lô thì điền sẵn lô đó, loại tảng có đúng một công thức thì gắn luôn. Phiên nháp đang dở hiện lên trước |
+| `/noi-bo/kho/pha-loc/moi` | `pha_loc` | Bước 1: mỗi loại tảng đang có (trừ chờ hủy, đang mang ra quầy) là một nút kèm kg, số tảng, số lô. Bấm = tạo phiên nháp ngay (`ma_gui` riêng mỗi nút); tảng chỉ một lô thì điền sẵn lô đó, loại tảng có đúng một công thức thì gắn luôn. Phiên nháp đang dở hiện lên trước |
 | `/noi-bo/kho/pha-loc/<id>` | `pha_loc` (nháp) | Bước 2 "Cân & quét": ô quét trên cùng (`QuetMa tuFocus`), mỗi lần gửi là một lượt `kho_quet_phien_pha` (như đếm quầy: cùng `ma_gui` không cộng đôi, lỗi mạng giữ mã trong ô). Danh sách món đã quét (gói, kg, để ở đâu) có −1, "Bỏ lượt vừa quét", "Bỏ hẳn một món" (`kho_bo_quet_phien_pha`). Phụ phẩm, mỡ bỏ gõ kg (điền sẵn theo công thức); lô tảng, ngày, ghi chú, công thức nằm trong mục "Thêm". `?ma=<mã>` điền sẵn ô quét |
 | `/noi-bo/kho/pha-loc/<id>?buoc=ket-qua` | `pha_loc` | Bước 3: 4 số lớn — thu hồi, dự kiến (theo công thức / trung bình 30 ngày), trung bình 30 ngày, hao hụt. **Nút Chốt chỉ ở đây.** Thấp quá ngưỡng thì báo trước khi chốt (chốt vẫn được). Bảng giá vốn chỉ với `xem_gia` |
 | `/noi-bo/kho/pha-loc/<id>?buoc=xong` | `pha_loc` | Sau chốt: "Chuyển N khay ra quầy ngay" (đơn vị đếm của món; các lô khác đơn vị thì chữ chung "gói" — `goiRaQuay` trả `donVi`) — mỗi lô mới còn ở kho lạnh một nút `/noi-bo/kho/xuat/moi?loai=chuyen&tu=…&lo=…` |

@@ -104,7 +104,7 @@ await nhom('1 · CHUẨN BỊ', async () => {
 
 // ===========================================================================
 await nhom('2 · BỘ KHÓA ĐÚNG THEO QUYỀN TỪNG VAI', async () => {
-  const CHUNG = ['khoi_tao', 'het_han', 'sap_het_han', 'quay_duoi_muc', 'chua_doc', 'thong_bao_xem_luc'];
+  const CHUNG = ['khoi_tao', 'het_han', 'sap_het_han', 'quay_duoi_muc', 'chua_doc', 'thong_bao_xem_luc', 'viec_dong'];
   // 0032: mang hàng ra quầy — thủ kho thấy yêu cầu của quầy; NV quầy thấy hàng
   // đang mang ra chờ bấm nhận; quản lý thấy cả hai và phiếu nhận thiếu.
   const DI_DUONG = ['hang_dang_chuyen', 'hang_chuyen_qua_gio'];
@@ -300,6 +300,54 @@ await nhom('7 · CHƯA ĐỌC / ĐÃ ĐỌC', async () => {
     const lo = quetTien(await thongBao(u));
     ok(`${ten}: thông báo không có khóa tiền`, lo.length === 0, lo.join(', '));
   }
+});
+
+// ===========================================================================
+// 0092: số chuông = số dòng của trang chuông có tin chưa đọc (7 ngày, gom ≥ 3 cùng loại) — web gom bằng
+// gomSuKien (viec.ts). Hai bên phải ra cùng một số, ở mọi vai.
+const { gomSuKien, NGAY_CHUONG, laViec } = await import('../../web/src/lib/kho/viec.ts');
+const soDongChuong = async uid => {
+  const v = (await duoi(uid, `select kho_thong_bao($1, 300) as v`, [cnA.id])).rows?.[0]?.v;
+  const tu = Date.now() - NGAY_CHUONG * 86400000;
+  const trong = (v?.su_kien ?? []).filter(e => { const t = new Date(e.luc).getTime(); return t >= tu && t <= Date.now(); });
+  return gomSuKien(trong).filter(d => d.chuaDoc).length;
+};
+// Trang Việc cần làm: kho_thong_bao 300 dòng (30 ngày), lọc laViec, gom — số dòng phải bằng viec_dong.
+const soDongViec = async uid => {
+  const v = (await duoi(uid, `select kho_thong_bao($1, 300) as v`, [cnA.id])).rows?.[0]?.v;
+  return gomSuKien((v?.su_kien ?? []).filter(laViec)).length;
+};
+await nhom('7b · SỐ CHUÔNG VÀ SỐ Ô VIỆC ĐẾM DÒNG ĐÃ GOM (0092)', async () => {
+  for (const [ten, u] of [['Thủ kho', UID.thuKhoA], ['Quản lý', UID.qlA], ['NV quầy', UID.nvQuayA], ['Kế toán', UID.keToanA]]) {
+    const v = await demViec(u);
+    const soWeb = await soDongChuong(u);
+    ok(`${ten}: số chuông database = số dòng chưa đọc web gom`, v.chua_doc === soWeb, `database ${v.chua_doc}, web ${soWeb}`);
+    const viecWeb = await soDongViec(u);
+    ok(`${ten}: viec_dong database = số dòng trang Việc cần làm`, v.viec_dong === viecWeb, `database ${v.viec_dong}, web ${viecWeb}`);
+  }
+  // Thủ kho đã đọc ở nhóm 7, có đúng 1 tin mới (phiếu bị trả về). Thêm 3 phiếu bị trả về nữa: khóa đó
+  // thành một dòng gom → chuông vẫn 1, không phải 4.
+  for (let i = 0; i < 3; i++) {
+    const id = await guiPhieu(await luuPhieu([{ mat_hang_id: MH['T-THANNGOAI'].id, so_goi: 1, so_kg: 2,
+                                                han_dung: await ngaySau(20) }], viTri.kho));
+    await duoi(UID.qlA, `select kho_tu_choi_phieu_nhap($1, 'Thiếu ảnh')`, [id]);
+  }
+  let tk = await demViec(UID.thuKhoA);
+  ok('4 phiếu bị trả về chưa đọc → chuông 1 (một dòng gom)', tk.chua_doc === 1, `thấy ${tk.chua_doc}`);
+  const dongTra = gomSuKien(((await thongBao(UID.thuKhoA))?.su_kien ?? []).filter(e => e.khoa === 'nhap_bi_tu_choi'));
+  ok('…và trang Việc: các phiếu bị trả về là MỘT dòng, viec_dong khớp web',
+    tk.nhap_bi_tra >= 4 && dongTra.length === 1 && tk.viec_dong === await soDongViec(UID.thuKhoA),
+    `nhap_bi_tra ${tk.nhap_bi_tra}, dòng ${dongTra.length}, viec_dong ${tk.viec_dong}`);
+  ok('…và web cũng in đúng 1 dòng chưa đọc', (await soDongChuong(UID.thuKhoA)) === 1);
+  // Sự kiện ngoài 7 ngày không làm sáng chuông, dù chưa đọc.
+  await duoi(UID.thuKhoA, `select kho_da_xem_thong_bao($1)`, [cnA.id]);
+  await db.query(`update kho_nguoi_xem set thong_bao_xem_luc = now() - interval '20 days'
+                  where nhan_su_id = (select id from nhan_su where auth_uid = $1)`, [UID.thuKhoA]);
+  tk = await demViec(UID.thuKhoA);
+  ok('Mốc đã đọc lùi 20 ngày: chuông chỉ đếm dòng trong 7 ngày, khớp web',
+    tk.chua_doc === await soDongChuong(UID.thuKhoA), `database ${tk.chua_doc}`);
+  await duoi(UID.thuKhoA, `select kho_da_xem_thong_bao($1)`, [cnA.id]);
+  ok('Đọc lại → chuông 0', (await demViec(UID.thuKhoA)).chua_doc === 0);
 });
 
 // ===========================================================================

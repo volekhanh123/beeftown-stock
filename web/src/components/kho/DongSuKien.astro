@@ -1,23 +1,35 @@
 ---
-/** Một dòng sự kiện: câu, thời gian, nút làm ngay. Dùng ở Thông báo và Việc cần làm. Không gọi database. */
+/**
+ * Một dòng việc / thông báo: câu, thời gian, nút làm ngay. Dùng ở Thông báo, Việc cần làm, trang chủ.
+ * Không gọi database. Dòng là một sự kiện hoặc nhiều sự kiện cùng loại đã gom (lib/kho/viec.ts
+ * gomSuKien) — câu và nút của dòng gom dẫn tới trang danh sách đã lọc sẵn.
+ *
+ * Gọn hai dòng (22/10/2026): tiêu đề, rồi một dòng nhỏ "giờ · chi tiết" (tối đa hai dòng chữ); nút luôn
+ * ở bên phải, kể cả trên điện thoại — trước đây nút xuống dòng riêng, mỗi việc cao gấp đôi.
+ */
 import BieuTuong from './BieuTuong.astro';
-import { cauSuKien, thoiGianTruoc, type SuKien } from '../../lib/kho/viec.ts';
+import { thoiGianTruoc, type DongViec } from '../../lib/kho/viec.ts';
 import { nnCua } from '../../lib/ngon-ngu-noi-bo.ts';
 
-interface Props { e: SuKien; hienChuaDoc?: boolean }
-const { e, hienChuaDoc = false } = Astro.props;
+interface Props {
+  d: DongViec;
+  hienChuaDoc?: boolean;
+  /** Giờ in ra: 'cu' = sự kiện cũ nhất (Việc cần làm), 'moi' = mới nhất (chuông). */
+  moc?: 'cu' | 'moi';
+}
+const { d, hienChuaDoc = false, moc = 'cu' } = Astro.props;
 const nn = nnCua(Astro);
-const c = cauSuKien(e, nn);
+const c = d.cau;
 const moi = { vi: ' · mới', en: ' · new' }[nn];
+const gio = thoiGianTruoc(moc === 'moi' ? d.moiNhat : d.cuNhat, new Date(), nn) + (hienChuaDoc && d.chuaDoc ? moi : '');
 ---
-<li class:list={['kho-sk', c.muc, { 'chua-doc': hienChuaDoc && e.chua_doc }]}>
+<li class:list={['kho-sk', c.muc, { 'chua-doc': hienChuaDoc && d.chuaDoc }]}>
   <span class="kho-sk-dau" aria-hidden="true">
     <BieuTuong ten={c.muc === 'do' ? 'canh_bao' : c.muc === 'vang' ? 'viec' : 'chuong'} co={20} />
   </span>
   <div class="kho-sk-chu">
     <strong>{c.tieuDe}</strong>
-    {c.chiTiet && <span>{c.chiTiet}</span>}
-    <small>{thoiGianTruoc(e.luc, new Date(), nn)}{hienChuaDoc && e.chua_doc ? moi : ''}</small>
+    <small>{gio}{c.chiTiet ? ` · ${c.chiTiet}` : ''}</small>
   </div>
   <a class="nb-nut phu kho-sk-nut" href={c.link}>{c.nut}</a>
 </li>

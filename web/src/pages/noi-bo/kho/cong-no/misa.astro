@@ -7,6 +7,10 @@
  * mã mặt hàng ngay tại đây) → tải CSV (/noi-bo/kho/cong-no/misa.csv, UTF-8 BOM,
  * dấu ; hoặc ,). Thẻ "Mã tài khoản" sửa các TK mặc định (kho_luu_misa_tk).
  *
+ * Gọn 23/10/2026 (Khánh duyệt): xem trước 10 dòng, chữ không xuống dòng (vuốt ngang) — file vẫn đủ
+ * dòng; "Mã MISA còn thiếu" là một mục gập, mỗi mặt hàng một hàng. Mục mở sẵn khi vừa lưu mã
+ * (?mo=thieu_ma) hoặc mã vừa gõ sai.
+ *
  * Chưa có file mẫu nhập khẩu của MISA — cột, tên cột, cách ghi ngày / số gom
  * ở COT_MISA và DINH_DANG_MISA ("CHỈNH KHI CÓ FILE MẪU"). Chỉ vai kế toán.
  *
@@ -107,6 +111,10 @@ const t = dichNB(nn, {
     en: 'Yellow lines: the supplier or item has no MISA code (the file is still exported, with an "x" in the last column).',
   },
   maThieu: { vi: 'Mã MISA còn thiếu', en: 'Missing MISA codes' },
+  maThieuDem: {
+    vi: (ncc: number, mh: number) => `Mã MISA còn thiếu: ${[ncc ? `${ncc} nhà cung cấp` : '', mh ? `${mh} mặt hàng` : ''].filter(Boolean).join(', ')}`,
+    en: (ncc: number, mh: number) => `Missing MISA codes: ${[ncc ? `${ncc} ${s(ncc, 'supplier', 'suppliers')}` : '', mh ? `${mh} ${s(mh, 'item', 'items')}` : ''].filter(Boolean).join(', ')}`,
+  },
   daDuMa: { vi: 'Mọi nhà cung cấp và mặt hàng trong kỳ này đã có mã MISA.', en: 'Every supplier and item in this period has a MISA code.' },
   nhaCungCap: { vi: 'Nhà cung cấp', en: 'Suppliers' },
   nccThieu: {
@@ -130,6 +138,8 @@ const t = dichNB(nn, {
 const TEN_LOAI: Record<LoaiMisa, string> = { mua_hang: t.loaiMuaHang, thanh_toan: t.loaiThanhToan };
 
 let bao: KetQua | null = k.bao;
+/** Mục "Mã MISA còn thiếu" mở sẵn: vừa lưu một mã (?mo=thieu_ma) hay mã vừa gõ sai. */
+let moThieu = sp.get('mo') === 'thieu_ma';
 const form = await docFormGui(Astro);
 if (form) {
   const viec = String(form.get('viec') ?? '');
@@ -145,8 +155,8 @@ if (form) {
     } else return chuyenHuong(Astro, `${giuQ}#tai-khoan`, await luuMisaTk(k.client, cn.id, f.tk));
   } else if (viec === 'ma_hang') {
     const ma = docMaMisa(form.get('ma_misa'));
-    if (ma === undefined) bao = kqHai(false, CAU.maSai);
-    else return chuyenHuong(Astro, `${giuQ}#thieu-ma`, await luuMaMisaMatHang(k.client, String(form.get('mat_hang_id') ?? ''), ma));
+    if (ma === undefined) { bao = kqHai(false, CAU.maSai); moThieu = true; }
+    else return chuyenHuong(Astro, `${giuQ}&mo=thieu_ma#thieu-ma`, await luuMaMisaMatHang(k.client, String(form.get('mat_hang_id') ?? ''), ma));
   } else {
     bao = kqHai(false, CAU.viecSai);
   }
@@ -169,7 +179,7 @@ try {
 }
 const tt = tomTatMisa(dong);
 const cot = COT_MISA[loc.loai];
-const XEM = 50;
+const XEM = 10;
 const linkTai = `/noi-bo/kho/cong-no/misa.csv?tu=${loc.tu}&den=${loc.den}&loai=${loc.loai}${loc.ngan === ',' ? '&ngan=phay' : ''}`;
 ---
 <Kho k={k} huongDan="misa" tieuDe={t.tieuDe} rong>
@@ -198,7 +208,7 @@ const linkTai = `/noi-bo/kho/cong-no/misa.csv?tu=${loc.tu}&den=${loc.den}&loai=$
     <div class="kho-o-so"><b>{tt.soDong}</b><span>{t.dongChungTu(tt.soDong, tt.soChungTu)}</span></div>
     <div class="kho-o-so"><b style="font-size:1.2rem">{dinhDangTien(tt.tongTien, nn)}</b><span>{loc.loai === 'mua_hang' ? t.tienHang : t.tongSoTien}</span></div>
     {loc.loai === 'mua_hang' && <div class="kho-o-so"><b style="font-size:1.2rem">{dinhDangTien(tt.tongThue, nn)}</b><span>{t.tienThue}</span></div>}
-    <a href="#thieu-ma" class={`kho-o-so ${tt.soThieuMa > 0 ? 'luu-y' : ''}`}><b>{tt.soThieuMa}</b><span>{t.dongThieuMa(tt.soThieuMa)}</span></a>
+    <a href={`${giuQ}&mo=thieu_ma#thieu-ma`} class={`kho-o-so ${tt.soThieuMa > 0 ? 'luu-y' : ''}`}><b>{tt.soThieuMa}</b><span>{t.dongThieuMa(tt.soThieuMa)}</span></a>
   </div>
 
   <p style="display:flex;flex-wrap:wrap;gap:.5rem;align-items:center">
@@ -212,7 +222,7 @@ const linkTai = `/noi-bo/kho/cong-no/misa.csv?tu=${loc.tu}&den=${loc.den}&loai=$
     <>
       <h2>{t.xemTruoc}{dong.length > XEM ? t.dongDau(XEM, dong.length) : ''}</h2>
       <div class="kho-bang-khung">
-        <table class="kho-bang">
+        <table class="kho-bang misa-xem">
           <thead><tr>{cot.map(c => <th class={c.kieu === 'tien' || c.kieu === 'so' || c.kieu === 'phan_tram' ? 'so' : undefined}>{nn === 'en'
             ? <>{TEN_COT_EN[c.khoa] ?? c.ten}<br /><small class="kho-phu" lang="vi">{c.ten}</small></>
             : c.ten}</th>)}</tr></thead>
@@ -229,37 +239,38 @@ const linkTai = `/noi-bo/kho/cong-no/misa.csv?tu=${loc.tu}&den=${loc.den}&loai=$
     </>
   )}
 
-  <section id="thieu-ma" style="scroll-margin-top:5rem">
-    <h2>{t.maThieu}</h2>
-    {thieu.ncc.length === 0 && thieu.matHang.length === 0 ? (
+  {thieu.ncc.length === 0 && thieu.matHang.length === 0 ? (
+    <section id="thieu-ma" style="scroll-margin-top:5rem">
+      <h2>{t.maThieu}</h2>
       <p class="nb-rong">{t.daDuMa}</p>
-    ) : (
-      <>
-        {thieu.ncc.length > 0 && (
-          <>
-            <p><strong>{t.nhaCungCap}</strong>{t.nccThieu}</p>
-            <ul>
-              {thieu.ncc.map(n => <li><a href={`/noi-bo/kho/cai-dat/nha-cung-cap?sua=${n.id}`}>{n.ten}</a>{t.bamGhiMa}</li>)}
-            </ul>
-          </>
-        )}
-        {thieu.matHang.length > 0 && (
-          <>
-            <p><strong>{t.matHang}</strong>{t.mhThieu}</p>
-            {thieu.matHang.map(m => (
-              <form method="POST" class="kho-luoi" style="align-items:end">
-                <input type="hidden" name="viec" value="ma_hang" />
-                <input type="hidden" name="mat_hang_id" value={m.id} />
-                <p style="margin:0 0 .9rem"><strong>{m.ten}</strong><br /><span class="kho-phu">{t.maTrongKho(m.ma)}</span></p>
-                <label class="nb-o"><span>{t.maMisa}</span><input type="text" name="ma_misa" maxlength="40" autocapitalize="characters" required /></label>
-                <button type="submit" class="nb-nut phu">{t.luuMa}</button>
-              </form>
-            ))}
-          </>
-        )}
-      </>
-    )}
-  </section>
+    </section>
+  ) : (
+    <details id="thieu-ma" class="nb-the misa-thieu" open={moThieu}>
+      <summary>{t.maThieuDem(thieu.ncc.length, thieu.matHang.length)}</summary>
+      {thieu.ncc.length > 0 && (
+        <>
+          <p><strong>{t.nhaCungCap}</strong>{t.nccThieu}</p>
+          <ul>
+            {thieu.ncc.map(n => <li><a href={`/noi-bo/kho/cai-dat/nha-cung-cap?sua=${n.id}`}>{n.ten}</a>{t.bamGhiMa}</li>)}
+          </ul>
+        </>
+      )}
+      {thieu.matHang.length > 0 && (
+        <>
+          <p><strong>{t.matHang}</strong>{t.mhThieu}</p>
+          {thieu.matHang.map(m => (
+            <form method="POST" class="misa-ma">
+              <input type="hidden" name="viec" value="ma_hang" />
+              <input type="hidden" name="mat_hang_id" value={m.id} />
+              <p><strong>{m.ten}</strong><br /><span class="kho-phu">{t.maTrongKho(m.ma)}</span></p>
+              <label class="nb-o"><span class="an">{t.maMisa} — {m.ten}</span><input type="text" name="ma_misa" maxlength="40" autocapitalize="characters" required placeholder={t.maMisa} /></label>
+              <button type="submit" class="nb-nut phu">{t.luuMa}</button>
+            </form>
+          ))}
+        </>
+      )}
+    </details>
+  )}
 
   <section id="tai-khoan" class="nb-the" style="margin-top:1.5rem;scroll-margin-top:5rem">
     <h2 style="margin-top:0">{t.maTkMacDinh}</h2>
@@ -276,3 +287,20 @@ const linkTai = `/noi-bo/kho/cong-no/misa.csv?tu=${loc.tu}&den=${loc.den}&loai=$
     </form>
   </section>
 </Kho>
+
+<style>
+  /* Xem trước: một dòng file một hàng, vuốt ngang để xem hết cột. */
+  .misa-xem th, .misa-xem td { white-space: nowrap; }
+  .misa-thieu { margin-top: 1.5rem; scroll-margin-top: 5rem; }
+  .misa-thieu > summary { cursor: pointer; font-weight: 700; font-size: 1.05rem; min-height: 44px; display: list-item; padding: .3rem 0; }
+  /* Mỗi mặt hàng một hàng: tên · ô mã · nút; điện thoại tên một hàng, ô mã và nút hàng dưới. */
+  .misa-ma { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto; gap: .25rem .75rem; align-items: center;
+    padding: .5rem 0; border-top: 1px solid var(--vach); }
+  .misa-ma > p { margin: 0; }
+  .misa-ma .nb-o { margin: 0; }
+  @media (max-width: 640px) {
+    .misa-ma { grid-template-columns: minmax(0, 1fr) auto; }
+    .misa-ma > p { grid-column: 1 / -1; }
+  }
+  .an { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>

@@ -16,6 +16,7 @@
  * (dinh_muc_lech) mở sẵn đúng 7 ngày của cảnh báo (?tu=&den=).
  */
 import Kho from '../../../../layouts/Kho.astro';
+import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import InDau from '../../../../components/kho/InDau.astro';
 import NutIn from '../../../../components/kho/NutIn.astro';
@@ -143,6 +144,7 @@ const vungSo = nn === 'en' ? 'en-US' : 'vi-VN';
 ---
 <Kho k={k} huongDan="dinh-luong" tieuDe={dn.ten} rong>
   <InDau tieuDe={t.inTieuDe} soPhieu={kyChu} chiNhanh={k.chiNhanh?.ten} />
+  <TheTrangCon k={k} cha="bao_cao" />
   <h1>{dn.ten}</h1>
   <p><a href={`/noi-bo/kho/bao-cao?${new URLSearchParams({ tu, den }).toString()}`}>{t.veBaoCao}</a></p>
   <p class="nb-dan" style="font-size:.9rem">{t.khongTinh}{' '}
