@@ -11,9 +11,9 @@
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
-import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import { docDanhSachPhieuXuat, docDonViPhieuXuat, TEN_LOAI_XUAT_NB, type PhieuXuatTom, type LoaiXuat } from '../../../../lib/kho/xuat.ts';
-import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, nhanKho, trangThaiKho } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangKg, nhanKho, trangThaiKho } from '../../../../lib/kho/chung.ts';
 import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
 import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
@@ -31,6 +31,7 @@ const t = dichNB(nn, {
   xuatBep: { vi: 'Xuất bếp', en: 'To kitchen' },
   xuatKhac: { vi: 'Xuất khác', en: 'Other issues' },
   huy: { vi: 'Hủy', en: 'Write-offs' },
+  huyTuChoi: { vi: 'Báo hủy không được duyệt', en: 'Write-offs not approved' },
   traNcc: { vi: 'Trả NCC', en: 'Supplier returns' },
   khongDoc: { vi: 'Không đọc được phiếu xuất.', en: 'Could not read the issue slips.' },
   tu: { vi: (noi: string) => `từ ${noi}`, en: (noi: string) => `from ${noi}` },
@@ -58,13 +59,9 @@ const t = dichNB(nn, {
   khongKhop: { vi: 'Không tìm thấy phiếu nào khớp bộ lọc.', en: 'No slips match the filters.' },
   chuaCo: { vi: 'Chưa có phiếu nào', en: 'No slips yet' },
   oMucNay: { vi: ' ở mục này', en: ' in this section' },
-  noi: { vi: 'Nơi', en: 'Where' },
-  hang: { vi: 'Hàng', en: 'Goods' },
   soDong: { vi: (n: number) => `${n} dòng`, en: (n: number) => `${n} ${s(n, 'line', 'lines')}` },
   // dv: đơn vị đếm chung của các món trên phiếu ("khay"); phiếu có món khác đơn vị thì chữ chung.
   soGoi: { vi: (n: number, dv?: string) => `${n} ${dv ?? 'gói'}`, en: (n: number, dv?: string) => `${n} ${dv ?? s(n, 'pack', 'packs')}` },
-  lyDo: { vi: 'Lý do', en: 'Reason' },
-  nguoiLap: { vi: 'Người lập', en: 'Made by' },
 });
 
 const LOC = [
@@ -76,7 +73,15 @@ const LOC_TRANG_THAI: Record<string, string[]> = {
   cho_duyet: ['cho_duyet'],
   dang_chuyen: ['dang_chuyen', 'nhan_thieu'],
 };
-const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
+/**
+ * Lọc chỉ mở qua link, không có thẻ riêng (chỉ hiện thẻ khi đang lọc): dòng gom "n báo hủy không được duyệt"
+ * của Việc cần làm (lib/kho/viec.ts) dẫn tới đây — loại hủy VÀ trạng thái từ chối.
+ */
+const LOC_AN: Record<string, { ten: string; loai: string; trangThai: string[] }> = {
+  huy_tu_choi: { ten: t.huyTuChoi, loai: 'huy', trangThai: ['tu_choi'] },
+};
+const locUrl = Astro.url.searchParams.get('loc') ?? '';
+const loc = LOC.some(([v]) => v === locUrl) || Object.hasOwn(LOC_AN, locUrl) ? locUrl : '';
 
 const tim = docTimDs(Astro.url.searchParams);
 let ds: PhieuXuatTom[] = [];
@@ -84,17 +89,17 @@ let coSau = false;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
-    ({ ds, coSau } = catTrang(await docDanhSachPhieuXuat(k.client, k.chiNhanh.id, LOC_TRANG_THAI[loc]
+    ({ ds, coSau } = catTrang(await docDanhSachPhieuXuat(k.client, k.chiNhanh.id, LOC_AN[loc]
+      ? { loai: LOC_AN[loc].loai, trangThai: LOC_AN[loc].trangThai }
+      : LOC_TRANG_THAI[loc]
       ? { trangThai: LOC_TRANG_THAI[loc] }
       : { loai: loc || null }, { tim, nhanSuId: k.nhanSu.id })));
   } catch (e) {
     loiDoc = cauLoiKho(e, t.khongDoc);
   }
 }
-// Tên người lập và đơn vị đếm chung của từng phiếu ("khay") — hai lượt đọc song song.
-const [ten, donVi] = await Promise.all([
-  tenNhanSu(k.client, ds.map(p => p.nguoi_tao)), docDonViPhieuXuat(k.client, ds.map(p => p.id)),
-]);
+// Đơn vị đếm chung của từng phiếu ("khay"). Thẻ phiếu gọn hai dòng (Khánh duyệt 22/10/2026): không còn dòng người lập (xem trong phiếu), nên không đọc tên.
+const donVi = await docDonViPhieuXuat(k.client, ds.map(p => p.id));
 const moTa = (p: PhieuXuatTom) =>
   p.loai === 'chuyen' ? `${p.ten_vi_tri} → ${p.ten_vi_tri_den ?? '—'}` : t.tu(p.ten_vi_tri);
 ---
@@ -122,6 +127,7 @@ const moTa = (p: PhieuXuatTom) =>
         {LOC.map(([v, ten]) => (
           <a href={v ? `/noi-bo/kho/xuat?loc=${v}` : '/noi-bo/kho/xuat'} aria-current={loc === v ? 'page' : undefined}>{ten}</a>
         ))}
+        {LOC_AN[loc] && <a href={`/noi-bo/kho/xuat?loc=${loc}`} aria-current="page">{LOC_AN[loc].ten}</a>}
       </nav>
 
       <LocDanhSach duong="/noi-bo/kho/xuat" tim={tim} giu={{ loc }} coCuaToi={k.duoc('van_hanh')}
@@ -139,12 +145,10 @@ const moTa = (p: PhieuXuatTom) =>
               <strong>{p.so_phieu} · {nhanKho(TEN_LOAI_XUAT_NB, p.loai as LoaiXuat, nn)}</strong>
               <span class={`nb-nhan ${lop}`}>{nhan}</span>
             </div>
-            <dl>
-              <dt>{t.noi}</dt><dd>{moTa(p)}</dd>
-              <dt>{t.hang}</dt><dd>{t.soDong(p.so_dong)} · {p.tong_goi ? `${t.soGoi(p.tong_goi, donVi.get(p.id))} · ` : ''}{dinhDangKg(p.tong_kg, nn)} kg</dd>
-              {p.ten_ly_do && <><dt>{t.lyDo}</dt><dd>{p.ten_ly_do}</dd></>}
-              <dt>{t.nguoiLap}</dt><dd>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
-            </dl>
+            <p class="nb-dong-tom">
+              {moTa(p)} · {t.soDong(p.so_dong)} · {p.tong_goi ? `${t.soGoi(p.tong_goi, donVi.get(p.id))} · ` : ''}{dinhDangKg(p.tong_kg, nn)} kg
+              {p.ten_ly_do && <> · {p.ten_ly_do}</>}
+            </p>
           </a>
         );
       })}

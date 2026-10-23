@@ -12,6 +12,7 @@
  * và ma_gui. Không có JavaScript.
  */
 import Kho from '../../../../../layouts/Kho.astro';
+import TheTrangCon from '../../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../../components/kho/BaoKho.astro';
 import BieuTuong from '../../../../../components/kho/BieuTuong.astro';
 import ChonMatHang from '../../../../../components/kho/ChonMatHang.astro';
@@ -70,7 +71,10 @@ const t = dichNB(nn, {
   quayCon: { vi: (sl: string) => `Quầy còn ${sl}`, en: (sl: string) => `Counter has ${sl}` },
   dangMangRa: { vi: (sl: string) => ` · đang mang ra ${sl}`, en: (sl: string) => ` · ${sl} on the way` },
   khoCon: { vi: (sl: string) => `kho còn ${sl}`, en: (sl: string) => `store has ${sl}` },
-  khoHet: { vi: 'Kho đã hết — báo quản lý đặt hàng.', en: 'The store is out — ask a manager to order more.' },
+  nMonHetKho: {
+    vi: (n: number) => `${n} món kho cũng đã hết — báo quản lý đặt hàng`,
+    en: (n: number) => `${n} ${n === 1 ? 'item is' : 'items are'} out in the store too — ask a manager to order more`,
+  },
   soDvAn: { vi: (ten: string, dv: string) => `${ten} — số ${dv}`, en: (ten: string, dv: string) => `${ten} — quantity (${dv})` },
   themMon: { vi: 'Thêm món khác', en: 'Add other items' },
   themMonGoiY: {
@@ -150,7 +154,12 @@ try {
 
 const dangCho = yeuCau.filter(y => y.trang_thai === 'cho').sort((a, b) => a.created_at.localeCompare(b.created_at));
 const khac = yeuCau.filter(y => y.trang_thai !== 'cho');
-const idGoiY = new Set(goiY.map(g => g.mat_hang_id));
+// Gọn 22/10/2026 (Khánh duyệt): món kho cũng hết không có ô nhập — thủ kho không có gì mà mang ra. Gom vào một
+// mục gập "n món kho đã hết"; vẫn thêm được ở "Thêm món" nếu thấy sổ sai.
+const conKho = (g: GoiYRaQuay) => (g.dem_goi ? g.so_goi_kho : g.so_kg_kho) > 0;
+const goiYCo = goiY.filter(conKho);
+const goiYHetKho = goiY.filter(g => !conKho(g));
+const idGoiY = new Set(goiYCo.map(g => g.mat_hang_id));
 const mhTheoId = new Map(matHang.map(m => [m.id, m]));
 /** Giá trị ô: gửi lại form thì giữ số đã gõ, lần đầu thì số gợi ý. */
 const giaTriGoiY = (g: GoiYRaQuay) => {
@@ -167,6 +176,7 @@ const dongThem = Array.from({ length: soDong }, (_, i) => ({
 const nhan = (tt: string) => ((x: [string, string]) => [x[0], x[1] || 'nhap'])(trangThaiKho(tt, nn));
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan={laQuay ? 'yeu-cau' : 'ra-quay'}>
+  <TheTrangCon k={k} cha="quay" />
   <h1>{choGui ? t.yeuCauRaQuay : t.tieuDe}</h1>
   <BaoKho bao={bao} loiDoc={loiDoc} />
 
@@ -214,9 +224,9 @@ const nhan = (tt: string) => ((x: [string, string]) => [x[0], x[1] || 'nhap'])(t
         <p class="kho-phu">{t.khongDuoiMuc}</p>
       ) : (
         <>
-          <p class="kho-phu">{t.soDienSan}</p>
-          <ul class="kho-dong-ds">
-            {goiY.map(g => (
+          {goiYCo.length > 0 && <p class="kho-phu">{t.soDienSan}</p>}
+          <ul class="kho-dong-ds yc-ds">
+            {goiYCo.map(g => (
               <li>
                 <span>
                   <strong>{g.ten}</strong>
@@ -225,7 +235,6 @@ const nhan = (tt: string) => ((x: [string, string]) => [x[0], x[1] || 'nhap'])(t
                     {(g.so_goi_dang_mang > 0 || g.so_kg_dang_mang > 0) ? t.dangMangRa(cauSoLuong(g, g.so_goi_dang_mang, g.so_kg_dang_mang, nn)) : ''}
                     {' · '}{t.khoCon(cauSoLuong(g, g.so_goi_kho, g.so_kg_kho, nn))}
                   </small>
-                  {(g.dem_goi ? g.so_goi_kho : g.so_kg_kho) <= 0 && <small class="chu-do">{t.khoHet}</small>}
                 </span>
                 <label class="nb-o yc-o">
                   <span class="an">{t.soDvAn(g.ten, g.dem_goi ? g.don_vi_goi || t.goi : 'kg')}</span>
@@ -236,6 +245,16 @@ const nhan = (tt: string) => ((x: [string, string]) => [x[0], x[1] || 'nhap'])(t
               </li>
             ))}
           </ul>
+          {goiYHetKho.length > 0 && (
+            <details class="yc-het-kho">
+              <summary>{t.nMonHetKho(goiYHetKho.length)}</summary>
+              <ul class="kho-dong-ds">
+                {goiYHetKho.map(g => (
+                  <li><span><strong>{g.ten}</strong><small>{t.quayCon(cauSoLuong(g, g.so_goi_quay, g.so_kg_quay, nn))}</small></span></li>
+                ))}
+              </ul>
+            </details>
+          )}
         </>
       )}
 
@@ -289,7 +308,12 @@ const nhan = (tt: string) => ((x: [string, string]) => [x[0], x[1] || 'nhap'])(t
   .yc-nut { min-height: 48px !important; font-size: .95rem !important; }
   .yc-lon { min-height: 56px; font-size: 1.05rem; width: 100%; }
   .yc-o { display: flex; align-items: center; gap: .4rem; margin: 0; flex: 0 0 auto; }
-  .yc-o input { width: 6rem; text-align: right; font-size: 1.15rem !important; }
+  .yc-o input { width: 5rem; text-align: right; font-size: 1.15rem !important; }
+  /* Mỗi món một hàng gọn: ô số ở bên phải, kể cả điện thoại (22/10/2026). */
+  .yc-ds li { flex-wrap: nowrap; }
+  .yc-ds li > span { flex: 1 1 auto; }
+  .yc-het-kho { margin-top: .75rem; }
+  .yc-het-kho > summary { cursor: pointer; font-weight: 600; min-height: 44px; display: list-item; padding: .6rem 0; color: var(--do-dam); }
   .yc-them { display: grid; grid-template-columns: 1fr 7rem; gap: .5rem; align-items: end; }
   .an { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>

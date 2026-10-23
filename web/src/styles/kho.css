@@ -144,10 +144,14 @@
 .kho-lo-chon { display: grid; gap: .5rem; grid-template-columns: 1fr; margin-bottom: .75rem; }
 .kho-lo-chon > div {
   border: 1px solid var(--vach); border-radius: 10px; background: var(--nb-the);
-  padding: .7rem .85rem .2rem;
+  padding: .55rem .75rem .1rem;
 }
-.kho-lo-chon .dau { display: flex; justify-content: space-between; gap: .5rem; flex-wrap: wrap; align-items: baseline; margin-bottom: .4rem; }
-.kho-lo-chon .dau b { font-size: .95rem; }
+/* Gọn 22/10/2026: tên một dòng, "lô · còn · HSD" một dòng nhỏ ngay dưới, hai ô số luôn cạnh nhau (cả điện thoại). */
+.kho-lo-chon .dau { display: block; margin-bottom: .35rem; line-height: 1.35; }
+.kho-lo-chon .dau b { display: block; font-size: .95rem; }
+.kho-lo-chon .dau .kho-phu { font-size: .8rem; }
+.kho-lo-chon .kho-luoi { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; }
+.kho-lo-chon .kho-luoi .nb-o > span { font-size: .78rem; }
 
 /* Hàng nút dính đáy màn hình cho form dài — trên điện thoại VÀ tablet (tablet
    quầy 768–1023px trước đây phải cuộn hết form mới thấy nút gửi). Khi có thanh

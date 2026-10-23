@@ -113,6 +113,26 @@ export interface DongIpos {
   lech_o?: boolean;
 }
 
+/** Một nhóm dòng bán cùng trạng thái và cùng món (món kho, không có thì mã món iPOS). */
+export interface NhomDongIpos { khoa: string; ds: DongIpos[] }
+
+/**
+ * Gom dòng bán của MỘT trang danh sách theo trạng thái + món (Khánh duyệt 23/10/2026): "Túi giữ lạnh"
+ * chưa ghép 3 lần thành một hàng có một nút Ghép món, bấm mở ra từng hóa đơn. Món kho trước (mat_hang_id),
+ * chưa ghép thì theo mã iPOS; không có mã nào thì dòng đứng riêng. Nhóm xếp theo dòng đầu tiên gặp trên
+ * trang, trong nhóm giữ thứ tự cũ. Chỉ gom trong trang đang xem — chia trang không đổi.
+ */
+export function gomDongIpos(ds: DongIpos[]): NhomDongIpos[] {
+  const nhom = new Map<string, NhomDongIpos>();
+  for (const d of ds) {
+    const mon = d.mat_hang_id ? `mh:${d.mat_hang_id}` : d.ma_ipos ? `ma:${d.ma_ipos}` : `id:${d.id}`;
+    const khoa = `${d.trang_thai}|${mon}`;
+    const n = nhom.get(khoa);
+    if (n) n.ds.push(d); else nhom.set(khoa, { khoa, ds: [d] });
+  }
+  return [...nhom.values()];
+}
+
 export type DonViBan = 'kg' | 'goi' | 'suat';
 
 export interface MaIposDaGhep {

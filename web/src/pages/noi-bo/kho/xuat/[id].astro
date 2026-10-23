@@ -193,6 +193,7 @@ const ch = dichNB(nn, {
   themDong: { vi: '+ Thêm một dòng', en: '+ Add a line' },
   loDaChon: { vi: 'Lô đã chọn', en: 'Chosen lot' },
   chonLoHuy: { vi: 'Chọn lô cần hủy', en: 'Choose the lot to write off' },
+  xemLoKhac: { vi: (n: number) => `Xem mọi lô khác (${n})`, en: (n: number) => `Show all other lots (${n})` },
   hoacChonLo: { vi: 'Hoặc chọn đúng lô cần lấy', en: 'Or choose the exact lot to take' },
   motCho: {
     vi: 'Món đã ghi ở trên thì đừng ghi lại ở đây — mỗi món chỉ ghi một chỗ.',
@@ -594,10 +595,18 @@ const theoLoCu = new Map((dongB ?? []).map(l => [l.lo_id, l]));
 const loCoSo = new Set((dongB ?? []).filter(l => l.so_goi || l.so_kg).map(l => l.lo_id));
 // Lô link chọn sẵn lên đầu, rồi tới lô đang có số (vừa quét nhãn của tảng đó, hay gõ tay) — khỏi phải dò trong
 // danh sách dài. Nhân viên quầy chuyển hàng chỉ thấy lô đã chọn / đang có số.
+// Báo hủy (Khánh duyệt 22/10/2026): lô hết hạn rồi sắp hết hạn lên đầu (hạn gần trước); lô còn hạn xa nằm trong
+// mục gập "Xem mọi lô khác" — vẫn ở trong form (ô số vẫn gửi đi), chỉ không bày ra.
+const MUC_HAN_LO: Record<DongTon['tinh_trang_han'], number> = { het_han: 0, sap_het: 1, con_han: 2 };
 const loHien = (anTheoLo ? loTaiTu.filter(t => t.lo_id === loChon?.lo_id || loCoSo.has(t.lo_id)) : loTaiTu)
   .slice().sort((a, b) => Number(b.lo_id === loChon?.lo_id) - Number(a.lo_id === loChon?.lo_id)
-    || Number(loCoSo.has(b.lo_id)) - Number(loCoSo.has(a.lo_id)));
+    || Number(loCoSo.has(b.lo_id)) - Number(loCoSo.has(a.lo_id))
+    || (moHuy ? MUC_HAN_LO[a.tinh_trang_han] - MUC_HAN_LO[b.tinh_trang_han] || a.han_dung.localeCompare(b.han_dung) : 0));
 const hienTheoLo = !anTheoLo || loHien.length > 0;
+/** Số lô bày ra trước mục "Xem mọi lô khác": báo hủy = lô đã chọn / có số / hết hoặc sắp hết hạn; loại khác = tất cả. */
+const soLoDau = moHuy
+  ? loHien.filter(t => t.lo_id === loChon?.lo_id || loCoSo.has(t.lo_id) || t.tinh_trang_han !== 'con_han').length
+  : loHien.length;
 
 // Ảnh báo hủy: lý do nào cần ảnh, nói bằng chữ ngay dưới ô ảnh.
 const lyDoDung = lyDoChon.filter(l => l.dang_dung);
@@ -774,43 +783,54 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
                 <button type="submit" name="viec" value="them_dong" class="nb-nut phu" formnovalidate>{ch.themDong}</button>
               </div>
 
+              {/* Gập sẵn (22/10/2026): quét nhãn hoặc chọn món ở trên là đủ; mở sẵn khi đi từ nút của một lô. */}
               {hienTheoLo && (
-                <details open={moHuy || !!loChon || loCoSo.size > 0}>
+                <details open={!!loChon || loCoSo.size > 0}>
                   <summary style="cursor:pointer;font-weight:600;padding:.5rem 0">{anTheoLo ? ch.loDaChon : moHuy ? ch.chonLoHuy : ch.hoacChonLo}</summary>
                   <p class="kho-phu" style="margin-top:0">{ch.motCho}</p>
                   {loHien.length === 0 ? (
                     <p class="nb-rong">{ch.khongCoHang(tu.ten)}</p>
-                  ) : (
-                    <div class="kho-lo-chon">
-                      {loHien.map((t, i) => {
-                        const cu = theoLoCu.get(t.lo_id);
-                        const khoa = chiConHan && t.tinh_trang_han === 'het_han';
-                        return (
-                          <div>
-                            <input type="hidden" name={`l${i}_lo`} value={t.lo_id} />
-                            <input type="hidden" name={`l${i}_mat_hang`} value={t.mat_hang_id} />
-                            <div class="dau">
-                              <b>{t.ten_hang}</b>
-                              <span class="kho-phu">{ch.lo} {t.ma_lo}{tangChu(t.lo_id) && <>{' · '}<strong>{tangChu(t.lo_id)}</strong></>} · {ch.conTruoc}{t.dem_goi ? `${t.so_goi} ${t.don_vi_goi} · ` : ''}{dinhDangKg(t.so_kg, nn)} kg{ch.conSau} ·{' '}
-                                <span class={`kho-han ${t.tinh_trang_han}`}>{ch.hsd} {dinhDangNgay(t.han_dung)}</span></span>
-                            </div>
-                            {khoa ? (
-                              <p class="kho-phu" style="margin:.2rem 0 .6rem">{ch.chiBaoHuy}</p>
-                            ) : (
-                              <div class="kho-luoi">
-                                {t.dem_goi && (
-                                  <label class="nb-o"><span>{ch.soDv(t.don_vi_goi)}</span>
-                                    <input type="text" inputmode="numeric" name={`l${i}_so_goi`} value={cu?.so_goi ?? ''} /></label>
-                                )}
-                                <label class="nb-o"><span>{ch.soKg}{t.dem_goi ? ch.neuCan : ''}</span>
-                                  <input type="text" inputmode="decimal" name={`l${i}_so_kg`} value={cu?.so_kg ?? ''} /></label>
-                              </div>
-                            )}
+                  ) : (() => {
+                    // Một lô = một hàng gọn: tên, rồi "lô · còn · HSD", rồi ô số. Chỉ số i chạy liền qua cả hai nhóm.
+                    const dongLo = (t: DongTon, i: number) => {
+                      const cu = theoLoCu.get(t.lo_id);
+                      const khoa = chiConHan && t.tinh_trang_han === 'het_han';
+                      return (
+                        <div>
+                          <input type="hidden" name={`l${i}_lo`} value={t.lo_id} />
+                          <input type="hidden" name={`l${i}_mat_hang`} value={t.mat_hang_id} />
+                          <div class="dau">
+                            <b>{t.ten_hang}</b>
+                            <span class="kho-phu">{ch.lo} {t.ma_lo}{tangChu(t.lo_id) && <>{' · '}<strong>{tangChu(t.lo_id)}</strong></>} · {ch.conTruoc}{t.dem_goi ? `${t.so_goi} ${t.don_vi_goi} · ` : ''}{dinhDangKg(t.so_kg, nn)} kg{ch.conSau} ·{' '}
+                              <span class={`kho-han ${t.tinh_trang_han}`}>{ch.hsd} {dinhDangNgay(t.han_dung)}</span></span>
                           </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          {khoa ? (
+                            <p class="kho-phu" style="margin:.2rem 0 .6rem">{ch.chiBaoHuy}</p>
+                          ) : (
+                            <div class="kho-luoi">
+                              {t.dem_goi && (
+                                <label class="nb-o"><span>{ch.soDv(t.don_vi_goi)}</span>
+                                  <input type="text" inputmode="numeric" name={`l${i}_so_goi`} value={cu?.so_goi ?? ''} /></label>
+                              )}
+                              <label class="nb-o"><span>{ch.soKg}{t.dem_goi ? ch.neuCan : ''}</span>
+                                <input type="text" inputmode="decimal" name={`l${i}_so_kg`} value={cu?.so_kg ?? ''} /></label>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    };
+                    return (
+                      <>
+                        {soLoDau > 0 && <div class="kho-lo-chon">{loHien.slice(0, soLoDau).map((t, i) => dongLo(t, i))}</div>}
+                        {soLoDau < loHien.length && (
+                          <details class="xh-lo-them" open={soLoDau === 0}>
+                            <summary>{ch.xemLoKhac(loHien.length - soLoDau)}</summary>
+                            <div class="kho-lo-chon">{loHien.slice(soLoDau).map((t, j) => dongLo(t, soLoDau + j))}</div>
+                          </details>
+                        )}
+                      </>
+                    );
+                  })()}
                 </details>
               )}
             </>
@@ -1087,6 +1107,8 @@ const daHuy = soCai.filter(s => s.loai === 'huy');
 </Kho>
 
 <style>
+  /* Báo hủy: lô còn hạn xa nằm trong mục gập (22/10/2026). */
+  .xh-lo-them > summary { cursor: pointer; font-weight: 600; min-height: 44px; display: list-item; padding: .6rem 0; }
   /* Báo hủy 3 bước */
   .xh-buoc { list-style: none; display: flex; gap: .5rem; padding: 0; margin: 0 0 1rem; font-size: .9rem; }
   .xh-buoc li { flex: 1; padding: .4rem .25rem; border-bottom: 3px solid var(--vach); color: var(--muc-nhat); }

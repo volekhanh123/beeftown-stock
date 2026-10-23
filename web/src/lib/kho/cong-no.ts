@@ -515,7 +515,7 @@ export function tenLoaiCongNo(p: { so_phieu: string | null | undefined }, nn: Ng
  * nhà cung cấp, đúng dòng đó.
  */
 export function linkPhieuCongNo(p: { id: string; so_phieu: string; nha_cung_cap_id: string }): string {
-  return laNoDau(p) ? `/noi-bo/kho/cong-no/${p.nha_cung_cap_id}#p-${p.id}` : `/noi-bo/kho/nhap/${p.id}`;
+  return laNoDau(p) ? `/noi-bo/kho/cong-no/${p.nha_cung_cap_id}?mo=${p.id}#p-${p.id}` : `/noi-bo/kho/nhap/${p.id}`;
 }
 
 export interface NccNoDau {
