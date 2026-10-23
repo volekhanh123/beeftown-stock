@@ -1131,6 +1131,22 @@ theo vai. Gửi xuống cân, sửa tem, tạo mã giảm: quản lý / chủ (`
 - So "cân đã có tên này chưa" bằng `chuanTenCan` (`can-tma.ts`: NFC, bỏ tab, cắt như lúc gửi) ở cả hai phía; `tenTheoTang`
   chuẩn NFC trước khi cắt 24 ký tự.
 
+## 3r. Còn hàng cho Mini App Zalo (migration 0093)
+
+Mini App Zalo (`mini-app/`) hiện "Tạm hết" theo số khay ở quầy (`sap_het` hiện như còn hàng: không viết câu khan hiếm). Kho không mở bảng nào cho khách: Mini App hỏi
+`/mini-app/con-hang.json` (`src/pages/mini-app/con-hang.json.ts`, `src/lib/mini-app.ts`), website gọi `mini_app_con_hang(chi nhánh)`
+bằng vai anon, hàm chỉ trả `het` / `sap_het` / `con` của từng phần thịt — không số khay, như đặt bàn không trả số bàn.
+
+- **Gắn mặt hàng:** màn mặt hàng → ô thông tin thêm **"Phần thịt trên Mini App Zalo"** (0093 tạo sẵn, kiểu chọn, 6 mã của
+  `mini-app/src/san-pham.ts`). Chọn trên mặt hàng phần cắt đếm theo khay; nhiều mặt hàng cùng một phần thịt thì cộng khay.
+  Thêm phần thịt mới trên Mini App: sửa lựa chọn của ô ở màn cài đặt ô thông tin thêm.
+- **Đếm gì:** `kho_ton.so_goi` ở vị trí loại `quay` của chi nhánh (`PUBLIC_CHI_NHANH`), chỉ lô còn hạn theo giờ VN. Hàng trong kho,
+  đang chuyển ra quầy, chờ hủy không tính. 0 khay → `het`, 1–2 → `sap_het`, từ 3 → `con`.
+- **Công tắc:** `mini_app_hien_con_hang` ở màn Nội dung (chỉ chủ), **mặc định tắt**. Tắt, ô bị tắt, chi nhánh ngừng hoạt động →
+  hàm trả rỗng và Mini App hiện mọi phần như trước khi nối kho. Chỉ bật khi quầy quét khay ra vào kho đúng lúc.
+- Website lưu đệm 60 giây; hỏng bất kỳ cách nào (chưa có database, chưa chạy 0093, lỗi, hết giờ) đều trả `{}` — không bao giờ tự
+  ra "hết". Kiểm thử: `crm/test/test-mini-app-con-hang.mjs` (database), `test-mini-app-con-hang-web.mjs` (thư viện, đường JSON).
+
 ## 4. Cài như app (PWA)
 
 `public/kho/manifest.json`: mở `/noi-bo/kho?nguon=app`, trong phạm vi `/noi-bo/`, chạy như app riêng

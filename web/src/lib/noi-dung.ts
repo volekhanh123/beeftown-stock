@@ -49,6 +49,8 @@ export interface NoiDung {
   hien_quay_thit: boolean | null;
   hien_tiec_nhom: boolean | null;
   hien_danh_gia: boolean | null;
+  // Mini App Zalo hiện còn hàng theo kho (0093) — website không đọc khóa này, hàm mini_app_con_hang() tự hỏi.
+  mini_app_hien_con_hang: boolean | null;
   // Liên hệ
   dia_chi_hien_thi: string | null;
   hotline: string | null;
@@ -70,6 +72,7 @@ const RONG: NoiDung = {
   dong_trang_thai: null, form_dat_ban_dang_mo: null, gio_phuc_vu_da_chot: null,
   hien_thuc_don: null, hien_do_uong_co_con: null, hien_tuyen_dung: null,
   hien_ba_buoc: null, hien_quay_thit: null, hien_tiec_nhom: null, hien_danh_gia: null,
+  mini_app_hien_con_hang: null,
   dia_chi_hien_thi: null, hotline: null, facebook_url: null, instagram_url: null,
   tiktok_url: null, zalo_oa_url: null, google_maps_url: null, email_lien_he: null,
   tieu_de_og: null, mo_ta_og: null, anh_chia_se: null,

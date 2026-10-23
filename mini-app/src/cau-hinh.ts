@@ -45,6 +45,13 @@ export const CAU_HINH = {
   hotline: "",
   website: "beeftown.vn",
 
+  /**
+   * Còn hàng ở quầy theo kho (website, migration 0093). Để trống thì app không hỏi và hiện mọi phần như cũ.
+   * Tên miền phải khai ở Mini App Center → Cấu hình API Domains, không thì Zalo chặn và app cũng hiện như cũ.
+   * Website chỉ trả trạng thái khi chủ bật công tắc "mini_app_hien_con_hang" ở /noi-bo.
+   */
+  diaChiConHang: "https://beeftown.vn/mini-app/con-hang.json",
+
   /** Thông tin người bán, ghi đúng giấy chứng nhận đăng ký địa điểm kinh doanh (thay đổi lần 2, 20/10/2026). */
   phapNhan: {
     ten: "Công ty TNHH SLK Group",

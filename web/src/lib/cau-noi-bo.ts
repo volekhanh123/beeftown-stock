@@ -212,6 +212,7 @@ export const MO_TA_KHOA_EN: Readonly<Record<string, string>> = {
   tieu_de_og:           'Title shown when the link is pasted into Zalo or Facebook.',
   hien_ba_buoc:         'Show the three-step "how to order" block.',
   hien_danh_gia:        'Show guest reviews. Turn on only with REAL reviews you are allowed to use — the old draft site has four made-up reviews.',
+  mini_app_hien_con_hang: 'The Zalo Mini App shows "in stock / almost gone / sold out" from the number of trays at the counter in the warehouse. ONLY turn it on once the counter scans trays in and out on time — wrong warehouse numbers show "sold out" while the counter still has trays, or take orders the counter cannot fill.',
   hien_do_uong_co_con:  'Show alcoholic drinks. Alcohol advertising law has its own limits — off is the safe default.',
   hien_quay_thit:       'Show the block about the work behind the beef counter.',
   hien_thuc_don:        'Show the menu block.',

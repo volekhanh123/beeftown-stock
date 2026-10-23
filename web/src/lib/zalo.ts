@@ -6,31 +6,34 @@
  * log. Không đọc biến môi trường, không gọi mạng — lib/zalo-gui.ts lo phần đó.
  * crm/test/test-zalo-web.mjs nạp thẳng file này bằng Node.
  *
- * TÀI LIỆU API ZALO bị proxy của chúng ta chặn (developers.zalo.me,
- * zalo.solutions…) lúc viết file này (27/09/2026). Mọi chi tiết API — địa chỉ,
- * tên trường, tên header, mã lỗi — gom vào MỘT hằng ZALO_API ngay dưới đây,
- * theo chuẩn ZNS/ZBS đã biết. Khi đọc được tài liệu thật, chỉ sửa hằng đó.
+ * Viết 27/09/2026 khi proxy chặn tài liệu Zalo, theo chuẩn ZNS/ZBS đã biết. ĐÃ ĐỐI CHIẾU tài liệu thật ngày
+ * 23/10/2026 (đọc từ máy của Khánh). Mọi chi tiết API — địa chỉ, tên trường, tên header, mã lỗi — gom vào MỘT
+ * hằng ZALO_API ngay dưới đây; Zalo đổi API thì chỉ sửa hằng đó.
  */
 
 // =============================================================================
 // CHỈNH KHI CÓ TÀI LIỆU — mọi chi tiết API Zalo nằm trong hằng này
 // =============================================================================
 /**
- * GIẢ ĐỊNH (chưa đối chiếu tài liệu chính thức):
+ * ĐÃ ĐỐI CHIẾU 23/10/2026 với tài liệu Zalo (nguồn từng mục: web/README.md, mục Zalo). ZNS gộp vào "ZBS Template
+ * Message" từ 01/01/2026: cùng địa chỉ, cùng trường. Zalo trả expires_in và quota dạng chuỗi (đọc bằng Number);
+ * chế độ development không trả quota; không gửi sending_mode (mặc định 1).
+ * Như tài liệu:
  *
  *  · Làm mới token: POST oauth.zaloapp.com/v4/oa/access_token, header
  *    `secret_key`, thân dạng form (app_id, grant_type=refresh_token,
  *    refresh_token) → JSON { access_token, refresh_token, expires_in }.
  *    access token sống ~25 giờ (expires_in ~90000 giây). Refresh token MỚI
  *    mỗi lần làm mới, cái cũ hết dùng được ngay (dùng một lần), sống ~3 tháng.
- *    Lỗi: JSON { error: <số âm>, error_name, error_description }.
+ *    Lỗi: JSON { error: <số âm>, error_name, error_description } — dạng lỗi của
+ *    đường này tài liệu không ghi; còn là giả định.
  *  · Gửi tin: POST business.openapi.zalo.me/message/template, header
  *    `access_token`, JSON { phone: "84…", template_id, template_data,
  *    tracking_id, mode? } — mode "development" chỉ khi gửi thử (chỉ quản trị
  *    viên của OA / App nhận được). → { error: 0, message, data: { msg_id,
  *    sent_time, quota: { dailyQuota, remainingQuota } } }; lỗi → error ≠ 0.
- *  · Bảng mã lỗi `maLoi`: theo các mã ZNS hay gặp. Mã không có trong bảng
- *    coi là lỗi tạm thời (thử lại sau) — an toàn hơn là bỏ tin.
+ *  · Bảng mã lỗi `maLoi`: theo bảng mã lỗi ZBS đã đối chiếu. Mã không có trong
+ *    bảng coi là lỗi tạm thời (thử lại sau) — an toàn hơn là bỏ tin.
  */
 export const ZALO_API = {
   token: {
@@ -57,20 +60,24 @@ export const ZALO_API = {
   /** Access token còn ít hơn chừng này giây thì làm mới trước khi gửi. */
   lamMoiKhiConGiay: 3_600,
   /**
-   * Mã lỗi Zalo → cách xử lý (xem XU_LY_LOI). GIẢ ĐỊNH theo mã ZNS hay gặp —
-   * đối chiếu lại với tài liệu. Mã không có ở đây → 'thu_lai'.
+   * Mã lỗi Zalo → cách xử lý (xem XU_LY_LOI), theo bảng mã lỗi đã đối chiếu 23/10/2026. Mã không có ở đây
+   * → 'thu_lai' (an toàn hơn bỏ tin). Bản giả định 27/09 xếp nhầm -126 (ví chế độ thử hết tiền) vào người
+   * nhận và -110 (máy người nhận dùng Zalo quá cũ) vào cấu hình — dừng cả lượt 1 giờ vì một khách.
    */
   maLoi: [
     { loai: 'token',      ma: [-124, -216],                       ghiChu: 'access token sai / hết hạn' },
-    { loai: 'gioi_han',   ma: [-32],                              ghiChu: 'gọi quá nhanh' },
-    { loai: 'het_quota',  ma: [-115, -144],                       ghiChu: 'hết tiền ZBS / hết quota trong ngày' },
-    { loai: 'ngoai_gio',  ma: [-133],                             ghiChu: 'Zalo không cho gửi giờ khuya' },
-    { loai: 'nguoi_nhan', ma: [-108, -114, -118, -119, -126, -139, -140],
-      ghiChu: 'số sai / người nhận chặn, không dùng Zalo, không nhận loại tin này / chế độ thử: không phải quản trị viên' },
-    { loai: 'mau',        ma: [-109, -111, -112, -113, -116, -117, -130, -131],
-      ghiChu: 'mẫu sai / chưa duyệt / tham số mẫu sai / nội dung quá dài' },
-    { loai: 'cau_hinh',   ma: [-101, -102, -103, -104, -105, -106, -110, -125, -135, -138],
-      ghiChu: 'App / OA / secret key sai, App chưa nối OA, OA chưa xác thực, không có quyền gửi' },
+    { loai: 'gioi_han',   ma: [-32],                              ghiChu: 'App / OA gọi quá giới hạn mỗi phút' },
+    { loai: 'het_quota',  ma: [-115, -126, -137, -144, -1441],
+      ghiChu: 'ví ZBS hết tiền / trừ tiền hỏng / ví chế độ thử hết tiền / hết quota ngày của OA, quota tháng tin khuyến mãi' },
+    { loai: 'gioi_han_ngay', ma: [-147, -1472],
+      ghiChu: 'một mẫu hết quota ngày / quá giới hạn tin khuyến mãi trong ngày cho một người — tin khác vẫn gửi được' },
+    { loai: 'ngoai_gio',  ma: [-133],                             ghiChu: 'loại tin này không gửi được 22:00–07:00' },
+    { loai: 'nguoi_nhan', ma: [-108, -110, -114, -118, -119, -127, -139, -140, -141, -1471],
+      ghiChu: 'số sai / không có Zalo / Zalo quá cũ / không nhận được / từ chối tin / không đủ điều kiện / quá giới hạn tin khuyến mãi cho người này / chế độ thử: không phải quản trị viên' },
+    { loai: 'mau',        ma: [-109, -111, -112, -113, -1121, -1122, -1123, -1124, -1131, -116, -117, -121, -130, -131, -132, -145],
+      ghiChu: 'mã mẫu sai / chưa duyệt / không có quyền dùng / tham số thiếu, sai dạng, quá dài / nút, liên kết sai / OA không được gửi loại nội dung này' },
+    { loai: 'cau_hinh',   ma: [-101, -102, -103, -104, -105, -106, -120, -1202, -122, -1241, -125, -135, -1351, -136, -138, -1381],
+      ghiChu: 'App / OA / secret key sai, App chưa bật hay chưa nối OA, OA chưa mua gói, chưa xác thực hay bị chặn gửi tin SĐT, chưa nối ZBS Account, không có quyền / thân yêu cầu sai dạng JSON (lỗi của bộ gửi — dừng lượt)' },
   ],
 } as const;
 
@@ -78,7 +85,7 @@ export const ZALO_API = {
 // PHÂN LOẠI LỖI → KẾT QUẢ GHI VÀO nhat_ky_tin
 // =============================================================================
 export type LoaiLoiZalo =
-  | 'token' | 'thu_lai' | 'gioi_han' | 'het_quota' | 'ngoai_gio' | 'nguoi_nhan' | 'mau' | 'cau_hinh';
+  | 'token' | 'thu_lai' | 'gioi_han' | 'het_quota' | 'gioi_han_ngay' | 'ngoai_gio' | 'nguoi_nhan' | 'mau' | 'cau_hinh';
 
 export interface XuLyLoi {
   /** Gửi zalo_ghi_ket_qua với kết quả này. */
@@ -96,6 +103,8 @@ export const XU_LY_LOI: Readonly<Record<LoaiLoiZalo, XuLyLoi>> = {
   thu_lai:    { ketQua: 'that_bai',   thuLaiSau: 300,      dungLuot: false },
   gioi_han:   { ketQua: 'that_bai',   thuLaiSau: 900,      dungLuot: true },
   het_quota:  { ketQua: 'that_bai',   thuLaiSau: 6 * 3600, dungLuot: true },
+  // Giới hạn của RIÊNG một mẫu / một người nhận trong ngày: hẹn lại, không chặn tin khác của lượt.
+  gioi_han_ngay: { ketQua: 'that_bai', thuLaiSau: 12 * 3600, dungLuot: false },
   ngoai_gio:  { ketQua: 'that_bai',   thuLaiSau: 3600,     dungLuot: true },
   nguoi_nhan: { ketQua: 'bi_tu_choi', thuLaiSau: null,     dungLuot: false },
   mau:        { ketQua: 'that_bai',   thuLaiSau: null,     dungLuot: false },

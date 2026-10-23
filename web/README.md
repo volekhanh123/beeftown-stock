@@ -386,7 +386,16 @@ Gửi tin Zalo ZBS cho khách: **ZBS-01** xác nhận đặt bàn (khi nhân vi�
 
 **Ai gửi:** Cron 5 phút (`src/worker.ts`, cùng cron với iPOS, chạy song song — việc này hỏng không chặn việc kia) gọi `guiZaloTatCa` trong `src/lib/zalo-gui.ts`: đăng nhập tài khoản máy `may_zalo` → `zalo_bat_dau_luot` (khóa lượt, lấy lô tin đến hạn — database đã kiểm lại đồng ý, trần tháng, khung giờ) → làm mới access token khi còn dưới 1 giờ → gửi → `zalo_ghi_ket_qua` → `zalo_ket_thuc_luot`. Tin đã tới Zalo mà database không ghi được (hai lần lúc gửi, hai lần thử lại cuối lượt) đi kèm chính lời `zalo_ket_thuc_luot` (`p_da_gui`, migration `0078`) — database ghi `da_gui` trước khi trả tin chưa báo về hàng chờ, nên lượt sau không gửi khách lần hai. Chi tiết API Zalo (địa chỉ, tên trường, mã lỗi) nằm trong **một** hằng `ZALO_API` đầu `src/lib/zalo.ts`.
 
-> **Chưa đối chiếu tài liệu Zalo.** Lúc viết, proxy mạng chặn `developers.zalo.me`, `business.openapi.zalo.me`, `oauth.zaloapp.com`. Code làm theo chuẩn ZNS/ZBS đã biết (làm mới token: OAuth v4 `refresh_token` + header `secret_key`; gửi: `POST /message/template`, header `access_token`, `phone` dạng `84…`, `tracking_id` = id nhật ký, `mode: "development"` khi chế độ thử). Bảng mã lỗi → cách xử lý là **giả định**. Khi mở được tài liệu, chỉ sửa hằng `ZALO_API` (và `XU_LY_LOI` ngay dưới nó), chạy `node crm/test/test-zalo-web.mjs`.
+> **Đã đối chiếu tài liệu Zalo ngày 23/10/2026** (đọc từ máy của Khánh; trang `developers.zalo.me/docs/…` tải nội dung từ `stc-developers.zdn.vn/docs/v2/…`). Từ 01/01/2026 ZNS gộp vào **ZBS Template Message**: cùng địa chỉ, cùng trường.
+>
+> | Phần | Trang tài liệu | Kết quả |
+> |---|---|---|
+> | Làm mới token | `official-account/bat-dau/xac-thuc-va-uy-quyen-cho-ung-dung-new` | Khớp: `POST oauth.zaloapp.com/v4/oa/access_token`, header `secret_key`, thân form `refresh_token`, `app_id`, `grant_type=refresh_token`. Access token 25 giờ, refresh token dùng một lần, sống 3 tháng. `expires_in` trả dạng chuỗi. Dạng lỗi của đường này tài liệu không ghi — còn là giả định |
+> | Gửi tin | `zbs-template-message/gui-tin-template-qua-sdt/api-gui-tin-qua-sdt/api-gui-tin` | Khớp: `POST business.openapi.zalo.me/message/template`, header `access_token`, `phone` dạng `84…`, `template_id`, `template_data`, `tracking_id` (Zalo khuyên tối đa 48 ký tự; id nhật ký 36 ký tự). `quota` trả dạng chuỗi. Không gửi `sending_mode` (mặc định 1) |
+> | Chế độ thử | `…/api-gui-tin-su-dung-development-mode` | Khớp: `mode: "development"`, chỉ gửi tới quản trị viên của App hoặc OA; trả lời không có `quota` |
+> | Mã lỗi | `zbs-template-message/bang-ma-loi`, `official-account/phu-luc/ma-loi`, bảng ZNS cũ `zalo-notification-service/phu-luc/bang-ma-loi` | **Đã sửa** `ZALO_API.maLoi`: -126 (ví chế độ thử hết tiền) sang hết quota; -110 (máy người nhận dùng Zalo quá cũ) sang người nhận — trước đây dừng cả lượt 1 giờ; thêm 22 mã mới; -147, -1472 (giới hạn ngày của một mẫu / một người) hẹn lại 12 giờ, không dừng tin khác; -122 (thân yêu cầu sai dạng) dừng lượt. `crm/test/test-zalo-web.mjs` giữ bảng theo tài liệu |
+>
+> Zalo đổi API thì chỉ sửa hằng `ZALO_API` (và `XU_LY_LOI` ngay dưới nó), chạy `node crm/test/test-zalo-web.mjs`. Chưa thử thật: một tin chế độ thử tới số quản trị viên OA (mục "4 bước chuẩn bị với Zalo" ở `/noi-bo/zalo/cai-dat`).
 
 ### Bốn bí mật Worker
 

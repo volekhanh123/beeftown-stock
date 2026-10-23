@@ -132,6 +132,33 @@ await nhom('3 · ĐỌC CÂU TRẢ LỜI VÀ BẢNG MÃ LỖI', async () => {
      loaiCuaMa(-124) === 'token' && loaiCuaMa(-216) === 'token' && loaiCuaMa(-108) === 'nguoi_nhan'
      && loaiCuaMa(-131) === 'mau' && loaiCuaMa(-144) === 'het_quota' && loaiCuaMa(-104) === 'cau_hinh');
   ok('Mã lạ → thu_lai (an toàn: không bỏ tin)', loaiCuaMa(-99999) === 'thu_lai' && docPhanHoi(200, { error: -777 }).loai === 'thu_lai');
+
+  // Đối chiếu tài liệu ZBS Template Message 23/10/2026 (developers.zalo.me/docs/zbs-template-message/bang-ma-loi,
+  // official-account/phu-luc/ma-loi, bảng ZNS cũ cho -102 -105 -114 -119). Bản giả định 27/09 xếp nhầm ba mã:
+  //   -126 là ví chế độ thử (development) hết tiền — không phải người nhận; -110 là máy người nhận dùng Zalo
+  //   quá cũ — không phải cấu hình (xếp cấu hình thì dừng cả lượt 1 giờ vì một khách); -127 là "tin thử chỉ
+  //   gửi được cho quản trị viên" — đúng là người nhận.
+  const TAI_LIEU = {
+    token: [-124, -216],
+    gioi_han: [-32],
+    het_quota: [-115, -126, -137, -144, -1441],
+    gioi_han_ngay: [-147, -1472],
+    ngoai_gio: [-133],
+    nguoi_nhan: [-108, -110, -114, -118, -119, -127, -139, -140, -141, -1471],
+    mau: [-109, -111, -112, -113, -1121, -1122, -1123, -1124, -1131, -116, -117, -121, -130, -131, -132, -145],
+    cau_hinh: [-101, -102, -103, -104, -105, -106, -120, -1202, -122, -1241, -125, -135, -1351, -136, -138, -1381],
+  };
+  const sai = Object.entries(TAI_LIEU).flatMap(([loai, ds]) => ds.filter(ma => loaiCuaMa(ma) !== loai)
+    .map(ma => `${ma}: ${loaiCuaMa(ma)} (tài liệu: ${loai})`));
+  ok('Mã lỗi của tài liệu Zalo (23/10/2026) xếp đúng loại', sai.length === 0, sai.join(' · '));
+  ok('-126 (ví chế độ thử hết tiền) → het_quota, dừng lượt; -110 (Zalo quá cũ) → nguoi_nhan, không dừng lượt',
+     XU_LY_LOI[loaiCuaMa(-126)].dungLuot === true && loaiCuaMa(-110) === 'nguoi_nhan' && XU_LY_LOI[loaiCuaMa(-110)].dungLuot === false);
+  ok('-147 (một mẫu hết quota ngày), -1472 (giới hạn ngày của một người) → hẹn lại 12 giờ, không dừng tin khác',
+     [-147, -1472].every(ma => { const x = XU_LY_LOI[loaiCuaMa(ma)]; return x.dungLuot === false && x.thuLaiSau === 12 * 3600; }));
+  ok('-122 (thân yêu cầu sai dạng — lỗi của bộ gửi) → dừng lượt, không đánh hỏng từng tin',
+     XU_LY_LOI[loaiCuaMa(-122)].dungLuot === true);
+  const thuaMa = ZALO_API.maLoi.flatMap(d => d.ma).filter(ma => !Object.values(TAI_LIEU).flat().includes(ma));
+  ok('Bảng trong mã không có mã nào ngoài tài liệu', thuaMa.length === 0, thuaMa.join(', '));
   ok('HTTP 500 không JSON → thu_lai; 429 → gioi_han; 401 → token; 200 không JSON → thu_lai',
      docPhanHoi(500, undefined).loai === 'thu_lai' && docPhanHoi(429, undefined).loai === 'gioi_han'
      && docPhanHoi(401, undefined).loai === 'token' && docPhanHoi(200, undefined).loai === 'thu_lai'
