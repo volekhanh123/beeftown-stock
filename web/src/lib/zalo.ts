@@ -67,15 +67,17 @@ export const ZALO_API = {
   maLoi: [
     { loai: 'token',      ma: [-124, -216],                       ghiChu: 'access token sai / hết hạn' },
     { loai: 'gioi_han',   ma: [-32],                              ghiChu: 'App / OA gọi quá giới hạn mỗi phút' },
-    { loai: 'het_quota',  ma: [-115, -126, -137, -144, -1441, -147],
-      ghiChu: 'ví ZBS hết tiền / trừ tiền hỏng / ví chế độ thử hết tiền / hết quota ngày của OA, tháng (khuyến mãi), ngày của mẫu' },
+    { loai: 'het_quota',  ma: [-115, -126, -137, -144, -1441],
+      ghiChu: 'ví ZBS hết tiền / trừ tiền hỏng / ví chế độ thử hết tiền / hết quota ngày của OA, quota tháng tin khuyến mãi' },
+    { loai: 'gioi_han_ngay', ma: [-147, -1472],
+      ghiChu: 'một mẫu hết quota ngày / quá giới hạn tin khuyến mãi trong ngày cho một người — tin khác vẫn gửi được' },
     { loai: 'ngoai_gio',  ma: [-133],                             ghiChu: 'loại tin này không gửi được 22:00–07:00' },
-    { loai: 'nguoi_nhan', ma: [-108, -110, -114, -118, -119, -127, -139, -140, -141, -1471, -1472],
+    { loai: 'nguoi_nhan', ma: [-108, -110, -114, -118, -119, -127, -139, -140, -141, -1471],
       ghiChu: 'số sai / không có Zalo / Zalo quá cũ / không nhận được / từ chối tin / không đủ điều kiện / quá giới hạn tin khuyến mãi cho người này / chế độ thử: không phải quản trị viên' },
-    { loai: 'mau',        ma: [-109, -111, -112, -113, -1121, -1122, -1123, -1124, -1131, -116, -117, -121, -122, -130, -131, -132, -145],
+    { loai: 'mau',        ma: [-109, -111, -112, -113, -1121, -1122, -1123, -1124, -1131, -116, -117, -121, -130, -131, -132, -145],
       ghiChu: 'mã mẫu sai / chưa duyệt / không có quyền dùng / tham số thiếu, sai dạng, quá dài / nút, liên kết sai / OA không được gửi loại nội dung này' },
-    { loai: 'cau_hinh',   ma: [-101, -102, -103, -104, -105, -106, -120, -1202, -1241, -125, -135, -1351, -136, -138, -1381],
-      ghiChu: 'App / OA / secret key sai, App chưa bật hay chưa nối OA, OA chưa mua gói, chưa xác thực hay bị chặn gửi tin SĐT, chưa nối ZBS Account, không có quyền' },
+    { loai: 'cau_hinh',   ma: [-101, -102, -103, -104, -105, -106, -120, -1202, -122, -1241, -125, -135, -1351, -136, -138, -1381],
+      ghiChu: 'App / OA / secret key sai, App chưa bật hay chưa nối OA, OA chưa mua gói, chưa xác thực hay bị chặn gửi tin SĐT, chưa nối ZBS Account, không có quyền / thân yêu cầu sai dạng JSON (lỗi của bộ gửi — dừng lượt)' },
   ],
 } as const;
 
@@ -83,7 +85,7 @@ export const ZALO_API = {
 // PHÂN LOẠI LỖI → KẾT QUẢ GHI VÀO nhat_ky_tin
 // =============================================================================
 export type LoaiLoiZalo =
-  | 'token' | 'thu_lai' | 'gioi_han' | 'het_quota' | 'ngoai_gio' | 'nguoi_nhan' | 'mau' | 'cau_hinh';
+  | 'token' | 'thu_lai' | 'gioi_han' | 'het_quota' | 'gioi_han_ngay' | 'ngoai_gio' | 'nguoi_nhan' | 'mau' | 'cau_hinh';
 
 export interface XuLyLoi {
   /** Gửi zalo_ghi_ket_qua với kết quả này. */
@@ -101,6 +103,8 @@ export const XU_LY_LOI: Readonly<Record<LoaiLoiZalo, XuLyLoi>> = {
   thu_lai:    { ketQua: 'that_bai',   thuLaiSau: 300,      dungLuot: false },
   gioi_han:   { ketQua: 'that_bai',   thuLaiSau: 900,      dungLuot: true },
   het_quota:  { ketQua: 'that_bai',   thuLaiSau: 6 * 3600, dungLuot: true },
+  // Giới hạn của RIÊNG một mẫu / một người nhận trong ngày: hẹn lại, không chặn tin khác của lượt.
+  gioi_han_ngay: { ketQua: 'that_bai', thuLaiSau: 12 * 3600, dungLuot: false },
   ngoai_gio:  { ketQua: 'that_bai',   thuLaiSau: 3600,     dungLuot: true },
   nguoi_nhan: { ketQua: 'bi_tu_choi', thuLaiSau: null,     dungLuot: false },
   mau:        { ketQua: 'that_bai',   thuLaiSau: null,     dungLuot: false },
