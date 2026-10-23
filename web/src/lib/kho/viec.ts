@@ -361,7 +361,7 @@ export function cauNhomSuKien(khoa: string, ds: SuKien[], nn: NgonNguNB = 'vi'):
         { vi: 'Mở từng phiếu, sửa rồi gửi lại.', en: 'Open each one, fix it and send it again.' });
     case 'huy_bi_tu_choi':
       return dong({ vi: `${so} báo hủy không được duyệt`, en: `${so} write-offs were not approved` },
-        '/noi-bo/kho/xuat?loc=huy', xem, { vi: 'Hàng đã về lại chỗ cũ.', en: 'The goods are back where they were.' });
+        '/noi-bo/kho/xuat?loc=huy_tu_choi', xem, { vi: 'Hàng đã về lại chỗ cũ.', en: 'The goods are back where they were.' });
     case 'kiem_ke_tra_ve':
       return dong({ vi: `${so} phiếu kiểm kê cần đếm lại`, en: `${so} stocktakes need a recount` },
         '/noi-bo/kho/kiem-ke', c({ vi: 'Đếm lại', en: 'Recount' }));
@@ -443,7 +443,13 @@ export function cauNhomSuKien(khoa: string, ds: SuKien[], nn: NgonNguNB = 'vi'):
  */
 export function gomSuKien(ds: SuKien[], nn: NgonNguNB = 'vi'): DongViec[] {
   const theoKhoa = new Map<string, SuKien[]>();
-  for (const e of ds) theoKhoa.set(e.khoa, [...(theoKhoa.get(e.khoa) ?? []), e]);
+  for (const e of ds) {
+    const nhom = theoKhoa.get(e.khoa);
+    if (nhom) nhom.push(e); else theoKhoa.set(e.khoa, [e]);
+  }
+  // Câu gom tính MỘT lần mỗi khóa (cauNhomSuKien đọc cả nhóm — tính lại ở từng sự kiện là n² lần cauSuKien).
+  const cauNhom = new Map<string, CauSuKien | null>();
+  for (const [khoa, nhom] of theoKhoa) cauNhom.set(khoa, nhom.length >= NGUONG_GOM ? cauNhomSuKien(khoa, nhom, nn) : null);
   const dong = (khoa: string, nhom: SuKien[], cau: CauSuKien): DongViec => {
     const luc = nhom.map(e => e.luc).sort();
     return { khoa, ds: nhom, cau, cuNhat: luc[0], moiNhat: luc[luc.length - 1], chuaDoc: nhom.some(e => !!e.chua_doc) };
@@ -451,12 +457,11 @@ export function gomSuKien(ds: SuKien[], nn: NgonNguNB = 'vi'): DongViec[] {
   const ra: DongViec[] = [];
   const daGom = new Set<string>();
   for (const e of ds) {
-    const nhom = theoKhoa.get(e.khoa)!;
-    const cauNhom = nhom.length >= NGUONG_GOM ? cauNhomSuKien(e.khoa, nhom, nn) : null;
-    if (!cauNhom) { ra.push(dong(e.khoa, [e], cauSuKien(e, nn))); continue; }
+    const cau = cauNhom.get(e.khoa);
+    if (!cau) { ra.push(dong(e.khoa, [e], cauSuKien(e, nn))); continue; }
     if (daGom.has(e.khoa)) continue;
     daGom.add(e.khoa);
-    ra.push(dong(e.khoa, nhom, cauNhom));
+    ra.push(dong(e.khoa, theoKhoa.get(e.khoa)!, cau));
   }
   return ra;
 }

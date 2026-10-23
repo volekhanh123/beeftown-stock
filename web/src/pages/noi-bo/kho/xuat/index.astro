@@ -31,6 +31,7 @@ const t = dichNB(nn, {
   xuatBep: { vi: 'Xuất bếp', en: 'To kitchen' },
   xuatKhac: { vi: 'Xuất khác', en: 'Other issues' },
   huy: { vi: 'Hủy', en: 'Write-offs' },
+  huyTuChoi: { vi: 'Báo hủy không được duyệt', en: 'Write-offs not approved' },
   traNcc: { vi: 'Trả NCC', en: 'Supplier returns' },
   khongDoc: { vi: 'Không đọc được phiếu xuất.', en: 'Could not read the issue slips.' },
   tu: { vi: (noi: string) => `từ ${noi}`, en: (noi: string) => `from ${noi}` },
@@ -72,7 +73,15 @@ const LOC_TRANG_THAI: Record<string, string[]> = {
   cho_duyet: ['cho_duyet'],
   dang_chuyen: ['dang_chuyen', 'nhan_thieu'],
 };
-const loc = LOC.some(([v]) => v === Astro.url.searchParams.get('loc')) ? Astro.url.searchParams.get('loc')! : '';
+/**
+ * Lọc chỉ mở qua link, không có thẻ riêng (chỉ hiện thẻ khi đang lọc): dòng gom "n báo hủy không được duyệt"
+ * của Việc cần làm (lib/kho/viec.ts) dẫn tới đây — loại hủy VÀ trạng thái từ chối.
+ */
+const LOC_AN: Record<string, { ten: string; loai: string; trangThai: string[] }> = {
+  huy_tu_choi: { ten: t.huyTuChoi, loai: 'huy', trangThai: ['tu_choi'] },
+};
+const locUrl = Astro.url.searchParams.get('loc') ?? '';
+const loc = LOC.some(([v]) => v === locUrl) || Object.hasOwn(LOC_AN, locUrl) ? locUrl : '';
 
 const tim = docTimDs(Astro.url.searchParams);
 let ds: PhieuXuatTom[] = [];
@@ -80,7 +89,9 @@ let coSau = false;
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   try {
-    ({ ds, coSau } = catTrang(await docDanhSachPhieuXuat(k.client, k.chiNhanh.id, LOC_TRANG_THAI[loc]
+    ({ ds, coSau } = catTrang(await docDanhSachPhieuXuat(k.client, k.chiNhanh.id, LOC_AN[loc]
+      ? { loai: LOC_AN[loc].loai, trangThai: LOC_AN[loc].trangThai }
+      : LOC_TRANG_THAI[loc]
       ? { trangThai: LOC_TRANG_THAI[loc] }
       : { loai: loc || null }, { tim, nhanSuId: k.nhanSu.id })));
   } catch (e) {
@@ -116,6 +127,7 @@ const moTa = (p: PhieuXuatTom) =>
         {LOC.map(([v, ten]) => (
           <a href={v ? `/noi-bo/kho/xuat?loc=${v}` : '/noi-bo/kho/xuat'} aria-current={loc === v ? 'page' : undefined}>{ten}</a>
         ))}
+        {LOC_AN[loc] && <a href={`/noi-bo/kho/xuat?loc=${loc}`} aria-current="page">{LOC_AN[loc].ten}</a>}
       </nav>
 
       <LocDanhSach duong="/noi-bo/kho/xuat" tim={tim} giu={{ loc }} coCuaToi={k.duoc('van_hanh')}

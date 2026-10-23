@@ -184,9 +184,11 @@ const HANG_LOC: { ten: string; khoa: 'vi_tri' | 'han' | 'loai' | 'duoi_muc'; dan
 ];
 
 // Gọn 22/10/2026 (Khánh duyệt): mỗi món một dòng — tên, số lô, tổng kg / gói, hạn sớm nhất. Bảng lô và nút
-// chỉ hiện khi bấm mở; mở sẵn khi đang lọc theo hạn (đi từ "9 lô hết hạn") hoặc chỉ có vài món. Bảng lô bỏ cột
-// giá vốn/kg (giá vốn xem ở Báo cáo; tổng giá trị vẫn ở dòng đầu) và chữ "pha lóc / nhập dd/mm" dưới mã lô.
-const moSan = nhom.length <= 3 || han !== '';
+// chỉ hiện khi bấm mở; mở sẵn khi chỉ có vài món hoặc đang lọc hẹp — theo hạn (đi từ "9 lô hết hạn"), món
+// quầy dưới mức (đi từ "n món quầy sắp hết": mỗi lô một nút Mang ra quầy) hay ô tìm. Lọc theo chỗ / loại hàng
+// vẫn còn nhiều món nên giữ gập. Bảng lô bỏ cột giá vốn/kg (giá vốn xem ở Báo cáo; tổng giá trị vẫn ở dòng
+// đầu) và chữ "pha lóc / nhập dd/mm" dưới mã lô.
+const moSan = nhom.length <= 3 || han !== '' || duoiMuc || tim !== '';
 const conNgay = (t: DongTon) =>
   t.so_ngay_con < 0 ? ch.quaNgay(-t.so_ngay_con) : t.so_ngay_con === 0 ? ch.hetHomNay : ch.conNgay(t.so_ngay_con);
 const BIEU_TUONG_VIEC = { chuyen: 'chuyen', xuat_bep: 'bep', huy: 'huy' } as const;

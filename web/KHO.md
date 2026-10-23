@@ -118,7 +118,10 @@ chứng từ: phiếu bị trả về, lô hết hạn, nợ quá hạn… Nhờ
 (`KHOA_KHONG_GOM`). Dùng ở Việc cần làm (30 ngày), trang chủ (chỉ "Làm ngay", tối đa 5 dòng) và chuông
 (`NGAY_CHUONG` = 7 ngày). Số đỏ trên chuông (`chua_doc` của `kho_dem_viec`, 0092) đếm đúng số dòng chuông có tin
 chưa đọc — đổi luật gom thì viết migration mới cho khớp (`test-kho-viec.mjs` nhóm 7b, `test-kho-giao-dien.mjs`
-nhóm 4 so hai bên).
+nhóm 4 so hai bên). Cả `chua_doc` lẫn `viec_dong` chỉ đếm 300 sự kiện mới nhất của 30 ngày — đúng phần
+`kho_thong_bao` trả; chuông, Việc cần làm, Trang chủ đều đọc 300. `gomSuKien` tính câu gom một lần mỗi khóa.
+Báo hủy bị từ chối gom lại dẫn tới `/xuat?loc=huy_tu_choi` (lọc ẩn `LOC_AN` của `xuat/index.astro`: loại hủy và
+trạng thái từ chối; thẻ lọc chỉ hiện khi đang lọc).
 `kho_da_xem_thong_bao` dời mốc đó (mở trang chuông là đã đọc).
 
 Câu chữ và link "làm ngay" của từng khóa nằm ở `lib/kho/viec.ts` — sửa câu không cần viết
@@ -259,7 +262,8 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
 ### Gọn phần tồn kho (Khánh duyệt 22/10/2026)
 
 - **Tồn kho**: mỗi món một dòng gập (`details.kho-mh`) — tên, số lô, tổng kg · gói, "Hạn dd/mm" sớm nhất; bấm mới
-  thấy bảng lô và nút. Mở sẵn khi lọc theo hạn (`?han=`) hoặc chỉ ≤ 3 món. Không còn dòng mã · loại · nhóm, cột giá
+  thấy bảng lô và nút. Mở sẵn khi chỉ ≤ 3 món hay lọc hẹp: theo hạn (`?han=`), món quầy dưới mức (`?duoi_muc=1`,
+  dòng gom "n món quầy sắp hết" — mỗi lô một nút Mang ra quầy) hoặc ô tìm. Không còn dòng mã · loại · nhóm, cột giá
   vốn/kg (tổng giá trị vẫn ở dòng đầu cho vai xem giá) và chữ "pha lóc / nhập dd/mm" dưới mã lô.
 - **Tảng · ủ**: bảng tảng 5 cột (Số tảng · Món · Tuổi · Ủ xong · Kg). Chỗ để chỉ ghi dưới tên món khi khác chỗ của đa
   số tảng; ngày mổ, hạn dùng xem ở trang tảng.

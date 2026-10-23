@@ -16,6 +16,10 @@
 --   khác (quay_duoi_muc, quay_chua_dem, dinh_muc_lech) như cũ, vẫn đọc kho_su_kien MỘT lần. Cùng chữ ký,
 --   cùng quyền, cùng kiểm vai đầu hàm.
 --
+-- Cả hai số chỉ đếm trong 300 sự kiện MỚI NHẤT của 30 ngày — đúng phần kho_thong_bao trả cho trang
+-- (tối đa 300; trang chuông và trang Việc cần làm đều đọc 300): chi nhánh bận có hơn 300 sự kiện thì số
+-- đỏ vẫn khớp đúng dòng trang in, không đếm cả phần trang không thấy.
+--
 -- Luật gom nằm hai nơi: đây và web/src/lib/kho/viec.ts (NGUONG_GOM, KHOA_KHONG_GOM, NGAY_CHUONG).
 -- crm/test/test-kho-viec.mjs so số database đếm với số dòng web gom — đổi một bên thì đổi bên kia.
 -- Không đổi dữ liệu, không bảng mới.
@@ -72,19 +76,26 @@ begin
   -- kho_thong_bao), bỏ chua_doi_chieu (để biết, không phải việc), gom như trên. Đúng luật gomSuKien /
   -- NGUONG_GOM / KHOA_KHONG_GOM / NGAY_CHUONG / laViec của web/src/lib/kho/viec.ts.
   with e as materialized (select * from kho_su_kien(p_chi_nhanh_id)),
+  -- Đúng phần kho_thong_bao trả (0030): 30 ngày, mới nhất trước, tối đa 300.
+  moi as materialized (
+    select * from e
+    where e.luc <= now() and e.luc >= now() - interval '30 days'
+    order by e.luc desc
+    limit 300
+  ),
   g as (
-    select e.khoa,
+    select m.khoa,
            count(*) as tong,
-           count(*) filter (where v_xem_luc is null or e.luc > v_xem_luc) as chua
-    from e
-    where e.luc <= now() and e.luc >= now() - interval '7 days'
-    group by e.khoa
+           count(*) filter (where v_xem_luc is null or m.luc > v_xem_luc) as chua
+    from moi m
+    where m.luc >= now() - interval '7 days'
+    group by m.khoa
   ),
   vi as (
-    select e.khoa, count(*) as tong
-    from e
-    where e.luc <= now() and e.luc >= now() - interval '30 days' and e.khoa <> 'chua_doi_chieu'
-    group by e.khoa
+    select m.khoa, count(*) as tong
+    from moi m
+    where m.khoa <> 'chua_doi_chieu'
+    group by m.khoa
   )
   select (select count(*) from e where e.khoa = 'quay_duoi_muc'),
          (select count(*) from e where e.khoa = 'quay_chua_dem'),
@@ -197,4 +208,4 @@ $$;
 
 
 comment on function kho_dem_viec is
-  'Mọi số đỏ trên menu kho của người đang đăng nhập ở một chi nhánh, trong MỘT lần gọi. Khóa nào không có quyền thì vắng mặt. Chỉ đếm, không tiền. duyet_nhap theo quyền duyet_nhap (0031); yeu_cau_quay, hang_dang_chuyen, hang_chuyen_qua_gio, chuyen_nhan_thieu (0032); thu_hoi_thap (0033); ipos_cho_xu_ly (0037); dinh_muc_lech (0038); don_dat_tre (0039); tra_hang_cho_tien (0040). chua_doc (0092): số dòng của trang chuông có tin chưa đọc — 7 ngày, khóa có ≥ 3 sự kiện gom một dòng, trừ ncc_doi_tai_khoan. viec_dong (0092): số dòng của trang Việc cần làm — 30 ngày, trừ chua_doi_chieu, gom như chua_doc.';
+  'Mọi số đỏ trên menu kho của người đang đăng nhập ở một chi nhánh, trong MỘT lần gọi. Khóa nào không có quyền thì vắng mặt. Chỉ đếm, không tiền. duyet_nhap theo quyền duyet_nhap (0031); yeu_cau_quay, hang_dang_chuyen, hang_chuyen_qua_gio, chuyen_nhan_thieu (0032); thu_hoi_thap (0033); ipos_cho_xu_ly (0037); dinh_muc_lech (0038); don_dat_tre (0039); tra_hang_cho_tien (0040). chua_doc (0092): số dòng của trang chuông có tin chưa đọc — 7 ngày, khóa có ≥ 3 sự kiện gom một dòng, trừ ncc_doi_tai_khoan. viec_dong (0092): số dòng của trang Việc cần làm — 30 ngày, trừ chua_doi_chieu, gom như chua_doc. Cả hai chỉ đếm 300 sự kiện mới nhất của 30 ngày, đúng phần kho_thong_bao trả cho trang.';

@@ -393,11 +393,18 @@ await nhom('4 · THÔNG BÁO: KHÓA DATABASE ↔ CÂU CHỮ', async () => {
   ok('Migration 0092 đếm chuông bằng đúng luật gom của viec.ts (ngưỡng, khóa không gom, 7 ngày)',
     sql0092.includes(`g.tong >= ${NGUONG_GOM}`) && KHOA_KHONG_GOM.every(k => sql0092.includes(`g.khoa <> '${k}'`))
     && sql0092.includes("interval '7 days'"));
+  // HỒI QUY rà soát 23/10/2026: kho_thong_bao trả tối đa 300 sự kiện mới nhất của 30 ngày; chi nhánh bận vượt
+  // con số đó thì số chuông / số Việc đếm cả phần trang không thấy. 0092 đếm đúng 300 mới nhất, và ba trang
+  // (chuông, Việc cần làm, Trang chủ) đều đọc 300 — đổi một chỗ thì đổi cả bốn.
+  const doc300 = ['thong-bao', 'viec', 'index'].filter(f => !/docThongBao\(k\.client, (k\.chiNhanh\.id|cn), 300, /.test(doc(join(TRANG, 'noi-bo/kho', `${f}.astro`))));
+  ok('HỒI QUY rà soát: 0092 chỉ đếm 300 sự kiện mới nhất của 30 ngày — đúng phần ba trang đọc (300)',
+    /moi as materialized \(\s*select \* from e\s*where e\.luc <= now\(\) and e\.luc >= now\(\) - interval '30 days'\s*order by e\.luc desc\s*limit 300\s*\)/.test(sql0092)
+    && /from moi m\s*where m\.luc >= now\(\) - interval '7 days'/.test(sql0092) && doc300.length === 0, doc300.join(', '));
   // viec_dong: trang Việc cần làm = sự kiện laViec (mức khác "xam"). Khóa "để biết" duy nhất là chua_doi_chieu —
   // database bỏ đúng khóa đó. Thêm một khóa xám mới mà quên 0092 thì hai bên lệch: test này đỏ.
   const khoaXam = KHOA_SU_KIEN.filter(k => ['kho', 'quay'].every(phu => cauSuKien(sk(k, 1, { phu })).muc === 'xam'));
   ok('Chỉ chua_doi_chieu là "để biết" (không phải việc) — 0092 bỏ đúng khóa đó khi đếm viec_dong',
-    khoaXam.join() === 'chua_doi_chieu' && sql0092.includes("e.khoa <> 'chua_doi_chieu'")
+    khoaXam.join() === 'chua_doi_chieu' && sql0092.includes("m.khoa <> 'chua_doi_chieu'")
     && sql0092.includes(`vi.tong >= ${NGUONG_GOM}`) && KHOA_KHONG_GOM.every(k => sql0092.includes(`vi.khoa <> '${k}'`)),
     khoaXam.join(', '));
 });
@@ -1053,8 +1060,11 @@ await nhom('16 · AI LÀM ĐƯỢC GÌ · TRUNG TÂM BÁO CÁO ẨN THEO QUYỀN
 // ===========================================================================
 await nhom('17 · GỌN PHẦN TỒN KHO (Khánh duyệt 22/10/2026)', async () => {
   const ton = doc(join(TRANG, 'noi-bo/kho/ton.astro'));
-  ok('Tồn kho: mỗi món gập một dòng; chỉ mở sẵn khi lọc theo hạn hoặc ≤ 3 món',
-    /const moSan = nhom\.length <= 3 \|\| han !== '';/.test(ton) && /<details class="kho-mh" open=\{moSan\}>/.test(ton));
+  ok('Tồn kho: mỗi món gập một dòng; mở sẵn khi ≤ 3 món hay lọc hẹp (theo hạn, quầy dưới mức, ô tìm)',
+    /const moSan = nhom\.length <= 3 \|\| han !== '' \|\| duoiMuc \|\| tim !== '';/.test(ton) && /<details class="kho-mh" open=\{moSan\}>/.test(ton));
+  ok('HỒI QUY rà soát: dòng gom "n món quầy sắp hết" dẫn tới /ton?duoi_muc=1 — món phải mở sẵn để thấy nút Mang ra quầy',
+    cauNhomSuKien('quay_duoi_muc', [{ khoa: 'quay_duoi_muc', luc: '2026-10-22T01:00:00Z', du_lieu: {} }], 'vi')?.link?.includes('duoi_muc=1')
+    && /\|\| duoiMuc/.test(ton));
   ok('Tồn kho: dòng món không in mã · loại · nhóm, chỉ số lô',
     /<small>\{ch\.soLo\(g\.so_lo\)\}<\/small>/.test(ton) && !/g\.ma_hang/.test(ton));
   ok('Tồn kho: bảng lô không có cột giá vốn/kg, không có chữ "pha lóc / nhập dd/mm" dưới mã lô',
@@ -1065,7 +1075,8 @@ await nhom('17 · GỌN PHẦN TỒN KHO (Khánh duyệt 22/10/2026)', async () 
   const bangTang = tang.slice(tang.indexOf('theoNhom.map'), tang.indexOf('</table>', tang.indexOf('theoNhom.map')));
   ok('Tảng · ủ: bảng tảng còn 5 cột (Số tảng · Món · Tuổi · Ủ xong · Kg)', (bangTang.match(/<th\b/g) ?? []).length === 5,
     `${(bangTang.match(/<th\b/g) ?? []).length} cột`);
-  ok('Tảng · ủ: chỗ để chỉ ghi khi khác chỗ của đa số tảng', /x\.vi_tri !== noiChinh/.test(tang));
+  ok('Tảng · ủ: chỗ để chỉ ghi khi khác chỗ của đa số tảng (cùng luật phoBienNhat với Nhận hàng, Nhập hàng)',
+    /x\.vi_tri !== noiChinh/.test(tang) && /const noiChinh = phoBienNhat\(ds\.map\(x => x\.vi_tri\)\);/.test(tang));
 
   const theKho = doc(join(TRANG, 'noi-bo/kho/the-kho/[mat_hang_id].astro'));
   const dauBang = theKho.slice(theKho.indexOf('<thead>'), theKho.indexOf('</thead>'));
@@ -1179,6 +1190,19 @@ await nhom('20 · GỌN PHẦN TIỀN VÀ BÁO CÁO (Khánh duyệt 23/10/2026)'
     /chuaDoiChieuNhan: \{ vi: 'Chưa đối chiếu'/.test(ncc)
     && /<details open=\{loiO !== null \|\| moPhieu === p\.id \|\| !p\.da_doi_chieu\}>/.test(ncc));
   ok('Công nợ một NCC: ?mo=<phiếu> (link "Chưa đối chiếu") và lỗi đối chiếu vẫn mở đúng phiếu', /moPhieu === p\.id/.test(ncc) && /loiO !== null/.test(ncc));
+  // HỒI QUY rà soát 23/10/2026: "n báo hủy không được duyệt" từng dẫn tới ?loc=huy — mọi phiếu hủy, cả đã duyệt.
+  const dongHuy = cauNhomSuKien('huy_bi_tu_choi', [1, 2, 3].map(i => ({ khoa: 'huy_bi_tu_choi', ma: `HUY-${i}`, luc: '2026-10-22T01:00:00Z' })), 'vi');
+  const xuatDs = doc(join(TRANG, 'noi-bo/kho/xuat/index.astro'));
+  ok('HỒI QUY rà soát: dòng gom báo hủy bị từ chối mở danh sách CHỈ phiếu hủy bị từ chối (loại huy + trạng thái tu_choi)',
+    dongHuy?.link === '/noi-bo/kho/xuat?loc=huy_tu_choi'
+    && /huy_tu_choi: \{ ten: t\.huyTuChoi, loai: 'huy', trangThai: \['tu_choi'\] \}/.test(xuatDs)
+    && /LOC_AN\[loc\]\s*\?\s*\{ loai: LOC_AN\[loc\]\.loai, trangThai: LOC_AN\[loc\]\.trangThai \}/.test(xuatDs), dongHuy?.link);
+  // HỒI QUY rà soát 23/10/2026: phiếu là hàng gập — link chỉ có #p-<id> tới nơi thấy một dòng đóng.
+  const linkTran = moiFile(join(WEB, 'src')).filter(f => /\.(astro|ts)$/.test(f))
+    .flatMap(f => doc(f).split('\n').filter(d => /cong-no\/\$\{[^}]+\}[^`'"]*#p-\$\{/.test(d) && !/\?mo=\$\{/.test(d))
+      .map(d => `${relative(WEB, f)}: ${d.trim().slice(0, 80)}`));
+  ok('HỒI QUY rà soát: mọi link tới #p-<phiếu> của trang Công nợ NCC đều kèm ?mo=<phiếu> (mở sẵn hàng gập)',
+    linkTran.length === 0, linkTran.join(' | '));
 
   const misa = doc(join(TRANG, 'noi-bo/kho/cong-no/misa.astro'));
   ok('MISA: xem trước 10 dòng, chữ không xuống dòng', /const XEM = 10;/.test(misa) && /\.misa-xem th, \.misa-xem td \{ white-space: nowrap; \}/.test(misa));

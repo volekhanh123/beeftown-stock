@@ -28,7 +28,8 @@ const chon = NHOM.includes(Astro.url.searchParams.get('nhom') as NhomSuKien)
 let suKien: SuKien[] = [];
 let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
-  const r = await docThongBao(k.client, k.chiNhanh.id, 200, k.nn);
+  // 300 = tối đa của kho_thong_bao; số chuông (0092 chua_doc) đếm đúng 300 sự kiện mới nhất này.
+  const r = await docThongBao(k.client, k.chiNhanh.id, 300, k.nn);
   // Cùng mốc với database (0092): luc trong NGAY_CHUONG ngày tới bây giờ.
   const tu = Date.now() - NGAY_CHUONG * 86400000;
   suKien = r.suKien.filter(e => { const t = new Date(e.luc).getTime(); return t >= tu && t <= Date.now(); });

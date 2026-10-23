@@ -402,10 +402,6 @@ export function chiaSoDuLonNhat(tong: number, trongSo: number[]): number[] {
   return ra;
 }
 
-// -----------------------------------------------------------------------------
-// TÊN MÁY TỪ TÊN TIẾNG VIỆT
-// -----------------------------------------------------------------------------
-/** "Thăn ngoại cắt lát" → "than ngoai cat lat" */
 /**
  * Giá trị gặp nhiều nhất (bỏ null / rỗng) — danh sách gọn chỉ ghi chỗ để khi khác chỗ của đa số (Kho lạnh), 22/10/2026.
  * Bằng nhau thì lấy giá trị gặp trước. Không có gì thì null.
@@ -418,6 +414,10 @@ export function phoBienNhat(ds: readonly (string | null | undefined)[]): string 
   return tot;
 }
 
+// -----------------------------------------------------------------------------
+// TÊN MÁY TỪ TÊN TIẾNG VIỆT
+// -----------------------------------------------------------------------------
+/** "Thăn ngoại cắt lát" → "than ngoai cat lat" */
 export function boDau(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '')
     .replace(/đ/g, 'd').replace(/Đ/g, 'D');

@@ -14,7 +14,7 @@ import Kho from '../../../../layouts/Kho.astro';
 import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
-import { cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, homNayVn, nhanKho } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, congNgay, dinhDangKg, dinhDangNgay, dinhDangPhanTram, homNayVn, nhanKho, phoBienNhat } from '../../../../lib/kho/chung.ts';
 import {
   cauConU, docBaoCaoTang, docTangTon, soTangChu, timTangTheoSo, TINH_TRANG_BAN_NB, TINH_TRANG_U_NB,
   type DongTang, type TangTon, type TinhTrangU,
@@ -78,14 +78,12 @@ const theoNhom = NHOM.map(tt => ({ tt, ds: ds.filter(x => x.tinh_trang_u === tt)
 // Gọn 22/10/2026 (Khánh duyệt): bảng tảng còn 5 cột — bỏ Ngày mổ (đã có Tuổi), Hạn dùng (tảng đang ủ xem Ủ xong)
 // và Ở đâu: tảng gần như luôn nằm một chỗ, chỉ ghi chỗ dưới tên món khi tảng nằm khác chỗ của đa số tảng. Ngày mổ,
 // hạn dùng, chỗ để đủ ở trang chi tiết tảng.
-const demNoi = new Map<string, number>();
-for (const x of ds) if (x.vi_tri) demNoi.set(x.vi_tri, (demNoi.get(x.vi_tri) ?? 0) + 1);
-const noiChinh = [...demNoi].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+const noiChinh = phoBienNhat(ds.map(x => x.vi_tri));
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan="theo-tang">
   <TheTrangCon k={k} cha="ton" />
   <h1>{t.tieuDe}</h1>
-  <p class="kho-phu">{t.gioiThieu}{noiChinh && demNoi.size > 0 && <>{' '}{t.noiChinh(noiChinh)}</>}</p>
+  <p class="kho-phu">{t.gioiThieu}{noiChinh && <>{' '}{t.noiChinh(noiChinh)}</>}</p>
   <p><a href="/noi-bo/kho/bao-cao/theo-tang">{t.baoCao}</a></p>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
   {tim && <div class="nb-bao loi" role="alert"><p>{t.khongThay(tim)}</p></div>}
