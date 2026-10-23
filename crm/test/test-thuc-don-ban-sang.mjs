@@ -1,12 +1,12 @@
 /**
- * BEEFTOWN CRM — THỰC ĐƠN THEO CUỐN MENU BẢN SÁNG (migration 0091)
+ * BEEFTOWN CRM — THỰC ĐƠN THEO CUỐN MENU BẢN SÁNG (migration 0094)
  * ================================================================
  *
  *     node test/test-thuc-don-ban-sang.mjs
  *
- * Khánh chốt cuốn menu in "bản sáng" ngày 11/10/2026. 0091 đưa danh mục trong database (seed 0011:
+ * Khánh chốt cuốn menu in "bản sáng" ngày 11/10/2026. 0094 đưa danh mục trong database (seed 0011:
  * 13 nhóm, 31 món) về đúng cuốn: 17 nhóm dùng, 42 món còn dùng, 10 món thu hồi, 3 nhóm tắt — và
- * KHÔNG công bố gì. Điều cần chứng minh, ngay sau 0091:
+ * KHÔNG công bố gì. Điều cần chứng minh, ngay sau 0094:
  *
  *   1. Danh mục: đúng nhóm, tên ba thứ tiếng, thứ tự; đúng số món từng nhóm, thứ tự món; 52 dòng.
  *   2. Không món nào công bố, không giá (gia_de_xuat chỉ 4 món = 69.000), không độ cay duyệt (độ cay
@@ -14,11 +14,11 @@
  *   3. Trang công khai rỗng kể cả khi bật hai công tắc; món thu hồi KHÔNG BAO GIỜ lên trang; view
  *      món còn vướng (trang Tổng quan /noi-bo đọc thẳng) không có món thu hồi, nhóm tắt.
  *   4. Sổ bản dịch (0036): tên ba thứ tiếng là bản tay của tên tiếng Việt mới — máy không dịch đè.
- *   5. Chạy lại 0091 ngay sau lần đầu: không lỗi, dữ liệu y hệt.
+ *   5. Chạy lại 0094 ngay sau lần đầu: không lỗi, dữ liệu y hệt.
  *   6. Quyền: anon không đọc bảng; marketing sửa được món, không sửa được nhóm; vai khác bị từ chối.
  *   7. Database KHÔNG còn đúng seed (Beeftown-thu sau web/THUC-DON.md bản cũ, có bản dịch máy):
- *      0091 đưa về đúng như database mới cài — không món nào còn công bố với mô tả của tên cũ.
- *   8. Chạy lại 0091 SAU khi đã làm tiếp (công bố, duyệt giá, duyệt độ cay, ghi mô tả, ghi cảnh báo)
+ *      0094 đưa về đúng như database mới cài — không món nào còn công bố với mô tả của tên cũ.
+ *   8. Chạy lại 0094 SAU khi đã làm tiếp (công bố, duyệt giá, duyệt độ cay, ghi mô tả, ghi cảnh báo)
  *      → khối chặn đầu file từ chối, không cột nào của bất kỳ dòng nào đổi.
  */
 
@@ -29,7 +29,7 @@ import { dungDatabase, dungDatabaseTrong, taoBoDem, UID } from './kho-chung.mjs'
 
 const THU_MUC_MIGRATION = join(dirname(fileURLToPath(import.meta.url)), '..', 'supabase', 'migrations');
 const TEN_FILE = readdirSync(THU_MUC_MIGRATION).find(f => /^\d{4}_thuc_don_ban_sang\.sql$/.test(f));
-const SQL_0091 = readFileSync(join(THU_MUC_MIGRATION, TEN_FILE), 'utf8');
+const SQL_0094 = readFileSync(join(THU_MUC_MIGRATION, TEN_FILE), 'utf8');
 const SO_MIGRATION = Number(TEN_FILE.slice(0, 4));
 
 const { ok, nhom, ketThuc } = taoBoDem(`BEEFTOWN CRM — THỰC ĐƠN THEO CUỐN MENU BẢN SÁNG (${TEN_FILE})`);
@@ -201,7 +201,7 @@ await nhom('3 · TRANG CÔNG KHAI RỖNG; MÓN THU HỒI KHÔNG BAO GIỜ LÊN T
     if (r.loi) throw new Error(r.loi);
     return r.rows.map(x => x.mon_ma);
   };
-  ok('Ngay sau 0091: thuc_don_cong_khai() rỗng', (await goi()).length === 0);
+  ok('Ngay sau 0094: thuc_don_cong_khai() rỗng', (await goi()).length === 0);
 
   const { rows: vuong } = await db.query(`select ma, vuong_gi from v_mon_con_vuong`);
   ok('v_mon_con_vuong: đúng 42 món còn dùng, theo thứ tự của cuốn, đều "Chưa có mô tả"',
@@ -232,7 +232,7 @@ await nhom('3 · TRANG CÔNG KHAI RỖNG; MÓN THU HỒI KHÔNG BAO GIỜ LÊN T
      (await goi()).join() === 'F21', (await goi()).join());
   ok('Nhóm đã tắt cũng không đưa món vào v_mon_con_vuong',
      !(await db.query(`select ma from v_mon_con_vuong`)).rows.some(x => x.ma === 'F17'));
-  // Trả hai dòng về như sau 0091 cho các mục sau.
+  // Trả hai dòng về như sau 0094 cho các mục sau.
   await db.query(`update mon_an set trang_thai = 'nhap', mo_ta_vi = null, cong_bo_luc = null where ma = 'F21'`);
   await db.query(`update mon_an set trang_thai = 'da_thu_hoi' where ma = 'F17'`);
   await db.query(`update noi_dung_cong_bo set trang_thai = 'da_thu_hoi' where khoa in ('hien_thuc_don', 'hien_do_uong_co_con') and trang_thai = 'da_cong_bo'`);
@@ -252,13 +252,13 @@ await nhom('4 · SỔ BẢN DỊCH: TÊN BA THỨ TIẾNG LÀ BẢN TAY, MÁY KH
 });
 
 // ===========================================================================
-await nhom('5 · CHẠY LẠI 0091 NGAY SAU LẦN ĐẦU: KHÔNG LỖI, DỮ LIỆU Y HỆT', async () => {
+await nhom('5 · CHẠY LẠI 0094 NGAY SAU LẦN ĐẦU: KHÔNG LỖI, DỮ LIỆU Y HỆT', async () => {
   const chup = async () => JSON.stringify([
     (await db.query(`select to_jsonb(m) - 'updated_at' as d from mon_an m order by ma`)).rows,
     (await db.query(`select to_jsonb(g) as d from nhom_mon g order by ma`)).rows,
   ]);
   const truoc = await chup();
-  const loi = await db.exec(SQL_0091).then(() => null, e => e.message);
+  const loi = await db.exec(SQL_0094).then(() => null, e => e.message);
   ok(`Chạy lại ${TEN_FILE} → không lỗi`, loi === null, loi);
   ok('…mọi cột của 52 món và 20 nhóm y hệt (trừ updated_at), kể cả sổ bản dịch', (await chup()) === truoc);
 });
@@ -296,7 +296,7 @@ await nhom('6 · QUYỀN: ANON KHÔNG ĐỌC; MARKETING SỬA ĐƯỢC MÓN; VAI
 });
 
 // ===========================================================================
-await nhom('7 · DATABASE KHÔNG CÒN ĐÚNG SEED (Beeftown-thu sau THUC-DON.md bản cũ) → 0091 ĐƯA VỀ ĐÚNG DANH MỤC', async () => {
+await nhom('7 · DATABASE KHÔNG CÒN ĐÚNG SEED (Beeftown-thu sau THUC-DON.md bản cũ) → 0094 ĐƯA VỀ ĐÚNG DANH MỤC', async () => {
   const { db: cu } = await dungDatabaseTrong({ den: SO_MIGRATION - 1 });
   const id = async (bang, ma) => (await cu.query(`select id from ${bang} where ma = $1`, [ma])).rows[0].id;
 
@@ -313,19 +313,19 @@ await nhom('7 · DATABASE KHÔNG CÒN ĐÚNG SEED (Beeftown-thu sau THUC-DON.md 
     update mon_an set gia_de_xuat = 189000, gia = 189000, gia_da_duyet = true, muc_cay_de_xuat = 2, muc_cay = 2, muc_cay_da_duyet = true where ma = 'F05';
     insert into noi_dung_cong_bo (khoa, kieu, gia_tri_bool, trang_thai) values
       ('hien_thuc_don', 'bool', true, 'da_cong_bo'), ('hien_do_uong_co_con', 'bool', true, 'da_cong_bo');`);
-  // Máy dịch đã dịch tên tiếng Hàn từ tên Việt cũ — đúng chữ cuốn dùng lại, nên ô dịch không đổi khi 0091 chạy.
+  // Máy dịch đã dịch tên tiếng Hàn từ tên Việt cũ — đúng chữ cuốn dùng lại, nên ô dịch không đổi khi 0094 chạy.
   await cu.query(`select ghi_ban_dich('mon_an', $1, jsonb_build_array(jsonb_build_object(
                     'cot', 'ten', 'ngon_ngu', 'ko', 'bam', bam_nguon('Canh đậu hũ non'), 'tt', 'ok', 'noi_dung', '순두부찌개')))`, [await id('mon_an', 'F14')]);
   await cu.query(`select ghi_ban_dich('nhom_mon', $1, jsonb_build_array(jsonb_build_object(
                     'cot', 'ten', 'ngon_ngu', 'ko', 'bam', bam_nguon('Canh Hàn'), 'tt', 'ok', 'noi_dung', '찌개')))`, [await id('nhom_mon', 'canh')]);
   const { rows: truocTrang } = await cu.query(`select mon_ma from thuc_don_cong_khai('vi')`);
-  ok('Trước 0091: trang đang hiện bốn món của danh mục cũ', danhSach(truocTrang.map(r => r.mon_ma)) === 'D02,D09,F01,F03');
+  ok('Trước 0094: trang đang hiện bốn món của danh mục cũ', danhSach(truocTrang.map(r => r.mon_ma)) === 'D02,D09,F01,F03');
 
-  const loi = await cu.exec(SQL_0091).then(() => null, e => e.message);
+  const loi = await cu.exec(SQL_0094).then(() => null, e => e.message);
   ok(`${TEN_FILE} chạy được trên database đã công bố món theo bản cũ`, loi === null, loi);
 
   const { rows: sauTrang } = await cu.query(`select mon_ma from thuc_don_cong_khai('vi')`);
-  ok('Sau 0091: trang rỗng dù hai công tắc vẫn bật — "Tartare bò hoa tuyết" không hiện với mô tả của Yukhoe',
+  ok('Sau 0094: trang rỗng dù hai công tắc vẫn bật — "Tartare bò hoa tuyết" không hiện với mô tả của Yukhoe',
      sauTrang.length === 0, sauTrang.map(r => r.mon_ma).join(','));
   const { rows: [f03] } = await cu.query(`select * from mon_an where ma = 'F03'`);
   ok('F03 về nhap: mô tả, cảnh báo, ngày công bố bỏ; tên ba thứ tiếng là tên mới',
@@ -343,7 +343,7 @@ await nhom('7 · DATABASE KHÔNG CÒN ĐÚNG SEED (Beeftown-thu sau THUC-DON.md 
   const { rows: [{ bam }] } = await cu.query(`select bam_nguon('Đậu phụ hầm') as bam`);
   ok('F14: sổ ghi tên tiếng Hàn là bản tay của tên Việt MỚI', so?.cach === 'tay' && so?.bam === bam, JSON.stringify(so));
 
-  ok('Sau 0091, danh mục trên database cũ giống hệt database mới cài: mọi cột nghiệp vụ của 52 món và 20 nhóm',
+  ok('Sau 0094, danh mục trên database cũ giống hệt database mới cài: mọi cột nghiệp vụ của 52 món và 20 nhóm',
      (await chupDanhMuc(cu)) === DANH_MUC_MOI_CAI);
   const { rows: [{ ten_ko: tenKoSalad }] } = await cu.query(`select ten_ko from nhom_mon where ma = 'salad'`);
   ok('…kể cả tên tiếng Hàn của nhóm salad: "샐러드 & 애피타이저" (khối cũ) thành "샐러드" của cuốn', tenKoSalad === '샐러드', tenKoSalad);
@@ -351,16 +351,16 @@ await nhom('7 · DATABASE KHÔNG CÒN ĐÚNG SEED (Beeftown-thu sau THUC-DON.md 
 });
 
 // ===========================================================================
-await nhom('8 · CHẠY LẠI 0091 SAU KHI ĐÃ LÀM TIẾP → BỊ CHẶN, KHÔNG CỘT NÀO ĐỔI', async () => {
-  const CAU_CHAN = 'Thực đơn đã có món công bố, giá hoặc độ cay đã duyệt, hoặc mô tả đã ghi: chạy lại 0091 sẽ xóa hết. Không chạy lại file này.';
+await nhom('8 · CHẠY LẠI 0094 SAU KHI ĐÃ LÀM TIẾP → BỊ CHẶN, KHÔNG CỘT NÀO ĐỔI', async () => {
+  const CAU_CHAN = 'Thực đơn đã có món công bố, giá hoặc độ cay đã duyệt, hoặc mô tả đã ghi: chạy lại 0094 sẽ xóa hết. Không chạy lại file này.';
   /** Mọi cột của mọi dòng món, nhóm, công tắc, phiên bản — kể cả updated_at và sổ bản dịch. */
   const chupHet = async () => JSON.stringify(await Promise.all([
     `select to_jsonb(m) as d from mon_an m order by ma`, `select to_jsonb(g) as d from nhom_mon g order by ma`,
     `select to_jsonb(n) as d from noi_dung_cong_bo n order by id`, `select to_jsonb(p) as d from phien_ban_thuc_don p order by ma`,
   ].map(async q => (await db.query(q)).rows)));
-  const chayLai = () => db.exec(SQL_0091).then(() => null, e => ({ message: e.message, detail: e.detail ?? '' }));
+  const chayLai = () => db.exec(SQL_0094).then(() => null, e => ({ message: e.message, detail: e.detail ?? '' }));
 
-  // Về đúng trạng thái ngay sau 0091 (mục 6 cho marketing ghi mô tả F21): chạy lại được.
+  // Về đúng trạng thái ngay sau 0094 (mục 6 cho marketing ghi mô tả F21): chạy lại được.
   await db.query(`update mon_an set mo_ta_vi = null where ma = 'F21'`);
   ok('Chưa làm gì thêm (không công bố, không duyệt, không mô tả) → chạy lại được', (await chayLai()) === null);
 
@@ -384,7 +384,7 @@ await nhom('8 · CHẠY LẠI 0091 SAU KHI ĐÃ LÀM TIẾP → BỊ CHẶN, KH�
     await db.exec(lam);
     const truoc = await chupHet();
     const loi = await chayLai();
-    ok(`${ten} → chạy lại 0091 bị từ chối, câu báo rõ, detail chỉ đúng món`,
+    ok(`${ten} → chạy lại 0094 bị từ chối, câu báo rõ, detail chỉ đúng món`,
        loi?.message === CAU_CHAN && chiTiet.test(loi.detail), loi ? `${loi.message} | ${loi.detail}` : 'CHẠY ĐƯỢC');
     ok(`${ten} → không cột nào của bất kỳ dòng nào đổi (kể cả updated_at, sổ bản dịch)`, (await chupHet()) === truoc);
     await db.exec(tra);
@@ -402,7 +402,7 @@ await nhom('8 · CHẠY LẠI 0091 SAU KHI ĐÃ LÀM TIẾP → BỊ CHẶN, KH�
   const truoc = await chupHet();
   const { rows: trangTruoc } = await db.query(`select mon_ma, ten, mo_ta, gia from thuc_don_cong_khai('vi')`);
   const loi = await chayLai();
-  ok('Đã công bố 25 món, duyệt giá và độ cay → chạy lại 0091 bị từ chối', loi?.message === CAU_CHAN, loi?.message ?? 'CHẠY ĐƯỢC');
+  ok('Đã công bố 25 món, duyệt giá và độ cay → chạy lại 0094 bị từ chối', loi?.message === CAU_CHAN, loi?.message ?? 'CHẠY ĐƯỢC');
   ok('…mọi cột giữ nguyên: giá, độ cay đã duyệt, tên Hàn sửa tay, 25 món đã công bố, công tắc', (await chupHet()) === truoc);
   const { rows: trangSau } = await db.query(`select mon_ma, ten, mo_ta, gia from thuc_don_cong_khai('vi')`);
   ok('…và trang Thực đơn y như trước (22 món ăn, giá đã duyệt vẫn còn)',

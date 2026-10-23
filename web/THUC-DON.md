@@ -12,7 +12,7 @@ cần làm gì. Phần **Món ăn** và **Đồ uống** chỉ hiện những m�
    Makgeolli ẩn khỏi trang (dữ liệu vẫn còn), và dòng "không phục vụ đồ uống có cồn cho người dưới 18 tuổi"
    cũng ẩn theo.
 
-Danh mục là cuốn menu in **bản sáng** Khánh chốt ngày 11/10/2026, nạp bằng migration `0091_thuc_don_ban_sang.sql`:
+Danh mục là cuốn menu in **bản sáng** Khánh chốt ngày 11/10/2026, nạp bằng migration `0094_thuc_don_ban_sang.sql`:
 17 nhóm, 42 món (22 món ăn, 20 đồ uống), tất cả ở `nhap`. 10 món cũ không có trong cuốn đã thu hồi
 (`da_thu_hoi`) và 3 nhóm cũ đã tắt (Miến & mì lạnh, Tráng miệng, Cocktails) — chúng không bao giờ lên trang.
 Tên món và tên nhóm (ba thứ tiếng) đã nằm trong migration; hướng dẫn này chỉ ghi mô tả, cảnh báo và công bố.
@@ -25,7 +25,7 @@ khay tại quầy. Bốn món có `gia_de_xuat` 69.000đ đang chờ duyệt (S0
 
 **Tiếng Hàn do Claude dịch ngày 11/10/2026, sửa ngày 13/10/2026 theo rà soát, chưa có người đọc tiếng Hàn
 xem** — tên món, tên nhóm (trong
-migration 0091), mô tả và câu cảnh báo (các khối dưới). Nhờ người đọc tiếng Hàn xem lại trước khi chạy trên
+migration 0094), mô tả và câu cảnh báo (các khối dưới). Nhờ người đọc tiếng Hàn xem lại trước khi chạy trên
 production. Sửa một tên: `update mon_an set ten_ko = '…' where ma = '…';` (database tự ghi đó là bản sửa tay,
 máy dịch không đè).
 
@@ -42,13 +42,13 @@ tác dụng, chạy lại không đổi gì, thu hồi thì món biến mất. S
 - Chạy lại một khối lần nữa không hỏng gì: khối mô tả ghi lại đúng chữ đó, khối công bố bỏ qua món đã công bố,
   khối bật công tắc tự thu hồi bản cũ trước khi thêm bản mới.
 - Đây là thao tác dữ liệu, không phải migration — nhưng chỉ làm trên production **sau khi** PR đã gộp, migration
-  `0091` đã chạy (và `npm run doi-chieu` báo KHỚP), web đã deploy.
+  `0094` đã chạy (và `npm run doi-chieu` báo KHỚP), web đã deploy.
 - **Chưa xác nhận xong thì chưa công bố món đó.** Ghi mô tả trước thì được (trang chưa hiện gì), công bố thì chờ.
-- **Migration 0091 chỉ chạy một lần.** Đã ghi mô tả, cảnh báo, công bố hay duyệt giá / độ cay mà chạy lại thì
+- **Migration 0094 chỉ chạy một lần.** Đã ghi mô tả, cảnh báo, công bố hay duyệt giá / độ cay mà chạy lại thì
   database từ chối cả file (khối chặn đầu file) — chạy lại sẽ xóa hết phần đã làm. Sửa món thì dùng câu `update`
   riêng; đổi danh mục thì viết migration mới.
 
-## Bước 0 — Kiểm danh mục sau migration 0091
+## Bước 0 — Kiểm danh mục sau migration 0094
 
 `npm run doi-chieu` chỉ so cấu trúc, không đọc dữ liệu. Khối này đếm dữ liệu migration vừa nạp:
 
@@ -69,7 +69,7 @@ Ra số khác thì dừng, chưa chạy bước nào bên dưới — migration 
 
 <!-- sql:xem -->
 ```sql
--- Món chưa công bố và lý do (view v_mon_con_vuong — 0011, sửa ở 0091), kèm bản nháp mô tả và điều cần xác nhận.
+-- Món chưa công bố và lý do (view v_mon_con_vuong — 0011, sửa ở 0094), kèm bản nháp mô tả và điều cần xác nhận.
 select v.ma, v.ten_vi, v.nhom, v.vuong_gi, m.copy_nhap, m.can_xac_nhan
 from v_mon_con_vuong v
 join mon_an m on m.ma = v.ma
@@ -445,7 +445,7 @@ begin;
 update phien_ban_thuc_don set dang_dung = false
 where dang_dung and ma <> 'v2.0';
 insert into phien_ban_thuc_don (ma, ngay_hieu_luc, ghi_chu, dang_dung)
-values ('v2.0', '2026-10-11', 'Cuốn menu bản sáng, Khánh chốt 11/10/2026 (migration 0091)', true)
+values ('v2.0', '2026-10-11', 'Cuốn menu bản sáng, Khánh chốt 11/10/2026 (migration 0094)', true)
 on conflict (ma) do update set dang_dung = true, ngay_hieu_luc = excluded.ngay_hieu_luc;
 commit;
 ```

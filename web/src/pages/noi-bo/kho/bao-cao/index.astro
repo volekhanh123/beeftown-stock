@@ -8,8 +8,9 @@
  *   2. Thẻ tóm tắt kỳ (chỉ vai xem giá): nhập, bán, hao hụt, hủy, tồn cuối, chi
  *      phí thịt (cộng từ kho_bao_cao_xnt_v2 — tomTatXnt) và doanh thu iPOS khi
  *      kỳ trùng trọn tháng (từ kho_bao_cao_theo_thang — doanhThuKy).
- *   3. Danh sách báo cáo dạng thẻ theo nhóm (THE_BAO_CAO trong lib/kho/bao-cao.ts),
- *      mỗi thẻ ẩn theo quyền của người xem; thẻ có CSV thì có nút tải ngay.
+ *   3. Danh sách báo cáo theo nhóm (THE_BAO_CAO trong lib/kho/bao-cao.ts), mỗi báo cáo
+ *      một dòng (gọn 23/10/2026, Khánh duyệt): tên (link) — mô tả ngắn · Xem · CSV; ẩn
+ *      theo quyền của người xem.
  *
  * Mở cho mọi vai xem kho: thủ kho / NV quầy chỉ thấy thẻ chỉ kg (Theo tháng,
  * Định mức bếp; thủ kho thêm Đánh giá NCC). Ô menu "Báo cáo" vẫn chỉ cho vai
@@ -20,6 +21,7 @@
  * mua-hang, so-thanh-toan, /noi-bo/kho/bao-cao/dinh-muc (GĐ7b), ncc (GĐ8a).
  */
 import Kho from '../../../../layouts/Kho.astro';
+import TheTrangCon from '../../../../components/kho/TheTrangCon.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import ChonKy from '../../../../components/kho/ChonKy.astro';
 import { moTrangKho } from '../../../../lib/kho/trang.ts';
@@ -46,7 +48,7 @@ const nn = k.nn;
 const t = dichNB(nn, {
   tieuDe: { vi: 'Báo cáo kho', en: 'Inventory reports' },
   kyDai: { vi: 'Khoảng ngày dài quá — chọn tối đa 1 năm.', en: 'The date range is too long — choose at most 1 year.' },
-  bamThe: { vi: 'Bấm một thẻ báo cáo bên dưới — báo cáo mở đúng kỳ này.', en: 'Tap a report card below — the report opens for this period.' },
+  bamThe: { vi: 'Bấm một báo cáo bên dưới — báo cáo mở đúng kỳ này.', en: 'Tap a report below — it opens for this period.' },
   tomTatKy: { vi: 'Tóm tắt kỳ', en: 'Period summary' },
   nhap: { vi: 'Nhập', en: 'Received' },
   gomTonDau: { vi: 'kg (gồm tồn đầu kỳ)', en: 'kg (includes opening stock)' },
@@ -76,7 +78,9 @@ const t = dichNB(nn, {
   chuaBatDau: { vi: 'Chi nhánh chưa bắt đầu dùng kho. Vào', en: 'This branch has not started using inventory yet. Go to' },
   tongQuan: { vi: 'Tổng quan kho', en: 'Inventory overview' },
   xem: { vi: 'Xem', en: 'View' },
-  taiCsv: { vi: 'Tải CSV', en: 'Download CSV' },
+  taiCsv: { vi: 'CSV', en: 'CSV' },
+  taiCsvDai: { vi: (ten: string) => `Tải CSV: ${ten}`, en: (ten: string) => `Download CSV: ${ten}` },
+  xemDai: { vi: (ten: string) => `Xem ${ten}`, en: (ten: string) => `View ${ten}` },
   inDuoc1: { vi: 'Mỗi báo cáo in được (nút', en: 'Every report can be printed (the' },
   inBaoCao: { vi: 'In báo cáo', en: 'Print report' },
   inDuoc2: {
@@ -122,6 +126,7 @@ const kg = (n: number) => (n === 0 ? '0' : dinhDangKg(n, nn));
 const tien = (n: number) => dinhDangTien(n, nn);
 ---
 <Kho k={k} huongDan="bao-cao" tieuDe={t.tieuDe} rong>
+  <TheTrangCon k={k} cha="bao_cao" />
   <h1>{t.tieuDe}</h1>
   <BaoKho bao={k.bao} loiDoc={loiDoc} />
 
@@ -186,21 +191,21 @@ const tien = (n: number) => dinhDangTien(n, nn);
     return ds.length > 0 && (
       <section aria-label={nhom[nn]}>
         <h2>{nhom[nn]}</h2>
-        <div class="bc-luoi">
+        <ul class="bc-ds">
           {ds.map(bc => {
             const chu = chuTheBaoCao(bc.ma, nn);
             return (
-              <div class="nb-the bc-the">
-                <a class="bc-ten" href={linkTheBaoCao(bc, tu, den)}><strong>{chu.ten}</strong></a>
-                <p class="kho-phu">{chu.moTa}</p>
-                <p class="bc-nut">
-                  <a class="nb-nut phu" href={linkTheBaoCao(bc, tu, den)}>{t.xem}</a>
-                  {bc.csv && <a class="nb-nut phu" href={csvCua(bc.csv, bc.link)}>{t.taiCsv}</a>}
-                </p>
-              </div>
+              <li>
+                <span class="bc-chu">
+                  <a class="bc-ten" href={linkTheBaoCao(bc, tu, den)}>{chu.ten}</a>
+                  <span class="kho-phu"> — {chu.moTa}</span>
+                </span>
+                <a class="bc-lk" href={linkTheBaoCao(bc, tu, den)} aria-label={t.xemDai(chu.ten)}>{t.xem}</a>{' '}
+                {bc.csv ? <a class="bc-lk" href={csvCua(bc.csv, bc.link)} aria-label={t.taiCsvDai(chu.ten)}>{t.taiCsv}</a> : <span />}
+              </li>
             );
           })}
-        </div>
+        </ul>
       </section>
     );
   })}
@@ -208,10 +213,11 @@ const tien = (n: number) => dinhDangTien(n, nn);
 </Kho>
 
 <style>
-  .bc-luoi { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .75rem; }
-  .bc-the { margin: 0; display: flex; flex-direction: column; }
-  .bc-ten { color: inherit; text-decoration: none; font-size: 1.05rem; }
-  .bc-the .kho-phu { flex: 1; margin: .35rem 0 .6rem; }
-  .bc-nut { display: flex; gap: .5rem; flex-wrap: wrap; margin: 0; }
-  .bc-nut .nb-nut { min-height: 44px; }
+  /* Mỗi báo cáo một dòng: tên — mô tả · Xem · CSV (hai link nhỏ bên phải, cao đủ chạm 44px). */
+  .bc-ds { list-style: none; padding: 0; margin: 0; background: var(--nb-the); border: 1px solid var(--vach); border-radius: 10px; }
+  .bc-ds li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 0 .25rem; padding: .3rem .5rem .3rem 1rem; }
+  .bc-ds li + li { border-top: 1px solid var(--vach); }
+  .bc-ten { font-weight: 700; }
+  .bc-chu .kho-phu { font-size: .85rem; }
+  .bc-lk { display: inline-flex; align-items: center; min-height: 44px; padding: 0 .6rem; font-weight: 600; font-size: .9rem; white-space: nowrap; }
 </style>

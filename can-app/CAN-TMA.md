@@ -1217,6 +1217,11 @@ Cùng văn bản như file và mạng (mục 2), đi qua cổng COM. Nguồn: `S
 - **Chương trình mình** (`src/day-rs232.ts`): bắt tay như hãng nhưng chờ 5 giây và đọc tới `END` đứng **sau** dòng `TIM`;
   gửi nội dung file như đường 33571; rồi hỏi `UPL⇥TIM⇥` thêm một lần (chờ 30 giây) làm hàng rào như đường mạng —
   cân trả lời là đã đọc hết dữ liệu trước đó, không trả lời thì "chưa chắc đã nhận".
+- **2.10 — dây làm đường chính** (`day-rs232.ts` `LENH_CAU_NOI` / `moKetNoiDay`, `giao-thuc.ts` `moKetNoiQuaLuong`): một
+  PowerShell giữ cổng mở suốt một việc, chuyển byte hai chiều; mọi việc của §10.2 (bắt tay MAC / INF, `UPL`, `DWL`, `CLR PLU`,
+  hàng rào, `DWL TIM`, `UPL REP`) chạy trên luồng đó. Khác đường mạng: không BOM; `UPL⇥END⇥` sau `MAC` (như `ReportForm.cs:6164`);
+  lần hỏi `MAC` đầu chờ 5 giây, cân im lặng = chưa ở P43; mọi lần chờ gửi / hàng rào cộng 2 × thời gian đẩy byte ở tốc độ dây.
+  Nhật ký vẫn hỏi `UPL⇥REP⇥-N⇥` như mạng (hãng trên dây hỏi `N`, không dấu trừ) — **[chưa biết]** cân nhận dạng nào trên dây.
 
 ## 11. Rủi ro tổng hợp
 
@@ -1264,6 +1269,8 @@ Cùng văn bản như file và mạng (mục 2), đi qua cổng COM. Nguồn: `S
 | Dạng file cân tự lưu (thứ tự phần, số cột, INA / INM, LAB 1–9, SCP 73 / 63 / 63) | **File thật** 26/09/2026 | |
 | Tìm cân bằng dò TCP 33571 (`tim-can.ts`) | Chưa có ghi chép thử ở quán | Chạy với cân giả |
 | Việc khác qua **33581**: ghi + hàng rào (`DWL PLU` của 2.6.1), `UPL REP`, `DWL TIM` / `datGio` | **Chưa thử trên cân thật** | Chỉ với cân giả |
+| Kiểm tra dây RS232 (`UPL TIM` qua dây, cân ở P43) | **Đã thử** 19/10/2026 | Khánh báo: cân trả lời |
+| 2.10 — mọi việc qua dây (cầu nối PowerShell: bắt tay MAC / INF, `DWL PLU` + hàng rào, đọc lại, `UPL REP`, `DWL TIM`) | **Chưa thử trên cân thật** | Chỉ với cân giả (`test/thu-day-chinh.ts`) |
 | `CLR PLU` + nạp lại cả danh sách qua 33581 (`khoiXoaVaNapPlu`) | **Chưa thử trên cân thật** | Nguy hiểm nhất; 2.7 tự gửi lại cả danh sách khi hỏng |
 | Ghi thông số / chữ / phím / tem qua 33581 rồi đọc lại phần đó (`guiCaiDat`, 2.7) | **Chưa thử trên cân thật** | Chỉ với cân giả |
 | Gỡ hàng bằng ghi đè dòng trống mã 99999 + bỏ phím (`goHangConLai`, 2.7) | **Chưa thử trên cân thật** | Chỉ với cân giả |

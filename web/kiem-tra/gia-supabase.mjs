@@ -129,7 +129,7 @@ function noiDung(kichBan) {
 
 // ---------------------------------------------------------------------------
 // Thực đơn mẫu — ĐÚNG danh mục của cuốn menu bản sáng Khánh chốt 11/10/2026 (bảng danh mục 11/10,
-// migration 0091) ở trạng thái "đã công bố hết những món công bố được": 22 món ăn (kể cả Set 4 sốt S01)
+// migration 0094) ở trạng thái "đã công bố hết những món công bố được": 22 món ăn (kể cả Set 4 sốt S01)
 // và ba ly signature. Tên, mô tả ba thứ tiếng chép NGUYÊN VĂN bảng danh mục. 17 đồ uống dạng danh sách
 // (highball, bia, soju, makgeolli, nước ép & ade, nước ngọt, nước suối) KHÔNG trả về: cuốn không có mô tả
 // cho chúng, database đòi mô tả mới cho công bố. KHÔNG món nào có giá (gia null) — đúng như database:
@@ -139,7 +139,7 @@ function noiDung(kichBan) {
 const NN = ['vi', 'en', 'ko'];
 const ba = (vi, en, ko) => ({ vi, en, ko });
 
-// Nhóm theo thu_tu của bảng nhóm (0091). bo-tai-quay không có món nào trong danh mục.
+// Nhóm theo thu_tu của bảng nhóm (0094). bo-tai-quay không có món nào trong danh mục.
 const NHOM = {
   'goi-them':          { loai: 'goi_them', xemTaiQuay: false, ten: ba('Gọi thêm tùy chọn', 'Add-ons', '추가 메뉴') },
   'bo-tai-quay':       { loai: 'thit_bo', xemTaiQuay: true, ten: ba('Bò tại quầy', 'Beef at the Counter', '정육 코너') },

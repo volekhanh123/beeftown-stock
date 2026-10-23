@@ -124,7 +124,7 @@ Hai bộ, **không trộn**:
 | Bộ | File | Nét | Tên |
 |---|---|---|---|
 | Trang công khai | `web/src/components/BieuTuong.astro` | 1,5px | mui-ten, menu, dong, cong… |
-| Nội bộ, kho | `web/src/components/kho/BieuTuong.astro` + `web/src/lib/kho/bieu-tuong.ts` | 2px, prop `co` (mặc định 22) | nha, viec, duyet, quet, ton, quay, khac, nhap, dao, chuyen, bep, huy, kiem_ke, cong_no, bao_cao, cai_dat, chuong, quy_trinh, huong_dan, dang_xuat, can, nguoi, lich, them, tiep, lui, canh_bao, dat_hang, in, tin_nhan, tim, trang_web |
+| Nội bộ, kho | `web/src/components/kho/BieuTuong.astro` + `web/src/lib/kho/bieu-tuong.ts` | 2px, prop `co` (mặc định 22) | nha, viec, duyet, quet, ton, quay, khac, nhap, dao, chuyen, bep, huy, kiem_ke, cong_no, bao_cao, cai_dat, chuong, quy_trinh, huong_dan, dang_xuat, can, nguoi, lich, them, tiep, lui, canh_bao, dat_hang, in, tin_nhan, tim, trang_web, mat_hang |
 
 Cỡ: 18 (menu) · 20 (cột bên) · 22 (thanh đáy) · 26 (nút quét, ô chức năng). Không thư viện biểu tượng.
 Thêm biểu tượng kho: thêm vào `BIEU_TUONG` — kiểm thử điều hướng đòi mọi mục menu có biểu tượng trong đó.
@@ -141,6 +141,8 @@ Thêm biểu tượng kho: thêm vào `BIEU_TUONG` — kiểm thử điều hư�
 
 ## Khung một trang kho
 
+0. `<TheTrangCon k={k} cha="…" />` — hàng thẻ (`.kho-the-chon`) của ô menu có mục con (Tồn kho, Quầy,
+   Báo cáo, Thiết lập, Hướng dẫn), trên trang cha và từng trang con
 1. `.nh-buoc` "Bước 1/3 · …" (khi là luồng nhiều bước)
 2. `<h1>`
 3. `<BaoKho bao loiDoc />` — câu báo sau khi ghi, ngay dưới `h1`
@@ -171,6 +173,7 @@ Ví dụ: `web/src/pages/noi-bo/kho/nhap/index.astro` (danh sách), `nhan-hang/m
 | Trước khi chuyển tiền | `CanhBaoTaiKhoan` — trang công nợ NCC và màn Trả tiền, ngay dưới dòng số tài khoản | Tài khoản vừa đổi trong 30 ngày → `.nb-bao.loi`; đọc nhật ký lỗi → `.nb-bao.luu-y` "chưa kiểm được"; cả hai dặn gọi hỏi lại NCC |
 | Nhãn, đếm | `.nb-nhan`, `.kho-han`, `.kho-so-do` (đỏ, quá 99 hiện "99+") | |
 | Bản đồ chức năng | `BanDoChucNang`, `OTimChucNang` | Form GET, không JavaScript |
+| Thẻ trang con | `TheTrangCon` (`nav.kho-the-chon`) | Đi qua lại giữa một ô menu và mục con của nó (`cha` trong `lib/kho/dieu-huong.ts`); chỉ một thẻ thì không in. Không thay cho chip lọc `nav.kho-dh` |
 
 Thao tác xóa / hủy: đặt trong `<details class="nb-the">` đóng sẵn, có ô lý do bắt buộc và nút
 `.kho-nut-xoa` — **không `confirm()`**.

@@ -16,13 +16,13 @@
  */
 import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
-import { moTrangKho, docFormGui, chuyenHuong, tenNhanSu } from '../../../../lib/kho/trang.ts';
+import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.ts';
 import { docViTri, docCaiDat, type ViTri, type CaiDat } from '../../../../lib/kho/danh-muc.ts';
 import { docDanhSachKiemKe, batDauKiemKe, kieuTheoViTri, type KiemKeTom } from '../../../../lib/kho/kiem-ke.ts';
 import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
 import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
-import { cauLoiKho, dinhDangNgay, dinhDangThoiDiem, trangThaiKho, type KetQua } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangNgay, trangThaiKho, type KetQua } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -65,13 +65,11 @@ const t = dichNB(nn, {
   khongKhop: { vi: 'Không tìm thấy phiếu nào khớp bộ lọc.', en: 'No sheets match the filters.' },
   chuaCo: { vi: 'Chưa có phiếu kiểm kê nào', en: 'No stocktake sheets yet' },
   oTrangThai: { vi: ' ở trạng thái này', en: ' with this status' },
-  ngay: { vi: 'Ngày', en: 'Date' },
   kieuLo: { vi: 'đếm từng lô', en: 'lot by lot' },
   kieuMon: { vi: 'đếm gói theo món', en: 'packs by item' },
   daDem: { vi: 'Đã đếm', en: 'Counted' },
   soDong: { vi: (a: number, b: number) => `${a}/${b} dòng`, en: (a: number, b: number) => `${a}/${b} lines` },
   quanLyTraVe: { vi: 'Quản lý trả về', en: 'Sent back by manager' },
-  nguoiLap: { vi: 'Người lập', en: 'Made by' },
 });
 
 const LOC = [['', t.tatCa], ['cho_duyet', t.choDuyet], ['dang_dem', t.dangDem], ['da_duyet', t.daDuyet], ['da_huy', t.daHuy]] as const;
@@ -116,7 +114,7 @@ const dangMo = new Map(ds.filter(x => x.trang_thai === 'dang_dem' || x.trang_tha
 // Chỉ kho và quầy — không "chờ hủy", không "Đang mang ra quầy" (0032).
 const viTriDem = viTri.filter(v => (v.loai === 'kho' || v.loai === 'quay') && v.dang_dung && (!laQuay || v.loai === 'quay'));
 const DEM_QUAY = '/noi-bo/kho/quay/dem';
-const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
+// Thẻ phiếu gọn hai dòng (Khánh duyệt 22/10/2026): không còn dòng người lập (xem trong phiếu), nên không đọc tên.
 ---
 <Kho k={k} tieuDe={t.tieuDe} huongDan="kiem-ke">
   <h1>{t.tieuDe}</h1>
@@ -204,12 +202,10 @@ const ten = await tenNhanSu(k.client, hien.map(x => x.nguoi_tao));
               <strong>{x.so_phieu} · {x.ten_vi_tri}</strong>
               <span class={`nb-nhan ${lop}`}>{nhan}</span>
             </div>
-            <dl>
-              <dt>{t.ngay}</dt><dd>{dinhDangNgay(x.ngay_kiem)} · {x.kieu === 'theo_lo' ? t.kieuLo : t.kieuMon}</dd>
-              <dt>{t.daDem}</dt><dd>{t.soDong(x.so_dong_da_dem, x.so_dong)}</dd>
-              {x.trang_thai === 'dang_dem' && x.ly_do && <><dt>{t.quanLyTraVe}</dt><dd>{x.ly_do}</dd></>}
-              <dt>{t.nguoiLap}</dt><dd>{ten.get(x.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(x.created_at)}</dd>
-            </dl>
+            {x.trang_thai === 'dang_dem' && x.ly_do && <p class="nb-dong-tom"><strong>{t.quanLyTraVe}:</strong> {x.ly_do}</p>}
+            <p class="nb-dong-tom">
+              {dinhDangNgay(x.ngay_kiem)} · {x.kieu === 'theo_lo' ? t.kieuLo : t.kieuMon} · {t.daDem} {t.soDong(x.so_dong_da_dem, x.so_dong)}
+            </p>
           </a>
         );
       })}

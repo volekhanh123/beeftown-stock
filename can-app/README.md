@@ -197,6 +197,42 @@ Trước khi thử: **đóng TM-xA** trên mọi máy; quầy vắng; có sẵn 
 
 Ghi lại bước nào được / không được (và câu báo nguyên văn) để sửa `CAN-TMA.md` mục "đã thử / chưa thử".
 
+## Bản 2.10 — dây RS232 làm đường chính
+
+WiFi ở quán không ổn (cân bỏ qua cổng 33571 từ 02/10/2026), còn **Kiểm tra dây** chạy được trên cân thật (Khánh thử 19/10/2026:
+cân trả lời giờ qua dây). Từ 2.10 chọn được dây làm đường chính: **Cài đặt → Dây RS232 → Dùng dây làm đường chính**.
+
+- Mọi việc đọc / ghi / xoá với cân đi qua dây, cùng giao thức như cổng hai chiều: gửi giá (`DWL PLU`, đọc lại để kiểm), gỡ hàng,
+  xoá cả danh sách rồi nạp lại (`CLR PLU`), thông số, chữ cài đặt, phím, mẫu tem, đọc dữ liệu từ cân, nhật ký bán, đọc / chỉnh giờ.
+  Không qua WiFi, không lui về cổng 33571, không dò WiFi tìm cân.
+- **Cầu nối** (`src/day-rs232.ts` `LENH_CAU_NOI`, `moKetNoiDay`): một PowerShell giữ cổng COM mở suốt một việc (cài như hãng:
+  8N1, XOn/XOff, không DTR / RTS) và chuyển byte hai chiều; `giao-thuc.ts` `moKetNoiQuaLuong` nói chuyện trên luồng đó y như
+  trên kết nối TCP. Khác đường mạng: không BOM, có `UPL END` sau `MAC` (như hãng trên dây), lần hỏi đầu chỉ chờ 5 giây, chờ gửi
+  và chờ hàng rào cộng thời gian đẩy byte qua dây (9600 bit/giây ≈ 1 KB/giây).
+- **Cân chỉ nghe dây ở màn hình `Prog → 4 → 3`** (sách V3.04A mục 5.6.3). Mỗi lần gửi / đọc: trên cân vào P43, làm việc trên
+  chương trình, xong bấm **Sale** để bán tiếp. Cân không ở P43 → "Cân không trả lời qua dây … chưa gửi gì xuống cân", không ghi
+  nhận gì. Lúc mở chương trình không tự hỏi cân qua dây (cân thường đang bán hàng); nút **Kiểm tra kết nối** thì hỏi.
+- Đường dây không giữ kết nối, nên không có: nhịp 30 giây, tự chỉnh giờ mỗi ngày, tự đọc nhật ký khi cân báo in tem. Tự gửi (nếu bật)
+  vẫn chạy; cân không ở P43 thì ô Cân báo hỏng kèm cách làm và 2 phút sau mới thử lại (`TU_GUI_DAY_LUI_MS` — mỗi lần thử mở
+  PowerShell, chờ cân vài giây); bấm Gửi xuống cân thì không phải chờ. Chẩn đoán WiFi không chạy khi dùng dây.
+- Kiểm tra dây / Gửi thử qua dây ở cổng hay tốc độ khác lúc đang dùng dây: không dời đường chính sang đó (chỉ nút chọn dây đổi được).
+- Chọn dây: chương trình bắt tay đầy đủ qua cầu nối (mã máy, thông tin, giờ — chỉ đọc). Được mới đổi; cân ở đầu dây khác mã máy
+  cân đã nối qua WiFi thì không đổi. Cổng COM, tốc độ lấy theo ô đang chọn ở phần Dây RS232. **Về lại WiFi**: như trước.
+- Quyền: chỉ quản lý, chủ đổi được đường nối. Cài đặt: `cau-hinh.json` `duongCan: "day"` (cùng `com`, `baud`).
+
+**Chưa thử trên cân thật:** đọc / ghi qua cầu nối (chỉ mới thử bắt tay bằng kịch bản Kiểm tra dây). Nhật ký bán qua dây gửi
+`UPL REP -N` như đường mạng; phần mềm hãng gửi `UPL REP N` (không dấu trừ) trên dây — đọc nhật ký qua dây hỏng thì báo lại.
+
+**Thử ở quán (2.10)** — ngoài giờ bán, đã đóng TM-xA:
+1. Cài đặt → Dây RS232 → **Tìm cổng COM** → chọn cổng, tốc độ 9600. Trên cân bấm **Prog → 4 → 3**.
+2. Bấm **Dùng dây làm đường chính** → OK. Khung xanh "Đã chuyển sang dây COMx … mã máy …"; ô Cân ghi "Dây COMx · 9600 bit/giây".
+3. Sửa giá một món ít bán trong kho → thẻ Gửi giá từ kho → **Gửi xuống cân** (cân vẫn ở P43). Khung xanh "Cân đã nhận. Vừa gửi 1
+   hàng qua dây RS232 …". Bấm **Sale** trên cân, gọi PLU món đó: giá mới.
+4. Để cân ở màn hình bán hàng, sửa giá lần nữa, bấm Gửi: phải báo "Cân không trả lời qua dây … Prog → 4 → 3 … chưa gửi gì". Vào P43
+   rồi gửi lại: được.
+5. Thẻ Cân & thông số → **Đọc dữ liệu từ cân qua dây** (cân ở P43): ra đúng số hàng như trên cân.
+6. Ghi lại bước nào được / không được (kèm câu báo nguyên văn) để sửa `CAN-TMA.md` §12. Hỏng hẳn: **Về lại WiFi**, hoặc USB.
+
 ## Bản 2.9.3 — chỉ ghi nhận khi đọc lại cân khớp; không đọc lại được thì tự thử lại
 
 **Lỗi (rà soát nợ kỹ thuật 11/10/2026, tái hiện trên cân giả — `test/thu.ts` 6g6–6g8):** cổng hai chiều 33581 bận chốc lát
@@ -607,9 +643,10 @@ nhất, làm một lần là xong.
 Không nghe tiếng cân tự phát mỗi ~15 giây (UDP 33584): mở cổng nghe thì Windows hiện hộp hỏi tường lửa với nhân
 viên quầy. Dò bằng kết nối ra ngoài thì không.
 
-## Dây RS232 (thử, từ 2.1.0; làm như phần mềm hãng từ 2.3.0)
+## Dây RS232 (thử, từ 2.1.0; làm như phần mềm hãng từ 2.3.0; đường chính từ 2.10)
 
-Mới chắc cân nhận danh mục qua **USB** và **WiFi**. Qua dây RS232 thì **chưa thử trên cân thật**. Cân của quán có menu
+Từ 2.10 dây làm được đường chính — mục "Bản 2.10". **Kiểm tra dây** đã chạy trên cân thật (19/10/2026); gửi / đọc qua dây thì
+**chưa thử trên cân thật**. Cân của quán có menu
 `Prog → 4 → 3` (P43 RS-232), tức có cổng RS232. Thẻ Cài đặt có phần thử (`src/day-rs232.ts`): mở cổng COM bằng
 PowerShell có sẵn trong Windows, cài **đúng như phần mềm TM-xA của hãng**: 8 bit, không chẵn lẻ, 1 bit dừng, điều
 khiển luồng **XOn/XOff**, không bật DTR / RTS. Chi tiết: `CAN-TMA.md` mục 10.6.

@@ -1,0 +1,35 @@
+{
+  "name": "beeftown-mini-app",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Zalo Mini App bán thịt mang về của Beeftown: chọn 6 phần thịt, gửi đơn vào chat Zalo OA",
+  "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "kiem-tra": "node --experimental-strip-types scripts/kiem-tra-don.ts",
+    "login": "zmp login",
+    "deploy:thu": "zmp deploy --testing --passive --desc \"Ban thu 1.0, gia thu\""
+  },
+  "dependencies": {
+    "@fontsource/montserrat": "5.2.8",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "6.30.1",
+    "zmp-sdk": "2.53.1",
+    "zmp-ui": "1.11.14"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.23",
+    "@types/react-dom": "18.3.7",
+    "@vitejs/plugin-react": "4.7.0",
+    "typescript": "5.9.3",
+    "vite": "5.4.21",
+    "zmp-cli": "4.0.3",
+    "zmp-vite-plugin": "1.1.6"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -14,10 +14,10 @@ import Kho from '../../../../layouts/Kho.astro';
 import BaoKho from '../../../../components/kho/BaoKho.astro';
 import LocDanhSach from '../../../../components/kho/LocDanhSach.astro';
 import PhanTrang from '../../../../components/kho/PhanTrang.astro';
-import { moTrangKho, tenNhanSu } from '../../../../lib/kho/trang.ts';
+import { moTrangKho } from '../../../../lib/kho/trang.ts';
 import { docDsPhieuNhan, type PhieuNhanTom } from '../../../../lib/kho/nhan-hang.ts';
 import { docTimDs, catTrang, dangTim } from '../../../../lib/kho/tim-ds.ts';
-import { cauLoiKho, dinhDangKg, dinhDangNgay, dinhDangThoiDiem, trangThaiKho } from '../../../../lib/kho/chung.ts';
+import { cauLoiKho, dinhDangKg, dinhDangNgay, phoBienNhat, trangThaiKho } from '../../../../lib/kho/chung.ts';
 import { dichNB } from '../../../../lib/ngon-ngu-noi-bo.ts';
 
 const k = await moTrangKho(Astro);
@@ -44,17 +44,12 @@ const t = dichNB(nn, {
   chuaCo: { vi: 'Chưa có phiếu nhận hàng nào.', en: 'No receiving notes yet.' },
   tonDau: { vi: ' · tồn đầu kỳ', en: ' · opening stock' },
   lyDoTraVe: { vi: 'Lý do trả về:', en: 'Reason for sending back:' },
-  ncc: { vi: 'Nhà cung cấp', en: 'Supplier' },
   chuaChon: { vi: 'chưa chọn', en: 'not chosen' },
-  ngayNhan: { vi: 'Ngày nhận', en: 'Received on' },
   vao: { vi: 'vào', en: 'into' },
-  hang: { vi: 'Hàng', en: 'Goods' },
   soMon: { vi: (n: number) => `${n} món`, en: (n: number) => `${n} ${s(n, 'item', 'items')}` },
   tangGoi: { vi: 'tảng/gói', en: 'pieces/packs' },
-  anhHoaDon: { vi: 'Ảnh hóa đơn', en: 'Invoice photo' },
   soAnh: { vi: (n: number) => `✓ ${n} ảnh`, en: (n: number) => `✓ ${n} ${s(n, 'photo', 'photos')}` },
-  chuaChup: { vi: 'chưa chụp', en: 'not taken yet' },
-  nguoiLap: { vi: 'Người lập', en: 'Made by' },
+  chuaChupAnh: { vi: 'chưa chụp ảnh hóa đơn', en: 'no invoice photo yet' },
 });
 
 const LOC = [
@@ -76,7 +71,9 @@ if (k.chiNhanh && k.daKhoiTao) {
     loiDoc = cauLoiKho(e, t.khongDoc);
   }
 }
-const ten = await tenNhanSu(k.client, ds.map(p => p.nguoi_tao));
+// Thẻ phiếu gọn hai dòng (Khánh duyệt 22/10/2026): không còn dòng người lập (xem trong phiếu), nên không đọc tên.
+// Chỗ nhận chỉ ghi khi khác chỗ của đa số phiếu (thường là Kho lạnh).
+const noiChinh = phoBienNhat(ds.map(p => p.ten_vi_tri));
 // Nhãn trạng thái cho thủ kho: "Bị trả về" dễ hiểu hơn "Bị từ chối".
 const nhanTrangThai = (tt: string): [string, string] => {
   if (tt === 'tu_choi') return [t.biTraVe, 'tat'];
@@ -115,19 +112,17 @@ const nhanTrangThai = (tt: string): [string, string] => {
         return (
           <a href={`/noi-bo/kho/nhan-hang/${p.id}`} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
             <div class="nb-dong-dau">
-              <strong>{p.so_phieu}{p.loai === 'ton_dau' && t.tonDau}</strong>
+              <strong>{p.so_phieu}{p.loai === 'ton_dau' && t.tonDau}{p.loai === 'mua' && <> · {p.ten_nha_cung_cap ?? t.chuaChon}</>}</strong>
               <span class={`nb-nhan ${lop}`}>{nhan}</span>
             </div>
             {p.trang_thai === 'tu_choi' && p.ly_do && (
               <p class="nh-ly-do">{t.lyDoTraVe} {p.ly_do}</p>
             )}
-            <dl>
-              {p.loai === 'mua' && <><dt>{t.ncc}</dt><dd>{p.ten_nha_cung_cap ?? t.chuaChon}</dd></>}
-              <dt>{t.ngayNhan}</dt><dd>{dinhDangNgay(p.ngay_nhap)} · {t.vao} {p.ten_vi_tri ?? '—'}</dd>
-              <dt>{t.hang}</dt><dd>{t.soMon(p.so_dong)} · {dinhDangKg(p.tong_kg, nn)} kg{p.tong_goi > 0 && <> · {p.tong_goi} {t.tangGoi}</>}</dd>
-              {p.loai === 'mua' && <><dt>{t.anhHoaDon}</dt><dd>{p.so_anh > 0 ? t.soAnh(p.so_anh) : t.chuaChup}</dd></>}
-              <dt>{t.nguoiLap}</dt><dd>{ten.get(p.nguoi_tao ?? '') ?? '—'} · {dinhDangThoiDiem(p.created_at)}</dd>
-            </dl>
+            <p class="nb-dong-tom">
+              {dinhDangNgay(p.ngay_nhap)} · {t.soMon(p.so_dong)} · {dinhDangKg(p.tong_kg, nn)} kg{p.tong_goi > 0 && <> · {p.tong_goi} {t.tangGoi}</>}
+              {p.ten_vi_tri && p.ten_vi_tri !== noiChinh && <> · {t.vao} {p.ten_vi_tri}</>}
+              {p.loai === 'mua' && p.so_anh === 0 && <> · <strong>{t.chuaChupAnh}</strong></>}
+            </p>
           </a>
         );
       })}

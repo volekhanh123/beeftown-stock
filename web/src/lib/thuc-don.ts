@@ -155,7 +155,7 @@ export function dinhDangGia(n: number): string {
  * Câu dưới tên nhóm — chép NGUYÊN VĂN câu dưới tiêu đề trang của cuốn menu bản sáng (Khánh chốt
  * 11/10/2026; tiếng Hàn do Claude dịch, sửa 13/10/2026 theo rà soát, chưa có người đọc tiếng Hàn xem).
  * crm/test/test-cong-khai-thuc-don.mjs chép tay lại từng chữ và kiểm mọi khóa là mã nhóm đang dùng của
- * migration 0091 — sửa ở đây thì sửa cả ở đó. Database không có cột này
+ * migration 0094 — sửa ở đây thì sửa cả ở đó. Database không có cột này
  * nên câu nằm ở đây, khóa là MÃ NHÓM (nhom_mon.ma). Nhóm không có ở đây (Món đặc trưng, Gọi thêm, các
  * nhóm đồ uống, nhóm mới sau này) thì trang không in câu nào. Không câu nào được có giá: câu "Ba ly
  * signature, mỗi ly 69.000đ." của cuốn không dùng.

@@ -7,14 +7,20 @@
  *     hạn phải hủy, sắp hết hạn, quầy sắp hết...). Không có con số tiền nào
  *     (0031); phiếu nhận hàng mở ở /noi-bo/kho/nhan-hang (chỉ kg). Thẻ "Quầy
  *     đang cần": yêu cầu của quầy đang chờ mang ra (0032).
- *   · NV quầy/bếp — "Quầy hôm nay": nút lớn "Yêu cầu hàng", thẻ "Hàng đang
- *     mang ra — bấm nhận" (0032), gói nào xếp ra bán trước, gói hết hạn phải
- *     bỏ, món quầy sắp hết, đã đếm quầy chưa. Chỉ hàng ở quầy.
+ *   · NV quầy/bếp — "Quầy hôm nay": thẻ "Hàng đang mang ra — bấm nhận" (0032),
+ *     gói hết hạn phải bỏ (đủ), gói nào xếp ra bán trước và món quầy sắp hết
+ *     (mỗi khối HIEN_TOI_DA dòng, còn lại trong "Xem thêm"), đã đếm quầy chưa.
+ *     Chỉ hàng ở quầy. Nút đỏ lớn "Yêu cầu hàng ra quầy" bỏ 22/10/2026: trùng nút
+ *     tròn "Yêu cầu hàng" ngay trên.
  *   · Quản lý, chủ — "Hôm nay": hai thẻ "Cần theo dõi" (việc, chờ duyệt) và
  *     "Quản trị" (tiền: tồn kho, giá vốn, thu hồi, hao hụt, chi phí thịt).
  *     GĐ7a: thẻ nhỏ "Bán hàng iPOS" (đèn, số dòng chờ) khi đã cấu hình iPOS.
  *   · Kế toán — phiếu nhập chờ điền giá (0031), rồi công nợ: quá hạn, đến
  *     hạn 7 ngày, chưa đối chiếu.
+ *
+ * Thủ kho, quản lý / chủ: trang chủ không lặp trang Việc cần làm (22/10/2026) — chỉ
+ * "Làm ngay", đã gom việc cùng loại (gomSuKien), tối đa HIEN_TOI_DA dòng, rồi link
+ * "Xem tất cả việc". "Nên làm sớm" chỉ ở trang Việc cần làm.
  *
  * Chưa khởi tạo kho thì chỉ hiện nút "Bắt đầu dùng kho".
  */
@@ -27,7 +33,7 @@ import { docTon, type DongTon } from '../../../lib/kho/ton.ts';
 import { docMatHang, type MatHang } from '../../../lib/kho/danh-muc.ts';
 import { docCongNoNcc, type CongNoNcc } from '../../../lib/kho/cong-no.ts';
 import { docThongBao, docChiSoQuanTri, type ChiSoQuanTri } from '../../../lib/kho/thong-bao.ts';
-import { cauSuKien, laViec, type SuKien } from '../../../lib/kho/viec.ts';
+import { gomSuKien, laViec, type SuKien } from '../../../lib/kho/viec.ts';
 import { goiYXepQuay, dauThang, thayDoiPt } from '../../../lib/kho/trang-chu.ts';
 import { docSoTangCuaLo } from '../../../lib/kho/tang.ts';
 import { docDanhSachYeuCau, type YeuCauQuay } from '../../../lib/kho/quay.ts';
@@ -68,7 +74,6 @@ const t = dichNB(nn, {
   nho1: { vi: 'Nhờ quản lý hoặc chủ nhà hàng', en: 'Ask a manager or the owner' },
   nho2: { vi: ' bấm "Bắt đầu dùng kho".', en: ' to press "Start using inventory".' },
   thaoTacNhanh: { vi: 'Thao tác nhanh', en: 'Quick actions' },
-  yeuCauRaQuay: { vi: 'Yêu cầu hàng ra quầy', en: 'Request stock for the counter' },
   dangMangRa: { vi: 'Hàng đang mang ra — bấm nhận', en: 'On the way to the counter — confirm' },
   chuyenCho: { vi: 'chuyến chờ quầy kiểm', en: 'deliveries waiting to be checked' },
   quaGio: { vi: (n: number) => `${n} chuyến đã quá giờ chưa bấm nhận`,
@@ -105,8 +110,12 @@ const t = dichNB(nn, {
   xemTatCa: { vi: 'Xem tất cả →', en: 'See all →' },
   khongCoViec: { vi: 'Không có việc gì đang chờ. Tốt lắm!', en: 'Nothing is waiting. Well done!' },
   lamNgay: { vi: 'Làm ngay', en: 'Do now' },
-  nenLamSom: { vi: 'Nên làm sớm', en: 'Do soon' },
-  xemTatCaViec: { vi: 'Xem tất cả việc →', en: 'See all to-dos →' },
+  xemTatCaViec: { vi: (n: number) => `Xem tất cả việc (${n}) →`, en: (n: number) => `See all to-dos (${n}) →` },
+  khongGap: {
+    vi: (n: number) => `Không có việc gấp. ${n} việc nên làm sớm nằm ở trang Việc cần làm.`,
+    en: (n: number) => `Nothing urgent. ${n} to-do${n === 1 ? '' : 's'} for soon ${n === 1 ? 'is' : 'are'} on the To-do page.`,
+  },
+  xemThem: { vi: (n: number) => `Xem thêm ${n} món`, en: (n: number) => `Show ${n} more item${n === 1 ? '' : 's'}` },
   chonBang: { vi: 'Chọn bảng', en: 'Choose a view' },
   canTheoDoi: { vi: 'Cần theo dõi', en: 'Watch list' },
   quanTri: { vi: 'Quản trị', en: 'Management' },
@@ -196,7 +205,8 @@ let loiDoc = k.loiDoc;
 if (k.chiNhanh && k.daKhoiTao) {
   const cn = k.chiNhanh.id;
   try {
-    const viec = docThongBao(k.client, cn, 200, nn).then(r => { suKien = r.suKien.filter(laViec); if (r.loi) loiDoc = r.loi; });
+    // 300 như trang Việc cần làm: "Xem tất cả việc (n)" và số đỏ ô Việc (0092 viec_dong) đếm cùng một phần.
+    const viec = docThongBao(k.client, cn, 300, nn).then(r => { suKien = r.suKien.filter(laViec); if (r.loi) loiDoc = r.loi; });
     const cho: Promise<unknown>[] = [viec];
     if (laQuay || vai === 'thu_kho') cho.push(docTon(k.client, cn).then(r => { ton = r; }));
     // 0050: số tảng trên tem cho gợi ý xếp quầy. Lỗi đọc thì câu dặn không có số tảng.
@@ -220,10 +230,12 @@ if (k.chiNhanh && k.daKhoiTao) {
 
 const nhanh = thaoTacCuaVai(vai);
 const tenGoi = k.nhanSu.ho_ten.trim().split(/\s+/).pop();
-const viecNgay = suKien.filter(e => cauSuKien(e, nn).muc === 'do').sort((a, b) => a.luc.localeCompare(b.luc));
-// Thủ kho đã có thẻ "Quầy đang cần" riêng — không nhắc lại yêu cầu của quầy trong danh sách việc.
-const viecSom = suKien.filter(e => cauSuKien(e, nn).muc === 'vang' && !(yeuCauCho.length > 0 && e.khoa === 'yeu_cau_quay'))
-  .sort((a, b) => a.luc.localeCompare(b.luc));
+/** Mỗi danh sách trên trang chủ hiện tối đa chừng ấy dòng (22/10/2026) — đủ ở trang của nó. */
+const HIEN_TOI_DA = 5;
+// Việc đã gom (cũ nhất trước). Trang chủ chỉ in "Làm ngay"; đếm cả "Nên làm sớm" cho link Xem tất cả.
+const dongViec = gomSuKien(suKien, nn).sort((a, b) => a.cuNhat.localeCompare(b.cuNhat));
+const viecNgay = dongViec.filter(d => d.cau.muc === 'do');
+const soViecSom = dongViec.filter(d => d.cau.muc === 'vang').length;
 
 // NV quầy
 const xep = goiYXepQuay(ton, nn, soTang);
@@ -286,10 +298,6 @@ const tieuDe = laQuay ? t.tdQuay : laQuanLy ? t.tdQuanLy : vai === 'thu_kho' ? t
       {/* ============================ NV QUẦY ============================ */}
       {laQuay && (
         <>
-          <a href="/noi-bo/kho/quay/yeu-cau" class="nb-nut kho-yc-lon">
-            <BieuTuong ten="chuyen" /> {t.yeuCauRaQuay}
-          </a>
-
           {n('hang_dang_chuyen') > 0 && (
             <a href="/noi-bo/kho/quay/nhan" class:list={['kho-the-so', 'kho-yc-the', { do: n('hang_chuyen_qua_gio') > 0, vang: n('hang_chuyen_qua_gio') === 0 }]}>
               <span class="kho-the-so-dau"><BieuTuong ten="quay" /> {t.dangMangRa}</span>
@@ -324,14 +332,19 @@ const tieuDe = laQuay ? t.tdQuay : laQuanLy ? t.tdQuanLy : vai === 'thu_kho' ? t
           <section class="kho-khoi">
             <h2><BieuTuong ten="quay" /> {t.xepTruoc}</h2>
             {xep.length === 0 ? <p class="kho-phu">{t.khongCanXep}</p> : (
-              <ul class="kho-dong-ds">
-                {xep.map(x => (
-                  <li class:list={{ gap: x.gap }}>
-                    <span><strong>{x.ten}</strong><small>{x.cau}</small></span>
-                    {x.gap && <a class="nb-nut phu" href={`/noi-bo/kho/xuat/moi?loai=xuat_bep&tu=${x.truoc.vi_tri_id}&lo=${x.truoc.lo_id}`}>{t.duaBep}</a>}
-                  </li>
-                ))}
-              </ul>
+              [xep.slice(0, HIEN_TOI_DA), xep.slice(HIEN_TOI_DA)].map((ds, phan) => ds.length === 0 ? null : (() => {
+                const ul = (
+                  <ul class="kho-dong-ds">
+                    {ds.map(x => (
+                      <li class:list={{ gap: x.gap }}>
+                        <span><strong>{x.ten}</strong><small>{x.cau}</small></span>
+                        {x.gap && <a class="nb-nut phu" href={`/noi-bo/kho/xuat/moi?loai=xuat_bep&tu=${x.truoc.vi_tri_id}&lo=${x.truoc.lo_id}`}>{t.duaBep}</a>}
+                      </li>
+                    ))}
+                  </ul>
+                );
+                return phan === 0 ? ul : <details class="kho-xem-them"><summary>{t.xemThem(ds.length)}</summary>{ul}</details>;
+              })())
             )}
           </section>
 
@@ -339,14 +352,19 @@ const tieuDe = laQuay ? t.tdQuay : laQuanLy ? t.tdQuanLy : vai === 'thu_kho' ? t
             <section class="kho-khoi">
               <h2><BieuTuong ten="chuyen" /> {t.quaySapHet} · {quayThieu.length}</h2>
               <p class="kho-phu" style="margin:0 0 .3rem"><a href="/noi-bo/kho/quay/yeu-cau">{t.guiYeuCau}</a>{t.daDienSan}</p>
-              <ul class="kho-dong-ds">
-                {quayThieu.map(e => (
-                  <li>
-                    <span><strong>{e.ten}</strong><small>{t.conBan(kgs(e.so))}</small></span>
-                    <a class="nb-nut phu" href={`/noi-bo/kho/xuat/moi?loai=chuyen&mh=${e.ref_id}`}>{t.layThem}</a>
-                  </li>
-                ))}
-              </ul>
+              {[quayThieu.slice(0, HIEN_TOI_DA), quayThieu.slice(HIEN_TOI_DA)].map((ds, phan) => ds.length === 0 ? null : (() => {
+                const ul = (
+                  <ul class="kho-dong-ds">
+                    {ds.map(e => (
+                      <li>
+                        <span><strong>{e.ten}</strong><small>{t.conBan(kgs(e.so))}</small></span>
+                        <a class="nb-nut phu" href={`/noi-bo/kho/xuat/moi?loai=chuyen&mh=${e.ref_id}`}>{t.layThem}</a>
+                      </li>
+                    ))}
+                  </ul>
+                );
+                return phan === 0 ? ul : <details class="kho-xem-them"><summary>{t.xemThem(ds.length)}</summary>{ul}</details>;
+              })())}
             </section>
           )}
         </>
@@ -380,23 +398,19 @@ const tieuDe = laQuay ? t.tdQuay : laQuanLy ? t.tdQuanLy : vai === 'thu_kho' ? t
       )}
 
       {(vai === 'thu_kho' || (laQuanLy && tab === 'theo-doi')) && (
-        viecNgay.length + viecSom.length === 0 ? (
+        viecNgay.length + soViecSom === 0 ? (
           <p class="nb-rong">{t.khongCoViec}</p>
         ) : (
           <>
-            {viecNgay.length > 0 && (
+            {viecNgay.length > 0 ? (
               <>
                 <h2>{t.lamNgay} · {viecNgay.length}</h2>
-                <ul class="kho-sk-ds">{viecNgay.slice(0, 8).map(e => <DongSuKien e={e} />)}</ul>
+                <ul class="kho-sk-ds">{viecNgay.slice(0, HIEN_TOI_DA).map(d => <DongSuKien d={d} />)}</ul>
               </>
+            ) : (
+              <p class="kho-phu">{t.khongGap(soViecSom)}</p>
             )}
-            {viecSom.length > 0 && (
-              <>
-                <h2>{t.nenLamSom} · {viecSom.length}</h2>
-                <ul class="kho-sk-ds">{viecSom.slice(0, 8).map(e => <DongSuKien e={e} />)}</ul>
-              </>
-            )}
-            {viecNgay.length + viecSom.length > 16 && <p><a href="/noi-bo/kho/viec">{t.xemTatCaViec}</a></p>}
+            <p><a href="/noi-bo/kho/viec">{t.xemTatCaViec(viecNgay.length + soViecSom)}</a></p>
           </>
         )
       )}
@@ -558,7 +572,11 @@ const tieuDe = laQuay ? t.tdQuay : laQuanLy ? t.tdQuanLy : vai === 'thu_kho' ? t
 </Kho>
 
 <style>
-  .kho-yc-lon { width: 100%; min-height: 56px; font-size: 1.1rem; gap: .5rem; margin-bottom: 1rem; }
+  /* "Xem thêm n món": giữ mũi tên ▸ của summary và gạch chân như link — thấy ngay là bấm được. */
+  .kho-xem-them > summary {
+    display: list-item; cursor: pointer; font-weight: 600; padding: .7rem 0;
+    text-decoration: underline; text-underline-offset: 3px;
+  }
   .kho-yc-the { margin-bottom: 1rem; }
   .kho-yc-nut { min-height: 48px !important; font-size: .95rem !important; }
 </style>

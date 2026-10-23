@@ -69,6 +69,13 @@ Beeftown có **một bảng màu**: bảng thương hiệu Khánh chốt 09/10/2
 đã theo bảng này (hai nơi sau đổi ngày 12/10/2026). Beeftown Cân còn bảng cũ — đổi ở một PR riêng, kèm
 phiên bản mới của chương trình.
 
+> **Ngày 22/10/2026 Khánh chốt bảng mới: chỉ đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF`; bỏ Cream,
+> Marigold, Warm Stone** (`THUONG-HIEU.md` mục 0). Mã website và Beeftown Cân **chưa đổi**, danh sách
+> việc đổi chờ Khánh duyệt. Tới khi PR đổi màu gộp: sửa giao diện web vẫn theo bảng dưới (kiểm thử canh
+> bảng dưới), không tự đổi mã, không thêm chỗ mới ghi mã của bảng mới vào `web/`. Mini App Zalo
+> (`mini-app/`, vào repo ở PR riêng) dùng bảng mới cộng 7 màu pha xám và đỏ chưa được duyệt (câu 1 của
+> mục 0): đừng lấy màu pha của nó làm mẫu.
+
 ### Bảng màu thương hiệu — Khánh chốt 09/10/2026
 
 | Tên | HEX | Dùng cho | Phần trên mỗi bề mặt |

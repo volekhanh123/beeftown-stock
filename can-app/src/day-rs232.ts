@@ -24,12 +24,18 @@
  * kiểm thử được bằng PowerShell giả. Tham số đi qua biến môi trường — không lo
  * dấu nháy. Lỗi nào đoạn lệnh cũng in thành một dòng LOI<tab>loại lỗi<tab>câu
  * lỗi; xong thì in OK<tab>số byte đã ghi.
+ *
+ * 2.10 — DÂY LÀ ĐƯỜNG CHÍNH (Khánh thử Kiểm tra dây trên cân thật 19/10/2026: cân trả lời). Ngoài các kịch bản trên còn
+ * có CẦU NỐI (LENH_CAU_NOI, moKetNoiDay): một PowerShell giữ cổng COM mở suốt một việc và chuyển byte hai chiều, để
+ * giao-thuc.ts nói chuyện với cân qua dây y như qua cổng hai chiều — đọc (UPL), ghi (DWL), xoá (CLR), hàng rào, đặt
+ * giờ, nhật ký bán. Đọc / ghi qua cầu nối chưa thử trên cân thật.
  */
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { execFile } from 'node:child_process';
-import { docDongTim, type GioCan } from './giao-thuc.ts';
+import { execFile, spawn, type ChildProcess } from 'node:child_process';
+import { Duplex } from 'node:stream';
+import { docDongTim, moKetNoiQuaLuong, type GioCan, type KetNoiCan, type TuyChonKetNoi } from './giao-thuc.ts';
 
 /** Tốc độ cân chọn được (thông số 41: 0 = 300 … 5 = 9600 … 9 = 115200); cân để mặc định 9600. */
 export const TOC_DO = [300, 600, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200] as const;
@@ -312,4 +318,155 @@ export async function guiCom(com: string, baud: number, du: Uint8Array, chay: Ch
   const [docDau, docSau] = buocDoc(GUI_FILE);
   if (kq.hetGio === docDau) throw loiBatTay(kq, com, baud);
   return { soByte: kq.soByte, daXacNhan: kq.hetGio === null, gio: gioTrongBuoc(kq, docSau) };
+}
+
+// -----------------------------------------------------------------------------
+// 2.10 — CẦU NỐI: cổng COM mở suốt một việc, byte đi hai chiều
+// -----------------------------------------------------------------------------
+/** Chờ PowerShell khởi động và mở cổng COM tối đa. */
+export const CHO_MO_CONG_MS = 30_000;
+
+/**
+ * Cầu nối (cài cổng như LENH_KICH_BAN: XOn/XOff, không DTR / RTS): mở cổng BT_COM ở tốc độ BT_BAUD, in "SAN" ra stderr, rồi
+ * chuyển byte: stdin → dây (từng 256 byte, giữa các lần ghi vẫn chuyển câu cân trả lời), dây → stdout. stdin hết (chương
+ * trình đóng chiều gửi) → chờ cổng đẩy hết rồi đóng cổng, thoát. Lỗi: một dòng LOI<tab>loại<tab>câu ra stderr, thoát mã 2.
+ * stdout chỉ có byte của cân — mọi lệnh không được để lọt giá trị ra đường ống ([void] / gán biến).
+ */
+export const LENH_CAU_NOI = String.raw`$ErrorActionPreference = 'Stop'
+[Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false
+$loi = [Console]::Error
+function Bao-Loi($x) {
+  $e = $x.Exception
+  while ($e.InnerException) { $e = $e.InnerException }
+  $loi.WriteLine('LOI' + [char]9 + $e.GetType().Name + [char]9 + ($e.Message -replace '\s+', ' '))
+  $loi.Flush()
+}
+try {
+  $p = [System.IO.Ports.SerialPort]::new($env:BT_COM, [int]$env:BT_BAUD, [System.IO.Ports.Parity]::None, 8, [System.IO.Ports.StopBits]::One)
+  $p.Handshake = [System.IO.Ports.Handshake]::XOnXOff
+  $p.ReadBufferSize = 1048576
+  $p.WriteTimeout = [int]$env:BT_CHO_KHOI
+  $p.ReadTimeout = 500
+  $p.Open()
+} catch { Bao-Loi $_; exit 2 }
+try {
+  $vao = [Console]::OpenStandardInput()
+  $ra = [Console]::OpenStandardOutput()
+  $bv = New-Object byte[] 4096
+  $br = New-Object byte[] 65536
+  Start-Sleep -Milliseconds 200
+  [void]$p.DiscardInBuffer()
+  $loi.WriteLine('SAN')
+  $loi.Flush()
+  $cho = $vao.ReadAsync($bv, 0, $bv.Length)
+  $het = $false
+  while (-not $het) {
+    $co = $false
+    $n = $p.BytesToRead
+    if ($n -gt 0) {
+      $n = $p.Read($br, 0, [Math]::Min($n, $br.Length))
+      [void]$ra.Write($br, 0, $n)
+      [void]$ra.Flush()
+      $co = $true
+    }
+    if ($cho.IsCompleted) {
+      $m = $cho.Result
+      if ($m -le 0) { $het = $true } else {
+        for ($j = 0; $j -lt $m; $j += 256) {
+          [void]$p.Write($bv, $j, [Math]::Min(256, $m - $j))
+          $k = $p.BytesToRead
+          if ($k -gt 0) {
+            $k = $p.Read($br, 0, [Math]::Min($k, $br.Length))
+            [void]$ra.Write($br, 0, $k)
+            [void]$ra.Flush()
+          }
+        }
+        $cho = $vao.ReadAsync($bv, 0, $bv.Length)
+      }
+      $co = $true
+    }
+    if (-not $co) { Start-Sleep -Milliseconds 10 }
+  }
+  $hetGio = [DateTime]::UtcNow.AddSeconds(30)
+  while ($p.BytesToWrite -gt 0 -and [DateTime]::UtcNow -lt $hetGio) { Start-Sleep -Milliseconds 50 }
+  Start-Sleep -Milliseconds 300
+} catch { Bao-Loi $_; exit 2 } finally { [void]$p.Close() }`;
+
+/** Mở cầu nối tới cổng COM: luồng byte hai chiều với cân. Kiểm thử thay bằng luồng tới cân giả. */
+export type MoCauNoi = (com: string, baud: number) => Promise<Duplex>;
+
+/**
+ * Luồng hai chiều từ một tiến trình cầu nối đã mở cổng: ghi = stdin của nó, đọc = stdout của nó. Huỷ luồng = dừng tiến
+ * trình (Windows trả cổng COM). Tiến trình thoát (lỗi dây giữa chừng, cổng bị rút) → luồng đóng: KetNoi báo mất kết nối;
+ * tiến trình có in dòng LOI (`loiCua()`: những gì nó in ra stderr) thì luồng hỏng với đúng câu đó (docKetQua) — câu "mất kết
+ * nối" kèm lý do (cổng không đẩy được dữ liệu, không thấy cổng…). Luồng chỉ hết khi tiến trình đã thoát, để lý do tới trước.
+ */
+export function luongTuTienTrinh(con: ChildProcess, com = 'COM', loiCua: () => string = () => ''): Duplex {
+  const vao = con.stdin!, ra = con.stdout!;
+  const d = new Duplex({
+    read() { ra.resume(); },
+    write(chunk, _ma, xong) { vao.write(chunk, (e) => xong(e ?? null)); },
+    final(xong) { vao.end(); xong(); },
+    destroy(e, xong) { if (con.exitCode === null && con.signalCode === null) con.kill(); xong(e); },
+  });
+  vao.on('error', () => { /* ống gãy khi tiến trình đã dừng: 'close' của tiến trình theo sau */ });
+  ra.on('data', (b: Buffer) => { if (!d.push(b)) ra.pause(); });
+  con.on('close', () => {
+    if (d.destroyed) return;
+    const loi = loiCua();
+    if (/^\uFEFF?LOI\t/m.test(loi)) {
+      try { docKetQua(loi, com); } catch (e) { d.destroy(e as Error); return; }
+    }
+    d.push(null);
+    d.destroy();
+  });
+  return d;
+}
+
+/**
+ * Chạy `tao()` (tiến trình cầu nối), chờ dòng "SAN" ở stderr rồi trả luồng. Tiến trình thoát trước đó → LoiDay theo dòng LOI
+ * (cổng đang bị chương trình khác dùng, không có cổng…); quá `choMs` → dừng tiến trình, LoiDay.
+ */
+export function moCauNoiTienTrinh(com: string, tao: () => ChildProcess, choMs = CHO_MO_CONG_MS): Promise<Duplex> {
+  return new Promise((xong, hong) => {
+    let con: ChildProcess;
+    try { con = tao(); } catch (e) { hong(new LoiDay(`Không chạy được PowerShell: ${(e as Error)?.message ?? e}`)); return; }
+    let loi = '', daXong = false;
+    const ket = (f: () => void) => { if (daXong) return; daXong = true; clearTimeout(hen); f(); };
+    const hen = setTimeout(() => ket(() => {
+      con.kill();
+      hong(new LoiDay(`Mở cổng ${com} quá ${Math.round(choMs / 1000)} giây chưa xong. Rút dây ra cắm lại rồi thử lại.`));
+    }), choMs);
+    con.stderr!.setEncoding('utf8');
+    con.stderr!.on('data', (t: string) => {
+      loi = (loi + t).slice(-8192);
+      if (/^﻿?SAN\r?$/m.test(loi)) ket(() => xong(luongTuTienTrinh(con, com, () => loi)));
+    });
+    con.on('error', (e) => ket(() => hong(new LoiDay(`Không chạy được PowerShell: ${e.message}`))));
+    con.on('close', () => ket(() => {
+      // Dòng LOI → câu dễ hiểu của docKetQua (cổng bận, không có cổng…).
+      if (/^\uFEFF?LOI\t/m.test(loi)) { try { docKetQua(loi, com); } catch (e) { hong(e); return; } }
+      hong(new LoiDay(`Không mở được cổng ${com} (PowerShell dừng mà không báo lỗi).`));
+    }));
+  });
+}
+
+/** Cầu nối thật: PowerShell có sẵn trong Windows chạy LENH_CAU_NOI. */
+export const moCauNoiPowerShell: MoCauNoi = (com, baud) => {
+  kiemCom(com, baud);
+  if (process.platform !== 'win32') return Promise.reject(new LoiDay('Dây RS232 chỉ dùng được trên máy Windows.'));
+  const ma = Buffer.from(LENH_CAU_NOI, 'utf16le').toString('base64');
+  const choKhoi = String(Math.max(CHO_XAC_NHAN_MS, giayDay(256, baud) * 2000));
+  return moCauNoiTienTrinh(com, () => spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', ma],
+    { env: { ...process.env, BT_COM: com, BT_BAUD: String(baud), BT_CHO_KHOI: choKhoi }, windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] }));
+};
+
+/**
+ * Nối cân qua dây và bắt tay (UPL MAC, UPL INF — như hãng đọc nhật ký qua dây): trả KetNoiCan dùng y như kết nối cổng hai
+ * chiều. Cân không trả lời (không ở màn hình Prog → 4 → 3) → LoiGiaoThuc 'khong-noi', chưa gửi gì ngoài câu hỏi. Không
+ * mở được cổng → LoiDay. Nhớ gọi `dong()` khi xong (đóng cổng).
+ */
+export async function moKetNoiDay(com: string, baud: number, tuy: TuyChonKetNoi = {}, mo: MoCauNoi = moCauNoiPowerShell): Promise<KetNoiCan> {
+  kiemCom(com, baud);
+  return moKetNoiQuaLuong(await mo(com, baud), com, baud, tuy);
 }

@@ -12,9 +12,9 @@
  *      giá, kể cả khi database lỡ trả; món sống thiếu câu cảnh báo → bị bỏ; dòng hỏng → bị bỏ.
  *   3. Nhãn "Món sống" / "Có cồn" đủ vi, en, ko; dinhDangGia viết số kiểu Việt (125.000).
  *   4. CHẠY ĐÚNG CÁC KHỐI SQL CỦA web/THUC-DON.md, theo thứ tự trong file, trên database có đủ
- *      migration (PGlite, danh mục cuốn menu bản sáng của 0091), gọi thuc_don_cong_khai() dưới
+ *      migration (PGlite, danh mục cuốn menu bản sáng của 0094), gọi thuc_don_cong_khai() dưới
  *      vai anon như trang thật: đúng 22 món ăn theo thứ tự nhóm và món của cuốn; tên, mô tả
- *      đúng từng chữ (mô tả trùng chữ của cuốn mà 0091 giữ ở copy_nhap / nguyen_van_nguon);
+ *      đúng từng chữ (mô tả trùng chữ của cuốn mà 0094 giữ ở copy_nhap / nguyen_van_nguon);
  *      giá và độ cay rỗng; F03, F19 có cảnh báo ba thứ tiếng; ba ly signature chỉ hiện khi bật
  *      công tắc rượu; 17 đồ uống dạng danh sách và 10 món thu hồi không bao giờ hiện; chạy lại
  *      mọi khối lần hai không đổi gì; SQL thu hồi làm món biến mất; hướng dẫn không đặt giá nào.
@@ -23,7 +23,7 @@
  *      từng cờ, đúng thứ tự với dữ liệu giả MON_MAU của web/kiem-tra/gia-supabase.mjs (thu-day-du vẽ
  *      trang từ đó) — sửa một chữ ở migration, ở THUC-DON.md hay ở MON_MAU mà không sửa hai chỗ kia là đỏ.
  *      17 đồ uống dạng danh sách so tên ba thứ tiếng với danh sách chép tay; CAU_NHOM (câu dưới tên nhóm,
- *      web/src/lib/thuc-don.ts) so với bản chép tay, mọi khóa phải là mã nhóm đang dùng của 0091.
+ *      web/src/lib/thuc-don.ts) so với bản chép tay, mọi khóa phải là mã nhóm đang dùng của 0094.
  */
 
 import { readFileSync } from 'node:fs';
@@ -172,7 +172,7 @@ const KHOI = Object.fromEntries([...HUONG_DAN.matchAll(/<!--\s*sql:([a-z0-9-]+)\
 const COT_DONG_THUC_DON = [...readFileSync(join(LIB, 'thuc-don.ts'), 'utf8')
   .match(/export interface DongThucDon \{([\s\S]*?)\n\}/)?.[1].matchAll(/^\s+([a-z_]+):/gm) ?? []].map(m => m[1]);
 
-// Danh mục cuốn menu bản sáng (migration 0091): tám nhóm món ăn theo thứ tự trang, mỗi nhóm theo thứ tự món.
+// Danh mục cuốn menu bản sáng (migration 0094): tám nhóm món ăn theo thứ tự trang, mỗi nhóm theo thứ tự món.
 const NHOM_AN = [
   ['dac-trung', ['F03', 'F19']], ['lau', ['F15', 'F16', 'F20']], ['set-sot', ['S01']], ['salad', ['F21', 'F01', 'F10']],
   ['mon-them', ['F22', 'F23', 'F18']], ['canh', ['F12', 'F14', 'F13']], ['com', ['F06', 'F05', 'F04']], ['mi', ['F11', 'F08', 'F07', 'F09']],
@@ -260,7 +260,7 @@ await nhom('4 · CHẠY ĐÚNG CÁC KHỐI SQL CỦA web/THUC-DON.md (PGlite, va
   const trangThai = async m => (await db.query(`select trang_thai from mon_an where ma = $1`, [m])).rows[0]?.trang_thai;
 
   const tuDau = await xem();
-  ok('Database vừa cài (đủ migration, có 0091): anon gọi được thuc_don_cong_khai, thực đơn rỗng', tuDau.length === 0, `${tuDau.length} món`);
+  ok('Database vừa cài (đủ migration, có 0094): anon gọi được thuc_don_cong_khai, thực đơn rỗng', tuDau.length === 0, `${tuDau.length} món`);
 
   // ---- Bước 0 · Bước 1 -------------------------------------------------------
   const { rows: [dm] } = await db.query(KHOI['kiem-danh-muc']);
@@ -285,8 +285,8 @@ await nhom('4 · CHẠY ĐÚNG CÁC KHỐI SQL CỦA web/THUC-DON.md (PGlite, va
      JSON.stringify(moTa.map(r => r.ma)) === JSON.stringify([...THU_TU_MON_AN, ...SIGNATURE].sort()), moTa.map(r => r.ma).join(','));
   const lechVi = moTa.filter(r => r.mo_ta_vi !== r.copy_nhap).map(r => r.ma);
   const lechEn = moTa.filter(r => r.mo_ta_en !== r.nguyen_van_nguon).map(r => r.ma);
-  ok('Mô tả tiếng Việt của hướng dẫn trùng từng chữ với chữ của cuốn trong migration 0091 (copy_nhap)', lechVi.length === 0, lechVi.join(','));
-  ok('Mô tả tiếng Anh của hướng dẫn trùng từng chữ với chữ của cuốn trong migration 0091 (nguyen_van_nguon)', lechEn.length === 0, lechEn.join(','));
+  ok('Mô tả tiếng Việt của hướng dẫn trùng từng chữ với chữ của cuốn trong migration 0094 (copy_nhap)', lechVi.length === 0, lechVi.join(','));
+  ok('Mô tả tiếng Anh của hướng dẫn trùng từng chữ với chữ của cuốn trong migration 0094 (nguyen_van_nguon)', lechEn.length === 0, lechEn.join(','));
   ok('Mô tả tiếng Hàn có đủ cho 25 món và là chữ Hàn', moTa.every(r => /[가-힣]/.test(r.mo_ta_ko ?? '')));
 
   rXem = (await db.query(KHOI.xem)).rows;
@@ -412,7 +412,7 @@ await nhom('4 · CHẠY ĐÚNG CÁC KHỐI SQL CỦA web/THUC-DON.md (PGlite, va
      JSON.stringify(CAU_NHOM) === JSON.stringify(CAU_NHOM_CHEP_TAY), JSON.stringify(CAU_NHOM));
   const { rows: nhomDung } = await db.query(`select ma from nhom_mon where dang_dung`);
   const khoaLa = Object.keys(CAU_NHOM).filter(k => !nhomDung.some(g => g.ma === k));
-  ok('Mọi khóa của CAU_NHOM là mã nhóm đang dùng của 0091', Object.keys(CAU_NHOM).length > 0 && khoaLa.length === 0, khoaLa.join(','));
+  ok('Mọi khóa của CAU_NHOM là mã nhóm đang dùng của 0094', Object.keys(CAU_NHOM).length > 0 && khoaLa.length === 0, khoaLa.join(','));
 
   // ---- Chạy lại từng khối lần hai: không lỗi, không đổi gì --------------------
   const chup = async () => JSON.stringify(await Promise.all(['vi', 'en', 'ko'].map(xem)));

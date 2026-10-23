@@ -98,7 +98,9 @@ import {
 } from './thong-so.ts';
 import { chonNhatKyGui, dongTrenCanBao, vanTayGiaoO } from './bao-kho.ts';
 import { LA_IP, layMac, thuKetNoi, timCan as doTimCan, type KetQuaTim, type MangMay } from './tim-can.ts';
-import { LoiDay, dsCongCom, giayDay, guiCom, hoiGioQuaDay, kiemCom, tocDoTuThongSo, type ChayPs, type CongCom } from './day-rs232.ts';
+import {
+  LoiDay, dsCongCom, giayDay, guiCom, hoiGioQuaDay, kiemCom, moKetNoiDay, tocDoTuThongSo, type ChayPs, type CongCom, type MoCauNoi,
+} from './day-rs232.ts';
 import {
   CHO_MAC_DINH, FS_THAT, GIOI_HAN_MAC_DINH, GOC_BAN_CAI, LoiCapNhat, cacTepCapNhat, chayThuBanMoi, doiTep, duongTepBanMoi, hoiBanMoi, moTaMb,
   ngayPhatHanhVn, taiVaKiem, thuGhiThuMuc, type ChayThu, type FsHam,
@@ -163,9 +165,14 @@ export interface CauHinh {
   doiDiaChi?: DoiDiaChi[];
   /** Mã máy (MAC) của cân đang dùng — cân đổi địa chỉ thì chỉ tự theo khi máy thấy trong WiFi cùng mã. */
   macCan?: string;
-  /** Cổng COM và tốc độ chọn lần thử dây RS232 gần nhất. */
+  /** Cổng COM và tốc độ chọn lần thử dây RS232 gần nhất (2.10: đường dây dùng cổng và tốc độ này). */
   com?: string;
   baud?: number;
+  /**
+   * 2.10 — đường nối cân: 'day' = mọi việc đọc / ghi / xoá với cân đi qua dây RS232 (cổng `com`, tốc độ `baud`), không qua
+   * WiFi, không lui về cổng 33571, không giữ kết nối (cân chỉ nghe dây ở màn hình Prog → 4 → 3). undefined = WiFi như trước.
+   */
+  duongCan?: 'day';
   /** Cổng hai chiều của cân (Spec166, thường 33581) — đọc thông tin, giờ, nhật ký, xoá qua WiFi. Chưa thử trên cân thật. */
   congHaiChieu?: number;
   /**
@@ -493,7 +500,7 @@ export function cauLechPlu(lech: LechPlu[], soDaGui: Set<number>, cachGui: CachG
     vuaGui ? `cân CHƯA nhận ${vuaGui} hàng vừa gửi` : '',
     ngoai ? `cân còn ${ngoai} hàng khác kho từ trước (lần gửi cũ cân chưa nhận — lần gửi sau chương trình gửi cả danh sách)` : '',
   ].filter(Boolean).join(' và ');
-  return `Đã gửi ${soDaGui.size} hàng qua WiFi (${cachGui === 'hai-chieu' ? 'cổng hai chiều' : 'cổng 33571'}) nhưng đọc lại thấy ${thay}: `
+  return `Đã gửi ${soDaGui.size} hàng ${cachGui === 'day' ? 'qua dây RS232' : `qua WiFi (${tenCachGui(cachGui)})`} nhưng đọc lại thấy ${thay}: `
     + lech.slice(0, 5).map(mot).join('; ') + (lech.length > 5 ? `; và ${lech.length - 5} hàng khác` : '') + '. '
     + 'Chương trình chưa ghi nhận lần gửi này. Để cân ở màn hình bán hàng (không ở menu Prog, không có ai đang bấm) rồi bấm '
     + 'Gửi xuống cân thêm một lần; vẫn vậy thì bấm "Lưu file để nạp USB" và nạp bằng USB. Tự gửi tạm dừng tới lúc đó.';
@@ -645,6 +652,11 @@ const CHO_XAC_NHAN_MS = [0, 3000, 5000];
  * thử lại sau THU_LAI_KHONG_DOC_MS[n − 1] (lần thứ 4 trở đi: phần tử cuối). Bấm Gửi xuống cân không phải chờ.
  */
 export const THU_LAI_KHONG_DOC_MS = [60_000, 2 * 60_000, 5 * 60_000, 10 * 60_000];
+/**
+ * 2.10 — đường dây: tự gửi gặp cân không nghe dây (cân đang bán hàng, không ở Prog → 4 → 3) thì chờ chừng này mới thử lại —
+ * mỗi lần thử mở PowerShell và chờ cân trả lời, giữ hàng đợi việc với cân vài giây. Bấm Gửi xuống cân thì không phải chờ.
+ */
+export const TU_GUI_DAY_LUI_MS = 2 * 60_000;
 /** 2.7: xoá qua WiFi hỏng giữa chừng → gửi lại cả danh sách ngay, chưa đủ thì chờ rồi gửi lại — ms trước mỗi lần. */
 const CHO_PHUC_HOI_MS = [0, 3000, 8000];
 /** 2.7: Chẩn đoán WiFi — cổng 33571 không trả lời, chờ chừng này cho cân lưu rồi mới đọc lại qua cổng hai chiều. */
@@ -873,8 +885,13 @@ export interface KetQuaGui {
   soHangGui: number; cachGui: CachGui;
 }
 
-/** 2.6.1: 'hai-chieu' — khối DWL PLU qua cổng 33581 như phần mềm hãng; 'mot-chieu' — cả file qua cổng 33571 (trước 2.6.1). */
-export type CachGui = 'hai-chieu' | 'mot-chieu';
+/**
+ * 2.6.1: 'hai-chieu' — khối DWL PLU qua cổng 33581 như phần mềm hãng; 'mot-chieu' — cả file qua cổng 33571 (trước 2.6.1).
+ * 2.10: 'day' — cùng các khối như 'hai-chieu' nhưng qua dây RS232 (cài đặt duongCan).
+ */
+export type CachGui = 'hai-chieu' | 'mot-chieu' | 'day';
+/** Tên đường gửi trong câu báo. */
+export const tenCachGui = (c: CachGui) => (c === 'day' ? 'dây RS232' : c === 'hai-chieu' ? 'cổng hai chiều' : 'cổng 33571');
 
 /**
  * 2.7 — kết quả gửi thông số / chữ cài đặt / phím / mẫu tem (guiCaiDat). xacNhan: đọc lại qua cổng hai chiều thấy cân có
@@ -998,8 +1015,8 @@ export interface ThongTinHaiChieu {
 }
 
 export interface KetQuaChinhGio {
-  /** Đường đã đặt giờ: 33581 (cân báo lại giờ mới) hay 33571 (gửi một chiều, cân không trả lời). */
-  cach: '33581' | '33571';
+  /** Đường đã đặt giờ: 33581 (cân báo lại giờ mới), 33571 (gửi một chiều, cân không trả lời) hay (2.10) dây RS232 (cân báo lại). */
+  cach: '33581' | '33571' | 'day';
   gio: GioCan;
   /** Cân đã báo lại đúng giờ vừa đặt (chỉ đường 33581). */
   daXacNhan: boolean;
@@ -1199,6 +1216,10 @@ export class UngDung {
       mang?: MangMay[];
       /** Kiểm thử: PowerShell giả cho dây RS232. */
       chayPs?: ChayPs;
+      /** 2.10 — kiểm thử: cầu nối dây giả (luồng tới cân giả) thay cho PowerShell giữ cổng COM. */
+      moCauNoi?: MoCauNoi;
+      /** 2.10 — kiểm thử: chờ (ms) trước khi tự gửi thử lại sau lần cân không nghe dây — mặc định TU_GUI_DAY_LUI_MS. */
+      tuGuiDayLuiMs?: number;
       /** Kiểm thử: mã máy (MAC) theo địa chỉ thay cho bảng ARP thật. */
       mac?: (ip: string) => Promise<string | null>;
       /** Kiểm thử: thời gian chờ của giao thức hai chiều (cổng 33581) — ngắn hơn 30 giây của hãng. */
@@ -1281,7 +1302,7 @@ export class UngDung {
     this.fileMaMay = path.join(dd.cauHinh, 'ma-may.txt');
     this.fileNhatKyDaGui = path.join(dd.cauHinh, 'nhat-ky-da-gui.json');
     this.fileHuyChuaChac = path.join(dd.cauHinh, 'phieu-huy-chua-chac.json');
-    this.giu = new GiuKetNoi((ip, cong, tuy) => moKetNoi(ip, cong, tuy), () => this.bayGio());
+    this.giu = new GiuKetNoi((ip, cong, tuy) => this.moKetNoiCan(ip, cong, tuy), () => this.bayGio());
     this.udp = new NgheUdp({ ...(this.phu.udp ?? {}), bayGio: () => this.bayGio() });
   }
 
@@ -2011,7 +2032,7 @@ export class UngDung {
     // Cổng hai chiều hỏng: đã gửi qua 33571 (cân của quán từng bỏ qua cổng này — 03/10/2026), hay hỏng sau khi đã ghi.
     const veHaiChieu = !loiHaiChieu ? ''
       : cachGui === 'mot-chieu' ? ` (Cổng hai chiều không ghi được: ${loiHaiChieu.replace(/[.\s]+$/, '')} — nên đã gửi qua cổng 33571; ở quán cân từng bỏ qua cổng này.)`
-      : ` (Cổng hai chiều báo lỗi sau khi đã gửi: ${loiHaiChieu.replace(/[.\s]+$/, '')} — cân có thể còn đang lưu.)`;
+      : ` (${cachGui === 'day' ? 'Dây' : 'Cổng hai chiều'} báo lỗi sau khi đã gửi: ${loiHaiChieu.replace(/[.\s]+$/, '')} — cân có thể còn đang lưu.)`;
     // Đã gửi mà chưa xác nhận: các dòng vừa gửi có thể đã nằm trên cân.
     if (ketQua.loai !== 'khop') this.themChoXacNhan(moi, soDaGui);
     if (ketQua.loai === 'lech') {
@@ -2078,8 +2099,8 @@ export class UngDung {
     const caDanhSach = soDoi.size === 0 || this.canChuaRo() !== null || this.chuaXacNhan() !== null;
     const guiDi = p.moi.plu.filter(x => caDanhSach || soDoi.has(x.so));
     const soDaGui = new Set(guiDi.map(x => x.so));
-    if (!guiDi.length) {   // kho không có hàng nào lên cân: như trước 2.6.1
-      return { doiDiaChi: await this.guiDenCan(p.du, timLai), cachGui: 'mot-chieu', soDaGui: new Set(), loiHaiChieu: null };
+    if (!guiDi.length) {   // kho không có hàng nào lên cân: như trước 2.6.1 (2.10, đường dây: cả file qua dây — guiDenCan)
+      return { doiDiaChi: await this.guiDenCan(p.du, timLai), cachGui: this.laDay() ? 'day' : 'mot-chieu', soDaGui: new Set(), loiHaiChieu: null };
     }
     const r = await this.ghiHoacLui(['DWL\tPLU\t', ...guiDi.map(x => x.tho), 'END\tPLU\t'], p.du, timLai);
     // Qua 33571 là cả file: mọi hàng của kế hoạch đều vừa gửi.
@@ -2095,6 +2116,8 @@ export class UngDung {
    *      lại quyết định (cachGui 'hai-chieu' kèm loiHaiChieu);
    *   3. vẫn không ghi được qua cổng hai chiều → `duMotChieu` qua 33571 (guiDenCan bỏ dòng mạng, không dò lần hai).
    * Cân ở địa chỉ đang dùng khác mã máy chương trình nhớ → ném LoiKhacMay, không gửi gì (quán có thể có hai cân).
+   * 2.10 — đường dây: ghi qua dây; không ghi được (cân không trả lời, cổng COM bận) → ném lỗi đó, không dò WiFi, không lui
+   * về 33571 (người chọn dây vì WiFi không dùng được).
    */
   private async ghiHoacLui(khoi: string[], duMotChieu: Uint8Array, timLai: boolean): Promise<{
     doiDiaChi: DoiDiaChi | null; cachGui: CachGui; loiHaiChieu: string | null;
@@ -2110,8 +2133,10 @@ export class UngDung {
         return { xong: false, loi: cauLoi(e), daGhi: g && e.daGhi, khongNoi: g && e.loai === 'khong-noi' };
       }
     };
-    // Gửi được qua cổng hai chiều: nhớ mã máy (ARP) như guiDenCan — timCan dùng để nhận ra cân khác.
+    const day = this.laDay();
+    // Gửi được qua cổng hai chiều: nhớ mã máy (ARP) như guiDenCan — timCan dùng để nhận ra cân khác. Qua dây: không có ARP.
     const daGuiHaiChieu = async (doi: DoiDiaChi | null, loi: string | null) => {
+      if (day) return { doiDiaChi: doi, cachGui: 'day' as const, loiHaiChieu: loi };
       try { await this.nhoMac(this.cauHinh().ipCan); } catch { /* không đọc được mã máy: lần sau */ }
       return { doiDiaChi: doi, cachGui: 'hai-chieu' as const, loiHaiChieu: loi };
     };
@@ -2120,6 +2145,8 @@ export class UngDung {
     // Đã ghi xong khối mà hỏng sau đó (hết giờ chờ hàng rào, đứt kết nối): cân có thể đã nhận / đang lưu — không gửi thêm
     // qua 33571 (gửi chồng lúc cân đang lưu), để đọc lại quyết định.
     if (lan.daGhi) return daGuiHaiChieu(null, lan.loi);
+    // Đường dây: chưa gửi được gì — báo đúng lỗi của dây (chưa gửi byte dữ liệu nào), không đi WiFi.
+    if (day) throw lan.khongNoi ? new LoiKhongNoi(lan.loi) : new LoiCan(lan.loi);
     let doiDiaChi: DoiDiaChi | null = null;
     let loiDo: LoiCan | null = null;
     if (timLai && lan.khongNoi) {
@@ -2182,9 +2209,9 @@ export class UngDung {
     const { doiDiaChi, cachGui, loiHaiChieu } = await this.ghiHoacLui(khoi, duMotChieu, true);
     // Đã lui về 33571 vì cổng hai chiều không nối được: đọc lại một lần thôi (đọc lại nhiều lần chỉ làm trang treo lâu).
     const kq = await this.docLaiCaiDat(phan, khoi, cachGui === 'mot-chieu' ? [0] : undefined);
-    const qua = cachGui === 'hai-chieu' ? 'cổng hai chiều' : 'cổng 33571';
+    const qua = tenCachGui(cachGui);
     const veHaiChieu = loiHaiChieu
-      ? ` (Cổng hai chiều ${cachGui === 'mot-chieu' ? 'không ghi được' : 'báo lỗi sau khi đã gửi'}: ${loiHaiChieu.replace(/[.\s]+$/, '')}.)` : '';
+      ? ` (${cachGui === 'day' ? 'Dây' : 'Cổng hai chiều'} ${cachGui === 'mot-chieu' ? 'không ghi được' : 'báo lỗi sau khi đã gửi'}: ${loiHaiChieu.replace(/[.\s]+$/, '')}.)` : '';
     if (kq.loai === 'lech') {
       throw new LoiCan(`Đã gửi ${ten} qua ${qua} nhưng đọc lại thấy cân CHƯA nhận: ${kq.cau}.${veHaiChieu} Chương trình chưa ghi nhận gì. `
         + 'Để cân ở màn hình bán hàng (không ở menu Prog, không có ai đang bấm) rồi gửi lại; vẫn vậy thì bấm "Lưu file nạp USB" và nạp bằng USB.'
@@ -2201,6 +2228,7 @@ export class UngDung {
       const k = await this.guiKeHoach(await this.dung(giuHangNgoaiKho), timLai);
       // 2.9 — báo kho: cân đọc lại khớp thì vừa gửi được, hết lệch (2.9.3: chưa đọc lại được thì chưa "gửi được").
       if (k.xacNhan) { this.lucGuiDuoc = this.bayGio(); this.lechCuoi = 0; }
+      this.tuGuiDaySau = 0;   // 2.10: vừa nói chuyện được với cân qua dây — tự gửi khỏi chờ
       return k;
     });
   }
@@ -2262,9 +2290,16 @@ export class UngDung {
    * tới giờ thì không gửi, nói giờ thử lại.
    */
   lanTuGui: LanTuGui | null = null;
+  /** 2.10 — đường dây: mốc (ms) tự gửi được thử lại sau lần cân không nghe dây (TU_GUI_DAY_LUI_MS); 0 = không chờ. */
+  private tuGuiDaySau = 0;
   async tuGuiMotLan(): Promise<LanTuGui> {
     const luc = new Date().toISOString();
     try {
+      if (this.laDay() && this.bayGio() < this.tuGuiDaySau) {
+        this.lanTuGui = { luc, daGui: false, cau: `Lần tự gửi trước cân không nghe dây (cân đang bán hàng) — tự gửi thử lại lúc `
+          + `${gioPhutVn(this.tuGuiDaySau)}. Muốn gửi ngay: trên cân bấm Prog → 4 → 3 rồi bấm Gửi xuống cân.` };
+        return this.lanTuGui;
+      }
       // 2.9.3: lần gửi trước chưa đọc lại được cân và chưa tới giờ thử lại → không đọc kho, không dựng kế hoạch (mỗi phút).
       const cho = this.chuaXacNhan();
       const hen = cho?.loai === 'khong-doc' ? Date.parse(cho.thuLaiLuc ?? '') : NaN;
@@ -2326,7 +2361,7 @@ export class UngDung {
         // chưa đổi), và (2.9.3) chưa phải "gửi được" — kho không thấy lần gửi mới mỗi lượt thử lại hỏng.
         if (k.xacNhan) { this.lucGuiDuoc = this.bayGio(); this.lechCuoi = 0; }
         const diaChi = k.doiDiaChi ? ` — cân đổi địa chỉ, đã tìm thấy ở ${k.doiDiaChi.den}.` : '.';
-        const qua = k.cachGui === 'hai-chieu' ? 'cổng hai chiều' : 'cổng 33571';
+        const qua = tenCachGui(k.cachGui);
         const henSau = Date.parse(this.chuaXacNhan()?.thuLaiLuc ?? '');
         const ketQua = k.xacNhan ? ', cân đã nhận (đọc lại khớp)'
           : ' — chưa đọc lại được cân để kiểm, chương trình chưa ghi nhận' + (Number.isFinite(henSau) ? `; tự gửi thử lại lúc ${gioPhutVn(henSau)}` : '');
@@ -2344,6 +2379,7 @@ export class UngDung {
       });
     } catch (e) {
       this.lanTuGui = { luc, daGui: false, cau: cauLoi(e), hong: true };
+      if (this.laDay() && e instanceof LoiKhongNoi) this.tuGuiDaySau = this.bayGio() + (this.phu.tuGuiDayLuiMs ?? TU_GUI_DAY_LUI_MS);
     }
     return this.lanTuGui;
   }
@@ -2736,6 +2772,8 @@ export class UngDung {
     const ch = this.cauHinh();
     const cong = ch.congHaiChieu ?? CONG_HAI_CHIEU;
     const tuy = this.phu.tuyHaiChieu ?? {};
+    // 2.10 — đường dây: "địa chỉ" là cổng COM (moKetNoiCan mở dây), không dò WiFi.
+    if (this.laDay(ch)) return viec(ch.com!, 0, tuy);
     if (!timLai) return viec(ch.ipCan, cong, tuy);
     try {
       return await viec(ch.ipCan, cong, tuy);
@@ -2755,6 +2793,15 @@ export class UngDung {
   private kiemMayHaiChieu(mac: string, ip: string, cong: number): void {
     const ch = this.cauHinh();
     const nho = ch.macHaiChieu;
+    if (this.laDay(ch)) {
+      // 2.10 — qua dây: cùng mã máy với cân đã nối qua WiFi (MAC / INM là của cân, không của đường nối).
+      if (nho && mac !== nho) {
+        throw new LoiKhacMay(`Cân ở đầu dây ${ip} có mã máy ${mac}, không phải cân chương trình vẫn dùng (${nho}) — chưa đọc, chưa gửi, `
+          + 'chưa ghi nhận gì. Cắm dây vào đúng cân; vừa thay cân thì ở Cài đặt bấm "Dùng dây làm đường chính" lại.', 'khong-cho-phep');
+      }
+      if (!nho && mac) this.ghiThem({ macHaiChieu: mac });
+      return;
+    }
     if (nho && mac !== nho) {
       throw new LoiKhacMay(`Cân ở ${ip} (cổng ${cong}) có mã máy ${mac}, không phải cân chương trình vẫn dùng (${nho}) — chưa đọc, chưa gửi, `
         + 'chưa ghi nhận gì. Quán có hai cân hay router vừa đổi địa chỉ: trên cân bấm Prog → 4 → 2 xem địa chỉ, rồi chọn đúng cân ở '
@@ -2773,7 +2820,7 @@ export class UngDung {
   private voiKetNoi<T>(viec: (kn: KetNoiCan, ip: string, cong: number) => Promise<T>, timLai = true, moi = false): Promise<T> {
     if (!this.giuKetNoiBat()) {
       return this.quaHaiChieu(async (ip, cong, tuy) => {
-        const kn = await moKetNoi(ip, cong, tuy);
+        const kn = await this.moKetNoiCan(ip, cong, tuy);
         try {
           this.kiemMayHaiChieu(kn.thongTin.mac, ip, cong);
           return await viec(kn, ip, cong);
@@ -2800,7 +2847,18 @@ export class UngDung {
   }
 
   // ---- 2.8: kết nối giữ mở, nhịp, nghe cân, tự chỉnh giờ, UDP (CHƯA THỬ TRÊN CÂN THẬT) -----------------------------
-  private giuKetNoiBat(): boolean { return this.cauHinh().giuKetNoi !== false; }
+  /** 2.10 — đường dây không giữ kết nối: cân chỉ nghe dây ở màn hình Prog → 4 → 3, mỗi việc mở dây riêng rồi đóng. */
+  private giuKetNoiBat(): boolean { const ch = this.cauHinh(); return ch.giuKetNoi !== false && !this.laDay(ch); }
+
+  /** 2.10 — đang dùng dây RS232 làm đường chính (đã chọn cổng COM). */
+  private laDay(ch: CauHinh = this.cauHinh()): boolean { return ch.duongCan === 'day' && !!ch.com; }
+
+  /** Mở kết nối hai chiều theo đường đang chọn: dây (cổng COM, tốc độ ở cài đặt) hay cổng hai chiều ở `ip`. */
+  private moKetNoiCan(ip: string, cong: number, tuy: TuyChonKetNoi): Promise<KetNoiCan> {
+    const ch = this.cauHinh();
+    if (this.laDay(ch)) return moKetNoiDay(ch.com!, ch.baud ?? 9600, tuy, this.phu.moCauNoi);
+    return moKetNoi(ip, cong, tuy);
+  }
 
   /**
    * Nhịp mỗi 30 giây (main.ts, như hãng hỏi UPL TIM): giữ kết nối hai chiều sống và biết cân còn đó (đèn ô Cân), đọc giờ
@@ -3070,7 +3128,8 @@ export class UngDung {
       const f = docFileCan(du);
       const soTms = f.dong.filter(d => d.startsWith('TMS\t')).length;
       if (!f.plu.length || !soTms) {
-        throw new LoiCan(`Đọc qua WiFi (cổng hai chiều — chưa thử trên cân thật) được ${f.plu.length} hàng, ${soTms} thông số — không tin được `
+        const qua = this.laDay() ? 'Đọc qua dây RS232' : 'Đọc qua WiFi (cổng hai chiều — chưa thử trên cân thật)';
+        throw new LoiCan(`${qua} được ${f.plu.length} hàng, ${soTms} thông số — không tin được `
           + 'là cân trống. Chương trình chưa ghi nhận gì; dùng USB: trên cân lưu dữ liệu ra USB rồi đưa file A_000.TMS vào chương trình.');
       }
       if (this.coFileGoc()) {
@@ -3352,6 +3411,10 @@ export class UngDung {
    */
   async chanDoanWifi(b: { ghiThu?: unknown } = {}): Promise<KetQuaChanDoan> {
     await this.kiemQuyenCan('Chẩn đoán WiFi');
+    if (this.laDay()) {
+      throw new LoiCan('Đang nối cân qua dây RS232 — Chẩn đoán WiFi chỉ chạy khi nối qua WiFi. Muốn chẩn đoán WiFi: ở Cài đặt bấm '
+        + '"Về lại WiFi" trước.');
+    }
     const ghiThu = b.ghiThu === true;
     return this.motLuc(async () => {
       const ch = this.cauHinh();
@@ -3919,9 +3982,10 @@ export class UngDung {
       let gio = lay();
       try {
         await this.voiKetNoi(async (kn) => { gio = lay(); await kn.datGio(gio); });
-        return { cach: '33581' as const, gio, daXacNhan: true, loiHaiChieu: null, doiDiaChi: null };
+        return { cach: this.laDay() ? 'day' as const : '33581' as const, gio, daXacNhan: true, loiHaiChieu: null, doiDiaChi: null };
       } catch (e) {
-        if (!(e instanceof LoiGiaoThuc) || e.loai === 'khong-cho-phep') throw e;
+        // 2.10 — đường dây: không có cổng 33571 để lui.
+        if (!(e instanceof LoiGiaoThuc) || e.loai === 'khong-cho-phep' || this.laDay()) throw e;
         let phienBan = '';
         try { phienBan = docFileCan(this.docGoc()).phienBan; } catch { /* chưa có file gốc: fileNho ghi "100" */ }
         gio = lay();
@@ -3942,6 +4006,11 @@ export class UngDung {
     const gui = this.phu.gui ?? guiTcp;
     const du = boDongMang(duGoc);
     const ch = this.cauHinh();
+    // 2.10 — đường dây: cả file qua dây như "Gửi thử qua dây" (bắt tay trước; cân không trả lời thì không gửi gì).
+    if (this.laDay(ch)) {
+      await guiCom(ch.com!, ch.baud ?? 9600, du, this.phu.chayPs);
+      return null;
+    }
     try {
       await gui(ch.ipCan, ch.congCan, du);
       await this.nhoMac(ch.ipCan);
@@ -3960,6 +4029,16 @@ export class UngDung {
   /** Nút "Kiểm tra kết nối" (chạy cả lúc mở chương trình): nối không được thì dò WiFi tìm cân. */
   async thuCan(): Promise<KetQuaTimCan> {
     const ch = this.cauHinh();
+    // 2.10 — đường dây: hỏi giờ cân qua dây (cân phải ở Prog → 4 → 3), không dò WiFi.
+    if (this.laDay(ch)) {
+      const kq = { ipCan: ch.ipCan, doi: null, thay: [], daThu: 0, dai: [] };
+      try {
+        await this.motLuc(() => this.voiKetNoi(kn => kn.docGio(), false));
+        return { ...kq, thongCan: true, loi: null };
+      } catch (e) {
+        return { ...kq, thongCan: false, loi: cauLoi(e) };
+      }
+    }
     // 2.8: đang giữ kết nối hai chiều tới địa chỉ này và cân còn trả lời → thông, không mở thêm kết nối 33571 tới cùng cân
     // (cân có nhận hai kết nối cùng lúc không: chưa biết — thử 33571 lúc đang giữ có thể hỏng oan rồi dò cả WiFi).
     const tt = this.giu.trangThai();
@@ -4126,12 +4205,58 @@ export class UngDung {
       }
       const bd = Date.now();
       const kq = await guiCom(com, baud, du, this.phu.chayPs);
-      this.ghiThem({ com, baud });
+      this.nhoComThu(com, baud);
       return {
         com, baud, soByte: du.length, giay: Math.max(giayDay(du.length, baud), Math.round((Date.now() - bd) / 1000)),
         daXacNhan: kq.daXacNhan, gio: kq.gio,
         hang: { so: hang.so, ten: hang.ten, tenCu: hang.tenCu ?? null, gia: hang.gia, giaCu: hang.giaCu ?? null, loai: hang.loai },
       };
+    });
+  }
+
+  /**
+   * Cổng, tốc độ của lần thử dây (Kiểm tra dây, Gửi thử) — để lần sau chọn sẵn. Đang dùng dây làm đường chính thì KHÔNG đổi:
+   * cổng của đường chính chỉ đổi qua "Dùng dây làm đường chính" (bắt tay, so mã máy) — thử dây ở cổng khác không được lặng
+   * lẽ dời mọi việc với cân sang cổng đó.
+   */
+  private nhoComThu(com: string, baud: number): void {
+    if (!this.laDay()) this.ghiThem({ com, baud });
+  }
+
+  /**
+   * 2.10 — chọn đường nối cân. 'day': bắt tay đầy đủ qua cầu nối dây (UPL MAC, UPL INF, rồi hỏi giờ — đúng như mọi việc sau
+   * này sẽ làm) ở cổng và tốc độ đã chọn; được thì lưu duongCan 'day' (cùng cổng, tốc độ), không được thì giữ nguyên đường cũ
+   * và báo lỗi. Cân trả mã máy khác cân đã nhớ → không đổi. Chỉ đọc, không ghi gì xuống cân. 'wifi': về lại WiFi như trước.
+   */
+  async chonDuongCan(b: { duong?: unknown; com?: unknown; baud?: unknown }): Promise<{ cauHinh: CauHinh; thongTin: ThongTinCan | null }> {
+    await this.kiemQuyenCan('Đổi đường nối cân');
+    if (b.duong === 'wifi') {
+      return this.motLuc(async () => {
+        const ch = { ...this.cauHinh() };
+        delete ch.duongCan;
+        ghiJson(this.fileCauHinh, ch, this.phu.vietByte);
+        this.nhipHong = 0;
+        this.nhipSau = 0;
+        return { cauHinh: ch, thongTin: null };
+      });
+    }
+    if (b.duong !== 'day') throw new LoiCan('Chọn đường nối cân: dây RS232 hoặc WiFi.');
+    const com = String(b.com ?? ''), baud = Number(b.baud);
+    kiemCom(com, baud);
+    return this.motLuc(async () => {
+      const kn = await moKetNoiDay(com, baud, this.phu.tuyHaiChieu ?? {}, this.phu.moCauNoi);
+      try {
+        const nho = this.cauHinh().macHaiChieu;
+        if (nho && kn.thongTin.mac !== nho) {
+          throw new LoiCan(`Cân ở đầu dây ${com} có mã máy ${kn.thongTin.mac}, không phải cân chương trình vẫn dùng qua WiFi (${nho}) — `
+            + 'chưa đổi đường nối. Cắm dây vào đúng cân. Vừa thay cân: ở Cài đặt gõ lại địa chỉ cân, bấm Lưu cài đặt, rồi chọn dây lại.');
+        }
+        await kn.docGio();
+      } finally { kn.dong(); }
+      this.ghiThem({ duongCan: 'day', com, baud, ...(kn.thongTin.mac ? { macHaiChieu: kn.thongTin.mac } : {}) });
+      this.giu.bo();   // kết nối WiFi đang giữ (nếu có): đóng — từ đây mọi việc đi qua dây
+      this.tuGuiDaySau = 0;
+      return { cauHinh: this.cauHinh(), thongTin: kn.thongTin };
     });
   }
 
@@ -4145,7 +4270,7 @@ export class UngDung {
     kiemCom(com, baud);
     return this.motLuc(async () => {
       const gio = await hoiGioQuaDay(com, baud, this.phu.chayPs);
-      this.ghiThem({ com, baud });
+      this.nhoComThu(com, baud);
       return { com, baud, gio };
     });
   }

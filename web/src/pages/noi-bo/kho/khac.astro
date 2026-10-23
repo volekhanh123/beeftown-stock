@@ -3,7 +3,7 @@
  * KHO — KHÁC (TẤT CẢ CHỨC NĂNG)
  *
  * Nút cuối thanh đáy trên điện thoại, và đích của ô "Tìm chức năng" ở cột trái
- * máy tính: ô tìm, thao tác nhanh, mọi mục kho vai này dùng được theo nhóm
+ * máy tính: ô tìm (cả thao tác nhanh và mục con), mọi ô kho vai này dùng được theo nhóm
  * (NHOM_KHO), phần khác của nhà hàng cho quản lý / chủ, rồi nút ra khỏi phiên.
  * Dữ liệu: lib/ban-do-chuc-nang.ts; vẽ: components/BanDoChucNang.astro.
  *
@@ -40,7 +40,7 @@ const t = dichNB(nn, {
 <Kho k={k} huongDan="menu" tieuDe={t.tieuDe}>
   <h1>{t.tatCa}</h1>
 
-  <BanDoChucNang nn={nn} hanhDong="/noi-bo/kho/khac" nhom={nhom} nhanh={nhanh} tim={tim} ketQua={ketQua} viec={k.viec} />
+  <BanDoChucNang nn={nn} hanhDong="/noi-bo/kho/khac" nhom={nhom} tim={tim} ketQua={ketQua} viec={k.viec} />
 
   {cheDoMay ? (
     <form method="POST" action={DUONG_MAY} class="kho-thanh-nut">

@@ -11,7 +11,7 @@
  * ghi nhận sự thật đó thành một khẳng định chạy được.
  *
  * Mục 1 kiểm SEED CỦA 0011 trên database chỉ nạp tới 0011 — đúng thứ production đã
- * chạy. Từ 0091 danh mục là cuốn menu bản sáng (42 món còn dùng, 10 món thu hồi):
+ * chạy. Từ 0094 danh mục là cuốn menu bản sáng (42 món còn dùng, 10 món thu hồi):
  * test-thuc-don-ban-sang.mjs kiểm danh mục đó. Mục 2–7 chạy trên database đủ
  * migration, tức là trên danh mục mới.
  */
@@ -195,7 +195,7 @@ await nhom('3 · GIÁ CHƯA DUYỆT KHÔNG CÓ ĐƯỜNG RA', async () => {
 
 // ===========================================================================
 await nhom('4 · NỘI DUNG NHÁP KHÔNG CÔNG BỐ ĐƯỢC', async () => {
-  // Bản nháp của F07 trong seed 0011 (mục 1 kiểm nó còn nằm ở copy_nhap của seed). Từ 0091 copy_nhap của
+  // Bản nháp của F07 trong seed 0011 (mục 1 kiểm nó còn nằm ở copy_nhap của seed). Từ 0094 copy_nhap của
   // F07 là mô tả của cuốn, nên chép thẳng câu nháp đó vào mo_ta_vi.
   await db.query(`update mon_an set mo_ta_vi = '[Mô tả sau khi duyệt công thức]' where ma = 'F07'`);
   ok('Mô tả còn dấu ngoặc vuông → không công bố được',
@@ -294,7 +294,7 @@ await nhom('7 · MÀN HÌNH QUẢN TRỊ TRẢ LỜI ĐƯỢC "VÌ SAO CHƯA LÊ
 
   await db.query(
     `update mon_an set gia = gia_de_xuat, gia_da_duyet = true where ma = 'F05'`);
-  // Từ 0091, F05 (Cơm trộn Hàn) có mức cay ĐỀ XUẤT 1 của cuốn — lý do kế tiếp.
+  // Từ 0094, F05 (Cơm trộn Hàn) có mức cay ĐỀ XUẤT 1 của cuốn — lý do kế tiếp.
   const { rows: cay } = await db.query(
     `select vuong_gi from v_mon_con_vuong where ma = 'F05'`);
   ok('Duyệt giá rồi nhưng mức cay đề xuất chưa duyệt thì nói đúng lý do',

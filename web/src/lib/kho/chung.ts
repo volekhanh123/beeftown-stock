@@ -402,6 +402,18 @@ export function chiaSoDuLonNhat(tong: number, trongSo: number[]): number[] {
   return ra;
 }
 
+/**
+ * Giá trị gặp nhiều nhất (bỏ null / rỗng) — danh sách gọn chỉ ghi chỗ để khi khác chỗ của đa số (Kho lạnh), 22/10/2026.
+ * Bằng nhau thì lấy giá trị gặp trước. Không có gì thì null.
+ */
+export function phoBienNhat(ds: readonly (string | null | undefined)[]): string | null {
+  const dem = new Map<string, number>();
+  for (const x of ds) if (x) dem.set(x, (dem.get(x) ?? 0) + 1);
+  let tot: string | null = null;
+  for (const [x, n] of dem) if (tot === null || n > dem.get(tot)!) tot = x;
+  return tot;
+}
+
 // -----------------------------------------------------------------------------
 // TÊN MÁY TỪ TÊN TIẾNG VIỆT
 // -----------------------------------------------------------------------------

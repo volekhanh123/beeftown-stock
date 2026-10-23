@@ -112,11 +112,8 @@ const t = dichNB(nn, {
   quanLyTraVe: { vi: 'Quản lý trả về', en: 'Sent back by manager' },
   daDem: { vi: (a: number, b: number) => `Đã đếm ${a}/${b}`, en: (a: number, b: number) => `Counted ${a}/${b}` },
   duHet: { vi: ' — đủ hết, bấm "Gửi quản lý duyệt".', en: ' — all done, press "Send to manager for approval".' },
-  chuaDemHai: { vi: 'Chưa đếm:', en: 'Not counted yet:' },
-  dongKhac: { vi: (n: number) => ` và ${n} dòng khác`, en: (n: number) => ` and ${n} more ${s(n, 'line', 'lines')}` },
-  ghiDung1: { vi: 'Ghi đúng số đang thấy. Không còn gì thì chỉ cần tích ', en: 'Enter exactly what you see. If there is none left, just tick ' },
   daHetThat: { vi: 'Đã hết thật', en: 'None left' },
-  ghiDung2: { vi: '. Số trên sổ sẽ hiện sau khi gửi.', en: '. The book numbers show after you send.' },
+  quetNhanCan: { vi: 'Quét nhãn cân để điền số', en: 'Scan scale labels to fill in the counts' },
   congDon1: { vi: 'Phiếu này đang quét cộng dồn: ', en: 'This sheet uses running scans: ' },
   soNhan: { vi: (n: number) => `${n} nhãn`, en: (n: number) => `${n} ${s(n, 'label', 'labels')}` },
   congDon2: {
@@ -486,16 +483,6 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
               {dongHien.length > 0 && chuaDem.length === 0 && <span class="kho-phu">{' '}{t.duHet}</span>}
             </p>
             <progress max={Math.max(dongHien.length, 1)} value={soDaDem} style="width:100%;height:12px" aria-hidden="true"></progress>
-            {chuaDem.length > 0 && (
-              <p class="kho-phu" style="margin:.5rem 0 0">
-                {t.chuaDemHai}{' '}
-                {chuaDem.slice(0, 8).map((x, j) => <>{j > 0 && ', '}<a href={`#dong-${x.i}`}>{x.ten}</a></>)}
-                {chuaDem.length > 8 && t.dongKhac(chuaDem.length - 8)}
-              </p>
-            )}
-            <p class="nb-dan" style="margin:.75rem 0 0">
-              {t.ghiDung1}<strong>{t.daHetThat}</strong>{t.ghiDung2}
-            </p>
           </div>
 
           {!theoLo && coNhanQuet && (
@@ -505,41 +492,39 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
             </div>
           )}
           {!theoLo && !coNhanQuet && (
-            <div class="nb-the">
-              <QuetMa nhan={t.docVaGhi} tuFocus
-                goiY={t.quetGoiY} />
+            <details class="nb-the kk-quet">
+              <summary>{t.quetNhanCan}</summary>
+              <QuetMa nhan={t.docVaGhi} goiY={t.quetGoiY} />
               {kk.loai_vi_tri === 'quay' && (
                 <p class="nb-dan" style="margin:.75rem 0 0">{t.nhieuDot}<a href={`/noi-bo/kho/quay/dem?vi_tri=${kk.vi_tri_id}`}>{t.moDemQuay}</a>.</p>
               )}
-            </div>
+            </details>
           )}
 
           {dongHien.length === 0 && <p class="nb-rong">{t.viTriTrong}</p>}
           {dongHien.map((d, i) => {
             const mh = tenMh.get(d.mat_hang_id);
             return (
-              <div class="kho-dong-hang" id={`dong-${i}`}
-                   style={`scroll-margin-top:5.5rem${daDem[i] ? '' : ';border-left:4px solid var(--mu-tat)'}`}>
-                <span class="so-thu-tu">{i + 1}</span>
+              <div class:list={['kk-dong', { 'chua-dem': !daDem[i] }]} id={`dong-${i}`}>
                 <input type="hidden" name={`k${i}_mh`} value={d.mat_hang_id} />
                 {d.lo_id && <input type="hidden" name={`k${i}_lo`} value={d.lo_id} />}
                 {d.goc != null && <input type="hidden" name={`k${i}_goc`} value={d.goc} />}
-                <p style="margin:.35rem 0 .5rem"><strong>{mh?.ten ?? '—'}</strong>
-                  {d.lo_id && <><br /><span class="kho-phu">{moTaLo(d.lo_id)}</span></>}
-                  {!daDem[i] && <><br /><span class="kho-phu">{t.chuaDem}</span></>}
-                  {!d.lo_id && (nhanQuet.get(d.mat_hang_id) ?? 0) > 0 && <><br /><span class="kho-phu">{t.daQuetNhan(nhanQuet.get(d.mat_hang_id) ?? 0)}</span></>}</p>
-                <div class="kho-luoi">
+                <p class="kk-ten"><strong>{i + 1}. {mh?.ten ?? '—'}</strong>
+                  {d.lo_id && <span class="kho-phu">{moTaLo(d.lo_id)}</span>}
+                  {!daDem[i] && <span class="kho-phu">{t.chuaDem}</span>}
+                  {!d.lo_id && (nhanQuet.get(d.mat_hang_id) ?? 0) > 0 && <span class="kho-phu">{t.daQuetNhan(nhanQuet.get(d.mat_hang_id) ?? 0)}</span>}</p>
+                <div class="kk-o">
                   {mh?.dem_goi && (
                     <label class="nb-o"><span>{t.soDv(mh.don_vi_goi)}</span>
                       <input type="text" inputmode="numeric" name={`k${i}_goi`} value={d.goi} /></label>
                   )}
                   <label class="nb-o"><span>{mh?.dem_goi ? t.kgNeuCan : t.soKg}</span>
                     <input type="text" inputmode="decimal" name={`k${i}_kg`} value={d.kg} /></label>
+                  <label class="kho-tich kk-het" title={t.hetThat(mh?.dem_goi ? mh.don_vi_goi : null)}>
+                    <input type="checkbox" name={`k${i}_het`} value="co" checked={d.het} />
+                    {t.daHetThat}
+                  </label>
                 </div>
-                <label class="kho-tich" style="min-height:48px;padding:.1rem 0 .6rem">
-                  <input type="checkbox" name={`k${i}_het`} value="co" checked={d.het} />
-                  {t.hetThat(mh?.dem_goi ? mh.don_vi_goi : null)}
-                </label>
               </div>
             );
           })}
@@ -700,3 +685,24 @@ const choToiDuyet = kk?.trang_thai === 'cho_duyet' && k.duoc('duyet');
   </p>
   {kk && <KyTen ten={[t.kyNguoiDem, t.kyKiemTra, t.kyQuanLy]} />}
 </Kho>
+
+<style>
+  /* Gọn 22/10/2026 (Khánh duyệt): mỗi món một hàng — tên, rồi ô số gói, ô kg, ô "Đã hết thật" trên cùng một
+     hàng (điện thoại cũng vậy). Món chưa đếm: vạch Marigold bên trái như trước. */
+  .kk-dong {
+    border: 1px solid var(--kho-vach); border-radius: var(--kho-bo); background: var(--nb-the);
+    padding: .55rem .75rem .6rem; margin-bottom: .5rem; scroll-margin-top: 5.5rem;
+  }
+  .kk-dong.chua-dem { border-left: 4px solid var(--mu-tat); }
+  .kk-ten { margin: 0 0 .35rem; line-height: 1.3; }
+  .kk-ten .kho-phu { font-size: .8rem; }
+  .kk-ten .kho-phu::before { content: ' · '; }
+  /* Hai ô số chia đều, ô "Đã hết thật" vừa chữ, không ngắt dòng — vừa 360px. */
+  .kk-o { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: .5rem; align-items: end; }
+  .kk-o > .kk-het { grid-column: 3; }
+  .kk-o:not(:has(> .nb-o + .nb-o)) > .nb-o { grid-column: 1 / 3; }   /* món chỉ đếm kg: một ô số rộng gấp đôi */
+  .kk-o .nb-o { margin: 0; }
+  .kk-o .nb-o > span { font-size: .78rem; }
+  .kk-het { min-height: 48px; margin: 0; font-size: .82rem; white-space: nowrap; }
+  .kk-quet > summary { cursor: pointer; font-weight: 600; min-height: 48px; display: list-item; padding: .6rem 0; }
+</style>

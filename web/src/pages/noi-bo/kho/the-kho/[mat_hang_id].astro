@@ -71,12 +71,11 @@ const t = dichNB(nn, {
   viec: { vi: 'Việc', en: 'Activity' },
   chungTu: { vi: 'Chứng từ', en: 'Document' },
   oDauLo: { vi: 'Ở đâu · lô', en: 'Where · lot' },
-  nhapKg: { vi: 'Nhập kg', en: 'In kg' },
-  xuatKg: { vi: 'Xuất kg', en: 'Out kg' },
-  tonKg: { vi: 'Tồn kg', en: 'Stock kg' },
-  nhapDv: { vi: (dv: string) => `Nhập ${dv}`, en: (dv: string) => `In ${dv}` },
-  xuatDv: { vi: (dv: string) => `Xuất ${dv}`, en: (dv: string) => `Out ${dv}` },
-  tonDv: { vi: (dv: string) => `Tồn ${dv}`, en: (dv: string) => `Stock ${dv}` },
+  // Gọn 22/10/2026 (Khánh duyệt): nhập / xuất / tồn của kg (và của gói) gộp một cột — số thay đổi có dấu
+  // + / −, dưới là tồn sau dòng đó. 11 cột còn 7.
+  cotKg: { vi: 'Kg ± · tồn', en: 'Kg ± · balance' },
+  cotDv: { vi: (dv: string) => `${dv} ± · tồn`, en: (dv: string) => `${dv} ± · balance` },
+  ton: { vi: 'tồn', en: 'bal.' },
   ghiChu: { vi: 'Ghi chú', en: 'Note' },
   caChiNhanhGhiChu: {
     vi: 'Đang xem cả chi nhánh: hàng chuyển từ kho ra quầy hiện hai dòng (chuyển đi, chuyển đến) — tồn không đổi.',
@@ -133,8 +132,10 @@ const nhanh = khoangNhanh(homNay, nn);
 const duocXem = (q: 'xem_gia' | 'nhap' | 'pha_loc' | 'xem') => k.duoc(q);
 // Tồn âm không nên có — nếu có thì tô đỏ để người xem để ý.
 const am = (n: number) => n < 0;
-const soKg = (n: number) => (n ? dinhDangKg(n, nn) : '');
-const soGoi = (n: number) => (n ? String(n) : '');
+/** "+1,589", "−0,761"; dòng vừa nhập vừa xuất (hiếm) in cả hai. Không có thì rỗng. */
+const thayDoi = (vao: number, ra: number, chu: (n: number) => string) =>
+  [vao ? `+${chu(vao)}` : '', ra ? `−${chu(ra)}` : ''].filter(Boolean).join(' / ');
+const kgChu = (n: number) => dinhDangKg(n, nn);
 // Tên việc: màn tiếng Việt giữ đúng chữ database trả (ten_loai); tiếng Anh tra theo mã loại sổ,
 // mã lạ thì dịch chữ database (dichCau).
 const tenLoai = (d: DongTheKho) => (nn === 'vi' ? d.ten_loai : (TEN_LOAI_SO_CAI_NB[d.loai]?.[nn] ?? dichCau(nn, d.ten_loai)));
@@ -197,8 +198,8 @@ const tenLoai = (d: DongTheKho) => (nn === 'vi' ? d.ten_loai : (TEN_LOAI_SO_CAI_
               <table class="kho-bang the-bang">
                 <thead><tr>
                   <th>{t.ngay}</th><th>{t.viec}</th><th>{t.chungTu}</th><th>{t.oDauLo}</th>
-                  <th class="so">{t.nhapKg}</th><th class="so">{t.xuatKg}</th><th class="so">{t.tonKg}</th>
-                  {coGoi && <><th class="so">{t.nhapDv(dvg)}</th><th class="so">{t.xuatDv(dvg)}</th><th class="so">{t.tonDv(dvg)}</th></>}
+                  <th class="so">{t.cotKg}</th>
+                  {coGoi && <th class="so">{t.cotDv(dvg)}</th>}
                   <th>{t.ghiChu}</th>
                 </tr></thead>
                 <tbody>
@@ -208,10 +209,9 @@ const tenLoai = (d: DongTheKho) => (nn === 'vi' ? d.ten_loai : (TEN_LOAI_SO_CAI_
                         <tr class="dau-ky">
                           <td class="o-ngay" data-nhan={t.ngay}>{dinhDangNgay(d.ngay ?? boLoc.tu)}</td>
                           <td class="o-viec" data-nhan={t.viec}><strong>{tenLoai(d)}</strong></td>
-                          <td class="o-ct"></td><td class="o-noi"></td><td class="so o-nhap"></td><td class="so o-xuat"></td>
-                          <td class:list={['so o-ton', { am: am(d.ton_kg) }]} data-nhan={t.tonKg}><b>{dinhDangKg(d.ton_kg, nn)}</b></td>
-                          {coGoi && <><td class="so o-nhapg"></td><td class="so o-xuatg"></td>
-                            <td class="so o-tong" data-nhan={t.tonDv(dvg)}><b>{d.ton_goi}</b></td></>}
+                          <td class="o-ct"></td><td class="o-noi"></td>
+                          <td class:list={['so o-kg', { am: am(d.ton_kg) }]} data-nhan={t.cotKg}><b>{dinhDangKg(d.ton_kg, nn)}</b></td>
+                          {coGoi && <td class="so o-goi" data-nhan={t.cotDv(dvg)}><b>{d.ton_goi}</b></td>}
                           <td class="o-ghi"></td>
                         </tr>
                       );
@@ -225,14 +225,14 @@ const tenLoai = (d: DongTheKho) => (nn === 'vi' ? d.ten_loai : (TEN_LOAI_SO_CAI_
                           {d.so_chung_tu ? (link ? <a href={link}>{d.so_chung_tu}</a> : d.so_chung_tu) : '—'}
                         </td>
                         <td class="o-noi" data-nhan={t.oDauLo}>{d.vi_tri ?? '—'}{d.ma_lo && <span class="kho-phu">{' · '}{d.ma_lo}{tangChu(d.lo_id) && <>{' · '}<strong>{tangChu(d.lo_id)}</strong></>}</span>}</td>
-                        <td class="so o-nhap" data-nhan={t.nhapKg}>{soKg(d.nhap_kg)}</td>
-                        <td class="so o-xuat" data-nhan={t.xuatKg}>{soKg(d.xuat_kg)}</td>
-                        <td class:list={['so o-ton', { am: am(d.ton_kg) }]} data-nhan={t.tonKg}><b>{dinhDangKg(d.ton_kg, nn)}</b></td>
-                        {coGoi && <>
-                          <td class="so o-nhapg" data-nhan={t.nhapDv(dvg)}>{soGoi(d.nhap_goi)}</td>
-                          <td class="so o-xuatg" data-nhan={t.xuatDv(dvg)}>{soGoi(d.xuat_goi)}</td>
-                          <td class="so o-tong" data-nhan={t.tonDv(dvg)}><b>{d.ton_goi}</b></td>
-                        </>}
+                        <td class:list={['so o-kg', { am: am(d.ton_kg) }]} data-nhan={t.cotKg}>
+                          <b>{thayDoi(d.nhap_kg, d.xuat_kg, kgChu)}</b><small>{t.ton} {dinhDangKg(d.ton_kg, nn)}</small>
+                        </td>
+                        {coGoi && (
+                          <td class="so o-goi" data-nhan={t.cotDv(dvg)}>
+                            <b>{thayDoi(d.nhap_goi, d.xuat_goi, String)}</b><small>{t.ton} {d.ton_goi}</small>
+                          </td>
+                        )}
                         <td class="o-ghi" data-nhan={t.ghiChu}>{dichCau(nn, d.dien_giai)}</td>
                       </tr>
                     );
@@ -270,6 +270,8 @@ const tenLoai = (d: DongTheKho) => (nn === 'vi' ? d.ten_loai : (TEN_LOAI_SO_CAI_
   .the-khung { container-type: inline-size; overflow-x: auto; }
   .the-bang tr.dau-ky td { background: var(--kem-sau); }
   .the-bang td.o-ghi { min-width: 10rem; }
+  .the-bang td.o-kg b, .the-bang td.o-goi b { display: block; white-space: nowrap; }
+  .the-bang td.o-kg small, .the-bang td.o-goi small { display: block; color: var(--muc-nhat); white-space: nowrap; }
 
   /* Khung hẹp: mỗi dòng sổ là một thẻ. Hàng 1: ngày · việc; hàng 2: nhập /
      xuất / tồn; rồi chứng từ, nơi, ghi chú. Ô trống thì ẩn. */
@@ -288,15 +290,11 @@ const tenLoai = (d: DongTheKho) => (nn === 'vi' ? d.ten_loai : (TEN_LOAI_SO_CAI_
     }
     .the-bang td.o-ngay { order: 1; }
     .the-bang td.o-viec { order: 2; grid-column: span 2; }
-    .the-bang td.o-nhap { order: 3; }
-    .the-bang td.o-xuat { order: 4; }
-    .the-bang td.o-ton { order: 5; }
-    .the-bang td.o-nhapg { order: 6; }
-    .the-bang td.o-xuatg { order: 7; }
-    .the-bang td.o-tong { order: 8; }
-    .the-bang td.o-ct { order: 9; }
-    .the-bang td.o-noi { order: 10; grid-column: span 2; }
-    .the-bang td.o-ghi { order: 11; grid-column: 1 / -1; min-width: 0; }
+    .the-bang td.o-kg { order: 3; }
+    .the-bang td.o-goi { order: 4; }
+    .the-bang td.o-ct { order: 5; }
+    .the-bang td.o-noi { order: 6; grid-column: span 2; }
+    .the-bang td.o-ghi { order: 7; grid-column: 1 / -1; min-width: 0; }
   }
 
   @media print {

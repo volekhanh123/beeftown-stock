@@ -25,7 +25,8 @@ Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần c�
 | `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động — và **toàn bộ kiểm thử** (`crm/test/`). |
 | `CLAUDE.md` | **Quy trình kiểm thử bắt buộc** cho mọi tính năng mới: 9 mục "định nghĩa xong", cách chạy test, việc trước khi mở PR. |
 | `AGENTS.md` | Cùng quy trình đó cho Codex và các agent không phải Claude, kèm quy tắc rà soát PR (mục "Code Review Rules"). |
-| `THUONG-HIEU.md` | **Bảng màu thương hiệu Khánh chốt 09/10/2026**: giá trị đã áp dụng trên trang công khai, `/noi-bo` và kho; chỗ website còn khác guideline; thứ còn mang màu cũ (Beeftown Cân, ảnh hướng dẫn kho). |
+| `THUONG-HIEU.md` | **Bảng màu mới Khánh chốt 22/10/2026** (đỏ `#BD0000`, đen, trắng; mục 0, mã chưa đổi, danh sách việc đổi chờ duyệt). **Bảng 09/10/2026 đang chạy**: giá trị đã áp dụng trên trang công khai, `/noi-bo` và kho; chỗ website còn khác guideline; thứ còn mang màu cũ hơn (Beeftown Cân, ảnh hướng dẫn kho). |
+| `mini-app/` | **Mini App Zalo** bán thịt mang về: khách chọn số khay của 6 phần thịt, app mở chat Zalo OA với tin đơn điền sẵn, khách tự bấm Gửi. Không máy chủ, không lưu dữ liệu khách. Xem `mini-app/README.md`. |
 | `.github/` | Kiểm thử tự động (GitHub Actions) mỗi PR, mỗi lần gộp và mỗi đêm 00:30 giờ VN; đóng gói `BeeftownCan.exe` (tải về không cần gõ lệnh: `can-app/README.md`, mục "Tải BeeftownCan.exe về"); mẫu PR; mẫu báo lỗi. |
 | `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên — đặc tả nghiệp vụ của `crm/` (tỷ lệ tích điểm, ngưỡng, nhóm khách). |
 | `Beeftown_Bo_Nhan_Dien_So.html` | Bộ nhận diện trên Google Maps, Zalo OA, Facebook, Instagram, TikTok (bảng kích thước F4 còn dùng; phần nội dung đã cũ). |
@@ -66,6 +67,8 @@ Lưu ý khi sửa code phần mềm cân:
 
 ### Bảng màu
 
+> **Ngày 22/10/2026 Khánh chốt bảng màu mới: chỉ đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF`; bỏ Cream, Marigold, Warm Stone** (`THUONG-HIEU.md` mục 0). Mã chưa đổi: website và Beeftown Cân còn màu cũ, danh sách việc đổi màu chờ Khánh duyệt. Phần dưới đây tả bảng đang chạy.
+>
 > **Cả website** dùng bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (`THUONG-HIEU.md`): trang công khai đổi trước; `/noi-bo` và kho đổi ngày 12/10/2026. Còn mang màu cũ: Beeftown Cân (PR riêng, kèm phiên bản mới của chương trình) và 15 ảnh chụp trong trang hướng dẫn của kho (`web/public/kho/hd-*.png`), chờ chụp lại.
 
 | Tên | Mã | Token web | Dùng cho |
@@ -379,10 +382,12 @@ Kiểm thử: `crm/test/test-sao-luu.mjs` (chính hai script, với `supabase` v
 
 ## Kiểm thử tự động — Khánh cần biết
 
-Mỗi PR, mỗi lần gộp vào main và mỗi đêm lúc 00:30 giờ Việt Nam, GitHub tự chạy toàn bộ kiểm thử
-(database, kho, Zalo, Messenger, Beeftown Cân, trang web trên trình duyệt thật). Chi tiết ở `CLAUDE.md`.
+Mỗi PR (khi bấm "Ready for review"), mỗi lần gộp vào main, và đêm 00:30 giờ Việt Nam khi main có commit mới
+hoặc đêm Chủ nhật, GitHub tự chạy toàn bộ kiểm thử (database, kho, Zalo, Messenger, Beeftown Cân, trang web
+trên trình duyệt thật). PR nháp không chạy, để đỡ phút CI. Chi tiết ở `CLAUDE.md`.
 
-- **Chỉ bấm Merge khi PR có dấu ✓ xanh.** Dấu ✗ đỏ nghĩa là có kiểm thử hỏng — phiên Claude đang theo dõi
+- **Bấm "Ready for review", đợi ~10 phút cho CI chạy, chỉ bấm Merge khi PR có dấu ✓ xanh.** PR nháp có thể
+  hiện ✓ mà chưa kiểm gì (hai job kiểm mã bỏ qua). Dấu ✗ đỏ nghĩa là có kiểm thử hỏng — phiên Claude đang theo dõi
   PR sẽ tự sửa; đừng gộp trong lúc chờ.
 - **Deploy tự chặn** commit chưa có CI xanh (`npm run deploy`). Cài `gh` một lần trên máy deploy:
   `winget install GitHub.cli`, rồi `gh auth login`.

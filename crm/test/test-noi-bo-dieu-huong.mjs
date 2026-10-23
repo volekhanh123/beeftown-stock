@@ -191,10 +191,23 @@ await nhom('3 · AI THẤY MỤC NÀO — KHỚP TRANG VÀ RLS', async () => {
     ok(`${vai}: trang Khác chỉ có mục nhà hàng của vai`, crm.every(l => MUC_CRM.find(m => m.link === l)?.vai.includes(vai)));
   }
   ok('Thủ kho: trang Khác không có phần nhà hàng', !BD.banDoChucNang('thu_kho', 'kho').some(n => n.ma === 'nb_phan_khac'));
-  const khongNhom = MUC_KHO.filter(m => !KDH.NHOM_KHO.some(n => n.ma === m.nhom)).map(m => m.ma);
-  ok('Mục kho nào cũng thuộc một nhóm có thật', khongNhom.length === 0, khongNhom.join(', '));
-  ok('Nhóm kho nào cũng có mục', KDH.NHOM_KHO.every(n => MUC_KHO.some(m => m.nhom === n.ma)));
-  ok('Chủ: 23 mục kho trong 6 nhóm', KDH.nhomCuaVai('chu_so_huu').length === 6 && mucCuaVai('chu_so_huu').length === MUC_KHO.length);
+  // Ô menu có nhóm; mục con (`cha`, gọn menu 22/10/2026) không có nhóm — nó theo nhóm của ô cha.
+  const khongNhom = MUC_KHO.filter(m => m.cha ? m.nhom : !KDH.NHOM_KHO.some(n => n.ma === m.nhom)).map(m => m.ma);
+  ok('Ô menu kho nào cũng thuộc một nhóm có thật; mục con không tự đặt nhóm', khongNhom.length === 0, khongNhom.join(', '));
+  ok('Nhóm kho nào cũng có ô', KDH.NHOM_KHO.every(n => MUC_KHO.some(m => m.nhom === n.ma)));
+  ok('Chủ: 15 ô kho trong 6 nhóm', KDH.nhomCuaVai('chu_so_huu').length === 6 && mucCuaVai('chu_so_huu').length === 15);
+  // Mục con không in trên trang Khác nhưng ô tìm vẫn ra, kèm tên nhóm của ô cha.
+  const kq = (vai, chu) => BD.timChucNang(BD.banDoChucNang(vai, 'kho'), BD.thaoTacNhanhChucNang(vai), chu);
+  const inTrenTrang = BD.banDoChucNang('chu_so_huu', 'kho').flatMap(n => n.muc.map(m => m.link));
+  ok('Trang Khác không in mục con (Tảng · ủ, Mặt hàng, Bán hàng iPOS)',
+    !['/noi-bo/kho/tang', '/noi-bo/kho/cai-dat/mat-hang', '/noi-bo/kho/ban-ipos'].some(l => inTrenTrang.includes(l)));
+  for (const [chu, link, nhomVi] of [['tảng', '/noi-bo/kho/tang', 'Tồn kho'], ['mặt hàng', '/noi-bo/kho/cai-dat/mat-hang', 'Thiết lập và trợ giúp'],
+    ['ipos', '/noi-bo/kho/ban-ipos', 'Tiền và báo cáo'], ['ai lam duoc gi', '/noi-bo/kho/cai-dat/quyen', 'Thiết lập và trợ giúp'],
+    ['nhận hàng ra quầy', '/noi-bo/kho/quay/nhan', 'Pha lóc, quầy, xuất']]) {
+    const r = kq('chu_so_huu', chu).find(x => x.muc.link === link);
+    ok(`Ô tìm "${chu}" vẫn ra mục con ${link}, dưới nhóm "${nhomVi}"`, r?.nhom.vi === nhomVi, r?.nhom.vi ?? 'không ra');
+  }
+  ok('Ô tìm không ra mục con vai không mở được (kế toán gõ "ipos")', !kq('ke_toan', 'ipos').some(x => x.muc.link === '/noi-bo/kho/ban-ipos'));
   const tuLa = Object.keys(KDH.TU_KHOA_KHO).filter(ma => !MUC_KHO.some(m => m.ma === ma));
   ok('Từ khóa tìm chỉ cho mục kho có thật', tuLa.length === 0, tuLa.join(', '));
 });

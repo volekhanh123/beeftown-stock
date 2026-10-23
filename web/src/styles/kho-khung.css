@@ -195,25 +195,13 @@
 .kho-ben-muc[aria-current='page'] .kho-bt { color: var(--cuc-vang); }
 /* Vòng focus của dòng menu vẽ VÀO TRONG dòng: cột bên cuộn dọc (overflow) cắt mất hai mép của vòng vẽ ra ngoài,
    và vòng của dòng này đè lên dòng kề bên. Dòng đang chọn nền Charcoal nên vòng của nó là Marigold. */
-.kho-ben-muc:focus-visible, .kho-nhanh-ben a:focus-visible { outline-offset: -3px; }
+.kho-ben-muc:focus-visible { outline-offset: -3px; }
 .kho-ben-muc[aria-current='page']:focus-visible { outline-color: var(--cuc-vang); }
 /* Chuột (không phải ngón tay): dòng 36px để laptop 1366×768 thấy gần hết các nhóm. */
 @media (pointer: fine) {
   .kho-ben-muc { min-height: 36px; }
   .kho-ben-nhom { margin-top: .8rem; }
 }
-
-.kho-nhanh-ben { margin-top: 1.25rem; }
-.kho-nhanh-ben p {
-  margin: 0 0 .35rem; font-size: .7rem; font-weight: 700; letter-spacing: .08em;
-  text-transform: uppercase; color: var(--muc-nhat);
-}
-.kho-nhanh-ben a {
-  display: flex; align-items: center; gap: .6rem; min-height: 44px; padding: 0 .6rem;
-  border-radius: 10px; text-decoration: none; font-size: .88rem; font-weight: 600; color: var(--than);
-}
-.kho-nhanh-ben a .kho-bt { color: var(--do); }
-.kho-nhanh-ben a:hover { background: var(--nb-the); }
 
 /* --- Thanh đáy (điện thoại, tablet) ----------------------------------------- */
 .kho-day {
@@ -305,10 +293,11 @@
 
 /* --- Dòng sự kiện (Thông báo, Việc cần làm) --------------------------------- */
 .kho-sk-ds { list-style: none; margin: 0 0 1.25rem; padding: 0; display: grid; gap: .5rem; }
+/* Gọn hai dòng (22/10/2026): nút luôn ở cột phải, kể cả điện thoại — trước đây nút xuống dòng riêng. */
 .kho-sk {
-  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: .25rem .75rem; align-items: start;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: .25rem .75rem; align-items: center;
   background: var(--kho-the); border: 1px solid var(--kho-vach); border-radius: var(--kho-bo);
-  padding: .8rem .9rem; border-left-width: 4px;
+  padding: .65rem .75rem; border-left-width: 4px;
 }
 .kho-sk.do   { border-left-color: var(--do); }
 .kho-sk.vang { border-left-color: var(--mu-tat); }
@@ -322,18 +311,17 @@
   content: ''; position: absolute; top: -.15rem; right: -.3rem; width: .65rem; height: .65rem; border-radius: 50%;
   background: var(--mu-tat); box-shadow: 0 0 0 2px var(--kho-the), inset 0 0 0 1.5px var(--vang-chu);
 }
-.kho-sk-dau { color: var(--muc-nhat); padding-top: .1rem; }
+.kho-sk-dau { color: var(--muc-nhat); align-self: start; padding-top: .1rem; }
 .kho-sk.do .kho-sk-dau { color: var(--do); }
 .kho-sk.vang .kho-sk-dau { color: var(--vang-chu); }
 .kho-sk-chu { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
 .kho-sk-chu strong { font-size: .95rem; line-height: 1.3; overflow-wrap: anywhere; }
-.kho-sk-chu span { font-size: .85rem; color: var(--muc-nhat); }
-.kho-sk-chu small { font-size: .75rem; color: var(--muc-nhat); }
-.kho-sk-nut { grid-column: 2; justify-self: start; min-height: 44px; font-size: .85rem; margin-top: .35rem; }
-@media (min-width: 640px) {
-  .kho-sk { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; }
-  .kho-sk-nut { grid-column: 3; margin-top: 0; }
+/* "giờ · chi tiết" tối đa hai dòng chữ — đủ ở trang đích (nút). */
+.kho-sk-chu small {
+  font-size: .8rem; line-height: 1.35; color: var(--muc-nhat);
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
 }
+.kho-sk-nut { min-height: 44px; font-size: .85rem; padding-left: .75rem; padding-right: .75rem; white-space: nowrap; }
 
 /* Thẻ chọn (tab) dạng liên kết GET */
 .kho-the-chon { display: flex; gap: .4rem; overflow-x: auto; margin: 0 0 1rem; padding-bottom: .1rem; }

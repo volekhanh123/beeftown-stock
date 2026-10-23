@@ -53,6 +53,21 @@ updates:
       can-app-ban-nho:
         update-types: [minor, patch]
 
+  # Mini App Zalo. Nâng zmp-sdk, zmp-ui, zmp-cli: đọc ghi chú phát hành của Zalo, đưa bản thử lên và bấm thử
+  # gửi đơn trước khi gộp (mini-app/CLAUDE.md) — CI không chạy được Mini App trong Zalo. Bản phát hành đã
+  # duyệt không tự đổi theo: đổi thư viện rồi muốn khách thấy thì phải gửi Zalo duyệt lại.
+  - package-ecosystem: npm
+    directory: /mini-app
+    schedule:
+      interval: monthly
+      timezone: Asia/Ho_Chi_Minh
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: 'Mini App: nâng thư viện'
+    groups:
+      mini-app-ban-nho:
+        update-types: [minor, patch]
+
   # actions/checkout, setup-node, cache, upload-artifact… trong .github/workflows/
   - package-ecosystem: github-actions
     directory: /

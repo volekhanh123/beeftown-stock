@@ -182,9 +182,9 @@ export const CAU_EN: Readonly<Record<string, string>> = {
   'Đặt bàn mới chỉ ở trạng thái chờ gọi hoặc đã xác nhận': 'A new booking can only be waiting for a call or already confirmed',
   'Mẫu tin khác mẫu của chiến dịch': 'The message template differs from the campaign template',
 
-  // 0091 — khối chặn chạy lại migration thực đơn khi đã công bố / duyệt / ghi mô tả (hiện ở SQL Editor)
-  'Thực đơn đã có món công bố, giá hoặc độ cay đã duyệt, hoặc mô tả đã ghi: chạy lại 0091 sẽ xóa hết. Không chạy lại file này.':
-    'The menu already has published dishes, approved prices or spice levels, or written descriptions: running 0091 again would erase them all. Do not run this file again.',
+  // 0094 — khối chặn chạy lại migration thực đơn khi đã công bố / duyệt / ghi mô tả (hiện ở SQL Editor)
+  'Thực đơn đã có món công bố, giá hoặc độ cay đã duyệt, hoặc mô tả đã ghi: chạy lại 0094 sẽ xóa hết. Không chạy lại file này.':
+    'The menu already has published dishes, approved prices or spice levels, or written descriptions: running 0094 again would erase them all. Do not run this file again.',
 };
 
 /**

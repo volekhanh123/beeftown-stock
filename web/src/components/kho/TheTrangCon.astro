@@ -1,0 +1,49 @@
+---
+/**
+ * HÀNG THẺ TRANG CON — một ô menu và các mục con của nó (lib/kho/dieu-huong.ts, trường `cha`).
+ *
+ * Gọn menu 22/10/2026: Tảng · ủ nằm trong Tồn kho, Bán hàng iPOS và Định mức bếp trong Báo cáo,
+ * Mặt hàng và Định lượng món trong Thiết lập, Quy trình và Ai làm được gì trong Hướng dẫn, hai
+ * trang quầy trong ô Quầy. Hàng thẻ này đặt ngay trên `h1` của trang cha và của từng trang con,
+ * để đi qua lại mà không cần ô menu riêng.
+ *
+ * Thẻ = ô cha nếu vai thấy nó (bỏ khi một mục con trùng link, như Quầy → Quầy cần hàng) rồi các
+ * mục con vai này mở được. Chỉ còn một thẻ thì không in gì. Thẻ đang mở: link khớp đường dẫn dài nhất.
+ * Không gọi database — số đỏ đọc `k.viec` như menu.
+ */
+import type { TrangKho } from '../../lib/kho/trang.ts';
+import { mucCuaVai, mucConCuaVai, soDo, nhanSo } from '../../lib/kho/dieu-huong.ts';
+import { dichNB } from '../../lib/ngon-ngu-noi-bo.ts';
+
+interface Props { k: TrangKho; cha: string }
+const { k, cha } = Astro.props;
+const nn = k.nn;
+const t = dichNB(nn, {
+  trongMuc: { vi: 'Các trang trong mục này', en: 'Pages in this section' },
+  soViec: { vi: (n: number) => `${n} việc`, en: (n: number) => `${n} to do` },
+});
+
+// Ô cha chỉ thành thẻ khi vai này thấy nó (thủ kho mở Định mức bếp qua link: không thấy Báo cáo).
+const goc = mucCuaVai(k.nhanSu.vai_tro).find(m => m.ma === cha);
+const con = mucConCuaVai(k.nhanSu.vai_tro, cha);
+const the = goc && !con.some(m => m.link === goc.link) ? [goc, ...con] : con;
+
+const duong = Astro.url.pathname.replace(/\/$/, '');
+const doKhop = (link: string) => {
+  const l = link.split('?')[0];
+  return duong === l || duong.startsWith(l + '/') ? l.length : 0;
+};
+const dai = Math.max(0, ...the.map(m => doKhop(m.link)));
+---
+{the.length > 1 && (
+  <nav class="kho-the-chon" aria-label={t.trongMuc}>
+    {the.map(m => {
+      const so = soDo(m, k.viec);
+      return (
+        <a href={m.link} aria-current={dai > 0 && doKhop(m.link) === dai ? 'page' : undefined}>
+          {m.ten[nn]}{so > 0 && <b class="kho-so-do" aria-label={t.soViec(so)}>{nhanSo(so)}</b>}
+        </a>
+      );
+    })}
+  </nav>
+)}
