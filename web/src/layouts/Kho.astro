@@ -98,7 +98,8 @@ const cot = nhomCuaVai(vai);
 const day = thanhDayCuaVai(vai);
 const crm = cheDoMay ? [] : MUC_CRM.filter(m => m.vai.includes(vai));
 const chuaDoc = typeof k.viec?.chua_doc === 'number' ? (k.viec.chua_doc as number) : 0;
-const linkHuongDan = `/noi-bo/kho/huong-dan${huongDan ? `#${huongDan}` : ''}`;
+// ?mo= mở sẵn đúng mục (mục hướng dẫn là <details> gập — huong-dan.astro); #id cuộn tới đó.
+const linkHuongDan = `/noi-bo/kho/huong-dan${huongDan ? `?mo=${huongDan}#${huongDan}` : ''}`;
 // Link đổi chi nhánh: in ở thanh trên (≥ 641px) và trong menu người dùng (điện thoại).
 const doiChiNhanh = (vai === 'chu_so_huu' ? k.cacChiNhanh.filter(c => c.id !== k.chiNhanh?.id) : [])
   .map(c => ({ ten: c.ten, link: `${duong}?cn=${encodeURIComponent(c.ma)}` }));

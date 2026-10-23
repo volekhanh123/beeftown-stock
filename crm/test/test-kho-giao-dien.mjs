@@ -1214,4 +1214,43 @@ await nhom('20 · GỌN PHẦN TIỀN VÀ BÁO CÁO (Khánh duyệt 23/10/2026)'
     /name="dong_id" value=\{d\.id\}/.test(ip) && /value="ngoai_so"/.test(ip));
 });
 
+// ===========================================================================
+await nhom('21 · GỌN PHẦN THIẾT LẬP VÀ HƯỚNG DẪN (Khánh duyệt 23/10/2026)', async () => {
+  const tl = doc(join(TRANG, 'noi-bo/kho/cai-dat/index.astro'));
+  ok('Thiết lập: chỉ bày bước còn lại; bước xong / bỏ qua trong mục gập, mở sẵn khi vừa Bỏ qua (?mo=xong)',
+    /filter\(x => !x\.b\.xong && !x\.b\.boQua\)/.test(tl) && /<details class="tl-xong" open=\{Astro\.url\.searchParams\.get\('mo'\) === 'xong'\}>/.test(tl)
+    && /cai-dat\?mo=xong#buoc-/.test(tl));
+  ok('Thiết lập: mọi bước vẫn có id="buoc-…" (neo của nút và trang Tồn đầu kỳ)', /<li id=\{`buoc-\$\{b\.khoa\}`\}/.test(tl)
+    && /cai-dat\?mo=xong#buoc-ton_dau/.test(doc(join(TRANG, 'noi-bo/kho/cai-dat/ton-dau.astro'))));
+  ok('Thiết lập: danh mục mỗi mục một dòng (tên — mô tả), cả dòng là link', /<ul class="tl-dm">/.test(tl) && !/class="nb-dong" style="display:block/.test(tl));
+
+  const hd = doc(join(TRANG, 'noi-bo/kho/huong-dan.astro'));
+  ok('Hướng dẫn: mỗi mục là <details> gập, ?mo=<id> mở sẵn', /<details class="nb-the hd-the" id=\{m\.id\} open=\{m\.id === mo\}>/.test(hd));
+  ok('Hướng dẫn: lọc vai thì mục vai khác nằm trong MỘT mục gập — mọi #id vẫn có trong HTML',
+    /<details class="hd-vai-khac" id="vai-khac" open=\{moVaiKhac\}>/.test(hd) && /theKhoi\(khoiKhac\)/.test(hd));
+  ok('Hướng dẫn: mục lục khi lọc vai chỉ gồm vai đó, link mở sẵn mục (?mo=)', /\(locVai \? khoi : \[\.\.\.khoi, \.\.\.khoiKhac\]\)\.map/.test(hd)
+    && /<a href=\{linkMo\(m\.id\)\}>/.test(hd));
+  ok('Hướng dẫn: không có <p> trong <summary> (summary chỉ nhận chữ và tiêu đề)', !/<summary>(?:(?!<\/summary>)[\s\S])*<p\b/.test(hd));
+  ok('Nút "?" của mọi màn mở sẵn đúng mục: /huong-dan?mo=<id>#<id>',
+    /huong-dan\$\{huongDan \? `\?mo=\$\{huongDan\}#\$\{huongDan\}` : ''\}/.test(doc(join(WEB, 'src', 'layouts', 'Kho.astro'))));
+
+  const mh = doc(join(TRANG, 'noi-bo/kho/cai-dat/mat-hang.astro'));
+  ok('Mặt hàng: bảng không còn cột Mã cân, Pha lóc ra', !/\{t\.cotMaCan\}|\{t\.cotPhaRa\}/.test(mh)
+    && /<th>\{t\.cotMatHang\}<\/th><th>\{t\.cotLoai\}<\/th><th class="so">\{t\.cotGia\}<\/th><th class="so">\{t\.cotHsd\}<\/th><th><\/th>/.test(mh));
+
+  const td = doc(join(TRANG, 'noi-bo/kho/cai-dat/ton-dau.astro'));
+  ok('Tồn đầu kỳ: mỗi nhóm món một mục gập ghi số món đã điền', /<details class="td-nhom-the" open=\{!!timMon \|\| n\.dien > 0\}>/.test(td)
+    && /t\.nhomDem\(n\.tat\.length, n\.dien\)/.test(td));
+  ok('Tồn đầu kỳ: ô Tìm món gửi cả form (tim_luoi); món không khớp thành ô ẩn mang đủ số đã gõ',
+    /name="viec" value="tim_luoi"/.test(td) && /name="viec" value="xem_luoi" class="nb-nut"/.test(td) && !/type="hidden" name="viec" value="xem_luoi"/.test(td)
+    && ['mh', 'goi', 'kg', 'han'].every(o => new RegExp(`type="hidden" name=\\{\`\\$\\{O_LUOI\\.${o}\\}\\$\\{i\\}\`\\}`).test(td))
+    && /\{coGia && <input type="hidden" name=\{`\$\{O_LUOI\.gia\}\$\{i\}`\}/.test(td));
+  ok('Tồn đầu kỳ: vẫn không <script>', !/<script/i.test(td));
+
+  const ip = doc(join(TRANG, 'noi-bo/kho/cai-dat/ipos.astro'));
+  ok('Kết nối iPOS: Cấu hình, Địa chỉ nhận hóa đơn, Cài lần đầu là mục gập; Cấu hình mở khi đồng bộ tắt hay lưu hỏng',
+    /<details class="ip-gap" id="cau-hinh" open=\{!!formLai \|\| !tt\.bat\}>/.test(ip)
+    && /<details class="nb-the ip-gap" id="dia-chi-nhan">/.test(ip) && /<details class="nb-the ip-gap" id="cai-lan-dau">/.test(ip));
+});
+
 process.exit(ketThuc('KHUNG GIAO DIỆN'));

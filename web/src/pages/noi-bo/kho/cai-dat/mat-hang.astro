@@ -27,7 +27,7 @@ import {
   type MatHang, type GiaTriFormMatHang, type XemTruocDan, type DongGhiMatHang, type CotDan,
 } from '../../../../lib/kho/danh-muc.ts';
 import {
-  boDau, cauLoiKho, dinhDangKg, dinhDangTien, kqHai, nhanKho, TEN_LOAI_MAT_HANG_NB, TEN_NOI_DE_SAU_PHA_NB, TEN_XU_LY_NB,
+  boDau, cauLoiKho, dinhDangKg, dinhDangTien, kqHai, nhanKho, TEN_LOAI_MAT_HANG_NB, TEN_NOI_DE_SAU_PHA_NB,
   type KetQua,
 } from '../../../../lib/kho/chung.ts';
 import { docTruongThem, type DinhNghiaTruong } from '../../../../lib/kho/truong-them.ts';
@@ -64,7 +64,6 @@ const t = dichNB(nn, {
   capNhat: { vi: 'Cập nhật', en: 'Update' },
   ngungDungNho: { vi: ' · ngừng dùng', en: ' · no longer used' },
   theoTangNho: { vi: 'theo dõi theo tảng', en: 'tracked per primal' },
-  oMaNho: { vi: (ds: string) => `ô mã ${ds}`, en: (ds: string) => `rotating codes ${ds}` },
   themMoi: { vi: 'Thêm mới', en: 'New' },
   chiCoTen: { vi: 'Chỉ có tên — điền giá, hạn dùng sau.', en: 'Name only — fill in the price and use-by later.' },
   xacNhanNhap: { vi: 'Xác nhận nhập', en: 'Confirm import' },
@@ -120,10 +119,7 @@ const t = dichNB(nn, {
   cotLoai: { vi: 'Loại', en: 'Type' },
   cotGia: { vi: 'Giá bán/kg', en: 'Sale price/kg' },
   cotHsd: { vi: 'HSD', en: 'Use-by' },
-  cotMaCan: { vi: 'Mã cân', en: 'Scale code' },
-  cotPhaRa: { vi: 'Pha lóc ra', en: 'Butchery output' },
   chuaCoGia: { vi: 'chưa có', en: 'not set' },
-  sauPhaQuay: { vi: 'sau pha để ở quầy', en: 'after butchery goes to the counter' },
   suaNut: { vi: 'Sửa', en: 'Edit' },
 });
 
@@ -387,7 +383,8 @@ const coXemGia = k.duoc('xem_gia');
   {ds.length === 0 ? <p class="nb-rong">{t.khongCo}</p> : (
     <div class="kho-bang-khung">
       <table class="kho-bang">
-        <thead><tr><th>{t.cotMatHang}</th><th>{t.cotLoai}</th><th class="so">{t.cotGia}</th><th class="so">{t.cotHsd}</th><th>{t.cotMaCan}</th><th>{t.cotPhaRa}</th><th></th></tr></thead>
+        {/* Gọn 23/10/2026 (Khánh duyệt): bỏ cột Mã cân và Pha lóc ra — xem, sửa ở nút Sửa của từng món. */}
+        <thead><tr><th>{t.cotMatHang}</th><th>{t.cotLoai}</th><th class="so">{t.cotGia}</th><th class="so">{t.cotHsd}</th><th></th></tr></thead>
         <tbody>
           {ds.map(m => (
             <tr style={m.dang_dung ? '' : 'opacity:.5'}>
@@ -395,8 +392,6 @@ const coXemGia = k.duoc('xem_gia');
               <td>{nhanKho(TEN_LOAI_MAT_HANG_NB, m.loai, nn)}{m.theo_tang && <><br /><span class="kho-phu" title={moTaBangU(bangU.get(m.id) ?? [], nn)}>{t.theoTangNho}</span></>}</td>
               <td class="so">{m.gia_ban_kg !== null ? dinhDangTien(m.gia_ban_kg, nn) : (m.loai === 'phan_cat' ? <span class="kho-han sap_het">{t.chuaCoGia}</span> : '—')}</td>
               <td class="so">{m.han_dung_ngay ? t.soNgay(m.han_dung_ngay) : '—'}</td>
-              <td>{m.ma_can ?? '—'}{oMa.get(m.id)?.length ? <><br /><span class="kho-phu">{t.oMaNho(chuOMa((oMa.get(m.id) ?? []).map(o => o.ma_can)))}</span></> : ''}</td>
-              <td>{nhanKho(TEN_XU_LY_NB, m.xu_ly_mac_dinh, nn)}{m.loai !== 'tang' && m.noi_de_sau_pha === 'quay' ? <><br /><span class="kho-phu">{t.sauPhaQuay}</span></> : ''}{coXemGia && m.loai === 'phu_pham' && thuHoi.get(m.id) ? <><br /><span class="kho-phu">{dinhDangTien(thuHoi.get(m.id), nn)}/kg</span></> : ''}</td>
               <td><a href={`/noi-bo/kho/cai-dat/mat-hang?sua=${m.id}${locLoai ? `&loai=${locLoai}` : ''}`}>{t.suaNut}</a></td>
             </tr>
           ))}

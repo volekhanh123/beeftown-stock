@@ -8,6 +8,9 @@
  * đúng trang, nút "Bỏ qua" khi bước đó bỏ qua được (kho_danh_dau_thiet_lap).
  * Câu chữ, link, luật ẩn nút: lib/kho/thiet-lap.ts.
  *
+ * Gọn 23/10/2026 (Khánh duyệt): chỉ bày các bước CÒN LẠI; bước đã xong / bỏ qua gom vào mục gập
+ * "n bước đã xong" (mở sẵn khi vừa bấm Bỏ qua — ?mo=xong). Danh mục mỗi mục một dòng: tên — mô tả.
+ *
  * Bên dưới giữ các phần cài đặt cũ, mỗi phần một thẻ có neo để nút của bước
  * trỏ tới:
  *   · Danh mục: lối vào mặt hàng, công thức, NCC, vị trí, mã vạch, cân,
@@ -62,6 +65,7 @@ const t = dichNB(nn, {
   nhanXong: { vi: 'Xong', en: 'Done' },
   nhanChuaXong: { vi: 'Chưa xong', en: 'Not done' },
   lamBuocNay: { vi: 'Làm bước này', en: 'Do this step' },
+  buocDaXong: { vi: (n: number) => `${n} bước đã xong hoặc bỏ qua`, en: (n: number) => `${n} ${s(n, 'step', 'steps')} done or skipped` },
   danhMuc: { vi: 'Danh mục', en: 'Catalog' },
   mayDungChung: { vi: 'Máy dùng chung', en: 'Shared tablet' },
   daBat: { vi: 'Đã bật', en: 'On' },
@@ -159,7 +163,7 @@ if (form && k.chiNhanh) {
   } else if (viec === 'bo_qua') {
     const buoc = String(form.get('buoc') ?? '');
     kq = await danhDauBuoc(k.client, k.chiNhanh.id, buoc, form.get('bo_qua') === 'co');
-    ve = `/noi-bo/kho/cai-dat#buoc-${buoc.replace(/[^a-z_]/g, '')}`;
+    ve = `/noi-bo/kho/cai-dat?mo=xong#buoc-${buoc.replace(/[^a-z_]/g, '')}`;
   } else kq = kqHai(false, { vi: 'Việc không hợp lệ.', en: 'Invalid action.' });
   if (kq.ok) return chuyenHuong(Astro, ve, kq);
   bao = kq;
@@ -272,8 +276,8 @@ const mayChung: { bat: boolean; cau: string; cauEn?: string } | null =
       </div>
       <p class="kho-phu" style="margin:.4rem 0 0">{t.daXong(tienDo.tong - tienDo.conLai, tienDo.tong)}</p>
 
-      <ol class="tl-ds">
-        {tienDo.buoc.map((b, i) => {
+      {(() => {
+        const theBuoc = (b: TienDoThietLap['buoc'][number], i: number) => {
           const link = linkBuocCuaVai(b.khoa, vai, nn);
           const boQuaDuoc = coTheBoQua(b, vai);
           return (
@@ -303,18 +307,28 @@ const mayChung: { bat: boolean; cau: string; cauEn?: string } | null =
               </div>
             </li>
           );
-        })}
-      </ol>
+        };
+        const dsCon = tienDo.buoc.map((b, i) => ({ b, i })).filter(x => !x.b.xong && !x.b.boQua);
+        const dsXong = tienDo.buoc.map((b, i) => ({ b, i })).filter(x => x.b.xong || x.b.boQua);
+        return <>
+          {dsCon.length > 0 && <ol class="tl-ds">{dsCon.map(x => theBuoc(x.b, x.i))}</ol>}
+          {dsXong.length > 0 && (
+            <details class="tl-xong" open={Astro.url.searchParams.get('mo') === 'xong'}>
+              <summary>{t.buocDaXong(dsXong.length)}</summary>
+              <ol class="tl-ds">{dsXong.map(x => theBuoc(x.b, x.i))}</ol>
+            </details>
+          )}
+        </>;
+      })()}
     </section>
   )}
 
   <h2>{t.danhMuc}</h2>
-  {MUC.map(m => (
-    <a href={m.link} class="nb-dong" style="display:block;text-decoration:none;color:inherit">
-      <div class="nb-dong-dau"><strong>{m.ten[nn]}</strong><span aria-hidden="true">›</span></div>
-      <p class="kho-phu" style="margin:.35rem 0 0">{m.mo_ta[nn]}</p>
-    </a>
-  ))}
+  <ul class="tl-dm">
+    {MUC.map(m => (
+      <li><a href={m.link}><span><strong>{m.ten[nn]}</strong><span class="kho-phu"> — {m.mo_ta[nn]}</span></span><span aria-hidden="true">›</span></a></li>
+    ))}
+  </ul>
 
   {mayChung && (
     <section class="nb-the" id="may-chung">
@@ -468,5 +482,15 @@ const mayChung: { bat: boolean; cau: string; cauEn?: string } | null =
   .tl-nut { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
   .tl-nut form { margin: 0; }
   .tl-nut .nb-nut { min-height: 48px; }
+  .tl-xong { margin-top: .75rem; }
+  .tl-xong > summary { cursor: pointer; font-weight: 600; min-height: 44px; display: list-item; padding: .6rem 0; }
+  .tl-xong > .tl-ds { margin-top: .25rem; }
+  /* Danh mục: mỗi mục một dòng, cả dòng là link. */
+  .tl-dm { list-style: none; padding: 0; margin: 0 0 1rem; background: var(--nb-the); border: 1px solid var(--vach); border-radius: 10px; }
+  .tl-dm li + li { border-top: 1px solid var(--vach); }
+  .tl-dm a { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 48px;
+    padding: .55rem 1rem; color: inherit; text-decoration: none; }
+  .tl-dm a:hover strong { text-decoration: underline; }
+  .tl-dm .kho-phu { font-size: .85rem; }
 </style>
 

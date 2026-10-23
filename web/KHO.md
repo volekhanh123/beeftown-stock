@@ -313,6 +313,23 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
   hóa đơn, mỗi dòng vẫn đủ nút Thử lại / Bỏ qua / Hàng ngoài sổ. Món một dòng hiện như cũ.
 - `test-kho-giao-dien.mjs` nhóm 20 gác các điều trên.
 
+### Gọn phần thiết lập và hướng dẫn (Khánh duyệt 23/10/2026)
+
+- **Thiết lập kho**: chỉ bày các bước còn lại; bước đã xong / bỏ qua gom vào mục gập "n bước đã xong hoặc bỏ
+  qua" (mở sẵn khi vừa bấm Bỏ qua — `?mo=xong`, link "Về Thiết lập" của Tồn đầu kỳ cũng vậy). Mọi bước vẫn có
+  `id="buoc-…"`. Danh mục mỗi mục một dòng (tên — mô tả), cả dòng là link.
+- **Hướng dẫn**: mỗi mục là `<details>` (tiêu đề + câu tóm tắt; bấm mở ra bước, mẹo, ảnh). Lọc vai thì mục lục
+  chỉ gồm vai đó, mục của vai khác nằm trong MỘT mục gập `#vai-khac` — mọi `#id` vẫn có trong HTML. `?mo=<id>`
+  mở sẵn mục (và `#vai-khac` nếu cần): nút "?" của mọi màn (`layouts/Kho.astro`) và mục lục dùng
+  `?mo=<id>#<id>`. In ra vẫn đủ bước (`::details-content` trong `@media print`).
+- **Mặt hàng**: bảng bỏ cột Mã cân, Pha lóc ra (xem, sửa ở nút Sửa).
+- **Tồn đầu kỳ**: mỗi nhóm (Tảng nhập, Phần cắt, Phụ phẩm) một mục gập ghi số món đã điền. Ô **Tìm món** gửi cả
+  form (`viec=tim_luoi`, không JavaScript): vẽ lại chỉ món khớp, món khác thành ô ẩn mang đúng số đã gõ (chỉ số
+  `O_LUOI` liền nhau cho `docLuoiTonDau`); `bo_loc` bỏ lọc. Nút Tìm đứng trước nên Enter chỉ vẽ lại, không xem trước.
+- **Kết nối iPOS**: Cấu hình, Địa chỉ nhận hóa đơn (kèm việc cần nhớ), Cài lần đầu thành mục gập có tình trạng ngắn
+  ở tiêu đề; Cấu hình mở sẵn khi đồng bộ tắt hay vừa lưu hỏng.
+- `test-kho-giao-dien.mjs` nhóm 21 gác các điều trên.
+
 ## 3e. Pha lóc 3 bước bằng quét nhãn · báo thu hồi thấp (GĐ5c, migration 0033)
 
 | Trang | Ai | Việc |
