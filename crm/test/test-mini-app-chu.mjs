@@ -13,7 +13,8 @@
  *      6 phần thịt, cấu hình quán, và tin đơn soạn sẵn gửi vào chat OA (nhận tại quán, giao tận nơi).
  *   2. Không dính chữ Khánh dặn không viết cho Mini App (mini-app/CLAUDE.md, "Quy tắc chữ và thương hiệu").
  *   3. Giá ghi theo cách của repo, "000.000 đ" có dấu cách — đúng như dinhDangTien của
- *      web/src/lib/kho/chung.ts (toLocaleString('vi-VN') + ' đ').
+ *      web/src/lib/kho/chung.ts (toLocaleString('vi-VN') + ' đ'). Bán theo khay giá cố định (Khánh quyết
+ *      22/10/2026): mỗi dòng "số khay × giá một khay = tiền", dòng tổng bằng tổng các dòng.
  *   4. Giá trong tin đơn là giá chưa duyệt (máy quét chữ cấm bắt nó, "Chưa món nào có gia_da_duyet = true").
  *      Khi cau-hinh.ts có giaThu: true, tin có giá phải kèm dòng báo giá thử — đó là điều kiện để bản thử
  *      được hiện giá. Ngoài mẫu giá ra, tin có giá không dính chữ cấm nào khác.
@@ -88,7 +89,7 @@ const nhanGiao = {
   ghiChu: 'Gọi trước 10 phút',
 };
 const dongDon = gia => SAN_PHAM.map((sp, i) => ({
-  ten: sp.ten, baoQuan: sp.baoQuan, soKhay: i + 1, giaMoi100g: gia ? sp.giaMoi100g : null,
+  ten: sp.ten, baoQuan: sp.baoQuan, soKhay: i + 1, soGamKhay: sp.soGamKhay, giaMoiKhay: gia ? sp.giaMoiKhay : null,
 }));
 
 /** Mọi chữ khách thấy, kèm nơi lấy: [nơi, chữ]. */
@@ -130,9 +131,24 @@ await nhom('3 · GIÁ GHI THEO CÁCH CỦA REPO: "000.000 đ"', async () => {
     ok(`dinhDangTien(${n}) = "${cuaRepo(n)}"`, dinhDangTien(n) === cuaRepo(n), `ra "${dinhDangTien(n)}"`);
   }
   const tin = taoNoiDungDon(dongDon(true), nhanQuan, { giaThu: true });
-  const gia = [...tin.matchAll(/· ([\d.]+ đ)\/100 g/g)].map(m => m[1]);
-  ok('Tin đơn ghi giá từng phần dạng "120.000 đ/100 g"', gia.length === SAN_PHAM.filter(sp => sp.giaMoi100g).length
-     && gia.every(g => /^\d{1,3}(\.\d{3})* đ$/.test(g)), gia.join(', '));
+  // Bán theo khay, giá cố định (Khánh quyết 22/10/2026): "• Ribeye with Cap (khay ~150 g): 1 × 300.000 đ = 300.000 đ".
+  const so = g => Number(g.replace(/\D/g, ''));
+  const dongGia = [...tin.matchAll(/^• .+ \(.*khay ~\d+ g\): (\d+) × ([\d.]+ đ) = ([\d.]+ đ)$/gm)];
+  const DANG = /^\d{1,3}(\.\d{3})* đ$/;
+  ok('Tin đơn ghi từng phần dạng "2 × 300.000 đ = 600.000 đ", đúng phép nhân',
+     dongGia.length === SAN_PHAM.filter(sp => sp.giaMoiKhay !== null).length
+     && dongGia.every(([, n, gia, tien]) => DANG.test(gia) && DANG.test(tien) && Number(n) * so(gia) === so(tien)),
+     dongGia.map(m => m[0]).join(' | '));
+  const tong = tin.match(/^Tổng: (\d+) khay · ([\d.]+ đ) tiền thịt$/m);
+  ok('Dòng tổng ghi số khay và tổng tiền thịt, bằng tổng các dòng',
+     !!tong && DANG.test(tong[2]) && so(tong[2]) === dongGia.reduce((t, [, , , tien]) => t + so(tien), 0)
+     && Number(tong[1]) === dongDon(true).reduce((t, d) => t + d.soKhay, 0), tong?.[0] ?? 'không thấy dòng tổng');
+  ok('Tin đơn không còn câu "báo tiền theo tem" của cách bán theo gam', !/theo tem/.test(tin));
+  // Gõ nhầm khi thay số thật (thiếu một số 0, số gam 0) thì đỏ ở đây, không lên màn hình khách.
+  const saiSo = SAN_PHAM.filter(sp => !(Number.isInteger(sp.soGamKhay) && sp.soGamKhay >= 50 && sp.soGamKhay <= 1000)
+    || !(sp.giaMoiKhay === null || (Number.isInteger(sp.giaMoiKhay) && sp.giaMoiKhay >= 10000 && sp.giaMoiKhay % 1000 === 0)));
+  ok('Mỗi phần thịt: số gam một khay từ 50 tới 1.000 g; giá một khay để trống hoặc từ 10.000 đ, tròn nghìn',
+     saiSo.length === 0, saiSo.map(sp => `${sp.ma}: ${sp.soGamKhay} g, ${sp.giaMoiKhay}`).join(' | '));
   ok('Không còn giá dính chữ đ ("120.000đ") trong mã nguồn hay tin đơn',
      !CHU.some(([, chu]) => /\d\.\d{3}đ/.test(chu)) && !/\d\.\d{3}đ/.test(tin));
 });
@@ -140,7 +156,7 @@ await nhom('3 · GIÁ GHI THEO CÁCH CỦA REPO: "000.000 đ"', async () => {
 await nhom('4 · GIÁ THỬ: TIN CÓ GIÁ PHẢI KÈM DÒNG BÁO GIÁ THỬ', async () => {
   const MAU_GIA = CAM.find(m => /gia_da_duyet/.test(m.vi_sao));
   ok('chuoi-cam.js còn mẫu giá tiền (giá chưa duyệt)', !!MAU_GIA);
-  const coGia = SAN_PHAM.some(sp => sp.giaMoi100g);
+  const coGia = SAN_PHAM.some(sp => sp.giaMoiKhay !== null);
   for (const [ten, nhan] of [['nhận tại quán', nhanQuan], ['giao tận nơi', nhanGiao]]) {
     const tin = taoNoiDungDon(dongDon(true), nhan, { giaThu: CAU_HINH.giaThu });
     const thay = timChuoiCam(tin);

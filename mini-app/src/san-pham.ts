@@ -1,10 +1,12 @@
 // 6 phần thịt bán trên Mini App. Tên, đặc điểm, cách nướng lấy theo file vận hành của Sang (02/09/2026).
-// Giá: điền số đồng cho 100 g vào giaMoi100g (ví dụ 84500). Để null thì app hiện "Báo giá khi xác nhận đơn".
-// Giá đang điền là GIÁ THỬ (Claude đặt 22/10/2026 để thử app), chưa phải giá của Sang.
-// Có giá thật thì thay số và đổi giaThu thành false trong cau-hinh.ts.
+// Bán theo khay, giá cố định (Khánh quyết 22/10/2026): không bán đúng số gam. Mỗi khay khoảng soGamKhay gam, giá
+// giaMoiKhay đồng, không đổi theo số gam thật của khay. Để giaMoiKhay null thì app hiện "Báo giá khi xác nhận đơn".
+// Số gam và giá đang điền là SỐ THỬ (Claude đặt 22/10/2026): Ribeye theo ví dụ của Khánh (~150 g, 300.000 đ), phần
+// khác giữ tỷ lệ với giá thử theo 100 g trước đó. Chưa phải số của Sang.
+// Có số thật thì thay số và đổi giaThu thành false trong cau-hinh.ts.
 // Tạm ngưng bán 1 phần: đổi conHang thành false.
 
-import type { BaoQuan } from "./don";
+import type { BaoQuan, DongDon } from "./don";
 
 export interface SanPham {
   ma: string;
@@ -15,7 +17,10 @@ export interface SanPham {
   goiY?: string;
   moTa: string;
   cachNuong?: string;
-  giaMoi100g: number | null;
+  /** Số gam khoảng của 1 khay, hiện là "~150 g". */
+  soGamKhay: number;
+  /** Giá cố định của 1 khay (đồng). */
+  giaMoiKhay: number | null;
   conHang: boolean;
 }
 
@@ -27,7 +32,8 @@ export const SAN_PHAM: SanPham[] = [
     goiY: "Mềm mọng",
     moTa: "Mềm nhất trong 6 phần.",
     cachNuong: "Lửa vừa, ăn ở độ tái vừa đến chín vừa.",
-    giaMoi100g: 120000,
+    soGamKhay: 150,
+    giaMoiKhay: 300000,
     conHang: true,
   },
   {
@@ -37,7 +43,8 @@ export const SAN_PHAM: SanPham[] = [
     goiY: "Đậm vị",
     moTa: "Vị đậm nhất trong 6 phần.",
     cachNuong: "Lửa cao, ăn ở độ chín vừa.",
-    giaMoi100g: 110000,
+    soGamKhay: 150,
+    giaMoiKhay: 275000,
     conHang: true,
   },
   {
@@ -46,7 +53,8 @@ export const SAN_PHAM: SanPham[] = [
     baoQuan: "dong-lanh",
     moTa: "Thái lát mỏng.",
     cachNuong: "Lửa cao, lát mỏng nên chín nhanh.",
-    giaMoi100g: 45000,
+    soGamKhay: 150,
+    giaMoiKhay: 115000,
     conHang: true,
   },
   {
@@ -54,7 +62,8 @@ export const SAN_PHAM: SanPham[] = [
     ten: "Top Blade",
     baoQuan: "mat",
     moTa: "Có 1 đường gân chạy giữa miếng. Quầy giữ lại có chủ ý, không phải lỗi cắt.",
-    giaMoi100g: 65000,
+    soGamKhay: 150,
+    giaMoiKhay: 165000,
     conHang: true,
   },
   {
@@ -63,7 +72,8 @@ export const SAN_PHAM: SanPham[] = [
     baoQuan: "mat",
     moTa: "Thịt sườn đã lóc xương.",
     cachNuong: "Lửa vừa đến cao, ăn ở độ chín vừa trở lên.",
-    giaMoi100g: 100000,
+    soGamKhay: 150,
+    giaMoiKhay: 250000,
     conHang: true,
   },
   {
@@ -73,7 +83,19 @@ export const SAN_PHAM: SanPham[] = [
     goiY: "Dễ ăn cả nhà",
     moTa: "Có xương, đã ướp sẵn.",
     cachNuong: "Lửa thấp.",
-    giaMoi100g: 60000,
+    soGamKhay: 150,
+    giaMoiKhay: 150000,
     conHang: true,
   },
 ];
+
+/** Các dòng đơn từ giỏ hàng (mã phần thịt → số khay), theo thứ tự của SAN_PHAM. */
+export function dongTuGio(soKhay: Record<string, number>): DongDon[] {
+  return SAN_PHAM.filter((sp) => (soKhay[sp.ma] ?? 0) > 0).map((sp) => ({
+    ten: sp.ten,
+    baoQuan: sp.baoQuan,
+    soKhay: soKhay[sp.ma],
+    soGamKhay: sp.soGamKhay,
+    giaMoiKhay: sp.giaMoiKhay,
+  }));
+}

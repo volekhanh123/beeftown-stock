@@ -31,8 +31,8 @@ export default function DaGui() {
         </span>
         <h2>Bấm Gửi trong khung chat</h2>
         <p>
-          Đơn đã được điền sẵn trong chat với Beeftown. Bạn bấm Gửi thì quán mới nhận được đơn, rồi quán soạn khay và báo
-          số gam, số tiền theo tem.
+          Đơn đã được điền sẵn trong chat với Beeftown. Bạn bấm Gửi thì quán mới nhận được đơn, rồi quán soạn khay và xác
+          nhận đơn.
         </p>
         <p className="ghi-chu">Quán trả lời trong giờ mở cửa: {CAU_HINH.gioMoCua}.</p>
         <div className="cot-nut">
