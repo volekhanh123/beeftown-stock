@@ -89,13 +89,14 @@ export const SAN_PHAM: SanPham[] = [
   },
 ];
 
-/** Các dòng đơn từ giỏ hàng (mã phần thịt → số khay), theo thứ tự của SAN_PHAM. */
-export function dongTuGio(soKhay: Record<string, number>): DongDon[] {
+/** Các dòng đơn từ giỏ hàng (mã phần thịt → số khay), theo thứ tự của SAN_PHAM. vuaHet: kho báo hết ở quầy. */
+export function dongTuGio(soKhay: Record<string, number>, vuaHet?: (sp: SanPham) => boolean): DongDon[] {
   return SAN_PHAM.filter((sp) => (soKhay[sp.ma] ?? 0) > 0).map((sp) => ({
     ten: sp.ten,
     baoQuan: sp.baoQuan,
     soKhay: soKhay[sp.ma],
     soGamKhay: sp.soGamKhay,
     giaMoiKhay: sp.giaMoiKhay,
+    vuaHet: vuaHet?.(sp) ?? false,
   }));
 }

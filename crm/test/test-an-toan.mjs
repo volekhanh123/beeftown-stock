@@ -109,6 +109,9 @@ await nhom('1 · QUYỀN THỰC THI HÀM (lỗ hổng 1 và 4)', async () => {
     'ghi_su_kien_web',
     'huy_dat_ban',
     'lich_trong_theo_ma',
+    // Mini App Zalo hỏi qua website (0093): chỉ trả het / sap_het / con của từng phần thịt, không số khay,
+    // không dữ liệu khách; tắt theo công tắc mini_app_hien_con_hang. test-mini-app-con-hang.mjs.
+    'mini_app_con_hang',
     'noi_dung_cong_khai',
     'nop_ho_so_ung_tuyen',
     'tao_dat_ban',
