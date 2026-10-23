@@ -1112,4 +1112,60 @@ await nhom('18 · GỌN PHẦN MUA VÀ NHẬN HÀNG, THẺ PHIẾU (Khánh duy�
     !/<span class="kho-phu">\{' '\}\{t\.phieu\} \{ss\.so_phieu_truoc\}/.test(nhap) && /title=\{ss\?\.so_phieu_truoc/.test(nhap));
 });
 
+// ===========================================================================
+await nhom('19 · GỌN PHẦN PHA LÓC, QUẦY, XUẤT (Khánh duyệt 22–23/10/2026)', async () => {
+  const xuat = doc(join(TRANG, 'noi-bo/kho/xuat/[id].astro'));
+  ok('Xuất: mục chọn lô gập sẵn — chỉ mở khi đi từ nút của một lô hay lô đã có số (báo hủy cũng vậy)',
+    /<details open=\{!!loChon \|\| loCoSo\.size > 0\}>/.test(xuat) && !/open=\{moHuy \|\|/.test(xuat));
+  ok('Báo hủy: lô hết hạn rồi sắp hết hạn lên đầu, hạn gần trước',
+    /het_han: 0, sap_het: 1, con_han: 2/.test(xuat)
+    && /moHuy \? MUC_HAN_LO\[a\.tinh_trang_han\] - MUC_HAN_LO\[b\.tinh_trang_han\] \|\| a\.han_dung\.localeCompare\(b\.han_dung\)/.test(xuat));
+  ok('Báo hủy: lô còn hạn xa nằm trong mục gập "Xem mọi lô khác", vẫn trong form',
+    /t\.tinh_trang_han !== 'con_han'/.test(xuat) && /<details class="xh-lo-them" open=\{soLoDau === 0\}>/.test(xuat)
+    && /xemLoKhac: \{ vi: \(n: number\) => `Xem mọi lô khác \(\$\{n\}\)`/.test(xuat));
+  ok('Xuất: chỉ số ô lô chạy liền qua hai nhóm — máy chủ đọc l0 … l(so_lo − 1)',
+    /dongLo\(t, soLoDau \+ j\)/.test(xuat) && /loHien\.slice\(0, soLoDau\)\.map\(\(t, i\) => dongLo\(t, i\)\)/.test(xuat)
+    && /name="so_lo" value=\{String\(hienTheoLo \? loHien\.length : 0\)\}/.test(xuat));
+
+  const yc = doc(join(TRANG, 'noi-bo/kho/quay/yeu-cau/index.astro'));
+  ok('Quầy cần hàng: món kho cũng hết không có ô nhập — gom vào mục gập "n món kho cũng đã hết"',
+    /\{goiYCo\.map\(g => \(/.test(yc) && /<details class="yc-het-kho">/.test(yc) && /\{goiYHetKho\.map\(g => \(/.test(yc)
+    && !/goiY\.map\(g => \(\s*<li>\s*<span>\s*<strong>\{g\.ten\}<\/strong>\s*<small>/.test(yc));
+  ok('Quầy cần hàng: món kho hết vẫn chọn được ở "Thêm món khác" (idGoiY chỉ gồm món còn ở kho)',
+    /const idGoiY = new Set\(goiYCo\.map\(g => g\.mat_hang_id\)\)/.test(yc));
+
+  const moi = doc(join(TRANG, 'noi-bo/kho/pha-loc/moi.astro'));
+  ok('Pha lóc bước 1: nút chọn tảng nền phụ, lưới hai cột trên điện thoại',
+    /class="nb-nut phu pl-nut"/.test(moi) && !/class="nb-nut pl-nut"/.test(moi) && /minmax\(10rem, 1fr\)/.test(moi));
+
+  const pl = doc(join(TRANG, 'noi-bo/kho/pha-loc/[id].astro'));
+  const b2 = pl.slice(pl.indexOf('BƯỚC 2 — CÂN & QUÉT'), pl.indexOf('BƯỚC 3 — KẾT QUẢ, CHỐT'));
+  const truoc = b2.indexOf('{tangTruoc && chonTang}');
+  const sau = b2.indexOf('{!tangTruoc && chonTang}');
+  const dauForm = b2.indexOf('<form method="POST" action={DUONG}>\n            <input type="hidden" name="ma_gui"');
+  const cuoiForm = b2.indexOf('\n          </form>\n', dauForm);
+  ok('Pha lóc bước 2: chưa chọn tảng thì Tảng đem pha đứng đầu form, trước ô quét; chọn rồi thì sau phần gõ kg',
+    /const tangTruoc = vaoDb\.length === 0;/.test(b2) && truoc > 0 && truoc < b2.indexOf('<QuetMa')
+    && sau > b2.indexOf('id="go-tay"') && sau < b2.indexOf('{t.themNgay}'));
+  ok('Pha lóc bước 2: các ô của mục tảng (v0_…) vẫn nằm trong form chính ở cả hai chỗ',
+    dauForm > 0 && cuoiForm > dauForm && truoc > dauForm && sau > truoc && sau < cuoiForm);
+  ok('Pha lóc bước 2: chưa chọn tảng thì khung ô mã xuống dưới form (cần đúng một tảng mới giao được)',
+    b2.indexOf('{!tangTruoc && oMa}') > 0 && b2.indexOf('{!tangTruoc && oMa}') < dauForm
+    && b2.indexOf('{tangTruoc && oMa}') > cuoiForm);
+  ok('Pha lóc bước 2: dòng phụ phẩm gọn — Mặt hàng · Số kg · Xử lý chung một lưới',
+    /<div class="pl-ra-luoi">\s*<label class="nb-o pl-ra-mh">[\s\S]{0,200}r\$\{i\}_mat_hang[\s\S]{0,400}r\$\{i\}_so_kg[\s\S]{0,300}r\$\{i\}_xu_ly/.test(b2)
+    && /\.pl-ra-luoi \{[^}]*grid-template-columns: minmax\(0, 2fr\) minmax\(0, 1fr\) minmax\(0, 1\.3fr\)/.test(pl));
+  const cauVi = (khoa) => (pl.match(new RegExp(`  ${khoa}: \\{\\s*vi: '([^']*)'`)) ?? [])[1] ?? '';
+  for (const khoa of ['quetGoiY', 'goTayGoiY', 'oMaGt', 'tichLo']) {
+    const c = cauVi(khoa);
+    ok(`Pha lóc bước 2: hướng dẫn ${khoa} còn một câu ngắn (≤ 110 ký tự)`, c.length > 0 && c.length <= 110, c);
+  }
+  const { MUC_HUONG_DAN } = await import('../../web/src/lib/kho/huong-dan.ts');
+  const hd = MUC_HUONG_DAN.find(m => m.id === 'pha-loc');
+  const chuHd = hd ? [...hd.buoc, ...(hd.meo ?? [])].map(x => x.vi).join('\n') : '';
+  ok('Hướng dẫn Pha lóc giữ đủ phần đã rút khỏi trang: Tự gửi 15–60 giây, Gửi xuống cân, cân mỡ xương để biết tỉ lệ bỏ, quét nhiều đợt',
+    /15–60 giây/.test(chuHd) && /\*\*Gửi xuống cân\*\*/.test(chuHd) && /tỉ lệ bỏ/.test(chuHd) && /quét nhiều đợt/.test(chuHd)
+    && /đầu trang khi chưa chọn/.test(chuHd));
+});
+
 process.exit(ketThuc('KHUNG GIAO DIỆN'));

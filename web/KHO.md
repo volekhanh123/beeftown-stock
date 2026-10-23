@@ -281,11 +281,28 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
 - **Số đỏ ô Việc** = `viec_dong` (0092): số dòng của trang Việc cần làm sau khi gom, không cộng từng lô / món.
 - `test-kho-giao-dien.mjs` nhóm 18, `test-kho-viec.mjs` nhóm 7b gác các điều trên.
 
+### Gọn phần pha lóc, quầy, xuất (Khánh duyệt 22–23/10/2026)
+
+- **Chuyển · Xuất · Hủy** (`xuat/[id]`): mục chọn lô gập sẵn (quét nhãn hoặc chọn món ở trên là đủ); mở sẵn khi
+  đi từ nút của một lô (`?lo=`) hay lô đã có số. Mỗi lô một hàng gọn: tên, dòng nhỏ "lô · còn · HSD", hai ô số
+  cạnh nhau (`.kho-lo-chon`, `kho.css`). **Báo hủy**: lô hết hạn rồi sắp hết hạn lên đầu (hạn gần trước,
+  `MUC_HAN_LO`); lô còn hạn xa trong mục gập "Xem mọi lô khác (n)" — vẫn trong form, chỉ số `l<i>_…` chạy liền
+  qua hai nhóm (`so_lo` = tổng số lô).
+- **Quầy cần hàng** (`quay/yeu-cau`): món kho cũng hết (số đề nghị đã là 0 — `kho_goi_y_ra_quay` không đề nghị quá
+  số kho) không còn ô nhập, gom vào mục gập "n món kho cũng đã hết"; vẫn chọn được ở "Thêm món khác". Món còn ở
+  kho mỗi món một hàng: tên, dòng nhỏ quầy / kho, ô số bên phải kể cả điện thoại.
+- **Pha lóc bước 1**: nút chọn tảng nhỏ, nền phụ, lưới hai cột trên điện thoại (trước là nút đỏ lớn một cột).
+- **Pha lóc bước 2**: chưa chọn tảng thì mục **Tảng đem pha** đứng đầu form (mở sẵn), khung ô mã xuống dưới form
+  (cần đúng một tảng mới giao được); chọn rồi thì về chỗ cũ sau phần gõ kg. Các đoạn hướng dẫn (ô mã, quét, gõ kg,
+  tích lô) còn một câu; bản đủ ở Hướng dẫn (`pha-loc`). Dòng phụ phẩm: máy tính một hàng Mặt hàng · Số kg · Xử lý,
+  điện thoại mặt hàng một hàng, kg và xử lý cạnh nhau; "Thêm…" và "Bỏ dòng này" chung hàng chân.
+- `test-kho-giao-dien.mjs` nhóm 19 gác các điều trên.
+
 ## 3e. Pha lóc 3 bước bằng quét nhãn · báo thu hồi thấp (GĐ5c, migration 0033)
 
 | Trang | Ai | Việc |
 |---|---|---|
-| `/noi-bo/kho/pha-loc/moi` | `pha_loc` | Bước 1: mỗi loại tảng đang có (trừ chờ hủy, đang mang ra quầy) là một nút lớn kèm kg, số tảng, số lô. Bấm = tạo phiên nháp ngay (`ma_gui` riêng mỗi nút); tảng chỉ một lô thì điền sẵn lô đó, loại tảng có đúng một công thức thì gắn luôn. Phiên nháp đang dở hiện lên trước |
+| `/noi-bo/kho/pha-loc/moi` | `pha_loc` | Bước 1: mỗi loại tảng đang có (trừ chờ hủy, đang mang ra quầy) là một nút kèm kg, số tảng, số lô. Bấm = tạo phiên nháp ngay (`ma_gui` riêng mỗi nút); tảng chỉ một lô thì điền sẵn lô đó, loại tảng có đúng một công thức thì gắn luôn. Phiên nháp đang dở hiện lên trước |
 | `/noi-bo/kho/pha-loc/<id>` | `pha_loc` (nháp) | Bước 2 "Cân & quét": ô quét trên cùng (`QuetMa tuFocus`), mỗi lần gửi là một lượt `kho_quet_phien_pha` (như đếm quầy: cùng `ma_gui` không cộng đôi, lỗi mạng giữ mã trong ô). Danh sách món đã quét (gói, kg, để ở đâu) có −1, "Bỏ lượt vừa quét", "Bỏ hẳn một món" (`kho_bo_quet_phien_pha`). Phụ phẩm, mỡ bỏ gõ kg (điền sẵn theo công thức); lô tảng, ngày, ghi chú, công thức nằm trong mục "Thêm". `?ma=<mã>` điền sẵn ô quét |
 | `/noi-bo/kho/pha-loc/<id>?buoc=ket-qua` | `pha_loc` | Bước 3: 4 số lớn — thu hồi, dự kiến (theo công thức / trung bình 30 ngày), trung bình 30 ngày, hao hụt. **Nút Chốt chỉ ở đây.** Thấp quá ngưỡng thì báo trước khi chốt (chốt vẫn được). Bảng giá vốn chỉ với `xem_gia` |
 | `/noi-bo/kho/pha-loc/<id>?buoc=xong` | `pha_loc` | Sau chốt: "Chuyển N khay ra quầy ngay" (đơn vị đếm của món; các lô khác đơn vị thì chữ chung "gói" — `goiRaQuay` trả `donVi`) — mỗi lô mới còn ở kho lạnh một nút `/noi-bo/kho/xuat/moi?loai=chuyen&tu=…&lo=…` |
