@@ -2,8 +2,9 @@
 /**
  * KHO — CÔNG NỢ MỘT NHÀ CUNG CẤP (id = nha_cung_cap_id)
  *
- *   · các phiếu CÒN VIỆC (còn nợ, NCC nợ lại, hoặc chưa đối chiếu): phải trả,
- *     đã trả, còn nợ, hạn; đối chiếu hóa đơn ngay trên dòng; link trả hàng.
+ *   · các phiếu CÒN VIỆC (còn nợ, NCC nợ lại, hoặc chưa đối chiếu): mỗi phiếu một hàng
+ *     gập (Khánh duyệt 23/10/2026) — số phiếu · ngày · phải trả · còn nợ · nhãn; bấm mở ra
+ *     đã trả, hóa đơn, link trả hàng, ô đối chiếu (mở sẵn khi phiếu chưa đối chiếu);
  *     ?phieu=tat_ca hiện cả phiếu đã xong (để sửa đối chiếu, trả hàng muộn);
  *   · ghi thanh toán / giảm trừ: để trống phần chia thì trả phiếu đến hạn
  *     sớm nhất trước; muốn trả đúng phiếu nào thì ghi số tiền ở phiếu đó;
@@ -100,11 +101,11 @@ const t = dichNB(nn, {
   daTraDu: { vi: 'Đã trả đủ', en: 'Paid in full' },
   quaHanNgay: { vi: (n: number) => `Quá hạn ${n} ngày`, en: (n: number) => `${n} ${s(n, 'day', 'days')} overdue` },
   hanNgay: { vi: (d: string) => `Hạn ${d}`, en: (d: string) => `Due ${d}` },
-  hoaDon: { vi: 'Hóa đơn', en: 'Invoice' },
+  hoaDon: { vi: 'hóa đơn', en: 'invoice' },
   khongGhi: { vi: 'không ghi', en: 'none recorded' },
   noDauNho: { vi: 'nợ đầu kỳ', en: 'opening balance' },
   phieuNho: { vi: 'phiếu', en: 'receipt' },
-  chuaDoiChieu: { vi: 'chưa đối chiếu', en: 'not reconciled' },
+  chuaDoiChieuNhan: { vi: 'Chưa đối chiếu', en: 'Not reconciled' },
   phaiTra: { vi: 'Phải trả', en: 'Payable' },
   daTra: { vi: 'Đã trả', en: 'Paid' },
   giamTruNho: { vi: 'giảm trừ', en: 'deductions' },
@@ -306,66 +307,68 @@ const soO = (n: number) => n.toLocaleString(nn === 'en' ? 'en-US' : 'vi-VN');
     const noDau = laNoDau(p);
     const loiO = doiChieuLoi?.phieuId === p.id ? doiChieuLoi.giaTri : null;
     const o = (khoa: string, macDinh: string) => loiO?.[khoa] ?? macDinh;
+    const conNoChu = p.con_no < 0 ? `−${dinhDangTien(-p.con_no, nn)}` : dinhDangTien(p.con_no, nn);
     return (
-      <div class="nb-dong" id={`p-${p.id}`} style="scroll-margin-top:5rem">
-        <div class="nb-dong-dau">
-          {noDau
-            ? <strong>{p.so_phieu} · {t.ghiNgay} {dinhDangNgay(p.ngay_nhap)}</strong>
-            : <strong><a href={`/noi-bo/kho/nhap/${p.id}`}>{p.so_phieu}</a> · {t.nhapNgay} {dinhDangNgay(p.ngay_nhap)}</strong>}
-          <span style="display:inline-flex;gap:.35rem;flex-wrap:wrap">
+      <details class="cn-phieu" id={`p-${p.id}`} open={loiO !== null || moPhieu === p.id}>
+        <summary>
+          <span class="cn-phieu-ten">
+            {noDau ? <strong>{p.so_phieu}</strong> : <strong><a href={`/noi-bo/kho/nhap/${p.id}`}>{p.so_phieu}</a></strong>}
+            <span class="kho-phu"> · {noDau ? t.ghiNgay : t.nhapNgay} {dinhDangNgay(p.ngay_nhap)}</span>
+          </span>
+          <span class="cn-phieu-so cn-phieu-phai kho-so"><span class="kho-phu">{t.phaiTra}</span> {dinhDangTien(p.phai_tra, nn)}</span>
+          <span class="cn-phieu-so cn-phieu-con kho-so"><span class="kho-phu">{t.conNoCot}</span> <strong>{conNoChu}</strong></span>
+          <span class="cn-phieu-nhan">
             {noDau && <span class="nb-nhan nhap" style="text-transform:none">{t.noDau}</span>}
             {p.hoa_don_gop_id && <span class="nb-nhan nhap" style="text-transform:none">{t.hoaDonGop} {soHdGop.get(p.hoa_don_gop_id) ?? ''}</span>}
             {lech !== 0 && <span class="nb-nhan cho" style="text-transform:none" title={t.lechGiai}>{t.lech} {dinhDangLech(lech, nn)}</span>}
+            {!noDau && !p.da_doi_chieu && !p.hoa_don_gop_id && <span class="nb-nhan nhap" style="text-transform:none">{t.chuaDoiChieuNhan}</span>}
             {p.con_no <= 0
               ? <span class="nb-nhan song">{p.con_no < 0 ? t.nccNoLaiNhan : t.daTraDu}</span>
               : p.qua_han
                 ? <span class="nb-nhan tat">{t.quaHanNgay(p.so_ngay_qua_han)}</span>
                 : <span class={`nb-nhan ${p.han_thanh_toan && p.han_thanh_toan <= tuanToi ? 'cho' : 'nhap'}`}>{t.hanNgay(dinhDangNgay(p.han_thanh_toan))}</span>}
           </span>
+        </summary>
+        <div class="cn-phieu-than">
+          <p class="kho-phu">
+            {t.daTra} <span class="kho-so">{dinhDangTien(p.da_tra, nn)}</span>{p.giam_tru > 0 && <> · {t.giamTruNho} {dinhDangTien(p.giam_tru, nn)}</>}
+            {(p.bu_tru > 0 || p.hoan_tien > 0) && <>{' '}({t.tienTraNho} {dinhDangTien(p.tien_tra, nn)}{p.bu_tru > 0 ? ` · ${t.buTruNho} ${dinhDangTien(p.bu_tru, nn)}` : ''}{p.hoan_tien > 0 ? ` · ${t.nccHoanNho} ${dinhDangTien(p.hoan_tien, nn)}` : ''})</>}
+            {noDau
+              ? <>{' · '}{t.hoaDon} {p.so_hoa_don ?? t.khongGhi}</>
+              : p.da_doi_chieu && <>{' · '}{t.hoaDon} {p.so_hoa_don}{p.ngay_hoa_don && ` · ${dinhDangNgay(p.ngay_hoa_don)}`} · {dinhDangTien(p.tien_hoa_don, nn)}
+                  {lech !== 0 && <>{' '}({t.phieuNho} {dinhDangTien(p.tong_tien_phieu, nn)}{p.ghi_chu_doi_chieu ? ` — ${p.ghi_chu_doi_chieu}` : ''})</>}</>}
+          </p>
+          {noDau ? (
+            <p class="kho-phu">{t.ghiNham}<a href="/noi-bo/kho/cong-no/no-dau">{t.trangNoDau}</a>{t.khiChuaTra}</p>
+          ) : (
+          <>
+          <p><a href={`/noi-bo/kho/cong-no/tra-hang?phieu=${p.id}`}>{t.traHangNcc}</a></p>
+          {p.hoa_don_gop_id ? (
+            <p class="kho-phu">{t.daDoiChieuGop}<a href="#hoa-don-gop">{t.mucHdGop}</a>{t.hetCau}</p>
+          ) : (
+          <details open={loiO !== null || moPhieu === p.id || !p.da_doi_chieu}>
+            <summary style="cursor:pointer;font-weight:600;padding:.8rem 0">{p.da_doi_chieu ? t.suaDoiChieu : t.doiChieuHd}</summary>
+            <form method="POST" style="margin-top:.5rem">
+              <input type="hidden" name="viec" value="doi_chieu" />
+              <input type="hidden" name="phieu_id" value={p.id} />
+              <div class="kho-luoi">
+                <label class="nb-o"><span>{t.soHoaDon}</span><input type="text" name="so_hoa_don" value={o('so_hoa_don', p.so_hoa_don ?? '')} required autocapitalize="characters" /></label>
+                <label class="nb-o"><span>{t.ngayHoaDon}</span><input type="date" name="ngay_hoa_don" value={o('ngay_hoa_don', p.ngay_hoa_don ?? '')} max={homNay} /></label>
+                <label class="nb-o"><span>{t.tongTienHd}</span>
+                  <small>{t.phieuNhapGoiY(dinhDangTien(p.tong_tien_phieu, nn))}</small>
+                  <input type="text" inputmode="numeric" name="tien_hoa_don" value={o('tien_hoa_don', p.tien_hoa_don !== null ? soO(p.tien_hoa_don) : '')} required placeholder={t.viDuTien} /></label>
+                <label class="nb-o"><span>{t.hanThanhToan}</span><small>{t.boTrongHan(ncc.so_ngay_no)}</small><input type="date" name="han_thanh_toan" value={o('han_thanh_toan', '')} /></label>
+              </div>
+              <label class="nb-o"><span>{t.ghiChu}</span><small>{t.batBuocLech}</small>
+                <input type="text" name="ghi_chu_doi_chieu" value={o('ghi_chu_doi_chieu', p.ghi_chu_doi_chieu ?? '')} maxlength="500" placeholder={t.viDuGhiChu} /></label>
+              <button type="submit" class="nb-nut phu">{t.luuDoiChieu}</button>
+            </form>
+          </details>
+          )}
+          </>
+          )}
         </div>
-        <dl>
-          <dt>{t.hoaDon}</dt>
-          <dd>{noDau
-            ? <>{p.so_hoa_don ?? <span class="kho-phu">{t.khongGhi}</span>} · {t.noDauNho} <strong>{dinhDangTien(p.phai_tra, nn)}</strong></>
-            : p.da_doi_chieu
-            ? <>{p.so_hoa_don}{p.ngay_hoa_don && ` · ${dinhDangNgay(p.ngay_hoa_don)}`} · <strong>{dinhDangTien(p.tien_hoa_don, nn)}</strong>
-                {lech !== 0 && <span class="kho-phu">{' '}({t.phieuNho} {dinhDangTien(p.tong_tien_phieu, nn)}{p.ghi_chu_doi_chieu ? ` — ${p.ghi_chu_doi_chieu}` : ''})</span>}</>
-            : <span class="kho-phu">{t.chuaDoiChieu} · {t.phieuNho} {dinhDangTien(p.tong_tien_phieu, nn)}</span>}</dd>
-          <dt>{t.phaiTra}</dt><dd class="kho-so">{dinhDangTien(p.phai_tra, nn)}</dd>
-          <dt>{t.daTra}</dt><dd class="kho-so">{dinhDangTien(p.da_tra, nn)}{p.giam_tru > 0 && <> · {t.giamTruNho} {dinhDangTien(p.giam_tru, nn)}</>}
-            {(p.bu_tru > 0 || p.hoan_tien > 0) && <span class="kho-phu">{' '}({t.tienTraNho} {dinhDangTien(p.tien_tra, nn)}{p.bu_tru > 0 ? ` · ${t.buTruNho} ${dinhDangTien(p.bu_tru, nn)}` : ''}{p.hoan_tien > 0 ? ` · ${t.nccHoanNho} ${dinhDangTien(p.hoan_tien, nn)}` : ''})</span>}</dd>
-          <dt>{t.conNoCot}</dt><dd class="kho-so"><strong>{p.con_no < 0 ? `−${dinhDangTien(-p.con_no, nn)}` : dinhDangTien(p.con_no, nn)}</strong></dd>
-        </dl>
-        {noDau ? (
-          <p class="kho-phu" style="margin:.25rem 0 0">{t.ghiNham}<a href="/noi-bo/kho/cong-no/no-dau">{t.trangNoDau}</a>{t.khiChuaTra}</p>
-        ) : (
-        <>
-        <p style="margin:.25rem 0 0"><a href={`/noi-bo/kho/cong-no/tra-hang?phieu=${p.id}`}>{t.traHangNcc}</a></p>
-        {p.hoa_don_gop_id ? (
-          <p class="kho-phu" style="margin:.5rem 0 0">{t.daDoiChieuGop}<a href="#hoa-don-gop">{t.mucHdGop}</a>{t.hetCau}</p>
-        ) : (
-        <details open={loiO !== null || moPhieu === p.id}>
-          <summary style="cursor:pointer;font-weight:600;padding:.8rem 0">{p.da_doi_chieu ? t.suaDoiChieu : t.doiChieuHd}</summary>
-          <form method="POST" style="margin-top:.5rem">
-            <input type="hidden" name="viec" value="doi_chieu" />
-            <input type="hidden" name="phieu_id" value={p.id} />
-            <div class="kho-luoi">
-              <label class="nb-o"><span>{t.soHoaDon}</span><input type="text" name="so_hoa_don" value={o('so_hoa_don', p.so_hoa_don ?? '')} required autocapitalize="characters" /></label>
-              <label class="nb-o"><span>{t.ngayHoaDon}</span><input type="date" name="ngay_hoa_don" value={o('ngay_hoa_don', p.ngay_hoa_don ?? '')} max={homNay} /></label>
-              <label class="nb-o"><span>{t.tongTienHd}</span>
-                <small>{t.phieuNhapGoiY(dinhDangTien(p.tong_tien_phieu, nn))}</small>
-                <input type="text" inputmode="numeric" name="tien_hoa_don" value={o('tien_hoa_don', p.tien_hoa_don !== null ? soO(p.tien_hoa_don) : '')} required placeholder={t.viDuTien} /></label>
-              <label class="nb-o"><span>{t.hanThanhToan}</span><small>{t.boTrongHan(ncc.so_ngay_no)}</small><input type="date" name="han_thanh_toan" value={o('han_thanh_toan', '')} /></label>
-            </div>
-            <label class="nb-o"><span>{t.ghiChu}</span><small>{t.batBuocLech}</small>
-              <input type="text" name="ghi_chu_doi_chieu" value={o('ghi_chu_doi_chieu', p.ghi_chu_doi_chieu ?? '')} maxlength="500" placeholder={t.viDuGhiChu} /></label>
-            <button type="submit" class="nb-nut phu">{t.luuDoiChieu}</button>
-          </form>
-        </details>
-        )}
-        </>
-        )}
-      </div>
+      </details>
     );
   })}
   {tatCaPhieu
@@ -446,4 +449,27 @@ const soO = (n: number) => n.toLocaleString(nn === 'en' ? 'en-US' : 'vi-VN');
 
 <style>
   .cn-nut { display: flex; flex-wrap: wrap; gap: .5rem; margin: 0 0 1rem; scroll-margin-top: 5rem; }
+  /* Mỗi phiếu một hàng: màn rộng bốn cột cố định (các phiếu thẳng cột); hẹp hơn thì số phiếu + nhãn một
+     hàng, hai số tiền hàng dưới. */
+  .cn-phieu { background: var(--nb-the); border: 1px solid var(--vach); border-radius: 10px; margin-bottom: .5rem; scroll-margin-top: 5rem; }
+  .cn-phieu > summary {
+    list-style: none; cursor: pointer; position: relative; padding: .7rem 1rem .7rem 1.6rem;
+    display: grid; align-items: center; gap: .25rem .9rem;
+    grid-template-columns: minmax(0, 1fr) 10.5rem 10.5rem 16rem;
+  }
+  .cn-phieu > summary::-webkit-details-marker { display: none; }
+  .cn-phieu > summary::before { content: '▸'; position: absolute; left: .65rem; top: .75rem; color: var(--muc-nhat); }
+  .cn-phieu[open] > summary::before { content: '▾'; }
+  .cn-phieu-so { text-align: right; }
+  .cn-phieu-so .kho-phu { font-size: .78rem; }
+  .cn-phieu-nhan { display: inline-flex; gap: .35rem; flex-wrap: wrap; justify-content: flex-end; }
+  .cn-phieu-than { border-top: 1px solid var(--vach); padding: .5rem 1rem .25rem 1.6rem; }
+  .cn-phieu-than > p { margin: .35rem 0; }
+  @media (max-width: 960px) {
+    .cn-phieu > summary { grid-template-columns: 1fr 1fr; grid-template-areas: 'ten nhan' 'phai con'; }
+    .cn-phieu-ten { grid-area: ten; }
+    .cn-phieu-nhan { grid-area: nhan; }
+    .cn-phieu-phai { grid-area: phai; text-align: left; }
+    .cn-phieu-con { grid-area: con; }
+  }
 </style>

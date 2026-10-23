@@ -298,6 +298,21 @@ sau kiểm kê); hàm cũ giữ nguyên cho ai còn gọi.
   điện thoại mặt hàng một hàng, kg và xử lý cạnh nhau; "Thêm…" và "Bỏ dòng này" chung hàng chân.
 - `test-kho-giao-dien.mjs` nhóm 19 gác các điều trên.
 
+### Gọn phần tiền và báo cáo (Khánh duyệt 23/10/2026)
+
+- **Công nợ một nhà cung cấp** (`cong-no/[id]`): mỗi phiếu một hàng gập — số phiếu · ngày · phải trả · còn nợ ·
+  nhãn (hạn / đã trả đủ / nợ đầu kỳ / hóa đơn gộp / lệch / "Chưa đối chiếu"). Bấm mở ra: đã trả (và phần chia),
+  hóa đơn đã đối chiếu, link trả hàng, ô đối chiếu — mở sẵn khi phiếu chưa đối chiếu. `?mo=<phiếu>` và lỗi đối
+  chiếu vẫn mở đúng phiếu. Bỏ dòng "Hóa đơn: chưa đối chiếu · phiếu …" (thay bằng nhãn).
+- **Xuất sang MISA**: xem trước 10 dòng (`XEM`), chữ không xuống dòng (vuốt ngang); file vẫn đủ dòng. "Mã MISA
+  còn thiếu" là mục gập `#thieu-ma` ("n nhà cung cấp, m mặt hàng"), mỗi mặt hàng một hàng: tên · ô mã · Lưu mã.
+  Mở sẵn khi vừa lưu mã (`?mo=thieu_ma`) hay mã gõ sai; ô "dòng thiếu mã" dẫn tới đó với `?mo=thieu_ma`.
+- **Trung tâm báo cáo**: mỗi báo cáo một dòng — tên (link) — mô tả ngắn · Xem · CSV, thay cho thẻ to hai nút.
+- **Bán hàng iPOS**: `gomDongIpos` (`lib/kho/ban-ipos.ts`) gom dòng cùng trạng thái + cùng món (món kho, chưa ghép
+  thì mã iPOS) trên trang đang xem thành một hàng gập "tên · n dòng · tiền" + nhãn + MỘT nút Ghép món; mở ra từng
+  hóa đơn, mỗi dòng vẫn đủ nút Thử lại / Bỏ qua / Hàng ngoài sổ. Món một dòng hiện như cũ.
+- `test-kho-giao-dien.mjs` nhóm 20 gác các điều trên.
+
 ## 3e. Pha lóc 3 bước bằng quét nhãn · báo thu hồi thấp (GĐ5c, migration 0033)
 
 | Trang | Ai | Việc |

@@ -1168,4 +1168,50 @@ await nhom('19 · GỌN PHẦN PHA LÓC, QUẦY, XUẤT (Khánh duyệt 22–23/
     && /đầu trang khi chưa chọn/.test(chuHd));
 });
 
+// ===========================================================================
+await nhom('20 · GỌN PHẦN TIỀN VÀ BÁO CÁO (Khánh duyệt 23/10/2026)', async () => {
+  const ncc = doc(join(TRANG, 'noi-bo/kho/cong-no/[id].astro'));
+  ok('Công nợ một NCC: mỗi phiếu một hàng gập — số phiếu · ngày · phải trả · còn nợ · nhãn trong <summary>',
+    /<details class="cn-phieu" id=\{`p-\$\{p\.id\}`\} open=\{loiO !== null \|\| moPhieu === p\.id\}>/.test(ncc)
+    && /<summary>\s*<span class="cn-phieu-ten">[\s\S]{0,700}cn-phieu-phai[\s\S]{0,200}cn-phieu-con[\s\S]{0,300}cn-phieu-nhan/.test(ncc)
+    && !/<dt>\{t\.hoaDon\}<\/dt>/.test(ncc));
+  ok('Công nợ một NCC: phiếu chưa đối chiếu có nhãn "Chưa đối chiếu", ô đối chiếu mở sẵn khi bấm mở phiếu',
+    /chuaDoiChieuNhan: \{ vi: 'Chưa đối chiếu'/.test(ncc)
+    && /<details open=\{loiO !== null \|\| moPhieu === p\.id \|\| !p\.da_doi_chieu\}>/.test(ncc));
+  ok('Công nợ một NCC: ?mo=<phiếu> (link "Chưa đối chiếu") và lỗi đối chiếu vẫn mở đúng phiếu', /moPhieu === p\.id/.test(ncc) && /loiO !== null/.test(ncc));
+
+  const misa = doc(join(TRANG, 'noi-bo/kho/cong-no/misa.astro'));
+  ok('MISA: xem trước 10 dòng, chữ không xuống dòng', /const XEM = 10;/.test(misa) && /\.misa-xem th, \.misa-xem td \{ white-space: nowrap; \}/.test(misa));
+  ok('MISA: "Mã MISA còn thiếu" là mục gập (id thieu-ma), mở sẵn khi vừa lưu mã hay gõ sai',
+    /<details id="thieu-ma" class="nb-the misa-thieu" open=\{moThieu\}>/.test(misa)
+    && /&mo=thieu_ma#thieu-ma`, await luuMaMisaMatHang/.test(misa) && /bao = kqHai\(false, CAU\.maSai\); moThieu = true;/.test(misa));
+  ok('MISA: mỗi mặt hàng thiếu mã một hàng, ô mã vẫn có nhãn cho trình đọc màn hình',
+    /<form method="POST" class="misa-ma">/.test(misa) && /<span class="an">\{t\.maMisa\} — \{m\.ten\}<\/span>/.test(misa));
+
+  const hub = doc(join(TRANG, 'noi-bo/kho/bao-cao/index.astro'));
+  ok('Trung tâm báo cáo: mỗi báo cáo một dòng (tên — mô tả · Xem · CSV), không còn thẻ to',
+    /<ul class="bc-ds">/.test(hub) && !/class="nb-the bc-the"/.test(hub) && /aria-label=\{t\.taiCsvDai\(chu\.ten\)\}/.test(hub));
+
+  const { gomDongIpos } = await import('../../web/src/lib/kho/ban-ipos.ts');
+  const d = (id, trang_thai, mat_hang_id, ma_ipos, thanh_tien = 25000) => ({ id, trang_thai, mat_hang_id, ma_ipos, thanh_tien });
+  const nhom = gomDongIpos([
+    d('1', 'chua_khop', null, 'TUI'), d('2', 'chua_khop', null, 'NUOC'), d('3', 'chua_khop', null, 'TUI'),
+    d('4', 'loi', null, 'TUI'), d('5', 'thieu_hang', 'mh1', 'X1'), d('6', 'thieu_hang', 'mh1', 'X2'), d('7', 'chua_khop', null, null),
+    d('8', 'chua_khop', null, null),
+  ]);
+  ok('gomDongIpos: cùng trạng thái + cùng mã iPOS thành một nhóm, giữ thứ tự gặp đầu',
+    nhom[0].ds.map(x => x.id).join() === '1,3' && nhom[1].ds.map(x => x.id).join() === '2');
+  ok('gomDongIpos: khác trạng thái không gom (chưa khớp ≠ lỗi); món kho gom dù mã iPOS khác',
+    nhom[2].ds.map(x => x.id).join() === '4' && nhom[3].ds.map(x => x.id).join() === '5,6');
+  ok('gomDongIpos: dòng không món, không mã đứng riêng; đủ mọi dòng', nhom.length === 6
+    && nhom.flatMap(n => n.ds).length === 8);
+  const ip = doc(join(TRANG, 'noi-bo/kho/ban-ipos/index.astro'));
+  ok('Bán hàng iPOS: nhóm ≥ 2 dòng có MỘT nút Ghép món ở hàng gập; dòng trong nhóm không lặp nút',
+    /gomDongIpos\(hien\)/.test(ip) && /if \(n\.ds\.length === 1\) return theDong\(n\.ds\[0\], true\);/.test(ip)
+    && /n\.ds\.map\(d => theDong\(d, false\)\)/.test(ip) && /\{coNutGhep && canGhep\(d\) && \(/.test(ip)
+    && /<details class="ip-nhom">\s*<summary>[\s\S]{0,700}class="nb-nut phu ip-ghep"/.test(ip));
+  ok('Bán hàng iPOS: dòng trong nhóm vẫn đủ nút Thử lại / Bỏ qua / Hàng ngoài sổ của nó',
+    /name="dong_id" value=\{d\.id\}/.test(ip) && /value="ngoai_so"/.test(ip));
+});
+
 process.exit(ketThuc('KHUNG GIAO DIỆN'));

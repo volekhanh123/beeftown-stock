@@ -13,6 +13,10 @@
  *     sổ" (bắt buộc lý do: cộng phần thiếu vào lô mới nhất rồi trừ) · "Bỏ qua".
  * Dòng chưa khớp / thiếu hàng tự thử lại mỗi lượt đồng bộ, nên phần lớn tự hết.
  *
+ * Gom theo món (Khánh duyệt 23/10/2026, gomDongIpos): các dòng cùng trạng thái, cùng món trên trang
+ * thành một hàng gập "Túi giữ lạnh · 3 dòng · 75.000 đ" có MỘT nút Ghép món; bấm mở ra từng hóa đơn
+ * (mỗi dòng vẫn đủ nút Thử lại / Bỏ qua / Hàng ngoài sổ của nó). Món chỉ một dòng thì hiện như cũ.
+ *
  * Quản lý, chủ (duyet). Có tiền (thành tiền dòng) — view kho_v_ipos_dong chỉ
  * trả dòng cho vai xem_gia; cột tiền chỉ hiện khi xem_gia.
  */
@@ -25,7 +29,7 @@ import { moTrangKho, docFormGui, chuyenHuong } from '../../../../lib/kho/trang.t
 import { docTimDs, catTrang, dangTim, linkDs } from '../../../../lib/kho/tim-ds.ts';
 import { cauLoiKho, dinhDangKg, dinhDangThoiDiem, dinhDangTien, type KetQua } from '../../../../lib/kho/chung.ts';
 import {
-  docDongIpos, docTrangThaiIpos, docThe, xuLyDongIpos, lopDen, trangThaiDong, THE_DONG_NB,
+  docDongIpos, docTrangThaiIpos, docThe, gomDongIpos, xuLyDongIpos, lopDen, trangThaiDong, THE_DONG_NB,
   type DongIpos, type TrangThaiIpos,
 } from '../../../../lib/kho/ban-ipos.ts';
 import { soTangChu } from '../../../../lib/kho/tang.ts';
@@ -93,6 +97,8 @@ const t = dichNB(nn, {
   linkGhep: { vi: 'Ghép mã món iPOS với món kho →', en: 'Match iPOS dish codes with stock items →' },
   goi: { vi: (n: number) => `${n} gói`, en: (n: number) => `${n} ${n === 1 ? 'pack' : 'packs'}` },
   soLuongIpos: { vi: '(số lượng trên iPOS)', en: '(quantity on iPOS)' },
+  soDong: { vi: (n: number) => `${n} dòng`, en: (n: number) => `${n} lines` },
+  ghepMonCua: { vi: (ten: string) => `Ghép món ${ten}`, en: (ten: string) => `Match dish ${ten}` },
 });
 
 let bao: KetQua | null = k.bao;
@@ -158,59 +164,101 @@ const theDau = THE_DONG_NB[0].ma;
   ) : hien.length === 0 ? (
     <p class="nb-rong">{tim.trang > 1 ? t.hetDs : dangTim(tim) ? t.khongKhop
       : the.ma === 'chua_khop' || the.ma === 'thieu_hang' ? t.khongCho : t.chuaCoDong}</p>
-  ) : hien.map(d => {
-    const [nhan, lop] = trangThaiDong(d.trang_thai, nn);
-    return (
-      <div class="nb-dong" id={`d-${d.id}`}>
-        <div class="nb-dong-dau">
-          <strong>{d.ten_mat_hang ?? d.ten_ipos ?? d.ma_ipos ?? t.monKhongTen}</strong>
-          <span class={`nb-nhan ${lop}`}>{nhan}</span>
-        </div>
-        <dl>
-          <dt>{t.banLuc}</dt><dd>{dinhDangThoiDiem(d.thoi_diem_ban)} · {t.hd} {d.ma_hd}</dd>
-          <dt>{t.monIpos}</dt><dd>{d.ten_ipos ?? '—'}{d.ma_ipos ? t.ma(d.ma_ipos) : ''}{d.ma_can ? t.maCan(d.ma_can) : ''}</dd>
-          <dt>{t.soLuong}</dt><dd>{kgGoi(d)}</dd>
-          {xemGia && d.thanh_tien !== null && <><dt>{t.thanhTien}</dt><dd>{dinhDangTien(d.thanh_tien, nn)}</dd></>}
-          {d.ly_do && <><dt>{t.lyDo}</dt><dd>{dichCau(nn, d.ly_do)}</dd></>}
-          {d.so_lan_thu > 1 && d.trang_thai !== 'da_ghi' && <><dt>{t.daThu}</dt><dd>{t.soLan(d.so_lan_thu)}</dd></>}
-          {d.lo_het_han && <><dt>{t.luuY}</dt><dd>{t.loHetHan}</dd></>}
-          {d.so_o != null && <><dt>{t.oMa}</dt><dd>{t.oChu(d.so_o, soTangChu(d.so_tang))}</dd></>}
-          {d.lech_o && <><dt>{t.luuY}</dt><dd>{t.lechO}</dd></>}
-        </dl>
-
-        {(d.trang_thai === 'chua_khop' || (d.trang_thai === 'loi' && !d.mat_hang_id)) && d.ma_ipos && (
-          <div class="kho-thanh-nut" style="margin:.5rem 0 0">
-            <a class="nb-nut" href={`/noi-bo/kho/ban-ipos/ghep?ma=${encodeURIComponent(d.ma_ipos)}`}>{t.ghepMon}</a>
+  ) : (() => {
+    const tenDong = (d: DongIpos) => d.ten_mat_hang ?? d.ten_ipos ?? d.ma_ipos ?? t.monKhongTen;
+    /** Dòng chưa ghép được món kho mà có mã iPOS: sửa bằng Ghép món theo mã. */
+    const canGhep = (d: DongIpos) => (d.trang_thai === 'chua_khop' || (d.trang_thai === 'loi' && !d.mat_hang_id)) && !!d.ma_ipos;
+    const theDong = (d: DongIpos, coNutGhep: boolean) => {
+      const [nhan, lop] = trangThaiDong(d.trang_thai, nn);
+      return (
+        <div class="nb-dong" id={`d-${d.id}`}>
+          <div class="nb-dong-dau">
+            <strong>{tenDong(d)}</strong>
+            <span class={`nb-nhan ${lop}`}>{nhan}</span>
           </div>
-        )}
-        {(d.trang_thai === 'thieu_hang' || d.trang_thai === 'loi' || (d.trang_thai === 'chua_khop' && !d.ma_ipos)) && (
-          <form method="POST" class="kho-thanh-nut" style="margin:.5rem 0 0;flex-wrap:wrap">
-            <input type="hidden" name="viec" value="xu_ly" />
-            <input type="hidden" name="dong_id" value={d.id} />
-            {d.trang_thai !== 'chua_khop' && <button type="submit" name="cach" value="thu_lai" class="nb-nut">{t.thuLai}</button>}
-            <button type="submit" name="cach" value="bo_qua" class="nb-nut phu">{t.boQua}</button>
-          </form>
-        )}
-        {d.trang_thai === 'thieu_hang' && (
-          <details style="margin:.5rem 0 0">
-            <summary style="cursor:pointer;min-height:48px;display:flex;align-items:center;font-weight:600">{t.hangNgoaiSo}</summary>
-            <form method="POST">
+          <dl>
+            <dt>{t.banLuc}</dt><dd>{dinhDangThoiDiem(d.thoi_diem_ban)} · {t.hd} {d.ma_hd}</dd>
+            <dt>{t.monIpos}</dt><dd>{d.ten_ipos ?? '—'}{d.ma_ipos ? t.ma(d.ma_ipos) : ''}{d.ma_can ? t.maCan(d.ma_can) : ''}</dd>
+            <dt>{t.soLuong}</dt><dd>{kgGoi(d)}</dd>
+            {xemGia && d.thanh_tien !== null && <><dt>{t.thanhTien}</dt><dd>{dinhDangTien(d.thanh_tien, nn)}</dd></>}
+            {d.ly_do && <><dt>{t.lyDo}</dt><dd>{dichCau(nn, d.ly_do)}</dd></>}
+            {d.so_lan_thu > 1 && d.trang_thai !== 'da_ghi' && <><dt>{t.daThu}</dt><dd>{t.soLan(d.so_lan_thu)}</dd></>}
+            {d.lo_het_han && <><dt>{t.luuY}</dt><dd>{t.loHetHan}</dd></>}
+            {d.so_o != null && <><dt>{t.oMa}</dt><dd>{t.oChu(d.so_o, soTangChu(d.so_tang))}</dd></>}
+            {d.lech_o && <><dt>{t.luuY}</dt><dd>{t.lechO}</dd></>}
+          </dl>
+
+          {coNutGhep && canGhep(d) && (
+            <div class="kho-thanh-nut" style="margin:.5rem 0 0">
+              <a class="nb-nut" href={`/noi-bo/kho/ban-ipos/ghep?ma=${encodeURIComponent(d.ma_ipos ?? '')}`}>{t.ghepMon}</a>
+            </div>
+          )}
+          {(d.trang_thai === 'thieu_hang' || d.trang_thai === 'loi' || (d.trang_thai === 'chua_khop' && !d.ma_ipos)) && (
+            <form method="POST" class="kho-thanh-nut" style="margin:.5rem 0 0;flex-wrap:wrap">
               <input type="hidden" name="viec" value="xu_ly" />
               <input type="hidden" name="dong_id" value={d.id} />
-              <input type="hidden" name="cach" value="ngoai_so" />
-              <p class="kho-phu" style="margin:.25rem 0 .5rem">{t.ngoaiSoGiai}</p>
-              <label class="nb-o"><span>{t.lyDo}</span>
-                <input type="text" name="ly_do" required minlength="3" maxlength="300" placeholder={t.vdLyDo} /></label>
-              <button type="submit" class="nb-nut">{t.ghiNgoaiSo}</button>
+              {d.trang_thai !== 'chua_khop' && <button type="submit" name="cach" value="thu_lai" class="nb-nut">{t.thuLai}</button>}
+              <button type="submit" name="cach" value="bo_qua" class="nb-nut phu">{t.boQua}</button>
             </form>
-          </details>
-        )}
-      </div>
-    );
-  })}
+          )}
+          {d.trang_thai === 'thieu_hang' && (
+            <details style="margin:.5rem 0 0">
+              <summary style="cursor:pointer;min-height:48px;display:flex;align-items:center;font-weight:600">{t.hangNgoaiSo}</summary>
+              <form method="POST">
+                <input type="hidden" name="viec" value="xu_ly" />
+                <input type="hidden" name="dong_id" value={d.id} />
+                <input type="hidden" name="cach" value="ngoai_so" />
+                <p class="kho-phu" style="margin:.25rem 0 .5rem">{t.ngoaiSoGiai}</p>
+                <label class="nb-o"><span>{t.lyDo}</span>
+                  <input type="text" name="ly_do" required minlength="3" maxlength="300" placeholder={t.vdLyDo} /></label>
+                <button type="submit" class="nb-nut">{t.ghiNgoaiSo}</button>
+              </form>
+            </details>
+          )}
+        </div>
+      );
+    };
+    return gomDongIpos(hien).map(n => {
+      if (n.ds.length === 1) return theDong(n.ds[0], true);
+      const d0 = n.ds[0];
+      const [nhan, lop] = trangThaiDong(d0.trang_thai, nn);
+      const tong = n.ds.reduce((c, d) => c + (d.thanh_tien ?? 0), 0);
+      return (
+        <details class="ip-nhom">
+          <summary>
+            <span class="ip-nhom-ten">
+              <strong>{tenDong(d0)}</strong>
+              <span class="kho-phu"> · {t.soDong(n.ds.length)}{xemGia && tong > 0 ? ` · ${dinhDangTien(tong, nn)}` : ''}</span>
+            </span>
+            <span class={`nb-nhan ${lop}`}>{nhan}</span>
+            {canGhep(d0) && (
+              <a class="nb-nut phu ip-ghep" href={`/noi-bo/kho/ban-ipos/ghep?ma=${encodeURIComponent(d0.ma_ipos!)}`}
+                aria-label={t.ghepMonCua(tenDong(d0))}>{t.ghepMon}</a>
+            )}
+          </summary>
+          <div class="ip-nhom-than">{n.ds.map(d => theDong(d, false))}</div>
+        </details>
+      );
+    });
+  })()}
   <PhanTrang duong={DUONG} trang={tim.trang} coSau={coSau} />
 
   {k.duoc('danh_muc') && (
     <p><a href="/noi-bo/kho/ban-ipos/ghep">{t.linkGhep}</a></p>
   )}
 </Kho>
+
+<style>
+  /* Nhóm dòng cùng món: một hàng — tên · số dòng · tiền, nhãn, nút Ghép món; mở ra từng hóa đơn. */
+  .ip-nhom { background: var(--nb-the); border: 1px solid var(--vach); border-radius: 10px; margin-bottom: .6rem; }
+  .ip-nhom > summary {
+    list-style: none; cursor: pointer; position: relative; padding: .6rem .75rem .6rem 1.6rem;
+    display: flex; align-items: center; gap: .5rem .75rem; flex-wrap: wrap;
+  }
+  .ip-nhom > summary::-webkit-details-marker { display: none; }
+  .ip-nhom > summary::before { content: '▸'; position: absolute; left: .65rem; color: var(--muc-nhat); }
+  .ip-nhom[open] > summary::before { content: '▾'; }
+  .ip-nhom-ten { flex: 1 1 14rem; }
+  .ip-ghep { min-height: 44px; }
+  .ip-nhom-than { border-top: 1px solid var(--vach); padding: .5rem .75rem 0; }
+</style>
