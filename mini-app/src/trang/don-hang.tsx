@@ -32,7 +32,7 @@ export default function DonHang() {
   }, [cacGio, nhan.gio, suaNhan]);
 
   const daChon = SAN_PHAM.filter((sp) => (soKhay[sp.ma] ?? 0) > 0);
-  const dong = dongTuGio(soKhay);
+  const dong = dongTuGio(soKhay, (sp) => trangThaiPhan(sp.conHang, conHang[sp.ma]) === "het");
   const tongTien = tongTienThit(dong);
 
   // Sau lần bấm gửi đầu tiên, danh sách lỗi tự cập nhật theo từng ô khách sửa.

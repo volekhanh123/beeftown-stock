@@ -1029,7 +1029,7 @@ theo vai. Gửi xuống cân, sửa tem, tạo mã giảm: quản lý / chủ (`
 
 ## 3r. Còn hàng cho Mini App Zalo (migration 0093)
 
-Mini App Zalo (`mini-app/`) hiện "Tạm hết" và "Quầy còn ít khay" theo số khay ở quầy. Kho không mở bảng nào cho khách: Mini App hỏi
+Mini App Zalo (`mini-app/`) hiện "Tạm hết" theo số khay ở quầy (`sap_het` hiện như còn hàng: không viết câu khan hiếm). Kho không mở bảng nào cho khách: Mini App hỏi
 `/mini-app/con-hang.json` (`src/pages/mini-app/con-hang.json.ts`, `src/lib/mini-app.ts`), website gọi `mini_app_con_hang(chi nhánh)`
 bằng vai anon, hàm chỉ trả `het` / `sap_het` / `con` của từng phần thịt — không số khay, như đặt bàn không trả số bàn.
 

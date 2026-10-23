@@ -24,13 +24,16 @@ export async function docConHang(
   if (!url) return {};
   const huy = new AbortController();
   const hen = setTimeout(() => huy.abort(), msHetGio);
+  // Hết giờ bao cả lúc chờ trả lời lẫn lúc đọc thân: máy chủ gửi header rồi treo thân cũng dừng ở msHetGio.
+  const docThan = async (): Promise<unknown> => {
+    const tra = await hamFetch(url, { signal: huy.signal, cache: "no-store" });
+    return tra.ok ? tra.json() : null;
+  };
   try {
-    const tra = await Promise.race([
-      hamFetch(url, { signal: huy.signal, cache: "no-store" }),
+    const duLieu = (await Promise.race([
+      docThan(),
       new Promise<never>((_, tuChoi) => huy.signal.addEventListener("abort", () => tuChoi(new Error("hết giờ")))),
-    ]);
-    if (!tra.ok) return {};
-    const duLieu = (await tra.json()) as { phanThit?: unknown };
+    ])) as { phanThit?: unknown } | null;
     const phanThit = duLieu?.phanThit;
     if (!phanThit || typeof phanThit !== "object" || Array.isArray(phanThit)) return {};
     const ra: Record<string, TrangThaiKho> = {};

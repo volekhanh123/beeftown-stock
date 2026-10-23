@@ -20,6 +20,29 @@ const TRANG_THAI: ReadonlySet<string> = new Set(['con', 'sap_het', 'het']);
 /** Mã phần thịt của Mini App (mini-app/src/san-pham.ts, lựa chọn của ô mini_app trong kho). */
 const MA_PHAN_THIT = /^[a-z0-9-]{1,40}$/;
 
+/**
+ * Bộ đệm trong Worker: đường công khai /mini-app/con-hang.json không gọi database quá một lần mỗi
+ * GIU_DEM_MS cho mỗi Worker đang chạy — 100 khách mở app cùng lúc hay ai đó gọi liên tục không thành 100 lần
+ * gọi Supabase. Header Cache-Control chỉ giữ ở trình duyệt, không giữ ở Cloudflare cho Worker.
+ */
+export const GIU_DEM_MS = 30_000;
+let dem: { luc: number; giaTri: Record<string, TrangThaiConHang> } | null = null;
+
+export async function docConHangMiniAppCoDem(
+  bayGio = Date.now(),
+  doc: () => Promise<Record<string, TrangThaiConHang>> = () => docConHangMiniApp(),
+): Promise<Record<string, TrangThaiConHang>> {
+  if (dem && bayGio - dem.luc >= 0 && bayGio - dem.luc < GIU_DEM_MS) return dem.giaTri;
+  const giaTri = await doc();
+  dem = { luc: bayGio, giaTri };
+  return giaTri;
+}
+
+/** Chỉ cho kiểm thử: xóa bộ đệm. */
+export function xoaDemConHang(): void {
+  dem = null;
+}
+
 /** Trạng thái còn hàng của từng phần thịt đã gắn mặt hàng trong kho. Phần chưa gắn: không có khóa. */
 export async function docConHangMiniApp(
   client: SupabaseClient | null = taoClient(),

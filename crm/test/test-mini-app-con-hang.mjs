@@ -18,6 +18,7 @@
  */
 
 import { dungDatabase, taoBoDem, datGioDatabase, traGioDatabase, UID } from './kho-chung.mjs';
+import { SAN_PHAM } from '../../mini-app/src/san-pham.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — MINI APP ZALO: CÒN HÀNG Ở QUẦY');
 const { db, cnA, cnB, duoi, duoiAnon, phaiLoi } = await dungDatabase();
@@ -80,6 +81,9 @@ await nhom('0 · DỰNG MẶT HÀNG VÀ KHAY Ở QUẦY', async () => {
   ok('0093 tạo ô "Phần thịt trên Mini App Zalo": kiểu chọn, 6 mã phần thịt, không bắt buộc, đang dùng',
      dn?.kieu === 'chon' && dn.lua_chon.length === 6 && dn.lua_chon.includes('ribeye-with-cap')
      && dn.bat_buoc === false && dn.dang_dung === true, JSON.stringify(dn));
+  const maMiniApp = SAN_PHAM.map(sp => sp.ma).sort().join(',');
+  ok('Lựa chọn của ô đúng bằng mã 6 phần thịt trong mini-app/src/san-pham.ts (đổi mã bên này thì đổi ô bằng migration mới)',
+     [...(dn?.lua_chon ?? [])].sort().join(',') === maMiniApp, `ô: ${dn?.lua_chon} · Mini App: ${maMiniApp}`);
 
   id.ribeye = await matHang('RIBEYE', 'ribeye-with-cap');
   id.ribeye2 = await matHang('RIBEYE-B', 'ribeye-with-cap');   // cùng phần thịt, cộng khay

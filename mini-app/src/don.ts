@@ -13,6 +13,8 @@ export interface DongDon {
   soGamKhay: number;
   /** Giá cố định của 1 khay; null = quán báo giá khi xác nhận đơn. */
   giaMoiKhay: number | null;
+  /** Kho báo phần này vừa hết ở quầy (khách đã chọn trước đó): tin ghi thêm để nhân viên kiểm lại. */
+  vuaHet?: boolean;
 }
 
 export interface ThongTinNhan {
@@ -175,7 +177,7 @@ export function taoNoiDungDon(dong: DongDon[], nhan: ThongTinNhan, tuyChon: TuyC
       d.giaMoiKhay === null
         ? `${d.soKhay} khay, quán báo giá`
         : `${d.soKhay} × ${dinhDangTien(d.giaMoiKhay)} = ${dinhDangTien(d.soKhay * d.giaMoiKhay)}`;
-    dongTin.push(`• ${d.ten} (${khay}): ${tien}`);
+    dongTin.push(`• ${d.ten} (${khay}): ${tien}${d.vuaHet ? " — app báo quầy vừa hết" : ""}`);
   }
   const tong = tongTienThit(coKhay);
   dongTin.push(

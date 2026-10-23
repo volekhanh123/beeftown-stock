@@ -103,11 +103,11 @@ export function BaoGiaThu() {
   );
 }
 
-/** Một dòng nhỏ khi kho báo ít hay hết. Không nói số khay: kho chỉ trả trạng thái (0093). */
+/**
+ * Một dòng nhỏ khi phần đã chọn vừa hết ở quầy. "sap_het" của kho KHÔNG hiện cho khách: repo cấm câu khan hiếm
+ * kiểu "sắp hết" (kế hoạch IMC, như dat-ban.ts không nói còn mấy bàn) — Mini App coi sap_het như còn hàng.
+ */
 export function GhiChuConHang({ trangThai, daChon }: { trangThai: TrangThaiKho; daChon: boolean }) {
-  if (trangThai === "sap_het") {
-    return <p className="ghi-chu-con-hang">Quầy còn ít khay; quán xác nhận số khay khi nhận đơn.</p>;
-  }
   if (trangThai === "het" && daChon) {
     return <p className="ghi-chu-con-hang">Phần này vừa hết ở quầy; quán báo lại khi xác nhận đơn.</p>;
   }

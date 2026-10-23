@@ -179,7 +179,18 @@ await kiemAsync("còn hàng: hỏng thì không biết ({}), không bao giờ ra
   // Máy chủ treo: fetch không bao giờ trả lời, kể cả khi bị hủy.
   const batDau = Date.now();
   assert.deepEqual(await docConHang(URL_KHO, () => new Promise(() => {}), 50), {});
+  // Máy chủ gửi header rồi treo thân.
+  assert.deepEqual(await docConHang(URL_KHO, async () => ({ ok: true, json: () => new Promise(() => {}) }), 50), {});
   assert.ok(Date.now() - batDau < 2000);
+});
+
+kiem("phần kho báo vừa hết vẫn gửi được, tin ghi thêm cho nhân viên kiểm lại", () => {
+  const tin = taoNoiDungDon(
+    dong.map((d) => (d.ten === "LA Galbi" ? { ...d, vuaHet: true } : d)),
+    nhan,
+  );
+  assert.ok(tin.includes("• LA Galbi (đông lạnh, khay ~150 g): 1 × 150.000 đ = 150.000 đ — app báo quầy vừa hết"));
+  assert.ok(tin.includes("• Ribeye with Cap (khay ~150 g): 2 × 300.000 đ = 600.000 đ\n"));
 });
 
 await kiemAsync("còn hàng: tạm ngưng trong cau-hinh thắng kho; kho không biết thì coi như còn", async () => {

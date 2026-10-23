@@ -11,13 +11,14 @@
  *      tự ra 'het': Mini App hiện mọi phần như cũ thay vì báo tạm hết một khay còn ở quầy.
  *   3. Dòng lạ (mã có chữ hoa, dấu, thẻ HTML; trạng thái ngoài con / sap_het / het) bị bỏ.
  *   4. Đường JSON: cho mọi nơi đọc (Mini App chạy trên tên miền Zalo), lưu đệm 60 giây, không cookie.
+ *   5. Bộ đệm trong Worker: gọi database tối đa một lần mỗi GIU_DEM_MS, kể cả khi lần đọc trước hỏng.
  */
 
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { taoBoDem } from './kho-chung.mjs';
-import { docConHangMiniApp } from '../../web/src/lib/mini-app.ts';
+import { docConHangMiniApp, docConHangMiniAppCoDem, xoaDemConHang, GIU_DEM_MS } from '../../web/src/lib/mini-app.ts';
 
 const { ok, nhom, ketThuc } = taoBoDem('BEEFTOWN — MINI APP ZALO: ĐƯỜNG CÒN HÀNG CỦA WEBSITE');
 const GOC = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -87,12 +88,29 @@ await nhom('3 · DÒNG LẠ BỊ BỎ', async () => {
 // ===========================================================================
 await nhom('4 · ĐƯỜNG /mini-app/con-hang.json', async () => {
   const ma = readFileSync(join(GOC, 'web', 'src', 'pages', 'mini-app', 'con-hang.json.ts'), 'utf8');
-  ok('Chỉ có GET, gọi docConHangMiniApp, trả { phanThit }',
+  ok('Chỉ có GET, gọi docConHangMiniAppCoDem (có bộ đệm), trả { phanThit }',
      /export const GET\b/.test(ma) && !/export const (POST|PUT|DELETE|PATCH)\b/.test(ma)
-     && /docConHangMiniApp\(\)/.test(ma) && /JSON\.stringify\(\{ phanThit \}\)/.test(ma));
+     && /docConHangMiniAppCoDem\(\)/.test(ma) && /JSON\.stringify\(\{ phanThit \}\)/.test(ma));
   ok('Cho mọi nơi đọc (Access-Control-Allow-Origin: *), không gửi kèm cookie',
      /'Access-Control-Allow-Origin': '\*'/.test(ma) && !/Allow-Credentials/.test(ma) && !/cookies/.test(ma));
   ok('Lưu đệm công khai 60 giây', /'Cache-Control': 'public, max-age=60'/.test(ma));
+});
+
+// ===========================================================================
+await nhom('5 · BỘ ĐỆM TRONG WORKER', async () => {
+  xoaDemConHang();
+  let soLan = 0;
+  const doc = async () => { soLan++; return soLan === 1 ? {} : { 'la-galbi': 'het' }; };
+  const t0 = 1_000_000;
+  await docConHangMiniAppCoDem(t0, doc);
+  await docConHangMiniAppCoDem(t0 + 1, doc);
+  await docConHangMiniAppCoDem(t0 + GIU_DEM_MS - 1, doc);
+  ok(`Trong ${GIU_DEM_MS / 1000} giây chỉ gọi database một lần, kể cả khi lần đó ra {}`, soLan === 1, `${soLan} lần`);
+  const sau = await docConHangMiniAppCoDem(t0 + GIU_DEM_MS, doc);
+  ok('Hết hạn bộ đệm thì gọi lại và trả kết quả mới', soLan === 2 && sau['la-galbi'] === 'het', JSON.stringify(sau));
+  await docConHangMiniAppCoDem(t0 - 5, doc);
+  ok('Đồng hồ lùi thì gọi lại, không giữ bộ đệm mãi', soLan === 3, `${soLan} lần`);
+  xoaDemConHang();
 });
 
 console.error = consoleLoi;
