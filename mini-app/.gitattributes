@@ -1,0 +1,2 @@
+# dua-len-zalo.cmd chạy bằng cmd.exe: giữ xuống dòng CRLF trên mọi máy, kể cả khi lấy repo trên Linux hay Mac.
+*.cmd text eol=crlf

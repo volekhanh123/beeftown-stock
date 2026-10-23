@@ -1,0 +1,10 @@
+{
+  "name": "Beeftown",
+  "framework": "react-typescript",
+  "cssPreProcessor": "css",
+  "includeTailwind": false,
+  "package": "zmp-ui",
+  "stateManagement": "none",
+  "newProject": true,
+  "template": "single-view"
+}

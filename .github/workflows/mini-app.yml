@@ -1,0 +1,62 @@
+# Kiểm thử Mini App Zalo (mini-app/) — chỉ chạy khi mini-app/ hay file này đổi.
+#
+#   · PR không phải nháp (và mỗi lần đẩy thêm vào PR đó), main nhận commit, chạy tay.
+#   · Cài thư viện, kiểm tra logic đơn (npm run kiem-tra), kiểm kiểu (tsc), build — KHÔNG có mini-app/.env
+#     (file đó có ZMP_TOKEN, chỉ nằm trên máy Khánh): bản build phải đúng khi không có nó.
+#   · KHÔNG đưa lên Zalo. Đưa bản thử lên chỉ chạy tay trên máy có mạng tới Zalo (mini-app/README.md).
+#
+# Workflow riêng, không phải job trong kiem-thu.yml: cổng deploy website (web/kiem-tra/truoc-deploy.mjs) chỉ
+# đọc kiem-thu.yml, nên Mini App đỏ không khóa deploy website; và PR không đụng mini-app/ không tốn phút CI ở đây.
+# Chữ cấm trên chữ của Mini App thì quét trong kiem-thu.yml (crm/test/test-mini-app-chu.mjs) — chạy mọi PR,
+# vì danh sách chữ cấm (web/src/lib/chuoi-cam.js) nằm ngoài mini-app/.
+
+name: Mini App Zalo
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'mini-app/**'
+      - '.github/workflows/mini-app.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'mini-app/**'
+      - '.github/workflows/mini-app.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mini-app-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  mini-app:
+    name: Mini App · kiểm tra đơn · tsc · build
+    # PR nháp bỏ qua như kiem-thu.yml; bấm "Ready for review" thì chạy.
+    if: ${{ !(github.event_name == 'pull_request' && github.event.pull_request.draft) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: mini-app
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: web/.node-version
+          cache: npm
+          cache-dependency-path: mini-app/package-lock.json
+      - name: Cài thư viện
+        run: npm ci --no-audit --no-fund
+      - name: Kiểm tra logic đơn (giờ nhận, số điện thoại, tin nhắn, tổng tiền, giá thử)
+        run: npm run kiem-tra
+      # Sau kiểm tra, chạy cả khi kiểm tra hỏng: lỗi kiểu không che kết quả kiểm tra và ngược lại.
+      - name: Kiểm kiểu (tsc --noEmit)
+        if: ${{ !cancelled() }}
+        run: npx tsc --noEmit
+      - name: Build (vite, không có .env)
+        if: ${{ !cancelled() }}
+        run: npx vite build

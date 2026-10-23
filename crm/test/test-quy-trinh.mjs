@@ -14,7 +14,9 @@
  *      "chặn hết rồi mở từng cái" — file mới quên mở chỉ tồn tại trên máy người
  *      viết; CI và máy khác không bao giờ thấy nó.
  *   3. Các file của quy trình (CLAUDE.md, workflow CI, mẫu PR, mẫu báo lỗi) có
- *      mặt và không bị .gitignore chặn; workflow vẫn chạy đủ các bước.
+ *      mặt và không bị .gitignore chặn; workflow vẫn chạy đủ các bước. Mini App Zalo:
+ *      workflow riêng chạy kiểm tra đơn, tsc, build và không đưa lên Zalo; mini-app/.env
+ *      (có ZMP_TOKEN) luôn bị chặn.
  *   4. CLAUDE.md và mẫu PR cùng liệt kê đủ 9 mục "định nghĩa xong".
  *   5. crm/README.md nhắc đủ migration, migration thêm giá trị enum có dòng "chạy RIÊNG".
  *   6. Không file kiểm thử nào cấp quyền hàng loạt (mọi hàm, mọi bảng) sau khi nạp migration.
@@ -89,12 +91,13 @@ await nhom('2 · KHÔNG FILE MÃ NGUỒN NÀO BỊ .gitignore CHẶN ÂM THẦM'
   // Chỉ những chỗ chứa mã nguồn. Chỗ khác bị chặn là CÓ Ý (tài liệu mật, ảnh, .env, file cân .TMS).
   // web/cong-cu/: script dựng tài sản thương hiệu và ảnh (Python) — .gitignore mở riêng đuôi .py ở đó.
   // .claude/skills/: skill dùng chung — .gitignore mở từng skill, nên skill mới bị chặn tới khi có dòng mở.
-  const CHO_MA = /^(web\/(src|kiem-tra|cong-cu)\/|crm\/(test|supabase|sao-luu)\/|can-app\/(src|test|scripts)\/|\.github\/|\.claude\/skills\/|CLAUDE\.md$)/;
-  const DUOI_MA = /\.(ts|tsx|mjs|js|astro|sql|ya?ml|md|json|css|html|ps1|sh|py)$/;
+  // mini-app/: cả thư mục là mã nguồn (www/ là thư mục bị chặn cả khối, không hiện từng file; .env không mang đuôi mã).
+  const CHO_MA = /^(web\/(src|kiem-tra|cong-cu)\/|crm\/(test|supabase|sao-luu)\/|can-app\/(src|test|scripts)\/|mini-app\/|\.github\/|\.claude\/skills\/|CLAUDE\.md$)/;
+  const DUOI_MA = /\.(ts|tsx|mts|mjs|js|astro|sql|ya?ml|md|json|css|html|ps1|sh|py|cmd)$/;
   // --directory: thư mục bị chặn cả khối (node_modules, dist, ảnh lỗi) hiện một dòng "thư mục/" thay vì từng
   // file. Thư mục bị chặn chỉ đáng ngờ khi nằm trong chỗ CHỈ chứa mã nguồn — web/kiem-tra/anh-loi/ hay
   // crm/supabase/.temp/ là cố ý chặn.
-  const THU_MUC_MA = /^(web\/src|crm\/test|crm\/sao-luu|crm\/supabase\/(migrations|thu)|can-app\/(src|test|scripts)|\.github|\.claude\/skills)\//;
+  const THU_MUC_MA = /^(web\/src|crm\/test|crm\/sao-luu|crm\/supabase\/(migrations|thu)|can-app\/(src|test|scripts)|mini-app\/(src|scripts)|\.github|\.claude\/skills)\//;
   const biChan = git(['ls-files', '--others', '--ignored', '--exclude-standard', '--directory'])
     .split('\n').filter(f => (f.endsWith('/') ? THU_MUC_MA.test(f) : CHO_MA.test(f) && DUOI_MA.test(f)) && !/node_modules\//.test(f));
   const coSkill = biChan.some(f => f.startsWith('.claude/'));
@@ -111,6 +114,7 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
     '.github/workflows/gac-nhanh.yml',
     '.github/workflows/dong-goi-can.yml',
     '.github/workflows/sao-luu.yml',
+    '.github/workflows/mini-app.yml',
     '.github/dependabot.yml',
     'crm/sao-luu/sao-luu.sh',
     'crm/sao-luu/khoi-phuc.sh',
@@ -141,6 +145,28 @@ await nhom('3 · FILE CỦA QUY TRÌNH CÓ MẶT VÀ ĐƯỢC GIT THEO DÕI', as
   ];
   const thieu = BUOC.filter(([, m]) => !m.test(yml)).map(([t]) => t);
   ok('Workflow kiểm thử còn đủ các bước', thieu.length === 0, `thiếu: ${thieu.join(', ')}`);
+
+  // Mini App Zalo (22/10/2026): workflow riêng — cổng deploy website chỉ đọc kiem-thu.yml. Đưa lên Zalo cần ZMP_TOKEN
+  // của máy Khánh, nên CI chỉ kiểm và build, không bao giờ deploy.
+  const mini = existsSync(join(GOC, '.github/workflows/mini-app.yml'))
+    ? readFileSync(join(GOC, '.github/workflows/mini-app.yml'), 'utf8') : '';
+  const BUOC_MINI = [
+    ['chỉ khi mini-app/ đổi', /paths:\s*\n\s*- 'mini-app\/\*\*'/],
+    ['cài bằng npm ci', /npm ci/],
+    ['kiểm tra đơn', /npm run kiem-tra/],
+    ['kiểm kiểu', /tsc --noEmit/],
+    ['build', /vite build/],
+  ];
+  const thieuMini = BUOC_MINI.filter(([, m]) => !m.test(mini)).map(([t]) => t);
+  ok('Workflow Mini App còn đủ các bước', thieuMini.length === 0, `thiếu: ${thieuMini.join(', ')}`);
+  ok('Workflow Mini App không đưa lên Zalo và không đọc secret', !/zmp\s+(deploy|login)|deploy:thu|secrets\./.test(mini));
+  const daTheoDoi = git(['ls-files', 'mini-app']).split('\n').filter(Boolean);
+  let envBiChan = false;
+  try { git(['check-ignore', '-q', '--no-index', 'mini-app/.env']); envBiChan = true; } catch { /* mã 1 = không bị chặn */ }
+  ok('mini-app/.env (ZMP_TOKEN) bị .gitignore chặn và không file .env nào của Mini App vào git',
+     envBiChan && !daTheoDoi.some(f => /(^|\/)\.env(\.|$)/.test(f)), daTheoDoi.filter(f => /\.env/.test(f)).join(', '));
+  ok('Bản build mini-app/www/ và node_modules không vào git', !daTheoDoi.some(f => /^mini-app\/(www|node_modules)\//.test(f)));
+
   // Tiết kiệm phút CI (19/10/2026): PR nháp không chạy hai job kiểm mã — bấm "Ready for review" mới chạy, và
   // vẫn phải xanh mới gộp. Lượt đêm bỏ hai job đó khi main không đổi — job co-doi (tên ở web/kiem-tra/ket-qua-ci.mjs).
   // Phần điều kiện của một job: từ dòng khóa job tới dòng "steps:".
