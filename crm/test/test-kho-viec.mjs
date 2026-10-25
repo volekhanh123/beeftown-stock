@@ -397,8 +397,10 @@ await nhom('10 · HÀM NỘI BỘ', async () => {
   ok('Gọi thẳng kho_su_kien() bị từ chối', sk.loi !== null && /permission denied/i.test(sk.loi), sk.loi ?? 'GỌI ĐƯỢC');
   const lv = await duoi(UID.chu, `select kho_luc_vn('2026-01-01', 7)`);
   ok('Gọi thẳng kho_luc_vn() bị từ chối', lv.loi !== null);
-  const { rows: [{ t }] } = await db.query(`select kho_luc_vn('2026-01-01', 7)::text as t`);
-  ok('7 giờ sáng giờ VN = 0 giờ UTC', /^2026-01-01 00:00:00(\+00)?/.test(t), t);
+  // Đổi ra giờ UTC trước khi so: ::text của timestamptz in theo múi giờ của phiên, mà lượt CI đêm chạy
+  // với TZ=Asia/Ho_Chi_Minh (cùng thời điểm in thành "07:00:00+07").
+  const { rows: [{ t }] } = await db.query(`select (kho_luc_vn('2026-01-01', 7) at time zone 'UTC')::text as t`);
+  ok('7 giờ sáng giờ VN = 0 giờ UTC', t === '2026-01-01 00:00:00', t);
 });
 
 const { rows: doiSoat } = await db.query(`select * from kho_doi_soat_ton()`);
