@@ -14,7 +14,9 @@
  *
  * LƯU CẢ PHIẾU MỖI LẦN: kho_luu_phieu_nhap_kg thay toàn bộ dòng, nên mỗi lệnh
  * (thêm / sửa / bỏ dòng, thêm ảnh, sửa đầu phiếu) gửi lại MỌI dòng đang có,
- * lấy từ kho_doc_phieu_nhap_kg, kèm phien_ban chống hai máy đè nhau. Đầu phiếu
+ * lấy từ kho_doc_phieu_nhap_kg, kèm phien_ban chống hai máy đè nhau. Số tảng
+ * (0097) đi theo khóa so_tang của từng dòng: dòng gửi lại số database đã cấp
+ * thì giữ số; không gửi thì database cấp số mới và ghi bỏ số cũ. Đầu phiếu
  * (số hóa đơn, ngày hóa đơn, ghi chú…) cũng bị ghi đè bằng giá trị gửi lên, nên
  * luôn gửi lại đúng giá trị vừa đọc. Đơn giá kế toán đã điền thì database tự
  * mang theo mặt hàng sang dòng mới — ở đây không đụng tới.
@@ -36,6 +38,7 @@ import {
 import { docTruongThem, type DinhNghiaTruong, type GiaTriTruong } from './truong-them.ts';
 import { docAnhDaTai, layTepAnh, soThuTuCuoi, taiAnh } from './anh.ts';
 import { CO_TRANG, type TimDs } from './tim-ds.ts';
+import { soTangChu } from './tang.ts';
 import { dichCau } from '../cau-noi-bo.ts';
 
 // -----------------------------------------------------------------------------
@@ -75,9 +78,10 @@ export interface DongNhan {
   han_dung: string | null;
   truong_them: GiaTriTruong;
   lo_id: string | null;
-  /** Món theo dõi theo tảng (0048): dòng là MỘT tảng, có ngày mổ; số tảng có khi đã duyệt. */
+  /** Món theo dõi theo tảng (0048): dòng là MỘT tảng, có ngày mổ. */
   theo_tang?: boolean;
   ngay_mo?: string | null;
+  /** Số tảng: cấp lúc lưu dòng (0097); đã duyệt là số của lô. Viết lên túi tảng. */
   so_tang?: number | null;
   /** Kg sau repack (0050) — null = như so_kg. so_kg vẫn là kg nhà cung cấp (tính tiền). */
   so_kg_thuc?: number | null;
@@ -109,6 +113,8 @@ export interface PhieuNhan {
   dong: DongNhan[];
   /** Đơn đặt hàng của phiếu (0039) — null khi nhận lẻ, không theo đơn. Không tiền. */
   don_dat: DonDatCuaPhieu | null;
+  /** Số tảng đã cấp cho phiếu mà không dùng nữa (0097): dòng bị bỏ, đổi sang món thường, phiếu đã hủy. */
+  so_tang_bo?: number[];
 }
 
 /** kho_doc_phieu_nhap_kg → don_dat (0039). so_kg_da_nhan gồm cả phiếu này nếu phiếu đã gửi / đã duyệt. */
@@ -133,6 +139,11 @@ export interface DongLuu {
   ngay_mo?: string | null;
   /** Kg sau repack (0050) — món theo tảng phải có trước khi gửi duyệt. */
   so_kg_thuc?: number | null;
+  /**
+   * Số tảng (0097): chỉ gửi lại số database đã cấp cho dòng này — database kiểm số đúng là của
+   * phiếu này. Không gửi thì database cấp số mới (và ghi bỏ số cũ của dòng, nếu có).
+   */
+  so_tang?: number | null;
 }
 
 // -----------------------------------------------------------------------------
@@ -187,7 +198,9 @@ export async function docPhieuNhan(client: SupabaseClient, id: string): Promise<
     truong_them: p.truong_them ?? {},
     dong: (p.dong ?? []).map(d => ({
       ...d, so_kg: Number(d.so_kg), so_goi: Number(d.so_goi ?? 0), truong_them: d.truong_them ?? {},
+      so_tang: d.so_tang === null || d.so_tang === undefined ? null : Number(d.so_tang),
     })),
+    so_tang_bo: Array.isArray(p.so_tang_bo) ? p.so_tang_bo.map(Number) : [],
     don_dat: p.don_dat && typeof p.don_dat === 'object' ? {
       ...p.don_dat,
       dong: (p.don_dat.dong ?? []).map(x => ({
@@ -401,7 +414,10 @@ export function docFormDongNhan(
   return { dong, loi, loiEn, luu };
 }
 
-/** Dòng đã lưu → dòng gửi lại khi lưu cả phiếu (không mang đơn giá — database tự giữ). */
+/**
+ * Dòng đã lưu → dòng gửi lại khi lưu cả phiếu (không mang đơn giá — database tự giữ). Mang theo
+ * số tảng (0097) — thiếu nó thì mỗi lần thêm ảnh hay sửa đầu phiếu, mọi tảng bị cấp số mới.
+ */
 export function dongLuuTuPhieu(d: DongNhan): DongLuu {
   return {
     mat_hang_id: d.mat_hang_id,
@@ -413,6 +429,7 @@ export function dongLuuTuPhieu(d: DongNhan): DongLuu {
     truong_them: d.truong_them ?? {},
     ...(d.ngay_mo ? { ngay_mo: d.ngay_mo } : {}),
     ...(d.so_kg_thuc != null ? { so_kg_thuc: d.so_kg_thuc } : {}),
+    ...(d.so_tang != null ? { so_tang: d.so_tang } : {}),
   };
 }
 
@@ -434,6 +451,8 @@ export function tangChuaRepack(dong: DongNhan[]): DongNhan[] {
 /**
  * Danh sách dòng sau một lệnh: thêm dòng mới ở cuối, thay dòng `thay`, hoặc
  * bỏ dòng `bo`. Dòng cần thay / bỏ không còn (máy khác vừa sửa) → null.
+ * Thay dòng: dòng mới mang số tảng của dòng cũ (0097) — sửa kg, ngày mổ, kg sau repack
+ * không đổi số. Bỏ dòng: số không gửi nữa → database ghi bỏ.
  */
 export function ghepDongNhan(
   dsCu: DongNhan[],
@@ -442,8 +461,35 @@ export function ghepDongNhan(
   if ('them' in lenh) return [...dsCu.map(dongLuuTuPhieu), lenh.them];
   const id = 'thay' in lenh ? lenh.thay : lenh.bo;
   if (!dsCu.some(d => d.id === id)) return null;
-  if ('thay' in lenh) return dsCu.map(d => (d.id === id ? lenh.dong : dongLuuTuPhieu(d)));
+  if ('thay' in lenh) {
+    // Dòng cũ không có số thì dùng nguyên dòng mới (cùng một đối tượng), không chép ra đối tượng khác.
+    return dsCu.map(d => (d.id !== id ? dongLuuTuPhieu(d)
+      : d.so_tang != null ? { ...lenh.dong, so_tang: d.so_tang } : lenh.dong));
+  }
   return dsCu.filter(d => d.id !== id).map(dongLuuTuPhieu);
+}
+
+/**
+ * Số tảng vừa cấp để hiện to trên màn nhận hàng (0097). Chỉ khi trang được chuyển về từ chính lần
+ * lưu đó: `pb` là phien_ban lần lưu trả về và phiếu đọc lại vẫn đúng phiên bản ấy (không máy nào lưu
+ * chen giữa), `vua` là chỉ số dòng vừa thêm / vừa sửa, dòng đó là tảng và có số. Còn lại → null.
+ */
+export function soTangVuaThem(
+  p: Pick<PhieuNhan, 'phien_ban' | 'dong'>, vua: string | null | undefined, pb: string | null | undefined,
+): number | null {
+  if (!vua || !pb || !/^\d{1,4}$/.test(vua) || !/^\d{1,9}$/.test(pb)) return null;
+  if (Number(pb) !== p.phien_ban) return null;
+  const d = p.dong[Number(vua)];
+  return d?.theo_tang && d.so_tang != null ? d.so_tang : null;
+}
+
+/** Câu báo khi một số tảng không dùng nữa (bỏ dòng tảng, đổi sang món thường) — 0097. */
+export function cauSoTangBo(so: number): HaiThuTieng {
+  const chu = soTangChu(so);
+  return {
+    vi: `Số tảng ${chu} bỏ trống — nếu đã viết lên túi thì gạch đi.`,
+    en: `Primal number ${chu} is no longer used — if it is already on the bag, cross it out.`,
+  };
 }
 
 /**
@@ -570,11 +616,17 @@ export interface KetQuaLuuNhan extends KetQua {
   /** Chưa lưu được: ảnh vừa tải (ô ẩn anh_da_tai) và ma_gui để giữ lại. */
   maGui?: string;
   anhDaTai?: string[];
+  /**
+   * Đã lưu: phien_ban database trả về cho CHÍNH lần lưu này (0097). Trang chỉ hiện to số tảng khi có
+   * nó — không có (lỗi, mất mạng, "có thể đã thêm từ lần bấm trước") thì không hiện.
+   */
+  phienBan?: number;
 }
 
 /**
  * Lưu cả phiếu với danh sách dòng mới và ảnh thêm. Đầu phiếu lấy nguyên từ
  * lần đọc (hoặc `dau` khi đang sửa đầu phiếu) — hàm database ghi đè các ô đó.
+ * Chỉ báo đã lưu khi database trả dòng (phieu_id, phien_ban_moi) — cùng một lần await.
  */
 export async function luuPhieuNhan(
   client: SupabaseClient,
@@ -584,7 +636,7 @@ export async function luuPhieuNhan(
   maGui: string,
   dong: DongLuu[],
   them: { anh?: string[]; dau?: DauNhan } = {},
-): Promise<KetQua> {
+): Promise<KetQuaLuuNhan> {
   const dau = them.dau;
   const { data, error } = await client.rpc('kho_luu_phieu_nhap_kg', {
     p_id: p.id,
@@ -603,28 +655,47 @@ export async function luuPhieuNhan(
     p_dong: dong,
   });
   if (error) return { ok: false, cau: cauLoiKho(error) };
-  return kqHai(!!data, { vi: 'Đã lưu.', en: 'Saved.' });
+  const hang = (Array.isArray(data) ? data[0] : data) as { phieu_id: string; phien_ban_moi: number } | null | undefined;
+  if (!hang || typeof hang !== 'object' || !Number.isFinite(Number(hang.phien_ban_moi))) {
+    return kqHai(false, { vi: 'Không chắc đã lưu hay chưa — tải lại trang để kiểm tra.',
+                          en: 'Not sure whether it was saved — reload the page to check.' });
+  }
+  return { ...kqHai(true, { vi: 'Đã lưu.', en: 'Saved.' }), phienBan: Number(hang.phien_ban_moi) };
 }
 
 /**
  * Thêm dòng. Bấm hai lần (mạng chậm): lần sau vấp phien_ban cũ — đọc lại
- * phiếu, nếu dòng cuối đúng là dòng này thì coi như đã thêm, không báo lỗi.
+ * phiếu, nếu dòng cuối đúng là dòng này (món, kg, gói, ngày mổ, kg sau repack)
+ * thì coi như đã thêm, không báo lỗi. Nhánh đó KHÔNG trả phienBan: dòng cuối có
+ * thể là tảng của máy khác cùng món, cùng kg, cùng ngày mổ — trang không hiện to
+ * số của nó, chỉ bảo đối chiếu (0097).
  */
 export async function themDongNhan(
   client: SupabaseClient, chiNhanhId: string, p: PhieuNhan, phienBan: number, maGui: string, moi: DongLuu,
-): Promise<KetQua> {
+): Promise<KetQuaLuuNhan> {
   const kq = await luuPhieuNhan(client, chiNhanhId, p, phienBan, maGui, ghepDongNhan(p.dong, { them: moi })!);
   if (kq.ok) {
-    return kqHai(true, { vi: 'Đã thêm. Còn món nào thì thêm tiếp, hết thì bấm "Xong, xem lại".',
-                         en: 'Added. Add the next item, or press "Done, review" when you have finished.' });
+    return {
+      ...kqHai(true, { vi: 'Đã thêm. Còn món nào thì thêm tiếp, hết thì bấm "Xong, xem lại".',
+                       en: 'Added. Add the next item, or press "Done, review" when you have finished.' }),
+      phienBan: kq.phienBan,
+    };
   }
   // Câu database "…đã được sửa ở máy khác…" — so trên chữ đã bỏ dấu (xem docPhieuNhan).
   if (/may khac/.test(boDau(kq.cau))) {
     const lai = await docPhieuNhan(client, p.id).catch(() => null);
     const cuoi = lai?.dong[lai.dong.length - 1];
+    // Ngày mổ, kg sau repack: dòng đọc từ database trả null, dòng mới không có khóa là undefined.
     if (lai && lai.dong.length === p.dong.length + 1 && cuoi
-        && cuoi.mat_hang_id === moi.mat_hang_id && cuoi.so_kg === moi.so_kg && (cuoi.so_goi || null) === (moi.so_goi || null)) {
-      return kqHai(true, { vi: 'Dòng này đã được thêm từ lần bấm trước.', en: 'This line was already added the first time you pressed.' });
+        && cuoi.mat_hang_id === moi.mat_hang_id && cuoi.so_kg === moi.so_kg && (cuoi.so_goi || null) === (moi.so_goi || null)
+        && (cuoi.ngay_mo ?? null) === (moi.ngay_mo ?? null)
+        && (cuoi.so_kg_thuc == null ? null : Number(cuoi.so_kg_thuc)) === (moi.so_kg_thuc ?? null)) {
+      return cuoi.so_tang != null
+        ? kqHai(true, {
+          vi: 'Dòng này có thể đã được thêm từ lần bấm trước. Đối chiếu dòng cuối (kg, ngày mổ, số tảng) với tảng trên cân rồi mới viết số lên túi.',
+          en: 'This line may already have been added the first time you pressed. Check the last line (kg, slaughter date, primal number) against the primal on the scale before writing the number on the bag.',
+        })
+        : kqHai(true, { vi: 'Dòng này đã được thêm từ lần bấm trước.', en: 'This line was already added the first time you pressed.' });
     }
   }
   return kq;

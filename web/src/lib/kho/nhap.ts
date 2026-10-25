@@ -13,7 +13,8 @@
  * FORM DÒNG HÀNG — không JavaScript, nên số dòng cố định theo mỗi lần hiện
  * form: các dòng đã có + vài dòng trống. Cần thêm thì bấm "Lưu và thêm dòng".
  * Tên ô của dòng thứ i: d{i}_mat_hang, d{i}_so_goi, d{i}_so_kg, d{i}_don_gia,
- * d{i}_hsd, d{i}_nsx, d{i}_so_lo_ncc, d{i}_xoa; ô thông tin thêm tt__<khoa>__{i}.
+ * d{i}_hsd, d{i}_nsx, d{i}_so_lo_ncc, d{i}_xoa; ô thông tin thêm tt__<khoa>__{i};
+ * ô ẩn d{i}_so_tang mang số tảng database đã cấp cho dòng (0097) để lưu lại giữ số.
  * Dòng chưa chọn mặt hàng và chưa nhập kg thì bỏ qua — đó là dòng trống.
  *
  * ẢNH HÓA ĐƠN — tải lên TRƯỚC khi kiểm các ô khác. Ô chọn file không điền lại
@@ -102,6 +103,8 @@ export interface DongPhieuNhap {
   ngay_mo: string | null;
   /** Kg sau repack (0050) — null = như so_kg. so_kg là kg nhà cung cấp (tính tiền). */
   so_kg_thuc: number | null;
+  /** Số tảng của dòng (0097): cấp lúc lưu dòng; dòng đã duyệt mang đúng số của lô. */
+  so_tang: number | null;
 }
 
 /** Một dòng như đang hiện trên form — giữ nguyên chữ người dùng gõ để điền lại khi báo lỗi. */
@@ -117,6 +120,8 @@ export interface DongForm {
   /** 0048 / 0050: ngày mổ, kg sau repack — giữ lại khi lưu cả phiếu. */
   ngay_mo: string;
   so_kg_thuc: string;
+  /** 0097: số tảng database đã cấp cho dòng (ô ẩn d{i}_so_tang) — gửi lại để giữ số. Rỗng = chưa có. */
+  so_tang: string;
 }
 
 export interface DauForm {
@@ -178,7 +183,7 @@ export async function docPhieuNhap(
 
   const { data: dong, error: loiDong } = await client
     .from('kho_phieu_nhap_dong')
-    .select('id, thu_tu, mat_hang_id, so_goi, so_kg, don_gia_kg, thanh_tien, so_lo_ncc, ngay_san_xuat, han_dung, truong_them, lo_id, ngay_mo, so_kg_thuc')
+    .select('id, thu_tu, mat_hang_id, so_goi, so_kg, don_gia_kg, thanh_tien, so_lo_ncc, ngay_san_xuat, han_dung, truong_them, lo_id, ngay_mo, so_kg_thuc, so_tang')
     .eq('phieu_nhap_id', id).order('thu_tu');
   if (loiDong) throw loiDong;
 
@@ -199,6 +204,7 @@ export async function docPhieuNhap(
     dong: (dong ?? []).map(d => ({
       ...d, so_kg: Number(d.so_kg), don_gia_kg: Number(d.don_gia_kg), thanh_tien: Number(d.thanh_tien),
       so_kg_thuc: d.so_kg_thuc == null ? null : Number(d.so_kg_thuc),
+      so_tang: d.so_tang == null ? null : Number(d.so_tang),
     })) as DongPhieuNhap[],
     maLo,
     soTang,
@@ -236,12 +242,13 @@ export function dongTuPhieu(ds: DongPhieuNhap[]): DongForm[] {
     truong_them: d.truong_them ?? {},
     ngay_mo: d.ngay_mo ?? '',
     so_kg_thuc: d.so_kg_thuc != null ? String(d.so_kg_thuc).replace('.', ',') : '',
+    so_tang: d.so_tang != null ? String(d.so_tang) : '',
   }));
 }
 
 export function dongTrong(): DongForm {
   return { mat_hang_id: '', so_goi: '', so_kg: '', don_gia_kg: '', so_lo_ncc: '',
-           ngay_san_xuat: '', han_dung: '', truong_them: {}, ngay_mo: '', so_kg_thuc: '' };
+           ngay_san_xuat: '', han_dung: '', truong_them: {}, ngay_mo: '', so_kg_thuc: '', so_tang: '' };
 }
 
 /** Lỗi ô ngày / ô tiền của đầu phiếu — form lập phiếu và form điền giá dùng chung. */
@@ -306,7 +313,7 @@ export function docFormPhieuNhap(
       mat_hang_id: g('mat_hang'), so_goi: g('so_goi'), so_kg: g('so_kg'),
       don_gia_kg: g('don_gia'), so_lo_ncc: g('so_lo_ncc'),
       ngay_san_xuat: g('nsx'), han_dung: g('hsd'), truong_them: ttDong.giaTri,
-      ngay_mo: g('ngay_mo'), so_kg_thuc: g('kg_thuc'),
+      ngay_mo: g('ngay_mo'), so_kg_thuc: g('kg_thuc'), so_tang: g('so_tang'),
     };
     if (form.get(`d${i}_xoa`) === 'co') continue;
     if (!d.mat_hang_id && !d.so_kg && !d.so_goi) continue;   // dòng trống
@@ -335,6 +342,12 @@ export function docFormPhieuNhap(
       bao({ vi: `Dòng ${so}: kg sau repack chưa đúng (ví dụ 11,8)`, en: `Line ${so}: the weight after repack is not valid (for example 11.8)` });
     }
     ttDong.loi.forEach((x, j) => bao({ vi: `Dòng ${so}: ${x}`, en: `Line ${so}: ${ttDong.loiEn[j] ?? x}` }));
+    // 0097: số tảng là ô ẩn — chỉ là số database đã cấp. Chữ khác thì báo, không lặng lẽ để database cấp số mới
+    // (túi đã ghi số cũ). `so` ở trên là số thứ tự DÒNG, nên số tảng mang tên khác.
+    const chuSoTang = d.so_tang;
+    if (chuSoTang && !/^[1-9]\d{0,8}$/.test(chuSoTang)) {
+      bao({ vi: `Dòng ${so}: số tảng hỏng — tải lại trang`, en: `Line ${so}: the primal number is damaged — reload the page` });
+    }
 
     payload.push({
       mat_hang_id: d.mat_hang_id,
@@ -347,6 +360,7 @@ export function docFormPhieuNhap(
       truong_them: ttDong.giaTri,
       ...(mo ? { ngay_mo: mo } : {}),
       ...(thuc !== null && !Number.isNaN(thuc) ? { so_kg_thuc: thuc } : {}),
+      ...(chuSoTang && /^[1-9]\d{0,8}$/.test(chuSoTang) ? { so_tang: Number(chuSoTang) } : {}),
     });
   }
 
