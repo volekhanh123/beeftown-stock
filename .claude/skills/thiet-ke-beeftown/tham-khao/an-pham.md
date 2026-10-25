@@ -2,21 +2,21 @@
 
 Dùng khi làm bài đăng, story, ảnh bìa, banner, slide, biển, ấn phẩm in, landing page ngoài `web/`, hay
 bất kỳ hình nào mang tên Beeftown. Luật gốc: **`THUONG-HIEU.md`** (brand guideline Khánh chốt
-09/10/2026 — bảng màu, logo, chữ, ảnh, địa điểm); `web/THIET-KE.md` mục 8 (brief chụp ảnh) và mục 9 (bộ
-campaign) cho phần guideline chưa nói tới.
+09/10/2026 — logo, chữ, ảnh, địa điểm; bảng màu mới ở mục 0); `web/THIET-KE.md` mục 8 (brief chụp ảnh) và
+mục 9 (bộ campaign) cho phần guideline chưa nói tới.
 
 ## Nguyên tắc
 
-- **Màu: năm màu của bảng thương hiệu đã chốt**, không dùng màu pha của website (đỏ đậm, hai nền kem
-  đậm hơn, màu viền ô nhập — Khánh chỉ cho phép chúng trên màn hình của website) và
-  không dùng màu trạng thái xanh, vàng, đỏ nhạt của `/noi-bo`, kho (màu chức năng của công cụ):
-  Beef Red `#A70C0C`, Cream `#F0E3D0`, Charcoal `#151008`, Marigold `#F5AA14`, Warm Stone `#B8A98C`.
-  Phần trên mỗi bề mặt: Cream 60 % · Beef Red 25 % · Charcoal 10 % · Marigold dưới 5 %; Warm Stone chỉ
-  cho nét kẻ và nền phụ. Không màu pha nhạt, không đỏ thứ hai. Marigold và Warm Stone không làm chữ
-  trên nền kem; không đặt chữ đỏ trên nền than (2,4 : 1); Marigold trên nền đỏ chỉ cho chữ lớn hay hình.
+- **Màu: bảng mới Khánh chốt 22/10/2026, dùng cho ấn phẩm từ 25/10/2026** (`THUONG-HIEU.md` mục 0): đỏ
+  `#BD0000`, đen `#000000`, trắng `#FFFFFF`. Không dùng màu của bảng 09/10/2026 (Cream, Marigold, Warm
+  Stone, đỏ cũ) — website còn chạy bảng đó tới PR đổi màu, đừng lấy màu trên web làm mẫu. Không dùng
+  xám pha và đỏ đậm (Khánh chỉ cho phép chúng trên màn hình), không màu trạng thái. Chữ đỏ trên nền
+  trắng và chữ trắng trên nền đỏ dùng được cho chữ thường (6,64 : 1); chữ đỏ trên nền đen chỉ cho chữ
+  lớn và hình (3,16 : 1). Phần của mỗi màu trên một bề mặt chưa chốt (mục 0, câu 4).
 - **Chữ: Montserrat 500 / 700 / 800 / 900.** Giá dạng `000.000 đ`, ngày `dd/mm/yyyy`.
-- **Chữ trên ấn phẩm chỉ gồm**: tagline *Pick it. Grill it. Love it.* (có dấu chấm), descriptor *Beef
-  Specialty Restaurant*, câu chính *Không cần rành bò. Chọn theo gu, thấy giá trước.*, địa điểm
+- **Chữ trên ấn phẩm chỉ gồm**: tagline (logo 21/10/2026 đã in sẵn "PICK IT, GRILL IT, LOVE IT!", nên
+  đừng gõ lại tagline cạnh logo; cần gõ riêng thì cách viết chờ Khánh chốt — `THUONG-HIEU.md` mục 0, câu
+  6; guideline 09/10/2026 viết *Pick it. Grill it. Love it.*), descriptor *Beef Specialty Restaurant*, câu chính *Không cần rành bò. Chọn theo gu, thấy giá trước.*, địa điểm
   "Tầng 3, 63 Hồ Tùng Mậu" (không kèm tên phường, quận; chỉ đường thì dùng đúng câu trong
   [cau-chu.md](cau-chu.md), mục "Dữ kiện cố định"). Muốn thêm câu khác: câu đó phải đúng sự thật và qua
   được danh sách chữ cấm của web (`web/src/lib/chuoi-cam.js` áp dụng nguyên cho campaign).
@@ -29,12 +29,14 @@ campaign) cho phần guideline chưa nói tới.
   (chữ BEEFTOWN); cả logo một màu. Lockup rộng tối thiểu 160px — hẹp hơn thì dùng brandmark (tối thiểu
   48px). Khoảng trống quanh logo bằng chiều cao chữ "B". **Mỗi bề mặt một logo, đặt ở trên cùng**
   (trái, giữa hoặc phải). **Không** đổi màu, kéo giãn, xoay, thêm bóng, viền, **đặt lên ảnh**, gõ lại
-  bằng phông khác. Bản cho nền sáng và bản cho nền tối là hai bản vẽ khác nhau (bản nền tối có viền
-  ngoài và mặt bò tô kín) — không lấy bản này đổi màu thành bản kia.
-- **File logo**: bản mới nằm trên máy Khánh (`Beeftown_Brand_Assets_V17_2026-10-09`, thư mục
-  `01_Logo_vector`: bản nền sáng màu red / charcoal / black, bản nền tối màu cream / white) — không vào
-  repo. SVG trong `web/public/thuong-hieu/` đã đổi sang mã màu của bảng chốt nhưng vẫn là **nét tách từ
-  PDF nhận diện cũ**, không phải bản vẽ của bộ tài sản bản 17 — đừng dùng cho ấn phẩm mới.
+  bằng phông khác. Bản cho nền sáng và bản cho nền tối do designer xuất riêng — bộ 21/10/2026 có bản đỏ
+  (nền sáng) và bản trắng (nền đỏ hay đen); dùng đúng file cho nền, không lấy bản này đổi màu thành bản
+  kia. (Câu "bản nền tối có viền ngoài và mặt bò tô kín" là của bộ 09/10/2026.)
+- **File logo**: bộ logo mới 21/10/2026 (chữ BEEFTOWN, đầu bò trong ô vuông thay chữ O, tagline bên
+  dưới; bản đỏ và bản trắng) nằm trong thư mục Drive "LOGO BEEFTOWN" do designer chia sẻ — ấn phẩm lấy
+  file gốc ở đó. Repo mới có bản PNG trong `mini-app/src/assets/`, chưa có SVG (`THUONG-HIEU.md` mục 0,
+  câu 5). SVG trong `web/public/thuong-hieu/` là logo cũ, **nét tách từ PDF nhận diện** trước bộ
+  21/10/2026 — đừng dùng cho ấn phẩm mới. Tagline viết thế nào còn chờ Khánh chốt (mục 0, câu 6).
 - Kênh liên hệ (Facebook, hotline, Zalo, Google Maps) chỉ ghi khi **đã công bố** trong `/noi-bo` —
   tên tài khoản trong bản nháp cũ chưa phải dữ kiện.
 

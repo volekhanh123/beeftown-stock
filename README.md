@@ -25,7 +25,7 @@ Bò được cắt và **đóng sẵn trong khay skin-pack theo từng phần c�
 | `crm/` | Database CRM và kho trên Supabase: đặt bàn, khách hàng, điểm, thực đơn, tuyển dụng, cổng nội dung, kho, bản dịch tự động — và **toàn bộ kiểm thử** (`crm/test/`). |
 | `CLAUDE.md` | **Quy trình kiểm thử bắt buộc** cho mọi tính năng mới: 9 mục "định nghĩa xong", cách chạy test, việc trước khi mở PR. |
 | `AGENTS.md` | Cùng quy trình đó cho Codex và các agent không phải Claude, kèm quy tắc rà soát PR (mục "Code Review Rules"). |
-| `THUONG-HIEU.md` | **Bảng màu mới Khánh chốt 22/10/2026** (đỏ `#BD0000`, đen, trắng; mục 0, mã chưa đổi, danh sách việc đổi chờ duyệt). **Bảng 09/10/2026 đang chạy**: giá trị đã áp dụng trên trang công khai, `/noi-bo` và kho; chỗ website còn khác guideline; thứ còn mang màu cũ hơn (Beeftown Cân, ảnh hướng dẫn kho). |
+| `THUONG-HIEU.md` | **Bảng màu mới Khánh chốt 22/10/2026** (đỏ `#BD0000`, đen, trắng; mục 0; Khánh duyệt đổi 25/10/2026, mã chưa đổi). **Bảng 09/10/2026 đang chạy**: giá trị đã áp dụng trên trang công khai, `/noi-bo` và kho; chỗ website còn khác guideline; thứ còn mang màu cũ hơn (Beeftown Cân, ảnh hướng dẫn kho). |
 | `mini-app/` | **Mini App Zalo** bán thịt mang về: khách chọn số khay của 6 phần thịt, app mở chat Zalo OA với tin đơn điền sẵn, khách tự bấm Gửi. Không máy chủ, không lưu dữ liệu khách. Xem `mini-app/README.md`. |
 | `.github/` | Kiểm thử tự động (GitHub Actions) mỗi PR, mỗi lần gộp và mỗi đêm 00:30 giờ VN; đóng gói `BeeftownCan.exe` (tải về không cần gõ lệnh: `can-app/README.md`, mục "Tải BeeftownCan.exe về"); mẫu PR; mẫu báo lỗi. |
 | `Beeftown_CRM_Design.html` | Thiết kế hệ thống CRM và thẻ thành viên — đặc tả nghiệp vụ của `crm/` (tỷ lệ tích điểm, ngưỡng, nhóm khách). |
@@ -67,7 +67,7 @@ Lưu ý khi sửa code phần mềm cân:
 
 ### Bảng màu
 
-> **Ngày 22/10/2026 Khánh chốt bảng màu mới: chỉ đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF`; bỏ Cream, Marigold, Warm Stone** (`THUONG-HIEU.md` mục 0). Mã chưa đổi: website và Beeftown Cân còn màu cũ, danh sách việc đổi màu chờ Khánh duyệt. Phần dưới đây tả bảng đang chạy.
+> **Ngày 22/10/2026 Khánh chốt bảng màu mới: chỉ đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF`; bỏ Cream, Marigold, Warm Stone** (`THUONG-HIEU.md` mục 0). Ngày 25/10/2026 Khánh duyệt đổi và trả lời câu 1–3; từ đó thiết kế mới ngoài `web/` (bản mẫu, ấn phẩm, Mini App) dùng bảng mới. Mã chưa đổi: website và Beeftown Cân còn màu cũ tới PR đổi màu (mục 0, việc 3 và 7). Phần dưới đây tả bảng đang chạy.
 >
 > **Cả website** dùng bảng màu thương hiệu Khánh chốt ngày 09/10/2026 (`THUONG-HIEU.md`): trang công khai đổi trước; `/noi-bo` và kho đổi ngày 12/10/2026. Còn mang màu cũ: Beeftown Cân (PR riêng, kèm phiên bản mới của chương trình) và 15 ảnh chụp trong trang hướng dẫn của kho (`web/public/kho/hd-*.png`), chờ chụp lại.
 

@@ -1,6 +1,6 @@
 ---
 name: thiet-ke-beeftown
-description: Guideline thiết kế Beeftown — bảng màu thương hiệu Khánh chốt 09/10/2026 và token website đang chạy, hệ giao diện "Quầy thịt ấm" (màu theo bề mặt, Montserrat, artwork trích từ PDF nhận diện), giao diện nội bộ /noi-bo và kho, câu chữ ba thứ tiếng, địa điểm, ảnh, logo và ấn phẩm (ảnh chia sẻ, bài đăng, story, in ấn). Dùng khi tạo hoặc sửa BẤT KỲ thứ gì người khác nhìn thấy của Beeftown — trang, component, CSS trong web/, màu, phông, nút, form, bảng, biểu tượng, ảnh, câu thông báo, bài đăng mạng xã hội, banner, slide, landing page — kể cả câu hỏi nhanh như "đỏ Beeftown mã gì". Use for any Beeftown UI, brand, copy or visual design work.
+description: Guideline thiết kế Beeftown — bảng màu thương hiệu mới Khánh chốt 22/10/2026 (đỏ, đen, trắng; dùng cho ấn phẩm, bản mẫu, Mini App) và token website đang chạy (bảng 09/10/2026, chờ PR đổi màu), hệ giao diện "Quầy thịt ấm" (màu theo bề mặt, Montserrat, artwork trích từ PDF nhận diện), giao diện nội bộ /noi-bo và kho, câu chữ ba thứ tiếng, địa điểm, ảnh, logo và ấn phẩm (ảnh chia sẻ, bài đăng, story, in ấn). Dùng khi tạo hoặc sửa BẤT KỲ thứ gì người khác nhìn thấy của Beeftown — trang, component, CSS trong web/, màu, phông, nút, form, bảng, biểu tượng, ảnh, câu thông báo, bài đăng mạng xã hội, banner, slide, landing page — kể cả câu hỏi nhanh như "đỏ Beeftown mã gì". Use for any Beeftown UI, brand, copy or visual design work.
 ---
 
 # Thiết kế Beeftown
@@ -9,7 +9,7 @@ Skill này là **bản đồ và luật vận hành** để làm giao diện Bee
 tài liệu gốc — khi hai bên lệch nhau, thứ tự thắng là:
 
 1. **Thương hiệu và sự thật kinh doanh** — `THUONG-HIEU.md` (brand guideline Khánh chốt 09/10/2026:
-   bảng màu, logo, chữ, địa điểm), `README.md` gốc mục "Concept" và "Giọng văn". Thắng mọi tài liệu
+   chữ, địa điểm; bảng màu và logo mới 21–22/10/2026 ở mục 0), `README.md` gốc mục "Concept" và "Giọng văn". Thắng mọi tài liệu
    cũ hơn.
 2. **`web/THIET-KE.md`** — giao diện trang công khai **đang chạy**, lý do từng quyết định, manifest tài
    sản. Mục 2 ở đó ghi token và bảng tương phản của trang công khai; `/noi-bo` và kho dùng cùng token
@@ -35,7 +35,8 @@ Mỗi khu có CSS, layout và số thứ tiếng riêng. Xác định trước k
 | Beeftown Cân (`can-app/`) | Máy tính ở quầy | `can-app/src/*.html` | vi | [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md) |
 | Ấn phẩm ngoài web | Khách trên mạng xã hội, tại quán | — | vi (en / ko khi cần) | [tham-khao/an-pham.md](tham-khao/an-pham.md) |
 
-**Mọi khu web chung một bảng màu** — bảng thương hiệu chốt 09/10/2026 (mục "Màu"): trang công khai đổi
+**Mọi khu web chung một bảng màu** — bảng 09/10/2026 đang chạy, tới PR đổi sang bảng mới 22/10/2026
+(mục "Màu"): trang công khai đổi
 trước, `/noi-bo` và kho đổi ngày 12/10/2026; Beeftown Cân chưa đổi. Mọi khu web dùng Montserrat (Beeftown Cân
 chạy không mạng nên dùng phông hệ thống). **Đừng mang lớp của khu này sang khu kia**: lớp `.nut`,
 `.be-kem`… của trang công khai chỉ sống dưới `.ck`; `cong-khai.css` chỉ `Trang.astro` được nạp
@@ -65,16 +66,19 @@ bạn bè, nhóm văn phòng.
 
 ## Màu
 
-Beeftown có **một bảng màu**: bảng thương hiệu Khánh chốt 09/10/2026. Trang công khai, `/noi-bo` và kho
-đã theo bảng này (hai nơi sau đổi ngày 12/10/2026). Beeftown Cân còn bảng cũ — đổi ở một PR riêng, kèm
-phiên bản mới của chương trình.
+**Bảng thương hiệu hiện hành là bảng mới 22/10/2026** (khung ngay dưới): đỏ Beeftown là `#BD0000`,
+cùng đen và trắng. **Website vẫn chạy bảng 09/10/2026** (bảng và token bên dưới): trang công khai,
+`/noi-bo` và kho đã theo bảng đó (hai nơi sau đổi ngày 12/10/2026). Beeftown Cân còn bảng cũ hơn — đổi ở
+một PR riêng, kèm phiên bản mới của chương trình.
 
 > **Ngày 22/10/2026 Khánh chốt bảng mới: chỉ đỏ `#BD0000`, đen `#000000`, trắng `#FFFFFF`; bỏ Cream,
-> Marigold, Warm Stone** (`THUONG-HIEU.md` mục 0). Mã website và Beeftown Cân **chưa đổi**, danh sách
-> việc đổi chờ Khánh duyệt. Tới khi PR đổi màu gộp: sửa giao diện web vẫn theo bảng dưới (kiểm thử canh
-> bảng dưới), không tự đổi mã, không thêm chỗ mới ghi mã của bảng mới vào `web/`. Mini App Zalo
-> (`mini-app/`, vào repo ở PR riêng) dùng bảng mới cộng 7 màu pha xám và đỏ chưa được duyệt (câu 1 của
-> mục 0): đừng lấy màu pha của nó làm mẫu.
+> Marigold, Warm Stone** (`THUONG-HIEU.md` mục 0). **Ngày 25/10/2026 Khánh duyệt đổi** và trả lời: màn
+> hình được thêm vài xám và một đỏ đậm như Mini App (câu 1); bỏ màu trạng thái xanh, vàng, đỏ nhạt —
+> trạng thái phân biệt bằng chữ và biểu tượng (câu 2); vòng focus trên nền tối màu trắng (câu 3). Nền
+> trang công khai (câu 4) và file SVG của logo (câu 5) chưa có. Từ 25/10/2026 **ấn phẩm, bản mẫu và Mini
+> App dùng bảng mới**. Mã website và Beeftown Cân **chưa đổi**: tới khi PR đổi màu (việc 3 và 7 ở mục 0)
+> gộp, sửa giao diện web vẫn theo bảng dưới (kiểm thử canh bảng dưới), không đổi mã lẻ tẻ, không thêm
+> chỗ mới ghi mã của bảng mới vào `web/`.
 
 ### Bảng màu thương hiệu — Khánh chốt 09/10/2026
 
@@ -93,10 +97,11 @@ còn mang màu cũ (ảnh chụp trong trang hướng dẫn của kho, tài li�
 
 **Khu nào dùng gì:**
 
-- **Ấn phẩm ngoài web** (bài đăng, story, in ấn, slide, biển): năm màu ở trên, không màu pha; logo
-  vector bản 17 trên máy Khánh — xem [tham-khao/an-pham.md](tham-khao/an-pham.md).
-- **Website** (trang công khai, `/noi-bo`, kho): năm màu đó, cộng vài màu pha chỉ dùng trên màn hình
-  (Khánh cho phép ngày 10/10/2026). Token ở bảng "Token màu của website" dưới đây.
+- **Ấn phẩm ngoài web** (bài đăng, story, in ấn, slide, biển): từ 25/10/2026 theo bảng mới — đỏ, đen,
+  trắng, không màu pha; logo của bộ 21/10/2026 — xem [tham-khao/an-pham.md](tham-khao/an-pham.md).
+- **Website** (trang công khai, `/noi-bo`, kho): năm màu của bảng 09/10/2026 ở trên, cộng vài màu pha
+  chỉ dùng trên màn hình (Khánh cho phép ngày 10/10/2026), tới PR đổi màu. Token ở bảng "Token màu của
+  website" dưới đây.
 - **`/noi-bo`, kho, Beeftown Cân** có thêm **màu trạng thái** (xanh = xong, vàng = lưu ý, đỏ nhạt =
   làm ngay). Đó là màu chức năng của công cụ, không thuộc bảng thương hiệu: không dùng ở trang công
   khai, không dùng cho ấn phẩm — xem [tham-khao/noi-bo-va-kho.md](tham-khao/noi-bo-va-kho.md).
@@ -278,12 +283,14 @@ khối: [tham-khao/trang-cong-khai.md](tham-khao/trang-cong-khai.md) (công khai
   ở `web/public/thuong-hieu/` — không vẽ lại, không vẽ bằng AI, không gõ lại chữ. Đúng biến thể cho
   nền: `logo-ngang-do` trên kem, `logo-ngang-kem` trên đỏ / tối. Các SVG này đã mang mã màu của bảng
   chốt 09/10/2026 (`web/cong-cu/thuong-hieu/tao-bieu-tuong.py` đổi mã khi chép), nhưng vẫn là **nét
-  tách từ PDF cũ**, chưa phải file vector của bộ tài sản bản 17 trên máy Khánh. SVG chỉ được dùng mã
-  màu trong bảng `BANG_MAU` của `test-cong-khai-giao-dien.mjs`.
+  tách từ PDF cũ**, chưa phải bộ logo mới 21/10/2026 (thư mục Drive "LOGO BEEFTOWN", chưa có SVG —
+  `THUONG-HIEU.md` mục 0, câu 5). SVG chỉ được dùng mã màu trong bảng `BANG_MAU` của
+  `test-cong-khai-giao-dien.mjs`.
 - **Luật logo của guideline** (mọi nơi, kể cả web khi đổi): logo một màu; lockup rộng tối thiểu 160px,
   hẹp hơn thì dùng brandmark (đầu bò, tối thiểu 48px); khoảng trống quanh logo bằng chiều cao chữ "B";
   **không** đổi màu, kéo giãn, xoay, thêm bóng hay viền, đặt lên ảnh. Bản cho nền sáng và bản cho nền
-  tối là **hai bản vẽ khác nhau** — không lấy bản này đổi màu thành bản kia.
+  tối là **hai bản designer xuất riêng** (bộ 21/10/2026: bản đỏ cho nền sáng, bản trắng cho nền đỏ hay
+  đen) — dùng đúng file, không lấy bản này đổi màu thành bản kia.
 - Mockup trong PDF (mặt tiền, biển, đồng phục, menu, giá 400.000, câu "Thịt chuẩn - Giá thật") **chỉ
   là tham chiếu** — không đưa lên trang.
 - Manifest từng tài sản (nguồn, chỗ dùng, trạng thái, điều kiện thay) và brief chụp ảnh:
@@ -355,8 +362,9 @@ Kiểm thử nào gác luật nào, và bẫy hay gặp: [tham-khao/kiem-thu.md]
 Danh sách tự rà:
 
 - [ ] Đúng khu, đúng layout, không lớp lạc khu.
-- [ ] Màu đúng bảng thương hiệu: ấn phẩm ngoài web chỉ năm màu; website dùng token (năm màu cộng màu
-      pha của màn hình); màu trạng thái chỉ ở `/noi-bo`, kho, Beeftown Cân.
+- [ ] Màu đúng bảng thương hiệu: ấn phẩm ngoài web chỉ đỏ, đen, trắng (bảng mới); bản mẫu và Mini App
+      thêm đỏ đậm và các xám của câu 1 (`THUONG-HIEU.md` mục 0); website dùng token (bảng 09/10/2026
+      cộng màu pha của màn hình, tới PR đổi màu); màu trạng thái chỉ ở `/noi-bo`, kho, Beeftown Cân.
 - [ ] Chỉ token / biến bề mặt; không chữ vàng hay Warm Stone trên nền sáng (kem, kem sau, kem đậm); cặp
       màu mới đã tính tương phản.
 - [ ] Không nền trắng (trang công khai, `/noi-bo`, kho), thẻ trang công khai không bóng đổ; mỗi nhóm nút
