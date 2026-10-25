@@ -25,7 +25,7 @@ Hệ quả cụ thể:
 | Google Maps | Không nút "Chỉ đường", JSON-LD không khai `hasMap`. Không nhúng bản đồ, không tự dựng link Maps từ địa chỉ. |
 | Hotline | Không hiện nút gọi, và JSON-LD không khai `telephone`. |
 | Giờ phục vụ | Không hiện giờ, và không khai `openingHoursSpecification` — Google đưa giờ này lên kết quả tìm kiếm, khai sai là dẫn khách tới cửa đóng. |
-| Thực đơn (`hien_thuc_don`, món đã công bố) | Trang Thực đơn vẫn có phần Bò tại quầy đầy đủ (khay skin-pack, cách đọc nhãn, trọng lượng và giá xem tại quầy) và lời giới thiệu theo nhóm món — không danh sách món, không giá, JSON-LD không khai `hasMenu`. Công bố món: [`THUC-DON.md`](THUC-DON.md). |
+| Thực đơn (`hien_thuc_don`, món đã công bố) | Trang Thực đơn vẫn có phần Bò tại quầy đầy đủ (khay skin-pack, cách đọc nhãn, trọng lượng và giá xem tại quầy) và lời giới thiệu theo nhóm món — không danh sách món, không giá, JSON-LD không khai `hasMenu`. Công bố món: màn `/noi-bo/thuc-don`, hoặc SQL trong [`THUC-DON.md`](THUC-DON.md). |
 | Đồ uống có cồn (`hien_do_uong_co_con`) | Không nhắc highball, soju, makgeolli, bia ở đâu cả; không món có cồn (ba ly signature), không dòng luật rượu. |
 | Form hỏi bàn (`form_dat_ban_dang_mo`) | Nút chính màn đầu là "Khám phá thực đơn" (`nutMoDau()` trong `lib/trang-cong-khai.ts`); trang Hỏi bàn nói chưa mở hỏi bàn trực tuyến. |
 | Ngày khai trương | Không ngày, không đếm ngược, không ưu đãi. |
@@ -90,6 +90,7 @@ web/
 │  │  ├─ chu.ts        ← câu chữ cố định + bảng đường dẫn Việt–Anh–Hàn + địa chỉ cố định
 │  │  ├─ trang-cong-khai.ts ← liên hệ đã công bố (chỉ link http/https), địa chỉ, thứ bậc nút màn đầu, điều hướng
 │  │  ├─ thuc-don.ts   ← đọc thực đơn công khai — không bao giờ ném lỗi, không bao giờ hiện giá chưa duyệt
+│  │  ├─ thuc-don-noi-bo.ts ← màn /noi-bo/thuc-don: sửa tên, mô tả, bản dịch, công bố, gỡ món — không đụng giá
 │  │  ├─ anh.ts        ← danh mục ảnh: minh họa hay thật, alt ba thứ tiếng
 │  │  ├─ anh-tao-san.ts ← SINH TỰ ĐỘNG: cỡ ảnh đã dựng — đừng sửa tay
 │  │  ├─ chuoi-cam.js  ← danh sách chữ cấm, dùng chung cho máy quét và máy dịch
@@ -133,7 +134,7 @@ Tên file và biến đặt bằng tiếng Việt, khớp với tên cột trong
 
 **Giao diện** — hướng "Quầy thịt ấm": nền kem, đỏ Beeftown làm nhãn và nút, vài dải tối, artwork lấy nguyên từ PDF nhận diện. Màu theo vai kèm tỷ lệ tương phản, chữ, khoảng cách, thành phần, manifest từng tài sản, brief chụp ảnh và phần bàn giao: [`THIET-KE.md`](THIET-KE.md). `src/styles/cong-khai.css` chỉ `layouts/Trang.astro` nạp và mọi quy tắc nằm dưới `body.ck`, nên `/noi-bo` và kho không bị ảnh hưởng.
 
-**Thực đơn** — trang `/thuc-don` (`/en/menu`, `/ko/menu`) đọc món qua `thuc_don_cong_khai()`. Món chỉ hiện khi Khánh công bố; cách làm từng bước, kể cả SQL thu hồi: [`THUC-DON.md`](THUC-DON.md). Món đã công bố trình bày theo cuốn menu in "bản sáng" Khánh chốt 11/10/2026 (`ThucDonNhomAnh.astro`): tên nhóm chữ hoa như tiêu đề trang của cuốn, câu dưới tên nhóm (`CAU_NHOM` trong `src/lib/thuc-don.ts`), món dẫn đầu thẻ lớn, các món còn lại thành lưới thẻ có ảnh (`ANH_CUA_MON` trong `src/lib/anh.ts`, theo mã món) — dưới 600px món đứng sau món dẫn đầu là hàng gọn: ảnh nhỏ 128px bên trái, chữ bên phải (nhóm không có món dẫn đầu giữ thẻ to) — không giá, không độ cay. Chưa công bố món nào thì trang giới thiệu theo nhóm của cuốn. Bố cục và lý do: `THIET-KE.md`, mục 1, "Trang Thực đơn".
+**Thực đơn** — trang `/thuc-don` (`/en/menu`, `/ko/menu`) đọc món qua `thuc_don_cong_khai()`. Món chỉ hiện khi đã công bố. Sửa tên, mô tả, bản tiếng Anh và tiếng Hàn, công bố và gỡ từng món: màn `/noi-bo/thuc-don` (chủ nhà hàng, quản lý, marketing; thu ngân chỉ xem). Giá, mức cay, cờ món sống / có cồn và việc bật hai công tắc vẫn làm theo [`THUC-DON.md`](THUC-DON.md). Món đã công bố trình bày theo cuốn menu in "bản sáng" Khánh chốt 11/10/2026 (`ThucDonNhomAnh.astro`): tên nhóm chữ hoa như tiêu đề trang của cuốn, câu dưới tên nhóm (`CAU_NHOM` trong `src/lib/thuc-don.ts`), món dẫn đầu thẻ lớn, các món còn lại thành lưới thẻ có ảnh (`ANH_CUA_MON` trong `src/lib/anh.ts`, theo mã món) — dưới 600px món đứng sau món dẫn đầu là hàng gọn: ảnh nhỏ 128px bên trái, chữ bên phải (nhóm không có món dẫn đầu giữ thẻ to) — không giá, không độ cay. Chưa công bố món nào thì trang giới thiệu theo nhóm của cuốn. Bố cục và lý do: `THIET-KE.md`, mục 1, "Trang Thực đơn".
 
 **Ảnh** — hai loại, hai luật (`src/lib/anh.ts`):
 

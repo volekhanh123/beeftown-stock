@@ -64,7 +64,7 @@ const t = dichNB(nn, {
   taiAnh:      { vi: 'Tải ảnh lên', en: 'Upload photos' },
   taiAnh1:     { vi: ' — làm trong Supabase Storage; màn chọn ảnh chưa dựng', en: ' — done in Supabase Storage; the photo picker is not built yet' },
   duyetGia:    { vi: 'Duyệt giá từng món', en: 'Approve each dish price' },
-  duyetGia1:   { vi: ' — màn thực đơn chưa dựng', en: ' — the menu screen is not built yet' },
+  duyetGia1:   { vi: ' — màn Thực đơn chưa có phần giá', en: ' — the Menu screen has no price section yet' },
 });
 
 // Thủ kho, NV quầy/bếp, kế toán không thấy dữ liệu CRM (0018) — trang tổng
@@ -143,7 +143,7 @@ const viec = [
       : monVuongThat.length === 0
         ? (monSanSang > 0 ? t.monSanSang(monSanSang) : null)
         : t.monVuong(monVuongThat.length),
-    di: null,
+    di: '/noi-bo/thuc-don',
   },
   {
     xong: (tinDangTuyen ?? 0) > 0,

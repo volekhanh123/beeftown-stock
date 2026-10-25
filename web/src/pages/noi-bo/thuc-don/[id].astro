@@ -1,0 +1,338 @@
+---
+/**
+ * SOẠN MỘT MÓN
+ *
+ * Tên, mô tả, khẩu phần, cảnh báo (món sống), thứ tự, bản tiếng Anh và tiếng
+ * Hàn; công bố và gỡ. Quyền do database quyết định — xem đầu
+ * lib/thuc-don-noi-bo.ts. Giá, mức cay, cờ món sống / có cồn, nhóm: chỉ hiện.
+ *
+ * BA FORM TÁCH NHAU: soạn (Lưu / Lưu và công bố), dịch ngay, gỡ món. Nút Lưu
+ * là nút submit đầu tiên của form soạn, nên một cú Enter trong ô chữ chỉ lưu —
+ * không bao giờ công bố món.
+ *
+ * BẢN DỊCH (0036): lưu xong là máy dịch nền những ô có câu tiếng Việt vừa
+ * đổi — xem lib/ban-dich.ts. Ô tiếng Anh/Hàn vẫn sửa tay được; sửa tay thắng
+ * máy cho tới khi câu tiếng Việt của ô đó đổi.
+ *
+ * GHI ĐƯỢC THÌ CHUYỂN HƯỚNG 303 về chính món (lib/gui-noi-bo.ts): F5 không lưu
+ * lại bản cũ. Không ghi được thì dựng lại trang ngay, với đúng chữ người soạn
+ * vừa gõ. Lần hai của cú bấm đúp: luuMon / goMon tự nhận ra món đã đúng như
+ * vừa gửi.
+ */
+import NoiBo from '../../../layouts/NoiBo.astro';
+import { docNoiDung } from '../../../lib/noi-dung';
+import {
+  docMon, docVuong, luuMon, goMon, TRANG_THAI_MON, VAI_SUA_MON, O_DICH_MON,
+  type MonAn, type NhomMon, type KetQuaLuu,
+} from '../../../lib/thuc-don-noi-bo';
+import { dichBu, chayNen, oDangCho, moTaO, cauTomTat } from '../../../lib/ban-dich';
+import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
+import { dichCau } from '../../../lib/cau-noi-bo';
+import { CAU_DOC_FORM_HONG, chuyenHuongNoiBo, docBaoNoiBo, docFormNoiBo } from '../../../lib/gui-noi-bo';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  mon:          { vi: 'Món', en: 'Dish' },
+  khongDoc:     { vi: 'Không đọc được món.', en: 'Could not read the dish.' },
+  dangDich:     { vi: (cau: string) => `${cau} Bản tiếng Anh và tiếng Hàn đang được dịch — tải lại trang sau ít giây để xem.`,
+                  en: (cau: string) => `${cau} The English and Korean versions are being translated — reload in a few seconds to see them.` },
+  tatCaMon:     { vi: '← Cả thực đơn', en: '← Whole menu' },
+  khongThay:    { vi: 'Không tìm thấy món này, hoặc tài khoản của bạn không xem được.', en: 'This dish was not found, or your account cannot view it.' },
+  maMon:        { vi: 'Mã món ', en: 'Dish code ' },
+  nhom:         { vi: ' · nhóm ', en: ' · group ' },
+  congBoLuc:    { vi: (g: string) => ` Công bố lúc ${g}. `, en: (g: string) => ` Published at ${g}. ` },
+  xemTrang:     { vi: 'Xem trên trang ↗', en: 'View on the site ↗' },
+  congTat1:     { vi: 'Trang Thực đơn đang tắt', en: 'The menu section is switched off' },
+  congTat2:     { vi: ', nên món này chưa hiện trên trang dù đang công bố. Bật công tắc ',
+                  en: ', so this dish is not on the site even though it is live. Turn on the switch ' },
+  ruouTat1:     { vi: 'Đồ uống có cồn đang ẩn', en: 'Alcoholic drinks are hidden' },
+  ruouTat2:     { vi: ': món có cồn chỉ hiện trên trang khi bật công tắc ',
+                  en: ': an alcoholic dish shows on the site only when the switch ' },
+  ruouTat3:     { vi: '.', en: ' is on.' },
+  chiDoc:       { vi: 'Chỉ chủ nhà hàng, quản lý và marketing sửa được món. Bạn đang xem ở chế độ chỉ đọc.',
+                  en: 'Only the owner, managers and marketing can edit dishes. You are in read-only mode.' },
+  vuong:        { vi: 'Còn vướng: ', en: 'Still blocked: ' },
+  cuaMon:       { vi: 'Thông tin cố định', en: 'Fixed facts' },
+  cuaMonPhu:    { vi: 'Những ô này không sửa ở đây: giá và mức cay có luồng duyệt riêng, còn món sống và có cồn là nghĩa vụ pháp lý.',
+                  en: 'These are not edited here: prices and spice levels have their own approval, and raw and alcoholic flags are legal duties.' },
+  monSong:      { vi: 'Món sống', en: 'Raw dish' },
+  coCon:        { vi: 'Đồ uống có cồn', en: 'Alcoholic' },
+  diUng:        { vi: 'Dị ứng', en: 'Allergens' },
+  co:           { vi: 'có', en: 'yes' },
+  khong:        { vi: 'không', en: 'no' },
+  chuaGhi:      { vi: 'chưa ghi', en: 'not recorded' },
+  giaWeb:       { vi: 'Giá trên web', en: 'Price on the site' },
+  giaKhong:     { vi: 'không hiện — chưa có giá nào được duyệt', en: 'not shown — no price has been approved' },
+  noiDung:      { vi: 'Tên và mô tả', en: 'Name and description' },
+  noiDungPhu1:  { vi: 'Muốn công bố thì phải có tên và mô tả tiếng Việt. Chữ trong ngoặc vuông, kiểu ',
+                  en: 'To publish, the Vietnamese name and description must be filled in. Text in square brackets, like ' },
+  noiDungPhu2:  { vi: ', được coi là chưa viết xong và chặn việc công bố.', en: ', counts as unfinished and blocks publishing.' },
+  tenMon:       { vi: 'Tên món', en: 'Dish name (in Vietnamese)' },
+  moTa:         { vi: 'Mô tả', en: 'Description (in Vietnamese)' },
+  khauPhan:     { vi: 'Khẩu phần', en: 'Portion (in Vietnamese)' },
+  khauPhanPhu:  { vi: 'Không bắt buộc. Chỉ ghi điều đã chắc, không tự ghi "2–4 người".',
+                  en: 'Optional. Only write what is certain; do not guess a number of people.' },
+  canhBao:      { vi: 'Cảnh báo món sống', en: 'Raw-dish warning (in Vietnamese)' },
+  canhBaoPhu:   { vi: 'Bắt buộc trước khi công bố món sống.', en: 'Required before a raw dish can be published.' },
+  thuTu:        { vi: 'Thứ tự trong nhóm', en: 'Order within the group' },
+  thuTuPhu:     { vi: 'Số nhỏ đứng trước.', en: 'Smaller numbers come first.' },
+  banNhap:      { vi: 'Bản nháp mô tả có sẵn (nội bộ, không lên trang)', en: 'Existing draft description (internal, not on the site)' },
+  canXacNhan:   { vi: 'Cần xác nhận trước khi viết (nội bộ)', en: 'To confirm before writing (internal)' },
+  banDichTom:   { vi: 'Bản tiếng Anh và tiếng Hàn — máy tự dịch', en: 'English and Korean versions — machine translated' },
+  banDichPhu:   { vi: 'Mỗi lần lưu, máy dịch những ô có câu tiếng Việt vừa đổi. Sửa tay ô nào thì ô đó được giữ, cho tới khi câu tiếng Việt của nó đổi. Xóa trắng một ô là nhờ máy dịch lại ô đó.',
+                  en: 'Each save translates the fields whose Vietnamese text changed. A field you edit by hand is kept until its Vietnamese text changes. Clear a field to have it machine-translated again.' },
+  tiengAnh:     { vi: 'Tiếng Anh', en: 'English' },
+  tiengHan:     { vi: 'Tiếng Hàn', en: 'Korean' },
+  luuDoiNgay:   { vi: 'Lưu — trang đổi ngay', en: 'Save — the site changes right away' },
+  luuVanGo:     { vi: 'Lưu (món vẫn đang gỡ)', en: 'Save (dish stays down)' },
+  luuNhap:      { vi: 'Lưu nháp', en: 'Save draft' },
+  luuCongBo:    { vi: 'Lưu và công bố lên trang', en: 'Save and publish' },
+  banDich:      { vi: 'Bản dịch', en: 'Translations' },
+  conCho:       { vi: (n: number) => `Còn ${n} ô tiếng Anh/Hàn đang chờ máy dịch. Máy tự làm sau mỗi lần lưu và khi có người mở trang nội bộ; bấm nút này để dịch ngay và xem kết quả.`,
+                  en: (n: number) => `${n} English/Korean fields are waiting for machine translation. It runs after each save and whenever someone opens the internal app; press this button to translate now and see the result.` },
+  dichNgay:     { vi: 'Dịch ngay', en: 'Translate now' },
+  goMon:        { vi: 'Gỡ món', en: 'Take down' },
+  goMonPhu:     { vi: 'Món biến khỏi trang Thực đơn ngay. Nội dung và bản dịch vẫn còn nguyên, công bố lại lúc nào cũng được.',
+                  en: 'The dish disappears from the Menu page right away. Its text and translations are kept, and you can publish it again any time.' },
+  goKhoiTrang:  { vi: 'Gỡ khỏi trang', en: 'Remove from site' },
+});
+const duocSua = (VAI_SUA_MON as readonly string[]).includes(nhanSu.vai_tro);
+const id = Astro.params.id ?? '';
+const duongDan = `/noi-bo/thuc-don/${id}`;
+
+let bao: KetQuaLuu | null = docBaoNoiBo(Astro.cookies, Astro.url.pathname);
+
+if (Astro.request.method === 'POST') {
+  const form = await docFormNoiBo(Astro.request);
+  if (!form) bao = { ok: false, cau: CAU_DOC_FORM_HONG[nn] };
+
+  if (form) {
+    const viec = String(form.get('viec') ?? '');
+    bao = viec === 'go'   ? await goMon(client, id, nn)
+        // Dịch ngay thì CHỜ kết quả: người bấm nút muốn biết nó xong hay hỏng vì sao.
+        : viec === 'dich' ? cauTomTat(await dichBu(client, { bang: 'mon_an', dongId: id }), nn)
+        :                   await luuMon(client, id, form, nn);
+
+    if (bao.ok) {
+      // Lưu xong thì dịch nền đúng món này: trang trả về ngay, bản dịch vào sau vài giây.
+      // Máy hỏng cũng không làm hỏng lần lưu — xem chayNen().
+      if (viec === 'luu' || viec === 'luu_cong_bo') {
+        chayNen(Astro.locals, dichBu(client, { bang: 'mon_an', dongId: id }));
+        if ((await oDangCho(client, 'mon_an', id)).size > 0) bao = { ...bao, cau: t.dangDich(bao.cau) };
+      }
+      return chuyenHuongNoiBo(Astro, bao, duongDan);
+    }
+  }
+}
+
+let mon: MonAn | null = null;
+let nhom: NhomMon | null = null;
+let loiDoc: string | null = null;
+try {
+  const kq = await docMon(client, id);
+  mon = kq?.mon ?? null;
+  nhom = kq?.nhom ?? null;
+} catch (e) {
+  loiDoc = e instanceof Error ? dichCau(nn, e.message) : t.khongDoc;
+}
+
+const dangCho = mon ? await oDangCho(client, 'mon_an', id) : new Set<string>();
+const vuong = mon && mon.trang_thai !== 'da_cong_bo' ? await docVuong(client, mon.ma) : null;
+const noiDung = mon ? await docNoiDung('vi') : null;
+
+// Lưu hỏng thì hiện lại đúng những gì người dùng vừa gõ, không bắt gõ lại.
+const v: MonAn | null = mon && { ...mon, ...(bao && !bao.ok ? bao.daGo : undefined) };
+const dangHien = mon?.trang_thai === 'da_cong_bo';
+const oDich = O_DICH_MON.filter(o => !o.chiMonSong || mon?.la_mon_song);
+const gioVn = (iso: string) => new Date(iso).toLocaleString(nn === 'en' ? 'en-GB' : 'vi-VN', {
+  timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit',
+  day: 'numeric', month: 'numeric', year: 'numeric',
+});
+const coKhong = (b: boolean) => (b ? t.co : t.khong);
+---
+<NoiBo tieuDe={(nn === 'en' && mon?.ten_en) || mon?.ten_vi || t.mon} nhanSu={nhanSu}>
+  <p style="margin:0 0 .75rem;font-size:.9rem">
+    <a href="/noi-bo/thuc-don">{t.tatCaMon}</a>
+  </p>
+
+  {bao && <div class={`nb-bao ${bao.ok ? 'xong' : 'loi'}`}><p>{bao.cau}</p></div>}
+  {loiDoc && <div class="nb-bao loi"><p>{loiDoc}</p></div>}
+
+  {!mon && !loiDoc && (
+    <div class="nb-rong"><p style="margin:0">{t.khongThay}</p></div>
+  )}
+
+  {mon && v && (
+    <>
+      <div class="nb-dong-dau" style="margin-bottom:.35rem">
+        {/* Tiêu đề theo ngôn ngữ giao diện; ô soạn bên dưới vẫn là tên tiếng Việt (câu gốc). */}
+        <h1 style="margin:0">{(nn === 'en' && mon.ten_en) || mon.ten_vi || mon.ma}</h1>
+        <span class={`nb-nhan ${TRANG_THAI_MON[mon.trang_thai].lop}`}>{TRANG_THAI_MON[mon.trang_thai].ten[nn]}</span>
+      </div>
+      <p class="nb-dan" style="font-size:.85rem">
+        {t.maMon}<code>{mon.ma}</code>{nhom && <>{t.nhom}{(nn === 'en' && nhom.ten_en) || nhom.ten_vi}</>}.
+        {dangHien && mon.cong_bo_luc && (
+          <>{t.congBoLuc(gioVn(mon.cong_bo_luc))}<a href={nn === 'en' ? '/en/menu' : '/thuc-don'} target="_blank" rel="noopener">{t.xemTrang}</a></>
+        )}
+      </p>
+
+      {dangHien && noiDung?.hien_thuc_don !== true && (
+        <div class="nb-bao luu-y">
+          <p><strong>{t.congTat1}</strong>{t.congTat2}<a href="/noi-bo/noi-dung"><code>hien_thuc_don</code></a>.</p>
+        </div>
+      )}
+      {mon.co_con && noiDung?.hien_do_uong_co_con !== true && (
+        <div class="nb-bao luu-y">
+          <p><strong>{t.ruouTat1}</strong>{t.ruouTat2}<a href="/noi-bo/noi-dung"><code>hien_do_uong_co_con</code></a>{t.ruouTat3}</p>
+        </div>
+      )}
+      {vuong && <div class="nb-bao luu-y"><p>{t.vuong}{dichCau(nn, vuong)}</p></div>}
+      {!duocSua && <div class="nb-bao luu-y"><p>{t.chiDoc}</p></div>}
+
+      <section class="nb-the">
+        <h2>{t.cuaMon}</h2>
+        <p class="nb-dan" style="font-size:.85rem">{t.cuaMonPhu}</p>
+        <dl class="nb-co-dinh">
+          <dt>{t.monSong}</dt><dd>{coKhong(mon.la_mon_song)}</dd>
+          <dt>{t.coCon}</dt><dd>{coKhong(mon.co_con)}</dd>
+          <dt>{t.diUng}</dt><dd>{mon.di_ung?.length ? mon.di_ung.join(', ') : t.chuaGhi}</dd>
+          <dt>{t.giaWeb}</dt><dd>{t.giaKhong}</dd>
+        </dl>
+      </section>
+
+      {/* ------------------------------------------------------------ SOẠN */}
+      <form method="POST" action={duongDan} class="nb-soan">
+        <input type="hidden" name="phien_ban" value={mon.updated_at} />
+        <fieldset disabled={!duocSua}>
+          <section class="nb-the">
+            <h2>{t.noiDung}</h2>
+            <p class="nb-dan" style="font-size:.85rem">
+              {t.noiDungPhu1}<code>[chờ duyệt]</code>{t.noiDungPhu2}
+            </p>
+            <label class="nb-o">
+              <span>{t.tenMon}</span>
+              <input type="text" name="ten_vi" required maxlength="120" value={v.ten_vi ?? ''}
+                     autocapitalize="sentences" />
+            </label>
+            <label class="nb-o">
+              <span>{t.moTa}</span>
+              <textarea name="mo_ta_vi" rows="4">{v.mo_ta_vi ?? ''}</textarea>
+            </label>
+            {mon.copy_nhap && (
+              <details class="nb-goi-y">
+                <summary>{t.banNhap}</summary>
+                <p>{mon.copy_nhap}</p>
+              </details>
+            )}
+            {mon.can_xac_nhan && (
+              <details class="nb-goi-y">
+                <summary>{t.canXacNhan}</summary>
+                <p>{mon.can_xac_nhan}</p>
+              </details>
+            )}
+            {mon.la_mon_song && (
+              <label class="nb-o">
+                <span>{t.canhBao}</span>
+                <small>{t.canhBaoPhu}</small>
+                <textarea name="canh_bao" rows="2">{v.canh_bao ?? ''}</textarea>
+              </label>
+            )}
+            <div class="nb-hai">
+              <label class="nb-o">
+                <span>{t.khauPhan}</span>
+                <small>{t.khauPhanPhu}</small>
+                <input type="text" name="khau_phan" maxlength="120" value={v.khau_phan ?? ''} />
+              </label>
+              <label class="nb-o">
+                <span>{t.thuTu}</span>
+                <small>{t.thuTuPhu}</small>
+                <input type="number" name="thu_tu" min="0" max="999" step="1" inputmode="numeric"
+                       required value={v.thu_tu ?? 0} />
+              </label>
+            </div>
+
+            <details class="nb-tieng-anh" open={dangCho.size > 0}>
+              <summary>{t.banDichTom}</summary>
+              <p class="nb-dan" style="font-size:.85rem">{t.banDichPhu}</p>
+              {([['en', t.tiengAnh], ['ko', t.tiengHan]] as const).map(([l, tenNgonNgu]) => (
+                <fieldset class="nb-ngon-ngu">
+                  <legend>{tenNgonNgu}</legend>
+                  {oDich.map(o => {
+                    const ten = `${o.cot}_${l}` as keyof MonAn;
+                    const giaTri = (v[ten] as string | null) ?? '';
+                    const trangThai = moTaO(mon.ban_dich?.[o.cot]?.[l], dangCho.has(`${o.cot}/${l}`), nn);
+                    return (
+                      <label class="nb-o">
+                        <span>{o.ten[nn]} ({l.toUpperCase()})</span>
+                        {o.dong === 1
+                          ? <input type="text" name={ten} lang={l} maxlength={o.cot === 'ten' ? 120 : undefined} value={giaTri} />
+                          : <textarea name={ten} rows={o.dong} lang={l}>{giaTri}</textarea>}
+                        {/* Chữ lúc mở màn hình — lib/thuc-don-noi-bo.ts so với nó để biết ô nào được sửa tay. */}
+                        <input type="hidden" name={`goc_${ten}`} value={(mon[ten] as string | null) ?? ''} />
+                        {trangThai && <small class={`nb-dich ${trangThai.lop}`}>{trangThai.chu}</small>}
+                      </label>
+                    );
+                  })}
+                </fieldset>
+              ))}
+            </details>
+          </section>
+
+          {duocSua && (
+            <div class="nb-dong-nut" style="margin-bottom:1.5rem">
+              <button type="submit" name="viec" value="luu" class="nb-nut">
+                {dangHien ? t.luuDoiNgay : mon.trang_thai === 'da_thu_hoi' ? t.luuVanGo : t.luuNhap}
+              </button>
+              {!dangHien && (
+                <button type="submit" name="viec" value="luu_cong_bo" class="nb-nut phu">{t.luuCongBo}</button>
+              )}
+            </div>
+          )}
+        </fieldset>
+      </form>
+
+      {/* ------------------------------------------------------------ DỊCH */}
+      {duocSua && dangCho.size > 0 && (
+        <form method="POST" action={duongDan} class="nb-the">
+          <input type="hidden" name="viec" value="dich" />
+          <h2>{t.banDich}</h2>
+          <p class="nb-dan" style="font-size:.85rem">{t.conCho(dangCho.size)}</p>
+          <button type="submit" class="nb-nut phu">{t.dichNgay}</button>
+        </form>
+      )}
+
+      {/* ------------------------------------------------------------ GỠ MÓN */}
+      {duocSua && dangHien && (
+        <form method="POST" action={duongDan} class="nb-the">
+          <input type="hidden" name="viec" value="go" />
+          <h2>{t.goMon}</h2>
+          <p class="nb-dan" style="font-size:.85rem">{t.goMonPhu}</p>
+          <button type="submit" class="nb-nut phu">{t.goKhoiTrang}</button>
+        </form>
+      )}
+    </>
+  )}
+</NoiBo>
+
+<style>
+  .nb-soan fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+  .nb-soan h2, form.nb-the h2, section.nb-the h2 { margin-top: 0; }
+  .nb-hai {
+    display: grid; gap: 0 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  }
+  .nb-co-dinh { display: grid; grid-template-columns: max-content 1fr; gap: .35rem 1rem; margin: 0; font-size: .92rem; }
+  .nb-co-dinh dt { font-weight: 600; }
+  .nb-co-dinh dd { margin: 0; }
+  .nb-goi-y { margin: -.4rem 0 1rem; font-size: .88rem; }
+  .nb-goi-y summary { cursor: pointer; font-weight: 600; padding: .3rem 0; }
+  .nb-goi-y p { margin: .3rem 0 0; white-space: pre-line; color: var(--muc-nhat); }
+  .nb-tieng-anh { margin-top: .25rem; }
+  .nb-tieng-anh summary {
+    cursor: pointer; font-weight: 600; font-size: .9rem; padding: .4rem 0 .6rem;
+  }
+  .nb-ngon-ngu { border: 1px solid var(--vach); border-radius: 8px; padding: .5rem .85rem .25rem; margin: 0 0 1rem; }
+  .nb-ngon-ngu legend { font-weight: 700; font-size: .9rem; padding: 0 .35rem; }
+</style>

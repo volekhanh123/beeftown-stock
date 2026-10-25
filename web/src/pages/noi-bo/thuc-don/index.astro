@@ -1,0 +1,128 @@
+---
+/**
+ * THỰC ĐƠN — danh sách món theo nhóm
+ *
+ * Mỗi món một thẻ; bấm vào để soạn ở /noi-bo/thuc-don/<id> — tên, mô tả, bản
+ * dịch, công bố và gỡ đều ở đó. Thẻ món chưa công bố ghi lý do còn vướng
+ * (v_mon_con_vuong, 0011), để biết món nào chỉ còn chờ bấm công bố.
+ *
+ * Quyền do database quyết định, xem đầu lib/thuc-don-noi-bo.ts. Trang chỉ đọc,
+ * không ghi gì — nên không có POST.
+ */
+import NoiBo from '../../../layouts/NoiBo.astro';
+import { docNoiDung } from '../../../lib/noi-dung';
+import { docDanhSach, TRANG_THAI_MON, VAI_SUA_MON, type NhomCoMon } from '../../../lib/thuc-don-noi-bo';
+import { dichNB, nnCua } from '../../../lib/ngon-ngu-noi-bo';
+import { dichCau } from '../../../lib/cau-noi-bo';
+
+const phien = Astro.locals.phien!;
+const { client, nhanSu } = phien;
+const nn = nnCua(Astro);
+const t = dichNB(nn, {
+  tieuDe:    { vi: 'Thực đơn', en: 'Menu' },
+  dan:       { vi: 'Sửa tên, mô tả, bản tiếng Anh và tiếng Hàn của từng món, rồi công bố hoặc gỡ khỏi trang Thực đơn. Giá và mức cay chưa sửa ở đây.',
+               en: 'Edit each dish\'s name, description and English and Korean versions, then publish it on the Menu page or take it down. Prices and spice levels are not edited here.' },
+  xemTrang:  { vi: 'Xem trang Thực đơn ↗', en: 'View the Menu page ↗' },
+  khongDoc:  { vi: 'Không đọc được thực đơn.', en: 'Could not read the menu.' },
+  congTat1:  { vi: 'Trang Thực đơn đang tắt.', en: 'The menu section is switched off.' },
+  congTat2:  { vi: ' Món "đang công bố" cũng chưa hiện trên trang cho tới khi bật công tắc ',
+               en: ' Even "live" dishes will not show on the site until you turn on the switch ' },
+  ruouTat1:  { vi: 'Đồ uống có cồn đang ẩn.', en: 'Alcoholic drinks are hidden.' },
+  ruouTat2:  { vi: ' Món có cồn chỉ hiện trên trang khi bật thêm công tắc ',
+               en: ' Alcoholic dishes show on the site only when you also turn on the switch ' },
+  chiDoc:    { vi: 'Chỉ chủ nhà hàng, quản lý và marketing sửa được món. Bạn đang xem ở chế độ chỉ đọc.',
+               en: 'Only the owner, managers and marketing can edit dishes. You are in read-only mode.' },
+  chuaCo:    { vi: 'Chưa có món nào, hoặc tài khoản của bạn không xem được thực đơn.',
+               en: 'There are no dishes yet, or your account cannot view the menu.' },
+  tomTat:    { vi: (song: number, sanSang: number, vuong: number) => `${song} món đang công bố · ${sanSang} món sẵn sàng, chờ bấm công bố · ${vuong} món còn vướng`,
+               en: (song: number, sanSang: number, vuong: number) => `${song} dishes live · ${sanSang} ready, waiting for Publish · ${vuong} still blocked` },
+  monSong:   { vi: 'món sống', en: 'raw dish' },
+  coCon:     { vi: 'có cồn', en: 'alcoholic' },
+  khongGia:  { vi: 'Nhóm này không niêm yết giá trên web.', en: 'This group shows no prices on the site.' },
+  nhomAn:    { vi: 'Nhóm đang ngừng dùng: món trong nhóm không hiện trên trang dù đang công bố.',
+               en: 'This group is switched off: its dishes do not show on the site even when live.' },
+});
+const duocSua = (VAI_SUA_MON as readonly string[]).includes(nhanSu.vai_tro);
+
+let ds: NhomCoMon[] = [];
+let dsLoi: string | null = null;
+try {
+  ds = await docDanhSach(client);
+} catch (e) {
+  dsLoi = e instanceof Error ? dichCau(nn, e.message) : t.khongDoc;
+}
+
+const noiDung = await docNoiDung('vi');
+const tatCa = ds.flatMap(g => g.mon);
+// 'Sẵn sàng công bố' là đúng chữ vuong_gi của v_mon_con_vuong (0011) — chữ database, không phải nhãn.
+const SAN_SANG = 'Sẵn sàng công bố';
+const soSong = tatCa.filter(m => m.trang_thai === 'da_cong_bo').length;
+const soSanSang = tatCa.filter(m => m.vuong === SAN_SANG).length;
+// Chỉ đếm món có lý do vướng đọc được: đọc view hỏng thì món đó không biết vướng gì, không tính là vướng.
+const soVuong = tatCa.filter(m => m.vuong !== null && m.vuong !== SAN_SANG).length;
+const coRuou = tatCa.some(m => m.co_con);
+---
+<NoiBo tieuDe={t.tieuDe} nhanSu={nhanSu}>
+  <h1>{t.tieuDe}</h1>
+  <p class="nb-dan">
+    {t.dan} <a href={nn === 'en' ? '/en/menu' : '/thuc-don'} target="_blank" rel="noopener">{t.xemTrang}</a>
+  </p>
+
+  {dsLoi && <div class="nb-bao loi"><p>{dsLoi}</p></div>}
+
+  {noiDung.hien_thuc_don !== true && (
+    <div class="nb-bao luu-y">
+      <p><strong>{t.congTat1}</strong>{t.congTat2}<a href="/noi-bo/noi-dung"><code>hien_thuc_don</code></a>.</p>
+    </div>
+  )}
+  {noiDung.hien_thuc_don === true && coRuou && noiDung.hien_do_uong_co_con !== true && (
+    <div class="nb-bao luu-y">
+      <p><strong>{t.ruouTat1}</strong>{t.ruouTat2}<a href="/noi-bo/noi-dung"><code>hien_do_uong_co_con</code></a>.</p>
+    </div>
+  )}
+
+  {!duocSua && (
+    <div class="nb-bao luu-y"><p>{t.chiDoc}</p></div>
+  )}
+
+  {ds.length === 0 && !dsLoi && (
+    <div class="nb-rong"><p style="margin:0">{t.chuaCo}</p></div>
+  )}
+
+  {tatCa.length > 0 && <p class="nb-dan">{t.tomTat(soSong, soSanSang, soVuong)}</p>}
+
+  {ds.map(g => (
+    <section class="nb-nhom-mon">
+      <h2>{(nn === 'en' && g.nhom.ten_en) || g.nhom.ten_vi}</h2>
+      {g.nhom.khong_niem_yet_gia && <p class="nb-mon-phu">{t.khongGia}</p>}
+      {!g.nhom.dang_dung && <p class="nb-mon-vuong">{t.nhomAn}</p>}
+      {g.mon.map(m => {
+        const tt = TRANG_THAI_MON[m.trang_thai];
+        return (
+          <a href={`/noi-bo/thuc-don/${m.id}`} class="nb-dong nb-the-mon">
+            <div class="nb-dong-dau">
+              <strong>{(nn === 'en' && m.ten_en) || m.ten_vi || m.ma}</strong>
+              <span class={`nb-nhan ${tt.lop}`}>{tt.ten[nn]}</span>
+            </div>
+            <p class="nb-mon-phu">
+              {[m.ma, m.la_mon_song && t.monSong, m.co_con && t.coCon].filter(Boolean).join(' · ')}
+            </p>
+            {m.vuong && (
+              <p class={m.vuong === SAN_SANG ? 'nb-mon-san-sang' : 'nb-mon-vuong'}>{dichCau(nn, m.vuong)}</p>
+            )}
+          </a>
+        );
+      })}
+    </section>
+  ))}
+</NoiBo>
+
+<style>
+  .nb-nhom-mon { margin-bottom: 1.5rem; }
+  .nb-nhom-mon h2 { margin-bottom: .5rem; }
+  .nb-the-mon { display: block; color: inherit; text-decoration: none; }
+  .nb-the-mon:hover { border-color: var(--do); }
+  .nb-mon-phu { margin: .35rem 0 0; font-size: .85rem; color: var(--muc-nhat); }
+  .nb-mon-vuong { margin: .35rem 0 0; font-size: .85rem; color: var(--do); }
+  .nb-mon-san-sang { margin: .35rem 0 0; font-size: .85rem; font-weight: 600; }
+</style>
