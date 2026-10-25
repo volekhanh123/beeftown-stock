@@ -75,6 +75,11 @@ export const MUC_NOI_BO: readonly MucNoiBo[] = [
     ten: { vi: 'Nội dung website', en: 'Website content' }, ngan: { vi: 'Nội dung', en: 'Content' },
     vai: ['chu_so_huu', 'quan_ly', 'marketing'], bieuTuong: 'trang_web', nhom: 'website',
     tuKhoa: { vi: 'công bố địa chỉ hotline giờ mở cửa trang web', en: 'publish address hotline opening hours site' } },
+  // Bốn vai CRM như policy mon_an_doc (0070): thu ngân đọc được thực đơn, chỉ ba vai sửa (trang ẩn ô soạn).
+  { ma: 'thuc_don', link: '/noi-bo/thuc-don',
+    ten: { vi: 'Thực đơn', en: 'Menu' }, ngan: { vi: 'Thực đơn', en: 'Menu' },
+    vai: VAI_CRM, bieuTuong: 'bep', nhom: 'website',
+    tuKhoa: { vi: 'món ăn đồ uống mô tả công bố bản dịch', en: 'dish drink description publish translation' } },
   { ma: 'tuyen_dung', link: '/noi-bo/tuyen-dung',
     ten: { vi: 'Hồ sơ ứng tuyển', en: 'Job applications' }, ngan: { vi: 'Tuyển dụng', en: 'Hiring' },
     vai: ['chu_so_huu', 'quan_ly'], bieuTuong: 'nguoi', nhom: 'website',
@@ -106,6 +111,8 @@ export const MUC_THEM: MucNoiBo = {
 const UU_TIEN_DAY: Record<string, string[]> = {
   chu_so_huu: ['tong_quan', 'dat_ban', 'kho', 'zalo'],
   quan_ly:    ['tong_quan', 'dat_ban', 'kho', 'zalo'],
+  // Marketing có 6 mục từ khi có Thực đơn: giữ trên thanh đáy những màn nội dung — việc chính của vai này.
+  marketing:  ['tong_quan', 'noi_dung', 'thuc_don', 'zalo'],
 };
 
 export const SO_NUT_DAY = 5;

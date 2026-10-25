@@ -123,6 +123,8 @@ nhom('3 · MÀN CRM KHÔNG CÒN CHỮ VIỆT NGOÀI CẶP { vi, en }');
     'pages/noi-bo/tin-tuyen-dung/index.astro', 'pages/noi-bo/tin-tuyen-dung/[id].astro',
     'lib/cong-tac.ts', 'lib/tin-tuyen-dung.ts', 'lib/cai-dat.ts', 'lib/ban-dich.ts',
     'lib/truong-form.ts', 'lib/ngon-ngu-noi-bo.ts',
+    // Soạn thực đơn: danh sách, màn soạn, thư viện.
+    'pages/noi-bo/thuc-don/index.astro', 'pages/noi-bo/thuc-don/[id].astro', 'lib/thuc-don-noi-bo.ts',
     // Gửi tin Zalo (0047): ba màn + nhãn dùng chung.
     'pages/noi-bo/zalo/index.astro', 'pages/noi-bo/zalo/chien-dich/moi.astro', 'pages/noi-bo/zalo/cai-dat.astro',
     'lib/zalo-trang.ts', 'lib/zalo-bao.ts',
