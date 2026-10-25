@@ -3,9 +3,13 @@
 > **Ngày 22/10/2026 Khánh chốt bảng màu mới theo bộ logo gửi ngày 21/10/2026: chỉ đỏ `#BD0000`, đen
 > `#000000`, trắng `#FFFFFF`. Bỏ Cream, Marigold, Warm Stone.** Mã của website và Beeftown Cân **chưa
 > đổi**: website vẫn chạy bảng 09/10/2026, Beeftown Cân vẫn chạy bảng trước đó (mục 1–5 bên dưới, kiểm
-> thử vẫn canh đúng các mã đó). Bảng mới, chỗ còn màu cũ và danh sách việc đổi màu chờ Khánh duyệt: mục 0.
+> thử vẫn canh đúng các mã đó). Bảng mới, chỗ còn màu cũ và danh sách việc đổi màu: mục 0.
+>
+> **Ngày 25/10/2026 Khánh duyệt đổi sang bảng mới** và trả lời câu 1–3 của mục 0. Từ ngày đó mọi thiết
+> kế mới ngoài `web/` (bản mẫu, ấn phẩm, Mini App) dùng bảng mới. Mã website và Beeftown Cân đổi theo danh
+> sách ở mục 0: màu chờ câu 4 (nền trang công khai), logo chờ file SVG (câu 5).
 
-## 0. Bảng màu mới — Khánh chốt 22/10/2026, mã chưa đổi
+## 0. Bảng màu mới — Khánh chốt 22/10/2026, duyệt đổi 25/10/2026, mã chưa đổi
 
 | Tên | HEX | RGB | Thay cho |
 |---|---|---|---|
@@ -38,9 +42,9 @@
 | `theme-color`: `web/src/layouts/Trang.astro`, `NoiBo.astro`, `Kho.astro`, `web/public/kho/manifest.json` | Bảng 09/10/2026 |
 | Beeftown Cân: `can-app/src/giao-dien.html`, `can-app/src/huong-dan.html` | Bảng trước 09/10/2026 (mục 5) |
 | 15 ảnh hướng dẫn kho `web/public/kho/hd-*.png` | Giao diện trước 11/10/2026 |
-| Mini App Zalo (thư mục `mini-app/`, vào repo ở PR riêng) | Bảng mới từ bản 1.0, thêm 7 màu pha xám và đỏ (câu 1) |
+| Mini App Zalo (`mini-app/`) | Bảng mới từ bản 1.0, thêm 7 màu pha: đỏ đậm và các xám (duyệt ở câu 1), hai đỏ nhạt và chữ `#111111` chưa duyệt |
 
-### Câu Khánh cần trả lời trước khi đổi mã
+### Câu Khánh cần trả lời trước khi đổi mã (câu 1–3 trả lời ngày 25/10/2026)
 
 1. **Màu pha trên màn hình.** Ngày 10/10/2026 Khánh cho website giữ 6 token màu pha (`--do-dam` và
    `--do-sau` cho đỏ đậm, 2 nền kem đậm, viền ô nhập, chữ phụ). Bảng mới có được thêm màu pha không: 1
@@ -48,28 +52,48 @@
    phụ (tối thiểu 4,5 : 1 với trắng); 1 nền xám nhạt để tách thẻ khỏi nền trắng? Mini App Zalo đang
    dùng 7 màu pha như vậy (`mini-app/src/styles.css`, vào repo ở PR riêng): câu trả lời áp cho cả Mini
    App.
+   **Trả lời 25/10/2026: có** — một đỏ đậm (nút khi di chuột) và vài xám (viền ô nhập, chữ phụ, nền
+   nhạt, vạch), như Mini App; chỉ trên màn hình, ấn phẩm vẫn chỉ ba màu. Bản mẫu Menu bán lẻ ngày
+   25/10/2026 dùng: đỏ đậm `#8F0000`, xám viền ô nhập `#767676` (4,54 : 1 với trắng; Mini App chưa có màu
+   này), xám chữ phụ `#555555` (7,46 : 1), nền xám nhạt `#F4F4F4`, vạch `#E2E2E2`. Mini App còn hai đỏ
+   nhạt (`#FFF1F1`, `#D9A3A3`) và chữ `#111111`, chưa nằm trong câu trả lời. Mã cuối cùng chốt trong PR
+   đổi màu (việc 3).
 2. **Màu trạng thái** của `/noi-bo`, kho và Beeftown Cân (xanh = xong, vàng = lưu ý, đỏ nhạt = làm
    ngay): giữ làm màu chức năng như hiện nay (không thuộc bảng thương hiệu), hay đổi?
+   **Trả lời 25/10/2026: bỏ.** `/noi-bo`, kho và Beeftown Cân chỉ dùng đỏ, đen, trắng và các xám ở câu 1.
+   Trạng thái phân biệt bằng chữ và biểu tượng. Đề xuất của Claude (bản mẫu Menu bán lẻ 25/10/2026),
+   chốt trong PR đổi màu: đỏ = làm ngay ("Hết" nền đỏ chữ trắng); xám = lưu ý, tắt ("Sắp hết" nền xám);
+   đen = xong, đang chạy ("Còn" viền đen).
 3. **Thay Marigold** ở vòng focus trên nền tối, chấm chưa đọc, nhãn "nháp", đèn vàng bằng màu gì.
    Đề xuất của Claude: vòng focus trắng trên nền tối; chấm và nhãn dùng màu trạng thái của câu 2.
+   **Trả lời 25/10/2026: theo đề xuất.** Vòng focus trên nền tối màu trắng. Câu 2 đã bỏ màu trạng thái,
+   nên chấm, nhãn, đèn vàng theo cách báo mới của câu 2; nhãn "nháp", "giá thử" nền đen chữ trắng.
 4. **Nền trang công khai:** trắng hay đen, và phần của mỗi màu (bảng 09/10/2026 đang chạy kem khoảng
    60, tối khoảng 25, đỏ khoảng 12, vàng khoảng 3).
+   **25/10/2026: chưa chốt.** Khánh quyết sau khi xem cách El Gaucho trình bày cửa hàng thịt online,
+   cùng lúc thiết kế trang bán lẻ cho khách.
 5. **Logo:** thay nét tách từ PDF cũ bằng file vector của bộ logo 21/10/2026. Cần Khánh gửi bản SVG
    (repo chặn PNG và PDF, nhận SVG).
+   **25/10/2026: chưa có SVG.** Bộ logo nằm trong thư mục Drive "LOGO BEEFTOWN" do designer chia sẻ;
+   repo mới có bản PNG đỏ và trắng của logo ngang và đầu bò trong `mini-app/src/assets/`.
+6. **Tagline** (thêm 25/10/2026): logo 21/10/2026 ghi "PICK IT, GRILL IT, LOVE IT!" (dấu phẩy, chấm
+   than) và Mini App viết "Pick it, grill it, love it!", còn guideline 09/10/2026, website và skill thiết
+   kế viết *Pick it. Grill it. Love it.* (dấu chấm). Chốt một cách viết.
 
-### Danh sách việc đổi màu — chờ Khánh duyệt
+### Danh sách việc đổi màu — Khánh duyệt đổi màu 25/10/2026
 
-Chưa việc nào bắt đầu. Hạn ngày Khánh ghi khi duyệt.
+Khánh duyệt đổi màu ngày 25/10/2026; từng việc dưới đây chưa ghi hạn. Chưa việc mã nào bắt đầu: việc 3
+chờ câu 4, việc 5 chờ file SVG (việc 2).
 
 | # | Việc | Ai làm | Hạn |
 |---|---|---|---|
-| 1 | Trả lời 5 câu ở trên | Khánh | |
+| 1 | Trả lời các câu ở trên — câu 1–3 xong 25/10/2026; câu 4 sau khi xem El Gaucho; câu 5 là việc 2; câu 6 | Khánh | |
 | 2 | Gửi file SVG của bộ logo 21/10/2026: lockup, brandmark, wordmark, bản nền sáng và bản nền tối | Khánh | |
-| 3 | Đổi mã cả website trong **1 PR**: 14 token của khối `.ck` và 14 token của `:root` cùng giá trị; 8 màu trạng thái theo câu 2; 4 token của kho; 35 chỗ `rgba()` trong 13 file theo số RGB mới; viết lại 4 bảng chép tay trong kiểm thử (`test-cong-khai-giao-dien.mjs`, `test-noi-bo-bang-mau.mjs`, `web/kiem-tra/do-giao-dien.mjs`, `web/kiem-tra/thu-day-du.mjs`) và 2 nhóm bắt mã trắng; sửa skill thiết kế, `README.md` mục "Bảng màu", `AGENTS.md` mục "Màu", `web/THIET-KE.md` mục 2, `web/KHO.md`, file này | Claude Code | |
+| 3 | Đổi mã cả website trong **1 PR**: 14 token của khối `.ck` và 14 token của `:root` cùng giá trị; bỏ 8 màu trạng thái (câu 2); 4 token của kho; 35 chỗ `rgba()` trong 13 file theo số RGB mới; viết lại 4 bảng chép tay trong kiểm thử (`test-cong-khai-giao-dien.mjs`, `test-noi-bo-bang-mau.mjs`, `web/kiem-tra/do-giao-dien.mjs`, `web/kiem-tra/thu-day-du.mjs`) và 2 nhóm bắt mã trắng; sửa skill thiết kế, `README.md` mục "Bảng màu", `AGENTS.md` mục "Màu", `web/THIET-KE.md` mục 2, `web/KHO.md`, file này | Claude Code | |
 | 4 | Đổi tên token cho đúng màu mới (`--kem` mang mã trắng, `--than` mang mã đen là tên sai): 300 chỗ `var(--kem)`, `var(--kem-sau)`, `var(--kem-dam)`, `var(--than)`, `var(--do-dam)`, `var(--do-sau)`, `var(--cuc-vang)`, `var(--mu-tat)`, `var(--da)` trong 37 file (đếm ngày 22/10/2026). Làm cùng việc 3 hay PR sau: Khánh chọn | Claude Code | |
 | 5 | Dựng lại logo, hoa văn, `bieu-tuong.svg`, `favicon.ico`, ảnh chia sẻ, 4 biểu tượng kho: từ file của việc 2, hoặc đổi bảng `DOI_MAU` của `web/cong-cu/thuong-hieu/tao-bieu-tuong.py` nếu chưa có file | Claude Code | |
 | 6 | Đổi `theme-color` ở 3 layout và `theme_color`, `background_color` của `web/public/kho/manifest.json` | Claude Code, cùng PR việc 3 | |
-| 7 | Beeftown Cân đổi thẳng sang bảng mới (bỏ qua bảng 09/10/2026): khối `:root` của 2 file HTML, nền theo câu 4, màu trạng thái theo câu 2, tăng `PHIEN_BAN` (đang là 2.10.0) | Claude Code, PR riêng | |
+| 7 | Beeftown Cân đổi thẳng sang bảng mới (bỏ qua bảng 09/10/2026): khối `:root` của 2 file HTML, nền theo câu 4, bỏ màu trạng thái (câu 2), tăng `PHIEN_BAN` (đang là 2.10.0) | Claude Code, PR riêng | |
 | 8 | Chụp lại 15 ảnh `web/public/kho/hd-*.png` sau khi việc 3 gộp | Claude Code | |
 | 9 | Deploy website sau khi việc 3, 5, 6 gộp và CI xanh; xem lại trang chủ, Thực đơn, `/noi-bo`, kho trên điện thoại | Khánh | |
 

@@ -1,5 +1,5 @@
 -- =============================================================================
--- BEEFTOWN CRM — 0094 · THỰC ĐƠN THEO CUỐN MENU BẢN SÁNG
+-- BEEFTOWN CRM — 0096 · THỰC ĐƠN THEO CUỐN MENU BẢN SÁNG
 -- 17 nhóm đang dùng · 42 món còn dùng · 10 món thu hồi · KHÔNG món nào công bố
 -- =============================================================================
 -- NGUỒN DỮ LIỆU
@@ -143,7 +143,7 @@ begin
          or m.mo_ta_vi is not null or m.canh_bao is not null);
 
   if v_mon is not null then
-    raise exception 'Thực đơn đã có món công bố, giá hoặc độ cay đã duyệt, hoặc mô tả đã ghi: chạy lại 0094 sẽ xóa hết. Không chạy lại file này.'
+    raise exception 'Thực đơn đã có món công bố, giá hoặc độ cay đã duyệt, hoặc mô tả đã ghi: chạy lại 0096 sẽ xóa hết. Không chạy lại file này.'
       using errcode = 'restrict_violation',
             detail  = v_mon,
             hint    = 'Sửa từng món bằng câu update riêng (web/THUC-DON.md), đổi danh mục thì viết migration mới.';

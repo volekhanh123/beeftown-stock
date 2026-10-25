@@ -174,7 +174,8 @@ await nhom('1 · MẪU TIN — tham số lấy từ <...>, văn bản B4, câu N
      JSON.stringify(mau['ZBS-02'].tham_so));
   ok('ZBS-04 có <cash_value> (B4)', mau['ZBS-04'].tham_so.includes('cash_value'));
   ok('Không mẫu nào còn chỗ trống kiểu [hotline] / [số nhà]', Object.values(mau).every(m => !/\[[^\]]*\]/.test(m.noi_dung)));
-  ok('ZBS-03 (chăm sóc) kết thúc bằng câu hủy nhận "NGUNG"', /nhắn "NGUNG" cho Beeftown\.$/.test(mau['ZBS-03'].noi_dung));
+  // Chữ 0095 (bản B, 25/10/2026) bỏ ngoặc kép quanh NGUNG; so nguyên văn ở test-zalo-mau-cam-on.mjs.
+  ok('ZBS-03 (chăm sóc) kết thúc bằng câu hủy nhận "NGUNG"', /nhắn NGUNG cho Beeftown\.$/.test(mau['ZBS-03'].noi_dung));
   ok('Mặc định: chưa duyệt, chưa tự động', Object.values(mau).every(m => !m.da_duyet && !m.bat_tu_dong));
 
   const loi = await db.query(`insert into mau_tin (ma, ten, loai, noi_dung) values ('ZBS-99', 'Thử', 'cham_soc', 'Ưu đãi <x>')`)

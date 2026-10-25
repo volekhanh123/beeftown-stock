@@ -130,7 +130,7 @@ const VI = {
   chiDuong: 'Chỉ đường',
   goiNhaHang: 'Gọi nhà hàng',
   xemMenu: 'Xem thực đơn',
-  // Tên nhóm món theo cuốn menu bản sáng (Khánh chốt 11/10/2026; bảng nhóm của migration 0094) — MỘT
+  // Tên nhóm món theo cuốn menu bản sáng (Khánh chốt 11/10/2026; bảng nhóm của migration 0096) — MỘT
   // bộ tên cho trang chủ và lời giới thiệu của trang Thực đơn khi chưa công bố món. Tên nhóm, không tên
   // món, không mô tả nguyên liệu. Đồ uống có cồn (Highball, Soju, Makgeolli, Bia) chỉ được nhắc khi công
   // tắc hien_do_uong_co_con bật.
