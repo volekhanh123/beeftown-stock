@@ -19,6 +19,17 @@ PGlite với đủ migration) và kiểm món hiện ra, giá vẫn rỗng, côn
 mất. Sửa một khối ở đây mà làm hỏng điều đó thì `npm test` đỏ. Mỗi khối có dòng `<!-- sql:tên -->` ngay
 trước để kiểm thử tìm được — đổi tên thì sửa cả kiểm thử.
 
+## Màn Thực đơn trong /noi-bo — cách làm hằng ngày
+
+Bước 2, 3, 4 và bước thu hồi bên dưới làm được cho **từng món** ở `/noi-bo/thuc-don`, không cần SQL:
+- sửa tên, mô tả, khẩu phần, câu cảnh báo (món sống) và thứ tự;
+- sửa bản tiếng Anh, tiếng Hàn (máy dịch sau mỗi lần lưu, sửa tay thắng máy);
+- bấm **Lưu và công bố**, hoặc **Gỡ khỏi trang**.
+
+Ai làm được: chủ nhà hàng, quản lý, marketing; thu ngân chỉ xem. Database vẫn chặn đúng như các khối SQL: món chưa
+sạch không công bố được. Màn đó **không** đụng giá, mức cay, cờ món sống / có cồn, nhóm. Những việc đó, tên nhóm
+tiếng Hàn và việc bật hai công tắc (bước 5) vẫn làm bằng SQL ở đây; muốn sửa nhiều món một lượt cũng dùng SQL.
+
 ## Làm ở đâu, theo thứ tự nào
 
 - Supabase → project → **SQL Editor**. Mỗi khối là **một lần bấm Run**; khối nào báo lỗi thì dừng, đọc câu

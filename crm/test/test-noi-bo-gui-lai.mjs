@@ -261,7 +261,9 @@ await nhom('4 · Bàn ăn — thêm lần hai y hệt là "đã có", không ph�
 // ===========================================================================
 await nhom('5 · Năm trang CRM: không formData() trần, ghi được thì chuyển hướng 303, câu "không đọc được" một chỗ', async () => {
   const TRANG = ['pages/noi-bo/dat-ban.astro', 'pages/noi-bo/tuyen-dung.astro', 'pages/noi-bo/noi-dung.astro',
-                 'pages/noi-bo/cai-dat.astro', 'pages/noi-bo/tin-tuyen-dung/[id].astro'];
+                 'pages/noi-bo/cai-dat.astro', 'pages/noi-bo/tin-tuyen-dung/[id].astro',
+                 // Màn soạn món (lib/thuc-don-noi-bo.ts) — cùng luật từ ngày dựng.
+                 'pages/noi-bo/thuc-don/[id].astro'];
   for (const tep of TRANG) {
     const s = docNguon(tep);
     ok(`${tep}: không gọi Astro.request.formData() trần (thân cụt → trang 500)`, !/request\.formData\(\)/.test(s));

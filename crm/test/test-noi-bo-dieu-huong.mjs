@@ -118,8 +118,9 @@ await nhom('2 · THANH MENU: TỐI ĐA 5 NÚT, KHÔNG MỤC NÀO MẤT', async (
   const ma = vai => NB.thanhDayNoiBo(vai).map(m => m.ma).join(',');
   ok('Chủ: thanh đáy Tổng quan · Đặt bàn · Kho · Zalo · Thêm', ma('chu_so_huu') === 'tong_quan,dat_ban,kho,zalo,them', ma('chu_so_huu'));
   ok('Quản lý: thanh đáy như chủ', ma('quan_ly') === ma('chu_so_huu'), ma('quan_ly'));
-  ok('Marketing: đủ 5 mục, không cần "Thêm"', ma('marketing') === 'tong_quan,dat_ban,zalo,noi_dung,tin_tuyen_dung', ma('marketing'));
-  ok('Thu ngân: Tổng quan · Đặt bàn · Tin tuyển dụng', ma('thu_ngan') === 'tong_quan,dat_ban,tin_tuyen_dung', ma('thu_ngan'));
+  // Từ khi có mục Thực đơn, marketing có 6 mục: 4 màn nội dung + "Thêm" (Đặt bàn, Tin tuyển dụng nằm ở trang Tất cả chức năng).
+  ok('Marketing: Tổng quan · Nội dung · Thực đơn · Zalo · Thêm', ma('marketing') === 'tong_quan,noi_dung,thuc_don,zalo,them', ma('marketing'));
+  ok('Thu ngân: Tổng quan · Đặt bàn · Thực đơn · Tin tuyển dụng', ma('thu_ngan') === 'tong_quan,dat_ban,thuc_don,tin_tuyen_dung', ma('thu_ngan'));
   ok('Vai lạ / chưa đăng nhập: không mục nào, không lỗi', NB.thanhDayNoiBo('may_chung').length === 0 && NB.thanhDayNoiBo(undefined).length === 0);
   // Vai chỉ-kho mở một trang khung NoiBo: chỉ một mục (Kho) → không hiện thanh nào, như bản cũ;
   // không có "Tất cả chức năng" (trang đó chuyển họ sang trang Khác của kho).
@@ -166,6 +167,10 @@ await nhom('3 · AI THẤY MỤC NÀO — KHỚP TRANG VÀ RLS', async () => {
   ok('Tin tuyển dụng: bốn vai CRM (trang đọc cho mọi vai CRM, chỉ ẩn ô soạn)',
     bang(vaiCua('tin_tuyen_dung'), VAI_CRM_DS)
     && /const duocSoan = \['chu_so_huu', 'quan_ly', 'marketing'\]/.test(doc('web/src/pages/noi-bo/tin-tuyen-dung/index.astro')));
+  // Vai của mục so với chính policy mon_an_doc / mon_an_sua ở test-noi-bo-thuc-don.mjs mục 5.
+  ok('Thực đơn: bốn vai CRM (thu ngân chỉ đọc, trang ẩn ô soạn theo VAI_SUA_MON)',
+    bang(vaiCua('thuc_don'), VAI_CRM_DS)
+    && /VAI_SUA_MON as readonly string\[\]\)\.includes\(nhanSu\.vai_tro\)/.test(doc('web/src/pages/noi-bo/thuc-don/index.astro')));
   const mess = doc('web/src/pages/noi-bo/messenger.astro');
   ok('Messenger: trang chỉ cho chủ, quản lý — đúng vai của mục',
     /if \(!laChu && nhanSu\.vai_tro !== 'quan_ly'\) return Astro\.redirect/.test(mess) && bang(vaiCua('messenger'), ['chu_so_huu', 'quan_ly']));
